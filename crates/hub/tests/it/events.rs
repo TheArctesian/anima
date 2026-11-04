@@ -6,6 +6,7 @@ mod client;
 mod lists;
 mod operations;
 mod pages;
+mod pings;
 mod socket;
 mod streams;
 mod upkeep;

@@ -51,6 +51,13 @@ const RECHECK: Duration = Duration::from_secs(15);
 const INIT_TIMEOUT: Duration = Duration::from_secs(10);
 /// The longest one write to the client may take.
 const WRITE_TIMEOUT: Duration = Duration::from_secs(10);
+/// How much the hub buffers for a client before it writes to the socket.
+const WRITE_BUFFER: usize = 128 * 1024;
+/// The most the hub buffers for a client that does not read (H-6(b)). Without it, the pong
+/// queued for every Ping a client sends grows without bound; with it, a full buffer keeps one
+/// pending pong, and a message that does not fit ends the connection. It leaves room for the
+/// largest answer the hub sends, a full page of 200 log entries.
+const WRITE_BUFFER_LIMIT: usize = 2 * 1024 * 1024;
 
 /// What a connection needs to check its sign-in.
 #[derive(Clone)]
@@ -99,7 +106,9 @@ pub fn accept_socket<E: Executor>(
     let upgrade = upgrade
         .protocols([SUBPROTOCOL])
         .max_message_size(MESSAGE_LIMIT)
-        .max_frame_size(MESSAGE_LIMIT);
+        .max_frame_size(MESSAGE_LIMIT)
+        .write_buffer_size(WRITE_BUFFER)
+        .max_write_buffer_size(WRITE_BUFFER_LIMIT);
     if upgrade.selected_protocol().is_none() {
         let refusal = "Use the graphql-transport-ws subprotocol.";
         return (StatusCode::BAD_REQUEST, refusal).into_response();
