@@ -54,6 +54,21 @@ pub(super) fn patient() -> Timing {
     }
 }
 
+/// How long the tests' `endSession` waits for a tunnel to end its row (D-10): long enough
+/// that a loaded machine still finishes, far short of the waits in [`patient`], so only the
+/// end signal ends a session within it. These tests run on real sockets and PostgreSQL, so
+/// paused tokio time cannot stand in: auto-advance would fire the hub's waits while real I/O
+/// is still pending.
+pub(super) const END_WAIT: Duration = Duration::from_secs(10);
+
+/// The default setup with `endSession` waiting up to [`END_WAIT`].
+pub(super) fn ending_within_end_wait() -> Setup {
+    Setup {
+        live: Live::with_tunnel_end_wait(END_WAIT).reaching_loopback_for_tests(),
+        ..Setup::default()
+    }
+}
+
 /// How the bench differs from the default: the route's waits and clock, the live state and
 /// its target rule, the address the ticket is bound to, and the accepted host key when it is
 /// not the one the device presents.
