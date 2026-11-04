@@ -73,6 +73,11 @@ pub(super) fn host(text: &str) -> Result<String, FieldError> {
     Ok(host.to_owned())
 }
 
+/// The address a validated host spells out; a host name has none (R-026).
+pub(super) fn ip_literal(host: &str) -> Option<IpAddr> {
+    host.parse().ok()
+}
+
 fn is_host_label(label: &str) -> bool {
     (1..=LABEL_MAX).contains(&label.len())
         && !label.starts_with('-')
