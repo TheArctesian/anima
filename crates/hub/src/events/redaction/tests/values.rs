@@ -117,6 +117,10 @@ fn log_007_redaction_masks_secret_key_value_pairs() {
         "password='' x",
         "password: {\"a\": 1}",
         "status: down, port=22",
+        "password: [1, 2]",
+        "public.key=AAAAC3Nza1",
+        "public_key=AAAAC3Nza1",
+        "public-key=AAAAC3Nza1",
     ]);
 }
 
@@ -154,6 +158,17 @@ fn log_007_redaction_masks_values_of_text_keys_named_like_secrets() {
         ),
         ("Bearer \"ghp_AAAAsecret1\"", "Bearer \"[redacted]\""),
         ("password=\"abc def", "password=\"[redacted] def"),
+        ("sshCreds=hunter2 ok", "sshCreds=[redacted] ok"),
+        ("password\t= hunter2", "password\t= [redacted]"),
+        (
+            "run \"--password=hunter2\" now",
+            "run \"--password=[redacted]\" now",
+        ),
+        (
+            "run '--password=hunter2' now",
+            "run '--password=[redacted]' now",
+        ),
+        ("password=token=x next", "password=[redacted] next"),
     ]);
     let long = format!("password=\"{} end\" next", "a".repeat(300));
     assert_eq!(redact_text(&long), "password=\"[redacted]\" next");

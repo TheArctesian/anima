@@ -115,7 +115,7 @@ fn mask_key_values(text: &str) -> String {
         let separator = index + offset;
         index = separator + 1;
         let secret_key =
-            key_before(text, separator, copied).is_some_and(|key| secrecy(key) != Secrecy::Plain);
+            key_before(text, separator).is_some_and(|key| secrecy(key) != Secrecy::Plain);
         if let Some((start, end)) = secret_key.then(|| value_after(text, index)).flatten() {
             masked.push_str(&text[copied..start]);
             masked.push_str(REDACTED);
@@ -127,18 +127,18 @@ fn mask_key_values(text: &str) -> String {
 }
 
 /// The key that ends before the separator at `separator`: optional spaces, an optional quote,
-/// then key bytes, never reaching back before `floor`.
-fn key_before(text: &str, separator: usize, floor: usize) -> Option<&str> {
+/// then key bytes.
+fn key_before(text: &str, separator: usize) -> Option<&str> {
     let bytes = text.as_bytes();
     let mut end = separator;
-    while end > floor && matches!(bytes[end - 1], b' ' | b'\t') {
+    while end > 0 && matches!(bytes[end - 1], b' ' | b'\t') {
         end -= 1;
     }
-    if end > floor && matches!(bytes[end - 1], b'"' | b'\'') {
+    if end > 0 && matches!(bytes[end - 1], b'"' | b'\'') {
         end -= 1;
     }
     let mut start = end;
-    while start > floor && is_key_byte(bytes[start - 1]) {
+    while start > 0 && is_key_byte(bytes[start - 1]) {
         start -= 1;
     }
     (start < end).then(|| &text[start..end])

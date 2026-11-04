@@ -97,8 +97,9 @@ async fn r_023_new_partitions_get_select_and_insert_for_anima_runtime_only(pool:
 }
 
 /// A partition created before 0502 may carry grants that 0500's function kept from default
-/// privileges, including a chain where a grantee passed its right on with GRANT OPTION (C5);
-/// 0502 resets it once, like a new partition.
+/// privileges, including grants that grantees passed on with GRANT OPTION (C5); 0502 resets it
+/// once, like a new partition. The two roles grant to each other, so whichever the reset revokes
+/// first has a dependent grant, and only CASCADE lets it through.
 #[sqlx::test(migrations = "./migrations")]
 async fn r_023_migration_0502_resets_partitions_created_before_it(pool: PgPool) {
     let mut conn = pool.acquire().await.unwrap();
@@ -108,7 +109,7 @@ async fn r_023_migration_0502_resets_partitions_created_before_it(pool: PgPool) 
     execute(&mut conn, &format!("create role {chained} nologin")).await;
     execute(
         &mut conn,
-        &format!("grant usage on schema events to {group}"),
+        &format!("grant usage on schema events to {group}, {chained}"),
     )
     .await;
     for log in ["event_log", "audit_log"] {
@@ -123,9 +124,12 @@ async fn r_023_migration_0502_resets_partitions_created_before_it(pool: PgPool) 
             "grant update, delete on events.{partition} to {group}; \
              grant truncate, references on events.{partition} to public; \
              grant update, trigger on events.{partition} to anima_runtime; \
-             grant select on events.{partition} to {group} with grant option; \
+             grant select on events.{partition} to {group}, {chained} with grant option; \
              set role {group}; \
              grant select on events.{partition} to {chained}; \
+             reset role; \
+             set role {chained}; \
+             grant select on events.{partition} to {group}; \
              reset role"
         );
         sqlx::raw_sql(&leftovers).execute(&mut *conn).await.unwrap();
