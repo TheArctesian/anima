@@ -20,15 +20,15 @@ The operator approved all seven contracts on 2026-11-03 (checkpoint 1). Only a r
 
 | Package | Wave | State | Branch | Session |
 | --- | --- | --- | --- | --- |
-| WP-01 Skeleton and gates | 0 | Building | `claude/wp-01-skeleton-212429` | `wp-01-skeleton` |
-| WP-02 Tokens and fonts | 1 | Waiting (WP-01) | — | — |
-| WP-03 VPN and network | 1 | Waiting (WP-01; operator checkpoint 2 for each VPS change) | — | — |
-| WP-04 Deployment, stage A (hub) | 1 | Waiting (WP-01) | — | — |
+| WP-01 Skeleton and gates | 0 | Accepted, merged into `phase-1` (gates 12/12) | `claude/wp-01-skeleton-212429` | `wp-01-skeleton` |
+| WP-02 Tokens and fonts | 1 | Ready | — | — |
+| WP-03 VPN and network | 1 | Ready (operator checkpoint 2 for each VPS change) | — | — |
+| WP-04 Deployment, stage A (hub) | 1 | Ready | — | — |
 | WP-04 Deployment, stage B (releases and self-update, R-006) | 3 | Waiting (WP-15, WP-16; operator sets secrets) | — | — |
-| WP-05 Access and logs | 1 | Waiting (WP-01, K1–K3) | — | — |
-| WP-06 Devices | 1 | Waiting (WP-01, K1–K3) | — | — |
-| WP-07 Credentials | 1 | Waiting (WP-01, K3) | — | — |
-| WP-08 guac-protocol | 1 | Waiting (WP-01) | — | — |
+| WP-05 Access and logs | 1 | Ready | — | — |
+| WP-06 Devices | 1 | Ready | — | — |
+| WP-07 Credentials | 1 | Ready | — | — |
+| WP-08 guac-protocol | 1 | Ready | — | — |
 | WP-09 Checks and maintenance | 2 | Waiting (WP-05, WP-06) | — | — |
 | WP-10 Sessions | 2 | Waiting (WP-05–WP-08) | — | — |
 | WP-11 Client shell | 2 | Waiting (WP-02, K1) | — | — |
