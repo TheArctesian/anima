@@ -1,0 +1,7 @@
+# Generated files that the quality checks do not measure (CQ-012).
+# One repo-relative glob per line. `*` matches within a folder, `**` matches across folders.
+# Blank lines and lines that start with `#` are ignored.
+apps/client/src/styles/tokens.css
+apps/client/src/lib/motion/tokens.ts
+crates/theme/src/generated.rs
+crates/hub/migrations/**

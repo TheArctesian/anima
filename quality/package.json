@@ -1,0 +1,19 @@
+{
+  "name": "@anima/quality",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "limits": "bun bin/limits.ts",
+    "baseline": "bun bin/baseline.ts",
+    "names": "bun bin/names.ts",
+    "imports": "bun bin/imports.ts",
+    "test": "bun test",
+    "check": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.0",
+    "eslint": "^10.14.0",
+    "typescript": "^5.9.0"
+  }
+}
