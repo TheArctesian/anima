@@ -139,6 +139,7 @@
 
 <style>
   .keys {
+    flex: none;
     position: relative;
   }
 

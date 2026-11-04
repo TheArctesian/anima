@@ -48,6 +48,8 @@
   .panes {
     grid-area: 1 / 1;
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-inline-size: 0;
     background: var(--bg);
   }
 
@@ -59,5 +61,6 @@
   .pane {
     grid-area: 1 / 1;
     min-block-size: 0;
+    min-inline-size: 0;
   }
 </style>

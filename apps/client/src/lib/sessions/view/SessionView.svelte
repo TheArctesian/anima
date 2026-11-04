@@ -108,7 +108,11 @@
     const stopFollowing = followPaneFocus(element, (inside) => {
       // Release held keys now: the binding effect runs later, and a held key would repeat until then.
       if (!inside) paneKeys.unbind();
-      paneHasFocus = inside;
+      // Chromium fires `focusout` while Svelte removes the pane, inside its block effect, where a tracked state write
+      // is forbidden (`state_unsafe_mutation`); this event handler reads nothing, so the write is untracked.
+      untrack(() => {
+        paneHasFocus = inside;
+      });
     });
     const observer = new ResizeObserver((entries) => {
       const box = entries.at(-1)?.contentRect;
@@ -219,6 +223,7 @@
     flex-direction: column;
     block-size: 100%;
     min-block-size: 0;
+    min-inline-size: 0;
     background: var(--bg);
     color: var(--text);
   }
@@ -237,17 +242,24 @@
     flex: none;
     align-items: center;
     gap: var(--space-3);
+    min-inline-size: 0;
     padding: var(--space-2) var(--space-3);
     border-bottom: var(--border-thin) solid var(--border);
     background: var(--surface);
   }
 
+  /* The bar never sets the pane's width: the name gives way first, and the Keys control keeps its size (UI-009). */
   .device {
+    min-inline-size: 0;
+    overflow: hidden;
     font-family: var(--font-mono);
     font-size: var(--text-sm);
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .notice {
+    min-inline-size: 0;
     font-size: var(--text-sm);
   }
 
@@ -285,7 +297,7 @@
     isolation: isolate;
   }
 
-  /* Shown only while no display is: before ready and after the end (D-7). */
+  /* Shown only while no display is: before ready and after the end (D-7). A narrow pane scrolls it, never the page (UI-009). */
   .panel {
     position: absolute;
     inset: 0;
@@ -294,6 +306,7 @@
     align-items: flex-start;
     justify-content: flex-start;
     gap: var(--space-4);
+    overflow: auto;
     padding: var(--space-6);
     background: var(--bg);
   }
