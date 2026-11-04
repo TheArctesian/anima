@@ -14,6 +14,10 @@ use crate::checks::config::IpVersion;
 
 const PAYLOAD: [u8; 32] = [0x5a; 32];
 
+/// How much later than the check's limit the pinger gives up, so the probe's own limit is the
+/// one that ends an echo with no reply.
+const PINGER_MARGIN: Duration = Duration::from_millis(500);
+
 pub(super) async fn probe(
     host: &str,
     version: IpVersion,
@@ -44,7 +48,7 @@ async fn echo(
         .map_err(|error| Failure::IcmpSocket(error.kind()))?;
     // The kernel assigns the identifier of a datagram ICMP socket; this one is a placeholder.
     let mut pinger = client.pinger(ip, PingIdentifier(0)).await;
-    pinger.timeout(limit);
+    pinger.timeout(limit + PINGER_MARGIN);
     match pinger.ping(PingSequence(0), &PAYLOAD).await {
         Ok((_, elapsed)) => Ok((ip, elapsed)),
         Err(SurgeError::IOError(error)) => Err(Failure::Connect(error.kind())),
