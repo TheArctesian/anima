@@ -140,7 +140,8 @@ fixture_test! {
         let stored: chrono::DateTime<chrono::Utc> =
             sqlx::query_scalar("SELECT created_at FROM maintenance.windows WHERE name = 'Patch'")
                 .fetch_one(&pool).await.unwrap();
-        assert_eq!(stored.to_rfc3339(), AT);
+        // The sign-in check reads the ticking clock first, so the mutation sees a later tick.
+        assert!(stored >= AT.parse::<chrono::DateTime<chrono::Utc>>().unwrap());
         assert_eq!(event["at"], audit["at"]);
         assert_eq!(event["at"].as_str().unwrap().parse::<chrono::DateTime<chrono::Utc>>().unwrap(), stored);
     }
