@@ -31,7 +31,7 @@ async fn count(pool: &PgPool, sql: &str, device_id: &str) -> i64 {
 }
 
 #[sqlx::test(
-    migrations = "migrations",
+    migrations = "./migrations",
     fixtures(path = "../fixtures", scripts("devices"))
 )]
 async fn k6_devices_fixture_matches_phase1_json(pool: PgPool) {
@@ -129,7 +129,7 @@ async fn insert_site(pool: &PgPool, name: &str, subnet: &str) -> Result<(), sqlx
 }
 
 #[sqlx::test(
-    migrations = "migrations",
+    migrations = "./migrations",
     fixtures(path = "../fixtures", scripts("devices"))
 )]
 async fn vpn_001_overlapping_site_subnet_is_rejected(pool: PgPool) {
@@ -144,7 +144,7 @@ async fn vpn_001_overlapping_site_subnet_is_rejected(pool: PgPool) {
 }
 
 #[sqlx::test(
-    migrations = "migrations",
+    migrations = "./migrations",
     fixtures(path = "../fixtures", scripts("devices"))
 )]
 async fn dev_015_deleting_a_device_removes_its_tags_and_ssh_settings(pool: PgPool) {
@@ -166,7 +166,7 @@ async fn dev_015_deleting_a_device_removes_its_tags_and_ssh_settings(pool: PgPoo
 }
 
 #[sqlx::test(
-    migrations = "migrations",
+    migrations = "./migrations",
     fixtures(path = "../fixtures", scripts("devices"))
 )]
 async fn dev_001_duplicate_device_name_fails_on_the_named_constraint(pool: PgPool) {
