@@ -13,6 +13,7 @@ use super::{
 };
 use crate::ids::{DeviceId, EventId, OperatorId};
 
+mod partition_grants;
 mod partitions;
 mod privileges;
 mod redaction;

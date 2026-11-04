@@ -41,7 +41,7 @@ async fn log_007_record_stores_and_publishes_message_and_device_name_redacted(po
     );
     assert_eq!(
         stored_event(&mut conn, bearer_id).await.message,
-        "[redacted]"
+        "Bearer [redacted]"
     );
     let Ok(Signal::Event(published)) = receiver.try_recv() else {
         panic!("no event published");
@@ -50,7 +50,7 @@ async fn log_007_record_stores_and_publishes_message_and_device_name_redacted(po
     let Ok(Signal::Event(published)) = receiver.try_recv() else {
         panic!("no second event published");
     };
-    assert_eq!(published.message, "[redacted]");
+    assert_eq!(published.message, "Bearer [redacted]");
 }
 
 #[sqlx::test(migrations = "./migrations")]

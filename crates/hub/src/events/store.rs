@@ -84,6 +84,7 @@ pub(super) async fn start_refusal(db: &PgPool) -> Result<Option<Refusal>, sqlx::
 /// of, itself included, so a right reached by `SET ROLE`, a grant without INHERIT or ADMIN
 /// OPTION counts. Write defaults to `anima_runtime` are 0001's own, for every other domain's
 /// tables; `events.ensure_day_partition` strips every grant from a new partition (0502).
+/// Default privileges set by any creator role count, not only those of the partitions' owner.
 const START_REFUSAL: &str = "\
     with recursive events_schema as ( \
         select n.oid, n.nspowner from pg_catalog.pg_namespace n where n.nspname = 'events' \

@@ -7,8 +7,7 @@
 -- `alter default privileges grant update, delete on tables to some_group`) therefore reached
 -- every new partition. This replacement revokes every privilege from every grantee except the
 -- owner, including PUBLIC, and then grants anima_runtime exactly SELECT and INSERT.
--- Partitions that already exist keep their privileges; the hub's start check refuses a login
--- with more than SELECT and INSERT on any of them.
+-- The DO block at the end applies the same reset once to the partitions that already exist.
 --
 -- The signature, SECURITY DEFINER, search_path and schema-qualified names are those of 0500
 -- (see its comments for why pg_temp is listed last).
@@ -74,3 +73,39 @@ $$;
 
 revoke execute on function events.ensure_day_partition(text, timestamptz) from public;
 grant execute on function events.ensure_day_partition(text, timestamptz) to anima_runtime;
+
+-- Once, for the partitions that already exist (an installation upgraded from 0500): the same
+-- reset, so a grant that 0500's function left on an older partition does not reach the hub or
+-- trip its start check.
+do $$
+declare
+    existing pg_catalog.regclass;
+    holder pg_catalog.oid;
+begin
+    for existing in
+        select i.inhrelid::pg_catalog.regclass
+        from pg_catalog.pg_inherits i
+        where i.inhparent in (
+            pg_catalog.to_regclass('events.event_log'),
+            pg_catalog.to_regclass('events.audit_log')
+        )
+    loop
+        execute pg_catalog.format('revoke all on %s from public', existing);
+        for holder in
+            select distinct a.grantee
+            from pg_catalog.pg_class c
+            cross join lateral pg_catalog.aclexplode(c.relacl) a
+            where c.oid = existing
+                and a.grantee operator(pg_catalog.<>) c.relowner
+                and a.grantee operator(pg_catalog.<>) 0
+        loop
+            execute pg_catalog.format(
+                'revoke all on %s from %I',
+                existing,
+                pg_catalog.pg_get_userbyid(holder)
+            );
+        end loop;
+        execute pg_catalog.format('grant select, insert on %s to anima_runtime', existing);
+    end loop;
+end;
+$$;

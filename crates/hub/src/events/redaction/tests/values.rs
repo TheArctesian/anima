@@ -1,9 +1,23 @@
-//! The value rules: strings that are secrets under any key (LOG-007, D-3).
+//! The value rules: secrets inside strings under any key and in event text (LOG-007, D-3).
 
-use serde_json::{Value, json};
+use serde_json::json;
 
-use super::{PEM, kept};
-use crate::events::redaction::redact;
+use super::PEM;
+use crate::events::redaction::{redact, redact_text};
+
+/// Asserts that each `(text, expected)` pair is masked as expected.
+fn masks(cases: &[(&str, &str)]) {
+    for (text, expected) in cases {
+        assert_eq!(redact_text(text), *expected, "{text}");
+    }
+}
+
+/// Asserts that each text is kept as it is.
+fn keeps(texts: &[&str]) {
+    for text in texts {
+        assert_eq!(redact_text(text), *text);
+    }
+}
 
 #[test]
 fn log_007_redaction_hides_private_keys_and_otpauth_uris_under_any_key() {
@@ -17,52 +31,132 @@ fn log_007_redaction_hides_private_keys_and_otpauth_uris_under_any_key() {
         redact(change),
         json!({ "notes": "[redacted]", "lines": ["fine", "[redacted]"], "enrolment": "[redacted]" })
     );
-    assert_eq!(redact(json!(PEM)), json!("[redacted]"));
+    masks(&[
+        (PEM, "[redacted]"),
+        (
+            "curl -H 'Authorization: Bearer x' https://hub",
+            "[redacted]",
+        ),
+        ("see OTPAUTH://totp/x?secret=Y", "[redacted]"),
+        ("PuTTY-User-Key-File-3: ssh-ed25519", "[redacted]"),
+    ]);
 }
 
 #[test]
-fn log_007_redaction_hides_http_credentials_and_putty_keys_under_any_key() {
-    let change = json!([
-        "Bearer eyJhbGciOi",
-        "Bearer\teyJhbGciOi",
-        "  basic YWRtaW46aHVudGVyMg==",
-        "curl -H 'Authorization: Bearer x' https://hub",
-        "see OTPAUTH://totp/x?secret=Y",
-        "PuTTY-User-Key-File-3: ssh-ed25519",
+fn log_007_redaction_masks_only_the_credential_after_bearer_basic_or_token() {
+    masks(&[
+        ("Bearer eyJhbGciOi", "Bearer [redacted]"),
+        ("Bearer\tabc123def456", "Bearer\t[redacted]"),
+        ("  basic YWRtaW46aHVudGVyMg==", "  basic [redacted]"),
+        (
+            "upstream refused header Bearer eyJhbGciOiJIUzI1NiJ9 twice",
+            "upstream refused header Bearer [redacted] twice",
+        ),
+        ("token: dXNlcjpodW50ZXIy", "token: [redacted]"),
+        ("TOKEN:abc12345xyz", "TOKEN:[redacted]"),
+        ("(bearer ghp_AAAAsecret)", "(bearer [redacted])"),
     ]);
-
-    assert_eq!(redact(change), Value::Array(vec![json!("[redacted]"); 6]));
-    kept(&json!([
+    keeps(&[
+        "Basic connectivity check passed",
+        "Basic tier",
         "not a Bearer token",
         "basically fine",
-        "authorization pending"
-    ]));
+        "authorization pending",
+        "Bearer Required",
+        "token expired after a restart",
+        "token 1234567",
+    ]);
+    assert_eq!(
+        redact(json!({ "plan": "Basic tier" })),
+        json!({ "plan": "Basic tier" })
+    );
+}
+
+#[test]
+fn log_007_redaction_masks_a_jwt_anywhere() {
+    masks(&[
+        (
+            "session eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.sig-_x ok",
+            "session [redacted] ok",
+        ),
+        ("(eyJhbGciOiJub25lIn0.eyJzdWIiOiIxIn0.)", "([redacted])"),
+        ("eyJa.eyJb.c.", "[redacted]."),
+    ]);
+    keeps(&["eyJa.b", "keyJa.b.c", "eyJ..c", "eyJa.b.c.d"]);
+}
+
+#[test]
+fn log_007_redaction_masks_secret_key_value_pairs() {
+    masks(&[
+        (
+            "host=db password=hunter2 user=anima",
+            "host=db password=[redacted] user=anima",
+        ),
+        (
+            "jdbc:postgresql://db/anima?user=a&password=x1&ssl=true",
+            "jdbc:postgresql://db/anima?user=a&password=[redacted]&ssl=true",
+        ),
+        ("Pwd=s3cr3t;Server=db", "Pwd=[redacted];Server=db"),
+        ("passwd=a,b", "passwd=[redacted],b"),
+        (
+            "password='hunter 2' host=db",
+            "password='[redacted]' host=db",
+        ),
+        ("id_token=abc", "id_token=[redacted]"),
+    ]);
+    keeps(&[
+        "cwd=/tmp",
+        "passwordless=true",
+        "password=",
+        "password='' x",
+    ]);
 }
 
 #[test]
 fn log_007_redaction_masks_the_password_in_a_url() {
-    let change = json!({
-        "url": "postgres://anima:hunter2@db:5432/anima",
-        "mirrors": "https://a:b@one.example/x and ftp://c:d:e@two.example",
-        "plain": "https://user@host.example/path",
-        "other": "https://host.example/a:b@c",
-        "slash": "https://u:pa/ss@host.example/x",
-        "query": "postgres://u:p?w#d@db/anima ok",
-        "at_sign": "postgres://u:p@ss@db/anima",
-        "nested": "https://host.example/?next=https://v:q@k.example",
-    });
-
-    assert_eq!(
-        redact(change),
-        json!({
-            "url": "postgres://anima:[redacted]@db:5432/anima",
-            "mirrors": "https://a:[redacted]@one.example/x and ftp://c:[redacted]@two.example",
-            "plain": "https://user@host.example/path",
-            "other": "https://host.example/a:b@c",
-            "slash": "https://u:[redacted]@host.example/x",
-            "query": "postgres://u:[redacted]@db/anima ok",
-            "at_sign": "postgres://u:[redacted]@db/anima",
-            "nested": "https://host.example/?next=https://v:[redacted]@k.example",
-        })
-    );
+    masks(&[
+        (
+            "postgres://anima:hunter2@db:5432/anima",
+            "postgres://anima:[redacted]@db:5432/anima",
+        ),
+        (
+            "https://a:b@one.example/x and ftp://c:d:e@two.example",
+            "https://a:[redacted]@one.example/x and ftp://c:[redacted]@two.example",
+        ),
+        (
+            "https://u:pa/ss@host.example/x",
+            "https://u:[redacted]@host.example/x",
+        ),
+        (
+            "postgres://u:p?w#d@db/anima ok",
+            "postgres://u:[redacted]@db/anima ok",
+        ),
+        (
+            "postgres://u:p@ss@db/anima",
+            "postgres://u:[redacted]@db/anima",
+        ),
+        (
+            "https://host.example/?next=https://v:q@k.example",
+            "https://host.example/?next=https://v:[redacted]@k.example",
+        ),
+        (
+            "ftp://john@example.com:hunter2@ftp.example/x",
+            "ftp://john@example.com:[redacted]@ftp.example/x",
+        ),
+        (
+            "https://ghp_AAAAsecret@github.com/o/r",
+            "https://[redacted]@github.com/o/r",
+        ),
+        ("http://u:p@[::1]:8080/", "http://u:[redacted]@[::1]:8080/"),
+    ]);
+    keeps(&[
+        "https://user@host.example/path",
+        "https://host.example/a:b@c",
+        "https://a.example:443/x,https://b.example/@me",
+        "http://[::1]:8080/@me",
+        "rtsp://cam.local:554/stream@main",
+        "ssh://root@host",
+        "ssh://deploy-user@host:22",
+        "see https://example.com:abc",
+    ]);
 }

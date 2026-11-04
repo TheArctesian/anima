@@ -3,7 +3,7 @@
 use unicode_normalization::{UnicodeNormalization, char::is_combining_mark};
 
 /// A normalised name that contains one of these names a secret.
-const SECRET_PARTS: [&str; 19] = [
+const SECRET_PARTS: [&str; 21] = [
     "password",
     "passwd",
     "passphrase",
@@ -17,6 +17,8 @@ const SECRET_PARTS: [&str; 19] = [
     "privatekey",
     "privkey",
     "authkey",
+    "basicauth",
+    "proxyauth",
     "keymaterial",
     "totp",
     "otpauth",
@@ -26,10 +28,10 @@ const SECRET_PARTS: [&str; 19] = [
 ];
 
 /// A name with one of these as a whole word names a secret (`otpCode`, `sshKeyPem`, `sshPass`),
-/// while `notPaused`, `footprint` and `hotplug` do not. `auth` alone is not one: it names a
-/// method (`{"auth": "password"}`, `authType`), and `authKey`, `authToken` and `authorization`
-/// match `SECRET_PARTS`.
-const SECRET_WORDS: [&str; 6] = ["otp", "pem", "pin", "pass", "pwd", "pw"];
+/// while `notPaused`, `footprint` and `hotplug` do not. `auth` is not one: `authType` names a
+/// method, and `authKey`, `authToken`, `basicAuth` and `authorization` match `SECRET_PARTS`
+/// (a key named exactly `auth` is decided by its value, see `redaction::AUTH_METHODS`).
+const SECRET_WORDS: [&str; 7] = ["otp", "pem", "pin", "pass", "pwd", "pw", "psk"];
 
 /// With one of these in the name, `pin` means certificate pinning, not a PIN (`certPin`).
 const PINNING: [&str; 3] = ["cert", "tls", "spki"];
