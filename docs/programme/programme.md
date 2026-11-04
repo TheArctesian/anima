@@ -33,7 +33,7 @@ The operator approved all seven contracts on 2026-11-03 (checkpoint 1). Only a r
 | WP-10 Sessions | 2 | Accepted, merged at 1f75518 (12/12). Wiring (and WP-06 H-2 schema wiring) on `claude/wp-10-wiring`; `/tunnel` mount waits for WP-05 T4 | `claude/wp-10-sessions` | `wp-08-guac` session, reused |
 | WP-11 Client shell | 2 | Accepted, merged at bb575fd | own worktree from `phase-1` | `wp-11-client-shell` |
 | WP-12 Devices page | 3 | Building (from e939dff) | `claude/wp-12-devices-page` | `wp-06-devices` session, reused |
-| WP-13 Detail and form | 3 | Ready (WP-11 merged) | — | — |
+| WP-13 Detail and form | 3 | Building (from 91a926c) | `claude/wp-13-device-detail` | `wp-02-tokens` session, reused |
 | WP-14 SSH tab | 3 | Building (from e939dff; critical path) | `claude/wp-14-ssh-tab` | `wp-08-guac` session, reused |
 | WP-15 Settings page | 3 | Ready (WP-11 merged) | — | — |
 | WP-16 Tauri shell | 3 | Building (from e939dff) | `claude/wp-16-tauri-shell` | `wp-11-client-shell` session, reused |
