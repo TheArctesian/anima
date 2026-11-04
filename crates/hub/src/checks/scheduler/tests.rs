@@ -17,7 +17,10 @@ macro_rules! tick_test {
 mod daily;
 mod decisions;
 mod policy;
+mod races;
 mod retries;
+mod spawn;
+mod status;
 mod support;
 mod tick;
 mod watch;

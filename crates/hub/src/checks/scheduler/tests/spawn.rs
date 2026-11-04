@@ -8,7 +8,9 @@ use std::{
 
 use chrono::{DateTime, TimeDelta, Utc};
 
-use super::support::{DOCKER_HOST, Listener, add, beats, database_now, due_at, on_loopback, tcp, vault};
+use super::support::{
+    DOCKER_HOST, Listener, add, beats, database_now, due_at, on_loopback, tcp, vault,
+};
 use crate::{
     checks::{Probing, probe::AddressPolicy, spawn_scheduler},
     clock::Clock,

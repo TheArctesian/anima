@@ -3,7 +3,9 @@
 
 use chrono::TimeDelta;
 
-use super::support::{DOCKER_HOST, Listener, add, beats, database_now, on_loopback, rng, scheduler, stored};
+use super::support::{
+    DOCKER_HOST, Listener, add, beats, database_now, on_loopback, rng, scheduler, stored,
+};
 use crate::{
     checks::{self, Beat, CheckState},
     events::{Bus, Signal},

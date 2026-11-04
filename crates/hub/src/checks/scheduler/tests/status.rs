@@ -6,8 +6,8 @@ use chrono::TimeDelta;
 use tokio::sync::broadcast::Receiver;
 
 use super::support::{
-    DOCKER_HOST, Listener, add, allow_event_writes, closed_port, database_now, due_at,
-    events_of, fail_event_writes, on_loopback, rng, scheduler, tcp,
+    DOCKER_HOST, Listener, add, allow_event_writes, closed_port, database_now, due_at, events_of,
+    fail_event_writes, on_loopback, rng, scheduler, tcp,
 };
 use crate::{
     checks::{self, Beat, CheckState, Definition, PushToken},
