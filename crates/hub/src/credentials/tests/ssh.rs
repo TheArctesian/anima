@@ -40,7 +40,6 @@ fn secret_kind_round_trips_through_its_sql_text() {
     for kind in kinds {
         assert_eq!(SshKind::from_sql(kind.as_sql()).unwrap(), kind);
     }
-    assert_eq!(kinds.map(SshKind::as_sql), SshKind::ALL_SQL);
     assert!(matches!(SshKind::from_sql("totp"), Err(Error::Malformed)));
 }
 

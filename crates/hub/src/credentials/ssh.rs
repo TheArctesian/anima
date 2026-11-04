@@ -24,10 +24,6 @@ pub(super) enum SshKind {
 }
 
 impl SshKind {
-    /// Every kind, as stored in SQL.
-    pub(super) const ALL_SQL: [&'static str; 3] =
-        ["ssh_password", "ssh_private_key", "ssh_passphrase"];
-
     /// The `kind` column value.
     pub(super) fn as_sql(self) -> &'static str {
         match self {

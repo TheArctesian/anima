@@ -55,6 +55,10 @@ pub enum Error {
 /// connection. Runs in its own transaction (a savepoint inside the caller's), so a failure
 /// leaves the previous secret in place.
 ///
+/// Concurrent stores and clears for one device are serialised: each waits for this domain's
+/// per-device advisory lock, held until the caller's transaction ends, so two writers never
+/// leave a mixed row set.
+///
 /// # Errors
 ///
 /// [`Error::UnknownDevice`] when no device has this id, [`Error::Database`] otherwise.
@@ -70,7 +74,8 @@ pub async fn store_ssh(
         .map(|(kind, part)| (kind, vault.seal(&part, &ssh::context(device, kind))))
         .collect();
     let mut tx = conn.begin().await?;
-    store::delete_ssh(&mut tx, device).await?;
+    store::lock_device(&mut tx, device).await?;
+    store::delete_device(&mut tx, device).await?;
     for (kind, value) in &sealed {
         store::insert(&mut tx, device, *kind, value).await?;
     }
@@ -90,7 +95,7 @@ pub async fn load_ssh(
     vault: &Vault,
     device: DeviceId,
 ) -> Result<Option<SshSecret>, Error> {
-    let rows = store::fetch_ssh(db, device).await?;
+    let rows = store::fetch_device(db, device).await?;
     if rows.is_empty() {
         return Ok(None);
     }
@@ -111,15 +116,19 @@ pub async fn load_ssh(
 ///
 /// [`Error::Database`] when the store cannot be read.
 pub async fn has_ssh(db: &PgPool, device: DeviceId) -> Result<bool, Error> {
-    store::exists_ssh(db, device).await
+    store::exists_for_device(db, device).await
 }
 
 /// Deletes every SSH secret of the device in the caller's connection. Returns true if a
-/// secret was removed (R-010).
+/// secret was removed (R-010). Waits for a concurrent [`store_ssh`] for the device, as that does.
 ///
 /// # Errors
 ///
 /// [`Error::Database`] when the store cannot be written.
 pub async fn clear_ssh(conn: &mut PgConnection, device: DeviceId) -> Result<bool, Error> {
-    Ok(store::delete_ssh(conn, device).await? > 0)
+    let mut tx = conn.begin().await?;
+    store::lock_device(&mut tx, device).await?;
+    let removed = store::delete_device(&mut tx, device).await?;
+    tx.commit().await?;
+    Ok(removed > 0)
 }
