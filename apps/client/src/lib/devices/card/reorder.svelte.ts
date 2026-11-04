@@ -29,7 +29,7 @@ export function reorderMotion(
     order();
     const places = before;
     before = undefined;
-    if (places === undefined || preference.reduced) return;
+    if (places === undefined) return;
     const moved = [...places].filter(([element, place]) => !samePlace(place, element.getBoundingClientRect()));
     if (moved.length === 0) return;
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- passed once to flip, not state

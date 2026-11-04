@@ -81,3 +81,7 @@ it.each([false, true])('Status change: the edge highlight fades over duration-hi
   expect(runs.at(-1)?.keyframes.at(-1)).toBe(0);
   expect(runs.at(-1)?.options).toMatchObject({ duration: duration.highlight / 1000 });
 });
+
+it('D-7: an empty ip is no IP', () => {
+  expect(hostLine({ host: 'nas.lan', ip: '' }).ip).toBeNull();
+});

@@ -67,7 +67,7 @@ async function slowScreen() {
   };
 }
 
-const skeleton = () => document.querySelectorAll('li.card');
+const skeleton = () => document.querySelectorAll('li.place');
 
 it('Loading: no skeleton before threshold-loading, the skeleton after it', async () => {
   const { time } = await slowScreen();

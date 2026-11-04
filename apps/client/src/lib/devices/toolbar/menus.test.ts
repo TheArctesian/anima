@@ -121,3 +121,28 @@ it('DEV-003: an empty tag menu says why', () => {
   flushSync();
   expect(panel()?.querySelectorAll('input')).toHaveLength(1);
 });
+
+it('D-4: unmounting with a keystroke pending writes nothing', async () => {
+  vi.useFakeTimers();
+  show();
+  const input = document.querySelector<HTMLInputElement>('input[type=search]');
+  if (input === null) throw new Error('no search');
+  input.value = 'abc';
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  await unmount(app as object);
+  app = undefined;
+  vi.advanceTimersByTime(1000);
+  vi.useRealTimers();
+  expect(changes).toEqual([]);
+});
+
+it('Menu: a press outside does not steal focus that is somewhere else', () => {
+  show();
+  control('Status').click();
+  flushSync();
+  const input = document.querySelector<HTMLInputElement>('input[type=search]');
+  input?.focus();
+  document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+  flushSync();
+  expect(document.activeElement).toBe(input);
+});

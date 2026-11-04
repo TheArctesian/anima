@@ -54,7 +54,6 @@
     type="button"
     class="control"
     bind:this={button}
-    aria-haspopup="true"
     aria-expanded={open}
     aria-controls="{id}-panel"
     onclick={() => {

@@ -298,3 +298,33 @@ it('DEV-002: both subscriptions stop when the page goes away', async () => {
   expect(fake.listeners('DeviceStatusChanged')).toBe(0);
   expect(fake.listeners('HeartbeatAdded')).toBe(0);
 });
+
+it.each([
+  ['grid', 'article a'],
+  ['table', 'tbody th a'],
+] as const)('6.1 card: the %s name link encodes an id with / ? and #', async (view, selector) => {
+  await show([device('a/b?c#d')], { ...DEFAULT_QUERY, view });
+  expect(document.querySelector(selector)?.getAttribute('href')).toBe('/devices/a%2Fb%3Fc%23d');
+});
+
+it('6.1 card: in the table SSH shows only when enabled and calls onConnect', async () => {
+  await show([device('a', { ssh: { enabled: true } }), device('b')], { ...DEFAULT_QUERY, view: 'table' });
+  const buttons = [...document.querySelectorAll('tbody button')];
+  expect(buttons).toHaveLength(1);
+  (buttons[0] as HTMLButtonElement).click();
+  expect(connected).toEqual(['a']);
+});
+
+it('6.1 card: in the table the IP shows only next to a host name, not for an IP host or an empty ip', async () => {
+  await show(
+    [device('a', { ip: '10.0.0.5' }), device('b', { host: '10.0.0.9', ip: '10.0.0.9' }), device('c', { ip: '' })],
+    { ...DEFAULT_QUERY, view: 'table' },
+  );
+  const rows = [...document.querySelectorAll('tbody tr')];
+  expect(rows.map((row) => row.querySelectorAll('.ip').length)).toEqual([1, 0, 0]);
+});
+
+it('6.1 card: in the grid an empty ip shows no IP', async () => {
+  await show([device('c', { ip: '' })]);
+  expect(document.querySelectorAll('article .ip')).toHaveLength(0);
+});
