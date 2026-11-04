@@ -3,13 +3,10 @@ import { join } from 'node:path';
 import StyleDictionary from 'style-dictionary';
 import { tokenName, type Token } from './model.ts';
 
-/** The terminal palette has its own output (RA-010) and is not part of the interface outputs. */
-const NOT_INTERFACE = new Set(['terminal.tokens.json']);
-
 /** Source files in a fixed order, so every output is deterministic. */
-export function interfaceSources(tokensDir: string): string[] {
+export function tokenSources(tokensDir: string): string[] {
   return readdirSync(tokensDir)
-    .filter((file) => file.endsWith('.tokens.json') && !NOT_INTERFACE.has(file))
+    .filter((file) => file.endsWith('.tokens.json'))
     .sort()
     .map((file) => join(tokensDir, file));
 }
@@ -24,7 +21,7 @@ function extensionReduced(extensions: unknown): unknown {
 /** Read the DTCG files with Style Dictionary, which resolves every alias (D-2). */
 export async function loadTokens(tokensDir: string): Promise<Token[]> {
   const dictionary = new StyleDictionary({
-    source: interfaceSources(tokensDir),
+    source: tokenSources(tokensDir),
     usesDtcg: true,
     log: { verbosity: 'silent', warnings: 'error' },
     platforms: { interface: { transforms: [] } },
