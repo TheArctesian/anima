@@ -43,8 +43,12 @@
   // `headscale policy check --bypass-grpc-and-access-database-directly`. Headscale passes
   // a deny row when any one source address is denied; `bun test` is the authoritative
   // check, where every source address must be denied. A row without `proto` is checked
-  // for tcp, udp and icmp. Headscale needs a node for every tag a row names, so the rows
-  // are grouped by the nodes they need: add a group only once its nodes are enrolled.
+  // for tcp, udp and icmp. Headscale passes an accept row without `proto` if any one of
+  // them is allowed, while `bun test` requires all three, so accept rows always name
+  // `proto`. Headscale needs a node for every tag a row names, so the rows are grouped by
+  // the tagged nodes they need: add a group only once its nodes are enrolled. Rows with an
+  // IP source (10.10.0.5, 10.30.0.5) need no node on the server; they sit with their
+  // site's router because `bun test` reaches a LAN address only through that router.
   "tests": [
     // Needs a client and the hub.
     {
