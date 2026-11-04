@@ -192,3 +192,43 @@ it('CLI-003: outside the desktop app nothing is sent to the hub and a fixed mess
   expect(hub.sent).toEqual([]);
   expect(target.querySelector('[role="alert"]')?.textContent).toBe('Signing in needs the Anima desktop app, which keeps the access token.');
 });
+
+it('DEV-011: after a failed submit the invalid fields are aria-invalid and the first one has focus', async () => {
+  const target = open({});
+  type(target, 'username', 'ann');
+  type(target, 'password', '');
+  type(target, 'totp', '12ab');
+  await submit(target, 0);
+  expect(input(target, 'password').getAttribute('aria-invalid')).toBe('true');
+  expect(input(target, 'totp').getAttribute('aria-invalid')).toBe('true');
+  expect(input(target, 'username').hasAttribute('aria-invalid')).toBe(false);
+  expect(document.activeElement).toBe(input(target, 'password'));
+});
+
+it('DEV-011: a field stops being aria-invalid once its value passes the rules', async () => {
+  const target = open({});
+  type(target, 'username', 'ann');
+  type(target, 'password', PASSWORD);
+  type(target, 'totp', '12ab');
+  await submit(target, 0);
+  expect(input(target, 'totp').getAttribute('aria-invalid')).toBe('true');
+  type(target, 'totp', '123456');
+  flushSync();
+  expect(input(target, 'totp').hasAttribute('aria-invalid')).toBe(false);
+  expect(target.querySelector('#totp-problem')?.textContent).toBe('');
+});
+
+it('DEV-011: hub field errors also mark the field and take focus', async () => {
+  const error = { code: 'VALIDATION' as const, message: 'm', fields: [{ field: 'totpCode', message: 'The code is not accepted.' }] };
+  const target = open({ Login: { ok: false, error } });
+  await signInWith(target);
+  expect(input(target, 'totp').getAttribute('aria-invalid')).toBe('true');
+  expect(document.activeElement).toBe(input(target, 'totp'));
+});
+
+it('NAV-005: the Sign in and Save address buttons are focusable by Tab in WebKit (tabindex 0)', () => {
+  const target = open({});
+  const buttons = [...target.querySelectorAll('button')];
+  expect(buttons).toHaveLength(2);
+  for (const button of buttons) expect(button.getAttribute('tabindex')).toBe('0');
+});

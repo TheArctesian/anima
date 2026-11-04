@@ -2,7 +2,7 @@ import { TOKEN_UNREADABLE } from '$lib/hub/error';
 import type { FieldError, HubError } from '$lib/hub/hub';
 
 /** The three fields of the sign-in form. */
-type LoginField = 'username' | 'password' | 'totpCode';
+export type LoginField = 'username' | 'password' | 'totpCode';
 
 export interface LoginForm {
   readonly username: string;
@@ -55,4 +55,18 @@ export function failureMessage(error: HubError): string {
     default:
       return 'The hub could not sign you in. Try again.';
   }
+}
+
+const FIELD_ORDER: readonly LoginField[] = ['username', 'password', 'totpCode'];
+
+/** The first field in page order that has a message, so focus can go there after a failed submit. */
+export function firstInvalid(fields: FieldMessages): LoginField | undefined {
+  return FIELD_ORDER.find((field) => fields[field] !== undefined);
+}
+
+/** The messages after `field` was edited to `value`: that field's message goes once its value passes the client rules. */
+export function afterEdit(fields: FieldMessages, field: LoginField, value: string): FieldMessages {
+  const probe: LoginForm = { username: 'x', password: 'x', totpCode: '', [field]: value };
+  if (fields[field] === undefined || checkLogin(probe)[field] !== undefined) return fields;
+  return { ...fields, [field]: undefined };
 }
