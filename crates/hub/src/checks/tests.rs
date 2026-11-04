@@ -7,6 +7,7 @@ mod dns;
 mod evaluation;
 mod http;
 mod icmp;
+mod proxy;
 mod reach;
 mod secrets;
 mod standing;

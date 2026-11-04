@@ -151,3 +151,32 @@ async fn tls_server_name_overrides_the_host_for_sni() {
         ]
     );
 }
+
+#[tokio::test]
+async fn tls_listener_that_accepts_and_stays_silent_fails_within_the_timeout() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    tokio::spawn(async move {
+        let mut held = Vec::new();
+        while let Ok((tcp, _)) = listener.accept().await {
+            held.push(tcp);
+        }
+    });
+    let config = CheckConfig::Tls {
+        port,
+        server_name: None,
+        timeout_ms: 300,
+    };
+    let started = std::time::Instant::now();
+    // The guard turns "no outer timeout" into a failure instead of a hang.
+    let guarded = tokio::time::timeout(
+        std::time::Duration::from_secs(5),
+        probe(&target("127.0.0.1"), &config, None, &env()),
+    )
+    .await
+    .expect("the probe must stop at its own timeout");
+    assert!(!guarded.ok);
+    assert_eq!(guarded.message.as_deref(), Some("the check timed out"));
+    assert!(started.elapsed() < std::time::Duration::from_secs(3));
+    assert!(started.elapsed() >= std::time::Duration::from_millis(250));
+}

@@ -35,9 +35,10 @@ pub struct ProbeTarget {
     pub host: String,
 }
 
-/// Replacements for the network, so tests can run without it.
+/// Replacements for the network, so tests can run without it. Crate-private: production
+/// code outside this crate cannot carry host overrides.
 #[derive(Clone, Debug, Default)]
-pub struct Overrides {
+pub(crate) struct Overrides {
     /// Lower-case host name to the addresses it resolves to.
     pub hosts: Arc<HashMap<String, Vec<IpAddr>>>,
     /// The port of every configured DNS server (default 53).
@@ -50,7 +51,7 @@ pub struct ProbeEnv {
     pub policy: Arc<AddressPolicy>,
     /// The instant certificate dates are judged against.
     pub now: DateTime<Utc>,
-    pub overrides: Overrides,
+    pub(crate) overrides: Overrides,
 }
 
 impl ProbeEnv {

@@ -1,4 +1,9 @@
 //! DNS probe: asks one resolver for a record and compares the answer with what is expected.
+//!
+//! Only answers of the asked record type count. `expected` is compared without case and
+//! without a trailing dot, against each answer: A and AAAA by address; CNAME, NS and PTR by
+//! name; MX by the exchange or by `preference exchange`; SRV by the target only; TXT by its
+//! character strings joined, compared case-insensitively. Any answer matching is a success.
 
 use std::{
     net::IpAddr,
