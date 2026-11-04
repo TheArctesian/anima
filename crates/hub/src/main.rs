@@ -1,5 +1,6 @@
 //! Hub binary: reads the environment, builds the dependencies and serves the router, or runs
-//! `anima-hub migrate` (R-016) or `anima-hub operator set <username>` (D-9).
+//! `anima-hub migrate` (R-016), `anima-hub operator set <username>` or
+//! `anima-hub operator totp <username> [--disable]` (D-9).
 
 use std::{
     io::{BufRead as _, IsTerminal as _},
@@ -44,8 +45,13 @@ enum StartError {
     RuntimeRole(#[from] events::RoleError),
     #[error("hub failed to serve")]
     Serve(#[from] std::io::Error),
-    #[error("usage: anima-hub [migrate | operator set <username>]")]
+    #[error(
+        "usage: anima-hub [migrate | operator set <username> | operator totp <username> [--disable]]"
+    )]
     Usage,
+    /// The enrolment URI holds the secret, so it is shown only on a terminal (LOG-007).
+    #[error("run operator totp on a terminal: the enrolment URI is shown only there")]
+    NotATerminal,
     #[error("the password cannot be read from standard input")]
     Stdin,
     #[error("{0}")]
@@ -77,16 +83,20 @@ async fn run() -> Result<(), StartError> {
         [] => serve(config).await,
         ["migrate"] => migrate(&config).await,
         ["operator", "set", username] => set_operator(&config, username).await,
+        ["operator", "totp", username] => enrol_totp(&config, username).await,
+        ["operator", "totp", username, "--disable"] => {
+            let pool = connect(&config).await?;
+            access::disable_totp(&pool, username).await?;
+            println!("TOTP is off for operator {username}.");
+            Ok(())
+        }
         _ => Err(StartError::Usage),
     }
 }
 
 async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     process_log::init(&config.log)?;
-    let vault = Vault::from_key_file(&config.key_file).map_err(|source| StartError::Key {
-        path: config.key_file.display().to_string(),
-        source,
-    })?;
+    let vault = vault(&config)?;
     let pool = connect(&config).await?;
     events::check_runtime_role(&pool).await?;
     let clock: Arc<dyn anima_hub::clock::Clock> = Arc::new(SystemClock);
@@ -123,6 +133,29 @@ async fn set_operator(config: &Config, username: &str) -> Result<(), StartError>
     .await?;
     println!("Operator {username} is set.");
     Ok(())
+}
+
+/// Enrols TOTP and writes the `otpauth://` URI once, to the terminal only: never to a pipe,
+/// a file or the process log (LOG-007).
+async fn enrol_totp(config: &Config, username: &str) -> Result<(), StartError> {
+    if !std::io::stdout().is_terminal() {
+        return Err(StartError::NotATerminal);
+    }
+    let vault = vault(config)?;
+    let pool = connect(config).await?;
+    let enrolment = access::enrol_totp(&pool, &vault, username).await?;
+    println!(
+        "Add this to an authenticator app, then sign in again with its code:\n{}",
+        enrolment.uri()
+    );
+    Ok(())
+}
+
+fn vault(config: &Config) -> Result<Vault, StartError> {
+    Vault::from_key_file(&config.key_file).map_err(|source| StartError::Key {
+        path: config.key_file.display().to_string(),
+        source,
+    })
 }
 
 /// The password from standard input: prompted without echo on a terminal, else one line.

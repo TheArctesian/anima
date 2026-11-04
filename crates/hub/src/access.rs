@@ -11,10 +11,12 @@ mod store;
 mod tests;
 mod throttle;
 mod tokens;
+mod totp;
 
 use async_graphql::{ErrorExtensions as _, Pos, ServerError};
 use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::PgPool;
+use zeroize::Zeroizing;
 
 pub use crate::events::{ClientAddr, Operator};
 pub use guard::{Authenticated, SignInRequired};
@@ -22,7 +24,10 @@ pub use identity::{Identity, client_addr, identify, identify_connection};
 pub use password::Password;
 pub use tokens::Scope;
 
-use crate::ids::OperatorId;
+use crate::{
+    credentials::{self, Secret, Vault},
+    ids::OperatorId,
+};
 
 /// Login attempts are kept this long (K2 retention).
 const ATTEMPTS_KEPT: TimeDelta = TimeDelta::days(90);
@@ -57,6 +62,9 @@ pub enum Error {
     Random(getrandom::Error),
     #[error("Something went wrong on the hub.")]
     Unavailable,
+    /// The stored TOTP secret does not open with this vault and the operator's context.
+    #[error("Something went wrong on the hub.")]
+    TotpSecret(credentials::Error),
 }
 
 impl From<sqlx::Error> for Error {
@@ -90,7 +98,8 @@ impl Error {
             | Self::Hash(_)
             | Self::Task(_)
             | Self::Random(_)
-            | Self::Unavailable => "INTERNAL",
+            | Self::Unavailable
+            | Self::TotpSecret(_) => "INTERNAL",
         }
     }
 
@@ -109,6 +118,7 @@ impl Error {
             Self::Task(_) => Some("blocking_task"),
             Self::Random(_) => Some("random_source"),
             Self::Unavailable => Some("missing_context"),
+            Self::TotpSecret(_) => Some("totp_secret"),
         }
     }
 
@@ -185,6 +195,62 @@ pub async fn set_operator(
     tx.commit().await?;
     Ok(id)
 }
+
+/// What `operator totp` shows once: the `otpauth://` URI an authenticator app enrols from.
+/// No `Debug`: the URI holds the secret (LOG-007). Wiped from memory on drop.
+pub struct Enrolment(Zeroizing<String>);
+
+impl Enrolment {
+    /// The URI, with the secret in base32. Show it on the operator's terminal only.
+    #[must_use]
+    pub fn uri(&self) -> &str {
+        &self.0
+    }
+}
+
+/// Enrols a new TOTP secret for the operator for `anima-hub operator totp` (SEC-002, D-9):
+/// 160 random bits, sealed with the vault for this operator (R-010), replacing any earlier
+/// secret. In the same transaction it deletes the operator's tokens, so every client signs
+/// in again with the second factor.
+///
+/// # Errors
+///
+/// `Error::Validation` when no operator has this username; `Error::Random` or
+/// `Error::Database` if the secret cannot be made or stored.
+pub async fn enrol_totp(db: &PgPool, vault: &Vault, username: &str) -> Result<Enrolment, Error> {
+    let secret = Secret::new(Zeroizing::new(login::random::<{ totp::SECRET_LEN }>()?).to_vec());
+    let mut tx = db.begin().await?;
+    let account = store::account_by_username(&mut *tx, username)
+        .await?
+        .ok_or(UNKNOWN_OPERATOR)?;
+    let sealed = vault.seal(&secret, totp::context(account.id).as_bytes());
+    store::set_totp(&mut *tx, account.id, Some(&sealed.to_bytes())).await?;
+    store::delete_operator_tokens(&mut tx, account.id).await?;
+    tx.commit().await?;
+    Ok(Enrolment(totp::otpauth_uri(
+        secret.expose(),
+        &account.username,
+    )))
+}
+
+/// Removes the operator's TOTP secret for `anima-hub operator totp <username> --disable`;
+/// the password alone signs in again.
+///
+/// # Errors
+///
+/// `Error::Validation` when no operator has this username; `Error::Database` otherwise.
+pub async fn disable_totp(db: &PgPool, username: &str) -> Result<(), Error> {
+    let account = store::account_by_username(db, username)
+        .await?
+        .ok_or(UNKNOWN_OPERATOR)?;
+    store::set_totp(db, account.id, None).await?;
+    Ok(())
+}
+
+const UNKNOWN_OPERATOR: Error = Error::Validation {
+    field: "username",
+    message: "No operator has this username.",
+};
 
 /// The rules `operator set` applies: a username of 1 to 64 ASCII letters, digits, `.`, `_`
 /// or `-`; a password of at least 12 characters and at most 1024 bytes.

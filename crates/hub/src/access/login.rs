@@ -11,8 +11,12 @@ use super::{
     store::{self, Account, AttemptKey, NewToken, Outcome},
     throttle,
     tokens::{LOGIN_LIFETIME, Scope, TOKEN_BYTES, Token},
+    totp,
 };
-use crate::events::{self, AuditAction, AuditTarget, Bus, NewAudit, NewEvent, Severity, Source};
+use crate::{
+    credentials::{Sealed, Vault},
+    events::{self, AuditAction, AuditTarget, Bus, NewAudit, NewEvent, Severity, Source},
+};
 
 /// Password checks that run at once. Each takes 19 MiB and a CPU for tens of milliseconds,
 /// so a burst of attempts queues here instead of exhausting memory.
@@ -25,7 +29,7 @@ const MAX_STORED_USERNAME: usize = 128;
 pub(super) struct Attempt {
     pub username: String,
     pub password: Password,
-    /// Ignored until TOTP lands (WP-05 T6); an enrolled operator cannot sign in before then.
+    /// The TOTP code; required when the operator has enrolled TOTP.
     pub totp_code: Option<String>,
     pub client: ClientAddr,
     pub at: DateTime<Utc>,
@@ -40,9 +44,15 @@ pub(super) struct SignedIn {
 
 /// Signs the operator in and issues a `write` token valid for 30 days.
 ///
-/// Every attempt is recorded. A wrong password, an unknown username, an enrolled second
-/// factor (until T6) and a throttled attempt all give `Error::WrongCredentials`.
-pub(super) async fn login(db: &PgPool, bus: &Bus, attempt: Attempt) -> Result<SignedIn, Error> {
+/// Every attempt is recorded. A wrong password, an unknown username, a wrong, reused or
+/// missing TOTP code and a throttled attempt all give `Error::WrongCredentials`, and all but
+/// the throttled one count toward the throttle.
+pub(super) async fn login(
+    db: &PgPool,
+    bus: &Bus,
+    vault: &Vault,
+    attempt: Attempt,
+) -> Result<SignedIn, Error> {
     let stored_name = stored_username(&attempt.username);
     let key = AttemptKey {
         id: store::start_attempt(db, attempt.at, &stored_name, attempt.client.0).await?,
@@ -63,10 +73,15 @@ pub(super) async fn login(db: &PgPool, bus: &Bus, attempt: Attempt) -> Result<Si
         }
     };
     let verified = password_matches(attempt.password, account.as_ref()).await?;
-    match account {
-        Some(account) if verified && second_factor(&account, attempt.totp_code.as_deref()) => {
-            succeed(db, bus, &key, account).await
+    let passed = match &account {
+        Some(account) if verified => {
+            let factor = second_factor(vault, account, attempt.totp_code.as_deref(), attempt.at)?;
+            passes(db, account, factor).await?
         }
+        _ => false,
+    };
+    match account {
+        Some(account) if passed => succeed(db, bus, &key, account).await,
         account => {
             record_failure(db, bus, &key, account.as_ref()).await?;
             Err(Error::WrongCredentials)
@@ -114,11 +129,56 @@ async fn password_matches(password: Password, account: Option<&Account>) -> Resu
     Ok(known && matched)
 }
 
-/// The second-factor check. Until TOTP lands (WP-05 T6) an operator with an enrolled secret
-/// cannot sign in; T6 replaces this with the RFC 6238 check of `code`.
-fn second_factor(account: &Account, code: Option<&str>) -> bool {
-    let _ = code;
-    !account.totp_enabled
+/// What the second factor asks of a sign-in whose password matched.
+enum SecondFactor<'a> {
+    /// The operator has not enrolled TOTP.
+    NotEnrolled,
+    /// The code is valid for `step`, which must still be claimed as used.
+    Claim { sealed: &'a [u8], step: i64 },
+    /// The code is missing, wrong or for a step already used.
+    Refuse,
+}
+
+/// Checks `code` against the operator's sealed TOTP secret at `at` (RFC 6238, R-010).
+///
+/// # Errors
+///
+/// `Error::TotpSecret` when the stored secret does not open with this vault and context: a
+/// hub fault, never a sign-in.
+fn second_factor<'a>(
+    vault: &Vault,
+    account: &'a Account,
+    code: Option<&str>,
+    at: DateTime<Utc>,
+) -> Result<SecondFactor<'a>, Error> {
+    let Some(sealed) = account.totp_secret_enc.as_deref() else {
+        return Ok(SecondFactor::NotEnrolled);
+    };
+    let Some(code) = code else {
+        return Ok(SecondFactor::Refuse);
+    };
+    let context = totp::context(account.id);
+    let secret = Sealed::from_bytes(sealed)
+        .and_then(|stored| vault.open(&stored, context.as_bytes()))
+        .map_err(Error::TotpSecret)?;
+    Ok(
+        match totp::accepted_step(secret.expose(), code, at, account.totp_last_step) {
+            Some(step) => SecondFactor::Claim { sealed, step },
+            None => SecondFactor::Refuse,
+        },
+    )
+}
+
+/// Whether the second factor lets the sign-in through, claiming the code's step so it
+/// cannot be used again.
+async fn passes(db: &PgPool, account: &Account, factor: SecondFactor<'_>) -> Result<bool, Error> {
+    match factor {
+        SecondFactor::NotEnrolled => Ok(true),
+        SecondFactor::Refuse => Ok(false),
+        SecondFactor::Claim { sealed, step } => {
+            Ok(store::claim_totp_step(db, account.id, sealed, step).await?)
+        }
+    }
 }
 
 /// Records the success, the token, the audit entry and the event in one transaction.

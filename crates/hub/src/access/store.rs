@@ -15,12 +15,13 @@ pub(super) struct Account {
     pub id: OperatorId,
     pub username: String,
     pub password_hash: String,
-    /// Whether a TOTP secret is enrolled; the sealed secret itself is read only by T6's code.
-    pub totp_enabled: bool,
+    /// The TOTP secret sealed with the Vault (`Sealed::to_bytes`), if one is enrolled.
+    pub totp_secret_enc: Option<Vec<u8>>,
+    /// The last TOTP step that signed in; a code must belong to a later one.
+    pub totp_last_step: Option<i64>,
 }
 
-const ACCOUNT_COLUMNS: &str =
-    "id, username, password_hash, totp_secret_enc is not null as totp_enabled";
+const ACCOUNT_COLUMNS: &str = "id, username, password_hash, totp_secret_enc, totp_last_step";
 
 pub(super) async fn account_by_username(
     db: impl PgExecutor<'_>,
@@ -81,6 +82,45 @@ pub(super) async fn replace_operator(
     .fetch_one(&mut *conn)
     .await?;
     Ok((id, None))
+}
+
+/// Stores (`Some`) or removes (`None`) the operator's sealed TOTP secret and forgets the
+/// last used step.
+pub(super) async fn set_totp(
+    db: impl PgExecutor<'_>,
+    operator: OperatorId,
+    sealed: Option<&[u8]>,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "update access.operators set totp_secret_enc = $2, totp_last_step = null where id = $1",
+    )
+    .bind(operator)
+    .bind(sealed)
+    .execute(db)
+    .await?;
+    Ok(())
+}
+
+/// Marks `step` used if it is later than the last used one and the operator still has the
+/// secret that was checked. One atomic update, so of two sign-ins with one code only one
+/// claims the step. Returns whether this call claimed it.
+pub(super) async fn claim_totp_step(
+    db: impl PgExecutor<'_>,
+    operator: OperatorId,
+    sealed: &[u8],
+    step: i64,
+) -> Result<bool, sqlx::Error> {
+    let done = sqlx::query(
+        "update access.operators set totp_last_step = $3 \
+         where id = $1 and totp_secret_enc = $2 \
+         and (totp_last_step is null or totp_last_step < $3)",
+    )
+    .bind(operator)
+    .bind(sealed)
+    .bind(step)
+    .execute(db)
+    .await?;
+    Ok(done.rows_affected() == 1)
 }
 
 /// Deletes the login attempts of these usernames and every attempt from an address where one
