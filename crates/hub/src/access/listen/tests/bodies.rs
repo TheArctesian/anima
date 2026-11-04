@@ -81,6 +81,10 @@ async fn sec_001_a_trickled_body_frees_its_place_at_the_body_deadline() {
     );
     assert!(took < SERVED_WITHIN * 2, "{took:?}");
     assert!(
+        answer.starts_with(b"HTTP/1.1 400"),
+        "the route saw a failed body"
+    );
+    assert!(
         !String::from_utf8_lossy(&answer).ends_with("1000"),
         "the body never completed"
     );
@@ -119,4 +123,39 @@ async fn sec_001_a_client_that_stops_reading_frees_its_place_at_the_write_stall(
     let read = tokio::time::timeout(DEADLINE, stalled.read_to_end(&mut got)).await;
     let read = read.expect("the stalled connection was closed");
     assert!(read.is_err() || got.len() < BIG, "{}", got.len());
+}
+
+#[tokio::test]
+async fn sec_001_a_client_that_keeps_reading_gets_the_whole_answer() {
+    let door = one_place(Limits {
+        write_stall: Duration::from_millis(300),
+        ..SERVED
+    })
+    .await;
+    let request = b"GET /big HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n";
+    let mut reader = client(&door, request).await;
+    let started = Instant::now();
+    let mut got = 0;
+    let mut chunk = vec![0; 1024 * 1024];
+    let mut pauses = 0;
+    let read = tokio::time::timeout(DEADLINE, async {
+        // Three pauses of 150 ms: longer than the stall limit in total, never at once.
+        loop {
+            match reader.read(&mut chunk).await {
+                Ok(0) | Err(_) => break,
+                Ok(n) => got += n,
+            }
+            if pauses < 3 && got > (pauses + 1) * 8 * 1024 * 1024 {
+                tokio::time::sleep(Duration::from_millis(150)).await;
+                pauses += 1;
+            }
+        }
+    });
+    read.await.expect("the whole answer in time");
+    assert!(
+        started.elapsed() >= Duration::from_millis(450),
+        "{:?}",
+        started.elapsed()
+    );
+    assert!(got > BIG, "the head and all {BIG} bytes: {got}");
 }

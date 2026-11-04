@@ -99,7 +99,22 @@ async fn r_040_stopping_over_tls_lets_an_open_request_finish_and_stops_accepting
         answer
     });
 
-    let took = hub.stop().await;
+    let Hub {
+        stop,
+        serving,
+        _files,
+        ..
+    } = hub;
+    let began = Instant::now();
+    stop.send(()).unwrap();
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    let during = TcpStream::connect(addr).await;
+    assert!(during.is_err(), "no longer accepting while it drains");
+    tokio::time::timeout(DEADLINE, serving)
+        .await
+        .unwrap()
+        .unwrap();
+    let took = began.elapsed();
 
     let answer = tokio::time::timeout(DEADLINE, answer)
         .await
@@ -108,10 +123,6 @@ async fn r_040_stopping_over_tls_lets_an_open_request_finish_and_stops_accepting
     assert!(answer.starts_with("HTTP/1.1 200"), "{answer}");
     assert!(answer.ends_with("done"), "{answer}");
     assert!(took < Duration::from_secs(5), "returned after {took:?}");
-    assert!(
-        TcpStream::connect(addr).await.is_err(),
-        "no longer accepting"
-    );
 }
 
 #[tokio::test]

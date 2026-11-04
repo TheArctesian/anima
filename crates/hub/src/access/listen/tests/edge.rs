@@ -201,11 +201,14 @@ async fn net_002_an_unreadable_list_closes_the_connection_before_any_tls() {
         ..SERVED
     };
     let door = door_with(edge, peer_router(), limits, |_| ip("10.0.0.7")).await;
-    let mut waiting = TcpStream::connect(door.addr).await.unwrap();
-    assert!(
-        closes(&mut waiting, Duration::from_secs(5)).await,
-        "fail closed"
-    );
+    let (capture, _guard) = crate::events::process_log::tests::capture::capture_log("error");
+    for _ in 0..3 {
+        let mut waiting = TcpStream::connect(door.addr).await.unwrap();
+        let closed = closes(&mut waiting, Duration::from_secs(5)).await;
+        assert!(closed, "fail closed");
+    }
+    let lines = capture.lines();
+    assert_eq!(lines.len(), 1, "logged once, not per connection: {lines:?}");
 }
 
 #[test]
