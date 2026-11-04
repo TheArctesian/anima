@@ -15,6 +15,8 @@ Environment=RESTIC_PASSWORD_FILE=%d/restic-password
 CacheDirectory=restic-prune
 CacheDirectoryMode=0700
 UMask=0077
+# Prune holds the restic password in memory; a core dump must not keep it.
+LimitCORE=0
 
 CapabilityBoundingSet=
 AmbientCapabilities=

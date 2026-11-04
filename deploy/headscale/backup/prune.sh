@@ -5,12 +5,15 @@
 # folder: the home PC has full access, the VPS only appends through rest-server.
 #
 # The VPS chooses its snapshot times, so a compromised VPS could append junk snapshots
-# dated in the future, or many per day, to push every real snapshot out of a count-based
-# policy. Two defences:
-#   - retention is by age (--keep-within*), never by count;
+# dated in the future, in the past, or many per day, to push real snapshots out of the
+# retention policy. Three defences:
+#   - retention is `--keep-within 1y` only: every snapshot less than a year older than the
+#     newest is kept, so no junk snapshot can evict a real one. Anything older is pruned.
 #   - before forgetting anything, refuse when a snapshot is dated more than an hour in
-#     the future or a UTC day has more than two snapshots. The operator then inspects
-#     the list by hand.
+#     the future: keep-within counts from the newest snapshot, so a future-dated one
+#     would shift the window;
+#   - and refuse when a UTC day has more than two snapshots, which bounds growth.
+#     The operator then inspects the list by hand.
 # Snapshots are grouped by host and tag because each backup comes from a new temporary
 # folder, so the default grouping by path would keep every snapshot.
 #
@@ -84,7 +87,7 @@ read -r future busiest <<< "$verdict"
   || fail "refusing to prune: $busiest snapshots on one UTC day (more than $MAX_SNAPSHOTS_PER_DAY)"
 
 restic_run forget --host anima-vps --tag headscale --group-by host,tags \
-  --keep-within 14d --keep-within-weekly 2m --keep-within-monthly 1y --prune \
+  --keep-within 1y --prune \
   || fail "restic forget --prune failed"
 restic_run check || fail "restic check failed after pruning"
 printf 'restic-prune: retention applied\n'

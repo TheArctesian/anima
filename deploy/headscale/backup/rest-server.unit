@@ -9,6 +9,9 @@
 Description=restic rest-server for off-site backups
 Wants=network-online.target
 After=network-online.target tailscaled.service
+# Stop retrying after five failed starts in five minutes (for example a missing address).
+StartLimitIntervalSec=300
+StartLimitBurst=5
 
 [Service]
 Type=simple

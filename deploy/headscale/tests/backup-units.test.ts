@@ -54,6 +54,8 @@ describe("systemd units", () => {
     expect(argv).not.toContain("--no-auth");
     expect(value("ExecStartPre")).toEqual(["/usr/bin/test -n ${HOME_PC_LAN_IP}"]);
     expect(value("RestartSec")).toEqual(["10"]);
+    expect(unitValues("rest-server.unit", "Unit", "StartLimitIntervalSec")).toEqual(["300"]);
+    expect(unitValues("rest-server.unit", "Unit", "StartLimitBurst")).toEqual(["5"]);
     expect(value("User")).toEqual(["restic"]);
     expect(value("ReadWritePaths")).toEqual(["/srv/restic"]);
   });
@@ -70,6 +72,7 @@ describe("systemd units", () => {
     expect(unitValues("restic-prune.timer", "Timer", "Unit")).toEqual(["restic-prune.service"]);
     expect(value("User")).toEqual(["restic"]);
     expect(value("PrivateNetwork")).toEqual(["yes"]);
+    expect(value("LimitCORE")).toEqual(["0"]);
     expect(value("IPAddressAllow")).toEqual([]);
     expect(value("ReadWritePaths")).toEqual(["/srv/restic/headscale-vps/headscale"]);
     expect(value("LoadCredential")).toEqual(["restic-password:/etc/restic/headscale-password"]);

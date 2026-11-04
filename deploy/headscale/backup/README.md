@@ -73,8 +73,10 @@ First real run on the VPS, check:
    database read-only. If the journal shows `unable to open database file (14)` while
    Headscale is stopped, start Headscale once (it creates `db.sqlite-wal` and
    `db.sqlite-shm`) and run the backup again. If the error persists, add
-   `ReadWritePaths=/opt/anima/headscale/lib/db.sqlite-shm` to the unit (the `-shm` file
-   only, never the whole folder).
+   `ReadWritePaths=-/opt/anima/headscale/lib/db.sqlite-shm` to the unit (the `-shm` file
+   only, never the whole folder; the leading `-` keeps the unit from failing with
+   226/NAMESPACE when the file is missing). This lets the backup process write the live
+   WAL index, so add it only if the read-only open fails.
 2. `ls -ln /opt/anima/headscale/lib` shows owner `0` for every file. The unit has no
    capabilities; if Headscale's files belong to another user, add
    `CapabilityBoundingSet=CAP_DAC_READ_SEARCH` to the unit.
@@ -119,14 +121,15 @@ Then on the new VPS set `src=/root/headscale-restore` and run the steps above fr
 
 ## Risks
 
-- **Snapshot flooding.** The VPS sets its own snapshot times. Retention is by age
-  (`--keep-within 14d --keep-within-weekly 2m --keep-within-monthly 1y`), and
-  `prune.sh` refuses to prune when a snapshot is dated more than an hour in the future or
-  a UTC day has more than two snapshots. After a refusal, inspect
+- **Snapshot flooding.** The VPS sets its own snapshot times. Retention is
+  `--keep-within 1y` only: real snapshots are kept for one year whatever the VPS
+  appends, and anything older than a year (counted from the newest snapshot) is pruned.
+  Because keep-within counts from the newest snapshot, `prune.sh` refuses to prune when a
+  snapshot is dated more than an hour in the future. It also refuses when a UTC day has
+  more than two snapshots, which bounds growth (about 365 snapshots of a database under
+  1 MB, well inside `--max-size`). After a refusal, inspect
   `restic snapshots --host anima-vps --tag headscale` and forget the bad snapshot IDs by
   hand. Running the backup by hand more than once a day also triggers a refusal.
-  Remaining gap: junk dated in the past, at most two per day, can replace the weekly and
-  monthly snapshot kept for weeks older than 14 days. It cannot touch the last 14 days.
 - **The home PC holds the restic password**, because pruning needs it. Anyone with root on
   the home PC can decrypt the backups, including the Headscale private keys.
 - **rest-server and prune share the `restic` user.** rest-server writes the repository
