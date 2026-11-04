@@ -83,7 +83,8 @@ it('DEV-001: 200 devices from one request render 200 cards', async () => {
   const listed = fake.requests.filter((request) => request.operation === 'Devices');
   expect(listed).toHaveLength(1);
   expect(listed[0]?.variables).toMatchObject({ first: 200 });
-});
+  // Mounting 200 cards takes about a second in jsdom and seven under a full gate run; the default 5 s limit flaked.
+}, 30_000);
 
 it('DEV-001: Load more asks for the next page with the end cursor and adds its cards', async () => {
   await show([device('a')], DEFAULT_QUERY, { Devices: devicesAnswer([device('a')], 'cursor-1') });
