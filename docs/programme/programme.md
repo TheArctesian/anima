@@ -58,6 +58,8 @@ Integration branch: `phase-1`. Merge to `main` only after operator checkpoint 4.
 
 - **R-009 (Wave 1, from WP-07).** Database tests always run in `bun run gates`. The `cargo-test` gate starts a throwaway PostgreSQL 17 on a Unix socket and sets `DATABASE_URL` (`quality/bin/with-postgres.ts`); a set `DATABASE_URL` is used as is. A missing PostgreSQL fails the gate. Tests must not skip when no database is present (CQ-024). A domain's tests must not create tables in another domain's schema, not even a stub (CQ-032): a store whose migration has a foreign key into a domain that is not on `phase-1` yet waits until that domain's migration lands. WP-06 delivers its `devices` migration first so that WP-07 (and later WP-09, WP-10) can build on it.
 
+- **R-010 (Wave 1, from WP-07; changes K3).** (a) `devices` owns the GraphQL mutations `setSshCredential` and `clearSshCredential` and may call `credentials::{Vault, SshSecret, has_ssh, store_ssh, clear_ssh}`. `clear_ssh(conn, device) -> Result<bool, Error>` is added to `credentials`. (b) `Vault::seal` and `Vault::open` take a `context: &[u8]` that is bound as AEAD associated data, with the fixed context strings in K3, so a sealed value moved to another row does not open. Affects WP-05 (TOTP), WP-06, WP-07.
+
 ## Escalations
 
 None open.
