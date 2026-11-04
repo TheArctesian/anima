@@ -7,10 +7,19 @@
 
   let { tags = $bindable() }: Props = $props();
   let draft = $state('');
+  /** Read out politely, since a chip appearing or going is silent otherwise. */
+  let announcement = $state('');
+
+  function remove(tag: string): void {
+    tags = tags.filter((other) => other !== tag);
+    announcement = `Removed tag ${tag}`;
+  }
 
   /** Adds the typed text as a tag (trimmed, no duplicates, T1's rules). */
   function commit(): void {
-    if (draft.trim() !== '') tags = normalizeTags([...tags, draft]);
+    const added = draft.trim();
+    if (added !== '' && !tags.includes(added)) announcement = `Added tag ${added}`;
+    if (added !== '') tags = normalizeTags([...tags, draft]);
     draft = '';
   }
 
@@ -19,7 +28,8 @@
       event.preventDefault();
       commit();
     } else if (event.key === 'Backspace' && draft === '') {
-      tags = tags.slice(0, -1);
+      const last = tags.at(-1);
+      if (last !== undefined) remove(last);
     }
   }
 </script>
@@ -30,7 +40,7 @@
     {#each tags as tag (tag)}
       <span class="chip">
         {tag}
-        <button type="button" aria-label="Remove tag {tag}" onclick={() => { tags = tags.filter((other) => other !== tag); }}>
+        <button type="button" aria-label="Remove tag {tag}" onclick={() => { remove(tag); }}>
           x
         </button>
       </span>
@@ -38,6 +48,7 @@
     <input id="device-tags" bind:value={draft} onkeydown={keydown} onblur={commit} autocomplete="off" />
   </div>
   <small>Press Enter or comma to add a tag.</small>
+  <span class="announcement" role="status" aria-live="polite">{announcement}</span>
 </div>
 
 <style>
@@ -83,7 +94,18 @@
     font-size: var(--text-sm);
   }
 
+  .announcement {
+    position: absolute;
+    overflow: hidden;
+    inline-size: var(--border-thin);
+    block-size: var(--border-thin);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
   .chip button {
+    min-inline-size: var(--target-min-desktop);
+    min-block-size: var(--target-min-desktop);
     padding: 0;
     background: none;
     border: 0;

@@ -2,7 +2,7 @@
 import { flushSync, mount, tick, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { HubResult } from '$lib/hub/error';
-import { installAnimations } from '../animations.fixture';
+import { installAnimations, played } from '../animations.fixture';
 import ConfirmModal from './ConfirmModal.svelte';
 import HostKeyModal from './HostKeyModal.svelte';
 
@@ -199,5 +199,5 @@ it('D-5: an unsaved device has no Accept button and says the key can be accepted
   hostKey(false, false, () => Promise.resolve(OK));
 
   expect(() => button('Accept')).toThrow();
-  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('after you save the device');
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Save the device, then test again to accept this key.');
 });

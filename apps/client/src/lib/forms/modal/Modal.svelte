@@ -93,9 +93,7 @@
 
   .shade {
     block-size: 100%;
-    /* E-3: scrim token pending (MAT-003) */
-    background: var(--bg);
-    opacity: 0.6;
+    background: var(--scrim);
   }
 
   .frame {

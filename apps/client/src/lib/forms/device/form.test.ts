@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { HubError } from '$lib/hub/error';
-import { connectionTestInput, testOutcome, testsStoredCredential } from './connection-test';
+import { connectionTestInput, testOutcome, testsSavedRecord, testsStoredCredential } from './connection-test';
 import { FORM_FIELD, fieldErrorsFrom } from './field-errors';
 import type { DeviceFields, HostKey } from './hub-types';
 import { createInput, credentialInput, updateInput } from './input';
@@ -322,5 +322,26 @@ describe('testOutcome', () => {
   it('SEC-007: a changed host key without the key is never ok', () => {
     expect(testOutcome({ ...base, hostKeyChanged: true })).toEqual({ kind: 'hostKeyChangedUnknown' });
     expect(testOutcome({ ...base, hostKeyChanged: true, hostKey: null })).toEqual({ kind: 'hostKeyChangedUnknown' });
+  });
+});
+
+describe('formValues', () => {
+  it('D-4: every call gives a credential object of its own, so that editing one form cannot change another', () => {
+    const first = formValues(null);
+    const second = formValues(null);
+
+    expect(first.credential).not.toBe(second.credential);
+    expect(formValues(SAVED).credential).not.toBe(formValues(SAVED).credential);
+  });
+});
+
+describe('testsSavedRecord', () => {
+  it('SEC-007, D-5: holds for a saved device with its host and SSH settings as saved, and not once the host is edited or when unsaved', () => {
+    const initial = formValues(SAVED);
+
+    expect(testsSavedRecord(initial, initial, 'd1')).toBe(true);
+    expect(testsSavedRecord(initial, withValues(initial, { host: 'other.home.arpa' }), 'd1')).toBe(false);
+    expect(testsSavedRecord(initial, initial, null)).toBe(false);
+    expect(testsSavedRecord(null, initial, null)).toBe(false);
   });
 });

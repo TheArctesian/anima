@@ -1,112 +1,33 @@
 // @vitest-environment jsdom
-import { flushSync, mount, tick, unmount } from 'svelte';
+import { flushSync } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { HubResult } from '$lib/hub/error';
 import { installAnimations } from '../../animations.fixture';
 import { credentialInput } from '../input';
-import type { ConnectionTestInput, ConnectionTestResult, DeviceFields, HostKey } from '../hub-types';
-import type { DeviceFormValues } from '../values';
-import DeviceForm from './DeviceForm.svelte';
+import type { ConnectionTestResult } from '../hub-types';
+import { HOST_KEY, KEY, OK, SAVED, button, choose, input, leave, save, settle, show, type } from './form.fixture';
 
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
   animate: (await import('../../../motion/engine.fixture')).fakeRun,
 }));
 
-const OK: HubResult<unknown> = { ok: true, value: undefined };
-const SAVED: DeviceFields = {
-  name: 'nas',
-  host: 'nas.home.arpa',
-  kind: 'server',
-  os: 'LINUX',
-  tags: ['lab'],
-  ssh: { enabled: true, port: 22, username: 'root', auth: 'PASSWORD' },
-};
-const HOST_KEY: HostKey = { algorithm: 'ssh-ed25519', fingerprintSha256: 'SHA256:abc', firstSeenAt: '2026-11-04T09:00:00Z' };
-const KEY = '-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----\n';
-
-let app: ReturnType<typeof mount> | undefined;
-
 beforeEach(() => {
   installAnimations();
 });
 
-afterEach(() => {
-  if (app) void unmount(app);
-  app = undefined;
-  document.body.replaceChildren();
-});
+afterEach(leave);
 
-interface Calls {
-  onSave: ReturnType<typeof vi.fn<(values: DeviceFormValues, siteId: string | null) => Promise<HubResult<unknown>>>>;
-  onTest: ReturnType<typeof vi.fn<(input: ConnectionTestInput) => Promise<HubResult<ConnectionTestResult>>>>;
-  onAcceptHostKey: ReturnType<typeof vi.fn<(fingerprint: string) => Promise<HubResult<unknown>>>>;
-}
-
-function show(device: DeviceFields | null, options: Record<string, unknown> = {}, tested?: HubResult<ConnectionTestResult>): Calls {
-  const calls: Calls = {
-    onSave: vi.fn(() => Promise.resolve(OK)),
-    onTest: vi.fn(() => Promise.resolve(tested ?? { ok: true as const, value: { reachable: true, authenticated: true, hostKeyChanged: false } })),
-    onAcceptHostKey: vi.fn(() => Promise.resolve(OK)),
-  };
-  app = mount(DeviceForm, {
-    target: document.body,
-    props: {
-      device,
-      deviceId: device === null ? null : 'd1',
-      ...calls,
-      onClearCredential: () => Promise.resolve(OK),
-      onCancel: () => undefined,
-      ...options,
-    },
-  });
-  flushSync();
-  return calls;
-}
-
-function input(id: string): HTMLInputElement {
-  const found = document.getElementById(`device-${id}`);
-  if (!(found instanceof HTMLInputElement || found instanceof HTMLTextAreaElement)) throw new Error(`no input ${id}`);
-  return found as HTMLInputElement;
-}
-
-function type(id: string, text: string): void {
-  const field = input(id);
-  field.value = text;
-  field.dispatchEvent(new Event('input', { bubbles: true }));
-  flushSync();
-}
-
-function button(label: string): HTMLButtonElement {
-  const found = [...document.querySelectorAll('button')].find((candidate) => candidate.textContent.trim() === label);
-  if (!found) throw new Error(`no button ${label}`);
-  return found;
-}
-
-async function settle(): Promise<void> {
-  for (let turn = 0; turn < 4; turn += 1) await tick();
-}
-
-async function save(): Promise<void> {
-  button('Save').click();
-  await settle();
-}
-
-function choose(value: 'PASSWORD' | 'PRIVATE_KEY'): void {
-  const radio = document.querySelector<HTMLInputElement>(`input[type="radio"][value="${value}"]`);
-  radio?.click();
-  flushSync();
-}
 
 it('DEV-011: the password and the passphrase are hidden text that the browser does not remember', () => {
   show(SAVED);
   expect(input('credential-password').type).toBe('password');
-  expect(input('credential-password').autocomplete).toBe('off');
+  expect(input('credential-password').autocomplete).toBe('new-password');
 
   choose('PRIVATE_KEY');
 
   expect(input('credential-passphrase').type).toBe('password');
-  expect(input('credential-passphrase').autocomplete).toBe('off');
+  expect(input('credential-passphrase').autocomplete).toBe('new-password');
 });
 
 it('DEV-012: Private key shows the key and passphrase, and save sends the privateKey credential', async () => {
@@ -230,7 +151,7 @@ it.each(OUTCOMES)('DEV-013, SEC-007: the %s outcome shows its message', async (_
   button('Test connection').click();
   await settle();
 
-  expect(document.querySelector('[role="status"]')?.textContent).toContain(text);
+  expect(document.querySelector('.test [role="status"]')?.textContent).toContain(text);
   expect(document.querySelector('[role="dialog"]')).toBeNull();
 });
 
@@ -307,7 +228,7 @@ it('DEV-010: tags are added with Enter or comma, normalised, and removed with Ba
 it('D-6: the site picker shows only in create mode with more than one site, and the chosen site is sent', async () => {
   show(SAVED, { sites: [{ id: 's1', name: 'Home' }, { id: 's2', name: 'Office' }] });
   expect(document.getElementById('device-siteId')).toBeNull();
-  void unmount(app as object);
+  leave();
   document.body.replaceChildren();
 
   const { onSave } = show(null, { sites: [{ id: 's1', name: 'Home' }, { id: 's2', name: 'Office' }] });

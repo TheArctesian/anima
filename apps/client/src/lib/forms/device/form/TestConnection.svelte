@@ -32,8 +32,8 @@
   const fresh = $derived(tested !== null && tested.signature === signature);
   const shown = $derived(fresh ? outcome : null);
   const shownFailure = $derived(fresh ? failure : null);
-  const saved = $derived(fresh && tested !== null && tested.saved);
-  const advice = $derived(saved && !testsStoredCredential(initial, values, deviceId) && credentialInput(values) === null);
+  const acceptable = $derived(fresh && tested !== null && tested.saved);
+  const advice = $derived(deviceId !== null && !testsStoredCredential(initial, values, deviceId) && credentialInput(values) === null);
 
   async function test(): Promise<void> {
     if (testing || !canTest()) return;
@@ -84,7 +84,7 @@
     open={keyOpen}
     hostKey={shown.hostKey}
     changed={shown.kind === 'hostKeyChanged'}
-    {saved}
+    saved={acceptable}
     onAccept={accept}
     onClose={() => { keyOpen = false; }}
   />
