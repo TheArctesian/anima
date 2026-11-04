@@ -24,6 +24,14 @@ const bad: Record<string, string> = {
   'a raw 200ms duration': 'a { transition-duration: 200ms; }',
   'a raw duration in the transition shorthand': 'a { transition: opacity 200ms var(--ease); }',
   'a raw cubic-bezier() curve': 'a { transition-timing-function: cubic-bezier(0.2, 0, 0, 1); }',
+  'the linear keyword in the transition shorthand': 'a { transition: opacity var(--d) linear; }',
+  'the linear keyword in the animation shorthand': 'a { animation: spin var(--d) linear; }',
+  'a quoted string in a custom property': 'a { --label: "hi"; }',
+  'a quoted string after a url() in a custom property': 'a { --m: url(x.svg) "y"; }',
+  'a font-named custom property --f': 'a { --f: 12px; }',
+  'a font-named custom property --font': 'a { --font: 12px; }',
+  'a font-named custom property --font-x': 'a { --font-x: 12px; }',
+  'a family-named custom property --x-family': 'a { --x-family: 12px; }',
   'a raw ease keyword in the animation shorthand': 'a { animation: spin var(--d) ease-in; }',
   'a raw z-index': 'a { z-index: 10; }',
   'a raw font-family': 'a { font-family: Arial; }',
@@ -139,6 +147,10 @@ describe('Stylelint token gate', () => {
 });
 
 describe('Stylelint token gate: vendored fonts and primitive tokens', () => {
+  it('TOK-003 accepts quotes inside url() and non-font --f-* custom properties', async () => {
+    expect(await warnings('a { --mask: url("x.svg"); --f-size: 12px; }')).toEqual([]);
+  });
+
   it('TOK-003 accepts the vendored fonts.css with quoted @font-face families', async () => {
     const css = "@font-face { font-family: 'Fira Code'; src: url(x.woff2); }";
     expect(await warnings(css, 'apps/client/src/styles/fonts.css')).toEqual([]);

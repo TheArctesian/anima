@@ -15,7 +15,10 @@ const limits = {
 // Token-literal gate for script and markup (TOK-003). Known edge: a string that is only
 // a 3/4/6/8-digit hex-looking anchor such as '#add' or '#face' is refused; build the anchor
 // from a variable or use a longer id. Prose like 'retry in 5s' also matches the duration rule;
-// disable the line with a reason when that is intended.
+// disable the line with a reason when that is intended. URL fragments such as
+// 'https://x.io/#abc123' are refused too; build the URL from parts.
+// Do not set no-restricted-syntax for apps/client files in another config object: it
+// replaces this list. Extend tokenLiterals instead.
 const textRules = [
   [
     String.raw`(?<![\w&])#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})(?![\w-])`,
