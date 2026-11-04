@@ -49,7 +49,7 @@ async fn log_006_drop_function_refuses_a_cutoff_inside_retention_even_with_a_lat
         (("event_log", today - Days::new(100), now), None),
         (("access_log", today - Days::new(800), now), Some("22023")),
     ];
-    let mut conn = pool.acquire().await.unwrap();
+    let mut conn = pool.acquire().await.unwrap().detach();
 
     let outcomes = as_runtime(&mut conn, async |conn| {
         let mut outcomes = Vec::new();
