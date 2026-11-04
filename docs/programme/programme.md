@@ -6,21 +6,21 @@ Owner: programme orchestrator. Read by every agent. Rulings here override packag
 
 | ID | File | State |
 | --- | --- | --- |
-| K1 | [contracts/schema.graphql](../../contracts/schema.graphql) | Draft — awaiting operator approval |
-| K2 | [contracts/database.md](../../contracts/database.md) | Draft — awaiting operator approval |
-| K3 | [contracts/hub-domains.md](../../contracts/hub-domains.md) | Draft — awaiting operator approval |
-| K4 | [contracts/tunnel.md](../../contracts/tunnel.md) | Draft — awaiting operator approval |
-| K5 | [contracts/tokens.md](../../contracts/tokens.md) | Draft — awaiting operator approval |
-| K6 | [contracts/fixtures/phase1.json](../../contracts/fixtures/phase1.json) | Draft — awaiting operator approval |
-| K7 | [contracts/conventions.md](../../contracts/conventions.md) | Draft — awaiting operator approval |
+| K1 | [contracts/schema.graphql](../../contracts/schema.graphql) | Frozen (operator approved 2026-11-03) |
+| K2 | [contracts/database.md](../../contracts/database.md) | Frozen (operator approved 2026-11-03) |
+| K3 | [contracts/hub-domains.md](../../contracts/hub-domains.md) | Frozen (operator approved 2026-11-03) |
+| K4 | [contracts/tunnel.md](../../contracts/tunnel.md) | Frozen (operator approved 2026-11-03) |
+| K5 | [contracts/tokens.md](../../contracts/tokens.md) | Frozen (operator approved 2026-11-03) |
+| K6 | [contracts/fixtures/phase1.json](../../contracts/fixtures/phase1.json) | Frozen (operator approved 2026-11-03) |
+| K7 | [contracts/conventions.md](../../contracts/conventions.md) | Frozen (operator approved 2026-11-03) |
 
-When the operator approves, every row becomes **Frozen** and only a ruling can change it (CON-001).
+The operator approved all seven contracts on 2026-11-03 (checkpoint 1). Only a ruling can change them now (CON-001).
 
 ## Packages
 
 | Package | Wave | State | Branch | Session |
 | --- | --- | --- | --- | --- |
-| WP-01 Skeleton and gates | 0 | Building | `wp/01-skeleton` | `wp-01-skeleton` |
+| WP-01 Skeleton and gates | 0 | Building | `claude/wp-01-skeleton-212429` | `wp-01-skeleton` |
 | WP-02 Tokens and fonts | 1 | Waiting (WP-01) | — | — |
 | WP-03 VPN and network | 1 | Waiting (WP-01; operator checkpoint 2 for each VPS change) | — | — |
 | WP-04 Deployment | 1 | Waiting (WP-01) | — | — |
