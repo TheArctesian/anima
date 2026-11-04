@@ -1,7 +1,7 @@
 CREATE SCHEMA credentials;
 
 -- Sealed device secrets (SEC-003): only nonce, ciphertext and key id are stored, never plaintext.
--- created_at defaults to now(): store_ssh takes no clock.
+-- created_at defaults to now(): store_ssh takes no clock (K3).
 CREATE TABLE credentials.secrets (
     id uuid PRIMARY KEY,
     device_id uuid NOT NULL,
