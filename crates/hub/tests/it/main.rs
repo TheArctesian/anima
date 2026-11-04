@@ -1,3 +1,11 @@
 mod credentials;
 mod devices;
+mod edge;
 mod graphql;
+mod hub;
+mod login;
+mod logs;
+mod operator;
+mod start;
+mod tokens;
+mod transport;
