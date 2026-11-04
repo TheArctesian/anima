@@ -12,6 +12,7 @@ fn real_schema() -> HubSchema {
 
 const INTROSPECTION: &str = "{ __schema { queryType { name } } }";
 
+#[cfg(debug_assertions)]
 /// Twelve levels deep through introspection, the only deep path the real schema has.
 const TOO_DEEP: &str = "{ __schema { types { fields { type { ofType { ofType { ofType { ofType \
                         { ofType { ofType { name } } } } } } } } } } }";
@@ -28,7 +29,9 @@ async fn api_007_debug_build_answers_introspection_and_api_004_refuses_depth_11(
     assert!(deep.errors[0].message.contains("nested too deep"));
 }
 
-// The release side runs only under `cargo test --release`; `bun run gates` builds debug.
+// The release side runs only under `cargo test --release -p anima-hub schema`, which the gates
+// do not run. Only that command catches a mutation of `production_build()`, so it is a manual
+// check until it is gated.
 #[cfg(not(debug_assertions))]
 #[tokio::test]
 async fn api_007_release_build_answers_introspection_with_null() {
