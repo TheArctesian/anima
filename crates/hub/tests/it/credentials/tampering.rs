@@ -1,4 +1,4 @@
-//! Rows changed in the database do not open as another secret (SEC-003, R-010).
+//! Rows changed in the database do not open as another secret (SEC-003).
 
 use anima_hub::credentials::{Error, load_ssh};
 use sqlx::PgPool;
