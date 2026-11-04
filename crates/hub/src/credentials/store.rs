@@ -1,4 +1,4 @@
-//! The only SQL for `credentials.secrets` (K2, CQ-032). Rows hold sealed values only (SEC-003).
+//! The only SQL for `credentials.secrets`, the one table this domain owns (CQ-032). Rows hold sealed values only (SEC-003).
 //!
 //! The table's kind check admits only SSH kinds, so "the device's rows" are its SSH rows.
 

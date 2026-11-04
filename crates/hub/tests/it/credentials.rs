@@ -1,4 +1,4 @@
-//! `credentials.secrets` through the public SSH functions (SEC-003, R-010, DEV-015).
+//! `credentials.secrets` through the public SSH functions (SEC-003, SEC-005, DEV-015).
 
 mod concurrency;
 mod round_trip;
