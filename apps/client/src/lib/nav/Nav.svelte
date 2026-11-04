@@ -10,9 +10,11 @@
     pathname: string;
     /** The time the data age is measured against. */
     now: Date;
+    /** Called when the operator picks a destination, even the current page (it leaves a session tab). */
+    onnavigate?: () => void;
   }
 
-  const { pathname, now }: Props = $props();
+  const { pathname, now, onnavigate }: Props = $props();
   const hub = useHub();
   const banner = $derived(unreachableBanner(hub.status.current, hub.address.origin, now));
 </script>
@@ -24,6 +26,7 @@
     href={resolve(item.href)}
     tabindex="0"
     aria-current={isActive(item, pathname) ? 'page' : undefined}
+    onclick={onnavigate}
     {@attach press()}
   >
     <Icon name={item.icon} />
