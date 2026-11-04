@@ -30,7 +30,7 @@ It runs twelve gates as separate processes, in this order, and stops at the firs
 `BASE_REF` is read from the environment and defaults to `phase-1` (a local branch; no remote needed).
 A missing executable is a failure, never a skip (CQ-024). The gate list and runner live in `src/gates/gates.ts`.
 
-`cargo test` runs through `bin/with-postgres.ts` (R-009). It starts a throwaway PostgreSQL 17 on a Unix socket in a temporary folder, sets `DATABASE_URL`, runs the tests and deletes the folder. Set `DATABASE_URL` yourself to use a server you own. If PostgreSQL 17 is not installed, the gate fails; database tests never skip.
+`cargo test` runs through `bin/with-postgres.ts` (R-009). It starts a throwaway PostgreSQL 17 on a Unix socket in a temporary folder, sets `DATABASE_URL`, runs the tests and deletes the folder. Set `DATABASE_URL` yourself only for a server that no other worktree uses at the same time (R-019). If PostgreSQL 17 is not installed, the gate fails; database tests never skip.
 
 Files come from `git ls-files --cached --others --exclude-standard`, minus the globs in `generated.txt` (CQ-012).
 

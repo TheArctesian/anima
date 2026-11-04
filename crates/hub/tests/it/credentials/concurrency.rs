@@ -1,13 +1,14 @@
-//! Concurrent stores for one device are serialised, so no mixed row set survives.
+//! Concurrent writers for one device are serialised, so no mixed row set survives; writers
+//! for different devices do not wait for each other.
 
 use std::time::Duration;
 
 use anima_hub::credentials::{SshSecret, clear_ssh, load_ssh, store_ssh};
 use sqlx::PgPool;
 
-use super::{KEY, PVE_01, device, kinds, password, private_key, store, vault};
+use super::{DOCKER_HOST, KEY, PVE_01, device, kinds, password, private_key, store, vault};
 
-/// Upper bound for waiting until the second store queues on the device lock.
+/// Upper bound for any wait in these tests, so a broken lock fails instead of hanging.
 const BLOCK_WAIT: Duration = Duration::from_secs(10);
 
 /// Advisory locks held or awaited in this test's database (`pg_locks` spans the server).
@@ -15,6 +16,18 @@ async fn advisory_locks(pool: &PgPool) -> i64 {
     sqlx::query_scalar(
         "SELECT count(*) FROM pg_locks l JOIN pg_database d ON d.oid = l.database \
          WHERE d.datname = current_database() AND l.locktype = 'advisory'",
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap()
+}
+
+/// Whether a session in this test's database waits for any lock, advisory or row
+/// (`pg_locks` shows no row-lock waits; `pg_stat_activity` does).
+async fn lock_waiter(pool: &PgPool) -> bool {
+    sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM pg_stat_activity \
+         WHERE datname = current_database() AND wait_event_type = 'Lock')",
     )
     .fetch_one(pool)
     .await
@@ -98,4 +111,64 @@ async fn no_device_lock_outlives_its_transaction(pool: PgPool) {
     );
 
     assert_eq!(advisory_locks(&pool).await, 0);
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn clear_waits_for_a_concurrent_store(pool: PgPool) {
+    let (vault, id) = (vault(1), device(PVE_01));
+    store(&pool, &vault, id, password()).await.unwrap();
+    let mut first = pool.begin().await.unwrap();
+    store_ssh(&mut first, &vault, id, private_key(None))
+        .await
+        .unwrap();
+
+    let clear = tokio::spawn({
+        let pool = pool.clone();
+        async move {
+            clear_ssh(&mut pool.acquire().await.unwrap(), id)
+                .await
+                .unwrap()
+        }
+    });
+    tokio::time::timeout(BLOCK_WAIT, async {
+        while !lock_waiter(&pool).await {
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .expect("the clear must wait for the uncommitted store");
+    assert!(!clear.is_finished());
+
+    first.commit().await.unwrap();
+    let removed = tokio::time::timeout(BLOCK_WAIT, clear)
+        .await
+        .expect("the clear must finish once the store commits")
+        .unwrap();
+    assert!(removed);
+    assert_eq!(kinds(&pool, id).await, Vec::<String>::new());
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn stores_for_different_devices_do_not_wait(pool: PgPool) {
+    let vault = vault(1);
+    let mut first = pool.begin().await.unwrap();
+    store_ssh(&mut first, &vault, device(PVE_01), password())
+        .await
+        .unwrap();
+
+    tokio::time::timeout(
+        BLOCK_WAIT,
+        store(&pool, &vault, device(DOCKER_HOST), private_key(None)),
+    )
+    .await
+    .expect("a store for another device must not wait for this lock")
+    .unwrap();
+    first.commit().await.unwrap();
+    assert_eq!(kinds(&pool, device(DOCKER_HOST)).await, ["ssh_private_key"]);
 }

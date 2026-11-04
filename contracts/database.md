@@ -30,6 +30,7 @@ Status: **frozen for Phase 1** (change only through a programme ruling, CON-001)
 - **Exceptions are explicit.** Migration `0500` revokes UPDATE, DELETE and TRUNCATE on `events.audit_log` and `events.event_log` from `anima_runtime` (WP-05 may use a narrower writer group instead). A new partition gets the same restriction.
 - **Partitions.** The runtime role cannot create or drop a partition, because it does not own the parent. Each partitioned table has `SECURITY DEFINER` functions in its own schema, owned by the owner role, with `search_path = pg_catalog, pg_temp`: one creates a day partition, one drops partitions before a date. The drop function for `events.audit_log` refuses a date newer than its retention period (LOG-006). The domain's `store.rs` calls these functions.
 - **Start check.** The hub refuses to serve, with a plain error (API-010), if `current_user` is a superuser or owns `events.audit_log`.
+- One PostgreSQL cluster serves one Anima installation. `anima_runtime` is a cluster-wide role, so two installations in one cluster would share its grants (R-019).
 - Tests run as the throwaway server's superuser (R-009). Each restriction above has a test that uses `SET ROLE anima_runtime`.
 
 ## Table outlines

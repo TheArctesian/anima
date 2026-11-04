@@ -38,8 +38,7 @@ Each domain exposes `pub mod graphql` with `#[derive(Default)] pub struct Query;
 ## access (WP-05)
 
 ```rust
-pub struct Operator { pub id: OperatorId, pub name: String }
-pub struct ClientAddr(pub std::net::IpAddr);
+pub use events::{Operator, ClientAddr};   // defined in events (R-019)
 
 /// GraphQL guard: requires a valid token; puts `Operator` in the context (API-003).
 pub struct Authenticated;
@@ -52,6 +51,9 @@ pub async fn operator_for_token(db: &Db, token: &str, now: DateTime<Utc>) -> Res
 ## events (WP-05)
 
 ```rust
+pub struct Operator { pub id: OperatorId, pub name: String }   // re-exported by access (R-019)
+pub struct ClientAddr(pub std::net::IpAddr);                     // re-exported by access (R-019)
+pub struct HeartbeatSummary { pub at: DateTime<Utc>, pub status: Status, pub response_time_ms: Option<u32> }   // used by checks (R-019)
 pub enum Severity { Info, Warning, Error }
 pub enum Source { Check, Session, Device, Access, Hub }        // Proxmox, Metrics later
 pub struct NewEvent { pub severity: Severity, pub source: Source,
@@ -70,7 +72,9 @@ pub enum Signal { Event(EventSummary), DeviceStatus { device: DeviceId, status: 
 impl Bus { pub fn publish(&self, s: Signal); pub fn subscribe(&self) -> tokio::sync::broadcast::Receiver<Signal>; }
 ```
 
-`Status`, `CheckId` and `DeviceId` come from the leaf modules, so `events` imports no domain.
+`Status`, `CheckId` and `DeviceId` come from the leaf modules, and `events` defines the three shared value types above, so `events` imports no domain (R-019).
+
+Wiring only (called from `main.rs`, never from another domain): `create_partitions_ahead`, `drop_expired_partitions`, `check_runtime_role` (R-016, R-019).
 
 ### Allowed domain dependencies (the import-graph gate enforces this list; REPO-004)
 
@@ -148,7 +152,7 @@ The GraphQL mutations `setSshCredential` and `clearSshCredential` belong to `dev
 ## checks (WP-09)
 
 ```rust
-pub struct HeartbeatSummary { pub at: DateTime<Utc>, pub status: Status, pub response_time_ms: Option<u32> }
+// HeartbeatSummary is events::HeartbeatSummary (R-019).
 pub async fn device_status(db: &Db, device: DeviceId, now: DateTime<Utc>) -> Result<Status, Error>;   // CHK-004
 /// Started by main.rs; owns the scheduler task, the watchdog (CHK-010) and retention (DB-005).
 pub fn spawn_scheduler(db: Db, bus: events::Bus, clock: Clock) -> tokio::task::JoinHandle<()>;

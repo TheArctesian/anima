@@ -2,9 +2,13 @@
 
 use std::sync::Arc;
 
-use async_graphql::{EmptyMutation, EmptySubscription, Object, Schema};
+use async_graphql::{EmptyMutation, EmptySubscription, Object, Schema, SchemaBuilder};
 
-use crate::{clock::Clock, config::Config};
+use crate::{
+    clock::Clock,
+    config::Config,
+    events::process_log::{InternalErrors, RequestSpan},
+};
 
 pub struct Query;
 
@@ -21,8 +25,46 @@ pub type HubSchema = Schema<Query, EmptyMutation, EmptySubscription>;
 /// Put each dependency into the schema data; resolvers read them with `ctx.data::<T>()`.
 #[must_use]
 pub fn build_schema(config: Arc<Config>, clock: Arc<dyn Clock>) -> HubSchema {
-    Schema::build(Query, EmptyMutation, EmptySubscription)
-        .data(config)
-        .data(clock)
-        .finish()
+    harden(
+        Schema::build(Query, EmptyMutation, EmptySubscription),
+        production_build(),
+    )
+    .data(config)
+    .data(clock)
+    .finish()
+}
+
+/// API-007: release builds are production builds; debug builds keep introspection for tooling.
+const fn production_build() -> bool {
+    !cfg!(debug_assertions)
+}
+
+#[cfg(test)]
+mod tests;
+
+/// API-004: deepest query accepted.
+const MAX_DEPTH: usize = 10;
+/// API-004: most fields one query may select (each field costs 1). The operator's own client is
+/// the only caller. Assuming its largest screen selects under 100 fields, 500 leaves room for
+/// growth and still stops a query that fans out to thousands of fields. Revisit if a real
+/// query comes near it.
+const MAX_COMPLEXITY: usize = 500;
+
+/// Applies the query limits (API-004), the process-log extensions (LOG-002, API-010) and, when
+/// `production` is set, turns introspection off (API-007; there is no playground route).
+#[must_use]
+pub fn harden<Q, M, S>(
+    builder: SchemaBuilder<Q, M, S>,
+    production: bool,
+) -> SchemaBuilder<Q, M, S> {
+    let builder = builder
+        .limit_depth(MAX_DEPTH)
+        .limit_complexity(MAX_COMPLEXITY)
+        .extension(RequestSpan)
+        .extension(InternalErrors);
+    if production {
+        builder.disable_introspection()
+    } else {
+        builder
+    }
 }
