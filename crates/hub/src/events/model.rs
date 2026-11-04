@@ -1,0 +1,195 @@
+//! What the event log and the audit log record (LOG-004, LOG-005).
+#![expect(
+    clippy::unused_async_trait_impl,
+    reason = "the async-graphql Enum derive generates async trait impls"
+)]
+
+use std::net::IpAddr;
+
+use async_graphql::Enum;
+use chrono::{DateTime, Utc};
+
+use crate::{
+    ids::{CheckId, DeviceId, EventId, OperatorId, SessionId, SiteId, WindowId},
+    status::Status,
+};
+
+/// How much an event needs the operator's attention. Ordered: `Info < Warning < Error`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Enum)]
+pub enum Severity {
+    Info,
+    Warning,
+    Error,
+}
+
+impl Severity {
+    /// The text stored in `event_log.severity`.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Info => "info",
+            Self::Warning => "warning",
+            Self::Error => "error",
+        }
+    }
+}
+
+/// The part of the hub that produced an event.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Enum)]
+#[graphql(name = "EventSource")]
+pub enum Source {
+    Check,
+    Session,
+    Device,
+    Access,
+    Hub,
+}
+
+impl Source {
+    /// The text stored in `event_log.source`.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Check => "check",
+            Self::Session => "session",
+            Self::Device => "device",
+            Self::Access => "access",
+            Self::Hub => "hub",
+        }
+    }
+}
+
+/// An event to record. `device` carries the device name at the time of the event, so the
+/// entry keeps it after the device is renamed or deleted.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct NewEvent {
+    pub severity: Severity,
+    pub source: Source,
+    pub device: Option<(DeviceId, String)>,
+    pub message: String,
+}
+
+/// A stored event, as subscribers and the event list see it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct EventSummary {
+    pub id: EventId,
+    pub at: DateTime<Utc>,
+    pub severity: Severity,
+    pub source: Source,
+    pub device: Option<(DeviceId, String)>,
+    pub message: String,
+}
+
+/// The signed-in operator who made a request (API-003).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Operator {
+    pub id: OperatorId,
+    pub name: String,
+}
+
+/// The network address the request came from (LOG-005).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ClientAddr(pub IpAddr);
+
+/// One check result, as the live status view receives it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct HeartbeatSummary {
+    pub at: DateTime<Utc>,
+    pub status: Status,
+    pub response_time_ms: Option<u32>,
+}
+
+/// The verb of an audit entry. Its text form is stored in `audit_log.action`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum AuditAction {
+    Login,
+    Logout,
+    Create,
+    Update,
+    Delete,
+    Start,
+    End,
+    Accept,
+    Pause,
+    Resume,
+    Activate,
+    Deactivate,
+}
+
+impl AuditAction {
+    /// Stable `lower_snake` text, as stored and shown in `AuditEntry.action`.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Login => "login",
+            Self::Logout => "logout",
+            Self::Create => "create",
+            Self::Update => "update",
+            Self::Delete => "delete",
+            Self::Start => "start",
+            Self::End => "end",
+            Self::Accept => "accept",
+            Self::Pause => "pause",
+            Self::Resume => "resume",
+            Self::Activate => "activate",
+            Self::Deactivate => "deactivate",
+        }
+    }
+}
+
+/// The thing an audited action changed.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum AuditTarget {
+    Operator(OperatorId),
+    Site(SiteId),
+    Device(DeviceId),
+    Check(CheckId),
+    Window(WindowId),
+    Session(SessionId),
+    /// The SSH credential of a device.
+    Credential(DeviceId),
+    /// The accepted SSH host key of a device.
+    HostKey(DeviceId),
+}
+
+impl AuditTarget {
+    /// The text stored in `audit_log.target_type`.
+    #[must_use]
+    pub const fn kind(self) -> &'static str {
+        match self {
+            Self::Operator(_) => "operator",
+            Self::Site(_) => "site",
+            Self::Device(_) => "device",
+            Self::Check(_) => "check",
+            Self::Window(_) => "maintenance_window",
+            Self::Session(_) => "session",
+            Self::Credential(_) => "credential",
+            Self::HostKey(_) => "host_key",
+        }
+    }
+
+    /// The UUID text stored in `audit_log.target_id`.
+    #[must_use]
+    pub fn id(self) -> String {
+        match self {
+            Self::Operator(id) => id.to_string(),
+            Self::Site(id) => id.to_string(),
+            Self::Device(id) | Self::Credential(id) | Self::HostKey(id) => id.to_string(),
+            Self::Check(id) => id.to_string(),
+            Self::Window(id) => id.to_string(),
+            Self::Session(id) => id.to_string(),
+        }
+    }
+}
+
+/// An audit entry to record. `change` lists the changed fields; `audit` redacts secret
+/// values before it writes (LOG-007).
+///
+/// No `Debug`: `change` may hold a secret until it is redacted.
+pub struct NewAudit {
+    pub operator: Operator,
+    pub action: AuditAction,
+    pub target: AuditTarget,
+    pub client: ClientAddr,
+    pub change: serde_json::Value,
+}
