@@ -29,7 +29,7 @@ The operator approved all seven contracts on 2026-11-03 (checkpoint 1). Only a r
 | WP-06 Devices | 1 | Accepted, merged into `phase-1` (5cdc99c) | own worktree from `phase-1` | `wp-06-devices` |
 | WP-07 Credentials | 1 | Accepted, merged into `phase-1` (3f1f830) | own worktree from `phase-1` | `wp-07-credentials` |
 | WP-08 guac-protocol | 1 | Accepted, merged into `phase-1` (c19ad06) | own worktree from `phase-1` | `wp-08-guac` |
-| WP-09 Checks and maintenance | 2 | Building (starts on the WP-05 interface already on `phase-1`) | `claude/wp-09-checks` | `wp-07-credentials` session, reused (R-027) |
+| WP-09 Checks and maintenance | 2 | Accepted, merged at 2163f06 (12/12). Wiring on `claude/wp-09-wiring` | `claude/wp-09-checks` | `wp-07-credentials` session, reused (R-027) |
 | WP-10 Sessions | 2 | Accepted, merged at 1f75518 (12/12). Wiring (and WP-06 H-2 schema wiring) on `claude/wp-10-wiring`; `/tunnel` mount waits for WP-05 T4 | `claude/wp-10-sessions` | `wp-08-guac` session, reused |
 | WP-11 Client shell | 2 | Accepted, merged at bb575fd | own worktree from `phase-1` | `wp-11-client-shell` |
 | WP-12 Devices page | 3 | Building (from e939dff) | `claude/wp-12-devices-page` | `wp-06-devices` session, reused |
