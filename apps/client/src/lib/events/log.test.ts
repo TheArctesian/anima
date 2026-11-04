@@ -143,7 +143,7 @@ describe('event log', () => {
 describe('event log cap', () => {
   it('LOG-010 the list holds at 500 rows, drops the oldest and offers no older page', () => {
     const next = addLive(fullLog(), event('new'), DEFAULT_LOG_FILTER, NOW);
-    expect(next.rows).toHaveLength(LOG_CAP);
+    expect(next.rows).toHaveLength(500);
     expect(next.rows[0]?.id).toBe('new');
     expect(next.rows.at(-1)?.id).toBe(`e${String(LOG_CAP - 2)}`);
     expect(next).toMatchObject({ hasNextPage: false, endCursor: 'c1' });
@@ -167,7 +167,7 @@ describe('event log cap', () => {
     const ids = Array.from({ length: LOG_CAP - 50 }, (_, index) => `e${String(index)}`);
     const older = Array.from({ length: 50 }, (_, index) => `o${String(index)}`);
     const next = appendOlder(logOf(ids), page(older, true, 'c9'));
-    expect(next.rows).toHaveLength(LOG_CAP);
+    expect(next.rows).toHaveLength(500);
     expect(next).toMatchObject({ hasNextPage: false, endCursor: 'c1' });
   });
 
@@ -175,7 +175,7 @@ describe('event log cap', () => {
     const ids = Array.from({ length: LOG_CAP - 2 }, (_, index) => `e${String(index)}`);
     const older = Array.from({ length: 100 }, (_, index) => `o${String(index)}`);
     const next = appendOlder(logOf(ids), page(older, true, 'c9'));
-    expect(next.rows).toHaveLength(LOG_CAP);
+    expect(next.rows).toHaveLength(500);
     expect(next.rows.slice(-2).map((row) => row.id)).toEqual(['o0', 'o1']);
     expect(next).toMatchObject({ hasNextPage: false, endCursor: 'c1' });
   });

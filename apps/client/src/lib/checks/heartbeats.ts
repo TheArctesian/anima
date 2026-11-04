@@ -1,4 +1,3 @@
-import type { CardDevice } from '$lib/devices/api';
 import type { NewHeartbeat } from './api';
 
 /** How many cells the bar has (Section 6.1). */
@@ -8,7 +7,7 @@ export const BAR_LENGTH = 50;
 export interface Beat {
   readonly checkId: string;
   readonly at: string;
-  readonly status: CardDevice['status'];
+  readonly status: NewHeartbeat['heartbeat']['status'];
   readonly responseTimeMs?: number | null;
 }
 
@@ -36,8 +35,14 @@ function capped(beats: readonly Beat[]): readonly Beat[] {
   return beats.length > BAR_LENGTH ? beats.slice(-BAR_LENGTH) : beats;
 }
 
+/** A check with its recent heartbeats: the shape `latestBeats` reads from any document that asks for them. */
+interface CheckBeats {
+  readonly id: string;
+  readonly heartbeats: { readonly edges: readonly { readonly node: Omit<Beat, 'checkId'> }[] };
+}
+
 /** The device's last `BAR_LENGTH` heartbeats, oldest first, merged from all its checks (D-6). Server order is not trusted. */
-export function latestBeats(checks: CardDevice['checks']): readonly Beat[] {
+export function latestBeats(checks: readonly CheckBeats[]): readonly Beat[] {
   const all = checks.flatMap((check) =>
     check.heartbeats.edges.map(({ node }): Beat => ({ checkId: check.id, ...node })),
   );

@@ -17,12 +17,12 @@ export function reorderMotion(
   preference: MotionPreference = motionPreference(),
 ): (id: string) => Attachment<HTMLElement> {
   // eslint-disable-next-line svelte/prefer-svelte-reactivity -- a registry read by effects, never rendered
-  const items = new Map<string, HTMLElement>();
+  const cards = new Map<string, HTMLElement>();
   let before: Places | undefined;
 
   $effect.pre(() => {
     order();
-    before = measure(items.values());
+    before = measure(cards.values());
   });
 
   /** Slides the items that are not where they were. */
@@ -44,18 +44,18 @@ export function reorderMotion(
 
   /** A leaving item keeps its place until its fade ends; the items after it then close the gap by FLIP. */
   function closeGap(): void {
-    const places = measure(items.values());
+    const places = measure(cards.values());
     queueMicrotask(() => {
       play(places);
     });
   }
 
   return (id) => (element) => {
-    items.set(id, element);
+    cards.set(id, element);
     element.addEventListener('outroend', closeGap);
     return () => {
       element.removeEventListener('outroend', closeGap);
-      if (items.get(id) === element) items.delete(id);
+      if (cards.get(id) === element) cards.delete(id);
     };
   };
 }

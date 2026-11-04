@@ -37,12 +37,13 @@ endTransitionsAtOnce();
 
 let app: ReturnType<typeof mount> | undefined;
 
-async function show(): Promise<void> {
-  const fake = fakeHub({ Devices: devicesAnswer([device('a')]), Tags: { tags: [] } });
+async function show(devices = [device('a')]): Promise<ReturnType<typeof fakeHub>> {
+  const fake = fakeHub({ Devices: devicesAnswer(devices), Tags: { tags: [] } });
   current.hub = fake.hub;
   app = mount(Page, { target: document.body });
   for (let round = 0; round < 5; round += 1) await Promise.resolve();
   flushSync();
+  return fake;
 }
 
 beforeEach(() => {
@@ -85,4 +86,15 @@ it('H-1: Add device goes to /devices/new', async () => {
   await show();
   [...document.querySelectorAll('button')].find((node) => node.textContent.includes('Add device'))?.click();
   expect(current.goto[0]?.[0]).toBe('/devices/new');
+});
+
+it('H-2: SSH does nothing until WP-14 supplies the session tab', async () => {
+  const fake = await show([device('a', { ssh: { enabled: true } })]);
+  const sent = fake.requests.length;
+  const ssh = [...document.querySelectorAll('button')].find((node) => node.textContent.trim() === 'SSH');
+  expect(ssh).toBeDefined();
+  ssh?.click();
+  await Promise.resolve();
+  expect(current.goto).toEqual([]);
+  expect(fake.requests).toHaveLength(sent);
 });
