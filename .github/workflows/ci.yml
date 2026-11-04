@@ -2,6 +2,7 @@ name: CI
 
 on:
   push:
+    branches: [phase-1, main]
   pull_request:
 
 permissions:
@@ -9,7 +10,7 @@ permissions:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   rust:
@@ -65,6 +66,7 @@ jobs:
     name: quality
     runs-on: ubuntu-latest
     env:
+      # The push fallback needs `phase-1` on the remote.
       # Pull requests compare with their base branch. Pushes compare with the integration branch.
       BASE_REF: origin/${{ github.base_ref || 'phase-1' }}
     steps:

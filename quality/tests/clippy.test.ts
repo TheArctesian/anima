@@ -103,6 +103,7 @@ describe("CQ-010 Clippy rejects code over the limits in clippy.toml", () => {
     expectAccepted(runClippy("narrow_function", source));
   }, timeoutMs);
 
+  // excessive_nesting is proved through its threshold: -D warnings keeps it on even without the explicit deny.
   test("CQ-010 nesting of 5 blocks in a body is rejected (excessive_nesting)", () => {
     expectRejected(runClippy("deep_nesting", nested(5)), "excessive_nesting");
   }, timeoutMs);
