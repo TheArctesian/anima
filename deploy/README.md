@@ -66,7 +66,7 @@ Each service writes its log as JSON files, 10 MB each, 10 files.
    | `ANIMA_ACME_EMAIL` | yes | none | Contact address for Let's Encrypt. |
    | `ANIMA_HUB_SUBNET` | no | `172.30.0.0/24` | Subnet of the `gateway` network. |
    | `ANIMA_HUB_IP` | no | `172.30.0.10` | Hub address inside `ANIMA_HUB_SUBNET`. |
-   | `ANIMA_PERMITTED_NETWORKS` | no | `100.64.0.0/10` | Networks that devices may be in. |
+   | `ANIMA_PERMITTED_NETWORKS` | no | `100.64.0.0/10` | Client networks that may use the hub (NET-001): the VPN range and the site subnets, comma-separated. |
    | `ANIMA_LOG` | no | `info` | Hub log filter. |
    | `ANIMA_ACME_SERVER` | no | Let's Encrypt production | Use the staging URL to test. |
 
