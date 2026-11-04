@@ -166,6 +166,34 @@ async fn db_004_record_creates_a_day_partition_for_any_date(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
+async fn db_004_concurrent_records_on_a_new_day_all_succeed(pool: PgPool) {
+    let bus = Bus::new(16);
+    let at = day(2029, 2, 28);
+    let mut writers = tokio::task::JoinSet::new();
+    for _ in 0..8 {
+        let (pool, bus) = (pool.clone(), bus.clone());
+        writers.spawn(async move {
+            let mut tx = pool.begin().await.unwrap();
+            let id = record(&mut tx, &bus, at, device_event("racing"))
+                .await
+                .unwrap();
+            tx.commit().await.unwrap();
+            id
+        });
+    }
+
+    let ids = writers.join_all().await;
+
+    let mut conn = pool.acquire().await.unwrap();
+    for id in ids {
+        assert_eq!(
+            partition_of(&mut conn, id).await,
+            "events.event_log_20290228"
+        );
+    }
+}
+
+#[sqlx::test(migrations = "./migrations")]
 async fn log_005_audit_records_operator_client_and_change(pool: PgPool) {
     let mut conn = pool.acquire().await.unwrap();
     let change = json!({ "name": { "from": "lab-router", "to": "core-router" } });
