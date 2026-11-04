@@ -47,10 +47,10 @@ function typeErrors(values: CheckFormValues, configSent: boolean): FieldError[] 
 function commonErrors(values: CheckFormValues): FieldError[] {
   return [
     ...(values.name.trim() === '' ? [{ field: 'name', message: 'Enter a name.' }] : []),
-    ...integerError('intervalSeconds', values.intervalSeconds, 1, MAX_INT, 'Enter an interval of 1 second or more.'),
-    ...integerError('retries', values.retries, 0, MAX_INT, 'Enter 0 or more retries.'),
-    ...integerError('retryIntervalSeconds', values.retryIntervalSeconds, 1, MAX_INT, 'Enter a retry interval of 1 second or more.'),
-    ...integerError('degradedThresholdMs', values.degradedThresholdMs, 1, MAX_INT, 'Enter a threshold of 1 ms or more.'),
+    ...integerError('intervalSeconds', values.intervalSeconds, [1, MAX_INT], 'Enter an interval of 1 second or more.'),
+    ...integerError('retries', values.retries, [0, MAX_INT], 'Enter 0 or more retries.'),
+    ...integerError('retryIntervalSeconds', values.retryIntervalSeconds, [1, MAX_INT], 'Enter a retry interval of 1 second or more.'),
+    ...integerError('degradedThresholdMs', values.degradedThresholdMs, [1, MAX_INT], 'Enter a threshold of 1 ms or more.'),
   ];
 }
 

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { flushSync, mount, tick, unmount } from 'svelte';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import type { HubResult } from '$lib/hub/error';
 import CheckForm from './CheckForm.svelte';
 import type { SiblingCheck } from './model/group';
@@ -14,6 +14,12 @@ vi.mock('motion', async (importOriginal) => ({
 
 const OK: HubResult<unknown> = { ok: true, value: {} };
 let app: ReturnType<typeof mount> | undefined;
+
+// jsdom has no Web Animations; Svelte's transitions need an animation that never finishes on its own.
+beforeAll(() => {
+  Element.prototype.animate = () =>
+    ({ onfinish: null, cancel: () => undefined, finish: () => undefined, currentTime: 0 }) as unknown as Animation;
+});
 
 afterEach(() => {
   if (app !== undefined) void unmount(app);

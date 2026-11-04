@@ -71,7 +71,7 @@ export function validateHttp(http: HttpValues, configSent: boolean): FieldError[
   return [
     ...urlErrors(http.url),
     ...timeoutError(http.timeoutMs),
-    ...integerError('maxRedirects', http.maxRedirects, 0, MAX_REDIRECTS, `Enter 0 to ${String(MAX_REDIRECTS)} redirects.`),
+    ...integerError('maxRedirects', http.maxRedirects, [0, MAX_REDIRECTS], `Enter 0 to ${String(MAX_REDIRECTS)} redirects.`),
     ...headerErrors(http.headers),
     ...rangeErrors(http.acceptedStatus),
     ...(configSent ? authErrors(http) : []),

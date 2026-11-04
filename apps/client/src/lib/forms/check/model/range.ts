@@ -13,15 +13,15 @@ export function isIntegerIn(text: string, min: number, max: number = MAX_INT): b
 }
 
 /** An error on `field` unless `text` is a whole number from `min` to `max`. */
-export function integerError(field: string, text: string, min: number, max: number, message: string): FieldError[] {
+export function integerError(field: string, text: string, [min, max]: readonly [number, number], message: string): FieldError[] {
   return isIntegerIn(text, min, max) ? [] : [{ field, message }];
 }
 
 export function timeoutError(text: string): FieldError[] {
-  return integerError('timeoutMs', text, TIMEOUT_MS.min, TIMEOUT_MS.max, `Enter a timeout from ${String(TIMEOUT_MS.min)} to ${String(TIMEOUT_MS.max)} ms.`);
+  return integerError('timeoutMs', text, [TIMEOUT_MS.min, TIMEOUT_MS.max], `Enter a timeout from ${String(TIMEOUT_MS.min)} to ${String(TIMEOUT_MS.max)} ms.`);
 }
 
 export function portError(text: string): FieldError[] {
   if (text.trim() === '') return [{ field: 'port', message: 'Enter a port.' }];
-  return integerError('port', text, 1, MAX_PORT, 'Enter a port from 1 to 65535.');
+  return integerError('port', text, [1, MAX_PORT], 'Enter a port from 1 to 65535.');
 }
