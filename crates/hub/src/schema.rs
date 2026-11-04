@@ -1,8 +1,8 @@
-//! GraphQL schema root: merges each domain's `Query` and `Mutation` (CQ-033, K3).
+//! GraphQL schema root: merges each domain's `Query`, `Mutation` and `Subscription` (CQ-033, K3).
 
 use std::sync::Arc;
 
-use async_graphql::{EmptySubscription, MergedObject, Object, Schema, SchemaBuilder};
+use async_graphql::{MergedObject, MergedSubscription, Object, Schema, SchemaBuilder};
 use sqlx::PgPool;
 
 use crate::{
@@ -11,7 +11,7 @@ use crate::{
     config::Config,
     credentials::Vault,
     events::{
-        Bus,
+        self, Bus,
         process_log::{InternalErrors, RequestSpan},
     },
 };
@@ -28,12 +28,15 @@ impl Health {
 }
 
 #[derive(MergedObject, Default)]
-pub struct Query(access::graphql::Query, Health);
+pub struct Query(access::graphql::Query, events::graphql::Query, Health);
 
 #[derive(MergedObject, Default)]
 pub struct Mutation(access::graphql::Mutation);
 
-pub type HubSchema = Schema<Query, Mutation, EmptySubscription>;
+#[derive(MergedSubscription, Default)]
+pub struct Subscription(events::graphql::Subscription);
+
+pub type HubSchema = Schema<Query, Mutation, Subscription>;
 
 /// What `main.rs` builds once and the schema hands to resolvers as context data (R-002).
 pub struct Dependencies {
@@ -60,7 +63,11 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
         vault,
     } = dependencies;
     harden(
-        Schema::build(Query::default(), Mutation::default(), EmptySubscription),
+        Schema::build(
+            Query::default(),
+            Mutation::default(),
+            Subscription::default(),
+        ),
         production_build(),
     )
     .disable_suggestions()

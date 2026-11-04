@@ -258,6 +258,14 @@ pub(super) async fn touch_token(
     Ok(())
 }
 
+/// Whether the token is still stored: `logout`, `operator set` and `prune` delete tokens.
+pub(super) async fn token_exists(db: impl PgExecutor<'_>, id: Uuid) -> Result<bool, sqlx::Error> {
+    sqlx::query_scalar("select exists (select from access.api_tokens where id = $1)")
+        .bind(id)
+        .fetch_one(db)
+        .await
+}
+
 /// Deletes the token. Returns false if it was already gone.
 pub(super) async fn delete_token(conn: &mut PgConnection, id: Uuid) -> Result<bool, sqlx::Error> {
     let done = sqlx::query("delete from access.api_tokens where id = $1")
