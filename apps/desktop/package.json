@@ -1,0 +1,17 @@
+{
+  "name": "@anima/desktop",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "lint": "echo 'no TypeScript here; the cargo gates lint src-tauri'",
+    "check": "echo 'no TypeScript here; the cargo gates check src-tauri'",
+    "test": "echo 'no TypeScript here; cargo test covers src-tauri'"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.12.4"
+  }
+}

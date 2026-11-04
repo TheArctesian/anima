@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/hub", "crates/guac-protocol", "crates/theme"]
+members = ["crates/hub", "crates/guac-protocol", "crates/theme", "apps/desktop/src-tauri"]
 
 [workspace.package]
 version = "0.1.0"
@@ -42,6 +42,12 @@ russh = { version = "0.65", default-features = false, features = ["ring", "rsa"]
 hmac = "0.13"
 sha1 = "0.11"
 subtle = "2.6"
+
+# Desktop shell (WP-16): Tauri 2 and the OS key store. keyring 3.x: macOS Keychain and Linux
+# Secret Service (pure-Rust crypto, no OpenSSL). Its `mock` builder ships in the crate for tests.
+tauri = { version = "2", default-features = false, features = ["wry", "compression"] }
+tauri-build = "2"
+keyring = { version = "3.6", default-features = false, features = ["apple-native", "sync-secret-service", "crypto-rust"] }
 
 [workspace.lints.rust]
 warnings = "deny"

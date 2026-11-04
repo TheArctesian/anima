@@ -1,0 +1,12 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main",
+  "description": "The main window: core defaults and the hub access-token key store.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "allow-access-token-read",
+    "allow-access-token-write",
+    "allow-access-token-clear"
+  ]
+}
