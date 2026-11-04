@@ -87,7 +87,7 @@ fixture_test! {
         assert_eq!(at, now());
         assert_eq!(audit["at"], event["at"]);
         assert_eq!(audit["change"]["name"], "ssh");
-        assert_eq!(audit["change"]["config"], json!({ "type": "tcp", "port": 22, "timeout_ms": 5000 }));
+        assert_eq!(audit["change"]["config"], json!({ "type": "tcp", "port": 22, "timeoutMs": 5000 }));
         assert!(matches!(receiver.try_recv(), Ok(Signal::Event(_))));
     }
 

@@ -58,10 +58,10 @@ pub async fn add_bulk(pool: &PgPool, sites: i32, devices: i32) {
     .unwrap();
     sqlx::query(
         "INSERT INTO checks.checks (id, device_id, type, name, config) \
-         SELECT gen_random_uuid(), id, 'icmp', 'Ping', '{\"timeoutMs\":2000,\"ipVersion\":\"V4\"}' \
+         SELECT gen_random_uuid(), id, 'icmp', 'Ping', '{\"timeoutMs\":2000,\"ipVersion\":\"V4\"}'::jsonb \
          FROM devices.devices WHERE name LIKE 'bulk-%' \
          UNION ALL \
-         SELECT gen_random_uuid(), id, 'tcp', 'SSH port', '{\"port\":22,\"timeoutMs\":5000}' \
+         SELECT gen_random_uuid(), id, 'tcp', 'SSH port', '{\"port\":22,\"timeoutMs\":5000}'::jsonb \
          FROM devices.devices WHERE name LIKE 'bulk-%'",
     )
     .execute(pool)

@@ -146,7 +146,12 @@ fixture_test! {
         let id = create(&schema, input(PVE_01, "web", http(basic()))).await;
         let blank = json!({ "http": {
             "url": "https://web.lan/health",
-            "headers": [{ "name": "Authorization", "value": "" }],
+            "headers": [
+                { "name": "Authorization", "value": "" },
+                { "name": "proxy-authorization", "value": "" },
+                { "name": "COOKIE", "value": "" },
+                { "name": "X-Trace", "value": "trace-1" },
+            ],
             "auth": { "basic": { "username": "bob", "password": "" } },
         } });
         let vars = json!({ "id": id, "input": { "config": blank } });

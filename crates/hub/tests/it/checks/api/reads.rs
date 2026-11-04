@@ -92,7 +92,8 @@ fixture_test! {
         let schema = schema_for(&pool);
         let id = create(&schema, input(PVE_01, "ssh", tcp())).await;
         let base = database_now(&pool).await;
-        for seconds in 0..5 {
+        // Oldest first: a beat older than the stored state is not recorded.
+        for seconds in (0..5).rev() {
             let at = base - TimeDelta::seconds(seconds);
             record(&pool, &id, &beat(at, Status::Up, Some(u32::try_from(seconds).unwrap()))).await;
         }
