@@ -7,17 +7,28 @@
   "rules": {
     "color-no-hex": true,
     "color-named": "never",
-    "function-disallowed-list": ["rgb", "rgba", "hsl", "hsla", "hwb", "lab", "lch", "oklab", "oklch", "color", "color-mix", "cubic-bezier", "steps", "linear"],
+    "function-disallowed-list": ["/^(rgb|rgba|hsl|hsla|hwb|lab|lch|oklab|oklch|color|color-mix|cubic-bezier|steps|linear)$/i"],
+    "declaration-property-value-allowed-list": {
+      "font": ["/^(\\s*(var\\([^)]*\\)|inherit|initial|unset|revert|normal|italic|oblique|bold|bolder|lighter|small-caps|\\d*\\.?\\d+(px|rem|em|%|pt)?(\\/\\d*\\.?\\d+(px|rem|em|%)?)?))+\\s*$/i"],
+      "font-family": ["/^\\s*(var\\([^)]*\\)|inherit|initial|unset|revert)\\s*$/i"]
+    },
     "declaration-property-value-disallowed-list": {
       "/^transition/": ["/(?<![-\\w.])\\d*\\.?\\d+m?s(?![-\\w])/", "/(?<![-\\w])(ease|ease-in|ease-out|ease-in-out|linear)(?![-\\w])/"],
       "/^animation/": ["/(?<![-\\w.])\\d*\\.?\\d+m?s(?![-\\w])/", "/(?<![-\\w])(ease|ease-in|ease-out|ease-in-out|linear)(?![-\\w])/"],
-      "/^font/": ["/(?<![-\\w])(Arial|Helvetica|serif|sans-serif|monospace|system-ui|Inter)(?![-\\w])/i"]
+      "/^--/": [
+        "/#[0-9a-f]{3,8}\\b/i",
+        "/(?<![-\\w.])\\d*\\.?\\d+m?s(?![-\\w])/",
+        "/(?<![-\\w])(ease|ease-in|ease-out|ease-in-out)(?![-\\w])/",
+        "/[\"']/",
+        "/(?<![-\\w])(Arial|Helvetica|Roboto|Inter|serif|sans-serif|monospace|system-ui)(?![-\\w])/i"
+      ],
+      "/^--(.*-)?(z|z-index|layer)(-.*)?$/": ["/^\\s*-?\\d+\\s*$/"]
     },
     "scale-unlimited/declaration-strict-value": [
-      ["/color$/", "fill", "stroke", "z-index", "font-family", "transition-duration", "transition-timing-function", "animation-duration", "animation-timing-function", "transition-delay", "animation-delay"],
+      ["/color$/", "fill", "stroke", "z-index", "transition-duration", "transition-timing-function", "animation-duration", "animation-timing-function", "transition-delay", "animation-delay"],
       {
         "ignoreValues": ["inherit", "initial", "unset", "currentColor", "transparent", "none", "auto", "0"],
-        "ignoreFunctions": true,
+        "ignoreFunctions": false,
         "message": "Use a design token: var(--token) (TOK-003)."
       }
     ]

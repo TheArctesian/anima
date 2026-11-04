@@ -75,7 +75,12 @@ describe('ESLint limits and bans', () => {
   });
 
   it('CQ-010 covers quality/**/*.ts', async () => {
-    const code = 'export const f = (x: any): unknown => x;\n';
-    expect(await rulesFired(code, 'quality/src/sample.ts')).toContain('@typescript-eslint/no-explicit-any');
+    const code = 'export const f = (a: number, b: number, c: number, d: number, e: number) => a + b + c + d + e;\n';
+    expect(await rulesFired(code, 'quality/src/sample.ts')).toContain('max-params');
+  });
+
+  it('CQ-043 activates eslint-plugin-svelte recommended (no-at-html-tags)', async () => {
+    const code = '<script lang="ts">\n  const x = "<b>hi</b>";\n</script>\n{@html x}\n';
+    expect(await rulesFired(code, 'apps/client/src/lint/Sample.svelte')).toContain('svelte/no-at-html-tags');
   });
 });
