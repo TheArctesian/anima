@@ -1,9 +1,12 @@
 //! Day partitions of the event and audit logs (DB-004, D-4).
 
-use sqlx::{PgConnection, PgPool};
+use sqlx::{PgConnection, PgPool, Transaction};
 
-use super::{day, device_event, partition_of};
-use crate::events::{Bus, create_partitions_ahead, record};
+use serde_json::json;
+use sqlx::Postgres;
+
+use super::{day, device_event, new_audit, partition_of};
+use crate::events::{Bus, Error, audit, create_partitions_ahead, record};
 
 const ENSURE: &str = "select events.ensure_day_partition('event_log', $1)";
 
@@ -165,4 +168,59 @@ async fn db_004_concurrent_records_on_a_new_day_all_succeed(pool: PgPool) {
             "events.event_log_20290228"
         );
     }
+}
+
+/// Ends the transaction at once (rollback on error), so the other side is not left waiting.
+async fn finish<T>(tx: Transaction<'_, Postgres>, outcome: Result<T, Error>) -> Option<String> {
+    match outcome {
+        Ok(_) => {
+            tx.commit().await.unwrap();
+            None
+        }
+        Err(Error::Database(error)) => {
+            tx.rollback().await.unwrap();
+            let code = error
+                .as_database_error()
+                .and_then(sqlx::error::DatabaseError::code);
+            Some(code.map_or_else(|| error.to_string(), Into::into))
+        }
+    }
+}
+
+/// One transaction writes event then audit, the other audit then event, on the same day; the
+/// second statements run concurrently. Returns each side's SQLSTATE, or `None` on success.
+async fn write_in_opposite_orders(pool: &PgPool) -> [Option<String>; 2] {
+    let (bus, at) = (Bus::new(4), day(2030, 3, 1));
+    let mut first = pool.begin().await.unwrap();
+    let mut second = pool.begin().await.unwrap();
+    record(&mut first, &bus, at, device_event("first"))
+        .await
+        .unwrap();
+    audit(&mut second, at, new_audit(json!({}))).await.unwrap();
+
+    let first_side = async {
+        let outcome = audit(&mut first, at, new_audit(json!({}))).await;
+        finish(first, outcome).await
+    };
+    let second_side = async {
+        let outcome = record(&mut second, &bus, at, device_event("second")).await;
+        finish(second, outcome).await
+    };
+    let (first, second) = tokio::join!(first_side, second_side);
+    [first, second]
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn db_004_writes_in_opposite_orders_deadlock_on_a_new_day(pool: PgPool) {
+    let mut codes = write_in_opposite_orders(&pool).await;
+    codes.sort();
+    assert_eq!(codes, [None, Some("40P01".to_owned())]);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn db_004_writes_in_opposite_orders_succeed_on_a_day_created_ahead(pool: PgPool) {
+    create_partitions_ahead(&pool, day(2030, 3, 1), 0)
+        .await
+        .unwrap();
+    assert_eq!(write_in_opposite_orders(&pool).await, [None, None]);
 }

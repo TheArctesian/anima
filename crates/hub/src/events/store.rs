@@ -10,7 +10,7 @@ use crate::ids::EventId;
 const ENSURE_DAY_PARTITION: &str = "select events.ensure_day_partition($1, $2)";
 
 /// Creates the UTC-day partition of `parent` that holds `at`, if it does not exist yet (D-4).
-/// Inside the caller's transaction; takes no lock when the partition exists.
+/// Inside the caller's transaction.
 async fn ensure_day_partition(
     conn: &mut PgConnection,
     parent: &str,

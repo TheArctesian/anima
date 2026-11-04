@@ -1,16 +1,20 @@
 //! Removes secret values from an audit change before it is stored (LOG-007, D-3).
 //!
-//! A backstop: callers should not pass secrets. It prefers over-matching (`hasPassword`,
-//! `hostKey` and `credentialStored` are redacted) to letting a secret through.
+//! A backstop: callers should not pass secrets. It prefers over-matching (`tokenExpiresAt` and
+//! `passwordChangedAt` are redacted) to letting a secret through. Booleans are never redacted:
+//! they cannot hold a secret.
 
 use serde_json::{Map, Value};
-use unicode_normalization::UnicodeNormalization;
+use unicode_normalization::{UnicodeNormalization, char::is_combining_mark};
+
+#[cfg(test)]
+mod tests;
 
 /// The value that replaces a secret.
 const REDACTED: &str = "[redacted]";
 
 /// A normalised name that contains one of these names a secret.
-const SECRET_PARTS: [&str; 11] = [
+const SECRET_PARTS: [&str; 13] = [
     "password",
     "passwd",
     "passphrase",
@@ -21,18 +25,17 @@ const SECRET_PARTS: [&str; 11] = [
     "cookie",
     "bearer",
     "privatekey",
+    "keymaterial",
     "totp",
+    "otpauth",
 ];
 
-/// A name with one of these as a whole word names a secret (`otp`, `otpCode`), while
-/// `notPaused`, `footprint` and `hotplug` do not.
-const SECRET_WORDS: [&str; 1] = ["otp"];
-
-/// A normalised name equal to one of these names a secret.
-const SECRET_NAMES: [&str; 3] = ["pass", "pwd", "key"];
+/// A name with one of these as a whole word names a secret (`otpCode`, `sshKeyPem`, `sshPass`),
+/// while `notPaused`, `footprint` and `hotplug` do not.
+const SECRET_WORDS: [&str; 6] = ["otp", "pem", "auth", "pin", "pass", "pwd"];
 
 /// Names written as one lower-case word that end in "key". A name whose last word is `key`
-/// (`apiKey`, `ssh_key`, `APIKey`) is a secret too; `monkey` and `keyboard` are not.
+/// (`apiKey`, `ssh_key`, `APIKeys`) is a secret too; `monkey`, `keyboard` and `keyId` are not.
 const KEY_COMPOUNDS: [&str; 5] = [
     "apikey",
     "sshkey",
@@ -41,31 +44,40 @@ const KEY_COMPOUNDS: [&str; 5] = [
     "encryptionkey",
 ];
 
-/// In an object whose `field` or `name` value names a secret, these sibling values are redacted.
-const PAIRED_VALUES: [&str; 5] = ["value", "from", "to", "old", "new"];
+/// Public keys, never secret. The host-key fingerprint is audit evidence (SEC-006).
+const PUBLIC_KEYS: [&str; 3] = ["hostkey", "publickey", "nodekey"];
 
-/// Replaces the value of every object key that names a secret, at any depth and inside
-/// arrays, with `"[redacted]"`; also the values of a `{ field, from, to }`-style pair whose
-/// field names a secret.
+/// Keys whose string value names the field an object describes (`{ "field": "password", … }`,
+/// JSON Patch `{ "op": …, "path": "/ssh/password", … }`).
+const LABELS: [&str; 5] = ["field", "path", "key", "setting", "property"];
+
+/// Replaces every secret in `value` with `"[redacted]"`, at any depth and inside arrays:
+/// - the value of a key that names a secret;
+/// - in an object whose label names a secret, every sibling except the label and `op`;
+/// - any string that holds a PEM private key or an `otpauth://` URI.
 pub(super) fn redact(value: Value) -> Value {
     match value {
         Value::Object(fields) => Value::Object(redact_fields(fields)),
         Value::Array(values) => Value::Array(values.into_iter().map(redact).collect()),
+        Value::String(text) if is_secret_text(&text) => Value::String(REDACTED.to_owned()),
         other => other,
     }
 }
 
 fn redact_fields(fields: Map<String, Value>) -> Map<String, Value> {
-    let labels_secret = fields.iter().any(|(key, value)| {
-        matches!(normalise(key).as_str(), "field" | "name")
-            && value.as_str().is_some_and(names_secret)
-    });
+    let secret_label = fields
+        .iter()
+        .find(|(key, value)| is_label(key) && value.as_str().is_some_and(label_names_secret))
+        .map(|(key, _)| key.clone());
     fields
         .into_iter()
         .map(|(key, value)| {
-            let paired = labels_secret && PAIRED_VALUES.contains(&normalise(&key).as_str());
-            let value = if paired || names_secret(&key) {
-                Value::String(REDACTED.to_owned())
+            let hidden = match &secret_label {
+                Some(label) => key != *label && normalise(&key) != "op",
+                None => names_secret(&key),
+            };
+            let value = if hidden {
+                conceal(value)
             } else {
                 redact(value)
             };
@@ -74,18 +86,42 @@ fn redact_fields(fields: Map<String, Value>) -> Map<String, Value> {
         .collect()
 }
 
+fn conceal(value: Value) -> Value {
+    if value.is_boolean() {
+        value
+    } else {
+        Value::String(REDACTED.to_owned())
+    }
+}
+
+fn is_label(key: &str) -> bool {
+    LABELS.contains(&normalise(key).as_str())
+}
+
+/// A label value may be a path (`/ssh/password`, `ssh.password`); its last segment counts.
+fn label_names_secret(label: &str) -> bool {
+    label.rsplit(['/', '.']).next().is_some_and(names_secret)
+}
+
+fn is_secret_text(text: &str) -> bool {
+    let start = text.trim_start();
+    (text.contains("-----BEGIN") && text.contains("PRIVATE KEY"))
+        || start
+            .get(..10)
+            .is_some_and(|scheme| scheme.eq_ignore_ascii_case("otpauth://"))
+}
+
 fn names_secret(name: &str) -> bool {
     let words = words(name);
     let joined = words.concat();
-    SECRET_PARTS.iter().any(|part| joined.contains(part))
-        || SECRET_NAMES.contains(&joined.as_str())
-        || words
-            .iter()
-            .any(|word| SECRET_WORDS.contains(&word.as_str()))
-        || words.last().is_some_and(|word| word == "key")
-        || KEY_COMPOUNDS
-            .iter()
-            .any(|compound| joined.ends_with(compound))
+    let has_word = |wanted: &str| words.iter().any(|word| word == wanted);
+    !PUBLIC_KEYS.contains(&joined.as_str())
+        && (SECRET_PARTS.iter().any(|part| joined.contains(part))
+            || SECRET_WORDS.iter().any(|word| has_word(word))
+            || words.last().is_some_and(|word| word == "key")
+            || KEY_COMPOUNDS
+                .iter()
+                .any(|compound| joined.ends_with(compound)))
 }
 
 /// The name in lower-case ASCII letters and digits only.
@@ -93,11 +129,13 @@ fn normalise(name: &str) -> String {
     words(name).concat()
 }
 
-/// Splits an NFKC-normalised name into lower-case ASCII words. Any other character
-/// (separators, zero-width spaces, other scripts) ends a word, and so does a case change:
-/// `apiKey`, `api_key` and `APIKey` all give `["api", "key"]`.
+/// Splits a name into lower-case ASCII words. NFKD with combining marks dropped turns `pässword`
+/// into `password` and full-width letters into ASCII. Any other character (separators,
+/// zero-width spaces, other scripts) ends a word, and so does a case change: `apiKey`, `api_key`
+/// and `APIKey` all give `["api", "key"]`. A plural `s` on the last word is dropped (`apiKeys`),
+/// but not a double `ss` (`pass`).
 fn words(name: &str) -> Vec<String> {
-    let chars: Vec<char> = name.nfkc().collect();
+    let chars: Vec<char> = name.nfkd().filter(|c| !is_combining_mark(*c)).collect();
     let mut words = Vec::new();
     let mut word = String::new();
     let mut after_lower = false;
@@ -119,119 +157,11 @@ fn words(name: &str) -> Vec<String> {
     if !word.is_empty() {
         words.push(word);
     }
+    if let Some(last) = words
+        .last_mut()
+        .filter(|last| last.ends_with('s') && !last.ends_with("ss"))
+    {
+        last.pop();
+    }
     words
-}
-
-#[cfg(test)]
-mod tests {
-    use serde_json::{Value, json};
-
-    use super::redact;
-
-    fn kept(change: &Value) {
-        assert_eq!(&redact(change.clone()), change);
-    }
-
-    #[test]
-    fn log_007_redaction_replaces_secret_keys_at_any_depth_and_inside_arrays() {
-        let change = json!({
-            "Password": "a",
-            "name": "lab-router",
-            "ssh": { "PRIVATE_KEY": "b", "privateKey": "c", "passphrase": "d", "port": 22 },
-            "steps": [{ "totpCode": "123456" }, { "otp": "654321" }, [{ "Token": "e" }]],
-            "codes": { "otpCode": "1", "OTP": "2", "totpSecret": "3" },
-            "apiSecret": { "nested": "f" },
-            "newPassword": "g",
-            "headers": { "Authorization": "Bearer x", "Cookie": "y", "passwd": "z" },
-            "keys": { "apiKey": "k1", "APIKey": "k2", "ssh_key": "k3", "sshkey": "k4", "key": "k5" },
-            "short": { "pass": "p", "PWD": "q", "credential": "r" },
-        });
-
-        assert_eq!(
-            redact(change),
-            json!({
-                "Password": "[redacted]",
-                "name": "lab-router",
-                "ssh": {
-                    "PRIVATE_KEY": "[redacted]",
-                    "privateKey": "[redacted]",
-                    "passphrase": "[redacted]",
-                    "port": 22,
-                },
-                "steps": [{ "totpCode": "[redacted]" }, { "otp": "[redacted]" }, [{ "Token": "[redacted]" }]],
-                "codes": { "otpCode": "[redacted]", "OTP": "[redacted]", "totpSecret": "[redacted]" },
-                "apiSecret": "[redacted]",
-                "newPassword": "[redacted]",
-                "headers": { "Authorization": "[redacted]", "Cookie": "[redacted]", "passwd": "[redacted]" },
-                "keys": {
-                    "apiKey": "[redacted]",
-                    "APIKey": "[redacted]",
-                    "ssh_key": "[redacted]",
-                    "sshkey": "[redacted]",
-                    "key": "[redacted]",
-                },
-                "short": { "pass": "[redacted]", "PWD": "[redacted]", "credential": "[redacted]" },
-            })
-        );
-    }
-
-    #[test]
-    fn log_007_redaction_sees_through_zero_width_and_full_width_characters() {
-        let change = json!({
-            "pass\u{200b}word": "a",
-            "\u{ff30}\u{ff41}\u{ff53}\u{ff53}\u{ff57}\u{ff4f}\u{ff52}\u{ff44}": "b",
-            "to\u{200d}ken": "c",
-        });
-
-        assert_eq!(
-            redact(change),
-            json!({
-                "pass\u{200b}word": "[redacted]",
-                "\u{ff30}\u{ff41}\u{ff53}\u{ff53}\u{ff57}\u{ff4f}\u{ff52}\u{ff44}": "[redacted]",
-                "to\u{200d}ken": "[redacted]",
-            })
-        );
-    }
-
-    #[test]
-    fn log_007_redaction_hides_the_values_of_a_field_that_names_a_secret() {
-        let change = json!([
-            { "field": "password", "from": "a", "to": "b" },
-            { "name": "API_TOKEN", "value": "c", "old": "d", "new": "e", "at": "noon" },
-            { "field": "port", "from": 22, "to": 2222 },
-        ]);
-
-        assert_eq!(
-            redact(change),
-            json!([
-                { "field": "password", "from": "[redacted]", "to": "[redacted]" },
-                {
-                    "name": "API_TOKEN",
-                    "value": "[redacted]",
-                    "old": "[redacted]",
-                    "new": "[redacted]",
-                    "at": "noon",
-                },
-                { "field": "port", "from": 22, "to": 2222 },
-            ])
-        );
-    }
-
-    #[test]
-    fn log_007_redaction_keeps_values_without_secret_keys() {
-        kept(&json!(["password", { "username": "admin", "port": 22, "tags": ["token"] }, null]));
-        kept(&json!({ "keyboard": "us", "monkey": 1, "name": "lab-router", "deviceName": "x" }));
-        kept(&json!({ "notPaused": true, "footprint": "small", "hotplug": false }));
-        kept(&json!({ "field": "name", "from": "lab-router", "to": "core-router" }));
-    }
-
-    #[test]
-    fn log_007_redaction_over_matches_deliberately() {
-        let change =
-            json!({ "hasPassword": true, "hostKey": "SHA256:abc", "credentialStored": true });
-        assert_eq!(
-            redact(change),
-            json!({ "hasPassword": "[redacted]", "hostKey": "[redacted]", "credentialStored": "[redacted]" })
-        );
-    }
 }

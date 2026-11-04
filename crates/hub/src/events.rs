@@ -32,8 +32,9 @@ pub enum Error {
 /// Call it at start and daily, so the partition already exists when `record` or `audit` runs.
 /// Both still create a missing partition as a fallback, but that holds an `ACCESS EXCLUSIVE`
 /// lock on the parent table until the caller's transaction ends, which blocks readers and can
-/// deadlock two transactions that write both logs in opposite order. When the partition exists
-/// the fallback takes no lock.
+/// deadlock two transactions that write both logs in opposite order. With the partition
+/// already there, an open writer does not block readers and the two orders do not deadlock
+/// (both tested).
 ///
 /// # Errors
 ///
