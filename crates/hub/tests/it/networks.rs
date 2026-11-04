@@ -3,6 +3,7 @@
 //! of every request that passes (NET-001, NET-002, D-10, D-11).
 
 mod permit;
+mod untrusted;
 
 use std::{
     net::SocketAddr,

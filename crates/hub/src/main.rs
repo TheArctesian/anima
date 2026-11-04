@@ -1,5 +1,6 @@
 //! Hub binary: reads the environment, builds the dependencies and serves the router, or runs
-//! `anima-hub migrate` (R-016) or `anima-hub operator set <username>` (D-9).
+//! `anima-hub migrate` (R-016), `anima-hub operator set <username>` (D-9) or `anima-hub health`
+//! (the compose healthcheck).
 
 use std::{
     io::{BufRead as _, IsTerminal as _},
@@ -46,7 +47,9 @@ enum StartError {
     /// Names the address or the certificate fault kind, never file content (SEC-001).
     #[error("{0}")]
     Listen(#[from] listen::Error),
-    #[error("usage: anima-hub [migrate | operator set <username>]")]
+    #[error("the hub is not healthy: {0}")]
+    Health(#[from] listen::HealthError),
+    #[error("usage: anima-hub [migrate | operator set <username> | health]")]
     Usage,
     #[error("the password cannot be read from standard input")]
     Stdin,
@@ -79,7 +82,24 @@ async fn run() -> Result<(), StartError> {
         [] => serve(config).await,
         ["migrate"] => migrate(&config).await,
         ["operator", "set", username] => set_operator(&config, username).await,
+        ["health"] => Ok(listen::check_health(config.listen, tls_files(&config)).await?),
         _ => Err(StartError::Usage),
+    }
+}
+
+/// The certificate files when both TLS variables are set (WP-04 names one `tls.pem` twice).
+fn tls_files(config: &Config) -> Option<listen::TlsFiles> {
+    let files = config
+        .tls_cert_file
+        .clone()
+        .zip(config.tls_key_file.clone());
+    files.map(|(cert, key)| listen::TlsFiles { cert, key })
+}
+
+/// An empty `ANIMA_PROBE_DENY` is allowed but logged at start (R-030, K7).
+fn warn_without_probe_deny(config: &Config) {
+    if config.probe_deny.is_empty() {
+        tracing::warn!("ANIMA_PROBE_DENY is empty: checks may probe the hub's own networks");
     }
 }
 
@@ -87,12 +107,8 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     process_log::init(&config.log)?;
     let clock: Arc<dyn anima_hub::clock::Clock> = Arc::new(SystemClock);
     // Bind check and certificate first: a refused address needs no key or database (NET-003).
-    let tls = config
-        .tls_cert_file
-        .clone()
-        .zip(config.tls_key_file.clone());
-    let tls = tls.map(|(cert, key)| listen::TlsFiles { cert, key });
-    let listening = listen::listen(config.listen, tls, clock.clone()).await?;
+    let listening = listen::listen(config.listen, tls_files(&config), clock.clone()).await?;
+    warn_without_probe_deny(&config);
     let vault = Vault::from_key_file(&config.key_file).map_err(|source| StartError::Key {
         path: config.key_file.display().to_string(),
         source,
@@ -109,7 +125,10 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         bus: bus.clone(),
         vault,
     });
+    // Stand-in for WP-05 T8's `GET /health`; remove this merge when T8's route lands.
+    let liveness = axum::Router::new().route("/health", axum::routing::get(|| async { "ok" }));
     let app = router(schema, pool.clone(), clock.clone())
+        .merge(liveness)
         .layer(access::permitted_networks_layer(pool, bus, clock));
     Ok(listening.serve(app).await?)
 }

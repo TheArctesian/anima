@@ -13,7 +13,7 @@ use std::{
 };
 
 use tokio_rustls::rustls::{
-    self,
+    self, InconsistentKeys,
     crypto::CryptoProvider,
     pki_types::{CertificateDer, PrivateKeyDer, pem::PemObject as _},
     server::{ClientHello, ResolvesServerCert},
@@ -25,6 +25,8 @@ use zeroize::Zeroizing;
 const MAX_FILE_BYTES: usize = 1024 * 1024;
 
 /// The certificate chain and private key files (`ANIMA_TLS_CERT_FILE`, `ANIMA_TLS_KEY_FILE`).
+/// Both may name one file holding the key and the chain, as the deployment's `tls.pem` does
+/// (WP-04): certificates are read from the first and the first private key from the second.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TlsFiles {
     pub cert: PathBuf,
@@ -96,6 +98,16 @@ pub(super) fn read(files: &TlsFiles) -> Result<Pem, Fault> {
     })
 }
 
+/// The first certificate of the certificate file, which the hub serves to clients.
+pub(super) fn first_certificate(files: &TlsFiles) -> Result<CertificateDer<'static>, Fault> {
+    let cert = read_limited(&files.cert, Fault::CertificateFile)
+        .map_err(|fault| fault.unwrap_or(Fault::CertificateTooLarge))?;
+    CertificateDer::pem_slice_iter(&cert)
+        .next()
+        .ok_or(Fault::NoCertificate)?
+        .map_err(|_| Fault::CertificatePem)
+}
+
 /// The file's bytes in a buffer that never reallocates (so no unwiped copy is left behind);
 /// `Err(None)` when the file is too large.
 fn read_limited(
@@ -123,13 +135,18 @@ pub(super) fn certified_key(pem: &Pem, provider: &CryptoProvider) -> Result<Cert
         return Err(Fault::NoCertificate);
     }
     let key = PrivateKeyDer::from_pem_slice(&pem.key).map_err(|_| Fault::KeyPem)?;
-    CertifiedKey::from_der(chain, key, provider).map_err(|error| match error {
-        rustls::Error::InconsistentKeys(_) => Fault::KeyMismatch,
-        rustls::Error::InvalidCertificate(_) | rustls::Error::NoCertificatesPresented => {
-            Fault::CertificateInvalid
-        }
-        _ => Fault::KeyUnsupported,
-    })
+    let signing = provider
+        .key_provider
+        .load_private_key(key)
+        .map_err(|_| Fault::KeyUnsupported)?;
+    let certified = CertifiedKey::new(chain, signing);
+    // Unlike `CertifiedKey::from_der`, a pair whose match cannot be checked is refused too.
+    certified.keys_match().map_err(|error| match error {
+        rustls::Error::InconsistentKeys(InconsistentKeys::KeyMismatch) => Fault::KeyMismatch,
+        rustls::Error::InconsistentKeys(_) => Fault::KeyUnsupported,
+        _ => Fault::CertificateInvalid,
+    })?;
+    Ok(certified)
 }
 
 /// The certificate every new handshake gets.

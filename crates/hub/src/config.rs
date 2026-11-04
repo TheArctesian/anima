@@ -10,6 +10,7 @@ const DATABASE_URL_FILE: &str = "ANIMA_DATABASE_URL_FILE";
 const KEY_FILE: &str = "ANIMA_KEY_FILE";
 const GUACD: &str = "ANIMA_GUACD";
 const PERMITTED_NETWORKS: &str = "ANIMA_PERMITTED_NETWORKS";
+const PROBE_DENY: &str = "ANIMA_PROBE_DENY";
 const LOG: &str = "ANIMA_LOG";
 const TLS_CERT_FILE: &str = "ANIMA_TLS_CERT_FILE";
 const TLS_KEY_FILE: &str = "ANIMA_TLS_KEY_FILE";
@@ -22,6 +23,9 @@ pub struct Config {
     /// Gateway `host:port`; the host is a DNS name, so this is not a `SocketAddr`.
     pub guacd: String,
     pub permitted_networks: Vec<ipnet::IpNet>,
+    /// Networks checks must never probe: the hub's own Docker networks and public address
+    /// (R-030). Empty when unset; `main.rs` warns at start.
+    pub probe_deny: Vec<ipnet::IpNet>,
     pub log: String,
     pub tls_cert_file: Option<PathBuf>,
     pub tls_key_file: Option<PathBuf>,
@@ -41,10 +45,11 @@ pub enum Error {
     NotUnicode { name: String },
     #[error("{GUACD}={value:?} is not host:port")]
     Guacd { value: String },
-    #[error("{PERMITTED_NETWORKS} has an empty entry")]
-    NetworkEmpty,
-    #[error("{PERMITTED_NETWORKS} entry {entry:?} is not a CIDR network")]
+    #[error("{variable} has an empty entry")]
+    NetworkEmpty { variable: &'static str },
+    #[error("{variable} entry {entry:?} is not a CIDR network")]
     Network {
+        variable: &'static str,
         entry: String,
         #[source]
         source: ipnet::AddrParseError,
@@ -89,14 +94,16 @@ fn guacd(text: &str) -> Result<String, Error> {
     Ok(text.to_owned())
 }
 
-fn networks(text: &str) -> Result<Vec<ipnet::IpNet>, Error> {
+/// Comma-separated CIDR networks from `variable`.
+fn networks(variable: &'static str, text: &str) -> Result<Vec<ipnet::IpNet>, Error> {
     text.split(',')
         .map(|entry| {
             let entry = entry.trim();
             if entry.is_empty() {
-                return Err(Error::NetworkEmpty);
+                return Err(Error::NetworkEmpty { variable });
             }
             entry.parse().map_err(|source| Error::Network {
+                variable,
                 entry: entry.to_owned(),
                 source,
             })
@@ -160,7 +167,14 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {
         database_url_file: value(env, DATABASE_URL_FILE, "/run/secrets/database_url")?.into(),
         key_file: value(env, KEY_FILE, "/run/secrets/anima_key")?.into(),
         guacd: guacd(value(env, GUACD, "guacd:4822")?)?,
-        permitted_networks: networks(value(env, PERMITTED_NETWORKS, "100.64.0.0/10")?)?,
+        permitted_networks: networks(
+            PERMITTED_NETWORKS,
+            value(env, PERMITTED_NETWORKS, "100.64.0.0/10")?,
+        )?,
+        probe_deny: match env.get(PROBE_DENY).map(String::as_str) {
+            None | Some("") => Vec::new(),
+            Some(text) => networks(PROBE_DENY, text)?,
+        },
         log: value(env, LOG, "info")?.to_owned(),
         tls_cert_file,
         tls_key_file,
@@ -195,6 +209,54 @@ mod tests {
         assert_eq!(config.log, "info");
         assert_eq!(config.tls_cert_file, None);
         assert_eq!(config.tls_key_file, None);
+        assert_eq!(config.probe_deny, vec![]);
+    }
+
+    #[test]
+    fn r_030_probe_deny_reads_comma_separated_cidrs_and_empty_means_none() {
+        let text = "172.30.0.0/24, 172.30.1.0/24,203.0.113.7/32,fd00::/8";
+        let config = from_env(&env(&[(PROBE_DENY, text)])).unwrap();
+        let expected: Vec<ipnet::IpNet> = text
+            .split(',')
+            .map(|net| net.trim().parse().unwrap())
+            .collect();
+        assert_eq!(config.probe_deny, expected);
+        let empty = from_env(&env(&[(PROBE_DENY, "")])).unwrap();
+        assert_eq!(empty.probe_deny, vec![]);
+    }
+
+    #[test]
+    fn r_030_probe_deny_rejects_empty_entries_and_bad_cidrs_naming_the_variable() {
+        for bad in [
+            "172.30.0.0/24,",
+            ",172.30.0.0/24",
+            "10.0.0.0/8,,10.1.0.0/16",
+        ] {
+            let error = from_env(&env(&[(PROBE_DENY, bad)])).unwrap_err();
+            let expected = matches!(
+                error,
+                Error::NetworkEmpty {
+                    variable: PROBE_DENY
+                }
+            );
+            assert!(expected, "{bad}");
+        }
+        let error = from_env(&env(&[(PROBE_DENY, "172.30.0.0/33")])).unwrap_err();
+        assert!(matches!(
+            error,
+            Error::Network {
+                variable: PROBE_DENY,
+                ..
+            }
+        ));
+        let text = error.to_string();
+        assert!(
+            text.starts_with("ANIMA_PROBE_DENY entry \"172.30.0.0/33\""),
+            "{text}"
+        );
+        let error = from_env(&env(&[(PERMITTED_NETWORKS, "nope")])).unwrap_err();
+        let text = error.to_string();
+        assert!(text.starts_with("ANIMA_PERMITTED_NETWORKS entry"), "{text}");
     }
 
     #[test]
@@ -277,7 +339,7 @@ mod tests {
     fn permitted_networks_reject_empty_entries_and_bad_cidrs() {
         for bad in ["10.0.0.0/8,", ",10.0.0.0/8", "10.0.0.0/8,,192.168.0.0/16"] {
             let error = from_env(&env(&[(PERMITTED_NETWORKS, bad)])).unwrap_err();
-            assert!(matches!(error, Error::NetworkEmpty), "{bad}");
+            assert!(matches!(error, Error::NetworkEmpty { .. }), "{bad}");
         }
         let error = from_env(&env(&[(PERMITTED_NETWORKS, "10.0.0.0/99")])).unwrap_err();
         assert!(matches!(error, Error::Network { .. }));

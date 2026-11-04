@@ -10,7 +10,7 @@ use std::{
 use async_graphql_axum::GraphQLResponse;
 use axum::{
     extract::{ConnectInfo, Request, State},
-    http::StatusCode,
+    http::{Method, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse as _, Response},
     routing::Route,
@@ -47,7 +47,9 @@ struct Gate {
 /// request that passes gets that [`ClientAddr`] in its extensions.
 ///
 /// The list is `access.permitted_networks`, read again after 30 seconds (D-10). Without a
-/// peer address, or when the list cannot be read, the request is refused (fail closed).
+/// peer address, or when the list cannot be read, the request is refused (fail closed). A
+/// peer in `172.16.0.0/12` is refused whatever the list says: in the deployment that is a
+/// container or Docker's proxy, never the real client. Only `GET /health` passes unchecked.
 pub fn permitted_networks_layer(
     db: PgPool,
     bus: Bus,
@@ -80,7 +82,14 @@ async fn admit(State(gate): State<Gate>, mut request: Request, next: Next) -> Re
         return refusal(StatusCode::INTERNAL_SERVER_ERROR, &error);
     };
     let client = ClientAddr(networks::canonical(peer.ip()));
+    if is_liveness(&request) {
+        return next.run(request).await;
+    }
     let now = gate.clock.now();
+    if networks::untrusted(client.0) {
+        gate.refused(client.0, now, UNTRUSTED).await;
+        return refusal(StatusCode::FORBIDDEN, &Error::NotPermitted);
+    }
     let permitted = match gate.networks(now).await {
         Ok(permitted) => permitted,
         Err(error) => {
@@ -89,11 +98,23 @@ async fn admit(State(gate): State<Gate>, mut request: Request, next: Next) -> Re
         }
     };
     if !networks::permits(&permitted, client.0) {
-        gate.refused(client.0, now).await;
+        gate.refused(client.0, now, OUTSIDE).await;
         return refusal(StatusCode::FORBIDDEN, &Error::NotPermitted);
     }
     request.extensions_mut().insert(client);
     next.run(request).await
+}
+
+/// Why a refusal event was written, after "Refused a request from {address}: ".
+const OUTSIDE: &str = "the address is not in a permitted network.";
+const UNTRUSTED: &str =
+    "a container or proxy address (172.16.0.0/12) is never taken as a client address.";
+
+/// `GET /health`, the token-free liveness answer the compose healthcheck reads from inside the
+/// container, whose own address is a container address. It passes without a client address
+/// and so reaches no route that needs one; it holds no data.
+fn is_liveness(request: &Request) -> bool {
+    request.method() == Method::GET && request.uri().path() == "/health"
 }
 
 impl Gate {
@@ -114,7 +135,7 @@ impl Gate {
 
     /// Writes the refusal of `client` to the event log unless the limit says it was written
     /// recently. A write that fails is logged by kind; the request is refused either way.
-    async fn refused(&self, client: IpAddr, now: DateTime<Utc>) {
+    async fn refused(&self, client: IpAddr, now: DateTime<Utc>, why: &str) {
         if !lock(&self.refusals).admit(client, now) {
             return;
         }
@@ -122,9 +143,7 @@ impl Gate {
             severity: Severity::Warning,
             source: Source::Access,
             device: None,
-            message: format!(
-                "Refused a request from {client}: the address is not in a permitted network."
-            ),
+            message: format!("Refused a request from {client}: {why}"),
         };
         if let Err(error) = self.record(now, event).await {
             error.log();

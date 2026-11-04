@@ -7,7 +7,9 @@ use chrono::TimeDelta;
 use ipnet::IpNet;
 
 use super::now;
-use crate::access::networks::{Loaded, Refusals, canonical_net, permits};
+use crate::access::networks::{
+    Loaded, Refusals, canonical_net, only_untrusted, permits, untrusted,
+};
 
 fn ip(text: &str) -> IpAddr {
     text.parse().unwrap()
@@ -65,6 +67,33 @@ fn d_11_an_ipv4_client_is_never_inside_an_ipv6_network() {
     assert!(permits(&everything_v6, ip("2001:db8::1")));
     assert!(!permits(&everything_v6, ip("10.1.2.3")));
     assert!(!permits(&everything_v6, ip("::ffff:10.1.2.3")));
+}
+
+#[test]
+fn h_2_container_and_proxy_addresses_are_untrusted() {
+    for addr in [
+        "172.16.0.0",
+        "172.30.0.1",
+        "172.31.255.255",
+        "::ffff:172.30.0.10",
+    ] {
+        assert!(untrusted(ip(addr)), "{addr}");
+    }
+    for addr in [
+        "172.15.255.255",
+        "172.32.0.0",
+        "100.64.0.7",
+        "10.0.0.1",
+        "fd00::172",
+    ] {
+        assert!(!untrusted(ip(addr)), "{addr}");
+    }
+    for net in ["172.30.0.0/24", "172.16.0.0/12", "::ffff:172.20.0.0/112"] {
+        assert!(only_untrusted(net.parse().unwrap()), "{net}");
+    }
+    for net in ["172.0.0.0/8", "0.0.0.0/0", "172.32.0.0/16", "100.64.0.0/10"] {
+        assert!(!only_untrusted(net.parse().unwrap()), "{net}");
+    }
 }
 
 #[test]

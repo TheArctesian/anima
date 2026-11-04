@@ -3,6 +3,7 @@
 //! throwaway ones made here with `rcgen`; no real key file is read (SEC-004).
 
 mod bind;
+mod health;
 mod reload;
 mod serving;
 
@@ -61,6 +62,17 @@ impl Files {
         Self { _dir: dir, paths }
     }
 
+    /// One `tls.pem` named by both variables, as the deployment has it (WP-04).
+    fn single() -> Self {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("tls.pem");
+        let paths = TlsFiles {
+            cert: path.clone(),
+            key: path,
+        };
+        Self { _dir: dir, paths }
+    }
+
     /// Writes both files and sets their modification time `seconds` after a fixed instant,
     /// so a rewrite is always seen as a change.
     fn write(&self, cert: &str, key: &str, seconds: u64) {
@@ -90,6 +102,21 @@ fn load(cert: &str, key: &str) -> Result<Vec<u8>, Fault> {
 fn sec_001_a_throwaway_certificate_and_its_key_load() {
     let made = throwaway();
     assert_eq!(load(&made.cert, &made.key), Ok(made.der));
+}
+
+#[test]
+fn h_2_one_file_with_the_key_and_a_chain_loads_its_first_certificate() {
+    let (leaf, issuer) = (throwaway(), throwaway());
+    let tls_pem = format!("{}{}{}", leaf.key, leaf.cert, issuer.cert);
+    let key = certificate::certified_key(&pem(&tls_pem, &tls_pem), &provider()).unwrap();
+    assert_eq!(key.cert.len(), 2);
+    assert_eq!(key.cert[0].to_vec(), leaf.der);
+    let wrong_order = format!("{}{}{}", leaf.key, issuer.cert, leaf.cert);
+    assert_eq!(
+        load(&wrong_order, &wrong_order),
+        Err(Fault::KeyMismatch),
+        "the key must match the first certificate"
+    );
 }
 
 #[test]

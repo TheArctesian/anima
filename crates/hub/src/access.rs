@@ -226,8 +226,16 @@ fn check_credentials(username: &str, password: &Password) -> Result<(), Error> {
 ///
 /// # Errors
 ///
-/// `Error::Database` if the networks cannot be written.
+/// `Error::Validation` for a network inside `172.16.0.0/12`, whose addresses are never
+/// taken as clients; `Error::Database` if the networks cannot be written.
 pub async fn permit_networks(db: &PgPool, configured: &[IpNet]) -> Result<(), Error> {
+    if configured.iter().any(|net| networks::only_untrusted(*net)) {
+        return Err(Error::Validation {
+            field: CONFIGURED_NETWORKS,
+            message: "ANIMA_PERMITTED_NETWORKS may not name a network inside 172.16.0.0/12: \
+                      those are container and proxy addresses, never clients.",
+        });
+    }
     let wanted: Vec<IpNet> = configured
         .iter()
         .copied()

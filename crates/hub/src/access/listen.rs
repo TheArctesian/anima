@@ -3,6 +3,7 @@
 
 mod bind;
 mod certificate;
+mod health;
 mod reload;
 #[cfg(test)]
 mod tests;
@@ -20,6 +21,7 @@ use crate::clock::Clock;
 
 use bind::check_bind;
 pub use certificate::{Fault, TlsFiles};
+pub use health::{HealthError, check_health};
 pub use tls::TlsListener;
 
 /// Why the hub cannot listen. Names addresses and fault kinds, never file content.

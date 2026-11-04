@@ -50,6 +50,26 @@ pub(super) fn permits(networks: &[IpNet], addr: IpAddr) -> bool {
         .any(|net| canonical_net(*net).contains(&addr))
 }
 
+/// Whether `addr` is a container or proxy address (`172.16.0.0/12`), which is never taken as a
+/// client: Docker's bridges, its port proxy and the other containers all use it, so such a
+/// peer is not the real client (WP-04 deploy notes).
+#[must_use]
+pub(super) fn untrusted(addr: IpAddr) -> bool {
+    UNTRUSTED.contains(&canonical(addr))
+}
+
+/// Whether every address of `net` is [`untrusted`], so permitting it could never let a client
+/// in.
+#[must_use]
+pub(super) fn only_untrusted(net: IpNet) -> bool {
+    UNTRUSTED.contains(&canonical_net(net))
+}
+
+const UNTRUSTED: IpNet = IpNet::V4(Ipv4Net::new_assert(
+    std::net::Ipv4Addr::new(172, 16, 0, 0),
+    12,
+));
+
 /// A list of permitted networks and when it was read.
 #[derive(Clone, Debug)]
 pub(super) struct Loaded {

@@ -32,7 +32,7 @@ async fn net_001_permit_networks_makes_the_configured_rows_match_the_variable(po
     sqlx::query(
         "insert into access.permitted_networks (id, cidr, label) values \
          ('0190a000-0000-7000-8000-0000000000a1', '192.168.50.0/24', 'site lab'), \
-         ('0190a000-0000-7000-8000-0000000000a2', '172.16.0.0/12', 'site office')",
+         ('0190a000-0000-7000-8000-0000000000a2', '10.20.0.0/16', 'site office')",
     )
     .execute(&pool)
     .await
@@ -42,15 +42,15 @@ async fn net_001_permit_networks_makes_the_configured_rows_match_the_variable(po
         "::ffff:100.64.0.0/106",
         "100.64.0.0/10",
         "fd00::1/8",
-        "172.16.0.0/12",
+        "10.20.0.0/16",
     ];
     permit(&pool, &given).await;
     assert_eq!(
         stored(&pool).await,
         vec![
             row("10.0.0.0/8", CONFIGURED),
+            row("10.20.0.0/16", "site office"),
             row("100.64.0.0/10", CONFIGURED),
-            row("172.16.0.0/12", "site office"),
             row("192.168.50.0/24", "site lab"),
             row("fd00::/8", CONFIGURED),
         ]
@@ -60,8 +60,8 @@ async fn net_001_permit_networks_makes_the_configured_rows_match_the_variable(po
     assert_eq!(
         stored(&pool).await,
         vec![
+            row("10.20.0.0/16", "site office"),
             row("100.64.0.0/10", CONFIGURED),
-            row("172.16.0.0/12", "site office"),
             row("192.168.50.0/24", "site lab"),
         ],
         "a network taken out of the variable is no longer permitted"
@@ -73,6 +73,23 @@ async fn net_001_permit_networks_makes_the_configured_rows_match_the_variable(po
     );
     permit(&pool, &[]).await;
     assert_eq!(stored(&pool).await.len(), 2);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn h_2_a_container_network_is_never_permitted(pool: PgPool) {
+    for given in ["172.30.0.0/24", "172.16.0.0/12", "::ffff:172.30.0.0/120"] {
+        let net: ipnet::IpNet = given.parse().unwrap();
+        let refused = anima_hub::access::permit_networks(&pool, &[net]).await;
+        let Err(error) = refused else {
+            panic!("{given} was permitted");
+        };
+        assert!(error.to_string().contains("172.16.0.0/12"), "{error}");
+    }
+    assert!(stored(&pool).await.is_empty(), "nothing was written");
+    let wider: ipnet::IpNet = "172.0.0.0/8".parse().unwrap();
+    anima_hub::access::permit_networks(&pool, &[wider])
+        .await
+        .unwrap();
 }
 
 #[sqlx::test(migrations = "./migrations")]

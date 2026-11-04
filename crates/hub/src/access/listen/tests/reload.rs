@@ -105,6 +105,27 @@ async fn r_021_h_2_changed_files_swap_the_certificate_at_the_next_look() {
 }
 
 #[tokio::test]
+async fn h_2_the_single_tls_pem_reloads_and_a_mismatched_pair_keeps_the_old_certificate() {
+    let files = Files::single();
+    let (first, second) = (throwaway(), throwaway());
+    let combined = |key: &str, cert: &str| format!("{key}{cert}");
+    let write = |text: String, seconds| files.write(&text, &text, seconds);
+    write(combined(&first.key, &first.cert), 0);
+    let (mut reload, served) = served(&files).await;
+    assert_eq!(serving(&served), first.der);
+
+    write(combined(&first.key, &second.cert), 60);
+    let mismatched = check(&mut reload, now() + CHECK_EVERY, &served).await;
+    assert_eq!(mismatched, Outcome::Kept(Fault::KeyMismatch));
+    assert_eq!(serving(&served), first.der);
+
+    write(combined(&second.key, &second.cert), 120);
+    let swapped = check(&mut reload, now() + CHECK_EVERY * 2, &served).await;
+    assert_eq!(swapped, Outcome::Swapped);
+    assert_eq!(serving(&served), second.der);
+}
+
+#[tokio::test]
 async fn r_021_h_2_a_bad_new_certificate_keeps_the_old_one_and_is_tried_again() {
     let files = Files::new();
     let (good, other) = (throwaway(), throwaway());
