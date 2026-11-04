@@ -1,8 +1,15 @@
 # shellcheck shell=bash
 # The `firewall` and `confirm` commands: apply nftables.conf with a 180 s rollback that only
 # a new SSH session over the VPN can cancel, then install it for boot and mask firewalld
-# (VPS-002, DNS-005, D-10). Sourced by harden.sh; uses the helpers of harden.sh and
-# inventory.sh.
+# (VPS-002, DNS-005, D-10). Sourced by harden.sh after open-ports.sh; needs harden.sh's
+# say, refuse, fail, dry, path, write_file, save_previous and require_root, NFT, SYSTEMCTL,
+# SYSTEMD_RUN, IP, SS, STATE_DIR, CONSOLE, HERE and SELF, and open-ports.sh's
+# is_vpn_address, local_accepts, refuse_closing and LOCAL_ALLOW.
+
+NFT_RULES=/etc/nftables/anima.nft
+NFT_SYSCONFIG=/etc/sysconfig/nftables.conf
+NFT_INCLUDE="include \"$NFT_RULES\""
+NFT_DROPIN=/etc/systemd/system/nftables.service.d/anima.conf
 
 ROLLBACK_UNIT=anima-firewall-rollback
 ROLLBACK_SECONDS=180
@@ -14,33 +21,25 @@ FIREWALLD_WAS_ACTIVE=$STATE_DIR/firewalld-was-active
 # /var/lib/anima. The rollback unit therefore runs unconfined, as the backup unit does.
 ROLLBACK_CONTEXT=system_u:system_r:unconfined_service_t:s0
 
+# Print each problem with the live and boot firewall state.
+firewall_problems() {
+  $IP link show tailscale0 >/dev/null 2>&1 || say "tailscale0 is missing"
+  $NFT list table inet anima_filter >/dev/null 2>&1 || say "table inet anima_filter is not loaded"
+  $SYSTEMCTL is-enabled --quiet nftables.service || say "nftables.service is not enabled"
+  grep -qxF "$NFT_INCLUDE" "$(path "$NFT_SYSCONFIG")" 2>/dev/null \
+    || say "$NFT_SYSCONFIG does not load $NFT_RULES at boot"
+  ! grep -qE '^[[:space:]]*flush[[:space:]]+ruleset' "$(path "$NFT_SYSCONFIG")" 2>/dev/null \
+    || say "$NFT_SYSCONFIG flushes the whole ruleset (Docker's and tailscaled's tables too)"
+  [ -f "$(path "$NFT_DROPIN")" ] || say "nftables.service would flush the whole ruleset on stop or reload"
+  [ "$($SYSTEMCTL is-enabled firewalld.service 2>/dev/null)" = masked ] || say "firewalld is not masked"
+  (local_accepts >/dev/null) 2>/dev/null || say "$LOCAL_ALLOW has a line that is not one PORT/PROTO"
+}
+
 # True when this SSH session runs over the VPN at both ends.
 vpn_session() {
   local client server
   read -r client _ server _ <<<"${SSH_CONNECTION:-}"
   is_vpn_address "${client:-}" && is_vpn_address "${server:-}"
-}
-
-# Print each port that is open to the internet now and that the Anima table would close,
-# unless --allow-closing names it. SSH (22/tcp) moves to the VPN on purpose (VPS-001).
-closing_ports() {
-  local sockets port what
-  sockets=$(public_sockets) || { say "unknown (ss -Htulpn failed)"; return; }
-  while read -r port what; do
-    case $port in '' | 22/tcp) continue ;; esac
-    if kept_open "$port"; then continue; fi
-    case ",$ALLOW_CLOSING," in *",$port,"*) continue ;; esac
-    say "$port ($what)"
-  done < <(printf '%s\n' "$sockets"; firewalld_openings)
-}
-
-# Refuse while the firewall would silently close a port that is in use or allowed now.
-refuse_closing() {
-  local closing line
-  closing=$(closing_ports)
-  [ -n "$closing" ] || return 0
-  while IFS= read -r line; do say "would close: $line"; done <<<"$closing" >&2
-  refuse "the Anima firewall would close the ports above. Keep one open with a line PORT/PROTO in $LOCAL_ALLOW, or close it on purpose with --allow-closing PORT/PROTO,..."
 }
 
 # Print nftables.conf with the ports of LOCAL_ALLOW as public accepts after the marker line

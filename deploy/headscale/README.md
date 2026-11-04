@@ -11,7 +11,7 @@ uses it. The procedures are in the guide, not here. Public DNS records are in
 | `config/policy.hujson` | `/opt/anima/headscale/config/policy.hujson` | 2, 8 |
 | `compose.yaml` | `/opt/anima/headscale/compose.yaml`; its `config/` and `lib/` are labelled `container_file_t` by `harden.sh selinux` | 2 |
 | `vps/harden.sh` | Run from `/opt/anima/headscale/vps/` on the VPS (AlmaLinux 10); `check` also from root's copy in step 2.0, `selinux` from the home copy in step 2.5 | 2.0, 2.5, 4 |
-| `vps/inventory.sh`, `vps/firewall.sh` | Sourced by `harden.sh` (the read-only inventory and `check`; `firewall` and `confirm`) | 2.0, 4 |
+| `vps/sshd.sh`, `vps/selinux.sh`, `vps/open-ports.sh`, `vps/firewall.sh`, `vps/inventory.sh` | Sourced by `harden.sh`: `ssh`; `selinux`; which ports are open to the internet and the guard against closing them; `firewall` and `confirm`; the read-only inventory that `check` prints first | 2.0, 3, 4 |
 | `vps/stock-units.txt` | Not installed. The enabled services `check` does not mark as extra | 2.0, 4 |
 | `vps/sshd-anima.conf` | `/etc/ssh/sshd_config.d/00-anima.conf` (by `harden.sh ssh`) | 4 |
 | `vps/dnf-automatic.conf` | `/etc/dnf/automatic.conf`, the original kept in `/var/lib/anima/` (by `harden.sh updates`) | 4 |

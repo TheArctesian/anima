@@ -31,7 +31,7 @@ describe("harden.sh dry run, usage and lint", () => {
   });
 
   test("CQ-024: harden.sh and the files it sources are shellcheck-clean", () => {
-    const files = ["harden.sh", "inventory.sh", "firewall.sh"].map((name) => join(VPS_DIR, name));
+    const files = ["harden.sh", "sshd.sh", "selinux.sh", "open-ports.sh", "firewall.sh", "inventory.sh"].map((name) => join(VPS_DIR, name));
     const run = Bun.spawnSync(["shellcheck", "-x", ...files]);
     expect(run.stdout.toString()).toBe("");
     expect(run.exitCode).toBe(0);
