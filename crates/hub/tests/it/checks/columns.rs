@@ -5,7 +5,9 @@ use serde_json::{Value, json};
 use sqlx::{PgPool, Row};
 use uuid::Uuid;
 
-use super::{PVE_01, PVE_01_PING, UPTIME_TABLES, at, constraint_of, ensure, id, insert_check};
+use super::{
+    PVE_01, PVE_01_PING, UPTIME_TABLES, at, constraint_of, database_now, ensure, id, insert_check,
+};
 
 /// Settings at and beyond each bound: (column, accepted, refused).
 const RANGES: [(&str, [i32; 2], [i32; 2]); 5] = [
@@ -13,7 +15,7 @@ const RANGES: [(&str, [i32; 2], [i32; 2]); 5] = [
     ("retries", [0, 10], [-1, 11]),
     ("retry_interval_seconds", [5, 3_600], [4, 3_601]),
     ("degraded_threshold_ms", [1, 600_000], [0, 600_001]),
-    ("failures", [0, 1_000_000], [-1, -1]),
+    ("failures", [0, 1_000_000], [-1, i32::MIN]),
 ];
 
 const TYPES: [&str; 7] = ["icmp", "tcp", "tls", "http", "dns", "push", "group"];
@@ -27,28 +29,6 @@ async fn set(pool: &PgPool, column: &str, value: i32) -> Result<(), sqlx::Error>
     .execute(pool)
     .await
     .map(|_| ())
-}
-
-#[sqlx::test(
-    migrations = "./migrations",
-    fixtures(path = "../../fixtures", scripts("devices", "checks"))
-)]
-async fn chk_009_fixture_checks_load_with_lower_case_type_ids(pool: PgPool) {
-    let types: Vec<(String, i64)> =
-        sqlx::query_as("select type, count(*) from checks.checks group by type order by type")
-            .fetch_all(&pool)
-            .await
-            .unwrap();
-    let config: Value = sqlx::query_scalar("select config from checks.checks where id = $1")
-        .bind(id(PVE_01_PING))
-        .fetch_one(&pool)
-        .await
-        .unwrap();
-
-    let expected = [("dns", 1), ("http", 3), ("icmp", 13), ("tcp", 11)];
-    let expected: Vec<(String, i64)> = expected.map(|(t, n)| (t.to_owned(), n)).into();
-    assert_eq!(types, expected);
-    assert_eq!(config, json!({ "timeoutMs": 2000, "ipVersion": "V4" }));
 }
 
 #[sqlx::test(
@@ -151,7 +131,8 @@ async fn db_011_check_settings_outside_their_ranges_are_refused(pool: PgPool) {
 )]
 async fn db_008_heartbeat_and_uptime_values_outside_their_ranges_are_refused(pool: PgPool) {
     let mut conn = pool.acquire().await.unwrap();
-    ensure(&mut conn, at("2030-01-01T00:00:00Z")).await.unwrap();
+    let now = database_now(&mut conn).await;
+    ensure(&mut conn, now).await.unwrap();
     let long = Some("é".repeat(513));
     let beats = [
         ("'late'", "null", None, "heartbeats_status_check"),
@@ -161,10 +142,11 @@ async fn db_008_heartbeat_and_uptime_values_outside_their_ranges_are_refused(poo
     for (status, time, message, constraint) in beats {
         let error = sqlx::query(&format!(
             "insert into checks.heartbeats (check_id, at, status, response_time_ms, message) \
-             values ($1, '2030-01-01T00:00:00Z', {status}, {time}, $2)"
+             values ($1, $3, {status}, {time}, $2)"
         ))
         .bind(Uuid::now_v7())
         .bind(message)
+        .bind(now)
         .execute(&mut *conn)
         .await
         .unwrap_err();
@@ -172,10 +154,11 @@ async fn db_008_heartbeat_and_uptime_values_outside_their_ranges_are_refused(poo
     }
     sqlx::query(
         "insert into checks.heartbeats (check_id, at, status, message) \
-         values ($1, '2030-01-01T00:00:00Z', 'down', $2)",
+         values ($1, $3, 'down', $2)",
     )
     .bind(Uuid::now_v7())
     .bind("é".repeat(512))
+    .bind(now)
     .execute(&mut *conn)
     .await
     .unwrap();

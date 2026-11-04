@@ -1,28 +1,34 @@
 //! Heartbeats live in one partition per UTC day, created by `checks.ensure_day_partition`
 //! (DB-004).
 
+use chrono::{DateTime, NaiveTime, TimeDelta, Utc};
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use super::{at, beat, code_of, ensure, execute, refusal, table_exists};
+use super::{beat, code_of, database_now, ensure, execute, partition, refusal, table_exists};
+
+/// The database clock moved by `days` (negative is earlier).
+async fn days_from_now(pool: &PgPool, days: i64) -> DateTime<Utc> {
+    database_now(&mut pool.acquire().await.unwrap()).await + TimeDelta::days(days)
+}
 
 #[sqlx::test(migrations = "./migrations")]
 async fn db_004_a_heartbeat_needs_its_day_partition(pool: PgPool) {
     let mut conn = pool.acquire().await.unwrap();
-    let (check, instant) = (Uuid::now_v7(), at("2030-01-15T12:30:00Z"));
+    let (check, instant) = (Uuid::now_v7(), days_from_now(&pool, 1).await);
 
     let missing = beat(&mut conn, check, instant).await.unwrap_err();
     ensure(&mut conn, instant).await.unwrap();
     ensure(&mut conn, instant).await.unwrap();
-    let partition = beat(&mut conn, check, instant).await.unwrap();
+    let stored = beat(&mut conn, check, instant).await.unwrap();
 
     assert_eq!(code_of(&missing), "23514");
-    assert_eq!(partition, "checks.heartbeats_20300115");
+    assert_eq!(stored, partition(instant));
 }
 
 #[sqlx::test(migrations = "./migrations")]
 async fn db_004_ensure_partition_succeeds_after_a_racing_creator_commits(pool: PgPool) {
-    let instant = at("2029-02-28T08:00:00Z");
+    let instant = days_from_now(&pool, 2).await;
     let mut first = pool.begin().await.unwrap();
     ensure(&mut first, instant).await.unwrap();
 
@@ -51,12 +57,12 @@ async fn db_004_ensure_partition_succeeds_after_a_racing_creator_commits(pool: P
     first.commit().await.unwrap();
 
     racing.await.unwrap().unwrap();
-    assert!(table_exists(&mut observer, "checks.heartbeats_20290228").await);
+    assert!(table_exists(&mut observer, &partition(instant)).await);
 }
 
 #[sqlx::test(migrations = "./migrations")]
 async fn db_004_concurrent_ensure_calls_on_a_new_day_all_succeed(pool: PgPool) {
-    let instant = at("2029-03-01T00:00:00Z");
+    let instant = days_from_now(&pool, 3).await;
     let mut callers = tokio::task::JoinSet::new();
     for _ in 0..8 {
         let pool = pool.clone();
@@ -71,36 +77,57 @@ async fn db_004_concurrent_ensure_calls_on_a_new_day_all_succeed(pool: PgPool) {
         outcome.unwrap();
     }
     let mut conn = pool.acquire().await.unwrap();
-    assert!(table_exists(&mut conn, "checks.heartbeats_20290301").await);
+    assert!(table_exists(&mut conn, &partition(instant)).await);
 }
 
 #[sqlx::test(migrations = "./migrations")]
 async fn db_004_day_bounds_are_utc_whatever_the_session_time_zone(pool: PgPool) {
     let mut conn = pool.acquire().await.unwrap();
     let check = Uuid::now_v7();
+    let day = days_from_now(&pool, 2).await.date_naive();
+    let midnight = day.and_time(NaiveTime::MIN).and_utc();
     // 03:00 UTC is still the previous day in Los Angeles.
     execute(&mut conn, "set time zone 'America/Los_Angeles'").await;
-    ensure(&mut conn, at("2030-01-01T03:00:00Z")).await.unwrap();
-    execute(&mut conn, "set time zone 'Pacific/Kiritimati'").await;
-
-    let first = beat(&mut conn, check, at("2030-01-01T00:00:00Z"))
+    ensure(&mut conn, midnight + TimeDelta::hours(3))
         .await
         .unwrap();
-    let last: Result<String, _> = sqlx::query_scalar(
-        "insert into checks.heartbeats (check_id, at, status) \
-         values ($1, '2030-01-01T23:59:59.999999Z', 'up') returning tableoid::regclass::text",
-    )
-    .bind(check)
-    .fetch_one(&mut *conn)
-    .await;
-    let before = beat(&mut conn, check, at("2029-12-31T23:59:00Z")).await;
-    let after = beat(&mut conn, check, at("2030-01-02T00:00:00Z")).await;
+    execute(&mut conn, "set time zone 'Pacific/Kiritimati'").await;
 
-    assert_eq!(first, "checks.heartbeats_20300101");
-    assert_eq!(last.unwrap(), "checks.heartbeats_20300101");
+    let first = beat(&mut conn, check, midnight).await.unwrap();
+    let last = beat(
+        &mut conn,
+        check,
+        midnight + TimeDelta::days(1) - TimeDelta::microseconds(1),
+    )
+    .await
+    .unwrap();
+    let before = beat(&mut conn, check, midnight - TimeDelta::microseconds(1)).await;
+    let after = beat(&mut conn, check, midnight + TimeDelta::days(1)).await;
+
+    assert_eq!(first, partition(midnight));
+    assert_eq!(last, partition(midnight));
     assert_eq!(code_of(&before.unwrap_err()), "23514");
     assert_eq!(code_of(&after.unwrap_err()), "23514");
-    assert!(!table_exists(&mut conn, "checks.heartbeats_20291231").await);
+    let previous = partition(midnight - TimeDelta::days(1));
+    assert!(!table_exists(&mut conn, &previous).await);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn db_004_ensure_accepts_only_instants_from_31_days_ago_to_7_days_ahead(pool: PgPool) {
+    let mut conn = pool.acquire().await.unwrap();
+    let mut outcomes = Vec::new();
+    for (days, accepted) in [(-32, false), (-30, true), (6, true), (8, false)] {
+        let instant = days_from_now(&pool, days).await;
+        let outcome = ensure(&mut conn, instant).await.err().map(|e| code_of(&e));
+        let exists = table_exists(&mut conn, &partition(instant)).await;
+        outcomes.push((days, accepted, outcome, exists));
+    }
+
+    for (days, accepted, outcome, exists) in outcomes {
+        let expected = (!accepted).then(|| "22023".to_owned());
+        assert_eq!(outcome, expected, "{days} days");
+        assert_eq!(exists, accepted, "{days} days");
+    }
 }
 
 #[sqlx::test(migrations = "./migrations")]

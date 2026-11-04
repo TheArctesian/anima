@@ -1,20 +1,33 @@
 //! The runtime role writes heartbeats and aggregates and manages partitions only through the
 //! owner's functions (K2 "Roles", DB-009: a retained day cannot be dropped early).
 
-use super::{PVE_01_PING, UPTIME_TABLES, as_runtime, at, beat, ensure, execute, id, refusal};
+use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::{PgConnection, PgPool};
 
-/// Statements the runtime role must not be able to run. The partition is the one
-/// `runtime_writes` creates.
-const OWNER_ONLY: [&str; 6] = [
-    "create table checks.heartbeats_20300102 partition of checks.heartbeats \
-     for values from ('2030-01-02T00:00:00Z') to ('2030-01-03T00:00:00Z')",
-    "drop table checks.heartbeats",
-    "drop table checks.heartbeats_20300101",
-    "alter table checks.heartbeats detach partition checks.heartbeats_20300101",
-    "truncate checks.heartbeats",
-    "create table checks.extra (id int)",
-];
+use super::{
+    PVE_01_PING, UPTIME_TABLES, as_runtime, beat, create_day_as_owner, database_now, ensure,
+    execute, id, partition, refusal,
+};
+
+/// Statements the runtime role must not be able to run. `existing` is a partition that
+/// exists, and the day after it has none.
+fn owner_only(existing: DateTime<Utc>) -> [String; 6] {
+    let next = (existing + TimeDelta::days(1)).date_naive();
+    let after = next.succ_opt().unwrap();
+    let existing = partition(existing);
+    [
+        format!(
+            "create table checks.heartbeats_{} partition of checks.heartbeats \
+             for values from ('{next}T00:00:00Z') to ('{after}T00:00:00Z')",
+            next.format("%Y%m%d")
+        ),
+        "drop table checks.heartbeats".to_owned(),
+        format!("drop table {existing}"),
+        format!("alter table checks.heartbeats detach partition {existing}"),
+        "truncate checks.heartbeats".to_owned(),
+        "create table checks.extra (id int)".to_owned(),
+    ]
+}
 
 /// Temporary objects that shadow every type name the partition functions could resolve
 /// through `pg_temp`; each domain's CHECK records that it ran as the function owner.
@@ -37,8 +50,11 @@ const FUNCTIONS: [&str; 2] = [
 
 /// Creates a partition, writes a heartbeat and upserts every aggregate twice, then reads
 /// them back; returns the heartbeat count and each aggregate's up count.
-async fn runtime_writes(conn: &mut PgConnection) -> Result<(i64, Vec<i32>), sqlx::Error> {
-    let (check, instant) = (id(PVE_01_PING), at("2030-01-01T06:00:00Z"));
+async fn runtime_writes(
+    conn: &mut PgConnection,
+    instant: DateTime<Utc>,
+) -> Result<(i64, Vec<i32>), sqlx::Error> {
+    let check = id(PVE_01_PING);
     ensure(conn, instant).await?;
     beat(conn, check, instant).await?;
     let beats = sqlx::query_scalar("select count(*) from checks.heartbeats where check_id = $1")
@@ -73,12 +89,14 @@ async fn runtime_writes(conn: &mut PgConnection) -> Result<(i64, Vec<i32>), sqlx
 )]
 async fn db_009_runtime_role_writes_heartbeats_and_aggregates_but_not_partitions(pool: PgPool) {
     let mut conn = pool.acquire().await.unwrap();
+    let now = database_now(&mut conn).await;
 
     let (wrote, refusals) = as_runtime(&mut conn, async |conn| {
-        let wrote = runtime_writes(conn).await.map_err(|e| e.to_string());
+        let wrote = runtime_writes(conn, now).await.map_err(|e| e.to_string());
         let mut refusals = Vec::new();
-        for sql in OWNER_ONLY {
-            refusals.push((sql, refusal(conn, sql).await));
+        for sql in owner_only(now) {
+            let code = refusal(conn, &sql).await;
+            refusals.push((sql, code));
         }
         (wrote, refusals)
     })
@@ -138,6 +156,10 @@ async fn db_009_partition_functions_run_as_owner_with_pg_temp_searched_last(pool
 #[sqlx::test(migrations = "./migrations")]
 async fn db_009_runtime_role_cannot_run_code_as_the_partition_owner_through_pg_temp(pool: PgPool) {
     let mut conn = pool.acquire().await.unwrap();
+    let now = database_now(&mut conn).await;
+    let old = (now - TimeDelta::days(40)).date_naive();
+    create_day_as_owner(&mut conn, old).await;
+    let cutoff = (now - TimeDelta::days(31)).date_naive();
 
     let (outcome, injected) = as_runtime(&mut conn, async |conn| {
         execute(conn, "create temp table injected (via pg_catalog.text)").await;
@@ -153,9 +175,10 @@ async fn db_009_runtime_role_cannot_run_code_as_the_partition_owner_through_pg_t
             );
             execute(conn, &domain).await;
         }
-        let ensured = ensure(conn, at("2001-07-07T00:00:00Z")).await;
+        let ensured = ensure(conn, now + TimeDelta::days(1)).await;
         let dropped: Result<Vec<String>, _> =
-            sqlx::query_scalar("select checks.drop_day_partitions_before('2002-01-01', now())")
+            sqlx::query_scalar("select checks.drop_day_partitions_before($1, now())")
+                .bind(cutoff)
                 .fetch_all(&mut *conn)
                 .await;
         let injected: Vec<String> = sqlx::query_scalar("select via from pg_temp.injected")
@@ -168,7 +191,10 @@ async fn db_009_runtime_role_cannot_run_code_as_the_partition_owner_through_pg_t
 
     assert_eq!(
         outcome,
-        (true, Some(vec!["heartbeats_20010707".to_owned()]))
+        (
+            true,
+            Some(vec![format!("heartbeats_{}", old.format("%Y%m%d"))])
+        )
     );
     assert_eq!(injected, Vec::<String>::new(), "code ran as the owner");
 }

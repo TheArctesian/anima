@@ -4,7 +4,9 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use super::{DOCKER_HOST, PVE_01, UPTIME_TABLES, at, beat, count, ensure, id, insert_check};
+use super::{
+    DOCKER_HOST, PVE_01, UPTIME_TABLES, at, beat, count, database_now, ensure, id, insert_check,
+};
 
 #[sqlx::test(
     migrations = "./migrations",
@@ -20,17 +22,16 @@ async fn dev_015_deleting_a_device_removes_its_checks_and_uptime_but_keeps_heart
     insert_check(&pool, (child, PVE_01), ("tcp", "Web"), None)
         .await
         .unwrap();
-    sqlx::query("update checks.checks set parent_id = $1 where id = $2")
+    sqlx::query("update checks.checks set parent_id = $1, parent_type = 'group' where id = $2")
         .bind(group)
         .bind(child)
         .execute(&pool)
         .await
         .unwrap();
     let mut conn = pool.acquire().await.unwrap();
-    ensure(&mut conn, at("2030-01-01T00:00:00Z")).await.unwrap();
-    beat(&mut conn, child, at("2030-01-01T00:00:00Z"))
-        .await
-        .unwrap();
+    let now = database_now(&mut conn).await;
+    ensure(&mut conn, now).await.unwrap();
+    beat(&mut conn, child, now).await.unwrap();
     for table in UPTIME_TABLES {
         sqlx::query(&format!(
             "insert into checks.{table} (check_id, bucket, up_count) values ($1, $2, 1)"

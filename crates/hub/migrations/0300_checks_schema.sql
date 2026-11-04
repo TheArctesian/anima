@@ -14,6 +14,9 @@
 -- SELECT, INSERT, UPDATE and DELETE on every table created here, including every partition the
 -- functions below create (they run as the owner). Only the owner can create or drop a
 -- partition; the runtime role does both through the SECURITY DEFINER functions below.
+-- The runtime role keeps DELETE on heartbeats, because the retention job deletes the
+-- heartbeats of deleted checks row by row. The drop function's 30-day refusal therefore
+-- guards against mistakes, not against a hostile runtime role.
 
 create schema checks;
 
@@ -21,6 +24,8 @@ create table checks.checks (
     id uuid not null,
     device_id uuid not null,
     parent_id uuid null,
+    -- Always 'group' when parent_id is set: part of the parent key, so a parent is a group.
+    parent_type text null,
     type text not null,
     name text not null,
     interval_seconds integer not null default 60,
@@ -41,17 +46,23 @@ create table checks.checks (
     push_token text null,
     secrets_sealed bytea null,
     constraint checks_pkey primary key (id),
-    -- Target of the parent key below: a parent is a check on the same device.
-    constraint checks_device_id_id_key unique (device_id, id),
+    -- Target of the parent key below: a parent is a group check on the same device.
+    constraint checks_device_id_id_type_key unique (device_id, id, type),
     constraint checks_device_id_name_key unique (device_id, name),
     constraint checks_push_token_key unique (push_token),
     constraint checks_device_id_fkey foreign key (device_id)
         references devices.devices (id) on delete cascade,
-    -- MATCH SIMPLE: a null parent_id skips the check. Deleting the parent nulls only
-    -- parent_id, so the child keeps its device.
-    constraint checks_parent_fkey foreign key (device_id, parent_id)
-        references checks.checks (device_id, id) on delete set null (parent_id),
-    constraint checks_parent_not_self_check check (parent_id <> id),
+    -- MATCH SIMPLE: a null parent skips the check, and checks_parent_type_set_check makes
+    -- parent_id and parent_type null together. Deleting the parent nulls only those two, so
+    -- the child keeps its device. ON UPDATE NO ACTION: a group with children cannot change
+    -- its type or device.
+    constraint checks_parent_fkey foreign key (device_id, parent_id, parent_type)
+        references checks.checks (device_id, id, type)
+        on delete set null (parent_id, parent_type),
+    constraint checks_parent_type_check check (parent_type = 'group'),
+    constraint checks_parent_type_set_check check ((parent_id is null) = (parent_type is null)),
+    -- Groups have no parent, and only a group can be a parent, so parents never form a cycle.
+    constraint checks_group_parent_check check (type <> 'group' or parent_id is null),
     -- Fixed identifiers (CHK-009): never change the meaning of one; add a new one instead.
     constraint checks_type_check
         check (type in ('icmp', 'tcp', 'tls', 'http', 'dns', 'push', 'group')),
@@ -159,8 +170,9 @@ create table checks.uptime_day (
 -- in the body is schema-qualified anyway. (Functions and operators are never looked up in
 -- pg_temp.)
 --
--- Only finite days in years 1 to 9999 have a partition: other years do not fit the eight
--- digits of the name, so the drop function could never find them.
+-- It refuses an instant outside [now() - 31 days, now() + 7 days], so a caller cannot fill the
+-- schema with partitions for arbitrary days (heartbeats are written at probe time, and the
+-- scheduler creates at most a few days ahead).
 create function checks.ensure_day_partition(instant pg_catalog.timestamptz)
 returns void
 language plpgsql
@@ -171,15 +183,18 @@ declare
     utc_day pg_catalog.date;
     child pg_catalog.text;
 begin
-    if instant is null or not pg_catalog.isfinite(instant) then
-        raise exception 'checks.ensure_day_partition: no day for %', instant
+    -- Timestamp (not timestamptz) arithmetic, so the session TimeZone cannot move the bounds.
+    if instant is null
+        or (instant at time zone 'UTC')
+            < (pg_catalog.now() at time zone 'UTC') - '31 days'::pg_catalog.interval
+        or (instant at time zone 'UTC')
+            > (pg_catalog.now() at time zone 'UTC') + '7 days'::pg_catalog.interval
+    then
+        raise exception 'checks.ensure_day_partition: % is outside the partition window',
+            instant
             using errcode = 'invalid_parameter_value';
     end if;
     utc_day := (instant at time zone 'UTC')::pg_catalog.date;
-    if utc_day < '0001-01-01'::pg_catalog.date or utc_day > '9999-12-31'::pg_catalog.date then
-        raise exception 'checks.ensure_day_partition: no day for %', instant
-            using errcode = 'invalid_parameter_value';
-    end if;
     child := 'heartbeats_' || pg_catalog.to_char(utc_day, 'YYYYMMDD');
     -- Return before any CREATE when the partition exists: the CREATE would lock the parent
     -- even though it then fails as a duplicate, and so block or deadlock open writers.
@@ -236,6 +251,7 @@ begin
         from pg_catalog.pg_inherits i
         join pg_catalog.pg_class c on c.oid = i.inhrelid
         where i.inhparent = 'checks.heartbeats'::pg_catalog.regclass
+            and c.relnamespace = 'checks'::pg_catalog.regnamespace
             and c.relname operator(pg_catalog.~) '^heartbeats_[0-9]{8}$'
             and pg_catalog.to_date(pg_catalog.right(c.relname, 8), 'YYYYMMDD') < cutoff
         order by c.relname

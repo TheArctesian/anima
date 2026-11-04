@@ -3,12 +3,13 @@
 
 mod cascade;
 mod columns;
+mod fixture;
 mod parents;
 mod partitions;
 mod privileges;
 mod retention;
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
@@ -25,6 +26,31 @@ fn id(text: &str) -> Uuid {
 /// An RFC 3339 instant.
 fn at(text: &str) -> DateTime<Utc> {
     text.parse().unwrap()
+}
+
+/// The database clock: the partition functions bound their input by it.
+async fn database_now(conn: &mut PgConnection) -> DateTime<Utc> {
+    sqlx::query_scalar("select pg_catalog.now()")
+        .fetch_one(conn)
+        .await
+        .unwrap()
+}
+
+/// The heartbeat partition that holds `instant`.
+fn partition(instant: DateTime<Utc>) -> String {
+    format!("checks.heartbeats_{}", instant.format("%Y%m%d"))
+}
+
+/// Creates the partition for `day` directly as the owner, for days outside the window that
+/// `checks.ensure_day_partition` accepts.
+async fn create_day_as_owner(conn: &mut PgConnection, day: NaiveDate) {
+    let next = day.succ_opt().unwrap();
+    let sql = format!(
+        "create table checks.heartbeats_{} partition of checks.heartbeats \
+         for values from ('{day}T00:00:00Z') to ('{next}T00:00:00Z')",
+        day.format("%Y%m%d")
+    );
+    execute(conn, &sql).await;
 }
 
 /// The SQLSTATE of a database error, or the error text for any other error.
