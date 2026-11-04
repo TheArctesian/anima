@@ -1,6 +1,9 @@
 use std::collections::BTreeSet;
 
+mod batching;
 mod face;
+mod graphql_read;
+mod k1;
 
 use serde_json::Value;
 use sqlx::PgPool;

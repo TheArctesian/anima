@@ -28,6 +28,9 @@ use crate::{
     scalars::{Cidr, IpAddr},
 };
 
+/// K1's default for `first`.
+const DEFAULT_FIRST: i32 = 50;
+
 /// The loader behind `Device.site`: one query per batch of site ids. It has no cache, so one
 /// instance serves every request.
 #[must_use]
@@ -172,13 +175,14 @@ impl Query {
         &self,
         ctx: &Context<'_>,
         filter: Option<DeviceFilterInput>,
-        #[graphql(default)] sort: DeviceSort,
-        #[graphql(default = 50)] first: i32,
+        #[graphql(default_with = "Some(DeviceSort::Name)")] sort: Option<DeviceSort>,
+        #[graphql(default_with = "Some(DEFAULT_FIRST)")] first: Option<i32>,
         after: Option<String>,
     ) -> Result<DeviceConnection> {
-        let DeviceSort::Name = sort;
+        let DeviceSort::Name = sort.unwrap_or_default();
         let (size, after, filter) =
-            list_args(first, after.as_deref(), filter).map_err(|e| invalid(&e))?;
+            list_args(first.unwrap_or(DEFAULT_FIRST), after.as_deref(), filter)
+                .map_err(|e| invalid(&e))?;
         let page = store::list(pool(ctx)?, &filter, size, after.as_deref())
             .await
             .map_err(|e| to_graphql(&e))?;
@@ -217,10 +221,11 @@ impl Site {
     async fn devices(
         &self,
         ctx: &Context<'_>,
-        #[graphql(default = 50)] first: i32,
+        #[graphql(default_with = "Some(DEFAULT_FIRST)")] first: Option<i32>,
         after: Option<String>,
     ) -> Result<DeviceConnection> {
-        let (size, after) = paging(first, after.as_deref()).map_err(|e| invalid(&e))?;
+        let (size, after) =
+            paging(first.unwrap_or(DEFAULT_FIRST), after.as_deref()).map_err(|e| invalid(&e))?;
         let all = ctx
             .data::<DataLoader<DevicesBySite>>()?
             .load_one(self.id)
