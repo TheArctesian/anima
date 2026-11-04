@@ -10,13 +10,13 @@ describe('list query in the URL (D-4)', () => {
     const query: ListQuery = {
       view: 'table',
       name: 'nas',
-      statuses: ['DOWN', 'UP'],
+      statuses: ['UP', 'DOWN'],
       tags: ['lab', 'home'],
       sort: 'UPTIME',
     };
     const written = writeListQuery(query).toString();
     expect(written).toBe('view=table&q=nas&status=UP&status=DOWN&tag=lab&tag=home&sort=UPTIME');
-    expect(parseListQuery(new URLSearchParams(written))).toEqual({ ...query, statuses: ['UP', 'DOWN'] });
+    expect(parseListQuery(new URLSearchParams(written))).toEqual(query);
   });
 
   it('DEV-002 writes nothing for the defaults', () => {
