@@ -32,7 +32,7 @@ pub fn instant(value: &Value) -> DateTime<Utc> {
 
 /// Walks every page of `query` (whose root field is `list`) at `first` entries a page; returns
 /// the node ids in order and the `hasNextPage` of each page. Each page's `endCursor` must be
-/// its last edge's cursor.
+/// its last edge's cursor, and a walk of more than 20 pages fails.
 pub async fn walk(
     hub: &Hub,
     token: &str,
@@ -56,6 +56,7 @@ pub async fn walk(
         );
         let has_next_page = page["pageInfo"]["hasNextPage"].as_bool().unwrap();
         more.push(has_next_page);
+        assert!(more.len() <= 20, "the pages never end: {ids:?}");
         if !has_next_page {
             return (ids, more);
         }

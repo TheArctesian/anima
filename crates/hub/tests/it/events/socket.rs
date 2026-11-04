@@ -9,10 +9,17 @@ use anima_hub::{
     clock::{Clock, FixedClock},
     events::Severity,
 };
+use async_graphql::futures_util::SinkExt as _;
 use chrono::TimeDelta;
 use serde_json::{Value, json};
 use sqlx::PgPool;
-use tokio_tungstenite::tungstenite;
+use tokio_tungstenite::tungstenite::{
+    self, Message,
+    protocol::frame::{
+        Frame,
+        coding::{Data, OpCode},
+    },
+};
 
 use super::client::{
     Received, ack, bearer, connect, init, next_event, open, publish, receive, send, serve_router,
@@ -158,19 +165,50 @@ fn padded_init(token: &str, bytes: usize) -> Value {
     json!({ "type": "connection_init", "payload": payload })
 }
 
+/// H-6(b): 64 KiB, written out so that raising the hub's limit fails this test.
+const LIMIT: usize = 64 * 1024;
+
+fn refused_unread(answer: &Received) -> bool {
+    matches!(answer, Received::Closed(None | Some(1008 | 1009)))
+}
+
 #[sqlx::test(migrations = "./migrations")]
-async fn h_6_a_message_over_the_limit_closes_the_socket_before_sign_in(pool: PgPool) {
+async fn h_6_a_message_over_64_kib_closes_the_socket_before_sign_in(pool: PgPool) {
+    assert_eq!(MESSAGE_LIMIT, LIMIT);
     let token = signed_up(&pool).await;
     let served = serve_router(&pool, at_start()).await;
     let mut within = open(served.addr).await;
-    send(&mut within, &padded_init(&token, MESSAGE_LIMIT - 1024)).await;
+    send(&mut within, &padded_init(&token, LIMIT - 1024)).await;
     assert_eq!(receive(&mut within).await, ack());
 
     let mut over = open(served.addr).await;
-    send(&mut over, &padded_init(&token, MESSAGE_LIMIT)).await;
+    send(&mut over, &padded_init(&token, LIMIT)).await;
     let answer = receive(&mut over).await;
-    assert!(
-        matches!(answer, Received::Closed(None | Some(1008 | 1009))),
-        "{answer:?}"
-    );
+    assert!(refused_unread(&answer), "{answer:?}");
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn h_6_a_message_over_64_kib_in_small_frames_is_refused_too(pool: PgPool) {
+    let token = signed_up(&pool).await;
+    let served = serve_router(&pool, at_start()).await;
+    let text = padded_init(&token, LIMIT + LIMIT / 2)
+        .to_string()
+        .into_bytes();
+    let mut over = open(served.addr).await;
+    let chunks: Vec<&[u8]> = text.chunks(LIMIT / 4).collect();
+    for (index, chunk) in chunks.iter().enumerate() {
+        let opcode = if index == 0 {
+            Data::Text
+        } else {
+            Data::Continue
+        };
+        let last = index + 1 == chunks.len();
+        let frame = Frame::message(chunk.to_vec(), OpCode::Data(opcode), last);
+        // The hub may close before the last frame is written.
+        if over.send(Message::Frame(frame)).await.is_err() {
+            break;
+        }
+    }
+    let answer = receive(&mut over).await;
+    assert!(refused_unread(&answer), "{answer:?}");
 }

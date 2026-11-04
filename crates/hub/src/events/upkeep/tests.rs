@@ -90,7 +90,11 @@ async fn db_004_a_job_runs_at_start_retries_after_failures_then_runs_daily() {
     let job = {
         let (outcomes, runs) = (outcomes.clone(), runs.clone());
         move |now: DateTime<Utc>| {
-            runs.lock().unwrap().push(now);
+            let mut runs = runs.lock().unwrap();
+            runs.push(now);
+            // A plan that never waits would spin here; stop it instead of hanging the test.
+            assert!(runs.len() <= 10, "the job runs without waiting");
+            drop(runs);
             let outcome = outcomes.lock().unwrap().pop_front().unwrap_or(Ok(()));
             async move { outcome }
         }
