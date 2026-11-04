@@ -7,7 +7,7 @@ use async_graphql::parser::{
     types::{ServiceDocument, TypeKind, TypeSystemDefinition},
 };
 
-use super::harness::schema_for;
+use crate::hub::hub_sdl;
 
 const CHECKED: [&str; 19] = [
     "Query",
@@ -83,8 +83,7 @@ fn signature(input: &async_graphql::parser::types::InputValueDefinition) -> Stri
 
 #[tokio::test]
 async fn k1_every_devices_member_of_the_hub_schema_exists_in_k1_with_the_same_type() {
-    let hub_sdl = schema_for_sdl();
-    let hub = members(&parse_schema(hub_sdl).expect("hub sdl parses"));
+    let hub = members(&parse_schema(hub_sdl()).expect("hub sdl parses"));
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/../../contracts/schema.graphql"
@@ -97,33 +96,27 @@ async fn k1_every_devices_member_of_the_hub_schema_exists_in_k1_with_the_same_ty
             .unwrap_or_else(|| panic!("hub declares {name}"));
         let theirs = k1.get(name).unwrap_or_else(|| panic!("K1 declares {name}"));
         assert!(!ours.is_empty(), "{name} has members");
+        let is_root = matches!(name, "Query" | "Mutation");
         for (member, ours) in ours {
+            // The roots merge every domain; this test is about the devices members.
+            if is_root && !OWNED_ROOT.contains(&member.as_str()) {
+                continue;
+            }
             assert_eq!(theirs.get(member), Some(ours), "{name}.{member}");
         }
     }
-    // The R-011 fields that join checks are declared now; the SSH host key is WP-10's.
-    assert!(!hub["SshSettings"].contains_key("hostKey"));
 }
 
 #[tokio::test]
 async fn k1_ssh_credential_input_is_a_oneof_input_as_in_k1() {
     let line = "input SshCredentialInput @oneOf {";
-    assert!(schema_for_sdl().contains(line), "the hub declares {line}");
+    assert!(hub_sdl().contains(line), "the hub declares {line}");
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/../../contracts/schema.graphql"
     );
     assert!(std::fs::read_to_string(path).unwrap().contains(line));
 }
-
-fn schema_for_sdl() -> String {
-    // The schema never touches the database for its SDL, so a lazy pool is enough.
-    let pool = sqlx::PgPool::connect_lazy("postgres://unused@127.0.0.1:1/none").unwrap();
-    schema_for(&pool).sdl()
-}
-
-/// K1 members that need another package: WP-10's host key.
-const LATER: [(&str, &str); 1] = [("SshSettings", "hostKey")];
 
 /// The K1 root fields WP-06 builds; the others belong to other packages.
 const OWNED_ROOT: [&str; 10] = [
@@ -141,7 +134,7 @@ const OWNED_ROOT: [&str; 10] = [
 
 #[tokio::test]
 async fn k1_every_devices_member_wp06_owns_is_in_the_hub() {
-    let hub = members(&parse_schema(schema_for_sdl()).expect("hub sdl parses"));
+    let hub = members(&parse_schema(hub_sdl()).expect("hub sdl parses"));
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/../../contracts/schema.graphql"
@@ -151,8 +144,7 @@ async fn k1_every_devices_member_wp06_owns_is_in_the_hub() {
     for name in CHECKED {
         let is_root = matches!(name, "Query" | "Mutation");
         for member in k1[name].keys() {
-            let later = LATER.contains(&(name, member.as_str()));
-            if later || (is_root && !OWNED_ROOT.contains(&member.as_str())) {
+            if is_root && !OWNED_ROOT.contains(&member.as_str()) {
                 continue;
             }
             if !hub[name].contains_key(member) {

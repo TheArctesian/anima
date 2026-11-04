@@ -1,1 +1,1 @@
-<h1>Anima</h1>
+<!-- `/` never renders: +page.ts redirects to /devices (NAV-004). -->

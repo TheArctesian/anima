@@ -11,8 +11,9 @@ publish = false
 [workspace.dependencies]
 async-graphql = { version = "7.2", default-features = false, features = ["chrono", "dataloader"] }
 async-graphql-axum = "7.2"
-axum = "0.8"
+axum = { version = "0.8", features = ["ws"] }
 tokio = { version = "1.54", features = ["macros", "rt-multi-thread", "net", "sync", "time", "io-util"] }
+tokio-tungstenite = "0.29"
 tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"
 thiserror = "2"
@@ -38,11 +39,14 @@ reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
 x509-parser = "0.18"
-rand = "0.9"
+rand = "0.10"
 rcgen = { version = "0.14", default-features = false, features = ["ring", "pem"] }
 argon2 = { version = "0.6", default-features = false, features = ["alloc", "password-hash", "zeroize"] }
 getrandom = "0.4"
 rpassword = "7.5"
+# SSH host-key probe and connection test (WP-10 T3, R-032 E-3). `ring` is the crypto backend
+# (no OpenSSL, no CMake); `rsa` so RSA host keys and RSA private keys work.
+russh = { version = "0.65", default-features = false, features = ["ring", "rsa"] }
 # RFC 6238 TOTP (WP-05 T6): HMAC-SHA-1 from RustCrypto, constant-time comparison.
 hmac = "0.13"
 sha1 = "0.11"

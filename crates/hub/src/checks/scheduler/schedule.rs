@@ -5,7 +5,7 @@
 use std::collections::HashSet;
 
 use chrono::{DateTime, TimeDelta, Utc};
-use rand::Rng;
+use rand::{Rng, RngExt as _};
 
 use crate::{
     checks::{

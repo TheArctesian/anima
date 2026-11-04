@@ -1,6 +1,6 @@
 //! A device's SSH settings as the GraphQL type K1 calls `SshSettings`, with whether the hub
-//! holds a secret for it (DEV-012, SEC-005, API-005). R-011 seam: a later package adds
-//! `hostKey` to this block.
+//! holds a secret for it (DEV-012, SEC-005, API-005) and the host key accepted for it
+//! (SEC-006; the R-011 composition edge to `sessions`).
 
 use std::{collections::HashMap, sync::Arc};
 
@@ -15,6 +15,7 @@ use crate::{
     credentials::{self, with_ssh},
     devices::{SshAuth, model::SshSettings},
     ids::DeviceId,
+    sessions::{HostKey, graphql::HostKeysByDevice},
 };
 
 /// The SSH settings of one device. `credential_stored` is set when the resolver that built
@@ -53,6 +54,14 @@ impl DeviceSsh {
             .await
             .map_err(internal)?;
         Ok(stored.unwrap_or(false))
+    }
+
+    /// The host key the operator accepted for this device, if any (SEC-006).
+    async fn host_key(&self, ctx: &Context<'_>) -> Result<Option<HostKey>> {
+        schema_dependency::<DataLoader<HostKeysByDevice>>(ctx)?
+            .load_one(self.device)
+            .await
+            .map_err(internal)
     }
 }
 

@@ -1,6 +1,7 @@
 //! Who may use the hub: operator accounts, sign-in, API tokens and the GraphQL guard
 //! (SEC-002, API-003).
 
+mod connection;
 pub mod graphql;
 mod guard;
 mod identity;
@@ -19,6 +20,7 @@ use sqlx::PgPool;
 use zeroize::Zeroizing;
 
 pub use crate::events::{ClientAddr, Operator};
+pub use connection::{MESSAGE_LIMIT, SUBPROTOCOL, SocketAccess, accept_socket};
 pub use guard::{Authenticated, SignInRequired};
 pub use identity::{Identity, client_addr, identify, identify_connection};
 pub use password::Password;
