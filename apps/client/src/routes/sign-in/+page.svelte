@@ -105,6 +105,14 @@
     margin: 0 0 var(--space-4);
     font-size: var(--text-2xl);
     line-height: var(--leading-tight);
+    min-block-size: calc(var(--text-2xl) * var(--leading-tight));
+  }
+
+  /* The line height is reserved from tokens, so the font swap cannot move the fields below (MOT-007). */
+  label {
+    font-size: var(--text-md);
+    line-height: var(--leading-tight);
+    min-block-size: calc(var(--text-md) * var(--leading-tight));
   }
 
   form {
