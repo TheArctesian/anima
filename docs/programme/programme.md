@@ -54,6 +54,8 @@ Integration branch: `phase-1`. Merge to `main` only after operator checkpoint 4.
 
 - **R-007 (operator, 2026-11-03).** Work that is decided but left for later (for example the TestFlight release) goes on GitHub issue [#1 Deferred work](https://github.com/TheArctesian/anima/issues/1) as a checklist item, with the spec IDs. A package orchestrator that defers something asks the programme orchestrator to add it there; it does not leave it only in a package plan or a report.
 
+- **R-008 (operator, 2026-11-03).** Use the domain `anima.ing` (DNS on Cloudflare) as in spec Section 4.2.1: `hs.anima.ing` for Headscale, a public `hub.anima.ing` record that points to the hub's VPN address, `updates.anima.ing` as a redirect to the GitHub release feed, and VPN-only names under `net.anima.ing`. The hub gets a Let's Encrypt certificate by DNS-01. WP-03 owns the DNS records and the Headscale names; WP-04 owns the hub certificate (stage A) and the update redirect (stage B). Every Cloudflare change needs the operator's confirmation in chat (DNS-008); agents prepare the records in `deploy/dns/` and do not apply them.
+
 ## Escalations
 
 None open.

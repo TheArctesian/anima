@@ -243,7 +243,7 @@ desktop app ── at start and every 4 hours ── GET latest.json ── vers
 | Item | Value |
 | --- | --- |
 | Host | Public GitHub Releases of `TheArctesian/anima` (the repository is public, so the app needs no credential) |
-| Feed URL | `https://github.com/TheArctesian/anima/releases/latest/download/latest.json` |
+| Feed URL | `https://updates.anima.ing/latest.json`. It redirects to the latest GitHub release (DNS-007). |
 | Version | `0.1.<workflow run number>`, computed once in the version job. Do not commit version changes. |
 | Platforms | macOS universal (`.app.tar.gz` for the updater, `Anima.dmg` for people), Linux x86_64 (`.AppImage`) |
 | Updater signature | Tauri updater key pair. The public key is in `tauri.conf.json`. The private key is the GitHub secret `TAURI_SIGNING_PRIVATE_KEY`. |
@@ -287,7 +287,7 @@ The devices are at more than one site. Example: office 1, home and office 2. A m
 - **NET-002.** The hub must refuse each API request, tunnel request and login from an address that is not in a permitted network. The hub must write the refusal to the event log.
 - **NET-003.** The hub must listen only on its VPN interface and its private network interfaces. Do not bind the hub to a public interface.
 - **NET-004.** If the client cannot connect to the hub, the navigation bar must show "Not on the network" and the hub address. The message must tell the operator to check the VPN client. Data on the screen must show its age.
-- **NET-005.** The client must find the hub by its VPN DNS name (for example `anima-hub`). mDNS does not cross sites, so use mDNS only as a fallback on the local network. The operator can also type the hub address.
+- **NET-005.** The client must find the hub by its DNS name `hub.anima.ing` (DNS-001). mDNS does not cross sites, so use mDNS only as a fallback on the local network. The operator can also type the hub address.
 - **NET-006.** A later version can let the hub find new devices on each site with mDNS and an ARP scan. The operator must accept each found device before Anima adds it.
 
 ### 4.2 Sites and VPN
@@ -343,6 +343,26 @@ VPS security:
 - **VPS-004.** The VPS must install security updates automatically.
 - **VPS-005.** The operator must confirm each change to the VPS or the Hostinger account. Automation must not change the VPS without this confirmation.
 - **VPS-006.** Back up the Headscale database and the Anima database each day to a site that is not the VPS.
+
+#### 4.2.1 Domain names
+
+The operator owns the domain `anima.ing`. Cloudflare holds its DNS.
+
+| Name | Public DNS record | Points to | Purpose |
+| --- | --- | --- | --- |
+| `hs.anima.ing` | A, not proxied | VPS public IP | Headscale control server and DERP relay (Headscale `server_url`) |
+| `hub.anima.ing` | A, not proxied | Hub VPN address (`100.64.0.0/10`) | Hub address for clients. The name is public, but only VPN members can connect. |
+| `updates.anima.ing` | Proxied | Cloudflare redirect rule | Update feed and downloads (Section 3.9) |
+| `<device>.net.anima.ing` | None | Headscale DNS only | VPN names of hosts (Headscale `dns.base_domain` = `net.anima.ing`) |
+
+- **DNS-001.** The client must use `hub.anima.ing` as the default hub address (NET-005).
+- **DNS-002.** The hub must use a Let's Encrypt certificate for `hub.anima.ing`. Get it with the DNS-01 challenge through the Cloudflare API, because the hub has no public port. Renew it automatically. This satisfies SEC-001 with a certificate that the client trusts without a pinned exception.
+- **DNS-003.** The Cloudflare API token for DNS-01 must have only the permission "Zone DNS Edit" for `anima.ing`. Keep it in a Docker secret (SEC-004 rules apply). Do not log it.
+- **DNS-004.** The `hs.anima.ing` and `hub.anima.ing` records must not be proxied. Cloudflare cannot proxy WireGuard, STUN or a VPN address.
+- **DNS-005.** `hub.anima.ing` points to a private address. A connection from outside the VPN must fail. This keeps SEC-008: the public record shows the name and a VPN address only.
+- **DNS-006.** Headscale `dns.base_domain` must be `net.anima.ing`. It must not be `anima.ing`, because Headscale does not permit a base domain that contains the `server_url` host. Device names under `net.anima.ing` do not have public records.
+- **DNS-007.** `updates.anima.ing/latest.json` must redirect (HTTP 302) to `https://github.com/TheArctesian/anima/releases/latest/download/latest.json`. `updates.anima.ing/<file>` must redirect to the same file of the latest release. The app keeps the `updates.anima.ing` URL, so the host can change later without a new app build.
+- **DNS-008.** The operator must confirm each change to the Cloudflare account or the `anima.ing` zone, as for the VPS (VPS-005).
 
 ### 4.3 Traffic data (later)
 
