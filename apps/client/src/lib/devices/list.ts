@@ -75,7 +75,8 @@ export function compareDevices(sort: DeviceSort): (a: CardDevice, b: CardDevice)
 /**
  * The list after a live status change (DEV-003, DEV-004). The device changes in place; it leaves when the
  * status filter no longer admits it; under STATUS or UPTIME the list is ordered again. An unknown device
- * gives the same list.
+ * gives the same list: a push carries no device record, so a device cannot enter the list or the filter from here
+ * (the page fetches again for that), and under STATUS or UPTIME only the loaded rows are reordered.
  */
 export function applyStatus(list: DeviceList, change: StatusChange, query: ListQuery): DeviceList {
   if (!list.devices.some((device) => device.id === change.deviceId)) return list;
