@@ -1,11 +1,16 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { GENERATED_FOLDER, generateTypes, staleTypes } from './generation';
 
 const clientRoot = resolve(import.meta.dirname, '..', '..', '..');
 const scratch = mkdtempSync(join(tmpdir(), 'anima-codegen-'));
+let current = new Map<string, string>();
+
+beforeAll(async () => {
+  current = await generateTypes(clientRoot);
+});
 
 afterAll(() => {
   rmSync(scratch, { recursive: true, force: true });
@@ -19,7 +24,7 @@ function documentFile(name: string, query: string): string {
 
 describe('generated types', () => {
   it('API-008: the generated folder is current', async () => {
-    expect(staleTypes(await generateTypes(clientRoot), clientRoot)).toEqual([]);
+    expect(staleTypes(current, clientRoot)).toEqual([]);
   });
 
   it('API-008: a document that matches the schema yields a typed document', async () => {
@@ -33,10 +38,9 @@ describe('generated types', () => {
     await expect(generateTypes(clientRoot, [file])).rejects.toThrow(/Cannot query field "nickname"/);
   });
 
-  it('API-008: a folder with a file the generator no longer writes is stale', async () => {
-    const built = await generateTypes(clientRoot);
-    const fewer = new Map([...built].slice(1));
-    const [first] = [...built.keys()];
+  it('API-008: a folder with a file the generator no longer writes is stale', () => {
+    const fewer = new Map([...current].slice(1));
+    const [first] = [...current.keys()];
     expect(staleTypes(fewer, clientRoot)).toEqual([{ path: first, reason: 'extra' }]);
   });
 });
