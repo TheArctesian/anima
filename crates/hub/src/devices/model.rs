@@ -11,7 +11,10 @@ use async_graphql::Enum;
 use chrono::{DateTime, Utc};
 use ipnet::IpNet;
 
-use crate::ids::{DeviceId, SiteId};
+use crate::{
+    ids::{DeviceId, SiteId},
+    scalars::Cidr,
+};
 
 /// The database holds text that is not a known value of an enum.
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
@@ -141,7 +144,7 @@ pub struct Device {
 #[cfg_attr(not(test), expect(dead_code, reason = "used by the devices store"))]
 pub(super) struct NewSite {
     pub name: String,
-    pub subnet: IpNet,
+    pub subnet: Cidr,
 }
 
 /// A validated device to create.
@@ -173,7 +176,6 @@ pub(super) struct DeviceChange {
 
 /// Which devices a list returns; every part that is set must match.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-#[cfg_attr(not(test), expect(dead_code, reason = "used by devices GraphQL"))]
 pub(super) struct DeviceFilter {
     /// Case-insensitive substring of the name.
     pub name: Option<String>,
@@ -220,5 +222,5 @@ pub(super) struct DeviceChangeInput {
 #[derive(Clone, Debug)]
 pub(super) struct NewSiteInput {
     pub(super) name: String,
-    pub(super) subnet: String,
+    pub(super) subnet: Cidr,
 }

@@ -11,6 +11,7 @@ macro_rules! store_test {
     )+};
 }
 
+mod graphql_error;
 mod host;
 mod page;
 mod rules;
