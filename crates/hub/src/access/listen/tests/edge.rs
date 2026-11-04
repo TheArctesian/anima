@@ -9,15 +9,14 @@ use std::{
     time::{Duration, Instant},
 };
 
-use axum::{Router, body::Body, extract::Request, response::Response, routing::get};
-use hyper_util::rt::TokioIo;
+use axum::Router;
 use ipnet::IpNet;
 use tokio::{
-    io::{AsyncRead, AsyncReadExt as _, AsyncWriteExt as _},
+    io::{AsyncRead, AsyncReadExt as _},
     net::{TcpListener, TcpStream},
     task::{JoinHandle, JoinSet},
 };
-use tokio_rustls::{TlsAcceptor, rustls::pki_types::ServerName};
+use tokio_rustls::TlsAcceptor;
 
 use super::super::{
     certificate::{self, Current},
@@ -25,19 +24,19 @@ use super::super::{
     slots::Slots,
     tls,
 };
-use super::serving::{connector, get_over_tls, peer_router};
+use super::serving::{get_over_tls, peer_router};
 use super::{Throwaway, now, pem, provider, throwaway};
 use crate::{
     access::layer::{CONNECTION, Edge, REQUEST, Verdict},
     clock::FixedClock,
 };
 
-const DEADLINE: Duration = Duration::from_secs(20);
+pub(super) const DEADLINE: Duration = Duration::from_secs(20);
 
 /// How long a permitted client may take while the attack holds its connections.
-const SERVED_WITHIN: Duration = Duration::from_secs(2);
+pub(super) const SERVED_WITHIN: Duration = Duration::from_secs(2);
 
-fn ip(text: &str) -> IpAddr {
+pub(super) fn ip(text: &str) -> IpAddr {
     text.parse().unwrap()
 }
 
@@ -48,9 +47,9 @@ fn edge(networks: &[&str]) -> Edge {
 
 /// A TLS way in for `router` that permits `10.0.0.0/8`, giving the n-th connection it accepts
 /// the peer `peer_of(n)`. Stops when dropped.
-struct Door {
-    addr: SocketAddr,
-    made: Throwaway,
+pub(super) struct Door {
+    pub(super) addr: SocketAddr,
+    pub(super) made: Throwaway,
     accepting: JoinHandle<()>,
 }
 
@@ -60,12 +59,22 @@ impl Drop for Door {
     }
 }
 
-async fn door(router: Router, limits: Limits, peer_of: fn(usize) -> IpAddr) -> Door {
+pub(super) async fn door(router: Router, limits: Limits, peer_of: fn(usize) -> IpAddr) -> Door {
+    door_with(edge(&["10.0.0.0/8"]), router, limits, peer_of).await
+}
+
+/// As [`door`], with `edge` deciding who is let in.
+async fn door_with(
+    edge: Edge,
+    router: Router,
+    limits: Limits,
+    peer_of: fn(usize) -> IpAddr,
+) -> Door {
     let made = throwaway();
     let key = certificate::certified_key(&pem(&made.cert, &made.key), &provider()).unwrap();
     let config = tls::server_config(provider(), Arc::new(Current::new(key))).unwrap();
     let acceptor = Some(TlsAcceptor::from(config));
-    let serving = Serving::new(router, edge(&["10.0.0.0/8"]), acceptor, limits);
+    let serving = Serving::new(router, edge, acceptor, limits);
     let tcp = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = tcp.local_addr().unwrap();
     let accepting = tokio::spawn(async move {
@@ -97,7 +106,7 @@ async fn silent(addr: SocketAddr, count: usize) -> Vec<TcpStream> {
 }
 
 /// Whether the server closes `io` within `within`.
-async fn closes<T: AsyncRead + Unpin>(io: &mut T, within: Duration) -> bool {
+pub(super) async fn closes<T: AsyncRead + Unpin>(io: &mut T, within: Duration) -> bool {
     let mut sink = Vec::new();
     tokio::time::timeout(within, io.read_to_end(&mut sink))
         .await
@@ -177,6 +186,46 @@ async fn net_002_refused_peers_are_closed_at_accept_before_any_tls() {
 }
 
 #[tokio::test]
+async fn net_002_an_unreadable_list_closes_the_connection_before_any_tls() {
+    let unreachable = sqlx::postgres::PgPoolOptions::new()
+        .acquire_timeout(Duration::from_millis(300))
+        .connect_lazy("postgres://127.0.0.1:1/none")
+        .unwrap();
+    let edge = Edge::new(
+        unreachable,
+        crate::events::Bus::new(1),
+        Arc::new(FixedClock(now())),
+    );
+    let limits = Limits {
+        handshake_time: Duration::from_secs(60),
+        ..SERVED
+    };
+    let door = door_with(edge, peer_router(), limits, |_| ip("10.0.0.7")).await;
+    let mut waiting = TcpStream::connect(door.addr).await.unwrap();
+    assert!(
+        closes(&mut waiting, Duration::from_secs(5)).await,
+        "fail closed"
+    );
+}
+
+#[test]
+fn net_002_sec_001_the_hub_serves_with_the_reviewed_limits() {
+    let Limits {
+        connections,
+        connections_per_peer,
+        handshakes_per_peer,
+        handshake_time,
+        header_time,
+    } = SERVED;
+    assert_eq!(
+        (connections, connections_per_peer, handshakes_per_peer),
+        (1024, 64, 8)
+    );
+    assert_eq!(handshake_time, Duration::from_secs(5));
+    assert_eq!(header_time, Duration::from_secs(10));
+}
+
+#[tokio::test]
 async fn sec_001_a_stalled_handshake_is_dropped_at_its_deadline() {
     let limits = Limits {
         handshake_time: Duration::from_millis(300),
@@ -189,111 +238,6 @@ async fn sec_001_a_stalled_handshake_is_dropped_at_its_deadline() {
         "open at first"
     );
     assert!(closes(&mut stalled, SERVED_WITHIN).await);
-}
-
-/// The way in with a 300 ms head deadline, and a TLS client at `10.0.0.7` that sends `sent`.
-async fn after_handshake(sent: &[u8]) -> (Door, tokio_rustls::client::TlsStream<TcpStream>) {
-    let limits = Limits {
-        header_time: Duration::from_millis(300),
-        ..SERVED
-    };
-    let door = door(peer_router(), limits, |_| ip("10.0.0.7")).await;
-    let tcp = TcpStream::connect(door.addr).await.unwrap();
-    let name = ServerName::try_from("localhost").unwrap();
-    let mut tls = connector(&door.made).connect(name, tcp).await.unwrap();
-    tls.write_all(sent).await.unwrap();
-    (door, tls)
-}
-
-#[tokio::test]
-async fn sec_001_a_connection_silent_after_its_handshake_is_closed() {
-    let (_door, mut tls) = after_handshake(b"").await;
-    let started = Instant::now();
-    assert!(closes(&mut tls, SERVED_WITHIN).await);
-    assert!(
-        started.elapsed() >= Duration::from_millis(250),
-        "not before the deadline"
-    );
-}
-
-#[tokio::test]
-async fn sec_001_a_request_head_without_its_blank_line_is_closed() {
-    let (_door, mut tls) = after_handshake(b"GET / HTTP/1.1\r\nHost: localhost\r\n").await;
-    assert!(closes(&mut tls, SERVED_WITHIN).await);
-}
-
-#[tokio::test]
-async fn sec_001_an_idle_kept_alive_connection_is_closed() {
-    let (_door, mut tls) = after_handshake(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n").await;
-    let mut answer = Vec::new();
-    let mut chunk = [0; 512];
-    while !answer.ends_with(b"10.0.0.7") {
-        let read = tokio::time::timeout(DEADLINE, tls.read(&mut chunk)).await;
-        let read = read.expect("the answer in time").unwrap();
-        assert_ne!(read, 0, "kept alive after the answer");
-        answer.extend_from_slice(&chunk[..read]);
-    }
-    assert!(closes(&mut tls, SERVED_WITHIN).await);
-}
-
-/// Answers `GET /echo` by switching to a protocol that sends back four bytes.
-async fn echo(mut request: Request) -> Response {
-    let upgrade = hyper::upgrade::on(&mut request);
-    tokio::spawn(async move {
-        let mut io = TokioIo::new(upgrade.await.unwrap());
-        let mut four = [0; 4];
-        io.read_exact(&mut four).await.unwrap();
-        io.write_all(&four).await.unwrap();
-    });
-    Response::builder()
-        .status(101)
-        .header("connection", "upgrade")
-        .header("upgrade", "echo")
-        .body(Body::empty())
-        .unwrap()
-}
-
-#[tokio::test]
-async fn sec_001_an_upgraded_connection_outlives_the_head_deadline_and_keeps_its_place() {
-    let limits = Limits {
-        header_time: Duration::from_millis(300),
-        connections_per_peer: 1,
-        ..SERVED
-    };
-    let door = door(Router::new().route("/echo", get(echo)), limits, |_| {
-        ip("10.0.0.7")
-    })
-    .await;
-    let tcp = TcpStream::connect(door.addr).await.unwrap();
-    let name = ServerName::try_from("localhost").unwrap();
-    let mut tls = connector(&door.made).connect(name, tcp).await.unwrap();
-    let upgrade =
-        b"GET /echo HTTP/1.1\r\nHost: localhost\r\nConnection: upgrade\r\nUpgrade: echo\r\n\r\n";
-    tls.write_all(upgrade).await.unwrap();
-    let mut head = Vec::new();
-    while !head.ends_with(b"\r\n\r\n") {
-        let mut byte = [0; 1];
-        let read = tokio::time::timeout(DEADLINE, tls.read_exact(&mut byte)).await;
-        read.expect("the switch in time").unwrap();
-        head.push(byte[0]);
-    }
-    assert!(
-        head.starts_with(b"HTTP/1.1 101"),
-        "{}",
-        String::from_utf8_lossy(&head)
-    );
-
-    let mut second = TcpStream::connect(door.addr).await.unwrap();
-    assert!(
-        closes(&mut second, SERVED_WITHIN).await,
-        "the upgraded one holds the place"
-    );
-    tokio::time::sleep(Duration::from_secs(1)).await;
-    tls.write_all(b"ping").await.unwrap();
-    let mut back = [0; 4];
-    let read = tokio::time::timeout(DEADLINE, tls.read_exact(&mut back)).await;
-    read.expect("the echo in time").unwrap();
-    assert_eq!(&back, b"ping");
 }
 
 #[test]

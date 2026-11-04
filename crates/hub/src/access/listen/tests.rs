@@ -4,6 +4,7 @@
 
 mod bind;
 mod edge;
+mod heads;
 mod health;
 mod reload;
 mod serving;
