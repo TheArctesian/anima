@@ -1,38 +1,22 @@
-//! Hub binary: reads the listen address and serves the router.
+//! Hub binary: reads the environment, builds the dependencies and serves the router.
 
-use std::env::VarError;
-use std::net::{AddrParseError, SocketAddr};
+use std::sync::Arc;
 
-const ADDR_VAR: &str = "ANIMA_HUB_ADDR";
-const DEFAULT_ADDR: &str = "127.0.0.1:8080";
+use anima_hub::{clock::SystemClock, config, router, schema::build_schema};
 
 #[derive(Debug, thiserror::Error)]
 enum StartError {
-    #[error("{ADDR_VAR} is not valid unicode")]
-    AddrNotUnicode,
-    #[error("{ADDR_VAR}={value:?} is not a socket address")]
-    AddrInvalid {
-        value: String,
-        #[source]
-        source: AddrParseError,
-    },
+    #[error("invalid configuration")]
+    Config(#[from] config::Error),
     #[error("hub failed to serve")]
     Serve(#[from] std::io::Error),
 }
 
-fn listen_addr() -> Result<SocketAddr, StartError> {
-    let value = match std::env::var(ADDR_VAR) {
-        Ok(value) => value,
-        Err(VarError::NotPresent) => DEFAULT_ADDR.to_owned(),
-        Err(VarError::NotUnicode(_)) => return Err(StartError::AddrNotUnicode),
-    };
-    value
-        .parse()
-        .map_err(|source| StartError::AddrInvalid { value, source })
-}
-
 #[tokio::main]
 async fn main() -> Result<(), StartError> {
-    let listener = tokio::net::TcpListener::bind(listen_addr()?).await?;
-    Ok(axum::serve(listener, anima_hub::router()).await?)
+    let env = config::collect_env(std::env::vars_os())?;
+    let config = Arc::new(config::from_env(&env)?);
+    let listener = tokio::net::TcpListener::bind(config.listen).await?;
+    let schema = build_schema(config, Arc::new(SystemClock));
+    Ok(axum::serve(listener, router(schema)).await?)
 }
