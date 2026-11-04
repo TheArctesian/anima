@@ -2,21 +2,21 @@ interface Syntax {
   lineComment: boolean;
   blocks: [open: string, close: string][];
   quotes: string;
-  rustChars: boolean;
+  rust: boolean;
 }
 
 const C_BLOCK: [string, string] = ["/*", "*/"];
 const SYNTAX: Record<string, Syntax> = {
-  ".rs": { lineComment: true, blocks: [C_BLOCK], quotes: '"', rustChars: true },
-  ".ts": { lineComment: true, blocks: [C_BLOCK], quotes: "\"'`", rustChars: false },
-  ".js": { lineComment: true, blocks: [C_BLOCK], quotes: "\"'`", rustChars: false },
+  ".rs": { lineComment: true, blocks: [C_BLOCK], quotes: '"', rust: true },
+  ".ts": { lineComment: true, blocks: [C_BLOCK], quotes: "\"'`", rust: false },
+  ".js": { lineComment: true, blocks: [C_BLOCK], quotes: "\"'`", rust: false },
   ".svelte": {
     lineComment: true,
     blocks: [C_BLOCK, ["<!--", "-->"]],
     quotes: "\"'`",
-    rustChars: false,
+    rust: false,
   },
-  ".css": { lineComment: false, blocks: [C_BLOCK], quotes: "\"'", rustChars: false },
+  ".css": { lineComment: false, blocks: [C_BLOCK], quotes: "\"'", rust: false },
 };
 
 const RUST_CHAR = /^'(?:\\.[^']*|[^\\'])'/;
@@ -26,10 +26,30 @@ interface Step {
   next: number;
 }
 
-function skipBlock(text: string, at: number, open: string, close: string): Step {
-  const closeAt = text.indexOf(close, at + open.length);
-  const end = closeAt === -1 ? text.length : closeAt + close.length;
+function skipBlock(text: string, at: number, [open, close]: [string, string], nested: boolean): Step {
+  let depth = 1;
+  let end = at + open.length;
+  while (depth > 0 && end < text.length) {
+    if (text.startsWith(close, end)) {
+      depth--;
+      end += close.length;
+    } else if (nested && text.startsWith(open, end)) {
+      depth++;
+      end += open.length;
+    } else {
+      end++;
+    }
+  }
   return { keep: text.slice(at, end).replace(/[^\n]/g, ""), next: end };
+}
+
+function readRawString(text: string, at: number): Step | undefined {
+  if (/\w/.test(text.charAt(at - 1))) return undefined;
+  const opening = /^b?r(#*)"/.exec(text.slice(at, at + 40));
+  if (!opening) return undefined;
+  const closeAt = text.indexOf(`"${opening[1] ?? ""}`, at + opening[0].length);
+  const next = closeAt === -1 ? text.length : closeAt + 1 + (opening[1] ?? "").length;
+  return { keep: text.slice(at, next), next };
 }
 
 function skipLine(text: string, at: number): Step {
@@ -49,12 +69,16 @@ function readString(text: string, at: number, quote: string): Step {
 }
 
 function stepAt(text: string, at: number, syntax: Syntax): Step {
-  for (const [open, close] of syntax.blocks) {
-    if (text.startsWith(open, at)) return skipBlock(text, at, open, close);
+  for (const block of syntax.blocks) {
+    if (text.startsWith(block[0], at)) return skipBlock(text, at, block, syntax.rust);
   }
   if (syntax.lineComment && text.startsWith("//", at)) return skipLine(text, at);
   const char = text.charAt(at);
-  if (syntax.rustChars && char === "'") {
+  if (syntax.rust && (char === "r" || char === "b")) {
+    const raw = readRawString(text, at);
+    if (raw) return raw;
+  }
+  if (syntax.rust && char === "'") {
     const literal = RUST_CHAR.exec(text.slice(at, at + 12));
     if (literal) return { keep: literal[0], next: at + literal[0].length };
   }

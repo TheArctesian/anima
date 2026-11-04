@@ -1,22 +1,12 @@
 import { baselineValue, type Baseline, type Signal } from "./baseline.ts";
 import { countCodeLines } from "./codelines.ts";
 import type { Violation } from "./report.ts";
+import { extensionOf, type SourceFile } from "./source.ts";
 
 export const MEASURED_EXTENSIONS = [".rs", ".ts", ".js", ".svelte", ".css"];
 export const FILE_LINES_LIMIT = 300;
 export const FOLDER_FILES_LIMIT = 12;
 const FOLDER_ROOTS = ["crates/", "apps/", "quality/", "design/"];
-
-export interface SourceFile {
-  path: string;
-  text: string;
-}
-
-export function extensionOf(path: string): string {
-  const name = path.slice(path.lastIndexOf("/") + 1);
-  const dot = name.lastIndexOf(".");
-  return dot === -1 ? "" : name.slice(dot);
-}
 
 export function isMeasured(path: string): boolean {
   return MEASURED_EXTENSIONS.includes(extensionOf(path));

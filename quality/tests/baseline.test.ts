@@ -32,6 +32,7 @@ describe("CQ-011 baseline is shrink-only", () => {
     expect(() => parseBaseline('{"a.rs": 5}')).toThrow(BaselineShapeError);
     expect(() => parseBaseline('{"a.rs": {"lines": 5}}')).toThrow(BaselineShapeError);
     expect(() => parseBaseline('{"a.rs": {"file-lines": -1}}')).toThrow(BaselineShapeError);
+    expect(() => parseBaseline('{"a.rs": {"file-lines": 1.5}}')).toThrow(BaselineShapeError);
     expect(parseBaseline("{}")).toEqual({});
   });
 });

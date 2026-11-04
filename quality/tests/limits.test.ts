@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { countCodeLines } from "../src/codelines.ts";
-import { checkLimits, type SourceFile } from "../src/limits.ts";
+import { checkLimits } from "../src/limits.ts";
+import type { SourceFile } from "../src/source.ts";
 
 const lines = (count: number, line = "let x = 1;") => Array.from({ length: count }, () => line).join("\n");
 const file = (path: string, text = ""): SourceFile => ({ path, text });
@@ -21,6 +22,13 @@ describe("CQ-010 code lines per file", () => {
     expect(countCodeLines("a { color: red; } /* c */\n/* x */\n", ".css")).toBe(1);
     expect(countCodeLines('let u = "http://x"; // c\n', ".ts")).toBe(1);
     expect(countCodeLines("let c = '\"'; // c\nlet l: &'a str;\n", ".rs")).toBe(2);
+  });
+
+  test("CQ-010 nested Rust block comments and raw strings are lexed", () => {
+    expect(countCodeLines("/* a /* b */ still comment */\nlet x = 1;\n", ".rs")).toBe(1);
+    expect(countCodeLines('let s = r#"say "hi" // not a comment\n/* nor this"#;\nlet y = 2;\n', ".rs")).toBe(3);
+    expect(countCodeLines("let x = br##\"a\"# b\"##; // c\n", ".rs")).toBe(1);
+    expect(countCodeLines("/* /* x */ y */ // z\n", ".ts")).toBe(1);
   });
 
   test("files with other extensions are not measured", () => {

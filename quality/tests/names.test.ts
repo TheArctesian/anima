@@ -20,6 +20,12 @@ describe("CQ-030 banned names", () => {
     expect(signals("crates/hub/src/devices/metadata.rs")).toEqual([]);
   });
 
+  test("types named only in comments or Svelte markup do not count", () => {
+    expect(signals("a/b.rs", "// struct UserManager\n/* enum Helper */\n/// trait Handler")).toEqual([]);
+    expect(signals("a/b.ts", "/* class UserManager {} */\n// interface Helper {}")).toEqual([]);
+    expect(signals("a/B.svelte", "<p>\nclass Helper\n</p>\n<script lang=\"ts\">\n// class Util\nclass Handler {}\n</script>")).toEqual(["banned-type-name"]);
+  });
+
   test("segments split on case, underscores, hyphens and dots", () => {
     expect(wordSegments("HTTPServerManager")).toEqual(["http", "server", "manager"]);
     expect(wordSegments("a-b_c.d")).toEqual(["a", "b", "c", "d"]);

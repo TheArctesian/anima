@@ -1,5 +1,6 @@
-import { extensionOf, type SourceFile } from "./limits.ts";
+import { stripComments } from "./codelines.ts";
 import type { Violation } from "./report.ts";
+import { extensionOf, type SourceFile } from "./source.ts";
 
 const BANNED_WORDS = new Set([
   "manager", "service", "helper", "handler", "processor", "factory",
@@ -47,11 +48,18 @@ function pathViolations(path: string): Violation[] {
   return violations;
 }
 
+/** Source without comments; for Svelte, only the `<script>` blocks. */
+function codeOf(text: string, extension: string): string {
+  if (extension !== ".svelte") return stripComments(text, extension);
+  const scripts = [...text.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map((match) => match[1] ?? "");
+  return stripComments(scripts.join("\n"), ".ts");
+}
+
 function declaredTypes(file: SourceFile): string[] {
   const extension = extensionOf(file.path);
   if (!TYPE_EXTENSIONS.includes(extension)) return [];
   const pattern = extension === ".rs" ? RUST_TYPE : TS_TYPE;
-  return [...file.text.matchAll(pattern)].map((match) => match[1] ?? "");
+  return [...codeOf(file.text, extension).matchAll(pattern)].map((match) => match[1] ?? "");
 }
 
 function typeViolations(file: SourceFile): Violation[] {
