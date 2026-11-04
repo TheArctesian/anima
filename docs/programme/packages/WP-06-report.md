@@ -5,19 +5,19 @@ Status: **done**. Tasks T1 to T6 are accepted, the final package review (Opus, s
 | Item | Value |
 | --- | --- |
 | Branch | `claude/wp-06-devices-b9e5ba` |
-| Tip | `TIP` (includes `phase-1` at `c2a2b0c`, WP-05's log-capture fix) |
+| Tip | the commit that adds this line; code and tests as gated at `376c32a` (includes `phase-1` at `c2a2b0c`, WP-05's log-capture fix) |
 | Already on `phase-1` | T1 migrations and fixtures (`525078f`, merged as `668c898`) |
 | Plan and review log | [WP-06.md](WP-06.md) |
 | Spec | DEV-010–015, VPN-001, VPN-002, API-003, API-005, API-006, API-010, SEC-003, SEC-005, LOG-004, LOG-005, LOG-007 |
 | Contracts | K1 (devices part; not `testConnection`/`acceptHostKey` and not the R-011 fields), K2 `devices`, K3 `devices`, K6 fixtures, K7 error codes |
 
-## Gates (`env -u DATABASE_URL bun run gates`, tip `TIP`)
+## Gates (`env -u DATABASE_URL bun run gates`, `376c32a`)
 
 | # | Gate | Result |
 | --- | --- | --- |
 | 1 | cargo fmt --check | pass |
 | 2 | cargo clippy --all-targets -- -D warnings | pass |
-| 3 | cargo test (throwaway PostgreSQL, R-009, R-019) | pass |
+| 3 | cargo test (throwaway PostgreSQL, R-009, R-019) | pass (hub lib 177, integration 96, plus 76 and 5 in other binaries) |
 | 4 | bun install --frozen-lockfile | pass |
 | 5 | bun run lint | pass |
 | 6 | bun run check | pass |
