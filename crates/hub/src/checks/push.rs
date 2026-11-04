@@ -12,14 +12,15 @@ use axum::{
     extract::{DefaultBodyLimit, Path, Query, State, rejection::QueryRejection},
     http::StatusCode,
     response::{IntoResponse, Response},
-    routing::get,
+    routing::{MethodFilter, on},
 };
+use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use sqlx::PgPool;
 use subtle::ConstantTimeEq as _;
 
 use super::{
-    Beat, Check, Error, evaluate,
+    Beat, Check, Error, Recorded, evaluate,
     probe::{ProbeResult, clean_message},
     push_check, record_beat,
 };
@@ -45,7 +46,11 @@ struct PushState {
 /// `GET|POST /push/{token}`. The caller mounts it behind the permitted-networks layer (NET-002).
 pub fn push_router(db: PgPool, bus: Bus, clock: Arc<dyn Clock>) -> Router {
     Router::new()
-        .route("/push/{token}", get(accept).post(accept))
+        // GET and POST only: HEAD would record a beat, and Uptime Kuma pushes with GET.
+        .route(
+            "/push/{token}",
+            on(MethodFilter::GET.or(MethodFilter::POST), accept),
+        )
         .layer(DefaultBodyLimit::max(BODY_LIMIT))
         .with_state(PushState { db, bus, clock })
 }
@@ -124,6 +129,23 @@ enum Outcome {
     Refused,
 }
 
+/// Evaluates the report against the check's settings and records the beat in one transaction.
+/// `None` when the store skipped it (the check is paused or the beat is stale). This is the one
+/// place that decides the state the beat is evaluated against.
+async fn store_beat(
+    db: &PgPool,
+    check: &Check,
+    probe: ProbeResult,
+    now: DateTime<Utc>,
+) -> Result<Option<Beat>, Error> {
+    let evaluated = evaluate(&check.state, &probe, &check.settings, now);
+    let beat = Beat::of(probe, evaluated, now);
+    let mut tx = db.begin().await?;
+    let recorded = record_beat(&mut tx, check.id, &beat).await?;
+    tx.commit().await?;
+    Ok((recorded == Recorded::Written).then_some(beat))
+}
+
 async fn record(
     state: &PushState,
     token: &str,
@@ -139,12 +161,9 @@ async fn record(
         return Ok(Outcome::Refused);
     };
     let now = state.clock.now();
-    let probe = report.into_probe();
-    let evaluated = evaluate(&check.state, probe.clone(), &check.settings, now);
-    let beat = Beat::of(probe, evaluated, now);
-    let mut tx = state.db.begin().await?;
-    record_beat(&mut tx, check.id, &beat).await?;
-    tx.commit().await?;
+    let Some(beat) = store_beat(&state.db, &check, report.into_probe(), now).await? else {
+        return Ok(Outcome::NotFound);
+    };
     state.bus.publish(Signal::Heartbeat {
         check: check.id,
         device: check.device,
