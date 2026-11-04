@@ -87,7 +87,7 @@ describe("REPO-004 allow-list", () => {
   });
 
   test("a cyclic allow-list fails", () => {
-    const cyclic: HubModules = { leaves: [], wiring: [], domains: { a: ["b"], b: ["a"] } };
+    const cyclic: HubModules = { leaves: [], wiring: [], domains: { a: ["b"], b: ["a"] }, graphql: {} };
     expect(checkImports([], cyclic).map((v) => v.signal)).toEqual(["allow-list-cycle"]);
   });
 
@@ -103,6 +103,7 @@ describe("REPO-004 cycles", () => {
     leaves: [],
     wiring: [],
     domains: { a: ["b", "c"], b: ["a", "c"], c: ["a"] },
+    graphql: {},
   };
   const cycles = (...files: ReturnType<typeof hub>[]) =>
     checkImports(files, loose).filter((v) => v.signal === "import-cycle");
@@ -134,5 +135,25 @@ describe("REPO-004 parsing", () => {
     expect(mentionsIn("use a::b; fn f() { self::g(); }").inline).toEqual([["self", "g"]]);
     expect(modulePathOf("devices/mod.rs")).toEqual(["devices"]);
     expect(resolvePath(["super", "store"], ["devices", "x"])).toEqual(["devices", "store"]);
+  });
+});
+
+describe("R-011 graphql composition edges", () => {
+  test("a domain's graphql module may use the extra edges; its other files may not", () => {
+    expect(signals(hub("devices/graphql.rs", "use crate::checks::device_status;\nuse crate::sessions::host_key;"))).toEqual([]);
+    expect(signals(hub("devices/rules.rs", "use crate::checks::device_status;"))).toEqual(["forbidden-edge devices -> checks"]);
+  });
+
+  test("graphql edges never permit a foreign store", () => {
+    expect(signals(hub("devices/graphql.rs", "use crate::checks::store;"))).toEqual(["foreign-store crate::checks::store"]);
+  });
+
+  test("graphql edges do not make an import cycle", () => {
+    const changed = [hub("devices/graphql.rs", "use crate::checks::x;"), hub("checks/x.rs", "use crate::devices::Device;")];
+    expect(run(...changed)).toEqual([]);
+  });
+
+  test("a graphql entry must name a domain", () => {
+    expect(() => parseHubModules('{"leaves":[],"wiring":[],"domains":{},"graphql":{"nope":[]}}')).toThrow(HubModulesShapeError);
   });
 });
