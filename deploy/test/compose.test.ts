@@ -21,10 +21,18 @@ interface Container {
   cap_drop?: string[];
   security_opt?: string[];
   command?: string[];
+  cap_add?: string[];
+  restart?: string;
+  tmpfs?: string[];
+  volumes?: string[];
+  healthcheck?: { test: string[] };
+  init?: boolean;
+  build?: { additional_contexts?: Record<string, string> };
 }
 interface Compose {
   services: Record<string, Container>;
   networks: Record<string, { internal?: boolean } | null>;
+  volumes: Record<string, unknown>;
   secrets: Record<string, { file: string }>;
 }
 
@@ -174,10 +182,94 @@ describe("hub configuration (K7)", () => {
     }
   });
 
-  test("DNS-002 the hub reads its certificate from the certs volume", () => {
+  test("DNS-002 the hub reads certificate and key from the one tls.pem on the certs volume", () => {
     const environment = compose.services["hub"]?.environment ?? {};
-    expect(environment["ANIMA_TLS_CERT_FILE"]).toBe("/certs/hub/fullchain.pem");
-    expect(environment["ANIMA_TLS_KEY_FILE"]).toBe("/certs/hub/key.pem");
+    expect(environment["ANIMA_TLS_CERT_FILE"]).toBe("/certs/hub/tls.pem");
+    expect(environment["ANIMA_TLS_KEY_FILE"]).toBe("/certs/hub/tls.pem");
+  });
+
+  test("NET-003 the hub listens on its fixed gateway address and reaches guacd by name", () => {
+    const hub = compose.services["hub"] as Container;
+    expect(hub.environment?.["ANIMA_LISTEN"]).toBe("${ANIMA_HUB_IP:-172.30.0.10}:8443");
+    expect(hub.environment?.["ANIMA_GUACD"]).toBe("guacd:4822");
+    const gateway = (hub.networks as Record<string, { ipv4_address?: string }>)["gateway"];
+    expect(gateway?.ipv4_address).toBe("${ANIMA_HUB_IP:-172.30.0.10}");
+  });
+
+  test("DNS-002 the hub mounts the certs volume read-only", () => {
+    expect(compose.services["hub"]?.volumes).toContain("certs:/certs:ro");
+  });
+
+  test("GW-002 the gateway network keeps its egress and fixed subnet", () => {
+    expect(compose.networks["gateway"]?.internal).not.toBe(true);
+  });
+});
+
+describe("hardening and images (SEC-001, D-6)", () => {
+  test("SEC-001 only certs adds a capability, and only CHOWN", () => {
+    for (const [name, container] of services) {
+      expect(container.cap_add ?? (name === "certs" ? ["missing"] : [])).toEqual(name === "certs" ? ["CHOWN"] : []);
+    }
+  });
+
+  test("D-6 every image has a fixed version tag, and lego is pinned", () => {
+    for (const [name, container] of services) {
+      if (container.image === undefined) continue;
+      const tag = container.image.split(":")[1] ?? "";
+      expect(`${name}:${tag}`).toMatch(/^[a-z]+:(?!latest$)[\w.-]+$/);
+    }
+    expect(compose.services["certs"]?.image).toMatch(/^goacme\/lego:v\d+\.\d+\.\d+$/);
+    expect(compose.services["postgres"]?.image).toMatch(/^postgres:17\.(?:1[1-9]|[2-9]\d)-bookworm$/);
+  });
+
+  test("D-6 the hub Dockerfile pins a dated Debian slim tag", () => {
+    const dockerfile = readFileSync(join(ROOT, "deploy", "hub", "Dockerfile"), "utf8");
+    expect(dockerfile).toMatch(/^FROM debian:bookworm-\d{8}-slim$/m);
+    expect(dockerfile).toMatch(/^FROM rust:\d+\.\d+-bookworm AS build$/m);
+  });
+
+  test("D-6 Dockerfile.dockerignore is an allow-list", () => {
+    const lines = readFileSync(join(ROOT, "deploy", "hub", "Dockerfile.dockerignore"), "utf8")
+      .split("\n")
+      .filter((line) => line !== "" && !line.startsWith("#"));
+    expect(lines[0]).toBe("*");
+    expect(lines.filter((line) => line.startsWith("!")).sort()).toEqual(["!Cargo.lock", "!Cargo.toml", "!crates/"]);
+  });
+
+  test("GW-001 RA-011 the gateway adds only the font and its licence to guacd", () => {
+    const dockerfile = readFileSync(join(ROOT, "deploy", "gateway", "Dockerfile"), "utf8");
+    const copies = dockerfile.split("\n").filter((line) => line.startsWith("COPY"));
+    expect(copies).toEqual([
+      "COPY --from=fonts OpenDyslexicMNerdFontMono-Regular.otf LICENSE-OpenDyslexic.txt /usr/share/fonts/opendyslexic/",
+    ]);
+    expect(dockerfile).toMatch(/^FROM guacamole\/guacd:\d+\.\d+\.\d+$/m);
+    expect(dockerfile.match(/^FROM /gm)).toHaveLength(1);
+    expect(compose.services["guacd"]?.build?.additional_contexts?.["fonts"]).toBe("../apps/client/src/styles/fonts");
+  });
+
+  test("DNS-002 certs is healthy only when tls.pem exists, runs with init, and keeps lego state", () => {
+    const certs = compose.services["certs"] as Container;
+    expect(certs.healthcheck?.test.join(" ")).toContain("/certs/hub/tls.pem");
+    expect(certs.init).toBe(true);
+    expect(certs.volumes).toContain("lego_state:/var/lib/lego");
+    expect(compose.volumes).toHaveProperty("lego_state");
+  });
+
+  test("DB-006 postgres is healthy only over TCP, so the init-time server does not count", () => {
+    const test = compose.services["postgres"]?.healthcheck?.test.join(" ") ?? "";
+    expect(test).toContain("pg_isready");
+    expect(test).toContain("-h 127.0.0.1");
+  });
+
+  test("every long-running service restarts, and migrate does not", () => {
+    for (const name of ["postgres", "hub", "guacd", "certs"]) {
+      expect(compose.services[name]?.restart).toBe("unless-stopped");
+    }
+    expect(compose.services["migrate"]?.restart).toBe("no");
+  });
+
+  test("GW-002 guacd has a tmpfs for its cache", () => {
+    expect(compose.services["guacd"]?.tmpfs).toContain("/tmp");
   });
 });
 

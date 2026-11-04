@@ -6,7 +6,7 @@ COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
 RUN cargo build --release --locked -p anima-hub
 
-FROM debian:bookworm-slim
+FROM debian:bookworm-20261027-slim
 RUN apt-get update \
     && apt-get install --no-install-recommends -y ca-certificates \
     && rm -rf /var/lib/apt/lists/* \

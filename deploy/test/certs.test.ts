@@ -1,6 +1,6 @@
 // deploy/certs/install.sh, the lego hook (DNS-002, SEC-001), run in a temporary folder.
 import { afterEach, describe, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -10,44 +10,87 @@ afterEach(() => {
   for (const folder of folders.splice(0)) rmSync(folder, { recursive: true, force: true });
 });
 
-function runHook(env: Record<string, string> = {}) {
+interface Run {
+  exitCode: number;
+  output: string;
+  dest: string;
+  folder: string;
+}
+
+function setup(): { folder: string; chain: string; key: string; dest: string } {
   const folder = mkdtempSync(join(tmpdir(), "anima-certs-"));
   folders.push(folder);
   const chain = join(folder, "chain.crt");
   const key = join(folder, "chain.key");
   writeFileSync(chain, "CHAIN\n");
   writeFileSync(key, "KEY\n");
-  const dest = join(folder, "hub");
+  return { folder, chain, key, dest: join(folder, "hub") };
+}
+
+function run(env: Record<string, string> = {}, existing?: ReturnType<typeof setup>): Run {
+  const { folder, chain, key, dest } = existing ?? setup();
   const result = Bun.spawnSync(["sh", HOOK], {
-    env: { PATH: process.env["PATH"] ?? "", ANIMA_CERTS_DIR: dest, ANIMA_CERTS_OWNER: "", LEGO_CERT_PATH: chain, LEGO_CERT_KEY_PATH: key, ...env },
+    env: { PATH: process.env["PATH"] ?? "", ANIMA_CERTS_DIR: dest, ANIMA_CERTS_OWNER: "", ANIMA_CERTS_STAMP: join(folder, "stamp"), LEGO_CERT_PATH: chain, LEGO_CERT_KEY_PATH: key, ...env },
     stdin: "ignore",
   });
-  return { result, dest };
+  return { exitCode: result.exitCode ?? 1, output: result.stdout.toString() + result.stderr.toString(), dest, folder };
 }
 
 describe("install.sh", () => {
-  test("DNS-002 copies the chain and key with the modes the hub needs", () => {
-    const { result, dest } = runHook();
-    expect(result.exitCode).toBe(0);
-    expect(readFileSync(join(dest, "fullchain.pem"), "utf8")).toBe("CHAIN\n");
-    expect(readFileSync(join(dest, "key.pem"), "utf8")).toBe("KEY\n");
-    expect(statSync(join(dest, "key.pem")).mode & 0o777).toBe(0o400);
-    expect(statSync(join(dest, "fullchain.pem")).mode & 0o777).toBe(0o444);
+  test("DNS-002 writes key and chain as one tls.pem, mode 0400", () => {
+    const { exitCode, dest } = run();
+    expect(exitCode).toBe(0);
+    expect(readFileSync(join(dest, "tls.pem"), "utf8")).toBe("KEY\nCHAIN\n");
+    expect(statSync(join(dest, "tls.pem")).mode & 0o777).toBe(0o400);
   });
 
   test("DNS-002 leaves no temporary file behind", () => {
-    const { dest } = runHook();
-    expect(readdirSync(dest).sort()).toEqual(["fullchain.pem", "key.pem"]);
+    const { dest } = run();
+    expect(readdirSync(dest)).toEqual(["tls.pem"]);
   });
 
   test("SEC-001 never prints the key", () => {
-    const { result } = runHook();
-    expect(result.stdout.toString() + result.stderr.toString()).not.toContain("KEY");
+    expect(run().output).not.toContain("KEY");
   });
 
   test("DNS-002 fails and writes nothing when lego gives no key path", () => {
-    const { result, dest } = runHook({ LEGO_CERT_KEY_PATH: "" });
-    expect(result.exitCode).not.toBe(0);
-    expect(existsSync(join(dest, "key.pem"))).toBe(false);
+    const { exitCode, dest } = run({ LEGO_CERT_KEY_PATH: "" });
+    expect(exitCode).not.toBe(0);
+    expect(existsSync(join(dest, "tls.pem"))).toBe(false);
+  });
+
+  test("DNS-002 replaces a different installed file and leaves an identical one untouched", () => {
+    const first = setup();
+    run({}, first);
+    const before = statSync(join(first.dest, "tls.pem")).ino;
+    expect(run({}, first).output).toContain("up to date");
+    expect(statSync(join(first.dest, "tls.pem")).ino).toBe(before);
+    writeFileSync(first.chain, "NEWCHAIN\n");
+    run({}, first);
+    expect(readFileSync(join(first.dest, "tls.pem"), "utf8")).toBe("KEY\nNEWCHAIN\n");
+    expect(readdirSync(first.dest)).toEqual(["tls.pem"]);
+  });
+
+  test("SEC-001 chmod runs before chown and never after it (root without capabilities cannot chmod a file it gave away)", () => {
+    const env = setup();
+    const shims = join(env.folder, "shims");
+    const log = join(env.folder, "calls.log");
+    mkdirSync(shims);
+    for (const tool of ["chmod", "chown"]) {
+      const real = Bun.which(tool, { PATH: "/bin:/usr/bin:/usr/sbin:/sbin" });
+      if (real === null) throw new Error(`${tool} not found`);
+      const shim = join(shims, tool);
+      // The shim records the call and does nothing else; the order is what is tested.
+      writeFileSync(shim, `#!/bin/sh\necho "${tool} $*" >>"${log}"\n[ "${tool}" = chmod ] && exec "${real}" "$@"\nexit 0\n`);
+      chmodSync(shim, 0o755);
+    }
+    const result = run({ PATH: `${shims}:${process.env["PATH"] ?? ""}`, ANIMA_CERTS_OWNER: "10001:10001" }, env);
+    expect(result.exitCode).toBe(0);
+    const calls = readFileSync(log, "utf8").trim().split("\n");
+    const lastChmod = calls.map((call) => call.startsWith("chmod")).lastIndexOf(true);
+    const firstChown = calls.findIndex((call) => call.startsWith("chown"));
+    expect(firstChown).toBeGreaterThan(-1);
+    expect(lastChmod).toBeLessThan(firstChown);
+    expect(calls[firstChown]).toContain("10001:10001");
   });
 });

@@ -1,5 +1,6 @@
 # Anima hub deployment (WP-04 stage A). Run with `docker compose up -d` from this folder.
 # Required in the environment or in deploy/.env: ANIMA_HUB_ADDRESS, ANIMA_ACME_EMAIL.
+# Run `sh bin/preflight` first (VPN address, Docker version, secret files).
 # See README.md. Secret files are made by bin/make-secrets (DB-002, SEC-004, DNS-003).
 
 # Log rotation on every service (spec Section 3.8).
@@ -25,7 +26,7 @@ x-hub-image: &hub-image
 services:
   postgres:
     <<: *hardened
-    image: postgres:17.6-bookworm
+    image: postgres:17.11-bookworm
     # The official entrypoint starts as root to fix ownership. Starting as the postgres user
     # (999) skips that step, so no capability is needed.
     user: "999:999"
@@ -67,6 +68,8 @@ services:
     <<: *hardened
     image: goacme/lego:v4.25.2
     entrypoint: ["sh", "/anima/certs/run.sh"]
+    # A stop signal reaches the shell through the init process and ends the sleep loop.
+    init: true
     # Root, because the hook gives the files to the hub user (10001). CHOWN is the only
     # capability kept.
     cap_add: [CHOWN]
@@ -77,15 +80,15 @@ services:
     secrets: [cloudflare_dns_token]
     volumes:
       - certs:/certs
-      - lego_state:/lego
+      - lego_state:/var/lib/lego
       - ./certs:/anima/certs:ro
     tmpfs: ["/tmp"]
     networks: [acme]
     healthcheck:
-      test: ["CMD", "sh", "-c", "test -s /certs/hub/key.pem && test -s /certs/hub/fullchain.pem"]
+      test: ["CMD", "sh", "-c", "test -s /certs/hub/tls.pem"]
       interval: 10s
       timeout: 5s
-      retries: 30
+      retries: 90
       start_period: 60s
     restart: unless-stopped
 
@@ -96,6 +99,9 @@ services:
       additional_contexts:
         fonts: ../apps/client/src/styles/fonts
     image: anima-guacd:local
+    environment:
+      # The root is read-only; fontconfig writes its cache here.
+      XDG_CACHE_HOME: /tmp
     tmpfs: ["/tmp"]
     networks: [gateway]
     restart: unless-stopped
@@ -106,8 +112,8 @@ services:
       ANIMA_LISTEN: ${ANIMA_HUB_IP:-172.30.0.10}:8443
       ANIMA_DATABASE_URL_FILE: /run/secrets/database_url
       ANIMA_KEY_FILE: /run/secrets/anima_key
-      ANIMA_TLS_CERT_FILE: /certs/hub/fullchain.pem
-      ANIMA_TLS_KEY_FILE: /certs/hub/key.pem
+      ANIMA_TLS_CERT_FILE: /certs/hub/tls.pem
+      ANIMA_TLS_KEY_FILE: /certs/hub/tls.pem
       ANIMA_GUACD: guacd:4822
       ANIMA_PERMITTED_NETWORKS: ${ANIMA_PERMITTED_NETWORKS:-100.64.0.0/10}
       ANIMA_LOG: ${ANIMA_LOG:-info}
