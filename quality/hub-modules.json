@@ -3,7 +3,8 @@
     "ids",
     "status",
     "clock",
-    "config"
+    "config",
+    "scalars"
   ],
   "wiring": [
     "main",
