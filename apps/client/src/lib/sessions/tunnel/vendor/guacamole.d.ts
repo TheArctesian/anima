@@ -1,19 +1,24 @@
-// Hand-written types for the vendored Apache Guacamole 1.5.0 client (`guacamole.js`, R-045). They cover only
-// what Anima calls; every signature is taken from the 1.5.0 source. Add a member only when a caller needs it.
+// Hand-written types for the vendored Apache Guacamole 1.5.5 client (`guacamole.js`, R-045, R-046). They cover
+// only what Anima calls (the tunnel, the session view and their tests); every signature is taken from the 1.5.5
+// source. Add a member only when a caller needs it.
 //
-// K4 §5 note: 1.5.0 hides the WebSocket close code. `WebSocketTunnel` keeps its socket private and, on close,
-// reports only a Guacamole status that `Status.Code.fromWebSocketCode` derives from the code (1002, 1011, 4001
-// and 4002 all become 0x0200 SERVER_ERROR). `tunnel/socket.ts` observes the code instead (`withObservedSocket`).
-// The 1.5.0 `Client` does not watch its tunnel: when the socket closes without a `disconnect` or `error`
-// instruction, the client stays WAITING or CONNECTED until `disconnect()` is called.
+// 1.5.5 against 1.5.0, for what Anima calls: element lengths are counted in code points both ways
+// (`Guacamole.Parser`, `Parser.toInstruction`), so a non-BMP character no longer shifts the parse; the tunnel
+// pings and the client's `nop` keep-alive are rescheduled timeouts instead of fixed intervals; a first internal
+// instruction is the tunnel UUID only when it has exactly one argument. The client states are still private
+// numbers (there is no `Client.State` in 1.5.5), and `Guacamole.API_VERSION` still reads "1.5.4".
+//
+// K4 §5 note: 1.5.5 still hides the WebSocket close code. `WebSocketTunnel` keeps its socket private and, on
+// close, reports only a Guacamole status that `Status.Code.fromWebSocketCode` derives from the code (1002, 1011,
+// 4001 and 4002 all become 0x0200 SERVER_ERROR). `tunnel/socket.ts` observes the code instead
+// (`withObservedSocket`). The `Client` does not watch its tunnel: when the socket closes without a `disconnect`
+// or `error` instruction, the client stays WAITING or CONNECTED until `disconnect()` is called.
 
 declare namespace Guacamole {
   /** A Guacamole protocol status: a numeric code (0x0000 success, 0x0200.. errors) and an optional text. */
   class Status {
-    constructor(code: number, message?: string);
     readonly code: number;
     readonly message: string | undefined;
-    isError(): boolean;
   }
 
   /** The base of every tunnel; `state` is one of `Tunnel.State`. */
@@ -21,9 +26,7 @@ declare namespace Guacamole {
     state: number;
     /** Sets `state` and calls `onstatechange` when it changed. */
     setState(state: number): void;
-    disconnect(): void;
     onstatechange: ((state: number) => void) | null;
-    onerror: ((status: Status) => void) | null;
   }
 
   namespace Tunnel {
@@ -73,7 +76,7 @@ declare namespace Guacamole {
   }
 
   /**
-   * The Guacamole client over one tunnel. `onstatechange` hears the private 1.5.0 states 0 IDLE, 1 CONNECTING,
+   * The Guacamole client over one tunnel. `onstatechange` hears the private 1.5.5 states 0 IDLE, 1 CONNECTING,
    * 2 WAITING, 3 CONNECTED (first `sync`), 4 DISCONNECTING, 5 DISCONNECTED. A gateway `error` instruction calls
    * `onerror`, then `disconnect()`. The send methods do nothing unless the state is WAITING or CONNECTED.
    */
@@ -83,7 +86,7 @@ declare namespace Guacamole {
     disconnect(): void;
     getDisplay(): Display;
     sendSize(width: number, height: number): void;
-    /** 1.5.0 writes `pressed` with `String()`, so pass 1 or 0, never a boolean (guacd reads an integer). */
+    /** 1.5.5 writes `pressed` as `'' + pressed`, so pass 1 or 0, never a boolean (guacd reads an integer). */
     sendKeyEvent(pressed: 0 | 1, keysym: number): void;
     sendMouseState(state: Mouse.State, applyDisplayScale?: boolean): void;
     /** Opens a `clipboard` stream with `mimetype`; write it with a `StringWriter`. */
@@ -91,6 +94,8 @@ declare namespace Guacamole {
     onstatechange: ((state: number) => void) | null;
     onerror: ((status: Status) => void) | null;
     onclipboard: ((stream: InputStream, mimetype: string) => void) | null;
+    /** The gateway's `name` instruction (the connection name). */
+    onname: ((name: string) => void) | null;
   }
 
   /**

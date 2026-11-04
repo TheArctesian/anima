@@ -5,7 +5,7 @@ import { tunnelUrl } from './url';
 export type { SocketConstructor } from './socket';
 
 /**
- * Where the session stands, from the 1.5.0 client states: `connecting` while the socket is made, `waiting` until
+ * Where the session stands, from the 1.5.5 client states: `connecting` while the socket is made, `waiting` until
  * the gateway's first frame (`sync`), `connected` after it, `disconnected` once the client or the tunnel stopped.
  */
 export type TunnelPhase = 'connecting' | 'waiting' | 'connected' | 'disconnected';
@@ -31,7 +31,7 @@ export interface TunnelOptions {
   /** The hub origin, `https://host[:port]` (`hub.address.origin`). */
   readonly origin: string;
   readonly ticket: TunnelTicket;
-  /** Hears every change of the state. */
+  /** Hears every change of the state after `openTunnel` has connected; the first call gives the state then. */
   readonly onchange?: (state: TunnelState) => void;
   /** Hears the final state once, after the WebSocket closed and the client stopped. */
   readonly onend?: (state: TunnelState) => void;
@@ -65,7 +65,7 @@ const REFUSALS: Readonly<Record<TunnelRefusal['problem'], string>> = {
   'not-opened': 'The session tunnel could not be opened.',
 };
 
-/** The 1.5.0 client states (private in the library), as phases; 0 IDLE follows a failed `connect`. */
+/** The 1.5.5 client states (private in the library), as phases; 0 IDLE follows a failed `connect`. */
 const PHASES: readonly TunnelPhase[] = ['disconnected', 'connecting', 'waiting', 'connected', 'disconnected', 'disconnected'];
 
 interface Events {
@@ -77,12 +77,19 @@ interface Events {
 function trackedTunnel(url: string, events: Events) {
   const tunnel = new Guacamole.WebSocketTunnel(url);
   const client = new Guacamole.Client(tunnel);
-  let state: TunnelState = { phase: 'connecting', opened: false, gatewayError: undefined, closeCode: undefined };
-  let ended = false;
+  const initial: TunnelState = { phase: 'connecting', opened: false, gatewayError: undefined, closeCode: undefined };
+  let state = initial;
+  // `onchange` is held back while `connect` runs (the global WebSocket is swapped then, see `socket.ts`).
+  let connected = false;
   const update = (change: Partial<TunnelState>) => {
     if (Object.entries(change).every(([key, value]) => state[key as keyof TunnelState] === value)) return;
     state = { ...state, ...change };
-    events.onchange?.(state);
+    if (connected) events.onchange?.(state);
+  };
+  /** `connect` has returned: report the state it reached, once, if it changed. */
+  const release = () => {
+    connected = true;
+    if (state !== initial) events.onchange?.(state);
   };
   client.onstatechange = (clientState) => {
     update({ phase: PHASES[clientState] ?? 'disconnected' });
@@ -92,15 +99,16 @@ function trackedTunnel(url: string, events: Events) {
   };
   tunnel.onstatechange = (tunnelState) => {
     if (tunnelState === Guacamole.Tunnel.State.OPEN) update({ opened: true });
-    // The 1.5.0 client does not watch its tunnel; stop it so that its keep-alive timer ends too.
+    // The 1.5.5 client does not watch its tunnel; stop it so that its keep-alive timer ends too.
     if (tunnelState === Guacamole.Tunnel.State.CLOSED) client.disconnect();
   };
   const socketClosed = (code: number) => {
+    // A socket closed after a failed `connect` belongs to a tunnel that was refused, not ended.
+    if (!connected) return;
     update({ closeCode: code });
-    // The listener runs before the library handles the close; report the end after it has.
+    // The listener runs before the library handles the close; report the end after it has. It is added to the
+    // tunnel's one socket only, and a WebSocket fires `close` once, so the end is reported once.
     queueMicrotask(() => {
-      if (ended) return;
-      ended = true;
       events.onend?.(state);
     });
   };
@@ -111,12 +119,12 @@ function trackedTunnel(url: string, events: Events) {
       client.disconnect();
     },
   };
-  // After a `connect` that threw there is no socket, and 1.5.0's `disconnect` would call `close` on null:
+  // After a `connect` that threw there is no socket, and 1.5.5's `disconnect` would call `close` on null:
   // marking the tunnel closed first makes it only clear its timers (and stops the client through the hook above).
   const abandon = () => {
     tunnel.setState(Guacamole.Tunnel.State.CLOSED);
   };
-  return { handle, socketClosed, abandon };
+  return { handle, socketClosed, abandon, release };
 }
 
 /**
@@ -127,7 +135,7 @@ function trackedTunnel(url: string, events: Events) {
 export function openTunnel(options: TunnelOptions): TunnelOpening {
   const url = tunnelUrl(options.origin, options.ticket.tunnelPath);
   if (url === undefined) return refused('bad-address');
-  const { handle, socketClosed, abandon } = trackedTunnel(url, { onchange: options.onchange, onend: options.onend });
+  const { handle, socketClosed, abandon, release } = trackedTunnel(url, { onchange: options.onchange, onend: options.onend });
   try {
     withObservedSocket(options.WebSocket ?? globalThis.WebSocket, socketClosed, () => {
       handle.client.connect(`token=${encodeURIComponent(options.ticket.token)}`);
@@ -137,6 +145,7 @@ export function openTunnel(options: TunnelOptions): TunnelOpening {
     abandon();
     return refused('not-opened');
   }
+  release();
   return { ok: true, value: handle };
 }
 

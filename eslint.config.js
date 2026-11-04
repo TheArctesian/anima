@@ -18,7 +18,7 @@ const limits = {
 // disable the line with a reason when that is intended. URL fragments such as
 // 'https://x.io/#abc123' are refused too; build the URL from parts.
 // Do not set no-restricted-syntax for apps/client files in another config object: it
-// replaces this list. Extend tokenLiterals instead.
+// replaces this list. Extend tokenLiterals (or the list it is spread into) instead.
 const textRules = [
   [
     String.raw`(?<![\w&])#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})(?![\w-])`,
@@ -79,7 +79,17 @@ const motionImports = [{ regex: String.raw`^(?:motion|motion-dom|framer-motion)(
 const wsImports = [{ regex: String.raw`^graphql-ws(?:/|$)`, message: wsHint }];
 // The vendored Apache Guacamole client (R-045), and the npm repackaging it replaces.
 const npmGuacamoleImports = [{ regex: String.raw`^guacamole-common-js(?:/|$)`, message: guacamoleHint }];
-const guacamoleImports = [...npmGuacamoleImports, { regex: String.raw`(?:^|/)tunnel/vendor(?:/|$)`, message: guacamoleHint }];
+// Any path that names the vendor folder or the vendored file, however it is reached.
+const vendorPath = String.raw`(?:^|/)tunnel/vendor(?:/|$)|vendor/guacamole`;
+const guacamoleImports = [...npmGuacamoleImports, { regex: vendorPath, message: guacamoleHint }];
+// `import()` is not covered by no-restricted-imports; the tunnel imports the client statically, so a dynamic
+// import of it is refused everywhere (added to the one no-restricted-syntax list below).
+// esquery ends a regex at an unescaped `/`, so the selector escapes them.
+const guacamoleSelectorPath = `${vendorPath}|^guacamole-common-js(?:/|$)`.replaceAll('/', String.raw`\/`);
+const guacamoleDynamicImports = [
+  `ImportExpression > Literal[value=/${guacamoleSelectorPath}/]`,
+  `ImportExpression > TemplateLiteral > TemplateElement[value.raw=/${guacamoleSelectorPath}/]`,
+].map((selector) => ({ selector, message: guacamoleHint }));
 const transportGlobal = (name) => ({ name, message: transportHint });
 const transportGlobals = ['fetch', 'WebSocket', 'EventSource', 'XMLHttpRequest'].map(transportGlobal);
 const fetchProperties = ['window', 'globalThis', 'self'].map((object) => ({
@@ -161,7 +171,7 @@ export default tseslint.config(
   {
     files: ['apps/client/**/*.{ts,js,svelte}'],
     ignores: ['apps/client/src/lib/motion/tokens.ts', '**/*.test.ts'],
-    rules: { 'no-restricted-syntax': ['error', ...tokenLiterals] },
+    rules: { 'no-restricted-syntax': ['error', ...tokenLiterals, ...guacamoleDynamicImports] },
   },
   {
     files: ['**/*.svelte'],

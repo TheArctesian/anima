@@ -1,26 +1,35 @@
 // Test support: the hub's side of one session WebSocket, driven by hand under the real Guacamole client
 // (K4 §4, §5). Pass `FAKE_TUNNEL_SOCKET` as `WebSocket` to `openTunnel` or `startTunnel`. No vitest import here.
-import type { SocketConstructor } from './socket';
+import type { SocketConstructor } from '../socket';
 
 type Listener = (event: { code: number; reason: string; wasClean: boolean }) => void;
 
-/** One Guacamole instruction as text: `<len>.<opcode>,<len>.<arg>,…;` (lengths in UTF-16 units, as 1.5.0 counts). */
-export function encodeInstruction(opcode: string, ...args: readonly (string | number)[]): string {
-  return `${[opcode, ...args].map((element) => `${String(element).length}.${String(element)}`).join(',')};`;
+/** How many Unicode code points `text` holds: the unit of every Guacamole element length (guacd, the hub). */
+export function codePoints(text: string): number {
+  return [...text].length;
 }
 
-/** Split one message into instructions, reading each element's length; throws on a malformed one. */
+/**
+ * One Guacamole instruction as the hub relays it: `<len>.<opcode>,<len>.<arg>,…;`, each length in code points
+ * (K4 §4). A character outside the BMP counts once here but twice in a JavaScript string's `length`.
+ */
+export function encodeInstruction(opcode: string, ...args: readonly (string | number)[]): string {
+  return `${[opcode, ...args].map((element) => `${String(codePoints(String(element)))}.${String(element)}`).join(',')};`;
+}
+
+/** Split one message into instructions, reading each element's length in code points; throws on a malformed one. */
 export function decodeInstructions(message: string): string[][] {
+  const points = [...message];
   const instructions: string[][] = [];
   let elements: string[] = [];
   let at = 0;
-  while (at < message.length) {
-    const dot = message.indexOf('.', at);
-    const length = Number(message.slice(at, dot));
-    if (dot < 0 || !Number.isInteger(length) || length < 0) throw new Error(`malformed instruction at ${String(at)}`);
+  while (at < points.length) {
+    const dot = points.indexOf('.', at);
+    const length = Number(points.slice(at, dot).join(''));
+    if (dot <= at || !Number.isInteger(length) || length < 0) throw new Error(`malformed instruction at ${String(at)}`);
     const end = dot + 1 + length;
-    elements.push(message.slice(dot + 1, end));
-    const terminator = message.charAt(end);
+    elements.push(points.slice(dot + 1, end).join(''));
+    const terminator = points[end];
     if (terminator === ';') {
       instructions.push(elements);
       elements = [];

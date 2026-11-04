@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ending } from '../ending';
-import { installBlankCanvas } from './canvas.fixture';
-import { encodeInstruction, FAKE_TUNNEL_SOCKET, FakeTunnelSocket } from './socket.fixture';
+import { installBlankCanvas } from './fake/canvas.fixture';
+import { decodeInstructions, encodeInstruction, FAKE_TUNNEL_SOCKET, FakeTunnelSocket } from './fake/socket.fixture';
 import { openTunnel, type SessionTunnel, type TunnelState } from './tunnel';
 import Guacamole from './vendor/guacamole.js';
 
@@ -115,7 +115,50 @@ describe('tunnel request (K4 §2, SEC-002, D-3)', () => {
   });
 });
 
+describe('tunnel connect (D-3, K4 §4)', () => {
+  it('D-3: onchange is held back while connect runs (the global WebSocket is swapped then)', () => {
+    const real = globalThis.WebSocket;
+    const heard: { socket: typeof WebSocket; phase: string }[] = [];
+    const opening = openTunnel({
+      origin: ORIGIN,
+      ticket: { tunnelPath: '/tunnel', token: TOKEN },
+      WebSocket: FAKE_TUNNEL_SOCKET,
+      onchange: (state) => heard.push({ socket: globalThis.WebSocket, phase: state.phase }),
+    });
+    if (opening.ok) tunnels.push(opening.value);
+    FakeTunnelSocket.latest().open();
+    // connecting → waiting happened inside connect; it is reported once, after, with the real global back.
+    expect(heard.map((entry) => entry.phase)).toEqual(['waiting', 'waiting']);
+    expect(heard.every((entry) => entry.socket === real)).toBe(true);
+  });
+
+  it('K4 §4: the client pings with the internal instruction and keeps alive with nop', () => {
+    const { socket } = open();
+    socket.open();
+    vi.advanceTimersByTime(5_000);
+    // 1.5.5 schedules its `nop` when an instruction arrives and 5 s have passed since the last one.
+    socket.sync();
+    const internal = socket.sent.flatMap(decodeInstructions).filter(([opcode]) => opcode === '');
+    expect(internal.length).toBeGreaterThan(0);
+    expect(internal.every(([, name, at]) => name === 'ping' && /^\d+$/.test(at ?? ''))).toBe(true);
+    expect(socket.sentInstructions()).toContainEqual(['nop']);
+  });
+
+  it('SEC-002: a refused connect reports no change and no end', async () => {
+    const changes: TunnelState[] = [];
+    const ends: TunnelState[] = [];
+    const throwing = function (url: string): never {
+      throw new SyntaxError(`The URL '${url}' is invalid.`);
+    } as unknown as typeof WebSocket;
+    openTunnel({ origin: ORIGIN, ticket: { tunnelPath: '/tunnel', token: TOKEN }, WebSocket: throwing, onchange: (s) => changes.push(s), onend: (s) => ends.push(s) });
+    await settle();
+    expect(changes).toEqual([]);
+    expect(ends).toEqual([]);
+  });
+});
+
 describe('tunnel state (K4 §4)', () => {
+
   it('K4 §4: moves through waiting, opened and connected', () => {
     const { tunnel, socket, states } = open();
     expect(tunnel.state()).toMatchObject({ phase: 'waiting', opened: false });

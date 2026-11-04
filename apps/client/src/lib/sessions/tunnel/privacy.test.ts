@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
+import { inspect } from 'node:util';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ending, recordedEnding } from '../ending';
-import { installBlankCanvas } from './canvas.fixture';
-import { FAKE_TUNNEL_SOCKET, FakeTunnelSocket } from './socket.fixture';
+import { installBlankCanvas } from './fake/canvas.fixture';
+import { FAKE_TUNNEL_SOCKET, FakeTunnelSocket } from './fake/socket.fixture';
 import { startTunnel } from './start';
 import { openTunnel, type TunnelState } from './tunnel';
 import Guacamole from './vendor/guacamole.js';
@@ -32,9 +33,20 @@ function spyOnConsole() {
   return METHODS.map((method) => vi.spyOn(console, method).mockImplementation(() => undefined));
 }
 
-/** Everything written to the console, as one string per call. */
+/**
+ * Every way a value could show its text: `JSON.stringify` alone gives `{}` for an Error, so errors also give
+ * `String(e)`, `e.message`, `e.stack` and `inspect(e)` (which includes the cause and own properties).
+ */
+function rendered(value: unknown): string {
+  const inspected = inspect(value, { depth: 8, showHidden: true });
+  if (typeof value === 'string') return value;
+  if (value instanceof Error) return [String(value), value.message, value.stack ?? '', inspected].join('\n');
+  return inspected;
+}
+
+/** Everything written to the console, one string per call. */
 function logged(spies: ReturnType<typeof spyOnConsole>): string[] {
-  return spies.flatMap((spy) => spy.mock.calls.map((args) => args.map((arg) => (typeof arg === 'string' ? arg : JSON.stringify(arg))).join(' ')));
+  return spies.flatMap((spy) => spy.mock.calls.map((args) => args.map(rendered).join(' ')));
 }
 
 describe('session paths keep secrets out of logs (LOG-007, SEC-002)', () => {
@@ -72,7 +84,7 @@ describe('session paths keep secrets out of logs (LOG-007, SEC-002)', () => {
     const final = started.value.tunnel.state();
     const shown = recordedEnding(ending(final), 'AUTH_FAILED');
 
-    const visible = [...logged(spies), JSON.stringify(states), JSON.stringify(final), shown.text].join('\n');
+    const visible = [...logged(spies), rendered(states), rendered(final), shown.text].join('\n');
     for (const marker of MARKERS) expect(visible).not.toContain(marker);
     expect(socket.sentInstructions()).toContainEqual(['key', String(KEYSYM_MARKER), '1']);
   });
@@ -84,7 +96,18 @@ describe('session paths keep secrets out of logs (LOG-007, SEC-002)', () => {
       throw new DOMException(`Refused to connect to '${url}'`, 'SecurityError');
     } as unknown as typeof WebSocket;
     const opening = openTunnel({ origin: 'https://hub.anima.ing', ticket: { tunnelPath: '/tunnel', token: TOKEN_MARKER }, WebSocket: throwing });
-    expect(JSON.stringify(opening)).not.toContain(TOKEN_MARKER);
+    expect(rendered(opening)).not.toContain(TOKEN_MARKER);
     expect(logged(spies)).toEqual([]);
+  });
+
+  it('LOG-007: the log check sees a token inside an Error, which JSON.stringify would hide', () => {
+    const spies = spyOnConsole();
+    const leak = new Error(`tunnel failed for ${TOKEN_MARKER}`);
+    console.error(leak);
+    console.debug({ cause: new Error('wrapped', { cause: TOKEN_MARKER }) });
+    expect(JSON.stringify(leak)).toBe('{}');
+    const lines = logged(spies);
+    expect(lines).toHaveLength(2);
+    for (const line of lines) expect(line).toContain(TOKEN_MARKER);
   });
 });
