@@ -2,7 +2,7 @@
 import { flushSync, mount, tick, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { HubResult } from '$lib/hub/error';
-import { installAnimations, played } from '../animations.fixture';
+import { installAnimations } from '../animations.fixture';
 import ConfirmModal from './ConfirmModal.svelte';
 import HostKeyModal from './HostKeyModal.svelte';
 

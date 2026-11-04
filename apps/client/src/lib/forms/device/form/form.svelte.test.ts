@@ -5,7 +5,7 @@ import type { HubResult } from '$lib/hub/error';
 import { installAnimations } from '../../animations.fixture';
 import { credentialInput } from '../input';
 import type { ConnectionTestResult } from '../hub-types';
-import { HOST_KEY, KEY, OK, SAVED, button, choose, input, leave, save, settle, show, type } from './form.fixture';
+import { HOST_KEY, KEY, SAVED, button, choose, input, leave, save, settle, show, type } from './form.fixture';
 
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
