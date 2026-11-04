@@ -1,36 +1,75 @@
-//! GraphQL schema root. Later packages merge domain parts into `Query`.
+//! GraphQL schema root: merges each domain's `Query` and `Mutation` (CQ-033, K3).
 
 use std::sync::Arc;
 
-use async_graphql::{EmptyMutation, EmptySubscription, Object, Schema, SchemaBuilder};
+use async_graphql::{EmptySubscription, MergedObject, Object, Schema, SchemaBuilder};
+use sqlx::PgPool;
 
 use crate::{
+    access,
     clock::Clock,
     config::Config,
-    events::process_log::{InternalErrors, RequestSpan},
+    credentials::Vault,
+    events::{
+        Bus,
+        process_log::{InternalErrors, RequestSpan},
+    },
 };
 
-pub struct Query;
+#[derive(Default)]
+pub struct Health;
 
-#[Object]
-impl Query {
-    /// Liveness probe.
+#[Object(name = "HealthQuery")]
+impl Health {
+    /// Liveness probe. Needs a token like every operation except `login` (API-003).
     async fn health(&self) -> &'static str {
         "ok"
     }
 }
 
-pub type HubSchema = Schema<Query, EmptyMutation, EmptySubscription>;
+#[derive(MergedObject, Default)]
+pub struct Query(access::graphql::Query, Health);
+
+#[derive(MergedObject, Default)]
+pub struct Mutation(access::graphql::Mutation);
+
+pub type HubSchema = Schema<Query, Mutation, EmptySubscription>;
+
+/// What `main.rs` builds once and the schema hands to resolvers as context data (R-002).
+pub struct Dependencies {
+    pub config: Arc<Config>,
+    pub clock: Arc<dyn Clock>,
+    pub pool: PgPool,
+    pub bus: Bus,
+    /// Registered as `Vault` itself, as K3 writes `.data(vault)`; a router that needs it too
+    /// gets its own clone.
+    pub vault: Vault,
+}
 
 /// Put each dependency into the schema data; resolvers read them with `ctx.data::<T>()`.
+/// The access extension refuses every operation without a token except `login` (API-003).
+/// Validation errors never suggest field names ("Did you mean"), so a signed-out client
+/// learns nothing about the schema from a typo (API-003, API-007).
 #[must_use]
-pub fn build_schema(config: Arc<Config>, clock: Arc<dyn Clock>) -> HubSchema {
+pub fn build_schema(dependencies: Dependencies) -> HubSchema {
+    let Dependencies {
+        config,
+        clock,
+        pool,
+        bus,
+        vault,
+    } = dependencies;
     harden(
-        Schema::build(Query, EmptyMutation, EmptySubscription),
+        Schema::build(Query::default(), Mutation::default(), EmptySubscription),
         production_build(),
     )
+    .disable_suggestions()
+    .extension(access::SignInRequired)
     .data(config)
     .data(clock)
+    .data(pool)
+    .data(bus)
+    .data(vault)
     .finish()
 }
 
