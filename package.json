@@ -1,0 +1,29 @@
+{
+  "name": "anima",
+  "private": true,
+  "type": "module",
+  "workspaces": ["apps/*", "quality"],
+  "scripts": {
+    "gates": "bun quality/bin/gates.ts",
+    "lint": "bun run --filter '*' lint",
+    "check": "bun run --filter '*' check",
+    "test": "bun run --filter '*' test",
+    "quality:limits": "bun run --cwd quality limits",
+    "quality:baseline": "bun run --cwd quality baseline",
+    "quality:names": "bun run --cwd quality names",
+    "quality:imports": "bun run --cwd quality imports"
+  },
+  "devDependencies": {
+    "@eslint-community/eslint-plugin-eslint-comments": "^4.8.1",
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.6",
+    "eslint": "^10.14.0",
+    "eslint-plugin-svelte": "^3.24.0",
+    "globals": "^17.14.0",
+    "postcss-html": "^2.0.0",
+    "stylelint": "^18.0.0",
+    "stylelint-declaration-strict-value": "^1.12.1",
+    "svelte-eslint-parser": "^1.10.1",
+    "typescript-eslint": "^8.72.1"
+  }
+}

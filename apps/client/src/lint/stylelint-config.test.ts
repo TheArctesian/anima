@@ -1,0 +1,125 @@
+import { fileURLToPath } from 'node:url';
+import stylelint from 'stylelint';
+import { describe, expect, it } from 'vitest';
+
+const root = fileURLToPath(new URL('../../../../', import.meta.url));
+
+async function warnings(code: string, file = 'apps/client/src/lint/sample.css') {
+  const { results } = await stylelint.lint({
+    code,
+    codeFilename: `${root}${file}`,
+    cwd: root,
+    configFile: `${root}.stylelintrc.json`,
+  });
+  return results.flatMap((r) => r.warnings.map((w) => w.rule));
+}
+
+const inSvelte = (css: string) => `<h1>x</h1>\n<style>\n${css}\n</style>\n`;
+const svelteFile = 'apps/client/src/lint/Sample.svelte';
+
+const bad: Record<string, string> = {
+  'a raw hex colour': 'a { color: #ff0000; }',
+  'a raw named colour': 'a { color: red; }',
+  'a raw rgb() colour': 'a { background-color: rgb(1, 2, 3); }',
+  'a raw 200ms duration': 'a { transition-duration: 200ms; }',
+  'a raw duration in the transition shorthand': 'a { transition: opacity 200ms var(--ease); }',
+  'a raw cubic-bezier() curve': 'a { transition-timing-function: cubic-bezier(0.2, 0, 0, 1); }',
+  'a raw ease keyword in the animation shorthand': 'a { animation: spin var(--d) ease-in; }',
+  'a raw z-index': 'a { z-index: 10; }',
+  'a raw font-family': 'a { font-family: Arial; }',
+  'a raw font family in the font shorthand': 'a { font: 12px Arial; }',
+  'a raw border colour': 'a { border: 1px solid #fff; }',
+  'an unlisted family in the font shorthand': 'a { font: 12px Roboto; }',
+  'a quoted family with line-height in the font shorthand': 'a { font: 12px/1 "Fira Code"; }',
+  'an unlisted family in font-family': 'a { font-family: Roboto, sans-serif; }',
+  'an upper-case RGB() colour': 'a { color: RGB(1, 2, 3); }',
+  'a raw number inside calc() for z-index': 'a { z-index: calc(1 + 2); }',
+  'a raw duration in a custom property': 'a { --local: 200ms; }',
+  'a raw z-index in a custom property': 'a { --z: 10; }',
+  'a raw font family in a custom property': 'a { --f: Roboto; }',
+  'a raw colour in a custom property': 'a { --c: #abc; }',
+  'a raw easing curve in a custom property': 'a { --e: cubic-bezier(0, 0, 1, 1); }',
+  'an upper-case 0.2S duration in transition': 'a { transition: opacity 0.2S var(--ease); }',
+  'an upper-case EASE keyword in transition': 'a { transition: opacity var(--d) EASE; }',
+};
+
+const expectedRule: Record<string, string> = {
+  'a raw border colour': 'color-no-hex',
+  'a raw ease keyword in the animation shorthand': 'declaration-property-value-disallowed-list',
+  'a quoted family with line-height in the font shorthand': 'declaration-property-value-allowed-list',
+  'an unlisted family in font-family': 'declaration-property-value-allowed-list',
+  'a raw colour in a custom property': 'color-no-hex',
+  'a raw easing curve in a custom property': 'function-disallowed-list',
+  'an upper-case 0.2S duration in transition': 'declaration-property-value-disallowed-list',
+  'an upper-case EASE keyword in transition': 'declaration-property-value-disallowed-list',
+  'a raw hex colour': 'color-no-hex',
+  'a raw named colour': 'color-named',
+  'a raw rgb() colour': 'function-disallowed-list',
+  'an upper-case RGB() colour': 'function-disallowed-list',
+  'a raw 200ms duration': 'scale-unlimited/declaration-strict-value',
+  'a raw z-index': 'scale-unlimited/declaration-strict-value',
+  'a raw number inside calc() for z-index': 'scale-unlimited/declaration-strict-value',
+  'a raw cubic-bezier() curve': 'function-disallowed-list',
+  'a raw duration in the transition shorthand': 'declaration-property-value-disallowed-list',
+  'a raw font-family': 'declaration-property-value-allowed-list',
+  'an unlisted family in the font shorthand': 'declaration-property-value-allowed-list',
+  'a raw duration in a custom property': 'declaration-property-value-disallowed-list',
+  'a raw z-index in a custom property': 'declaration-property-value-disallowed-list',
+  'a raw font family in a custom property': 'declaration-property-value-disallowed-list',
+};
+
+describe('Stylelint token gate', () => {
+  for (const [name, css] of Object.entries(bad)) {
+    it(`TOK-003 refuses ${name} in a .css file`, async () => {
+      const rules = await warnings(css);
+      expect(rules.length).toBeGreaterThan(0);
+      const expected = expectedRule[name];
+      if (expected) expect(rules).toContain(expected);
+    });
+  }
+
+  for (const [name, css] of [
+    ['a raw hex colour', bad['a raw hex colour']],
+    ['a raw 200ms duration', bad['a raw 200ms duration']],
+    ['a raw cubic-bezier() curve', bad['a raw cubic-bezier() curve']],
+    ['a raw z-index', bad['a raw z-index']],
+    ['a raw font-family', bad['a raw font-family']],
+  ] as const) {
+    it(`TOK-003 refuses ${name} in a .svelte <style>`, async () => {
+      expect((await warnings(inSvelte(css), svelteFile)).length).toBeGreaterThan(0);
+    });
+  }
+
+  it('TOK-003 accepts var(--token) references and neutral keywords', async () => {
+    const css = `a {
+  color: var(--color-text);
+  background-color: transparent;
+  border-color: currentColor;
+  transition-duration: var(--motion-fast);
+  transition-timing-function: var(--ease-standard);
+  z-index: var(--z-modal);
+  font-family: var(--font-body);
+  font: 12px/1.5 var(--font-body);
+  --local-gap: var(--space-2);
+  margin: 0;
+}`;
+    expect(await warnings(css)).toEqual([]);
+    expect(await warnings(inSvelte(css), svelteFile)).toEqual([]);
+  });
+
+  it('TOK-003 accepts one level of nested var() fallback in font and font-family', async () => {
+    const css = 'a { font: 1rem var(--font-body, var(--font-fallback)); font-family: var(--font-body, var(--font-fallback)); }';
+    expect(await warnings(css)).toEqual([]);
+  });
+
+  it('TOK-003 refuses calc() around var() in z-index on purpose: offsets come from tokens', async () => {
+    expect(await warnings('a { z-index: calc(var(--z-base) + 1); }')).toContain(
+      'scale-unlimited/declaration-strict-value',
+    );
+  });
+
+  it('TOK-003 accepts raw values in the generated tokens.css', async () => {
+    const css = ':root { --color-bg: #101010; --motion-fast: 120ms; --z-modal: 10; --font-body: Arial; }';
+    expect(await warnings(css, 'apps/client/src/styles/tokens.css')).toEqual([]);
+  });
+});

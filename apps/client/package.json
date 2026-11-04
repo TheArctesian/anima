@@ -1,0 +1,23 @@
+{
+  "name": "@anima/client",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "lint": "eslint . && stylelint \"src/**/*.{css,svelte}\"",
+    "check": "svelte-kit sync && svelte-check --fail-on-warnings",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-static": "^3.0.10",
+    "@sveltejs/kit": "^2.70.3",
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "svelte": "^5.57.3",
+    "svelte-check": "^4.7.8",
+    "typescript": "^6",
+    "vite": "^8.3.5",
+    "vitest": "^5.1.0"
+  }
+}
