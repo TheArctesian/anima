@@ -13,6 +13,9 @@ use crate::{
 
 use super::error::invalid;
 
+/// K1's default for `kind`.
+const DEFAULT_KIND: &str = "server";
+
 #[derive(InputObject)]
 #[graphql(name = "SshSettingsInput")]
 pub(super) struct SshSettingsInput {
@@ -39,12 +42,12 @@ pub(super) struct CreateDeviceInput {
     site_id: ID,
     name: String,
     host: String,
-    #[graphql(default = "server")]
-    kind: String,
-    #[graphql(default_with = "OperatingSystem::Other")]
-    os: OperatingSystem,
-    #[graphql(default)]
-    tags: Vec<String>,
+    #[graphql(default_with = r#"Some("server".to_owned())"#)]
+    kind: Option<String>,
+    #[graphql(default_with = "Some(OperatingSystem::Other)")]
+    os: Option<OperatingSystem>,
+    #[graphql(default_with = "Some(Vec::<String>::new())")]
+    tags: Option<Vec<String>>,
     ssh: Option<SshSettingsInput>,
     /// When true (the default), the hub adds one ICMP check (spec 6.2). Accepted and ignored
     /// until checks add the behaviour.
@@ -87,9 +90,9 @@ impl CreateDeviceInput {
             site,
             name: self.name,
             host: self.host,
-            kind: self.kind,
-            os: self.os,
-            tags: self.tags,
+            kind: self.kind.unwrap_or_else(|| DEFAULT_KIND.to_owned()),
+            os: self.os.unwrap_or(OperatingSystem::Other),
+            tags: self.tags.unwrap_or_default(),
             ssh: self.ssh.map(SshInput::from),
         };
         (form, bad_site)
