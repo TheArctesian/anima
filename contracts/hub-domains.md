@@ -83,7 +83,7 @@ Wiring only (called from `main.rs`, never from another domain): `create_partitio
 | `events` | — |
 | `credentials` | — |
 | `access` | `events`, `credentials` (Vault only, for TOTP secrets) |
-| `devices` | `events`, `credentials` (`Vault`, `SshSecret`, `has_ssh`, `with_ssh`, `store_ssh`, `clear_ssh`; R-010, R-017) |
+| `devices` | `events`, `credentials` (`Vault`, `Secret`, `SshSecret`, `Error`, `has_ssh`, `with_ssh`, `store_ssh`, `clear_ssh`; R-010, R-017, R-026) |
 | `maintenance` | — (pure rules and its own store; callers pass the device, check and tags) |
 | `checks` | `devices`, `maintenance`, `events` |
 | `sessions` | `access`, `devices`, `credentials`, `events` |

@@ -26,7 +26,7 @@ The operator approved all seven contracts on 2026-11-03 (checkpoint 1). Only a r
 | WP-04 Deployment, stage A (hub) | 1 | Building (prepares files only; operator confirms each host and Cloudflare change) | own worktree from `phase-1` | `wp-04-hub-deploy` |
 | WP-04 Deployment, stage B (releases and self-update, R-006) | 3 | Waiting (WP-15, WP-16; operator sets secrets) | — | — |
 | WP-05 Access and logs | 1 | Building; T1 and T7 merged early into `phase-1` (2581982) | own worktree from `phase-1` | `wp-05-access` |
-| WP-06 Devices | 1 | Building; T1 migrations merged early into `phase-1` (668c898) | own worktree from `phase-1` | `wp-06-devices` |
+| WP-06 Devices | 1 | Accepted, merged into `phase-1` (5cdc99c) | own worktree from `phase-1` | `wp-06-devices` |
 | WP-07 Credentials | 1 | Accepted, merged into `phase-1` (3f1f830) | own worktree from `phase-1` | `wp-07-credentials` |
 | WP-08 guac-protocol | 1 | Accepted, merged into `phase-1` (c19ad06) | own worktree from `phase-1` | `wp-08-guac` |
 | WP-09 Checks and maintenance | 2 | Waiting (WP-05, WP-06) | — | — |
@@ -78,6 +78,7 @@ Integration branch: `phase-1`. Merge to `main` only after operator checkpoint 4.
 - **R-023 (Wave 1, from WP-05 T5 security review; changes K2).** The R-016 start check checked `current_user`, so a login with a session role of `anima_runtime` passed and could `SET ROLE` back to its own rights. Predefined roles such as `pg_execute_server_program` also passed. K2 "Start check" now uses `session_user` and lists the refused cases. WP-05 T5 builds it, and a new migration replaces `ensure_day_partition` with EXECUTE revoked from PUBLIC. WP-04: the hub's URL sets no session role.
 - **R-024 (operator, 2026-11-04).** The programme orchestrator runs Phase 1 on its own: it merges reviewed work that passes 12/12 into `phase-1`, makes rulings and starts packages in plan order without asking. It still asks the operator before a push, any merge into `main`, any change on the VPS, Headscale, Cloudflare or another account (VPS-005, DNS-008), and anything that touches secrets.
 - **R-025 (operator, 2026-11-04, overnight run).** The operator widens R-024: merge every accepted package into `phase-1` without asking, and apply the VPS, Headscale and Cloudflare changes from WP-03 and WP-04 directly (the operator's chat confirmation for VPS-005 and DNS-008 covers this run). Finish all of Phase 1. The orchestrator logs each cloud change it makes in `docs/programme/operator-changes.md`. Unchanged: never read secret files, never print or commit a secret, and do not merge into `main` or push without the operator.
+- **R-026 (Wave 1, from WP-06).** (1) `deleteDevice` calls `credentials::clear_ssh` and then deletes the device: two DELETEs in one transaction, in the R-007/WP-07 lock order. This replaces the "one DELETE plus cascades" wording of R-004 for devices; other cascades stay. (2) K3's devices row also names `credentials::Secret` and `credentials::Error`. (3) Q-2: `createDevice` and `updateDevice` set `Device.ip` to the host when the host is an IP literal, else null; WP-09 sets it to the address a check resolved. K1 documents this. (4) Q-1: `health` leaves GraphQL. It becomes `GET /health` (no sign-in, body `ok`) in `main.rs`; WP-05 makes the change with its `main.rs` wiring, so K1 does not gain it and CON-002 stays exact.
 
 ## Escalations
 
