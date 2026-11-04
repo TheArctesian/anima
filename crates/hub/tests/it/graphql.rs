@@ -1,25 +1,26 @@
-use std::{collections::BTreeMap, sync::Arc};
+use std::sync::Arc;
 
 use anima_hub::{
     clock::{Clock, SystemClock},
-    config,
     events::Bus,
     router,
     schema::{HubSchema, build_schema},
 };
 use axum::{body::Body, http::Request};
 use http_body_util::BodyExt;
-use sqlx::postgres::PgPoolOptions;
+use sqlx::{PgPool, postgres::PgPoolOptions};
 use tower::ServiceExt;
 
-/// A schema whose pool never connects: these requests are refused before any query.
-fn schema() -> (HubSchema, sqlx::PgPool, Arc<dyn Clock>) {
-    let config = config::from_env(&BTreeMap::new()).unwrap();
+use crate::hub::dependencies;
+
+/// A schema whose pool never connects: these requests are refused or fail validation before
+/// any query.
+fn schema() -> (HubSchema, PgPool, Arc<dyn Clock>) {
     let pool = PgPoolOptions::new()
         .connect_lazy("postgres://nobody@127.0.0.1:1/none")
         .unwrap();
     let clock: Arc<dyn Clock> = Arc::new(SystemClock);
-    let schema = build_schema(Arc::new(config), clock.clone(), pool.clone(), Bus::new(1));
+    let schema = build_schema(dependencies(&pool, clock.clone(), Bus::new(1)));
     (schema, pool, clock)
 }
 
@@ -28,6 +29,17 @@ async fn api_003_health_query_needs_a_token() {
     let response = schema().0.execute("{ health }").await;
     assert_eq!(response.data, async_graphql::Value::Null);
     assert_eq!(response.errors[0].message, "Sign in to continue.");
+}
+
+#[tokio::test]
+async fn api_007_a_signed_out_typo_gets_no_field_suggestion() {
+    let typo = "mutation { login(input: { username: \"a\", password: \"b\" }) { tokn } }";
+    let response = schema().0.execute(typo).await;
+    let [error] = response.errors.as_slice() else {
+        panic!("expected one error, got {:?}", response.errors);
+    };
+    assert!(error.message.contains("Unknown field"), "{}", error.message);
+    assert!(!error.message.contains("Did you mean"), "{}", error.message);
 }
 
 #[tokio::test]

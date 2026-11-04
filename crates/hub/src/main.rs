@@ -12,9 +12,10 @@ use anima_hub::{
     access,
     clock::{Clock as _, SystemClock},
     config::{self, Config},
-    events::Bus,
+    credentials::Vault,
+    events::{self, Bus, process_log},
     router,
-    schema::build_schema,
+    schema::{Dependencies, build_schema},
 };
 use sqlx::PgPool;
 
@@ -31,6 +32,16 @@ enum StartError {
     Database(#[from] sqlx::Error),
     #[error("the database migrations failed")]
     Migrate(#[from] sqlx::migrate::MigrateError),
+    #[error("invalid log setup")]
+    Log(#[from] process_log::Error),
+    /// Names the path only; the source error never holds key bytes (SEC-004).
+    #[error("cannot load the credential key from {path}: {source}")]
+    Key {
+        path: String,
+        source: anima_hub::credentials::Error,
+    },
+    #[error("{0}")]
+    RuntimeRole(#[from] events::Error),
     #[error("hub failed to serve")]
     Serve(#[from] std::io::Error),
     #[error("usage: anima-hub [migrate | operator set <username>]")]
@@ -71,11 +82,23 @@ async fn run() -> Result<(), StartError> {
 }
 
 async fn serve(config: Arc<Config>) -> Result<(), StartError> {
+    process_log::init(&config.log)?;
+    let vault = Vault::from_key_file(&config.key_file).map_err(|source| StartError::Key {
+        path: config.key_file.display().to_string(),
+        source,
+    })?;
     let pool = connect(&config).await?;
-    // SEAM (R-016): `anima_hub::events::check_runtime_role(&pool).await?;` once WP-05 T1 adds it.
+    events::check_runtime_role(&pool).await?;
     let clock: Arc<dyn anima_hub::clock::Clock> = Arc::new(SystemClock);
     let listener = tokio::net::TcpListener::bind(config.listen).await?;
-    let schema = build_schema(config, clock.clone(), pool.clone(), Bus::new(BUS_CAPACITY));
+    tracing::info!(listen = %config.listen, "hub started");
+    let schema = build_schema(Dependencies {
+        config,
+        clock: clock.clone(),
+        pool: pool.clone(),
+        bus: Bus::new(BUS_CAPACITY),
+        vault,
+    });
     let app = router(schema, pool, clock).into_make_service_with_connect_info::<SocketAddr>();
     Ok(axum::serve(listener, app).await?)
 }

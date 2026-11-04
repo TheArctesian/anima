@@ -44,6 +44,15 @@ pub fn router(schema: schema::HubSchema, db: PgPool, clock: Arc<dyn clock::Clock
         .with_state(Edge { schema, db, clock })
 }
 
+/// Whether the media type is exactly `application/json`, in any case, parameters allowed.
+fn is_json(headers: &HeaderMap) -> bool {
+    headers
+        .get(CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.split(';').next())
+        .is_some_and(|media| media.trim().eq_ignore_ascii_case("application/json"))
+}
+
 /// Reads one JSON request of at most [`BODY_LIMIT`] bytes (no batch, no multipart), resolves
 /// the bearer token and the client address once, then runs it (D-6).
 async fn graphql(
@@ -52,11 +61,7 @@ async fn graphql(
     extensions: Extensions,
     body: Bytes,
 ) -> Response {
-    let json = headers
-        .get(CONTENT_TYPE)
-        .and_then(|value| value.to_str().ok())
-        .is_some_and(|value| value.starts_with("application/json"));
-    if !json {
+    if !is_json(&headers) {
         return (StatusCode::UNSUPPORTED_MEDIA_TYPE, "Send one JSON request.").into_response();
     }
     let Ok(mut request) = serde_json::from_slice::<async_graphql::Request>(&body) else {

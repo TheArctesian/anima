@@ -16,9 +16,11 @@ tokio = { version = "1.54", features = ["macros", "rt-multi-thread", "net", "syn
 tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"
 thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", default-features = false, features = ["std", "fmt", "json", "env-filter", "registry"] }
 uuid = { version = "1", features = ["v7", "serde"] }
 serde = { version = "1", features = ["derive"] }
-sqlx = { version = "0.8", default-features = false, features = ["derive", "postgres", "uuid", "runtime-tokio", "macros", "migrate", "chrono", "json", "ipnet"] }
+sqlx = { version = "0.8", default-features = false, features = ["derive", "postgres", "uuid", "runtime-tokio", "migrate", "macros", "chrono", "json", "ipnet"] }
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 ipnet = "2"
 serde_json = "1"
@@ -31,7 +33,6 @@ static_assertions = "1.1"
 tempfile = "3.27"
 argon2 = { version = "0.6", default-features = false, features = ["alloc", "password-hash", "zeroize"] }
 getrandom = "0.4"
-tracing = "0.1"
 rpassword = "7.5"
 
 [workspace.lints.rust]

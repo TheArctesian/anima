@@ -1,4 +1,5 @@
-//! The hub's runtime role can run the sign-in flow on the access tables (R-016, K2 "Roles").
+//! The hub's runtime role can run the sign-in flow on the access tables through the default
+//! privileges of migration 0001 alone (R-016, K2 "Roles").
 
 use std::net::{IpAddr, Ipv4Addr};
 
@@ -11,28 +12,8 @@ use crate::access::{
     tokens::{Scope, Token},
 };
 
-/// STAND-IN until WP-05 T1's migration `0001_access_runtime_role.sql` is on this branch: it
-/// creates `anima_runtime` and the owner's default privileges. Remove this function and its
-/// call at that merge; the test must then pass on the default privileges alone.
-async fn stand_in_runtime_role(pool: &PgPool) {
-    let statements = [
-        "do $$ begin \
-           if not exists (select from pg_catalog.pg_roles where rolname = 'anima_runtime') then \
-             begin create role anima_runtime nologin; \
-             exception when duplicate_object or unique_violation then null; end; \
-           end if; \
-         end $$",
-        "grant usage on schema access to anima_runtime",
-        "grant select, insert, update, delete on all tables in schema access to anima_runtime",
-    ];
-    for sql in statements {
-        sqlx::query(sql).execute(pool).await.unwrap();
-    }
-}
-
 #[sqlx::test(migrations = "./migrations")]
 async fn log_006_r_016_runtime_role_runs_the_login_flow_on_access_tables(pool: PgPool) {
-    stand_in_runtime_role(&pool).await;
     let mut conn = pool.acquire().await.unwrap();
     sqlx::query("set role anima_runtime")
         .execute(&mut *conn)

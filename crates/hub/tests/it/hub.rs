@@ -1,14 +1,17 @@
 //! A hub router on a test database at a fixed time, and requests to its `/graphql` endpoint.
 
-use std::{collections::BTreeMap, net::SocketAddr, sync::Arc};
+use std::{collections::BTreeMap, io::Write as _, net::SocketAddr, sync::Arc};
+
+use base64::{Engine as _, engine::general_purpose::STANDARD};
 
 use anima_hub::{
     access::{self, Password},
     clock::{Clock, FixedClock},
     config,
+    credentials::Vault,
     events::Bus,
     router,
-    schema::build_schema,
+    schema::{Dependencies, build_schema},
 };
 use axum::{
     Router,
@@ -44,10 +47,9 @@ impl Hub {
 
     /// A hub whose requests come from `client` instead of `CLIENT`.
     pub fn from_client(pool: &PgPool, now: DateTime<Utc>, client: &'static str) -> Self {
-        let config = Arc::new(config::from_env(&BTreeMap::new()).unwrap());
         let clock: Arc<dyn Clock> = Arc::new(FixedClock(now));
         let bus = Bus::new(16);
-        let schema = build_schema(config, clock.clone(), pool.clone(), bus.clone());
+        let schema = build_schema(dependencies(pool, clock.clone(), bus.clone()));
         Self {
             router: router(schema, pool.clone(), clock),
             bus,
@@ -98,6 +100,24 @@ impl Hub {
             .as_str()
             .unwrap_or_else(|| panic!("login failed: {response}"))
             .to_owned()
+    }
+}
+
+/// A vault over a throwaway key in a temporary file (SEC-004); never a real key file.
+pub fn test_vault() -> Vault {
+    let mut key_file = tempfile::NamedTempFile::new().unwrap();
+    writeln!(key_file, "{}", STANDARD.encode([7_u8; 32])).unwrap();
+    Vault::from_key_file(key_file.path()).unwrap()
+}
+
+/// The schema dependencies `main.rs` builds, with default config and a throwaway vault.
+pub fn dependencies(pool: &PgPool, clock: Arc<dyn Clock>, bus: Bus) -> Dependencies {
+    Dependencies {
+        config: Arc::new(config::from_env(&BTreeMap::new()).unwrap()),
+        clock,
+        pool: pool.clone(),
+        bus,
+        vault: test_vault(),
     }
 }
 

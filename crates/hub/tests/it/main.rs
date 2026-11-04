@@ -1,3 +1,4 @@
+mod credentials;
 mod devices;
 mod edge;
 mod graphql;
