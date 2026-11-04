@@ -172,11 +172,13 @@ Wave 4 (serial)    WP-17 integration and acceptance
 | Rust tests | `cargo test` (database tests use a throwaway PostgreSQL) | Each task |
 | Client lint and types | `bun run lint && bun run check` (Stylelint runs inside `lint`) | Each task |
 | Client tests | `bun run test` | Each task |
-| CUPID limits and baseline | `bun run quality:limits`, `bun run quality:names` and `bun run quality:baseline -- --base origin/phase-1` (CQ-010, CQ-011) | Each task |
+| CUPID limits and baseline | `bun run quality:limits`, `bun run quality:names` and `bun run quality:baseline -- --base phase-1` (the local `phase-1` branch; CQ-010, CQ-011) | Each task |
 | Import graph | `bun run quality:imports`: domain `store` imports and cycles (REPO-004) | Each task |
 | Tokens | Stylelint raw-value rule (TOK-003) inside `bun run lint`; generated files current (TOK-002) | Each task |
 | GraphQL contract | Schema comparison (CON-002) | Each hub task |
 | Browser | WebKit and Chromium checks for the interface (spec Section 5.8) | Each interface task |
+
+Run all gates with `bun run gates`. Gates do not run in GitHub Actions (R-005).
 
 ## 8. Files and communication
 
