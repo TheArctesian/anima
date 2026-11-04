@@ -106,23 +106,21 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .data(vault)
     // One block per domain: its loaders (R-014) and its state.
     // devices
-    .data(devices::graphql::site_loader(pool.clone()))
-    .data(devices::graphql::devices_by_site_loader(pool.clone()))
-    .data(devices::graphql::credential_loader(pool.clone()))
+    .data(devices::graphql::site_loader(pool.clone()).delay(BATCH_WINDOW))
+    .data(devices::graphql::devices_by_site_loader(pool.clone()).delay(BATCH_WINDOW))
+    .data(devices::graphql::credential_loader(pool.clone()).delay(BATCH_WINDOW))
     // devices fields that join checks (API-005)
-    .data(devices::graphql::status_loader(pool.clone(), clock.clone()).delay(CHECK_BATCH_WINDOW))
-    .data(devices::graphql::uptime_loader(pool.clone(), clock.clone()).delay(CHECK_BATCH_WINDOW))
-    .data(devices::graphql::checks_loader(pool.clone()).delay(CHECK_BATCH_WINDOW))
-    .data(devices::graphql::resolved_ip_loader(pool.clone()).delay(CHECK_BATCH_WINDOW))
+    .data(devices::graphql::status_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
+    .data(devices::graphql::uptime_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
+    .data(devices::graphql::checks_loader(pool.clone()).delay(BATCH_WINDOW))
+    .data(devices::graphql::resolved_ip_loader(pool.clone()).delay(BATCH_WINDOW))
     // checks
-    .data(
-        checks::graphql::check_status_loader(pool.clone(), clock.clone()).delay(CHECK_BATCH_WINDOW),
-    )
-    .data(checks::graphql::last_heartbeat_loader(pool.clone()).delay(CHECK_BATCH_WINDOW))
-    .data(checks::graphql::heartbeats_loader(pool.clone()).delay(CHECK_BATCH_WINDOW))
-    .data(checks::graphql::check_uptime_loader(pool.clone(), clock).delay(CHECK_BATCH_WINDOW))
+    .data(checks::graphql::check_status_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
+    .data(checks::graphql::last_heartbeat_loader(pool.clone()).delay(BATCH_WINDOW))
+    .data(checks::graphql::heartbeats_loader(pool.clone()).delay(BATCH_WINDOW))
+    .data(checks::graphql::check_uptime_loader(pool.clone(), clock).delay(BATCH_WINDOW))
     // sessions (R-032)
-    .data(sessions::graphql::host_key_loader(pool.clone()))
+    .data(sessions::graphql::host_key_loader(pool.clone()).delay(BATCH_WINDOW))
     .data(live)
     .finish()
 }
@@ -135,11 +133,11 @@ const fn production_build() -> bool {
 #[cfg(test)]
 mod tests;
 
-/// API-005: how long the loaders that read checks wait to gather keys. A device page reads
-/// several of them per check, and the 1 ms default splits their batches once a page holds a few
-/// hundred checks (342 statements for 163 devices in a debug build, against 15 for 13); each
-/// split repeats the reads of a batch. 10 ms costs that much latency per nesting level.
-const CHECK_BATCH_WINDOW: Duration = Duration::from_millis(10);
+/// API-005: how long every loader waits to gather keys. A device page nests several loaders,
+/// and the 1 ms default splits their batches once a page holds a few hundred rows (342
+/// statements for 163 devices in a debug build, against 15 for 13); each split repeats the
+/// reads of a batch. 10 ms costs that much latency per nesting level.
+const BATCH_WINDOW: Duration = Duration::from_millis(10);
 
 /// API-004: deepest query accepted.
 const MAX_DEPTH: usize = 10;
