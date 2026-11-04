@@ -10,12 +10,23 @@ use super::rules::FieldError;
 const HOST_MAX: usize = 253;
 const LABEL_MAX: usize = 63;
 
-/// Whether the text has no control character (a line break or NUL would split or break a log
-/// line) and no character that changes the reading direction (it would disguise the text).
+/// Whether the text has no control character or line or paragraph separator (each would split
+/// or break a log line) and no character that changes the reading direction (it would disguise
+/// the text).
 pub(super) fn is_plain(text: &str) -> bool {
-    !text
-        .chars()
-        .any(|c| c.is_control() || matches!(c, '\u{202A}'..='\u{202E}' | '\u{2066}'..='\u{2069}'))
+    !text.chars().any(|c| {
+        c.is_control()
+            || matches!(
+                c,
+                '\u{2028}'
+                    | '\u{2029}'
+                    | '\u{200E}'
+                    | '\u{200F}'
+                    | '\u{061C}'
+                    | '\u{202A}'..='\u{202E}'
+                    | '\u{2066}'..='\u{2069}'
+            )
+    })
 }
 
 /// An IP address or an RFC 1123 host name, without scheme, port or path (DEV-010).

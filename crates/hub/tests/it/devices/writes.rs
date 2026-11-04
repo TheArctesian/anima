@@ -126,11 +126,23 @@ fixture_test! {
     }
 
     async fn log_004_control_and_direction_characters_in_a_name_are_validation_not_internal(pool: PgPool) {
-        for bad in ["a\nb", "a\u{202E}b", "a\u{0000}b"] {
+        let unsafe_text = [
+            "a\nb", "a\u{202E}b", "a\u{0000}b", "a\u{2028}b", "a\u{2029}b", "a\u{200E}b",
+            "a\u{200F}b", "a\u{061C}b",
+        ];
+        for bad in unsafe_text {
             let mut input = pve_02();
             input["name"] = json!(bad);
             let error = failed(&pool, CREATE_DEVICE, json!({ "input": input })).await;
             assert_eq!(validation_fields(&error), ["name"], "{bad:?}");
+            let mut input = pve_02();
+            input["tags"] = json!([bad]);
+            let error = failed(&pool, CREATE_DEVICE, json!({ "input": input })).await;
+            assert_eq!(validation_fields(&error), ["tags"], "{bad:?}");
+            let mut input = pve_02();
+            input["kind"] = json!(bad);
+            let error = failed(&pool, CREATE_DEVICE, json!({ "input": input })).await;
+            assert_eq!(validation_fields(&error), ["kind"], "{bad:?}");
             let site = failed(&pool, CREATE_SITE, json!({ "name": bad, "subnet": "10.40.0.0/24" })).await;
             assert_eq!(validation_fields(&site), ["name"], "{bad:?}");
         }
