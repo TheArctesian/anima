@@ -26,7 +26,7 @@ The operator approved all seven contracts on 2026-11-03 (checkpoint 1). Only a r
 | WP-04 Deployment, stage A (hub) | 1 | Ready | — | — |
 | WP-04 Deployment, stage B (releases and self-update, R-006) | 3 | Waiting (WP-15, WP-16; operator sets secrets) | — | — |
 | WP-05 Access and logs | 1 | Building | own worktree from `phase-1` | `wp-05-access` |
-| WP-06 Devices | 1 | Building | own worktree from `phase-1` | `wp-06-devices` |
+| WP-06 Devices | 1 | Building; T1 migrations merged early into `phase-1` (668c898) | own worktree from `phase-1` | `wp-06-devices` |
 | WP-07 Credentials | 1 | Building | own worktree from `phase-1` | `wp-07-credentials` |
 | WP-08 guac-protocol | 1 | Building | own worktree from `phase-1` | `wp-08-guac` |
 | WP-09 Checks and maintenance | 2 | Waiting (WP-05, WP-06) | — | — |
@@ -55,6 +55,12 @@ Integration branch: `phase-1`. Merge to `main` only after operator checkpoint 4.
 - **R-007 (operator, 2026-11-03).** Work that is decided but left for later (for example the TestFlight release) goes on GitHub issue [#1 Deferred work](https://github.com/TheArctesian/anima/issues/1) as a checklist item, with the spec IDs. A package orchestrator that defers something asks the programme orchestrator to add it there; it does not leave it only in a package plan or a report.
 
 - **R-008 (operator, 2026-11-03).** Use the domain `anima.ing` (DNS on Cloudflare) as in spec Section 4.2.1: `hs.anima.ing` for Headscale, a public `hub.anima.ing` record that points to the hub's VPN address, `updates.anima.ing` as a redirect to the GitHub release feed, and VPN-only names under `net.anima.ing`. The hub gets a Let's Encrypt certificate by DNS-01. WP-03 owns the DNS records and the Headscale names; WP-04 owns the hub certificate (stage A) and the update redirect (stage B). Every Cloudflare change needs the operator's confirmation in chat (DNS-008); agents prepare the records in `deploy/dns/` and do not apply them.
+
+- **R-009 (Wave 1, from WP-07).** Database tests always run in `bun run gates`. The `cargo-test` gate starts a throwaway PostgreSQL 17 on a Unix socket and sets `DATABASE_URL` (`quality/bin/with-postgres.ts`); a set `DATABASE_URL` is used as is. A missing PostgreSQL fails the gate. Tests must not skip when no database is present (CQ-024). A domain's tests must not create tables in another domain's schema, not even a stub (CQ-032): a store whose migration has a foreign key into a domain that is not on `phase-1` yet waits until that domain's migration lands. WP-06 delivers its `devices` migration first so that WP-07 (and later WP-09, WP-10) can build on it.
+
+- **R-010 (Wave 1, from WP-07; changes K3).** (a) `devices` owns the GraphQL mutations `setSshCredential` and `clearSshCredential` and may call `credentials::{Vault, SshSecret, has_ssh, store_ssh, clear_ssh}`. `clear_ssh(conn, device) -> Result<bool, Error>` is added to `credentials`. (b) `Vault::seal` and `Vault::open` take a `context: &[u8]` that is bound as AEAD associated data, with the fixed context strings in K3, so a sealed value moved to another row does not open. Affects WP-05 (TOTP), WP-06, WP-07.
+
+- **R-011 (Wave 1, from WP-06; changes K3).** (a) A domain's `graphql.rs` may import extra domains listed under `graphql` in `quality/hub-modules.json`, only to resolve K1 fields that join domains; never a `store`, and these edges do not count toward cycles. `devices/graphql.rs` may import `checks` and `sessions`. (b) WP-06 builds `Device` and `SshSettings` with the fields devices owns, `DeviceFilter` name/tags/siteId and `DeviceSort.NAME`; it does not declare the fields that need other domains. WP-09 adds `Device.status`, `checks`, `uptime`, `DeviceFilter.status`, `DeviceSort.STATUS`/`UPTIME` and the `addDefaultCheck` behaviour to `devices/graphql.rs` after WP-06 is accepted; WP-10 adds `SshSettings.hostKey`. One owner at a time (PKG-001). (c) Until WP-17, the schema contract check (CON-002) requires only that every hub field matches K1; WP-17 checks that K1 is complete.
 
 ## Escalations
 

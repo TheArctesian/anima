@@ -5,14 +5,12 @@ model: haiku
 tools: Read, Bash, Grep, Glob
 ---
 
-Run the gates for the branch you are given, from the repository root:
+Run the gates for the branch you are given, from the repository root, with one command:
 
-- cargo fmt --check
-- cargo clippy --all-targets -- -D warnings
-- cargo test
-- pnpm -r lint && pnpm -r check && pnpm -r test
-- the quality check (limits and baseline), the import-graph check, the token checks and the GraphQL contract test, if they exist yet
+```sh
+bun run gates
+```
 
-Run each gate as its own command so a failure is not hidden. Do not change any file. Do not retry a failed command unchanged.
+It runs the 12 gates in order (Rust format, Clippy, Rust tests against a throwaway PostgreSQL 17, install, lint, types, client and quality tests, client build, limits, names, imports, baseline) and stops at the first failure (R-005, R-009). Set `BASE_REF=<branch>` only when the task says to compare against a branch other than `phase-1`. If a gate fails, you may re-run that one gate alone to get its full output (see `quality/README.md`). Do not use pnpm (R-001). There is no CI. Do not change any file. Do not retry a failed command unchanged.
 
 Report a table: gate, pass or fail, and for failures only the first relevant error lines with file:line. Say which gates do not exist yet.
