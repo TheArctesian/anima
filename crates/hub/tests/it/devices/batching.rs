@@ -22,10 +22,10 @@ use tokio::{
     net::{TcpListener, TcpStream, UnixStream},
 };
 
-use anima_hub::devices::graphql::{Query, devices_by_site_loader, site_loader};
-use async_graphql::{EmptyMutation, EmptySubscription, Schema};
+use anima_hub::devices::graphql::{Mutation, Query, devices_by_site_loader, site_loader};
+use async_graphql::{EmptySubscription, Schema};
 
-use super::graphql_read::{add_bulk, data};
+use super::{graphql_read::add_bulk, harness::data};
 
 /// Splits the client's byte stream into PostgreSQL frontend messages and counts statements.
 #[derive(Default)]
@@ -152,7 +152,7 @@ async fn api_005_nested_site_device_site_costs_a_constant_few_statements_for_13_
     pool: PgPool,
 ) {
     let (counted, statements) = counting_pool(&pool).await;
-    let schema = Schema::build(Query, EmptyMutation, EmptySubscription)
+    let schema = Schema::build(Query, Mutation, EmptySubscription)
         .data(counted.clone())
         .data(site_loader(counted.clone()).delay(BATCH_WINDOW))
         .data(devices_by_site_loader(counted.clone()).delay(BATCH_WINDOW))

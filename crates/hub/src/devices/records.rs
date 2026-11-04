@@ -72,7 +72,6 @@ pub(super) fn to_site((id, name, subnet): (SiteId, String, IpNet)) -> Site {
 }
 
 /// Turns a violated constraint into the field the operator must fix.
-#[cfg_attr(not(test), expect(dead_code, reason = "used by devices GraphQL"))]
 pub(super) fn write_error(error: sqlx::Error) -> Error {
     let field = match error.as_database_error().and_then(|e| e.constraint()) {
         Some("sites_name_key" | "devices_name_key") => {

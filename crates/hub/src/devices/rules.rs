@@ -65,7 +65,6 @@ impl Problems {
 ///
 /// # Errors
 /// Every invalid field, all at once.
-#[cfg_attr(not(test), expect(dead_code, reason = "used by the devices GraphQL"))]
 pub(super) fn validate_new_device(input: &NewDeviceInput) -> Result<NewDevice, Vec<FieldError>> {
     let mut problems = Problems::default();
     let name = problems.field(device_name(&input.name));
@@ -97,7 +96,6 @@ pub(super) fn validate_new_device(input: &NewDeviceInput) -> Result<NewDevice, V
 ///
 /// # Errors
 /// Every invalid field, all at once.
-#[cfg_attr(not(test), expect(dead_code, reason = "used by the devices GraphQL"))]
 pub(super) fn validate_change(input: &DeviceChangeInput) -> Result<DeviceChange, Vec<FieldError>> {
     let mut problems = Problems::default();
     let name = input
@@ -143,7 +141,6 @@ pub(super) fn validate_change(input: &DeviceChangeInput) -> Result<DeviceChange,
 ///
 /// # Errors
 /// Every invalid field, all at once.
-#[cfg_attr(not(test), expect(dead_code, reason = "used by the devices GraphQL"))]
 pub(super) fn validate_new_site(input: &NewSiteInput) -> Result<NewSite, Vec<FieldError>> {
     let mut problems = Problems::default();
     let name = problems.field(site_name(&input.name));

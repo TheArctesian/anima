@@ -4,14 +4,14 @@ use std::sync::Arc;
 
 use async_graphql::{Context, Error as GraphQlError, ErrorExtensions, Result, value};
 
-use super::{Error, FieldError};
+use crate::devices::{Error, FieldError};
 
 const INTERNAL_MESSAGE: &str = "Something went wrong on the hub. Try again.";
 
 /// The GraphQL error with its `extensions.code`; a database failure shows no detail.
 ///
 /// Accepts the error itself or the `Arc` a data loader hands back.
-pub(super) fn to_graphql(error: impl Into<Arc<Error>>) -> GraphQlError {
+pub(in crate::devices) fn to_graphql(error: impl Into<Arc<Error>>) -> GraphQlError {
     let error = error.into();
     match &*error {
         Error::NotFound(missing) => coded(format!("No such {missing}."), "NOT_FOUND"),

@@ -3,7 +3,11 @@ use std::collections::BTreeSet;
 mod batching;
 mod face;
 mod graphql_read;
+mod guard;
+mod harness;
 mod k1;
+mod trail;
+mod writes;
 
 use serde_json::Value;
 use sqlx::PgPool;

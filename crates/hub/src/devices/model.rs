@@ -141,7 +141,6 @@ pub struct Device {
 
 /// A validated site to create.
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(not(test), expect(dead_code, reason = "used by the devices store"))]
 pub(super) struct NewSite {
     pub name: String,
     pub subnet: Cidr,
@@ -149,7 +148,6 @@ pub(super) struct NewSite {
 
 /// A validated device to create.
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(not(test), expect(dead_code, reason = "used by the devices store"))]
 pub(super) struct NewDevice {
     pub site: SiteId,
     pub name: String,
@@ -162,7 +160,6 @@ pub(super) struct NewDevice {
 
 /// A validated partial update: `None` leaves the field as it is.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-#[cfg_attr(not(test), expect(dead_code, reason = "used by the devices store"))]
 pub(super) struct DeviceChange {
     pub site: Option<SiteId>,
     pub name: Option<String>,
