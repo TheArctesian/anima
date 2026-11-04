@@ -164,3 +164,15 @@ it('DEV-003: a refresh drops a Load more that is in flight', async () => {
   await settle();
   expect(names()).toEqual(['Device a', 'Device x']);
 });
+
+it('Loading: a list on screen stays while a slow reload runs, and no skeleton replaces it', async () => {
+  await show();
+  held.held[0]?.release([device('a')]);
+  await settle();
+  url.query = { ...DEFAULT_QUERY, sort: 'STATUS' };
+  await settle();
+  time.advance(threshold.loading * 2);
+  flushSync();
+  expect(document.querySelectorAll('li.place')).toHaveLength(0);
+  expect(names()).toEqual(['Device a']);
+});
