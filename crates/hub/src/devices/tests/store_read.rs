@@ -5,6 +5,17 @@ fn names(devices: &[Device]) -> Vec<&str> {
     devices.iter().map(|device| device.name.as_str()).collect()
 }
 
+/// One page as (devices, has next page, total).
+async fn list(
+    pool: &sqlx::PgPool,
+    filter: &DeviceFilter,
+    first: usize,
+    after: Option<&str>,
+) -> Result<(Vec<Device>, bool, i64), Error> {
+    let page = store::list(pool, filter, first, after).await?;
+    Ok((page.devices, page.has_next_page, page.total))
+}
+
 fn filter() -> DeviceFilter {
     DeviceFilter::default()
 }
@@ -14,9 +25,7 @@ async fn walk(pool: &sqlx::PgPool, filter: &DeviceFilter, size: usize) -> (Vec<S
     let mut seen = Vec::new();
     let mut after: Option<String> = None;
     loop {
-        let (page, has_next, total) = store::list(pool, filter, size, after.as_deref())
-            .await
-            .unwrap();
+        let (page, has_next, total) = list(pool, filter, size, after.as_deref()).await.unwrap();
         seen.extend(page.iter().map(|device| device.name.clone()));
         if !has_next {
             return (seen, total);
@@ -33,9 +42,9 @@ store_test! {
         assert_eq!(seen, sorted);
         assert_eq!(seen.len(), 13);
         assert_eq!(total, 13);
-        let (last, has_next, total) = store::list(&pool, &filter(), 2, Some("pve-01")).await.unwrap();
+        let (last, has_next, total) = list(&pool, &filter(), 2, Some("pve-01")).await.unwrap();
         assert_eq!((names(&last), has_next, total), (vec!["truenas", "win-desktop"], false, 13));
-        let (empty, has_next, total) = store::list(&pool, &filter(), 2, Some("zzz")).await.unwrap();
+        let (empty, has_next, total) = list(&pool, &filter(), 2, Some("zzz")).await.unwrap();
         assert_eq!((empty.len(), has_next, total), (0, false, 13));
     }
 
@@ -44,24 +53,24 @@ store_test! {
         let device = NewDevice { name: "Zeta-box".into(), ..super::record("Zeta-box") };
         let id = device_id("0190a000-0000-7000-8002-0000000000f1");
         store::create_device(&mut conn, id, instant("2026-11-02T10:00:00Z"), &device).await.unwrap();
-        let (all, ..) = store::list(&pool, &filter(), 200, None).await.unwrap();
+        let (all, ..) = list(&pool, &filter(), 200, None).await.unwrap();
         assert_eq!(all[0].name, "Zeta-box");
         let expected: Vec<_> = page_after(&all, |d| d.name.as_str(), Some("Zeta-box"), 3)
             .rows.into_iter().cloned().collect();
-        let (page, ..) = store::list(&pool, &filter(), 3, Some("Zeta-box")).await.unwrap();
+        let (page, ..) = list(&pool, &filter(), 3, Some("Zeta-box")).await.unwrap();
         assert_eq!(page, expected);
         assert_eq!(names(&page), ["backup-02", "docker-host", "home-assistant"]);
     }
 
     async fn api_006_total_counts_the_filtered_set_ignoring_the_cursor(pool: PgPool) {
         let by_site = DeviceFilter { site: Some(site_id(OFFICE_2)), ..filter() };
-        let (page, has_next, total) = store::list(&pool, &by_site, 1, Some("linux-pc-office-2")).await.unwrap();
+        let (page, has_next, total) = list(&pool, &by_site, 1, Some("linux-pc-office-2")).await.unwrap();
         assert_eq!((names(&page), has_next, total), (vec!["mac-office-2"], true, 3));
     }
 
     async fn dev_003_name_filter_is_a_case_insensitive_substring(pool: PgPool) {
         let by_name = DeviceFilter { name: Some("PC".into()), ..filter() };
-        let (found, _, total) = store::list(&pool, &by_name, 50, None).await.unwrap();
+        let (found, _, total) = list(&pool, &by_name, 50, None).await.unwrap();
         assert_eq!(names(&found), ["linux-pc-home", "linux-pc-office-2"]);
         assert_eq!(total, 2);
     }
@@ -73,25 +82,25 @@ store_test! {
         store::create_device(&mut conn, id, instant("2026-11-02T10:00:00Z"), &device).await.unwrap();
         for (input, expected) in [("%", 1), ("_", 1), ("\\", 1), ("0%_d", 1), ("0_%d", 0), ("xyz", 0)] {
             let by_name = DeviceFilter { name: Some(input.into()), ..filter() };
-            let (_, _, total) = store::list(&pool, &by_name, 5, None).await.unwrap();
+            let (_, _, total) = list(&pool, &by_name, 5, None).await.unwrap();
             assert_eq!(total, expected, "{input:?}");
         }
     }
 
     async fn dev_003_tags_filter_requires_all_given_tags(pool: PgPool) {
         let both = DeviceFilter { tags: vec!["vm".into(), "docker".into()], ..filter() };
-        let (found, ..) = store::list(&pool, &both, 50, None).await.unwrap();
+        let (found, ..) = list(&pool, &both, 50, None).await.unwrap();
         assert_eq!(names(&found), ["docker-host"]);
         let one = DeviceFilter { tags: vec!["infra".into()], ..filter() };
-        let (found, _, total) = store::list(&pool, &one, 50, None).await.unwrap();
+        let (found, _, total) = list(&pool, &one, 50, None).await.unwrap();
         assert_eq!((names(&found), total), (vec!["pihole", "pve-01", "truenas"], 3));
         let none = DeviceFilter { tags: vec!["vm".into(), "nope".into()], ..filter() };
-        assert_eq!(store::list(&pool, &none, 50, None).await.unwrap().2, 0);
+        assert_eq!(list(&pool, &none, 50, None).await.unwrap().2, 0);
     }
 
     async fn vpn_002_site_filter_lists_only_that_sites_devices(pool: PgPool) {
         let by_site = DeviceFilter { site: Some(site_id(OFFICE_1)), ..filter() };
-        let (found, _, total) = store::list(&pool, &by_site, 50, None).await.unwrap();
+        let (found, _, total) = list(&pool, &by_site, 50, None).await.unwrap();
         assert_eq!((names(&found), total), (vec!["mac-office-1"], 1));
     }
 

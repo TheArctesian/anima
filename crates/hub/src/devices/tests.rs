@@ -1,6 +1,6 @@
 /// Wraps each async test in a throwaway database holding the K6 rows from
 /// `tests/fixtures/devices.sql`. These tests live in the crate because they call the
-/// store's `pub(super)` functions.
+/// store's `pub(super)` functions; public behaviour is tested in `tests/it`.
 macro_rules! store_test {
     ($(async fn $name:ident($pool:ident: PgPool) $body:block)+) => {$(
         #[sqlx::test(

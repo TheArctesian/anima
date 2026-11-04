@@ -1,4 +1,4 @@
-//! Maps database rows and constraint errors to devices types. No SQL here.
+//! Database records of the `devices` schema and how its constraints map to field errors.
 
 use std::net::IpAddr;
 

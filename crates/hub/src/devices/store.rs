@@ -1,4 +1,4 @@
-//! All SQL on schema `devices`: I/O only; rows are mapped in `row`. Ids and time come in as parameters.
+//! All SQL on schema `devices`: I/O only; rows are mapped in `records`. Ids and time come in as parameters.
 
 use chrono::{DateTime, Utc};
 use sqlx::{Connection, PgConnection, PgExecutor, PgPool};
@@ -7,7 +7,7 @@ use super::{
     Error, Missing,
     model::{Device, DeviceChange, DeviceFilter, NewDevice, NewSite, OperatingSystem, Site},
     page::split_page,
-    row::{DeviceRow, to_devices, to_site, write_error},
+    records::{DeviceRow, to_devices, to_site, write_error},
 };
 use crate::ids::{DeviceId, SiteId};
 
@@ -174,16 +174,24 @@ pub(super) async fn update_device(
 }
 
 /// Deletes with one `DELETE`; foreign keys remove tags and SSH settings (DEV-015).
+/// The device is read `FOR UPDATE` first, so the returned device is the one deleted.
 #[cfg_attr(not(test), expect(dead_code, reason = "used by devices GraphQL"))]
 pub(super) async fn delete_device(conn: &mut PgConnection, id: DeviceId) -> Result<Device, Error> {
-    let device = fetch(&mut *conn, id).await?;
+    let mut tx = conn.begin().await?;
+    let row = sqlx::query_as::<_, DeviceRow>(select_device!("WHERE d.id = $1 FOR UPDATE OF d"))
+        .bind(id)
+        .fetch_optional(&mut *tx)
+        .await?
+        .ok_or(Error::NotFound(Missing::Device(id)))?;
+    let device = Device::try_from(row)?;
     let deleted = sqlx::query("DELETE FROM devices.devices WHERE id = $1")
         .bind(id)
-        .execute(conn)
+        .execute(&mut *tx)
         .await?;
     if deleted.rows_affected() == 0 {
         return Err(Error::NotFound(Missing::Device(id)));
     }
+    tx.commit().await?;
     Ok(device)
 }
 
@@ -208,15 +216,24 @@ pub(super) async fn all(db: &PgPool) -> Result<Vec<Device>, Error> {
     to_devices(rows)
 }
 
-/// One page of the filtered devices in byte order of the name, whether more follow, and the
-/// size of the filtered set (the cursor does not narrow it).
+/// One page of devices in byte order of the name.
+#[derive(Debug)]
+#[cfg_attr(not(test), expect(dead_code, reason = "used by devices GraphQL"))]
+pub(super) struct DevicePage {
+    pub(super) devices: Vec<Device>,
+    pub(super) has_next_page: bool,
+    /// The size of the filtered set; the cursor does not narrow it.
+    pub(super) total: i64,
+}
+
+/// The page of filtered devices after the named one.
 #[cfg_attr(not(test), expect(dead_code, reason = "used by devices GraphQL"))]
 pub(super) async fn list(
     db: &PgPool,
     filter: &DeviceFilter,
     first: usize,
     after: Option<&str>,
-) -> Result<(Vec<Device>, bool, i64), Error> {
+) -> Result<DevicePage, Error> {
     let pattern = filter.name.as_deref().map(like_pattern);
     let limit = i64::try_from(first.saturating_add(1)).unwrap_or(i64::MAX);
     let rows = sqlx::query_as(select_device!(
@@ -241,7 +258,11 @@ pub(super) async fn list(
     .fetch_one(db)
     .await?;
     let page = split_page(to_devices(rows)?, first);
-    Ok((page.rows, page.has_next_page, total))
+    Ok(DevicePage {
+        devices: page.rows,
+        has_next_page: page.has_next_page,
+        total,
+    })
 }
 
 /// A substring pattern for `ILIKE` that matches `%`, `_` and `\` literally.
