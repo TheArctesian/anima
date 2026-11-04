@@ -29,12 +29,12 @@ describe('list query in the URL (D-4)', () => {
   });
 });
 
-describe('list variables (DEV-001, DEV-002, DEV-004)', () => {
+describe('list variables (DEV-001, DEV-003, DEV-004)', () => {
   it('DEV-001 asks for 200 devices and omits an empty filter', () => {
     expect(listVariables(DEFAULT_QUERY)).toStrictEqual({ sort: 'NAME', first: 200 });
   });
 
-  it('DEV-002 sends only the filter parts that are set', () => {
+  it('DEV-003 sends only the filter parts that are set', () => {
     expect(listVariables({ ...DEFAULT_QUERY, name: 'nas' }).filter).toEqual({ name: 'nas' });
     expect(listVariables({ ...DEFAULT_QUERY, statuses: ['DOWN'], tags: ['lab'] }).filter).toEqual({
       status: ['DOWN'],
