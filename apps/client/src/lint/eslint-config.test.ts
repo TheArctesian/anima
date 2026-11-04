@@ -1,6 +1,9 @@
 import { fileURLToPath } from 'node:url';
 import { ESLint } from 'eslint';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+// Linting loads the whole config; under a parallel workspace run it can pass 5 s.
+vi.setConfig({ testTimeout: 30_000 });
 
 const root = fileURLToPath(new URL('../../../../', import.meta.url));
 const eslint = new ESLint({ cwd: root });
@@ -168,5 +171,110 @@ export const f = 'items: 5 of 10';
 
   it('TOK-003 does not apply outside apps/client', async () => {
     expect(await rulesFired("export const c = '#ff0000';\n", 'quality/src/sample.ts')).toEqual([]);
+  });
+});
+
+describe('ESLint parsing of rune modules', () => {
+  const runes = 'apps/client/src/lib/counter.svelte.ts';
+  it('CQ-043 lints a .svelte.ts file that uses $state', async () => {
+    const code = 'export const counter = $state({ count: 0 });\nexport const bump = (): void => { counter.count += 1; };\n';
+    expect(await rulesFired(code, runes)).toEqual([]);
+  });
+
+  it('CQ-043 refuses any in a .svelte.ts file', async () => {
+    const code = 'export const f = (x: any): unknown => x;\n';
+    expect(await rulesFired(code, runes)).toContain('@typescript-eslint/no-explicit-any');
+  });
+});
+
+const lib = 'apps/client/src/lib/devices/sample.ts';
+const motionFile = 'apps/client/src/lib/motion/spring.ts';
+const hubFile = 'apps/client/src/lib/hub/sample.ts';
+const motionImport = "import { animate } from 'motion';\nexport const a = animate;\n";
+
+describe('ESLint motion boundary', () => {
+  for (const name of ['motion', 'motion/mini', 'motion-dom', 'framer-motion']) {
+    it(`MOT-020: ${name} is refused outside $lib/motion`, async () => {
+      const code = `import * as m from '${name}';\nexport const a = m;\n`;
+      expect(await rulesFired(code, lib)).toContain('no-restricted-imports');
+    });
+  }
+
+  it('MOT-020: motion is imported only in $lib/motion', async () => {
+    expect(await rulesFired(motionImport, motionFile)).toEqual([]);
+    expect(await rulesFired(motionImport, hubFile)).toContain('no-restricted-imports');
+  });
+
+  it('MV-008: motion fixtures and tests under $lib/motion may import it', async () => {
+    expect(await rulesFired(motionImport, 'apps/client/src/lib/motion/spring.fixture.ts')).toEqual([]);
+    expect(await rulesFired(motionImport, 'apps/client/src/lib/motion/spring.test.ts')).toEqual([]);
+  });
+
+  it('MV-008: the message names $lib/motion', async () => {
+    const [result] = await eslint.lintText(motionImport, { filePath: `${root}${lib}` });
+    expect(result?.messages[0]?.message).toContain('$lib/motion');
+  });
+
+  it('MV-008: motion is refused in a Svelte component', async () => {
+    const code = `<script lang="ts">\n  import { animate } from 'motion';\n  animate();\n</script>\n`;
+    expect(await rulesFired(code, 'apps/client/src/routes/Sample.svelte')).toContain('no-restricted-imports');
+  });
+
+});
+
+describe('ESLint hub boundaries', () => {
+  const wsImport = "import { createClient } from 'graphql-ws';\nexport const c = createClient;\n";
+  const fetchCall = "export const get = (): Promise<Response> => fetch('/x');\n";
+
+  it('CQ-045: graphql-ws is imported only in $lib/hub', async () => {
+    expect(await rulesFired(wsImport, hubFile)).toEqual([]);
+    expect(await rulesFired(wsImport, lib)).toContain('no-restricted-imports');
+    expect(await rulesFired(wsImport, motionFile)).toContain('no-restricted-imports');
+  });
+
+  it('CQ-045: a graphql-ws subpath is refused outside $lib/hub', async () => {
+    const code = "import { x } from 'graphql-ws/use/ws';\nexport const c = x;\n";
+    expect(await rulesFired(code, lib)).toContain('no-restricted-imports');
+    expect(await rulesFired(code, hubFile)).toEqual([]);
+  });
+
+  for (const transport of ['WebSocket', 'EventSource', 'XMLHttpRequest']) {
+    it(`CQ-045: new ${transport} is refused outside $lib/hub`, async () => {
+      const code = `export const t = new ${transport}('/x');\n`;
+      expect(await rulesFired(code, lib)).toContain('no-restricted-globals');
+      expect(await rulesFired(code, hubFile)).toEqual([]);
+    });
+  }
+
+  it('CQ-045: motion is still refused inside $lib/hub', async () => {
+    expect(await rulesFired(motionImport, hubFile)).toContain('no-restricted-imports');
+  });
+
+  it('CQ-045: fetch is called only in $lib/hub', async () => {
+    expect(await rulesFired(fetchCall, hubFile)).toEqual([]);
+    expect(await rulesFired(fetchCall, lib)).toContain('no-restricted-globals');
+  });
+
+  it('CQ-045: window.fetch and globalThis.fetch are refused outside $lib/hub', async () => {
+    for (const object of ['window', 'globalThis', 'self']) {
+      const code = `export const get = (): Promise<Response> => ${object}.fetch('/x');\n`;
+      expect(await rulesFired(code, lib)).toContain('no-restricted-properties');
+      expect(await rulesFired(code, hubFile)).toEqual([]);
+    }
+  });
+
+  it('CQ-045: the message points to a domain client on $lib/hub', async () => {
+    const [result] = await eslint.lintText(fetchCall, { filePath: `${root}${lib}` });
+    expect(result?.messages[0]?.message).toContain('$lib/<domain>/api.ts');
+  });
+
+  it('CQ-045: test files may use fetch and graphql-ws', async () => {
+    const test = 'apps/client/src/lib/devices/sample.test.ts';
+    expect(await rulesFired(fetchCall, test)).toEqual([]);
+    expect(await rulesFired(wsImport, test)).toEqual([]);
+  });
+
+  it('CQ-045: the generated hub folder is not linted', async () => {
+    expect(await eslint.isPathIgnored(`${root}apps/client/src/lib/hub/generated/graphql.ts`)).toBe(true);
   });
 });

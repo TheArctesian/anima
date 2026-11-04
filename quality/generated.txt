@@ -5,3 +5,4 @@ apps/client/src/styles/tokens.css
 apps/client/src/lib/motion/tokens.ts
 crates/theme/src/generated.rs
 crates/hub/migrations/**
+apps/client/src/lib/hub/generated/**
