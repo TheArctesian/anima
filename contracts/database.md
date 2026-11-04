@@ -23,6 +23,16 @@ Status: **frozen for Phase 1** (change only through a programme ruling, CON-001)
 | 0600–0699 | sessions (WP-10) | `sessions` | `sessions`, `host_keys` |
 | 0700–0999 | reserved (metrics, web interfaces, notifications) | — | Phase 2+ |
 
+## Roles (R-016, LOG-006)
+
+- **Owner role** (for example `anima_owner`, LOGIN, not superuser; CREATEROLE only when migration `0001` must create `anima_runtime` itself. The WP-04 deployment creates the roles first and gives the owner no CREATEROLE, R-021). Migrations run as this role, so it owns every schema, table, partition and function. Only the one-shot `migrate` step has its password.
+- **Runtime group** `anima_runtime` (NOLOGIN), created by migration `0001`. The same migration runs `ALTER DEFAULT PRIVILEGES` for the owner role: USAGE on schemas; SELECT, INSERT, UPDATE and DELETE on tables; USAGE and SELECT on sequences; EXECUTE on functions. The hub's runtime login (for example `anima_hub`) is a member of this group and owns nothing.
+- **Exceptions are explicit.** Migration `0500` revokes UPDATE, DELETE and TRUNCATE on `events.audit_log` and `events.event_log` from `anima_runtime` (WP-05 may use a narrower writer group instead). A new partition gets the same restriction.
+- **Partitions.** The runtime role cannot create or drop a partition, because it does not own the parent. Each partitioned table has `SECURITY DEFINER` functions in its own schema, owned by the owner role, with `search_path = pg_catalog, pg_temp`: one creates a day partition, one drops partitions before a date. The drop function for `events.audit_log` refuses a date newer than its retention period (LOG-006). The domain's `store.rs` calls these functions.
+- **Start check.** At start the hub refuses to serve, with a plain error (API-010), when its database login (`session_user`) is a superuser, differs from `current_user`, owns the database, schema `events` or any log table or partition, is a member of a role that can change, truncate, lock or reference the logs, or of `pg_execute_server_program`, `pg_write_server_files`, `pg_read_server_files` or `pg_maintain`, or would get write rights on new partitions through default privileges (R-023). The hub's database URL must not set `options=-c role=…`.
+- One PostgreSQL cluster serves one Anima installation. `anima_runtime` is a cluster-wide role, so two installations in one cluster would share its grants (R-019).
+- Tests run as the throwaway server's superuser (R-009). Each restriction above has a test that uses `SET ROLE anima_runtime`.
+
 ## Table outlines
 
 Columns listed are the contract; a package may add columns to its own tables.
@@ -72,8 +82,8 @@ events.event_log          id uuid, at timestamptz, severity text, source text, d
                           null, device_name text null, message text; partitioned by range (at)
 events.audit_log          id uuid, at timestamptz, operator_id uuid, operator_name text, action
                           text, target_type text, target_id text, client_addr inet,
-                          change jsonb; partitioned by range (at); no UPDATE/DELETE grants
-                          for the hub role before retention (LOG-006)
+                          change jsonb; partitioned by range (at); the runtime role has
+                          only SELECT and INSERT (LOG-006, R-016)
 
 sessions.sessions         id uuid pk, device_id uuid null, device_name text, protocol text,
                           operator_id uuid, client_addr inet, started_at, ended_at null,

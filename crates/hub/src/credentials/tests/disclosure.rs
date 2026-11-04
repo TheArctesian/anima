@@ -7,7 +7,7 @@ use super::{test_key, vault_from};
 use crate::credentials::Secret;
 
 #[test]
-fn log_007_secret_has_no_format_traits() {
+fn log_007_sec_005_secret_has_no_format_traits() {
     assert_not_impl_any!(Secret: fmt::Debug, fmt::Display, serde::Serialize, Clone, PartialEq);
 }
 

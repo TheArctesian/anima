@@ -168,7 +168,7 @@ Anima uses PostgreSQL. For this version, the database runs on the same host as t
 | --- | --- |
 | Version | PostgreSQL 17 or later |
 | Rust access | `sqlx` with compile-time checked queries |
-| Schema changes | `sqlx` migrations in the hub repository. The hub applies them at start. |
+| Schema changes | `sqlx` migrations in the hub repository. A one-shot `migrate` step applies them as the owner role before the hub starts. The hub serves as a runtime role that owns nothing (LOG-006). |
 | Data volume | A named Docker volume |
 
 - **DB-001.** Only the hub must connect to the database. Do not publish port 5432 outside the Docker network.
@@ -1237,7 +1237,7 @@ Each hub domain folder has the same shape. Add only the files that the domain ne
 - **REPO-002.** `crates/hub/src/main.rs` and `schema.rs` contain wiring only. They contain no business rules.
 - **REPO-003.** The Tauri shell (`apps/desktop/src-tauri`) contains only functions that need the operating system: windows, the key store and web views. All other logic is in the hub or the client.
 - **REPO-004.** A domain must not import the `store` module of a different domain (CQ-032). The gate script must check the import graph for this rule and for cycles.
-- **REPO-005.** A folder with more than 12 files must be split into sub-domains, for example `checks/types/`.
+- **REPO-005.** A folder with more than 12 files must be split into sub-domains, for example `checks/types/`. A Rust module file `name.rs` that has a folder `name/` belongs to that folder and does not count in its parent folder.
 
 ## 14. References
 
