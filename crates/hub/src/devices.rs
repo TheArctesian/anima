@@ -1,7 +1,6 @@
 //! Device inventory: sites, devices, tags and SSH settings.
 
 pub mod graphql;
-mod graphql_error;
 mod loaders;
 mod model;
 mod page;
@@ -10,6 +9,7 @@ mod rules;
 mod store;
 #[cfg(test)]
 mod tests;
+mod text;
 
 use sqlx::PgPool;
 

@@ -34,7 +34,6 @@ macro_rules! device_filter {
     };
 }
 
-#[cfg_attr(not(test), expect(dead_code, reason = "used by devices GraphQL"))]
 pub(super) async fn create_site(
     conn: &mut PgConnection,
     id: SiteId,
@@ -69,7 +68,6 @@ pub(super) async fn sites_by_ids(db: &PgPool, ids: &[SiteId]) -> Result<Vec<Site
 }
 
 /// Inserts the device, its tags and its SSH settings; all or nothing.
-#[cfg_attr(not(test), expect(dead_code, reason = "used by devices GraphQL"))]
 pub(super) async fn create_device(
     conn: &mut PgConnection,
     id: DeviceId,
@@ -108,7 +106,6 @@ pub(super) async fn create_device(
     Ok(created)
 }
 
-#[cfg_attr(not(test), expect(dead_code, reason = "used by devices GraphQL"))]
 async fn replace_tags(conn: &mut PgConnection, id: DeviceId, tags: &[String]) -> Result<(), Error> {
     sqlx::query("DELETE FROM devices.device_tags WHERE device_id = $1")
         .bind(id)
@@ -123,7 +120,6 @@ async fn replace_tags(conn: &mut PgConnection, id: DeviceId, tags: &[String]) ->
 }
 
 /// Changes only the fields present; tags and SSH settings are replaced wholly when present.
-#[cfg_attr(not(test), expect(dead_code, reason = "used by devices GraphQL"))]
 pub(super) async fn update_device(
     conn: &mut PgConnection,
     id: DeviceId,
@@ -173,7 +169,6 @@ pub(super) async fn update_device(
 
 /// Deletes with one `DELETE`; foreign keys remove tags and SSH settings (DEV-015).
 /// The device is read `FOR UPDATE` first, so the returned device is the one deleted.
-#[cfg_attr(not(test), expect(dead_code, reason = "used by devices GraphQL"))]
 pub(super) async fn delete_device(conn: &mut PgConnection, id: DeviceId) -> Result<Device, Error> {
     let mut tx = conn.begin().await?;
     let row = sqlx::query_as::<_, DeviceRow>(select_device!("WHERE d.id = $1 FOR UPDATE OF d"))

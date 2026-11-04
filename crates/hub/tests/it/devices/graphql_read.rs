@@ -2,52 +2,16 @@
 
 use anima_hub::devices::{
     self,
-    graphql::{Query, devices_by_site_loader, site_loader},
+    graphql::{Mutation, Query},
 };
-use async_graphql::{EmptyMutation, EmptySubscription, Request, Response, Schema};
+use async_graphql::{EmptySubscription, Schema};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
-pub type TestSchema = Schema<Query, EmptyMutation, EmptySubscription>;
+use super::harness::{data, only_error, schema_for, signed_in, validation_fields};
 
 const HOME_SITE: &str = "0190a000-0000-7000-8001-000000000001";
 const OFFICE_1_SITE: &str = "0190a000-0000-7000-8001-000000000002";
-
-/// The schema as `schema.rs` builds it.
-pub fn schema_for(pool: &PgPool) -> TestSchema {
-    Schema::build(Query, EmptyMutation, EmptySubscription)
-        .data(pool.clone())
-        .data(site_loader(pool.clone()))
-        .data(devices_by_site_loader(pool.clone()))
-        .finish()
-}
-
-/// The data of a response that must have no errors.
-pub async fn data(schema: &TestSchema, query: &str) -> Value {
-    let response = schema.execute(query).await;
-    assert!(response.errors.is_empty(), "{:?}", response.errors);
-    response.data.into_json().unwrap()
-}
-
-/// The only error of a response, as JSON with `extensions`.
-pub async fn only_error(schema: &TestSchema, query: &str) -> Value {
-    error_json(&schema.execute(Request::new(query)).await)
-}
-
-fn error_json(response: &Response) -> Value {
-    assert_eq!(response.errors.len(), 1, "{:?}", response.errors);
-    serde_json::to_value(&response.errors[0]).unwrap()
-}
-
-fn validation_fields(error: &Value) -> Vec<&str> {
-    assert_eq!(error["extensions"]["code"], "VALIDATION", "{error}");
-    error["extensions"]["fields"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|f| f["field"].as_str().unwrap())
-        .collect()
-}
 
 fn names(connection: &Value) -> Vec<&str> {
     connection["edges"]
@@ -176,7 +140,7 @@ fixture_test! {
             assert_eq!(validation_fields(&error), [field], "{query}");
         }
         // One error per site, each naming the same field.
-        let nested = schema.execute("{ sites { devices(first: 0) { totalCount } } }").await;
+        let nested = schema.execute(signed_in("{ sites { devices(first: 0) { totalCount } } }")).await;
         assert_eq!(nested.errors.len(), 3);
         for error in &nested.errors {
             let error = serde_json::to_value(error).unwrap();
@@ -199,6 +163,17 @@ fixture_test! {
     async fn vpn_002_a_malformed_site_id_is_a_validation_error_on_site_id(pool: PgPool) {
         let error = only_error(&schema_for(&pool), r#"{ devices(filter: { siteId: "nope" }) { totalCount } }"#).await;
         assert_eq!(validation_fields(&error), ["siteId"]);
+    }
+
+    async fn dev_010_a_filter_over_its_limits_is_validation_on_each_field(pool: PgPool) {
+        let schema = schema_for(&pool);
+        let name = "n".repeat(65);
+        let tags = vec!["t"; 33].join(r#"", ""#);
+        let query = format!(r#"{{ devices(filter: {{ name: "{name}", tags: ["{tags}"] }}) {{ totalCount }} }}"#);
+        let error = only_error(&schema, &query).await;
+        assert_eq!(validation_fields(&error), ["name", "tags"]);
+        let at_limit = format!(r#"{{ devices(filter: {{ name: "{}" }}) {{ totalCount }} }}"#, "n".repeat(64));
+        assert_eq!(data(&schema, &at_limit).await["devices"]["totalCount"], 0);
     }
 
     async fn api_006_name_filter_is_a_case_insensitive_substring_and_tags_are_all_of(pool: PgPool) {
@@ -287,7 +262,7 @@ fixture_test! {
         let schema = schema_for(&pool);
         // The sites still load; the batched device query joins the dropped table.
         sqlx::query("DROP TABLE devices.ssh_settings").execute(&pool).await.unwrap();
-        let response = schema.execute("{ sites { name devices { totalCount } } }").await;
+        let response = schema.execute(signed_in("{ sites { name devices { totalCount } } }")).await;
         assert_eq!(response.errors.len(), 3);
         for error in &response.errors {
             let error = serde_json::to_value(error).unwrap();
@@ -302,11 +277,33 @@ fixture_test! {
 
 #[tokio::test]
 async fn k7_missing_schema_data_is_internal_without_rust_type_names() {
-    let schema = Schema::build(Query, EmptyMutation, EmptySubscription).finish();
+    let schema = Schema::build(Query, Mutation, EmptySubscription).finish();
     let error = only_error(&schema, "{ tags }").await;
     assert_eq!(error["extensions"]["code"], "INTERNAL");
     let text = error.to_string();
     for leak in ["PgPool", "sqlx", "Data `", "does not exist"] {
         assert!(!text.contains(leak), "{text}");
+    }
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn api_010_a_missing_site_devices_loader_is_internal_without_rust_type_names(pool: PgPool) {
+    let schema = Schema::build(Query, Mutation, EmptySubscription)
+        .data(pool)
+        .finish();
+    let response = schema
+        .execute(signed_in("{ sites { devices { totalCount } } }"))
+        .await;
+    assert_eq!(response.errors.len(), 3);
+    for error in &response.errors {
+        let error = serde_json::to_value(error).unwrap();
+        assert_eq!(error["extensions"]["code"], "INTERNAL", "{error}");
+        let text = error.to_string();
+        for leak in ["DataLoader", "DevicesBySite", "Data `", "does not exist"] {
+            assert!(!text.contains(leak), "{text}");
+        }
     }
 }

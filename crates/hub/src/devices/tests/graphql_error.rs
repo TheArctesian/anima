@@ -1,7 +1,7 @@
 use async_graphql::Value;
 
 use super::*;
-use crate::devices::graphql_error::to_graphql;
+use crate::devices::graphql::error::to_graphql;
 
 fn code_of(error: &async_graphql::Error) -> Value {
     error

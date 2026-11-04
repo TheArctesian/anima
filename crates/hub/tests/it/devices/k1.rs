@@ -7,10 +7,14 @@ use async_graphql::parser::{
     types::{ServiceDocument, TypeKind, TypeSystemDefinition},
 };
 
-use super::graphql_read::schema_for;
+use super::harness::schema_for;
 
-const CHECKED: [&str; 11] = [
+const CHECKED: [&str; 15] = [
     "Query",
+    "Mutation",
+    "CreateDeviceInput",
+    "UpdateDeviceInput",
+    "SshSettingsInput",
     "Site",
     "Device",
     "SshSettings",
