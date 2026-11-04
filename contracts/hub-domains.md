@@ -92,7 +92,11 @@ GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also 
 
 | Domain `graphql.rs` | May also import | For |
 | --- | --- | --- |
-| `devices` | `checks`, `sessions` | `Device.status`, `Device.checks`, `Device.uptime`, `DeviceFilter.status`, `DeviceSort.STATUS`/`UPTIME`, `createDevice(addDefaultCheck)`, `SshSettings.hostKey` |
+| `devices` | `access` (R-022), `checks`, `sessions` | the `Authenticated` guard; `Device.status`, `Device.checks`, `Device.uptime`, `DeviceFilter.status`, `DeviceSort.STATUS`/`UPTIME`, `createDevice(addDefaultCheck)`, `SshSettings.hostKey` |
+
+| `checks`, `maintenance`, `events` | `access` (R-022) | the `Authenticated` guard on their root fields (API-003) |
+
+`sessions` already depends on `access`. Through these edges a `graphql.rs` uses only `access::Authenticated`; `Operator` and `ClientAddr` come from `events` (R-019).
 
 Outside `graphql.rs`, `devices` never imports `checks` (that edge would make a cycle). Device deletion relies on foreign keys and the checks retention job instead (see below).
 
