@@ -60,3 +60,28 @@ async fn api_003_a_read_token_may_query_through_a_root_fragment() {
     assert!(response.errors.is_empty(), "{:?}", response.errors);
     assert_eq!(response.data, value!({ "open": "open" }));
 }
+
+#[tokio::test]
+async fn api_003_a_read_token_cannot_mutate_through_a_fragment() {
+    for document in [
+        "mutation { ...F } fragment F on Mutation { open }",
+        "mutation { ... on Mutation { open } }",
+    ] {
+        let response = backstopped()
+            .execute(read_identity().attach(Request::new(document)))
+            .await;
+        let codes: Vec<_> = response
+            .errors
+            .iter()
+            .map(|error| {
+                error
+                    .extensions
+                    .as_ref()
+                    .and_then(|e| e.get("code"))
+                    .cloned()
+            })
+            .collect();
+        assert_eq!(codes, [Some(value!("FORBIDDEN"))], "{document}");
+        assert_eq!(response.data, value!(null), "{document}");
+    }
+}
