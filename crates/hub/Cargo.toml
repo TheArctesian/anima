@@ -27,8 +27,17 @@ chacha20poly1305.workspace = true
 zeroize.workspace = true
 sha2.workspace = true
 base64.workspace = true
+argon2.workspace = true
+getrandom.workspace = true
+rpassword.workspace = true
+
+[features]
+# `access::Identity::for_tests`, for integration tests of guarded domains (D-6). Turned on
+# only by the dev-dependency below; never in a release build.
+test-support = []
 
 [dev-dependencies]
+anima-hub = { path = ".", features = ["test-support"] }
 http-body-util.workspace = true
 tower.workspace = true
 static_assertions.workspace = true
