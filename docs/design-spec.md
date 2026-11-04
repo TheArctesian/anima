@@ -168,7 +168,7 @@ Anima uses PostgreSQL. For this version, the database runs on the same host as t
 | --- | --- |
 | Version | PostgreSQL 17 or later |
 | Rust access | `sqlx` with compile-time checked queries |
-| Schema changes | `sqlx` migrations in the hub repository. The hub applies them at start. |
+| Schema changes | `sqlx` migrations in the hub repository. A one-shot `migrate` step applies them as the owner role before the hub starts. The hub serves as a runtime role that owns nothing (LOG-006). |
 | Data volume | A named Docker volume |
 
 - **DB-001.** Only the hub must connect to the database. Do not publish port 5432 outside the Docker network.
