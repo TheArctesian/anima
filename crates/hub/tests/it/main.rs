@@ -8,4 +8,5 @@ mod logs;
 mod operator;
 mod start;
 mod tokens;
+mod totp;
 mod transport;
