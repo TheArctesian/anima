@@ -172,6 +172,18 @@ it('card to detail: detaching mid-flight stops the flight and clears the styles 
   expect(old.style.opacity).toBe('');
 });
 
+it('card to detail: detaching after no flight leaves the styles it did not write', () => {
+  const node = header();
+  node.style.translate = '4px 0px';
+  node.style.scale = '0.9';
+
+  attach(node)();
+
+  expect(node.style.translate).toBe('4px 0px');
+  expect(node.style.scale).toBe('0.9');
+  expect(node.dataset.shared).toBeUndefined();
+});
+
 it('MOT-002: a page that mounts mid-flight starts from where the moving item is on screen', () => {
   card();
   const middle = header();

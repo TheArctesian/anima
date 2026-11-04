@@ -15,7 +15,7 @@ export interface SharedOptions {
  */
 function counterpart(element: HTMLElement, key: string): HTMLElement | undefined {
   const matches = [...document.querySelectorAll<HTMLElement>('[data-shared]')].filter(
-    (other) => other !== element && other.isConnected && other.dataset.shared === key,
+    (other) => other !== element && other.dataset.shared === key,
   );
   return matches.at(-1);
 }
@@ -40,7 +40,11 @@ function hide(element: Animatable): () => void {
  * outgoing page to its place on this one, with `spring-move`, by `translate` and `scale` only
  * (MOT-006). The outgoing element starts from where it is on screen, even mid-flight
  * (MOT-002). Under reduced motion nothing moves; the page cross-fade is the reduced form
- * (MOT-040, MOT-041). Detaching stops the flight and clears the styles it wrote.
+ * (MOT-040, MOT-041). Detaching mid-flight stops the flight and clears the styles it wrote.
+ *
+ * A key must be unique on a page, so each page has one counterpart for it. The element must
+ * keep the default `transform-origin` (its centre), because the flight runs centre to centre,
+ * and must not be a non-replaced inline element, to which `translate` and `scale` do not apply.
  */
 export function sharedItem(key: string, options: SharedOptions = {}): Attachment<HTMLElement> {
   const { preference = motionPreference() } = options;
@@ -49,11 +53,12 @@ export function sharedItem(key: string, options: SharedOptions = {}): Attachment
     // The preference is read once per attach; a later change must not re-run the flight.
     const flight = untrack(() => depart(element, key, preference));
     return () => {
-      flight?.playback.stop();
-      flight?.show();
+      delete element.dataset.shared;
+      if (flight === undefined) return;
+      flight.playback.stop();
+      flight.show();
       element.style.translate = '';
       element.style.scale = '';
-      if (element.dataset.shared === key) delete element.dataset.shared;
     };
   };
 }
