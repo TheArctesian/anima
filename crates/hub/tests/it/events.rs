@@ -4,6 +4,7 @@
 mod audit;
 mod client;
 mod lists;
+mod operations;
 mod pages;
 mod socket;
 mod streams;

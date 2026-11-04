@@ -79,3 +79,30 @@ async fn log_005_audit_pages_show_who_changed_what_newest_first(pool: PgPool) {
     assert_eq!(entries, [update.clone(), update, login]);
     assert_eq!(ids[0], page["edges"][0]["node"]["id"]);
 }
+
+#[sqlx::test(migrations = "./migrations")]
+async fn api_006_audit_pages_keep_entries_that_share_an_instant(pool: PgPool) {
+    set_operator(&pool).await;
+    let hub = Hub::new(&pool, start());
+    let token = hub.token().await;
+    let mut conn = pool.acquire().await.unwrap();
+    // Three entries share an instant: the id decides their order.
+    for minutes in [5, 10, 10, 10, 15] {
+        let at = start() + TimeDelta::minutes(minutes);
+        let entry = audit_entry(json!({ "minutes": minutes }));
+        events::audit(&mut conn, at, entry).await.unwrap();
+    }
+    let newest_first: Vec<String> =
+        sqlx::query_scalar("select id::text from events.audit_log order by at desc, id desc")
+            .fetch_all(&mut *conn)
+            .await
+            .unwrap();
+    drop(conn);
+    assert_eq!(newest_first.len(), 6);
+
+    for (first, pages) in [(1, 6), (2, 3), (4, 2)] {
+        let (ids, more) = walk(&hub, &token, (AUDIT, "audit"), first).await;
+        assert_eq!(ids, newest_first, "first: {first}");
+        assert_eq!(more.len(), pages, "first: {first}");
+    }
+}

@@ -62,14 +62,7 @@ impl Query {
         #[graphql(default_with = "Some(DEFAULT_FIRST)")] first: Option<i32>,
         after: Option<String>,
     ) -> Result<EventConnection> {
-        let paged = paging(Log::Events, first, after.as_deref());
-        let filter = event_filter(filter.unwrap_or_default());
-        let ((size, after), filter) = match (paged, filter) {
-            (Ok(paged), Ok(filter)) => (paged, filter),
-            (paged, filter) => {
-                return Err(invalid(paged.err().into_iter().chain(filter.err())));
-            }
-        };
+        let ((size, after), filter) = validate(filter, first, after.as_deref()).map_err(invalid)?;
         let rows = store::list_events(dependency(ctx)?, &filter, after, fetch_limit(size))
             .await
             .map_err(internal)?;
@@ -146,12 +139,26 @@ fn delivered(signal: Signal, min: Severity) -> Option<EventSummary> {
 /// A field the operator must fix, and why.
 type Bad = (&'static str, &'static str);
 
-/// Reads `first` (K1 default when omitted) and `after` for `log`; the first bad one.
-fn paging(
-    log: Log,
+/// A page size, and the position the page starts after.
+type Paging = (usize, Option<Position>);
+
+/// Reads the arguments of `Query.events`; every bad field at once.
+fn validate(
+    filter: Option<EventFilterInput>,
     first: Option<i32>,
     after: Option<&str>,
-) -> Result<(usize, Option<Position>), Bad> {
+) -> Result<(Paging, EventFilter), Vec<Bad>> {
+    match (
+        paging(Log::Events, first, after),
+        event_filter(filter.unwrap_or_default()),
+    ) {
+        (Ok(paged), Ok(filter)) => Ok((paged, filter)),
+        (paged, filter) => Err(paged.err().into_iter().chain(filter.err()).collect()),
+    }
+}
+
+/// Reads `first` (K1 default when omitted) and `after` for `log`; the first bad one.
+fn paging(log: Log, first: Option<i32>, after: Option<&str>) -> Result<Paging, Bad> {
     let size = page_size(first.unwrap_or(DEFAULT_FIRST)).ok_or(("first", PAGE_SIZE_MESSAGE))?;
     let after = after
         .map(|cursor| decode_cursor(log, cursor).ok_or(("after", CURSOR_MESSAGE)))
