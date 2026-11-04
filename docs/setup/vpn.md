@@ -79,10 +79,13 @@ chat first (VPS-005, DNS-008)** before you do it.
 | 12 | Install the full policy and reload it (only when all nodes are enrolled) | VPS | 8 |
 | 13 | Install and start the backup units | VPS, home PC | 9 |
 | 14 | **Recurring:** renew each client before its 180 days end | VPS | 7 |
-| 15 | **When needed:** rebuild or restore the VPS from backup | VPS, home PC | 9 |
+| 15 | **When needed:** rebuild or restore the VPS from backup (snapshot by ID, `hub` node replaced, records updated) | VPS, home PC, Cloudflare, Hostinger | 9 |
+| 16 | **When needed:** upgrade the Headscale image | VPS | 13.1 |
+| 17 | **When needed:** revoke a lost or stolen client | VPS | 13.2 |
+| 18 | **When needed:** follow a change of the hub's VPN IPv4 | home PC, Cloudflare | 13.3 |
 
-Every row has the marker **confirm in chat first (VPS-005, DNS-008)**, including the recurring and
-rebuild rows.
+Every row has the marker **confirm in chat first (VPS-005, DNS-008)**, including the recurring,
+rebuild and maintenance rows.
 
 Order matters. The Mac you use to administer the VPS must be on the VPN before you apply the VPS
 firewall (row 8), because the firewall closes SSH on the public interface. Rows 7 and 8 are in
@@ -1119,9 +1122,10 @@ The backup uses the home router (step 5) and the hub's `--accept-routes` (step 3
    sudo find /srv/restic ! -user restic          # must print nothing
    ```
 
-   Read the output for `removed snapshot`. A mistyped ID prints "Ignoring ... no matching ID found"
-   and still exits 0. If `find` prints anything, repair the owner:
-   `sudo chown -R restic:restic /srv/restic/headscale-vps`.
+   The wording depends on the restic version: restic 0.16.4 prints `1 / 1 files deleted`, not
+   "removed snapshot". A mistyped ID prints "Ignoring ... no matching ID found" and still exits 0.
+   So run the `--no-lock snapshots` command above again and confirm the ID is gone. If `find`
+   prints anything, repair the owner: `sudo chown -R restic:restic /srv/restic/headscale-vps`.
 
    The `snapshots` and `restore` commands in this guide run as root with `--no-lock`, which writes
    no lock file into the repository, so they are safe.
@@ -1135,7 +1139,9 @@ The backup uses the home router (step 5) and the hub's `--accept-routes` (step 3
 
 **Restore drill, every quarter.** A backup you have not restored is not a backup. On the home PC,
 restore the latest snapshot into a scratch folder and check it. This does not touch the live
-server:
+server. `latest` is acceptable here, and only here: the drill proves that the newest backup can be
+read and decrypted, and it puts nothing into service, so a snapshot a taken-over VPS wrote does no
+harm. A real restore never uses `latest`:
 
 ```bash
 # Runs on: home Linux PC
@@ -1147,10 +1153,23 @@ sudo rm -rf /root/headscale-restore                           # it holds private
 ```
 
 `--no-cache --no-lock` keep the drill from writing into the repository, which belongs to the
-`restic` user. To rebuild a lost VPS, use the restore commands in the backup README: restore into
-`/root/headscale-restore`, check the database, stop Headscale, copy the files into `lib/` and
-`config/`, start it, confirm that `hsctl nodes list` shows every node, and `rm -rf` the restore
-folder at the end (it holds private keys).
+`restic` user.
+
+**Rebuild or restore the VPS (operator change 15, confirm in chat first: VPS-005, DNS-008).** Use
+the restore procedure in the [backup README](../../deploy/headscale/backup/README.md#restore); in
+short:
+
+1. Choose a snapshot **by ID**, dated by its arrival on the home PC before the suspected
+   compromise. The VPS sets snapshot times itself, so after an incident never use `latest`.
+2. Restore it on the home PC and take only `db.sqlite` and the two private keys. Render
+   `config.yaml` again with `render.sh` for the VPS's public IPv4 (mode 0600, root), and install
+   `policy.hujson` from the repository, not from the snapshot.
+3. After Headscale starts, delete the old `hub` node (`hsctl nodes delete`) and join again with a
+   new tagged pre-auth key (step 3). Then review every node, route, pre-auth key and API key
+   (step 11, Detection).
+4. If the hub's VPN IPv4 changed, update `allow.conf` on the home PC and the `hub` record
+   ([Hub VPN address changes](#133-hub-vpn-address-changes)). On a new VPS, update the `hs`
+   record and the Hostinger panel firewall too.
 
 ## 10. Warnings
 
@@ -1242,6 +1261,13 @@ hsctl apikeys list      # no keys
 hsctl nodes list        # exactly the nodes you expect; clients with no tags and an expiry within 180 days
 ```
 
+On the home PC, the receiver must accept the hub's current VPN address:
+
+```bash
+# Runs on: home Linux PC
+grep IPAddressAllow /etc/systemd/system/rest-server.service.d/allow.conf    # must equal tailscale ip -4 on the VPS
+```
+
 Other listeners must be on `127.0.0.1`, `::1`, or the VPN address. `sshd` listens on `0.0.0.0:22`
 and `[::]:22`; the `nftables` rules, not `sshd`, restrict it to the VPN interface. Also expect
 Headscale's `127.0.0.1:9090` and
@@ -1250,3 +1276,74 @@ Headscale's `127.0.0.1:9090` and
 If `dig +short hub.anima.ing` is empty at a site while `@1.1.1.1` answers, the site resolver (for
 example the Pi-hole) drops answers with private addresses. See the end of
 [`deploy/dns/README.md`](../../deploy/dns/README.md).
+
+## 13. Maintenance
+
+### 13.1 Upgrade the Headscale image
+
+**Operator change 16 (confirm in chat first: VPS-005).** Headscale is pinned by tag and digest
+in `compose.yaml`; an upgrade is a reviewed change to that line.
+
+1. On your Mac, read the release notes for config or CLI changes, update the `image:` line (tag
+   and digest) and run `bun test deploy/headscale`.
+2. On the VPS, take a backup first (`sudo systemctl start headscale-backup.service`, then check
+   the journal), and note its snapshot ID on the home PC: a database migration cannot be undone
+   except by a restore.
+3. Pull the new image and check that its digest equals the one in the new `compose.yaml`
+   (step 2.6). Install the new file and start it:
+
+   ```bash
+   # Runs on: VPS (SSH over the VPN)
+   sudo docker pull docker.io/headscale/headscale:<NEW_VERSION>
+   sudo docker image inspect --format '{{index .RepoDigests 0}}' docker.io/headscale/headscale:<NEW_VERSION>
+   sudo cp -p /opt/anima/headscale/compose.yaml /opt/anima/headscale/compose.yaml.old
+   sudo install -m 0644 ~/anima-headscale/compose.yaml /opt/anima/headscale/compose.yaml
+   sudo docker compose -f /opt/anima/headscale/compose.yaml up -d
+   sudo docker compose -f /opt/anima/headscale/compose.yaml ps        # healthy
+   ```
+
+4. Check again what an upgrade could change: `hsctl apikeys list` is empty,
+   `hsctl policy check --file /etc/headscale/policy.hujson` exits 0, and `hsctl nodes list`
+   shows the same nodes, tags and expiries as before.
+
+Undo: put `compose.yaml.old` back and `up -d`. If the new version migrated the database, restore
+the snapshot from step 2 by ID (the backup README, Restore).
+
+### 13.2 Revoke a lost or stolen client
+
+**Operator change 17 (confirm in chat first: VPS-005).** Do it from the other Mac, over the VPN,
+as soon as you know.
+
+```bash
+# Runs on: VPS (SSH over the VPN, from the other Mac)
+hsctl nodes list                                   # find the lost client's ID
+hsctl nodes expire --identifier <NODE_ID>          # cuts it off now
+hsctl nodes delete --identifier <NODE_ID>
+hsctl nodes list-routes                            # only the routes you approved remain
+hsctl preauthkeys list                             # expire any key you did not use
+```
+
+If it was a Mac with your SSH key, remove that key from `~<ADMIN_USER>/.ssh/authorized_keys` on
+the VPS (and on the home and office PCs), and sign out of the Hostinger and Cloudflare accounts
+on it. If both Macs are lost, use the Hostinger browser console (step 4.8).
+
+### 13.3 Hub VPN address changes
+
+**Operator change 18 (confirm in chat first: VPS-005, DNS-008).** The hub's VPN IPv4 changes only
+when the `hub` node is registered again (for example after a restore, step 9). After
+`tailscale ip -4` on the VPS shows the new `<HUB_VPN_IPV4>`:
+
+1. On the home PC, write the new address into the receiver's allow list and restart it:
+
+   ```bash
+   # Runs on: home Linux PC, in a copy of deploy/headscale/backup
+   sed 's/\${HUB_VPN_IPV4}/<HUB_VPN_IPV4>/' rest-server-allow.conf | sudo tee /etc/systemd/system/rest-server.service.d/allow.conf > /dev/null
+   sudo systemctl daemon-reload && sudo systemctl restart rest-server.service
+   ```
+
+2. Change the `hub` record: with a new short-lived operator token, delete the old `hub` record
+   and apply the `hub` row of [`deploy/dns/README.md`](../../deploy/dns/README.md) again with
+   `HUB_VPN_IPV4` set to the new address. Revoke the token. Check with
+   `dig +short hub.anima.ing @1.1.1.1`.
+3. Run the backup once (`sudo systemctl start headscale-backup.service`) and check that it
+   arrives (step 9.6). Tell WP-04: the hub listens on this address (`ANIMA_LISTEN`).

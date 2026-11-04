@@ -1,8 +1,9 @@
 # Home Linux PC: restic rest-server that receives the VPS backups (VPS-006, decision D-12).
 # Install as /etc/systemd/system/rest-server.service (see README.md).
-# --append-only: a client can add snapshots but never delete or overwrite them, so a
-# compromised VPS cannot delete old snapshots as long as prune.sh refuses anomalous
-# snapshot lists. --private-repos: the user headscale-vps may only use
+# --append-only: a client can add files but never delete or overwrite them. The VPS holds
+# the repository key, so a compromised VPS can still append crafted snapshots, index or
+# pack data; prune.sh refuses anomalous snapshot lists, and pack verification before
+# prune is deferred (issue #1). --private-repos: the user headscale-vps may only use
 # /srv/restic/headscale-vps/. --max-size caps the space a client can fill (1 GiB, about
 # ten times the expected repository).
 [Unit]
