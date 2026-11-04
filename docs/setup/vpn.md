@@ -166,12 +166,15 @@ Everything in this step runs on the VPS over SSH, over the public address for no
    ```
 
    Send the part from `== Listening sockets` to `== End of inventory` to the programme. It
-   holds program, unit, container, network and port names, and no secrets. The `VIOLATION`
-   lines after it are expected now. **Stop and wait for the programme if the inventory lists
-   anything unexpected:** a line marked `!`, a running container, an existing Docker network
-   other than `bridge`, `host` and `none`, a firewalld zone with ports, rich rules or services
-   other than `ssh`, `cockpit` and `dhcpv6-client`, or an nftables table other than
-   `inet firewalld`. Each of those is a service that the firewall (step 4.6) or the Docker
+   holds program, unit, container, network and port names, and no secrets. Most `VIOLATION`
+   lines after it are expected now; send those that name a `Match` block or
+   `/etc/sysconfig/nftables.conf` too, because steps 4.2 and 4.6 refuse until they are gone.
+   **Stop and wait for the programme if the inventory lists anything unexpected:** a line
+   marked `!`, a running container, an existing Docker network other than `bridge`, `host` and
+   `none`, a firewalld zone with anything set beyond its interfaces and the services `ssh`,
+   `cockpit` and `dhcpv6-client` (ports, sources, rich rules, forward ports, masquerade, a
+   target other than `default`), a firewalld policy other than `allow-host-ipv6`, a direct
+   rule, or an nftables table other than `inet firewalld`. Each of those is a service that the firewall (step 4.6) or the Docker
    settings (step 4.4) could break.
 
    Then create the admin user. On AlmaLinux the admin group is `wheel`. **Secret:** the
@@ -357,8 +360,8 @@ and the tag `tag:hub`. A tagged node never expires (VPN-003), so no renewal is n
 
 1. Create a tagged, single-use pre-auth key that is valid for one hour, straight into a file that only
    root can read. The key is never printed. (`sh -c` is used so that the shell, not `sudo`, makes the
-   file; `sudo` writes every command line to `/var/log/auth.log`, so a key on a command line would
-   be logged.)
+   file; `sudo` writes every command line to `/var/log/secure` and the journal, so a key on a
+   command line would be logged.)
 
    ```bash
    # Runs on: VPS (SSH)
@@ -455,9 +458,12 @@ changes nothing.
    (VPS-001). It installs `/etc/ssh/sshd_config.d/00-anima.conf`; AlmaLinux reads the drop-ins
    before the main file and keeps the first value, so `00-` wins over AlmaLinux's
    `01-permitrootlogin.conf` (or `25-`), `50-redhat.conf` and cloud-init's file. Guards: it refuses
-   unless that user is a non-root member of `wheel` with a key in `authorized_keys`; it checks the
-   result with `sshd -t` and `sshd -T`, and puts the old file back if either check fails; then it
-   reloads `sshd.service`. **Keep your current session open.** Open a second session and log in
+   unless that user is a non-root member of `wheel` with a key in `authorized_keys`; it refuses
+   while `/etc/ssh/sshd_config` or any file it includes has an active `Match` line (a provider
+   image can carry one that turns passwords or root login back on for some addresses, and
+   `sshd -T` alone does not show it: remove the block, then run `ssh` again); it checks the result
+   with `sshd -t`, `sshd -T` and `sshd -T -C` for root and the admin user from a public and a VPN
+   address, and puts the old file back if any check fails; then it reloads `sshd.service`. **Keep your current session open.** Open a second session and log in
    before you close the first.
 
    Before you run it, prove your way back in: log in at the Hostinger browser console as
@@ -495,8 +501,10 @@ changes nothing.
    Docker run containers confined (`container_t`; Docker CE on AlmaLinux does not do this by
    default, so Headscale would run unconfined as `spc_t`), logs are rotated, and `live-restore`
    keeps containers running while Docker restarts. It refuses while Headscale's folders are not
-   labelled `container_file_t` (step 2.5). Restart Docker to apply it; the Headscale container
-   restarts once, and clients stay connected meanwhile.
+   labelled `container_file_t` (step 2.5). Restart Docker to apply it, then recreate Headscale:
+   `live-restore` keeps the running container, and a container keeps the label it was created
+   with, so Headscale stays unconfined (`spc_t`) until it is created again. Clients reconnect
+   within seconds.
 
    **If Docker was installed before this guide (step 2.2), decide with the programme first.**
    This step changes Docker for every container on the VPS. Each container that publishes a port
@@ -508,18 +516,21 @@ changes nothing.
    ```bash
    # Runs on: VPS (SSH)
    sudo ./harden.sh --restart-docker docker
+   sudo docker compose -f /opt/anima/headscale/compose.yaml up -d --force-recreate
    sudo docker compose -f /opt/anima/headscale/compose.yaml ps       # headscale: healthy again
    sudo docker info --format '{{.SecurityOptions}}'                  # lists name=selinux
-   ps -eZ | grep headscale                                           # ...:container_t:s0:c...
+   sudo docker inspect -f '{{.ProcessLabel}}' \
+     "$(sudo docker compose -f /opt/anima/headscale/compose.yaml ps -q headscale)"   # ...:container_t:s0:c...
    sudo ausearch -m avc -ts recent                                   # <no matches>
    ```
 
-   If `ausearch` shows denials for Headscale, or it is not healthy, undo: restore
+   `harden.sh check` reports a Headscale container that is not `container_t`. If `ausearch`
+   shows denials for Headscale, or it is not healthy, undo: restore
    `/var/lib/anima/daemon.json.previous` (or delete `/etc/docker/daemon.json`), restart Docker,
-   and report the denial lines.
+   recreate Headscale as above, and report the denial lines.
 
-5. Before the firewall: the Mac you administer from must be on the VPN. Do step 6 for that Mac
-   now (sections A to C). The VPN is not closed yet, so you approve it from an SSH session over the
+5. Before the firewall: the Mac you administer from must be on the VPN. Do section 6, A to C,
+   for that Mac now. The VPN is not closed yet, so you approve it from an SSH session over the
    **public** address, which still works. Then return here. Test:
 
    ```bash
@@ -534,18 +545,30 @@ changes nothing.
    run as a systemd unit under SELinux; and it **arms a rollback before applying**.
 
    It also **refuses while a port that is open now would close**: every public listener and every
-   port firewalld allows (ports, services and rich rules of the active zones), except 22/tcp (SSH
-   moves to the VPN on purpose) and the Anima ports. It prints each one as `would close:`. For each,
-   decide:
+   port firewalld allows (ports and services of the active zones), except 22/tcp (SSH moves to the
+   VPN on purpose) and the Anima ports. It prints each one as `would close:`. A port that Docker
+   publishes (`docker-proxy`) is printed as a `note:` instead: Docker's rules run before this
+   firewall, so it stays reachable until step 4 moves it to `127.0.0.1` when the container is
+   recreated. Anything firewalld does that is not a plain port shows as a token in place of the
+   port: `public:rich-rules`, `public:sources`, `public:forward-ports`, `public:source-ports`,
+   `public:protocols`, `public:masquerade`, `public:target` (the zone name first),
+   `service:NAME` (a service that includes others or opens protocols or source ports),
+   `policy:NAME` (a firewalld policy) or `direct-rules`. Read it with
+   `sudo firewall-cmd --zone=public --list-all`, `--info-service=NAME`, `--info-policy=NAME` or
+   `--direct --get-all-rules`, and send it to the programme. For each, decide:
 
    - **Keep it open** (another service on the VPS needs it from the internet): add one line
      `PORT/PROTO` (for example `8080/tcp`) to `/etc/anima/firewall-allow`. The file may hold only
      single tcp or udp ports; it never opens 22/tcp and never touches the VPN rules.
    - **Close it on purpose** (for example firewalld's default `cockpit` 9090/tcp and
      `dhcpv6-client` 546/udp; keep 546/udp only if the VPS gets IPv6 by DHCPv6): pass
-     `--allow-closing 9090/tcp,546/udp` to both `firewall` and `confirm`. A rich rule shows as
-     `rich-rules`: read it with `sudo firewall-cmd --list-rich-rules`, then keep its port in the
-     allow file or pass `rich-rules` in `--allow-closing`.
+     `--allow-closing 9090/tcp,546/udp` to both `firewall` and `confirm`. A token closes the same
+     way (for example `--allow-closing 9090/tcp,public:rich-rules`); keep the ports it opened in
+     the allow file if they must stay open.
+
+   It refuses while `/etc/sysconfig/nftables.conf` holds anything but comments and the Anima
+   include: AlmaLinux ships it as comments only, and a rule or an include there could flush
+   Docker's and Tailscale's tables at every boot. Send those lines to the programme.
 
    Run it inside an SSH session you opened to `<HUB_VPN_IPV4>`, not to the public address:
 
@@ -568,8 +591,11 @@ changes nothing.
    sudo --preserve-env=ANIMA_ADMIN_USER,SSH_CONNECTION ./harden.sh --allow-closing <PORTS> confirm
    ```
 
-   `confirm` refuses to run in the same session that ran `firewall`, or in one that does not come
-   over the VPN, and checks the open ports again. It cancels the rollback, installs the rules as
+   `confirm` refuses to run in the same session that ran `firewall`, in any SSH connection that
+   was already open when `firewall` ran (only a connection made through the new rules proves that
+   they let you in), or in one that does not come over the VPN. It checks the open ports and the
+   boot file again, and has `nft -c` check the boot file with the new rules before it changes
+   anything and again before it masks firewalld. It cancels the rollback, installs the rules as
    `/etc/nftables/anima.nft`, adds `include "/etc/nftables/anima.nft"` to the end of
    `/etc/sysconfig/nftables.conf` (the file AlmaLinux's `nftables.service` loads at boot; the
    rest of the file is kept, and its first version is saved as
@@ -1146,14 +1172,18 @@ harm. A real restore never uses `latest`:
 ```bash
 # Runs on: home Linux PC
 sudo restic --repo /srv/restic/headscale-vps/headscale --password-file /etc/restic/headscale-password \
-  --no-cache --no-lock restore latest --host anima-vps --tag headscale --target /root/headscale-restore
-sudo find /root/headscale-restore -type f                     # db.sqlite, two private keys, config.yaml, policy.hujson
-sudo sqlite3 "$(sudo find /root/headscale-restore -name db.sqlite)" "PRAGMA integrity_check"      # must print ok
+  --no-cache --no-lock restore latest --host anima-vps --tag headscale --target /root/headscale-restore \
+  --include '/tmp/headscale-backup.*/db.sqlite' --include '/tmp/headscale-backup.*/noise_private.key' \
+  --include '/tmp/headscale-backup.*/derp_server_private.key'
+sudo find /root/headscale-restore -type f                     # db.sqlite and the two private keys
+sudo find /root/headscale-restore -type l                     # must print nothing
+sudo sqlite3 "$(sudo find /root/headscale-restore -type f -name db.sqlite)" "PRAGMA integrity_check"      # must print ok
 sudo rm -rf /root/headscale-restore                           # it holds private keys
 ```
 
 `--no-cache --no-lock` keep the drill from writing into the repository, which belongs to the
-`restic` user.
+`restic` user. The drill restores only the three files a real restore uses, and `-type f` never
+follows a link a crafted snapshot could hold.
 
 **Rebuild or restore the VPS (operator change 15, confirm in chat first: VPS-005, DNS-008).** Use
 the restore procedure in the [backup README](../../deploy/headscale/backup/README.md#restore); in

@@ -35,6 +35,24 @@ label_problems() {
   done
 }
 
+# Print a problem unless the Headscale container runs confined (container_t). A container
+# keeps the label it was created with: after daemon.json turns labels on, Headscale stays
+# spc_t until it is recreated.
+headscale_label_problem() {
+  local mode id label
+  mode=$($GETENFORCE 2>/dev/null) || mode=unknown
+  [ "$mode" != Disabled ] || return 0
+  id=$($DOCKER ps -q --filter label=com.docker.compose.project=headscale \
+    --filter label=com.docker.compose.service=headscale 2>/dev/null) || { say "docker ps failed"; return; }
+  id=${id%%$'\n'*}
+  [ -n "$id" ] || { say "the Headscale container is not running"; return; }
+  label=$($DOCKER inspect -f '{{.ProcessLabel}}' "$id" 2>/dev/null) || label=
+  case $label in
+    *:container_t:*) ;;
+    *) say "Headscale runs as ${label:-an unknown label}, not container_t; recreate it (docker compose up -d --force-recreate)" ;;
+  esac
+}
+
 selinux_problems() {
   local mode
   mode=$($GETENFORCE 2>/dev/null) || mode=unknown
@@ -44,4 +62,5 @@ selinux_problems() {
     *name=selinux*) ;;
     *) say "Docker runs containers without SELinux labels (daemon.json selinux-enabled)" ;;
   esac
+  headscale_label_problem
 }

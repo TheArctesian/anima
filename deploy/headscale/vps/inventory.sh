@@ -6,7 +6,9 @@
 # needs its say, and SS, PS, DOCKER, SYSTEMCTL, FIREWALL_CMD, NFT and HERE.
 
 # Programs expected to listen on the VPS (ss shows at most 15 characters of a name).
-EXPECTED_PROGRAMS=" sshd headscale tailscaled dockerd docker-proxy containerd chronyd systemd-resolve "
+# Headscale uses the host network, so any docker-proxy is a port another container
+# publishes, and dockerd or containerd should not listen on the network at all.
+EXPECTED_PROGRAMS=" sshd headscale tailscaled chronyd systemd-resolve "
 
 # Print each listening socket with its program and unit; mark the unexpected ones.
 listener_inventory() {
@@ -56,10 +58,14 @@ firewalld_inventory() {
   while read -r zone _; do
     [ -z "$zone" ] || $FIREWALL_CMD --zone="$zone" --list-all
   done < <($FIREWALL_CMD --get-active-zones | grep -v '^[[:space:]]')
+  say "policies:"
+  $FIREWALL_CMD --get-active-policies
+  say "direct rules:"
+  $FIREWALL_CMD --direct --get-all-rules
 }
 
 inventory() {
-  say "== Listening sockets (! = not sshd, Headscale, tailscaled, Docker, chronyd or resolved)"
+  say "== Listening sockets (! = not sshd, Headscale, tailscaled, chronyd or resolved; docker-proxy is a port Docker publishes)"
   listener_inventory
   say "== Running containers"
   $DOCKER ps --format '{{.Names}} {{.Image}} {{.Ports}}' 2>/dev/null || say "(docker ps failed)"

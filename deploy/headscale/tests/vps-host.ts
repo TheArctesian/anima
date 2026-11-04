@@ -83,7 +83,9 @@ esac`,
   DOCKER: `case "$1" in
   version) echo "\${FAKE_DOCKER_VERSION:-29.9.3}";;
   info) echo "\${FAKE_DOCKER_SECURITY:-[name=seccomp,profile=builtin name=selinux]}";;
-  ps) printf '%b\\n' "\${FAKE_CONTAINERS:-headscale-headscale-1 docker.io/headscale/headscale:0.29.7 }";;
+  ps) [ "$2" != -q ] || { printf '%b' "\${FAKE_HEADSCALE_ID-0123abcd\\n}"; exit 0; }
+      printf '%b\\n' "\${FAKE_CONTAINERS:-headscale-headscale-1 docker.io/headscale/headscale:0.29.7 }";;
+  inspect) echo "\${FAKE_PROCESS_LABEL-system_u:system_r:container_t:s0:c241,c692}";;
   network) case "$2" in
       ls) printf '%b\\n' "\${FAKE_NETWORKS:-bridge bridge 2673f396533215b1e304\\nhost host 3779e81102d984fcc41a}";;
       inspect) case "$5" in bridge) echo docker0;; *) echo "\${FAKE_BRIDGE:-<no value>}";; esac;;

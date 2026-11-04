@@ -143,6 +143,12 @@ describe("harden.sh check inventory (VPS-005)", () => {
     expect(lines).toEqual(["  tcp 0.0.0.0:22 sshd mariadb.service", "! tcp 127.0.0.1:3306 mariadbd mariadb.service"]);
   });
 
+  test("marks docker-proxy: Headscale uses the host network, so it is another container's port", () => {
+    host.setListeners(['tcp LISTEN 0 4096 0.0.0.0:8080 0.0.0.0:* users:(("docker-proxy",pid=1300,fd=7))']);
+    const lines = section(host.run(["check"], { FAKE_UNIT: "docker.service" }).out, "Listening sockets");
+    expect(lines).toEqual(["! tcp 0.0.0.0:8080 docker-proxy docker.service"]);
+  });
+
   test("lists running containers", () => {
     const run = host.run(["check"], { FAKE_CONTAINERS: "blog wordpress:6 0.0.0.0:80->80/tcp" });
     expect(section(run.out, "Running containers")).toEqual(["blog wordpress:6 0.0.0.0:80->80/tcp"]);
@@ -161,11 +167,15 @@ describe("harden.sh check inventory (VPS-005)", () => {
     expect(section(run.out, "Enabled services")).toEqual(["! nginx.service"]);
   });
 
-  test("prints each active firewalld zone, or that firewalld is not running", () => {
+  test("prints each active firewalld zone, its policies and direct rules, or that firewalld is not running", () => {
     expect(section(host.run(["check"]).out, "firewalld")).toEqual(["firewalld: masked, not running"]);
-    const active = host.run(["check"], { FAKE_FIREWALLD_ACTIVE: "0", FAKE_FIREWALLD: "enabled" });
+    const active = host.run(["check"], {
+      FAKE_FIREWALLD_ACTIVE: "0", FAKE_FIREWALLD: "enabled", FAKE_FW_DIRECT: "ipv4 filter INPUT 0 -j ACCEPT\\n",
+    });
     const zones = section(active.out, "firewalld");
-    expect(zones.filter((line) => !line.startsWith(" "))).toEqual(["docker (active)", "public (active)"]);
+    expect(zones.filter((line) => !line.startsWith(" "))).toEqual([
+      "docker (active)", "public (active)", "policies:", "allow-host-ipv6", "direct rules:", "ipv4 filter INPUT 0 -j ACCEPT",
+    ]);
     expect(zones).toContain("  services: ssh");
   });
 });

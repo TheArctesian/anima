@@ -154,6 +154,13 @@ closing_ports() {
     case $port in '' | 22/tcp) continue ;; esac
     if kept_open "$port"; then continue; fi
     case ",$ALLOW_CLOSING," in *",$port,"*) continue ;; esac
+    # Docker's DNAT runs before the input chain, so the Anima table does not close a port
+    # Docker publishes; daemon.json moves it to 127.0.0.1 when the container is recreated.
+    case $what in
+      *'(("docker-proxy",'* | *'(("dockerd",'*)
+        say "note: $port ($what) is published by Docker, not closed by this firewall; see guide 4.4" >&2
+        continue ;;
+    esac
     say "$port ($what)"
   done < <(printf '%s\n' "$sockets"; firewalld_openings)
 }

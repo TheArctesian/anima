@@ -120,6 +120,15 @@ describe("harden.sh firewall never silently closes an open port (VPS-005)", () =
     expect(host.run(["--allow-closing", `546/udp,${port}`, "firewall"], { ...vpn, ...rest }).code).toBe(0);
   });
 
+  test.each([["docker-proxy"], ["dockerd"]])("a port %s publishes is noted, not refused: the table does not close it", (program) => {
+    host.setListeners([...ALLOWED_SS, `tcp LISTEN 0 4096 0.0.0.0:8080 0.0.0.0:* users:(("${program}",pid=1300,fd=7))`]);
+    const run = host.run(["firewall"], vpn);
+    expect(run.code).toBe(0);
+    expect(run.out).toContain("note: 8080/tcp (");
+    expect(run.out).toContain("is published by Docker, not closed by this firewall; see guide 4.4");
+    expect(run.out).not.toContain("would close");
+  });
+
   test("SSH (22/tcp) and the Anima ports never count as closing", () => {
     host.setListeners([...ALLOWED_SS, "tcp LISTEN 0 128 0.0.0.0:22 0.0.0.0:*"]);
     expect(host.run(["firewall"], { ...vpn, ...firewalld, FAKE_FW_SERVICES: "ssh", FAKE_FW_PORTS: "443/tcp" }).code).toBe(0);

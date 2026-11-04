@@ -22,6 +22,11 @@ describe("nftables.conf", () => {
     expect(unexplainedAccepts(input)).toEqual([]);
   });
 
+  test("VPS-002: the shell's ALLOWED_PUBLIC is the table's public ports plus SSH on the VPN", () => {
+    const shell = /^ALLOWED_PUBLIC="([^"]*)"$/m.exec(readVps("open-ports.sh"))?.[1]?.trim().split(/\s+/) ?? [];
+    expect(shell.sort()).toEqual([...publicPorts(input), ...interfacePorts(input, "tailscale0")].sort());
+  });
+
   test("VPS-002: 22/tcp is accepted only on tailscale0", () => {
     expect(interfacePorts(input, "tailscale0")).toEqual(["22/tcp"]);
     expect(publicPorts(input)).not.toContain("22/tcp");

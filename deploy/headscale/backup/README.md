@@ -96,6 +96,12 @@ render `config.yaml` again with `render.sh` and install `policy.hujson` from the
 repository, never from the snapshot: a snapshot written by a taken-over VPS can hold a
 widened policy or a changed config.
 
+**After a suspected compromise, restore onto a freshly reinstalled VPS** (Hostinger
+reinstall, or a new VPS), never onto the same system: the "same VPS" steps below are for
+a lost or corrupted database only. The restored `noise_private.key` is known to the
+attacker, and rotating it means registering every node again, so it is kept unless the
+programme decides otherwise (WP-03 D-12).
+
 ### 1. Choose the snapshot by ID (home PC)
 
 The VPS sets each snapshot's time itself, so `latest` and the `Time` column can point to a
@@ -119,19 +125,34 @@ poisoned latest snapshot does no harm there.
 ### 2. Restore the three files (home PC)
 
 Restore on the home PC, not on the VPS: the VPS may be the compromised machine. Without a
-cache or a lock, nothing is written into the `restic`-owned repository. Run as the admin
-user of the home PC (`<HOME_USER>`):
+cache or a lock, nothing is written into the `restic`-owned repository. A taken-over VPS
+can write a crafted snapshot, so restore only the three files, and refuse links: `install`
+follows a link, and a link named `db.sqlite` could copy any file of the home PC. Run as the
+admin user of the home PC (`<HOME_USER>`):
 
 ```sh
 # home PC
 sudo restic -r /srv/restic/headscale-vps/headscale --password-file /etc/restic/headscale-password \
-  --no-cache --no-lock restore <SNAPSHOT_ID> --target /root/headscale-restore
-src="$(sudo find /root/headscale-restore -name db.sqlite -printf '%h')"
-sudo sqlite3 "$src/db.sqlite" "PRAGMA integrity_check"        # must print ok
+  --no-cache --no-lock restore <SNAPSHOT_ID> --target /root/headscale-restore \
+  --include '/tmp/headscale-backup.*/db.sqlite' --include '/tmp/headscale-backup.*/noise_private.key' \
+  --include '/tmp/headscale-backup.*/derp_server_private.key'
 install -d -m 0700 ~/headscale-take
-sudo install -m 0600 -o "$USER" "$src/db.sqlite" "$src/noise_private.key" "$src/derp_server_private.key" ~/headscale-take/
+sudo sh -euc '
+  restored=/root/headscale-restore
+  [ -z "$(find "$restored" -type l)" ] || { echo "STOP: the snapshot holds links"; exit 1; }
+  src=$(find "$restored" -type f -name db.sqlite -printf "%h\n")
+  [ "$(printf "%s\n" "$src" | grep -c .)" = 1 ] || { echo "STOP: not exactly one db.sqlite"; exit 1; }
+  for f in "$src/db.sqlite" "$src/noise_private.key" "$src/derp_server_private.key"; do
+    [ -f "$f" ] && [ ! -L "$f" ] || { echo "STOP: $f is missing or not a plain file"; exit 1; }
+  done
+  sqlite3 "$src/db.sqlite" "PRAGMA integrity_check"         # must print ok
+  install -m 0600 -o "$1" "$src/db.sqlite" "$src/noise_private.key" "$src/derp_server_private.key" "$2/headscale-take/"
+' sh "$USER" "$HOME"
 sudo rm -rf /root/headscale-restore                           # it holds private keys
 ```
+
+If it prints `STOP`, do not use that snapshot: take an older one and send the output to
+the programme.
 
 Copy them to the VPS through your Mac (the policy lets the Mac reach the home subnet and
 the hub's SSH; it lets the home PC reach neither). `scp -3` passes the files through the

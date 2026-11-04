@@ -186,8 +186,10 @@ cmd_docker() {
   if [ "$RESTART_DOCKER" -eq 1 ]; then
     run "$SYSTEMCTL" restart docker
   else
-    say "Restart Docker to apply: systemctl restart docker (containers restart once)."
+    say "Restart Docker to apply: systemctl restart docker."
   fi
+  say "Then recreate Headscale, which keeps its old label until then:"
+  say "  docker compose -f $HEADSCALE_DIR/compose.yaml up -d --force-recreate"
 }
 
 cmd_check() {

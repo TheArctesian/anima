@@ -82,8 +82,49 @@ describe("harden.sh docker", () => {
     expect(run.out).toContain("jq is required");
   });
 
+  test("D-10: merging keeps the operator's other log options and the Anima ones win", () => {
+    host.write("etc/docker/daemon.json", '{"log-opts": {"max-size": "1g", "labels": "team", "compress": "true"}}');
+    expect(host.run(["docker"]).code).toBe(0);
+    const merged = JSON.parse(host.read("etc/docker/daemon.json")) as Record<string, unknown>;
+    expect(merged["log-opts"]).toEqual({ "max-size": "10m", "max-file": "5", labels: "team", compress: "true" });
+  });
+
+  test("D-9: docker tells the operator to recreate Headscale, which keeps its old label", () => {
+    expect(host.run(["--restart-docker", "docker"]).out).toContain("up -d --force-recreate");
+  });
+
   test("D-10: docker restarts Docker only when asked", () => {
     expect(host.run(["docker"]).calls).not.toContain("SYSTEMCTL restart docker");
     expect(host.run(["--restart-docker", "docker"]).calls).toContain("SYSTEMCTL restart docker");
+  });
+});
+
+describe("harden.sh check (Headscale's process label)", () => {
+  beforeEach(() => {
+    host.harden();
+  });
+
+  test("D-9: check passes when Headscale runs as container_t", () => {
+    const run = host.run(["check"]);
+    expect(run.calls).toContain(
+      "DOCKER ps -q --filter label=com.docker.compose.project=headscale --filter label=com.docker.compose.service=headscale",
+    );
+    expect(run.calls).toContain("DOCKER inspect -f {{.ProcessLabel}} 0123abcd");
+    expect(run.code).toBe(0);
+  });
+
+  test.each([
+    ["spc_t, as before it is recreated", { FAKE_PROCESS_LABEL: "system_u:system_r:spc_t:s0" }, "Headscale runs as system_u:system_r:spc_t:s0, not container_t"],
+    ["no label", { FAKE_PROCESS_LABEL: "" }, "Headscale runs as an unknown label, not container_t"],
+    ["no running container", { FAKE_HEADSCALE_ID: "" }, "the Headscale container is not running"],
+  ])("D-9: check reports %s", (_, env, message) => {
+    const run = host.run(["check"], env);
+    expect(run.code).toBe(1);
+    expect(run.out).toContain(`VIOLATION: ${message}`);
+  });
+
+  test("D-9: check skips the process label when SELinux is disabled", () => {
+    const run = host.run(["check"], { FAKE_ENFORCE: "Disabled", FAKE_PROCESS_LABEL: "" });
+    expect(run.out).not.toContain("container_t");
   });
 });
