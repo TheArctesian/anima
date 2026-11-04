@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { flushSync } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { installBlankCanvas } from '../../tunnel/canvas.fixture';
-import { FakeTunnelSocket } from '../../tunnel/socket.fixture';
+import { installBlankCanvas } from '../../tunnel/fake/canvas.fixture';
+import { FakeTunnelSocket } from '../../tunnel/fake/socket.fixture';
 import { NEW_KEY, connectView, flags, installBrowserFakes, settle, showView } from '../view.fixture.svelte';
 
 let cleanups: (() => unknown)[] = [];

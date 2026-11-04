@@ -4,7 +4,7 @@ import { flushSync, mount, unmount } from 'svelte';
 import type { HubResult } from '$lib/hub/hub';
 import type { AcceptedHostKey, ConnectionTest, EndedSession, SessionDisplay, SessionsApi, SessionTicket } from '../api';
 import type { SessionEndReason, SessionEnding } from '../ending';
-import { FAKE_TUNNEL_SOCKET, FakeTunnelSocket } from '../tunnel/socket.fixture';
+import { FAKE_TUNNEL_SOCKET, FakeTunnelSocket } from '../tunnel/fake/socket.fixture';
 import SessionView from './SessionView.svelte';
 import { sessionStart } from './start';
 

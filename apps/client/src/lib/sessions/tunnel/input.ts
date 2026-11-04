@@ -11,7 +11,7 @@ export interface KeyRoute {
 
 /**
  * The keyboard of one session pane (D-8): a `Guacamole.Keyboard` that listens to `pane` only, never the document.
- * 1.5.0 cannot remove its listeners, so one keyboard serves the pane for its whole life and is switched by its
+ * 1.5.5 cannot remove its listeners, so one keyboard serves the pane for its whole life and is switched by its
  * handlers: with none set, every listener ignores its event.
  */
 export interface PaneKeyboard {
@@ -38,7 +38,7 @@ export function paneKeyboard(pane: HTMLElement): PaneKeyboard {
   };
 }
 
-/** The 1.5.0 touch screen mouse (tap is a click, drag moves); the hand-written types do not list it yet. */
+/** The 1.5.5 touch screen mouse (tap is a click, drag moves); the hand-written types do not list it yet. */
 const Touchscreen = (Guacamole.Mouse as unknown as { Touchscreen: new (element: Element) => Guacamole.Mouse }).Touchscreen;
 
 const MOUSE_EVENTS: readonly Guacamole.Mouse.EventType[] = ['mousedown', 'mouseup', 'mousemove'];

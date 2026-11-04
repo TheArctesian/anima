@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { flushSync } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { installBlankCanvas } from '../tunnel/canvas.fixture';
+import { installBlankCanvas } from '../tunnel/fake/canvas.fixture';
 import { CLIPBOARD_LIMIT, receiveClipboard } from '../tunnel/input';
-import { FakeTunnelSocket } from '../tunnel/socket.fixture';
+import { FakeTunnelSocket } from '../tunnel/fake/socket.fixture';
 import type { SessionTunnel } from '../tunnel/tunnel';
 import { KEYSYM, PASTE_STROKES } from './keys';
 import { TOKEN_MARKER, connectView, flags, installBrowserFakes, paneOf, sent, settle, showView, systemClipboard } from './view.fixture.svelte';
