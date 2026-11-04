@@ -141,9 +141,18 @@ tick_test! {
         scheduler.tick(now, &mut rng()).await;
         let device = DeviceId::from(uuid::Uuid::now_v7());
         sqlx::query(
-            "INSERT INTO devices.devices (id, site_id, name, host, kind, os, maintenance) \
+            "INSERT INTO devices.devices (id, site_id, name, host, kind, os, maintenance, \
+                                         created_at, updated_at) \
              VALUES ($1, '0190a000-0000-7000-8001-000000000001', 'late-box', '127.0.0.1', \
-                     'Test box', 'linux', false)",
+                     'Test box', 'linux', false, now(), now())",
+        )
+        .bind(device)
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO devices.ssh_settings (device_id, enabled, port, username, auth) \
+             VALUES ($1, false, 22, 'operator', 'private_key')",
         )
         .bind(device)
         .execute(&pool)
