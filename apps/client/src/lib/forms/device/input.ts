@@ -1,14 +1,17 @@
 import type { CreateDeviceInput, SshCredentialInput, SshSettingsInput, UpdateDeviceInput } from './hub-types';
-import { normalizedValues, type DeviceFormValues } from './values';
+import { normalizedValues, portToSend, type DeviceFormValues } from './values';
 
 type NormalizedSsh = ReturnType<typeof normalizedValues>['ssh'];
 
 /** The SSH settings as the hub input; shared with the connection test. */
-export function sshInput(ssh: NormalizedSsh): SshSettingsInput {
-  return { enabled: ssh.enabled, port: Number(ssh.port), username: ssh.username, auth: ssh.auth };
+export function sshInput(ssh: NormalizedSsh, initialPort?: string): SshSettingsInput {
+  return { enabled: ssh.enabled, port: portToSend(ssh, initialPort), username: ssh.username, auth: ssh.auth };
 }
 
-function sameSsh(a: NormalizedSsh, b: NormalizedSsh): boolean {
+/** Whether the SSH settings that would be sent differ from the saved ones. */
+export function sameSsh(initial: NormalizedSsh, now: NormalizedSsh): boolean {
+  const a = sshInput(initial);
+  const b = sshInput(now, initial.port);
   return a.enabled === b.enabled && a.port === b.port && a.username === b.username && a.auth === b.auth;
 }
 
@@ -41,7 +44,7 @@ export function updateInput(initial: DeviceFormValues, values: DeviceFormValues)
     ...(now.kind !== before.kind ? { kind: now.kind } : {}),
     ...(now.os !== before.os ? { os: now.os } : {}),
     ...(sameTags(now.tags, before.tags) ? {} : { tags: now.tags }),
-    ...(sameSsh(now.ssh, before.ssh) ? {} : { ssh: sshInput(now.ssh) }),
+    ...(sameSsh(before.ssh, now.ssh) ? {} : { ssh: sshInput(now.ssh, before.ssh.port) }),
   };
 }
 
