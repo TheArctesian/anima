@@ -1,0 +1,107 @@
+{
+  "size": {
+    "space": {
+      "$type": "dimension",
+      "0": {
+        "$value": "0",
+        "$description": "0 px on the 4-pixel grid (UI-012)"
+      },
+      "1": {
+        "$value": "0.25rem",
+        "$description": "4 px on the 4-pixel grid (UI-012)"
+      },
+      "2": {
+        "$value": "0.5rem",
+        "$description": "8 px on the 4-pixel grid (UI-012)"
+      },
+      "3": {
+        "$value": "0.75rem",
+        "$description": "12 px on the 4-pixel grid (UI-012)"
+      },
+      "4": {
+        "$value": "1rem",
+        "$description": "16 px on the 4-pixel grid (UI-012)"
+      },
+      "5": {
+        "$value": "1.25rem",
+        "$description": "20 px on the 4-pixel grid (UI-012)"
+      },
+      "6": {
+        "$value": "1.5rem",
+        "$description": "24 px on the 4-pixel grid (UI-012)"
+      },
+      "8": {
+        "$value": "2rem",
+        "$description": "32 px on the 4-pixel grid (UI-012)"
+      },
+      "10": {
+        "$value": "2.5rem",
+        "$description": "40 px on the 4-pixel grid (UI-012)"
+      },
+      "12": {
+        "$value": "3rem",
+        "$description": "48 px on the 4-pixel grid (UI-012)"
+      },
+      "16": {
+        "$value": "4rem",
+        "$description": "64 px on the 4-pixel grid (UI-012)"
+      }
+    },
+    "radius": {
+      "$type": "dimension",
+      "sm": {
+        "$value": "4px",
+        "$description": "Small controls"
+      },
+      "md": {
+        "$value": "6px",
+        "$description": "Cards, inputs"
+      },
+      "lg": {
+        "$value": "10px",
+        "$description": "Panels, dialogs"
+      },
+      "pill": {
+        "$value": "999px",
+        "$description": "Pills and badges"
+      }
+    },
+    "border": {
+      "$type": "dimension",
+      "thin": {
+        "$value": "1px",
+        "$description": "Default border"
+      },
+      "focus": {
+        "$value": "2px",
+        "$description": "Focus ring"
+      }
+    },
+    "icon": {
+      "$type": "dimension",
+      "sm": {
+        "$value": "1em",
+        "$description": "Small icon"
+      },
+      "md": {
+        "$value": "1.125em",
+        "$description": "Default icon"
+      },
+      "lg": {
+        "$value": "1.25em",
+        "$description": "Large icon"
+      }
+    },
+    "target": {
+      "$type": "dimension",
+      "min-desktop": {
+        "$value": "24px",
+        "$description": "Minimum control size on desktop (UI-013)"
+      },
+      "min-touch": {
+        "$value": "44px",
+        "$description": "Minimum control size on touch: 44 pt on iOS, emitted as 44 CSS px (UI-013)"
+      }
+    }
+  }
+}

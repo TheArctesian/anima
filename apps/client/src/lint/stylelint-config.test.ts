@@ -24,6 +24,14 @@ const bad: Record<string, string> = {
   'a raw 200ms duration': 'a { transition-duration: 200ms; }',
   'a raw duration in the transition shorthand': 'a { transition: opacity 200ms var(--ease); }',
   'a raw cubic-bezier() curve': 'a { transition-timing-function: cubic-bezier(0.2, 0, 0, 1); }',
+  'the linear keyword in the transition shorthand': 'a { transition: opacity var(--d) linear; }',
+  'the linear keyword in the animation shorthand': 'a { animation: spin var(--d) linear; }',
+  'a quoted string in a custom property': 'a { --label: "hi"; }',
+  'a quoted string after a url() in a custom property': 'a { --m: url(x.svg) "y"; }',
+  'a font-named custom property --f': 'a { --f: 12px; }',
+  'a font-named custom property --font': 'a { --font: 12px; }',
+  'a font-named custom property --font-x': 'a { --font-x: 12px; }',
+  'a family-named custom property --x-family': 'a { --x-family: 12px; }',
   'a raw ease keyword in the animation shorthand': 'a { animation: spin var(--d) ease-in; }',
   'a raw z-index': 'a { z-index: 10; }',
   'a raw font-family': 'a { font-family: Arial; }',
@@ -39,6 +47,14 @@ const bad: Record<string, string> = {
   'a raw font family in a custom property': 'a { --f: Roboto; }',
   'a raw colour in a custom property': 'a { --c: #abc; }',
   'a raw easing curve in a custom property': 'a { --e: cubic-bezier(0, 0, 1, 1); }',
+  'an unquoted unknown family in a font custom property': 'a { --f: Fira Code; }',
+  'a font-named custom property holding a raw size': 'a { --font-size: 12px; }',
+  'the linear easing keyword in a custom property': 'a { --e: linear; }',
+  'the step-end easing keyword in a custom property': 'a { --e: step-end; }',
+  'a calc() of literals in a layer custom property': 'a { --z: calc(1 + 2); }',
+  'a primitive nord token in a colour': 'a { color: var(--nord-3); }',
+  'a primitive nord token in a custom property': 'a { --surface-local: var(--nord-0); }',
+  'a primitive nord token with a fallback': 'a { background-color: var(--nord-10, var(--bg)); }',
   'an upper-case 0.2S duration in transition': 'a { transition: opacity 0.2S var(--ease); }',
   'an upper-case EASE keyword in transition': 'a { transition: opacity var(--d) EASE; }',
 };
@@ -66,6 +82,12 @@ const expectedRule: Record<string, string> = {
   'a raw duration in a custom property': 'declaration-property-value-disallowed-list',
   'a raw z-index in a custom property': 'declaration-property-value-disallowed-list',
   'a raw font family in a custom property': 'declaration-property-value-disallowed-list',
+  'an unquoted unknown family in a font custom property': 'declaration-property-value-allowed-list',
+  'the linear easing keyword in a custom property': 'declaration-property-value-disallowed-list',
+  'the step-end easing keyword in a custom property': 'declaration-property-value-disallowed-list',
+  'a calc() of literals in a layer custom property': 'declaration-property-value-disallowed-list',
+  'a primitive nord token in a colour': 'declaration-property-value-disallowed-list',
+  'a primitive nord token in a custom property': 'declaration-property-value-disallowed-list',
 };
 
 describe('Stylelint token gate', () => {
@@ -92,15 +114,19 @@ describe('Stylelint token gate', () => {
 
   it('TOK-003 accepts var(--token) references and neutral keywords', async () => {
     const css = `a {
-  color: var(--color-text);
+  color: var(--text);
   background-color: transparent;
   border-color: currentColor;
-  transition-duration: var(--motion-fast);
-  transition-timing-function: var(--ease-standard);
-  z-index: var(--z-modal);
-  font-family: var(--font-body);
-  font: 12px/1.5 var(--font-body);
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-enter);
+  z-index: var(--layer-modal);
+  font-family: var(--font-ui);
+  font: 12px/1.5 var(--font-mono);
   --local-gap: var(--space-2);
+  --x: 0;
+  --w: 50%;
+  --font-local: var(--font-ui);
+  --layer-local: var(--layer-modal);
   margin: 0;
 }`;
     expect(await warnings(css)).toEqual([]);
@@ -108,7 +134,7 @@ describe('Stylelint token gate', () => {
   });
 
   it('TOK-003 accepts one level of nested var() fallback in font and font-family', async () => {
-    const css = 'a { font: 1rem var(--font-body, var(--font-fallback)); font-family: var(--font-body, var(--font-fallback)); }';
+    const css = 'a { font: 1rem var(--font-ui, var(--font-mono)); font-family: var(--font-ui, var(--font-mono)); }';
     expect(await warnings(css)).toEqual([]);
   });
 
@@ -116,6 +142,29 @@ describe('Stylelint token gate', () => {
     expect(await warnings('a { z-index: calc(var(--z-base) + 1); }')).toContain(
       'scale-unlimited/declaration-strict-value',
     );
+  });
+
+});
+
+describe('Stylelint token gate: vendored fonts and primitive tokens', () => {
+  it('TOK-003 accepts quotes inside url() and non-font --f-* custom properties', async () => {
+    expect(await warnings('a { --mask: url("x.svg"); --f-size: 12px; }')).toEqual([]);
+  });
+
+  it('TOK-003 accepts the vendored fonts.css with quoted @font-face families', async () => {
+    const css = "@font-face { font-family: 'Fira Code'; src: url(x.woff2); }";
+    expect(await warnings(css, 'apps/client/src/styles/fonts.css')).toEqual([]);
+  });
+
+  it('TOK-010 accepts primitive nord tokens inside tokens.css only', async () => {
+    const css = ':root { --bg: var(--nord-0); }';
+    expect(await warnings(css, 'apps/client/src/styles/tokens.css')).toEqual([]);
+    expect(await warnings(css)).toContain('declaration-property-value-disallowed-list');
+  });
+
+  it('TOK-010 refuses a primitive nord token in a .svelte <style>', async () => {
+    const rules = await warnings(inSvelte('a { color: var(--nord-3); }'), svelteFile);
+    expect(rules).toContain('declaration-property-value-disallowed-list');
   });
 
   it('TOK-003 accepts raw values in the generated tokens.css', async () => {
