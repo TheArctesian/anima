@@ -45,3 +45,5 @@ http-body-util.workspace = true
 tower.workspace = true
 static_assertions.workspace = true
 tempfile.workspace = true
+tokio = { workspace = true, features = ["test-util"] }
+tokio-tungstenite.workspace = true

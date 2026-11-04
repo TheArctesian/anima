@@ -20,6 +20,7 @@ mod redaction;
 mod retention;
 mod runtime_group;
 mod runtime_role;
+mod upkeep;
 
 const DEVICE: &str = "0192f5a0-7c3e-7a52-9d1b-3f4e5a6b7c8d";
 const OPERATOR: &str = "0192f5a0-7c3e-7a52-9d1b-000000000001";
