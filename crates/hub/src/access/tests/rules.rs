@@ -211,3 +211,19 @@ fn sec_002_d_7_scope_round_trips_its_stored_text() {
     assert_eq!(Scope::from_stored("read"), Some(Scope::Read));
     assert_eq!(Scope::from_stored("admin"), None);
 }
+
+#[test]
+fn api_010_an_unreachable_database_is_unavailable_and_logged_by_kind_only() {
+    for source in [sqlx::Error::PoolTimedOut, sqlx::Error::PoolClosed] {
+        let error = Error::from(source);
+        assert_eq!(error.code(), "UNAVAILABLE");
+        assert_eq!(error.fault(), Some("database_unreachable"));
+    }
+    let other = Error::from(sqlx::Error::RowNotFound);
+    assert_eq!(
+        (other.code(), other.fault()),
+        ("INTERNAL", Some("database"))
+    );
+    assert_eq!(other.to_string(), "Something went wrong on the hub.");
+    assert_eq!(Error::WrongCredentials.fault(), None);
+}
