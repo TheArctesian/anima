@@ -15,7 +15,7 @@ export function device(id: string, over: Partial<CardDevice> = {}): CardDevice {
     maintenance: false,
     status: 'UP',
     uptime: 0.9995,
-    ssh: { enabled: false },
+    ssh: { enabled: false, hostKey: null },
     checks: [],
     ...over,
   };

@@ -9,7 +9,7 @@
   interface Props {
     devices: readonly CardDevice[];
     beats: ReadonlyMap<string, readonly Beat[]>;
-    onConnect: (deviceId: string, button: HTMLElement) => void;
+    onConnect: (device: CardDevice, button: HTMLElement) => void;
   }
 
   const { devices, beats, onConnect }: Props = $props();

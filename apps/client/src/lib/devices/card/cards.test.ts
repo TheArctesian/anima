@@ -2,6 +2,7 @@
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { runs } from '../../motion/engine.fixture';
+import type { CardDevice } from '../api';
 import { fakeHub } from '../hub.fixture';
 import { DEFAULT_QUERY, type ListQuery } from '../query';
 import DeviceScreen from '../screen/DeviceScreen.svelte';
@@ -15,6 +16,8 @@ vi.mock('motion', async (importOriginal) => ({
 
 const preference = vi.hoisted(() => ({ reduced: false }));
 vi.mock('$lib/motion/preference', () => ({ motionPreference: () => preference }));
+
+const KEYED = { enabled: true, hostKey: { fingerprintSha256: 'SHA256:abc' } };
 
 const current = vi.hoisted(() => ({ hub: undefined as unknown }));
 vi.mock('$lib/hub/context', () => ({ useHub: () => current.hub }));
@@ -51,7 +54,7 @@ async function show(
         url.query = next;
       },
       onAddDevice: () => added.push('add'),
-      onConnect: (id: string) => connected.push(id),
+      onConnect: (target: CardDevice) => connected.push(target.id),
     },
   });
   await settle();
@@ -87,8 +90,8 @@ it('6.1 card: shows name link, host, IP for a named host, uptime and a 50-cell b
   expect(cards[1]?.querySelectorAll('.ip')).toHaveLength(0);
 });
 
-it('6.1 card: SSH shows only when enabled and passes the device id to onConnect', async () => {
-  await show([device('a', { ssh: { enabled: true } }), device('b')]);
+it('6.1 card: SSH shows only when enabled with an accepted host key, and passes the device to onConnect', async () => {
+  await show([device('a', { ssh: KEYED }), device('b'), device('c', { ssh: { enabled: true, hostKey: null } })]);
   const buttons = [...document.querySelectorAll('article button')];
   expect(buttons).toHaveLength(1);
   (buttons[0] as HTMLButtonElement).click();
@@ -108,8 +111,11 @@ it.each([
   expect(document.querySelector(selector)?.getAttribute('href')).toBe('/devices/a%2Fb%3Fc%23d');
 });
 
-it('6.1 card: in the table SSH shows only when enabled and calls onConnect', async () => {
-  await show([device('a', { ssh: { enabled: true } }), device('b')], { ...DEFAULT_QUERY, view: 'table' });
+it('6.1 card: in the table SSH shows only when enabled with an accepted host key, and calls onConnect', async () => {
+  await show([device('a', { ssh: KEYED }), device('b'), device('c', { ssh: { enabled: true, hostKey: null } })], {
+    ...DEFAULT_QUERY,
+    view: 'table',
+  });
   const buttons = [...document.querySelectorAll('tbody button')];
   expect(buttons).toHaveLength(1);
   (buttons[0] as HTMLButtonElement).click();
@@ -132,7 +138,7 @@ it('6.1 card: in the grid an empty ip shows no IP', async () => {
 
 it('WebKit: every card and table control has tabindex 0, or Tab skips it (NAV-005)', async () => {
   for (const view of ['grid', 'table'] as const) {
-    await show([device('a', { ssh: { enabled: true } })], { ...DEFAULT_QUERY, view });
+    await show([device('a', { ssh: KEYED })], { ...DEFAULT_QUERY, view });
     const controls = [...document.querySelectorAll('button, a[href]')];
     expect(controls.length).toBeGreaterThan(6);
     expect(controls.filter((node) => node.getAttribute('tabindex') !== '0')).toEqual([]);

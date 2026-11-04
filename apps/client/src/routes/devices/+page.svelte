@@ -2,8 +2,12 @@
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
+  import type { CardDevice } from '$lib/devices/api';
   import { parseListQuery, writeListQuery, type ListQuery } from '$lib/devices/query';
   import DeviceScreen from '$lib/devices/screen/DeviceScreen.svelte';
+  import { useSessions } from '$lib/sessions/sessions.svelte';
+
+  const sessions = useSessions();
 
   const query = $derived(parseListQuery(page.url.searchParams));
 
@@ -24,9 +28,14 @@
     void goto(`${resolve('/devices')}/new`);
   }
 
-  /** WP-14 supplies the session open (H-2). */
-  function connect(): void {
-    return undefined;
+  /** Opens an SSH tab that grows from the button (WP-14 H-1, MOT-005). */
+  function connect(device: CardDevice, button: HTMLElement): void {
+    sessions.openSession({
+      deviceId: device.id,
+      deviceName: device.name,
+      protocol: 'SSH',
+      origin: button.getBoundingClientRect(),
+    });
   }
 </script>
 

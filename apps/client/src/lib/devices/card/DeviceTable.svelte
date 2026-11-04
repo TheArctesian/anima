@@ -5,7 +5,7 @@
   import type { CardDevice } from '$lib/devices/api';
   import { press } from '$lib/motion/roles/press';
   import { listRow } from '$lib/motion/roles/transitions';
-  import { hostLine } from './card';
+  import { hostLine, offersSsh } from './card';
   import { reorderMotion } from './reorder.svelte';
   import StatusEdge from './StatusEdge.svelte';
   import StatusPill from './StatusPill.svelte';
@@ -13,7 +13,7 @@
   interface Props {
     devices: readonly CardDevice[];
     beats: ReadonlyMap<string, readonly Beat[]>;
-    onConnect: (deviceId: string, button: HTMLElement) => void;
+    onConnect: (device: CardDevice, button: HTMLElement) => void;
   }
 
   const { devices, beats, onConnect }: Props = $props();
@@ -61,13 +61,13 @@
         <td>{uptimeText(device.uptime)}</td>
         <td>{#if deviceBeats !== undefined}<HeartbeatBar beats={deviceBeats} />{/if}</td>
         <td>
-          {#if device.ssh.enabled}
+          {#if offersSsh(device)}
             <button
               type="button"
               tabindex="0"
               aria-label="SSH to {device.name}"
               onclick={(event) => {
-                onConnect(device.id, event.currentTarget);
+                onConnect(device, event.currentTarget);
               }}
               {@attach press()}>SSH</button
             >

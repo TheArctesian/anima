@@ -22,6 +22,9 @@ const Devices = graphql(`
           uptime(window: DAY)
           ssh {
             enabled
+            hostKey {
+              fingerprintSha256
+            }
           }
           checks {
             id

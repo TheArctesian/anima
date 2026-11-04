@@ -11,8 +11,11 @@ vi.mock('motion', async (importOriginal) => ({
   animate: (await import('../../motion/engine.fixture')).fakeRun,
 }));
 
-const current = vi.hoisted(() => ({ hub: undefined as unknown, goto: [] as [string, unknown][] }));
+const current = vi.hoisted(() => ({ hub: undefined as unknown, goto: [] as [string, unknown][], opened: [] as unknown[] }));
 vi.mock('$lib/hub/context', () => ({ useHub: () => current.hub }));
+vi.mock('$lib/sessions/sessions.svelte', () => ({
+  useSessions: () => ({ openSession: (request: unknown) => current.opened.push(request) }),
+}));
 
 vi.mock('$app/navigation', () => ({
   goto: (href: string, options: unknown) => {
@@ -48,6 +51,7 @@ async function show(devices = [device('a')]): Promise<ReturnType<typeof fakeHub>
 
 beforeEach(() => {
   current.goto = [];
+  current.opened = [];
   url.query = { view: 'grid', name: '', statuses: [], tags: [], sort: 'NAME' };
 });
 
@@ -88,13 +92,13 @@ it('H-1: Add device goes to /devices/new', async () => {
   expect(current.goto[0]?.[0]).toBe('/devices/new');
 });
 
-it('H-2: SSH does nothing until WP-14 supplies the session tab', async () => {
-  const fake = await show([device('a', { ssh: { enabled: true } })]);
-  const sent = fake.requests.length;
+it('WP-14 H-1: SSH opens a session tab for the device, growing from the button', async () => {
+  await show([device('a', { ssh: { enabled: true, hostKey: { fingerprintSha256: 'SHA256:abc' } } })]);
   const ssh = [...document.querySelectorAll('button')].find((node) => node.textContent.trim() === 'SSH');
   expect(ssh).toBeDefined();
   ssh?.click();
-  await Promise.resolve();
+  expect(current.opened).toEqual([
+    { deviceId: 'a', deviceName: 'Device a', protocol: 'SSH', origin: ssh?.getBoundingClientRect() },
+  ]);
   expect(current.goto).toEqual([]);
-  expect(fake.requests).toHaveLength(sent);
 });

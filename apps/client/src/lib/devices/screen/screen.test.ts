@@ -2,6 +2,7 @@
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { runs } from '../../motion/engine.fixture';
+import type { CardDevice } from '../api';
 import { fakeHub } from '../hub.fixture';
 import { DEFAULT_QUERY, listVariables, type ListQuery } from '../query';
 import DeviceScreen from './DeviceScreen.svelte';
@@ -51,7 +52,7 @@ async function show(
         url.query = next;
       },
       onAddDevice: () => added.push('add'),
-      onConnect: (id: string) => connected.push(id),
+      onConnect: (target: CardDevice) => connected.push(target.id),
     },
   });
   await settle();

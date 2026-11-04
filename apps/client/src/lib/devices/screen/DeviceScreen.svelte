@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { CardDevice } from '$lib/devices/api';
   import LogsPanel from '$lib/events/panel/LogsPanel.svelte';
   import '$lib/events/resize/geometry.css';
   import { useHub } from '$lib/hub/context';
@@ -19,7 +20,7 @@
     query: ListQuery;
     onQueryChange: (query: ListQuery) => void;
     onAddDevice: () => void;
-    onConnect: (deviceId: string, button: HTMLElement) => void;
+    onConnect: (device: CardDevice, button: HTMLElement) => void;
     /** The clock of the loading thresholds; tests pass their own. */
     clock?: LoadingClock;
   }

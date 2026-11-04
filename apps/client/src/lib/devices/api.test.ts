@@ -19,7 +19,7 @@ const PAGE = {
           maintenance: false,
           status: 'UP',
           uptime: 0.99,
-          ssh: { enabled: true },
+          ssh: { enabled: true, hostKey: { fingerprintSha256: 'SHA256:abc' } },
           checks: [],
         },
       },

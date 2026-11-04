@@ -4,7 +4,7 @@
   import { uptimeText, type Beat } from '$lib/checks/heartbeats';
   import type { CardDevice } from '$lib/devices/api';
   import { press } from '$lib/motion/roles/press';
-  import { hostLine } from './card';
+  import { hostLine, offersSsh } from './card';
   import './geometry.css';
   import StatusEdge from './StatusEdge.svelte';
   import StatusPill from './StatusPill.svelte';
@@ -14,7 +14,7 @@
     /** The device's last heartbeats; `undefined` while they are not loaded, so no bar shows. */
     beats: readonly Beat[] | undefined;
     /** The card's "SSH" button; the button is passed so the session tab can grow from it (WP-12 H-2). */
-    onConnect: (deviceId: string, button: HTMLElement) => void;
+    onConnect: (device: CardDevice, button: HTMLElement) => void;
   }
 
   const { device, beats, onConnect }: Props = $props();
@@ -44,13 +44,13 @@
   <p class="uptime"><span>Uptime, 24 h</span> <strong>{uptimeText(device.uptime)}</strong></p>
   <footer>
     {#if beats !== undefined}<HeartbeatBar {beats} />{/if}
-    {#if device.ssh.enabled}
+    {#if offersSsh(device)}
       <button
         type="button"
         tabindex="0"
         aria-label="SSH to {device.name}"
         onclick={(event) => {
-          onConnect(device.id, event.currentTarget);
+          onConnect(device, event.currentTarget);
         }}
         {@attach press()}>SSH</button
       >
