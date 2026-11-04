@@ -2,23 +2,23 @@ import { checksApi, type NewHeartbeat } from '$lib/checks/api';
 import type { Hub, HubError } from '$lib/hub/hub';
 import { devicesApi, type StatusChange } from '../api';
 
-export interface LiveHandlers {
+export interface LiveListeners {
   onStatus: (change: StatusChange) => void;
   onBeat: (added: NewHeartbeat) => void;
   onError: (error: HubError) => void;
 }
 
 /** Listens for status changes and new heartbeats of every device; returns the function that stops both. */
-export function watchLive(hub: Hub, handlers: LiveHandlers): () => void {
+export function watchLive(hub: Hub, listeners: LiveListeners): () => void {
   const stops = [
     devicesApi(hub).watchStatus({
-      next: handlers.onStatus,
-      error: handlers.onError,
+      next: listeners.onStatus,
+      error: listeners.onError,
       complete: () => undefined,
     }),
     checksApi(hub).watchHeartbeats({
-      next: handlers.onBeat,
-      error: handlers.onError,
+      next: listeners.onBeat,
+      error: listeners.onError,
       complete: () => undefined,
     }),
   ];
