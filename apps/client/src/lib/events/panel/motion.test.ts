@@ -163,6 +163,16 @@ describe('Resize separator', () => {
     expect(valueNow()).toBe(Math.round(THIRD_PX));
   });
 
+  it('MOT-030: a key the separator uses is kept from scrolling the page, another key is not', async () => {
+    await show();
+    const used = new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, cancelable: true });
+    const other = new KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true });
+    edge()?.dispatchEvent(used);
+    edge()?.dispatchEvent(other);
+    expect(used.defaultPrevented).toBe(true);
+    expect(other.defaultPrevented).toBe(false);
+  });
+
   it('MOT-030: the keyboard reaches all three stops and aria-valuenow follows', async () => {
     await show();
     press('ArrowUp');
@@ -198,7 +208,7 @@ describe('Resize drag', () => {
     send(pointer('pointerup', 100, 600));
     flushSync();
     expect(valueNow()).toBe(0);
-    const snap = runs.find((run) => run.options.stiffness === spring.snappy.stiffness);
+    const snap = runs.find((run) => run.options.stiffness === spring.momentum.stiffness);
     expect(snap?.options.velocity).toBeCloseTo(900, 6);
   });
 
@@ -233,7 +243,7 @@ describe('Resize drag', () => {
 });
 
 describe('MOT-042: no animation timers', () => {
-  it('a new row, a drag, a key and the disclosure start no timer', async () => {
+  it('the panel code adds no timer of its own for a new row, a drag, a key or the disclosure', async () => {
     vi.useFakeTimers();
     await show();
     layOut(500);

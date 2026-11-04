@@ -12,6 +12,12 @@ interface Surroundings {
 
 const instant: Motion = { type: 'instant' };
 
+/** How far down the panel is drawn now (`translate`, in px), or null when nothing has moved it yet. */
+function drawnOffset(panel: HTMLElement): number | null {
+  const y = Number.parseFloat(getComputedStyle(panel).translate.split(' ')[1] ?? '');
+  return Number.isNaN(y) ? null : y;
+}
+
 /**
  * How far the logs panel is open: the stop it rests at, the height it shows now and the motion between stops.
  * A drag moves it 1:1 with rubber-band at the limits; a release, a key or the disclosure button springs it to a stop.
@@ -38,7 +44,11 @@ export class PanelPlacement {
     this.#place(instant);
   }
 
+  /** Takes hold of the panel where it is drawn now, so a grab in the middle of a spring does not jump (MOT-002). */
   grab(): void {
+    const panel = this.#around.panel();
+    const drawn = panel === undefined ? null : drawnOffset(panel);
+    this.height = drawn === null ? this.height : this.#around.snaps()[2] - drawn;
     this.#grabbedAt = this.height;
   }
 
@@ -51,7 +61,7 @@ export class PanelPlacement {
   /** `velocity` is the top edge's speed upward in px/s; the spring starts with it (MOT-031). */
   release(velocity: number): void {
     const stop = releasedStop(this.height, velocity, this.#around.snaps());
-    this.#goTo(stop, springMotion('snappy', this.#around.preference.reduced, -velocity));
+    this.#goTo(stop, springMotion('momentum', this.#around.preference.reduced, -velocity));
   }
 
   /** Moves by a key; returns whether the key was one the separator uses. */

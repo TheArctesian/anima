@@ -31,6 +31,9 @@ export class LogFeed {
   #stopListening: (() => void) | undefined;
   /** Counts the loads; an answer from an earlier one is dropped. */
   #generation = 0;
+  /** Live events that came while the first page was loading; they join the page when it arrives (LOG-010). */
+  #held: LogEvent[] = [];
+  #loading = false;
 
   constructor(hub: Hub, now: () => Date) {
     this.#api = eventsApi(hub);
@@ -49,8 +52,11 @@ export class LogFeed {
     this.#generation += 1;
   }
 
+  /** Rows of the old filter do not stay under the new controls: they go until the new page arrives (LOG-009). */
   setFilter(next: LogFilter): void {
     this.filter = next;
+    this.log = null;
+    this.fresh = null;
     void this.#reload();
     this.#listen();
   }
@@ -79,13 +85,16 @@ export class LogFeed {
   async #reload(): Promise<void> {
     this.#generation += 1;
     const mine = this.#generation;
+    this.#held = [];
+    this.#loading = true;
     const result = await this.#api.list(eventVariables(this.filter, this.#now()));
     if (mine !== this.#generation) return;
+    this.#loading = false;
     if (result.ok) {
       this.error = null;
       this.olderError = null;
       this.fresh = null;
-      this.log = fromPage(result.value);
+      this.log = this.#held.reduce((log, held) => addLive(log, held, this.filter, this.#now()), fromPage(result.value));
     } else {
       this.error = result.error;
     }
@@ -105,6 +114,7 @@ export class LogFeed {
   }
 
   #add(event: LogEvent): void {
+    if (this.#loading) this.#held.push(event);
     if (this.log === null) return;
     const next = addLive(this.log, event, this.filter, this.#now());
     if (next === this.log) return;

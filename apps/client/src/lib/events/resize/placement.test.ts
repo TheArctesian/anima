@@ -50,15 +50,15 @@ it('MOT-033: dragging past 66 % shows less than the pointer moved', () => {
   expect(placement.height).toBeLessThan(297 + 400);
 });
 
-it('MOT-031: a release springs with spring-snappy, starting with the pointer velocity', () => {
+it('MOT-031: a release springs with spring-momentum, starting with the pointer velocity', () => {
   placement.grab();
   placement.move(60);
   placement.release(-1200);
   expect(runs).toHaveLength(1);
   expect(runs[0]?.options).toMatchObject({
     type: 'spring',
-    stiffness: spring.snappy.stiffness,
-    damping: spring.snappy.damping,
+    stiffness: spring.momentum.stiffness,
+    damping: spring.momentum.damping,
     velocity: 1200,
   });
   expect(runs[0]?.keyframes.at(-1)).toBe(554);
@@ -75,6 +75,7 @@ it('MOT-032: the release stop comes from the projected height, not the release h
 
 it('MOT-034: an upward flick from near collapsed opens the panel', () => {
   placement.press('Home');
+  runs[0]?.finish();
   runs.length = 0;
   placement.grab();
   placement.move(-60);
@@ -128,4 +129,15 @@ it('MOT-030: a page that changes size puts the panel at its stop at once', () =>
   placement.settle();
   expect(placement.height).toBe(396);
   expect(runs).toEqual([]);
+});
+
+it('MOT-030: a grab in the middle of a spring takes hold where the panel is drawn, without a jump', () => {
+  placement.press('End');
+  runs[0]?.frame(300);
+  expect(slid()).toBe('0px 300px');
+  placement.grab();
+  expect(placement.height).toBe(294);
+  placement.move(-6);
+  expect(placement.height).toBe(300);
+  expect(slid()).toBe('0px 294px');
 });

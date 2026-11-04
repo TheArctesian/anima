@@ -34,8 +34,11 @@
   const placement = new PanelPlacement({ snaps: () => snaps, panel: () => panel, preference });
   let fadedIn: boolean | undefined;
 
+  /** Starting reads the filter; only the panel coming and going restarts it, a filter change goes through `setFilter`. */
   $effect(() => {
-    feed.start();
+    untrack(() => {
+      feed.start();
+    });
     return () => {
       feed.stop();
     };

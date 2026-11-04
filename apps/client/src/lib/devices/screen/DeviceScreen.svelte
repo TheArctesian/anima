@@ -103,9 +103,16 @@
   {/if}
 </div>
 
+<div class="clearance" aria-hidden="true"></div>
 <LogsPanel devices={list?.devices ?? []} />
 
 <style>
+  /* Room to scroll the last card clear of the logs panel: its 33 % stop plus its header, fixed, so a drag reflows nothing. */
+  .clearance {
+    --logs-third: 33vh;
+    block-size: calc(var(--logs-third) + var(--target-min-desktop) + var(--space-2));
+  }
+
   .results {
     display: grid;
     margin-block-start: var(--space-4);
