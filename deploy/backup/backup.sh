@@ -26,7 +26,10 @@ pipe_folder=""
 cleanup() {
     rm -f "$partial" "$counts_partial"
     if [ -n "$pipe_folder" ]; then rm -rf "$pipe_folder"; fi
-    if [ -n "$snapshot_pid" ]; then kill "$snapshot_pid" 2>/dev/null || true; fi
+    if [ -n "$snapshot_pid" ]; then
+        kill "$snapshot_pid" 2>/dev/null || true
+        wait "$snapshot_pid" 2>/dev/null || true
+    fi
     rmdir "$lock_folder" 2>/dev/null || true
 }
 
@@ -78,12 +81,12 @@ mv "$partial" "$final"
 # Only a good new backup gets here (set -e). Age comes from the time in the file name.
 cutoff=$(date -u -d "$keep_days days ago" +%Y%m%dT%H%M%SZ 2>/dev/null ||
     date -u -v-"$keep_days"d +%Y%m%dT%H%M%SZ)
-for old in "$backup_dir"/anima-*.dump "$backup_dir"/anima-*.dump.counts; do
-    [ -e "$old" ] || continue
+# Only files named exactly like ours are pruned: anima-<UTC time>.dump and its .counts.
+for old in "$backup_dir"/anima-*; do
     name=$(basename "$old")
-    old_stamp=${name#anima-}
-    old_stamp=${old_stamp%%.*}
-    if [ "$old_stamp" "<" "$cutoff" ] && [ "$old_stamp" != "$stamp" ]; then rm -f "$old"; fi
+    [[ $name =~ ^anima-([0-9]{8}T[0-9]{6}Z)\.dump(\.counts)?$ ]] || continue
+    old_stamp=${BASH_REMATCH[1]}
+    if [[ $old_stamp < $cutoff && $old_stamp != "$stamp" ]]; then rm -f "$old"; fi
 done
 
 printf '%s\n' "$final"

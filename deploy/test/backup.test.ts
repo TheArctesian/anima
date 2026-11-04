@@ -1,8 +1,7 @@
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { BACKUP, DATABASE, RESTORE_CHECK, backUp, backupFiles, resetSample, run, state, tearDownSample, toolDirectory } from "./backup-fixture.ts";
+import { BACKUP, DATABASE, RESTORE_CHECK, backUp, createDatabase, shimDirectory, backupFiles, resetSample, run, state, tearDownSample, toolDirectory } from "./backup-fixture.ts";
 
 beforeEach(resetSample);
 afterAll(tearDownSample);
@@ -12,13 +11,6 @@ function writeOld(stamp: string): string {
   writeFileSync(path, "old");
   writeFileSync(`${path}.counts`, "old");
   return path;
-}
-
-function shimDirectory(name: string, body: string): string {
-  const folder = mkdtempSync(join(tmpdir(), "anima-shim-"));
-  writeFileSync(join(folder, name), `#!/bin/sh\n${body}\n`);
-  chmodSync(join(folder, name), 0o755);
-  return folder;
 }
 
 function utcStamp(daysAgo: number): string {
@@ -97,6 +89,22 @@ describe("backup.sh failures (DB-007)", () => {
     expect(existsSync(join(state.backupDir, ".lock.d"))).toBe(true);
   });
 
+  test("DB-007: when flock refuses the lock, no backup runs", () => {
+    const result = run(BACKUP, [], {}, shimDirectory("flock", "exit 1"));
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stderr).toContain("another backup is running");
+    expect(backupFiles(".dump")).toEqual([]);
+  });
+
+  test("DB-007: an empty database gives no dump", () => {
+    createDatabase("anima_backup_test_empty");
+    const result = run(BACKUP, [], { ANIMA_DB_NAME: "anima_backup_test_empty" });
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stderr).toContain("no tables");
+    expect(backupFiles(".dump")).toEqual([]);
+    expect(backupFiles(".counts")).toEqual([]);
+  });
+
   test("DB-007: a good run frees the lock folder", () => {
     backUp({ ANIMA_BACKUP_LOCK: "folder" });
     expect(existsSync(join(state.backupDir, ".lock.d"))).toBe(false);
@@ -112,4 +120,13 @@ describe("backup.sh pruning (VPS-006)", () => {
     expect(existsSync(recent) && existsSync(`${recent}.counts`)).toBe(true);
     expect(existsSync(path) && existsSync(`${path}.counts`)).toBe(true);
   });
+
+  test.each(["anima-x.dump", "anima-.dump", "anima-1.dump", "anima-2000.restored.dump", "anima-20000101T000000Z.dump.bak"])(
+    "VPS-006: pruning leaves %s alone",
+    (name) => {
+      writeFileSync(join(state.backupDir, name), "mine");
+      backUp({ ANIMA_BACKUP_KEEP_DAYS: "0" });
+      expect(existsSync(join(state.backupDir, name))).toBe(true);
+    },
+  );
 });

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { serverDirectory } from "./postgres.ts";
 import {
   RESTORE_CHECK, appendLogs, backUp, backUpWithMissingRole, createDatabase, databasesLike, owner, resetSample,
-  run, state, tearDownSample, toolDirectory,
+  run, shimDirectory, state, tearDownSample, toolDirectory,
 } from "./backup-fixture.ts";
 
 beforeEach(resetSample);
@@ -43,7 +43,15 @@ describe("restore-check.sh against the manifest (DB-007)", () => {
     Bun.spawnSync(["rm", `${path}.counts`]);
     const result = run(RESTORE_CHECK, [path]);
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain("manifest");
+    expect(result.stderr).toContain("restore-check.sh: the manifest");
+    expect(result.stderr).toContain("is missing");
+  });
+
+  test("DB-007: a check database that cannot be dropped is a warning on stderr", () => {
+    const real = join(toolDirectory(), "psql");
+    const shim = shimDirectory("psql", `case "$*" in *"drop database"*) exit 1 ;; esac\nexec "${real}" "$@"`);
+    const result = run(RESTORE_CHECK, [backUp()], {}, shim);
+    expect(result.stderr).toContain("warning: could not drop database anima_restore_check");
   });
 
   test("DB-007: the output never holds row contents", () => {

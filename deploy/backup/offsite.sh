@@ -21,8 +21,8 @@ restic="${RESTIC:-restic}"
 dump="${1:-}"
 if [ -z "$dump" ]; then
     # File names hold the UTC time, so the last name in sorted order is the newest.
-    for candidate in "$backup_dir"/anima-*.dump; do
-        [ -e "$candidate" ] && dump="$candidate"
+    for candidate in "$backup_dir"/anima-*; do
+        [[ $(basename "$candidate") =~ ^anima-[0-9]{8}T[0-9]{6}Z\.dump$ ]] && dump="$candidate"
     done
 fi
 [ -n "$dump" ] || fail "no dump in $backup_dir"

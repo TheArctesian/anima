@@ -30,7 +30,7 @@ swapped=0
 require_services_stopped() {
     [ "${ANIMA_PG_LOCAL:-0}" != 1 ] || return 0
     local running
-    running=$(docker compose -f "$ANIMA_COMPOSE_FILE" ps --status running --services hub migrate) ||
+    running=$(docker compose -f "$ANIMA_COMPOSE_FILE" ps --status running --status restarting --services hub migrate) ||
         fail "cannot list services"
     [ -z "$running" ] || fail "stop these services first: $(echo "$running" | tr '\n' ' ')"
 }

@@ -158,18 +158,33 @@ export function backUpWithMissingRole(): string {
   return path;
 }
 
-/** A directory with a fake `docker` that lists `running` as the running services and runs exec locally. */
+/**
+ * A directory with a fake `docker`. `ps` lists $FAKE_RUNNING from its $FAKE_RUNNING_FROM-th call on
+ * (default the first) and records its arguments in $FAKE_CALLS; `exec` runs the command locally.
+ */
 export function dockerShim(): string {
   const folder = mkdtempSync(join(tmpdir(), "anima-docker-"));
   const script = [
     "#!/bin/sh",
     'case " $* " in',
-    '  *" ps "*) [ -z "$FAKE_RUNNING" ] || echo "$FAKE_RUNNING"; exit 0 ;;',
+    '  *" ps "*)',
+    '    echo "$*" >> "$FAKE_CALLS"',
+    '    n=$(wc -l < "$FAKE_CALLS" | tr -d " ")',
+    '    if [ -n "$FAKE_RUNNING" ] && [ "$n" -ge "${FAKE_RUNNING_FROM:-1}" ]; then echo "$FAKE_RUNNING"; fi',
+    "    exit 0 ;;",
     '  *" exec "*) while [ "$1" != postgres ]; do shift; done; shift; exec "$@" ;;',
     "esac",
     "exit 1",
   ].join("\n");
   writeFileSync(join(folder, "docker"), `${script}\n`);
   chmodSync(join(folder, "docker"), 0o755);
+  return folder;
+}
+
+/** A directory with an executable `name` that runs `body` with sh. */
+export function shimDirectory(name: string, body: string): string {
+  const folder = mkdtempSync(join(tmpdir(), "anima-shim-"));
+  writeFileSync(join(folder, name), `#!/bin/sh\n${body}\n`);
+  chmodSync(join(folder, name), 0o755);
   return folder;
 }

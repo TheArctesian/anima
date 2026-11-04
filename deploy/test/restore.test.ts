@@ -1,9 +1,10 @@
 import { afterAll, beforeEach, describe, expect, test } from "bun:test";
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { scalar } from "./postgres.ts";
 import {
   DATABASE, RESTORE, backUp, backUpWithMissingRole, count, databasesLike, dockerShim, owner, resetSample, run,
-  tearDownSample,
+  state, tearDownSample,
 } from "./backup-fixture.ts";
 
 beforeEach(resetSample);
@@ -101,16 +102,33 @@ describe("restore.sh failures leave the live database alone (DB-007)", () => {
 
   test("DB-007: while the hub is listed as running, restore refuses and drops nothing", () => {
     const path = backUp();
-    const result = run(RESTORE, ["--yes", path], { ANIMA_PG_LOCAL: "0", FAKE_RUNNING: "hub" }, dockerShim());
+    const result = run(RESTORE, ["--yes", path], { ANIMA_PG_LOCAL: "0", FAKE_RUNNING: "hub", FAKE_CALLS: join(state.backupDir, "docker-calls") }, dockerShim());
     expect(result.exitCode).not.toBe(0);
     expect(result.stderr).toContain("hub");
     expectLiveDatabaseIntact();
   });
 
+  test("DB-007: a service that starts during the restore stops the swap and the new database goes", () => {
+    const path = backUp();
+    const calls = join(state.backupDir, "docker-calls");
+    const env = { ANIMA_PG_LOCAL: "0", FAKE_RUNNING: "hub", FAKE_RUNNING_FROM: "2", FAKE_CALLS: calls };
+    const result = run(RESTORE, ["--yes", path], env, dockerShim());
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stderr).toContain("stop these services first");
+    expect(readFileSync(calls, "utf8").trim().split("\n")).toHaveLength(2);
+    expectLiveDatabaseIntact();
+  });
+
+  test("DB-007: the service check also asks for restarting services", () => {
+    const calls = join(state.backupDir, "docker-calls");
+    run(RESTORE, ["--yes", backUp()], { ANIMA_PG_LOCAL: "0", FAKE_CALLS: calls }, dockerShim());
+    expect(readFileSync(calls, "utf8")).toContain("--status restarting");
+  });
+
   test("DB-007: with the services stopped, restore works through the docker path", () => {
     const path = backUp();
     owner("delete from devices.device_tags");
-    const result = run(RESTORE, ["--yes", path], { ANIMA_PG_LOCAL: "0", FAKE_RUNNING: "" }, dockerShim());
+    const result = run(RESTORE, ["--yes", path], { ANIMA_PG_LOCAL: "0", FAKE_RUNNING: "", FAKE_CALLS: join(state.backupDir, "docker-calls") }, dockerShim());
     expect(result.stderr).toBe("");
     expect(result.exitCode).toBe(0);
     expect(count("devices.device_tags")).toBe("1");

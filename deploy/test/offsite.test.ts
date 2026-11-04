@@ -15,7 +15,7 @@ function setUp(): void {
   folder = mkdtempSync(join(tmpdir(), "anima-offsite-"));
   calls = join(folder, "calls");
   const fake = join(folder, "restic");
-  writeFileSync(fake, `#!/bin/sh\nprintf '%s\\n' "$*" >> "${calls}"\n[ -z "$FAKE_RESTIC_FAIL" ] || { echo "$FAKE_RESTIC_FAIL" >&2; exit 1; }\n`);
+  writeFileSync(fake, `#!/bin/sh\nprintf '%s\\n' "$*" >> "${calls}"\necho RESTIC-STDOUT-LINE\n[ -z "$FAKE_RESTIC_FAIL" ] || { echo "$FAKE_RESTIC_FAIL" >&2; exit 1; }\n`);
   chmodSync(fake, 0o755);
   writeFileSync(join(folder, "repo"), "rest:https://user:hunter2@home.example/anima-db\n");
   writeFileSync(join(folder, "pw"), `${PASSWORD}\n`);
@@ -50,9 +50,23 @@ describe("offsite.sh (VPS-006)", () => {
     expect(line).toContain(`--repository-file ${folder}/repo --password-file ${folder}/pw backup`);
     expect(line).toContain(`${folder}/anima-20260102T000000Z.dump ${folder}/anima-20260102T000000Z.dump.counts`);
     expect(line).not.toContain("20260101");
+    expect(line).toContain("backup --host anima-vps --tag anima-db ");
+    expect(result.out).not.toContain("RESTIC-STDOUT-LINE");
     expect(result.out).not.toContain(PASSWORD);
     expect(result.out).not.toContain("hunter2");
   });
+
+  test.each(["anima-x.dump", "anima-.dump", "anima-1.dump", "anima-9999.restored.dump"])(
+    "VPS-006: the newest dump is never picked from the odd name %s",
+    (name) => {
+      writeFileSync(join(folder, name), "x");
+      writeFileSync(join(folder, `${name}.counts`), "x");
+      expect(offsite([]).exitCode).toBe(0);
+      const line = readFileSync(calls, "utf8");
+      expect(line).toContain("anima-20260102T000000Z.dump ");
+      expect(line).not.toContain(name);
+    },
+  );
 
   test("VPS-006: a failing restic fails the run and prints no secret", () => {
     const result = offsite([], { FAKE_RESTIC_FAIL: "repository unreachable" });
