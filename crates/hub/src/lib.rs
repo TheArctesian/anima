@@ -1,6 +1,7 @@
 //! Hub library face: module tree and HTTP router, so integration tests can reach them.
 
 pub mod access;
+pub mod checks;
 pub mod clock;
 pub mod config;
 pub mod credentials;
