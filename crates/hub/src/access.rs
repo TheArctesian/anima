@@ -1,10 +1,14 @@
 //! Who may use the hub: operator accounts, sign-in, API tokens and the GraphQL guard
-//! (SEC-002, API-003).
+//! (SEC-002, API-003), and from where: permitted networks and the listening edge (NET-001 to
+//! NET-003, SEC-001, SEC-008).
 
 pub mod graphql;
 mod guard;
 mod identity;
+mod layer;
+pub mod listen;
 mod login;
+mod networks;
 mod password;
 mod store;
 #[cfg(test)]
@@ -14,11 +18,13 @@ mod tokens;
 
 use async_graphql::{ErrorExtensions as _, Pos, ServerError};
 use chrono::{DateTime, TimeDelta, Utc};
+use ipnet::IpNet;
 use sqlx::PgPool;
 
 pub use crate::events::{ClientAddr, Operator};
 pub use guard::{Authenticated, SignInRequired};
 pub use identity::{Identity, client_addr, identify, identify_connection};
+pub use layer::permitted_networks_layer;
 pub use password::Password;
 pub use tokens::Scope;
 
@@ -26,6 +32,9 @@ use crate::ids::OperatorId;
 
 /// Login attempts are kept this long (K2 retention).
 const ATTEMPTS_KEPT: TimeDelta = TimeDelta::days(90);
+
+/// The label of the networks that come from `ANIMA_PERMITTED_NETWORKS` (D-10).
+const CONFIGURED_NETWORKS: &str = "ANIMA_PERMITTED_NETWORKS";
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -38,6 +47,9 @@ pub enum Error {
     /// A `read` token asked for a mutation.
     #[error("This token may only read.")]
     ReadOnly,
+    /// The client address is outside every permitted network (NET-002).
+    #[error("This address is not in a permitted network.")]
+    NotPermitted,
     #[error("{message}")]
     Validation {
         field: &'static str,
@@ -83,7 +95,7 @@ impl Error {
     const fn code(&self) -> &'static str {
         match self {
             Self::Unauthenticated | Self::WrongCredentials => "UNAUTHENTICATED",
-            Self::ReadOnly => "FORBIDDEN",
+            Self::ReadOnly | Self::NotPermitted => "FORBIDDEN",
             Self::Validation { .. } => "VALIDATION",
             Self::Unreachable(_) => "UNAVAILABLE",
             Self::Database(_)
@@ -102,6 +114,7 @@ impl Error {
             Self::Unauthenticated
             | Self::WrongCredentials
             | Self::ReadOnly
+            | Self::NotPermitted
             | Self::Validation { .. } => None,
             Self::Unreachable(_) => Some("database_unreachable"),
             Self::Database(_) => Some("database"),
@@ -203,6 +216,28 @@ fn check_credentials(username: &str, password: &Password) -> Result<(), Error> {
             message: "Use a password of at least 12 characters and at most 1024 bytes.",
         });
     }
+    Ok(())
+}
+
+/// Makes the networks from `ANIMA_PERMITTED_NETWORKS` the stored ones with that label, at
+/// start (D-10): adds the new ones and removes those no longer listed, so taking a network out
+/// of the variable stops permitting it. Networks are stored without host bits, and an
+/// IPv4-mapped IPv6 network as IPv4. A network stored under another label is left alone.
+///
+/// # Errors
+///
+/// `Error::Database` if the networks cannot be written.
+pub async fn permit_networks(db: &PgPool, configured: &[IpNet]) -> Result<(), Error> {
+    let mut wanted: Vec<IpNet> = configured
+        .iter()
+        .copied()
+        .map(networks::canonical_net)
+        .collect();
+    wanted.sort_unstable();
+    wanted.dedup();
+    let mut tx = db.begin().await?;
+    store::replace_labelled_networks(&mut tx, CONFIGURED_NETWORKS, &wanted).await?;
+    tx.commit().await?;
     Ok(())
 }
 

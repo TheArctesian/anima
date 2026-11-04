@@ -12,6 +12,7 @@ use uuid::Uuid;
 use super::{Authenticated, Identity, Operator, Scope, SignInRequired};
 use crate::clock::{Clock, FixedClock};
 
+mod networks;
 mod rules;
 mod runtime;
 mod scope;
