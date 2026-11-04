@@ -27,7 +27,8 @@
     "checks": [
       "devices",
       "maintenance",
-      "events"
+      "events",
+      "credentials"
     ],
     "sessions": [
       "access",
