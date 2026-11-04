@@ -35,38 +35,45 @@ create table events.audit_log (
 create index audit_log_target_at on events.audit_log (target_type, target_id, at desc);
 
 -- Creates events.<parent>_YYYYMMDD for the UTC day that holds `instant`, if it is missing.
--- Safe under concurrent calls: a racing creator makes this call a no-op. When the partition
--- exists the function takes no lock on the parent.
+-- Safe under concurrent calls: a racing creator makes this call a no-op.
 --
 -- SECURITY DEFINER: only the table owner may create a partition, and the hub role must not
 -- own the tables, because an owner can always UPDATE, DELETE, TRUNCATE or DROP the audit log
 -- (LOG-006). The function runs as its owner (the migration role), so partitions it creates
--- are owned by that role too. search_path is pinned and every name is schema-qualified.
-create function events.ensure_day_partition(parent text, instant timestamptz)
+-- are owned by that role too.
+--
+-- The caller controls its own temporary schema. Unless pg_temp is listed, PostgreSQL searches
+-- it FIRST for type and table names, so a caller's `pg_temp.date` domain with a CHECK would run
+-- the caller's code as the owner. pg_temp is therefore listed last, and every type and table
+-- in the body is schema-qualified anyway. (Functions and operators are never looked up in
+-- pg_temp.)
+create function events.ensure_day_partition(parent pg_catalog.text, instant pg_catalog.timestamptz)
 returns void
 language plpgsql
 security definer
-set search_path = pg_catalog
+set search_path = pg_catalog, pg_temp
 as $$
 declare
-    utc_day date := (instant at time zone 'UTC')::date;
-    child text := parent || '_' || to_char(utc_day, 'YYYYMMDD');
+    utc_day pg_catalog.date := (instant at time zone 'UTC')::pg_catalog.date;
+    child pg_catalog.text := parent || '_' || pg_catalog.to_char(utc_day, 'YYYYMMDD');
 begin
     if parent not in ('event_log', 'audit_log') then
         raise exception 'events.ensure_day_partition: unknown table %', parent
             using errcode = 'invalid_parameter_value';
     end if;
-    if to_regclass(format('events.%I', child)) is not null then
+    -- Optimisation, not covered by a test: skips the create attempt and its exception block
+    -- when the partition already exists.
+    if pg_catalog.to_regclass(pg_catalog.format('events.%I', child)) is not null then
         return;
     end if;
     begin
         -- Bounds as ISO text with an explicit offset, independent of DateStyle and TimeZone.
-        execute format(
+        execute pg_catalog.format(
             'create table events.%I partition of events.%I for values from (%L) to (%L)',
             child,
             parent,
-            to_char(utc_day, 'YYYY-MM-DD') || ' 00:00:00+00',
-            to_char(utc_day + 1, 'YYYY-MM-DD') || ' 00:00:00+00'
+            pg_catalog.to_char(utc_day, 'YYYY-MM-DD') || ' 00:00:00+00',
+            pg_catalog.to_char(utc_day + 1, 'YYYY-MM-DD') || ' 00:00:00+00'
         );
     exception
         when duplicate_table or unique_violation then
@@ -79,9 +86,15 @@ revoke execute on function events.ensure_day_partition(text, timestamptz) from p
 
 -- The group role the hub login role belongs to (LOG-006, K2): it may read and append, never
 -- change or remove. Roles are cluster-wide, so another database (or a concurrent migration)
--- may have created it already.
+-- may have created it already. It must stay a group role (NOLOGIN): the hub logs in as its
+-- own role, which is a member, so nobody can sign in with the writer rights alone.
 do $$
 begin
+    if exists (
+        select from pg_catalog.pg_roles where rolname = 'anima_events_writer' and rolcanlogin
+    ) then
+        raise exception 'anima_events_writer exists and can log in; it must be a NOLOGIN role';
+    end if;
     if not exists (select from pg_catalog.pg_roles where rolname = 'anima_events_writer') then
         begin
             create role anima_events_writer nologin;
