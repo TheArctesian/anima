@@ -1,6 +1,13 @@
 -- Event log and audit log (K2, LOG-004, LOG-005), partitioned by UTC day (DB-004, D-4).
 -- No default partition: events.ensure_day_partition creates the day's partition before each
 -- insert, and a missing partition is an error rather than a silent catch-all.
+--
+-- Privileges (K2 "Roles", R-016, LOG-006): migration 0001's default privileges give
+-- `anima_runtime` SELECT, INSERT, UPDATE and DELETE on every table created here, including
+-- every partition the functions below create (they run as the owner). The runtime role may
+-- only read and append, so UPDATE, DELETE and TRUNCATE are revoked from the parents here and
+-- from each partition when it is created. Only the owner can create or drop a partition; the
+-- runtime role does both through the SECURITY DEFINER functions below.
 
 create schema events;
 
@@ -33,6 +40,8 @@ create table events.audit_log (
 ) partition by range (at);
 
 create index audit_log_target_at on events.audit_log (target_type, target_id, at desc);
+
+revoke update, delete, truncate on events.event_log, events.audit_log from anima_runtime;
 
 -- Creates events.<parent>_YYYYMMDD for the UTC day that holds `instant`, if it is missing.
 -- Safe under concurrent calls: a racing creator makes this call a no-op.
@@ -76,6 +85,11 @@ begin
             pg_catalog.to_char(utc_day, 'YYYY-MM-DD') || ' 00:00:00+00',
             pg_catalog.to_char(utc_day + 1, 'YYYY-MM-DD') || ' 00:00:00+00'
         );
+        -- The default privileges just granted UPDATE and DELETE on the new partition.
+        execute pg_catalog.format(
+            'revoke update, delete, truncate on events.%I from anima_runtime',
+            child
+        );
     exception
         when duplicate_table or unique_violation then
             null;
@@ -84,29 +98,58 @@ end;
 $$;
 
 revoke execute on function events.ensure_day_partition(text, timestamptz) from public;
+grant execute on function events.ensure_day_partition(text, timestamptz) to anima_runtime;
 
--- The group role the hub login role belongs to (LOG-006, K2): it may read and append, never
--- change or remove. Roles are cluster-wide, so another database (or a concurrent migration)
--- may have created it already. It must stay a group role (NOLOGIN): the hub logs in as its
--- own role, which is a member, so nobody can sign in with the writer rights alone.
-do $$
+-- Drops the day partitions of `parent` for UTC days strictly before `cutoff`, and returns
+-- their names. Retention (DB-005, LOG-006): it refuses a `cutoff` newer than the UTC day of
+-- `instant` minus 90 days (event_log) or 1 year (audit_log). The caller passes its clock as
+-- `instant`, but the database clock also bounds it, so a caller cannot claim a later "now"
+-- to drop entries early. SECURITY DEFINER and search_path as for ensure_day_partition.
+create function events.drop_day_partitions_before(
+    parent pg_catalog.text,
+    cutoff pg_catalog.date,
+    instant pg_catalog.timestamptz
+)
+returns setof pg_catalog.text
+language plpgsql
+security definer
+set search_path = pg_catalog, pg_temp
+as $$
+declare
+    retention pg_catalog.interval := case parent
+        when 'event_log' then '90 days'::pg_catalog.interval
+        when 'audit_log' then '1 year'::pg_catalog.interval
+    end;
+    latest pg_catalog.date;
+    child pg_catalog.text;
 begin
-    if exists (
-        select from pg_catalog.pg_roles where rolname = 'anima_events_writer' and rolcanlogin
-    ) then
-        raise exception 'anima_events_writer exists and can log in; it must be a NOLOGIN role';
+    if retention is null then
+        raise exception 'events.drop_day_partitions_before: unknown table %', parent
+            using errcode = 'invalid_parameter_value';
     end if;
-    if not exists (select from pg_catalog.pg_roles where rolname = 'anima_events_writer') then
-        begin
-            create role anima_events_writer nologin;
-        exception
-            when duplicate_object or unique_violation then
-                null;
-        end;
+    -- Timestamp (not timestamptz) arithmetic, so the session TimeZone cannot move the bound.
+    latest := (
+        (least(instant, pg_catalog.now()) at time zone 'UTC') - retention
+    )::pg_catalog.date;
+    if cutoff is null or cutoff > latest then
+        raise exception 'events.drop_day_partitions_before: % is inside the retention of %',
+            cutoff, parent
+            using errcode = 'insufficient_privilege';
     end if;
+    for child in
+        select c.relname::pg_catalog.text
+        from pg_catalog.pg_inherits i
+        join pg_catalog.pg_class c on c.oid = i.inhrelid
+        where i.inhparent = pg_catalog.to_regclass(pg_catalog.format('events.%I', parent))
+            and c.relname operator(pg_catalog.~) ('^' || parent || '_[0-9]{8}$')
+            and pg_catalog.to_date(pg_catalog.right(c.relname, 8), 'YYYYMMDD') < cutoff
+        order by c.relname
+    loop
+        execute pg_catalog.format('drop table events.%I', child);
+        return next child;
+    end loop;
 end;
 $$;
 
-grant usage on schema events to anima_events_writer;
-grant select, insert on events.event_log, events.audit_log to anima_events_writer;
-grant execute on function events.ensure_day_partition(text, timestamptz) to anima_events_writer;
+revoke execute on function events.drop_day_partitions_before(text, date, timestamptz) from public;
+grant execute on function events.drop_day_partitions_before(text, date, timestamptz) to anima_runtime;

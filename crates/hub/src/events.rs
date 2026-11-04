@@ -4,6 +4,7 @@
 mod bus;
 mod model;
 mod redaction;
+mod retention;
 mod store;
 #[cfg(test)]
 mod tests;
@@ -24,6 +25,53 @@ pub enum Error {
     /// The message stays generic: the source error may hold SQL text (API-010).
     #[error("the event store is unavailable")]
     Database(#[from] sqlx::Error),
+    /// The hub must not serve with rights that could change the audit log (LOG-006).
+    #[error("The hub's database role is a superuser. Serve as a member of anima_runtime instead.")]
+    Superuser,
+    #[error(
+        "The hub's database role owns the audit log. Run migrations as the owner role and \
+         serve as a member of anima_runtime."
+    )]
+    OwnsAuditLog,
+}
+
+/// Checks that the hub serves as a runtime role that cannot change the audit log: not a
+/// superuser and not its owner, nor able to become either with `SET ROLE` (K2 "Roles",
+/// R-016, LOG-006). Call at start, before serving.
+///
+/// # Errors
+///
+/// `Error::Superuser` or `Error::OwnsAuditLog` with a plain message (API-010);
+/// `Error::Database` if the check cannot run.
+pub async fn check_runtime_role(db: &PgPool) -> Result<(), Error> {
+    let role = store::runtime_role(db).await?;
+    if role.superuser {
+        Err(Error::Superuser)
+    } else if role.owns_audit_log {
+        Err(Error::OwnsAuditLog)
+    } else {
+        Ok(())
+    }
+}
+
+/// Drops the day partitions older than each log's retention at `now` (90 days for events,
+/// 1 year for the audit log; DB-005) and returns the names of the dropped partitions. The
+/// database refuses to drop anything inside retention, by `now` and by its own clock
+/// (LOG-006). Schedule it daily.
+///
+/// # Errors
+///
+/// `Error::Database` if a partition cannot be dropped or the database refuses the cutoff.
+pub async fn drop_expired_partitions(
+    db: &PgPool,
+    now: DateTime<Utc>,
+) -> Result<Vec<String>, Error> {
+    let mut dropped = Vec::new();
+    for log in retention::LOGS {
+        let first_kept_day = log.first_kept_day(now);
+        dropped.extend(store::drop_day_partitions_before(db, log, first_kept_day, now).await?);
+    }
+    Ok(dropped)
 }
 
 /// Creates the day partitions of both logs for `today` and the `days` days after it, each in

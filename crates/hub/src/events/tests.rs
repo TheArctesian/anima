@@ -15,9 +15,21 @@ use crate::ids::{DeviceId, EventId, OperatorId};
 
 mod partitions;
 mod privileges;
+mod retention;
+mod runtime_role;
 
 const DEVICE: &str = "0192f5a0-7c3e-7a52-9d1b-3f4e5a6b7c8d";
 const OPERATOR: &str = "0192f5a0-7c3e-7a52-9d1b-000000000001";
+
+/// A one-connection pool on the test database whose session runs as `role`.
+async fn pool_as(pool: &PgPool, role: &str) -> PgPool {
+    let options = (*pool.connect_options()).clone().options([("role", role)]);
+    sqlx::postgres::PgPoolOptions::new()
+        .max_connections(1)
+        .connect_with(options)
+        .await
+        .unwrap()
+}
 
 fn day(year: i32, month: u32, date: u32) -> DateTime<Utc> {
     Utc.with_ymd_and_hms(year, month, date, 12, 30, 0).unwrap()

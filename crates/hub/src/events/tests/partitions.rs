@@ -10,7 +10,7 @@ use crate::events::{Bus, Error, audit, create_partitions_ahead, record};
 
 const ENSURE: &str = "select events.ensure_day_partition('event_log', $1)";
 
-async fn table_exists(conn: &mut PgConnection, name: &str) -> bool {
+pub(super) async fn table_exists(conn: &mut PgConnection, name: &str) -> bool {
     sqlx::query_scalar("select to_regclass($1) is not null")
         .bind(name)
         .fetch_one(conn)
@@ -183,6 +183,10 @@ async fn finish<T>(tx: Transaction<'_, Postgres>, outcome: Result<T, Error>) -> 
                 .as_database_error()
                 .and_then(sqlx::error::DatabaseError::code);
             Some(code.map_or_else(|| error.to_string(), Into::into))
+        }
+        Err(other) => {
+            tx.rollback().await.unwrap();
+            Some(other.to_string())
         }
     }
 }
