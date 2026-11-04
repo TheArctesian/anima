@@ -1,13 +1,14 @@
-//! Hub library face: schema and HTTP router, so integration tests can reach them.
+//! Hub library face: module tree and HTTP router, so integration tests can reach them.
 
+pub mod clock;
+pub mod config;
+pub mod ids;
 pub mod schema;
+pub mod status;
 
 use async_graphql_axum::GraphQL;
 use axum::{Router, routing::post_service};
 
-pub fn router() -> Router {
-    Router::new().route(
-        "/graphql",
-        post_service(GraphQL::new(schema::build_schema())),
-    )
+pub fn router(schema: schema::HubSchema) -> Router {
+    Router::new().route("/graphql", post_service(GraphQL::new(schema)))
 }

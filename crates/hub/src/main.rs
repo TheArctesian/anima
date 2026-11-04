@@ -1,38 +1,51 @@
-//! Hub binary: reads the listen address and serves the router.
+//! Hub binary: reads the environment, builds the dependencies and serves the router.
 
-use std::env::VarError;
-use std::net::{AddrParseError, SocketAddr};
+use std::collections::BTreeMap;
+use std::ffi::OsString;
+use std::sync::Arc;
 
-const ADDR_VAR: &str = "ANIMA_HUB_ADDR";
-const DEFAULT_ADDR: &str = "127.0.0.1:8080";
+use anima_hub::{clock::SystemClock, config, router, schema::build_schema};
 
 #[derive(Debug, thiserror::Error)]
 enum StartError {
-    #[error("{ADDR_VAR} is not valid unicode")]
-    AddrNotUnicode,
-    #[error("{ADDR_VAR}={value:?} is not a socket address")]
-    AddrInvalid {
-        value: String,
-        #[source]
-        source: AddrParseError,
-    },
+    #[error("environment variable {name:?} is not valid unicode")]
+    EnvNotUnicode { name: String },
+    #[error("invalid configuration")]
+    Config(#[from] config::Error),
     #[error("hub failed to serve")]
     Serve(#[from] std::io::Error),
 }
 
-fn listen_addr() -> Result<SocketAddr, StartError> {
-    let value = match std::env::var(ADDR_VAR) {
-        Ok(value) => value,
-        Err(VarError::NotPresent) => DEFAULT_ADDR.to_owned(),
-        Err(VarError::NotUnicode(_)) => return Err(StartError::AddrNotUnicode),
-    };
-    value
-        .parse()
-        .map_err(|source| StartError::AddrInvalid { value, source })
+/// Collect the process environment; non-unicode `ANIMA_*` variables are an error, others are skipped.
+fn process_env() -> Result<BTreeMap<String, String>, StartError> {
+    let mut env = BTreeMap::new();
+    for (name, value) in std::env::vars_os() {
+        match (name.into_string(), value.into_string()) {
+            (Ok(name), Ok(value)) => {
+                env.insert(name, value);
+            }
+            (Ok(name), Err(_)) if name.starts_with("ANIMA_") => {
+                return Err(StartError::EnvNotUnicode { name });
+            }
+            (Err(name), _) if is_anima(&name) => {
+                return Err(StartError::EnvNotUnicode {
+                    name: name.to_string_lossy().into_owned(),
+                });
+            }
+            _ => {}
+        }
+    }
+    Ok(env)
+}
+
+fn is_anima(name: &OsString) -> bool {
+    name.as_encoded_bytes().starts_with(b"ANIMA_")
 }
 
 #[tokio::main]
 async fn main() -> Result<(), StartError> {
-    let listener = tokio::net::TcpListener::bind(listen_addr()?).await?;
-    Ok(axum::serve(listener, anima_hub::router()).await?)
+    let config = Arc::new(config::from_env(&process_env()?)?);
+    let listener = tokio::net::TcpListener::bind(config.listen).await?;
+    let schema = build_schema(config, Arc::new(SystemClock));
+    Ok(axum::serve(listener, router(schema)).await?)
 }
