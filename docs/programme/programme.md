@@ -62,6 +62,8 @@ Integration branch: `phase-1`. Merge to `main` only after operator checkpoint 4.
 
 - **R-011 (Wave 1, from WP-06; changes K3).** (a) A domain's `graphql.rs` may import extra domains listed under `graphql` in `quality/hub-modules.json`, only to resolve K1 fields that join domains; never a `store`, and these edges do not count toward cycles. `devices/graphql.rs` may import `checks` and `sessions`. (b) WP-06 builds `Device` and `SshSettings` with the fields devices owns, `DeviceFilter` name/tags/siteId and `DeviceSort.NAME`; it does not declare the fields that need other domains. WP-09 adds `Device.status`, `checks`, `uptime`, `DeviceFilter.status`, `DeviceSort.STATUS`/`UPTIME` and the `addDefaultCheck` behaviour to `devices/graphql.rs` after WP-06 is accepted; WP-10 adds `SshSettings.hostKey`. One owner at a time (PKG-001). (c) Until WP-17, the schema contract check (CON-002) requires only that every hub field matches K1; WP-17 checks that K1 is complete.
 
+- **R-012 (Wave 1, from WP-06; changes K3).** The K1 scalars `IpAddr` and `Cidr` live in the leaf module `crates/hub/src/scalars.rs` (programme-owned, like R-003). `Cidr` rejects host bits. `DateTime` and `JSON` are async-graphql's built-in chrono and `Json<T>` scalars. A domain must not define a scalar with a K1 name. Storage conversion (for example to `ipnet::IpNet` for sqlx) stays in each domain's `store.rs`.
+
 ## Escalations
 
 None open.
