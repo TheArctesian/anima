@@ -177,4 +177,3 @@ fn log_kept(fault: Fault) {
         "TLS certificate reload failed; the previous certificate is still served"
     );
 }
-

@@ -311,9 +311,7 @@ pub(super) async fn replace_labelled_networks(
 }
 
 /// Every permitted network.
-pub(super) async fn permitted_networks(
-    db: impl PgExecutor<'_>,
-) -> Result<Vec<IpNet>, sqlx::Error> {
+pub(super) async fn permitted_networks(db: impl PgExecutor<'_>) -> Result<Vec<IpNet>, sqlx::Error> {
     sqlx::query_scalar("select cidr from access.permitted_networks")
         .fetch_all(db)
         .await

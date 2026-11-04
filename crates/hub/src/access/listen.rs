@@ -46,7 +46,10 @@ pub enum Error {
     #[error("the TLS library refused the hub's settings")]
     TlsSetup,
     #[error("cannot listen on {addr} ({kind})")]
-    Bind { addr: SocketAddr, kind: io::ErrorKind },
+    Bind {
+        addr: SocketAddr,
+        kind: io::ErrorKind,
+    },
 }
 
 /// A bound listener: plain on loopback without certificate files, else TLS.

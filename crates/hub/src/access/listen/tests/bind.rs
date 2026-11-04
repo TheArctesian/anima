@@ -45,7 +45,10 @@ fn sec_008_public_and_unlisted_addresses_are_refused() {
     for text in refused {
         for tls in [true, false] {
             let outcome = check_bind(ip(text), tls);
-            assert!(matches!(outcome, Err(Error::Public(_))), "{text}: {outcome:?}");
+            assert!(
+                matches!(outcome, Err(Error::Public(_))),
+                "{text}: {outcome:?}"
+            );
         }
     }
 }
@@ -84,7 +87,13 @@ fn sec_001_plain_http_is_accepted_only_on_loopback() {
     for text in ["127.0.0.1", "::1", "::ffff:127.0.0.1"] {
         assert!(check_bind(ip(text), false).is_ok(), "{text}");
     }
-    for text in ["10.0.0.1", "172.30.0.10", "192.168.1.1", "100.64.0.1", "fd00::1"] {
+    for text in [
+        "10.0.0.1",
+        "172.30.0.10",
+        "192.168.1.1",
+        "100.64.0.1",
+        "fd00::1",
+    ] {
         let outcome = check_bind(ip(text), false);
         assert!(matches!(outcome, Err(Error::TlsRequired(_))), "{text}");
     }
@@ -92,7 +101,9 @@ fn sec_001_plain_http_is_accepted_only_on_loopback() {
 
 #[test]
 fn net_003_the_refusal_names_the_variable_and_the_address() {
-    let text = check_bind(ip("::ffff:8.8.8.8"), true).unwrap_err().to_string();
+    let text = check_bind(ip("::ffff:8.8.8.8"), true)
+        .unwrap_err()
+        .to_string();
     assert!(text.starts_with("ANIMA_LISTEN=8.8.8.8 "), "{text}");
     let text = check_bind(ip("0.0.0.0"), true).unwrap_err().to_string();
     assert!(text.contains("unspecified"), "{text}");

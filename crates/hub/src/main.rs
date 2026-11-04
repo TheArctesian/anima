@@ -3,13 +3,12 @@
 
 use std::{
     io::{BufRead as _, IsTerminal as _},
-    net::SocketAddr,
     process::ExitCode,
     sync::Arc,
 };
 
 use anima_hub::{
-    access,
+    access::{self, listen},
     clock::{Clock as _, SystemClock},
     config::{self, Config},
     credentials::Vault,
@@ -44,6 +43,9 @@ enum StartError {
     RuntimeRole(#[from] events::RoleError),
     #[error("hub failed to serve")]
     Serve(#[from] std::io::Error),
+    /// Names the address or the certificate fault kind, never file content (SEC-001).
+    #[error("{0}")]
+    Listen(#[from] listen::Error),
     #[error("usage: anima-hub [migrate | operator set <username>]")]
     Usage,
     #[error("the password cannot be read from standard input")]
@@ -83,24 +85,33 @@ async fn run() -> Result<(), StartError> {
 
 async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     process_log::init(&config.log)?;
+    let clock: Arc<dyn anima_hub::clock::Clock> = Arc::new(SystemClock);
+    // Bind check and certificate first: a refused address needs no key or database (NET-003).
+    let tls = config
+        .tls_cert_file
+        .clone()
+        .zip(config.tls_key_file.clone());
+    let tls = tls.map(|(cert, key)| listen::TlsFiles { cert, key });
+    let listening = listen::listen(config.listen, tls, clock.clone()).await?;
     let vault = Vault::from_key_file(&config.key_file).map_err(|source| StartError::Key {
         path: config.key_file.display().to_string(),
         source,
     })?;
     let pool = connect(&config).await?;
     events::check_runtime_role(&pool).await?;
-    let clock: Arc<dyn anima_hub::clock::Clock> = Arc::new(SystemClock);
-    let listener = tokio::net::TcpListener::bind(config.listen).await?;
-    tracing::info!(listen = %config.listen, "hub started");
+    access::permit_networks(&pool, &config.permitted_networks).await?;
+    tracing::info!(listen = %listening.local_addr()?, "hub started");
+    let bus = Bus::new(BUS_CAPACITY);
     let schema = build_schema(Dependencies {
         config,
         clock: clock.clone(),
         pool: pool.clone(),
-        bus: Bus::new(BUS_CAPACITY),
+        bus: bus.clone(),
         vault,
     });
-    let app = router(schema, pool, clock).into_make_service_with_connect_info::<SocketAddr>();
-    Ok(axum::serve(listener, app).await?)
+    let app = router(schema, pool.clone(), clock.clone())
+        .layer(access::permitted_networks_layer(pool, bus, clock));
+    Ok(listening.serve(app).await?)
 }
 
 /// Applies the migrations as the owner role and exits; serving never migrates (R-016).

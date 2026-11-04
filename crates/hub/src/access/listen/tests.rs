@@ -140,12 +140,18 @@ fn sec_001_unreadable_and_oversized_files_are_refused_by_kind() {
     let files = Files::new();
     let missing = certificate::read(&files.paths).err();
     assert!(
-        matches!(missing, Some(Fault::CertificateFile(std::io::ErrorKind::NotFound))),
+        matches!(
+            missing,
+            Some(Fault::CertificateFile(std::io::ErrorKind::NotFound))
+        ),
         "{missing:?}"
     );
     let made = throwaway();
     files.write(&made.cert, &"k".repeat(1024 * 1024 + 1), 0);
-    assert_eq!(certificate::read(&files.paths).err(), Some(Fault::KeyTooLarge));
+    assert_eq!(
+        certificate::read(&files.paths).err(),
+        Some(Fault::KeyTooLarge)
+    );
     files.write(&"c".repeat(1024 * 1024 + 1), &made.key, 0);
     assert_eq!(
         certificate::read(&files.paths).err(),

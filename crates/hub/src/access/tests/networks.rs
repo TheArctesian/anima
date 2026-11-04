@@ -20,10 +20,21 @@ fn nets(texts: &[&str]) -> Vec<IpNet> {
 #[test]
 fn net_002_ipv4_inside_a_network_passes_and_outside_is_refused() {
     let permitted = nets(&["100.64.0.0/10", "192.168.10.0/24"]);
-    for inside in ["100.64.0.0", "100.100.7.7", "100.127.255.255", "192.168.10.200"] {
+    for inside in [
+        "100.64.0.0",
+        "100.100.7.7",
+        "100.127.255.255",
+        "192.168.10.200",
+    ] {
         assert!(permits(&permitted, ip(inside)), "{inside}");
     }
-    for outside in ["100.63.255.255", "100.128.0.0", "192.168.11.1", "8.8.8.8", "127.0.0.1"] {
+    for outside in [
+        "100.63.255.255",
+        "100.128.0.0",
+        "192.168.11.1",
+        "8.8.8.8",
+        "127.0.0.1",
+    ] {
         assert!(!permits(&permitted, ip(outside)), "{outside}");
     }
 }
@@ -86,7 +97,10 @@ fn d_10_a_loaded_list_is_used_for_30_seconds() {
     assert!(loaded.fresh_at(now()));
     assert!(loaded.fresh_at(now() + TimeDelta::seconds(29)));
     assert!(!loaded.fresh_at(now() + TimeDelta::seconds(30)));
-    assert!(!loaded.fresh_at(now() - TimeDelta::seconds(1)), "clock went back");
+    assert!(
+        !loaded.fresh_at(now() - TimeDelta::seconds(1)),
+        "clock went back"
+    );
 }
 
 #[test]

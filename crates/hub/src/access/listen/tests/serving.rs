@@ -38,7 +38,9 @@ fn peer_router() -> Router {
 
 fn connector(trusted: &Throwaway) -> TlsConnector {
     let mut roots = RootCertStore::empty();
-    roots.add(CertificateDer::from(trusted.der.clone())).unwrap();
+    roots
+        .add(CertificateDer::from(trusted.der.clone()))
+        .unwrap();
     let config = ClientConfig::builder_with_provider(provider())
         .with_protocol_versions(&[&TLS13])
         .unwrap()
@@ -68,7 +70,9 @@ async fn sec_001_the_hub_serves_tls_with_the_certificate_files() {
     files.write(&made.cert, &made.key, 0);
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(super::now()));
     let addr: SocketAddr = "127.0.0.1:0".parse().unwrap();
-    let listening = listen(addr, Some(files.paths.clone()), clock).await.unwrap();
+    let listening = listen(addr, Some(files.paths.clone()), clock)
+        .await
+        .unwrap();
     assert!(matches!(listening, Listening::Tls(_)));
     let bound = listening.local_addr().unwrap();
     let server = tokio::spawn(listening.serve(peer_router()));
@@ -93,7 +97,10 @@ async fn sec_001_the_hub_serves_tls_with_the_certificate_files() {
     })
     .await
     .expect("plain request closed in time");
-    assert!(!plain.starts_with(b"HTTP/"), "no plain HTTP on the TLS port");
+    assert!(
+        !plain.starts_with(b"HTTP/"),
+        "no plain HTTP on the TLS port"
+    );
     server.abort();
 }
 
