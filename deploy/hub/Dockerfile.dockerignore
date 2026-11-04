@@ -1,0 +1,6 @@
+# Allow-list: the build needs the workspace manifests, the lock file and the crates.
+*
+!Cargo.toml
+!Cargo.lock
+!crates/
+**/target

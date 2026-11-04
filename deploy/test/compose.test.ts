@@ -1,0 +1,205 @@
+// Rules for deploy/compose.yaml, checked on the parsed file (WP-04 D-3 to D-7, D-9).
+// Nothing here starts Docker, and no test writes a file.
+import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+const ROOT = join(import.meta.dir, "..", "..");
+const COMPOSE_PATH = join(ROOT, "deploy", "compose.yaml");
+const CONFIG_PATH = join(ROOT, "crates", "hub", "src", "config.rs");
+
+type Dict = Record<string, unknown>;
+interface Container {
+  image?: string;
+  ports?: string[];
+  networks?: string[] | Dict;
+  secrets?: (string | { source: string; target?: string })[];
+  environment?: Record<string, string>;
+  depends_on?: Record<string, { condition: string }>;
+  logging?: { driver: string; options: Record<string, string> };
+  read_only?: boolean;
+  cap_drop?: string[];
+  security_opt?: string[];
+  command?: string[];
+}
+interface Compose {
+  services: Record<string, Container>;
+  networks: Record<string, { internal?: boolean } | null>;
+  secrets: Record<string, { file: string }>;
+}
+
+const compose = Bun.YAML.parse(readFileSync(COMPOSE_PATH, "utf8")) as Compose;
+const services = Object.entries(compose.services);
+
+function networksOf(service: Container): string[] {
+  const networks = service.networks ?? [];
+  return Array.isArray(networks) ? networks : Object.keys(networks);
+}
+
+function secretsOf(service: Container): string[] {
+  return (service.secrets ?? []).map((secret) => (typeof secret === "string" ? secret : secret.source)).sort();
+}
+
+describe("published ports (NET-003, DB-001, GW-002)", () => {
+  test("DB-001 postgres publishes no port", () => {
+    expect(compose.services["postgres"]?.ports).toBeUndefined();
+  });
+
+  test("GW-002 guacd publishes no port", () => {
+    expect(compose.services["guacd"]?.ports).toBeUndefined();
+  });
+
+  test("NET-003 the hub is the only service with a port, and it binds ANIMA_HUB_ADDRESS", () => {
+    const published = services.filter(([, service]) => service.ports !== undefined);
+    expect(published.map(([name]) => name)).toEqual(["hub"]);
+    const ports = compose.services["hub"]?.ports ?? [];
+    expect(ports).toHaveLength(1);
+    expect(ports[0]).toMatch(/^\$\{ANIMA_HUB_ADDRESS:\?[^}]+\}:443:8443$/);
+  });
+});
+
+describe("networks (DB-001, GW-002, GW-003)", () => {
+  test("DB-001 the database network is internal", () => {
+    expect(compose.networks["database"]?.internal).toBe(true);
+  });
+
+  test("GW-002 guacd shares a network only with the hub", () => {
+    const guacd = networksOf(compose.services["guacd"] as Container);
+    expect(guacd).toEqual(["gateway"]);
+    for (const [name, service] of services) {
+      if (name === "guacd") continue;
+      const shared = networksOf(service).filter((network) => guacd.includes(network));
+      expect(shared.length > 0 ? name : null).toBe(shared.length > 0 ? "hub" : null);
+    }
+  });
+
+  test("DB-001 only postgres, migrate and the hub join the database network", () => {
+    const members = services.filter(([, service]) => networksOf(service).includes("database")).map(([name]) => name);
+    expect(members.sort()).toEqual(["hub", "migrate", "postgres"]);
+  });
+
+  test("DNS-003 only certs joins the acme network", () => {
+    const members = services.filter(([, service]) => networksOf(service).includes("acme")).map(([name]) => name);
+    expect(members).toEqual(["certs"]);
+  });
+});
+
+describe("secrets (DB-002, SEC-004, DNS-003)", () => {
+  const expected: Record<string, string[]> = {
+    postgres: ["hub_password", "owner_password", "postgres_password"],
+    migrate: ["owner_database_url"],
+    certs: ["cloudflare_dns_token"],
+    hub: ["anima_key", "hub_database_url"],
+    guacd: [],
+  };
+
+  for (const [name, secrets] of Object.entries(expected)) {
+    test(`DB-002 ${name} has exactly its secrets`, () => {
+      expect(secretsOf(compose.services[name] as Container)).toEqual(secrets);
+    });
+  }
+
+  test("DB-002 the hub reads hub_database_url as /run/secrets/database_url", () => {
+    const entry = compose.services["hub"]?.secrets?.find((secret) => typeof secret !== "string" && secret.source === "hub_database_url");
+    expect(entry).toEqual({ source: "hub_database_url", target: "database_url" });
+  });
+
+  test("SEC-004 every secret is a file under ./secrets/", () => {
+    expect(Object.keys(compose.secrets).length).toBeGreaterThan(0);
+    for (const [name, secret] of Object.entries(compose.secrets)) {
+      expect(secret.file).toBe(`./secrets/${name}`);
+    }
+  });
+
+  test("SEC-004 every service secret is declared", () => {
+    for (const [, service] of services) {
+      for (const secret of secretsOf(service)) expect(compose.secrets).toHaveProperty(secret);
+    }
+  });
+
+  test("LOG-007 no environment value is a password, token or URL with credentials", () => {
+    for (const [name, service] of services) {
+      for (const [key, value] of Object.entries(service.environment ?? {})) {
+        const label = `${name}.${key}`;
+        if (/(PASSWORD|TOKEN|SECRET|KEY)/.test(key)) expect(`${label}:${key}`).toMatch(/_FILE$/);
+        expect(`${label}=${value}`).not.toMatch(/:\/\/[^/\s:@]+:[^/\s@]+@/);
+      }
+    }
+  });
+});
+
+describe("start order (R-016, D-4)", () => {
+  test("R-016 the hub waits for postgres, migrate, certs and guacd", () => {
+    const depends = compose.services["hub"]?.depends_on ?? {};
+    expect(Object.fromEntries(Object.entries(depends).map(([name, value]) => [name, value.condition]))).toEqual({
+      postgres: "service_healthy",
+      migrate: "service_completed_successfully",
+      certs: "service_healthy",
+      guacd: "service_started",
+    });
+  });
+
+  test("R-016 migrate waits for a healthy postgres and runs the migrate command", () => {
+    const migrate = compose.services["migrate"] as Container;
+    expect(migrate.depends_on?.["postgres"]?.condition).toBe("service_healthy");
+    expect(migrate.command).toEqual(["migrate"]);
+    expect(migrate.environment?.["ANIMA_DATABASE_URL_FILE"]).toBe("/run/secrets/owner_database_url");
+  });
+});
+
+describe("container limits (D-7, SEC-001)", () => {
+  test("every service rotates its log at 10m x 10 (spec Section 3.8)", () => {
+    for (const [, service] of services) {
+      expect(service.logging).toEqual({ driver: "json-file", options: { "max-size": "10m", "max-file": "10" } });
+    }
+  });
+
+  test("every service has a read-only root, no capability and no new privileges", () => {
+    for (const [, service] of services) {
+      expect(service.read_only).toBe(true);
+      expect(service.cap_drop).toEqual(["ALL"]);
+      expect(service.security_opt).toContain("no-new-privileges:true");
+    }
+  });
+});
+
+describe("hub configuration (K7)", () => {
+  test("every ANIMA_* variable the hub receives is read by config.rs", () => {
+    const source = readFileSync(CONFIG_PATH, "utf8");
+    const known = new Set([...source.matchAll(/"(ANIMA_[A-Z_]+)"/g)].map((match) => match[1]));
+    for (const name of ["hub", "migrate"]) {
+      for (const key of Object.keys(compose.services[name]?.environment ?? {})) {
+        expect(known.has(key) ? key : `${name}.${key} is unknown to config.rs`).toBe(key);
+      }
+    }
+  });
+
+  test("DNS-002 the hub reads its certificate from the certs volume", () => {
+    const environment = compose.services["hub"]?.environment ?? {};
+    expect(environment["ANIMA_TLS_CERT_FILE"]).toBe("/certs/hub/fullchain.pem");
+    expect(environment["ANIMA_TLS_KEY_FILE"]).toBe("/certs/hub/key.pem");
+  });
+});
+
+describe("images (DB-002, D-6)", () => {
+  test("DB-002 the postgres image is a fixed Debian tag, not Alpine (group 999 is postgres only there)", () => {
+    const image = compose.services["postgres"]?.image ?? "";
+    expect(image).toMatch(/^postgres:\d+\.\d+-bookworm$/);
+    expect(image).not.toContain("alpine");
+  });
+
+  test("DB-002 the hub image runs as 10001:10001, the owner group of the hub secrets", () => {
+    const dockerfile = readFileSync(join(ROOT, "deploy", "hub", "Dockerfile"), "utf8");
+    expect(dockerfile).toMatch(/^USER 10001:10001$/m);
+    expect(dockerfile).toMatch(/^ENTRYPOINT \["anima-hub"\]$/m);
+  });
+});
+
+describe("this test file", () => {
+  test("it changes nothing: no file write, no process", () => {
+    const source = readFileSync(import.meta.path, "utf8");
+    // Each word is built from two parts so that this list does not match itself.
+    const forbidden = [["write", "File"], ["append", "File"], ["mk", "dir"], ["r", "mSync"], ["un", "link"], ["spa", "wn"], ["child", "_process"]];
+    for (const [head, tail] of forbidden) expect(source).not.toContain(`${head}${tail}`);
+  });
+});
