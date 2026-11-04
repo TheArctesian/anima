@@ -9,7 +9,7 @@
 use guac_protocol::{Display, Instruction};
 
 use super::decimal::decimal;
-use super::ending::EndCause;
+use super::ending::Cause;
 use super::relay::{ClientStep, MAX_CLIENT_STREAMS, PROMPTABLE, Relay};
 
 /// The client may always set the terminal colour scheme (GW-012, guacd SSH `argv`).
@@ -36,7 +36,7 @@ impl Relay {
             "size" => size(&i),
             "disconnect" => ClientStep::End {
                 forward: Some(i),
-                cause: EndCause::OperatorClosed,
+                cause: Cause::OperatorClosed,
             },
             "ack" => ack(i),
             "clipboard" => self.open_stream(i, 2),
@@ -155,6 +155,6 @@ fn stream_index(i: &Instruction, arity: usize) -> Option<u16> {
 fn invalid() -> ClientStep {
     ClientStep::End {
         forward: None,
-        cause: EndCause::InvalidInstruction,
+        cause: Cause::InvalidInstruction,
     }
 }

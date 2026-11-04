@@ -5,6 +5,8 @@
 //! a constant here. The client supplies only the display and the time zone, and the time zone
 //! is used only when it is zone-shaped.
 
+use std::net::IpAddr;
+
 use guac_protocol::{ArgValues, is_zone_name};
 
 use super::known_hosts::{BadHost, known_hosts_line};
@@ -37,8 +39,10 @@ impl From<BadHost> for BadConnectValue {
     }
 }
 
-/// The `connect` values by guacd argument name for an SSH session to `device`, pinned to
-/// `host_key` (SEC-007). Names not set here get an empty value from the handshake, so
+/// The `connect` values by guacd argument name for an SSH session to `device` at `target`,
+/// pinned to `host_key` (SEC-007). `target` is the address the hub resolved the device's host
+/// to and checked (R-032): guacd gets it as `hostname` and the `host-key` line names it, so
+/// guacd never resolves the name again or reaches an address the hub refused. Names not set here get an empty value from the handshake, so
 /// `enable-sftp`, `recording-path`, `typescript-path`, guacd's own `timezone` argument (the
 /// `timezone` instruction sets it, WP-08 H-9) and every path stay empty.
 ///
@@ -50,12 +54,14 @@ impl From<BadHost> for BadConnectValue {
 /// [`BadConnectValue::NotText`] when a stored secret is not UTF-8.
 pub(super) fn connect_values(
     device: &Device,
+    target: IpAddr,
     secret: Option<&SshSecret>,
     host_key: &HostKey,
 ) -> Result<ArgValues, BadConnectValue> {
-    let host_key = known_hosts_line(&device.host, device.ssh.port, &host_key.public_key)?;
+    let hostname = target.to_string();
+    let host_key = known_hosts_line(&hostname, device.ssh.port, &host_key.public_key)?;
     let mut values = ArgValues::new();
-    values.set("hostname", device.host.as_str());
+    values.set("hostname", hostname);
     values.set("port", device.ssh.port.to_string());
     values.set("username", device.ssh.username.as_str());
     values.set("host-key", host_key);

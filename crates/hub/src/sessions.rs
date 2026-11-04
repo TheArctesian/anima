@@ -31,6 +31,7 @@ pub use model::{EndReason, FieldError, HostKey, Protocol, Session, SessionEnd, U
 pub use public_key::{BadFingerprint, BadKey, Fingerprint, PublicKey};
 pub use start::{DEFAULT_DPI, DisplayRequest, StartRequest, start};
 pub use tickets::{PendingTicket, Ticket};
+pub use tunnel::tunnel_router;
 
 /// What a sessions operation looked for and did not find.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

@@ -17,7 +17,7 @@ use std::collections::BTreeSet;
 
 use guac_protocol::Instruction;
 
-use super::ending::EndCause;
+use super::ending::Cause;
 
 /// What the tunnel task does with one client instruction.
 #[derive(Debug, PartialEq, Eq)]
@@ -31,7 +31,7 @@ pub(super) enum ClientStep {
     /// Send `forward` to guacd if there is one, then end the session for `cause`.
     End {
         forward: Option<Instruction>,
-        cause: EndCause,
+        cause: Cause,
     },
 }
 
@@ -43,7 +43,7 @@ pub(super) enum GatewayStep {
     /// Send nothing.
     Drop,
     /// Send `send` to the client, then end the session for `cause`.
-    End { send: Instruction, cause: EndCause },
+    End { send: Instruction, cause: Cause },
 }
 
 /// The state of one tunnel's relay. Bounded: at most [`PROMPTABLE`] names and

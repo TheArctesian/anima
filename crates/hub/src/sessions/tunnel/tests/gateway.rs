@@ -2,7 +2,7 @@
 
 use guac_protocol::{Instruction, encode};
 
-use super::super::ending::EndCause;
+use super::super::ending::Cause;
 use super::super::gateway::host_key_changed;
 use super::super::relay::{ClientStep, GatewayStep, Relay};
 use super::decoded;
@@ -12,7 +12,7 @@ fn step(wire: &str) -> GatewayStep {
 }
 
 /// guacd's `error` in `wire` reaches the client as the fixed text with `status`, then ends.
-fn ends_with_error(wire: &str, status: &str, cause: EndCause) {
+fn ends_with_error(wire: &str, status: &str, cause: Cause) {
     let send = Instruction::new("error", ["Aborted. See logs.", status]);
     assert_eq!(step(wire), GatewayStep::End { send, cause }, "{wire}");
 }
@@ -59,7 +59,7 @@ fn k4_gateway_disconnect_is_relayed_then_ends_remote_closed() {
         step("10.disconnect;"),
         GatewayStep::End {
             send,
-            cause: EndCause::RemoteClosed
+            cause: Cause::RemoteClosed
         }
     );
 }
@@ -69,12 +69,12 @@ fn k4_error_unauthorized_or_forbidden_is_relayed_then_ends_auth_failed() {
     ends_with_error(
         "5.error,18.Aborted. See logs.,3.769;",
         "769",
-        EndCause::AuthFailed,
+        Cause::AuthFailed,
     );
     ends_with_error(
         "5.error,18.Aborted. See logs.,3.771;",
         "771",
-        EndCause::AuthFailed,
+        Cause::AuthFailed,
     );
 }
 
@@ -86,7 +86,7 @@ fn k4_any_other_error_is_relayed_then_ends_gateway_error() {
         ("5.error,18.Aborted. See logs.,3.768;", "768"),
         ("5.error,18.Aborted. See logs.,5.01023;", "1023"),
     ] {
-        ends_with_error(wire, status, EndCause::GatewayError);
+        ends_with_error(wire, status, Cause::GatewayError);
     }
 }
 
@@ -100,7 +100,7 @@ fn k4_a_missing_or_malformed_status_is_sent_as_server_error() {
         "5.error,18.Aborted. See logs.,4. 769;",
         "5.error,18.Aborted. See logs.,6.000769;",
     ] {
-        ends_with_error(wire, "512", EndCause::GatewayError);
+        ends_with_error(wire, "512", Cause::GatewayError);
     }
 }
 
@@ -109,7 +109,7 @@ fn log_007_guacds_error_text_never_reaches_the_client() {
     ends_with_error(
         "5.error,34.connection 3f2a to 10.0.0.9 failed,3.519;",
         "519",
-        EndCause::GatewayError,
+        Cause::GatewayError,
     );
 }
 
@@ -122,12 +122,12 @@ fn sec_007_guacds_host_key_abort_is_a_gateway_error_on_the_wire() {
     ends_with_error(
         "5.error,18.Aborted. See logs.,3.512;",
         "512",
-        EndCause::GatewayError,
+        Cause::GatewayError,
     );
     ends_with_error(
         "5.error,53.Host key did not match any provided known host keys. ,3.512;",
         "512",
-        EndCause::GatewayError,
+        Cause::GatewayError,
     );
 }
 

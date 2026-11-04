@@ -1,7 +1,10 @@
 //! `connect` values from the device, the secret and the host key (K4 Section 3, GW-012,
 //! GW-013, RA-010, RA-011, SEC-006).
 
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    net::{IpAddr, Ipv4Addr},
+};
 
 use guac_protocol::{ConnectParams, Decoder, Display, Handshake, HandshakeStep, Instruction};
 
@@ -50,9 +53,13 @@ fn params(secret: Option<&SshSecret>, display: Display, zone: Option<&str>) -> C
         display,
         timezone: time_zone(zone),
         name: "alice".to_owned(),
-        values: connect_values(&device("db.example.net", 2222), secret, &host_key()).unwrap(),
+        values: connect_values(&device("db.example.net", 2222), TARGET, secret, &host_key())
+            .unwrap(),
     }
 }
+
+/// The address the hub resolved `db.example.net` to (R-032).
+const TARGET: IpAddr = IpAddr::V4(Ipv4Addr::new(10, 20, 0, 5));
 
 /// The instructions the handshake sends after the fixture's `args`, and the `args` names.
 fn reply(fixture: &[u8], params: ConnectParams) -> (Vec<String>, Vec<Instruction>) {
@@ -80,10 +87,10 @@ fn connect_by_name(names: &[String], sent: &[Instruction]) -> HashMap<String, St
 
 /// The K4 Section 3 value of every non-empty name for the password device.
 fn k4_values(secret: &[(&str, &str)]) -> HashMap<String, String> {
-    let line = format!("[db.example.net]:2222 ssh-ed25519 {ED25519}");
+    let line = format!("[10.20.0.5]:2222 ssh-ed25519 {ED25519}");
     let scheme = anima_theme::guac_color_scheme();
     let fixed = [
-        ("hostname", "db.example.net"),
+        ("hostname", "10.20.0.5"),
         ("port", "2222"),
         ("username", "ops"),
         ("host-key", line.as_str()),
@@ -284,17 +291,32 @@ fn sec_006_host_key_line_keeps_an_underscore_host() {
 }
 
 #[test]
-fn sec_006_a_host_that_cannot_be_pinned_refuses_the_connect_values() {
-    let error = connect_values(&device("db host", 22), None, &host_key())
-        .err()
-        .unwrap();
-    assert_eq!(error, BadConnectValue::Host);
+fn sec_007_r_032_guacd_gets_the_checked_address_never_the_host_name() {
+    let target: IpAddr = "fd7a:115c::7".parse().unwrap();
+    let params = ConnectParams {
+        display: DISPLAY,
+        timezone: time_zone(None),
+        name: "alice".to_owned(),
+        values: connect_values(&device("db.example.net", 2200), target, None, &host_key()).unwrap(),
+    };
+    let (names, sent) = reply(FIXTURES[1], params);
+    let connect = connect_by_name(&names, &sent);
+    assert_eq!(connect["hostname"], "fd7a:115c::7");
+    assert_eq!(
+        connect["host-key"],
+        format!("[fd7a:115c::7]:2200 ssh-ed25519 {ED25519}")
+    );
+    assert!(
+        !sent
+            .iter()
+            .any(|i| i.args.iter().any(|a| a.contains("db.example")))
+    );
 }
 
 #[test]
 fn log_007_a_secret_that_is_not_text_is_refused_without_its_bytes() {
     let secret = SshSecret::Password(Secret::new(vec![0xff, 0xfe, b's', b'3', b'c']));
-    let error = connect_values(&device("db", 22), Some(&secret), &host_key())
+    let error = connect_values(&device("db", 22), TARGET, Some(&secret), &host_key())
         .err()
         .unwrap();
     assert_eq!(

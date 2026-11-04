@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use guac_protocol::encode;
 
-use super::super::ending::{CLIENT_IDLE, EndCause, Ending, GATEWAY_SILENCE};
+use super::super::ending::{CLIENT_IDLE, Cause, Ending, GATEWAY_SILENCE};
 use super::super::gateway::tunnel_opened;
 use crate::events::Severity;
 use crate::sessions::EndReason;
@@ -20,49 +20,49 @@ fn row(close_code: u16, reason: EndReason, severity: Severity) -> Ending {
 #[test]
 fn k4_operator_and_client_close_end_1000_operator_info() {
     let expected = row(1000, EndReason::Operator, Severity::Info);
-    assert_eq!(EndCause::OperatorClosed.ending(), expected);
+    assert_eq!(Cause::OperatorClosed.ending(), expected);
 }
 
 #[test]
 fn k4_remote_close_ends_1000_remote_closed_info() {
     let expected = row(1000, EndReason::RemoteClosed, Severity::Info);
-    assert_eq!(EndCause::RemoteClosed.ending(), expected);
+    assert_eq!(Cause::RemoteClosed.ending(), expected);
 }
 
 #[test]
 fn k4_gateway_error_ends_1011_warning() {
     let expected = row(1011, EndReason::GatewayError, Severity::Warning);
-    assert_eq!(EndCause::GatewayError.ending(), expected);
+    assert_eq!(Cause::GatewayError.ending(), expected);
 }
 
 #[test]
 fn k4_auth_failure_ends_1011_warning() {
     let expected = row(1011, EndReason::AuthFailed, Severity::Warning);
-    assert_eq!(EndCause::AuthFailed.ending(), expected);
+    assert_eq!(Cause::AuthFailed.ending(), expected);
 }
 
 #[test]
 fn sec_007_host_key_mismatch_ends_4001_error() {
     let expected = row(4001, EndReason::HostKeyMismatch, Severity::Error);
-    assert_eq!(EndCause::HostKeyMismatch.ending(), expected);
+    assert_eq!(Cause::HostKeyMismatch.ending(), expected);
 }
 
 #[test]
 fn k4_idle_timeout_ends_4002_timeout_info() {
     let expected = row(4002, EndReason::Timeout, Severity::Info);
-    assert_eq!(EndCause::Timeout.ending(), expected);
+    assert_eq!(Cause::Timeout.ending(), expected);
 }
 
 #[test]
 fn k4_hub_shutdown_ends_1001_hub_shutdown_info() {
     let expected = row(1001, EndReason::HubShutdown, Severity::Info);
-    assert_eq!(EndCause::HubShutdown.ending(), expected);
+    assert_eq!(Cause::HubShutdown.ending(), expected);
 }
 
 #[test]
 fn gw_011_an_invalid_instruction_ends_1002_protocol_error_warning() {
     let expected = row(1002, EndReason::ProtocolError, Severity::Warning);
-    assert_eq!(EndCause::InvalidInstruction.ending(), expected);
+    assert_eq!(Cause::InvalidInstruction.ending(), expected);
 }
 
 #[test]
