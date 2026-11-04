@@ -1,5 +1,6 @@
-import { normalizeHost } from '../../device/host';
+import { normalizeHost } from '$lib/forms/device/host';
 import type { CheckConfigInput, HttpAuthInput, HttpConfigInput } from './hub-types';
+import { toNumber } from './range';
 import type { CheckFormValues } from './values';
 
 /** The header names whose values the hub keeps secret and never returns (as the hub's `is_secret_header`). */
@@ -18,7 +19,6 @@ function present<K extends string>(key: K, text: string): Partial<Record<K, stri
   return value === undefined ? {} : ({ [key]: value } as Record<K, string>);
 }
 
-const number = (text: string): number => Number(text.trim());
 
 /**
  * HTTP authentication as sent. An empty password or token is sent as is: the hub then keeps the
@@ -39,14 +39,14 @@ function httpInput(http: CheckFormValues['http']): HttpConfigInput {
       .filter((row) => row.name.trim() !== '' || row.value !== '')
       .map((row) => ({ name: row.name.trim(), value: row.value })),
     ...present('body', http.body),
-    maxRedirects: number(http.maxRedirects),
-    acceptedStatus: http.acceptedStatus.map((row) => ({ from: number(row.from), to: number(row.to) })),
+    maxRedirects: toNumber(http.maxRedirects),
+    acceptedStatus: http.acceptedStatus.map((row) => ({ from: toNumber(row.from), to: toNumber(row.to) })),
     ...present('keyword', http.keyword),
     ...present('jsonQuery', http.jsonQuery),
     ...present('jsonExpected', http.jsonExpected),
     ...(auth === undefined ? {} : { auth }),
     verifyTls: http.verifyTls,
-    timeoutMs: number(http.timeoutMs),
+    timeoutMs: toNumber(http.timeoutMs),
   };
 }
 
@@ -54,12 +54,12 @@ function httpInput(http: CheckFormValues['http']): HttpConfigInput {
 export function configInput(values: CheckFormValues): CheckConfigInput {
   switch (values.type) {
     case 'ICMP':
-      return { icmp: { timeoutMs: number(values.icmp.timeoutMs), ipVersion: values.icmp.ipVersion } };
+      return { icmp: { timeoutMs: toNumber(values.icmp.timeoutMs), ipVersion: values.icmp.ipVersion } };
     case 'TCP':
-      return { tcp: { port: number(values.tcp.port), timeoutMs: number(values.tcp.timeoutMs) } };
+      return { tcp: { port: toNumber(values.tcp.port), timeoutMs: toNumber(values.tcp.timeoutMs) } };
     case 'TLS':
       return {
-        tls: { port: number(values.tls.port), ...present('serverName', values.tls.serverName), timeoutMs: number(values.tls.timeoutMs) },
+        tls: { port: toNumber(values.tls.port), ...present('serverName', values.tls.serverName), timeoutMs: toNumber(values.tls.timeoutMs) },
       };
     case 'HTTP':
       return { http: httpInput(values.http) };

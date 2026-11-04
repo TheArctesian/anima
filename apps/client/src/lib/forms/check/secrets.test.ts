@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fieldsOf, fresh, HTTP_SAVED } from './fixture';
+import { fieldsOf, fresh, HTTP_SAVED } from './check.fixture';
 import { updateCheckInput } from './model/input';
 import { validateCheck } from './model/validate';
 import { checkValues } from './model/values';

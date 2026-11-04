@@ -1,8 +1,8 @@
 import { configChanged, configInput } from './config-input';
 import type { CreateCheckInput, UpdateCheckInput } from './hub-types';
+import { toNumber } from './range';
 import type { CheckFormValues } from './values';
 
-const number = (text: string): number => Number(text.trim());
 
 /** CHK-008, CHK-009: the create mutation input; every common setting is sent, so the hub applies no default of its own. */
 export function createCheckInput(values: CheckFormValues, deviceId: string): CreateCheckInput {
@@ -10,10 +10,10 @@ export function createCheckInput(values: CheckFormValues, deviceId: string): Cre
     deviceId,
     name: values.name.trim(),
     config: configInput(values),
-    intervalSeconds: number(values.intervalSeconds),
-    retries: number(values.retries),
-    retryIntervalSeconds: number(values.retryIntervalSeconds),
-    degradedThresholdMs: number(values.degradedThresholdMs),
+    intervalSeconds: toNumber(values.intervalSeconds),
+    retries: toNumber(values.retries),
+    retryIntervalSeconds: toNumber(values.retryIntervalSeconds),
+    degradedThresholdMs: toNumber(values.degradedThresholdMs),
     invert: values.invert,
   };
 }
@@ -27,13 +27,13 @@ export function updateCheckInput(initial: CheckFormValues, values: CheckFormValu
   return {
     ...(values.name.trim() !== initial.name.trim() ? { name: values.name.trim() } : {}),
     ...(configChanged(initial, values) ? { config: configInput({ ...values, type: initial.type }) } : {}),
-    ...(number(values.intervalSeconds) !== number(initial.intervalSeconds) ? { intervalSeconds: number(values.intervalSeconds) } : {}),
-    ...(number(values.retries) !== number(initial.retries) ? { retries: number(values.retries) } : {}),
-    ...(number(values.retryIntervalSeconds) !== number(initial.retryIntervalSeconds)
-      ? { retryIntervalSeconds: number(values.retryIntervalSeconds) }
+    ...(toNumber(values.intervalSeconds) !== toNumber(initial.intervalSeconds) ? { intervalSeconds: toNumber(values.intervalSeconds) } : {}),
+    ...(toNumber(values.retries) !== toNumber(initial.retries) ? { retries: toNumber(values.retries) } : {}),
+    ...(toNumber(values.retryIntervalSeconds) !== toNumber(initial.retryIntervalSeconds)
+      ? { retryIntervalSeconds: toNumber(values.retryIntervalSeconds) }
       : {}),
-    ...(number(values.degradedThresholdMs) !== number(initial.degradedThresholdMs)
-      ? { degradedThresholdMs: number(values.degradedThresholdMs) }
+    ...(toNumber(values.degradedThresholdMs) !== toNumber(initial.degradedThresholdMs)
+      ? { degradedThresholdMs: toNumber(values.degradedThresholdMs) }
       : {}),
     ...(values.invert !== initial.invert ? { invert: values.invert } : {}),
   };

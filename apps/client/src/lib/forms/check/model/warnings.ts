@@ -12,6 +12,13 @@ function storedHeaderNames(http: HttpValues): string[] {
   return http.headers.filter((row) => row.stored && isSecretHeader(row.name)).map((row) => row.name.trim().toLowerCase());
 }
 
+/** Every secret-named header that will be sent, stored or new: the hub compares all of them with what it holds. */
+function sentSecretHeaderNames(http: HttpValues): string[] {
+  return http.headers
+    .filter((row) => isSecretHeader(row.name) && (row.stored || row.value !== ''))
+    .map((row) => row.name.trim().toLowerCase());
+}
+
 /** Whether saving would send an empty secret, which the hub fills in from what it holds. */
 function keepsStoredSecret(http: HttpValues): boolean {
   const kept = (http.authKind === 'BASIC' && http.password === '') || (http.authKind === 'BEARER' && http.bearerToken === '');
@@ -21,7 +28,7 @@ function keepsStoredSecret(http: HttpValues): boolean {
 
 /** The hub reuses stored secrets only for the same origin, authentication and secret headers, and with TLS checking kept on. */
 function destinationChanged(initial: HttpValues, http: HttpValues): boolean {
-  const sameHeaders = JSON.stringify(storedHeaderNames(initial).sort()) === JSON.stringify(storedHeaderNames(http).sort());
+  const sameHeaders = JSON.stringify(storedHeaderNames(initial).sort()) === JSON.stringify(sentSecretHeaderNames(http).sort());
   return originOf(initial.url) !== originOf(http.url) || initial.authKind !== http.authKind || (initial.verifyTls && !http.verifyTls) || !sameHeaders;
 }
 

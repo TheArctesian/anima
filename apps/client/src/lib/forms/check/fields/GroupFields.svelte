@@ -5,9 +5,10 @@
     /** Already filtered by `groupCandidates`. */
     candidates: readonly SiblingCheck[];
     childIds: string[];
+    error?: string | undefined;
   }
 
-  let { candidates, childIds = $bindable() }: Props = $props();
+  let { candidates, childIds = $bindable(), error }: Props = $props();
 </script>
 
 <fieldset>
@@ -20,6 +21,7 @@
   {:else}
     <p>This device has no other checks to group.</p>
   {/each}
+  {#if error !== undefined}<p class="error" role="alert">{error}</p>{/if}
 </fieldset>
 
 <style>
@@ -49,5 +51,10 @@
   p {
     margin: 0;
     color: var(--text-muted);
+  }
+
+  .error {
+    font-size: var(--text-xs);
+    color: var(--status-down);
   }
 </style>

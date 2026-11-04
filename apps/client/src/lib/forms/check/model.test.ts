@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fresh, saved } from './fixture';
+import { fresh, saved } from './check.fixture';
 import { configInput } from './model/config-input';
 import { groupCandidates, siblingOf, type SiblingCheck } from './model/group';
 import { createCheckInput, updateCheckInput } from './model/input';

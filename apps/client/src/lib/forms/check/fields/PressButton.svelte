@@ -6,18 +6,16 @@
     kind?: 'primary' | 'quiet';
     submit?: boolean;
     disabled?: boolean;
-    expanded?: boolean;
     onclick?: () => void;
   }
 
-  const { label, kind = 'quiet', submit = false, disabled = false, expanded, onclick }: Props = $props();
+  const { label, kind = 'quiet', submit = false, disabled = false, onclick }: Props = $props();
 </script>
 
 <button
   class={kind}
   type={submit ? 'submit' : 'button'}
   {disabled}
-  aria-expanded={expanded}
   {onclick}
   {@attach press()}
 >

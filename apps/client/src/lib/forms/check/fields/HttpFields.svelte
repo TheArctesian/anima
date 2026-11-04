@@ -38,9 +38,9 @@
   <legend>Accepted status codes</legend>
   {#each http.acceptedStatus as range, index (index)}
     <div class="row">
-      <TextField label="From" kind="numeric" bind:value={range.from} error={error(`acceptedStatus.${String(index)}`)} />
-      <TextField label="To" kind="numeric" bind:value={range.to} />
-      <PressButton label="Remove range" onclick={() => http.acceptedStatus.splice(index, 1)} />
+      <TextField label={`Range ${String(index + 1)} from`} kind="numeric" bind:value={range.from} />
+      <TextField label={`Range ${String(index + 1)} to`} kind="numeric" bind:value={range.to} error={error(`acceptedStatus.${String(index)}`)} />
+      <PressButton label={`Remove range ${String(index + 1)}`} onclick={() => http.acceptedStatus.splice(index, 1)} />
     </div>
   {/each}
   {#if error('acceptedStatus') !== undefined}<small class="error" role="alert">{error('acceptedStatus')}</small>{/if}
@@ -51,15 +51,15 @@
   <legend>Headers</legend>
   {#each http.headers as header, index (index)}
     <div class="row">
-      <TextField label="Header name" bind:value={header.name} error={error(`headers.${String(index)}.name`)} />
+      <TextField label={`Header name ${String(index + 1)}`} bind:value={header.name} error={error(`headers.${String(index)}.name`)} />
       <TextField
-        label="Header value"
+        label={`Header value ${String(index + 1)}`}
         kind={isSecretHeader(header.name) ? 'password' : 'text'}
         bind:value={header.value}
         error={error(`headers.${String(index)}.value`)}
         hint={header.stored && isSecretHeader(header.name) ? keepHint : undefined}
       />
-      <PressButton label="Remove header" onclick={() => http.headers.splice(index, 1)} />
+      <PressButton label={`Remove header ${String(index + 1)}`} onclick={() => http.headers.splice(index, 1)} />
     </div>
   {/each}
   {#if error('headers') !== undefined}<small class="error" role="alert">{error('headers')}</small>{/if}
@@ -73,7 +73,7 @@
 
 <SelectField label="Authentication" bind:value={http.authKind} options={authOptions} error={error('auth')} />
 {#if http.authKind === 'BASIC'}
-  <TextField label="User name" bind:value={http.username} error={error('username')} hint={http.storedAuth === 'BASIC' ? 'Enter the stored user name again; the hub never returns it.' : undefined} />
+  <TextField label="User name" bind:value={http.username} error={error('username')} hint={http.storedAuth === 'BASIC' ? 'Enter the stored user name again; the hub never returns it. If you change the user name, type the password again.' : undefined} />
   <TextField label="Password" kind="password" bind:value={http.password} error={error('password')} hint={secretHint} />
 {:else if http.authKind === 'BEARER'}
   <TextField label="Bearer token" kind="password" bind:value={http.bearerToken} error={error('bearerToken')} hint={secretHint} />

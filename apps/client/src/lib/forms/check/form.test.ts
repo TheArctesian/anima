@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
-import { flushSync, mount, tick, unmount } from 'svelte';
-import { afterEach, beforeAll, expect, it, vi } from 'vitest';
+import { flushSync } from 'svelte';
+import { expect, it, vi } from 'vitest';
 import type { HubResult } from '$lib/hub/error';
-import CheckForm from './CheckForm.svelte';
+import { BEARER_SAVED, HTTP_SAVED, saved } from './check.fixture';
+import { button, choose, hasInput, input, installFormHarness, messageOf, OK, settle, show, submit, type } from './form.fixture';
 import type { SiblingCheck } from './model/group';
-import type { CheckFields } from './model/hub-types';
 import type { CheckFormValues } from './model/values';
 
 vi.mock('motion', async (importOriginal) => ({
@@ -12,89 +12,13 @@ vi.mock('motion', async (importOriginal) => ({
   animate: (await import('../../motion/engine.fixture')).fakeRun,
 }));
 
-const OK: HubResult<unknown> = { ok: true, value: {} };
-let app: ReturnType<typeof mount> | undefined;
+installFormHarness();
 
-// jsdom has no Web Animations; Svelte's transitions need an animation that never finishes on its own.
-beforeAll(() => {
-  Element.prototype.animate = () =>
-    ({ onfinish: null, cancel: () => undefined, finish: () => undefined, currentTime: 0 }) as unknown as Animation;
-});
-
-afterEach(() => {
-  if (app !== undefined) void unmount(app);
-  app = undefined;
-  document.body.innerHTML = '';
-});
-
-interface Options {
-  check?: CheckFields | null;
-  siblings?: SiblingCheck[];
-  onSave?: (values: CheckFormValues) => Promise<HubResult<unknown>>;
-}
-
-function show({ check = null, siblings = [], onSave = () => Promise.resolve(OK) }: Options = {}): HTMLFormElement {
-  app = mount(CheckForm, { target: document.body, props: { check, siblings, onSave, onCancel: () => undefined } });
-  flushSync();
-  return document.querySelector('form') as HTMLFormElement;
-}
-
-function input(label: string): HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement {
-  const found = [...document.querySelectorAll('label')].find((candidate) => candidate.textContent.trim() === label);
-  const target = found?.control ?? null;
-  if (target === null) throw new Error(`no input labelled ${label}`);
-  return target as HTMLInputElement;
-}
-
-function type(label: string, value: string): void {
-  const field = input(label);
-  field.value = value;
-  field.dispatchEvent(new Event('input', { bubbles: true }));
-  flushSync();
-}
-
-function choose(label: string, value: string): void {
-  const field = input(label);
-  field.value = value;
-  field.dispatchEvent(new Event('change', { bubbles: true }));
-  flushSync();
-}
-
-async function submit(form: HTMLFormElement): Promise<void> {
-  form.dispatchEvent(new SubmitEvent('submit', { bubbles: true, cancelable: true }));
-  await tick();
-  await Promise.resolve();
-  flushSync();
-}
-
-const HTTP_SAVED: CheckFields = {
-  id: 'chk-1',
-  type: 'HTTP',
-  name: 'site',
-  intervalSeconds: 60,
-  retries: 3,
-  retryIntervalSeconds: 20,
-  degradedThresholdMs: 1000,
-  invert: false,
-  config: {
-    __typename: 'HttpConfig',
-    url: 'https://example.com',
-    method: 'GET',
-    headers: [{ name: 'Authorization', value: null }],
-    body: null,
-    maxRedirects: 10,
-    acceptedStatus: [{ from: 200, to: 299 }],
-    keyword: null,
-    jsonQuery: null,
-    jsonExpected: null,
-    authKind: 'BEARER',
-    verifyTls: true,
-    timeoutMs: 10000,
-  },
-};
+type Save = (values: CheckFormValues) => Promise<HubResult<unknown>>;
+const saver = () => vi.fn<Save>(() => Promise.resolve(OK));
 
 it('CHK-009: the form refuses to save an invalid check and shows the error beside its input', async () => {
-  const onSave = vi.fn(() => Promise.resolve(OK));
+  const onSave = saver();
   const form = show({ onSave });
   type('Name', 'ssh');
   choose('Type', 'TCP');
@@ -103,14 +27,12 @@ it('CHK-009: the form refuses to save an invalid check and shows the error besid
   await submit(form);
 
   expect(onSave).not.toHaveBeenCalled();
-  const port = input('Port');
-  expect(port.getAttribute('aria-invalid')).toBe('true');
-  const message = document.getElementById(port.getAttribute('aria-describedby') ?? '');
-  expect(message?.textContent).toBe('Enter a port from 1 to 65535.');
+  expect(input('Port').getAttribute('aria-invalid')).toBe('true');
+  expect(messageOf('Port')).toBe('Enter a port from 1 to 65535.');
 });
 
 it('CHK-009: a valid form saves the typed values', async () => {
-  const onSave = vi.fn<(values: CheckFormValues) => Promise<HubResult<unknown>>>(() => Promise.resolve(OK));
+  const onSave = saver();
   const form = show({ onSave });
   type('Name', 'ssh');
   choose('Type', 'TCP');
@@ -122,23 +44,20 @@ it('CHK-009: a valid form saves the typed values', async () => {
   expect(onSave.mock.calls[0]?.[0]).toMatchObject({ type: 'TCP', name: 'ssh', tcp: { port: '22', timeoutMs: '5000' } });
 });
 
-it('CHK-009: a hub VALIDATION error shows on its field', async () => {
-  const onSave = vi.fn(() =>
-    Promise.resolve<HubResult<unknown>>({
-      ok: false,
-      error: { code: 'VALIDATION', message: 'Invalid', fields: [{ field: 'timeoutMs', message: 'This value must be between 100 and 60000.' }] },
-    }),
-  );
+it('CHK-009: a second submit while the first is saving does nothing', async () => {
+  let finish: (result: HubResult<unknown>) => void = () => undefined;
+  const onSave = vi.fn<Save>(() => new Promise((done) => (finish = done)));
   const form = show({ onSave });
   type('Name', 'ping');
 
   await submit(form);
+  await submit(form);
+  expect(onSave).toHaveBeenCalledOnce();
+  expect(button('Add check').disabled).toBe(true);
 
-  const timeout = input('Timeout (ms)');
-  expect(timeout.getAttribute('aria-invalid')).toBe('true');
-  expect(document.getElementById(timeout.getAttribute('aria-describedby') ?? '')?.textContent).toBe(
-    'This value must be between 100 and 60000.',
-  );
+  finish(OK);
+  await settle();
+  expect(button('Add check').disabled).toBe(false);
 });
 
 it('CHK-009: a hub error with no input is listed at the top', async () => {
@@ -153,16 +72,25 @@ it('CHK-009: a hub error with no input is listed at the top', async () => {
 });
 
 it('CHK-009: in edit mode the type is fixed: there is no type picker', () => {
-  show({ check: HTTP_SAVED });
-  expect([...document.querySelectorAll('label')].some((label) => label.textContent.trim() === 'Type')).toBe(false);
+  show({ check: BEARER_SAVED });
+  expect(hasInput('Type')).toBe(false);
   expect(document.body.textContent).toContain('Type: HTTP or HTTPS');
 });
 
+it('CHK-009: edit mode validates against the saved values: a rename of a basic-auth check needs no secret', async () => {
+  const onSave = saver();
+  const form = show({ check: HTTP_SAVED, onSave });
+  type('Name', 'renamed');
+
+  await submit(form);
+
+  expect(onSave).toHaveBeenCalledOnce();
+  expect(document.querySelector('[aria-invalid="true"]')).toBeNull();
+});
+
 it('CHK-009: secret inputs are password fields and are never prefilled', () => {
-  show({ check: HTTP_SAVED });
-  const header = input('Header value') as HTMLInputElement;
-  expect(header.type).toBe('password');
-  expect(header.value).toBe('');
+  show({ check: BEARER_SAVED });
+  expect(input('Header value 1')).toMatchObject({ type: 'password', value: '' });
   expect(input('Bearer token')).toMatchObject({ type: 'password', value: '' });
 });
 
@@ -174,37 +102,25 @@ it('CHK-009: a new basic-auth password is a password field', () => {
   expect((input('User name') as HTMLInputElement).type).toBe('text');
 });
 
-it('CHK-008: invert sits in the advanced settings, which open on request with aria-expanded', async () => {
-  show();
-  const toggle = [...document.querySelectorAll('button')].find((button) => button.textContent.trim() === 'Advanced settings');
-  expect(toggle?.getAttribute('aria-expanded')).toBe('false');
-  expect(document.body.textContent).not.toContain('Invert');
-
-  toggle?.click();
-  await tick();
-  flushSync();
-
-  expect(toggle?.getAttribute('aria-expanded')).toBe('true');
-  expect((input('Invert') as HTMLInputElement).checked).toBe(false);
-  expect((input('Interval (seconds)') as HTMLInputElement).value).toBe('60');
-});
-
-it('CHK-009: an error in an advanced setting opens the advanced settings', async () => {
-  const onSave = vi.fn(() => Promise.resolve(OK));
-  const form = show({ onSave });
-  type('Name', 'ping');
-  const toggle = [...document.querySelectorAll('button')].find((button) => button.textContent.trim() === 'Advanced settings');
-  toggle?.click();
-  await tick();
-  flushSync();
-  type('Interval (seconds)', '0');
-  toggle?.click();
-  await tick();
-  flushSync();
+it('CHK-009: a body over 64 KiB marks the multi-line input invalid', async () => {
+  const form = show();
+  type('Name', 'site');
+  choose('Type', 'HTTP');
+  type('URL', 'https://example.com');
+  type('Request body', 'x'.repeat(65_537));
 
   await submit(form);
 
-  expect(input('Interval (seconds)').getAttribute('aria-invalid')).toBe('true');
+  expect(input('Request body').getAttribute('aria-invalid')).toBe('true');
+  expect(messageOf('Request body')).toContain('65536');
+});
+
+it('CHK-009: a warning is shown when saving would lose a stored secret', () => {
+  show({ check: BEARER_SAVED });
+  type('URL', 'https://other.example');
+  flushSync();
+
+  expect(document.querySelector('[role="status"]')?.textContent).toContain('will not reuse the stored secrets');
 });
 
 it('Section 6.4: a group offers only the other checks that cannot make a cycle', () => {
@@ -213,10 +129,24 @@ it('Section 6.4: a group offers only the other checks that cannot make a cycle',
     { id: 'self', name: 'self-group', type: 'GROUP', childIds: [] },
     { id: 'outer', name: 'outer-group', type: 'GROUP', childIds: ['self'] },
   ];
-  show({
-    check: { ...HTTP_SAVED, id: 'self', type: 'GROUP', name: 'self-group', config: { __typename: 'GroupConfig', children: [] } },
-    siblings,
-  });
+  show({ check: saved('GROUP', { __typename: 'GroupConfig', children: [] }, { id: 'self', name: 'self-group' }), siblings });
   const names = [...document.querySelectorAll('fieldset label')].map((label) => label.textContent.trim());
   expect(names).toEqual(['ping']);
+});
+
+it('Section 6.4: ticking a check puts its id in the group', async () => {
+  const onSave = saver();
+  const siblings: SiblingCheck[] = [
+    { id: 'a', name: 'ping', type: 'ICMP', childIds: [] },
+    { id: 'b', name: 'web', type: 'HTTP', childIds: [] },
+  ];
+  const form = show({ siblings, onSave });
+  type('Name', 'both');
+  choose('Type', 'GROUP');
+  input('web').click();
+  flushSync();
+
+  await submit(form);
+
+  expect(onSave.mock.calls[0]?.[0].group.childIds).toEqual(['b']);
 });

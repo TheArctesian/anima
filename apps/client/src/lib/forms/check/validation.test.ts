@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fieldsOf, fresh } from './fixture';
+import { fieldsOf, fresh } from './check.fixture';
 
 describe('validation', () => {
   it('CHK-009: a name, an ICMP timeout and the defaults make a valid form', () => {

@@ -1,7 +1,7 @@
 import type { FieldError } from '$lib/hub/error';
-import { isValidHost, normalizeHost } from '../../device/host';
+import { isValidHost, normalizeHost } from '$lib/forms/device/host';
 import { configChanged } from './config-input';
-import { integerError, MAX_INT, portError, timeoutError } from './range';
+import { integerError, LIMITS, lengthError, portError, timeoutError } from './range';
 import { validateHttp } from './validate-http';
 import type { CheckFormValues } from './values';
 
@@ -20,7 +20,19 @@ function dnsErrors(dns: CheckFormValues['dns']): FieldError[] {
   if (dns.resolver.trim() !== '' && !isIpLiteral(dns.resolver.trim())) {
     errors.push({ field: 'resolver', message: 'Enter the resolver as an IP address, or leave it empty.' });
   }
-  return errors;
+  return [...errors, ...lengthError('expected', dns.expected.trim(), LIMITS.dnsExpectedBytes, 'The expected answer')];
+}
+
+function tlsErrors(tls: CheckFormValues['tls']): FieldError[] {
+  const serverName = tls.serverName.trim();
+  const nameErrors = serverName !== '' && !isValidHost(serverName) ? [{ field: 'serverName', message: 'Enter a valid host name.' }] : [];
+  return [...portError(tls.port), ...nameErrors, ...timeoutError(tls.timeoutMs)];
+}
+
+function groupErrors(group: CheckFormValues['group']): FieldError[] {
+  return group.childIds.length > LIMITS.groupChildren
+    ? [{ field: 'childIds', message: `A group takes at most ${String(LIMITS.groupChildren)} checks.` }]
+    : [];
 }
 
 function typeErrors(values: CheckFormValues, configSent: boolean): FieldError[] {
@@ -29,28 +41,34 @@ function typeErrors(values: CheckFormValues, configSent: boolean): FieldError[] 
       return timeoutError(values.icmp.timeoutMs);
     case 'TCP':
       return [...portError(values.tcp.port), ...timeoutError(values.tcp.timeoutMs)];
-    case 'TLS': {
-      const serverName = values.tls.serverName.trim();
-      const nameErrors = serverName !== '' && !isValidHost(serverName) ? [{ field: 'serverName', message: 'Enter a valid host name.' }] : [];
-      return [...portError(values.tls.port), ...nameErrors, ...timeoutError(values.tls.timeoutMs)];
-    }
+    case 'TLS':
+      return tlsErrors(values.tls);
     case 'HTTP':
       return validateHttp(values.http, configSent);
     case 'DNS':
       return dnsErrors(values.dns);
-    case 'PUSH':
     case 'GROUP':
+      return groupErrors(values.group);
+    case 'PUSH':
       return [];
   }
 }
 
+function nameErrors(name: string): FieldError[] {
+  const trimmed = name.trim();
+  if (trimmed === '') return [{ field: 'name', message: 'Enter a name.' }];
+  return [...trimmed].length > LIMITS.nameChars ? [{ field: 'name', message: `A name is at most ${String(LIMITS.nameChars)} characters.` }] : [];
+}
+
 function commonErrors(values: CheckFormValues): FieldError[] {
+  const { intervalSeconds, retries, retryIntervalSeconds, degradedThresholdMs } = LIMITS;
+  const range = ([min, max]: readonly [number, number], what: string) => `${what} from ${String(min)} to ${String(max)}.`;
   return [
-    ...(values.name.trim() === '' ? [{ field: 'name', message: 'Enter a name.' }] : []),
-    ...integerError('intervalSeconds', values.intervalSeconds, [1, MAX_INT], 'Enter an interval of 1 second or more.'),
-    ...integerError('retries', values.retries, [0, MAX_INT], 'Enter 0 or more retries.'),
-    ...integerError('retryIntervalSeconds', values.retryIntervalSeconds, [1, MAX_INT], 'Enter a retry interval of 1 second or more.'),
-    ...integerError('degradedThresholdMs', values.degradedThresholdMs, [1, MAX_INT], 'Enter a threshold of 1 ms or more.'),
+    ...nameErrors(values.name),
+    ...integerError('intervalSeconds', values.intervalSeconds, intervalSeconds, range(intervalSeconds, 'Enter an interval in seconds')),
+    ...integerError('retries', values.retries, retries, range(retries, 'Enter the retries')),
+    ...integerError('retryIntervalSeconds', values.retryIntervalSeconds, retryIntervalSeconds, range(retryIntervalSeconds, 'Enter a retry interval in seconds')),
+    ...integerError('degradedThresholdMs', values.degradedThresholdMs, degradedThresholdMs, range(degradedThresholdMs, 'Enter a threshold in ms')),
   ];
 }
 
