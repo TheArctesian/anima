@@ -82,7 +82,13 @@ impl Bus { pub fn publish(&self, s: Signal); pub fn subscribe(&self) -> tokio::s
 | `checks` | `devices`, `maintenance`, `events` |
 | `sessions` | `access`, `devices`, `credentials`, `events` |
 
-`devices` never imports `checks` (that edge would make a cycle). Device deletion relies on foreign keys and the checks retention job instead (see below).
+GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also import these domains' public faces, to resolve K1 fields that join domains. These edges never permit a `store` import and do not count toward cycles. They live in `quality/hub-modules.json` under `graphql`.
+
+| Domain `graphql.rs` | May also import | For |
+| --- | --- | --- |
+| `devices` | `checks`, `sessions` | `Device.status`, `Device.checks`, `Device.uptime`, `DeviceFilter.status`, `DeviceSort.STATUS`/`UPTIME`, `createDevice(addDefaultCheck)`, `SshSettings.hostKey` |
+
+Outside `graphql.rs`, `devices` never imports `checks` (that edge would make a cycle). Device deletion relies on foreign keys and the checks retention job instead (see below).
 
 Any other edge is a contract change.
 
@@ -144,6 +150,16 @@ pub async fn device_status(db: &Db, device: DeviceId, now: DateTime<Utc>) -> Res
 pub fn spawn_scheduler(db: Db, bus: events::Bus, clock: Clock) -> tokio::task::JoinHandle<()>;
 ```
 
+Functions for the devices GraphQL composition (R-011; WP-09 adds them and their use in `devices/graphql.rs`):
+
+```rust
+pub async fn statuses(db: &Db, devices: &[DeviceId], now: DateTime<Utc>) -> Result<HashMap<DeviceId, Status>, Error>;
+pub async fn uptimes(db: &Db, devices: &[DeviceId], window: UptimeWindow, now: DateTime<Utc>) -> Result<HashMap<DeviceId, f64>, Error>;
+pub async fn for_device(db: &Db, device: DeviceId) -> Result<Vec<Check>, Error>;
+/// Adds the default ICMP check in the caller's transaction (spec 6.2).
+pub async fn add_default_check(conn: &mut PgConnection, device: DeviceId) -> Result<CheckId, Error>;
+```
+
 Check evaluation is pure: `fn evaluate(prev: &CheckState, probe: ProbeResult, cfg: &CheckConfig, now) -> (CheckState, Status)`.
 
 ## maintenance (WP-09)
@@ -158,6 +174,8 @@ pub async fn active_for(db: &Db, device: DeviceId, check: Option<CheckId>, tags:
 
 ```rust
 pub async fn start(db: &Db, clock: &Clock, op: &Operator, client: ClientAddr, req: StartRequest) -> Result<Ticket, Error>;
+/// For `SshSettings.hostKey` (R-011; WP-10 adds its use in `devices/graphql.rs`).
+pub async fn host_key(db: &Db, device: DeviceId) -> Result<Option<HostKey>, Error>;
 /// axum route for GET /tunnel (see tunnel.md).
 pub fn tunnel_router(db: Db, vault: credentials::Vault, bus: events::Bus, clock: Clock, guacd: SocketAddr) -> axum::Router;
 ```
