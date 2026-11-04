@@ -145,7 +145,13 @@ async fn api_003_guard_refuses_an_identity_at_its_expiry() {
 async fn api_003_guard_fails_closed_without_a_clock() {
     let schema = Schema::build(Query, Mutation, EmptySubscription).finish();
     let request = identity(now() + TimeDelta::days(1)).attach(Request::new("{ me }"));
-    assert_unauthenticated(&schema.execute(request).await);
+    let response = schema.execute(request).await;
+    assert_eq!(response.data, Value::Null, "{:?}", response.data);
+    let [error] = response.errors.as_slice() else {
+        panic!("expected one error, got {:?}", response.errors);
+    };
+    let code = error.extensions.as_ref().and_then(|e| e.get("code"));
+    assert_eq!(code, Some(&value!("INTERNAL")), "{error:?}");
 }
 
 #[tokio::test]
@@ -182,6 +188,7 @@ async fn api_003_h_6_signed_out_bad_arguments_get_only_unauthenticated() {
         "query($v: Refusing!) { probe(value: $v) }",
         "{ probe }",
         "{ nosuchfield(x: 1) }",
+        "{ login }",
     ];
     for document in documents {
         let request = Request::new(document).variables(async_graphql::Variables::from_json(

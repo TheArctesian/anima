@@ -49,9 +49,6 @@ pub enum Error {
     /// The message stays generic: the source error may hold SQL text (API-010).
     #[error("Something went wrong on the hub.")]
     Database(sqlx::Error),
-    /// An event-log failure other than its database (none occurs while recording today).
-    #[error("Something went wrong on the hub.")]
-    Events(crate::events::Error),
     #[error("Something went wrong on the hub.")]
     Hash(#[from] password::HashError),
     #[error("Something went wrong on the hub.")]
@@ -76,10 +73,8 @@ impl From<sqlx::Error> for Error {
 
 impl From<crate::events::Error> for Error {
     fn from(error: crate::events::Error) -> Self {
-        match error {
-            crate::events::Error::Database(error) => error.into(),
-            other => Self::Events(other),
-        }
+        let crate::events::Error::Database(error) = error;
+        error.into()
     }
 }
 
@@ -92,7 +87,6 @@ impl Error {
             Self::Validation { .. } => "VALIDATION",
             Self::Unreachable(_) => "UNAVAILABLE",
             Self::Database(_)
-            | Self::Events(_)
             | Self::Hash(_)
             | Self::Task(_)
             | Self::Random(_)
@@ -111,7 +105,6 @@ impl Error {
             | Self::Validation { .. } => None,
             Self::Unreachable(_) => Some("database_unreachable"),
             Self::Database(_) => Some("database"),
-            Self::Events(_) => Some("events"),
             Self::Hash(_) => Some("password_hash"),
             Self::Task(_) => Some("blocking_task"),
             Self::Random(_) => Some("random_source"),

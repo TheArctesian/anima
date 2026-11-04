@@ -100,3 +100,34 @@ async fn api_010_an_unreachable_database_is_logged_by_kind_at_both_edges() {
         assert!(!text.contains(leak), "{leak:?} in {text}");
     }
 }
+
+#[tokio::test]
+async fn log_007_a_malformed_login_input_keeps_its_password_out_of_the_log() {
+    const SECRET: &str = "hunter2-correct-horse";
+    let capture = Capture::default();
+    let writer = capture.clone();
+    let subscriber = process_log::subscriber("trace", move || writer.clone()).unwrap();
+    let _default = tracing::subscriber::set_default(subscriber);
+    tracing::callsite::rebuild_interest_cache();
+    let hub = unreachable_hub();
+    let query = "mutation($input: LoginInput!) { login(input: $input) { token } }";
+
+    let wrong_shape = hub.post(None, query, json!({ "input": SECRET })).await;
+    assert_eq!(
+        wrong_shape["errors"][0]["extensions"]["code"], "VALIDATION",
+        "{wrong_shape}"
+    );
+    assert!(!wrong_shape.to_string().contains(SECRET), "{wrong_shape}");
+    for input in [
+        json!({ "username": 5, "password": SECRET }),
+        json!({ "username": USERNAME, "password": SECRET, "extra": SECRET }),
+        json!({ "username": USERNAME, "password": SECRET, "totpCode": 7 }),
+    ] {
+        let response = hub.post(None, query, json!({ "input": input })).await;
+        assert!(response["errors"][0].is_object(), "{response}");
+    }
+
+    let text = capture.text();
+    assert!(text.contains("argument refused"), "{text}");
+    assert!(!text.contains(SECRET), "{text}");
+}

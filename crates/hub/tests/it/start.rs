@@ -1,25 +1,54 @@
 //! The hub refuses to start without a usable credential key, naming only the path (SEC-004),
 //! and as a database role that could change the audit log (R-016, LOG-006).
 
-use std::{io::Write as _, path::Path, process::Command};
+use std::{
+    io::{Read as _, Write as _},
+    path::Path,
+    process::{Command, Stdio},
+    thread,
+    time::{Duration, Instant},
+};
 
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use sqlx::PgPool;
 
-/// Runs `anima-hub` with `key_file` as `ANIMA_KEY_FILE` and the extra variables; returns
-/// (success, stderr).
+/// How long a refused start may take; a hub that is still running after it is serving.
+const DEADLINE: Duration = Duration::from_secs(20);
+
+/// Runs `anima-hub` with `key_file` as `ANIMA_KEY_FILE` and the extra variables, listening on
+/// a free loopback port; returns (success, stderr). Kills the hub and fails the test when it
+/// does not stop within `DEADLINE`, so a hub that wrongly serves cannot hang the suite.
 fn start_with(key_file: &Path, extra: &[(&str, &Path)]) -> (bool, String) {
-    let output = Command::new(env!("CARGO_BIN_EXE_anima-hub"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_anima-hub"))
         .env_clear()
         .env("ANIMA_KEY_FILE", key_file)
         .env("ANIMA_LOG", "error")
+        .env("ANIMA_LISTEN", "127.0.0.1:0")
         .envs(extra.iter().copied())
-        .output()
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn()
         .unwrap();
-    (
-        output.status.success(),
-        String::from_utf8(output.stderr).unwrap(),
-    )
+    let started = Instant::now();
+    let status = loop {
+        if let Some(status) = child.try_wait().unwrap() {
+            break status;
+        }
+        if started.elapsed() > DEADLINE {
+            child.kill().unwrap();
+            child.wait().unwrap();
+            panic!("the hub did not stop");
+        }
+        thread::sleep(Duration::from_millis(50));
+    };
+    let mut stderr = String::new();
+    child
+        .stderr
+        .take()
+        .unwrap()
+        .read_to_string(&mut stderr)
+        .unwrap();
+    (status.success(), stderr)
 }
 
 fn start_with_key(key_file: &Path) -> (bool, String) {

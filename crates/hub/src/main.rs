@@ -41,7 +41,7 @@ enum StartError {
         source: anima_hub::credentials::Error,
     },
     #[error("{0}")]
-    RuntimeRole(#[from] events::Error),
+    RuntimeRole(#[from] events::RoleError),
     #[error("hub failed to serve")]
     Serve(#[from] std::io::Error),
     #[error("usage: anima-hub [migrate | operator set <username>]")]

@@ -22,12 +22,19 @@ use crate::clock::Clock;
 /// A guard cannot add context data (D-6): the HTTP and WebSocket edges resolve the bearer
 /// token and attach an [`Identity`] with its `Operator`. This guard passes only when the
 /// identity is there and has not expired by the context's `Arc<dyn Clock>`, and refuses with
-/// `UNAUTHENTICATED` otherwise. An `Operator` alone does not pass.
+/// `UNAUTHENTICATED` otherwise. An `Operator` alone does not pass. A schema without a clock
+/// refuses every identity with `INTERNAL`: the hub is miswired, not the operator signed out.
 pub struct Authenticated;
 
 impl Guard for Authenticated {
     fn check(&self, ctx: &Context<'_>) -> impl Future<Output = async_graphql::Result<()>> + Send {
-        let verdict = if signed_in(ctx.data_opt(), ctx.data_opt()) {
+        let identity = ctx.data_opt::<Identity>();
+        let clock = ctx.data_opt::<Arc<dyn Clock>>();
+        let verdict = if identity.is_some() && clock.is_none() {
+            let error = Error::Unavailable;
+            error.log();
+            Err(error.to_graphql())
+        } else if signed_in(identity, clock) {
             Ok(())
         } else {
             Err(Error::Unauthenticated.to_graphql())
