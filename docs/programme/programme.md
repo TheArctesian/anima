@@ -64,6 +64,10 @@ Integration branch: `phase-1`. Merge to `main` only after operator checkpoint 4.
 
 - **R-012 (Wave 1, from WP-06; changes K3).** The K1 scalars `IpAddr` and `Cidr` live in the leaf module `crates/hub/src/scalars.rs` (programme-owned, like R-003). `Cidr` rejects host bits. `DateTime` and `JSON` are async-graphql's built-in chrono and `Json<T>` scalars. A domain must not define a scalar with a K1 name. Storage conversion (for example to `ipnet::IpNet` for sqlx) stays in each domain's `store.rs`.
 
+- **R-013 (Wave 1, from WP-02; changes K5).** K5 adds `projection-deceleration` (0.998) and `rubberband-constant` (0.55), TypeScript only, in a `gesture` object (MOT-032, MOT-033). The TypeScript `reducedMotion` and `breakpoint` objects are a correct reading of K5: they carry values, not new names.
+
+- **R-014 (Wave 1, from WP-06; changes K3).** K1's `PageInfo` is `paging::PageEnd` (GraphQL name `PageInfo`) in the leaf module `crates/hub/src/paging.rs`; no domain defines its own or uses async-graphql's built-in connection `PageInfo`. Data loaders (API-005): each domain exposes a constructor in its `graphql.rs` (for example `devices::graphql::site_loader(pool)`), and `schema.rs` registers it with `.data(..)` as a wiring handoff. The loaders have no cache, so one schema-wide instance is safe.
+
 ## Escalations
 
 None open.
