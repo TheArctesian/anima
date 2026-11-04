@@ -51,8 +51,9 @@ pub fn router(schema: schema::HubSchema, db: PgPool, clock: Arc<dyn clock::Clock
 
 /// Runs every route of `routes` in an `http_request` span that records the route template,
 /// never a path value, so `/push/{token}` is logged as `/push/[redacted]` (LOG-007, R-028).
-/// Apply it to the whole router after the last route is added.
-pub fn logged(routes: Router) -> Router {
+/// Apply it to the whole router after the last route is added; WP-09 widens it when the push
+/// router is merged in.
+pub(crate) fn logged(routes: Router) -> Router {
     routes.layer(middleware::from_fn(events::process_log::http_request))
 }
 
@@ -94,9 +95,11 @@ async fn graphql(
     let response = match access::identify(&edge.db, &headers, edge.clock.now()).await {
         Ok(Some(identity)) => edge.schema.execute(identity.attach(request)).await,
         Ok(None) => edge.schema.execute(request).await,
+        // The schema's boundary never sees this error, so the edge logs its cause chain (H-5).
         Err(error) => {
-            error.log();
-            async_graphql::Response::from_errors(vec![error.into_response_error()])
+            let error = error.into_response_error();
+            events::process_log::log_failure(&error);
+            async_graphql::Response::from_errors(vec![error])
         }
     };
     GraphQLResponse::from(response).into_response()

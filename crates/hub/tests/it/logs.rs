@@ -14,9 +14,9 @@ use axum::{
 };
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use serde_json::json;
-use sqlx::postgres::PgPoolOptions;
+use sqlx::{PgPool, postgres::PgPoolOptions};
 
-use crate::hub::{Hub, PASSWORD, USERNAME, start};
+use crate::hub::{Hub, PASSWORD, USERNAME, set_operator, start};
 
 /// Collects everything the process log writes.
 #[derive(Clone, Default)]
@@ -75,7 +75,7 @@ fn unreachable_hub() -> Hub {
 }
 
 #[tokio::test]
-async fn api_010_an_unreachable_database_is_logged_by_kind_at_both_edges() {
+async fn api_010_h_5_an_unreachable_database_is_logged_by_kind_at_both_edges() {
     let capture = Capture::default();
     let writer = capture.clone();
     let subscriber = process_log::subscriber("error", move || writer.clone()).unwrap();
@@ -103,12 +103,10 @@ async fn api_010_an_unreachable_database_is_logged_by_kind_at_both_edges() {
         .await;
     assert_eq!(me["errors"][0]["extensions"]["code"], "UNAVAILABLE", "{me}");
     let text = capture.text();
-    let kind_only =
-        r#""message":"access request failed","domain":"access","fault":"database_unreachable""#;
     assert_eq!(
-        text.matches(kind_only).count(),
-        1,
-        "through identify, the kind and nothing else: {text}"
+        text.matches(resolver).count(),
+        2,
+        "and through identify, at the HTTP edge: {text}"
     );
     assert_eq!(text.matches("database_unreachable").count(), 2, "{text}");
     for leak in [
@@ -119,6 +117,43 @@ async fn api_010_an_unreachable_database_is_logged_by_kind_at_both_edges() {
         "access.",
         "127.0.0.1",
     ] {
+        assert!(!text.contains(leak), "{leak:?} in {text}");
+    }
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn h_5_a_failed_token_lookup_at_the_edge_is_logged_with_its_sqlstate(pool: PgPool) {
+    set_operator(&pool).await;
+    let hub = Hub::new(&pool, start());
+    let token = hub.token().await;
+    sqlx::query("alter table access.api_tokens rename to api_tokens_gone")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let capture = Capture::default();
+    let writer = capture.clone();
+    let subscriber = process_log::subscriber("error", move || writer.clone()).unwrap();
+    let _default = tracing::subscriber::set_default(subscriber);
+    tracing::callsite::rebuild_interest_cache();
+
+    let response = hub.post(Some(&token), "{ __typename }", json!({})).await;
+
+    assert_eq!(
+        response,
+        json!({
+            "data": null,
+            "errors": [{ "message": "Something went wrong on the hub.",
+                         "locations": [{ "line": 0, "column": 0 }],
+                         "extensions": { "code": "INTERNAL" } }]
+        })
+    );
+    let text = capture.text();
+    assert!(
+        text.contains("request failed: database: database error 42P01"),
+        "{text}"
+    );
+    assert!(text.contains(r#""code":"INTERNAL""#), "{text}");
+    for leak in [token.as_str(), "api_tokens", "select"] {
         assert!(!text.contains(leak), "{leak:?} in {text}");
     }
 }

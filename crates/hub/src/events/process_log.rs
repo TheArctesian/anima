@@ -13,7 +13,7 @@ use tracing::Subscriber;
 use tracing_subscriber::{EnvFilter, fmt::MakeWriter};
 
 pub use http_span::http_request;
-pub use internal_errors::InternalErrors;
+pub use internal_errors::{InternalErrors, log_failure};
 pub use request_span::RequestSpan;
 
 #[derive(Debug, thiserror::Error)]

@@ -9,6 +9,8 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+# `events/process_log/echoes.rs` matches async-graphql 7.2's message prefixes (syntax,
+# argument value, coercion, unknown operation); its tests pin them and fail on drift.
 async-graphql.workspace = true
 async-graphql-axum.workspace = true
 axum.workspace = true

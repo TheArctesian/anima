@@ -24,6 +24,32 @@ async fn api_003_signed_out_a_failed_validation_is_one_unauthenticated() {
     assert_unauthenticated(&backstopped().execute(login_with_fragment).await);
 }
 
+/// A request whose error has neither a path nor a code: a syntax error, or an
+/// `operationName` the document lacks, named like a secret.
+fn unexplained() -> [Request; 2] {
+    [
+        Request::new("{ __typename "),
+        Request::new("query A { __typename }").operation_name("hunter2-correct-horse"),
+    ]
+}
+
+#[tokio::test]
+async fn log_007_signed_out_an_error_without_a_path_or_code_is_one_unauthenticated() {
+    for request in unexplained() {
+        assert_unauthenticated(&backstopped().execute(request).await);
+    }
+}
+
+#[tokio::test]
+async fn log_007_signed_in_an_error_without_a_path_or_code_is_kept() {
+    for request in unexplained() {
+        let request = identity(now() + TimeDelta::days(1)).attach(request);
+        let response = backstopped().execute(request).await;
+        assert_eq!(response.errors.len(), 1, "{:?}", response.errors);
+        assert_ne!(response.errors[0].message, "Sign in to continue.");
+    }
+}
+
 #[tokio::test]
 async fn api_003_signed_in_validation_errors_are_shown() {
     for document in MAPPING {

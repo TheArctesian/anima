@@ -139,6 +139,31 @@ async fn h_6_f_other_validation_errors_pass_unchanged() {
     );
 }
 
+#[tokio::test]
+async fn log_007_an_unknown_operation_name_is_not_echoed() {
+    let (capture, _guard) = capture_log("trace");
+    let request = Request::new("query A { find(filter: { name: \"a\" }) }").operation_name(SECRET);
+
+    let response = shaded().execute(request).await;
+
+    let [error] = errors(&response).try_into().expect("one error");
+    assert_eq!(
+        error,
+        json!({ "message": "The request names an operation it does not hold." })
+    );
+    assert!(!capture.text().contains(SECRET));
+    // Without the boundary, async-graphql quotes the name: this is what the test guards.
+    let plain = Schema::new(Query, EmptyMutation, EmptySubscription);
+    let echoed = plain
+        .execute(Request::new("query A { __typename }").operation_name(SECRET))
+        .await;
+    assert!(
+        echoed.errors[0]
+            .message
+            .starts_with("Unknown operation named \"")
+    );
+}
+
 #[test]
 fn log_007_without_the_document_a_coercion_error_is_known_by_its_text() {
     let at = Some(Pos { line: 1, column: 3 });

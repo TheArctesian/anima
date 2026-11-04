@@ -222,3 +222,21 @@ async fn api_010_a_resolver_error_that_reads_like_a_coercion_error_stays_interna
     }
     assert!(!capture.text().contains("argument refused"));
 }
+
+/// Pins the positional match: a resolver error on a field that takes arguments is placed at
+/// the field, never at an argument's value, so it stays `INTERNAL` and is logged.
+#[tokio::test]
+async fn api_010_a_resolver_error_on_a_field_with_arguments_sits_at_the_field_and_is_internal() {
+    let query = "{ lookalike(kind: 1) }";
+    let raw = plain().execute(query).await;
+    assert_eq!(raw.errors[0].locations, [Pos { line: 1, column: 3 }]);
+
+    let (capture, _guard) = capture_log("trace");
+    let response = hardened().execute(query).await;
+
+    let error = serde_json::to_value(&response.errors[0]).unwrap();
+    assert_eq!(error["extensions"]["code"], "INTERNAL", "{error}");
+    let text = capture.text();
+    assert!(text.contains("request failed:"), "{text}");
+    assert!(!text.contains("argument refused"), "{text}");
+}

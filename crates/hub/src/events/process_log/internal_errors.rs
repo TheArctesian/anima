@@ -70,6 +70,10 @@ fn mask(response: &mut Response, arguments: Option<&Arguments>) {
             continue;
         }
         let code = code_of(error);
+        if !resolved && code.is_none() && echoes::names_unknown_operation(&error.message) {
+            echoes::hide_operation(error);
+            continue;
+        }
         if (resolved && code.is_none()) || code.as_deref() == Some(INTERNAL) {
             hide_internal(error);
         } else if error.source::<Cause>().is_some() {
@@ -89,6 +93,13 @@ fn code_of(error: &ServerError) -> Option<String> {
 fn log_cause(error: &ServerError, code: &str) {
     let cause = chain(error);
     tracing::error!(path = ?error.path, code, "request failed: {cause}");
+}
+
+/// Writes an error's code and cause chain to the process log, as the boundary does, for an
+/// edge that answers before the schema runs (a token lookup that fails; H-5). The chain
+/// holds no SQL text, values or tokens.
+pub fn log_failure(error: &ServerError) {
+    log_cause(error, code_of(error).as_deref().unwrap_or_default());
 }
 
 /// Logs the fault's cause chain and answers `INTERNAL` with a generic message (API-010).

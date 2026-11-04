@@ -73,6 +73,14 @@ async fn api_003_t3_signed_out_documents_that_fail_validation_get_one_unauthenti
         assert_eq!(body["data"], json!(null));
         assert_eq!(body["errors"].as_array().map(Vec::len), Some(1));
     }
+    // T8 round 2: an `operationName` the document lacks, and a syntax error.
+    let named = async_graphql::Request::new("query A { __typename }")
+        .operation_name("hunter2-correct-horse");
+    let unparsed = async_graphql::Request::new("{ __typename ");
+    for request in [named, unparsed] {
+        let body = serde_json::to_value(schema().0.execute(request).await).unwrap();
+        assert_eq!(body, refused);
+    }
 }
 
 #[sqlx::test(migrations = "./migrations")]

@@ -40,6 +40,21 @@ pub(super) fn hide_syntax(error: &mut ServerError) {
     SYNTAX_MESSAGE.clone_into(&mut error.message);
 }
 
+/// How async-graphql 7.2 begins the error for an `operationName` the document does not hold;
+/// the rest quotes the name the sender wrote.
+const UNKNOWN_OPERATION_PREFIX: &str = r#"Unknown operation named ""#;
+const UNKNOWN_OPERATION_MESSAGE: &str = "The request names an operation it does not hold.";
+
+/// Whether `message` is async-graphql's error for an operation name the document lacks.
+pub(super) fn names_unknown_operation(message: &str) -> bool {
+    message.starts_with(UNKNOWN_OPERATION_PREFIX)
+}
+
+/// Replaces the unknown-operation text, which quotes the sender's `operationName` (LOG-007).
+pub(super) fn hide_operation(error: &mut ServerError) {
+    UNKNOWN_OPERATION_MESSAGE.clone_into(&mut error.message);
+}
+
 /// Whether `message` is a validation error about an argument value.
 pub(super) fn is_value_error(message: &str) -> bool {
     VALUE_PREFIXES

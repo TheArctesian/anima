@@ -1,14 +1,18 @@
-//! The HTTP request span names the route, never a value in the path (LOG-007, R-028).
+//! The HTTP request span names the route and a standard method, never a value in the path or
+//! a method the sender made up (LOG-007, R-028).
 
 use axum::{
     Router,
     body::Body,
-    http::{Request, StatusCode},
+    http::{Method, Request, StatusCode},
     routing::get,
 };
 use tower::ServiceExt as _;
 
-use super::{super::http_span::logged_path, capture::capture_log};
+use super::{
+    super::http_span::{logged_method, logged_path},
+    capture::capture_log,
+};
 
 const TOKEN: &str = "pk_7f3a9c2e41b8d6f0a5e4c3b2a1908f7e";
 
@@ -83,4 +87,34 @@ fn log_007_route_parameters_are_redacted_and_fixed_segments_kept() {
     assert_eq!(logged_path(Some("/graphql")), "/graphql");
     assert_eq!(logged_path(Some("/a/{b}/c")), "/a/[redacted]/c");
     assert_eq!(logged_path(None), "[no route]");
+}
+
+#[tokio::test]
+async fn log_007_a_custom_method_is_logged_as_other() {
+    let (capture, _guard) = capture_log("trace");
+
+    send(push_stand_in(), "Hunter2Secret9xyz", "/push/x").await;
+
+    let lines = capture.lines();
+    assert_eq!(lines[0]["span"]["method"], "[other]", "{lines:?}");
+    assert!(!capture.text().contains("Hunter2Secret9xyz"));
+}
+
+#[test]
+fn log_007_standard_methods_are_logged_by_name() {
+    for method in [
+        Method::GET,
+        Method::POST,
+        Method::PUT,
+        Method::DELETE,
+        Method::HEAD,
+        Method::OPTIONS,
+        Method::PATCH,
+        Method::CONNECT,
+        Method::TRACE,
+    ] {
+        assert_eq!(logged_method(&method), method.as_str());
+    }
+    let custom = Method::from_bytes(b"PURGE").unwrap();
+    assert_eq!(logged_method(&custom), "[other]");
 }

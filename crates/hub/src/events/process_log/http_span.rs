@@ -3,6 +3,7 @@
 
 use axum::{
     extract::{MatchedPath, Request},
+    http::Method,
     middleware::Next,
     response::Response,
 };
@@ -11,6 +12,7 @@ use tracing::{Instrument as _, info_span};
 /// What the log records for a request that matched no route: its path is the sender's text.
 const NO_ROUTE: &str = "[no route]";
 const REDACTED: &str = "[redacted]";
+const OTHER_METHOD: &str = "[other]";
 
 /// axum middleware: runs the request in an `http_request` span with the method and the
 /// logged path, and writes one `request served` line with the status.
@@ -26,7 +28,8 @@ pub async fn http_request(request: Request, next: Next) -> Response {
             .get::<MatchedPath>()
             .map(MatchedPath::as_str),
     );
-    let span = info_span!("http_request", method = %request.method(), path);
+    let method = logged_method(request.method());
+    let span = info_span!("http_request", method, path);
     async move {
         let response = next.run(request).await;
         tracing::info!(status = response.status().as_u16(), "request served");
@@ -34,6 +37,18 @@ pub async fn http_request(request: Request, next: Next) -> Response {
     }
     .instrument(span)
     .await
+}
+
+/// A standard method by name; any other method is the sender's text and logged as `[other]`
+/// (LOG-007).
+pub(super) fn logged_method(method: &Method) -> &'static str {
+    const STANDARD: [&str; 9] = [
+        "GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS", "PATCH", "CONNECT", "TRACE",
+    ];
+    STANDARD
+        .into_iter()
+        .find(|name| *name == method.as_str())
+        .unwrap_or(OTHER_METHOD)
 }
 
 /// The route template with each `{parameter}` or `{*rest}` segment replaced by
