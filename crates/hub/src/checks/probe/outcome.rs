@@ -131,6 +131,12 @@ pub enum Failure {
     DnsMismatch,
     #[error("this check type is not probed by the hub")]
     NotProbed,
+    /// The sealed HTTP secrets do not open for the check (SEC-003).
+    #[error("the check secrets cannot be opened")]
+    Secrets,
+    /// A PUSH check got no push within its interval (CHK-002).
+    #[error("no push received")]
+    NoPush,
 }
 
 impl From<io::Error> for Failure {

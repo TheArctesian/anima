@@ -18,6 +18,7 @@ macro_rules! select_check {
     };
 }
 
+mod attempts;
 mod beats;
 mod retention;
 mod rows;
@@ -37,6 +38,7 @@ use super::{
 };
 use crate::ids::{CheckId, DeviceId};
 
+pub(super) use attempts::record_attempt;
 pub(super) use beats::record_beat;
 pub use retention::Trimmed;
 pub(super) use retention::{
@@ -110,4 +112,18 @@ pub(super) async fn due(db: &PgPool, now: DateTime<Utc>, limit: u32) -> Result<V
     .fetch_all(db)
     .await?;
     rows.into_iter().map(CheckRow::into_due).collect()
+}
+
+/// The devices with a check whose last beat is at or after `since`, from any writer: the
+/// scheduler or the push route.
+pub(super) async fn devices_beaten_since(
+    db: &PgPool,
+    since: DateTime<Utc>,
+) -> Result<Vec<DeviceId>, Error> {
+    Ok(
+        sqlx::query_scalar("SELECT DISTINCT device_id FROM checks.checks WHERE last_beat_at >= $1")
+            .bind(since)
+            .fetch_all(db)
+            .await?,
+    )
 }

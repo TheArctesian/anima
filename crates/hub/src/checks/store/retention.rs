@@ -29,11 +29,16 @@ pub struct Trimmed {
 }
 
 /// Deletes aggregate buckets older than 7 days (minute), 90 days (hour) and 2 years (day)
-/// before `now` (DB-009). A bucket that starts exactly at the limit is kept.
+/// before `now`, or before the database clock when `now` is later (DB-009, CQ-021). A
+/// bucket that starts exactly at the limit is kept.
 pub(in crate::checks) async fn trim_aggregates(
     db: &PgPool,
     now: DateTime<Utc>,
 ) -> Result<Trimmed, Error> {
+    let database_now: DateTime<Utc> = sqlx::query_scalar("SELECT pg_catalog.now()")
+        .fetch_one(db)
+        .await?;
+    let now = now.min(database_now);
     let day_limit = now.checked_sub_months(DAY_KEPT).unwrap_or(now);
     let delete = async |sql: &'static str, limit: DateTime<Utc>| {
         sqlx::query(sql)

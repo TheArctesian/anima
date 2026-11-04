@@ -231,17 +231,20 @@ pub(in crate::checks) async fn load_http_secrets<'e>(
     open(vault, id, &config, &bytes).map(Some)
 }
 
-/// Sets the first due time of a check that has none; returns whether it was set. A check
-/// whose time was set meanwhile, by a beat or the push route, keeps it (CHK-001).
+/// Moves the check's due time from `expected` to `at`; returns whether it moved. A check
+/// whose time changed meanwhile, by a beat or the push route, keeps it (CHK-001).
 pub(in crate::checks) async fn set_next_due<'e>(
     db: impl PgExecutor<'e>,
     id: CheckId,
+    expected: Option<DateTime<Utc>>,
     at: DateTime<Utc>,
 ) -> Result<bool, Error> {
     let done = sqlx::query(
-        "UPDATE checks.checks SET next_due_at = $2 WHERE id = $1 AND next_due_at IS NULL",
+        "UPDATE checks.checks SET next_due_at = $3 \
+         WHERE id = $1 AND next_due_at IS NOT DISTINCT FROM $2",
     )
     .bind(id)
+    .bind(expected)
     .bind(at)
     .execute(db)
     .await?;

@@ -1,24 +1,33 @@
-//! One attempt of one due check: observe, evaluate, record the beat and publish it
+//! One attempt of one due check: observe, record on the current state and publish
 //! (CHK-001, CHK-002, CHK-003, CHK-006).
+//!
+//! Maintenance is decided when the beat is recorded, so a window that starts or ends shows
+//! on the check's next beat; the status rules apply it to the stored state at once.
 
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 
-use super::{Probing, schedule};
+use super::schedule::{self, Timing};
 use crate::{
     checks::{
-        self, Beat, Due, Error,
+        self, Attempt, Beat, Due, Error,
         config::CheckConfig,
-        evaluate,
-        probe::{Failure, ProbeEnv, ProbeResult, ProbeTarget, probe},
-        status::maintained,
+        probe::{AddressPolicy, Failure, ProbeEnv, ProbeResult, ProbeTarget, probe},
     },
+    credentials::Vault,
     devices::{self, Device},
     events::{Bus, HeartbeatSummary, Signal},
     ids::{CheckId, DeviceId},
     maintenance,
-    status::Status,
 };
+
+/// What probes need: the vault that opens HTTP secrets and the addresses they may reach
+/// (R-030). The policy always refuses loopback, link-local and multicast addresses; the
+/// deny list only refuses more (D-8).
+pub struct Probing {
+    pub vault: Vault,
+    pub policy: AddressPolicy,
+}
 
 /// What the attempts share.
 pub(super) struct Context {
@@ -32,12 +41,12 @@ pub(super) struct Context {
 pub(super) struct Finished {
     pub(super) check: CheckId,
     pub(super) device: DeviceId,
-    /// The device name when a beat was recorded; `None` when nothing was written.
-    pub(super) recorded: Option<String>,
+    /// The check's new timing when a beat was written; `None` when nothing was.
+    pub(super) recorded: Option<Timing>,
 }
 
-/// Logs a failed read or write at this I/O boundary; the error text holds no SQL, URL,
-/// header or secret (LOG-007).
+/// Logs a failed read or write about one check at this I/O boundary; the error text holds
+/// no SQL, URL, header or secret (LOG-007).
 pub(super) fn warn(due: &Due, what: &str, error: &dyn std::fmt::Display) {
     tracing::warn!(
         domain = "checks",
@@ -48,7 +57,7 @@ pub(super) fn warn(due: &Due, what: &str, error: &dyn std::fmt::Display) {
     );
 }
 
-/// Runs the attempt. Every failure is logged here and leaves the check due, so the next tick
+/// Runs the attempt. Every failure is logged here and leaves the check due, so a later tick
 /// tries again.
 pub(super) async fn run(ctx: &Context, due: Due, now: DateTime<Utc>) -> Finished {
     let mut finished = Finished {
@@ -63,13 +72,26 @@ pub(super) async fn run(ctx: &Context, due: Due, now: DateTime<Utc>) -> Finished
             return finished;
         }
     };
-    let Some(beat) = judge(ctx, &due, &device, now).await else {
+    let Some(result) = observe(ctx, &due, &device, now).await else {
         return finished;
     };
-    if let Err(error) = record(&ctx.db, due.id, &beat).await {
-        warn(&due, "the heartbeat cannot be recorded", &error);
+    let Some(covered) = covered(ctx, &due, &device, (&result, now)).await else {
         return finished;
-    }
+    };
+    let attempt = Attempt {
+        result: &result,
+        settings: &due.settings,
+        covered,
+        at: now,
+    };
+    let beat = match record(&ctx.db, due.id, &attempt).await {
+        Ok(Some(beat)) => beat,
+        Ok(None) => return finished,
+        Err(error) => {
+            warn(&due, "the heartbeat cannot be recorded", &error);
+            return finished;
+        }
+    };
     ctx.bus.publish(Signal::Heartbeat {
         check: due.id,
         device: due.device,
@@ -79,7 +101,10 @@ pub(super) async fn run(ctx: &Context, due: Due, now: DateTime<Utc>) -> Finished
             response_time_ms: beat.response_time_ms,
         },
     });
-    finished.recorded = Some(device.name);
+    finished.recorded = Some(Timing {
+        next_due_at: beat.state.next_due_at,
+        interval_seconds: due.settings.interval_seconds,
+    });
     finished
 }
 
@@ -99,9 +124,7 @@ async fn observe(
     let secrets = if matches!(config, CheckConfig::Http(_)) {
         match checks::load_http_secrets(&ctx.db, &ctx.probing.vault, due.id).await {
             Ok(secrets) => secrets,
-            Err(Error::Credentials(_)) => {
-                return Some(schedule::failed("the check secrets cannot be opened"));
-            }
+            Err(Error::Credentials(_)) => return Some(ProbeResult::failed(&Failure::Secrets)),
             Err(error) => {
                 warn(due, "the check secrets cannot be read", &error);
                 return None;
@@ -117,32 +140,36 @@ async fn observe(
     Some(probe(&target, config, secrets.as_ref(), &env).await)
 }
 
-/// The beat for the result. A Down beat is recorded as Maintenance when the device's manual
-/// flag or an active window covers the check, so uptime counts maintenance (CHK-006); the
-/// stored state stays Down and the status rules show it as Maintenance while covered.
-/// `None` when the windows cannot be read.
-async fn judge(ctx: &Context, due: &Due, device: &Device, now: DateTime<Utc>) -> Option<Beat> {
-    let result = observe(ctx, due, device, now).await?;
-    let (state, status) = evaluate(&due.state, result.clone(), &due.settings, now);
-    let covered = if status == Status::Down && !device.maintenance {
-        let active =
-            maintenance::active_for(&ctx.db, device.id, Some(due.id), &device.tags, now).await;
-        match active {
-            Ok(active) => active,
-            Err(error) => {
-                warn(due, "the maintenance windows cannot be read", &error);
-                return None;
-            }
+/// Whether maintenance covers the check: the device's manual flag, or an active window on
+/// the device, the check, its group or a tag (CHK-006). Windows are read only for a failed
+/// result, the only kind that can be Down. `None` when the windows cannot be read.
+async fn covered(
+    ctx: &Context,
+    due: &Due,
+    device: &Device,
+    (result, now): (&ProbeResult, DateTime<Utc>),
+) -> Option<bool> {
+    let failed = result.ok == due.settings.invert;
+    if device.maintenance || !failed {
+        return Some(device.maintenance);
+    }
+    match maintenance::active_targets(&ctx.db, now).await {
+        Ok(active) => Some(
+            [Some(due.id), due.parent]
+                .into_iter()
+                .flatten()
+                .any(|check| active.covers(device.id, Some(check), &device.tags)),
+        ),
+        Err(error) => {
+            warn(due, "the maintenance windows cannot be read", &error);
+            None
         }
-    } else {
-        device.maintenance
-    };
-    Some(Beat::of(result, (state, maintained(status, covered)), now))
+    }
 }
 
-async fn record(db: &PgPool, check: CheckId, beat: &Beat) -> Result<(), Error> {
+async fn record(db: &PgPool, check: CheckId, attempt: &Attempt<'_>) -> Result<Option<Beat>, Error> {
     let mut tx = db.begin().await?;
-    checks::record_beat(&mut tx, check, beat).await?;
+    let beat = checks::record_attempt(&mut tx, check, attempt).await?;
     tx.commit().await?;
-    Ok(())
+    Ok(beat)
 }

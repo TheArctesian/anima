@@ -1,135 +1,84 @@
-//! What a tick tells the rest of the hub: signals after commit, status-change events and
-//! the watchdog (CHK-010, LOG-004, LOG-010).
+//! The watchdog through the tick: one Error event per lateness episode, never for the hub's
+//! own downtime, retried when it cannot be written (CHK-010).
 
-use chrono::TimeDelta;
-use tokio::sync::broadcast::Receiver;
+use chrono::{DateTime, TimeDelta, Utc};
+use sqlx::PgPool;
 
 use super::support::{
-    DOCKER_HOST, Listener, add, database_now, due_at, events_of, on_loopback, rng, scheduler,
-    settle_briefly, tcp,
+    DOCKER_HOST, Listener, add, allow_event_writes, database_now, due_at, events_of,
+    fail_event_writes, on_loopback, rng, scheduler, tcp,
 };
-use crate::{
-    events::{Bus, Signal},
-    status::Status,
-};
+use crate::{checks::scheduler::tick::Scheduler, events::Bus, ids::DeviceId};
 
-fn drain(receiver: &mut Receiver<Signal>) -> Vec<Signal> {
-    std::iter::from_fn(|| receiver.try_recv().ok()).collect()
+const LATE: &str = "Check Service port on docker-host is late by more than 2 intervals";
+
+/// A scheduler that started a minute before `now`.
+async fn started_before(pool: &PgPool, now: DateTime<Utc>) -> Scheduler {
+    let mut scheduler = scheduler(pool, &Bus::new(64));
+    scheduler
+        .tick(now - TimeDelta::seconds(60), &mut rng())
+        .await;
+    scheduler
 }
 
-fn device_statuses(signals: &[Signal]) -> Vec<Status> {
-    signals
-        .iter()
-        .filter_map(|signal| match signal {
-            Signal::DeviceStatus { status, .. } => Some(*status),
-            _ => None,
-        })
+async fn errors(pool: &PgPool, device: DeviceId) -> Vec<String> {
+    events_of(pool, device)
+        .await
+        .into_iter()
+        .filter(|(severity, source, _)| severity == "error" && source == "check")
+        .map(|(_, _, message)| message)
         .collect()
 }
 
 tick_test! {
-    async fn log_010_the_heartbeat_signal_follows_the_commit(pool: PgPool) {
-        let listener = Listener::start().await;
-        let device = on_loopback(&pool, DOCKER_HOST).await;
-        let id = add(&pool, device, tcp(listener.port), 2).await;
-        let now = database_now(&pool).await;
-        due_at(&pool, id, now).await;
-        let bus = Bus::new(16);
-        let mut receiver = bus.subscribe();
-        let reader = pool.clone();
-        let seen = tokio::spawn(async move {
-            loop {
-                if let Signal::Heartbeat { check, beat, .. } = receiver.recv().await.unwrap() {
-                    let stored: i64 = sqlx::query_scalar(
-                        "SELECT count(*) FROM checks.heartbeats WHERE check_id = $1",
-                    )
-                    .bind(check)
-                    .fetch_one(&reader)
-                    .await
-                    .unwrap();
-                    return (check, beat.status, stored);
-                }
-            }
-        });
-        let mut scheduler = scheduler(&pool, &bus);
-
-        scheduler.tick(now, &mut rng()).await;
-        scheduler.finish_running(now).await;
-
-        let seen = tokio::time::timeout(std::time::Duration::from_secs(5), seen).await;
-        assert_eq!(seen.expect("no heartbeat signal").unwrap(), (id, Status::Up, 1));
-    }
-
-    async fn log_004_a_status_change_gives_one_event_and_one_signal(pool: PgPool) {
-        let listener = Listener::start().await;
-        let device = on_loopback(&pool, DOCKER_HOST).await;
-        let id = add(&pool, device, tcp(listener.port), 0).await;
-        let now = database_now(&pool).await;
-        due_at(&pool, id, now).await;
-        let bus = Bus::new(64);
-        let mut receiver = bus.subscribe();
-        let mut scheduler = scheduler(&pool, &bus);
-
-        scheduler.tick(now, &mut rng()).await;
-        scheduler.finish_running(now).await;
-        let later = now + TimeDelta::seconds(10);
-        scheduler.tick(later, &mut rng()).await;
-        scheduler.finish_running(later).await;
-
-        let signals = drain(&mut receiver);
-        assert_eq!(device_statuses(&signals), [Status::Up]);
-        assert!(signals.contains(&Signal::DeviceStatus { device, status: Status::Up, at: now }));
-        let up = ("info".to_owned(), "check".to_owned(), "docker-host is Up".to_owned());
-        assert_eq!(events_of(&pool, device).await, std::slice::from_ref(&up));
-
-        sqlx::query("UPDATE checks.checks SET config = jsonb_set(config, '{port}', to_jsonb($2)) WHERE id = $1")
-            .bind(id)
-            .bind(i32::from(super::support::closed_port()))
-            .execute(&pool)
-            .await
-            .unwrap();
-        let down_at = now + TimeDelta::seconds(20);
-        scheduler.tick(down_at, &mut rng()).await;
-        scheduler.finish_running(down_at).await;
-
-        assert_eq!(device_statuses(&drain(&mut receiver)), [Status::Down]);
-        let down = ("error".to_owned(), "check".to_owned(), "docker-host is Down".to_owned());
-        assert_eq!(events_of(&pool, device).await, [up, down]);
-    }
-
     async fn chk_010_a_late_check_gives_exactly_one_error_event(pool: PgPool) {
         let listener = Listener::start().await;
         let device = on_loopback(&pool, DOCKER_HOST).await;
         let late = add(&pool, device, listener.silent_tls(), 2).await;
         let now = database_now(&pool).await;
+        let mut scheduler = started_before(&pool, now).await;
         due_at(&pool, late, now - TimeDelta::seconds(25)).await;
-        let mut scheduler = scheduler(&pool, &Bus::new(64));
 
         scheduler.tick(now, &mut rng()).await;
-        settle_briefly().await;
+        listener.wait_for(1).await;
         scheduler.tick(now + TimeDelta::seconds(1), &mut rng()).await;
-        scheduler.finish_running(now).await;
+        scheduler.finish_running(now + TimeDelta::seconds(1)).await;
 
-        let message = "Check Service port on docker-host is late by more than 2 intervals";
-        let expected = ("error".to_owned(), "check".to_owned(), message.to_owned());
-        assert_eq!(events_of(&pool, device).await, [expected]);
+        assert_eq!(errors(&pool, device).await, [LATE]);
     }
 
     async fn chk_010_a_check_late_again_after_it_ran_gives_a_new_event(pool: PgPool) {
         let listener = Listener::start().await;
         let device = on_loopback(&pool, DOCKER_HOST).await;
-        let late = add(&pool, device, listener.silent_tls(), 2).await;
+        let late = add(&pool, device, tcp(listener.port), 2).await;
         let now = database_now(&pool).await;
-        let mut scheduler = scheduler(&pool, &Bus::new(64));
+        let mut scheduler = started_before(&pool, now).await;
         for at in [now, now + TimeDelta::seconds(2)] {
             due_at(&pool, late, at - TimeDelta::seconds(25)).await;
             scheduler.tick(at, &mut rng()).await;
             scheduler.finish_running(at).await;
         }
 
-        let events = events_of(&pool, device).await;
-        assert_eq!(events.len(), 2, "{events:?}");
-        assert!(events.iter().all(|(severity, ..)| severity == "error"), "{events:?}");
+        assert_eq!(errors(&pool, device).await, [LATE, LATE]);
+    }
+
+    async fn chk_010_a_probe_slower_than_2_intervals_is_one_episode(pool: PgPool) {
+        let listener = Listener::start().await;
+        let device = on_loopback(&pool, DOCKER_HOST).await;
+        let late = add(&pool, device, listener.silent_tls(), 2).await;
+        let now = database_now(&pool).await;
+        let mut scheduler = started_before(&pool, now).await;
+        due_at(&pool, late, now - TimeDelta::seconds(25)).await;
+
+        scheduler.tick(now, &mut rng()).await;
+        listener.wait_for(1).await;
+        let slow = now + TimeDelta::seconds(30);
+        scheduler.finish_running(slow).await;
+        scheduler.tick(slow, &mut rng()).await;
+        listener.wait_for(2).await;
+        scheduler.finish_running(slow).await;
+
+        assert_eq!(errors(&pool, device).await, [LATE]);
     }
 
     async fn chk_010_a_check_within_2_intervals_is_not_late(pool: PgPool) {
@@ -137,13 +86,46 @@ tick_test! {
         let device = on_loopback(&pool, DOCKER_HOST).await;
         let id = add(&pool, device, tcp(listener.port), 2).await;
         let now = database_now(&pool).await;
+        let mut scheduler = started_before(&pool, now).await;
         due_at(&pool, id, now - TimeDelta::seconds(20)).await;
-        let mut scheduler = scheduler(&pool, &Bus::new(64));
 
         scheduler.tick(now, &mut rng()).await;
         scheduler.finish_running(now).await;
 
-        let events = events_of(&pool, device).await;
-        assert!(events.iter().all(|(severity, ..)| severity != "error"), "{events:?}");
+        assert_eq!(errors(&pool, device).await.len(), 0);
+    }
+
+    async fn chk_010_the_hubs_own_downtime_is_not_reported_as_late(pool: PgPool) {
+        let listener = Listener::start().await;
+        let device = on_loopback(&pool, DOCKER_HOST).await;
+        let id = add(&pool, device, tcp(listener.port), 2).await;
+        let now = database_now(&pool).await;
+        due_at(&pool, id, now - TimeDelta::hours(1)).await;
+        let mut scheduler = scheduler(&pool, &Bus::new(64));
+
+        scheduler.tick(now, &mut rng()).await;
+        scheduler.tick(now + TimeDelta::seconds(15), &mut rng()).await;
+        scheduler.finish_running(now + TimeDelta::seconds(15)).await;
+
+        assert_eq!(errors(&pool, device).await.len(), 0);
+    }
+
+    async fn chk_010_a_late_event_that_cannot_be_written_is_retried(pool: PgPool) {
+        let listener = Listener::start().await;
+        let device = on_loopback(&pool, DOCKER_HOST).await;
+        let late = add(&pool, device, listener.silent_tls(), 2).await;
+        let now = database_now(&pool).await;
+        let mut scheduler = started_before(&pool, now).await;
+        due_at(&pool, late, now - TimeDelta::seconds(25)).await;
+        fail_event_writes(&pool).await;
+
+        scheduler.tick(now, &mut rng()).await;
+        listener.wait_for(1).await;
+        assert_eq!(errors(&pool, device).await.len(), 0);
+        allow_event_writes(&pool).await;
+        scheduler.tick(now + TimeDelta::seconds(1), &mut rng()).await;
+        scheduler.finish_running(now + TimeDelta::seconds(1)).await;
+
+        assert_eq!(errors(&pool, device).await, [LATE]);
     }
 }

@@ -50,7 +50,8 @@ async fn orphan(pool: &PgPool, now: DateTime<Utc>) -> CheckId {
         cert_not_after: None,
     };
     let mut conn = pool.acquire().await.unwrap();
-    checks::record_beat(&mut conn, id, &beat).await.unwrap();
+    let written = checks::record_beat(&mut conn, id, &beat).await.unwrap();
+    assert_eq!(written, checks::Recorded::Written);
     checks::delete_check(&mut conn, id).await.unwrap();
     id
 }
@@ -112,5 +113,58 @@ tick_test! {
         assert_eq!(count(&pool, BEATS, gone).await, 1);
         scheduler.tick(now + TimeDelta::hours(24), &mut rng()).await;
         assert_eq!(count(&pool, BEATS, gone).await, 0);
+    }
+
+    async fn db_005_a_failed_daily_run_is_retried_within_the_hour(pool: PgPool) {
+        let now = database_now(&pool).await;
+        for sql in [
+            "CREATE FUNCTION checks.refuse() RETURNS trigger LANGUAGE plpgsql AS \
+             $$ BEGIN RAISE EXCEPTION 'refused'; END $$",
+            "CREATE TRIGGER refuse BEFORE DELETE ON checks.uptime_minute \
+             FOR EACH STATEMENT EXECUTE FUNCTION checks.refuse()",
+        ] {
+            sqlx::query(sql).execute(&pool).await.unwrap();
+        }
+        let mut scheduler = scheduler(&pool, &Bus::new(16));
+        scheduler.tick(now, &mut rng()).await;
+        let old = old_partition(&pool, now, 40).await;
+        sqlx::query("DROP TRIGGER refuse ON checks.uptime_minute")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        scheduler.tick(now + TimeDelta::minutes(59), &mut rng()).await;
+        assert!(partition_exists(&pool, old).await);
+        scheduler.tick(now + TimeDelta::hours(1), &mut rng()).await;
+        assert!(!partition_exists(&pool, old).await);
+    }
+
+    async fn cq_021_the_daily_jobs_run_again_when_the_clock_goes_back(pool: PgPool) {
+        let now = database_now(&pool).await;
+        let mut scheduler = scheduler(&pool, &Bus::new(16));
+        scheduler.tick(now, &mut rng()).await;
+        let old = old_partition(&pool, now, 40).await;
+
+        scheduler.tick(now + TimeDelta::hours(1), &mut rng()).await;
+        assert!(partition_exists(&pool, old).await);
+        scheduler.tick(now - TimeDelta::hours(1), &mut rng()).await;
+        assert!(!partition_exists(&pool, old).await);
+    }
+
+    async fn cq_021_a_clock_ahead_of_the_database_trims_no_recent_aggregates(pool: PgPool) {
+        let now = database_now(&pool).await;
+        let kept = add(&pool, device(DOCKER_HOST), tcp(23), 2).await;
+        sqlx::query("INSERT INTO checks.uptime_minute (check_id, bucket) VALUES ($1, $2)")
+            .bind(kept)
+            .bind(now - TimeDelta::days(1))
+            .execute(&pool)
+            .await
+            .unwrap();
+        let mut scheduler = scheduler(&pool, &Bus::new(16));
+
+        scheduler.tick(now + TimeDelta::days(30), &mut rng()).await;
+
+        let minutes = "SELECT count(*) FROM checks.uptime_minute WHERE check_id = $1";
+        assert_eq!(count(&pool, minutes, kept).await, 1);
     }
 }

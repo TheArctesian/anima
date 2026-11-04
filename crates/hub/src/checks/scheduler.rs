@@ -6,6 +6,7 @@
 
 mod attempt;
 mod daily;
+mod notices;
 mod schedule;
 #[cfg(test)]
 mod tests;
@@ -17,23 +18,19 @@ use rand::{SeedableRng as _, rngs::StdRng};
 use sqlx::PgPool;
 use tokio::time::MissedTickBehavior;
 
-use crate::{checks::probe::AddressPolicy, clock::Clock, credentials::Vault, events::Bus};
+use crate::{clock::Clock, events::Bus};
 
 use attempt::Context;
-use tick::Scheduler;
+pub use attempt::Probing;
+use tick::{Limits, Scheduler};
 
 /// The time between ticks.
 const TICK: Duration = Duration::from_secs(1);
-/// The most probes that run at the same time (D-7).
-const CONCURRENCY: usize = 32;
-
-/// What probes need: the vault that opens HTTP secrets and the addresses they may reach
-/// (R-030). The policy always refuses loopback, link-local and multicast addresses; the
-/// deny list only refuses more (D-8).
-pub struct Probing {
-    pub vault: Vault,
-    pub policy: AddressPolicy,
-}
+/// The most probes that run at the same time (D-7), and the most due checks read per tick.
+const LIMITS: Limits = Limits {
+    probes: 32,
+    due: 256,
+};
 
 /// Starts the scheduler. It ticks about once a second at the clock's time and runs until
 /// the handle is aborted; aborting it also aborts the probes in flight. It never panics on
@@ -46,7 +43,7 @@ pub fn spawn_scheduler(
     probing: Probing,
 ) -> tokio::task::JoinHandle<()> {
     let mut rng = StdRng::from_rng(&mut rand::rng());
-    let mut scheduler = Scheduler::new(Context { db, bus, probing }, CONCURRENCY);
+    let mut scheduler = Scheduler::new(Context { db, bus, probing }, LIMITS);
     tokio::spawn(async move {
         let mut ticker = tokio::time::interval(TICK);
         ticker.set_missed_tick_behavior(MissedTickBehavior::Delay);

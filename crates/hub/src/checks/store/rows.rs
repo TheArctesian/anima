@@ -73,7 +73,7 @@ pub(super) const fn status_sql(status: Status) -> &'static str {
     }
 }
 
-fn status_of(text: &str) -> Result<Status, sqlx::Error> {
+pub(super) fn status_of(text: &str) -> Result<Status, sqlx::Error> {
     Ok(match text {
         "up" => Status::Up,
         "down" => Status::Down,
@@ -84,7 +84,7 @@ fn status_of(text: &str) -> Result<Status, sqlx::Error> {
     })
 }
 
-fn number<T: TryFrom<i32>>(value: i32) -> Result<T, sqlx::Error> {
+pub(super) fn number<T: TryFrom<i32>>(value: i32) -> Result<T, sqlx::Error> {
     T::try_from(value).map_err(|_| out_of_range())
 }
 
@@ -139,6 +139,7 @@ impl CheckRow {
             state: self.state()?,
             id: self.id,
             device: self.device_id,
+            parent: self.parent_id,
             config: config_of(&self.kind, self.config),
         })
     }

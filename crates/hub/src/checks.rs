@@ -1,5 +1,5 @@
 //! Checks: what each device is checked for, the results, the status they give and the
-//! uptime they add up to (spec 6.4). main.rs starts [`spawn_scheduler`] (HUB-003).
+//! uptime they add up to (spec 6.4). [`spawn_scheduler`] runs the checks (HUB-003).
 //!
 //! Other domains use only the contract functions: [`statuses`], [`uptimes`], [`for_device`],
 //! [`add_default_check`], [`device_status`], [`resolved_ips`] and [`evaluate`]. The writes,
@@ -40,7 +40,8 @@ use rules::Prepared;
 
 pub use evaluation::{CheckSettings, CheckState, evaluate};
 pub use model::{
-    Beat, Check, CheckChange, Definition, Due, FieldError, Missing, NewCheck, PushToken, Recorded,
+    Attempt, Beat, Check, CheckChange, Definition, Due, FieldError, Missing, NewCheck, PushToken,
+    Recorded,
 };
 pub use scheduler::{Probing, spawn_scheduler};
 pub use store::Trimmed;
@@ -354,6 +355,21 @@ pub async fn record_beat(
     beat: &Beat,
 ) -> Result<Recorded, Error> {
     store::record_beat(conn, check, beat).await
+}
+
+/// Records one attempt in the caller's transaction: locks the check, evaluates the result on
+/// its current state, so a beat or pause that landed meanwhile is not overwritten, and
+/// writes the beat with [`record_beat`] (CHK-002, CHK-005). Returns the beat written, or
+/// `None` when the check is paused or already has a later beat.
+///
+/// # Errors
+/// `NotFound` when the check no longer exists.
+pub async fn record_attempt(
+    conn: &mut PgConnection,
+    check: CheckId,
+    attempt: &Attempt<'_>,
+) -> Result<Option<Beat>, Error> {
+    store::record_attempt(conn, check, attempt).await
 }
 
 /// Up to `limit` checks that are not paused and are due at `now` (CHK-001). PUSH checks are

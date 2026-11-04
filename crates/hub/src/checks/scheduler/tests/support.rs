@@ -6,6 +6,7 @@ use std::{
         Arc,
         atomic::{AtomicUsize, Ordering},
     },
+    time::Duration,
 };
 
 use base64::{Engine as _, engine::general_purpose::STANDARD};
@@ -18,7 +19,11 @@ use crate::{
         self, Check, CheckSettings, Definition, NewCheck,
         config::CheckConfig,
         probe::AddressPolicy,
-        scheduler::{Probing, attempt::Context, tick::Scheduler},
+        scheduler::{
+            Probing,
+            attempt::Context,
+            tick::{Limits, Scheduler},
+        },
     },
     credentials::Vault,
     events::Bus,
@@ -34,10 +39,16 @@ pub fn device(text: &str) -> DeviceId {
     text.parse().unwrap()
 }
 
-pub fn vault() -> Vault {
+/// A vault whose key is 32 bytes of `byte`.
+pub fn vault_with(byte: u8) -> Vault {
     let mut key_file = tempfile::NamedTempFile::new().unwrap();
-    writeln!(key_file, "{}", STANDARD.encode([7u8; 32])).unwrap();
+    writeln!(key_file, "{}", STANDARD.encode([byte; 32])).unwrap();
     Vault::from_key_file(key_file.path()).unwrap()
+}
+
+/// The vault the test schedulers use.
+pub fn vault() -> Vault {
+    vault_with(7)
 }
 
 pub fn rng() -> StdRng {
@@ -55,7 +66,13 @@ pub fn scheduler_with(pool: &PgPool, bus: &Bus, policy: AddressPolicy) -> Schedu
         bus: bus.clone(),
         probing,
     };
-    Scheduler::new(ctx, 32)
+    Scheduler::new(
+        ctx,
+        Limits {
+            probes: 32,
+            due: 256,
+        },
+    )
 }
 
 /// A scheduler whose probes may reach the local listeners.
@@ -63,8 +80,8 @@ pub fn scheduler(pool: &PgPool, bus: &Bus) -> Scheduler {
     scheduler_with(pool, bus, AddressPolicy::default().allowing_loopback())
 }
 
-/// A scheduler that reaches the local listeners and runs at most `concurrency` probes.
-pub fn limited(pool: &PgPool, concurrency: usize) -> Scheduler {
+/// A scheduler that reaches the local listeners within these limits.
+pub fn limited(pool: &PgPool, limits: Limits) -> Scheduler {
     let ctx = Context {
         db: pool.clone(),
         bus: Bus::new(16),
@@ -73,7 +90,7 @@ pub fn limited(pool: &PgPool, concurrency: usize) -> Scheduler {
             policy: AddressPolicy::default().allowing_loopback(),
         },
     };
-    Scheduler::new(ctx, concurrency)
+    Scheduler::new(ctx, limits)
 }
 
 /// The database clock, truncated to the second: the partition functions accept only
@@ -113,15 +130,23 @@ pub fn tcp(port: u16) -> Definition {
     })
 }
 
-/// Adds a check; its first due time is unset.
-pub async fn add(pool: &PgPool, device: DeviceId, definition: Definition, retries: u8) -> CheckId {
-    let new = NewCheck {
+/// A check named `name` with [`settings`] and no group.
+pub fn new_check(device: DeviceId, name: &str, definition: Definition, retries: u8) -> NewCheck {
+    NewCheck {
         device,
         parent: None,
-        name: "Service port".to_owned(),
+        name: name.to_owned(),
         definition,
         settings: settings(retries),
-    };
+    }
+}
+
+/// Adds a check named "Service port"; its first due time is unset.
+pub async fn add(pool: &PgPool, device: DeviceId, definition: Definition, retries: u8) -> CheckId {
+    add_check(pool, new_check(device, "Service port", definition, retries)).await
+}
+
+pub async fn add_check(pool: &PgPool, new: NewCheck) -> CheckId {
     let mut conn = pool.acquire().await.unwrap();
     checks::create_check(&mut conn, &vault(), new)
         .await
@@ -196,17 +221,49 @@ impl Listener {
         self.accepted.load(Ordering::SeqCst)
     }
 
-    /// A TLS check: the handshake never completes, so the attempt stays in flight for 1 s.
+    /// Waits until `count` connections were accepted; panics after 5 seconds.
+    pub async fn wait_for(&self, count: usize) {
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(5);
+        while self.accepted() < count {
+            assert!(
+                tokio::time::Instant::now() < deadline,
+                "{} accepted",
+                self.accepted()
+            );
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    }
+
+    /// A TLS check: the handshake never completes, so the attempt stays in flight for 2 s.
     pub fn silent_tls(&self) -> Definition {
         Definition::Config(CheckConfig::Tls {
             port: self.port,
             server_name: None,
-            timeout_ms: 1000,
+            timeout_ms: 2000,
         })
     }
 }
 
-/// Lets the attempts in flight reach the listener.
+/// Gives an attempt that should not start the time to reach the listener.
 pub async fn settle_briefly() {
-    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    tokio::time::sleep(Duration::from_millis(300)).await;
+}
+
+/// Makes every event write fail until [`allow_event_writes`].
+pub async fn fail_event_writes(pool: &PgPool) {
+    for sql in [
+        "CREATE FUNCTION events.refuse() RETURNS trigger LANGUAGE plpgsql AS \
+         $$ BEGIN RAISE EXCEPTION 'refused'; END $$",
+        "CREATE TRIGGER refuse BEFORE INSERT ON events.event_log \
+         FOR EACH ROW EXECUTE FUNCTION events.refuse()",
+    ] {
+        sqlx::query(sql).execute(pool).await.unwrap();
+    }
+}
+
+pub async fn allow_event_writes(pool: &PgPool) {
+    sqlx::query("DROP TRIGGER refuse ON events.event_log")
+        .execute(pool)
+        .await
+        .unwrap();
 }

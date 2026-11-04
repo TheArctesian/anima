@@ -1,6 +1,6 @@
-//! The scheduler's decisions: when a check first runs, when it is late, what a missed push
-//! means and how a status change is reported (CHK-001, CHK-002, CHK-010). Pure: time and
-//! randomness come in as parameters.
+//! The scheduler's decisions: when a check runs first, when it is late, when the daily jobs
+//! run and how a status change is reported (CHK-001, CHK-002, CHK-010, DB-005). Pure: time
+//! and randomness come in as parameters.
 
 use std::collections::HashSet;
 
@@ -8,21 +8,33 @@ use chrono::{DateTime, TimeDelta, Utc};
 use rand::Rng;
 
 use crate::{
-    checks::{config::CheckConfig, model::Due, probe::ProbeResult},
+    checks::{
+        config::CheckConfig,
+        model::Due,
+        probe::{Failure, ProbeResult},
+    },
     events::Severity,
     ids::CheckId,
     status::Status,
 };
 
-fn interval(due: &Due) -> TimeDelta {
-    TimeDelta::seconds(i64::from(due.settings.interval_seconds.max(1)))
+const DAY: TimeDelta = TimeDelta::hours(24);
+const HOUR: TimeDelta = TimeDelta::hours(1);
+
+fn interval(seconds: u32) -> TimeDelta {
+    TimeDelta::seconds(i64::from(seconds.max(1)))
 }
 
-/// When a check with no due time runs first. A probed check gets a uniform instant in
-/// `[now, now + interval)`, so a hub restart does not probe every check at once (CHK-001).
-/// A PUSH check waits its whole interval: its device has had no chance to call yet.
+/// Whether the check gets a new, spread due time instead of running: it has none, or it was
+/// due before the scheduler started, so a hub restart does not probe everything at once.
+pub(super) fn needs_spreading(due: &Due, started_at: DateTime<Utc>) -> bool {
+    due.state.next_due_at.is_none_or(|at| at < started_at)
+}
+
+/// The spread due time. A probed check gets a uniform instant in `[now, now + interval)`
+/// (CHK-001). A PUSH check waits its whole interval: its device has had no chance to call.
 pub(super) fn first_due(due: &Due, now: DateTime<Utc>, rng: &mut impl Rng) -> DateTime<Utc> {
-    let interval = interval(due);
+    let interval = interval(due.settings.interval_seconds);
     if matches!(due.config, Some(CheckConfig::Push)) {
         return now + interval;
     }
@@ -30,12 +42,29 @@ pub(super) fn first_due(due: &Due, now: DateTime<Utc>, rng: &mut impl Rng) -> Da
     now + TimeDelta::milliseconds(rng.random_range(0..millis))
 }
 
-/// Whether the check's due time is more than 2 intervals before `now` (CHK-010). The caller
-/// passes checks that are not paused.
-pub(super) fn is_late(due: &Due, now: DateTime<Utc>) -> bool {
-    due.state
+/// When a check is due and how often it runs, for the lateness rule.
+#[derive(Clone, Copy, Debug)]
+pub(super) struct Timing {
+    pub(super) next_due_at: Option<DateTime<Utc>>,
+    pub(super) interval_seconds: u32,
+}
+
+impl From<&Due> for Timing {
+    fn from(due: &Due) -> Self {
+        Self {
+            next_due_at: due.state.next_due_at,
+            interval_seconds: due.settings.interval_seconds,
+        }
+    }
+}
+
+/// Whether a check that is not paused is late by more than 2 intervals at `now` (CHK-010).
+/// Lateness counts from the due time, or from `started_at` when the check was due before the
+/// scheduler started, so the downtime of the hub itself is not reported.
+pub(super) fn is_late(timing: Timing, started_at: DateTime<Utc>, now: DateTime<Utc>) -> bool {
+    timing
         .next_due_at
-        .is_some_and(|at| at < now - interval(due) * 2)
+        .is_some_and(|at| at.max(started_at) < now - interval(timing.interval_seconds) * 2)
 }
 
 /// The late checks already reported, so each lateness episode gives one event (CHK-010).
@@ -46,31 +75,37 @@ pub(super) struct Watchdog {
 
 impl Watchdog {
     /// Whether to report the check as late now: true once for each lateness episode.
-    pub(super) fn should_report(&mut self, due: &Due, now: DateTime<Utc>) -> bool {
-        is_late(due, now) && self.reported.insert(due.id)
+    pub(super) fn should_report(&mut self, check: CheckId, late: bool) -> bool {
+        late && self.reported.insert(check)
     }
 
-    /// The check ran, or its report was not written: its next lateness is reported again.
+    /// The check ran on time again, or its report was not written: its next lateness is
+    /// reported again.
     pub(super) fn clear(&mut self, check: CheckId) {
         self.reported.remove(&check);
     }
+
+    /// Forgets the checks that are not in `kept`.
+    pub(super) fn retain(&mut self, kept: &HashSet<CheckId>) {
+        self.reported.retain(|check| kept.contains(check));
+    }
 }
 
-/// A failed result with a fixed message, for a check that was not probed.
-pub(super) fn failed(message: &str) -> ProbeResult {
-    ProbeResult {
-        ok: false,
-        response_time: None,
-        message: Some(message.to_owned()),
-        resolved_ip: None,
-        cert_not_after: None,
-    }
+/// Whether the daily jobs run at `now`: never run, due, or the clock went back more than a
+/// day since they were scheduled (DB-005, CQ-021).
+pub(super) fn daily_due(next_daily: Option<DateTime<Utc>>, now: DateTime<Utc>) -> bool {
+    next_daily.is_none_or(|at| now >= at || now < at - DAY)
+}
+
+/// When the daily jobs run next: a day after a full success, an hour after any failure.
+pub(super) fn next_daily(succeeded: bool, now: DateTime<Utc>) -> DateTime<Utc> {
+    now + if succeeded { DAY } else { HOUR }
 }
 
 /// A due PUSH check got no push within its interval: a failed attempt, so retries apply
 /// through `evaluate` (CHK-002).
 pub(super) fn missed_push() -> ProbeResult {
-    failed("no push received")
+    ProbeResult::failed(&Failure::NoPush)
 }
 
 /// The severity of the event for a device that changed to `status`.
