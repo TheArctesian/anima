@@ -1,5 +1,6 @@
-//! A credential that cannot be parsed is refused without quoting it, in the response or in
-//! the process log (LOG-007, API-010).
+//! What the credential mutations let out: a credential that cannot be parsed is refused
+//! without quoting it, in the response or in the process log, and missing wiring shows only
+//! `INTERNAL` (LOG-007, API-010).
 
 use std::{
     future::Future,
@@ -7,14 +8,18 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use anima_hub::events::process_log::subscriber;
-use async_graphql::{Request, Variables};
+use anima_hub::{
+    clock::{Clock, FixedClock},
+    devices::graphql::{Mutation, Query},
+    events::{Bus, process_log::subscriber},
+};
+use async_graphql::{EmptySubscription, Request, Schema, Variables};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
 use super::{
     credential::{PVE_01, SET},
-    harness::{error_json, hardened_schema, signed_in},
+    harness::{error_json, hardened_schema, now, signed_in},
 };
 
 #[derive(Clone, Default)]
@@ -114,19 +119,51 @@ async fn log_007_a_credential_that_does_not_parse_is_refused_without_quoting_it(
     for (index, (request, secret)) in malformed().into_iter().enumerate() {
         let (log, response) = captured(|| schema.execute(request)).await;
         let error = error_json(&response);
+        let body = secret.trim_start_matches("-----BEGIN OPENSSH PRIVATE KEY-----");
+        let debug = format!("{:?}", response.errors);
+        let message = response.errors[0].message.clone();
+        assert_absent(body, &[&error.to_string(), &debug, &message, &log]);
         assert_eq!(error["extensions"]["code"], "VALIDATION", "request {index}");
         assert_eq!(
             error["extensions"]["fields"][0]["field"], "credential",
             "request {index}"
         );
-        let body = secret.trim_start_matches("-----BEGIN OPENSSH PRIVATE KEY-----");
-        let debug = format!("{:?}", response.errors);
-        let message = response.errors[0].message.clone();
-        assert_absent(body, &[&error.to_string(), &debug, &message, &log]);
     }
-    let stored: i64 = sqlx::query_scalar("SELECT count(*) FROM credentials.secrets")
-        .fetch_one(&pool)
+    assert_eq!(secret_rows(&pool).await, 0);
+}
+
+async fn secret_rows(pool: &PgPool) -> i64 {
+    sqlx::query_scalar("SELECT count(*) FROM credentials.secrets")
+        .fetch_one(pool)
         .await
-        .unwrap();
-    assert_eq!(stored, 0);
+        .unwrap()
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn api_010_without_the_vault_or_the_credential_loader_the_operator_gets_internal(
+    pool: PgPool,
+) {
+    // Everything the mutation and the field need except the vault and the loader.
+    let (bus, clock) = (Bus::new(4), Arc::new(FixedClock(now())) as Arc<dyn Clock>);
+    let schema = Schema::build(Query, Mutation, EmptySubscription)
+        .data(pool.clone())
+        .data(bus)
+        .data(clock)
+        .finish();
+    let set = signed_in(SET).variables(variables(&json!({ "password": "a-password" })));
+    let read = signed_in(&format!(
+        r#"{{ device(id: "{PVE_01}") {{ ssh {{ credentialStored }} }} }}"#
+    ));
+    for request in [set, read] {
+        let error = error_json(&schema.execute(request).await);
+        assert_eq!(error["extensions"]["code"], "INTERNAL", "{error}");
+        let text = error.to_string();
+        for leak in ["Vault", "DataLoader", "CredentialStored", "Data `"] {
+            assert!(!text.contains(leak), "{text}");
+        }
+    }
+    assert_eq!(secret_rows(&pool).await, 0);
 }
