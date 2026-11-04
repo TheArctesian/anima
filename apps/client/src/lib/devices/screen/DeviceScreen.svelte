@@ -9,7 +9,7 @@
   import { Tags } from '../toolbar/tags.svelte';
   import { isFiltered, withoutFilters } from '../toolbar/toolbar';
   import { Listing } from './listing.svelte';
-  import { browserClock, type LoadingClock } from './loading';
+  import { browserClock, type LoadingClock } from './loading/loading';
   import Skeleton from './Skeleton.svelte';
 
   interface Props {

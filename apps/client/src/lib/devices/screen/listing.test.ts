@@ -1,6 +1,6 @@
 import { afterEach, expect, it } from 'vitest';
 import { DEFAULT_QUERY } from '../query';
-import { manualClock } from './clock.fixture';
+import { manualClock } from './loading/clock.fixture';
 import { heldHub } from './held.fixture';
 import { Listing } from './listing.svelte';
 import { device } from './screen.fixture.svelte';

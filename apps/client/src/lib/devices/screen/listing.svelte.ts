@@ -6,7 +6,7 @@ import { appendPage, applyStatus, fromPage, type DeviceList } from '../list';
 import { DEFAULT_QUERY, listVariables, type ListQuery } from '../query';
 import { coalesced } from '../live/coalesce';
 import { watchLive } from '../live/live';
-import { browserClock, skeletonGate, type LoadingClock, type SkeletonGate } from './loading';
+import { browserClock, skeletonGate, type LoadingClock, type SkeletonGate } from './loading/loading';
 
 /**
  * The devices the page shows and the hub calls behind them: the loaded list, the beats of each device,

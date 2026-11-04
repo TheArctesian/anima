@@ -4,7 +4,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { threshold } from '$lib/motion/tokens';
 import { fakeHub } from '../hub.fixture';
 import { DEFAULT_QUERY } from '../query';
-import { manualClock } from './clock.fixture';
+import { manualClock } from './loading/clock.fixture';
 import DeviceScreen from './DeviceScreen.svelte';
 import { device, devicesAnswer } from './screen.fixture.svelte';
 import { endTransitionsAtOnce } from '../transitions.fixture';
