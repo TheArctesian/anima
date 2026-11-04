@@ -3,8 +3,11 @@
 mod model;
 mod page;
 mod rules;
+mod store;
 #[cfg(test)]
 mod tests;
+
+use sqlx::PgPool;
 
 use crate::ids::{DeviceId, SiteId};
 
@@ -45,4 +48,28 @@ fn field_names(errors: &[FieldError]) -> String {
         .map(|error| error.field)
         .collect::<Vec<_>>()
         .join(", ")
+}
+
+/// The device with this id, with its tags and SSH settings.
+///
+/// # Errors
+/// `NotFound` when there is no such device.
+pub async fn get(db: &PgPool, id: DeviceId) -> Result<Device, Error> {
+    store::get(db, id).await
+}
+
+/// Every device, in byte order of the name.
+///
+/// # Errors
+/// `Database` when the query fails.
+pub async fn list(db: &PgPool) -> Result<Vec<Device>, Error> {
+    store::all(db).await
+}
+
+/// Whether the device is in maintenance.
+///
+/// # Errors
+/// `NotFound` when there is no such device.
+pub async fn in_maintenance(db: &PgPool, id: DeviceId) -> Result<bool, Error> {
+    store::in_maintenance(db, id).await
 }

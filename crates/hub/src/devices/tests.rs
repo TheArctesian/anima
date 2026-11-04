@@ -1,6 +1,21 @@
+/// Wraps each async test in a throwaway database holding the K6 rows from
+/// `tests/fixtures/devices.sql`. These tests live in the crate because they call the
+/// store's `pub(super)` functions.
+macro_rules! store_test {
+    ($(async fn $name:ident($pool:ident: PgPool) $body:block)+) => {$(
+        #[sqlx::test(
+            migrations = "./migrations",
+            fixtures(path = "../../../tests/fixtures", scripts("devices"))
+        )]
+        async fn $name($pool: sqlx::PgPool) $body
+    )+};
+}
+
 mod host;
 mod page;
 mod rules;
+mod store_read;
+mod store_write;
 
 use super::model::*;
 use super::page::*;
@@ -91,4 +106,34 @@ fn k7_validation_error_names_fields_never_values() {
         FieldError::new("ssh.port", "secret-ish 70000"),
     ]);
     assert_eq!(error.to_string(), "input is not valid: name, ssh.port");
+}
+
+const PVE_01: &str = "0190a000-0000-7000-8002-000000000001";
+const JELLYFIN: &str = "0190a000-0000-7000-8002-000000000006";
+const OFFICE_1: &str = "0190a000-0000-7000-8001-000000000002";
+const OFFICE_2: &str = "0190a000-0000-7000-8001-000000000003";
+
+fn instant(text: &str) -> chrono::DateTime<chrono::Utc> {
+    text.parse().unwrap()
+}
+
+fn device_id(text: &str) -> crate::ids::DeviceId {
+    text.parse().unwrap()
+}
+
+fn site_id(text: &str) -> SiteId {
+    text.parse().unwrap()
+}
+
+/// A valid device record for the home site.
+fn record(name: &str) -> NewDevice {
+    NewDevice {
+        site: home(),
+        name: name.into(),
+        host: format!("{name}.home.lan"),
+        kind: "Test box".into(),
+        os: OperatingSystem::Linux,
+        tags: vec![],
+        ssh: SshSettings::default(),
+    }
 }
