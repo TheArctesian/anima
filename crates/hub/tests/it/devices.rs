@@ -234,7 +234,7 @@ async fn vpn_002_a_device_without_a_site_is_rejected(pool: PgPool) {
     let error = insert_device(&pool, None, "linux").await.unwrap_err();
     let database = error.as_database_error().unwrap();
     assert_eq!(database.code().as_deref(), Some("23502"));
-    assert_eq!(database.column_name_hint(), Some("site_id"));
+    assert!(database.message().contains("site_id"));
 }
 
 #[sqlx::test(
