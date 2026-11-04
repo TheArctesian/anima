@@ -4,48 +4,18 @@
     reason = "async-graphql resolvers must be async"
 )]
 
-use std::{
-    io,
-    sync::{Arc, Mutex},
-};
-
 use async_graphql::{
     EmptyMutation, EmptySubscription, Error as GraphqlError, ErrorExtensions, Object, Request,
     Response, Schema, Subscription, Variables,
     futures_util::{Stream, StreamExt, stream},
     value,
 };
-use serde_json::Value;
 
+mod capture;
+
+use self::capture::{Capture, capture_log};
 use super::{Error, subscriber};
 use crate::schema::harden;
-
-#[derive(Clone, Default)]
-struct Capture(Arc<Mutex<Vec<u8>>>);
-
-impl io::Write for Capture {
-    fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
-        self.0.lock().unwrap().extend_from_slice(bytes);
-        Ok(bytes.len())
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
-}
-
-impl Capture {
-    fn text(&self) -> String {
-        String::from_utf8(self.0.lock().unwrap().clone()).unwrap()
-    }
-
-    fn lines(&self) -> Vec<Value> {
-        self.text()
-            .lines()
-            .map(|line| serde_json::from_str(line).unwrap())
-            .collect()
-    }
-}
 
 struct Node;
 
@@ -99,17 +69,6 @@ impl Query {
         tracing::info!("login attempted");
         Ok(password.is_empty())
     }
-}
-
-/// Routes this thread's log to a buffer. Rebuilding the callsite cache stops another test
-/// thread's earlier registration from hiding the spans and events of this one.
-fn capture_log(filter: &str) -> (Capture, tracing::subscriber::DefaultGuard) {
-    let capture = Capture::default();
-    let writer = capture.clone();
-    let log = subscriber(filter, move || writer.clone()).unwrap();
-    let guard = tracing::subscriber::set_default(log);
-    tracing::callsite::rebuild_interest_cache();
-    (capture, guard)
 }
 
 type TestSchema = Schema<Query, EmptyMutation, EmptySubscription>;
