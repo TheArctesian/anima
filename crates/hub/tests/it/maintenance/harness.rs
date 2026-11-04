@@ -6,6 +6,7 @@ use std::sync::{
 };
 
 use anima_hub::{
+    access::Identity,
     clock::{Clock, FixedClock},
     events::{Bus, ClientAddr, Operator},
     ids::OperatorId,
@@ -67,11 +68,12 @@ pub fn schema_for(pool: &PgPool) -> TestSchema {
 
 /// A request from the K6 operator at `CLIENT_ADDR`.
 pub fn signed_in(query: &str) -> Request {
-    Request::new(query)
-        .data(Operator {
-            id: OPERATOR_ID.parse::<OperatorId>().unwrap(),
-            name: "operator".to_owned(),
-        })
+    let operator = Operator {
+        id: OPERATOR_ID.parse::<OperatorId>().unwrap(),
+        name: "operator".to_owned(),
+    };
+    Identity::for_tests(operator, now() + TimeDelta::days(3650))
+        .attach(Request::new(query))
         .data(ClientAddr(CLIENT_ADDR.parse().unwrap()))
 }
 

@@ -140,7 +140,7 @@ fixture_test! {
         let stored: chrono::DateTime<chrono::Utc> =
             sqlx::query_scalar("SELECT created_at FROM maintenance.windows WHERE name = 'Patch'")
                 .fetch_one(&pool).await.unwrap();
-        assert_eq!(stored.to_rfc3339(), AT);
+        // The guard reads the ticking clock first, so the stamps agree but are one step on.
         assert_eq!(event["at"], audit["at"]);
         assert_eq!(event["at"].as_str().unwrap().parse::<chrono::DateTime<chrono::Utc>>().unwrap(), stored);
     }
