@@ -39,9 +39,19 @@ const bad: Record<string, string> = {
   'a raw font family in a custom property': 'a { --f: Roboto; }',
   'a raw colour in a custom property': 'a { --c: #abc; }',
   'a raw easing curve in a custom property': 'a { --e: cubic-bezier(0, 0, 1, 1); }',
+  'an upper-case 0.2S duration in transition': 'a { transition: opacity 0.2S var(--ease); }',
+  'an upper-case EASE keyword in transition': 'a { transition: opacity var(--d) EASE; }',
 };
 
 const expectedRule: Record<string, string> = {
+  'a raw border colour': 'color-no-hex',
+  'a raw ease keyword in the animation shorthand': 'declaration-property-value-disallowed-list',
+  'a quoted family with line-height in the font shorthand': 'declaration-property-value-allowed-list',
+  'an unlisted family in font-family': 'declaration-property-value-allowed-list',
+  'a raw colour in a custom property': 'color-no-hex',
+  'a raw easing curve in a custom property': 'function-disallowed-list',
+  'an upper-case 0.2S duration in transition': 'declaration-property-value-disallowed-list',
+  'an upper-case EASE keyword in transition': 'declaration-property-value-disallowed-list',
   'a raw hex colour': 'color-no-hex',
   'a raw named colour': 'color-named',
   'a raw rgb() colour': 'function-disallowed-list',
@@ -95,6 +105,17 @@ describe('Stylelint token gate', () => {
 }`;
     expect(await warnings(css)).toEqual([]);
     expect(await warnings(inSvelte(css), svelteFile)).toEqual([]);
+  });
+
+  it('TOK-003 accepts one level of nested var() fallback in font and font-family', async () => {
+    const css = 'a { font: 1rem var(--font-body, var(--font-fallback)); font-family: var(--font-body, var(--font-fallback)); }';
+    expect(await warnings(css)).toEqual([]);
+  });
+
+  it('TOK-003 refuses calc() around var() in z-index on purpose: offsets come from tokens', async () => {
+    expect(await warnings('a { z-index: calc(var(--z-base) + 1); }')).toContain(
+      'scale-unlimited/declaration-strict-value',
+    );
   });
 
   it('TOK-003 accepts raw values in the generated tokens.css', async () => {
