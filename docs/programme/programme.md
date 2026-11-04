@@ -31,12 +31,12 @@ The operator approved all seven contracts on 2026-11-03 (checkpoint 1). Only a r
 | WP-08 guac-protocol | 1 | Accepted, merged into `phase-1` (c19ad06) | own worktree from `phase-1` | `wp-08-guac` |
 | WP-09 Checks and maintenance | 2 | Building (starts on the WP-05 interface already on `phase-1`) | `claude/wp-09-checks` | `wp-07-credentials` session, reused (R-027) |
 | WP-10 Sessions | 2 | Accepted, merged at 1f75518 (12/12). Wiring (and WP-06 H-2 schema wiring) on `claude/wp-10-wiring`; `/tunnel` mount waits for WP-05 T4 | `claude/wp-10-sessions` | `wp-08-guac` session, reused |
-| WP-11 Client shell | 2 | Building | own worktree from `phase-1` | `wp-11-client-shell` |
-| WP-12 Devices page | 3 | Waiting (WP-11) | — | — |
-| WP-13 Detail and form | 3 | Waiting (WP-11) | — | — |
-| WP-14 SSH tab | 3 | Waiting (WP-11, K4) | — | — |
-| WP-15 Settings page | 3 | Waiting (WP-11) | — | — |
-| WP-16 Tauri shell | 3 | Waiting (WP-11) | — | — |
+| WP-11 Client shell | 2 | Accepted, merged at bb575fd | own worktree from `phase-1` | `wp-11-client-shell` |
+| WP-12 Devices page | 3 | Ready (WP-11 merged) | — | — |
+| WP-13 Detail and form | 3 | Ready (WP-11 merged) | — | — |
+| WP-14 SSH tab | 3 | Ready (WP-11 merged) | — | — |
+| WP-15 Settings page | 3 | Ready (WP-11 merged) | — | — |
+| WP-16 Tauri shell | 3 | Ready (WP-11 merged) | — | — |
 | WP-17 Integration and acceptance | 4 | Waiting (all) | — | — |
 
 Integration branch: `phase-1`. Merge to `main` only after operator checkpoint 4.
@@ -94,6 +94,7 @@ Integration branch: `phase-1`. Merge to `main` only after operator checkpoint 4.
 - **R-039 (from WP-10 E-13).** `crates/hub` may depend on `tungstenite` directly, pinned to the version axum 0.8 already resolves (no new crate in the lockfile), so the tunnel can downcast `axum::Error` and end an oversize or non-UTF-8 client frame with `PROTOCOL_ERROR` (1002), as K4 §5 says. A test proves each case.
 - **R-040 (from WP-10 E-14; changes K3).** `sessions::shut_down(db, live, now)` replaces the `live.shut_down()` wiring of R-032 E-4 and is the only public shutdown; `close_stale` audits each row it ends (LOG-005). Migration `0601_sessions_end_once` refuses changes to ended session rows and revokes DELETE on `sessions.host_keys` from `anima_runtime`. `/tunnel` is mounted only behind `access::permitted_networks_layer` (NET-002), so the WP-10 wiring waits for WP-05 T4 on phase-1.
 - **R-041 (from WP-10 E-15; changes K3).** `sessions::open(db, now) -> (Live, u64)` is the start-up face (stale rows ended, then the `Live` returned); `close_stale` stays. tokio `signal` (adds `signal-hook-registry` 1.4.8) accepted. Root GraphQL parts are named `<Domain>Query`/`<Domain>Mutation`; `lib.rs` exports `serve_until`, `Shutdown`, `DRAIN_LIMIT` (10 s) as wiring only. Loader batch window stays 1 ms.
+- **R-042 (from WP-11 H-8).** `fonts.css` uses `font-display: block`. The fonts are bundled and local, so the block period is short, and it removes the first-paint swap shift on every page (MOT-007). WP-12 and WP-15 still reserve page heading height.
 
 ## Escalations
 

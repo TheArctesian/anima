@@ -9,7 +9,7 @@
   src: url("./fonts/OpenDyslexicNerdFontPropo-Regular.otf") format("opentype");
   font-weight: 400;
   font-style: normal;
-  font-display: swap;
+  font-display: block;   /* bundled local fonts: no first-paint swap shift (MOT-007, R-042) */
 }
 
 @font-face {
@@ -17,7 +17,7 @@
   src: url("./fonts/OpenDyslexicNerdFontPropo-Bold.otf") format("opentype");
   font-weight: 700;
   font-style: normal;
-  font-display: swap;
+  font-display: block;   /* bundled local fonts: no first-paint swap shift (MOT-007, R-042) */
 }
 
 @font-face {
@@ -25,7 +25,7 @@
   src: url("./fonts/OpenDyslexicNerdFontPropo-Italic.otf") format("opentype");
   font-weight: 400;
   font-style: italic;
-  font-display: swap;
+  font-display: block;   /* bundled local fonts: no first-paint swap shift (MOT-007, R-042) */
 }
 
 @font-face {
@@ -33,7 +33,7 @@
   src: url("./fonts/OpenDyslexicNerdFontPropo-BoldItalic.otf") format("opentype");
   font-weight: 700;
   font-style: italic;
-  font-display: swap;
+  font-display: block;   /* bundled local fonts: no first-paint swap shift (MOT-007, R-042) */
 }
 
 @font-face {
@@ -41,7 +41,7 @@
   src: url("./fonts/OpenDyslexicMNerdFontMono-Regular.otf") format("opentype");
   font-weight: 400;
   font-style: normal;
-  font-display: swap;
+  font-display: block;   /* bundled local fonts: no first-paint swap shift (MOT-007, R-042) */
 }
 
 @font-face {
@@ -49,5 +49,5 @@
   src: url("./fonts/SymbolsNerdFont-Regular.ttf") format("truetype");
   font-weight: 400;
   font-style: normal;
-  font-display: swap;
+  font-display: block;   /* bundled local fonts: no first-paint swap shift (MOT-007, R-042) */
 }
