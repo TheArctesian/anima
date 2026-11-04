@@ -25,7 +25,8 @@ export function gateList(baseRef: string): Gate[] {
   return [
     { name: "fmt", argv: ["cargo", "fmt", "--check"] },
     { name: "clippy", argv: ["cargo", "clippy", "--all-targets", "--", "-D", "warnings"] },
-    { name: "cargo-test", argv: ["cargo", "test"] },
+    // Rust tests run against a throwaway PostgreSQL unless DATABASE_URL is set (R-009).
+    { name: "cargo-test", argv: ["bun", "quality/bin/with-postgres.ts", "cargo", "test"] },
     { name: "install", argv: ["bun", "install", "--frozen-lockfile"] },
     { name: "lint", argv: ["bun", "run", "lint"] },
     { name: "check", argv: ["bun", "run", "check"] },

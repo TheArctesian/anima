@@ -56,6 +56,8 @@ Integration branch: `phase-1`. Merge to `main` only after operator checkpoint 4.
 
 - **R-008 (operator, 2026-11-03).** Use the domain `anima.ing` (DNS on Cloudflare) as in spec Section 4.2.1: `hs.anima.ing` for Headscale, a public `hub.anima.ing` record that points to the hub's VPN address, `updates.anima.ing` as a redirect to the GitHub release feed, and VPN-only names under `net.anima.ing`. The hub gets a Let's Encrypt certificate by DNS-01. WP-03 owns the DNS records and the Headscale names; WP-04 owns the hub certificate (stage A) and the update redirect (stage B). Every Cloudflare change needs the operator's confirmation in chat (DNS-008); agents prepare the records in `deploy/dns/` and do not apply them.
 
+- **R-009 (Wave 1, from WP-07).** Database tests always run in `bun run gates`. The `cargo-test` gate starts a throwaway PostgreSQL 17 on a Unix socket and sets `DATABASE_URL` (`quality/bin/with-postgres.ts`); a set `DATABASE_URL` is used as is. A missing PostgreSQL fails the gate. Tests must not skip when no database is present (CQ-024). A domain's tests must not create tables in another domain's schema, not even a stub (CQ-032): a store whose migration has a foreign key into a domain that is not on `phase-1` yet waits until that domain's migration lands. WP-06 delivers its `devices` migration first so that WP-07 (and later WP-09, WP-10) can build on it.
+
 ## Escalations
 
 None open.
