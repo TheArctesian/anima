@@ -5,6 +5,7 @@ mod config;
 mod dns;
 mod http;
 mod icmp;
+mod proxy;
 mod reach;
 mod secrets;
 mod support;
