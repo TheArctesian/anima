@@ -3,6 +3,7 @@
 
 mod bus;
 mod model;
+pub mod process_log;
 mod redaction;
 mod store;
 #[cfg(test)]

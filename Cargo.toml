@@ -16,6 +16,8 @@ tokio = { version = "1.54", features = ["macros", "rt-multi-thread", "net", "syn
 tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"
 thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", default-features = false, features = ["std", "fmt", "json", "env-filter", "registry"] }
 uuid = { version = "1", features = ["v7", "serde"] }
 serde = { version = "1", features = ["derive"] }
 sqlx = { version = "0.8", default-features = false, features = ["derive", "postgres", "uuid", "runtime-tokio", "macros", "migrate", "chrono", "json", "ipnet"] }
