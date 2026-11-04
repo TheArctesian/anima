@@ -7,7 +7,7 @@
     "dev": "vite dev",
     "build": "vite build",
     "graphql": "bun codegen.ts",
-    "lint": "eslint . --ignore-pattern 'src/lib/hub/generated/**' && stylelint \"src/**/*.{css,svelte}\" && bun codegen.ts --check",
+    "lint": "eslint . && stylelint \"src/**/*.{css,svelte}\" && bun codegen.ts --check",
     "check": "svelte-kit sync && svelte-check --fail-on-warnings",
     "test": "vitest run"
   },
