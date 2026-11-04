@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use super::{
     AuditAction, AuditTarget, Bus, ClientAddr, EventSummary, NewAudit, NewEvent, Operator,
-    Severity, Signal, Source, audit, record, redaction::redact,
+    Severity, Signal, Source, audit, record,
 };
 use crate::ids::{DeviceId, EventId, OperatorId};
 
@@ -243,45 +243,6 @@ async fn log_007_audit_stores_secret_values_redacted(pool: PgPool) {
         stored,
         json!({ "ssh": { "username": "admin", "password": "[redacted]" } })
     );
-}
-
-#[test]
-fn log_007_redaction_replaces_secret_keys_at_any_depth_and_inside_arrays() {
-    let change = json!({
-        "Password": "a",
-        "name": "lab-router",
-        "ssh": { "PRIVATE_KEY": "b", "privateKey": "c", "passphrase": "d", "port": 22 },
-        "steps": [{ "totpCode": "123456" }, { "totp_code": "654321" }, [{ "Token": "e" }]],
-        "apiSecret": { "nested": "f" },
-        "newPassword": "g",
-    });
-
-    assert_eq!(
-        redact(change),
-        json!({
-            "Password": "[redacted]",
-            "name": "lab-router",
-            "ssh": {
-                "PRIVATE_KEY": "[redacted]",
-                "privateKey": "[redacted]",
-                "passphrase": "[redacted]",
-                "port": 22,
-            },
-            "steps": [
-                { "totpCode": "[redacted]" },
-                { "totp_code": "[redacted]" },
-                [{ "Token": "[redacted]" }],
-            ],
-            "apiSecret": "[redacted]",
-            "newPassword": "[redacted]",
-        })
-    );
-}
-
-#[test]
-fn log_007_redaction_keeps_values_without_secret_keys() {
-    let change = json!(["password", { "username": "admin", "port": 22, "tags": ["token"] }, null]);
-    assert_eq!(redact(change.clone()), change);
 }
 
 #[test]

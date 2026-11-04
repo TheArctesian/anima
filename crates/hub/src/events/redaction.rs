@@ -3,7 +3,7 @@
 use serde_json::Value;
 
 /// The value that replaces a secret.
-pub(super) const REDACTED: &str = "[redacted]";
+const REDACTED: &str = "[redacted]";
 
 /// Key fragments that name a secret, compared after lower-casing and removing `_` and `-`.
 /// A key that contains one (`password`, `newPassword`, `private_key`, `apiToken`) is redacted.
@@ -45,4 +45,51 @@ fn names_secret(key: &str) -> bool {
         .flat_map(char::to_lowercase)
         .collect();
     SECRET_KEY_PARTS.iter().any(|part| key.contains(part))
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::redact;
+
+    #[test]
+    fn log_007_redaction_replaces_secret_keys_at_any_depth_and_inside_arrays() {
+        let change = json!({
+            "Password": "a",
+            "name": "lab-router",
+            "ssh": { "PRIVATE_KEY": "b", "privateKey": "c", "passphrase": "d", "port": 22 },
+            "steps": [{ "totpCode": "123456" }, { "totp_code": "654321" }, [{ "Token": "e" }]],
+            "apiSecret": { "nested": "f" },
+            "newPassword": "g",
+        });
+
+        assert_eq!(
+            redact(change),
+            json!({
+                "Password": "[redacted]",
+                "name": "lab-router",
+                "ssh": {
+                    "PRIVATE_KEY": "[redacted]",
+                    "privateKey": "[redacted]",
+                    "passphrase": "[redacted]",
+                    "port": 22,
+                },
+                "steps": [
+                    { "totpCode": "[redacted]" },
+                    { "totp_code": "[redacted]" },
+                    [{ "Token": "[redacted]" }],
+                ],
+                "apiSecret": "[redacted]",
+                "newPassword": "[redacted]",
+            })
+        );
+    }
+
+    #[test]
+    fn log_007_redaction_keeps_values_without_secret_keys() {
+        let change =
+            json!(["password", { "username": "admin", "port": 22, "tags": ["token"] }, null]);
+        assert_eq!(redact(change.clone()), change);
+    }
 }
