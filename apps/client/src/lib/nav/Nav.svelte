@@ -82,15 +82,18 @@
     transition: background-color var(--duration-press) var(--ease-enter);
   }
 
-  .item:hover {
+  .item:not([aria-current='page']):hover {
     background: var(--surface-raised);
   }
 
-  .item:active {
+  .item:not([aria-current='page']):active {
     background: var(--border);
   }
 
-  /* --accent text on the chrome is 5.0:1 (nord8 on nord1); an accent bar marks the page instead of a tint (NAV-002). */
+  /*
+   * --accent text on the chrome is 5.0:1 (nord8 on nord1); an accent bar marks the page instead of a tint (NAV-002).
+   * The active item gets no hover or press background: on nord2 it would be 4.31:1 and on nord3 3.69:1.
+   */
   .item[aria-current='page'] {
     color: var(--accent);
     box-shadow: inset var(--border-focus) 0 0 var(--accent);
@@ -112,9 +115,15 @@
     border-top: var(--border-thin) solid var(--border);
   }
 
+  /* One line with a height set from tokens, so the font swap cannot move the divider (MOT-007). */
   .status {
+    flex: none;
     margin: 0;
     padding: 0 var(--space-3);
+    block-size: calc(var(--text-sm) * var(--leading-tight));
+    line-height: var(--leading-tight);
+    overflow: hidden;
+    white-space: nowrap;
     color: var(--text);
     font-size: var(--text-sm);
   }
@@ -128,6 +137,7 @@
     background: var(--status-down-tint);
     color: var(--text);
     font-size: var(--text-sm);
+    line-height: var(--leading-tight);
     overflow-wrap: anywhere;
   }
 </style>
