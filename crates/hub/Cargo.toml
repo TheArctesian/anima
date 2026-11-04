@@ -1,0 +1,19 @@
+[package]
+name = "anima-hub"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+async-graphql.workspace = true
+async-graphql-axum.workspace = true
+axum.workspace = true
+tokio.workspace = true
+
+[dev-dependencies]
+http-body-util.workspace = true
+tower.workspace = true
