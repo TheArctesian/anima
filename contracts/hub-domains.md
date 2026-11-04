@@ -77,12 +77,18 @@ impl Bus { pub fn publish(&self, s: Signal); pub fn subscribe(&self) -> tokio::s
 | `events` | — |
 | `credentials` | — |
 | `access` | `events`, `credentials` (Vault only, for TOTP secrets) |
-| `devices` | `events`, `credentials` (`has_ssh` only, for `credentialStored`) |
+| `devices` | `events`, `credentials` (`Vault`, `SshSecret`, `has_ssh`, `store_ssh`, `clear_ssh`; R-010) |
 | `maintenance` | — (pure rules and its own store; callers pass the device, check and tags) |
 | `checks` | `devices`, `maintenance`, `events` |
 | `sessions` | `access`, `devices`, `credentials`, `events` |
 
-`devices` never imports `checks` (that edge would make a cycle). Device deletion relies on foreign keys and the checks retention job instead (see below).
+GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also import these domains' public faces, to resolve K1 fields that join domains. These edges never permit a `store` import and do not count toward cycles. They live in `quality/hub-modules.json` under `graphql`.
+
+| Domain `graphql.rs` | May also import | For |
+| --- | --- | --- |
+| `devices` | `checks`, `sessions` | `Device.status`, `Device.checks`, `Device.uptime`, `DeviceFilter.status`, `DeviceSort.STATUS`/`UPTIME`, `createDevice(addDefaultCheck)`, `SshSettings.hostKey` |
+
+Outside `graphql.rs`, `devices` never imports `checks` (that edge would make a cycle). Device deletion relies on foreign keys and the checks retention job instead (see below).
 
 Any other edge is a contract change.
 
@@ -108,8 +114,10 @@ Delete (DEV-015) is one `DELETE` in `devices`: foreign keys cascade to `device_t
 #[derive(Clone)] pub struct Vault { /* key material, zeroized on drop */ }
 impl Vault {
     pub fn from_key_file(path: &Path) -> Result<Self, Error>;
-    pub fn seal(&self, plaintext: &Secret) -> Sealed;                 // nonce + ciphertext + key_id
-    pub fn open(&self, sealed: &Sealed) -> Result<Secret, Error>;
+    /// `context` is authenticated but not encrypted (AEAD associated data). It binds the
+    /// ciphertext to its row, so a sealed value copied to another row does not open (R-010).
+    pub fn seal(&self, plaintext: &Secret, context: &[u8]) -> Sealed;     // nonce + ciphertext + key_id
+    pub fn open(&self, sealed: &Sealed, context: &[u8]) -> Result<Secret, Error>;
 }
 /// Secret bytes: zeroized on drop; no Debug, Display, Serialize or Clone (LOG-007, SEC-005).
 pub struct Secret(/* zeroize::Zeroizing<Vec<u8>> */);
@@ -118,9 +126,20 @@ pub enum SshSecret { Password(Secret), PrivateKey { key: Secret, passphrase: Opt
 pub async fn store_ssh(conn: &mut PgConnection, vault: &Vault, device: DeviceId, s: SshSecret) -> Result<(), Error>;
 pub async fn load_ssh(db: &Db, vault: &Vault, device: DeviceId) -> Result<Option<SshSecret>, Error>;
 pub async fn has_ssh(db: &Db, device: DeviceId) -> Result<bool, Error>;
+/// Deletes every SSH secret of the device. Returns true if a secret was removed (R-010).
+pub async fn clear_ssh(conn: &mut PgConnection, device: DeviceId) -> Result<bool, Error>;
 ```
 
-`load_ssh` has exactly one caller: `sessions` (and the connection test). The GraphQL API never returns a secret, only `credentialStored: Boolean`.
+Context values (R-010). Each caller uses exactly this byte string, so a value sealed for one row cannot be opened for another:
+
+| Use | `context` |
+| --- | --- |
+| SSH secret (inside `credentials`) | `credentials.secrets:<device_id>:<kind>` |
+| TOTP secret (WP-05) | `access.operators.totp:<operator_id>` |
+
+The GraphQL mutations `setSshCredential` and `clearSshCredential` belong to `devices` (they return `SshSettings`). They call `store_ssh` / `clear_ssh` in the same transaction as the audit entry (`events::audit`), and the audit `change` never contains the secret.
+
+`load_ssh` has exactly one caller: `sessions` (and the connection test, which `sessions` owns). The GraphQL API never returns a secret, only `credentialStored: Boolean`.
 
 ## checks (WP-09)
 
@@ -129,6 +148,16 @@ pub struct HeartbeatSummary { pub at: DateTime<Utc>, pub status: Status, pub res
 pub async fn device_status(db: &Db, device: DeviceId, now: DateTime<Utc>) -> Result<Status, Error>;   // CHK-004
 /// Started by main.rs; owns the scheduler task, the watchdog (CHK-010) and retention (DB-005).
 pub fn spawn_scheduler(db: Db, bus: events::Bus, clock: Clock) -> tokio::task::JoinHandle<()>;
+```
+
+Functions for the devices GraphQL composition (R-011; WP-09 adds them and their use in `devices/graphql.rs`):
+
+```rust
+pub async fn statuses(db: &Db, devices: &[DeviceId], now: DateTime<Utc>) -> Result<HashMap<DeviceId, Status>, Error>;
+pub async fn uptimes(db: &Db, devices: &[DeviceId], window: UptimeWindow, now: DateTime<Utc>) -> Result<HashMap<DeviceId, f64>, Error>;
+pub async fn for_device(db: &Db, device: DeviceId) -> Result<Vec<Check>, Error>;
+/// Adds the default ICMP check in the caller's transaction (spec 6.2).
+pub async fn add_default_check(conn: &mut PgConnection, device: DeviceId) -> Result<CheckId, Error>;
 ```
 
 Check evaluation is pure: `fn evaluate(prev: &CheckState, probe: ProbeResult, cfg: &CheckConfig, now) -> (CheckState, Status)`.
@@ -145,6 +174,8 @@ pub async fn active_for(db: &Db, device: DeviceId, check: Option<CheckId>, tags:
 
 ```rust
 pub async fn start(db: &Db, clock: &Clock, op: &Operator, client: ClientAddr, req: StartRequest) -> Result<Ticket, Error>;
+/// For `SshSettings.hostKey` (R-011; WP-10 adds its use in `devices/graphql.rs`).
+pub async fn host_key(db: &Db, device: DeviceId) -> Result<Option<HostKey>, Error>;
 /// axum route for GET /tunnel (see tunnel.md).
 pub fn tunnel_router(db: Db, vault: credentials::Vault, bus: events::Bus, clock: Clock, guacd: SocketAddr) -> axum::Router;
 ```

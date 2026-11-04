@@ -88,7 +88,7 @@ BASE_REF=my-branch bun run gates   # baseline gate compares against this ref (de
 ```
 
 The gates run in this order and stop at the first failure: `cargo fmt --check`,
-`cargo clippy --all-targets -- -D warnings`, `cargo test`, `bun install --frozen-lockfile`,
+`cargo clippy --all-targets -- -D warnings`, `cargo test` (with a throwaway PostgreSQL 17, R-009), `bun install --frozen-lockfile`,
 `bun run lint`, `bun run check`, `bun run test`, `bun run --cwd apps/client build`,
 `bun run quality:limits`, `bun run quality:names`, `bun run quality:imports`,
 `bun run quality:baseline -- --base $BASE_REF`. See [quality/README.md](quality/README.md).
