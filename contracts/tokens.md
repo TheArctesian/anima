@@ -23,7 +23,7 @@ Components use semantic or component names. Primitive names (`nord-*`) appear on
 | Group | Names |
 | --- | --- |
 | Colour, primitive | `nord-0` … `nord-15` |
-| Colour, semantic | `bg`, `surface`, `surface-raised`, `border`, `text`, `text-muted`, `accent`, `accent-alt`, `accent-deep`, `info`, `status-up`, `status-down`, `status-degraded`, `status-warning`, `status-maintenance`, `status-unknown` |
+| Colour, semantic | `bg`, `surface`, `surface-raised`, `border`, `text`, `text-muted`, `accent`, `accent-alt`, `accent-deep`, `info`, `status-up`, `status-down`, `status-degraded`, `status-warning`, `status-maintenance`, `status-unknown`, `scrim` (R-049) |
 | Colour, tint | `accent-tint`, `status-up-tint`, `status-down-tint`, `status-degraded-tint`, `status-warning-tint`, `status-maintenance-tint`, `status-unknown-tint` |
 | Font family | `font-ui`, `font-mono`, `font-icon` |
 | Font size | `text-xs`, `text-sm`, `text-md`, `text-lg`, `text-xl`, `text-2xl` |
