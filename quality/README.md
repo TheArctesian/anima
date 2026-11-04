@@ -57,3 +57,7 @@ Inline `mod { }` blocks, bare relative `use store::x;`, macro-generated `use`, p
 glob imports (`use crate::checks::*;` then a bare `store::x`), names re-bound by shadowing or `let`,
 and re-exports (`pub use` counts as a use at the re-exporting file only).
 Aliases bound by `use` (`use crate::checks as c; c::store::x`) are followed within the same file.
+
+## Machine requirements
+
+Linux machines that run `bun run gates` need the webkit2gtk-4.1 development headers (and libsoup-3.0, librsvg2, libdbus-1) because gates 1-3 compile the Tauri shell (`apps/desktop/src-tauri`). macOS needs nothing extra.

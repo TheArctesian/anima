@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-access-token-read"
+description = "Enables the access_token_read command without any pre-configured scope."
+commands.allow = ["access_token_read"]
+
+[[permission]]
+identifier = "deny-access-token-read"
+description = "Denies the access_token_read command without any pre-configured scope."
+commands.deny = ["access_token_read"]

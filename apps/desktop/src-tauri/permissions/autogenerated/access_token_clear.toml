@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-access-token-clear"
+description = "Enables the access_token_clear command without any pre-configured scope."
+commands.allow = ["access_token_clear"]
+
+[[permission]]
+identifier = "deny-access-token-clear"
+description = "Denies the access_token_clear command without any pre-configured scope."
+commands.deny = ["access_token_clear"]
