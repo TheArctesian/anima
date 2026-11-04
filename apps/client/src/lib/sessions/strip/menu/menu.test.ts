@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { placeUnder } from './anchor';
 import TabMenu from './TabMenu.svelte';
 
 vi.mock('motion', async (importOriginal) => ({
@@ -11,9 +12,11 @@ vi.mock('motion', async (importOriginal) => ({
 let menu: ReturnType<typeof mount> | undefined;
 const onpopout = vi.fn();
 const onreturn = vi.fn();
+const keyframes: Keyframe[][] = [];
+const MENU_WIDTH = 120;
 
 /** A scrolling strip like the real one, with the menu's control inside it. */
-function show(ready: boolean): HTMLElement {
+function show(ready: boolean, at = new DOMRect(300, 40, 32, 32)): HTMLElement {
   const strip = document.createElement('div');
   strip.style.overflowX = 'auto';
   document.body.append(strip);
@@ -21,7 +24,7 @@ function show(ready: boolean): HTMLElement {
   flushSync();
   const control = strip.querySelector<HTMLElement>('[aria-haspopup="menu"]');
   if (control === null) throw new Error('no menu button');
-  control.getBoundingClientRect = () => new DOMRect(300, 40, 32, 32);
+  control.getBoundingClientRect = () => at;
   return control;
 }
 
@@ -45,7 +48,18 @@ beforeEach(() => {
       queueMicrotask(done);
     },
   };
-  Object.defineProperty(Element.prototype, 'animate', { value: () => animation, configurable: true });
+  keyframes.length = 0;
+  const record = (frames: Keyframe[]) => {
+    keyframes.push(frames);
+    return animation;
+  };
+  Object.defineProperty(Element.prototype, 'animate', { value: record, configurable: true });
+  // A menu measures where its style puts it: MENU_WIDTH wide, 40 px high.
+  const measure = Element.prototype.getBoundingClientRect;
+  vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+    if (!(this instanceof HTMLElement) || this.getAttribute('role') !== 'menu') return measure.call(this);
+    return new DOMRect(Number.parseFloat(this.style.left) || 0, Number.parseFloat(this.style.top) || 0, MENU_WIDTH, 40);
+  });
 });
 
 afterEach(async () => {
@@ -53,6 +67,44 @@ afterEach(async () => {
   menu = undefined;
   document.body.innerHTML = '';
   Reflect.deleteProperty(Element.prototype, 'animate');
+  vi.restoreAllMocks();
+});
+
+it.each([
+  ['fits: aligned to the control', 300, 300],
+  ['near the right edge: moved left to stay inside', 1380, 1440 - 120 - 8],
+  ['wider than the room on the left: kept off the left edge', 2, 8],
+])('UI-009: a menu that %s', (_name, controlLeft, left) => {
+  expect(placeUnder(new DOMRect(controlLeft, 40, 32, 32), 120, 1440, 8)).toEqual({ left, top: 72 });
+});
+
+it('UI-009 / MOT-005: a control near the right edge gives a menu inside the viewport, growing from the control', async () => {
+  const width = window.innerWidth;
+  const control = show(true, new DOMRect(width - 40, 40, 32, 32));
+  control.click();
+  await settle();
+  const list = document.querySelector<HTMLElement>('[role="menu"]');
+  const box = list?.getBoundingClientRect();
+  expect(box?.right).toBeLessThanOrEqual(width);
+  expect(box?.left).toBe(width - MENU_WIDTH);
+  // The control's centre (width - 24, 56) relative to the menu's corner (width - 120, 72).
+  const origin = keyframes.flat().find((frame) => 'transformOrigin' in frame)?.transformOrigin;
+  expect(origin).toBe(`${String(MENU_WIDTH - 24)}px -16px`);
+});
+
+it('UI-015: a press on the control never puts focus inside it, and a toggle-close returns focus to the tab', async () => {
+  const control = show(true);
+  const down = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+  control.dispatchEvent(down);
+  expect(down.defaultPrevented).toBe(true);
+  control.focus();
+  expect(onreturn).toHaveBeenCalledOnce();
+  control.click();
+  await settle();
+  control.click();
+  await settle();
+  expect(document.querySelector('[role="menu"]')).toBeNull();
+  expect(onreturn).toHaveBeenCalledTimes(2);
 });
 
 it('UI-009 / MOT-007: the open menu lives outside the scrolling strip, fixed under its control', async () => {

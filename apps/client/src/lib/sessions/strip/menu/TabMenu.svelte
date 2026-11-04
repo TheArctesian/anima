@@ -2,7 +2,7 @@
   import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
   import { popover } from '$lib/motion/roles/transitions';
-  import { below, portal, type Placement } from './anchor';
+  import { keepFocus, portal, under } from './anchor';
 
   interface Props {
     /** The tooltip and name of the menu button (UI-015). */
@@ -19,7 +19,6 @@
   let { label, ready, open = $bindable(false), onpopout, onreturn }: Props = $props();
   let control: HTMLButtonElement | undefined = $state();
   let menu: HTMLElement | undefined = $state();
-  let place: Placement = $state({ left: 0, top: 0 });
 
   function dismiss(event: Event): void {
     if (open && event.target instanceof Node && !control?.contains(event.target) && !menu?.contains(event.target)) {
@@ -47,9 +46,11 @@
     onpopout();
   }
 
-  $effect.pre(() => {
-    if (open && control !== undefined) place = below(control.getBoundingClientRect());
-  });
+  /** A press on the control toggles the menu; closing it this way gives focus back to the tab too. */
+  function toggle(): void {
+    open = !open;
+    if (!open) onreturn();
+  }
 
   $effect(() => {
     if (open) menu?.querySelector<HTMLElement>('[role="menuitem"]')?.focus();
@@ -71,7 +72,10 @@
   aria-expanded={open}
   data-no-drag
   bind:this={control}
-  onclick={() => (open = !open)}
+  onpointerdown={keepFocus}
+  onmousedown={keepFocus}
+  onfocus={onreturn}
+  onclick={toggle}
   {@attach press()}
 >
   <Icon name="nf-md-dots_vertical" size="sm" />
@@ -82,12 +86,11 @@
     role="menu"
     tabindex="-1"
     aria-label={label}
-    style:left={`${String(place.left)}px`}
-    style:top={`${String(place.top)}px`}
     bind:this={menu}
     onfocusout={leave}
     transition:popover={{ from: control }}
     {@attach portal}
+    {@attach under(() => control)}
   >
     <button type="button" role="menuitem" aria-disabled={!ready} onclick={popOut}>Pop out</button>
   </div>

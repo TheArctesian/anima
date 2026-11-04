@@ -1,21 +1,16 @@
 // @vitest-environment jsdom
-import { createRawSnippet, flushSync, mount, unmount } from 'svelte';
+import { flushSync } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Hub } from '$lib/hub/hub';
 import { runs } from '$lib/motion/engine.fixture';
 import { route } from '$lib/nav/route.fixture.svelte';
-import type { PopOutPort, SessionPort, Sessions } from '../sessions.svelte';
 import Layout from '../../../routes/+layout.svelte';
+import type { PopOutPort } from '../sessions.svelte';
+import { cleanup, fake, keyframes, openStarted, prepare, settle, show as mountLayout, tabs, visiblePanels } from './layout.fixture';
 
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
   animate: (await import('$lib/motion/engine.fixture')).fakeRun,
-}));
-
-const fake = vi.hoisted(() => ({
-  port: undefined as unknown as SessionPort,
-  popOut: undefined as PopOutPort | undefined,
-  sessions: undefined as unknown as Sessions,
 }));
 
 vi.mock('$app/state', async () => {
@@ -39,89 +34,28 @@ vi.mock('$lib/hub/hub', async (importOriginal) => ({
     }) as unknown as Hub,
 }));
 
-// The layout's temporary port is replaced by a fake hub, and `popOut` by the test's port.
+// The layout's temporary port is replaced by the fixture's fake hub, and `popOut` by the test's port.
 vi.mock('$lib/sessions/sessions.svelte', async (importOriginal) => {
   const actual = await importOriginal<typeof import('$lib/sessions/sessions.svelte')>();
+  const { fake: state } = await import('./layout.fixture');
   return {
     ...actual,
     createSessions: () => {
-      fake.sessions = actual.createSessions(fake.port, fake.popOut);
-      return fake.sessions;
+      state.sessions = actual.createSessions(state.port, state.popOut);
+      return state.sessions;
     },
   };
 });
 
-let app: ReturnType<typeof mount> | undefined;
-const keyframes: Keyframe[][] = [];
-
-/** jsdom has no Web Animations; this one finishes at once so outros complete. */
-function finishingAnimate(this: Element, frames: Keyframe[]) {
-  keyframes.push(frames);
-  return {
-    cancel: () => undefined,
-    currentTime: 0,
-    playState: 'finished',
-    effect: null,
-    set onfinish(done: () => void) {
-      queueMicrotask(done);
-    },
-  };
-}
-
-async function settle(): Promise<void> {
-  for (let tick = 0; tick < 6; tick += 1) {
-    await Promise.resolve();
-    flushSync();
-  }
-}
-
-function show(popOut?: PopOutPort): Sessions {
-  fake.popOut = popOut;
-  const children = createRawSnippet(() => ({ render: () => '<p id="page">page</p>' }));
-  app = mount(Layout, { target: document.body, props: { children } });
-  flushSync();
-  return fake.sessions;
-}
-
-const request = { deviceId: 'web-1', deviceName: 'web-1', protocol: 'SSH', origin: null } as const;
-const tabs = () => [...document.querySelectorAll<HTMLElement>('[role="tab"]')];
-const visiblePanels = () => [...document.querySelectorAll('[role="tabpanel"]')].filter((panel) => !panel.closest('[hidden]'));
-
-async function openStarted(sessions: Sessions, origin: DOMRect | null = null): Promise<string> {
-  const id = sessions.openSession({ ...request, origin });
-  await sessions.start(id, { widthPx: 800, heightPx: 600 });
-  await settle();
-  return id;
-}
+const show = (popOut?: PopOutPort) => mountLayout(Layout, popOut);
 
 beforeEach(() => {
-  let count = 0;
-  fake.port = {
-    start: vi.fn(() => {
-      count += 1;
-      return Promise.resolve({ sessionId: `session-${String(count)}` });
-    }),
-    end: vi.fn(() => Promise.resolve()),
-  };
-  keyframes.length = 0;
+  prepare();
   runs.length = 0;
   route.pathname = '/devices';
-  Object.defineProperty(Element.prototype, 'animate', { value: finishingAnimate, configurable: true });
-  // jsdom has no pointer capture.
-  for (const name of ['setPointerCapture', 'releasePointerCapture']) {
-    Object.defineProperty(Element.prototype, name, { value: () => undefined, configurable: true });
-  }
-  Object.defineProperty(Element.prototype, 'hasPointerCapture', { value: () => true, configurable: true });
 });
 
-afterEach(async () => {
-  if (app !== undefined) await unmount(app);
-  app = undefined;
-  document.body.innerHTML = '';
-  for (const name of ['animate', 'setPointerCapture', 'releasePointerCapture', 'hasPointerCapture']) {
-    Reflect.deleteProperty(Element.prototype, name);
-  }
-});
+afterEach(cleanup);
 
 it('no tabs: the strip is hidden and the pages show', () => {
   show();
@@ -165,20 +99,6 @@ it('RA-001 / UI-015: the labelled close button ends that session once and keeps 
   expect(fake.port.end).toHaveBeenCalledExactlyOnceWith('session-1');
   expect(tabs()).toHaveLength(1);
   expect(tabs()[0]?.getAttribute('aria-selected')).toBe('true');
-});
-
-it('keyboard: the selected tab is the one Tab stop, the arrows move focus, Delete closes', async () => {
-  const sessions = show();
-  await openStarted(sessions);
-  await openStarted(sessions);
-  expect(tabs().map((tab) => tab.tabIndex)).toEqual([-1, 0]);
-  tabs()[1]?.focus();
-  tabs()[1]?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
-  expect(document.activeElement).toBe(tabs()[0]);
-  tabs()[0]?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true }));
-  await settle();
-  expect(fake.port.end).toHaveBeenCalledExactlyOnceWith('session-1');
-  expect(tabs()).toHaveLength(1);
 });
 
 it('MOT-005: a new tab grows with transform-origin at the control that opened it', async () => {
@@ -269,16 +189,6 @@ describe('pop out (RA-002, D-13)', () => {
     expect(document.activeElement?.textContent).toBe('Pop out');
     expect(tabs()[0]?.getAttribute('aria-keyshortcuts')).toBe('Delete Shift+F10');
   });
-});
-
-it('S5 / ARIA: the tablist owns only tabs; Close and More are hidden from it and are not Tab stops', async () => {
-  const sessions = show(vi.fn(() => Promise.resolve()));
-  await openStarted(sessions);
-  const strip = document.querySelector('[role="tablist"]');
-  const exposed = [...(strip?.querySelectorAll('button') ?? [])].filter((button) => button.closest('[aria-hidden="true"]') === null);
-  expect(exposed.map((button) => button.getAttribute('role'))).toEqual(['tab']);
-  const others = [...(strip?.querySelectorAll<HTMLElement>('button[aria-hidden="true"]') ?? [])];
-  expect(others.map((button) => button.tabIndex)).toEqual([-1, -1]);
 });
 
 it('MV-004: the strip keeps its space until it has left after the last tab closes', async () => {

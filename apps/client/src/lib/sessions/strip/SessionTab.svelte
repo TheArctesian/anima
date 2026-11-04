@@ -2,6 +2,7 @@
   import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
   import type { Tab } from '../tabs';
+  import { keepFocus } from './menu/anchor';
   import TabMenu from './menu/TabMenu.svelte';
   import { tabElementId } from './tablist';
 
@@ -71,6 +72,9 @@
   tabindex="-1"
   title={closeLabel}
   data-no-drag
+  onpointerdown={keepFocus}
+  onmousedown={keepFocus}
+  onfocus={() => button?.focus()}
   onclick={onclose}
   {@attach press()}
 >
