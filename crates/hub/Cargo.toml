@@ -33,7 +33,8 @@ rpassword.workspace = true
 
 [features]
 # `access::Identity::for_tests`, for integration tests of guarded domains (D-6). Turned on
-# only by the dev-dependency below; never in a release build.
+# only by the dev-dependency below, so it is in `cargo test` builds and never in
+# `cargo build --release --bin anima-hub`.
 test-support = []
 
 [dev-dependencies]

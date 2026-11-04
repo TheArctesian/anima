@@ -1,13 +1,18 @@
-//! The devices part of the hub schema is a subset of K1 (R-011(c)).
+//! The hub schema is a subset of K1, and its devices part is complete (R-011(c), CON-002).
 
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
 
+use anima_hub::{
+    clock::{Clock, SystemClock},
+    events::Bus,
+    schema::build_schema,
+};
 use async_graphql::parser::{
     parse_schema,
     types::{ServiceDocument, TypeKind, TypeSystemDefinition},
 };
 
-use super::harness::schema_for;
+use crate::hub::dependencies;
 
 const CHECKED: [&str; 17] = [
     "Query",
@@ -121,10 +126,36 @@ async fn k1_ssh_credential_input_is_a_oneof_input_as_in_k1() {
     assert!(std::fs::read_to_string(path).unwrap().contains(line));
 }
 
+/// The SDL of the hub schema as `schema.rs` builds it.
 fn schema_for_sdl() -> String {
     // The schema never touches the database for its SDL, so a lazy pool is enough.
     let pool = sqlx::PgPool::connect_lazy("postgres://unused@127.0.0.1:1/none").unwrap();
-    schema_for(&pool).sdl()
+    let clock: Arc<dyn Clock> = Arc::new(SystemClock);
+    build_schema(dependencies(&pool, clock, Bus::new(1))).sdl()
+}
+
+fn k1() -> BTreeMap<String, BTreeMap<String, String>> {
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../contracts/schema.graphql"
+    );
+    members(&parse_schema(std::fs::read_to_string(path).unwrap()).expect("K1 parses"))
+}
+
+#[tokio::test]
+async fn con_002_every_member_of_the_hub_schema_exists_in_k1_with_the_same_type() {
+    let hub = members(&parse_schema(schema_for_sdl()).expect("hub sdl parses"));
+    let k1 = k1();
+    assert!(hub.len() >= CHECKED.len(), "{:?}", hub.keys());
+    for (name, ours) in &hub {
+        let theirs = k1.get(name).unwrap_or_else(|| panic!("K1 declares {name}"));
+        for (member, ours) in ours {
+            assert_eq!(theirs.get(member), Some(ours), "{name}.{member}");
+        }
+    }
+    // R-026(4): the liveness probe is `GET /health`, not a field.
+    assert!(!hub["Query"].contains_key("health"));
+    assert!(hub["Query"].contains_key("me") && hub["Mutation"].contains_key("login"));
 }
 
 /// K1 members that need other domains: WP-09 (status, checks, uptime) and WP-10 (hostKey).

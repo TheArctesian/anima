@@ -1,5 +1,5 @@
-//! Hub faults reach the process log by kind only, never with SQL or a token (K7, LOG-007,
-//! API-010).
+//! Hub faults reach the process log by kind and cause chain, never with SQL or a token (K7,
+//! LOG-007, API-010, H-5).
 
 use std::{
     io,
@@ -60,16 +60,15 @@ async fn api_010_an_unreachable_database_is_logged_by_kind_at_both_edges() {
         login["errors"][0]["extensions"]["code"], "UNAVAILABLE",
         "{login}"
     );
-    let resolver_lines = capture
-        .text()
-        .matches(r#""fault":"database_unreachable""#)
-        .count();
+    // The source is a pool timeout or a connection error, logged by kind.
+    let resolver = r#""message":"request failed: database_unreachable: database "#;
     assert_eq!(
-        resolver_lines,
+        capture.text().matches(resolver).count(),
         1,
-        "through the resolver: {}",
+        "through the resolver, at the API boundary: {}",
         capture.text()
     );
+    assert!(capture.text().contains(r#""code":"UNAVAILABLE""#));
 
     let token = URL_SAFE_NO_PAD.encode([9_u8; 32]);
     let me = hub
@@ -77,18 +76,14 @@ async fn api_010_an_unreachable_database_is_logged_by_kind_at_both_edges() {
         .await;
     assert_eq!(me["errors"][0]["extensions"]["code"], "UNAVAILABLE", "{me}");
     let text = capture.text();
-    assert_eq!(
-        text.matches(r#""fault":"database_unreachable""#).count(),
-        2,
-        "and through identify: {text}"
-    );
     let kind_only =
         r#""message":"access request failed","domain":"access","fault":"database_unreachable""#;
     assert_eq!(
         text.matches(kind_only).count(),
-        2,
-        "the kind and nothing else: {text}"
+        1,
+        "through identify, the kind and nothing else: {text}"
     );
+    assert_eq!(text.matches("database_unreachable").count(), 2, "{text}");
     for leak in [
         token.as_str(),
         PASSWORD,

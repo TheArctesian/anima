@@ -211,15 +211,14 @@ async fn log_007_inline_credentials_of_the_wrong_shape_are_refused_without_quoti
     assert_eq!(secret_rows(&pool).await, 0);
 }
 
-/// A query that does not parse. The async-graphql parser quotes the text around the error, so
-/// a secret written inline next to a syntax error comes back in the response to its sender.
-/// That is known and handed to WP-05 under H-6 (refuse unauthenticated requests before parsing);
-/// this test pins it, and pins that the process log does not get it.
+/// A query that does not parse. The async-graphql parser quotes the text around the error;
+/// the API boundary replaces that text with a fixed one and keeps the position, so a secret
+/// written inline next to a syntax error reaches neither its sender nor the log (H-6 (e)).
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
 )]
-async fn log_007_a_query_with_a_syntax_error_echoes_its_text_to_the_sender_but_not_to_the_log(
+async fn log_007_h_6_e_a_query_with_a_syntax_error_is_not_echoed_to_the_sender_or_the_log(
     pool: PgPool,
 ) {
     let secret = "syntax-error-secret";
@@ -228,12 +227,10 @@ async fn log_007_a_query_with_a_syntax_error_echoes_its_text_to_the_sender_but_n
     );
     let schema = hardened_schema(&pool);
     let (log, response) = captured(|| schema.execute(signed_in(&query))).await;
-    assert_eq!(response.errors.len(), 1);
+    let error = error_json(&response);
+    assert_eq!(error["message"], "The request is not valid GraphQL.");
+    assert!(error["locations"][0]["column"].is_u64(), "{error}");
     let body = serde_json::to_string(&response).unwrap();
-    assert!(
-        body.contains(secret),
-        "the parser no longer echoes the query; update H-6"
-    );
-    assert_absent(secret, &[&log]);
+    assert_absent(secret, &[&body, &log]);
     assert_eq!(secret_rows(&pool).await, 0);
 }

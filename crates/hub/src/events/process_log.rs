@@ -1,14 +1,18 @@
 //! The process log: `tracing` output as JSON lines on standard output (LOG-001 to LOG-003),
-//! with the GraphQL request span and the generic-error mapping that feed it.
+//! with the HTTP and GraphQL request spans and the error boundary that feed it.
 
+mod causes;
+mod echoes;
+mod http_span;
 mod internal_errors;
 mod request_span;
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
 
 use tracing::Subscriber;
 use tracing_subscriber::{EnvFilter, fmt::MakeWriter};
 
+pub use http_span::http_request;
 pub use internal_errors::InternalErrors;
 pub use request_span::RequestSpan;
 

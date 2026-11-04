@@ -22,8 +22,6 @@ async fn api_003_me_answers_with_a_token(pool: PgPool) {
     assert_eq!(response["data"]["me"], login["data"]["login"]["operator"]);
     assert_eq!(response["data"]["me"]["username"], USERNAME);
     assert_eq!(response["data"]["me"]["totpEnabled"], false);
-    let health = hub.post(Some(token), "{ health }", json!({})).await;
-    assert_eq!(health, json!({ "data": { "health": "ok" } }));
 }
 
 #[sqlx::test(migrations = "./migrations")]

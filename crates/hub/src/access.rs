@@ -12,6 +12,8 @@ mod tests;
 mod throttle;
 mod tokens;
 
+use std::sync::Arc;
+
 use async_graphql::{ErrorExtensions as _, Pos, ServerError};
 use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::PgPool;
@@ -45,16 +47,16 @@ pub enum Error {
     },
     /// The database cannot be reached (connection, pool or I/O failure).
     #[error("The hub cannot reach its database. Try again shortly.")]
-    Unreachable(sqlx::Error),
+    Unreachable(#[source] sqlx::Error),
     /// The message stays generic: the source error may hold SQL text (API-010).
     #[error("Something went wrong on the hub.")]
-    Database(sqlx::Error),
+    Database(#[source] sqlx::Error),
     #[error("Something went wrong on the hub.")]
     Hash(#[from] password::HashError),
     #[error("Something went wrong on the hub.")]
     Task(#[from] tokio::task::JoinError),
     #[error("Something went wrong on the hub.")]
-    Random(getrandom::Error),
+    Random(#[source] getrandom::Error),
     #[error("Something went wrong on the hub.")]
     Unavailable,
 }
@@ -120,13 +122,23 @@ impl Error {
     }
 
     /// The GraphQL error the operator sees: the plain message and the K7 code, nothing else.
-    fn to_graphql(&self) -> async_graphql::Error {
+    /// A hub fault keeps a [`Fault`] as its hidden source, which the API boundary writes to
+    /// the process log and never sends (H-5).
+    fn into_graphql(self) -> async_graphql::Error {
         let code = self.code();
-        let field = match self {
+        let field = match &self {
             Self::Validation { field, message } => Some((*field, *message)),
             _ => None,
         };
-        async_graphql::Error::new(self.to_string()).extend_with(|_, extensions| {
+        let mut error = async_graphql::Error::new(self.to_string());
+        if let Some(kind) = self.fault() {
+            let fault: Arc<dyn std::error::Error + Send + Sync> = Arc::new(Fault {
+                kind,
+                source: self.into_source(),
+            });
+            error.source = Some(Arc::new(fault));
+        }
+        error.extend_with(|_, extensions| {
             extensions.set("code", code);
             if let Some((field, message)) = field {
                 let entry = async_graphql::value!([{ "field": field, "message": message }]);
@@ -135,11 +147,36 @@ impl Error {
         })
     }
 
+    /// The error behind a hub fault, if there is one.
+    fn into_source(self) -> Option<Box<dyn std::error::Error + Send + Sync>> {
+        match self {
+            Self::Unreachable(error) | Self::Database(error) => Some(Box::new(error)),
+            Self::Hash(error) => Some(Box::new(error)),
+            Self::Task(error) => Some(Box::new(error)),
+            Self::Random(error) => Some(Box::new(error)),
+            Self::Unauthenticated
+            | Self::WrongCredentials
+            | Self::ReadOnly
+            | Self::Validation { .. }
+            | Self::Unavailable => None,
+        }
+    }
+
     /// The error as a response error, for an edge that fails before execution.
     #[must_use]
-    pub fn to_server_error(&self) -> ServerError {
-        self.to_graphql().into_server_error(Pos::default())
+    pub fn into_response_error(self) -> ServerError {
+        self.into_graphql().into_server_error(Pos::default())
     }
+}
+
+/// A hub fault as the process log describes it: the [`Error::fault`] word, then the error
+/// behind it. Its message is the word alone, so the chain starts with what failed.
+#[derive(Debug, thiserror::Error)]
+#[error("{kind}")]
+struct Fault {
+    kind: &'static str,
+    #[source]
+    source: Option<Box<dyn std::error::Error + Send + Sync>>,
 }
 /// Used by the tunnel: resolve a bearer token to an operator.
 ///
