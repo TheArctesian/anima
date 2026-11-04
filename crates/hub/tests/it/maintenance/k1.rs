@@ -1,5 +1,5 @@
 //! The maintenance part of the hub schema is a subset of K1, and covers every K1 maintenance
-//! member (R-011(c)).
+//! member (the schema contract check).
 
 use std::collections::BTreeMap;
 
