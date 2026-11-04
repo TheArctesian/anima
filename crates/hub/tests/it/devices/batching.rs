@@ -163,6 +163,7 @@ async fn api_005_nested_site_device_site_costs_a_constant_few_statements_for_13_
     let (counted, statements) = counting_pool(&pool).await;
     let schema = Schema::build(Query, Mutation, EmptySubscription)
         .data(counted.clone())
+        .data(test_clock())
         .data(site_loader(counted.clone()).delay(BATCH_WINDOW))
         .data(devices_by_site_loader(counted.clone()).delay(BATCH_WINDOW))
         .finish();
@@ -210,6 +211,7 @@ async fn api_005_credential_stored_costs_a_constant_few_statements_for_13_or_163
     let (counted, statements) = counting_pool(&pool).await;
     let schema = Schema::build(Query, Mutation, EmptySubscription)
         .data(counted.clone())
+        .data(test_clock())
         .data(credential_loader(counted.clone()).delay(BATCH_WINDOW))
         .finish();
     store_password(&pool, PVE_01, "a-stored-password").await;
@@ -247,6 +249,7 @@ async fn api_005_credential_stored_in_a_set_or_clear_response_costs_no_statement
     let (counted, statements) = counting_pool(&pool).await;
     let schema = Schema::build(Query, Mutation, EmptySubscription)
         .data(counted.clone())
+        .data(test_clock())
         .data(credential_loader(counted.clone()))
         .data(vault())
         .data(Bus::new(4))
@@ -281,4 +284,9 @@ async fn api_005_credential_stored_in_a_set_or_clear_response_costs_no_statement
         (set_plain, clear_plain),
         "credentialStored added statements to the response"
     );
+}
+
+/// The clock the access guard reads to check the identity (API-003).
+fn test_clock() -> Arc<dyn Clock> {
+    Arc::new(FixedClock(now()))
 }
