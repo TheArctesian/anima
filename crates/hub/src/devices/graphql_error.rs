@@ -30,13 +30,13 @@ pub(super) fn internal(cause: impl std::error::Error + Send + Sync + 'static) ->
 
 /// A schema datum a resolver needs is not registered: a wiring mistake, never the operator's.
 #[derive(Debug, thiserror::Error)]
-#[error("schema data missing: {0}")]
-struct MissingData(String);
+#[error("schema dependency not registered: {0}")]
+struct UnregisteredDependency(String);
 
 /// Reads schema data; if it is missing the operator gets `INTERNAL`, not the Rust type name.
-pub(super) fn schema_data<'a, T: Send + Sync + 'static>(ctx: &Context<'a>) -> Result<&'a T> {
+pub(super) fn schema_dependency<'a, T: Send + Sync + 'static>(ctx: &Context<'a>) -> Result<&'a T> {
     ctx.data::<T>()
-        .map_err(|missing| internal(MissingData(missing.message)))
+        .map_err(|missing| internal(UnregisteredDependency(missing.message)))
 }
 
 /// A `VALIDATION` error that lists every field the operator must fix.

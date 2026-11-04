@@ -17,7 +17,7 @@ use sqlx::PgPool;
 
 use super::{
     DevicesBySite, Error, FieldError, Missing, OperatingSystem, SitesById, SshAuth,
-    graphql_error::{internal, invalid, schema_data, to_graphql},
+    graphql_error::{internal, invalid, schema_dependency, to_graphql},
     model::{Device, DeviceFilter, Site, SshSettings},
     page::{decode_cursor, encode_cursor, page_after, page_size},
     store,
@@ -142,7 +142,7 @@ fn list_args(
 }
 
 fn pool<'a>(ctx: &Context<'a>) -> Result<&'a PgPool> {
-    schema_data::<PgPool>(ctx)
+    schema_dependency::<PgPool>(ctx)
 }
 
 #[derive(Default)]
@@ -243,7 +243,7 @@ impl Device {
     }
 
     async fn site(&self, ctx: &Context<'_>) -> Result<Site> {
-        schema_data::<DataLoader<SitesById>>(ctx)?
+        schema_dependency::<DataLoader<SitesById>>(ctx)?
             .load_one(self.site)
             .await
             .map_err(to_graphql)?
