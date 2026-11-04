@@ -94,6 +94,9 @@ describe("install.sh", () => {
     expect(calls[firstChown]).toContain("10001:10001");
   });
 
+});
+
+describe("install.sh stamp, folder and temporary file", () => {
   test("DNS-002 reinstalls a file that was emptied, even though the content to install is unchanged", () => {
     const env = setup();
     run({}, env);
