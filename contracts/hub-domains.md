@@ -205,8 +205,11 @@ pub async fn host_key(db: &Db, device: DeviceId) -> Result<Option<HostKey>, Erro
 pub async fn host_keys(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, HostKey>, Error>;
 /// axum route for GET /tunnel (see tunnel.md). `guacd` is the K7 `host:port` text, resolved at connect time (R-032).
 pub fn tunnel_router(db: Db, vault: credentials::Vault, bus: events::Bus, clock: Clock, guacd: String, live: Live) -> axum::Router;
-/// Wiring only: at start, end rows a crashed hub left open with HUB_SHUTDOWN (R-032).
+/// Wiring only: at start, end rows a crashed hub left open with HUB_SHUTDOWN, one `session.end` audit entry per row in the same transaction (R-032, R-040).
 pub async fn close_stale(db: &Db, now: DateTime<Utc>) -> Result<u64, Error>;
+/// Wiring only: call on the shutdown signal, before the runtime stops; upgraded tunnels are not ended by the server's drain.
+/// Signals tunnels, withdraws pending and spent tickets and refuses new ones, ends those rows HUB_SHUTDOWN with audit, waits up to 5 s (R-040).
+pub async fn shut_down(db: &Db, live: &Live, now: DateTime<Utc>) -> Result<(), Error>;
 ```
 
 ## guac-protocol crate (WP-08)
