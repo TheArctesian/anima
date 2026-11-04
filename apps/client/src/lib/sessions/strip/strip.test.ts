@@ -16,7 +16,6 @@ vi.mock('motion', async (importOriginal) => ({
 vi.mock('$app/state', async () => {
   const { route } = await import('$lib/nav/route.fixture.svelte');
   return {
-    navigating: { to: null },
     page: {
       get url() {
         return new URL(route.pathname, 'http://localhost');

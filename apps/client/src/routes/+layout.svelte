@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { afterNavigate } from '$app/navigation';
-  import { navigating, page } from '$app/state';
+  import { page } from '$app/state';
   import { tick, untrack, type Snippet } from 'svelte';
   import '../styles/global.css';
   import { provideHub } from '$lib/hub/context';
@@ -41,30 +40,29 @@
   });
 
   // A covered page has no height, so the document loses its scroll position: read it before the session covers the
-  // page and give it back when the same page shows again (WP-14 E-2). A navigation that uncovers the pages scrolls
-  // after the update, so the position is given back once it settles.
+  // page and give it back when the same page shows again (WP-14 E-2). A nav click is a navigation, so it drops the
+  // saved position and keeps the scroll the router gives it (see `navigate`).
   let covered: CoveredScroll | null = null;
-  let uncovered: CoveredScroll | null = null;
-  function giveBackScroll() {
-    const y = restoredScroll(uncovered, page.url.pathname);
-    uncovered = null;
-    if (y !== undefined) window.scrollTo(0, y);
-  }
   $effect.pre(() => {
     const covering = sessions.active !== null;
     untrack(() => {
       if (covering && covered === null) {
         covered = { path: page.url.pathname, y: window.scrollY };
       } else if (!covering && covered !== null) {
-        uncovered = covered;
+        const saved = covered;
         covered = null;
         void tick().then(() => {
-          if (navigating.to === null) giveBackScroll();
+          const y = restoredScroll(saved, page.url.pathname);
+          if (y !== undefined) window.scrollTo(0, y);
         });
       }
     });
   });
-  afterNavigate(giveBackScroll);
+
+  function navigate() {
+    covered = null;
+    sessions.deselect();
+  }
 
   $effect(() => () => {
     // close() rejects only when a pending connect failed; the status already shows that.
@@ -76,7 +74,7 @@
 </script>
 
 <div class="shell">
-  <Nav pathname={page.url.pathname} now={clock.current} onnavigate={() => sessions.deselect()} />
+  <Nav pathname={page.url.pathname} now={clock.current} onnavigate={navigate} />
   <main>
     <SessionTabs />
     <div class="stage">
@@ -119,14 +117,18 @@
     padding: var(--space-6);
   }
 
+  /* One column that may shrink below its content, so neither the pages nor a session widen the document (UI-009). */
   .stage,
   .pages {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-inline-size: 0;
   }
 
   .pages,
   .page {
     grid-area: 1 / 1;
+    min-inline-size: 0;
   }
 
   /* Covered pages stay mounted but give the stage no height, so a session pane is sized by the window (D-7). */

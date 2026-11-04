@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { readFileSync } from 'node:fs';
 import { flushSync } from 'svelte';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Hub } from '$lib/hub/hub';
 import { route } from '$lib/nav/route.fixture.svelte';
 import Layout from '../../../routes/+layout.svelte';
@@ -18,7 +18,6 @@ vi.mock('motion', async (importOriginal) => ({
 vi.mock('$app/state', async () => {
   const { route } = await import('$lib/nav/route.fixture.svelte');
   return {
-    navigating: { to: null },
     page: {
       get url() {
         return new URL(route.pathname, 'http://localhost');
@@ -220,6 +219,31 @@ it('D-8: the keyboard is unbound while the page is hidden', async () => {
   expect(sent(socket, 'key')).toEqual([]);
 });
 
+it('closing the last tab while its pane has the focus tears the view down without a state error', async () => {
+  const sessions = show();
+  const id = await openStarted(sessions);
+  await ready(FakeTunnelSocket.latest());
+  expect(document.activeElement).toBe(paneAt(0));
+  // Chromium fires `focusout` on the focused pane while Svelte clears the panes (jsdom does not): do the same.
+  const panes = document.querySelector<HTMLElement>('.panes');
+  const clear = Object.getOwnPropertyDescriptor(Node.prototype, 'textContent');
+  Object.defineProperty(panes, 'textContent', {
+    configurable: true,
+    set(text: string) {
+      document.activeElement?.dispatchEvent(new FocusEvent('focusout', { bubbles: true }));
+      clear?.set?.call(this, text);
+    },
+  });
+  const errors: unknown[] = [];
+  const caught = (event: ErrorEvent) => errors.push(event.error);
+  window.addEventListener('error', caught);
+  await expect(sessions.close(id)).resolves.toBeUndefined();
+  await settle();
+  window.removeEventListener('error', caught);
+  expect(errors).toEqual([]);
+  expect(document.querySelector('[role="application"]')).toBeNull();
+});
+
 it('no temporary adapter or placeholder pane remains', async () => {
   const layout = readFileSync(`${import.meta.dirname}/../../../routes/+layout.svelte`, 'utf8');
   expect(layout).not.toMatch(/not wired|TEMPORARY|notWired/);
@@ -227,5 +251,53 @@ it('no temporary adapter or placeholder pane remains', async () => {
   await openStarted(sessions);
   expect(document.querySelector('[data-placeholder]')).toBeNull();
   expect(document.body.textContent).not.toContain('not available yet');
+});
+
+describe('covered pages keep their scroll (WP-14 E-2)', () => {
+  /** The pages scrolled to `y` before a session covers them; `scrollTo` is spied on (jsdom has none). */
+  function scrolledTo(y: number) {
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: y });
+    return vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
+  }
+
+  afterEach(() => {
+    Reflect.deleteProperty(window, 'scrollY');
+    vi.restoreAllMocks();
+  });
+
+  it('showing the same page again with no navigation, by deselect or by closing the last tab, gives it back', async () => {
+    const scrollTo = scrolledTo(500);
+    const sessions = show();
+    const id = await openStarted(sessions);
+    sessions.deselect();
+    await settle();
+    expect(scrollTo).toHaveBeenCalledExactlyOnceWith(0, 500);
+    sessions.select(id);
+    await settle();
+    await sessions.close(id);
+    await settle();
+    expect(scrollTo.mock.calls).toEqual([
+      [0, 500],
+      [0, 500],
+    ]);
+  });
+
+  it('a nav click on the page under the session is a navigation: no old position comes back', async () => {
+    const scrollTo = scrolledTo(500);
+    const sessions = show();
+    await openStarted(sessions);
+    // jsdom cannot follow the link; the router is not under test here.
+    document.addEventListener(
+      'click',
+      (event) => {
+        event.preventDefault();
+      },
+      { once: true },
+    );
+    document.querySelector<HTMLElement>('nav a[href="/devices"]')?.click();
+    await settle();
+    expect(sessions.active).toBeNull();
+    expect(scrollTo).not.toHaveBeenCalled();
+  });
 });
 
