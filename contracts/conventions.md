@@ -13,7 +13,7 @@ Status: **frozen for Phase 1** (change only through a programme ruling, CON-001)
 
 ## Time
 
-- All stored and transmitted times are UTC. GraphQL scalar `DateTime` = RFC 3339 with `Z`.
+- All stored and transmitted times are UTC. GraphQL scalar `DateTime` = RFC 3339 in UTC; the hub writes it as `2026-11-04T09:00:00+00:00` (async-graphql's chrono scalar, R-012). Readers accept any RFC 3339 offset and compare instants, never text (R-033).
 - Durations in the API are integers with the unit in the field name: `intervalSeconds`, `responseTimeMs`.
 - Core logic takes `now: DateTime<Utc>` as a parameter (CQ-021). Only `main.rs` and I/O edges read the clock, through `Clock` (see `hub-domains.md`).
 

@@ -12,6 +12,7 @@ use async_graphql::{
 };
 
 mod capture;
+mod leaks;
 
 use self::capture::{Capture, capture_log};
 use super::{Error, subscriber};
