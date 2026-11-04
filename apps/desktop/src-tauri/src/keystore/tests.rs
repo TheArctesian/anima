@@ -5,8 +5,10 @@
 use std::{
     any::Any,
     collections::HashMap,
-    sync::{Arc, Mutex, Once},
+    sync::{Arc, Mutex, OnceLock},
 };
+
+use tauri::async_runtime::block_on;
 
 use keyring::{
     Error as BackendError,
@@ -14,8 +16,8 @@ use keyring::{
 };
 
 use super::{
-    KeystoreError,
-    token::{clear_token, read_token, write_token},
+    KeystoreError, access_token_clear, access_token_read, access_token_write, blocking,
+    token::{RELEASE_SERVICE, SERVICE, clear_token, read_token, write_token},
 };
 
 type Store = Arc<Mutex<HashMap<(String, String), String>>>;
@@ -70,13 +72,15 @@ impl CredentialBuilderApi for MemoryStore {
     }
 }
 
-/// Installs the in-memory store once for the test process. Each test uses its own origins.
-fn use_memory_store() {
-    static INSTALL: Once = Once::new();
-    INSTALL.call_once(|| {
-        let store = MemoryStore(Arc::default());
-        keyring::set_default_credential_builder(Box::new(store));
-    });
+/// Installs the in-memory store once for the test process and returns it, so a test can see
+/// the exact (service, account) keys. Each test uses its own origins.
+fn use_memory_store() -> &'static Store {
+    static STORE: OnceLock<Store> = OnceLock::new();
+    STORE.get_or_init(|| {
+        let store = Store::default();
+        keyring::set_default_credential_builder(Box::new(MemoryStore(Arc::clone(&store))));
+        store
+    })
 }
 
 const SECRET: &str = "tok-s3cret-value";
@@ -113,7 +117,7 @@ fn cli_003_empty_token_is_refused_and_nothing_is_stored() {
 }
 
 #[test]
-fn sec_002_tokens_for_two_origins_are_independent() {
+fn cli_003_tokens_for_two_origins_are_independent() {
     use_memory_store();
     let (a, b) = ("https://a.anima.test", "https://b.anima.test");
     write_token(a, "token-for-a").unwrap();
@@ -125,7 +129,7 @@ fn sec_002_tokens_for_two_origins_are_independent() {
 }
 
 #[test]
-fn sec_002_an_origin_that_is_not_https_is_refused_by_every_command() {
+fn cli_003_an_origin_that_is_not_canonical_https_is_refused_by_every_command() {
     use_memory_store();
     for origin in [
         "",
@@ -133,6 +137,14 @@ fn sec_002_an_origin_that_is_not_https_is_refused_by_every_command() {
         "http://hub.anima.test",
         "hub.anima.test",
         "ftp://x",
+        "https://hub/",
+        "https://HUB",
+        "https://hub ",
+        "https://hub/path?q",
+        "https:// ",
+        "https://\n",
+        " https://hub",
+        "https://hub?x",
     ] {
         assert_eq!(
             read_token(origin),
@@ -151,6 +163,72 @@ fn sec_002_an_origin_that_is_not_https_is_refused_by_every_command() {
         );
     }
     assert_eq!(KeystoreError::BadOrigin.code(), "origin");
+}
+
+#[test]
+fn cli_003_canonical_origins_with_port_or_ip_are_accepted() {
+    use_memory_store();
+    for origin in [
+        "https://hub.anima.ing",
+        "https://hub.anima.ing:8443",
+        "https://10.0.0.5",
+        "https://[::1]:8443",
+    ] {
+        assert_eq!(read_token(origin), Ok(None), "{origin}");
+    }
+}
+
+#[test]
+fn cli_003_commands_round_trip_and_store_under_service_and_origin() {
+    let store = use_memory_store();
+    let origin = "https://commands.anima.test".to_owned();
+    block_on(access_token_write(origin.clone(), SECRET.to_owned())).unwrap();
+    let key = (SERVICE.to_owned(), origin.clone());
+    assert_eq!(
+        store.lock().unwrap().get(&key).map(String::as_str),
+        Some(SECRET)
+    );
+    assert_eq!(
+        block_on(access_token_read(origin.clone()))
+            .unwrap()
+            .as_deref(),
+        Some(SECRET)
+    );
+    block_on(access_token_clear(origin.clone())).unwrap();
+    assert!(!store.lock().unwrap().contains_key(&key));
+    assert_eq!(block_on(access_token_read(origin)).unwrap(), None);
+}
+
+#[test]
+fn cli_003_a_blocking_call_that_panics_is_a_failed_error_with_no_detail() {
+    let result: Result<(), KeystoreError> = block_on(blocking(|| panic!("secret detail {SECRET}")));
+    assert_eq!(result, Err(KeystoreError::Failed));
+}
+
+#[test]
+fn cli_003_release_builds_use_the_shipped_service_name() {
+    assert_eq!(RELEASE_SERVICE, "ing.anima.desktop");
+    if cfg!(debug_assertions) {
+        assert_eq!(SERVICE, "ing.anima.desktop.dev");
+    } else {
+        assert_eq!(SERVICE, RELEASE_SERVICE);
+    }
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn cli_003_a_cancelled_or_failed_keychain_prompt_is_access_denied() {
+    for code in [-128, -25293] {
+        let backend =
+            keyring::macos::decode_error(security_framework::base::Error::from_code(code));
+        assert_eq!(
+            KeystoreError::from(backend),
+            KeystoreError::AccessDenied,
+            "{code}"
+        );
+    }
+    let other = keyring::macos::decode_error(security_framework::base::Error::from_code(-25299));
+    assert_eq!(KeystoreError::from(other), KeystoreError::Unavailable);
 }
 
 #[test]

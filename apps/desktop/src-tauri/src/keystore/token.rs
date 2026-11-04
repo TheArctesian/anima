@@ -2,14 +2,34 @@ use keyring::Entry;
 
 use super::error::KeystoreError;
 
-const SERVICE: &str = "ing.anima.desktop";
+pub(super) const RELEASE_SERVICE: &str = "ing.anima.desktop";
+
+/// Release builds use the shipped service name; debug builds use their own so a development
+/// build never reads or overwrites a released app's token.
+pub(super) const SERVICE: &str = if cfg!(debug_assertions) {
+    "ing.anima.desktop.dev"
+} else {
+    RELEASE_SERVICE
+};
+
 const SCHEME: &str = "https://";
 
+/// Input check only, no URL resolution (REPO-003): `https://` then a lowercase host with an
+/// optional port. Anything with a path, query, whitespace, uppercase or trailing slash is not
+/// the canonical origin the client sends.
+fn is_canonical_origin(origin: &str) -> bool {
+    origin.strip_prefix(SCHEME).is_some_and(|host| {
+        !host.is_empty()
+            && host
+                .chars()
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || ".-:[]".contains(c))
+    })
+}
+
 /// The entry for one hub. The account is the hub origin, so a token is only ever read back for
-/// the hub that issued it. The shell does not parse the origin (REPO-003); the client sends the
-/// canonical form and this only refuses what cannot be one.
+/// the hub that issued it.
 fn entry_for(origin: &str) -> Result<Entry, KeystoreError> {
-    if origin.len() <= SCHEME.len() || !origin.starts_with(SCHEME) {
+    if !is_canonical_origin(origin) {
         return Err(KeystoreError::BadOrigin);
     }
     Entry::new(SERVICE, origin).map_err(KeystoreError::from)

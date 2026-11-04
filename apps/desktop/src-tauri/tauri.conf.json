@@ -6,7 +6,7 @@
   "build": {
     "frontendDist": "../../client/build",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "bun run --cwd ../client dev",
+    "beforeDevCommand": "bun run --cwd ../client dev --port 5173 --strictPort",
     "beforeBuildCommand": "bun run --cwd ../client build"
   },
   "app": {
@@ -22,7 +22,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; connect-src 'self' https: wss:; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'"
+      "csp": "default-src 'self'; connect-src 'self' https: wss:; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
     }
   },
   "bundle": {

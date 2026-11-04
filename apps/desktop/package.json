@@ -7,9 +7,9 @@
     "tauri": "tauri",
     "dev": "tauri dev",
     "build": "tauri build",
-    "lint": "echo 'no TypeScript here; the cargo gates lint src-tauri'",
-    "check": "echo 'no TypeScript here; the cargo gates check src-tauri'",
-    "test": "echo 'no TypeScript here; cargo test covers src-tauri'"
+    "lint": "echo 'The Rust side is covered by the cargo gates (fmt, clippy).'",
+    "check": "echo 'The Rust side is covered by the cargo gates (clippy, build).'",
+    "test": "echo 'The Rust side is covered by the cargo gates (cargo test).'"
   },
   "devDependencies": {
     "@tauri-apps/cli": "2.12.4"
