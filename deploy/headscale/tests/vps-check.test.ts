@@ -63,7 +63,9 @@ describe("harden.sh check", () => {
     expect(run.code).toBe(1);
     expect(run.out).toContain(`VIOLATION: ${message}`);
   });
+});
 
+describe("harden.sh check (boot firewall)", () => {
   test("VPS-002: check reports a boot config that does not load the Anima rules", () => {
     host.write("etc/sysconfig/nftables.conf", '#include "/etc/nftables/anima.nft"\n');
     expect(host.run(["check"]).out).toContain("VIOLATION: /etc/sysconfig/nftables.conf does not load /etc/nftables/anima.nft at boot");
@@ -97,7 +99,9 @@ describe("harden.sh check", () => {
     host.write("etc/anima/firewall-allow", "80/tcp accept\n");
     expect(host.run(["check"]).out).toContain("VIOLATION: /etc/anima/firewall-allow has a line that is not one PORT/PROTO");
   });
+});
 
+describe("harden.sh check (updates, Docker, OS)", () => {
   test.each([
     ["apply_updates = yes", "apply_updates = no"],
     ["upgrade_type = default", "upgrade_type = security"],
@@ -108,12 +112,17 @@ describe("harden.sh check", () => {
   });
 
   test.each([
-    ["27.5.1", true],
-    ["28.0.0", false],
-  ])("D-10: check warns about Docker %p before 28: %p", (version, warns) => {
-    const run = host.run(["check"], { FAKE_DOCKER_VERSION: version });
-    expect(run.out.includes("warning: Docker")).toBe(warns);
-    expect(run.code).toBe(0);
+    [{ FAKE_DOCKER_VERSION: "27.5.1" }, "Docker 27.5.1 is older than 28"],
+    [{ FAKE_DOCKER_VERSION: "dev" }, 'cannot tell the Docker version from "dev"'],
+    [{ FAKE_DOCKER_DOWN: "1" }, "cannot read the Docker version"],
+  ])("D-10: check reports Docker below 28 or of unknown version: %p", (env, message) => {
+    const run = host.run(["check"], env);
+    expect(run.code).toBe(1);
+    expect(run.out).toContain(`VIOLATION: ${message}`);
+  });
+
+  test.each([["28.0.0"], ["29.9.3"]])("D-10: check accepts Docker %p", (version) => {
+    expect(host.run(["check"], { FAKE_DOCKER_VERSION: version }).code).toBe(0);
   });
 
   test.each([

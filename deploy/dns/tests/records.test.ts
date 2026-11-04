@@ -77,7 +77,9 @@ describe('anima.ing public records', () => {
       expect(record.name === 'net.anima.ing' || record.name.endsWith('.net.anima.ing')).toBe(false);
     }
   });
+});
 
+describe('anima.ing proxied and CAA records, and the README', () => {
   test('DNS-007 handoff updates.anima.ing is the only proxied record', () => {
     const proxied = zone.records.filter((record) => record.proxied === true);
     expect(proxied.map((record) => `${record.type} ${record.name}`)).toEqual(['AAAA updates.anima.ing']);

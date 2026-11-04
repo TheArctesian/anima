@@ -238,7 +238,13 @@ Everything in this step runs on the VPS over SSH, over the public address for no
    ```bash
    # Runs on: VPS (SSH)
    rpm -q gpg-pubkey --qf '%{version} %{summary}\n'      # 621e9f35 Docker Release (CE rpm)
+   sudo docker version --format '{{.Server.Version}}'     # must be 28 or newer
    ```
+
+   **Preflight: Docker 28 or newer.** Before 28, Docker turns on `route_localnet`, so a port
+   published on `127.0.0.1` is reachable from the network. If Docker was already installed
+   and is older, stop and tell the programme; `harden.sh check` reports it as a violation, and
+   `docker` and `firewall` refuse to run.
 
 3. Install Tailscale from Tailscale's RHEL 10 repository, EPEL (for `restic`) and the other
    tools. AlmaLinux provides `sqlite`, `jq`, `gettext-envsubst` and `policycoreutils-python-utils`;
@@ -445,8 +451,10 @@ changes nothing.
    violations. Compare the inventory with the one you sent: anything new that is marked `!` is a
    reason to stop and ask. Before the hardening it lists violations (SSH password login, no
    automatic updates, Docker without SELinux labels, no firewall table, no `nftables` drop-in,
-   firewalld not masked, listeners). That is expected. It also warns if Docker is older than
-   version 28 and fails if `tailscale0` is missing. Run it as the same admin user as in the next
+   firewalld not masked, listeners). That is expected. It also reports Docker older than
+   version 28 (or a version it cannot read), any interface other than `lo`, `tailscale0`,
+   `docker0` and `br-*` with an address in `172.16.0.0/12`, and fails if `tailscale0` is
+   missing. Run it as the same admin user as in the next
    steps, with `ANIMA_ADMIN_USER` exported.
 
    ```bash
@@ -556,7 +564,8 @@ changes nothing.
    `public:protocols`, `public:masquerade`, `public:target` (the zone name first),
    `service:NAME` (a service that includes others or opens protocols or source ports),
    `policy:NAME` (a firewalld policy; `allow-host-ipv6` and Docker's `docker-forwarding` pass
-   only in their stock form) or `direct-rules`. Read it with
+   only in their stock form, as `sudo firewall-cmd --info-policy=NAME` prints it, `(active)`
+   after the name included) or `direct-rules`. Read it with
    `sudo firewall-cmd --zone=public --list-all`, `--info-service=NAME`, `--info-policy=NAME` or
    `--direct --get-all-rules`, and send it to the programme. For each, decide:
 
@@ -568,6 +577,12 @@ changes nothing.
      `--allow-closing 9090/tcp,546/udp` to both `firewall` and `confirm`. A token closes the same
      way (for example `--allow-closing 9090/tcp,public:rich-rules`); keep the ports it opened in
      the allow file if they must stay open.
+
+   It refuses while Docker is older than 28, and while an interface other than `lo`,
+   `tailscale0`, `docker0` and `br-*` holds an address in `172.16.0.0/12` (a provider private
+   network, for example): the rules drop that range unless it comes from those interfaces, so
+   a neighbour with a static route cannot reach a container's own address past Docker's
+   published ports (NET-002). Send that interface to the programme.
 
    It refuses while `/etc/sysconfig/nftables.conf` holds anything but comments and the Anima
    include: AlmaLinux ships it as comments only, and a rule or an include there could flush

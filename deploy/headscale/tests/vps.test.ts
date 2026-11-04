@@ -7,11 +7,11 @@ import { VPS_DIR } from "./vps-host.ts";
 const readVps = (name: string): string => readFileSync(join(VPS_DIR, name), "utf8");
 const DSTNAT_PRIORITY = -100;
 
-describe("nftables.conf", () => {
-  const ruleset = parseNftables(readVps("nftables.conf"));
-  const hooked = (hook: string): Chain => ruleset.chains.find((chain) => chain.hook === hook) as Chain;
-  const input = hooked("input");
+const ruleset = parseNftables(readVps("nftables.conf"));
+const hooked = (hook: string): Chain => ruleset.chains.find((chain) => chain.hook === hook) as Chain;
+const input = hooked("input");
 
+describe("nftables.conf", () => {
   test("VPS-002: the input chain drops by default", () => {
     expect(input.table).toBe("inet anima_filter");
     expect(input.policy).toBe("drop");
@@ -45,6 +45,9 @@ describe("nftables.conf", () => {
   // behaviour (neighbour blocked, VPN peer reaches a DNAT-published port, container
   // reaches a tailnet peer) was checked in network namespaces on ubuntu:24.04 (T3) and
   // again on almalinux:10 with nftables 1.1.5 and Docker 29.9 (T7).
+});
+
+describe("nftables.conf keeps the VPN addresses on tailscale0 (DNS-005)", () => {
   const OFF_VPN = 'iifname != { "lo", "tailscale0" }';
   const LOCAL_VPN_DROPS = [
     `${OFF_VPN} fib daddr type local ip daddr 100.64.0.0/10 drop`,
@@ -55,7 +58,18 @@ describe("nftables.conf", () => {
     const prerouting = hooked("prerouting");
     expect(prerouting.table).toBe("inet anima_filter");
     expect(prerouting.priority).toBeLessThanOrEqual(DSTNAT_PRIORITY);
-    expect(prerouting.rules).toEqual([...LOCAL_VPN_DROPS, 'iifname != "lo" ip daddr 127.0.0.0/8 drop']);
+    expect(prerouting.rules).toEqual([
+      ...LOCAL_VPN_DROPS,
+      'iifname != "lo" ip daddr 127.0.0.0/8 drop',
+      'iifname != { "lo", "tailscale0", "docker0", "br-*" } ip daddr 172.16.0.0/12 drop',
+    ]);
+  });
+
+  test("NET-002: Docker's private range is reachable only from lo, the VPN and the Docker bridges, as the forward chain allows", () => {
+    const set = (rule = ""): string | undefined => /iifname != (\{[^}]*\})/.exec(rule)?.[1];
+    const docker = hooked("prerouting").rules.find((rule) => rule.includes("172.16.0.0/12"));
+    expect(set(docker)).toBe('{ "lo", "tailscale0", "docker0", "br-*" }');
+    expect(set(docker)).toBe(set(hooked("forward").rules[0]));
   });
 
   test("DNS-005: forwarding into tailscale0 is allowed only from the VPN, loopback and Docker bridges", () => {

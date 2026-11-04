@@ -66,7 +66,9 @@ describe("backup.sh", () => {
       for (const call of result.calls) expect(call.env.filter((line) => /^RESTIC_(PASSWORD|REPOSITORY)=/.test(line))).toEqual([]);
     }
   });
+});
 
+describe("backup.sh failures and cleanup", () => {
   test("VPS-006 removes the temporary snapshot after a successful backup", () => {
     const result = run("backup.sh");
     expect(result.code).toBe(0);
@@ -103,7 +105,9 @@ describe("backup.sh", () => {
     expect(result.out).toContain("could not copy");
     expect(result.leftover).toEqual([]);
   });
+});
 
+describe("backup.sh refusals and stops", () => {
   test("VPS-006 refuses a temporary folder whose path would break the VACUUM INTO quoting", () => {
     const root = fixture();
     const quoted = join(root, "tmp", "it's");

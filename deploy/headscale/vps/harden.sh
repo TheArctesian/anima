@@ -159,10 +159,19 @@ os_warnings() {
   if ! grep -qxE 'ID="?almalinux"?' "$release" 2>/dev/null || ! grep -qxE 'VERSION_ID="?10(\.[0-9]+)?"?' "$release"; then
     say "warning: not AlmaLinux 10; this script is written for it"
   fi
+}
+
+# Print a problem unless the Docker daemon is version 28 or newer. Before 28 Docker turns
+# on route_localnet, so a port published on 127.0.0.1 is reachable from the network, and
+# the Anima setup (daemon.json, WP-04's preflight) relies on 28's behaviour.
+docker_version_problem() {
+  local version
   if ! version=$($DOCKER version --format '{{.Server.Version}}' 2>/dev/null); then
-    say "warning: cannot read the Docker version"
-  elif [[ ${version%%.*} =~ ^[0-9]+$ ]] && [ "${version%%.*}" -lt 28 ]; then
-    say "warning: Docker $version is older than 28; ports published on loopback are reachable"
+    say "cannot read the Docker version (docker version); Docker 28 or newer is required"
+  elif ! [[ ${version%%.*} =~ ^[0-9]+$ ]]; then
+    say "cannot tell the Docker version from \"$version\"; Docker 28 or newer is required"
+  elif [ "${version%%.*}" -lt 28 ]; then
+    say "Docker $version is older than 28: ports published on loopback are reachable; upgrade Docker"
   fi
 }
 
@@ -170,6 +179,8 @@ cmd_docker() {
   local target merged problems
   require_root
   command -v "$JQ" >/dev/null 2>&1 || fail "jq is required: dnf install jq"
+  problems=$(docker_version_problem)
+  [ -z "$problems" ] || refuse "$problems"
   # daemon.json turns on SELinux labels: an unlabelled lib/ would lock Headscale out.
   problems=$(label_problems)
   [ -z "$problems" ] || refuse "$problems; run harden.sh selinux first"
@@ -197,7 +208,7 @@ cmd_check() {
   require_root
   inventory
   os_warnings
-  problems=$(admin_problem; match_problems; sshd_mismatches "${ANIMA_ADMIN_USER:-}"; update_problems
+  problems=$(docker_version_problem; admin_problem; match_problems; sshd_mismatches "${ANIMA_ADMIN_USER:-}"; update_problems
     selinux_problems; firewall_problems; listener_violations)
   if [ -z "$problems" ]; then say "ok: no violations"; return 0; fi
   while IFS= read -r line; do say "VIOLATION: $line"; done <<<"$problems"

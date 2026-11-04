@@ -35,14 +35,15 @@ const SSHD_CONFIG =
   "# stock comments\nInclude /etc/ssh/sshd_config.d/*.conf\nAuthorizedKeysFile .ssh/authorized_keys\n" +
   "#Match User anoncvs\n#\tPermitTTY no\nSubsystem sftp /usr/libexec/openssh/sftp-server\n";
 
-// `firewall-cmd --info-policy` on AlmaLinux 10 (firewalld 2.4.3), trailing blanks kept.
+// `firewall-cmd --info-policy` of a running firewalld 2.4.3 on AlmaLinux 10: " (active)"
+// after the name, trailing blanks kept.
 const KEYS = "  services: \n  ports: \n  protocols: \n  masquerade: no\n  forward-ports: \n  source-ports: \n  icmp-blocks: \n  rich rules: \n";
 const ICMP = ["mld-listener-done", "mld-listener-query", "mld-listener-report", "mld2-listener-report",
   "neighbour-advertisement", "neighbour-solicitation", "redirect", "router-advertisement"];
 const POLICIES: Record<string, string> = {
-  "allow-host-ipv6": "allow-host-ipv6\n  disable: no\n  priority: -15000\n  target: CONTINUE\n  ingress-zones: ANY\n" +
+  "allow-host-ipv6": "allow-host-ipv6 (active)\n  disable: no\n  priority: -15000\n  target: CONTINUE\n  ingress-zones: ANY\n" +
     `  egress-zones: HOST\n${KEYS}${ICMP.map((name) => `\trule family="ipv6" icmp-type name="${name}" accept\n`).join("")}`,
-  "docker-forwarding": `docker-forwarding\n  disable: no\n  priority: -1\n  target: ACCEPT\n  ingress-zones: ANY\n  egress-zones: docker\n${KEYS}`,
+  "docker-forwarding": `docker-forwarding (active)\n  disable: no\n  priority: -1\n  target: ACCEPT\n  ingress-zones: ANY\n  egress-zones: docker\n${KEYS}`,
 };
 
 // `systemctl show -p ... nftables.service` on AlmaLinux 10 (systemd 257), stock and with the
@@ -57,6 +58,15 @@ const NFT_UNIT = {
   anima: `${START}${exec("ExecReload", "/usr/sbin/nft -f /etc/sysconfig/nftables.conf").replace("path=/sbin", "path=/usr/sbin")}` +
     `${FRAGMENT}DropInPaths=/etc/systemd/system/nftables.service.d/anima.conf\n`,
 };
+
+// `ip -o -4 addr show` on a VPS with Docker and the VPN: loopback, public, docker0, tailnet.
+const ADDRS = [
+  "1: lo    inet 127.0.0.1/8 scope host lo",
+  "2: eth0    inet 203.0.113.7/24 brd 203.0.113.255 scope global eth0",
+  "3: docker0    inet 172.17.0.1/16 brd 172.17.255.255 scope global docker0",
+  "4: br-5b1c2d3e4f60    inet 172.30.0.1/24 brd 172.30.0.255 scope global br-5b1c2d3e4f60",
+  "5: tailscale0    inet 100.64.0.1/32 scope global tailscale0",
+].join("\\n");
 
 const FAKES: Record<string, string> = {
   NFT: `case "$1" in
@@ -107,7 +117,8 @@ esac`,
   GETENFORCE: `echo "\${FAKE_ENFORCE:-Enforcing}"`,
   STAT: `[ -e "$3" ] || exit 1; echo "\${FAKE_LABEL:-system_u:object_r:container_file_t:s0}"`,
   PS: `echo "\${FAKE_UNIT:-sshd.service}"`,
-  IP: `exit "\${FAKE_TAILSCALE:-0}"`,
+  IP: `[ "$1" = -o ] || exit "\${FAKE_TAILSCALE:-0}"
+printf '%b\\n' "\${FAKE_ADDRS:-${ADDRS}}"`,
   ID: `echo "\${FAKE_GROUPS:-$2 wheel}"`,
   GETENT: `case "$2" in
   ghost) exit 2;;
@@ -116,7 +127,7 @@ esac`,
   *) echo "$2:x:\${FAKE_OWNER:-$FAKE_UID}:1000::/home/$2:/bin/bash";;
 esac`,
   DOCKER: `case "$1" in
-  version) echo "\${FAKE_DOCKER_VERSION:-29.9.3}";;
+  version) [ -z "\${FAKE_DOCKER_DOWN:-}" ] || exit 1; echo "\${FAKE_DOCKER_VERSION:-29.9.3}";;
   info) echo "\${FAKE_DOCKER_SECURITY:-[name=seccomp,profile=builtin name=selinux]}";;
   ps) [ "$2" != -q ] || { printf '%b' "\${FAKE_HEADSCALE_ID-0123abcd\\n}"; exit 0; }
       printf '%b\\n' "\${FAKE_CONTAINERS:-headscale-headscale-1 docker.io/headscale/headscale:0.29.7 }";;
@@ -150,11 +161,8 @@ export interface Host {
   harden(): void;
 }
 
-export function fakeHost(): Host {
-  const work = mkdtempSync(join(tmpdir(), "anima-vps-"));
-  const root = join(work, "root");
-  const vps = join(work, "vps");
-  cpSync(VPS_DIR, vps, { recursive: true });
+/** Write the fake system commands and the outputs they replay into the work folder. */
+function installFakes(work: string): void {
   mkdirSync(join(work, "bin"));
   for (const [name, body] of Object.entries(FAKES)) {
     const file = join(work, "bin", name);
@@ -164,30 +172,42 @@ export function fakeHost(): Host {
   writeFileSync(join(work, "ruleset"), RULESET);
   for (const [name, text] of Object.entries(POLICIES)) writeFileSync(join(work, `policy-${name}`), text);
   for (const [name, text] of Object.entries(NFT_UNIT)) writeFileSync(join(work, `nft-unit-${name}`), text);
+}
+
+/** Run the copy of harden.sh in `work` against the fakes and the temporary root. */
+function runHarden(work: string, args: string[], env: Record<string, string>): Run {
+  const log = join(work, "calls.log");
+  const root = join(work, "root");
+  writeFileSync(log, "");
+  const fakes = Object.keys(FAKES).map((name) => [`HARDEN_${name}`, join(work, "bin", name)]);
+  const result = Bun.spawnSync(["bash", join(work, "vps", "harden.sh"), "--root", root, ...args], {
+    env: {
+      PATH: process.env.PATH ?? "",
+      FAKE_LOG: log,
+      FAKE_RULESET: join(work, "ruleset"),
+      FAKE_SS: join(work, "ss"),
+      FAKE_ROOT: root,
+      FAKE_DIR: work,
+      FAKE_UID: String(process.getuid?.() ?? 0),
+      ANIMA_ADMIN_USER: "admin",
+      ...Object.fromEntries(fakes),
+      ...env,
+    },
+  });
+  const calls = readFileSync(log, "utf8").split("\n").filter(Boolean);
+  return { code: result.exitCode, out: result.stdout.toString() + result.stderr.toString(), calls };
+}
+
+export function fakeHost(): Host {
+  const work = mkdtempSync(join(tmpdir(), "anima-vps-"));
+  const root = join(work, "root");
+  const vps = join(work, "vps");
+  cpSync(VPS_DIR, vps, { recursive: true });
+  installFakes(work);
   const host: Host = {
     root,
     vps,
-    run(args, env = {}) {
-      const log = join(work, "calls.log");
-      writeFileSync(log, "");
-      const fakes = Object.keys(FAKES).map((name) => [`HARDEN_${name}`, join(work, "bin", name)]);
-      const result = Bun.spawnSync(["bash", join(vps, "harden.sh"), "--root", root, ...args], {
-        env: {
-          PATH: process.env.PATH ?? "",
-          FAKE_LOG: log,
-          FAKE_RULESET: join(work, "ruleset"),
-          FAKE_SS: join(work, "ss"),
-          FAKE_ROOT: root,
-          FAKE_DIR: work,
-          FAKE_UID: String(process.getuid?.() ?? 0),
-          ANIMA_ADMIN_USER: "admin",
-          ...Object.fromEntries(fakes),
-          ...env,
-        },
-      });
-      const calls = readFileSync(log, "utf8").split("\n").filter(Boolean);
-      return { code: result.exitCode, out: result.stdout.toString() + result.stderr.toString(), calls };
-    },
+    run: (args, env = {}) => runHarden(work, args, env),
     write(path, text, mode = 0o644) {
       mkdirSync(dirname(join(root, path)), { recursive: true });
       writeFileSync(join(root, path), text);

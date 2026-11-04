@@ -121,10 +121,12 @@ stock_policy() {
     '  source-ports:' '  icmp-blocks:' '  rich rules:'
 }
 
-# Print policy $1's --info-policy output in a form to compare: no trailing blanks, no
-# priority line (only allow-host-ipv6's priority is fixed; Docker sets its own), sorted.
+# Print policy $1's --info-policy output in a form to compare: no " (active)" after the
+# name (the running firewall-cmd adds it, firewall-offline-cmd does not), no trailing
+# blanks, no priority line (only allow-host-ipv6's priority is fixed; Docker sets its
+# own), sorted.
 policy_form() {
-  sed -e 's/[[:space:]]*$//' -e '/^  priority:/d' | LC_ALL=C sort
+  sed -e 's/[[:space:]]*$//' -e '1s/ (active)$//' -e '/^  priority:/d' | LC_ALL=C sort
 }
 
 # True when policy $1 is in its stock form, priority included for allow-host-ipv6.

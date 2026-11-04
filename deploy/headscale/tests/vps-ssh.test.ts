@@ -55,6 +55,9 @@ describe("harden.sh ssh", () => {
 
   // The files an AlmaLinux 10 VPS may carry: the permitrootlogin migration (01- or 25-),
   // Red Hat's defaults (50-redhat.conf, X11Forwarding yes) and cloud-init's.
+});
+
+describe("harden.sh ssh against other drop-ins", () => {
   test.each([
     ["01-permitrootlogin.conf", "PermitRootLogin yes\n"],
     ["25-permitrootlogin.conf", "PermitRootLogin yes\n"],
@@ -125,7 +128,9 @@ describe("harden.sh ssh and check (Match blocks)", () => {
     expect(run.code).toBe(2);
     expect(run.out).toContain("90-provider.conf:1: a Match block can override the hardening");
   });
+});
 
+describe("harden.sh ssh and check (Include forms)", () => {
   test.each([
     ["Include=/etc/ssh/provider.conf"],
     ['"Include" /etc/ssh/provider.conf'],
@@ -162,7 +167,9 @@ describe("harden.sh ssh and check (Match blocks)", () => {
     expect(run.out).toContain(`VIOLATION: ${PUBLIC_ROOT}: expected "passwordauthentication no"`);
     expect(run.out).toContain(`VIOLATION: ${PUBLIC_ROOT}: expected "allowusers admin"`);
   });
+});
 
+describe("harden.sh ssh and check (sshd -T -C and include limits)", () => {
   test("VPS-001: check compares sshd -T -C for root and the admin user on the public and VPN addresses", () => {
     host.harden();
     const run = host.run(["check"], { VPS_PUBLIC_IPV4: "203.0.113.9" });

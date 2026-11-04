@@ -2,7 +2,8 @@
 # The `firewall` and `confirm` commands: apply nftables.conf with a 180 s rollback that only
 # a new SSH session over the VPN can cancel, then install it for boot and mask firewalld
 # (VPS-002, DNS-005, D-10). Sourced by harden.sh after open-ports.sh; needs harden.sh's
-# say, refuse, fail, dry, path, write_file, save_previous and require_root, NFT, SYSTEMCTL,
+# say, refuse, fail, dry, path, write_file, save_previous, require_root and
+# docker_version_problem, NFT, SYSTEMCTL,
 # SYSTEMD_RUN, IP, SS, STATE_DIR, CONSOLE, HERE and SELF, and open-ports.sh's
 # is_vpn_address, local_accepts, refuse_closing and LOCAL_ALLOW.
 
@@ -35,6 +36,7 @@ firewall_problems() {
     say "$NFT_SYSCONFIG does not load $NFT_RULES at boot"
   fi
   sysconfig_extra_lines
+  docker_range_problems
   [ -f "$(path "$NFT_DROPIN")" ] || say "nftables.service would flush the whole ruleset on stop or reload"
   nft_unit_problems
   [ "$($SYSTEMCTL is-enabled firewalld.service 2>/dev/null)" = masked ] || say "firewalld is not masked"
@@ -96,6 +98,19 @@ nft_unit_problems() {
       *) say "nftables.service runs \"$line\"; only nft -f $NFT_SYSCONFIG is expected, at start and reload" ;;
     esac
   done <<<"$settings"
+}
+
+# Print each interface other than lo, tailscale0, docker0 and br-* that holds an IPv4
+# address in Docker's range 172.16.0.0/12 (a provider private network, for example): the
+# table's prerouting drop for that range would cut it off, so the operator decides first.
+docker_range_problems() {
+  local addresses
+  addresses=$($IP -o -4 addr show) || { say "ip -o -4 addr show failed"; return; }
+  awk '{
+    device = $2; sub(/@.*/, "", device); split($4, octet, /[.\/]/)
+    if (octet[1] == 172 && octet[2] >= 16 && octet[2] <= 31 && device !~ /^(lo|tailscale0|docker0|br-.*)$/)
+      print "interface " device " holds " $4 " in 172.16.0.0/12, which the Anima table drops off lo, tailscale0 and the Docker bridges"
+  }' <<<"$addresses"
 }
 
 # Print each active line of the boot file other than the Anima include. EL ships it as
@@ -184,7 +199,7 @@ arm_rollback() {
 }
 
 cmd_firewall() {
-  local state nft_path
+  local state nft_path problems
   require_root
   $IP link show tailscale0 >/dev/null 2>&1 || refuse "tailscale0 is missing; join the VPN first"
   if [ "$CONSOLE" -eq 0 ] && ! vpn_session; then
@@ -193,6 +208,8 @@ cmd_firewall() {
   local_accepts >/dev/null
   refuse_closing
   refuse_sysconfig_extras
+  problems=$(docker_version_problem; docker_range_problems)
+  [ -z "$problems" ] || refuse "$problems; ask the programme before applying the firewall"
   render_rules | $NFT -c -f /dev/stdin || fail "nft -c rejected the rules; nothing applied"
   if dry; then
     say "[dry-run] save ruleset to $STATE_DIR/nftables.previous, arm $ROLLBACK_UNIT ($ROLLBACK_SECONDS s), apply"

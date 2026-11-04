@@ -75,7 +75,9 @@ describe("prune.sh", () => {
     expect(result.code).toBe(0);
     expect(commandNames(result)).toContain("forget");
   });
+});
 
+describe("prune.sh refusals", () => {
   const refusals: [string, string[], string][] = [
     ["a snapshot is dated more than an hour in the future", [...dailyTimes(20), "2027-01-01T03:15:00Z"], "in the future"],
     ["a snapshot is dated in the future through its time zone", [...dailyTimes(3), "2026-11-04T08:30:00-05:00"], "in the future"],

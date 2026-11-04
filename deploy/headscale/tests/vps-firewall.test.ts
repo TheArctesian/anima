@@ -11,6 +11,10 @@ const applied = (run: Run): boolean => run.calls.some((call) => /^NFT -f /.test(
 const armed = (run: Run): boolean => run.calls.some((call) => call.startsWith("SYSTEMD_RUN --unit="));
 const indexOf = (run: Run, re: RegExp): number => run.calls.findIndex((call) => re.test(call));
 const CONTEXT = "--property=SELinuxContext=system_u:system_r:unconfined_service_t:s0";
+const firewalld = { FAKE_FIREWALLD_ACTIVE: "0", FAKE_FIREWALLD: "enabled" };
+const applyFirewall = (): void => {
+  expect(host.run(["firewall"], vpn).code).toBe(0);
+};
 let host: Host;
 
 beforeEach(() => {
@@ -63,7 +67,9 @@ describe("harden.sh firewall", () => {
     expect(apply).toBeGreaterThan(arm);
     expect(host.exists("etc/nftables/anima.nft")).toBe(false);
   });
+});
 
+describe("harden.sh firewall failures", () => {
   test.each([
     ["nft -c rejects the rules", { FAKE_NFT_CHECK: "1" }],
     ["nft -c rejects the rollback", { FAKE_NFT_CHECK_ROLLBACK: "1" }],
@@ -94,8 +100,6 @@ describe("harden.sh firewall", () => {
 });
 
 describe("harden.sh firewall never silently closes an open port (VPS-005)", () => {
-  const firewalld = { FAKE_FIREWALLD_ACTIVE: "0", FAKE_FIREWALLD: "enabled" };
-
   test.each([
     ["a public listener", { FAKE_SS_EXTRA: "tcp LISTEN 0 511 0.0.0.0:8080 0.0.0.0:*" }, "8080/tcp"],
     ["a firewalld port", { ...firewalld, FAKE_FW_PORTS: "8080/tcp" }, "8080/tcp"],
@@ -135,7 +139,9 @@ describe("harden.sh firewall never silently closes an open port (VPS-005)", () =
     host.setListeners([...ALLOWED_SS, "tcp LISTEN 0 128 0.0.0.0:22 0.0.0.0:*"]);
     expect(host.run(["firewall"], { ...vpn, ...firewalld, FAKE_FW_SERVICES: "ssh", FAKE_FW_PORTS: "443/tcp" }).code).toBe(0);
   });
+});
 
+describe("harden.sh firewall never silently closes firewalld policies or Docker ports (VPS-005)", () => {
   test.each([
     ["a forward port added to allow-host-ipv6", "allow-host-ipv6", { FAKE_FW_POLICY_EXTRA: "\\trule family=\"ipv4\" forward-port port=\"80\" protocol=\"tcp\" to-port=\"8080\"\\n" }],
     ["allow-host-ipv6 with target ACCEPT", "allow-host-ipv6", { FAKE_FW_POLICY_EDIT: "s/target: CONTINUE/target: ACCEPT/" }],
@@ -147,6 +153,16 @@ describe("harden.sh firewall never silently closes an open port (VPS-005)", () =
     const run = host.run(["firewall"], { ...vpn, ...firewalld, FAKE_FW_POLICIES: policies, ...edit });
     expect(run.code).toBe(2);
     expect(run.out).toContain(`would close: policy:${policy} (`);
+  });
+
+  test.each([["with"], ["without"]])("a stock policy passes %s the (active) suffix, and a changed one is still flagged", (form) => {
+    const policies = "allow-host-ipv6\\n  ingress-zones: ANY\\ndocker-forwarding\\n  ingress-zones: ANY";
+    const strip = form === "without" ? "1s/ (active)$//;" : "";
+    const env = { ...vpn, ...firewalld, FAKE_FW_POLICIES: policies };
+    expect(host.run(["firewall"], { ...env, FAKE_FW_POLICY_EDIT: strip || "s/^//" }).code).toBe(0);
+    const changed = host.run(["firewall"], { ...env, FAKE_FW_POLICY_EDIT: `${strip}s/target: CONTINUE/target: ACCEPT/` });
+    expect(changed.code).toBe(2);
+    expect(changed.out).toContain("would close: policy:allow-host-ipv6 (");
   });
 
   test("Docker's forwarding policy and the built-in allow-host-ipv6 are not openings", () => {
@@ -177,9 +193,7 @@ describe("harden.sh firewall never silently closes an open port (VPS-005)", () =
 });
 
 describe("harden.sh confirm", () => {
-  beforeEach(() => {
-    expect(host.run(["firewall"], vpn).code).toBe(0);
-  });
+  beforeEach(applyFirewall);
 
   test("VPS-002: confirm from a new VPN session stops the rollback, installs the rules for boot and masks firewalld", () => {
     const pending = host.read("var/lib/anima/nftables.pending");
@@ -214,6 +228,10 @@ describe("harden.sh confirm", () => {
     expect(host.run(["confirm"], { ...second, FAKE_FIREWALLD_ACTIVE: "0" }).code).toBe(0);
     expect(host.exists("var/lib/anima/firewalld-was-active")).toBe(true);
   });
+});
+
+describe("harden.sh confirm refusals", () => {
+  beforeEach(applyFirewall);
 
   test.each([
     ["the session that ran firewall", vpn],
