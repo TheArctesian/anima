@@ -181,6 +181,14 @@ pub async fn get(db: &PgPool, id: CheckId) -> Result<Check, Error> {
     store::fetch(db, id).await
 }
 
+/// The checks with these ids, in one query (API-005). An id with no check is absent.
+///
+/// # Errors
+/// `Unreadable` when a stored configuration cannot be read.
+pub async fn get_many(db: &PgPool, ids: &[CheckId]) -> Result<Vec<Check>, Error> {
+    store::fetch_many(db, ids).await
+}
+
 /// For each device, the address that its check with the latest beat resolved.
 ///
 /// # Errors

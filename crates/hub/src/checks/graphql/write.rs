@@ -1,6 +1,8 @@
 //! The four check mutations. Each writes its change, one audit entry and one event in one
 //! transaction: if any step fails, nothing is stored (API-003, LOG-005, CHK-005).
 
+use std::collections::HashMap;
+
 use async_graphql::{Context, ID, Result};
 use sqlx::{PgConnection, PgPool, Postgres, Transaction};
 
@@ -75,20 +77,23 @@ fn child_problem(child: &Check, device: DeviceId) -> Option<&'static str> {
     }
 }
 
-/// Every child must exist, be on the group's device and not be a group.
+/// Every child must exist, be on the group's device and not be a group. One query reads them
+/// all (API-005).
 async fn validate_children(db: &PgPool, children: &[CheckId], device: DeviceId) -> Result<()> {
-    let mut problems = Vec::new();
-    for &child in children {
-        match checks::get(db, child).await {
-            Ok(found) => problems.extend(
-                child_problem(&found, device).map(|problem| FieldError::new("childIds", problem)),
-            ),
-            Err(Error::NotFound(_)) => {
-                problems.push(FieldError::new("childIds", "A child check does not exist."));
-            }
-            Err(error) => return Err(to_graphql(error)),
-        }
-    }
+    let found: HashMap<CheckId, Check> = checks::get_many(db, children)
+        .await
+        .map_err(to_graphql)?
+        .into_iter()
+        .map(|check| (check.id, check))
+        .collect();
+    let problems: Vec<FieldError> = children
+        .iter()
+        .filter_map(|child| match found.get(child) {
+            Some(check) => child_problem(check, device),
+            None => Some("A child check does not exist."),
+        })
+        .map(|problem| FieldError::new("childIds", problem))
+        .collect();
     if problems.is_empty() {
         Ok(())
     } else {

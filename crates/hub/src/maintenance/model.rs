@@ -37,7 +37,7 @@ impl WindowKind {
 }
 
 /// A day of the week; `Mon` is the first.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Enum)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, Enum)]
 #[serde(rename_all = "lowercase")]
 pub enum Weekday {
     Mon,

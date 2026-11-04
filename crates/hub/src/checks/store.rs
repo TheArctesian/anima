@@ -65,6 +65,15 @@ pub(super) async fn fetch<'e>(db: impl PgExecutor<'e>, id: CheckId) -> Result<Ch
     Check::try_from(row)
 }
 
+/// The checks with these ids that exist, in one query.
+pub(super) async fn fetch_many(db: &PgPool, ids: &[CheckId]) -> Result<Vec<Check>, Error> {
+    let rows = sqlx::query_as(select_check!("WHERE id = ANY($1)"))
+        .bind(ids)
+        .fetch_all(db)
+        .await?;
+    to_checks(rows)
+}
+
 /// The check as it is now, its row locked until the caller's transaction ends, so what an audit
 /// entry compares against cannot change underneath it.
 pub(super) async fn fetch_for_update(
@@ -150,14 +159,16 @@ pub(super) async fn by_push_token(db: &PgPool, token: &str) -> Result<Option<Che
     row.map(Check::try_from).transpose()
 }
 
-/// For each device, the address of the check with the latest beat that has one.
+/// For each device, the address of the ICMP, TCP or TLS check with the latest beat that has
+/// one. Only those probe the device's own host; an HTTP or DNS check can name another (R-026).
 pub(super) async fn resolved_ips(
     db: &PgPool,
     devices: &[DeviceId],
 ) -> Result<HashMap<DeviceId, IpAddr>, Error> {
     let rows: Vec<(DeviceId, IpAddr)> = sqlx::query_as(
         "SELECT DISTINCT ON (device_id) device_id, resolved_ip FROM checks.checks \
-         WHERE device_id = ANY($1) AND resolved_ip IS NOT NULL AND last_beat_at IS NOT NULL \
+         WHERE device_id = ANY($1) AND type IN ('icmp', 'tcp', 'tls') \
+         AND resolved_ip IS NOT NULL AND last_beat_at IS NOT NULL \
          ORDER BY device_id, last_beat_at DESC, id",
     )
     .bind(devices)

@@ -2,6 +2,8 @@
 //! Pure: the new push token comes in as a parameter. Errors name the field, never its value
 //! (LOG-007).
 
+use std::collections::HashSet;
+
 use async_graphql::ID;
 
 use super::input::{
@@ -143,12 +145,22 @@ fn dns(shape: DnsShape) -> ConfigForm {
     })
 }
 
+/// The most children one group takes: more is a mistake, and each child is a row to write.
+const CHILDREN_MAX: usize = 100;
+
 /// The group's children, each once, in the order given.
 fn children(ids: &[ID]) -> Result<Vec<CheckId>, FieldError> {
-    let mut parsed: Vec<CheckId> = Vec::with_capacity(ids.len());
+    if ids.len() > CHILDREN_MAX {
+        return Err(FieldError::new(
+            "childIds",
+            format!("A group takes at most {CHILDREN_MAX} children."),
+        ));
+    }
+    let mut seen = HashSet::with_capacity(ids.len());
+    let mut parsed = Vec::with_capacity(ids.len());
     for each in ids {
         let child = id("childIds", each)?;
-        if !parsed.contains(&child) {
+        if seen.insert(child) {
             parsed.push(child);
         }
     }

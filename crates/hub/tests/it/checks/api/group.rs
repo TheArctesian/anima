@@ -100,6 +100,26 @@ fixture_test! {
         assert_eq!(validation_fields(&error), ["childIds"]);
     }
 
+    async fn api_005_an_oversized_child_list_is_refused_at_once_with_a_validation_error(pool: PgPool) {
+        let schema = schema_for(&pool);
+        let many: Vec<String> = (0..60_000u128)
+            .map(|n| uuid::Uuid::from_u128(n + 1).to_string())
+            .collect();
+        let many: Vec<&str> = many.iter().map(String::as_str).collect();
+        let vars = json!({ "input": input(PVE_01, "group", group_of(&many)) });
+        let started = std::time::Instant::now();
+        let error = error_json(&with_variables(&schema, CREATE, vars).await);
+        assert_eq!(validation_fields(&error), ["childIds"]);
+        assert!(started.elapsed() < std::time::Duration::from_secs(3), "{:?}", started.elapsed());
+    }
+
+    async fn api_005_a_child_listed_twice_is_one_child(pool: PgPool) {
+        let schema = schema_for(&pool);
+        let a = tcp(&schema, PVE_01, "a").await;
+        let group = create(&schema, input(PVE_01, "group", group_of(&[&a, &a]))).await;
+        assert_eq!(names(&schema, &group).await, ["a"]);
+    }
+
     async fn chk_004_a_bad_update_of_the_children_changes_no_check(pool: PgPool) {
         let schema = schema_for(&pool);
         let a = tcp(&schema, PVE_01, "a").await;
