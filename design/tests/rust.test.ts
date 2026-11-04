@@ -1,6 +1,12 @@
 import { beforeAll, describe, expect, test } from 'bun:test';
 import { resolve } from 'node:path';
+import type { Token } from '../src/model.ts';
 import { buildOutputs, OUTPUT_PATHS } from '../src/outputs.ts';
+import { renderRust } from '../src/rust.ts';
+
+function token(name: string, value: string, source: string, group = 'color.nord'): Token {
+  return { name, path: `${group}.${name}`, group, type: 'color', value, source, description: '', reduced: undefined };
+}
 
 const root = resolve(import.meta.dir, '..', '..');
 let rust = '';
@@ -39,7 +45,21 @@ describe('Rust output', () => {
   test('RA-010 terminal colours reference NORD by index', () => {
     expect(rust).toContain('pub const TERMINAL_BACKGROUND: Rgb = NORD[0];');
     expect(rust).toContain('pub const TERMINAL_FOREGROUND: Rgb = NORD[4];');
-    expect(rust).toContain('NORD[1], NORD[11], NORD[14], NORD[13], NORD[9], NORD[15], NORD[8], NORD[5]');
+    expect(rust).toContain('    NORD[1],\n    NORD[11],\n    NORD[14],\n');
+  });
+
+  test('RA-010 the arrays are marked rustfmt::skip so rustfmt cannot repack them', () => {
+    expect(rust.match(/#\[rustfmt::skip\]\npub const (NORD|TERMINAL_ANSI)/g)).toHaveLength(2);
+  });
+
+  test('RA-010 a terminal value that is not a Nord alias renders as Rgb::new', () => {
+    const nord = Array.from({ length: 16 }, (_, index): Token => token(`nord-${index}`, '#000000', '#000000'));
+    const ansi = Array.from({ length: 16 }, (_, index): Token => token(`ansi-${index}`, '#112233', '#112233', 'terminal.ansi'));
+    const terminal = [token('background', '#445566', '{color.nord.0}', 'terminal'), token('foreground', '#ABCDEF', '#ABCDEF', 'terminal'), ...ansi];
+    const text = renderRust([...nord, ...terminal]);
+    expect(text).toContain('pub const TERMINAL_FOREGROUND: Rgb = Rgb::new(0xAB, 0xCD, 0xEF);');
+    expect(text).toContain('pub const TERMINAL_BACKGROUND: Rgb = NORD[0];');
+    expect(text).toContain('    Rgb::new(0x11, 0x22, 0x33),\n');
   });
 
   test('RA-010 terminal tokens do not appear in CSS, TypeScript or the reference page', () => {

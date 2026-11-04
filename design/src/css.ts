@@ -1,5 +1,5 @@
-import { GENERATED_NOTICE, aliasName, aliasOrValue, fieldsOf, numberOf, plain, tokensOfType, type Token } from './model.ts';
-import { sampleCurve, settleMs, type SpringShape } from './spring.ts';
+import { GENERATED_NOTICE, aliasName, aliasOrValue, bezierOf, fieldsOf, numberOf, springOf, trimmedDecimal, tokensOfType, type Token } from './model.ts';
+import { sampleCurve, settleMs } from './spring.ts';
 
 type Declaration = readonly [property: string, value: string];
 
@@ -11,7 +11,7 @@ function fontFamily(names: unknown): string {
 }
 
 function colourMix(colour: string, percent: number, over: string): string {
-  return `color-mix(in srgb, ${colour} ${plain(percent)}%, ${over})`;
+  return `color-mix(in srgb, ${colour} ${trimmedDecimal(percent)}%, ${over})`;
 }
 
 function tint(token: Token): string {
@@ -20,8 +20,8 @@ function tint(token: Token): string {
   return colourMix(aliasOrValue(source['color'], parts['color']), numberOf(parts['percent']), aliasOrValue(source['over'], parts['over']));
 }
 
-function springFragment(value: unknown): string {
-  const spring = fieldsOf(value) as unknown as SpringShape;
+function springFragment(token: Token): string {
+  const spring = springOf(token);
   return `${settleMs(spring)}ms linear(${sampleCurve(spring).map(String).join(', ')})`;
 }
 
@@ -32,7 +32,7 @@ function material(token: Token): Declaration[] {
   return [
     [`${prefix}-bg`, colourMix(base, numberOf(parts['opacityPercent']), 'transparent')],
     [`${prefix}-blur`, String(parts['blur'])],
-    [`${prefix}-saturate`, `${plain(numberOf(parts['saturatePercent']))}%`],
+    [`${prefix}-saturate`, `${trimmedDecimal(numberOf(parts['saturatePercent']))}%`],
   ];
 }
 
@@ -52,11 +52,11 @@ function valueOf(token: Token): string {
     case 'fontFamily':
       return fontFamily(token.value);
     case 'cubicBezier':
-      return `cubic-bezier(${(token.value as readonly number[]).map((point) => plain(point)).join(', ')})`;
+      return `cubic-bezier(${bezierOf(token).map((point) => trimmedDecimal(point)).join(', ')})`;
     case 'spring':
-      return springFragment(token.value);
+      return springFragment(token);
     case 'stagger':
-      return `${plain(numberOf(fieldsOf(token.value)['intervalMs']))}ms`;
+      return `${trimmedDecimal(numberOf(fieldsOf(token.value)['intervalMs']))}ms`;
     case 'elevation':
       return elevation(token);
     default:

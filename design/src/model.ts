@@ -1,10 +1,14 @@
 // The resolved token as the output formats see it. Pure data: no Style Dictionary types.
 
+import type { SpringShape } from './spring.ts';
+
 export type Fields = Readonly<Record<string, unknown>>;
 
 export interface Token {
   /** The K5 name, for example `status-up` or `spring-default`. */
   readonly name: string;
+  /** The full source path, for example `motion.spring.default`; names the token in errors. */
+  readonly path: string;
   /** Source path without the last segment, for example `motion.spring`. Groups the reference page. */
   readonly group: string;
   /** DTCG `$type`, or a custom type such as `spring`. */
@@ -26,7 +30,7 @@ export function isTerminal(token: Token): boolean {
   return token.group === 'terminal' || token.group.startsWith('terminal.');
 }
 
-/** The K5 name of a token:the source path without its first segment, joined by dashes. */
+/** The K5 name of a token: the source path without its first segment, joined by dashes. */
 export function tokenName(path: readonly string[]): string {
   return path.slice(1).join('-');
 }
@@ -67,10 +71,44 @@ export function leadingNumber(value: unknown): number {
 }
 
 /** Round to `digits` decimals and drop trailing zeros, so output is stable text. */
-export function plain(value: number, digits = 6): string {
+export function trimmedDecimal(value: number, digits = 6): string {
   return String(Number(value.toFixed(digits)));
 }
 
 export function tokensOfType(tokens: readonly Token[], type: string): Token[] {
   return tokens.filter((token) => token.type === type);
+}
+
+/** A token source that cannot be turned into output: names the token and what is wrong with it. */
+export class TokenSourceError extends Error {
+  constructor(
+    readonly tokenPath: string,
+    readonly problem: string,
+  ) {
+    super(`${tokenPath}: ${problem}`);
+    this.name = 'TokenSourceError';
+  }
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+/** A spring needs a damping ratio and a positive response time (D-4). */
+export function springOf(token: Token): SpringShape {
+  const fields: Fields = typeof token.value === 'object' && token.value !== null ? (token.value as Fields) : {};
+  const { dampingRatio, responseS } = fields;
+  if (!isFiniteNumber(dampingRatio) || !isFiniteNumber(responseS) || responseS <= 0) {
+    throw new TokenSourceError(token.path, 'a spring needs numeric dampingRatio and positive responseS');
+  }
+  return { dampingRatio, responseS };
+}
+
+/** A cubic-bezier is four finite numbers. */
+export function bezierOf(token: Token): readonly number[] {
+  const { value } = token;
+  if (!Array.isArray(value) || value.length !== 4 || !value.every(isFiniteNumber)) {
+    throw new TokenSourceError(token.path, 'a cubic-bezier needs four finite numbers');
+  }
+  return value;
 }
