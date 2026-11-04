@@ -40,11 +40,11 @@ describe("preflight address", () => {
 });
 
 describe("preflight public", () => {
-  test.each(["31.220.53.226", "203.0.113.5", "8.8.8.8"])("NET-003 accepts the public address %s", (ip) => {
+  test.each(["31.220.53.226", "8.8.8.8", "100.128.0.1", "172.32.0.1"])("NET-003 accepts the public address %s", (ip) => {
     expect(preflight("public", ip).ok).toBe(true);
   });
 
-  test.each(["100.64.0.1", "10.0.0.1", "172.16.0.1", "172.31.255.1", "192.168.1.1", "127.0.0.1", "169.254.1.1", "0.0.0.0"])(
+  test.each(["100.64.0.1", "100.127.255.255", "192.0.2.1", "198.18.0.1", "198.51.100.1", "203.0.113.5", "10.0.0.1", "172.16.0.1", "172.31.255.1", "192.168.1.1", "127.0.0.1", "169.254.1.1", "0.0.0.0"])(
     "NET-003 refuses %s as not public",
     (ip) => {
       const result = preflight("public", ip);
@@ -125,5 +125,16 @@ describe("preflight secrets", () => {
       expect(result.message).toContain("make-secrets");
       expect(result.message).not.toContain("token-value-1");
     });
+  });
+});
+
+describe("preflight all", () => {
+  test("NET-003 refuses a private VPS public address before it looks at Docker", () => {
+    const result = Bun.spawnSync(["sh", SCRIPT, "all"], {
+      stdin: "ignore",
+      env: { PATH: process.env["PATH"] ?? "", ANIMA_HUB_ADDRESS: "100.64.0.5", ANIMA_VPS_PUBLIC_ADDRESS: "10.0.0.1" },
+    });
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stderr.toString() + result.stdout.toString()).toContain("not a public address");
   });
 });

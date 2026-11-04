@@ -64,6 +64,11 @@ check_public_address() {
     if [ "$1" -eq 172 ] && [ "$2" -ge 16 ] && [ "$2" -le 31 ]; then private=1; fi
     if [ "$1" -eq 192 ] && [ "$2" -eq 168 ]; then private=1; fi
     if [ "$1" -eq 169 ] && [ "$2" -eq 254 ]; then private=1; fi
+    # Documentation, benchmark and protocol ranges (RFC 5737, RFC 2544, RFC 6890).
+    if [ "$1" -eq 192 ] && [ "$2" -eq 0 ] && { [ "$3" -eq 0 ] || [ "$3" -eq 2 ]; }; then private=1; fi
+    if [ "$1" -eq 198 ] && { [ "$2" -eq 18 ] || [ "$2" -eq 19 ]; }; then private=1; fi
+    if [ "$1" -eq 198 ] && [ "$2" -eq 51 ] && [ "$3" -eq 100 ]; then private=1; fi
+    if [ "$1" -eq 203 ] && [ "$2" -eq 0 ] && [ "$3" -eq 113 ]; then private=1; fi
     [ -z "$private" ] || fail "ANIMA_VPS_PUBLIC_ADDRESS '$ip' is not a public address (VPN, private, loopback or reserved range)"
 }
 

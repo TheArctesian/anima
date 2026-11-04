@@ -4,7 +4,7 @@ FROM rust:1.93-bookworm AS build
 WORKDIR /src
 COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
-RUN cargo build --release --locked -p anima-hub
+RUN cargo build --release --locked --bin anima-hub
 
 FROM debian:bookworm-20261027-slim
 RUN apt-get update \

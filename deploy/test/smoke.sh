@@ -6,8 +6,8 @@
 # owner (root:999) of a real install cannot be set without root. Never do this on the host.
 # It contacts neither Let's Encrypt nor Cloudflare: `certs` runs only with a stub entrypoint
 # (the hook on fixture certificates and `/lego --version`), never its real entry point.
-# `hub` is started without `migrate` (which a later package adds), so it may exit; the check does not
-# depend on it staying up.
+# `migrate` runs the real migrations as the owner role; then `hub` starts with the runtime
+# login only and must pass its start check and answer TLS on the published port.
 #
 #   sh deploy/test/smoke.sh
 set -eu
@@ -114,7 +114,10 @@ compose run --rm --no-deps --entrypoint sh -v "$work/fixture:/fixture:ro" \
     [ "$owner" = "10001:10001 400" ] || { echo "tls.pem has owner/mode $owner" >&2; exit 1; }
 '
 
-step "hub: runs as 10001 and reads its secrets, no migrate yet"
+step "Build the hub image from this checkout (no cached image)"
+compose build hub
+
+step "hub: runs as 10001 and reads its secrets"
 # shellcheck disable=SC2016
 compose run --rm --no-deps --entrypoint sh hub -c '
     [ "$(id -u):$(id -g)" = 10001:10001 ] || { echo "hub user is $(id -u):$(id -g)" >&2; exit 1; }
@@ -122,10 +125,37 @@ compose run --rm --no-deps --entrypoint sh hub -c '
     test -r /certs/hub/tls.pem && echo "tls.pem readable"
     ! touch /certs/hub/x 2>/dev/null && echo "certs volume is read-only"
 '
-if compose up -d --no-deps hub; then
-    sleep 5
-    compose ps hub
-    compose logs --tail 5 hub
+
+step "migrate: applies the migrations as the owner role and exits 0 (R-016)"
+# Run migrate and wait at most 120 s for it to exit; a migrate that serves never exits.
+run_migrate() {
+    compose up -d --no-deps --force-recreate migrate >/dev/null
+    id=$(compose ps -aq migrate)
+    tries=0
+    while [ "$(docker inspect -f '{{.State.Status}}' "$id")" != exited ]; do
+        tries=$((tries + 1))
+        [ "$tries" -le 120 ] || { compose logs migrate; fail "migrate did not exit within 120 s"; }
+        sleep 1
+    done
+    compose logs migrate
+    code=$(docker inspect -f '{{.State.ExitCode}}' "$id")
+    [ "$code" = 0 ] || fail "migrate exited $code"
+}
+run_migrate
+run_migrate >/dev/null
+echo "migrate exited 0 twice (a second run applies nothing)"
+
+step "hub: starts as the runtime login and serves TLS (SEC-001, DB-003)"
+compose up -d --no-deps guacd hub
+sleep 5
+state=$(docker inspect -f '{{.State.Status}}' "$(compose ps -aq hub)")
+compose logs --tail 10 hub
+[ "$state" = running ] || fail "hub is $state, not running"
+if curl -sk -o /dev/null --max-time 10 "https://127.0.0.1:443/graphql"; then
+    echo "hub is running and answers TLS on 127.0.0.1:443"
+elif curl -s -o /dev/null --max-time 10 "http://127.0.0.1:443/graphql"; then
+    echo "WARNING: the hub answers plain HTTP on 127.0.0.1:443, not TLS (SEC-001)."
+    echo "TLS serving from tls.pem belongs to the hub's network edge; until it lands, this is expected."
 else
-    echo "hub did not start (port 443 in use, or no migrate yet); the checks above are enough"
+    fail "nothing answers on the published hub port"
 fi

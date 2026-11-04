@@ -20,7 +20,7 @@ interface Compose {
 
 const compose = Bun.YAML.parse(readFileSync(join(ROOT, "deploy", "compose.yaml"), "utf8")) as Compose;
 
-describe("hub configuration (K7)", () => {
+describe("hub configuration", () => {
   test("every ANIMA_* variable the hub receives is read by config.rs or listed in the conventions.md environment table", () => {
     const source = readFileSync(CONFIG_PATH, "utf8");
     const conventions = readFileSync(join(ROOT, "contracts", "conventions.md"), "utf8");
@@ -81,5 +81,20 @@ describe("hub configuration (K7)", () => {
 
   test("GW-002 the gateway network keeps its egress and fixed subnet", () => {
     expect(compose.networks["gateway"]?.internal).not.toBe(true);
+  });
+});
+
+describe("hub image build", () => {
+  const dockerfile = readFileSync(join(ROOT, "deploy", "hub", "Dockerfile"), "utf8");
+  const builds = dockerfile.split("\n").filter((line) => line.includes("cargo build"));
+
+  test("SEC-005 the image builds only the hub binary, so no test-support code ships", () => {
+    expect(builds).toEqual(["RUN cargo build --release --locked --bin anima-hub"]);
+  });
+
+  test("SEC-005 the build never enables test targets or extra features", () => {
+    for (const flag of ["--all-targets", "--tests", "--features", "--all-features", "test-support"]) {
+      expect(dockerfile).not.toContain(flag);
+    }
   });
 });
