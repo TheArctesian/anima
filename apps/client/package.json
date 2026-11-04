@@ -14,6 +14,8 @@
     "@sveltejs/adapter-static": "^3.0.10",
     "@sveltejs/kit": "^2.70.3",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "@types/fontkit": "2.0.9",
+    "fontkit": "2.0.4",
     "svelte": "^5.57.3",
     "svelte-check": "^4.7.8",
     "typescript": "^6",
