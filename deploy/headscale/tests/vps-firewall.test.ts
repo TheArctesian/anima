@@ -1,7 +1,9 @@
-import { beforeEach, describe, expect, test } from "bun:test";
+import { beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { ALLOWED_SS, fakeHost, RULESET, VPN_SESSION, type Host, type Run } from "./vps-host.ts";
+import { HARDEN_TIMEOUT_MS, ALLOWED_SS, fakeHost, RULESET, VPN_SESSION, type Host, type Run } from "./vps-host.ts";
+
+setDefaultTimeout(HARDEN_TIMEOUT_MS);
 
 const vpn = { SSH_CONNECTION: VPN_SESSION };
 const second = { SSH_CONNECTION: "100.64.0.2 51001 100.64.0.1 22" };

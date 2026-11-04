@@ -1,7 +1,9 @@
-import { beforeEach, describe, expect, test } from "bun:test";
+import { beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { rmSync } from "node:fs";
 import { join } from "node:path";
-import { fakeHost, type Host } from "./vps-host.ts";
+import { HARDEN_TIMEOUT_MS, fakeHost, type Host } from "./vps-host.ts";
+
+setDefaultTimeout(HARDEN_TIMEOUT_MS);
 
 // D-9: Headscale's bind mounts carry container_file_t, and Docker labels containers.
 const SPEC = "/opt/anima/headscale/(config|lib)(/.*)?";

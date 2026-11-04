@@ -1,6 +1,8 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, setDefaultTimeout, test } from "bun:test";
 import { join } from "node:path";
-import { fakeHost, mutatingCalls, VPN_SESSION, VPS_DIR } from "./vps-host.ts";
+import { HARDEN_TIMEOUT_MS, fakeHost, mutatingCalls, VPN_SESSION, VPS_DIR } from "./vps-host.ts";
+
+setDefaultTimeout(HARDEN_TIMEOUT_MS);
 
 describe("harden.sh dry run, usage and lint", () => {
   test("VPS-005: --dry-run writes nothing and calls no mutating command", () => {

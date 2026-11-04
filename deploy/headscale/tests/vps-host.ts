@@ -6,6 +6,13 @@ import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rea
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
+/**
+ * Per-test timeout for the harden.sh tests. Each test runs harden.sh in bash with a dozen
+ * fake commands; `check` alone starts some hundred processes, which takes more than bun's
+ * 5 s default on a loaded machine. bun applies setDefaultTimeout per test file.
+ */
+export const HARDEN_TIMEOUT_MS = 30_000;
+
 export const VPS_DIR = join(import.meta.dir, "..", "vps");
 export const VPN_SESSION = "100.64.0.2 51000 100.64.0.1 22";
 export const ALLOWED_SS = [

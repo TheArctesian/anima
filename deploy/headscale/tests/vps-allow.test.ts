@@ -1,8 +1,10 @@
-import { beforeEach, describe, expect, test } from "bun:test";
+import { beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseNftables, publicPorts, unexplainedAccepts, type Chain } from "../src/nftables.ts";
-import { fakeHost, VPN_SESSION, VPS_DIR, type Host } from "./vps-host.ts";
+import { HARDEN_TIMEOUT_MS, fakeHost, VPN_SESSION, VPS_DIR, type Host } from "./vps-host.ts";
+
+setDefaultTimeout(HARDEN_TIMEOUT_MS);
 
 // VPS-002, VPS-005: /etc/anima/firewall-allow keeps a port open for another service on the
 // VPS. It may add public tcp/udp accepts to the input chain and change nothing else.
