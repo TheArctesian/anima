@@ -588,6 +588,8 @@ enum SessionEndReason {
   GATEWAY_ERROR
   AUTH_FAILED
   HOST_KEY_MISMATCH
+  "The client sent an instruction that does not decode (GW-011, R-034)."
+  PROTOCOL_ERROR
   TIMEOUT
   HUB_SHUTDOWN
 }

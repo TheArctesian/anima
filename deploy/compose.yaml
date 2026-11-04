@@ -1,0 +1,198 @@
+# Anima hub deployment (DB-002, SEC-001). Run with `docker compose up -d` from this folder.
+# Required in the environment or in deploy/.env: ANIMA_HUB_ADDRESS, ANIMA_ACME_EMAIL,
+# ANIMA_VPS_PUBLIC_ADDRESS.
+# Run `sh bin/preflight` first (VPN address, Docker version, secret files).
+# See README.md. Secret files are made by bin/make-secrets (DB-002, SEC-004, DNS-003).
+
+# Log rotation on every service (spec Section 3.8).
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "10"
+
+# Bind mounts use `bind: {selinux: z}` so SELinux hosts (AlmaLinux) allow the container to
+# read them. File secrets cannot carry a label; the README labels the secrets folder.
+
+# Hardening that every service keeps. A service that needs more says so beside it.
+x-hardened: &hardened
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  logging: *logging
+
+x-hub-image: &hub-image
+  image: anima-hub:local
+  build:
+    context: ..
+    dockerfile: deploy/hub/Dockerfile
+
+services:
+  postgres:
+    <<: *hardened
+    image: postgres:17.11-bookworm
+    # The official entrypoint starts as root to fix ownership. Starting as the postgres user
+    # (999) skips that step, so no capability is needed.
+    user: "999:999"
+    environment:
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      ANIMA_OWNER_PASSWORD_FILE: /run/secrets/owner_password
+      ANIMA_HUB_PASSWORD_FILE: /run/secrets/hub_password
+    secrets: [postgres_password, owner_password, hub_password]
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - type: bind
+        source: ./postgres/roles.sql
+        target: /anima/roles.sql
+        read_only: true
+        bind: {selinux: z}
+      - type: bind
+        source: ./postgres/init
+        target: /docker-entrypoint-initdb.d
+        read_only: true
+        bind: {selinux: z}
+    tmpfs: ["/tmp", "/run/postgresql"]
+    networks: [database]
+    # TCP on 127.0.0.1, not the socket: the temporary server of the first start listens on the
+    # socket only, so this check passes only after the init scripts have finished.
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    stop_grace_period: 60s
+    restart: unless-stopped
+
+  migrate:
+    <<: [*hardened, *hub-image]
+    command: ["migrate"]
+    environment:
+      ANIMA_DATABASE_URL_FILE: /run/secrets/owner_database_url
+    secrets: [owner_database_url]
+    networks: [database]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  certs:
+    <<: *hardened
+    image: goacme/lego:v4.25.2
+    entrypoint: ["sh", "/anima/certs/run.sh"]
+    # A stop signal reaches the shell through the init process and ends the sleep loop.
+    init: true
+    # Root, because the hook gives the files to the hub user (10001). CHOWN is the only
+    # capability kept.
+    cap_add: [CHOWN]
+    environment:
+      ANIMA_ACME_EMAIL: ${ANIMA_ACME_EMAIL:?set ANIMA_ACME_EMAIL to the Let's Encrypt contact address}
+      ANIMA_ACME_SERVER: ${ANIMA_ACME_SERVER:-https://acme-v02.api.letsencrypt.org/directory}
+      CF_DNS_API_TOKEN_FILE: /run/secrets/cloudflare_dns_token
+    secrets: [cloudflare_dns_token]
+    volumes:
+      - certs:/certs
+      - lego_state:/var/lib/lego
+      - type: bind
+        source: ./certs
+        target: /anima/certs
+        read_only: true
+        bind: {selinux: z}
+    tmpfs: ["/tmp"]
+    networks: [acme]
+    healthcheck:
+      test: ["CMD", "sh", "-c", "test -s /certs/hub/tls.pem"]
+      interval: 10s
+      timeout: 5s
+      retries: 90
+      start_period: 60s
+    restart: unless-stopped
+
+  guacd:
+    <<: *hardened
+    build:
+      context: ./gateway
+      additional_contexts:
+        fonts: ../apps/client/src/styles/fonts
+    image: anima-guacd:local
+    environment:
+      # The root is read-only; fontconfig writes its cache here.
+      XDG_CACHE_HOME: /tmp
+    tmpfs: ["/tmp"]
+    networks: [gateway]
+    restart: unless-stopped
+
+  hub:
+    <<: [*hardened, *hub-image]
+    environment:
+      ANIMA_LISTEN: ${ANIMA_HUB_IP:-172.30.0.10}:8443
+      ANIMA_DATABASE_URL_FILE: /run/secrets/database_url
+      ANIMA_KEY_FILE: /run/secrets/anima_key
+      ANIMA_TLS_CERT_FILE: /certs/hub/tls.pem
+      ANIMA_TLS_KEY_FILE: /certs/hub/tls.pem
+      ANIMA_GUACD: guacd:4822
+      ANIMA_PERMITTED_NETWORKS: ${ANIMA_PERMITTED_NETWORKS:-100.64.0.0/10}
+      # Checks never probe the hub's own networks or the VPS public address, so a device
+      # entry cannot reach PostgreSQL or guacd.
+      ANIMA_PROBE_DENY: ${ANIMA_HUB_SUBNET:-172.30.0.0/24},${ANIMA_DATABASE_SUBNET:-172.30.1.0/24},${ANIMA_VPS_PUBLIC_ADDRESS:?set to the VPS public IPv4}/32
+      ANIMA_LOG: ${ANIMA_LOG:-info}
+    secrets:
+      - source: hub_database_url
+        target: database_url
+      - anima_key
+    volumes:
+      - certs:/certs:ro
+    tmpfs: ["/tmp"]
+    # Only the hub is published, and only on its VPN address (NET-003). The explicit address
+    # is required: the host's Docker daemon publishes on 127.0.0.1 by default.
+    ports:
+      - "${ANIMA_HUB_ADDRESS:?set ANIMA_HUB_ADDRESS to the hub's VPN address}:443:8443"
+    networks:
+      database: {}
+      gateway:
+        ipv4_address: ${ANIMA_HUB_IP:-172.30.0.10}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      certs:
+        condition: service_healthy
+      guacd:
+        condition: service_started
+    restart: unless-stopped
+
+networks:
+  # No route out: PostgreSQL has no reason to reach the internet (DB-001).
+  database:
+    internal: true
+    ipam:
+      config:
+        - subnet: ${ANIMA_DATABASE_SUBNET:-172.30.1.0/24}
+  # guacd and the hub reach devices from here (GW-002, GW-003).
+  gateway:
+    ipam:
+      config:
+        - subnet: ${ANIMA_HUB_SUBNET:-172.30.0.0/24}
+  acme: {}
+
+volumes:
+  postgres_data: {}
+  certs: {}
+  lego_state: {}
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password
+  owner_password:
+    file: ./secrets/owner_password
+  hub_password:
+    file: ./secrets/hub_password
+  owner_database_url:
+    file: ./secrets/owner_database_url
+  hub_database_url:
+    file: ./secrets/hub_database_url
+  anima_key:
+    file: ./secrets/anima_key
+  cloudflare_dns_token:
+    file: ./secrets/cloudflare_dns_token
