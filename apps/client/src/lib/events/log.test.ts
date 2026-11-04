@@ -36,6 +36,10 @@ function logOf(ids: string[]): EventLog {
   return fromPage(page(ids, true, 'c1'));
 }
 
+function fullLog(): EventLog {
+  return logOf(Array.from({ length: LOG_CAP }, (_, index) => `e${String(index)}`));
+}
+
 const filterWith = (changes: Partial<LogFilter>): LogFilter => ({ ...DEFAULT_LOG_FILTER, ...changes });
 
 describe('eventVariables', () => {
@@ -118,6 +122,12 @@ describe('event log', () => {
     expect(next.rows.map((row) => row.id)).toEqual(['c', 'b', 'a']);
   });
 
+  it('LOG-009 an event with an unparseable time does not match a time window, but does under "all"', () => {
+    const odd = event('a', { at: 'yesterday' });
+    expect(matches(odd, DEFAULT_LOG_FILTER, NOW)).toBe(false);
+    expect(matches(odd, filterWith({ since: 'all' }), NOW)).toBe(true);
+  });
+
   it('LOG-009 a live event that does not match leaves the log as it was', () => {
     const log = logOf(['a']);
     expect(addLive(log, event('x', { severity: 'INFO' }), filterWith({ severities: ['ERROR'] }), NOW)).toBe(log);
@@ -128,16 +138,34 @@ describe('event log', () => {
     expect(addLive(log, event('a'), DEFAULT_LOG_FILTER, NOW)).toBe(log);
   });
 
-  it('LOG-010 the list holds at 500 rows and drops the oldest', () => {
-    const ids = Array.from({ length: LOG_CAP }, (_, index) => `e${String(index)}`);
-    const next = addLive(logOf(ids), event('new'), DEFAULT_LOG_FILTER, NOW);
+  it('LOG-010 the list holds at 500 rows, drops the oldest and offers no older page', () => {
+    const next = addLive(fullLog(), event('new'), DEFAULT_LOG_FILTER, NOW);
     expect(next.rows).toHaveLength(LOG_CAP);
     expect(next.rows[0]?.id).toBe('new');
     expect(next.rows.at(-1)?.id).toBe(`e${String(LOG_CAP - 2)}`);
+    expect(next).toMatchObject({ hasNextPage: false, endCursor: 'c1' });
   });
 
-  it('LOG-010 an older page cannot push the list past 500 rows', () => {
-    const ids = Array.from({ length: LOG_CAP }, (_, index) => `e${String(index)}`);
-    expect(appendOlder(logOf(ids), page(['x', 'y'])).rows).toHaveLength(LOG_CAP);
+  it('LOG-010 a live event below the cap keeps the cursor and the older page', () => {
+    expect(addLive(logOf(['a']), event('b'), DEFAULT_LOG_FILTER, NOW)).toMatchObject({
+      hasNextPage: true,
+      endCursor: 'c1',
+    });
+  });
+
+  it('LOG-010 an older page on a full list changes nothing and offers no older page', () => {
+    const full = fullLog();
+    const next = appendOlder(full, page(['x', 'y'], true, 'c9'));
+    expect(next.rows).toEqual(full.rows);
+    expect(next).toMatchObject({ hasNextPage: false, endCursor: 'c1' });
+  });
+
+  it('LOG-010 an older page that only partly fits fills the list to 500 and offers no older page', () => {
+    const ids = Array.from({ length: LOG_CAP - 2 }, (_, index) => `e${String(index)}`);
+    const older = Array.from({ length: 100 }, (_, index) => `o${String(index)}`);
+    const next = appendOlder(logOf(ids), page(older, true, 'c9'));
+    expect(next.rows).toHaveLength(LOG_CAP);
+    expect(next.rows.slice(-2).map((row) => row.id)).toEqual(['o0', 'o1']);
+    expect(next).toMatchObject({ hasNextPage: false, endCursor: 'c1' });
   });
 });
