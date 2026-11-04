@@ -10,6 +10,7 @@
 use std::{io, sync::Arc};
 
 use axum::extract::ws::{CloseFrame, Message, Utf8Bytes, WebSocket};
+use futures_util::SinkExt;
 use guac_protocol::{Decoder, Instruction, encode};
 use tokio::{
     io::{AsyncReadExt as _, AsyncWriteExt as _},
@@ -315,14 +316,20 @@ async fn send_text(
     }
 }
 
-/// Sends the close frame with the cause's code (K4 Section 5). Best effort: the client may
-/// be gone, and the session ends either way.
+/// Sends the close frame with the cause's code (K4 Section 5), then flushes and closes the
+/// socket. When the client closed first, the WebSocket library refuses a second close frame
+/// and its echo of the client's frame is what goes out (RFC 6455 Section 5.5.1); closing the
+/// sink flushes it. Best effort: the client may be gone, and the session ends either way.
 async fn close_client(mut client: WebSocket, cause: Cause, timing: Timing) {
     let frame = CloseFrame {
         code: cause.ending().close_code,
         reason: Utf8Bytes::default(),
     };
-    let _ = timeout(timing.client_idle, client.send(Message::Close(Some(frame)))).await;
+    let _ = timeout(timing.client_idle, async {
+        let _ = client.send(Message::Close(Some(frame))).await;
+        SinkExt::close(&mut client).await
+    })
+    .await;
 }
 
 /// Tells guacd the hub is leaving, then closes the connection. Best effort: guacd may be

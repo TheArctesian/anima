@@ -30,6 +30,7 @@ base64.workspace = true
 argon2.workspace = true
 getrandom.workspace = true
 rpassword.workspace = true
+futures-util = { version = "0.3", default-features = false, features = ["sink"] }
 guac-protocol = { path = "../guac-protocol" }
 anima-theme = { path = "../theme" }
 
@@ -46,4 +47,3 @@ static_assertions.workspace = true
 tempfile.workspace = true
 proptest = "1.12"
 tokio-tungstenite = "0.29"
-futures-util = "0.3"
