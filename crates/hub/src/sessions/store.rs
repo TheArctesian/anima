@@ -3,10 +3,10 @@
 use std::{collections::HashMap, net::IpAddr};
 
 use chrono::{DateTime, Utc};
-use sqlx::PgExecutor;
+use sqlx::{PgConnection, PgExecutor};
 
 use super::{
-    Error,
+    Error, Missing,
     model::{EndReason, HostKey, Protocol, Session, SessionEnd, SessionFilter},
     page::{Cursor, Page, split_page},
     public_key::{BadKey, PublicKey},
@@ -228,4 +228,66 @@ pub(super) async fn host_keys<'e>(
         .map(<(DeviceId, HostKey)>::try_from)
         .collect::<Result<_, _>>()?;
     Ok(keys)
+}
+
+/// Waits for, then holds until the transaction ends, this domain's advisory lock on the
+/// device's host key, so two accepts for one device run one after the other and each audit
+/// entry names the key it replaced.
+pub(super) async fn lock_host_key(conn: &mut PgConnection, device: DeviceId) -> Result<(), Error> {
+    sqlx::query(
+        "select pg_advisory_xact_lock(hashtextextended('sessions.host_keys:' || $1::text, 0))",
+    )
+    .bind(device)
+    .execute(conn)
+    .await?;
+    Ok(())
+}
+
+/// A host key the operator accepts for a device.
+pub(super) struct AcceptedKey<'a> {
+    pub(super) device: DeviceId,
+    pub(super) key: &'a HostKey,
+    pub(super) by: OperatorId,
+    pub(super) at: DateTime<Utc>,
+}
+
+/// Stores the accepted key, replacing the device's previous one. The algorithm and the
+/// fingerprint are read from the key, so the row's checks always hold.
+pub(super) async fn put_host_key(
+    conn: &mut PgConnection,
+    accepted: &AcceptedKey<'_>,
+) -> Result<(), Error> {
+    let public_key = &accepted.key.public_key;
+    let stored = sqlx::query(
+        "insert into sessions.host_keys (device_id, algorithm, fingerprint_sha256, public_key, \
+                first_seen_at, accepted_at, accepted_by) \
+         values ($1, $2, $3, $4, $5, $6, $7) \
+         on conflict (device_id) do update set algorithm = excluded.algorithm, \
+             fingerprint_sha256 = excluded.fingerprint_sha256, public_key = excluded.public_key, \
+             first_seen_at = excluded.first_seen_at, accepted_at = excluded.accepted_at, \
+             accepted_by = excluded.accepted_by",
+    )
+    .bind(accepted.device)
+    .bind(public_key.algorithm())
+    .bind(public_key.fingerprint().as_str())
+    .bind(public_key.to_base64())
+    .bind(accepted.key.first_seen_at)
+    .bind(accepted.at)
+    .bind(accepted.by)
+    .execute(conn)
+    .await;
+    match stored {
+        Ok(_) => Ok(()),
+        Err(error) if is_violation_of(&error, "host_keys_device_id_fkey") => {
+            Err(Error::NotFound(Missing::Device(accepted.device)))
+        }
+        Err(error) => Err(error.into()),
+    }
+}
+
+fn is_violation_of(error: &sqlx::Error, constraint: &str) -> bool {
+    error
+        .as_database_error()
+        .and_then(|error| error.constraint())
+        == Some(constraint)
 }

@@ -5,7 +5,10 @@ use std::net::IpAddr;
 
 use proptest::prelude::*;
 
-use crate::sessions::start::{DisplayRequest, checked_display, is_refused_target};
+use crate::sessions::{
+    start::{DisplayRequest, checked_display},
+    target::is_refused_target,
+};
 
 fn request(width_px: i64, height_px: i64, dpi: i64) -> DisplayRequest {
     DisplayRequest {

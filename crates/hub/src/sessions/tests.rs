@@ -2,7 +2,9 @@
 //! behaviour is tested in `tests/it/sessions`.
 
 mod failures;
+mod observations;
 mod page;
+mod probe;
 mod public_key;
 mod start;
 mod store;

@@ -2,30 +2,77 @@
 //! API-009).
 //!
 //! The types live in the sub-modules; each `#[Object]` block there is the single resolver block
-//! for its type. A later task adds `testConnection` and `acceptHostKey`.
+//! for its type.
 
 mod connection;
+mod connection_test;
 mod error;
+mod host_key;
 mod session;
 mod ticket;
 
 use std::sync::Arc;
 
-use async_graphql::{Context, ID, Object, Result};
+use async_graphql::{Context, ID, Object, Result, dataloader::DataLoader};
 use sqlx::PgPool;
+
+pub use self::host_key::HostKeysByDevice;
 
 use self::{
     connection::{DEFAULT_FIRST, SessionConnection, sessions_args},
+    connection_test::ConnectionTestInput,
     error::{invalid, schema_dependency, to_graphql},
     ticket::StartSessionInput,
 };
-use super::{Actor, FieldError, Live, Session, Ticket, end::end_session, start, store};
+use super::{
+    Actor, FieldError, Fingerprint, HostKey, Live, Session, Ticket,
+    end::end_session,
+    start, store,
+    trust::{Acceptance, ConnectionTest, TestRequest, accept_host_key, test_connection},
+};
 use crate::{
     access::Authenticated,
     clock::Clock,
+    credentials::Vault,
     events::{ClientAddr, Operator},
-    ids::SessionId,
+    ids::{DeviceId, SessionId},
 };
+
+/// The loader behind `SshSettings.hostKey`: one query per batch of device ids, no cache, so
+/// a key accepted shows in the next request (API-005, R-014).
+#[must_use]
+pub fn host_key_loader(pool: PgPool) -> DataLoader<HostKeysByDevice> {
+    DataLoader::new(HostKeysByDevice(pool), tokio::spawn)
+}
+
+/// Who acts, from where and when, as the schema data of a signed-in request gives it.
+fn actor(ctx: &Context<'_>) -> Result<Actor> {
+    Ok(Actor {
+        operator: schema_dependency::<Operator>(ctx)?.clone(),
+        client: *schema_dependency::<ClientAddr>(ctx)?,
+        at: schema_dependency::<Arc<dyn Clock>>(ctx)?.now(),
+    })
+}
+
+/// `acceptHostKey`'s arguments, reporting both bad ones at once.
+fn acceptance(device_id: &ID, fingerprint: &str) -> Result<Acceptance, Vec<FieldError>> {
+    let device = device_id
+        .parse::<DeviceId>()
+        .map_err(|_| FieldError::new("deviceId", "That device id is not valid."));
+    let fingerprint = fingerprint.parse::<Fingerprint>().map_err(|_| {
+        FieldError::new(
+            "fingerprintSha256",
+            "Enter the fingerprint as the connection test shows it: SHA256: and 43 characters.",
+        )
+    });
+    match (device, fingerprint) {
+        (Ok(device), Ok(fingerprint)) => Ok(Acceptance {
+            device,
+            fingerprint,
+        }),
+        (device, fingerprint) => Err(device.err().into_iter().chain(fingerprint.err()).collect()),
+    }
+}
 
 #[derive(Default)]
 pub struct Query;
@@ -93,16 +140,56 @@ impl Mutation {
         let session = id
             .parse::<SessionId>()
             .map_err(|_| invalid(&[FieldError::new("id", "That session id is not valid.")]))?;
-        let by = Actor {
-            operator: schema_dependency::<Operator>(ctx)?.clone(),
-            client: *schema_dependency::<ClientAddr>(ctx)?,
-            at: schema_dependency::<Arc<dyn Clock>>(ctx)?.now(),
-        };
+        let by = actor(ctx)?;
         end_session(
             schema_dependency::<PgPool>(ctx)?,
             schema_dependency::<Live>(ctx)?,
             session,
             &by,
+        )
+        .await
+        .map_err(to_graphql)
+    }
+
+    /// Tests SSH to a saved device or to the form's values (DEV-013). A credential is sent
+    /// only to the device's accepted host key (D-5).
+    #[graphql(guard = "Authenticated")]
+    async fn test_connection(
+        &self,
+        ctx: &Context<'_>,
+        input: ConnectionTestInput,
+    ) -> Result<ConnectionTest> {
+        let subject = input.into_subject().map_err(|fields| invalid(&fields))?;
+        let request = TestRequest {
+            subject,
+            at: schema_dependency::<Arc<dyn Clock>>(ctx)?.now(),
+        };
+        test_connection(
+            schema_dependency::<PgPool>(ctx)?,
+            schema_dependency::<Vault>(ctx)?,
+            schema_dependency::<Live>(ctx)?,
+            request,
+        )
+        .await
+        .map_err(to_graphql)
+    }
+
+    /// Accepts the host key the last connection test saw for the device, when the
+    /// fingerprint matches; else `CONFLICT` (D-6, SEC-006).
+    #[graphql(guard = "Authenticated")]
+    async fn accept_host_key(
+        &self,
+        ctx: &Context<'_>,
+        device_id: ID,
+        fingerprint_sha256: String,
+    ) -> Result<HostKey> {
+        let acceptance =
+            acceptance(&device_id, &fingerprint_sha256).map_err(|fields| invalid(&fields))?;
+        accept_host_key(
+            schema_dependency::<PgPool>(ctx)?,
+            schema_dependency::<Live>(ctx)?,
+            &actor(ctx)?,
+            acceptance,
         )
         .await
         .map_err(to_graphql)
