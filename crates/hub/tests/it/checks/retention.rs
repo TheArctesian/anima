@@ -44,7 +44,7 @@ async fn db_009_drop_refuses_a_cutoff_inside_30_days_even_with_a_later_instant(p
         (Some(today - Days::new(30)), later),
         (Some(today - Days::new(400)), now),
     ];
-    let mut conn = pool.acquire().await.unwrap();
+    let mut conn = pool.acquire().await.unwrap().detach();
 
     let outcomes = as_runtime(&mut conn, async |conn| {
         let mut outcomes = Vec::new();
@@ -69,7 +69,7 @@ async fn db_005_drop_removes_only_heartbeat_days_before_the_cutoff(pool: PgPool)
     let now = database_now(&pool).await;
     let ago = |days: i64| (now - TimeDelta::days(days)).date_naive();
     let name = |days: i64| format!("heartbeats_{}", ago(days).format("%Y%m%d"));
-    let mut conn = pool.acquire().await.unwrap();
+    let mut conn = pool.acquire().await.unwrap().detach();
     for days in [60, 45, 40] {
         create_day_as_owner(&mut conn, ago(days)).await;
     }

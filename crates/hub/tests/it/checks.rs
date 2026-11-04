@@ -77,16 +77,14 @@ async fn refusal(conn: &mut PgConnection, sql: &str) -> Option<String> {
     Some(code_of(&error))
 }
 
-/// Runs `body` on `conn` as `anima_runtime`, then resets the role. `body` returns its findings
-/// instead of asserting, so the reset runs before the caller asserts.
+/// Runs `body` on `conn` as `anima_runtime`. `conn` must be detached from the pool, so
+/// the role dies with the connection.
 async fn as_runtime<T>(
     conn: &mut PgConnection,
     body: impl AsyncFnOnce(&mut PgConnection) -> T,
 ) -> T {
     execute(conn, "set role anima_runtime").await;
-    let findings = body(conn).await;
-    execute(conn, "reset role").await;
-    findings
+    body(conn).await
 }
 
 async fn table_exists(conn: &mut PgConnection, name: &str) -> bool {

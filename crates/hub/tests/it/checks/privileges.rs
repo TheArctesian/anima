@@ -88,7 +88,7 @@ async fn runtime_writes(
     fixtures(path = "../../fixtures", scripts("devices", "checks"))
 )]
 async fn db_009_runtime_role_writes_heartbeats_and_aggregates_but_not_partitions(pool: PgPool) {
-    let mut conn = pool.acquire().await.unwrap();
+    let mut conn = pool.acquire().await.unwrap().detach();
     let now = database_now(&mut conn).await;
 
     let (wrote, refusals) = as_runtime(&mut conn, async |conn| {
@@ -155,7 +155,7 @@ async fn db_009_partition_functions_run_as_owner_with_pg_temp_searched_last(pool
 
 #[sqlx::test(migrations = "./migrations")]
 async fn db_009_runtime_role_cannot_run_code_as_the_partition_owner_through_pg_temp(pool: PgPool) {
-    let mut conn = pool.acquire().await.unwrap();
+    let mut conn = pool.acquire().await.unwrap().detach();
     let now = database_now(&mut conn).await;
     let old = (now - TimeDelta::days(40)).date_naive();
     create_day_as_owner(&mut conn, old).await;
