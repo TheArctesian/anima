@@ -15,7 +15,6 @@ mod heartbeat;
 mod input;
 mod live;
 mod loaders;
-mod opaque;
 mod settings;
 mod trail;
 mod write;
@@ -29,9 +28,8 @@ pub use self::loaders::{
 
 use self::{
     error::{invalid, schema_dependency, to_graphql},
-    input::{CreateShape, UpdateShape},
+    input::{CreateShape, Opaque, UpdateShape},
     live::{DeviceStatusChange, HeartbeatAdded, device_status_changes, heartbeats_added},
-    opaque::Opaque,
     write::pool,
 };
 use super::{Check, Error, FieldError};
