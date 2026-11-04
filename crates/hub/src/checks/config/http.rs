@@ -19,6 +19,7 @@ pub enum HttpMethod {
 
 /// An inclusive range of accepted status codes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct StatusRange {
     pub from: u16,
     pub to: u16,
@@ -27,6 +28,7 @@ pub struct StatusRange {
 /// A request header. `value` is `None` for a secret header (Authorization,
 /// Proxy-Authorization, Cookie): its value lives in [`HttpSecrets`].
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct HttpHeader {
     pub name: String,
     pub value: Option<String>,
@@ -34,7 +36,7 @@ pub struct HttpHeader {
 
 /// Which authentication the check uses; the secret part is in [`HttpSecrets`].
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(tag = "kind", rename_all = "snake_case")]
+#[serde(tag = "kind", rename_all = "UPPERCASE", deny_unknown_fields)]
 pub enum HttpAuth {
     #[default]
     None,
@@ -59,23 +61,24 @@ const fn timeout_ms() -> u32 {
 
 /// The stored, secret-free part of an HTTP check.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct HttpConfig {
     pub url: String,
     #[serde(default)]
     pub method: HttpMethod,
     #[serde(default)]
     pub headers: Vec<HttpHeader>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub body: Option<String>,
     #[serde(default = "max_redirects")]
     pub max_redirects: u8,
     #[serde(default = "accepted")]
     pub accepted_status: Vec<StatusRange>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub keyword: Option<String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub json_query: Option<String>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub json_expected: Option<String>,
     #[serde(default)]
     pub auth: HttpAuth,

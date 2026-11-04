@@ -21,6 +21,7 @@ macro_rules! select_check {
 mod beats;
 mod retention;
 mod rows;
+mod sealed;
 mod uptime;
 mod writes;
 
@@ -42,9 +43,10 @@ pub(super) use retention::{
     create_days_ahead, delete_orphan_heartbeats, drop_heartbeat_days_before, trim_aggregates,
 };
 use rows::{CheckRow, StandingRow, to_checks};
+pub(super) use sealed::seal;
 pub(super) use uptime::tallies;
 pub(super) use writes::{
-    Change, Current, Insert, delete, insert, load_http_secrets, lock, seal, set_paused, update,
+    Change, Current, Insert, delete, insert, load_http_secrets, lock, set_paused, update,
 };
 
 pub(super) async fn fetch<'e>(db: impl PgExecutor<'e>, id: CheckId) -> Result<Check, Error> {

@@ -3,7 +3,7 @@
 
 use super::{
     config::{
-        CheckConfig, ConfigError, HttpConfig, HttpCredentials, HttpInput, HttpSecrets,
+        CheckConfig, ConfigError, HttpAuth, HttpConfig, HttpCredentials, HttpInput, HttpSecrets,
         is_secret_header,
     },
     model::{Definition, FieldError, PushToken},
@@ -110,11 +110,62 @@ pub(super) fn needs_stored(input: &HttpInput) -> bool {
     empty_header || empty_credential
 }
 
+/// The origin of a URL as `scheme://host:port`, with the scheme's default port written out.
+pub(super) fn origin(url: &str) -> Option<String> {
+    let url = reqwest::Url::parse(url).ok()?;
+    let host = url.host_str()?;
+    let port = url.port_or_known_default()?;
+    Some(format!("{}://{host}:{port}", url.scheme()))
+}
+
+fn secret_names<'a>(names: impl Iterator<Item = &'a str>) -> Vec<String> {
+    let mut names: Vec<String> = names.map(str::to_ascii_lowercase).collect();
+    names.sort_unstable();
+    names
+}
+
+/// Whether stored secrets may go where the input sends them (SEC-005): the same origin, the
+/// same kind of authentication and basic user name, TLS checks not turned off, and the same
+/// secret header names.
+fn same_destination(input: &HttpInput, stored: &HttpConfig) -> bool {
+    let origin_kept = origin(&input.url).is_some_and(|o| Some(o) == origin(&stored.url));
+    let auth_kept = match (&input.credentials, &stored.auth) {
+        (HttpCredentials::None, HttpAuth::None)
+        | (HttpCredentials::Bearer(_), HttpAuth::Bearer) => true,
+        (HttpCredentials::Basic { username, .. }, HttpAuth::Basic { username: kept }) => {
+            username == kept
+        }
+        _ => false,
+    };
+    let tls_kept = input.verify_tls || !stored.verify_tls;
+    let given = input
+        .headers
+        .iter()
+        .map(|(name, _)| name.as_str())
+        .filter(|n| is_secret_header(n));
+    let kept = stored
+        .headers
+        .iter()
+        .filter(|h| h.value.is_none())
+        .map(|h| h.name.as_str());
+    origin_kept && auth_kept && tls_kept && secret_names(given) == secret_names(kept)
+}
+
 /// Fills each empty secret from the stored setup: the n-th secret header with a name takes
 /// the stored value of the n-th stored header with that name.
+/// Stored secrets are kept only for the same destination (see `same_destination`).
 fn keep_stored(mut input: HttpInput, stored: Option<StoredHttp>) -> Result<HttpInput, FieldError> {
     if !needs_stored(&input) {
         return Ok(input);
+    }
+    if stored
+        .as_ref()
+        .is_some_and(|(config, _)| !same_destination(&input, config))
+    {
+        return Err(FieldError::new(
+            "config",
+            "Enter every secret again: the address, the authentication or the secret headers changed.",
+        ));
     }
     let (config, secrets) = stored.unwrap_or_else(|| (HttpConfig::new(""), HttpSecrets::default()));
     let HttpSecrets {

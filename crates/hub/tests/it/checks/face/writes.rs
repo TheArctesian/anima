@@ -250,7 +250,7 @@ devices_test! {
         assert!(matches!(checks::set_paused(&mut conn, gone, true).await, Err(Error::NotFound(_))));
     }
 
-    async fn r_028_a_push_check_keeps_its_token_and_hides_it_from_debug(pool: PgPool) {
+    async fn sec_005_a_push_check_keeps_its_token_and_hides_it_from_debug(pool: PgPool) {
         let token = PushToken::from_random(&[9; 32]);
         let created = try_create(&pool, new_check(PVE_01, "Push", Definition::Push(token.clone()))).await.unwrap();
         assert_eq!(created.config, CheckConfig::Push);
@@ -260,5 +260,20 @@ devices_test! {
         let bare = Definition::Config(CheckConfig::Push);
         let error = try_create(&pool, new_check(PVE_01, "Tokenless", bare)).await.unwrap_err();
         assert_eq!(fields(error), ["config"]);
+    }
+
+    async fn log_007_a_taken_push_token_is_refused_without_the_token(pool: PgPool) {
+        let token = PushToken::from_random(&[7; 32]);
+        try_create(&pool, new_check(PVE_01, "First", Definition::Push(token.clone()))).await.unwrap();
+        let error = try_create(&pool, new_check(DOCKER_HOST, "Second", Definition::Push(token.clone()))).await.unwrap_err();
+        assert!(matches!(error, Error::PushTokenTaken), "{error:?}");
+        assert!(!format!("{error:?} {error}").contains(token.expose()));
+
+        let other = PushToken::from_random(&[8; 32]);
+        let id = try_create(&pool, new_check(DOCKER_HOST, "Other", Definition::Push(other))).await.unwrap().id;
+        let change = CheckChange { definition: Some(Definition::Push(token.clone())), ..CheckChange::default() };
+        let error = update(&pool, id, change).await.unwrap_err();
+        assert!(matches!(error, Error::PushTokenTaken), "{error:?}");
+        assert!(!format!("{error:?} {error}").contains(token.expose()));
     }
 }
