@@ -1,6 +1,7 @@
 mod credentials;
 mod devices;
 mod edge;
+mod events;
 mod graphql;
 mod hub;
 mod login;

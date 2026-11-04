@@ -52,6 +52,7 @@ pub struct SocketAccess {
     clock: Arc<dyn Clock>,
     client: Option<ClientAddr>,
     recheck: Duration,
+    init_timeout: Duration,
 }
 
 impl SocketAccess {
@@ -63,15 +64,21 @@ impl SocketAccess {
             clock,
             client,
             recheck: RECHECK,
+            init_timeout: INIT_TIMEOUT,
         }
     }
 
-    /// The same checks with another re-check interval, for tests of expiry and logout. It exists
-    /// only with the `test-support` feature, which no release build turns on.
+    /// The same checks with another re-check interval and `connection_init` timeout, for tests
+    /// of expiry, logout and silence. It exists only with the `test-support` feature, which no
+    /// release build turns on.
     #[cfg(feature = "test-support")]
     #[must_use]
-    pub fn rechecking_every(self, recheck: Duration) -> Self {
-        Self { recheck, ..self }
+    pub fn with_timings(self, recheck: Duration, init_timeout: Duration) -> Self {
+        Self {
+            recheck,
+            init_timeout,
+            ..self
+        }
     }
 }
 
@@ -115,7 +122,7 @@ enum Closing {
     ClientLeft,
     /// A message could not be read, for example because it is bigger than [`MESSAGE_LIMIT`].
     Unreadable,
-    /// No `connection_init` within [`INIT_TIMEOUT`].
+    /// No `connection_init` in time ([`INIT_TIMEOUT`]).
     InitTimeout,
     /// The token is missing, not valid, expired or deleted.
     Forbidden,
@@ -219,7 +226,7 @@ async fn converse<S: Sink<Message> + Unpin>(
     access: &SocketAccess,
 ) -> Closing {
     let mut protocol = pin!(protocol);
-    let lease = match signed_in(sink, &mut protocol, decided).await {
+    let lease = match signed_in(sink, &mut protocol, decided, access.init_timeout).await {
         Ok(lease) => lease,
         Err(closing) => return closing,
     };
@@ -242,8 +249,9 @@ async fn signed_in<S: Sink<Message> + Unpin>(
     sink: &mut S,
     protocol: &mut Pin<&mut impl Stream<Item = WsMessage>>,
     mut decided: oneshot::Receiver<Verdict>,
+    init_timeout: Duration,
 ) -> Result<Lease, Closing> {
-    let mut deadline = pin!(tokio::time::sleep(INIT_TIMEOUT));
+    let mut deadline = pin!(tokio::time::sleep(init_timeout));
     loop {
         tokio::select! {
             biased;
