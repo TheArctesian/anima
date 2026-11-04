@@ -16,6 +16,7 @@ use crate::ids::{DeviceId, EventId, OperatorId};
 mod partitions;
 mod privileges;
 mod retention;
+mod runtime_group;
 mod runtime_role;
 
 const DEVICE: &str = "0192f5a0-7c3e-7a52-9d1b-3f4e5a6b7c8d";

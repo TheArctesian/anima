@@ -26,30 +26,60 @@ pub enum Error {
     /// The message stays generic: the source error may hold SQL text (API-010).
     #[error("the event store is unavailable")]
     Database(#[from] sqlx::Error),
-    /// The hub must not serve with rights that could change the audit log (LOG-006).
+}
+
+/// Why the hub must not serve with its database role (K2 "Roles", R-016, LOG-006). Only
+/// `check_runtime_role` returns it, once at start before the hub serves, so it never reaches
+/// GraphQL; the messages are plain sentences for the operator at the console (API-010).
+#[derive(Debug, thiserror::Error)]
+pub enum RoleError {
+    /// The message stays generic: the source error may hold SQL text (API-010).
+    #[error("The hub could not check its database role.")]
+    Database(#[from] sqlx::Error),
+    #[error("The events schema is missing. Run the migrate subcommand before serving.")]
+    NotMigrated,
     #[error("The hub's database role is a superuser. Serve as a member of anima_runtime instead.")]
     Superuser,
     #[error(
-        "The hub's database role owns the audit log. Run migrations as the owner role and \
+        "The hub's database role owns the event log or the audit log. Run migrations as the \
+         owner role and serve as a member of anima_runtime."
+    )]
+    OwnsLogs,
+    #[error(
+        "The hub's database role owns the events schema. Run migrations as the owner role and \
          serve as a member of anima_runtime."
     )]
-    OwnsAuditLog,
+    OwnsEventsSchema,
+    #[error(
+        "The hub's database role can change or remove log entries. Revoke its UPDATE, DELETE, \
+         TRUNCATE and TRIGGER rights on the logs and CREATE on the events schema, and serve as \
+         a member of anima_runtime."
+    )]
+    CanChangeLogs,
 }
 
-/// Checks that the hub serves as a runtime role that cannot change the audit log: not a
-/// superuser and not its owner, nor able to become either with `SET ROLE` (K2 "Roles",
-/// R-016, LOG-006). Call at start, before serving.
+/// Checks that the hub serves as a runtime role that cannot change the logs, nor become a
+/// role that can with `SET ROLE` (K2 "Roles", R-016, LOG-006). It refuses a superuser, an
+/// owner of a log table, a partition or schema `events`, and a holder of UPDATE, DELETE,
+/// TRUNCATE or TRIGGER on a log table or partition (directly, through `pg_write_all_data` or
+/// PUBLIC) or of CREATE on `events`. Call at start, before serving.
 ///
 /// # Errors
 ///
-/// `Error::Superuser` or `Error::OwnsAuditLog` with a plain message (API-010);
-/// `Error::Database` if the check cannot run.
-pub async fn check_runtime_role(db: &PgPool) -> Result<(), Error> {
-    let role = store::runtime_role(db).await?;
+/// A `RoleError` refusal with a plain message (API-010); `RoleError::Database` if the check
+/// cannot run.
+pub async fn check_runtime_role(db: &PgPool) -> Result<(), RoleError> {
+    let role = store::runtime_role(db)
+        .await?
+        .ok_or(RoleError::NotMigrated)?;
     if role.superuser {
-        Err(Error::Superuser)
-    } else if role.owns_audit_log {
-        Err(Error::OwnsAuditLog)
+        Err(RoleError::Superuser)
+    } else if role.owns_logs {
+        Err(RoleError::OwnsLogs)
+    } else if role.owns_events_schema {
+        Err(RoleError::OwnsEventsSchema)
+    } else if role.can_change_logs {
+        Err(RoleError::CanChangeLogs)
     } else {
         Ok(())
     }
