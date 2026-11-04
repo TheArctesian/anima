@@ -39,6 +39,20 @@
         "typescript": "^6",
       },
     },
+    "deploy/dns": {
+      "name": "@anima/dns",
+      "devDependencies": {
+        "@types/bun": "^1.3.0",
+        "typescript": "^6",
+      },
+    },
+    "deploy/headscale": {
+      "name": "@anima/headscale",
+      "devDependencies": {
+        "@types/bun": "^1.3.0",
+        "typescript": "^6",
+      },
+    },
     "design": {
       "name": "@anima/design",
       "dependencies": {
@@ -63,6 +77,10 @@
     "@anima/deploy": ["@anima/deploy@workspace:deploy"],
 
     "@anima/design": ["@anima/design@workspace:design"],
+
+    "@anima/dns": ["@anima/dns@workspace:deploy/dns"],
+
+    "@anima/headscale": ["@anima/headscale@workspace:deploy/headscale"],
 
     "@anima/quality": ["@anima/quality@workspace:quality"],
 

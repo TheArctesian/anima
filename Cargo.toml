@@ -42,6 +42,10 @@ rcgen = { version = "0.14", default-features = false, features = ["ring", "pem"]
 argon2 = { version = "0.6", default-features = false, features = ["alloc", "password-hash", "zeroize"] }
 getrandom = "0.4"
 rpassword = "7.5"
+# RFC 6238 TOTP (WP-05 T6): HMAC-SHA-1 from RustCrypto, constant-time comparison.
+hmac = "0.13"
+sha1 = "0.11"
+subtle = "2.6"
 
 [workspace.lints.rust]
 warnings = "deny"
