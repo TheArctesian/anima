@@ -9,7 +9,7 @@ use async_graphql::parser::{
 
 use super::harness::schema_for;
 
-const CHECKED: [&str; 15] = [
+const CHECKED: [&str; 17] = [
     "Query",
     "Mutation",
     "CreateDeviceInput",
@@ -25,6 +25,8 @@ const CHECKED: [&str; 15] = [
     "DeviceSort",
     "OperatingSystem",
     "SshAuth",
+    "SshCredentialInput",
+    "PrivateKeyInput",
 ];
 
 /// For each named type, member name → signature (arguments, type, default).
@@ -106,6 +108,17 @@ async fn k1_every_devices_member_of_the_hub_schema_exists_in_k1_with_the_same_ty
     ] {
         assert!(!hub[type_name].contains_key(member), "{type_name}.{member}");
     }
+}
+
+#[tokio::test]
+async fn k1_ssh_credential_input_is_a_oneof_input_as_in_k1() {
+    let line = "input SshCredentialInput @oneOf {";
+    assert!(schema_for_sdl().contains(line), "the hub declares {line}");
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../contracts/schema.graphql"
+    );
+    assert!(std::fs::read_to_string(path).unwrap().contains(line));
 }
 
 fn schema_for_sdl() -> String {

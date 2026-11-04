@@ -3,26 +3,32 @@
 //!
 //! The types live in the sub-modules; each `#[Object]` block there is the single resolver block
 //! for its type. Later packages add the fields that join other domains (`Device.status`,
-//! `Device.checks`, `Device.uptime`, `SshSettings.hostKey`) and the SSH credential mutations to
-//! these same types (R-011, R-010).
+//! `Device.checks`, `Device.uptime`, `SshSettings.hostKey`) to these same types (R-011).
 
 mod connection;
+mod credential;
+mod credential_input;
 mod device;
 pub(super) mod error;
 mod filter;
 mod input;
 mod site;
+mod ssh;
 mod trail;
 
 use async_graphql::{Context, ID, Object, Result, dataloader::DataLoader};
 use sqlx::{PgPool, Postgres, Transaction};
 use uuid::Uuid;
 
+pub use self::ssh::CredentialStored;
+
 use self::{
     connection::{DEFAULT_FIRST, DeviceConnection},
+    credential_input::SshCredential,
     error::{invalid, schema_dependency, to_graphql},
     filter::{DeviceFilterInput, DeviceSort, list_args},
     input::{CreateDeviceInput, UpdateDeviceInput, checked, device_id},
+    ssh::DeviceSsh,
     trail::Trail,
 };
 use super::{
@@ -33,6 +39,7 @@ use super::{
 };
 use crate::{
     access::Authenticated,
+    credentials::clear_ssh,
     ids::{DeviceId, SiteId},
     scalars::Cidr,
 };
@@ -48,6 +55,13 @@ pub fn site_loader(pool: PgPool) -> DataLoader<SitesById> {
 #[must_use]
 pub fn devices_by_site_loader(pool: PgPool) -> DataLoader<DevicesBySite> {
     DataLoader::new(DevicesBySite(pool), tokio::spawn)
+}
+
+/// The loader behind `SshSettings.credentialStored`: one query per batch of device ids, no
+/// cache, so a secret stored or cleared shows in the next request.
+#[must_use]
+pub fn credential_loader(pool: PgPool) -> DataLoader<CredentialStored> {
+    DataLoader::new(CredentialStored(pool), tokio::spawn)
 }
 
 fn pool<'a>(ctx: &Context<'a>) -> Result<&'a PgPool> {
@@ -201,11 +215,33 @@ impl Mutation {
         let id = device_id(&id).map_err(|e| invalid(&[e]))?;
         let trail = Trail::from_context(ctx)?;
         let mut tx = begin(ctx).await?;
+        // The secret goes first, under the credentials lock, before the device row is locked:
+        // the order a concurrent `setSshCredential` takes, so the two cannot deadlock.
+        clear_ssh(&mut tx, id)
+            .await
+            .map_err(|error| credential::credential_error(error, id))?;
         let device = store::delete_device(&mut tx, id)
             .await
             .map_err(to_graphql)?;
         trail.write(&mut tx, trail::device_deleted(&device)).await?;
         commit(tx).await?;
         Ok(ID(device.id.to_string()))
+    }
+
+    /// Seals and stores the device's SSH secret, replacing any earlier one (DEV-012, SEC-003).
+    #[graphql(guard = "Authenticated")]
+    async fn set_ssh_credential(
+        &self,
+        ctx: &Context<'_>,
+        device_id: ID,
+        credential: SshCredential,
+    ) -> Result<DeviceSsh> {
+        credential::set(ctx, &device_id, credential).await
+    }
+
+    /// Deletes the device's SSH secret.
+    #[graphql(guard = "Authenticated")]
+    async fn clear_ssh_credential(&self, ctx: &Context<'_>, device_id: ID) -> Result<DeviceSsh> {
+        credential::clear(ctx, &device_id).await
     }
 }

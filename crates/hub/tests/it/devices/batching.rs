@@ -22,10 +22,19 @@ use tokio::{
     net::{TcpListener, TcpStream, UnixStream},
 };
 
-use anima_hub::devices::graphql::{Mutation, Query, devices_by_site_loader, site_loader};
+use anima_hub::{
+    clock::{Clock, FixedClock},
+    devices::graphql::{Mutation, Query, credential_loader, devices_by_site_loader, site_loader},
+    events::Bus,
+};
 use async_graphql::{EmptySubscription, Schema};
+use serde_json::{Value, json};
 
-use super::{graphql_read::add_bulk, harness::data};
+use super::{
+    credential::{PVE_01, store_password},
+    graphql_read::add_bulk,
+    harness::{TestSchema, data, now, vault},
+};
 
 /// Splits the client's byte stream into PostgreSQL frontend messages and counts statements.
 #[derive(Default)]
@@ -175,5 +184,101 @@ async fn api_005_nested_site_device_site_costs_a_constant_few_statements_for_13_
     assert!(
         few_statements <= BATCHED_AT_MOST && many_statements <= BATCHED_AT_MOST,
         "{few_statements} statements for 13 devices, {many_statements} for 163"
+    );
+}
+
+const STORED: &str = "{ devices(first: 200) { edges { node { name ssh { credentialStored } } } } }";
+
+/// The names of the devices whose `credentialStored` is true, and how many devices there are.
+fn stored_flags(result: &serde_json::Value) -> (Vec<&str>, usize) {
+    let edges = result["devices"]["edges"].as_array().unwrap();
+    let stored = edges
+        .iter()
+        .filter(|edge| edge["node"]["ssh"]["credentialStored"] == true)
+        .map(|edge| edge["node"]["name"].as_str().unwrap())
+        .collect();
+    (stored, edges.len())
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn api_005_credential_stored_costs_a_constant_few_statements_for_13_or_163_devices(
+    pool: PgPool,
+) {
+    let (counted, statements) = counting_pool(&pool).await;
+    let schema = Schema::build(Query, Mutation, EmptySubscription)
+        .data(counted.clone())
+        .data(credential_loader(counted.clone()).delay(BATCH_WINDOW))
+        .finish();
+    store_password(&pool, PVE_01, "a-stored-password").await;
+
+    let few = data(&schema, STORED).await;
+    let few_statements = statements.swap(0, Ordering::SeqCst);
+
+    add_bulk(&pool, SITES, 150).await;
+
+    let many = data(&schema, STORED).await;
+    let many_statements = statements.load(Ordering::SeqCst);
+
+    assert_eq!(stored_flags(&few), (vec!["pve-01"], 13));
+    assert_eq!(stored_flags(&many), (vec!["pve-01"], 163));
+    // The batched cost is 3: the page, its count, one batch of secrets for every device. A
+    // per-device lookup costs one statement per device, at least 15 on this data.
+    assert!(
+        few_statements <= BATCHED_AT_MOST && many_statements <= BATCHED_AT_MOST,
+        "{few_statements} statements for 13 devices, {many_statements} for 163"
+    );
+}
+
+/// The statements one signed-in request costs on the counted pool, and its data.
+async fn cost(schema: &TestSchema, statements: &AtomicUsize, query: &str) -> (usize, Value) {
+    statements.store(0, Ordering::SeqCst);
+    let result = data(schema, query).await;
+    (statements.load(Ordering::SeqCst), result)
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn api_005_credential_stored_in_a_set_or_clear_response_costs_no_statement(pool: PgPool) {
+    let (counted, statements) = counting_pool(&pool).await;
+    let schema = Schema::build(Query, Mutation, EmptySubscription)
+        .data(counted.clone())
+        .data(credential_loader(counted.clone()))
+        .data(vault())
+        .data(Bus::new(4))
+        .data(Arc::new(FixedClock(now())) as Arc<dyn Clock>)
+        .finish();
+    let set = |fields: &str| {
+        format!(
+            r#"mutation {{ setSshCredential(deviceId: "{PVE_01}", credential: {{ password: "a-password" }}) {{ {fields} }} }}"#
+        )
+    };
+    let clear = |fields: &str| {
+        format!(r#"mutation {{ clearSshCredential(deviceId: "{PVE_01}") {{ {fields} }} }}"#)
+    };
+    // Each pair runs on the same state: both sets replace a stored secret, both clears find none.
+    cost(&schema, &statements, &set("enabled")).await;
+    let (set_plain, _) = cost(&schema, &statements, &set("enabled")).await;
+    let (set_known, set_data) = cost(&schema, &statements, &set("credentialStored")).await;
+    cost(&schema, &statements, &clear("enabled")).await;
+    let (clear_plain, _) = cost(&schema, &statements, &clear("enabled")).await;
+    let (clear_known, clear_data) = cost(&schema, &statements, &clear("credentialStored")).await;
+
+    assert_eq!(
+        set_data["setSshCredential"]["credentialStored"],
+        json!(true)
+    );
+    assert_eq!(
+        clear_data["clearSshCredential"]["credentialStored"],
+        json!(false)
+    );
+    assert_eq!(
+        (set_known, clear_known),
+        (set_plain, clear_plain),
+        "credentialStored added statements to the response"
     );
 }

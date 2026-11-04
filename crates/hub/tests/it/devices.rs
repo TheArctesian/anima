@@ -1,11 +1,14 @@
 use std::collections::BTreeSet;
 
 mod batching;
+mod concurrency;
+mod credential;
 mod face;
 mod graphql_read;
 mod guard;
 mod harness;
 mod k1;
+mod leak;
 mod trail;
 mod writes;
 

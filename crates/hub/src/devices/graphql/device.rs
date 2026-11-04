@@ -1,14 +1,17 @@
-//! `Device` and its SSH settings as the GraphQL types K1 describes (R-011 seam: later
-//! packages add `status`, `checks`, `uptime` and `hostKey` to these blocks).
+//! `Device` as the GraphQL type K1 describes (R-011 seam: later packages add `status`,
+//! `checks` and `uptime` to this block).
 
 use async_graphql::{Context, ID, Object, Result, dataloader::DataLoader};
 use chrono::{DateTime, Utc};
 
-use super::error::{schema_dependency, to_graphql};
+use super::{
+    error::{schema_dependency, to_graphql},
+    ssh::DeviceSsh,
+};
 use crate::{
     devices::{
-        Error, Missing, OperatingSystem, SitesById, SshAuth,
-        model::{Device, Site, SshSettings},
+        Error, Missing, OperatingSystem, SitesById,
+        model::{Device, Site},
     },
     scalars::IpAddr,
 };
@@ -56,8 +59,12 @@ impl Device {
         self.maintenance
     }
 
-    async fn ssh(&self) -> &SshSettings {
-        &self.ssh
+    async fn ssh(&self) -> DeviceSsh {
+        DeviceSsh {
+            device: self.id,
+            settings: self.ssh.clone(),
+            credential_stored: None,
+        }
     }
 
     async fn created_at(&self) -> DateTime<Utc> {
@@ -66,24 +73,5 @@ impl Device {
 
     async fn updated_at(&self) -> DateTime<Utc> {
         self.updated_at
-    }
-}
-
-#[Object]
-impl SshSettings {
-    async fn enabled(&self) -> bool {
-        self.enabled
-    }
-
-    async fn port(&self) -> i32 {
-        i32::from(self.port)
-    }
-
-    async fn username(&self) -> &str {
-        &self.username
-    }
-
-    async fn auth(&self) -> SshAuth {
-        self.auth
     }
 }
