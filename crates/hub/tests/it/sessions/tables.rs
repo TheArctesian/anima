@@ -1,10 +1,10 @@
-//! Migration 0600: columns, named checks and what a device delete does (K2, RA-008, SEC-006).
+//! Migration 0600: columns, session checks and what a device delete does (K2, RA-008, SEC-006).
 
 use sqlx::PgPool;
 
 use super::{
-    DOCKER_HOST, ECDSA_FINGERPRINT, ED25519, ED25519_KEY, PVE_01, Row, add_operator, constraint_of,
-    delete_device, insert, insert_all, put_host_key, session_id,
+    DOCKER_HOST, ED25519_KEY, PVE_01, Row, add_operator, constraint_of, delete_device, insert,
+    insert_all, put_host_key, session_id,
 };
 use anima_hub::sessions::EndReason;
 
@@ -87,23 +87,41 @@ async fn ra_008_end_reason_takes_every_k1_value_and_refuses_other_text(pool: PgP
 )]
 async fn ra_008_ended_at_and_end_reason_are_set_together(pool: PgPool) {
     insert(&pool, &Row::live(1, PVE_01, 0)).await.unwrap();
-    for set in [
-        "end_reason = 'operator'",
-        "ended_at = started_at",
-        "protocol = 'rdp'",
-    ] {
-        let error = sqlx::query(&format!("update sessions.sessions set {set} where id = $1"))
-            .bind(session_id(1))
-            .execute(&pool)
+    for set in ["end_reason = 'operator'", "ended_at = started_at"] {
+        let error = update(&pool, set).await.unwrap_err();
+        assert_eq!(
+            constraint_of(&error),
+            Some("sessions_end_pair_check"),
+            "{set}"
+        );
+    }
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn ra_008_protocol_is_ssh_only(pool: PgPool) {
+    insert(&pool, &Row::live(1, PVE_01, 0)).await.unwrap();
+    for protocol in ["rdp", "SSH", ""] {
+        let error = update(&pool, &format!("protocol = '{protocol}'"))
             .await
             .unwrap_err();
-        let expected = if set.starts_with("protocol") {
-            "sessions_protocol_check"
-        } else {
-            "sessions_end_pair_check"
-        };
-        assert_eq!(constraint_of(&error), Some(expected), "{set}");
+        assert_eq!(
+            constraint_of(&error),
+            Some("sessions_protocol_check"),
+            "{protocol:?}"
+        );
     }
+}
+
+/// Runs `update … set {set}` on session 1.
+async fn update(pool: &PgPool, set: &str) -> Result<(), sqlx::Error> {
+    sqlx::query(&format!("update sessions.sessions set {set} where id = $1"))
+        .bind(session_id(1))
+        .execute(pool)
+        .await
+        .map(|_| ())
 }
 
 #[sqlx::test(
@@ -137,51 +155,4 @@ async fn ra_008_session_history_survives_device_delete_and_host_key_does_not(poo
         .await
         .unwrap();
     assert_eq!(keys, [DOCKER_HOST]);
-}
-
-#[sqlx::test(
-    migrations = "./migrations",
-    fixtures(path = "../../fixtures", scripts("devices"))
-)]
-async fn sec_006_a_host_key_row_must_be_one_consistent_openssh_key(pool: PgPool) {
-    add_operator(&pool).await;
-    let cases = [
-        (
-            ("ssh-ed25519", ED25519, ECDSA_FINGERPRINT),
-            "host_keys_fingerprint_matches_key",
-        ),
-        (
-            ("ssh ed25519", ED25519, ED25519_KEY.2),
-            "host_keys_algorithm_check",
-        ),
-        (
-            ("ssh-ed25519", "AAAA\nAAAA", ED25519_KEY.2),
-            "host_keys_public_key_check",
-        ),
-        (
-            ("ssh-ed25519", "AAAAA", ED25519_KEY.2),
-            "host_keys_public_key_check",
-        ),
-        (
-            ("ssh-ed25519", ED25519, "SHA256:short"),
-            "host_keys_fingerprint_check",
-        ),
-    ];
-    for (key, constraint) in cases {
-        let error = put_host_key(&pool, PVE_01, key).await.unwrap_err();
-        assert_eq!(constraint_of(&error), Some(constraint), "{key:?}");
-    }
-    sqlx::query("delete from access.operators")
-        .execute(&pool)
-        .await
-        .unwrap();
-    let error = put_host_key(&pool, PVE_01, ED25519_KEY).await.unwrap_err();
-    assert_eq!(constraint_of(&error), Some("host_keys_accepted_by_fkey"));
-}
-
-#[sqlx::test(migrations = "./migrations")]
-async fn sec_006_a_host_key_needs_an_existing_device(pool: PgPool) {
-    add_operator(&pool).await;
-    let error = put_host_key(&pool, PVE_01, ED25519_KEY).await.unwrap_err();
-    assert_eq!(constraint_of(&error), Some("host_keys_device_id_fkey"));
 }

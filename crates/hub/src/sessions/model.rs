@@ -59,18 +59,21 @@ pub enum EndReason {
     GatewayError,
     AuthFailed,
     HostKeyMismatch,
+    /// The client sent an instruction that does not decode (GW-011, R-034).
+    ProtocolError,
     Timeout,
     HubShutdown,
 }
 
 impl EndReason {
     /// Every reason, in K1 order.
-    pub const ALL: [Self; 7] = [
+    pub const ALL: [Self; 8] = [
         Self::Operator,
         Self::RemoteClosed,
         Self::GatewayError,
         Self::AuthFailed,
         Self::HostKeyMismatch,
+        Self::ProtocolError,
         Self::Timeout,
         Self::HubShutdown,
     ];
@@ -83,6 +86,7 @@ impl EndReason {
             Self::GatewayError => "gateway_error",
             Self::AuthFailed => "auth_failed",
             Self::HostKeyMismatch => "host_key_mismatch",
+            Self::ProtocolError => "protocol_error",
             Self::Timeout => "timeout",
             Self::HubShutdown => "hub_shutdown",
         }

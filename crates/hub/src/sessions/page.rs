@@ -13,6 +13,11 @@ use crate::ids::SessionId;
 const CURSOR_PREFIX: &str = "s1.";
 const CURSOR_BYTES: usize = 8 + 16;
 const MAX_PAGE_SIZE: usize = 200;
+/// The start times a cursor may hold, in microseconds: `0001-01-01T00:00:00Z` to
+/// `9999-12-31T23:59:59.999999Z`. Narrower than PostgreSQL's `timestamptz` (4713 BC to
+/// 294276 AD), so every cursor that decodes binds as a query parameter (API-010).
+const CURSOR_MICROS: std::ops::RangeInclusive<i64> =
+    -62_135_596_800_000_000..=253_402_300_799_999_999;
 
 /// The row a page starts after.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -81,6 +86,9 @@ pub(super) fn decode_cursor(text: &str) -> Result<Cursor, FieldError> {
         .ok_or_else(bad)?;
     let (micros, id) = bytes.split_at(8);
     let micros = i64::from_be_bytes(micros.try_into().map_err(|_| bad())?);
+    if !CURSOR_MICROS.contains(&micros) {
+        return Err(bad());
+    }
     let started_at = DateTime::from_timestamp_micros(micros).ok_or_else(bad)?;
     let id = Uuid::from_slice(id).map_err(|_| bad())?;
     Ok(Cursor {

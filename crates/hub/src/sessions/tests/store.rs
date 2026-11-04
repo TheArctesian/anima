@@ -172,3 +172,17 @@ async fn api_005_host_keys_reads_many_devices_in_one_query(pool: PgPool) {
     }
     assert_eq!(host_key_scans(&mut tx).await, 4);
 }
+
+#[sqlx::test(migrations = "./migrations")]
+async fn api_005_host_keys_of_no_devices_runs_no_query(pool: PgPool) {
+    let mut tx = pool.begin().await.unwrap();
+    // After an error PostgreSQL refuses every statement until the transaction ends, so any
+    // query on this connection would fail.
+    sqlx::query("select 1 / 0")
+        .execute(&mut *tx)
+        .await
+        .unwrap_err();
+    let keys = store::host_keys(&mut *tx, &[]).await.unwrap();
+    assert!(keys.is_empty());
+    assert!(store::host_keys(&mut *tx, &[device(PVE_01)]).await.is_err());
+}
