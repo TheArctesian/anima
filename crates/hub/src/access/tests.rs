@@ -20,6 +20,7 @@ mod rules;
 mod runtime;
 mod scope;
 mod second_factor;
+mod signed_out;
 mod timing;
 mod totp;
 

@@ -11,7 +11,10 @@ use async_graphql::{
     value,
 };
 
-mod capture;
+pub(crate) mod capture;
+mod causes;
+mod echoes;
+mod http;
 mod leaks;
 
 use self::capture::{Capture, capture_log};

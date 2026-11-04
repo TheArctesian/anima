@@ -161,11 +161,13 @@ async fn log_007_a_connection_test_input_that_does_not_parse_never_quotes_its_cr
     pool: PgPool,
 ) {
     for hardened in [true, false] {
-        refused_without_quoting(&schema_with(&pool, hardened)).await;
+        refused_without_quoting(&schema_with(&pool, hardened), hardened).await;
     }
 }
 
-async fn refused_without_quoting(schema: &TestSchema) {
+/// Behind the API boundary every argument refusal is one fixed VALIDATION text (H-6(f)), so
+/// which step refused it is told only on the bare schema.
+async fn refused_without_quoting(schema: &TestSchema, hardened: bool) {
     for (index, (request, secret, refusal)) in malformed().into_iter().enumerate() {
         let (log, response) = logged(schema, request).await;
         let error = error_json(&response);
@@ -179,6 +181,10 @@ async fn refused_without_quoting(schema: &TestSchema) {
             assert!(!text.contains(secret), "request {index}: place {place}");
         }
         let message = error["message"].as_str().unwrap();
+        if hardened {
+            assert_eq!(error["extensions"]["code"], "VALIDATION", "request {index}");
+            continue;
+        }
         let refused_by = if error["extensions"]["code"] == "VALIDATION" {
             Refusal::Parse
         } else {
