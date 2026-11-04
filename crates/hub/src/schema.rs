@@ -1,4 +1,8 @@
 //! GraphQL schema root: merges each domain's `Query`, `Mutation` and `Subscription` (CQ-033, K3).
+//!
+//! A domain joins with one line in each root it has and one block of its data in
+//! `build_schema`; a domain with state `main.rs` builds once (such as `sessions::Live`) also
+//! adds a `Dependencies` field.
 
 use std::sync::Arc;
 
@@ -10,10 +14,12 @@ use crate::{
     clock::Clock,
     config::Config,
     credentials::Vault,
+    devices,
     events::{
         self, Bus,
         process_log::{InternalErrors, RequestSpan},
     },
+    sessions::{self, Live},
 };
 
 #[derive(Default)]
@@ -27,11 +33,22 @@ impl Health {
     }
 }
 
+// One line per domain in each root (K3).
 #[derive(MergedObject, Default)]
-pub struct Query(access::graphql::Query, events::graphql::Query, Health);
+pub struct Query(
+    access::graphql::Query,
+    devices::graphql::Query,
+    events::graphql::Query,
+    sessions::graphql::Query,
+    Health,
+);
 
 #[derive(MergedObject, Default)]
-pub struct Mutation(access::graphql::Mutation);
+pub struct Mutation(
+    access::graphql::Mutation,
+    devices::graphql::Mutation,
+    sessions::graphql::Mutation,
+);
 
 #[derive(MergedSubscription, Default)]
 pub struct Subscription(events::graphql::Subscription);
@@ -47,6 +64,9 @@ pub struct Dependencies {
     /// Registered as `Vault` itself, as K3 writes `.data(vault)`; a router that needs it too
     /// gets its own clone.
     pub vault: Vault,
+    /// The hub's one `Live`: the tunnel router gets a clone of this same value, or no ticket
+    /// the schema issues can be redeemed (R-032).
+    pub live: Live,
 }
 
 /// Put each dependency into the schema data; resolvers read them with `ctx.data::<T>()`.
@@ -61,6 +81,7 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
         pool,
         bus,
         vault,
+        live,
     } = dependencies;
     harden(
         Schema::build(
@@ -72,11 +93,20 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     )
     .disable_suggestions()
     .extension(access::SignInRequired)
+    // Shared dependencies (K3 wiring).
     .data(config)
     .data(clock)
-    .data(pool)
+    .data(pool.clone())
     .data(bus)
     .data(vault)
+    // One block per domain: its loaders (R-014) and its state.
+    // devices
+    .data(devices::graphql::site_loader(pool.clone()))
+    .data(devices::graphql::devices_by_site_loader(pool.clone()))
+    .data(devices::graphql::credential_loader(pool.clone()))
+    // sessions (R-032)
+    .data(sessions::graphql::host_key_loader(pool.clone()))
+    .data(live)
     .finish()
 }
 

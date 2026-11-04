@@ -1,10 +1,10 @@
 use std::collections::BTreeSet;
 
-mod batching;
+pub(crate) mod batching;
 mod concurrency;
 mod credential;
 mod face;
-mod graphql_read;
+pub(crate) mod graphql_read;
 mod guard;
 mod harness;
 mod k1;

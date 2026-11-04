@@ -146,6 +146,17 @@ pub async fn close_stale(db: &PgPool, now: DateTime<Utc>) -> Result<u64, Error> 
     end::close_stale(db, now).await
 }
 
+/// Opens this hub process's sessions: ends what a previous process left open, as
+/// [`close_stale`] does, and only then returns the `Live` that issues tickets, with how many
+/// rows it ended (R-040, D-13). The hub calls it once, before it serves.
+///
+/// # Errors
+/// As [`close_stale`]; then no `Live` is returned.
+pub async fn open(db: &PgPool, now: DateTime<Utc>) -> Result<(Live, u64), Error> {
+    let ended = end::close_stale(db, now).await?;
+    Ok((Live::default(), ended))
+}
+
 /// Ends every session this hub holds with `HUB_SHUTDOWN` at `now`, then refuses new ones
 /// (D-10). The hub calls it once on graceful shutdown, with the `Live` it serves, when the
 /// shutdown signal arrives and before the runtime stops: tunnels are upgraded connections,

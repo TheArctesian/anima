@@ -13,7 +13,8 @@ async-graphql.workspace = true
 async-graphql-axum.workspace = true
 axum = { workspace = true, features = ["ws"] }
 thiserror.workspace = true
-tokio = { workspace = true, features = ["time", "io-util"] }
+# `signal`: the hub ends its sessions on SIGTERM or Ctrl-C before it stops (R-040).
+tokio = { workspace = true, features = ["time", "io-util", "signal"] }
 tracing.workspace = true
 tracing-subscriber.workspace = true
 uuid.workspace = true
