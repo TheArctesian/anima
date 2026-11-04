@@ -1,6 +1,6 @@
 //! One Guacamole instruction and its wire encoding.
 
-use std::fmt;
+use std::{borrow::Cow, fmt};
 
 /// A Guacamole instruction: an opcode and its arguments, in wire order.
 ///
@@ -28,6 +28,41 @@ impl Instruction {
             args: args.into_iter().map(Into::into).collect(),
         }
     }
+
+    /// This instruction with every character outside the Basic Multilingual Plane replaced
+    /// by U+FFFD, so each element's length is the same in code points and in UTF-16 units.
+    ///
+    /// Borrowed when every element is already BMP text. For the client-bound encode only:
+    /// guacamole-common-js before 1.5.2 counts lengths in UTF-16 units (K4 Section 4, R-046).
+    #[must_use]
+    pub fn with_bmp_text(&self) -> Cow<'_, Self> {
+        if is_bmp(&self.opcode) && self.args.iter().all(|arg| is_bmp(arg)) {
+            return Cow::Borrowed(self);
+        }
+        Cow::Owned(Self {
+            opcode: bmp_text(&self.opcode),
+            args: self.args.iter().map(|arg| bmp_text(arg)).collect(),
+        })
+    }
+}
+
+/// Whether `text` has no character outside the BMP: in UTF-8 only those start with a byte
+/// of 0xF0 or more.
+fn is_bmp(text: &str) -> bool {
+    text.bytes().all(|byte| byte < 0xF0)
+}
+
+/// `text` with each character outside the BMP replaced by U+FFFD.
+fn bmp_text(text: &str) -> String {
+    text.chars()
+        .map(|c| {
+            if c.len_utf16() == 1 {
+                c
+            } else {
+                char::REPLACEMENT_CHARACTER
+            }
+        })
+        .collect()
 }
 
 impl fmt::Debug for Instruction {

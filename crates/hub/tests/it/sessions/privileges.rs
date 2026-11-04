@@ -3,17 +3,19 @@
 //! upserts, but not delete one or move it to another device.
 
 use chrono::TimeDelta;
-use sqlx::{PgPool, Postgres, pool::PoolConnection};
+use sqlx::{PgConnection, PgPool};
 
 use super::{
     DOCKER_HOST, ED25519_KEY, OPERATOR_ID, PVE_01, Row, add_operator, constraint_of, insert, now,
     put_host_key, session_id,
 };
 
-async fn as_runtime(pool: &PgPool) -> PoolConnection<Postgres> {
-    let mut conn = pool.acquire().await.unwrap();
+/// A connection that runs as `anima_runtime`. It is detached from the pool, so the changed role
+/// can never reach a later `pool.acquire()` (R-019).
+async fn as_runtime(pool: &PgPool) -> PgConnection {
+    let mut conn = pool.acquire().await.unwrap().detach();
     sqlx::query("set role anima_runtime")
-        .execute(&mut *conn)
+        .execute(&mut conn)
         .await
         .unwrap();
     conn
@@ -48,7 +50,7 @@ async fn ra_008_runtime_role_can_end_a_session_but_not_delete_or_rewrite_it(pool
         } else {
             query
         };
-        let error = query.execute(&mut *conn).await.unwrap_err();
+        let error = query.execute(&mut conn).await.unwrap_err();
         assert!(is_refused(&error), "{sql}: {error}");
     }
 
@@ -58,17 +60,17 @@ async fn ra_008_runtime_role_can_end_a_session_but_not_delete_or_rewrite_it(pool
     )
     .bind(session_id(1))
     .bind(now())
-    .execute(&mut *conn)
+    .execute(&mut conn)
     .await
     .unwrap();
     assert_eq!(ended.rows_affected(), 1);
 }
 
 /// Runs `sql` on session row `n` and returns the database's refusal.
-async fn refused_update(conn: &mut PoolConnection<Postgres>, sql: &str, n: u128) -> sqlx::Error {
+async fn refused_update(conn: &mut PgConnection, sql: &str, n: u128) -> sqlx::Error {
     sqlx::query(sql)
         .bind(session_id(n))
-        .execute(&mut **conn)
+        .execute(&mut *conn)
         .await
         .unwrap_err()
 }
@@ -131,7 +133,7 @@ async fn ra_008_a_live_session_ends_whole_and_not_before_it_started(pool: PgPool
     )
     .bind(session_id(1))
     .bind(now() - TimeDelta::microseconds(1))
-    .execute(&mut *conn)
+    .execute(&mut conn)
     .await
     .unwrap_err();
     assert_eq!(
@@ -163,7 +165,7 @@ async fn ra_008_a_live_session_ends_whole_and_not_before_it_started(pool: PgPool
          where id = $1 and ended_at is null",
     )
     .bind(session_id(1))
-    .execute(&mut *conn)
+    .execute(&mut conn)
     .await
     .unwrap();
     assert_eq!(
@@ -175,7 +177,7 @@ async fn ra_008_a_live_session_ends_whole_and_not_before_it_started(pool: PgPool
 
 /// Inserts session row 1 on PVE-01 with the given times and end, through `conn`.
 async fn insert_times(
-    conn: &mut PoolConnection<Postgres>,
+    conn: &mut PgConnection,
     started_at: &str,
     end: Option<(&str, &str)>,
 ) -> Result<(), sqlx::Error> {
@@ -191,7 +193,7 @@ async fn insert_times(
     .bind(started_at)
     .bind(end.map(|(at, _)| at))
     .bind(end.map(|(_, reason)| reason))
-    .execute(&mut **conn)
+    .execute(&mut *conn)
     .await
     .map(|_| ())
 }
@@ -261,7 +263,7 @@ async fn sec_006_runtime_role_upserts_host_keys_but_cannot_delete_them(pool: PgP
         .bind(key)
         .bind(now())
         .bind(OPERATOR_ID)
-        .execute(&mut *conn)
+        .execute(&mut conn)
         .await
         .unwrap();
     }
@@ -271,7 +273,7 @@ async fn sec_006_runtime_role_upserts_host_keys_but_cannot_delete_them(pool: PgP
     ] {
         let error = sqlx::query(sql)
             .bind(DOCKER_HOST)
-            .execute(&mut *conn)
+            .execute(&mut conn)
             .await
             .unwrap_err();
         assert!(is_refused(&error), "{sql}: {error}");
@@ -296,7 +298,7 @@ async fn sec_006_deleting_a_device_as_the_runtime_role_still_removes_its_host_ke
     let mut conn = as_runtime(&pool).await;
     let deleted = sqlx::query("delete from devices.devices where id = $1::text::uuid")
         .bind(PVE_01)
-        .execute(&mut *conn)
+        .execute(&mut conn)
         .await
         .unwrap();
     assert_eq!(deleted.rows_affected(), 1);

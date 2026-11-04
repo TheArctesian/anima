@@ -19,12 +19,14 @@ use super::{
         record::{Unfinished, finish},
     },
     Bench,
-    bench::{LOOPBACK, PASSWORD, Setup, address, bench, now, operator},
+    bench::{
+        END_WAIT, LOOPBACK, PASSWORD, Setup, address, bench, ending_within_end_wait, now, operator,
+    },
     ended_once,
     fake_guacd::{ARGS_1_6_0, Act, FakeGuacd, Script, fake_guacd},
     records::ended,
 };
-use crate::sessions::{Actor, Live, end::end_session};
+use crate::sessions::{Actor, end::end_session};
 
 /// A guacd that takes `select` and then says nothing until told, and a bench in front of it.
 async fn stalled(pool: &PgPool, setup: Setup) -> (FakeGuacd, Bench) {
@@ -87,11 +89,15 @@ async fn mv_003_a_client_that_leaves_during_the_opening_ends_the_session_operato
     fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
 async fn sec_002_d_10_end_session_during_the_opening_sends_guacd_no_credential(pool: PgPool) {
-    // A short `endSession` wait, so a hub that ignored the signal would still be in its
-    // handshake when guacd answers below.
+    // `endSession` waits for the tunnel to end its row (D-10), up to `END_WAIT`; the handshake
+    // wait is far longer, so a hub that ignored the signal would still be in its handshake
+    // when guacd answers below. A fixed short wait here raced the tunnel's end write on a
+    // loaded machine.
+    let handshake = Duration::from_secs(60);
+    assert!(END_WAIT < handshake);
     let setup = Setup {
-        live: Live::with_tunnel_end_wait(Duration::from_millis(300)).reaching_loopback_for_tests(),
-        ..Setup::route(|route| route.timing.handshake = Duration::from_secs(60))
+        route: Box::new(move |route| route.timing.handshake = handshake),
+        ..ending_within_end_wait()
     };
     let (mut guacd, bench) = stalled(&pool, setup).await;
     let mut raw = request_reaching_guacd(&bench, &mut guacd).await;

@@ -22,13 +22,17 @@ const CLIENT_STOPPED_READING: &str =
 
 /// Sends one instruction to the client as one text message, unless the session ends first. A
 /// failed send is the client leaving; one that stalls past `wait` is a timeout.
+///
+/// Characters outside the Basic Multilingual Plane go out as U+FFFD, so each length is the
+/// same in code points and UTF-16 units and remote text such as a terminal title cannot end
+/// an element early in guacamole-common-js before 1.5.2 (K4 Section 4, R-046).
 pub(super) async fn send_text(
     client: &mut WebSocket,
     instruction: &Instruction,
     tunnel: &mut Tunnel,
     wait: Duration,
 ) -> Result<(), End> {
-    let message = Message::Text(Utf8Bytes::from(encode(instruction)));
+    let message = Message::Text(Utf8Bytes::from(encode(&instruction.with_bmp_text())));
     tokio::select! {
         signal = tunnel.ended() => Err(End::from(signal)),
         sent = timeout(wait, client.send(message)) => match sent {
