@@ -1,0 +1,33 @@
+{
+  "name": "@anima/client",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "lint": "eslint . && stylelint \"src/**/*.{css,svelte}\"",
+    "check": "svelte-kit sync && svelte-check --fail-on-warnings",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@eslint-community/eslint-plugin-eslint-comments": "^4.8.1",
+    "@eslint/js": "^10.0.1",
+    "@sveltejs/adapter-static": "^3.0.10",
+    "@sveltejs/kit": "^2.70.3",
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "eslint": "^10.14.0",
+    "eslint-plugin-svelte": "^3.24.0",
+    "globals": "^17.14.0",
+    "postcss-html": "^2.0.0",
+    "stylelint": "^18.0.0",
+    "stylelint-declaration-strict-value": "^1.12.1",
+    "svelte": "^5.57.3",
+    "svelte-check": "^4.7.8",
+    "svelte-eslint-parser": "^1.10.1",
+    "typescript": "^6",
+    "typescript-eslint": "^8.72.1",
+    "vite": "^8.3.5",
+    "vitest": "^5.1.0"
+  }
+}
