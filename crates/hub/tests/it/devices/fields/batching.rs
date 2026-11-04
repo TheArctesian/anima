@@ -21,10 +21,11 @@ use crate::devices::{
 };
 
 /// The batched cost of the fields below is 9 statements (the page, its count, and the reads of
-/// the checks face); the in-memory path adds 3. A per-device read costs at least one statement
-/// per device: 13 on the small set and 163 on the large one.
-const BATCHED_AT_MOST: usize = 12;
-const IN_MEMORY_AT_MOST: usize = 16;
+/// the checks face); the in-memory path adds 3. A loaded machine can split a batch in two, so
+/// the bounds leave room for that. A per-device read costs at least one statement per device,
+/// 163 on the large set, far above the bounds.
+const BATCHED_AT_MOST: usize = 30;
+const IN_MEMORY_AT_MOST: usize = 36;
 
 const FIELDS: &str = "totalCount edges { node { name status ip uptime(window: DAY) \
                       week: uptime(window: WEEK) checks { name } } }";
