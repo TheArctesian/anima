@@ -101,6 +101,25 @@ pub(super) async fn set_totp(
     Ok(())
 }
 
+/// Locks the operator row until the transaction ends and tells whether it still has the
+/// username, password hash and TOTP secret of `account`, as they were checked.
+pub(super) async fn lock_unchanged(
+    conn: &mut PgConnection,
+    account: &Account,
+) -> Result<bool, sqlx::Error> {
+    let found: Option<bool> = sqlx::query_scalar(
+        "select true from access.operators where id = $1 and username = $2 \
+         and password_hash = $3 and totp_secret_enc is not distinct from $4 for update",
+    )
+    .bind(account.id)
+    .bind(&account.username)
+    .bind(&account.password_hash)
+    .bind(account.totp_secret_enc.as_deref())
+    .fetch_optional(conn)
+    .await?;
+    Ok(found.is_some())
+}
+
 /// Marks `step` used if it is later than the last used one and the operator still has the
 /// secret that was checked. One atomic update, so of two sign-ins with one code only one
 /// claims the step. Returns whether this call claimed it.

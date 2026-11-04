@@ -13,7 +13,7 @@ use crate::{
         set_operator, store,
         totp::{context, otpauth_uri},
     },
-    credentials::{Sealed, Vault},
+    credentials::Sealed,
     events::Bus,
 };
 
@@ -66,24 +66,83 @@ async fn sec_002_r_010_the_secret_is_stored_sealed_for_its_operator(pool: PgPool
     assert!(vault.open(&sealed, b"").is_err());
 }
 
+/// The client's view of a refusal: message and extensions, nothing else.
+fn shown(error: &Error) -> (String, Option<async_graphql::ErrorExtensionValues>) {
+    let shown = error.to_server_error();
+    (shown.message, shown.extensions)
+}
+
 #[sqlx::test(migrations = "./migrations")]
-async fn sec_002_r_010_a_secret_from_another_key_is_a_hub_fault(pool: PgPool) {
+async fn sec_002_r_010_a_secret_from_another_key_is_answered_like_a_wrong_password(pool: PgPool) {
     operator(&pool).await;
     enrol_totp(&pool, &test_vault(7), USERNAME).await.unwrap();
+    let (other, bus) = (test_vault(8), Bus::new(4));
 
-    let other: Vault = test_vault(8);
-    let result = login::login(&pool, &Bus::new(4), &other, attempt(Some("123456"))).await;
-    let error = result.err().expect("no sign-in");
-    assert!(matches!(error, Error::TotpSecret(_)));
-    assert_eq!(error.fault(), Some("totp_secret"));
-    assert_eq!(error.to_string(), "Something went wrong on the hub.");
-    let shown = error.to_server_error().extensions.unwrap();
-    assert_eq!(shown.get("code"), Some(&async_graphql::value!("INTERNAL")));
+    let mut wrong_password = attempt(Some("123456"));
+    wrong_password.password = Password::new("wrong password guess".to_owned());
+    let wrong = login::login(&pool, &bus, &other, wrong_password)
+        .await
+        .err()
+        .unwrap();
+    let right = login::login(&pool, &bus, &other, attempt(Some("123456"))).await;
+    let right = right.err().expect("no sign-in");
+    assert!(matches!(wrong, Error::WrongCredentials));
+    assert!(matches!(right, Error::TotpSecret(_)));
     assert_eq!(
-        attempts(&pool).await,
-        [(false, false)],
-        "counted as a failure"
+        shown(&right),
+        shown(&wrong),
+        "the answer hides the right password"
     );
+    assert_eq!(
+        right.fault(),
+        Some("totp_secret"),
+        "the edge logs the fault"
+    );
+
+    assert_eq!(attempts(&pool).await, [(false, false); 2], "both counted");
+    let events: Vec<(String, String)> =
+        sqlx::query_as("select severity, message from events.event_log order by at, id")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+    let failed = "Sign-in failed for operator operator from 100.64.0.9.";
+    let unchecked = "The second factor of operator operator cannot be checked: its TOTP secret \
+                     does not open with the hub key. Enrol it again with anima-hub operator totp.";
+    let expected = [
+        ("warning", failed),
+        ("warning", failed),
+        ("error", unchecked),
+    ];
+    let expected = expected.map(|(severity, message)| (severity.to_owned(), message.to_owned()));
+    assert_eq!(events, expected);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn sec_002_a_malformed_code_is_refused_before_the_secret_is_opened(pool: PgPool) {
+    operator(&pool).await;
+    enrol_totp(&pool, &test_vault(7), USERNAME).await.unwrap();
+    let other = test_vault(8);
+    for code in ["x", "12345", "1234567", "12345a", ""] {
+        let result = login::login(&pool, &Bus::new(4), &other, attempt(Some(code))).await;
+        assert!(matches!(result, Err(Error::WrongCredentials)), "{code:?}");
+    }
+    let unchecked: i64 =
+        sqlx::query_scalar("select count(*) from events.event_log where severity = 'error'")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(unchecked, 0, "the vault was never asked");
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn sec_002_a_used_step_needs_a_secret(pool: PgPool) {
+    operator(&pool).await;
+    let error = sqlx::query("update access.operators set totp_last_step = 5")
+        .execute(&pool)
+        .await
+        .unwrap_err();
+    let constraint = error.as_database_error().and_then(|e| e.constraint());
+    assert_eq!(constraint, Some("operators_totp_step_needs_secret"));
 }
 
 #[sqlx::test(migrations = "./migrations")]

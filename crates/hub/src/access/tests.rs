@@ -15,6 +15,7 @@ use crate::{
     credentials::Vault,
 };
 
+mod races;
 mod rules;
 mod runtime;
 mod scope;

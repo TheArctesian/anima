@@ -44,6 +44,9 @@ async fn enrolled(pool: &PgPool) -> bool {
         .unwrap()
 }
 
+/// Standard output here is always a pipe, so the success path that prints the URI on a real
+/// terminal is not covered by these tests; `access::enrol_totp` and its URI are tested in
+/// `totp.rs` and the access unit tests.
 #[sqlx::test(migrations = "./migrations")]
 async fn log_007_operator_totp_refuses_to_print_the_uri_into_a_pipe(pool: PgPool) {
     set_operator(&pool).await;
@@ -70,4 +73,19 @@ async fn sec_002_operator_totp_disable_turns_the_second_factor_off(pool: PgPool)
     let (ok, _, stderr) = hub_command(&pool, &["operator", "totp", "nobody", "--disable"]);
     assert!(!ok);
     assert_eq!(stderr.trim(), "anima-hub: No operator has this username.");
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn sec_002_operator_totp_without_a_username_is_a_usage_error(pool: PgPool) {
+    set_operator(&pool).await;
+    for args in [
+        &["operator", "totp", "--disable"][..],
+        &["operator", "totp"],
+    ] {
+        let (ok, stdout, stderr) = hub_command(&pool, args);
+        assert!(!ok);
+        assert_eq!(stdout, "");
+        assert!(stderr.starts_with("anima-hub: usage: "), "{stderr}");
+    }
+    assert!(!enrolled(&pool).await);
 }

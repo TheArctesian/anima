@@ -83,13 +83,10 @@ async fn run() -> Result<(), StartError> {
         [] => serve(config).await,
         ["migrate"] => migrate(&config).await,
         ["operator", "set", username] => set_operator(&config, username).await,
+        // `--disable` is a valid username, so it alone is refused rather than enrolled.
+        ["operator", "totp", "--disable"] => Err(StartError::Usage),
         ["operator", "totp", username] => enrol_totp(&config, username).await,
-        ["operator", "totp", username, "--disable"] => {
-            let pool = connect(&config).await?;
-            access::disable_totp(&pool, username).await?;
-            println!("TOTP is off for operator {username}.");
-            Ok(())
-        }
+        ["operator", "totp", username, "--disable"] => disable_totp(&config, username).await,
         _ => Err(StartError::Usage),
     }
 }
@@ -148,6 +145,14 @@ async fn enrol_totp(config: &Config, username: &str) -> Result<(), StartError> {
         "Add this to an authenticator app, then sign in again with its code:\n{}",
         enrolment.uri()
     );
+    Ok(())
+}
+
+/// Turns TOTP off: the password alone signs in again.
+async fn disable_totp(config: &Config, username: &str) -> Result<(), StartError> {
+    let pool = connect(config).await?;
+    access::disable_totp(&pool, username).await?;
+    println!("TOTP is off for operator {username}.");
     Ok(())
 }
 

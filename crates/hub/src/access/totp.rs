@@ -10,7 +10,11 @@ use sha1::Sha1;
 use subtle::ConstantTimeEq as _;
 use zeroize::Zeroizing;
 
-use crate::ids::OperatorId;
+use super::store::Account;
+use crate::{
+    credentials::{self, Sealed, Vault},
+    ids::OperatorId,
+};
 
 /// Secret length in bytes: 160 bits, the HMAC-SHA-1 output size RFC 4226 recommends.
 pub(super) const SECRET_LEN: usize = 20;
@@ -35,6 +39,62 @@ pub(super) fn context(operator: OperatorId) -> String {
 /// The time step that holds `at`: whole 30-second periods since the Unix epoch.
 pub(super) const fn step_at(at: DateTime<Utc>) -> i64 {
     at.timestamp().div_euclid(STEP_SECONDS)
+}
+
+/// What the second factor makes of a sign-in whose password matched.
+pub(super) enum SecondFactor {
+    /// The operator has not enrolled TOTP.
+    NotEnrolled,
+    /// The code is valid for this step, which the sign-in must still claim as used.
+    Claim(i64),
+    /// The code is missing, malformed, wrong or for a step already used.
+    Refuse,
+    /// The stored secret does not open with this vault and the operator's context: a hub
+    /// fault, never a sign-in.
+    Unopenable(credentials::Error),
+}
+
+impl SecondFactor {
+    /// Whether the sign-in may go on.
+    pub(super) const fn passes(&self) -> bool {
+        matches!(self, Self::NotEnrolled | Self::Claim(_))
+    }
+
+    /// The step the sign-in must claim, if any.
+    pub(super) const fn step(&self) -> Option<i64> {
+        match self {
+            Self::Claim(step) => Some(*step),
+            _ => None,
+        }
+    }
+}
+
+/// Checks `code` against the operator's sealed TOTP secret at `at` (RFC 6238, R-010). A
+/// missing or malformed code is refused before the secret is opened.
+pub(super) fn second_factor(
+    vault: &Vault,
+    account: &Account,
+    code: Option<&str>,
+    at: DateTime<Utc>,
+) -> SecondFactor {
+    let Some(sealed) = account.totp_secret_enc.as_deref() else {
+        return SecondFactor::NotEnrolled;
+    };
+    let Some(code) = code.filter(|code| is_code(code)) else {
+        return SecondFactor::Refuse;
+    };
+    let context = context(account.id);
+    let secret = match Sealed::from_bytes(sealed).and_then(|s| vault.open(&s, context.as_bytes())) {
+        Ok(secret) => secret,
+        Err(error) => return SecondFactor::Unopenable(error),
+    };
+    accepted_step(secret.expose(), code, at, account.totp_last_step)
+        .map_or(SecondFactor::Refuse, SecondFactor::Claim)
+}
+
+/// Whether `code` has the form of a code: six ASCII digits.
+fn is_code(code: &str) -> bool {
+    code.len() == DIGITS && code.bytes().all(|byte| byte.is_ascii_digit())
 }
 
 /// The step `code` belongs to, if it is the secret's code for the step at `at` or one step

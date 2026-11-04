@@ -62,8 +62,10 @@ pub enum Error {
     Random(getrandom::Error),
     #[error("Something went wrong on the hub.")]
     Unavailable,
-    /// The stored TOTP secret does not open with this vault and the operator's context.
-    #[error("Something went wrong on the hub.")]
+    /// The stored TOTP secret does not open with this vault and the operator's context. The
+    /// operator sees a wrong password, so the answer does not tell that the password was
+    /// right; the process log gets the fault.
+    #[error("The username or password is wrong.")]
     TotpSecret(credentials::Error),
 }
 
@@ -90,7 +92,9 @@ impl Error {
     /// The GraphQL `extensions.code` for this error (K7).
     const fn code(&self) -> &'static str {
         match self {
-            Self::Unauthenticated | Self::WrongCredentials => "UNAUTHENTICATED",
+            Self::Unauthenticated | Self::WrongCredentials | Self::TotpSecret(_) => {
+                "UNAUTHENTICATED"
+            }
             Self::ReadOnly => "FORBIDDEN",
             Self::Validation { .. } => "VALIDATION",
             Self::Unreachable(_) => "UNAVAILABLE",
@@ -98,8 +102,7 @@ impl Error {
             | Self::Hash(_)
             | Self::Task(_)
             | Self::Random(_)
-            | Self::Unavailable
-            | Self::TotpSecret(_) => "INTERNAL",
+            | Self::Unavailable => "INTERNAL",
         }
     }
 
