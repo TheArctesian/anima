@@ -1,0 +1,90 @@
+//! `store_ssh` in the caller's connection: all or nothing, and the caller's transaction survives.
+
+use std::error::Error as _;
+
+use anima_hub::{
+    credentials::{Error, SshSecret, has_ssh, load_ssh, store_ssh},
+    ids::DeviceId,
+};
+use sqlx::{Connection as _, PgPool};
+
+use super::{PASSWORD, PVE_01, device, kinds, password, private_key, store, vault};
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn store_for_unknown_device_fails(pool: PgPool) {
+    let unknown = DeviceId::from(uuid::Uuid::now_v7());
+    let result = store(&pool, &vault(1), unknown, password()).await;
+    assert!(matches!(result, Err(Error::UnknownDevice)));
+    assert_eq!(kinds(&pool, unknown).await, Vec::<String>::new());
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn store_failure_keeps_the_callers_transaction_usable(pool: PgPool) {
+    let (vault, id) = (vault(1), device(PVE_01));
+    let mut tx = pool.begin().await.unwrap();
+    let unknown = DeviceId::from(uuid::Uuid::now_v7());
+    let failed = store_ssh(&mut tx, &vault, unknown, password()).await;
+    assert!(matches!(failed, Err(Error::UnknownDevice)));
+    store_ssh(&mut tx, &vault, id, password()).await.unwrap();
+    tx.commit().await.unwrap();
+    assert!(has_ssh(&pool, id).await.unwrap());
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn store_in_a_rolled_back_transaction_leaves_nothing(pool: PgPool) {
+    let (vault, id) = (vault(1), device(PVE_01));
+    let mut conn = pool.acquire().await.unwrap();
+    let mut tx = conn.begin().await.unwrap();
+    store_ssh(&mut tx, &vault, id, password()).await.unwrap();
+    tx.rollback().await.unwrap();
+    assert!(!has_ssh(&pool, id).await.unwrap());
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn log_007_failed_store_keeps_the_previous_secret_and_reveals_no_plaintext(pool: PgPool) {
+    let (vault, id) = (vault(1), device(PVE_01));
+    store(&pool, &vault, id, password()).await.unwrap();
+    // A trigger in this domain's schema makes the insert after the delete fail; its message
+    // quotes the whole new row, so the error chain shows what the database saw.
+    sqlx::query(
+        "CREATE FUNCTION credentials.refuse_insert() RETURNS trigger LANGUAGE plpgsql \
+         AS $$ BEGIN RAISE EXCEPTION 'refused %', NEW; END $$",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        "CREATE TRIGGER refuse_insert BEFORE INSERT ON credentials.secrets \
+         FOR EACH ROW EXECUTE FUNCTION credentials.refuse_insert()",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let error = store(&pool, &vault, id, private_key(Some("new passphrase")))
+        .await
+        .unwrap_err();
+    let chain = format!("{error} | {error:?} | {}", error.source().unwrap());
+    assert!(matches!(error, Error::Database(_)));
+    assert!(chain.contains("refused"));
+    assert!(!chain.contains("new passphrase") && !chain.contains("OPENSSH"));
+
+    sqlx::query("DROP TRIGGER refuse_insert ON credentials.secrets")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let loaded = load_ssh(&pool, &vault, id).await.unwrap();
+    assert!(matches!(loaded, Some(SshSecret::Password(p)) if p.expose() == PASSWORD.as_bytes()));
+}
