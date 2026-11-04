@@ -76,8 +76,10 @@ grant execute on function events.ensure_day_partition(text, timestamptz) to anim
 
 -- Once, for the partitions that already exist (an installation upgraded from 0500): the same
 -- reset, so a grant that 0500's function left on an older partition does not reach the hub or
--- trip its start check. CASCADE (here and in the function) also removes grants that a grantee
--- passed on with GRANT OPTION, which would otherwise abort the revoke.
+-- trip its start check. CASCADE also removes grants that a grantee passed on with GRANT
+-- OPTION, which would otherwise abort the revoke. The function uses it too, only so the two
+-- resets read the same: a partition it has just created holds no passed-on grant, and PUBLIC
+-- never holds a grant option.
 do $$
 declare
     existing pg_catalog.regclass;
