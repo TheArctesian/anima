@@ -1,8 +1,15 @@
 import type { TransitionConfig } from 'svelte/transition';
 import { easeCurve, springCurve } from '../animate';
-import { modeTokens, springMotion, type SpringName } from '../options';
+import { modeTokens, springMotion, staggerDelayMs, type SpringName } from '../options';
 import { motionPreference, type MotionPreference } from '../preference';
 import { roleScale } from './scales';
+
+/*
+ * Each role is one bidirectional transition: use it with `transition:`, not a pair of `in:`
+ * and `out:`, so that a reversal mid-flight starts from where the element is (MOT-002).
+ * Svelte asks the returned function for the configuration of each direction once the DOM
+ * has been updated.
+ */
 
 /** Parameters every role transition takes; the window's preference is the default (MOT-041). */
 export interface RoleParams {
@@ -14,9 +21,12 @@ export interface PopoverParams extends RoleParams {
   readonly from?: Element;
 }
 
-interface Direction {
-  readonly direction?: 'in' | 'out' | 'both';
+/** A list item's place among the items that come in together (`stagger-list`). */
+export interface ListItemParams extends RoleParams {
+  readonly index?: number;
 }
+
+export type RoleTransition = (options?: { direction?: 'in' | 'out' }) => TransitionConfig;
 
 const fade = (t: number) => `opacity: ${String(t)};`;
 
@@ -43,8 +53,8 @@ function enter(spring: SpringName, fromScale: number, reduced: boolean, origin?:
   return { duration: durationMs, easing, css: scaledFade(fromScale, origin) };
 }
 
-function exit(toScale: number, reduced: boolean, origin?: string): TransitionConfig {
-  const css = reduced ? fade : scaledFade(toScale, origin);
+function exit(toScale: number | undefined, reduced: boolean, origin?: string): TransitionConfig {
+  const css = reduced || toScale === undefined ? fade : scaledFade(toScale, origin);
   return { duration: modeTokens(reduced).duration.fast, easing: easeCurve('exit'), css };
 }
 
@@ -52,42 +62,50 @@ function exit(toScale: number, reduced: boolean, origin?: string): TransitionCon
  * A cross-fade over `duration-base` for page change, readings and the modal scrim (5.7.3,
  * MOT-008); the same under reduced motion.
  */
-export function crossFade(
-  _node: Element,
-  { preference = motionPreference() }: RoleParams = {},
-  options: Direction = {},
-): TransitionConfig {
-  return {
+export function crossFade(_node: Element, { preference = motionPreference() }: RoleParams = {}): RoleTransition {
+  return ({ direction } = {}) => ({
     duration: modeTokens(preference.reduced).duration.base,
-    easing: easeCurve(options.direction === 'out' ? 'exit' : 'enter'),
+    easing: easeCurve(direction === 'out' ? 'exit' : 'enter'),
     css: fade,
+  });
+}
+
+/**
+ * Menu and popover (5.7.3): enter scales 0.96 to 1 with a fade from the control on
+ * `spring-snappy`; exit fades and scales to 0.98 over `duration-fast`. Reduced: fade only.
+ */
+export function popover(node: Element, { preference = motionPreference(), from }: PopoverParams = {}): RoleTransition {
+  return ({ direction } = {}) => {
+    const origin = from === undefined ? undefined : originAt(from, node);
+    return direction === 'out'
+      ? exit(roleScale.popoverExit, preference.reduced, origin)
+      : enter('snappy', roleScale.popoverEnter, preference.reduced, origin);
   };
 }
 
-/** Menu and popover enter: scale 0.96 to 1 and fade from the control with `spring-snappy`; reduced: fade. */
-export function popoverIn(
-  node: Element,
-  { preference = motionPreference(), from }: PopoverParams = {},
-): TransitionConfig {
-  const origin = from === undefined ? undefined : originAt(from, node);
-  return enter('snappy', roleScale.popoverEnter, preference.reduced, origin);
+/**
+ * Modal surface (5.7.3): enter scales 0.98 to 1 with a fade on `spring-default`; exit is the
+ * same path in reverse over `duration-fast`. Reduced: fade only. The role's blur is left out
+ * because MOT-006 allows only transform and opacity to animate.
+ */
+export function modal(_node: Element, { preference = motionPreference() }: RoleParams = {}): RoleTransition {
+  return ({ direction } = {}) =>
+    direction === 'out'
+      ? exit(roleScale.modal, preference.reduced)
+      : enter('default', roleScale.modal, preference.reduced);
 }
 
-/** Menu and popover exit: fade and scale to 0.98 over `duration-fast`; reduced: fade. */
-export function popoverOut(
-  node: Element,
-  { preference = motionPreference(), from }: PopoverParams = {},
-): TransitionConfig {
-  const origin = from === undefined ? undefined : originAt(from, node);
-  return exit(roleScale.popoverExit, preference.reduced, origin);
-}
-
-/** Modal surface enter: scale 0.98 to 1 and fade with `spring-default`; reduced: fade. */
-export function modalIn(_node: Element, { preference = motionPreference() }: RoleParams = {}): TransitionConfig {
-  return enter('default', roleScale.modal, preference.reduced);
-}
-
-/** Modal surface exit: the enter path in reverse over `duration-fast`; reduced: fade. */
-export function modalOut(_node: Element, { preference = motionPreference() }: RoleParams = {}): TransitionConfig {
-  return exit(roleScale.modal, preference.reduced);
+/**
+ * Reorder (5.7.3): a new item fades and scales from 0.98 on `spring-move` after its stagger
+ * delay; a leaving item fades over `duration-fast` in its place. Reduced: fade only, no stagger.
+ */
+export function listItem(
+  _node: Element,
+  { preference = motionPreference(), index = 0 }: ListItemParams = {},
+): RoleTransition {
+  return ({ direction } = {}) => {
+    if (direction === 'out') return exit(undefined, preference.reduced);
+    const delay = staggerDelayMs(index, preference.reduced);
+    return { ...enter('move', roleScale.listEnter, preference.reduced), delay };
+  };
 }

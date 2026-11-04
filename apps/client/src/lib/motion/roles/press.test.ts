@@ -57,6 +57,19 @@ it('MOT-040: under reduced motion the press does not scale', () => {
   expect(button.style.scale).toBe('');
 });
 
+it('MOT-001: only the primary button presses', () => {
+  const { button } = pressable(false);
+  button.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 2 }));
+  expect(runs).toEqual([]);
+});
+
+it('a pointer leaving without a press does nothing', () => {
+  const { button } = pressable(false);
+  pointer(button, 'pointerleave');
+  expect(runs).toEqual([]);
+  expect(button.style.scale).toBe('');
+});
+
 it('a detached press no longer reacts', () => {
   const { button, detach } = pressable(false);
   if (typeof detach === 'function') detach();

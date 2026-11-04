@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
+import type { TransitionConfig } from 'svelte/transition';
+import { easeCurve, springCurve } from '../animate';
+import { springMotion, staggerDelayMs, type SpringName } from '../options';
 import { duration, reducedMotion } from '../tokens';
-import { crossFade, modalIn, modalOut, popoverIn, popoverOut } from './transitions';
+import { crossFade, listItem, modal, popover, type RoleTransition } from './transitions';
 
 const normal = { preference: { reduced: false } };
 const reduced = { preference: { reduced: true } };
@@ -12,52 +15,114 @@ function placed(left: number, top: number, width: number, height: number): Eleme
   return node;
 }
 
-function css(config: { css?: (t: number, u: number) => string }, t: number): string {
+const box = () => placed(0, 0, 100, 100);
+const entering = (role: RoleTransition) => role({ direction: 'in' });
+const leaving = (role: RoleTransition) => role({ direction: 'out' });
+
+function css(config: TransitionConfig, t: number): string {
   return config.css?.(t, 1 - t) ?? '';
 }
 
-describe('role transitions', () => {
-  it('menu and popover: enter scales from 0.96 to 1 with a fade', () => {
-    const config = popoverIn(placed(0, 0, 100, 100), normal);
+function expectSpring(config: TransitionConfig, name: SpringName): void {
+  const motion = springMotion(name, false);
+  if (motion.type !== 'spring') throw new Error('expected a spring');
+  const curve = springCurve(motion);
+  expect(config.duration).toBeCloseTo(curve.durationMs, 6);
+  expect(config.duration).toBeGreaterThan(duration.fast);
+  expect(config.easing?.(0.5)).toBeCloseTo(curve.easing(0.5), 6);
+}
+
+describe('ease curves', () => {
+  it('ease-enter decelerates and ease-exit accelerates', () => {
+    expect(easeCurve('enter')(0.5)).toBeGreaterThan(0.5);
+    expect(easeCurve('exit')(0.5)).toBeLessThan(0.5);
+  });
+});
+
+describe('popover', () => {
+  it('enters from 0.96 with a fade on spring-snappy', () => {
+    const config = entering(popover(box(), normal));
     expect(css(config, 0)).toContain('opacity: 0;');
     expect(css(config, 0)).toContain('scale: 0.96;');
     expect(css(config, 1)).toContain('scale: 1;');
-    expect(config.easing?.(1)).toBeCloseTo(1, 2);
+    expectSpring(config, 'snappy');
   });
 
-  it('MOT-005: a popover grows from the centre of the control that opened it', () => {
-    const control = placed(10, 0, 40, 20);
-    const config = popoverIn(placed(0, 30, 200, 100), { ...normal, from: control });
-    expect(css(config, 0)).toContain('transform-origin: 30px -20px;');
-  });
-
-  it('menu and popover: exit fades and scales to 0.98 over duration-fast', () => {
-    const config = popoverOut(placed(0, 0, 100, 100), normal);
+  it('leaves with a fade and scale to 0.98 over duration-fast with ease-exit', () => {
+    const config = leaving(popover(box(), normal));
     expect(config.duration).toBe(duration.fast);
+    expect(config.easing?.(0.5)).toBeCloseTo(easeCurve('exit')(0.5), 6);
     expect(css(config, 0)).toContain('scale: 0.98;');
   });
 
-  it('modal: the surface enters from 0.98 and leaves the same way over duration-fast', () => {
-    expect(css(modalIn(placed(0, 0, 1, 1), normal), 0)).toContain('scale: 0.98;');
-    const out = modalOut(placed(0, 0, 1, 1), normal);
-    expect(out.duration).toBe(duration.fast);
-    expect(css(out, 0)).toContain('scale: 0.98;');
+  it.each([
+    ['enters', entering],
+    ['leaves', leaving],
+  ] as const)('MOT-005: %s at the centre of the control that opened it', (_name, direction) => {
+    const control = placed(10, 0, 40, 20);
+    const config = direction(popover(placed(0, 30, 200, 100), { ...normal, from: control }));
+    expect(css(config, 0.5)).toContain('transform-origin: 30px -20px;');
+  });
+});
+
+describe('modal', () => {
+  it('enters from 0.98 on spring-default and leaves the same way over duration-fast', () => {
+    const enter = entering(modal(box(), normal));
+    expect(css(enter, 0)).toContain('scale: 0.98;');
+    expectSpring(enter, 'default');
+    const leave = leaving(modal(box(), normal));
+    expect(leave.duration).toBe(duration.fast);
+    expect(css(leave, 0)).toContain('scale: 0.98;');
+  });
+});
+
+describe('listItem', () => {
+  it('5.7.3 reorder: a new item fades and scales from 0.98 after its stagger delay', () => {
+    const config = entering(listItem(box(), { ...normal, index: 3 }));
+    expect(config.delay).toBe(staggerDelayMs(3, false));
+    expect(config.delay).toBeGreaterThan(0);
+    expect(css(config, 0)).toContain('scale: 0.98;');
+    expectSpring(config, 'move');
   });
 
-  it.each([
-    ['popoverIn', popoverIn],
-    ['popoverOut', popoverOut],
-    ['modalIn', modalIn],
-    ['modalOut', modalOut],
-  ] as const)('MOT-040/041: under reduced motion %s is a fade only', (_name, transition) => {
-    const config = transition(placed(0, 0, 1, 1), reduced);
+  it('5.7.3 reorder: a leaving item fades in place over duration-fast', () => {
+    const config = leaving(listItem(box(), { ...normal, index: 3 }));
+    expect(config.duration).toBe(duration.fast);
+    expect(config.delay).toBeUndefined();
     expect(css(config, 0.5)).toBe('opacity: 0.5;');
   });
 
-  it('page change: a cross-fade over duration-base, the same under reduced motion', () => {
-    const node = placed(0, 0, 1, 1);
-    expect(crossFade(node, normal).duration).toBe(duration.base);
-    expect(crossFade(node, reduced).duration).toBe(reducedMotion.duration.base);
-    expect(css(crossFade(node, reduced), 0.25)).toBe('opacity: 0.25;');
+  it('MOT-041: under reduced motion items fade in together', () => {
+    const config = entering(listItem(box(), { ...reduced, index: 3 }));
+    expect(config.delay).toBe(0);
+    expect(css(config, 0.5)).toBe('opacity: 0.5;');
+  });
+});
+
+describe('reduced motion', () => {
+  const roles = [
+    ['popover', popover],
+    ['modal', modal],
+    ['listItem', listItem],
+  ] as const;
+
+  it.each(roles)('MOT-040/041: %s is a fade only in both directions', (_name, role) => {
+    for (const direction of [entering, leaving]) {
+      expect(css(direction(role(box(), reduced)), 0.5)).toBe('opacity: 0.5;');
+    }
+  });
+
+  it.each(roles)('MOT-041: %s fades in over the reduced duration-base', (_name, role) => {
+    expect(entering(role(box(), reduced)).duration).toBe(reducedMotion.duration.base);
+  });
+});
+
+describe('crossFade', () => {
+  it('page change: duration-base in both modes, ease-enter in and ease-exit out', () => {
+    expect(entering(crossFade(box(), normal)).duration).toBe(duration.base);
+    expect(entering(crossFade(box(), reduced)).duration).toBe(reducedMotion.duration.base);
+    expect(entering(crossFade(box(), normal)).easing?.(0.5)).toBeCloseTo(easeCurve('enter')(0.5), 6);
+    expect(leaving(crossFade(box(), normal)).easing?.(0.5)).toBeCloseTo(easeCurve('exit')(0.5), 6);
+    expect(css(leaving(crossFade(box(), reduced)), 0.25)).toBe('opacity: 0.25;');
   });
 });

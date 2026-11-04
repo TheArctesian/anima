@@ -26,6 +26,8 @@ type Channel = 'x' | 'y' | 'scaleX' | 'scaleY' | 'opacity';
 
 interface Track {
   readonly value: MotionValue<number>;
+  /** Writes this value, with its partner axis, to the element's style. */
+  readonly draw: () => void;
   running?: { stop(): void };
 }
 
@@ -53,27 +55,28 @@ function tracksFor(element: Animatable): Tracks {
   const known = tracksOf.get(element);
   if (known) return known;
   const now = rendered(element);
-  const track = (channel: Channel): Track => ({ value: motionValue(now[channel]) });
-  const tracks: Tracks = {
-    x: track('x'),
-    y: track('y'),
-    scaleX: track('scaleX'),
-    scaleY: track('scaleY'),
-    opacity: track('opacity'),
-  };
+  const x = motionValue(now.x);
+  const y = motionValue(now.y);
+  const scaleX = motionValue(now.scaleX);
+  const scaleY = motionValue(now.scaleY);
+  const opacity = motionValue(now.opacity);
   const translate = () => {
-    element.style.translate = `${String(tracks.x.value.get())}px ${String(tracks.y.value.get())}px`;
+    element.style.translate = `${String(x.get())}px ${String(y.get())}px`;
   };
   const scale = () => {
-    element.style.scale = `${String(tracks.scaleX.value.get())} ${String(tracks.scaleY.value.get())}`;
+    element.style.scale = `${String(scaleX.get())} ${String(scaleY.get())}`;
   };
-  tracks.x.value.on('change', translate);
-  tracks.y.value.on('change', translate);
-  tracks.scaleX.value.on('change', scale);
-  tracks.scaleY.value.on('change', scale);
-  tracks.opacity.value.on('change', (opacity) => {
-    element.style.opacity = String(opacity);
-  });
+  const fade = () => {
+    element.style.opacity = String(opacity.get());
+  };
+  const tracks: Tracks = {
+    x: { value: x, draw: translate },
+    y: { value: y, draw: translate },
+    scaleX: { value: scaleX, draw: scale },
+    scaleY: { value: scaleY, draw: scale },
+    opacity: { value: opacity, draw: fade },
+  };
+  for (const track of Object.values(tracks)) track.value.on('change', track.draw);
   tracksOf.set(element, tracks);
   return tracks;
 }
@@ -115,13 +118,17 @@ function start(track: Track, from: number, to: number, motion: Motion): Playback
   track.running?.stop();
   if (motion.type === 'instant') {
     track.value.jump(to);
+    track.draw();
     return settled;
   }
   const controls = run(track.value, [from, to], engineOptions(motion, inherited));
-  const { promise: finished, resolve } = Promise.withResolvers<undefined>();
+  let resolve: () => void = () => undefined;
+  const finished = new Promise<void>((done) => {
+    resolve = done;
+  });
   const settle = () => {
     if (track.running === running) delete track.running;
-    resolve(undefined);
+    resolve();
   };
   const running = {
     stop: () => {
