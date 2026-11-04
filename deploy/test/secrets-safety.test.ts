@@ -2,7 +2,6 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import {
-  GENERATED,
   makeSecrets,
   newSecretsPath,
   read,
@@ -49,6 +48,14 @@ describe("make-secrets producers (DB-002, SEC-004)", () => {
 });
 
 describe("make-secrets folder trust (SEC-004)", () => {
+  test("SEC-004: a folder that the current user does not own is refused", () => {
+    const folder = newSecretsPath();
+    const result = makeSecrets(folder, { shimDirectories: [shimFolder({ find: "exit 0" })] });
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stderr).toContain("does not belong");
+    expect(readdirSync(folder)).toEqual([]);
+  });
+
   test("SEC-004: a folder that group or others can write is refused", () => {
     const folder = newSecretsPath();
     mkdirSync(folder, { mode: 0o700 });
@@ -71,10 +78,11 @@ describe("make-secrets folder trust (SEC-004)", () => {
 });
 
 describe("make-secrets owners (DB-002)", () => {
-  test("DB-002: chown gets the owner of every file, the password files first", () => {
+  test("DB-002: every file gets its D-1 owner, and chown runs before chmod", () => {
     const folder = newSecretsPath();
-    const log = join(scratchFolder(), "chown.log");
-    const shims = shimFolder({ chown: `printf '%s %s\\n' "$1" "$(basename "$2")" >>"${log}"` });
+    const log = join(scratchFolder(), "calls.log");
+    const record = (command: string) => `printf '%s %s %s\\n' ${command} "$1" "$(basename "$2")" >>"${log}"`;
+    const shims = shimFolder({ chown: record("chown"), chmod: `${record("chmod")}\n/bin/chmod "$@"` });
     const result = makeSecrets(folder, {
       chown: "1",
       shimDirectories: [shims],
@@ -82,16 +90,17 @@ describe("make-secrets owners (DB-002)", () => {
       stdin: "cf-token-value\n",
     });
     expect(result.exitCode).toBe(0);
-    const owners = new Map(
-      readFileSync(log, "utf8")
-        .trim()
-        .split("\n")
-        .map((line) => {
-          const [owner = "", file = ""] = line.split(" ");
-          return [file.replace(/^\.(.*)\.[^.]+$/, "$1"), owner] as const;
-        }),
-    );
-    expect(Object.fromEntries(owners)).toEqual({
+    const calls = readFileSync(log, "utf8").trim().split("\n").map((line) => line.split(" "));
+    const owners: Record<string, string> = {};
+    for (const [command = "", argument = "", file = ""] of calls) {
+      const name = file.replace(/^\.(.*)\.[^.]+$/, "$1");
+      if (command === "chown") {
+        owners[name] = argument;
+      } else {
+        expect(owners[name]).toBeDefined();
+      }
+    }
+    expect(owners).toEqual({
       postgres_password: "root:999",
       owner_password: "root:999",
       hub_password: "root:999",
@@ -100,29 +109,5 @@ describe("make-secrets owners (DB-002)", () => {
       anima_key: "root:10001",
       cloudflare_dns_token: "root:root",
     });
-  });
-});
-
-describe("make-secrets Cloudflare token (DNS-003)", () => {
-  test("DNS-003: --cloudflare-token-stdin stores one line with mode 0400 and prints nothing of it", () => {
-    const folder = newSecretsPath();
-    const result = makeSecrets(folder, { args: ["--cloudflare-token-stdin"], stdin: "cf-secret-token\nextra\n" });
-    expect(result.exitCode).toBe(0);
-    expect(read(folder, "cloudflare_dns_token")).toBe("cf-secret-token");
-    expect(result.output).not.toContain("cf-secret-token");
-    expect(GENERATED.every((name) => existsSync(join(folder, name)))).toBe(true);
-  });
-
-  test("DNS-003: the token file has mode 0400", () => {
-    const folder = newSecretsPath();
-    makeSecrets(folder, { args: ["--cloudflare-token-stdin"], stdin: "abc\n" });
-    expect(Bun.spawnSync(["ls", "-l", join(folder, "cloudflare_dns_token")]).stdout.toString()).toMatch(/^-r--------/);
-  });
-
-  test("DNS-003: an empty token line gives exit 1 and no file", () => {
-    const folder = newSecretsPath();
-    const result = makeSecrets(folder, { args: ["--cloudflare-token-stdin"], stdin: "\n" });
-    expect(result.exitCode).toBe(1);
-    expect(existsSync(join(folder, "cloudflare_dns_token"))).toBe(false);
   });
 });

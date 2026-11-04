@@ -40,6 +40,8 @@ export interface RunOptions {
   path?: string;
   chown?: "0" | "1";
   stdin?: string;
+  /** Makes the script offer the no-echo prompt although stdin is a pipe. */
+  assumeTerminal?: boolean;
 }
 
 export interface RunResult {
@@ -49,15 +51,35 @@ export interface RunResult {
   stderr: string;
 }
 
-export function makeSecrets(folder: string, options: RunOptions = {}): RunResult {
+function environment(folder: string, options: RunOptions): Record<string, string | undefined> {
   const path = options.path ?? [...(options.shimDirectories ?? []), process.env["PATH"] ?? ""].join(":");
+  return {
+    ...process.env,
+    PATH: path,
+    ANIMA_SECRETS_DIR: folder,
+    ANIMA_SECRETS_CHOWN: options.chown ?? "0",
+    ...(options.assumeTerminal ? { ANIMA_ASSUME_TERMINAL: "1" } : {}),
+  };
+}
+
+export function makeSecrets(folder: string, options: RunOptions = {}): RunResult {
   const result = Bun.spawnSync(["/bin/sh", SCRIPT, ...(options.args ?? [])], {
-    env: { ...process.env, PATH: path, ANIMA_SECRETS_DIR: folder, ANIMA_SECRETS_CHOWN: options.chown ?? "0" },
+    env: environment(folder, options),
     stdin: options.stdin === undefined ? "ignore" : Buffer.from(options.stdin),
   });
   const stdout = result.stdout.toString();
   const stderr = result.stderr.toString();
   return { exitCode: result.exitCode ?? 1, output: stdout + stderr, stdout, stderr };
+}
+
+/** Starts the script with a stdin pipe that stays open, so a test can signal it while it reads. */
+export function startMakeSecrets(folder: string, options: RunOptions = {}) {
+  return Bun.spawn(["/bin/sh", SCRIPT, ...(options.args ?? [])], {
+    env: environment(folder, options),
+    stdin: "pipe",
+    stdout: "pipe",
+    stderr: "pipe",
+  });
 }
 
 export function read(folder: string, name: string): string {

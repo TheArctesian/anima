@@ -93,3 +93,45 @@ describe("make-secrets reruns (DB-002, SEC-004)", () => {
     expect(readdirSync(folder).filter((name) => name.startsWith("."))).toEqual([]);
   });
 });
+
+describe("make-secrets existing files (DB-002, SEC-004)", () => {
+  const goodKey = Buffer.alloc(32, 7).toString("base64");
+
+  test("DB-002: a password file with a trailing newline is refused by name", () => {
+    const folder = secretsFolderWith({ hub_password: "abc123\n" });
+    const result = makeSecrets(folder);
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stderr).toContain("hub_password");
+    expect(existsSync(join(folder, "hub_database_url"))).toBe(false);
+  });
+
+  test.each([
+    ["anima_key", Buffer.alloc(31, 7).toString("base64")],
+    ["anima_key", "not-base64!"],
+    ["anima_key", ""],
+    ["cloudflare_dns_token", ""],
+    ["hub_database_url", "postgres://anima_hub:other@postgres:5432/anima"],
+    ["owner_database_url", "postgres://anima_owner:x@postgres:5432/anima\n"],
+  ])("SEC-004: an existing %s with content %j is refused by name and the value is not printed", (name, content) => {
+    const folder = secretsFolderWith({ [name]: content });
+    const result = makeSecrets(folder);
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stderr).toContain(name);
+    if (content.trim() !== "") expect(result.output).not.toContain(content.trim());
+  });
+
+  test("SEC-004: an existing key of 32 bytes is kept", () => {
+    const folder = secretsFolderWith({ anima_key: goodKey });
+    expect(makeSecrets(folder).exitCode).toBe(0);
+    expect(read(folder, "anima_key")).toBe(goodKey);
+  });
+
+  test("DB-002: a URL file that equals the URL built from its password file is kept", () => {
+    const folder = secretsFolderWith({
+      owner_password: "abc",
+      owner_database_url: "postgres://anima_owner:abc@postgres:5432/anima",
+    });
+    expect(makeSecrets(folder).exitCode).toBe(0);
+    expect(read(folder, "owner_database_url")).toBe("postgres://anima_owner:abc@postgres:5432/anima");
+  });
+});
