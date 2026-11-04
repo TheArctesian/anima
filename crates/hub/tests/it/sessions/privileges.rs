@@ -1,13 +1,13 @@
-//! The runtime role may append a session and end it once, never delete, reopen or rewrite one
-//! (RA-008, R-016, K2 "Roles"). It may upsert a host key, because accepting one upserts, but
-//! not delete one.
+//! The runtime role may append a live session and end it once, never delete, reopen or
+//! rewrite one (RA-008, R-016, K2 "Roles"). It may upsert a host key, because accepting one
+//! upserts, but not delete one or move it to another device.
 
 use chrono::TimeDelta;
 use sqlx::{PgPool, Postgres, pool::PoolConnection};
 
 use super::{
-    ED25519_KEY, OPERATOR_ID, PVE_01, Row, add_operator, constraint_of, insert, now, put_host_key,
-    session_id,
+    DOCKER_HOST, ED25519_KEY, OPERATOR_ID, PVE_01, Row, add_operator, constraint_of, insert, now,
+    put_host_key, session_id,
 };
 
 async fn as_runtime(pool: &PgPool) -> PoolConnection<Postgres> {
@@ -139,17 +139,24 @@ async fn ra_008_a_live_session_ends_whole_and_not_before_it_started(pool: PgPool
         Some("sessions_end_after_start"),
         "{before}"
     );
-    // A half end is the 0600 pair check's to refuse.
-    for sql in [
-        "update sessions.sessions set ended_at = started_at where id = $1",
-        "update sessions.sessions set end_reason = 'operator' where id = $1",
+    // A half end is the 0600 pair check's to refuse; an end at no real instant, C3's.
+    for (sql, constraint) in [
+        (
+            "update sessions.sessions set ended_at = started_at where id = $1",
+            "sessions_end_pair_check",
+        ),
+        (
+            "update sessions.sessions set end_reason = 'operator' where id = $1",
+            "sessions_end_pair_check",
+        ),
+        (
+            "update sessions.sessions set ended_at = 'infinity', end_reason = 'operator' \
+             where id = $1",
+            "sessions_times_finite",
+        ),
     ] {
         let error = refused_update(&mut conn, sql, 1).await;
-        assert_eq!(
-            constraint_of(&error),
-            Some("sessions_end_pair_check"),
-            "{sql}: {error}"
-        );
+        assert_eq!(constraint_of(&error), Some(constraint), "{sql}: {error}");
     }
     let at_start = sqlx::query(
         "update sessions.sessions set ended_at = started_at, end_reason = 'operator' \
@@ -164,6 +171,71 @@ async fn ra_008_a_live_session_ends_whole_and_not_before_it_started(pool: PgPool
         1,
         "an end at the start instant is allowed"
     );
+}
+
+/// Inserts session row 1 on PVE-01 with the given times and end, through `conn`.
+async fn insert_times(
+    conn: &mut PoolConnection<Postgres>,
+    started_at: &str,
+    end: Option<(&str, &str)>,
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "insert into sessions.sessions (id, device_id, device_name, protocol, operator_id, \
+                operator_name, client_addr, started_at, ended_at, end_reason) \
+         values ($1, $2::text::uuid, 'pve-01', 'ssh', $3::text::uuid, 'operator', \
+                 '10.10.0.77', $4::timestamptz, $5::timestamptz, $6)",
+    )
+    .bind(session_id(1))
+    .bind(PVE_01)
+    .bind(OPERATOR_ID)
+    .bind(started_at)
+    .bind(end.map(|(at, _)| at))
+    .bind(end.map(|(_, reason)| reason))
+    .execute(&mut **conn)
+    .await
+    .map(|_| ())
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn ra_008_a_session_is_inserted_live_with_real_times(pool: PgPool) {
+    let start = "2026-11-04T09:00:00Z";
+    let mut runtime = as_runtime(&pool).await;
+    let ended = insert_times(&mut runtime, start, Some((start, "operator"))).await;
+    assert!(
+        is_refused(&ended.unwrap_err()),
+        "the runtime role inserts live rows only"
+    );
+    drop(runtime);
+
+    // The checks hold for the owner too, on insert as on update.
+    let mut owner = pool.acquire().await.unwrap();
+    for (started_at, end, constraint) in [
+        (
+            start,
+            Some(("2026-11-04T08:59:59Z", "operator")),
+            "sessions_end_after_start",
+        ),
+        ("infinity", None, "sessions_times_finite"),
+        ("-infinity", None, "sessions_times_finite"),
+        (
+            start,
+            Some(("infinity", "operator")),
+            "sessions_times_finite",
+        ),
+    ] {
+        let error = insert_times(&mut owner, started_at, end).await.unwrap_err();
+        assert_eq!(
+            constraint_of(&error),
+            Some(constraint),
+            "{started_at} {end:?}: {error}"
+        );
+    }
+    insert_times(&mut owner, start, Some((start, "operator")))
+        .await
+        .unwrap();
 }
 
 #[sqlx::test(
@@ -193,11 +265,17 @@ async fn sec_006_runtime_role_upserts_host_keys_but_cannot_delete_them(pool: PgP
         .await
         .unwrap();
     }
-    let error = sqlx::query("delete from sessions.host_keys")
-        .execute(&mut *conn)
-        .await
-        .unwrap_err();
-    assert!(is_refused(&error), "{error}");
+    for sql in [
+        "delete from sessions.host_keys where device_id <> $1::text::uuid",
+        "update sessions.host_keys set device_id = $1::text::uuid",
+    ] {
+        let error = sqlx::query(sql)
+            .bind(DOCKER_HOST)
+            .execute(&mut *conn)
+            .await
+            .unwrap_err();
+        assert!(is_refused(&error), "{sql}: {error}");
+    }
     assert_eq!(host_key_count(&pool).await, 1);
 }
 

@@ -6,7 +6,7 @@ use std::net::IpAddr;
 use proptest::prelude::*;
 
 use crate::sessions::{
-    start::{DisplayRequest, checked_display},
+    start::{DisplayRequest, checked_display, held_timezone},
     target::is_refused_target,
 };
 
@@ -64,31 +64,25 @@ fn gw_012_values_beyond_u32_are_refused_not_wrapped() {
 }
 
 #[test]
-fn gw_012_a_ticket_holds_only_a_zone_name_of_at_most_64_bytes() {
-    let with_zone = |zone: &str| DisplayRequest {
-        timezone: Some(zone.to_owned()),
-        ..request(1280, 800, 96)
-    };
+fn r_032_e_6_a_ticket_holds_only_a_zone_name_of_at_most_64_bytes_else_none() {
+    let held = |zone: &str| held_timezone(Some(zone.to_owned()));
     let at_cap = format!("Etc/{}", "x".repeat(60));
-    assert!(checked_display(&with_zone(&at_cap)).is_ok());
-    assert!(checked_display(&with_zone("Pacific/Auckland")).is_ok());
-    for refused in [
+    assert_eq!(held(&at_cap), Some(at_cap.clone()));
+    assert_eq!(
+        held("Pacific/Auckland").as_deref(),
+        Some("Pacific/Auckland")
+    );
+    assert_eq!(held_timezone(None), None);
+    for dropped in [
         format!("{at_cap}x"),
+        "Europe/../Berlin".to_owned(),
         "Europe/Berlin\n".to_owned(),
+        "/etc/localtime".to_owned(),
         "a//b".to_owned(),
+        String::new(),
     ] {
-        let fields = checked_display(&with_zone(&refused)).unwrap_err();
-        let named: Vec<&str> = fields.iter().map(|field| field.field).collect();
-        assert_eq!(named, ["display.timezone"], "{refused:?}");
+        assert_eq!(held(&dropped), None, "{dropped:?}");
     }
-    // Named after the bounds, in input order.
-    let both = DisplayRequest {
-        timezone: Some("not a zone".to_owned()),
-        ..request(0, 800, 96)
-    };
-    let fields = checked_display(&both).unwrap_err();
-    let named: Vec<&str> = fields.iter().map(|field| field.field).collect();
-    assert_eq!(named, ["display.widthPx", "display.timezone"]);
 }
 
 #[test]

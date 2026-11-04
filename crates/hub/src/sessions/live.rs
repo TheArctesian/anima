@@ -241,6 +241,11 @@ impl Live {
         self.state.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
+    /// Whether `shut_down` has run: from then on no ticket is issued or redeemed.
+    pub(super) fn is_shutting_down(&self) -> bool {
+        self.state().shutting_down
+    }
+
     /// Holds a new ticket under its hash.
     pub(super) fn issue(&self, hash: TicketHash, ticket: PendingTicket) -> Result<(), Unavailable> {
         let mut state = self.state();

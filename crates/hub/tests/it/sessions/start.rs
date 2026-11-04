@@ -190,27 +190,26 @@ async fn gw_012_start_session_refuses_a_display_out_of_bounds(pool: PgPool) {
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
 )]
-async fn gw_012_start_session_refuses_a_time_zone_that_is_not_a_short_zone_name(pool: PgPool) {
+async fn r_032_e_6_a_time_zone_that_is_not_a_short_zone_name_starts_without_one(pool: PgPool) {
     ready(&pool, &[PVE_01]).await;
+    let live = Live::default();
+    let schema = schema_at(&pool, now(), &live);
+    let at_cap = format!("America/{}", "A".repeat(56));
     // 65 bytes of zone-name characters: only the length is wrong.
-    let long = format!("America/{}", "A".repeat(57));
-    for zone in [long.as_str(), "Europe/../Berlin", "/etc/localtime", ""] {
-        let display = json!({ "widthPx": 1280, "heightPx": 800, "timezone": zone });
-        let error = refusal(&pool, PVE_01, display).await;
-        assert_eq!(error["extensions"]["code"], "VALIDATION", "{zone}: {error}");
-        assert_eq!(fields(&error), ["display.timezone"], "{zone}");
-    }
-    nothing_written(&pool).await;
-
-    let schema = schema_at(&pool, now(), &Live::default());
-    for zone in [
-        json!(format!("America/{}", "A".repeat(56))),
-        json!("UTC"),
-        json!(null),
+    let over_cap = format!("{at_cap}A");
+    for (zone, held) in [
+        (json!(over_cap), None),
+        (json!("Europe/../Berlin"), None),
+        (json!(""), None),
+        (json!(at_cap), Some(at_cap.as_str())),
+        (json!(null), None),
     ] {
         let display = json!({ "widthPx": 1280, "heightPx": 800, "timezone": zone });
         let response = schema.execute(start_request(PVE_01, &display)).await;
         assert!(response.errors.is_empty(), "{zone}: {:?}", response.errors);
+        let ticket = response.data.into_json().unwrap()["startSession"].clone();
+        let redeemed = redeem(&live, &ticket, now()).unwrap();
+        assert_eq!(redeemed.ticket.timezone.as_deref(), held, "{zone}");
     }
 }
 

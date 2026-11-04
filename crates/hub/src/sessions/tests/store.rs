@@ -111,6 +111,27 @@ async fn ra_008_a_session_ends_once_and_the_first_end_wins(pool: PgPool) {
     migrations = "./migrations",
     fixtures(path = "../../../tests/fixtures", scripts("devices"))
 )]
+async fn mv_003_an_end_before_the_start_is_written_at_the_start(pool: PgPool) {
+    let mut conn = pool.acquire().await.unwrap();
+    // Started 5 minutes ahead of a clock that then stepped back.
+    let id = start(&mut conn, 1, 5).await;
+    let end = SessionEnd {
+        at: now(),
+        reason: EndReason::RemoteClosed,
+    };
+    assert!(store::end(&mut *conn, id, end).await.unwrap());
+    let session = store::get(&mut *conn, id).await.unwrap().unwrap();
+    let at_start = SessionEnd {
+        at: now() + TimeDelta::minutes(5),
+        ..end
+    };
+    assert_eq!(session.end, Some(at_start));
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../tests/fixtures", scripts("devices"))
+)]
 async fn log_006_r_016_runtime_role_reads_and_writes_session_tables(pool: PgPool) {
     add_operator(&pool).await;
     let mut conn = pool.acquire().await.unwrap();
