@@ -1,6 +1,7 @@
 use std::collections::BTreeSet;
 
 mod batching;
+mod concurrency;
 mod credential;
 mod face;
 mod graphql_read;

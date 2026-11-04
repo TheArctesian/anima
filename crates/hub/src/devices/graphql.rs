@@ -39,6 +39,7 @@ use super::{
 };
 use crate::{
     access::Authenticated,
+    credentials::clear_ssh,
     ids::{DeviceId, SiteId},
     scalars::Cidr,
 };
@@ -214,6 +215,11 @@ impl Mutation {
         let id = device_id(&id).map_err(|e| invalid(&[e]))?;
         let trail = Trail::from_context(ctx)?;
         let mut tx = begin(ctx).await?;
+        // The secret goes first, under the credentials lock, before the device row is locked:
+        // the order a concurrent `setSshCredential` takes, so the two cannot deadlock.
+        clear_ssh(&mut tx, id)
+            .await
+            .map_err(|error| credential::credential_error(error, id))?;
         let device = store::delete_device(&mut tx, id)
             .await
             .map_err(to_graphql)?;

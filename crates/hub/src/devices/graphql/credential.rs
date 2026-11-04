@@ -28,7 +28,7 @@ fn device_arg(id: &ID) -> Result<DeviceId, FieldError> {
 
 /// `UnknownDevice` is the operator's `NOT_FOUND`; any other failure is `INTERNAL` with its
 /// cause kept as the hidden source. No `credentials` error message holds a secret.
-fn credential_error(error: crate::credentials::Error, device: DeviceId) -> GraphQlError {
+pub(super) fn credential_error(error: crate::credentials::Error, device: DeviceId) -> GraphQlError {
     match error {
         crate::credentials::Error::UnknownDevice => {
             to_graphql(Error::NotFound(Missing::Device(device)))
