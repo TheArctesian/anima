@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { gateList, runGates, type GateEvent } from "../src/gates.ts";
+import { gateList, runGates, type GateEvent } from "../src/gates/gates.ts";
 
 const NAMES = [
   "fmt", "clippy", "cargo-test", "install", "lint", "check", "test", "build", "limits", "names", "imports", "baseline",
@@ -20,6 +20,11 @@ function recorder(codes: Record<number, number | Error> = {}) {
 describe("gateList", () => {
   test("CQ-010 lists the twelve gates in the documented order", () => {
     expect(gateList("phase-1").map((gate) => gate.name)).toEqual(NAMES);
+  });
+
+  test("R-009 runs the Rust tests with a throwaway PostgreSQL", () => {
+    const cargoTest = gateList("phase-1").find((gate) => gate.name === "cargo-test");
+    expect(cargoTest?.argv).toEqual(["bun", "quality/bin/with-postgres.ts", "cargo", "test"]);
   });
 
   test("CQ-011 passes the base ref to the baseline gate", () => {
