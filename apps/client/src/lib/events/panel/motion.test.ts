@@ -176,6 +176,9 @@ describe('Resize separator', () => {
     expect(valueNow()).toBe(0);
   });
 
+});
+
+describe('Resize drag', () => {
   it('MOT-030: the panel follows the pointer 1:1 from the grab point', async () => {
     await show();
     layOut(500);

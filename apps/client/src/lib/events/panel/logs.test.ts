@@ -94,6 +94,9 @@ describe('LOG-009: the list', () => {
     expect(lastFilter().filter).toEqual({ since: new Date(NOW.getTime() - 24 * 3_600_000).toISOString() });
   });
 
+});
+
+describe('LOG-009: the filters', () => {
   it('sends the time filter', async () => {
     await show();
     choose('Time', '1h');

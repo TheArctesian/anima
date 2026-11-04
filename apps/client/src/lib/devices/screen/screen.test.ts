@@ -80,8 +80,9 @@ afterEach(async () => {
 it('DEV-001: 200 devices from one request render 200 cards', async () => {
   await show(Array.from({ length: 200 }, (_, index) => device(String(index).padStart(3, '0'))));
   expect(document.querySelectorAll('article')).toHaveLength(200);
-  expect(fake.requests.filter((request) => request.operation === 'Devices')).toHaveLength(1);
-  expect(fake.requests[0]?.variables).toMatchObject({ first: 200 });
+  const listed = fake.requests.filter((request) => request.operation === 'Devices');
+  expect(listed).toHaveLength(1);
+  expect(listed[0]?.variables).toMatchObject({ first: 200 });
 });
 
 it('DEV-001: Load more asks for the next page with the end cursor and adds its cards', async () => {
