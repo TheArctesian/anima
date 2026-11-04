@@ -5,6 +5,7 @@
 
 mod checks_schema;
 mod devices_schema;
+mod edge;
 mod serving;
 mod sessions_schema;
 mod uri_log;

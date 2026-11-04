@@ -9,6 +9,8 @@ publish.workspace = true
 workspace = true
 
 [dependencies]
+# `events/process_log/echoes.rs` matches async-graphql 7.2's message prefixes (syntax,
+# argument value, coercion, unknown operation); its tests pin them and fail on drift.
 async-graphql.workspace = true
 async-graphql-axum.workspace = true
 axum = { workspace = true, features = ["ws"] }
@@ -52,7 +54,8 @@ subtle.workspace = true
 
 [features]
 # `access::Identity::for_tests`, for integration tests of guarded domains (D-6). Turned on
-# only by the dev-dependency below; never in a release build.
+# only by the dev-dependency below, so it is in `cargo test` builds and never in
+# `cargo build --release --bin anima-hub`.
 test-support = []
 
 [dev-dependencies]

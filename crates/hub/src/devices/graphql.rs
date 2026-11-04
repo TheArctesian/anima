@@ -120,7 +120,7 @@ async fn commit(tx: Transaction<'static, Postgres>) -> Result<()> {
 #[derive(Default)]
 pub struct Query;
 
-/// Merged into the root `Query`; the name only keeps it apart from the other parts.
+/// Merged into the root `Query` (`schema.rs`); the name only keeps it apart from the others.
 #[Object(name = "DevicesQuery")]
 impl Query {
     #[graphql(guard = "Authenticated")]

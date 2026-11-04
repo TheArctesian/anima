@@ -1,6 +1,7 @@
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import { print } from 'graphql';
 import { createClient, type Client, type Sink as ClientSink } from 'graphql-ws';
+import type { HubAddress } from '../address';
 import { MALFORMED, parseErrors, parseResponse, TOKEN_UNREADABLE, UNREACHABLE, type HubError } from '../error';
 import { readToken, type TokenProvider } from '../request';
 import type { StatusSignal } from '../status/status';
@@ -14,7 +15,7 @@ export interface Sink<T> {
 
 /** What the subscription socket needs; every part is injected so that tests need no network (CQ-021). */
 interface SocketTransport {
-  readonly endpoint: string;
+  readonly address: HubAddress;
   readonly WebSocket: typeof WebSocket;
   readonly token: TokenProvider;
   readonly signal: (signal: StatusSignal) => void;
@@ -143,7 +144,7 @@ function lifecycle(transport: SocketTransport, state: SocketState, refuse: () =>
 function connect(transport: SocketTransport, state: SocketState, refuse: () => void): Client {
   const events = lifecycle(transport, state, refuse);
   return createClient({
-    url: transport.endpoint,
+    url: transport.address.socket,
     webSocketImpl: transport.WebSocket,
     // Connect at once and stay connected, so the status is true without any subscription (NAV-003, NET-004).
     lazy: false,
@@ -151,7 +152,7 @@ function connect(transport: SocketTransport, state: SocketState, refuse: () => v
     onNonLazyError: events.stopped,
     // Read per connection, so a new login applies at the next reconnect; never a query parameter (LOG-007).
     connectionParams: async () => {
-      const read = await readToken(transport.token);
+      const read = await readToken(transport.token, transport.address);
       if (!read.ok) {
         state.tokenUnreadable = true;
         // graphql-ws closes with 4005; the message is ours, never the provider's.
