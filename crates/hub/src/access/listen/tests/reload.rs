@@ -32,6 +32,15 @@ fn r_021_a_look_is_due_one_hour_after_the_last() {
 }
 
 #[test]
+fn r_021_a_clock_that_went_back_does_not_stop_the_looks() {
+    let mut reload = Reload::new(stamp(1), now());
+    let back = now() - TimeDelta::days(3);
+    assert!(reload.begin(back), "the next look was days ahead");
+    assert!(!reload.begin(back + TimeDelta::minutes(59)));
+    assert!(reload.begin(back + CHECK_EVERY));
+}
+
+#[test]
 fn r_021_the_wait_runs_to_the_next_look_and_never_past_an_hour() {
     let reload = Reload::new(stamp(1), now());
     assert_eq!(reload.wait(now()), Duration::from_hours(1));
@@ -154,4 +163,27 @@ async fn r_021_h_2_a_bad_new_certificate_keeps_the_old_one_and_is_tried_again() 
     let fixed = check(&mut reload, now() + CHECK_EVERY * 4, &served).await;
     assert_eq!(fixed, Outcome::Swapped, "a failed load is retried");
     assert_eq!(serving(&served), other.der);
+}
+
+#[tokio::test]
+async fn r_021_h_2_a_change_to_the_key_file_alone_is_seen() {
+    let files = Files::new();
+    let made = throwaway();
+    files.write(&made.cert, &made.key, 0);
+    let (mut reload, served) = served(&files).await;
+    let modified = std::fs::metadata(&files.paths.key)
+        .unwrap()
+        .modified()
+        .unwrap();
+    let key = std::fs::File::create(&files.paths.key).unwrap();
+    std::io::Write::write_all(&mut &key, b"not a key").unwrap();
+    key.set_modified(modified).unwrap();
+
+    let looked = check(&mut reload, now() + CHECK_EVERY, &served).await;
+    assert_eq!(
+        looked,
+        Outcome::Kept(Fault::KeyPem),
+        "the key file is looked at"
+    );
+    assert_eq!(serving(&served), made.der);
 }

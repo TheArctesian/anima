@@ -127,10 +127,11 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     });
     // Stand-in for WP-05 T8's `GET /health`; remove this merge when T8's route lands.
     let liveness = axum::Router::new().route("/health", axum::routing::get(|| async { "ok" }));
-    let app = router(schema, pool.clone(), clock.clone())
+    let edge = access::Edge::new(pool.clone(), bus, clock.clone());
+    let app = router(schema, pool, clock)
         .merge(liveness)
-        .layer(access::permitted_networks_layer(pool, bus, clock));
-    Ok(listening.serve(app).await?)
+        .layer(access::permitted_networks_layer(edge.clone()));
+    match listening.serve(app, edge).await {}
 }
 
 /// Applies the migrations as the owner role and exits; serving never migrates (R-016).

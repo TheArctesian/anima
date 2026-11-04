@@ -159,3 +159,45 @@ fn d_11_a_scan_from_many_addresses_writes_at_most_30_events_a_minute() {
     assert!(refusals.admit(ip("198.51.100.1"), later));
     assert_eq!(refusals.len(), 1, "a minute later the old entries are gone");
 }
+
+#[test]
+fn d_11_refusals_the_budget_left_out_are_counted_once_a_minute() {
+    let scan = |refusals: &mut Refusals, from: u32, at| {
+        for n in from..from + 100 {
+            refusals.admit(IpAddr::V4(Ipv4Addr::from(0xcb00_7100 + n)), at);
+        }
+    };
+    let mut refusals = Refusals::default();
+    assert_eq!(refusals.unrecorded(now()), None, "nothing left out yet");
+    scan(&mut refusals, 0, now());
+    assert_eq!(
+        refusals.unrecorded(now()),
+        None,
+        "not before a minute has passed"
+    );
+    let second = now() + TimeDelta::seconds(59);
+    assert!(
+        !refusals.admit(ip("198.18.0.9"), now()),
+        "the budget is spent"
+    );
+    assert!(!refusals.admit(ip("198.18.0.9"), second));
+    assert_eq!(refusals.unrecorded(second), None);
+    let minute = now() + TimeDelta::minutes(1);
+    assert_eq!(
+        refusals.unrecorded(minute),
+        Some(72),
+        "70 of the scan and 2 more"
+    );
+    assert_eq!(refusals.unrecorded(minute), None, "counted once");
+    let repeat = ip("198.51.100.7");
+    assert!(refusals.admit(repeat, minute));
+    assert!(!refusals.admit(repeat, minute));
+    assert_eq!(
+        refusals.unrecorded(minute + TimeDelta::minutes(5)),
+        None,
+        "a repeat within the minute is not a left-out refusal"
+    );
+    scan(&mut refusals, 200, minute);
+    let back = minute - TimeDelta::hours(1);
+    assert_eq!(refusals.unrecorded(back), Some(71), "clock went back");
+}

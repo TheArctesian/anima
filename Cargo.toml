@@ -37,6 +37,9 @@ rpassword = "7.5"
 # TLS for the hub (SEC-001): ring only, no aws-lc build, no `log` output.
 tokio-rustls = { version = "0.26", default-features = false, features = ["ring"] }
 rcgen = "0.14"
+# The hub's own HTTP/1 serving, for header deadlines and connection caps (SEC-001, NET-002).
+hyper = { version = "1", features = ["http1", "server"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
 
 [workspace.lints.rust]
 warnings = "deny"

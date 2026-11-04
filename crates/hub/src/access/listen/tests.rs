@@ -3,6 +3,7 @@
 //! throwaway ones made here with `rcgen`; no real key file is read (SEC-004).
 
 mod bind;
+mod edge;
 mod health;
 mod reload;
 mod serving;
@@ -17,13 +18,20 @@ use std::{
 use chrono::{DateTime, TimeZone, Utc};
 use tokio_rustls::rustls::crypto::{CryptoProvider, ring};
 
+use crate::clock::FixedClock;
+
 use super::{
-    TlsFiles,
+    Edge, TlsFiles,
     certificate::{self, Fault, Pem},
 };
 
 fn now() -> DateTime<Utc> {
     Utc.with_ymd_and_hms(2030, 5, 5, 12, 0, 0).unwrap()
+}
+
+/// An edge that permits no network, so only this host's own connections pass (no database).
+fn nowhere() -> Edge {
+    Edge::permitting(&[], Arc::new(FixedClock(now())))
 }
 
 fn provider() -> Arc<CryptoProvider> {

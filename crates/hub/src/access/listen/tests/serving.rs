@@ -29,14 +29,14 @@ use crate::clock::{Clock, FixedClock};
 const DEADLINE: Duration = Duration::from_secs(20);
 
 /// Answers `GET /` with the client address the connection reports.
-fn peer_router() -> Router {
+pub(super) fn peer_router() -> Router {
     Router::new().route(
         "/",
         get(|ConnectInfo(peer): ConnectInfo<SocketAddr>| async move { peer.ip().to_string() }),
     )
 }
 
-fn connector(trusted: &Throwaway) -> TlsConnector {
+pub(super) fn connector(trusted: &Throwaway) -> TlsConnector {
     let mut roots = RootCertStore::empty();
     roots
         .add(CertificateDer::from(trusted.der.clone()))
@@ -50,7 +50,7 @@ fn connector(trusted: &Throwaway) -> TlsConnector {
 }
 
 /// The response to `GET /` over TLS, and the certificate the server showed.
-async fn get_over_tls(addr: SocketAddr, trusted: &Throwaway) -> (String, Vec<u8>) {
+pub(super) async fn get_over_tls(addr: SocketAddr, trusted: &Throwaway) -> (String, Vec<u8>) {
     let tcp = TcpStream::connect(addr).await.unwrap();
     let name = ServerName::try_from("localhost").unwrap();
     let mut tls = connector(trusted).connect(name, tcp).await.unwrap();
@@ -75,7 +75,7 @@ async fn sec_001_the_hub_serves_tls_with_the_certificate_files() {
         .unwrap();
     assert!(matches!(listening, Listening::Tls(_)));
     let bound = listening.local_addr().unwrap();
-    let server = tokio::spawn(listening.serve(peer_router()));
+    let server = tokio::spawn(listening.serve(peer_router(), super::nowhere()));
     // A client that never starts its handshake does not hold up the next one.
     let _stalled = TcpStream::connect(bound).await.unwrap();
 
@@ -143,7 +143,7 @@ async fn r_021_h_2_a_swapped_certificate_reaches_the_next_handshake() {
     let bound = tcp.local_addr().unwrap();
     let idle = tokio::spawn(std::future::pending::<()>());
     let listening = Listening::Tls(TlsListener::new(tcp, config, idle));
-    let server = tokio::spawn(listening.serve(peer_router()));
+    let server = tokio::spawn(listening.serve(peer_router(), super::nowhere()));
 
     let (_, shown) = tokio::time::timeout(DEADLINE, get_over_tls(bound, &first))
         .await

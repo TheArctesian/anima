@@ -24,7 +24,7 @@ use sqlx::PgPool;
 pub use crate::events::{ClientAddr, Operator};
 pub use guard::{Authenticated, SignInRequired};
 pub use identity::{Identity, client_addr, identify, identify_connection};
-pub use layer::permitted_networks_layer;
+pub use layer::{Edge, permitted_networks_layer};
 pub use password::Password;
 pub use tokens::Scope;
 

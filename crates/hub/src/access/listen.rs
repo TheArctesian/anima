@@ -5,19 +5,23 @@ mod bind;
 mod certificate;
 mod health;
 mod reload;
+mod serve;
+mod slots;
 #[cfg(test)]
 mod tests;
 mod tls;
 
 use certificate::Current;
 
-use std::{io, net::IpAddr, net::SocketAddr, sync::Arc};
+use std::{convert::Infallible, io, net::IpAddr, net::SocketAddr, sync::Arc};
 
-use axum::{Router, serve::ListenerExt as _};
+use axum::Router;
 use tokio::net::TcpListener;
 use tokio_rustls::rustls::crypto::ring;
 
+use super::Edge;
 use crate::clock::Clock;
+use serve::Serving;
 
 use bind::check_bind;
 pub use certificate::{Fault, TlsFiles};
@@ -107,22 +111,25 @@ impl Listening {
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         match self {
             Self::Plain(tcp) => tcp.local_addr(),
-            Self::Tls(tls) => axum::serve::Listener::local_addr(tls),
+            Self::Tls(tls) => tls.tcp.local_addr(),
         }
     }
 
-    /// Serves `router` until the process ends, with each request's TCP peer as
-    /// `ConnectInfo<SocketAddr>` for the NET-002 layer.
-    ///
-    /// # Errors
-    ///
-    /// Serving fails.
-    pub async fn serve(self, router: Router) -> io::Result<()> {
-        let app = router.into_make_service_with_connect_info::<SocketAddr>();
+    /// Serves `router` until the returned future is dropped, with each request's TCP peer as
+    /// `ConnectInfo<SocketAddr>` for the NET-002 layer. `edge` checks each peer at accept,
+    /// before TLS, with the same list and refusal log as the layer.
+    pub async fn serve(self, router: Router, edge: Edge) -> Infallible {
+        self.serve_within(router, edge, serve::SERVED).await
+    }
+
+    async fn serve_within(self, router: Router, edge: Edge, limits: serve::Limits) -> Infallible {
         match self {
-            Self::Plain(tcp) => axum::serve(tcp, app).await,
-            // `tap_io` gives a custom listener `ConnectInfo<SocketAddr>` (axum 0.8).
-            Self::Tls(tls) => axum::serve(tls.tap_io(|_| ()), app).await,
+            Self::Plain(tcp) => serve::run(tcp, Serving::new(router, edge, None, limits)).await,
+            Self::Tls(TlsListener {
+                tcp,
+                acceptor,
+                reload: _reload,
+            }) => serve::run(tcp, Serving::new(router, edge, Some(acceptor), limits)).await,
         }
     }
 }

@@ -5,6 +5,8 @@
 create table access.permitted_networks (
     id uuid primary key,
     -- `cidr` refuses host bits, so `10.0.0.1/8` cannot be stored for `10.0.0.0/8`.
+    -- `not null` on both columns and the label length check tighten K2's columns; only
+    -- `access::permit_networks` writes them.
     cidr cidr not null unique,
     label text not null check (char_length(label) between 1 and 128)
 );

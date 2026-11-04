@@ -16,7 +16,7 @@ const REFUSAL_SPAN: TimeDelta = TimeDelta::minutes(1);
 
 /// Refusal events for all addresses together in [`REFUSAL_SPAN`], so a scan from many
 /// addresses cannot flood the event log either. Also bounds the memory the limit uses.
-const REFUSALS_PER_SPAN: usize = 30;
+pub(super) const REFUSALS_PER_SPAN: usize = 30;
 
 /// The address an IPv4-mapped IPv6 address (`::ffff:a.b.c.d`) stands for; others unchanged.
 #[must_use]
@@ -93,24 +93,46 @@ impl Loaded {
     }
 }
 
-/// The refusals written to the event log in the last [`REFUSAL_SPAN`], by client address.
+/// The refusals written to the event log in the last [`REFUSAL_SPAN`], by client address, and
+/// the ones the budget left out.
 #[derive(Debug, Default)]
 pub(super) struct Refusals {
     written: HashMap<IpAddr, DateTime<Utc>>,
+    /// Refusals left out because [`REFUSALS_PER_SPAN`] were written, not yet counted in an
+    /// event.
+    unrecorded: usize,
+    /// When the first of `unrecorded` was left out.
+    since: Option<DateTime<Utc>>,
 }
 
 impl Refusals {
     /// Whether the refusal of `addr` at `now` is written to the event log, and if so notes
     /// it: not when `addr` was written in the last minute, nor when
-    /// [`REFUSALS_PER_SPAN`] addresses were.
+    /// [`REFUSALS_PER_SPAN`] addresses were; such a refusal is counted for [`Self::unrecorded`].
     pub(super) fn admit(&mut self, addr: IpAddr, now: DateTime<Utc>) -> bool {
         self.written
             .retain(|_, at| *at <= now && now - *at < REFUSAL_SPAN);
-        if self.written.contains_key(&addr) || self.written.len() >= REFUSALS_PER_SPAN {
+        if self.written.contains_key(&addr) {
+            return false;
+        }
+        if self.written.len() >= REFUSALS_PER_SPAN {
+            self.unrecorded += 1;
+            self.since.get_or_insert(now);
             return false;
         }
         self.written.insert(addr, now);
         true
+    }
+
+    /// How many refusals the budget left out, once [`REFUSAL_SPAN`] has passed since the first
+    /// of them, so one event a minute at most reports them (D-11). The count starts again.
+    pub(super) fn unrecorded(&mut self, now: DateTime<Utc>) -> Option<usize> {
+        let since = self.since?;
+        if now >= since && now - since < REFUSAL_SPAN {
+            return None;
+        }
+        self.since = None;
+        Some(std::mem::take(&mut self.unrecorded))
     }
 
     /// How many addresses are being remembered.

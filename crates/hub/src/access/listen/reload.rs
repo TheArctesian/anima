@@ -69,9 +69,10 @@ impl Reload {
             .unwrap_or(Duration::ZERO)
     }
 
-    /// Whether a look is due at `now`; if so, schedules the next one.
+    /// Whether a look is due at `now`; if so, schedules the next one. A look scheduled more
+    /// than [`CHECK_EVERY`] ahead is due too, so a clock that went back does not stop them.
     pub(super) fn begin(&mut self, now: DateTime<Utc>) -> bool {
-        if now < self.next {
+        if now < self.next && self.next - now <= CHECK_EVERY {
             return false;
         }
         self.next = now + CHECK_EVERY;

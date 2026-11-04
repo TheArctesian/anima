@@ -56,6 +56,8 @@ dependencies = [
  "chrono",
  "getrandom 0.4.3",
  "http-body-util",
+ "hyper",
+ "hyper-util",
  "ipnet",
  "rcgen",
  "rpassword",

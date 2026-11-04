@@ -2,6 +2,7 @@
 //! GraphQL work with one `ACCESS` warning event a minute per address, and the `ClientAddr`
 //! of every request that passes (NET-001, NET-002, D-10, D-11).
 
+mod budget;
 mod permit;
 mod untrusted;
 
@@ -71,11 +72,11 @@ async fn edge(pool: &PgPool, permitted: &[&str]) -> Edge {
                     },
                 ),
             )
-            .layer(access::permitted_networks_layer(
+            .layer(access::permitted_networks_layer(access::Edge::new(
                 pool.clone(),
                 bus.clone(),
                 dyn_clock,
-            ));
+            )));
     Edge { app, clock, bus }
 }
 
