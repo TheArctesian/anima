@@ -227,9 +227,13 @@
     display: none;
   }
 
-  /* Solid and above the display, never over it (MAT-008). */
+  /*
+   * Solid and above the display, never over it (MAT-008). A token line height, not `normal`, so the bar is as tall
+   * before the bundled fonts load as after; with `normal` it grew 6 px when they did (MOT-007, R2).
+   */
   .toolbar {
     display: flex;
+    line-height: var(--leading-normal);
     flex: none;
     align-items: center;
     gap: var(--space-3);

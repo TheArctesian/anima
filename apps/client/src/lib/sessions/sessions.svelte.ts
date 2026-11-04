@@ -1,4 +1,7 @@
 import { createContext } from 'svelte';
+import type { HubError, HubResult } from '$lib/hub/hub';
+import type { TunnelStart } from './tunnel/start';
+import type { SessionStart, TunnelEvents } from './view/start';
 import {
   closed,
   deselected,
@@ -14,26 +17,16 @@ import {
   type Tabs,
 } from './tabs';
 
-/** The display the operator's pane offers; K1 `DisplayInput` (D-7, GW-012). */
-export interface SessionDisplay {
-  readonly widthPx: number;
-  readonly heightPx: number;
-  readonly dpi?: number;
-  readonly timezone?: string;
-}
-
-/**
- * What a started session gives back. The hub's ticket also carries the single-use token
- * (API-009); the store passes it to the caller and never keeps it (D-3, LOG-007).
- */
-export interface StartedSession {
-  readonly sessionId: string;
-}
-
-/** The hub calls the store makes; the root layout supplies them (K1 `startSession`, `endSession`). */
+/** The hub calls behind the store; the root layout supplies them (K1 `startSession`, `endSession`). */
 export interface SessionPort {
-  start(deviceId: string, display: SessionDisplay): Promise<StartedSession>;
-  end(sessionId: string): Promise<unknown>;
+  /**
+   * How a session view starts sessions on `deviceId` (D-5, D-7):
+   * `sessionStart(sessionsApi(hub), deviceId, hub.address.origin)`. Only the view calls it, because only the
+   * view knows its display; the store wraps it to learn each session ID (see `startIn`).
+   */
+  start(deviceId: string): SessionStart;
+  /** End the session, or return an ended one unchanged (K1 `endSession`, D-4). */
+  end(sessionId: string): Promise<HubResult<unknown>>;
 }
 
 /** Moves a live session into its own window (RA-002, D-13); only the desktop shell has one (WP-16). */
@@ -47,12 +40,25 @@ export interface SessionRequest {
   readonly origin: Origin | null;
 }
 
-/** A start finished after its tab was closed or started again; its session has been ended. */
-export class TabClosedError extends Error {
-  constructor(cause?: unknown) {
-    super('The session tab was closed before the session started', cause === undefined ? undefined : { cause });
-    this.name = 'TabClosedError';
+/** The hub could not end a session; `code` is its K7 code. The text is fixed (LOG-007, R-035). */
+export class SessionEndError extends Error {
+  readonly code: HubError['code'];
+
+  constructor(error: HubError) {
+    super('The hub could not end the session');
+    this.name = 'SessionEndError';
+    this.code = error.code;
   }
+}
+
+/** What a start in a tab that has gone answers; the view of that tab has gone too, so no one shows it. */
+const TAB_CLOSED: TunnelStart = { ok: false, error: { problem: 'not-opened', message: 'The session tab was closed.' } };
+
+/** What one start in a tab has learnt from its tunnel so far. */
+interface Attempt {
+  sessionId: string | undefined;
+  /** The tunnel ended, so the view ends the session itself to learn the recorded reason (D-4). */
+  ended: boolean;
 }
 
 /** The open session tabs (RA-001): order, selection and the hub sessions behind them. */
@@ -61,12 +67,21 @@ export interface Sessions {
   readonly active: Tab | null;
   /** Whether "Pop out" and drag-out may be offered (D-13). */
   readonly canPopOut: boolean;
+  /**
+   * Opens and selects a tab for `request`; its view then starts the session (D-11). The one entry point: the device
+   * page's SSH button calls `useSessions().openSession({ deviceId, deviceName, protocol: 'SSH', origin:
+   * button.getBoundingClientRect() })` (WP-14 H-1, WP-12).
+   */
   openSession(request: SessionRequest): TabId;
-  /** Starts a hub session in tab `id` and returns its ticket; a restart ends the previous session first (D-5). */
-  start(id: TabId, display: SessionDisplay): Promise<StartedSession>;
+  /**
+   * The `SessionStart` for the view in tab `id`. Each call starts a hub session and records its ID on the tab;
+   * one that replaces a live session ends that first (D-5); one that finishes after the tab closed, or after a
+   * newer start, has its session ended here. A session whose tunnel ended is the view's to end (D-4).
+   */
+  startIn(id: TabId): SessionStart;
   select(id: TabId): void;
   deselect(): void;
-  /** Removes the tab and ends its session once; rejects when the hub could not end it. */
+  /** Removes the tab and ends its session once; rejects with `SessionEndError` when the hub could not end it. */
   close(id: TabId): Promise<void>;
   move(from: number, to: number): void;
   /** Hands the tab's session to a new window and removes the tab without ending the session. */
@@ -105,22 +120,33 @@ class OpenSessions implements Sessions {
     return id;
   }
 
-  async start(id: TabId, display: SessionDisplay): Promise<StartedSession> {
-    const tab = this.#find(id);
-    if (tab === undefined) throw new TabClosedError();
-    this.#starts += 1;
-    const mine = this.#starts;
-    this.#latestStart.set(id, mine);
-    if (tab.sessionId !== null) {
-      await this.#endPrevious(id, tab.sessionId);
-      if (!this.#isLatest(id, mine)) throw new TabClosedError();
-    }
-    const started = await this.#port.start(tab.deviceId, display);
-    if (!this.#isLatest(id, mine)) {
-      return this.#endAfterClose(started.sessionId);
-    }
-    this.#state = withSession(this.#state, id, started.sessionId);
-    return started;
+  startIn(id: TabId): SessionStart {
+    return async (display, events) => {
+      const tab = this.#find(id);
+      if (tab === undefined) return TAB_CLOSED;
+      this.#starts += 1;
+      const mine = this.#starts;
+      this.#latestStart.set(id, mine);
+      if (tab.sessionId !== null) {
+        const failure = await this.#endPrevious(id, tab.sessionId);
+        if (failure !== undefined) return { ok: false, error: failure };
+        if (!this.#isLatest(id, mine)) return TAB_CLOSED;
+      }
+      const attempt: Attempt = { sessionId: undefined, ended: false };
+      const result = await this.#port.start(tab.deviceId)(display, this.#following(id, attempt, events));
+      if (!result.ok) return result;
+      attempt.sessionId = result.value.sessionId;
+      if (!this.#isLatest(id, mine)) {
+        // The view that asked has gone or moved on, so nothing owns this session: close its tunnel now (the view
+        // may close it too; that is safe) and end it. A failure has no one to tell: the hub also records the end
+        // when the tunnel closes (K4 §5).
+        result.value.tunnel.close();
+        await this.#port.end(attempt.sessionId);
+      } else if (!attempt.ended) {
+        this.#state = withSession(this.#state, id, attempt.sessionId);
+      }
+      return result;
+    };
   }
 
   select(id: TabId): void {
@@ -140,8 +166,8 @@ class OpenSessions implements Sessions {
       this.#poppingOut.set(id, true);
       return;
     }
-    // A start still in flight ends its own session when it resolves (see `start`).
-    if (tab.sessionId !== null) await this.#port.end(tab.sessionId);
+    // A start still in flight ends its own session when it resolves (see `startIn`).
+    if (tab.sessionId !== null) await this.#end(tab.sessionId);
   }
 
   move(from: number, to: number): void {
@@ -156,7 +182,7 @@ class OpenSessions implements Sessions {
       await this.#popOut(sessionId);
     } catch (reason) {
       // The tab was closed while the window was opening: nothing owns the session now.
-      if (this.#poppingOut.get(id) === true) await this.#port.end(sessionId);
+      if (this.#poppingOut.get(id) === true) await this.#end(sessionId);
       throw reason;
     } finally {
       this.#poppingOut.delete(id);
@@ -168,18 +194,35 @@ class OpenSessions implements Sessions {
     return this.#find(id) !== undefined && this.#latestStart.get(id) === start;
   }
 
+  /** `events`, after the tab gives up the session of `attempt` when its tunnel ends (D-4). */
+  #following(id: TabId, attempt: Attempt, events: TunnelEvents): TunnelEvents {
+    return {
+      onchange: events.onchange,
+      onend: (state) => {
+        attempt.ended = true;
+        if (attempt.sessionId !== undefined && this.#find(id)?.sessionId === attempt.sessionId) {
+          this.#state = withSession(this.#state, id, null);
+        }
+        events.onend(state);
+      },
+    };
+  }
+
   /**
-   * A restart ends the tab's previous session once before the new one starts (D-5). The tab
-   * gives the id up first, so a close or another start meanwhile cannot end it again.
+   * A new start ends the tab's live session once before it asks for another (D-5). The tab gives the id up first,
+   * so a close or another start meanwhile cannot end it again; on a failure it takes the id back.
    */
-  async #endPrevious(id: TabId, previous: string): Promise<void> {
+  async #endPrevious(id: TabId, previous: string): Promise<HubError | undefined> {
     this.#state = withSession(this.#state, id, null);
-    try {
-      await this.#port.end(previous);
-    } catch (reason) {
-      if (this.#find(id)?.sessionId === null) this.#state = withSession(this.#state, id, previous);
-      throw reason;
-    }
+    const ended = await this.#port.end(previous);
+    if (ended.ok) return undefined;
+    if (this.#find(id)?.sessionId === null) this.#state = withSession(this.#state, id, previous);
+    return ended.error;
+  }
+
+  async #end(sessionId: string): Promise<void> {
+    const ended = await this.#port.end(sessionId);
+    if (!ended.ok) throw new SessionEndError(ended.error);
   }
 
   #find(id: TabId | null): Tab | undefined {
@@ -189,14 +232,6 @@ class OpenSessions implements Sessions {
   #remove(id: TabId): void {
     this.#state = closed(this.#state, id);
     this.#latestStart.delete(id);
-  }
-
-  async #endAfterClose(sessionId: string): Promise<never> {
-    const failure = await this.#port.end(sessionId).then(
-      () => undefined,
-      (reason: unknown) => reason,
-    );
-    throw new TabClosedError(failure);
   }
 }
 
