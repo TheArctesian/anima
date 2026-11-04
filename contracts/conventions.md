@@ -57,6 +57,7 @@ Environment variables, read once in `main.rs` into a typed `Config` that is pass
 | `ANIMA_KEY_FILE` | File containing the credential encryption key (SEC-004) | `/run/secrets/anima_key` |
 | `ANIMA_GUACD` | Gateway address | `guacd:4822` |
 | `ANIMA_PERMITTED_NETWORKS` | Comma-separated CIDRs (NET-001) | VPN range + site subnets |
+| `ANIMA_PROBE_DENY` | Comma-separated CIDRs that checks must never probe: the hub's own Docker networks and public address (R-030) | empty; the hub logs a warning at start when empty |
 | `ANIMA_LOG` | Log level filter (LOG-003) | `info` |
 | `ANIMA_TLS_CERT_FILE`, `ANIMA_TLS_KEY_FILE` | Hub TLS (SEC-001) | — (required outside tests) |
 
