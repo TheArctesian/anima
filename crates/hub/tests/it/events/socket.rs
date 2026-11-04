@@ -131,6 +131,26 @@ async fn r_020_subscribe_before_sign_in_and_a_second_init_are_refused(pool: PgPo
     assert_eq!(receive(&mut garbled).await, Received::Closed(Some(4400)));
 }
 
+#[sqlx::test(migrations = "./migrations")]
+async fn log_005_a_mutation_over_the_socket_is_audited_with_the_peer_address(pool: PgPool) {
+    let token = signed_up(&pool).await;
+    let served = serve_router(&pool, at_start()).await;
+    let mut socket = open(served.addr).await;
+    assert_eq!(init(&mut socket, bearer(&token)).await, ack());
+    let logout =
+        json!({ "id": "1", "type": "subscribe", "payload": { "query": "mutation { logout }" } });
+    send(&mut socket, &logout).await;
+    let next = json!({ "id": "1", "type": "next", "payload": { "data": { "logout": true } } });
+    assert_eq!(receive(&mut socket).await, Received::Json(next));
+    let clients: Vec<String> = sqlx::query_scalar(
+        "select host(client_addr) from events.audit_log where action = 'logout'",
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(clients, ["127.0.0.1"]);
+}
+
 /// A `connection_init` with a valid token, padded to `bytes`.
 fn padded_init(token: &str, bytes: usize) -> Value {
     let mut payload = bearer(token);

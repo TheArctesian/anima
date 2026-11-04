@@ -18,7 +18,9 @@ use async_graphql_axum::GraphQLResponse;
 use axum::{
     Router,
     body::Bytes,
-    extract::{DefaultBodyLimit, State, WebSocketUpgrade},
+    extract::{
+        DefaultBodyLimit, State, WebSocketUpgrade, ws::rejection::WebSocketUpgradeRejection,
+    },
     http::{Extensions, HeaderMap, StatusCode, header::CONTENT_TYPE},
     response::{IntoResponse, Response},
     routing::post,
@@ -86,12 +88,16 @@ async fn graphql(
 }
 
 /// Upgrades `GET /graphql` to a `graphql-transport-ws` connection. The token comes only from
-/// the `connection_init` payload, never from the URL (R-020).
+/// the `connection_init` payload, never from the URL (R-020). A `GET` that is not a WebSocket
+/// upgrade gets 405: queries are never read from a URL.
 async fn subscriptions(
     State(edge): State<Edge>,
     extensions: Extensions,
-    upgrade: WebSocketUpgrade,
+    upgrade: Result<WebSocketUpgrade, WebSocketUpgradeRejection>,
 ) -> Response {
+    let Ok(upgrade) = upgrade else {
+        return StatusCode::METHOD_NOT_ALLOWED.into_response();
+    };
     let access = access::SocketAccess::new(edge.db, edge.clock, access::client_addr(&extensions));
     access::accept_socket(upgrade, edge.schema, access)
 }

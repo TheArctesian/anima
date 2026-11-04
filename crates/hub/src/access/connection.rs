@@ -151,6 +151,7 @@ impl Closing {
     }
 }
 
+/// Serves one upgraded connection until it ends, then sends the close frame that says why.
 async fn serve<E: Executor>(socket: WebSocket, executor: E, access: SocketAccess) {
     let (mut sink, source) = socket.split();
     let unreadable = Arc::new(AtomicBool::new(false));

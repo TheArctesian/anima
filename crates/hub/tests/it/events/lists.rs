@@ -8,7 +8,7 @@ use chrono::{DateTime, TimeDelta, Utc};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
-use super::pages::{EVENTS, HUB_EVENTS, walk};
+use super::pages::{EVENTS, HUB_EVENTS, instant, walk};
 use crate::hub::{Hub, set_operator, start};
 
 pub const ROUTER: &str = "0192f5a0-7c3e-7a52-9d1b-3f4e5a6b7c8d";
@@ -132,7 +132,7 @@ async fn log_004_an_event_shows_every_k1_field(pool: PgPool) {
     let (hub, token) = filter_fixtures(&pool).await;
     let response = hub.post(Some(&token), EVENTS, json!({ "first": 1 })).await;
     let node = &response["data"]["events"]["edges"][0]["node"];
-    assert_eq!(node["at"], "2030-05-05T12:00:00+00:00");
+    assert_eq!(instant(&node["at"]), start());
     assert_eq!(node["severity"], "ERROR");
     assert_eq!(node["source"], "HUB");
     assert_eq!(node["deviceId"], ROUTER);

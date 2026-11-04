@@ -165,6 +165,7 @@ const DEVICE_MESSAGE: &str = "That device id is not valid.";
 
 const _: () = assert!(MAX_PAGE_SIZE == 200, "PAGE_SIZE_MESSAGE names the maximum");
 
+/// The event filter the input asks for; a bad device id is refused.
 fn event_filter(input: EventFilterInput) -> Result<EventFilter, Bad> {
     let device = input
         .device_id

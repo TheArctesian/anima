@@ -13,7 +13,7 @@ use sqlx::PgPool;
 
 use super::{
     lists::ROUTER,
-    pages::{AUDIT, walk},
+    pages::{AUDIT, instant, walk},
 };
 use crate::hub::{CLIENT, Hub, USERNAME, set_operator, start};
 
@@ -50,7 +50,7 @@ async fn log_005_audit_pages_show_who_changed_what_newest_first(pool: PgPool) {
     let first = hub.post(Some(&token), AUDIT, json!({ "first": 1 })).await;
     let page = &first["data"]["audit"];
     let node = &page["edges"][0]["node"];
-    assert_eq!(node["at"], "2030-05-05T12:20:00+00:00");
+    assert_eq!(instant(&node["at"]), start() + TimeDelta::minutes(20));
     assert_eq!(node["operatorName"], "operator");
     assert_eq!(node["action"], "update");
     assert_eq!(node["targetType"], "device");

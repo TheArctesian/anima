@@ -1,6 +1,7 @@
 //! Cursor pages of both lists: walking them, and refusing bad sizes, cursors and ids or a
 //! signed-out caller (API-006, API-003).
 
+use chrono::{DateTime, Utc};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
@@ -20,6 +21,14 @@ pub const AUDIT: &str = "query($first: Int, $after: String) { \
     audit(first: $first, after: $after) { \
     edges { cursor node { id at operatorName action targetType targetId clientAddr change } } \
     pageInfo { hasNextPage endCursor } } }";
+
+/// The instant a K1 `DateTime` names, whatever RFC 3339 offset it is written with (R-033).
+pub fn instant(value: &Value) -> DateTime<Utc> {
+    let text = value
+        .as_str()
+        .unwrap_or_else(|| panic!("not a DateTime: {value}"));
+    DateTime::parse_from_rfc3339(text).unwrap().to_utc()
+}
 
 /// Walks every page of `query` (whose root field is `list`) at `first` entries a page; returns
 /// the node ids in order and the `hasNextPage` of each page. Each page's `endCursor` must be
