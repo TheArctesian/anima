@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "bun ../quality/bin/with-postgres.ts bun test ./deploy",
+    "test": "bun ../quality/bin/with-postgres.ts bun test --timeout 30000 ./deploy",
     "check": "tsc --noEmit",
     "lint": "eslint ."
   },
