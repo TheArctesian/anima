@@ -34,7 +34,7 @@ The operator approved all seven contracts on 2026-11-03 (checkpoint 1). Only a r
 | WP-11 Client shell | 2 | Accepted, merged at bb575fd | own worktree from `phase-1` | `wp-11-client-shell` |
 | WP-12 Devices page | 3 | Building (from e939dff) | `claude/wp-12-devices-page` | `wp-06-devices` session, reused |
 | WP-13 Detail and form | 3 | Building (from 91a926c) | `claude/wp-13-device-detail` | `wp-02-tokens` session, reused |
-| WP-14 SSH tab | 3 | Building (from e939dff; critical path) | `claude/wp-14-ssh-tab` | `wp-08-guac` session, reused |
+| WP-14 SSH tab | 3 | Accepted, merged at 1446b54 (12/12) | `claude/wp-14-ssh-tab` | `wp-08-guac` session, reused |
 | WP-15 Settings page | 3 | Building (from cd91aae) | `claude/wp-15-settings` | `wp-11-client-shell` session, reused |
 | WP-16 Tauri shell | 3 | Accepted, merged at 8960ca4 | `claude/wp-16-tauri-shell` | `wp-11-client-shell` session, reused |
 | WP-17 Integration and acceptance | 4 | Waiting (all) | — | — |
