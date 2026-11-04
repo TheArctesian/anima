@@ -4,6 +4,7 @@
   "type": "module",
   "workspaces": ["apps/*", "quality"],
   "scripts": {
+    "gates": "bun quality/bin/gates.ts",
     "lint": "bun run --filter '*' lint",
     "check": "bun run --filter '*' check",
     "test": "bun run --filter '*' test",

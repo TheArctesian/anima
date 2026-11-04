@@ -1,4 +1,4 @@
-/** The hub's top-level modules and which domains each domain may import (contract K3, REPO-004). */
+/** The hub's top-level modules and which domains each domain may import (the hub-domains contract, REPO-004). */
 export interface HubModules {
   /** May be imported by everyone; import no domain. */
   leaves: string[];

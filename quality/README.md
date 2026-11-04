@@ -9,6 +9,27 @@ Repository checks that Clippy and ESLint do not cover. Run with bun from `qualit
 | `bun run names` | CQ-030 | Banned words in file, folder and type names |
 | `bun run imports` | REPO-004 | No hub domain uses another domain's `store`; no domain cycle |
 
+## Local gates
+
+`bun run gates` (from the repository root) is the only gate entry point. There is no CI; gates run on the machine that makes the change.
+It runs twelve gates as separate processes, in this order, and stops at the first failure (exit code of that gate, 1 if killed by a signal):
+
+1. `cargo fmt --check`
+2. `cargo clippy --all-targets -- -D warnings`
+3. `cargo test`
+4. `bun install --frozen-lockfile`
+5. `bun run lint`
+6. `bun run check`
+7. `bun run test`
+8. `bun run --cwd apps/client build`
+9. `bun run quality:limits`
+10. `bun run quality:names`
+11. `bun run quality:imports`
+12. `bun run quality:baseline -- --base <BASE_REF>`
+
+`BASE_REF` is read from the environment and defaults to `phase-1` (a local branch; no remote needed).
+A missing executable is a failure, never a skip (CQ-024). The gate list and runner live in `src/gates.ts`.
+
 Files come from `git ls-files --cached --others --exclude-standard`, minus the globs in `generated.txt` (CQ-012).
 
 ## baseline.json (CQ-011)
