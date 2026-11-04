@@ -6,8 +6,11 @@ use std::{sync::Arc, time::Duration};
 
 use chrono::TimeDelta;
 use sqlx::PgPool;
-use tokio::{io::AsyncWriteExt as _, net::TcpStream, time::timeout};
-use tokio_tungstenite::tungstenite::http::StatusCode;
+use tokio::{
+    io::{AsyncReadExt as _, AsyncWriteExt as _},
+    net::TcpStream,
+    time::timeout,
+};
 
 use super::{
     super::super::record::Unfinished,
@@ -16,9 +19,8 @@ use super::{
     ended_once,
     fake_guacd::{ARGS_1_6_0, Act, FakeGuacd, Script, fake_guacd},
     records::ended,
-    socket::open_with,
 };
-use crate::sessions::{Actor, end::end_session};
+use crate::sessions::{Actor, Live, end::end_session};
 
 /// A guacd that takes `select` and then says nothing until told, and a bench in front of it.
 async fn stalled(pool: &PgPool, setup: Setup) -> (FakeGuacd, Bench) {
@@ -27,12 +29,33 @@ async fn stalled(pool: &PgPool, setup: Setup) -> (FakeGuacd, Bench) {
     (guacd, bench)
 }
 
-/// Waits until the hub has sent guacd `select`: the opening is under way.
-async fn opening_reached_guacd(guacd: &mut FakeGuacd) {
+/// Sends the upgrade request as guacamole-common-js would and keeps the connection, then
+/// waits until the hub has sent guacd `select`: the opening is under way.
+async fn request_reaching_guacd(bench: &Bench, guacd: &mut FakeGuacd) -> TcpStream {
+    let mut raw = TcpStream::connect(bench.served).await.unwrap();
+    let request = format!(
+        "GET /tunnel?token={} HTTP/1.1\r\nHost: {}\r\nConnection: Upgrade\r\n\
+         Upgrade: websocket\r\nSec-WebSocket-Version: 13\r\n\
+         Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Protocol: guacamole\r\n\r\n",
+        bench.token, bench.served
+    );
+    raw.write_all(request.as_bytes()).await.unwrap();
     timeout(Duration::from_secs(5), &mut guacd.selected)
         .await
         .expect("the opening reaches guacd")
         .unwrap();
+    raw
+}
+
+/// The status line of the response on `raw`.
+async fn status_line(raw: &mut TcpStream) -> String {
+    let mut response = [0; 64];
+    let read = timeout(Duration::from_secs(5), raw.read(&mut response))
+        .await
+        .unwrap()
+        .unwrap();
+    let text = String::from_utf8_lossy(&response[..read]).into_owned();
+    text.lines().next().unwrap_or_default().to_owned()
 }
 
 #[sqlx::test(
@@ -43,15 +66,7 @@ async fn mv_003_a_client_that_leaves_during_the_opening_ends_the_session_operato
     // The opening would wait out the whole handshake if nothing noticed the client leave.
     let setup = Setup::route(|route| route.timing.handshake = Duration::from_secs(60));
     let (mut guacd, bench) = stalled(&pool, setup).await;
-    let mut raw = TcpStream::connect(bench.served).await.unwrap();
-    let request = format!(
-        "GET /tunnel?token={} HTTP/1.1\r\nHost: {}\r\nConnection: Upgrade\r\n\
-         Upgrade: websocket\r\nSec-WebSocket-Version: 13\r\n\
-         Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Protocol: guacamole\r\n\r\n",
-        bench.token, bench.served
-    );
-    raw.write_all(request.as_bytes()).await.unwrap();
-    opening_reached_guacd(&mut guacd).await;
+    let raw = request_reaching_guacd(&bench, &mut guacd).await;
     drop(raw);
     // The client left first, so the session ends `OPERATOR` as for any client that leaves;
     // the opening stops and guacd gets no credential.
@@ -68,18 +83,22 @@ async fn mv_003_a_client_that_leaves_during_the_opening_ends_the_session_operato
     fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
 async fn sec_002_d_10_end_session_during_the_opening_sends_guacd_no_credential(pool: PgPool) {
-    let setup = Setup::route(|route| route.timing.handshake = Duration::from_secs(60));
+    // A short `endSession` wait, so a hub that ignored the signal would still be in its
+    // handshake when guacd answers below.
+    let setup = Setup {
+        live: Live::with_tunnel_end_wait(Duration::from_millis(300)).reaching_loopback_for_tests(),
+        ..Setup::route(|route| route.timing.handshake = Duration::from_secs(60))
+    };
     let (mut guacd, bench) = stalled(&pool, setup).await;
-    let url = bench.url.clone();
-    let client = tokio::spawn(async move { open_with(&url, true).await.err() });
-    opening_reached_guacd(&mut guacd).await;
+    let mut raw = request_reaching_guacd(&bench, &mut guacd).await;
     let by = Actor {
         operator: operator(),
         client: address("10.10.0.80"),
         at: now() + TimeDelta::seconds(5),
     };
-    let row = end_session(&pool, &bench.live, bench.session, &by).await;
-    assert!(row.unwrap().end.is_some(), "the tunnel ended its row");
+    let row = end_session(&pool, &bench.live, bench.session, &by)
+        .await
+        .unwrap();
     // Only now does guacd offer its `args`: a hub still in the handshake would answer with
     // the credential.
     guacd.act.send(Act::Close).ok();
@@ -92,7 +111,11 @@ async fn sec_002_d_10_end_session_during_the_opening_sends_guacd_no_credential(p
         "{after_args:?}"
     );
     assert!(!format!("{after_args:?}").contains(PASSWORD));
-    assert_eq!(client.await.unwrap(), Some(StatusCode::SERVICE_UNAVAILABLE));
+    assert!(row.end.is_some(), "the tunnel ended its row in time");
+    assert_eq!(
+        status_line(&mut raw).await,
+        "HTTP/1.1 503 Service Unavailable"
+    );
     ended_once(
         &ended(&pool, bench.session).await,
         "operator",

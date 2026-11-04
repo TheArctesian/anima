@@ -31,7 +31,7 @@ pub(super) enum Script {
     /// Closes the connection after reading `select`.
     DropAfterSelect,
     /// After `select`, sends nothing until the test's first act; then sends `args` and
-    /// reports as the handshake every instruction the hub sends until it closes.
+    /// reports as the handshake what the hub sends up to `connect` or until it closes.
     StallBeforeArgs { args: &'static [u8] },
 }
 
@@ -88,7 +88,7 @@ pub(super) async fn fake_guacd(script: Script) -> FakeGuacd {
                 let _ = acts.recv().await;
                 // The hub may have closed already; then nothing more comes.
                 let _ = peer.stream.write_all(args).await;
-                let _ = handshake_tx.send(peer.until_closed().await);
+                let _ = handshake_tx.send(peer.until_connect().await);
             }
         }
     });
@@ -121,7 +121,7 @@ impl Peer {
         Some(self.queue.remove(0))
     }
 
-    /// Every instruction up to and including `connect`.
+    /// Every instruction up to and including `connect`, or until the hub closes.
     async fn until_connect(&mut self) -> Vec<Instruction> {
         let mut sent = Vec::new();
         while let Some(instruction) = self.next().await {
@@ -130,15 +130,6 @@ impl Peer {
             if done {
                 break;
             }
-        }
-        sent
-    }
-
-    /// Every instruction until the hub closes.
-    async fn until_closed(&mut self) -> Vec<Instruction> {
-        let mut sent = Vec::new();
-        while let Some(instruction) = self.next().await {
-            sent.push(instruction);
         }
         sent
     }

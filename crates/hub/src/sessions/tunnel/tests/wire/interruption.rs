@@ -5,12 +5,13 @@ use std::time::Duration;
 
 use chrono::TimeDelta;
 use sqlx::PgPool;
+use tokio::time::Instant;
 use tokio_tungstenite::tungstenite::http::StatusCode;
 
 use super::{
     bench::{Setup, address, bench, now, operator},
     ended_once,
-    fake_guacd::{Script, fake_guacd},
+    fake_guacd::{Act, Script, fake_guacd},
     heard,
     records::ended,
     session,
@@ -109,5 +110,37 @@ async fn d_9_a_row_already_ended_elsewhere_gets_no_second_end_or_event(pool: PgP
     assert!(
         ended.audits.is_empty() && ended.events.is_empty(),
         "{ended:?}"
+    );
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
+)]
+async fn d_9_end_session_wins_over_a_client_that_stopped_reading(pool: PgPool) {
+    // The client reads nothing more while guacd sends far more than the sockets hold, so the
+    // hub's write to the client stalls; the idle wait is long, so only the end signal can
+    // end it in time.
+    let (guacd, bench, _client) = session(&pool, Setup::default()).await;
+    let blob = format!("4.blob,1.0,8000.{};", "A".repeat(8_000));
+    guacd.act.send(Act::Send(blob.repeat(4_000))).ok();
+    tokio::time::sleep(Duration::from_millis(500)).await;
+    let by = Actor {
+        operator: operator(),
+        client: address("10.10.0.80"),
+        at: now() + TimeDelta::seconds(5),
+    };
+    let started = Instant::now();
+    let row = end_session(&pool, &bench.live, bench.session, &by)
+        .await
+        .unwrap();
+    assert_eq!(row.end.map(|end| end.reason), Some(EndReason::Operator));
+    let took = started.elapsed();
+    assert!(took < Duration::from_secs(4), "{took:?}");
+    ended_once(
+        &ended(&pool, bench.session).await,
+        "operator",
+        "info",
+        "10.10.0.80",
     );
 }
