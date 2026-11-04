@@ -159,7 +159,7 @@ fixture_test! {
         let wide = json!({ "input": { "deviceId": PVE_01, "name": "x", "config": ssh_port(), "retries": 300 } });
         let error = error_json(&with_variables(&schema, CREATE, wide).await);
         assert_eq!(super::harness::validation_fields(&error), ["retries"]);
-        assert!(rows(&pool, "audit_log").await.is_empty());
+        assert_eq!(rows(&pool, "audit_log").await.len(), 0);
     }
 
     async fn log_005_a_failed_audit_rolls_back_every_check_write_and_shows_no_sql(pool: PgPool) {

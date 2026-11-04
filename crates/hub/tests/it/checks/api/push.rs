@@ -150,7 +150,7 @@ fixture_test! {
             let (status, body) = rig.get(uri).await;
             assert_eq!((status, body.len()), (StatusCode::NOT_FOUND, 0), "{uri}");
         }
-        assert!(rig.beats(&id).await.is_empty());
+        assert_eq!(rig.beats(&id).await.len(), 0);
     }
 
     async fn chk_003_a_token_of_the_wrong_shape_is_a_bare_404_before_any_lookup(pool: PgPool) {
@@ -169,7 +169,7 @@ fixture_test! {
             let (status, body) = rig.get(uri).await;
             assert_eq!((status, body.len()), (StatusCode::NOT_FOUND, 0), "{uri}");
         }
-        assert!(rig.beats(&id).await.is_empty());
+        assert_eq!(rig.beats(&id).await.len(), 0);
     }
 
     async fn chk_005_a_paused_check_answers_404_and_records_nothing_until_resumed(pool: PgPool) {
@@ -179,7 +179,7 @@ fixture_test! {
         data_with(&rig.schema, pause, json!({ "id": id, "paused": true })).await;
         let (status, body) = rig.get(&path).await;
         assert_eq!((status, body.len()), (StatusCode::NOT_FOUND, 0));
-        assert!(rig.beats(&id).await.is_empty());
+        assert_eq!(rig.beats(&id).await.len(), 0);
         data_with(&rig.schema, pause, json!({ "id": id, "paused": false })).await;
         assert_eq!(rig.get(&path).await.0, StatusCode::OK);
     }
@@ -204,7 +204,7 @@ fixture_test! {
             let (status, body) = rig.get(&format!("{path}?{query}")).await;
             assert_eq!((status, body.len()), (StatusCode::BAD_REQUEST, 0), "{query}");
         }
-        assert!(rig.beats(&id).await.is_empty());
+        assert_eq!(rig.beats(&id).await.len(), 0);
         assert_eq!(rig.get(&format!("{path}?ping=0")).await.0, StatusCode::OK);
         assert_eq!(rig.get(&format!("{path}?ping=600000")).await.0, StatusCode::OK);
     }
@@ -214,7 +214,7 @@ fixture_test! {
         let (id, path) = rig.push_check("backup").await;
         let (status, _) = rig.call(Method::POST, &path, vec![b'x'; 1025]).await;
         assert_eq!(status, StatusCode::PAYLOAD_TOO_LARGE);
-        assert!(rig.beats(&id).await.is_empty());
+        assert_eq!(rig.beats(&id).await.len(), 0);
         let (status, _) = rig.call(Method::POST, &path, vec![b'x'; 1024]).await;
         assert_eq!(status, StatusCode::OK);
     }

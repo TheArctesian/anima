@@ -1,6 +1,8 @@
 //! No HTTP secret is returned, audited, recorded, broadcast or logged (SEC-003, LOG-007,
 //! K1 `HttpHeader.value`).
 
+use std::fmt::Write as _;
+
 use anima_hub::{checks, events::Signal};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -32,7 +34,7 @@ const COOKIE: &str = "hunter2-cookie-header";
 const SECRETS: [&str; 5] = [PASSWORD, BEARER, AUTHORIZATION, PROXY, COOKIE];
 
 fn http(auth: Value) -> Value {
-    json!({ "http": {
+    let mut config = json!({ "http": {
         "url": "https://web.lan/health",
         "headers": [
             { "name": "Authorization", "value": AUTHORIZATION },
@@ -40,8 +42,9 @@ fn http(auth: Value) -> Value {
             { "name": "COOKIE", "value": COOKIE },
             { "name": "X-Trace", "value": "trace-1" },
         ],
-        "auth": auth,
-    } })
+    } });
+    config["http"]["auth"] = auth;
+    config
 }
 
 fn basic() -> Value {
@@ -79,7 +82,7 @@ fixture_test! {
         let (log, created) = captured(|| schema.execute(signed_in(CREATE).variables(
             async_graphql::Variables::from_json(vars),
         ))).await;
-        assert!(created.errors.is_empty());
+        assert_eq!(created.errors.len(), 0);
         let id = created.data.clone().into_json().unwrap()["createCheck"]["id"].as_str().unwrap().to_owned();
         let update = json!({ "id": id, "input": { "name": "web2", "config": http(json!({ "bearerToken": BEARER })) } });
         let updated = with_variables(&schema, UPDATE, update).await;
@@ -89,7 +92,7 @@ fixture_test! {
         let mut broadcast = String::new();
         while let Ok(signal) = receiver.try_recv() {
             if let Signal::Event(event) = signal {
-                broadcast.push_str(&format!("{event:?}"));
+                write!(broadcast, "{event:?}").unwrap();
             }
         }
         let tables = [

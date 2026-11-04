@@ -124,7 +124,9 @@ pub const UPDATE: &str = "mutation($id: ID!, $input: UpdateCheckInput!) { \
 
 /// A `createCheck` input on `device` with this config.
 pub fn input(device: &str, name: &str, config: Value) -> Value {
-    json!({ "deviceId": device, "name": name, "config": config })
+    let mut input = json!({ "deviceId": device, "name": name });
+    input["config"] = config;
+    input
 }
 
 /// Creates a check and returns its id.
