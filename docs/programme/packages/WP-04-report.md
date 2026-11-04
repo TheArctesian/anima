@@ -32,9 +32,9 @@ All 12 pass:
 - runs the certificate hook under the real container limits;
 - builds the hub image from the checkout (`--bin anima-hub`);
 - runs `anima-hub migrate` as the owner role twice, and both runs exit 0;
-- starts the hub with the runtime login only. The hub passes its start check (R-023) and answers on the published port.
+- starts the hub with the runtime login only. The hub passes its start check (R-023) and becomes healthy.
 
-**TLS is not served yet.** The hub on `phase-1` answers plain HTTP on the published port, because `serve()` does not yet use `ANIMA_TLS_CERT_FILE`. The smoke check prints a warning for plain HTTP and fails only if nothing answers. The hub's TLS edge is WP-05's handoff H-2. **The operator must not start the hub on the VPS until H-2 lands** (see the runbook).
+**TLS only.** With WP-05 T4 the smoke test waits until `anima-hub health` reports the hub healthy, needs `ok` from `GET /health` over TLS on the published port, and fails if plain HTTP gets any HTTP answer there.
 
 ## What the package delivers (`deploy/`)
 
@@ -113,7 +113,8 @@ Do the steps in this order.
   - WP-03 is applied: Tailscale on the VPS with `tag:hub`, the nftables table `inet anima_filter`, `daemon.json`, and the rest-server on HOME.
   - The hub's VPN address is known: `tailscale ip -4` on the VPS.
   - WP-05's `migrate` subcommand is on `phase-1` (done at `2f28917`).
-  - **WP-05's TLS edge (H-2) is on `phase-1`.** Until it lands, the hub answers plain HTTP on 443, and the step 10 `curl https://` check fails. Do not run step 10 before H-2. The smoke test prints a warning when the hub answers plain HTTP.
+  - **WP-05's TLS edge (H-2) is on `phase-1`** (WP-05 T4). Before it, the hub answers plain HTTP on 443; the smoke test now fails on plain HTTP, so a passing smoke run on the merged branch proves it.
+  - **The userland proxy is off** (`"userland-proxy": false` in WP-03's `daemon.json`). Docker then forwards VPN clients by DNAT, and the hub sees their 100.64 address. The hub refuses every 172.16.0.0/12 peer, so a proxied or SNAT'd client is locked out (step 10b).
 
 | # | Host | Command | Check | Undo |
 | --- | --- | --- | --- | --- |
@@ -126,7 +127,8 @@ Do the steps in this order.
 | 7 | VPS | 🔒 As root in bash, in `$D`: `read -rs CF_TOKEN; printf '%s\n' "$CF_TOKEN" \| sh bin/make-secrets --cloudflare-token-stdin; unset CF_TOKEN; restorecon -Rv secrets`. This makes `postgres_password`, `owner_password`, `hub_password`, `owner_database_url`, `hub_database_url`, `anima_key` and `cloudflare_dns_token`. | `sudo ls -ln $D/secrets` shows 7 files: `0 999` (the three passwords, 0440), `0 10001` (the two URLs and `anima_key`, 0440), `0 0` (the token, 0400). Run `getent group 999 10001`: 999 is `systemd-oom` with no members. | `sudo rm $D/secrets/*` (only before step 10; after it, the volume holds these passwords) |
 | 8 | VPS | Write `$D/.env` (mode 0600, root) with `ANIMA_HUB_ADDRESS=<hub VPN IPv4>`, `ANIMA_ACME_EMAIL=<operator e-mail>` and `ANIMA_VPS_PUBLIC_ADDRESS=31.220.53.226`. Add `ANIMA_PERMITTED_NETWORKS=100.64.0.0/10,<site subnets>` (NET-001). | `sudo sh -c 'cd /opt/anima/deploy && set -a && . ./.env && set +a && sh bin/preflight'` exits 0 | `sudo rm $D/.env` |
 | 9 | VPS | `cd $D && sudo docker compose build` | `sudo docker images` lists `anima-hub:local` and the gateway image | `sudo docker image rm anima-hub:local <gateway image>` |
-| 10 | VPS | `cd $D && sudo docker compose up -d` (this accepts the Let's Encrypt subscriber agreement for `ANIMA_ACME_EMAIL`) | `sudo docker compose ps`: postgres healthy, migrate exited 0, certs healthy, hub running. `sudo docker compose logs certs` shows `installed /certs/hub/tls.pem`. From a VPN client: `curl -sS https://hub.anima.ing/` answers with a valid certificate. From outside the VPN, the connection fails. If certs is unhealthy after the first order: `sudo docker compose restart certs` | `sudo docker compose down` (keeps volumes); `down -v` deletes the database, so do that only before real data exists |
+| 10 | VPS | `cd $D && sudo docker compose up -d` (this accepts the Let's Encrypt subscriber agreement for `ANIMA_ACME_EMAIL`) | `sudo docker compose ps`: postgres healthy, migrate exited 0, certs healthy, hub healthy (`anima-hub health`). `sudo docker compose logs certs` shows `installed /certs/hub/tls.pem`. From a VPN client: `curl -sS https://hub.anima.ing/health` prints `ok` with a valid certificate, and `curl -s http://hub.anima.ing:443/health` gets no HTTP answer. From outside the VPN, the connection fails. If certs is unhealthy after the first order: `sudo docker compose restart certs` | `sudo docker compose down` (keeps volumes); `down -v` deletes the database, so do that only before real data exists |
+| 10b | VPS, then MAC (on the VPN), then VPS | **Client address check.** On VPS: `pgrep -a docker-proxy`. On MAC: `tailscale ip -4`; then send one sign-in that must fail, with a made-up name and no real password: `curl -sS https://hub.anima.ing/graphql -H 'content-type: application/json' -d '{"query":"mutation { login(input: {username: \"source-check\", password: \"not-a-password\"}) { token } }"}'`. On VPS: `sudo docker compose -f $D/compose.yaml exec -T postgres psql -X -U postgres -d anima -Atc "select at, message from events.event_log where source = 'access' order by at desc limit 3"` | `pgrep` prints nothing. The MAC's curl gets a GraphQL error, not HTTP 403. The newest event is `Sign-in failed for an unknown username from 100.x.y.z.`, with the MAC's own `tailscale ip -4` address. **Stop** if the event says `Refused a request from 172.…`: Docker is proxying or SNATing VPN clients. Check `/etc/docker/daemon.json` has `"userland-proxy": false`, then `sudo systemctl restart docker` and repeat. | — (read only; the failed attempt only counts toward that address's sign-in throttle) |
 | 11 | VPS→offline | 🔒 Copy `$D/secrets/anima_key` to an offline store (for example an encrypted USB key) with `sudo install -m 0400 $D/secrets/anima_key <mount>/anima_key` | `sudo cmp $D/secrets/anima_key <mount>/anima_key` exits 0 | Delete the copy |
 | 12 | VPS | `sudo dnf install -y epel-release && sudo dnf install -y restic` | `restic version` | `sudo dnf remove restic` |
 | 13 | HOME | 🔒 `sudo htpasswd -B /etc/restic/htpasswd anima-db` (it prompts; type a new rest-server password). Then create `/etc/restic/anima-db-password` (the restic repository password, mode 0400, owner `restic`) with `umask 077; read -rs P; printf '%s' "$P" > /etc/restic/anima-db-password; unset P`. Check `--max-size` per `deploy/backup/README.md`. | `sudo grep -c '^anima-db:' /etc/restic/htpasswd` prints 1 | `sudo htpasswd -D /etc/restic/htpasswd anima-db` |
@@ -147,9 +149,9 @@ Not a step: password rotation is in `deploy/README.md` "Rotate a password". It h
 1. **WP-05, taken under R-021 (check at its merge):**
    - `anima-hub migrate` reads `ANIMA_DATABASE_URL_FILE` and exits 0. **Done:** the smoke test proves it at `bf94907`.
    - The bind check accepts the private bridge address 172.30.0.10. **Done:** the hub starts on it in the smoke test.
-   - **Open (H-2):** the hub serves TLS. Today `serve()` is plain HTTP. When it lands, change the last check in `deploy/test/smoke.sh` so plain HTTP fails. The hub reads the chain and the key from the one file `tls.pem` (both TLS variables name it), reloads it when it changes, checks the pair with `keys_match` before swapping, and does not trust 172.x client sources.
+   - **Done (H-2, WP-05 T4):** the hub serves TLS; the smoke test fails on plain HTTP and waits for `anima-hub health`. The hub reads the chain and the key from the one file `tls.pem` (both TLS variables name it), reloads it when it changes, checks the pair with `keys_match` before swapping, and does not trust 172.x client sources.
    - `config.rs` reads `ANIMA_PROBE_DENY` (R-030). The compose test accepts the name from `contracts/conventions.md` until then.
-2. **WP-05 or WP-01, the hub health probe:** the hub service has no healthcheck, because the image has no HTTP client and the health route needs a token. A token-free liveness subcommand, for example `anima-hub health`, would let compose check it.
+2. **Done (WP-05 T4), the hub health probe:** compose's hub healthcheck runs `anima-hub health`.
 3. **WP-10, the gateway font:** the family name in the image is `OpenDyslexicM Nerd Font Mono`, while `fc-match OpenDyslexic` returns DejaVu. The guacd `font-name` argument must use the exact name.
 4. **WP-03:**
    - (C-3, not proven) A neighbour on the provider network with a static route to 172.30.0.0/24 may reach the published container address 172.30.0.10:8443 directly. Proposed rule for `nftables.conf` raw prerouting: `iifname != { "lo", "tailscale0", "docker0", "br-*" } ip daddr 172.16.0.0/12 drop`. NET-002 is the second line of defence.
@@ -168,7 +170,6 @@ Not a step: password rotation is in `deploy/README.md` "Rotate a password". It h
 
 ## Open questions and risks
 
-- Until WP-05's TLS edge (H-2) lands, the hub answers plain HTTP on the VPN address. The runbook holds step 10 until then.
 - Members of host gid 999 or 10001 can read the database secrets. On AlmaLinux 10, gid 999 is `systemd-oom` with no members.
 - The postgres entrypoint keeps `POSTGRES_PASSWORD` in PID 1's environment inside the container. Only uid 999 and `docker exec` users can read it.
 - Dumps hold credential ciphertext and password hashes. restic encrypts them off-site; on the VPS they are mode 0600 in a 0700 folder.

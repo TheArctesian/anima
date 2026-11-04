@@ -75,6 +75,17 @@ describe("hub configuration", () => {
     expect(check?.interval).toBe("10s");
   });
 
+  test("SEC-001 the hub healthcheck is the token-free anima-hub health probe", () => {
+    const check = compose.services["hub"]?.healthcheck;
+    expect(check?.test).toEqual(["CMD", "anima-hub", "health"]);
+  });
+
+  test("GW-001 guacd reports healthy within a minute, not after the image's 5-minute interval", () => {
+    const check = compose.services["guacd"]?.healthcheck;
+    expect(check?.test.join(" ")).toContain("4822");
+    expect(check?.interval).toBe("30s");
+  });
+
   test("GW-001 guacd writes its font cache to /tmp", () => {
     expect(compose.services["guacd"]?.environment?.["XDG_CACHE_HOME"]).toBe("/tmp");
   });

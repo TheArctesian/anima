@@ -7,7 +7,7 @@
 # It contacts neither Let's Encrypt nor Cloudflare: `certs` runs only with a stub entrypoint
 # (the hook on fixture certificates and `/lego --version`), never its real entry point.
 # `migrate` runs the real migrations as the owner role; then `hub` starts with the runtime
-# login only and must pass its start check and answer TLS on the published port.
+# login only, must become healthy, and must answer TLS, never plain HTTP, on the published port.
 #
 #   sh deploy/test/smoke.sh
 set -eu
@@ -145,17 +145,19 @@ run_migrate
 run_migrate >/dev/null
 echo "migrate exited 0 twice (a second run applies nothing)"
 
-step "hub: starts as the runtime login and serves TLS (SEC-001, DB-003)"
-compose up -d --no-deps guacd hub
-sleep 5
-state=$(docker inspect -f '{{.State.Status}}' "$(compose ps -aq hub)")
+step "hub: starts as the runtime login and serves TLS only (SEC-001, DB-003)"
+compose up -d --no-deps --wait --wait-timeout 120 guacd hub ||
+    {
+        compose logs --tail 20 hub
+        docker inspect -f '{{range .State.Health.Log}}{{.ExitCode}} {{.Output}}{{end}}' "$(compose ps -aq hub)"
+        fail "hub did not become healthy (anima-hub health)"
+    }
 compose logs --tail 10 hub
-[ "$state" = running ] || fail "hub is $state, not running"
-if curl -sk -o /dev/null --max-time 10 "https://127.0.0.1:443/graphql"; then
-    echo "hub is running and answers TLS on 127.0.0.1:443"
-elif curl -s -o /dev/null --max-time 10 "http://127.0.0.1:443/graphql"; then
-    echo "WARNING: the hub answers plain HTTP on 127.0.0.1:443, not TLS (SEC-001)."
-    echo "TLS serving from tls.pem belongs to the hub's network edge; until it lands, this is expected."
-else
-    fail "nothing answers on the published hub port"
-fi
+echo "hub is healthy: anima-hub health answered ok over TLS"
+answer=$(curl -sk --max-time 10 "https://127.0.0.1:443/health") ||
+    fail "no TLS answer on the published hub port"
+[ "$answer" = ok ] || fail "GET /health over TLS answered '$answer'"
+echo "the published port answers GET /health over TLS"
+code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "http://127.0.0.1:443/health" || true)
+[ "$code" = 000 ] || fail "the published port answered plain HTTP with status $code"
+echo "plain HTTP on the published port gets no HTTP answer"
