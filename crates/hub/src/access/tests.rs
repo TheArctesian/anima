@@ -1,7 +1,7 @@
 //! The guard and the API-003 backstop, without a database. Rules are in `tests/rules.rs`;
 //! the HTTP and database behaviour is in the `it` crate (`tests/it/login.rs`, `tokens.rs`).
 
-use std::sync::Arc;
+use std::{io::Write as _, sync::Arc};
 
 use async_graphql::{
     EmptySubscription, Object, Request, Response, Schema, SchemaBuilder, Value, value,
@@ -10,15 +10,30 @@ use chrono::{DateTime, TimeDelta, TimeZone, Utc};
 use uuid::Uuid;
 
 use super::{Authenticated, Identity, Operator, Scope, SignInRequired};
-use crate::clock::{Clock, FixedClock};
+use crate::{
+    clock::{Clock, FixedClock},
+    credentials::Vault,
+};
 
+mod races;
 mod rules;
 mod runtime;
 mod scope;
+mod second_factor;
 mod timing;
+mod totp;
 
 fn now() -> DateTime<Utc> {
     Utc.with_ymd_and_hms(2030, 5, 5, 12, 0, 0).unwrap()
+}
+
+/// A vault over a throwaway key of `fill` bytes in a temporary file; never a real key
+/// file (SEC-004).
+fn test_vault(fill: u8) -> Vault {
+    use base64::{Engine as _, engine::general_purpose::STANDARD};
+    let mut key_file = tempfile::NamedTempFile::new().unwrap();
+    writeln!(key_file, "{}", STANDARD.encode([fill; 32])).unwrap();
+    Vault::from_key_file(key_file.path()).unwrap()
 }
 
 fn operator() -> Operator {
