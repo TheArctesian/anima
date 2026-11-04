@@ -20,6 +20,7 @@ const fake = vi.hoisted(() => ({
 vi.mock('$app/state', async () => {
   const { route: current } = await import('./route.fixture.svelte');
   return {
+    navigating: { to: null },
     page: {
       get url() {
         return new URL(current.pathname, 'http://localhost');

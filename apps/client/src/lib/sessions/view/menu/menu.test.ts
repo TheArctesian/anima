@@ -5,7 +5,7 @@ import { installBlankCanvas } from '../../tunnel/fake/canvas.fixture';
 import { FakeTunnelSocket } from '../../tunnel/fake/socket.fixture';
 import { KEY_COMBINATIONS, PASTE_STROKES, keyStrokes } from '../keys';
 import { connectView, flags, installBrowserFakes, sent, settle, showView, systemClipboard } from '../view.fixture.svelte';
-import { MENU_MARGIN_PX, menuFocus, menuPlacement } from './menu';
+import { MENU_MARGIN_PX, menuAlignment, menuFocus, menuPlacement } from './menu';
 
 describe('menuFocus', () => {
   const items = ['a', 'b', 'c'];
@@ -37,6 +37,20 @@ describe('menuPlacement (UI-N2)', () => {
 
   it('stays below and scrolls in a short window where below has the most room', () => {
     expect(menuPlacement({ top: 8, bottom: 40 }, 260, 300)).toEqual({ side: 'below', maxHeight: room(260 - 40) });
+  });
+});
+
+describe('menuAlignment (UI-009)', () => {
+  it('lines up with the control start when the menu fits there', () => {
+    expect(menuAlignment({ left: 100, right: 190 }, 1440, 340)).toEqual({ align: 'start', maxWidth: 1440 - 100 - MENU_MARGIN_PX });
+  });
+
+  it('lines up with the control end, no wider than the room there, when the start side is too narrow', () => {
+    expect(menuAlignment({ left: 228, right: 318 }, 360, 340)).toEqual({ align: 'end', maxWidth: 318 - MENU_MARGIN_PX });
+  });
+
+  it('keeps the start side and narrows when that side still has the most room', () => {
+    expect(menuAlignment({ left: 8, right: 98 }, 300, 340)).toEqual({ align: 'start', maxWidth: 300 - 8 - MENU_MARGIN_PX });
   });
 });
 

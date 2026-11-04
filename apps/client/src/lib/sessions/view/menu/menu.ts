@@ -38,3 +38,21 @@ export function menuPlacement(control: { top: number; bottom: number }, viewport
   const side = menuHeight <= below || below >= above ? 'below' : 'above';
   return { side, maxHeight: Math.max(0, side === 'below' ? below : above) };
 }
+
+/** Which edge of its control a menu lines up with, and the width it may take there (CSS px). */
+export interface MenuAlignment {
+  readonly align: 'start' | 'end';
+  readonly maxWidth: number;
+}
+
+/**
+ * Line the menu up with the control's start edge when it fits there or that side has at least as much room,
+ * otherwise with its end edge. The menu is no wider than the room on its side, so a narrow window wraps it instead
+ * of clipping it (UI-009).
+ */
+export function menuAlignment(control: { left: number; right: number }, viewportWidth: number, menuWidth: number): MenuAlignment {
+  const start = viewportWidth - control.left - MENU_MARGIN_PX;
+  const end = control.right - MENU_MARGIN_PX;
+  const align = menuWidth <= start || start >= end ? 'start' : 'end';
+  return { align, maxWidth: Math.max(0, align === 'start' ? start : end) };
+}

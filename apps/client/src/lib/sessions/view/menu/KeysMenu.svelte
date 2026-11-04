@@ -3,7 +3,7 @@
   import { press } from '$lib/motion/roles/press';
   import { popover } from '$lib/motion/roles/transitions';
   import { KEY_COMBINATIONS, type KeyCombination } from '../keys';
-  import { menuFocus, menuPlacement, type MenuPlacement } from './menu';
+  import { menuAlignment, menuFocus, menuPlacement, type MenuAlignment, type MenuPlacement } from './menu';
 
   interface Props {
     /** No session to send to (not ready, or ended). */
@@ -18,6 +18,7 @@
   let trigger: HTMLButtonElement | undefined = $state();
   let menu: HTMLElement | undefined = $state();
   let placement: MenuPlacement | undefined = $state();
+  let alignment: MenuAlignment | undefined = $state();
 
   function items(): HTMLElement[] {
     return menu === undefined ? [] : [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')];
@@ -26,10 +27,13 @@
   function show(at: 'first' | 'last') {
     open = true;
     placement = undefined;
+    alignment = undefined;
     // The menu exists after this update: place it on the side with room, then focus its first (or last) item.
     queueMicrotask(() => {
       if (trigger !== undefined && menu !== undefined) {
-        placement = menuPlacement(trigger.getBoundingClientRect(), window.innerHeight, menu.scrollHeight);
+        const control = trigger.getBoundingClientRect();
+        placement = menuPlacement(control, window.innerHeight, menu.scrollHeight);
+        alignment = menuAlignment(control, window.innerWidth, menu.scrollWidth);
       }
       const all = items();
       (at === 'first' ? all[0] : all.at(-1))?.focus();
@@ -112,7 +116,9 @@
       aria-label="Keys"
       bind:this={menu}
       data-side={placement?.side ?? 'below'}
+      data-align={alignment?.align ?? 'start'}
       style:max-block-size={placement === undefined ? undefined : `${String(placement.maxHeight)}px`}
+      style:--menu-room={alignment === undefined ? undefined : `${String(alignment.maxWidth)}px`}
       onkeydown={menuKey}
       transition:popover={{ from: trigger }}
     >
@@ -169,12 +175,18 @@
     z-index: var(--layer-popover);
     display: flex;
     flex-direction: column;
-    min-inline-size: calc(var(--space-16) * 4);
+    min-inline-size: min(calc(var(--space-16) * 4), var(--menu-room, 100vw));
+    max-inline-size: var(--menu-room, none);
     padding: var(--space-1);
     border: var(--border-thin) solid var(--border);
     border-radius: var(--radius-md);
     background: var(--surface-raised);
     box-shadow: var(--elevation-2);
+  }
+
+  .menu[data-align='end'] {
+    inset-inline-start: auto;
+    inset-inline-end: 0;
   }
 
   .menu[data-side='above'] {

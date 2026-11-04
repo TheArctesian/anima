@@ -206,7 +206,7 @@ it('a hub failure to end reaches the caller as a typed error; closing the tab ag
   expect(sessions.tabs).toEqual([]);
 });
 
-const DEVICE = { id: 'web-1', name: 'web-1' };
+const DEVICE = { deviceId: 'web-1', deviceName: 'web-1', protocol: 'SSH' };
 
 it('RA-002, D-13: popOut opens the device in a window, then removes the tab and ends its session once', async () => {
   const hub = fakeHub();
@@ -216,6 +216,7 @@ it('RA-002, D-13: popOut opens the device in a window, then removes the tab and 
   await sessions.startIn(id)(display, quiet());
   await sessions.popOut(id);
   expect(popOut).toHaveBeenCalledExactlyOnceWith(DEVICE);
+  expect(JSON.stringify(popOut.mock.calls)).not.toContain('session-1');
   expect(sessions.tabs).toEqual([]);
   expect(hub.port.end).toHaveBeenCalledExactlyOnceWith('session-1');
 });

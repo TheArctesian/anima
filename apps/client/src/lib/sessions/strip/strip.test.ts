@@ -16,6 +16,7 @@ vi.mock('motion', async (importOriginal) => ({
 vi.mock('$app/state', async () => {
   const { route } = await import('$lib/nav/route.fixture.svelte');
   return {
+    navigating: { to: null },
     page: {
       get url() {
         return new URL(route.pathname, 'http://localhost');
@@ -160,7 +161,7 @@ describe('pop out (RA-002, D-13)', () => {
     await settle();
     document.querySelector<HTMLButtonElement>('[role="menu"] [role="menuitem"]')?.click();
     await settle();
-    expect(popOut).toHaveBeenCalledExactlyOnceWith({ id: 'web-1', name: 'web-1' });
+    expect(popOut).toHaveBeenCalledExactlyOnceWith({ deviceId: 'web-1', deviceName: 'web-1', protocol: 'SSH' });
     expect(tabs()).toEqual([]);
     expect(fake.port.end).toHaveBeenCalledExactlyOnceWith('session-1');
   });
@@ -177,7 +178,7 @@ describe('pop out (RA-002, D-13)', () => {
     slot.dispatchEvent(at('pointermove', 120));
     slot.dispatchEvent(at('pointerup', 200));
     await settle();
-    expect(popOut).toHaveBeenCalledExactlyOnceWith({ id: 'web-1', name: 'web-1' });
+    expect(popOut).toHaveBeenCalledExactlyOnceWith({ deviceId: 'web-1', deviceName: 'web-1', protocol: 'SSH' });
   });
 
   it('Shift+F10 on a tab opens its menu, so the menu needs no Tab stop', async () => {

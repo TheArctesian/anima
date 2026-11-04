@@ -30,11 +30,18 @@ export interface SessionPort {
 }
 
 /**
- * Opens a window with its own session on `device` (RA-002, D-13); only the desktop shell has one (WP-16). A hub
- * session cannot change hands (K4: one ticket per `startSession`), so the window starts a new session and the tab's
- * session ends.
+ * Opens a window that starts its own session on `device` through `openSession` (RA-002, D-13); only the desktop
+ * shell has one (WP-16). A hub session cannot change hands (K4: one ticket per `startSession`), so the port is never
+ * given a session ID and the tab's session ends (`OPERATOR`).
  */
-export type PopOutPort = (device: { readonly id: string; readonly name: string }) => Promise<void>;
+export type PopOutPort = (device: PoppedOutDevice) => Promise<void>;
+
+/** What a new window needs to open its own session with `openSession` (D-13): the device, never a session ID. */
+export interface PoppedOutDevice {
+  readonly deviceId: string;
+  readonly deviceName: string;
+  readonly protocol: SessionProtocol;
+}
 
 /** What `openSession` needs: the device, the protocol and the control that opened it (H-1). */
 export interface SessionRequest {
@@ -178,7 +185,7 @@ class OpenSessions implements Sessions {
   async popOut(id: TabId): Promise<void> {
     const tab = this.#find(id);
     if (this.#popOut === undefined || tab === undefined) return;
-    await this.#popOut({ id: tab.deviceId, name: tab.deviceName });
+    await this.#popOut({ deviceId: tab.deviceId, deviceName: tab.deviceName, protocol: tab.protocol });
     // A tab closed while the window opened has already ended its session (see `close`).
     const sessionId = this.#find(id)?.sessionId;
     if (sessionId === undefined) return;

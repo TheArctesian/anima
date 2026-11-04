@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { page } from '$app/state';
-  import { untrack, type Snippet } from 'svelte';
+  import { afterNavigate } from '$app/navigation';
+  import { navigating, page } from '$app/state';
+  import { tick, untrack, type Snippet } from 'svelte';
   import '../styles/global.css';
   import { provideHub } from '$lib/hub/context';
   import { DEFAULT_HUB_ADDRESS, createHub } from '$lib/hub/hub';
@@ -9,6 +10,7 @@
   import { createClock } from '$lib/nav/clock.svelte';
   import Nav from '$lib/nav/Nav.svelte';
   import { sessionsApi } from '$lib/sessions/api';
+  import { restoredScroll, type CoveredScroll } from '$lib/sessions/covered';
   import { createSessions, provideSessions, type SessionPort } from '$lib/sessions/sessions.svelte';
   import SessionPanes from '$lib/sessions/strip/SessionPanes.svelte';
   import SessionTabs from '$lib/sessions/strip/SessionTabs.svelte';
@@ -37,6 +39,32 @@
       sessions.deselect();
     });
   });
+
+  // A covered page has no height, so the document loses its scroll position: read it before the session covers the
+  // page and give it back when the same page shows again (WP-14 E-2). A navigation that uncovers the pages scrolls
+  // after the update, so the position is given back once it settles.
+  let covered: CoveredScroll | null = null;
+  let uncovered: CoveredScroll | null = null;
+  function giveBackScroll() {
+    const y = restoredScroll(uncovered, page.url.pathname);
+    uncovered = null;
+    if (y !== undefined) window.scrollTo(0, y);
+  }
+  $effect.pre(() => {
+    const covering = sessions.active !== null;
+    untrack(() => {
+      if (covering && covered === null) {
+        covered = { path: page.url.pathname, y: window.scrollY };
+      } else if (!covering && covered !== null) {
+        uncovered = covered;
+        covered = null;
+        void tick().then(() => {
+          if (navigating.to === null) giveBackScroll();
+        });
+      }
+    });
+  });
+  afterNavigate(giveBackScroll);
 
   $effect(() => () => {
     // close() rejects only when a pending connect failed; the status already shows that.
@@ -72,7 +100,8 @@
 
   .shell {
     display: grid;
-    grid-template-columns: auto 1fr;
+    /* The page column may shrink below its content's width, so a narrow window never scrolls sideways (UI-009). */
+    grid-template-columns: auto minmax(0, 1fr);
     align-items: start;
     min-height: 100vh;
     background: var(--bg);
@@ -85,6 +114,8 @@
     display: grid;
     align-self: stretch;
     grid-template-rows: auto 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    min-inline-size: 0;
     padding: var(--space-6);
   }
 
