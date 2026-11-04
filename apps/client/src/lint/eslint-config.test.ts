@@ -187,12 +187,12 @@ describe('ESLint parsing of rune modules', () => {
   });
 });
 
-describe('ESLint motion boundary', () => {
-  const lib = 'apps/client/src/lib/devices/sample.ts';
-  const motionFile = 'apps/client/src/lib/motion/spring.ts';
-  const hubFile = 'apps/client/src/lib/hub/sample.ts';
-  const motionImport = "import { animate } from 'motion';\nexport const a = animate;\n";
+const lib = 'apps/client/src/lib/devices/sample.ts';
+const motionFile = 'apps/client/src/lib/motion/spring.ts';
+const hubFile = 'apps/client/src/lib/hub/sample.ts';
+const motionImport = "import { animate } from 'motion';\nexport const a = animate;\n";
 
+describe('ESLint motion boundary', () => {
   for (const name of ['motion', 'motion/mini', 'motion-dom', 'framer-motion']) {
     it(`MOT-020: ${name} is refused outside $lib/motion`, async () => {
       const code = `import * as m from '${name}';\nexport const a = m;\n`;
@@ -223,10 +223,6 @@ describe('ESLint motion boundary', () => {
 });
 
 describe('ESLint hub boundaries', () => {
-  const lib = 'apps/client/src/lib/devices/sample.ts';
-  const motionFile = 'apps/client/src/lib/motion/spring.ts';
-  const hubFile = 'apps/client/src/lib/hub/sample.ts';
-  const motionImport = "import { animate } from 'motion';\nexport const a = animate;\n";
   const wsImport = "import { createClient } from 'graphql-ws';\nexport const c = createClient;\n";
   const fetchCall = "export const get = (): Promise<Response> => fetch('/x');\n";
 
@@ -235,6 +231,20 @@ describe('ESLint hub boundaries', () => {
     expect(await rulesFired(wsImport, lib)).toContain('no-restricted-imports');
     expect(await rulesFired(wsImport, motionFile)).toContain('no-restricted-imports');
   });
+
+  it('CQ-045: a graphql-ws subpath is refused outside $lib/hub', async () => {
+    const code = "import { x } from 'graphql-ws/use/ws';\nexport const c = x;\n";
+    expect(await rulesFired(code, lib)).toContain('no-restricted-imports');
+    expect(await rulesFired(code, hubFile)).toEqual([]);
+  });
+
+  for (const transport of ['WebSocket', 'EventSource', 'XMLHttpRequest']) {
+    it(`CQ-045: new ${transport} is refused outside $lib/hub`, async () => {
+      const code = `export const t = new ${transport}('/x');\n`;
+      expect(await rulesFired(code, lib)).toContain('no-restricted-globals');
+      expect(await rulesFired(code, hubFile)).toEqual([]);
+    });
+  }
 
   it('CQ-045: motion is still refused inside $lib/hub', async () => {
     expect(await rulesFired(motionImport, hubFile)).toContain('no-restricted-imports');
@@ -246,7 +256,7 @@ describe('ESLint hub boundaries', () => {
   });
 
   it('CQ-045: window.fetch and globalThis.fetch are refused outside $lib/hub', async () => {
-    for (const object of ['window', 'globalThis']) {
+    for (const object of ['window', 'globalThis', 'self']) {
       const code = `export const get = (): Promise<Response> => ${object}.fetch('/x');\n`;
       expect(await rulesFired(code, lib)).toContain('no-restricted-properties');
       expect(await rulesFired(code, hubFile)).toEqual([]);

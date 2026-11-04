@@ -71,11 +71,14 @@ const motionHint =
 const wsHint =
   'Use a domain client in $lib/<domain>/api.ts built on $lib/hub (CQ-045): graphql-ws is imported only in apps/client/src/lib/hub/.';
 const fetchHint =
-  'Use a domain client in $lib/<domain>/api.ts built on $lib/hub (CQ-045): fetch is called only in apps/client/src/lib/hub/.';
+  'Use a domain client in $lib/<domain>/api.ts built on $lib/hub (CQ-045): fetch, WebSocket, EventSource and XMLHttpRequest are used only in apps/client/src/lib/hub/.';
 // A regex, not a gitignore group: 'motion/*' would also match '$lib/motion/tokens'.
 const motionImports = [{ regex: String.raw`^(?:motion|motion-dom|framer-motion)(?:/|$)`, message: motionHint }];
-const wsImports = [{ name: 'graphql-ws', message: wsHint }];
-const fetchGlobals = [{ name: 'fetch', message: fetchHint }];
+const wsImports = [{ regex: String.raw`^graphql-ws(?:/|$)`, message: wsHint }];
+const fetchGlobals = ['fetch', 'WebSocket', 'EventSource', 'XMLHttpRequest'].map((name) => ({
+  name,
+  message: fetchHint,
+}));
 const fetchProperties = ['window', 'globalThis', 'self'].map((object) => ({
   object,
   property: 'fetch',
@@ -85,15 +88,15 @@ const clientFiles = ['apps/client/**/*.{ts,js,svelte}'];
 const clientTests = ['**/*.test.ts'];
 const hubFolder = ['apps/client/src/lib/hub/**'];
 const motionFolder = ['apps/client/src/lib/motion/**'];
-const importsRule = (patterns, paths) => ({
-  'no-restricted-imports': ['error', { paths, patterns }],
+const importsRule = (patterns) => ({
+  'no-restricted-imports': ['error', { patterns }],
 });
 const boundaryRules = [
   {
     files: clientFiles,
     ignores: clientTests,
     rules: {
-      ...importsRule(motionImports, wsImports),
+      ...importsRule([...motionImports, ...wsImports]),
       'no-restricted-globals': ['error', ...fetchGlobals],
       'no-restricted-properties': ['error', ...fetchProperties],
     },
@@ -101,13 +104,13 @@ const boundaryRules = [
   {
     files: motionFolder,
     ignores: clientTests,
-    rules: importsRule([], wsImports),
+    rules: importsRule(wsImports),
   },
   {
     files: hubFolder,
     ignores: clientTests,
     rules: {
-      ...importsRule(motionImports, []),
+      ...importsRule(motionImports),
       'no-restricted-globals': 'off',
       'no-restricted-properties': 'off',
     },
