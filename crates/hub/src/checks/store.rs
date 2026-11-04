@@ -44,7 +44,8 @@ pub(super) use retention::{
 use rows::{CheckRow, StandingRow, to_checks};
 pub(super) use uptime::tallies;
 pub(super) use writes::{
-    Change, Current, Insert, delete, insert, load_http_secrets, lock, seal, set_paused, update,
+    Change, Current, Insert, delete, insert, load_http_secrets, lock, seal, set_next_due,
+    set_paused, update,
 };
 
 pub(super) async fn fetch<'e>(db: impl PgExecutor<'e>, id: CheckId) -> Result<Check, Error> {

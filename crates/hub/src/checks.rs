@@ -14,6 +14,7 @@ mod evaluation;
 mod model;
 pub mod probe;
 mod rules;
+mod scheduler;
 mod status;
 mod store;
 #[cfg(test)]
@@ -41,6 +42,7 @@ pub use evaluation::{CheckSettings, CheckState, evaluate};
 pub use model::{
     Beat, Check, CheckChange, Definition, Due, FieldError, Missing, NewCheck, PushToken,
 };
+pub use scheduler::{Probing, spawn_scheduler};
 pub use store::Trimmed;
 pub use uptime::UptimeWindow;
 

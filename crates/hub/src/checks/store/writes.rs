@@ -1,6 +1,7 @@
 //! Check writes, each in the caller's transaction in a savepoint, and the sealed HTTP
 //! secrets (SEC-003, R-028).
 
+use chrono::{DateTime, Utc};
 use serde_json::Value;
 use sqlx::{Connection as _, PgConnection, PgExecutor};
 
@@ -234,4 +235,21 @@ pub(in crate::checks) async fn load_http_secrets<'e>(
         Some(bytes) => open(vault, id, &bytes).map(Some),
         None => Ok(None),
     }
+}
+
+/// Sets the first due time of a check that has none; returns whether it was set. A check
+/// whose time was set meanwhile, by a beat or the push route, keeps it (CHK-001).
+pub(in crate::checks) async fn set_next_due<'e>(
+    db: impl PgExecutor<'e>,
+    id: CheckId,
+    at: DateTime<Utc>,
+) -> Result<bool, Error> {
+    let done = sqlx::query(
+        "UPDATE checks.checks SET next_due_at = $2 WHERE id = $1 AND next_due_at IS NULL",
+    )
+    .bind(id)
+    .bind(at)
+    .execute(db)
+    .await?;
+    Ok(done.rows_affected() == 1)
 }
