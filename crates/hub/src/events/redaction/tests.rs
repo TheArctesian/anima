@@ -109,6 +109,7 @@ fn log_007_redaction_hides_everything_beside_a_label_that_names_a_secret() {
         { "setting": "privateKey", "value": { "pem": "g" }, "enabled": true },
         { "field": "ssh.passphrase", "change": { "from": "h", "to": "i" } },
         { "property": "API_TOKEN", "value": 1 },
+        { "op": "add", "path": "/secrets/0", "value": "j" },
     ]);
 
     assert_eq!(
@@ -126,6 +127,7 @@ fn log_007_redaction_hides_everything_beside_a_label_that_names_a_secret() {
             { "setting": "privateKey", "value": "[redacted]", "enabled": true },
             { "field": "ssh.passphrase", "change": "[redacted]" },
             { "property": "API_TOKEN", "value": "[redacted]" },
+            { "op": "add", "path": "/secrets/0", "value": "[redacted]" },
         ])
     );
 }
@@ -155,6 +157,7 @@ fn log_007_redaction_keeps_values_without_secrets() {
     );
     kept(&json!({ "field": "name", "from": "lab-router", "to": "core-router" }));
     kept(&json!({ "op": "replace", "path": "/ssh/port", "value": 2222 }));
+    kept(&json!({ "op": "replace", "path": "/passwordPolicy/minLength", "value": 12 }));
     kept(&json!({ "name": "secret-lab", "value": "kept", "from": "a" }));
 }
 

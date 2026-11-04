@@ -98,9 +98,15 @@ fn is_label(key: &str) -> bool {
     LABELS.contains(&normalise(key).as_str())
 }
 
-/// A label value may be a path (`/ssh/password`, `ssh.password`); its last segment counts.
+/// A label value may be a path (`/ssh/password`, `ssh.password`); its last segment counts,
+/// skipping array indexes (`/secrets/0`, `/keys/-`).
 fn label_names_secret(label: &str) -> bool {
-    label.rsplit(['/', '.']).next().is_some_and(names_secret)
+    label
+        .rsplit(['/', '.'])
+        .find(|segment| {
+            !segment.is_empty() && *segment != "-" && !segment.bytes().all(|b| b.is_ascii_digit())
+        })
+        .is_some_and(names_secret)
 }
 
 fn is_secret_text(text: &str) -> bool {

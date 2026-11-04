@@ -61,8 +61,9 @@ begin
         raise exception 'events.ensure_day_partition: unknown table %', parent
             using errcode = 'invalid_parameter_value';
     end if;
-    -- Optimisation, not covered by a test: skips the create attempt and its exception block
-    -- when the partition already exists.
+    -- Return before any CREATE when the partition exists: the CREATE would lock the parent
+    -- even though it then fails as a duplicate (db_004_writes_in_opposite_orders_succeed_on_a_
+    -- day_created_ahead deadlocks without this check).
     if pg_catalog.to_regclass(pg_catalog.format('events.%I', child)) is not null then
         return;
     end if;
