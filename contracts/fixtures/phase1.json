@@ -1,0 +1,692 @@
+{
+  "_comment": "K6 synthetic fixtures for Phase 1. Not real devices, addresses or credentials. IDs are fixed UUID v7-shaped strings so tests are deterministic. `expectedStatus` is for UI and contract tests only; it is not a stored column.",
+  "operator": {
+    "id": "0190a000-0000-7000-8000-000000000001",
+    "username": "operator",
+    "passwordForTestsOnly": "correct horse battery staple"
+  },
+  "sites": [
+    {
+      "id": "0190a000-0000-7000-8001-000000000001",
+      "name": "home",
+      "subnet": "10.10.0.0/24"
+    },
+    {
+      "id": "0190a000-0000-7000-8001-000000000002",
+      "name": "office-1",
+      "subnet": "10.20.0.0/24"
+    },
+    {
+      "id": "0190a000-0000-7000-8001-000000000003",
+      "name": "office-2",
+      "subnet": "10.30.0.0/24"
+    }
+  ],
+  "devices": [
+    {
+      "id": "0190a000-0000-7000-8002-000000000001",
+      "siteId": "0190a000-0000-7000-8001-000000000001",
+      "name": "pve-01",
+      "host": "pve-01.home.lan",
+      "ip": "10.10.0.2",
+      "kind": "Proxmox VE node",
+      "os": "LINUX",
+      "tags": [
+        "proxmox",
+        "infra"
+      ],
+      "maintenance": false,
+      "expectedStatus": "UP",
+      "ssh": {
+        "enabled": true,
+        "port": 22,
+        "username": "operator",
+        "auth": "PRIVATE_KEY",
+        "credentialStored": false
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8002-000000000002",
+      "siteId": "0190a000-0000-7000-8001-000000000001",
+      "name": "docker-host",
+      "host": "10.10.0.21",
+      "ip": null,
+      "kind": "VM 101 on pve-01",
+      "os": "LINUX",
+      "tags": [
+        "vm",
+        "docker"
+      ],
+      "maintenance": false,
+      "expectedStatus": "DEGRADED",
+      "ssh": {
+        "enabled": true,
+        "port": 22,
+        "username": "operator",
+        "auth": "PRIVATE_KEY",
+        "credentialStored": false
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8002-000000000003",
+      "siteId": "0190a000-0000-7000-8001-000000000001",
+      "name": "ollama",
+      "host": "10.10.0.30",
+      "ip": null,
+      "kind": "VM 106 on pve-01, GPU passthrough",
+      "os": "LINUX",
+      "tags": [
+        "vm",
+        "ai"
+      ],
+      "maintenance": false,
+      "expectedStatus": "UP",
+      "ssh": {
+        "enabled": true,
+        "port": 22,
+        "username": "operator",
+        "auth": "PRIVATE_KEY",
+        "credentialStored": false
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8002-000000000004",
+      "siteId": "0190a000-0000-7000-8001-000000000001",
+      "name": "home-assistant",
+      "host": "ha.home.lan",
+      "ip": "10.10.0.22",
+      "kind": "VM 102 on pve-01",
+      "os": "LINUX",
+      "tags": [
+        "vm",
+        "home"
+      ],
+      "maintenance": false,
+      "expectedStatus": "UP",
+      "ssh": {
+        "enabled": false,
+        "port": 22,
+        "username": "operator",
+        "auth": "PRIVATE_KEY",
+        "credentialStored": false
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8002-000000000005",
+      "siteId": "0190a000-0000-7000-8001-000000000001",
+      "name": "pihole",
+      "host": "10.10.0.53",
+      "ip": null,
+      "kind": "LXC 103 on pve-01",
+      "os": "LINUX",
+      "tags": [
+        "lxc",
+        "dns",
+        "infra"
+      ],
+      "maintenance": false,
+      "expectedStatus": "UP",
+      "ssh": {
+        "enabled": true,
+        "port": 22,
+        "username": "operator",
+        "auth": "PRIVATE_KEY",
+        "credentialStored": false
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8002-000000000006",
+      "siteId": "0190a000-0000-7000-8001-000000000001",
+      "name": "jellyfin",
+      "host": "jellyfin.home.lan",
+      "ip": "10.10.0.25",
+      "kind": "LXC 105 on pve-01",
+      "os": "LINUX",
+      "tags": [
+        "lxc",
+        "media"
+      ],
+      "maintenance": true,
+      "expectedStatus": "MAINTENANCE",
+      "ssh": {
+        "enabled": true,
+        "port": 22,
+        "username": "operator",
+        "auth": "PRIVATE_KEY",
+        "credentialStored": false
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8002-000000000007",
+      "siteId": "0190a000-0000-7000-8001-000000000001",
+      "name": "truenas",
+      "host": "truenas.home.lan",
+      "ip": "10.10.0.5",
+      "kind": "NAS, TrueNAS SCALE",
+      "os": "LINUX",
+      "tags": [
+        "storage",
+        "infra"
+      ],
+      "maintenance": false,
+      "expectedStatus": "DEGRADED",
+      "ssh": {
+        "enabled": true,
+        "port": 22,
+        "username": "operator",
+        "auth": "PRIVATE_KEY",
+        "credentialStored": false
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8002-000000000008",
+      "siteId": "0190a000-0000-7000-8001-000000000001",
+      "name": "backup-02",
+      "host": "10.10.0.9",
+      "ip": null,
+      "kind": "Backup server",
+      "os": "LINUX",
+      "tags": [
+        "storage"
+      ],
+      "maintenance": false,
+      "expectedStatus": "DOWN",
+      "ssh": {
+        "enabled": true,
+        "port": 22,
+        "username": "operator",
+        "auth": "PRIVATE_KEY",
+        "credentialStored": false
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8002-000000000009",
+      "siteId": "0190a000-0000-7000-8001-000000000001",
+      "name": "linux-pc-home",
+      "host": "linux-pc.home.lan",
+      "ip": "10.10.0.40",
+      "kind": "Workstation",
+      "os": "LINUX",
+      "tags": [
+        "desktop"
+      ],
+      "maintenance": false,
+      "expectedStatus": "UP",
+      "ssh": {
+        "enabled": true,
+        "port": 22,
+        "username": "operator",
+        "auth": "PRIVATE_KEY",
+        "credentialStored": false
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8002-00000000000a",
+      "siteId": "0190a000-0000-7000-8001-000000000002",
+      "name": "mac-office-1",
+      "host": "mac-1.office1.lan",
+      "ip": "10.20.0.10",
+      "kind": "Mac mini (M2)",
+      "os": "MACOS",
+      "tags": [
+        "desktop",
+        "build"
+      ],
+      "maintenance": false,
+      "expectedStatus": "UP",
+      "ssh": {
+        "enabled": true,
+        "port": 22,
+        "username": "operator",
+        "auth": "PRIVATE_KEY",
+        "credentialStored": false
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8002-00000000000b",
+      "siteId": "0190a000-0000-7000-8001-000000000003",
+      "name": "mac-office-2",
+      "host": "mac-2.office2.lan",
+      "ip": "10.30.0.10",
+      "kind": "MacBook Pro",
+      "os": "MACOS",
+      "tags": [
+        "desktop"
+      ],
+      "maintenance": false,
+      "expectedStatus": "UP",
+      "ssh": {
+        "enabled": true,
+        "port": 22,
+        "username": "operator",
+        "auth": "PRIVATE_KEY",
+        "credentialStored": false
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8002-00000000000c",
+      "siteId": "0190a000-0000-7000-8001-000000000003",
+      "name": "linux-pc-office-2",
+      "host": "linux-pc.office2.lan",
+      "ip": "10.30.0.20",
+      "kind": "Workstation",
+      "os": "LINUX",
+      "tags": [
+        "desktop",
+        "build"
+      ],
+      "maintenance": false,
+      "expectedStatus": "UNKNOWN",
+      "ssh": {
+        "enabled": true,
+        "port": 22,
+        "username": "operator",
+        "auth": "PRIVATE_KEY",
+        "credentialStored": false
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8002-00000000000d",
+      "siteId": "0190a000-0000-7000-8001-000000000003",
+      "name": "win-desktop",
+      "host": "DESKTOP-7Q2KJ.office2.lan",
+      "ip": "10.30.0.15",
+      "kind": "Workstation",
+      "os": "WINDOWS",
+      "tags": [
+        "desktop"
+      ],
+      "maintenance": false,
+      "expectedStatus": "UP",
+      "ssh": {
+        "enabled": false,
+        "port": 22,
+        "username": "operator",
+        "auth": "PRIVATE_KEY",
+        "credentialStored": false
+      }
+    }
+  ],
+  "checks": [
+    {
+      "id": "0190a000-0000-7000-8003-000000000001",
+      "deviceId": "0190a000-0000-7000-8002-000000000001",
+      "name": "Ping",
+      "type": "ICMP",
+      "config": {
+        "icmp": {
+          "timeoutMs": 2000,
+          "ipVersion": "V4"
+        }
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8003-000000000002",
+      "deviceId": "0190a000-0000-7000-8002-000000000001",
+      "name": "SSH port",
+      "type": "TCP",
+      "config": {
+        "tcp": {
+          "port": 22,
+          "timeoutMs": 5000
+        }
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8003-000000000003",
+      "deviceId": "0190a000-0000-7000-8002-000000000002",
+      "name": "Ping",
+      "type": "ICMP",
+      "config": {
+        "icmp": {
+          "timeoutMs": 2000,
+          "ipVersion": "V4"
+        }
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8003-000000000004",
+      "deviceId": "0190a000-0000-7000-8002-000000000002",
+      "name": "SSH port",
+      "type": "TCP",
+      "config": {
+        "tcp": {
+          "port": 22,
+          "timeoutMs": 5000
+        }
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8003-000000000005",
+      "deviceId": "0190a000-0000-7000-8002-000000000003",
+      "name": "Ping",
+      "type": "ICMP",
+      "config": {
+        "icmp": {
+          "timeoutMs": 2000,
+          "ipVersion": "V4"
+        }
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8003-000000000006",
+      "deviceId": "0190a000-0000-7000-8002-000000000003",
+      "name": "SSH port",
+      "type": "TCP",
+      "config": {
+        "tcp": {
+          "port": 22,
+          "timeoutMs": 5000
+        }
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8003-000000000007",
+      "deviceId": "0190a000-0000-7000-8002-000000000004",
+      "name": "Ping",
+      "type": "ICMP",
+      "config": {
+        "icmp": {
+          "timeoutMs": 2000,
+          "ipVersion": "V4"
+        }
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8003-000000000008",
+      "deviceId": "0190a000-0000-7000-8002-000000000005",
+      "name": "Ping",
+      "type": "ICMP",
+      "config": {
+        "icmp": {
+          "timeoutMs": 2000,
+          "ipVersion": "V4"
+        }
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8003-000000000009",
+      "deviceId": "0190a000-0000-7000-8002-000000000005",
+      "name": "SSH port",
+      "type": "TCP",
+      "config": {
+        "tcp": {
+          "port": 22,
+          "timeoutMs": 5000
+        }
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8003-00000000000a",
+      "deviceId": "0190a000-0000-7000-8002-000000000006",
+      "name": "Ping",
+      "type": "ICMP",
+      "config": {
+        "icmp": {
+          "timeoutMs": 2000,
+          "ipVersion": "V4"
+        }
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8003-00000000000b",
+      "deviceId": "0190a000-0000-7000-8002-000000000006",
+      "name": "SSH port",
+      "type": "TCP",
+      "config": {
+        "tcp": {
+          "port": 22,
+          "timeoutMs": 5000
+        }
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8003-00000000000c",
+      "deviceId": "0190a000-0000-7000-8002-000000000007",
+      "name": "Ping",
+      "type": "ICMP",
+      "config": {
+        "icmp": {
+          "timeoutMs": 2000,
+          "ipVersion": "V4"
+        }
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8003-00000000000d",
+      "deviceId": "0190a000-0000-7000-8002-000000000007",
+      "name": "SSH port",
+      "type": "TCP",
+      "config": {
+        "tcp": {
+          "port": 22,
+          "timeoutMs": 5000
+        }
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8003-00000000000e",
+      "deviceId": "0190a000-0000-7000-8002-000000000008",
+      "name": "Ping",
+      "type": "ICMP",
+      "config": {
+        "icmp": {
+          "timeoutMs": 2000,
+          "ipVersion": "V4"
+        }
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8003-00000000000f",
+      "deviceId": "0190a000-0000-7000-8002-000000000008",
+      "name": "SSH port",
+      "type": "TCP",
+      "config": {
+        "tcp": {
+          "port": 22,
+          "timeoutMs": 5000
+        }
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8003-000000000010",
+      "deviceId": "0190a000-0000-7000-8002-000000000009",
+      "name": "Ping",
+      "type": "ICMP",
+      "config": {
+        "icmp": {
+          "timeoutMs": 2000,
+          "ipVersion": "V4"
+        }
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8003-000000000011",
+      "deviceId": "0190a000-0000-7000-8002-000000000009",
+      "name": "SSH port",
+      "type": "TCP",
+      "config": {
+        "tcp": {
+          "port": 22,
+          "timeoutMs": 5000
+        }
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8003-000000000012",
+      "deviceId": "0190a000-0000-7000-8002-00000000000a",
+      "name": "Ping",
+      "type": "ICMP",
+      "config": {
+        "icmp": {
+          "timeoutMs": 2000,
+          "ipVersion": "V4"
+        }
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8003-000000000013",
+      "deviceId": "0190a000-0000-7000-8002-00000000000a",
+      "name": "SSH port",
+      "type": "TCP",
+      "config": {
+        "tcp": {
+          "port": 22,
+          "timeoutMs": 5000
+        }
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8003-000000000014",
+      "deviceId": "0190a000-0000-7000-8002-00000000000b",
+      "name": "Ping",
+      "type": "ICMP",
+      "config": {
+        "icmp": {
+          "timeoutMs": 2000,
+          "ipVersion": "V4"
+        }
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8003-000000000015",
+      "deviceId": "0190a000-0000-7000-8002-00000000000b",
+      "name": "SSH port",
+      "type": "TCP",
+      "config": {
+        "tcp": {
+          "port": 22,
+          "timeoutMs": 5000
+        }
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8003-000000000016",
+      "deviceId": "0190a000-0000-7000-8002-00000000000c",
+      "name": "Ping",
+      "type": "ICMP",
+      "config": {
+        "icmp": {
+          "timeoutMs": 2000,
+          "ipVersion": "V4"
+        }
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8003-000000000017",
+      "deviceId": "0190a000-0000-7000-8002-00000000000c",
+      "name": "SSH port",
+      "type": "TCP",
+      "config": {
+        "tcp": {
+          "port": 22,
+          "timeoutMs": 5000
+        }
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8003-000000000018",
+      "deviceId": "0190a000-0000-7000-8002-00000000000d",
+      "name": "Ping",
+      "type": "ICMP",
+      "config": {
+        "icmp": {
+          "timeoutMs": 2000,
+          "ipVersion": "V4"
+        }
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8003-000000000019",
+      "deviceId": "0190a000-0000-7000-8002-000000000004",
+      "name": "Web UI",
+      "type": "HTTP",
+      "config": {
+        "http": {
+          "url": "http://ha.home.lan:8123/",
+          "verifyTls": true
+        }
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8003-00000000001a",
+      "deviceId": "0190a000-0000-7000-8002-000000000001",
+      "name": "Web UI",
+      "type": "HTTP",
+      "config": {
+        "http": {
+          "url": "https://pve-01.home.lan:8006/",
+          "verifyTls": false
+        }
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8003-00000000001b",
+      "deviceId": "0190a000-0000-7000-8002-000000000005",
+      "name": "Web UI",
+      "type": "HTTP",
+      "config": {
+        "http": {
+          "url": "http://10.10.0.53/admin/",
+          "verifyTls": true
+        }
+      }
+    },
+    {
+      "id": "0190a000-0000-7000-8003-00000000001c",
+      "deviceId": "0190a000-0000-7000-8002-000000000005",
+      "name": "DNS answers",
+      "type": "DNS",
+      "config": {
+        "dns": {
+          "name": "anima-hub",
+          "recordType": "A",
+          "resolver": "10.10.0.53"
+        }
+      }
+    }
+  ],
+  "maintenanceWindows": [
+    {
+      "id": "0190a000-0000-7000-8004-000000000001",
+      "name": "Sunday updates",
+      "kind": "RECURRING_WEEKDAY",
+      "timezone": "Pacific/Auckland",
+      "weekdays": [
+        "SUN"
+      ],
+      "startTime": "03:00",
+      "durationMinutes": 60,
+      "targets": [
+        {
+          "type": "TAG",
+          "target": "infra"
+        }
+      ]
+    },
+    {
+      "id": "0190a000-0000-7000-8004-000000000002",
+      "name": "Overnight backup",
+      "kind": "RECURRING_WEEKDAY",
+      "timezone": "Pacific/Auckland",
+      "weekdays": [
+        "MON",
+        "TUE",
+        "WED",
+        "THU",
+        "FRI",
+        "SAT",
+        "SUN"
+      ],
+      "startTime": "23:30",
+      "durationMinutes": 90,
+      "targets": [
+        {
+          "type": "TAG",
+          "target": "storage"
+        }
+      ],
+      "note": "Crosses midnight (MW-002)."
+    }
+  ]
+}

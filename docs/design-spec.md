@@ -225,6 +225,44 @@ Anima keeps three types of log.
 - **LOG-009.** The client must show the event log in a Logs panel on the Devices page. It must also show it in the Logs tab of the device detail view. The operator must be able to filter it by time, severity, device and source.
 - **LOG-010.** The client must receive new event log entries through a GraphQL subscription.
 
+### 3.9 Desktop releases and updates
+
+The desktop app updates itself, as Sparkle does on macOS. GitHub Actions builds and publishes each release. The app downloads a new version in the background and asks the operator to restart.
+
+```text
+push to main ─► version job ─► build macOS + build Linux (parallel; each signs its updater file)
+                                         │
+                                         ▼
+                 feed job: latest.json lists only the platforms that built ─► publish the release
+                                                                                     │
+desktop app ── at start and every 4 hours ── GET latest.json ── version differs? ── download, verify signature, install
+                                                                                     │
+                                                                  banner "Restart to update" ─► relaunch
+```
+
+| Item | Value |
+| --- | --- |
+| Host | Public GitHub Releases of `TheArctesian/anima` (the repository is public, so the app needs no credential) |
+| Feed URL | `https://github.com/TheArctesian/anima/releases/latest/download/latest.json` |
+| Version | `0.1.<workflow run number>`, computed once in the version job. Do not commit version changes. |
+| Platforms | macOS universal (`.app.tar.gz` for the updater, `Anima.dmg` for people), Linux x86_64 (`.AppImage`) |
+| Updater signature | Tauri updater key pair. The public key is in `tauri.conf.json`. The private key is the GitHub secret `TAURI_SIGNING_PRIVATE_KEY`. |
+| macOS signature | Ad-hoc (`APPLE_SIGNING_IDENTITY=-`). The workflow uses Developer ID signing and notarization only when all Apple secrets are present. |
+| Rollback | `allowDowngrades: true`. To roll back, mark an older release as "latest". |
+
+- **UPD-001.** The desktop app must check the feed at start and then every 4 hours. Development builds, the web client and the iOS client must not check and must not load the updater plugin.
+- **UPD-002.** The app must verify the signature of each update with the public key in the app before it installs the update. If the signature is not correct, the app must not install the update. It must record the failure and continue.
+- **UPD-003.** The app must download and install an update without a prompt. The app must not restart until the operator selects "Restart to update", because a restart can stop live sessions.
+- **UPD-004.** When an update is installed, the client must show a banner with the text "Anima <version> is installed" and a "Restart to update" button. The banner must have `role="status"`.
+- **UPD-005.** After one update is installed, the app must stop checking until it restarts.
+- **UPD-006.** The Settings page must show an "Updates" row with the current version, the update state and a "Check for updates" button. A failed check must not show an error dialog; the next check runs at the usual time.
+- **UPD-007.** The release workflow must run only on a push to `main` and on manual start. It must not run on pull requests (CQ-010). It must not cancel a release run that is in progress.
+- **UPD-008.** The workflow must upload all files before it publishes the release. The release becomes "latest", and thus visible to the app, only after `latest.json` is uploaded.
+- **UPD-009.** `latest.json` must list only the platforms whose build passed in this run. Do not list a platform with a file from an older version. (With `allowDowngrades`, the app would install that file again at each check.)
+- **UPD-010.** Each release must have versioned updater files, stable-named files for people (`Anima.dmg`, `Anima-x86_64.AppImage`) and a `SHA256SUMS` file.
+- **UPD-011.** The macOS build job must verify the bundle with `codesign --verify --deep --strict` and must verify that `lipo -archs` gives `x86_64` and `arm64`.
+- **UPD-012.** Only the operator makes the updater key pair and sets the GitHub secrets. Agents must not read the private key file. The operator must keep a backup of the private key: if it is lost, each installed app must be installed again by hand.
+
 ## 4. Security
 
 The hub can open a session to every device. Thus the hub is a high-value target. Obey all the requirements in this section.
@@ -424,7 +462,7 @@ A design token is a named design value, for example a colour, a space or a sprin
 | Output: documentation | A generated token page in the design documentation |
 
 - **TOK-001.** The token files are the single source of truth. Do not edit the generated files.
-- **TOK-002.** The build must make all outputs from the token files. The CI gate must fail if a generated file is not current.
+- **TOK-002.** The build must make all outputs from the token files. The gate script (CQ-010) must fail if a generated file is not current.
 - **TOK-003.** A CSS gate (Stylelint) must refuse raw values in component code. This applies to colours, durations, easing curves, z-index values and font families. Existing exceptions go in a baseline that can only become smaller.
 - **TOK-004.** A token can change its value. A token must not change its meaning. To change a meaning, add a new token and remove the old token.
 
@@ -601,7 +639,7 @@ At the end of each phase, do a motion audit with the `motion-audit` procedure on
 - **MV-005.** Delay the API by 400 ms in the test, so that staged loading shows.
 - **MV-006.** Check that WebKit supports each view transition that Anima uses. If it does not, use a FLIP animation from the `motion` library.
 - **MV-007.** Write the report to `docs/research/motion/` with a ranked list. A reel that shows the top proposals is optional.
-- **MV-008.** CI gates: transitions must use tokens or the shared motion helpers. Each `@keyframes` rule must be in an allowlist with a reason.
+- **MV-008.** Gates (CQ-010): transitions must use tokens or the shared motion helpers. Each `@keyframes` rule must be in an allowlist with a reason.
 
 ## 6. Devices page
 
@@ -873,7 +911,7 @@ The view has these tabs:
 ## 7. Settings page
 
 - **SET-001.** The Settings page must be available from the navigation bar.
-- **SET-002.** In Phase 1, the Settings page must show only the page title "Settings" and an empty state.
+- **SET-002.** In Phase 1, the Settings page must show only the page title "Settings" and, in the desktop app, the "Updates" row (UPD-006).
 
 A later version adds these items to the Settings page:
 
@@ -981,7 +1019,8 @@ A later version can manage libvirt hosts and Docker hosts. Prepare for this now:
 12. No log contains a password, a private key or a token.
 13. All colours, spaces, font sizes and motion values come from tokens. The token gate (TOK-003) passes.
 14. Each motion role in Section 5.7.3 that Phase 1 uses has a reduced-motion form. The Phase 1 motion audit (Section 5.8) has no open finding of the classes "layout jump" or "wrong motion".
-15. The CUPID gates (CQ-010, CQ-040, CQ-043) and the import graph check (REPO-004) run in CI and pass. The baseline file is empty.
+15. The CUPID gates (CQ-010, CQ-040, CQ-043) and the import graph check (REPO-004) pass in the gate script (`bun run gates`). The baseline file is empty.
+16. A merge to `main` publishes a release. An installed earlier build downloads it, shows the restart banner, and runs the new version after "Restart to update". A feed with a bad signature is refused and the app continues to run (UPD-001–012).
 
 ## 10. iOS constraints
 
@@ -1044,7 +1083,7 @@ Anima uses the CUPID properties for code quality: Composable, Unix philosophy, P
 | Clock, random, environment or global reads in core modules | P | 0 |
 | Suppressed lints without a reason | I | 0 |
 
-- **CQ-010.** CI must measure each signal in this table. CI must fail when a new file or a changed file is more than a limit.
+- **CQ-010.** The gate script (`bun run gates`) must measure each signal in this table. It must fail when a new file or a changed file is more than a limit. The gates run on the machine that makes the change, before each review and each merge. Do not run gates or tests in GitHub Actions. GitHub Actions is only for deployment.
 - **CQ-011.** The repository starts with an empty baseline file (`quality/baseline.json`). An entry records a file and its current value. An entry can only decrease. Do not add an entry by hand. Do not increase a value to make a change pass. Split the code.
 - **CQ-012.** Generated files (tokens, GraphQL types, migrations) are not measured. List them in `quality/generated.txt`.
 - **CQ-013.** Suppress a lint only with a reason. Rust: `#[expect(clippy::rule, reason = "...")]`. TypeScript: `// eslint-disable-next-line rule -- reason`.
@@ -1177,7 +1216,7 @@ Each hub domain folder has the same shape. Add only the files that the domain ne
 - **REPO-001.** A new domain is a new folder with a noun from the domain. Do not add a folder named for a technical layer at the top of `src/`.
 - **REPO-002.** `crates/hub/src/main.rs` and `schema.rs` contain wiring only. They contain no business rules.
 - **REPO-003.** The Tauri shell (`apps/desktop/src-tauri`) contains only functions that need the operating system: windows, the key store and web views. All other logic is in the hub or the client.
-- **REPO-004.** A domain must not import the `store` module of a different domain (CQ-032). CI must check the import graph for this rule and for cycles.
+- **REPO-004.** A domain must not import the `store` module of a different domain (CQ-032). The gate script must check the import graph for this rule and for cycles.
 - **REPO-005.** A folder with more than 12 files must be split into sub-domains, for example `checks/types/`.
 
 ## 14. References
