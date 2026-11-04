@@ -20,7 +20,7 @@ export function fakeHub(answers: Readonly<Record<string, unknown>> = {}) {
   const sinks = new Map<string, Set<Sink<never>>>();
 
   const hub: Hub = {
-    address: { http: 'http://hub.test/graphql', socket: 'ws://hub.test/graphql' },
+    address: { origin: 'https://hub.test', http: 'https://hub.test/graphql', socket: 'wss://hub.test/graphql' },
     request: <R, V extends Variables>(document: TypedDocumentNode<R, V>, variables: V) => {
       const operation = operationName(document);
       requests.push({ operation, variables });
