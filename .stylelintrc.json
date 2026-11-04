@@ -1,5 +1,5 @@
 {
-  "ignoreFiles": ["**/node_modules/**", "**/.svelte-kit/**", "**/build/**", "**/src/styles/tokens.css"],
+  "ignoreFiles": ["**/node_modules/**", "**/.svelte-kit/**", "**/build/**", "**/src/styles/tokens.css", "**/src/styles/fonts.css"],
   "overrides": [
     { "files": ["**/*.svelte"], "customSyntax": "postcss-html" }
   ],
@@ -10,19 +10,21 @@
     "function-disallowed-list": ["/^(rgb|rgba|hsl|hsla|hwb|lab|lch|oklab|oklch|color|color-mix|cubic-bezier|steps|linear)$/i"],
     "declaration-property-value-allowed-list": {
       "font": ["/^(\\s*(var\\((?:[^()]|var\\([^()]*\\))*\\)|inherit|initial|unset|revert|normal|italic|oblique|bold|bolder|lighter|small-caps|\\d*\\.?\\d+(px|rem|em|%|pt)?(\\/\\d*\\.?\\d+(px|rem|em|%)?)?))+\\s*$/i"],
+      "/^--(.*-)?(font|family|f)(-.*)?$/": ["/^\\s*var\\((?:[^()]|var\\([^()]*\\))*\\)\\s*$/i"],
       "font-family": ["/^\\s*(var\\((?:[^()]|var\\([^()]*\\))*\\)|inherit|initial|unset|revert)\\s*$/i"]
     },
     "declaration-property-value-disallowed-list": {
+      "/.*/": ["/var\\(\\s*--nord-\\d+/i"],
       "/^transition/": ["/(?<![-\\w.])\\d*\\.?\\d+m?s(?![-\\w])/i", "/(?<![-\\w])(ease|ease-in|ease-out|ease-in-out|linear)(?![-\\w])/i"],
       "/^animation/": ["/(?<![-\\w.])\\d*\\.?\\d+m?s(?![-\\w])/i", "/(?<![-\\w])(ease|ease-in|ease-out|ease-in-out|linear)(?![-\\w])/i"],
       "/^--/": [
         "/#[0-9a-f]{3,8}\\b/i",
         "/(?<![-\\w.])\\d*\\.?\\d+m?s(?![-\\w])/",
-        "/(?<![-\\w])(ease|ease-in|ease-out|ease-in-out)(?![-\\w])/",
+        "/(?<![-\\w])(ease|ease-in|ease-out|ease-in-out|linear|step-start|step-end)(?![-\\w])/",
         "/[\"']/",
         "/(?<![-\\w])(Arial|Helvetica|Roboto|Inter|serif|sans-serif|monospace|system-ui)(?![-\\w])/i"
       ],
-      "/^--(.*-)?(z|z-index|layer)(-.*)?$/": ["/^\\s*-?\\d+\\s*$/"]
+      "/^--(.*-)?(z|z-index|layer)(-.*)?$/": ["/^\\s*-?\\d+\\s*$/", "/calc\\(/i"]
     },
     "scale-unlimited/declaration-strict-value": [
       ["/color$/", "fill", "stroke", "z-index", "transition-duration", "transition-timing-function", "animation-duration", "animation-timing-function", "transition-delay", "animation-delay"],
