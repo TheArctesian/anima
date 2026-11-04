@@ -43,14 +43,6 @@ mod tests {
     const BEST_TO_WORST: [Status; 5] = [Up, Maintenance, Unknown, Degraded, Down];
 
     #[test]
-    fn chk_004_worst_prefers_down() {
-        for other in BEST_TO_WORST {
-            assert_eq!(worst(Down, other), Down);
-            assert_eq!(worst(other, Down), Down);
-        }
-    }
-
-    #[test]
     fn chk_004_worst_follows_severity_order_for_all_pairs() {
         for (i, a) in BEST_TO_WORST.into_iter().enumerate() {
             for (j, b) in BEST_TO_WORST.into_iter().enumerate() {
@@ -68,8 +60,7 @@ mod tests {
     #[test]
     fn graphql_names_are_screaming_snake_case() {
         use async_graphql::EnumType;
-        assert_eq!(Status::items().len(), 5);
-        assert_eq!(Status::items()[0].name, "UP");
-        assert_eq!(Status::items()[3].name, "MAINTENANCE");
+        let names: Vec<_> = Status::items().iter().map(|item| item.name).collect();
+        assert_eq!(names, ["UP", "DOWN", "DEGRADED", "MAINTENANCE", "UNKNOWN"]);
     }
 }

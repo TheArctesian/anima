@@ -1,6 +1,7 @@
 //! Hub configuration, parsed from a map of environment variables (no process env, no files).
 
 use std::collections::BTreeMap;
+use std::ffi::OsString;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 
@@ -36,6 +37,8 @@ pub enum Error {
         #[source]
         source: std::net::AddrParseError,
     },
+    #[error("environment variable {name:?} is not valid unicode")]
+    NotUnicode { name: String },
     #[error("{GUACD}={value:?} is not host:port")]
     Guacd { value: String },
     #[error("{PERMITTED_NETWORKS} has an empty entry")]
@@ -66,22 +69,21 @@ fn value<'a>(
     }
 }
 
-fn optional_path(
-    env: &BTreeMap<String, String>,
-    name: &'static str,
-) -> Result<Option<PathBuf>, Error> {
-    match env.get(name).map(String::as_str) {
-        Some("") => Err(Error::Empty { variable: name }),
-        other => Ok(other.map(PathBuf::from)),
-    }
+/// An empty value (Compose passes `VAR=`) counts as unset.
+fn optional_path(env: &BTreeMap<String, String>, name: &str) -> Option<PathBuf> {
+    env.get(name)
+        .filter(|text| !text.is_empty())
+        .map(PathBuf::from)
 }
 
+/// `host:port` where an IPv6 host must be bracketed.
 fn guacd(text: &str) -> Result<String, Error> {
     let invalid = || Error::Guacd {
         value: text.to_owned(),
     };
     let (host, port) = text.rsplit_once(':').ok_or_else(invalid)?;
-    if host.is_empty() || port.parse::<u16>().is_err() {
+    let bracketed_v6 = host.starts_with('[') && host.ends_with(']');
+    if host.is_empty() || (host.contains(':') && !bracketed_v6) || port.parse::<u16>().is_err() {
         return Err(invalid());
     }
     Ok(text.to_owned())
@@ -102,14 +104,39 @@ fn networks(text: &str) -> Result<Vec<ipnet::IpNet>, Error> {
         .collect()
 }
 
+/// Collect process variables into a map. A non-unicode `ANIMA_*` name or value is an error;
+/// other non-unicode variables are skipped.
+///
+/// # Errors
+/// Returns [`Error::NotUnicode`] naming the offending `ANIMA_*` variable.
+pub fn collect_env(
+    vars: impl IntoIterator<Item = (OsString, OsString)>,
+) -> Result<BTreeMap<String, String>, Error> {
+    let mut env = BTreeMap::new();
+    for (name, value) in vars {
+        let ours = name.as_encoded_bytes().starts_with(b"ANIMA_");
+        match (name.into_string(), value.into_string()) {
+            (Ok(name), Ok(value)) => {
+                env.insert(name, value);
+            }
+            (name, _) if ours => {
+                let name = name.unwrap_or_else(|raw| raw.to_string_lossy().into_owned());
+                return Err(Error::NotUnicode { name });
+            }
+            _ => {}
+        }
+    }
+    Ok(env)
+}
+
 /// Build the configuration from `env`, applying defaults for unset variables.
 ///
 /// # Errors
 /// Returns the first variable that is empty, malformed, or half of a TLS pair.
 pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {
     let listen = value(env, LISTEN, "127.0.0.1:8443")?;
-    let tls_cert_file = optional_path(env, TLS_CERT_FILE)?;
-    let tls_key_file = optional_path(env, TLS_KEY_FILE)?;
+    let tls_cert_file = optional_path(env, TLS_CERT_FILE);
+    let tls_key_file = optional_path(env, TLS_KEY_FILE);
     match (&tls_cert_file, &tls_key_file) {
         (Some(_), None) => {
             return Err(Error::TlsIncomplete {
@@ -198,6 +225,44 @@ mod tests {
         let error = from_env(&env(&[(LISTEN, "nope")])).unwrap_err();
         assert!(matches!(error, Error::Listen { .. }));
         assert!(error.to_string().contains(LISTEN));
+    }
+
+    #[test]
+    fn guacd_accepts_bracketed_ipv6_and_rejects_unbracketed() {
+        let config = from_env(&env(&[(GUACD, "[::1]:4822")])).unwrap();
+        assert_eq!(config.guacd, "[::1]:4822");
+        let error = from_env(&env(&[(GUACD, "::1:4822")])).unwrap_err();
+        assert!(matches!(error, Error::Guacd { .. }));
+    }
+
+    #[test]
+    fn empty_tls_files_count_as_unset() {
+        let config = from_env(&env(&[(TLS_CERT_FILE, ""), (TLS_KEY_FILE, "")])).unwrap();
+        assert_eq!((config.tls_cert_file, config.tls_key_file), (None, None));
+    }
+
+    #[test]
+    fn collect_env_rejects_non_unicode_anima_and_skips_other_non_unicode() {
+        use std::os::unix::ffi::OsStringExt;
+        let bad = || OsString::from_vec(vec![0xff, 0xfe]);
+        let good = [(OsString::from("ANIMA_LOG"), OsString::from("debug"))];
+
+        let skipped = [
+            (OsString::from("OTHER"), bad()),
+            (bad(), OsString::from("x")),
+        ];
+        let map = collect_env(good.clone().into_iter().chain(skipped)).unwrap();
+        assert_eq!(map, env(&[(LOG, "debug")]));
+
+        let value = [(OsString::from("ANIMA_LOG"), bad())];
+        let error = collect_env(value).unwrap_err();
+        assert!(matches!(error, Error::NotUnicode { name } if name == "ANIMA_LOG"));
+
+        let name = [(
+            OsString::from_vec(b"ANIMA_\xff".to_vec()),
+            OsString::from("x"),
+        )];
+        assert!(matches!(collect_env(name), Err(Error::NotUnicode { .. })));
     }
 
     #[test]

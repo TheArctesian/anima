@@ -27,6 +27,18 @@ macro_rules! entity_id {
             }
         }
 
+        impl From<Uuid> for $name {
+            fn from(uuid: Uuid) -> Self {
+                Self(uuid)
+            }
+        }
+
+        impl From<$name> for Uuid {
+            fn from(id: $name) -> Self {
+                id.0
+            }
+        }
+
         impl fmt::Display for $name {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 self.0.hyphenated().fmt(f)
@@ -62,6 +74,14 @@ mod tests {
     fn id_text_round_trips_through_from_str_and_display() {
         let id: DeviceId = TEXT.parse().unwrap();
         assert_eq!(id.to_string(), TEXT);
+    }
+
+    #[test]
+    fn id_converts_to_and_from_a_generated_uuid() {
+        let uuid = Uuid::now_v7();
+        let id = EventId::from(uuid);
+        assert_eq!(Uuid::from(id), uuid);
+        assert_eq!(id.to_string(), uuid.hyphenated().to_string());
     }
 
     #[test]
