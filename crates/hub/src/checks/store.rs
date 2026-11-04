@@ -69,6 +69,18 @@ pub(super) async fn by_devices(db: &PgPool, devices: &[DeviceId]) -> Result<Vec<
     to_checks(rows)
 }
 
+/// The checks of the devices grouped by device, each group in name order.
+pub(super) async fn grouped_by_devices(
+    db: &PgPool,
+    devices: &[DeviceId],
+) -> Result<HashMap<DeviceId, Vec<Check>>, Error> {
+    let mut grouped: HashMap<DeviceId, Vec<Check>> = HashMap::new();
+    for check in by_devices(db, devices).await? {
+        grouped.entry(check.device).or_default().push(check);
+    }
+    Ok(grouped)
+}
+
 /// What the status rules need about every check of the devices, in one query.
 pub(super) async fn standings(db: &PgPool, devices: &[DeviceId]) -> Result<Vec<Standing>, Error> {
     let rows: Vec<StandingRow> = sqlx::query_as(

@@ -158,11 +158,7 @@ pub async fn for_devices(
     db: &PgPool,
     devices: &[DeviceId],
 ) -> Result<HashMap<DeviceId, Vec<Check>>, Error> {
-    let mut grouped: HashMap<DeviceId, Vec<Check>> = HashMap::new();
-    for check in store::by_devices(db, devices).await? {
-        grouped.entry(check.device).or_default().push(check);
-    }
-    Ok(grouped)
+    store::grouped_by_devices(db, devices).await
 }
 
 /// The check with this id.
