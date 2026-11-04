@@ -7,7 +7,7 @@ use super::rows::status_sql;
 use crate::{
     checks::{
         Error,
-        model::{Beat, Missing},
+        model::{Beat, Missing, Recorded},
         probe::clean_message,
         uptime::Resolution,
     },
@@ -66,14 +66,20 @@ fn response_ms(beat: &Beat) -> Option<i32> {
 }
 
 /// Records the beat in the caller's transaction, in a savepoint: all or nothing. The check's
-/// state row is written first, so concurrent beats of one check wait for each other.
+/// state row is written first, so concurrent beats of one check wait for each other. A paused
+/// check or a beat older than the last one writes nothing (CHK-005).
 pub(in crate::checks) async fn record_beat(
     conn: &mut PgConnection,
     check: CheckId,
     beat: &Beat,
-) -> Result<(), Error> {
+) -> Result<Recorded, Error> {
     let mut tx = conn.begin().await?;
-    write_state(&mut tx, check, beat).await?;
+    if !write_state(&mut tx, check, beat).await? {
+        if exists(&mut tx, check).await? {
+            return Ok(Recorded::Skipped);
+        }
+        return Err(Error::NotFound(Missing::Check(check)));
+    }
     sqlx::query("SELECT checks.ensure_day_partition($1)")
         .bind(beat.at)
         .execute(&mut *tx)
@@ -91,16 +97,27 @@ pub(in crate::checks) async fn record_beat(
     .await?;
     add_to_aggregates(&mut tx, check, beat).await?;
     tx.commit().await?;
-    Ok(())
+    Ok(Recorded::Written)
 }
 
-async fn write_state(conn: &mut PgConnection, check: CheckId, beat: &Beat) -> Result<(), Error> {
+async fn exists(conn: &mut PgConnection, check: CheckId) -> Result<bool, Error> {
+    Ok(
+        sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM checks.checks WHERE id = $1)")
+            .bind(check)
+            .fetch_one(conn)
+            .await?,
+    )
+}
+
+/// Writes the new state unless the check is paused or already has a later beat; returns
+/// whether it did.
+async fn write_state(conn: &mut PgConnection, check: CheckId, beat: &Beat) -> Result<bool, Error> {
     let updated = sqlx::query(
         "UPDATE checks.checks SET status = $2, failures = $3, next_due_at = $4, \
-                last_beat_at = GREATEST(last_beat_at, $5), \
+                last_beat_at = $5, \
                 resolved_ip = COALESCE($6, resolved_ip), \
                 cert_not_after = COALESCE($7, cert_not_after) \
-         WHERE id = $1",
+         WHERE id = $1 AND NOT paused AND (last_beat_at IS NULL OR last_beat_at <= $5)",
     )
     .bind(check)
     .bind(status_sql(beat.state.status))
@@ -111,10 +128,7 @@ async fn write_state(conn: &mut PgConnection, check: CheckId, beat: &Beat) -> Re
     .bind(beat.cert_not_after)
     .execute(conn)
     .await?;
-    if updated.rows_affected() == 0 {
-        return Err(Error::NotFound(Missing::Check(check)));
-    }
-    Ok(())
+    Ok(updated.rows_affected() > 0)
 }
 
 /// Adds the beat to its minute, hour and day rows (DB-008).

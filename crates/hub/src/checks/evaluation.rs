@@ -69,13 +69,9 @@ fn after(now: DateTime<Utc>, seconds: u32) -> DateTime<Utc> {
 /// after the retry interval, and the heartbeat records Unknown (pending), because the
 /// outcome is not settled yet.
 #[must_use]
-#[expect(
-    clippy::needless_pass_by_value,
-    reason = "the hub contract (K3) fixes the signature of evaluate"
-)]
 pub fn evaluate(
     prev: &CheckState,
-    probe: ProbeResult,
+    probe: &ProbeResult,
     cfg: &CheckSettings,
     now: DateTime<Utc>,
 ) -> (CheckState, Status) {

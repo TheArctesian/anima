@@ -1,11 +1,14 @@
 //! Check writes, each in the caller's transaction in a savepoint, and the sealed HTTP
-//! secrets (SEC-003, R-028).
+//! secrets (SEC-003).
 
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 use sqlx::{Connection as _, PgConnection, PgExecutor};
 
-use super::rows::{CheckRow, config_of, stored_config, write_error};
+use super::{
+    rows::{CheckRow, config_of, stored_config, write_error},
+    sealed::open,
+};
 use crate::{
     checks::{
         Error,
@@ -14,23 +17,9 @@ use crate::{
         model::{Check, CheckChange, Missing, PushToken},
         rules::StoredHttp,
     },
-    credentials::{self, Sealed, Vault},
+    credentials::Vault,
     ids::{CheckId, DeviceId},
 };
-
-/// The associated data that binds sealed HTTP secrets to their check (K3, R-028).
-fn context(check: CheckId) -> Vec<u8> {
-    format!("checks.checks.http:{check}").into_bytes()
-}
-
-pub(in crate::checks) fn seal(vault: &Vault, check: CheckId, secrets: &HttpSecrets) -> Vec<u8> {
-    vault.seal(&secrets.encode(), &context(check)).to_bytes()
-}
-
-fn open(vault: &Vault, check: CheckId, bytes: &[u8]) -> Result<HttpSecrets, Error> {
-    let plain = vault.open(&Sealed::from_bytes(bytes)?, &context(check))?;
-    HttpSecrets::decode(&plain).map_err(|_| Error::Credentials(credentials::Error::Malformed))
-}
 
 fn small(value: u32) -> i32 {
     i32::try_from(value).unwrap_or(i32::MAX)
@@ -99,7 +88,7 @@ impl Current {
             return Ok(None);
         };
         let secrets = match self.sealed {
-            Some(bytes) => open(vault, check, &bytes)?,
+            Some(bytes) => open(vault, check, &config, &bytes)?,
             None => HttpSecrets::default(),
         };
         Ok(Some((config, secrets)))
@@ -220,21 +209,26 @@ pub(in crate::checks) async fn set_paused(
     Check::try_from(row)
 }
 
-/// The opened HTTP secrets of the check, for its probe; `None` when it has none.
+/// The opened HTTP secrets of the check, for its probe; `None` when it has none. They open
+/// only for the origin and secret headers the stored configuration names.
 pub(in crate::checks) async fn load_http_secrets<'e>(
     db: impl PgExecutor<'e>,
     vault: &Vault,
     id: CheckId,
 ) -> Result<Option<HttpSecrets>, Error> {
-    let sealed: Option<Option<Vec<u8>>> =
-        sqlx::query_scalar("SELECT secrets_sealed FROM checks.checks WHERE id = $1")
+    let row: Option<(String, Value, Option<Vec<u8>>)> =
+        sqlx::query_as("SELECT type, config, secrets_sealed FROM checks.checks WHERE id = $1")
             .bind(id)
             .fetch_optional(db)
             .await?;
-    match sealed.ok_or(Error::NotFound(Missing::Check(id)))? {
-        Some(bytes) => open(vault, id, &bytes).map(Some),
-        None => Ok(None),
-    }
+    let (kind, config, sealed) = row.ok_or(Error::NotFound(Missing::Check(id)))?;
+    let Some(bytes) = sealed else {
+        return Ok(None);
+    };
+    let Some(CheckConfig::Http(config)) = config_of(&kind, config) else {
+        return Err(Error::Unreadable(id));
+    };
+    open(vault, id, &config, &bytes).map(Some)
 }
 
 /// Sets the first due time of a check that has none; returns whether it was set. A check

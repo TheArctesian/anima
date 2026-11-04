@@ -31,7 +31,7 @@ fn proxy_variables_in_the_environment_are_ignored() {
     let url = format!("http://{}", proxy.local_addr().unwrap());
     let status = std::process::Command::new(std::env::current_exe().unwrap())
         .args([
-            "checks::tests::proxy::proxy_environment_child",
+            "checks::tests::probe::proxy::proxy_environment_child",
             "--exact",
             "--test-threads=1",
         ])

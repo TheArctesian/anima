@@ -99,11 +99,17 @@ pub(super) fn stored_config(config: &CheckConfig) -> Result<Value, sqlx::Error> 
     Ok(value)
 }
 
-/// Reads the `config` column back with the type tag from the `type` column.
+/// Reads the `config` column back with the type tag from the `type` column. A stored tag,
+/// or any key on a type without settings (serde ignores those), is refused like any other
+/// unknown key.
 pub(super) fn config_of(kind: &str, mut value: Value) -> Option<CheckConfig> {
     let Value::Object(fields) = &mut value else {
         return None;
     };
+    let settingless = [CheckType::Push.as_sql(), CheckType::Group.as_sql()].contains(&kind);
+    if fields.contains_key("type") || (settingless && !fields.is_empty()) {
+        return None;
+    }
     fields.insert("type".to_owned(), Value::String(kind.to_owned()));
     serde_json::from_value(value).ok()
 }
@@ -208,6 +214,8 @@ pub(super) fn write_error(error: sqlx::Error) -> Error {
         ),
         Some("checks_group_parent_check") => ("parentId", "A group cannot belong to a group."),
         Some("checks_device_id_fkey") => ("deviceId", "There is no such device."),
+        // The database detail of this error holds the token, so the error is dropped.
+        Some("checks_push_token_key") => return Error::PushTokenTaken,
         _ => return Error::Database(error),
     };
     Error::Validation(vec![FieldError::new(field, message)])

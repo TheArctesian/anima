@@ -13,9 +13,9 @@ fn at(text: &str) -> DateTime<Utc> {
 
 #[test]
 fn db_008_a_beat_falls_in_the_utc_minute_hour_and_day_that_hold_it() {
-    let beat = at("2026-11-04T23:59:59.999+13:00");
-    assert_eq!(Resolution::Minute.bucket(beat), at("2026-11-04T10:59:00Z"));
-    assert_eq!(Resolution::Hour.bucket(beat), at("2026-11-04T10:00:00Z"));
+    let beat = at("2026-11-05T09:59:59.999+13:00");
+    assert_eq!(Resolution::Minute.bucket(beat), at("2026-11-04T20:59:00Z"));
+    assert_eq!(Resolution::Hour.bucket(beat), at("2026-11-04T20:00:00Z"));
     assert_eq!(Resolution::Day.bucket(beat), at("2026-11-04T00:00:00Z"));
 }
 

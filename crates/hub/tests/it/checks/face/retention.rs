@@ -1,5 +1,5 @@
 //! The daily jobs' store functions: the orphan sweep, aggregate trimming and heartbeat
-//! partitions (R-004, DB-004, DB-005, DB-009).
+//! partitions (DEV-015, DB-004, DB-005, DB-009).
 
 use anima_hub::{
     checks::{self, Error, Trimmed},

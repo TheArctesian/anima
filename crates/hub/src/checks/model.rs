@@ -46,7 +46,7 @@ impl Check {
     }
 }
 
-/// The token in a PUSH check's URL: 32 random bytes in unpadded base64url (R-028). It is the
+/// The token in a PUSH check's URL: 32 random bytes in unpadded base64url. It is the
 /// only authentication of the push route, so `Debug` never prints it (LOG-007).
 #[derive(Clone, PartialEq, Eq)]
 pub struct PushToken(String);
@@ -96,7 +96,7 @@ impl Definition {
     }
 }
 
-/// A check to add (K1 `CreateCheckInput`).
+/// A check to add (the API's `CreateCheckInput`).
 pub struct NewCheck {
     pub device: DeviceId,
     /// A group check on the same device.
@@ -106,7 +106,7 @@ pub struct NewCheck {
     pub settings: CheckSettings,
 }
 
-/// The fields to change on a check (K1 `UpdateCheckInput`); `None` keeps a field.
+/// The fields to change on a check (the API's `UpdateCheckInput`); `None` keeps a field.
 ///
 /// The type of a check never changes. An HTTP definition replaces the whole HTTP setup, but
 /// an empty secret keeps the stored one: an empty value of a secret header keeps the stored
@@ -180,14 +180,15 @@ pub struct Beat {
 
 impl Beat {
     /// The beat for a probe result and its evaluation. The response time is kept only for an
-    /// Up or Degraded beat, so the average describes answered probes.
+    /// Up or Degraded beat of a probe that succeeded, so the average describes answered
+    /// probes: an inverted Up (a failed probe) has none, as `evaluate` ignores it too.
     #[must_use]
     pub fn of(
         probe: ProbeResult,
         (state, status): (CheckState, Status),
         at: DateTime<Utc>,
     ) -> Self {
-        let answered = matches!(status, Status::Up | Status::Degraded);
+        let answered = probe.ok && matches!(status, Status::Up | Status::Degraded);
         let millis =
             |time: std::time::Duration| u32::try_from(time.as_millis()).unwrap_or(u32::MAX);
         Self {
@@ -200,6 +201,16 @@ impl Beat {
             cert_not_after: probe.cert_not_after,
         }
     }
+}
+
+/// What `record_beat` did with a beat.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[must_use]
+pub enum Recorded {
+    /// The heartbeat, its aggregates and the check's state were written.
+    Written,
+    /// Nothing was written: the check is paused, or the beat is older than its last beat.
+    Skipped,
 }
 
 /// A check whose next probe is due, as the scheduler needs it.

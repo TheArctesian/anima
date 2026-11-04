@@ -1,5 +1,5 @@
 //! `statuses`, `device_status` and `resolved_ips` against stored state, the manual flag and
-//! maintenance windows (CHK-004, CHK-006, R-028).
+//! maintenance windows (CHK-004, CHK-006).
 
 use std::collections::HashMap;
 
@@ -27,7 +27,7 @@ macro_rules! fixture_test {
     )+};
 }
 
-/// The "Ping" check of `jellyfin` and of `truenas` in the K6 fixtures.
+/// The "Ping" check of `jellyfin` and of `truenas` in the fixtures.
 const JELLYFIN_PING: &str = "0190a000-0000-7000-8003-00000000000a";
 const TRUENAS_PING: &str = "0190a000-0000-7000-8003-00000000000c";
 const TRUENAS_SSH: &str = "0190a000-0000-7000-8003-00000000000d";
@@ -166,7 +166,7 @@ fixture_test! {
         assert!(matches!(error, Error::NotFound(Missing::Device(id)) if id == stranger), "{error:?}");
     }
 
-    async fn r_028_resolved_ips_take_the_check_with_the_latest_beat(pool: PgPool) {
+    async fn resolved_ips_take_the_check_with_the_latest_beat(pool: PgPool) {
         let at = database_now(&pool).await;
         let mut ping = beat(at, Status::Up, Some(3));
         ping.resolved_ip = Some("10.10.0.2".parse().unwrap());
