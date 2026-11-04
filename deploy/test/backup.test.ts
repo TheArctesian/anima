@@ -2,7 +2,7 @@ import { afterAll, beforeEach, describe, expect, test } from "bun:test";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { BACKUP, DATABASE, appendLogs, backUp, backupFiles, resetSample, run, state, tearDownSample } from "./backup-fixture.ts";
+import { BACKUP, DATABASE, RESTORE_CHECK, backUp, backupFiles, resetSample, run, state, tearDownSample, toolDirectory } from "./backup-fixture.ts";
 
 beforeEach(resetSample);
 afterAll(tearDownSample);
@@ -43,10 +43,15 @@ describe("backup.sh files (DB-007, VPS-006)", () => {
     expect(readFileSync(`${path}.counts`, "utf8")).not.toContain("nas");
   });
 
-  test("DB-007: the manifest matches the snapshot the dump reads, not later writes", () => {
-    const path = backUp();
-    appendLogs();
-    expect(readFileSync(`${path}.counts`, "utf8")).toContain("events.audit_log 2\n");
+  test("DB-007: a row written between the snapshot and the dump is in neither, so the drill still passes", () => {
+    const real = join(toolDirectory(), "pg_dump");
+    const shim = shimDirectory(
+      "pg_dump",
+      `psql -X -q -U anima_owner -d ${DATABASE} -c "insert into devices.device_tags values ('00000000-0000-0000-0000-0000000000a2', 'late')"\nexec "${real}" "$@"`,
+    );
+    const path = backUp({}, shim);
+    expect(readFileSync(`${path}.counts`, "utf8")).toContain("devices.device_tags 1\n");
+    expect(run(RESTORE_CHECK, [path]).exitCode).toBe(0);
   });
 
   test("DB-007: the backup folder is created with mode 0700", () => {

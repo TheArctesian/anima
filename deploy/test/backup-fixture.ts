@@ -70,8 +70,8 @@ export function backupFiles(suffix: string): string[] {
 }
 
 /** Runs backup.sh, expects success and returns the dump path. */
-export function backUp(env: Record<string, string> = {}): string {
-  const result = run(BACKUP, [], env);
+export function backUp(env: Record<string, string> = {}, shimDirectory?: string): string {
+  const result = run(BACKUP, [], env, shimDirectory);
   if (result.exitCode !== 0) throw new Error(`backup.sh failed: ${result.stderr}`);
   return result.stdout.trim();
 }
