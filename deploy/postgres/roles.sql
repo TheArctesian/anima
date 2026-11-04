@@ -10,12 +10,23 @@
 \set ON_ERROR_STOP on
 \set VERBOSITY terse
 
--- Passwords come from files, never from argv. A failing statement must not copy its text (and
--- so a password) into the server log, and no statement is logged either.
+-- Passwords come from files, never from argv. No statement of this session may reach the
+-- server log, whether it fails, runs slowly or is sampled: a CREATE ROLE carries a password.
 set log_min_error_statement = panic;
 set log_statement = none;
+set log_min_duration_statement = -1;
+set log_min_duration_sample = -1;
+set log_transaction_sample_rate = 0;
 \set owner_password `cat "$ANIMA_OWNER_PASSWORD_FILE"`
 \set hub_password `cat "$ANIMA_HUB_PASSWORD_FILE"`
+
+-- A missing or empty file gives an empty value: stop before any role is made.
+select :'owner_password' <> '' and :'hub_password' <> '' as ok \gset
+\if :ok
+\else
+    \echo 'roles.sql: a password file is missing or empty; no role was made'
+    do $$ begin raise exception 'password file missing or empty'; end $$;
+\endif
 
 create role anima_runtime nologin;
 
