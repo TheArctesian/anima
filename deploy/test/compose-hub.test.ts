@@ -69,6 +69,16 @@ describe("hub configuration", () => {
     expect(value).toBe("${ANIMA_PERMITTED_NETWORKS:-100.64.0.0/10}");
   });
 
+  test("GW-001 guacd writes its font cache to /tmp", () => {
+    expect(compose.services["guacd"]?.environment?.["XDG_CACHE_HOME"]).toBe("/tmp");
+  });
+
+  test("GW-002 the gateway network keeps its egress and fixed subnet", () => {
+    expect(compose.networks["gateway"]?.internal).not.toBe(true);
+  });
+});
+
+describe("healthchecks", () => {
   test("DNS-002 certs may take 15 minutes to become healthy before the hub gives up", () => {
     const check = compose.services["certs"]?.healthcheck;
     expect((check?.retries ?? 0) * 10).toBeGreaterThanOrEqual(900);
@@ -84,14 +94,6 @@ describe("hub configuration", () => {
     const check = compose.services["guacd"]?.healthcheck;
     expect(check?.test.join(" ")).toContain("4822");
     expect(check?.interval).toBe("30s");
-  });
-
-  test("GW-001 guacd writes its font cache to /tmp", () => {
-    expect(compose.services["guacd"]?.environment?.["XDG_CACHE_HOME"]).toBe("/tmp");
-  });
-
-  test("GW-002 the gateway network keeps its egress and fixed subnet", () => {
-    expect(compose.networks["gateway"]?.internal).not.toBe(true);
   });
 });
 
