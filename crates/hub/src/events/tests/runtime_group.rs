@@ -3,7 +3,7 @@
 
 use sqlx::PgPool;
 
-use super::{privileges::execute, runtime_role::test_role};
+use super::{privileges::execute, test_role};
 
 /// Migrations 0001 and 0501 as written; tests run them for a stand-in group name.
 const MIGRATION_0001: &str = include_str!("../../../migrations/0001_access_runtime_role.sql");
@@ -41,6 +41,10 @@ async fn r_016_migrations_0001_and_0501_refuse_a_runtime_group_with_more_rights_
         ("nologin createdb", Some("P0001")),
         ("nologin bypassrls", Some("P0001")),
         (member_of_parent.as_str(), Some("P0001")),
+        ("nologin in role pg_execute_server_program", Some("P0001")),
+        ("nologin in role pg_write_server_files", Some("P0001")),
+        ("nologin in role pg_read_server_files", Some("P0001")),
+        ("nologin in role pg_maintain", Some("P0001")),
         ("nologin", None),
     ];
     let mut outcomes = Vec::new();

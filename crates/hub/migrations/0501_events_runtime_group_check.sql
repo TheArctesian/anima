@@ -9,7 +9,10 @@
 -- database's migration creates it between that check and 0001's CREATE ROLE, 0001 swallows
 -- the duplicate_object error and has not seen the attributes the other creator gave it. This
 -- migration checks again, so a group with more rights than a plain NOLOGIN group stops the
--- migration in both cases.
+-- migration in both cases. "No membership in another role" includes the predefined roles
+-- pg_execute_server_program, pg_write_server_files, pg_read_server_files and pg_maintain,
+-- which would let every hub login run server programs, touch server files or lock the logs
+-- (R-023).
 --
 -- Migration 0500 grants EXECUTE on its two partition functions to anima_runtime explicitly.
 -- That deliberately duplicates 0001's default EXECUTE privilege: the functions are the only

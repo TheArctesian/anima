@@ -28,60 +28,71 @@ pub enum Error {
     Database(#[from] sqlx::Error),
 }
 
-/// Why the hub must not serve with its database role (K2 "Roles", R-016, LOG-006). Only
+/// The start check failed (K2 "Start check", R-016, R-023, LOG-006). Only
 /// `check_runtime_role` returns it, once at start before the hub serves, so it never reaches
 /// GraphQL; the messages are plain sentences for the operator at the console (API-010).
 #[derive(Debug, thiserror::Error)]
 pub enum RoleError {
     /// The message stays generic: the source error may hold SQL text (API-010).
-    #[error("The hub could not check its database role.")]
+    #[error("The hub could not check its database login.")]
     Database(#[from] sqlx::Error),
-    #[error("The events schema is missing. Run the migrate subcommand before serving.")]
-    NotMigrated,
-    #[error("The hub's database role is a superuser. Serve as a member of anima_runtime instead.")]
-    Superuser,
-    #[error(
-        "The hub's database role owns the event log or the audit log. Run migrations as the \
-         owner role and serve as a member of anima_runtime."
-    )]
-    OwnsLogs,
-    #[error(
-        "The hub's database role owns the events schema. Run migrations as the owner role and \
-         serve as a member of anima_runtime."
-    )]
-    OwnsEventsSchema,
-    #[error(
-        "The hub's database role can change or remove log entries. Revoke its UPDATE, DELETE, \
-         TRUNCATE and TRIGGER rights on the logs and CREATE on the events schema, and serve as \
-         a member of anima_runtime."
-    )]
-    CanChangeLogs,
+    #[error(transparent)]
+    Refused(#[from] Refusal),
 }
 
-/// Checks that the hub serves as a runtime role that cannot change the logs, nor become a
-/// role that can with `SET ROLE` (K2 "Roles", R-016, LOG-006). It refuses a superuser, an
-/// owner of a log table, a partition or schema `events`, and a holder of UPDATE, DELETE,
-/// TRUNCATE or TRIGGER on a log table or partition (directly, through `pg_write_all_data` or
-/// PUBLIC) or of CREATE on `events`. Call at start, before serving.
+/// Why the hub's database login must not serve, in the order the start check tests them.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum Refusal {
+    #[error("The events schema is missing. Run the migrate subcommand before serving.")]
+    NotMigrated,
+    #[error("The hub's database login is a superuser. Serve as a member of anima_runtime instead.")]
+    Superuser,
+    #[error(
+        "The hub's database login runs as another role. Remove the role setting from the login \
+         and from its database URL."
+    )]
+    SessionRole,
+    #[error(
+        "The hub's database login owns the database, the events schema or a log table. Run \
+         migrations as the owner role and serve as a member of anima_runtime."
+    )]
+    Owner,
+    #[error(
+        "The hub's database login can read or write server files or run server programs. \
+         Revoke pg_execute_server_program, pg_write_server_files, pg_read_server_files and \
+         pg_maintain from it."
+    )]
+    ServerAccess,
+    #[error(
+        "The hub's database login can change, lock or reference log entries. Revoke its \
+         UPDATE, DELETE, TRUNCATE, TRIGGER, REFERENCES and MAINTAIN rights on the logs and \
+         CREATE on the events schema."
+    )]
+    CanChangeLogs,
+    #[error(
+        "The hub's database login would get write rights on new tables through default \
+         privileges. Remove those default privileges."
+    )]
+    DefaultPrivileges,
+}
+
+/// Checks that the hub's database login (`session_user`) cannot change the logs, by itself or
+/// through any role it may become (K2 "Start check", R-016, R-023, LOG-006). It refuses a
+/// superuser; a login whose session runs as another role; an owner of the database, schema
+/// `events` or a log table or partition; a member of `pg_execute_server_program`,
+/// `pg_write_server_files`, `pg_read_server_files` or `pg_maintain`; a holder of UPDATE,
+/// REFERENCES, DELETE, TRUNCATE, TRIGGER or MAINTAIN on a log table or partition (directly,
+/// through `pg_write_all_data` or PUBLIC) or of CREATE on `events`; and default privileges
+/// that grant those rights on new tables to it or to PUBLIC. Call at start, before serving.
 ///
 /// # Errors
 ///
-/// A `RoleError` refusal with a plain message (API-010); `RoleError::Database` if the check
+/// `RoleError::Refused` with a plain message (API-010); `RoleError::Database` if the check
 /// cannot run.
 pub async fn check_runtime_role(db: &PgPool) -> Result<(), RoleError> {
-    let role = store::runtime_role(db)
-        .await?
-        .ok_or(RoleError::NotMigrated)?;
-    if role.superuser {
-        Err(RoleError::Superuser)
-    } else if role.owns_logs {
-        Err(RoleError::OwnsLogs)
-    } else if role.owns_events_schema {
-        Err(RoleError::OwnsEventsSchema)
-    } else if role.can_change_logs {
-        Err(RoleError::CanChangeLogs)
-    } else {
-        Ok(())
+    match store::start_refusal(db).await? {
+        Some(refusal) => Err(refusal.into()),
+        None => Ok(()),
     }
 }
 
@@ -131,8 +142,10 @@ pub async fn create_partitions_ahead(
 
 /// Stores the event, then publishes it on `bus` as `Signal::Event`.
 ///
-/// `message` is stored and broadcast as is: it must never hold a password, key, token or
-/// session content (LOG-007).
+/// `message` must never hold a password, key, token or session content (LOG-007). As a
+/// backstop, `message` and the device name are stored and broadcast with the value rules of
+/// the audit redaction applied: a URL password is masked, and a text holding a private key, an
+/// `otpauth://` URI or an HTTP credential is replaced with `"[redacted]"`.
 ///
 /// If the day partition is missing, it is created inside the caller's transaction (see
 /// `create_partitions_ahead` for the lock this takes).
@@ -150,6 +163,13 @@ pub async fn record(
     at: DateTime<Utc>,
     event: NewEvent,
 ) -> Result<EventId, Error> {
+    let event = NewEvent {
+        message: redaction::redact_text(&event.message),
+        device: event
+            .device
+            .map(|(id, name)| (id, redaction::redact_text(&name))),
+        ..event
+    };
     let summary = store::insert_event(conn, at, event).await?;
     let id = summary.id;
     bus.publish(Signal::Event(summary));

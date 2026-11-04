@@ -26,8 +26,10 @@ const SECRET_PARTS: [&str; 19] = [
 ];
 
 /// A name with one of these as a whole word names a secret (`otpCode`, `sshKeyPem`, `sshPass`),
-/// while `notPaused`, `footprint` and `hotplug` do not.
-const SECRET_WORDS: [&str; 7] = ["otp", "pem", "auth", "pin", "pass", "pwd", "pw"];
+/// while `notPaused`, `footprint` and `hotplug` do not. `auth` alone is not one: it names a
+/// method (`{"auth": "password"}`, `authType`), and `authKey`, `authToken` and `authorization`
+/// match `SECRET_PARTS`.
+const SECRET_WORDS: [&str; 6] = ["otp", "pem", "pin", "pass", "pwd", "pw"];
 
 /// With one of these in the name, `pin` means certificate pinning, not a PIN (`certPin`).
 const PINNING: [&str; 3] = ["cert", "tls", "spki"];
@@ -46,8 +48,9 @@ const KEY_COMPOUNDS: [&str; 5] = [
 /// a public key (`privateHostKey`, `hostKeyPrivate`, `privNodeKey`).
 const PRIVATE: [&str; 2] = ["private", "priv"];
 
-/// Unless the name is a private key, names ending in these are public keys, never secret, and kept as audit evidence (SEC-006,
-/// WEB-009): `hostKey`, `newHostKey`, `publicKey`, `authorizedKeys`.
+/// Names ending in these are public keys, kept as audit evidence (SEC-006, WEB-009): `hostKey`,
+/// `newHostKey`, `publicKey`, `authorizedKeys`. A name that also has a secret part is a secret
+/// (`privateHostKey`, `secretHostKey`, `passwordNodeKey`).
 const PUBLIC_KEYS: [&str; 4] = ["hostkey", "publickey", "nodekey", "authorizedkey"];
 
 /// What a name says about its value.
@@ -68,31 +71,28 @@ pub(super) fn secrecy(name: &str) -> Secrecy {
     let joined = words.concat();
     let has_word = |wanted: &str| words.iter().any(|word| word == wanted);
     let pinning = PINNING.iter().any(|part| joined.contains(part));
-    let private_key = joined.contains("key") && PRIVATE.iter().any(|part| joined.contains(part));
-    if private_key {
+    let last_is = |wanted: &str| words.last().is_some_and(|word| word == wanted);
+    let has_secret_part = (joined.contains("key")
+        && PRIVATE.iter().any(|part| joined.contains(part)))
+        || SECRET_PARTS.iter().any(|part| joined.contains(part))
+        || SECRET_WORDS
+            .iter()
+            .any(|word| has_word(word) && !(*word == "pin" && pinning));
+    if has_secret_part {
         Secrecy::Secret
     } else if PUBLIC_KEYS.iter().any(|public| joined.ends_with(public)) {
         Secrecy::Plain
-    } else if SECRET_PARTS.iter().any(|part| joined.contains(part))
-        || SECRET_WORDS
-            .iter()
-            .any(|word| has_word(word) && !(*word == "pin" && pinning))
-        || words.last().is_some_and(|word| word == "key")
+    } else if last_is("key")
         || KEY_COMPOUNDS
             .iter()
             .any(|compound| joined.ends_with(compound))
     {
         Secrecy::Secret
-    } else if joined.contains("credential") && words.last().is_none_or(|word| word != "id") {
+    } else if (joined.contains("credential") || has_word("cred")) && !last_is("id") {
         Secrecy::Holder
     } else {
         Secrecy::Plain
     }
-}
-
-/// The last word of the name (see `words`), if it has one.
-pub(super) fn last_word(name: &str) -> Option<String> {
-    words(name).pop()
 }
 
 /// The name in lower-case ASCII letters and digits only.

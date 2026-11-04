@@ -231,3 +231,68 @@ async fn r_016_default_privileges_reach_objects_created_after_migration_0001(poo
         assert_eq!(held, expected, "{expression}");
     }
 }
+
+/// A new partition's privileges come from `events.ensure_day_partition` alone: default
+/// privileges for another role or PUBLIC, global or in `events`, never reach it (0502, R-023).
+#[sqlx::test(migrations = "./migrations")]
+async fn r_023_new_partitions_get_select_and_insert_for_anima_runtime_only(pool: PgPool) {
+    let mut conn = pool.acquire().await.unwrap();
+    let group = super::test_role("group");
+    let defaults = [
+        format!("update, delete on tables to {group}"),
+        "truncate, references on tables to public".to_owned(),
+    ];
+    execute(&mut conn, &format!("create role {group} nologin")).await;
+    for grant in &defaults {
+        execute(
+            &mut conn,
+            &format!("alter default privileges grant {grant}"),
+        )
+        .await;
+    }
+    execute(
+        &mut conn,
+        &format!(
+            "alter default privileges in schema events grant trigger, maintain on tables to {group}"
+        ),
+    )
+    .await;
+    for log in ["event_log", "audit_log"] {
+        execute(
+            &mut conn,
+            &format!("select events.ensure_day_partition('{log}', '2030-06-06 12:00+00')"),
+        )
+        .await;
+    }
+    let grants: Vec<(String, String, String)> = sqlx::query_as(
+        "select c.relname::text, a.grantee::regrole::text, a.privilege_type \
+         from pg_catalog.pg_class c cross join lateral pg_catalog.aclexplode(c.relacl) a \
+         where c.relname in ('event_log_20300606', 'audit_log_20300606') \
+             and a.grantee <> c.relowner \
+         order by 1, 2, 3",
+    )
+    .fetch_all(&mut *conn)
+    .await
+    .unwrap();
+
+    execute(&mut conn, &format!("drop owned by {group}")).await;
+    execute(&mut conn, &format!("drop role {group}")).await;
+    execute(
+        &mut conn,
+        "alter default privileges revoke truncate, references on tables from public",
+    )
+    .await;
+    let expected: Vec<(String, String, String)> = ["audit_log_20300606", "event_log_20300606"]
+        .into_iter()
+        .flat_map(|table| {
+            ["INSERT", "SELECT"].map(|privilege| {
+                (
+                    table.to_owned(),
+                    "anima_runtime".to_owned(),
+                    privilege.to_owned(),
+                )
+            })
+        })
+        .collect();
+    assert_eq!(grants, expected);
+}
