@@ -3,7 +3,10 @@
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 
 use super::{ECDSA, ECDSA_FINGERPRINT, ED25519, ED25519_FINGERPRINT, Inputs};
-use crate::sessions::{BadFingerprint, BadKey, Fingerprint, PublicKey};
+use crate::sessions::{
+    BadFingerprint, BadKey, Fingerprint, PublicKey,
+    public_key::{MAX_BASE64, MAX_BLOB},
+};
 
 fn blob(algorithm: &[u8], data: &[u8]) -> Vec<u8> {
     let mut blob = u32::try_from(algorithm.len())
@@ -73,6 +76,22 @@ fn sec_007_an_algorithm_name_that_could_break_a_known_hosts_line_is_refused() {
     }
     let key = PublicKey::from_blob(blob(b"sk-ssh-ed25519@openssh.com", b"k")).unwrap();
     assert_eq!(key.algorithm(), "sk-ssh-ed25519@openssh.com");
+}
+
+#[test]
+fn sec_007_the_size_cap_is_8190_bytes_or_10920_base64_characters() {
+    assert_eq!((MAX_BLOB, MAX_BASE64), (8190, 10_920));
+    let largest = blob(b"ssh-rsa", &vec![1; MAX_BLOB - 11]);
+    assert_eq!(largest.len(), MAX_BLOB);
+    let text = STANDARD.encode(&largest);
+    assert_eq!(text.len(), MAX_BASE64);
+    assert!(PublicKey::from_base64(&text).is_ok());
+    let over = blob(b"ssh-rsa", &vec![1; MAX_BLOB - 10]);
+    assert_eq!(PublicKey::from_blob(over.clone()), Err(BadKey::TooLong));
+    assert_eq!(
+        PublicKey::from_base64(&STANDARD.encode(over)),
+        Err(BadKey::TooLong)
+    );
 }
 
 #[test]

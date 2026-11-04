@@ -11,8 +11,13 @@ use base64::{
 };
 use sha2::{Digest as _, Sha256};
 
-/// Largest key blob accepted. A 16384-bit RSA key is about 2 KiB.
-const MAX_BLOB: usize = 8 * 1024;
+/// Largest key blob accepted: 8190 bytes, exactly 2730 base64 quanta, so its text is at most
+/// [`MAX_BASE64`] characters with no padding. Migration 0600's `host_keys_public_key_check`
+/// caps `public_key` at the same 10920 characters, so the table and this parser accept the
+/// same keys. A 16384-bit RSA key is about 2 KiB.
+pub(super) const MAX_BLOB: usize = 8190;
+/// Longest base64 text of a key blob accepted (`MAX_BLOB / 3 * 4`).
+pub(super) const MAX_BASE64: usize = MAX_BLOB / 3 * 4;
 /// Longest algorithm name accepted (OpenSSH names are well under this).
 const MAX_ALGORITHM: usize = 64;
 const FINGERPRINT_PREFIX: &str = "SHA256:";
@@ -72,7 +77,7 @@ impl PublicKey {
     /// # Errors
     /// [`BadKey`] when the text is not canonical base64 or not a key blob.
     pub fn from_base64(text: &str) -> Result<Self, BadKey> {
-        if text.len() > MAX_BLOB.div_ceil(3) * 4 {
+        if text.len() > MAX_BASE64 {
             return Err(BadKey::TooLong);
         }
         let blob = STANDARD.decode(text).map_err(|_| BadKey::NotBase64)?;

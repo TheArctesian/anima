@@ -4,7 +4,9 @@ mod face;
 mod graphql_read;
 mod guard;
 mod harness;
+mod host_key_rows;
 mod k1;
+mod privileges;
 mod tables;
 
 use chrono::{DateTime, TimeDelta, Utc};

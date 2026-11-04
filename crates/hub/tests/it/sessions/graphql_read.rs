@@ -1,5 +1,6 @@
 //! `Query.sessions`: fields, filters and keyset paging (RA-008, API-006, K7).
 
+use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use chrono::{DateTime, SecondsFormat, Utc};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -241,4 +242,43 @@ async fn api_010_a_row_the_hub_cannot_read_gives_a_generic_internal_error(pool: 
         "Something went wrong on the hub. Try again."
     );
     assert!(!error.to_string().contains("secret-reason-text"), "{error}");
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn api_010_a_half_ended_row_gives_a_generic_internal_error(pool: PgPool) {
+    sqlx::query("alter table sessions.sessions drop constraint sessions_end_pair_check")
+        .execute(&pool)
+        .await
+        .unwrap();
+    insert(&pool, &Row::live(1, PVE_01, 0)).await.unwrap();
+    sqlx::query("update sessions.sessions set ended_at = started_at where id = $1")
+        .bind(session_id(1))
+        .execute(&pool)
+        .await
+        .unwrap();
+    let error = only_error(&schema_for(&pool), "{ sessions { edges { cursor } } }").await;
+    assert_eq!(error["extensions"]["code"], "INTERNAL");
+    assert_eq!(
+        error["message"],
+        "Something went wrong on the hub. Try again."
+    );
+    assert!(!error.to_string().contains("ended_at"), "{error}");
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn api_010_a_cursor_time_postgresql_cannot_store_is_a_validation_error(pool: PgPool) {
+    // A well-formed cursor at chrono's earliest instant, far before PostgreSQL's 4713 BC.
+    let mut bytes = [0_u8; 24];
+    bytes[..8].copy_from_slice(&DateTime::<Utc>::MIN_UTC.timestamp_micros().to_be_bytes());
+    let cursor = format!("s1.{}", URL_SAFE_NO_PAD.encode(bytes));
+    let error = only_error(
+        &schema_for(&pool),
+        &format!(r#"{{ sessions(after: "{cursor}") {{ edges {{ cursor }} }} }}"#),
+    )
+    .await;
+    assert_eq!(error["extensions"]["code"], "VALIDATION", "{error}");
+    assert_eq!(error["extensions"]["fields"][0]["field"], "after");
 }
