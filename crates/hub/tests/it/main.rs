@@ -6,6 +6,7 @@ mod hub;
 mod login;
 mod logs;
 mod operator;
+mod sessions;
 mod start;
 mod tokens;
 mod transport;
