@@ -74,44 +74,90 @@ describe('Hub connects when it is created', () => {
 });
 
 describe('Hub connects when it is created, and the hub ends the connection', () => {
-  it('NET-004: a fatal close (4500) stops reconnecting and reads unreachable', async () => {
-    const hub = newHub();
-    await settle();
-    await acknowledge(onlySocket());
-    onlySocket().close(4500);
-    await settle(120_000);
-    expect(hub.status.current).toEqual({ connection: 'unreachable', lastContactAt: NOW });
-    expect(FakeSocket.opened).toHaveLength(1);
-    void hub.close();
-  });
-});
-
-describe('Hub connects when it is created, and the token is refused', () => {
-  it('NET-004: a 4403 at start is contact, and the socket does not reconnect by itself', async () => {
+  it.each([4400, 4500])('NET-004: a fatal close %i from the hub stops reconnecting and counts as contact', async (code) => {
     const hub = newHub();
     await settle();
     onlySocket().accept();
     await settle();
-    onlySocket().close(4403, 'Forbidden');
+    onlySocket().close(code);
     await settle(120_000);
     expect(hub.status.current).toEqual({ connection: 'connected', lastContactAt: NOW });
     expect(FakeSocket.opened).toHaveLength(1);
     void hub.close();
   });
 
-  it('API-002: after a 4403 at start, the next subscription connects again with the token read anew', async () => {
+  it('NET-004: a fatal close that is not from graphql-transport-ws (1002) reads unreachable', async () => {
     const hub = newHub();
     await settle();
-    onlySocket().close(4403, 'Forbidden');
+    onlySocket().accept();
     await settle();
-    hub.subscribe(STATUS_CHANGED, {}, recordingSink().sink);
-    await settle();
-    const again = FakeSocket.opened.at(-1);
-    again?.accept();
-    await settle();
-    expect(FakeSocket.opened).toHaveLength(2);
-    expect(again?.sent[0]).toEqual({ type: 'connection_init', payload: { authorization: 'Bearer s3cret-token' } });
+    onlySocket().close(1002);
+    await settle(120_000);
+    expect(hub.status.current).toEqual({ connection: 'unreachable', lastContactAt: null });
     void hub.close();
+  });
+});
+
+/** Open the newest socket and refuse its token, as the hub does. */
+async function refuseNewest(): Promise<void> {
+  const socket = FakeSocket.opened.at(-1);
+  socket?.accept();
+  await settle();
+  socket?.close(4403, 'Forbidden');
+  await settle();
+}
+
+describe('Hub connects when it is created, and the token is refused', () => {
+  it('NET-004: a 4403 at start is contact, then probes on the backoff (wait grows to the cap)', async () => {
+    const hub = newHub();
+    await settle();
+    await refuseNewest();
+    for (const waitMs of [1000, 2000, 4000, 8000, 16_000, 30_000, 30_000]) {
+      const before = FakeSocket.opened.length;
+      await settle(waitMs - 1);
+      expect(FakeSocket.opened).toHaveLength(before);
+      await settle(1);
+      expect(FakeSocket.opened).toHaveLength(before + 1);
+      await refuseNewest();
+      expect(hub.status.current).toEqual({ connection: 'connected', lastContactAt: NOW });
+    }
+    void hub.close();
+  });
+
+  it('NET-004: a drop after a 4403 reaches unreachable', async () => {
+    const hub = newHub();
+    await settle();
+    await refuseNewest();
+    await settle(FIRST_RETRY_MS);
+    expect(FakeSocket.opened).toHaveLength(2);
+    await settle(DEFAULT_TIMEOUT_MS);
+    expect(hub.status.current.connection).toBe('unreachable');
+    void hub.close();
+  });
+
+  it('API-002: each probe after a 4403 reads the token again, so a new login connects', async () => {
+    const tokens: (string | null)[] = [null, 's3cret-token'];
+    const hub = newHub(() => Promise.resolve(tokens.shift() ?? null));
+    await settle();
+    await refuseNewest();
+    expect(onlySocket().sent[0]).toEqual({ type: 'connection_init', payload: {} });
+    await settle(FIRST_RETRY_MS);
+    const probe = FakeSocket.opened.at(-1);
+    if (probe === undefined) throw new Error('no probe socket');
+    await acknowledge(probe);
+    expect(probe.sent[0]).toEqual({ type: 'connection_init', payload: { authorization: 'Bearer s3cret-token' } });
+    expect(hub.status.current.connection).toBe('connected');
+    void hub.close();
+  });
+});
+
+describe('Hub.close failure', () => {
+  it('CQ-024: close rejects with the reason when the open socket cannot be closed', async () => {
+    const hub = newHub();
+    await settle();
+    await acknowledge(onlySocket());
+    onlySocket().closeFailure = new Error('the socket is broken');
+    await expect(hub.close()).rejects.toThrow('the socket is broken');
   });
 });
 

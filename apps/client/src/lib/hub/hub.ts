@@ -35,8 +35,9 @@ export interface Hub {
   ): Promise<HubResult<TResult>>;
   /**
    * Start a subscription on the shared socket; returns the function that stops it (API-002).
-   * The sink hears `error` when the hub refuses the token (close 4403) or the token cannot be read; neither is
-   * retried, and the socket stays closed until the next `subscribe` connects again with the token read anew.
+   * The sink hears `error` (UNAUTHENTICATED) when the hub refuses the token (close 4403) or the token cannot be
+   * read; the subscription is not sent again. After a refusal the socket keeps probing on the backoff, reading the
+   * token anew each time; after an unreadable token it waits for the next `subscribe`.
    */
   subscribe<TResult, TVariables extends Variables>(
     document: TypedDocumentNode<TResult, TVariables>,
@@ -51,7 +52,8 @@ export interface Hub {
   /**
    * End every subscription (each sink hears `complete`), stop any connection attempt or retry wait, and close
    * the socket. A later `subscribe` completes at once without connecting; `request` keeps working, since HTTP
-   * holds no connection. Subscriptions end synchronously; the promise resolves once closing has begun.
+   * holds no connection. Subscriptions end synchronously; the promise resolves once closing has begun and
+   * rejects with the reason when an open socket could not be closed.
    */
   close(): Promise<void>;
 }

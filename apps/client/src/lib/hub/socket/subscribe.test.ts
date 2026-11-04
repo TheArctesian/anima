@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  acknowledge,
   DEFAULT_TIMEOUT_MS,
   FakeSocket,
   FIRST_RETRY_MS,
@@ -64,16 +65,20 @@ describe('Hub.subscribe and the connection status', () => {
     void hub.close();
   });
 
-  it('NET-004: close 4403 is contact, ends the subscription as UNAUTHENTICATED and is not retried', async () => {
+  it('NET-004: close 4403 is contact and ends the subscription as UNAUTHENTICATED; it is not sent again', async () => {
     const hub = newHub();
     const { events, sink } = recordingSink();
     const { socket } = await liveSubscription(hub, sink);
     socket.close(4403, 'Forbidden');
-    await settle(120_000);
-    expect(events.errors.map((error) => error.code)).toEqual(['UNAUTHENTICATED']);
+    await settle(FIRST_RETRY_MS);
+    const probe = FakeSocket.opened.at(-1);
+    if (probe === undefined || probe === socket) throw new Error('no probe socket');
+    await acknowledge(probe);
+    expect(events.errors).toEqual([{ code: 'UNAUTHENTICATED', message: 'The hub refused the access token. Log in again.' }]);
     expect(hub.status.current.connection).toBe('connected');
-    expect(FakeSocket.opened).toHaveLength(1);
+    expect(probe.sent.filter((sent) => sent.type === 'subscribe')).toEqual([]);
     expect(JSON.stringify(events.errors)).not.toContain('s3cret-token');
+    void hub.close();
   });
 
   it('NET-004: a dropped socket reconnects after a backoff and the subscription continues', async () => {

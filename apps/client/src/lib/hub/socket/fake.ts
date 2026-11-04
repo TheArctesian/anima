@@ -41,7 +41,11 @@ export class FakeSocket {
     this.sent.push(JSON.parse(text) as Record<string, unknown>);
   }
 
+  /** When set, the client's `close()` throws it, as a broken WebSocket implementation might. */
+  closeFailure: Error | undefined;
+
   close(code = 1000, reason = ''): void {
+    if (this.closeFailure !== undefined) throw this.closeFailure;
     if (this.readyState === FakeSocket.CLOSED) return;
     this.readyState = FakeSocket.CLOSED;
     this.closedWith = code;
