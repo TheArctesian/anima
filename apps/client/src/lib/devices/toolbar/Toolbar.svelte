@@ -79,6 +79,7 @@
     {#each [{ view: 'grid', label: 'Grid' }, { view: 'table', label: 'Table' }] as const as option (option.view)}
       <button
         type="button"
+        tabindex="0"
         aria-pressed={query.view === option.view}
         onclick={() => {
           onQueryChange({ ...query, view: option.view });
@@ -87,7 +88,7 @@
       >
     {/each}
   </div>
-  <button type="button" class="add" onclick={onAddDevice} {@attach press()}>
+  <button type="button" class="add" tabindex="0" onclick={onAddDevice} {@attach press()}>
     <Icon name="nf-md-plus" size="sm" />
     <span>Add device</span>
   </button>
@@ -102,10 +103,13 @@
   }
 
   .search {
+    flex: 1 1 calc(var(--space-16) * 3);
+    min-inline-size: 0;
+    max-inline-size: calc(var(--space-16) * 6);
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
-    min-block-size: var(--target-min-desktop);
+    block-size: calc(var(--target-min-desktop) + var(--space-2));
     padding: 0 var(--space-3);
     border: var(--border-thin) solid var(--border);
     border-radius: var(--radius-md);
@@ -120,7 +124,13 @@
     white-space: nowrap;
   }
 
+  input::placeholder {
+    color: var(--text-muted);
+  }
+
   input {
+    flex: 1;
+    min-inline-size: 0;
     border: 0;
     background: transparent;
     color: var(--text);
@@ -145,7 +155,7 @@
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
-    min-block-size: var(--target-min-desktop);
+    block-size: calc(var(--target-min-desktop) + var(--space-2));
     padding: 0 var(--space-3);
     border: 0;
     background: var(--surface);
@@ -156,6 +166,10 @@
 
   button:hover {
     background: var(--surface-raised);
+  }
+
+  button:active {
+    background: var(--border);
   }
 
   button[aria-pressed='true'] {

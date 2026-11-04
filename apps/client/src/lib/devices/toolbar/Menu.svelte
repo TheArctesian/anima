@@ -29,11 +29,9 @@
     button?.focus();
   }
 
+  /** Escape closes the open menu wherever focus is: WebKit does not focus a button that a mouse click opened. */
   function onKeydown(event: KeyboardEvent): void {
-    if (event.key === 'Escape' && open) {
-      event.stopPropagation();
-      close();
-    }
+    if (event.key === 'Escape' && open) close();
   }
 
   /** A press outside closes the menu; focus goes back to the control only when it was inside the menu. */
@@ -45,16 +43,15 @@
   }
 </script>
 
-<svelte:document onpointerdown={onOutside} />
+<svelte:document onpointerdown={onOutside} onkeydown={onKeydown} />
 
-<!-- The keydown listener only catches Escape from the controls inside; the controls are the keyboard targets. -->
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="menu" bind:this={root} onkeydown={onKeydown}>
+<div class="menu" bind:this={root}>
+  <!-- tabindex="0": WebKit skips plain buttons and form controls when Tab is pressed unless they are focusable (NAV-005). -->
   <button
     type="button"
     class="control"
+    tabindex="0"
     bind:this={button}
-    aria-haspopup="true"
     aria-expanded={open}
     aria-controls="{id}-panel"
     onclick={() => {
@@ -72,6 +69,7 @@
         <label class="option">
           <input
             type={kind}
+            tabindex="0"
             name={kind === 'radio' ? id : undefined}
             checked={chosen.includes(option.value)}
             onchange={() => {
@@ -97,7 +95,7 @@
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
-    min-block-size: var(--target-min-desktop);
+    block-size: calc(var(--target-min-desktop) + var(--space-2));
     padding: 0 var(--space-3);
     border: var(--border-thin) solid var(--border);
     border-radius: var(--radius-md);
@@ -109,6 +107,14 @@
 
   .control:hover {
     background: var(--surface-raised);
+  }
+
+  .control:active {
+    background: var(--border);
+  }
+
+  input {
+    accent-color: var(--accent);
   }
 
   .control:focus-visible,
@@ -154,6 +160,6 @@
   .none {
     margin: 0;
     padding: var(--space-2);
-    color: var(--text-muted);
+    color: var(--text);
   }
 </style>

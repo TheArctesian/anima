@@ -121,3 +121,50 @@ it('DEV-003: an empty tag menu says why', () => {
   flushSync();
   expect(panel()?.querySelectorAll('input')).toHaveLength(1);
 });
+
+it('D-4: unmounting with a keystroke pending writes nothing', async () => {
+  vi.useFakeTimers();
+  show();
+  const input = document.querySelector<HTMLInputElement>('input[type=search]');
+  if (input === null) throw new Error('no search');
+  input.value = 'abc';
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  await unmount(app as object);
+  app = undefined;
+  vi.advanceTimersByTime(1000);
+  vi.useRealTimers();
+  expect(changes).toEqual([]);
+});
+
+it('Menu: a press outside does not steal focus that is somewhere else', () => {
+  show();
+  control('Status').click();
+  flushSync();
+  const input = document.querySelector<HTMLInputElement>('input[type=search]');
+  input?.focus();
+  document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+  flushSync();
+  expect(document.activeElement).toBe(input);
+});
+
+it('Menu: Escape closes a menu a mouse click opened, with focus outside it (WebKit does not focus the button)', async () => {
+  show();
+  control('Sort').click();
+  flushSync();
+  (document.activeElement as HTMLElement | null)?.blur();
+  document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  flushSync();
+  await vi.waitFor(() => {
+    expect(panel()).toBeNull();
+  });
+  expect(document.activeElement).toBe(control('Sort'));
+});
+
+it('WebKit: every button and option has tabindex 0, or Tab skips it (NAV-005)', () => {
+  show();
+  control('Status').click();
+  flushSync();
+  const controls = [...document.querySelectorAll('button, a[href], input[type=checkbox], input[type=radio]')];
+  expect(controls.length).toBeGreaterThan(8);
+  expect(controls.filter((node) => node.getAttribute('tabindex') !== '0')).toEqual([]);
+});

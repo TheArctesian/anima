@@ -36,6 +36,10 @@
 </section>
 
 <style>
+  section {
+    min-inline-size: 0;
+  }
+
   /* A fixed block size from tokens, so the font swap cannot move the page (WP-11 H-7). */
   h1 {
     box-sizing: border-box;

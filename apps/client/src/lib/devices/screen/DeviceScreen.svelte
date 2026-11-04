@@ -7,9 +7,10 @@
   import DeviceTable from '../card/DeviceTable.svelte';
   import type { ListQuery } from '../query';
   import Toolbar from '../toolbar/Toolbar.svelte';
+  import { Tags } from '../toolbar/tags.svelte';
   import { isFiltered, withoutFilters } from '../toolbar/toolbar';
   import { Listing } from './listing.svelte';
-  import { browserClock, type LoadingClock } from './loading';
+  import { browserClock, type LoadingClock } from './loading/loading';
   import Skeleton from './Skeleton.svelte';
 
   interface Props {
@@ -23,25 +24,26 @@
   }
 
   const { query, onQueryChange, onAddDevice, onConnect, clock = browserClock }: Props = $props();
-  const listing = new Listing(useHub(), {
-    now: () => clock.now(),
-    after: (ms, run) => clock.after(ms, run),
-  });
+  const hub = useHub();
+  // The clock is fixed for the life of the screen.
+  // svelte-ignore state_referenced_locally
+  const listing = new Listing(hub, clock);
+  const tags = new Tags(hub);
   const list = $derived(listing.list);
-  const tagsNote = $derived(listing.tagsError?.message ?? 'No tags yet');
 
   $effect(() => {
     void listing.load(query);
   });
   $effect(() => {
     listing.start();
+    void tags.load();
     return () => {
       listing.stop();
     };
   });
 </script>
 
-<Toolbar {query} tags={listing.tags} {tagsNote} {onQueryChange} {onAddDevice} />
+<Toolbar {query} tags={tags.names} tagsNote={tags.note} {onQueryChange} {onAddDevice} />
 
 {#if listing.liveError !== null}
   <p class="notice" role="status">Live updates stopped: {listing.liveError.message}</p>
@@ -52,6 +54,7 @@
     <p>{listing.error.message}</p>
     <button
       type="button"
+      tabindex="0"
       onclick={() => {
         void listing.retry();
       }}
@@ -62,7 +65,7 @@
 
 <div class="results" aria-busy={listing.skeleton}>
   {#if listing.skeleton}
-    <div class="layer" transition:crossFade><Skeleton /></div>
+    <div class="layer" transition:crossFade><Skeleton view={query.view} /></div>
   {:else if list !== null}
     <div class="layer" transition:crossFade>
       {#if list.devices.length === 0}
@@ -71,6 +74,7 @@
             <p>No devices match</p>
             <button
               type="button"
+              tabindex="0"
               onclick={() => {
                 onQueryChange(withoutFilters(query));
               }}
@@ -78,7 +82,7 @@
             >
           {:else}
             <p>No devices yet</p>
-            <button type="button" onclick={onAddDevice} {@attach press()}>Add device</button>
+            <button type="button" tabindex="0" onclick={onAddDevice} {@attach press()}>Add device</button>
           {/if}
         </div>
       {:else if query.view === 'table'}
@@ -91,6 +95,7 @@
           {#if listing.moreError !== null}<p role="alert">{listing.moreError.message}</p>{/if}
           <button
             type="button"
+            tabindex="0"
             disabled={listing.loadingMore}
             onclick={() => {
               void listing.loadMore();
@@ -107,19 +112,26 @@
 <LogsPanel devices={list?.devices ?? []} />
 
 <style>
-  /* Room to scroll the last card clear of the logs panel: its 33 % stop plus its header, fixed, so a drag reflows nothing. */
+  /*
+   * Room to scroll the last card clear of the logs panel: its 33 % stop plus its header, fixed, so a drag reflows nothing.
+   * The 33vh is THIRD_SHARE in lib/events/resize/resize.ts; change them together.
+   */
   .clearance {
     --logs-third: 33vh;
     block-size: calc(var(--logs-third) + var(--target-min-desktop) + var(--space-2));
   }
 
+  /* A new order must not drag the scroll position after the card the browser anchored to. */
   .results {
+    overflow-anchor: none;
+    min-inline-size: 0;
     display: grid;
     margin-block-start: var(--space-4);
   }
 
   .layer {
     grid-area: 1 / 1;
+    min-inline-size: 0;
   }
 
   .notice,
@@ -163,6 +175,10 @@
 
   button:hover:not(:disabled) {
     background: var(--border);
+  }
+
+  button:active:not(:disabled) {
+    background: var(--accent-tint);
   }
 
   button:focus-visible {

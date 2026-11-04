@@ -74,6 +74,18 @@ it('LOG-010: a live event held during a filter change is judged by the new filte
   expect(ids()).toEqual(['match', 'b']);
 });
 
+it('LOG-010: a second load does not replay the live events held during the first', async () => {
+  feed.start();
+  push(event('live', 0));
+  hub.pending[0]?.answer(page([event('a', 1)]));
+  await later();
+  expect(ids()).toEqual(['live', 'a']);
+  feed.setFilter({ ...DEFAULT_LOG_FILTER, since: '1h' });
+  hub.pending[1]?.answer(page([event('b', 1)]));
+  await later();
+  expect(ids()).toEqual(['b']);
+});
+
 it('LOG-009: a filter change clears the old rows, and a failed reload leaves the error and no stale rows', async () => {
   feed.start();
   hub.pending[0]?.answer(page([event('a', 1)]));

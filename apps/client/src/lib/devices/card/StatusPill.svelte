@@ -30,7 +30,7 @@
 
   .pill {
     grid-area: 1 / 1;
-    justify-self: start;
+    justify-self: end;
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);

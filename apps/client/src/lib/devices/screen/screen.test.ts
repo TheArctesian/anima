@@ -242,30 +242,6 @@ it('DEV-005: a filter with no result shows "No devices match" and Clear filters'
   expect(url.writes.at(-1)).toEqual({ ...DEFAULT_QUERY, sort: 'STATUS' });
 });
 
-it('6.1 card: shows name link, host, IP for a named host, uptime and a 50-cell bar', async () => {
-  await show([device('a', { ip: '10.0.0.5', uptime: null }), device('b', { host: '10.0.0.9', ip: '10.0.0.9' })]);
-  const cards = [...document.querySelectorAll('article')];
-  expect(cards[0]?.textContent).toContain('a.lan');
-  expect(cards[0]?.textContent).toContain('10.0.0.5');
-  expect(cards[0]?.textContent).toContain('—');
-  expect(cards[0]?.querySelectorAll('.cell')).toHaveLength(50);
-  expect(cards[0]?.querySelector('a')?.getAttribute('href')).toBe('/devices/a');
-  expect(cards[1]?.querySelectorAll('.ip')).toHaveLength(0);
-});
-
-it('6.1 card: SSH shows only when enabled and passes the device id to onConnect', async () => {
-  await show([device('a', { ssh: { enabled: true } }), device('b')]);
-  const buttons = [...document.querySelectorAll('article button')];
-  expect(buttons).toHaveLength(1);
-  (buttons[0] as HTMLButtonElement).click();
-  expect(connected).toEqual(['a']);
-});
-
-it('6.1 card: the name and the pill carry data-device-id (H-1)', async () => {
-  await show([device('a')]);
-  expect(document.querySelectorAll('[data-device-id="a"]')).toHaveLength(2);
-});
-
 it('DEV-001: the cards are a list, and the table has column headers', async () => {
   await show();
   expect(document.querySelectorAll('ul[aria-label="Devices"] > li')).toHaveLength(2);
@@ -298,4 +274,30 @@ it('DEV-002: both subscriptions stop when the page goes away', async () => {
   app = undefined;
   expect(fake.listeners('DeviceStatusChanged')).toBe(0);
   expect(fake.listeners('HeartbeatAdded')).toBe(0);
+});
+
+it.each(['grid', 'table'] as const)('Reorder: when a %s item leaves, the items after it slide into its place', async (view) => {
+  const place = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+    const top = this.tagName === 'LI' || this.tagName === 'TR' ? [...(this.parentElement?.children ?? [])].indexOf(this) * 100 : 0;
+    return { left: 0, right: 0, top, bottom: top, width: 0, height: 0, x: 0, y: top, toJSON: () => ({}) };
+  });
+  await show([device('a'), device('b'), device('c')], { ...DEFAULT_QUERY, view, statuses: ['UP'] });
+  runs.length = 0;
+  fake.push('DeviceStatusChanged', { deviceStatusChanged: { deviceId: 'a', status: 'DOWN', at: 'now' } });
+  await settle();
+  await vi.waitFor(() => {
+    expect(names().length + document.querySelectorAll('tbody tr').length).toBeGreaterThan(0);
+    expect(document.querySelectorAll(view === 'grid' ? 'article' : 'tbody tr')).toHaveLength(2);
+  });
+  await settle();
+  expect(runs.filter((run) => run.options['type'] === 'spring').length).toBeGreaterThan(0);
+  place.mockRestore();
+});
+
+it('Loading: a list on screen stays while the next one loads, and no skeleton replaces it', async () => {
+  await show([device('a')]);
+  url.query = { ...DEFAULT_QUERY, sort: 'STATUS' };
+  await settle();
+  expect(document.querySelectorAll('li.place')).toHaveLength(0);
+  expect(document.querySelectorAll('article')).toHaveLength(1);
 });

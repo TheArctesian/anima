@@ -20,6 +20,8 @@
   const track = reorderMotion(() => devices.map((device) => device.id).join('\n'));
 </script>
 
+<!-- A wide table scrolls inside its own box and does not widen the page. -->
+<div class="scroll">
 <table>
   <caption class="caption">Devices</caption>
   <thead>
@@ -38,7 +40,13 @@
       {@const deviceBeats = beats.get(device.id)}
       <tr transition:listRow={{ index }} {@attach track(device.id)}>
         <th scope="row">
-          <a href="{resolve('/devices')}/{encodeURIComponent(device.id)}" data-device-id={device.id} {@attach press()}>
+          <a
+            href="{resolve('/devices')}/{encodeURIComponent(device.id)}"
+            title={device.name}
+            tabindex="0"
+            data-device-id={device.id}
+            {@attach press()}
+          >
             {device.name}
           </a>
         </th>
@@ -46,13 +54,17 @@
           <StatusEdge status={device.status} />
           <StatusPill status={device.status} deviceId={device.id} />
         </td>
-        <td>{line.host}{#if line.ip !== null}<span class="ip"> {line.ip}</span>{/if}</td>
+        <td>
+          <span class="host" title={line.host}>{line.host}</span>
+          {#if line.ip !== null}<span class="ip">{line.ip}</span>{/if}
+        </td>
         <td>{uptimeText(device.uptime)}</td>
         <td>{#if deviceBeats !== undefined}<HeartbeatBar beats={deviceBeats} />{/if}</td>
         <td>
           {#if device.ssh.enabled}
             <button
               type="button"
+              tabindex="0"
               aria-label="SSH to {device.name}"
               onclick={(event) => {
                 onConnect(device.id, event.currentTarget);
@@ -65,6 +77,7 @@
     {/each}
   </tbody>
 </table>
+</div>
 
 <style>
   .caption {
@@ -72,6 +85,11 @@
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
+  }
+
+  .scroll {
+    min-inline-size: 0;
+    overflow-x: auto;
   }
 
   table {
@@ -109,13 +127,21 @@
   }
 
   .ip {
+    margin-inline-start: var(--space-2);
     color: var(--text-muted);
     font-family: var(--font-mono);
   }
 
   a {
+    display: inline-block;
+    min-block-size: var(--target-min-desktop);
+    line-height: var(--target-min-desktop);
     color: var(--text);
     text-decoration: none;
+  }
+
+  a:active {
+    color: var(--text-muted);
   }
 
   a:hover {
@@ -136,6 +162,10 @@
 
   button:hover {
     background: var(--border);
+  }
+
+  button:active {
+    background: var(--accent-tint);
   }
 
   a:focus-visible,

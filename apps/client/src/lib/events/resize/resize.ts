@@ -10,6 +10,7 @@ export const COLLAPSED: Stop = 0;
 export const THIRD: Stop = 1;
 export const TWO_THIRDS: Stop = 2;
 
+/** The page share of the 33 % stop; `.clearance` in DeviceScreen.svelte is the same share in vh, so change them together. */
 const THIRD_SHARE = 0.33;
 const TWO_THIRDS_SHARE = 0.66;
 
