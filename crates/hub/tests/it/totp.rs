@@ -151,6 +151,29 @@ async fn sec_002_a_code_works_once_and_never_after_a_later_step(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
+async fn sec_002_a_new_secret_starts_with_no_used_step(pool: PgPool) {
+    let secret = enrol(&pool).await;
+    let hub = Hub::new(&pool, start());
+    assert!(signed_in(
+        &login(&hub, PASSWORD, Some(&code(&secret, start()))).await
+    ));
+
+    let renewed = access::enrol_totp(&pool, &test_vault(), USERNAME)
+        .await
+        .unwrap();
+    let renewed = secret_of(renewed.uri());
+    assert_ne!(renewed, secret);
+    assert_refused_like_a_wrong_password(
+        &login(&hub, PASSWORD, Some(&code(&secret, start()))).await,
+    );
+    assert!(signed_in(
+        &login(&hub, PASSWORD, Some(&code(&renewed, start()))).await
+    ));
+    access::disable_totp(&pool, USERNAME).await.unwrap();
+    assert!(signed_in(&login(&hub, PASSWORD, None).await));
+}
+
+#[sqlx::test(migrations = "./migrations")]
 async fn sec_002_two_sign_ins_racing_with_one_code_let_only_one_in(pool: PgPool) {
     let secret = enrol(&pool).await;
     let typed = code(&secret, start());

@@ -39,7 +39,8 @@ pub(super) const fn step_at(at: DateTime<Utc>) -> i64 {
 
 /// The step `code` belongs to, if it is the secret's code for the step at `at` or one step
 /// either side, and later than `last_used`. Each candidate step is compared in constant
-/// time, and all of them are, so the time taken does not tell which one matched.
+/// time, and all of them are, so the time taken does not tell which one matched. Input that
+/// is not six bytes is refused unread; six bytes that are not digits match no code.
 pub(super) fn accepted_step(
     secret: &[u8],
     code: &str,
@@ -47,9 +48,6 @@ pub(super) fn accepted_step(
     last_used: Option<i64>,
 ) -> Option<i64> {
     let typed: &[u8; DIGITS] = code.as_bytes().try_into().ok()?;
-    if !typed.iter().all(u8::is_ascii_digit) {
-        return None;
-    }
     let now = step_at(at);
     let mut accepted = None;
     for step in now - DRIFT..=now + DRIFT {

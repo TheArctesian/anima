@@ -10,7 +10,7 @@ use crate::{
     access::{
         ClientAddr, Error, Password, disable_totp, enrol_totp,
         login::{self, Attempt},
-        set_operator,
+        set_operator, store,
         totp::{context, otpauth_uri},
     },
     credentials::{Sealed, Vault},
@@ -77,6 +77,8 @@ async fn sec_002_r_010_a_secret_from_another_key_is_a_hub_fault(pool: PgPool) {
     assert!(matches!(error, Error::TotpSecret(_)));
     assert_eq!(error.fault(), Some("totp_secret"));
     assert_eq!(error.to_string(), "Something went wrong on the hub.");
+    let shown = error.to_server_error().extensions.unwrap();
+    assert_eq!(shown.get("code"), Some(&async_graphql::value!("INTERNAL")));
     assert_eq!(
         attempts(&pool).await,
         [(false, false)],
@@ -148,6 +150,28 @@ async fn sec_002_enrolment_needs_an_existing_operator(pool: PgPool) {
             .await
             .unwrap();
     assert_eq!(stored, None);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn sec_002_a_step_is_claimed_only_for_the_secret_that_was_checked(pool: PgPool) {
+    operator(&pool).await;
+    enrol_totp(&pool, &test_vault(7), USERNAME).await.unwrap();
+    let (id, stored) = sealed(&pool).await;
+    let id = id.into();
+    let replaced = [stored.as_slice(), b"x"].concat();
+    assert!(
+        !store::claim_totp_step(&pool, id, &replaced, 9)
+            .await
+            .unwrap()
+    );
+    assert!(store::claim_totp_step(&pool, id, &stored, 9).await.unwrap());
+    assert!(!store::claim_totp_step(&pool, id, &stored, 9).await.unwrap());
+    assert!(!store::claim_totp_step(&pool, id, &stored, 8).await.unwrap());
+    assert!(
+        store::claim_totp_step(&pool, id, &stored, 10)
+            .await
+            .unwrap()
+    );
 }
 
 /// `(ok, refused)` of every login attempt, oldest first.
