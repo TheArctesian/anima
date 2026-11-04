@@ -63,6 +63,60 @@ const tokenLiterals = [
   },
 ];
 
+// Import and call boundaries for client code (MV-008, MOT-020, CQ-045). One config object per
+// rule for the same files: a second object that sets the same rule replaces the first, so the
+// folders that own a library get their own object listing only the other bans.
+const motionHint =
+  'Use $lib/motion (MV-008, MOT-020): the motion library is imported only in apps/client/src/lib/motion/.';
+const wsHint =
+  'Use a domain client in $lib/<domain>/api.ts built on $lib/hub (CQ-045): graphql-ws is imported only in apps/client/src/lib/hub/.';
+const fetchHint =
+  'Use a domain client in $lib/<domain>/api.ts built on $lib/hub (CQ-045): fetch, WebSocket, EventSource and XMLHttpRequest are used only in apps/client/src/lib/hub/.';
+// A regex, not a gitignore group: 'motion/*' would also match '$lib/motion/tokens'.
+const motionImports = [{ regex: String.raw`^(?:motion|motion-dom|framer-motion)(?:/|$)`, message: motionHint }];
+const wsImports = [{ regex: String.raw`^graphql-ws(?:/|$)`, message: wsHint }];
+const fetchGlobals = ['fetch', 'WebSocket', 'EventSource', 'XMLHttpRequest'].map((name) => ({
+  name,
+  message: fetchHint,
+}));
+const fetchProperties = ['window', 'globalThis', 'self'].map((object) => ({
+  object,
+  property: 'fetch',
+  message: fetchHint,
+}));
+const clientFiles = ['apps/client/**/*.{ts,js,svelte}'];
+const clientTests = ['**/*.test.ts'];
+const hubFolder = ['apps/client/src/lib/hub/**'];
+const motionFolder = ['apps/client/src/lib/motion/**'];
+const importsRule = (patterns) => ({
+  'no-restricted-imports': ['error', { patterns }],
+});
+const boundaryRules = [
+  {
+    files: clientFiles,
+    ignores: clientTests,
+    rules: {
+      ...importsRule([...motionImports, ...wsImports]),
+      'no-restricted-globals': ['error', ...fetchGlobals],
+      'no-restricted-properties': ['error', ...fetchProperties],
+    },
+  },
+  {
+    files: motionFolder,
+    ignores: clientTests,
+    rules: importsRule(wsImports),
+  },
+  {
+    files: hubFolder,
+    ignores: clientTests,
+    rules: {
+      ...importsRule(motionImports),
+      'no-restricted-globals': 'off',
+      'no-restricted-properties': 'off',
+    },
+  },
+];
+
 export default tseslint.config(
   {
     ignores: [
@@ -71,6 +125,7 @@ export default tseslint.config(
       '**/build/**',
       '**/dist/**',
       '**/target/**',
+      'apps/client/src/lib/hub/generated/**',
     ],
   },
   js.configs.recommended,
@@ -101,4 +156,12 @@ export default tseslint.config(
       parserOptions: { parser: tseslint.parser, extraFileExtensions: ['.svelte'] },
     },
   },
+  {
+    files: ['**/*.svelte.ts', '**/*.svelte.js'],
+    languageOptions: {
+      parser: svelteParser,
+      parserOptions: { parser: tseslint.parser },
+    },
+  },
+  ...boundaryRules,
 );

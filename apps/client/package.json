@@ -7,7 +7,7 @@
     "dev": "vite dev",
     "build": "vite build",
     "graphql": "bun codegen.ts",
-    "lint": "eslint . --ignore-pattern 'src/lib/hub/generated/**' && stylelint \"src/**/*.{css,svelte}\" && bun codegen.ts --check",
+    "lint": "eslint . && stylelint \"src/**/*.{css,svelte}\" && bun codegen.ts --check",
     "check": "svelte-kit sync && svelte-check --fail-on-warnings",
     "test": "vitest run"
   },
@@ -19,6 +19,7 @@
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "@types/fontkit": "2.0.9",
     "fontkit": "2.0.4",
+    "jsdom": "^30.1.3",
     "svelte": "^5.57.3",
     "svelte-check": "^4.7.8",
     "typescript": "^6",
