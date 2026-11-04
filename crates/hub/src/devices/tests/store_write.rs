@@ -180,28 +180,26 @@ store_test! {
         assert!(matches!(error, Err(Error::NotFound(Missing::Device(_)))));
     }
 
-    async fn k3_create_that_fails_after_the_device_row_leaves_nothing_even_in_a_committed_transaction(pool: PgPool) {
+    async fn k3_create_that_fails_after_the_device_row_leaves_nothing_on_an_autocommit_connection(pool: PgPool) {
         // Duplicate tags pass the store and hit the device_tags primary key after the device insert.
         let device = NewDevice { tags: vec!["dup".into(), "dup".into()], ..record("half") };
-        let mut tx = pool.begin().await.unwrap();
-        let error = store::create_device(&mut tx, device_id(NEW_ID), instant(NOW), &device).await;
+        let mut conn = pool.acquire().await.unwrap();
+        let error = store::create_device(&mut conn, device_id(NEW_ID), instant(NOW), &device).await;
         assert!(matches!(error, Err(Error::Database(_))));
-        tx.commit().await.unwrap();
         assert_eq!(rows(&pool, "devices", NEW_ID).await, 0);
         assert_eq!(rows(&pool, "ssh_settings", NEW_ID).await, 0);
     }
 
-    async fn k3_update_that_fails_midway_changes_nothing_even_in_a_committed_transaction(pool: PgPool) {
+    async fn k3_update_that_fails_midway_changes_nothing_on_an_autocommit_connection(pool: PgPool) {
         let before = store::get(&pool, device_id(PVE_01)).await.unwrap();
         let change = DeviceChange {
             maintenance: Some(true),
             tags: Some(vec!["dup".into(), "dup".into()]),
             ..DeviceChange::default()
         };
-        let mut tx = pool.begin().await.unwrap();
-        let error = store::update_device(&mut tx, before.id, instant(NOW), &change).await;
+        let mut conn = pool.acquire().await.unwrap();
+        let error = store::update_device(&mut conn, before.id, instant(NOW), &change).await;
         assert!(matches!(error, Err(Error::Database(_))));
-        tx.commit().await.unwrap();
         assert_eq!(store::get(&pool, before.id).await.unwrap(), before);
     }
 }
