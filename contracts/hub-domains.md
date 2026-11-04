@@ -53,7 +53,7 @@ pub async fn operator_for_token(db: &Db, token: &str, now: DateTime<Utc>) -> Res
 ```rust
 pub struct Operator { pub id: OperatorId, pub name: String }   // re-exported by access (R-019)
 pub struct ClientAddr(pub std::net::IpAddr);                     // re-exported by access (R-019)
-pub struct HeartbeatSummary { pub at: DateTime<Utc>, pub status: Status, pub response_time_ms: Option<u32> }   // used by checks (R-019)
+pub struct HeartbeatSummary { pub at: DateTime<Utc>, pub status: Status, pub response_time_ms: Option<u32>, pub message: Option<String> }   // used by checks (R-019); `message` as stored: cleaned, at most MESSAGE_MAX chars; Clone, not Copy (R-036)
 pub enum Severity { Info, Warning, Error }
 pub enum Source { Check, Session, Device, Access, Hub }        // Proxmox, Metrics later
 pub struct NewEvent { pub severity: Severity, pub source: Source,
