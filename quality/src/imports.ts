@@ -13,6 +13,8 @@ interface Reference {
   path: string;
   isStore: boolean;
   isGlob: boolean;
+  /** The file is the domain's `graphql` module (R-011). */
+  isGraphql: boolean;
   target: string;
 }
 
@@ -32,7 +34,8 @@ function referencesFrom(file: SourceFile, module: ModulePath, modules: HubModule
     const [to, member] = absolute ?? [];
     if (to === undefined || to === from || !Object.hasOwn(modules.domains, to)) return [];
     const isGlob = absolute?.at(-1) === "*";
-    return [{ from, to, path: file.path, isStore: member === "store", isGlob, target: `crate::${to}::${member ?? ""}` }];
+    const isGraphql = module[1] === "graphql";
+    return [{ from, to, path: file.path, isStore: member === "store", isGlob, isGraphql, target: `crate::${to}::${member ?? ""}` }];
   });
 }
 
@@ -49,12 +52,21 @@ function edgeViolations(reference: Reference, modules: HubModules): Violation[] 
   const violations: Violation[] = [];
   if (modules.leaves.includes(from)) {
     violations.push({ path, signal: "leaf-imports-domain", detail: `${from} -> ${to}` });
-  } else if (Object.hasOwn(modules.domains, from) && !modules.domains[from]?.includes(to)) {
+  } else if (Object.hasOwn(modules.domains, from) && !isAllowed(reference, modules)) {
     violations.push({ path, signal: "forbidden-edge", detail: `${from} -> ${to}` });
   }
   if (reference.isStore) violations.push({ path, signal: "foreign-store", detail: reference.target });
   if (reference.isGlob) violations.push({ path, signal: "domain-glob-import", detail: `${from} -> ${to}::*` });
   return violations;
+}
+
+function isAllowed({ from, to, isGraphql }: Reference, modules: HubModules): boolean {
+  return (modules.domains[from]?.includes(to) ?? false) || (isGraphql && (modules.graphql[from]?.includes(to) ?? false));
+}
+
+/** A reference that only the graphql allow-list permits; it does not count toward cycles (R-011). */
+function isGraphqlOnly(reference: Reference, modules: HubModules): boolean {
+  return reference.isGraphql && !(modules.domains[reference.from]?.includes(reference.to) ?? false);
 }
 
 function graphOf(edges: [string, string][]): Map<string, Set<string>> {
@@ -75,7 +87,9 @@ export function checkImports(files: SourceFile[], modules: HubModules): Violatio
     return module && isListed(modules, module[0] ?? "") ? referencesFrom(file, module, modules) : [];
   });
   const allowed = Object.entries(modules.domains).flatMap(([from, tos]) => tos.map((to): [string, string] => [from, to]));
-  const used = references.filter((reference) => Object.hasOwn(modules.domains, reference.from));
+  const used = references.filter(
+    (reference) => Object.hasOwn(modules.domains, reference.from) && !isGraphqlOnly(reference, modules),
+  );
   const all = [
     ...unlistedModules(files, modules),
     ...references.flatMap((reference) => edgeViolations(reference, modules)),

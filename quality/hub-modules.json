@@ -1,13 +1,43 @@
 {
-  "leaves": ["ids", "status", "clock", "config"],
-  "wiring": ["main", "lib", "schema"],
+  "leaves": [
+    "ids",
+    "status",
+    "clock",
+    "config"
+  ],
+  "wiring": [
+    "main",
+    "lib",
+    "schema"
+  ],
   "domains": {
     "events": [],
     "credentials": [],
-    "access": ["events", "credentials"],
-    "devices": ["events", "credentials"],
+    "access": [
+      "events",
+      "credentials"
+    ],
+    "devices": [
+      "events",
+      "credentials"
+    ],
     "maintenance": [],
-    "checks": ["devices", "maintenance", "events"],
-    "sessions": ["access", "devices", "credentials", "events"]
+    "checks": [
+      "devices",
+      "maintenance",
+      "events"
+    ],
+    "sessions": [
+      "access",
+      "devices",
+      "credentials",
+      "events"
+    ]
+  },
+  "graphql": {
+    "devices": [
+      "checks",
+      "sessions"
+    ]
   }
 }
