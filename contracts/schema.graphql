@@ -91,6 +91,7 @@ type Device {
   site: Site!
   name: String!
   host: String!
+  "The host when it is an IP literal; otherwise the address the last check resolved, or null (R-026)."
   ip: IpAddr
   kind: String!
   os: OperatingSystem!

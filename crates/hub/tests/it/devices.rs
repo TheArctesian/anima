@@ -1,9 +1,22 @@
 use std::collections::BTreeSet;
 
+mod batching;
+mod concurrency;
+mod credential;
+mod face;
+mod graphql_read;
+mod guard;
+mod harness;
+mod k1;
+mod leak;
+mod trail;
+mod writes;
+
 use serde_json::Value;
 use sqlx::PgPool;
 
 const PVE_01: &str = "0190a000-0000-7000-8002-000000000001";
+const JELLYFIN: &str = "0190a000-0000-7000-8002-000000000006";
 const DOCKER_HOST: &str = "0190a000-0000-7000-8002-000000000002";
 
 fn phase1() -> Value {

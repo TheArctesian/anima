@@ -13,7 +13,7 @@ Status: **frozen for Phase 1** (change only through a programme ruling, CON-001)
 
 ## Time
 
-- All stored and transmitted times are UTC. GraphQL scalar `DateTime` = RFC 3339 with `Z`.
+- All stored and transmitted times are UTC. GraphQL scalar `DateTime` = RFC 3339 in UTC; the hub writes it as `2026-11-04T09:00:00+00:00` (async-graphql's chrono scalar, R-012). Readers accept any RFC 3339 offset and compare instants, never text (R-033).
 - Durations in the API are integers with the unit in the field name: `intervalSeconds`, `responseTimeMs`.
 - Core logic takes `now: DateTime<Utc>` as a parameter (CQ-021). Only `main.rs` and I/O edges read the clock, through `Clock` (see `hub-domains.md`).
 
@@ -34,6 +34,12 @@ Status: **frozen for Phase 1** (change only through a programme ruling, CON-001)
 
 - Messages are plain sentences for the operator. They never contain SQL, file paths, secrets or stack traces.
 
+## Authentication transport (R-020)
+
+- HTTP `POST /graphql`: header `Authorization: Bearer <token>`.
+- `graphql-transport-ws` (API-002): the client sends the token in the `connection_init` payload as `{ "authorization": "Bearer <token>" }`. Browsers cannot set headers on a WebSocket, and a query parameter would put the token in logs (LOG-007). The hub resolves it in its connection-init handler with `access::operator_for_token` and closes the socket with code `4403` (Forbidden) when the token is missing or not valid.
+- The token never goes in a URL. The tunnel (K4) uses its own single-use ticket instead.
+
 ## Logging (process log)
 
 - `tracing` with JSON output (LOG-001). Standard fields: `request_id`, `operator_id`, `device_id`, `session_id`, `domain`.
@@ -51,6 +57,7 @@ Environment variables, read once in `main.rs` into a typed `Config` that is pass
 | `ANIMA_KEY_FILE` | File containing the credential encryption key (SEC-004) | `/run/secrets/anima_key` |
 | `ANIMA_GUACD` | Gateway address | `guacd:4822` |
 | `ANIMA_PERMITTED_NETWORKS` | Comma-separated CIDRs (NET-001) | VPN range + site subnets |
+| `ANIMA_PROBE_DENY` | Comma-separated CIDRs that checks must never probe: the hub's own Docker networks and public address (R-030) | empty; the hub logs a warning at start when empty |
 | `ANIMA_LOG` | Log level filter (LOG-003) | `info` |
 | `ANIMA_TLS_CERT_FILE`, `ANIMA_TLS_KEY_FILE` | Hub TLS (SEC-001) | — (required outside tests) |
 
