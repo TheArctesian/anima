@@ -14,6 +14,16 @@ Unattended-Upgrade::Allowed-Origins {
 	"${distro_id}ESM:${distro_codename}-infra-security";
 };
 
+// Docker and Tailscale come from their own repositories; without these patterns their
+// security fixes would never install. The guide has the operator confirm the exact
+// Origin values with `apt-cache policy` before enabling. A Docker or Tailscale upgrade
+// restarts its daemon (live-restore keeps containers running; the VPN blips).
+#clear Unattended-Upgrade::Origins-Pattern;
+Unattended-Upgrade::Origins-Pattern {
+	"origin=Docker";
+	"origin=Tailscale";
+};
+
 Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
 Unattended-Upgrade::Remove-New-Unused-Dependencies "true";
 Unattended-Upgrade::Remove-Unused-Dependencies "true";

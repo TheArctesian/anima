@@ -8,11 +8,13 @@ export interface Chain {
   table: string;
   name: string;
   hook?: string;
+  /** Numeric priority; named priorities (raw, dstnat, filter...) are resolved. */
+  priority?: number;
   policy?: string;
   rules: string[];
 }
 
-export interface Ruleset {
+interface Ruleset {
   /** Statements outside any table block, such as `delete table inet x`. */
   commands: string[];
   chains: Chain[];
@@ -41,12 +43,26 @@ function balanced(statement: string): boolean {
   return statement.split("{").length === statement.split("}").length;
 }
 
+// Standard priority names for the inet family (nft(8), "PRIORITY").
+const PRIORITIES: Record<string, number> = { raw: -300, mangle: -150, dstnat: -100, filter: 0, security: 50, srcnat: 100 };
+
+function parsePriority(text: string | undefined, line: number): number {
+  const match = /^(-?\d+)$|^(\w+)\s*(?:([+-])\s*(\d+))?$/.exec(text?.trim() ?? "");
+  if (match?.[1] !== undefined) return Number(match[1]);
+  const base = match?.[2] === undefined ? undefined : PRIORITIES[match[2]];
+  if (base === undefined) throw new NftParseError(line, `unknown chain priority: ${text ?? ""}`);
+  const offset = Number(match?.[4] ?? 0);
+  return match?.[3] === "-" ? base - offset : base + offset;
+}
+
 function addStatements(chain: Chain, text: string, line: number): void {
   for (const piece of text.split(";").map((part) => part.trim())) {
     if (piece === "") continue;
     if (!balanced(piece)) throw new NftParseError(line, "multi-line sets are not supported");
-    if (piece.startsWith("type ")) chain.hook = /\bhook\s+(\w+)/.exec(piece)?.[1];
-    else if (piece.startsWith("policy ")) chain.policy = piece.slice("policy ".length).trim();
+    if (piece.startsWith("type ")) {
+      chain.hook = /\bhook\s+(\w+)/.exec(piece)?.[1];
+      chain.priority = parsePriority(/\bpriority\s+(.+)$/.exec(piece)?.[1], line);
+    } else if (piece.startsWith("policy ")) chain.policy = piece.slice("policy ".length).trim();
     else chain.rules.push(piece);
   }
 }
@@ -84,12 +100,12 @@ export function parseNftables(text: string): Ruleset {
 }
 
 /** The input interface a rule requires, or undefined if it matches every interface. */
-export function ruleInterface(rule: string): string | undefined {
+function ruleInterface(rule: string): string | undefined {
   return /\biifname\s+"([^"]+)"/.exec(rule)?.[1] ?? /\biif\s+"?([\w.-]+)"?/.exec(rule)?.[1];
 }
 
 /** Destination ports a rule matches, as `port/protocol`. */
-export function rulePorts(rule: string): string[] {
+function rulePorts(rule: string): string[] {
   const ports: string[] = [];
   for (const [, protocol, value] of rule.matchAll(/\b(tcp|udp)\s+dport\s+(\{[^}]*\}|\d+)/g)) {
     for (const port of (value ?? "").replace(/[{}]/g, "").split(",")) {
