@@ -100,6 +100,7 @@ fn gw_012_time_zone_outside_the_zone_charset_is_refused() {
         "Europe/ London",
         " UTC",
         ":/etc/shadow",
+        "UTC:/etc/shadow",
         "4.port,2.22;",
         "Europe/Zürich",
         "東京",
