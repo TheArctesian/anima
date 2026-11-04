@@ -17,10 +17,12 @@
   const banner = $derived(unreachableBanner(hub.status.current, hub.address.origin, now));
 </script>
 
+<!-- tabindex="0": WebKit (Safari, WKWebView) skips plain links when Tab is pressed unless they are focusable (NAV-005). -->
 {#snippet destination(item: NavDestination)}
   <a
     class="item"
     href={resolve(item.href)}
+    tabindex="0"
     aria-current={isActive(item, pathname) ? 'page' : undefined}
     {@attach press()}
   >
@@ -31,21 +33,30 @@
 
 <nav aria-label="Main">
   {@render destination(DEVICES)}
+  <!-- Always rendered, so a screen reader announces the text when it appears (NET-004). -->
+  <div class="notice" role="status">
+    {#if banner !== null}
+      <div class="banner">
+        <strong>{banner.title}</strong>
+        <span>{banner.origin}</span>
+        <span>{banner.advice}</span>
+        <span>{banner.age}</span>
+      </div>
+    {/if}
+  </div>
   <hr />
-  {#if banner !== null}
-    <div class="banner" role="status">
-      <strong>{banner.title}</strong>
-      <span>{banner.origin}</span>
-      <span>{banner.advice}</span>
-      <span>{banner.age}</span>
-    </div>
-  {/if}
   <p class="status">{statusLabel(hub.status.current)}</p>
   {@render destination(SETTINGS)}
 </nav>
 
 <style>
+  /* Fixed width and fixed item height: the banner and the font swap move nothing (MOT-007). */
   nav {
+    position: sticky;
+    top: 0;
+    box-sizing: border-box;
+    inline-size: calc(var(--space-16) * 3);
+    block-size: 100vh;
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
@@ -57,18 +68,32 @@
   }
 
   .item {
+    box-sizing: border-box;
     display: flex;
+    flex: none;
     align-items: center;
     gap: var(--space-2);
-    padding: var(--space-2) var(--space-3);
+    block-size: var(--target-min-touch);
+    padding: 0 var(--space-3);
     border-radius: var(--radius-md);
     color: var(--text);
+    line-height: var(--leading-tight);
     text-decoration: none;
+    transition: background-color var(--duration-press) var(--ease-enter);
   }
 
+  .item:hover {
+    background: var(--surface-raised);
+  }
+
+  .item:active {
+    background: var(--border);
+  }
+
+  /* --accent text on the chrome is 5.0:1 (nord8 on nord1); an accent bar marks the page instead of a tint (NAV-002). */
   .item[aria-current='page'] {
     color: var(--accent);
-    background: var(--accent-tint);
+    box-shadow: inset var(--border-focus) 0 0 var(--accent);
   }
 
   .item:focus-visible {
@@ -76,8 +101,12 @@
     outline-offset: var(--border-focus);
   }
 
+  .notice {
+    flex: none;
+  }
+
   hr {
-    width: 100%;
+    inline-size: 100%;
     margin: auto 0 var(--space-2);
     border: 0;
     border-top: var(--border-thin) solid var(--border);
@@ -86,7 +115,7 @@
   .status {
     margin: 0;
     padding: 0 var(--space-3);
-    color: var(--text-muted);
+    color: var(--text);
     font-size: var(--text-sm);
   }
 
@@ -99,5 +128,6 @@
     background: var(--status-down-tint);
     color: var(--text);
     font-size: var(--text-sm);
+    overflow-wrap: anywhere;
   }
 </style>

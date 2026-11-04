@@ -35,3 +35,6 @@ export function unreachableBanner(status: HubStatus, origin: string, now: Date):
   const age = status.lastContactAt === null ? 'No data received yet' : `Data from ${dataAge(status.lastContactAt, now)}`;
   return { title: 'Not on the network', origin, advice: 'Check the VPN client', age };
 }
+
+/** How often the data age in the banner is recomputed; `dataAge` changes at most once a minute. */
+export const DATA_AGE_REFRESH_MS = 30_000;
