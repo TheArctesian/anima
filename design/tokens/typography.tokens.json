@@ -1,0 +1,101 @@
+{
+  "typeface": {
+    "font": {
+      "$type": "fontFamily",
+      "ui": {
+        "$value": [
+          "OpenDyslexic Nerd Font Propo",
+          "system-ui",
+          "-apple-system",
+          "sans-serif"
+        ],
+        "$description": "Interface text (UI-010); the system font is the fallback (UI-020)"
+      },
+      "mono": {
+        "$value": [
+          "OpenDyslexicM Nerd Font Mono",
+          "ui-monospace",
+          "monospace"
+        ],
+        "$description": "Terminal, IP addresses, host names, code (UI-011)"
+      },
+      "icon": {
+        "$value": [
+          "OpenDyslexic Nerd Font Propo",
+          "Symbols Nerd Font"
+        ],
+        "$description": "Nerd Font glyph icons (UI-014)"
+      }
+    }
+  },
+  "size": {
+    "text": {
+      "$type": "dimension",
+      "xs": {
+        "$value": "0.75rem",
+        "$description": "Smallest labels"
+      },
+      "sm": {
+        "$value": "0.8125rem",
+        "$description": "Dense tables (UI-019)"
+      },
+      "md": {
+        "$value": "0.875rem",
+        "$description": "Body text (UI-019)"
+      },
+      "lg": {
+        "$value": "1rem",
+        "$description": "Emphasised body, small headings"
+      },
+      "xl": {
+        "$value": "1.25rem",
+        "$description": "Headings"
+      },
+      "2xl": {
+        "$value": "1.5rem",
+        "$description": "Page titles"
+      }
+    },
+    "leading": {
+      "$type": "number",
+      "tight": {
+        "$value": 1.2,
+        "$description": "Headings"
+      },
+      "normal": {
+        "$value": 1.5,
+        "$description": "Body text (UI-019)"
+      },
+      "relaxed": {
+        "$value": 1.7,
+        "$description": "Long reading text"
+      }
+    },
+    "tracking": {
+      "$type": "dimension",
+      "display": {
+        "$value": "-0.01em",
+        "$description": "Large text (TOK-021)"
+      },
+      "body": {
+        "$value": "0em",
+        "$description": "Body text (TOK-021)"
+      },
+      "small": {
+        "$value": "0.01em",
+        "$description": "Small text (TOK-021)"
+      }
+    },
+    "weight": {
+      "$type": "fontWeight",
+      "regular": {
+        "$value": 400,
+        "$description": "Regular weight"
+      },
+      "bold": {
+        "$value": 700,
+        "$description": "Bold weight (OpenDyslexic has only two weights)"
+      }
+    }
+  }
+}

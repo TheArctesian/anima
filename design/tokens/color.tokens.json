@@ -1,0 +1,198 @@
+{
+  "color": {
+    "$type": "color",
+    "nord": {
+      "0": {
+        "$value": "#2E3440",
+        "$description": "Nord primitive nord0. Source token only (TOK-010)."
+      },
+      "1": {
+        "$value": "#3B4252",
+        "$description": "Nord primitive nord1. Source token only (TOK-010)."
+      },
+      "2": {
+        "$value": "#434C5E",
+        "$description": "Nord primitive nord2. Source token only (TOK-010)."
+      },
+      "3": {
+        "$value": "#4C566A",
+        "$description": "Nord primitive nord3. Source token only (TOK-010)."
+      },
+      "4": {
+        "$value": "#D8DEE9",
+        "$description": "Nord primitive nord4. Source token only (TOK-010)."
+      },
+      "5": {
+        "$value": "#E5E9F0",
+        "$description": "Nord primitive nord5. Source token only (TOK-010)."
+      },
+      "6": {
+        "$value": "#ECEFF4",
+        "$description": "Nord primitive nord6. Source token only (TOK-010)."
+      },
+      "7": {
+        "$value": "#8FBCBB",
+        "$description": "Nord primitive nord7. Source token only (TOK-010)."
+      },
+      "8": {
+        "$value": "#88C0D0",
+        "$description": "Nord primitive nord8. Source token only (TOK-010)."
+      },
+      "9": {
+        "$value": "#81A1C1",
+        "$description": "Nord primitive nord9. Source token only (TOK-010)."
+      },
+      "10": {
+        "$value": "#5E81AC",
+        "$description": "Nord primitive nord10. Source token only (TOK-010)."
+      },
+      "11": {
+        "$value": "#BF616A",
+        "$description": "Nord primitive nord11. Source token only (TOK-010)."
+      },
+      "12": {
+        "$value": "#D08770",
+        "$description": "Nord primitive nord12. Source token only (TOK-010)."
+      },
+      "13": {
+        "$value": "#EBCB8B",
+        "$description": "Nord primitive nord13. Source token only (TOK-010)."
+      },
+      "14": {
+        "$value": "#A3BE8C",
+        "$description": "Nord primitive nord14. Source token only (TOK-010)."
+      },
+      "15": {
+        "$value": "#B48EAD",
+        "$description": "Nord primitive nord15. Source token only (TOK-010)."
+      }
+    },
+    "bg": {
+      "$value": "{color.nord.0}",
+      "$description": "Main background"
+    },
+    "surface": {
+      "$value": "{color.nord.1}",
+      "$description": "Navigation bar, cards, panels"
+    },
+    "surface-raised": {
+      "$value": "{color.nord.2}",
+      "$description": "Hover state, selected row, input fields"
+    },
+    "border": {
+      "$value": "{color.nord.3}",
+      "$description": "Borders and dividers"
+    },
+    "text": {
+      "$value": "{color.nord.6}",
+      "$description": "Primary text"
+    },
+    "text-muted": {
+      "$value": "{color.nord.4}",
+      "$description": "Secondary text and labels"
+    },
+    "accent": {
+      "$value": "{color.nord.8}",
+      "$description": "Primary buttons, links, active navigation item, focus ring. Text on it uses bg (UI-004)"
+    },
+    "accent-alt": {
+      "$value": "{color.nord.9}",
+      "$description": "Secondary buttons and icons"
+    },
+    "accent-deep": {
+      "$value": "{color.nord.10}",
+      "$description": "Pressed state of a primary button"
+    },
+    "info": {
+      "$value": "{color.nord.7}",
+      "$description": "Information messages"
+    },
+    "status-up": {
+      "$value": "{color.nord.14}",
+      "$description": "Device or check is up"
+    },
+    "status-down": {
+      "$value": "{color.nord.11}",
+      "$description": "Device or check is down. Error messages"
+    },
+    "status-degraded": {
+      "$value": "{color.nord.13}",
+      "$description": "Slow response or high resource usage"
+    },
+    "status-warning": {
+      "$value": "{color.nord.12}",
+      "$description": "Warnings. Host key changed"
+    },
+    "status-maintenance": {
+      "$value": "{color.nord.15}",
+      "$description": "Device is in maintenance"
+    },
+    "status-unknown": {
+      "$value": "{color.nord.3}",
+      "$description": "No data, or the check is paused"
+    },
+    "accent-tint": {
+      "$type": "tint",
+      "$value": {
+        "color": "{color.accent}",
+        "percent": 12,
+        "over": "{color.surface}"
+      },
+      "$description": "accent at 12 % on surface (5.5.3)"
+    },
+    "status-up-tint": {
+      "$type": "tint",
+      "$value": {
+        "color": "{color.status-up}",
+        "percent": 12,
+        "over": "{color.surface}"
+      },
+      "$description": "status-up at 12 % on surface (5.5.3)"
+    },
+    "status-down-tint": {
+      "$type": "tint",
+      "$value": {
+        "color": "{color.status-down}",
+        "percent": 12,
+        "over": "{color.surface}"
+      },
+      "$description": "status-down at 12 % on surface (5.5.3)"
+    },
+    "status-degraded-tint": {
+      "$type": "tint",
+      "$value": {
+        "color": "{color.status-degraded}",
+        "percent": 12,
+        "over": "{color.surface}"
+      },
+      "$description": "status-degraded at 12 % on surface (5.5.3)"
+    },
+    "status-warning-tint": {
+      "$type": "tint",
+      "$value": {
+        "color": "{color.status-warning}",
+        "percent": 12,
+        "over": "{color.surface}"
+      },
+      "$description": "status-warning at 12 % on surface (5.5.3)"
+    },
+    "status-maintenance-tint": {
+      "$type": "tint",
+      "$value": {
+        "color": "{color.status-maintenance}",
+        "percent": 12,
+        "over": "{color.surface}"
+      },
+      "$description": "status-maintenance at 12 % on surface (5.5.3)"
+    },
+    "status-unknown-tint": {
+      "$type": "tint",
+      "$value": {
+        "color": "{color.status-unknown}",
+        "percent": 12,
+        "over": "{color.surface}"
+      },
+      "$description": "status-unknown at 12 % on surface (5.5.3)"
+    }
+  }
+}

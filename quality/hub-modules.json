@@ -3,7 +3,9 @@
     "ids",
     "status",
     "clock",
-    "config"
+    "config",
+    "scalars",
+    "paging"
   ],
   "wiring": [
     "main",
