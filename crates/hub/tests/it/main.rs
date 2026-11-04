@@ -10,4 +10,5 @@ mod maintenance;
 mod operator;
 mod start;
 mod tokens;
+mod totp;
 mod transport;

@@ -12,7 +12,7 @@ use super::{
     password::Password,
     store::{self, Account},
 };
-use crate::{clock::Clock, events::Bus};
+use crate::{clock::Clock, credentials::Vault, events::Bus};
 
 #[derive(Default)]
 pub struct Query;
@@ -35,7 +35,7 @@ impl From<&Account> for OperatorProfile {
         Self {
             id: ID(account.id.to_string()),
             username: account.username.clone(),
-            totp_enabled: account.totp_enabled,
+            totp_enabled: account.totp_secret_enc.is_some(),
         }
     }
 }
@@ -97,7 +97,8 @@ impl Mutation {
             client: *need::<ClientAddr>(ctx)?,
             at: need::<Arc<dyn Clock>>(ctx)?.now(),
         };
-        login::login(need::<PgPool>(ctx)?, need::<Bus>(ctx)?, attempt)
+        let (db, bus, vault) = (need::<PgPool>(ctx)?, need::<Bus>(ctx)?, need::<Vault>(ctx)?);
+        login::login(db, bus, vault, attempt)
             .await
             .map(AuthPayload)
             .map_err(answer)
