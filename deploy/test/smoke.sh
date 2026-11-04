@@ -154,21 +154,17 @@ compose up -d --no-deps --wait --wait-timeout 120 guacd hub ||
     }
 compose logs --tail 10 hub
 echo "hub is healthy: anima-hub health answered ok over TLS"
-answer=$(curl -sk --max-time 10 "https://127.0.0.1:443/health") ||
-    fail "no TLS answer on the published hub port"
-[ "$answer" = ok ] || fail "GET /health over TLS answered '$answer'"
-echo "the published port answers GET /health over TLS"
-code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "http://127.0.0.1:443/health" || true)
-[ "$code" = 000 ] || fail "the published port answered plain HTTP with status $code"
-echo "plain HTTP on the published port gets no HTTP answer"
 # From this host the published port reaches the hub through Docker's proxy, so the hub sees
-# a 172.16.0.0/12 peer and must refuse it: a proxied address is never a client (NET-002).
+# a 172.16.0.0/12 peer. It closes that connection at accept, before TLS: no HTTP status.
 code=$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 -X POST \
     -H 'content-type: application/json' -d '{"query":"{__typename}"}' "https://127.0.0.1:443/graphql" || true)
-[ "$code" = 403 ] || fail "a proxied request to /graphql got status $code, not 403"
+[ "$code" = 000 ] || fail "a proxied request to /graphql got HTTP status $code, not a closed connection"
+code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "http://127.0.0.1:443/health" || true)
+[ "$code" = 000 ] || fail "the published port answered plain HTTP with status $code"
+echo "the published port closes proxied TLS and plain HTTP without an HTTP answer"
 refusal=$(compose exec -T postgres psql -X -U postgres -d anima -Atc \
     "select message from events.event_log where source = 'access' order by at desc limit 1")
 case "$refusal" in
-    "Refused a request from 172."*) echo "a proxied 172.16/12 peer gets 403: $refusal" ;;
+    "Refused a connection from 172."*) echo "the refusal is logged (NET-002): $refusal" ;;
     *) fail "the newest access event is '$refusal', not a 172.16/12 refusal" ;;
 esac
