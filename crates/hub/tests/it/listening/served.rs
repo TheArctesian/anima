@@ -176,6 +176,9 @@ async fn net_002_sec_001_the_served_hub_refuses_outside_networks_over_tls(pool: 
     let role = runtime_login(&pool).await;
     let secrets = secrets(&url_as(&role, &database));
 
+    // The peer is the hub's own listen address, as for the compose healthcheck run inside the
+    // container (WP-04): it passes the accept-time check (which closes 172.16/12 and outside
+    // peers, `access::listen::tests::edge`), reaches `GET /health` and gets 403 on `/graphql`.
     let (hub, addr) = serve(&secrets, "10.0.0.0/8");
     let refused = tokio::time::timeout(DEADLINE, post_over_tls(addr, &secrets.der))
         .await
