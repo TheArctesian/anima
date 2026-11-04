@@ -38,7 +38,8 @@ pub fn is_active(rule: &WindowRule, tz: Tz, now: DateTime<Utc>) -> bool {
     }
 }
 
-/// Checks the local day of `now` and every earlier day an occurrence could still run from.
+/// Checks the local day of `now` and every earlier day an occurrence could still run from: as
+/// many days as the duration spans, plus one because a day with a clock change is shorter.
 fn recurring_is_active(rule: &WindowRule, tz: Tz, now: DateTime<Utc>, minutes: u32) -> bool {
     let length = TimeDelta::minutes(i64::from(minutes));
     let today = now.with_timezone(&tz).date_naive();

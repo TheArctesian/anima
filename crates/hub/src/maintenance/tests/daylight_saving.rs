@@ -137,3 +137,18 @@ fn mw_001_a_day_of_month_window_in_the_gap_also_starts_when_the_gap_ends() {
         [false, true, true, false]
     );
 }
+
+#[test]
+fn mw_002_a_seven_day_window_that_crosses_a_short_day_is_found_eight_local_days_later() {
+    // 5 March 23:30 EST for 168 elapsed hours; the clocks spring forward on 8 March, so the
+    // window ends at 00:30 EDT on 13 March, which is eight local days after it began.
+    let rule = monthly(&[5], "23:30", 10_080);
+    assert_eq!(
+        states(
+            &rule,
+            NEW_YORK,
+            &["2026-03-13T04:15:00Z", "2026-03-13T04:30:00Z"]
+        ),
+        [true, false]
+    );
+}
