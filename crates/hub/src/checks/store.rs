@@ -48,7 +48,7 @@ pub(super) use retention::{
 };
 use rows::{CheckRow, StandingRow, to_checks};
 pub(super) use sealed::seal;
-pub(super) use uptime::{check_tallies, check_tally, tallies};
+pub(super) use uptime::{check_tallies, tallies};
 pub(super) use writes::{
     Change, Current, Insert, delete, insert, load_http_secrets, lock, set_next_due, set_paused,
     update,

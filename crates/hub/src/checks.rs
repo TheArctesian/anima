@@ -169,36 +169,6 @@ pub async fn get(db: &PgPool, id: CheckId) -> Result<Check, Error> {
     store::fetch(db, id).await
 }
 
-/// The status the check shows: its stored status with pause, group and maintenance applied
-/// (CHK-004, CHK-006). It agrees with [`device_status`] for the check's device.
-///
-/// # Errors
-/// `NotFound` when the device is gone; `Database`, `Devices` or `Maintenance` when a read fails.
-pub async fn check_status(db: &PgPool, check: &Check, now: DateTime<Utc>) -> Result<Status, Error> {
-    let device = devices::get(db, check.device).await.map_err(from_devices)?;
-    let checks = store::standings(db, &[check.device]).await?;
-    let active = maintenance::active_targets(db, now)
-        .await
-        .map_err(Error::Maintenance)?;
-    Ok(status::of_check(check.id, &device, &checks, &active))
-}
-
-/// The uptime of one check over the window ending at `now`, from the aggregate tables;
-/// `None` when it has no counted beats (CHK-011).
-///
-/// # Errors
-/// `Database` when the query fails.
-pub async fn check_uptime(
-    db: &PgPool,
-    check: CheckId,
-    window: UptimeWindow,
-    now: DateTime<Utc>,
-) -> Result<Option<f64>, Error> {
-    let span = (window.start(now), now);
-    let tally = store::check_tally(db, check, window.resolution(), span).await?;
-    Ok(uptime::ratio(tally))
-}
-
 /// For each device, the address that its check with the latest beat resolved.
 ///
 /// # Errors
