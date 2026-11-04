@@ -42,7 +42,7 @@ The hub, not the client, does the handshake with the `guac-protocol` `Handshake`
 
 1. `select` with `ssh`.
 2. Read `args`. The first arg is the protocol version (`VERSION_1_5_0` or later). The hub answers with `VERSION_1_5_0`, the newest version it implements, not the version guacd sends (R-018).
-3. Send `size` (width, height, DPI from `DisplayInput`), `audio` (empty), `video` (empty), `image` (`image/png`, `image/jpeg`, `image/webp`), `timezone` (from `DisplayInput`, else the device site's zone, else UTC), `name` (operator username).
+3. Send `size` (width, height, DPI from `DisplayInput`), `audio` (empty), `video` (empty), `image` (`image/png`, `image/jpeg`, `image/webp`), `timezone` (from `DisplayInput` when it is an IANA zone name, else UTC; sites have no zone in Phase 1, R-032), `name` (operator username).
 4. Send `connect` with one value per name in `args`, in the same order. Values come only from the database and the credential store (GW-012). Unknown names get an empty value. The client never supplies `hostname`, `port`, credentials or any path (GW-013).
 5. Read `ready`. Its argument is the gateway connection ID. The hub keeps it with the session and never sends it to the client (GW-014).
 
@@ -87,7 +87,7 @@ The hub sends a `nop` to the client when the gateway has sent nothing for 5 seco
 | Idle timeout | 4002 | `TIMEOUT` |
 | Hub shutdown | 1001 | `HUB_SHUTDOWN` |
 
-On every end the hub: closes both sockets; sets `ended_at` and `end_reason` on the session row; publishes an `events::Signal::Event` (`Source::Session`, severity Info, or Warning for `HOST_KEY_MISMATCH`, `AUTH_FAILED`, `GATEWAY_ERROR`); writes the audit entry `session.end`. The hub never records session content (RA-008).
+On every end the hub: closes both sockets; sets `ended_at` and `end_reason` on the session row; publishes an `events::Signal::Event` (`Source::Session`, severity Info; Error for `HOST_KEY_MISMATCH`; Warning for `AUTH_FAILED` and `GATEWAY_ERROR`; R-032); writes the audit entry `session.end`. The hub never records session content (RA-008).
 
 ## 6. Host keys (SEC-006, SEC-007)
 
