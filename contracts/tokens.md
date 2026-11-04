@@ -12,6 +12,8 @@ WP-02 owns the token source (`design/tokens/`, W3C DTCG) and the build. Every ot
 | TypeScript | `apps/client/src/lib/motion/tokens.ts` | `export const spring = { default: { dampingRatio, responseS, stiffness, damping }, … }`, `duration`, `ease`, `stagger`, `threshold` objects |
 | Rust | `crates/theme` | `pub const NORD: [Rgb; 16]`, `pub fn guac_color_scheme() -> String` (RA-010) |
 
+The TypeScript output may also hold `reducedMotion` and `breakpoint` objects: they carry values of the names below and add no new names (R-013).
+
 All three are generated files (listed in `quality/generated.txt`). Do not edit them by hand.
 
 ## Names
@@ -42,6 +44,7 @@ Components use semantic or component names. Primitive names (`nord-*`) appear on
 | Spring | `spring-default`, `spring-snappy`, `spring-move`, `spring-momentum` |
 | Stagger | `stagger-list` |
 | Threshold | `threshold-drag`, `threshold-loading`, `threshold-loading-min` |
+| Gesture | `projection-deceleration`, `rubberband-constant` (TypeScript only, in a `gesture` object; spec 5.7.2, MOT-032, MOT-033; R-013) |
 
 Space numbers follow the 4-pixel grid index (`space-4` = 1 rem = 16 px), as in spec 5.5.3.
 

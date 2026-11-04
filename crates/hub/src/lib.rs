@@ -2,8 +2,11 @@
 
 pub mod clock;
 pub mod config;
+pub mod credentials;
 pub mod devices;
 pub mod ids;
+pub mod paging;
+pub mod scalars;
 pub mod schema;
 pub mod status;
 
