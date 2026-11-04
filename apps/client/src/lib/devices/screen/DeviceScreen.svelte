@@ -1,4 +1,5 @@
 <script lang="ts">
+  import LogsPanel from '$lib/events/panel/LogsPanel.svelte';
   import { useHub } from '$lib/hub/context';
   import { press } from '$lib/motion/roles/press';
   import { crossFade } from '$lib/motion/roles/transitions';
@@ -101,6 +102,8 @@
     </div>
   {/if}
 </div>
+
+<LogsPanel devices={list?.devices ?? []} />
 
 <style>
   .results {

@@ -1,0 +1,240 @@
+// @vitest-environment jsdom
+import { flushSync, mount, unmount } from 'svelte';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { fakeHub } from '$lib/devices/hub.fixture';
+import { endTransitionsAtOnce } from '$lib/devices/transitions.fixture';
+import type { LogEvent } from '../api';
+import LogsPanel from './LogsPanel.svelte';
+import { NOW, event, eventsAnswer, settle } from './panel.fixture';
+
+vi.mock('motion', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('motion')>()),
+  animate: (await import('../../motion/engine.fixture')).fakeRun,
+}));
+
+const preference = vi.hoisted(() => ({ reduced: false }));
+vi.mock('$lib/motion/preference', () => ({ motionPreference: () => preference }));
+
+const current = vi.hoisted(() => ({ hub: undefined as unknown }));
+vi.mock('$lib/hub/context', () => ({ useHub: () => current.hub }));
+
+endTransitionsAtOnce();
+
+const devices = [
+  { id: 'd1', name: 'Router' },
+  { id: 'd2', name: 'NAS' },
+];
+let app: ReturnType<typeof mount> | undefined;
+let fake: ReturnType<typeof fakeHub>;
+let clock = NOW;
+
+async function show(answer: unknown = eventsAnswer([event('e3', 1), event('e2', 2), event('e1', 3)])): Promise<void> {
+  fake = fakeHub({ Events: answer });
+  current.hub = fake.hub;
+  clock = NOW;
+  app = mount(LogsPanel, { target: document.body, props: { devices, now: () => clock } });
+  await settle();
+}
+
+beforeEach(() => {
+  preference.reduced = false;
+});
+
+afterEach(() => {
+  if (app) void unmount(app);
+  app = undefined;
+  document.body.innerHTML = '';
+});
+
+const ids = () => [...document.querySelectorAll('.row .message')].map((node) => node.textContent);
+const eventRequests = () => fake.requests.filter((request) => request.operation === 'Events');
+const lastFilter = () => eventRequests().at(-1)?.variables as { filter: Record<string, unknown>; after?: string };
+const button = (text: string) =>
+  [...document.querySelectorAll('button')].find((candidate) => candidate.textContent.includes(text));
+
+function choose(select: string, value: string): void {
+  const control = [...document.querySelectorAll('label.select')].find((label) => label.textContent.includes(select));
+  const element = control?.querySelector('select');
+  if (!element) throw new Error(`no ${select} select`);
+  element.value = value;
+  element.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+function pick(menu: string, option: string): void {
+  button(menu)?.click();
+  flushSync();
+  const label = [...document.querySelectorAll('.option')].find((row) => row.textContent.includes(option));
+  const box = label?.querySelector('input');
+  if (!box) throw new Error(`no ${option} option`);
+  box.click();
+  flushSync();
+}
+
+async function push(over: LogEvent): Promise<void> {
+  fake.push('EventAdded', { eventAdded: over });
+  await settle();
+}
+
+describe('LOG-009: the list', () => {
+  it('shows the events as the hub sends them, newest first, with time, severity, source, device and message', async () => {
+    await show(eventsAnswer([event('e2', 1, { severity: 'ERROR', source: 'HUB', deviceName: null }), event('e1', 2)]));
+    expect(ids()).toEqual(['message e2', 'message e1']);
+    const first = document.querySelector('.row');
+    expect(first?.querySelector('.severity')?.textContent).toBe('Error');
+    expect(first?.querySelector('.source')?.textContent).toBe('Hub');
+    expect(first?.querySelector('.device')?.textContent).toBe('—');
+    expect(first?.querySelector('time')?.getAttribute('datetime')).toBe(event('e2', 1).at);
+    expect(document.querySelectorAll('.row .device')[1]?.textContent).toBe('Router');
+  });
+
+  it('has the title "Logs" and loads the last 24 hours at first', async () => {
+    await show();
+    expect(document.querySelector('h2')?.textContent).toBe('Logs');
+    expect(eventRequests()).toHaveLength(1);
+    expect(lastFilter().filter).toEqual({ since: new Date(NOW.getTime() - 24 * 3_600_000).toISOString() });
+  });
+
+  it('sends the time filter', async () => {
+    await show();
+    choose('Time', '1h');
+    await settle();
+    expect(lastFilter().filter).toEqual({ since: new Date(NOW.getTime() - 3_600_000).toISOString() });
+    choose('Time', 'all');
+    await settle();
+    expect(lastFilter().filter).toEqual({});
+  });
+
+  it('sends the severity filter, and several severities together', async () => {
+    await show();
+    pick('Severity', 'Warning');
+    await settle();
+    expect(lastFilter().filter).toMatchObject({ severity: ['WARNING'] });
+    pick('Severity', 'Error');
+    await settle();
+    expect(lastFilter().filter).toMatchObject({ severity: ['WARNING', 'ERROR'] });
+  });
+
+  it('sends the source filter', async () => {
+    await show();
+    pick('Source', 'Session');
+    await settle();
+    expect(lastFilter().filter).toMatchObject({ source: ['SESSION'] });
+  });
+
+  it('sends the device filter from the devices the page has, and takes it off again', async () => {
+    await show();
+    expect([...document.querySelectorAll('option')].map((option) => option.textContent)).toContain('NAS');
+    choose('Device', 'd2');
+    await settle();
+    expect(lastFilter().filter).toMatchObject({ deviceId: 'd2' });
+    choose('Device', '');
+    await settle();
+    expect(lastFilter().filter).not.toHaveProperty('deviceId');
+  });
+
+  it('does not show a live event that the filter does not match', async () => {
+    await show();
+    choose('Device', 'd2');
+    await settle();
+    await push(event('e9', 0, { deviceId: 'd1' }));
+    expect(ids()).not.toContain('message e9');
+    await push(event('e8', 0, { deviceId: 'd2' }));
+    expect(ids()[0]).toBe('message e8');
+  });
+
+  it('shows an empty log as "No events"', async () => {
+    await show(eventsAnswer([]));
+    expect(document.querySelector('.none')?.textContent).toBe('No events');
+  });
+});
+
+describe('LOG-009: older events', () => {
+  it('offers "Load older" only while the hub has another page, and sends the cursor', async () => {
+    await show(eventsAnswer([event('e2', 1), event('e1', 2)], 'cursor-1'));
+    expect(button('Load older')).toBeDefined();
+    button('Load older')?.click();
+    await settle();
+    expect(lastFilter().after).toBe('cursor-1');
+  });
+
+  it('hides "Load older" when the hub has no other page', async () => {
+    await show();
+    expect(button('Load older')).toBeUndefined();
+  });
+
+  it('a full log of 500 rows offers no "Load older" although the hub has more', async () => {
+    const full = Array.from({ length: 500 }, (_, index) => event(`f${String(index)}`, index));
+    await show(eventsAnswer(full, 'more'));
+    expect(document.querySelectorAll('.row')).toHaveLength(500);
+    expect(button('Load older')).toBeUndefined();
+  });
+});
+
+describe('LOG-010: live events', () => {
+  it('puts a pushed event on top with no new request', async () => {
+    await show();
+    await push(event('e4', 0));
+    expect(ids()[0]).toBe('message e4');
+    expect(eventRequests()).toHaveLength(1);
+  });
+
+  it('listens from INFO at first and again with the lowest chosen severity after a filter change', async () => {
+    await show();
+    expect(fake.subscriptions).toEqual([{ operation: 'EventAdded', variables: { minSeverity: 'INFO' } }]);
+    pick('Severity', 'Error');
+    await settle();
+    expect(fake.subscriptions.at(-1)).toEqual({ operation: 'EventAdded', variables: { minSeverity: 'ERROR' } });
+    expect(fake.listeners('EventAdded')).toBe(1);
+  });
+
+  it('judges each live event by the clock at that time', async () => {
+    await show();
+    choose('Time', '1h');
+    await settle();
+    await push(event('e5', 30));
+    expect(ids()).toContain('message e5');
+    clock = new Date(NOW.getTime() + 2 * 3_600_000);
+    await push(event('e6', 30));
+    expect(ids()).not.toContain('message e6');
+  });
+
+  it('stops listening when the panel goes away', async () => {
+    await show();
+    expect(fake.listeners('EventAdded')).toBe(1);
+    if (app) void unmount(app);
+    app = undefined;
+    expect(fake.listeners('EventAdded')).toBe(0);
+  });
+
+  it('says so when the live updates fail', async () => {
+    await show();
+    fake.fail('EventAdded', { code: 'unreachable', message: 'The hub went away.' });
+    await settle();
+    expect(document.querySelector('[role="status"]')?.textContent).toContain('The hub went away.');
+  });
+});
+
+describe('Text safety and errors', () => {
+  it('LOG-009: a message with markup renders as text', async () => {
+    const message = '<img src=x onerror="alert(1)"> & <b>bold</b>';
+    await show(eventsAnswer([event('e1', 1, { message })]));
+    expect(document.querySelector('.message')?.textContent).toBe(message);
+    expect(document.querySelector('img')).toBeNull();
+    expect(document.querySelector('.message b')).toBeNull();
+  });
+
+  it('LOG-009: a pushed message with markup renders as text', async () => {
+    await show();
+    await push(event('e7', 0, { message: '<script>x()</script>' }));
+    expect(ids()[0]).toBe('<script>x()</script>');
+    expect(document.querySelector('.message script')).toBeNull();
+  });
+
+  it('shows the K7 error text with a Retry that loads the first page again', async () => {
+    await show({ code: 'unreachable', message: 'The hub did not answer.' });
+    expect(document.querySelector('[role="alert"]')?.textContent).toContain('The hub did not answer.');
+    button('Retry')?.click();
+    await settle();
+    expect(eventRequests()).toHaveLength(2);
+  });
+});
