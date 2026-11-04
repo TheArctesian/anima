@@ -110,6 +110,12 @@ describe('anima.ing public records', () => {
     expect(readme).not.toMatch(/[A-Za-z0-9_-]{32,}/);
   });
 
+  test('DNS-003 LOG-007 every curl in the README takes -q first so ~/.curlrc cannot turn on verbose', () => {
+    const calls = [...readme.matchAll(/\bcurl -\S*/g)].map((match) => match[0]);
+    expect(calls.length).toBeGreaterThan(0);
+    for (const call of calls) expect(call).toBe('curl -q');
+  });
+
   test('DNS-008 the README requires the operator confirmation in chat for each change', () => {
     expect(readme).toContain('DNS-008');
     expect(readme).toMatch(/confirmation in chat/);

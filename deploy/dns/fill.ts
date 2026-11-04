@@ -1,5 +1,6 @@
 // Fills the address placeholders of anima.ing.records.json after checking each value.
 // Usage, from the repository root: bun deploy/dns/fill.ts [--out FILE] [RECORD_NAME ...]
+// `--out FILE`, when given, must be the first argument.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { isPublicAddress, isVpnAddress } from './address.ts';
