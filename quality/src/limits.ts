@@ -39,10 +39,17 @@ function fileLines(files: SourceFile[], baseline: Baseline): Violation[] {
     );
 }
 
+/** A Rust module face `x/name.rs` with a `x/name/` folder belongs to that folder, not to `x/` (R-015). */
+function isModuleFace(path: string, paths: string[]): boolean {
+  return path.endsWith(".rs") && paths.some((other) => other.startsWith(`${path.slice(0, -".rs".length)}/`));
+}
+
 function folderFiles(files: SourceFile[], baseline: Baseline): Violation[] {
   const counts = new Map<string, number>();
+  const paths = files.map((file) => file.path);
   for (const { path } of files) {
     if (!isMeasured(path) || !FOLDER_ROOTS.some((root) => path.startsWith(root))) continue;
+    if (isModuleFace(path, paths)) continue;
     const folder = path.slice(0, path.lastIndexOf("/"));
     counts.set(folder, (counts.get(folder) ?? 0) + 1);
   }
