@@ -5,7 +5,7 @@
 //! and uptimes in one call each, then filters, orders and pages. That is Phase 1 scale; the
 //! SQL join across domains is deferred (issue #1).
 
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use async_graphql::{Context, Result};
 
@@ -73,14 +73,14 @@ async fn read(
     let statuses = if sort == DeviceSort::Status || !args.statuses.is_empty() {
         checks::statuses(db, &ids, now).await.map_err(internal)?
     } else {
-        Default::default()
+        HashMap::default()
     };
     let uptimes = if sort == DeviceSort::Uptime {
         checks::uptimes(db, &ids, SORT_WINDOW, now)
             .await
             .map_err(internal)?
     } else {
-        Default::default()
+        HashMap::default()
     };
     Ok(Readings { statuses, uptimes })
 }

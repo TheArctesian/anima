@@ -20,10 +20,11 @@ use crate::devices::{
     harness::{TestSchema, data, now},
 };
 
-/// The batched cost of the fields below is about ten statements: the page and its count, then
-/// for each loader the reads of the checks face. A per-device read costs at least one
-/// statement per device, 13 on the small set and 163 on the large one.
-const BATCHED_AT_MOST: usize = 18;
+/// The batched cost of the fields below is 9 statements (the page, its count, and the reads of
+/// the checks face); the in-memory path adds 3. A per-device read costs at least one statement
+/// per device: 13 on the small set and 163 on the large one.
+const BATCHED_AT_MOST: usize = 12;
+const IN_MEMORY_AT_MOST: usize = 16;
 
 const FIELDS: &str = "totalCount edges { node { name status ip uptime(window: DAY) \
                       week: uptime(window: WEEK) checks { name } } }";
@@ -33,9 +34,10 @@ fn schema(pool: &PgPool) -> TestSchema {
     Schema::build(Query, Mutation, EmptySubscription)
         .data(pool.clone())
         .data(status_loader(pool.clone(), Arc::clone(&clock)).delay(BATCH_WINDOW))
-        .data(uptime_loader(pool.clone(), clock).delay(BATCH_WINDOW))
+        .data(uptime_loader(pool.clone(), Arc::clone(&clock)).delay(BATCH_WINDOW))
         .data(checks_loader(pool.clone()).delay(BATCH_WINDOW))
         .data(resolved_ip_loader(pool.clone()).delay(BATCH_WINDOW))
+        .data(clock)
         .finish()
 }
 
@@ -103,7 +105,7 @@ async fn api_005_a_status_sort_with_a_filter_costs_a_constant_few_statements_for
     );
     let (few, many, _) = cost_for_13_then_163(pool, &query).await;
     assert!(
-        few <= BATCHED_AT_MOST + 4 && many <= BATCHED_AT_MOST + 4,
+        few <= IN_MEMORY_AT_MOST && many <= IN_MEMORY_AT_MOST,
         "{few} statements for 13 devices, {many} for 163"
     );
 }
