@@ -4,14 +4,25 @@
 //! XChaCha20-Poly1305 into a [`Sealed`] value. Plaintext never leaves this module except
 //! through [`Secret::expose`]; secret types implement no format or serialise traits, and
 //! this module writes no logs (LOG-007).
+//!
+//! SSH credentials live in `credentials.secrets`, one sealed row per part, each bound to its
+//! device and kind (R-010). Only sessions read them back ([`load_ssh`]); the API sees
+//! [`has_ssh`] alone (SEC-005).
 
 mod secret;
+mod ssh;
+mod store;
 mod vault;
 
 #[cfg(test)]
 mod tests;
 
+use sqlx::{Connection as _, PgConnection, PgPool};
+
+use crate::ids::DeviceId;
+
 pub use secret::Secret;
+pub use ssh::SshSecret;
 pub use vault::{Sealed, Vault};
 
 /// Why a credential operation failed. Messages name no path, key, nonce or plaintext.
@@ -32,4 +43,83 @@ pub enum Error {
     /// The sealed value is not in a known layout.
     #[error("the sealed secret is malformed")]
     Malformed,
+    /// The secret store failed; the source holds the database error, never a secret.
+    #[error("the credential store is unavailable")]
+    Database(#[from] sqlx::Error),
+    /// No device has the given id.
+    #[error("the device does not exist")]
+    UnknownDevice,
+}
+
+/// Replaces every SSH secret of the device with `secret`, sealed per part, in the caller's
+/// connection. Runs in its own transaction (a savepoint inside the caller's), so a failure
+/// leaves the previous secret in place.
+///
+/// # Errors
+///
+/// [`Error::UnknownDevice`] when no device has this id, [`Error::Database`] otherwise.
+pub async fn store_ssh(
+    conn: &mut PgConnection,
+    vault: &Vault,
+    device: DeviceId,
+    secret: SshSecret,
+) -> Result<(), Error> {
+    let sealed: Vec<_> = secret
+        .into_parts()
+        .into_iter()
+        .map(|(kind, part)| (kind, vault.seal(&part, &ssh::context(device, kind))))
+        .collect();
+    let mut tx = conn.begin().await?;
+    store::delete_ssh(&mut tx, device).await?;
+    for (kind, value) in &sealed {
+        store::insert(&mut tx, device, *kind, value).await?;
+    }
+    tx.commit().await?;
+    Ok(())
+}
+
+/// Opens the device's SSH secret; `None` when none is stored.
+///
+/// # Errors
+///
+/// [`Error::WrongKey`] or [`Error::Decrypt`] when a row does not open with this vault for this
+/// device, [`Error::Malformed`] for a stored row set no [`SshSecret`] produces, and
+/// [`Error::Database`].
+pub async fn load_ssh(
+    db: &PgPool,
+    vault: &Vault,
+    device: DeviceId,
+) -> Result<Option<SshSecret>, Error> {
+    let rows = store::fetch_ssh(db, device).await?;
+    if rows.is_empty() {
+        return Ok(None);
+    }
+    let parts = rows
+        .into_iter()
+        .map(|row| {
+            let kind = ssh::SshKind::from_sql(&row.kind)?;
+            let sealed = Sealed::from_parts(&row.nonce, row.ciphertext, row.key_id)?;
+            Ok((kind, vault.open(&sealed, &ssh::context(device, kind))?))
+        })
+        .collect::<Result<Vec<_>, Error>>()?;
+    SshSecret::from_parts(parts).map(Some)
+}
+
+/// Whether the device has an SSH secret stored.
+///
+/// # Errors
+///
+/// [`Error::Database`] when the store cannot be read.
+pub async fn has_ssh(db: &PgPool, device: DeviceId) -> Result<bool, Error> {
+    store::exists_ssh(db, device).await
+}
+
+/// Deletes every SSH secret of the device in the caller's connection. Returns true if a
+/// secret was removed (R-010).
+///
+/// # Errors
+///
+/// [`Error::Database`] when the store cannot be written.
+pub async fn clear_ssh(conn: &mut PgConnection, device: DeviceId) -> Result<bool, Error> {
+    Ok(store::delete_ssh(conn, device).await? > 0)
 }
