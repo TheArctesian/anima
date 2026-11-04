@@ -7,13 +7,20 @@
 -- the owning domain's migration (for example 0500 takes UPDATE and DELETE off the logs).
 
 -- Roles are cluster-wide, so another database (or a concurrent migration) may have created
--- the group already. It must stay a group (NOLOGIN): nobody signs in with its rights alone.
+-- the group already. It must stay a plain group: no login (nobody signs in with its rights
+-- alone), no superuser, CREATEROLE, CREATEDB or BYPASSRLS, and no membership in another role
+-- (every member of anima_runtime would inherit it).
 do $$
 begin
     if exists (
-        select from pg_catalog.pg_roles where rolname = 'anima_runtime' and rolcanlogin
+        select from pg_catalog.pg_roles r
+        where r.rolname = 'anima_runtime'
+            and (
+                r.rolcanlogin or r.rolsuper or r.rolcreaterole or r.rolcreatedb or r.rolbypassrls
+                or exists (select from pg_catalog.pg_auth_members m where m.member = r.oid)
+            )
     ) then
-        raise exception 'anima_runtime exists and can log in; it must be a NOLOGIN role';
+        raise exception 'anima_runtime exists with more rights than a plain NOLOGIN group';
     end if;
     if not exists (select from pg_catalog.pg_roles where rolname = 'anima_runtime') then
         begin

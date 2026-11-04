@@ -66,7 +66,7 @@ declare
     utc_day pg_catalog.date := (instant at time zone 'UTC')::pg_catalog.date;
     child pg_catalog.text := parent || '_' || pg_catalog.to_char(utc_day, 'YYYYMMDD');
 begin
-    if parent not in ('event_log', 'audit_log') then
+    if parent collate pg_catalog."C" not in ('event_log', 'audit_log') then
         raise exception 'events.ensure_day_partition: unknown table %', parent
             using errcode = 'invalid_parameter_value';
     end if;
@@ -116,7 +116,7 @@ security definer
 set search_path = pg_catalog, pg_temp
 as $$
 declare
-    retention pg_catalog.interval := case parent
+    retention pg_catalog.interval := case parent collate pg_catalog."C"
         when 'event_log' then '90 days'::pg_catalog.interval
         when 'audit_log' then '1 year'::pg_catalog.interval
     end;
