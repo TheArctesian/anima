@@ -344,8 +344,8 @@ pub async fn load_http_secrets(
 }
 
 /// Records one result in the caller's transaction: the heartbeat, its minute, hour and day
-/// aggregates, and the check's new state (CHK-003, DB-008). A paused check, or a beat older
-/// than the check's last beat, writes nothing and gives [`Recorded::Skipped`] (CHK-005).
+/// aggregates, and the check's new state (CHK-003, DB-008). A paused check, or a beat not
+/// newer than the check's last beat, writes nothing and gives [`Recorded::Skipped`] (CHK-005).
 ///
 /// # Errors
 /// `NotFound` when the check no longer exists; nothing is written then.
