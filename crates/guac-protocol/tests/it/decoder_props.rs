@@ -5,9 +5,10 @@ use guac_protocol::{
 };
 use proptest::prelude::*;
 
-/// Any Unicode text, multibyte characters included, short enough to stay in limits.
+/// Any Unicode text but NUL (guacd ends an element there), short enough to stay in limits.
 fn text(max_chars: usize) -> impl Strategy<Value = String> {
-    prop::collection::vec(any::<char>(), 0..=max_chars).prop_map(String::from_iter)
+    let non_nul = any::<char>().prop_filter("NUL is rejected", |c| *c != '\0');
+    prop::collection::vec(non_nul, 0..=max_chars).prop_map(String::from_iter)
 }
 
 fn instruction(max_chars: usize, max_args: usize) -> impl Strategy<Value = Instruction> {
@@ -42,12 +43,26 @@ fn feed_in_chunks(bytes: &[u8], sizes: &[usize]) -> Result<Vec<Instruction>, Dec
     Ok(instructions)
 }
 
-/// Every instruction a decoder returns fits guacd's limits.
-fn assert_within_limits(decoded: &[Instruction]) {
+/// Every instruction a decoder returns fits guacd's limits and holds no NUL.
+fn assert_acceptable(decoded: &[Instruction]) {
     for i in decoded {
         assert!(encode(i).len() <= MAX_INSTRUCTION_BYTES);
         assert!(i.args.len() < MAX_ELEMENTS);
+        assert!(!i.opcode.contains('\0'));
+        assert!(i.args.iter().all(|arg| !arg.contains('\0')));
     }
+}
+
+/// Byte offsets of the first byte of every code point inside a value of `i`'s encoding.
+fn value_byte_offsets(i: &Instruction) -> Vec<usize> {
+    let mut offsets = Vec::new();
+    let mut at = 0;
+    for value in std::iter::once(&i.opcode).chain(&i.args) {
+        at += value.chars().count().to_string().len() + 1;
+        offsets.extend(value.char_indices().map(|(index, _)| at + index));
+        at += value.len() + 1;
+    }
+    offsets
 }
 
 proptest! {
@@ -124,16 +139,31 @@ proptest! {
 
     #[test]
     fn gw_011_rejects_oversize_instruction_before_terminator(
-        extra in 1usize..2000,
+        length in (MAX_INSTRUCTION_BYTES / 2)..(MAX_INSTRUCTION_BYTES - 6),
         sizes in prop::collection::vec(1usize..512, 1..8),
     ) {
-        let length = MAX_INSTRUCTION_BYTES + extra;
-        let unterminated = format!("{length}.{}", "a".repeat(length));
+        // Two-byte characters pass the length check at `.` and overflow later.
+        let unterminated = format!("{length}.{}", "é".repeat(length));
         let result = feed_in_chunks(unterminated.as_bytes(), &sizes);
         prop_assert!(
             matches!(result, Err(DecodeError::InstructionTooLong { .. })),
             "unexpected result {:?}", result
         );
+    }
+
+    #[test]
+    fn gw_011_rejects_nul_anywhere_in_a_value(
+        i in instruction(8, 3),
+        at in any::<prop::sample::Index>(),
+    ) {
+        let encoded = encode(&i);
+        let value_bytes = value_byte_offsets(&i);
+        prop_assume!(!value_bytes.is_empty());
+        let mut bytes = encoded.into_bytes();
+        let offset = value_bytes[at.index(value_bytes.len())];
+        bytes[offset] = 0;
+        let result = Decoder::new().feed(&bytes);
+        prop_assert!(matches!(result, Err(DecodeError::NulByte { .. })), "unexpected {:?}", result);
     }
 
     #[test]
@@ -157,20 +187,20 @@ proptest! {
         sizes in prop::collection::vec(1usize..64, 1..16),
     ) {
         if let Ok(decoded) = feed_in_chunks(&bytes, &sizes) {
-            assert_within_limits(&decoded);
+            assert_acceptable(&decoded);
         }
     }
 
     #[test]
     fn gw_011_arbitrary_length_shaped_bytes_never_panic(
         bytes in prop::collection::vec(
-            prop::sample::select(b"0123456789.,;a\xc3\xa9\x80\xff".to_vec()),
+            prop::sample::select(b"0123456789.,;a\x00\xc3\xa9\x80\xff".to_vec()),
             0..4096,
         ),
         sizes in prop::collection::vec(1usize..64, 1..16),
     ) {
         if let Ok(decoded) = feed_in_chunks(&bytes, &sizes) {
-            assert_within_limits(&decoded);
+            assert_acceptable(&decoded);
         }
     }
 
@@ -186,7 +216,7 @@ proptest! {
             bytes[at] = *byte;
         }
         if let Ok(decoded) = feed_in_chunks(&bytes, &sizes) {
-            assert_within_limits(&decoded);
+            assert_acceptable(&decoded);
         }
     }
 
@@ -200,7 +230,7 @@ proptest! {
         bytes.truncate(cut.index(bytes.len() + 1));
         bytes.extend(tail);
         if let Ok(decoded) = Decoder::new().feed(&bytes) {
-            assert_within_limits(&decoded);
+            assert_acceptable(&decoded);
         }
     }
 }

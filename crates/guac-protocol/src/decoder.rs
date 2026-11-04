@@ -36,6 +36,10 @@ pub enum DecodeError {
     TooManyLengthDigits { position: u64, limit: usize },
     #[error("expected ',' or ';' after an element at byte {position}")]
     MissingSeparator { position: u64 },
+    /// guacd ends an element at its first NUL byte, so a value with a NUL would
+    /// mean one thing to the hub and another to guacd.
+    #[error("element contains a NUL byte at byte {position}")]
+    NulByte { position: u64 },
     #[error("element ending at byte {position} is not valid UTF-8")]
     InvalidUtf8 { position: u64 },
     #[error("instruction exceeds {limit} bytes at byte {position}")]
@@ -144,6 +148,9 @@ impl Decoder {
             Element::Value { length, chars } if chars == length && starts_char(byte) => {
                 self.end_element(byte)
             }
+            Element::Value { .. } if byte == 0 => Err(DecodeError::NulByte {
+                position: self.position,
+            }),
             Element::Value { length, chars } => {
                 let chars = if starts_char(byte) {
                     chars.saturating_add(1)
@@ -174,6 +181,17 @@ impl Decoder {
                 Ok(())
             }
             b'.' if digits > 0 => {
+                // Each code point takes at least one byte, and a separator follows.
+                let least = self
+                    .instruction_bytes
+                    .saturating_add(length)
+                    .saturating_add(1);
+                if least > MAX_INSTRUCTION_BYTES {
+                    return Err(DecodeError::InstructionTooLong {
+                        position: self.position,
+                        limit: MAX_INSTRUCTION_BYTES,
+                    });
+                }
                 self.element = Element::Value { length, chars: 0 };
                 Ok(())
             }

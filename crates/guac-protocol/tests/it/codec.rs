@@ -156,20 +156,88 @@ fn gw_011_accepts_instruction_of_exactly_max_bytes() {
     assert_eq!(decoded[0].opcode.len(), length);
 }
 
+fn too_long_at(position: usize) -> Result<Vec<Instruction>, DecodeError> {
+    Err(DecodeError::InstructionTooLong {
+        position: u64::try_from(position).expect("fits"),
+        limit: MAX_INSTRUCTION_BYTES,
+    })
+}
+
+/// Feeds `bytes` seven bytes at a time and collects every result.
+fn decode_in_chunks(bytes: &[u8]) -> Result<Vec<Instruction>, DecodeError> {
+    let mut decoder = Decoder::new();
+    let mut instructions = Vec::new();
+    for chunk in bytes.chunks(7) {
+        instructions.extend(decoder.feed(chunk)?);
+    }
+    Ok(instructions)
+}
+
+/// Opcode `a` and 65 arguments of 60 two-byte characters: 8063 bytes, no `;`.
+fn sixty_five_wide_args() -> String {
+    let arg = "é".repeat(60);
+    format!("1.a{}", format!(",60.{arg}").repeat(65))
+}
+
 #[test]
 fn gw_011_rejects_oversize_instruction_before_terminator() {
-    let mut decoder = Decoder::new();
-    let head = format!("{MAX_INSTRUCTION_BYTES}.");
-    assert_eq!(decoder.feed(head.as_bytes()), Ok(vec![]));
-    let filler = vec![b'a'; MAX_INSTRUCTION_BYTES - head.len()];
-    assert_eq!(decoder.feed(&filler), Ok(vec![]));
-    let position = u64::try_from(MAX_INSTRUCTION_BYTES).expect("fits");
+    // The length fits the early check; the two-byte characters overflow it.
+    let head = "4100.";
+    let unterminated = format!("{head}{}", "é".repeat(4100));
     assert_eq!(
-        decoder.feed(b"a"),
-        Err(DecodeError::InstructionTooLong {
-            position,
-            limit: MAX_INSTRUCTION_BYTES
-        })
+        decode_in_chunks(unterminated.as_bytes()),
+        too_long_at(MAX_INSTRUCTION_BYTES)
+    );
+}
+
+#[test]
+fn gw_011_rejects_length_that_cannot_fit_at_the_dot() {
+    assert_eq!(decode_all(b"99999."), too_long_at(5));
+    let over = MAX_INSTRUCTION_BYTES - 5;
+    assert_eq!(decode_all(format!("{over}.").as_bytes()), too_long_at(4));
+    let fits = MAX_INSTRUCTION_BYTES - 6;
+    assert_eq!(decode_all(format!("{fits}.").as_bytes()), Ok(vec![]));
+}
+
+#[test]
+fn gw_011_limit_counts_lengths_and_separators_of_all_elements() {
+    let unterminated = format!("{},100.{}", sixty_five_wide_args(), "é".repeat(100));
+    assert_eq!(
+        decode_in_chunks(unterminated.as_bytes()),
+        too_long_at(MAX_INSTRUCTION_BYTES)
+    );
+}
+
+#[test]
+fn gw_011_accepts_many_elements_of_exactly_max_bytes() {
+    let stream = format!("{},123.{};", sixty_five_wide_args(), "b".repeat(123));
+    assert_eq!(stream.len(), MAX_INSTRUCTION_BYTES);
+    let decoded = decode_in_chunks(stream.as_bytes()).expect("instruction at the limit");
+    assert_eq!(decoded.len(), 1);
+    assert_eq!(decoded[0].args.len(), 66);
+}
+
+#[test]
+fn gw_011_rejects_nul_in_opcode() {
+    assert_eq!(
+        decode_all(b"5.size\0,6.100000,6.100000,4.9999;"),
+        Err(DecodeError::NulByte { position: 6 })
+    );
+}
+
+#[test]
+fn gw_011_rejects_nul_in_internal_opcode() {
+    assert_eq!(
+        decode_all(b"1.\0,4.ping,1.1;"),
+        Err(DecodeError::NulByte { position: 2 })
+    );
+}
+
+#[test]
+fn gw_011_rejects_nul_in_argument() {
+    assert_eq!(
+        decode_all(b"4.size,4.10\x0024,3.768,2.96;"),
+        Err(DecodeError::NulByte { position: 11 })
     );
 }
 
@@ -226,6 +294,15 @@ fn log_007_instruction_debug_hides_argument_values() {
     assert!(printed.contains('3'));
     assert!(!printed.contains("hunter2-secret"));
     assert!(!printed.contains("host.example"));
+}
+
+#[test]
+fn log_007_instruction_debug_truncates_long_opcode() {
+    let long = Instruction::new("x".repeat(40), ["v"]);
+    let printed = format!("{long:?}");
+    assert!(printed.contains(&format!("{}…", "x".repeat(32))));
+    assert!(!printed.contains(&"x".repeat(33)));
+    assert!(!format!("{:?}", Instruction::new("x".repeat(32), ["v"])).contains('…'));
 }
 
 #[test]

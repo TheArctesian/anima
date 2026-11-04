@@ -4,13 +4,17 @@ use std::fmt;
 
 /// A Guacamole instruction: an opcode and its arguments, in wire order.
 ///
-/// `Debug` prints the opcode and the argument count only: `connect` carries
-/// passwords and keys, and no argument value may reach a log (LOG-007).
+/// `Debug` prints the opcode (at most [`DEBUG_OPCODE_CHARS`] characters, then
+/// `…`) and the argument count only: `connect` carries passwords and keys, and
+/// no argument value may reach a log (LOG-007).
 #[derive(Clone, PartialEq, Eq)]
 pub struct Instruction {
     pub opcode: String,
     pub args: Vec<String>,
 }
+
+/// Longest opcode prefix that `Debug` prints; opcodes come from the peer.
+const DEBUG_OPCODE_CHARS: usize = 32;
 
 impl Instruction {
     #[must_use]
@@ -28,8 +32,12 @@ impl Instruction {
 
 impl fmt::Debug for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut opcode: String = self.opcode.chars().take(DEBUG_OPCODE_CHARS).collect();
+        if self.opcode.chars().nth(DEBUG_OPCODE_CHARS).is_some() {
+            opcode.push('…');
+        }
         f.debug_struct("Instruction")
-            .field("opcode", &self.opcode)
+            .field("opcode", &opcode)
             .field("arg_count", &self.args.len())
             .finish()
     }
