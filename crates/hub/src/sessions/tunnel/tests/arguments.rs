@@ -9,7 +9,7 @@ use std::{
 use guac_protocol::{ConnectParams, Decoder, Display, Handshake, HandshakeStep, Instruction};
 
 use super::super::arguments::{BadConnectValue, connect_values, time_zone};
-use super::super::known_hosts::{BadHost, known_hosts_line};
+use super::super::known_hosts::known_hosts_line;
 use super::{device, host_key};
 use crate::credentials::{Secret, SshSecret};
 use crate::sessions::tests::{ED25519, Inputs};
@@ -236,58 +236,34 @@ fn gw_013_no_client_display_or_zone_changes_a_connect_value() {
 #[test]
 fn sec_006_host_key_line_has_no_brackets_on_port_22() {
     let key = host_key().public_key;
-    let line = known_hosts_line("db.example.net", 22, &key).unwrap();
-    assert_eq!(line, format!("db.example.net ssh-ed25519 {ED25519}"));
-    let line = known_hosts_line("10.20.0.15", 22, &key).unwrap();
+    let line = known_hosts_line(ip("10.20.0.15"), 22, &key);
     assert_eq!(line, format!("10.20.0.15 ssh-ed25519 {ED25519}"));
+    let line = known_hosts_line(ip("fd7a:115c::1"), 22, &key);
+    assert_eq!(line, format!("fd7a:115c::1 ssh-ed25519 {ED25519}"));
 }
 
 #[test]
 fn sec_006_host_key_line_brackets_the_host_on_other_ports() {
     let key = host_key().public_key;
-    let line = known_hosts_line("db.example.net", 2222, &key).unwrap();
-    assert_eq!(line, format!("[db.example.net]:2222 ssh-ed25519 {ED25519}"));
-    let line = known_hosts_line("fd7a:115c::1", 2200, &key).unwrap();
+    let line = known_hosts_line(ip("10.20.0.15"), 2222, &key);
+    assert_eq!(line, format!("[10.20.0.15]:2222 ssh-ed25519 {ED25519}"));
+    let line = known_hosts_line(ip("fd7a:115c::1"), 2200, &key);
     assert_eq!(line, format!("[fd7a:115c::1]:2200 ssh-ed25519 {ED25519}"));
 }
 
 #[test]
-fn sec_006_host_key_line_refuses_a_host_that_would_change_the_line() {
+fn sec_006_the_longest_address_fits_libssh2s_host_field() {
+    // libssh2 refuses a host field of 255 bytes or more.
     let key = host_key().public_key;
-    let long = "a".repeat(255);
-    let bad = [
-        "",
-        "db host",
-        "db,evil",
-        "|1|salt|hash",
-        "#db",
-        "@revoked",
-        "[db]",
-        "db\n",
-        "db\t",
-        "db\0",
-        &long,
-    ];
-    for host in bad {
-        assert_eq!(known_hosts_line(host, 22, &key), Err(BadHost), "{host:?}");
-    }
+    let longest = ip("ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff");
+    let line = known_hosts_line(longest, 65535, &key);
+    let field = line.split(' ').next().unwrap();
+    assert_eq!(field, "[ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff]:65535");
+    assert!(field.len() < 255);
 }
 
-#[test]
-fn sec_006_host_key_line_host_field_is_at_most_254_bytes() {
-    let key = host_key().public_key;
-    assert!(known_hosts_line(&"a".repeat(254), 22, &key).is_ok());
-    assert_eq!(known_hosts_line(&"a".repeat(255), 22, &key), Err(BadHost));
-    // `[` + 247 + `]:2222` is 254 bytes; one more is 255.
-    assert!(known_hosts_line(&"a".repeat(247), 2222, &key).is_ok());
-    assert_eq!(known_hosts_line(&"a".repeat(248), 2222, &key), Err(BadHost));
-}
-
-#[test]
-fn sec_006_host_key_line_keeps_an_underscore_host() {
-    let key = host_key().public_key;
-    let line = known_hosts_line("db_1.example", 22, &key).unwrap();
-    assert_eq!(line, format!("db_1.example ssh-ed25519 {ED25519}"));
+fn ip(text: &str) -> IpAddr {
+    text.parse().unwrap()
 }
 
 #[test]

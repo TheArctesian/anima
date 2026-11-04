@@ -1,8 +1,8 @@
 //! Everything the tunnel does before the WebSocket upgrade, after the ticket is redeemed:
-//! load the device, resolve and check its host (R-032), check its host key (R-034), build the
-//! `connect` values and run the guacd handshake (K4 Section 3).
+//! load the device, resolve and check its host (R-032), read its host key with the SSH probe
+//! (R-034), build the `connect` values and run the guacd handshake (K4 Section 3).
 
-use std::{future::Future, net::SocketAddr, pin::Pin, sync::Arc};
+use std::net::{IpAddr, SocketAddr};
 
 use guac_protocol::{ConnectParams, DecodeError};
 use tokio::{net::lookup_host, time::timeout};
@@ -13,60 +13,20 @@ use super::{
     route::Route,
 };
 use crate::{
-    credentials,
-    devices::{self, Device},
-    sessions::{self, PendingTicket, PublicKey, start::is_refused_target},
+    credentials, devices,
+    sessions::{
+        self, PendingTicket,
+        probe::{self, PROBE_TIMEOUT, ProbeError, Target},
+        target::TargetRule,
+    },
 };
-
-/// The key a device presented and the address it was read from: the address the reader
-/// resolved the host to and checked against the target rule (WP-10 T3 `KeyRead`).
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub(super) struct HostKeyRead {
-    pub(super) key: PublicKey,
-    pub(super) address: SocketAddr,
-}
-
-/// Why the reader found no key, in the tunnel's terms (from WP-10 T3 `ProbeError`: its
-/// `Unresolved` and `RefusedTarget` map to the same names, everything else to `Unreadable`).
-/// Holds no detail: the reader logs its own.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "built by the WP-10 T3 probe once tunnel_router wires it in"
-    )
-)]
-pub(super) enum HostKeyUnread {
-    Unresolved,
-    RefusedTarget,
-    Unreadable,
-}
-
-/// Reads the SSH host key the device presents at `host` and `port`, without signing in
-/// (R-034, the `testConnection` probe). The reader resolves the host and applies the target
-/// rule, so the tunnel resolves nothing itself and sends guacd the address the key came
-/// from. The tunnel bounds the wait.
-pub(super) type ReadHostKey = Arc<
-    dyn Fn(String, u16) -> Pin<Box<dyn Future<Output = Result<HostKeyRead, HostKeyUnread>> + Send>>
-        + Send
-        + Sync,
->;
-
-/// What the hub's own read of the host key found (R-034).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum HostKeyCheck {
-    /// The key read is the accepted one, or the hub has no reader and leaves it to guacd's pin.
-    Accepted,
-    /// The device presents another key: the session ends `HOST_KEY_MISMATCH`.
-    Changed,
-}
 
 /// What the tunnel opens after the upgrade.
 pub(super) enum Opening {
     /// guacd is past `ready`: relay.
     Gateway(Connected),
-    /// The host key changed: tell the client, close 4001.
+    /// The device presented another host key than the accepted one: tell the client, close
+    /// 4001. guacd was never reached and no credential left the hub (SEC-007).
     HostKeyChanged,
 }
 
@@ -85,7 +45,7 @@ pub(super) enum NotOpened {
     #[error("the device host resolves to a refused address")]
     RefusedTarget,
     #[error("the device's host key could not be read")]
-    HostKeyUnread,
+    HostKeyUnread(#[source] ProbeError),
     #[error(transparent)]
     Values(#[from] BadConnectValue),
     #[error("guacd cannot be reached")]
@@ -122,7 +82,7 @@ impl NotOpened {
                 "The device's host resolves to a loopback, link-local, multicast or unspecified \
                  address, which the gateway must not reach."
             }
-            Self::HostKeyUnread => "The hub could not read the device's SSH host key.",
+            Self::HostKeyUnread(_) => "The hub could not read the device's SSH host key.",
             Self::Values(_) => {
                 "The device's settings or stored credential cannot be sent to the gateway."
             }
@@ -140,6 +100,8 @@ impl NotOpened {
 }
 
 /// Opens the gateway side of the ticket's session, or learns that the host key changed.
+/// Safe to drop at any await: the credential leaves the hub only in the handshake's
+/// `connect`, after guacd's `args`, so dropping this earlier sends it nowhere (SEC-002).
 ///
 /// # Errors
 /// [`NotOpened`] for each step that fails; the caller ends the session `GATEWAY_ERROR`.
@@ -157,14 +119,32 @@ pub(super) async fn open(route: &Route, ticket: &PendingTicket) -> Result<Openin
         .await
         .map_err(NotOpened::Sessions)?
         .ok_or(NotOpened::NoHostKey)?;
-    let (target, check) = check_host_key(route, &device, &accepted.public_key).await?;
-    if check == HostKeyCheck::Changed {
+    let rule = route.live.target_rule();
+    let port = device.ssh.port;
+    let address = timeout(route.timing.connect, target(&device.host, port, rule))
+        .await
+        .map_err(|_| NotOpened::Unresolved)??;
+    // The probe goes to the checked address, not the name, so it reads the key of the host
+    // guacd will reach; it applies the rule to that address again.
+    let probed = Target {
+        host: &address.to_string(),
+        port,
+        rule,
+    };
+    let presented =
+        probe::read_host_key(probed, PROBE_TIMEOUT)
+            .await
+            .map_err(|error| match error {
+                ProbeError::RefusedTarget => NotOpened::RefusedTarget,
+                other => NotOpened::HostKeyUnread(other),
+            })?;
+    if presented != accepted.public_key {
         return Ok(Opening::HostKeyChanged);
     }
     let secret = credentials::load_ssh(&route.db, &route.vault, device.id)
         .await
         .map_err(NotOpened::Credentials)?;
-    let values = connect_values(&device, target.ip(), secret.as_ref(), &accepted)?;
+    let values = connect_values(&device, address, secret.as_ref(), &accepted)?;
     drop(secret);
     let params = ConnectParams {
         display: ticket.display,
@@ -177,50 +157,18 @@ pub(super) async fn open(route: &Route, ticket: &PendingTicket) -> Result<Openin
         .map(Opening::Gateway)
 }
 
-/// The first address the device's host resolves to, unless the gateway must not reach it
-/// (`start`'s rule: loopback, link-local, multicast, broadcast, unspecified, "this network",
-/// or an IPv6 address embedding one of those). An IPv4-mapped address is given as IPv4.
-async fn target(host: &str, port: u16) -> Result<SocketAddr, NotOpened> {
-    let first = lookup_host((host, port))
+/// The address the session goes to: the first one the device's host resolves to, when `rule`
+/// lets the gateway reach every one of them (R-032). Each address is checked in its canonical
+/// form, so an IPv4-mapped address is checked and sent as the IPv4 address it is.
+async fn target(host: &str, port: u16, rule: TargetRule) -> Result<IpAddr, NotOpened> {
+    let addresses: Vec<SocketAddr> = lookup_host((host, port))
         .await
-        .ok()
-        .and_then(|mut addresses| addresses.next())
-        .ok_or(NotOpened::Unresolved)?;
-    let ip = first.ip().to_canonical();
-    if is_refused_target(ip) {
-        return Err(NotOpened::RefusedTarget);
-    }
-    Ok(SocketAddr::new(ip, port))
-}
-
-/// The hub's own host-key check before the guacd handshake (R-034), and the address guacd
-/// is sent to: the one the key was read from. Without a reader the host is resolved and
-/// checked here, and the key is left to guacd's pin.
-async fn check_host_key(
-    route: &Route,
-    device: &Device,
-    accepted: &PublicKey,
-) -> Result<(SocketAddr, HostKeyCheck), NotOpened> {
-    let (host, port) = (device.host.clone(), device.ssh.port);
-    let wait = route.timing.connect;
-    let Some(read) = &route.read_host_key else {
-        let target = timeout(wait, target(&host, port))
-            .await
-            .map_err(|_| NotOpened::Unresolved)??;
-        return Ok((target, HostKeyCheck::Accepted));
-    };
-    let read = timeout(wait, read(host, port))
-        .await
-        .map_err(|_| NotOpened::HostKeyUnread)?
-        .map_err(|unread| match unread {
-            HostKeyUnread::Unresolved => NotOpened::Unresolved,
-            HostKeyUnread::RefusedTarget => NotOpened::RefusedTarget,
-            HostKeyUnread::Unreadable => NotOpened::HostKeyUnread,
-        })?;
-    let check = if read.key == *accepted {
-        HostKeyCheck::Accepted
-    } else {
-        HostKeyCheck::Changed
-    };
-    Ok((read.address, check))
+        .map_err(|_| NotOpened::Unresolved)?
+        .map(|address| SocketAddr::new(address.ip().to_canonical(), port))
+        .collect();
+    let checked = rule.checked(addresses).ok_or(NotOpened::RefusedTarget)?;
+    checked
+        .first()
+        .map(SocketAddr::ip)
+        .ok_or(NotOpened::Unresolved)
 }

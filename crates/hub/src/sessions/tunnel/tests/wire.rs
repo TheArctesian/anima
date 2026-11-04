@@ -1,15 +1,20 @@
 //! The tunnel over real sockets (K4 Section 7, WP-10 T5): a fake guacd on loopback, the hub's
-//! `/tunnel` route on loopback, and a WebSocket client with the subprotocol `guacamole`.
-//! These are in-crate tests so the waits and the host-key reader stay crate-private seams.
+//! `/tunnel` route on loopback, the device's SSH server on loopback, and a WebSocket client
+//! with the subprotocol `guacamole`. These are in-crate tests so the waits stay crate-private
+//! and the session task's parts can be driven one at a time.
 
 mod bench;
 mod causes;
 mod fake_guacd;
 mod host_keys;
 mod interruption;
+mod opening;
+mod records;
 mod refusals;
 mod relaying;
 mod socket;
+mod ssh_host;
+mod upgrade;
 
 use std::time::Duration;
 
@@ -18,8 +23,9 @@ use sqlx::PgPool;
 use tokio::time::timeout;
 use uuid::Uuid;
 
-use bench::{Bench, Ended, Setup, bench};
+use bench::{Bench, Setup, bench};
 use fake_guacd::{ARGS_1_6_0, CONNECTION_ID, FakeGuacd, Script, fake_guacd};
+use records::Ended;
 use socket::Socket;
 
 /// The one instruction in `wire`.

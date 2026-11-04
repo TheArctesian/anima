@@ -3,8 +3,9 @@
 //! Pure rules: the `connect` values and time zone (`arguments`, `known_hosts`), what each
 //! client and guacd instruction means after `ready` (`relay`, `client`, `gateway`) and how a
 //! tunnel ends (`ending`). I/O: the `/tunnel` route and its checks before the upgrade
-//! (`route`), the device and guacd side up to `ready` (`opening`, `guacd`), the relay task
-//! (`relaying`) and the end's row, audit entry and event (`record`).
+//! (`route`), the device, host-key and guacd side up to `ready` (`opening`, `guacd`), the
+//! session task that owns the ticket from redeem to end (`relaying`) and the end's row, audit
+//! entry and event (`record`).
 
 mod arguments;
 mod client;

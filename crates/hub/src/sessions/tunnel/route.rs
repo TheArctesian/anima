@@ -8,10 +8,10 @@
 //!    token is spent whatever happens next, valid or not (K4 Section 1), so the ticket is
 //!    redeemed before the subprotocol is checked: a request without `guacamole` still spends
 //!    it, and cannot be used to test a token without spending it.
-//! 3. A WebSocket upgrade offering the subprotocol `guacamole` (400). The ticket is already
-//!    redeemed, so the session ends `PROTOCOL_ERROR`.
-//! 4. The device, the host target, the host-key check and the guacd handshake (`opening`);
-//!    a failure is 503 and the session ends `GATEWAY_ERROR`.
+//! 3. From here the session task owns the redeemed ticket (`relaying`), so the session ends
+//!    exactly once even when the client leaves and this handler is dropped (MV-003). The task
+//!    answers this handler: 400 without the subprotocol `guacamole` (the session ends
+//!    `PROTOCOL_ERROR`), 503 when the opening fails (`GATEWAY_ERROR`), else the upgrade.
 //!
 //! Neither the URI, the query nor the token reaches a log, a span or an error (LOG-007).
 
@@ -19,10 +19,7 @@ use std::{sync::Arc, time::Duration};
 
 use axum::{
     Router,
-    extract::{
-        RawQuery, State, WebSocketUpgrade,
-        ws::{WebSocket, rejection::WebSocketUpgradeRejection},
-    },
+    extract::{RawQuery, State, WebSocketUpgrade, ws::rejection::WebSocketUpgradeRejection},
     http::{Extensions, StatusCode},
     response::{IntoResponse, Response},
     routing::get,
@@ -32,9 +29,7 @@ use tokio::sync::oneshot;
 use zeroize::Zeroizing;
 
 use super::{
-    ending::{CLIENT_IDLE, Cause, End, GATEWAY_SILENCE},
-    opening::{self, Opening, ReadHostKey},
-    record::finish,
+    ending::{CLIENT_IDLE, GATEWAY_SILENCE},
     relaying,
 };
 use crate::{
@@ -42,7 +37,7 @@ use crate::{
     clock::Clock,
     credentials::Vault,
     events::Bus,
-    sessions::{Live, Redeemed, end::sweep},
+    sessions::{Live, Redeemed, end::sweep, probe::PROBE_TIMEOUT},
 };
 
 /// The only path of the tunnel in Phase 1 (K4 Section 1 `tunnelPath`).
@@ -51,15 +46,16 @@ const PATH: &str = "/tunnel";
 const SUBPROTOCOL: &str = "guacamole";
 /// Largest WebSocket message and frame from the client (WP-08 H-3): eight of guacd's largest
 /// instructions, so one message never decodes into an unbounded number of instructions.
-pub(super) const MAX_MESSAGE_BYTES: usize = 64 * 1024;
-/// How long the hub waits for each of: resolving the device host, reading its host key,
-/// reaching guacd, and the guacd handshake (K4 Section 3, D-7).
-const CONNECT_WAIT: Duration = Duration::from_secs(10);
+const MAX_MESSAGE_BYTES: usize = 64 * 1024;
+/// How long the hub waits for the guacd handshake and for the upgrade after it (K4 Section 3,
+/// D-7).
+const HANDSHAKE_WAIT: Duration = Duration::from_secs(10);
 
 /// The waits of one tunnel. Tests shorten them; the hub uses `Timing::default()`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct Timing {
-    /// Each of: resolving the device host, reading its host key, connecting to guacd.
+    /// Each of: resolving the device host, connecting to guacd. The host-key read has the
+    /// probe's own limit (`PROBE_TIMEOUT`).
     pub(super) connect: Duration,
     /// The guacd handshake, and the WebSocket upgrade after it.
     pub(super) handshake: Duration,
@@ -73,16 +69,16 @@ pub(super) struct Timing {
 impl Default for Timing {
     fn default() -> Self {
         Self {
-            connect: CONNECT_WAIT,
-            handshake: CONNECT_WAIT,
+            connect: PROBE_TIMEOUT,
+            handshake: HANDSHAKE_WAIT,
             gateway_silence: GATEWAY_SILENCE,
             client_idle: CLIENT_IDLE,
         }
     }
 }
 
-/// What the tunnel route needs: the hub's stores, the gateway address, the live state, the
-/// waits and the host-key reader.
+/// What the tunnel route needs: the hub's stores, the gateway address, the live state and
+/// the waits.
 #[derive(Clone)]
 pub(super) struct Route {
     pub(super) db: PgPool,
@@ -91,19 +87,14 @@ pub(super) struct Route {
     pub(super) clock: Arc<dyn Clock>,
     /// guacd's `host:port` (K7, R-032 E-8).
     pub(super) guacd: String,
+    /// The tickets and tunnels, and the target rule for the device's host (R-032).
     pub(super) live: Live,
     pub(super) timing: Timing,
-    /// The hub's own read of the device's host key before the handshake (R-034); `None`
-    /// skips the read and leaves the check to guacd's pin alone.
-    pub(super) read_host_key: Option<ReadHostKey>,
 }
 
 /// The `/tunnel` route (K3, K4 Section 2). `main.rs` mounts it behind
 /// `access::permitted_networks_layer` (NET-002) and serves it with `ConnectInfo<SocketAddr>`,
 /// so the client address is known.
-///
-/// Until WP-10 T3's probe is wired in, the hub does not read the host key itself; guacd still
-/// pins the accepted key (`host-key`), so a changed key fails closed as `GATEWAY_ERROR`.
 #[expect(
     clippy::too_many_arguments,
     reason = "K3 fixes tunnel_router's parameters (R-032 E-1)"
@@ -124,11 +115,10 @@ pub fn tunnel_router(
         guacd,
         live,
         timing: Timing::default(),
-        read_host_key: None,
     })
 }
 
-/// The route over `route`'s dependencies, waits and host-key reader.
+/// The route over `route`'s dependencies and waits.
 pub(super) fn router(route: Route) -> Router {
     Router::new()
         .route(PATH, get(open))
@@ -168,25 +158,13 @@ async fn open(
         Err(status) => return status.into_response(),
     };
     drop(query);
-    let Some(upgrade) = guacamole(upgrade) else {
-        let end = End::explained(
-            Cause::InvalidInstruction,
-            "The client did not open the tunnel as a Guacamole WebSocket, so the hub closed \
-             the SSH session.",
-        );
-        finish(&route, redeemed, &end).await;
-        return StatusCode::BAD_REQUEST.into_response();
-    };
-    match opening::open(&route, &redeemed.ticket).await {
-        Ok(opening) => upgrade_to(route, redeemed, upgrade, opening),
-        Err(not_opened) => {
-            let session = redeemed.ticket.session;
-            tracing::warn!(%session, error = %not_opened, "the tunnel did not open");
-            let end = End::explained(Cause::GatewayError, not_opened.message());
-            finish(&route, redeemed, &end).await;
-            StatusCode::SERVICE_UNAVAILABLE.into_response()
-        }
-    }
+    let (answer, answered) = oneshot::channel();
+    // Not awaited here: dropping this handler must not drop the session (MV-003).
+    tokio::spawn(relaying::run(route, redeemed, guacamole(upgrade), answer));
+    // No answer only when the task stopped before giving one; it still ended the session.
+    answered
+        .await
+        .unwrap_or_else(|_| StatusCode::SERVICE_UNAVAILABLE.into_response())
 }
 
 /// Sweeps expired tickets, then redeems the query's token for the client address. The
@@ -209,22 +187,4 @@ async fn redeem(
         .live
         .redeem(token, client, now)
         .map_err(|_| StatusCode::FORBIDDEN)
-}
-
-/// Answers with the upgrade and hands the socket to the tunnel task, which owns the session
-/// from here: if the upgrade fails, the task sees no socket and still ends the session.
-fn upgrade_to(
-    route: Arc<Route>,
-    redeemed: Redeemed,
-    upgrade: WebSocketUpgrade,
-    opening: Opening,
-) -> Response {
-    let (socket_tx, socket_rx) = oneshot::channel::<WebSocket>();
-    let response = upgrade.on_upgrade(move |socket| async move {
-        // Unsent only when the tunnel task has already ended (shutdown, or the upgrade wait
-        // ran out); the socket then closes as it drops.
-        let _ = socket_tx.send(socket);
-    });
-    tokio::spawn(relaying::run(route, redeemed, opening, socket_rx));
-    response
 }

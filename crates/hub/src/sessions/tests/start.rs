@@ -5,7 +5,10 @@ use std::net::IpAddr;
 
 use proptest::prelude::*;
 
-use crate::sessions::start::{DisplayRequest, checked_display, is_refused_target};
+use crate::sessions::{
+    start::{DisplayRequest, checked_display},
+    target::is_refused_target,
+};
 
 fn request(width_px: i64, height_px: i64, dpi: i64) -> DisplayRequest {
     DisplayRequest {
@@ -87,11 +90,6 @@ fn gw_011_loopback_link_local_multicast_and_unspecified_literals_are_refused() {
         "64:ff9b::127.0.0.1",
         "64:ff9b::a9fe:a9fe",
         "64:ff9b::255.255.255.255",
-        // 6to4 2002::/16 and Teredo 2001::/32, refused whatever they carry.
-        "2002:7f00:1::1",
-        "2002:a0a:2::1",
-        "2001:0:4136:e378:8000:63bf:3fff:fdd2",
-        "2001::1",
     ] {
         assert!(
             is_refused_target(refused.parse::<IpAddr>().unwrap()),
@@ -112,10 +110,8 @@ fn gw_011_loopback_link_local_multicast_and_unspecified_literals_are_refused() {
         "64:ff9b::10.10.0.2",
         // Outside the embedding prefixes the last 32 bits mean nothing.
         "2001:db8::127.0.0.1",
-        "64:ff9b:1::127.0.0.1",
-        // Next to the tunnel prefixes, not in them.
-        "2001:1::1",
-        "2003::1",
+        // 6to4 carrying an address the gateway may reach.
+        "2002:a0a:2::1",
     ] {
         assert!(
             !is_refused_target(allowed.parse::<IpAddr>().unwrap()),

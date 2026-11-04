@@ -1,10 +1,10 @@
-//! `Session` and `HostKey` as the GraphQL types K1 describes. Neither exposes the client
-//! address, the operator id or the key blob.
+//! `Session` as the GraphQL type K1 describes. It does not expose the client address or the
+//! operator id.
 
 use async_graphql::{ID, Object};
 use chrono::{DateTime, Utc};
 
-use crate::sessions::{EndReason, HostKey, Protocol, Session};
+use crate::sessions::{EndReason, Protocol, Session};
 
 #[Object]
 impl Session {
@@ -39,21 +39,5 @@ impl Session {
 
     async fn end_reason(&self) -> Option<EndReason> {
         self.end.map(|end| end.reason)
-    }
-}
-
-#[Object]
-impl HostKey {
-    async fn algorithm(&self) -> &str {
-        self.public_key.algorithm()
-    }
-
-    /// OpenSSH's `SHA256:` fingerprint of the key.
-    async fn fingerprint_sha256(&self) -> String {
-        self.public_key.fingerprint().to_string()
-    }
-
-    async fn first_seen_at(&self) -> DateTime<Utc> {
-        self.first_seen_at
     }
 }

@@ -31,8 +31,12 @@ argon2.workspace = true
 getrandom.workspace = true
 rpassword.workspace = true
 futures-util = { version = "0.3", default-features = false, features = ["sink"] }
+# The WebSocket errors axum wraps, to tell an oversize or non-UTF-8 message from a lost
+# client (R-039). Same semver range as axum's own, so the lockfile keeps one copy.
+tungstenite = { version = "0.29", default-features = false }
 guac-protocol = { path = "../guac-protocol" }
 anima-theme = { path = "../theme" }
+russh.workspace = true
 
 [features]
 # `access::Identity::for_tests`, for integration tests of guarded domains (D-6). Turned on
@@ -47,3 +51,5 @@ static_assertions.workspace = true
 tempfile.workspace = true
 proptest = "1.12"
 tokio-tungstenite = "0.29"
+# ECDSA host keys for the in-process SSH server of the connection test (WP-10 T3).
+rand = "0.10"

@@ -9,42 +9,25 @@
 //! `<host> <algorithm> <base64>` for port 22 (as OpenSSH writes it) and
 //! `[<host>]:<port> <algorithm> <base64>` otherwise, where `<host>` is byte for byte the
 //! `hostname` argument.
+//!
+//! The host is always the address the hub checked (R-032), never a name. An IP address in its
+//! standard text form holds only hex digits, dots and colons and is at most 39 bytes, so it
+//! can neither change how libssh2 splits the line nor overflow its 256-byte host buffer
+//! (1.11.0 `src/knownhost.c:638-645`).
+
+use std::net::IpAddr;
 
 use crate::sessions::PublicKey;
 
 /// The SSH port OpenSSH writes without brackets.
 const DEFAULT_PORT: u16 = 22;
-/// libssh2 copies each host name into a 256-byte buffer and refuses one of 255 bytes or more
-/// (1.11.0 `src/knownhost.c:638-645`).
-const MAX_HOST_FIELD: usize = 254;
-
-/// The device host cannot go into a `known_hosts` line. Holds no text.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
-#[error("the device host cannot be written into a known_hosts line")]
-pub(super) struct BadHost;
 
 /// The line for `host` and `port` that pins `key`.
-///
-/// # Errors
-/// [`BadHost`] when `host` holds a character that would change how libssh2
-/// splits or reads the line (space, comma, `|`, `#`, `@`, brackets, control characters, or
-/// anything outside `[A-Za-z0-9._:-]`), or is too long for libssh2.
-pub(super) fn known_hosts_line(host: &str, port: u16, key: &PublicKey) -> Result<String, BadHost> {
-    if host.is_empty() || !host.bytes().all(is_host_byte) {
-        return Err(BadHost);
-    }
+pub(super) fn known_hosts_line(host: IpAddr, port: u16, key: &PublicKey) -> String {
     let field = if port == DEFAULT_PORT {
-        host.to_owned()
+        host.to_string()
     } else {
         format!("[{host}]:{port}")
     };
-    if field.len() > MAX_HOST_FIELD {
-        return Err(BadHost);
-    }
-    Ok(format!("{field} {} {}", key.algorithm(), key.to_base64()))
-}
-
-/// A byte of a host name or an IP literal (devices allows nothing else, DEV-010).
-fn is_host_byte(byte: u8) -> bool {
-    byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'-' | b'_' | b':')
+    format!("{field} {} {}", key.algorithm(), key.to_base64())
 }

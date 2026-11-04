@@ -129,12 +129,36 @@ async fn k1_ticket_types_and_session_mutations_equal_k1() {
         assert!(hub.contains_key(name), "{name}");
         assert_eq!(hub.get(name), k1.get(name), "{name}");
     }
+    for name in ["startSession", "endSession"] {
+        assert_eq!(hub["Mutation"][name], k1["Mutation"][name], "{name}");
+    }
+}
+
+/// Types T3 builds whole, and the credential inputs it reuses from devices (`SshSettingsInput`
+/// is checked with devices).
+const T3_WHOLE: [&str; 2] = ["ConnectionTestResult", "ConnectionTestInput"];
+
+#[tokio::test]
+async fn k1_connection_test_types_and_host_key_mutations_equal_k1() {
+    let (hub, k1) = (hub(), k1());
+    for name in T3_WHOLE
+        .into_iter()
+        .chain(["SshCredentialInput", "PrivateKeyInput"])
+    {
+        assert!(hub.contains_key(name), "{name}");
+        assert_eq!(hub.get(name), k1.get(name), "{name}");
+    }
     assert_eq!(
         hub["Mutation"].keys().collect::<Vec<_>>(),
-        ["endSession", "startSession"],
-        "T2 declares two mutations"
+        [
+            "acceptHostKey",
+            "endSession",
+            "startSession",
+            "testConnection"
+        ],
+        "sessions declares four mutations"
     );
-    for name in ["startSession", "endSession"] {
+    for name in ["testConnection", "acceptHostKey"] {
         assert_eq!(hub["Mutation"][name], k1["Mutation"][name], "{name}");
     }
 }

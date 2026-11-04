@@ -9,7 +9,7 @@ use std::net::IpAddr;
 
 use guac_protocol::{ArgValues, is_zone_name};
 
-use super::known_hosts::{BadHost, known_hosts_line};
+use super::known_hosts::known_hosts_line;
 use crate::credentials::{Secret, SshSecret};
 use crate::devices::Device;
 use crate::sessions::HostKey;
@@ -27,22 +27,15 @@ const FALLBACK_ZONE: &str = "UTC";
 /// Why the hub cannot build the `connect` values. Holds no value (LOG-007).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub(super) enum BadConnectValue {
-    #[error("the device host cannot be written into a known_hosts line")]
-    Host,
     #[error("the stored {argument} is not UTF-8 text")]
     NotText { argument: &'static str },
-}
-
-impl From<BadHost> for BadConnectValue {
-    fn from(_: BadHost) -> Self {
-        Self::Host
-    }
 }
 
 /// The `connect` values by guacd argument name for an SSH session to `device` at `target`,
 /// pinned to `host_key` (SEC-007). `target` is the address the hub resolved the device's host
 /// to and checked (R-032): guacd gets it as `hostname` and the `host-key` line names it, so
-/// guacd never resolves the name again or reaches an address the hub refused. Names not set here get an empty value from the handshake, so
+/// guacd never resolves the name again or reaches an address the hub refused. Names not set
+/// here get an empty value from the handshake, so
 /// `enable-sftp`, `recording-path`, `typescript-path`, guacd's own `timezone` argument (the
 /// `timezone` instruction sets it, WP-08 H-9) and every path stay empty.
 ///
@@ -50,7 +43,6 @@ impl From<BadHost> for BadConnectValue {
 /// credential to any host (SEC-006). Without a stored secret guacd prompts in the terminal.
 ///
 /// # Errors
-/// [`BadConnectValue::Host`] when the host cannot go into a `known_hosts` line;
 /// [`BadConnectValue::NotText`] when a stored secret is not UTF-8.
 pub(super) fn connect_values(
     device: &Device,
@@ -58,10 +50,9 @@ pub(super) fn connect_values(
     secret: Option<&SshSecret>,
     host_key: &HostKey,
 ) -> Result<ArgValues, BadConnectValue> {
-    let hostname = target.to_string();
-    let host_key = known_hosts_line(&hostname, device.ssh.port, &host_key.public_key)?;
+    let host_key = known_hosts_line(target, device.ssh.port, &host_key.public_key);
     let mut values = ArgValues::new();
-    values.set("hostname", hostname);
+    values.set("hostname", target.to_string());
     values.set("port", device.ssh.port.to_string());
     values.set("username", device.ssh.username.as_str());
     values.set("host-key", host_key);

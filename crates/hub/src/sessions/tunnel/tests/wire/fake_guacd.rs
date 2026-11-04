@@ -1,7 +1,7 @@
 //! An in-process guacd: a TCP listener that speaks the guacd 1.5.5 / 1.6.0 handshake from the
 //! WP-08 `args` fixtures, reports what the hub sent, then relays on the test's command.
 
-use std::collections::HashMap;
+use std::{collections::HashMap, future};
 
 use guac_protocol::{Decoder, Instruction, encode};
 use tokio::{
@@ -30,18 +30,27 @@ pub(super) enum Script {
     },
     /// Closes the connection after reading `select`.
     DropAfterSelect,
+    /// After `select`, sends nothing until the test's first act; then sends `args` and
+    /// reports as the handshake every instruction the hub sends until it closes.
+    StallBeforeArgs { args: &'static [u8] },
 }
 
 /// What the test tells the fake guacd after `ready`.
 pub(super) enum Act {
     Send(String),
+    /// Closes the connection with a FIN.
     Close,
+    /// Resets the connection (RST), so the hub's next read fails.
+    Reset,
+    /// Stops reading and keeps the connection open, so the hub's writes stall.
+    Stall,
 }
 
-/// A running fake guacd: its address, the handshake the hub sent, the instructions the hub
-/// relayed after `ready`, and the way to make it act.
+/// A running fake guacd: its address, whether `select` came, the handshake the hub sent,
+/// the instructions the hub relayed after `ready`, and the way to make it act.
 pub(super) struct FakeGuacd {
     pub(super) address: String,
+    pub(super) selected: oneshot::Receiver<()>,
     pub(super) handshake: oneshot::Receiver<Vec<Instruction>>,
     pub(super) from_hub: mpsc::UnboundedReceiver<Instruction>,
     pub(super) act: mpsc::UnboundedSender<Act>,
@@ -51,9 +60,10 @@ pub(super) struct FakeGuacd {
 pub(super) async fn fake_guacd(script: Script) -> FakeGuacd {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let address = listener.local_addr().unwrap().to_string();
+    let (selected_tx, selected) = oneshot::channel();
     let (handshake_tx, handshake) = oneshot::channel();
     let (from_hub_tx, from_hub) = mpsc::unbounded_channel();
-    let (act, acts) = mpsc::unbounded_channel();
+    let (act, mut acts) = mpsc::unbounded_channel();
     tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
         let mut peer = Peer {
@@ -63,18 +73,28 @@ pub(super) async fn fake_guacd(script: Script) -> FakeGuacd {
         };
         let select = peer.next().await.expect("select");
         assert_eq!(select, Instruction::new("select", ["ssh"]));
-        if let Script::Serve { args, with_ready } = script {
-            peer.stream.write_all(args).await.unwrap();
-            let sent = peer.until_connect().await;
-            let _ = handshake_tx.send(sent);
-            let ready = encode(&Instruction::new("ready", [CONNECTION_ID]));
-            let first = format!("{ready}{with_ready}");
-            peer.stream.write_all(first.as_bytes()).await.unwrap();
-            peer.relay(acts, from_hub_tx).await;
+        let _ = selected_tx.send(());
+        match script {
+            Script::Serve { args, with_ready } => {
+                peer.stream.write_all(args).await.unwrap();
+                let _ = handshake_tx.send(peer.until_connect().await);
+                let ready = encode(&Instruction::new("ready", [CONNECTION_ID]));
+                let first = format!("{ready}{with_ready}");
+                peer.stream.write_all(first.as_bytes()).await.unwrap();
+                peer.relay(acts, from_hub_tx).await;
+            }
+            Script::DropAfterSelect => {}
+            Script::StallBeforeArgs { args } => {
+                let _ = acts.recv().await;
+                // The hub may have closed already; then nothing more comes.
+                let _ = peer.stream.write_all(args).await;
+                let _ = handshake_tx.send(peer.until_closed().await);
+            }
         }
     });
     FakeGuacd {
         address,
+        selected,
         handshake,
         from_hub,
         act,
@@ -88,7 +108,7 @@ struct Peer {
 }
 
 impl Peer {
-    /// The next instruction from the hub, or `None` at EOF.
+    /// The next instruction from the hub, or `None` at EOF or a broken connection.
     async fn next(&mut self) -> Option<Instruction> {
         let mut buffer = [0; 4096];
         while self.queue.is_empty() {
@@ -114,8 +134,17 @@ impl Peer {
         sent
     }
 
-    /// Passes the hub's instructions to the test and writes what the test asks for, until
-    /// the hub leaves or the test closes.
+    /// Every instruction until the hub closes.
+    async fn until_closed(&mut self) -> Vec<Instruction> {
+        let mut sent = Vec::new();
+        while let Some(instruction) = self.next().await {
+            sent.push(instruction);
+        }
+        sent
+    }
+
+    /// Passes the hub's instructions to the test and acts as the test asks, until the hub
+    /// leaves or the test closes.
     async fn relay(
         mut self,
         mut acts: mpsc::UnboundedReceiver<Act>,
@@ -125,15 +154,26 @@ impl Peer {
             let _ = from_hub.send(queued);
         }
         loop {
-            tokio::select! {
+            let stalled = tokio::select! {
                 act = acts.recv() => match act {
-                    Some(Act::Send(text)) => self.stream.write_all(text.as_bytes()).await.unwrap(),
+                    Some(Act::Send(text)) => {
+                        self.stream.write_all(text.as_bytes()).await.unwrap();
+                        false
+                    }
+                    Some(Act::Reset) => {
+                        self.stream.set_zero_linger().unwrap();
+                        return;
+                    }
+                    Some(Act::Stall) => true,
                     Some(Act::Close) | None => return,
                 },
                 instruction = self.next() => match instruction {
-                    Some(instruction) => { let _ = from_hub.send(instruction); }
+                    Some(instruction) => { let _ = from_hub.send(instruction); false }
                     None => return,
                 },
+            };
+            if stalled {
+                future::pending::<()>().await;
             }
         }
     }

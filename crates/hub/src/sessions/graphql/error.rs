@@ -15,9 +15,11 @@ pub(super) fn to_graphql(error: Error) -> GraphQlError {
         Error::Validation(fields) => invalid(&fields),
         Error::Conflict(conflict) => coded(conflict.to_string(), "CONFLICT"),
         Error::Unavailable => coded(UNAVAILABLE_MESSAGE.to_owned(), "UNAVAILABLE"),
-        Error::Devices(_) | Error::Events(_) | Error::Random(_) | Error::Database(_) => {
-            internal(error)
-        }
+        Error::Devices(_)
+        | Error::Events(_)
+        | Error::Credentials(_)
+        | Error::Random(_)
+        | Error::Database(_) => internal(error),
     }
 }
 

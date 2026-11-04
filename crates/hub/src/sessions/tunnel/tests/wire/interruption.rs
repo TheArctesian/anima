@@ -8,10 +8,12 @@ use sqlx::PgPool;
 use tokio_tungstenite::tungstenite::http::StatusCode;
 
 use super::{
-    bench::{Setup, address, bench, ended, now, operator},
+    bench::{Setup, address, bench, now, operator},
     ended_once,
     fake_guacd::{Script, fake_guacd},
-    heard, session,
+    heard,
+    records::ended,
+    session,
     socket::open_with,
 };
 use crate::sessions::{Actor, EndReason, SessionEnd, end::end_session, store};
@@ -82,7 +84,7 @@ async fn mv_003_end_session_racing_a_client_close_ends_once(pool: PgPool) {
     assert_eq!((ended.audits.len(), ended.events.len()), (1, 1));
     // Nothing more is written later.
     tokio::time::sleep(Duration::from_millis(200)).await;
-    let again = super::bench::ended(&pool, bench.session).await;
+    let again = super::records::ended(&pool, bench.session).await;
     assert_eq!((again.audits.len(), again.events.len()), (1, 1));
 }
 

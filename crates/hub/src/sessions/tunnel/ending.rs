@@ -11,6 +11,10 @@ pub(super) const GATEWAY_SILENCE: Duration = Duration::from_secs(5);
 /// The hub ends the session with `TIMEOUT` when the client has sent nothing for this long,
 /// not even a ping (K4 Section 4).
 pub(super) const CLIENT_IDLE: Duration = Duration::from_secs(15);
+/// The longest the hub waits for each peer while it closes: telling guacd to disconnect and
+/// sending the client its close frame run side by side, so a stalled peer delays the end's
+/// write by at most this, well inside `endSession`'s wait for the tunnel (D-10).
+pub(super) const CLOSE_WAIT: Duration = Duration::from_secs(2);
 
 /// Why a live tunnel ends. The first cause wins; the tunnel task records it once (D-9).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -26,12 +30,13 @@ pub(super) enum Cause {
     AuthFailed,
     /// The device's host key is not the accepted one (SEC-007).
     HostKeyMismatch,
-    /// The client sent nothing for [`CLIENT_IDLE`].
+    /// The client sent nothing for [`CLIENT_IDLE`], or stopped reading what the hub sends.
     Timeout,
     /// The hub is shutting down.
     HubShutdown,
-    /// The client sent bytes that do not decode, an opcode outside the allow-list, or an
-    /// instruction whose shape guacd cannot handle (GW-011).
+    /// The client sent bytes that do not decode, an opcode outside the allow-list, an
+    /// instruction whose shape guacd cannot handle, a binary message, a message over the size
+    /// cap or text that is not UTF-8 (GW-011, R-039).
     InvalidInstruction,
 }
 

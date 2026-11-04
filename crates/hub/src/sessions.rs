@@ -1,18 +1,22 @@
 //! Remote sessions: the record of every session (RA-008), the SSH host key accepted for
 //! each device (SEC-006), which the gateway is pinned to (SEC-007), and the single-use
-//! tickets that open the tunnel (K4 §1, API-009).
+//! tickets that open the tunnel (K4 §1, API-009). The connection test reads a host's key
+//! and `acceptHostKey` records it (DEV-013, D-5, D-6).
 
 mod end;
 pub mod graphql;
 mod live;
 mod model;
 mod page;
+mod probe;
 mod public_key;
 mod start;
 mod store;
+mod target;
 #[cfg(test)]
 mod tests;
 mod tickets;
+mod trust;
 mod tunnel;
 
 use std::collections::HashMap;
@@ -21,7 +25,9 @@ use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 
 use crate::{
-    devices, events,
+    credentials,
+    devices::{self, Device},
+    events,
     ids::{DeviceId, SessionId},
 };
 
@@ -56,6 +62,16 @@ pub enum Conflict {
     SshDisabled,
     #[error("No host key is accepted for this device. Test the connection and accept its key.")]
     NoHostKey,
+    #[error(
+        "The hub has not seen a host key for this device in the last 15 minutes. Test the \
+         connection, then accept the key it shows."
+    )]
+    KeyNotSeen,
+    #[error(
+        "That fingerprint is not the key the hub saw for this device. Test the connection \
+         again and compare the fingerprint."
+    )]
+    KeyDiffers,
 }
 
 /// Why a sessions operation failed. No variant holds a ticket token (LOG-007).
@@ -75,6 +91,8 @@ pub enum Error {
     Devices(#[source] devices::Error),
     #[error("event store error")]
     Events(#[from] events::Error),
+    #[error("credential store error")]
+    Credentials(#[source] credentials::Error),
     #[error("no random bytes for a ticket")]
     Random(#[source] getrandom::Error),
     #[error("database error")]
@@ -88,6 +106,14 @@ fn field_names(errors: &[FieldError]) -> String {
         .map(|error| error.field)
         .collect::<Vec<_>>()
         .join(", ")
+}
+
+/// The device, or `NotFound` for it.
+async fn find_device(db: &PgPool, id: DeviceId) -> Result<Device, Error> {
+    devices::get(db, id).await.map_err(|error| match error {
+        devices::Error::NotFound(_) => Error::NotFound(Missing::Device(id)),
+        other => Error::Devices(other),
+    })
 }
 
 /// The host key accepted for the device, if any (SEC-006).

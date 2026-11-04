@@ -11,7 +11,13 @@ use tokio_tungstenite::{
         Error, Message,
         client::IntoClientRequest as _,
         http::StatusCode,
-        protocol::{CloseFrame, frame::coding::CloseCode},
+        protocol::{
+            CloseFrame,
+            frame::{
+                Frame,
+                coding::{CloseCode, Data, OpCode},
+            },
+        },
     },
 };
 
@@ -108,6 +114,22 @@ impl Socket {
 
     pub(super) async fn send(&mut self, text: &str) {
         self.stream.send(Message::text(text)).await.unwrap();
+    }
+
+    /// Sends `bytes` as one text frame without checking that they are UTF-8.
+    pub(super) async fn send_unchecked_text(&mut self, bytes: &[u8]) {
+        let frame = Frame::message(bytes.to_vec(), OpCode::Data(Data::Text), true);
+        self.stream.send(Message::Frame(frame)).await.unwrap();
+    }
+
+    /// Sends `text` up to `count` times, until a send fails or stalls for a second.
+    pub(super) async fn flood(&mut self, text: &str, count: usize) {
+        for _ in 0..count {
+            let sent = timeout(WAIT / 5, self.stream.send(Message::text(text))).await;
+            if !matches!(sent, Ok(Ok(()))) {
+                return;
+            }
+        }
     }
 
     pub(super) async fn send_binary(&mut self, bytes: &[u8]) {

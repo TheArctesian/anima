@@ -56,7 +56,14 @@ async fn log_007_the_ticket_token_is_never_stored_logged_or_in_an_error(pool: Pg
     let capture = Capture::default();
     let writer = capture.clone();
     let subscriber = process_log::subscriber("trace", move || writer.clone()).unwrap();
+    // While exactly one dispatcher is registered, tracing-core builds a callsite's interest
+    // from the registering thread's own default, so another test thread with no subscriber
+    // would cache the sessions callsites as disabled for this one too. A second registered
+    // dispatcher makes every registration ask all of them.
+    let _second = tracing::Dispatch::new(tracing::subscriber::NoSubscriber::default());
     let _default = tracing::subscriber::set_default(subscriber);
+    tracing::callsite::rebuild_interest_cache();
+    tracing::info!("log_007 capture marker");
 
     let live = Live::default();
     let schema = schema_at(&pool, now(), &live);
@@ -91,6 +98,10 @@ async fn log_007_the_ticket_token_is_never_stored_logged_or_in_an_error(pool: Pg
 
     let stored = stored_text(&pool).await;
     let logged = String::from_utf8(capture.0.lock().unwrap().clone()).unwrap();
+    assert!(
+        logged.contains("log_007 capture marker"),
+        "the capture works: {logged}"
+    );
     for token in &tokens {
         assert!(!stored.contains(token.as_str()), "stored: {stored}");
         assert!(!logged.contains(token.as_str()), "logged: {logged}");
