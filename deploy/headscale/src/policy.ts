@@ -12,6 +12,8 @@ export type PolicyErrorCode =
   | 'unknown-tag'
   | 'invalid-address'
   | 'invalid-port'
+  | 'invalid-protocol'
+  | 'invalid-node'
   | 'unknown-node';
 
 export class PolicyError extends Error {
@@ -24,9 +26,10 @@ export class PolicyError extends Error {
   }
 }
 
-export interface PolicyTest {
+interface PolicyTest {
   readonly src: string;
-  readonly proto: string;
+  /** Each row must hold for every protocol listed here. */
+  readonly protos: readonly string[];
   readonly accept: readonly string[];
   readonly deny: readonly string[];
 }
@@ -53,32 +56,33 @@ export interface PortRule {
   readonly last: number;
 }
 
-export interface Grant {
+interface Grant {
   readonly src: readonly Selector[];
   readonly dst: readonly Selector[];
   readonly ip: readonly PortRule[];
 }
 
-export interface Scope {
-  readonly groups: ReadonlyMap<string, readonly string[]>;
+interface Scope {
   readonly hosts: ReadonlyMap<string, Prefix>;
   readonly tags: ReadonlySet<string>;
 }
 
-const SECTIONS = ['groups', 'tagOwners', 'hosts', 'grants', 'tests'];
+const SECTIONS = ['tagOwners', 'hosts', 'grants', 'tests'];
+// A tests row without `proto` is checked by Headscale for each of these.
+const TEST_PROTOCOLS = ['tcp', 'udp', 'icmp'];
 const PROTOCOLS = new Set(['tcp', 'udp', 'sctp', 'icmp']);
 const OCTET = /^(?:0|[1-9]\d{0,2})$/;
 const PORT = /^\d{1,5}$/;
 const HOST_NAME = /^[a-z][a-z0-9-]*$/i;
-const MAX_PORT = 65_535;
+export const MAX_PORT = 65_535;
 
 export function parsePolicy(raw: unknown): Policy {
   const root = record(raw, 'policy');
   onlyKeys(root, SECTIONS, 'policy');
-  // Headscale allows every connection when a policy has no grants, so a missing or empty
-  // list is refused rather than modelled as "deny all" (VPN-004).
+  // A missing grants list makes Headscale allow everything; an empty one denies
+  // everything. Both are refused because Anima requires the D-4 grants (VPN-004).
   const grants = list(root.grants, 'grants');
-  if (grants.length === 0) throw new PolicyError('invalid-shape', 'grants is empty; Headscale would allow everything');
+  if (grants.length === 0) throw new PolicyError('invalid-shape', 'grants is empty; Anima requires the D-4 grants');
   const scope = parseScope(root);
   return {
     grants: grants.map((grant, index) => parseGrant(grant, scope, `grants[${String(index)}]`)),
@@ -91,12 +95,6 @@ function parseScope(root: Readonly<Record<string, unknown>>): Scope {
   const tagOwners = Object.entries(record(root.tagOwners ?? {}, 'tagOwners'));
   const tags = new Set(tagOwners.map(([tag]) => tag));
   if (![...tags].every((tag) => /^tag:[a-z0-9-]+$/i.test(tag))) throw new PolicyError('invalid-shape', 'tagOwners keys must be tag:<name>');
-  const groups = new Map(
-    Object.entries(record(root.groups ?? {}, 'groups')).map(([name, members]) => {
-      if (!name.startsWith('group:')) throw new PolicyError('invalid-shape', `group name ${name} must start with group:`);
-      return [name, stringList(members, name).map(groupMember)] as const;
-    }),
-  );
   const hosts = new Map(
     Object.entries(record(root.hosts ?? {}, 'hosts')).map(([name, value]) => {
       if (!HOST_NAME.test(name)) throw new PolicyError('invalid-shape', `host alias ${name} is not a plain name`);
@@ -104,18 +102,13 @@ function parseScope(root: Readonly<Record<string, unknown>>): Scope {
       return [name, parsePrefix(value)] as const;
     }),
   );
-  const scope = { groups, hosts, tags };
+  const scope = { hosts, tags };
   for (const [tag, owners] of tagOwners) {
     for (const owner of stringList(owners, tag)) {
       if (parseSelector(owner, scope).kind === 'prefix') throw new PolicyError('invalid-shape', `${tag} owner ${owner} is an address`);
     }
   }
   return scope;
-}
-
-function groupMember(member: string): string {
-  if (!member.includes('@')) throw new PolicyError('invalid-shape', `group member ${member} is not a user`);
-  return userName(member);
 }
 
 function userName(selector: string): string {
@@ -146,22 +139,17 @@ function parseTest(value: unknown, scope: Scope, where: string): PolicyTest {
   if (accept.length + deny.length === 0) throw new PolicyError('invalid-shape', `${where} checks nothing`);
   parseSelector(test.src, scope);
   for (const dst of [...accept, ...deny]) parseSelector(parseTarget(dst).host, scope);
-  const proto = checkProto(test.proto ?? 'tcp');
-  return { src: test.src, proto, accept, deny };
+  const protos = test.proto === undefined ? TEST_PROTOCOLS : [checkProto(test.proto)];
+  return { src: test.src, protos, accept, deny };
 }
 
 export function parseSelector(text: string, scope: Scope): Selector {
-  if (text === '*' || text.startsWith('autogroup:')) {
+  if (text === '*' || text.startsWith('autogroup:') || text.startsWith('group:')) {
     throw new PolicyError('unsupported-selector', `${text} is not allowed; name users, tags or sites (VPN-004)`);
   }
   if (text.startsWith('tag:')) {
     if (!scope.tags.has(text)) throw new PolicyError('unknown-tag', `${text} is not in tagOwners`);
     return { kind: 'tag', tag: text };
-  }
-  if (text.startsWith('group:')) {
-    const names = scope.groups.get(text);
-    if (names === undefined) throw new PolicyError('unknown-selector', `${text} is not a group`);
-    return { kind: 'users', names };
   }
   if (text.includes('@')) return { kind: 'users', names: [userName(text)] };
   const host = scope.hosts.get(text);
@@ -202,7 +190,7 @@ export function checkPort(port: number): number {
 }
 
 export function checkProto(proto: unknown): string {
-  if (typeof proto !== 'string' || !PROTOCOLS.has(proto)) throw new PolicyError('invalid-port', `unknown protocol ${String(proto)}`);
+  if (typeof proto !== 'string' || !PROTOCOLS.has(proto)) throw new PolicyError('invalid-protocol', `unknown protocol ${String(proto)}`);
   return proto;
 }
 

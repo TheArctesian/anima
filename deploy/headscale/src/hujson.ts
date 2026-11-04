@@ -11,8 +11,10 @@ export class HujsonError extends Error {
   }
 }
 
+const BYTE_ORDER_MARK = '﻿';
+
 export function parseHujson(text: string): unknown {
-  const json = standardize(text.startsWith('﻿') ? text.slice(1) : text);
+  const json = standardize(text.startsWith(BYTE_ORDER_MARK) ? text.slice(1) : text);
   try {
     return JSON.parse(json) as unknown;
   } catch (error) {

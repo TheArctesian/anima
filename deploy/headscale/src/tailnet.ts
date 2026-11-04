@@ -7,6 +7,7 @@ import {
   checkPort,
   checkProto,
   contains,
+  MAX_PORT,
   parseIpv4,
   parsePrefix,
   parseSelector,
@@ -71,7 +72,12 @@ export function allows(policy: Policy, nodes: readonly TailnetNode[], connection
   return permits(policy, sources, target, packet);
 }
 
-/** Runs the policy's own `tests` block against an inventory; an empty result means all pass. */
+/**
+ * Runs the policy's own `tests` block against an inventory; an empty result means all pass.
+ * This is the authoritative check: a row holds only if it holds for every source address
+ * and every protocol it names. `headscale policy check` on the server is a weaker smoke
+ * test, because it passes a deny row when any one source address is denied.
+ */
 export function runPolicyTests(policy: Policy, nodes: readonly TailnetNode[]): TestFailure[] {
   const network = resolveNetwork(nodes);
   return policy.tests.flatMap((test) => {
@@ -81,7 +87,7 @@ export function runPolicyTests(policy: Policy, nodes: readonly TailnetNode[]): T
       ...test.deny.map((dst) => ({ dst, expected: 'deny' as const })),
     ];
     return cases.flatMap(({ dst, expected }) => {
-      const reason = testCase(policy, network, { sources, dst, expected, proto: test.proto });
+      const reason = testCase(policy, network, { sources, dst, expected, protos: test.protos });
       return reason === undefined ? [] : [{ src: test.src, dst, expected, reason }];
     });
   });
@@ -91,7 +97,7 @@ interface TestCase {
   readonly sources: readonly (readonly Party[])[];
   readonly dst: string;
   readonly expected: 'accept' | 'deny';
-  readonly proto: string;
+  readonly protos: readonly string[];
 }
 
 function testCase(policy: Policy, network: Network, test: TestCase): string | undefined {
@@ -99,16 +105,13 @@ function testCase(policy: Policy, network: Network, test: TestCase): string | un
   const targets = testTargets(parseSelector(host, policy.scope), network);
   if (test.sources.length === 0) return 'source matches no node';
   if (targets.length === 0) return 'destination matches no node';
-  for (const source of test.sources) {
-    for (const target of targets) {
-      const allowed = permits(policy, source, target, { proto: test.proto, port });
-      if (allowed !== (test.expected === 'accept')) {
-        const who = source[0]?.node?.name ?? 'an unroutable address';
-        return `${who} is ${allowed ? 'allowed' : 'denied'} to ${target.node?.name ?? host}:${String(port)}`;
-      }
-    }
-  }
-  return undefined;
+  const runs = test.sources.flatMap((source) => targets.flatMap((target) => test.protos.map((proto) => ({ source, target, proto }))));
+  const wrong = runs.find(({ source, target, proto }) => permits(policy, source, target, { proto, port }) !== (test.expected === 'accept'));
+  if (wrong === undefined) return undefined;
+  // A LAN source is several parties (its address and its routers); name only a node source.
+  const who = wrong.source.length === 1 ? wrong.source[0]?.node?.name : undefined;
+  const verdict = test.expected === 'accept' ? 'denied' : 'allowed';
+  return `${who ?? 'the source address'} is ${verdict} ${wrong.proto} to ${wrong.target.node?.name ?? host}:${String(port)}`;
 }
 
 function permits(policy: Policy, sources: readonly Party[], target: Party, packet: Packet): boolean {
@@ -128,12 +131,17 @@ function matches(selector: Selector, party: Party): boolean {
   return 'user' in identity && selector.names.includes(identity.user);
 }
 
+// ICMP has no ports, so only a rule for ICMP or for every protocol and port admits it.
 function portMatches(rule: PortRule, packet: Packet): boolean {
+  if (packet.proto === 'icmp') return rule.proto === 'icmp' || (rule.proto === '*' && rule.first === 0 && rule.last === MAX_PORT);
   return (rule.proto === '*' || rule.proto === packet.proto) && packet.port >= rule.first && packet.port <= rule.last;
 }
 
-// Subnet routers masquerade LAN traffic by default, so a LAN source is checked both as
-// its own address and as its router's identity; either one being permitted allows it.
+// Subnet routers masquerade LAN traffic by default (--snat-subnet-routes), so a LAN source
+// is checked both as its own address and as its router's identity, and either one being
+// permitted allows it. That is conservative for deny checks: a LAN source is denied only
+// if neither identity is permitted. Traffic between two addresses of the same site never
+// enters the tailnet; the model still answers for it through the router's own-site grant.
 function lanParties(network: Network, ip: number): Party[] {
   const routers = network.routes.filter((route) => contains(route.prefix, ip)).map((route) => route.router);
   return routers.length === 0 ? [] : [{ ip }, ...routers.map(partyOf)];
@@ -172,8 +180,8 @@ function resolveNetwork(nodes: readonly TailnetNode[]): Network {
   const names = new Set<string>();
   for (const node of nodes) {
     const ip = parseIpv4(node.ip);
-    if (names.has(node.name) || ips.has(ip)) throw new PolicyError('invalid-shape', `duplicate node ${node.name}`);
-    if ('tags' in node.identity && node.identity.tags.length === 0) throw new PolicyError('invalid-shape', `node ${node.name} has neither a user nor tags`);
+    if (names.has(node.name) || ips.has(ip)) throw new PolicyError('invalid-node', `duplicate node ${node.name}`);
+    if ('tags' in node.identity && node.identity.tags.length === 0) throw new PolicyError('invalid-node', `node ${node.name} has neither a user nor tags`);
     names.add(node.name);
     ips.set(ip, node);
   }
@@ -186,4 +194,3 @@ function nodeNamed(network: Network, name: string): TailnetNode {
   if (node === undefined) throw new PolicyError('unknown-node', name);
   return node;
 }
-
