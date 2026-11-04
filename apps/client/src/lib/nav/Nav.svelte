@@ -3,7 +3,7 @@
   import { useHub } from '$lib/hub/context';
   import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
-  import { DEVICES, SETTINGS, isActive, statusLabel, unreachableBanner, type NavItem } from './nav';
+  import { DEVICES, SETTINGS, isActive, statusLabel, unreachableBanner, type NavDestination } from './nav';
 
   interface Props {
     /** The current route, for the active item. */
@@ -17,7 +17,7 @@
   const banner = $derived(unreachableBanner(hub.status.current, hub.address.origin, now));
 </script>
 
-{#snippet destination(item: NavItem)}
+{#snippet destination(item: NavDestination)}
   <a
     class="item"
     href={resolve(item.href)}
