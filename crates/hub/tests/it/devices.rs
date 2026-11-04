@@ -4,6 +4,7 @@ pub(crate) mod batching;
 mod concurrency;
 mod credential;
 mod face;
+mod fields;
 pub(crate) mod graphql_read;
 mod guard;
 mod harness;

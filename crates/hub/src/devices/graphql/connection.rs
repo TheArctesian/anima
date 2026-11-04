@@ -29,12 +29,22 @@ pub(super) struct DeviceConnection {
 
 impl DeviceConnection {
     pub(super) fn new(devices: Vec<Device>, has_next_page: bool, total: usize) -> Self {
+        let cursored = devices
+            .into_iter()
+            .map(|node| (encode_cursor(&node.name), node))
+            .collect();
+        Self::with_cursors(cursored, has_next_page, total)
+    }
+
+    /// A page whose edges already carry their cursors.
+    pub(super) fn with_cursors(
+        devices: Vec<(String, Device)>,
+        has_next_page: bool,
+        total: usize,
+    ) -> Self {
         let edges: Vec<_> = devices
             .into_iter()
-            .map(|node| DeviceEdge {
-                cursor: encode_cursor(&node.name),
-                node,
-            })
+            .map(|(cursor, node)| DeviceEdge { cursor, node })
             .collect();
         let end_cursor = edges.last().map(|edge| edge.cursor.clone());
         Self {
