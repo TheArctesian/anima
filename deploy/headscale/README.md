@@ -14,6 +14,7 @@ uses it. The procedures are in the guide, not here. Public DNS records are in
 | `vps/sshd-anima.conf` | `/etc/ssh/sshd_config.d/10-anima.conf` (by `harden.sh ssh`) | 4 |
 | `vps/20auto-upgrades`, `vps/52anima-unattended-upgrades` | `/etc/apt/apt.conf.d/` (by `harden.sh updates`) | 4 |
 | `vps/daemon.json` | Merged into `/etc/docker/daemon.json` (by `harden.sh docker`) | 4 |
+| `vps/nftables-unit.conf` | `/etc/systemd/system/nftables.service.d/anima.conf` (by `harden.sh confirm`) | 4 |
 | `vps/nftables.conf` | Applied live, then `/etc/nftables.conf` (by `harden.sh firewall`, `confirm`) | 4 |
 | `backup/` | Units, scripts and secret files as listed in [`backup/README.md`](backup/README.md) | 9 |
 | `src/`, `tests/`, `package.json`, `tsconfig.json` | Not installed. Local checks: `bun test deploy/headscale` | 8 |

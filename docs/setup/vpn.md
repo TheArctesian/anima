@@ -168,19 +168,6 @@ ssh <ADMIN_USER>@<VPS_PUBLIC_IPV4>
    scp -r deploy/headscale <ADMIN_USER>@<VPS_PUBLIC_IPV4>:anima-headscale
    ```
 
-   The policy has a `tests` block that needs nodes that do not exist yet. Make a copy with an empty
-   `tests` block for the first start. You add the real block in step 8.
-
-   ```bash
-   # Runs on: operator's Mac, from the repository root
-   TMP_POLICY=$(mktemp)
-   awk '/^  "tests": \[/ { print "  \"tests\": [],"; skip = 1; next } skip && /^  \],$/ { skip = 0; next } !skip' \
-     deploy/headscale/config/policy.hujson > "$TMP_POLICY"
-   grep -n '"tests"' "$TMP_POLICY"      # must print exactly one line: "tests": [],
-   scp "$TMP_POLICY" <ADMIN_USER>@<VPS_PUBLIC_IPV4>:policy-first.hujson
-   rm -f "$TMP_POLICY"
-   ```
-
 5. Create the folders and render the config. `sudo` is required: the rendered config is `0600`
    and owned by root, and the container has no capability to read files of other owners.
    `render.sh` stops, and writes nothing, if the public address is not a public IPv4 address on
@@ -194,7 +181,7 @@ ssh <ADMIN_USER>@<VPS_PUBLIC_IPV4>
    sudo env VPS_PUBLIC_IPV4=<VPS_PUBLIC_IPV4> ACME_EMAIL=<YOUR_EMAIL> \
      bash ./config/render.sh ./config/config.yaml /opt/anima/headscale/config/config.yaml
    sudo install -m 0644 ./compose.yaml /opt/anima/headscale/compose.yaml
-   sudo install -m 0644 ~/policy-first.hujson /opt/anima/headscale/config/policy.hujson
+   sudo install -m 0644 ./config/policy.hujson /opt/anima/headscale/config/policy.hujson
    sudo ls -l /opt/anima/headscale/config      # config.yaml is -rw------- root root
    ```
 
@@ -219,6 +206,13 @@ ssh <ADMIN_USER>@<VPS_PUBLIC_IPV4>
    sudo docker compose -f /opt/anima/headscale/compose.yaml ps        # headscale: healthy
    sudo docker compose -f /opt/anima/headscale/compose.yaml logs --tail 30 headscale
    ```
+
+   The log shows a **warning** that the policy `tests` failed and that the server starts anyway.
+   This is expected: the `tests` rows name the hub, a client and both routers, and none are
+   enrolled yet. Headscale applies the policy anyway at boot. Until all four kinds of node
+   are enrolled, do not reload the policy (a reload with failing rows is rejected). Approving
+   routes needs no reload. If you must change the policy earlier, delete the router row groups
+   (the file marks them) from the copy you install.
 
    If the state is not `healthy` after a minute, read the log. The first start writes the
    database and two private keys into `lib/`; the compose file assumes the image runs as root and
@@ -251,7 +245,7 @@ ssh <ADMIN_USER>@<VPS_PUBLIC_IPV4>
     ```bash
     # Runs on: VPS (SSH)
     hsctl users create operator
-    hsctl users list            # note the numeric ID of operator
+    hsctl users list            # operator is listed
     ```
 
 ## 3. The VPS joins the VPN as the hub
@@ -264,7 +258,7 @@ and the tag `tag:hub`. A tagged node never expires (VPN-003), so no renewal is n
 
    ```bash
    # Runs on: VPS (SSH)
-   hsctl preauthkeys create --user <OPERATOR_USER_ID> --tags tag:hub --expiration 1h
+   hsctl preauthkeys create --tags tag:hub --expiration 1h
    ```
 
 2. Join. Type the key at the prompt; it is not echoed and not stored in shell history:
@@ -278,7 +272,8 @@ and the tag `tag:hub`. A tagged node never expires (VPN-003), so no renewal is n
    ```
 
    `--accept-routes` lets the hub reach the site subnets once the routers are approved (step 5).
-   The key is visible in the process list for a moment; it works once and expires in an hour.
+   The key is visible in the process list for a moment. It is single use and valid for one hour,
+   and Headscale consumes it at once when the node joins; `unset` removes it from the shell.
 
 3. Read the VPN address Headscale gave the hub, and check the node:
 
@@ -330,8 +325,9 @@ the config files beside it). Do these in order, one command at a time.
    cd /opt/anima/headscale/vps
    ```
 
-1. `check` reports and changes nothing. Read every line. Before the hardening it will list
-   violations (SSH password login, listeners). That is expected.
+1. `check` reports and changes nothing. Read every line. Before the hardening it lists
+   violations (SSH password login, no firewall table, no `nftables` drop-in, listeners). That is
+   expected. It also warns if Docker is older than version 28 and fails if `tailscale0` is missing.
 
    ```bash
    # Runs on: VPS (SSH)
@@ -350,22 +346,27 @@ the config files beside it). Do these in order, one command at a time.
    ```
 
 3. `updates` turns on automatic security updates, with a reboot at 04:30 UTC when needed
-   (VPS-004):
+   (VPS-004). The rules cover Ubuntu's security pockets and, through `origin=Docker` and
+   `origin=Tailscale`, the two extra repositories. First confirm that those two names match
+   what your VPS reports. Docker and Tailscale are installed already:
+
+   ```bash
+   # Runs on: VPS (SSH)
+   apt-cache policy docker-ce tailscale | grep -E 'o=|^[a-z]'     # expect o=Docker and o=Tailscale
+   grep -n 'origin=' /opt/anima/headscale/vps/52anima-unattended-upgrades
+   ```
+
+   If an `o=` value differs (for example in capitalisation), edit the `origin=` line in
+   `/opt/anima/headscale/vps/52anima-unattended-upgrades` to match, then install:
 
    ```bash
    # Runs on: VPS (SSH)
    sudo ./harden.sh updates
+   sudo unattended-upgrade --dry-run --debug 2>&1 | grep -i 'allowed origins'
    ```
 
-   The update rules list Ubuntu's own origins only. Docker and Tailscale come from their own
-   repositories and are not updated automatically: update them by hand every month
-   (`sudo apt-get update && sudo apt-get upgrade`). If a later version of the file lists their
-   origins, check the exact values first:
-
-   ```bash
-   # Runs on: VPS (SSH)
-   apt-cache policy docker-ce tailscale     # compare the "o=" and "n=" values with the file
-   ```
+   A Docker or Tailscale upgrade restarts its daemon: containers keep running (`live-restore`),
+   and the VPN drops for a few seconds.
 
 4. `docker` merges `daemon.json` into `/etc/docker/daemon.json`: published ports bind to
    `127.0.0.1` by default (Docker would otherwise bypass the firewall), logs are rotated, and
@@ -403,15 +404,20 @@ the config files beside it). Do these in order, one command at a time.
 
    ```bash
    # Runs on: VPS (a NEW SSH session over the VPN)
+   export ANIMA_ADMIN_USER=<ADMIN_USER>
    cd /opt/anima/headscale/vps
-   sudo ./harden.sh confirm
+   sudo --preserve-env=ANIMA_ADMIN_USER,SSH_CONNECTION ./harden.sh confirm
    ```
 
-   `confirm` cancels the rollback and installs the rules for boot. If you do nothing, or the new
+   `confirm` refuses to run in the same session that ran `firewall`, or in one that does not come
+   over the VPN (from the Hostinger console use `--console`). It cancels the rollback, installs
+   the rules for boot, and installs `/etc/systemd/system/nftables.service.d/anima.conf`. That
+   drop-in makes a stop of `nftables` remove only the Anima table. If you do nothing, or the new
    session cannot connect, after 180 seconds the previous rules come back by themselves (the
    VPS is as open as before: keep 22/tcp in the Hostinger firewall until `confirm` succeeds).
-   Then find the cause and run `firewall` again. Do not `systemctl stop nftables` on this host:
-   it flushes Docker's rules too.
+   Then find the cause and run `firewall` again. Without
+   that drop-in, never `systemctl stop nftables` on this host: it flushes Docker's and Tailscale's
+   rules too.
 
 8. If SSH over the VPN does not work and you are locked out, open the Hostinger browser console,
    log in there, and run the firewall step from it:
@@ -425,14 +431,19 @@ the config files beside it). Do these in order, one command at a time.
 
    To remove the firewall table completely from the console: `sudo nft delete table inet anima_filter`.
 
-9. Run `check` again from the VPN session. It must say `ok: no violations`:
+9. Run `check` again from the VPN session. It must say `ok: no violations`. It now also needs the
+   Anima table, the `nftables` unit enabled, the drop-in and `tailscale0`:
 
    ```bash
    # Runs on: VPS (SSH over the VPN)
    sudo --preserve-env=ANIMA_ADMIN_USER ./harden.sh check
    ```
 
-10. **Operator change 7.** In the Hostinger panel, remove the 22/tcp rule that you added in step 1 of this guide.
+10. Note for the hub guide (WP-04): the firewall drops packets for `100.64.0.0/10` that do not
+    arrive on `tailscale0`, so a container on a Docker bridge network cannot reach any VPN address.
+    Treat this as a WP-04 note for the hub's network setup.
+
+11. **Operator change 7.** In the Hostinger panel, remove the 22/tcp rule that you added in step 1 of this guide.
     SSH now works only over the VPN.
 
 ## 5. Subnet routers
@@ -461,7 +472,7 @@ router in Phase 1: its Mac is a client, and its devices are not reachable until 
 
    ```bash
    # Runs on: VPS (SSH over the VPN)
-   hsctl preauthkeys create --user <OPERATOR_USER_ID> --tags tag:router,tag:site-home --expiration 1h
+   hsctl preauthkeys create --tags tag:router,tag:site-home --expiration 1h
    ```
 
 3. Join and advertise the site subnet. Keep the default `--snat-subnet-routes`: devices at the
@@ -667,7 +678,7 @@ tagged pre-auth key.
 
 **To change the rules:**
 
-1. Edit the policy and its `tests` block on your Mac. Run the tests there. They are the
+1. Edit the policy and its `tests` block on your Mac, in the full form. Run the tests there. They are the
    authoritative check:
 
    ```bash
@@ -699,12 +710,12 @@ tagged pre-auth key.
    ```
 
 **The `tests` block and the enrolment order.** Headscale refuses a test row whose source or
-destination has no node. The repository file groups its rows by the nodes they need: first the
-hub and a client, then the home router, then the office 2 router. The first start used an empty
-`tests` block (step 2). Once the hub, a client and both routers are enrolled, install the real
-file with the commands above. If a router is not enrolled yet, delete its rows from the copy you
-install and add them back when it joins. Run `bun test deploy/headscale` on the full file
-every time.
+destination has no node. At boot it only warns and starts anyway (step 2.7), but a **reload with
+a failing row is rejected**. So do not reload the policy until the hub, a client and both routers
+are enrolled. The repository file groups its rows by the nodes they need: first the hub and a
+client, then the home router, then the office 2 router. If you must change the policy earlier,
+delete the router row groups from the copy you install and add them back when the routers join.
+Run `bun test deploy/headscale` on the full file every time.
 
 ## 9. Backups (VPS-006)
 
@@ -719,7 +730,7 @@ The backup uses the home router (step 5) and the hub's `--accept-routes` (step 3
 
 **Operator change 9 (confirm in chat first).**
 
-1. Home PC: install `restic`, `apache2-utils` (for `htpasswd`) and the `rest-server` binary
+1. Home PC: install `restic`, `jq` (the prune script needs it), `apache2-utils` (for `htpasswd`) and the `rest-server` binary
    (download a release from <https://github.com/restic/rest-server/releases>, check its checksum,
    and install it as `/usr/local/bin/rest-server`). Create the user and the folders:
 
@@ -730,25 +741,34 @@ The backup uses the home router (step 5) and the hub's `--accept-routes` (step 3
    sudo install -d -m 0755 /etc/restic
    ```
 
-2. Home PC: the login of the VPS, and the files the units read. These hold secrets. Type each
-   password at the prompt; never paste it into chat or a note. Choose the restic password in
-   your password manager and keep it offline too: without it the backups cannot be read.
+2. Home PC: the login of the VPS, and the files the units read. These hold secrets. Make the
+   rest-server password hex, so it needs no URL encoding: run `openssl rand -hex 32` on the home PC,
+   read it from the screen and type it at the two prompts below (here and on the VPS). Choose the
+   restic encryption password in your password manager and keep it offline too: without it the
+   backups cannot be read. Never paste either password into chat or a note.
 
    ```bash
    # Runs on: home Linux PC
+   openssl rand -hex 32                                         # the rest-server password: read it, then type it at the next prompt
    sudo htpasswd -B -c /etc/restic/htpasswd headscale-vps       # asks for the rest-server password
    sudo chown root:restic /etc/restic/htpasswd && sudo chmod 0640 /etc/restic/htpasswd
    sudo bash -c 'umask 077; read -rsp "restic encryption password: " P; echo; printf "%s" "$P" > /etc/restic/headscale-password'
-   echo 'HOME_PC_LAN_IP=<HOME_PC_LAN_IP>' | sudo tee /etc/restic/rest-server.env     # 10.10.0.x; not a secret
+   echo 'HOME_PC_LAN_IP=<HOME_PC_LAN_IP>' | sudo tee /etc/restic/rest-server.env     # 10.10.0.x; required, not a secret
    sudo chmod 0644 /etc/restic/rest-server.env
    ```
 
 3. Home PC: install the units (the repository names end in `.unit`; systemd needs `.service`) and
-   start the receiver and the weekly prune. Run from your copy of the repository files:
+   start the receiver and the weekly prune. `rest-server-allow.conf` is a template: the receiver
+   accepts only the hub's VPN address, and you write the real address (`tailscale ip -4` on the
+   VPS, <HUB_VPN_IPV4>) in place of the placeholder. The receiver also caps uploads (`--max-size`).
+   Put `/srv/restic` on its own filesystem or under a quota. Run from your copy of the repository
+   files:
 
    ```bash
    # Runs on: home Linux PC, in a copy of deploy/headscale/backup
    sudo install -m 0644 rest-server.unit /etc/systemd/system/rest-server.service
+   sudo install -d -m 0755 /etc/systemd/system/rest-server.service.d
+   sed 's/\${HUB_VPN_IPV4}/<HUB_VPN_IPV4>/' rest-server-allow.conf | sudo tee /etc/systemd/system/rest-server.service.d/allow.conf > /dev/null
    sudo install -m 0755 prune.sh /usr/local/bin/restic-prune
    sudo install -m 0644 restic-prune.unit /etc/systemd/system/restic-prune.service
    sudo install -m 0644 restic-prune.timer /etc/systemd/system/restic-prune.timer
@@ -758,7 +778,7 @@ The backup uses the home router (step 5) and the hub's `--accept-routes` (step 3
 
 4. VPS: the secret files. Both are `0600` and owned by root. The repository file is one line:
    `rest:http://headscale-vps:<rest-server password>@<HOME_PC_LAN_IP>:8000/headscale-vps/headscale`.
-   Use a rest-server password without special characters, so it needs no URL encoding.
+   Type the hex rest-server password from the home PC.
 
    ```bash
    # Runs on: VPS (SSH over the VPN)
@@ -784,6 +804,17 @@ The backup uses the home router (step 5) and the hub's `--accept-routes` (step 3
    sudo journalctl -u headscale-backup.service -n 50
    ```
 
+   First-run checks on the VPS and the home PC (the unit runs without capabilities and with
+   `/opt/anima/headscale` read-only):
+
+   - The journal must not show `unable to open database file`. If it does while Headscale is
+     stopped, start Headscale once and run the backup again. If it persists, follow the backup
+     README (a `ReadWritePaths=` line for the `db.sqlite-shm` file only).
+   - `sudo ls -ln /opt/anima/headscale/lib` must show owner `0` for every file. If not, see the
+     backup README.
+   - On the home PC, `sudo journalctl -u rest-server.service` must show the request coming from
+     the hub's VPN address you put in `allow.conf`.
+
 6. Check from the home PC that the snapshot arrived:
 
    ```bash
@@ -791,8 +822,27 @@ The backup uses the home router (step 5) and the hub's `--accept-routes` (step 3
    sudo restic --repo /srv/restic/headscale-vps/headscale --password-file /etc/restic/headscale-password snapshots
    ```
 
-   The prune runs every Sunday on this PC: 14 daily, 8 weekly and 12 monthly snapshots are kept.
-   Check it once with `systemctl list-timers restic-prune.timer`.
+   The prune runs every Sunday on this PC. It keeps snapshots by age: every snapshot of the last
+   14 days, then weekly ones for two months, then monthly ones for a year. Check it once with
+   `systemctl list-timers restic-prune.timer`.
+
+   **If the prune refuses.** The prune script stops, and deletes nothing, when a snapshot is dated
+   more than an hour in the future or when one UTC day has more than two snapshots (a running
+   VPS could otherwise flood the repository to push good snapshots out). Running the backup by
+   hand more than twice in one day also triggers it. Look at the list:
+
+   ```bash
+   # Runs on: home Linux PC
+   sudo restic --repo /srv/restic/headscale-vps/headscale --password-file /etc/restic/headscale-password --no-cache --no-lock snapshots --host anima-vps --tag headscale
+   ```
+
+   If the extra snapshots came from your own manual runs, forget those snapshot IDs by hand
+   (`restic forget <ID>`). If you did not make them, **suspect the VPS**: treat it as taken over,
+   check `hsctl nodes list`, the policy and the SSH logs before you prune.
+
+   The alert for a backup that has stopped arriving is deferred work (GitHub issue #1). Until then
+   look at `systemctl list-timers headscale-backup.timer` on the VPS and at the snapshot list
+   once a week.
 
 **Restore drill, every quarter.** A backup you have not restored is not a backup. On the home PC,
 restore the latest snapshot into a scratch folder and check it. This does not touch the live
@@ -801,15 +851,17 @@ server:
 ```bash
 # Runs on: home Linux PC
 sudo restic --repo /srv/restic/headscale-vps/headscale --password-file /etc/restic/headscale-password \
-  restore latest --host anima-vps --tag headscale --target /root/headscale-restore
+  --no-cache --no-lock restore latest --host anima-vps --tag headscale --target /root/headscale-restore
 sudo find /root/headscale-restore -type f                     # db.sqlite, two private keys, config.yaml, policy.hujson
 sudo sqlite3 "$(sudo find /root/headscale-restore -name db.sqlite)" "PRAGMA integrity_check"      # must print ok
 sudo rm -rf /root/headscale-restore                           # it holds private keys
 ```
 
-To rebuild a lost VPS, use the restore commands in the backup README: restore into
+`--no-cache --no-lock` keep the drill from writing into the repository, which belongs to the
+`restic` user. To rebuild a lost VPS, use the restore commands in the backup README: restore into
 `/root/headscale-restore`, check the database, stop Headscale, copy the files into `lib/` and
-`config/`, start it, and confirm that `hsctl nodes list` shows every node.
+`config/`, start it, confirm that `hsctl nodes list` shows every node, and `rm -rf` the restore
+folder at the end (it holds private keys).
 
 ## 10. Warnings
 
