@@ -1,0 +1,25 @@
+{
+  "ignoreFiles": ["**/node_modules/**", "**/.svelte-kit/**", "**/build/**", "**/src/styles/tokens.css"],
+  "overrides": [
+    { "files": ["**/*.svelte"], "customSyntax": "postcss-html" }
+  ],
+  "plugins": ["stylelint-declaration-strict-value"],
+  "rules": {
+    "color-no-hex": true,
+    "color-named": "never",
+    "function-disallowed-list": ["rgb", "rgba", "hsl", "hsla", "hwb", "lab", "lch", "oklab", "oklch", "color", "color-mix", "cubic-bezier", "steps", "linear"],
+    "declaration-property-value-disallowed-list": {
+      "/^transition/": ["/(?<![-\\w.])\\d*\\.?\\d+m?s(?![-\\w])/", "/(?<![-\\w])(ease|ease-in|ease-out|ease-in-out|linear)(?![-\\w])/"],
+      "/^animation/": ["/(?<![-\\w.])\\d*\\.?\\d+m?s(?![-\\w])/", "/(?<![-\\w])(ease|ease-in|ease-out|ease-in-out|linear)(?![-\\w])/"],
+      "/^font/": ["/(?<![-\\w])(Arial|Helvetica|serif|sans-serif|monospace|system-ui|Inter)(?![-\\w])/i"]
+    },
+    "scale-unlimited/declaration-strict-value": [
+      ["/color$/", "fill", "stroke", "z-index", "font-family", "transition-duration", "transition-timing-function", "animation-duration", "animation-timing-function", "transition-delay", "animation-delay"],
+      {
+        "ignoreValues": ["inherit", "initial", "unset", "currentColor", "transparent", "none", "auto", "0"],
+        "ignoreFunctions": true,
+        "message": "Use a design token: var(--token) (TOK-003)."
+      }
+    ]
+  }
+}
