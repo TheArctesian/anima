@@ -41,7 +41,7 @@ Sec-WebSocket-Protocol: guacamole
 The hub, not the client, does the handshake with the `guac-protocol` `Handshake` state machine:
 
 1. `select` with `ssh`.
-2. Read `args`. The first arg is the protocol version (`VERSION_1_5_0` or later). The hub answers with the same version.
+2. Read `args`. The first arg is the protocol version (`VERSION_1_5_0` or later). The hub answers with `VERSION_1_5_0`, the newest version it implements, not the version guacd sends (R-018).
 3. Send `size` (width, height, DPI from `DisplayInput`), `audio` (empty), `video` (empty), `image` (`image/png`, `image/jpeg`, `image/webp`), `timezone` (from `DisplayInput`, else the device site's zone, else UTC), `name` (operator username).
 4. Send `connect` with one value per name in `args`, in the same order. Values come only from the database and the credential store (GW-012). Unknown names get an empty value. The client never supplies `hostname`, `port`, credentials or any path (GW-013).
 5. Read `ready`. Its argument is the gateway connection ID. The hub keeps it with the session and never sends it to the client (GW-014).
@@ -70,7 +70,7 @@ After `ready`, the hub sends to the client, in this order:
 From the client, the hub:
 
 - answers the internal instruction `0.,4.ping,<n>.<ts>;` with the same instruction, and does not forward it;
-- forwards every other complete instruction to the gateway unchanged, except `size`, which it forwards only when width and height are 1..8192 and DPI is 48..480;
+- forwards every other complete instruction to the gateway unchanged, except `size`, which it forwards only when width and height are 1..8192 and DPI, when present, is 48..480 (R-018);
 - closes the tunnel if an instruction does not decode (GW-011), with close code 1002.
 
 The hub sends a `nop` to the client when the gateway has sent nothing for 5 seconds. If the client sends nothing for 15 seconds (no ping, no input), the hub ends the session with `TIMEOUT`.
