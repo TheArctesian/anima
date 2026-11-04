@@ -10,8 +10,19 @@ fn device_with(change: impl FnOnce(&mut NewDeviceInput)) -> Result<NewDevice, Ve
     validate_new_device(&input).map_err(|errors| fields(&errors))
 }
 
-/// A newline, a right-to-left override and an isolate, and NUL.
-const UNSAFE: [&str; 4] = ["a\nb", "a\u{202E}b", "a\u{2067}b", "a\0b"];
+/// A newline, a right-to-left override and an isolate, NUL, the line and paragraph separators,
+/// the left-to-right and right-to-left marks, and the Arabic letter mark.
+const UNSAFE: [&str; 9] = [
+    "a\nb",
+    "a\u{202E}b",
+    "a\u{2067}b",
+    "a\0b",
+    "a\u{2028}b",
+    "a\u{2029}b",
+    "a\u{200E}b",
+    "a\u{200F}b",
+    "a\u{061C}b",
+];
 
 #[test]
 fn log_004_control_and_direction_characters_are_rejected_in_every_logged_text() {
@@ -58,11 +69,11 @@ fn log_004_control_and_direction_characters_are_rejected_in_every_logged_text() 
 #[test]
 fn log_004_the_characters_just_outside_the_unsafe_ranges_are_accepted() {
     for ok in [
-        "a\u{2029}b",
+        "a\u{2027}b",
         "a\u{202F}b",
         "a\u{2065}b",
         "a\u{206A}b",
-        "a\u{2029}b",
+        "a\u{200D}b",
     ] {
         assert!(device_with(|i| i.name = ok.into()).is_ok(), "{ok:?}");
     }
@@ -103,6 +114,17 @@ fn dev_010_a_filter_has_a_name_of_at_most_64_characters_and_at_most_32_tags() {
         fields(&validate_filter(filter(65, 33)).unwrap_err()),
         ["name", "tags"]
     );
+}
+
+#[test]
+fn dev_010_a_filter_tag_has_at_most_32_characters() {
+    let filter = |length: usize| DeviceFilter {
+        name: None,
+        tags: vec!["ok".into(), "t".repeat(length)],
+        site: None,
+    };
+    assert!(validate_filter(filter(32)).is_ok());
+    assert_eq!(fields(&validate_filter(filter(33)).unwrap_err()), ["tags"]);
 }
 
 #[test]

@@ -35,7 +35,7 @@ struct PrivateKeyInput {
 }
 
 /// The parsed `credential` argument, already held as secrets.
-pub(super) struct SshCredential(pub(super) SshSecret);
+pub struct SshCredential(pub(super) SshSecret);
 
 /// The field a parse error names: the input that could not be read is the whole argument.
 const ARGUMENT: &str = "credential";

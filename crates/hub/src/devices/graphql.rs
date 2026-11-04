@@ -20,11 +20,10 @@ use async_graphql::{Context, ID, Object, Result, dataloader::DataLoader};
 use sqlx::{PgPool, Postgres, Transaction};
 use uuid::Uuid;
 
-pub use self::ssh::CredentialStored;
+pub use self::{credential_input::SshCredential, ssh::CredentialStored};
 
 use self::{
     connection::{DEFAULT_FIRST, DeviceConnection},
-    credential_input::SshCredential,
     error::{invalid, schema_dependency, to_graphql},
     filter::{DeviceFilterInput, DeviceSort, list_args},
     input::{CreateDeviceInput, UpdateDeviceInput, checked, device_id},

@@ -126,3 +126,55 @@ fn schema_for_sdl() -> String {
     let pool = sqlx::PgPool::connect_lazy("postgres://unused@127.0.0.1:1/none").unwrap();
     schema_for(&pool).sdl()
 }
+
+/// K1 members that need other domains: WP-09 (status, checks, uptime) and WP-10 (hostKey).
+const LATER: [(&str, &str); 7] = [
+    ("Device", "status"),
+    ("Device", "checks"),
+    ("Device", "uptime"),
+    ("SshSettings", "hostKey"),
+    ("DeviceSort", "STATUS"),
+    ("DeviceSort", "UPTIME"),
+    ("DeviceFilter", "status"),
+];
+
+/// The K1 root fields WP-06 builds; the others belong to other packages.
+const OWNED_ROOT: [&str; 10] = [
+    "sites",
+    "device",
+    "devices",
+    "tags",
+    "createSite",
+    "createDevice",
+    "updateDevice",
+    "deleteDevice",
+    "setSshCredential",
+    "clearSshCredential",
+];
+
+#[tokio::test]
+async fn k1_every_devices_member_wp06_owns_is_in_the_hub() {
+    let hub = members(&parse_schema(schema_for_sdl()).expect("hub sdl parses"));
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../contracts/schema.graphql"
+    );
+    let k1 = members(&parse_schema(std::fs::read_to_string(path).unwrap()).expect("K1 parses"));
+    let mut missing = Vec::new();
+    for name in CHECKED {
+        let is_root = matches!(name, "Query" | "Mutation");
+        for member in k1[name].keys() {
+            let later = LATER.contains(&(name, member.as_str()));
+            if later || (is_root && !OWNED_ROOT.contains(&member.as_str())) {
+                continue;
+            }
+            if !hub[name].contains_key(member) {
+                missing.push(format!("{name}.{member}"));
+            }
+        }
+    }
+    assert!(
+        missing.is_empty(),
+        "K1 members missing from the hub: {missing:?}"
+    );
+}
