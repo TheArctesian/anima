@@ -208,6 +208,7 @@ describe("backup.sh", () => {
     const result = run("backup.sh");
     expect(result.code).toBe(0);
     expect(existsSync(join(result.root, "snapshot.list"))).toBe(true);
+    expect(sqlOf(result.calls)[0]).toStartWith(`VACUUM INTO '${join(result.root, "tmp")}/`);
     expect(result.leftover).toEqual([]);
   });
 

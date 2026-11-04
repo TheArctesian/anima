@@ -54,7 +54,8 @@ restic_run() {
 }
 
 umask 077
-staging="$(mktemp -d)" || fail "could not create a private temporary folder"
+# Explicit template: BSD mktemp ignores TMPDIR without one. Under systemd, /tmp is private.
+staging="$(mktemp -d "${TMPDIR:-/tmp}/headscale-backup.XXXXXXXX")" || fail "could not create a private temporary folder"
 # The snapshot holds the Noise and DERP private keys: remove it however the script ends.
 trap 'rm -rf -- "$staging"' EXIT
 trap 'exit 130' INT
