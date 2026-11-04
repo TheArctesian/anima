@@ -52,9 +52,5 @@ async fn graphql_endpoint_answers_post_over_http() {
     let response = router(schema, pool, clock).oneshot(request).await.unwrap();
     assert!(response.status().is_success());
     let body = response.into_body().collect().await.unwrap().to_bytes();
-    let body: serde_json::Value = serde_json::from_slice(&body).unwrap();
-    assert_eq!(
-        body["errors"][0]["extensions"]["code"], "UNAUTHENTICATED",
-        "{body}"
-    );
+    assert_eq!(body.as_ref(), br#"{"data":{"__typename":"Query"}}"#);
 }

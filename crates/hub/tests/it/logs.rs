@@ -82,6 +82,13 @@ async fn api_010_an_unreachable_database_is_logged_by_kind_at_both_edges() {
         2,
         "and through identify: {text}"
     );
+    let kind_only =
+        r#""message":"access request failed","domain":"access","fault":"database_unreachable""#;
+    assert_eq!(
+        text.matches(kind_only).count(),
+        2,
+        "the kind and nothing else: {text}"
+    );
     for leak in [
         token.as_str(),
         PASSWORD,

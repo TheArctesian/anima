@@ -49,6 +49,28 @@ impl Query {
     async fn open(&self) -> &'static str {
         "open"
     }
+
+    /// An unguarded field whose argument never parses, so any argument error would show.
+    async fn probe(&self, value: Refusing) -> &'static str {
+        let _ = value;
+        "probed"
+    }
+}
+
+/// A scalar that refuses every value with a message naming its rule.
+struct Refusing;
+
+#[async_graphql::Scalar]
+impl async_graphql::ScalarType for Refusing {
+    fn parse(_: Value) -> async_graphql::InputValueResult<Self> {
+        Err(async_graphql::InputValueError::custom(
+            "the secret argument rule",
+        ))
+    }
+
+    fn to_value(&self) -> Value {
+        Value::Null
+    }
 }
 
 struct Mutation;
@@ -140,31 +162,41 @@ async fn api_003_backstop_refuses_an_unguarded_field_without_an_identity() {
 }
 
 #[tokio::test]
-async fn api_003_backstop_lets_exactly_one_login_through_without_an_identity() {
+async fn api_003_backstop_lets_one_login_or_typename_through_without_an_identity() {
     let login = backstopped().execute("mutation { login }").await;
     assert_eq!(login.data, value!({ "login": "signed in" }));
     let renamed = backstopped().execute("mutation { signIn: login }").await;
     assert_eq!(renamed.data, value!({ "signIn": "signed in" }));
+    let typename = backstopped().execute("{ __typename a: __typename }").await;
+    assert_eq!(
+        typename.data,
+        value!({ "__typename": "Query", "a": "Query" })
+    );
 }
 
 #[tokio::test]
-async fn api_003_backstop_refuses_several_logins_as_validation() {
-    let response = backstopped()
-        .execute("mutation { a0: login a1: login a2: login }")
-        .await;
-    assert_eq!(response.data, Value::Null);
-    let [error] = response.errors.as_slice() else {
-        panic!("expected one error, got {:?}", response.errors);
-    };
-    let code = error.extensions.as_ref().and_then(|e| e.get("code"));
-    assert_eq!(code, Some(&value!("VALIDATION")));
+async fn api_003_h_6_signed_out_bad_arguments_get_only_unauthenticated() {
+    let documents = [
+        r#"{ probe(value: "anything") }"#,
+        "{ probe(value: 42) }",
+        "query($v: Refusing!) { probe(value: $v) }",
+        "{ probe }",
+        "{ nosuchfield(x: 1) }",
+    ];
+    for document in documents {
+        let request = Request::new(document).variables(async_graphql::Variables::from_json(
+            serde_json::json!({ "v": "anything" }),
+        ));
+        assert_unauthenticated(&backstopped().execute(request).await);
+    }
 }
 
 #[tokio::test]
 async fn api_003_backstop_refuses_mixed_fragment_and_introspection_documents() {
     let documents = [
-        "{ __typename }",
         "mutation { login __typename }",
+        "mutation { a0: login a1: login }",
+        "mutation { __typename } mutation B { login open }",
         "mutation { login open }",
         "mutation { renamed: open }",
         "mutation { ...F } fragment F on Mutation { login }",

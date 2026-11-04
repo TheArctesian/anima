@@ -7,7 +7,7 @@ use std::{
 };
 
 use async_graphql::{
-    Context, Guard, Pos, ServerResult, Variables,
+    Context, Guard, Pos, Positioned, ServerResult, Variables,
     extensions::{Extension, ExtensionContext, ExtensionFactory, NextParseQuery},
     parser::types::{
         DocumentOperations, ExecutableDocument, OperationDefinition, OperationType, Selection,
@@ -53,10 +53,13 @@ fn current<'a>(
         .map(|(identity, _)| identity)
 }
 
-/// Schema extension (API-003 backstop):
-/// - without a valid identity, an operation may select exactly one root field, `login` in a
-///   mutation; anything else (`__typename`, introspection, fragments) is refused with
-///   `UNAUTHENTICATED`, and several `login` fields with `VALIDATION`, before any resolver runs;
+/// Schema extension (API-003 backstop, ruling H-6(a)). It runs in `parse_query`, after the
+/// document is parsed and before validation, variable coercion or any resolver, so a
+/// signed-out client learns nothing about field names or argument rules:
+/// - without a valid identity, a document is allowed only when every operation selects just
+///   `__typename`, or is a mutation with exactly one root field, `login`. Anything else
+///   (other fields, several `login`s, introspection, fragments) gets one `UNAUTHENTICATED`
+///   error and nothing else;
 /// - with a `read` token, a mutation that selects more than `login`, `logout` and
 ///   `__typename` is refused with `FORBIDDEN`.
 pub struct SignInRequired;
@@ -78,7 +81,7 @@ impl Extension for SignInRequired {
     ) -> ServerResult<ExecutableDocument> {
         let document = next.run(ctx, query, variables).await?;
         let refusal = match current(ctx.data_opt(), ctx.data_opt()) {
-            None => signed_out_refusal(&document),
+            None => (!signed_out_allowed(&document)).then_some(Error::Unauthenticated),
             Some(identity)
                 if identity.scope() == Scope::Read
                     && !roots_only(&document, Roots::Any, Roots::Only(&["login", "logout"])) =>
@@ -94,27 +97,27 @@ impl Extension for SignInRequired {
     }
 }
 
-/// Why a document without an identity is refused, if it is: each operation must be a
-/// mutation whose only root selection is one `login` field.
-fn signed_out_refusal(document: &ExecutableDocument) -> Option<Error> {
-    let mut logins = Vec::new();
-    for operation in operations(document) {
-        let only_logins = operation.ty == OperationType::Mutation
-            && operation.selection_set.node.items.iter().all(|selection| {
-                matches!(&selection.node, Selection::Field(field) if field.node.name.node == "login")
-            });
-        if !only_logins {
-            return Some(Error::Unauthenticated);
-        }
-        logins.push(operation.selection_set.node.items.len());
+/// Whether a document may run without an identity: each operation selects only
+/// `__typename`, or is a mutation whose one root selection is a `login` field.
+fn signed_out_allowed(document: &ExecutableDocument) -> bool {
+    operations(document).all(|operation| {
+        let items = &operation.selection_set.node.items;
+        let typename_only = items
+            .iter()
+            .all(|item| field_name(item) == Some("__typename"));
+        let one_login = operation.ty == OperationType::Mutation
+            && items.len() == 1
+            && items.iter().all(|item| field_name(item) == Some("login"));
+        typename_only || one_login
+    })
+}
+
+/// The field a selection names; `None` for a fragment.
+fn field_name(selection: &Positioned<Selection>) -> Option<&str> {
+    match &selection.node {
+        Selection::Field(field) => Some(field.node.name.node.as_str()),
+        Selection::FragmentSpread(_) | Selection::InlineFragment(_) => None,
     }
-    logins
-        .iter()
-        .any(|&count| count != 1)
-        .then_some(Error::Validation {
-            field: "login",
-            message: "Send one login at a time.",
-        })
 }
 
 /// The root fields an operation may select, besides `__typename`.

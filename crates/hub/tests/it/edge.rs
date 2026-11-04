@@ -78,21 +78,23 @@ async fn sec_002_only_one_json_request_per_post_is_accepted(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn api_003_signed_out_documents_may_hold_only_one_login(pool: PgPool) {
+async fn api_003_h_6_signed_out_documents_may_hold_one_login_or_typename(pool: PgPool) {
     set_operator(&pool).await;
     let hub = Hub::new(&pool, start());
     let typename = hub.post(None, "{ a: __typename }", json!({})).await;
-    assert_eq!(
-        typename["errors"][0]["extensions"]["code"],
-        "UNAUTHENTICATED"
-    );
+    assert_eq!(typename, json!({ "data": { "a": "Query" } }));
 
     let input = json!({ "username": USERNAME, "password": "guess" });
     let query = "mutation($i: LoginInput!) { a0: login(input: $i) { token } a1: login(input: $i) { token } }";
     let several = hub.post(None, query, json!({ "i": input })).await;
     assert_eq!(several["data"], json!(null), "{several}");
     assert_eq!(
-        several["errors"][0]["extensions"]["code"], "VALIDATION",
+        several["errors"].as_array().map(Vec::len),
+        Some(1),
+        "{several}"
+    );
+    assert_eq!(
+        several["errors"][0]["extensions"]["code"], "UNAUTHENTICATED",
         "{several}"
     );
     let rows = attempts(&pool, "select count(*) from access.login_attempts").await;
