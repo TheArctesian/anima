@@ -6,7 +6,11 @@
   "scripts": {
     "lint": "bun run --filter '*' lint",
     "check": "bun run --filter '*' check",
-    "test": "bun run --filter '*' test"
+    "test": "bun run --filter '*' test",
+    "quality:limits": "bun run --cwd quality limits",
+    "quality:baseline": "bun run --cwd quality baseline",
+    "quality:names": "bun run --cwd quality names",
+    "quality:imports": "bun run --cwd quality imports"
   },
   "devDependencies": {
     "@eslint-community/eslint-plugin-eslint-comments": "^4.8.1",
