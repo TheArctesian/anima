@@ -84,3 +84,89 @@ describe('ESLint limits and bans', () => {
     expect(await rulesFired(code, 'apps/client/src/lint/Sample.svelte')).toContain('svelte/no-at-html-tags');
   });
 });
+
+const refused: Record<string, string> = {
+  'a 6-digit hex colour string': "export const c = '#ff0000';\n",
+  'a 3-digit hex colour string': "export const c = '#f00';\n",
+  'an 8-digit hex colour string': "export const c = '#ff000080';\n",
+  'a hex colour in a template literal': 'export const c = `border: 1px solid #fff`;\n',
+  'an rgb() string': "export const c = 'rgb(1, 2, 3)';\n",
+  'an rgba() string': "export const c = 'rgba(1, 2, 3, 0.5)';\n",
+  'an hsl() string': "export const c = 'hsl(10 20% 30%)';\n",
+  'an oklch() string': "export const c = 'oklch(0.5 0.1 200)';\n",
+  'a cubic-bezier() string': "export const e = 'cubic-bezier(0.2, 0, 0, 1)';\n",
+  'a 200ms string': "export const d = '200ms';\n",
+  'a 0.2s string': "export const d = '0.2s';\n",
+  'a duration inside a template literal': 'export const d = `opacity 200ms ease`;\n',
+  'a numeric duration property': 'export const o = { duration: 200 };\n',
+  'a numeric delay property': 'export const o = { delay: 0 };\n',
+  'a numeric stiffness property': 'export const o = { stiffness: 170 };\n',
+  'a numeric damping property': 'export const o = { damping: 26 };\n',
+  'a numeric mass property': 'export const o = { mass: 1 };\n',
+  'a numeric bounce property': 'export const o = { bounce: 0.2 };\n',
+  'a numeric visualDuration property': 'export const o = { visualDuration: 0.3 };\n',
+  'a numeric ease array': 'export const o = { ease: [0.2, 0, 0, 1] };\n',
+  'a numeric zIndex property': 'export const o = { zIndex: 10 };\n',
+  'a quoted numeric duration key': "export const o = { 'duration': 200 };\n",
+  'an assigned zIndex': 'export const f = (el: { zIndex: number }) => { el.zIndex = 5; };\n',
+};
+
+describe('ESLint token literals (TOK-003)', () => {
+  const svelte = (markup: string) => `<script lang="ts">\n  export let x = 1;\n</script>\n${markup}\n`;
+  const restricted = 'no-restricted-syntax';
+  const sample = 'apps/client/src/lib/sample.ts';
+  const svelteSample = 'apps/client/src/lib/Sample.svelte';
+  for (const [name, code] of Object.entries(refused)) {
+    it(`TOK-003 refuses ${name} in a .ts file`, async () => {
+      expect(await rulesFired(code, sample)).toContain(restricted);
+    });
+  }
+
+  it('TOK-003 names the rule in the message', async () => {
+    const [result] = await eslint.lintText("export const c = '#ff0000';\n", { filePath: `${root}${sample}` });
+    expect(result?.messages[0]?.message).toContain('Use a design token (TOK-003)');
+  });
+
+  it('TOK-003 refuses a hex colour in a Svelte script block', async () => {
+    const code = '<script lang="ts">\n  const c = "#ff0000";\n  export { c };\n</script>\n';
+    expect(await rulesFired(code, svelteSample)).toContain(restricted);
+  });
+
+  it('TOK-003 refuses an inline style attribute with a hex colour', async () => {
+    expect(await rulesFired(svelte('<p style="color: #fff">x</p>'), svelteSample)).toContain(restricted);
+  });
+
+  it('TOK-003 refuses a style: directive with a raw duration', async () => {
+    expect(await rulesFired(svelte('<p style:transition-duration="200ms">x</p>'), svelteSample)).toContain(restricted);
+  });
+
+  it('TOK-003 accepts an inline style attribute that reads tokens', async () => {
+    const code = svelte('<p style="color: var(--text); margin: var(--space-2)">x</p>');
+    expect(await rulesFired(code, svelteSample)).toEqual([]);
+  });
+
+  it('TOK-003 accepts token references, identifiers and non-colour strings', async () => {
+    const code = `import { duration, spring, layer, ease } from '$lib/motion/tokens';
+export const a = { duration: duration.fast, delay: duration.base, zIndex: layer.modal };
+export const b = { stiffness: spring.default.stiffness };
+export const c = 'var(--text)';
+export const d = '/devices#overview';
+export const e = { count: 3, width: 200, ease: ease.enter };
+export const f = 'items: 5 of 10';
+`;
+    expect(await rulesFired(code, sample)).toEqual([]);
+  });
+
+  it('TOK-003 exempts the generated lib/motion/tokens.ts', async () => {
+    const code = "export const spring = { default: { stiffness: 170, damping: 26 } };\nexport const c = '#ff0000';\nexport const o = { duration: 200 };\n";
+    expect(await rulesFired(code, 'apps/client/src/lib/motion/tokens.ts')).toEqual([]);
+  });
+
+  it('TOK-003 exempts test files', async () => {
+    expect(await rulesFired("export const c = '#ff0000';\n", 'apps/client/src/lib/sample.test.ts')).toEqual([]);
+  });
+
+  it('TOK-003 does not apply outside apps/client', async () => {
+    expect(await rulesFired("export const c = '#ff0000';\n", 'quality/src/sample.ts')).toEqual([]);
+  });
+});

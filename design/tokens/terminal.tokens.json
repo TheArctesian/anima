@@ -1,0 +1,31 @@
+{
+  "terminal": {
+    "$type": "color",
+    "background": {
+      "$value": "{color.nord.0}",
+      "$description": "Terminal background: nord0 (RA-010). Rust and reference page only."
+    },
+    "foreground": {
+      "$value": "{color.nord.4}",
+      "$description": "Terminal foreground: nord4 (RA-010). Rust and reference page only."
+    },
+    "ansi": {
+      "0": { "$value": "{color.nord.1}", "$description": "Terminal ANSI colour 0: nord1, the standard Nord terminal mapping (RA-010)." },
+      "1": { "$value": "{color.nord.11}", "$description": "Terminal ANSI colour 1: nord11, the standard Nord terminal mapping (RA-010)." },
+      "2": { "$value": "{color.nord.14}", "$description": "Terminal ANSI colour 2: nord14, the standard Nord terminal mapping (RA-010)." },
+      "3": { "$value": "{color.nord.13}", "$description": "Terminal ANSI colour 3: nord13, the standard Nord terminal mapping (RA-010)." },
+      "4": { "$value": "{color.nord.9}", "$description": "Terminal ANSI colour 4: nord9, the standard Nord terminal mapping (RA-010)." },
+      "5": { "$value": "{color.nord.15}", "$description": "Terminal ANSI colour 5: nord15, the standard Nord terminal mapping (RA-010)." },
+      "6": { "$value": "{color.nord.8}", "$description": "Terminal ANSI colour 6: nord8, the standard Nord terminal mapping (RA-010)." },
+      "7": { "$value": "{color.nord.5}", "$description": "Terminal ANSI colour 7: nord5, the standard Nord terminal mapping (RA-010)." },
+      "8": { "$value": "{color.nord.3}", "$description": "Terminal ANSI colour 8: nord3, the standard Nord terminal mapping (RA-010)." },
+      "9": { "$value": "{color.nord.11}", "$description": "Terminal ANSI colour 9: nord11, the standard Nord terminal mapping (RA-010)." },
+      "10": { "$value": "{color.nord.14}", "$description": "Terminal ANSI colour 10: nord14, the standard Nord terminal mapping (RA-010)." },
+      "11": { "$value": "{color.nord.13}", "$description": "Terminal ANSI colour 11: nord13, the standard Nord terminal mapping (RA-010)." },
+      "12": { "$value": "{color.nord.9}", "$description": "Terminal ANSI colour 12: nord9, the standard Nord terminal mapping (RA-010)." },
+      "13": { "$value": "{color.nord.15}", "$description": "Terminal ANSI colour 13: nord15, the standard Nord terminal mapping (RA-010)." },
+      "14": { "$value": "{color.nord.7}", "$description": "Terminal ANSI colour 14: nord7, the standard Nord terminal mapping (RA-010)." },
+      "15": { "$value": "{color.nord.6}", "$description": "Terminal ANSI colour 15: nord6, the standard Nord terminal mapping (RA-010)." }
+    }
+  }
+}

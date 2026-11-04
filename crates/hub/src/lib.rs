@@ -3,8 +3,12 @@
 pub mod access;
 pub mod clock;
 pub mod config;
+pub mod credentials;
+pub mod devices;
 pub mod events;
 pub mod ids;
+pub mod paging;
+pub mod scalars;
 pub mod schema;
 pub mod status;
 
