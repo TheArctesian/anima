@@ -173,7 +173,7 @@ pub(super) struct DeviceChange {
 
 /// Which devices a list returns; every part that is set must match.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-#[expect(dead_code, reason = "used by the devices store")]
+#[cfg_attr(not(test), expect(dead_code, reason = "used by devices GraphQL"))]
 pub(super) struct DeviceFilter {
     /// Case-insensitive substring of the name.
     pub name: Option<String>,
