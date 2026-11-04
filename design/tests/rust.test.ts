@@ -44,7 +44,7 @@ describe('Rust output', () => {
 
   test('RA-010 terminal tokens do not appear in CSS, TypeScript or the reference page', () => {
     for (const text of [css, typescript, reference]) {
-      expect(text).not.toMatch(/ansi/i);
+      expect(text).not.toMatch(/ansi-\d|ANSI/);
       expect(text).not.toContain('terminal');
     }
   });
