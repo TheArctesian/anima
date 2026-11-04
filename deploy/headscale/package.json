@@ -1,0 +1,14 @@
+{
+  "name": "@anima/headscale",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "check": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.0",
+    "typescript": "^6"
+  }
+}
