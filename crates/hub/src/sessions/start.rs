@@ -1,8 +1,10 @@
 //! Starting a session (K4 §1, K3 `start`): checks the device and the display, writes the row
-//! and its audit entry, and issues the single-use ticket. Also the lazy sweep of tickets that
-//! expired unredeemed (D-2).
+//! and its audit entry, and issues the single-use ticket.
 
-use std::{net::IpAddr, sync::Arc};
+use std::{
+    net::{IpAddr, Ipv4Addr, Ipv6Addr},
+    sync::Arc,
+};
 
 use chrono::{DateTime, Utc};
 use serde_json::json;
@@ -10,9 +12,11 @@ use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
 use super::{
-    Conflict, Error, Missing, host_key,
+    Conflict, Error, Missing,
+    end::sweep,
+    host_key,
     live::Live,
-    model::{EndReason, FieldError, Protocol, SessionEnd},
+    model::{FieldError, Protocol},
     store::{self, NewSession},
     tickets::{LIFETIME, PendingTicket, TOKEN_BYTES, Ticket, TicketToken},
 };
@@ -41,7 +45,7 @@ pub struct DisplayRequest {
 }
 
 /// K1's default for `DisplayInput.dpi`.
-pub const DEFAULT_DPI: i64 = 96;
+pub const DEFAULT_DPI: i32 = 96;
 
 type Display = guac_protocol::Display;
 
@@ -72,23 +76,40 @@ pub(super) fn checked_display(display: &DisplayRequest) -> Result<Display, Vec<F
     }
 }
 
+/// Whether an IPv4 address points back at the gateway's own machine or at no single host.
+fn is_refused_v4(v4: Ipv4Addr) -> bool {
+    v4.is_loopback()
+        || v4.is_link_local()
+        || v4.is_multicast()
+        || v4.is_broadcast()
+        || v4.octets()[0] == 0
+}
+
+/// The IPv4 address an IPv6 address carries in its last 32 bits, for the prefixes that
+/// embed one: IPv4-compatible `::/96`, IPv4-mapped `::ffff:0:0/96`, SIIT
+/// `::ffff:0:0:0/96` and NAT64 `64:ff9b::/96`.
+fn embedded_v4(v6: Ipv6Addr) -> Option<Ipv4Addr> {
+    let prefix: [u16; 6] = v6.segments()[..6].try_into().ok()?;
+    let embeds = matches!(
+        prefix,
+        [0, 0, 0, 0, 0, 0 | 0xffff] | [0, 0, 0, 0, 0xffff, 0] | [0x64, 0xff9b, 0, 0, 0, 0]
+    );
+    let [.., high, low] = v6.segments();
+    embeds.then(|| Ipv4Addr::from((u32::from(high) << 16) | u32::from(low)))
+}
+
 /// Whether `ip` points back at the gateway's own machine or at no single host: loopback,
-/// link-local, multicast, broadcast, unspecified or "this network" (`0.0.0.0/8`). An
-/// IPv4-mapped IPv6 address is judged as the IPv4 address it carries.
+/// link-local, multicast, broadcast, unspecified or "this network" (`0.0.0.0/8`). An IPv6
+/// address that embeds an IPv4 address is also refused when that address is.
 pub(super) fn is_refused_target(ip: IpAddr) -> bool {
-    match ip.to_canonical() {
-        IpAddr::V4(v4) => {
-            v4.is_loopback()
-                || v4.is_link_local()
-                || v4.is_multicast()
-                || v4.is_broadcast()
-                || v4.octets()[0] == 0
-        }
+    match ip {
+        IpAddr::V4(v4) => is_refused_v4(v4),
         IpAddr::V6(v6) => {
             v6.is_loopback()
                 || v6.is_unicast_link_local()
                 || v6.is_multicast()
                 || v6.is_unspecified()
+                || embedded_v4(v6).is_some_and(is_refused_v4)
         }
     }
 }
@@ -180,7 +201,7 @@ pub async fn start(
     live.issue(token.hash(), pending.clone())
         .map_err(|_| Error::Unavailable)?;
     if let Err(error) = tx.commit().await {
-        live.take_pending(pending.session);
+        live.withdraw(pending.session);
         return Err(error.into());
     }
     Ok(Ticket::new(pending.session, token, pending.expires_at))
@@ -218,67 +239,4 @@ async fn write_start(
     };
     events::audit(conn, now, audit).await?;
     Ok(())
-}
-
-/// Who ends a session, from where and when: the audit entry of the end.
-pub(super) struct Actor<'a> {
-    pub(super) operator: &'a Operator,
-    pub(super) client: ClientAddr,
-    pub(super) at: DateTime<Utc>,
-}
-
-/// Ends a live row with `end` and writes the audit entry `session.end` for it. Does nothing
-/// when the row has already ended: the first end wins (D-9).
-pub(super) async fn end_row(
-    conn: &mut PgConnection,
-    session: SessionId,
-    end: SessionEnd,
-    by: &Actor<'_>,
-) -> Result<(), Error> {
-    if !store::end(&mut *conn, session, end).await? {
-        return Ok(());
-    }
-    let audit = NewAudit {
-        operator: by.operator.clone(),
-        action: AuditAction::End,
-        target: AuditTarget::Session(session),
-        client: by.client,
-        change: json!({ "reason": end.reason.as_str() }),
-    };
-    events::audit(conn, by.at, audit).await?;
-    Ok(())
-}
-
-/// Removes every ticket expired at `now`, unredeemed or spent by a refused redemption, and
-/// ends its row with `TIMEOUT` at the ticket's expiry, in one transaction. At most `MAX_PENDING` tickets, so the work is bounded. If the
-/// rows cannot be ended the tickets go back (still refused) and the next sweep retries.
-///
-/// # Errors
-/// `Database` when the rows or audit entries cannot be written.
-pub(super) async fn sweep(db: &PgPool, live: &Live, now: DateTime<Utc>) -> Result<(), Error> {
-    let expired = live.take_expired(now);
-    if expired.is_empty() {
-        return Ok(());
-    }
-    let ended = async {
-        let mut tx = db.begin().await?;
-        for ticket in &expired {
-            let end = SessionEnd {
-                at: ticket.expires_at,
-                reason: EndReason::Timeout,
-            };
-            let by = Actor {
-                operator: &ticket.operator,
-                client: ticket.client,
-                at: now,
-            };
-            end_row(&mut tx, ticket.session, end, &by).await?;
-        }
-        tx.commit().await.map_err(Error::from)
-    }
-    .await;
-    if ended.is_err() {
-        live.restore(expired);
-    }
-    ended
 }

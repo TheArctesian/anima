@@ -1,9 +1,11 @@
 //! `endSession` (D-10, K7) and the sweep of tickets that expired unredeemed (D-2): each
 //! session ends once, with one `session.end` audit entry.
 
+use std::time::Duration;
+
 use anima_hub::{
     events::ClientAddr,
-    sessions::{EndReason, Live},
+    sessions::{Actor, EndCause, EndReason, Live},
 };
 use chrono::{DateTime, TimeDelta, Utc};
 use serde_json::Value;
@@ -11,9 +13,12 @@ use sqlx::PgPool;
 
 use super::{
     DOCKER_HOST, OLLAMA, PVE_01,
-    harness::{TestSchema, error_json, schema_at},
+    harness::{TestSchema, error_json, operator, schema_at},
     now,
-    starting::{end_audits, end_request, ready, redeem, started, started_on_pve_01, stored},
+    starting::{
+        client, end_audits, end_request, event_count, ready, redeem, started, started_on_pve_01,
+        stored,
+    },
 };
 
 async fn end(schema: &TestSchema, id: &str) -> Value {
@@ -90,7 +95,20 @@ async fn ra_008_end_session_tells_the_open_tunnel_and_returns_the_row_it_ended(p
     });
 
     let ended = end(&schema, &id).await;
-    assert_eq!(task.await.unwrap(), EndReason::Operator);
+    let who = Actor {
+        operator: operator(),
+        client: client(),
+        at: now(),
+    };
+    let cause = EndCause {
+        reason: EndReason::Operator,
+        by: Some(who),
+    };
+    assert_eq!(
+        task.await.unwrap(),
+        cause,
+        "the tunnel learns who ended it (LOG-005)"
+    );
     assert_eq!(ended["endReason"], "OPERATOR");
     assert_eq!(instant(&ended["endedAt"]), now() + TimeDelta::seconds(2));
     assert!(
@@ -166,4 +184,110 @@ async fn api_009_the_sweep_ends_expired_unredeemed_tickets_timeout_once(pool: Pg
     assert_eq!(audits[0].change, serde_json::json!({ "reason": "timeout" }));
     assert_eq!(stored(&pool, opened_id).await.end_reason, None);
     assert!(redeem(&live, &expired, now()).is_none());
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn ra_008_end_session_returns_the_live_row_when_the_tunnel_does_not_finish(pool: PgPool) {
+    let live = Live::with_tunnel_end_wait(Duration::from_millis(50));
+    let schema = schema_at(&pool, now(), &live);
+    let ticket = started_on_pve_01(&pool, &schema).await;
+    let id = ticket["sessionId"].as_str().unwrap();
+    let stuck = redeem(&live, &ticket, now()).unwrap().tunnel;
+
+    let row = end(&schema, id).await;
+    assert_eq!(
+        row["endReason"],
+        Value::Null,
+        "still live: the tunnel never dropped"
+    );
+    assert_eq!(row["endedAt"], Value::Null);
+    assert_eq!(stored(&pool, id).await.end_reason, None);
+    drop(stuck);
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn ra_008_end_session_on_a_ticket_spent_by_a_refusal_ends_it_once(pool: PgPool) {
+    let live = Live::default();
+    let schema = schema_at(&pool, now(), &live);
+    let ticket = started_on_pve_01(&pool, &schema).await;
+    let id = ticket["sessionId"].as_str().unwrap();
+    let elsewhere = ClientAddr("10.10.0.99".parse().unwrap());
+    assert!(
+        live.redeem(ticket["token"].as_str().unwrap(), elsewhere, now())
+            .is_err()
+    );
+
+    let ended = end(&schema, id).await;
+    assert_eq!(ended["endReason"], "OPERATOR");
+    // The sweep no longer holds it, so a later start ends nothing more.
+    started(
+        &schema_at(&pool, now() + TimeDelta::hours(1), &live),
+        PVE_01,
+    )
+    .await;
+    assert_eq!(end_audits(&pool, id).await.len(), 1);
+    assert_eq!(
+        stored(&pool, id).await.end_reason.as_deref(),
+        Some("operator")
+    );
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn api_009_a_late_sweep_ends_the_row_at_the_tickets_expiry_not_at_now(pool: PgPool) {
+    let live = Live::default();
+    ready(&pool, &[PVE_01, DOCKER_HOST]).await;
+    let ticket = started(&schema_at(&pool, now(), &live), PVE_01).await;
+    started(
+        &schema_at(&pool, now() + TimeDelta::seconds(45), &live),
+        DOCKER_HOST,
+    )
+    .await;
+    let row = stored(&pool, ticket["sessionId"].as_str().unwrap()).await;
+    assert_eq!(row.end_reason.as_deref(), Some("timeout"));
+    assert_eq!(row.ended_at, Some(now() + TimeDelta::seconds(30)));
+}
+
+/// Ends that never open a tunnel write the `session.end` audit entry and, by decision, no
+/// event (K4 §5 describes tunnel ends).
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn log_004_ends_without_a_tunnel_write_audit_and_no_event(pool: PgPool) {
+    let live = Live::default();
+    ready(&pool, &[PVE_01, DOCKER_HOST]).await;
+    let first = schema_at(&pool, now(), &live);
+    let withdrawn = started(&first, PVE_01).await;
+    let expired = started(&first, PVE_01).await;
+    let spent = started(&first, PVE_01).await;
+    let elsewhere = ClientAddr("10.10.0.99".parse().unwrap());
+    assert!(
+        live.redeem(spent["token"].as_str().unwrap(), elsewhere, now())
+            .is_err()
+    );
+    end(&first, withdrawn["sessionId"].as_str().unwrap()).await;
+    started(
+        &schema_at(&pool, now() + TimeDelta::minutes(1), &live),
+        DOCKER_HOST,
+    )
+    .await;
+
+    for ticket in [&withdrawn, &expired, &spent] {
+        assert_eq!(
+            end_audits(&pool, ticket["sessionId"].as_str().unwrap())
+                .await
+                .len(),
+            1
+        );
+    }
+    assert_eq!(event_count(&pool).await, 0);
 }

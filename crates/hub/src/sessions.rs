@@ -24,7 +24,8 @@ use crate::{
     ids::{DeviceId, SessionId},
 };
 
-pub use live::{Closing, Live, Redeemed, Refused, Tunnel};
+pub use end::Actor;
+pub use live::{Closing, EndCause, Live, Redeemed, Refused, Tunnel};
 pub use model::{EndReason, FieldError, HostKey, Protocol, Session, SessionEnd, UnknownValue};
 pub use public_key::{BadFingerprint, BadKey, Fingerprint, PublicKey};
 pub use start::{DEFAULT_DPI, DisplayRequest, StartRequest, start};

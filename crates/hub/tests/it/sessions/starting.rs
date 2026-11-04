@@ -130,3 +130,10 @@ pub async fn end_audits(pool: &PgPool, id: &str) -> Vec<SessionAudit> {
         .filter(|entry| entry.action == "end" && entry.target_id == id)
         .collect()
 }
+
+pub async fn event_count(pool: &PgPool) -> i64 {
+    sqlx::query_scalar("select count(*) from events.event_log")
+        .fetch_one(pool)
+        .await
+        .unwrap()
+}

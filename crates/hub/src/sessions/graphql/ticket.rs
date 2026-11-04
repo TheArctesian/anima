@@ -17,7 +17,7 @@ const TUNNEL_PATH: &str = "/tunnel";
 pub(super) struct DisplayInput {
     width_px: i32,
     height_px: i32,
-    #[graphql(default = 96)]
+    #[graphql(default_with = "Some(DEFAULT_DPI)")]
     dpi: Option<i32>,
     timezone: Option<String>,
 }
@@ -43,7 +43,7 @@ impl StartSessionInput {
             display: DisplayRequest {
                 width_px: display.width_px.into(),
                 height_px: display.height_px.into(),
-                dpi: display.dpi.map_or(DEFAULT_DPI, i64::from),
+                dpi: i64::from(display.dpi.unwrap_or(DEFAULT_DPI)),
                 timezone: display.timezone,
             },
         })

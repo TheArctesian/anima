@@ -19,7 +19,7 @@ use self::{
     error::{invalid, schema_dependency, to_graphql},
     ticket::StartSessionInput,
 };
-use super::{FieldError, Live, Session, Ticket, end::end_session, start, start::Actor, store};
+use super::{Actor, FieldError, Live, Session, Ticket, end::end_session, start, store};
 use crate::{
     access::Authenticated,
     clock::Clock,
@@ -94,7 +94,7 @@ impl Mutation {
             .parse::<SessionId>()
             .map_err(|_| invalid(&[FieldError::new("id", "That session id is not valid.")]))?;
         let by = Actor {
-            operator: schema_dependency::<Operator>(ctx)?,
+            operator: schema_dependency::<Operator>(ctx)?.clone(),
             client: *schema_dependency::<ClientAddr>(ctx)?,
             at: schema_dependency::<Arc<dyn Clock>>(ctx)?.now(),
         };

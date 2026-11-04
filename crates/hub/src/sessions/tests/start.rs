@@ -78,6 +78,15 @@ fn gw_011_loopback_link_local_multicast_and_unspecified_literals_are_refused() {
         "ff02::1",
         "::ffff:127.0.0.1",
         "::ffff:169.254.169.254",
+        // IPv4-compatible ::/96, SIIT ::ffff:0:0:0/96 and NAT64 64:ff9b::/96.
+        "::127.0.0.1",
+        "::169.254.169.254",
+        "::224.0.0.1",
+        "::ffff:0:127.0.0.1",
+        "::ffff:0:169.254.1.1",
+        "64:ff9b::127.0.0.1",
+        "64:ff9b::a9fe:a9fe",
+        "64:ff9b::255.255.255.255",
     ] {
         assert!(
             is_refused_target(refused.parse::<IpAddr>().unwrap()),
@@ -93,6 +102,12 @@ fn gw_011_loopback_link_local_multicast_and_unspecified_literals_are_refused() {
         "2001:db8::1",
         "fec0::1",
         "::ffff:10.10.0.2",
+        "::10.10.0.2",
+        "::ffff:0:10.10.0.2",
+        "64:ff9b::10.10.0.2",
+        // Outside the embedding prefixes the last 32 bits mean nothing.
+        "2001:db8::127.0.0.1",
+        "64:ff9b:1::127.0.0.1",
     ] {
         assert!(
             !is_refused_target(allowed.parse::<IpAddr>().unwrap()),

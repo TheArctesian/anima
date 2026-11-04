@@ -1,6 +1,7 @@
 //! Unit tests of the pure session rules and of the store's crate-private writes. Public
 //! behaviour is tested in `tests/it/sessions`.
 
+mod failures;
 mod page;
 mod public_key;
 mod start;

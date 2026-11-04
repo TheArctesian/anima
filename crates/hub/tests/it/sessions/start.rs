@@ -240,3 +240,48 @@ async fn k4_1_start_session_reports_display_and_host_problems_together(pool: PgP
     let error = refusal(&pool, DOCKER_HOST, json!({ "widthPx": 0, "heightPx": 800 })).await;
     assert_eq!(fields(&error), ["display.widthPx", "host"]);
 }
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn gw_012_a_null_dpi_means_96(pool: PgPool) {
+    let live = Live::default();
+    let schema = schema_at(&pool, now(), &live);
+    ready(&pool, &[PVE_01]).await;
+    let display = json!({ "widthPx": 1280, "heightPx": 800, "dpi": null });
+    let response = schema.execute(start_request(PVE_01, &display)).await;
+    assert!(response.errors.is_empty(), "{:?}", response.errors);
+    let ticket = response.data.into_json().unwrap()["startSession"].clone();
+    let redeemed = redeem(&live, &ticket, now()).unwrap();
+    assert_eq!(redeemed.ticket.display.dpi, 96);
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn api_009_start_session_is_unavailable_when_the_table_is_full_or_the_hub_stops(
+    pool: PgPool,
+) {
+    let live = Live::default();
+    let schema = schema_at(&pool, now(), &live);
+    ready(&pool, &[PVE_01]).await;
+    for _ in 0..128 {
+        started(&schema, PVE_01).await;
+    }
+    let full = error_json(&schema.execute(start_request(PVE_01, &display())).await);
+    assert_eq!(full["extensions"]["code"], "UNAVAILABLE", "{full}");
+    assert_eq!(
+        session_count(&pool).await,
+        128,
+        "the refused start wrote no row"
+    );
+
+    let stopping = Live::default();
+    drop(stopping.shut_down());
+    let stopped = schema_at(&pool, now(), &stopping);
+    let error = error_json(&stopped.execute(start_request(PVE_01, &display())).await);
+    assert_eq!(error["extensions"]["code"], "UNAVAILABLE", "{error}");
+    assert_eq!(session_count(&pool).await, 128);
+}
