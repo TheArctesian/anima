@@ -28,15 +28,16 @@ pub struct Actor {
 }
 
 /// Ends a live row with `end` and writes the audit entry `session.end` for it, stamped
-/// `by.at`. Does nothing when the row has already ended: the first end wins (D-9).
+/// `by.at`. Does nothing when the row has already ended: the first end wins (D-9). Returns
+/// whether this call ended it.
 pub(super) async fn end_row(
     conn: &mut PgConnection,
     session: SessionId,
     end: SessionEnd,
     by: &Actor,
-) -> Result<(), Error> {
+) -> Result<bool, Error> {
     if !store::end(&mut *conn, session, end).await? {
-        return Ok(());
+        return Ok(false);
     }
     let audit = NewAudit {
         operator: by.operator.clone(),
@@ -46,7 +47,7 @@ pub(super) async fn end_row(
         change: json!({ "reason": end.reason.as_str() }),
     };
     events::audit(conn, by.at, audit).await?;
-    Ok(())
+    Ok(true)
 }
 
 /// Removes every ticket expired at `now`, unredeemed or spent by a refused redemption, and

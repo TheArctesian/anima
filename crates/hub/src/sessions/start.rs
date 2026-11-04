@@ -156,7 +156,12 @@ pub async fn start(
     live.issue(token.hash(), pending.clone())
         .map_err(|_| Error::Unavailable)?;
     if let Err(error) = tx.commit().await {
-        live.withdraw(pending.session);
+        // The commit may have reached the database before it failed, leaving a live row.
+        // The ticket goes back without its token: never redeemable, and the sweep ends any
+        // such row `TIMEOUT` at expiry (a missing row is a no-op for `end_row`).
+        if let Some(ticket) = live.withdraw(pending.session) {
+            live.restore(vec![ticket]);
+        }
         return Err(error.into());
     }
     Ok(Ticket::new(pending.session, token, pending.expires_at))

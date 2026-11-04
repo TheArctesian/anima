@@ -2,14 +2,14 @@
 
 use guac_protocol::{Instruction, encode};
 
-use super::super::ending::EndCause;
+use super::super::ending::Cause;
 use super::super::relay::{ClientStep, Relay};
 use super::{decoded, prompted};
 use crate::sessions::tests::Inputs;
 
 const CLOSE: ClientStep = ClientStep::End {
     forward: None,
-    cause: EndCause::InvalidInstruction,
+    cause: Cause::InvalidInstruction,
 };
 
 fn step(relay: &mut Relay, wire: &str) -> ClientStep {
@@ -70,7 +70,7 @@ fn gw_011_client_disconnect_is_forwarded_then_ends_as_the_operator() {
         Relay::default().on_client(disconnect.clone()),
         ClientStep::End {
             forward: Some(disconnect),
-            cause: EndCause::OperatorClosed,
+            cause: Cause::OperatorClosed,
         }
     );
 }

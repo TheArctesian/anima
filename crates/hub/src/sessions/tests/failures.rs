@@ -112,7 +112,7 @@ fn later() -> DateTime<Utc> {
     migrations = "./migrations",
     fixtures(path = "../../../tests/fixtures", scripts("devices"))
 )]
-async fn api_009_a_start_whose_commit_fails_leaves_no_ticket(pool: PgPool) {
+async fn api_009_a_start_whose_commit_fails_keeps_a_spent_ticket_for_the_sweep(pool: PgPool) {
     ready(&pool).await;
     fail_commits_on(&pool, "insert").await;
     let live = Live::default();
@@ -120,7 +120,10 @@ async fn api_009_a_start_whose_commit_fails_leaves_no_ticket(pool: PgPool) {
         start_on_pve_01(&pool, &live).await,
         Err(Error::Database(_))
     ));
-    assert_eq!(live.take_expired(later()).len(), 0);
+    // The commit may have landed before it failed, so the ticket stays, without its token,
+    // until it expires: the sweep then ends any row it left (no row: nothing to end).
+    assert_eq!(live.take_expired(now()).len(), 0, "kept until it expires");
+    assert_eq!(live.take_expired(later()).len(), 1);
 }
 
 #[sqlx::test(

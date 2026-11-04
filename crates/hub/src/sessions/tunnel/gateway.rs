@@ -13,7 +13,7 @@
 use guac_protocol::Instruction;
 
 use super::decimal::decimal;
-use super::ending::EndCause;
+use super::ending::Cause;
 use super::relay::{GatewayStep, PROMPTABLE, Relay};
 
 /// `GUAC_PROTOCOL_STATUS_CLIENT_UNAUTHORIZED` (1.5.5 `src/libguac/guacamole/protocol-types.h:135`).
@@ -55,7 +55,7 @@ impl Relay {
             }
             "disconnect" => GatewayStep::End {
                 send: i,
-                cause: EndCause::RemoteClosed,
+                cause: Cause::RemoteClosed,
             },
             "error" => {
                 let status = error_status(&i);
@@ -90,9 +90,9 @@ fn error_status(i: &Instruction) -> u32 {
 }
 
 /// 0x0301 and 0x0303 are sign-in failures; any other status is a gateway error.
-fn error_cause(status: u32) -> EndCause {
+fn error_cause(status: u32) -> Cause {
     match status {
-        CLIENT_UNAUTHORIZED | CLIENT_FORBIDDEN => EndCause::AuthFailed,
-        _ => EndCause::GatewayError,
+        CLIENT_UNAUTHORIZED | CLIENT_FORBIDDEN => Cause::AuthFailed,
+        _ => Cause::GatewayError,
     }
 }

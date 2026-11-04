@@ -1,11 +1,12 @@
-//! Unit tests of the pure tunnel rules: `connect` values, the client and gateway rules and the
-//! end table (WP-10 T4). The tunnel I/O is tested in `tests/it/sessions`.
+//! Tests of the tunnel: the pure rules (`connect` values, the client and gateway rules and the
+//! end table, WP-10 T4) and the tunnel over real sockets (`wire`, WP-10 T5).
 
 mod arguments;
 mod client;
 mod ending;
 mod gateway;
 mod size;
+mod wire;
 
 use chrono::DateTime;
 use guac_protocol::{Decoder, Instruction};
