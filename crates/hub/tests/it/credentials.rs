@@ -1,5 +1,6 @@
 //! `credentials.secrets` through the public SSH functions (SEC-003, SEC-005, DEV-015).
 
+mod batch;
 mod concurrency;
 mod round_trip;
 mod schema;

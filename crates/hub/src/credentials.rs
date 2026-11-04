@@ -17,6 +17,8 @@ mod vault;
 #[cfg(test)]
 mod tests;
 
+use std::collections::HashSet;
+
 use sqlx::{Connection as _, PgConnection, PgPool};
 
 use crate::ids::DeviceId;
@@ -121,6 +123,16 @@ pub async fn load_ssh(
 /// [`Error::Database`] when the store cannot be read.
 pub async fn has_ssh(db: &PgPool, device: DeviceId) -> Result<bool, Error> {
     store::exists_for_device(db, device).await
+}
+
+/// Which of the given devices have an SSH secret stored, in one query, so a list of devices
+/// costs one round trip (API-005). Devices without a secret, and unknown ids, are left out.
+///
+/// # Errors
+///
+/// [`Error::Database`] when the store cannot be read.
+pub async fn with_ssh(db: &PgPool, devices: &[DeviceId]) -> Result<HashSet<DeviceId>, Error> {
+    store::devices_with_rows(db, devices).await
 }
 
 /// Deletes every SSH secret of the device in the caller's connection. Returns true if a
