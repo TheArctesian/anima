@@ -25,12 +25,12 @@ The operator approved all seven contracts on 2026-11-03 (checkpoint 1). Only a r
 | WP-03 VPN and network | 1 | Building (prepares files only; operator confirms each VPS, Headscale and Cloudflare change) | own worktree from `phase-1` | `wp-03-vpn-and-network` |
 | WP-04 Deployment, stage A (hub) | 1 | Building (prepares files only; operator confirms each host and Cloudflare change) | own worktree from `phase-1` | `wp-04-hub-deploy` |
 | WP-04 Deployment, stage B (releases and self-update, R-006) | 3 | Waiting (WP-15, WP-16; operator sets secrets) | — | — |
-| WP-05 Access and logs | 1 | Building; T1 and T7 merged early into `phase-1` (2581982) | own worktree from `phase-1` | `wp-05-access` |
+| WP-05 Access and logs | 1 | Building; T1, T7, T5, T3 merged early into `phase-1` (2f28917) | own worktree from `phase-1` | `wp-05-access` |
 | WP-06 Devices | 1 | Accepted, merged into `phase-1` (5cdc99c) | own worktree from `phase-1` | `wp-06-devices` |
 | WP-07 Credentials | 1 | Accepted, merged into `phase-1` (3f1f830) | own worktree from `phase-1` | `wp-07-credentials` |
 | WP-08 guac-protocol | 1 | Accepted, merged into `phase-1` (c19ad06) | own worktree from `phase-1` | `wp-08-guac` |
 | WP-09 Checks and maintenance | 2 | Building (starts on the WP-05 interface already on `phase-1`) | `claude/wp-09-checks` | `wp-07-credentials` session, reused (R-027) |
-| WP-10 Sessions | 2 | Waiting (WP-05–WP-08) | — | — |
+| WP-10 Sessions | 2 | Building (R-027) | `claude/wp-10-sessions` | `wp-08-guac` session, reused |
 | WP-11 Client shell | 2 | Building | own worktree from `phase-1` | `wp-11-client-shell` |
 | WP-12 Devices page | 3 | Waiting (WP-11) | — | — |
 | WP-13 Detail and form | 3 | Waiting (WP-11) | — | — |
@@ -83,6 +83,7 @@ Integration branch: `phase-1`. Merge to `main` only after operator checkpoint 4.
 - **R-028 (Wave 2, from WP-09 E-1–E-6; changes K3 and the import allow-list).** E-1: checks keeps the last resolved address in its own table and exposes `resolved_ips`; the `Device.ip` resolver in `devices/graphql.rs` (an R-011 composition edit by WP-09) returns the host when it is an IP literal, else the resolved address through a loader. E-2: `checks::push_router` serves `GET|POST /push/{token}` behind NET-002; the token is 32 random bytes, base64url, compared in constant time; WP-05 keeps `/push/` paths out of request spans (LOG-007). E-3: checks may import `credentials::{Vault, Secret, Sealed}` and seals HTTP check secrets with context `checks.checks.http:<check_id>`; `spawn_scheduler` takes the vault. E-4: `checks::graphql::Subscription` owns `deviceStatusChanged` and `heartbeatAdded`; WP-05 adds `at` to `Signal::DeviceStatus`. E-5: `maintenance::active_targets` plus `ActiveTargets::covers` batch maintenance for `statuses`. E-6: WP-09 may add its dependency lines (tokio `time`, rand 0.9, chrono-tz, surge-ping, hickory-resolver, reqwest with rustls only, tokio-rustls, rustls, webpki-roots, x509-parser) to the workspace manifests as handoff edits; the orchestrator reviews them at merge.
 - **R-029 (Wave 2, from WP-09 E-7; changes K3 and the import allow-list).** `maintenance` may import `events`, to write audit entries and events for window changes (LOG-005). `events` imports no domain, so no cycle. Window events use `Source::Hub` with no device.
 - **R-030 (Wave 2, from WP-09 E-8; changes K3 and K7).** The probe address policy allows private and VPN ranges, so it needs the hub's own deny list. `spawn_scheduler(db, bus, clock, probing: Probing)` with `Probing { vault, policy: AddressPolicy }`. K7 adds `ANIMA_PROBE_DENY` (CIDRs; empty by default with a start warning). WP-04 compose sets it to the hub's Docker networks and the VPS public address; main.rs wiring is a WP-09 handoff. K3's `evaluate` takes `&CheckSettings`.
+- **R-031 (Wave 1, from WP-05 T3).** The `test-support` feature of the hub crate (`Identity::for_tests`) is accepted for Phase 1. Release images build with `cargo build --release --bin anima-hub` only, never `--all-targets` (WP-04). WP-17 replaces it with a real-token fixture if time allows.
 
 ## Escalations
 
