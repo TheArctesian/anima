@@ -103,21 +103,25 @@ pub(super) fn site_added(site: &Site) -> Entry {
     }
 }
 
-pub(super) fn device_added(device: &Device, new: &NewDevice) -> Entry {
+pub(super) fn device_added(device: &Device, new: &NewDevice, default_check: bool) -> Entry {
+    let mut change = json!({
+        "siteId": new.site.to_string(),
+        "name": new.name,
+        "host": new.host,
+        "kind": new.kind,
+        "os": new.os.as_str(),
+        "tags": new.tags,
+        "ssh": ssh_json(&new.ssh),
+    });
+    if default_check {
+        change["defaultCheck"] = json!(true);
+    }
     Entry {
         device: Some((device.id, device.name.clone())),
         message: format!("Device {} added.", device.name),
         action: AuditAction::Create,
         target: AuditTarget::Device(device.id),
-        change: json!({
-            "siteId": new.site.to_string(),
-            "name": new.name,
-            "host": new.host,
-            "kind": new.kind,
-            "os": new.os.as_str(),
-            "tags": new.tags,
-            "ssh": ssh_json(&new.ssh),
-        }),
+        change,
     }
 }
 

@@ -9,7 +9,7 @@ use async_graphql::parser::{
 
 use crate::hub::hub_sdl;
 
-const CHECKED: [&str; 17] = [
+const CHECKED: [&str; 19] = [
     "Query",
     "Mutation",
     "CreateDeviceInput",
@@ -27,6 +27,8 @@ const CHECKED: [&str; 17] = [
     "SshAuth",
     "SshCredentialInput",
     "PrivateKeyInput",
+    "Status",
+    "UptimeWindow",
 ];
 
 /// For each named type, member name → signature (arguments, type, default).
@@ -103,15 +105,6 @@ async fn k1_every_devices_member_of_the_hub_schema_exists_in_k1_with_the_same_ty
             assert_eq!(theirs.get(member), Some(ours), "{name}.{member}");
         }
     }
-    // The R-011 fields that need other domains are not declared yet; WP-10 has declared
-    // `SshSettings.hostKey`, which the loop above checks against K1.
-    for (type_name, member) in [
-        ("Device", "status"),
-        ("Device", "checks"),
-        ("DeviceSort", "STATUS"),
-    ] {
-        assert!(!hub[type_name].contains_key(member), "{type_name}.{member}");
-    }
 }
 
 #[tokio::test]
@@ -124,16 +117,6 @@ async fn k1_ssh_credential_input_is_a_oneof_input_as_in_k1() {
     );
     assert!(std::fs::read_to_string(path).unwrap().contains(line));
 }
-
-/// K1 members that need other domains and are not built yet: WP-09 (status, checks, uptime).
-const LATER: [(&str, &str); 6] = [
-    ("Device", "status"),
-    ("Device", "checks"),
-    ("Device", "uptime"),
-    ("DeviceSort", "STATUS"),
-    ("DeviceSort", "UPTIME"),
-    ("DeviceFilter", "status"),
-];
 
 /// The K1 root fields WP-06 builds; the others belong to other packages.
 const OWNED_ROOT: [&str; 10] = [
@@ -161,8 +144,7 @@ async fn k1_every_devices_member_wp06_owns_is_in_the_hub() {
     for name in CHECKED {
         let is_root = matches!(name, "Query" | "Mutation");
         for member in k1[name].keys() {
-            let later = LATER.contains(&(name, member.as_str()));
-            if later || (is_root && !OWNED_ROOT.contains(&member.as_str())) {
+            if is_root && !OWNED_ROOT.contains(&member.as_str()) {
                 continue;
             }
             if !hub[name].contains_key(member) {

@@ -4,6 +4,7 @@
 use std::time::Duration;
 
 use futures_util::{SinkExt as _, StreamExt as _};
+use guac_protocol::Instruction;
 use tokio::{net::TcpStream, time::timeout};
 use tokio_tungstenite::{
     MaybeTlsStream, WebSocketStream, connect_async,
@@ -154,4 +155,34 @@ impl Socket {
     pub(super) fn drop_connection(self) {
         drop(self.stream);
     }
+}
+
+/// The instructions guacamole-common-js 1.5.0 reads from one text message: its
+/// `WebSocketTunnel.onmessage` takes each length as UTF-16 units, reads the next length from
+/// just past the element's terminator, and ends an instruction only at `;` (any other
+/// terminator continues it).
+pub(super) fn decoded_as_utf16(message: &str) -> Vec<Instruction> {
+    let units: Vec<u16> = message.encode_utf16().collect();
+    let mut instructions = Vec::new();
+    let mut elements: Vec<String> = Vec::new();
+    let mut start = 0;
+    while start < units.len() {
+        let dot = start
+            + units[start..]
+                .iter()
+                .position(|&u| u == u16::from(b'.'))
+                .unwrap();
+        let length: usize = String::from_utf16(&units[start..dot])
+            .unwrap()
+            .parse()
+            .expect("a decimal length");
+        let end = (dot + 1 + length).min(units.len());
+        elements.push(String::from_utf16_lossy(&units[dot + 1..end]));
+        if units.get(end) == Some(&u16::from(b';')) {
+            let opcode = elements.remove(0);
+            instructions.push(Instruction::new(opcode, elements.drain(..)));
+        }
+        start = end + 1;
+    }
+    instructions
 }
