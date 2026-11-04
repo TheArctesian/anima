@@ -23,7 +23,9 @@
       "events",
       "credentials"
     ],
-    "maintenance": [],
+    "maintenance": [
+      "events"
+    ],
     "checks": [
       "devices",
       "maintenance",
