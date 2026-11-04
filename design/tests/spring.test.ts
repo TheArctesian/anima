@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { sampleCurve, settleMs, stepResponse, toLibraryForm } from '../build/spring.ts';
+import { sampleCurve, settleMs, stepResponse, toLibraryForm } from '../src/spring.ts';
 
 const SPRINGS = {
   default: { dampingRatio: 1, responseS: 0.35 },

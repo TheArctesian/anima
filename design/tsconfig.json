@@ -11,5 +11,5 @@
     "skipLibCheck": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["build", "bin", "tests"]
+  "include": ["src", "bin", "tests"]
 }

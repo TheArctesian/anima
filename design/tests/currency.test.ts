@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { staleFiles } from '../build/currency.ts';
+import { staleFiles } from '../src/currency.ts';
 
 const built = { 'a.css': 'one', 'b.ts': 'two' };
 

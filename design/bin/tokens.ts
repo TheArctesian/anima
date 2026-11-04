@@ -1,8 +1,8 @@
 // Entry: `bun run tokens` writes the outputs; `bun run tokens:check` fails if any is not current (TOK-002).
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { staleFiles } from '../build/currency.ts';
-import { buildOutputs } from '../build/outputs.ts';
+import { staleFiles } from '../src/currency.ts';
+import { buildOutputs } from '../src/outputs.ts';
 
 const repositoryRoot = resolve(import.meta.dir, '..', '..');
 const built = await buildOutputs(repositoryRoot);
