@@ -12,7 +12,7 @@ use super::{
     password::Password,
     store::{self, Account},
 };
-use crate::{clock::Clock, events::Bus};
+use crate::{clock::Clock, credentials::Vault, events::Bus};
 
 #[derive(Default)]
 pub struct Query;
@@ -35,7 +35,7 @@ impl From<&Account> for OperatorProfile {
         Self {
             id: ID(account.id.to_string()),
             username: account.username.clone(),
-            totp_enabled: account.totp_enabled,
+            totp_enabled: account.totp_secret_enc.is_some(),
         }
     }
 }
@@ -75,8 +75,8 @@ impl Query {
         let identity = need::<Identity>(ctx)?;
         let account = store::account_by_id(need::<PgPool>(ctx)?, identity.operator().id)
             .await
-            .map_err(|error| answer(error.into()))?
-            .ok_or_else(|| Error::Unauthenticated.to_graphql())?;
+            .map_err(|error| Error::from(error).into_graphql())?
+            .ok_or_else(|| Error::Unauthenticated.into_graphql())?;
         Ok((&account).into())
     }
 }
@@ -97,10 +97,11 @@ impl Mutation {
             client: *need::<ClientAddr>(ctx)?,
             at: need::<Arc<dyn Clock>>(ctx)?.now(),
         };
-        login::login(need::<PgPool>(ctx)?, need::<Bus>(ctx)?, attempt)
+        let (db, bus, vault) = (need::<PgPool>(ctx)?, need::<Bus>(ctx)?, need::<Vault>(ctx)?);
+        login::login(db, bus, vault, attempt)
             .await
             .map(AuthPayload)
-            .map_err(answer)
+            .map_err(Error::into_graphql)
     }
 
     /// Deletes the token of this request.
@@ -110,24 +111,15 @@ impl Mutation {
         let client = *need::<ClientAddr>(ctx)?;
         login::logout(need::<PgPool>(ctx)?, need::<Identity>(ctx)?, client, now)
             .await
-            .map_err(answer)?;
+            .map_err(Error::into_graphql)?;
         Ok(true)
     }
 }
 
-/// The GraphQL error for `error`, after a hub fault is written to the process log (K7).
-#[expect(
-    clippy::needless_pass_by_value,
-    reason = "called as `map_err(answer)`; the error ends here"
-)]
-fn answer(error: Error) -> async_graphql::Error {
-    error.log();
-    error.to_graphql()
-}
-
 /// Context data the edge or the schema must provide; its absence is a wiring fault, shown
-/// as `INTERNAL` without naming the type.
+/// as `INTERNAL` without naming the type. A hub fault carries its cause, which the API
+/// boundary (`events::process_log::InternalErrors`) writes to the process log (H-5).
 fn need<'a, T: Any + Send + Sync>(ctx: &Context<'a>) -> async_graphql::Result<&'a T> {
     ctx.data_opt::<T>()
-        .ok_or_else(|| answer(Error::Unavailable))
+        .ok_or_else(|| Error::Unavailable.into_graphql())
 }

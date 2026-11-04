@@ -2,7 +2,7 @@
   "name": "anima",
   "private": true,
   "type": "module",
-  "workspaces": ["apps/*", "quality", "design", "deploy"],
+  "workspaces": ["apps/*", "quality", "design", "deploy", "deploy/*"],
   "scripts": {
     "gates": "bun quality/bin/gates.ts",
     "lint": "bun run --filter '*' lint",

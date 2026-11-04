@@ -8,6 +8,7 @@ use std::net::IpAddr;
 
 use async_graphql::Enum;
 use chrono::{DateTime, Utc};
+use uuid::Uuid;
 
 use crate::{
     ids::{CheckId, DeviceId, EventId, OperatorId, SessionId, SiteId, WindowId},
@@ -31,6 +32,14 @@ impl Severity {
             Self::Warning => "warning",
             Self::Error => "error",
         }
+    }
+
+    /// The severity whose stored text is `text`.
+    #[must_use]
+    pub fn from_stored(text: &str) -> Option<Self> {
+        [Self::Info, Self::Warning, Self::Error]
+            .into_iter()
+            .find(|severity| severity.as_str() == text)
     }
 }
 
@@ -57,6 +66,20 @@ impl Source {
             Self::Hub => "hub",
         }
     }
+
+    /// The source whose stored text is `text`.
+    #[must_use]
+    pub fn from_stored(text: &str) -> Option<Self> {
+        [
+            Self::Check,
+            Self::Session,
+            Self::Device,
+            Self::Access,
+            Self::Hub,
+        ]
+        .into_iter()
+        .find(|source| source.as_str() == text)
+    }
 }
 
 /// An event to record. `device` carries the device name at the time of the event, so the
@@ -80,6 +103,17 @@ pub struct EventSummary {
     pub message: String,
 }
 
+/// Which events a list shows (K1 `EventFilter`). `None` lets every value through; an empty
+/// list lets none through.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(super) struct EventFilter {
+    pub(super) severities: Option<Vec<Severity>>,
+    pub(super) sources: Option<Vec<Source>>,
+    pub(super) device: Option<DeviceId>,
+    /// Only events at or after this instant.
+    pub(super) since: Option<DateTime<Utc>>,
+}
+
 /// The signed-in operator who made a request (API-003).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Operator {
@@ -92,11 +126,13 @@ pub struct Operator {
 pub struct ClientAddr(pub IpAddr);
 
 /// One check result, as the live status view receives it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HeartbeatSummary {
     pub at: DateTime<Utc>,
     pub status: Status,
     pub response_time_ms: Option<u32>,
+    /// The cleaned message as stored.
+    pub message: Option<String>,
 }
 
 /// The verb of an audit entry. Its text form is stored in `audit_log.action`.
@@ -192,4 +228,18 @@ pub struct NewAudit {
     pub target: AuditTarget,
     pub client: ClientAddr,
     pub change: serde_json::Value,
+}
+
+/// A stored audit entry, as the audit list shows it (K1 `AuditEntry`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) struct AuditRecord {
+    pub(super) id: Uuid,
+    pub(super) at: DateTime<Utc>,
+    pub(super) operator_name: String,
+    pub(super) action: String,
+    pub(super) target_type: String,
+    pub(super) target_id: String,
+    pub(super) client: IpAddr,
+    /// Already redacted when it was written (LOG-007).
+    pub(super) change: serde_json::Value,
 }

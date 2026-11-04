@@ -1,29 +1,42 @@
-//! Hub library face: module tree and HTTP router, so integration tests can reach them.
+//! Hub library face: module tree, HTTP router and the serving steps around it, so integration
+//! tests can reach them.
 
 pub mod access;
+pub mod checks;
 pub mod clock;
 pub mod config;
 pub mod credentials;
 pub mod devices;
 pub mod events;
 pub mod ids;
+pub mod maintenance;
 pub mod paging;
 pub mod scalars;
 pub mod schema;
+pub mod sessions;
 pub mod status;
 
-use std::sync::Arc;
+use std::{
+    future::{Future, IntoFuture as _},
+    net::SocketAddr,
+    sync::Arc,
+    time::Duration,
+};
 
 use async_graphql_axum::GraphQLResponse;
 use axum::{
     Router,
     body::Bytes,
-    extract::{DefaultBodyLimit, State},
+    extract::{
+        DefaultBodyLimit, State, WebSocketUpgrade, ws::rejection::WebSocketUpgradeRejection,
+    },
     http::{Extensions, HeaderMap, StatusCode, header::CONTENT_TYPE},
+    middleware,
     response::{IntoResponse, Response},
-    routing::post,
+    routing::{get, post},
 };
 use sqlx::PgPool;
+use tokio::net::TcpListener;
 
 /// Largest `/graphql` request body. A bigger one gets 413 before it is parsed or any token
 /// or password is checked (SEC-002).
@@ -37,11 +50,90 @@ struct Edge {
     clock: Arc<dyn clock::Clock>,
 }
 
+/// The hub's HTTP routes: `POST /graphql`, `GET /graphql` (subscriptions) and `GET /health`,
+/// each request in a logged span.
 pub fn router(schema: schema::HubSchema, db: PgPool, clock: Arc<dyn clock::Clock>) -> Router {
-    Router::new()
-        .route("/graphql", post(graphql))
-        .layer(DefaultBodyLimit::max(BODY_LIMIT))
-        .with_state(Edge { schema, db, clock })
+    logged(
+        Router::new()
+            .route("/graphql", post(graphql).get(subscriptions))
+            .route("/health", get(health))
+            .layer(DefaultBodyLimit::max(BODY_LIMIT))
+            .with_state(Edge { schema, db, clock }),
+    )
+}
+
+/// Runs every route of `routes` in an `http_request` span that records the route template,
+/// never a path value, so `/push/{token}` is logged as `/push/[redacted]` (LOG-007, R-028).
+/// Apply it to the whole router after the last route is added; WP-09 widens it when the push
+/// router is merged in.
+pub(crate) fn logged(routes: Router) -> Router {
+    routes.layer(middleware::from_fn(events::process_log::http_request))
+}
+
+/// Liveness probe (R-026(4)): no sign-in, no database, body `ok`.
+async fn health() -> &'static str {
+    "ok"
+}
+
+/// The longest the drain may wait for open requests after the stop signal. A client can hold
+/// a request open for ever (a partial body, say); past this the hub stops anyway, and its
+/// sessions have already ended (R-040).
+pub const DRAIN_LIMIT: Duration = Duration::from_secs(10);
+
+/// What the hub ends when it stops, and how long it waits for open requests (R-040).
+pub struct Shutdown {
+    pub db: PgPool,
+    /// The `Live` the schema and the tunnel serve with.
+    pub live: sessions::Live,
+    pub clock: Arc<dyn clock::Clock>,
+    /// [`DRAIN_LIMIT`] in the hub.
+    pub drain_limit: Duration,
+}
+
+/// Serves `app`, with each request's TCP peer as its connect info, until `signal` resolves.
+/// Then, in order: ends every session `shutdown.live` holds with `HUB_SHUTDOWN`, because the
+/// drain does not end upgraded connections such as tunnels; then drains the open requests for
+/// at most `shutdown.drain_limit` (R-040).
+///
+/// # Errors
+/// When the server fails to serve.
+pub async fn serve_until(
+    listener: TcpListener,
+    app: Router,
+    shutdown: Shutdown,
+    signal: impl Future<Output = ()> + Send + 'static,
+) -> std::io::Result<()> {
+    let Shutdown {
+        db,
+        live,
+        clock,
+        drain_limit,
+    } = shutdown;
+    let (sessions_ended, draining) = tokio::sync::oneshot::channel();
+    let stop = async move {
+        signal.await;
+        if let Err(error) = sessions::shut_down(&db, &live, clock.now()).await {
+            // The error's text is fixed and holds no value (sessions::Error, LOG-007).
+            tracing::error!(%error, "sessions did not all end at shutdown");
+        }
+        sessions_ended.send(()).ok();
+    };
+    let app = app.into_make_service_with_connect_info::<SocketAddr>();
+    // If serving fails, the sessions are not shut down; the next start's `close_stale` ends
+    // their rows.
+    let server = axum::serve(listener, app)
+        .with_graceful_shutdown(stop)
+        .into_future();
+    tokio::pin!(server);
+    tokio::select! {
+        result = &mut server => return result,
+        Ok(()) = draining => {}
+    }
+    if let Ok(result) = tokio::time::timeout(drain_limit, server).await {
+        return result;
+    }
+    tracing::warn!("drain limit reached; open requests are dropped");
+    Ok(())
 }
 
 /// Whether the media type is exactly `application/json`, in any case, parameters allowed.
@@ -77,10 +169,27 @@ async fn graphql(
     let response = match access::identify(&edge.db, &headers, edge.clock.now()).await {
         Ok(Some(identity)) => edge.schema.execute(identity.attach(request)).await,
         Ok(None) => edge.schema.execute(request).await,
+        // The schema's boundary never sees this error, so the edge logs its cause chain (H-5).
         Err(error) => {
-            error.log();
-            async_graphql::Response::from_errors(vec![error.to_server_error()])
+            let error = error.into_response_error();
+            events::process_log::log_failure(&error);
+            async_graphql::Response::from_errors(vec![error])
         }
     };
     GraphQLResponse::from(response).into_response()
+}
+
+/// Upgrades `GET /graphql` to a `graphql-transport-ws` connection. The token comes only from
+/// the `connection_init` payload, never from the URL (R-020). A `GET` that is not a WebSocket
+/// upgrade gets 405: queries are never read from a URL.
+async fn subscriptions(
+    State(edge): State<Edge>,
+    extensions: Extensions,
+    upgrade: Result<WebSocketUpgrade, WebSocketUpgradeRejection>,
+) -> Response {
+    let Ok(upgrade) = upgrade else {
+        return StatusCode::METHOD_NOT_ALLOWED.into_response();
+    };
+    let access = access::SocketAccess::new(edge.db, edge.clock, access::client_addr(&extensions));
+    access::accept_socket(upgrade, edge.schema, access)
 }

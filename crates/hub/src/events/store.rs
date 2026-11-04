@@ -1,15 +1,16 @@
 //! The only SQL for `events.event_log` and `events.audit_log`.
 
 use chrono::{DateTime, NaiveDate, Utc};
-use sqlx::{PgConnection, PgPool};
+use sqlx::{PgConnection, PgPool, Postgres, Transaction};
 use uuid::Uuid;
 
 use super::{
     Refusal,
-    model::{EventSummary, NewAudit, NewEvent},
+    model::{AuditRecord, EventFilter, EventSummary, NewAudit, NewEvent, Severity, Source},
+    page::Position,
     retention::{LOGS, Log},
 };
-use crate::ids::EventId;
+use crate::ids::{DeviceId, EventId};
 
 const ENSURE_DAY_PARTITION: &str = "select events.ensure_day_partition($1, $2)";
 
@@ -28,36 +29,57 @@ async fn ensure_day_partition(
     Ok(())
 }
 
-/// Creates the day partitions of both logs that hold `at`. Each call is its own statement
-/// outside any transaction, so the lock it takes on a parent ends at once.
+/// How long a scheduled partition change waits for a lock on a log before it gives up (D-4).
+/// Waiting longer would queue every reader and writer of that log behind it; the daily job
+/// retries instead.
+const SCHEDULED_LOCK_TIMEOUT: &str = "set local lock_timeout = '2s'";
+
+/// A short transaction of its own for one scheduled partition change, with
+/// [`SCHEDULED_LOCK_TIMEOUT`]. Never a caller's transaction, so the lock ends at its commit.
+async fn scheduled_change(db: &PgPool) -> Result<Transaction<'static, Postgres>, sqlx::Error> {
+    let mut tx = db.begin().await?;
+    sqlx::query(SCHEDULED_LOCK_TIMEOUT)
+        .execute(&mut *tx)
+        .await?;
+    Ok(tx)
+}
+
+/// Creates the day partitions of both logs that hold `at`, each in a short transaction of its
+/// own, so the lock it takes on a parent ends at once.
 pub(super) async fn create_day_partitions(
     db: &PgPool,
     at: DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
     for log in LOGS {
+        let mut tx = scheduled_change(db).await?;
         sqlx::query(ENSURE_DAY_PARTITION)
             .bind(log.table())
             .bind(at)
-            .execute(db)
+            .execute(&mut *tx)
             .await?;
+        tx.commit().await?;
     }
     Ok(())
 }
 
-/// Drops the partitions of `log` for UTC days before `first_kept_day` and returns their names.
-/// The database refuses a day inside the retention period of `now` or of its own clock.
+/// Drops the partitions of `log` for UTC days before `first_kept_day` and returns their names,
+/// in a short transaction of its own. The database refuses a day inside the retention period
+/// of `now` or of its own clock.
 pub(super) async fn drop_day_partitions_before(
     db: &PgPool,
     log: Log,
     first_kept_day: NaiveDate,
     now: DateTime<Utc>,
 ) -> Result<Vec<String>, sqlx::Error> {
-    sqlx::query_scalar("select events.drop_day_partitions_before($1, $2, $3)")
+    let mut tx = scheduled_change(db).await?;
+    let dropped = sqlx::query_scalar("select events.drop_day_partitions_before($1, $2, $3)")
         .bind(log.table())
         .bind(first_kept_day)
         .bind(now)
-        .fetch_all(db)
-        .await
+        .fetch_all(&mut *tx)
+        .await?;
+    tx.commit().await?;
+    Ok(dropped)
 }
 
 /// The first reason the hub's login must not serve, or `None` (K2 "Start check", R-023). Reads
@@ -211,4 +233,114 @@ pub(super) async fn insert_audit(
     .execute(&mut *conn)
     .await?;
     Ok(())
+}
+
+/// A stored `event_log` row.
+#[derive(sqlx::FromRow)]
+struct EventRow {
+    id: Uuid,
+    at: DateTime<Utc>,
+    severity: String,
+    source: String,
+    device_id: Option<DeviceId>,
+    device_name: Option<String>,
+    message: String,
+}
+
+impl TryFrom<EventRow> for EventSummary {
+    type Error = sqlx::Error;
+
+    fn try_from(row: EventRow) -> Result<Self, Self::Error> {
+        let unknown = |column: &str| sqlx::Error::Decode(format!("unknown event {column}").into());
+        Ok(Self {
+            id: row.id.into(),
+            at: row.at,
+            severity: Severity::from_stored(&row.severity).ok_or_else(|| unknown("severity"))?,
+            source: Source::from_stored(&row.source).ok_or_else(|| unknown("source"))?,
+            device: row.device_id.zip(row.device_name),
+            message: row.message,
+        })
+    }
+}
+
+/// Up to `limit` events that pass `filter`, newest first, after `after` when it is given.
+pub(super) async fn list_events(
+    db: &PgPool,
+    filter: &EventFilter,
+    after: Option<Position>,
+    limit: i64,
+) -> Result<Vec<EventSummary>, sqlx::Error> {
+    let severities: Option<Vec<&str>> = filter
+        .severities
+        .as_ref()
+        .map(|all| all.iter().map(|severity| severity.as_str()).collect());
+    let sources: Option<Vec<&str>> = filter
+        .sources
+        .as_ref()
+        .map(|all| all.iter().map(|source| source.as_str()).collect());
+    let rows: Vec<EventRow> = sqlx::query_as(
+        "select id, at, severity, source, device_id, device_name, message \
+         from events.event_log \
+         where ($1::text[] is null or severity = any($1)) \
+           and ($2::text[] is null or source = any($2)) \
+           and ($3::uuid is null or device_id = $3) \
+           and ($4::timestamptz is null or at >= $4) \
+           and ($5::timestamptz is null or (at, id) < ($5, $6)) \
+         order by at desc, id desc limit $7",
+    )
+    .bind(severities)
+    .bind(sources)
+    .bind(filter.device)
+    .bind(filter.since)
+    .bind(after.map(|position| position.at))
+    .bind(after.map(|position| position.id))
+    .bind(limit)
+    .fetch_all(db)
+    .await?;
+    rows.into_iter().map(EventSummary::try_from).collect()
+}
+
+/// A stored `audit_log` row.
+#[derive(sqlx::FromRow)]
+struct AuditRow {
+    id: Uuid,
+    at: DateTime<Utc>,
+    operator_name: String,
+    action: String,
+    target_type: String,
+    target_id: String,
+    client_addr: std::net::IpAddr,
+    change: serde_json::Value,
+}
+
+/// Up to `limit` audit entries, newest first, after `after` when it is given.
+pub(super) async fn list_audit(
+    db: &PgPool,
+    after: Option<Position>,
+    limit: i64,
+) -> Result<Vec<AuditRecord>, sqlx::Error> {
+    let rows: Vec<AuditRow> = sqlx::query_as(
+        "select id, at, operator_name, action, target_type, target_id, client_addr, change \
+         from events.audit_log \
+         where ($1::timestamptz is null or (at, id) < ($1, $2)) \
+         order by at desc, id desc limit $3",
+    )
+    .bind(after.map(|position| position.at))
+    .bind(after.map(|position| position.id))
+    .bind(limit)
+    .fetch_all(db)
+    .await?;
+    Ok(rows
+        .into_iter()
+        .map(|row| AuditRecord {
+            id: row.id,
+            at: row.at,
+            operator_name: row.operator_name,
+            action: row.action,
+            target_type: row.target_type,
+            target_id: row.target_id,
+            client: row.client_addr,
+            change: row.change,
+        })
+        .collect())
 }

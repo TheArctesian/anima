@@ -14,9 +14,10 @@ use crate::access::{
 
 #[sqlx::test(migrations = "./migrations")]
 async fn log_006_r_016_runtime_role_runs_the_login_flow_on_access_tables(pool: PgPool) {
-    let mut conn = pool.acquire().await.unwrap();
+    // Detached: a connection whose role changed must not return to the pool (R-019).
+    let mut conn = pool.acquire().await.unwrap().detach();
     sqlx::query("set role anima_runtime")
-        .execute(&mut *conn)
+        .execute(&mut conn)
         .await
         .unwrap();
 
@@ -34,7 +35,7 @@ async fn log_006_r_016_runtime_role_runs_the_login_flow_on_access_tables(pool: P
         .await
         .unwrap();
     let client = IpAddr::V4(Ipv4Addr::new(100, 64, 0, 7));
-    let attempt = store::start_attempt(&mut *conn, now(), "operator", client)
+    let attempt = store::start_attempt(&mut conn, now(), "operator", client)
         .await
         .unwrap();
     let key = AttemptKey {
@@ -45,18 +46,16 @@ async fn log_006_r_016_runtime_role_runs_the_login_flow_on_access_tables(pool: P
     store::failures(&mut conn, &key, now() - TimeDelta::minutes(30))
         .await
         .unwrap();
-    store::finish_attempt(&mut *conn, attempt, Outcome::Ok)
+    store::finish_attempt(&mut conn, attempt, Outcome::Ok)
         .await
         .unwrap();
-    let account = store::account_by_username(&mut *conn, "operator")
+    let account = store::account_by_username(&mut conn, "operator")
         .await
         .unwrap();
     assert_eq!(account.map(|a| a.id), Some(id));
-    let stored = store::token_by_hash(&mut *conn, token.hash())
-        .await
-        .unwrap();
+    let stored = store::token_by_hash(&mut conn, token.hash()).await.unwrap();
     assert_eq!(stored.map(|t| t.id), Some(token_id));
-    store::touch_token(&mut *conn, token_id, now())
+    store::touch_token(&mut conn, token_id, now())
         .await
         .unwrap();
     assert!(store::delete_token(&mut conn, token_id).await.unwrap());
@@ -65,6 +64,13 @@ async fn log_006_r_016_runtime_role_runs_the_login_flow_on_access_tables(pool: P
         .await
         .unwrap();
     store::prune(&mut conn, now(), now()).await.unwrap();
-
-    sqlx::query("reset role").execute(&mut *conn).await.unwrap();
+    store::set_totp(&mut conn, id, Some(b"sealed"))
+        .await
+        .unwrap();
+    assert!(
+        store::claim_totp_step(&mut conn, id, b"sealed", 7)
+            .await
+            .unwrap()
+    );
+    store::set_totp(&mut conn, id, None).await.unwrap();
 }

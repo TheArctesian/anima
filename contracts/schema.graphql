@@ -119,6 +119,13 @@ type DeviceConnection {
   totalCount: Int!
 }
 
+"""
+Ties and orders (R-044). Names compare in byte order.
+NAME: name.
+STATUS: worst first in severity order DOWN, DEGRADED, UNKNOWN, MAINTENANCE, UP; then name.
+UPTIME: lowest 24 h uptime first, null last; then name.
+The client uses the same order when it re-sorts on live changes.
+"""
 enum DeviceSort {
   NAME
   STATUS
@@ -588,6 +595,8 @@ enum SessionEndReason {
   GATEWAY_ERROR
   AUTH_FAILED
   HOST_KEY_MISMATCH
+  "The client sent an instruction that does not decode (GW-011, R-034)."
+  PROTOCOL_ERROR
   TIMEOUT
   HUB_SHUTDOWN
 }

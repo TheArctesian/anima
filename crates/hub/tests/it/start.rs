@@ -56,7 +56,7 @@ fn start_with_key(key_file: &Path) -> (bool, String) {
 }
 
 /// `DATABASE_URL` (the throwaway test server) with its database replaced by `database`.
-fn url_for(database: &str) -> String {
+pub fn url_for(database: &str) -> String {
     let url = std::env::var("DATABASE_URL").expect("tests run with DATABASE_URL (R-009)");
     let (base, query) = url
         .split_once('?')

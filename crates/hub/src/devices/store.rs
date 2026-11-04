@@ -259,6 +259,21 @@ pub(super) async fn list(
     })
 }
 
+/// Every device that passes the filter, in byte order of the name, with no paging.
+pub(super) async fn filtered(db: &PgPool, filter: &DeviceFilter) -> Result<Vec<Device>, Error> {
+    let rows = sqlx::query_as(select_device!(
+        "WHERE ",
+        device_filter!(),
+        " ORDER BY d.name COLLATE \"C\""
+    ))
+    .bind(filter.name.as_deref().map(like_pattern))
+    .bind(&filter.tags)
+    .bind(filter.site)
+    .fetch_all(db)
+    .await?;
+    to_devices(rows)
+}
+
 /// A substring pattern for `ILIKE` that matches `%`, `_` and `\` literally.
 fn like_pattern(text: &str) -> String {
     let mut pattern = String::from("%");

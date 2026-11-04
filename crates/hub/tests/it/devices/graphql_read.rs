@@ -25,8 +25,9 @@ fn names(connection: &Value) -> Vec<&str> {
         .collect()
 }
 
-/// Adds `sites` empty sites and `devices` devices spread over every site, with SSH settings.
-pub async fn add_bulk(pool: &PgPool, sites: i32, devices: i32) {
+/// Adds `sites` empty sites and `devices` devices spread over every site, with SSH settings
+/// and two checks each.
+pub(crate) async fn add_bulk(pool: &PgPool, sites: i32, devices: i32) {
     sqlx::query(
         "INSERT INTO devices.sites (id, name, subnet) \
          SELECT gen_random_uuid(), 'bulk-site-' || g, ('10.100.' || g || '.0/24')::cidr \
@@ -51,6 +52,17 @@ pub async fn add_bulk(pool: &PgPool, sites: i32, devices: i32) {
     sqlx::query(
         "INSERT INTO devices.ssh_settings (device_id, enabled, port, username, auth) \
          SELECT id, false, 22, '', 'private_key' FROM devices.devices WHERE name LIKE 'bulk-%'",
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        "INSERT INTO checks.checks (id, device_id, type, name, config) \
+         SELECT gen_random_uuid(), id, 'icmp', 'Ping', '{\"timeoutMs\":2000,\"ipVersion\":\"V4\"}'::jsonb \
+         FROM devices.devices WHERE name LIKE 'bulk-%' \
+         UNION ALL \
+         SELECT gen_random_uuid(), id, 'tcp', 'SSH port', '{\"port\":22,\"timeoutMs\":5000}'::jsonb \
+         FROM devices.devices WHERE name LIKE 'bulk-%'",
     )
     .execute(pool)
     .await
@@ -94,8 +106,10 @@ fixture_test! {
         assert_eq!(node["os"], "LINUX");
         assert_eq!(node["tags"], json!(["infra", "proxmox"]));
         assert_eq!(node["maintenance"], false);
-        assert!(node["createdAt"].as_str().unwrap().starts_with("2026-11-01T00:00:00"));
-        assert_eq!(node["updatedAt"], node["createdAt"]);
+        // R-033: compare instants, not text.
+        let instant = |value: &Value| value.as_str().unwrap().parse::<chrono::DateTime<chrono::Utc>>().unwrap();
+        assert_eq!(instant(&node["createdAt"]), "2026-11-01T00:00:00Z".parse::<chrono::DateTime<chrono::Utc>>().unwrap());
+        assert_eq!(instant(&node["updatedAt"]), instant(&node["createdAt"]));
         assert_eq!(node["ssh"], json!({ "enabled": true, "port": 22, "username": "operator", "auth": "PRIVATE_KEY" }));
         assert_eq!(node["site"], json!({ "id": HOME_SITE, "name": "home" }));
 

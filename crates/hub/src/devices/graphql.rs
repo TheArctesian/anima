@@ -14,17 +14,25 @@ mod filter;
 mod input;
 mod site;
 mod ssh;
+mod standing;
 mod trail;
+
+use std::sync::Arc;
 
 use async_graphql::{Context, ID, Object, Result, dataloader::DataLoader};
 use sqlx::{PgPool, Postgres, Transaction};
 use uuid::Uuid;
 
-pub use self::{credential_input::SshCredential, ssh::CredentialStored};
+pub use self::{
+    credential_input::SshCredential,
+    input::SshSettingsInput,
+    ssh::CredentialStored,
+    standing::{ChecksOf, ResolvedIpOf, StatusOf, UptimeOf},
+};
 
 use self::{
     connection::{DEFAULT_FIRST, DeviceConnection},
-    error::{invalid, schema_dependency, to_graphql},
+    error::{internal, invalid, schema_dependency, to_graphql},
     filter::{DeviceFilterInput, DeviceSort, list_args},
     input::{CreateDeviceInput, UpdateDeviceInput, checked, device_id},
     ssh::DeviceSsh,
@@ -38,6 +46,8 @@ use super::{
 };
 use crate::{
     access::Authenticated,
+    checks,
+    clock::Clock,
     credentials::clear_ssh,
     ids::{DeviceId, SiteId},
     scalars::Cidr,
@@ -63,6 +73,32 @@ pub fn credential_loader(pool: PgPool) -> DataLoader<CredentialStored> {
     DataLoader::new(CredentialStored(pool), tokio::spawn)
 }
 
+/// The loader behind `Device.status`: one `checks::statuses` call per batch, judged at the
+/// schema clock's time read once per batch (CHK-004). No cache.
+#[must_use]
+pub fn status_loader(pool: PgPool, clock: Arc<dyn Clock>) -> DataLoader<StatusOf> {
+    DataLoader::new(StatusOf { db: pool, clock }, tokio::spawn)
+}
+
+/// The loader behind `Device.uptime`: one `checks::uptimes` call per window per batch. No cache.
+#[must_use]
+pub fn uptime_loader(pool: PgPool, clock: Arc<dyn Clock>) -> DataLoader<UptimeOf> {
+    DataLoader::new(UptimeOf { db: pool, clock }, tokio::spawn)
+}
+
+/// The loader behind `Device.checks`: one query per batch of device ids, no cache.
+#[must_use]
+pub fn checks_loader(pool: PgPool) -> DataLoader<ChecksOf> {
+    DataLoader::new(ChecksOf(pool), tokio::spawn)
+}
+
+/// The loader behind `Device.ip` for a device whose host is a name: one query per batch, no
+/// cache.
+#[must_use]
+pub fn resolved_ip_loader(pool: PgPool) -> DataLoader<ResolvedIpOf> {
+    DataLoader::new(ResolvedIpOf(pool), tokio::spawn)
+}
+
 fn pool<'a>(ctx: &Context<'a>) -> Result<&'a PgPool> {
     schema_dependency::<PgPool>(ctx)
 }
@@ -84,7 +120,8 @@ async fn commit(tx: Transaction<'static, Postgres>) -> Result<()> {
 #[derive(Default)]
 pub struct Query;
 
-#[Object]
+/// Merged into the root `Query` (`schema.rs`); the name only keeps it apart from the others.
+#[Object(name = "DevicesQuery")]
 impl Query {
     #[graphql(guard = "Authenticated")]
     async fn sites(&self, ctx: &Context<'_>) -> Result<Vec<Site>> {
@@ -116,19 +153,15 @@ impl Query {
         #[graphql(default_with = "Some(DEFAULT_FIRST)")] first: Option<i32>,
         after: Option<String>,
     ) -> Result<DeviceConnection> {
-        let DeviceSort::Name = sort.unwrap_or_default();
-        let (size, after, filter) =
-            list_args(first.unwrap_or(DEFAULT_FIRST), after.as_deref(), filter)
-                .map_err(|e| invalid(&e))?;
-        let page = store::list(pool(ctx)?, &filter, size, after.as_deref())
-            .await
-            .map_err(to_graphql)?;
-        let total = usize::try_from(page.total).unwrap_or(0);
-        Ok(DeviceConnection::new(
-            page.devices,
-            page.has_next_page,
-            total,
-        ))
+        let sort = sort.unwrap_or_default();
+        let args = list_args(
+            sort,
+            first.unwrap_or(DEFAULT_FIRST),
+            after.as_deref(),
+            filter,
+        )
+        .map_err(|e| invalid(&e))?;
+        standing::list(ctx, sort, args).await
     }
 
     #[graphql(guard = "Authenticated")]
@@ -142,7 +175,8 @@ impl Query {
 #[derive(Default)]
 pub struct Mutation;
 
-#[Object]
+/// Merged into the root `Mutation`.
+#[Object(name = "DevicesMutation")]
 impl Mutation {
     #[graphql(guard = "Authenticated")]
     async fn create_site(&self, ctx: &Context<'_>, name: String, subnet: Cidr) -> Result<Site> {
@@ -160,6 +194,7 @@ impl Mutation {
 
     #[graphql(guard = "Authenticated")]
     async fn create_device(&self, ctx: &Context<'_>, input: CreateDeviceInput) -> Result<Device> {
+        let add_default_check = input.add_default_check();
         let (form, bad_site) = input.into_form();
         let new = checked(validate_new_device(&form), bad_site)?;
         let trail = Trail::from_context(ctx)?;
@@ -168,8 +203,16 @@ impl Mutation {
         let device = store::create_device(&mut tx, id, trail.now, &new)
             .await
             .map_err(to_graphql)?;
+        if add_default_check {
+            checks::add_default_check(&mut tx, id)
+                .await
+                .map_err(internal)?;
+        }
         trail
-            .write(&mut tx, trail::device_added(&device, &new))
+            .write(
+                &mut tx,
+                trail::device_added(&device, &new, add_default_check),
+            )
             .await?;
         commit(tx).await?;
         Ok(device)
