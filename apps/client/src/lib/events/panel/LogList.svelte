@@ -19,6 +19,7 @@
     <p>{feed.error.message}</p>
     <button
       type="button"
+      tabindex="0"
       onclick={() => {
         void feed.retry();
       }}
@@ -50,6 +51,7 @@
     {#if feed.olderError !== null}<p role="alert">{feed.olderError.message}</p>{/if}
     <button
       type="button"
+      tabindex="0"
       disabled={feed.loadingOlder}
       onclick={() => {
         void feed.loadOlder();

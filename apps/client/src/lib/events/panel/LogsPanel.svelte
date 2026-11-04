@@ -107,6 +107,7 @@
       <h2 id="{id}-title">Logs</h2>
       <button
         type="button"
+        tabindex="0"
         aria-expanded={placement.open}
         onclick={() => {
           placement.toggle();

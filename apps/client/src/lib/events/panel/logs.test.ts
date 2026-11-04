@@ -165,7 +165,8 @@ describe('LOG-010: one filter change', () => {
 describe('LOG-009: older events', () => {
   it('offers "Load older" only while the hub has another page, and sends the cursor', async () => {
     await show(eventsAnswer([event('e2', 1), event('e1', 2)], 'cursor-1'));
-    expect(button('Load older')).toBeDefined();
+    expect(button('Load older')?.getAttribute('tabindex')).toBe('0');
+    expect(button('Collapse')?.getAttribute('tabindex')).toBe('0');
     button('Load older')?.click();
     await settle();
     expect(lastFilter().after).toBe('cursor-1');
