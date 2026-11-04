@@ -77,7 +77,7 @@ async fn chk_001_http_keyword_must_be_in_the_body() {
 
 #[tokio::test]
 async fn chk_001_http_json_pointer_value_must_equal_the_expected_text() {
-    let body = r#"{"status":"ok","n":3,"flag":true,"deep":{"list":[{"v":"x"}]}}"#;
+    let body = r#"{"status":"ok","n":3,"f":3.0,"flag":true,"deep":{"list":[{"v":"x"}]}}"#;
     let server = serve(None, move |r| {
         if r.path == "/text" {
             Reply::ok("not json")
@@ -97,6 +97,12 @@ async fn chk_001_http_json_pointer_value_must_equal_the_expected_text() {
     assert!(run(json("/flag", Some("true"))).await.ok);
     assert!(run(json("/deep/list/0/v", Some("x"))).await.ok);
     assert!(run(json("/status", None)).await.ok);
+    // Equal length, a prefix, and the rendering of a float (serde: 3.0 stays "3.0").
+    assert!(!run(json("/status", Some("ox"))).await.ok);
+    assert!(!run(json("/status", Some("o"))).await.ok);
+    assert!(!run(json("/status", Some("okk"))).await.ok);
+    assert!(!run(json("/f", Some("3"))).await.ok);
+    assert!(run(json("/f", Some("3.0"))).await.ok);
     assert_eq!(
         message(&run(json("/status", Some("bad"))).await),
         "the JSON value is not the expected one"
@@ -284,4 +290,45 @@ async fn chk_007_https_reports_the_certificate_expiry_and_verify_tls_controls_tr
         !strict.ok,
         "a self-signed certificate must fail when verification is on"
     );
+}
+
+const PROXY_CHILD: &str = "ANIMA_TEST_PROXY_CHILD";
+
+/// Runs only inside the child process of `proxy_variables_in_the_environment_are_ignored`.
+#[tokio::test]
+async fn proxy_environment_child() {
+    if std::env::var_os(PROXY_CHILD).is_none() {
+        return;
+    }
+    let server = serve(None, |_| Reply::ok("direct")).await;
+    let result = run(HttpConfig::new(server.url("/"))).await;
+    assert!(result.ok, "{:?}", result.message);
+    assert_eq!(server.seen().len(), 1);
+}
+
+#[test]
+fn proxy_variables_in_the_environment_are_ignored() {
+    let proxy = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    proxy.set_nonblocking(true).unwrap();
+    let url = format!("http://{}", proxy.local_addr().unwrap());
+    let status = std::process::Command::new(std::env::current_exe().unwrap())
+        .args([
+            "checks::tests::http::proxy_environment_child",
+            "--exact",
+            "--test-threads=1",
+        ])
+        .env(PROXY_CHILD, "1")
+        .env("HTTP_PROXY", &url)
+        .env("http_proxy", &url)
+        .env("ALL_PROXY", &url)
+        .env("all_proxy", &url)
+        .env_remove("NO_PROXY")
+        .env_remove("no_proxy")
+        .status()
+        .unwrap();
+    assert!(
+        status.success(),
+        "the child probe went through the proxy or failed"
+    );
+    assert!(proxy.accept().is_err(), "the proxy received a connection");
 }

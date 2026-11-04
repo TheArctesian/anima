@@ -3,6 +3,10 @@
 //! The probe never decompresses a body, stores a cookie or uses an environment proxy. It
 //! reads at most [`BODY_CAP`] bytes, and only when a keyword or JSON check needs them.
 //! Header values, the body and credentials never reach a message (LOG-007).
+//!
+//! The caller validates the configuration (`probe` does). With `verify_tls = true` an
+//! untrusted or expired certificate fails the request, so that result carries no
+//! `cert_not_after`; with `verify_tls = false` the expiry is reported (CHK-007).
 
 use std::{
     error::Error,
@@ -98,6 +102,8 @@ fn client(config: &HttpConfig, env: &ProbeEnv) -> Result<Client, Failure> {
     Client::builder()
         .use_rustls_tls()
         .user_agent("anima-hub")
+        // Never take a proxy from the environment: it would send the request to a host the
+        // address policy never judged. A child-process test sets the variable to prove it.
         .no_proxy()
         .redirect(redirect_policy(config.max_redirects, env.policy.clone()))
         .dns_resolver(Arc::new(PolicyResolver(env.clone())))
@@ -258,7 +264,6 @@ fn prepare(
     secrets: Option<&HttpSecrets>,
     env: &ProbeEnv,
 ) -> Result<RequestBuilder, Failure> {
-    config.validate().map_err(|_| Failure::BadConfig)?;
     let url = Url::parse(&config.url).map_err(|_| Failure::BadConfig)?;
     if !url_permitted(&url, &env.policy) {
         return Err(Failure::NotPermitted);

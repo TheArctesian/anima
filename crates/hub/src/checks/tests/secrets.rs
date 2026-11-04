@@ -238,3 +238,54 @@ fn messages_lose_control_characters_and_stop_at_512_characters() {
     assert_eq!(clean_message(&"y".repeat(512)).chars().count(), 512);
     assert_eq!(clean_message("short"), "short");
 }
+
+#[test]
+fn log_007_messages_lose_bidi_zero_width_and_separator_characters() {
+    use crate::checks::probe::clean_message;
+    let text = "ok\u{202E}gnp.exe\u{2028}line\u{2029}para\u{200B}zw\u{FEFF}bom\u{061C}alm";
+    assert_eq!(clean_message(text), "okgnp.exelineparazwbomalm");
+    for c in [
+        '\u{200B}', '\u{200F}', '\u{202A}', '\u{2060}', '\u{2069}', '\u{FEFF}', '\u{061C}',
+    ] {
+        assert_eq!(clean_message(&format!("a{c}b")), "ab", "{c:?}");
+    }
+    assert_eq!(
+        clean_message("plain \u{e4}\u{4e2d}"),
+        "plain \u{e4}\u{4e2d}"
+    );
+}
+
+#[test]
+fn split_refuses_secrets_that_are_not_utf8_and_names_the_field() {
+    let bad = || Secret::new(vec![0xff, 0xfe, 0x41]);
+    let mut headers = input("http://a.test/".into(), HttpCredentials::None);
+    headers.headers.push(("Authorization".into(), bad()));
+    assert_eq!(
+        headers.split().err().unwrap().to_string(),
+        "headers: is not valid"
+    );
+    let mut plain = input("http://a.test/".into(), HttpCredentials::None);
+    plain.headers.push(("X-Other".into(), bad()));
+    assert_eq!(plain.split().err().unwrap().field, "headers");
+    let password = HttpCredentials::Basic {
+        username: "u".into(),
+        password: bad(),
+    };
+    assert_eq!(
+        input("http://a.test/".into(), password)
+            .split()
+            .err()
+            .unwrap()
+            .field,
+        "auth"
+    );
+    let token = HttpCredentials::Bearer(bad());
+    assert_eq!(
+        input("http://a.test/".into(), token)
+            .split()
+            .err()
+            .unwrap()
+            .field,
+        "auth"
+    );
+}

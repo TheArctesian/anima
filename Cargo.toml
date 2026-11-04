@@ -33,7 +33,7 @@ static_assertions = "1.1"
 tempfile = "3.27"
 surge-ping = "0.9"
 hickory-resolver = { version = "0.26", default-features = false, features = ["system-config", "tokio"] }
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
 x509-parser = "0.18"
