@@ -4,6 +4,7 @@ mod batching;
 mod concurrency;
 mod credential;
 mod face;
+mod fields;
 mod graphql_read;
 mod guard;
 mod harness;

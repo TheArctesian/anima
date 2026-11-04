@@ -92,6 +92,18 @@ pub(super) async fn children_for_update(
     Ok(ids)
 }
 
+/// The checks of the devices grouped by device, each group in name order.
+pub(super) async fn grouped_by_devices(
+    db: &PgPool,
+    devices: &[DeviceId],
+) -> Result<HashMap<DeviceId, Vec<Check>>, Error> {
+    let mut grouped: HashMap<DeviceId, Vec<Check>> = HashMap::new();
+    for check in by_devices(db, devices).await? {
+        grouped.entry(check.device).or_default().push(check);
+    }
+    Ok(grouped)
+}
+
 /// The checks of the devices, each device's in byte order of the name.
 pub(super) async fn by_devices(db: &PgPool, devices: &[DeviceId]) -> Result<Vec<Check>, Error> {
     let rows = sqlx::query_as(select_check!(

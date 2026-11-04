@@ -109,7 +109,7 @@ impl Upstream {
 }
 
 /// A pool on the same database whose statements are counted.
-async fn counting_pool(hub: &PgPool) -> (PgPool, Arc<AtomicUsize>) {
+pub(super) async fn counting_pool(hub: &PgPool) -> (PgPool, Arc<AtomicUsize>) {
     let real = hub.connect_options();
     let upstream = real.get_socket().map_or_else(
         || Upstream::Tcp(real.get_host().to_owned(), real.get_port()),
@@ -139,8 +139,8 @@ async fn counting_pool(hub: &PgPool) -> (PgPool, Arc<AtomicUsize>) {
 }
 
 const BATCHED_AT_MOST: usize = 12;
-const SITES: i32 = 30;
-const BATCH_WINDOW: Duration = Duration::from_millis(20);
+pub(super) const SITES: i32 = 30;
+pub(super) const BATCH_WINDOW: Duration = Duration::from_millis(20);
 const NESTED: &str =
     "{ sites { name devices(first: 200) { totalCount edges { node { name site { name } } } } } }";
 

@@ -161,6 +161,18 @@ pub async fn for_device(db: &PgPool, device: DeviceId) -> Result<Vec<Check>, Err
     store::by_devices(db, &[device]).await
 }
 
+/// The checks of each device, each device's in byte order of the name, in one query
+/// (API-005). A device with no checks is absent.
+///
+/// # Errors
+/// `Unreadable` when a stored configuration cannot be read.
+pub async fn for_devices(
+    db: &PgPool,
+    devices: &[DeviceId],
+) -> Result<HashMap<DeviceId, Vec<Check>>, Error> {
+    store::grouped_by_devices(db, devices).await
+}
+
 /// The check with this id.
 ///
 /// # Errors
