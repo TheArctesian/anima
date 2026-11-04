@@ -72,3 +72,53 @@ describe("harden.sh confirm needs a connection opened after firewall (VPS-002)",
     expect(run.out).toContain("no recorded SSH connections");
   });
 });
+
+describe("harden.sh check and confirm read nftables.service as systemd loaded it (VPS-002, D-10)", () => {
+  const OTHER = "/etc/systemd/system/nftables.service.d/zz-other.conf";
+  const cases: [string, Record<string, string>, string][] = [
+    [
+      "a second drop-in that flushes on stop",
+      { FAKE_NFT_UNIT_EDIT: `s#^DropInPaths=.*#& ${OTHER}#`, FAKE_NFT_UNIT_EXTRA: "ExecStop={ path=/sbin/nft ; argv[]=/sbin/nft flush ruleset ; ignore_errors=no }\\n" },
+      `nftables.service has another drop-in: ${OTHER}`,
+    ],
+    [
+      "a full override in /etc",
+      { FAKE_NFT_UNIT_EDIT: "s#^FragmentPath=.*#FragmentPath=/etc/systemd/system/nftables.service#" },
+      "nftables.service is not loaded from /usr/lib/systemd/system/nftables.service",
+    ],
+    ["an enabled iptables.service", { FAKE_IPTABLES: "enabled" }, "iptables.service is enabled"],
+  ];
+
+  test.each(cases)("check reports %s", (_, env, message) => {
+    const hardened = fakeHost();
+    hardened.harden();
+    expect(hardened.run(["check"]).out).not.toContain("nftables.service");
+    const run = hardened.run(["check"], env);
+    expect(run.code).toBe(1);
+    expect(run.out).toContain(`VIOLATION: ${message}`);
+  });
+
+  test.each(cases)("confirm refuses %s before it changes anything", (_, env, message) => {
+    expect(host.run(["firewall"], vpn).code).toBe(0);
+    const run = host.run(["confirm"], { ...second, ...env });
+    expect(run.code).toBe(2);
+    expect(run.out).toContain(message);
+    expect(run.calls).not.toContain("SYSTEMCTL stop anima-firewall-rollback.timer");
+  });
+
+  test("check reports the stock unit's flush on stop and reload", () => {
+    const run = host.run(["check"]);
+    expect(run.out).toContain('VIOLATION: nftables.service runs "ExecStop=/sbin/nft flush ruleset"');
+    expect(run.out).toContain('VIOLATION: nftables.service runs "ExecReload=/sbin/nft flush ruleset; include');
+  });
+
+  test("confirm leaves firewalld running when the loaded unit still flushes after daemon-reload", () => {
+    expect(host.run(["firewall"], vpn).code).toBe(0);
+    const extra = { FAKE_NFT_UNIT_EXTRA: "ExecStopPost={ path=/bin/sh ; argv[]=/bin/sh -c nft flush ruleset ; ignore_errors=no }\\n" };
+    const run = host.run(["confirm"], { ...second, ...extra });
+    expect(run.code).toBe(1);
+    expect(run.out).toContain('nftables.service runs "ExecStopPost=/bin/sh -c nft flush ruleset"');
+    expect(run.calls).not.toContain("SYSTEMCTL enable nftables.service");
+    expect(run.calls).not.toContain("SYSTEMCTL mask firewalld.service");
+  });
+});

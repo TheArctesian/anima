@@ -28,6 +28,29 @@ const SSHD_CONFIG =
   "# stock comments\nInclude /etc/ssh/sshd_config.d/*.conf\nAuthorizedKeysFile .ssh/authorized_keys\n" +
   "#Match User anoncvs\n#\tPermitTTY no\nSubsystem sftp /usr/libexec/openssh/sftp-server\n";
 
+// `firewall-cmd --info-policy` on AlmaLinux 10 (firewalld 2.4.3), trailing blanks kept.
+const KEYS = "  services: \n  ports: \n  protocols: \n  masquerade: no\n  forward-ports: \n  source-ports: \n  icmp-blocks: \n  rich rules: \n";
+const ICMP = ["mld-listener-done", "mld-listener-query", "mld-listener-report", "mld2-listener-report",
+  "neighbour-advertisement", "neighbour-solicitation", "redirect", "router-advertisement"];
+const POLICIES: Record<string, string> = {
+  "allow-host-ipv6": "allow-host-ipv6\n  disable: no\n  priority: -15000\n  target: CONTINUE\n  ingress-zones: ANY\n" +
+    `  egress-zones: HOST\n${KEYS}${ICMP.map((name) => `\trule family="ipv6" icmp-type name="${name}" accept\n`).join("")}`,
+  "docker-forwarding": `docker-forwarding\n  disable: no\n  priority: -1\n  target: ACCEPT\n  ingress-zones: ANY\n  egress-zones: docker\n${KEYS}`,
+};
+
+// `systemctl show -p ... nftables.service` on AlmaLinux 10 (systemd 257), stock and with the
+// Anima drop-in; systemd prints no line for an empty command list.
+const exec = (name: string, argv: string): string =>
+  `${name}={ path=/sbin/nft ; argv[]=${argv} ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }\n`;
+const START = exec("ExecStart", "/sbin/nft -f /etc/sysconfig/nftables.conf");
+const FRAGMENT = "FragmentPath=/usr/lib/systemd/system/nftables.service\n";
+const NFT_UNIT = {
+  stock: `${START}${exec("ExecReload", '/sbin/nft flush ruleset; include "/etc/sysconfig/nftables.conf";')}` +
+    `${exec("ExecStop", "/sbin/nft flush ruleset")}${FRAGMENT}DropInPaths=\n`,
+  anima: `${START}${exec("ExecReload", "/usr/sbin/nft -f /etc/sysconfig/nftables.conf").replace("path=/sbin", "path=/usr/sbin")}` +
+    `${FRAGMENT}DropInPaths=/etc/systemd/system/nftables.service.d/anima.conf\n`,
+};
+
 const FAKES: Record<string, string> = {
   NFT: `case "$1" in
   -c) if [ "$3" = /dev/stdin ]; then
@@ -43,9 +66,12 @@ esac`,
   SYSTEMCTL: `unit=$(printf '%s\\n' "$@" | tail -n 1)
 case "$1" in
   is-active) case "$unit" in firewalld.service) exit "\${FAKE_FIREWALLD_ACTIVE:-3}";; *) exit "\${FAKE_ACTIVE:-0}";; esac;;
-  is-enabled) [ "$unit" = firewalld.service ] && { echo "\${FAKE_FIREWALLD:-masked}"; exit 1; }; exit "\${FAKE_ENABLED:-0}";;
+  is-enabled) [ "$unit" = firewalld.service ] && { echo "\${FAKE_FIREWALLD:-masked}"; exit 1; }
+              case "$unit" in ip*tables.service) [ "\${FAKE_IPTABLES:-disabled}" = enabled ]; exit $?;; esac; exit "\${FAKE_ENABLED:-0}";;
   list-unit-files) printf '%b\\n' "\${FAKE_UNITS:-sshd.service enabled enabled}";;
-  show) echo "\${FAKE_SUBSTATE:-waiting}";; reload) exit "\${FAKE_RELOAD:-0}";; mask) exit "\${FAKE_MASK:-0}";;
+  show) [ "$unit" = nftables.service ] || { echo "\${FAKE_SUBSTATE:-waiting}"; exit 0; }
+        f=stock; [ ! -f "$FAKE_ROOT/etc/systemd/system/nftables.service.d/anima.conf" ] || f=anima
+        sed "\${FAKE_NFT_UNIT_EDIT:-}" "$FAKE_DIR/nft-unit-$f"; printf '%b' "\${FAKE_NFT_UNIT_EXTRA:-}";; reload) exit "\${FAKE_RELOAD:-0}";; mask) exit "\${FAKE_MASK:-0}";;
   stop) [ -z "\${FAKE_STOP_STARTS_ROLLBACK:-}" ] || : > "$FAKE_ROOT/var/lib/anima/firewall-rolled-back";;
 esac`,
   SYSTEMD_RUN: `[ "$1" != --wait ] || exit "\${FAKE_PROBE:-0}"`,
@@ -57,6 +83,8 @@ case "$1" in
   --get-active-zones) printf '%b\\n' "\${FAKE_ZONES:-docker\\n  interfaces: docker0\\npublic (default)}";;
   --get-active-policies) printf '%b\\n' "\${FAKE_FW_POLICIES:-allow-host-ipv6\\n  ingress-zones: ANY\\n  egress-zones: HOST}";;
   --direct) [ "$2" != --get-all-rules ] || printf '%b' "\${FAKE_FW_DIRECT:-}";;
+  --info-policy=*) f="$FAKE_DIR/policy-\${1#*=}"; [ -f "$f" ] || exit 1
+    sed "\${FAKE_FW_POLICY_EDIT:-}" "$f"; printf '%b' "\${FAKE_FW_POLICY_EXTRA:-}";;
   --info-service=*) i=; case "$1" in *=cockpit) p=9090/tcp;; *=ssh) p=22/tcp;; *=dhcpv6-client) p=546/udp;; *=bundle) p=; i=ssh;; *) p=;; esac
                     printf '%s\\n  ports: %s\\n  protocols: \\n  source-ports: \\n  includes: %s\\n' "\${1#*=}" "$p" "$i";;
   --zone=*) [ "$2" = --list-all ] || exit 0
@@ -127,6 +155,8 @@ export function fakeHost(): Host {
     chmodSync(file, 0o755);
   }
   writeFileSync(join(work, "ruleset"), RULESET);
+  for (const [name, text] of Object.entries(POLICIES)) writeFileSync(join(work, `policy-${name}`), text);
+  for (const [name, text] of Object.entries(NFT_UNIT)) writeFileSync(join(work, `nft-unit-${name}`), text);
   const host: Host = {
     root,
     vps,

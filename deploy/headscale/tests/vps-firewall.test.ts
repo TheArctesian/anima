@@ -134,6 +134,19 @@ describe("harden.sh firewall never silently closes an open port (VPS-005)", () =
     expect(host.run(["firewall"], { ...vpn, ...firewalld, FAKE_FW_SERVICES: "ssh", FAKE_FW_PORTS: "443/tcp" }).code).toBe(0);
   });
 
+  test.each([
+    ["a forward port added to allow-host-ipv6", "allow-host-ipv6", { FAKE_FW_POLICY_EXTRA: "\\trule family=\"ipv4\" forward-port port=\"80\" protocol=\"tcp\" to-port=\"8080\"\\n" }],
+    ["allow-host-ipv6 with target ACCEPT", "allow-host-ipv6", { FAKE_FW_POLICY_EDIT: "s/target: CONTINUE/target: ACCEPT/" }],
+    ["allow-host-ipv6 at another priority", "allow-host-ipv6", { FAKE_FW_POLICY_EDIT: "s/priority: -15000/priority: 100/" }],
+    ["a service added to docker-forwarding", "docker-forwarding", { FAKE_FW_POLICY_EDIT: "s/services: /services: ssh/" }],
+    ["docker-forwarding from the public zone", "docker-forwarding", { FAKE_FW_POLICY_EDIT: "s/egress-zones: docker/egress-zones: public/" }],
+  ])("refuses a stock policy changed in any way: %s", (_, policy, edit) => {
+    const policies = `${policy}\\n  ingress-zones: ANY`;
+    const run = host.run(["firewall"], { ...vpn, ...firewalld, FAKE_FW_POLICIES: policies, ...edit });
+    expect(run.code).toBe(2);
+    expect(run.out).toContain(`would close: policy:${policy} (`);
+  });
+
   test("Docker's forwarding policy and the built-in allow-host-ipv6 are not openings", () => {
     const policies = "allow-host-ipv6\\n  ingress-zones: ANY\\ndocker-forwarding\\n  ingress-zones: ANY\\n  egress-zones: docker";
     expect(host.run(["firewall"], { ...vpn, ...firewalld, FAKE_FW_POLICIES: policies }).code).toBe(0);

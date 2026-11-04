@@ -229,7 +229,10 @@ main() {
     esac
   done
   [ $# -eq 1 ] || usage_error
-  [[ $ROOT == /* ]] && [ -d "$ROOT" ] || { printf 'harden.sh: --root must be an existing absolute directory\n' >&2; exit 64; }
+  if [[ $ROOT != /* ]] || [ ! -d "$ROOT" ]; then
+    printf 'harden.sh: --root must be an existing absolute directory\n' >&2
+    exit 64
+  fi
   case $1 in
     check | ssh | updates | selinux | docker | firewall | confirm) "cmd_$1" ;;
     *) usage_error ;;

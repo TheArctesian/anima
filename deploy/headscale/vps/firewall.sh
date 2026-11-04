@@ -10,6 +10,8 @@ NFT_RULES=/etc/nftables/anima.nft
 NFT_SYSCONFIG=/etc/sysconfig/nftables.conf
 NFT_INCLUDE="include \"$NFT_RULES\""
 NFT_DROPIN=/etc/systemd/system/nftables.service.d/anima.conf
+NFT_UNIT_FRAGMENT=/usr/lib/systemd/system/nftables.service
+NFT_UNIT_PROPERTIES=ExecStart,ExecStartPre,ExecStartPost,ExecReload,ExecStop,ExecStopPost,FragmentPath,DropInPaths
 
 ROLLBACK_UNIT=anima-firewall-rollback
 ROLLBACK_SECONDS=180
@@ -34,8 +36,66 @@ firewall_problems() {
   fi
   sysconfig_extra_lines
   [ -f "$(path "$NFT_DROPIN")" ] || say "nftables.service would flush the whole ruleset on stop or reload"
+  nft_unit_problems
   [ "$($SYSTEMCTL is-enabled firewalld.service 2>/dev/null)" = masked ] || say "firewalld is not masked"
   (local_accepts >/dev/null) 2>/dev/null || say "$LOCAL_ALLOW has a line that is not one PORT/PROTO"
+}
+
+# Print nftables.service's settings as systemd has loaded them, one "Exec...=ARGV" line per
+# command, its arguments up to systemd's " ; ignore_errors=" (/usr/sbin/nft written as
+# /sbin/nft), and the FragmentPath and DropInPaths lines.
+# systemd prints no line for a command list that is empty.
+nft_unit_settings() {
+  $SYSTEMCTL show -p "$NFT_UNIT_PROPERTIES" nftables.service | awk '
+    /^Exec/ {
+      key = $0; sub(/=.*/, "", key); line = $0
+      while ((start = index(line, "argv[]=")) > 0) {
+        line = substr(line, start + 7); end = index(line, " ; ignore_errors=")
+        argv = end > 0 ? substr(line, 1, end - 1) : line; sub(/^\/usr\/sbin\/nft /, "/sbin/nft ", argv)
+        print key "=" argv; line = end > 0 ? substr(line, end) : ""
+      }
+      next
+    }
+    { print }'
+}
+
+# Print each part of nftables.service the Anima drop-in cannot override: a unit file other
+# than the package's (an override in /etc or /run), another drop-in, and an enabled
+# iptables or ip6tables service, any of which could flush Docker's tables.
+nft_unit_foreign() {
+  local settings dropin unit
+  settings=$(nft_unit_settings) || { say "systemctl show nftables.service failed"; return; }
+  grep -qxF "FragmentPath=$NFT_UNIT_FRAGMENT" <<<"$settings" \
+    || say "nftables.service is not loaded from $NFT_UNIT_FRAGMENT; remove the override in /etc or /run"
+  while read -r dropin; do
+    [ -z "$dropin" ] || [ "$dropin" = "$NFT_DROPIN" ] || say "nftables.service has another drop-in: $dropin"
+  done < <(awk '/^DropInPaths=/ { sub(/^DropInPaths=/, ""); for (i = 1; i <= NF; i++) print $i }' <<<"$settings")
+  for unit in iptables.service ip6tables.service; do
+    if $SYSTEMCTL is-enabled --quiet "$unit" 2>/dev/null; then say "$unit is enabled; it replaces the ruleset when it starts or stops"; fi
+  done
+}
+
+# Print each problem with nftables.service once the Anima drop-in is in place: anything
+# nft_unit_foreign finds, and any command other than `nft -f` of the boot file at start
+# and reload.
+nft_unit_problems() {
+  local settings line
+  nft_unit_foreign
+  settings=$(nft_unit_settings) || return 0
+  case " $(sed -n 's/^DropInPaths=//p' <<<"$settings") " in
+    *" $NFT_DROPIN "*) ;;
+    *) say "nftables.service has not loaded $NFT_DROPIN (systemctl daemon-reload)" ;;
+  esac
+  while IFS= read -r line; do
+    case $line in
+      Exec*) ;;
+      *) continue ;;
+    esac
+    case $line in
+      "ExecStart=/sbin/nft -f $NFT_SYSCONFIG" | "ExecReload=/sbin/nft -f $NFT_SYSCONFIG") ;;
+      *) say "nftables.service runs \"$line\"; only nft -f $NFT_SYSCONFIG is expected, at start and reload" ;;
+    esac
+  done <<<"$settings"
 }
 
 # Print each active line of the boot file other than the Anima include. EL ships it as
@@ -45,7 +105,7 @@ sysconfig_extra_lines() {
   local conf
   conf=$(path "$NFT_SYSCONFIG")
   [ -f "$conf" ] || return 0
-  awk -v name="$NFT_SYSCONFIG" -v include="$NFT_INCLUDE" '/^[[:space:]]*(#|$)/ || $0 == include { next }
+  awk -v name="$NFT_SYSCONFIG" -v anima_include="$NFT_INCLUDE" '/^[[:space:]]*(#|$)/ || $0 == anima_include { next }
     { print name ":" FNR ": only the Anima include may be active in this file" }' "$conf"
 }
 
@@ -208,7 +268,7 @@ mask_firewalld() {
 }
 
 cmd_confirm() {
-  local pending=$STATE_DIR/nftables.pending
+  local pending=$STATE_DIR/nftables.pending problems
   require_root
   [ -f "$(path "$pending")" ] || refuse "nothing to confirm; run firewall first"
   [ ! -e "$(path "$ROLLED_BACK")" ] || refuse "the rollback already ran; run firewall again"
@@ -217,6 +277,8 @@ cmd_confirm() {
   require_new_vpn_session
   refuse_closing
   refuse_sysconfig_extras
+  problems=$(nft_unit_foreign)
+  [ -z "$problems" ] || refuse "$problems"
   check_boot_candidate "$pending"
   if dry; then say "[dry-run] stop $ROLLBACK_UNIT.timer, install $NFT_RULES, enable nftables, mask firewalld"; return; fi
   $SYSTEMCTL stop "$ROLLBACK_UNIT.timer" || fail "could not stop the rollback"
@@ -225,6 +287,8 @@ cmd_confirm() {
   install_boot_include
   write_file "$NFT_DROPIN" 0644 <"$HERE/nftables-unit.conf"
   $SYSTEMCTL daemon-reload
+  problems=$(nft_unit_problems)
+  [ -z "$problems" ] || fail "$problems; firewalld left running, the Anima rules are live until reboot"
   $SYSTEMCTL enable nftables.service
   $NFT -c -f "$(path "$NFT_SYSCONFIG")" || fail "nft -c rejects $NFT_SYSCONFIG; firewalld left running, the Anima rules are live until reboot"
   mask_firewalld

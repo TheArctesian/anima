@@ -25,7 +25,7 @@ expand() {
         # shellcheck disable=SC2086 # the pattern is a glob
         for file in "$FAKE_ROOT"$pattern; do
           includes=$((includes + 1))
-          if [ "$includes" -le 64 ] && [ -f "$file" ]; then expand <"$file"; fi
+          if [ "$includes" -le 32 ] && [ -f "$file" ]; then expand <"$file"; fi
         done
       done
     else

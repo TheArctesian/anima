@@ -41,30 +41,71 @@ admin_problem() {
 SSHD_CONFIG=/etc/ssh/sshd_config
 # Includes nest at most this deep; sshd itself stops at 16.
 SSHD_INCLUDE_DEPTH=16
+# At most this many files are read, so no include pattern can make the walk run long.
+SSHD_FILE_LIMIT=256
+SSHD_FILES_SEEN=$'\n'
+SSHD_FILES_READ=0
 
-# Print FILE (a path under ROOT) and every file it includes, depth first. A relative
-# Include is relative to /etc/ssh, as sshd reads it.
+# Print, for one sshd config file, "I<tab>PATTERN" for each pattern of a plain Include
+# line and "P<tab>PROBLEM" for each Match line and each Include the walk cannot follow.
+# Each line is read as sshd reads it: leading blanks dropped, the keyword ends at a blank
+# or "=", may be quoted, and is not case-sensitive. Only `Include PATTERN...` with no
+# quotes, "=" or backslash is followed; any other Include form is reported instead.
+sshd_scan() {
+  awk -v name="${1#"${ROOT%/}"}" '{
+    line = $0
+    sub(/^[ \t\r]+/, "", line)
+    if (line == "" || line ~ /^#/) next
+    word = line
+    sub(/[ \t\r=].*/, "", word)
+    rest = substr(line, length(word) + 1)
+    keyword = tolower(word)
+    gsub(/["\047]/, "", keyword)
+    where = "sshd: " name ":" FNR ": "
+    if (keyword == "match") { print "P\t" where "a Match block can override the hardening; remove it"; next }
+    if (keyword != "include") next
+    if (word ~ /["\047]/ || rest !~ /^[ \t]/ || rest ~ /["\047=\\]/) {
+      print "P\t" where "an Include this check cannot follow; write it as: Include /path/pattern"
+      next
+    }
+    n = split(rest, words, /[ \t\r]+/)
+    for (i = 1; i <= n; i++) if (words[i] != "") print "I\t" words[i]
+  }' "$1"
+}
+
+# Print FILE (a path under ROOT) and every file it includes, depth first, each once. A
+# relative Include is relative to /etc/ssh, as sshd reads it.
 sshd_files() {
-  local file=$1 depth=$2 pattern included
+  local file=$1 depth=$2 kind pattern included
   [ -f "$file" ] || return 0
+  case $SSHD_FILES_SEEN in *$'\n'"$file"$'\n'*) return 0 ;; esac
+  SSHD_FILES_SEEN+=$file$'\n'
+  SSHD_FILES_READ=$((SSHD_FILES_READ + 1))
+  if [ "$SSHD_FILES_READ" -gt "$SSHD_FILE_LIMIT" ]; then
+    [ "$SSHD_FILES_READ" -gt $((SSHD_FILE_LIMIT + 1)) ] || say "sshd: more than $SSHD_FILE_LIMIT included files"
+    return
+  fi
   [ "$depth" -le "$SSHD_INCLUDE_DEPTH" ] || { say "sshd: includes nest deeper than $SSHD_INCLUDE_DEPTH at $file"; return; }
   say "$file"
-  while read -r pattern; do
+  while IFS=$'\t' read -r kind pattern; do
+    [ "$kind" = I ] || continue
     case $pattern in /*) ;; *) pattern=/etc/ssh/$pattern ;; esac
     # shellcheck disable=SC2086 # the pattern is a glob, as in sshd
     for included in "${ROOT%/}"$pattern; do sshd_files "$included" $((depth + 1)); done
-  done < <(awk 'tolower($1) == "include" { for (i = 2; i <= NF; i++) print $i }' "$file")
+  done < <(sshd_scan "$file")
 }
 
-# Print each active Match line in sshd_config and the files it includes. A Match block
-# overrides the global values for the connections it matches, so it can turn passwords or
-# root logins back on past the drop-in; sshd -T without -C does not show it.
+# Print each Match line, in any form, in sshd_config and the files it includes, and each
+# Include the walk cannot follow. A Match block overrides the global values for the
+# connections it matches, so it can turn passwords or root logins back on past the
+# drop-in; sshd -T without -C does not show it.
 match_problems() {
-  local file
+  local file kind problem
   while IFS= read -r file; do
     case $file in sshd:*) say "$file"; continue ;; esac
-    awk -v name="${file#"${ROOT%/}"}" 'tolower($1) == "match" {
-      print "sshd: " name ":" FNR ": a Match block can override the hardening; remove it" }' "$file"
+    while IFS=$'\t' read -r kind problem; do
+      if [ "$kind" = P ]; then say "$problem"; fi
+    done < <(sshd_scan "$file")
   done < <(sshd_files "$(path "$SSHD_CONFIG")" 0)
 }
 

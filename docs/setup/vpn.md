@@ -459,9 +459,11 @@ changes nothing.
    before the main file and keeps the first value, so `00-` wins over AlmaLinux's
    `01-permitrootlogin.conf` (or `25-`), `50-redhat.conf` and cloud-init's file. Guards: it refuses
    unless that user is a non-root member of `wheel` with a key in `authorized_keys`; it refuses
-   while `/etc/ssh/sshd_config` or any file it includes has an active `Match` line (a provider
-   image can carry one that turns passwords or root login back on for some addresses, and
-   `sshd -T` alone does not show it: remove the block, then run `ssh` again); it checks the result
+   while `/etc/ssh/sshd_config` or any file it includes has an active `Match` line in any form
+   (`Match`, `match=`, `"Match"`; a provider image can carry one that turns passwords or root
+   login back on for some addresses, and `sshd -T` alone does not show it: remove the block,
+   then run `ssh` again), and while any `Include` is written in a form it cannot follow
+   literally (`Include=`, quotes, a path with spaces: rewrite it as `Include /path/pattern`); it checks the result
    with `sshd -t`, `sshd -T` and `sshd -T -C` for root and the admin user from a public and a VPN
    address, and puts the old file back if any check fails; then it reloads `sshd.service`. **Keep your current session open.** Open a second session and log in
    before you close the first.
@@ -553,7 +555,8 @@ changes nothing.
    port: `public:rich-rules`, `public:sources`, `public:forward-ports`, `public:source-ports`,
    `public:protocols`, `public:masquerade`, `public:target` (the zone name first),
    `service:NAME` (a service that includes others or opens protocols or source ports),
-   `policy:NAME` (a firewalld policy) or `direct-rules`. Read it with
+   `policy:NAME` (a firewalld policy; `allow-host-ipv6` and Docker's `docker-forwarding` pass
+   only in their stock form) or `direct-rules`. Read it with
    `sudo firewall-cmd --zone=public --list-all`, `--info-service=NAME`, `--info-policy=NAME` or
    `--direct --get-all-rules`, and send it to the programme. For each, decide:
 
@@ -568,7 +571,12 @@ changes nothing.
 
    It refuses while `/etc/sysconfig/nftables.conf` holds anything but comments and the Anima
    include: AlmaLinux ships it as comments only, and a rule or an include there could flush
-   Docker's and Tailscale's tables at every boot. Send those lines to the programme.
+   Docker's and Tailscale's tables at every boot. Send those lines to the programme. `confirm`
+   also refuses while `nftables.service` has a drop-in other than Anima's, a unit file in `/etc`
+   or `/run` that overrides the package's, or while `iptables.service` or `ip6tables.service` is
+   enabled: any of them could flush those tables. After it installs the drop-in it reads the
+   unit as systemd loaded it (`systemctl show`), and stops before masking firewalld if the unit
+   still runs anything but `nft -f /etc/sysconfig/nftables.conf`.
 
    Run it inside an SSH session you opened to `<HUB_VPN_IPV4>`, not to the public address:
 

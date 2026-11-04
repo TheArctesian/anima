@@ -113,6 +113,37 @@ describe("harden.sh ssh and check (Match blocks)", () => {
     expect(host.exists(DROP_IN)).toBe(false);
   });
 
+  test.each([
+    ["Match=Address *"],
+    ['"Match" Address *'],
+    ["\tMATCH all"],
+  ])("VPS-001: ssh refuses a Match line in another form: %p", (match) => {
+    host.write("etc/ssh/sshd_config.d/90-provider.conf", `${match}\n  PermitRootLogin yes\n`);
+    const run = host.run(["ssh"]);
+    expect(run.code).toBe(2);
+    expect(run.out).toContain("90-provider.conf:1: a Match block can override the hardening");
+  });
+
+  test.each([
+    ["Include=/etc/ssh/provider.conf"],
+    ['"Include" /etc/ssh/provider.conf'],
+    ['Include "/etc/ssh/provider dir/x.conf"'],
+    ["include = /etc/ssh/provider.conf"],
+  ])("VPS-001: ssh refuses an Include it cannot follow literally: %p", (include) => {
+    host.write("etc/ssh/sshd_config.d/50-provider.conf", `${include}\n`);
+    host.write("etc/ssh/provider.conf", "PasswordAuthentication yes\n");
+    const run = host.run(["ssh"]);
+    expect(run.code).toBe(2);
+    expect(run.out).toContain("50-provider.conf:1: an Include this check cannot follow");
+    expect(host.exists(DROP_IN)).toBe(false);
+  });
+
+  test("VPS-001: ssh follows a plain Include with several patterns and mixed case", () => {
+    host.write("etc/ssh/sshd_config.d/50-provider.conf", "  INCLUDE /etc/ssh/a.conf b.conf\n");
+    host.write("etc/ssh/b.conf", "Match User root\n");
+    expect(host.run(["ssh"]).out).toContain("/etc/ssh/b.conf:1: a Match block");
+  });
+
   test("VPS-001: ssh accepts the stock commented-out Match example", () => {
     expect(host.read("etc/ssh/sshd_config")).toContain("#Match User anoncvs");
     expect(host.run(["ssh"]).code).toBe(0);
@@ -150,11 +181,21 @@ describe("harden.sh ssh and check (Match blocks)", () => {
 
   test("VPS-001: check stops at includes that nest too deep", () => {
     host.harden();
-    host.write("etc/ssh/sshd_config.d/50-loop.conf", "Include /etc/ssh/sshd_config.d/50-loop.conf\n");
+    host.write("etc/ssh/sshd_config.d/50-chain.conf", "Include /etc/ssh/chain/1.conf\n");
+    for (let level = 1; level <= 20; level += 1) host.write(`etc/ssh/chain/${level}.conf`, `Include /etc/ssh/chain/${level + 1}.conf\n`);
     const run = host.run(["check"]);
     expect(run.code).toBe(1);
     expect(run.out).toContain("VIOLATION: sshd: includes nest deeper than 16");
-  });
+  }, 60_000);
+
+  test("VPS-001: a file that includes itself twice is read once, not exponentially often", () => {
+    host.harden();
+    const loop = "Include /etc/ssh/sshd_config.d/50-loop.conf\n";
+    host.write("etc/ssh/sshd_config.d/50-loop.conf", `${loop}${loop}`);
+    const started = Date.now();
+    expect(host.run(["ssh"]).code).toBe(0);
+    expect(Date.now() - started).toBeLessThan(20_000);
+  }, 60_000);
 
   test("VPS-001: check reports a VPS_PUBLIC_IPV4 that is not an address", () => {
     host.harden();

@@ -101,12 +101,49 @@ service_openings() {
   fi
 }
 
-# Print "TOKEN firewalld ..." for each policy and direct rule firewalld has beside its zones.
-# Docker adds the docker-forwarding policy for its own bridges; allow-host-ipv6 is built in.
+# Print the stock form of policy $1, as `firewall-cmd --info-policy` prints it (firewalld
+# 2.4.3 on AlmaLinux 10), without the priority line. allow-host-ipv6 is built in; Docker
+# adds docker-forwarding for its own bridges. Nothing is printed for any other name.
+stock_policy() {
+  case $1 in
+    allow-host-ipv6)
+      printf '%s\n' allow-host-ipv6 '  disable: no' '  target: CONTINUE' '  ingress-zones: ANY' \
+        '  egress-zones: HOST'
+      printf '\trule family="ipv6" icmp-type name="%s" accept\n' mld-listener-done mld-listener-query \
+        mld-listener-report mld2-listener-report neighbour-advertisement neighbour-solicitation \
+        redirect router-advertisement ;;
+    docker-forwarding)
+      printf '%s\n' docker-forwarding '  disable: no' '  target: ACCEPT' '  ingress-zones: ANY' \
+        '  egress-zones: docker' ;;
+    *) return 0 ;;
+  esac
+  printf '%s\n' '  services:' '  ports:' '  protocols:' '  masquerade: no' '  forward-ports:' \
+    '  source-ports:' '  icmp-blocks:' '  rich rules:'
+}
+
+# Print policy $1's --info-policy output in a form to compare: no trailing blanks, no
+# priority line (only allow-host-ipv6's priority is fixed; Docker sets its own), sorted.
+policy_form() {
+  sed -e 's/[[:space:]]*$//' -e '/^  priority:/d' | LC_ALL=C sort
+}
+
+# True when policy $1 is in its stock form, priority included for allow-host-ipv6.
+stock_policy_in_force() {
+  local shown
+  [ -n "$(stock_policy "$1")" ] || return 1
+  shown=$($FIREWALL_CMD --info-policy="$1") || return 1
+  if [ "$1" = allow-host-ipv6 ]; then grep -qx '  priority: -15000' <<<"$shown" || return 1; fi
+  [ "$(policy_form <<<"$shown")" = "$(stock_policy "$1" | policy_form)" ]
+}
+
+# Print "TOKEN firewalld ..." for each policy and direct rule firewalld has beside its
+# zones. Only allow-host-ipv6 and docker-forwarding in their stock form let nothing in;
+# any other active policy, or either of those changed in any way, is a token.
 firewalld_extras() {
   local policy
   while read -r policy _; do
-    case $policy in '' | allow-host-ipv6 | docker-forwarding) continue ;; esac
+    [ -n "$policy" ] || continue
+    if stock_policy_in_force "$policy"; then continue; fi
     say "policy:$policy firewalld policy $policy"
   done < <($FIREWALL_CMD --get-active-policies | grep -v '^[[:space:]]')
   if [ -n "$($FIREWALL_CMD --direct --get-all-rules)$($FIREWALL_CMD --direct --get-all-chains)$($FIREWALL_CMD --direct --get-all-passthroughs)" ]; then

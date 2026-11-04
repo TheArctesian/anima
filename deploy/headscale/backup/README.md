@@ -145,7 +145,7 @@ sudo sh -euc '
   for f in "$src/db.sqlite" "$src/noise_private.key" "$src/derp_server_private.key"; do
     [ -f "$f" ] && [ ! -L "$f" ] || { echo "STOP: $f is missing or not a plain file"; exit 1; }
   done
-  sqlite3 "$src/db.sqlite" "PRAGMA integrity_check"         # must print ok
+  [ "$(sqlite3 "$src/db.sqlite" "PRAGMA integrity_check")" = ok ] || { echo "STOP: integrity_check failed"; exit 1; }
   install -m 0600 -o "$1" "$src/db.sqlite" "$src/noise_private.key" "$src/derp_server_private.key" "$2/headscale-take/"
 ' sh "$USER" "$HOME"
 sudo rm -rf /root/headscale-restore                           # it holds private keys
