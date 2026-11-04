@@ -197,7 +197,7 @@ async fn observe_http(
 
 /// Whether maintenance covers the check: the device's manual flag, or an active window on
 /// the device, the check, its group or a tag (CHK-006). The scheduler and the push route
-/// both ask it, so every beat is recorded under the same cover. `checks` is the check and
+/// both ask it, so every beat is recorded under the same cover. The pair is the check and
 /// its group.
 ///
 /// # Errors

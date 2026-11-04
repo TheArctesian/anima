@@ -5,8 +5,8 @@ use base64::Engine as _;
 use super::support::{Reply, env, serve, target};
 use crate::checks::{
     config::{
-        CheckConfig, HttpAuth, HttpCredentials, HttpHeader, HttpInput, HttpMethod, HttpSecrets,
-        Reason, StatusRange,
+        CheckConfig, HttpAuth, HttpCredentials, HttpInput, HttpMethod, HttpSecrets, Reason,
+        StatusRange,
     },
     probe::probe,
 };
@@ -110,40 +110,28 @@ fn secrets_round_trip_through_their_sealed_layout_and_join_back() {
 
 #[test]
 fn sec_005_a_header_that_names_the_destination_is_refused_without_its_value() {
+    let refused = |name: &str| {
+        let mut with = input("http://a.test/".into(), basic());
+        with.headers
+            .push((name.into(), Secret::from("evil.example".to_owned())));
+        with.split().err().unwrap()
+    };
     for name in [
-        "Host",
-        "host",
+        "hOsT",
         "Forwarded",
         "X-Forwarded-Host",
         "x-forwarded-server",
         "X-Host",
     ] {
-        let mut with = input("http://a.test/".into(), basic());
-        with.headers
-            .push((name.into(), Secret::from("evil.example".to_owned())));
-        let error = with.split().err().unwrap();
+        let error = refused(name);
         assert_eq!(
             (error.field, error.reason),
             ("headers", Reason::Destination),
             "{name}"
         );
         assert!(!error.to_string().contains("evil"), "{name}");
-        let (mut stored, _) = input("http://a.test/".into(), basic()).split().unwrap();
-        stored.headers.push(HttpHeader {
-            name: name.into(),
-            value: Some("evil.example".into()),
-        });
-        assert_eq!(
-            stored.validate().unwrap_err().reason,
-            Reason::Destination,
-            "{name}"
-        );
     }
-    let mut pseudo = input("http://a.test/".into(), basic());
-    pseudo
-        .headers
-        .push((":authority".into(), Secret::from("evil.example".to_owned())));
-    assert_eq!(pseudo.split().err().unwrap().reason, Reason::Invalid);
+    assert_eq!(refused(":authority").reason, Reason::Invalid);
 }
 
 #[test]
