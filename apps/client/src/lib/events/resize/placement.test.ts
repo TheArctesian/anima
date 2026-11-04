@@ -139,6 +139,19 @@ it('MOT-030: a page that changes size in the middle of a drag keeps the dragged 
   expect(placement.height).toBe(396);
 });
 
+it('MOT-030: after a release, a page that changes size puts the panel at its stop, not at the dragged height', () => {
+  let current = snaps;
+  placement = new PanelPlacement({ snaps: () => current, panel: () => panel, preference });
+  placement.settle();
+  placement.grab();
+  placement.move(-200);
+  placement.release(0);
+  runs.at(-1)?.finish();
+  current = snapsOf(40, 1200);
+  placement.settle();
+  expect(placement.height).toBe(current[placement.stop]);
+});
+
 it('MOT-030: a page that changes size puts the panel at its stop at once', () => {
   const taller = snapsOf(40, 1200);
   placement = new PanelPlacement({ snaps: () => taller, panel: () => panel, preference });
