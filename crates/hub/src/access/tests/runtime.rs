@@ -65,6 +65,15 @@ async fn log_006_r_016_runtime_role_runs_the_login_flow_on_access_tables(pool: P
         .await
         .unwrap();
     store::prune(&mut conn, now(), now()).await.unwrap();
+    store::set_totp(&mut *conn, id, Some(b"sealed"))
+        .await
+        .unwrap();
+    assert!(
+        store::claim_totp_step(&mut *conn, id, b"sealed", 7)
+            .await
+            .unwrap()
+    );
+    store::set_totp(&mut *conn, id, None).await.unwrap();
 
     sqlx::query("reset role").execute(&mut *conn).await.unwrap();
 }
