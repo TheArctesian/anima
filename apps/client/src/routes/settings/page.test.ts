@@ -60,7 +60,7 @@ it('SET-002: the page holds the title, "Signed in as <name>" and "Sign out", and
   expect(target.textContent.replace(/\s+/g, ' ').trim()).toBe('Settings Signed in as ann Sign out');
   const elements = [...target.querySelectorAll('*')].map((element) => element.tagName.toLowerCase());
   expect(elements).toEqual(['h1', 'section', 'p', 'strong', 'button']);
-  expect(target.querySelectorAll('[role="switch"], img, input, select, textarea, a, [tabindex]')).toHaveLength(0);
+  expect(target.querySelectorAll('[role="switch"], img, input, select, textarea, a, [tabindex]:not(button)')).toHaveLength(0);
   expect(signOutButton(target).textContent).toBe('Sign out');
 });
 
@@ -116,4 +116,24 @@ it('SET-002: Sign out disables the button while the hub answers, so a second cli
   release(ok({ logout: true }));
   await settled();
   expect(mocks.goToSignIn).toHaveBeenCalledOnce();
+});
+
+it('MOT-007: the Sign out button has the same place before and after the name arrives', async () => {
+  let release: (result: ReturnType<typeof ok>) => void = () => undefined;
+  const pending = new Promise<ReturnType<typeof ok>>((resolve) => {
+    release = resolve;
+  });
+  const target = await open({ Me: pending });
+  const before = [...target.querySelectorAll('section > *')].map((element) => element.tagName);
+  expect(before).toEqual(['P', 'BUTTON']);
+  expect(target.querySelector('section > p')?.textContent.trim()).toBe('');
+  release(ok({ me: { username: 'ann' } }));
+  await settled();
+  const after = [...target.querySelectorAll('section > *')].map((element) => element.tagName);
+  expect(after).toEqual(before);
+});
+
+it('NAV-005: the Sign out button is focusable by Tab in WebKit (tabindex 0)', async () => {
+  const target = await open({ Me: ok({ me: { username: 'ann' } }) });
+  expect(signOutButton(target).getAttribute('tabindex')).toBe('0');
 });
