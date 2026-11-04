@@ -31,10 +31,10 @@ pub async fn data(schema: &TestSchema, query: &str) -> Value {
 
 /// The only error of a response, as JSON with `extensions`.
 pub async fn only_error(schema: &TestSchema, query: &str) -> Value {
-    error_json(schema.execute(Request::new(query)).await)
+    error_json(&schema.execute(Request::new(query)).await)
 }
 
-fn error_json(response: Response) -> Value {
+fn error_json(response: &Response) -> Value {
     assert_eq!(response.errors.len(), 1, "{:?}", response.errors);
     serde_json::to_value(&response.errors[0]).unwrap()
 }
@@ -214,7 +214,7 @@ fixture_test! {
         assert_eq!(first["sites"][1]["devices"]["pageInfo"]["hasNextPage"], false);
 
         let after = office_2["pageInfo"]["endCursor"].clone();
-        let query = format!(r#"{{ sites {{ name devices(first: 1, after: {after}) {{ totalCount pageInfo {{ hasNextPage }} edges {{ node {{ name }} }} }} }} }}"#);
+        let query = format!(r"{{ sites {{ name devices(first: 1, after: {after}) {{ totalCount pageInfo {{ hasNextPage }} edges {{ node {{ name }} }} }} }} }}");
         let second = data(&schema, &query).await;
         let office_2 = second["sites"].as_array().unwrap().iter().find(|s| s["name"] == "office-2").unwrap();
         assert_eq!(names(&office_2["devices"]), ["mac-office-2"]);
