@@ -1,6 +1,9 @@
-//! The only SQL for `credentials.secrets` (K2, CQ-032). Rows hold sealed values only (SEC-003).
+//! The only SQL for `credentials.secrets`, the one table this domain owns (CQ-032).
+//! Rows hold sealed values only (SEC-003).
 //!
 //! The table's kind check admits only SSH kinds, so "the device's rows" are its SSH rows.
+
+use std::collections::HashSet;
 
 use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
@@ -98,4 +101,19 @@ pub(super) async fn exists_for_device(db: &PgPool, device: DeviceId) -> Result<b
         .fetch_one(db)
         .await?,
     )
+}
+
+/// Which of the devices have any row. No kind filter: the kind check keeps the table
+/// SSH-only, so any row is an SSH secret. An empty slice matches nothing.
+pub(super) async fn devices_with_rows(
+    db: &PgPool,
+    devices: &[DeviceId],
+) -> Result<HashSet<DeviceId>, Error> {
+    let found: Vec<DeviceId> = sqlx::query_scalar(
+        "SELECT DISTINCT device_id FROM credentials.secrets WHERE device_id = ANY($1)",
+    )
+    .bind(devices)
+    .fetch_all(db)
+    .await?;
+    Ok(found.into_iter().collect())
 }
