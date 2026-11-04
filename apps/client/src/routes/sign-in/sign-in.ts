@@ -8,6 +8,8 @@ import { checkLogin, failureMessage, fieldMessages, type FieldMessages, type Log
 export interface SignIn {
   readonly api: Pick<AccessApi, 'login'>;
   readonly address: HubAddress;
+  /** Whether the key store exists; without it the token would be dropped after the hub issued it (CLI-003). */
+  readonly desktop: boolean;
   readonly writeToken: (address: HubAddress, token: string) => Promise<void>;
 }
 
@@ -22,9 +24,12 @@ function refused(message: string, fields: FieldMessages = {}): SignInOutcome {
 }
 
 /** The token goes from the hub's answer to the key store inside this function and nowhere else (CLI-003, LOG-007). */
-export async function signIn({ api, address, writeToken }: SignIn, form: LoginForm): Promise<SignInOutcome> {
+export const DESKTOP_ONLY_MESSAGE = 'Signing in needs the Anima desktop app, which keeps the access token.';
+
+export async function signIn({ api, address, desktop, writeToken }: SignIn, form: LoginForm): Promise<SignInOutcome> {
   const problems = checkLogin(form);
   if (Object.keys(problems).length > 0) return refused('Check the marked fields.', problems);
+  if (!desktop) return refused(DESKTOP_ONLY_MESSAGE);
   const totpCode = form.totpCode === '' ? {} : { totpCode: form.totpCode };
   const result = await api.login({ username: form.username.trim(), password: form.password, ...totpCode });
   if (!result.ok) {

@@ -11,6 +11,7 @@
   const api = accessApi(hub);
   let username = $state<string | null>(null);
   let problem = $state<string | null>(null);
+  let busy = $state(false);
 
   $effect(() => {
     void api.me().then((result) => {
@@ -20,7 +21,9 @@
   });
 
   async function leave(): Promise<void> {
+    busy = true;
     const kept = await signOut({ api, address: hub.address, clearToken: clearAccessToken });
+    busy = false;
     if (kept === null) goToSignIn();
     else problem = kept;
   }
@@ -30,7 +33,7 @@
   {#if username !== null}
     <p>Signed in as <strong>{username}</strong></p>
   {/if}
-  <button type="button" onclick={leave} {@attach press()}>Sign out</button>
+  <button type="button" disabled={busy} onclick={leave} {@attach press()}>Sign out</button>
   {#if problem !== null}
     <p role="alert">{problem}</p>
   {/if}

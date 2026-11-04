@@ -2,6 +2,7 @@
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { failure, fakeHub, ok } from '$lib/access/access.fixture';
+import { TOKEN_UNREADABLE } from '$lib/hub/error';
 import type { Hub } from '$lib/hub/hub';
 import Page from './+page.svelte';
 
@@ -10,12 +11,14 @@ const mocks = vi.hoisted(() => ({
   writeAccessToken: vi.fn(),
   goToDevices: vi.fn(),
   reloadClient: vi.fn(),
+  desktop: true,
 }));
 
 vi.mock('$lib/hub/context', () => ({ useHub: () => mocks.hub }));
 vi.mock('$lib/desktop/token', async (importOriginal) => ({
   ...(await importOriginal<typeof import('$lib/desktop/token')>()),
   writeAccessToken: mocks.writeAccessToken,
+  keyStoreAvailable: () => mocks.desktop,
 }));
 vi.mock('$lib/access/navigation', () => ({ goToDevices: mocks.goToDevices, reloadClient: mocks.reloadClient }));
 
@@ -67,6 +70,7 @@ beforeEach(() => {
   mocks.writeAccessToken.mockReset().mockResolvedValue(undefined);
   mocks.goToDevices.mockReset();
   mocks.reloadClient.mockReset();
+  mocks.desktop = true;
   for (const spy of consoleSpies) spy.mockClear();
 });
 
@@ -94,6 +98,7 @@ it('CLI-003: a good sign-in sends totpCode, writes the token with hub.address an
   await signInWith(target);
   expect(hub.sent).toEqual([{ operation: 'Login', variables: { input: { username: 'ann', password: PASSWORD, totpCode: '123456' } } }]);
   expect(mocks.writeAccessToken).toHaveBeenCalledWith(hub.hub.address, TOKEN);
+  expect(hub.hub.address.origin).not.toBe('https://hub.anima.ing');
   expect(mocks.goToDevices).toHaveBeenCalledOnce();
 });
 
@@ -161,4 +166,36 @@ it('CLI-002: an invalid hub address stores nothing, does not reload and shows th
   const problem = target.querySelector('#address-problem')?.textContent ?? '';
   expect(problem).not.toBe('');
   expect(problem).not.toContain('secretpw');
+});
+
+it('DEV-011: a rejected field the form does not have shows nothing beside any field', async () => {
+  const error = { code: 'VALIDATION' as const, message: 'm', fields: [{ field: 'nickname', message: 'Not a field.' }] };
+  const target = open({ Login: { ok: false, error } });
+  await signInWith(target);
+  for (const id of ['username', 'password', 'totp']) expect(target.querySelector(`#${id}-problem`)?.textContent).toBe('');
+});
+
+it('OD-2: the user name is sent without surrounding spaces', async () => {
+  const target = open({ Login: ok({ login: { token: TOKEN } }) });
+  type(target, 'username', ' ann ');
+  type(target, 'password', PASSWORD);
+  type(target, 'totp', '123456');
+  await submit(target, 0);
+  expect(hub.sent[0]?.variables).toEqual({ input: { username: 'ann', password: PASSWORD, totpCode: '123456' } });
+});
+
+it('CLI-003: an unreadable key store is not reported as a wrong password', async () => {
+  const target = open({ Login: { ok: false, error: TOKEN_UNREADABLE } });
+  await signInWith(target);
+  const text = target.querySelector('[role="alert"]')?.textContent ?? '';
+  expect(text).toContain('key store');
+  expect(text).not.toContain('wrong');
+});
+
+it('CLI-003: outside the desktop app nothing is sent to the hub and a fixed message shows', async () => {
+  mocks.desktop = false;
+  const target = open({ Login: ok({ login: { token: TOKEN } }) });
+  await signInWith(target);
+  expect(hub.sent).toEqual([]);
+  expect(target.querySelector('[role="alert"]')?.textContent).toBe('Signing in needs the Anima desktop app, which keeps the access token.');
 });

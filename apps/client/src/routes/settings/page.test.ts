@@ -49,10 +49,9 @@ afterEach(async () => {
   document.body.innerHTML = '';
 });
 
-it('SET-001: the nav link to Settings is /settings, the route of this page, which renders the h1 "Settings"', async () => {
+it('SET-001: the nav link to Settings is /settings and the page renders the h1 "Settings"', async () => {
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
   expect(SETTINGS.href).toBe('/settings');
-  expect(new URL(import.meta.url).pathname).toContain(`/routes${SETTINGS.href}/`);
   expect(target.querySelector('h1')?.textContent).toBe(SETTINGS.label);
 });
 

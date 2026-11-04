@@ -18,7 +18,7 @@
   const address = storedHubAddress(localStorage);
   const hub = createHub({ address, token: readAccessToken });
   provideHub(hub);
-  guardStart(page.url.pathname, address);
+  guardStart(page.url.pathname, hub.address);
   const clock = createClock(DATA_AGE_REFRESH_MS);
 
   $effect(() => () => {

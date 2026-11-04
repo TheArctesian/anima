@@ -2,7 +2,7 @@ import { goto } from '$app/navigation';
 import { resolve } from '$app/paths';
 import { keyStoreAvailable, readAccessToken } from '$lib/desktop/token';
 import type { HubAddress } from '$lib/hub/hub';
-import { startGuard } from './guard';
+import { SIGN_IN_PATH, startGuard } from './guard';
 
 // The browser side of access: the router, the page reload and the desktop check. Logic stays in `guard.ts`.
 
@@ -12,7 +12,7 @@ function failed(): void {
 }
 
 export function goToSignIn(): void {
-  goto(resolve('/sign-in')).catch(failed);
+  goto(resolve(SIGN_IN_PATH)).catch(failed);
 }
 
 export function goToDevices(): void {

@@ -1,7 +1,8 @@
+import { TOKEN_UNREADABLE } from '$lib/hub/error';
 import type { FieldError, HubError } from '$lib/hub/hub';
 
 /** The three fields of the sign-in form. */
-export type LoginField = 'username' | 'password' | 'totpCode';
+type LoginField = 'username' | 'password' | 'totpCode';
 
 export interface LoginForm {
   readonly username: string;
@@ -39,6 +40,8 @@ export function fieldMessages(fields: readonly FieldError[]): FieldMessages {
 export function failureMessage(error: HubError): string {
   switch (error.code) {
     case 'UNAUTHENTICATED':
+      // The request never left: the key store could not be read, which is not a wrong password.
+      if (error === TOKEN_UNREADABLE) return 'The key store could not be read, so Anima cannot sign you in.';
       return 'The user name, password or code is wrong.';
     case 'VALIDATION':
       return 'Check the marked fields.';

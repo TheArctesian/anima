@@ -1,12 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AccessTokenError } from '$lib/desktop/token';
-import { DEFAULT_HUB_ADDRESS } from '$lib/hub/hub';
 import { accessApi } from './api';
-import { fakeHub, failure, ok } from './access.fixture';
+import { fakeHub, failure, HUB_ADDRESS, ok } from './access.fixture';
 import { signInNeeded, startGuard } from './guard';
-import { signOut, TOKEN_KEPT_MESSAGE } from './sign-out';
+import { signOut, TOKEN_KEPT_AFTER_LOGOUT, TOKEN_KEPT_UNCONFIRMED } from './sign-out';
 
-const ADDRESS = DEFAULT_HUB_ADDRESS;
+const ADDRESS = HUB_ADDRESS;
 
 describe('accessApi', () => {
   it('OD-2: login sends the user name, password and totpCode and returns the token', async () => {
@@ -37,10 +36,9 @@ describe('startGuard', () => {
     return { goToSignIn, read, run: () => startGuard({ pathname, address: ADDRESS, token: read, desktop, goToSignIn }) };
   }
 
-  it('API-003: with no stored token the guard goes to sign-in', async () => {
+  it('API-003: the guard reads the token for the hub address it is given', async () => {
     const c = check('/devices', null);
     await c.run();
-    expect(c.goToSignIn).toHaveBeenCalledOnce();
     expect(c.read).toHaveBeenCalledWith(ADDRESS);
   });
 
@@ -49,6 +47,12 @@ describe('startGuard', () => {
     const token = () => Promise.reject(new AccessTokenError('failed'));
     await startGuard({ pathname: '/devices', address: ADDRESS, token, desktop: true, goToSignIn });
     expect(goToSignIn).toHaveBeenCalledOnce();
+  });
+
+  it.each([null, ''])('API-003: with the stored token %j the guard goes to sign-in', async (stored) => {
+    const c = check('/devices', stored);
+    await c.run();
+    expect(c.goToSignIn).toHaveBeenCalledOnce();
   });
 
   it('API-003: with a stored token the guard does nothing', async () => {
@@ -110,9 +114,34 @@ describe('signOut', () => {
     expect(clearToken).toHaveBeenCalledWith(ADDRESS);
   });
 
-  it('CLI-003: a key store that cannot clear is reported, with fixed text', async () => {
+  it('CLI-003: the token is cleared even when logout rejects', async () => {
+    const api = { logout: () => Promise.reject(new Error('boom')) };
+    const clearToken = vi.fn(() => Promise.resolve());
+    expect(await signOut({ api, address: ADDRESS, clearToken })).toBeNull();
+    expect(clearToken).toHaveBeenCalledWith(ADDRESS);
+  });
+
+  it('SET-002: a key store that cannot clear after a good logout says the hub signed out', async () => {
     const { hub } = fakeHub({ Logout: ok({ logout: true }) });
     const clearToken = () => Promise.reject(new AccessTokenError('denied'));
-    expect(await signOut({ api: accessApi(hub), address: ADDRESS, clearToken })).toBe(TOKEN_KEPT_MESSAGE);
+    expect(await signOut({ api: accessApi(hub), address: ADDRESS, clearToken })).toBe(TOKEN_KEPT_AFTER_LOGOUT);
+  });
+
+  it('SET-002: a key store that cannot clear after a failed logout does not claim the hub signed out', async () => {
+    const { hub } = fakeHub({ Logout: failure('unreachable') });
+    const clearToken = () => Promise.reject(new AccessTokenError('denied'));
+    expect(await signOut({ api: accessApi(hub), address: ADDRESS, clearToken })).toBe(TOKEN_KEPT_UNCONFIRMED);
+  });
+
+  it('CLI-003: a plain Error from the key store gives the token-kept text', async () => {
+    const { hub } = fakeHub({ Logout: ok({ logout: true }) });
+    const clearToken = () => Promise.reject(new Error('anything'));
+    expect(await signOut({ api: accessApi(hub), address: ADDRESS, clearToken })).toBe(TOKEN_KEPT_AFTER_LOGOUT);
+  });
+
+  it('CLI-003: without a key store (not-desktop) there is nothing to clear and sign-out completes', async () => {
+    const { hub } = fakeHub({ Logout: failure('UNAUTHENTICATED') });
+    const clearToken = () => Promise.reject(new AccessTokenError('not-desktop'));
+    expect(await signOut({ api: accessApi(hub), address: ADDRESS, clearToken })).toBeNull();
   });
 });

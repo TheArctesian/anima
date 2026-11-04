@@ -1,7 +1,7 @@
 <script lang="ts">
   import { accessApi } from '$lib/access/api';
   import { goToDevices, reloadClient } from '$lib/access/navigation';
-  import { writeAccessToken } from '$lib/desktop/token';
+  import { keyStoreAvailable, writeAccessToken } from '$lib/desktop/token';
   import { useHub } from '$lib/hub/context';
   import { press } from '$lib/motion/roles/press';
   import type { FieldMessages } from './form';
@@ -27,7 +27,7 @@
     password = '';
     totpCode = '';
     busy = true;
-    const outcome = await signIn({ api, address: hub.address, writeToken: writeAccessToken }, form);
+    const outcome = await signIn({ api, address: hub.address, desktop: keyStoreAvailable(), writeToken: writeAccessToken }, form);
     busy = false;
     if (outcome.signedIn) {
       goToDevices();

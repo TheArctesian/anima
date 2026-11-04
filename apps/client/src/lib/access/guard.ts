@@ -1,13 +1,13 @@
 import type { HubAddress, HubError, TokenProvider } from '$lib/hub/hub';
 
 /** Takes the client to the sign-in page. Injected, so that this file stays pure (WP-15 D-4). */
-export type GoToSignIn = () => void;
+type GoToSignIn = () => void;
 
 /** The sign-in page path. */
 export const SIGN_IN_PATH = '/sign-in';
 
 /** What the start guard needs; every part is injected so that tests need no desktop shell. */
-export interface StartCheck {
+interface StartCheck {
   readonly pathname: string;
   readonly address: HubAddress;
   /** The desktop key store's reader. */

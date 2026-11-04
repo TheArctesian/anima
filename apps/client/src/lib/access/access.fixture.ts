@@ -2,7 +2,12 @@
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import { print } from 'graphql';
 import type { Hub, HubError, HubResult } from '$lib/hub/hub';
-import { DEFAULT_HUB_ADDRESS } from '$lib/hub/hub';
+import { parseHubAddress } from '$lib/hub/hub';
+
+const parsed = parseHubAddress('hub.example.org');
+if (!parsed.ok) throw new Error('bad fixture address');
+/** Not the default hub, so a test fails when code uses the default instead of `hub.address` (CLI-003). */
+export const HUB_ADDRESS = parsed.value;
 
 export type Operation = 'Login' | 'Logout' | 'Me';
 
@@ -23,7 +28,7 @@ export function ok<T>(value: T): HubResult<T> {
 export function fakeHub(answers: Partial<Record<Operation, HubResult<unknown>>>): { hub: Hub; sent: SentRequest[] } {
   const sent: SentRequest[] = [];
   const hub = {
-    address: DEFAULT_HUB_ADDRESS,
+    address: HUB_ADDRESS,
     request: (document: TypedDocumentNode, variables: unknown) => {
       const operation = /(?:mutation|query) (\w+)/.exec(print(document))?.[1] ?? '';
       sent.push({ operation, variables });
