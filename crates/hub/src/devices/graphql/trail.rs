@@ -10,7 +10,10 @@ use async_graphql::{Context, Result};
 use serde_json::{Value, json};
 use sqlx::PgConnection;
 
-use super::error::{internal, schema_dependency};
+use super::{
+    credential_input::CredentialKind,
+    error::{internal, schema_dependency},
+};
 use crate::{
     clock::Clock,
     devices::model::{Device, DeviceChange, NewDevice, Site, SshSettings},
@@ -155,5 +158,33 @@ pub(super) fn device_deleted(device: &Device) -> Entry {
             "host": device.host,
             "siteId": device.site.to_string(),
         }),
+    }
+}
+
+/// Names the kind of secret and whether the key is encrypted, never the secret. The flag is
+/// called `encrypted` because the audit log hides the value of any key that names a passphrase.
+pub(super) fn credential_set(device: &Device, kind: CredentialKind) -> Entry {
+    let change = match kind {
+        CredentialKind::Password => json!({ "kind": "password" }),
+        CredentialKind::PrivateKey { passphrase } => {
+            json!({ "kind": "privateKey", "encrypted": passphrase })
+        }
+    };
+    Entry {
+        device: Some((device.id, device.name.clone())),
+        message: format!("Device {} SSH credential set.", device.name),
+        action: AuditAction::Update,
+        target: AuditTarget::Credential(device.id),
+        change,
+    }
+}
+
+pub(super) fn credential_cleared(device: &Device) -> Entry {
+    Entry {
+        device: Some((device.id, device.name.clone())),
+        message: format!("Device {} SSH credential cleared.", device.name),
+        action: AuditAction::Delete,
+        target: AuditTarget::Credential(device.id),
+        change: json!({ "cleared": true }),
     }
 }

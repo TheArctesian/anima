@@ -3,7 +3,10 @@
 use serde_json::json;
 use sqlx::PgPool;
 
-use super::harness::{error_json, schema_for};
+use super::{
+    credential::store_password,
+    harness::{error_json, schema_for},
+};
 use async_graphql::Request;
 
 const PVE_01: &str = "0190a000-0000-7000-8002-000000000001";
@@ -40,6 +43,18 @@ fn operations() -> Vec<(&'static str, String)> {
             "deleteDevice",
             format!(r#"mutation {{ deleteDevice(id: "{PVE_01}") }}"#),
         ),
+        (
+            "setSshCredential",
+            format!(
+                r#"mutation {{ setSshCredential(deviceId: "{PVE_01}", credential: {{ password: "hunter2-guard" }}) {{ credentialStored }} }}"#
+            ),
+        ),
+        (
+            "clearSshCredential",
+            format!(
+                r#"mutation {{ clearSshCredential(deviceId: "{PVE_01}") {{ credentialStored }} }}"#
+            ),
+        ),
     ]
 }
 
@@ -51,9 +66,11 @@ async fn api_003_every_devices_operation_without_an_operator_is_unauthenticated_
     pool: PgPool,
 ) {
     let schema = schema_for(&pool);
+    // A stored secret, so an unguarded clear would change something.
+    store_password(&pool, PVE_01, "a-stored-password").await;
     let before = snapshot(&pool).await;
     let operations = operations();
-    assert_eq!(operations.len(), 8);
+    assert_eq!(operations.len(), 10);
     for (name, query) in operations {
         let response = schema.execute(Request::new(query)).await;
         let error = error_json(&response);
@@ -66,11 +83,12 @@ async fn api_003_every_devices_operation_without_an_operator_is_unauthenticated_
     assert_eq!(snapshot(&pool).await, before);
 }
 
-async fn snapshot(pool: &PgPool) -> (i64, i64, i64, i64, i64) {
+async fn snapshot(pool: &PgPool) -> (i64, i64, i64, i64, i64, i64) {
     sqlx::query_as(
         "SELECT (SELECT count(*) FROM devices.sites), (SELECT count(*) FROM devices.devices), \
                 (SELECT count(*) FROM devices.device_tags), \
-                (SELECT count(*) FROM events.event_log), (SELECT count(*) FROM events.audit_log)",
+                (SELECT count(*) FROM events.event_log), (SELECT count(*) FROM events.audit_log), \
+                (SELECT count(*) FROM credentials.secrets)",
     )
     .fetch_one(pool)
     .await

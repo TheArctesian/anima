@@ -188,7 +188,7 @@ pub(super) async fn delete_device(conn: &mut PgConnection, id: DeviceId) -> Resu
     Ok(device)
 }
 
-async fn fetch<'e>(db: impl PgExecutor<'e>, id: DeviceId) -> Result<Device, Error> {
+pub(super) async fn fetch<'e>(db: impl PgExecutor<'e>, id: DeviceId) -> Result<Device, Error> {
     let row = sqlx::query_as::<_, DeviceRow>(select_device!("WHERE d.id = $1"))
         .bind(id)
         .fetch_optional(db)

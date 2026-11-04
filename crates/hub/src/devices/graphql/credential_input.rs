@@ -1,0 +1,161 @@
+//! The credential argument of `setSshCredential` (K1 `SshCredentialInput`) and the checks on
+//! it (DEV-012, SEC-005, LOG-007).
+//!
+//! async-graphql's derived parse errors quote the whole value they could not parse, and the
+//! process log keeps the message of an error without a code. A bare string sent as the
+//! credential would reach the log. So [`SshCredential`] parses the argument and replaces any
+//! parse error with a fixed one that holds no input; each string moves into a [`Secret`]
+//! without a copy.
+
+use std::borrow::Cow;
+
+use async_graphql::{
+    InputObject, InputType, InputValueError, InputValueResult, OneofObject, Value,
+    registry::Registry, value,
+};
+
+use crate::{
+    credentials::{Secret, SshSecret},
+    devices::FieldError,
+};
+
+/// The schema shape of the argument. Only [`SshCredential`] parses into it.
+#[derive(OneofObject)]
+#[graphql(name = "SshCredentialInput")]
+enum SshCredentialInput {
+    Password(String),
+    PrivateKey(PrivateKeyInput),
+}
+
+#[derive(InputObject)]
+#[graphql(name = "PrivateKeyInput")]
+struct PrivateKeyInput {
+    key: String,
+    passphrase: Option<String>,
+}
+
+/// The parsed `credential` argument, already held as secrets.
+pub(super) struct SshCredential(pub(super) SshSecret);
+
+/// The field a parse error names: the input that could not be read is the whole argument.
+const ARGUMENT: &str = "credential";
+
+impl InputType for SshCredential {
+    type RawValueType = Self;
+
+    fn type_name() -> Cow<'static, str> {
+        SshCredentialInput::type_name()
+    }
+
+    fn create_type_info(registry: &mut Registry) -> String {
+        SshCredentialInput::create_type_info(registry)
+    }
+
+    fn parse(value: Option<Value>) -> InputValueResult<Self> {
+        // The derived error is dropped unread: its message quotes the input.
+        let input = SshCredentialInput::parse(value).map_err(|_| unreadable())?;
+        Ok(Self(match input {
+            SshCredentialInput::Password(password) => SshSecret::Password(Secret::from(password)),
+            SshCredentialInput::PrivateKey(PrivateKeyInput { key, passphrase }) => {
+                SshSecret::PrivateKey {
+                    key: Secret::from(key),
+                    passphrase: passphrase.map(Secret::from),
+                }
+            }
+        }))
+    }
+
+    /// A secret is never shown, not even in introspection.
+    fn to_value(&self) -> Value {
+        Value::Null
+    }
+
+    fn as_raw_value(&self) -> Option<&Self::RawValueType> {
+        Some(self)
+    }
+}
+
+/// A `VALIDATION` error that names the argument and quotes nothing of it.
+fn unreadable() -> InputValueError<SshCredential> {
+    let message = "Send a password, or a private key with an optional passphrase.";
+    InputValueError::custom("the credential is not a password or a private key")
+        .with_extension("code", "VALIDATION")
+        .with_extension(
+            "fields",
+            Value::List(vec![value!({ "field": ARGUMENT, "message": message })]),
+        )
+}
+
+/// Which kind of secret was stored; what the audit entry may say about it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum CredentialKind {
+    Password,
+    PrivateKey { passphrase: bool },
+}
+
+/// Largest private key accepted: an RSA 16384-bit key in PEM is under 13 KiB.
+const MAX_KEY_BYTES: usize = 16 * 1024;
+/// Largest password or passphrase accepted.
+const MAX_TEXT_BYTES: usize = 1024;
+
+const PASSWORD: &str = "credential.password";
+const KEY: &str = "credential.privateKey.key";
+const PASSPHRASE: &str = "credential.privateKey.passphrase";
+
+/// The kind of the credential, or the fields to fix. Errors name the field, never the value
+/// or its length.
+pub(super) fn checked_secret(secret: &SshSecret) -> Result<CredentialKind, Vec<FieldError>> {
+    let problems: Vec<_> = match secret {
+        SshSecret::Password(password) => text_problem(PASSWORD, password).into_iter().collect(),
+        SshSecret::PrivateKey { key, passphrase } => key_problem(key)
+            .into_iter()
+            .chain(
+                passphrase
+                    .as_ref()
+                    .and_then(|p| text_problem(PASSPHRASE, p)),
+            )
+            .collect(),
+    };
+    if !problems.is_empty() {
+        return Err(problems);
+    }
+    Ok(match secret {
+        SshSecret::Password(_) => CredentialKind::Password,
+        SshSecret::PrivateKey { passphrase, .. } => CredentialKind::PrivateKey {
+            passphrase: passphrase.is_some(),
+        },
+    })
+}
+
+fn text_problem(field: &'static str, secret: &Secret) -> Option<FieldError> {
+    let bytes = secret.expose();
+    if bytes.len() > MAX_TEXT_BYTES {
+        Some(FieldError::new(field, "Use at most 1024 bytes."))
+    } else if bytes.trim_ascii().is_empty() {
+        Some(FieldError::new(field, "Enter a value."))
+    } else {
+        None
+    }
+}
+
+fn key_problem(key: &Secret) -> Option<FieldError> {
+    let bytes = key.expose();
+    // Size first, so an oversized value is never searched.
+    if bytes.len() > MAX_KEY_BYTES {
+        return Some(FieldError::new(KEY, "Use a private key of at most 16 KiB."));
+    }
+    let text = bytes.trim_ascii();
+    if text.is_empty() {
+        return Some(FieldError::new(KEY, "Enter a private key."));
+    }
+    let marked = text.starts_with(b"-----BEGIN ")
+        && text
+            .windows(b"PRIVATE KEY-----".len())
+            .any(|window| window == b"PRIVATE KEY-----");
+    (!marked).then(|| {
+        FieldError::new(
+            KEY,
+            "Paste a private key that starts with -----BEGIN and names a PRIVATE KEY.",
+        )
+    })
+}

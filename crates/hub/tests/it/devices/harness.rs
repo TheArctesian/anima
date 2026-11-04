@@ -1,17 +1,23 @@
 //! The test schema as `schema.rs` builds it, and requests from a signed-in operator.
 
-use std::sync::{
-    Arc,
-    atomic::{AtomicI64, Ordering},
+use std::{
+    io::Write as _,
+    sync::{
+        Arc,
+        atomic::{AtomicI64, Ordering},
+    },
 };
 
 use anima_hub::{
     clock::{Clock, FixedClock},
-    devices::graphql::{Mutation, Query, devices_by_site_loader, site_loader},
+    credentials::Vault,
+    devices::graphql::{Mutation, Query, credential_loader, devices_by_site_loader, site_loader},
     events::{Bus, ClientAddr, Operator},
     ids::OperatorId,
+    schema::harden,
 };
-use async_graphql::{EmptySubscription, Request, Response, Schema};
+use async_graphql::{EmptySubscription, Request, Response, Schema, SchemaBuilder};
+use base64::{Engine as _, engine::general_purpose::STANDARD};
 use chrono::{DateTime, TimeDelta, Utc};
 use serde_json::Value;
 use sqlx::PgPool;
@@ -49,14 +55,38 @@ pub fn schema_with_bus(pool: &PgPool) -> (TestSchema, Bus) {
 
 pub fn schema_with_clock(pool: &PgPool, clock: Arc<dyn Clock>) -> (TestSchema, Bus) {
     let bus = Bus::new(16);
-    let schema = Schema::build(Query, Mutation, EmptySubscription)
+    let schema = builder(pool, &bus, clock).finish();
+    (schema, bus)
+}
+
+/// The schema with the process-log extensions `schema.rs` adds, so a resolver error without a
+/// code is written to the log.
+pub fn hardened_schema(pool: &PgPool) -> TestSchema {
+    let builder = builder(pool, &Bus::new(16), Arc::new(FixedClock(now())));
+    harden(builder, false).finish()
+}
+
+fn builder(
+    pool: &PgPool,
+    bus: &Bus,
+    clock: Arc<dyn Clock>,
+) -> SchemaBuilder<Query, Mutation, EmptySubscription> {
+    Schema::build(Query, Mutation, EmptySubscription)
         .data(pool.clone())
         .data(site_loader(pool.clone()))
         .data(devices_by_site_loader(pool.clone()))
+        .data(credential_loader(pool.clone()))
+        .data(vault())
         .data(bus.clone())
         .data(clock)
-        .finish();
-    (schema, bus)
+}
+
+/// The schema's vault: a throwaway key written to a temporary file (SEC-004), never a real
+/// key. Every call returns a vault with the same key.
+pub fn vault() -> Vault {
+    let mut key_file = tempfile::NamedTempFile::new().unwrap();
+    writeln!(key_file, "{}", STANDARD.encode([7_u8; 32])).unwrap();
+    Vault::from_key_file(key_file.path()).unwrap()
 }
 
 pub fn schema_for(pool: &PgPool) -> TestSchema {
