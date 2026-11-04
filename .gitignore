@@ -1,0 +1,21 @@
+# Rust
+target/
+
+# JavaScript
+node_modules/
+.svelte-kit/
+dist/
+build/
+
+# Secrets (never commit)
+.env
+.env.*
+!.env.example
+secrets/
+
+# Claude Code local state
+.claude/worktrees/
+.claude/settings.local.json
+
+# OS
+.DS_Store
