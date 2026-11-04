@@ -23,7 +23,8 @@ The operator approved all seven contracts on 2026-11-03 (checkpoint 1). Only a r
 | WP-01 Skeleton and gates | 0 | Building | `claude/wp-01-skeleton-212429` | `wp-01-skeleton` |
 | WP-02 Tokens and fonts | 1 | Waiting (WP-01) | — | — |
 | WP-03 VPN and network | 1 | Waiting (WP-01; operator checkpoint 2 for each VPS change) | — | — |
-| WP-04 Deployment | 1 | Waiting (WP-01) | — | — |
+| WP-04 Deployment, stage A (hub) | 1 | Waiting (WP-01) | — | — |
+| WP-04 Deployment, stage B (releases and self-update, R-006) | 3 | Waiting (WP-15, WP-16; operator sets secrets) | — | — |
 | WP-05 Access and logs | 1 | Waiting (WP-01, K1–K3) | — | — |
 | WP-06 Devices | 1 | Waiting (WP-01, K1–K3) | — | — |
 | WP-07 Credentials | 1 | Waiting (WP-01, K3) | — | — |
@@ -48,6 +49,8 @@ Integration branch: `phase-1`. Merge to `main` only after operator checkpoint 4.
 - **R-004 (Wave 0).** `devices` never imports `checks`. Device deletion is one `DELETE` with foreign-key cascades; the checks retention job removes heartbeats of deleted checks (K3, DEV-015).
 
 - **R-005 (operator, 2026-11-03).** GitHub Actions runs only deployment, never gates or tests. All gates run locally with one command, `bun run gates`, before each review and before each merge into `phase-1`; the merge needs a green run on the merged result. WP-01 removes `ci.yml`. Spec CQ-010, TOK-002, MV-008, REPO-004 and acceptance item 15 are changed to match (checkpoint 3: requested by the operator).
+
+- **R-006 (operator, 2026-11-03).** WP-04 also builds the self-updating desktop release pipeline (spec Section 3.9, UPD-001–012), as stage B, after WP-15 and WP-16 are accepted. Operator decisions: host on public GitHub Releases; version `0.1.<run number>`; macOS universal and Linux AppImage only; ad-hoc macOS signing with automatic Developer ID signing when all Apple secrets exist; `allowDowngrades: true`. Under R-005, the release workflow is the only GitHub Actions workflow and does not run on pull requests. Stage B may edit, after their owners are accepted and one at a time: in WP-16's `apps/desktop/src-tauri/`, the updater and process plugin lines in `Cargo.toml` and `lib.rs`, the `bundle.createUpdaterArtifacts` and `plugins.updater` keys in `tauri.conf.json`, and the "Check for Updates…" menu item; one mount line for the banner in WP-11's root layout; the Updates row in WP-15's Settings page. The operator runs `tauri signer generate` and `gh secret set TAURI_SIGNING_PRIVATE_KEY` personally (UPD-012). Agents never read the key file.
 
 ## Escalations
 

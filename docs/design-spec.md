@@ -225,6 +225,44 @@ Anima keeps three types of log.
 - **LOG-009.** The client must show the event log in a Logs panel on the Devices page. It must also show it in the Logs tab of the device detail view. The operator must be able to filter it by time, severity, device and source.
 - **LOG-010.** The client must receive new event log entries through a GraphQL subscription.
 
+### 3.9 Desktop releases and updates
+
+The desktop app updates itself, as Sparkle does on macOS. GitHub Actions builds and publishes each release. The app downloads a new version in the background and asks the operator to restart.
+
+```text
+push to main ─► version job ─► build macOS + build Linux (parallel; each signs its updater file)
+                                         │
+                                         ▼
+                 feed job: latest.json lists only the platforms that built ─► publish the release
+                                                                                     │
+desktop app ── at start and every 4 hours ── GET latest.json ── version differs? ── download, verify signature, install
+                                                                                     │
+                                                                  banner "Restart to update" ─► relaunch
+```
+
+| Item | Value |
+| --- | --- |
+| Host | Public GitHub Releases of `TheArctesian/anima` (the repository is public, so the app needs no credential) |
+| Feed URL | `https://github.com/TheArctesian/anima/releases/latest/download/latest.json` |
+| Version | `0.1.<workflow run number>`, computed once in the version job. Do not commit version changes. |
+| Platforms | macOS universal (`.app.tar.gz` for the updater, `Anima.dmg` for people), Linux x86_64 (`.AppImage`) |
+| Updater signature | Tauri updater key pair. The public key is in `tauri.conf.json`. The private key is the GitHub secret `TAURI_SIGNING_PRIVATE_KEY`. |
+| macOS signature | Ad-hoc (`APPLE_SIGNING_IDENTITY=-`). The workflow uses Developer ID signing and notarization only when all Apple secrets are present. |
+| Rollback | `allowDowngrades: true`. To roll back, mark an older release as "latest". |
+
+- **UPD-001.** The desktop app must check the feed at start and then every 4 hours. Development builds, the web client and the iOS client must not check and must not load the updater plugin.
+- **UPD-002.** The app must verify the signature of each update with the public key in the app before it installs the update. If the signature is not correct, the app must not install the update. It must record the failure and continue.
+- **UPD-003.** The app must download and install an update without a prompt. The app must not restart until the operator selects "Restart to update", because a restart can stop live sessions.
+- **UPD-004.** When an update is installed, the client must show a banner with the text "Anima <version> is installed" and a "Restart to update" button. The banner must have `role="status"`.
+- **UPD-005.** After one update is installed, the app must stop checking until it restarts.
+- **UPD-006.** The Settings page must show an "Updates" row with the current version, the update state and a "Check for updates" button. A failed check must not show an error dialog; the next check runs at the usual time.
+- **UPD-007.** The release workflow must run only on a push to `main` and on manual start. It must not run on pull requests (CQ-010). It must not cancel a release run that is in progress.
+- **UPD-008.** The workflow must upload all files before it publishes the release. The release becomes "latest", and thus visible to the app, only after `latest.json` is uploaded.
+- **UPD-009.** `latest.json` must list only the platforms whose build passed in this run. Do not list a platform with a file from an older version. (With `allowDowngrades`, the app would install that file again at each check.)
+- **UPD-010.** Each release must have versioned updater files, stable-named files for people (`Anima.dmg`, `Anima-x86_64.AppImage`) and a `SHA256SUMS` file.
+- **UPD-011.** The macOS build job must verify the bundle with `codesign --verify --deep --strict` and must verify that `lipo -archs` gives `x86_64` and `arm64`.
+- **UPD-012.** Only the operator makes the updater key pair and sets the GitHub secrets. Agents must not read the private key file. The operator must keep a backup of the private key: if it is lost, each installed app must be installed again by hand.
+
 ## 4. Security
 
 The hub can open a session to every device. Thus the hub is a high-value target. Obey all the requirements in this section.
@@ -873,7 +911,7 @@ The view has these tabs:
 ## 7. Settings page
 
 - **SET-001.** The Settings page must be available from the navigation bar.
-- **SET-002.** In Phase 1, the Settings page must show only the page title "Settings" and an empty state.
+- **SET-002.** In Phase 1, the Settings page must show only the page title "Settings" and, in the desktop app, the "Updates" row (UPD-006).
 
 A later version adds these items to the Settings page:
 
@@ -982,6 +1020,7 @@ A later version can manage libvirt hosts and Docker hosts. Prepare for this now:
 13. All colours, spaces, font sizes and motion values come from tokens. The token gate (TOK-003) passes.
 14. Each motion role in Section 5.7.3 that Phase 1 uses has a reduced-motion form. The Phase 1 motion audit (Section 5.8) has no open finding of the classes "layout jump" or "wrong motion".
 15. The CUPID gates (CQ-010, CQ-040, CQ-043) and the import graph check (REPO-004) pass in the gate script (`bun run gates`). The baseline file is empty.
+16. A merge to `main` publishes a release. An installed earlier build downloads it, shows the restart banner, and runs the new version after "Restart to update". A feed with a bad signature is refused and the app continues to run (UPD-001–012).
 
 ## 10. iOS constraints
 
