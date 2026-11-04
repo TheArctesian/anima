@@ -187,13 +187,11 @@ describe('ESLint parsing of rune modules', () => {
   });
 });
 
-describe('ESLint import and call boundaries', () => {
+describe('ESLint motion boundary', () => {
   const lib = 'apps/client/src/lib/devices/sample.ts';
   const motionFile = 'apps/client/src/lib/motion/spring.ts';
   const hubFile = 'apps/client/src/lib/hub/sample.ts';
   const motionImport = "import { animate } from 'motion';\nexport const a = animate;\n";
-  const wsImport = "import { createClient } from 'graphql-ws';\nexport const c = createClient;\n";
-  const fetchCall = "export const get = (): Promise<Response> => fetch('/x');\n";
 
   for (const name of ['motion', 'motion/mini', 'motion-dom', 'framer-motion']) {
     it(`MOT-020: ${name} is refused outside $lib/motion`, async () => {
@@ -221,6 +219,16 @@ describe('ESLint import and call boundaries', () => {
     const code = `<script lang="ts">\n  import { animate } from 'motion';\n  animate();\n</script>\n`;
     expect(await rulesFired(code, 'apps/client/src/routes/Sample.svelte')).toContain('no-restricted-imports');
   });
+
+});
+
+describe('ESLint hub boundaries', () => {
+  const lib = 'apps/client/src/lib/devices/sample.ts';
+  const motionFile = 'apps/client/src/lib/motion/spring.ts';
+  const hubFile = 'apps/client/src/lib/hub/sample.ts';
+  const motionImport = "import { animate } from 'motion';\nexport const a = animate;\n";
+  const wsImport = "import { createClient } from 'graphql-ws';\nexport const c = createClient;\n";
+  const fetchCall = "export const get = (): Promise<Response> => fetch('/x');\n";
 
   it('CQ-045: graphql-ws is imported only in $lib/hub', async () => {
     expect(await rulesFired(wsImport, hubFile)).toEqual([]);
