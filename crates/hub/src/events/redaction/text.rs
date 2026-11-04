@@ -16,10 +16,6 @@ const SECRET_MARKERS_ANY_CASE: [&str; 2] = ["otpauth://", "authorization:"];
 /// case and followed by whitespace or `:`.
 const SCHEMES: [&str; 3] = ["bearer", "basic", "token"];
 
-/// The longest quoted value searched for its closing quote; a longer one is masked like an
-/// unquoted value. The bound keeps every pass linear in the text's length.
-const MAX_QUOTED_LEN: usize = 256;
-
 /// The shortest text that counts as a credential after a scheme word or as a URL user.
 const CREDENTIAL_MIN_LEN: usize = 8;
 
@@ -149,18 +145,20 @@ fn key_before(text: &str, separator: usize, floor: usize) -> Option<&str> {
 }
 
 /// The byte range of the value that starts at `from`: optional spaces, then the inside of a
-/// quoted value, or an unquoted value up to whitespace, `&`, `;`, `,`, `}` or a quote. An empty
-/// value, `true`, `false`, or an object or array (`{`, `[`) gives `None`.
+/// quoted value, or an unquoted value up to whitespace, `&`, `;`, `,`, `}` or a quote (also
+/// after an unterminated quote). An empty value, `true`, `false`, or an object or array (`{`,
+/// `[`) gives `None`.
 fn value_after(text: &str, from: usize) -> Option<(usize, usize)> {
     let bytes = text.as_bytes();
     let mut start = from;
     while start < bytes.len() && matches!(bytes[start], b' ' | b'\t') {
         start += 1;
     }
+    // A found closing quote ends a masked value and the caller resumes after it; a search fails
+    // only from the last quote of its kind. So the searches stay linear in the text's length.
     if let Some(&quote @ (b'"' | b'\'')) = bytes.get(start) {
         start += 1;
-        let window = &text.as_bytes()[start..bytes.len().min(start + MAX_QUOTED_LEN)];
-        if let Some(close) = window.iter().position(|byte| *byte == quote) {
+        if let Some(close) = bytes[start..].iter().position(|byte| *byte == quote) {
             return (close > 0).then_some((start, start + close));
         }
     }

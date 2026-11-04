@@ -153,7 +153,10 @@ fn log_007_redaction_masks_values_of_text_keys_named_like_secrets() {
             "spring.datasource.password=[redacted]",
         ),
         ("Bearer \"ghp_AAAAsecret1\"", "Bearer \"[redacted]\""),
+        ("password=\"abc def", "password=\"[redacted] def"),
     ]);
+    let long = format!("password=\"{} end\" next", "a".repeat(300));
+    assert_eq!(redact_text(&long), "password=\"[redacted]\" next");
 }
 
 /// Inputs built to make a scan quadratic finish in linear time (S1). 200 KB each; a
