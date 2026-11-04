@@ -30,21 +30,10 @@ export function serverDirectory(): string {
   return connection().socketDir;
 }
 
-/** Directory that holds psql, pg_dump and pg_restore. */
-export function toolDirectory(): string {
-  const dir = findTools(binaryDirs(process.env["PATH"] ?? ""), ["psql", "pg_dump", "pg_restore"], existsSync);
-  if (dir === undefined) throw new Error("psql, pg_dump or pg_restore not found; install PostgreSQL 17 (CQ-024: these tests never skip)");
-  return dir;
-}
-
-/** The libpq variables and superuser name that point a script at the throwaway server. */
-export function serverEnvironment(): { PGHOST: string; PGPORT: string; superuser: string } {
-  const { socketDir, port, user } = connection();
-  return { PGHOST: socketDir, PGPORT: port, superuser: user };
-}
-
 function psqlBinary(): string {
-  return join(toolDirectory(), "psql");
+  const dir = findTools(binaryDirs(process.env["PATH"] ?? ""), ["psql"], existsSync);
+  if (dir === undefined) throw new Error("psql not found; install PostgreSQL 17 (CQ-024: these tests never skip)");
+  return join(dir, "psql");
 }
 
 export interface PsqlOptions {
