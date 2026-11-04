@@ -150,7 +150,10 @@ pub(in crate::devices::graphql) fn decode(
     let rest = text.strip_prefix(SORTED_PREFIX).ok_or_else(bad)?;
     let (made_for, rest) = rest.split_once('.').ok_or_else(bad)?;
     let (key, name) = rest.split_once('.').ok_or_else(bad)?;
-    if made_for != tag(sort) || key.len() != KEY_DIGITS {
+    if made_for != tag(sort)
+        || key.len() != KEY_DIGITS
+        || !key.bytes().all(|b| b.is_ascii_hexdigit())
+    {
         return Err(bad());
     }
     Ok(Position {

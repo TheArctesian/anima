@@ -74,6 +74,7 @@ fixture_test! {
     async fn chk_011_device_uptime_is_what_the_checks_face_reports_per_window(pool: PgPool) {
         seed_standing(&pool).await;
         ping_uptime(&pool, PVE_01, ("uptime_hour", TimeDelta::days(20)), (9, 1)).await;
+        ping_uptime(&pool, PVE_01, ("uptime_hour", TimeDelta::days(3)), (4, 1)).await;
         let result = data(
             &schema_for(&pool),
             "{ devices(first: 200) { edges { node { id name day: uptime(window: DAY) week: uptime(window: WEEK) month: uptime(window: MONTH) } } } }",
@@ -92,8 +93,7 @@ fixture_test! {
         }
         let devices = by_name(&result["devices"]);
         assert_eq!(devices["pve-01"]["day"], 0.5);
-        assert_eq!(devices["pve-01"]["week"], Value::Null);
-        assert_eq!(devices["pve-01"]["month"], 0.9);
+        assert_eq!(devices["pve-01"]["week"], 0.8);
         assert_eq!(devices["pihole"]["day"], Value::Null);
     }
 

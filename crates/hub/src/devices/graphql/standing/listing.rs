@@ -1,9 +1,11 @@
 //! `Query.devices`: the SQL path for the name order, and the in-memory path that joins the
 //! checks domain for a status filter or a STATUS or UPTIME order (R-011, API-006).
 //!
-//! The in-memory path loads every device that passes the SQL filters, reads their statuses
-//! and uptimes in one call each, then filters, orders and pages. That is Phase 1 scale; the
-//! SQL join across domains is deferred (issue #1).
+//! The in-memory path loads every device that passes the SQL filters, with no cap, reads their
+//! statuses and uptimes in one call each, then filters, orders and pages. Loading every
+//! matching device is fine at Phase 1 scale; the SQL join across domains is deferred (issue #1).
+//! Its cursors are positional (key and name), so a status change between two pages can make a
+//! device be skipped or shown twice.
 
 use std::{collections::HashMap, sync::Arc};
 

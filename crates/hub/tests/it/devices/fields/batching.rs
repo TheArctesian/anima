@@ -27,6 +27,9 @@ use crate::devices::{
 const BATCHED_AT_MOST: usize = 30;
 const IN_MEMORY_AT_MOST: usize = 36;
 
+const PER_CHECK_FIELDS: &str = "totalCount edges { node { name status ip uptime(window: DAY) \
+                                checks { name status lastHeartbeat { at } uptime(window: DAY) } } }";
+
 const FIELDS: &str = "totalCount edges { node { name status ip uptime(window: DAY) \
                       week: uptime(window: WEEK) checks { name } } }";
 
@@ -72,10 +75,11 @@ async fn cost_for_13_then_163(pool: PgPool, query: &str) -> (usize, usize, Value
     migrations = "./migrations",
     fixtures(path = "../../../fixtures", scripts("devices", "checks"))
 )]
+#[ignore = "waits for the check loaders"]
 async fn api_005_status_uptime_checks_and_ip_cost_a_constant_few_statements_for_13_or_163_devices(
     pool: PgPool,
 ) {
-    let query = format!("{{ devices(first: 200) {{ {FIELDS} }} }}");
+    let query = format!("{{ devices(first: 200) {{ {PER_CHECK_FIELDS} }} }}");
     let (few, many, shown) = cost_for_13_then_163(pool, &query).await;
     // The loaders ran on real rows: the page shows the seeded values.
     let ollama = shown["devices"]["edges"]

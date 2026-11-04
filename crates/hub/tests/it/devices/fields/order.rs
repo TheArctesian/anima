@@ -147,6 +147,9 @@ fixture_test! {
             "s1.status.1.n1.abcd".to_owned(),
             format!("s1.status.00000000000000zz.n1.{name}"),
             "s1.rank.0000000000000001.n1.6162".to_owned(),
+            "s1.status.000000000000001.n1.6162".to_owned(),
+            "s1.status.+000000000000001.n1.6162".to_owned(),
+            "s1.status.0000000000000001f.n1.6162".to_owned(),
             "s1.status.0000000000000001.n1.zz".to_owned(),
         ] {
             let error = refused_cursor(&pool, "STATUS", &damaged).await;
