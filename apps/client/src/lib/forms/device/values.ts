@@ -22,7 +22,9 @@ export interface DeviceFormValues {
   };
 }
 
-const EMPTY_CREDENTIAL = { password: '', privateKey: '', passphrase: '' } as const;
+function emptyCredential(): DeviceFormValues['credential'] {
+  return { password: '', privateKey: '', passphrase: '' };
+}
 
 /** The form values for a new device (`null`) or for editing `device`. */
 export function formValues(device: DeviceFields | null): DeviceFormValues {
@@ -34,7 +36,7 @@ export function formValues(device: DeviceFields | null): DeviceFormValues {
       os: 'OTHER',
       tags: [],
       ssh: { enabled: false, port: '22', username: '', auth: 'PASSWORD' },
-      credential: EMPTY_CREDENTIAL,
+      credential: emptyCredential(),
     };
   }
   return {
@@ -49,7 +51,7 @@ export function formValues(device: DeviceFields | null): DeviceFormValues {
       username: device.ssh.username,
       auth: device.ssh.auth,
     },
-    credential: EMPTY_CREDENTIAL,
+    credential: emptyCredential(),
   };
 }
 
@@ -73,7 +75,7 @@ export function portToSend(ssh: { readonly enabled: boolean; readonly port: stri
 }
 
 /** Tags trimmed, empty ones dropped, duplicates removed; the first occurrence wins. */
-function normalizeTags(tags: readonly string[]): string[] {
+export function normalizeTags(tags: readonly string[]): string[] {
   return [...new Set(tags.map((tag) => tag.trim()).filter((tag) => tag !== ''))];
 }
 
