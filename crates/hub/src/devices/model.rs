@@ -138,14 +138,16 @@ pub struct Device {
 
 /// A validated site to create.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct NewSite {
+#[cfg_attr(not(test), expect(dead_code, reason = "used by the devices store"))]
+pub(super) struct NewSite {
     pub name: String,
     pub subnet: IpNet,
 }
 
 /// A validated device to create.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct NewDevice {
+#[cfg_attr(not(test), expect(dead_code, reason = "used by the devices store"))]
+pub(super) struct NewDevice {
     pub site: SiteId,
     pub name: String,
     pub host: String,
@@ -157,7 +159,8 @@ pub struct NewDevice {
 
 /// A validated partial update: `None` leaves the field as it is.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct DeviceChange {
+#[cfg_attr(not(test), expect(dead_code, reason = "used by the devices store"))]
+pub(super) struct DeviceChange {
     pub site: Option<SiteId>,
     pub name: Option<String>,
     pub host: Option<String>,
@@ -170,7 +173,8 @@ pub struct DeviceChange {
 
 /// Which devices a list returns; every part that is set must match.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct DeviceFilter {
+#[expect(dead_code, reason = "used by the devices store")]
+pub(super) struct DeviceFilter {
     /// Case-insensitive substring of the name.
     pub name: Option<String>,
     /// Devices carrying all of these tags.

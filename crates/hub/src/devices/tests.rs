@@ -2,6 +2,9 @@ mod host;
 mod page;
 mod rules;
 
+use super::model::*;
+use super::page::*;
+use super::rules::*;
 use super::*;
 use crate::ids::SiteId;
 
@@ -36,9 +39,11 @@ fn fields(errors: &[FieldError]) -> Vec<&'static str> {
     errors.iter().map(|error| error.field).collect()
 }
 
+/// The last field error for a device whose only possibly bad field is `host`.
 fn host_error(host: &str) -> Option<FieldError> {
     validate_new_device(&new_device("pve-01", host))
         .err()
+        // Safe: name, kind, tags and ssh are valid here, so `host` is the only error to pop.
         .and_then(|mut e| e.pop())
 }
 
@@ -74,7 +79,16 @@ fn dev_010_graphql_enum_names_follow_the_schema() {
 }
 
 #[test]
-fn error_names_what_was_not_found() {
+fn k7_not_found_error_names_the_missing_entity() {
     let error = Error::NotFound(Missing::Site(home()));
     assert_eq!(error.to_string(), format!("site {HOME} not found"));
+}
+
+#[test]
+fn k7_validation_error_names_fields_never_values() {
+    let error = Error::Validation(vec![
+        FieldError::new("name", "The name must be 1 to 64 characters."),
+        FieldError::new("ssh.port", "secret-ish 70000"),
+    ]);
+    assert_eq!(error.to_string(), "input is not valid: name, ssh.port");
 }

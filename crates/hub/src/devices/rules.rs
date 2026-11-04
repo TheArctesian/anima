@@ -19,6 +19,8 @@ const DEFAULT_SSH_PORT: i32 = 22;
 /// One input field the operator must fix. `field` is the GraphQL input field name.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FieldError {
+    /// The GraphQL input field in camelCase, as the client form names it; nested SSH
+    /// fields are written `ssh.port` and `ssh.username`.
     pub field: &'static str,
     pub message: String,
 }
@@ -40,43 +42,43 @@ impl std::fmt::Display for FieldError {
 
 /// SSH settings as typed in the form; `port` is the raw GraphQL integer.
 #[derive(Clone, Debug)]
-pub struct SshInput {
-    pub enabled: bool,
-    pub port: Option<i32>,
-    pub username: String,
-    pub auth: SshAuth,
+pub(super) struct SshInput {
+    pub(super) enabled: bool,
+    pub(super) port: Option<i32>,
+    pub(super) username: String,
+    pub(super) auth: SshAuth,
 }
 
 /// A device to create, as typed in the form.
 #[derive(Clone, Debug)]
-pub struct NewDeviceInput {
-    pub site: SiteId,
-    pub name: String,
-    pub host: String,
-    pub kind: String,
-    pub os: OperatingSystem,
-    pub tags: Vec<String>,
-    pub ssh: Option<SshInput>,
+pub(super) struct NewDeviceInput {
+    pub(super) site: SiteId,
+    pub(super) name: String,
+    pub(super) host: String,
+    pub(super) kind: String,
+    pub(super) os: OperatingSystem,
+    pub(super) tags: Vec<String>,
+    pub(super) ssh: Option<SshInput>,
 }
 
 /// A device update as typed in the form; absent fields stay as they are.
 #[derive(Clone, Debug, Default)]
-pub struct DeviceChangeInput {
-    pub site: Option<SiteId>,
-    pub name: Option<String>,
-    pub host: Option<String>,
-    pub kind: Option<String>,
-    pub os: Option<OperatingSystem>,
-    pub tags: Option<Vec<String>>,
-    pub maintenance: Option<bool>,
-    pub ssh: Option<SshInput>,
+pub(super) struct DeviceChangeInput {
+    pub(super) site: Option<SiteId>,
+    pub(super) name: Option<String>,
+    pub(super) host: Option<String>,
+    pub(super) kind: Option<String>,
+    pub(super) os: Option<OperatingSystem>,
+    pub(super) tags: Option<Vec<String>>,
+    pub(super) maintenance: Option<bool>,
+    pub(super) ssh: Option<SshInput>,
 }
 
 /// A site to create, as typed in the form.
 #[derive(Clone, Debug)]
-pub struct NewSiteInput {
-    pub name: String,
-    pub subnet: String,
+pub(super) struct NewSiteInput {
+    pub(super) name: String,
+    pub(super) subnet: String,
 }
 
 /// Collects field errors while the remaining fields are still checked.
@@ -104,7 +106,8 @@ impl Problems {
 ///
 /// # Errors
 /// Every invalid field, all at once.
-pub fn validate_new_device(input: &NewDeviceInput) -> Result<NewDevice, Vec<FieldError>> {
+#[cfg_attr(not(test), expect(dead_code, reason = "used by the devices GraphQL"))]
+pub(super) fn validate_new_device(input: &NewDeviceInput) -> Result<NewDevice, Vec<FieldError>> {
     let mut problems = Problems::default();
     let name = problems.field(device_name(&input.name));
     let host = problems.field(host(&input.host));
@@ -135,7 +138,8 @@ pub fn validate_new_device(input: &NewDeviceInput) -> Result<NewDevice, Vec<Fiel
 ///
 /// # Errors
 /// Every invalid field, all at once.
-pub fn validate_change(input: &DeviceChangeInput) -> Result<DeviceChange, Vec<FieldError>> {
+#[cfg_attr(not(test), expect(dead_code, reason = "used by the devices GraphQL"))]
+pub(super) fn validate_change(input: &DeviceChangeInput) -> Result<DeviceChange, Vec<FieldError>> {
     let mut problems = Problems::default();
     let name = input
         .name
@@ -179,7 +183,8 @@ pub fn validate_change(input: &DeviceChangeInput) -> Result<DeviceChange, Vec<Fi
 ///
 /// # Errors
 /// Every invalid field, all at once.
-pub fn validate_new_site(input: &NewSiteInput) -> Result<NewSite, Vec<FieldError>> {
+#[cfg_attr(not(test), expect(dead_code, reason = "used by the devices GraphQL"))]
+pub(super) fn validate_new_site(input: &NewSiteInput) -> Result<NewSite, Vec<FieldError>> {
     let mut problems = Problems::default();
     let name = problems.field(site_name(&input.name));
     let subnet = problems.field(subnet(&input.subnet));
@@ -283,11 +288,15 @@ fn is_host_label(label: &str) -> bool {
 /// Trimmed tags without repeats, in first-seen order.
 fn tags(raw: &[String]) -> Result<Vec<String>, FieldError> {
     let mut kept: Vec<String> = Vec::with_capacity(raw.len());
-    for tag in raw.iter().map(|tag| tag.trim()) {
+    for (index, tag) in raw.iter().map(|tag| tag.trim()).enumerate() {
+        let position = index + 1;
+        if tag.is_empty() {
+            return Err(FieldError::new("tags", format!("Tag {position} is empty.")));
+        }
         if !length_between(tag, TAG_MAX) {
             return Err(FieldError::new(
                 "tags",
-                format!("Each tag must be 1 to {TAG_MAX} characters."),
+                format!("Tag {position} is longer than {TAG_MAX} characters."),
             ));
         }
         if !kept.iter().any(|seen| seen == tag) {

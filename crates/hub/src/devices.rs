@@ -8,15 +8,8 @@ mod tests;
 
 use crate::ids::{DeviceId, SiteId};
 
-pub use model::{
-    Device, DeviceChange, DeviceFilter, NewDevice, NewSite, OperatingSystem, Site, SshAuth,
-    SshSettings, UnknownValue,
-};
-pub use page::{Page, decode_cursor, encode_cursor, page_after, page_size, split_page};
-pub use rules::{
-    DeviceChangeInput, FieldError, NewDeviceInput, NewSiteInput, SshInput, validate_change,
-    validate_new_device, validate_new_site,
-};
+pub use model::{Device, OperatingSystem, Site, SshAuth, SshSettings};
+pub use rules::FieldError;
 
 /// What a lookup could not find.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -39,8 +32,17 @@ impl std::fmt::Display for Missing {
 pub enum Error {
     #[error("{0} not found")]
     NotFound(Missing),
-    #[error("input is not valid ({} field errors)", .0.len())]
+    #[error("input is not valid: {}", field_names(.0))]
     Validation(Vec<FieldError>),
     #[error("database error")]
     Database(#[from] sqlx::Error),
+}
+
+/// The names of the fields in error, never their values.
+fn field_names(errors: &[FieldError]) -> String {
+    errors
+        .iter()
+        .map(|error| error.field)
+        .collect::<Vec<_>>()
+        .join(", ")
 }

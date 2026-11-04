@@ -77,3 +77,16 @@ fn api_006_in_memory_page_after_the_last_name_is_empty() {
     let from_gap = page_after(&names, |name| name, Some("aa"), 5);
     assert_eq!(from_gap.rows, [&"b"]);
 }
+
+#[test]
+fn api_006_in_memory_paging_follows_byte_order_of_names() {
+    let names = ["Zeta", "alpha", "émile"];
+    let first = page_after(&names, |name| name, None, 1);
+    assert_eq!(first.rows, [&"Zeta"]);
+    let second = page_after(&names, |name| name, Some("Zeta"), 1);
+    assert_eq!(second.rows, [&"alpha"]);
+    assert!(second.has_next_page);
+    let third = page_after(&names, |name| name, Some("alpha"), 5);
+    assert_eq!(third.rows, [&"émile"]);
+    assert!(!third.has_next_page);
+}

@@ -78,3 +78,9 @@ fn dev_010_host_rejects_a_malformed_ip_address() {
     assert_eq!(host_error("10.10.0.256").map(|e| e.field), Some("host"));
     assert_eq!(host_error("10.10.0").map(|e| e.field), Some("host"));
 }
+
+#[test]
+fn dev_010_host_is_kept_as_written_including_case() {
+    let device = validate_new_device(&new_device("pve-01", " PVE-01.Home.LAN ")).unwrap();
+    assert_eq!(device.host, "PVE-01.Home.LAN");
+}

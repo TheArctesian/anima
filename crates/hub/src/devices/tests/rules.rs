@@ -214,3 +214,27 @@ fn vpn_001_site_name_is_1_to_64_characters_and_errors_come_together() {
         .is_err()
     );
 }
+
+#[test]
+fn dev_010_tag_error_names_the_tag_by_position() {
+    let mut input = new_device("pve-01", "10.10.0.2");
+    input.tags = vec!["a".into(), "b".into(), " ".into()];
+    let errors = validate_new_device(&input).unwrap_err();
+    assert_eq!(errors[0].message, "Tag 3 is empty.");
+    input.tags = vec!["t".repeat(33)];
+    assert!(
+        validate_new_device(&input).unwrap_err()[0]
+            .message
+            .starts_with("Tag 1 ")
+    );
+}
+
+#[test]
+fn dev_010_change_with_an_empty_kind_becomes_server() {
+    let change = validate_change(&DeviceChangeInput {
+        kind: Some(String::new()),
+        ..DeviceChangeInput::default()
+    })
+    .unwrap();
+    assert_eq!(change.kind.as_deref(), Some("server"));
+}
