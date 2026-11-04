@@ -49,6 +49,8 @@ fixture_test! {
             (CREATE, json!({ "input": input(PVE_01, "second", tcp) })),
             (UPDATE, json!({ "id": id, "input": { "name": "renamed" } })),
             ("mutation($id: ID!) { setCheckPaused(id: $id, paused: true) { id } }", json!({ "id": id })),
+            (CREATE, json!({ "input": input(PVE_01, "g2", json!({ "group": { "childIds": [id] } })) })),
+            (UPDATE, json!({ "id": group, "input": { "config": { "group": { "childIds": [id] } } } })),
             ("mutation($id: ID!) { deleteCheck(id: $id) }", json!({ "id": group })),
         ];
         for (query, variables) in calls {
@@ -120,5 +122,16 @@ fixture_test! {
         let error = error_json(&response);
         assert_eq!(code(&error), "INTERNAL");
         assert!(!error.to_string().contains("no token"), "no detail reaches the operator");
+    }
+
+    async fn chk_005_changing_a_tcp_config_does_not_claim_a_push_token_change(pool: PgPool) {
+        let (schema, _) = schema_with_bus(&pool);
+        let id = create(&schema, input(PVE_01, "ssh", json!({ "tcp": { "port": 22 } }))).await;
+        let vars = json!({ "id": id, "input": { "config": { "tcp": { "port": 23 } } } });
+        data_with(&schema, UPDATE, vars).await;
+        let audits = rows(&pool, "audit_log").await;
+        let change = audits[1]["change"].as_object().unwrap();
+        assert!(change.contains_key("config"));
+        assert!(!change.contains_key("pushPath"), "{change:?}");
     }
 }

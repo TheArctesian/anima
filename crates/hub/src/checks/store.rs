@@ -60,6 +60,35 @@ pub(super) async fn fetch<'e>(db: impl PgExecutor<'e>, id: CheckId) -> Result<Ch
     Check::try_from(row)
 }
 
+/// The check as it is now, its row locked until the caller's transaction ends, so what an audit
+/// entry compares against cannot change underneath it.
+pub(super) async fn fetch_for_update(
+    conn: &mut sqlx::PgConnection,
+    id: CheckId,
+) -> Result<Check, Error> {
+    let row = sqlx::query_as::<_, CheckRow>(select_check!("WHERE id = $1 FOR UPDATE"))
+        .bind(id)
+        .fetch_optional(conn)
+        .await?
+        .ok_or(Error::NotFound(Missing::Check(id)))?;
+    Check::try_from(row)
+}
+
+/// The children of a group, their rows locked until the caller's transaction ends: a child
+/// that another transaction is moving is waited for, so the answer is what was committed.
+pub(super) async fn children_for_update(
+    conn: &mut sqlx::PgConnection,
+    group: CheckId,
+) -> Result<Vec<CheckId>, Error> {
+    let ids = sqlx::query_scalar(
+        "SELECT id FROM checks.checks WHERE parent_id = $1 ORDER BY id FOR UPDATE",
+    )
+    .bind(group)
+    .fetch_all(conn)
+    .await?;
+    Ok(ids)
+}
+
 /// The checks of the devices, each device's in byte order of the name.
 pub(super) async fn by_devices(db: &PgPool, devices: &[DeviceId]) -> Result<Vec<Check>, Error> {
     let rows = sqlx::query_as(select_check!(

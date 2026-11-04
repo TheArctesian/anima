@@ -8,6 +8,7 @@ mod harness;
 mod k1;
 mod live;
 mod push;
+mod race;
 mod reads;
 mod secrets;
 mod writes;

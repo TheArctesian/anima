@@ -165,6 +165,8 @@ fixture_test! {
             format!("/push/{}=", &token[..42]),
             "/push/".to_owned(),
             format!("/push/{token}/extra"),
+            format!("/push/{}.", &token[..42]),
+            format!("/push/{}%2F", &token[..42]),
         ];
         for uri in &malformed {
             let (status, body) = rig.get(uri).await;
@@ -261,6 +263,9 @@ fixture_test! {
         let (id, path) = rig.push_check("backup").await;
         let (status, _) = rig.call(Method::HEAD, &path, Vec::new()).await;
         assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
+        let request = Request::builder().method(Method::HEAD).uri(&path).body(Body::empty()).unwrap();
+        let response = rig.router.clone().oneshot(request).await.unwrap();
+        assert_eq!(response.headers()["allow"], "GET, POST");
         assert_eq!(rig.beats(&id).await.len(), 0);
     }
 
@@ -306,5 +311,20 @@ fixture_test! {
         assert_eq!(item.errors.len(), 0, "{:?}", item.errors);
         let data = item.data.into_json().unwrap();
         assert_eq!(data["heartbeatAdded"]["heartbeat"]["message"], "abc");
+    }
+
+    async fn chk_003_a_declared_length_over_the_cap_is_refused_before_the_body_is_read(pool: PgPool) {
+        let rig = rig(pool).await;
+        let (id, path) = rig.push_check("backup").await;
+        // The body never arrives; only the header says it is large.
+        let request = Request::builder()
+            .method(Method::POST)
+            .uri(&path)
+            .header("content-length", "2000")
+            .body(Body::empty())
+            .unwrap();
+        let response = rig.router.clone().oneshot(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::PAYLOAD_TOO_LARGE);
+        assert_eq!(rig.beats(&id).await.len(), 0);
     }
 }

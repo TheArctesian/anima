@@ -11,7 +11,7 @@ use super::{
     trail::{self, Extras, Trail},
 };
 use crate::{
-    checks::{self, Check, CheckChange, Error, FieldError, PushToken, config::CheckType},
+    checks::{self, Check, CheckChange, Error, FieldError, PushToken, config::CheckType, store},
     credentials::Vault,
     devices,
     ids::{CheckId, DeviceId},
@@ -157,24 +157,24 @@ pub(super) async fn update(ctx: &Context<'_>, id: &ID, input: UpdateShape) -> Re
         return Err(invalid(&[nothing]));
     }
     let device = device_name(db, before.device).await?;
-    let current = match &form.children {
-        Some(children) => {
-            validate_children(db, children, before.device).await?;
-            let siblings = checks::for_device(db, before.device)
-                .await
-                .map_err(to_graphql)?;
-            let members = siblings.iter().filter(|check| check.parent == Some(id));
-            members.map(|check| check.id).collect()
-        }
-        None => Vec::new(),
-    };
+    if let Some(children) = &form.children {
+        validate_children(db, children, before.device).await?;
+    }
     let vault = schema_dependency::<Vault>(ctx)?;
     let trail = Trail::from_context(ctx)?;
     let mut tx = begin(ctx).await?;
+    // The audit compares against the row as it is under our lock, not as it was when the
+    // request arrived (LOG-005).
+    let before = store::fetch_for_update(&mut tx, id)
+        .await
+        .map_err(to_graphql)?;
     let after = checks::update_check(&mut tx, vault, id, form.change)
         .await
         .map_err(to_graphql)?;
     if let Some(children) = &form.children {
+        let current = store::children_for_update(&mut tx, id)
+            .await
+            .map_err(to_graphql)?;
         regroup(&mut tx, vault, id, (&current, children)).await?;
     }
     let extras = Extras {
@@ -194,17 +194,19 @@ pub(super) async fn delete(ctx: &Context<'_>, id: &ID) -> Result<ID> {
     let db = pool(ctx)?;
     let before = checks::get(db, id).await.map_err(to_graphql)?;
     let device = device_name(db, before.device).await?;
-    let freed: Vec<CheckId> = if before.kind() == CheckType::Group {
-        let siblings = checks::for_device(db, before.device)
+    let trail = Trail::from_context(ctx)?;
+    let mut tx = begin(ctx).await?;
+    // The group is locked first, then its children, so the audit lists exactly those it frees.
+    let locked = store::fetch_for_update(&mut tx, id)
+        .await
+        .map_err(to_graphql)?;
+    let freed = if locked.kind() == CheckType::Group {
+        store::children_for_update(&mut tx, id)
             .await
-            .map_err(to_graphql)?;
-        let members = siblings.iter().filter(|check| check.parent == Some(id));
-        members.map(|check| check.id).collect()
+            .map_err(to_graphql)?
     } else {
         Vec::new()
     };
-    let trail = Trail::from_context(ctx)?;
-    let mut tx = begin(ctx).await?;
     let check = checks::delete_check(&mut tx, id)
         .await
         .map_err(to_graphql)?;

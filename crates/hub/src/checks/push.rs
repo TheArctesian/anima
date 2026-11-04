@@ -10,7 +10,7 @@ use axum::{
     Router,
     body::to_bytes,
     extract::{Path, Query, Request, State, rejection::QueryRejection},
-    http::{Method, StatusCode},
+    http::{Method, StatusCode, header},
     response::{IntoResponse, Response},
     routing::get,
 };
@@ -189,10 +189,20 @@ async fn accept(
     // GET and POST only: axum routes HEAD to a GET handler, and a probe of the URL must not
     // count as the device reporting in. Uptime Kuma pushes with GET.
     if parts.method == Method::HEAD {
-        return StatusCode::METHOD_NOT_ALLOWED.into_response();
+        let allow = [(header::ALLOW, "GET, POST")];
+        return (StatusCode::METHOD_NOT_ALLOWED, allow).into_response();
     }
     if !is_token_shaped(&token) {
         return StatusCode::NOT_FOUND.into_response();
+    }
+    // A declared length over the cap is refused at once, before any wait for the body.
+    let declared = parts
+        .headers
+        .get(header::CONTENT_LENGTH)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.parse::<usize>().ok());
+    if declared.is_some_and(|length| length > BODY_LIMIT) {
+        return StatusCode::PAYLOAD_TOO_LARGE.into_response();
     }
     // The body is never used; reading it under the cap is what refuses a larger one.
     if to_bytes(body, BODY_LIMIT).await.is_err() {
@@ -200,8 +210,9 @@ async fn accept(
     }
     match record(&state, &token, query).await {
         Ok(Outcome::Recorded) => (StatusCode::OK, "ok").into_response(),
-        Ok(Outcome::NotFound) => StatusCode::NOT_FOUND.into_response(),
         Ok(Outcome::Refused) => StatusCode::BAD_REQUEST.into_response(),
+        // Not there: unknown, paused, or deleted while the push was in flight.
+        Ok(Outcome::NotFound) | Err(Error::NotFound(_)) => StatusCode::NOT_FOUND.into_response(),
         Err(error) => {
             // The error's message holds no path, token or SQL (LOG-007).
             tracing::error!(%error, "a push result could not be recorded");
