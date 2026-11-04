@@ -1,7 +1,7 @@
 # WP-08 report (package orchestrator)
 
 Status: **done**. Branch `claude/wp-08-guac-protocol-2cb3bb`, based on `phase-1` (latest, `75d1690` with R-015–R-017, merged in). Not pushed, not merged.
-`bun run gates` on the tip: see the last line of this report. Plan, decisions D-1..D-9, handoffs and the review log: [WP-08.md](WP-08.md).
+`bun run gates` on `94d48d8` (the tip before this line was filled in; this commit changes only this file): **12/12 pass**, exit 0. Plan, decisions D-1..D-9, handoffs and the review log: [WP-08.md](WP-08.md).
 
 ## What is delivered
 
