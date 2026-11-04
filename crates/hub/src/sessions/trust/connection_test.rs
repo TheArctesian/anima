@@ -117,7 +117,7 @@ pub(in crate::sessions) async fn test_connection(
         }
         _ => read_host_key(target, PROBE_TIMEOUT)
             .await
-            .map(SignIn::OtherKey),
+            .map(|read| SignIn::OtherKey(read.key)),
     };
     let endpoint = Endpoint::new(&plan.host, plan.port);
     let seen = match probed {

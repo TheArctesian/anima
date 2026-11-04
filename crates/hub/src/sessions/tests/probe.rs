@@ -1,18 +1,55 @@
-//! The probe's edge cases that need no SSH server (R-032, D-5): refused targets, a closed
-//! port, a host that never answers and one that does not speak SSH. The key exchange and the
-//! sign-in run against an in-process server in `tests/it/sessions/host_keys`.
+//! The probe's edges (R-032, D-5, R-034): refused targets, a closed port, a host that never
+//! answers, one that does not speak SSH, and the address a key was read from. The sign-in
+//! runs against the recording server in `tests/it/sessions/host_keys`.
 
 use std::{
     net::{IpAddr, SocketAddr},
+    sync::Arc,
     time::Duration,
 };
 
+use russh::{
+    keys::{PrivateKey, ssh_key::private::Ed25519Keypair},
+    server,
+};
 use tokio::{io::AsyncWriteExt, net::TcpListener};
 
 use crate::sessions::{
-    probe::{ProbeError, Target, read_host_key},
+    probe::{KeyRead, ProbeError, Target, read_host_key},
+    public_key::PublicKey,
     target::TargetRule,
 };
+
+/// A server that only presents its key; every authentication is refused by default.
+struct KeyOnly;
+
+impl server::Handler for KeyOnly {
+    type Error = russh::Error;
+}
+
+#[tokio::test]
+async fn r_034_the_probe_returns_the_key_and_the_checked_address_it_came_from() {
+    let host_key = PrivateKey::from(Ed25519Keypair::from_seed(&[3; 32]));
+    let blob = host_key.public_key().to_bytes().unwrap();
+    let config = Arc::new(server::Config {
+        keys: vec![host_key],
+        ..server::Config::default()
+    });
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let address = listener.local_addr().unwrap();
+    let serve = tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        if let Ok(session) = server::run_stream(config, stream, KeyOnly).await {
+            let _ended = session.await;
+        }
+    });
+
+    let read = read_host_key(loopback(address.port()), Duration::from_secs(5)).await;
+
+    let key = PublicKey::from_blob(blob).unwrap();
+    assert_eq!(read, Ok(KeyRead { key, address }));
+    serve.abort();
+}
 
 const SHORT: Duration = Duration::from_millis(300);
 

@@ -90,6 +90,15 @@ pub(super) enum SignIn {
     OtherKey(PublicKey),
 }
 
+/// A host key as read, and the checked address that presented it. A later connection to the
+/// same device (guacd, R-034) goes to this address, not to the name, so a second lookup
+/// cannot send it elsewhere.
+#[derive(Debug, PartialEq, Eq)]
+pub(super) struct KeyRead {
+    pub(super) key: PublicKey,
+    pub(super) address: SocketAddr,
+}
+
 /// Reads the host key of `target`: a key exchange, then the connection closes before any
 /// authentication.
 ///
@@ -99,13 +108,15 @@ pub(super) enum SignIn {
 pub(super) async fn read_host_key(
     target: Target<'_>,
     timeout: Duration,
-) -> Result<PublicKey, ProbeError> {
+) -> Result<KeyRead, ProbeError> {
     let probe = async {
         let (observer, seen) = Observer::expecting(None);
+        let stream = connect(target).await?;
+        let address = stream.peer_addr().map_err(|_| ProbeError::Unreachable)?;
         // The observer turns down every key, so the exchange always ends here.
-        let _refused =
-            client::connect_stream(config(timeout), connect(target).await?, observer).await;
-        seen.await.map_err(|_| ProbeError::Protocol)
+        let _refused = client::connect_stream(config(timeout), stream, observer).await;
+        let key = seen.await.map_err(|_| ProbeError::Protocol)?;
+        Ok(KeyRead { key, address })
     };
     tokio::time::timeout(timeout, probe)
         .await
