@@ -39,6 +39,7 @@
   --status-warning-tint: color-mix(in srgb, var(--status-warning) 12%, var(--surface));
   --status-maintenance-tint: color-mix(in srgb, var(--status-maintenance) 12%, var(--surface));
   --status-unknown-tint: color-mix(in srgb, var(--status-unknown) 12%, var(--surface));
+  --scrim: color-mix(in srgb, var(--nord-0) 55%, transparent);
   --layer-base: 0;
   --layer-sticky: 10;
   --layer-nav: 20;
