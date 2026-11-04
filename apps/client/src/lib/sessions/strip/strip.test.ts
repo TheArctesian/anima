@@ -5,7 +5,7 @@ import type { Hub } from '$lib/hub/hub';
 import { runs } from '$lib/motion/engine.fixture';
 import { route } from '$lib/nav/route.fixture.svelte';
 import Layout from '../../../routes/+layout.svelte';
-import type { PopOutPort } from '../sessions.svelte';
+import type { PopOutPort, SessionPort } from '../sessions.svelte';
 import { cleanup, fake, keyframes, openStarted, prepare, settle, show as mountLayout, tabs, visiblePanels } from './layout.fixture';
 
 vi.mock('motion', async (importOriginal) => ({
@@ -34,17 +34,16 @@ vi.mock('$lib/hub/hub', async (importOriginal) => ({
     }) as unknown as Hub,
 }));
 
-// The layout's temporary port is replaced by the fixture's fake hub, and `popOut` by the test's port.
+// The layout's sessions API is the fixture's fake hub; its port is spied on, and `popOut` is the test's port.
+vi.mock('$lib/sessions/api', async (importOriginal) => {
+  const { fake: state } = await import('./layout.fixture');
+  return { ...(await importOriginal<typeof import('$lib/sessions/api')>()), sessionsApi: () => state.api };
+});
+
 vi.mock('$lib/sessions/sessions.svelte', async (importOriginal) => {
   const actual = await importOriginal<typeof import('$lib/sessions/sessions.svelte')>();
-  const { fake: state } = await import('./layout.fixture');
-  return {
-    ...actual,
-    createSessions: () => {
-      state.sessions = actual.createSessions(state.port, state.popOut);
-      return state.sessions;
-    },
-  };
+  const { spiedSessions } = await import('./layout.fixture');
+  return { ...actual, createSessions: (port: SessionPort) => spiedSessions(actual.createSessions, port) };
 });
 
 const show = (popOut?: PopOutPort) => mountLayout(Layout, popOut);
@@ -83,7 +82,7 @@ it('RA-001: switching tabs keeps both sessions mounted and shows only the select
   tabs()[0]?.click();
   flushSync();
   expect(tabs().map((tab) => tab.getAttribute('aria-selected'))).toEqual(['true', 'false']);
-  expect(document.querySelectorAll('[data-placeholder="session-view"]')).toHaveLength(2);
+  expect(document.querySelectorAll('[role="tabpanel"] [aria-label="SSH session on web-1"]')).toHaveLength(2);
   expect(visiblePanels()).toHaveLength(1);
   expect(fake.port.end).not.toHaveBeenCalled();
 });
@@ -147,19 +146,19 @@ describe('pop out (RA-002, D-13)', () => {
   it('with no port, no menu and no "Pop out" are offered', async () => {
     const sessions = show();
     await openStarted(sessions);
-    expect(document.querySelector('[aria-haspopup="menu"]')).toBeNull();
-    expect(document.body.textContent).not.toContain('Pop out');
+    expect(document.querySelector('[role="tablist"] [aria-haspopup="menu"]')).toBeNull();
+    expect(document.querySelector('[role="tablist"]')?.textContent).not.toContain('Pop out');
   });
 
   it('with a port, "Pop out" in the tab menu hands the session over once and the tab leaves', async () => {
     const popOut = vi.fn(() => Promise.resolve());
     const sessions = show(popOut);
     await openStarted(sessions);
-    const more = document.querySelector<HTMLButtonElement>('[aria-haspopup="menu"]');
+    const more = document.querySelector<HTMLButtonElement>('[role="tablist"] [aria-haspopup="menu"]');
     expect(more?.getAttribute('aria-label')).toBe('More for web-1 SSH session');
     more?.click();
     await settle();
-    document.querySelector<HTMLButtonElement>('[role="menuitem"]')?.click();
+    document.querySelector<HTMLButtonElement>('[role="menu"] [role="menuitem"]')?.click();
     await settle();
     expect(popOut).toHaveBeenCalledExactlyOnceWith('session-1');
     expect(tabs()).toEqual([]);

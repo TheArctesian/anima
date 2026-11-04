@@ -5,7 +5,7 @@ import type { Hub } from '$lib/hub/hub';
 import { runs } from '$lib/motion/engine.fixture';
 import { route } from '$lib/nav/route.fixture.svelte';
 import Layout from '../../../routes/+layout.svelte';
-import type { PopOutPort } from '../sessions.svelte';
+import type { PopOutPort, SessionPort } from '../sessions.svelte';
 import { cleanup, fake, openStarted, prepare, settle, show as mountLayout, tabs } from './layout.fixture';
 
 vi.mock('motion', async (importOriginal) => ({
@@ -34,17 +34,16 @@ vi.mock('$lib/hub/hub', async (importOriginal) => ({
     }) as unknown as Hub,
 }));
 
-// The layout's temporary port is replaced by the fixture's fake hub, and `popOut` by the test's port.
+// The layout's sessions API is the fixture's fake hub; its port is spied on, and `popOut` is the test's port.
+vi.mock('$lib/sessions/api', async (importOriginal) => {
+  const { fake: state } = await import('./layout.fixture');
+  return { ...(await importOriginal<typeof import('$lib/sessions/api')>()), sessionsApi: () => state.api };
+});
+
 vi.mock('$lib/sessions/sessions.svelte', async (importOriginal) => {
   const actual = await importOriginal<typeof import('$lib/sessions/sessions.svelte')>();
-  const { fake: state } = await import('./layout.fixture');
-  return {
-    ...actual,
-    createSessions: () => {
-      state.sessions = actual.createSessions(state.port, state.popOut);
-      return state.sessions;
-    },
-  };
+  const { spiedSessions } = await import('./layout.fixture');
+  return { ...actual, createSessions: (port: SessionPort) => spiedSessions(actual.createSessions, port) };
 });
 
 const show = (popOut?: PopOutPort) => mountLayout(Layout, popOut);
@@ -101,7 +100,7 @@ it('UI-015: focus never rests inside the aria-hidden Close or More, on a press o
   await openStarted(sessions);
   await openStarted(sessions);
   const hidden = () => document.activeElement?.closest('[aria-hidden="true"]') ?? null;
-  const more = document.querySelector<HTMLElement>('[aria-haspopup="menu"]');
+  const more = document.querySelector<HTMLElement>('[role="tablist"] [aria-haspopup="menu"]');
   more?.click();
   await settle();
   more?.focus();

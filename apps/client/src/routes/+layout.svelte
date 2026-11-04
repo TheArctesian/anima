@@ -8,9 +8,11 @@
   import { DATA_AGE_REFRESH_MS } from '$lib/nav/nav';
   import { createClock } from '$lib/nav/clock.svelte';
   import Nav from '$lib/nav/Nav.svelte';
+  import { sessionsApi } from '$lib/sessions/api';
   import { createSessions, provideSessions, type SessionPort } from '$lib/sessions/sessions.svelte';
   import SessionPanes from '$lib/sessions/strip/SessionPanes.svelte';
   import SessionTabs from '$lib/sessions/strip/SessionTabs.svelte';
+  import { sessionStart } from '$lib/sessions/view/start';
 
   const { children }: { children: Snippet } = $props();
 
@@ -19,10 +21,12 @@
   provideHub(hub);
   const clock = createClock(DATA_AGE_REFRESH_MS);
 
-  // TEMPORARY until WP-14 T1 merges: replace with `sessionsApi(hub)` from `$lib/sessions/api`.
-  // Until then no session can start; ending one that never started cannot happen.
-  const notWired = () => Promise.reject(new Error('Sessions are not wired to the hub yet (WP-14 T1)'));
-  const sessionsPort: SessionPort = { start: notWired, end: notWired };
+  // Each session view starts its own sessions, since only it knows its display (D-7); the store ends them (D-11).
+  const api = sessionsApi(hub);
+  const sessionsPort: SessionPort = {
+    start: (deviceId) => sessionStart(api, deviceId, hub.address.origin),
+    end: (sessionId) => api.endSession(sessionId),
+  };
   // WP-16 passes the `popOut` port as the second argument (WP-14 H-2); without it none is offered.
   const sessions = createSessions(sessionsPort);
   provideSessions(sessions);
@@ -56,7 +60,7 @@
           </div>
         {/key}
       </div>
-      <SessionPanes />
+      <SessionPanes {api} />
     </div>
   </main>
 </div>
@@ -76,8 +80,10 @@
     font-family: var(--font-ui);
   }
 
+  /* At least the window's height, so a selected session's stage fills what the strip leaves (D-7). */
   main {
     display: grid;
+    align-self: stretch;
     grid-template-rows: auto 1fr;
     padding: var(--space-6);
   }
@@ -92,7 +98,10 @@
     grid-area: 1 / 1;
   }
 
+  /* Covered pages stay mounted but give the stage no height, so a session pane is sized by the window (D-7). */
   .covered {
     visibility: hidden;
+    block-size: 0;
+    overflow: hidden;
   }
 </style>

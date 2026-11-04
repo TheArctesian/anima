@@ -1,25 +1,44 @@
 <script lang="ts">
+  import type { SessionsApi } from '../api';
   import { useSessions } from '../sessions.svelte';
-  import SessionViewPlaceholder from './SessionViewPlaceholder.svelte';
+  import SessionView from '../view/SessionView.svelte';
   import { panelId, tabElementId } from './tablist';
 
+  const { api }: { api: Pick<SessionsApi, 'endSession' | 'testConnection' | 'acceptHostKey'> } = $props();
+
   const sessions = useSessions();
+  /** The app window has the focus and the page is shown, so the selected pane may take the keyboard (D-8). */
+  let windowFocused = $state(document.hasFocus());
+  let pageShown = $state(document.visibilityState === 'visible');
+  const focused = $derived(windowFocused && pageShown);
 </script>
+
+<svelte:window onfocus={() => (windowFocused = true)} onblur={() => (windowFocused = false)} />
+<svelte:document onvisibilitychange={() => (pageShown = document.visibilityState === 'visible')} />
 
 <!--
   One panel per open tab, all kept mounted so a hidden session stays alive (D-11); only the
-  selected one shows. No motion here: the remote display is never animated (MAT-008).
+  selected one shows, and a hidden one is inert with its keyboard unbound (D-8). No motion
+  here: the remote display is never animated (MAT-008).
 -->
 <div class="panes" hidden={sessions.active === null}>
   {#each sessions.tabs as tab (tab.id)}
+    {@const visible = sessions.active?.id === tab.id}
     <div
       class="pane"
       role="tabpanel"
       id={panelId(tab.id)}
       aria-labelledby={tabElementId(tab.id)}
-      hidden={sessions.active?.id !== tab.id}
+      hidden={!visible}
+      inert={!visible}
     >
-      <SessionViewPlaceholder {tab} />
+      <SessionView
+        device={{ id: tab.deviceId, name: tab.deviceName }}
+        start={sessions.startIn(tab.id)}
+        {api}
+        {visible}
+        {focused}
+      />
     </div>
   {/each}
 </div>
