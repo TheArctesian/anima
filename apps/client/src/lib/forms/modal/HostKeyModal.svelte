@@ -9,7 +9,7 @@
     hostKey: HostKey;
     /** True when the key differs from the pinned one (SEC-007). */
     changed: boolean;
-    /** The hub pins a key to a saved device only (D-5). */
+    /** True when the test ran against the saved record: the hub pins a key to a saved device only (D-5). */
     saved: boolean;
     onAccept: (fingerprint: string) => Promise<HubResult<unknown>>;
     onClose: () => void;
@@ -45,7 +45,7 @@
     <dd><time datetime={hostKey.firstSeenAt}>{hostKey.firstSeenAt}</time></dd>
   </dl>
   {#if !saved}
-    <p>You can accept this key after you save the device.</p>
+    <p>Save the device, then test again to accept this key.</p>
   {/if}
   {#if failure !== null}
     <p class="warning" role="alert">{failure.message}</p>
@@ -53,7 +53,7 @@
   <div class="actions">
     <FormButton data-autofocus onclick={onClose}>Close</FormButton>
     {#if saved}
-      <FormButton tone={changed ? 'danger' : 'primary'} onclick={accept} disabled={busy} aria-busy={busy}>
+      <FormButton tone={changed ? 'danger' : 'primary'} onclick={accept} aria-disabled={busy} aria-busy={busy}>
         Accept
       </FormButton>
     {/if}

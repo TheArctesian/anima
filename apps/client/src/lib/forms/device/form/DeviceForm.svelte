@@ -6,7 +6,7 @@
   import type { ConnectionTestInput, ConnectionTestResult, DeviceFields, SiteOption } from '../hub-types';
   import { validateDevice } from '../validate';
   import { formValues, type DeviceFormValues } from '../values';
-  import { editable, type EditedValues } from './editing';
+  import type { EditedValues } from './editing';
   import DisclosureSection from './DisclosureSection.svelte';
   import { firstInvalidField, formErrors, inputId, replaceField } from './errors';
   import GeneralSection from './GeneralSection.svelte';
@@ -23,7 +23,7 @@
     sites?: readonly SiteOption[];
     /** The section to open and bring into view (DEV-022). */
     section?: 'general' | 'ssh' | 'rdp';
-    /** `siteId` is null when editing. */
+    /** `siteId` is null when editing. The values are a snapshot with secrets in it: the owner must not keep it. */
     onSave: (values: DeviceFormValues, siteId: string | null) => Promise<HubResult<unknown>>;
     onTest: (input: ConnectionTestInput) => Promise<HubResult<ConnectionTestResult>>;
     /** Only for a saved device. */
@@ -46,7 +46,7 @@
   }: Props = $props();
 
   const initial = untrack(() => formValues(device));
-  let values = $state<EditedValues>(editable(initial));
+  let values = $state<EditedValues>(structuredClone(initial) as EditedValues);
   let siteId = $state(untrack(() => sites[0]?.id ?? ''));
   let errors = $state<FieldError[]>([]);
   let saving = $state(false);
@@ -105,6 +105,7 @@
   }
 
   async function clearCredential(): Promise<void> {
+    if (clearing) return;
     clearing = true;
     const result = await onClearCredential();
     clearing = false;
@@ -121,7 +122,7 @@
     }}
   >
     <div class="alert" role="alert">
-      {#each formErrors(errors) as error (error.message)}
+      {#each formErrors(errors) as error, index (index)}
         <p>{error.message}</p>
       {/each}
     </div>
@@ -145,7 +146,7 @@
     </div>
     <div class="actions">
       <FormButton onclick={onCancel}>Cancel</FormButton>
-      <FormButton type="submit" tone="primary" disabled={saving} aria-busy={saving}>Save</FormButton>
+      <FormButton type="submit" tone="primary" aria-disabled={saving} aria-busy={saving}>Save</FormButton>
     </div>
   </form>
 </div>

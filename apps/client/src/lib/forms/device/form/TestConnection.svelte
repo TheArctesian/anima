@@ -2,7 +2,7 @@
   import type { HubError, HubResult } from '$lib/hub/error';
   import FormButton from '../../FormButton.svelte';
   import HostKeyModal from '../../modal/HostKeyModal.svelte';
-  import { connectionTestInput, testOutcome, testsStoredCredential, type TestOutcome } from '../connection-test';
+  import { connectionTestInput, testOutcome, testsSavedRecord, testsStoredCredential, type TestOutcome } from '../connection-test';
   import type { ConnectionTestInput, ConnectionTestResult } from '../hub-types';
   import { credentialInput } from '../input';
   import type { DeviceFormValues } from '../values';
@@ -24,8 +24,15 @@
   let outcome = $state<TestOutcome | null>(null);
   let failure = $state<HubError | null>(null);
   let keyOpen = $state(false);
+  /** What the shown result is about: the test input then, and whether it ran against the saved record. */
+  let tested = $state<{ signature: string; saved: boolean } | null>(null);
 
-  const saved = $derived(deviceId !== null);
+  // The input is serialised only to compare it; the text is never shown or sent.
+  const signature = $derived(JSON.stringify(connectionTestInput(initial, values, deviceId)));
+  const fresh = $derived(tested !== null && tested.signature === signature);
+  const shown = $derived(fresh ? outcome : null);
+  const shownFailure = $derived(fresh ? failure : null);
+  const saved = $derived(fresh && tested !== null && tested.saved);
   const advice = $derived(saved && !testsStoredCredential(initial, values, deviceId) && credentialInput(values) === null);
 
   async function test(): Promise<void> {
@@ -33,7 +40,9 @@
     testing = true;
     outcome = null;
     failure = null;
-    const result = await onTest(connectionTestInput(initial, values, deviceId));
+    const input = connectionTestInput(initial, values, deviceId);
+    tested = { signature: JSON.stringify(input), saved: testsSavedRecord(initial, values, deviceId) };
+    const result = await onTest(input);
     testing = false;
     if (!result.ok) {
       failure = result.error;
@@ -51,7 +60,7 @@
 </script>
 
 <div class="test">
-  <FormButton onclick={test} disabled={testing} aria-busy={testing}>Test connection</FormButton>
+  <FormButton onclick={test} aria-disabled={testing} aria-busy={testing}>Test connection</FormButton>
   {#if advice}
     <p class="advice">
       This test does not use the stored credential, because the host or the SSH settings changed. Enter the credential to
@@ -59,22 +68,22 @@
     </p>
   {/if}
   <div role="status">
-    {#if outcome !== null}
-      <p class:warning={isWarning(outcome)}>{outcomeText(outcome)}</p>
-      {#if outcome.kind === 'hostKeyNew' || outcome.kind === 'hostKeyChanged'}
+    {#if shown !== null}
+      <p class:warning={isWarning(shown)}>{outcomeText(shown)}</p>
+      {#if shown.kind === 'hostKeyNew' || shown.kind === 'hostKeyChanged'}
         <FormButton onclick={() => { keyOpen = true; }}>Show host key</FormButton>
       {/if}
     {/if}
   </div>
-  {#if failure !== null}
-    <p class="warning" role="alert">{failure.message}</p>
+  {#if shownFailure !== null}
+    <p class="warning" role="alert">{shownFailure.message}</p>
   {/if}
 </div>
-{#if outcome !== null && (outcome.kind === 'hostKeyNew' || outcome.kind === 'hostKeyChanged')}
+{#if shown !== null && (shown.kind === 'hostKeyNew' || shown.kind === 'hostKeyChanged')}
   <HostKeyModal
     open={keyOpen}
-    hostKey={outcome.hostKey}
-    changed={outcome.kind === 'hostKeyChanged'}
+    hostKey={shown.hostKey}
+    changed={shown.kind === 'hostKeyChanged'}
     {saved}
     onAccept={accept}
     onClose={() => { keyOpen = false; }}

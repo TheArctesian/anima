@@ -41,25 +41,25 @@
   {#if values.ssh.auth === 'PASSWORD'}
     <Field label="Password" field="credential.password" {errors}>
       {#snippet control(attributes)}
-        <input {...attributes} type="password" autocomplete="off" bind:value={values.credential.password} />
+        <input {...attributes} type="password" autocomplete="new-password" bind:value={values.credential.password} />
       {/snippet}
     </Field>
   {:else}
     <Field label="Private key" field="credential.privateKey.key" {errors}>
       {#snippet control(attributes)}
-        <textarea {...attributes} rows="6" spellcheck="false" autocomplete="off" bind:value={values.credential.privateKey}></textarea>
+        <textarea {...attributes} rows="6" spellcheck="false" autocomplete="new-password" bind:value={values.credential.privateKey}></textarea>
       {/snippet}
     </Field>
     <Field label="Key passphrase" field="credential.passphrase" {errors}>
       {#snippet control(attributes)}
-        <input {...attributes} type="password" autocomplete="off" bind:value={values.credential.passphrase} />
+        <input {...attributes} type="password" autocomplete="new-password" bind:value={values.credential.passphrase} />
       {/snippet}
     </Field>
   {/if}
   {#if credentialStored}
     <p class="stored">
       Credential stored. Leave the fields empty to keep it.
-      <FormButton onclick={onClearCredential} disabled={clearing}>Remove credential</FormButton>
+      <FormButton onclick={onClearCredential} aria-disabled={clearing}>Remove credential</FormButton>
     </p>
   {/if}
 {/if}

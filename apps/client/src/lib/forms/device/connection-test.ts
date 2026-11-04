@@ -3,7 +3,7 @@ import { credentialInput, sameSsh, sshInput } from './input';
 import { normalizedValues, type DeviceFormValues } from './values';
 
 /** Whether the saved device's host and SSH settings are as saved, so that the test can run against the stored record. */
-function unchanged(initial: DeviceFormValues | null, values: DeviceFormValues, deviceId: string | null): initial is DeviceFormValues {
+export function testsSavedRecord(initial: DeviceFormValues | null, values: DeviceFormValues, deviceId: string | null): initial is DeviceFormValues {
   if (initial === null || deviceId === null) return false;
   const before = normalizedValues(initial);
   const now = normalizedValues(values);
@@ -17,14 +17,14 @@ function unchanged(initial: DeviceFormValues | null, values: DeviceFormValues, d
 export function connectionTestInput(initial: DeviceFormValues | null, values: DeviceFormValues, deviceId: string | null): ConnectionTestInput {
   const credential = credentialInput(values);
   const extra = credential === null ? {} : { credential };
-  if (unchanged(initial, values, deviceId) && deviceId !== null) return { deviceId, ...extra };
+  if (testsSavedRecord(initial, values, deviceId) && deviceId !== null) return { deviceId, ...extra };
   const now = normalizedValues(values);
   return { host: now.host, ssh: sshInput(now.ssh, initial === null ? undefined : normalizedValues(initial).ssh.port), ...extra };
 }
 
 /** DEV-013: whether the test uses the stored credential, which holds only while host and SSH settings are unchanged. */
 export function testsStoredCredential(initial: DeviceFormValues | null, values: DeviceFormValues, deviceId: string | null): boolean {
-  return unchanged(initial, values, deviceId) && credentialInput(values) === null;
+  return testsSavedRecord(initial, values, deviceId) && credentialInput(values) === null;
 }
 
 export type TestOutcome =

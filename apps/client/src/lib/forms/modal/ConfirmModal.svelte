@@ -36,8 +36,8 @@
     <p class="failure" role="alert">{failure.message}</p>
   {/if}
   <div class="actions">
-    <FormButton data-autofocus onclick={onCancel} disabled={done}>Cancel</FormButton>
-    <FormButton tone="danger" onclick={confirm} disabled={busy || done} aria-busy={busy}>
+    <FormButton data-autofocus onclick={onCancel}>Cancel</FormButton>
+    <FormButton tone="danger" onclick={confirm} aria-disabled={busy || done} aria-busy={busy}>
       {busy ? 'Working' : confirmLabel}
     </FormButton>
   </div>

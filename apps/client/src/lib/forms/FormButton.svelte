@@ -27,7 +27,7 @@
     transition: background-color var(--duration-press) var(--ease-enter);
   }
 
-  button:hover:not(:disabled) {
+  button:hover:not(:disabled, [aria-disabled='true']) {
     background: var(--border);
   }
 
@@ -36,7 +36,8 @@
     outline-offset: var(--border-focus);
   }
 
-  button:disabled {
+  button:disabled,
+  button[aria-disabled='true'] {
     color: var(--text-muted);
   }
 
