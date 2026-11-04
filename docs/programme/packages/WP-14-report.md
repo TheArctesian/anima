@@ -1,9 +1,9 @@
 # WP-14 report (package orchestrator)
 
 **Status: done.**
-- **Branch:** `claude/wp-14-ssh-tab`, with the latest `phase-1` (15918fd) merged in. The code tip is **32fafe9**, and this report is committed on top of it.
+- **Branch:** `claude/wp-14-ssh-tab`, with the latest `phase-1` (d491d67, including WP-16) merged in. The code tip is **10d0b4b**, and this report is committed on top of it.
 - **Pushed or merged:** neither.
-- **Gates:** `bun run gates` (DATABASE_URL unset) on 32fafe9: fmt, clippy pass; cargo-test 682/683, failing only `chk_012` (the WP-09 ICMP timeout race, gate ruling); gates 4–12 then run on their own all pass (client tests 753/753, baseline ok). The builder's tip 5832786 passed 12/12.
+- **Gates:** `bun run gates` (DATABASE_URL unset) on 10d0b4b: **12/12 pass** (hub 706 + 523 + 80 + others, client 791/791). The earlier run on 32fafe9 failed only the WP-09 ICMP flake (`chk_012`), and gates 4–12 passed on their own; the reviewed code is unchanged since, apart from the phase-1 merge.
 - **Plan, decisions, rulings and review log:** [WP-14.md](WP-14.md).
 
 **Not touched:** nothing ran against the VPS, Headscale or any cloud account, and nothing under `contracts/` was edited (K4 §4 was amended on phase-1 by the programme under R-046). Shared files changed are only the handoff edits listed under H-4.
@@ -45,7 +45,7 @@ Every task was reviewed by agents that did not build it: Opus security reviews f
   - whether WebKitGTK fires `paste` for Ctrl+Shift+V on the non-editable pane (if not, Linux has no paste shortcut, only the Keys menu);
   - the stage height and the 43 px toolbar with the real preloaded fonts;
   - guacd 1.6.0's paste on Ctrl+V after a clipboard stream (confirmed from source, `terminal.c:1446`).
-- **H-4 programme:** shared files changed: `eslint.config.js` (vendor boundary, computed `import()`, wider client globs), `quality/generated.txt` (the vendored file), `routes/+layout.svelte` (strip, stage, panes, the sessions port, covered-page scroll, `minmax(0, 1fr)` columns; the `createHub` line untouched), and `lib/nav/Nav.svelte` (optional `onnavigate`). No `package.json` or `bun.lock` change: the library is vendored, not an npm dependency.
+- **H-4 programme:** shared files changed: `eslint.config.js` (vendor boundary, computed `import()`, wider client globs; merged with WP-16's Tauri boundary so every list refuses both, outside their own folders), `quality/generated.txt` (the vendored file), `routes/+layout.svelte` (strip, stage, panes, the sessions port, covered-page scroll, `minmax(0, 1fr)` columns; the `createHub` line untouched), and `lib/nav/Nav.svelte` (optional `onnavigate`). No `package.json` or `bun.lock` change: the library is vendored, not an npm dependency.
 
 ## Deferred (for issue #1)
 
