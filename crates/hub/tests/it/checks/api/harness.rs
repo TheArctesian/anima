@@ -13,7 +13,10 @@ use anima_hub::{
     access::Identity,
     checks::{
         self, Beat, CheckState,
-        graphql::{Mutation, Query, Subscription},
+        graphql::{
+            Mutation, Query, Subscription, check_status_loader, check_uptime_loader,
+            heartbeats_loader, last_heartbeat_loader,
+        },
     },
     clock::{Clock, FixedClock},
     credentials::Vault,
@@ -53,6 +56,10 @@ pub fn schema_at(pool: &PgPool, at: DateTime<Utc>) -> (TestSchema, Bus) {
         .data(pool.clone())
         .data(vault())
         .data(bus.clone())
+        .data(check_status_loader(pool.clone(), clock.clone()))
+        .data(last_heartbeat_loader(pool.clone()))
+        .data(heartbeats_loader(pool.clone()))
+        .data(check_uptime_loader(pool.clone(), clock.clone()))
         .data(clock)
         .finish();
     (schema, bus)
@@ -73,6 +80,10 @@ pub fn hardened_schema(pool: &PgPool) -> TestSchema {
         .data(pool.clone())
         .data(vault())
         .data(Bus::new(16))
+        .data(check_status_loader(pool.clone(), clock.clone()))
+        .data(last_heartbeat_loader(pool.clone()))
+        .data(heartbeats_loader(pool.clone()))
+        .data(check_uptime_loader(pool.clone(), clock.clone()))
         .data(clock);
     harden(builder, false).finish()
 }
@@ -83,7 +94,7 @@ pub fn signed_in(query: &str) -> Request {
         id: OPERATOR_ID.parse::<OperatorId>().unwrap(),
         name: "operator".to_owned(),
     };
-    Identity::for_tests(operator, now() + chrono::TimeDelta::days(3650))
+    Identity::for_tests(operator, now() + TimeDelta::days(3650))
         .attach(Request::new(query))
         .data(ClientAddr("10.10.0.77".parse().unwrap()))
 }
@@ -222,7 +233,8 @@ pub fn beat(at: DateTime<Utc>, status: Status, response_time_ms: Option<u32>) ->
 /// Records the beat on the check, as the scheduler does.
 pub async fn record(pool: &PgPool, check: &str, beat: &Beat) {
     let mut conn = pool.acquire().await.unwrap();
-    let _recorded = checks::record_beat(&mut conn, check.parse::<CheckId>().unwrap(), beat)
+    let recorded = checks::record_beat(&mut conn, check.parse::<CheckId>().unwrap(), beat)
         .await
         .unwrap();
+    assert_eq!(recorded, checks::Recorded::Written);
 }

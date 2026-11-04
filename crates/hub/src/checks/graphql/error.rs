@@ -19,6 +19,15 @@ pub(super) fn to_graphql(error: Error) -> GraphQlError {
     }
 }
 
+/// The error a data loader hands back, shared between the keys of its batch.
+pub(super) fn from_shared(error: std::sync::Arc<Error>) -> GraphQlError {
+    match &*error {
+        Error::NotFound(missing) => coded(format!("No such {missing}."), "NOT_FOUND"),
+        Error::Validation(fields) => invalid(fields),
+        _ => internal(error),
+    }
+}
+
 /// A device lookup that failed: a missing device is `NOT_FOUND`, the rest `INTERNAL`.
 pub(super) fn from_devices(error: devices::Error) -> GraphQlError {
     match error {

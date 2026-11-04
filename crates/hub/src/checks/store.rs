@@ -18,6 +18,7 @@ macro_rules! select_check {
     };
 }
 
+mod attempts;
 mod beats;
 mod heartbeats;
 mod retention;
@@ -38,17 +39,19 @@ use super::{
 };
 use crate::ids::{CheckId, DeviceId};
 
+pub(super) use attempts::record_attempt;
 pub(super) use beats::record_beat;
-pub(super) use heartbeats::before as heartbeats_before;
+pub(super) use heartbeats::{latest as latest_heartbeats, pages as heartbeat_pages};
 pub use retention::Trimmed;
 pub(super) use retention::{
     create_days_ahead, delete_orphan_heartbeats, drop_heartbeat_days_before, trim_aggregates,
 };
 use rows::{CheckRow, StandingRow, to_checks};
 pub(super) use sealed::seal;
-pub(super) use uptime::{check_tally, tallies};
+pub(super) use uptime::{check_tallies, tallies};
 pub(super) use writes::{
-    Change, Current, Insert, delete, insert, load_http_secrets, lock, set_paused, update,
+    Change, Current, Insert, delete, insert, load_http_secrets, lock, set_next_due, set_paused,
+    update,
 };
 
 pub(super) async fn fetch<'e>(db: impl PgExecutor<'e>, id: CheckId) -> Result<Check, Error> {
@@ -60,15 +63,33 @@ pub(super) async fn fetch<'e>(db: impl PgExecutor<'e>, id: CheckId) -> Result<Ch
     Check::try_from(row)
 }
 
-/// The checks of the devices, each device's in byte order of the name.
-pub(super) async fn by_devices(db: &PgPool, devices: &[DeviceId]) -> Result<Vec<Check>, Error> {
-    let rows = sqlx::query_as(select_check!(
-        "WHERE device_id = ANY($1) ORDER BY device_id, name COLLATE \"C\", id"
-    ))
-    .bind(devices)
-    .fetch_all(db)
+/// The check as it is now, its row locked until the caller's transaction ends, so what an audit
+/// entry compares against cannot change underneath it.
+pub(super) async fn fetch_for_update(
+    conn: &mut sqlx::PgConnection,
+    id: CheckId,
+) -> Result<Check, Error> {
+    let row = sqlx::query_as::<_, CheckRow>(select_check!("WHERE id = $1 FOR UPDATE"))
+        .bind(id)
+        .fetch_optional(conn)
+        .await?
+        .ok_or(Error::NotFound(Missing::Check(id)))?;
+    Check::try_from(row)
+}
+
+/// The children of a group, their rows locked until the caller's transaction ends: a child
+/// that another transaction is moving is waited for, so the answer is what was committed.
+pub(super) async fn children_for_update(
+    conn: &mut sqlx::PgConnection,
+    group: CheckId,
+) -> Result<Vec<CheckId>, Error> {
+    let ids = sqlx::query_scalar(
+        "SELECT id FROM checks.checks WHERE parent_id = $1 ORDER BY id FOR UPDATE",
+    )
+    .bind(group)
+    .fetch_all(conn)
     .await?;
-    to_checks(rows)
+    Ok(ids)
 }
 
 /// The checks of the devices grouped by device, each group in name order.
@@ -83,6 +104,17 @@ pub(super) async fn grouped_by_devices(
     Ok(grouped)
 }
 
+/// The checks of the devices, each device's in byte order of the name.
+pub(super) async fn by_devices(db: &PgPool, devices: &[DeviceId]) -> Result<Vec<Check>, Error> {
+    let rows = sqlx::query_as(select_check!(
+        "WHERE device_id = ANY($1) ORDER BY device_id, name COLLATE \"C\", id"
+    ))
+    .bind(devices)
+    .fetch_all(db)
+    .await?;
+    to_checks(rows)
+}
+
 /// What the status rules need about every check of the devices, in one query.
 pub(super) async fn standings(db: &PgPool, devices: &[DeviceId]) -> Result<Vec<Standing>, Error> {
     let rows: Vec<StandingRow> = sqlx::query_as(
@@ -93,6 +125,18 @@ pub(super) async fn standings(db: &PgPool, devices: &[DeviceId]) -> Result<Vec<S
     .fetch_all(db)
     .await?;
     rows.into_iter().map(Standing::try_from).collect()
+}
+
+/// The device of each of the checks, in one query.
+pub(super) async fn devices_of(
+    db: &PgPool,
+    checks: &[CheckId],
+) -> Result<Vec<(CheckId, DeviceId)>, Error> {
+    let rows = sqlx::query_as("SELECT id, device_id FROM checks.checks WHERE id = ANY($1)")
+        .bind(checks)
+        .fetch_all(db)
+        .await?;
+    Ok(rows)
 }
 
 /// The PUSH check that holds this token, if any.
@@ -132,4 +176,18 @@ pub(super) async fn due(db: &PgPool, now: DateTime<Utc>, limit: u32) -> Result<V
     .fetch_all(db)
     .await?;
     rows.into_iter().map(CheckRow::into_due).collect()
+}
+
+/// The devices with a check whose last beat is at or after `since`, from any writer: the
+/// scheduler or the push route.
+pub(super) async fn devices_beaten_since(
+    db: &PgPool,
+    since: DateTime<Utc>,
+) -> Result<Vec<DeviceId>, Error> {
+    Ok(
+        sqlx::query_scalar("SELECT DISTINCT device_id FROM checks.checks WHERE last_beat_at >= $1")
+            .bind(since)
+            .fetch_all(db)
+            .await?,
+    )
 }

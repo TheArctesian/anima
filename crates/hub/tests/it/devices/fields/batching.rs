@@ -4,6 +4,7 @@
 use std::sync::{Arc, atomic::Ordering};
 
 use anima_hub::{
+    checks::graphql::{check_status_loader, check_uptime_loader, last_heartbeat_loader},
     clock::{Clock, FixedClock},
     devices::graphql::{
         Mutation, Query, checks_loader, resolved_ip_loader, status_loader, uptime_loader,
@@ -41,6 +42,9 @@ fn schema(pool: &PgPool) -> TestSchema {
         .data(uptime_loader(pool.clone(), Arc::clone(&clock)).delay(BATCH_WINDOW))
         .data(checks_loader(pool.clone()).delay(BATCH_WINDOW))
         .data(resolved_ip_loader(pool.clone()).delay(BATCH_WINDOW))
+        .data(check_status_loader(pool.clone(), Arc::clone(&clock)).delay(BATCH_WINDOW))
+        .data(last_heartbeat_loader(pool.clone()).delay(BATCH_WINDOW))
+        .data(check_uptime_loader(pool.clone(), Arc::clone(&clock)).delay(BATCH_WINDOW))
         .data(clock)
         .finish()
 }
@@ -75,7 +79,6 @@ async fn cost_for_13_then_163(pool: PgPool, query: &str) -> (usize, usize, Value
     migrations = "./migrations",
     fixtures(path = "../../../fixtures", scripts("devices", "checks"))
 )]
-#[ignore = "waits for the check loaders"]
 async fn api_005_status_uptime_checks_and_ip_cost_a_constant_few_statements_for_13_or_163_devices(
     pool: PgPool,
 ) {

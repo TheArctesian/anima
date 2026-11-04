@@ -1,6 +1,7 @@
 //! Check writes, each in the caller's transaction in a savepoint, and the sealed HTTP
 //! secrets (SEC-003).
 
+use chrono::{DateTime, Utc};
 use serde_json::Value;
 use sqlx::{Connection as _, PgConnection, PgExecutor};
 
@@ -228,4 +229,24 @@ pub(in crate::checks) async fn load_http_secrets<'e>(
         return Err(Error::Unreadable(id));
     };
     open(vault, id, &config, &bytes).map(Some)
+}
+
+/// Moves the check's due time from `expected` to `at`; returns whether it moved. A check
+/// whose time changed meanwhile, by a beat or the push route, keeps it (CHK-001).
+pub(in crate::checks) async fn set_next_due<'e>(
+    db: impl PgExecutor<'e>,
+    id: CheckId,
+    expected: Option<DateTime<Utc>>,
+    at: DateTime<Utc>,
+) -> Result<bool, Error> {
+    let done = sqlx::query(
+        "UPDATE checks.checks SET next_due_at = $3 \
+         WHERE id = $1 AND next_due_at IS NOT DISTINCT FROM $2",
+    )
+    .bind(id)
+    .bind(expected)
+    .bind(at)
+    .execute(db)
+    .await?;
+    Ok(done.rows_affected() == 1)
 }

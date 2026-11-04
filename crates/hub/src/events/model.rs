@@ -92,11 +92,13 @@ pub struct Operator {
 pub struct ClientAddr(pub IpAddr);
 
 /// One check result, as the live status view receives it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HeartbeatSummary {
     pub at: DateTime<Utc>,
     pub status: Status,
     pub response_time_ms: Option<u32>,
+    /// The cleaned message as stored.
+    pub message: Option<String>,
 }
 
 /// The verb of an audit entry. Its text form is stored in `audit_log.action`.

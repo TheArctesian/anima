@@ -4,10 +4,11 @@ use std::sync::Arc;
 
 use anima_hub::{
     checks::push_router,
-    clock::Clock,
+    clock::{Clock, FixedClock},
     events::{Bus, Signal},
     status::Status,
 };
+use async_graphql::futures_util::StreamExt as _;
 use axum::{
     Router,
     body::Body,
@@ -164,6 +165,8 @@ fixture_test! {
             format!("/push/{}=", &token[..42]),
             "/push/".to_owned(),
             format!("/push/{token}/extra"),
+            format!("/push/{}.", &token[..42]),
+            format!("/push/{}%2F", &token[..42]),
         ];
         for uri in &malformed {
             let (status, body) = rig.get(uri).await;
@@ -232,5 +235,96 @@ fixture_test! {
         assert!(failed_log.contains("could not be recorded"), "the failure is logged without detail");
         assert_absent(&token, &[&log, &unknown_log, &failed_log]);
         assert_absent("/push/", &[&log, &unknown_log, &failed_log]);
+    }
+
+    async fn chk_002_a_down_report_stays_pending_until_the_retries_are_used_up(pool: PgPool) {
+        let rig = rig(pool).await;
+        let created = create(&rig.schema, input(PVE_01, "backup", json!({ "push": true }))).await;
+        let query = "query($id: ID!) { check(id: $id) { config { ... on PushConfig { pushPath } } } }";
+        let read = data_with(&rig.schema, query, json!({ "id": created })).await;
+        let path = read["check"]["config"]["pushPath"].as_str().unwrap().to_owned();
+        for _ in 0..4 {
+            assert_eq!(rig.get(&format!("{path}?status=down&msg=late")).await.0, StatusCode::OK);
+        }
+        let statuses: Vec<String> = rig.beats(&created).await.into_iter().map(|b| b.0).collect();
+        assert_eq!(statuses, ["unknown", "unknown", "unknown", "down"]);
+        let state: (String, i32) = sqlx::query_as(
+            "SELECT status, failures FROM checks.checks WHERE id = $1::text::uuid",
+        )
+        .bind(&created)
+        .fetch_one(&rig.pool)
+        .await
+        .unwrap();
+        assert_eq!(state, ("down".to_owned(), 4));
+    }
+
+    async fn chk_003_head_does_not_record_a_beat(pool: PgPool) {
+        let rig = rig(pool).await;
+        let (id, path) = rig.push_check("backup").await;
+        let (status, _) = rig.call(Method::HEAD, &path, Vec::new()).await;
+        assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
+        let request = Request::builder().method(Method::HEAD).uri(&path).body(Body::empty()).unwrap();
+        let response = rig.router.clone().oneshot(request).await.unwrap();
+        assert_eq!(response.headers()["allow"], "GET, POST");
+        assert_eq!(rig.beats(&id).await.len(), 0);
+    }
+
+    async fn chk_003_a_malformed_token_is_refused_before_any_lookup(pool: PgPool) {
+        let rig = rig(pool).await;
+        let (_, path) = rig.push_check("backup").await;
+        sqlx::query("DROP TABLE checks.checks CASCADE").execute(&rig.pool).await.unwrap();
+        // With the table gone any lookup fails with 500; the shape check answers first.
+        let short = &path[..path.len() - 1];
+        assert_eq!(rig.get(short).await.0, StatusCode::NOT_FOUND);
+        assert_eq!(rig.get(&path).await.0, StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    async fn chk_003_a_push_at_the_instant_of_the_last_beat_is_a_success_that_records_nothing(pool: PgPool) {
+        let at = database_now(&pool).await;
+        let (schema, bus) = schema_at(&pool, at);
+        let clock: Arc<dyn Clock> = Arc::new(FixedClock(at));
+        let router = push_router(pool.clone(), bus.clone(), clock);
+        let rig = Rig { pool, schema, bus, router };
+        let (id, path) = rig.push_check("backup").await;
+        assert_eq!(rig.get(&path).await.0, StatusCode::OK);
+        let mut receiver = rig.bus.subscribe();
+        let (status, body) = rig.get(&path).await;
+        assert_eq!((status, body.as_slice()), (StatusCode::OK, b"ok".as_slice()));
+        assert_eq!(rig.beats(&id).await.len(), 1);
+        assert!(receiver.try_recv().is_err(), "nothing was recorded, so nothing is published");
+    }
+
+    async fn chk_003_the_cleaned_message_of_a_push_arrives_on_the_subscription(pool: PgPool) {
+        let rig = rig(pool).await;
+        let (id, path) = rig.push_check("backup").await;
+        let query = format!("subscription {{ heartbeatAdded(checkId: \"{id}\") {{ heartbeat {{ message }} }} }}");
+        let mut stream = Box::pin(rig.schema.execute_stream(super::harness::signed_in(&query)));
+        let reader = tokio::spawn(async move { stream.next().await });
+        tokio::pin!(reader);
+        let item = loop {
+            // The stream subscribes when first polled, so push until it has seen one.
+            assert_eq!(rig.get(&format!("{path}?msg=a%01b%0Ac")).await.0, StatusCode::OK);
+            if let Ok(done) = tokio::time::timeout(std::time::Duration::from_millis(50), &mut reader).await {
+                break done.unwrap().expect("the stream ended");
+            }
+        };
+        assert_eq!(item.errors.len(), 0, "{:?}", item.errors);
+        let data = item.data.into_json().unwrap();
+        assert_eq!(data["heartbeatAdded"]["heartbeat"]["message"], "abc");
+    }
+
+    async fn chk_003_a_declared_length_over_the_cap_is_refused_before_the_body_is_read(pool: PgPool) {
+        let rig = rig(pool).await;
+        let (id, path) = rig.push_check("backup").await;
+        // The body never arrives; only the header says it is large.
+        let request = Request::builder()
+            .method(Method::POST)
+            .uri(&path)
+            .header("content-length", "2000")
+            .body(Body::empty())
+            .unwrap();
+        let response = rig.router.clone().oneshot(request).await.unwrap();
+        assert_eq!(response.status(), StatusCode::PAYLOAD_TOO_LARGE);
+        assert_eq!(rig.beats(&id).await.len(), 0);
     }
 }

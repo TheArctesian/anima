@@ -27,9 +27,10 @@ impl AddressPolicy {
         }
     }
 
-    /// Also allows loopback. For tests that probe local listeners; never use in production.
+    /// Also allows loopback, for the in-crate tests that probe local listeners only (R-030).
+    #[cfg(test)]
     #[must_use]
-    pub fn allowing_loopback(mut self) -> Self {
+    pub(crate) fn allowing_loopback(mut self) -> Self {
         self.allow_loopback = true;
         self
     }

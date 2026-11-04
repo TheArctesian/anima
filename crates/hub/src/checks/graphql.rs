@@ -14,17 +14,22 @@ mod form;
 mod heartbeat;
 mod input;
 mod live;
-mod opaque;
+mod loaders;
+mod settings;
 mod trail;
 mod write;
 
 use async_graphql::{Context, ID, Object, Result, Subscription, futures_util::stream::Stream};
 
+pub use self::loaders::{
+    CheckStatuses, CheckUptimes, HeartbeatPages, LastHeartbeats, check_status_loader,
+    check_uptime_loader, heartbeats_loader, last_heartbeat_loader,
+};
+
 use self::{
     error::{invalid, schema_dependency, to_graphql},
-    input::{CreateShape, UpdateShape},
+    input::{CreateShape, Opaque, UpdateShape},
     live::{DeviceStatusChange, HeartbeatAdded, device_status_changes, heartbeats_added},
-    opaque::Opaque,
     write::pool,
 };
 use super::{Check, Error, FieldError};

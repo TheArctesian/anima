@@ -3,15 +3,16 @@
 
 use std::sync::Arc;
 
-use async_graphql::{Context, ID, Object, Result};
+use async_graphql::{Context, ID, Object, Result, dataloader::DataLoader};
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 
 use super::{
     config_view::ConfigView,
     enums::CheckKind,
-    error::{from_devices, invalid, schema_dependency, to_graphql},
+    error::{from_devices, from_shared, invalid, schema_dependency, to_graphql},
     heartbeat::{HeartbeatConnection, connection, paging},
+    loaders::{CheckStatuses, CheckUptimes, HeartbeatPages, LastHeartbeats},
 };
 use crate::{
     checks::{self, Check, Error, Heartbeat, UptimeWindow},
@@ -94,16 +95,18 @@ impl Check {
 
     /// The status shown: pause, groups, maintenance and the device's manual flag applied.
     async fn status(&self, ctx: &Context<'_>) -> Result<Status> {
-        checks::check_status(pool(ctx)?, self, now(ctx)?)
+        let shown = schema_dependency::<DataLoader<CheckStatuses>>(ctx)?
+            .load_one(self.id)
             .await
-            .map_err(to_graphql)
+            .map_err(from_shared)?;
+        Ok(shown.unwrap_or(Status::Unknown))
     }
 
     async fn last_heartbeat(&self, ctx: &Context<'_>) -> Result<Option<Heartbeat>> {
-        let latest = checks::heartbeats(pool(ctx)?, self.id, None, 1)
+        schema_dependency::<DataLoader<LastHeartbeats>>(ctx)?
+            .load_one(self.id)
             .await
-            .map_err(to_graphql)?;
-        Ok(latest.into_iter().next())
+            .map_err(from_shared)
     }
 
     #[expect(
@@ -126,15 +129,18 @@ impl Check {
         let (size, before) =
             paging(first.unwrap_or(100), after.as_deref()).map_err(|e| invalid(&e))?;
         let limit = u32::try_from(size + 1).unwrap_or(u32::MAX);
-        let fetched = checks::heartbeats(pool(ctx)?, self.id, before, limit)
+        let fetched = schema_dependency::<DataLoader<HeartbeatPages>>(ctx)?
+            .load_one((self.id, limit, before))
             .await
-            .map_err(to_graphql)?;
+            .map_err(from_shared)?
+            .unwrap_or_default();
         Ok(connection(fetched, size))
     }
 
     async fn uptime(&self, ctx: &Context<'_>, window: UptimeWindow) -> Result<Option<f64>> {
-        checks::check_uptime(pool(ctx)?, self.id, window, now(ctx)?)
+        schema_dependency::<DataLoader<CheckUptimes>>(ctx)?
+            .load_one((self.id, window))
             .await
-            .map_err(to_graphql)
+            .map_err(from_shared)
     }
 }

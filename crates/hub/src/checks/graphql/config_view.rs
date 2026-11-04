@@ -6,7 +6,7 @@ use async_graphql::{Context, Object, Result, SimpleObject, Union};
 
 use super::{
     enums::{IpFamily, RecordType, RequestMethod, SignInKind},
-    error::{schema_dependency, to_graphql},
+    error::{internal, schema_dependency, to_graphql},
 };
 use crate::{
     checks::{
@@ -80,11 +80,29 @@ pub(super) struct DnsView {
     expected: Option<String>,
 }
 
-#[derive(SimpleObject)]
-#[graphql(name = "PushConfig")]
+/// A PUSH check without a token: the database forbids it, so it is a fault, never an empty path.
+#[derive(Debug, thiserror::Error)]
+#[error("push check {0} has no token")]
+struct MissingToken(CheckId);
+
 pub(super) struct PushView {
+    check: CheckId,
+    path: Option<String>,
+}
+
+#[Object(name = "PushConfig")]
+impl PushView {
     /// Path on the hub that the device calls. The token is part of the path.
-    push_path: String,
+    #[expect(
+        clippy::unused_async,
+        clippy::unused_async_trait_impl,
+        reason = "the Object macro requires async resolvers"
+    )]
+    async fn push_path(&self) -> Result<&str> {
+        self.path
+            .as_deref()
+            .ok_or_else(|| internal(MissingToken(self.check)))
+    }
 }
 
 pub(super) struct GroupView {
@@ -122,6 +140,8 @@ fn wide(value: impl Into<u32>) -> i32 {
     i32::try_from(value.into()).unwrap_or(i32::MAX)
 }
 
+/// The stored value of a secret header is already null; filtering by name again is defence in
+/// depth, so a stored value that slipped in (an older version, a hand-edited row) never leaves.
 fn header(header: &HttpHeader) -> HeaderView {
     HeaderView {
         name: header.name.clone(),
@@ -193,10 +213,11 @@ impl ConfigView {
                 expected: expected.clone(),
             }),
             CheckConfig::Push => Self::Push(PushView {
-                push_path: check
+                check: check.id,
+                path: check
                     .push_token
                     .as_ref()
-                    .map_or_else(String::new, |token| format!("/push/{}", token.expose())),
+                    .map(|token| format!("/push/{}", token.expose())),
             }),
             CheckConfig::Group => Self::Group(GroupView {
                 group: check.id,

@@ -10,6 +10,7 @@ use std::{
 
 use anima_hub::{
     access::Identity,
+    checks::graphql::{check_status_loader, check_uptime_loader, last_heartbeat_loader},
     clock::{Clock, FixedClock},
     credentials::Vault,
     devices::graphql::{
@@ -84,6 +85,9 @@ fn builder(
         .data(uptime_loader(pool.clone(), Arc::clone(&clock)))
         .data(checks_loader(pool.clone()))
         .data(resolved_ip_loader(pool.clone()))
+        .data(check_status_loader(pool.clone(), Arc::clone(&clock)))
+        .data(last_heartbeat_loader(pool.clone()))
+        .data(check_uptime_loader(pool.clone(), Arc::clone(&clock)))
         .data(vault())
         .data(bus.clone())
         .data(clock)

@@ -2,7 +2,7 @@
 //! time of the beat, newest first (API-006, R-014).
 
 use async_graphql::{Object, SimpleObject};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Datelike as _, Utc};
 
 use crate::{
     checks::{FieldError, Heartbeat},
@@ -12,6 +12,10 @@ use crate::{
 
 const MAX_FIRST: usize = 500;
 const CURSOR_PREFIX: &str = "h1.";
+/// The years a stored beat can have; a cursor outside them is not one we made, and the
+/// database would refuse it (API-010).
+const EARLIEST_YEAR: i32 = 1970;
+const LATEST_YEAR: i32 = 9999;
 
 #[Object]
 impl Heartbeat {
@@ -51,8 +55,9 @@ fn encode_cursor(at: DateTime<Utc>) -> String {
 }
 
 fn decode_cursor(cursor: &str) -> Option<DateTime<Utc>> {
-    let micros = cursor.strip_prefix(CURSOR_PREFIX)?.parse().ok()?;
+    let micros: i64 = cursor.strip_prefix(CURSOR_PREFIX)?.parse().ok()?;
     DateTime::from_timestamp_micros(micros)
+        .filter(|at| (EARLIEST_YEAR..=LATEST_YEAR).contains(&at.year()))
 }
 
 /// The page size (1 to 500) and the time the page starts after, or every argument in error.

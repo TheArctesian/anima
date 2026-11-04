@@ -197,9 +197,13 @@ pub(super) fn updated(before: &Check, after: &Check, device: &str, extras: &Extr
     )
 }
 
-/// The deleted check's name and type, so the entry outlives the check.
-pub(super) fn deleted(check: &Check, device: &str) -> Entry {
-    let change = json!({ "name": check.name, "type": check.kind().as_sql() });
+/// The deleted check's name and type, so the entry outlives the check. A deleted group also
+/// lists the children it let go of.
+pub(super) fn deleted(check: &Check, device: &str, freed: &[CheckId]) -> Entry {
+    let mut change = json!({ "name": check.name, "type": check.kind().as_sql() });
+    if !freed.is_empty() {
+        change["childIds"] = child_ids(freed);
+    }
     entry(check, device, AuditAction::Delete, ("deleted", change))
 }
 

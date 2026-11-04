@@ -36,6 +36,7 @@ fn heartbeat(check: &str, owner: &str) -> Signal {
             at: now(),
             status: Status::Up,
             response_time_ms: Some(12),
+            message: None,
         },
     }
 }
@@ -88,12 +89,14 @@ async fn log_010_device_status_changed_filters_by_device_and_carries_the_signals
         status(PVE_01, Status::Down),
     ];
     let item = first_item(Box::pin(subscribe(&schema, &query)), &bus, &signals).await;
+    let change = &item["deviceStatusChanged"];
     assert_eq!(
-        item["deviceStatusChanged"],
-        json!({
-            "deviceId": PVE_01, "status": "DOWN", "at": "2026-11-04T09:00:00+00:00",
-        })
+        (&change["deviceId"], &change["status"]),
+        (&json!(PVE_01), &json!("DOWN"))
     );
+    // R-033: compare the instant, not its text.
+    let at: chrono::DateTime<chrono::Utc> = change["at"].as_str().unwrap().parse().unwrap();
+    assert_eq!(at, now());
     let all = "subscription { deviceStatusChanged { deviceId } }";
     let item = first_item(Box::pin(subscribe(&schema, all)), &bus, &signals[..1]).await;
     assert_eq!(item["deviceStatusChanged"]["deviceId"], DOCKER_HOST);

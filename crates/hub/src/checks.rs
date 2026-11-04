@@ -1,9 +1,8 @@
 //! Checks: what each device is checked for, the results, the status they give and the
-//! uptime they add up to (spec 6.4).
+//! uptime they add up to (spec 6.4). [`spawn_scheduler`] runs the checks (HUB-003).
 //!
 //! Other domains use only the contract functions: [`statuses`], [`uptimes`], [`for_device`],
-//! [`for_devices`], [`add_default_check`], [`device_status`], [`resolved_ips`] and [`evaluate`].
-//! The writes,
+//! [`add_default_check`], [`device_status`], [`resolved_ips`] and [`evaluate`]. The writes,
 //! [`record_beat`], [`due_checks`] and the retention functions serve this domain's GraphQL,
 //! push route and scheduler; they are public so the integration tests can drive them.
 //!
@@ -16,8 +15,8 @@ pub mod graphql;
 mod model;
 pub mod probe;
 mod push;
-mod reads;
 mod rules;
+mod scheduler;
 mod status;
 mod store;
 #[cfg(test)]
@@ -42,12 +41,13 @@ use config::{CheckConfig, HttpSecrets, IpVersion};
 use rules::Prepared;
 
 pub use evaluation::{CheckSettings, CheckState, evaluate};
+pub(in crate::checks) use model::Attempt;
 pub use model::{
     Beat, Check, CheckChange, Definition, Due, FieldError, Heartbeat, Missing, NewCheck, PushToken,
     Recorded,
 };
 pub use push::push_router;
-pub use reads::{check_status, check_uptime, for_device, for_devices, get, heartbeats, push_check};
+pub use scheduler::{Probing, spawn_scheduler};
 pub use store::Trimmed;
 pub use uptime::UptimeWindow;
 
@@ -151,6 +151,34 @@ pub async fn uptimes(
         .into_iter()
         .filter_map(|(device, tally)| uptime::ratio(tally).map(|ratio| (device, ratio)))
         .collect())
+}
+
+/// The device's checks in byte order of the name.
+///
+/// # Errors
+/// `Unreadable` when a stored configuration cannot be read.
+pub async fn for_device(db: &PgPool, device: DeviceId) -> Result<Vec<Check>, Error> {
+    store::by_devices(db, &[device]).await
+}
+
+/// The checks of each device, each device's in byte order of the name, in one query
+/// (API-005). A device with no checks is absent.
+///
+/// # Errors
+/// `Unreadable` when a stored configuration cannot be read.
+pub async fn for_devices(
+    db: &PgPool,
+    devices: &[DeviceId],
+) -> Result<HashMap<DeviceId, Vec<Check>>, Error> {
+    store::grouped_by_devices(db, devices).await
+}
+
+/// The check with this id.
+///
+/// # Errors
+/// `NotFound` when there is no such check.
+pub async fn get(db: &PgPool, id: CheckId) -> Result<Check, Error> {
+    store::fetch(db, id).await
 }
 
 /// For each device, the address that its check with the latest beat resolved.
@@ -343,6 +371,21 @@ pub async fn record_beat(
     beat: &Beat,
 ) -> Result<Recorded, Error> {
     store::record_beat(conn, check, beat).await
+}
+
+/// Records one attempt in the caller's transaction: locks the check, evaluates the result on
+/// its current state and settings, so a beat, pause or change that landed meanwhile applies,
+/// and writes the beat with [`record_beat`] (CHK-002, CHK-005). Returns the beat written, or
+/// `None` when the check is paused or already has a beat at least as new.
+///
+/// # Errors
+/// `NotFound` when the check no longer exists.
+pub(in crate::checks) async fn record_attempt(
+    conn: &mut PgConnection,
+    check: CheckId,
+    attempt: &Attempt<'_>,
+) -> Result<Option<Beat>, Error> {
+    store::record_attempt(conn, check, attempt).await
 }
 
 /// Up to `limit` checks that are not paused and are due at `now` (CHK-001). PUSH checks are

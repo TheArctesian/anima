@@ -59,7 +59,7 @@ devices_test! {
 
     async fn db_009_aggregates_are_trimmed_at_7_days_90_days_and_2_years(pool: PgPool) {
         let id = create(&pool, new_check(PVE_01, "Trimmed", icmp())).await;
-        let now: DateTime<Utc> = "2026-11-04T09:00:00Z".parse().unwrap();
+        let now = database_now(&pool).await;
         let minute = now - TimeDelta::days(7);
         let hour = now - TimeDelta::days(90);
         let day = now.checked_sub_months(Months::new(24)).unwrap();
