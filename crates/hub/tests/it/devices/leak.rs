@@ -1,6 +1,7 @@
-//! What the credential mutations let out: a credential that cannot be parsed is refused
-//! without quoting it, in the response or in the process log, and missing wiring shows only
-//! `INTERNAL` (LOG-007, API-010).
+//! What the credential mutations let out (LOG-007, API-010). In a query that parses, a
+//! credential of the wrong shape or type is refused without quoting it, in the response or in
+//! the process log. A query that does not parse is echoed to its sender by the GraphQL parser
+//! (pinned below, handed off under H-6), never to the log. Missing wiring shows only `INTERNAL`.
 
 use std::{
     future::Future,
@@ -165,5 +166,74 @@ async fn api_010_without_the_vault_or_the_credential_loader_the_operator_gets_in
             assert!(!text.contains(leak), "{text}");
         }
     }
+    assert_eq!(secret_rows(&pool).await, 0);
+}
+
+/// Inline credentials that GraphQL validation refuses before the parser sees them, each with
+/// the secret it carries. Validation errors name types and fields, never the values.
+const REFUSED_SHAPES: [(&str, &str); 7] = [
+    (
+        r#"{ passwrd: "shape-misspelt-secret" }"#,
+        "shape-misspelt-secret",
+    ),
+    (
+        r#"{ password: "shape-both-secret", privateKey: { key: "-----BEGIN OPENSSH PRIVATE KEY-----shapebothkey" } }"#,
+        "shape-both-secret",
+    ),
+    (
+        r#"{ password: "shape-both-other", privateKey: { key: "-----BEGIN OPENSSH PRIVATE KEY-----shapebothkey" } }"#,
+        "shapebothkey",
+    ),
+    ("{ password: 918273645 }", "918273645"),
+    (
+        r#"{ password: "shape-extra-secret", extra: "x" }"#,
+        "shape-extra-secret",
+    ),
+    (r#"["shape-list-secret"]"#, "shape-list-secret"),
+    ("{ password: null }", "null-password-marker"),
+];
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn log_007_inline_credentials_of_the_wrong_shape_are_refused_without_quoting_them(
+    pool: PgPool,
+) {
+    let schema = hardened_schema(&pool);
+    for (index, (credential, secret)) in REFUSED_SHAPES.into_iter().enumerate() {
+        let request = signed_in(&inline(credential));
+        let (log, response) = captured(|| schema.execute(request)).await;
+        assert!(!response.errors.is_empty(), "shape {index} was accepted");
+        let body = serde_json::to_string(&response).unwrap();
+        assert_absent(secret, &[&body, &format!("{:?}", response.errors), &log]);
+    }
+    assert_eq!(secret_rows(&pool).await, 0);
+}
+
+/// A query that does not parse. The async-graphql parser quotes the text around the error, so
+/// a secret written inline next to a syntax error comes back in the response to its sender.
+/// That is known and handed to WP-05 under H-6 (refuse unauthenticated requests before parsing);
+/// this test pins it, and pins that the process log does not get it.
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn log_007_a_query_with_a_syntax_error_echoes_its_text_to_the_sender_but_not_to_the_log(
+    pool: PgPool,
+) {
+    let secret = "syntax-error-secret";
+    let query = format!(
+        r#"mutation {{ setSshCredential(deviceId: "{PVE_01}", credential: {{ password: "{secret}" ) }}"#
+    );
+    let schema = hardened_schema(&pool);
+    let (log, response) = captured(|| schema.execute(signed_in(&query))).await;
+    assert_eq!(response.errors.len(), 1);
+    let body = serde_json::to_string(&response).unwrap();
+    assert!(
+        body.contains(secret),
+        "the parser no longer echoes the query; update H-6"
+    );
+    assert_absent(secret, &[&log]);
     assert_eq!(secret_rows(&pool).await, 0);
 }
