@@ -1,0 +1,32 @@
+// Anima (VPS-004, decision D-11): install security updates automatically and reboot at
+// 04:30 (the VPS clock is UTC) when an update needs it. Installed by `harden.sh updates`
+// as /etc/apt/apt.conf.d/52anima-unattended-upgrades; it sorts after Ubuntu's
+// 50unattended-upgrades, so these values override the defaults.
+
+// Replace the origin list instead of appending to it, so this file is the whole list.
+// The origins are Ubuntu's defaults: the release, its security pocket and the ESM
+// security pockets (empty unless the machine is attached to Ubuntu Pro).
+#clear Unattended-Upgrade::Allowed-Origins;
+Unattended-Upgrade::Allowed-Origins {
+	"${distro_id}:${distro_codename}";
+	"${distro_id}:${distro_codename}-security";
+	"${distro_id}ESMApps:${distro_codename}-apps-security";
+	"${distro_id}ESM:${distro_codename}-infra-security";
+};
+
+// Docker and Tailscale come from their own repositories; without these patterns their
+// security fixes would never install. The guide has the operator confirm the exact
+// Origin values with `apt-cache policy` before enabling. A Docker or Tailscale upgrade
+// restarts its daemon (live-restore keeps containers running; the VPN blips).
+#clear Unattended-Upgrade::Origins-Pattern;
+Unattended-Upgrade::Origins-Pattern {
+	"origin=Docker";
+	"origin=Tailscale";
+};
+
+Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+Unattended-Upgrade::Remove-New-Unused-Dependencies "true";
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+Unattended-Upgrade::Automatic-Reboot "true";
+Unattended-Upgrade::Automatic-Reboot-WithUsers "true";
+Unattended-Upgrade::Automatic-Reboot-Time "04:30";
