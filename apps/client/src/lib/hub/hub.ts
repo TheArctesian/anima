@@ -3,7 +3,7 @@ import type { HubAddress } from './address';
 import type { HubResult } from './error';
 import { sendRequest, type TokenProvider } from './request';
 import { createConnection, type LiveStatus } from './status/connection';
-import { createSocket, type Sink } from './subscriptions';
+import { createSocket, type Sink } from './socket/socket';
 
 export type { HubAddress } from './address';
 export { DEFAULT_HUB_ADDRESS, parseHubAddress } from './address';
@@ -12,7 +12,7 @@ export type { TokenProvider } from './request';
 export type { LiveStatus } from './status/connection';
 export type { Connection, HubStatus } from './status/status';
 export { dataAge } from './status/age';
-export type { Sink } from './subscriptions';
+export type { Sink } from './socket/socket';
 
 /** GraphQL variables: an object, or an empty one for a document without variables. */
 export type Variables = Record<string, unknown>;
@@ -35,20 +35,23 @@ export interface Hub {
   ): Promise<HubResult<TResult>>;
   /**
    * Start a subscription on the shared socket; returns the function that stops it (API-002).
-   * The sink hears `error` when the hub refuses the token (close 4403) or the token cannot be read; neither is retried.
+   * The sink hears `error` when the hub refuses the token (close 4403) or the token cannot be read; neither is
+   * retried, and the socket stays closed until the next `subscribe` connects again with the token read anew.
    */
   subscribe<TResult, TVariables extends Variables>(
     document: TypedDocumentNode<TResult, TVariables>,
     variables: TVariables,
     sink: Sink<TResult>,
   ): () => void;
-  /** Connection status and last contact, as Svelte state (NAV-003, NET-004). */
+  /**
+   * Connection status and last contact, as Svelte state (NAV-003, NET-004). The socket keeps it current from
+   * creation on: `connected` on `connection_ack` or a refused token, `unreachable` on failure or no ack in time.
+   */
   readonly status: LiveStatus;
   /**
-   * End every subscription (each sink hears `complete`) and close the socket. A later `subscribe`
-   * completes at once without connecting; `request` keeps working, since HTTP holds no connection.
-   * Subscriptions end synchronously; the promise resolves when the socket is closed and rejects with the
-   * reason when a connection attempt that was still pending failed instead.
+   * End every subscription (each sink hears `complete`), stop any connection attempt or retry wait, and close
+   * the socket. A later `subscribe` completes at once without connecting; `request` keeps working, since HTTP
+   * holds no connection. Subscriptions end synchronously; the promise resolves once closing has begun.
    */
   close(): Promise<void>;
 }
@@ -63,7 +66,7 @@ export interface HubOptions {
   readonly timeoutMs?: number;
 }
 
-/** A hub at `address`; nothing connects until the first request or subscription. */
+/** A hub at `address`; its socket connects at once, so the status is true before any request (NAV-003, NET-004). */
 export function createHub(options: HubOptions): Hub {
   const { address, token } = options;
   const timeoutMs = options.timeoutMs ?? HUB_TIMEOUT_MS;

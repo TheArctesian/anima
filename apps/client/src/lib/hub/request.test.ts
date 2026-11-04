@@ -1,7 +1,8 @@
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import { parse } from 'graphql';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createHub, DEFAULT_HUB_ADDRESS, type Hub, type TokenProvider } from './hub';
+import { acknowledge, FAKE_WEBSOCKET, FakeSocket } from './socket/fake';
 
 const ME = parse('query Me($first: Int) { me { username } }') as TypedDocumentNode<
   { me: { username: string } },
@@ -29,9 +30,21 @@ function hubAnswering(answer: (signal?: AbortSignal | null) => Promise<Response>
     });
     return answer(init?.signal);
   };
-  const hub: Hub = createHub({ address: DEFAULT_HUB_ADDRESS, token, fetch: fakeFetch, now: () => CONTACT_AT });
+  const hub: Hub = createHub({ address: DEFAULT_HUB_ADDRESS, token, fetch: fakeFetch, WebSocket: FAKE_WEBSOCKET, now: () => CONTACT_AT });
+  hubs.push(hub);
   return { hub, sent };
 }
+
+/** Every hub a test made; each is closed after the test, so no socket or timer outlives it. */
+const hubs: Hub[] = [];
+
+beforeEach(() => {
+  FakeSocket.opened = [];
+});
+
+afterEach(async () => {
+  await Promise.all(hubs.splice(0).map((hub) => hub.close()));
+});
 
 /** An answer that never arrives; it rejects like fetch does when the request is aborted. */
 function stalled(signal?: AbortSignal | null): Promise<Response> {
@@ -104,6 +117,10 @@ describe('Hub.request on a stalled link', () => {
   it('NET-004: no answer within the timeout is unreachable and the status follows', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     const { hub } = hubAnswering(stalled);
+    const [socket] = FakeSocket.opened;
+    if (socket === undefined) throw new Error('no socket was opened');
+    await acknowledge(socket);
+    expect(hub.status.current.connection).toBe('connected');
     let settled = false;
     const pending = hub.request(ME, {}).then((result) => {
       settled = true;

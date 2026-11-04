@@ -75,13 +75,11 @@ export function recordingSink() {
   return { events, sink };
 }
 
+/** `FakeSocket` as the WebSocket constructor `createHub` takes. */
+export const FAKE_WEBSOCKET = FakeSocket as unknown as typeof WebSocket;
+
 export function newHub(token: TokenProvider = () => Promise.resolve('s3cret-token')) {
-  return createHub({
-    address: DEFAULT_HUB_ADDRESS,
-    token,
-    WebSocket: FakeSocket as unknown as typeof WebSocket,
-    now: () => NOW,
-  });
+  return createHub({ address: DEFAULT_HUB_ADDRESS, token, WebSocket: FAKE_WEBSOCKET, now: () => NOW });
 }
 
 /** Run pending promise callbacks and timers due by `ms`. */
@@ -95,14 +93,19 @@ export function onlySocket(): FakeSocket {
   return socket;
 }
 
-/** Open a socket, subscribe and acknowledge; returns the socket. */
-export async function liveSubscription(hub: ReturnType<typeof newHub>, sink: Sink<unknown>) {
-  const stop = hub.subscribe(STATUS_CHANGED, { deviceId: 'd1' }, sink);
-  await settle();
-  const socket = onlySocket();
+/** Open `socket` and answer its `connection_init` with `connection_ack`. */
+export async function acknowledge(socket: FakeSocket): Promise<void> {
   socket.accept();
   await settle();
   socket.receive({ type: 'connection_ack' });
   await settle();
+}
+
+/** Subscribe and acknowledge the hub's first socket; returns the socket. */
+export async function liveSubscription(hub: ReturnType<typeof newHub>, sink: Sink<unknown>) {
+  const stop = hub.subscribe(STATUS_CHANGED, { deviceId: 'd1' }, sink);
+  await settle();
+  const socket = onlySocket();
+  await acknowledge(socket);
   return { socket, stop };
 }
