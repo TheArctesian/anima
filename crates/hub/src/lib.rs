@@ -10,6 +10,7 @@ pub mod ids;
 pub mod paging;
 pub mod scalars;
 pub mod schema;
+pub mod sessions;
 pub mod status;
 
 use std::sync::Arc;

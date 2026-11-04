@@ -16,12 +16,21 @@ use super::error::invalid;
 
 #[derive(InputObject)]
 #[graphql(name = "SshSettingsInput")]
-pub(super) struct SshSettingsInput {
+pub struct SshSettingsInput {
     enabled: bool,
     #[graphql(default_with = "Some(22)")]
     port: Option<i32>,
     username: String,
     auth: SshAuth,
+}
+
+impl SshSettingsInput {
+    /// The SSH port as sent, K1's default 22 when left out, unchecked. For
+    /// `ConnectionTestInput.ssh` (WP-10, R-011), which reuses this K1 type.
+    #[must_use]
+    pub const fn port(&self) -> Option<i32> {
+        self.port
+    }
 }
 
 impl From<SshSettingsInput> for SshInput {
