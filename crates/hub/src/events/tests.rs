@@ -258,15 +258,28 @@ fn audit_action_and_target_have_stable_stored_text() {
     assert_eq!(AuditTarget::Credential(device).id(), DEVICE);
 }
 
+fn device_down() -> Signal {
+    Signal::DeviceStatus {
+        device: DEVICE.parse().unwrap(),
+        status: crate::status::Status::Down,
+        at: "2026-11-04T09:30:00Z".parse().unwrap(),
+    }
+}
+
 #[test]
 fn bus_publish_without_subscribers_is_not_an_error() {
     let bus = Bus::new(1);
-    bus.publish(Signal::DeviceStatus {
-        device: DEVICE.parse().unwrap(),
-        status: crate::status::Status::Down,
-    });
+    bus.publish(device_down());
     let mut late = bus.subscribe();
     assert_eq!(late.try_recv(), Err(TryRecvError::Empty));
+}
+
+#[test]
+fn log_010_r_028_a_subscriber_receives_the_status_change_with_its_time() {
+    let bus = Bus::new(1);
+    let mut live = bus.subscribe();
+    bus.publish(device_down());
+    assert_eq!(live.try_recv(), Ok(device_down()));
 }
 
 struct Query;

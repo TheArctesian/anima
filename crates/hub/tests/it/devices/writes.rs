@@ -11,10 +11,10 @@ use super::{
 const HOME_SITE: &str = "0190a000-0000-7000-8001-000000000001";
 const PVE_01: &str = "0190a000-0000-7000-8002-000000000001";
 const CREATE_DEVICE: &str = "mutation($input: CreateDeviceInput!) { createDevice(input: $input) {
-    id name host kind os tags maintenance createdAt updatedAt
+    id name host ip kind os tags maintenance createdAt updatedAt
     ssh { enabled port username auth } site { name } } }";
 const UPDATE_DEVICE: &str = "mutation($id: ID!, $input: UpdateDeviceInput!) {
-    updateDevice(id: $id, input: $input) { id name host kind os tags maintenance updatedAt
+    updateDevice(id: $id, input: $input) { id name host ip kind os tags maintenance updatedAt
     ssh { enabled port username auth } site { name } } }";
 const CREATE_SITE: &str = "mutation($name: String!, $subnet: Cidr!) {
     createSite(name: $name, subnet: $subnet) { id name subnet devices { totalCount } } }";
@@ -47,6 +47,17 @@ async fn logged(pool: &PgPool) -> (i64, i64) {
         events.fetch_one(pool).await.unwrap(),
         audits.fetch_one(pool).await.unwrap(),
     )
+}
+
+async fn updated(pool: &PgPool, id: &str, input: Value) -> Value {
+    let vars = json!({ "id": id, "input": input });
+    let response = with_variables(&schema_for(pool), UPDATE_DEVICE, vars).await;
+    assert!(response.errors.is_empty(), "{:?}", response.errors);
+    response.data.into_json().unwrap()["updateDevice"].clone()
+}
+
+fn host_named(name: &str, host: &str) -> Value {
+    json!({ "siteId": HOME_SITE, "name": name, "host": host })
 }
 
 fn pve_02() -> Value {
@@ -171,6 +182,39 @@ fixture_test! {
         assert_eq!(validation_fields(&error), ["name"]);
         assert_eq!(row_count(&pool, "devices").await, 13);
         assert_eq!(logged(&pool).await, (0, 0));
+    }
+
+    async fn r_026_create_sets_ip_from_an_ipv4_or_ipv6_literal_and_leaves_a_name_null(pool: PgPool) {
+        let v4 = created(&pool, host_named("v4", "10.10.0.5")).await;
+        let v6 = created(&pool, host_named("v6", "fd7a:115c::1")).await;
+        let name = created(&pool, host_named("named", "box.home.lan")).await;
+        assert_eq!(v4["ip"], "10.10.0.5");
+        assert_eq!(v6["ip"], "fd7a:115c::1");
+        assert_eq!(name["ip"], Value::Null);
+    }
+
+    async fn r_026_a_bracketed_ipv6_host_is_still_refused(pool: PgPool) {
+        let vars = json!({ "input": host_named("br", "[::1]") });
+        let error = failed(&pool, CREATE_DEVICE, vars).await;
+        assert_eq!(validation_fields(&error), ["host"]);
+    }
+
+    async fn r_026_update_of_the_host_makes_ip_follow_between_a_name_and_an_address(pool: PgPool) {
+        let to_ip = updated(&pool, PVE_01, json!({ "host": "10.10.0.9" })).await;
+        assert_eq!(to_ip["ip"], "10.10.0.9");
+        let to_name = updated(&pool, PVE_01, json!({ "host": "pve-01.home.lan" })).await;
+        assert_eq!(to_name["ip"], Value::Null);
+    }
+
+    async fn r_026_an_update_that_leaves_the_host_alone_keeps_ip(pool: PgPool) {
+        sqlx::query("UPDATE devices.devices SET ip = '10.10.0.77' WHERE id = $1::uuid")
+            .bind(PVE_01)
+            .execute(&pool)
+            .await
+            .unwrap();
+        let device = updated(&pool, PVE_01, json!({ "name": "pve-1", "maintenance": true })).await;
+        assert_eq!(device["ip"], "10.10.0.77");
+        assert_eq!(device["host"], "pve-01.home.lan");
     }
 
     async fn dev_010_update_with_only_maintenance_changes_only_that_and_the_time(pool: PgPool) {
