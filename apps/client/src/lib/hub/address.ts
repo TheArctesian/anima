@@ -19,11 +19,11 @@ interface AddressError {
 type AddressResult = { readonly ok: true; readonly value: HubAddress } | { readonly ok: false; readonly error: AddressError };
 
 /** The default hub (NET-005, DNS-001). */
-export const DEFAULT_HUB_ADDRESS: HubAddress = {
+export const DEFAULT_HUB_ADDRESS: HubAddress = Object.freeze({
   origin: 'https://hub.anima.ing',
   http: 'https://hub.anima.ing/graphql',
   socket: 'wss://hub.anima.ing/graphql',
-};
+});
 
 const MESSAGES: Record<AddressProblem, string> = {
   'not-a-url': 'Type the hub address as a host name, for example hub.anima.ing.',
@@ -47,6 +47,6 @@ export function parseHubAddress(text: string): AddressResult {
   if (url.pathname !== '/' || url.search !== '' || url.hash !== '') return refused('has-path');
   return {
     ok: true,
-    value: { origin: url.origin, http: `${url.origin}/graphql`, socket: `wss://${url.host}/graphql` },
+    value: Object.freeze({ origin: url.origin, http: `${url.origin}/graphql`, socket: `wss://${url.host}/graphql` }),
   };
 }

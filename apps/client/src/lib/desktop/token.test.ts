@@ -185,7 +185,7 @@ describe('changing the hub address', () => {
       sent.push({ url: String(input), authorization: (init?.headers as Record<string, string>).authorization });
       return Promise.resolve(new Response(JSON.stringify({ data: {} }), { headers: { 'content-type': 'application/json' } }));
     };
-    const hub = createHub({ address, token: () => readAccessToken(address), fetch: fakeFetch });
+    const hub = createHub({ address, token: readAccessToken, fetch: fakeFetch });
     await hub.request(parse('query Me { me { username } }') as never, {});
     expect(sent.map((request) => request.url)).toEqual(['https://hub-anima.example/graphql']);
     expect(sent[0]?.authorization).toBeUndefined();

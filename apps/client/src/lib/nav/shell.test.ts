@@ -16,7 +16,7 @@ const keyStore = vi.hoisted(() => ({ read: vi.fn() }));
 vi.mock('$lib/desktop/token', () => ({ readAccessToken: keyStore.read }));
 
 const fake = vi.hoisted(() => ({
-  options: undefined as { address: { origin: string }; token: () => Promise<string | null> } | undefined,
+  options: undefined as { address: { origin: string }; token: (address: never) => Promise<string | null> } | undefined,
   status: { connection: 'connected', lastContactAt: null } as HubStatus,
   close: (): Promise<void> => Promise.resolve(),
 }));
@@ -209,20 +209,14 @@ it('CQ-045: unmounting the layout closes the hub, and a rejected close is handle
   warn.mockRestore();
 });
 
-it('H-2: the hub is created with the stored address and a token read from the key store for that origin', async () => {
+it('H-2: the hub is created with the stored address and the key store as its token provider', () => {
   localStorage.setItem('anima.hubAddress', 'https://my-hub.example');
   onTestFinished(() => {
     localStorage.clear();
   });
-  keyStore.read.mockResolvedValue('s3cret-token');
   show();
   expect(fake.options?.address.origin).toBe('https://my-hub.example');
-  await expect(fake.options?.token()).resolves.toBe('s3cret-token');
-  expect(keyStore.read).toHaveBeenCalledExactlyOnceWith({
-    origin: 'https://my-hub.example',
-    http: 'https://my-hub.example/graphql',
-    socket: 'wss://my-hub.example/graphql',
-  });
+  expect(fake.options?.token).toBe(keyStore.read);
 });
 
 it('H-2: with nothing stored the hub is the default one', () => {
