@@ -129,7 +129,8 @@ Then on the new VPS set `src=/root/headscale-restore` and run the steps above fr
   more than two snapshots, which bounds growth (about 365 snapshots of a database under
   1 MB, well inside `--max-size`). After a refusal, inspect
   `restic snapshots --host anima-vps --tag headscale` and forget the bad snapshot IDs by
-  hand. Running the backup by hand more than once a day also triggers a refusal.
+  hand. One extra run by hand beside the timer is fine; two or more extra runs on the same
+  UTC day trigger a refusal.
 - **The home PC holds the restic password**, because pruning needs it. Anyone with root on
   the home PC can decrypt the backups, including the Headscale private keys.
 - **rest-server and prune share the `restic` user.** rest-server writes the repository
