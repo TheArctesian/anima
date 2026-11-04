@@ -158,6 +158,8 @@ fixture_test! {
         let opened = checks::load_http_secrets(&pool, &vault(), id.parse().unwrap())
             .await
             .unwrap()
+            .unwrap()
+            .secrets
             .unwrap();
         assert_eq!(opened.password.unwrap().expose(), PASSWORD.as_bytes());
         assert_eq!(opened.headers.len(), 3);
@@ -172,6 +174,8 @@ fixture_test! {
         let opened = checks::load_http_secrets(&pool, &vault(), id.parse().unwrap())
             .await
             .unwrap()
+            .unwrap()
+            .secrets
             .unwrap();
         assert_eq!(opened.password.unwrap().expose(), PASSWORD.as_bytes());
         assert_eq!(opened.headers[0].expose(), AUTHORIZATION.as_bytes());
@@ -189,7 +193,7 @@ fixture_test! {
         assert_eq!(validation_fields(&error), ["config"]);
         // Nothing changed: the stored secrets still open, and no second audit row exists.
         let opened = checks::load_http_secrets(&pool, &vault(), id.parse().unwrap())
-            .await.unwrap().unwrap();
+            .await.unwrap().unwrap().secrets.unwrap();
         assert_eq!(opened.password.unwrap().expose(), PASSWORD.as_bytes());
         assert_eq!(rows(&pool, "audit_log").await.len(), 1);
         // The same origin with another path keeps the secrets.
@@ -300,5 +304,24 @@ async fn log_007_inline_check_inputs_of_the_wrong_shape_are_refused_without_quot
             "hunter2-outer",
             &[&body, &format!("{:?}", response.errors), &log],
         );
+    }
+}
+
+fixture_test! {
+    async fn sec_005_a_kept_secret_cannot_follow_an_added_host_header(pool: PgPool) {
+        let (schema, _) = schema_with_bus(&pool);
+        let id = create(&schema, input(PVE_01, "web", http(basic()))).await;
+        let mut config = blank(URL);
+        let host = json!({ "name": "Host", "value": "evil.example" });
+        config["http"]["headers"].as_array_mut().unwrap().push(host);
+        let vars = json!({ "id": id, "input": { "config": config } });
+        let response = with_variables(&schema, UPDATE, vars).await;
+        let error = error_json(&response);
+        assert_eq!(error["extensions"]["code"], "VALIDATION", "{error}");
+        assert!(!error.to_string().contains("evil.example"), "{error}");
+        let read = data_with(&schema, READ, json!({ "id": id })).await;
+        let names = read["check"]["config"]["headers"].to_string();
+        assert!(!names.to_ascii_lowercase().contains("host"), "{names}");
+        assert_eq!(rows(&pool, "audit_log").await.len(), 1);
     }
 }

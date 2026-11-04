@@ -6,7 +6,7 @@ use anima_hub::{
         self, CheckChange, Definition, Error,
         config::{CheckConfig, HttpCredentials, HttpInput, HttpMethod, HttpSecrets, StatusRange},
     },
-    credentials::{Sealed, Secret},
+    credentials::{Sealed, Secret, Vault},
     ids::CheckId,
 };
 use sqlx::PgPool;
@@ -58,11 +58,18 @@ fn text(secret: &Secret) -> &str {
     std::str::from_utf8(secret.expose()).unwrap()
 }
 
+/// The check's secrets as its probe opens them, without the configuration they go with.
+async fn open_secrets(
+    pool: &PgPool,
+    vault: &Vault,
+    id: CheckId,
+) -> Result<Option<HttpSecrets>, Error> {
+    let setup = checks::load_http_secrets(pool, vault, id).await?;
+    Ok(setup.and_then(|setup| setup.secrets))
+}
+
 async fn secrets(pool: &PgPool, id: CheckId) -> HttpSecrets {
-    checks::load_http_secrets(pool, &vault(), id)
-        .await
-        .unwrap()
-        .unwrap()
+    open_secrets(pool, &vault(), id).await.unwrap().unwrap()
 }
 
 async fn update(pool: &PgPool, id: CheckId, definition: Definition) -> Result<(), Error> {
@@ -126,11 +133,11 @@ devices_test! {
         .execute(&pool)
         .await
         .unwrap();
-        let copied = checks::load_http_secrets(&pool, &vault(), other).await;
+        let copied = open_secrets(&pool, &vault(), other).await;
         assert!(matches!(copied, Err(Error::Credentials(_))), "a copied row opened");
-        let wrong_key = checks::load_http_secrets(&pool, &vault_with(8), id).await;
+        let wrong_key = open_secrets(&pool, &vault_with(8), id).await;
         assert!(matches!(wrong_key, Err(Error::Credentials(_))), "another key opened");
-        assert!(checks::load_http_secrets(&pool, &vault(), id).await.unwrap().is_some());
+        assert!(open_secrets(&pool, &vault(), id).await.unwrap().is_some());
     }
 
     async fn sec_003_a_check_without_secrets_stores_none(pool: PgPool) {
@@ -138,9 +145,9 @@ devices_test! {
         let Definition::Http(mut input) = definition else { unreachable!() };
         input.headers.remove(0);
         let id = create(&pool, new_check(PVE_01, "Open", Definition::Http(input))).await;
-        assert!(checks::load_http_secrets(&pool, &vault(), id).await.unwrap().is_none());
+        assert!(open_secrets(&pool, &vault(), id).await.unwrap().is_none());
         let icmp = create(&pool, new_check(PVE_01, "Ping", super::icmp())).await;
-        assert!(checks::load_http_secrets(&pool, &vault(), icmp).await.unwrap().is_none());
+        assert!(open_secrets(&pool, &vault(), icmp).await.unwrap().is_none());
     }
 
     async fn sec_003_an_update_with_empty_secrets_keeps_the_stored_ones(pool: PgPool) {
@@ -227,7 +234,7 @@ devices_test! {
         .execute(&pool)
         .await
         .unwrap();
-        let opened = checks::load_http_secrets(&pool, &vault(), id).await;
+        let opened = open_secrets(&pool, &vault(), id).await;
         assert!(matches!(opened, Err(Error::SecretsUnbound)), "the secrets opened for a new origin");
         let renamed = web_check(&pool, "Renamed header").await;
         sqlx::query(
@@ -238,7 +245,7 @@ devices_test! {
         .execute(&pool)
         .await
         .unwrap();
-        let opened = checks::load_http_secrets(&pool, &vault(), renamed).await;
+        let opened = open_secrets(&pool, &vault(), renamed).await;
         assert!(matches!(opened, Err(Error::SecretsUnbound)), "the secrets opened for a renamed header");
     }
 
@@ -260,7 +267,7 @@ devices_test! {
             .execute(&pool)
             .await
             .unwrap();
-            let opened = checks::load_http_secrets(&pool, &vault(), id).await;
+            let opened = open_secrets(&pool, &vault(), id).await;
             assert!(matches!(opened, Err(Error::SecretsUnbound)), "the secrets opened after {path}");
         }
     }
@@ -269,13 +276,13 @@ devices_test! {
         let Definition::Http(mut input) = http("https://pve-01.home.lan:8006/", COOKIE, basic(PASSWORD)) else { unreachable!() };
         input.verify_tls = false;
         let id = create(&pool, new_check(PVE_01, "Self-signed", Definition::Http(input))).await;
-        assert!(checks::load_http_secrets(&pool, &vault(), id).await.unwrap().is_some());
+        assert!(open_secrets(&pool, &vault(), id).await.unwrap().is_some());
         sqlx::query("UPDATE checks.checks SET config = jsonb_set(config, '{verifyTls}', 'true') WHERE id = $1")
             .bind(id)
             .execute(&pool)
             .await
             .unwrap();
-        assert!(checks::load_http_secrets(&pool, &vault(), id).await.unwrap().is_some());
+        assert!(open_secrets(&pool, &vault(), id).await.unwrap().is_some());
     }
 
     async fn sec_003_the_sealed_value_opens_with_exactly_its_check_context(pool: PgPool) {

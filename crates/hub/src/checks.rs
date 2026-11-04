@@ -37,14 +37,14 @@ use crate::{
     status::Status,
 };
 
-use config::{CheckConfig, HttpSecrets, IpVersion};
+use config::{CheckConfig, IpVersion};
 use rules::Prepared;
 
 pub use evaluation::{CheckSettings, CheckState, evaluate};
 pub(in crate::checks) use model::Attempt;
 pub use model::{
-    Beat, Check, CheckChange, Definition, Due, FieldError, Heartbeat, Missing, NewCheck, PushToken,
-    Recorded,
+    Beat, Check, CheckChange, Definition, Due, FieldError, Heartbeat, HttpSetup, Missing, NewCheck,
+    PushToken, Recorded,
 };
 pub use push::push_router;
 pub use scheduler::{Probing, spawn_scheduler};
@@ -355,15 +355,19 @@ pub async fn set_paused(
     store::set_paused(conn, id, paused).await
 }
 
-/// The opened HTTP secrets of the check, for its probe only; `None` when it has none.
+/// The stored HTTP configuration of the check with its opened secrets, for its probe only:
+/// the probe sends this configuration, so the secrets go only where they were given for
+/// (SEC-005). `None` when the check is not an HTTP check and holds no secrets.
 ///
 /// # Errors
-/// `Credentials` when the sealed value does not open for this check.
+/// `Credentials` when the sealed value does not open for this check; `SecretsUnbound` when
+/// the configuration no longer names the destination they were given for; `Unreadable` when
+/// the check holds secrets but no readable HTTP configuration.
 pub async fn load_http_secrets(
     db: &PgPool,
     vault: &Vault,
     check: CheckId,
-) -> Result<Option<HttpSecrets>, Error> {
+) -> Result<Option<HttpSetup>, Error> {
     store::load_http_secrets(db, vault, check).await
 }
 

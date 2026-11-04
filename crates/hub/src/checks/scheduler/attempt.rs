@@ -110,8 +110,14 @@ async fn attempt(ctx: &Context, due: &Due, now: DateTime<Utc>) -> Outcome {
     let Some(result) = observe(ctx, due, &device, now).await else {
         return Outcome::Failed;
     };
-    let Some(in_maintenance) = in_maintenance(ctx, due, &device, now).await else {
-        return Outcome::Failed;
+    // Read for every result, because the settings that decide Down are read only when the
+    // beat is written.
+    let in_maintenance = match in_maintenance(&ctx.db, &device, (due.id, due.parent), now).await {
+        Ok(covered) => covered,
+        Err(error) => {
+            warn(due, "the maintenance windows cannot be read", &error);
+            return Outcome::Failed;
+        }
     };
     let attempt = Attempt {
         result: &result,
@@ -149,55 +155,67 @@ async fn observe(
     device: &Device,
     now: DateTime<Utc>,
 ) -> Option<ProbeResult> {
-    let config = match &due.config {
-        None => return Some(ProbeResult::failed(&Failure::BadConfig)),
-        Some(CheckConfig::Push) => return Some(schedule::missed_push()),
-        Some(config) => config,
-    };
-    let secrets = if matches!(config, CheckConfig::Http(_)) {
-        match checks::load_http_secrets(&ctx.db, &ctx.probing.vault, due.id).await {
-            Ok(secrets) => secrets,
-            Err(Error::Credentials(_)) => return Some(ProbeResult::failed(&Failure::Secrets)),
-            Err(error) => {
-                warn(due, "the check secrets cannot be read", &error);
-                return None;
-            }
-        }
-    } else {
-        None
-    };
     let target = ProbeTarget {
         host: device.host.clone(),
     };
     let env = ProbeEnv::new(ctx.probing.policy.clone(), now);
-    Some(probe(&target, config, secrets.as_ref(), &env).await)
+    match &due.config {
+        None => Some(ProbeResult::failed(&Failure::BadConfig)),
+        Some(CheckConfig::Push) => Some(schedule::missed_push()),
+        Some(CheckConfig::Http(_)) => observe_http(ctx, due, &target, &env).await,
+        Some(config) => Some(probe(&target, config, None, &env).await),
+    }
+}
+
+/// Probes the HTTP configuration stored now, read with its secrets, never the one read at
+/// tick time: the secrets go only where they were given for (SEC-005). Secrets that do not
+/// open, or no longer match the configuration, fail the probe with a fixed message and send
+/// nothing (CHK-001). `None` when the read failed.
+async fn observe_http(
+    ctx: &Context,
+    due: &Due,
+    target: &ProbeTarget,
+    env: &ProbeEnv,
+) -> Option<ProbeResult> {
+    let setup = match checks::load_http_secrets(&ctx.db, &ctx.probing.vault, due.id).await {
+        Ok(Some(setup)) => setup,
+        Ok(None) | Err(Error::Unreadable(_)) => {
+            return Some(ProbeResult::failed(&Failure::BadConfig));
+        }
+        Err(Error::Credentials(_)) => return Some(ProbeResult::failed(&Failure::Secrets)),
+        Err(Error::SecretsUnbound) => {
+            return Some(ProbeResult::failed(&Failure::SecretsUnbound));
+        }
+        Err(error) => {
+            warn(due, "the check secrets cannot be read", &error);
+            return None;
+        }
+    };
+    let config = CheckConfig::Http(setup.config);
+    Some(probe(target, &config, setup.secrets.as_ref(), env).await)
 }
 
 /// Whether maintenance covers the check: the device's manual flag, or an active window on
-/// the device, the check, its group or a tag (CHK-006). Read for every result, because the
-/// settings that decide Down are read only when the beat is written. `None` when the
-/// windows cannot be read.
-async fn in_maintenance(
-    ctx: &Context,
-    due: &Due,
+/// the device, the check, its group or a tag (CHK-006). The scheduler and the push route
+/// both ask it, so every beat is recorded under the same cover. The pair is the check and
+/// its group.
+///
+/// # Errors
+/// `Database` when the windows cannot be read.
+pub(in crate::checks) async fn in_maintenance(
+    db: &PgPool,
     device: &Device,
+    (check, parent): (CheckId, Option<CheckId>),
     now: DateTime<Utc>,
-) -> Option<bool> {
+) -> Result<bool, maintenance::Error> {
     if device.maintenance {
-        return Some(true);
+        return Ok(true);
     }
-    match maintenance::active_targets(&ctx.db, now).await {
-        Ok(active) => Some(
-            [Some(due.id), due.parent]
-                .into_iter()
-                .flatten()
-                .any(|check| active.covers(device.id, Some(check), &device.tags)),
-        ),
-        Err(error) => {
-            warn(due, "the maintenance windows cannot be read", &error);
-            None
-        }
-    }
+    let active = maintenance::active_targets(db, now).await?;
+    Ok([Some(check), parent]
+        .into_iter()
+        .flatten()
+        .any(|check| active.covers(device.id, Some(check), &device.tags)))
 }
 
 async fn record(db: &PgPool, check: CheckId, attempt: &Attempt<'_>) -> Result<Option<Beat>, Error> {

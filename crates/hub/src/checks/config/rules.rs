@@ -29,6 +29,8 @@ pub enum Reason {
     ControlCharacter,
     #[error("needs a value that is missing")]
     Missing,
+    #[error("must not name the destination; the URL sets it")]
+    Destination,
 }
 
 pub const TIMEOUT_MS: (u32, u32) = (100, 60_000);
@@ -84,17 +86,35 @@ pub(super) fn header_value(field: &'static str, value: &str) -> Result<(), Confi
     }
 }
 
-/// RFC 9110 token: the grammar of a header name.
+/// Header names that pick where a request goes, at the client or at a proxy in front of the
+/// server (compared case-insensitively). Only the URL names the destination, so stored
+/// secrets, which are bound to the URL origin, never follow one of these (SEC-005).
+/// Pseudo-headers such as `:authority` are not tokens, so the grammar refuses them already.
+const DESTINATION_HEADERS: [&str; 5] = [
+    "host",
+    "forwarded",
+    "x-forwarded-host",
+    "x-forwarded-server",
+    "x-host",
+];
+
+/// RFC 9110 token: the grammar of a header name. A name that picks the destination is
+/// refused (SEC-005).
 pub(super) fn header_name(field: &'static str, name: &str) -> Result<(), ConfigError> {
     let token = |b: u8| b.is_ascii_alphanumeric() || b"!#$%&'*+-.^_`|~".contains(&b);
     if name.is_empty() {
         Err(err(field, Reason::Empty))
     } else if name.len() > 128 {
         Err(err(field, Reason::TooLong { max: 128 }))
-    } else if name.bytes().all(token) {
-        Ok(())
-    } else {
+    } else if !name.bytes().all(token) {
         Err(err(field, Reason::Invalid))
+    } else if DESTINATION_HEADERS
+        .iter()
+        .any(|destination| name.eq_ignore_ascii_case(destination))
+    {
+        Err(err(field, Reason::Destination))
+    } else {
+        Ok(())
     }
 }
 
