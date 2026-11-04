@@ -222,7 +222,7 @@ pub fn beat(at: DateTime<Utc>, status: Status, response_time_ms: Option<u32>) ->
 /// Records the beat on the check, as the scheduler does.
 pub async fn record(pool: &PgPool, check: &str, beat: &Beat) {
     let mut conn = pool.acquire().await.unwrap();
-    checks::record_beat(&mut conn, check.parse::<CheckId>().unwrap(), beat)
+    let _recorded = checks::record_beat(&mut conn, check.parse::<CheckId>().unwrap(), beat)
         .await
         .unwrap();
 }

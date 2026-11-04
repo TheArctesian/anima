@@ -1,4 +1,4 @@
-//! Retention and partition upkeep for the daily jobs (DB-005, DB-009, R-004).
+//! Retention and partition upkeep for the daily jobs (DB-005, DB-009, DEV-015).
 
 use chrono::{DateTime, Months, NaiveDate, TimeDelta, Utc};
 use sqlx::PgPool;
@@ -9,7 +9,7 @@ const MINUTE_KEPT: TimeDelta = TimeDelta::days(7);
 const HOUR_KEPT: TimeDelta = TimeDelta::days(90);
 const DAY_KEPT: Months = Months::new(24);
 
-/// Deletes the heartbeats whose check no longer exists; returns how many (R-004).
+/// Deletes the heartbeats whose check no longer exists; returns how many (DEV-015).
 pub(in crate::checks) async fn delete_orphan_heartbeats(db: &PgPool) -> Result<u64, Error> {
     let deleted = sqlx::query(
         "DELETE FROM checks.heartbeats h \

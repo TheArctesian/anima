@@ -46,7 +46,7 @@ fn chk_009_stored_json_is_tagged_with_the_type_id() {
     let json = serde_json::to_value(tcp(22, 5000)).unwrap();
     assert_eq!(
         json,
-        serde_json::json!({"type": "tcp", "port": 22, "timeout_ms": 5000})
+        serde_json::json!({"type": "tcp", "port": 22, "timeoutMs": 5000})
     );
     assert_eq!(
         serde_json::to_value(CheckConfig::Push).unwrap(),

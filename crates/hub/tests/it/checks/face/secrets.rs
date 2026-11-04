@@ -1,12 +1,12 @@
 //! HTTP check secrets: sealed apart from `config`, bound to their check, opened only for the
-//! probe, and kept on update when left empty (SEC-003, LOG-007, R-028).
+//! probe, and kept on update when left empty (SEC-003, SEC-005, LOG-007).
 
 use anima_hub::{
     checks::{
         self, CheckChange, Definition, Error,
         config::{CheckConfig, HttpCredentials, HttpInput, HttpMethod, HttpSecrets, StatusRange},
     },
-    credentials::Secret,
+    credentials::{Sealed, Secret},
     ids::CheckId,
 };
 use sqlx::PgPool;
@@ -145,10 +145,10 @@ devices_test! {
 
     async fn sec_003_an_update_with_empty_secrets_keeps_the_stored_ones(pool: PgPool) {
         let id = web_check(&pool, "Web UI").await;
-        update(&pool, id, http("https://pve-01.home.lan:8007/", "", basic(""))).await.unwrap();
+        update(&pool, id, http("https://PVE-01.home.lan:8006/api/", "", basic(""))).await.unwrap();
         let check = checks::get(&pool, id).await.unwrap();
         let CheckConfig::Http(config) = check.config else { panic!("not http") };
-        assert_eq!(config.url, "https://pve-01.home.lan:8007/");
+        assert_eq!(config.url, "https://PVE-01.home.lan:8006/api/");
         let kept = secrets(&pool, id).await;
         assert_eq!(kept.password.as_ref().map(text), Some(PASSWORD));
         assert_eq!(kept.headers.iter().map(text).collect::<Vec<_>>(), [COOKIE]);
@@ -172,20 +172,124 @@ devices_test! {
         assert_eq!(replaced.headers.iter().map(text).collect::<Vec<_>>(), ["session=new"]);
     }
 
-    async fn sec_003_an_empty_secret_with_nothing_stored_is_refused(pool: PgPool) {
+    async fn sec_005_an_empty_secret_for_another_kind_or_header_is_refused(pool: PgPool) {
         let id = web_check(&pool, "Web UI").await;
         let bearer = HttpCredentials::Bearer(Secret::from(String::new()));
         let error = update(&pool, id, http("https://pve-01.home.lan:8006/", COOKIE, bearer)).await.unwrap_err();
-        assert!(matches!(&error, Error::Validation(e) if e[0].field == "auth"), "{error:?}");
+        assert!(matches!(&error, Error::Validation(e) if e[0].field == "config"), "{error:?}");
         let Definition::Http(mut input) = http("https://pve-01.home.lan:8006/", COOKIE, basic(PASSWORD)) else { unreachable!() };
         input.headers.push(("Authorization".to_owned(), Secret::from(String::new())));
         let error = update(&pool, id, Definition::Http(input)).await.unwrap_err();
-        assert!(matches!(&error, Error::Validation(e) if e[0].field == "headers"), "{error:?}");
+        assert!(matches!(&error, Error::Validation(e) if e[0].field == "config"), "{error:?}");
         let mut conn = pool.acquire().await.unwrap();
         let fresh = new_check(PVE_01, "Fresh", http("https://x.lan/", "", basic(PASSWORD)));
         let error = checks::create_check(&mut conn, &vault(), fresh).await.unwrap_err();
         assert!(matches!(&error, Error::Validation(e) if e[0].field == "headers"), "{error:?}");
         assert_eq!(secrets(&pool, id).await.password.as_ref().map(text), Some(PASSWORD));
+    }
+
+    async fn sec_005_stored_secrets_never_follow_a_changed_destination(pool: PgPool) {
+        let id = web_check(&pool, "Web UI").await;
+        let with_tls = |url: &str, verify: bool, credentials| {
+            let Definition::Http(mut input) = http(url, "", credentials) else { unreachable!() };
+            input.verify_tls = verify;
+            Definition::Http(input)
+        };
+        let other_user = HttpCredentials::Basic {
+            username: "someone".to_owned(),
+            password: Secret::from(String::new()),
+        };
+        let refused = [
+            with_tls("http://attacker.example/collect", false, basic("")),
+            with_tls("https://attacker.example:8006/", true, basic("")),
+            with_tls("http://pve-01.home.lan:8006/", true, basic("")),
+            with_tls("https://pve-01.home.lan:8443/", true, basic("")),
+            with_tls("https://pve-01.home.lan:8006/", false, basic("")),
+            with_tls("https://pve-01.home.lan:8006/", true, other_user),
+        ];
+        for definition in refused {
+            let error = update(&pool, id, definition).await.unwrap_err();
+            assert!(matches!(&error, Error::Validation(e) if e[0].field == "config"), "{error:?}");
+        }
+        let check = checks::get(&pool, id).await.unwrap();
+        let CheckConfig::Http(config) = check.config else { panic!("not http") };
+        assert_eq!(config.url, "https://pve-01.home.lan:8006/");
+        assert!(config.verify_tls);
+    }
+
+    async fn sec_005_secrets_do_not_open_after_the_url_is_changed_in_the_database(pool: PgPool) {
+        let id = web_check(&pool, "Web UI").await;
+        sqlx::query(
+            "UPDATE checks.checks SET config = jsonb_set(config, '{url}', '\"http://attacker.example/\"') \
+             WHERE id = $1",
+        )
+        .bind(id)
+        .execute(&pool)
+        .await
+        .unwrap();
+        let opened = checks::load_http_secrets(&pool, &vault(), id).await;
+        assert!(matches!(opened, Err(Error::SecretsUnbound)), "the secrets opened for a new origin");
+        let renamed = web_check(&pool, "Renamed header").await;
+        sqlx::query(
+            "UPDATE checks.checks SET config = jsonb_set(config, '{headers,0,name}', '\"Authorization\"') \
+             WHERE id = $1",
+        )
+        .bind(renamed)
+        .execute(&pool)
+        .await
+        .unwrap();
+        let opened = checks::load_http_secrets(&pool, &vault(), renamed).await;
+        assert!(matches!(opened, Err(Error::SecretsUnbound)), "the secrets opened for a renamed header");
+    }
+
+    async fn sec_005_secrets_do_not_open_after_tls_or_auth_is_changed_in_the_database(pool: PgPool) {
+        let edits = [
+            ("{verifyTls}", "false"),
+            ("{auth,username}", "\"attacker\""),
+            ("{auth}", "{\"kind\": \"BEARER\"}"),
+        ];
+        for (path, value) in edits {
+            let id = web_check(&pool, path).await;
+            sqlx::query(
+                "UPDATE checks.checks SET config = jsonb_set(config, $2::text[], $3::jsonb) \
+                 WHERE id = $1",
+            )
+            .bind(id)
+            .bind(path)
+            .bind(value)
+            .execute(&pool)
+            .await
+            .unwrap();
+            let opened = checks::load_http_secrets(&pool, &vault(), id).await;
+            assert!(matches!(opened, Err(Error::SecretsUnbound)), "the secrets opened after {path}");
+        }
+    }
+
+    async fn sec_005_secrets_given_without_tls_checks_still_open_when_they_are_turned_on(pool: PgPool) {
+        let Definition::Http(mut input) = http("https://pve-01.home.lan:8006/", COOKIE, basic(PASSWORD)) else { unreachable!() };
+        input.verify_tls = false;
+        let id = create(&pool, new_check(PVE_01, "Self-signed", Definition::Http(input))).await;
+        assert!(checks::load_http_secrets(&pool, &vault(), id).await.unwrap().is_some());
+        sqlx::query("UPDATE checks.checks SET config = jsonb_set(config, '{verifyTls}', 'true') WHERE id = $1")
+            .bind(id)
+            .execute(&pool)
+            .await
+            .unwrap();
+        assert!(checks::load_http_secrets(&pool, &vault(), id).await.unwrap().is_some());
+    }
+
+    async fn sec_003_the_sealed_value_opens_with_exactly_its_check_context(pool: PgPool) {
+        let id = web_check(&pool, "Web UI").await;
+        let bytes: Vec<u8> = sqlx::query_scalar("SELECT secrets_sealed FROM checks.checks WHERE id = $1")
+            .bind(id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        let sealed = Sealed::from_bytes(&bytes).unwrap();
+        let uuid: uuid::Uuid = id.into();
+        let context = format!("checks.checks.http:{}", uuid.hyphenated());
+        assert!(vault().open(&sealed, context.as_bytes()).is_ok());
+        assert!(vault().open(&sealed, format!("checks.check.http:{uuid}").as_bytes()).is_err());
     }
 
     async fn log_007_errors_never_echo_a_secret(pool: PgPool) {

@@ -36,7 +36,7 @@ fn run(cfg: &CheckSettings, probes: Vec<ProbeResult>) -> (Vec<Status>, CheckStat
     let mut state = CheckState::default();
     let mut beats = Vec::new();
     for probe in probes {
-        let (next, beat) = evaluate(&state, probe, cfg, now());
+        let (next, beat) = evaluate(&state, &probe, cfg, now());
         beats.push(beat);
         state = next;
     }
@@ -66,8 +66,8 @@ fn chk_002_with_three_retries_down_comes_after_four_failures() {
 #[test]
 fn chk_002_a_held_failure_keeps_the_previous_status_and_waits_the_retry_interval() {
     let cfg = settings(3);
-    let up_state = evaluate(&CheckState::default(), up(5), &cfg, now()).0;
-    let (state, beat) = evaluate(&up_state, failed(), &cfg, now());
+    let up_state = evaluate(&CheckState::default(), &up(5), &cfg, now()).0;
+    let (state, beat) = evaluate(&up_state, &failed(), &cfg, now());
     assert_eq!(beat, Unknown);
     assert_eq!(state.status, Up);
     assert_eq!(state.failures, 1);
@@ -87,6 +87,30 @@ fn chk_002_recovery_resets_the_failures() {
     let (beats, state) = run(&settings(1), vec![failed(), failed(), up(5), failed()]);
     assert_eq!(beats, [Unknown, Down, Up, Unknown]);
     assert_eq!((state.status, state.failures), (Up, 1));
+}
+
+#[test]
+fn chk_002_a_held_failure_after_degraded_stays_degraded_until_down() {
+    let cfg = CheckSettings {
+        degraded_threshold_ms: 10,
+        ..settings(1)
+    };
+    let mut state = CheckState::default();
+    let mut shown = Vec::new();
+    for probe in [up(50), failed(), failed()] {
+        let (next, _) = evaluate(&state, &probe, &cfg, now());
+        shown.push(next.status);
+        state = next;
+    }
+    assert_eq!(shown, [Degraded, Degraded, Down]);
+}
+
+#[test]
+fn chk_002_ten_retries_hold_ten_failures_and_the_eleventh_is_down() {
+    let (beats, state) = run(&settings(10), vec![failed(); 11]);
+    assert_eq!(beats[..10], [Unknown; 10]);
+    assert_eq!(beats[10], Down);
+    assert_eq!(state.failures, 11);
 }
 
 #[test]

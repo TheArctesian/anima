@@ -1,0 +1,14 @@
+{
+  "name": "@anima/deploy",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bun ../quality/bin/with-postgres.ts bun test --timeout 30000 ./deploy",
+    "check": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.0",
+    "typescript": "^6"
+  }
+}

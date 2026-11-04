@@ -4,7 +4,7 @@
 use std::net::IpAddr;
 
 use anima_hub::{
-    checks::{self, Error, Missing},
+    checks::{self, Error, Missing, Recorded},
     ids::CheckId,
     status::Status,
 };
@@ -24,6 +24,7 @@ macro_rules! fixture_test {
 }
 
 const UPTIME_TABLES: [&str; 3] = ["uptime_minute", "uptime_hour", "uptime_day"];
+const HEARTBEATS: &str = "SELECT count(*) FROM checks.heartbeats WHERE check_id = $1";
 
 /// (bucket, up, down, degraded, unknown, response count, average) of each aggregate table.
 type Aggregate = (DateTime<Utc>, i32, i32, i32, i32, i32, Option<f32>);
@@ -153,12 +154,68 @@ fixture_test! {
         first.cert_not_after = Some(at + TimeDelta::days(3));
         record(&pool, id, &first).await;
         record(&pool, id, &beat(at + TimeDelta::seconds(1), Status::Down, None)).await;
-        // A late beat from before the last one does not move the last beat back.
-        record(&pool, id, &beat(at - TimeDelta::seconds(5), Status::Down, None)).await;
         let (status, _, _, last, ip, expiry) = state(&pool, id).await;
         assert_eq!(status, "down");
         assert_eq!(last, Some(at + TimeDelta::seconds(1)));
         assert_eq!((ip, expiry), (first.resolved_ip, first.cert_not_after));
+    }
+
+    async fn db_008_an_older_beat_after_a_newer_one_changes_nothing(pool: PgPool) {
+        let id = create(&pool, new_check(PVE_01, "Ordered", icmp())).await;
+        let at = database_now(&pool).await;
+        record(&pool, id, &beat(at, Status::Up, Some(5))).await;
+        let before = state(&pool, id).await;
+        let mut conn = pool.acquire().await.unwrap();
+        let late = beat(at - TimeDelta::seconds(5), Status::Down, None);
+        assert_eq!(checks::record_beat(&mut conn, id, &late).await.unwrap(), Recorded::Skipped);
+        assert_eq!(state(&pool, id).await, before);
+        assert_eq!(count(&pool, HEARTBEATS, id).await, 1);
+        assert_eq!(aggregates(&pool, id).await[0][0].1, 1);
+    }
+
+    async fn db_008_a_second_beat_at_the_same_instant_is_skipped(pool: PgPool) {
+        let id = create(&pool, new_check(PVE_01, "Twice", icmp())).await;
+        let at = database_now(&pool).await;
+        record(&pool, id, &beat(at, Status::Up, Some(5))).await;
+        let before = state(&pool, id).await;
+        let mut conn = pool.acquire().await.unwrap();
+        let again = beat(at, Status::Down, None);
+        assert_eq!(checks::record_beat(&mut conn, id, &again).await.unwrap(), Recorded::Skipped);
+        assert_eq!(state(&pool, id).await, before);
+        assert_eq!(count(&pool, HEARTBEATS, id).await, 1);
+        assert_eq!(aggregates(&pool, id).await[0][0].2, 0);
+    }
+
+    async fn chk_005_a_beat_for_a_paused_check_changes_nothing(pool: PgPool) {
+        let id = create(&pool, new_check(PVE_01, "Paused", icmp())).await;
+        let mut conn = pool.acquire().await.unwrap();
+        checks::set_paused(&mut conn, id, true).await.unwrap();
+        let before = state(&pool, id).await;
+        let down = beat(database_now(&pool).await, Status::Down, None);
+        assert_eq!(checks::record_beat(&mut conn, id, &down).await.unwrap(), Recorded::Skipped);
+        assert_eq!(state(&pool, id).await, before);
+        assert_eq!(count(&pool, HEARTBEATS, id).await, 0);
+        assert!(aggregates(&pool, id).await.iter().all(Vec::is_empty));
+    }
+
+    async fn db_008_a_failed_heartbeat_step_rolls_back_only_its_savepoint(pool: PgPool) {
+        let id = create(&pool, new_check(PVE_01, "Savepoint", icmp())).await;
+        let outside = database_now(&pool).await - TimeDelta::days(40);
+        let mut conn = pool.acquire().await.unwrap();
+        let mut tx = conn.begin().await.unwrap();
+        let refused = checks::record_beat(&mut tx, id, &beat(outside, Status::Down, None)).await;
+        assert!(matches!(refused, Err(Error::Database(_))), "{refused:?}");
+        let name: String = sqlx::query_scalar("SELECT name FROM checks.checks WHERE id = $1")
+            .bind(id)
+            .fetch_one(&mut *tx)
+            .await
+            .unwrap();
+        assert_eq!(name, "Savepoint");
+        tx.commit().await.unwrap();
+        let (status, failures, due, last, _, _) = state(&pool, id).await;
+        assert_eq!((status.as_str(), failures, due, last), ("unknown", 0, None, None));
+        assert!(aggregates(&pool, id).await.iter().all(Vec::is_empty));
+        assert_eq!(count(&pool, HEARTBEATS, id).await, 0);
     }
 
     async fn chk_003_a_beat_for_a_missing_check_writes_nothing(pool: PgPool) {
@@ -177,7 +234,8 @@ fixture_test! {
         let at = database_now(&pool).await;
         let mut conn = pool.acquire().await.unwrap();
         let mut tx = conn.begin().await.unwrap();
-        checks::record_beat(&mut tx, id, &beat(at, Status::Down, None)).await.unwrap();
+        let recorded = checks::record_beat(&mut tx, id, &beat(at, Status::Down, None)).await;
+        assert_eq!(recorded.unwrap(), Recorded::Written);
         tx.rollback().await.unwrap();
         let heartbeats = "SELECT count(*) FROM checks.heartbeats WHERE check_id = $1";
         assert_eq!(count(&pool, heartbeats, id).await, 0);

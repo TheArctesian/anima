@@ -140,10 +140,10 @@ async fn record(
     };
     let now = state.clock.now();
     let probe = report.into_probe();
-    let evaluated = evaluate(&check.state, probe.clone(), &check.settings, now);
+    let evaluated = evaluate(&check.state, &probe, &check.settings, now);
     let beat = Beat::of(probe, evaluated, now);
     let mut tx = state.db.begin().await?;
-    record_beat(&mut tx, check.id, &beat).await?;
+    let _recorded = record_beat(&mut tx, check.id, &beat).await?;
     tx.commit().await?;
     state.bus.publish(Signal::Heartbeat {
         check: check.id,

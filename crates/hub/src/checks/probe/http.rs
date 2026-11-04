@@ -64,13 +64,20 @@ fn url_permitted(url: &Url, policy: &AddressPolicy) -> bool {
         })
 }
 
-fn redirect_policy(max: u8, policy: Arc<AddressPolicy>) -> Policy {
+/// Follows at most `max` redirects to permitted addresses. With secrets attached it refuses
+/// a hop from HTTPS to HTTP: reqwest drops the secret headers on a change of host or port,
+/// but not on a change of scheme alone (SEC-005).
+fn redirect_policy(max: u8, policy: Arc<AddressPolicy>, secrets: bool) -> Policy {
     if max == 0 {
         return Policy::none();
     }
     Policy::custom(move |attempt| {
+        let downgrade = attempt.url().scheme() == "http"
+            && attempt.previous().iter().any(|url| url.scheme() == "https");
         if attempt.previous().len() > usize::from(max) {
             attempt.error(Failure::TooManyRedirects)
+        } else if secrets && downgrade {
+            attempt.error(Failure::InsecureRedirect)
         } else if !url_permitted(attempt.url(), &policy) {
             attempt.error(Failure::NotPermitted)
         } else {
@@ -98,6 +105,11 @@ fn classify(error: &reqwest::Error) -> Failure {
     }
 }
 
+/// Whether the request carries a secret: authentication or a secret header.
+fn has_secrets(config: &HttpConfig) -> bool {
+    config.auth != HttpAuth::None || config.headers.iter().any(|header| header.value.is_none())
+}
+
 fn client(config: &HttpConfig, env: &ProbeEnv) -> Result<Client, Failure> {
     Client::builder()
         .use_rustls_tls()
@@ -105,7 +117,11 @@ fn client(config: &HttpConfig, env: &ProbeEnv) -> Result<Client, Failure> {
         // Never take a proxy from the environment: it would send the request to a host the
         // address policy never judged. A child-process test sets the variable to prove it.
         .no_proxy()
-        .redirect(redirect_policy(config.max_redirects, env.policy.clone()))
+        .redirect(redirect_policy(
+            config.max_redirects,
+            env.policy.clone(),
+            has_secrets(config),
+        ))
         .dns_resolver(Arc::new(PolicyResolver(env.clone())))
         .danger_accept_invalid_certs(!config.verify_tls)
         .timeout(Duration::from_millis(u64::from(config.timeout_ms)))

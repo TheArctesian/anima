@@ -4,6 +4,7 @@
 use std::borrow::Cow;
 
 use serde::{Deserialize, Serialize};
+use zeroize::Zeroizing;
 
 use super::{
     http::{HttpAuth, HttpConfig, HttpHeader, HttpMethod, StatusRange},
@@ -74,7 +75,9 @@ impl HttpSecrets {
         self.password.is_none() && self.bearer_token.is_none() && self.headers.is_empty()
     }
 
-    /// The bytes to seal into the `secrets_sealed` column.
+    /// The bytes to seal into the `secrets_sealed` column. They are written into a zeroized
+    /// buffer sized for the worst case (every byte escaped), so it never grows and leaves no
+    /// copy behind.
     #[must_use]
     pub fn encode(&self) -> Secret {
         let wire = Wire {
@@ -82,7 +85,16 @@ impl HttpSecrets {
             bearer_token: self.bearer_token.as_ref().map(lossy),
             headers: self.headers.iter().map(lossy).collect(),
         };
-        Secret::new(serde_json::to_vec(&wire).unwrap_or_default())
+        let parts = [&wire.password, &wire.bearer_token]
+            .into_iter()
+            .flatten()
+            .chain(&wire.headers);
+        let worst = parts.map(|part| part.len() * 6 + 8).sum::<usize>() + 64;
+        let mut bytes = Zeroizing::new(Vec::with_capacity(worst));
+        if serde_json::to_writer(&mut *bytes, &wire).is_err() {
+            bytes.clear();
+        }
+        Secret::new(std::mem::take(&mut *bytes))
     }
 
     /// Reads back what [`HttpSecrets::encode`] wrote.
