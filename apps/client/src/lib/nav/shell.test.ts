@@ -12,8 +12,11 @@ vi.mock('motion', async (importOriginal) => ({
   animate: (await import('../motion/engine.fixture')).fakeRun,
 }));
 
-const keyStore = vi.hoisted(() => ({ read: vi.fn() }));
-vi.mock('$lib/desktop/token', () => ({ readAccessToken: keyStore.read }));
+const keyStore = vi.hoisted(() => ({ read: vi.fn(), available: vi.fn(() => false) }));
+vi.mock('$lib/desktop/token', () => ({ readAccessToken: keyStore.read, keyStoreAvailable: keyStore.available }));
+
+const router = vi.hoisted(() => ({ goto: vi.fn(() => Promise.resolve()) }));
+vi.mock('$app/navigation', () => router);
 
 const fake = vi.hoisted(() => ({
   options: undefined as { address: { origin: string }; token: (address: never) => Promise<string | null> } | undefined,
@@ -37,7 +40,7 @@ vi.mock('$lib/hub/hub', async (importOriginal) => ({
   createHub: (options: NonNullable<typeof fake.options>): Hub => {
     fake.options = options;
     return {
-      address: { origin: 'https://hub.anima.ing', http: '', socket: '' },
+      address: options.address,
       status: {
         get current() {
           return fake.status;
@@ -64,6 +67,9 @@ function show(pathname = '/devices', status: HubStatus = CONNECTED): HTMLElement
 }
 
 beforeEach(() => {
+  keyStore.available.mockReset().mockReturnValue(false);
+  keyStore.read.mockReset();
+  router.goto.mockClear();
   vi.useFakeTimers();
   vi.setSystemTime(NOW);
   fake.close = () => Promise.resolve();
@@ -222,4 +228,33 @@ it('H-2: the hub is created with the stored address and the key store as its tok
 it('H-2: with nothing stored the hub is the default one', () => {
   show();
   expect(fake.options?.address.origin).toBe('https://hub.anima.ing');
+});
+
+it('API-003, H-5: in the desktop app with no stored token the layout goes to /sign-in', async () => {
+  keyStore.available.mockReturnValue(true);
+  keyStore.read.mockResolvedValue(null);
+  localStorage.setItem('anima.hubAddress', 'https://hub.example.org');
+  onTestFinished(() => {
+    localStorage.clear();
+  });
+  show('/devices');
+  await vi.advanceTimersByTimeAsync(0);
+  expect(keyStore.read).toHaveBeenCalledWith(expect.objectContaining({ origin: 'https://hub.example.org' }));
+  expect(router.goto).toHaveBeenCalledWith('/sign-in');
+});
+
+it('H-5: on /sign-in the layout does not go anywhere', async () => {
+  keyStore.available.mockReturnValue(true);
+  keyStore.read.mockResolvedValue(null);
+  show('/sign-in');
+  await vi.advanceTimersByTimeAsync(0);
+  expect(router.goto).not.toHaveBeenCalled();
+});
+
+it('D-4: outside the desktop app the layout does not go to /sign-in', async () => {
+  keyStore.available.mockReturnValue(false);
+  keyStore.read.mockResolvedValue(null);
+  show('/devices');
+  await vi.advanceTimersByTimeAsync(0);
+  expect(router.goto).not.toHaveBeenCalled();
 });
