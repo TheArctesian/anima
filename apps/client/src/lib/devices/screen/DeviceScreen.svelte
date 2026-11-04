@@ -1,4 +1,5 @@
 <script lang="ts">
+  import LogsPanel from '$lib/events/panel/LogsPanel.svelte';
   import { useHub } from '$lib/hub/context';
   import { press } from '$lib/motion/roles/press';
   import { crossFade } from '$lib/motion/roles/transitions';
@@ -107,7 +108,19 @@
   {/if}
 </div>
 
+<div class="clearance" aria-hidden="true"></div>
+<LogsPanel devices={list?.devices ?? []} />
+
 <style>
+  /*
+   * Room to scroll the last card clear of the logs panel: its 33 % stop plus its header, fixed, so a drag reflows nothing.
+   * The 33vh is THIRD_SHARE in lib/events/resize/resize.ts; change them together.
+   */
+  .clearance {
+    --logs-third: 33vh;
+    block-size: calc(var(--logs-third) + var(--target-min-desktop) + var(--space-2));
+  }
+
   /* A new order must not drag the scroll position after the card the browser anchored to. */
   .results {
     overflow-anchor: none;
