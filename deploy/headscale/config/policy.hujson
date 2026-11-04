@@ -1,0 +1,93 @@
+// Anima tailnet access policy for Headscale v0.29.7 (VPN-004).
+// Only `grants` are used: anything no grant names is denied. Never use `*` or
+// `autogroup:` selectors, and never add `autoApprovers`: the operator approves routes.
+// Client computers are personal nodes of `operator`, never tagged, so their keys keep
+// the 180-day expiry; the hub and routers are tagged and do not expire (VPN-003).
+{
+  // Every owner list is empty, so no node can claim a tag when it registers: with an
+  // owner, a client re-registered by its user could advertise tag:hub and lose its
+  // expiry (VPN-003). Tags are applied only by the operator through the CLI, with a
+  // tagged pre-auth key or `headscale nodes tag`.
+  "tagOwners": {
+    "tag:hub": [],
+    // Every subnet router carries tag:router and the tag of its own site.
+    "tag:router": [],
+    "tag:site-home": [],
+    "tag:site-office1": [],
+    "tag:site-office2": [],
+  },
+
+  // One subnet per site; they must not overlap (VPN-001).
+  "hosts": {
+    "site-home": "10.10.0.0/24",
+    "site-office1": "10.20.0.0/24",
+    "site-office2": "10.30.0.0/24",
+  },
+
+  "grants": [
+    // Clients reach the hub API and SSH on the VPS.
+    {"src": ["operator@"], "dst": ["tag:hub"], "ip": ["tcp:443", "tcp:22"]},
+    // Clients reach every device at every site.
+    {"src": ["operator@"], "dst": ["site-home", "site-office1", "site-office2"], "ip": ["*"]},
+    // The hub reaches every device for checks, metrics and sessions.
+    {"src": ["tag:hub"], "dst": ["site-home", "site-office1", "site-office2"], "ip": ["*"]},
+    // Each router reaches only its own site subnet.
+    {"src": ["tag:site-home"], "dst": ["site-home"], "ip": ["*"]},
+    {"src": ["tag:site-office1"], "dst": ["site-office1"], "ip": ["*"]},
+    {"src": ["tag:site-office2"], "dst": ["site-office2"], "ip": ["*"]},
+    // No grant targets a client address: devices, routers and the hub cannot start a
+    // connection to a client; replies to permitted connections still flow.
+  ],
+
+  // A smoke test, run on the server with
+  // `headscale policy check --bypass-grpc-and-access-database-directly`. Headscale passes
+  // a deny row when any one source address is denied; `bun test` is the authoritative
+  // check, where every source address must be denied. A row without `proto` is checked
+  // for tcp, udp and icmp. Headscale passes an accept row without `proto` if any one of
+  // them is allowed, while `bun test` requires all three, so accept rows always name
+  // `proto`. Headscale needs a node for every tag a row names, so the rows are grouped by
+  // the tagged nodes they need: add a group only once its nodes are enrolled. Rows with an
+  // IP source (10.10.0.5, 10.30.0.5) need no node on the server; they sit with their
+  // site's router because `bun test` reaches a LAN address only through that router.
+  "tests": [
+    // Needs a client and the hub.
+    {
+      "src": "operator@",
+      "proto": "tcp",
+      "accept": ["tag:hub:443", "tag:hub:22", "10.10.0.5:22", "10.20.0.5:443", "10.30.0.5:3389"],
+      "deny": ["tag:hub:5432", "tag:hub:80", "operator@:22"],
+    },
+    {
+      "src": "tag:hub",
+      "proto": "tcp",
+      "accept": ["10.10.0.5:161", "10.20.0.5:22", "10.30.0.5:5900"],
+      "deny": ["operator@:22", "operator@:443"],
+    },
+    {"src": "tag:hub", "deny": ["operator@:22", "operator@:53"]},
+
+    // Needs the home router (tag:router, tag:site-home).
+    {
+      "src": "tag:site-home",
+      "proto": "tcp",
+      "accept": ["10.10.0.5:22"],
+      "deny": ["10.20.0.5:22", "10.30.0.5:22", "operator@:22", "tag:hub:443"],
+    },
+    {"src": "10.10.0.5", "deny": ["operator@:22", "tag:hub:443", "10.30.0.5:22"]},
+    {
+      "src": "tag:router",
+      "proto": "tcp",
+      "deny": ["operator@:22", "operator@:443", "tag:hub:443", "tag:hub:22"],
+    },
+    {"src": "operator@", "proto": "tcp", "deny": ["tag:router:22"]},
+    {"src": "tag:hub", "proto": "tcp", "deny": ["tag:router:22"]},
+
+    // Needs the office 2 router (tag:router, tag:site-office2).
+    {
+      "src": "tag:site-office2",
+      "proto": "tcp",
+      "accept": ["10.30.0.5:22"],
+      "deny": ["10.10.0.5:22", "10.20.0.5:22", "operator@:22", "tag:hub:443"],
+    },
+    {"src": "10.30.0.5", "deny": ["operator@:22", "tag:hub:443", "10.10.0.5:22"]},
+  ],
+}
