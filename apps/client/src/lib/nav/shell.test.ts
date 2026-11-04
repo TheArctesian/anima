@@ -13,7 +13,7 @@ vi.mock('motion', async (importOriginal) => ({
 }));
 
 const keyStore = vi.hoisted(() => ({ read: vi.fn() }));
-vi.mock('$lib/desktop/token', () => ({ readAccessToken: keyStore.read }));
+vi.mock('$lib/desktop/token', () => ({ readAccessToken: keyStore.read, keyStoreAvailable: () => false }));
 
 const fake = vi.hoisted(() => ({
   options: undefined as { address: { origin: string }; token: (address: never) => Promise<string | null> } | undefined,

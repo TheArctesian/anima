@@ -38,6 +38,11 @@ async function invokeKeyStore(command: string, args: Record<string, unknown>): P
   }
 }
 
+/** Whether this client is the desktop app, which has the key store. The browser has none (WP-15 D-4). */
+export function keyStoreAvailable(): boolean {
+  return isTauri();
+}
+
 function requireDesktop(): void {
   if (!isTauri()) throw new AccessTokenError('not-desktop');
 }

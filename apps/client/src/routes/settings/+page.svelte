@@ -1,13 +1,12 @@
 <script lang="ts">
-  // No state yet. The script block gives the page a type for the test that mounts it (svelte-check).
+  import SignOutRow from '$lib/access/SignOutRow.svelte';
 </script>
 
 <h1>Settings</h1>
 
-<!--
-  WP-04 stage B mounts the desktop "Updates" row (UPD-006, R-006) here, below the title.
-  Nothing renders in this place until then. No Updates code belongs in this page before that stage.
--->
+<SignOutRow />
+
+<!-- WP-04 stage B mounts the desktop "Updates" row here (UPD-006, R-006). -->
 
 <style>
   /* The title's line height is reserved from tokens, so the font load cannot move it (WP-11 H-7, R-042). */
