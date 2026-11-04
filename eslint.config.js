@@ -68,6 +68,8 @@ const tokenLiterals = [
 // folders that own a library get their own object listing only the other bans.
 const motionHint =
   'Use $lib/motion (MV-008, MOT-020): the motion library is imported only in apps/client/src/lib/motion/.';
+const guacamoleHint =
+  'Use $lib/sessions/tunnel (D-2, R-045): the vendored Guacamole client is imported only in apps/client/src/lib/sessions/tunnel/.';
 const wsHint =
   'Use a domain client in $lib/<domain>/api.ts built on $lib/hub (CQ-045): graphql-ws is imported only in apps/client/src/lib/hub/.';
 const transportHint =
@@ -75,10 +77,11 @@ const transportHint =
 // A regex, not a gitignore group: 'motion/*' would also match '$lib/motion/tokens'.
 const motionImports = [{ regex: String.raw`^(?:motion|motion-dom|framer-motion)(?:/|$)`, message: motionHint }];
 const wsImports = [{ regex: String.raw`^graphql-ws(?:/|$)`, message: wsHint }];
-const transportGlobals = ['fetch', 'WebSocket', 'EventSource', 'XMLHttpRequest'].map((name) => ({
-  name,
-  message: transportHint,
-}));
+// The vendored Apache Guacamole client (R-045), and the npm repackaging it replaces.
+const npmGuacamoleImports = [{ regex: String.raw`^guacamole-common-js(?:/|$)`, message: guacamoleHint }];
+const guacamoleImports = [...npmGuacamoleImports, { regex: String.raw`(?:^|/)tunnel/vendor(?:/|$)`, message: guacamoleHint }];
+const transportGlobal = (name) => ({ name, message: transportHint });
+const transportGlobals = ['fetch', 'WebSocket', 'EventSource', 'XMLHttpRequest'].map(transportGlobal);
 const fetchProperties = ['window', 'globalThis', 'self'].map((object) => ({
   object,
   property: 'fetch',
@@ -88,6 +91,7 @@ const clientFiles = ['apps/client/**/*.{ts,js,svelte}'];
 const clientTests = ['**/*.test.ts'];
 const hubFolder = ['apps/client/src/lib/hub/**'];
 const motionFolder = ['apps/client/src/lib/motion/**'];
+const tunnelFolder = ['apps/client/src/lib/sessions/tunnel/**'];
 const importsRule = (patterns) => ({
   'no-restricted-imports': ['error', { patterns }],
 });
@@ -96,7 +100,7 @@ const boundaryRules = [
     files: clientFiles,
     ignores: clientTests,
     rules: {
-      ...importsRule([...motionImports, ...wsImports]),
+      ...importsRule([...motionImports, ...wsImports, ...guacamoleImports]),
       'no-restricted-globals': ['error', ...transportGlobals],
       'no-restricted-properties': ['error', ...fetchProperties],
     },
@@ -104,15 +108,24 @@ const boundaryRules = [
   {
     files: motionFolder,
     ignores: clientTests,
-    rules: importsRule(wsImports),
+    rules: importsRule([...wsImports, ...guacamoleImports]),
   },
   {
     files: hubFolder,
     ignores: clientTests,
     rules: {
-      ...importsRule(motionImports),
+      ...importsRule([...motionImports, ...guacamoleImports]),
       'no-restricted-globals': 'off',
       'no-restricted-properties': 'off',
+    },
+  },
+  {
+    // The Guacamole tunnel opens its own WebSocket (K4 §2); `socket.ts` observes its close code.
+    files: tunnelFolder,
+    ignores: clientTests,
+    rules: {
+      ...importsRule([...motionImports, ...wsImports, ...npmGuacamoleImports]),
+      'no-restricted-globals': ['error', ...['fetch', 'EventSource', 'XMLHttpRequest'].map(transportGlobal)],
     },
   },
 ];
@@ -126,6 +139,7 @@ export default tseslint.config(
       '**/dist/**',
       '**/target/**',
       'apps/client/src/lib/hub/generated/**',
+      'apps/client/src/lib/sessions/tunnel/vendor/guacamole.js',
     ],
   },
   js.configs.recommended,
