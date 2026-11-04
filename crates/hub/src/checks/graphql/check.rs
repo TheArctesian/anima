@@ -120,10 +120,11 @@ impl Check {
     async fn heartbeats(
         &self,
         ctx: &Context<'_>,
-        #[graphql(default = 100)] first: i32,
+        #[graphql(default_with = "Some(100)")] first: Option<i32>,
         after: Option<String>,
     ) -> Result<HeartbeatConnection> {
-        let (size, before) = paging(first, after.as_deref()).map_err(|e| invalid(&e))?;
+        let (size, before) =
+            paging(first.unwrap_or(100), after.as_deref()).map_err(|e| invalid(&e))?;
         let limit = u32::try_from(size + 1).unwrap_or(u32::MAX);
         let fetched = checks::heartbeats(pool(ctx)?, self.id, before, limit)
             .await
