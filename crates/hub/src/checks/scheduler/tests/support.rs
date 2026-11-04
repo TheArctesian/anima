@@ -63,6 +63,19 @@ pub fn scheduler(pool: &PgPool, bus: &Bus) -> Scheduler {
     scheduler_with(pool, bus, AddressPolicy::default().allowing_loopback())
 }
 
+/// A scheduler that reaches the local listeners and runs at most `concurrency` probes.
+pub fn limited(pool: &PgPool, concurrency: usize) -> Scheduler {
+    let ctx = Context {
+        db: pool.clone(),
+        bus: Bus::new(16),
+        probing: Probing {
+            vault: vault(),
+            policy: AddressPolicy::default().allowing_loopback(),
+        },
+    };
+    Scheduler::new(ctx, concurrency)
+}
+
 /// The database clock, truncated to the second: the partition functions accept only
 /// instants near it.
 pub async fn database_now(pool: &PgPool) -> DateTime<Utc> {

@@ -4,12 +4,38 @@
 use chrono::TimeDelta;
 
 use super::support::{
-    DOCKER_HOST, Listener, add, beats, database_now, due_at, on_loopback, rng, scheduler,
-    settle_briefly, stored, tcp,
+    DOCKER_HOST, JELLYFIN, Listener, add, beats, database_now, due_at, limited, on_loopback, rng,
+    scheduler, settle_briefly, stored, tcp,
 };
 use crate::{checks, events::Bus, status::Status};
 
 tick_test! {
+    async fn d_7_no_more_probes_run_at_once_than_the_limit(pool: PgPool) {
+        let listener = Listener::start().await;
+        let now = database_now(&pool).await;
+        let mut ids = Vec::new();
+        for text in [DOCKER_HOST, JELLYFIN] {
+            let device = on_loopback(&pool, text).await;
+            let id = add(&pool, device, listener.silent_tls(), 2).await;
+            due_at(&pool, id, now).await;
+            ids.push(id);
+        }
+        let mut scheduler = limited(&pool, 1);
+
+        scheduler.tick(now, &mut rng()).await;
+        settle_briefly().await;
+        assert_eq!(listener.accepted(), 1);
+        scheduler.finish_running(now).await;
+        scheduler.tick(now + TimeDelta::seconds(1), &mut rng()).await;
+        settle_briefly().await;
+
+        assert_eq!(listener.accepted(), 2);
+        scheduler.finish_running(now).await;
+        for id in ids {
+            assert_eq!(beats(&pool, id).await.len(), 1);
+        }
+    }
+
     async fn hub_003_a_tick_probes_a_due_check_and_records_its_beat(pool: PgPool) {
         let listener = Listener::start().await;
         let device = on_loopback(&pool, DOCKER_HOST).await;

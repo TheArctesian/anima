@@ -114,6 +114,23 @@ tick_test! {
         assert_eq!(events_of(&pool, device).await, [expected]);
     }
 
+    async fn chk_010_a_check_late_again_after_it_ran_gives_a_new_event(pool: PgPool) {
+        let listener = Listener::start().await;
+        let device = on_loopback(&pool, DOCKER_HOST).await;
+        let late = add(&pool, device, listener.silent_tls(), 2).await;
+        let now = database_now(&pool).await;
+        let mut scheduler = scheduler(&pool, &Bus::new(64));
+        for at in [now, now + TimeDelta::seconds(2)] {
+            due_at(&pool, late, at - TimeDelta::seconds(25)).await;
+            scheduler.tick(at, &mut rng()).await;
+            scheduler.finish_running(at).await;
+        }
+
+        let events = events_of(&pool, device).await;
+        assert_eq!(events.len(), 2, "{events:?}");
+        assert!(events.iter().all(|(severity, ..)| severity == "error"), "{events:?}");
+    }
+
     async fn chk_010_a_check_within_2_intervals_is_not_late(pool: PgPool) {
         let listener = Listener::start().await;
         let device = on_loopback(&pool, DOCKER_HOST).await;

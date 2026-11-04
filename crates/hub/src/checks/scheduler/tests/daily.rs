@@ -4,7 +4,7 @@
 use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::PgPool;
 
-use super::support::{DOCKER_HOST, add, database_now, device, rng, scheduler, tcp};
+use super::support::{DOCKER_HOST, JELLYFIN, add, database_now, device, rng, scheduler, tcp};
 use crate::{
     checks::{self, Beat, CheckState},
     events::Bus,
@@ -39,7 +39,7 @@ async fn old_partition(pool: &PgPool, now: DateTime<Utc>) -> DateTime<Utc> {
 
 /// Records a beat for a check and deletes the check, leaving an orphan heartbeat.
 async fn orphan(pool: &PgPool, now: DateTime<Utc>) -> CheckId {
-    let id = add(pool, device(DOCKER_HOST), tcp(22), 2).await;
+    let id = add(pool, device(JELLYFIN), tcp(22), 2).await;
     let beat = Beat {
         at: now,
         status: Status::Up,
