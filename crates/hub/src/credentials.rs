@@ -59,6 +59,10 @@ pub enum Error {
 /// per-device advisory lock, held until the caller's transaction ends, so two writers never
 /// leave a mixed row set.
 ///
+/// Lock order for callers: call this before taking `FOR UPDATE` on, or deleting, the device
+/// row in the same transaction. Otherwise a concurrent store can deadlock, which PostgreSQL
+/// detects and reports as [`Error::Database`] (SQLSTATE 40P01).
+///
 /// # Errors
 ///
 /// [`Error::UnknownDevice`] when no device has this id, [`Error::Database`] otherwise.
@@ -121,6 +125,10 @@ pub async fn has_ssh(db: &PgPool, device: DeviceId) -> Result<bool, Error> {
 
 /// Deletes every SSH secret of the device in the caller's connection. Returns true if a
 /// secret was removed (R-010). Waits for a concurrent [`store_ssh`] for the device, as that does.
+///
+/// Lock order for callers: call this before taking `FOR UPDATE` on, or deleting, the device
+/// row in the same transaction. Otherwise a concurrent store can deadlock, which PostgreSQL
+/// detects and reports as [`Error::Database`] (SQLSTATE 40P01).
 ///
 /// # Errors
 ///
