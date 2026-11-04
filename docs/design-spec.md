@@ -1102,8 +1102,11 @@ anima/
 ├── CLAUDE.md                  Points to AGENTS.md
 ├── Cargo.toml                 Rust workspace, [workspace.lints] (CQ-040)
 ├── package.json               JavaScript workspace (pnpm)
+├── contracts/                 Frozen interfaces for parallel work (implementation plan, Section 4)
 ├── docs/
 │   ├── design-spec.md         This document
+│   ├── implementation-plan.md Agent implementation plan
+│   ├── programme/             Programme file and package plans
 │   ├── decisions/             Architecture decision records, one file for each decision
 │   ├── mockup/                Interactive mockup
 │   └── research/              Research notes, motion audits (MV-007)
