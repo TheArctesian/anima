@@ -3,6 +3,7 @@
 
 mod cascade;
 mod columns;
+mod face;
 mod fixture;
 mod parents;
 mod partitions;
