@@ -27,7 +27,9 @@ export function reorderMotion(
 
   /** Slides the items that are not where they were. */
   function play(places: Places): void {
-    const moved = [...places].filter(([element, place]) => !samePlace(place, element.getBoundingClientRect()));
+    const moved = [...places].filter(
+      ([element, place]) => element.isConnected && !samePlace(place, element.getBoundingClientRect()),
+    );
     if (moved.length === 0) return;
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- passed once to flip, not state
     flip(new Map(moved), { preference });

@@ -108,7 +108,9 @@
 </div>
 
 <style>
+  /* A new order must not drag the scroll position after the card the browser anchored to. */
   .results {
+    overflow-anchor: none;
     min-inline-size: 0;
     display: grid;
     margin-block-start: var(--space-4);

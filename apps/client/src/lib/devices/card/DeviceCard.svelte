@@ -94,6 +94,8 @@
   /* A block, so the press can scale it; a long name ends in an ellipsis. */
   a {
     display: block;
+    min-block-size: var(--target-min-desktop);
+    line-height: var(--target-min-desktop);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

@@ -46,6 +46,7 @@
 <svelte:document onpointerdown={onOutside} onkeydown={onKeydown} />
 
 <div class="menu" bind:this={root}>
+  <!-- tabindex="0": WebKit skips plain buttons and form controls when Tab is pressed unless they are focusable (NAV-005). -->
   <button
     type="button"
     class="control"

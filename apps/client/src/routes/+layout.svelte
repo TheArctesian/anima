@@ -52,6 +52,7 @@
   }
 
   main {
+    /* A grid item is as wide as its content unless told otherwise; a wide table must scroll in its own box instead. */
     min-inline-size: 0;
     display: grid;
     padding: var(--space-6);

@@ -33,7 +33,7 @@ async function settle(): Promise<void> {
 }
 
 /** A screen whose Devices answer waits until `answer()` is called. */
-async function slowScreen() {
+async function slowScreen(view: 'grid' | 'table' = 'grid') {
   const fake = fakeHub({ Devices: devicesAnswer([device('a')]), Tags: { tags: [] } });
   let release: () => void = () => undefined;
   const open = new Promise<void>((resolve) => {
@@ -50,7 +50,7 @@ async function slowScreen() {
   app = mount(DeviceScreen, {
     target: document.body,
     props: {
-      query: DEFAULT_QUERY,
+      query: { ...DEFAULT_QUERY, view },
       onQueryChange: () => undefined,
       onAddDevice: () => undefined,
       onConnect: () => undefined,
@@ -104,4 +104,12 @@ it('Loading: data that arrives while the skeleton shows waits for threshold-load
     expect(skeleton()).toHaveLength(0);
   });
   expect(document.querySelectorAll('article')).toHaveLength(1);
+});
+
+it('Loading: in table view the skeleton is table rows, not the card grid', async () => {
+  const { time } = await slowScreen('table');
+  time.advance(threshold.loading);
+  flushSync();
+  expect(document.querySelector('ul.places.table')).not.toBeNull();
+  expect(document.querySelector('ul.places.grid')).toBeNull();
 });

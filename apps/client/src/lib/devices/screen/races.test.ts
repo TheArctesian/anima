@@ -176,3 +176,19 @@ it('Loading: a list on screen stays while a slow reload runs, and no skeleton re
   expect(document.querySelectorAll('li.place')).toHaveLength(0);
   expect(names()).toEqual(['Device a']);
 });
+
+it('DEV-003: a refresh answer that arrives after the filter changed does not show', async () => {
+  await show({ ...DEFAULT_QUERY, statuses: ['DOWN'] });
+  held.held[0]?.release([device('a', { status: 'DOWN' })]);
+  await settle();
+  held.push('DeviceStatusChanged', { deviceStatusChanged: { deviceId: 'x', status: 'DOWN', at: 'now' } });
+  await settle();
+  expect(requests()).toBe(2);
+  url.query = { ...DEFAULT_QUERY, statuses: ['DOWN'], name: 'b' };
+  await settle();
+  held.held[2]?.release([device('b', { status: 'DOWN' })]);
+  await settle();
+  held.held[1]?.release([device('late', { status: 'DOWN' })]);
+  await settle();
+  expect(names()).toEqual(['Device b']);
+});

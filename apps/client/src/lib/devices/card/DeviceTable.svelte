@@ -134,6 +134,8 @@
 
   a {
     display: inline-block;
+    min-block-size: var(--target-min-desktop);
+    line-height: var(--target-min-desktop);
     color: var(--text);
     text-decoration: none;
   }
