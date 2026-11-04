@@ -24,7 +24,8 @@
 
   const { query, onQueryChange, onAddDevice, onConnect, clock = browserClock }: Props = $props();
   const hub = useHub();
-  // svelte-ignore state_referenced_locally -- the clock is fixed for the life of the screen
+  // The clock is fixed for the life of the screen.
+  // svelte-ignore state_referenced_locally
   const listing = new Listing(hub, clock);
   const tags = new Tags(hub);
   const list = $derived(listing.list);
