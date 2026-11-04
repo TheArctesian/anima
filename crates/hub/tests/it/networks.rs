@@ -2,6 +2,8 @@
 //! GraphQL work with one `ACCESS` warning event a minute per address, and the `ClientAddr`
 //! of every request that passes (NET-001, NET-002, D-10, D-11).
 
+mod permit;
+
 use std::{
     net::SocketAddr,
     sync::{Arc, Mutex},
@@ -277,85 +279,4 @@ async fn d_10_a_changed_list_is_used_after_30_seconds(pool: PgPool) {
         .await;
     assert_eq!(passed, (StatusCode::OK, "100.64.0.7".to_owned()));
     assert_forbidden(&edge.send_from("10.0.0.1:40000", get_path("/client")).await);
-}
-
-/// `(cidr, label)` of every permitted network, in address order.
-async fn stored(pool: &PgPool) -> Vec<(String, String)> {
-    sqlx::query_as("select cidr::text, label from access.permitted_networks order by cidr")
-        .fetch_all(pool)
-        .await
-        .unwrap()
-}
-
-fn row(cidr: &str, label: &str) -> (String, String) {
-    (cidr.to_owned(), label.to_owned())
-}
-
-#[sqlx::test(migrations = "./migrations")]
-async fn net_001_permit_networks_makes_the_configured_rows_match_the_variable(pool: PgPool) {
-    let configured = "ANIMA_PERMITTED_NETWORKS";
-    sqlx::query(
-        "insert into access.permitted_networks (id, cidr, label) values \
-         ('0190a000-0000-7000-8000-0000000000a1', '192.168.50.0/24', 'site lab'), \
-         ('0190a000-0000-7000-8000-0000000000a2', '172.16.0.0/12', 'site office')",
-    )
-    .execute(&pool)
-    .await
-    .unwrap();
-    permit(
-        &pool,
-        &[
-            "10.1.2.3/8",
-            "::ffff:100.64.0.0/106",
-            "100.64.0.0/10",
-            "fd00::1/8",
-            "172.16.0.0/12",
-        ],
-    )
-    .await;
-    assert_eq!(
-        stored(&pool).await,
-        vec![
-            row("10.0.0.0/8", configured),
-            row("100.64.0.0/10", configured),
-            row("172.16.0.0/12", "site office"),
-            row("192.168.50.0/24", "site lab"),
-            row("fd00::/8", configured),
-        ]
-    );
-    permit(&pool, &["100.64.0.0/10"]).await;
-    assert_eq!(
-        stored(&pool).await,
-        vec![
-            row("100.64.0.0/10", configured),
-            row("172.16.0.0/12", "site office"),
-            row("192.168.50.0/24", "site lab"),
-        ],
-        "a network taken out of the variable is no longer permitted"
-    );
-    permit(&pool, &[]).await;
-    assert_eq!(stored(&pool).await.len(), 2);
-}
-
-#[sqlx::test(migrations = "./migrations")]
-async fn k2_the_table_refuses_host_bits_and_duplicate_networks(pool: PgPool) {
-    let insert = |id: &'static str, cidr: &'static str| {
-        sqlx::query("insert into access.permitted_networks (id, cidr, label) values ($1::uuid, $2::cidr, 'x')")
-            .bind(id)
-            .bind(cidr)
-            .execute(&pool)
-    };
-    insert("0190a000-0000-7000-8000-0000000000b1", "10.0.0.0/8")
-        .await
-        .unwrap();
-    assert!(
-        insert("0190a000-0000-7000-8000-0000000000b2", "10.0.0.0/8")
-            .await
-            .is_err()
-    );
-    assert!(
-        insert("0190a000-0000-7000-8000-0000000000b3", "10.0.0.1/8")
-            .await
-            .is_err()
-    );
 }

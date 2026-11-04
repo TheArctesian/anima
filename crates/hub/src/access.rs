@@ -228,13 +228,11 @@ fn check_credentials(username: &str, password: &Password) -> Result<(), Error> {
 ///
 /// `Error::Database` if the networks cannot be written.
 pub async fn permit_networks(db: &PgPool, configured: &[IpNet]) -> Result<(), Error> {
-    let mut wanted: Vec<IpNet> = configured
+    let wanted: Vec<IpNet> = configured
         .iter()
         .copied()
         .map(networks::canonical_net)
         .collect();
-    wanted.sort_unstable();
-    wanted.dedup();
     let mut tx = db.begin().await?;
     store::replace_labelled_networks(&mut tx, CONFIGURED_NETWORKS, &wanted).await?;
     tx.commit().await?;

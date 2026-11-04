@@ -18,7 +18,7 @@ use tokio_rustls::rustls::crypto::ring;
 
 use crate::clock::Clock;
 
-pub use bind::check_bind;
+use bind::check_bind;
 pub use certificate::{Fault, TlsFiles};
 pub use tls::TlsListener;
 

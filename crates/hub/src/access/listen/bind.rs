@@ -15,7 +15,7 @@ use super::Error;
 /// # Errors
 ///
 /// `Error::Unspecified`, `Error::Public` or `Error::TlsRequired`.
-pub fn check_bind(addr: IpAddr, tls: bool) -> Result<(), Error> {
+pub(super) fn check_bind(addr: IpAddr, tls: bool) -> Result<(), Error> {
     let addr = addr.to_canonical();
     if addr.is_unspecified() {
         return Err(Error::Unspecified(addr));
