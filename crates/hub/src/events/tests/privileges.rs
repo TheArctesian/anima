@@ -165,6 +165,12 @@ async fn r_016_default_privileges_reach_objects_created_after_migration_0001(poo
         &format!("create function {schema}.f() returns int language sql as 'select 1'"),
     )
     .await;
+    // PUBLIC gets EXECUTE on every new function; without it only 0001's default grant remains.
+    execute(
+        &mut conn,
+        &format!("revoke execute on function {schema}.f() from public"),
+    )
+    .await;
     let checks = [
         (
             format!("has_schema_privilege('anima_runtime', '{schema}', 'USAGE')"),

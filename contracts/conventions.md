@@ -13,7 +13,7 @@ Status: **frozen for Phase 1** (change only through a programme ruling, CON-001)
 
 ## Time
 
-- All stored and transmitted times are UTC. GraphQL scalar `DateTime` = RFC 3339 with `Z`.
+- All stored and transmitted times are UTC. GraphQL scalar `DateTime` = RFC 3339 in UTC; the hub writes it as `2026-11-04T09:00:00+00:00` (async-graphql's chrono scalar, R-012). Readers accept any RFC 3339 offset and compare instants, never text (R-033).
 - Durations in the API are integers with the unit in the field name: `intervalSeconds`, `responseTimeMs`.
 - Core logic takes `now: DateTime<Utc>` as a parameter (CQ-021). Only `main.rs` and I/O edges read the clock, through `Clock` (see `hub-domains.md`).
 
@@ -57,6 +57,7 @@ Environment variables, read once in `main.rs` into a typed `Config` that is pass
 | `ANIMA_KEY_FILE` | File containing the credential encryption key (SEC-004) | `/run/secrets/anima_key` |
 | `ANIMA_GUACD` | Gateway address | `guacd:4822` |
 | `ANIMA_PERMITTED_NETWORKS` | Comma-separated CIDRs (NET-001) | VPN range + site subnets |
+| `ANIMA_PROBE_DENY` | Comma-separated CIDRs that checks must never probe: the hub's own Docker networks and public address (R-030) | empty; the hub logs a warning at start when empty |
 | `ANIMA_LOG` | Log level filter (LOG-003) | `info` |
 | `ANIMA_TLS_CERT_FILE`, `ANIMA_TLS_KEY_FILE` | Hub TLS (SEC-001) | — (required outside tests) |
 

@@ -1,13 +1,16 @@
-use std::{collections::BTreeMap, sync::Arc};
+use async_graphql::{EmptySubscription, Schema, value};
 
-use async_graphql::value;
+use super::{Mutation, Query, harden, production_build};
 
-use super::{HubSchema, build_schema};
-use crate::{clock::SystemClock, config};
-
-fn real_schema() -> HubSchema {
-    let config = config::from_env(&BTreeMap::new()).unwrap();
-    build_schema(Arc::new(config), Arc::new(SystemClock))
+/// The real root types under `harden`, as `build_schema` applies it, without the access
+/// backstop: these tests are about the limits, not about sign-in (that is `access`'s and the
+/// `it` crate's).
+fn hardened() -> Schema<Query, Mutation, EmptySubscription> {
+    harden(
+        Schema::build(Query::default(), Mutation::default(), EmptySubscription),
+        production_build(),
+    )
+    .finish()
 }
 
 const INTROSPECTION: &str = "{ __schema { queryType { name } } }";
@@ -20,12 +23,12 @@ const TOO_DEEP: &str = "{ __schema { types { fields { type { ofType { ofType { o
 #[cfg(debug_assertions)]
 #[tokio::test]
 async fn api_007_debug_build_answers_introspection_and_api_004_refuses_depth_11() {
-    let ok = real_schema().execute(INTROSPECTION).await;
+    let ok = hardened().execute(INTROSPECTION).await;
     assert_eq!(
         ok.data,
         value!({ "__schema": { "queryType": { "name": "Query" } } })
     );
-    let deep = real_schema().execute(TOO_DEEP).await;
+    let deep = hardened().execute(TOO_DEEP).await;
     assert!(deep.errors[0].message.contains("nested too deep"));
 }
 
@@ -35,6 +38,6 @@ async fn api_007_debug_build_answers_introspection_and_api_004_refuses_depth_11(
 #[cfg(not(debug_assertions))]
 #[tokio::test]
 async fn api_007_release_build_answers_introspection_with_null() {
-    let response = real_schema().execute(INTROSPECTION).await;
+    let response = hardened().execute(INTROSPECTION).await;
     assert_eq!(response.data, value!({ "__schema": null }));
 }

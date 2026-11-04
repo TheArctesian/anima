@@ -1,0 +1,13 @@
+# VPS: run anima-backup.service once a day (DB-007, VPS-006).
+# Install as /etc/systemd/system/anima-backup.timer (see README.md).
+[Unit]
+Description=Daily Anima database backup
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 UTC
+RandomizedDelaySec=15m
+Persistent=true
+Unit=anima-backup.service
+
+[Install]
+WantedBy=timers.target
