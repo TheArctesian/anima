@@ -138,6 +138,9 @@ fn text_problem(field: &'static str, secret: &Secret) -> Option<FieldError> {
     }
 }
 
+const BEGIN: &[u8] = b"-----BEGIN ";
+const PRIVATE_END: &[u8] = b"PRIVATE KEY-----";
+
 fn key_problem(key: &Secret) -> Option<FieldError> {
     let bytes = key.expose();
     // Size first, so an oversized value is never searched.
@@ -148,14 +151,24 @@ fn key_problem(key: &Secret) -> Option<FieldError> {
     if text.is_empty() {
         return Some(FieldError::new(KEY, "Enter a private key."));
     }
-    let marked = text.starts_with(b"-----BEGIN ")
-        && text
-            .windows(b"PRIVATE KEY-----".len())
-            .any(|window| window == b"PRIVATE KEY-----");
+    // The first line must be the key's own header, `-----BEGIN <kind> PRIVATE KEY-----`, so a
+    // public key with a private key marker further down is refused.
+    let header = text
+        .split(|byte| *byte == b'\n')
+        .next()
+        .unwrap_or_default()
+        .trim_ascii_end();
+    // Between the two, only the key format: `OPENSSH `, `RSA `, `ENCRYPTED `, or nothing.
+    let marked = header.len() >= BEGIN.len() + PRIVATE_END.len()
+        && header.starts_with(BEGIN)
+        && header.ends_with(PRIVATE_END)
+        && header[BEGIN.len()..header.len() - PRIVATE_END.len()]
+            .iter()
+            .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit() || *byte == b' ');
     (!marked).then(|| {
         FieldError::new(
             KEY,
-            "Paste a private key that starts with -----BEGIN and names a PRIVATE KEY.",
+            "Paste a private key whose first line is -----BEGIN … PRIVATE KEY-----.",
         )
     })
 }
