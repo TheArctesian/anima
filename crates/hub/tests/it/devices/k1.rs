@@ -99,11 +99,11 @@ async fn k1_every_devices_member_of_the_hub_schema_exists_in_k1_with_the_same_ty
             assert_eq!(theirs.get(member), Some(ours), "{name}.{member}");
         }
     }
-    // The R-011 fields that need other domains are not declared yet.
+    // The R-011 fields that need other domains are not declared yet; WP-10 has declared
+    // `SshSettings.hostKey`, which the loop above checks against K1.
     for (type_name, member) in [
         ("Device", "status"),
         ("Device", "checks"),
-        ("SshSettings", "hostKey"),
         ("DeviceSort", "STATUS"),
     ] {
         assert!(!hub[type_name].contains_key(member), "{type_name}.{member}");
@@ -127,12 +127,11 @@ fn schema_for_sdl() -> String {
     schema_for(&pool).sdl()
 }
 
-/// K1 members that need other domains: WP-09 (status, checks, uptime) and WP-10 (hostKey).
-const LATER: [(&str, &str); 7] = [
+/// K1 members that need other domains and are not built yet: WP-09 (status, checks, uptime).
+const LATER: [(&str, &str); 6] = [
     ("Device", "status"),
     ("Device", "checks"),
     ("Device", "uptime"),
-    ("SshSettings", "hostKey"),
     ("DeviceSort", "STATUS"),
     ("DeviceSort", "UPTIME"),
     ("DeviceFilter", "status"),

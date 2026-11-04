@@ -1,5 +1,6 @@
 //! What the hub holds in memory about sessions (D-1, R-032): unredeemed tickets, tickets
-//! spent by a refused redemption, and the end signal of each open tunnel.
+//! spent by a refused redemption, the end signal of each open tunnel, and the host keys
+//! connection tests saw (D-5).
 //!
 //! Every method takes the lock for a short, synchronous critical section and never across an
 //! `.await`; time comes in as a parameter (CQ-021).
@@ -16,7 +17,10 @@ use tokio::sync::watch;
 use super::{
     end::Actor,
     model::EndReason,
+    public_key::PublicKey,
+    target::TargetRule,
     tickets::{PendingTicket, TicketHash, hash_of},
+    trust::{Endpoint, Observation, Observations},
 };
 use crate::{events::ClientAddr, ids::SessionId};
 
@@ -63,12 +67,16 @@ impl State {
     }
 }
 
-/// Tickets and open tunnels, shared by GraphQL and the tunnel route. Cheap to clone; every
-/// clone sees the same state. `main.rs` builds one with `Live::default()` (R-032).
+/// Tickets, open tunnels and host-key observations, shared by GraphQL and the tunnel route.
+/// Cheap to clone; every clone sees the same state. `main.rs` builds one with
+/// `Live::default()` (R-032), which probes with [`TargetRule::STRICT`].
 #[derive(Clone)]
 pub struct Live {
     state: Arc<Mutex<State>>,
+    /// Its own lock: a connection test never waits on a ticket redemption.
+    observations: Arc<Mutex<Observations>>,
     tunnel_end_wait: Duration,
+    target_rule: TargetRule,
 }
 
 impl Default for Live {
@@ -174,12 +182,51 @@ impl Live {
     pub fn with_tunnel_end_wait(wait: Duration) -> Self {
         Self {
             state: Arc::default(),
+            observations: Arc::default(),
             tunnel_end_wait: wait,
+            target_rule: TargetRule::STRICT,
+        }
+    }
+
+    /// This `Live` with probes that may reach an SSH server on the loopback interface, for
+    /// tests only: every other refused address stays refused (R-032).
+    #[cfg(any(test, feature = "test-support"))]
+    #[must_use]
+    pub fn reaching_loopback_for_tests(self) -> Self {
+        Self {
+            target_rule: TargetRule::LOOPBACK_FOR_TESTS,
+            ..self
         }
     }
 
     pub(super) const fn tunnel_end_wait(&self) -> Duration {
         self.tunnel_end_wait
+    }
+
+    /// The rule every SSH probe applies to the addresses a host resolves to.
+    pub(super) const fn target_rule(&self) -> TargetRule {
+        self.target_rule
+    }
+
+    fn observations(&self) -> MutexGuard<'_, Observations> {
+        self.observations
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// Records that `endpoint` presented `key` at `now` (D-5).
+    pub(super) fn observe(
+        &self,
+        endpoint: Endpoint,
+        key: PublicKey,
+        now: DateTime<Utc>,
+    ) -> Observation {
+        self.observations().record(endpoint, key, now)
+    }
+
+    /// The key a connection test saw at `endpoint` within the last 15 minutes before `now`.
+    pub(super) fn observed(&self, endpoint: &Endpoint, now: DateTime<Utc>) -> Option<Observation> {
+        self.observations().find(endpoint, now)
     }
 
     /// The poisoned case is taken over: no critical section here can leave the maps half

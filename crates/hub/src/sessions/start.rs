@@ -1,10 +1,7 @@
 //! Starting a session (K4 §1, K3 `start`): checks the device and the display, writes the row
 //! and its audit entry, and issues the single-use ticket.
 
-use std::{
-    net::{IpAddr, Ipv4Addr, Ipv6Addr},
-    sync::Arc,
-};
+use std::{net::IpAddr, sync::Arc};
 
 use chrono::{DateTime, Utc};
 use serde_json::json;
@@ -12,17 +9,18 @@ use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
 use super::{
-    Conflict, Error, Missing,
+    Conflict, Error,
     end::sweep,
-    host_key,
+    find_device, host_key,
     live::Live,
     model::{FieldError, Protocol},
     store::{self, NewSession},
+    target::is_refused_target,
     tickets::{LIFETIME, PendingTicket, TOKEN_BYTES, Ticket, TicketToken},
 };
 use crate::{
     clock::Clock,
-    devices::{self, Device},
+    devices::Device,
     events::{self, AuditAction, AuditTarget, ClientAddr, NewAudit, Operator},
     ids::{DeviceId, SessionId},
 };
@@ -73,44 +71,6 @@ pub(super) fn checked_display(display: &DisplayRequest) -> Result<Display, Vec<F
             .into_iter()
             .flatten()
             .collect()),
-    }
-}
-
-/// Whether an IPv4 address points back at the gateway's own machine or at no single host.
-fn is_refused_v4(v4: Ipv4Addr) -> bool {
-    v4.is_loopback()
-        || v4.is_link_local()
-        || v4.is_multicast()
-        || v4.is_broadcast()
-        || v4.octets()[0] == 0
-}
-
-/// The IPv4 address an IPv6 address carries in its last 32 bits, for the prefixes that
-/// embed one: IPv4-compatible `::/96`, IPv4-mapped `::ffff:0:0/96`, SIIT
-/// `::ffff:0:0:0/96` and NAT64 `64:ff9b::/96`.
-fn embedded_v4(v6: Ipv6Addr) -> Option<Ipv4Addr> {
-    let prefix: [u16; 6] = v6.segments()[..6].try_into().ok()?;
-    let embeds = matches!(
-        prefix,
-        [0, 0, 0, 0, 0, 0 | 0xffff] | [0, 0, 0, 0, 0xffff, 0] | [0x64, 0xff9b, 0, 0, 0, 0]
-    );
-    let [.., high, low] = v6.segments();
-    embeds.then(|| Ipv4Addr::from((u32::from(high) << 16) | u32::from(low)))
-}
-
-/// Whether `ip` points back at the gateway's own machine or at no single host: loopback,
-/// link-local, multicast, broadcast, unspecified or "this network" (`0.0.0.0/8`). An IPv6
-/// address that embeds an IPv4 address is also refused when that address is.
-pub(super) fn is_refused_target(ip: IpAddr) -> bool {
-    match ip {
-        IpAddr::V4(v4) => is_refused_v4(v4),
-        IpAddr::V6(v6) => {
-            v6.is_loopback()
-                || v6.is_unicast_link_local()
-                || v6.is_multicast()
-                || v6.is_unspecified()
-                || embedded_v4(v6).is_some_and(is_refused_v4)
-        }
     }
 }
 
@@ -176,12 +136,7 @@ pub async fn start(
     client: ClientAddr,
     req: StartRequest,
 ) -> Result<Ticket, Error> {
-    let device = devices::get(db, req.device)
-        .await
-        .map_err(|error| match error {
-            devices::Error::NotFound(_) => Error::NotFound(Missing::Device(req.device)),
-            other => Error::Devices(other),
-        })?;
+    let device = find_device(db, req.device).await?;
     let display = admit(db, &device, &req.display).await?;
     let now = clock.now();
     sweep(db, live, now).await?;

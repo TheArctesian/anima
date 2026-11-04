@@ -1,5 +1,6 @@
-//! The sessions domain: its tables, its face and its GraphQL part (WP-10 T1), and starting
-//! and ending sessions with tunnel tickets (WP-10 T2).
+//! The sessions domain: its tables, its face and its GraphQL part (WP-10 T1), starting and
+//! ending sessions with tunnel tickets (WP-10 T2), and the connection test and host keys
+//! (WP-10 T3).
 
 mod end;
 mod face;
@@ -7,6 +8,7 @@ mod graphql_read;
 mod guard;
 mod harness;
 mod host_key_rows;
+mod host_keys;
 mod k1;
 mod leak;
 mod privileges;

@@ -5,7 +5,10 @@ use std::net::IpAddr;
 
 use proptest::prelude::*;
 
-use crate::sessions::start::{DisplayRequest, checked_display, is_refused_target};
+use crate::sessions::{
+    start::{DisplayRequest, checked_display},
+    target::is_refused_target,
+};
 
 fn request(width_px: i64, height_px: i64, dpi: i64) -> DisplayRequest {
     DisplayRequest {
@@ -107,7 +110,8 @@ fn gw_011_loopback_link_local_multicast_and_unspecified_literals_are_refused() {
         "64:ff9b::10.10.0.2",
         // Outside the embedding prefixes the last 32 bits mean nothing.
         "2001:db8::127.0.0.1",
-        "64:ff9b:1::127.0.0.1",
+        // 6to4 carrying an address the gateway may reach.
+        "2002:a0a:2::1",
     ] {
         assert!(
             !is_refused_target(allowed.parse::<IpAddr>().unwrap()),
