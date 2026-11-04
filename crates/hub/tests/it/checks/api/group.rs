@@ -1,12 +1,13 @@
 //! `GroupConfigInput.childIds` sets the parent of its children in the mutation's own
 //! transaction (CHK-004, CHK-005).
 
+use anima_hub::status::Status;
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
 use super::harness::{
-    CREATE, DOCKER_HOST, PVE_01, UPDATE, create, data_with, error_json, input, schema_for,
-    validation_fields, with_variables,
+    CREATE, DOCKER_HOST, PVE_01, UPDATE, beat, create, data_with, database_now, error_json, input,
+    record, schema_at, schema_for, validation_fields, with_variables,
 };
 
 macro_rules! fixture_test {
@@ -114,5 +115,54 @@ fixture_test! {
             .await
             .unwrap();
         assert_eq!(name, "group");
+    }
+
+    async fn chk_004_a_group_shows_the_worst_status_of_the_children_that_are_not_paused(pool: PgPool) {
+        let at = database_now(&pool).await;
+        let schema = schema_at(&pool, at).0;
+        let (good, bad) = (tcp(&schema, PVE_01, "good").await, tcp(&schema, PVE_01, "bad").await);
+        let group = create(&schema, input(PVE_01, "group", group_of(&[&good, &bad]))).await;
+        record(&pool, &good, &beat(at, Status::Up, Some(1))).await;
+        record(&pool, &bad, &beat(at, Status::Down, None)).await;
+        let status = "query($id: ID!) { check(id: $id) { status } }";
+        let shown = data_with(&schema, status, json!({ "id": group })).await;
+        assert_eq!(shown["check"]["status"], "DOWN");
+        let pause = "mutation($id: ID!) { setCheckPaused(id: $id, paused: true) { id } }";
+        data_with(&schema, pause, json!({ "id": bad })).await;
+        let shown = data_with(&schema, status, json!({ "id": group })).await;
+        assert_eq!(shown["check"]["status"], "UP");
+    }
+
+    async fn mw_001_a_window_over_the_device_turns_down_into_maintenance_for_check_and_group(pool: PgPool) {
+        let at = database_now(&pool).await;
+        let schema = schema_at(&pool, at).0;
+        let bad = tcp(&schema, PVE_01, "bad").await;
+        let group = create(&schema, input(PVE_01, "group", group_of(&[&bad]))).await;
+        record(&pool, &bad, &beat(at, Status::Down, None)).await;
+        let status = "query($id: ID!) { check(id: $id) { status } }";
+        for id in [&bad, &group] {
+            let read = data_with(&schema, status, json!({ "id": id })).await;
+            assert_eq!(read["check"]["status"], "DOWN");
+        }
+        sqlx::query(
+            "INSERT INTO maintenance.windows (id, name, kind, timezone, rule, active_manual) \
+             VALUES ('0190a000-0000-7000-8004-0000000000aa', 'window', 'manual', 'UTC', \
+                     '{\"kind\": \"manual\"}', true)",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO maintenance.window_targets (window_id, target_type, target) \
+             VALUES ('0190a000-0000-7000-8004-0000000000aa', 'device', $1)",
+        )
+        .bind(PVE_01)
+        .execute(&pool)
+        .await
+        .unwrap();
+        for id in [&bad, &group] {
+            let read = data_with(&schema, status, json!({ "id": id })).await;
+            assert_eq!(read["check"]["status"], "MAINTENANCE");
+        }
     }
 }

@@ -233,4 +233,43 @@ fixture_test! {
         assert_absent(&token, &[&log, &unknown_log, &failed_log]);
         assert_absent("/push/", &[&log, &unknown_log, &failed_log]);
     }
+
+    async fn chk_002_a_down_report_stays_pending_until_the_retries_are_used_up(pool: PgPool) {
+        let rig = rig(pool).await;
+        let created = create(&rig.schema, input(PVE_01, "backup", json!({ "push": true }))).await;
+        let query = "query($id: ID!) { check(id: $id) { config { ... on PushConfig { pushPath } } } }";
+        let read = data_with(&rig.schema, query, json!({ "id": created })).await;
+        let path = read["check"]["config"]["pushPath"].as_str().unwrap().to_owned();
+        for _ in 0..4 {
+            assert_eq!(rig.get(&format!("{path}?status=down&msg=late")).await.0, StatusCode::OK);
+        }
+        let statuses: Vec<String> = rig.beats(&created).await.into_iter().map(|b| b.0).collect();
+        assert_eq!(statuses, ["unknown", "unknown", "unknown", "down"]);
+        let state: (String, i32) = sqlx::query_as(
+            "SELECT status, failures FROM checks.checks WHERE id = $1::text::uuid",
+        )
+        .bind(&created)
+        .fetch_one(&rig.pool)
+        .await
+        .unwrap();
+        assert_eq!(state, ("down".to_owned(), 4));
+    }
+
+    async fn chk_003_head_does_not_record_a_beat(pool: PgPool) {
+        let rig = rig(pool).await;
+        let (id, path) = rig.push_check("backup").await;
+        let (status, _) = rig.call(Method::HEAD, &path, Vec::new()).await;
+        assert_eq!(status, StatusCode::METHOD_NOT_ALLOWED);
+        assert_eq!(rig.beats(&id).await.len(), 0);
+    }
+
+    async fn chk_003_a_malformed_token_is_refused_before_any_lookup(pool: PgPool) {
+        let rig = rig(pool).await;
+        let (_, path) = rig.push_check("backup").await;
+        sqlx::query("DROP TABLE checks.checks CASCADE").execute(&rig.pool).await.unwrap();
+        // With the table gone any lookup fails with 500; the shape check answers first.
+        let short = &path[..path.len() - 1];
+        assert_eq!(rig.get(short).await.0, StatusCode::NOT_FOUND);
+        assert_eq!(rig.get(&path).await.0, StatusCode::INTERNAL_SERVER_ERROR);
+    }
 }

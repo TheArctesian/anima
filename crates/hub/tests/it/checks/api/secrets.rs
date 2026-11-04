@@ -31,11 +31,13 @@ const BEARER: &str = "hunter2-bearer-token";
 const AUTHORIZATION: &str = "hunter2-authorization-header";
 const PROXY: &str = "hunter2-proxy-header";
 const COOKIE: &str = "hunter2-cookie-header";
+/// A URL that carries a secret in its query and a fragment: only its origin may be audited.
+const URL: &str = "https://web.lan/p/q?token=q-secret-xyz#frag";
 const SECRETS: [&str; 5] = [PASSWORD, BEARER, AUTHORIZATION, PROXY, COOKIE];
 
 fn http(auth: Value) -> Value {
     let mut config = json!({ "http": {
-        "url": "https://web.lan/health",
+        "url": URL,
         "headers": [
             { "name": "Authorization", "value": AUTHORIZATION },
             { "name": "proxy-authorization", "value": PROXY },
@@ -45,6 +47,20 @@ fn http(auth: Value) -> Value {
     } });
     config["http"]["auth"] = auth;
     config
+}
+
+/// The stored setup resent with every secret left empty.
+fn blank(url: &str) -> Value {
+    json!({ "http": {
+        "url": url,
+        "headers": [
+            { "name": "Authorization", "value": "" },
+            { "name": "proxy-authorization", "value": "" },
+            { "name": "COOKIE", "value": "" },
+            { "name": "X-Trace", "value": "trace-1" },
+        ],
+        "auth": { "basic": { "username": "bob", "password": "" } },
+    } })
 }
 
 fn basic() -> Value {
@@ -117,7 +133,13 @@ fixture_test! {
         for secret in SECRETS {
             assert_absent(secret, &places);
         }
+        // The response may show the URL it was given, but no log, audit row, event or
+        // broadcast may carry more of it than its origin.
+        for leaked in ["q-secret-xyz", "frag", "/p/q"] {
+            assert_absent(leaked, &[places[3], places[4], places[6], places[7]]);
+        }
         let audit = &rows(&pool, "audit_log").await[0];
+        assert_eq!(audit["change"]["config"]["origin"], "https://web.lan");
         assert_eq!(audit["change"]["sealed"], "[set]");
         assert_eq!(audit["change"]["config"]["headerNames"][0], "Authorization");
     }
@@ -144,12 +166,7 @@ fixture_test! {
     async fn sec_003_an_empty_secret_in_an_update_keeps_the_stored_one(pool: PgPool) {
         let (schema, _) = schema_with_bus(&pool);
         let id = create(&schema, input(PVE_01, "web", http(basic()))).await;
-        let blank = json!({ "http": {
-            "url": "https://web.lan/health",
-            "headers": [{ "name": "Authorization", "value": "" }],
-            "auth": { "basic": { "username": "bob", "password": "" } },
-        } });
-        let vars = json!({ "id": id, "input": { "config": blank } });
+        let vars = json!({ "id": id, "input": { "config": blank(URL) } });
         let updated = with_variables(&schema, UPDATE, vars).await;
         assert!(updated.errors.is_empty(), "{:?}", updated.errors);
         let opened = checks::load_http_secrets(&pool, &vault(), id.parse().unwrap())
@@ -161,6 +178,25 @@ fixture_test! {
         // No secret was sent, so the audit entry records none.
         let audits = rows(&pool, "audit_log").await;
         assert!(audits[1]["change"].get("sealed").is_none(), "{}", audits[1]["change"]);
+    }
+
+    async fn sec_003_an_empty_secret_is_refused_when_the_update_changes_the_url_origin(pool: PgPool) {
+        let (schema, _) = schema_with_bus(&pool);
+        let id = create(&schema, input(PVE_01, "web", http(basic()))).await;
+        let other = "https://elsewhere.lan/p/q?token=q-secret-xyz#frag";
+        let vars = json!({ "id": id, "input": { "config": blank(other) } });
+        let error = error_json(&with_variables(&schema, UPDATE, vars).await);
+        assert_eq!(validation_fields(&error), ["config"]);
+        // Nothing changed: the stored secrets still open, and no second audit row exists.
+        let opened = checks::load_http_secrets(&pool, &vault(), id.parse().unwrap())
+            .await.unwrap().unwrap();
+        assert_eq!(opened.password.unwrap().expose(), PASSWORD.as_bytes());
+        assert_eq!(rows(&pool, "audit_log").await.len(), 1);
+        // The same origin with another path keeps the secrets.
+        let same_origin = "https://web.lan/other/path";
+        let vars = json!({ "id": id, "input": { "config": blank(same_origin) } });
+        let updated = with_variables(&schema, UPDATE, vars).await;
+        assert_eq!(updated.errors.len(), 0, "{:?}", updated.errors);
     }
 
     async fn sec_003_an_empty_secret_with_nothing_stored_is_a_validation_error(pool: PgPool) {

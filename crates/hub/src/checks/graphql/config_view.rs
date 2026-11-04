@@ -122,6 +122,8 @@ fn wide(value: impl Into<u32>) -> i32 {
     i32::try_from(value.into()).unwrap_or(i32::MAX)
 }
 
+/// The stored value of a secret header is already null; filtering by name again is defence in
+/// depth, so a stored value that slipped in (an older version, a hand-edited row) never leaves.
 fn header(header: &HttpHeader) -> HeaderView {
     HeaderView {
         name: header.name.clone(),

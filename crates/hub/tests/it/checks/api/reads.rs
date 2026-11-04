@@ -92,7 +92,7 @@ fixture_test! {
         let schema = schema_for(&pool);
         let id = create(&schema, input(PVE_01, "ssh", tcp())).await;
         let base = database_now(&pool).await;
-        for seconds in 0..5 {
+        for seconds in (0..5).rev() {
             let at = base - TimeDelta::seconds(seconds);
             record(&pool, &id, &beat(at, Status::Up, Some(u32::try_from(seconds).unwrap()))).await;
         }
@@ -119,6 +119,35 @@ fixture_test! {
 
         let all = data_with(&schema, BEATS, json!({ "id": id })).await;
         assert_eq!(all["check"]["heartbeats"]["edges"].as_array().unwrap().len(), 5);
+    }
+
+    async fn api_006_has_next_page_is_false_when_exactly_a_page_remains(pool: PgPool) {
+        let schema = schema_for(&pool);
+        let id = create(&schema, input(PVE_01, "ssh", tcp())).await;
+        let base = database_now(&pool).await;
+        for seconds in (0..4).rev() {
+            record(&pool, &id, &beat(base - TimeDelta::seconds(seconds), Status::Up, Some(1))).await;
+        }
+        let first = data_with(&schema, BEATS, json!({ "id": id, "first": 2 })).await;
+        let page = &first["check"]["heartbeats"]["pageInfo"];
+        assert_eq!(page["hasNextPage"], true);
+        let cursor = page["endCursor"].as_str().unwrap();
+        let second = data_with(&schema, BEATS, json!({ "id": id, "first": 2, "after": cursor })).await;
+        let last = &second["check"]["heartbeats"];
+        assert_eq!(last["edges"].as_array().unwrap().len(), 2);
+        assert_eq!(last["pageInfo"]["hasNextPage"], false, "exactly one page remained");
+        let all = data_with(&schema, BEATS, json!({ "id": id, "first": 4 })).await;
+        assert_eq!(all["check"]["heartbeats"]["pageInfo"]["hasNextPage"], false);
+    }
+
+    async fn api_006_a_cursor_outside_the_stored_range_is_a_validation_error(pool: PgPool) {
+        let schema = schema_for(&pool);
+        let id = create(&schema, input(PVE_01, "ssh", tcp())).await;
+        for cursor in ["h1.-300000000000000000", "h1.999999999999999999", "h1.-1"] {
+            let vars = json!({ "id": id, "after": cursor });
+            let error = error_json(&with_variables(&schema, BEATS, vars).await);
+            assert_eq!(validation_fields(&error), ["after"], "{cursor}");
+        }
     }
 
     async fn api_006_heartbeats_refuse_a_page_size_outside_1_to_500_and_a_bad_cursor(pool: PgPool) {

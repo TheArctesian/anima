@@ -8,11 +8,11 @@ use std::{sync::Arc, time::Duration};
 
 use axum::{
     Router,
-    body::Bytes,
-    extract::{DefaultBodyLimit, Path, Query, State, rejection::QueryRejection},
-    http::StatusCode,
+    body::to_bytes,
+    extract::{Path, Query, Request, State, rejection::QueryRejection},
+    http::{Method, StatusCode},
     response::{IntoResponse, Response},
-    routing::{MethodFilter, on},
+    routing::get,
 };
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
@@ -46,12 +46,7 @@ struct PushState {
 /// `GET|POST /push/{token}`. The caller mounts it behind the permitted-networks layer (NET-002).
 pub fn push_router(db: PgPool, bus: Bus, clock: Arc<dyn Clock>) -> Router {
     Router::new()
-        // GET and POST only: HEAD would record a beat, and Uptime Kuma pushes with GET.
-        .route(
-            "/push/{token}",
-            on(MethodFilter::GET.or(MethodFilter::POST), accept),
-        )
-        .layer(DefaultBodyLimit::max(BODY_LIMIT))
+        .route("/push/{token}", get(accept).post(accept))
         .with_state(PushState { db, bus, clock })
 }
 
@@ -72,6 +67,7 @@ struct Report {
 
 impl PushQuery {
     /// `None` when `status` is not `up` or `down`, or `ping` is not 0 to 600000.
+    /// The message is cleaned here and again when the store writes it (defence in depth).
     fn report(self) -> Option<Report> {
         let up = match self.status.as_deref() {
             None | Some("up") => true,
@@ -115,6 +111,10 @@ fn is_token_shaped(text: &str) -> bool {
 
 /// Whether the check is a live PUSH check holding exactly this token; the bytes are compared
 /// in constant time.
+///
+/// Defence in depth: the lookup already matched the token exactly in SQL, so the comparison
+/// here cannot change an answer today. It keeps the route safe if the lookup ever becomes a
+/// prefix or case-folded match, and it takes the same time for every near miss.
 fn accepts(check: &Check, token: &str) -> bool {
     let holds = check
         .push_token
@@ -180,11 +180,20 @@ async fn accept(
     State(state): State<PushState>,
     Path(token): Path<String>,
     query: Result<Query<PushQuery>, QueryRejection>,
-    // Reading the body is what makes `DefaultBodyLimit` refuse a larger one.
-    _body: Bytes,
+    request: Request,
 ) -> Response {
+    let (parts, body) = request.into_parts();
+    // GET and POST only: axum routes HEAD to a GET handler, and a probe of the URL must not
+    // count as the device reporting in. Uptime Kuma pushes with GET.
+    if parts.method == Method::HEAD {
+        return StatusCode::METHOD_NOT_ALLOWED.into_response();
+    }
     if !is_token_shaped(&token) {
         return StatusCode::NOT_FOUND.into_response();
+    }
+    // The body is never used; reading it under the cap is what refuses a larger one.
+    if to_bytes(body, BODY_LIMIT).await.is_err() {
+        return StatusCode::PAYLOAD_TOO_LARGE.into_response();
     }
     match record(&state, &token, query).await {
         Ok(Outcome::Recorded) => (StatusCode::OK, "ok").into_response(),

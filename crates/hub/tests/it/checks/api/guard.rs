@@ -72,10 +72,12 @@ async fn api_003_both_subscriptions_refuse_a_request_without_an_operator(pool: P
         "subscription { heartbeatAdded { checkId } }",
     ];
     for query in queries {
-        let first = schema
-            .execute_stream(Request::new(query))
-            .next()
+        // Without the guard the stream waits for a signal forever; the timeout makes that a
+        // failed test instead of a hung one.
+        let mut stream = schema.execute_stream(Request::new(query));
+        let first = tokio::time::timeout(std::time::Duration::from_secs(5), stream.next())
             .await
+            .expect("the subscription ran without an operator")
             .unwrap();
         assert_eq!(first.errors.len(), 1, "{query}");
         let error = serde_json::to_value(&first.errors[0]).unwrap();
