@@ -1,5 +1,6 @@
 {
   "ip": "127.0.0.1",
+  "selinux-enabled": true,
   "log-driver": "json-file",
   "log-opts": {
     "max-size": "10m",
