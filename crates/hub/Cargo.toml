@@ -35,8 +35,17 @@ rustls.workspace = true
 tokio-rustls.workspace = true
 x509-parser.workspace = true
 rand.workspace = true
+argon2.workspace = true
+getrandom.workspace = true
+rpassword.workspace = true
+
+[features]
+# `access::Identity::for_tests`, for integration tests of guarded domains (D-6). Turned on
+# only by the dev-dependency below; never in a release build.
+test-support = []
 
 [dev-dependencies]
+anima-hub = { path = ".", features = ["test-support"] }
 http-body-util.workspace = true
 tower.workspace = true
 static_assertions.workspace = true
