@@ -125,18 +125,24 @@
         <p>{error.message}</p>
       {/each}
     </div>
-    <DisclosureSection name="general" title="General" bind:open={general}>
-      <GeneralSection bind:values {errors} sites={creating ? sites : []} bind:siteId onHostBlur={checkHost} />
-    </DisclosureSection>
-    <DisclosureSection name="ssh" title="SSH" bind:open={ssh}>
-      <SshSection bind:values {errors} {credentialStored} {clearing} onClearCredential={clearCredential} />
-      {#if values.ssh.enabled}
-        <TestConnection {initial} {values} {deviceId} {canTest} {onTest} {onAcceptHostKey} />
-      {/if}
-    </DisclosureSection>
-    <DisclosureSection name="rdp" title="Remote Desktop (RDP)" bind:open={rdp}>
-      <p>RDP comes in a later version of Anima.</p>
-    </DisclosureSection>
+    <div data-section="general">
+      <DisclosureSection title="General" bind:open={general}>
+        <GeneralSection bind:values {errors} sites={creating ? sites : []} bind:siteId onHostBlur={checkHost} />
+      </DisclosureSection>
+    </div>
+    <div data-section="ssh">
+      <DisclosureSection title="SSH" bind:open={ssh}>
+        <SshSection bind:values {errors} {credentialStored} {clearing} onClearCredential={clearCredential} />
+        {#if values.ssh.enabled}
+          <TestConnection {initial} {values} {deviceId} {canTest} {onTest} {onAcceptHostKey} />
+        {/if}
+      </DisclosureSection>
+    </div>
+    <div data-section="rdp">
+      <DisclosureSection title="Remote Desktop (RDP)" bind:open={rdp}>
+        <p>RDP comes in a later version of Anima.</p>
+      </DisclosureSection>
+    </div>
     <div class="actions">
       <FormButton onclick={onCancel}>Cancel</FormButton>
       <FormButton type="submit" tone="primary" disabled={saving} aria-busy={saving}>Save</FormButton>

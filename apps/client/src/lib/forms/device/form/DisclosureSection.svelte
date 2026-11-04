@@ -1,40 +1,30 @@
 <script lang="ts">
-  import { tick, type Snippet } from 'svelte';
+  import type { Snippet } from 'svelte';
   import Icon from '$lib/icons/Icon.svelte';
-  import { crossFade } from '$lib/motion/roles/transitions';
-  import { flip, measure } from '$lib/motion/roles/flip';
 
+  /*
+   * A plain disclosure with no motion. It has the props of the shared Disclosure (title, open, children)
+   * so that `forms/disclosure/Disclosure.svelte` can replace it when the two tasks merge.
+   */
   interface Props {
-    /** `general`, `ssh` or `rdp`: how the form finds the section (DEV-022). */
-    name: string;
     title: string;
     open: boolean;
     children: Snippet;
   }
 
-  let { name, title, open = $bindable(), children }: Props = $props();
+  let { title, open = $bindable(), children }: Props = $props();
   const bodyId = $props.id();
-  let section = $state<HTMLElement>();
-
-  /** Disclosure role (5.7.3): the sections below move to their new place on `spring-default`; the content fades. */
-  async function toggle(): Promise<void> {
-    const sections = section?.parentElement?.querySelectorAll<HTMLElement>('[data-disclosure]') ?? [];
-    const first = measure(sections);
-    open = !open;
-    await tick();
-    flip(first, { spring: 'default' });
-  }
 </script>
 
-<section data-disclosure data-section={name} bind:this={section}>
+<section>
   <h3>
-    <button type="button" aria-expanded={open} aria-controls={bodyId} onclick={toggle}>
+    <button type="button" aria-expanded={open} aria-controls={bodyId} onclick={() => { open = !open; }}>
       <Icon name={open ? 'nf-md-chevron_down' : 'nf-md-chevron_right'} size="sm" />
       {title}
     </button>
   </h3>
   {#if open}
-    <div id={bodyId} class="body" transition:crossFade>
+    <div id={bodyId} class="body">
       {@render children()}
     </div>
   {/if}
