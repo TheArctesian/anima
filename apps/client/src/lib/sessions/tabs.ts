@@ -75,7 +75,7 @@ export function moved(state: Tabs, from: number, to: number): Tabs {
   return { ...state, tabs };
 }
 
-/** `id` now shows the hub session `sessionId`; an unknown id changes nothing. */
-export function withSession(state: Tabs, id: TabId, sessionId: string): Tabs {
+/** `id` now shows the hub session `sessionId` (`null`: none); an unknown id changes nothing. */
+export function withSession(state: Tabs, id: TabId, sessionId: string | null): Tabs {
   return { ...state, tabs: state.tabs.map((tab) => (tab.id === id ? { ...tab, sessionId } : tab)) };
 }

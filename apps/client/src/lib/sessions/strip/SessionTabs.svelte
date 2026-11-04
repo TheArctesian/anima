@@ -1,23 +1,42 @@
 <script lang="ts">
-  import { flushSync } from 'svelte';
+  import { flushSync, tick, untrack } from 'svelte';
+  import { motionPreference } from '$lib/motion/preference';
   import { flip, measure } from '$lib/motion/roles/flip';
   import { useSessions } from '../sessions.svelte';
   import type { Tab } from '../tabs';
-  import { dragTab } from './drag';
+  import { dragTab } from './drag/drag';
   import { grow } from './grow';
+  import { enterStrip, exitStrip } from './presence';
   import { nextFocus, panelId } from './tablist';
   import SessionTab from './SessionTab.svelte';
 
   const sessions = useSessions();
+  const preference = motionPreference();
   let strip: HTMLElement | undefined = $state();
+  /** The strip keeps its space while any tab is open or the last one is leaving (MV-004). */
+  let reserved = $state(false);
 
   /** The tabs in the strip now, without one that is closing. */
   function slots(): HTMLElement[] {
     return strip === undefined ? [] : [...strip.querySelectorAll<HTMLElement>(':scope > [data-slot]:not([data-closing])')];
   }
 
-  function focusActive(): void {
-    strip?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus();
+  function tabButtons(): HTMLElement[] {
+    return slots().flatMap((slot) => [...slot.querySelectorAll<HTMLElement>('[role="tab"]')]);
+  }
+
+  /** Whether focus is in the strip, in a tab's menu, or lost, so closing a tab must move it. */
+  function focusIsOurs(): boolean {
+    const focused = document.activeElement;
+    return focused === null || focused === document.body || strip?.contains(focused) === true || focused.closest('[role="menu"]') !== null;
+  }
+
+  /** After a tab leaves: the selected tab, else the tab now in its place, else the page's nav item. */
+  function refocus(index: number): void {
+    const tabs = tabButtons();
+    const selected = tabs.find((tab) => tab.getAttribute('aria-selected') === 'true');
+    const target = selected ?? tabs[Math.min(index, tabs.length - 1)] ?? document.querySelector<HTMLElement>('nav a[aria-current="page"], nav a');
+    target?.focus();
   }
 
   /** Fixed text and the error name only: the message is the transport's (LOG-007). */
@@ -27,6 +46,8 @@
 
   /** The closing tab keeps its place while it closes; the others move into the gap (5.7.3). */
   function close(tab: Tab, slot: HTMLElement): void {
+    const index = slots().indexOf(slot);
+    const moveFocus = focusIsOurs();
     const others = slots().filter((other) => other !== slot);
     const places = measure(others);
     const box = slot.getBoundingClientRect();
@@ -40,14 +61,16 @@
     });
     flushSync();
     flip(places);
-    focusActive();
+    if (moveFocus) refocus(index);
   }
 
   async function popOut(tab: Tab): Promise<boolean> {
+    const index = sessions.tabs.findIndex((open) => open.id === tab.id);
     try {
       await sessions.popOut(tab.id);
+      const moveFocus = focusIsOurs();
       flushSync();
-      focusActive();
+      if (moveFocus) refocus(index);
       return !sessions.tabs.some((open) => open.id === tab.id);
     } catch (reason) {
       warn('Moving the session to a window failed:', reason);
@@ -67,7 +90,7 @@
       if (slot !== null) close(tab, slot);
       return;
     }
-    const tabs = slots().flatMap((slot) => [...slot.querySelectorAll<HTMLElement>('[role="tab"]')]);
+    const tabs = tabButtons();
     const next = nextFocus(event.key, tabs.indexOf(event.target), tabs.length);
     if (next === null) return;
     event.preventDefault();
@@ -75,9 +98,33 @@
   }
 
   const anyActive = $derived(sessions.active !== null);
+
+  async function appear(element: HTMLElement): Promise<void> {
+    const fromHidden = !reserved;
+    reserved = true;
+    await tick();
+    enterStrip(element, fromHidden, preference);
+  }
+
+  /** The space goes only after the strip has left, so the page moves once, after the motion. */
+  function disappear(element: HTMLElement): void {
+    void exitStrip(element, preference).finished.then(() => {
+      if (sessions.tabs.length === 0) reserved = false;
+    });
+  }
+
+  $effect(() => {
+    const open = sessions.tabs.length > 0;
+    const element = strip;
+    untrack(() => {
+      if (element === undefined) return;
+      if (open) void appear(element);
+      else if (reserved) disappear(element);
+    });
+  });
 </script>
 
-<div class="strip" role="tablist" aria-label="Sessions" hidden={sessions.tabs.length === 0} bind:this={strip}>
+<div class="strip" role="tablist" aria-label="Sessions" hidden={!reserved && sessions.tabs.length === 0} bind:this={strip}>
   {#each sessions.tabs as tab, index (tab.id)}
     {@const selected = sessions.active?.id === tab.id}
     <div
@@ -119,8 +166,11 @@
 </div>
 
 <style>
+  /* The height is reserved whether or not a tab is in the flow (a closing tab is pinned out of it). */
   .strip {
     position: relative;
+    box-sizing: border-box;
+    min-block-size: calc(var(--target-min-desktop) + var(--space-2));
     display: flex;
     gap: var(--space-1);
     padding-block-end: var(--space-2);
@@ -143,7 +193,7 @@
   }
 
   .slot:global([data-dragging]) {
-    z-index: var(--layer-sticky);
+    z-index: var(--layer-popover);
     box-shadow: var(--elevation-2);
   }
 </style>

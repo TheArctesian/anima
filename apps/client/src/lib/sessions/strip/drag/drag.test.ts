@@ -1,10 +1,9 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runs } from '$lib/motion/engine.fixture';
 import { rubberband } from '$lib/motion/gesture';
-import { duration, spring } from '$lib/motion/tokens';
+import { spring } from '$lib/motion/tokens';
 import { dragTab, type DragOptions } from './drag';
-import { grow } from './grow';
 
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
@@ -17,44 +16,6 @@ const reduced = { reduced: true };
 function box(left: number, top: number, width: number, height: number): DOMRect {
   return new DOMRect(left, top, width, height);
 }
-
-describe('grow (Session tab open, 5.7.3)', () => {
-  const tab = () => {
-    const node = document.createElement('div');
-    node.getBoundingClientRect = () => box(100, 0, 100, 36);
-    return node;
-  };
-  const origin = { left: 400, top: 300, width: 50, height: 20 };
-
-  it('MOT-005: the tab grows on spring-snappy with transform-origin at the control that opened it', () => {
-    const config = grow(tab(), { origin, preference: moving })({ direction: 'in' });
-    // Control centre (425, 310) less the tab's corner (100, 0).
-    expect(config.css?.(0, 1)).toContain('transform-origin: 325px 310px;');
-    expect(config.css?.(0, 1)).toContain('scale: 0.5;');
-    expect(config.css?.(1, 0)).toContain('scale: 1;');
-    expect(config.duration).toBeGreaterThan(0);
-    expect(config.easing?.(1)).toBeCloseTo(1);
-  });
-
-  it('MOT-040: under reduced motion the tab fades in place over duration-base', () => {
-    const config = grow(tab(), { origin, preference: reduced })({ direction: 'in' });
-    expect(config.css?.(0.5, 0.5)).toBe('opacity: 0.5;');
-    expect(config.duration).toBe(duration.base);
-  });
-
-  it('a tab with no known control fades in', () => {
-    const config = grow(tab(), { origin: null, preference: moving })({ direction: 'in' });
-    expect(config.css?.(0.5, 0.5)).toBe('opacity: 0.5;');
-  });
-
-  it('5.7.3: a closing tab closes to its own place over duration-fast; reduced motion only fades', () => {
-    const exit = grow(tab(), { origin, preference: moving })({ direction: 'out' });
-    expect(exit.css?.(0.5, 0.5)).toBe('opacity: 0.5; scale: 0.5;');
-    expect(exit.css?.(0.5, 0.5)).not.toContain('transform-origin');
-    expect(exit.duration).toBe(duration.fast);
-    expect(grow(tab(), { origin, preference: reduced })({ direction: 'out' }).css?.(0.5, 0.5)).toBe('opacity: 0.5;');
-  });
-});
 
 /** Strip-local translate of `node`, as the engine draws it. */
 function shown(node: HTMLElement): [number, number] {
@@ -83,7 +44,6 @@ function rig(overrides: Partial<DragOptions> = {}): Rig {
   const tabs = ['a', 'b', 'c'].map((name) => {
     const node = document.createElement('div');
     node.dataset.name = name;
-    node.setPointerCapture = vi.fn();
     node.getBoundingClientRect = () => {
       const [x, y] = shown(node);
       return box([...strip.children].indexOf(node) * PITCH + x, y, WIDTH, 36);
@@ -117,33 +77,98 @@ function pointer(node: HTMLElement, type: string, x: number, y = 18): void {
   node.dispatchEvent(new PointerEvent(type, { bubbles: true, button: 0, pointerId: 7, clientX: x, clientY: y }));
 }
 
-/** Drags from `fromX` through `points` (x at time t) and releases at the last one. */
-function drag(node: HTMLElement, clock: { now: number }, fromX: number, points: [number, number][]): void {
+/** Drags from `fromX` through `points` (x at time t, and y) and releases at the last one. */
+function drag(node: HTMLElement, clock: { now: number }, fromX: number, points: [number, number, number?][]): void {
   clock.now = 0;
   pointer(node, 'pointerdown', fromX);
-  for (const [x, t] of points) {
+  for (const [x, t, y] of points) {
     clock.now = t;
-    pointer(node, 'pointermove', x);
+    pointer(node, 'pointermove', x, y);
   }
-  const [lastX = fromX] = points.at(-1) ?? [];
-  pointer(node, 'pointerup', lastX);
+  const [lastX = fromX, , lastY] = points.at(-1) ?? [];
+  pointer(node, 'pointerup', lastX, lastY);
 }
+
+// jsdom has no pointer capture; these stand in for the element's capture methods.
+const capture = {
+  setPointerCapture: vi.fn<(id: number) => void>(),
+  hasPointerCapture: vi.fn<(id: number) => boolean>(() => true),
+  releasePointerCapture: vi.fn<(id: number) => void>(),
+};
 
 beforeEach(() => {
   runs.length = 0;
   document.body.innerHTML = '';
+  for (const [name, stub] of Object.entries(capture)) {
+    stub.mockClear();
+    Object.defineProperty(Element.prototype, name, { value: stub, configurable: true });
+  }
 });
 
-it('MOT-030: the tab follows the pointer only after threshold-drag, with pointer capture and the grab offset kept', () => {
+afterEach(() => {
+  for (const name of Object.keys(capture)) Reflect.deleteProperty(Element.prototype, name);
+});
+
+it('MOT-030: the pointer is captured on press; the tab follows only after threshold-drag, with the grab offset kept', () => {
   const { tabs } = rig();
   const [a] = tabs as [HTMLElement];
   pointer(a, 'pointerdown', 50);
+  expect(capture.setPointerCapture).toHaveBeenCalledExactlyOnceWith(7);
   pointer(a, 'pointermove', 55);
   expect(a.style.translate).toBe('');
-  expect(a.setPointerCapture).not.toHaveBeenCalled();
   pointer(a, 'pointermove', 80, 23);
-  expect(a.setPointerCapture).toHaveBeenCalledWith(7);
   expect(shown(a)).toEqual([30, rubberband(5, 36)]);
+});
+
+it('MOT-030 / RA-002: a fast first move that leaves the tab still starts the drag', () => {
+  const { tabs } = rig({ canDragOut: () => true });
+  const [a] = tabs as [HTMLElement];
+  pointer(a, 'pointerdown', 50);
+  // Captured, so the browser sends the move to the tab even though the pointer is 60 px below it.
+  pointer(a, 'pointermove', 52, 78);
+  expect(a.dataset.dragging).toBe('');
+  expect(shown(a)).toEqual([2, 60]);
+});
+
+it('a press with no drag lets the capture go, so the click is the tab\'s', () => {
+  const { tabs } = rig();
+  const [a] = tabs as [HTMLElement];
+  pointer(a, 'pointerdown', 50);
+  pointer(a, 'pointerup', 51);
+  expect(capture.releasePointerCapture).toHaveBeenCalledExactlyOnceWith(7);
+  expect(a.dataset.dragging).toBeUndefined();
+});
+
+it('a lost capture mid-drag puts the tab back in its place', () => {
+  const { tabs, order } = rig();
+  const [a] = tabs as [HTMLElement];
+  pointer(a, 'pointerdown', 50);
+  pointer(a, 'pointermove', 170);
+  pointer(a, 'lostpointercapture', 170);
+  expect(order()).toEqual(['a', 'b', 'c']);
+  expect(a.style.position).toBe('');
+});
+
+it('the dragged tab is drawn in a fixed layer at its exact place, and a neighbour holds the place', () => {
+  const { tabs } = rig();
+  const [a, b] = tabs as [HTMLElement, HTMLElement];
+  pointer(a, 'pointerdown', 50);
+  pointer(a, 'pointermove', 70);
+  expect([a.style.position, a.style.left, a.style.top, a.style.width]).toEqual(['fixed', '0px', '0px', '100px']);
+  expect(b.style.marginInlineStart).toBe(`${String(PITCH)}px`);
+  expect(a.getBoundingClientRect().left).toBe(20);
+  pointer(a, 'pointerup', 70);
+  expect([a.style.position, b.style.marginInlineStart]).toEqual(['', '']);
+
+});
+
+it('the last tab dragged is held by the margin of the tab before it', () => {
+  const { tabs } = rig();
+  const [, b, c] = tabs as [HTMLElement, HTMLElement, HTMLElement];
+  pointer(c, 'pointerdown', 250);
+  pointer(c, 'pointermove', 230);
+  expect(b.style.marginInlineEnd).toBe(`${String(PITCH)}px`);
+  expect(c.style.left).toBe(`${String(2 * PITCH)}px`);
 });
 
 it('MOT-030: a tab grabbed mid-motion keeps the offset from where it is on screen', () => {
@@ -175,6 +200,17 @@ it('MOT-031 / MOT-035: the release spring starts with the pointer velocity, one 
   expect(order()).toEqual(['b', 'c', 'a']);
   const momentum = runs.filter((run) => run.options.stiffness === spring.momentum.stiffness);
   expect(momentum.map((run) => run.options.velocity)).toEqual([600, 0]);
+});
+
+it('MOT-031 / MOT-035: a release moving down starts the Y spring with the pointer\'s Y velocity', () => {
+  const { tabs, clock } = rig();
+  drag(tabs[0] as HTMLElement, clock, 50, [
+    [80, 50, 28],
+    [110, 100, 38],
+  ]);
+  // 20 px down in 100 ms = 200 px/s, while the tab itself follows with resistance.
+  const momentum = runs.filter((run) => run.options.stiffness === spring.momentum.stiffness);
+  expect(momentum.map((run) => run.options.velocity)).toEqual([600, 200]);
 });
 
 it('MOT-032: the new place comes from the projected position, not the release position', () => {
@@ -266,5 +302,18 @@ describe('drag out (RA-002, D-13)', () => {
     await Promise.resolve();
     const back = runs.filter((run) => run.options.stiffness === spring.momentum.stiffness);
     expect(back.map((run) => run.keyframes.at(-1))).toEqual([0, 0]);
+    expect(r.tabs[0]?.style.position).toBe('');
+  });
+
+  it('a tab that left fades where it was let go, and the others close its place', async () => {
+    const r = rig({ canDragOut: () => true });
+    dragOutOf(r);
+    const [a, b] = r.tabs as [HTMLElement, HTMLElement];
+    expect(a.style.position).toBe('fixed');
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(a.dataset.closing).toBe('');
+    expect(a.style.position).toBe('fixed');
+    expect(b.style.marginInlineStart).toBe('');
   });
 });

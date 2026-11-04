@@ -5,6 +5,7 @@ import { springMotion } from '$lib/motion/options';
 import { motionPreference, type MotionPreference } from '$lib/motion/preference';
 import { flip, measure } from '$lib/motion/roles/flip';
 import { threshold } from '$lib/motion/tokens';
+import { closeGap, lift, lower, type Lift } from './lift';
 import { VELOCITY_WINDOW_MS, isOutside, shifts, slotIndex, velocityOf, type Bounds, type Sample, type Slot, type Velocity } from './reorder';
 
 /** What a dragged tab needs from its strip. */
@@ -26,6 +27,8 @@ export interface DragOptions {
 
 interface Grab {
   readonly pointerId: number;
+  /** The element that holds pointer capture from pointer-down, so a fast first move is not lost (MOT-030). */
+  readonly captor: Element;
   readonly downX: number;
   readonly downY: number;
   readonly samples: Sample[];
@@ -40,6 +43,7 @@ interface Drag {
   readonly baseX: number;
   readonly baseY: number;
   readonly height: number;
+  readonly lift: Lift | undefined;
   over: number;
   centre: number;
 }
@@ -54,17 +58,17 @@ function translateOf(element: Element): [number, number] {
   return [x, y];
 }
 
-function begin(element: HTMLElement, grab: Grab, tabs: readonly HTMLElement[]): Drag {
+function begin(element: HTMLElement, tabs: readonly HTMLElement[]): Drag {
   const [baseX, baseY] = translateOf(element);
   const slots = tabs.map((tab) => {
     const box = tab.getBoundingClientRect();
     return { left: box.left - (tab === element ? baseX : translateOf(tab)[0]), width: box.width };
   });
   const from = tabs.indexOf(element);
-  element.setPointerCapture(grab.pointerId);
   element.dataset.dragging = '';
   const height = element.getBoundingClientRect().height;
-  return { tabs, slots, from, baseX, baseY, height, over: from, centre: 0 };
+  const lifted = lift(tabs, slots, from, baseY);
+  return { tabs, slots, from, baseX, baseY, height, lift: lifted, over: from, centre: 0 };
 }
 
 function moveAside(drag: Drag, over: number, reduced: boolean): void {
@@ -81,6 +85,7 @@ function land(element: HTMLElement, drag: Drag, to: number, settings: Release): 
   const places = measure(drag.tabs);
   const before = places.get(element);
   places.delete(element);
+  if (drag.lift !== undefined) lower(drag.lift);
   options.drop(drag.from, to);
   element.style.translate = '';
   const after = element.getBoundingClientRect();
@@ -110,11 +115,32 @@ function release(element: HTMLElement, grab: Grab, drag: Drag, settings: Release
   if (last !== undefined && options.canDragOut() && isOutside(last.x, last.y, options.bounds(), threshold.drag)) {
     moveAside(drag, drag.from, preference.reduced);
     void options.dragOut().then((gone) => {
-      if (!gone) land(element, drag, drag.from, settings);
+      if (!gone) {
+        land(element, drag, drag.from, settings);
+        return;
+      }
+      // The tab fades out where it was let go; the strip closes its place.
+      element.dataset.closing = '';
+      if (drag.lift !== undefined) {
+        closeGap(
+          drag.lift,
+          drag.tabs.filter((tab) => tab !== element),
+          preference,
+        );
+      }
     });
     return;
   }
   land(element, drag, slotIndex(drag.slots, drag.centre, settings.velocity.x), settings);
+}
+
+/** Ends a drag: a cancel or a lost capture puts the tab back with no velocity; a release places it. */
+function finish(element: HTMLElement, grab: Grab, cancelled: boolean, settings: Settings): void {
+  const { drag } = grab;
+  if (drag === undefined) return;
+  delete element.dataset.dragging;
+  if (cancelled) land(element, drag, drag.from, { ...settings, velocity: { x: 0, y: 0 } });
+  else release(element, grab, drag, { ...settings, velocity: velocityOf(grab.samples) });
 }
 
 function follow(element: HTMLElement, grab: Grab, drag: Drag, { options, preference }: Settings): void {
@@ -161,28 +187,30 @@ export function dragTab(options: DragOptions): Attachment<HTMLElement> {
     const down = (event: PointerEvent) => {
       if (event.button !== 0 || (event.target instanceof Element && event.target.closest(noDrag))) return;
       swallowClick = false;
-      grab = { pointerId: event.pointerId, downX: event.clientX, downY: event.clientY, samples: [] };
+      // Capture on the pressed element itself, so a press without a drag still clicks it.
+      const captor = event.target instanceof Element ? event.target : element;
+      captor.setPointerCapture(event.pointerId);
+      grab = { pointerId: event.pointerId, captor, downX: event.clientX, downY: event.clientY, samples: [] };
       sample(event);
     };
     const move = (event: PointerEvent) => {
       if (grab?.pointerId !== event.pointerId) return;
       sample(event);
       if (!grab.drag && travelled(grab, event) < threshold.drag) return;
-      grab.drag ??= begin(element, grab, options.tabs());
+      grab.drag ??= begin(element, options.tabs());
       follow(element, grab, grab.drag, settings);
     };
     const up = (event: PointerEvent) => {
       if (grab?.pointerId !== event.pointerId) return;
-      const { drag } = grab;
+      const ended = grab;
       sample(event);
-      if (drag) {
-        const velocity = event.type === 'pointercancel' ? { x: 0, y: 0 } : velocityOf(grab.samples);
-        delete element.dataset.dragging;
-        swallowClick = true;
-        if (event.type === 'pointercancel') land(element, drag, drag.from, { ...settings, velocity });
-        else release(element, grab, drag, { ...settings, velocity });
-      }
       grab = undefined;
+      if (ended.drag === undefined) {
+        if (ended.captor.hasPointerCapture(event.pointerId)) ended.captor.releasePointerCapture(event.pointerId);
+        return;
+      }
+      swallowClick = true;
+      finish(element, ended, event.type !== 'pointerup', settings);
     };
     const click = (event: MouseEvent) => {
       if (!swallowClick) return;
@@ -195,6 +223,7 @@ export function dragTab(options: DragOptions): Attachment<HTMLElement> {
       ['pointermove', move],
       ['pointerup', up],
       ['pointercancel', up],
+      ['lostpointercapture', up],
     ] as const;
     for (const [name, listener] of listeners) element.addEventListener(name, listener);
     element.addEventListener('click', click, true);

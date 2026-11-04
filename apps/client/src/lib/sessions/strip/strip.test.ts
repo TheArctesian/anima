@@ -2,6 +2,8 @@
 import { createRawSnippet, flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Hub } from '$lib/hub/hub';
+import { runs } from '$lib/motion/engine.fixture';
+import { route } from '$lib/nav/route.fixture.svelte';
 import type { PopOutPort, SessionPort, Sessions } from '../sessions.svelte';
 import Layout from '../../../routes/+layout.svelte';
 
@@ -102,14 +104,23 @@ beforeEach(() => {
     end: vi.fn(() => Promise.resolve()),
   };
   keyframes.length = 0;
+  runs.length = 0;
+  route.pathname = '/devices';
   Object.defineProperty(Element.prototype, 'animate', { value: finishingAnimate, configurable: true });
+  // jsdom has no pointer capture.
+  for (const name of ['setPointerCapture', 'releasePointerCapture']) {
+    Object.defineProperty(Element.prototype, name, { value: () => undefined, configurable: true });
+  }
+  Object.defineProperty(Element.prototype, 'hasPointerCapture', { value: () => true, configurable: true });
 });
 
 afterEach(async () => {
   if (app !== undefined) await unmount(app);
   app = undefined;
   document.body.innerHTML = '';
-  Reflect.deleteProperty(Element.prototype, 'animate');
+  for (const name of ['animate', 'setPointerCapture', 'releasePointerCapture', 'hasPointerCapture']) {
+    Reflect.deleteProperty(Element.prototype, name);
+  }
 });
 
 it('no tabs: the strip is hidden and the pages show', () => {
@@ -241,7 +252,6 @@ describe('pop out (RA-002, D-13)', () => {
     await openStarted(sessions);
     const slot = document.querySelector<HTMLElement>('[data-slot]');
     if (slot === null) throw new Error('no tab');
-    slot.setPointerCapture = vi.fn();
     const at = (type: string, y: number) =>
       new PointerEvent(type, { bubbles: true, button: 0, pointerId: 3, clientX: 20, clientY: y });
     slot.querySelector('[role="tab"]')?.dispatchEvent(at('pointerdown', 10));
@@ -251,12 +261,59 @@ describe('pop out (RA-002, D-13)', () => {
     expect(popOut).toHaveBeenCalledExactlyOnceWith('session-1');
   });
 
-  it('"Pop out" waits for the session to start', () => {
+  it('Shift+F10 on a tab opens its menu, so the menu needs no Tab stop', async () => {
     const sessions = show(vi.fn(() => Promise.resolve()));
-    sessions.openSession(request);
-    flushSync();
-    document.querySelector<HTMLButtonElement>('[aria-haspopup="menu"]')?.click();
-    flushSync();
-    expect(document.querySelector<HTMLButtonElement>('[role="menuitem"]')?.disabled).toBe(true);
+    await openStarted(sessions);
+    tabs()[0]?.dispatchEvent(new KeyboardEvent('keydown', { key: 'F10', shiftKey: true, bubbles: true }));
+    await settle();
+    expect(document.activeElement?.textContent).toBe('Pop out');
+    expect(tabs()[0]?.getAttribute('aria-keyshortcuts')).toBe('Delete Shift+F10');
   });
+});
+
+it('S5 / ARIA: the tablist owns only tabs; Close and More are hidden from it and are not Tab stops', async () => {
+  const sessions = show(vi.fn(() => Promise.resolve()));
+  await openStarted(sessions);
+  const strip = document.querySelector('[role="tablist"]');
+  const exposed = [...(strip?.querySelectorAll('button') ?? [])].filter((button) => button.closest('[aria-hidden="true"]') === null);
+  expect(exposed.map((button) => button.getAttribute('role'))).toEqual(['tab']);
+  const others = [...(strip?.querySelectorAll<HTMLElement>('button[aria-hidden="true"]') ?? [])];
+  expect(others.map((button) => button.tabIndex)).toEqual([-1, -1]);
+});
+
+it('MV-004: the strip keeps its space until it has left after the last tab closes', async () => {
+  const sessions = show();
+  const id = await openStarted(sessions);
+  const strip = document.querySelector('[role="tablist"]');
+  expect(strip?.hasAttribute('hidden')).toBe(false);
+  await sessions.close(id);
+  await settle();
+  expect(strip?.hasAttribute('hidden')).toBe(false);
+  for (const run of [...runs]) run.finish();
+  await settle();
+  expect(strip?.hasAttribute('hidden')).toBe(true);
+});
+
+it('S4: closing a tab with none selected sends focus to the tab in its place; the last one to the nav', async () => {
+  const sessions = show();
+  await openStarted(sessions);
+  await openStarted(sessions);
+  sessions.deselect();
+  flushSync();
+  tabs()[0]?.focus();
+  tabs()[0]?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true }));
+  await settle();
+  expect(document.activeElement).toBe(tabs()[0]);
+  tabs()[0]?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true }));
+  await settle();
+  expect(document.activeElement).toBe(document.querySelector('nav a[aria-current="page"]'));
+});
+
+it('D-11: a route change (back, goto) shows the pages and keeps the tabs', async () => {
+  const sessions = show();
+  await openStarted(sessions);
+  route.pathname = '/settings';
+  flushSync();
+  expect(sessions.active).toBeNull();
+  expect(tabs()).toHaveLength(1);
 });

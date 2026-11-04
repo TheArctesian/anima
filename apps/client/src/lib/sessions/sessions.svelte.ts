@@ -62,7 +62,7 @@ export interface Sessions {
   /** Whether "Pop out" and drag-out may be offered (D-13). */
   readonly canPopOut: boolean;
   openSession(request: SessionRequest): TabId;
-  /** Starts a hub session in tab `id` and returns its ticket; a second call replaces the first (D-5). */
+  /** Starts a hub session in tab `id` and returns its ticket; a restart ends the previous session first (D-5). */
   start(id: TabId, display: SessionDisplay): Promise<StartedSession>;
   select(id: TabId): void;
   deselect(): void;
@@ -78,6 +78,8 @@ class OpenSessions implements Sessions {
   #opens = 0;
   #starts = 0;
   readonly #latestStart = new Map<TabId, number>();
+  /** Tabs whose session is being handed to a window; `true` once the operator closed the tab meanwhile. */
+  readonly #poppingOut = new Map<TabId, boolean>();
   readonly #port: SessionPort;
   readonly #popOut: PopOutPort | undefined;
   readonly canPopOut: boolean;
@@ -109,8 +111,12 @@ class OpenSessions implements Sessions {
     this.#starts += 1;
     const mine = this.#starts;
     this.#latestStart.set(id, mine);
+    if (tab.sessionId !== null) {
+      await this.#endPrevious(id, tab.sessionId);
+      if (!this.#isLatest(id, mine)) throw new TabClosedError();
+    }
     const started = await this.#port.start(tab.deviceId, display);
-    if (this.#find(id) === undefined || this.#latestStart.get(id) !== mine) {
+    if (!this.#isLatest(id, mine)) {
       return this.#endAfterClose(started.sessionId);
     }
     this.#state = withSession(this.#state, id, started.sessionId);
@@ -129,6 +135,11 @@ class OpenSessions implements Sessions {
     const tab = this.#find(id);
     if (tab === undefined) return;
     this.#remove(id);
+    // A session on its way to a window is the window's unless the hand-over fails (see `popOut`).
+    if (this.#poppingOut.has(id)) {
+      this.#poppingOut.set(id, true);
+      return;
+    }
     // A start still in flight ends its own session when it resolves (see `start`).
     if (tab.sessionId !== null) await this.#port.end(tab.sessionId);
   }
@@ -140,8 +151,35 @@ class OpenSessions implements Sessions {
   async popOut(id: TabId): Promise<void> {
     const sessionId = this.#find(id)?.sessionId;
     if (this.#popOut === undefined || sessionId == null) return;
-    await this.#popOut(sessionId);
+    this.#poppingOut.set(id, false);
+    try {
+      await this.#popOut(sessionId);
+    } catch (reason) {
+      // The tab was closed while the window was opening: nothing owns the session now.
+      if (this.#poppingOut.get(id) === true) await this.#port.end(sessionId);
+      throw reason;
+    } finally {
+      this.#poppingOut.delete(id);
+    }
     this.#remove(id);
+  }
+
+  #isLatest(id: TabId, start: number): boolean {
+    return this.#find(id) !== undefined && this.#latestStart.get(id) === start;
+  }
+
+  /**
+   * A restart ends the tab's previous session once before the new one starts (D-5). The tab
+   * gives the id up first, so a close or another start meanwhile cannot end it again.
+   */
+  async #endPrevious(id: TabId, previous: string): Promise<void> {
+    this.#state = withSession(this.#state, id, null);
+    try {
+      await this.#port.end(previous);
+    } catch (reason) {
+      if (this.#find(id)?.sessionId === null) this.#state = withSession(this.#state, id, previous);
+      throw reason;
+    }
   }
 
   #find(id: TabId | null): Tab | undefined {

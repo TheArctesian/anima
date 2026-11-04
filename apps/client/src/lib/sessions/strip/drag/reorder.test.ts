@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { project } from '$lib/motion/gesture';
 import { VELOCITY_WINDOW_MS, isOutside, shifts, slotIndex, velocityOf } from './reorder';
-import { nextFocus } from './tablist';
+import { nextFocus } from '../tablist';
 
 // Four 100 px tabs with a 10 px gap: centres at 50, 160, 270, 380.
 const slots = [0, 110, 220, 330].map((left) => ({ left, width: 100 }));

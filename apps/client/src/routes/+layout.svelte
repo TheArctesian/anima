@@ -1,6 +1,6 @@
 <script lang="ts">
   import { page } from '$app/state';
-  import type { Snippet } from 'svelte';
+  import { untrack, type Snippet } from 'svelte';
   import '../styles/global.css';
   import { provideHub } from '$lib/hub/context';
   import { DEFAULT_HUB_ADDRESS, createHub } from '$lib/hub/hub';
@@ -26,6 +26,13 @@
   // WP-16 passes the `popOut` port as the second argument (WP-14 H-2); without it none is offered.
   const sessions = createSessions(sessionsPort);
   provideSessions(sessions);
+  // A route change (link, back, goto) shows the pages; the session tabs stay open (D-11).
+  $effect(() => {
+    void page.url.pathname;
+    untrack(() => {
+      sessions.deselect();
+    });
+  });
 
   $effect(() => () => {
     // close() rejects only when a pending connect failed; the status already shows that.

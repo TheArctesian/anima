@@ -2,7 +2,7 @@
   import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
   import type { Tab } from '../tabs';
-  import TabMenu from './TabMenu.svelte';
+  import TabMenu from './menu/TabMenu.svelte';
   import { tabElementId } from './tablist';
 
   interface Props {
@@ -20,6 +20,18 @@
 
   const { tab, selected, focusable, panel, onselect, onclose, onpopout }: Props = $props();
   const closeLabel = $derived(`Close ${tab.deviceName} ${tab.protocol} session`);
+  const shortcuts = $derived(onpopout === undefined ? 'Delete' : 'Delete Shift+F10');
+  let menuOpen = $state(false);
+  let button: HTMLButtonElement | undefined = $state();
+
+  /** The keyboard way to the tab menu (APG): Shift+F10 or the ContextMenu key. */
+  function key(event: KeyboardEvent): void {
+    if (onpopout === undefined) return;
+    if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
+      event.preventDefault();
+      menuOpen = true;
+    }
+  }
 </script>
 
 <button
@@ -30,8 +42,11 @@
   aria-selected={selected}
   aria-controls={panel}
   tabindex={focusable ? 0 : -1}
+  aria-keyshortcuts={shortcuts}
   data-tab
+  bind:this={button}
   onclick={onselect}
+  onkeydown={key}
   {@attach press()}
 >
   <Icon name="nf-md-console" size="sm" />
@@ -39,9 +54,26 @@
   <span class="protocol">{tab.protocol}</span>
 </button>
 {#if onpopout !== undefined}
-  <TabMenu label={`More for ${tab.deviceName} ${tab.protocol} session`} ready={tab.sessionId !== null} {onpopout} />
+  <TabMenu
+    label={`More for ${tab.deviceName} ${tab.protocol} session`}
+    ready={tab.sessionId !== null}
+    bind:open={menuOpen}
+    {onpopout}
+    onreturn={() => button?.focus()}
+  />
 {/if}
-<button type="button" class="close" aria-label={closeLabel} title={closeLabel} data-no-drag onclick={onclose}>
+<!-- Not a Tab stop and hidden from the tablist, which owns only tabs: Delete on the tab closes it. -->
+<button
+  type="button"
+  class="close"
+  aria-label={closeLabel}
+  aria-hidden="true"
+  tabindex="-1"
+  title={closeLabel}
+  data-no-drag
+  onclick={onclose}
+  {@attach press()}
+>
   <Icon name="nf-md-close" size="sm" />
 </button>
 
@@ -87,9 +119,18 @@
   }
 
   .close {
+    flex: none;
     justify-content: center;
     inline-size: var(--target-min-desktop);
     border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  }
+
+  /* Forced colours drop the shadow; an underline still marks the selected tab. */
+  @media (forced-colors: active) {
+    .tab[aria-selected='true'] {
+      text-decoration: underline;
+      text-decoration-thickness: var(--border-focus);
+    }
   }
 
   button:hover {

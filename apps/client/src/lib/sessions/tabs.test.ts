@@ -44,18 +44,18 @@ it.each([
   expect(next.activeId).toBe('b');
 });
 
-it('move on an empty strip changes nothing', () => {
+it('moving a tab in an empty strip changes nothing', () => {
   expect(moved(noTabs, 0, 1)).toBe(noTabs);
 });
 
-it('select picks a known tab only; deselect shows the pages and keeps every tab', () => {
+it('selecting picks a known tab only; deselecting shows the pages and keeps every tab', () => {
   const state = strip(['a', 'b'], 'a');
   expect(selected(state, 'b').activeId).toBe('b');
   expect(selected(state, 'z')).toBe(state);
   expect(deselected(state)).toEqual({ tabs: state.tabs, activeId: null });
 });
 
-it('withSession records the session on its tab only', () => {
+it('a started session is recorded on its own tab only', () => {
   const next = withSession(strip(['a', 'b'], 'a'), 'b', 'session-1');
   expect(next.tabs.map((open) => open.sessionId)).toEqual([null, 'session-1']);
 });
@@ -107,7 +107,7 @@ it('RA-001: opening selects the new tab and records its origin; deselect shows t
   expect(sessions.tabs).toHaveLength(1);
 });
 
-it('start asks the hub for the tab device with the display and returns the ticket', async () => {
+it('starting asks the hub for the tab device with the display and returns the ticket', async () => {
   const hub = fakeHub();
   const sessions = createSessions(hub);
   const id = sessions.openSession({ ...request, deviceId: 'db-2' });
@@ -149,7 +149,7 @@ it('D-5: a second start replaces the first; one that finishes after it is ended'
   expect(sessions.active?.sessionId).toBe('session-1');
 });
 
-it('close passes on a hub failure; a closed tab closes once', async () => {
+it('a hub failure to end reaches the caller; closing the tab again ends nothing more', async () => {
   const hub = fakeHub();
   hub.end.mockRejectedValueOnce(new Error('NOT_FOUND'));
   const sessions = createSessions(hub);
@@ -184,7 +184,7 @@ it('RA-002: without a port nothing is popped out and the tab stays', async () =>
   expect(sessions.tabs).toHaveLength(1);
 });
 
-it('a failed pop out keeps the tab', async () => {
+it('a pop out the window refuses keeps the tab', async () => {
   const sessions = createSessions(fakeHub(), () => Promise.reject(new Error('no window')));
   const id = sessions.openSession(request);
   await sessions.start(id, display);
@@ -192,10 +192,89 @@ it('a failed pop out keeps the tab', async () => {
   expect(sessions.tabs).toHaveLength(1);
 });
 
-it('move reorders the store', () => {
+it('moving a tab changes the order the strip shows', () => {
   const sessions = createSessions(fakeHub());
   const a = sessions.openSession(request);
   const b = sessions.openSession(request);
   sessions.move(0, 1);
   expect(sessions.tabs.map((open) => open.id)).toEqual([b, a]);
+});
+
+it('D-5: a restart ends the previous session once before the new one is recorded', async () => {
+  const hub = fakeHub();
+  const sessions = createSessions(hub);
+  const id = sessions.openSession(request);
+  await sessions.start(id, display);
+  hub.end.mockImplementationOnce(() => {
+    expect(hub.start).toHaveBeenCalledOnce();
+    return Promise.resolve();
+  });
+  const restarting = sessions.start(id, display);
+  await sessions.close(id).catch(() => undefined);
+  await expect(restarting).rejects.toBeInstanceOf(TabClosedError);
+  expect(hub.end).toHaveBeenCalledExactlyOnceWith('session-1');
+});
+
+it('D-5: a sequential restart ends the old session exactly once, then records the new one', async () => {
+  const hub = fakeHub();
+  const sessions = createSessions(hub);
+  const id = sessions.openSession(request);
+  await sessions.start(id, display);
+  await sessions.start(id, display);
+  expect(hub.end).toHaveBeenCalledExactlyOnceWith('session-1');
+  expect(sessions.active?.sessionId).toBe('session-2');
+  await sessions.close(id);
+  expect(hub.end.mock.calls).toEqual([['session-1'], ['session-2']]);
+});
+
+it('D-5: when the old session cannot be ended, no new one starts and the tab keeps the old one', async () => {
+  const hub = fakeHub();
+  const sessions = createSessions(hub);
+  const id = sessions.openSession(request);
+  await sessions.start(id, display);
+  hub.end.mockRejectedValueOnce(new Error('UNAVAILABLE'));
+  await expect(sessions.start(id, display)).rejects.toThrow('UNAVAILABLE');
+  expect(hub.start).toHaveBeenCalledOnce();
+  expect(sessions.active?.sessionId).toBe('session-1');
+});
+
+function slowWindow() {
+  let settle: (opened: boolean) => void = () => undefined;
+  const popOut = vi.fn(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        settle = (opened) => {
+          if (opened) resolve();
+          else reject(new Error('no window'));
+        };
+      }),
+  );
+  return { popOut, settle: (opened: boolean) => settle(opened) };
+}
+
+it('RA-002: closing a tab while its window opens leaves the session to the window', async () => {
+  const hub = fakeHub();
+  const window = slowWindow();
+  const sessions = createSessions(hub, window.popOut);
+  const id = sessions.openSession(request);
+  await sessions.start(id, display);
+  const moving = sessions.popOut(id);
+  await sessions.close(id);
+  window.settle(true);
+  await moving;
+  expect(hub.end).not.toHaveBeenCalled();
+  expect(sessions.tabs).toEqual([]);
+});
+
+it('RA-002: closing a tab while its window fails to open ends the session once', async () => {
+  const hub = fakeHub();
+  const window = slowWindow();
+  const sessions = createSessions(hub, window.popOut);
+  const id = sessions.openSession(request);
+  await sessions.start(id, display);
+  const moving = sessions.popOut(id);
+  await sessions.close(id);
+  window.settle(false);
+  await expect(moving).rejects.toThrow('no window');
+  expect(hub.end).toHaveBeenCalledExactlyOnceWith('session-1');
 });
