@@ -99,7 +99,7 @@ pub(super) type TestSchema = Schema<Query, EmptyMutation, EmptySubscription>;
 
 /// Requests whose argument async-graphql cannot coerce while resolving, each holding `SECRET`,
 /// with the argument's position and name.
-fn malformed() -> [(Request, Pos, &'static str); 4] {
+fn malformed() -> [(Request, Pos, &'static str); 6] {
     let variables = |input| Variables::from_json(json!({ "input": input }));
     let at = |column| Pos { line: 1, column };
     [
@@ -123,6 +123,22 @@ fn malformed() -> [(Request, Pos, &'static str); 4] {
         (
             Request::new(format!(r#"{{ coded(pin: "{SECRET}") }}"#)),
             at(14),
+            "pin",
+        ),
+        // Inside a named fragment and an inline fragment.
+        (
+            Request::new(
+                "query($input: SignIn!) { ...F } fragment F on Query { login(input: $input) }",
+            )
+            .variables(variables(json!(SECRET))),
+            at(68),
+            "input",
+        ),
+        (
+            Request::new(format!(
+                r#"{{ ... on Query {{ unlock(pin: "{SECRET}") }} }}"#
+            )),
+            at(30),
             "pin",
         ),
     ]
@@ -167,7 +183,7 @@ async fn log_007_a_bad_argument_is_validation_naming_it_and_its_value_stays_out_
     }
 
     let text = capture.text();
-    assert_eq!(text.matches("argument refused").count(), 4, "{text}");
+    assert_eq!(text.matches("argument refused").count(), 6, "{text}");
     assert!(!text.contains(SECRET), "{text}");
 }
 
