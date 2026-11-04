@@ -3,11 +3,27 @@
 # Sourced by harden.sh; needs its say, refuse, fail, run, path and require_root, and
 # GETENFORCE, SEMANAGE, RESTORECON, STAT, DOCKER, HEADSCALE_DIR and LABEL_SPEC.
 
+# A recorded deviation from D-9 (R-050): while this file holds a reason, SELinux may stay
+# disabled, so that turning it on (a relabel and reboots) does not stop the operator's
+# other services. It is ignored, and reported, once SELinux is on.
+SELINUX_DEVIATION=/etc/anima/selinux-disabled
+
+# Print the recorded reason for keeping SELinux disabled, or nothing.
+selinux_deviation() {
+  local file
+  file=$(path "$SELINUX_DEVIATION")
+  [ -f "$file" ] || return 0
+  sed -e 's/#.*//' -e '/^[[:space:]]*$/d' "$file" | head -n 1
+}
+
 cmd_selinux() {
   local mode dir
   require_root
   mode=$($GETENFORCE) || fail "getenforce failed"
-  [ "$mode" != Disabled ] || refuse "SELinux is disabled; set SELINUX=enforcing in /etc/selinux/config and reboot"
+  if [ "$mode" = Disabled ]; then
+    [ -z "$(selinux_deviation)" ] || { say "SELinux is disabled, a recorded deviation ($SELINUX_DEVIATION); nothing to label."; return 0; }
+    refuse "SELinux is disabled; turn it on (guide 2.0b), or record the deviation in $SELINUX_DEVIATION"
+  fi
   [ "$mode" = Enforcing ] || say "warning: SELinux is $mode; set it to Enforcing (setenforce 1 and /etc/selinux/config)"
   for dir in config lib; do
     [ -d "$(path "$HEADSCALE_DIR/$dir")" ] || refuse "$HEADSCALE_DIR/$dir is missing; create it first (guide step 2.5)"
@@ -56,6 +72,10 @@ headscale_label_problem() {
 selinux_problems() {
   local mode
   mode=$($GETENFORCE 2>/dev/null) || mode=unknown
+  if [ -n "$(selinux_deviation)" ]; then
+    [ "$mode" = Disabled ] && return 0
+    say "$SELINUX_DEVIATION records SELinux as disabled, but it is $mode; remove the file"
+  fi
   [ "$mode" = Enforcing ] || say "SELinux is $mode, not Enforcing"
   label_problems
   case $($DOCKER info --format '{{.SecurityOptions}}' 2>/dev/null) in

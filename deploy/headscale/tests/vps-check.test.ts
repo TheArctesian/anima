@@ -160,9 +160,15 @@ describe("harden.sh check inventory (VPS-005)", () => {
     expect(lines).toEqual(["! tcp 0.0.0.0:8080 docker-proxy docker.service"]);
   });
 
-  test("lists running containers", () => {
-    const run = host.run(["check"], { FAKE_CONTAINERS: "blog wordpress:6 0.0.0.0:80->80/tcp" });
-    expect(section(run.out, "Running containers")).toEqual(["blog wordpress:6 0.0.0.0:80->80/tcp"]);
+  test("marks each running container that is neither Headscale nor a known workload", () => {
+    const containers = "headscale-headscale-1 docker.io/headscale/headscale:0.29.7\\nblog wordpress:6 0.0.0.0:80->80/tcp\\ndawarich_db postgis/postgis:17-3.5";
+    host.write("etc/anima/known-workloads", "# agreed in R-050\ncontainer dawarich_db\nservice blog # not a container entry\n");
+    const run = host.run(["check"], { FAKE_CONTAINERS: containers });
+    expect(section(run.out, "Running containers")).toEqual([
+      "  headscale-headscale-1 docker.io/headscale/headscale:0.29.7",
+      "! blog wordpress:6 0.0.0.0:80->80/tcp",
+      "= dawarich_db postgis/postgis:17-3.5",
+    ]);
   });
 
   test("names each bridge and marks one the forward chain would not let into the VPN", () => {
@@ -176,6 +182,17 @@ describe("harden.sh check inventory (VPS-005)", () => {
   test("lists enabled services that are not stock", () => {
     const run = host.run(["check"], { FAKE_UNITS: "sshd.service enabled enabled\\nnginx.service enabled disabled" });
     expect(section(run.out, "Enabled services")).toEqual(["! nginx.service"]);
+  });
+
+  test("R-050: marks a known service = and changes no check", () => {
+    host.harden();
+    const units = "sshd.service enabled enabled\\nmonarx-agent.service enabled enabled\\nsssd.service enabled enabled";
+    const before = host.run(["check"], { FAKE_UNITS: units });
+    host.write("etc/anima/known-workloads", "service monarx-agent.service\nservice sssd.service\n");
+    const after = host.run(["check"], { FAKE_UNITS: units });
+    expect(section(before.out, "Enabled services")).toEqual(["! monarx-agent.service", "! sssd.service"]);
+    expect(section(after.out, "Enabled services")).toEqual(["= monarx-agent.service", "= sssd.service"]);
+    expect(after.code).toBe(before.code);
   });
 
   test("prints each active firewalld zone, its policies and direct rules, or that firewalld is not running", () => {

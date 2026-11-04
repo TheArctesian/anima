@@ -88,7 +88,7 @@ case "$1" in
   list-unit-files) printf '%b\\n' "\${FAKE_UNITS:-sshd.service enabled enabled}";;
   show) [ "$unit" = nftables.service ] || { echo "\${FAKE_SUBSTATE:-waiting}"; exit 0; }
         f=stock; [ ! -f "$FAKE_ROOT/etc/systemd/system/nftables.service.d/anima.conf" ] || f=anima
-        sed "\${FAKE_NFT_UNIT_EDIT:-}" "$FAKE_DIR/nft-unit-$f"; printf '%b' "\${FAKE_NFT_UNIT_EXTRA:-}";; reload) exit "\${FAKE_RELOAD:-0}";; mask) exit "\${FAKE_MASK:-0}";;
+        sed "\${FAKE_NFT_UNIT_EDIT:-}" "$FAKE_DIR/nft-unit-$f"; printf '%b' "\${FAKE_NFT_UNIT_EXTRA:-}";; reload) exit "\${FAKE_RELOAD:-0}";; restart) [ "$unit" != docker ] || : > "$FAKE_DIR/docker-restarted"; exit "\${FAKE_RESTART:-0}";; mask) exit "\${FAKE_MASK:-0}";;
   stop) [ -z "\${FAKE_STOP_STARTS_ROLLBACK:-}" ] || : > "$FAKE_ROOT/var/lib/anima/firewall-rolled-back";;
 esac`,
   SYSTEMD_RUN: `[ "$1" != --wait ] || exit "\${FAKE_PROBE:-0}"`,
@@ -128,8 +128,13 @@ printf '%b\\n' "\${FAKE_ADDRS:-${ADDRS}}"`,
 esac`,
   DOCKER: `case "$1" in
   version) [ -z "\${FAKE_DOCKER_DOWN:-}" ] || exit 1; echo "\${FAKE_DOCKER_VERSION:-29.9.3}";;
-  info) echo "\${FAKE_DOCKER_SECURITY:-[name=seccomp,profile=builtin name=selinux]}";;
-  ps) [ "$2" != -q ] || { printf '%b' "\${FAKE_HEADSCALE_ID-0123abcd\\n}"; exit 0; }
+  info) case "$*" in *LiveRestoreEnabled*) echo "\${FAKE_LIVE_RESTORE:-true}";;
+          *) echo "\${FAKE_DOCKER_SECURITY:-[name=seccomp,profile=builtin name=selinux]}";; esac;;
+  ps) if [ "$2" = -q ] && [ "$3" = --no-trunc ]; then
+        if [ -f "$FAKE_DIR/docker-restarted" ]; then printf '%b' "\${FAKE_IDS_AFTER-\${FAKE_IDS:-aaa\\nbbb\\n}}"; else printf '%b' "\${FAKE_IDS:-aaa\\nbbb\\n}"; fi
+        exit 0
+      fi
+      [ "$2" != -q ] || { printf '%b' "\${FAKE_HEADSCALE_ID-0123abcd\\n}"; exit 0; }
       printf '%b\\n' "\${FAKE_CONTAINERS:-headscale-headscale-1 docker.io/headscale/headscale:0.29.7 }";;
   inspect) echo "\${FAKE_PROCESS_LABEL-system_u:system_r:container_t:s0:c241,c692}";;
   network) case "$2" in

@@ -35,6 +35,19 @@ describe("harden.sh selinux", () => {
     expect(run.calls.some((call) => /^(SEMANAGE fcontext -[am]|RESTORECON)/.test(call))).toBe(false);
   });
 
+  test("R-050: labels nothing and succeeds while a recorded deviation keeps SELinux disabled", () => {
+    host.write("etc/anima/selinux-disabled", "# why\nR-050: the operator's services must not stop for a relabel\n");
+    const run = host.run(["selinux"], { FAKE_ENFORCE: "Disabled" });
+    expect(run.code).toBe(0);
+    expect(run.out).toContain("a recorded deviation");
+    expect(run.calls.some((call) => /^(SEMANAGE|RESTORECON)/.test(call))).toBe(false);
+  });
+
+  test("R-050: a deviation file with only comments records nothing", () => {
+    host.write("etc/anima/selinux-disabled", "# no reason given\n\n");
+    expect(host.run(["selinux"], { FAKE_ENFORCE: "Disabled" }).code).toBe(2);
+  });
+
   test("D-9: warns but labels when SELinux is permissive", () => {
     const run = host.run(["selinux"], { FAKE_ENFORCE: "Permissive" });
     expect(run.code).toBe(0);
@@ -99,6 +112,40 @@ describe("harden.sh docker", () => {
     expect(host.run(["docker"]).calls).not.toContain("SYSTEMCTL restart docker");
     expect(host.run(["--restart-docker", "docker"]).calls).toContain("SYSTEMCTL restart docker");
   });
+
+  test("R-050: docker reloads Docker to turn live-restore on before it restarts it", () => {
+    const run = host.run(["--restart-docker", "docker"]);
+    expect(run.code).toBe(0);
+    const reload = run.calls.indexOf("SYSTEMCTL reload docker");
+    expect(reload).toBeGreaterThanOrEqual(0);
+    expect(run.calls.indexOf("DOCKER info --format {{.LiveRestoreEnabled}}")).toBeGreaterThan(reload);
+    expect(run.calls.indexOf("SYSTEMCTL restart docker")).toBeGreaterThan(reload);
+    expect(run.out).toContain("every running container kept running");
+  });
+
+  test("R-050: docker does not restart Docker when live-restore is still off, which would stop every container", () => {
+    const run = host.run(["--restart-docker", "docker"], { FAKE_LIVE_RESTORE: "false" });
+    expect(run.code).toBe(1);
+    expect(run.out).toContain("live-restore is not on");
+    expect(run.calls).not.toContain("SYSTEMCTL restart docker");
+  });
+
+  test("R-050: docker does not restart Docker when the reload fails", () => {
+    const run = host.run(["--restart-docker", "docker"], { FAKE_RELOAD: "1" });
+    expect(run.code).toBe(1);
+    expect(run.calls).not.toContain("SYSTEMCTL restart docker");
+  });
+
+  test("R-050: docker fails and names each container the restart stopped", () => {
+    const run = host.run(["--restart-docker", "docker"], { FAKE_IDS: "aaa111\\nbbb222\\n", FAKE_IDS_AFTER: "aaa111\\n" });
+    expect(run.code).toBe(1);
+    expect(run.out).toContain("containers stopped by the restart: bbb222");
+  });
+
+  test("R-050: a dry run neither reloads nor restarts Docker", () => {
+    const run = host.run(["--dry-run", "--restart-docker", "docker"]);
+    expect(run.calls.some((call) => /^SYSTEMCTL (reload|restart) docker/.test(call))).toBe(false);
+  });
 });
 
 describe("harden.sh check (Headscale's process label)", () => {
@@ -123,6 +170,26 @@ describe("harden.sh check (Headscale's process label)", () => {
     const run = host.run(["check"], env);
     expect(run.code).toBe(1);
     expect(run.out).toContain(`VIOLATION: ${message}`);
+  });
+
+  test("R-050: check accepts disabled SELinux with a recorded deviation, and prints the reason", () => {
+    host.write("etc/anima/selinux-disabled", "R-050: keep the operator's services running\n");
+    const run = host.run(["check"], { FAKE_ENFORCE: "Disabled", FAKE_DOCKER_SECURITY: "[name=seccomp,profile=builtin]" });
+    expect(run.code).toBe(0);
+    expect(run.out).toContain("note: SELinux stays disabled, a recorded deviation: R-050: keep the operator's services running");
+  });
+
+  test("R-050: check reports disabled SELinux without a deviation", () => {
+    const run = host.run(["check"], { FAKE_ENFORCE: "Disabled" });
+    expect(run.code).toBe(1);
+    expect(run.out).toContain("VIOLATION: SELinux is Disabled, not Enforcing");
+  });
+
+  test("R-050: check reports a deviation file left behind once SELinux is on", () => {
+    host.write("etc/anima/selinux-disabled", "R-050\n");
+    const run = host.run(["check"]);
+    expect(run.code).toBe(1);
+    expect(run.out).toContain("VIOLATION: /etc/anima/selinux-disabled records SELinux as disabled, but it is Enforcing; remove the file");
   });
 
   test("D-9: check skips the process label when SELinux is disabled", () => {
