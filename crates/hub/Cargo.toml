@@ -12,6 +12,7 @@ workspace = true
 async-graphql.workspace = true
 async-graphql-axum.workspace = true
 axum.workspace = true
+thiserror.workspace = true
 tokio.workspace = true
 
 [dev-dependencies]

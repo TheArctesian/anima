@@ -25,6 +25,7 @@ dependencies = [
  "async-graphql-axum",
  "axum",
  "http-body-util",
+ "thiserror",
  "tokio",
  "tower",
 ]
