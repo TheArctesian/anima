@@ -1,5 +1,8 @@
 //! `Query.sites`, `device`, `devices` and `tags` against the K6 rows (API-006, VPN-002, K7).
 
+use std::sync::Arc;
+
+use anima_hub::clock::{Clock, FixedClock};
 use anima_hub::devices::{
     self,
     graphql::{Mutation, Query},
@@ -8,7 +11,7 @@ use async_graphql::{EmptySubscription, Schema};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
-use super::harness::{data, only_error, schema_for, signed_in, validation_fields};
+use super::harness::{data, now, only_error, schema_for, signed_in, validation_fields};
 
 const HOME_SITE: &str = "0190a000-0000-7000-8001-000000000001";
 const OFFICE_1_SITE: &str = "0190a000-0000-7000-8001-000000000002";
@@ -291,8 +294,10 @@ async fn k7_missing_schema_data_is_internal_without_rust_type_names() {
     fixtures(path = "../../fixtures", scripts("devices"))
 )]
 async fn api_010_a_missing_site_devices_loader_is_internal_without_rust_type_names(pool: PgPool) {
+    let clock: Arc<dyn Clock> = Arc::new(FixedClock(now()));
     let schema = Schema::build(Query, Mutation, EmptySubscription)
         .data(pool)
+        .data(clock)
         .finish();
     let response = schema
         .execute(signed_in("{ sites { devices { totalCount } } }"))
