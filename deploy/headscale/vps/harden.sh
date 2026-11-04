@@ -57,9 +57,12 @@ Commands (run as root):
             admin user, effective sshd values, updates, SELinux and firewall state.
             Changes nothing.
   ssh       Install the sshd drop-in (keys only, no root, AllowUsers \$ANIMA_ADMIN_USER),
-            verify it with sshd -t and sshd -T, then reload sshd. ANIMA_ADMIN_USER must
-            be a non-root member of group $ADMIN_GROUP with a key in ~/.ssh/authorized_keys:
-            sudo --preserve-env=ANIMA_ADMIN_USER $SELF ssh
+            verify it with sshd -t, sshd -T and sshd -T -C for root and the admin user,
+            then reload sshd. Refuses while sshd_config or a file it includes has an
+            active Match line. ANIMA_ADMIN_USER must be a non-root member of group
+            $ADMIN_GROUP with a key in ~/.ssh/authorized_keys (VPS_PUBLIC_IPV4, if set,
+            is the public address the -C checks use):
+            sudo --preserve-env=ANIMA_ADMIN_USER,VPS_PUBLIC_IPV4 $SELF ssh
   updates   Install dnf-automatic: all updates daily at 03:45 UTC, reboot at 04:30 when
             needed.
   selinux   Label Headscale's config/ and lib/ container_file_t (semanage, restorecon).
@@ -192,7 +195,7 @@ cmd_check() {
   require_root
   inventory
   os_warnings
-  problems=$(admin_problem; sshd_mismatches "${ANIMA_ADMIN_USER:-}"; update_problems
+  problems=$(admin_problem; match_problems; sshd_mismatches "${ANIMA_ADMIN_USER:-}"; update_problems
     selinux_problems; firewall_problems; listener_violations)
   if [ -z "$problems" ]; then say "ok: no violations"; return 0; fi
   while IFS= read -r line; do say "VIOLATION: $line"; done <<<"$problems"

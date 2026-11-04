@@ -99,7 +99,16 @@ describe("harden.sh firewall never silently closes an open port (VPS-005)", () =
     ["a firewalld port", { ...firewalld, FAKE_FW_PORTS: "8080/tcp" }, "8080/tcp"],
     ["a firewalld service", { ...firewalld, FAKE_FW_SERVICES: "ssh cockpit" }, "9090/tcp"],
     ["a firewalld port range", { ...firewalld, FAKE_FW_PORTS: "60000-61000/udp" }, "60000-61000/udp"],
-    ["a firewalld rich rule", { ...firewalld, FAKE_FW_RICH: "rule port port=80 protocol=tcp accept" }, "rich-rules"],
+    ["a firewalld rich rule", { ...firewalld, FAKE_FW_RICH: "rule port port=80 protocol=tcp accept" }, "public:rich-rules"],
+    ["a firewalld source", { ...firewalld, FAKE_FW_SOURCES: "198.51.100.0/24" }, "public:sources"],
+    ["a firewalld protocol", { ...firewalld, FAKE_FW_PROTOCOLS: "gre" }, "public:protocols"],
+    ["a firewalld forward port", { ...firewalld, FAKE_FW_FORWARD_PORTS: "port=80:proto=tcp:toport=8080:toaddr=" }, "public:forward-ports"],
+    ["a firewalld source port", { ...firewalld, FAKE_FW_SOURCE_PORTS: "53/udp" }, "public:source-ports"],
+    ["firewalld masquerade", { ...firewalld, FAKE_FW_MASQ: "yes" }, "public:masquerade"],
+    ["a zone target other than default", { ...firewalld, FAKE_FW_TARGET: "ACCEPT" }, "public:target"],
+    ["a service that only includes others", { ...firewalld, FAKE_FW_SERVICES: "bundle" }, "service:bundle"],
+    ["a firewalld policy of the operator's", { ...firewalld, FAKE_FW_POLICIES: "allow-host-ipv6\\nexpose\\n  ingress-zones: ANY" }, "policy:expose"],
+    ["a firewalld direct rule", { ...firewalld, FAKE_FW_DIRECT: "ipv4 filter INPUT 0 -j ACCEPT\\n" }, "direct-rules"],
   ])("refuses for %s and changes nothing; --allow-closing lets it close", (_, env, port) => {
     const { FAKE_SS_EXTRA: extra, ...rest } = env as Record<string, string>;
     if (extra) host.setListeners([...ALLOWED_SS, extra]);
@@ -114,6 +123,11 @@ describe("harden.sh firewall never silently closes an open port (VPS-005)", () =
   test("SSH (22/tcp) and the Anima ports never count as closing", () => {
     host.setListeners([...ALLOWED_SS, "tcp LISTEN 0 128 0.0.0.0:22 0.0.0.0:*"]);
     expect(host.run(["firewall"], { ...vpn, ...firewalld, FAKE_FW_SERVICES: "ssh", FAKE_FW_PORTS: "443/tcp" }).code).toBe(0);
+  });
+
+  test("Docker's forwarding policy and the built-in allow-host-ipv6 are not openings", () => {
+    const policies = "allow-host-ipv6\\n  ingress-zones: ANY\\ndocker-forwarding\\n  ingress-zones: ANY\\n  egress-zones: docker";
+    expect(host.run(["firewall"], { ...vpn, ...firewalld, FAKE_FW_POLICIES: policies }).code).toBe(0);
   });
 
   test("Docker's own firewalld zone is not an opening", () => {

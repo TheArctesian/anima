@@ -7,6 +7,7 @@ describe("harden.sh dry run, usage and lint", () => {
     const host = fakeHost();
     host.write("var/lib/anima/nftables.pending", "pending\n");
     host.write("var/lib/anima/firewall-session", "100.64.0.2 50000 100.64.0.1 22\n");
+    host.write("var/lib/anima/firewall-peers", "100.64.0.2 50000\n");
     const before = host.tree();
     for (const command of ["ssh", "updates", "selinux", "docker", "firewall", "confirm", "check"]) {
       const run = host.run(["--dry-run", "--restart-docker", command], { SSH_CONNECTION: VPN_SESSION });

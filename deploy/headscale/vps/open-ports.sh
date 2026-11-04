@@ -60,22 +60,79 @@ public_sockets() {
   done <<<"$sockets"
 }
 
-# Print "PORT/PROTO firewalld zone ZONE ..." for each opening firewalld has now.
+# Print one line per entry of `firewall-cmd --zone=ZONE --list-all` that can let traffic
+# in: "PORT/PROTO" for each port, "service NAME" for each service, and "ZONE:KEY" for
+# anything else that is set (sources, protocols, forward-ports, source-ports, masquerade,
+# rich rules, a target other than default, keys a newer firewalld adds). Interfaces,
+# priorities, intra-zone forwarding and ICMP blocks let nothing in from outside.
+zone_entries() {
+  $FIREWALL_CMD --zone="$1" --list-all | awk -v zone="$1" '
+    /^\t/ { if (key != "") value[key] = value[key] " " $0; next }
+    /^[[:space:]]+[a-z][a-z -]*:/ {
+      key = $0; sub(/^[[:space:]]+/, "", key); sub(/:.*/, "", key)
+      value[key] = $0; sub(/^[^:]*:/, "", value[key]); order[++n] = key
+    }
+    END {
+      for (i = 1; i <= n; i++) {
+        k = order[i]; v = value[k]; gsub(/^[[:space:]]+|[[:space:]]+$/, "", v)
+        if (k ~ /^(interfaces|ingress-priority|egress-priority|forward|icmp-blocks)$/) continue
+        if (k == "ports" || k == "services") {
+          c = split(v, words, /[[:space:]]+/)
+          for (j = 1; j <= c; j++) if (words[j] != "") print (k == "ports" ? "" : "service ") words[j]
+          continue
+        }
+        if (k == "target" && v == "default") continue
+        if (k ~ /^(masquerade|icmp-block-inversion)$/ && v == "no") continue
+        if (v != "") { gsub(/ /, "-", k); print zone ":" k }
+      }
+    }'
+}
+
+# Print the ports of firewalld service $2 in zone $1, or "service:NAME" when the service
+# also opens protocols or source ports or includes other services.
+service_openings() {
+  local service_info port
+  service_info=$($FIREWALL_CMD --info-service="$2") || { say "service:$2 firewalld zone $1 (unknown service)"; return; }
+  while read -r port; do
+    say "$port firewalld zone $1 service $2"
+  done < <(awk '$1 == "ports:" { for (i = 2; i <= NF; i++) print $i }' <<<"$service_info")
+  if awk '$1 ~ /^(protocols|source-ports|includes):$/ && NF > 1 { found = 1 } END { exit !found }' <<<"$service_info"; then
+    say "service:$2 firewalld zone $1 (protocols, source ports or included services)"
+  fi
+}
+
+# Print "TOKEN firewalld ..." for each policy and direct rule firewalld has beside its zones.
+# Docker adds the docker-forwarding policy for its own bridges; allow-host-ipv6 is built in.
+firewalld_extras() {
+  local policy
+  while read -r policy _; do
+    case $policy in '' | allow-host-ipv6 | docker-forwarding) continue ;; esac
+    say "policy:$policy firewalld policy $policy"
+  done < <($FIREWALL_CMD --get-active-policies | grep -v '^[[:space:]]')
+  if [ -n "$($FIREWALL_CMD --direct --get-all-rules)$($FIREWALL_CMD --direct --get-all-chains)$($FIREWALL_CMD --direct --get-all-passthroughs)" ]; then
+    say "direct-rules firewalld direct rules, chains or passthroughs"
+  fi
+}
+
+# Print "PORT/PROTO firewalld zone ZONE ..." for each opening firewalld has now, and a
+# token (ZONE:KEY, service:NAME, policy:NAME, direct-rules) for anything else that could
+# let traffic in: the guard refuses those too, because no port check can see through them.
 firewalld_openings() {
-  local zones zone service port
+  local zones zone entry
   $SYSTEMCTL is-active --quiet firewalld.service || return 0
   zones=$($FIREWALL_CMD --get-active-zones) || { say "unknown firewall-cmd --get-active-zones failed"; return; }
   while read -r zone _; do
     # Docker's own zone holds docker0 (target ACCEPT); it is not an opening to the internet.
     case $zone in '' | docker) continue ;; esac
-    for port in $($FIREWALL_CMD --zone="$zone" --list-ports); do say "$port firewalld zone $zone"; done
-    for service in $($FIREWALL_CMD --zone="$zone" --list-services); do
-      for port in $($FIREWALL_CMD --info-service="$service" | awk '$1 == "ports:" { $1 = ""; print }'); do
-        say "$port firewalld zone $zone service $service"
-      done
-    done
-    [ -z "$($FIREWALL_CMD --zone="$zone" --list-rich-rules)" ] || say "rich-rules firewalld zone $zone"
+    while read -r entry; do
+      case $entry in
+        '') ;;
+        "service "*) service_openings "$zone" "${entry#service }" ;;
+        *) say "$entry firewalld zone $zone" ;;
+      esac
+    done < <(zone_entries "$zone")
   done < <(grep -v '^[[:space:]]' <<<"$zones")
+  firewalld_extras
 }
 
 # Print each public listener the Anima table does not leave open (VPS-002).

@@ -23,20 +23,19 @@ export const ALLOWED_SS = [
 export const RULESET = "table ip nat {\n}\ntable inet anima_filter {\n\tchain input {\n\t}\n}\n";
 const TEST_KEY = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITestOnlyNotARealKey admin@test\n";
 
-// sshd -T: first value wins across the drop-ins in name order; AllowUsers adds up.
-const SSHD_DEFAULTS =
-  "passwordauthentication yes kbdinteractiveauthentication yes permitrootlogin prohibit-password " +
-  "permitemptypasswords no pubkeyauthentication yes authenticationmethods any x11forwarding no " +
-  "maxauthtries 6 logingracetime 120";
-const SSHD_T = `awk 'BEGIN { n = split("${SSHD_DEFAULTS}", d, " "); for (i = 1; i < n; i += 2) dflt[d[i]] = d[i + 1] }
-/^[[:space:]]*(#|$)/ { next }
-{ k = tolower($1); if (k == "allowusers") { for (i = 2; i <= NF; i++) print "allowusers " $i; next }; if (!(k in v)) v[k] = $2 }
-END { for (k in dflt) print k " " ((k in v) ? v[k] : dflt[k]) }' "$@" </dev/null`;
+// The stock AlmaLinux 10 sshd_config, cut to the lines that matter here.
+const SSHD_CONFIG =
+  "# stock comments\nInclude /etc/ssh/sshd_config.d/*.conf\nAuthorizedKeysFile .ssh/authorized_keys\n" +
+  "#Match User anoncvs\n#\tPermitTTY no\nSubsystem sftp /usr/libexec/openssh/sftp-server\n";
 
 const FAKES: Record<string, string> = {
   NFT: `case "$1" in
-  -c) [ "$3" != /dev/stdin ] || cat > "$FAKE_DIR/checked.nft"
-      case "$3" in *rollback) exit "\${FAKE_NFT_CHECK_ROLLBACK:-0}";; *) exit "\${FAKE_NFT_CHECK:-0}";; esac;;
+  -c) if [ "$3" = /dev/stdin ]; then
+        cat > "$FAKE_DIR/stdin.nft"
+        if grep -q '^include ' "$FAKE_DIR/stdin.nft"; then mv "$FAKE_DIR/stdin.nft" "$FAKE_DIR/boot.nft"; exit "\${FAKE_NFT_CHECK_BOOT:-0}"; fi
+        mv "$FAKE_DIR/stdin.nft" "$FAKE_DIR/checked.nft"
+      fi
+      case "$3" in *rollback) exit "\${FAKE_NFT_CHECK_ROLLBACK:-0}";; */etc/sysconfig/nftables.conf) exit "\${FAKE_NFT_CHECK_BOOT:-0}";; *) exit "\${FAKE_NFT_CHECK:-0}";; esac;;
   -f) exit "\${FAKE_NFT_APPLY:-0}";;
   list) [ "$2" = ruleset ] && cat "$FAKE_RULESET" && exit 0
         [ "$2" = tables ] && echo "table ip nat" && exit 0; exit "\${FAKE_NFT_TABLE:-0}";;
@@ -50,20 +49,23 @@ case "$1" in
   stop) [ -z "\${FAKE_STOP_STARTS_ROLLBACK:-}" ] || : > "$FAKE_ROOT/var/lib/anima/firewall-rolled-back";;
 esac`,
   SYSTEMD_RUN: `[ "$1" != --wait ] || exit "\${FAKE_PROBE:-0}"`,
-  SSHD: `[ "$1" = -T ] || exit "\${FAKE_SSHD_SYNTAX:-0}"
-set -- "$FAKE_ROOT"/etc/ssh/sshd_config.d/*.conf
-[ -e "$1" ] || set --
-${SSHD_T}`,
-  SS: `cat "$FAKE_SS"`,
+  SSHD: readFileSync(join(import.meta.dir, "fake-sshd.sh"), "utf8"),
+  SS: `case "$*" in *established*) printf '%b' "\${FAKE_SS_ESTABLISHED:-}";; *) cat "$FAKE_SS";; esac`,
   DNF: "exit 0",
-  FIREWALL_CMD: `case "$1" in
+  FIREWALL_CMD: `tabbed() { [ -z "$1" ] || printf '\\t%s\\n' "$1"; }
+case "$1" in
   --get-active-zones) printf '%b\\n' "\${FAKE_ZONES:-docker\\n  interfaces: docker0\\npublic (default)}";;
-  --info-service=*) case "$1" in *=cockpit) p=9090/tcp;; *=ssh) p=22/tcp;; *=dhcpv6-client) p=546/udp;; *) p=;; esac
-                    printf '%s\\n  ports: %s\\n  source-ports: \\n' "\${1#*=}" "$p";;
-  --zone=*) case "$2" in
-      --list-ports) echo "\${FAKE_FW_PORTS:-}";; --list-services) echo "\${FAKE_FW_SERVICES:-ssh}";;
-      --list-rich-rules) echo "\${FAKE_FW_RICH:-}";; --list-all) echo "\${1#--zone=}"; echo "  target: default";;
-    esac;;
+  --get-active-policies) printf '%b\\n' "\${FAKE_FW_POLICIES:-allow-host-ipv6\\n  ingress-zones: ANY\\n  egress-zones: HOST}";;
+  --direct) [ "$2" != --get-all-rules ] || printf '%b' "\${FAKE_FW_DIRECT:-}";;
+  --info-service=*) i=; case "$1" in *=cockpit) p=9090/tcp;; *=ssh) p=22/tcp;; *=dhcpv6-client) p=546/udp;; *=bundle) p=; i=ssh;; *) p=;; esac
+                    printf '%s\\n  ports: %s\\n  protocols: \\n  source-ports: \\n  includes: %s\\n' "\${1#*=}" "$p" "$i";;
+  --zone=*) [ "$2" = --list-all ] || exit 0
+    printf '%s (active)\\n  target: %s\\n  ingress-priority: 0\\n  icmp-block-inversion: no\\n  interfaces: eth0\\n' \\
+      "\${1#--zone=}" "\${FAKE_FW_TARGET:-default}"
+    printf '  sources: %s\\n  services: %s\\n  ports: %s\\n  protocols: %s\\n  forward: yes\\n  masquerade: %s\\n' \\
+      "\${FAKE_FW_SOURCES:-}" "\${FAKE_FW_SERVICES:-ssh}" "\${FAKE_FW_PORTS:-}" "\${FAKE_FW_PROTOCOLS:-}" "\${FAKE_FW_MASQ:-no}"
+    echo '  forward-ports: '; tabbed "\${FAKE_FW_FORWARD_PORTS:-}"
+    printf '  source-ports: %s\\n  icmp-blocks: \\n  rich rules: \\n' "\${FAKE_FW_SOURCE_PORTS:-}"; tabbed "\${FAKE_FW_RICH:-}";;
 esac`,
   SEMANAGE: `[ "$2" != -l ] || printf '%b' "\${FAKE_FCONTEXT:-}"`,
   RESTORECON: "exit 0",
@@ -169,6 +171,7 @@ export function fakeHost(): Host {
   host.write("home/admin/.ssh/authorized_keys", TEST_KEY, 0o600);
   chmodSync(join(root, "home/admin/.ssh"), 0o700);
   chmodSync(join(root, "home/admin"), 0o755);
+  host.write("etc/ssh/sshd_config", SSHD_CONFIG);
   host.write("etc/os-release", 'ID="almalinux"\nVERSION_ID="10.2"\n');
   mkdirSync(join(root, "opt/anima/headscale/config"), { recursive: true });
   mkdirSync(join(root, "opt/anima/headscale/lib"), { recursive: true });

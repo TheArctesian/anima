@@ -1,7 +1,7 @@
 # shellcheck shell=bash
 # The `ssh` command and the checks of the admin account and the effective sshd values
 # (VPS-001). Sourced by harden.sh; needs its say, refuse, fail, dry, path, write_file,
-# save_previous and require_root, and SSHD, SYSTEMCTL, GETENT, ID, SSHD_DROPIN, STATE_DIR,
+# save_previous and require_root, and ROOT, SSHD, SYSTEMCTL, GETENT, ID, SSHD_DROPIN, STATE_DIR,
 # ADMIN_GROUP, USER_NAME_PATTERN, KEY_LINE_PATTERN and HERE.
 
 # Print why a path would make sshd (StrictModes) ignore the keys, or nothing.
@@ -38,12 +38,43 @@ admin_problem() {
   done
 }
 
-# Print each effective sshd value (sshd -T) that differs from the drop-in.
-sshd_mismatches() {
-  local effective line
-  effective=$($SSHD -T) || { say "sshd -T failed"; return; }
+SSHD_CONFIG=/etc/ssh/sshd_config
+# Includes nest at most this deep; sshd itself stops at 16.
+SSHD_INCLUDE_DEPTH=16
+
+# Print FILE (a path under ROOT) and every file it includes, depth first. A relative
+# Include is relative to /etc/ssh, as sshd reads it.
+sshd_files() {
+  local file=$1 depth=$2 pattern included
+  [ -f "$file" ] || return 0
+  [ "$depth" -le "$SSHD_INCLUDE_DEPTH" ] || { say "sshd: includes nest deeper than $SSHD_INCLUDE_DEPTH at $file"; return; }
+  say "$file"
+  while read -r pattern; do
+    case $pattern in /*) ;; *) pattern=/etc/ssh/$pattern ;; esac
+    # shellcheck disable=SC2086 # the pattern is a glob, as in sshd
+    for included in "${ROOT%/}"$pattern; do sshd_files "$included" $((depth + 1)); done
+  done < <(awk 'tolower($1) == "include" { for (i = 2; i <= NF; i++) print $i }' "$file")
+}
+
+# Print each active Match line in sshd_config and the files it includes. A Match block
+# overrides the global values for the connections it matches, so it can turn passwords or
+# root logins back on past the drop-in; sshd -T without -C does not show it.
+match_problems() {
+  local file
+  while IFS= read -r file; do
+    case $file in sshd:*) say "$file"; continue ;; esac
+    awk -v name="${file#"${ROOT%/}"}" 'tolower($1) == "match" {
+      print "sshd: " name ":" FNR ": a Match block can override the hardening; remove it" }' "$file"
+  done < <(sshd_files "$(path "$SSHD_CONFIG")" 0)
+}
+
+# Print each value in the output of sshd -T (with the -C arguments given, if any) that
+# differs from the drop-in for admin user $1.
+sshd_effective_mismatches() {
+  local effective line label="sshd -T${2:+ -C $2}"
+  effective=$($SSHD -T ${2:+-C "$2"}) || { say "$label failed"; return; }
   while IFS= read -r line; do
-    grep -qixF "$line" <<<"$effective" || say "sshd: expected \"$line\""
+    grep -qixF "$line" <<<"$effective" || say "$label: expected \"$line\""
   done <<EOF
 passwordauthentication no
 kbdinteractiveauthentication no
@@ -57,8 +88,23 @@ logingracetime 30
 allowusers $1
 EOF
   # AllowUsers adds up across drop-ins: any other user is a second way in.
-  awk -v want="allowusers $1" 'tolower($1) == "allowusers" && tolower($0) != want {
-    print "sshd: unexpected \"" $0 "\" (AllowUsers adds up across drop-ins)" }' <<<"$effective"
+  awk -v want="allowusers $1" -v label="$label" 'tolower($1) == "allowusers" && tolower($0) != want {
+    print label ": unexpected \"" $0 "\" (AllowUsers adds up across drop-ins)" }' <<<"$effective"
+}
+
+# Print each effective sshd value that differs from the drop-in: first the global values,
+# then, once they are right, the values for root and the admin user from a public address
+# and for the admin user from the VPN, which a Match block could change.
+sshd_mismatches() {
+  local user=$1 public=${VPS_PUBLIC_IPV4:-198.51.100.7} global connection
+  global=$(sshd_effective_mismatches "$user")
+  if [ -n "$global" ]; then say "$global"; return; fi
+  [[ $user =~ $USER_NAME_PATTERN ]] || return 0
+  [[ $public =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || { say "VPS_PUBLIC_IPV4 is not an IPv4 address"; return; }
+  for connection in "user=root,host=x,addr=$public" "user=$user,host=x,addr=$public" \
+    "user=$user,host=x,addr=100.64.0.2"; do
+    sshd_effective_mismatches "$user" "$connection"
+  done
 }
 
 restore_dropin() {
@@ -70,6 +116,8 @@ cmd_ssh() {
   local previous=$STATE_DIR/00-anima.conf.previous mismatches
   require_root
   problem=$(admin_problem)
+  [ -z "$problem" ] || refuse "$problem"
+  problem=$(match_problems)
   [ -z "$problem" ] || refuse "$problem"
   if dry; then
     say "[dry-run] write $(path "$dropin") with AllowUsers $user, then $SSHD -t, $SSHD -T, reload sshd"

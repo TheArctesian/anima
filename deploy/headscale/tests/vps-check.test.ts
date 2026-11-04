@@ -67,9 +67,21 @@ describe("harden.sh check", () => {
     expect(host.run(["check"]).out).toContain("VIOLATION: /etc/sysconfig/nftables.conf does not load /etc/nftables/anima.nft at boot");
   });
 
-  test("VPS-002: check reports a boot config that flushes the whole ruleset", () => {
-    host.write("etc/sysconfig/nftables.conf", 'flush ruleset\ninclude "/etc/nftables/anima.nft"\n');
-    expect(host.run(["check"]).out).toContain("VIOLATION: /etc/sysconfig/nftables.conf flushes the whole ruleset");
+  test.each([
+    ["flush ruleset"],
+    ['include "/etc/nftables/main.nft"'],
+    ["  table inet other { }"],
+  ])("VPS-002: check reports a boot config with another active line: %s", (line) => {
+    host.write("etc/sysconfig/nftables.conf", `# stock\n${line}\ninclude "/etc/nftables/anima.nft"\n`);
+    expect(host.run(["check"]).out).toContain(
+      "VIOLATION: /etc/sysconfig/nftables.conf:2: only the Anima include may be active in this file",
+    );
+  });
+
+  test("VPS-002: check reports a boot config that nft -c rejects", () => {
+    const run = host.run(["check"], { FAKE_NFT_CHECK_BOOT: "1" });
+    expect(run.calls).toContain(`NFT -c -f ${host.root}/etc/sysconfig/nftables.conf`);
+    expect(run.out).toContain("VIOLATION: nft -c rejects /etc/sysconfig/nftables.conf; nftables.service would fail at boot");
   });
 
   test("VPS-002: check reports a missing nftables.service drop-in", () => {
@@ -152,7 +164,9 @@ describe("harden.sh check inventory (VPS-005)", () => {
   test("prints each active firewalld zone, or that firewalld is not running", () => {
     expect(section(host.run(["check"]).out, "firewalld")).toEqual(["firewalld: masked, not running"]);
     const active = host.run(["check"], { FAKE_FIREWALLD_ACTIVE: "0", FAKE_FIREWALLD: "enabled" });
-    expect(section(active.out, "firewalld")).toEqual(["docker", "  target: default", "public", "  target: default"]);
+    const zones = section(active.out, "firewalld");
+    expect(zones.filter((line) => !line.startsWith(" "))).toEqual(["docker (active)", "public (active)"]);
+    expect(zones).toContain("  services: ssh");
   });
 });
 

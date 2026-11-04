@@ -15,6 +15,7 @@ ROLLBACK_UNIT=anima-firewall-rollback
 ROLLBACK_SECONDS=180
 ROLLED_BACK=$STATE_DIR/firewall-rolled-back
 SESSION=$STATE_DIR/firewall-session
+PEERS=$STATE_DIR/firewall-peers
 FIREWALLD_WAS_ACTIVE=$STATE_DIR/firewalld-was-active
 # Under SELinux a unit's /bin/sh runs as initrc_t and its nft as iptables_t, and the
 # targeted policy lets iptables_t read no var_lib_t file, so the rollback could not read
@@ -26,13 +27,53 @@ firewall_problems() {
   $IP link show tailscale0 >/dev/null 2>&1 || say "tailscale0 is missing"
   $NFT list table inet anima_filter >/dev/null 2>&1 || say "table inet anima_filter is not loaded"
   $SYSTEMCTL is-enabled --quiet nftables.service || say "nftables.service is not enabled"
-  grep -qxF "$NFT_INCLUDE" "$(path "$NFT_SYSCONFIG")" 2>/dev/null \
-    || say "$NFT_SYSCONFIG does not load $NFT_RULES at boot"
-  ! grep -qE '^[[:space:]]*flush[[:space:]]+ruleset' "$(path "$NFT_SYSCONFIG")" 2>/dev/null \
-    || say "$NFT_SYSCONFIG flushes the whole ruleset (Docker's and tailscaled's tables too)"
+  if grep -qxF "$NFT_INCLUDE" "$(path "$NFT_SYSCONFIG")" 2>/dev/null; then
+    $NFT -c -f "$(path "$NFT_SYSCONFIG")" >/dev/null 2>&1 || say "nft -c rejects $NFT_SYSCONFIG; nftables.service would fail at boot"
+  else
+    say "$NFT_SYSCONFIG does not load $NFT_RULES at boot"
+  fi
+  sysconfig_extra_lines
   [ -f "$(path "$NFT_DROPIN")" ] || say "nftables.service would flush the whole ruleset on stop or reload"
   [ "$($SYSTEMCTL is-enabled firewalld.service 2>/dev/null)" = masked ] || say "firewalld is not masked"
   (local_accepts >/dev/null) 2>/dev/null || say "$LOCAL_ALLOW has a line that is not one PORT/PROTO"
+}
+
+# Print each active line of the boot file other than the Anima include. EL ships it as
+# comments only; a rule or an include there could flush Docker's and tailscaled's tables
+# at boot, which no check of this file alone can rule out.
+sysconfig_extra_lines() {
+  local conf
+  conf=$(path "$NFT_SYSCONFIG")
+  [ -f "$conf" ] || return 0
+  awk -v name="$NFT_SYSCONFIG" -v include="$NFT_INCLUDE" '/^[[:space:]]*(#|$)/ || $0 == include { next }
+    { print name ":" FNR ": only the Anima include may be active in this file" }' "$conf"
+}
+
+# Refuse while the boot file holds anything but comments and the Anima include.
+refuse_sysconfig_extras() {
+  local extras
+  extras=$(sysconfig_extra_lines)
+  [ -z "$extras" ] || refuse "$extras; move those rules into a file of their own, or comment them out, first"
+}
+
+# Print "ADDRESS PORT" for an address and port as ss or SSH_CONNECTION print them: no
+# brackets, no IPv4-mapped prefix, no scope, lower case.
+peer_key() {
+  local address=${1#[}
+  address=${address%]}
+  address=${address#::ffff:}
+  address=${address%%\%*}
+  printf '%s %s\n' "$(tr 'A-F' 'a-f' <<<"$address")" "$2"
+}
+
+# Print "ADDRESS PORT" for each SSH connection established now.
+ssh_peers() {
+  local sockets peer
+  sockets=$($SS -Htn state established '( sport = :22 )') || return 1
+  while read -r _ _ _ peer _; do
+    [ -n "${peer:-}" ] || continue
+    peer_key "${peer%:*}" "${peer##*:}"
+  done <<<"$sockets"
 }
 
 # True when this SSH session runs over the VPN at both ends.
@@ -91,6 +132,7 @@ cmd_firewall() {
   fi
   local_accepts >/dev/null
   refuse_closing
+  refuse_sysconfig_extras
   render_rules | $NFT -c -f /dev/stdin || fail "nft -c rejected the rules; nothing applied"
   if dry; then
     say "[dry-run] save ruleset to $STATE_DIR/nftables.previous, arm $ROLLBACK_UNIT ($ROLLBACK_SECONDS s), apply"
@@ -107,6 +149,7 @@ cmd_firewall() {
   $NFT -c -f "$state/nftables.rollback" || fail "the rollback does not validate; nothing applied"
   probe_rollback "$nft_path"
   printf '%s\n' "${SSH_CONNECTION:-console}" >"$(path "$SESSION")"
+  ssh_peers >"$(path "$PEERS")" || fail "ss could not list the SSH connections; nothing applied"
   render_rules >"$state/nftables.pending"
   arm_rollback "$nft_path"
   if ! $NFT -f "$state/nftables.pending"; then
@@ -130,6 +173,20 @@ require_new_vpn_session() {
   [ -f "$(path "$SESSION")" ] || refuse "no recorded firewall session; run firewall again"
   [ "$(cat "$(path "$SESSION")")" != "${SSH_CONNECTION:-}" ] \
     || refuse "this is the session that ran firewall; confirm from a NEW SSH session over the VPN"
+  # Any session open before firewall ran proves nothing about new connections.
+  local client port
+  read -r client port _ <<<"${SSH_CONNECTION:-}"
+  [ -f "$(path "$PEERS")" ] || refuse "no recorded SSH connections; run firewall again"
+  ! grep -qxF "$(peer_key "$client" "$port")" "$(path "$PEERS")" \
+    || refuse "this SSH connection was open before firewall ran; confirm from a NEW SSH session over the VPN"
+}
+
+# Refuse unless nft accepts the boot file as it will be once confirm installs the rules:
+# what the file holds now, without the Anima include, then the pending rules.
+check_boot_candidate() {
+  { grep -vxF "$NFT_INCLUDE" "$(path "$NFT_SYSCONFIG")" 2>/dev/null || true
+    printf 'include "%s"\n' "$(path "$1")"; } | $NFT -c -f /dev/stdin \
+    || refuse "nft -c rejects the boot file with the new rules; nothing installed"
 }
 
 # Make EL's nftables.service load the Anima rules at boot, keeping what the file holds.
@@ -159,6 +216,8 @@ cmd_confirm() {
     || refuse "the rollback is not armed (it may have run); run firewall again"
   require_new_vpn_session
   refuse_closing
+  refuse_sysconfig_extras
+  check_boot_candidate "$pending"
   if dry; then say "[dry-run] stop $ROLLBACK_UNIT.timer, install $NFT_RULES, enable nftables, mask firewalld"; return; fi
   $SYSTEMCTL stop "$ROLLBACK_UNIT.timer" || fail "could not stop the rollback"
   [ ! -e "$(path "$ROLLED_BACK")" ] || fail "the rollback started while confirming; run firewall again"
@@ -167,6 +226,7 @@ cmd_confirm() {
   write_file "$NFT_DROPIN" 0644 <"$HERE/nftables-unit.conf"
   $SYSTEMCTL daemon-reload
   $SYSTEMCTL enable nftables.service
+  $NFT -c -f "$(path "$NFT_SYSCONFIG")" || fail "nft -c rejects $NFT_SYSCONFIG; firewalld left running, the Anima rules are live until reboot"
   mask_firewalld
   rm -f "$(path "$pending")"
   say "Firewall confirmed, installed for boot, and firewalld masked."

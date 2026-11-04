@@ -90,11 +90,83 @@ describe("harden.sh ssh", () => {
   });
 });
 
+// The bypass a provider image could carry: sshd -T alone still shows the hardened values.
+const PROVIDER_MATCH = "Match Address *\n  PasswordAuthentication yes\n  PermitRootLogin yes\n  AllowUsers root\n";
+const PUBLIC_ROOT = "sshd -T -C user=root,host=x,addr=198.51.100.7";
+
+describe("harden.sh ssh and check (Match blocks)", () => {
+  test.each([
+    ["a drop-in", "etc/ssh/sshd_config.d/90-provider.conf", "Match Address *"],
+    ["sshd_config itself", "etc/ssh/sshd_config", "Match All"],
+    ["a file included by a relative path", "etc/ssh/sshd_config.d/50-extra.conf", "  match user root"],
+  ])("VPS-001: ssh refuses an active Match line in %s", (_, file, match) => {
+    if (file.endsWith("50-extra.conf")) {
+      host.write("etc/ssh/sshd_config.d/50-extra.conf", "Include nested.conf\n");
+      host.write("etc/ssh/nested.conf", `${match}\n  PermitRootLogin yes\n`);
+    } else {
+      const before = host.exists(file) ? host.read(file) : "";
+      host.write(file, `${before}${match}\n  PermitRootLogin yes\n`);
+    }
+    const run = host.run(["ssh"]);
+    expect(run.code).toBe(2);
+    expect(run.out).toContain("a Match block can override the hardening");
+    expect(host.exists(DROP_IN)).toBe(false);
+  });
+
+  test("VPS-001: ssh accepts the stock commented-out Match example", () => {
+    expect(host.read("etc/ssh/sshd_config")).toContain("#Match User anoncvs");
+    expect(host.run(["ssh"]).code).toBe(0);
+  });
+
+  test("VPS-001: check reports the provider's Match block and the values it turns back on", () => {
+    host.harden();
+    host.write("etc/ssh/sshd_config.d/90-provider.conf", PROVIDER_MATCH);
+    const run = host.run(["check"]);
+    expect(run.code).toBe(1);
+    expect(run.out).toContain("VIOLATION: sshd: /etc/ssh/sshd_config.d/90-provider.conf:1: a Match block");
+    expect(run.out).not.toContain("VIOLATION: sshd -T: ");
+    expect(run.out).toContain(`VIOLATION: ${PUBLIC_ROOT}: expected "permitrootlogin no"`);
+    expect(run.out).toContain(`VIOLATION: ${PUBLIC_ROOT}: expected "passwordauthentication no"`);
+    expect(run.out).toContain(`VIOLATION: ${PUBLIC_ROOT}: expected "allowusers admin"`);
+  });
+
+  test("VPS-001: check compares sshd -T -C for root and the admin user on the public and VPN addresses", () => {
+    host.harden();
+    const run = host.run(["check"], { VPS_PUBLIC_IPV4: "203.0.113.9" });
+    expect(run.calls).toEqual(expect.arrayContaining([
+      "SSHD -T -C user=root,host=x,addr=203.0.113.9",
+      "SSHD -T -C user=admin,host=x,addr=203.0.113.9",
+      "SSHD -T -C user=admin,host=x,addr=100.64.0.2",
+    ]));
+  });
+
+  test("VPS-001: ssh restores the drop-in when only sshd -T -C shows a weaker value", () => {
+    const run = host.run(["ssh"], { FAKE_SSHD_C_CONF: "PasswordAuthentication yes" });
+    expect(run.code).toBe(1);
+    expect(run.out).toContain(`${PUBLIC_ROOT}: expected "passwordauthentication no"`);
+    expect(host.exists(DROP_IN)).toBe(false);
+    expect(run.calls).not.toContain("SYSTEMCTL reload sshd.service");
+  });
+
+  test("VPS-001: check stops at includes that nest too deep", () => {
+    host.harden();
+    host.write("etc/ssh/sshd_config.d/50-loop.conf", "Include /etc/ssh/sshd_config.d/50-loop.conf\n");
+    const run = host.run(["check"]);
+    expect(run.code).toBe(1);
+    expect(run.out).toContain("VIOLATION: sshd: includes nest deeper than 16");
+  });
+
+  test("VPS-001: check reports a VPS_PUBLIC_IPV4 that is not an address", () => {
+    host.harden();
+    expect(host.run(["check"], { VPS_PUBLIC_IPV4: "x;y" }).out).toContain("VIOLATION: VPS_PUBLIC_IPV4 is not an IPv4 address");
+  });
+});
+
 describe("harden.sh check (admin and sshd)", () => {
   test("VPS-001: check reports sshd values that are not in force", () => {
     const run = host.run(["check"]);
     expect(run.code).toBe(1);
-    expect(run.out).toContain('VIOLATION: sshd: expected "passwordauthentication no"');
+    expect(run.out).toContain('VIOLATION: sshd -T: expected "passwordauthentication no"');
   });
 
   test("VPS-001: check reports an admin user without keys", () => {
