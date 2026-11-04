@@ -1,38 +1,53 @@
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import { print } from 'graphql';
-import { isGraphQLResponse, MALFORMED, parseResponse, UNREACHABLE, type HubResult } from './error';
+import { isGraphQLResponse, MALFORMED, parseResponse, TOKEN_UNREADABLE, UNREACHABLE, type HubResult } from './error';
 import type { StatusSignal } from './status/status';
 
 /** Reads the operator's access token, or `null` before login. The token is read per call, never stored here. */
 export type TokenProvider = () => Promise<string | null>;
 
 /** What one HTTP GraphQL call needs; every part is injected so that tests need no network (CQ-021). */
-export interface HttpTransport {
+interface HttpTransport {
   readonly endpoint: string;
   readonly fetch: typeof fetch;
   readonly token: TokenProvider;
   readonly signal: (signal: StatusSignal) => void;
+  /** How long to wait for a complete answer before the hub counts as unreachable (NET-004). */
+  readonly timeoutMs: number;
 }
 
-async function headersFor(token: TokenProvider): Promise<Record<string, string>> {
-  const value = await token();
+/** The token, or `TOKEN_UNREADABLE` when the provider rejects; nothing from the rejection is kept (LOG-007). */
+export async function readToken(token: TokenProvider): Promise<HubResult<string | null>> {
+  try {
+    return { ok: true, value: await token() };
+  } catch {
+    // The reason may describe the key store; the operator only needs to know the token is missing.
+    return { ok: false, error: TOKEN_UNREADABLE };
+  }
+}
+
+function headersFor(token: string | null): Record<string, string> {
   const headers: Record<string, string> = {
     'content-type': 'application/json',
     accept: 'application/graphql-response+json, application/json',
   };
-  if (value !== null) headers.authorization = `Bearer ${value}`;
+  if (token !== null) headers.authorization = `Bearer ${token}`;
   return headers;
 }
 
-/** The answer text, or `undefined` when no complete answer arrived. */
-async function answerText(transport: HttpTransport, body: string): Promise<string | undefined> {
-  const headers = await headersFor(transport.token);
+/** The answer text, or `undefined` when no complete answer arrived within the timeout. */
+async function answerText(transport: HttpTransport, token: string | null, body: string): Promise<string | undefined> {
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), transport.timeoutMs);
   try {
-    const response = await transport.fetch(transport.endpoint, { method: 'POST', headers, body });
+    const init = { method: 'POST', headers: headersFor(token), body, signal: abort.signal };
+    const response = await transport.fetch(transport.endpoint, init);
     return await response.text();
   } catch {
-    // fetch rejects only when no answer arrived (network, TLS, reset); the reason is the same for the operator.
+    // fetch rejects only when no answer arrived (network, TLS, reset, timeout); the reason is the same for the operator.
     return undefined;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -47,14 +62,16 @@ function parseJson(text: string): unknown {
 
 /**
  * POST `document` with `variables` to the hub (HTTP status is ignored; the GraphQL body decides).
- * Resolves with a typed result for every hub or network outcome; rejects only when `token` rejects.
+ * Always resolves, with a typed result for every hub, network and token outcome.
  */
 export async function sendRequest<TResult, TVariables>(
   transport: HttpTransport,
   document: TypedDocumentNode<TResult, TVariables>,
   variables: TVariables,
 ): Promise<HubResult<TResult>> {
-  const text = await answerText(transport, JSON.stringify({ query: print(document), variables }));
+  const token = await readToken(transport.token);
+  if (!token.ok) return token;
+  const text = await answerText(transport, token.value, JSON.stringify({ query: print(document), variables }));
   if (text === undefined) {
     transport.signal('failed');
     return { ok: false, error: UNREACHABLE };

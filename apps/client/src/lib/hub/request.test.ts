@@ -1,7 +1,7 @@
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import { parse } from 'graphql';
-import { describe, expect, it } from 'vitest';
-import { createHub, DEFAULT_HUB_ADDRESS, type Hub, type TokenProvider } from './hub';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createHub, DEFAULT_HUB_ADDRESS, HUB_TIMEOUT_MS, type Hub, type TokenProvider } from './hub';
 
 const ME = parse('query Me($first: Int) { me { username } }') as TypedDocumentNode<
   { me: { username: string } },
@@ -15,7 +15,7 @@ interface Sent {
   readonly body: unknown;
 }
 
-function hubAnswering(answer: () => Promise<Response>, token: TokenProvider = () => Promise.resolve('s3cret-token')) {
+function hubAnswering(answer: (signal?: AbortSignal | null) => Promise<Response>, token: TokenProvider = () => Promise.resolve('s3cret-token')) {
   const sent: Sent[] = [];
   const fakeFetch: typeof fetch = (input, init) => {
     const headers = init?.headers;
@@ -25,10 +25,17 @@ function hubAnswering(answer: () => Promise<Response>, token: TokenProvider = ()
       headers: headers !== undefined && !Array.isArray(headers) && !(headers instanceof Headers) ? headers : {},
       body: typeof body === 'string' ? JSON.parse(body) : undefined,
     });
-    return answer();
+    return answer(init?.signal);
   };
   const hub: Hub = createHub({ address: DEFAULT_HUB_ADDRESS, token, fetch: fakeFetch, now: () => CONTACT_AT });
   return { hub, sent };
+}
+
+/** An answer that never arrives; it rejects like fetch does when the request is aborted. */
+function stalled(signal?: AbortSignal | null): Promise<Response> {
+  return new Promise((_resolve, reject) => {
+    signal?.addEventListener('abort', () => reject(new DOMException('The operation was aborted.', 'AbortError')));
+  });
 }
 
 function graphQLAnswer(body: unknown, status = 200): () => Promise<Response> {
@@ -84,5 +91,38 @@ describe('Hub.request', () => {
       const { hub } = hubAnswering(answer);
       expect(JSON.stringify(await hub.request(ME, {}))).not.toContain('s3cret-token');
     }
+  });
+});
+
+describe('Hub.request on a stalled link', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('NET-004: no answer within the timeout is unreachable and the status follows', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const { hub } = hubAnswering(stalled);
+    let settled = false;
+    const pending = hub.request(ME, {}).then((result) => {
+      settled = true;
+      return result;
+    });
+    await vi.advanceTimersByTimeAsync(HUB_TIMEOUT_MS - 1);
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    const result = await pending;
+    expect(result.ok ? undefined : result.error.code).toBe('unreachable');
+    expect(hub.status.current.connection).toBe('unreachable');
+  });
+});
+
+describe('Hub.request with an unreadable token', () => {
+  it('LOG-007: a rejecting token provider gives UNAUTHENTICATED without its reason and sends nothing', async () => {
+    const { hub, sent } = hubAnswering(graphQLAnswer({ data: {} }), () => Promise.reject(new Error('keychain item s3cret-token locked')));
+    const result = await hub.request(ME, {});
+    expect(result).toEqual({ ok: false, error: { code: 'UNAUTHENTICATED', message: 'The access token could not be read.' } });
+    expect(JSON.stringify(result)).not.toContain('s3cret-token');
+    expect(sent).toEqual([]);
+    expect(hub.status.current.connection).toBe('connecting');
   });
 });

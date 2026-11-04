@@ -9,25 +9,24 @@ export interface HubStatus {
 
 /**
  * What the transport saw.
- * Socket: `opened` (the upgrade succeeded), `refused` (closed 4403: the hub answered and refused the token),
- * `closed` (any other abnormal close), `error`.
+ * Socket: `acknowledged` (the hub sent `connection_ack`), `refused` (closed 4403: the hub answered and refused
+ * the token), `closed` (any other abnormal close, including a missing `connection_ack`).
  * Requests: `answered` (any HTTP answer with a GraphQL body, even `UNAUTHENTICATED`), `failed` (no answer).
  */
-export type StatusSignal = 'opened' | 'refused' | 'closed' | 'error' | 'answered' | 'failed';
+export type StatusSignal = 'acknowledged' | 'refused' | 'closed' | 'answered' | 'failed';
 
 export const INITIAL_STATUS: HubStatus = { connection: 'connecting', lastContactAt: null };
 
 /** The status after `signal` arrives at `now` (NAV-003, NET-004). */
 export function nextStatus(state: HubStatus, signal: StatusSignal, now: Date): HubStatus {
   switch (signal) {
-    case 'opened':
+    case 'acknowledged':
     case 'refused':
     case 'answered':
       return { connection: 'connected', lastContactAt: now };
     case 'closed':
       // A drop from a live connection is retried first; a close before any answer means no answer.
       return { ...state, connection: state.connection === 'connected' ? 'connecting' : 'unreachable' };
-    case 'error':
     case 'failed':
       return { ...state, connection: 'unreachable' };
   }

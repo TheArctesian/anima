@@ -1,5 +1,5 @@
 /** The K7 `extensions.code` values the hub sends. */
-export const HUB_CODES = ['UNAUTHENTICATED', 'FORBIDDEN', 'NOT_FOUND', 'VALIDATION', 'CONFLICT', 'UNAVAILABLE', 'INTERNAL'] as const;
+const HUB_CODES = ['UNAUTHENTICATED', 'FORBIDDEN', 'NOT_FOUND', 'VALIDATION', 'CONFLICT', 'UNAVAILABLE', 'INTERNAL'] as const;
 
 export type HubCode = (typeof HUB_CODES)[number];
 
@@ -30,6 +30,12 @@ export const UNREACHABLE: HubError = {
 export const MALFORMED: HubError = {
   code: 'malformed',
   message: 'The hub sent an answer that Anima cannot read.',
+};
+
+/** The token provider failed; nothing from its error is kept, since it may describe the key store (LOG-007). */
+export const TOKEN_UNREADABLE: HubError = {
+  code: 'UNAUTHENTICATED',
+  message: 'The access token could not be read.',
 };
 
 const UNCODED_MESSAGE = 'The hub could not run the request.';

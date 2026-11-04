@@ -8,15 +8,15 @@ export interface HubAddress {
   readonly socket: string;
 }
 
-export type AddressProblem = 'not-a-url' | 'not-https' | 'has-credentials' | 'has-path';
+type AddressProblem = 'not-a-url' | 'not-https' | 'has-credentials' | 'has-path';
 
 /** Why an address was refused. The message never repeats the input, which may hold a password. */
-export interface AddressError {
+interface AddressError {
   readonly problem: AddressProblem;
   readonly message: string;
 }
 
-export type AddressResult = { readonly ok: true; readonly value: HubAddress } | { readonly ok: false; readonly error: AddressError };
+type AddressResult = { readonly ok: true; readonly value: HubAddress } | { readonly ok: false; readonly error: AddressError };
 
 /** The default hub (NET-005, DNS-001). */
 export const DEFAULT_HUB_ADDRESS: HubAddress = {

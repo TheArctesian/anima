@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HUB_CODES, MALFORMED, parseResponse } from './error';
+import { MALFORMED, parseResponse } from './error';
 
 function failure(error: unknown): unknown {
   return { data: null, errors: [error] };
@@ -10,7 +10,7 @@ describe('parseResponse', () => {
     expect(parseResponse({ data: { devices: [] } })).toEqual({ ok: true, value: { devices: [] } });
   });
 
-  it.each(HUB_CODES.filter((code) => code !== 'VALIDATION'))('K7: extensions.code %s becomes that typed error', (code) => {
+  it.each(['UNAUTHENTICATED', 'FORBIDDEN', 'NOT_FOUND', 'CONFLICT', 'UNAVAILABLE', 'INTERNAL'])('K7: extensions.code %s becomes that typed error', (code) => {
     const body = failure({ message: 'Plain sentence.', extensions: { code } });
     expect(parseResponse(body)).toEqual({ ok: false, error: { code, message: 'Plain sentence.' } });
   });

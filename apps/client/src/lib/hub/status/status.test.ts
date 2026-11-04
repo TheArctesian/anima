@@ -14,16 +14,14 @@ describe('nextStatus', () => {
   });
 
   it.each<[Connection, StatusSignal, Connection, Date]>([
-    ['connecting', 'opened', 'connected', NOW],
-    ['unreachable', 'opened', 'connected', NOW],
+    ['connecting', 'acknowledged', 'connected', NOW],
+    ['unreachable', 'acknowledged', 'connected', NOW],
     ['connecting', 'answered', 'connected', NOW],
     ['unreachable', 'answered', 'connected', NOW],
     ['unreachable', 'refused', 'connected', NOW],
     ['connected', 'closed', 'connecting', EARLIER],
     ['connecting', 'closed', 'unreachable', EARLIER],
     ['unreachable', 'closed', 'unreachable', EARLIER],
-    ['connected', 'error', 'unreachable', EARLIER],
-    ['connecting', 'error', 'unreachable', EARLIER],
     ['connected', 'failed', 'unreachable', EARLIER],
     ['connecting', 'failed', 'unreachable', EARLIER],
   ])('NAV-003, NET-004: %s + %s = %s', (from, signal, connection, lastContactAt) => {

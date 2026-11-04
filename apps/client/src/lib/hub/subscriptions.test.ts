@@ -1,14 +1,15 @@
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import { parse } from 'graphql';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createHub, DEFAULT_HUB_ADDRESS, type HubError, type Sink, type TokenProvider } from './hub';
-import { retryDelayMs } from './subscriptions';
+import { createHub, DEFAULT_HUB_ADDRESS, HUB_TIMEOUT_MS, type HubError, type Sink, type TokenProvider } from './hub';
 
 const STATUS_CHANGED = parse('subscription S($deviceId: ID) { deviceStatusChanged(deviceId: $deviceId) { status } }') as TypedDocumentNode<
   { deviceStatusChanged: { status: string } },
   { deviceId?: string }
 >;
 const NOW = new Date('2026-11-04T10:00:00Z');
+/** The first reconnect waits 1 s. */
+const FIRST_RETRY_MS = 1000;
 
 /** The hub side of one fake graphql-transport-ws connection. */
 class FakeSocket {
@@ -19,6 +20,7 @@ class FakeSocket {
   static opened: FakeSocket[] = [];
 
   readyState = FakeSocket.CONNECTING;
+  closedWith: number | undefined;
   readonly sent: Record<string, unknown>[] = [];
   onopen: ((event: unknown) => void) | null = null;
   onclose: ((event: unknown) => void) | null = null;
@@ -39,6 +41,7 @@ class FakeSocket {
   close(code = 1000, reason = ''): void {
     if (this.readyState === FakeSocket.CLOSED) return;
     this.readyState = FakeSocket.CLOSED;
+    this.closedWith = code;
     this.onclose?.({ code, reason, wasClean: code === 1000 });
   }
 
@@ -172,7 +175,7 @@ describe('Hub.subscribe and the connection status', () => {
     socket.close(1006);
     await settle();
     expect(hub.status.current.connection).toBe('connecting');
-    await settle(retryDelayMs(0));
+    await settle(FIRST_RETRY_MS);
     expect(FakeSocket.opened).toHaveLength(2);
     expect(events.errors).toEqual([]);
     hub.close();
@@ -185,7 +188,7 @@ describe('Hub.subscribe and the token', () => {
     const hub = newHub(() => Promise.resolve(tokens.shift() ?? null));
     const { socket } = await liveSubscription(hub, recordingSink().sink);
     socket.close(1006);
-    await settle(retryDelayMs(0));
+    await settle(FIRST_RETRY_MS);
     const [, second] = FakeSocket.opened;
     second?.accept();
     await settle();
@@ -228,14 +231,86 @@ describe('Hub.subscribe endings', () => {
   });
 });
 
-describe('retryDelayMs', () => {
-  it.each([
-    [0, 1000],
-    [1, 2000],
-    [4, 16_000],
-    [5, 30_000],
-    [1000, 30_000],
-  ])('NET-004: retry %i waits %i ms and never gives up', (retries, ms) => {
-    expect(retryDelayMs(retries)).toBe(ms);
+describe('Hub.subscribe reconnect backoff', () => {
+  it('NET-004: reconnects wait 1 s, doubling to at most 30 s, and never stop', async () => {
+    const hub = newHub();
+    const { socket } = await liveSubscription(hub, recordingSink().sink);
+    socket.close(1006);
+    for (const waitMs of [1000, 2000, 4000, 8000, 16_000, 30_000, 30_000, 30_000]) {
+      const before = FakeSocket.opened.length;
+      await settle(waitMs - 1);
+      expect(FakeSocket.opened).toHaveLength(before);
+      await settle(1);
+      expect(FakeSocket.opened).toHaveLength(before + 1);
+      FakeSocket.opened.at(-1)?.close(1006);
+    }
+    expect(hub.status.current.connection).toBe('unreachable');
+    hub.close();
+  });
+});
+
+describe('Hub.subscribe and close', () => {
+  it('NET-004: when the last subscription stops, the socket closes 1000 and the status stays connected', async () => {
+    const hub = newHub();
+    const { socket, stop } = await liveSubscription(hub, recordingSink().sink);
+    stop();
+    await settle();
+    expect(socket.closedWith).toBe(1000);
+    expect(hub.status.current).toEqual({ connection: 'connected', lastContactAt: NOW });
+    hub.close();
+  });
+
+  it('API-002: close ends every subscription with complete and closes the socket', async () => {
+    const hub = newHub();
+    const { events, sink } = recordingSink();
+    const { socket } = await liveSubscription(hub, sink);
+    hub.close();
+    expect(events).toEqual({ next: [], errors: [], completed: 1 });
+    await settle();
+    expect(socket.closedWith).toBe(1000);
+  });
+
+  it('API-002: a subscription after close completes at once and never connects', async () => {
+    const hub = newHub();
+    await liveSubscription(hub, recordingSink().sink);
+    hub.close();
+    const { events, sink } = recordingSink();
+    hub.subscribe(STATUS_CHANGED, {}, sink);
+    expect(events).toEqual({ next: [], errors: [], completed: 1 });
+    await settle(120_000);
+    expect(FakeSocket.opened).toHaveLength(1);
+  });
+});
+
+describe('Hub.subscribe on a stalled link', () => {
+  it('NET-004: no connection_ack within the timeout is unreachable, then the socket retries', async () => {
+    const hub = newHub();
+    const { events, sink } = recordingSink();
+    hub.subscribe(STATUS_CHANGED, {}, sink);
+    await settle();
+    onlySocket().accept();
+    await settle(HUB_TIMEOUT_MS);
+    expect(onlySocket().closedWith).toBe(4504);
+    expect(hub.status.current.connection).toBe('unreachable');
+    await settle(FIRST_RETRY_MS);
+    expect(FakeSocket.opened).toHaveLength(2);
+    expect(events.errors).toEqual([]);
+    hub.close();
+  });
+});
+
+describe('Hub.subscribe with an unreadable token', () => {
+  it('LOG-007: a rejecting token provider ends the subscription as UNAUTHENTICATED, sends no token and is not retried', async () => {
+    const hub = newHub(() => Promise.reject(new Error('keychain item s3cret-token locked')));
+    const { events, sink } = recordingSink();
+    hub.subscribe(STATUS_CHANGED, {}, sink);
+    await settle();
+    onlySocket().accept();
+    await settle(120_000);
+    expect(events.errors).toEqual([{ code: 'UNAUTHENTICATED', message: 'The access token could not be read.' }]);
+    expect(onlySocket().sent).toEqual([]);
+    expect(JSON.stringify(events.errors)).not.toContain('s3cret-token');
+    expect(FakeSocket.opened).toHaveLength(1);
+    expect(hub.status.current.connection).toBe('connecting');
   });
 });
