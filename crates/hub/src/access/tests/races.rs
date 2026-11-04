@@ -157,3 +157,21 @@ async fn sec_002_of_many_concurrent_claims_of_one_step_one_wins(pool: PgPool) {
         .count();
     assert_eq!(wins, 1);
 }
+
+#[sqlx::test(migrations = "./migrations")]
+async fn sec_002_the_checked_account_stays_locked_until_the_token_is_issued(pool: PgPool) {
+    operator(&pool, PASSWORD).await;
+    let checked = account(&pool).await;
+    let mut tx = pool.begin().await.unwrap();
+    assert!(store::lock_unchanged(&mut tx, &checked).await.unwrap());
+
+    let error = sqlx::query("select id from access.operators for update nowait")
+        .execute(&pool)
+        .await
+        .unwrap_err();
+    let code = error
+        .as_database_error()
+        .and_then(sqlx::error::DatabaseError::code);
+    assert_eq!(code.as_deref(), Some("55P03"), "lock_not_available");
+    tx.rollback().await.unwrap();
+}
