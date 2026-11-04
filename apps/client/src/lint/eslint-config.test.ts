@@ -85,36 +85,37 @@ describe('ESLint limits and bans', () => {
   });
 });
 
+const refused: Record<string, string> = {
+  'a 6-digit hex colour string': "export const c = '#ff0000';\n",
+  'a 3-digit hex colour string': "export const c = '#f00';\n",
+  'an 8-digit hex colour string': "export const c = '#ff000080';\n",
+  'a hex colour in a template literal': 'export const c = `border: 1px solid #fff`;\n',
+  'an rgb() string': "export const c = 'rgb(1, 2, 3)';\n",
+  'an rgba() string': "export const c = 'rgba(1, 2, 3, 0.5)';\n",
+  'an hsl() string': "export const c = 'hsl(10 20% 30%)';\n",
+  'an oklch() string': "export const c = 'oklch(0.5 0.1 200)';\n",
+  'a cubic-bezier() string': "export const e = 'cubic-bezier(0.2, 0, 0, 1)';\n",
+  'a 200ms string': "export const d = '200ms';\n",
+  'a 0.2s string': "export const d = '0.2s';\n",
+  'a duration inside a template literal': 'export const d = `opacity 200ms ease`;\n',
+  'a numeric duration property': 'export const o = { duration: 200 };\n',
+  'a numeric delay property': 'export const o = { delay: 0 };\n',
+  'a numeric stiffness property': 'export const o = { stiffness: 170 };\n',
+  'a numeric damping property': 'export const o = { damping: 26 };\n',
+  'a numeric mass property': 'export const o = { mass: 1 };\n',
+  'a numeric bounce property': 'export const o = { bounce: 0.2 };\n',
+  'a numeric visualDuration property': 'export const o = { visualDuration: 0.3 };\n',
+  'a numeric ease array': 'export const o = { ease: [0.2, 0, 0, 1] };\n',
+  'a numeric zIndex property': 'export const o = { zIndex: 10 };\n',
+  'a quoted numeric duration key': "export const o = { 'duration': 200 };\n",
+  'an assigned zIndex': 'export const f = (el: { zIndex: number }) => { el.zIndex = 5; };\n',
+};
+
 describe('ESLint token literals (TOK-003)', () => {
   const svelte = (markup: string) => `<script lang="ts">\n  export let x = 1;\n</script>\n${markup}\n`;
   const restricted = 'no-restricted-syntax';
   const sample = 'apps/client/src/lib/sample.ts';
   const svelteSample = 'apps/client/src/lib/Sample.svelte';
-  const refused: Record<string, string> = {
-    'a 6-digit hex colour string': "export const c = '#ff0000';\n",
-    'a 3-digit hex colour string': "export const c = '#f00';\n",
-    'an 8-digit hex colour string': "export const c = '#ff000080';\n",
-    'a hex colour in a template literal': 'export const c = `border: 1px solid #fff`;\n',
-    'an rgb() string': "export const c = 'rgb(1, 2, 3)';\n",
-    'an rgba() string': "export const c = 'rgba(1, 2, 3, 0.5)';\n",
-    'an hsl() string': "export const c = 'hsl(10 20% 30%)';\n",
-    'an oklch() string': "export const c = 'oklch(0.5 0.1 200)';\n",
-    'a cubic-bezier() string': "export const e = 'cubic-bezier(0.2, 0, 0, 1)';\n",
-    'a 200ms string': "export const d = '200ms';\n",
-    'a 0.2s string': "export const d = '0.2s';\n",
-    'a duration inside a template literal': 'export const d = `opacity 200ms ease`;\n',
-    'a numeric duration property': 'export const o = { duration: 200 };\n',
-    'a numeric delay property': 'export const o = { delay: 0 };\n',
-    'a numeric stiffness property': 'export const o = { stiffness: 170 };\n',
-    'a numeric damping property': 'export const o = { damping: 26 };\n',
-    'a numeric mass property': 'export const o = { mass: 1 };\n',
-    'a numeric bounce property': 'export const o = { bounce: 0.2 };\n',
-    'a numeric visualDuration property': 'export const o = { visualDuration: 0.3 };\n',
-    'a numeric ease array': 'export const o = { ease: [0.2, 0, 0, 1] };\n',
-    'a numeric zIndex property': 'export const o = { zIndex: 10 };\n',
-    'a quoted numeric duration key': "export const o = { 'duration': 200 };\n",
-    'an assigned zIndex': 'export const f = (el: { zIndex: number }) => { el.zIndex = 5; };\n',
-  };
   for (const [name, code] of Object.entries(refused)) {
     it(`TOK-003 refuses ${name} in a .ts file`, async () => {
       expect(await rulesFired(code, sample)).toContain(restricted);

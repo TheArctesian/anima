@@ -136,6 +136,9 @@ describe('Stylelint token gate', () => {
     );
   });
 
+});
+
+describe('Stylelint token gate: vendored fonts and primitive tokens', () => {
   it('TOK-003 accepts the vendored fonts.css with quoted @font-face families', async () => {
     const css = "@font-face { font-family: 'Fira Code'; src: url(x.woff2); }";
     expect(await warnings(css, 'apps/client/src/styles/fonts.css')).toEqual([]);
