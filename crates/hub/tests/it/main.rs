@@ -1,1 +1,2 @@
+mod devices;
 mod graphql;
