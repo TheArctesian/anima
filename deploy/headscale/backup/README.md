@@ -41,8 +41,10 @@ Files the operator creates (secrets: never commit them, never print them):
 Make the rest-server password hex (`openssl rand -hex 32`): it sits inside a URL, and
 hex needs no URL encoding.
 
-Packages: `sqlite3` and `restic` on the VPS; `restic`, `rest-server` and `jq` on the home
-PC, with a system user `restic` that owns `/srv/restic` (`0700`). Put `/srv/restic` on its
+Packages: on the VPS (AlmaLinux 10), `sqlite` (AppStream, the `sqlite3` command) and
+`restic` (EPEL 10); both install to `/usr/bin`. Under SELinux the backup unit runs as
+`unconfined_service_t` and reads Headscale's `container_file_t` files; the systemd sandbox
+confines it. On the home PC, `restic`, `rest-server` and `jq`, with a system user `restic` that owns `/srv/restic` (`0700`). Put `/srv/restic` on its
 own filesystem or under a quota, so a flood of uploads cannot fill the home PC's disk
 before `--max-size` (1 GiB) stops it.
 

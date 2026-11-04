@@ -1,6 +1,0 @@
-// Anima (VPS-004, decision D-11): refresh package lists and run unattended-upgrade daily.
-// Installed by `harden.sh updates` as /etc/apt/apt.conf.d/20auto-upgrades.
-APT::Periodic::Update-Package-Lists "1";
-APT::Periodic::Download-Upgradeable-Packages "1";
-APT::Periodic::Unattended-Upgrade "1";
-APT::Periodic::AutocleanInterval "7";

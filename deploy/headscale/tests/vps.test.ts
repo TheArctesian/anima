@@ -38,7 +38,8 @@ describe("nftables.conf", () => {
 
   // These tests read the rules as text; they cannot prove what packets do. The packet
   // behaviour (neighbour blocked, VPN peer reaches a DNAT-published port, container
-  // reaches a tailnet peer) was checked in network namespaces on ubuntu:24.04.
+  // reaches a tailnet peer) was checked in network namespaces on ubuntu:24.04 (T3) and
+  // again on almalinux:10 with nftables 1.1.5 and Docker 29.9 (T7).
   const OFF_VPN = 'iifname != { "lo", "tailscale0" }';
   const LOCAL_VPN_DROPS = [
     `${OFF_VPN} fib daddr type local ip daddr 100.64.0.0/10 drop`,
@@ -88,18 +89,23 @@ describe("nftables.conf", () => {
 });
 
 describe("configuration files", () => {
-  test("VPS-002: the nftables.service drop-in clears Ubuntu's flush-on-stop and replaces it with nothing", () => {
-    const settings = readVps("nftables-unit.conf")
+  const settings = (name: string): string[] =>
+    readVps(name)
       .split("\n")
       .filter((line) => line !== "" && !line.startsWith("#"));
-    expect(settings).toEqual(["[Service]", "ExecStop="]);
+
+  test("VPS-002: the nftables.service drop-in clears EL10's flush on stop and on reload", () => {
+    expect(settings("nftables-unit.conf")).toEqual([
+      "[Service]",
+      "ExecReload=",
+      "ExecReload=/usr/sbin/nft -f /etc/sysconfig/nftables.conf",
+      "ExecStop=",
+    ]);
   });
 
-  test("VPS-002: stopping nftables.service never deletes or flushes the live rules", () => {
-    const execStops = readVps("nftables-unit.conf")
-      .split("\n")
-      .filter((line) => line.startsWith("ExecStop="));
-    expect(execStops.filter((line) => /delete|flush/.test(line))).toEqual([]);
+  test("VPS-002: stopping or reloading nftables.service never deletes or flushes the live rules", () => {
+    const actions = settings("nftables-unit.conf").filter((line) => /^Exec(Stop|Reload)=/.test(line));
+    expect(actions.filter((line) => /delete|flush/.test(line))).toEqual([]);
   });
 
   test("VPS-001: the sshd drop-in disables password, keyboard-interactive and root login", () => {
@@ -110,24 +116,33 @@ describe("configuration files", () => {
     expect(lines).toContain("AuthenticationMethods publickey");
   });
 
-  test("VPS-004: unattended upgrades run daily with security origins and reboot at 04:30", () => {
-    const periodic = readVps("20auto-upgrades");
-    expect(periodic).toContain('APT::Periodic::Update-Package-Lists "1";');
-    expect(periodic).toContain('APT::Periodic::Unattended-Upgrade "1";');
-    const upgrades = readVps("52anima-unattended-upgrades");
-    expect(upgrades).toContain('"${distro_id}:${distro_codename}-security";');
-    expect(upgrades).toContain('"${distro_id}ESM:${distro_codename}-infra-security";');
-    expect(upgrades).toContain('Unattended-Upgrade::Automatic-Reboot "true";');
-    expect(upgrades).toContain('Unattended-Upgrade::Automatic-Reboot-Time "04:30";');
-    expect(upgrades).toContain('Unattended-Upgrade::Remove-Unused-Dependencies "true";');
+  const automatic = (key: string): string | undefined =>
+    settings("dnf-automatic.conf")
+      .map((line) => /^(\w+) = (.*)$/.exec(line))
+      .find((match) => match?.[1] === key)?.[2];
+
+  test("VPS-004: dnf-automatic installs all updates, so Tailscale's (no advisories) install too", () => {
+    expect(automatic("upgrade_type")).toBe("default");
+    expect(automatic("download_updates")).toBe("yes");
+    expect(automatic("apply_updates")).toBe("yes");
   });
 
-  test("VPS-004: Docker and Tailscale repositories are upgraded too", () => {
-    const upgrades = readVps("52anima-unattended-upgrades");
-    expect(upgrades).toMatch(/Origins-Pattern \{[^}]*"origin=Docker";[^}]*"origin=Tailscale";/);
+  test("VPS-004: dnf-automatic reboots only when needed, at 04:30", () => {
+    expect(automatic("reboot")).toBe("when-needed");
+    expect(automatic("reboot_command")).toMatch(/^"shutdown -r 04:30 /);
   });
 
-  test("D-10: daemon.json binds published ports to 127.0.0.1 by default", () => {
-    expect(JSON.parse(readVps("daemon.json"))).toMatchObject({ ip: "127.0.0.1", "live-restore": true });
+  test("VPS-004/VPS-006: updates run daily after the backup window, and before the 04:30 reboot", () => {
+    const timer = settings("dnf-automatic-timer.conf");
+    expect(timer.slice(0, 3)).toEqual(["[Timer]", "OnCalendar=", "OnCalendar=*-*-* 03:45:00 UTC"]);
+    expect(timer).toContain("Persistent=true");
+    const backup = readFileSync(join(VPS_DIR, "..", "backup", "headscale-backup.timer"), "utf8");
+    expect(backup).toContain("OnCalendar=*-*-* 03:15:00 UTC");
+    expect(backup).toContain("RandomizedDelaySec=15m");
+    expect(timer).toContain("RandomizedDelaySec=10m");
+  });
+
+  test("D-10: daemon.json binds published ports to 127.0.0.1 and labels containers (D-9)", () => {
+    expect(JSON.parse(readVps("daemon.json"))).toMatchObject({ ip: "127.0.0.1", "selinux-enabled": true, "live-restore": true });
   });
 });

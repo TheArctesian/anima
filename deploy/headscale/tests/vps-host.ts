@@ -35,32 +35,58 @@ END { for (k in dflt) print k " " ((k in v) ? v[k] : dflt[k]) }' "$@" </dev/null
 
 const FAKES: Record<string, string> = {
   NFT: `case "$1" in
-  -c) case "$3" in *rollback) exit "\${FAKE_NFT_CHECK_ROLLBACK:-0}";; *) exit "\${FAKE_NFT_CHECK:-0}";; esac;;
+  -c) [ "$3" != /dev/stdin ] || cat > "$FAKE_DIR/checked.nft"
+      case "$3" in *rollback) exit "\${FAKE_NFT_CHECK_ROLLBACK:-0}";; *) exit "\${FAKE_NFT_CHECK:-0}";; esac;;
   -f) exit "\${FAKE_NFT_APPLY:-0}";;
-  list) [ "$2" = ruleset ] && cat "$FAKE_RULESET" && exit 0; exit "\${FAKE_NFT_TABLE:-0}";;
+  list) [ "$2" = ruleset ] && cat "$FAKE_RULESET" && exit 0
+        [ "$2" = tables ] && echo "table ip nat" && exit 0; exit "\${FAKE_NFT_TABLE:-0}";;
 esac`,
-  SYSTEMCTL: `case "$1" in
-  is-active) exit "\${FAKE_ACTIVE:-0}";; is-enabled) exit "\${FAKE_ENABLED:-0}";;
-  show) echo "\${FAKE_SUBSTATE:-waiting}";; reload) exit "\${FAKE_RELOAD:-0}";;
+  SYSTEMCTL: `unit=$(printf '%s\\n' "$@" | tail -n 1)
+case "$1" in
+  is-active) case "$unit" in firewalld.service) exit "\${FAKE_FIREWALLD_ACTIVE:-3}";; *) exit "\${FAKE_ACTIVE:-0}";; esac;;
+  is-enabled) [ "$unit" = firewalld.service ] && { echo "\${FAKE_FIREWALLD:-masked}"; exit 1; }; exit "\${FAKE_ENABLED:-0}";;
+  list-unit-files) printf '%b\\n' "\${FAKE_UNITS:-sshd.service enabled enabled}";;
+  show) echo "\${FAKE_SUBSTATE:-waiting}";; reload) exit "\${FAKE_RELOAD:-0}";; mask) exit "\${FAKE_MASK:-0}";;
   stop) [ -z "\${FAKE_STOP_STARTS_ROLLBACK:-}" ] || : > "$FAKE_ROOT/var/lib/anima/firewall-rolled-back";;
 esac`,
-  SYSTEMD_RUN: "exit 0",
+  SYSTEMD_RUN: `[ "$1" != --wait ] || exit "\${FAKE_PROBE:-0}"`,
   SSHD: `[ "$1" = -T ] || exit "\${FAKE_SSHD_SYNTAX:-0}"
 set -- "$FAKE_ROOT"/etc/ssh/sshd_config.d/*.conf
 [ -e "$1" ] || set --
 ${SSHD_T}`,
   SS: `cat "$FAKE_SS"`,
-  APT_GET: "exit 0",
-  UNATTENDED_UPGRADE: "exit 0",
+  DNF: "exit 0",
+  FIREWALL_CMD: `case "$1" in
+  --get-active-zones) printf '%b\\n' "\${FAKE_ZONES:-docker\\n  interfaces: docker0\\npublic (default)}";;
+  --info-service=*) case "$1" in *=cockpit) p=9090/tcp;; *=ssh) p=22/tcp;; *=dhcpv6-client) p=546/udp;; *) p=;; esac
+                    printf '%s\\n  ports: %s\\n  source-ports: \\n' "\${1#*=}" "$p";;
+  --zone=*) case "$2" in
+      --list-ports) echo "\${FAKE_FW_PORTS:-}";; --list-services) echo "\${FAKE_FW_SERVICES:-ssh}";;
+      --list-rich-rules) echo "\${FAKE_FW_RICH:-}";; --list-all) echo "\${1#--zone=}"; echo "  target: default";;
+    esac;;
+esac`,
+  SEMANAGE: `[ "$2" != -l ] || printf '%b' "\${FAKE_FCONTEXT:-}"`,
+  RESTORECON: "exit 0",
+  GETENFORCE: `echo "\${FAKE_ENFORCE:-Enforcing}"`,
+  STAT: `[ -e "$3" ] || exit 1; echo "\${FAKE_LABEL:-system_u:object_r:container_file_t:s0}"`,
+  PS: `echo "\${FAKE_UNIT:-sshd.service}"`,
   IP: `exit "\${FAKE_TAILSCALE:-0}"`,
-  ID: `echo "\${FAKE_GROUPS:-$2 sudo}"`,
+  ID: `echo "\${FAKE_GROUPS:-$2 wheel}"`,
   GETENT: `case "$2" in
   ghost) exit 2;;
   root | toor) echo "$2:x:0:0::/root:/bin/sh";;
   relhome) echo "$2:x:$FAKE_UID:1000::home/$2:/bin/sh";;
   *) echo "$2:x:\${FAKE_OWNER:-$FAKE_UID}:1000::/home/$2:/bin/bash";;
 esac`,
-  DOCKER: `echo "\${FAKE_DOCKER_VERSION:-28.5.1}"`,
+  DOCKER: `case "$1" in
+  version) echo "\${FAKE_DOCKER_VERSION:-29.9.3}";;
+  info) echo "\${FAKE_DOCKER_SECURITY:-[name=seccomp,profile=builtin name=selinux]}";;
+  ps) printf '%b\\n' "\${FAKE_CONTAINERS:-headscale-headscale-1 docker.io/headscale/headscale:0.29.7 }";;
+  network) case "$2" in
+      ls) printf '%b\\n' "\${FAKE_NETWORKS:-bridge bridge 2673f396533215b1e304\\nhost host 3779e81102d984fcc41a}";;
+      inspect) case "$5" in bridge) echo docker0;; *) echo "\${FAKE_BRIDGE:-<no value>}";; esac;;
+    esac;;
+esac`,
 };
 
 export interface Run {
@@ -79,7 +105,9 @@ export interface Host {
   exists(path: string): boolean;
   tree(): string[];
   setListeners(lines: string[]): void;
-  /** Install what `ssh` and `confirm` install, so `check` sees a hardened host. */
+  /** The rules `firewall` last passed to `nft -c` (with the local accepts in place). */
+  checkedRules(): string;
+  /** Install what `ssh`, `updates`, `selinux` and `confirm` install, so `check` sees a hardened host. */
   harden(): void;
 }
 
@@ -109,6 +137,7 @@ export function fakeHost(): Host {
           FAKE_RULESET: join(work, "ruleset"),
           FAKE_SS: join(work, "ss"),
           FAKE_ROOT: root,
+          FAKE_DIR: work,
           FAKE_UID: String(process.getuid?.() ?? 0),
           ANIMA_ADMIN_USER: "admin",
           ...Object.fromEntries(fakes),
@@ -127,16 +156,22 @@ export function fakeHost(): Host {
     exists: (path) => existsSync(join(root, path)),
     tree: () => readdirSync(root, { recursive: true, encoding: "utf8" }).sort(),
     setListeners: (lines) => { writeFileSync(join(work, "ss"), `${lines.join("\n")}\n`); },
+    checkedRules: () => readFileSync(join(work, "checked.nft"), "utf8"),
     harden() {
       const dropIn = readFileSync(join(vps, "sshd-anima.conf"), "utf8").replace("${ANIMA_ADMIN_USER}", "admin");
-      host.write("etc/ssh/sshd_config.d/10-anima.conf", dropIn);
+      host.write("etc/ssh/sshd_config.d/00-anima.conf", dropIn);
       host.write("etc/systemd/system/nftables.service.d/anima.conf", "[Service]\n");
+      host.write("etc/sysconfig/nftables.conf", '# stock comments\ninclude "/etc/nftables/anima.nft"\n');
+      host.write("etc/dnf/automatic.conf", readFileSync(join(vps, "dnf-automatic.conf"), "utf8"));
+      host.write("etc/systemd/system/dnf-automatic.timer.d/anima.conf", "[Timer]\n");
     },
   };
   host.write("home/admin/.ssh/authorized_keys", TEST_KEY, 0o600);
   chmodSync(join(root, "home/admin/.ssh"), 0o700);
   chmodSync(join(root, "home/admin"), 0o755);
-  host.write("etc/os-release", 'ID=ubuntu\nVERSION_ID="24.04"\n');
+  host.write("etc/os-release", 'ID="almalinux"\nVERSION_ID="10.2"\n');
+  mkdirSync(join(root, "opt/anima/headscale/config"), { recursive: true });
+  mkdirSync(join(root, "opt/anima/headscale/lib"), { recursive: true });
   host.setListeners(ALLOWED_SS);
   return host;
 }
@@ -145,8 +180,9 @@ export function fakeHost(): Host {
 export function mutatingCalls(run: Run): string[] {
   return run.calls.filter(
     (call) =>
-      /^(APT_GET|SYSTEMD_RUN|UNATTENDED_UPGRADE) /.test(call) ||
+      /^(DNF|SYSTEMD_RUN|RESTORECON) /.test(call) ||
+      /^SEMANAGE fcontext -[am] /.test(call) ||
       /^NFT -f /.test(call) ||
-      (/^SYSTEMCTL /.test(call) && !/^SYSTEMCTL (is-active|is-enabled|show) /.test(call)),
+      (/^SYSTEMCTL /.test(call) && !/^SYSTEMCTL (is-active|is-enabled|show|list-unit-files) /.test(call)),
   );
 }

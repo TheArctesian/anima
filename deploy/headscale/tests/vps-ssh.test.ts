@@ -3,7 +3,7 @@ import { chmodSync } from "node:fs";
 import { join } from "node:path";
 import { fakeHost, type Host } from "./vps-host.ts";
 
-const DROP_IN = "etc/ssh/sshd_config.d/10-anima.conf";
+const DROP_IN = "etc/ssh/sshd_config.d/00-anima.conf";
 let host: Host;
 
 beforeEach(() => {
@@ -15,7 +15,7 @@ describe("harden.sh ssh", () => {
     ["no authorized_keys", { ANIMA_ADMIN_USER: "nokeys" }],
     ["root", { ANIMA_ADMIN_USER: "root" }],
     ["uid 0 under another name", { ANIMA_ADMIN_USER: "toor" }],
-    ["a user not in group sudo", { FAKE_GROUPS: "admin users" }],
+    ["a user only in group sudo, not wheel", { FAKE_GROUPS: "admin sudo users" }],
     ["a user that does not exist", { ANIMA_ADMIN_USER: "ghost" }],
     ["a relative home directory", { ANIMA_ADMIN_USER: "relhome" }],
     ["keys owned by another user", { FAKE_OWNER: "4242" }],
@@ -43,16 +43,23 @@ describe("harden.sh ssh", () => {
     expect(run.out).toContain("writable");
   });
 
-  test("VPS-001: installs the drop-in with AllowUsers, validates it and reloads ssh", () => {
+  test("VPS-001: installs the drop-in with AllowUsers, validates it and reloads sshd", () => {
     const run = host.run(["ssh"]);
     expect(run.code).toBe(0);
     expect(host.read(DROP_IN)).toContain("\nAllowUsers admin\n");
-    expect(run.calls).toEqual(expect.arrayContaining(["SSHD -t", "SSHD -T", "SYSTEMCTL reload ssh"]));
+    expect(run.calls).toEqual(expect.arrayContaining(["SSHD -t", "SSHD -T", "SYSTEMCTL reload sshd.service"]));
     expect(run.out).not.toContain("AAAA");
   });
 
-  test("VPS-001: wins over cloud-init's PasswordAuthentication yes", () => {
-    host.write("etc/ssh/sshd_config.d/50-cloud-init.conf", "PasswordAuthentication yes\n");
+  // The files an AlmaLinux 10 VPS may carry: the permitrootlogin migration (01- or 25-),
+  // Red Hat's defaults (50-redhat.conf, X11Forwarding yes) and cloud-init's.
+  test.each([
+    ["01-permitrootlogin.conf", "PermitRootLogin yes\n"],
+    ["25-permitrootlogin.conf", "PermitRootLogin yes\n"],
+    ["50-redhat.conf", "X11Forwarding yes\nChallengeResponseAuthentication no\n"],
+    ["50-cloud-init.conf", "PasswordAuthentication yes\n"],
+  ])("VPS-001: wins over %s", (file, text) => {
+    host.write(`etc/ssh/sshd_config.d/${file}`, text);
     expect(host.run(["ssh"]).code).toBe(0);
   });
 
@@ -62,12 +69,12 @@ describe("harden.sh ssh", () => {
     expect(run.code).toBe(1);
     expect(run.out).toContain('unexpected "allowusers intruder"');
     expect(host.exists(DROP_IN)).toBe(false);
-    expect(run.calls).not.toContain("SYSTEMCTL reload ssh");
+    expect(run.calls).not.toContain("SYSTEMCTL reload sshd.service");
   });
 
   test("VPS-001: restores the previous drop-in when an earlier file overrides a value", () => {
     host.write(DROP_IN, "# previous\n");
-    host.write("etc/ssh/sshd_config.d/05-early.conf", "PermitRootLogin yes\n");
+    host.write("etc/ssh/sshd_config.d/0-early.conf", "PermitRootLogin yes\n");
     const run = host.run(["ssh"]);
     expect(run.code).toBe(1);
     expect(run.out).toContain('expected "permitrootlogin no"');
@@ -76,7 +83,7 @@ describe("harden.sh ssh", () => {
 
   test.each([
     ["sshd -t fails", { FAKE_SSHD_SYNTAX: "1" }],
-    ["systemctl reload ssh fails", { FAKE_RELOAD: "1" }],
+    ["systemctl reload sshd fails", { FAKE_RELOAD: "1" }],
   ])("VPS-001: removes the drop-in when %s", (_, env) => {
     expect(host.run(["ssh"], env).code).toBe(1);
     expect(host.exists(DROP_IN)).toBe(false);

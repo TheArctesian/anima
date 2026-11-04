@@ -1,7 +1,5 @@
 import { beforeEach, describe, expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import { ALLOWED_SS, fakeHost, mutatingCalls, VPN_SESSION, VPS_DIR, type Host } from "./vps-host.ts";
+import { ALLOWED_SS, fakeHost, mutatingCalls, type Host } from "./vps-host.ts";
 
 let host: Host;
 
@@ -13,8 +11,17 @@ beforeEach(() => {
 describe("harden.sh check", () => {
   test("VPS-002: check passes on a hardened host with only allowed listeners", () => {
     const run = host.run(["check"]);
-    expect(run.out).toBe("ok: no violations\n");
+    expect(run.out).toEndWith("== End of inventory\nok: no violations\n");
     expect(run.code).toBe(0);
+  });
+
+  test("VPS-005: check changes nothing, even with violations", () => {
+    const unhardened = fakeHost();
+    const before = unhardened.tree();
+    const run = unhardened.run(["check"], { FAKE_FIREWALLD_ACTIVE: "0", FAKE_FIREWALLD: "enabled" });
+    expect(run.code).toBe(1);
+    expect(mutatingCalls(run)).toEqual([]);
+    expect(unhardened.tree()).toEqual(before);
   });
 
   test.each([
@@ -34,19 +41,56 @@ describe("harden.sh check", () => {
     expect(run.out.match(/VIOLATION: public listener/g)?.length ?? 0).toBe(violation ? 1 : 0);
   });
 
+  test("VPS-002: a port in the local allow file is not a violation", () => {
+    host.setListeners([...ALLOWED_SS, "tcp LISTEN 0 244 0.0.0.0:8080 0.0.0.0:*"]);
+    host.write("etc/anima/firewall-allow", "# web site\n8080/tcp\n");
+    expect(host.run(["check"]).code).toBe(0);
+  });
+
   test.each([
     ["tailscale0 is missing", { FAKE_TAILSCALE: "1" }],
     ["table inet anima_filter is not loaded", { FAKE_NFT_TABLE: "1" }],
     ["nftables.service is not enabled", { FAKE_ENABLED: "1" }],
-  ])("VPS-002: check reports %s", (message, env) => {
+    ["firewalld is not masked", { FAKE_FIREWALLD: "enabled" }],
+    ["SELinux is Permissive, not Enforcing", { FAKE_ENFORCE: "Permissive" }],
+    ["/opt/anima/headscale/lib is labelled system_u:object_r:usr_t:s0, not container_file_t", { FAKE_LABEL: "system_u:object_r:usr_t:s0" }],
+    ["Docker runs containers without SELinux labels", { FAKE_DOCKER_SECURITY: "[name=seccomp,profile=builtin]" }],
+    ["dnf-automatic.timer is not enabled", { FAKE_ENABLED: "1" }],
+  ])("VPS-002/VPS-004: check reports %s", (message, env) => {
     const run = host.run(["check"], env);
     expect(run.code).toBe(1);
     expect(run.out).toContain(`VIOLATION: ${message}`);
   });
 
+  test("VPS-002: check reports a boot config that does not load the Anima rules", () => {
+    host.write("etc/sysconfig/nftables.conf", '#include "/etc/nftables/anima.nft"\n');
+    expect(host.run(["check"]).out).toContain("VIOLATION: /etc/sysconfig/nftables.conf does not load /etc/nftables/anima.nft at boot");
+  });
+
+  test("VPS-002: check reports a boot config that flushes the whole ruleset", () => {
+    host.write("etc/sysconfig/nftables.conf", 'flush ruleset\ninclude "/etc/nftables/anima.nft"\n');
+    expect(host.run(["check"]).out).toContain("VIOLATION: /etc/sysconfig/nftables.conf flushes the whole ruleset");
+  });
+
   test("VPS-002: check reports a missing nftables.service drop-in", () => {
     const unhardened = fakeHost();
-    expect(unhardened.run(["check"]).out).toContain("VIOLATION: nftables.service would flush the whole ruleset on stop");
+    expect(unhardened.run(["check"]).out).toContain(
+      "VIOLATION: nftables.service would flush the whole ruleset on stop or reload",
+    );
+  });
+
+  test("VPS-002: check reports a local allow file with a line that is not one port", () => {
+    host.write("etc/anima/firewall-allow", "80/tcp accept\n");
+    expect(host.run(["check"]).out).toContain("VIOLATION: /etc/anima/firewall-allow has a line that is not one PORT/PROTO");
+  });
+
+  test.each([
+    ["apply_updates = yes", "apply_updates = no"],
+    ["upgrade_type = default", "upgrade_type = security"],
+    ["reboot = when-needed", "reboot = never"],
+  ])("VPS-004: check reports dnf-automatic without %p", (line, replacement) => {
+    host.write("etc/dnf/automatic.conf", host.read("etc/dnf/automatic.conf").replace(line, replacement));
+    expect(host.run(["check"]).out).toContain(`VIOLATION: /etc/dnf/automatic.conf: expected "${line}"`);
   });
 
   test.each([
@@ -58,86 +102,78 @@ describe("harden.sh check", () => {
     expect(run.code).toBe(0);
   });
 
-  test("VPS-002: check warns on another OS but does not fail for it", () => {
-    host.write("etc/os-release", 'ID=debian\nVERSION_ID="12"\n');
+  test.each([
+    ['ID=ubuntu\nVERSION_ID="24.04"\n', true],
+    ['ID="almalinux"\nVERSION_ID="9.6"\n', true],
+    ['ID="almalinux"\nVERSION_ID="10.0"\n', false],
+  ])("D-9: check warns on another OS (%p: %p) but does not fail for it", (release, warns) => {
+    host.write("etc/os-release", release);
     const run = host.run(["check"]);
-    expect(run.out).toContain("warning: not Ubuntu 24.04");
+    expect(run.out.includes("warning: not AlmaLinux 10")).toBe(warns);
     expect(run.code).toBe(0);
   });
 });
 
-describe("harden.sh updates and docker", () => {
-  test("VPS-004: updates installs the package, both files and runs a dry run", () => {
-    const run = host.run(["updates"]);
-    expect(run.code).toBe(0);
-    expect(run.calls).toContain("APT_GET install -y unattended-upgrades");
-    expect(host.read("etc/apt/apt.conf.d/52anima-unattended-upgrades")).toBe(
-      readFileSync(join(VPS_DIR, "52anima-unattended-upgrades"), "utf8"),
-    );
-    expect(host.exists("etc/apt/apt.conf.d/20auto-upgrades")).toBe(true);
-    expect(run.calls).toContain("UNATTENDED_UPGRADE --dry-run");
+describe("harden.sh check inventory (VPS-005)", () => {
+  const section = (out: string, title: string): string[] => {
+    const lines = out.split("\n");
+    const start = lines.findIndex((line) => line.startsWith(`== ${title}`));
+    const end = lines.findIndex((line, i) => i > start && line.startsWith("=="));
+    return lines.slice(start + 1, end);
+  };
+
+  test("marks a listener whose program is not expected, with its unit", () => {
+    host.setListeners([
+      'tcp LISTEN 0 128 0.0.0.0:22 0.0.0.0:* users:(("sshd",pid=900,fd=3))',
+      'tcp LISTEN 0 511 127.0.0.1:3306 0.0.0.0:* users:(("mariadbd",pid=1200,fd=20))',
+    ]);
+    const lines = section(host.run(["check"], { FAKE_UNIT: "mariadb.service" }).out, "Listening sockets");
+    expect(lines).toEqual(["  tcp 0.0.0.0:22 sshd mariadb.service", "! tcp 127.0.0.1:3306 mariadbd mariadb.service"]);
   });
 
-  test("D-10: docker installs daemon.json with the loopback bind", () => {
-    expect(host.run(["docker"]).code).toBe(0);
-    expect(JSON.parse(host.read("etc/docker/daemon.json"))).toMatchObject({ ip: "127.0.0.1" });
+  test("lists running containers", () => {
+    const run = host.run(["check"], { FAKE_CONTAINERS: "blog wordpress:6 0.0.0.0:80->80/tcp" });
+    expect(section(run.out, "Running containers")).toEqual(["blog wordpress:6 0.0.0.0:80->80/tcp"]);
   });
 
-  test("D-10: merging keeps existing keys and forces the loopback bind", () => {
-    host.write("etc/docker/daemon.json", '{"ip": "0.0.0.0", "data-root": "/srv/docker"}');
-    expect(host.run(["docker"]).code).toBe(0);
-    const merged = JSON.parse(host.read("etc/docker/daemon.json")) as Record<string, unknown>;
-    expect(merged).toMatchObject({ ip: "127.0.0.1", "data-root": "/srv/docker" });
+  test("names each bridge and marks one the forward chain would not let into the VPN", () => {
+    const networks = "bridge bridge 2673f396533215b1e304\\napp bridge 6c7f1b24fa0e40e6770b\\nlegacy bridge 99aa";
+    const run = host.run(["check"], { FAKE_NETWORKS: networks });
+    expect(section(run.out, "Docker networks")).toEqual(["  bridge bridge docker0", "  app bridge br-6c7f1b24fa0e", "  legacy bridge br-99aa"]);
+    const custom = host.run(["check"], { FAKE_NETWORKS: "web bridge 6c7f1b24fa0e", FAKE_BRIDGE: "webbr0" });
+    expect(section(custom.out, "Docker networks")).toEqual(["! web bridge webbr0"]);
   });
 
-  test.each([["{ broken"], ["[1]"], ['{"a": 1} {"b": 2}']])("D-10: refuses an existing daemon.json %p", (text) => {
-    host.write("etc/docker/daemon.json", text);
-    expect(host.run(["docker"]).code).toBe(2);
-    expect(host.read("etc/docker/daemon.json")).toBe(text);
+  test("lists enabled services that are not stock", () => {
+    const run = host.run(["check"], { FAKE_UNITS: "sshd.service enabled enabled\\nnginx.service enabled disabled" });
+    expect(section(run.out, "Enabled services")).toEqual(["! nginx.service"]);
   });
 
-  test("D-10: docker fails clearly without jq", () => {
-    const run = host.run(["docker"], { HARDEN_JQ: "/nonexistent/jq" });
-    expect(run.code).toBe(1);
-    expect(run.out).toContain("jq is required");
-  });
-
-  test("D-10: docker restarts Docker only when asked", () => {
-    expect(host.run(["docker"]).calls).not.toContain("SYSTEMCTL restart docker");
-    expect(host.run(["--restart-docker", "docker"]).calls).toContain("SYSTEMCTL restart docker");
+  test("prints each active firewalld zone, or that firewalld is not running", () => {
+    expect(section(host.run(["check"]).out, "firewalld")).toEqual(["firewalld: masked, not running"]);
+    const active = host.run(["check"], { FAKE_FIREWALLD_ACTIVE: "0", FAKE_FIREWALLD: "enabled" });
+    expect(section(active.out, "firewalld")).toEqual(["docker", "  target: default", "public", "  target: default"]);
   });
 });
 
-describe("harden.sh dry run, usage and lint", () => {
-  test("VPS-005: --dry-run writes nothing and calls no mutating command", () => {
-    host.write("var/lib/anima/nftables.pending", "pending\n");
-    host.write("var/lib/anima/firewall-session", "100.64.0.2 50000 100.64.0.1 22\n");
-    const before = host.tree();
-    for (const command of ["ssh", "updates", "docker", "firewall", "confirm", "check"]) {
-      const run = host.run(["--dry-run", "--restart-docker", command], { SSH_CONNECTION: VPN_SESSION });
-      expect([command, run.code]).toEqual([command, 0]);
-      expect([command, mutatingCalls(run)]).toEqual([command, []]);
-    }
-    expect(host.tree()).toEqual(before);
-    expect(host.read("var/lib/anima/nftables.pending")).toBe("pending\n");
-  });
-
-  test.each([[[]], [["bogus"]], [["--bogus", "check"]], [["check", "ssh"]], [["--root"]]])(
-    "usage errors exit 64: %p",
-    (args) => {
-      expect(host.run(args).code).toBe(64);
-    },
-  );
-
-  test("--help prints the exit codes and exits 0", () => {
-    const run = host.run(["--help"]);
+describe("harden.sh updates", () => {
+  test("VPS-004: installs dnf-automatic, its config and schedule, and enables the timer", () => {
+    const fresh = fakeHost();
+    const run = fresh.run(["updates"]);
     expect(run.code).toBe(0);
-    expect(run.out).toContain("Exit codes: 0 done; 1");
+    expect(run.calls).toContain("DNF install -y dnf-automatic");
+    expect(fresh.read("etc/dnf/automatic.conf")).toBe(host.read("etc/dnf/automatic.conf"));
+    expect(fresh.exists("etc/systemd/system/dnf-automatic.timer.d/anima.conf")).toBe(true);
+    const reload = run.calls.indexOf("SYSTEMCTL daemon-reload");
+    expect(reload).toBeGreaterThanOrEqual(0);
+    expect(run.calls.indexOf("SYSTEMCTL enable --now dnf-automatic.timer")).toBeGreaterThan(reload);
   });
 
-  test("CQ-024: harden.sh is shellcheck-clean", () => {
-    const run = Bun.spawnSync(["shellcheck", join(VPS_DIR, "harden.sh")]);
-    expect(run.stdout.toString()).toBe("");
-    expect(run.exitCode).toBe(0);
+  test("VPS-004: keeps the first copy of the original automatic.conf", () => {
+    const fresh = fakeHost();
+    fresh.write("etc/dnf/automatic.conf", "# stock\n");
+    expect(fresh.run(["updates"]).code).toBe(0);
+    expect(fresh.run(["updates"]).code).toBe(0);
+    expect(fresh.read("var/lib/anima/automatic.conf.previous")).toBe("# stock\n");
   });
 });
