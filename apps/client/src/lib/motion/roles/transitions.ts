@@ -21,8 +21,8 @@ export interface PopoverParams extends RoleParams {
   readonly from?: Element;
 }
 
-/** A list item's place among the items that come in together (`stagger-list`). */
-export interface ListItemParams extends RoleParams {
+/** A row's place among the rows that come in together (`stagger-list`). */
+export interface ListRowParams extends RoleParams {
   readonly index?: number;
 }
 
@@ -96,12 +96,12 @@ export function modal(_node: Element, { preference = motionPreference() }: RoleP
 }
 
 /**
- * Reorder (5.7.3): a new item fades and scales from 0.98 on `spring-move` after its stagger
- * delay; a leaving item fades over `duration-fast` in its place. Reduced: fade only, no stagger.
+ * Reorder (5.7.3): a new row fades and scales from 0.98 on `spring-move` after its stagger
+ * delay; a leaving row fades over `duration-fast` in its place. Reduced: fade only, no stagger.
  */
-export function listItem(
+export function listRow(
   _node: Element,
-  { preference = motionPreference(), index = 0 }: ListItemParams = {},
+  { preference = motionPreference(), index = 0 }: ListRowParams = {},
 ): RoleTransition {
   return ({ direction } = {}) => {
     if (direction === 'out') return exit(undefined, preference.reduced);

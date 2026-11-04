@@ -4,7 +4,7 @@ import type { TransitionConfig } from 'svelte/transition';
 import { easeCurve, springCurve } from '../animate';
 import { springMotion, staggerDelayMs, type SpringName } from '../options';
 import { duration, reducedMotion } from '../tokens';
-import { crossFade, listItem, modal, popover, type RoleTransition } from './transitions';
+import { crossFade, listRow, modal, popover, type RoleTransition } from './transitions';
 
 const normal = { preference: { reduced: false } };
 const reduced = { preference: { reduced: true } };
@@ -76,24 +76,24 @@ describe('modal', () => {
   });
 });
 
-describe('listItem', () => {
-  it('5.7.3 reorder: a new item fades and scales from 0.98 after its stagger delay', () => {
-    const config = entering(listItem(box(), { ...normal, index: 3 }));
+describe('listRow', () => {
+  it('5.7.3 reorder: a new row fades and scales from 0.98 after its stagger delay', () => {
+    const config = entering(listRow(box(), { ...normal, index: 3 }));
     expect(config.delay).toBe(staggerDelayMs(3, false));
     expect(config.delay).toBeGreaterThan(0);
     expect(css(config, 0)).toContain('scale: 0.98;');
     expectSpring(config, 'move');
   });
 
-  it('5.7.3 reorder: a leaving item fades in place over duration-fast', () => {
-    const config = leaving(listItem(box(), { ...normal, index: 3 }));
+  it('5.7.3 reorder: a leaving row fades in place over duration-fast', () => {
+    const config = leaving(listRow(box(), { ...normal, index: 3 }));
     expect(config.duration).toBe(duration.fast);
     expect(config.delay).toBeUndefined();
     expect(css(config, 0.5)).toBe('opacity: 0.5;');
   });
 
-  it('MOT-041: under reduced motion items fade in together', () => {
-    const config = entering(listItem(box(), { ...reduced, index: 3 }));
+  it('MOT-041: under reduced motion rows fade in together', () => {
+    const config = entering(listRow(box(), { ...reduced, index: 3 }));
     expect(config.delay).toBe(0);
     expect(css(config, 0.5)).toBe('opacity: 0.5;');
   });
@@ -103,7 +103,7 @@ describe('reduced motion', () => {
   const roles = [
     ['popover', popover],
     ['modal', modal],
-    ['listItem', listItem],
+    ['listRow', listRow],
   ] as const;
 
   it.each(roles)('MOT-040/041: %s is a fade only in both directions', (_name, role) => {
