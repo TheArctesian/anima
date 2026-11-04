@@ -3,6 +3,7 @@
 //! shutdown ends of sessions, the client address, and a process log without the URI.
 
 mod devices_schema;
+mod edge;
 mod serving;
 mod sessions_schema;
 mod uri_log;

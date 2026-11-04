@@ -21,8 +21,10 @@ pub(in crate::devices) fn to_graphql(error: impl Into<Arc<Error>>) -> GraphQlErr
 }
 
 /// The generic `INTERNAL` error: the operator sees no detail. The cause stays as the error's
-/// source, which is never serialised, so a log layer can report it.
+/// source, which is never serialised. It is stored as `Arc<dyn Error + Send + Sync>`, the
+/// type the API boundary reads, so the process log gets its chain (H-5).
 pub(super) fn internal(cause: impl std::error::Error + Send + Sync + 'static) -> GraphQlError {
+    let cause: Arc<dyn std::error::Error + Send + Sync> = Arc::new(cause);
     let mut error = GraphQlError::new_with_source(cause);
     INTERNAL_MESSAGE.clone_into(&mut error.message);
     error.extend_with(|_, extensions| extensions.set("code", "INTERNAL"))
