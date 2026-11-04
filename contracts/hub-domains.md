@@ -171,6 +171,7 @@ Functions for the devices GraphQL composition (R-011; WP-09 adds them and their 
 pub async fn statuses(db: &Db, devices: &[DeviceId], now: DateTime<Utc>) -> Result<HashMap<DeviceId, Status>, Error>;
 pub async fn uptimes(db: &Db, devices: &[DeviceId], window: UptimeWindow, now: DateTime<Utc>) -> Result<HashMap<DeviceId, f64>, Error>;
 pub async fn for_device(db: &Db, device: DeviceId) -> Result<Vec<Check>, Error>;
+pub async fn for_devices(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, Vec<Check>>, Error>;   // every requested device has an entry (empty when none); checks in name order; API-005 batch for Device.checks (R-037)
 /// Adds the default ICMP check in the caller's transaction (spec 6.2).
 pub async fn add_default_check(conn: &mut PgConnection, device: DeviceId) -> Result<CheckId, Error>;
 /// The last address a check resolved for each device (R-028); `Device.ip` uses it when the host is a name.

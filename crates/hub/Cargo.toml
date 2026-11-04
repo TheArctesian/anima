@@ -38,6 +38,9 @@ rand.workspace = true
 argon2.workspace = true
 getrandom.workspace = true
 rpassword.workspace = true
+hmac.workspace = true
+sha1.workspace = true
+subtle.workspace = true
 
 [features]
 # `access::Identity::for_tests`, for integration tests of guarded domains (D-6). Turned on
