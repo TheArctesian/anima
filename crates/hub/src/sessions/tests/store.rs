@@ -134,9 +134,10 @@ async fn mv_003_an_end_before_the_start_is_written_at_the_start(pool: PgPool) {
 )]
 async fn log_006_r_016_runtime_role_reads_and_writes_session_tables(pool: PgPool) {
     add_operator(&pool).await;
-    let mut conn = pool.acquire().await.unwrap();
+    // Detached: a connection whose role changed must not return to the pool (R-019).
+    let mut conn = pool.acquire().await.unwrap().detach();
     sqlx::query("set role anima_runtime")
-        .execute(&mut *conn)
+        .execute(&mut conn)
         .await
         .unwrap();
 
@@ -146,19 +147,19 @@ async fn log_006_r_016_runtime_role_reads_and_writes_session_tables(pool: PgPool
         at: now() + TimeDelta::minutes(2),
         reason: EndReason::RemoteClosed,
     };
-    assert!(store::end(&mut *conn, id, end).await.unwrap());
-    let stale = store::close_stale(&mut *conn, now() + TimeDelta::minutes(3))
+    assert!(store::end(&mut conn, id, end).await.unwrap());
+    let stale = store::close_stale(&mut conn, now() + TimeDelta::minutes(3))
         .await
         .unwrap();
     assert_eq!(stale.len(), 1);
-    let page = store::page(&mut *conn, SessionFilter::default(), 10, None)
+    let page = store::page(&mut conn, SessionFilter::default(), 10, None)
         .await
         .unwrap();
     assert_eq!(page.rows.len(), 2);
 
     put_host_key(&mut conn, PVE_01).await;
     put_host_key(&mut conn, PVE_01).await;
-    let keys = store::host_keys(&mut *conn, &[device(PVE_01)])
+    let keys = store::host_keys(&mut conn, &[device(PVE_01)])
         .await
         .unwrap();
     assert_eq!(keys.len(), 1);
