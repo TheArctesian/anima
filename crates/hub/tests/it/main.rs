@@ -12,3 +12,4 @@ mod start;
 mod tokens;
 mod totp;
 mod transport;
+mod wiring;

@@ -1,4 +1,5 @@
-//! Hub library face: module tree and HTTP router, so integration tests can reach them.
+//! Hub library face: module tree, HTTP router and the serving steps around it, so integration
+//! tests can reach them.
 
 pub mod access;
 pub mod clock;
@@ -13,7 +14,7 @@ pub mod schema;
 pub mod sessions;
 pub mod status;
 
-use std::sync::Arc;
+use std::{future::Future, net::SocketAddr, sync::Arc};
 
 use async_graphql_axum::GraphQLResponse;
 use axum::{
@@ -27,6 +28,7 @@ use axum::{
     routing::post,
 };
 use sqlx::PgPool;
+use tokio::net::TcpListener;
 
 /// Largest `/graphql` request body. A bigger one gets 413 before it is parsed or any token
 /// or password is checked (SEC-002).
@@ -45,6 +47,66 @@ pub fn router(schema: schema::HubSchema, db: PgPool, clock: Arc<dyn clock::Clock
         .route("/graphql", post(graphql).get(subscriptions))
         .layer(DefaultBodyLimit::max(BODY_LIMIT))
         .with_state(Edge { schema, db, clock })
+}
+
+/// The sessions this hub process holds, with what ends them when it stops (R-040).
+pub struct HeldSessions {
+    db: PgPool,
+    live: sessions::Live,
+    clock: Arc<dyn clock::Clock>,
+}
+
+impl HeldSessions {
+    /// A clone of the process's one `Live`, for the schema and the tunnel router (R-032).
+    #[must_use]
+    pub fn live(&self) -> sessions::Live {
+        self.live.clone()
+    }
+}
+
+/// Ends, with `HUB_SHUTDOWN`, the sessions a previous hub process left open and logs how many
+/// (a number only), then holds a new `Live` (R-040, D-13). Call once, before binding: only
+/// its `Live` issues tickets, so the stale rows end before any request is served.
+///
+/// # Errors
+/// When the stale rows cannot be ended; then none is.
+pub async fn hold_sessions(
+    db: PgPool,
+    clock: Arc<dyn clock::Clock>,
+) -> Result<HeldSessions, sessions::Error> {
+    let ended = sessions::close_stale(&db, clock.now()).await?;
+    tracing::info!(ended, "stale sessions ended");
+    Ok(HeldSessions {
+        db,
+        live: sessions::Live::default(),
+        clock,
+    })
+}
+
+/// Serves `app`, with each request's TCP peer as its connect info, until `signal` resolves.
+/// Then, in order: ends every held session with `HUB_SHUTDOWN`, because the drain does not
+/// end upgraded connections such as tunnels; then drains the open requests (R-040).
+///
+/// # Errors
+/// When the server fails to serve.
+pub async fn serve_until(
+    listener: TcpListener,
+    app: Router,
+    held: HeldSessions,
+    signal: impl Future<Output = ()> + Send + 'static,
+) -> std::io::Result<()> {
+    let stop = async move {
+        signal.await;
+        let HeldSessions { db, live, clock } = held;
+        if let Err(error) = sessions::shut_down(&db, &live, clock.now()).await {
+            // The error's text is fixed and holds no value (sessions::Error, LOG-007).
+            tracing::error!(%error, "sessions did not all end at shutdown");
+        }
+    };
+    let app = app.into_make_service_with_connect_info::<SocketAddr>();
+    axum::serve(listener, app)
+        .with_graceful_shutdown(stop)
+        .await
 }
 
 /// Whether the media type is exactly `application/json`, in any case, parameters allowed.

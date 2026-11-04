@@ -77,7 +77,8 @@ fn acceptance(device_id: &ID, fingerprint: &str) -> Result<Acceptance, Vec<Field
 #[derive(Default)]
 pub struct Query;
 
-#[Object]
+/// Merged into the root `Query`; the name only keeps it apart from the other parts.
+#[Object(name = "SessionsQuery")]
 impl Query {
     /// Sessions newest first, live and ended (RA-008).
     #[graphql(guard = "Authenticated")]
@@ -115,7 +116,8 @@ impl Query {
 #[derive(Default)]
 pub struct Mutation;
 
-#[Object]
+/// Merged into the root `Mutation`.
+#[Object(name = "SessionsMutation")]
 impl Mutation {
     /// Starts a session and returns its single-use tunnel ticket (K4 §1, API-009).
     #[graphql(guard = "Authenticated")]

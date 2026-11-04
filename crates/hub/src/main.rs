@@ -4,7 +4,6 @@
 
 use std::{
     io::{BufRead as _, IsTerminal as _},
-    net::SocketAddr,
     process::ExitCode,
     sync::Arc,
 };
@@ -15,8 +14,9 @@ use anima_hub::{
     config::{self, Config},
     credentials::Vault,
     events::{self, Bus, process_log},
-    router,
+    hold_sessions, router,
     schema::{Dependencies, build_schema},
+    serve_until, sessions,
 };
 use sqlx::PgPool;
 
@@ -43,6 +43,9 @@ enum StartError {
     },
     #[error("{0}")]
     RuntimeRole(#[from] events::RoleError),
+    /// The source's text is fixed and holds no value (LOG-007).
+    #[error("the sessions a previous hub left open cannot be ended ({0})")]
+    StaleSessions(#[from] sessions::Error),
     #[error("hub failed to serve")]
     Serve(#[from] std::io::Error),
     #[error(
@@ -97,6 +100,7 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     let pool = connect(&config).await?;
     events::check_runtime_role(&pool).await?;
     let clock: Arc<dyn anima_hub::clock::Clock> = Arc::new(SystemClock);
+    let held = hold_sessions(pool.clone(), clock.clone()).await?;
     let listener = tokio::net::TcpListener::bind(config.listen).await?;
     tracing::info!(listen = %config.listen, "hub started");
     let schema = build_schema(Dependencies {
@@ -105,12 +109,37 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         pool: pool.clone(),
         bus: Bus::new(BUS_CAPACITY),
         vault,
+        live: held.live(),
     });
     let upkeep = spawn_upkeep(&pool, &clock);
-    let app = router(schema, pool, clock).into_make_service_with_connect_info::<SocketAddr>();
-    let served = axum::serve(listener, app).await;
+    // `/tunnel` mounts here only behind `access::permitted_networks_layer` (WP-05 T4, R-040).
+    let app = router(schema, pool, clock);
+    let served = serve_until(listener, app, held, stop_signal()).await;
     upkeep.iter().for_each(tokio::task::JoinHandle::abort);
     Ok(served?)
+}
+
+/// Resolves on Ctrl-C or SIGTERM. A signal that cannot be watched never resolves, so the
+/// other one still stops the hub.
+async fn stop_signal() {
+    let interrupt = async {
+        if tokio::signal::ctrl_c().await.is_err() {
+            std::future::pending::<()>().await;
+        }
+    };
+    let terminate = async {
+        match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+            Ok(mut terminate) => {
+                terminate.recv().await;
+            }
+            Err(_) => std::future::pending::<()>().await,
+        }
+    };
+    tokio::select! {
+        () = interrupt => {}
+        () = terminate => {}
+    }
+    tracing::info!("hub stopping");
 }
 
 /// Starts the daily jobs, each run now and then daily (D-4, DB-004, DB-005, K2 retention):

@@ -9,6 +9,7 @@ use async_graphql::parser::{
 use sqlx::PgPool;
 
 use super::harness::schema_for;
+use crate::hub::hub_sdl;
 use anima_hub::sessions::EndReason;
 
 /// Types T1 builds whole; `Query` is checked for `sessions` alone.
@@ -80,7 +81,13 @@ fn k1() -> BTreeMap<String, BTreeMap<String, String>> {
     members(&std::fs::read_to_string(path).unwrap())
 }
 
+/// The hub's whole schema: K1 names the merged roots `Query` and `Mutation`.
 fn hub() -> BTreeMap<String, BTreeMap<String, String>> {
+    members(&hub_sdl())
+}
+
+/// The sessions part alone, for the root fields it declares.
+fn part() -> BTreeMap<String, BTreeMap<String, String>> {
     // The schema never touches the database for its SDL, so a lazy pool is enough.
     let pool = PgPool::connect_lazy("postgres://unused@127.0.0.1:1/none").unwrap();
     members(&schema_for(&pool).sdl())
@@ -93,7 +100,7 @@ async fn k1_session_types_and_host_key_equal_k1() {
         assert_eq!(hub.get(name), k1.get(name), "{name}");
     }
     assert_eq!(
-        hub["Query"].keys().collect::<Vec<_>>(),
+        part()["SessionsQuery"].keys().collect::<Vec<_>>(),
         ["sessions"],
         "T1 declares one root field"
     );
@@ -149,7 +156,7 @@ async fn k1_connection_test_types_and_host_key_mutations_equal_k1() {
         assert_eq!(hub.get(name), k1.get(name), "{name}");
     }
     assert_eq!(
-        hub["Mutation"].keys().collect::<Vec<_>>(),
+        part()["SessionsMutation"].keys().collect::<Vec<_>>(),
         [
             "acceptHostKey",
             "endSession",
