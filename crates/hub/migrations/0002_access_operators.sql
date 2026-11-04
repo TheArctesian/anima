@@ -1,5 +1,5 @@
 -- Operators, their API tokens and every sign-in attempt (K2, SEC-002, D-7, D-8).
--- access.permitted_networks comes in 0002 (WP-05 T4).
+-- 0001 is the runtime role (R-016); access.permitted_networks comes in 0003 (WP-05 T4).
 
 create schema access;
 
@@ -45,22 +45,5 @@ create index login_attempts_client_at on access.login_attempts (client_addr, at)
 -- Retention (90 days, K2) deletes by age.
 create index login_attempts_at on access.login_attempts (at);
 
--- The group role the hub login role belongs to, as for events (0500). Roles are
--- cluster-wide, so another database (or a concurrent migration) may have created it.
-do $$
-begin
-    if not exists (select from pg_catalog.pg_roles where rolname = 'anima_access_writer') then
-        begin
-            create role anima_access_writer nologin;
-        exception
-            when duplicate_object or unique_violation then
-                null;
-        end;
-    end if;
-end;
-$$;
-
-grant usage on schema access to anima_access_writer;
-grant select, insert, update on access.operators to anima_access_writer;
-grant select, insert, update, delete on access.api_tokens to anima_access_writer;
-grant select, insert, update, delete on access.login_attempts to anima_access_writer;
+-- No grants here: anima_runtime gets its table privileges from the default privileges that
+-- migration 0001 sets for the owner role (R-016, K2 "Roles").

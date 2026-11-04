@@ -7,10 +7,10 @@ mod identity;
 mod login;
 mod password;
 mod store;
-mod throttle;
-mod tokens;
 #[cfg(test)]
 mod tests;
+mod throttle;
+mod tokens;
 
 use async_graphql::{ErrorExtensions as _, Pos, ServerError};
 use chrono::{DateTime, Utc};

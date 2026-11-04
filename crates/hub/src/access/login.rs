@@ -147,8 +147,19 @@ async fn succeed(
     store::finish_attempt(&mut *tx, attempt.id, Outcome::Ok).await?;
     store::insert_token(&mut tx, &new_token, attempt.at).await?;
     let message = format!("Operator {} signed in.", operator.name);
-    events::audit(&mut tx, attempt.at, audit_entry(operator, AuditAction::Login, client)).await?;
-    events::record(&mut tx, bus, attempt.at, access_event(Severity::Info, message)).await?;
+    events::audit(
+        &mut tx,
+        attempt.at,
+        audit_entry(operator, AuditAction::Login, client),
+    )
+    .await?;
+    events::record(
+        &mut tx,
+        bus,
+        attempt.at,
+        access_event(Severity::Info, message),
+    )
+    .await?;
     tx.commit().await?;
     Ok(SignedIn {
         token,
@@ -171,7 +182,13 @@ async fn record_failure(
     );
     let message = format!("Sign-in failed for {who} from {}.", attempt.client);
     let mut conn = db.acquire().await?;
-    events::record(&mut conn, bus, attempt.at, access_event(Severity::Warning, message)).await?;
+    events::record(
+        &mut conn,
+        bus,
+        attempt.at,
+        access_event(Severity::Warning, message),
+    )
+    .await?;
     Ok(())
 }
 
@@ -208,6 +225,12 @@ fn stored_username(username: &str) -> String {
     username
         .chars()
         .take(MAX_STORED_USERNAME)
-        .map(|c| if c == '\0' { char::REPLACEMENT_CHARACTER } else { c })
+        .map(|c| {
+            if c == '\0' {
+                char::REPLACEMENT_CHARACTER
+            } else {
+                c
+            }
+        })
         .collect()
 }

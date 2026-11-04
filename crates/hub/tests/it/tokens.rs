@@ -36,7 +36,10 @@ async fn d_7_token_is_stored_only_as_its_hash(pool: PgPool) {
     let hub = Hub::new(&pool, start());
     let login = hub.login(USERNAME, PASSWORD).await;
     let token = login["data"]["login"]["token"].as_str().unwrap();
-    assert_eq!(login["data"]["login"]["expiresAt"], "2030-06-04T12:00:00+00:00");
+    assert_eq!(
+        login["data"]["login"]["expiresAt"],
+        "2030-06-04T12:00:00+00:00"
+    );
 
     let rows: Vec<String> = sqlx::query_scalar(
         "select row_to_json(t)::text from access.api_tokens t \
@@ -77,11 +80,18 @@ async fn sec_002_logout_revokes_the_token(pool: PgPool) {
     let hub = Hub::new(&pool, start());
     let token = hub.token().await;
     let other = hub.token().await;
-    let logout = hub.post(Some(&token), "mutation { logout }", json!({})).await;
+    let logout = hub
+        .post(Some(&token), "mutation { logout }", json!({}))
+        .await;
     assert_eq!(logout, json!({ "data": { "logout": true } }));
 
-    assert_eq!(error(&hub.post(Some(&token), ME, json!({})).await), unauthenticated());
-    let again = hub.post(Some(&token), "mutation { logout }", json!({})).await;
+    assert_eq!(
+        error(&hub.post(Some(&token), ME, json!({})).await),
+        unauthenticated()
+    );
+    let again = hub
+        .post(Some(&token), "mutation { logout }", json!({}))
+        .await;
     assert_eq!(error(&again), unauthenticated());
     assert!(hub.post(Some(&other), ME, json!({})).await["data"]["me"].is_object());
 }
@@ -92,13 +102,17 @@ async fn sec_002_operator_for_token_resolves_and_touches_once_a_minute(pool: PgP
     let token = Hub::new(&pool, start()).token().await;
     let last_used = || sqlx::query_scalar("select last_used_at from access.api_tokens");
 
-    let operator = access::operator_for_token(&pool, &token, start()).await.unwrap();
+    let operator = access::operator_for_token(&pool, &token, start())
+        .await
+        .unwrap();
     assert_eq!(operator.name, USERNAME);
     let at = start() + TimeDelta::seconds(30);
     access::operator_for_token(&pool, &token, at).await.unwrap();
     let first: Option<chrono::DateTime<chrono::Utc>> = last_used().fetch_one(&pool).await.unwrap();
     assert_eq!(first, Some(start()));
-    access::operator_for_token(&pool, &token, start() + TimeDelta::minutes(1)).await.unwrap();
+    access::operator_for_token(&pool, &token, start() + TimeDelta::minutes(1))
+        .await
+        .unwrap();
     let second: Option<chrono::DateTime<chrono::Utc>> = last_used().fetch_one(&pool).await.unwrap();
     assert_eq!(second, Some(start() + TimeDelta::minutes(1)));
 
@@ -111,9 +125,16 @@ async fn api_003_connection_init_payload_identifies_a_websocket(pool: PgPool) {
     set_operator(&pool).await;
     let token = Hub::new(&pool, start()).token().await;
     let payload = json!({ "token": token });
-    let identity = access::identify_connection(&pool, &payload, start()).await.unwrap();
-    assert_eq!(identity.map(|i| i.operator().name.clone()), Some(USERNAME.to_owned()));
-    let missing = access::identify_connection(&pool, &json!({}), start()).await.unwrap();
+    let identity = access::identify_connection(&pool, &payload, start())
+        .await
+        .unwrap();
+    assert_eq!(
+        identity.map(|i| i.operator().name.clone()),
+        Some(USERNAME.to_owned())
+    );
+    let missing = access::identify_connection(&pool, &json!({}), start())
+        .await
+        .unwrap();
     assert!(missing.is_none());
 }
 
@@ -124,7 +145,11 @@ fn root_fields() -> Vec<(&'static str, String)> {
     for (keyword, type_name) in [("query", "Query"), ("mutation", "Mutation")] {
         let block = sdl.split(&format!("type {type_name} {{")).nth(1).unwrap();
         let block = block.split('}').next().unwrap();
-        for line in block.lines().map(str::trim).filter(|l| !l.is_empty() && !l.starts_with('"')) {
+        for line in block
+            .lines()
+            .map(str::trim)
+            .filter(|l| !l.is_empty() && !l.starts_with('"'))
+        {
             let name = line.split(['(', ':']).next().unwrap().to_owned();
             fields.push((keyword, name));
         }
@@ -180,13 +205,33 @@ async fn d_9_operator_set_replaces_the_password_and_revokes_tokens(pool: PgPool)
         .await
         .unwrap();
     assert_eq!(count, 1);
-    assert_eq!(error(&hub.post(Some(&token), ME, json!({})).await), unauthenticated());
+    assert_eq!(
+        error(&hub.post(Some(&token), ME, json!({})).await),
+        unauthenticated()
+    );
     assert!(hub.login(USERNAME, PASSWORD).await["errors"].is_array());
     let response = hub.login(USERNAME, replaced).await;
     assert_eq!(response["data"]["login"]["operator"]["id"], id.to_string());
 
     let short = access::set_operator(&pool, USERNAME, Password::new("short".to_owned()), start());
-    assert!(matches!(short.await, Err(access::Error::Validation { field: "password", .. })));
-    let spaced = access::set_operator(&pool, "an operator", Password::new(replaced.to_owned()), start());
-    assert!(matches!(spaced.await, Err(access::Error::Validation { field: "username", .. })));
+    assert!(matches!(
+        short.await,
+        Err(access::Error::Validation {
+            field: "password",
+            ..
+        })
+    ));
+    let spaced = access::set_operator(
+        &pool,
+        "an operator",
+        Password::new(replaced.to_owned()),
+        start(),
+    );
+    assert!(matches!(
+        spaced.await,
+        Err(access::Error::Validation {
+            field: "username",
+            ..
+        })
+    ));
 }

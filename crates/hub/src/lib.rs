@@ -51,7 +51,9 @@ async fn graphql(
     match access::identify(&edge.db, &headers, edge.clock.now()).await {
         Ok(Some(identity)) => request = identity.attach(request),
         Ok(None) => {}
-        Err(error) => return async_graphql::Response::from_errors(vec![error.to_server_error()]).into(),
+        Err(error) => {
+            return async_graphql::Response::from_errors(vec![error.to_server_error()]).into();
+        }
     }
     edge.schema.execute(request).await.into()
 }

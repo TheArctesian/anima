@@ -1,5 +1,5 @@
 //! Hub binary: reads the environment, builds the dependencies and serves the router, or runs
-//! `anima-hub operator set <username>` (D-9).
+//! `anima-hub migrate` (R-016) or `anima-hub operator set <username>` (D-9).
 
 use std::{io::BufRead as _, net::SocketAddr, sync::Arc};
 
@@ -24,9 +24,11 @@ enum StartError {
     DatabaseUrl(std::io::ErrorKind),
     #[error("the database is unavailable")]
     Database(#[from] sqlx::Error),
+    #[error("the database migrations failed")]
+    Migrate(#[from] sqlx::migrate::MigrateError),
     #[error("hub failed to serve")]
     Serve(#[from] std::io::Error),
-    #[error("usage: anima-hub [operator set <username>]")]
+    #[error("usage: anima-hub [migrate | operator set <username>]")]
     Usage,
     #[error("the password cannot be read from standard input")]
     Stdin,
@@ -39,8 +41,14 @@ async fn main() -> Result<(), StartError> {
     let env = config::collect_env(std::env::vars_os())?;
     let config = Arc::new(config::from_env(&env)?);
     let args: Vec<String> = std::env::args().skip(1).collect();
-    match args.iter().map(String::as_str).collect::<Vec<_>>().as_slice() {
+    match args
+        .iter()
+        .map(String::as_str)
+        .collect::<Vec<_>>()
+        .as_slice()
+    {
         [] => serve(config).await,
+        ["migrate"] => migrate(&config).await,
         ["operator", "set", username] => set_operator(&config, username).await,
         _ => Err(StartError::Usage),
     }
@@ -48,11 +56,19 @@ async fn main() -> Result<(), StartError> {
 
 async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     let pool = connect(&config).await?;
+    // SEAM (R-016): `anima_hub::events::check_runtime_role(&pool).await?;` once WP-05 T1 adds it.
     let clock: Arc<dyn anima_hub::clock::Clock> = Arc::new(SystemClock);
     let listener = tokio::net::TcpListener::bind(config.listen).await?;
     let schema = build_schema(config, clock.clone(), pool.clone(), Bus::new(BUS_CAPACITY));
     let app = router(schema, pool, clock).into_make_service_with_connect_info::<SocketAddr>();
     Ok(axum::serve(listener, app).await?)
+}
+
+/// Applies the migrations as the owner role and exits; serving never migrates (R-016).
+async fn migrate(config: &Config) -> Result<(), StartError> {
+    let pool = connect(config).await?;
+    sqlx::migrate!("./migrations").run(&pool).await?;
+    Ok(())
 }
 
 /// Reads one line from standard input as the password and creates or replaces the operator.
@@ -65,7 +81,13 @@ async fn set_operator(config: &Config, username: &str) -> Result<(), StartError>
     let typed = line.trim_end_matches(['\r', '\n']).to_owned();
     zeroize::Zeroize::zeroize(&mut line);
     let pool = connect(config).await?;
-    access::set_operator(&pool, username, access::Password::new(typed), SystemClock.now()).await?;
+    access::set_operator(
+        &pool,
+        username,
+        access::Password::new(typed),
+        SystemClock.now(),
+    )
+    .await?;
     println!("Operator {username} is set.");
     Ok(())
 }

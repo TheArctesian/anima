@@ -9,7 +9,9 @@ use std::{
 use async_graphql::{
     Context, Guard, Pos, ServerResult, Variables,
     extensions::{Extension, ExtensionContext, ExtensionFactory, NextParseQuery},
-    parser::types::{DocumentOperations, ExecutableDocument, OperationDefinition, OperationType, Selection},
+    parser::types::{
+        DocumentOperations, ExecutableDocument, OperationDefinition, OperationType, Selection,
+    },
 };
 
 use super::{Error, Identity};
@@ -37,7 +39,9 @@ impl Guard for Authenticated {
 /// Whether the request data holds an identity that is valid now. Without a clock nothing is
 /// valid: the check fails closed.
 fn signed_in(identity: Option<&Identity>, clock: Option<&Arc<dyn Clock>>) -> bool {
-    identity.zip(clock).is_some_and(|(identity, clock)| identity.valid_at(clock.now()))
+    identity
+        .zip(clock)
+        .is_some_and(|(identity, clock)| identity.valid_at(clock.now()))
 }
 
 /// Schema extension: refuses, with `UNAUTHENTICATED`, any operation without a valid identity

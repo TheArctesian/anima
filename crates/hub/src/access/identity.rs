@@ -6,7 +6,7 @@ use std::net::SocketAddr;
 use async_graphql::{Data, Request};
 use axum::{
     extract::ConnectInfo,
-    http::{HeaderMap, Extensions, header::AUTHORIZATION},
+    http::{Extensions, HeaderMap, header::AUTHORIZATION},
 };
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;

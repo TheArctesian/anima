@@ -30,7 +30,10 @@ fn sec_002_throttle_refuses_after_five_failures_within_15_minutes() {
 
     let five: Vec<_> = (0..5).map(|i| start + minutes(i)).collect();
     assert!(throttle::refused(&five, &[], start + minutes(4)));
-    assert!(throttle::refused(&[], &five, start + minutes(4)), "by address");
+    assert!(
+        throttle::refused(&[], &five, start + minutes(4)),
+        "by address"
+    );
 }
 
 #[test]
@@ -38,7 +41,11 @@ fn sec_002_throttle_releases_15_minutes_after_the_fifth_failure() {
     let start = now();
     let five: Vec<_> = (0..5).map(|i| start + minutes(i)).collect();
     let fifth = start + minutes(4);
-    assert!(throttle::refused(&five, &[], fifth + minutes(15) - TimeDelta::seconds(1)));
+    assert!(throttle::refused(
+        &five,
+        &[],
+        fifth + minutes(15) - TimeDelta::seconds(1)
+    ));
     assert!(!throttle::refused(&five, &[], fifth + minutes(15)));
 }
 
@@ -67,11 +74,17 @@ fn d_7_only_a_canonical_token_has_a_hash() {
     assert!(tokens::hash_of(&format!("{text}=")).is_none(), "padding");
     assert!(tokens::hash_of(&text[..42]).is_none(), "short");
     assert!(tokens::hash_of(&"A".repeat(4096)).is_none(), "long");
-    assert!(tokens::hash_of(&format!("{}+", &text[..42])).is_none(), "standard alphabet");
+    assert!(
+        tokens::hash_of(&format!("{}+", &text[..42])).is_none(),
+        "standard alphabet"
+    );
     // The last character carries two unused bits; a non-zero value is another spelling.
     let mut other = text[..42].to_owned();
     other.push('B');
-    assert!(tokens::hash_of(&other).is_none(), "non-canonical trailing bits");
+    assert!(
+        tokens::hash_of(&other).is_none(),
+        "non-canonical trailing bits"
+    );
 }
 
 #[test]

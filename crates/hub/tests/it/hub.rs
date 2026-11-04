@@ -51,7 +51,8 @@ impl Hub {
     /// Posts a GraphQL request from `CLIENT`; returns the response body as JSON text.
     pub async fn post_text(&self, token: Option<&str>, query: &str, variables: Value) -> String {
         let body = json!({ "query": query, "variables": variables }).to_string();
-        let mut request = Request::post("/graphql").header(header::CONTENT_TYPE, "application/json");
+        let mut request =
+            Request::post("/graphql").header(header::CONTENT_TYPE, "application/json");
         if let Some(token) = token {
             request = request.header(header::AUTHORIZATION, format!("Bearer {token}"));
         }
@@ -95,7 +96,9 @@ pub async fn set_operator(pool: &PgPool) {
 
 /// The one error of a response, as `(message, code)`.
 pub fn error(response: &Value) -> (String, String) {
-    let errors = response["errors"].as_array().unwrap_or_else(|| panic!("no errors: {response}"));
+    let errors = response["errors"]
+        .as_array()
+        .unwrap_or_else(|| panic!("no errors: {response}"));
     assert_eq!(errors.len(), 1, "{response}");
     let message = errors[0]["message"].as_str().unwrap().to_owned();
     let code = errors[0]["extensions"]["code"].as_str().unwrap().to_owned();
@@ -103,7 +106,10 @@ pub fn error(response: &Value) -> (String, String) {
 }
 
 pub fn unauthenticated() -> (String, String) {
-    ("Sign in to continue.".to_owned(), "UNAUTHENTICATED".to_owned())
+    (
+        "Sign in to continue.".to_owned(),
+        "UNAUTHENTICATED".to_owned(),
+    )
 }
 
 pub fn wrong_credentials() -> (String, String) {

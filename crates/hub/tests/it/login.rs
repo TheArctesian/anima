@@ -6,14 +6,15 @@ use chrono::TimeDelta;
 use serde_json::json;
 use sqlx::PgPool;
 
-use crate::hub::{
-    CLIENT, Hub, PASSWORD, USERNAME, error, set_operator, start, wrong_credentials,
-};
+use crate::hub::{CLIENT, Hub, PASSWORD, USERNAME, error, set_operator, start, wrong_credentials};
 
 /// Five wrong passwords for the operator at `start()`.
 async fn five_failures(hub: &Hub) {
     for _ in 0..5 {
-        assert_eq!(error(&hub.login(USERNAME, "wrong password").await), wrong_credentials());
+        assert_eq!(
+            error(&hub.login(USERNAME, "wrong password").await),
+            wrong_credentials()
+        );
     }
 }
 
@@ -33,7 +34,10 @@ async fn sec_002_wrong_password_unknown_user_and_throttled_user_get_the_same_err
     for response in [&wrong_password, &unknown_user, &junk_user, &throttled] {
         assert_eq!(response["data"], json!(null), "{response}");
         assert_eq!(error(response), wrong_credentials());
-        assert_eq!(response["errors"][0]["extensions"], json!({ "code": "UNAUTHENTICATED" }));
+        assert_eq!(
+            response["errors"][0]["extensions"],
+            json!({ "code": "UNAUTHENTICATED" })
+        );
     }
 }
 
@@ -42,12 +46,21 @@ async fn sec_002_throttle_starts_after_five_failures_and_ends_after_15_minutes(p
     set_operator(&pool).await;
     five_failures(&Hub::new(&pool, start())).await;
 
-    let locked = Hub::new(&pool, start() + TimeDelta::minutes(15) - TimeDelta::seconds(1));
-    assert_eq!(error(&locked.login(USERNAME, PASSWORD).await), wrong_credentials());
+    let locked = Hub::new(
+        &pool,
+        start() + TimeDelta::minutes(15) - TimeDelta::seconds(1),
+    );
+    assert_eq!(
+        error(&locked.login(USERNAME, PASSWORD).await),
+        wrong_credentials()
+    );
 
     let released = Hub::new(&pool, start() + TimeDelta::minutes(15));
     let response = released.login(USERNAME, PASSWORD).await;
-    assert_eq!(response["data"]["login"]["operator"]["username"], USERNAME, "{response}");
+    assert_eq!(
+        response["data"]["login"]["operator"]["username"], USERNAME,
+        "{response}"
+    );
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -67,7 +80,10 @@ async fn sec_002_throttle_counts_failures_per_client_address(pool: PgPool) {
     for name in ["a", "b", "c", "d", "e"] {
         hub.login(name, "guess").await;
     }
-    assert_eq!(error(&hub.login(USERNAME, PASSWORD).await), wrong_credentials());
+    assert_eq!(
+        error(&hub.login(USERNAME, PASSWORD).await),
+        wrong_credentials()
+    );
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -83,8 +99,15 @@ async fn sec_002_every_attempt_is_recorded(pool: PgPool) {
     .await
     .unwrap();
     assert_eq!(rows.len(), 6);
-    assert!(rows.iter().all(|row| row.0 == USERNAME && row.1 == CLIENT && !row.2));
-    assert_eq!(rows.iter().filter(|row| row.3).count(), 1, "the sixth was refused");
+    assert!(
+        rows.iter()
+            .all(|row| row.0 == USERNAME && row.1 == CLIENT && !row.2)
+    );
+    assert_eq!(
+        rows.iter().filter(|row| row.3).count(),
+        1,
+        "the sixth was refused"
+    );
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -103,7 +126,8 @@ async fn log_005_login_and_logout_are_audited_with_name_and_client_address(pool:
     set_operator(&pool).await;
     let hub = Hub::new(&pool, start());
     let token = hub.token().await;
-    hub.post(Some(&token), "mutation { logout }", json!({})).await;
+    hub.post(Some(&token), "mutation { logout }", json!({}))
+        .await;
 
     let operator_id: uuid::Uuid = sqlx::query_scalar("select id from access.operators")
         .fetch_one(&pool)
@@ -146,8 +170,14 @@ async fn log_005_sign_in_events_name_the_operator_and_never_the_password(pool: P
     assert_eq!(
         events,
         [
-            (Severity::Warning, format!("Sign-in failed for operator operator from {CLIENT}.")),
-            (Severity::Warning, format!("Sign-in failed for an unknown username from {CLIENT}.")),
+            (
+                Severity::Warning,
+                format!("Sign-in failed for operator operator from {CLIENT}.")
+            ),
+            (
+                Severity::Warning,
+                format!("Sign-in failed for an unknown username from {CLIENT}.")
+            ),
             (Severity::Info, "Operator operator signed in.".to_owned()),
         ]
     );

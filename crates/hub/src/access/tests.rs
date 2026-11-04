@@ -9,10 +9,11 @@ use async_graphql::{
 use chrono::{DateTime, TimeDelta, TimeZone, Utc};
 use uuid::Uuid;
 
-use super::{Authenticated, Identity, Operator, SignInRequired, Scope};
+use super::{Authenticated, Identity, Operator, Scope, SignInRequired};
 use crate::clock::{Clock, FixedClock};
 
 mod rules;
+mod runtime;
 
 fn now() -> DateTime<Utc> {
     Utc.with_ymd_and_hms(2030, 5, 5, 12, 0, 0).unwrap()
@@ -130,7 +131,10 @@ async fn api_003_backstop_refuses_an_unguarded_field_without_an_identity() {
     let with_operator = Request::new("{ open }").data(operator());
     assert_unauthenticated(&backstopped().execute(with_operator).await);
     // Without the backstop the same field answers: the test above proves the extension.
-    assert_eq!(guarded().execute("{ open }").await.data, value!({ "open": "open" }));
+    assert_eq!(
+        guarded().execute("{ open }").await.data,
+        value!({ "open": "open" })
+    );
 }
 
 #[tokio::test]
