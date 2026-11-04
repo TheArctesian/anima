@@ -121,7 +121,7 @@ Each package owns its paths. A package must not change a path that a different p
 
 | ID | Package | Owned paths | Depends on | Builders | Reviewers | Spec IDs |
 | --- | --- | --- | --- | --- | --- | --- |
-| WP-01 | Repository skeleton and quality gates | Root `Cargo.toml`, `package.json`, `quality/`, CI files, lint configurations, `crates/hub/src/main.rs`, `crates/hub/src/schema.rs` | — | Sonnet, Haiku | Sonnet | CQ-010–013, CQ-040, CQ-043, REPO-001–005 |
+| WP-01 | Repository skeleton and quality gates | Root `Cargo.toml`, `package.json`, `quality/`, the gate script (`bun run gates`), lint configurations, `crates/hub/src/main.rs`, `crates/hub/src/schema.rs` | — | Sonnet, Haiku | Sonnet | CQ-010–013, CQ-040, CQ-043, REPO-001–005 |
 | WP-02 | Design tokens and fonts | `design/tokens/`, `apps/client/src/styles/`, `crates/theme/`, token build | WP-01 | Haiku, Sonnet | Sonnet (interface) | TOK-*, UI-010–022 |
 | WP-03 | VPN and network | `deploy/headscale/`, VPN setup guide | WP-01 | Sonnet | Opus (security) | VPN-*, VPS-*, NET-005 |
 | WP-04 | Deployment | `deploy/compose.yaml`, `deploy/gateway/`, backup scripts | WP-01 | Haiku, Sonnet | Sonnet | GW-001–004, DB-001–007, RA-011 |

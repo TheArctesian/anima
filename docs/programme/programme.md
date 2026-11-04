@@ -47,6 +47,8 @@ Integration branch: `phase-1`. Merge to `main` only after operator checkpoint 4.
 - **R-003 (Wave 0).** WP-01 owns four leaf modules that every domain may import and that import no domain: `crates/hub/src/ids.rs` (all ID newtypes), `status.rs` (`Status` with `worst`), `clock.rs` (`Clock`, `SystemClock`, `FixedClock`), `config.rs` (`Config`). Reason: domains must not import each other only for an ID or the status enum (K3, K7).
 - **R-004 (Wave 0).** `devices` never imports `checks`. Device deletion is one `DELETE` with foreign-key cascades; the checks retention job removes heartbeats of deleted checks (K3, DEV-015).
 
+- **R-005 (operator, 2026-11-03).** GitHub Actions runs only deployment, never gates or tests. All gates run locally with one command, `bun run gates`, before each review and before each merge into `phase-1`; the merge needs a green run on the merged result. WP-01 removes `ci.yml`. Spec CQ-010, TOK-002, MV-008, REPO-004 and acceptance item 15 are changed to match (checkpoint 3: requested by the operator).
+
 ## Escalations
 
 None open.
