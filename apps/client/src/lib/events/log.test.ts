@@ -161,6 +161,14 @@ describe('event log', () => {
     expect(next).toMatchObject({ hasNextPage: false, endCursor: 'c1' });
   });
 
+  it('LOG-010 an older page that fills the list to exactly 500 offers no older page', () => {
+    const ids = Array.from({ length: LOG_CAP - 50 }, (_, index) => `e${String(index)}`);
+    const older = Array.from({ length: 50 }, (_, index) => `o${String(index)}`);
+    const next = appendOlder(logOf(ids), page(older, true, 'c9'));
+    expect(next.rows).toHaveLength(LOG_CAP);
+    expect(next).toMatchObject({ hasNextPage: false, endCursor: 'c1' });
+  });
+
   it('LOG-010 an older page that only partly fits fills the list to 500 and offers no older page', () => {
     const ids = Array.from({ length: LOG_CAP - 2 }, (_, index) => `e${String(index)}`);
     const older = Array.from({ length: 100 }, (_, index) => `o${String(index)}`);

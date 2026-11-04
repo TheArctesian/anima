@@ -90,7 +90,7 @@ export function appendOlder(log: EventLog, page: EventPage): EventLog {
   const older = page.edges.map((edge) => edge.node).filter((row) => !known.has(row.id));
   const kept = older.slice(0, Math.max(LOG_CAP - log.rows.length, 0));
   const rows = [...log.rows, ...kept];
-  if (kept.length < older.length || rows.length >= LOG_CAP) return { ...log, rows, hasNextPage: false };
+  if (rows.length >= LOG_CAP) return { ...log, rows, hasNextPage: false };
   return { rows, endCursor: page.pageInfo.endCursor ?? null, hasNextPage: page.pageInfo.hasNextPage };
 }
 
