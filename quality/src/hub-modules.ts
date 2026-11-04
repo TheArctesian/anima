@@ -6,6 +6,11 @@ export interface HubModules {
   wiring: string[];
   /** Domain -> domains it may import. */
   domains: Record<string, string[]>;
+  /**
+   * Domain -> extra domains its `graphql` module only may import, to resolve K1 fields that join
+   * domains (R-011). These edges are left out of the cycle checks.
+   */
+  graphql: Record<string, string[]>;
 }
 
 export class HubModulesShapeError extends Error {
@@ -22,6 +27,15 @@ function stringList(value: unknown, what: string): string[] {
   return value;
 }
 
+function edgeMap(value: unknown, what: string): Record<string, string[]> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw new HubModulesShapeError(`${what} must map names to lists`);
+  }
+  const map: Record<string, string[]> = {};
+  for (const [name, allowed] of Object.entries(value)) map[name] = stringList(allowed, `${what}.${name}`);
+  return map;
+}
+
 export function parseHubModules(text: string): HubModules {
   let parsed: unknown;
   try {
@@ -33,11 +47,12 @@ export function parseHubModules(text: string): HubModules {
   if (typeof root !== "object" || root === null || typeof root["domains"] !== "object" || root["domains"] === null) {
     throw new HubModulesShapeError("needs leaves, wiring and domains");
   }
-  const domains: Record<string, string[]> = {};
-  for (const [name, allowed] of Object.entries(root["domains"])) {
-    domains[name] = stringList(allowed, `domains.${name}`);
+  const domains = edgeMap(root["domains"], "domains");
+  const graphql = root["graphql"] === undefined ? {} : edgeMap(root["graphql"], "graphql");
+  for (const name of Object.keys(graphql)) {
+    if (!Object.hasOwn(domains, name)) throw new HubModulesShapeError(`graphql.${name} is not a domain`);
   }
-  return { leaves: stringList(root["leaves"], "leaves"), wiring: stringList(root["wiring"], "wiring"), domains };
+  return { leaves: stringList(root["leaves"], "leaves"), wiring: stringList(root["wiring"], "wiring"), domains, graphql };
 }
 
 export function isListed(modules: HubModules, name: string): boolean {
