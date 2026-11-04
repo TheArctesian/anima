@@ -2,6 +2,7 @@
 
 pub mod clock;
 pub mod config;
+pub mod credentials;
 pub mod devices;
 pub mod ids;
 pub mod paging;
