@@ -69,4 +69,16 @@ describe("REPO-005 files per folder", () => {
     expect(checkLimits(folder(14), { "crates/hub/src/devices": { "folder-files": 14 } })).toEqual([]);
     expect(checkLimits(folder(20, "scripts"), {})).toEqual([]);
   });
+
+  test("R-015 a module face with its own folder does not count in the parent folder", () => {
+    const faces = Array.from({ length: 13 }, (_, index) => [
+      file(`crates/hub/src/d${index}.rs`, "mod model;"),
+      file(`crates/hub/src/d${index}/model.rs`, "fn a() {}"),
+    ]).flat();
+    expect(checkLimits(faces, {})).toEqual([]);
+    const loose = Array.from({ length: 13 }, (_, index) => file(`crates/hub/src/d${index}.rs`, "fn a() {}"));
+    expect(checkLimits(loose, {})).toEqual([
+      { path: "crates/hub/src", signal: "folder-files", detail: "13 > 12" },
+    ]);
+  });
 });
