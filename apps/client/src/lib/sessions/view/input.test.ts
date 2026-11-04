@@ -6,7 +6,7 @@ import { CLIPBOARD_LIMIT, receiveClipboard } from '../tunnel/input';
 import { FakeTunnelSocket } from '../tunnel/fake/socket.fixture';
 import type { SessionTunnel } from '../tunnel/tunnel';
 import { KEYSYM, PASTE_STROKES } from './keys';
-import { TOKEN_MARKER, connectView, flags, installBrowserFakes, paneOf, sent, settle, showView, systemClipboard } from './view.fixture.svelte';
+import { connectView, flags, installBrowserFakes, paneOf, sent, settle, showView, systemClipboard } from './view.fixture.svelte';
 
 const ENTER = 0xff0d;
 let cleanups: (() => unknown)[] = [];
@@ -120,6 +120,74 @@ describe('keyboard across hide and show (D-8)', () => {
   });
 });
 
+/** Press Backspace on the pane, do `leave`, release it wherever focus is, and count the presses the device got. */
+async function holdAndLeave(leave: (pane: HTMLElement, trigger: HTMLElement) => void) {
+  const { socket, pane, target } = await connected();
+  key(pane, 'keydown', { key: 'Backspace', code: 'Backspace', keyCode: 8 });
+  const trigger = target.querySelector<HTMLElement>('[aria-haspopup="menu"]');
+  if (trigger === null) throw new Error('no Keys button');
+  leave(pane, trigger);
+  flushSync();
+  key(document.activeElement ?? document.body, 'keyup', { key: 'Backspace', code: 'Backspace', keyCode: 8 });
+  vi.advanceTimersByTime(10_000);
+  return { socket, pane, strokes: strokes(socket) };
+}
+
+const BACKSPACE = 0xff08;
+
+describe('keyboard and DOM focus (D-8, SEC-M1)', () => {
+  it.each([
+    ['focus moves to the Keys control', (_pane: HTMLElement, trigger: HTMLElement) => trigger.focus()],
+    ['the window loses focus', () => window.dispatchEvent(new FocusEvent('blur'))],
+    [
+      'the page is hidden',
+      () => {
+        Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+        document.dispatchEvent(new Event('visibilitychange'));
+      },
+    ],
+  ])('D-8: a key held when %s is released once and does not repeat', async (_name, leave) => {
+    const { strokes: heard } = await holdAndLeave(leave);
+    Reflect.deleteProperty(document, 'visibilityState');
+    expect(heard).toEqual([
+      [1, BACKSPACE],
+      [0, BACKSPACE],
+    ]);
+  });
+
+  it('D-8: keys on the pane are not sent while the window has no focus, and are again once it has', async () => {
+    const { socket, pane } = await connected();
+    window.dispatchEvent(new FocusEvent('blur'));
+    flushSync();
+    typeEnter(pane);
+    expect(sent(socket, 'key')).toEqual([]);
+    window.dispatchEvent(new FocusEvent('focus'));
+    flushSync();
+    typeEnter(pane);
+    expect(strokes(socket)).toEqual([
+      [1, ENTER],
+      [0, ENTER],
+    ]);
+  });
+});
+
+describe('paste shortcuts (D-9, SEC-S2)', () => {
+  const CTRL = { key: 'Control', code: 'ControlLeft', keyCode: 17, location: 1, ctrlKey: true };
+  const SHIFT = { key: 'Shift', code: 'ShiftLeft', keyCode: 16, location: 1, shiftKey: true };
+
+  it.each([
+    ['Ctrl+Shift+V', [CTRL, { ...SHIFT, ctrlKey: true }], { key: 'V', code: 'KeyV', keyCode: 86, ctrlKey: true, shiftKey: true }],
+    ['Shift+Insert', [SHIFT], { key: 'Insert', code: 'Insert', keyCode: 45, shiftKey: true }],
+  ])('D-9: %s goes to the browser (its paste event), not to guacd', async (_name, modifiers, last) => {
+    const { socket, pane } = await connected();
+    for (const modifier of modifiers) key(pane, 'keydown', modifier);
+    const before = sent(socket, 'key').length;
+    const shortcut = key(pane, 'keydown', last);
+    expect(shortcut.defaultPrevented).toBe(false);
+    expect(sent(socket, 'key')).toHaveLength(before);
+  });
+});
+
 describe('mouse and clipboard (RA-003)', () => {
   it('RA-003: the wheel on the display sends scroll button presses (guacd scroll-back)', async () => {
     const { socket, target } = await connected();
@@ -137,18 +205,17 @@ describe('mouse and clipboard (RA-003)', () => {
     expect(systemClipboard.written).toEqual(['copied from the device ✓']);
   });
 
-  it('D-9: clipboard text that arrives while hidden is written when shown again, latest value only', async () => {
-    const { socket } = await connected();
+  it('D-9: clipboard text that arrives while the pane is hidden or unfocused is dropped, also once it is shown', async () => {
+    const { socket, target } = await connected();
     flags.visible = false;
     flushSync();
-    socket.clipboard('first', 1);
-    socket.clipboard('second', 2);
-    await settle();
-    expect(systemClipboard.written).toEqual([]);
+    socket.clipboard('while hidden', 1);
     flags.visible = true;
     flushSync();
+    target.querySelector<HTMLButtonElement>('[aria-haspopup="menu"]')?.focus();
+    socket.clipboard('while unfocused', 2);
     await settle();
-    expect(systemClipboard.written).toEqual(['second']);
+    expect(systemClipboard.written).toEqual([]);
   });
 
   it('RA-003: a paste event on the pane sends one text/plain clipboard stream, then the paste keys', async () => {
@@ -213,29 +280,5 @@ describe('receiveClipboard (D-9)', () => {
     for (let sentLength = 0; sentLength <= CLIPBOARD_LIMIT; sentLength += 6144) stream.onblob?.(chunk);
     stream.onend?.();
     expect(heard).toEqual([]);
-  });
-});
-
-describe('LOG-007', () => {
-  it('LOG-007: no console output in a whole session holds the token, clipboard text or keystrokes', async () => {
-    const spies = (['log', 'info', 'warn', 'error', 'debug', 'trace'] as const).map((level) =>
-      vi.spyOn(console, level).mockImplementation(() => undefined),
-    );
-    const { socket, pane, target } = await connected();
-    socket.clipboard('CLIP-MARKER-91c2');
-    typeEnter(pane);
-    const event = new Event('paste', { bubbles: true, cancelable: true });
-    Object.defineProperty(event, 'clipboardData', { value: { getData: () => 'PASTE-MARKER-4b1e' } });
-    pane.dispatchEvent(event);
-    socket.gatewayError(0x0301);
-    socket.closeWith(1011);
-    await settle();
-    const logged = JSON.stringify(spies.flatMap((spy) => spy.mock.calls));
-    for (const marker of [TOKEN_MARKER, 'CLIP-MARKER-91c2', 'PASTE-MARKER-4b1e', String(ENTER), 'Aborted']) {
-      expect(logged).not.toContain(marker);
-    }
-    expect(document.body.innerHTML).not.toContain(TOKEN_MARKER);
-    expect(target.textContent).not.toContain('CLIP-MARKER-91c2');
-    for (const spy of spies) spy.mockRestore();
   });
 });

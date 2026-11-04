@@ -126,6 +126,13 @@ declare namespace Guacamole {
   namespace Mouse {
     type EventType = 'mousedown' | 'mouseup' | 'mousemove' | 'mouseout';
 
+    /** Touch on `element` as a mouse: a tap is a click, a drag moves; it fires the same events as `Mouse`. */
+    class Touchscreen {
+      constructor(element: Element);
+      onEach(types: readonly EventType[], listener: (event: Event) => void): void;
+      offEach(types: readonly EventType[], listener: (event: Event) => void): boolean;
+    }
+
     interface StateTemplate {
       readonly x?: number;
       readonly y?: number;

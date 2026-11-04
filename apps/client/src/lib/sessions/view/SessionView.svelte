@@ -6,7 +6,7 @@
   import { displayInput, isMeasured, remoteSize, sizeSender, type Size, type SizeSender } from './display';
   import EndedPanel from './EndedPanel.svelte';
   import HostKeyModal from './hostkey/HostKeyModal.svelte';
-  import { keyRoute, pasteText, sendCombination, showDisplay } from './input';
+  import { followPaneFocus, keyRoute, pasteText, sendCombination, showDisplay } from './input';
   import type { KeyCombination } from './keys';
   import KeysMenu from './menu/KeysMenu.svelte';
   import { SessionConnection, progressOf, type Stage } from './session.svelte';
@@ -42,14 +42,18 @@
   let sizes: SizeSender | undefined;
   let notice: string | undefined = $state();
   let dismissed: Stage | undefined = $state();
-  /** The latest gateway clipboard text that arrived while the pane was not bound; only the latest is kept (D-9). */
-  let pendingCopy: string | undefined;
+  /** Whether the keyboard focus is inside the pane, and the window has it (D-8). */
+  let paneHasFocus = $state(false);
 
   const stage = $derived(connection.stage);
   const client = $derived(connection.tunnel?.client);
   const ready = $derived(connection.ready);
-  const bound = $derived(visible && focused && ready);
-  const hostKeyOpen = $derived(stage.kind === 'ended' && stage.hostKeyChanged && dismissed !== stage);
+  /** The parent gives this pane the keyboard; the pane then takes the focus. */
+  const wanted = $derived(visible && focused && ready);
+  /** Keys are sent only while the focus is really in the pane, so no key is held when it leaves (D-8). */
+  const bound = $derived(wanted && paneHasFocus);
+  // A hidden tab's warning waits until its tab is shown, so it never covers or traps another tab (SEC-007).
+  const hostKeyOpen = $derived(visible && stage.kind === 'ended' && stage.hostKeyChanged && dismissed !== stage);
 
   function connect(css: Size) {
     const display = displayInput(css, window.devicePixelRatio, Intl.DateTimeFormat().resolvedOptions().timeZone);
@@ -97,7 +101,13 @@
 
   /** The pane's keyboard, and its size: the first measure starts the session, later ones resize it (D-7). */
   function attachPane(element: HTMLElement) {
-    keyboard = paneKeyboard(element);
+    const paneKeys = paneKeyboard(element);
+    keyboard = paneKeys;
+    const stopFollowing = followPaneFocus(element, (inside) => {
+      // Release held keys now: the binding effect runs later, and a held key would repeat until then.
+      if (!inside) paneKeys.unbind();
+      paneHasFocus = inside;
+    });
     const observer = new ResizeObserver((entries) => {
       const box = entries.at(-1)?.contentRect;
       if (box === undefined) return;
@@ -109,6 +119,7 @@
     });
     observer.observe(element);
     return () => {
+      stopFollowing();
       observer.disconnect();
     };
   }
@@ -125,26 +136,28 @@
     sizes = sender;
     const now = untrack(() => paneSize);
     if (now !== undefined) resized(now);
+    // Text the gateway sends while the pane is not bound is dropped, so a background session never writes the
+    // system clipboard (D-9).
     receiveClipboard(target, (text) => {
       if (bound) copyToSystem(text);
-      else pendingCopy = text;
     });
     return () => {
       sender.cancel();
       sizes = undefined;
       target.onclipboard = null;
-      pendingCopy = undefined;
     };
   });
 
-  // The keyboard is bound only while the pane is visible, focused and ready; never to the document (D-8).
+  $effect(() => {
+    if (wanted) pane?.focus({ preventScroll: true });
+  });
+
+  // The keyboard is bound only while the pane is visible, focused and ready and holds the DOM focus; never to the
+  // document (D-8).
   $effect(() => {
     if (!bound || client === undefined || keyboard === undefined) return;
     const bindTo = keyboard;
     bindTo.bind(keyRoute(client));
-    pane?.focus({ preventScroll: true });
-    if (pendingCopy !== undefined) copyToSystem(pendingCopy);
-    pendingCopy = undefined;
     return () => {
       bindTo.unbind();
     };
@@ -179,12 +192,13 @@
       {/if}
     </div>
     {#if !ready}
+      <!-- Top-aligned, steps first: the ended text appears below the steps, so nothing above it moves (MV-004). -->
       <div class="panel">
-        {#if stage.kind === 'ending' || stage.kind === 'ended'}
-          <EndedPanel ending={stage.ending} settled={stage.kind === 'ended'} onreconnect={reconnect} />
-        {/if}
         {#if !progressOf(stage).connected}
           <ConnectionSteps progress={progressOf(stage)} />
+        {/if}
+        {#if stage.kind === 'ending' || stage.kind === 'ended'}
+          <EndedPanel ending={stage.ending} settled={stage.kind === 'ended'} onreconnect={reconnect} />
         {/if}
       </div>
     {/if}
@@ -198,6 +212,7 @@
 <style>
   .session {
     display: flex;
+    font-family: var(--font-ui);
     flex-direction: column;
     block-size: 100%;
     min-block-size: 0;
@@ -243,14 +258,24 @@
     outline: none;
   }
 
-  .pane:focus-visible {
+  /* Drawn after the display, so a display that fills the pane cannot cover the ring (UI-009, UI-012). */
+  .pane:focus-visible::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
     box-shadow: inset 0 0 0 var(--border-focus) var(--accent);
   }
 
-  /* The remote display: never animated, transformed, filtered or covered by a material (MAT-008). */
+  /*
+   * The remote display: never animated, transformed, filtered or covered by a material (MAT-008). The library puts
+   * each layer at z-index -1, so the display makes its own stacking context; without it the layers paint behind
+   * the session's background (D-7).
+   */
   .display {
     position: absolute;
     inset: 0;
+    isolation: isolate;
   }
 
   /* Shown only while no display is: before ready and after the end (D-7). */
@@ -260,7 +285,7 @@
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    justify-content: center;
+    justify-content: flex-start;
     gap: var(--space-4);
     padding: var(--space-6);
     background: var(--bg);

@@ -40,6 +40,40 @@ export function pasteText(client: Client, text: string): void {
 }
 
 /**
+ * Follow whether the keyboard focus is inside `pane` (D-8): `change(true)` when focus enters it, `change(false)`
+ * when focus moves out of it, the window loses focus, or the page is hidden. In those three cases no `keyup` will
+ * reach the pane for a key still held, so the caller must release it at once. Returns the function that stops.
+ */
+export function followPaneFocus(pane: HTMLElement, change: (inside: boolean) => void): () => void {
+  const inside = () => {
+    change(pane.contains(document.activeElement));
+  };
+  const focusout = (event: FocusEvent) => {
+    if (!(event.relatedTarget instanceof Node && pane.contains(event.relatedTarget))) change(false);
+  };
+  const lost = () => {
+    change(false);
+  };
+  const visibility = () => {
+    if (document.visibilityState === 'hidden') change(false);
+    else inside();
+  };
+  pane.addEventListener('focusin', inside);
+  pane.addEventListener('focusout', focusout);
+  window.addEventListener('blur', lost);
+  window.addEventListener('focus', inside);
+  document.addEventListener('visibilitychange', visibility);
+  inside();
+  return () => {
+    pane.removeEventListener('focusin', inside);
+    pane.removeEventListener('focusout', focusout);
+    window.removeEventListener('blur', lost);
+    window.removeEventListener('focus', inside);
+    document.removeEventListener('visibilitychange', visibility);
+  };
+}
+
+/**
  * Show the client's display in the host element (D-7): at a `devicePixelRatio` above 1 the remote draws in device
  * pixels, so the library's own static scale maps it back to CSS pixels; nothing animates it (MAT-008). Pointer
  * input is forwarded while it is shown.

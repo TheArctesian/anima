@@ -37,8 +37,13 @@
 </ol>
 
 <style>
+  /*
+   * Equal, fixed columns, each mark word on its own line: a mark that changes its word moves no other step
+   * (MV-004, MOT-007).
+   */
   .steps {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, calc(var(--space-16) * 2)));
     gap: var(--space-4);
     margin: 0;
     padding: 0;
@@ -48,13 +53,15 @@
   }
 
   .step {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: var(--space-1);
     align-items: center;
-    gap: var(--space-1);
     color: var(--text-muted);
   }
 
   .mark {
+    grid-column: 2;
     color: var(--text-muted);
   }
 

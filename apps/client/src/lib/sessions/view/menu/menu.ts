@@ -18,3 +18,23 @@ export function menuFocus<T>(key: string, items: readonly T[], active: unknown):
       return undefined;
   }
 }
+
+/** Where a menu opens from its control: the side with room, and the height it may take there (CSS px). */
+export interface MenuPlacement {
+  readonly side: 'below' | 'above';
+  readonly maxHeight: number;
+}
+
+/** The room a menu leaves between itself and the window edge, and between itself and its control (CSS px). */
+export const MENU_MARGIN_PX = 8;
+
+/**
+ * Open below the control when the menu fits there or below has at least as much room, otherwise above. The menu is
+ * no taller than the room on its side, so a short window scrolls it instead of clipping it (UI-N2).
+ */
+export function menuPlacement(control: { top: number; bottom: number }, viewportHeight: number, menuHeight: number): MenuPlacement {
+  const below = viewportHeight - control.bottom - 2 * MENU_MARGIN_PX;
+  const above = control.top - 2 * MENU_MARGIN_PX;
+  const side = menuHeight <= below || below >= above ? 'below' : 'above';
+  return { side, maxHeight: Math.max(0, side === 'below' ? below : above) };
+}

@@ -16,6 +16,11 @@ export const KEYSYM = {
 /** The Meta and Super keys (Command on macOS): shortcuts with them belong to the operator's system, not the device. */
 const SYSTEM_MODIFIERS: ReadonlySet<number> = new Set([0xffe7, 0xffe8, 0xffeb, 0xffec]);
 
+const CONTROL: ReadonlySet<number> = new Set([0xffe3, 0xffe4]);
+const SHIFT: ReadonlySet<number> = new Set([0xffe1, 0xffe2]);
+const V: ReadonlySet<number> = new Set([0x56, 0x76]);
+const INSERT = 0xff63;
+
 /** One key event: 1 is a press, 0 a release (the values `sendKeyEvent` takes). */
 export type KeyStroke = readonly [pressed: 0 | 1, keysym: number];
 
@@ -72,18 +77,28 @@ export interface KeyFilter {
   up(keysym: number): boolean;
 }
 
+/** Whether `keysym`, pressed while `held` are down, is the operator's paste shortcut (Ctrl+Shift+V or Shift+Insert). */
+function isPasteShortcut(keysym: number, held: ReadonlySet<number>): boolean {
+  const any = (keys: ReadonlySet<number>) => [...keys].some((key) => held.has(key));
+  if (keysym === INSERT) return any(SHIFT);
+  return V.has(keysym) && any(CONTROL) && any(SHIFT);
+}
+
 /**
- * Every key reaches the device except while a Meta or Super key is held: then the key is the operator's own
- * shortcut (Command+V pastes through the `paste` event, D-9) and goes to the browser. A release is sent only for
- * a press that was sent, so the device never sees a key go up that never went down.
+ * Every key reaches the device except the operator's own shortcuts, which go to the browser:
+ * - any key while a Meta or Super key is held (Command+V pastes through the `paste` event);
+ * - the paste shortcuts Ctrl+Shift+V and Shift+Insert. guacd would answer them by typing the clipboard it already
+ *   holds, which may be stale; left to the browser, they fire `paste` with the current system clipboard (D-9).
+ * A release is sent only for a press that was sent, so the device never sees a key go up that never went down.
  */
 export function keyFilter(): KeyFilter {
   const system = new Set<number>();
+  // The keys the device holds down: every press sent and not yet released.
   const sent = new Set<number>();
   return {
     down: (keysym) => {
       if (SYSTEM_MODIFIERS.has(keysym)) system.add(keysym);
-      if (system.size > 0) return false;
+      if (system.size > 0 || isPasteShortcut(keysym, sent)) return false;
       sent.add(keysym);
       return true;
     },

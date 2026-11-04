@@ -38,9 +38,6 @@ export function paneKeyboard(pane: HTMLElement): PaneKeyboard {
   };
 }
 
-/** The 1.5.5 touch screen mouse (tap is a click, drag moves); the hand-written types do not list it yet. */
-const Touchscreen = (Guacamole.Mouse as unknown as { Touchscreen: new (element: Element) => Guacamole.Mouse }).Touchscreen;
-
 const MOUSE_EVENTS: readonly Guacamole.Mouse.EventType[] = ['mousedown', 'mouseup', 'mousemove'];
 
 /**
@@ -49,7 +46,7 @@ const MOUSE_EVENTS: readonly Guacamole.Mouse.EventType[] = ['mousedown', 'mouseu
  */
 export function forwardPointer(client: Client): () => void {
   const element = client.getDisplay().getElement();
-  const pointers = [new Guacamole.Mouse(element), new Touchscreen(element)];
+  const pointers = [new Guacamole.Mouse(element), new Guacamole.Mouse.Touchscreen(element)];
   const send = (event: Guacamole.Mouse.Event) => {
     client.sendMouseState(event.state, true);
   };

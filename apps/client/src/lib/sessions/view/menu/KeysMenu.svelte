@@ -3,7 +3,7 @@
   import { press } from '$lib/motion/roles/press';
   import { popover } from '$lib/motion/roles/transitions';
   import { KEY_COMBINATIONS, type KeyCombination } from '../keys';
-  import { menuFocus } from './menu';
+  import { menuFocus, menuPlacement, type MenuPlacement } from './menu';
 
   interface Props {
     /** No session to send to (not ready, or ended). */
@@ -17,6 +17,7 @@
   let open = $state(false);
   let trigger: HTMLButtonElement | undefined = $state();
   let menu: HTMLElement | undefined = $state();
+  let placement: MenuPlacement | undefined = $state();
 
   function items(): HTMLElement[] {
     return menu === undefined ? [] : [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')];
@@ -24,8 +25,12 @@
 
   function show(at: 'first' | 'last') {
     open = true;
-    // The menu exists after this update; focus its first (or last) item then.
+    placement = undefined;
+    // The menu exists after this update: place it on the side with room, then focus its first (or last) item.
     queueMicrotask(() => {
+      if (trigger !== undefined && menu !== undefined) {
+        placement = menuPlacement(trigger.getBoundingClientRect(), window.innerHeight, menu.scrollHeight);
+      }
       const all = items();
       (at === 'first' ? all[0] : all.at(-1))?.focus();
     });
@@ -106,6 +111,8 @@
       tabindex="-1"
       aria-label="Keys"
       bind:this={menu}
+      data-side={placement?.side ?? 'below'}
+      style:max-block-size={placement === undefined ? undefined : `${String(placement.maxHeight)}px`}
       onkeydown={menuKey}
       transition:popover={{ from: trigger }}
     >
@@ -157,6 +164,8 @@
     position: absolute;
     inset-block-start: calc(100% + var(--space-1));
     inset-inline-start: 0;
+    box-sizing: border-box;
+    overflow-y: auto;
     z-index: var(--layer-popover);
     display: flex;
     flex-direction: column;
@@ -168,9 +177,17 @@
     box-shadow: var(--elevation-2);
   }
 
+  .menu[data-side='above'] {
+    inset-block-start: auto;
+    inset-block-end: calc(100% + var(--space-1));
+  }
+
   .menu button {
     display: flex;
+    flex: none;
+    align-items: center;
     justify-content: space-between;
+    white-space: nowrap;
     gap: var(--space-4);
     min-block-size: var(--target-min-desktop);
     padding: 0 var(--space-3);

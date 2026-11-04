@@ -60,4 +60,25 @@ describe('keyFilter (D-8, D-9)', () => {
     filter.down(META);
     expect(filter.up(CTRL)).toBe(true);
   });
+
+  it.each([
+    ['Ctrl+Shift+V', [CTRL, SHIFT], 0x56],
+    ['Ctrl+Shift+v', [CTRL, SHIFT], 0x76],
+    ['Shift+Insert', [SHIFT], 0xff63],
+  ])('D-9, SEC-S2: %s is the operator paste shortcut and goes to the browser', (_name, modifiers, last) => {
+    const filter = keyFilter();
+    for (const modifier of modifiers) expect(filter.down(modifier)).toBe(true);
+    expect(filter.down(last)).toBe(false);
+    expect(filter.up(last)).toBe(false);
+  });
+
+  it.each([
+    ['Ctrl+V', [CTRL], 0x76],
+    ['Shift+V', [SHIFT], 0x56],
+    ['Insert', [], 0xff63],
+  ])('%s still reaches the device', (_name, modifiers, last) => {
+    const filter = keyFilter();
+    for (const modifier of modifiers) filter.down(modifier);
+    expect(filter.down(last)).toBe(true);
+  });
 });

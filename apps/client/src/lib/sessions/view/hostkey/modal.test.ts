@@ -134,6 +134,25 @@ describe('host key modal keyboard (Section 5.7.3 "Modal")', () => {
     expect(dialog()).toBeNull();
   });
 
+  it('SEC-007, D-8: a hidden session opens its warning only when its tab is shown, never over another tab', async () => {
+    const view = showView();
+    cleanups.push(view.close);
+    const socket = await connectView();
+    const other = document.createElement('input');
+    document.body.append(other);
+    flags.visible = false;
+    flushSync();
+    other.focus();
+    socket.closeWith(4001);
+    await settle();
+    expect(dialog()).toBeNull();
+    expect(document.activeElement).toBe(other);
+    flags.visible = true;
+    flushSync();
+    await settle();
+    expect(dialog()).not.toBeNull();
+  });
+
   it('a session that ends for another reason opens no warning', async () => {
     const view = showView();
     cleanups.push(view.close);

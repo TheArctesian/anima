@@ -1,10 +1,24 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
 import { flushSync } from 'svelte';
+import { compile } from 'svelte/compiler';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { installBlankCanvas } from '../tunnel/fake/canvas.fixture';
 import { FakeTunnelSocket } from '../tunnel/fake/socket.fixture';
 import { RESIZE_SETTLE_MS } from './display';
-import { FakeResizeObserver, connectView, flags, installBrowserFakes, sent, settle, showView } from './view.fixture.svelte';
+import { KEY_COMBINATIONS } from './keys';
+import {
+  FakeResizeObserver,
+  TOKEN_MARKER,
+  connectView,
+  flags,
+  installBrowserFakes,
+  paneOf,
+  sent,
+  settle,
+  showView,
+  systemClipboard,
+} from './view.fixture.svelte';
 
 let cleanups: (() => unknown)[] = [];
 
@@ -91,23 +105,55 @@ describe('start and display (D-7)', () => {
   });
 });
 
-describe('MAT-008: the remote display', () => {
-  const MOTION_PROPERTIES = ['transform', 'translate', 'scale', 'rotate', 'filter', 'backdrop-filter', 'transition', 'animation'];
-  const NEUTRAL = ['', 'none'];
+/**
+ * The rules of a component's stylesheet as Svelte compiles it, by selector without the scoping class. jsdom applies
+ * no component CSS, so the structural style checks read the compiled rules.
+ */
+function componentRules(file: string): Map<string, Map<string, string>> {
+  const source = readFileSync(new URL(file, import.meta.url), 'utf8');
+  const code = (compile(source, { filename: file, css: 'external' }).css?.code ?? '').replaceAll(/\/\*[\s\S]*?\*\//g, '');
+  const rules = new Map<string, Map<string, string>>();
+  for (const [, selector = '', body = ''] of code.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const declarations = body
+      .split(';')
+      .map((declaration) => declaration.split(':').map((part) => part.trim()))
+      .filter(([property]) => property !== '');
+    rules.set(selector.replaceAll(/\.svelte-[\w-]+/g, '').trim(), new Map(declarations.map(([property = '', ...value]) => [property, value.join(':')])));
+  }
+  return rules;
+}
 
-  it('MAT-008: the display element and the pane holding it have no transform, filter, transition, animation or material', async () => {
+describe('MAT-008: the remote display', () => {
+  const MOTION = ['transform', 'translate', 'scale', 'rotate', 'filter', 'backdrop-filter', 'transition', 'animation', 'opacity'];
+  const rules = componentRules('./SessionView.svelte');
+
+  it('MAT-008: no rule on the display, the pane or the stage animates, transforms, filters or blurs them', () => {
+    for (const selector of ['.display', '.pane', '.stage']) {
+      const declarations = [...(rules.get(selector)?.keys() ?? [])];
+      expect(declarations, selector).not.toEqual([]);
+      for (const property of MOTION) expect(declarations, `${selector} ${property}`).not.toContain(property);
+    }
+  });
+
+  it('UI-M1, D-7: the display makes its own stacking context, so the library layers (z-index -1) paint in front of the session', () => {
+    expect(rules.get('.display')?.get('isolation')).toBe('isolate');
+  });
+
+  it('UI-M2: the pane focus ring is drawn after the display, over it, without taking pointer input', () => {
+    const ring = rules.get('.pane:focus-visible::after');
+    expect(ring?.get('position')).toBe('absolute');
+    expect(ring?.get('pointer-events')).toBe('none');
+    expect(ring?.get('box-shadow')).toContain('var(--accent)');
+    expect(rules.get('.pane')?.get('position')).toMatch(/^(absolute|relative)$/);
+  });
+
+  it('MAT-008: the library display element has no transform, transition, filter or animation set on it', async () => {
     const { target } = show();
     await connectView();
-    const host = target.querySelector<HTMLElement>('[data-display]');
-    const element = host?.firstElementChild;
-    if (host === null || !(element instanceof HTMLElement)) throw new Error('no display');
-    for (const node of [element, host, host.parentElement]) {
-      if (node === null) continue;
-      const style = getComputedStyle(node);
-      for (const property of MOTION_PROPERTIES) expect(NEUTRAL, property).toContain(style.getPropertyValue(property));
-      expect(['', '1'], 'opacity').toContain(style.opacity);
-      expect(node.getAnimations?.() ?? []).toEqual([]);
-    }
+    const element = target.querySelector<HTMLElement>('[data-display]')?.firstElementChild;
+    if (!(element instanceof HTMLElement)) throw new Error('no display');
+    for (const property of MOTION) expect(['', 'none'], property).toContain(element.style.getPropertyValue(property) || '');
+    expect(element.getAnimations?.() ?? []).toEqual([]);
   });
 
   it('MAT-008: nothing lies over a live display: no panel, steps or modal is rendered beside it', async () => {
@@ -177,5 +223,46 @@ describe('ended panel and Reconnect (RA-007)', () => {
     await close();
     await settle();
     expect(FakeTunnelSocket.latest().closedByClient).toBeDefined();
+  });
+});
+
+describe('LOG-007', () => {
+  it('LOG-007: a whole session makes no console call at all', async () => {
+    const spies = Object.keys(console)
+      .filter((name) => typeof (console as unknown as Record<string, unknown>)[name] === 'function')
+      .map((name) => vi.spyOn(console as unknown as Record<string, () => void>, name).mockImplementation(() => undefined));
+    const { target } = show();
+    const socket = await connectView();
+    const pane = paneOf(target);
+    socket.clipboard('CLIP-MARKER-91c2');
+    pane.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true }));
+    pane.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true }));
+    const trigger = target.querySelector<HTMLButtonElement>('[aria-haspopup="menu"]');
+    const menuItems = () => [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')];
+    for (const index of KEY_COMBINATIONS.keys()) {
+      trigger?.click();
+      flushSync();
+      menuItems()[index]?.click();
+      flushSync();
+    }
+    systemClipboard.text = 'MENU-PASTE-MARKER-2d7';
+    trigger?.click();
+    flushSync();
+    menuItems().at(-1)?.click();
+    await settle();
+    const paste = new Event('paste', { bubbles: true, cancelable: true });
+    Object.defineProperty(paste, 'clipboardData', { value: { getData: () => 'PASTE-MARKER-4b1e' } });
+    pane.dispatchEvent(paste);
+    systemClipboard.refuse = true;
+    socket.clipboard('REFUSED-CLIP-MARKER');
+    socket.gatewayError(0x0301);
+    socket.closeWith(1011);
+    await settle();
+    const calls = spies.flatMap((spy) => spy.mock.calls);
+    for (const spy of spies) spy.mockRestore();
+    expect(sent(socket, 'clipboard').length).toBeGreaterThan(1);
+    expect(calls).toEqual([]);
+    expect(document.body.innerHTML).not.toContain(TOKEN_MARKER);
+    expect(target.textContent).not.toContain('CLIP-MARKER');
   });
 });

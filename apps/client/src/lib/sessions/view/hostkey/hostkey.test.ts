@@ -63,6 +63,13 @@ describe('host key warning (SEC-007, D-6)', () => {
     expect(run({ event: 'review' }, { event: 'reviewed', result })).toEqual({ step: 'warned', problem });
   });
 
+  it.each([
+    ['reviewed', REVIEWED],
+    ['confirming', [...REVIEWED, { event: 'confirm' } as const]],
+  ])('an accept answer that arrives in %s (no accept sent) is ignored', (_step, events) => {
+    expect(transition(run(...events), { event: 'accepted', result: acceptedAs('SHA256:new') })).toBeUndefined();
+  });
+
   it('Back from the confirmation returns to the reviewed key', () => {
     expect(run(...REVIEWED, { event: 'confirm' }, { event: 'back' }).step).toBe('reviewed');
   });

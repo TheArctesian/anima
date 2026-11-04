@@ -112,11 +112,12 @@
 </div>
 
 <style>
+  /* Anchored at the top, so the surface grows downward when the key appears instead of re-centring (MV-004). */
   .layer {
     position: fixed;
     inset: 0;
     display: grid;
-    place-items: center;
+    place-items: start center;
     z-index: var(--layer-modal);
   }
 
@@ -127,6 +128,12 @@
 
   .scrim {
     place-self: stretch;
+  }
+
+  .surface {
+    margin-block-start: var(--space-16);
+    max-block-size: calc(100vh - var(--space-16) * 2);
+    overflow-y: auto;
   }
 
   /* The opacity sits on the child, so the scrim's own fade runs 0 to 1. */
@@ -223,10 +230,14 @@
     outline-offset: var(--border-focus);
   }
 
+  /*
+   * Text on a --status-warning fill reaches only 4.39:1 with --bg (UI-002), so the warning is the border on the
+   * tint: --text on --status-warning-tint is 7.5:1, and the border against --surface is 3.5:1.
+   */
   .warning {
     border-color: var(--status-warning);
-    background: var(--status-warning);
-    color: var(--bg);
+    background: var(--status-warning-tint);
+    color: var(--text);
   }
 
   .primary {

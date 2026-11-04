@@ -5,7 +5,7 @@ import { installBlankCanvas } from '../../tunnel/fake/canvas.fixture';
 import { FakeTunnelSocket } from '../../tunnel/fake/socket.fixture';
 import { KEY_COMBINATIONS, PASTE_STROKES, keyStrokes } from '../keys';
 import { connectView, flags, installBrowserFakes, sent, settle, showView, systemClipboard } from '../view.fixture.svelte';
-import { menuFocus } from './menu';
+import { MENU_MARGIN_PX, menuFocus, menuPlacement } from './menu';
 
 describe('menuFocus', () => {
   const items = ['a', 'b', 'c'];
@@ -21,6 +21,22 @@ describe('menuFocus', () => {
     ['x', 'a', undefined],
   ])('%s from %s moves to %s', (key, active, expected) => {
     expect(menuFocus(key, items, active)).toBe(expected);
+  });
+});
+
+describe('menuPlacement (UI-N2)', () => {
+  const room = (px: number) => px - 2 * MENU_MARGIN_PX;
+
+  it('opens below when the menu fits there', () => {
+    expect(menuPlacement({ top: 40, bottom: 72 }, 800, 300)).toEqual({ side: 'below', maxHeight: room(800 - 72) });
+  });
+
+  it('opens above, no taller than the room there, when below is too short and above has more room', () => {
+    expect(menuPlacement({ top: 200, bottom: 232 }, 260, 300)).toEqual({ side: 'above', maxHeight: room(200) });
+  });
+
+  it('stays below and scrolls in a short window where below has the most room', () => {
+    expect(menuPlacement({ top: 8, bottom: 40 }, 260, 300)).toEqual({ side: 'below', maxHeight: room(260 - 40) });
   });
 });
 

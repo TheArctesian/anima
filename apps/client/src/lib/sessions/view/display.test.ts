@@ -36,6 +36,18 @@ describe('display size (D-7)', () => {
     });
   });
 
+  it('R-018: any ratio and pane, however extreme, gives integer sizes in 1..8192 and a DPI in 48..480', () => {
+    const inRange = (value: number, min: number, max: number) => Number.isInteger(value) && value >= min && value <= max;
+    for (const ratio of [Number.NaN, 0, -1, Number.POSITIVE_INFINITY, 1e308, 1e-308]) {
+      for (const pane of [{ width: 0, height: 0 }, { width: Number.NaN, height: 5 }, { width: Number.POSITIVE_INFINITY, height: 1e9 }, { width: 800, height: 600 }]) {
+        const display = displayInput(pane, ratio, 'UTC');
+        const size = remoteSize(pane, ratio);
+        for (const value of [display.widthPx, display.heightPx, size.width, size.height]) expect(inRange(value, 1, 8192)).toBe(true);
+        expect(inRange(display.dpi ?? 0, 48, 480)).toBe(true);
+      }
+    }
+  });
+
   it('D-7: an unmeasured (hidden) pane starts at the fallback size', () => {
     const display = displayInput({ width: 0, height: 300 }, 1, 'UTC');
     expect([display.widthPx, display.heightPx]).toEqual([UNMEASURED_PANE.width, UNMEASURED_PANE.height]);
