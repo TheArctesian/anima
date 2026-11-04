@@ -1,9 +1,9 @@
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import { print } from 'graphql';
 import { createClient, type Client, type Sink as ClientSink } from 'graphql-ws';
-import { MALFORMED, parseErrors, parseResponse, TOKEN_UNREADABLE, UNREACHABLE, type HubError } from './error';
-import { readToken, type TokenProvider } from './request';
-import type { StatusSignal } from './status/status';
+import { MALFORMED, parseErrors, parseResponse, TOKEN_UNREADABLE, UNREACHABLE, type HubError } from '../error';
+import { readToken, type TokenProvider } from '../request';
+import type { StatusSignal } from '../status/status';
 
 /** Receives one subscription's events. After `error` or `complete`, nothing more arrives. */
 export interface Sink<T> {
@@ -30,8 +30,9 @@ export interface Socket {
     sink: Sink<TResult>,
   ): () => void;
   /**
-   * End every subscription with `complete` at once and close the socket; later subscriptions complete at once.
-   * Resolves when the socket is closed; rejects with the reason when a pending connection attempt failed instead.
+   * End every subscription with `complete` at once, stop any connection attempt or retry wait, and close the
+   * socket; later subscriptions complete at once. Resolves once closing has begun; rejects with the reason
+   * when an open socket could not be closed.
    */
   close(): Promise<void>;
 }
@@ -42,6 +43,8 @@ const NORMAL_CLOSE_CODE = 1000;
 /** graphql-transport-ws `InternalClientError`: the client closed its own socket. */
 const CLIENT_CLOSE_CODE = 4005;
 const SERVER_ERROR_CLOSE_CODE = 4500;
+/** The hub's refusal of the token, as subscriptions hear it. */
+const REFUSED: HubError = { code: 'UNAUTHENTICATED', message: 'The hub refused the access token. Log in again.' };
 const FIRST_RETRY_MS = 1000;
 const LONGEST_RETRY_MS = 30_000;
 
@@ -68,19 +71,27 @@ function subscriptionError(reason: unknown, tokenUnreadable: boolean): HubError 
   if (Array.isArray(reason)) return parseErrors(reason);
   const code = closeCode(reason);
   if (code === undefined) return UNREACHABLE;
-  if (code === REFUSED_CLOSE_CODE) return { code: 'UNAUTHENTICATED', message: 'The hub refused the access token. Log in again.' };
+  if (code === REFUSED_CLOSE_CODE) return REFUSED;
   if (code === SERVER_ERROR_CLOSE_CODE || code === CLIENT_CLOSE_CODE) {
     return { code: 'INTERNAL', message: 'The live connection to the hub failed.' };
   }
   return code >= 4000 && code <= 4999 ? MALFORMED : UNREACHABLE;
 }
 
+/** Where the current connection attempt is: `opening` until `connection_ack`, `live` after it, `waiting` after a close. */
+type Phase = 'opening' | 'live' | 'waiting';
+
 /** Per-socket state that graphql-ws callbacks share. */
 interface SocketState {
+  phase: Phase;
+  /** `close()` was called: no more signals, no more connection attempts. */
+  closed: boolean;
   /** The current connection could not read the token. */
   tokenUnreadable: boolean;
   /** Fires `failed` when a connection attempt has no `connection_ack` within the timeout, even if it never opens. */
   deadline: ReturnType<typeof setTimeout> | undefined;
+  /** The backoff before the next attempt; `close()` clears it, which parks that attempt for good. */
+  retryTimer: ReturnType<typeof setTimeout> | undefined;
 }
 
 function clearDeadline(state: SocketState): void {
@@ -88,10 +99,56 @@ function clearDeadline(state: SocketState): void {
   state.deadline = undefined;
 }
 
-function connect(transport: SocketTransport, state: SocketState): Client {
+function isHubCloseCode(code: number | undefined): boolean {
+  return code !== undefined && code >= 4000 && code <= 4999;
+}
+
+/**
+ * The end of the always-on connection loop (a fatal close or an unreadable token). An unreadable token says
+ * nothing about the network; a graphql-transport-ws close (4xxx) means the hub answered; anything else, no answer.
+ */
+function stoppedSignal(reason: unknown, state: SocketState): StatusSignal | undefined {
+  if (state.tokenUnreadable) return undefined;
+  return isHubCloseCode(closeCode(reason)) ? 'answered' : 'failed';
+}
+
+/** The graphql-ws lifecycle callbacks: they track the phase and the deadline and feed the status, until `close()`. */
+function lifecycle(transport: SocketTransport, state: SocketState, refuse: () => void) {
+  const signal = (value: StatusSignal | undefined): void => {
+    if (value !== undefined && !state.closed) transport.signal(value);
+  };
+  return {
+    connecting: () => {
+      state.phase = 'opening';
+      state.tokenUnreadable = false;
+      clearDeadline(state);
+      state.deadline = setTimeout(() => signal('failed'), transport.timeoutMs);
+    },
+    connected: () => {
+      state.phase = 'live';
+      clearDeadline(state);
+      signal('acknowledged');
+    },
+    closed: (event: unknown) => {
+      state.phase = 'waiting';
+      clearDeadline(state);
+      // The socket keeps probing after a refusal; the subscriptions end, so they are not sent again.
+      if (closeCode(event) === REFUSED_CLOSE_CODE) refuse();
+      signal(closeSignal(event));
+    },
+    stopped: (reason: unknown) => signal(stoppedSignal(reason, state)),
+  };
+}
+
+function connect(transport: SocketTransport, state: SocketState, refuse: () => void): Client {
+  const events = lifecycle(transport, state, refuse);
   return createClient({
     url: transport.endpoint,
     webSocketImpl: transport.WebSocket,
+    // Connect at once and stay connected, so the status is true without any subscription (NAV-003, NET-004).
+    lazy: false,
+    // The always-on loop stopped (unreadable token or a fatal close): a status signal, never a throw.
+    onNonLazyError: events.stopped,
     // Read per connection, so a new login applies at the next reconnect; never a query parameter (LOG-007).
     connectionParams: async () => {
       const read = await readToken(transport.token);
@@ -104,25 +161,15 @@ function connect(transport: SocketTransport, state: SocketState): Client {
     },
     connectionAckWaitTimeout: transport.timeoutMs,
     retryAttempts: Number.POSITIVE_INFINITY,
-    retryWait: (retries) => new Promise((resolve) => setTimeout(resolve, retryDelayMs(retries))),
-    // Retry every failure except a refused or unreadable token: retrying cannot succeed.
-    shouldRetry: (reason) => !state.tokenUnreadable && closeCode(reason) !== REFUSED_CLOSE_CODE,
-    on: {
-      connecting: () => {
-        state.tokenUnreadable = false;
-        clearDeadline(state);
-        state.deadline = setTimeout(() => transport.signal('failed'), transport.timeoutMs);
-      },
-      connected: () => {
-        clearDeadline(state);
-        transport.signal('acknowledged');
-      },
-      closed: (event) => {
-        clearDeadline(state);
-        const signal = closeSignal(event);
-        if (signal !== undefined) transport.signal(signal);
-      },
-    },
+    retryWait: (retries) =>
+      new Promise((resolve) => {
+        state.retryTimer = setTimeout(resolve, retryDelayMs(retries));
+      }),
+    // Retry every failure except an unreadable token. A refused token is retried too, on the same backoff
+    // (graphql-ws resets it only on `connection_ack`, so it settles at 30 s): each probe reads the token
+    // again, and a probe that fails tells the status the network is gone (NET-004).
+    shouldRetry: () => !state.tokenUnreadable,
+    on: { connecting: events.connecting, connected: events.connected, closed: events.closed },
   });
 }
 
@@ -140,15 +187,20 @@ function deliverTo<T>(sink: Sink<T>, tokenUnreadable: () => boolean): ClientSink
   };
 }
 
-/** The single graphql-transport-ws socket of one hub (API-002); it opens lazily and retries until the hub answers. */
+/**
+ * The single graphql-transport-ws socket of one hub (API-002). It connects at once and retries until the hub
+ * answers, also after a refused token (4403). After an unreadable token it stops; the next `subscribe` connects again.
+ */
 export function createSocket(transport: SocketTransport): Socket {
-  const state: SocketState = { tokenUnreadable: false, deadline: undefined };
-  let closed = false;
-  const live = new Set<() => void>();
-  const client = connect(transport, state);
+  const state: SocketState = { phase: 'opening', closed: false, tokenUnreadable: false, deadline: undefined, retryTimer: undefined };
+  /** How to end each live subscription: with `complete` when no error is given. */
+  const live = new Set<(error?: HubError) => void>();
+  const client = connect(transport, state, () => {
+    for (const finish of [...live]) finish(REFUSED);
+  });
   return {
     subscribe(document, variables, sink) {
-      if (closed) {
+      if (state.closed) {
         sink.complete();
         return () => undefined;
       }
@@ -161,27 +213,30 @@ export function createSocket(transport: SocketTransport): Socket {
         stop();
         deliver();
       };
-      const finish = (): void => end(() => sink.complete());
+      const finish = (error?: HubError): void => end(() => (error === undefined ? sink.complete() : sink.error(error)));
       const guarded: typeof sink = {
         next: (value) => {
           if (!ended) sink.next(value);
         },
-        error: (error) => end(() => sink.error(error)),
-        complete: finish,
+        error: finish,
+        complete: () => finish(),
       };
       live.add(finish);
       stop = client.subscribe({ query: print(document), variables }, deliverTo(guarded, () => state.tokenUnreadable));
       return () => end(() => undefined);
     },
     close() {
-      closed = true;
+      const { phase } = state;
+      state.closed = true;
       clearDeadline(state);
+      clearTimeout(state.retryTimer);
       for (const finish of [...live]) finish();
-      // dispose waits for a pending connection attempt; one abandoned during a retry wait rejects with a
-      // normal close ("All Subscriptions Gone"), which is the outcome close asks for. Anything else is passed on.
-      return Promise.resolve(client.dispose()).catch((reason: unknown) => {
-        if (closeCode(reason) !== NORMAL_CLOSE_CODE) throw reason;
-      });
+      // dispose closes an open socket with 1000 but waits for a pending attempt, so an attempt still opening is
+      // terminated first. An attempt parked in the cleared retry wait never opens and its dispose never settles,
+      // so close resolves without it; otherwise a dispose failure reaches the caller (CQ-024).
+      if (phase === 'opening') client.terminate();
+      const disposing = Promise.resolve(client.dispose());
+      return phase === 'waiting' ? Promise.resolve() : disposing;
     },
   };
 }
