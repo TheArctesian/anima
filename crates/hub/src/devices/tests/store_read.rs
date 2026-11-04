@@ -98,7 +98,7 @@ store_test! {
     async fn vpn_002_devices_by_sites_returns_only_those_sites_in_name_order(pool: PgPool) {
         let found = store::devices_by_sites(&pool, &[site_id(OFFICE_1), site_id(OFFICE_2)]).await.unwrap();
         assert_eq!(names(&found), ["linux-pc-office-2", "mac-office-1", "mac-office-2", "win-desktop"]);
-        assert!(store::devices_by_sites(&pool, &[]).await.unwrap().is_empty());
+        assert_eq!(store::devices_by_sites(&pool, &[]).await.unwrap().len(), 0);
     }
 
     async fn vpn_002_sites_are_listed_by_name_and_fetched_by_id(pool: PgPool) {

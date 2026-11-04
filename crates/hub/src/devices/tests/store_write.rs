@@ -141,7 +141,7 @@ store_test! {
         assert_eq!(rows(&pool, "device_tags", PVE_01).await, 1);
         let cleared = DeviceChange { tags: Some(vec![]), ..DeviceChange::default() };
         let after = store::update_device(&mut conn, device_id(PVE_01), instant(NOW), &cleared).await.unwrap();
-        assert!(after.tags.is_empty());
+        assert_eq!(after.tags.len(), 0);
     }
 
     async fn k3_update_to_a_taken_name_or_unknown_site_is_a_field_error(pool: PgPool) {
