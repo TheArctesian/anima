@@ -5,7 +5,7 @@ import { runs } from '../motion/engine.fixture';
 import { spring } from '../motion/tokens';
 import { shown } from './bar.fixture.svelte';
 import HeartbeatBar from './HeartbeatBar.svelte';
-import { BAR_LENGTH, type Beat } from './heartbeats';
+import { BAR_LENGTH, addBeat, type Beat } from './heartbeats';
 
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
@@ -47,6 +47,7 @@ const cells = () => [...document.querySelectorAll('.cell')];
 
 beforeEach(() => {
   runs.length = 0;
+  vi.restoreAllMocks();
   preference.reduced = false;
 });
 
@@ -106,4 +107,58 @@ it('MOT-040: with reduced motion a new beat is instant', () => {
   add(beat(2));
   expect(runs).toEqual([]);
   expect(cells().at(-1)?.classList.contains('up')).toBe(true);
+});
+
+const PITCH = 12;
+
+/** Gives every cell a place `PITCH` pixels after the cell before it, as a laid-out page would. */
+function layOutCells(): void {
+  vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+    const left = this.classList.contains('cell') ? cells().indexOf(this) * PITCH : 0;
+    return { left, right: left, top: 0, bottom: 0, width: 0, height: 0, x: left, y: 0, toJSON: () => ({}) };
+  });
+}
+
+const row = () => document.querySelector<HTMLElement>('.row');
+
+it('MOT-002: a new beat starts the row one cell to the right and springs to rest', () => {
+  layOutCells();
+  show([beat(1)]);
+  add(beat(2));
+  expect(row()?.style.translate).toBe(`${String(PITCH)}px 0px`);
+  expect(runs[0]?.keyframes).toEqual([PITCH, 0]);
+});
+
+it('MOT-002: a beat mid-spring starts from where the row is drawn, one cell further', () => {
+  layOutCells();
+  show([beat(1)]);
+  add(beat(2));
+  runs[0]?.frame(5);
+  expect(row()?.style.translate).toBe('5px 0px');
+  add(beat(3));
+  expect(runs[1]?.keyframes).toEqual([5 + PITCH, 0]);
+});
+
+it('MOT-002: a beat older than the newest, put in its place, does not move the bar', () => {
+  show([beat(1), beat(3)]);
+  shown.beats = addBeat(shown.beats, beat(2));
+  flushSync();
+  expect(cells().filter((cell) => cell.classList.contains('up'))).toHaveLength(3);
+  expect(runs).toEqual([]);
+});
+
+it('MOT-002: a duplicate beat does not move the bar', () => {
+  show([beat(1), beat(2)]);
+  shown.beats = addBeat(shown.beats, beat(2));
+  flushSync();
+  shown.beats = [...shown.beats];
+  flushSync();
+  expect(runs).toEqual([]);
+});
+
+it('MOT-002: beats that load into an empty bar do not move it', () => {
+  show([]);
+  shown.beats = [beat(1), beat(2)];
+  flushSync();
+  expect(runs).toEqual([]);
 });

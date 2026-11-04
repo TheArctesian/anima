@@ -24,6 +24,8 @@ function when(beat: Beat): number {
  * Heartbeats have no id, so a beat is identified by its check and its instant: one check
  * records at most one heartbeat per instant. Instants compare as times, not as text, so
  * `Z` and `+00:00` spellings of one moment are the same beat.
+ * A time that does not parse counts as the oldest instant, so two unparseable beats of one
+ * check collapse into one: nothing tells them apart, and the hub never sends such a time.
  */
 function sameBeat(a: Beat, b: Beat): boolean {
   return a.checkId === b.checkId && when(a) === when(b);
@@ -74,11 +76,14 @@ export function barSummary(beats: readonly Beat[]): string {
   return `${count}, latest ${latest.status.toLowerCase()}`;
 }
 
-/** Whether `now` has a newer last beat than `was`: the bar then moves one cell left. */
+/**
+ * Whether `now` has a newer last beat than `was`: the bar then moves one cell left.
+ * A bar that showed no beat is being loaded, not fed, so it does not move.
+ */
 export function shiftedByNewBeat(was: readonly Beat[], now: readonly Beat[]): boolean {
   const latest = now.at(-1);
   const previous = was.at(-1);
-  return latest !== undefined && (previous === undefined || !sameBeat(previous, latest));
+  return latest !== undefined && previous !== undefined && !sameBeat(previous, latest);
 }
 
 /**

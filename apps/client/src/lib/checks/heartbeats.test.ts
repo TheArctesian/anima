@@ -45,6 +45,31 @@ describe('DEV-002: latestBeats merges the checks of a device', () => {
   });
 });
 
+describe('DEV-002: a time that does not parse counts as the oldest', () => {
+  const bad = (checkId = 'c1'): Beat => ({ checkId, at: 'not a time', status: 'DOWN' });
+
+  it('sorts first in latestBeats', () => {
+    const broken = { id: 'a', heartbeats: { edges: [edge(2), { node: { at: 'not a time', status: 'DOWN' as const, responseTimeMs: null } }, edge(1)] } };
+    const beats = latestBeats([broken]);
+    expect(beats.map((b) => b.status)).toEqual(['DOWN', 'UP', 'UP']);
+    expect(beats[0]?.at).toBe('not a time');
+  });
+
+  it('is ignored by addBeat on a full bar, which returns the same list', () => {
+    const full = Array.from({ length: BAR_LENGTH }, (_, i) => beat(i));
+    expect(addBeat(full, bad())).toBe(full);
+  });
+
+  it('goes first in a bar that has room', () => {
+    expect(addBeat([beat(1)], bad()).map((b) => b.status)).toEqual(['DOWN', 'UP']);
+  });
+
+  it('collapses two of one check into one, but keeps those of two checks', () => {
+    expect(addBeat([bad()], bad())).toHaveLength(1);
+    expect(addBeat([bad('a')], bad('b'))).toHaveLength(2);
+  });
+});
+
 describe('DEV-002: addBeat adds a live heartbeat to the bar', () => {
   it('appends a newer beat at the end', () => {
     expect(minutesOf(addBeat([beat(1), beat(2)], beat(3)))).toEqual([1, 2, 3]);
@@ -100,7 +125,7 @@ describe('DEV-002: the bar reads its beats', () => {
 
   it('moves only when the newest beat changes', () => {
     expect(shiftedByNewBeat([beat(1)], [beat(1), beat(2)])).toBe(true);
-    expect(shiftedByNewBeat([], [beat(1)])).toBe(true);
+    expect(shiftedByNewBeat([], [beat(1)])).toBe(false);
     expect(shiftedByNewBeat([beat(1), beat(3)], [beat(1), beat(2), beat(3)])).toBe(false);
     expect(shiftedByNewBeat([beat(1)], [])).toBe(false);
   });
