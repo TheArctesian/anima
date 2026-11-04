@@ -71,6 +71,14 @@ async fn manual_window(pool: &PgPool, target_type: &str, target: &str) {
     .unwrap();
 }
 
+/// Every fixture check Up, so one changed check decides its device.
+async fn all_up(pool: &PgPool) {
+    sqlx::query("UPDATE checks.checks SET status = 'up'")
+        .execute(pool)
+        .await
+        .unwrap();
+}
+
 fixture_test! {
     async fn chk_004_each_device_shows_the_worst_of_its_checks(pool: PgPool) {
         set_status(&pool, PVE_01_PING, "up").await;
@@ -97,6 +105,7 @@ fixture_test! {
     }
 
     async fn chk_005_a_paused_down_check_does_not_count(pool: PgPool) {
+        all_up(&pool).await;
         set_status(&pool, PVE_01_PING, "up").await;
         set_status(&pool, PVE_01_SSH, "down").await;
         assert_eq!(status_of(&pool, PVE_01, quiet()).await, Down);
@@ -109,6 +118,7 @@ fixture_test! {
     }
 
     async fn chk_006_the_manual_flag_turns_down_into_maintenance(pool: PgPool) {
+        all_up(&pool).await;
         set_status(&pool, JELLYFIN_PING, "down").await;
         assert_eq!(status_of(&pool, JELLYFIN, quiet()).await, Maintenance);
         set_status(&pool, JELLYFIN_PING, "degraded").await;
@@ -126,6 +136,7 @@ fixture_test! {
     }
 
     async fn chk_006_a_device_window_covers_every_check_of_the_device(pool: PgPool) {
+        all_up(&pool).await;
         set_status(&pool, PVE_01_PING, "down").await;
         set_status(&pool, PVE_01_SSH, "down").await;
         manual_window(&pool, "device", PVE_01).await;
@@ -135,6 +146,7 @@ fixture_test! {
     }
 
     async fn chk_006_a_check_window_covers_only_that_check(pool: PgPool) {
+        all_up(&pool).await;
         set_status(&pool, PVE_01_PING, "up").await;
         set_status(&pool, PVE_01_SSH, "down").await;
         manual_window(&pool, "check", PVE_01_SSH).await;
@@ -144,6 +156,7 @@ fixture_test! {
     }
 
     async fn chk_004_device_status_matches_statuses_and_knows_missing_devices(pool: PgPool) {
+        all_up(&pool).await;
         set_status(&pool, JELLYFIN_PING, "down").await;
         let one = checks::device_status(&pool, device(JELLYFIN), quiet()).await.unwrap();
         assert_eq!(one, status_of(&pool, JELLYFIN, quiet()).await);

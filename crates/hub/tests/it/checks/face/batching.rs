@@ -142,8 +142,8 @@ async fn add_bulk(pool: &PgPool) {
         "INSERT INTO devices.ssh_settings (device_id, enabled, port, username, auth) \
          SELECT id, false, 22, 'operator', 'password' FROM devices.devices WHERE name LIKE 'bulk-%'",
         "INSERT INTO checks.checks (id, device_id, type, name, status) \
-         SELECT gen_random_uuid(), id, kind, kind, 'down' FROM devices.devices, \
-                unnest(ARRAY['icmp', 'tcp']) AS kind WHERE name LIKE 'bulk-%'",
+         SELECT gen_random_uuid(), d.id, t.type, t.type, 'down' FROM devices.devices d, \
+                unnest(ARRAY['icmp', 'tcp']) AS t(type) WHERE d.name LIKE 'bulk-%'",
     ] {
         sqlx::query(sql).execute(pool).await.unwrap();
     }
