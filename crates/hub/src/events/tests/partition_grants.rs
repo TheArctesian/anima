@@ -97,13 +97,20 @@ async fn r_023_new_partitions_get_select_and_insert_for_anima_runtime_only(pool:
 }
 
 /// A partition created before 0502 may carry grants that 0500's function kept from default
-/// privileges; 0502 resets it once, like a new partition.
+/// privileges, including a chain where a grantee passed its right on with GRANT OPTION (C5);
+/// 0502 resets it once, like a new partition.
 #[sqlx::test(migrations = "./migrations")]
 async fn r_023_migration_0502_resets_partitions_created_before_it(pool: PgPool) {
     let mut conn = pool.acquire().await.unwrap();
-    let group = test_role("group");
+    let (group, chained) = (test_role("group"), test_role("chained"));
     let partitions = ["audit_log_20300707", "event_log_20300707"];
     execute(&mut conn, &format!("create role {group} nologin")).await;
+    execute(&mut conn, &format!("create role {chained} nologin")).await;
+    execute(
+        &mut conn,
+        &format!("grant usage on schema events to {group}"),
+    )
+    .await;
     for log in ["event_log", "audit_log"] {
         execute(
             &mut conn,
@@ -115,7 +122,11 @@ async fn r_023_migration_0502_resets_partitions_created_before_it(pool: PgPool) 
         let leftovers = format!(
             "grant update, delete on events.{partition} to {group}; \
              grant truncate, references on events.{partition} to public; \
-             grant update, trigger on events.{partition} to anima_runtime"
+             grant update, trigger on events.{partition} to anima_runtime; \
+             grant select on events.{partition} to {group} with grant option; \
+             set role {group}; \
+             grant select on events.{partition} to {chained}; \
+             reset role"
         );
         sqlx::raw_sql(&leftovers).execute(&mut *conn).await.unwrap();
     }
@@ -126,7 +137,9 @@ async fn r_023_migration_0502_resets_partitions_created_before_it(pool: PgPool) 
         .unwrap();
     let grants = grants_on(&mut conn, &partitions).await;
 
-    execute(&mut conn, &format!("drop owned by {group}")).await;
-    execute(&mut conn, &format!("drop role {group}")).await;
+    for role in [&chained, &group] {
+        execute(&mut conn, &format!("drop owned by {role} cascade")).await;
+        execute(&mut conn, &format!("drop role {role}")).await;
+    }
     assert_eq!(grants, select_and_insert(&partitions));
 }

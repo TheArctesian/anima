@@ -1,7 +1,10 @@
 //! Secrets inside free text: event messages, device names and audit string values (LOG-007,
 //! D-3 *Values*).
 
-use super::REDACTED;
+use super::{
+    REDACTED,
+    names::{Secrecy, secrecy},
+};
 
 /// Text that marks a whole string as a secret, compared case-sensitively.
 const SECRET_MARKERS: [&str; 1] = ["PuTTY-User-Key-File-"];
@@ -13,22 +16,22 @@ const SECRET_MARKERS_ANY_CASE: [&str; 2] = ["otpauth://", "authorization:"];
 /// case and followed by whitespace or `:`.
 const SCHEMES: [&str; 3] = ["bearer", "basic", "token"];
 
-/// Keys of `key=value` pairs whose value is a secret (libpq `password=…`, JDBC `?pwd=…`),
-/// compared ignoring ASCII case.
-const SECRET_KEYS: [&str; 4] = ["password", "passwd", "pwd", "token"];
+/// The longest quoted value searched for its closing quote; a longer one is masked like an
+/// unquoted value. The bound keeps every pass linear in the text's length.
+const MAX_QUOTED_LEN: usize = 256;
 
 /// The shortest text that counts as a credential after a scheme word or as a URL user.
 const CREDENTIAL_MIN_LEN: usize = 8;
 
 /// `"[redacted]"` if `text` holds a private key, an `otpauth://` URI or an `Authorization:`
-/// header; otherwise `text` with every URL password, secret `key=value`, scheme credential and
-/// JWT masked.
+/// header; otherwise `text` with every URL password, secret `key=value` or `key: value`, scheme
+/// credential and JWT masked. Each pass takes time linear in the length of `text`.
 pub(in crate::events) fn redact_text(text: &str) -> String {
     if is_secret_text(text) {
         return REDACTED.to_owned();
     }
     let masked = mask_url_userinfo(text);
-    let masked = mask_after_words(&masked, &SECRET_KEYS, key_value);
+    let masked = mask_key_values(&masked);
     let masked = mask_after_words(&masked, &SCHEMES, scheme_credential);
     mask_jwts(&masked)
 }
@@ -98,48 +101,113 @@ fn mask_after_words(
     masked
 }
 
-/// After a secret key: `=` and a value up to whitespace, `&`, `;` or `,`, or the inside of a
-/// quoted value.
-fn key_value(rest: &str) -> Option<(usize, usize)> {
-    let value = rest.strip_prefix('=')?;
-    let len = match value.as_bytes().first() {
-        Some(&quote @ (b'\'' | b'"')) => {
-            let close = value[1..].find(char::from(quote))?;
-            return (close > 0).then_some((2, 2 + close));
-        }
-        _ => value
-            .find(|c: char| c.is_whitespace() || matches!(c, '&' | ';' | ','))
-            .unwrap_or(value.len()),
-    };
-    (len > 0).then_some((1, 1 + len))
+/// A byte of a key in `key=value` text: ASCII letters, digits, `_`, `-` and `.`
+/// (`spring.datasource.password`).
+fn is_key_byte(byte: u8) -> bool {
+    byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-' | b'.')
 }
 
-/// After a scheme word: whitespace or `:`, then a credential-shaped token.
+/// Masks the value of every `key=value` and `key: value` whose key names a secret by the same
+/// rules as a JSON key (`password`, `PGPASSWORD`, `dbPassword`, `accessToken`, `api_key`,
+/// `client_secret`, …), including embedded JSON (`{"password":"…"}`). The separator is `=` or
+/// `:` with optional spaces around it and an optional quote before it; a quoted value is masked
+/// inside its quotes. `true` and `false` are never masked, like JSON booleans.
+fn mask_key_values(text: &str) -> String {
+    let mut masked = String::with_capacity(text.len());
+    let (mut copied, mut index) = (0, 0);
+    while let Some(offset) = text[index..].find(['=', ':']) {
+        let separator = index + offset;
+        index = separator + 1;
+        let secret_key =
+            key_before(text, separator, copied).is_some_and(|key| secrecy(key) != Secrecy::Plain);
+        if let Some((start, end)) = secret_key.then(|| value_after(text, index)).flatten() {
+            masked.push_str(&text[copied..start]);
+            masked.push_str(REDACTED);
+            (copied, index) = (end, end);
+        }
+    }
+    masked.push_str(&text[copied..]);
+    masked
+}
+
+/// The key that ends before the separator at `separator`: optional spaces, an optional quote,
+/// then key bytes, never reaching back before `floor`.
+fn key_before(text: &str, separator: usize, floor: usize) -> Option<&str> {
+    let bytes = text.as_bytes();
+    let mut end = separator;
+    while end > floor && matches!(bytes[end - 1], b' ' | b'\t') {
+        end -= 1;
+    }
+    if end > floor && matches!(bytes[end - 1], b'"' | b'\'') {
+        end -= 1;
+    }
+    let mut start = end;
+    while start > floor && is_key_byte(bytes[start - 1]) {
+        start -= 1;
+    }
+    (start < end).then(|| &text[start..end])
+}
+
+/// The byte range of the value that starts at `from`: optional spaces, then the inside of a
+/// quoted value, or an unquoted value up to whitespace, `&`, `;`, `,`, `}` or a quote. An empty
+/// value, `true`, `false`, or an object or array (`{`, `[`) gives `None`.
+fn value_after(text: &str, from: usize) -> Option<(usize, usize)> {
+    let bytes = text.as_bytes();
+    let mut start = from;
+    while start < bytes.len() && matches!(bytes[start], b' ' | b'\t') {
+        start += 1;
+    }
+    if let Some(&quote @ (b'"' | b'\'')) = bytes.get(start) {
+        start += 1;
+        let window = &text.as_bytes()[start..bytes.len().min(start + MAX_QUOTED_LEN)];
+        if let Some(close) = window.iter().position(|byte| *byte == quote) {
+            return (close > 0).then_some((start, start + close));
+        }
+    }
+    if matches!(bytes.get(start), Some(b'{' | b'[')) {
+        return None;
+    }
+    let len = text[start..]
+        .find(|c: char| c.is_whitespace() || matches!(c, '&' | ';' | ',' | '}' | '"' | '\''))
+        .unwrap_or(text.len() - start);
+    let value = &text[start..start + len];
+    let boolean = value.eq_ignore_ascii_case("true") || value.eq_ignore_ascii_case("false");
+    (len > 0 && !boolean).then_some((start, start + len))
+}
+
+/// After a scheme word: whitespace or `:`, an optional quote, then a credential-shaped token.
 fn scheme_credential(rest: &str) -> Option<(usize, usize)> {
     let gap = rest
         .bytes()
         .take_while(|byte| byte.is_ascii_whitespace() || *byte == b':')
         .count();
-    let len = rest.as_bytes()[gap..]
+    if gap == 0 {
+        return None;
+    }
+    let start = gap + usize::from(matches!(rest.as_bytes().get(gap), Some(b'"' | b'\'')));
+    let len = rest.as_bytes()[start..]
         .iter()
         .take_while(|byte| is_credential_byte(**byte))
         .count();
-    (gap > 0 && looks_like_credential(&rest[gap..gap + len])).then_some((gap, gap + len))
+    looks_like_credential(&rest[start..start + len]).then_some((start, start + len))
 }
 
 /// Replaces every JWT: `eyJ` starting a word, then three base64url segments split by `.`, the
 /// payload not empty and the signature possibly empty (unsigned); a `.` right after it is kept.
 fn mask_jwts(text: &str) -> String {
     let mut masked = String::with_capacity(text.len());
-    let mut copied = 0;
+    let (mut copied, mut scanned_to) = (0, 0);
     for (start, _) in text.match_indices("eyJ") {
-        if start < copied || !starts_word(text, start) {
+        // An `eyJ` inside a run already scanned is part of that run: skipping it keeps the
+        // pass linear (`"eyJ.".repeat(…)`).
+        if start < scanned_to || !starts_word(text, start) {
             continue;
         }
         let len = text[start..]
             .bytes()
             .take_while(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.'))
             .count();
+        scanned_to = start + len;
         let run = &text[start..start + len];
         let parts: Vec<&str> = run.split('.').collect();
         // `header.payload.` is an unsigned JWT; a fourth, empty part is a full stop after one.
@@ -185,9 +253,13 @@ fn mask_url_userinfo(text: &str) -> String {
 }
 
 /// The byte range of the secret in the userinfo at the start of `url` (the text after `://`).
+/// It reads only the authority and, for an unencoded password, the text up to the next `@`,
+/// whitespace or `://`, so the scan over all URLs stays linear (`"://".repeat(…)`).
 fn userinfo_secret(url: &str) -> Option<(usize, usize)> {
-    let word = &url[..url.find(char::is_whitespace).unwrap_or(url.len())];
-    let authority = &word[..word.find(['/', '?', '#']).unwrap_or(word.len())];
+    let authority_len = url
+        .find(|c: char| matches!(c, '/' | '?' | '#') || c.is_whitespace())
+        .unwrap_or(url.len());
+    let authority = &url[..authority_len];
     if let Some(at) = authority.rfind('@') {
         let userinfo = &authority[..at];
         return match userinfo.find(':') {
@@ -205,6 +277,11 @@ fn userinfo_secret(url: &str) -> Option<(usize, usize)> {
     if !port.is_empty() && port.bytes().all(|byte| byte.is_ascii_digit()) {
         return None;
     }
-    let at = word[authority.len()..].find('@')? + authority.len();
-    Some((colon + 1, at))
+    let tail = &url[authority_len..];
+    let at = tail
+        .char_indices()
+        .take_while(|(index, c)| !c.is_whitespace() && !tail[*index..].starts_with("://"))
+        .find(|(_, c)| *c == '@')?
+        .0;
+    Some((colon + 1, authority_len + at))
 }

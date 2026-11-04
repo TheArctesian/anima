@@ -45,7 +45,7 @@ begin
             pg_catalog.to_char(utc_day + 1, 'YYYY-MM-DD') || ' 00:00:00+00'
         );
         -- Every grant the default privileges just added, to any role, goes.
-        execute pg_catalog.format('revoke all on events.%I from public', child);
+        execute pg_catalog.format('revoke all on events.%I from public cascade', child);
         for holder in
             select distinct a.grantee
             from pg_catalog.pg_class c
@@ -55,7 +55,7 @@ begin
                 and a.grantee operator(pg_catalog.<>) 0
         loop
             execute pg_catalog.format(
-                'revoke all on events.%I from %I',
+                'revoke all on events.%I from %I cascade',
                 child,
                 pg_catalog.pg_get_userbyid(holder)
             );
@@ -76,7 +76,8 @@ grant execute on function events.ensure_day_partition(text, timestamptz) to anim
 
 -- Once, for the partitions that already exist (an installation upgraded from 0500): the same
 -- reset, so a grant that 0500's function left on an older partition does not reach the hub or
--- trip its start check.
+-- trip its start check. CASCADE (here and in the function) also removes grants that a grantee
+-- passed on with GRANT OPTION, which would otherwise abort the revoke.
 do $$
 declare
     existing pg_catalog.regclass;
@@ -90,7 +91,7 @@ begin
             pg_catalog.to_regclass('events.audit_log')
         )
     loop
-        execute pg_catalog.format('revoke all on %s from public', existing);
+        execute pg_catalog.format('revoke all on %s from public cascade', existing);
         for holder in
             select distinct a.grantee
             from pg_catalog.pg_class c
@@ -100,7 +101,7 @@ begin
                 and a.grantee operator(pg_catalog.<>) 0
         loop
             execute pg_catalog.format(
-                'revoke all on %s from %I',
+                'revoke all on %s from %I cascade',
                 existing,
                 pg_catalog.pg_get_userbyid(holder)
             );

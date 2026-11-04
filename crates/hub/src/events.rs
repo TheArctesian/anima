@@ -143,9 +143,11 @@ pub async fn create_partitions_ahead(
 /// Stores the event, then publishes it on `bus` as `Signal::Event`.
 ///
 /// `message` must never hold a password, key, token or session content (LOG-007). As a
-/// backstop, `message` and the device name are stored and broadcast with the value rules of
-/// the audit redaction applied: a URL password is masked, and a text holding a private key, an
-/// `otpauth://` URI or an HTTP credential is replaced with `"[redacted]"`.
+/// backstop, `message` and the device name are stored and broadcast with the text rules of the
+/// audit redaction applied (D-3 *Values*): a text holding a private key, an `otpauth://` URI or
+/// an `Authorization:` header is replaced with `"[redacted]"`; otherwise only the secrets inside
+/// it are masked (URL passwords, values of secret `key=value` or `key: value` pairs, the
+/// credential after `Bearer`, `Basic` or `token`, and JWTs).
 ///
 /// If the day partition is missing, it is created inside the caller's transaction (see
 /// `create_partitions_ahead` for the lock this takes).

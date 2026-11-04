@@ -43,7 +43,7 @@ const HOLDER_METADATA: [&str; 11] = [
 
 /// Values of a key named exactly `auth` that name an authentication method, compared
 /// normalised (`private_key` gives `privatekey`). Any other scalar under `auth` is a secret.
-const AUTH_METHODS: [&str; 7] = [
+const AUTH_METHODS: [&str; 11] = [
     "password",
     "key",
     "publickey",
@@ -51,6 +51,10 @@ const AUTH_METHODS: [&str; 7] = [
     "none",
     "token",
     "totp",
+    "basic",
+    "agent",
+    "keyboardinteractive",
+    "kerberos",
 ];
 
 /// Replaces every secret in `value` with `"[redacted]"`, at any depth and inside arrays:
@@ -132,12 +136,16 @@ fn is_metadata(key: &str, value: &Value) -> bool {
 /// holder, any other scalar is hidden.
 fn redact_auth(value: Value) -> Value {
     match value {
-        Value::String(method) if AUTH_METHODS.contains(&normalise(&method).as_str()) => {
-            Value::String(method)
-        }
+        Value::String(method) if is_auth_method(&method) => Value::String(method),
         Value::Object(_) | Value::Array(_) => redact_holder(value),
         scalar => conceal(scalar),
     }
+}
+
+/// Both sides are normalised, which drops a plural `s` (`kerberos` gives `kerbero`).
+fn is_auth_method(method: &str) -> bool {
+    let method = normalise(method);
+    AUTH_METHODS.iter().any(|known| normalise(known) == method)
 }
 
 fn conceal(value: Value) -> Value {

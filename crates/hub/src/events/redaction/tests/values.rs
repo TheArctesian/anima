@@ -112,9 +112,78 @@ fn log_007_redaction_masks_secret_key_value_pairs() {
         "cwd=/tmp",
         "OLDPWD=/home/op",
         "passwordless=true",
+        "hasPassword=False",
         "password=",
         "password='' x",
+        "password: {\"a\": 1}",
+        "status: down, port=22",
     ]);
+}
+
+/// Any key that names a secret by the JSON-key rules, with `=` or `:` and spaces or quotes
+/// around the separator, including embedded JSON (S2).
+#[test]
+fn log_007_redaction_masks_values_of_text_keys_named_like_secrets() {
+    masks(&[
+        ("password = hunter2", "password = [redacted]"),
+        ("password= hunter2", "password= [redacted]"),
+        ("password: hunter2", "password: [redacted]"),
+        ("PGPASSWORD=hunter2 psql", "PGPASSWORD=[redacted] psql"),
+        ("dbPassword=hunter2", "dbPassword=[redacted]"),
+        (
+            "wss://hub/tunnel?accessToken=abc123def",
+            "wss://hub/tunnel?accessToken=[redacted]",
+        ),
+        ("api_key=abc123def456", "api_key=[redacted]"),
+        ("secret=abc123def456", "secret=[redacted]"),
+        ("client_secret=x&id=1", "client_secret=[redacted]&id=1"),
+        (
+            "body {\"password\":\"hunter2\",\"user\":\"a\"}",
+            "body {\"password\":\"[redacted]\",\"user\":\"a\"}",
+        ),
+        (
+            "body {\"token\":\"ghp_AAAAsecret1\"}",
+            "body {\"token\":\"[redacted]\"}",
+        ),
+        ("{\"pin\": 1234}", "{\"pin\": [redacted]}"),
+        ("token: \"abc123def456\"", "token: \"[redacted]\""),
+        ("'password' : 'hunter2'", "'password' : '[redacted]'"),
+        (
+            "spring.datasource.password=x",
+            "spring.datasource.password=[redacted]",
+        ),
+        ("Bearer \"ghp_AAAAsecret1\"", "Bearer \"[redacted]\""),
+    ]);
+}
+
+/// Inputs built to make a scan quadratic finish in linear time (S1). 200 KB each; a
+/// quadratic scan took seconds in a release build, the bound leaves wide room for a debug one.
+#[test]
+fn log_007_redaction_of_pathological_text_takes_linear_time() {
+    let units = [
+        "eyJ.",
+        "://",
+        "://a:b",
+        "eyJa.",
+        "token.",
+        "token ",
+        "a=",
+        "password=\"",
+        "x:",
+        "Bearer \"",
+        "@",
+        "password=a",
+    ];
+    for unit in units {
+        let text = unit.repeat(200_000 / unit.len());
+        let started = std::time::Instant::now();
+        let _ = redact_text(&text);
+        let elapsed = started.elapsed();
+        assert!(
+            elapsed < std::time::Duration::from_secs(2),
+            "{unit:?}: {elapsed:?}"
+        );
+    }
 }
 
 #[test]
