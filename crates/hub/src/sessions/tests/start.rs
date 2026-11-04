@@ -64,6 +64,34 @@ fn gw_012_values_beyond_u32_are_refused_not_wrapped() {
 }
 
 #[test]
+fn gw_012_a_ticket_holds_only_a_zone_name_of_at_most_64_bytes() {
+    let with_zone = |zone: &str| DisplayRequest {
+        timezone: Some(zone.to_owned()),
+        ..request(1280, 800, 96)
+    };
+    let at_cap = format!("Etc/{}", "x".repeat(60));
+    assert!(checked_display(&with_zone(&at_cap)).is_ok());
+    assert!(checked_display(&with_zone("Pacific/Auckland")).is_ok());
+    for refused in [
+        format!("{at_cap}x"),
+        "Europe/Berlin\n".to_owned(),
+        "a//b".to_owned(),
+    ] {
+        let fields = checked_display(&with_zone(&refused)).unwrap_err();
+        let named: Vec<&str> = fields.iter().map(|field| field.field).collect();
+        assert_eq!(named, ["display.timezone"], "{refused:?}");
+    }
+    // Named after the bounds, in input order.
+    let both = DisplayRequest {
+        timezone: Some("not a zone".to_owned()),
+        ..request(0, 800, 96)
+    };
+    let fields = checked_display(&both).unwrap_err();
+    let named: Vec<&str> = fields.iter().map(|field| field.field).collect();
+    assert_eq!(named, ["display.widthPx", "display.timezone"]);
+}
+
+#[test]
 fn gw_011_loopback_link_local_multicast_and_unspecified_literals_are_refused() {
     for refused in [
         "127.0.0.1",

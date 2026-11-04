@@ -32,7 +32,7 @@ use crate::{
 };
 
 pub use end::Actor;
-pub use live::{Closing, EndCause, Live, Redeemed, Refused, Tunnel};
+pub use live::{EndCause, Live, Redeemed, Refused, Tunnel};
 pub use model::{EndReason, FieldError, HostKey, Protocol, Session, SessionEnd, UnknownValue};
 pub use public_key::{BadFingerprint, BadKey, Fingerprint, PublicKey};
 pub use start::{DEFAULT_DPI, DisplayRequest, StartRequest, start};
@@ -136,11 +136,26 @@ pub async fn host_keys(
     store::host_keys(db, devices).await
 }
 
-/// Ends, with `HUB_SHUTDOWN` at `now`, every session a previous hub process left open. The hub
-/// calls it once at start, before it serves; returns how many rows it ended.
+/// Ends, with `HUB_SHUTDOWN` at `now`, every session a previous hub process left open, each
+/// with its `session.end` audit entry and no event (D-13). The hub calls it once at start,
+/// before it serves; returns how many rows it ended.
 ///
 /// # Errors
-/// `Database` when the update fails.
+/// `Database` or `Events` when the rows or audit entries cannot be written; then none is.
 pub async fn close_stale(db: &PgPool, now: DateTime<Utc>) -> Result<u64, Error> {
-    store::close_stale(db, now).await
+    end::close_stale(db, now).await
+}
+
+/// Ends every session this hub holds with `HUB_SHUTDOWN` at `now`, then refuses new ones
+/// (D-10). The hub calls it once on graceful shutdown, with the `Live` it serves, when the
+/// shutdown signal arrives and before the runtime stops: tunnels are upgraded connections,
+/// which the server's graceful drain does not end. It returns when every open
+/// tunnel has written its end, or after `live`'s tunnel end wait (5 s by default); pending
+/// tickets' rows end with their audit entry. What it misses, the next start's
+/// [`close_stale`] ends.
+///
+/// # Errors
+/// `Database` or `Events` when a pending ticket's row or audit entry cannot be written.
+pub async fn shut_down(db: &PgPool, live: &Live, now: DateTime<Utc>) -> Result<(), Error> {
+    end::shut_down(db, live, now).await
 }

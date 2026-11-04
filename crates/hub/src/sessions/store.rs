@@ -12,7 +12,7 @@ use super::{
     public_key::{BadKey, PublicKey},
 };
 use crate::{
-    events::Operator,
+    events::{ClientAddr, Operator},
     ids::{DeviceId, OperatorId, SessionId},
 };
 
@@ -168,19 +168,35 @@ pub(super) async fn get<'e>(
     Ok(row.map(Session::try_from).transpose()?)
 }
 
-/// Ends every live session with `HUB_SHUTDOWN` at `now`; returns how many it ended.
+/// A live row `close_stale` ended: the session and who started it, from where.
+pub(super) struct Stale {
+    pub(super) session: SessionId,
+    pub(super) operator: Operator,
+    pub(super) client: ClientAddr,
+}
+
+/// Ends every live session with `HUB_SHUTDOWN` at `now`; returns each row it ended.
 pub(super) async fn close_stale<'e>(
     db: impl PgExecutor<'e>,
     now: DateTime<Utc>,
-) -> Result<u64, Error> {
-    let closed = sqlx::query(
-        "update sessions.sessions set ended_at = $1, end_reason = $2 where ended_at is null",
+) -> Result<Vec<Stale>, Error> {
+    let rows: Vec<(SessionId, OperatorId, String, IpAddr)> = sqlx::query_as(
+        "update sessions.sessions set ended_at = $1, end_reason = $2 where ended_at is null \
+         returning id, operator_id, operator_name, client_addr",
     )
     .bind(now)
     .bind(EndReason::HubShutdown.as_str())
-    .execute(db)
+    .fetch_all(db)
     .await?;
-    Ok(closed.rows_affected())
+    let stale = rows
+        .into_iter()
+        .map(|(session, id, name, client)| Stale {
+            session,
+            operator: Operator { id, name },
+            client: ClientAddr(client),
+        })
+        .collect();
+    Ok(stale)
 }
 
 #[derive(sqlx::FromRow)]

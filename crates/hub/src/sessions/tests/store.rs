@@ -126,7 +126,10 @@ async fn log_006_r_016_runtime_role_reads_and_writes_session_tables(pool: PgPool
         reason: EndReason::RemoteClosed,
     };
     assert!(store::end(&mut *conn, id, end).await.unwrap());
-    assert_eq!(store::close_stale(&mut *conn, now()).await.unwrap(), 1);
+    let stale = store::close_stale(&mut *conn, now() + TimeDelta::minutes(3))
+        .await
+        .unwrap();
+    assert_eq!(stale.len(), 1);
     let page = store::page(&mut *conn, SessionFilter::default(), 10, None)
         .await
         .unwrap();

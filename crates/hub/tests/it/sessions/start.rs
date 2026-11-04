@@ -1,7 +1,7 @@
 //! `startSession`: the row, the audit entry and the ticket, and each refusal (K4 §1, §6,
 //! RA-008, LOG-005, API-009).
 
-use anima_hub::sessions::{Live, Protocol};
+use anima_hub::sessions::{self, Live, Protocol};
 use chrono::{DateTime, TimeDelta, Utc};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -186,6 +186,34 @@ async fn gw_012_start_session_refuses_a_display_out_of_bounds(pool: PgPool) {
     }
 }
 
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn gw_012_start_session_refuses_a_time_zone_that_is_not_a_short_zone_name(pool: PgPool) {
+    ready(&pool, &[PVE_01]).await;
+    // 65 bytes of zone-name characters: only the length is wrong.
+    let long = format!("America/{}", "A".repeat(57));
+    for zone in [long.as_str(), "Europe/../Berlin", "/etc/localtime", ""] {
+        let display = json!({ "widthPx": 1280, "heightPx": 800, "timezone": zone });
+        let error = refusal(&pool, PVE_01, display).await;
+        assert_eq!(error["extensions"]["code"], "VALIDATION", "{zone}: {error}");
+        assert_eq!(fields(&error), ["display.timezone"], "{zone}");
+    }
+    nothing_written(&pool).await;
+
+    let schema = schema_at(&pool, now(), &Live::default());
+    for zone in [
+        json!(format!("America/{}", "A".repeat(56))),
+        json!("UTC"),
+        json!(null),
+    ] {
+        let display = json!({ "widthPx": 1280, "heightPx": 800, "timezone": zone });
+        let response = schema.execute(start_request(PVE_01, &display)).await;
+        assert!(response.errors.is_empty(), "{zone}: {:?}", response.errors);
+    }
+}
+
 async fn set_host(pool: &PgPool, device: &str, host: &str) {
     sqlx::query("update devices.devices set host = $2 where id = $1::text::uuid")
         .bind(device)
@@ -279,7 +307,7 @@ async fn api_009_start_session_is_unavailable_when_the_table_is_full_or_the_hub_
     );
 
     let stopping = Live::default();
-    drop(stopping.shut_down());
+    sessions::shut_down(&pool, &stopping, now()).await.unwrap();
     let stopped = schema_at(&pool, now(), &stopping);
     let error = error_json(&stopped.execute(start_request(PVE_01, &display())).await);
     assert_eq!(error["extensions"]["code"], "UNAVAILABLE", "{error}");

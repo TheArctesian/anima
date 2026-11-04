@@ -55,7 +55,25 @@ fn bounded(value: i64, (min, max): (u32, u32), field: &'static str) -> Result<u3
         .ok_or_else(|| FieldError::new(field, format!("Enter a value from {min} to {max}.")))
 }
 
-/// The display within K4 §4's bounds, else an error for each field outside them.
+/// Longest `DisplayInput.timezone` a ticket holds, in bytes: the longest IANA zone name has
+/// 32, and `guac_protocol::is_zone_name` allows 64.
+const MAX_TIMEZONE_BYTES: usize = 64;
+
+/// The time zone, when given, as an error unless it is a zone name of at most
+/// `MAX_TIMEZONE_BYTES`. Checked here so a ticket never holds arbitrary client text; the
+/// tunnel still falls back to UTC for a value that is not a zone name (R-032 E-6).
+fn timezone_problem(timezone: Option<&str>) -> Option<FieldError> {
+    let zone = timezone?;
+    (zone.len() > MAX_TIMEZONE_BYTES || !guac_protocol::is_zone_name(zone)).then(|| {
+        FieldError::new(
+            "display.timezone",
+            "Enter an IANA time zone name, such as Europe/Berlin, or leave it empty.",
+        )
+    })
+}
+
+/// The display within K4 §4's bounds, else an error for each field outside them and for a
+/// time zone that is not a zone name.
 pub(super) fn checked_display(display: &DisplayRequest) -> Result<Display, Vec<FieldError>> {
     let side = (Display::MIN_SIDE_PX, Display::MAX_SIDE_PX);
     let width = bounded(display.width_px, side, "display.widthPx");
@@ -65,9 +83,10 @@ pub(super) fn checked_display(display: &DisplayRequest) -> Result<Display, Vec<F
         (Display::MIN_DPI, Display::MAX_DPI),
         "display.dpi",
     );
-    match (width, height, dpi) {
-        (Ok(width), Ok(height), Ok(dpi)) => Ok(Display { width, height, dpi }),
-        (width, height, dpi) => Err([width.err(), height.err(), dpi.err()]
+    let timezone = timezone_problem(display.timezone.as_deref());
+    match (width, height, dpi, timezone) {
+        (Ok(width), Ok(height), Ok(dpi), None) => Ok(Display { width, height, dpi }),
+        (width, height, dpi, timezone) => Err([width.err(), height.err(), dpi.err(), timezone]
             .into_iter()
             .flatten()
             .collect()),
@@ -115,8 +134,8 @@ fn random_token() -> Result<TicketToken, Error> {
 }
 
 /// Starts a session (K3, K4 §1): refuses a missing device (`NotFound`), a display outside
-/// K4 §4's bounds or a host that is a loopback, link-local, multicast or unspecified IP
-/// literal (`Validation`), and SSH turned off or no accepted host key (`Conflict`). Then, in
+/// K4 §4's bounds, a time zone that is not a zone name, or a host that is a loopback,
+/// link-local, multicast or unspecified IP literal (`Validation`), and SSH turned off or no accepted host key (`Conflict`). Then, in
 /// one transaction, it writes the live session row and the audit entry `session.start`, and
 /// holds a ticket that `/tunnel` redeems once within 30 s from `client`. Tickets that expired
 /// unredeemed are swept first.
