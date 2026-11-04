@@ -4,8 +4,8 @@ use std::fmt;
 
 /// A Guacamole instruction: an opcode and its arguments, in wire order.
 ///
-/// `Debug` prints the opcode (at most [`DEBUG_OPCODE_CHARS`] characters, then
-/// `…`) and the argument count only: `connect` carries passwords and keys, and
+/// `Debug` prints the opcode (at most 32 characters, then `…`) and the
+/// argument count only: `connect` carries passwords and keys, and
 /// no argument value may reach a log (LOG-007).
 #[derive(Clone, PartialEq, Eq)]
 pub struct Instruction {
@@ -13,8 +13,8 @@ pub struct Instruction {
     pub args: Vec<String>,
 }
 
-/// Longest opcode prefix that `Debug` prints; opcodes come from the peer.
-const DEBUG_OPCODE_CHARS: usize = 32;
+/// Longest prefix of a peer-supplied opcode or name that `Debug` and errors print.
+pub(crate) const NAME_CHARS: usize = 32;
 
 impl Instruction {
     #[must_use]
@@ -32,15 +32,23 @@ impl Instruction {
 
 impl fmt::Debug for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut opcode: String = self.opcode.chars().take(DEBUG_OPCODE_CHARS).collect();
-        if self.opcode.chars().nth(DEBUG_OPCODE_CHARS).is_some() {
-            opcode.push('…');
-        }
         f.debug_struct("Instruction")
-            .field("opcode", &opcode)
+            .field("opcode", &truncated(&self.opcode, NAME_CHARS))
             .field("arg_count", &self.args.len())
             .finish()
     }
+}
+
+/// The first `max_chars` characters of `text`, then `…` when it is longer.
+///
+/// Opcodes, names and messages come from the peer, so they are bounded before
+/// they reach `Debug` or an error message.
+pub(crate) fn truncated(text: &str, max_chars: usize) -> String {
+    let mut prefix: String = text.chars().take(max_chars).collect();
+    if text.chars().nth(max_chars).is_some() {
+        prefix.push('…');
+    }
+    prefix
 }
 
 /// Encodes `i` as `LENGTH.VALUE` elements separated by `,` and ended by `;`.
