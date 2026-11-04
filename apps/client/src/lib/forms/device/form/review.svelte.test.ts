@@ -149,3 +149,46 @@ it('DEV-010: a tag is added with Enter alone, and the change is announced polite
   expect(live?.textContent).toBe('Removed tag edge');
   expect(document.querySelectorAll('.chip')).toHaveLength(0);
 });
+
+it('DEV-013: Test connection clicked twice while the first test is pending calls onTest once', async () => {
+  const { onTest } = show(SAVED);
+  onTest.mockImplementation(() => new Promise(() => undefined));
+
+  button('Test connection').click();
+  button('Test connection').click();
+  await settle();
+
+  expect(onTest).toHaveBeenCalledOnce();
+});
+
+it('DEV-010: saving twice while the first save is pending (click, then a form submit) calls onSave once', async () => {
+  const { onSave } = show(SAVED);
+  onSave.mockImplementation(() => new Promise(() => undefined));
+
+  button('Save').click();
+  document.querySelector('form')?.requestSubmit();
+  await settle();
+
+  expect(onSave).toHaveBeenCalledOnce();
+});
+
+it('D-4: Remove credential clicked twice while the first call is pending calls onClearCredential once', async () => {
+  const onClearCredential = vi.fn(() => new Promise<HubResult<unknown>>(() => undefined));
+  show(SAVED, { credentialStored: true, onClearCredential });
+
+  button('Remove credential').click();
+  button('Remove credential').click();
+  await settle();
+
+  expect(onClearCredential).toHaveBeenCalledOnce();
+});
+
+it('D-4: a test result does not outlive a successful save', async () => {
+  show(SAVED);
+  await test();
+  expect(status()).toContain('accepted the credential');
+
+  await save();
+
+  expect(status()).toBe('');
+});

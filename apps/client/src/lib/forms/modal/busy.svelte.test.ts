@@ -131,3 +131,42 @@ it('SEC-007: Accept stays in the dialog while busy and is not run twice', () => 
   expect(onAccept).toHaveBeenCalledOnce();
   expect(document.activeElement).toBe(accept);
 });
+
+it('Modal: opening and closing repeatedly leaves exactly one portal while open and none after', async () => {
+  const state = confirmation(() => Promise.resolve(OK), () => undefined, false);
+
+  for (let round = 0; round < 3; round += 1) {
+    state.open = true;
+    flushSync();
+    expect(document.querySelectorAll('.portal')).toHaveLength(1);
+    state.open = false;
+    flushSync();
+    await tick();
+    await tick();
+    expect(document.querySelectorAll('.portal')).toHaveLength(0);
+  }
+});
+
+it('Modal: closing, reopening mid-outro and then unmounting leaves no portal under body', () => {
+  const state = confirmation(() => Promise.resolve(OK), () => undefined);
+
+  state.open = false;
+  flushSync();
+  state.open = true;
+  flushSync();
+  if (app) void unmount(app);
+  app = undefined;
+
+  expect(document.querySelectorAll('.portal')).toHaveLength(0);
+});
+
+it('Modal: Escape is not passed on to listeners outside the dialog', () => {
+  const outside = vi.fn();
+  document.addEventListener('keydown', outside);
+  confirmation(() => Promise.resolve(OK), () => undefined);
+
+  press('Escape');
+  document.removeEventListener('keydown', outside);
+
+  expect(outside).not.toHaveBeenCalled();
+});

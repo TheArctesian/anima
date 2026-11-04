@@ -50,6 +50,8 @@
   let siteId = $state(untrack(() => sites[0]?.id ?? ''));
   let errors = $state<FieldError[]>([]);
   let saving = $state(false);
+  /** Counts successful saves; the connection test starts afresh after each, so no typed secret outlives the save. */
+  let saves = $state(0);
   let clearing = $state(false);
   let general = $state(true);
   let ssh = $state(untrack(() => section !== 'rdp'));
@@ -99,6 +101,7 @@
     if (result.ok) {
       values.credential = { password: '', privateKey: '', passphrase: '' };
       errors = [];
+      saves += 1;
     } else {
       await show(fieldErrorsFrom(result.error));
     }
@@ -135,7 +138,9 @@
       <DisclosureSection title="SSH" bind:open={ssh}>
         <SshSection bind:values {errors} {credentialStored} {clearing} onClearCredential={clearCredential} />
         {#if values.ssh.enabled}
+          {#key saves}
           <TestConnection {initial} {values} {deviceId} {canTest} {onTest} {onAcceptHostKey} />
+        {/key}
         {/if}
       </DisclosureSection>
     </div>
