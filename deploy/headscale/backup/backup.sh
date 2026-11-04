@@ -69,13 +69,12 @@ integrity="$("$SQLITE3" -batch -bail -readonly "$staging/db.sqlite" "PRAGMA inte
   || fail "sqlite3 integrity_check could not run on the snapshot"
 [[ "$integrity" == "ok" ]] || fail "integrity_check of the database snapshot did not return ok"
 
-for source in "$LIB/noise_private.key" "$LIB/derp_server_private.key" \
+for file in "$LIB/noise_private.key" "$LIB/derp_server_private.key" \
   "$CONFIG/config.yaml" "$CONFIG/policy.hujson"; do
-  cp -- "$source" "$staging/" || fail "could not copy $source"
+  cp -- "$file" "$staging/" || fail "could not copy $file"
 done
 
+# restic exits 0 only when the snapshot is saved; 3 (some files unreadable) is a failure here.
 restic_run backup --host anima-vps --tag headscale "$staging" \
   || fail "restic backup failed (no snapshot is guaranteed)"
-restic_run snapshots --latest 1 --host anima-vps --tag headscale \
-  || fail "restic snapshots could not confirm the new snapshot"
 printf 'headscale-backup: snapshot sent\n'

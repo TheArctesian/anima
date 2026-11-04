@@ -26,6 +26,7 @@ PrivateTmp=yes
 PrivateDevices=yes
 # Works on the local folder only.
 PrivateNetwork=yes
+IPAddressDeny=any
 ProtectKernelTunables=yes
 ProtectKernelModules=yes
 ProtectKernelLogs=yes

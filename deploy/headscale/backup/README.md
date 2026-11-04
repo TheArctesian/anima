@@ -3,11 +3,13 @@
 Every day the VPS takes a consistent snapshot of the Headscale database, adds the two
 private keys and the configuration, and sends it with `restic` to a `rest-server` on the
 home Linux PC over the VPN. restic encrypts on the VPS. The rest-server runs
-`--append-only --private-repos`, so a compromised VPS can add snapshots but cannot
-delete or change old ones. Retention and pruning run only on the home PC.
+`--append-only --private-repos`. A compromised VPS can add snapshots, but it cannot
+delete old snapshots as long as `prune.sh` refuses anomalous snapshot lists (see
+[Risks](#risks)). Retention and pruning run only on the home PC.
 
 The full setup and the restore drill are in the VPN guide (`docs/setup/vpn.md`). This
-file lists what goes where.
+file lists what goes where. The hub reaches `10.10.0.0/24` only if the VPS runs
+`tailscale up --accept-routes` (also in the guide).
 
 ## File map
 
@@ -21,6 +23,7 @@ installed names below.
 | `headscale-backup.unit` | VPS | `/etc/systemd/system/headscale-backup.service` | `0644` |
 | `headscale-backup.timer` | VPS | `/etc/systemd/system/headscale-backup.timer` | `0644` |
 | `rest-server.unit` | home PC | `/etc/systemd/system/rest-server.service` | `0644` |
+| `rest-server-allow.conf` | home PC | `/etc/systemd/system/rest-server.service.d/allow.conf`, placeholder replaced | `0644` |
 | `prune.sh` | home PC | `/usr/local/bin/restic-prune` | `0755` |
 | `restic-prune.unit` | home PC | `/etc/systemd/system/restic-prune.service` | `0644` |
 | `restic-prune.timer` | home PC | `/etc/systemd/system/restic-prune.timer` | `0644` |
@@ -35,8 +38,13 @@ Files the operator creates (secrets: never commit them, never print them):
 | `/etc/restic/headscale-password` | home PC | the same restic encryption password | `0600 root` |
 | `/etc/restic/rest-server.env` | home PC | `HOME_PC_LAN_IP=10.10.0.X` (not a secret) | `0644` |
 
-Packages: `sqlite3` and `restic` on the VPS; `restic` and `rest-server` on the home PC,
-with a system user `restic` that owns `/srv/restic` (`0700`).
+Make the rest-server password hex (`openssl rand -hex 32`): it sits inside a URL, and
+hex needs no URL encoding.
+
+Packages: `sqlite3` and `restic` on the VPS; `restic`, `rest-server` and `jq` on the home
+PC, with a system user `restic` that owns `/srv/restic` (`0700`). Put `/srv/restic` on its
+own filesystem or under a quota, so a flood of uploads cannot fill the home PC's disk
+before `--max-size` (1 GiB) stops it.
 
 ## What a snapshot holds
 
@@ -55,8 +63,23 @@ systemctl start headscale-backup.service        # first run by hand
 journalctl -u headscale-backup.service -n 50
 
 # home PC
+systemctl daemon-reload
 systemctl enable --now rest-server.service restic-prune.timer
 ```
+
+First real run on the VPS, check:
+
+1. The database copy works under `ReadOnlyPaths`. `sqlite3 -readonly` opens the live WAL
+   database read-only. If the journal shows `unable to open database file (14)` while
+   Headscale is stopped, start Headscale once (it creates `db.sqlite-wal` and
+   `db.sqlite-shm`) and run the backup again. If the error persists, add
+   `ReadWritePaths=/opt/anima/headscale/lib/db.sqlite-shm` to the unit (the `-shm` file
+   only, never the whole folder).
+2. `ls -ln /opt/anima/headscale/lib` shows owner `0` for every file. The unit has no
+   capabilities; if Headscale's files belong to another user, add
+   `CapabilityBoundingSet=CAP_DAC_READ_SEARCH` to the unit.
+3. On the home PC, `journalctl -u rest-server.service` shows the VPS's request coming
+   from the address in `allow.conf`.
 
 ## Restore
 
@@ -80,10 +103,40 @@ docker compose exec headscale headscale nodes list     # every node is listed
 rm -rf /root/headscale-restore
 ```
 
-If the VPS is lost, restore on the home PC from the local folder, then copy the files to
-the new VPS over SSH:
+If the VPS is lost, restore on the home PC from the local folder. Run as root without a
+cache or a lock, so nothing is written into the `restic`-owned repository:
 
 ```sh
 restic -r /srv/restic/headscale-vps/headscale --password-file /etc/restic/headscale-password \
-  restore latest --host anima-vps --tag headscale --target /root/headscale-restore
+  --no-cache --no-lock restore latest --host anima-vps --tag headscale --target /root/headscale-restore
+src="$(dirname "$(find /root/headscale-restore -name db.sqlite)")"
+rsync -a --chmod=D0700,F0600 "$src"/ root@<NEW_VPS_IP>:/root/headscale-restore/
+rm -rf /root/headscale-restore
 ```
+
+Then on the new VPS set `src=/root/headscale-restore` and run the steps above from
+`cd /opt/anima/headscale` on.
+
+## Risks
+
+- **Snapshot flooding.** The VPS sets its own snapshot times. Retention is by age
+  (`--keep-within 14d --keep-within-weekly 2m --keep-within-monthly 1y`), and
+  `prune.sh` refuses to prune when a snapshot is dated more than an hour in the future or
+  a UTC day has more than two snapshots. After a refusal, inspect
+  `restic snapshots --host anima-vps --tag headscale` and forget the bad snapshot IDs by
+  hand. Running the backup by hand more than once a day also triggers a refusal.
+  Remaining gap: junk dated in the past, at most two per day, can replace the weekly and
+  monthly snapshot kept for weeks older than 14 days. It cannot touch the last 14 days.
+- **The home PC holds the restic password**, because pruning needs it. Anyone with root on
+  the home PC can decrypt the backups, including the Headscale private keys.
+- **rest-server and prune share the `restic` user.** rest-server writes the repository
+  files, so its user owns them: a compromised rest-server can delete the repository
+  whichever user runs prune. Append-only protects against a compromised client (the
+  VPS), not a compromised server. A separate prune user would not fix that. It would also
+  have to share write access to the repository folders, and a prune run as root would
+  leave files rest-server cannot read. Prune therefore runs as `restic`. The cost: while
+  prune runs, a process running as `restic` could read the password credential. The
+  defences are around rest-server: only the hub's VPN address may connect, it listens on
+  the LAN address only, and it runs sandboxed with no capabilities.
+- **Stale backups are not alerted yet** (deferred, issue #1). Check
+  `systemctl list-timers headscale-backup.timer` and the journal.

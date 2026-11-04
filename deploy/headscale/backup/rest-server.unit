@@ -1,8 +1,10 @@
 # Home Linux PC: restic rest-server that receives the VPS backups (VPS-006, decision D-12).
 # Install as /etc/systemd/system/rest-server.service (see README.md).
 # --append-only: a client can add snapshots but never delete or overwrite them, so a
-# compromised VPS cannot destroy old backups. --private-repos: the user headscale-vps
-# may only use /srv/restic/headscale-vps/.
+# compromised VPS cannot delete old snapshots as long as prune.sh refuses anomalous
+# snapshot lists. --private-repos: the user headscale-vps may only use
+# /srv/restic/headscale-vps/. --max-size caps the space a client can fill (1 GiB, about
+# ten times the expected repository).
 [Unit]
 Description=restic rest-server for off-site backups
 Wants=network-online.target
@@ -14,8 +16,11 @@ User=restic
 Group=restic
 # Holds HOME_PC_LAN_IP=10.10.0.X, the home PC's LAN address; not a secret.
 EnvironmentFile=/etc/restic/rest-server.env
-ExecStart=/usr/local/bin/rest-server --listen ${HOME_PC_LAN_IP}:8000 --path /srv/restic --append-only --private-repos --htpasswd-file /etc/restic/htpasswd
+# Without the address rest-server would listen on every interface (":8000").
+ExecStartPre=/usr/bin/test -n ${HOME_PC_LAN_IP}
+ExecStart=/usr/local/bin/rest-server --listen ${HOME_PC_LAN_IP}:8000 --path /srv/restic --append-only --private-repos --htpasswd-file /etc/restic/htpasswd --max-size 1073741824
 Restart=on-failure
+RestartSec=10
 UMask=0077
 
 CapabilityBoundingSet=
@@ -44,9 +49,9 @@ SystemCallArchitectures=native
 SystemCallFilter=@system-service
 SystemCallFilter=~@privileged
 SystemCallErrorNumber=EPERM
-# Clients: the tailnet (the VPS arrives from its tailnet address) and the home LAN.
+# No client is allowed here. The drop-in rest-server-allow.conf allows only the hub's VPN
+# address; until the operator installs it, every connection is refused.
 IPAddressDeny=any
-IPAddressAllow=localhost 10.10.0.0/24 100.64.0.0/10 fd7a:115c:a1e0::/48
 
 [Install]
 WantedBy=multi-user.target

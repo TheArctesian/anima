@@ -18,6 +18,8 @@ Environment=RESTIC_PASSWORD_FILE=%d/restic-password
 CacheDirectory=headscale-backup
 CacheDirectoryMode=0700
 UMask=0077
+# A core dump of restic or sqlite3 could hold the keys or the password.
+LimitCORE=0
 
 # Sandbox. Runs as root only so that it can read the root-owned 0600 key files by
 # ownership; that needs no capability, so the bounding set is empty.
