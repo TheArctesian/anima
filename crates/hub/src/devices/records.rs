@@ -67,7 +67,6 @@ pub(super) fn to_devices(rows: Vec<DeviceRow>) -> Result<Vec<Device>, Error> {
         .collect::<Result<_, _>>()?)
 }
 
-#[cfg_attr(not(test), expect(dead_code, reason = "used by devices GraphQL"))]
 pub(super) fn to_site((id, name, subnet): (SiteId, String, IpNet)) -> Site {
     Site { id, name, subnet }
 }

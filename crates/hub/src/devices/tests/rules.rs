@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use super::*;
 use super::{fields, new_device, ssh};
 
@@ -162,57 +160,27 @@ fn dev_010_change_reports_every_bad_present_field() {
 }
 
 #[test]
-fn vpn_001_subnet_must_be_a_network_address() {
+fn vpn_001_site_name_is_trimmed_and_keeps_the_parsed_subnet() {
     let site = validate_new_site(&NewSiteInput {
         name: " home ".into(),
-        subnet: "10.10.0.0/24".into(),
+        subnet: "10.10.0.0/24".parse().unwrap(),
     })
     .unwrap();
     assert_eq!(site.name, "home");
-    assert_eq!(site.subnet, ipnet::IpNet::from_str("10.10.0.0/24").unwrap());
-    let errors = validate_new_site(&NewSiteInput {
-        name: "home".into(),
-        subnet: "10.10.0.5/24".into(),
-    })
-    .unwrap_err();
-    assert_eq!(fields(&errors), ["subnet"]);
-    assert!(errors[0].message.contains("10.10.0.0/24"));
+    assert_eq!(site.subnet.to_string(), "10.10.0.0/24");
 }
 
 #[test]
-fn vpn_001_subnet_rejects_text_that_is_not_a_cidr() {
-    for bad in ["", "10.10.0.0", "10.10.0.0/33", "home"] {
-        let errors = validate_new_site(&NewSiteInput {
-            name: "home".into(),
-            subnet: bad.into(),
-        })
-        .unwrap_err();
-        assert_eq!(fields(&errors), ["subnet"], "{bad:?}");
-    }
-    assert!(
+fn vpn_001_site_name_is_1_to_64_characters() {
+    let site = |name: String| {
         validate_new_site(&NewSiteInput {
-            name: "v6".into(),
-            subnet: "fd00::/64".into()
+            name,
+            subnet: "10.0.0.0/8".parse().unwrap(),
         })
-        .is_ok()
-    );
-}
-
-#[test]
-fn vpn_001_site_name_is_1_to_64_characters_and_errors_come_together() {
-    let errors = validate_new_site(&NewSiteInput {
-        name: " ".into(),
-        subnet: "x".into(),
-    })
-    .unwrap_err();
-    assert_eq!(fields(&errors), ["name", "subnet"]);
-    assert!(
-        validate_new_site(&NewSiteInput {
-            name: "s".repeat(65),
-            subnet: "10.0.0.0/8".into()
-        })
-        .is_err()
-    );
+    };
+    assert_eq!(fields(&site(" ".into()).unwrap_err()), ["name"]);
+    assert!(site("s".repeat(64)).is_ok());
+    assert!(site("s".repeat(65)).is_err());
 }
 
 #[test]

@@ -9,7 +9,6 @@ const MAX_PAGE_SIZE: usize = 200;
 
 /// One page of rows and whether more follow.
 #[derive(Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(not(test), expect(dead_code, reason = "used by the devices store"))]
 pub(super) struct Page<T> {
     pub(super) rows: Vec<T>,
     pub(super) has_next_page: bool,
@@ -19,10 +18,6 @@ pub(super) struct Page<T> {
 ///
 /// # Errors
 /// A `first` error when it is outside that range.
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "used by the devices store and GraphQL")
-)]
 pub(super) fn page_size(first: i32) -> Result<usize, FieldError> {
     match usize::try_from(first) {
         Ok(size) if (1..=MAX_PAGE_SIZE).contains(&size) => Ok(size),
@@ -35,10 +30,6 @@ pub(super) fn page_size(first: i32) -> Result<usize, FieldError> {
 
 /// The opaque cursor that points just after the row with this name.
 #[must_use]
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "used by the devices store and GraphQL")
-)]
 pub(super) fn encode_cursor(name: &str) -> String {
     let mut cursor = String::from(CURSOR_PREFIX);
     for byte in name.bytes() {
@@ -51,10 +42,6 @@ pub(super) fn encode_cursor(name: &str) -> String {
 ///
 /// # Errors
 /// An `after` error when the text is not a cursor this module made.
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "used by the devices store and GraphQL")
-)]
 pub(super) fn decode_cursor(cursor: &str) -> Result<String, FieldError> {
     let bad = || {
         FieldError::new(
@@ -76,10 +63,6 @@ pub(super) fn decode_cursor(cursor: &str) -> Result<String, FieldError> {
 
 /// Turns rows fetched with limit `size + 1` into a page of at most `size` rows.
 #[must_use]
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "used by the devices store and GraphQL")
-)]
 pub(super) fn split_page<T>(mut fetched: Vec<T>, size: usize) -> Page<T> {
     let has_next_page = fetched.len() > size;
     fetched.truncate(size);
@@ -94,10 +77,6 @@ pub(super) fn split_page<T>(mut fetched: Vec<T>, size: usize) -> Page<T> {
 /// The list must be sorted by the byte order of the name, the same order as the store's
 /// `COLLATE "C"`; names are compared as bytes.
 #[must_use]
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "used by the devices GraphQL loaders")
-)]
 pub(super) fn page_after<'a, T>(
     sorted: &'a [T],
     name_of: impl Fn(&T) -> &str,

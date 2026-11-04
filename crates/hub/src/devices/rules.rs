@@ -2,9 +2,7 @@
 //!
 //! Every function is pure. Validators report all field errors at once so the form can show them together.
 
-use std::{net::IpAddr, str::FromStr};
-
-use ipnet::IpNet;
+use std::net::IpAddr;
 
 use super::model::{
     DeviceChange, DeviceChangeInput, NewDevice, NewDeviceInput, NewSite, NewSiteInput, SshInput,
@@ -140,7 +138,8 @@ pub(super) fn validate_change(input: &DeviceChangeInput) -> Result<DeviceChange,
     problems.finish(Some(checked))
 }
 
-/// Checks a new site (VPN-001). Overlap with other sites is the database's job.
+/// Checks a new site (VPN-001). The subnet arrives parsed as a `Cidr`, which rejects host bits;
+/// overlap with other sites is the database's job.
 ///
 /// # Errors
 /// Every invalid field, all at once.
@@ -148,10 +147,10 @@ pub(super) fn validate_change(input: &DeviceChangeInput) -> Result<DeviceChange,
 pub(super) fn validate_new_site(input: &NewSiteInput) -> Result<NewSite, Vec<FieldError>> {
     let mut problems = Problems::default();
     let name = problems.field(site_name(&input.name));
-    let subnet = problems.field(subnet(&input.subnet));
-    let checked = name
-        .zip(subnet)
-        .map(|(name, subnet)| NewSite { name, subnet });
+    let checked = name.map(|name| NewSite {
+        name,
+        subnet: input.subnet,
+    });
     problems.finish(checked)
 }
 
@@ -299,25 +298,4 @@ fn ssh_username(text: &str, enabled: bool) -> Result<String, FieldError> {
         ));
     }
     Ok(username.to_owned())
-}
-
-/// A network address with no host bits set (VPN-001).
-fn subnet(text: &str) -> Result<IpNet, FieldError> {
-    let net = IpNet::from_str(text.trim()).map_err(|_| {
-        FieldError::new(
-            "subnet",
-            "Write the subnet like 10.10.0.0/24: an address, a slash and the prefix length.",
-        )
-    })?;
-    if net == net.trunc() {
-        Ok(net)
-    } else {
-        Err(FieldError::new(
-            "subnet",
-            format!(
-                "{net} has host bits set. Use the network address {} instead.",
-                net.trunc()
-            ),
-        ))
-    }
 }

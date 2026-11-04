@@ -1,5 +1,8 @@
 //! Device inventory: sites, devices, tags and SSH settings.
 
+pub mod graphql;
+mod graphql_error;
+mod loaders;
 mod model;
 mod page;
 mod records;
@@ -12,6 +15,7 @@ use sqlx::PgPool;
 
 use crate::ids::{DeviceId, SiteId};
 
+pub use loaders::{DevicesBySite, SitesById};
 pub use model::{Device, OperatingSystem, Site, SshAuth, SshSettings};
 pub use rules::FieldError;
 

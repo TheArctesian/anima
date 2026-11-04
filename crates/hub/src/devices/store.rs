@@ -43,14 +43,13 @@ pub(super) async fn create_site(
     sqlx::query_as("INSERT INTO devices.sites (id, name, subnet) VALUES ($1, $2, $3) RETURNING id, name, subnet")
         .bind(id)
         .bind(&site.name)
-        .bind(site.subnet)
+        .bind(site.subnet.net())
         .fetch_one(conn)
         .await
         .map(to_site)
         .map_err(write_error)
 }
 
-#[cfg_attr(not(test), expect(dead_code, reason = "used by devices GraphQL"))]
 pub(super) async fn list_sites(db: &PgPool) -> Result<Vec<Site>, Error> {
     let rows =
         sqlx::query_as("SELECT id, name, subnet FROM devices.sites ORDER BY name COLLATE \"C\"")
@@ -59,7 +58,6 @@ pub(super) async fn list_sites(db: &PgPool) -> Result<Vec<Site>, Error> {
     Ok(rows.into_iter().map(to_site).collect())
 }
 
-#[cfg_attr(not(test), expect(dead_code, reason = "used by devices GraphQL"))]
 pub(super) async fn sites_by_ids(db: &PgPool, ids: &[SiteId]) -> Result<Vec<Site>, Error> {
     let rows = sqlx::query_as(
         "SELECT id, name, subnet FROM devices.sites WHERE id = ANY($1) ORDER BY name COLLATE \"C\"",
@@ -218,7 +216,6 @@ pub(super) async fn all(db: &PgPool) -> Result<Vec<Device>, Error> {
 
 /// One page of devices in byte order of the name.
 #[derive(Debug)]
-#[cfg_attr(not(test), expect(dead_code, reason = "used by devices GraphQL"))]
 pub(super) struct DevicePage {
     pub(super) devices: Vec<Device>,
     pub(super) has_next_page: bool,
@@ -227,7 +224,6 @@ pub(super) struct DevicePage {
 }
 
 /// The page of filtered devices after the named one.
-#[cfg_attr(not(test), expect(dead_code, reason = "used by devices GraphQL"))]
 pub(super) async fn list(
     db: &PgPool,
     filter: &DeviceFilter,
@@ -266,7 +262,6 @@ pub(super) async fn list(
 }
 
 /// A substring pattern for `ILIKE` that matches `%`, `_` and `\` literally.
-#[cfg_attr(not(test), expect(dead_code, reason = "used by devices GraphQL"))]
 fn like_pattern(text: &str) -> String {
     let mut pattern = String::from("%");
     for character in text.chars() {
@@ -279,7 +274,6 @@ fn like_pattern(text: &str) -> String {
     pattern
 }
 
-#[cfg_attr(not(test), expect(dead_code, reason = "used by devices GraphQL"))]
 pub(super) async fn devices_by_sites(db: &PgPool, sites: &[SiteId]) -> Result<Vec<Device>, Error> {
     let rows = sqlx::query_as(select_device!(
         "WHERE d.site_id = ANY($1) ORDER BY d.name COLLATE \"C\""
@@ -299,7 +293,6 @@ pub(super) async fn in_maintenance(db: &PgPool, id: DeviceId) -> Result<bool, Er
 }
 
 /// Every tag in use, once, in byte order.
-#[cfg_attr(not(test), expect(dead_code, reason = "used by devices GraphQL"))]
 pub(super) async fn tags(db: &PgPool) -> Result<Vec<String>, Error> {
     Ok(sqlx::query_scalar(
         "SELECT tag FROM (SELECT DISTINCT tag FROM devices.device_tags) t ORDER BY tag COLLATE \"C\"",
