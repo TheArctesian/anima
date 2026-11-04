@@ -68,6 +68,9 @@ pub enum Error {
     Maintenance(#[source] maintenance::Error),
 }
 
+/// Values by device.
+pub type ByDevice<T> = HashMap<DeviceId, T>;
+
 /// The names of the fields in error, never their values.
 fn field_names(errors: &[FieldError]) -> String {
     errors
@@ -154,11 +157,8 @@ pub async fn for_device(db: &PgPool, device: DeviceId) -> Result<Vec<Check>, Err
 ///
 /// # Errors
 /// `Unreadable` when a stored configuration cannot be read.
-pub async fn for_devices(
-    db: &PgPool,
-    devices: &[DeviceId],
-) -> Result<HashMap<DeviceId, Vec<Check>>, Error> {
-    store::grouped_by_devices(db, devices).await
+pub async fn for_devices(db: &PgPool, ids: &[DeviceId]) -> Result<ByDevice<Vec<Check>>, Error> {
+    store::grouped_by_devices(db, ids).await
 }
 
 /// The check with this id.
