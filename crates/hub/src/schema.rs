@@ -27,18 +27,27 @@ pub type HubSchema = Schema<Query, EmptyMutation, EmptySubscription>;
 pub fn build_schema(config: Arc<Config>, clock: Arc<dyn Clock>) -> HubSchema {
     harden(
         Schema::build(Query, EmptyMutation, EmptySubscription),
-        !cfg!(debug_assertions),
+        production_build(),
     )
     .data(config)
     .data(clock)
     .finish()
 }
 
+/// API-007: release builds are production builds; debug builds keep introspection for tooling.
+const fn production_build() -> bool {
+    !cfg!(debug_assertions)
+}
+
+#[cfg(test)]
+mod tests;
+
 /// API-004: deepest query accepted.
 const MAX_DEPTH: usize = 10;
 /// API-004: most fields one query may select (each field costs 1). The operator's own client is
-/// the only caller; its largest screen selects well under 100 fields, so 500 leaves room for
-/// growth and still stops a query that fans out to thousands of fields.
+/// the only caller. Assuming its largest screen selects under 100 fields, 500 leaves room for
+/// growth and still stops a query that fans out to thousands of fields. Revisit if a real
+/// query comes near it.
 const MAX_COMPLEXITY: usize = 500;
 
 /// Applies the query limits (API-004), the process-log extensions (LOG-002, API-010) and, when

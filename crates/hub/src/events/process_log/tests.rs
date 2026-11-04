@@ -11,7 +11,9 @@ use std::{
 
 use async_graphql::{
     EmptyMutation, EmptySubscription, Error as GraphqlError, ErrorExtensions, Object, Request,
-    Response, Schema, Variables, value,
+    Response, Schema, Subscription, Variables,
+    futures_util::{Stream, StreamExt, stream},
+    value,
 };
 use serde_json::Value;
 
@@ -56,6 +58,19 @@ impl Node {
     async fn child(&self) -> Node {
         Node
     }
+
+    async fn leak(&self) -> async_graphql::Result<String> {
+        Err(GraphqlError::new("connection to /var/run/pg.sock refused"))
+    }
+}
+
+struct Feed;
+
+#[Subscription]
+impl Feed {
+    async fn ticks(&self) -> impl Stream<Item = async_graphql::Result<i32>> {
+        stream::iter([Ok(1), Err(GraphqlError::new("stream broke at /srv/db"))])
+    }
 }
 
 struct Query;
@@ -84,6 +99,17 @@ impl Query {
         tracing::info!("login attempted");
         Ok(password.is_empty())
     }
+}
+
+/// Routes this thread's log to a buffer. Rebuilding the callsite cache stops another test
+/// thread's earlier registration from hiding the spans and events of this one.
+fn capture_log(filter: &str) -> (Capture, tracing::subscriber::DefaultGuard) {
+    let capture = Capture::default();
+    let writer = capture.clone();
+    let log = subscriber(filter, move || writer.clone()).unwrap();
+    let guard = tracing::subscriber::set_default(log);
+    tracing::callsite::rebuild_interest_cache();
+    (capture, guard)
 }
 
 type TestSchema = Schema<Query, EmptyMutation, EmptySubscription>;
@@ -149,13 +175,7 @@ async fn api_007_introspection_is_refused_in_production_and_allowed_otherwise() 
 
 #[tokio::test]
 async fn api_010_internal_error_shows_the_generic_message_and_the_log_keeps_the_original() {
-    let capture = Capture::default();
-    let log = subscriber("info", {
-        let capture = capture.clone();
-        move || capture.clone()
-    })
-    .unwrap();
-    let _guard = tracing::subscriber::set_default(log);
+    let (capture, _guard) = capture_log("info");
 
     let response = schema(true).execute("{ broken }").await;
 
@@ -186,13 +206,7 @@ async fn api_010_error_with_a_code_passes_unchanged() {
 
 #[tokio::test]
 async fn log_002_line_has_time_level_target_message_and_request_id() {
-    let capture = Capture::default();
-    let log = subscriber("info", {
-        let capture = capture.clone();
-        move || capture.clone()
-    })
-    .unwrap();
-    let _guard = tracing::subscriber::set_default(log);
+    let (capture, _guard) = capture_log("info");
 
     tracing::info!("outside any request");
     let response = schema(true)
@@ -221,13 +235,7 @@ async fn log_002_line_has_time_level_target_message_and_request_id() {
 
 #[tokio::test]
 async fn log_007_password_variable_never_reaches_the_log() {
-    let capture = Capture::default();
-    let log = subscriber("trace", {
-        let capture = capture.clone();
-        move || capture.clone()
-    })
-    .unwrap();
-    let _guard = tracing::subscriber::set_default(log);
+    let (capture, _guard) = capture_log("trace");
 
     let request = Request::new("query($p: String!) { login(password: $p) }").variables(
         Variables::from_json(serde_json::json!({ "p": "hunter2-correct-horse" })),
@@ -257,4 +265,71 @@ fn log_003_filter_limits_levels_and_an_invalid_filter_is_a_typed_error() {
 
     let result = subscriber("info,[bad", Capture::default);
     assert!(matches!(result, Err(Error::Filter { .. })));
+}
+
+#[tokio::test]
+async fn api_010_error_in_a_nested_resolver_is_masked() {
+    let response = schema(true).execute("{ node { child { leak } } }").await;
+    let error = first_error(&response);
+    assert_eq!(error["message"], "Something went wrong on the hub.");
+    assert_eq!(error["extensions"]["code"], "INTERNAL");
+}
+
+#[tokio::test]
+async fn api_010_and_log_002_subscription_items_are_masked_and_carry_a_request_id() {
+    let (capture, _guard) = capture_log("info");
+    let schema = harden(Schema::build(Query, EmptyMutation, Feed), true).finish();
+
+    let items: Vec<Response> = schema
+        .execute_stream("subscription { ticks }")
+        .collect()
+        .await;
+
+    assert_eq!(items.len(), 2);
+    assert!(items[0].errors.is_empty(), "{:?}", items[0].errors);
+    let error = first_error(&items[1]);
+    assert_eq!(error["message"], "Something went wrong on the hub.");
+    assert_eq!(error["extensions"]["code"], "INTERNAL");
+    let entries = capture.lines();
+    let entry = entries
+        .iter()
+        .find(|entry| entry["level"] == "ERROR")
+        .expect("an error line");
+    assert!(
+        entry["fields"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("/srv/db")
+    );
+    assert!(entry["span"]["request_id"].is_string());
+}
+
+#[tokio::test]
+async fn log_002_concurrent_requests_each_log_their_own_request_id() {
+    let (capture, _guard) = capture_log("info");
+    let schema = schema(true);
+
+    let (first, second) = tokio::join!(
+        schema.execute("{ login(password: \"a\") }"),
+        schema.execute("{ login(password: \"b\") }"),
+    );
+
+    let header = |response: &Response| {
+        response
+            .http_headers
+            .get("x-request-id")
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_owned()
+    };
+    let logged: Vec<String> = capture
+        .lines()
+        .iter()
+        .map(|entry| entry["span"]["request_id"].as_str().unwrap().to_owned())
+        .collect();
+    assert_eq!(logged.len(), 2);
+    assert_ne!(header(&first), header(&second));
+    assert!(logged.contains(&header(&first)));
+    assert!(logged.contains(&header(&second)));
 }
