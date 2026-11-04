@@ -15,9 +15,11 @@ pub(in crate::sessions) const LIFETIME: TimeDelta = TimeDelta::minutes(15);
 /// bounds memory even when one tests many hosts in a loop.
 pub(in crate::sessions) const MAX_OBSERVATIONS: usize = 256;
 
-/// A host and an SSH port, in one spelling: a name is trimmed, without a final dot and in
-/// lower case; an IP literal is in its canonical text. So a test of `Pve-01.lan.` and a
-/// device saved as `pve-01.lan` share their observation.
+/// A host and an SSH port, in one spelling: a name is trimmed and in lower case; an IP
+/// literal is in its canonical text. So a test of `PVE-01.lan` and a device saved as
+/// `pve-01.lan` share their observation. A final dot is kept: `pve-01.lan.` is absolute and
+/// `pve-01.lan` may resolve through a search domain, so they can name different hosts and
+/// never share a key.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(in crate::sessions) struct Endpoint {
     host: String,
@@ -27,10 +29,9 @@ pub(in crate::sessions) struct Endpoint {
 impl Endpoint {
     pub(in crate::sessions) fn new(host: &str, port: u16) -> Self {
         let host = host.trim();
-        let host = host.parse::<IpAddr>().map_or_else(
-            |_| host.strip_suffix('.').unwrap_or(host).to_ascii_lowercase(),
-            |ip| ip.to_string(),
-        );
+        let host = host
+            .parse::<IpAddr>()
+            .map_or_else(|_| host.to_ascii_lowercase(), |ip| ip.to_string());
         Self { host, port }
     }
 }

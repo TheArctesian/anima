@@ -5,7 +5,7 @@
 //! for its type.
 
 mod connection;
-mod connection_test;
+pub(super) mod connection_test;
 mod error;
 mod host_key;
 mod session;

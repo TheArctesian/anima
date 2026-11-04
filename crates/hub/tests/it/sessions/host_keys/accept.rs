@@ -2,6 +2,7 @@
 //! by its fingerprint; stored with an audit entry in the same transaction.
 
 use chrono::{DateTime, TimeDelta, Utc};
+use russh::keys::PrivateKey;
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
@@ -211,4 +212,54 @@ async fn sec_006_accept_for_an_unknown_device_is_not_found(pool: PgPool) {
         ))
         .await;
     assert_eq!(code(&response), "NOT_FOUND");
+}
+
+/// Puts `key` back as PVE-01's accepted key, keeping the row's other columns.
+async fn restore(pool: &PgPool, key: &PrivateKey) {
+    let openssh = key.public_key().to_openssh().unwrap();
+    sqlx::query(
+        "update sessions.host_keys set fingerprint_sha256 = $2, public_key = $3 \
+         where device_id = $1::text::uuid",
+    )
+    .bind(PVE_01)
+    .bind(fingerprint(key))
+    .bind(openssh.split(' ').nth(1).unwrap())
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../fixtures", scripts("devices"))
+)]
+async fn log_005_two_accepts_at_once_audit_one_replacement_naming_the_key_it_replaced(
+    pool: PgPool,
+) {
+    let (old, new) = (ed25519(1), ed25519(2));
+    let server = SshServer::start(vec![new.clone()], None).await;
+    point_at(&pool, &server).await;
+    accept_directly(&pool, &old).await;
+    let schema = schema(&pool, &loopback_live());
+    tested(&schema, &json!({ "deviceId": PVE_01 })).await;
+
+    for round in 1..=20 {
+        restore(&pool, &old).await;
+        let (first, second) = tokio::join!(
+            schema.execute(accept_request(PVE_01, &fingerprint(&new))),
+            schema.execute(accept_request(PVE_01, &fingerprint(&new))),
+        );
+        assert!(first.errors.is_empty(), "{:?}", first.errors);
+        assert!(second.errors.is_empty(), "{:?}", second.errors);
+        // One replacement per round: the second accept finds the new key and writes nothing.
+        let audits = host_key_audits(&pool).await;
+        assert_eq!(audits.len(), round, "round {round}");
+        for (_, _, change) in &audits {
+            assert_eq!(
+                change["oldFingerprint"],
+                json!(fingerprint(&old)),
+                "round {round}"
+            );
+        }
+    }
 }

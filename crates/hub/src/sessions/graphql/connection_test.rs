@@ -38,7 +38,7 @@ struct ConnectionTestShape {
 }
 
 /// The parsed `input` argument of `testConnection`; the credential is already a secret.
-pub(super) struct ConnectionTestInput(ConnectionTestShape);
+pub(in crate::sessions) struct ConnectionTestInput(ConnectionTestShape);
 
 impl InputType for ConnectionTestInput {
     type RawValueType = Self;
@@ -82,7 +82,7 @@ fn unreadable() -> InputValueError<ConnectionTestInput> {
 
 impl ConnectionTestInput {
     /// What to test, or every field to fix. Errors name fields, never values.
-    pub(super) fn into_subject(self) -> Result<TestSubject, Vec<FieldError>> {
+    pub(in crate::sessions) fn into_subject(self) -> Result<TestSubject, Vec<FieldError>> {
         let ConnectionTestShape {
             device_id,
             host,

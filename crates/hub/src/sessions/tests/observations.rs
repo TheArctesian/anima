@@ -57,7 +57,7 @@ fn sec_006_another_key_at_the_same_endpoint_replaces_the_first_and_its_first_see
 
 #[test]
 fn dev_013_an_endpoint_is_one_spelling_of_host_and_port() {
-    assert_eq!(Endpoint::new(" PVE-01.lan. ", 22), pve());
+    assert_eq!(Endpoint::new(" PVE-01.lan ", 22), pve());
     assert_eq!(
         Endpoint::new("2001:DB8:0::1", 22),
         Endpoint::new("2001:db8::1", 22)
@@ -104,20 +104,49 @@ fn dev_013_observations_are_bounded_and_the_oldest_goes_first() {
 }
 
 #[test]
+fn sec_006_a_name_with_a_final_dot_is_another_endpoint_than_without() {
+    // `pve-01.lan.` is absolute; `pve-01.lan` may go through a search domain (S2).
+    assert_ne!(Endpoint::new("pve-01.lan.", 22), pve());
+    let live = Live::default();
+    live.observe(Endpoint::new("pve-01.lan.", 22), key(ED25519), at());
+    assert_eq!(live.observed(&pve(), at()), None);
+    assert!(
+        live.observed(&Endpoint::new("PVE-01.LAN.", 22), at())
+            .is_some()
+    );
+}
+
+#[test]
 fn dev_013_expired_observations_make_room_before_a_live_one_is_dropped() {
+    const EXPIRED: usize = MAX_OBSERVATIONS / 2;
     let mut observations = Observations::default();
     for n in 0..MAX_OBSERVATIONS {
         let endpoint = Endpoint::new(&format!("host-{n}.lan"), 22);
-        // host-0 is old and expired by the time the new one comes; the rest are fresh.
-        let seen_at = if n == 0 { at() - LIFETIME } else { at() };
+        // A middle entry is expired by the time the new one comes; the rest are fresh.
+        let seen_at = if n == EXPIRED { at() - LIFETIME } else { at() };
         observations.record(endpoint, key(ED25519), seen_at);
     }
     observations.record(Endpoint::new("new.lan", 22), key(ECDSA), at());
     assert_eq!(observations.len(), MAX_OBSERVATIONS);
+    let fresh = (0..MAX_OBSERVATIONS).filter(|n| *n != EXPIRED);
     assert!(
-        (1..MAX_OBSERVATIONS).all(|n| observations
+        fresh.into_iter().all(|n| observations
             .find(&Endpoint::new(&format!("host-{n}.lan"), 22), at())
             .is_some()),
         "no fresh observation was dropped"
     );
+    assert!(
+        observations
+            .find(&Endpoint::new("new.lan", 22), at())
+            .is_some()
+    );
+}
+
+#[test]
+fn sec_006_the_same_key_seen_again_after_expiry_is_first_seen_anew() {
+    let mut observations = Observations::default();
+    observations.record(pve(), key(ED25519), at());
+    let after_expiry = at() + LIFETIME + TimeDelta::minutes(1);
+    let seen = observations.record(pve(), key(ED25519), after_expiry);
+    assert_eq!(seen.first_seen_at, after_expiry);
 }

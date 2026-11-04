@@ -117,16 +117,14 @@ pub(in crate::sessions) async fn test_connection(
         }
         _ => read_host_key(target, PROBE_TIMEOUT)
             .await
-            .map(|read| SignIn::OtherKey(read.key)),
+            .map(SignIn::OtherKey),
     };
     let endpoint = Endpoint::new(&plan.host, plan.port);
-    let seen = match probed {
-        Ok(SignIn::SignedIn) => Ok(Seen::SignedIn),
-        Ok(SignIn::OtherKey(key)) => Ok(Seen::Key(live.observe(endpoint, key, request.at))),
-        Err(ProbeError::RefusedTarget) => return Err(Error::Validation(vec![refused_host()])),
-        Err(error) => Err(error),
-    };
-    Ok(outcome(plan.accepted.as_ref(), seen))
+    let seen = probed.map(|signed| match signed {
+        SignIn::SignedIn => Seen::SignedIn,
+        SignIn::OtherKey(key) => Seen::Key(live.observe(endpoint, key, request.at)),
+    });
+    outcome(plan.accepted.as_ref(), seen)
 }
 
 async fn plan(db: &PgPool, vault: &Vault, subject: TestSubject) -> Result<Plan, Error> {
@@ -166,8 +164,12 @@ fn refused_host() -> FieldError {
     )
 }
 
-/// The result K1 describes for what the probe saw, given the accepted key.
-fn outcome(accepted: Option<&HostKey>, seen: Result<Seen, ProbeError>) -> ConnectionTest {
+/// The result K1 describes for what the probe saw, given the accepted key; a refused
+/// target is the operator's `Validation` error on `host` (R-032).
+fn outcome(
+    accepted: Option<&HostKey>,
+    seen: Result<Seen, ProbeError>,
+) -> Result<ConnectionTest, Error> {
     let reached = |message| ConnectionTest {
         reachable: true,
         authenticated: false,
@@ -179,7 +181,7 @@ fn outcome(accepted: Option<&HostKey>, seen: Result<Seen, ProbeError>) -> Connec
         reachable: false,
         ..reached(message)
     };
-    match seen {
+    Ok(match seen {
         Ok(Seen::SignedIn) => ConnectionTest {
             authenticated: true,
             ..reached(SIGNED_IN)
@@ -201,9 +203,10 @@ fn outcome(accepted: Option<&HostKey>, seen: Result<Seen, ProbeError>) -> Connec
         },
         Err(ProbeError::AuthFailed) => reached(AUTH_FAILED),
         Err(ProbeError::UnreadableKey) => reached(UNREADABLE_KEY),
-        Err(ProbeError::Unresolved | ProbeError::RefusedTarget) => unreached(UNRESOLVED),
+        Err(ProbeError::RefusedTarget) => return Err(Error::Validation(vec![refused_host()])),
+        Err(ProbeError::Unresolved) => unreached(UNRESOLVED),
         Err(ProbeError::Unreachable) => unreached(UNREACHABLE),
         Err(ProbeError::Timeout) => unreached(TIMED_OUT),
         Err(ProbeError::Protocol) => unreached(NOT_SSH),
-    }
+    })
 }

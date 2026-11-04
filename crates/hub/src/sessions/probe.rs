@@ -27,6 +27,10 @@ pub(super) const PROBE_TIMEOUT: Duration = Duration::from_secs(10);
 /// Host key algorithms in libssh2's order (`hostkey.c`, 1.11), because guacd sets no
 /// preference: the key the probe reads is then the key guacd is pinned to (SEC-007). SHA-1
 /// `ssh-rsa` is left out; an RSA key still reads as `rsa-sha2-*`, and its blob is the same.
+///
+/// Leaving SHA-1 out here does not stop guacd: its libssh2, and russh, may still accept a
+/// device that offers only `ssh-rsa`. The hub pins whatever key the device presents and the
+/// operator accepts (SEC-006); it does not judge the device's algorithms.
 const HOST_KEY_ORDER: &[Algorithm] = &[
     Algorithm::Ecdsa {
         curve: EcdsaCurve::NistP256,
@@ -90,15 +94,6 @@ pub(super) enum SignIn {
     OtherKey(PublicKey),
 }
 
-/// A host key as read, and the checked address that presented it. A later connection to the
-/// same device (guacd, R-034) goes to this address, not to the name, so a second lookup
-/// cannot send it elsewhere.
-#[derive(Debug, PartialEq, Eq)]
-pub(super) struct KeyRead {
-    pub(super) key: PublicKey,
-    pub(super) address: SocketAddr,
-}
-
 /// Reads the host key of `target`: a key exchange, then the connection closes before any
 /// authentication.
 ///
@@ -108,15 +103,13 @@ pub(super) struct KeyRead {
 pub(super) async fn read_host_key(
     target: Target<'_>,
     timeout: Duration,
-) -> Result<KeyRead, ProbeError> {
+) -> Result<PublicKey, ProbeError> {
     let probe = async {
         let (observer, seen) = Observer::expecting(None);
         let stream = connect(target).await?;
-        let address = stream.peer_addr().map_err(|_| ProbeError::Unreachable)?;
         // The observer turns down every key, so the exchange always ends here.
         let _refused = client::connect_stream(config(timeout), stream, observer).await;
-        let key = seen.await.map_err(|_| ProbeError::Protocol)?;
-        Ok(KeyRead { key, address })
+        seen.await.map_err(|_| ProbeError::Protocol)
     };
     tokio::time::timeout(timeout, probe)
         .await

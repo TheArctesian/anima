@@ -1,5 +1,5 @@
 //! The probe's edges (R-032, D-5, R-034): refused targets, a closed port, a host that never
-//! answers, one that does not speak SSH, and the address a key was read from. The sign-in
+//! answers, one that does not speak SSH, and a key read with no authentication. The sign-in
 //! runs against the recording server in `tests/it/sessions/host_keys`.
 
 use std::{
@@ -15,7 +15,7 @@ use russh::{
 use tokio::{io::AsyncWriteExt, net::TcpListener};
 
 use crate::sessions::{
-    probe::{KeyRead, ProbeError, Target, read_host_key},
+    probe::{ProbeError, Target, read_host_key},
     public_key::PublicKey,
     target::TargetRule,
 };
@@ -28,7 +28,7 @@ impl server::Handler for KeyOnly {
 }
 
 #[tokio::test]
-async fn r_034_the_probe_returns_the_key_and_the_checked_address_it_came_from() {
+async fn r_034_the_probe_returns_the_key_the_host_presents() {
     let host_key = PrivateKey::from(Ed25519Keypair::from_seed(&[3; 32]));
     let blob = host_key.public_key().to_bytes().unwrap();
     let config = Arc::new(server::Config {
@@ -36,7 +36,7 @@ async fn r_034_the_probe_returns_the_key_and_the_checked_address_it_came_from() 
         ..server::Config::default()
     });
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let address = listener.local_addr().unwrap();
+    let port = listener.local_addr().unwrap().port();
     let serve = tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
         if let Ok(session) = server::run_stream(config, stream, KeyOnly).await {
@@ -44,10 +44,9 @@ async fn r_034_the_probe_returns_the_key_and_the_checked_address_it_came_from() 
         }
     });
 
-    let read = read_host_key(loopback(address.port()), Duration::from_secs(5)).await;
+    let read = read_host_key(loopback(port), Duration::from_secs(5)).await;
 
-    let key = PublicKey::from_blob(blob).unwrap();
-    assert_eq!(read, Ok(KeyRead { key, address }));
+    assert_eq!(read, Ok(PublicKey::from_blob(blob).unwrap()));
     serve.abort();
 }
 
@@ -189,4 +188,47 @@ async fn dev_013_a_host_that_does_not_speak_ssh_is_a_protocol_failure() {
         Err(ProbeError::Protocol)
     );
     http.await.unwrap();
+}
+
+fn refused(text: &str) -> bool {
+    TargetRule::STRICT.refuses(text.parse::<IpAddr>().unwrap())
+}
+
+#[test]
+fn r_032_a_6to4_address_is_refused_when_the_ipv4_it_carries_is() {
+    for carried_refused in [
+        "2002:7f00:1::1",
+        "2002:a9fe:a9fe::",
+        "2002:e000:1::5",
+        "2002::1",
+    ] {
+        assert!(refused(carried_refused), "{carried_refused}");
+    }
+    for carried_allowed in ["2002:a0a:2::1", "2002:c0a8:10a::7f00:1"] {
+        assert!(!refused(carried_allowed), "{carried_allowed}");
+    }
+}
+
+#[test]
+fn r_032_a_teredo_address_is_refused_outright() {
+    for teredo in [
+        "2001::1",
+        "2001:0:4136:e378:8000:63bf:3fff:fdd2",
+        "2001:0:a0a:2::",
+    ] {
+        assert!(refused(teredo), "{teredo}");
+    }
+    for outside in ["2001:1::1", "2001:db8::1", "2001:470::1"] {
+        assert!(!refused(outside), "{outside}");
+    }
+}
+
+#[test]
+fn r_032_a_local_use_nat64_address_is_refused_outright() {
+    for local in ["64:ff9b:1::a0a:2", "64:ff9b:1:ffff::1", "64:ff9b:1::"] {
+        assert!(refused(local), "{local}");
+    }
+    for outside in ["64:ff9b::a0a:2", "64:ff9b:2::1"] {
+        assert!(!refused(outside), "{outside}");
+    }
 }

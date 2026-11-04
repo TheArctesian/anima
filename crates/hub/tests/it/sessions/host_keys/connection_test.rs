@@ -262,6 +262,12 @@ async fn dev_013_the_input_names_one_subject(pool: PgPool) {
             "VALIDATION",
         ),
         (json!({ "deviceId": "not-an-id" }), "deviceId", "VALIDATION"),
+        (
+            json!({ "deviceId": PVE_01, "ssh": { "enabled": true, "port": 22, "username": USER,
+            "auth": "PASSWORD" } }),
+            "deviceId",
+            "VALIDATION",
+        ),
         (json!({ "host": "http://x/" }), "host", "VALIDATION"),
         (
             json!({ "host": "10.0.0.1", "ssh": { "enabled": true, "port": 0, "username": USER,
