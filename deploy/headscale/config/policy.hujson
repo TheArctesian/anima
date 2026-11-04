@@ -1,0 +1,70 @@
+// Anima tailnet access policy for Headscale v0.29.7 (VPN-004).
+// Only `grants` are used: anything no grant names is denied. Never use `*` or
+// `autogroup:` selectors, and never add `autoApprovers`: the operator approves routes.
+// Client computers are personal nodes of `operator`, never tagged, so their keys keep
+// the 180-day expiry; the hub and routers are tagged and do not expire (VPN-003).
+{
+  "tagOwners": {
+    "tag:hub": ["operator@"],
+    // Every subnet router carries tag:router and the tag of its own site.
+    "tag:router": ["operator@"],
+    "tag:site-home": ["operator@"],
+    "tag:site-office1": ["operator@"],
+    "tag:site-office2": ["operator@"],
+  },
+
+  // One subnet per site; they must not overlap (VPN-001).
+  "hosts": {
+    "site-home": "10.10.0.0/24",
+    "site-office1": "10.20.0.0/24",
+    "site-office2": "10.30.0.0/24",
+  },
+
+  "grants": [
+    // Clients reach the hub API and SSH on the VPS.
+    {"src": ["operator@"], "dst": ["tag:hub"], "ip": ["tcp:443", "tcp:22"]},
+    // Clients reach every device at every site.
+    {"src": ["operator@"], "dst": ["site-home", "site-office1", "site-office2"], "ip": ["*"]},
+    // The hub reaches every device for checks, metrics and sessions.
+    {"src": ["tag:hub"], "dst": ["site-home", "site-office1", "site-office2"], "ip": ["*"]},
+    // Each router reaches only its own site subnet.
+    {"src": ["tag:site-home"], "dst": ["site-home"], "ip": ["*"]},
+    {"src": ["tag:site-office1"], "dst": ["site-office1"], "ip": ["*"]},
+    {"src": ["tag:site-office2"], "dst": ["site-office2"], "ip": ["*"]},
+    // No grant has operator@ as dst: devices, routers and the hub cannot start a
+    // connection to a client; replies to permitted connections still flow.
+  ],
+
+  // Run on the server by `headscale policy check --bypass`, and by bun test.
+  "tests": [
+    {
+      "src": "operator@",
+      "proto": "tcp",
+      "accept": ["tag:hub:443", "tag:hub:22", "10.10.0.5:22", "10.20.0.5:443", "10.30.0.5:3389"],
+      "deny": ["tag:hub:5432", "tag:hub:80", "operator@:22", "tag:router:22"],
+    },
+    {
+      "src": "tag:hub",
+      "proto": "tcp",
+      "accept": ["10.10.0.5:161", "10.20.0.5:22", "10.30.0.5:5900"],
+      "deny": ["operator@:22", "operator@:443"],
+    },
+    {
+      "src": "tag:site-home",
+      "proto": "tcp",
+      "accept": ["10.10.0.5:22"],
+      "deny": ["10.20.0.5:22", "10.30.0.5:22", "operator@:22", "tag:hub:443"],
+    },
+    {
+      "src": "tag:site-office2",
+      "proto": "tcp",
+      "accept": ["10.30.0.5:22"],
+      "deny": ["10.10.0.5:22", "10.20.0.5:22", "operator@:22", "tag:hub:443"],
+    },
+    {
+      "src": "tag:router",
+      "proto": "tcp",
+      "deny": ["operator@:22", "operator@:443", "tag:hub:443", "tag:hub:22"],
+    },
+  ],
+}
