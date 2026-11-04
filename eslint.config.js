@@ -18,7 +18,8 @@ const limits = {
 // disable the line with a reason when that is intended. URL fragments such as
 // 'https://x.io/#abc123' are refused too; build the URL from parts.
 // Do not set no-restricted-syntax for apps/client files in another config object: it
-// replaces this list. Extend tokenLiterals (or the list it is spread into) instead.
+// replaces this list. Extend tokenLiterals (or the lists it is spread into) instead; the one
+// folder object that sets it (the tunnel) spreads tokenLiterals too.
 const textRules = [
   [
     String.raw`(?<![\w&])#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})(?![\w-])`,
@@ -83,13 +84,23 @@ const npmGuacamoleImports = [{ regex: String.raw`^guacamole-common-js(?:/|$)`, m
 const vendorPath = String.raw`(?:^|/)tunnel/vendor(?:/|$)|vendor/guacamole`;
 const guacamoleImports = [...npmGuacamoleImports, { regex: vendorPath, message: guacamoleHint }];
 // `import()` is not covered by no-restricted-imports; the tunnel imports the client statically, so a dynamic
-// import of it is refused everywhere (added to the one no-restricted-syntax list below).
+// import of it is refused everywhere (added to the no-restricted-syntax lists below). A template is checked as
+// written (`raw`) and as evaluated (`cooked`, where `\x2f` is a `/`).
 // esquery ends a regex at an unescaped `/`, so the selector escapes them.
 const guacamoleSelectorPath = `${vendorPath}|^guacamole-common-js(?:/|$)`.replaceAll('/', String.raw`\/`);
 const guacamoleDynamicImports = [
   `ImportExpression > Literal[value=/${guacamoleSelectorPath}/]`,
   `ImportExpression > TemplateLiteral > TemplateElement[value.raw=/${guacamoleSelectorPath}/]`,
+  `ImportExpression > TemplateLiteral > TemplateElement[value.cooked=/${guacamoleSelectorPath}/]`,
 ].map((selector) => ({ selector, message: guacamoleHint }));
+// A computed `import()` (a variable, a concatenation, a template with expressions) cannot be checked against
+// the boundary, so client code outside the tunnel refuses it; the client has none (D-2).
+const computedImports = [
+  {
+    selector: "ImportExpression:not([source.type='Literal']):not([source.type='TemplateLiteral'][source.expressions.length=0])",
+    message: 'Import a module by a literal path (D-2): a computed import() cannot be checked against the import boundaries.',
+  },
+];
 const transportGlobal = (name) => ({ name, message: transportHint });
 const transportGlobals = ['fetch', 'WebSocket', 'EventSource', 'XMLHttpRequest'].map(transportGlobal);
 const fetchProperties = ['window', 'globalThis', 'self'].map((object) => ({
@@ -97,7 +108,7 @@ const fetchProperties = ['window', 'globalThis', 'self'].map((object) => ({
   property: 'fetch',
   message: transportHint,
 }));
-const clientFiles = ['apps/client/**/*.{ts,js,svelte}'];
+const clientFiles = ['apps/client/**/*.{ts,mts,cts,js,mjs,cjs,svelte}'];
 const clientTests = ['**/*.test.ts'];
 const hubFolder = ['apps/client/src/lib/hub/**'];
 const motionFolder = ['apps/client/src/lib/motion/**'];
@@ -157,7 +168,7 @@ export default tseslint.config(
   tseslint.configs.stylistic,
   svelte.configs.recommended,
   {
-    files: ['apps/client/**/*.{ts,js,svelte}', 'quality/**/*.ts', 'deploy/**/*.ts', 'design/**/*.ts'],
+    files: [...clientFiles, 'quality/**/*.ts', 'deploy/**/*.ts', 'design/**/*.ts'],
     languageOptions: { globals: { ...globals.browser, ...globals.node } },
     plugins: { '@eslint-community/eslint-comments': comments },
     rules: {
@@ -169,8 +180,14 @@ export default tseslint.config(
     },
   },
   {
-    files: ['apps/client/**/*.{ts,js,svelte}'],
+    files: clientFiles,
     ignores: ['apps/client/src/lib/motion/tokens.ts', '**/*.test.ts'],
+    rules: { 'no-restricted-syntax': ['error', ...tokenLiterals, ...guacamoleDynamicImports, ...computedImports] },
+  },
+  {
+    // The tunnel keeps every syntax ban but the one on computed imports (this object replaces the list above).
+    files: tunnelFolder,
+    ignores: ['**/*.test.ts'],
     rules: { 'no-restricted-syntax': ['error', ...tokenLiterals, ...guacamoleDynamicImports] },
   },
   {
