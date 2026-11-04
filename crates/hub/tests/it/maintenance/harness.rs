@@ -66,7 +66,8 @@ pub fn schema_for(pool: &PgPool) -> TestSchema {
     schema_at(pool, now()).0
 }
 
-/// A request from the K6 operator at `CLIENT_ADDR`.
+/// A request from the K6 operator at `CLIENT_ADDR`, with an identity that holds well past the
+/// test clock.
 pub fn signed_in(query: &str) -> Request {
     let operator = Operator {
         id: OPERATOR_ID.parse::<OperatorId>().unwrap(),

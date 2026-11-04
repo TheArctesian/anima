@@ -235,7 +235,7 @@ impl Beat {
 pub enum Recorded {
     /// The heartbeat, its aggregates and the check's state were written.
     Written,
-    /// Nothing was written: the check is paused, or the beat is older than its last beat.
+    /// Nothing was written: the check is paused, or the beat is not newer than its last beat.
     Skipped,
 }
 

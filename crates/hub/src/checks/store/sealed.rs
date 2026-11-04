@@ -2,9 +2,11 @@
 //! destination they were given for by the plaintext (SEC-003, SEC-005).
 //!
 //! Plaintext layout: a 4-byte big-endian length, that many bytes of binding JSON (the URL
-//! origin and the secret header names), then the encoded secrets. The binding is checked
-//! against the stored configuration on every open, so a database writer who points the URL
-//! elsewhere or renames a secret header gets an error instead of the secrets.
+//! origin, the secret header names, the authentication and whether TLS was verified), then
+//! the encoded secrets. The binding is checked against the stored configuration on every
+//! open, with the rule an update uses to keep secrets, so a database writer who points the
+//! URL elsewhere, renames a secret header, changes the authentication or turns TLS checks off
+//! gets an error instead of the secrets.
 
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroizing;
@@ -12,7 +14,7 @@ use zeroize::Zeroizing;
 use crate::{
     checks::{
         Error,
-        config::{HttpConfig, HttpSecrets},
+        config::{HttpAuth, HttpConfig, HttpSecrets},
         rules::origin,
     },
     credentials::{self, Sealed, Secret, Vault},
@@ -24,13 +26,15 @@ fn context(check: CheckId) -> Vec<u8> {
     format!("checks.checks.http:{check}").into_bytes()
 }
 
-/// Where the secrets may be sent: the URL origin and the secret header names, lower case,
-/// in order.
+/// Where the secrets may be sent: the URL origin, the secret header names (lower case, in
+/// order), the authentication kind and user name, and whether TLS was verified.
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Binding {
     origin: String,
     headers: Vec<String>,
+    auth: HttpAuth,
+    verify_tls: bool,
 }
 
 impl Binding {
@@ -43,7 +47,20 @@ impl Binding {
                 .filter(|header| header.value.is_none())
                 .map(|header| header.name.to_ascii_lowercase())
                 .collect(),
+            auth: config.auth.clone(),
+            verify_tls: config.verify_tls,
         }
+    }
+
+    /// Whether the secrets may go where `config` sends them: everything the same, except
+    /// that TLS checks may be turned on (SEC-005).
+    fn permits(&self, config: &HttpConfig) -> bool {
+        let now = Self::of(config);
+        !self.origin.is_empty()
+            && self.origin == now.origin
+            && self.headers == now.headers
+            && self.auth == now.auth
+            && (now.verify_tls || !self.verify_tls)
     }
 }
 
@@ -91,7 +108,7 @@ pub(in crate::checks) fn open(
     }
     let (binding, secrets) = rest.split_at(length);
     let binding: Binding = serde_json::from_slice(binding).map_err(|_| malformed())?;
-    if binding.origin.is_empty() || binding != Binding::of(config) {
+    if !binding.permits(config) {
         return Err(Error::SecretsUnbound);
     }
     HttpSecrets::decode(&Secret::new(secrets.to_vec())).map_err(|_| malformed())

@@ -242,6 +242,42 @@ devices_test! {
         assert!(matches!(opened, Err(Error::SecretsUnbound)), "the secrets opened for a renamed header");
     }
 
+    async fn sec_005_secrets_do_not_open_after_tls_or_auth_is_changed_in_the_database(pool: PgPool) {
+        let edits = [
+            ("{verifyTls}", "false"),
+            ("{auth,username}", "\"attacker\""),
+            ("{auth}", "{\"kind\": \"BEARER\"}"),
+        ];
+        for (path, value) in edits {
+            let id = web_check(&pool, path).await;
+            sqlx::query(
+                "UPDATE checks.checks SET config = jsonb_set(config, $2::text[], $3::jsonb) \
+                 WHERE id = $1",
+            )
+            .bind(id)
+            .bind(path)
+            .bind(value)
+            .execute(&pool)
+            .await
+            .unwrap();
+            let opened = checks::load_http_secrets(&pool, &vault(), id).await;
+            assert!(matches!(opened, Err(Error::SecretsUnbound)), "the secrets opened after {path}");
+        }
+    }
+
+    async fn sec_005_secrets_given_without_tls_checks_still_open_when_they_are_turned_on(pool: PgPool) {
+        let Definition::Http(mut input) = http("https://pve-01.home.lan:8006/", COOKIE, basic(PASSWORD)) else { unreachable!() };
+        input.verify_tls = false;
+        let id = create(&pool, new_check(PVE_01, "Self-signed", Definition::Http(input))).await;
+        assert!(checks::load_http_secrets(&pool, &vault(), id).await.unwrap().is_some());
+        sqlx::query("UPDATE checks.checks SET config = jsonb_set(config, '{verifyTls}', 'true') WHERE id = $1")
+            .bind(id)
+            .execute(&pool)
+            .await
+            .unwrap();
+        assert!(checks::load_http_secrets(&pool, &vault(), id).await.unwrap().is_some());
+    }
+
     async fn sec_003_the_sealed_value_opens_with_exactly_its_check_context(pool: PgPool) {
         let id = web_check(&pool, "Web UI").await;
         let bytes: Vec<u8> = sqlx::query_scalar("SELECT secrets_sealed FROM checks.checks WHERE id = $1")

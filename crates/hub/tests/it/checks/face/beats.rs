@@ -173,6 +173,19 @@ fixture_test! {
         assert_eq!(aggregates(&pool, id).await[0][0].1, 1);
     }
 
+    async fn db_008_a_second_beat_at_the_same_instant_is_skipped(pool: PgPool) {
+        let id = create(&pool, new_check(PVE_01, "Twice", icmp())).await;
+        let at = database_now(&pool).await;
+        record(&pool, id, &beat(at, Status::Up, Some(5))).await;
+        let before = state(&pool, id).await;
+        let mut conn = pool.acquire().await.unwrap();
+        let again = beat(at, Status::Down, None);
+        assert_eq!(checks::record_beat(&mut conn, id, &again).await.unwrap(), Recorded::Skipped);
+        assert_eq!(state(&pool, id).await, before);
+        assert_eq!(count(&pool, HEARTBEATS, id).await, 1);
+        assert_eq!(aggregates(&pool, id).await[0][0].2, 0);
+    }
+
     async fn chk_005_a_beat_for_a_paused_check_changes_nothing(pool: PgPool) {
         let id = create(&pool, new_check(PVE_01, "Paused", icmp())).await;
         let mut conn = pool.acquire().await.unwrap();

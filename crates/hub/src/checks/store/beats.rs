@@ -67,7 +67,7 @@ fn response_ms(beat: &Beat) -> Option<i32> {
 
 /// Records the beat in the caller's transaction, in a savepoint: all or nothing. The check's
 /// state row is written first, so concurrent beats of one check wait for each other. A paused
-/// check or a beat older than the last one writes nothing (CHK-005).
+/// check, or a beat that is not newer than the last one, writes nothing (CHK-005, DB-008).
 pub(in crate::checks) async fn record_beat(
     conn: &mut PgConnection,
     check: CheckId,
@@ -117,7 +117,7 @@ async fn write_state(conn: &mut PgConnection, check: CheckId, beat: &Beat) -> Re
                 last_beat_at = $5, \
                 resolved_ip = COALESCE($6, resolved_ip), \
                 cert_not_after = COALESCE($7, cert_not_after) \
-         WHERE id = $1 AND NOT paused AND (last_beat_at IS NULL OR last_beat_at <= $5)",
+         WHERE id = $1 AND NOT paused AND (last_beat_at IS NULL OR last_beat_at < $5)",
     )
     .bind(check)
     .bind(status_sql(beat.state.status))
