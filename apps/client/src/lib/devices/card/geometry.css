@@ -1,0 +1,5 @@
+/* One card size for the card and the loading skeleton, so the skeleton has the card's geometry (5.7.3, Loading). */
+:root {
+  --device-card-block-size: calc(var(--space-16) * 2 + var(--space-8));
+  --device-card-min-inline-size: calc(var(--space-16) * 5);
+}
