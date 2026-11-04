@@ -99,8 +99,42 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         bus: Bus::new(BUS_CAPACITY),
         vault,
     });
+    let upkeep = spawn_upkeep(&pool, &clock);
     let app = router(schema, pool, clock).into_make_service_with_connect_info::<SocketAddr>();
-    Ok(axum::serve(listener, app).await?)
+    let served = axum::serve(listener, app).await;
+    upkeep.iter().for_each(tokio::task::JoinHandle::abort);
+    Ok(served?)
+}
+
+/// Starts the daily jobs, each run now and then daily (D-4, DB-004, DB-005, K2 retention):
+/// day partitions ahead and expired ones dropped, and old login attempts and expired tokens
+/// deleted.
+fn spawn_upkeep(
+    pool: &PgPool,
+    clock: &Arc<dyn anima_hub::clock::Clock>,
+) -> [tokio::task::JoinHandle<()>; 2] {
+    let partitions = {
+        let db = pool.clone();
+        events::run_daily("partitions", clock.clone(), move |now| {
+            let db = db.clone();
+            async move {
+                events::keep_partitions(&db, now)
+                    .await
+                    .map_err(|e| e.fault())
+            }
+        })
+    };
+    let prune = {
+        let db = pool.clone();
+        events::run_daily("access_prune", clock.clone(), move |now| {
+            let db = db.clone();
+            async move {
+                let pruned = access::prune(&db, now).await;
+                pruned.map(drop).map_err(|e| e.fault().unwrap_or("access"))
+            }
+        })
+    };
+    [tokio::spawn(partitions), tokio::spawn(prune)]
 }
 
 /// Applies the migrations as the owner role and exits; serving never migrates (R-016).

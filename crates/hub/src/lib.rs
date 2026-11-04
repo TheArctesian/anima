@@ -18,7 +18,7 @@ use async_graphql_axum::GraphQLResponse;
 use axum::{
     Router,
     body::Bytes,
-    extract::{DefaultBodyLimit, State},
+    extract::{DefaultBodyLimit, State, WebSocketUpgrade},
     http::{Extensions, HeaderMap, StatusCode, header::CONTENT_TYPE},
     response::{IntoResponse, Response},
     routing::post,
@@ -39,7 +39,7 @@ struct Edge {
 
 pub fn router(schema: schema::HubSchema, db: PgPool, clock: Arc<dyn clock::Clock>) -> Router {
     Router::new()
-        .route("/graphql", post(graphql))
+        .route("/graphql", post(graphql).get(subscriptions))
         .layer(DefaultBodyLimit::max(BODY_LIMIT))
         .with_state(Edge { schema, db, clock })
 }
@@ -83,4 +83,15 @@ async fn graphql(
         }
     };
     GraphQLResponse::from(response).into_response()
+}
+
+/// Upgrades `GET /graphql` to a `graphql-transport-ws` connection. The token comes only from
+/// the `connection_init` payload, never from the URL (R-020).
+async fn subscriptions(
+    State(edge): State<Edge>,
+    extensions: Extensions,
+    upgrade: WebSocketUpgrade,
+) -> Response {
+    let access = access::SocketAccess::new(edge.db, edge.clock, access::client_addr(&extensions));
+    access::accept_socket(upgrade, edge.schema, access)
 }
