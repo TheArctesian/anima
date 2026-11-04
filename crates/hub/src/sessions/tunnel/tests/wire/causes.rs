@@ -255,7 +255,7 @@ async fn k4_4_pings_keep_a_client_from_timing_out(pool: PgPool) {
 )]
 async fn k4_5_d_10_hub_shutdown_closes_1001_and_finishes(pool: PgPool) {
     let (_guacd, bench, mut client) = session(&pool, Setup::default()).await;
-    let closing = bench.live.shut_down();
+    let (closing, _) = bench.live.shut_down();
     assert_eq!(client.close_code().await, Some(1001));
     timeout(Duration::from_secs(5), closing.finished())
         .await

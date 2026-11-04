@@ -1,6 +1,8 @@
 //! `endSession` (D-10, K7) and the sweep of tickets that expired unredeemed (D-2): each
 //! session ends once, with one `session.end` audit entry.
 
+mod shutdown;
+
 use std::time::Duration;
 
 use anima_hub::{

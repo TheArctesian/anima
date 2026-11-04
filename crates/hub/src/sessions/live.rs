@@ -150,11 +150,11 @@ impl Drop for Tunnel {
 }
 
 /// The tunnels that were told to end; `finished` waits until each has deregistered.
-pub struct Closing(Vec<EndSignal>);
+pub(super) struct Closing(Vec<EndSignal>);
 
 impl Closing {
     /// Waits until every signalled tunnel has dropped its `Tunnel`. Callers bound the wait.
-    pub async fn finished(self) {
+    pub(super) async fn finished(self) {
         for signal in &self.0 {
             signal.closed().await;
         }
@@ -239,6 +239,11 @@ impl Live {
     /// written, because none of them panics between two writes.
     fn state(&self) -> MutexGuard<'_, State> {
         self.state.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// Whether `shut_down` has run: from then on no ticket is issued or redeemed.
+    pub(super) fn is_shutting_down(&self) -> bool {
+        self.state().shutting_down
     }
 
     /// Holds a new ticket under its hash.
@@ -343,13 +348,17 @@ impl Live {
             .extend(tickets.into_iter().map(|ticket| (ticket.session, ticket)));
     }
 
-    /// Tells every open tunnel to end with `HUB_SHUTDOWN` and refuses new tickets and
-    /// redemptions from now on (D-10). The caller bounds the wait on the returned `Closing`.
-    #[must_use]
-    pub fn shut_down(&self) -> Closing {
+    /// Tells every open tunnel to end with `HUB_SHUTDOWN`, withdraws every unredeemed and
+    /// spent ticket, and refuses new tickets and redemptions from now on (D-10), all under one
+    /// lock, so no ticket becomes a tunnel in between. The caller ends the withdrawn tickets'
+    /// rows and bounds the wait on the returned `Closing` (`end::shut_down`).
+    pub(super) fn shut_down(&self) -> (Closing, Vec<PendingTicket>) {
         let mut state = self.state();
         state.shutting_down = true;
         let ends: Vec<EndSignal> = state.tunnels.values().cloned().collect();
+        let mut tickets: Vec<PendingTicket> =
+            state.tickets.drain().map(|(_, ticket)| ticket).collect();
+        tickets.extend(state.spent.drain().map(|(_, ticket)| ticket));
         drop(state);
         for end in &ends {
             let cause = EndCause {
@@ -358,6 +367,6 @@ impl Live {
             };
             signal(end, cause);
         }
-        Closing(ends)
+        (Closing(ends), tickets)
     }
 }

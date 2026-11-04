@@ -1,13 +1,13 @@
-//! The sessions face other domains and `main.rs` call: host keys and the stale-row close.
+//! The sessions face other domains call: host keys. The stale-row close and the shutdown
+//! are tested with the other ends (`end/shutdown.rs`).
 
 use std::collections::BTreeMap;
 
-use chrono::TimeDelta;
 use sqlx::PgPool;
 
 use super::{
-    DOCKER_HOST, ECDSA_KEY, ED25519, ED25519_FINGERPRINT, ED25519_KEY, OLLAMA, PVE_01, Row,
-    add_operator, insert_all, now, put_host_key, session_id,
+    DOCKER_HOST, ECDSA_KEY, ED25519, ED25519_FINGERPRINT, ED25519_KEY, OLLAMA, PVE_01,
+    add_operator, now, put_host_key,
 };
 use anima_hub::{
     ids::DeviceId,
@@ -84,42 +84,4 @@ async fn sec_007_a_stored_key_whose_algorithm_differs_from_the_blob_is_an_error(
     let error = sessions::host_key(&pool, device(PVE_01)).await.unwrap_err();
     assert!(matches!(error, Error::Database(_)));
     assert_eq!(error.to_string(), "database error");
-}
-
-#[sqlx::test(
-    migrations = "./migrations",
-    fixtures(path = "../../fixtures", scripts("devices"))
-)]
-async fn ra_008_close_stale_ends_only_open_sessions_with_hub_shutdown(pool: PgPool) {
-    insert_all(
-        &pool,
-        &[
-            Row::live(1, PVE_01, 0),
-            Row::live(2, DOCKER_HOST, 1),
-            Row::ended(3, PVE_01, 2, "operator"),
-        ],
-    )
-    .await;
-    let at = now() + TimeDelta::hours(1);
-
-    assert_eq!(sessions::close_stale(&pool, at).await.unwrap(), 2);
-
-    let rows: Vec<(uuid::Uuid, chrono::DateTime<chrono::Utc>, String)> =
-        sqlx::query_as("select id, ended_at, end_reason from sessions.sessions order by id")
-            .fetch_all(&pool)
-            .await
-            .unwrap();
-    assert_eq!(
-        rows,
-        [
-            (session_id(1), at, "hub_shutdown".to_owned()),
-            (session_id(2), at, "hub_shutdown".to_owned()),
-            (
-                session_id(3),
-                now() + TimeDelta::minutes(7),
-                "operator".to_owned()
-            ),
-        ]
-    );
-    assert_eq!(sessions::close_stale(&pool, at).await.unwrap(), 0);
 }

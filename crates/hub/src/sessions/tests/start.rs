@@ -6,7 +6,7 @@ use std::net::IpAddr;
 use proptest::prelude::*;
 
 use crate::sessions::{
-    start::{DisplayRequest, checked_display},
+    start::{DisplayRequest, checked_display, held_timezone},
     target::is_refused_target,
 };
 
@@ -61,6 +61,28 @@ fn gw_012_values_beyond_u32_are_refused_not_wrapped() {
     let huge = i64::from(u32::MAX) + 1_281;
     assert!(checked_display(&request(huge, 800, 96)).is_err());
     assert!(checked_display(&request(1280, 800, i64::MIN)).is_err());
+}
+
+#[test]
+fn r_032_e_6_a_ticket_holds_only_a_zone_name_of_at_most_64_bytes_else_none() {
+    let held = |zone: &str| held_timezone(Some(zone.to_owned()));
+    let at_cap = format!("Etc/{}", "x".repeat(60));
+    assert_eq!(held(&at_cap), Some(at_cap.clone()));
+    assert_eq!(
+        held("Pacific/Auckland").as_deref(),
+        Some("Pacific/Auckland")
+    );
+    assert_eq!(held_timezone(None), None);
+    for dropped in [
+        format!("{at_cap}x"),
+        "Europe/../Berlin".to_owned(),
+        "Europe/Berlin\n".to_owned(),
+        "/etc/localtime".to_owned(),
+        "a//b".to_owned(),
+        String::new(),
+    ] {
+        assert_eq!(held(&dropped), None, "{dropped:?}");
+    }
 }
 
 #[test]

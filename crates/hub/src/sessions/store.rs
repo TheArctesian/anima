@@ -12,7 +12,7 @@ use super::{
     public_key::{BadKey, PublicKey},
 };
 use crate::{
-    events::Operator,
+    events::{ClientAddr, Operator},
     ids::{DeviceId, OperatorId, SessionId},
 };
 
@@ -135,15 +135,16 @@ pub(super) async fn insert<'e>(
     Ok(Session::try_from(row)?)
 }
 
-/// Ends a live session. Returns whether this call ended it: a session ends once, and the
-/// first end wins (D-9).
+/// Ends a live session at `end.at`, or at its start if that is later (a clock that stepped
+/// back must not leave the row live, MV-003). Returns whether this call ended it: a session
+/// ends once, and the first end wins (D-9).
 pub(super) async fn end<'e>(
     db: impl PgExecutor<'e>,
     id: SessionId,
     end: SessionEnd,
 ) -> Result<bool, Error> {
     let ended = sqlx::query(
-        "update sessions.sessions set ended_at = $2, end_reason = $3 \
+        "update sessions.sessions set ended_at = greatest($2, started_at), end_reason = $3 \
          where id = $1 and ended_at is null",
     )
     .bind(id)
@@ -168,19 +169,36 @@ pub(super) async fn get<'e>(
     Ok(row.map(Session::try_from).transpose()?)
 }
 
-/// Ends every live session with `HUB_SHUTDOWN` at `now`; returns how many it ended.
+/// A live row `close_stale` ended: the session and who started it, from where.
+pub(super) struct Stale {
+    pub(super) session: SessionId,
+    pub(super) operator: Operator,
+    pub(super) client: ClientAddr,
+}
+
+/// Ends every live session with `HUB_SHUTDOWN` at `now`, or at its start if that is later,
+/// so a row started ahead of a clock that stepped back still ends; returns each row it ended.
 pub(super) async fn close_stale<'e>(
     db: impl PgExecutor<'e>,
     now: DateTime<Utc>,
-) -> Result<u64, Error> {
-    let closed = sqlx::query(
-        "update sessions.sessions set ended_at = $1, end_reason = $2 where ended_at is null",
+) -> Result<Vec<Stale>, Error> {
+    let rows: Vec<(SessionId, OperatorId, String, IpAddr)> = sqlx::query_as(
+        "update sessions.sessions set ended_at = greatest($1, started_at), end_reason = $2 \
+         where ended_at is null returning id, operator_id, operator_name, client_addr",
     )
     .bind(now)
     .bind(EndReason::HubShutdown.as_str())
-    .execute(db)
+    .fetch_all(db)
     .await?;
-    Ok(closed.rows_affected())
+    let stale = rows
+        .into_iter()
+        .map(|(session, id, name, client)| Stale {
+            session,
+            operator: Operator { id, name },
+            client: ClientAddr(client),
+        })
+        .collect();
+    Ok(stale)
 }
 
 #[derive(sqlx::FromRow)]

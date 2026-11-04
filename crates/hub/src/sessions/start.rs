@@ -10,10 +10,10 @@ use uuid::Uuid;
 
 use super::{
     Conflict, Error,
-    end::sweep,
+    end::{Actor, end_row, sweep},
     find_device, host_key,
     live::Live,
-    model::{FieldError, Protocol},
+    model::{EndReason, FieldError, Protocol, SessionEnd},
     store::{self, NewSession},
     target::is_refused_target,
     tickets::{LIFETIME, PendingTicket, TOKEN_BYTES, Ticket, TicketToken},
@@ -53,6 +53,17 @@ fn bounded(value: i64, (min, max): (u32, u32), field: &'static str) -> Result<u3
         .ok()
         .filter(|value| (min..=max).contains(value))
         .ok_or_else(|| FieldError::new(field, format!("Enter a value from {min} to {max}.")))
+}
+
+/// Longest `DisplayInput.timezone` a ticket holds, in bytes: the longest IANA zone name has
+/// 32, and `guac_protocol::is_zone_name` allows 64.
+const MAX_TIMEZONE_BYTES: usize = 64;
+
+/// The time zone a ticket holds: the requested one when it is a zone name of at most
+/// `MAX_TIMEZONE_BYTES`, else none, so the tunnel uses UTC (K4 §3, R-032 E-6). Never a
+/// refusal, and a ticket never holds arbitrary client text.
+pub(super) fn held_timezone(requested: Option<String>) -> Option<String> {
+    requested.filter(|zone| zone.len() <= MAX_TIMEZONE_BYTES && guac_protocol::is_zone_name(zone))
 }
 
 /// The display within K4 §4's bounds, else an error for each field outside them.
@@ -116,14 +127,19 @@ fn random_token() -> Result<TicketToken, Error> {
 
 /// Starts a session (K3, K4 §1): refuses a missing device (`NotFound`), a display outside
 /// K4 §4's bounds or a host that is a loopback, link-local, multicast or unspecified IP
-/// literal (`Validation`), and SSH turned off or no accepted host key (`Conflict`). Then, in
-/// one transaction, it writes the live session row and the audit entry `session.start`, and
+/// literal (`Validation`), and SSH turned off or no accepted host key (`Conflict`). A time
+/// zone that is not a zone name is dropped, so the tunnel uses UTC. Then, in one
+/// transaction, it writes the live session row and the audit entry `session.start`, and
 /// holds a ticket that `/tunnel` redeems once within 30 s from `client`. Tickets that expired
 /// unredeemed are swept first.
 ///
+/// If the hub shut down while the commit was in flight, `shut_down` took the ticket but could
+/// not yet see the row; the row then ends here with `HUB_SHUTDOWN` and its audit entry, and
+/// the start is `Unavailable` (D-10).
+///
 /// # Errors
 /// As above; `Unavailable` when too many tickets are pending or the hub is shutting down;
-/// `Database`, `Devices` or `Random` when a dependency fails.
+/// `Database`, `Devices`, `Events` or `Random` when a dependency fails.
 #[expect(
     clippy::too_many_arguments,
     reason = "K3 fixes start's parameters (R-032 E-1)"
@@ -148,7 +164,7 @@ pub async fn start(
         device: device.id,
         protocol: req.protocol,
         display,
-        timezone: req.display.timezone,
+        timezone: held_timezone(req.display.timezone),
         expires_at: now + LIFETIME,
     };
     let mut tx = db.begin().await?;
@@ -164,7 +180,34 @@ pub async fn start(
         }
         return Err(error.into());
     }
+    if live.is_shutting_down() {
+        end_shut_down(db, &pending, now).await?;
+        return Err(Error::Unavailable);
+    }
     Ok(Ticket::new(pending.session, token, pending.expires_at))
+}
+
+/// Ends the committed row of a ticket `shut_down` withdrew before the row was visible to it,
+/// with `HUB_SHUTDOWN` and its audit entry naming the ticket's operator and client. A row
+/// `shut_down` did end is left as it is (D-9).
+async fn end_shut_down(
+    db: &PgPool,
+    pending: &PendingTicket,
+    now: DateTime<Utc>,
+) -> Result<(), Error> {
+    let end = SessionEnd {
+        at: now,
+        reason: EndReason::HubShutdown,
+    };
+    let by = Actor {
+        operator: pending.operator.clone(),
+        client: pending.client,
+        at: now,
+    };
+    let mut tx = db.begin().await?;
+    end_row(&mut tx, pending.session, end, &by).await?;
+    tx.commit().await?;
+    Ok(())
 }
 
 /// The live row and the audit entry `session.start`; the change never holds the token.

@@ -10,9 +10,12 @@ use std::{
 use chrono::TimeDelta;
 
 use super::tickets::{CLIENT, client, issue, issued_at, pending, session, token};
-use crate::sessions::{
-    Actor, EndCause, EndReason,
-    live::{Ending, Live, Refused, Unavailable},
+use crate::{
+    ids::SessionId,
+    sessions::{
+        Actor, EndCause, EndReason,
+        live::{Ending, Live, Refused, Unavailable},
+    },
 };
 
 fn operator_actor() -> Actor {
@@ -111,7 +114,7 @@ fn ra_008_end_by_and_redeem_never_both_miss_on_real_threads() {
 }
 
 #[tokio::test]
-async fn ra_008_shut_down_signals_hub_shutdown_to_every_tunnel_and_refuses_new_ones() {
+async fn ra_008_shut_down_signals_every_tunnel_withdraws_every_ticket_and_refuses_new_ones() {
     let live = Live::default();
     let first = issue(&live, 1, 1);
     let second = issue(&live, 2, 2);
@@ -129,7 +132,14 @@ async fn ra_008_shut_down_signals_hub_shutdown_to_every_tunnel_and_refuses_new_o
         reason: EndReason::HubShutdown,
         by: None,
     };
-    let closing = live.shut_down();
+    let (closing, withdrawn) = live.shut_down();
+    let withdrawn: Vec<SessionId> = withdrawn.iter().map(|ticket| ticket.session).collect();
+    assert_eq!(
+        withdrawn,
+        [session(3)],
+        "the unredeemed ticket is handed back to end its row"
+    );
+    assert!(live.withdraw(session(3)).is_none(), "and no longer held");
     assert_eq!(one.ended().await, shutdown);
     assert_eq!(two.ended().await, shutdown);
     // The first cause wins: a later endSession does not change it.
