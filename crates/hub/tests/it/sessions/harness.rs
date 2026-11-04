@@ -1,18 +1,20 @@
 //! A schema with the sessions part only, and requests from a signed-in operator.
 
-use std::sync::Arc;
+use std::{io::Write as _, sync::Arc};
 
 use anima_hub::{
     access::Identity,
     clock::{Clock, FixedClock},
+    credentials::Vault,
     events::{ClientAddr, Operator},
     ids::OperatorId,
     sessions::{
-        HostKey, Live,
+        Live,
         graphql::{Mutation, Query},
     },
 };
 use async_graphql::{EmptySubscription, Request, Response, Schema};
+use base64::{Engine as _, engine::general_purpose::STANDARD};
 use chrono::{DateTime, TimeDelta, Utc};
 use serde_json::Value;
 use sqlx::PgPool;
@@ -29,16 +31,23 @@ pub fn schema_for(pool: &PgPool) -> TestSchema {
     schema_at(pool, now() + TimeDelta::hours(1), &Live::default())
 }
 
-/// The schema with a clock fixed at `at`, sharing `live`. `HostKey` is registered because no
-/// root field returns it yet (WP-10 T3 adds them).
+/// The schema with a clock fixed at `at`, sharing `live`.
 pub fn schema_at(pool: &PgPool, at: DateTime<Utc>, live: &Live) -> TestSchema {
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(at));
     Schema::build(Query, Mutation, EmptySubscription)
-        .register_output_type::<HostKey>()
         .data(pool.clone())
         .data(clock)
         .data(live.clone())
+        .data(vault())
         .finish()
+}
+
+/// The schema's vault: a throwaway key written to a temporary file (SEC-004), never a real
+/// key. Every call returns a vault with the same key.
+pub fn vault() -> Vault {
+    let mut key_file = tempfile::NamedTempFile::new().unwrap();
+    writeln!(key_file, "{}", STANDARD.encode([7_u8; 32])).unwrap();
+    Vault::from_key_file(key_file.path()).unwrap()
 }
 
 /// The K6 operator as the guard puts it in the context.

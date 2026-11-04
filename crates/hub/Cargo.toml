@@ -46,3 +46,5 @@ tower.workspace = true
 static_assertions.workspace = true
 tempfile.workspace = true
 proptest = "1.12"
+# ECDSA host keys for the in-process SSH server of the connection test (WP-10 T3).
+rand = "0.10"

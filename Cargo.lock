@@ -87,6 +87,7 @@ dependencies = [
  "http-body-util",
  "ipnet",
  "proptest",
+ "rand 0.10.3",
  "rpassword",
  "russh",
  "serde",
