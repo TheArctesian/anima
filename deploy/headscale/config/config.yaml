@@ -1,0 +1,145 @@
+---
+# Headscale v0.29.7 configuration for the Anima VPN control server on the VPS
+# (spec Sections 4.1, 4.2, 4.2.1; package plan WP-03 decisions D-5 to D-9).
+#
+# This file is a template. Placeholders (the only two; tests fail on any other):
+#   VPS_PUBLIC_IPV4  public IPv4 address of the VPS, for the embedded DERP map entry
+#   ACME_EMAIL       contact address registered with Let's Encrypt
+# The operator renders it on the VPS with envsubst, restricted to exactly these two
+# variables, into /opt/anima/headscale/config/config.yaml (the guide gives the command).
+# No key, token or password belongs in this file (LOG-007): Headscale generates its
+# private keys into /var/lib/headscale on first start.
+
+# Public name of the control server; a separate name from the MagicDNS domain (DNS-006).
+server_url: https://hs.anima.ing
+
+# The only public TCP listener: control protocol, embedded DERP and ACME TLS-ALPN-01
+# all share port 443 (VPS-002, VPS-003, D-6). There is no reverse proxy in front.
+listen_addr: 0.0.0.0:443
+
+# Metrics and debug endpoints stay on loopback (VPS-003).
+metrics_listen_addr: 127.0.0.1:9090
+
+# Remote gRPC admin is not used: the CLI talks to the unix socket below, so gRPC stays
+# on loopback and never runs without TLS (VPS-003, D-6).
+grpc_listen_addr: 127.0.0.1:50443
+grpc_allow_insecure: false
+
+# No proxy in front of Headscale, so forwarded-for headers are never trusted.
+trusted_proxies: []
+
+noise:
+  # Generated on first start if missing; part of the backup (VPS-006).
+  private_key_path: /var/lib/headscale/noise_private.key
+
+# The standard Tailscale ranges (the hub's VPN address is in 100.64.0.0/10, NET-005).
+prefixes:
+  v4: 100.64.0.0/10
+  v6: fd7a:115c:a1e0::/48
+  allocation: sequential
+
+# Embedded DERP only (D-7): relayed traffic stays on the operator's VPS; no Tailscale
+# public relays. The relay runs on listen_addr (443/tcp) plus STUN on 3478/udp.
+derp:
+  server:
+    enabled: true
+    region_id: 999
+    region_code: "anima"
+    region_name: "Anima VPS"
+    # Only nodes of this Headscale may relay through it.
+    verify_clients: true
+    stun_listen_addr: "0.0.0.0:3478"
+    # Generated on first start if missing; part of the backup (VPS-006).
+    private_key_path: /var/lib/headscale/derp_server_private.key
+    automatically_add_embedded_derp_region: true
+    ipv4: "${VPS_PUBLIC_IPV4}"
+    # Optional: if the VPS has a public IPv6 address, the operator may add
+    #   ipv6: "<address>"
+    # here. Phase 1 uses IPv4 only.
+  # No external DERP maps (D-7), so there is nothing to refresh.
+  urls: []
+  paths: []
+  auto_update_enabled: false
+
+# No outbound phone-home to GitHub on start: the image version is pinned by tag and
+# digest, and an upgrade is a deliberate operator change (VPS-005), not a prompt.
+disable_check_updates: true
+
+node:
+  # Personal (client) node keys expire after 180 days (VPN-003, D-1). Tagged nodes
+  # (hub, routers) are exempt. Headscale treats an unparseable value as "never expire",
+  # so the tests parse this string with Headscale's duration grammar.
+  expiry: 180d
+  ephemeral:
+    inactivity_timeout: 30m
+  routes:
+    ha:
+      probe_interval: 10s
+      probe_timeout: 5s
+
+database:
+  type: sqlite
+  debug: false
+  gorm:
+    prepare_stmt: true
+    parameterized_queries: true
+    skip_err_record_not_found: true
+    slow_threshold: 1000
+  sqlite:
+    path: /var/lib/headscale/db.sqlite
+    write_ahead_log: true
+    wal_autocheckpoint: 1000
+
+# Let's Encrypt with TLS-ALPN-01 on listen_addr :443; no port 80 is opened (D-6).
+# tls_letsencrypt_listen is used only by HTTP-01, so it is not set.
+acme_url: https://acme-v02.api.letsencrypt.org/directory
+acme_email: "${ACME_EMAIL}"
+tls_letsencrypt_hostname: hs.anima.ing
+tls_letsencrypt_cache_dir: /var/lib/headscale/cache
+tls_letsencrypt_challenge_type: TLS-ALPN-01
+tls_cert_path: ""
+tls_key_path: ""
+
+# JSON lines for the Docker json-file log. Info, not debug or trace, which log
+# request detail (LOG-007).
+log:
+  level: info
+  format: json
+
+# Access rules live in the HuJSON policy beside this file (VPN-004, D-4).
+policy:
+  mode: file
+  path: /etc/headscale/policy.hujson
+
+# MagicDNS names nodes <host>.net.anima.ing (D-8, DNS-006).
+dns:
+  magic_dns: true
+  base_domain: net.anima.ing
+  # Split DNS: clients keep their own resolver (Pi-hole, site DNS) for every name
+  # outside net.anima.ing, so no global nameservers are pushed.
+  override_local_dns: false
+  nameservers:
+    global: []
+    split: {}
+  search_domains: []
+  # None: the hub's node name already gives hub.net.anima.ing, and the public record
+  # hub.anima.ing is the primary name (D-5).
+  extra_records: []
+
+# The CLI connects here without authentication: root and group only, never world (D-6).
+unix_socket: /var/run/headscale/headscale.sock
+unix_socket_permission: "0770"
+
+# No OIDC block: nodes register with pre-auth keys or `headscale auth register` (D-6).
+
+# Clients never send logs to Tailscale Inc.
+logtail:
+  enabled: false
+
+# File sharing is not needed; withholding it keeps the surface smaller.
+taildrop:
+  enabled: false
+
+# Client updates stay the operator's choice on each machine.
+auto_update:
+  enabled: false
