@@ -1,7 +1,8 @@
 #!/bin/sh
 # Checks the host before `docker compose up` (NET-003, DB-002). With no argument it checks
-# all three things from the environment and exits 1 on the first failure:
+# all four things from the environment and exits 1 on the first failure:
 #   address  ANIMA_HUB_ADDRESS is an IPv4 address in 100.64.0.0/10 (the VPN range).
+#   public   ANIMA_VPS_PUBLIC_ADDRESS is a public IPv4 address (not VPN, private or reserved).
 #   docker   the Docker Engine is version 28 or later (earlier engines let a routed LAN
 #            neighbour reach unpublished container ports).
 #   secrets  every secret file of compose.yaml exists and is not empty in the secrets folder
@@ -39,6 +40,33 @@ check_address() {
     fi
 }
 
+# check_public_address ADDRESS: an IPv4 address that is not in the VPN range or a private range.
+check_public_address() {
+    ip=$1
+    case $ip in
+    *[!0-9.]* | '' | .* | *. | *..*) fail "ANIMA_VPS_PUBLIC_ADDRESS '$ip' is not an IPv4 address" ;;
+    esac
+    oldifs=$IFS
+    IFS=.
+    # shellcheck disable=SC2086 # word splitting on dots is the point
+    set -- $ip
+    IFS=$oldifs
+    [ "$#" -eq 4 ] || fail "ANIMA_VPS_PUBLIC_ADDRESS '$ip' is not an IPv4 address"
+    for part in "$@"; do
+        case $part in
+        0?*) fail "ANIMA_VPS_PUBLIC_ADDRESS '$ip' has a leading zero in '$part'" ;;
+        esac
+        [ "${#part}" -le 3 ] && [ "$part" -le 255 ] || fail "ANIMA_VPS_PUBLIC_ADDRESS '$ip' is not an IPv4 address"
+    done
+    private=
+    if [ "$1" -eq 10 ] || [ "$1" -eq 127 ] || [ "$1" -eq 0 ] || [ "$1" -ge 224 ]; then private=1; fi
+    if [ "$1" -eq 100 ] && [ "$2" -ge 64 ] && [ "$2" -le 127 ]; then private=1; fi
+    if [ "$1" -eq 172 ] && [ "$2" -ge 16 ] && [ "$2" -le 31 ]; then private=1; fi
+    if [ "$1" -eq 192 ] && [ "$2" -eq 168 ]; then private=1; fi
+    if [ "$1" -eq 169 ] && [ "$2" -eq 254 ]; then private=1; fi
+    [ -z "$private" ] || fail "ANIMA_VPS_PUBLIC_ADDRESS '$ip' is not a public address (VPN, private, loopback or reserved range)"
+}
+
 check_docker() {
     major=${1%%.*}
     case $major in
@@ -66,10 +94,12 @@ check_secrets() {
 
 case ${1:-all} in
 address) check_address "${2:-}" ;;
+public) check_public_address "${2:-}" ;;
 docker) check_docker "${2:-}" ;;
 secrets) check_secrets "${2:-}" ;;
 all)
     check_address "${ANIMA_HUB_ADDRESS:-}"
+    check_public_address "${ANIMA_VPS_PUBLIC_ADDRESS:-}"
     check_docker "$(docker version --format '{{.Server.Version}}')"
     check_secrets "${ANIMA_SECRETS_DIR:-$here/../secrets}"
     echo "preflight: ok"

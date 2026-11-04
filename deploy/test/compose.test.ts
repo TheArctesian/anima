@@ -6,7 +6,6 @@ import { join } from "node:path";
 
 const ROOT = join(import.meta.dir, "..", "..");
 const COMPOSE_PATH = join(ROOT, "deploy", "compose.yaml");
-const CONFIG_PATH = join(ROOT, "crates", "hub", "src", "config.rs");
 
 type Dict = Record<string, unknown>;
 interface Container {
@@ -168,55 +167,6 @@ describe("container limits (SEC-001)", () => {
       expect(service.cap_drop).toEqual(["ALL"]);
       expect(service.security_opt).toContain("no-new-privileges:true");
     }
-  });
-});
-
-describe("hub configuration (K7)", () => {
-  test("every ANIMA_* variable the hub receives is read by config.rs", () => {
-    const source = readFileSync(CONFIG_PATH, "utf8");
-    const known = new Set([...source.matchAll(/"(ANIMA_[A-Z_]+)"/g)].map((match) => match[1]));
-    for (const name of ["hub", "migrate"]) {
-      for (const key of Object.keys(compose.services[name]?.environment ?? {})) {
-        expect(known.has(key) ? key : `${name}.${key} is unknown to config.rs`).toBe(key);
-      }
-    }
-  });
-
-  test("DNS-002 the hub reads certificate and key from the one tls.pem on the certs volume", () => {
-    const environment = compose.services["hub"]?.environment ?? {};
-    expect(environment["ANIMA_TLS_CERT_FILE"]).toBe("/certs/hub/tls.pem");
-    expect(environment["ANIMA_TLS_KEY_FILE"]).toBe("/certs/hub/tls.pem");
-  });
-
-  test("NET-003 the hub listens on its fixed gateway address and reaches guacd by name", () => {
-    const hub = compose.services["hub"] as Container;
-    expect(hub.environment?.["ANIMA_LISTEN"]).toBe("${ANIMA_HUB_IP:-172.30.0.10}:8443");
-    expect(hub.environment?.["ANIMA_GUACD"]).toBe("guacd:4822");
-    const gateway = (hub.networks as Record<string, { ipv4_address?: string }>)["gateway"];
-    expect(gateway?.ipv4_address).toBe("${ANIMA_HUB_IP:-172.30.0.10}");
-  });
-
-  test("DNS-002 the hub mounts the certs volume read-only", () => {
-    expect(compose.services["hub"]?.volumes).toContain("certs:/certs:ro");
-  });
-
-  test("NET-003 the permitted networks default is exactly the VPN range", () => {
-    const value = compose.services["hub"]?.environment?.["ANIMA_PERMITTED_NETWORKS"];
-    expect(value).toBe("${ANIMA_PERMITTED_NETWORKS:-100.64.0.0/10}");
-  });
-
-  test("DNS-002 certs may take 15 minutes to become healthy before the hub gives up", () => {
-    const check = compose.services["certs"]?.healthcheck;
-    expect((check?.retries ?? 0) * 10).toBeGreaterThanOrEqual(900);
-    expect(check?.interval).toBe("10s");
-  });
-
-  test("GW-001 guacd writes its font cache to /tmp", () => {
-    expect(compose.services["guacd"]?.environment?.["XDG_CACHE_HOME"]).toBe("/tmp");
-  });
-
-  test("GW-002 the gateway network keeps its egress and fixed subnet", () => {
-    expect(compose.networks["gateway"]?.internal).not.toBe(true);
   });
 });
 

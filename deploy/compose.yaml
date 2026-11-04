@@ -1,5 +1,6 @@
 # Anima hub deployment (DB-002, SEC-001). Run with `docker compose up -d` from this folder.
-# Required in the environment or in deploy/.env: ANIMA_HUB_ADDRESS, ANIMA_ACME_EMAIL.
+# Required in the environment or in deploy/.env: ANIMA_HUB_ADDRESS, ANIMA_ACME_EMAIL,
+# ANIMA_VPS_PUBLIC_ADDRESS.
 # Run `sh bin/preflight` first (VPN address, Docker version, secret files).
 # See README.md. Secret files are made by bin/make-secrets (DB-002, SEC-004, DNS-003).
 
@@ -131,6 +132,9 @@ services:
       ANIMA_TLS_KEY_FILE: /certs/hub/tls.pem
       ANIMA_GUACD: guacd:4822
       ANIMA_PERMITTED_NETWORKS: ${ANIMA_PERMITTED_NETWORKS:-100.64.0.0/10}
+      # Checks never probe the hub's own networks or the VPS public address, so a device
+      # entry cannot reach PostgreSQL or guacd.
+      ANIMA_PROBE_DENY: ${ANIMA_HUB_SUBNET:-172.30.0.0/24},${ANIMA_DATABASE_SUBNET:-172.30.1.0/24},${ANIMA_VPS_PUBLIC_ADDRESS:?set to the VPS public IPv4}/32
       ANIMA_LOG: ${ANIMA_LOG:-info}
     secrets:
       - source: hub_database_url
@@ -162,6 +166,9 @@ networks:
   # No route out: PostgreSQL has no reason to reach the internet (DB-001).
   database:
     internal: true
+    ipam:
+      config:
+        - subnet: ${ANIMA_DATABASE_SUBNET:-172.30.1.0/24}
   # guacd and the hub reach devices from here (GW-002, GW-003).
   gateway:
     ipam:

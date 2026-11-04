@@ -39,6 +39,25 @@ describe("preflight address", () => {
   );
 });
 
+describe("preflight public", () => {
+  test.each(["31.220.53.226", "203.0.113.5", "8.8.8.8"])("NET-003 accepts the public address %s", (ip) => {
+    expect(preflight("public", ip).ok).toBe(true);
+  });
+
+  test.each(["100.64.0.1", "10.0.0.1", "172.16.0.1", "172.31.255.1", "192.168.1.1", "127.0.0.1", "169.254.1.1", "0.0.0.0"])(
+    "NET-003 refuses %s as not public",
+    (ip) => {
+      const result = preflight("public", ip);
+      expect(result.ok).toBe(false);
+      expect(result.message).toContain("not a public address");
+    },
+  );
+
+  test.each(["", "abc", "31.220.53", "31.220.53.256", "31.220.053.226", "31.220.53.226/32"])("NET-003 refuses %p as an invalid address", (ip) => {
+    expect(preflight("public", ip).ok).toBe(false);
+  });
+});
+
 describe("preflight docker", () => {
   test.each(["28.0.0", "29.9.2", "100.1"])("NET-003 accepts Docker %s", (version) => {
     expect(preflight("docker", version).ok).toBe(true);

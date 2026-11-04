@@ -50,6 +50,7 @@ chmod 0444 "$work/fixture/"*
 cd "$work/deploy"
 export ANIMA_HUB_ADDRESS=127.0.0.1
 export ANIMA_ACME_EMAIL=smoke@example.invalid
+export ANIMA_VPS_PUBLIC_ADDRESS=203.0.113.9
 compose() { docker compose -p "$project" "$@"; }
 
 step "docker compose config"

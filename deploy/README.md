@@ -65,6 +65,8 @@ Each service writes its log as JSON files, 10 MB each, 10 files.
    | `ANIMA_HUB_ADDRESS` | yes | none | The VPN address (100.64.0.0/10) that gets the published port 443. |
    | `ANIMA_ACME_EMAIL` | yes | none | Contact address for Let's Encrypt. |
    | `ANIMA_HUB_SUBNET` | no | `172.30.0.0/24` | Subnet of the `gateway` network. |
+   | `ANIMA_DATABASE_SUBNET` | no | `172.30.1.0/24` | Subnet of the `database` network. |
+   | `ANIMA_VPS_PUBLIC_ADDRESS` | yes | none | The VPS public IPv4 address (31.220.53.226 on this VPS). With both subnets it forms `ANIMA_PROBE_DENY`, so checks never probe the hub's own networks. |
    | `ANIMA_HUB_IP` | no | `172.30.0.10` | Hub address inside `ANIMA_HUB_SUBNET`. |
    | `ANIMA_PERMITTED_NETWORKS` | no | `100.64.0.0/10` | Client networks that may use the hub (NET-001): the VPN range and the site subnets, comma-separated. |
    | `ANIMA_LOG` | no | `info` | Hub log filter. |
@@ -211,7 +213,7 @@ user) or in Cloudflare. Nothing in this repository does them.
    user from the group, or give the group another number. If gid 999 is `docker` on your
    host, its members are already root-equivalent; remove every other member.
 6. Make the secrets (First start, step 1), with the Cloudflare token from item 1.
-7. Write `deploy/.env` (mode 0600) with `ANIMA_HUB_ADDRESS` and `ANIMA_ACME_EMAIL`.
+7. Write `deploy/.env` (mode 0600) with `ANIMA_HUB_ADDRESS`, `ANIMA_ACME_EMAIL` and `ANIMA_VPS_PUBLIC_ADDRESS`.
 8. Make `tailscaled` start before Docker: run `sudo systemctl edit docker.service` and add
    `[Unit]` and `After=tailscaled.service`. Then run `sudo systemctl daemon-reload`.
 9. Check that WP-03's firewall is loaded: run `sudo nft list table inet anima_filter`. The
