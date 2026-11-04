@@ -194,25 +194,21 @@ fn length_between(text: &str, max: usize) -> bool {
 }
 
 fn device_name(text: &str) -> Result<String, FieldError> {
-    let name = text.trim();
-    if length_between(name, NAME_MAX) {
-        Ok(name.to_owned())
-    } else {
-        Err(FieldError::new(
-            "name",
-            format!("The name must be 1 to {NAME_MAX} characters."),
-        ))
-    }
+    name(text, "name")
 }
 
 fn site_name(text: &str) -> Result<String, FieldError> {
+    name(text, "site name")
+}
+
+fn name(text: &str, noun: &str) -> Result<String, FieldError> {
     let name = text.trim();
     if length_between(name, NAME_MAX) {
         Ok(name.to_owned())
     } else {
         Err(FieldError::new(
             "name",
-            format!("The site name must be 1 to {NAME_MAX} characters."),
+            format!("The {noun} must be 1 to {NAME_MAX} characters."),
         ))
     }
 }
