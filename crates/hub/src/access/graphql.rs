@@ -71,7 +71,8 @@ pub struct LoginInput {
     totp_code: Option<String>,
 }
 
-#[Object]
+/// Merged into the root `Query`; the name only keeps it apart from the other parts.
+#[Object(name = "AccessQuery")]
 impl Query {
     #[graphql(guard = "Authenticated")]
     async fn me(&self, ctx: &Context<'_>) -> async_graphql::Result<OperatorProfile> {
@@ -84,7 +85,8 @@ impl Query {
     }
 }
 
-#[Object]
+/// Merged into the root `Mutation`.
+#[Object(name = "AccessMutation")]
 impl Mutation {
     /// The only operation that needs no token (API-003).
     async fn login(

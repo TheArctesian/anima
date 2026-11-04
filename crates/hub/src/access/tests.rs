@@ -14,6 +14,7 @@ use crate::clock::{Clock, FixedClock};
 
 mod rules;
 mod runtime;
+mod timing;
 
 fn now() -> DateTime<Utc> {
     Utc.with_ymd_and_hms(2030, 5, 5, 12, 0, 0).unwrap()

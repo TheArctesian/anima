@@ -1,11 +1,7 @@
 //! Tokens at the edge: storage, expiry, logout, `me` and API-003 for every root field
 //! (SEC-002, API-003, LOG-007, D-7, D-9).
 
-use anima_hub::{
-    access::{self, Password},
-    schema::{Mutation, Query},
-};
-use async_graphql::{EmptySubscription, Schema};
+use anima_hub::access::{self, Password};
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use chrono::TimeDelta;
 use serde_json::json;
@@ -138,20 +134,14 @@ async fn api_003_connection_init_payload_identifies_a_websocket(pool: PgPool) {
     assert!(missing.is_none());
 }
 
-/// The root field names of the hub schema, per operation type.
-fn root_fields() -> Vec<(&'static str, String)> {
-    let sdl = Schema::new(Query::default(), Mutation::default(), EmptySubscription).sdl();
+/// The root field names of the hub schema, per operation type, by introspection.
+async fn root_fields(hub: &Hub, token: &str) -> Vec<(&'static str, String)> {
+    let query = "{ __schema { queryType { fields { name } } mutationType { fields { name } } } }";
+    let schema = &hub.post(Some(token), query, json!({})).await["data"]["__schema"];
     let mut fields = Vec::new();
-    for (keyword, type_name) in [("query", "Query"), ("mutation", "Mutation")] {
-        let block = sdl.split(&format!("type {type_name} {{")).nth(1).unwrap();
-        let block = block.split('}').next().unwrap();
-        for line in block
-            .lines()
-            .map(str::trim)
-            .filter(|l| !l.is_empty() && !l.starts_with('"'))
-        {
-            let name = line.split(['(', ':']).next().unwrap().to_owned();
-            fields.push((keyword, name));
+    for (keyword, root) in [("query", "queryType"), ("mutation", "mutationType")] {
+        for field in schema[root]["fields"].as_array().unwrap() {
+            fields.push((keyword, field["name"].as_str().unwrap().to_owned()));
         }
     }
     fields
@@ -161,7 +151,7 @@ fn root_fields() -> Vec<(&'static str, String)> {
 async fn api_003_every_root_field_except_login_is_refused_without_a_token(pool: PgPool) {
     set_operator(&pool).await;
     let hub = Hub::new(&pool, start());
-    let fields = root_fields();
+    let fields = root_fields(&hub, &hub.token().await).await;
     assert!(fields.len() >= 4, "{fields:?}");
     let mut documents: Vec<String> = fields
         .iter()

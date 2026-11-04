@@ -10,7 +10,7 @@ use crate::{access, clock::Clock, config::Config, events::Bus};
 #[derive(Default)]
 pub struct Health;
 
-#[Object]
+#[Object(name = "HealthQuery")]
 impl Health {
     /// Liveness probe. Needs a token like every operation except `login` (API-003).
     async fn health(&self) -> &'static str {
