@@ -1,5 +1,5 @@
 import { baselineValue, type Baseline, type Signal } from "./baseline.ts";
-import { countCodeLines } from "./codelines.ts";
+import { countCodeLines } from "./lexing.ts";
 import type { Violation } from "./report.ts";
 import { extensionOf, type SourceFile } from "./source.ts";
 
@@ -12,13 +12,14 @@ export function isMeasured(path: string): boolean {
   return MEASURED_EXTENSIONS.includes(extensionOf(path));
 }
 
-function overLimit(
-  baseline: Baseline,
-  path: string,
-  signal: Signal,
-  value: number,
-  limit: number,
-): Violation[] {
+interface Measure {
+  path: string;
+  signal: Signal;
+  value: number;
+  limit: number;
+}
+
+function overLimit(baseline: Baseline, { path, signal, value, limit }: Measure): Violation[] {
   if (value <= limit) return [];
   const allowed = baselineValue(baseline, path, signal);
   if (allowed !== undefined && allowed >= value) return [];
@@ -29,13 +30,12 @@ function fileLines(files: SourceFile[], baseline: Baseline): Violation[] {
   return files
     .filter((file) => isMeasured(file.path))
     .flatMap((file) =>
-      overLimit(
-        baseline,
-        file.path,
-        "file-lines",
-        countCodeLines(file.text, extensionOf(file.path)),
-        FILE_LINES_LIMIT,
-      ),
+      overLimit(baseline, {
+        path: file.path,
+        signal: "file-lines",
+        value: countCodeLines(file.text, extensionOf(file.path)),
+        limit: FILE_LINES_LIMIT,
+      }),
     );
 }
 
@@ -47,7 +47,7 @@ function folderFiles(files: SourceFile[], baseline: Baseline): Violation[] {
     counts.set(folder, (counts.get(folder) ?? 0) + 1);
   }
   return [...counts].flatMap(([folder, count]) =>
-    overLimit(baseline, folder, "folder-files", count, FOLDER_FILES_LIMIT),
+    overLimit(baseline, { path: folder, signal: "folder-files", value: count, limit: FOLDER_FILES_LIMIT }),
   );
 }
 

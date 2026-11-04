@@ -24,6 +24,8 @@ const RUST_CHAR = /^'(?:\\.[^']*|[^\\'])'/;
 interface Step {
   keep: string;
   next: number;
+  /** The step is a string or char literal. */
+  literal?: boolean;
 }
 
 function skipBlock(text: string, at: number, [open, close]: [string, string], nested: boolean): Step {
@@ -49,7 +51,7 @@ function readRawString(text: string, at: number): Step | undefined {
   if (!opening) return undefined;
   const closeAt = text.indexOf(`"${opening[1] ?? ""}`, at + opening[0].length);
   const next = closeAt === -1 ? text.length : closeAt + 1 + (opening[1] ?? "").length;
-  return { keep: text.slice(at, next), next };
+  return { keep: text.slice(at, next), next, literal: true };
 }
 
 function skipLine(text: string, at: number): Step {
@@ -65,7 +67,7 @@ function readString(text: string, at: number, quote: string): Step {
     end++;
   }
   const next = text.charAt(end) === quote ? end + 1 : end;
-  return { keep: text.slice(at, next), next };
+  return { keep: text.slice(at, next), next, literal: true };
 }
 
 function stepAt(text: string, at: number, syntax: Syntax): Step {
@@ -80,21 +82,24 @@ function stepAt(text: string, at: number, syntax: Syntax): Step {
   }
   if (syntax.rust && char === "'") {
     const literal = RUST_CHAR.exec(text.slice(at, at + 12));
-    if (literal) return { keep: literal[0], next: at + literal[0].length };
+    if (literal) return { keep: literal[0], next: at + literal[0].length, literal: true };
   }
   if (syntax.quotes.includes(char)) return readString(text, at, char);
   return { keep: char, next: at + 1 };
 }
 
-/** Remove comments, keeping newlines. Unknown extensions are returned unchanged. */
-export function stripComments(text: string, extension: string): string {
+/**
+ * Remove comments, keeping newlines. With `blankLiterals`, string and char literals are emptied too.
+ * Unknown extensions are returned unchanged.
+ */
+export function stripComments(text: string, extension: string, blankLiterals = false): string {
   const syntax = SYNTAX[extension];
   if (!syntax) return text;
   const parts: string[] = [];
   let at = 0;
   while (at < text.length) {
     const step = stepAt(text, at, syntax);
-    parts.push(step.keep);
+    parts.push(blankLiterals && step.literal ? step.keep.replace(/[^\n]/g, "") : step.keep);
     at = step.next;
   }
   return parts.join("");

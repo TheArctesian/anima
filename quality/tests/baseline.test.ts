@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { BaselineShapeError, growth, parseBaseline } from "../src/baseline.ts";
+import { BaseRefError, BaselineShapeError, baseRefFrom, growth, parseBaseline } from "../src/baseline.ts";
 import { parseGeneratedList, withoutGenerated } from "../src/glob.ts";
 import { listMeasurableFiles, readFileAtRef } from "../src/repository.ts";
 
@@ -34,6 +34,18 @@ describe("CQ-011 baseline is shrink-only", () => {
     expect(() => parseBaseline('{"a.rs": {"file-lines": -1}}')).toThrow(BaselineShapeError);
     expect(() => parseBaseline('{"a.rs": {"file-lines": 1.5}}')).toThrow(BaselineShapeError);
     expect(parseBaseline("{}")).toEqual({});
+  });
+});
+
+describe("CQ-011 --base argument", () => {
+  test("the value after --base is used, the fallback otherwise", () => {
+    expect(baseRefFrom(["bun", "x", "--base", "main"], "phase-1")).toBe("main");
+    expect(baseRefFrom(["bun", "x"], "phase-1")).toBe("phase-1");
+  });
+
+  test("--base with no value, or followed by a flag, is an error", () => {
+    expect(() => baseRefFrom(["bun", "x", "--base"], "phase-1")).toThrow(BaseRefError);
+    expect(() => baseRefFrom(["bun", "x", "--base", "--other"], "phase-1")).toThrow(BaseRefError);
   });
 });
 

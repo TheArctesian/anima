@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { countCodeLines } from "../src/codelines.ts";
+import { countCodeLines } from "../src/lexing.ts";
 import { checkLimits } from "../src/limits.ts";
 import type { SourceFile } from "../src/source.ts";
 
@@ -28,6 +28,7 @@ describe("CQ-010 code lines per file", () => {
     expect(countCodeLines("/* a /* b */ still comment */\nlet x = 1;\n", ".rs")).toBe(1);
     expect(countCodeLines('let s = r#"say "hi" // not a comment\n/* nor this"#;\nlet y = 2;\n', ".rs")).toBe(3);
     expect(countCodeLines("let x = br##\"a\"# b\"##; // c\n", ".rs")).toBe(1);
+    expect(countCodeLines('let xr = 1; xr#"a\n/* \n"#;\nlet z = 1;\n*/', ".rs")).toBe(1);
     expect(countCodeLines("/* /* x */ y */ // z\n", ".ts")).toBe(1);
   });
 

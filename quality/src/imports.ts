@@ -1,4 +1,4 @@
-import { stripComments } from "./codelines.ts";
+import { stripComments } from "./lexing.ts";
 import { findCycle, isListed, type HubModules } from "./hub-modules.ts";
 import type { Violation } from "./report.ts";
 import type { SourceFile } from "./source.ts";
@@ -12,6 +12,7 @@ interface Reference {
   to: string;
   path: string;
   isStore: boolean;
+  isGlob: boolean;
   target: string;
 }
 
@@ -24,13 +25,14 @@ function hubModulePath(file: SourceFile): ModulePath | undefined {
 function referencesFrom(file: SourceFile, module: ModulePath, modules: HubModules): Reference[] {
   const from = module[0];
   if (from === undefined) return [];
-  const { uses, inline } = mentionsIn(stripComments(file.text, ".rs"));
+  const { uses, inline } = mentionsIn(stripComments(file.text, ".rs", true));
   const bindings = bindingsOf(uses, module);
   const resolved = [...uses.map((use) => use.path), ...inline].map((path) => resolveInline(path, module, bindings));
   return resolved.flatMap((absolute) => {
     const [to, member] = absolute ?? [];
     if (to === undefined || to === from || !Object.hasOwn(modules.domains, to)) return [];
-    return [{ from, to, path: file.path, isStore: member === "store", target: `crate::${to}::${member ?? ""}` }];
+    const isGlob = absolute?.at(-1) === "*";
+    return [{ from, to, path: file.path, isStore: member === "store", isGlob, target: `crate::${to}::${member ?? ""}` }];
   });
 }
 
@@ -50,7 +52,8 @@ function edgeViolations(reference: Reference, modules: HubModules): Violation[] 
   } else if (Object.hasOwn(modules.domains, from) && !modules.domains[from]?.includes(to)) {
     violations.push({ path, signal: "forbidden-edge", detail: `${from} -> ${to}` });
   }
-  if (reference.isStore && Object.hasOwn(modules.domains, from)) violations.push({ path, signal: "foreign-store", detail: reference.target });
+  if (reference.isStore) violations.push({ path, signal: "foreign-store", detail: reference.target });
+  if (reference.isGlob) violations.push({ path, signal: "domain-glob-import", detail: `${from} -> ${to}::*` });
   return violations;
 }
 

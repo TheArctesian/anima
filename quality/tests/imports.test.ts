@@ -36,6 +36,23 @@ describe("REPO-004 foreign store", () => {
   });
 });
 
+describe("REPO-004 literals, globs and duplicates", () => {
+  test("a path inside a string literal is not an edge", () => {
+    expect(signals(hub("events/x.rs", 'let s = "use crate::sessions::x;";\nlet r = r#"crate::devices::store"#;'))).toEqual([]);
+  });
+
+  test("a glob import of another domain fails, even on an allowed edge", () => {
+    expect(signals(hub("checks/x.rs", "use crate::devices::*;"))).toEqual(["domain-glob-import checks -> devices::*"]);
+    expect(signals(hub("checks/x.rs", "use crate::devices::{Device, *};"))).toHaveLength(1);
+    expect(signals(hub("devices/x.rs", "use crate::devices::*;\nuse super::*;"))).toEqual([]);
+    expect(signals(hub("checks/x.rs", "use crate::ids::*;"))).toEqual([]);
+  });
+
+  test("identical references give one violation", () => {
+    expect(signals(hub("checks/x.rs", "use crate::devices::store;\nuse crate::devices::store;"))).toHaveLength(1);
+  });
+});
+
 describe("REPO-004 allow-list", () => {
   test("a domain using a domain outside its list fails", () => {
     expect(signals(hub("devices/x.rs", "use crate::checks::Check;"))).toEqual(["forbidden-edge devices -> checks"]);
@@ -55,7 +72,7 @@ describe("REPO-004 allow-list", () => {
   test("wiring may import anything, including lib.rs", () => {
     expect(signals(hub("main.rs", "use crate::sessions::run;\nuse crate::checks::Check;"))).toEqual([]);
     expect(signals(hub("lib.rs", "mod devices;\nuse crate::checks::Check;"))).toEqual([]);
-    expect(signals(hub("schema.rs", "use crate::devices::store::Q;"))).toEqual([]);
+    expect(signals(hub("schema.rs", "use crate::devices::store::Q;"))).toEqual(["foreign-store crate::devices::store"]);
   });
 
   test("a top-level module in no list fails", () => {

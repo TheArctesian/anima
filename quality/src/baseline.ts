@@ -46,6 +46,22 @@ export function parseBaseline(text: string): Baseline {
   return baseline;
 }
 
+export class BaseRefError extends Error {
+  constructor() {
+    super("--base needs a git ref");
+    this.name = "BaseRefError";
+  }
+}
+
+/** The ref after `--base` in the arguments, or `fallback` when the flag is absent. */
+export function baseRefFrom(args: string[], fallback: string): string {
+  const flag = args.indexOf("--base");
+  if (flag === -1) return fallback;
+  const value = args[flag + 1];
+  if (value === undefined || value.startsWith("--")) throw new BaseRefError();
+  return value;
+}
+
 export function baselineValue(baseline: Baseline, path: string, signal: Signal): number | undefined {
   return Object.hasOwn(baseline, path) ? baseline[path]?.[signal] : undefined;
 }

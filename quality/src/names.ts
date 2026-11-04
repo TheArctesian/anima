@@ -1,4 +1,4 @@
-import { stripComments } from "./codelines.ts";
+import { stripComments } from "./lexing.ts";
 import type { Violation } from "./report.ts";
 import { extensionOf, type SourceFile } from "./source.ts";
 
