@@ -2,7 +2,6 @@
   import { page } from '$app/state';
   import type { Snippet } from 'svelte';
   import '../styles/global.css';
-  import fontRegular from '../styles/fonts/OpenDyslexicNerdFontPropo-Regular.otf?url';
   import { provideHub } from '$lib/hub/context';
   import { DEFAULT_HUB_ADDRESS, createHub } from '$lib/hub/hub';
   import { crossFade } from '$lib/motion/roles/transitions';
@@ -25,11 +24,6 @@
     });
   });
 </script>
-
-<svelte:head>
-  <!-- The UI and icon glyphs share this face; loading it before first paint keeps the swap from moving the shell (MOT-007). -->
-  <link rel="preload" as="font" type="font/otf" crossorigin="anonymous" href={fontRegular} />
-</svelte:head>
 
 <div class="shell">
   <Nav pathname={page.url.pathname} now={clock.current} />
