@@ -38,8 +38,8 @@ cp -R "$repo/Cargo.toml" "$repo/Cargo.lock" "$repo/crates" "$work/"
 cp -R "$repo/apps/client/src/styles/fonts" "$work/apps/client/src/styles/fonts"
 printf '%s\n' 'smoke-test-not-a-token' |
     ANIMA_SECRETS_CHOWN=0 sh "$repo/deploy/bin/make-secrets" --cloudflare-token-stdin "$work/deploy/secrets"
-chmod 0444 "$work/deploy/secrets/"*
 sh "$repo/deploy/bin/preflight" secrets "$work/deploy/secrets"
+chmod 0444 "$work/deploy/secrets/"*
 # Fixture certificate for the hook test. Test-only: world-readable so that root without
 # capabilities inside the container can read it.
 mkdir "$work/fixture"

@@ -1,6 +1,6 @@
 // deploy/bin/preflight, checked on plain inputs (NET-003, DB-002). Nothing here needs Docker.
 import { describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -51,22 +51,60 @@ describe("preflight docker", () => {
 
 describe("preflight secrets", () => {
   const names = ["postgres_password", "owner_password", "hub_password", "owner_database_url", "hub_database_url", "anima_key", "cloudflare_dns_token"];
+  const modeOf = (name: string) => (name === "cloudflare_dns_token" ? 0o400 : 0o440);
 
-  test("DB-002 accepts a folder with every secret file and names the one that is missing", () => {
+  function write(folder: string, name: string, content = "x", mode = modeOf(name)): void {
+    rmSync(join(folder, name), { force: true });
+    writeFileSync(join(folder, name), content);
+    chmodSync(join(folder, name), mode);
+  }
+
+  function withFolder(body: (folder: string) => void): void {
     const folder = mkdtempSync(join(tmpdir(), "anima-preflight-"));
     try {
-      for (const name of names.slice(1)) writeFileSync(join(folder, name), "x");
-      const missing = preflight("secrets", folder);
-      expect(missing.ok).toBe(false);
-      expect(missing.message).toContain("postgres_password");
-      writeFileSync(join(folder, "postgres_password"), "");
-      expect(preflight("secrets", folder).ok).toBe(false);
-      writeFileSync(join(folder, "postgres_password"), "x");
-      expect(preflight("secrets", folder).ok).toBe(true);
-      writeFileSync(join(folder, "cloudflare_dns_token"), "");
-      expect(preflight("secrets", folder).message).toContain("cloudflare_dns_token");
+      body(folder);
     } finally {
       rmSync(folder, { recursive: true, force: true });
     }
+  }
+
+  test("DB-002 accepts a folder with every secret file and names the one that is missing", () => {
+    withFolder((folder) => {
+      for (const name of names.slice(1)) write(folder, name);
+      const missing = preflight("secrets", folder);
+      expect(missing.ok).toBe(false);
+      expect(missing.message).toContain("postgres_password");
+      write(folder, "postgres_password", "");
+      expect(preflight("secrets", folder).ok).toBe(false);
+      write(folder, "postgres_password");
+      expect(preflight("secrets", folder).ok).toBe(true);
+      write(folder, "cloudflare_dns_token", "");
+      expect(preflight("secrets", folder).message).toContain("cloudflare_dns_token");
+    });
+  });
+
+  test.each([0o600, 0o444, 0o640, 0o400])("DB-002 refuses a generated file with mode %o and says to rerun make-secrets", (mode) => {
+    withFolder((folder) => {
+      for (const name of names) write(folder, name);
+      write(folder, "hub_password", "secret-value-1", mode);
+      const result = preflight("secrets", folder);
+      expect(result.ok).toBe(false);
+      expect(result.message).toContain("hub_password");
+      expect(result.message).toContain("mode 0440");
+      expect(result.message).toContain("make-secrets");
+      expect(result.message).not.toContain("secret-value-1");
+    });
+  });
+
+  test.each([0o440, 0o600, 0o444])("DB-002 refuses the Cloudflare token with mode %o and prints no value", (mode) => {
+    withFolder((folder) => {
+      for (const name of names) write(folder, name);
+      write(folder, "cloudflare_dns_token", "token-value-1", mode);
+      const result = preflight("secrets", folder);
+      expect(result.ok).toBe(false);
+      expect(result.message).toContain("mode 0400");
+      expect(result.message).toContain("make-secrets");
+      expect(result.message).not.toContain("token-value-1");
+    });
   });
 });

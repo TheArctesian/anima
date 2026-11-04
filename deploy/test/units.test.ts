@@ -36,4 +36,16 @@ describe("systemd units (DB-007, VPS-006)", () => {
     expect(lines(timer, "Persistent")).toEqual(["true"]);
     expect(lines(timer, "Unit")).toEqual(["anima-backup.service"]);
   });
+
+  test("VPS-006: the home PC prune unit runs restic forget as the restic user, with no --no-lock", () => {
+    const pruneUnit = readFileSync(join(BACKUP_FOLDER, "home-pc", "anima-db-prune.unit"), "utf8");
+    const pruneTimer = readFileSync(join(BACKUP_FOLDER, "home-pc", "anima-db-prune.timer"), "utf8");
+    expect(lines(pruneUnit, "User")).toEqual(["restic"]);
+    expect(lines(pruneUnit, "Environment")).toContain("RESTIC_REPOSITORY=/srv/restic/anima-db");
+    const [command] = lines(pruneUnit, "ExecStart");
+    expect(command).toContain("forget --host anima-vps --tag anima-db");
+    expect(command).toContain("--keep-within 90d --prune");
+    expect(command).not.toContain("--no-lock");
+    expect(lines(pruneTimer, "Unit")).toEqual(["anima-db-prune.service"]);
+  });
 });

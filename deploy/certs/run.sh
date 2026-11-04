@@ -33,8 +33,21 @@ install_current() {
     LEGO_CERT_PATH=$chain LEGO_CERT_KEY_PATH=$key sh "$hook"
 }
 
+# One renewal check, then the install. A renewal whose hook failed is installed here, at the
+# latest one check later.
+check_renewal() {
+    if ! lego_cmd renew --days 30 --renew-hook "$hook"; then
+        echo "run.sh: renewal check failed; trying again in $renew_every seconds" >&2
+    fi
+    if ! install_current; then
+        echo "run.sh: installing the certificate failed; trying again in $renew_every seconds" >&2
+    fi
+}
+
+# A start with a certificate checks renewal at once, so a restart after a long stop does not
+# serve an expired certificate for 12 hours.
 if [ -s "$chain" ]; then
-    install_current
+    check_renewal
 elif ! lego_cmd run --run-hook "$hook"; then
     # Wait before the restart so a failing order does not hit the Let's Encrypt rate limit.
     echo "run.sh: the first certificate order failed; retrying in $retry_after_failure seconds" >&2
@@ -44,11 +57,5 @@ fi
 
 while true; do
     sleep "$renew_every"
-    if ! lego_cmd renew --days 30 --renew-hook "$hook"; then
-        echo "run.sh: renewal check failed; trying again in $renew_every seconds" >&2
-    fi
-    # A renewal whose hook failed is installed here, at the latest one check later.
-    if ! install_current; then
-        echo "run.sh: installing the certificate failed; trying again in $renew_every seconds" >&2
-    fi
+    check_renewal
 done

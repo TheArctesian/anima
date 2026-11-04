@@ -111,6 +111,14 @@ describe("run.sh", () => {
     expect(outcome.tls).toBe("OLDKEY\nOLDCHAIN\n");
   });
 
+  test("DNS-002 a start with an existing certificate checks renewal, with the hook, before the first sleep", () => {
+    const outcome = runScript({ chain: "OLDCHAIN\n", env: { FAKE_LEGO_RENEW_CONTENT: "NEWCHAIN", FAKE_SLEEP_LIMIT: "0" } });
+    expect(outcome.lego.filter((line) => line.includes(" renew "))).toHaveLength(1);
+    expect(outcome.lego[0]).toMatch(/ renew .*--renew-hook .*install\.sh$/);
+    expect(outcome.sleeps).toEqual(["43200"]);
+    expect(outcome.tls).toBe("OLDKEY\nNEWCHAIN\n");
+  });
+
   test("DNS-002 waits 3600 seconds after a failed first order, then exits non-zero", () => {
     const outcome = runScript({ env: { FAKE_LEGO_RUN_EXIT: "1" } });
     expect(outcome.exitCode).not.toBe(0);

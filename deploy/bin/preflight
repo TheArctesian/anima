@@ -5,7 +5,8 @@
 #   docker   the Docker Engine is version 28 or later (earlier engines let a routed LAN
 #            neighbour reach unpublished container ports).
 #   secrets  every secret file of compose.yaml exists and is not empty in the secrets folder
-#            (ANIMA_SECRETS_DIR, default deploy/secrets).
+#            (ANIMA_SECRETS_DIR, default deploy/secrets), and has the mode make-secrets sets:
+#            0440, or 0400 for cloudflare_dns_token.
 # One argument pair checks one thing from the value given: `preflight address 100.64.0.1`.
 set -eu
 
@@ -46,11 +47,20 @@ check_docker() {
     [ "$major" -ge 28 ] || fail "Docker Engine $1 is too old; use 28.0 or later"
 }
 
+# file_mode FILE: the permission bits in octal (GNU stat, else BSD stat for tests).
+file_mode() {
+    stat -c '%a' "$1" 2>/dev/null || stat -f '%Lp' "$1"
+}
+
 check_secrets() {
     dir=$1
     for name in postgres_password owner_password hub_password owner_database_url \
         hub_database_url anima_key cloudflare_dns_token; do
         [ -s "$dir/$name" ] || fail "missing or empty secret file $dir/$name; run bin/make-secrets"
+        wanted=440
+        if [ "$name" = cloudflare_dns_token ]; then wanted=400; fi
+        [ "$(file_mode "$dir/$name")" = "$wanted" ] ||
+            fail "secret file $dir/$name does not have mode 0$wanted; rerun bin/make-secrets, which resets owners and modes"
     done
 }
 
