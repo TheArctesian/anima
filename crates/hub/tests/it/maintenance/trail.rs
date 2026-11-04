@@ -9,11 +9,10 @@ use sqlx::PgPool;
 
 use super::harness::{
     CLIENT_ADDR, DELETE, OPERATOR_ID, TickingClock, create, create_query, error_json, manual_input,
-    schema_for, schema_with_clock, switch_query, update_query, weekday_input, with_variables,
+    now, schema_for, schema_with_clock, switch_query, update_query, weekday_input, with_variables,
 };
 
 const SUNDAY_UPDATES: &str = "0190a000-0000-7000-8004-000000000001";
-const AT: &str = "2026-11-04T09:00:00+00:00";
 
 macro_rules! fixture_test {
     ($(async fn $name:ident($pool:ident: PgPool) $body:block)+) => {$(
@@ -57,7 +56,7 @@ fn assert_who_and_when(event: &Value, audit: &Value) {
     assert_eq!(audit["target_type"], "maintenance_window");
     for at in [&event["at"], &audit["at"]] {
         let stamped: chrono::DateTime<chrono::Utc> = at.as_str().unwrap().parse().unwrap();
-        assert_eq!(stamped.to_rfc3339(), AT);
+        assert_eq!(stamped, now());
     }
 }
 
@@ -140,9 +139,11 @@ fixture_test! {
         let stored: chrono::DateTime<chrono::Utc> =
             sqlx::query_scalar("SELECT created_at FROM maintenance.windows WHERE name = 'Patch'")
                 .fetch_one(&pool).await.unwrap();
-        assert_eq!(stored.to_rfc3339(), AT);
-        assert_eq!(event["at"], audit["at"]);
-        assert_eq!(event["at"].as_str().unwrap().parse::<chrono::DateTime<chrono::Utc>>().unwrap(), stored);
+        // The guard reads the clock before the mutation does, so only the three stamps agreeing
+        // with each other shows that the mutation read it once.
+        let instant = |value: &Value| value.as_str().unwrap().parse::<chrono::DateTime<chrono::Utc>>().unwrap();
+        assert_eq!(instant(&event["at"]), stored);
+        assert_eq!(instant(&audit["at"]), stored);
     }
 
     async fn log_010_the_bus_receives_the_event_of_a_mutation(pool: PgPool) {
@@ -156,7 +157,7 @@ fixture_test! {
         assert_eq!(event.source, Source::Hub);
         assert_eq!(event.message, "Maintenance window Patch added.");
         assert!(event.device.is_none());
-        assert_eq!(event.at.to_rfc3339(), AT);
+        assert_eq!(event.at, now());
         assert!(receiver.try_recv().is_err());
     }
 
