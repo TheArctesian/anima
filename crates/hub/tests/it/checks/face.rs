@@ -6,6 +6,7 @@
 
 mod batching;
 mod beats;
+mod configs;
 mod due;
 mod retention;
 mod secrets;
@@ -17,7 +18,7 @@ use std::io::Write as _;
 
 use anima_hub::{
     checks::{
-        self, Beat, CheckSettings, CheckState, Definition, NewCheck,
+        self, Beat, CheckSettings, CheckState, Definition, NewCheck, Recorded,
         config::{CheckConfig, IpVersion},
     },
     credentials::Vault,
@@ -32,7 +33,7 @@ const PVE_01: &str = "0190a000-0000-7000-8002-000000000001";
 const DOCKER_HOST: &str = "0190a000-0000-7000-8002-000000000002";
 const JELLYFIN: &str = "0190a000-0000-7000-8002-000000000006";
 const TRUENAS: &str = "0190a000-0000-7000-8002-000000000007";
-/// The "Ping" and "SSH port" checks of `pve-01` in the K6 fixtures.
+/// The "Ping" and "SSH port" checks of `pve-01` in the fixtures.
 const PVE_01_PING: &str = "0190a000-0000-7000-8003-000000000001";
 const PVE_01_SSH: &str = "0190a000-0000-7000-8003-000000000002";
 
@@ -108,7 +109,8 @@ fn beat(at: DateTime<Utc>, status: Status, response_time_ms: Option<u32>) -> Bea
 
 async fn record(pool: &PgPool, id: CheckId, beat: &Beat) {
     let mut conn = pool.acquire().await.unwrap();
-    checks::record_beat(&mut conn, id, beat).await.unwrap();
+    let recorded = checks::record_beat(&mut conn, id, beat).await.unwrap();
+    assert_eq!(recorded, Recorded::Written);
 }
 
 /// Sets the stored status of a check directly.

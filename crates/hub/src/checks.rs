@@ -1,7 +1,7 @@
 //! Checks: what each device is checked for, the results, the status they give and the
 //! uptime they add up to (spec 6.4).
 //!
-//! Other domains use only the K3 functions: [`statuses`], [`uptimes`], [`for_device`],
+//! Other domains use only the contract functions: [`statuses`], [`uptimes`], [`for_device`],
 //! [`add_default_check`], [`device_status`], [`resolved_ips`] and [`evaluate`]. The writes,
 //! [`record_beat`], [`due_checks`] and the retention functions serve this domain's GraphQL,
 //! push route and scheduler; they are public so the integration tests can drive them.
@@ -42,6 +42,7 @@ use rules::Prepared;
 pub use evaluation::{CheckSettings, CheckState, evaluate};
 pub use model::{
     Beat, Check, CheckChange, Definition, Due, FieldError, Heartbeat, Missing, NewCheck, PushToken,
+    Recorded,
 };
 pub use push::push_router;
 pub use store::Trimmed;
@@ -62,6 +63,14 @@ pub enum Error {
     /// The stored configuration is not in the form this version reads.
     #[error("the stored configuration of check {0} cannot be read")]
     Unreadable(CheckId),
+    /// The sealed secrets were given for another origin or other secret headers than the
+    /// stored configuration names, so they are not used (SEC-005).
+    #[error("the stored secrets do not match the check's address")]
+    SecretsUnbound,
+    /// Another check already has this push token. The database detail, which holds the
+    /// token, is dropped (LOG-007).
+    #[error("the push token is already in use")]
+    PushTokenTaken,
     #[error("the devices of the check cannot be read")]
     Devices(#[source] devices::Error),
     #[error("the maintenance windows cannot be read")]
@@ -208,7 +217,7 @@ pub async fn push_check(db: &PgPool, token: &str) -> Result<Option<Check>, Error
     store::by_push_token(db, token).await
 }
 
-/// For each device, the address that its check with the latest beat resolved (R-028).
+/// For each device, the address that its check with the latest beat resolved.
 ///
 /// # Errors
 /// `Database` when the query fails.
@@ -249,7 +258,11 @@ fn sealed(vault: &Vault, id: CheckId, prepared: &Prepared) -> Option<Vec<u8>> {
     prepared
         .secrets
         .as_ref()
-        .map(|secrets| store::seal(vault, id, secrets))
+        .zip(match &prepared.config {
+            CheckConfig::Http(config) => Some(config),
+            _ => None,
+        })
+        .map(|(secrets, config)| store::seal(vault, id, config, secrets))
 }
 
 /// Adds a check in the caller's transaction. A parent must be a group on the same device.
@@ -383,7 +396,8 @@ pub async fn load_http_secrets(
 }
 
 /// Records one result in the caller's transaction: the heartbeat, its minute, hour and day
-/// aggregates, and the check's new state (CHK-003, DB-008).
+/// aggregates, and the check's new state (CHK-003, DB-008). A paused check, or a beat older
+/// than the check's last beat, writes nothing and gives [`Recorded::Skipped`] (CHK-005).
 ///
 /// # Errors
 /// `NotFound` when the check no longer exists; nothing is written then.
@@ -391,11 +405,13 @@ pub async fn record_beat(
     conn: &mut PgConnection,
     check: CheckId,
     beat: &Beat,
-) -> Result<(), Error> {
+) -> Result<Recorded, Error> {
     store::record_beat(conn, check, beat).await
 }
 
-/// Up to `limit` checks that are not paused and are due at `now` (CHK-001).
+/// Up to `limit` checks that are not paused and are due at `now` (CHK-001). PUSH checks are
+/// included: when one is due, the push did not come in its interval and the scheduler records
+/// that. Groups are never due.
 ///
 /// # Errors
 /// `Database` when the query fails.
@@ -403,7 +419,7 @@ pub async fn due_checks(db: &PgPool, now: DateTime<Utc>, limit: u32) -> Result<V
     store::due(db, now, limit).await
 }
 
-/// Deletes the heartbeats of checks that no longer exist (R-004).
+/// Deletes the heartbeats of checks that no longer exist (DEV-015).
 ///
 /// # Errors
 /// `Database` when the query fails.

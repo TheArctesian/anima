@@ -1,9 +1,11 @@
 //! Typed check configuration and its stored JSON form (CHK-009).
 //!
-//! The `config` column holds [`CheckConfig`] as JSON with an internal tag:
-//! `{"type":"tcp","port":22,"timeout_ms":5000}`. The tag values are the fixed type ids
-//! (`icmp tcp tls http dns push group`) and never change meaning. Secrets are never part of
-//! this JSON: see [`HttpSecrets`].
+//! The serde form of [`CheckConfig`] is JSON with camelCase keys and an internal tag:
+//! `{"type":"tcp","port":22,"timeoutMs":5000}`. The `config` column stores it without the tag,
+//! which the `type` column holds, so it matches the fixtures. The tag values are the fixed
+//! type ids (`icmp tcp tls http dns push group`) and never change meaning. Unknown keys are
+//! refused, so a stored form that does not match fails loudly instead of falling back to
+//! defaults. Secrets are never part of this JSON: see [`HttpSecrets`].
 
 mod http;
 mod rules;
@@ -61,7 +63,7 @@ impl CheckType {
 
 /// Address family an ICMP check uses.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "UPPERCASE")]
 pub enum IpVersion {
     #[default]
     V4,
@@ -95,7 +97,12 @@ const fn tls_port() -> u16 {
 
 /// What a check does, with the settings of its type. Contains no secrets.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(
+    tag = "type",
+    rename_all = "snake_case",
+    rename_all_fields = "camelCase",
+    deny_unknown_fields
+)]
 pub enum CheckConfig {
     Icmp {
         #[serde(default = "icmp_timeout_ms")]
@@ -111,7 +118,7 @@ pub enum CheckConfig {
     Tls {
         #[serde(default = "tls_port")]
         port: u16,
-        #[serde(default)]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         server_name: Option<String>,
         #[serde(default = "network_timeout_ms")]
         timeout_ms: u32,
@@ -121,9 +128,9 @@ pub enum CheckConfig {
         name: String,
         #[serde(default)]
         record_type: DnsRecordType,
-        #[serde(default)]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         resolver: Option<IpAddr>,
-        #[serde(default)]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         expected: Option<String>,
     },
     /// The device calls the hub; nothing is probed.

@@ -1,4 +1,4 @@
-//! `uptimes`: from the aggregate tables only, over the window that ends now (CHK-011, D-4).
+//! `uptimes`: from the aggregate tables only, over the window that ends now (CHK-011).
 
 use std::collections::HashMap;
 

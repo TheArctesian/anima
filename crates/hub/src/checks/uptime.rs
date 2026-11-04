@@ -8,7 +8,7 @@
 use async_graphql::Enum;
 use chrono::{DateTime, DurationRound, TimeDelta, Utc};
 
-/// The period an uptime figure covers (K1 `UptimeWindow`).
+/// The period an uptime figure covers (the API's `UptimeWindow`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Enum)]
 pub enum UptimeWindow {
     Day,
