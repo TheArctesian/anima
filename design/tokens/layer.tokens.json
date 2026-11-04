@@ -1,0 +1,31 @@
+{
+  "depth": {
+    "layer": {
+      "$type": "number",
+      "base": {
+        "$value": 0,
+        "$description": "Page content"
+      },
+      "sticky": {
+        "$value": 10,
+        "$description": "Sticky headers"
+      },
+      "nav": {
+        "$value": 20,
+        "$description": "Navigation bar and session toolbar"
+      },
+      "popover": {
+        "$value": 30,
+        "$description": "Menus and popovers"
+      },
+      "modal": {
+        "$value": 40,
+        "$description": "Modal dialogs and scrims"
+      },
+      "toast": {
+        "$value": 50,
+        "$description": "Toasts"
+      }
+    }
+  }
+}
