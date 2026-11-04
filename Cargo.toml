@@ -12,13 +12,13 @@ publish = false
 async-graphql = { version = "7.2", default-features = false }
 async-graphql-axum = "7.2"
 axum = "0.8"
-tokio = { version = "1.54", features = ["macros", "rt-multi-thread", "net"] }
+tokio = { version = "1.54", features = ["macros", "rt-multi-thread", "net", "sync"] }
 tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"
 thiserror = "2"
 uuid = { version = "1", features = ["v7", "serde"] }
 serde = { version = "1", features = ["derive"] }
-sqlx = { version = "0.8", default-features = false, features = ["derive", "postgres", "uuid"] }
+sqlx = { version = "0.8", default-features = false, features = ["derive", "postgres", "uuid", "runtime-tokio", "macros", "migrate", "chrono", "json", "ipnet"] }
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 ipnet = "2"
 serde_json = "1"
