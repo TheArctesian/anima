@@ -195,11 +195,17 @@ impl ActiveTargets { pub fn covers(&self, device: DeviceId, check: Option<CheckI
 ## sessions (WP-10)
 
 ```rust
-pub async fn start(db: &Db, clock: &Clock, op: &Operator, client: ClientAddr, req: StartRequest) -> Result<Ticket, Error>;
+/// Tickets, live tunnels and host-key observations; built once in main.rs, added with `.data(live.clone())` (R-032).
+#[derive(Clone)] pub struct Live { /* Arc inside */ }
+pub async fn start(db: &Db, clock: &Clock, live: &Live, op: &Operator, client: ClientAddr, req: StartRequest) -> Result<Ticket, Error>;
 /// For `SshSettings.hostKey` (R-011; WP-10 adds its use in `devices/graphql.rs`).
 pub async fn host_key(db: &Db, device: DeviceId) -> Result<Option<HostKey>, Error>;
-/// axum route for GET /tunnel (see tunnel.md).
-pub fn tunnel_router(db: Db, vault: credentials::Vault, bus: events::Bus, clock: Clock, guacd: SocketAddr) -> axum::Router;
+/// One query for the `SshSettings.hostKey` loader (API-005, R-032).
+pub async fn host_keys(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, HostKey>, Error>;
+/// axum route for GET /tunnel (see tunnel.md). `guacd` is the K7 `host:port` text, resolved at connect time (R-032).
+pub fn tunnel_router(db: Db, vault: credentials::Vault, bus: events::Bus, clock: Clock, guacd: String, live: Live) -> axum::Router;
+/// Wiring only: at start, end rows a crashed hub left open with HUB_SHUTDOWN (R-032).
+pub async fn close_stale(db: &Db, now: DateTime<Utc>) -> Result<u64, Error>;
 ```
 
 ## guac-protocol crate (WP-08)
