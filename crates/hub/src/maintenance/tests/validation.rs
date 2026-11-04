@@ -271,7 +271,7 @@ fn refused_fast(form: &WindowForm, field: &str) {
 #[test]
 fn api_005_an_oversized_days_of_month_list_is_refused_at_once() {
     let form = WindowForm {
-        days_of_month: Some((0..150_000).map(|n| n % 31 + 1).collect()),
+        days_of_month: Some((1..=150_000).collect()),
         ..day_form()
     };
     refused_fast(&form, "daysOfMonth");

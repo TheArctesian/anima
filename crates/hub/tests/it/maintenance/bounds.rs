@@ -55,7 +55,7 @@ async fn mw_004_a_stored_list_or_interval_beyond_the_form_bounds_is_refused(pool
     let monthly = json!({ "kind": "recurring_day_of_month", "daysOfMonth": days,
                           "startTime": "03:00:00", "durationMinutes": 60 });
     assert!(refused_by(store(&pool, "recurring_day_of_month", monthly).await).is_some());
-    let week = json!({ "kind": "recurring_weekday", "weekdays": ["mon"; 8],
+    let week = json!({ "kind": "recurring_weekday", "weekdays": vec!["mon"; 8],
                        "startTime": "03:00:00", "durationMinutes": 60 });
     assert!(refused_by(store(&pool, "recurring_weekday", week).await).is_some());
     let interval = json!({ "kind": "recurring_interval", "firstStartAt": "2026-11-01T00:00:00Z",
