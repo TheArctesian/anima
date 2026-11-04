@@ -18,8 +18,22 @@ export function placeUnder(control: DOMRectReadOnly, menuWidth: number, viewport
 
 /** The `--space-2` token in pixels, the gap the menu keeps from the viewport's edges. */
 function edgeSpace(node: Element): number {
-  const value = Number.parseFloat(getComputedStyle(node).getPropertyValue('--space-2'));
-  return Number.isNaN(value) ? 0 : value;
+  const token = getComputedStyle(node).getPropertyValue('--space-2');
+  const rootFontPx = Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
+  return lengthInPx(token, rootFontPx) ?? 0;
+}
+
+/**
+ * A token length in pixels: `px` as it is, `rem` times the root font size. `null` for an empty
+ * value or any other unit, so a unit is never read as pixels by mistake.
+ */
+export function lengthInPx(text: string, rootFontPx: number): number | null {
+  const match = /^\s*(-?\d*\.?\d+)(px|rem)\s*$/.exec(text);
+  if (match === null) return null;
+  const [, amount = '', unit] = match;
+  const value = Number.parseFloat(amount);
+  if (unit === 'px') return value;
+  return Number.isFinite(rootFontPx) ? value * rootFontPx : null;
 }
 
 /**

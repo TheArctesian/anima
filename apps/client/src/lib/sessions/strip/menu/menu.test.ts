@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { placeUnder } from './anchor';
+import { lengthInPx, placeUnder } from './anchor';
 import TabMenu from './TabMenu.svelte';
 
 vi.mock('motion', async (importOriginal) => ({
@@ -168,5 +168,32 @@ it('a press outside, a scroll or a resize closes the menu', async () => {
     expect(document.querySelector('[role="menu"]')).toBeNull();
     if (menu !== undefined) await unmount(menu);
     menu = undefined;
+  }
+});
+
+it.each([
+  ['0.5rem', 16, 8],
+  ['0.5rem', 20, 10],
+  ['8px', 16, 8],
+  [' 1.25rem ', 16, 20],
+  ['', 16, null],
+  ['2em', 16, null],
+  ['0.5rem', Number.NaN, null],
+])('UI-009: the token length %j at a %d px root font is %s px', (text, root, px) => {
+  expect(lengthInPx(text, root)).toBe(px);
+});
+
+it('UI-009: a rem spacing token keeps the menu its pixel size from the right edge', async () => {
+  document.documentElement.style.setProperty('--space-2', '0.5rem');
+  document.documentElement.style.fontSize = '16px';
+  try {
+    const width = window.innerWidth;
+    show(true, new DOMRect(width - 40, 40, 32, 32)).click();
+    await settle();
+    const box = document.querySelector<HTMLElement>('[role="menu"]')?.getBoundingClientRect();
+    expect(box?.left).toBe(width - MENU_WIDTH - 8);
+  } finally {
+    document.documentElement.style.removeProperty('--space-2');
+    document.documentElement.style.fontSize = '';
   }
 });
