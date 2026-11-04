@@ -229,6 +229,18 @@ impl Beat {
     }
 }
 
+/// One attempt to record with `record_attempt`: the evaluation runs on the check's stored
+/// state and settings inside the write, so a beat, pause or change that landed during the
+/// probe is not lost.
+#[derive(Clone, Copy, Debug)]
+pub(in crate::checks) struct Attempt<'a> {
+    pub(in crate::checks) result: &'a ProbeResult,
+    /// Maintenance covers the check. It only turns a Down beat into a Maintenance beat
+    /// (CHK-006); every other status is recorded as evaluated.
+    pub(in crate::checks) in_maintenance: bool,
+    pub(in crate::checks) at: DateTime<Utc>,
+}
+
 /// What `record_beat` did with a beat.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[must_use]
@@ -244,6 +256,8 @@ pub enum Recorded {
 pub struct Due {
     pub id: CheckId,
     pub device: DeviceId,
+    /// The group the check belongs to; maintenance on the group covers it (CHK-006).
+    pub parent: Option<CheckId>,
     /// `None` when the stored configuration cannot be read; the probe then fails as a bad
     /// configuration instead of stopping the schedule.
     pub config: Option<CheckConfig>,

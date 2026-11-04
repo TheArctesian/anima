@@ -20,9 +20,9 @@ use sqlx::PgPool;
 use subtle::ConstantTimeEq as _;
 
 use super::{
-    Beat, Check, Error, Recorded, evaluate,
+    Attempt, Beat, Check, Error,
     probe::{ProbeResult, clean_message},
-    record_beat, store,
+    store,
 };
 use crate::{
     clock::Clock,
@@ -129,21 +129,25 @@ enum Outcome {
     Refused,
 }
 
-/// Evaluates the report against the check's settings and records the beat in one transaction.
-/// `None` when the store skipped it (the beat is not newer than the last one). This is the one
-/// place that decides the state the beat is evaluated against.
+/// Records the report as an attempt: the store evaluates it against the check's state and
+/// settings under the row lock, so a push and a scheduled attempt never count from a stale
+/// state. `None` when nothing was written (the check is paused or has a beat at least as
+/// new). A push is never in maintenance: it cannot produce Maintenance (D-5).
 async fn store_beat(
     db: &PgPool,
     check: &Check,
-    probe: ProbeResult,
+    probe: &ProbeResult,
     now: DateTime<Utc>,
 ) -> Result<Option<Beat>, Error> {
-    let evaluated = evaluate(&check.state, &probe, &check.settings, now);
-    let beat = Beat::of(probe, evaluated, now);
+    let attempt = Attempt {
+        result: probe,
+        in_maintenance: false,
+        at: now,
+    };
     let mut tx = db.begin().await?;
-    let recorded = record_beat(&mut tx, check.id, &beat).await?;
+    let beat = store::record_attempt(&mut tx, check.id, &attempt).await?;
     tx.commit().await?;
-    Ok((recorded == Recorded::Written).then_some(beat))
+    Ok(beat)
 }
 
 async fn record(
@@ -161,7 +165,7 @@ async fn record(
         return Ok(Outcome::Refused);
     };
     let now = state.clock.now();
-    let Some(beat) = store_beat(&state.db, &check, report.into_probe(), now).await? else {
+    let Some(beat) = store_beat(&state.db, &check, &report.into_probe(), now).await? else {
         // Skipped: a push at the instant of the last beat has nothing new to record. The
         // device did report in, so it is answered as a success, and nothing is published.
         return Ok(Outcome::Recorded);
