@@ -78,6 +78,7 @@ hsctl() { sudo docker compose -f /opt/anima/headscale/compose.yaml exec -T heads
   - `daemon.json` sets the default publish address to 127.0.0.1.
   - The hub DNS-01 Cloudflare token needs IP filtering for the VPS's IPv4 and IPv6, and a rotation date.
   - The Anima database backup can use its own repository on the same `rest-server` (VPS-006).
+- **WP-04 (metrics):** Headscale's metrics listener on 127.0.0.1:9090 also serves its debug endpoints to every local user and to host-network processes on the VPS. If the hub runs with host networking, it can reach them.
 - **WP-04 / hub vault:** the hub's credential vault runs on the same VPS as Headscale. A VPS compromise exposes both VPN reach and device credentials (OD-9, OD-10). The guide says so.
 
 ## Deviations from the brief
@@ -96,6 +97,8 @@ hsctl() { sudo docker compose -f /opt/anima/headscale/compose.yaml exec -T heads
 - `_acme-challenge` CNAME delegation to a separate zone, so the hub DNS-01 token cannot edit the main zone (DNS-003).
 - Filesystem snapshots or an offline copy of the home PC's restic repository (protects against a home-PC compromise).
 - A test that every `harden.sh` subcommand, flag and path named in the guide exists.
+- Verify pack data before prune (`restic check --read-data-subset` or `repair index --read-all-packs`). The VPS holds the repository key and could append crafted index or pack data (final review S4).
+- An automated check that the home PC's `allow.conf` holds the current hub VPN IPv4 (alerts on hub re-registration).
 - DHCPv6 accept rule in the firewall, only if the VPS gets IPv6 by DHCPv6.
 - `Package-Blacklist` or a hold so unattended upgrades do not cross Docker major versions.
 - A separate tag-owner identity for `tag:hub`/`tag:router` if tags ever need non-empty owners.
