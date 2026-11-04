@@ -1,4 +1,4 @@
-// psql against the throwaway server that quality/bin/with-postgres.ts starts (R-009).
+// psql against the throwaway server that quality/bin/with-postgres.ts starts.
 // The server trusts every local connection, so no test passes a password.
 import { existsSync } from "node:fs";
 import { join } from "node:path";

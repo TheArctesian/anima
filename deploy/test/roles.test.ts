@@ -80,8 +80,8 @@ describe("roles.sql inputs (DB-003)", () => {
 
 });
 
-describe("hub login start check (R-023)", () => {
-  test("R-023: anima_hub signs in as itself, owns no database, has no server-level role and no SET role", () => {
+describe("hub login start check (DB-003)", () => {
+  test("DB-003: anima_hub signs in as itself, owns no database, has no server-level role and no SET role", () => {
     const url = new URL(read(secretsFolder, "hub_database_url").replace(/^postgres:/, "http:"));
     expect(url.search).toBe("");
     expect(read(secretsFolder, "owner_database_url")).not.toContain("?");
@@ -97,13 +97,13 @@ describe("hub login start check (R-023)", () => {
 
 });
 
-describe("roles.sql attributes (R-016)", () => {
-  test("R-016: anima_owner can log in but is not superuser, createdb, createrole, bypassrls or replication", () => {
+describe("roles.sql attributes (DB-003)", () => {
+  test("DB-003: anima_owner can log in but is not superuser, createdb, createrole, bypassrls or replication", () => {
     expect(roleFlags("anima_owner", ["rolcanlogin"])).toBe("t");
     expect(roleFlags("anima_owner", ["rolsuper", "rolcreatedb", "rolcreaterole", "rolbypassrls", "rolreplication"])).toBe("f");
   });
 
-  test("R-016: anima_hub can log in, has no elevated rights and belongs to anima_runtime only", () => {
+  test("DB-003: anima_hub can log in, has no elevated rights and belongs to anima_runtime only", () => {
     expect(roleFlags("anima_hub", ["rolcanlogin"])).toBe("t");
     expect(roleFlags("anima_hub", ["rolsuper", "rolcreatedb", "rolcreaterole", "rolbypassrls", "rolreplication"])).toBe("f");
     const groups = scalar(
@@ -114,7 +114,7 @@ describe("roles.sql attributes (R-016)", () => {
     expect(groups).toBe("anima_runtime");
   });
 
-  test("R-016: anima_runtime is a plain group that cannot log in", () => {
+  test("DB-003: anima_runtime is a plain group that cannot log in", () => {
     expect(roleFlags("anima_runtime", ["rolcanlogin"])).toBe("f");
     expect(roleFlags("anima_runtime", ["rolsuper", "rolcreatedb", "rolcreaterole", "rolbypassrls"])).toBe("f");
   });
@@ -134,7 +134,7 @@ describe("roles.sql database access (DB-003, LOG-006, LOG-007)", () => {
     expect(psql(["-c", "select 1"], { user: "anima_hub", database: "anima" }).exitCode).toBe(0);
   });
 
-  test("R-016: anima_hub owns nothing after the migrations ran", () => {
+  test("DB-003: anima_hub owns nothing after the migrations ran", () => {
     const owned = `select count(*) from pg_shdepend d join pg_roles r on r.oid = d.refobjid
       where r.rolname = 'anima_hub' and d.deptype = 'o'`;
     expect(scalar(owned, { database: "anima" })).toBe("0");

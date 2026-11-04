@@ -1,12 +1,12 @@
 #!/bin/sh
-# Manual smoke test for deploy/compose.yaml (WP-04 D-9). Needs Docker. Not a gate.
+# Manual smoke test for deploy/compose.yaml (DB-002). Needs Docker. Not a gate.
 #
 # It works in a temporary copy of the deploy folder, so it never reads deploy/secrets.
 # TEST-ONLY: the secret files are made readable by everyone (mode 0444), because the host
 # owner (root:999) of a real install cannot be set without root. Never do this on the host.
 # It contacts neither Let's Encrypt nor Cloudflare: `certs` runs only with a stub entrypoint
 # (the hook on fixture certificates and `/lego --version`), never its real entry point.
-# `hub` is started without `migrate` (which WP-05 adds), so it may exit; the check does not
+# `hub` is started without `migrate` (which a later package adds), so it may exit; the check does not
 # depend on it staying up.
 #
 #   sh deploy/test/smoke.sh

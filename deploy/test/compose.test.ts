@@ -1,4 +1,4 @@
-// Rules for deploy/compose.yaml, checked on the parsed file (WP-04 D-3 to D-7, D-9).
+// Rules for deploy/compose.yaml, checked on the parsed file (DB-002, SEC-001, NET-003).
 // Nothing here starts Docker, and no test writes a file.
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
@@ -136,8 +136,8 @@ describe("secrets (DB-002, SEC-004, DNS-003)", () => {
   });
 });
 
-describe("start order (R-016, D-4)", () => {
-  test("R-016 the hub waits for postgres, migrate, certs and guacd", () => {
+describe("start order (DB-003)", () => {
+  test("DB-003 the hub waits for postgres, migrate, certs and guacd", () => {
     const depends = compose.services["hub"]?.depends_on ?? {};
     expect(Object.fromEntries(Object.entries(depends).map(([name, value]) => [name, value.condition]))).toEqual({
       postgres: "service_healthy",
@@ -147,7 +147,7 @@ describe("start order (R-016, D-4)", () => {
     });
   });
 
-  test("R-016 migrate waits for a healthy postgres and runs the migrate command", () => {
+  test("DB-003 migrate waits for a healthy postgres and runs the migrate command", () => {
     const migrate = compose.services["migrate"] as Container;
     expect(migrate.depends_on?.["postgres"]?.condition).toBe("service_healthy");
     expect(migrate.command).toEqual(["migrate"]);
@@ -155,7 +155,7 @@ describe("start order (R-016, D-4)", () => {
   });
 });
 
-describe("container limits (D-7, SEC-001)", () => {
+describe("container limits (SEC-001)", () => {
   test("every service rotates its log at 10m x 10 (spec Section 3.8)", () => {
     for (const [, service] of services) {
       expect(service.logging).toEqual({ driver: "json-file", options: { "max-size": "10m", "max-file": "10" } });
@@ -220,7 +220,7 @@ describe("hub configuration (K7)", () => {
   });
 });
 
-describe("host integration (AlmaLinux, WP-03)", () => {
+describe("host integration (AlmaLinux host firewall)", () => {
   test("every bind mount uses the long syntax with the SELinux z label", () => {
     let binds = 0;
     for (const [name, container] of services) {
@@ -237,7 +237,7 @@ describe("host integration (AlmaLinux, WP-03)", () => {
     expect(binds).toBe(3);
   });
 
-  test("WP-03 no network sets a bridge name (the forward chain relies on the default br-* names)", () => {
+  test("NET-003 no network sets a bridge name (the forward chain relies on the default br-* names)", () => {
     for (const network of Object.values(compose.networks)) {
       expect(JSON.stringify(network ?? {})).not.toContain("bridge.name");
     }
@@ -251,14 +251,14 @@ describe("host integration (AlmaLinux, WP-03)", () => {
   });
 });
 
-describe("hardening and images (SEC-001, D-6)", () => {
+describe("hardening and images (SEC-001)", () => {
   test("SEC-001 only certs adds a capability, and only CHOWN", () => {
     for (const [name, container] of services) {
       expect(container.cap_add ?? (name === "certs" ? ["missing"] : [])).toEqual(name === "certs" ? ["CHOWN"] : []);
     }
   });
 
-  test("D-6 every image has a fixed version tag, and lego is pinned", () => {
+  test("SEC-001 every image has a fixed version tag, and lego is pinned", () => {
     for (const [name, container] of services) {
       if (container.image === undefined) continue;
       const tag = container.image.split(":")[1] ?? "";
@@ -268,13 +268,13 @@ describe("hardening and images (SEC-001, D-6)", () => {
     expect(compose.services["postgres"]?.image).toMatch(/^postgres:17\.(?:1[1-9]|[2-9]\d)-bookworm$/);
   });
 
-  test("D-6 the hub Dockerfile pins a dated Debian slim tag", () => {
+  test("SEC-001 the hub Dockerfile pins a dated Debian slim tag", () => {
     const dockerfile = readFileSync(join(ROOT, "deploy", "hub", "Dockerfile"), "utf8");
     expect(dockerfile).toMatch(/^FROM debian:bookworm-\d{8}-slim$/m);
     expect(dockerfile).toMatch(/^FROM rust:\d+\.\d+-bookworm AS build$/m);
   });
 
-  test("D-6 Dockerfile.dockerignore is an allow-list", () => {
+  test("SEC-001 Dockerfile.dockerignore is an allow-list", () => {
     const lines = readFileSync(join(ROOT, "deploy", "hub", "Dockerfile.dockerignore"), "utf8")
       .split("\n")
       .filter((line) => line !== "" && !line.startsWith("#"));
@@ -319,7 +319,7 @@ describe("hardening and images (SEC-001, D-6)", () => {
   });
 });
 
-describe("images (DB-002, D-6)", () => {
+describe("images (DB-002)", () => {
   test("DB-002 the postgres image is a fixed Debian tag, not Alpine (group 999 is postgres only there)", () => {
     const image = compose.services["postgres"]?.image ?? "";
     expect(image).toMatch(/^postgres:\d+\.\d+-bookworm$/);

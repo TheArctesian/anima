@@ -1,4 +1,4 @@
-# Hub image (WP-04 D-6). Build context: the repository root.
+# Hub image (SEC-001). Build context: the repository root.
 #   docker build -f deploy/hub/Dockerfile .
 FROM rust:1.93-bookworm AS build
 WORKDIR /src

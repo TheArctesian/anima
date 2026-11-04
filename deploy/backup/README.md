@@ -57,7 +57,7 @@ dnf install -y epel-release
 dnf install -y restic
 ```
 
-**Secret files** that you create on the VPS (mode 0600, owner root; never commit them, never print them):
+**Secret files** that you create on the VPS (mode 0600, owner root; never commit them, never print them). The recipe below keeps the values out of the shell history and the process list:
 
 | File | Content |
 |---|---|
@@ -66,23 +66,51 @@ dnf install -y restic
 
 Make the rest-server password hex (`openssl rand -hex 32`). It sits inside a URL.
 
+```bash
+# bash, as root, on the VPS
+umask 077
+cd /opt/anima/deploy/secrets
+read -rs -p 'restic repository URL: ' value; echo
+printf '%s' "$value" > restic_repository
+read -rs -p 'restic encryption password: ' value; echo
+printf '%s' "$value" > restic_password
+unset value
+```
+
 **Home PC steps** (the Headscale README lists the packages and the `rest-server` unit):
 
 1. Add the user: `htpasswd -B /etc/restic/htpasswd anima-db`. Use the same password as in the URL above.
 2. Put the restic password in `/etc/restic/anima-db-password` (mode 0600, root).
 3. Check the size limit. WP-03's `rest-server` unit starts with `--max-size` (1 GiB at the time of writing). Check in `/etc/systemd/system/rest-server.service` whether the limit covers each repository or all of them together, and whether Headscale already uses part of it. Daily dumps are small and `restic` stores only the changed parts, but 90 days of history grows. After the first week, run `restic stats --mode raw-data` and multiply by 13. Raise `--max-size` if the result is more than half of the limit.
-4. Prune on the home PC only. This repository is append-only for the VPS, so the VPS cannot delete anything. Run this as root, with no cache and no lock, so nothing is written into the `restic`-owned repository:
+4. Prune on the home PC only. This repository is append-only for the VPS, so the VPS cannot
+   delete anything. Install the pair in `deploy/backup/home-pc/` (copy the folder to the home
+   PC). The service runs as `User=restic`, the owner of `/srv/restic/anima-db`, so restic
+   never writes a root-owned file into the repository. Do not run `restic forget` as root
+   against it. Nor does the command take `--no-lock`: restic refuses that flag outside
+   `--dry-run`.
 
 ```sh
-restic -r /srv/restic/anima-db --password-file /etc/restic/anima-db-password --no-cache --no-lock \
-  forget --host anima-vps --tag anima-db --keep-within 90d --prune
+install -m 0644 anima-db-prune.unit /etc/systemd/system/anima-db-prune.service
+install -m 0644 anima-db-prune.timer /etc/systemd/system/anima-db-prune.timer
+systemctl daemon-reload
+systemctl start anima-db-prune.service
+systemctl enable --now anima-db-prune.timer
+```
+
+The service runs this command, with the repository, the password file (a systemd credential
+read from `/etc/restic/anima-db-password`) and the cache folder set in its environment:
+
+```sh
+restic forget --host anima-vps --tag anima-db --group-by host,tags --keep-within 90d --prune
 ```
 
 Keep 90 days, not 14. Damage such as a wrong delete can go unseen for weeks. Ninety days also
 matches the retention of `events.event_log`, so a restore from the oldest dump still holds the
-logs of its own period. Do not run this command from a timer until it sits behind the guard of
-`deploy/headscale/backup/prune.sh`. That script refuses to prune when the snapshot list looks
-wrong (too few snapshots, or a time in the future). Copy its pattern for this repository.
+logs of its own period. `--keep-within` counts from the newest snapshot, and the VPS chooses
+snapshot times. Look at `restic snapshots --tag anima-db` now and then (as the `restic` user,
+`runuser -u restic -- restic ...`) for a snapshot dated in the future, because it would shift
+the window. `deploy/headscale/backup/prune.sh` has a guard for this, but it is fixed to the
+Headscale host and tag, so it cannot be used here.
 
 **Initialise the repository** once, from the VPS. This needs the user and password above:
 
@@ -165,7 +193,7 @@ Do these in order.
 
 1. On the VPS: `dnf install -y epel-release && dnf install -y restic`.
 2. On the home PC: `htpasswd -B /etc/restic/htpasswd anima-db`, and create `/etc/restic/anima-db-password`. Check `--max-size` as described above.
-3. On the VPS: create `/opt/anima/deploy/secrets/restic_repository` and `/opt/anima/deploy/secrets/restic_password` (mode 0600, root).
+3. On the VPS: create `/opt/anima/deploy/secrets/restic_repository` and `/opt/anima/deploy/secrets/restic_password` (mode 0600, root) with the bash recipe above (`umask 077`, `read -rs`, `printf '%s' ... > file`).
 4. On the VPS: `restic --repository-file /opt/anima/deploy/secrets/restic_repository --password-file /opt/anima/deploy/secrets/restic_password init`.
 5. On the VPS: `install -m 0644 /opt/anima/deploy/backup/anima-backup.unit /etc/systemd/system/anima-backup.service`.
 6. On the VPS: `install -m 0644 /opt/anima/deploy/backup/anima-backup.timer /etc/systemd/system/anima-backup.timer`.
@@ -174,4 +202,4 @@ Do these in order.
 9. On the VPS: `/opt/anima/deploy/backup/restore-check.sh <the printed path>`.
 10. On the VPS: `systemctl enable --now anima-backup.timer`.
 11. Copy `/opt/anima/deploy/secrets/anima_key` and `restic_password` to an offline place.
-12. On the home PC: schedule the `forget` command above behind the prune guard.
+12. On the home PC: install `deploy/backup/home-pc/anima-db-prune.unit` and `.timer` as in Home PC step 4 (they run as the `restic` user), then `systemctl enable --now anima-db-prune.timer`.

@@ -1,4 +1,4 @@
--- Roles and database for a new Anima installation (DB-003, R-016, contracts/database.md "Roles").
+-- Roles and database for a new Anima installation (DB-003, contracts/database.md "Roles").
 --
 -- Run once, as the PostgreSQL superuser, against the `postgres` database:
 --   psql -v ON_ERROR_STOP=1 --dbname postgres -f roles.sql

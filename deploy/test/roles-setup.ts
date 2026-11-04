@@ -1,4 +1,4 @@
-// Makes the Anima roles and the database on the throwaway server, once per server (R-009, R-019).
+// Makes the Anima roles and the database on the throwaway server, once per server.
 // Roles are cluster-wide, so every test file that needs them calls `installRoles()` and gets the
 // same result, whichever file runs first.
 import { readdirSync } from "node:fs";

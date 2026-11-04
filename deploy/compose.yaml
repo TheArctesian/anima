@@ -1,4 +1,4 @@
-# Anima hub deployment (WP-04 stage A). Run with `docker compose up -d` from this folder.
+# Anima hub deployment (DB-002, SEC-001). Run with `docker compose up -d` from this folder.
 # Required in the environment or in deploy/.env: ANIMA_HUB_ADDRESS, ANIMA_ACME_EMAIL.
 # Run `sh bin/preflight` first (VPN address, Docker version, secret files).
 # See README.md. Secret files are made by bin/make-secrets (DB-002, SEC-004, DNS-003).

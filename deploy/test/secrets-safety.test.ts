@@ -78,7 +78,7 @@ describe("make-secrets folder trust (SEC-004)", () => {
 });
 
 describe("make-secrets owners (DB-002)", () => {
-  test("DB-002: every file gets its D-1 owner, and chown runs before chmod", () => {
+  test("DB-002: every file gets its owner, and chown runs before chmod", () => {
     const folder = newSecretsPath();
     const log = join(scratchFolder(), "calls.log");
     const record = (command: string) => `printf '%s %s %s\\n' ${command} "$1" "$(basename "$2")" >>"${log}"`;

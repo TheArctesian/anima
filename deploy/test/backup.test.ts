@@ -69,6 +69,14 @@ describe("backup.sh failures (DB-007)", () => {
     expect(backupFiles(".counts")).toEqual([]);
   });
 
+  test("DB-007: a pg_dump that exits 3 gives exactly one stderr line, with no shell job message", () => {
+    const shim = shimDirectory("pg_dump", "exit 3");
+    const result = run(BACKUP, [], {}, shim);
+    expect(result.exitCode).not.toBe(0);
+    expect(result.stderr).toBe("backup.sh: pg_dump failed\n");
+    expect(backupFiles(".dump")).toEqual([]);
+  });
+
   test("DB-007: a bad ANIMA_BACKUP_KEEP_DAYS fails before any dump is made", () => {
     const result = run(BACKUP, [], { ANIMA_BACKUP_KEEP_DAYS: "abc" });
     expect(result.exitCode).not.toBe(0);
