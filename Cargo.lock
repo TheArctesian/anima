@@ -59,6 +59,7 @@ dependencies = [
  "guac-protocol",
  "http-body-util",
  "ipnet",
+ "proptest",
  "rpassword",
  "serde",
  "serde_json",

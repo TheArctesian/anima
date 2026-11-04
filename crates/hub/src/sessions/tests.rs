@@ -1,9 +1,13 @@
 //! Unit tests of the pure session rules and of the store's crate-private writes. Public
 //! behaviour is tested in `tests/it/sessions`.
 
+mod failures;
 mod page;
 mod public_key;
+mod start;
 mod store;
+mod tickets;
+mod tunnels;
 
 /// Two real OpenSSH public keys (throwaway, made with `ssh-keygen`; the private halves were
 /// deleted) and the fingerprints `ssh-keygen -l` printed for them.

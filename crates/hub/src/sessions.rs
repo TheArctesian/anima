@@ -1,13 +1,18 @@
-//! Remote sessions: the record of every session (RA-008) and the SSH host key accepted for
-//! each device (SEC-006), which the gateway is pinned to (SEC-007).
+//! Remote sessions: the record of every session (RA-008), the SSH host key accepted for
+//! each device (SEC-006), which the gateway is pinned to (SEC-007), and the single-use
+//! tickets that open the tunnel (K4 §1, API-009).
 
+mod end;
 pub mod graphql;
+mod live;
 mod model;
 mod page;
 mod public_key;
+mod start;
 mod store;
 #[cfg(test)]
 mod tests;
+mod tickets;
 mod tunnel;
 
 use std::collections::HashMap;
@@ -15,17 +20,73 @@ use std::collections::HashMap;
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 
-use crate::ids::DeviceId;
+use crate::{
+    devices, events,
+    ids::{DeviceId, SessionId},
+};
 
-pub use model::{EndReason, HostKey, Protocol, Session, SessionEnd, UnknownValue};
+pub use end::Actor;
+pub use live::{Closing, EndCause, Live, Redeemed, Refused, Tunnel};
+pub use model::{EndReason, FieldError, HostKey, Protocol, Session, SessionEnd, UnknownValue};
 pub use public_key::{BadFingerprint, BadKey, Fingerprint, PublicKey};
+pub use start::{DEFAULT_DPI, DisplayRequest, StartRequest, start};
+pub use tickets::{PendingTicket, Ticket};
 
-/// Why a sessions operation failed.
+/// What a sessions operation looked for and did not find.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Missing {
+    Device(DeviceId),
+    Session(SessionId),
+}
+
+impl std::fmt::Display for Missing {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Device(id) => write!(f, "device {id}"),
+            Self::Session(id) => write!(f, "session {id}"),
+        }
+    }
+}
+
+/// Why the device's state does not allow a session now (K4 §1, §6).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum Conflict {
+    #[error("SSH is turned off for this device. Turn it on in the device's SSH settings.")]
+    SshDisabled,
+    #[error("No host key is accepted for this device. Test the connection and accept its key.")]
+    NoHostKey,
+}
+
+/// Why a sessions operation failed. No variant holds a ticket token (LOG-007).
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    /// The message stays generic: the source error may hold SQL text (API-010).
+    #[error("{0} not found")]
+    NotFound(Missing),
+    #[error("input is not valid: {}", field_names(.0))]
+    Validation(Vec<FieldError>),
+    #[error(transparent)]
+    Conflict(Conflict),
+    /// Too many tickets are pending, or the hub is shutting down.
+    #[error("no session can start now")]
+    Unavailable,
+    /// The messages stay generic: the source errors may hold SQL text (API-010).
+    #[error("device store error")]
+    Devices(#[source] devices::Error),
+    #[error("event store error")]
+    Events(#[from] events::Error),
+    #[error("no random bytes for a ticket")]
+    Random(#[source] getrandom::Error),
     #[error("database error")]
     Database(#[from] sqlx::Error),
+}
+
+/// The names of the fields in error, never their values.
+fn field_names(errors: &[FieldError]) -> String {
+    errors
+        .iter()
+        .map(|error| error.field)
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 /// The host key accepted for the device, if any (SEC-006).
