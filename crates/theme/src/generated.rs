@@ -2,6 +2,7 @@
 
 use crate::Rgb;
 
+#[rustfmt::skip]
 pub const NORD: [Rgb; 16] = [
     Rgb::new(0x2E, 0x34, 0x40),
     Rgb::new(0x3B, 0x42, 0x52),
@@ -25,7 +26,22 @@ pub const TERMINAL_BACKGROUND: Rgb = NORD[0];
 
 pub const TERMINAL_FOREGROUND: Rgb = NORD[4];
 
+#[rustfmt::skip]
 pub const TERMINAL_ANSI: [Rgb; 16] = [
-    NORD[1], NORD[11], NORD[14], NORD[13], NORD[9], NORD[15], NORD[8], NORD[5], NORD[3], NORD[11],
-    NORD[14], NORD[13], NORD[9], NORD[15], NORD[7], NORD[6],
+    NORD[1],
+    NORD[11],
+    NORD[14],
+    NORD[13],
+    NORD[9],
+    NORD[15],
+    NORD[8],
+    NORD[5],
+    NORD[3],
+    NORD[11],
+    NORD[14],
+    NORD[13],
+    NORD[9],
+    NORD[15],
+    NORD[7],
+    NORD[6],
 ];

@@ -1,5 +1,5 @@
-import { GENERATED_NOTICE, fieldsOf, leadingNumber, plain, type Token } from './model.ts';
-import { toLibraryForm, type SpringShape } from './spring.ts';
+import { GENERATED_NOTICE, bezierOf, fieldsOf, leadingNumber, springOf, trimmedDecimal, type Token } from './model.ts';
+import { toLibraryForm } from './spring.ts';
 
 interface LiteralObject {
   readonly [key: string]: Literal;
@@ -37,9 +37,8 @@ function render(value: Literal, indent: string): string {
 }
 
 function springValue(token: Token): Literal {
-  const spring = fieldsOf(token.value) as unknown as SpringShape;
-  const { dampingRatio, responseS, stiffness, damping } = toLibraryForm(spring);
-  return { dampingRatio, responseS, stiffness: Number(plain(stiffness)), damping: Number(plain(damping)) };
+  const { dampingRatio, responseS, stiffness, damping } = toLibraryForm(springOf(token));
+  return { dampingRatio, responseS, stiffness: Number(trimmedDecimal(stiffness)), damping: Number(trimmedDecimal(damping)) };
 }
 
 function exportedValue(token: Token): Literal {
@@ -50,7 +49,7 @@ function exportedValue(token: Token): Literal {
     case 'dimension':
       return leadingNumber(token.value);
     case 'cubicBezier':
-      return (token.value as readonly number[]).map(Number);
+      return [...bezierOf(token)];
     default:
       return fieldsOf(token.value) as LiteralObject;
   }

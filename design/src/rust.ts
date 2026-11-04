@@ -20,23 +20,10 @@ function find(tokens: readonly Token[], name: string): Token {
   return token;
 }
 
-const LINE_WIDTH = 100;
-const SHORT_ITEM_WIDTH = 10;
-
-/** Items of at most 10 characters share lines; longer items take one line each (rustfmt's array layout). */
-function arrayLines(items: readonly string[]): string[] {
-  if (items.some((item) => item.length > SHORT_ITEM_WIDTH)) return items.map((item) => `    ${item},`);
-  const lines: string[] = [];
-  for (const item of items) {
-    const last = lines.at(-1);
-    if (last !== undefined && last.length + 1 + item.length + 1 <= LINE_WIDTH) lines[lines.length - 1] = `${last} ${item},`;
-    else lines.push(`    ${item},`);
-  }
-  return lines;
-}
-
+/** One item per line; `#[rustfmt::skip]` keeps rustfmt from repacking short items. */
 function array(name: string, items: readonly string[]): string {
-  return `pub const ${name}: [Rgb; ${items.length}] = [\n${arrayLines(items).join('\n')}\n];`;
+  const lines = items.map((item) => `    ${item},\n`).join('');
+  return `#[rustfmt::skip]\npub const ${name}: [Rgb; ${items.length}] = [\n${lines}];`;
 }
 
 /** generated.rs: the Nord palette and the terminal palette for crates/theme (RA-010, TOK-001). */
