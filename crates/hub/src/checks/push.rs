@@ -173,6 +173,7 @@ async fn record(
             at: beat.at,
             status: beat.status,
             response_time_ms: beat.response_time_ms,
+            message: beat.message.as_deref().map(clean_message),
         },
     });
     Ok(Outcome::Recorded)

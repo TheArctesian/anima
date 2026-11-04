@@ -52,19 +52,20 @@ fn heartbeat_added(
     signal: &Signal,
     (check, device): (Option<CheckId>, Option<DeviceId>),
 ) -> Option<HeartbeatAdded> {
-    match *signal {
+    match signal {
         Signal::Heartbeat {
             check: beaten,
             device: owner,
             beat,
-        } if check.is_none_or(|wanted| wanted == beaten)
-            && device.is_none_or(|wanted| wanted == owner) =>
+        } if check.is_none_or(|wanted| wanted == *beaten)
+            && device.is_none_or(|wanted| wanted == *owner) =>
         {
             let HeartbeatSummary {
                 at,
                 status,
                 response_time_ms,
-            } = beat;
+                message,
+            } = beat.clone();
             Some(HeartbeatAdded {
                 check_id: ID(beaten.to_string()),
                 device_id: ID(owner.to_string()),
@@ -72,7 +73,7 @@ fn heartbeat_added(
                     at,
                     status,
                     response_time_ms,
-                    message: None,
+                    message,
                 },
             })
         }

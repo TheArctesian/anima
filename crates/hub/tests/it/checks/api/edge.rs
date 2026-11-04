@@ -107,4 +107,18 @@ fixture_test! {
         assert_eq!(last["action"], "delete");
         assert_eq!(last["change"]["childIds"], json!([child]));
     }
+
+    async fn chk_005_a_push_check_without_a_token_gives_internal_never_an_empty_path(pool: PgPool) {
+        let (schema, _) = schema_with_bus(&pool);
+        let id = create(&schema, input(PVE_01, "p", json!({ "push": true }))).await;
+        sqlx::query("ALTER TABLE checks.checks DROP CONSTRAINT checks_push_token_check")
+            .execute(&pool)
+            .await
+            .unwrap();
+        sqlx::query("UPDATE checks.checks SET push_token = NULL").execute(&pool).await.unwrap();
+        let response = with_variables(&schema, PATH, json!({ "id": id })).await;
+        let error = error_json(&response);
+        assert_eq!(code(&error), "INTERNAL");
+        assert!(!error.to_string().contains("no token"), "no detail reaches the operator");
+    }
 }

@@ -36,6 +36,7 @@ fn heartbeat(check: &str, owner: &str) -> Signal {
             at: now(),
             status: Status::Up,
             response_time_ms: Some(12),
+            message: None,
         },
     }
 }

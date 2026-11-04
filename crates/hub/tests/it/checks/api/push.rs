@@ -8,6 +8,7 @@ use anima_hub::{
     events::{Bus, Signal},
     status::Status,
 };
+use async_graphql::futures_util::StreamExt as _;
 use axum::{
     Router,
     body::Body,
@@ -286,5 +287,24 @@ fixture_test! {
         assert_eq!((status, body.as_slice()), (StatusCode::OK, b"ok".as_slice()));
         assert_eq!(rig.beats(&id).await.len(), 1);
         assert!(receiver.try_recv().is_err(), "nothing was recorded, so nothing is published");
+    }
+
+    async fn chk_003_the_cleaned_message_of_a_push_arrives_on_the_subscription(pool: PgPool) {
+        let rig = rig(pool).await;
+        let (id, path) = rig.push_check("backup").await;
+        let query = format!("subscription {{ heartbeatAdded(checkId: \"{id}\") {{ heartbeat {{ message }} }} }}");
+        let mut stream = Box::pin(rig.schema.execute_stream(super::harness::signed_in(&query)));
+        let reader = tokio::spawn(async move { stream.next().await });
+        tokio::pin!(reader);
+        let item = loop {
+            // The stream subscribes when first polled, so push until it has seen one.
+            assert_eq!(rig.get(&format!("{path}?msg=a%01b%0Ac")).await.0, StatusCode::OK);
+            if let Ok(done) = tokio::time::timeout(std::time::Duration::from_millis(50), &mut reader).await {
+                break done.unwrap().expect("the stream ended");
+            }
+        };
+        assert_eq!(item.errors.len(), 0, "{:?}", item.errors);
+        let data = item.data.into_json().unwrap();
+        assert_eq!(data["heartbeatAdded"]["heartbeat"]["message"], "abc");
     }
 }
