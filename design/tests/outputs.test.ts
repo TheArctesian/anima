@@ -97,6 +97,11 @@ describe('colour tokens', () => {
   test('UI-005 a tint is the colour at 12 % over the current surface (D-7)', () => {
     expect(css).toContain('--status-up-tint: color-mix(in srgb, var(--status-up) 12%, var(--surface));');
   });
+
+  test('MAT-003 the scrim is nord-0 at 55 % over what is behind it, and contrast mode leaves it alone (R-049)', () => {
+    expect(css).toContain('  --scrim: color-mix(in srgb, var(--nord-0) 55%, transparent);');
+    expect(css.match(/--scrim:/g)).toHaveLength(1);
+  });
 });
 
 describe('sizes and type', () => {
