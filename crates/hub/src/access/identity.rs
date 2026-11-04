@@ -122,7 +122,7 @@ pub async fn identify_connection(
 }
 
 /// The token of the one `Authorization` header with the `Bearer` scheme.
-fn bearer(headers: &HeaderMap) -> Option<&str> {
+pub(super) fn bearer(headers: &HeaderMap) -> Option<&str> {
     let mut values = headers.get_all(AUTHORIZATION).iter();
     let value = values.next()?;
     if values.next().is_some() {
