@@ -1,0 +1,60 @@
+# Home Linux PC: restic rest-server that receives the VPS backups (VPS-006, decision D-12).
+# Install as /etc/systemd/system/rest-server.service (see README.md).
+# --append-only: a client can add snapshots but never delete or overwrite them, so a
+# compromised VPS cannot delete old snapshots as long as prune.sh refuses anomalous
+# snapshot lists. --private-repos: the user headscale-vps may only use
+# /srv/restic/headscale-vps/. --max-size caps the space a client can fill (1 GiB, about
+# ten times the expected repository).
+[Unit]
+Description=restic rest-server for off-site backups
+Wants=network-online.target
+After=network-online.target tailscaled.service
+# Stop retrying after five failed starts in five minutes (for example a missing address).
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=restic
+Group=restic
+# Holds HOME_PC_LAN_IP=10.10.0.X, the home PC's LAN address; not a secret.
+EnvironmentFile=/etc/restic/rest-server.env
+# Without the address rest-server would listen on every interface (":8000").
+ExecStartPre=/usr/bin/test -n ${HOME_PC_LAN_IP}
+ExecStart=/usr/local/bin/rest-server --listen ${HOME_PC_LAN_IP}:8000 --path /srv/restic --append-only --private-repos --htpasswd-file /etc/restic/htpasswd --max-size 1073741824
+Restart=on-failure
+RestartSec=10
+UMask=0077
+
+CapabilityBoundingSet=
+AmbientCapabilities=
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/srv/restic
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+ProcSubset=pid
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged
+SystemCallErrorNumber=EPERM
+# No client is allowed here. The drop-in rest-server-allow.conf allows only the hub's VPN
+# address; until the operator installs it, every connection is refused.
+IPAddressDeny=any
+
+[Install]
+WantedBy=multi-user.target
