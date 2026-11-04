@@ -65,7 +65,7 @@ Phase 1 SSH argument values:
 After `ready`, the hub sends to the client, in this order:
 
 1. The internal instruction `0.,36.<tunnel-uuid>;` (empty opcode, one arg: a new UUID). `guacamole-common-js` needs it to mark the tunnel open. The UUID is not the gateway connection ID.
-2. Every gateway instruction, unchanged, as one WebSocket text message per complete instruction (the `Decoder` gives complete instructions only), except `error`: the hub relays its status code with the fixed text `"Aborted. See logs."`, so no gateway error detail reaches the client (GW-014, LOG-007, R-035).
+2. Every gateway instruction, unchanged except that characters outside the Basic Multilingual Plane become U+FFFD (lengths then agree in code points and UTF-16 units, R-046), as one WebSocket text message per complete instruction (the `Decoder` gives complete instructions only), except `error`: the hub relays its status code with the fixed text `"Aborted. See logs."`, so no gateway error detail reaches the client (GW-014, LOG-007, R-035).
 
 From the client, the hub:
 

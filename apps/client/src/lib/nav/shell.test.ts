@@ -12,7 +12,11 @@ vi.mock('motion', async (importOriginal) => ({
   animate: (await import('../motion/engine.fixture')).fakeRun,
 }));
 
+const keyStore = vi.hoisted(() => ({ read: vi.fn() }));
+vi.mock('$lib/desktop/token', () => ({ readAccessToken: keyStore.read }));
+
 const fake = vi.hoisted(() => ({
+  options: undefined as { address: { origin: string }; token: (address: never) => Promise<string | null> } | undefined,
   status: { connection: 'connected', lastContactAt: null } as HubStatus,
   close: (): Promise<void> => Promise.resolve(),
 }));
@@ -30,8 +34,9 @@ vi.mock('$app/state', async () => {
 
 vi.mock('$lib/hub/hub', async (importOriginal) => ({
   ...(await importOriginal<typeof import('$lib/hub/hub')>()),
-  createHub: (): Hub =>
-    ({
+  createHub: (options: NonNullable<typeof fake.options>): Hub => {
+    fake.options = options;
+    return {
       address: { origin: 'https://hub.anima.ing', http: '', socket: '' },
       status: {
         get current() {
@@ -39,7 +44,8 @@ vi.mock('$lib/hub/hub', async (importOriginal) => ({
         },
       },
       close: () => fake.close(),
-    }) as unknown as Hub,
+    } as unknown as Hub;
+  },
 }));
 
 const NOW = new Date('2026-11-04T10:00:00Z');
@@ -201,4 +207,19 @@ it('CQ-045: unmounting the layout closes the hub, and a rejected close is handle
   expect(unhandled).not.toHaveBeenCalled();
   process.off('unhandledRejection', unhandled);
   warn.mockRestore();
+});
+
+it('H-2: the hub is created with the stored address and the key store as its token provider', () => {
+  localStorage.setItem('anima.hubAddress', 'https://my-hub.example');
+  onTestFinished(() => {
+    localStorage.clear();
+  });
+  show();
+  expect(fake.options?.address.origin).toBe('https://my-hub.example');
+  expect(fake.options?.token).toBe(keyStore.read);
+});
+
+it('H-2: with nothing stored the hub is the default one', () => {
+  show();
+  expect(fake.options?.address.origin).toBe('https://hub.anima.ing');
 });

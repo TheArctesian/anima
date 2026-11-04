@@ -102,7 +102,8 @@ async fn r_023_new_partitions_get_select_and_insert_for_anima_runtime_only(pool:
 /// first has a dependent grant, and only CASCADE lets it through.
 #[sqlx::test(migrations = "./migrations")]
 async fn r_023_migration_0502_resets_partitions_created_before_it(pool: PgPool) {
-    let mut conn = pool.acquire().await.unwrap();
+    // Detached: the leftovers script changes this connection's role (R-019).
+    let mut conn = pool.acquire().await.unwrap().detach();
     let (group, chained) = (test_role("group"), test_role("chained"));
     let partitions = ["audit_log_20300707", "event_log_20300707"];
     execute(&mut conn, &format!("create role {group} nologin")).await;
@@ -132,11 +133,11 @@ async fn r_023_migration_0502_resets_partitions_created_before_it(pool: PgPool) 
              grant select on events.{partition} to {group}; \
              reset role"
         );
-        sqlx::raw_sql(&leftovers).execute(&mut *conn).await.unwrap();
+        sqlx::raw_sql(&leftovers).execute(&mut conn).await.unwrap();
     }
 
     sqlx::raw_sql(MIGRATION_0502)
-        .execute(&mut *conn)
+        .execute(&mut conn)
         .await
         .unwrap();
     let grants = grants_on(&mut conn, &partitions).await;

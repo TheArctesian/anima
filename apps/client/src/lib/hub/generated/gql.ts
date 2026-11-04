@@ -20,6 +20,10 @@ type Documents = {
     "\n  subscription DeviceStatusChanged {\n    deviceStatusChanged(deviceId: null) {\n      deviceId\n      status\n      at\n    }\n  }\n": typeof types.DeviceStatusChangedDocument,
     "\n  query Events($filter: EventFilter, $first: Int, $after: String) {\n    events(filter: $filter, first: $first, after: $after) {\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n      edges {\n        node {\n          id\n          at\n          severity\n          source\n          deviceId\n          deviceName\n          message\n        }\n      }\n    }\n  }\n": typeof types.EventsDocument,
     "\n  subscription EventAdded($minSeverity: Severity) {\n    eventAdded(minSeverity: $minSeverity) {\n      id\n      at\n      severity\n      source\n      deviceId\n      deviceName\n      message\n    }\n  }\n": typeof types.EventAddedDocument,
+    "\n  mutation StartSession($input: StartSessionInput!) {\n    startSession(input: $input) {\n      sessionId\n      token\n      tunnelPath\n      expiresAt\n    }\n  }\n": typeof types.StartSessionDocument,
+    "\n  mutation EndSession($id: ID!) {\n    endSession(id: $id) {\n      id\n      deviceId\n      deviceName\n      protocol\n      startedAt\n      endedAt\n      endReason\n    }\n  }\n": typeof types.EndSessionDocument,
+    "\n  mutation TestConnection($deviceId: ID!) {\n    testConnection(input: { deviceId: $deviceId }) {\n      reachable\n      authenticated\n      hostKey {\n        algorithm\n        fingerprintSha256\n        firstSeenAt\n      }\n      hostKeyChanged\n      message\n    }\n  }\n": typeof types.TestConnectionDocument,
+    "\n  mutation AcceptHostKey($deviceId: ID!, $fingerprintSha256: String!) {\n    acceptHostKey(deviceId: $deviceId, fingerprintSha256: $fingerprintSha256) {\n      algorithm\n      fingerprintSha256\n      firstSeenAt\n    }\n  }\n": typeof types.AcceptHostKeyDocument,
 };
 const documents: Documents = {
     "\n  subscription HeartbeatAdded {\n    heartbeatAdded(deviceId: null) {\n      checkId\n      deviceId\n      heartbeat {\n        at\n        status\n        responseTimeMs\n      }\n    }\n  }\n": types.HeartbeatAddedDocument,
@@ -28,6 +32,10 @@ const documents: Documents = {
     "\n  subscription DeviceStatusChanged {\n    deviceStatusChanged(deviceId: null) {\n      deviceId\n      status\n      at\n    }\n  }\n": types.DeviceStatusChangedDocument,
     "\n  query Events($filter: EventFilter, $first: Int, $after: String) {\n    events(filter: $filter, first: $first, after: $after) {\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n      edges {\n        node {\n          id\n          at\n          severity\n          source\n          deviceId\n          deviceName\n          message\n        }\n      }\n    }\n  }\n": types.EventsDocument,
     "\n  subscription EventAdded($minSeverity: Severity) {\n    eventAdded(minSeverity: $minSeverity) {\n      id\n      at\n      severity\n      source\n      deviceId\n      deviceName\n      message\n    }\n  }\n": types.EventAddedDocument,
+    "\n  mutation StartSession($input: StartSessionInput!) {\n    startSession(input: $input) {\n      sessionId\n      token\n      tunnelPath\n      expiresAt\n    }\n  }\n": types.StartSessionDocument,
+    "\n  mutation EndSession($id: ID!) {\n    endSession(id: $id) {\n      id\n      deviceId\n      deviceName\n      protocol\n      startedAt\n      endedAt\n      endReason\n    }\n  }\n": types.EndSessionDocument,
+    "\n  mutation TestConnection($deviceId: ID!) {\n    testConnection(input: { deviceId: $deviceId }) {\n      reachable\n      authenticated\n      hostKey {\n        algorithm\n        fingerprintSha256\n        firstSeenAt\n      }\n      hostKeyChanged\n      message\n    }\n  }\n": types.TestConnectionDocument,
+    "\n  mutation AcceptHostKey($deviceId: ID!, $fingerprintSha256: String!) {\n    acceptHostKey(deviceId: $deviceId, fingerprintSha256: $fingerprintSha256) {\n      algorithm\n      fingerprintSha256\n      firstSeenAt\n    }\n  }\n": types.AcceptHostKeyDocument,
 };
 
 /**
@@ -68,6 +76,22 @@ export function graphql(source: "\n  query Events($filter: EventFilter, $first: 
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  subscription EventAdded($minSeverity: Severity) {\n    eventAdded(minSeverity: $minSeverity) {\n      id\n      at\n      severity\n      source\n      deviceId\n      deviceName\n      message\n    }\n  }\n"): (typeof documents)["\n  subscription EventAdded($minSeverity: Severity) {\n    eventAdded(minSeverity: $minSeverity) {\n      id\n      at\n      severity\n      source\n      deviceId\n      deviceName\n      message\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation StartSession($input: StartSessionInput!) {\n    startSession(input: $input) {\n      sessionId\n      token\n      tunnelPath\n      expiresAt\n    }\n  }\n"): (typeof documents)["\n  mutation StartSession($input: StartSessionInput!) {\n    startSession(input: $input) {\n      sessionId\n      token\n      tunnelPath\n      expiresAt\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation EndSession($id: ID!) {\n    endSession(id: $id) {\n      id\n      deviceId\n      deviceName\n      protocol\n      startedAt\n      endedAt\n      endReason\n    }\n  }\n"): (typeof documents)["\n  mutation EndSession($id: ID!) {\n    endSession(id: $id) {\n      id\n      deviceId\n      deviceName\n      protocol\n      startedAt\n      endedAt\n      endReason\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation TestConnection($deviceId: ID!) {\n    testConnection(input: { deviceId: $deviceId }) {\n      reachable\n      authenticated\n      hostKey {\n        algorithm\n        fingerprintSha256\n        firstSeenAt\n      }\n      hostKeyChanged\n      message\n    }\n  }\n"): (typeof documents)["\n  mutation TestConnection($deviceId: ID!) {\n    testConnection(input: { deviceId: $deviceId }) {\n      reachable\n      authenticated\n      hostKey {\n        algorithm\n        fingerprintSha256\n        firstSeenAt\n      }\n      hostKeyChanged\n      message\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation AcceptHostKey($deviceId: ID!, $fingerprintSha256: String!) {\n    acceptHostKey(deviceId: $deviceId, fingerprintSha256: $fingerprintSha256) {\n      algorithm\n      fingerprintSha256\n      firstSeenAt\n    }\n  }\n"): (typeof documents)["\n  mutation AcceptHostKey($deviceId: ID!, $fingerprintSha256: String!) {\n    acceptHostKey(deviceId: $deviceId, fingerprintSha256: $fingerprintSha256) {\n      algorithm\n      fingerprintSha256\n      firstSeenAt\n    }\n  }\n"];
 
 export function graphql(source: string) {
   return (documents as any)[source] ?? {};
