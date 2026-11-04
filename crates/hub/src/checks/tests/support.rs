@@ -181,7 +181,7 @@ pub async fn serve(
         connections: Arc::default(),
     };
     let (requests, connections) = (server.requests.clone(), server.connections.clone());
-    let handler: Handler = Arc::new(handler);
+    let handler: Responder = Arc::new(handler);
     tokio::spawn(async move {
         while let Ok((tcp, _)) = listener.accept().await {
             connections.fetch_add(1, Ordering::SeqCst);
@@ -199,12 +199,12 @@ pub async fn serve(
     server
 }
 
-type Handler = Arc<dyn Fn(&Request) -> Reply + Send + Sync>;
+type Responder = Arc<dyn Fn(&Request) -> Reply + Send + Sync>;
 
 async fn handle<S: AsyncRead + AsyncWrite + Unpin>(
     mut stream: S,
     requests: Arc<Mutex<Vec<Request>>>,
-    handler: Handler,
+    handler: Responder,
 ) {
     if let Some(request) = read_request(&mut stream).await {
         requests.lock().unwrap().push(request.clone());
