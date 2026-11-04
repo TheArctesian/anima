@@ -1,30 +1,14 @@
 //! The handshake fails closed: out-of-order instructions, gateway errors and
-//! replies guacd would misread (GW-010, GW-013, LOG-007).
+//! replies guacd would misread (GW-010, GW-014, LOG-007).
 
 use guac_protocol::{
-    ConnectParams, Handshake, HandshakeError, HandshakeStep, Instruction, MAX_ELEMENTS,
-    MAX_INSTRUCTION_BYTES,
+    Handshake, HandshakeError, HandshakeStep, Instruction, MAX_ELEMENTS, MAX_INSTRUCTION_BYTES,
 };
 
 use crate::guacd::{
-    ARGS_1_5_5, ARGS_1_6_0, DISPLAY, K4_PASSWORD_VALUES, decode_args, params, values_of,
+    ARGS_1_5_5, ARGS_1_6_0, DISPLAY, K4_PASSWORD_VALUES, after_args, decode_args, k4_params,
+    params, started, values_of,
 };
-
-fn k4_params() -> ConnectParams {
-    params(DISPLAY, "UTC", values_of(&K4_PASSWORD_VALUES))
-}
-
-fn started(params: ConnectParams) -> Handshake {
-    Handshake::new("ssh", params).0
-}
-
-fn after_args() -> Handshake {
-    let mut handshake = started(k4_params());
-    handshake
-        .on_instruction(decode_args(ARGS_1_5_5))
-        .expect("args accepted");
-    handshake
-}
 
 fn ready() -> Instruction {
     Instruction::new("ready", ["$4c1f6a0e"])
@@ -125,7 +109,7 @@ fn gw_010_unexpected_opcode_is_cut_to_32_characters() {
 }
 
 #[test]
-fn gw_013_nul_in_a_connect_value_is_refused_without_the_value() {
+fn gw_010_nul_in_a_connect_value_is_refused_without_the_value() {
     let mut values = values_of(&K4_PASSWORD_VALUES);
     values.set("password", "hunter2\0hostname");
     let mut handshake = started(params(DISPLAY, "UTC", values));
@@ -144,7 +128,7 @@ fn gw_013_nul_in_a_connect_value_is_refused_without_the_value() {
 }
 
 #[test]
-fn gw_013_nul_in_name_is_refused() {
+fn gw_010_nul_in_name_is_refused() {
     let mut named = k4_params();
     named.name = "operator\0root".to_owned();
     let mut handshake = started(named);
@@ -174,15 +158,13 @@ fn log_007_nul_error_cuts_a_long_argument_name_to_32_characters() {
 }
 
 #[test]
-fn gw_013_long_name_is_refused_as_too_large() {
+fn gw_010_long_name_is_refused_as_too_large() {
     let mut named = k4_params();
     named.name = "o".repeat(MAX_INSTRUCTION_BYTES);
     let mut handshake = started(named);
     assert_eq!(
         handshake.on_instruction(decode_args(ARGS_1_5_5)),
-        Err(HandshakeError::InstructionTooLarge {
-            opcode: "name".to_owned()
-        })
+        Err(HandshakeError::InstructionTooLarge { opcode: "name" })
     );
 }
 
@@ -212,7 +194,7 @@ fn gw_014_debug_of_ready_redacts_the_connection_id() {
 }
 
 #[test]
-fn gw_013_oversize_private_key_is_refused_without_the_key() {
+fn gw_010_oversize_private_key_is_refused_without_the_key() {
     let key = format!(
         "-----BEGIN OPENSSH PRIVATE KEY-----\n{}",
         "QUJD".repeat(2048)
@@ -225,9 +207,7 @@ fn gw_013_oversize_private_key_is_refused_without_the_key() {
         .expect_err("oversize refused");
     assert_eq!(
         error,
-        HandshakeError::InstructionTooLarge {
-            opcode: "connect".to_owned()
-        }
+        HandshakeError::InstructionTooLarge { opcode: "connect" }
     );
     assert!(!error.to_string().contains("QUJD"));
 }
@@ -245,7 +225,7 @@ fn log_007_debug_of_the_reply_omits_connect_values() {
 }
 
 #[test]
-fn gw_013_connect_over_the_element_limit_is_refused() {
+fn gw_010_connect_over_the_element_limit_is_refused() {
     let args_with = |names: usize| {
         let mut args = vec!["VERSION_1_5_0".to_owned()];
         args.extend((0..names).map(|n| format!("x-{n}")));
@@ -255,8 +235,6 @@ fn gw_013_connect_over_the_element_limit_is_refused() {
     assert!(matches!(fits, Ok(HandshakeStep::Send(_))));
     assert_eq!(
         started(k4_params()).on_instruction(args_with(MAX_ELEMENTS - 1)),
-        Err(HandshakeError::InstructionTooLarge {
-            opcode: "connect".to_owned()
-        })
+        Err(HandshakeError::InstructionTooLarge { opcode: "connect" })
     );
 }

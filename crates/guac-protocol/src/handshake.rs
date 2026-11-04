@@ -7,7 +7,7 @@
 
 use std::fmt;
 
-use crate::connect::{ConnectParams, Display, is_timezone};
+use crate::connect::{ConnectParams, Display, is_zone_name};
 use crate::decoder::{MAX_ELEMENTS, MAX_INSTRUCTION_BYTES};
 use crate::instruction::{Instruction, NAME_CHARS, encode, truncated};
 
@@ -59,7 +59,7 @@ pub enum HandshakeError {
     /// The display is outside the bounds of [`Display::within_bounds`].
     #[error("display size or DPI is out of bounds")]
     InvalidDisplay,
-    /// The time zone is not 1..=64 characters of `[A-Za-z0-9_+-/]`.
+    /// The time zone is not a zone name by the rule of [`is_zone_name`](crate::is_zone_name).
     #[error("time zone is not a zone name")]
     InvalidTimezone,
     /// A value to send holds a NUL byte, where guacd would cut it short.
@@ -72,7 +72,7 @@ pub enum HandshakeError {
     #[error(
         "the {opcode} instruction exceeds {MAX_INSTRUCTION_BYTES} bytes or {MAX_ELEMENTS} elements"
     )]
-    InstructionTooLarge { opcode: String },
+    InstructionTooLarge { opcode: &'static str },
     /// guacd sent `ready` without a connection ID.
     #[error("guacd sent ready without a connection ID")]
     MissingConnectionId,
@@ -181,33 +181,38 @@ fn reply_to_args(
     if !params.display.within_bounds() {
         return Err(HandshakeError::InvalidDisplay);
     }
-    if !is_timezone(&params.timezone) {
+    if !is_zone_name(&params.timezone) {
         return Err(HandshakeError::InvalidTimezone);
     }
-    let reply = vec![
-        size(params.display),
-        Instruction::new("audio", Vec::<String>::new()),
-        Instruction::new("video", Vec::<String>::new()),
-        Instruction::new("image", IMAGE_TYPES),
-        Instruction::new("timezone", [params.timezone.as_str()]),
-        Instruction::new("name", [checked("name", "name", &params.name)?]),
+    Ok(vec![
+        size(params.display)?,
+        sendable("audio", Vec::<String>::new())?,
+        sendable("video", Vec::<String>::new())?,
+        sendable("image", IMAGE_TYPES)?,
+        sendable("timezone", [params.timezone.as_str()])?,
+        sendable("name", [checked("name", "name", &params.name)?])?,
         connect(params, names)?,
-    ];
-    if let Some(large) = reply.iter().find(|i| !within_guacd_limits(i)) {
-        return Err(HandshakeError::InstructionTooLarge {
-            opcode: large.opcode.clone(),
-        });
+    ])
+}
+
+/// `opcode` with `args`, refused when guacd's parser would not accept it
+/// (its byte and element limits).
+fn sendable<A>(opcode: &'static str, args: A) -> Result<Instruction, HandshakeError>
+where
+    A: IntoIterator,
+    A::Item: Into<String>,
+{
+    let instruction = Instruction::new(opcode, args);
+    if instruction.args.len() < MAX_ELEMENTS && encode(&instruction).len() <= MAX_INSTRUCTION_BYTES
+    {
+        Ok(instruction)
+    } else {
+        Err(HandshakeError::InstructionTooLarge { opcode })
     }
-    Ok(reply)
 }
 
-/// True when guacd's parser accepts `i` (its byte and element limits).
-fn within_guacd_limits(i: &Instruction) -> bool {
-    i.args.len() < MAX_ELEMENTS && encode(i).len() <= MAX_INSTRUCTION_BYTES
-}
-
-fn size(display: Display) -> Instruction {
-    Instruction::new(
+fn size(display: Display) -> Result<Instruction, HandshakeError> {
+    sendable(
         "size",
         [display.width, display.height, display.dpi].map(|n| n.to_string()),
     )
@@ -221,7 +226,7 @@ fn connect(params: &ConnectParams, names: &[String]) -> Result<Instruction, Hand
         let value = params.values.get(name).unwrap_or_default();
         values.push(checked("connect", name, value)?);
     }
-    Ok(Instruction::new("connect", values))
+    sendable("connect", values)
 }
 
 /// `value` as an owned argument, refused when guacd would cut it at a NUL.

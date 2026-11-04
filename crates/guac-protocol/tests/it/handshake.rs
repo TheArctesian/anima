@@ -1,12 +1,12 @@
-//! The handshake reply to guacd `args` fixtures (GW-010, GW-013, GW-014).
+//! The handshake reply to guacd `args` fixtures (GW-010, GW-014).
 
 use guac_protocol::{
     ArgValues, Handshake, HandshakeError, HandshakeStep, Instruction, MAX_INSTRUCTION_BYTES, encode,
 };
 
 use crate::guacd::{
-    ARGS_1_5_5, ARGS_1_6_0, DISPLAY, K4_PASSWORD_VALUES, all_fixtures, connect_of, decode_args,
-    params, reply, value_for, values_of,
+    ARGS_1_5_5, ARGS_1_6_0, DISPLAY, K4_PASSWORD_VALUES, after_args, all_fixtures, connect_of,
+    decode_args, k4_params, params, reply, started, value_for, values_of,
 };
 
 const ONLY_IN_1_6: [&str; 4] = [
@@ -21,17 +21,6 @@ fn k4_reply(args: &Instruction) -> Vec<Instruction> {
         args.clone(),
         params(DISPLAY, "Europe/Berlin", values_of(&K4_PASSWORD_VALUES)),
     )
-}
-
-fn handshake_after_args() -> Handshake {
-    let (mut handshake, _select) = Handshake::new(
-        "ssh",
-        params(DISPLAY, "UTC", values_of(&K4_PASSWORD_VALUES)),
-    );
-    handshake
-        .on_instruction(decode_args(ARGS_1_5_5))
-        .expect("args accepted");
-    handshake
 }
 
 #[test]
@@ -150,7 +139,7 @@ fn gw_010_connect_sends_private_key_and_passphrase() {
 }
 
 #[test]
-fn gw_013_names_only_in_1_6_are_empty_unless_set() {
+fn gw_010_names_only_in_1_6_are_empty_unless_set() {
     let args = decode_args(ARGS_1_6_0);
     let send = k4_reply(&args);
     for name in ONLY_IN_1_6 {
@@ -189,26 +178,25 @@ fn gw_010_refuses_old_or_unparseable_versions() {
         let mut args = decode_args(ARGS_1_5_5);
         args.args[0] = version.to_owned();
         assert_eq!(
-            refusal(args),
+            started(k4_params())
+                .on_instruction(args)
+                .expect_err("refused"),
             HandshakeError::UnsupportedVersion,
             "{version:?}"
         );
     }
     let empty = Instruction::new("args", Vec::<String>::new());
-    assert_eq!(refusal(empty), HandshakeError::UnsupportedVersion);
-}
-
-fn refusal(args: Instruction) -> HandshakeError {
-    let (mut handshake, _) = Handshake::new(
-        "ssh",
-        params(DISPLAY, "UTC", values_of(&K4_PASSWORD_VALUES)),
+    assert_eq!(
+        started(k4_params())
+            .on_instruction(empty)
+            .expect_err("refused"),
+        HandshakeError::UnsupportedVersion
     );
-    handshake.on_instruction(args).expect_err("refused")
 }
 
 #[test]
 fn gw_014_ready_returns_the_gateway_connection_id() {
-    let mut handshake = handshake_after_args();
+    let mut handshake = after_args();
     let ready = Instruction::new("ready", ["$4c1f6a0e-7f3b-4e2a-9c55-1d2e3f4a5b6c"]);
     assert_eq!(
         handshake.on_instruction(ready),
@@ -224,7 +212,7 @@ fn gw_014_ready_without_connection_id_is_refused() {
         Instruction::new("ready", Vec::<String>::new()),
         Instruction::new("ready", [""]),
     ] {
-        let mut handshake = handshake_after_args();
+        let mut handshake = after_args();
         assert_eq!(
             handshake.on_instruction(ready),
             Err(HandshakeError::MissingConnectionId)
@@ -254,7 +242,7 @@ fn gw_010_nop_is_ignored_before_ready() {
 }
 
 #[test]
-fn gw_013_connect_at_the_byte_limit_is_sent_and_one_byte_more_is_refused() {
+fn gw_010_connect_at_the_byte_limit_is_sent_and_one_byte_more_is_refused() {
     let args = decode_args(ARGS_1_5_5);
     let base = encode(connect_of(&k4_reply(&args))).len();
     // An unset `private-key` encodes as `0.`; a key of n ASCII chars as `<n>.<key>`.
@@ -270,8 +258,6 @@ fn gw_013_connect_at_the_byte_limit_is_sent_and_one_byte_more_is_refused() {
     let (mut handshake, _) = Handshake::new("ssh", with_key(key_chars + 1));
     assert_eq!(
         handshake.on_instruction(args),
-        Err(HandshakeError::InstructionTooLarge {
-            opcode: "connect".to_owned()
-        })
+        Err(HandshakeError::InstructionTooLarge { opcode: "connect" })
     );
 }

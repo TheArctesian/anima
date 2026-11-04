@@ -12,19 +12,19 @@ fn decode_all(bytes: &[u8]) -> Result<Vec<Instruction>, DecodeError> {
 }
 
 #[test]
-fn encodes_size_instruction() {
+fn gw_011_encodes_size_instruction() {
     let size = Instruction::new("size", ["1024", "768", "96"]);
     assert_eq!(encode(&size), "4.size,4.1024,3.768,2.96;");
 }
 
 #[test]
-fn encodes_internal_instruction_with_empty_opcode() {
+fn gw_011_encodes_internal_instruction_with_empty_opcode() {
     let internal = Instruction::new("", [TUNNEL_UUID]);
     assert_eq!(encode(&internal), format!("0.,36.{TUNNEL_UUID};"));
 }
 
 #[test]
-fn encodes_ping_and_instruction_without_args() {
+fn gw_011_encodes_ping_and_instruction_without_args() {
     let ping = Instruction::new("ping", ["1730678400000"]);
     assert_eq!(encode(&ping), "4.ping,13.1730678400000;");
     assert_eq!(
@@ -34,7 +34,7 @@ fn encodes_ping_and_instruction_without_args() {
 }
 
 #[test]
-fn encode_counts_code_points_not_bytes() {
+fn gw_011_encode_counts_code_points_not_bytes() {
     assert_eq!(encode(&Instruction::new("é€", ["😀a"])), "2.é€,2.😀a;");
 }
 
@@ -68,7 +68,7 @@ fn gw_011_accepts_leading_zeros_in_length() {
 }
 
 #[test]
-fn keeps_partial_instruction_until_it_completes() {
+fn gw_011_keeps_partial_instruction_until_it_completes() {
     let mut decoder = Decoder::new();
     let bytes = "4.size,2.é€;".as_bytes();
     assert_eq!(decoder.feed(&bytes[..9]), Ok(vec![]));
