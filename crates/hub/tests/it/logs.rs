@@ -1,5 +1,5 @@
-//! Hub faults reach the process log by kind only, never with SQL or a token (K7, LOG-007,
-//! API-010).
+//! Hub faults reach the process log by kind and cause chain, never with SQL or a token (K7,
+//! LOG-007, API-010, H-5).
 
 use std::{
     io,
@@ -8,11 +8,15 @@ use std::{
 };
 
 use anima_hub::events::process_log;
+use axum::{
+    body::Body,
+    http::{Request, StatusCode},
+};
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use serde_json::json;
-use sqlx::postgres::PgPoolOptions;
+use sqlx::{PgPool, postgres::PgPoolOptions};
 
-use crate::hub::{Hub, PASSWORD, USERNAME, start};
+use crate::hub::{Hub, PASSWORD, USERNAME, set_operator, start};
 
 /// Collects everything the process log writes.
 #[derive(Clone, Default)]
@@ -38,6 +42,29 @@ impl Capture {
     }
 }
 
+#[tokio::test]
+async fn log_002_the_hub_router_logs_each_request_by_its_route() {
+    let capture = Capture::default();
+    let writer = capture.clone();
+    let subscriber = process_log::subscriber("info", move || writer.clone()).unwrap();
+    let _default = tracing::subscriber::set_default(subscriber);
+    tracing::callsite::rebuild_interest_cache();
+    let hub = unreachable_hub();
+
+    let health = Request::get("/health").body(Body::empty()).unwrap();
+    assert_eq!(hub.send(health).await.0, StatusCode::OK);
+    hub.post(None, "{ __typename }", json!({})).await;
+
+    let served: Vec<serde_json::Value> = capture
+        .text()
+        .lines()
+        .map(|line| serde_json::from_str::<serde_json::Value>(line).unwrap())
+        .filter(|line| line["fields"]["message"] == "request served")
+        .collect();
+    let paths: Vec<_> = served.iter().map(|line| &line["span"]["path"]).collect();
+    assert_eq!(paths, [&json!("/health"), &json!("/graphql")], "{served:?}");
+}
+
 /// A hub whose database cannot be reached: each query fails with a pool or I/O error.
 fn unreachable_hub() -> Hub {
     let pool = PgPoolOptions::new()
@@ -48,7 +75,7 @@ fn unreachable_hub() -> Hub {
 }
 
 #[tokio::test]
-async fn api_010_an_unreachable_database_is_logged_by_kind_at_both_edges() {
+async fn api_010_h_5_an_unreachable_database_is_logged_by_kind_at_both_edges() {
     let capture = Capture::default();
     let writer = capture.clone();
     let subscriber = process_log::subscriber("error", move || writer.clone()).unwrap();
@@ -60,16 +87,15 @@ async fn api_010_an_unreachable_database_is_logged_by_kind_at_both_edges() {
         login["errors"][0]["extensions"]["code"], "UNAVAILABLE",
         "{login}"
     );
-    let resolver_lines = capture
-        .text()
-        .matches(r#""fault":"database_unreachable""#)
-        .count();
+    // The source is a pool timeout or a connection error, logged by kind.
+    let resolver = r#""message":"request failed: database_unreachable: database "#;
     assert_eq!(
-        resolver_lines,
+        capture.text().matches(resolver).count(),
         1,
-        "through the resolver: {}",
+        "through the resolver, at the API boundary: {}",
         capture.text()
     );
+    assert!(capture.text().contains(r#""code":"UNAVAILABLE""#));
 
     let token = URL_SAFE_NO_PAD.encode([9_u8; 32]);
     let me = hub
@@ -78,17 +104,11 @@ async fn api_010_an_unreachable_database_is_logged_by_kind_at_both_edges() {
     assert_eq!(me["errors"][0]["extensions"]["code"], "UNAVAILABLE", "{me}");
     let text = capture.text();
     assert_eq!(
-        text.matches(r#""fault":"database_unreachable""#).count(),
+        text.matches(resolver).count(),
         2,
-        "and through identify: {text}"
+        "and through identify, at the HTTP edge: {text}"
     );
-    let kind_only =
-        r#""message":"access request failed","domain":"access","fault":"database_unreachable""#;
-    assert_eq!(
-        text.matches(kind_only).count(),
-        2,
-        "the kind and nothing else: {text}"
-    );
+    assert_eq!(text.matches("database_unreachable").count(), 2, "{text}");
     for leak in [
         token.as_str(),
         PASSWORD,
@@ -97,6 +117,43 @@ async fn api_010_an_unreachable_database_is_logged_by_kind_at_both_edges() {
         "access.",
         "127.0.0.1",
     ] {
+        assert!(!text.contains(leak), "{leak:?} in {text}");
+    }
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn h_5_a_failed_token_lookup_at_the_edge_is_logged_with_its_sqlstate(pool: PgPool) {
+    set_operator(&pool).await;
+    let hub = Hub::new(&pool, start());
+    let token = hub.token().await;
+    sqlx::query("alter table access.api_tokens rename to api_tokens_gone")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let capture = Capture::default();
+    let writer = capture.clone();
+    let subscriber = process_log::subscriber("error", move || writer.clone()).unwrap();
+    let _default = tracing::subscriber::set_default(subscriber);
+    tracing::callsite::rebuild_interest_cache();
+
+    let response = hub.post(Some(&token), "{ __typename }", json!({})).await;
+
+    assert_eq!(
+        response,
+        json!({
+            "data": null,
+            "errors": [{ "message": "Something went wrong on the hub.",
+                         "locations": [{ "line": 0, "column": 0 }],
+                         "extensions": { "code": "INTERNAL" } }]
+        })
+    );
+    let text = capture.text();
+    assert!(
+        text.contains("request failed: database: database error 42P01"),
+        "{text}"
+    );
+    assert!(text.contains(r#""code":"INTERNAL""#), "{text}");
+    for leak in [token.as_str(), "api_tokens", "select"] {
         assert!(!text.contains(leak), "{leak:?} in {text}");
     }
 }

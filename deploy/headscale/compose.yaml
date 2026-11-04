@@ -1,0 +1,43 @@
+# Headscale on the VPS (WP-03 D-9; spec VPS-002, VPS-003).
+# Project folder on the VPS: /opt/anima/headscale, holding config/ (rendered config.yaml
+# and policy.hujson, mounted read-only) and lib/ (database, keys, ACME cache).
+# The image is pinned by tag and digest; the guide checks the digest at install.
+# Admin is the CLI over the unix socket only:
+#   docker compose exec headscale headscale <args>
+services:
+  headscale:
+    image: docker.io/headscale/headscale:0.29.7@sha256:11f81665e842809db9fe3006a38c56a66e968baa5abd4bac498e86445572b970
+    command: serve
+    restart: unless-stopped
+    # No `environment:`: Headscale reads HEADSCALE_* variables over the config file, so
+    # the reviewed config.yaml is the only source of settings. The tests pin this key set.
+    # Host network: Headscale binds 443/tcp and 3478/udp on the public interface and keeps
+    # gRPC and metrics on the host's loopback. No `ports:`, so Docker publishes nothing.
+    network_mode: host
+    read_only: true
+    # Socket folder for root only; the socket inside is 0770 (D-6).
+    tmpfs:
+      - /var/run/headscale:mode=0700
+    volumes:
+      - ./config:/etc/headscale:ro
+      - ./lib:/var/lib/headscale
+    security_opt:
+      - no-new-privileges:true
+    # Assumption for the guide to verify on first start: the image runs as root and
+    # lib/ is owned by root, so writing the volume needs no DAC_OVERRIDE or CHOWN.
+    # NET_BIND_SERVICE is the only capability, for port 443.
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    healthcheck:
+      test: ["CMD", "headscale", "health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"

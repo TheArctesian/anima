@@ -1,8 +1,12 @@
-//! GraphQL schema root: merges each domain's `Query` and `Mutation` (CQ-033, K3).
+//! GraphQL schema root: merges each domain's `Query`, `Mutation` and `Subscription` (CQ-033, K3).
+//!
+//! A domain joins with one line in each root it has and one block of its data in
+//! `build_schema`; a domain with state `main.rs` builds once (such as `sessions::Live`) also
+//! adds a `Dependencies` field.
 
 use std::sync::Arc;
 
-use async_graphql::{EmptySubscription, MergedObject, Object, Schema, SchemaBuilder};
+use async_graphql::{MergedObject, MergedSubscription, Schema, SchemaBuilder};
 use sqlx::PgPool;
 
 use crate::{
@@ -10,30 +14,34 @@ use crate::{
     clock::Clock,
     config::Config,
     credentials::Vault,
+    devices,
     events::{
-        Bus,
+        self, Bus,
         process_log::{InternalErrors, RequestSpan},
     },
+    sessions::{self, Live},
 };
 
-#[derive(Default)]
-pub struct Health;
-
-#[Object(name = "HealthQuery")]
-impl Health {
-    /// Liveness probe. Needs a token like every operation except `login` (API-003).
-    async fn health(&self) -> &'static str {
-        "ok"
-    }
-}
+// One line per domain in each root (K3).
+#[derive(MergedObject, Default)]
+pub struct Query(
+    access::graphql::Query,
+    devices::graphql::Query,
+    events::graphql::Query,
+    sessions::graphql::Query,
+);
 
 #[derive(MergedObject, Default)]
-pub struct Query(access::graphql::Query, Health);
+pub struct Mutation(
+    access::graphql::Mutation,
+    devices::graphql::Mutation,
+    sessions::graphql::Mutation,
+);
 
-#[derive(MergedObject, Default)]
-pub struct Mutation(access::graphql::Mutation);
+#[derive(MergedSubscription, Default)]
+pub struct Subscription(events::graphql::Subscription);
 
-pub type HubSchema = Schema<Query, Mutation, EmptySubscription>;
+pub type HubSchema = Schema<Query, Mutation, Subscription>;
 
 /// What `main.rs` builds once and the schema hands to resolvers as context data (R-002).
 pub struct Dependencies {
@@ -44,12 +52,18 @@ pub struct Dependencies {
     /// Registered as `Vault` itself, as K3 writes `.data(vault)`; a router that needs it too
     /// gets its own clone.
     pub vault: Vault,
+    /// The hub's one `Live`: the tunnel router gets a clone of this same value, or no ticket
+    /// the schema issues can be redeemed (R-032).
+    pub live: Live,
 }
 
-/// Put each dependency into the schema data; resolvers read them with `ctx.data::<T>()`.
+/// Put each dependency into the schema data, with the devices loaders (WP-06 H-2);
+/// resolvers read them with `ctx.data::<T>()`. The HTTP edge adds the `Operator` and the
+/// `ClientAddr` to each request (D-6).
 /// The access extension refuses every operation without a token except `login` (API-003).
-/// Validation errors never suggest field names ("Did you mean"), so a signed-out client
-/// learns nothing about the schema from a typo (API-003, API-007).
+/// Validation errors never suggest field names, and signed out they become one
+/// `UNAUTHENTICATED`, so a signed-out client learns nothing about the schema (API-003,
+/// API-007).
 #[must_use]
 pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     let Dependencies {
@@ -58,18 +72,32 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
         pool,
         bus,
         vault,
+        live,
     } = dependencies;
     harden(
-        Schema::build(Query::default(), Mutation::default(), EmptySubscription),
+        Schema::build(
+            Query::default(),
+            Mutation::default(),
+            Subscription::default(),
+        ),
         production_build(),
     )
     .disable_suggestions()
     .extension(access::SignInRequired)
+    // Shared dependencies (K3 wiring).
     .data(config)
     .data(clock)
-    .data(pool)
+    .data(pool.clone())
     .data(bus)
     .data(vault)
+    // One block per domain: its loaders (R-014) and its state.
+    // devices
+    .data(devices::graphql::site_loader(pool.clone()))
+    .data(devices::graphql::devices_by_site_loader(pool.clone()))
+    .data(devices::graphql::credential_loader(pool.clone()))
+    // sessions (R-032)
+    .data(sessions::graphql::host_key_loader(pool.clone()))
+    .data(live)
     .finish()
 }
 

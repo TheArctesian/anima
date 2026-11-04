@@ -1,33 +1,36 @@
 //! The way in for every connection (NET-002, SEC-001): the peer is checked against the
 //! permitted networks at TCP accept, before any TLS work, and a refused peer is closed at once.
-//! Caps in total and per peer bound connections and handshakes; deadlines bound the handshake
-//! and every request head, including the wait for the next request on a kept-alive connection.
+//! Caps in total and per peer bound connections and handshakes; deadlines bound the handshake,
+//! every request head (including the wait for the next request on a kept-alive connection),
+//! every request body, every answer and every stalled write.
 //!
-//! The accept loop never waits on a client: each connection runs in its own task, and the
-//! tasks are aborted when serving stops.
+//! The accept loop never waits on a client: each connection runs in its own task. On the stop
+//! signal the loop stops accepting, asks every connection to finish its request and close,
+//! waits at most the drain limit, then aborts what is left (R-040).
 
-use std::{
-    convert::Infallible,
-    io,
-    net::SocketAddr,
-    pin::Pin,
-    sync::Arc,
-    task::{Context, Poll},
-    time::Duration,
+use std::{convert::Infallible, io, net::SocketAddr, sync::Arc, time::Duration};
+
+use axum::{
+    Router,
+    extract::ConnectInfo,
+    http::StatusCode,
+    response::{IntoResponse as _, Response},
 };
-
-use axum::{Router, extract::ConnectInfo};
 use hyper::{body::Incoming, server::conn::http1, service::service_fn};
 use hyper_util::rt::{TokioIo, TokioTimer};
 use tokio::{
-    io::{AsyncRead, AsyncWrite, ReadBuf},
+    io::{AsyncRead, AsyncWrite},
     net::{TcpListener, TcpStream},
+    sync::watch,
     task::JoinSet,
 };
 use tokio_rustls::TlsAcceptor;
 use tower::ServiceExt as _;
 
-use super::slots::{Slot, Slots};
+use super::{
+    slots::{Slot, Slots},
+    timed::{Holding, timed_body},
+};
 use crate::access::{
     layer::{CONNECTION, Edge, Verdict},
     networks,
@@ -45,6 +48,14 @@ pub(super) struct Limits {
     /// A request head that takes longer, counted from the end of the last answer or the
     /// handshake, closes the connection; so does an idle kept-alive connection.
     pub header_time: Duration,
+    /// A request body must arrive whole within this, from its head.
+    pub body_time: Duration,
+    /// A route that has not answered within this gets 503 in its place.
+    pub answer_time: Duration,
+    /// A write that makes no progress for this closes the connection.
+    pub write_stall: Duration,
+    /// After the stop signal, how long open connections may take to finish (R-040).
+    pub drain_limit: Duration,
 }
 
 /// The limits the hub serves with.
@@ -54,6 +65,10 @@ pub(super) const SERVED: Limits = Limits {
     handshakes_per_peer: 8,
     handshake_time: Duration::from_secs(5),
     header_time: Duration::from_secs(10),
+    body_time: Duration::from_secs(30),
+    answer_time: Duration::from_mins(1),
+    write_stall: Duration::from_secs(30),
+    drain_limit: Duration::from_secs(10),
 };
 
 /// After an accept error other than a reset connection (for example too many open files).
@@ -67,6 +82,8 @@ pub(super) struct Serving {
     limits: Limits,
     connections: Arc<Slots>,
     handshakes: Arc<Slots>,
+    /// Set once serving stops: open connections finish their request and close.
+    stopping: watch::Sender<bool>,
 }
 
 impl Serving {
@@ -83,6 +100,7 @@ impl Serving {
             limits,
             connections: Slots::new(limits.connections, limits.connections_per_peer),
             handshakes: Slots::new(limits.connections, limits.handshakes_per_peer),
+            stopping: watch::Sender::new(false),
         })
     }
 
@@ -107,19 +125,12 @@ impl Serving {
                     drop(stream);
                     return self.edge.write(written).await;
                 }
-                Verdict::Unavailable(error) => return error.log(),
+                Verdict::Unavailable(error) => return self.edge.unavailable(&error),
             }
         }
+        let stall = self.limits.write_stall;
         let Some(acceptor) = &self.tls else {
-            return self
-                .http(
-                    Holding {
-                        io: stream,
-                        _slot: slot,
-                    },
-                    peer,
-                )
-                .await;
+            return self.http(Holding::new(stream, slot, stall), peer).await;
         };
         let Some(handshake) = self.handshakes.take(peer.ip()) else {
             return;
@@ -130,53 +141,69 @@ impl Serving {
             return;
         };
         drop(handshake);
-        self.http(
-            Holding {
-                io: tls,
-                _slot: slot,
-            },
-            peer,
-        )
-        .await;
+        self.http(Holding::new(tls, slot, stall), peer).await;
     }
 
     /// Serves HTTP/1 on `io` with each request's peer as `ConnectInfo<SocketAddr>`, until the
-    /// client closes, a deadline passes or the connection is upgraded. A client's protocol
-    /// errors are not logged, as with handshakes.
+    /// client closes, a deadline passes, the connection is upgraded or serving stops. A
+    /// client's protocol errors are not logged, as with handshakes.
     async fn http<T>(&self, io: Holding<T>, peer: SocketAddr)
     where
         T: AsyncRead + AsyncWrite + Unpin + Send + 'static,
     {
-        let router = self.router.clone();
+        let (router, limits) = (self.router.clone(), self.limits);
         let service = service_fn(move |mut request: hyper::Request<Incoming>| {
             request.extensions_mut().insert(ConnectInfo(peer));
-            router.clone().oneshot(request)
+            let request = request.map(|body| timed_body(body, limits.body_time));
+            let answer = tokio::time::timeout(limits.answer_time, router.clone().oneshot(request));
+            async move { answer.await.unwrap_or_else(|_| Ok::<_, Infallible>(late())) }
         });
-        let _closed = http1::Builder::new()
+        let connection = http1::Builder::new()
             .timer(TokioTimer::new())
-            .header_read_timeout(self.limits.header_time)
+            .header_read_timeout(limits.header_time)
             .serve_connection(TokioIo::new(io), service)
-            .with_upgrades()
-            .await;
+            .with_upgrades();
+        tokio::pin!(connection);
+        let mut stopping = self.stopping.subscribe();
+        tokio::select! {
+            _closed = connection.as_mut() => return,
+            _stop = stopping.wait_for(|stop| *stop) => {}
+        }
+        connection.as_mut().graceful_shutdown();
+        let _closed = connection.await;
     }
 }
 
-/// Serves every connection `tcp` accepts until the returned future is dropped, which aborts
-/// the connections still open.
-pub(super) async fn run(tcp: TcpListener, serving: Arc<Serving>) -> Infallible {
+/// The answer in place of one that missed [`Limits::answer_time`].
+fn late() -> Response {
+    StatusCode::SERVICE_UNAVAILABLE.into_response()
+}
+
+/// Serves every connection `tcp` accepts until `stop` resolves; then stops accepting and
+/// drains the open connections for at most the drain limit before aborting the rest (R-040).
+pub(super) async fn run(tcp: TcpListener, serving: Arc<Serving>, stop: impl Future<Output = ()>) {
     let mut connections = JoinSet::new();
+    tokio::pin!(stop);
     loop {
         tokio::select! {
+            () = &mut stop => break,
             Some(_) = connections.join_next() => {}
             incoming = tcp.accept() => match incoming {
-                Ok((stream, peer)) => {
-                    if let Some(connection) = serving.admit(stream, peer) {
-                        connections.spawn(connection);
-                    }
-                }
+                Ok((stream, peer)) => connections.extend(serving.admit(stream, peer)),
                 Err(error) => accept_failed(&error).await,
             },
         }
+    }
+    drop(tcp);
+    serving.stopping.send_replace(true);
+    drain(connections, serving.limits.drain_limit).await;
+}
+
+/// Waits at most `limit` for `connections` to finish; the rest are aborted when dropped.
+async fn drain(mut connections: JoinSet<()>, limit: Duration) {
+    let drained = async { while connections.join_next().await.is_some() {} };
+    if tokio::time::timeout(limit, drained).await.is_err() {
+        tracing::warn!("drain limit reached; open requests are dropped");
     }
 }
 
@@ -203,50 +230,4 @@ async fn accept_failed(error: &io::Error) {
     }
     tracing::error!(domain = "access", fault = "accept", kind = %error.kind(), "accept failed");
     tokio::time::sleep(ACCEPT_PAUSE).await;
-}
-
-/// A connection and its place: an upgraded connection keeps the place until it closes.
-struct Holding<T> {
-    io: T,
-    _slot: Slot,
-}
-
-impl<T: AsyncRead + Unpin> AsyncRead for Holding<T> {
-    fn poll_read(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &mut ReadBuf<'_>,
-    ) -> Poll<io::Result<()>> {
-        Pin::new(&mut self.get_mut().io).poll_read(cx, buf)
-    }
-}
-
-impl<T: AsyncWrite + Unpin> AsyncWrite for Holding<T> {
-    fn poll_write(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &[u8],
-    ) -> Poll<io::Result<usize>> {
-        Pin::new(&mut self.get_mut().io).poll_write(cx, buf)
-    }
-
-    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
-        Pin::new(&mut self.get_mut().io).poll_flush(cx)
-    }
-
-    fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
-        Pin::new(&mut self.get_mut().io).poll_shutdown(cx)
-    }
-
-    fn poll_write_vectored(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        bufs: &[io::IoSlice<'_>],
-    ) -> Poll<io::Result<usize>> {
-        Pin::new(&mut self.get_mut().io).poll_write_vectored(cx, bufs)
-    }
-
-    fn is_write_vectored(&self) -> bool {
-        self.io.is_write_vectored()
-    }
 }

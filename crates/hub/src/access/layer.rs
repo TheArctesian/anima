@@ -22,7 +22,7 @@ use tower::{Layer, Service};
 
 use super::{
     ClientAddr, Error,
-    networks::{self, Loaded, REFUSALS_PER_SPAN, Refusals},
+    networks::{self, Loaded, OncePerSpan, REFUSALS_PER_SPAN, Refusals},
     store,
 };
 use crate::{
@@ -39,6 +39,7 @@ pub struct Edge {
     clock: Arc<dyn Clock>,
     loaded: Arc<Mutex<Option<Loaded>>>,
     refusals: Arc<Mutex<Refusals>>,
+    unavailable_logged: Arc<Mutex<OncePerSpan>>,
 }
 
 /// The events a refusal writes, decided under the D-11 limit when the client was refused:
@@ -67,6 +68,7 @@ impl Edge {
             clock,
             loaded: Arc::default(),
             refusals: Arc::default(),
+            unavailable_logged: Arc::default(),
         }
     }
 }
@@ -101,7 +103,7 @@ async fn admit(State(edge): State<Edge>, mut request: Request, next: Next) -> Re
     let Some(ConnectInfo(peer)) = request.extensions().get::<ConnectInfo<SocketAddr>>() else {
         let error = Error::Unavailable;
         error.log();
-        return refusal(StatusCode::INTERNAL_SERVER_ERROR, &error);
+        return refusal(StatusCode::INTERNAL_SERVER_ERROR, error);
     };
     let client = ClientAddr(networks::canonical(peer.ip()));
     if is_liveness(&request) {
@@ -111,11 +113,11 @@ async fn admit(State(edge): State<Edge>, mut request: Request, next: Next) -> Re
         Verdict::Permitted => {}
         Verdict::Refused(written) => {
             edge.write(written).await;
-            return refusal(StatusCode::FORBIDDEN, &Error::NotPermitted);
+            return refusal(StatusCode::FORBIDDEN, Error::NotPermitted);
         }
         Verdict::Unavailable(error) => {
-            error.log();
-            return refusal(StatusCode::SERVICE_UNAVAILABLE, &error);
+            edge.unavailable(&error);
+            return refusal(StatusCode::SERVICE_UNAVAILABLE, error);
         }
     }
     request.extensions_mut().insert(client);
@@ -154,6 +156,14 @@ impl Edge {
                 Verdict::Refused(self.refused(client, now, message))
             }
             Err(error) => Verdict::Unavailable(error),
+        }
+    }
+
+    /// Logs `error`, why the list could not be read, at most once a minute however many
+    /// connections and requests it refuses.
+    pub(super) fn unavailable(&self, error: &Error) {
+        if lock(&self.unavailable_logged).due(self.clock.now()) {
+            error.log();
         }
     }
 
@@ -237,8 +247,8 @@ impl Refusal {
 }
 
 /// The plain message and K7 code of `error`, as a GraphQL error body with `status`.
-fn refusal(status: StatusCode, error: &Error) -> Response {
-    let body = async_graphql::Response::from_errors(vec![error.to_server_error()]);
+fn refusal(status: StatusCode, error: Error) -> Response {
+    let body = async_graphql::Response::from_errors(vec![error.into_response_error()]);
     let mut response = GraphQLResponse::from(body).into_response();
     *response.status_mut() = status;
     response

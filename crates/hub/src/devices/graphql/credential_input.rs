@@ -37,6 +37,18 @@ struct PrivateKeyInput {
 /// The parsed `credential` argument, already held as secrets.
 pub struct SshCredential(pub(super) SshSecret);
 
+impl SshCredential {
+    /// The secret, once it passes the checks `setSshCredential` applies. For
+    /// `ConnectionTestInput.credential` (WP-10, WP-06 H-4).
+    ///
+    /// # Errors
+    /// Every credential field to fix; no error holds the value or its length.
+    pub fn into_checked(self) -> Result<SshSecret, Vec<FieldError>> {
+        checked_secret(&self.0)?;
+        Ok(self.0)
+    }
+}
+
 /// The field a parse error names: the input that could not be read is the whole argument.
 const ARGUMENT: &str = "credential";
 

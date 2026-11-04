@@ -75,7 +75,7 @@ async fn sec_001_the_hub_serves_tls_with_the_certificate_files() {
         .unwrap();
     assert!(matches!(listening, Listening::Tls(_)));
     let bound = listening.local_addr().unwrap();
-    let server = tokio::spawn(listening.serve(peer_router(), super::nowhere()));
+    let server = tokio::spawn(super::serve_forever(listening, peer_router()));
     // A client that never starts its handshake does not hold up the next one.
     let _stalled = TcpStream::connect(bound).await.unwrap();
 
@@ -143,7 +143,7 @@ async fn r_021_h_2_a_swapped_certificate_reaches_the_next_handshake() {
     let bound = tcp.local_addr().unwrap();
     let idle = tokio::spawn(std::future::pending::<()>());
     let listening = Listening::Tls(TlsListener::new(tcp, config, idle));
-    let server = tokio::spawn(listening.serve(peer_router(), super::nowhere()));
+    let server = tokio::spawn(super::serve_forever(listening, peer_router()));
 
     let (_, shown) = tokio::time::timeout(DEADLINE, get_over_tls(bound, &first))
         .await

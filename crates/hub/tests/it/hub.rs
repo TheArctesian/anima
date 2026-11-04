@@ -12,6 +12,7 @@ use anima_hub::{
     events::Bus,
     router,
     schema::{Dependencies, build_schema},
+    sessions::Live,
 };
 use axum::{
     Router,
@@ -118,7 +119,16 @@ pub fn dependencies(pool: &PgPool, clock: Arc<dyn Clock>, bus: Bus) -> Dependenc
         pool: pool.clone(),
         bus,
         vault: test_vault(),
+        live: Live::default(),
     }
+}
+
+/// The SDL of the schema `build_schema` makes, which K1 describes (CON-002). The SDL needs no
+/// database, so the pool never connects.
+pub fn hub_sdl() -> String {
+    let pool = PgPool::connect_lazy("postgres://unused@127.0.0.1:1/none").unwrap();
+    let clock: Arc<dyn Clock> = Arc::new(FixedClock(start()));
+    build_schema(dependencies(&pool, clock, Bus::new(1))).sdl()
 }
 
 /// Creates the fixture operator (K6 `phase1.json`).

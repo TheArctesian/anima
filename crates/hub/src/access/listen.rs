@@ -9,11 +9,12 @@ mod serve;
 mod slots;
 #[cfg(test)]
 mod tests;
+mod timed;
 mod tls;
 
 use certificate::Current;
 
-use std::{convert::Infallible, io, net::IpAddr, net::SocketAddr, sync::Arc};
+use std::{io, net::IpAddr, net::SocketAddr, sync::Arc, time::Duration};
 
 use axum::Router;
 use tokio::net::TcpListener;
@@ -115,21 +116,60 @@ impl Listening {
         }
     }
 
-    /// Serves `router` until the returned future is dropped, with each request's TCP peer as
-    /// `ConnectInfo<SocketAddr>` for the NET-002 layer. `edge` checks each peer at accept,
-    /// before TLS, with the same list and refusal log as the layer.
-    pub async fn serve(self, router: Router, edge: Edge) -> Infallible {
-        self.serve_within(router, edge, serve::SERVED).await
+    /// This listener with `edge` checking each peer at accept, before TLS, with the same list
+    /// and refusal log as the layer (NET-002).
+    #[must_use]
+    pub fn admitting(self, edge: Edge) -> Entrance {
+        Entrance {
+            listening: self,
+            edge,
+        }
+    }
+}
+
+/// A listener and the edge that checks its peers: ready to serve.
+pub struct Entrance {
+    listening: Listening,
+    edge: Edge,
+}
+
+impl Entrance {
+    /// Serves `router` until `stop` resolves, with each request's TCP peer as
+    /// `ConnectInfo<SocketAddr>` for the NET-002 layer. Then stops accepting, lets open
+    /// requests finish for at most `drain_limit`, and drops the rest (R-040).
+    pub async fn serve_until(
+        self,
+        router: Router,
+        stop: impl Future<Output = ()>,
+        drain_limit: Duration,
+    ) {
+        let limits = serve::Limits {
+            drain_limit,
+            ..serve::SERVED
+        };
+        self.serve_within(router, stop, limits).await;
     }
 
-    async fn serve_within(self, router: Router, edge: Edge, limits: serve::Limits) -> Infallible {
-        match self {
-            Self::Plain(tcp) => serve::run(tcp, Serving::new(router, edge, None, limits)).await,
-            Self::Tls(TlsListener {
+    async fn serve_within(
+        self,
+        router: Router,
+        stop: impl Future<Output = ()>,
+        limits: serve::Limits,
+    ) {
+        let Self { listening, edge } = self;
+        match listening {
+            Listening::Plain(tcp) => {
+                let serving = Serving::new(router, edge, None, limits);
+                serve::run(tcp, serving, stop).await;
+            }
+            Listening::Tls(TlsListener {
                 tcp,
                 acceptor,
                 reload: _reload,
-            }) => serve::run(tcp, Serving::new(router, edge, Some(acceptor), limits)).await,
+            }) => {
+                let serving = Serving::new(router, edge, Some(acceptor), limits);
+                serve::run(tcp, serving, stop).await;
+            }
         }
     }
 }

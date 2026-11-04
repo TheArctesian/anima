@@ -16,12 +16,21 @@ use super::error::invalid;
 
 #[derive(InputObject)]
 #[graphql(name = "SshSettingsInput")]
-pub(super) struct SshSettingsInput {
+pub struct SshSettingsInput {
     enabled: bool,
     #[graphql(default_with = "Some(22)")]
     port: Option<i32>,
     username: String,
     auth: SshAuth,
+}
+
+impl SshSettingsInput {
+    /// The SSH port as sent, K1's default 22 when left out, unchecked. For
+    /// `ConnectionTestInput.ssh` (WP-10, R-011), which reuses this K1 type.
+    #[must_use]
+    pub const fn port(&self) -> Option<i32> {
+        self.port
+    }
 }
 
 impl From<SshSettingsInput> for SshInput {
@@ -47,8 +56,7 @@ pub(super) struct CreateDeviceInput {
     #[graphql(default_with = "Some(Vec::<String>::new())")]
     tags: Option<Vec<String>>,
     ssh: Option<SshSettingsInput>,
-    /// When true (the default), the hub adds one ICMP check (spec 6.2). Accepted and ignored
-    /// until checks add the behaviour.
+    /// When true (the default), the hub adds one ICMP check (spec 6.2).
     #[graphql(default_with = "Some(true)")]
     add_default_check: Option<bool>,
 }
@@ -77,6 +85,11 @@ pub(super) fn device_id(id: &ID) -> Result<DeviceId, FieldError> {
 }
 
 impl CreateDeviceInput {
+    /// Whether to add the default check; true unless the operator sent false.
+    pub(super) fn add_default_check(&self) -> bool {
+        self.add_default_check.unwrap_or(true)
+    }
+
     /// The form to validate, and the malformed `siteId` if there is one. A malformed id is
     /// replaced by the nil id so the other fields are still checked and reported together.
     pub(super) fn into_form(self) -> (NewDeviceInput, Option<FieldError>) {

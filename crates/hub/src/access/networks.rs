@@ -93,6 +93,27 @@ impl Loaded {
     }
 }
 
+/// When a line that is logged at most once per [`REFUSAL_SPAN`] was last logged.
+#[derive(Debug, Default)]
+pub(super) struct OncePerSpan {
+    last: Option<DateTime<Utc>>,
+}
+
+impl OncePerSpan {
+    /// Whether the line is logged at `now`, and if so notes it: not within a minute of the
+    /// last one. A clock that went back makes it due.
+    pub(super) fn due(&mut self, now: DateTime<Utc>) -> bool {
+        if self
+            .last
+            .is_some_and(|last| last <= now && now - last < REFUSAL_SPAN)
+        {
+            return false;
+        }
+        self.last = Some(now);
+        true
+    }
+}
+
 /// The refusals written to the event log in the last [`REFUSAL_SPAN`], by client address, and
 /// the ones the budget left out.
 #[derive(Debug, Default)]

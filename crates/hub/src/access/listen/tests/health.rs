@@ -41,7 +41,7 @@ async fn hub(files: &Files, body: &'static str) -> (SocketAddr, tokio::task::Joi
     let bound = listening.local_addr().unwrap();
     let router = Router::new().route("/health", get(move || async move { body }));
     let server = tokio::spawn(async move {
-        let _ = listening.serve(router, super::nowhere()).await;
+        super::serve_forever(listening, router).await;
     });
     (bound, server)
 }
@@ -92,7 +92,7 @@ async fn h_3_plain_http_on_loopback_without_certificate_files() {
     let bound = listening.local_addr().unwrap();
     let router = Router::new().route("/health", get(|| async { "ok" }));
     let server = tokio::spawn(async move {
-        let _ = listening.serve(router, super::nowhere()).await;
+        super::serve_forever(listening, router).await;
     });
     assert!(probe(bound, None).await.is_ok());
     server.abort();

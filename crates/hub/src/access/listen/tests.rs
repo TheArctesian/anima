@@ -3,11 +3,13 @@
 //! throwaway ones made here with `rcgen`; no real key file is read (SEC-004).
 
 mod bind;
+mod bodies;
 mod edge;
 mod heads;
 mod health;
 mod reload;
 mod serving;
+mod stopping;
 
 use std::{
     fs::File,
@@ -22,7 +24,7 @@ use tokio_rustls::rustls::crypto::{CryptoProvider, ring};
 use crate::clock::FixedClock;
 
 use super::{
-    Edge, TlsFiles,
+    Edge, Listening, TlsFiles,
     certificate::{self, Fault, Pem},
 };
 
@@ -33,6 +35,13 @@ fn now() -> DateTime<Utc> {
 /// An edge that permits no network, so only this host's own connections pass (no database).
 fn nowhere() -> Edge {
     Edge::permitting(&[], Arc::new(FixedClock(now())))
+}
+
+/// Serves `router` from `listening` until the task is aborted, with [`nowhere`] as the edge.
+async fn serve_forever(listening: Listening, router: axum::Router) {
+    let stop = std::future::pending();
+    let entrance = listening.admitting(nowhere());
+    entrance.serve_until(router, stop, Duration::ZERO).await;
 }
 
 fn provider() -> Arc<CryptoProvider> {

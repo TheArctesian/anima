@@ -8,7 +8,7 @@ use ipnet::IpNet;
 
 use super::now;
 use crate::access::networks::{
-    Loaded, Refusals, canonical_net, only_untrusted, permits, untrusted,
+    Loaded, OncePerSpan, Refusals, canonical_net, only_untrusted, permits, untrusted,
 };
 
 fn ip(text: &str) -> IpAddr {
@@ -200,4 +200,14 @@ fn d_11_refusals_the_budget_left_out_are_counted_once_a_minute() {
     scan(&mut refusals, 200, minute);
     let back = minute - TimeDelta::hours(1);
     assert_eq!(refusals.unrecorded(back), Some(71), "clock went back");
+}
+
+#[test]
+fn net_002_a_list_that_cannot_be_read_is_logged_once_a_minute() {
+    let mut logged = OncePerSpan::default();
+    assert!(logged.due(now()));
+    assert!(!logged.due(now()));
+    assert!(!logged.due(now() + TimeDelta::seconds(59)));
+    assert!(logged.due(now() + TimeDelta::seconds(60)));
+    assert!(logged.due(now() - TimeDelta::hours(1)), "clock went back");
 }

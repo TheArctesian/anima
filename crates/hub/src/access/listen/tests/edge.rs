@@ -216,6 +216,10 @@ fn net_002_sec_001_the_hub_serves_with_the_reviewed_limits() {
         handshakes_per_peer,
         handshake_time,
         header_time,
+        body_time,
+        answer_time,
+        write_stall,
+        drain_limit: _,
     } = SERVED;
     assert_eq!(
         (connections, connections_per_peer, handshakes_per_peer),
@@ -223,6 +227,9 @@ fn net_002_sec_001_the_hub_serves_with_the_reviewed_limits() {
     );
     assert_eq!(handshake_time, Duration::from_secs(5));
     assert_eq!(header_time, Duration::from_secs(10));
+    assert_eq!(body_time, Duration::from_secs(30));
+    assert_eq!(answer_time, Duration::from_mins(1));
+    assert_eq!(write_stall, Duration::from_secs(30));
 }
 
 #[tokio::test]
@@ -279,4 +286,21 @@ async fn d_11_a_peer_refused_at_accept_and_by_the_layer_is_written_once() {
         edge.verdict(ip("10.1.2.3"), CONNECTION).await,
         Verdict::Permitted
     ));
+}
+
+#[tokio::test]
+async fn net_002_an_unreadable_list_is_logged_once_a_minute_not_per_connection() {
+    let (capture, _guard) = crate::events::process_log::tests::capture::capture_log("error");
+    let edge = edge(&[]);
+    for _ in 0..5 {
+        edge.unavailable(&crate::access::Error::Unreachable(
+            sqlx::Error::PoolTimedOut,
+        ));
+    }
+    let lines = capture.lines();
+    assert_eq!(lines.len(), 1, "{lines:?}");
+    assert_eq!(
+        lines[0]["fields"]["fault"], "database_unreachable",
+        "{lines:?}"
+    );
 }
