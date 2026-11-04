@@ -42,7 +42,7 @@ Key: repo-relative file path (`file-lines`) or folder path (`folder-files`). Val
 A file or folder over its limit passes only when its entry is at least the measured number.
 Entries only shrink. Never add one by hand.
 
-## hub-modules.json (REPO-004, contract K3)
+## hub-modules.json (REPO-004, hub-domains contract)
 
 `leaves` may be imported by all and import no domain. `wiring` (`main`, `lib`, `schema`) may import anything.
 `domains` maps each domain to the domains it may import. Any other top-level module under `crates/hub/src` is `unlisted-module`.
