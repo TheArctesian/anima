@@ -52,6 +52,8 @@ Integration branch: `phase-1`. Merge to `main` only after operator checkpoint 4.
 
 - **R-006 (operator, 2026-11-03).** WP-04 also builds the self-updating desktop release pipeline (spec Section 3.9, UPD-001–012), as stage B, after WP-15 and WP-16 are accepted. Operator decisions: host on public GitHub Releases; version `0.1.<run number>`; macOS universal and Linux AppImage only; ad-hoc macOS signing with automatic Developer ID signing when all Apple secrets exist; `allowDowngrades: true`. Under R-005, the release workflow is the only GitHub Actions workflow and does not run on pull requests. Stage B may edit, after their owners are accepted and one at a time: in WP-16's `apps/desktop/src-tauri/`, the updater and process plugin lines in `Cargo.toml` and `lib.rs`, the `bundle.createUpdaterArtifacts` and `plugins.updater` keys in `tauri.conf.json`, and the "Check for Updates…" menu item; one mount line for the banner in WP-11's root layout; the Updates row in WP-15's Settings page. The operator runs `tauri signer generate` and `gh secret set TAURI_SIGNING_PRIVATE_KEY` personally (UPD-012). Agents never read the key file.
 
+- **R-007 (operator, 2026-11-03).** Work that is decided but left for later (for example the TestFlight release) goes on GitHub issue [#1 Deferred work](https://github.com/TheArctesian/anima/issues/1) as a checklist item, with the spec IDs. A package orchestrator that defers something asks the programme orchestrator to add it there; it does not leave it only in a package plan or a report.
+
 ## Escalations
 
 None open.
