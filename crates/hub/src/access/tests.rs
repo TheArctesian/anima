@@ -196,7 +196,7 @@ async fn api_003_backstop_refuses_mixed_fragment_and_introspection_documents() {
     let documents = [
         "mutation { login __typename }",
         "mutation { a0: login a1: login }",
-        "mutation { __typename } mutation B { login open }",
+        "mutation A { __typename } mutation B { login open }",
         "mutation { login open }",
         "mutation { renamed: open }",
         "mutation { ...F } fragment F on Mutation { login }",
