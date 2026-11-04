@@ -5,4 +5,5 @@ mod beat;
 mod evaluation;
 mod probe;
 mod standing;
+mod stored_config;
 mod uptime;
