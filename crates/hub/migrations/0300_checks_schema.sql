@@ -10,7 +10,7 @@
 -- deleting a device or check leaves them behind; the retention job deletes them, and drops
 -- whole partitions after 30 days (DB-005, DB-009).
 --
--- Privileges (K2 "Roles", R-016): migration 0001's default privileges give `anima_runtime`
+-- Privileges (K2 "Roles"): migration 0001's default privileges give `anima_runtime`
 -- SELECT, INSERT, UPDATE and DELETE on every table created here, including every partition the
 -- functions below create (they run as the owner). Only the owner can create or drop a
 -- partition; the runtime role does both through the SECURITY DEFINER functions below.

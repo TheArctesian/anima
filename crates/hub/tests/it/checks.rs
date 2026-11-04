@@ -1,5 +1,5 @@
 //! The `checks` schema: checks, partitioned heartbeats, uptime aggregates and the partition
-//! functions (CHK-009, DB-004, DB-005, DB-008, DB-009, DB-011, R-016, R-023).
+//! functions (CHK-009, DB-004, DB-005, DB-008, DB-009, DB-011).
 
 mod cascade;
 mod columns;

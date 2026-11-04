@@ -1,5 +1,5 @@
 //! Deleting a device removes its checks and their aggregates, but heartbeats have no foreign
-//! key and stay until the retention job removes them (R-004, DEV-015).
+//! key and stay until the retention job removes them (DEV-015).
 
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -10,7 +10,9 @@ use super::{DOCKER_HOST, PVE_01, UPTIME_TABLES, at, beat, count, ensure, id, ins
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices", "checks"))
 )]
-async fn r_004_deleting_a_device_removes_its_checks_and_uptime_but_keeps_heartbeats(pool: PgPool) {
+async fn dev_015_deleting_a_device_removes_its_checks_and_uptime_but_keeps_heartbeats(
+    pool: PgPool,
+) {
     let (group, child) = (Uuid::now_v7(), Uuid::now_v7());
     insert_check(&pool, (group, PVE_01), ("group", "All"), None)
         .await

@@ -1,5 +1,5 @@
 //! The runtime role writes heartbeats and aggregates and manages partitions only through the
-//! owner's functions (K2 "Roles", R-016, R-023).
+//! owner's functions (K2 "Roles", DB-009: a retained day cannot be dropped early).
 
 use super::{PVE_01_PING, UPTIME_TABLES, as_runtime, at, beat, ensure, execute, id, refusal};
 use sqlx::{PgConnection, PgPool};
@@ -71,7 +71,7 @@ async fn runtime_writes(conn: &mut PgConnection) -> Result<(i64, Vec<i32>), sqlx
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices", "checks"))
 )]
-async fn r_016_runtime_role_writes_heartbeats_and_aggregates_but_not_partitions(pool: PgPool) {
+async fn db_009_runtime_role_writes_heartbeats_and_aggregates_but_not_partitions(pool: PgPool) {
     let mut conn = pool.acquire().await.unwrap();
 
     let (wrote, refusals) = as_runtime(&mut conn, async |conn| {
@@ -91,7 +91,7 @@ async fn r_016_runtime_role_writes_heartbeats_and_aggregates_but_not_partitions(
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn r_023_only_the_runtime_role_may_execute_the_partition_functions(pool: PgPool) {
+async fn db_009_only_the_runtime_role_may_execute_the_partition_functions(pool: PgPool) {
     let grants: Vec<(String, bool, bool, i64)> = sqlx::query_as(
         "select p.oid::pg_catalog.regprocedure::pg_catalog.text, \
          p.proacl is not null, \
@@ -118,7 +118,7 @@ async fn r_023_only_the_runtime_role_may_execute_the_partition_functions(pool: P
 /// The bodies are also schema-qualified, so the attack below needs both defences removed;
 /// this pins the search path on its own.
 #[sqlx::test(migrations = "./migrations")]
-async fn r_016_partition_functions_run_as_owner_with_pg_temp_searched_last(pool: PgPool) {
+async fn db_009_partition_functions_run_as_owner_with_pg_temp_searched_last(pool: PgPool) {
     let functions: Vec<(String, bool, Vec<String>)> = sqlx::query_as(
         "select p.oid::pg_catalog.regprocedure::pg_catalog.text, p.prosecdef, p.proconfig \
          from pg_catalog.pg_proc p \
@@ -136,7 +136,7 @@ async fn r_016_partition_functions_run_as_owner_with_pg_temp_searched_last(pool:
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn r_023_runtime_role_cannot_run_code_as_the_partition_owner_through_pg_temp(pool: PgPool) {
+async fn db_009_runtime_role_cannot_run_code_as_the_partition_owner_through_pg_temp(pool: PgPool) {
     let mut conn = pool.acquire().await.unwrap();
 
     let (outcome, injected) = as_runtime(&mut conn, async |conn| {
