@@ -24,14 +24,14 @@ interface Container {
   cap_add?: string[];
   restart?: string;
   tmpfs?: string[];
-  volumes?: string[];
-  healthcheck?: { test: string[] };
+  volumes?: (string | { type?: string; bind?: { selinux?: string } })[];
+  healthcheck?: { test: string[]; interval?: string; retries?: number };
   init?: boolean;
   build?: { additional_contexts?: Record<string, string> };
 }
 interface Compose {
   services: Record<string, Container>;
-  networks: Record<string, { internal?: boolean } | null>;
+  networks: Record<string, { internal?: boolean; driver_opts?: Record<string, string> } | null>;
   volumes: Record<string, unknown>;
   secrets: Record<string, { file: string }>;
 }
@@ -200,8 +200,54 @@ describe("hub configuration (K7)", () => {
     expect(compose.services["hub"]?.volumes).toContain("certs:/certs:ro");
   });
 
+  test("NET-003 the permitted networks default is exactly the VPN range", () => {
+    const value = compose.services["hub"]?.environment?.["ANIMA_PERMITTED_NETWORKS"];
+    expect(value).toBe("${ANIMA_PERMITTED_NETWORKS:-100.64.0.0/10}");
+  });
+
+  test("DNS-002 certs may take 15 minutes to become healthy before the hub gives up", () => {
+    const check = compose.services["certs"]?.healthcheck;
+    expect((check?.retries ?? 0) * 10).toBeGreaterThanOrEqual(900);
+    expect(check?.interval).toBe("10s");
+  });
+
+  test("GW-001 guacd writes its font cache to /tmp", () => {
+    expect(compose.services["guacd"]?.environment?.["XDG_CACHE_HOME"]).toBe("/tmp");
+  });
+
   test("GW-002 the gateway network keeps its egress and fixed subnet", () => {
     expect(compose.networks["gateway"]?.internal).not.toBe(true);
+  });
+});
+
+describe("host integration (AlmaLinux, WP-03)", () => {
+  test("every bind mount uses the long syntax with the SELinux z label", () => {
+    let binds = 0;
+    for (const [name, container] of services) {
+      for (const volume of container.volumes ?? []) {
+        if (typeof volume === "string") {
+          expect(`${name}:${volume}`).not.toMatch(/^[^:]+:(\.|\/)/);
+          continue;
+        }
+        if (volume.type !== "bind") continue;
+        binds += 1;
+        expect(volume.bind?.selinux).toBe("z");
+      }
+    }
+    expect(binds).toBe(3);
+  });
+
+  test("WP-03 no network sets a bridge name (the forward chain relies on the default br-* names)", () => {
+    for (const network of Object.values(compose.networks)) {
+      expect(JSON.stringify(network ?? {})).not.toContain("bridge.name");
+    }
+  });
+
+  test("preflight checks exactly the secret files that compose declares", () => {
+    const script = readFileSync(join(ROOT, "deploy", "bin", "preflight"), "utf8");
+    const loop = /for name in ([^;]*?); do/s.exec(script)?.[1] ?? "";
+    const listed = loop.replaceAll("\\", " ").split(/\s+/).filter((word) => word !== "");
+    expect(listed.sort()).toEqual(Object.keys(compose.secrets).sort());
   });
 });
 

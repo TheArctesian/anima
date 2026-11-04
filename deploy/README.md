@@ -30,8 +30,14 @@ Each service writes its log as JSON files, 10 MB each, 10 files.
 
 ## Prerequisites
 
-- A Linux host with Docker Engine 28.0 or later and the Compose plugin. Before version 28,
-  a machine on the same routed network could reach the unpublished `guacd` port.
+- A Linux host with Docker Engine 28.0 or later and the Compose plugin (on AlmaLinux 10:
+  the dnf packages `docker-ce` and `docker-compose-plugin`). Before version 28, a machine on
+  the same routed network could reach the unpublished `guacd` port.
+- `openssl` on the host (`dnf install -y openssl`; the minimal image lacks it).
+- On a host with SELinux enforcing: `semanage` (package `policycoreutils-python-utils` on
+  EL10). The install folder in this document is `/opt/anima`, so this folder is
+  `/opt/anima/deploy`.
+- The host firewall from WP-03 (`deploy/headscale/vps/nftables.conf`).
 - The host has the VPN address that the hub will use (`ANIMA_HUB_ADDRESS`).
 - A Cloudflare API token for the zone `anima.ing` (Operator changes, item 1).
 
@@ -40,13 +46,17 @@ Each service writes its log as JSON files, 10 MB each, 10 files.
 1. Make the secret files. Run this as root, in this folder:
 
    ```sh
-   sh bin/make-secrets
+   read -rs CF_TOKEN
+   printf '%s\n' "$CF_TOKEN" | sh bin/make-secrets --cloudflare-token-stdin
+   unset CF_TOKEN
    ```
 
    The script makes each missing file in `secrets/` with a random value and the right owner
-   and mode. It never overwrites a file and never prints a secret. It asks for the
-   Cloudflare token if you run it in a terminal. Run it again at any time: it only adds
-   what is missing.
+   and mode. It never overwrites a file and never prints a secret. It checks the characters
+   of the Cloudflare token, which it reads from one line of standard input. In a terminal
+   it asks for the token with no echo instead. It refuses a secrets folder that is
+   writable by others, and it checks the files that exist. Run it again at any time: it
+   only adds what is missing.
 
 2. Set the environment in `deploy/.env` (mode 0600):
 
@@ -91,8 +101,9 @@ Encrypt subscriber agreement for you (`--accept-tos`). Read it first.
 `certs` is healthy when `/certs/hub/tls.pem` exists. The first order needs Cloudflare and
 Let's Encrypt and can take a few minutes. If it fails, the service waits one hour before it
 tries again, to stay below the Let's Encrypt limits. `docker compose up -d` waits about
-15 minutes for `certs`. If `certs` was unhealthy on the first start, fix the cause (see
-`docker compose logs certs`) and run `docker compose up -d` again.
+15 minutes for `certs`. If the first order failed, fix the cause (see
+`docker compose logs certs`) and run `docker compose restart certs` to order again at once.
+Then run `docker compose up -d` again to start the services that waited.
 
 ## Certificate renewal
 
@@ -113,11 +124,25 @@ No log contains a secret (LOG-007).
 
 ## Rotate a password
 
-These steps rotate the hub database password. Keep the old files until the last step.
+These steps rotate the hub database password. Run them in `bash`, as root, in this folder.
+The password never appears in a program argument: `printf` is a shell built-in, and the
+SQL goes to `psql` on standard input. Keep the old files until the last step.
 
-1. Make the new value: `NEW=$(openssl rand -hex 32)`.
-2. Change the role:
-   `docker compose exec -T postgres psql -U postgres -c "ALTER ROLE anima_hub PASSWORD '$NEW'"`.
+1. Make the new value, with files private from now on:
+
+   ```sh
+   umask 077
+   NEW=$(openssl rand -hex 32)
+   ```
+
+2. Change the role. The first statement keeps the password out of the server log if the
+   second one fails:
+
+   ```sh
+   printf "SET log_min_error_statement = panic;\nALTER ROLE anima_hub PASSWORD '%s';\n" "$NEW" |
+       docker compose exec -T postgres psql -X -v ON_ERROR_STOP=1 -U postgres
+   ```
+
 3. Write the new files next to the old ones:
 
    ```sh
@@ -126,15 +151,17 @@ These steps rotate the hub database password. Keep the old files until the last 
    chown root:999 secrets/hub_password.new
    chown root:10001 secrets/hub_database_url.new
    chmod 0440 secrets/hub_password.new secrets/hub_database_url.new
+   unset NEW
    ```
 
-4. Restart the hub on the new files:
+4. Move the old files aside and restart the hub on the new ones:
 
    ```sh
    mv secrets/hub_password secrets/hub_password.old
    mv secrets/hub_database_url secrets/hub_database_url.old
    mv secrets/hub_password.new secrets/hub_password
    mv secrets/hub_database_url.new secrets/hub_database_url
+   restorecon -R secrets
    docker compose up -d --force-recreate hub
    docker compose logs --tail 20 hub
    ```
@@ -143,6 +170,12 @@ These steps rotate the hub database password. Keep the old files until the last 
 
 To rotate the owner password, use the role `anima_owner` and the files `owner_password` and
 `owner_database_url` (same owners and modes), then run `docker compose run --rm migrate`.
+
+## Gateway font
+
+The gateway image holds the font family `OpenDyslexicM Nerd Font Mono`. Set guacd's
+`font-name` to exactly this name. `fc-match OpenDyslexic` returns DejaVu Sans, not this font.
+`test/smoke.sh` checks the name.
 
 ## Security notes
 
@@ -153,35 +186,50 @@ To rotate the owner password, use the role `anima_owner` and the files `owner_pa
 
 ## Operator changes
 
-Do each item once, on the real host or in Cloudflare. Nothing in this repository does them.
+Do each item once, on the real host (AlmaLinux 10, SELinux enforcing, as the sudo admin
+user) or in Cloudflare. Nothing in this repository does them.
 
 1. In Cloudflare, create an API token with the permission "Zone / DNS / Edit" on the zone
    `anima.ing` only.
-2. On the host, run `sh bin/make-secrets` in a terminal and paste the token when it asks.
-3. Run `getent group 999 10001` on the host. If a user is a member of either group, remove
-   that user from the group or give the group another number. On Debian, gid 999 is often
-   `docker` or `systemd-journal`. Members of `docker` can already act as root, so they
-   do not widen access; remove every other member.
-4. Write `deploy/.env` (mode 0600) with `ANIMA_HUB_ADDRESS` and `ANIMA_ACME_EMAIL`.
-5. Make `tailscaled` start before Docker: run `systemctl edit docker.service` and add
-   `[Unit]` and `After=tailscaled.service`. Then run `systemctl daemon-reload`.
-6. Drop hub-port traffic that does not come in on the VPN interface:
+2. Install the packages:
+   `sudo dnf install -y docker-ce docker-compose-plugin openssl policycoreutils-python-utils`.
+   Then run `sudo systemctl enable --now docker`.
+3. Copy this `deploy` folder to `/opt/anima/deploy`.
+4. Label the secrets folder, because file secrets cannot carry a label of their own:
 
    ```sh
-   iptables -t raw -I PREROUTING -d "$ANIMA_HUB_ADDRESS" -p tcp --dport 443 ! -i tailscale0 -j DROP
+   sudo semanage fcontext -a -t container_file_t '/opt/anima/deploy/secrets(/.*)?'
+   sudo mkdir -p /opt/anima/deploy/secrets
+   sudo restorecon -Rv /opt/anima/deploy/secrets
    ```
 
-   Install `iptables-persistent` (`apt install iptables-persistent`) and run
-   `netfilter-persistent save` so the rule survives a reboot. If the host uses nftables,
-   make the same rule in the `raw` hook of your nftables file instead.
-7. Run the first start (First start, step 4) and check `docker compose ps`.
-8. Copy `secrets/anima_key` to an offline store. Without it, the stored credentials cannot
-   be opened. The database backup does not contain it.
+   The bind mounts in `compose.yaml` (`postgres/`, `certs/`) relabel themselves with the
+   `z` option. Rerun `restorecon -Rv /opt/anima/deploy/secrets` after you add or replace a
+   secret file by hand.
+5. Run `getent group 999 10001`. On AlmaLinux 10, gid 999 is `systemd-oom` and has no
+   members, and gid 10001 does not exist. If a user is listed in either group, remove that
+   user from the group, or give the group another number. If gid 999 is `docker` on your
+   host, its members are already root-equivalent; remove every other member.
+6. Make the secrets (First start, step 1), with the Cloudflare token from item 1.
+7. Write `deploy/.env` (mode 0600) with `ANIMA_HUB_ADDRESS` and `ANIMA_ACME_EMAIL`.
+8. Make `tailscaled` start before Docker: run `sudo systemctl edit docker.service` and add
+   `[Unit]` and `After=tailscaled.service`. Then run `sudo systemctl daemon-reload`.
+9. Check that WP-03's firewall is loaded: run `sudo nft list table inet anima_filter`. The
+   chain `prerouting` must hold the rule
+   `iifname != { "lo", "tailscale0" } fib daddr type local ip daddr 100.64.0.0/10 drop`.
+   That rule drops hub-port traffic for the VPN address that does not arrive on
+   `tailscale0`. If the table or the rule is missing, stop and apply WP-03's firewall first.
+   WP-03's `daemon.json` makes Docker publish on `127.0.0.1` by default, so `compose.yaml`
+   names `ANIMA_HUB_ADDRESS` in the hub's `ports` entry. Keep it. The compose file sets no
+   bridge name on any network, because the forward chain relies on the default `br-*` names.
+10. Run the first start (First start, steps 3 and 4) and check `docker compose ps`.
+11. Copy `secrets/anima_key` to an offline store. Without it, the stored credentials cannot
+    be opened. The database backup does not contain it.
 
 ## Checks
 
-- `bun run --cwd deploy test` checks the compose file, the scripts and the database
-  roles. It needs no Docker.
+- `bun run --cwd deploy test` checks the compose file, the scripts (`bin/preflight`,
+  `certs/install.sh`, `certs/run.sh` with a fake lego) and the database roles. It needs no Docker.
 - `sh deploy/test/smoke.sh` is a manual test that needs Docker. It checks the Docker
   version, builds the gateway and hub images, checks the font, starts `postgres` and checks
   the roles, runs the certificate hook on a fixture certificate with the real container

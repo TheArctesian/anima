@@ -23,6 +23,12 @@ describe("preflight address", () => {
     },
   );
 
+  test.each(["100.064.0.1", "100.64.00.1", "100.64.0.01"])("NET-003 refuses %s with a leading zero", (ip) => {
+    const result = preflight("address", ip);
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain("leading zero");
+  });
+
   test.each(["", "abc", "100.64.0", "100.64.0.1.2", "100.64.0.256", "100..0.1", "100.64.0.1/10"])(
     "NET-003 refuses %p as not an IPv4 address",
     (ip) => {
@@ -53,8 +59,12 @@ describe("preflight secrets", () => {
       const missing = preflight("secrets", folder);
       expect(missing.ok).toBe(false);
       expect(missing.message).toContain("postgres_password");
+      writeFileSync(join(folder, "postgres_password"), "");
+      expect(preflight("secrets", folder).ok).toBe(false);
       writeFileSync(join(folder, "postgres_password"), "x");
       expect(preflight("secrets", folder).ok).toBe(true);
+      writeFileSync(join(folder, "cloudflare_dns_token"), "");
+      expect(preflight("secrets", folder).message).toContain("cloudflare_dns_token");
     } finally {
       rmSync(folder, { recursive: true, force: true });
     }

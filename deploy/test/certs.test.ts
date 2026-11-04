@@ -1,6 +1,6 @@
 // deploy/certs/install.sh, the lego hook (DNS-002, SEC-001), run in a temporary folder.
 import { afterEach, describe, expect, test } from "bun:test";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -27,9 +27,9 @@ function setup(): { folder: string; chain: string; key: string; dest: string } {
   return { folder, chain, key, dest: join(folder, "hub") };
 }
 
-function run(env: Record<string, string> = {}, existing?: ReturnType<typeof setup>): Run {
+function run(env: Record<string, string> = {}, existing?: ReturnType<typeof setup>, umask = "077"): Run {
   const { folder, chain, key, dest } = existing ?? setup();
-  const result = Bun.spawnSync(["sh", HOOK], {
+  const result = Bun.spawnSync(["sh", "-c", `umask ${umask}; exec sh "$0"`, HOOK], {
     env: { PATH: process.env["PATH"] ?? "", ANIMA_CERTS_DIR: dest, ANIMA_CERTS_OWNER: "", ANIMA_CERTS_STAMP: join(folder, "stamp"), LEGO_CERT_PATH: chain, LEGO_CERT_KEY_PATH: key, ...env },
     stdin: "ignore",
   });
@@ -92,5 +92,65 @@ describe("install.sh", () => {
     expect(firstChown).toBeGreaterThan(-1);
     expect(lastChmod).toBeLessThan(firstChown);
     expect(calls[firstChown]).toContain("10001:10001");
+  });
+
+  test("DNS-002 reinstalls a file that was emptied, even though the content to install is unchanged", () => {
+    const env = setup();
+    run({}, env);
+    const target = join(env.dest, "tls.pem");
+    chmodSync(target, 0o600);
+    writeFileSync(target, "");
+    expect(run({}, env).output).toContain("installed");
+    expect(readFileSync(target, "utf8")).toBe("KEY\nCHAIN\n");
+  });
+
+  test("DNS-002 reinstalls an older file whose checksum still matches", () => {
+    const env = setup();
+    run({}, env);
+    const target = join(env.dest, "tls.pem");
+    const old = new Date(Date.now() - 86_400_000);
+    utimesSync(target, old, old);
+    expect(run({}, env).output).toContain("installed");
+    expect(statSync(target).mtimeMs).toBeGreaterThan(old.getTime() + 60_000);
+  });
+
+  test("DNS-002 repairs a deleted tls.pem", () => {
+    const env = setup();
+    run({}, env);
+    rmSync(join(env.dest, "tls.pem"));
+    expect(run({}, env).exitCode).toBe(0);
+    expect(readFileSync(join(env.dest, "tls.pem"), "utf8")).toBe("KEY\nCHAIN\n");
+  });
+
+  test("DNS-002 writes the stamp only after the rename succeeded", () => {
+    const env = setup();
+    const shims = join(env.folder, "shims");
+    mkdirSync(shims);
+    writeFileSync(join(shims, "mv"), "#!/bin/sh\nexit 1\n");
+    chmodSync(join(shims, "mv"), 0o755);
+    const result = run({ PATH: `${shims}:${process.env["PATH"] ?? ""}` }, env);
+    expect(result.exitCode).not.toBe(0);
+    expect(existsSync(join(env.folder, "stamp"))).toBe(false);
+    expect(existsSync(join(env.dest, "tls.pem"))).toBe(false);
+    expect(readdirSync(env.dest)).toEqual([]);
+  });
+
+  test("DNS-002 makes the temporary file in the destination folder, so the rename is atomic", () => {
+    const env = setup();
+    const shims = join(env.folder, "shims");
+    const log = join(env.folder, "mktemp.log");
+    mkdirSync(shims);
+    const real = Bun.which("mktemp", { PATH: "/bin:/usr/bin" });
+    writeFileSync(join(shims, "mktemp"), `#!/bin/sh\necho "$1" >>"${log}"\nexec "${real}" "$@"\n`);
+    chmodSync(join(shims, "mktemp"), 0o755);
+    run({ PATH: `${shims}:${process.env["PATH"] ?? ""}` }, env);
+    expect(readFileSync(log, "utf8").trim()).toStartWith(`${env.dest}/`);
+  });
+
+  test("SEC-001 sets its own umask: the stamp is private and the folder is 0755 even under umask 000", () => {
+    const env = setup();
+    run({}, env, "000");
+    expect(statSync(join(env.folder, "stamp")).mode & 0o777).toBe(0o600);
+    expect(statSync(env.dest).mode & 0o777).toBe(0o755);
   });
 });

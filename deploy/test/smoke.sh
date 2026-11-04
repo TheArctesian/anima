@@ -36,8 +36,8 @@ mkdir -p "$work/deploy" "$work/apps/client/src/styles"
 cp -R "$repo/deploy/compose.yaml" "$repo/deploy/postgres" "$repo/deploy/certs" "$repo/deploy/gateway" "$repo/deploy/hub" "$work/deploy/"
 cp -R "$repo/Cargo.toml" "$repo/Cargo.lock" "$repo/crates" "$work/"
 cp -R "$repo/apps/client/src/styles/fonts" "$work/apps/client/src/styles/fonts"
-ANIMA_SECRETS_CHOWN=0 sh "$repo/deploy/bin/make-secrets" "$work/deploy/secrets" </dev/null
-printf '%s' 'smoke-test-not-a-token' >"$work/deploy/secrets/cloudflare_dns_token"
+printf '%s\n' 'smoke-test-not-a-token' |
+    ANIMA_SECRETS_CHOWN=0 sh "$repo/deploy/bin/make-secrets" --cloudflare-token-stdin "$work/deploy/secrets"
 chmod 0444 "$work/deploy/secrets/"*
 sh "$repo/deploy/bin/preflight" secrets "$work/deploy/secrets"
 # Fixture certificate for the hook test. Test-only: world-readable so that root without
@@ -61,10 +61,18 @@ echo "config is valid, and a missing ANIMA_HUB_ADDRESS is refused"
 
 step "Build the gateway image and check the font (RA-011)"
 compose build guacd
+# The single quotes are meant: the shell inside the container expands the variables.
+# shellcheck disable=SC2016
 compose run --rm --no-deps --entrypoint sh guacd -c '
     test -f /usr/share/fonts/opendyslexic/OpenDyslexicMNerdFontMono-Regular.otf
     test -f /usr/share/fonts/opendyslexic/LICENSE-OpenDyslexic.txt
     if command -v fc-list >/dev/null 2>&1; then fc-list | grep -i opendyslexic; fi
+    if command -v fc-match >/dev/null 2>&1; then
+        # the guacd font-name must be this exact family (fc-match OpenDyslexic gives DejaVu Sans).
+        family=$(fc-match -f "%{family}" "OpenDyslexicM Nerd Font Mono")
+        [ "$family" = "OpenDyslexicM Nerd Font Mono" ] || { echo "fc-match gave $family" >&2; exit 1; }
+        echo "fc-match: $family"
+    fi
     id -un
 '
 

@@ -4,7 +4,7 @@
 #   address  ANIMA_HUB_ADDRESS is an IPv4 address in 100.64.0.0/10 (the VPN range).
 #   docker   the Docker Engine is version 28 or later (earlier engines let a routed LAN
 #            neighbour reach unpublished container ports).
-#   secrets  every secret file of compose.yaml exists in the secrets folder
+#   secrets  every secret file of compose.yaml exists and is not empty in the secrets folder
 #            (ANIMA_SECRETS_DIR, default deploy/secrets).
 # One argument pair checks one thing from the value given: `preflight address 100.64.0.1`.
 set -eu
@@ -27,6 +27,9 @@ check_address() {
     IFS=$oldifs
     [ "$#" -eq 4 ] || fail "ANIMA_HUB_ADDRESS '$ip' is not an IPv4 address"
     for part in "$@"; do
+        case $part in
+        0?*) fail "ANIMA_HUB_ADDRESS '$ip' has a leading zero in '$part'" ;;
+        esac
         [ "${#part}" -le 3 ] && [ "$part" -le 255 ] || fail "ANIMA_HUB_ADDRESS '$ip' is not an IPv4 address"
     done
     # 100.64.0.0/10 is 100.64.0.0 to 100.127.255.255.
@@ -47,7 +50,7 @@ check_secrets() {
     dir=$1
     for name in postgres_password owner_password hub_password owner_database_url \
         hub_database_url anima_key cloudflare_dns_token; do
-        [ -f "$dir/$name" ] || fail "missing secret file $dir/$name; run bin/make-secrets"
+        [ -s "$dir/$name" ] || fail "missing or empty secret file $dir/$name; run bin/make-secrets"
     done
 }
 

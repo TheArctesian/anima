@@ -10,6 +10,9 @@ x-logging: &logging
     max-size: 10m
     max-file: "10"
 
+# Bind mounts use `bind: {selinux: z}` so SELinux hosts (AlmaLinux) allow the container to
+# read them. File secrets cannot carry a label; the README labels the secrets folder.
+
 # Hardening that every service keeps. A service that needs more says so beside it.
 x-hardened: &hardened
   read_only: true
@@ -37,8 +40,16 @@ services:
     secrets: [postgres_password, owner_password, hub_password]
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./postgres/roles.sql:/anima/roles.sql:ro
-      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+      - type: bind
+        source: ./postgres/roles.sql
+        target: /anima/roles.sql
+        read_only: true
+        bind: {selinux: z}
+      - type: bind
+        source: ./postgres/init
+        target: /docker-entrypoint-initdb.d
+        read_only: true
+        bind: {selinux: z}
     tmpfs: ["/tmp", "/run/postgresql"]
     networks: [database]
     # TCP on 127.0.0.1, not the socket: the temporary server of the first start listens on the
@@ -81,7 +92,11 @@ services:
     volumes:
       - certs:/certs
       - lego_state:/var/lib/lego
-      - ./certs:/anima/certs:ro
+      - type: bind
+        source: ./certs
+        target: /anima/certs
+        read_only: true
+        bind: {selinux: z}
     tmpfs: ["/tmp"]
     networks: [acme]
     healthcheck:
@@ -124,7 +139,8 @@ services:
     volumes:
       - certs:/certs:ro
     tmpfs: ["/tmp"]
-    # Only the hub is published, and only on its VPN address (NET-003).
+    # Only the hub is published, and only on its VPN address (NET-003). The explicit address
+    # is required: the host's Docker daemon publishes on 127.0.0.1 by default.
     ports:
       - "${ANIMA_HUB_ADDRESS:?set ANIMA_HUB_ADDRESS to the hub's VPN address}:443:8443"
     networks:
