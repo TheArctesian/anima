@@ -1,4 +1,4 @@
-//! What a store writes and what a load gives back (SEC-003, R-010).
+//! What a store writes and what a load gives back (SEC-003).
 
 use anima_hub::credentials::{SshSecret, clear_ssh, has_ssh, load_ssh};
 use sqlx::PgPool;
@@ -96,7 +96,7 @@ async fn sec_003_password_replaces_key_and_passphrase(pool: PgPool) {
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
 )]
-async fn r_010_clear_ssh_removes_the_secret_once(pool: PgPool) {
+async fn clear_ssh_removes_the_secret_once(pool: PgPool) {
     let (vault, id) = (vault(1), device(PVE_01));
     assert!(!has_ssh(&pool, id).await.unwrap());
     assert!(load_ssh(&pool, &vault, id).await.unwrap().is_none());

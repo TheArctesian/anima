@@ -6,8 +6,9 @@
 //! this module writes no logs (LOG-007).
 //!
 //! SSH credentials live in `credentials.secrets`, one sealed row per part, each bound to its
-//! device and kind (R-010). Only sessions read them back ([`load_ssh`]); the API sees
-//! [`has_ssh`] alone (SEC-005).
+//! device and kind, so a value moved to another row does not open. Only sessions read them
+//! back ([`load_ssh`]); the API sees only whether one exists ([`has_ssh`], [`with_ssh`])
+//! (SEC-005).
 
 mod secret;
 mod ssh;
@@ -16,6 +17,8 @@ mod vault;
 
 #[cfg(test)]
 mod tests;
+
+use std::collections::HashSet;
 
 use sqlx::{Connection as _, PgConnection, PgPool};
 
@@ -123,8 +126,18 @@ pub async fn has_ssh(db: &PgPool, device: DeviceId) -> Result<bool, Error> {
     store::exists_for_device(db, device).await
 }
 
+/// Which of the given devices have an SSH secret stored, in one query, so a list of devices
+/// costs one round trip (API-005). Devices without a secret, and unknown ids, are left out.
+///
+/// # Errors
+///
+/// [`Error::Database`] when the store cannot be read.
+pub async fn with_ssh(db: &PgPool, devices: &[DeviceId]) -> Result<HashSet<DeviceId>, Error> {
+    store::devices_with_rows(db, devices).await
+}
+
 /// Deletes every SSH secret of the device in the caller's connection. Returns true if a
-/// secret was removed (R-010). Waits for a concurrent [`store_ssh`] for the device, as that does.
+/// secret was removed. Waits for a concurrent [`store_ssh`] for the device, as that does.
 ///
 /// Lock order for callers: call this before taking `FOR UPDATE` on, or deleting, the device
 /// row in the same transaction. Otherwise a concurrent store can deadlock, which PostgreSQL

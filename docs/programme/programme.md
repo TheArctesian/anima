@@ -25,10 +25,10 @@ The operator approved all seven contracts on 2026-11-03 (checkpoint 1). Only a r
 | WP-03 VPN and network | 1 | Building (prepares files only; operator confirms each VPS, Headscale and Cloudflare change) | own worktree from `phase-1` | `wp-03-vpn-and-network` |
 | WP-04 Deployment, stage A (hub) | 1 | Ready | — | — |
 | WP-04 Deployment, stage B (releases and self-update, R-006) | 3 | Waiting (WP-15, WP-16; operator sets secrets) | — | — |
-| WP-05 Access and logs | 1 | Building | own worktree from `phase-1` | `wp-05-access` |
+| WP-05 Access and logs | 1 | Building; T1 and T7 merged early into `phase-1` (2581982) | own worktree from `phase-1` | `wp-05-access` |
 | WP-06 Devices | 1 | Building; T1 migrations merged early into `phase-1` (668c898) | own worktree from `phase-1` | `wp-06-devices` |
-| WP-07 Credentials | 1 | Building; T1 vault (78a6461) and T2 SSH store (4d61119) merged early into `phase-1` | own worktree from `phase-1` | `wp-07-credentials` |
-| WP-08 guac-protocol | 1 | Accepted by package review (6abd568); waiting for operator merge | own worktree from `phase-1` | `wp-08-guac` |
+| WP-07 Credentials | 1 | Accepted, merged into `phase-1` (3f1f830) | own worktree from `phase-1` | `wp-07-credentials` |
+| WP-08 guac-protocol | 1 | Accepted, merged into `phase-1` (c19ad06) | own worktree from `phase-1` | `wp-08-guac` |
 | WP-09 Checks and maintenance | 2 | Waiting (WP-05, WP-06) | — | — |
 | WP-10 Sessions | 2 | Waiting (WP-05–WP-08) | — | — |
 | WP-11 Client shell | 2 | Waiting (WP-02, K1) | — | — |

@@ -21,7 +21,7 @@ fn exposed(parts: &[(SshKind, Secret)]) -> Vec<(SshKind, &[u8])> {
 }
 
 #[test]
-fn log_007_ssh_secret_has_no_format_traits() {
+fn log_007_sec_005_cli_004_ssh_secret_has_no_format_traits() {
     assert_not_impl_any!(SshSecret: fmt::Debug, fmt::Display, serde::Serialize, Clone, PartialEq);
 }
 

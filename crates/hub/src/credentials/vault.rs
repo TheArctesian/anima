@@ -53,7 +53,7 @@ impl Vault {
 
     /// Builds a vault from raw key bytes: the core of `from_key_file`, and the test entry
     /// point that skips writing a key file.
-    pub(crate) fn from_key(key: Zeroizing<[u8; KEY_LEN]>) -> Self {
+    pub(super) fn from_key(key: Zeroizing<[u8; KEY_LEN]>) -> Self {
         let key_id = key_id(&key);
         Self { key, key_id }
     }

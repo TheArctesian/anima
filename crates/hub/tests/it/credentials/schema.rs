@@ -1,4 +1,4 @@
-//! The table's K2 constraints and its link to the device (DEV-015).
+//! The table's named constraints and its link to the device (DEV-015).
 
 use sqlx::PgPool;
 
@@ -25,7 +25,7 @@ async fn insert_raw(pool: &PgPool, id: anima_hub::ids::DeviceId, kind: &str) -> 
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
 )]
-async fn k2_second_row_of_one_kind_fails_on_the_unique_constraint(pool: PgPool) {
+async fn second_row_of_one_kind_fails_on_the_unique_constraint(pool: PgPool) {
     let id = device(PVE_01);
     store(&pool, &vault(1), id, password()).await.unwrap();
     let error = insert_raw(&pool, id, "ssh_password").await;
@@ -36,7 +36,7 @@ async fn k2_second_row_of_one_kind_fails_on_the_unique_constraint(pool: PgPool) 
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
 )]
-async fn k2_unknown_kind_fails_on_the_kind_check(pool: PgPool) {
+async fn unknown_kind_fails_on_the_kind_check(pool: PgPool) {
     let error = insert_raw(&pool, device(PVE_01), "totp").await;
     assert_eq!(constraint_of(&error), Some("secrets_kind_check"));
 }
