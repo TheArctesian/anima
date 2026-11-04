@@ -283,13 +283,39 @@ describe('Hub.subscribe recovery', () => {
     hub.close();
   });
 
-  it('API-002: close during a retry wait opens no new socket', async () => {
+  it('API-002: close during a retry wait opens no new socket and resolves', async () => {
     const hub = newHub();
     const { socket } = await liveSubscription(hub, recordingSink().sink);
     socket.close(1006);
     await settle();
-    hub.close();
+    const closing = hub.close();
     await settle(60_000);
     expect(FakeSocket.opened).toHaveLength(1);
+    await expect(closing).resolves.toBeUndefined();
+  });
+});
+
+describe('Hub.close with a connection attempt pending', () => {
+  it('NET-004: close stops the connect deadline, so the status does not change afterwards', async () => {
+    const hub = newHub();
+    hub.subscribe(STATUS_CHANGED, {}, recordingSink().sink);
+    await settle();
+    void hub.close();
+    await settle(DEFAULT_TIMEOUT_MS * 2);
+    expect(hub.status.current.connection).toBe('connecting');
+  });
+
+  it.each([
+    ['an abnormal close', (socket: FakeSocket) => socket.close(1006), { code: 1006 }],
+    ['a socket error without a code', (socket: FakeSocket) => socket.onerror?.({ type: 'error' }), { type: 'error' }],
+  ])('CQ-024: close rejects when the pending attempt ends with %s', async (_label, fail, reason) => {
+    const hub = newHub();
+    hub.subscribe(STATUS_CHANGED, {}, recordingSink().sink);
+    await settle();
+    const closing = hub.close();
+    const outcome = expect(closing).rejects.toMatchObject(reason);
+    fail(onlySocket());
+    await settle();
+    await outcome;
   });
 });

@@ -47,8 +47,10 @@ export interface Hub {
   /**
    * End every subscription (each sink hears `complete`) and close the socket. A later `subscribe`
    * completes at once without connecting; `request` keeps working, since HTTP holds no connection.
+   * Subscriptions end synchronously; the promise resolves when the socket is closed and rejects with the
+   * reason when a connection attempt that was still pending failed instead.
    */
-  close(): void;
+  close(): Promise<void>;
 }
 
 export interface HubOptions {

@@ -29,8 +29,11 @@ export interface Socket {
     variables: TVariables,
     sink: Sink<TResult>,
   ): () => void;
-  /** End every subscription with `complete` and close the socket; later subscriptions complete at once. */
-  close(): void;
+  /**
+   * End every subscription with `complete` at once and close the socket; later subscriptions complete at once.
+   * Resolves when the socket is closed; rejects with the reason when a pending connection attempt failed instead.
+   */
+  close(): Promise<void>;
 }
 
 /** The hub closes with 4403 when the token is missing or invalid (graphql-transport-ws `Forbidden`). */
@@ -175,8 +178,8 @@ export function createSocket(transport: SocketTransport): Socket {
       clearDeadline(state);
       for (const finish of [...live]) finish();
       // dispose waits for a pending connection attempt; one abandoned during a retry wait rejects with a
-      // normal close ("All Subscriptions Gone"), which is the outcome close asks for. Anything else stays unhandled.
-      void Promise.resolve(client.dispose()).catch((reason: unknown) => {
+      // normal close ("All Subscriptions Gone"), which is the outcome close asks for. Anything else is passed on.
+      return Promise.resolve(client.dispose()).catch((reason: unknown) => {
         if (closeCode(reason) !== NORMAL_CLOSE_CODE) throw reason;
       });
     },
