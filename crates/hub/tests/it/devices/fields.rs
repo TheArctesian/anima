@@ -3,6 +3,7 @@
 //! CHK-011, API-005, API-006, R-026).
 
 mod batching;
+mod byte_order;
 mod clock;
 mod create;
 mod ip;
