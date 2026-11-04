@@ -1,12 +1,8 @@
 import { beforeAll, describe, expect, test } from "bun:test";
-import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { psql, scalar, serverDirectory } from "./postgres.ts";
-
-const ROOT = join(import.meta.dir, "..", "..");
-const ROLES_SQL = join(ROOT, "deploy", "postgres", "roles.sql");
-const MIGRATIONS = join(ROOT, "crates", "hub", "migrations");
+import { ROLES_SQL, installRoles } from "./roles-setup.ts";
 
 let secretsFolder = "";
 let passwordEnv: Record<string, string> = {};
@@ -15,29 +11,9 @@ function password(name: string): string {
   return readFileSync(join(secretsFolder, name), "utf8");
 }
 
-function runRolesSql() {
-  return psql(["-f", ROLES_SQL], { env: passwordEnv });
-}
-
-// Roles are cluster-wide and the server is shared by this file, so they are made once.
+// Roles are cluster-wide and the server is shared, so the first test file to run installs them.
 beforeAll(() => {
-  secretsFolder = mkdtempSync(join(tmpdir(), "anima-roles-"));
-  const made = Bun.spawnSync(["sh", join(ROOT, "deploy", "bin", "make-secrets"), secretsFolder], {
-    env: { ...process.env, ANIMA_SECRETS_CHOWN: "0" },
-    stdin: "ignore",
-  });
-  if (made.exitCode !== 0) throw new Error(`make-secrets failed: ${made.stderr.toString()}`);
-  passwordEnv = {
-    ANIMA_OWNER_PASSWORD_FILE: join(secretsFolder, "owner_password"),
-    ANIMA_HUB_PASSWORD_FILE: join(secretsFolder, "hub_password"),
-  };
-  const result = runRolesSql();
-  if (result.exitCode !== 0) throw new Error(`roles.sql failed: ${result.stderr}`);
-  for (const file of readdirSync(MIGRATIONS).filter((name) => name.endsWith(".sql")).sort()) {
-    const applied = psql(["-f", join(MIGRATIONS, file)], { user: "anima_owner", database: "anima" });
-    if (applied.exitCode !== 0) throw new Error(`migration ${file} failed: ${applied.stderr}`);
-  }
-  return () => rmSync(secretsFolder, { recursive: true, force: true });
+  ({ secretsFolder, passwordEnv } = installRoles());
 });
 
 function roleFlags(role: string, flags: string[]): string {
