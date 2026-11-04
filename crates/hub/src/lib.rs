@@ -22,8 +22,9 @@ use axum::{
         DefaultBodyLimit, State, WebSocketUpgrade, ws::rejection::WebSocketUpgradeRejection,
     },
     http::{Extensions, HeaderMap, StatusCode, header::CONTENT_TYPE},
+    middleware,
     response::{IntoResponse, Response},
-    routing::post,
+    routing::{get, post},
 };
 use sqlx::PgPool;
 
@@ -39,11 +40,29 @@ struct Edge {
     clock: Arc<dyn clock::Clock>,
 }
 
+/// The hub's HTTP routes: `POST /graphql`, `GET /graphql` (subscriptions) and `GET /health`,
+/// each request in a logged span.
 pub fn router(schema: schema::HubSchema, db: PgPool, clock: Arc<dyn clock::Clock>) -> Router {
-    Router::new()
-        .route("/graphql", post(graphql).get(subscriptions))
-        .layer(DefaultBodyLimit::max(BODY_LIMIT))
-        .with_state(Edge { schema, db, clock })
+    logged(
+        Router::new()
+            .route("/graphql", post(graphql).get(subscriptions))
+            .route("/health", get(health))
+            .layer(DefaultBodyLimit::max(BODY_LIMIT))
+            .with_state(Edge { schema, db, clock }),
+    )
+}
+
+/// Runs every route of `routes` in an `http_request` span that records the route template,
+/// never a path value, so `/push/{token}` is logged as `/push/[redacted]` (LOG-007, R-028).
+/// Apply it to the whole router after the last route is added; WP-09 widens it when the push
+/// router is merged in.
+pub(crate) fn logged(routes: Router) -> Router {
+    routes.layer(middleware::from_fn(events::process_log::http_request))
+}
+
+/// Liveness probe (R-026(4)): no sign-in, no database, body `ok`.
+async fn health() -> &'static str {
+    "ok"
 }
 
 /// Whether the media type is exactly `application/json`, in any case, parameters allowed.
@@ -79,9 +98,11 @@ async fn graphql(
     let response = match access::identify(&edge.db, &headers, edge.clock.now()).await {
         Ok(Some(identity)) => edge.schema.execute(identity.attach(request)).await,
         Ok(None) => edge.schema.execute(request).await,
+        // The schema's boundary never sees this error, so the edge logs its cause chain (H-5).
         Err(error) => {
-            error.log();
-            async_graphql::Response::from_errors(vec![error.to_server_error()])
+            let error = error.into_response_error();
+            events::process_log::log_failure(&error);
+            async_graphql::Response::from_errors(vec![error])
         }
     };
     GraphQLResponse::from(response).into_response()

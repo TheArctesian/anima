@@ -1,7 +1,7 @@
 //! What the credential mutations let out (LOG-007, API-010). In a query that parses, a
 //! credential of the wrong shape or type is refused without quoting it, in the response or in
-//! the process log. A query that does not parse is echoed to its sender by the GraphQL parser
-//! (pinned below, handed off under H-6), never to the log. Missing wiring shows only `INTERNAL`.
+//! the process log. A query that does not parse gets a fixed text (H-6 (e)). Missing wiring
+//! shows only `INTERNAL`, and its cause goes to the log (H-5).
 
 use std::{
     future::Future,
@@ -13,6 +13,7 @@ use anima_hub::{
     clock::{Clock, FixedClock},
     devices::graphql::{Mutation, Query},
     events::{Bus, process_log::subscriber},
+    schema::harden,
 };
 use async_graphql::{EmptySubscription, Request, Schema, Variables};
 use serde_json::{Value, json};
@@ -147,24 +148,29 @@ async fn secret_rows(pool: &PgPool) -> i64 {
 async fn api_010_without_the_vault_or_the_credential_loader_the_operator_gets_internal(
     pool: PgPool,
 ) {
-    // Everything the mutation and the field need except the vault and the loader.
+    // Everything the mutation and the field need except the vault and the loader, behind the
+    // API boundary as `schema.rs` builds it.
     let (bus, clock) = (Bus::new(4), Arc::new(FixedClock(now())) as Arc<dyn Clock>);
-    let schema = Schema::build(Query, Mutation, EmptySubscription)
+    let builder = Schema::build(Query, Mutation, EmptySubscription)
         .data(pool.clone())
         .data(bus)
-        .data(clock)
-        .finish();
+        .data(clock);
+    let schema = harden(builder, false).finish();
     let set = signed_in(SET).variables(variables(&json!({ "password": "a-password" })));
     let read = signed_in(&format!(
         r#"{{ device(id: "{PVE_01}") {{ ssh {{ credentialStored }} }} }}"#
     ));
     for request in [set, read] {
-        let error = error_json(&schema.execute(request).await);
+        let (log, response) = captured(|| schema.execute(request)).await;
+        let error = error_json(&response);
         assert_eq!(error["extensions"]["code"], "INTERNAL", "{error}");
         let text = error.to_string();
         for leak in ["Vault", "DataLoader", "CredentialStored", "Data `"] {
             assert!(!text.contains(leak), "{text}");
         }
+        // H-5: the hidden cause reaches the log through the boundary.
+        assert!(log.contains("schema dependency not registered"), "{log}");
+        assert!(!log.contains("a-password"), "{log}");
     }
     assert_eq!(secret_rows(&pool).await, 0);
 }
@@ -211,15 +217,14 @@ async fn log_007_inline_credentials_of_the_wrong_shape_are_refused_without_quoti
     assert_eq!(secret_rows(&pool).await, 0);
 }
 
-/// A query that does not parse. The async-graphql parser quotes the text around the error, so
-/// a secret written inline next to a syntax error comes back in the response to its sender.
-/// That is known and handed to WP-05 under H-6 (refuse unauthenticated requests before parsing);
-/// this test pins it, and pins that the process log does not get it.
+/// A query that does not parse. The async-graphql parser quotes the text around the error;
+/// the API boundary replaces that text with a fixed one and keeps the position, so a secret
+/// written inline next to a syntax error reaches neither its sender nor the log (H-6 (e)).
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
 )]
-async fn log_007_a_query_with_a_syntax_error_echoes_its_text_to_the_sender_but_not_to_the_log(
+async fn log_007_h_6_e_a_query_with_a_syntax_error_is_not_echoed_to_the_sender_or_the_log(
     pool: PgPool,
 ) {
     let secret = "syntax-error-secret";
@@ -228,12 +233,10 @@ async fn log_007_a_query_with_a_syntax_error_echoes_its_text_to_the_sender_but_n
     );
     let schema = hardened_schema(&pool);
     let (log, response) = captured(|| schema.execute(signed_in(&query))).await;
-    assert_eq!(response.errors.len(), 1);
+    let error = error_json(&response);
+    assert_eq!(error["message"], "The request is not valid GraphQL.");
+    assert!(error["locations"][0]["column"].is_u64(), "{error}");
     let body = serde_json::to_string(&response).unwrap();
-    assert!(
-        body.contains(secret),
-        "the parser no longer echoes the query; update H-6"
-    );
-    assert_absent(secret, &[&log]);
+    assert_absent(secret, &[&body, &log]);
     assert_eq!(secret_rows(&pool).await, 0);
 }

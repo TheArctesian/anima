@@ -67,8 +67,8 @@ async fn sec_002_r_010_the_secret_is_stored_sealed_for_its_operator(pool: PgPool
 }
 
 /// The client's view of a refusal: message and extensions, nothing else.
-fn shown(error: &Error) -> (String, Option<async_graphql::ErrorExtensionValues>) {
-    let shown = error.to_server_error();
+fn shown(error: Error) -> (String, Option<async_graphql::ErrorExtensionValues>) {
+    let shown = error.into_response_error();
     (shown.message, shown.extensions)
 }
 
@@ -89,14 +89,14 @@ async fn sec_002_r_010_a_secret_from_another_key_is_answered_like_a_wrong_passwo
     assert!(matches!(wrong, Error::WrongCredentials));
     assert!(matches!(right, Error::TotpSecret(_)));
     assert_eq!(
-        shown(&right),
-        shown(&wrong),
-        "the answer hides the right password"
-    );
-    assert_eq!(
         right.fault(),
         Some("totp_secret"),
         "the edge logs the fault"
+    );
+    assert_eq!(
+        shown(right),
+        shown(wrong),
+        "the answer hides the right password"
     );
 
     assert_eq!(attempts(&pool).await, [(false, false); 2], "both counted");

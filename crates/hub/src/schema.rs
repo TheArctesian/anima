@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use async_graphql::{MergedObject, MergedSubscription, Object, Schema, SchemaBuilder};
+use async_graphql::{MergedObject, MergedSubscription, Schema, SchemaBuilder};
 use sqlx::PgPool;
 
 use crate::{
@@ -10,28 +10,22 @@ use crate::{
     clock::Clock,
     config::Config,
     credentials::Vault,
+    devices,
     events::{
         self, Bus,
         process_log::{InternalErrors, RequestSpan},
     },
 };
 
-#[derive(Default)]
-pub struct Health;
-
-#[Object(name = "HealthQuery")]
-impl Health {
-    /// Liveness probe. Needs a token like every operation except `login` (API-003).
-    async fn health(&self) -> &'static str {
-        "ok"
-    }
-}
+#[derive(MergedObject, Default)]
+pub struct Query(
+    access::graphql::Query,
+    devices::graphql::Query,
+    events::graphql::Query,
+);
 
 #[derive(MergedObject, Default)]
-pub struct Query(access::graphql::Query, events::graphql::Query, Health);
-
-#[derive(MergedObject, Default)]
-pub struct Mutation(access::graphql::Mutation);
+pub struct Mutation(access::graphql::Mutation, devices::graphql::Mutation);
 
 #[derive(MergedSubscription, Default)]
 pub struct Subscription(events::graphql::Subscription);
@@ -49,10 +43,13 @@ pub struct Dependencies {
     pub vault: Vault,
 }
 
-/// Put each dependency into the schema data; resolvers read them with `ctx.data::<T>()`.
+/// Put each dependency into the schema data, with the devices loaders (WP-06 H-2);
+/// resolvers read them with `ctx.data::<T>()`. The HTTP edge adds the `Operator` and the
+/// `ClientAddr` to each request (D-6).
 /// The access extension refuses every operation without a token except `login` (API-003).
-/// Validation errors never suggest field names ("Did you mean"), so a signed-out client
-/// learns nothing about the schema from a typo (API-003, API-007).
+/// Validation errors never suggest field names, and signed out they become one
+/// `UNAUTHENTICATED`, so a signed-out client learns nothing about the schema (API-003,
+/// API-007).
 #[must_use]
 pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     let Dependencies {
@@ -74,6 +71,9 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .extension(access::SignInRequired)
     .data(config)
     .data(clock)
+    .data(devices::graphql::site_loader(pool.clone()))
+    .data(devices::graphql::devices_by_site_loader(pool.clone()))
+    .data(devices::graphql::credential_loader(pool.clone()))
     .data(pool)
     .data(bus)
     .data(vault)

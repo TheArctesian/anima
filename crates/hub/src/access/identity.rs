@@ -45,7 +45,8 @@ impl Identity {
 
     /// A write identity for `operator` that holds until `expires_at`, for other domains' tests.
     /// It exists only with the `test-support` feature, which only the hub's own dev-dependency
-    /// turns on, so no release build can make an identity without a token (D-6).
+    /// turns on: it is in `cargo test` builds, not in a `cargo build --release --bin
+    /// anima-hub`, so the shipped hub cannot make an identity without a token (D-6).
     #[cfg(feature = "test-support")]
     #[must_use]
     pub const fn for_tests(operator: Operator, expires_at: DateTime<Utc>) -> Self {
