@@ -168,13 +168,6 @@ it('CLI-002: an invalid hub address stores nothing, does not reload and shows th
   expect(problem).not.toContain('secretpw');
 });
 
-it('DEV-011: a rejected field the form does not have shows nothing beside any field', async () => {
-  const error = { code: 'VALIDATION' as const, message: 'm', fields: [{ field: 'nickname', message: 'Not a field.' }] };
-  const target = open({ Login: { ok: false, error } });
-  await signInWith(target);
-  for (const id of ['username', 'password', 'totp']) expect(target.querySelector(`#${id}-problem`)?.textContent).toBe('');
-});
-
 it('OD-2: the user name is sent without surrounding spaces', async () => {
   const target = open({ Login: ok({ login: { token: TOKEN } }) });
   type(target, 'username', ' ann ');

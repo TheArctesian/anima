@@ -40,7 +40,7 @@ vi.mock('$lib/hub/hub', async (importOriginal) => ({
   createHub: (options: NonNullable<typeof fake.options>): Hub => {
     fake.options = options;
     return {
-      address: { origin: 'https://hub.anima.ing', http: '', socket: '' },
+      address: options.address,
       status: {
         get current() {
           return fake.status;
@@ -233,9 +233,13 @@ it('H-2: with nothing stored the hub is the default one', () => {
 it('API-003, H-5: in the desktop app with no stored token the layout goes to /sign-in', async () => {
   keyStore.available.mockReturnValue(true);
   keyStore.read.mockResolvedValue(null);
+  localStorage.setItem('anima.hubAddress', 'https://hub.example.org');
+  onTestFinished(() => {
+    localStorage.clear();
+  });
   show('/devices');
   await vi.advanceTimersByTimeAsync(0);
-  expect(keyStore.read).toHaveBeenCalledWith(expect.objectContaining({ origin: 'https://hub.anima.ing' }));
+  expect(keyStore.read).toHaveBeenCalledWith(expect.objectContaining({ origin: 'https://hub.example.org' }));
   expect(router.goto).toHaveBeenCalledWith('/sign-in');
 });
 

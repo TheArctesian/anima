@@ -25,7 +25,7 @@ export function ok<T>(value: T): HubResult<T> {
 }
 
 /** `answers` maps an operation name to the data it returns; an operation without an answer is `unreachable`. */
-export function fakeHub(answers: Partial<Record<Operation, HubResult<unknown>>>): { hub: Hub; sent: SentRequest[] } {
+export function fakeHub(answers: Partial<Record<Operation, HubResult<unknown> | Promise<HubResult<unknown>>>>): { hub: Hub; sent: SentRequest[] } {
   const sent: SentRequest[] = [];
   const hub = {
     address: HUB_ADDRESS,

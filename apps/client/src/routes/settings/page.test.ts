@@ -99,3 +99,21 @@ it('LOG-007: nothing is written to the console while signing out', async () => {
   await settled();
   for (const spy of consoleSpies) expect(spy).not.toHaveBeenCalled();
 });
+
+it('SET-002: Sign out disables the button while the hub answers, so a second click sends no second logout', async () => {
+  let release: (result: ReturnType<typeof ok>) => void = () => undefined;
+  const pending = new Promise<ReturnType<typeof ok>>((resolve) => {
+    release = resolve;
+  });
+  const target = await open({ Me: ok({ me: { username: 'ann' } }), Logout: pending });
+  const button = signOutButton(target);
+  button.click();
+  flushSync();
+  expect(button.disabled).toBe(true);
+  button.click();
+  await settled();
+  expect(hub.sent.filter((request) => request.operation === 'Logout')).toHaveLength(1);
+  release(ok({ logout: true }));
+  await settled();
+  expect(mocks.goToSignIn).toHaveBeenCalledOnce();
+});

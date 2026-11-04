@@ -22,8 +22,12 @@
 
   async function leave(): Promise<void> {
     busy = true;
-    const kept = await signOut({ api, address: hub.address, clearToken: clearAccessToken });
-    busy = false;
+    let kept: string | null;
+    try {
+      kept = await signOut({ api, address: hub.address, clearToken: clearAccessToken });
+    } finally {
+      busy = false;
+    }
     if (kept === null) goToSignIn();
     else problem = kept;
   }

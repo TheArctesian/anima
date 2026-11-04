@@ -23,9 +23,9 @@ function refused(message: string, fields: FieldMessages = {}): SignInOutcome {
   return { signedIn: false, message, fields };
 }
 
-/** The token goes from the hub's answer to the key store inside this function and nowhere else (CLI-003, LOG-007). */
 export const DESKTOP_ONLY_MESSAGE = 'Signing in needs the Anima desktop app, which keeps the access token.';
 
+/** The token goes from the hub's answer to the key store inside this function and nowhere else (CLI-003, LOG-007). */
 export async function signIn({ api, address, desktop, writeToken }: SignIn, form: LoginForm): Promise<SignInOutcome> {
   const problems = checkLogin(form);
   if (Object.keys(problems).length > 0) return refused('Check the marked fields.', problems);
