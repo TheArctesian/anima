@@ -1,0 +1,205 @@
+<script lang="ts">
+  import Icon from '$lib/icons/Icon.svelte';
+  import { press } from '$lib/motion/roles/press';
+  import { popover } from '$lib/motion/roles/transitions';
+  import { KEY_COMBINATIONS, type KeyCombination } from '../keys';
+  import { menuFocus } from './menu';
+
+  interface Props {
+    /** No session to send to (not ready, or ended). */
+    disabled: boolean;
+    onkeys: (combination: KeyCombination) => void;
+    onpaste: () => void;
+  }
+
+  const { disabled, onkeys, onpaste }: Props = $props();
+  const menuId = $props.id();
+  let open = $state(false);
+  let trigger: HTMLButtonElement | undefined = $state();
+  let menu: HTMLElement | undefined = $state();
+
+  function items(): HTMLElement[] {
+    return menu === undefined ? [] : [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+  }
+
+  function show(at: 'first' | 'last') {
+    open = true;
+    // The menu exists after this update; focus its first (or last) item then.
+    queueMicrotask(() => {
+      const all = items();
+      (at === 'first' ? all[0] : all.at(-1))?.focus();
+    });
+  }
+
+  function hide(refocus: boolean) {
+    open = false;
+    if (refocus) trigger?.focus();
+  }
+
+  function choose(action: () => void) {
+    hide(true);
+    action();
+  }
+
+  function triggerKey(event: KeyboardEvent) {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      show(event.key === 'ArrowDown' ? 'first' : 'last');
+    }
+  }
+
+  function menuKey(event: KeyboardEvent) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      hide(true);
+    } else if (event.key === 'Tab') {
+      hide(false);
+    } else {
+      const next = menuFocus(event.key, items(), document.activeElement);
+      if (next === undefined) return;
+      event.preventDefault();
+      next.focus();
+    }
+  }
+
+  // A press outside the menu and its control closes it.
+  $effect(() => {
+    if (!open) return;
+    const outside = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (target !== null && !menu?.contains(target) && !trigger?.contains(target)) hide(false);
+    };
+    document.addEventListener('pointerdown', outside, true);
+    return () => {
+      document.removeEventListener('pointerdown', outside, true);
+    };
+  });
+
+  $effect(() => {
+    if (disabled) open = false;
+  });
+</script>
+
+<div class="keys">
+  <button
+    type="button"
+    class="trigger"
+    bind:this={trigger}
+    {disabled}
+    aria-haspopup="menu"
+    aria-expanded={open}
+    aria-controls={menuId}
+    title="Send a key combination"
+    onclick={() => (open ? hide(false) : show('first'))}
+    onkeydown={triggerKey}
+    {@attach press()}
+  >
+    <Icon name="nf-md-key" />
+    <span>Keys</span>
+  </button>
+  {#if open}
+    <!-- Solid, not a translucent material: the menu lies over the live display (MAT-008). -->
+    <div
+      class="menu"
+      id={menuId}
+      role="menu"
+      tabindex="-1"
+      aria-label="Keys"
+      bind:this={menu}
+      onkeydown={menuKey}
+      transition:popover={{ from: trigger }}
+    >
+      {#each KEY_COMBINATIONS as combination (combination.id)}
+        <button type="button" role="menuitem" tabindex="-1" onclick={() => choose(() => onkeys(combination))}>
+          <span class="label">{combination.label}</span>
+          <span class="hint">{combination.hint}</span>
+        </button>
+      {/each}
+      <hr />
+      <button type="button" role="menuitem" tabindex="-1" onclick={() => choose(onpaste)}>
+        <span class="label">Paste</span>
+        <span class="hint">Send the clipboard</span>
+      </button>
+    </div>
+  {/if}
+</div>
+
+<style>
+  .keys {
+    position: relative;
+  }
+
+  .trigger {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-block-size: var(--target-min-desktop);
+    padding: 0 var(--space-3);
+    border: var(--border-thin) solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-raised);
+    color: var(--text);
+    font: inherit;
+    transition: background-color var(--duration-press) var(--ease-enter);
+  }
+
+  .trigger:disabled {
+    color: var(--text-muted);
+  }
+
+  .trigger:focus-visible,
+  .menu button:focus-visible {
+    outline: var(--border-focus) solid var(--accent);
+    outline-offset: calc(var(--border-focus) * -1);
+  }
+
+  .menu {
+    position: absolute;
+    inset-block-start: calc(100% + var(--space-1));
+    inset-inline-start: 0;
+    z-index: var(--layer-popover);
+    display: flex;
+    flex-direction: column;
+    min-inline-size: calc(var(--space-16) * 4);
+    padding: var(--space-1);
+    border: var(--border-thin) solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-raised);
+    box-shadow: var(--elevation-2);
+  }
+
+  .menu button {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-4);
+    min-block-size: var(--target-min-desktop);
+    padding: 0 var(--space-3);
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    text-align: start;
+  }
+
+  .menu button:hover,
+  .menu button:focus {
+    background: var(--border);
+  }
+
+  .label {
+    font-family: var(--font-mono);
+  }
+
+  .hint {
+    color: var(--text);
+    font-size: var(--text-sm);
+  }
+
+  hr {
+    inline-size: 100%;
+    margin: var(--space-1) 0;
+    border: 0;
+    border-top: var(--border-thin) solid var(--border);
+  }
+</style>
