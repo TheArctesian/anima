@@ -44,6 +44,32 @@ impl Check {
     pub const fn kind(&self) -> CheckType {
         self.config.kind()
     }
+
+    /// Whole days from `now` to the certificate's expiry, rounded down, so negative once it
+    /// has expired. `None` unless the check is TLS or HTTPS and has seen a certificate
+    /// (CHK-007).
+    #[must_use]
+    pub fn certificate_days_left(&self, now: DateTime<Utc>) -> Option<i32> {
+        let secure = match &self.config {
+            CheckConfig::Tls { .. } => true,
+            CheckConfig::Http(http) => {
+                reqwest::Url::parse(&http.url).is_ok_and(|url| url.scheme() == "https")
+            }
+            _ => false,
+        };
+        let seconds = (self.cert_not_after? - now).num_seconds();
+        let days = seconds.div_euclid(86_400);
+        secure.then(|| i32::try_from(days).unwrap_or(if days < 0 { i32::MIN } else { i32::MAX }))
+    }
+}
+
+/// One stored result of a check (CHK-003), as the heartbeat list shows it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Heartbeat {
+    pub at: DateTime<Utc>,
+    pub status: Status,
+    pub response_time_ms: Option<u32>,
+    pub message: Option<String>,
 }
 
 /// The token in a PUSH check's URL: 32 random bytes in unpadded base64url (R-028). It is the

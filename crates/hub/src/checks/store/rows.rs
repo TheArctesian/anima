@@ -73,7 +73,7 @@ pub(super) const fn status_sql(status: Status) -> &'static str {
     }
 }
 
-fn status_of(text: &str) -> Result<Status, sqlx::Error> {
+pub(super) fn status_of(text: &str) -> Result<Status, sqlx::Error> {
     Ok(match text {
         "up" => Status::Up,
         "down" => Status::Down,

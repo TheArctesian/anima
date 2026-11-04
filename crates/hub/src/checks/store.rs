@@ -19,6 +19,7 @@ macro_rules! select_check {
 }
 
 mod beats;
+mod heartbeats;
 mod retention;
 mod rows;
 mod uptime;
@@ -37,12 +38,13 @@ use super::{
 use crate::ids::{CheckId, DeviceId};
 
 pub(super) use beats::record_beat;
+pub(super) use heartbeats::before as heartbeats_before;
 pub use retention::Trimmed;
 pub(super) use retention::{
     create_days_ahead, delete_orphan_heartbeats, drop_heartbeat_days_before, trim_aggregates,
 };
 use rows::{CheckRow, StandingRow, to_checks};
-pub(super) use uptime::tallies;
+pub(super) use uptime::{check_tally, tallies};
 pub(super) use writes::{
     Change, Current, Insert, delete, insert, load_http_secrets, lock, seal, set_paused, update,
 };
@@ -77,6 +79,15 @@ pub(super) async fn standings(db: &PgPool, devices: &[DeviceId]) -> Result<Vec<S
     .fetch_all(db)
     .await?;
     rows.into_iter().map(Standing::try_from).collect()
+}
+
+/// The PUSH check that holds this token, if any.
+pub(super) async fn by_push_token(db: &PgPool, token: &str) -> Result<Option<Check>, Error> {
+    let row = sqlx::query_as::<_, CheckRow>(select_check!("WHERE push_token = $1"))
+        .bind(token)
+        .fetch_optional(db)
+        .await?;
+    row.map(Check::try_from).transpose()
 }
 
 /// For each device, the address of the check with the latest beat that has one.
