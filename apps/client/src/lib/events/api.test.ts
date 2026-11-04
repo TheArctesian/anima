@@ -73,4 +73,24 @@ describe('eventsApi.watch', () => {
     expect(listeners('EventAdded')).toBe(0);
     expect(heard).toEqual([]);
   });
+
+  it('LOG-010 forwards the end of the subscription when the hub closes, and a later watch ends at once', async () => {
+    const fake = fakeHub();
+    const { heard, sink } = sinkOf();
+    eventsApi(fake.hub).watch('INFO', sink);
+    await fake.hub.close();
+    eventsApi(fake.hub).watch('INFO', sink);
+    expect(heard).toEqual(['complete', 'complete']);
+    expect(fake.listeners('EventAdded')).toBe(0);
+  });
+
+  it('LOG-010 a stop after the hub closed is harmless and adds nothing', async () => {
+    const fake = fakeHub();
+    const { heard, sink } = sinkOf();
+    const stop = eventsApi(fake.hub).watch('INFO', sink);
+    await fake.hub.close();
+    stop();
+    fake.push('EventAdded', { eventAdded: ROW });
+    expect(heard).toEqual(['complete']);
+  });
 });
