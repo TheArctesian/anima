@@ -51,22 +51,22 @@ function accepted(key: ReviewedKey, result: HubResult<AcceptedHostKey>): HostKey
 }
 
 /**
- * The next step after `event`, or `current` when the event does not apply to it. Results arrive only in the step
- * that asked for them, so a late or repeated answer changes nothing; a new review always clears an older key.
+ * The step `event` leads to, or undefined when it does not apply to `current`. Results apply only in the step that
+ * asked for them, so a late or repeated answer, or a second click, does nothing; a new review clears an older key.
  */
-export function nextStep(current: HostKeyStep, event: HostKeyEvent): HostKeyStep {
+export function transition(current: HostKeyStep, event: HostKeyEvent): HostKeyStep | undefined {
   switch (event.event) {
     case 'review':
-      return current.step === 'warned' || current.step === 'reviewed' ? { step: 'reviewing' } : current;
+      return current.step === 'warned' || current.step === 'reviewed' ? { step: 'reviewing' } : undefined;
     case 'reviewed':
-      return current.step === 'reviewing' ? reviewed(event.result) : current;
+      return current.step === 'reviewing' ? reviewed(event.result) : undefined;
     case 'confirm':
-      return current.step === 'reviewed' ? { step: 'confirming', key: current.key } : current;
+      return current.step === 'reviewed' ? { step: 'confirming', key: current.key } : undefined;
     case 'back':
-      return current.step === 'confirming' ? { step: 'reviewed', key: current.key } : current;
+      return current.step === 'confirming' ? { step: 'reviewed', key: current.key } : undefined;
     case 'accept':
-      return current.step === 'confirming' ? { step: 'accepting', key: current.key } : current;
+      return current.step === 'confirming' ? { step: 'accepting', key: current.key } : undefined;
     case 'accepted':
-      return current.step === 'accepting' ? accepted(current.key, event.result) : current;
+      return current.step === 'accepting' ? accepted(current.key, event.result) : undefined;
   }
 }

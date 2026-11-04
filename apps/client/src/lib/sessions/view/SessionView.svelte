@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import type { SessionsApi } from '../api';
   import type { SessionEnding } from '../ending';
   import { paneKeyboard, receiveClipboard, type PaneKeyboard } from '../tunnel/input';
@@ -122,7 +123,8 @@
       clear: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
     });
     sizes = sender;
-    if (paneSize !== undefined) resized(paneSize);
+    const now = untrack(() => paneSize);
+    if (now !== undefined) resized(now);
     receiveClipboard(target, (text) => {
       if (bound) copyToSystem(text);
       else pendingCopy = text;

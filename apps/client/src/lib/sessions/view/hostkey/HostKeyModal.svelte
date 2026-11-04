@@ -4,7 +4,7 @@
   import { crossFade, modal } from '$lib/motion/roles/transitions';
   import type { SessionsApi } from '../../api';
   import { trapFocus } from './focus';
-  import { WARNED, nextStep, type HostKeyEvent, type HostKeyStep } from './hostkey';
+  import { WARNED, transition, type HostKeyEvent, type HostKeyStep } from './hostkey';
 
   interface Props {
     device: { readonly id: string; readonly name: string };
@@ -16,26 +16,28 @@
   }
 
   const { device, api, onclose, onreconnect }: Props = $props();
-  let current: HostKeyStep = $state(WARNED);
+  let current: HostKeyStep = $state.raw(WARNED);
   let surface: HTMLElement | undefined = $state();
   let closeButton: HTMLButtonElement | undefined = $state();
   const key = $derived('key' in current ? current.key : undefined);
   const problem = $derived(current.step === 'warned' ? current.problem : undefined);
 
-  function apply(event: HostKeyEvent): HostKeyStep {
-    current = nextStep(current, event);
-    return current;
+  /** Move to the step `event` leads to; undefined (and no change) when it does not apply now. */
+  function apply(event: HostKeyEvent): HostKeyStep | undefined {
+    const next = transition(current, event);
+    if (next !== undefined) current = next;
+    return next;
   }
 
   async function review() {
-    if (apply({ event: 'review' }).step !== 'reviewing') return;
+    if (apply({ event: 'review' }) === undefined) return;
     const result = await api.testConnection(device.id);
     apply({ event: 'reviewed', result });
   }
 
   async function accept() {
     const sending = apply({ event: 'accept' });
-    if (sending.step !== 'accepting') return;
+    if (sending?.step !== 'accepting') return;
     // Exactly the fingerprint shown and confirmed; the state sends it once (SEC-007).
     const result = await api.acceptHostKey(device.id, sending.key.fingerprintSha256);
     apply({ event: 'accepted', result });
