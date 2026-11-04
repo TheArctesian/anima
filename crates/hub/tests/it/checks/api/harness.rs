@@ -10,6 +10,7 @@ use std::{
 };
 
 use anima_hub::{
+    access::Identity,
     checks::{
         self, Beat, CheckState,
         graphql::{Mutation, Query, Subscription},
@@ -78,11 +79,12 @@ pub fn hardened_schema(pool: &PgPool) -> TestSchema {
 
 /// A request from the K6 operator.
 pub fn signed_in(query: &str) -> Request {
-    Request::new(query)
-        .data(Operator {
-            id: OPERATOR_ID.parse::<OperatorId>().unwrap(),
-            name: "operator".to_owned(),
-        })
+    let operator = Operator {
+        id: OPERATOR_ID.parse::<OperatorId>().unwrap(),
+        name: "operator".to_owned(),
+    };
+    Identity::for_tests(operator, now() + TimeDelta::days(3650))
+        .attach(Request::new(query))
         .data(ClientAddr("10.10.0.77".parse().unwrap()))
 }
 
@@ -220,7 +222,8 @@ pub fn beat(at: DateTime<Utc>, status: Status, response_time_ms: Option<u32>) ->
 /// Records the beat on the check, as the scheduler does.
 pub async fn record(pool: &PgPool, check: &str, beat: &Beat) {
     let mut conn = pool.acquire().await.unwrap();
-    checks::record_beat(&mut conn, check.parse::<CheckId>().unwrap(), beat)
+    let recorded = checks::record_beat(&mut conn, check.parse::<CheckId>().unwrap(), beat)
         .await
         .unwrap();
+    assert_eq!(recorded, checks::Recorded::Written);
 }

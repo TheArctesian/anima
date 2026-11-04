@@ -278,6 +278,21 @@ pub(super) struct UpdateForm {
     pub(super) rotated: bool,
 }
 
+impl UpdateForm {
+    /// Whether the input names nothing to change.
+    pub(super) fn is_empty(&self) -> bool {
+        let change = &self.change;
+        change.parent.is_none()
+            && change.name.is_none()
+            && change.definition.is_none()
+            && change.interval_seconds.is_none()
+            && change.retries.is_none()
+            && change.retry_interval_seconds.is_none()
+            && change.degraded_threshold_ms.is_none()
+            && change.invert.is_none()
+    }
+}
+
 #[expect(
     clippy::option_option,
     reason = "CheckChange.parent separates keeping the group from leaving it"

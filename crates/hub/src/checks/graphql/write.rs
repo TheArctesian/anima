@@ -43,6 +43,20 @@ fn fresh_token() -> PushToken {
     PushToken::from_random(&bytes)
 }
 
+/// The device a new check goes on; a missing one is the operator's `deviceId` error.
+async fn new_device_name(db: &PgPool, device: DeviceId) -> Result<String> {
+    match devices::get(db, device).await {
+        Ok(found) => Ok(found.name),
+        Err(devices::Error::NotFound(_)) => Err(invalid(&[FieldError::new(
+            "deviceId",
+            "There is no such device.",
+        )])),
+        Err(error) => Err(from_devices(error)),
+    }
+}
+
+/// Every device name is read before the transaction opens: a mutation never holds one
+/// connection while it waits for a second (API-010).
 async fn device_name(db: &PgPool, device: DeviceId) -> Result<String> {
     devices::get(db, device)
         .await
@@ -111,6 +125,7 @@ pub(super) async fn create(ctx: &Context<'_>, input: CreateShape) -> Result<Chec
     if let Some(children) = &form.children {
         validate_children(db, children, form.new.device).await?;
     }
+    let device = new_device_name(db, form.new.device).await?;
     let vault = schema_dependency::<Vault>(ctx)?;
     let trail = Trail::from_context(ctx)?;
     let mut tx = begin(ctx).await?;
@@ -120,7 +135,6 @@ pub(super) async fn create(ctx: &Context<'_>, input: CreateShape) -> Result<Chec
     if let Some(children) = &form.children {
         regroup(&mut tx, vault, check.id, (&[], children)).await?;
     }
-    let device = device_name(db, check.device).await?;
     let extras = Extras {
         sealed: form.sealed,
         children: form.children.as_deref(),
@@ -138,6 +152,11 @@ pub(super) async fn update(ctx: &Context<'_>, id: &ID, input: UpdateShape) -> Re
     let db = pool(ctx)?;
     let before = checks::get(db, id).await.map_err(to_graphql)?;
     let form = form::update(input, fresh_token()).map_err(|errors| invalid(&errors))?;
+    if form.is_empty() {
+        let nothing = FieldError::new("input", "Send at least one field to change.");
+        return Err(invalid(&[nothing]));
+    }
+    let device = device_name(db, before.device).await?;
     let current = match &form.children {
         Some(children) => {
             validate_children(db, children, before.device).await?;
@@ -158,7 +177,6 @@ pub(super) async fn update(ctx: &Context<'_>, id: &ID, input: UpdateShape) -> Re
     if let Some(children) = &form.children {
         regroup(&mut tx, vault, id, (&current, children)).await?;
     }
-    let device = device_name(db, after.device).await?;
     let extras = Extras {
         sealed: form.sealed,
         children: form.children.as_deref(),
@@ -173,14 +191,25 @@ pub(super) async fn update(ctx: &Context<'_>, id: &ID, input: UpdateShape) -> Re
 
 pub(super) async fn delete(ctx: &Context<'_>, id: &ID) -> Result<ID> {
     let id = check_id(id).map_err(|error| invalid(&[error]))?;
+    let db = pool(ctx)?;
+    let before = checks::get(db, id).await.map_err(to_graphql)?;
+    let device = device_name(db, before.device).await?;
+    let freed: Vec<CheckId> = if before.kind() == CheckType::Group {
+        let siblings = checks::for_device(db, before.device)
+            .await
+            .map_err(to_graphql)?;
+        let members = siblings.iter().filter(|check| check.parent == Some(id));
+        members.map(|check| check.id).collect()
+    } else {
+        Vec::new()
+    };
     let trail = Trail::from_context(ctx)?;
     let mut tx = begin(ctx).await?;
     let check = checks::delete_check(&mut tx, id)
         .await
         .map_err(to_graphql)?;
-    let device = device_name(pool(ctx)?, check.device).await?;
     trail
-        .write(&mut tx, trail::deleted(&check, &device))
+        .write(&mut tx, trail::deleted(&check, &device, &freed))
         .await?;
     commit(tx).await?;
     Ok(ID(check.id.to_string()))
@@ -188,12 +217,14 @@ pub(super) async fn delete(ctx: &Context<'_>, id: &ID) -> Result<ID> {
 
 pub(super) async fn set_paused(ctx: &Context<'_>, id: &ID, paused: bool) -> Result<Check> {
     let id = check_id(id).map_err(|error| invalid(&[error]))?;
+    let db = pool(ctx)?;
+    let before = checks::get(db, id).await.map_err(to_graphql)?;
+    let device = device_name(db, before.device).await?;
     let trail = Trail::from_context(ctx)?;
     let mut tx = begin(ctx).await?;
     let check = checks::set_paused(&mut tx, id, paused)
         .await
         .map_err(to_graphql)?;
-    let device = device_name(pool(ctx)?, check.device).await?;
     trail.write(&mut tx, trail::paused(&check, &device)).await?;
     commit(tx).await?;
     Ok(check)
