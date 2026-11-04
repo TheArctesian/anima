@@ -70,10 +70,13 @@ export interface HubOptions {
 
 /** A hub at `address`; its socket connects at once, so the status is true before any request (NAV-003, NET-004). */
 export function createHub(options: HubOptions): Hub {
-  const { address, token } = options;
+  // A frozen copy: a caller that changes its own object later changes neither the endpoints nor what the token provider hears (CLI-002).
+  const address: HubAddress = Object.freeze({ ...options.address });
+  const { token } = options;
   const timeoutMs = options.timeoutMs ?? HUB_TIMEOUT_MS;
   const connection = createConnection(options.now ?? (() => new Date()));
   const http = {
+    address,
     endpoint: address.http,
     fetch: options.fetch ?? globalThis.fetch.bind(globalThis),
     token,
@@ -81,6 +84,7 @@ export function createHub(options: HubOptions): Hub {
     timeoutMs,
   };
   const socket = createSocket({
+    address,
     endpoint: address.socket,
     WebSocket: options.WebSocket ?? globalThis.WebSocket,
     token,

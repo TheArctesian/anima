@@ -15,7 +15,7 @@
 
   // The hub address is the stored setting (CLI-002); the token is read from the desktop key store per call (CLI-003).
   const address = storedHubAddress(localStorage);
-  const hub = createHub({ address, token: () => readAccessToken(address) });
+  const hub = createHub({ address, token: readAccessToken });
   provideHub(hub);
   const clock = createClock(DATA_AGE_REFRESH_MS);
 

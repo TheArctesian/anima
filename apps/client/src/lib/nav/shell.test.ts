@@ -16,7 +16,7 @@ const keyStore = vi.hoisted(() => ({ read: vi.fn() }));
 vi.mock('$lib/desktop/token', () => ({ readAccessToken: keyStore.read }));
 
 const fake = vi.hoisted(() => ({
-  options: undefined as { address: { origin: string }; token: () => Promise<string | null> } | undefined,
+  options: undefined as { address: { origin: string }; token: (address: never) => Promise<string | null> } | undefined,
   status: { connection: 'connected', lastContactAt: null } as HubStatus,
   close: (): Promise<void> => Promise.resolve(),
 }));
@@ -217,7 +217,7 @@ it('H-2: the hub is created with the stored address and a token read from the ke
   keyStore.read.mockResolvedValue('s3cret-token');
   show();
   expect(fake.options?.address.origin).toBe('https://my-hub.example');
-  await expect(fake.options?.token()).resolves.toBe('s3cret-token');
+  await expect(fake.options?.token(fake.options.address as never)).resolves.toBe('s3cret-token');
   expect(keyStore.read).toHaveBeenCalledExactlyOnceWith({
     origin: 'https://my-hub.example',
     http: 'https://my-hub.example/graphql',
