@@ -1,10 +1,11 @@
 //! One full session, and the relay rules on the wire: the open instruction first, guacd's
 //! instructions sent with `ready`, ping, `size`, `nop` after silence, the client's
-//! `disconnect`, and the messages the WebSocket refuses (over the size cap, not UTF-8).
+//! `disconnect`, the messages the WebSocket refuses (over the size cap, not UTF-8), and
+//! non-BMP text that guacamole-common-js 1.5.0 would misread (R-046).
 
 use std::time::Duration;
 
-use guac_protocol::Instruction;
+use guac_protocol::{Instruction, encode};
 use serde_json::json;
 use sqlx::PgPool;
 use tokio::time::{Instant, timeout};
@@ -14,7 +15,7 @@ use super::{
     fake_guacd::{ARGS_1_5_5, ARGS_1_6_0, Act, CONNECTION_ID, Script, connect_values, fake_guacd},
     heard, opened,
     records::{ended, stored_text},
-    socket::open,
+    socket::{decoded_as_utf16, open},
 };
 
 const OPCODES: [&str; 7] = [
@@ -232,4 +233,25 @@ async fn k4_5_the_clients_disconnect_reaches_guacd_once(pool: PgPool) {
     assert_eq!(heard(&mut guacd).await.opcode, "disconnect");
     let after = timeout(Duration::from_secs(5), guacd.from_hub.recv()).await;
     assert_eq!(after.unwrap(), None, "the hub closes without a second one");
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
+)]
+async fn r_046_gw_014_r_035_a_non_bmp_title_cannot_forge_client_instructions(pool: PgPool) {
+    // A terminal title the remote host chose: emoji that 1.5.0 counts twice, then a `;` and
+    // the instructions 1.5.0 would read after it.
+    let forged = "9.clipboard,1.0,10.text/plain;4.blob,1.0,8.SGVsbG8=;3.end,1.0;\
+                  5.error,13.forged detail,3.769";
+    let k = forged.chars().count() + 1;
+    let title = format!("{}x;{forged}", "😀".repeat(k));
+    let (guacd, _bench, mut client) = super::session(&pool, Setup::default()).await;
+    let name = encode(&Instruction::new("name", [title]));
+    guacd.act.send(Act::Send(name)).ok();
+    let read = decoded_as_utf16(&client.text().await);
+    let opcodes: Vec<&str> = read.iter().map(|i| i.opcode.as_str()).collect();
+    assert_eq!(opcodes, ["name"], "nothing forged reaches the client");
+    let shown = format!("{}x;{forged}", "\u{FFFD}".repeat(k));
+    assert_eq!(read[0].args, [shown]);
 }
