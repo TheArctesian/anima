@@ -3,7 +3,8 @@
 # (spec Sections 4.1, 4.2, 4.2.1; package plan WP-03 decisions D-5 to D-9).
 #
 # This file is a template. Placeholders (the only two; tests fail on any other):
-#   VPS_PUBLIC_IPV4  public IPv4 address of the VPS, for the embedded DERP map entry
+#   VPS_PUBLIC_IPV4  public IPv4 address of the VPS: the public listeners bind it, and
+#                    the embedded DERP map entry announces it
 #   ACME_EMAIL       contact address registered with Let's Encrypt
 # The operator renders it on the VPS with envsubst, restricted to exactly these two
 # variables, into /opt/anima/headscale/config/config.yaml (the guide gives the command).
@@ -15,13 +16,19 @@ server_url: https://hs.anima.ing
 
 # The only public TCP listener: control protocol, embedded DERP and ACME TLS-ALPN-01
 # all share port 443 (VPS-002, VPS-003, D-6). There is no reverse proxy in front.
-listen_addr: 0.0.0.0:443
+# It binds the public IPv4 only, never a wildcard: the hub binds <hub VPN address>:443
+# on the same host (D-5), and Go's dual-stack wildcard would also open 443 on public
+# IPv6. TLS-ALPN-01 still works, because Let's Encrypt connects to the public IPv4:443.
+# In 0.29.7 this listener also serves /api/v1, /swagger and /version, with no switch to
+# turn them off. The protection is that no API keys exist (D-6); the guide repeats the
+# `headscale apikeys list` check after each upgrade.
+listen_addr: "${VPS_PUBLIC_IPV4}:443"
 
 # Metrics and debug endpoints stay on loopback (VPS-003).
 metrics_listen_addr: 127.0.0.1:9090
 
-# Remote gRPC admin is not used: the CLI talks to the unix socket below, so gRPC stays
-# on loopback and never runs without TLS (VPS-003, D-6).
+# Remote gRPC starts (TLS is on, which enables it) but listens on loopback only and
+# requires an API key, and none exist (VPS-003, D-6). The CLI uses the unix socket below.
 grpc_listen_addr: 127.0.0.1:50443
 grpc_allow_insecure: false
 
@@ -48,7 +55,8 @@ derp:
     region_name: "Anima VPS"
     # Only nodes of this Headscale may relay through it.
     verify_clients: true
-    stun_listen_addr: "0.0.0.0:3478"
+    # Public IPv4 only, like listen_addr (no wildcard, no public IPv6).
+    stun_listen_addr: "${VPS_PUBLIC_IPV4}:3478"
     # Generated on first start if missing; part of the backup (VPS-006).
     private_key_path: /var/lib/headscale/derp_server_private.key
     automatically_add_embedded_derp_region: true
@@ -66,9 +74,10 @@ derp:
 disable_check_updates: true
 
 node:
-  # Personal (client) node keys expire after 180 days (VPN-003, D-1). Tagged nodes
-  # (hub, routers) are exempt. Headscale treats an unparseable value as "never expire",
-  # so the tests parse this string with Headscale's duration grammar.
+  # Default expiry for personal (client) node keys: 180 days (VPN-003, D-1). A client
+  # may request its own expiry at registration (the guide checks each new client's
+  # expiry). Tagged nodes (hub, routers) are exempt. Headscale treats an unparseable
+  # value as "never expire", so the tests parse this string with Headscale's grammar.
   expiry: 180d
   ephemeral:
     inactivity_timeout: 30m
@@ -79,6 +88,7 @@ node:
 
 database:
   type: sqlite
+  # No SQL debug logging, and parameterised queries keep values out of SQL logs (LOG-007).
   debug: false
   gorm:
     prepare_stmt: true
@@ -100,8 +110,9 @@ tls_letsencrypt_challenge_type: TLS-ALPN-01
 tls_cert_path: ""
 tls_key_path: ""
 
-# JSON lines for the Docker json-file log. Info, not debug or trace, which log
-# request detail (LOG-007).
+# JSON lines for the Docker json-file log. Level info only: trace logs credentials
+# (the plaintext pre-auth key), and Headscale silently falls back to debug on an
+# unknown level (LOG-007).
 log:
   level: info
   format: json

@@ -1,7 +1,8 @@
 // Headscale config template and Compose file (WP-03 T2; VPN-003, VPS-002, VPS-003,
 // DNS-006, NET-005; decisions D-5 to D-9).
 import { describe, expect, test } from 'bun:test';
-import { days, parseDuration } from '../src/duration.ts';
+import { parseGoDuration, seconds } from '../src/go-duration.ts';
+import { days, parsePrometheusDuration } from '../src/prometheus-duration.ts';
 
 const root = new URL('../', import.meta.url);
 const template = await Bun.file(new URL('config/config.yaml', root)).text();
@@ -94,27 +95,11 @@ describe('placeholders (VPS-003, LOG-007)', () => {
   });
 });
 
-describe('Headscale duration grammar (VPN-003)', () => {
-  test('accepts unit sequences in Headscale order', () => {
-    expect(parseDuration('180d')).toBe(days(180));
-    expect(parseDuration('1w2d')).toBe(days(9));
-    expect(parseDuration('1h30m')).toBe(90 * 60 * 1000);
-    expect(parseDuration('5ms')).toBe(5);
-    expect(parseDuration('0')).toBe(0);
-  });
-
-  test('rejects what Headscale rejects (and would then never expire)', () => {
-    for (const text of ['180 days', '180', '6mo', '', '1.5d', '2d1w', '-1d', '180D']) {
-      expect(parseDuration(text)).toBeNull();
-    }
-  });
-});
-
 describe('config: control server, expiry and names (VPN-003, DNS-006, NET-005)', () => {
   test('VPN-003: node.expiry parses as exactly 180 days', () => {
     const expiry = at(config, 'node.expiry');
     expect(typeof expiry).toBe('string');
-    expect(parseDuration(expiry as string)).toBe(days(180));
+    expect(parsePrometheusDuration(expiry as string)).toBe(days(180));
   });
 
   test('server_url is https://hs.anima.ing', () => {
@@ -138,9 +123,20 @@ describe('config: control server, expiry and names (VPN-003, DNS-006, NET-005)',
     expect(at(config, 'dns.extra_records')).toEqual([]);
   });
 
-  test('NET-005: node addresses come from the Tailscale ranges', () => {
+  test('NET-005: node addresses come sequentially from the Tailscale ranges', () => {
     expect(at(config, 'prefixes.v4')).toBe('100.64.0.0/10');
     expect(at(config, 'prefixes.v6')).toBe('fd7a:115c:a1e0::/48');
+    expect(at(config, 'prefixes.allocation')).toBe('sequential');
+  });
+
+  test('Go durations pass the bounds Headscale enforces at start (else fatal)', () => {
+    const go = (key: string): number | null => parseGoDuration(String(at(config, key)));
+    const interval = go('node.routes.ha.probe_interval') ?? 0;
+    const timeout = go('node.routes.ha.probe_timeout') ?? 0;
+    expect(go('node.ephemeral.inactivity_timeout')).toBeGreaterThan(seconds(65));
+    expect(interval).toBeGreaterThanOrEqual(seconds(2));
+    expect(timeout).toBeGreaterThanOrEqual(seconds(1));
+    expect(timeout).toBeLessThan(interval);
   });
 
   test('VPN-004: policy is the file beside the config (T1 path)', () => {
@@ -162,16 +158,21 @@ describe('config: listeners and ports (VPS-002, VPS-003)', () => {
     expect(at(config, 'grpc_allow_insecure')).toBe(false);
   });
 
+  test('VPS-002: no listener uses a wildcard address (0.0.0.0, [::], empty host)', () => {
+    const wildcards = listeners().filter(({ listener }) => ['', '0.0.0.0', '::'].includes(listener.host));
+    expect(wildcards.map(({ key }) => key)).toEqual([]);
+  });
+
   test('VPS-003: every listener except listen_addr and STUN is loopback', () => {
     const exposed = listeners().filter(({ listener }) => !isLoopback(listener.host));
     expect(exposed.map(({ key }) => key).sort()).toEqual(['derp.server.stun_listen_addr', 'listen_addr']);
   });
 
-  test('VPS-002: public ports from the config are exactly 443/tcp and 3478/udp', () => {
+  test('VPS-002: public listeners are exactly 443/tcp and 3478/udp on the rendered VPS address', () => {
     const ports = listeners()
       .filter(({ listener }) => !isLoopback(listener.host))
-      .map(({ protocol, listener }) => `${String(listener.port)}/${protocol}`);
-    expect(ports.sort()).toEqual(['3478/udp', '443/tcp']);
+      .map(({ protocol, listener }) => `${listener.host}:${String(listener.port)}/${protocol}`);
+    expect(ports.sort()).toEqual(['203.0.113.10:3478/udp', '203.0.113.10:443/tcp']);
   });
 
   test('VPS-003: the CLI socket is a unix socket not open to other users', () => {
@@ -189,6 +190,7 @@ describe('config: listeners and ports (VPS-002, VPS-003)', () => {
 
 describe('config: TLS, DERP and storage (D-6, D-7, VPS-006)', () => {
   test('VPS-003: Let\'s Encrypt TLS-ALPN-01 on :443, no HTTP-01 listener, no static certs', () => {
+    expect(at(config, 'acme_url')).toBe('https://acme-v02.api.letsencrypt.org/directory');
     expect(at(config, 'tls_letsencrypt_hostname')).toBe('hs.anima.ing');
     expect(at(config, 'tls_letsencrypt_challenge_type')).toBe('TLS-ALPN-01');
     expect(parseListener(at(config, 'listen_addr') as string).port).toBe(443);
@@ -217,8 +219,16 @@ describe('config: TLS, DERP and storage (D-6, D-7, VPS-006)', () => {
     expect(at(config, 'derp.server.private_key_path')).toMatch(/^\/var\/lib\/headscale\//);
   });
 
-  test('outbound features are off: update check, logtail, taildrop', () => {
+  test('LOG-007: log level info (trace logs the plaintext pre-auth key), no SQL debug', () => {
+    expect(at(config, 'log.level')).toBe('info');
+    expect(at(config, 'log.format')).toBe('json');
+    expect(at(config, 'database.debug')).toBe(false);
+    expect(at(config, 'database.gorm.parameterized_queries')).toBe(true);
+  });
+
+  test('outbound features are off: update check, logtail, taildrop, client auto-update', () => {
     expect(at(config, 'disable_check_updates')).toBe(true);
+    expect(at(config, 'auto_update.enabled')).toBe(false);
     expect(at(config, 'logtail.enabled')).toBe(false);
     expect(at(config, 'taildrop.enabled')).toBe(false);
   });
@@ -250,8 +260,18 @@ test('every config key exists in Headscale v0.29.7', () => {
 });
 
 describe('compose (VPS-002, VPS-003, D-9)', () => {
-  test('image is Headscale 0.29.7 by tag, optionally pinned by digest', () => {
-    expect(at(service, 'image')).toMatch(/^docker\.io\/headscale\/headscale:0\.29\.7(?:@sha256:[0-9a-f]{64})?$/);
+  test('Headscale is the only service, with exactly the reviewed keys (no environment, user, pid, entrypoint)', () => {
+    // Guards against HEADSCALE_* environment overrides (viper AutomaticEnv) and against
+    // user, pid or entrypoint changes that the review did not see.
+    expect(Object.keys(at(compose, 'services') as Tree)).toEqual(['headscale']);
+    expect(Object.keys(service as Tree).sort()).toEqual([
+      'cap_add', 'cap_drop', 'command', 'healthcheck', 'image', 'logging', 'network_mode',
+      'read_only', 'restart', 'security_opt', 'tmpfs', 'volumes',
+    ]);
+  });
+
+  test('image is Headscale 0.29.7 pinned by tag and digest', () => {
+    expect(at(service, 'image')).toMatch(/^docker\.io\/headscale\/headscale:0\.29\.7@sha256:[0-9a-f]{64}$/);
     expect(at(service, 'command')).toBe('serve');
     expect(at(service, 'restart')).toBe('unless-stopped');
   });
@@ -269,9 +289,9 @@ describe('compose (VPS-002, VPS-003, D-9)', () => {
     expect(at(service, 'cap_add')).toEqual(['NET_BIND_SERVICE']);
   });
 
-  test('VPS-003: config is mounted read-only; only lib and the socket folder are writable', () => {
+  test('VPS-003: config is mounted read-only; only lib and the root-only socket folder are writable', () => {
     expect(at(service, 'volumes')).toEqual(['./config:/etc/headscale:ro', './lib:/var/lib/headscale']);
-    expect(at(service, 'tmpfs')).toEqual(['/var/run/headscale']);
+    expect(at(service, 'tmpfs')).toEqual(['/var/run/headscale:mode=0700']);
   });
 
   test('health check uses the CLI; logs rotate by size', () => {
