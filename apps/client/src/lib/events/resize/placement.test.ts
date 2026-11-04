@@ -123,6 +123,22 @@ it('MOT-040: with reduced motion the disclosure changes height at once', () => {
   expect(slid()).toBe('0px 554px');
 });
 
+it('MOT-030: a page that changes size in the middle of a drag keeps the dragged height between the new limits', () => {
+  let current = snaps;
+  placement = new PanelPlacement({ snaps: () => current, panel: () => panel, preference });
+  placement.settle();
+  placement.grab();
+  placement.move(-200);
+  expect(placement.height).toBe(497);
+  current = snapsOf(40, 600);
+  placement.settle();
+  expect(placement.height).toBeGreaterThan(396);
+  expect(placement.height).toBeLessThan(497);
+  expect(slid()).toBe(`0px ${String(396 - placement.height)}px`);
+  placement.release(0);
+  expect(placement.height).toBe(396);
+});
+
 it('MOT-030: a page that changes size puts the panel at its stop at once', () => {
   const taller = snapsOf(40, 1200);
   placement = new PanelPlacement({ snaps: () => taller, panel: () => panel, preference });

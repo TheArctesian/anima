@@ -27,6 +27,7 @@ export class PanelPlacement {
   height = $state(0);
   #lastOpen: Stop = THIRD;
   #grabbedAt = 0;
+  #dragging = false;
   readonly #around: Surroundings;
 
   constructor(around: Surroundings) {
@@ -40,7 +41,9 @@ export class PanelPlacement {
 
   /** Puts the panel at its stop at once: first paint, and a page that changed size. */
   settle(): void {
-    this.height = this.#around.snaps()[this.stop];
+    const snaps = this.#around.snaps();
+    // A page that changes size under a drag keeps the dragged height, held between the new limits.
+    this.height = this.#dragging ? draggedHeight(this.height, snaps) : snaps[this.stop];
     this.#place(instant);
   }
 
@@ -50,6 +53,7 @@ export class PanelPlacement {
     const drawn = panel === undefined ? null : drawnOffset(panel);
     this.height = drawn === null ? this.height : this.#around.snaps()[2] - drawn;
     this.#grabbedAt = this.height;
+    this.#dragging = true;
   }
 
   /** The top edge is `delta` px below where it was grabbed; the panel follows 1:1 (MOT-030). */
@@ -60,6 +64,7 @@ export class PanelPlacement {
 
   /** `velocity` is the top edge's speed upward in px/s; the spring starts with it (MOT-031). */
   release(velocity: number): void {
+    this.#dragging = false;
     const stop = releasedStop(this.height, velocity, this.#around.snaps());
     this.#goTo(stop, springMotion('momentum', this.#around.preference.reduced, -velocity));
   }

@@ -68,12 +68,13 @@
     list-style: none;
   }
 
+  /* Cells shrink and the message wraps below them on a narrow panel, so a row never widens the page. */
   .row {
     position: relative;
-    display: grid;
-    grid-template-columns: calc(var(--space-16) * 2) calc(var(--space-16) * 1.5) calc(var(--space-16) * 1.5) calc(var(--space-16) * 3) 1fr;
+    display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
-    gap: var(--space-3);
+    gap: var(--space-1) var(--space-3);
     padding: var(--space-1) var(--space-3);
     border-block-end: var(--border-thin) solid var(--border);
     font-size: var(--text-sm);
@@ -109,7 +110,27 @@
     color: var(--text-muted);
   }
 
+  time {
+    flex: none;
+    inline-size: calc(var(--space-16) * 2);
+  }
+
+  .severity,
+  .source {
+    flex: none;
+    inline-size: calc(var(--space-16) * 1.5);
+  }
+
+  .device {
+    flex: 0 1 calc(var(--space-16) * 3);
+    min-inline-size: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .message {
+    flex: 1 1 calc(var(--space-16) * 3);
     min-inline-size: 0;
     overflow-wrap: anywhere;
     color: var(--text);

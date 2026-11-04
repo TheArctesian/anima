@@ -1,3 +1,8 @@
 /* The one stylesheet the client shell imports (WP-11, D-9). */
 @import "./tokens.css";
 @import "./fonts.css";
+
+/* The navigation bar's width; the logs panel starts beside it. */
+:root {
+  --nav-inline-size: calc(var(--space-16) * 3);
+}

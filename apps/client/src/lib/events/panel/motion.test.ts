@@ -88,6 +88,18 @@ async function arrive(over: LogEvent): Promise<void> {
 const springsMoving = () => runs.filter((run) => run.options.stiffness === spring.move.stiffness);
 const highlights = () => runs.filter((run) => run.keyframes[0] === 1 && run.keyframes[1] === 0);
 
+describe('First paint', () => {
+  it('MOT-007: the panel is at its 33 % place as soon as it is mounted, before any answer from the hub', () => {
+    fake = fakeHub({ Events: eventsAnswer([]) });
+    current.hub = fake.hub;
+    app = mount(LogsPanel, { target: document.body, props: { devices: [], now: () => NOW } });
+    flushSync();
+    expect(panel()?.style.translate).toBe(`0px ${String(TWO_THIRDS_PX - THIRD_PX)}px`);
+    expect(panel()?.style.blockSize).toBe(`${String(TWO_THIRDS_PX)}px`);
+    expect(valueNow()).toBe(Math.round(THIRD_PX));
+  });
+});
+
 describe('New log row', () => {
   it('moves the rows below down by FLIP on spring-move and fades a highlight over duration-highlight', async () => {
     await show();

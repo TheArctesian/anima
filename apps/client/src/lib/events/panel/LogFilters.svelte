@@ -66,6 +66,7 @@
 
 <style>
   .filters {
+    min-inline-size: 0;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -73,13 +74,19 @@
   }
 
   .select {
+    min-inline-size: 0;
+    max-inline-size: 100%;
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
     color: var(--text-muted);
   }
 
+  /* A long device name must not widen the page: the select shrinks and clips the name. */
   select {
+    min-inline-size: 0;
+    max-inline-size: 100%;
+    text-overflow: ellipsis;
     box-sizing: border-box;
     min-block-size: var(--target-min-desktop);
     padding: 0 var(--space-2);

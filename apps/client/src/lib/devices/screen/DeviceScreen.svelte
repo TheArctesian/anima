@@ -1,5 +1,6 @@
 <script lang="ts">
   import LogsPanel from '$lib/events/panel/LogsPanel.svelte';
+  import '$lib/events/resize/geometry.css';
   import { useHub } from '$lib/hub/context';
   import { press } from '$lib/motion/roles/press';
   import { crossFade } from '$lib/motion/roles/transitions';
@@ -113,12 +114,12 @@
 
 <style>
   /*
-   * Room to scroll the last card clear of the logs panel: its 33 % stop plus its header, fixed, so a drag reflows nothing.
-   * The 33vh is THIRD_SHARE in lib/events/resize/resize.ts; change them together.
+   * Room to scroll the last card clear of the logs panel at every stop: the 66 % stop plus the header. It is a constant, never
+   * the live height, so a drag or a stop change reflows nothing. The 66vh is TWO_THIRDS_SHARE in lib/events/resize/resize.ts
+   * (THIRD_SHARE is the 33 % stop); change them together.
    */
   .clearance {
-    --logs-third: 33vh;
-    block-size: calc(var(--logs-third) + var(--target-min-desktop) + var(--space-2));
+    block-size: calc(var(--logs-two-thirds) + var(--logs-header-size));
   }
 
   /* A new order must not drag the scroll position after the card the browser anchored to. */

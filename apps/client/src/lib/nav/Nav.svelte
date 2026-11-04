@@ -55,7 +55,7 @@
     position: sticky;
     top: 0;
     box-sizing: border-box;
-    inline-size: calc(var(--space-16) * 3);
+    inline-size: var(--nav-inline-size);
     block-size: 100vh;
     display: flex;
     flex-direction: column;

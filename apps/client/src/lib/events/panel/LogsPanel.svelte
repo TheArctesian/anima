@@ -11,6 +11,7 @@
   import LogFilters from './LogFilters.svelte';
   import LogList from './LogList.svelte';
   import { PanelPlacement } from '../resize/placement.svelte';
+  import '../resize/geometry.css';
   import { snapsOf } from '../resize/resize';
 
   interface Props {
@@ -24,7 +25,7 @@
   const id = $props.id();
   const preference = motionPreference();
   const feed = new LogFeed(useHub(), () => now());
-  let pageHeight = $state(0);
+  let pageHeight = $state(innerHeight);
   let header = $state<HTMLElement>();
   let headerHeight = $state(0);
   let panel = $state<HTMLElement>();
@@ -84,8 +85,7 @@
 
 <svelte:window bind:innerHeight={pageHeight} />
 
-<div class="anchor">
-  <section class="panel" aria-labelledby="{id}-title" bind:this={panel} style:block-size="{snaps[2]}px">
+<section class="panel" aria-labelledby="{id}-title" bind:this={panel} style:block-size="{snaps[2]}px">
     <!-- A focusable separator with a value is the WAI-ARIA window splitter, an interactive widget that Svelte's check does not know. -->
     <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
     <div
@@ -120,24 +120,23 @@
     </header>
     <div class="content" bind:this={content} inert={!placement.open}>
       <LogFilters filter={feed.filter} {devices} onChange={(next) => { feed.setFilter(next); }} />
-      <div class="scroll"><LogList {feed} {now} /></div>
+      <!-- A scrollable region must take focus so the keyboard can scroll it. -->
+      <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+      <div class="scroll" role="region" aria-label="Log list" tabindex="0"><LogList {feed} {now} /></div>
     </div>
-  </section>
-</div>
+</section>
 
 <style>
-  /* No height of its own: the panel overlays the bottom of the page and the page below it never moves. */
-  .anchor {
-    position: sticky;
-    inset-block-end: 0;
-    z-index: var(--layer-sticky);
-    block-size: 0;
-  }
-
+  /*
+   * Pinned to the viewport at the bottom of the content column, beside the navigation bar: it takes no room in the page and
+   * a translate never adds scroll height. Until the script has placed it, it is below the screen, never in the flow.
+   */
   .panel {
-    position: absolute;
+    position: fixed;
     inset-block-end: 0;
-    inset-inline: 0;
+    inset-inline: var(--nav-inline-size) 0;
+    z-index: var(--layer-sticky);
+    translate: 0 100%;
     display: flex;
     flex-direction: column;
     border-block-start: var(--border-thin) solid var(--border);
@@ -148,9 +147,9 @@
 
   .edge {
     position: absolute;
-    inset-block-start: calc(var(--space-2) * -1);
+    inset-block-start: calc(var(--space-1) * -1);
     inset-inline: 0;
-    block-size: var(--space-4);
+    block-size: var(--space-2);
     cursor: row-resize;
     touch-action: none;
   }
@@ -166,8 +165,8 @@
     flex: none;
     align-items: center;
     justify-content: space-between;
-    min-block-size: var(--target-min-desktop);
-    padding: var(--space-1) var(--space-3);
+    block-size: var(--logs-header-size);
+    padding: 0 var(--space-3);
   }
 
   h2 {
@@ -205,6 +204,7 @@
     flex-direction: column;
     gap: var(--space-2);
     min-block-size: 0;
+    min-inline-size: 0;
     padding: 0 var(--space-3) var(--space-3);
   }
 
@@ -212,5 +212,11 @@
     flex: 1;
     min-block-size: 0;
     overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .scroll:focus-visible {
+    outline: var(--border-focus) solid var(--accent);
+    outline-offset: calc(var(--border-focus) * -1);
   }
 </style>
