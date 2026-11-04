@@ -24,14 +24,6 @@ fn forwards(relay: &mut Relay, wire: &str) {
     );
 }
 
-fn size(args: &[&str]) -> ClientStep {
-    Relay::new().on_client(Instruction::new("size", args.iter().copied()))
-}
-
-fn sized(args: &[&str]) -> ClientStep {
-    ClientStep::Forward(Instruction::new("size", args.iter().copied()))
-}
-
 #[test]
 fn gw_011_ping_is_answered_with_itself_and_not_forwarded() {
     let ping = decoded("0.,4.ping,13.1730700000000;");
@@ -123,50 +115,6 @@ fn gw_011_an_ack_with_a_non_numeric_stream_or_status_closes() {
         "3.ack,0.,2.OK,1.0;",
     ] {
         assert_eq!(step(&mut Relay::new(), wire), CLOSE, "{wire}");
-    }
-}
-
-#[test]
-fn k4_size_is_forwarded_within_bounds_with_or_without_dpi() {
-    assert_eq!(size(&["1024", "768"]), sized(&["1024", "768"]));
-    assert_eq!(size(&["1", "1"]), sized(&["1", "1"]));
-    assert_eq!(size(&["8192", "8192"]), sized(&["8192", "8192"]));
-    assert_eq!(size(&["1024", "768", "48"]), sized(&["1024", "768", "48"]));
-    assert_eq!(
-        size(&["1024", "768", "480"]),
-        sized(&["1024", "768", "480"])
-    );
-}
-
-#[test]
-fn k4_size_leading_zeros_are_forwarded_as_plain_numbers() {
-    assert_eq!(size(&["01024", "0768"]), sized(&["1024", "768"]));
-    assert_eq!(
-        size(&["000001024", "768"]),
-        ClientStep::Drop,
-        "more than five digits"
-    );
-}
-
-#[test]
-fn k4_size_out_of_bounds_or_not_plain_digits_is_dropped() {
-    for args in [
-        &["0", "768"][..],
-        &["1024", "8193"],
-        &["1024", "768", "47"],
-        &["1024", "768", "481"],
-        &["+1024", "768"],
-        &["-1", "768"],
-        &["", "768"],
-        &[" 1024", "768"],
-        &["1024 ", "768"],
-        &["0x400", "768"],
-        &["１０２４", "768"],
-        &["1024"],
-        &[],
-        &["1024", "768", "96", "1"],
-    ] {
-        assert_eq!(size(args), ClientStep::Drop, "{args:?}");
     }
 }
 

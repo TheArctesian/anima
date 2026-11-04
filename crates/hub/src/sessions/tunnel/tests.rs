@@ -5,6 +5,7 @@ mod arguments;
 mod client;
 mod ending;
 mod gateway;
+mod size;
 
 use chrono::DateTime;
 use guac_protocol::{Decoder, Instruction};
