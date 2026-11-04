@@ -14,14 +14,14 @@ fn code_of(error: &async_graphql::Error) -> Value {
 
 #[test]
 fn k7_not_found_has_code_not_found_and_names_what_is_missing() {
-    let error = to_graphql(&Error::NotFound(Missing::Site(home())));
+    let error = to_graphql(Error::NotFound(Missing::Site(home())));
     assert_eq!(code_of(&error), Value::from("NOT_FOUND"));
     assert!(error.message.contains(HOME));
 }
 
 #[test]
 fn k7_validation_lists_each_field_with_its_message() {
-    let error = to_graphql(&Error::Validation(vec![
+    let error = to_graphql(Error::Validation(vec![
         FieldError::new("first", "Too big."),
         FieldError::new("siteId", "Not a site."),
     ]));
@@ -45,9 +45,10 @@ fn k7_validation_lists_each_field_with_its_message() {
 
 #[test]
 fn k7_database_failure_is_internal_with_a_generic_message() {
-    let error = to_graphql(&Error::Database(sqlx::Error::Protocol(
+    let error = to_graphql(Error::Database(sqlx::Error::Protocol(
         "SELECT secret FROM devices.devices".into(),
     )));
     assert_eq!(code_of(&error), Value::from("INTERNAL"));
+    assert!(error.source.is_some(), "the cause is kept for a log layer");
     assert!(!error.message.contains("SELECT") && !error.message.contains("devices."));
 }

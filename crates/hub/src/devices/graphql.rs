@@ -17,7 +17,7 @@ use sqlx::PgPool;
 
 use super::{
     DevicesBySite, Error, FieldError, Missing, OperatingSystem, SitesById, SshAuth,
-    graphql_error::{internal, invalid, to_graphql},
+    graphql_error::{internal, invalid, schema_data, to_graphql},
     model::{Device, DeviceFilter, Site, SshSettings},
     page::{decode_cursor, encode_cursor, page_after, page_size},
     store,
@@ -142,7 +142,7 @@ fn list_args(
 }
 
 fn pool<'a>(ctx: &Context<'a>) -> Result<&'a PgPool> {
-    ctx.data::<PgPool>()
+    schema_data::<PgPool>(ctx)
 }
 
 #[derive(Default)]
@@ -151,9 +151,7 @@ pub struct Query;
 #[Object]
 impl Query {
     async fn sites(&self, ctx: &Context<'_>) -> Result<Vec<Site>> {
-        store::list_sites(pool(ctx)?)
-            .await
-            .map_err(|e| to_graphql(&e))
+        store::list_sites(pool(ctx)?).await.map_err(to_graphql)
     }
 
     async fn device(&self, ctx: &Context<'_>, id: ID) -> Result<Option<Device>> {
@@ -163,7 +161,7 @@ impl Query {
         match store::get(pool(ctx)?, id).await {
             Ok(device) => Ok(Some(device)),
             Err(Error::NotFound(_)) => Ok(None),
-            Err(error) => Err(to_graphql(&error)),
+            Err(error) => Err(to_graphql(error)),
         }
     }
 
@@ -185,7 +183,7 @@ impl Query {
                 .map_err(|e| invalid(&e))?;
         let page = store::list(pool(ctx)?, &filter, size, after.as_deref())
             .await
-            .map_err(|e| to_graphql(&e))?;
+            .map_err(to_graphql)?;
         let total = usize::try_from(page.total).unwrap_or(0);
         Ok(DeviceConnection::new(
             page.devices,
@@ -195,7 +193,7 @@ impl Query {
     }
 
     async fn tags(&self, ctx: &Context<'_>) -> Result<Vec<String>> {
-        store::tags(pool(ctx)?).await.map_err(|e| to_graphql(&e))
+        store::tags(pool(ctx)?).await.map_err(to_graphql)
     }
 }
 
@@ -215,7 +213,7 @@ impl Site {
     )]
     async fn subnet(&self) -> Result<Cidr> {
         // The database column is `cidr`, which cannot hold host bits.
-        Cidr::new(self.subnet).map_err(|_| internal())
+        Cidr::new(self.subnet).map_err(internal)
     }
 
     async fn devices(
@@ -230,7 +228,7 @@ impl Site {
             .data::<DataLoader<DevicesBySite>>()?
             .load_one(self.id)
             .await
-            .map_err(|e| to_graphql(&e))?
+            .map_err(to_graphql)?
             .unwrap_or_default();
         let page = page_after(&all, |d| d.name.as_str(), after.as_deref(), size);
         let shown = page.rows.into_iter().cloned().collect();
@@ -245,11 +243,11 @@ impl Device {
     }
 
     async fn site(&self, ctx: &Context<'_>) -> Result<Site> {
-        ctx.data::<DataLoader<SitesById>>()?
+        schema_data::<DataLoader<SitesById>>(ctx)?
             .load_one(self.site)
             .await
-            .map_err(|e| to_graphql(&e))?
-            .ok_or_else(|| to_graphql(&Error::NotFound(Missing::Site(self.site))))
+            .map_err(to_graphql)?
+            .ok_or_else(|| to_graphql(Error::NotFound(Missing::Site(self.site))))
     }
 
     async fn name(&self) -> &str {

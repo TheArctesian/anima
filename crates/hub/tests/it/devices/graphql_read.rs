@@ -58,6 +58,38 @@ fn names(connection: &Value) -> Vec<&str> {
         .collect()
 }
 
+/// Adds `sites` empty sites and `devices` devices spread over every site, with SSH settings.
+pub async fn add_bulk(pool: &PgPool, sites: i32, devices: i32) {
+    sqlx::query(
+        "INSERT INTO devices.sites (id, name, subnet) \
+         SELECT gen_random_uuid(), 'bulk-site-' || g, ('10.100.' || g || '.0/24')::cidr \
+         FROM generate_series(1, $1) g",
+    )
+    .bind(sites)
+    .execute(pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        "INSERT INTO devices.devices (id, site_id, name, host, kind, os, created_at, updated_at) \
+         SELECT gen_random_uuid(), \
+                (SELECT id FROM devices.sites ORDER BY name \
+                 OFFSET g % (SELECT count(*) FROM devices.sites) LIMIT 1), \
+                'bulk-' || g, 'bulk-' || g || '.lan', 'server', 'linux', now(), now() \
+         FROM generate_series(1, $1) g",
+    )
+    .bind(devices)
+    .execute(pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        "INSERT INTO devices.ssh_settings (device_id, enabled, port, username, auth) \
+         SELECT id, false, 22, '', 'private_key' FROM devices.devices WHERE name LIKE 'bulk-%'",
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
 macro_rules! fixture_test {
     ($(async fn $name:ident($pool:ident: PgPool) $body:block)+) => {$(
         #[sqlx::test(
@@ -241,5 +273,40 @@ fixture_test! {
                 assert!(!text.contains(leak), "{query}: {text}");
             }
         }
+    }
+
+    async fn api_006_a_null_first_pages_by_the_default_of_50(pool: PgPool) {
+        add_bulk(&pool, 0, 40).await;
+        let result = data(&schema_for(&pool), "{ devices(first: null) { totalCount pageInfo { hasNextPage } edges { cursor } } }").await;
+        assert_eq!(result["devices"]["edges"].as_array().unwrap().len(), 50);
+        assert_eq!(result["devices"]["totalCount"], 53);
+        assert_eq!(result["devices"]["pageInfo"]["hasNextPage"], true);
+    }
+
+    async fn k7_a_loader_failure_is_internal_and_leaks_no_sql(pool: PgPool) {
+        let schema = schema_for(&pool);
+        // The sites still load; the batched device query joins the dropped table.
+        sqlx::query("DROP TABLE devices.ssh_settings").execute(&pool).await.unwrap();
+        let response = schema.execute("{ sites { name devices { totalCount } } }").await;
+        assert_eq!(response.errors.len(), 3);
+        for error in &response.errors {
+            let error = serde_json::to_value(error).unwrap();
+            assert_eq!(error["extensions"]["code"], "INTERNAL", "{error}");
+            let text = error.to_string();
+            for leak in ["ssh_settings", "SELECT", "relation", "devices."] {
+                assert!(!text.contains(leak), "{text}");
+            }
+        }
+    }
+}
+
+#[tokio::test]
+async fn k7_missing_schema_data_is_internal_without_rust_type_names() {
+    let schema = Schema::build(Query, EmptyMutation, EmptySubscription).finish();
+    let error = only_error(&schema, "{ tags }").await;
+    assert_eq!(error["extensions"]["code"], "INTERNAL");
+    let text = error.to_string();
+    for leak in ["PgPool", "sqlx", "Data `", "does not exist"] {
+        assert!(!text.contains(leak), "{text}");
     }
 }

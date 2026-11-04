@@ -10,6 +10,7 @@ use std::{
         Arc,
         atomic::{AtomicUsize, Ordering},
     },
+    time::Duration,
 };
 
 use sqlx::{
@@ -21,7 +22,10 @@ use tokio::{
     net::{TcpListener, TcpStream, UnixStream},
 };
 
-use super::graphql_read::{data, schema_for};
+use anima_hub::devices::graphql::{Query, devices_by_site_loader, site_loader};
+use async_graphql::{EmptyMutation, EmptySubscription, Schema};
+
+use super::graphql_read::{add_bulk, data};
 
 /// Splits the client's byte stream into PostgreSQL frontend messages and counts statements.
 #[derive(Default)]
@@ -125,7 +129,9 @@ async fn counting_pool(hub: &PgPool) -> (PgPool, Arc<AtomicUsize>) {
     (pool, count)
 }
 
-const BATCHED_AT_MOST: usize = 6;
+const BATCHED_AT_MOST: usize = 12;
+const SITES: i32 = 30;
+const BATCH_WINDOW: Duration = Duration::from_millis(20);
 const NESTED: &str =
     "{ sites { name devices(first: 200) { totalCount edges { node { name site { name } } } } } }";
 
@@ -142,42 +148,32 @@ fn rendered_devices(result: &serde_json::Value) -> usize {
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
 )]
-async fn api_005_nested_site_device_site_costs_a_constant_few_statements_for_13_or_113_devices(
+async fn api_005_nested_site_device_site_costs_a_constant_few_statements_for_13_or_163_devices(
     pool: PgPool,
 ) {
     let (counted, statements) = counting_pool(&pool).await;
-    let schema = schema_for(&counted);
+    let schema = Schema::build(Query, EmptyMutation, EmptySubscription)
+        .data(counted.clone())
+        .data(site_loader(counted.clone()).delay(BATCH_WINDOW))
+        .data(devices_by_site_loader(counted.clone()).delay(BATCH_WINDOW))
+        .finish();
 
     let few = data(&schema, NESTED).await;
     let few_statements = statements.swap(0, Ordering::SeqCst);
 
-    sqlx::query(
-        "INSERT INTO devices.devices (id, site_id, name, host, kind, os, created_at, updated_at) \
-         SELECT gen_random_uuid(), (SELECT id FROM devices.sites ORDER BY name OFFSET g % 3 LIMIT 1), \
-                'bulk-' || g, 'bulk-' || g || '.lan', 'server', 'linux', now(), now() \
-         FROM generate_series(1, 100) g",
-    )
-    .execute(&pool)
-    .await
-    .unwrap();
-    sqlx::query(
-        "INSERT INTO devices.ssh_settings (device_id, enabled, port, username, auth) \
-         SELECT id, false, 22, '', 'private_key' FROM devices.devices WHERE name LIKE 'bulk-%'",
-    )
-    .execute(&pool)
-    .await
-    .unwrap();
+    add_bulk(&pool, SITES, 150).await;
 
     let many = data(&schema, NESTED).await;
     let many_statements = statements.load(Ordering::SeqCst);
 
-    assert_eq!((rendered_devices(&few), rendered_devices(&many)), (13, 113));
-    // Three when every key reaches its loader inside one 1 ms batch window: the sites, one batch
-    // of devices for all sites, one batch of sites for all devices. Under heavy load a window can
-    // split, so the bound allows one split per level. Without batching, 13 devices alone would
-    // cost 17 statements and 113 devices 117.
+    assert_eq!((rendered_devices(&few), rendered_devices(&many)), (13, 163));
+    // The batched cost is 3: the sites, one batch of devices for all sites, one batch of sites
+    // for all devices. A loader that queries once per key costs about one statement per site, so
+    // at least 33 on this data. The test loaders wait 20 ms, not the default 1 ms, so a loaded
+    // machine cannot split a batch; the bound sits far below the per-key cost so it does not
+    // depend on timing.
     assert!(
         few_statements <= BATCHED_AT_MOST && many_statements <= BATCHED_AT_MOST,
-        "{few_statements} statements for 13 devices, {many_statements} for 113"
+        "{few_statements} statements for 13 devices, {many_statements} for 163"
     );
 }
