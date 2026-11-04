@@ -1,0 +1,156 @@
+{
+  "motion": {
+    "spring": {
+      "$type": "spring",
+      "default": {
+        "$value": {
+          "dampingRatio": 1.0,
+          "responseS": 0.35
+        },
+        "$description": "Most motion"
+      },
+      "snappy": {
+        "$value": {
+          "dampingRatio": 1.0,
+          "responseS": 0.25
+        },
+        "$description": "Menus, popovers, tab selection indicator"
+      },
+      "move": {
+        "$value": {
+          "dampingRatio": 1.0,
+          "responseS": 0.4
+        },
+        "$description": "Reorder, shared items (card to detail)"
+      },
+      "momentum": {
+        "$value": {
+          "dampingRatio": 0.8,
+          "responseS": 0.3
+        },
+        "$description": "After a drag or a flick: session tabs, toasts, sheets, panel resize"
+      }
+    },
+    "duration": {
+      "$type": "duration",
+      "instant": {
+        "$value": "0ms",
+        "$description": "State changes that must not move"
+      },
+      "press": {
+        "$value": "100ms",
+        "$description": "Press feedback",
+        "$extensions": {
+          "anima": {
+            "reduced": "0ms"
+          }
+        }
+      },
+      "fast": {
+        "$value": "150ms",
+        "$description": "Exits, hover colour"
+      },
+      "base": {
+        "$value": "200ms",
+        "$description": "Cross-fades, theme change"
+      },
+      "highlight": {
+        "$value": "1500ms",
+        "$description": "Fade of the highlight on a new log row or a status change"
+      }
+    },
+    "ease": {
+      "$type": "cubicBezier",
+      "enter": {
+        "$value": [
+          0.2,
+          0,
+          0,
+          1
+        ],
+        "$description": "Opacity and colour in"
+      },
+      "exit": {
+        "$value": [
+          1,
+          0,
+          0.8,
+          1
+        ],
+        "$description": "Opacity and colour out (mirror of ease-enter)"
+      }
+    },
+    "stagger": {
+      "$type": "stagger",
+      "list": {
+        "$value": {
+          "intervalMs": 20,
+          "maxItems": 8
+        },
+        "$description": "List items that come in together: 20 ms, maximum 8 items",
+        "$extensions": {
+          "anima": {
+            "reduced": {
+              "intervalMs": 0,
+              "maxItems": 8
+            }
+          }
+        }
+      }
+    },
+    "threshold": {
+      "drag": {
+        "$type": "dimension",
+        "$value": "10px",
+        "$description": "Movement before a drag starts"
+      },
+      "loading": {
+        "$type": "duration",
+        "$value": "300ms",
+        "$description": "Wait before a skeleton or spinner shows"
+      },
+      "loading-min": {
+        "$type": "duration",
+        "$value": "500ms",
+        "$description": "Minimum display time of a spinner after it shows"
+      }
+    }
+  },
+  "gesture": {
+    "$type": "gesture",
+    "projection-deceleration": {
+      "$value": 0.998,
+      "$description": "Deceleration rate that projects where a flick lands (MOT-032)"
+    },
+    "rubberband-constant": {
+      "$value": 0.55,
+      "$description": "Constant of the rubber-band curve past a scroll or sheet edge (MOT-033)"
+    }
+  },
+  "layout": {
+    "bp": {
+      "$type": "breakpoint",
+      "compact": {
+        "$value": {
+          "minPx": 0,
+          "maxPx": 768
+        },
+        "$description": "Below 768 px (maxPx is exclusive)"
+      },
+      "medium": {
+        "$value": {
+          "minPx": 768,
+          "maxPx": 1101
+        },
+        "$description": "768 to 1100 px"
+      },
+      "wide": {
+        "$value": {
+          "minPx": 1101,
+          "maxPx": null
+        },
+        "$description": "Above 1100 px"
+      }
+    }
+  }
+}
