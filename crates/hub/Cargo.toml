@@ -13,7 +13,7 @@ async-graphql.workspace = true
 async-graphql-axum.workspace = true
 axum.workspace = true
 thiserror.workspace = true
-tokio.workspace = true
+tokio = { workspace = true, features = ["time"] }
 tracing.workspace = true
 tracing-subscriber.workspace = true
 uuid.workspace = true
@@ -30,6 +30,7 @@ base64.workspace = true
 argon2.workspace = true
 getrandom.workspace = true
 rpassword.workspace = true
+guac-protocol = { path = "../guac-protocol" }
 
 [features]
 # `access::Identity::for_tests`, for integration tests of guarded domains (D-6). Turned on
@@ -42,3 +43,4 @@ http-body-util.workspace = true
 tower.workspace = true
 static_assertions.workspace = true
 tempfile.workspace = true
+proptest = "1.12"

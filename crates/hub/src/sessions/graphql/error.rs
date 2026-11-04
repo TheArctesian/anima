@@ -6,11 +6,23 @@ use crate::sessions::{Error, model::FieldError};
 
 const INTERNAL_MESSAGE: &str = "Something went wrong on the hub. Try again.";
 
-/// The GraphQL error with its `extensions.code`; a database failure shows no detail.
+const UNAVAILABLE_MESSAGE: &str = "The hub cannot start a session now. Try again in a moment.";
+
+/// The GraphQL error with its `extensions.code` (K7); a dependency failure shows no detail.
 pub(super) fn to_graphql(error: Error) -> GraphQlError {
     match error {
-        Error::Database(_) => internal(error),
+        Error::NotFound(missing) => coded(format!("No such {missing}."), "NOT_FOUND"),
+        Error::Validation(fields) => invalid(&fields),
+        Error::Conflict(conflict) => coded(conflict.to_string(), "CONFLICT"),
+        Error::Unavailable => coded(UNAVAILABLE_MESSAGE.to_owned(), "UNAVAILABLE"),
+        Error::Devices(_) | Error::Events(_) | Error::Random(_) | Error::Database(_) => {
+            internal(error)
+        }
     }
+}
+
+fn coded(message: String, code: &'static str) -> GraphQlError {
+    GraphQlError::new(message).extend_with(|_, extensions| extensions.set("code", code))
 }
 
 /// The generic `INTERNAL` error: the operator sees no detail. The cause stays as the error's

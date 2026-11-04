@@ -103,10 +103,6 @@ pub(super) async fn page<'e>(
 }
 
 /// What a new session row holds; it starts live.
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "WP-10 T2 `start` inserts the row")
-)]
 pub(super) struct NewSession<'a> {
     pub(super) id: SessionId,
     pub(super) device: DeviceId,
@@ -117,10 +113,6 @@ pub(super) struct NewSession<'a> {
     pub(super) started_at: DateTime<Utc>,
 }
 
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "WP-10 T2 `start` inserts the row")
-)]
 pub(super) async fn insert<'e>(
     db: impl PgExecutor<'e>,
     new: &NewSession<'_>,
@@ -145,7 +137,6 @@ pub(super) async fn insert<'e>(
 
 /// Ends a live session. Returns whether this call ended it: a session ends once, and the
 /// first end wins (D-9).
-#[cfg_attr(not(test), expect(dead_code, reason = "WP-10 T2 and T5 end sessions"))]
 pub(super) async fn end<'e>(
     db: impl PgExecutor<'e>,
     id: SessionId,
@@ -161,6 +152,20 @@ pub(super) async fn end<'e>(
     .execute(db)
     .await?;
     Ok(ended.rows_affected() == 1)
+}
+
+/// The session with this id, live or ended.
+pub(super) async fn get<'e>(
+    db: impl PgExecutor<'e>,
+    id: SessionId,
+) -> Result<Option<Session>, Error> {
+    let row: Option<SessionRow> = sqlx::query_as(&format!(
+        "select {SESSION_COLUMNS} from sessions.sessions where id = $1"
+    ))
+    .bind(id)
+    .fetch_optional(db)
+    .await?;
+    Ok(row.map(Session::try_from).transpose()?)
 }
 
 /// Ends every live session with `HUB_SHUTDOWN` at `now`; returns how many it ended.

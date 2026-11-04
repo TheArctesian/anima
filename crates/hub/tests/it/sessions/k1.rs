@@ -22,7 +22,8 @@ const WHOLE: [&str; 7] = [
     "PageInfo",
 ];
 
-/// For each object or enum, member name → signature (sorted arguments and type).
+/// For each object, input object or enum, member name → signature (sorted arguments and
+/// type; an input field's type and default).
 fn members(sdl: &str) -> BTreeMap<String, BTreeMap<String, String>> {
     let document = parse_schema(sdl).expect("SDL parses");
     let mut types = BTreeMap::new();
@@ -45,6 +46,11 @@ fn members(sdl: &str) -> BTreeMap<String, BTreeMap<String, String>> {
                         format!("({}): {}", args.join(", "), field.ty.node),
                     )
                 })
+                .collect(),
+            TypeKind::InputObject(input) => input
+                .fields
+                .iter()
+                .map(|field| (field.node.name.node.to_string(), argument(&field.node)))
                 .collect(),
             TypeKind::Enum(enumeration) => enumeration
                 .values
@@ -111,4 +117,24 @@ fn ra_008_every_k1_end_reason_is_stored_as_its_lower_snake_name() {
         assert_eq!(reason.as_str().parse::<EndReason>(), Ok(reason));
     }
     assert!("crashed".parse::<EndReason>().is_err());
+}
+
+/// Types T2 builds whole, and the two mutations (API-009).
+const T2_WHOLE: [&str; 3] = ["SessionTicket", "StartSessionInput", "DisplayInput"];
+
+#[tokio::test]
+async fn k1_ticket_types_and_session_mutations_equal_k1() {
+    let (hub, k1) = (hub(), k1());
+    for name in T2_WHOLE {
+        assert!(hub.contains_key(name), "{name}");
+        assert_eq!(hub.get(name), k1.get(name), "{name}");
+    }
+    assert_eq!(
+        hub["Mutation"].keys().collect::<Vec<_>>(),
+        ["endSession", "startSession"],
+        "T2 declares two mutations"
+    );
+    for name in ["startSession", "endSession"] {
+        assert_eq!(hub["Mutation"][name], k1["Mutation"][name], "{name}");
+    }
 }
