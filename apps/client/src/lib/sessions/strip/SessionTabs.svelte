@@ -74,7 +74,7 @@
       return !sessions.tabs.some((open) => open.id === tab.id);
     } catch (reason) {
       warn('Moving the session to a window failed:', reason);
-      return false;
+      return !sessions.tabs.some((open) => open.id === tab.id);
     }
   }
 

@@ -150,7 +150,7 @@ describe('pop out (RA-002, D-13)', () => {
     expect(document.querySelector('[role="tablist"]')?.textContent).not.toContain('Pop out');
   });
 
-  it('with a port, "Pop out" in the tab menu hands the session over once and the tab leaves', async () => {
+  it('with a port, "Pop out" in the tab menu opens the device in a window once, the tab leaves and its session ends', async () => {
     const popOut = vi.fn(() => Promise.resolve());
     const sessions = show(popOut);
     await openStarted(sessions);
@@ -160,12 +160,12 @@ describe('pop out (RA-002, D-13)', () => {
     await settle();
     document.querySelector<HTMLButtonElement>('[role="menu"] [role="menuitem"]')?.click();
     await settle();
-    expect(popOut).toHaveBeenCalledExactlyOnceWith('session-1');
+    expect(popOut).toHaveBeenCalledExactlyOnceWith({ id: 'web-1', name: 'web-1' });
     expect(tabs()).toEqual([]);
-    expect(fake.port.end).not.toHaveBeenCalled();
+    expect(fake.port.end).toHaveBeenCalledExactlyOnceWith('session-1');
   });
 
-  it('with a port, dragging a tab out of the strip calls it once with the session id', async () => {
+  it('with a port, dragging a tab out of the strip calls it once with the device', async () => {
     const popOut = vi.fn(() => Promise.resolve());
     const sessions = show(popOut);
     await openStarted(sessions);
@@ -177,7 +177,7 @@ describe('pop out (RA-002, D-13)', () => {
     slot.dispatchEvent(at('pointermove', 120));
     slot.dispatchEvent(at('pointerup', 200));
     await settle();
-    expect(popOut).toHaveBeenCalledExactlyOnceWith('session-1');
+    expect(popOut).toHaveBeenCalledExactlyOnceWith({ id: 'web-1', name: 'web-1' });
   });
 
   it('Shift+F10 on a tab opens its menu, so the menu needs no Tab stop', async () => {

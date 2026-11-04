@@ -29,8 +29,12 @@ export interface SessionPort {
   end(sessionId: string): Promise<HubResult<unknown>>;
 }
 
-/** Moves a live session into its own window (RA-002, D-13); only the desktop shell has one (WP-16). */
-export type PopOutPort = (sessionId: string) => Promise<void>;
+/**
+ * Opens a window with its own session on `device` (RA-002, D-13); only the desktop shell has one (WP-16). A hub
+ * session cannot change hands (K4: one ticket per `startSession`), so the window starts a new session and the tab's
+ * session ends.
+ */
+export type PopOutPort = (device: { readonly id: string; readonly name: string }) => Promise<void>;
 
 /** What `openSession` needs: the device, the protocol and the control that opened it (H-1). */
 export interface SessionRequest {
@@ -84,7 +88,11 @@ export interface Sessions {
   /** Removes the tab and ends its session once; rejects with `SessionEndError` when the hub could not end it. */
   close(id: TabId): Promise<void>;
   move(from: number, to: number): void;
-  /** Hands the tab's session to a new window and removes the tab without ending the session. */
+  /**
+   * Opens the tab's device in a new window, then removes the tab and ends its session once; the window starts its
+   * own. Rejects with the port's error and keeps the tab when no window opens, or with `SessionEndError` (the tab
+   * gone) when the hub could not end the session.
+   */
   popOut(id: TabId): Promise<void>;
 }
 
@@ -93,8 +101,6 @@ class OpenSessions implements Sessions {
   #opens = 0;
   #starts = 0;
   readonly #latestStart = new Map<TabId, number>();
-  /** Tabs whose session is being handed to a window; `true` once the operator closed the tab meanwhile. */
-  readonly #poppingOut = new Map<TabId, boolean>();
   readonly #port: SessionPort;
   readonly #popOut: PopOutPort | undefined;
   readonly canPopOut: boolean;
@@ -161,11 +167,6 @@ class OpenSessions implements Sessions {
     const tab = this.#find(id);
     if (tab === undefined) return;
     this.#remove(id);
-    // A session on its way to a window is the window's unless the hand-over fails (see `popOut`).
-    if (this.#poppingOut.has(id)) {
-      this.#poppingOut.set(id, true);
-      return;
-    }
     // A start still in flight ends its own session when it resolves (see `startIn`).
     if (tab.sessionId !== null) await this.#end(tab.sessionId);
   }
@@ -175,19 +176,14 @@ class OpenSessions implements Sessions {
   }
 
   async popOut(id: TabId): Promise<void> {
+    const tab = this.#find(id);
+    if (this.#popOut === undefined || tab === undefined) return;
+    await this.#popOut({ id: tab.deviceId, name: tab.deviceName });
+    // A tab closed while the window opened has already ended its session (see `close`).
     const sessionId = this.#find(id)?.sessionId;
-    if (this.#popOut === undefined || sessionId == null) return;
-    this.#poppingOut.set(id, false);
-    try {
-      await this.#popOut(sessionId);
-    } catch (reason) {
-      // The tab was closed while the window was opening: nothing owns the session now.
-      if (this.#poppingOut.get(id) === true) await this.#end(sessionId);
-      throw reason;
-    } finally {
-      this.#poppingOut.delete(id);
-    }
+    if (sessionId === undefined) return;
     this.#remove(id);
+    if (sessionId !== null) await this.#end(sessionId);
   }
 
   #isLatest(id: TabId, start: number): boolean {
@@ -210,7 +206,9 @@ class OpenSessions implements Sessions {
 
   /**
    * A new start ends the tab's live session once before it asks for another (D-5). The tab gives the id up first,
-   * so a close or another start meanwhile cannot end it again; on a failure it takes the id back.
+   * so a close or another start meanwhile cannot end it again; on a failure it takes the id back. If a newer start
+   * or a close has replaced the tab's id by then, the failed session is left to the hub, which ends it when its
+   * tunnel closes (K4 §5): the view that owned it closed that tunnel before starting again.
    */
   async #endPrevious(id: TabId, previous: string): Promise<HubError | undefined> {
     this.#state = withSession(this.#state, id, null);
