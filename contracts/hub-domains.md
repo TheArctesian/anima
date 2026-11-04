@@ -79,7 +79,7 @@ impl Bus { pub fn publish(&self, s: Signal); pub fn subscribe(&self) -> tokio::s
 | `events` | — |
 | `credentials` | — |
 | `access` | `events`, `credentials` (Vault only, for TOTP secrets) |
-| `devices` | `events`, `credentials` (`Vault`, `SshSecret`, `has_ssh`, `store_ssh`, `clear_ssh`; R-010) |
+| `devices` | `events`, `credentials` (`Vault`, `SshSecret`, `has_ssh`, `with_ssh`, `store_ssh`, `clear_ssh`; R-010, R-017) |
 | `maintenance` | — (pure rules and its own store; callers pass the device, check and tags) |
 | `checks` | `devices`, `maintenance`, `events` |
 | `sessions` | `access`, `devices`, `credentials`, `events` |
@@ -128,6 +128,8 @@ pub enum SshSecret { Password(Secret), PrivateKey { key: Secret, passphrase: Opt
 pub async fn store_ssh(conn: &mut PgConnection, vault: &Vault, device: DeviceId, s: SshSecret) -> Result<(), Error>;
 pub async fn load_ssh(db: &Db, vault: &Vault, device: DeviceId) -> Result<Option<SshSecret>, Error>;
 pub async fn has_ssh(db: &Db, device: DeviceId) -> Result<bool, Error>;
+/// The devices in `devices` that have a stored SSH secret, in one query (API-005, R-017).
+pub async fn with_ssh(db: &Db, devices: &[DeviceId]) -> Result<HashSet<DeviceId>, Error>;
 /// Deletes every SSH secret of the device. Returns true if a secret was removed (R-010).
 pub async fn clear_ssh(conn: &mut PgConnection, device: DeviceId) -> Result<bool, Error>;
 ```
