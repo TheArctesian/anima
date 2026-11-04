@@ -42,7 +42,11 @@ const KEY_COMPOUNDS: [&str; 5] = [
     "encryptionkey",
 ];
 
-/// Names ending in these are public keys, never secret, and kept as audit evidence (SEC-006,
+/// With one of these and `key` in the name, it names a private key, even when it also ends like
+/// a public key (`privateHostKey`, `hostKeyPrivate`, `privNodeKey`).
+const PRIVATE: [&str; 2] = ["private", "priv"];
+
+/// Unless the name is a private key, names ending in these are public keys, never secret, and kept as audit evidence (SEC-006,
 /// WEB-009): `hostKey`, `newHostKey`, `publicKey`, `authorizedKeys`.
 const PUBLIC_KEYS: [&str; 4] = ["hostkey", "publickey", "nodekey", "authorizedkey"];
 
@@ -51,8 +55,9 @@ const PUBLIC_KEYS: [&str; 4] = ["hostkey", "publickey", "nodekey", "authorizedke
 pub(super) enum Secrecy {
     /// Not a secret.
     Plain,
-    /// Holds credentials (`credential`, `sshCredential`): a scalar value is a secret, but an
-    /// object is searched like any other, so its `kind` and `username` stay.
+    /// Holds credentials (`credential`, `sshCredential`): a scalar value is a secret, and so is
+    /// every scalar inside an object or array under it except credential metadata (`kind`,
+    /// `username`, `createdAt`, …).
     Holder,
     /// The value is a secret.
     Secret,
@@ -63,7 +68,10 @@ pub(super) fn secrecy(name: &str) -> Secrecy {
     let joined = words.concat();
     let has_word = |wanted: &str| words.iter().any(|word| word == wanted);
     let pinning = PINNING.iter().any(|part| joined.contains(part));
-    if PUBLIC_KEYS.iter().any(|public| joined.ends_with(public)) {
+    let private_key = joined.contains("key") && PRIVATE.iter().any(|part| joined.contains(part));
+    if private_key {
+        Secrecy::Secret
+    } else if PUBLIC_KEYS.iter().any(|public| joined.ends_with(public)) {
         Secrecy::Plain
     } else if SECRET_PARTS.iter().any(|part| joined.contains(part))
         || SECRET_WORDS
@@ -80,6 +88,11 @@ pub(super) fn secrecy(name: &str) -> Secrecy {
     } else {
         Secrecy::Plain
     }
+}
+
+/// The last word of the name (see `words`), if it has one.
+pub(super) fn last_word(name: &str) -> Option<String> {
+    words(name).pop()
 }
 
 /// The name in lower-case ASCII letters and digits only.

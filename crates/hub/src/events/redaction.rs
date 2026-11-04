@@ -10,7 +10,7 @@ mod tests;
 
 use serde_json::{Map, Value};
 
-use names::{Secrecy, normalise, secrecy};
+use names::{Secrecy, last_word, normalise, secrecy};
 
 /// The value that replaces a secret.
 const REDACTED: &str = "[redacted]";
@@ -20,6 +20,10 @@ const REDACTED: &str = "[redacted]";
 /// `value` (a header `{ "name": "Authorization", "value": … }`), never on its own: a device may
 /// be called `secret-lab`.
 const LABELS: [&str; 5] = ["field", "path", "key", "setting", "property"];
+
+/// Names of credential metadata kept inside a credential holder, compared normalised. Any other
+/// scalar there is hidden; a name whose last word is `at` (`createdAt`) is a timestamp and kept.
+const HOLDER_METADATA: [&str; 6] = ["kind", "type", "username", "id", "fingerprint", "stored"];
 
 /// Text that marks a whole string as a secret, compared case-sensitively.
 const SECRET_MARKERS: [&str; 1] = ["PuTTY-User-Key-File-"];
@@ -32,6 +36,7 @@ const CREDENTIAL_SCHEMES: [&str; 2] = ["bearer ", "basic "];
 
 /// Replaces every secret in `value` with `"[redacted]"`, at any depth and inside arrays:
 /// - the value of a key that names a secret;
+/// - under a key that holds credentials, every scalar except credential metadata;
 /// - in an object whose label names a secret, every sibling except the label and `op`;
 /// - any string that holds a private key, an `otpauth://` URI or an HTTP credential;
 /// - the password in a URL (`scheme://user:[redacted]@host`).
@@ -62,14 +67,44 @@ fn redact_fields(fields: Map<String, Value>) -> Map<String, Value> {
                 Some(label) if key != *label && normalise(&key) != "op" => conceal(value),
                 Some(_) => redact(value),
                 None => match secrecy(&key) {
-                    Secrecy::Holder if value.is_object() || value.is_array() => redact(value),
-                    Secrecy::Secret | Secrecy::Holder => conceal(value),
+                    Secrecy::Holder => redact_holder(value),
+                    Secrecy::Secret => conceal(value),
                     Secrecy::Plain => redact(value),
                 },
             };
             (key, value)
         })
         .collect()
+}
+
+/// Inside a credential holder (`{"credential": {…}}`, `{"credentials": […]}`), at any depth:
+/// hides every scalar except a boolean and the scalar of a metadata name, which is redacted
+/// like any other value. A secret name is hidden whatever it holds.
+fn redact_holder(value: Value) -> Value {
+    match value {
+        Value::Object(fields) => Value::Object(
+            fields
+                .into_iter()
+                .map(|(key, value)| {
+                    let value = match secrecy(&key) {
+                        Secrecy::Secret => conceal(value),
+                        _ if is_metadata(&key) && !value.is_object() && !value.is_array() => {
+                            redact(value)
+                        }
+                        _ => redact_holder(value),
+                    };
+                    (key, value)
+                })
+                .collect(),
+        ),
+        Value::Array(values) => Value::Array(values.into_iter().map(redact_holder).collect()),
+        scalar => conceal(scalar),
+    }
+}
+
+fn is_metadata(key: &str) -> bool {
+    HOLDER_METADATA.contains(&normalise(key).as_str())
+        || last_word(key).is_some_and(|word| word == "at")
 }
 
 fn conceal(value: Value) -> Value {
