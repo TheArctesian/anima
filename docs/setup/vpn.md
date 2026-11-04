@@ -65,12 +65,16 @@ chat first (VPS-005, DNS-008)** before you do it.
 | # | Change | Where | Step |
 | --- | --- | --- | --- |
 | 0 | Read-only inventory (send it to the programme first); create the admin user in group `wheel` with your key | VPS (root) | 2.0 |
+| 0a | Existing workloads: read-only checks, and the operator's agreement on the plan for them | VPS (root) | 2.0a |
 | 1 | Create the first operator Cloudflare token; add `hs` A and CAA records; revoke the token | Cloudflare | 1 |
 | 2 | Hostinger panel firewall: 443/tcp, 3478/udp, 41641/udp, and 22/tcp temporarily | Hostinger | 1 |
+| 2a | SELinux from Disabled to Permissive, with a relabel and a reboot (only if `getenforce` says Disabled) | VPS (root) | 2.0b |
 | 3 | Install packages, copy files, render the config, start Headscale | VPS | 2 |
 | 4 | Create user `operator`; create the `hub` pre-auth key; join the VPS to the VPN | VPS | 2, 3 |
 | 5 | Create a second, short-lived operator token; add the `hub` A record; revoke the token | Cloudflare | 3 |
 | 6 | Harden SSH, updates and Docker | VPS | 4.0 to 4.4 |
+| 6a | Recreate the other containers; 24 h in Permissive; read the denials | VPS | 4.4a |
+| 6b | SELinux to Enforcing | VPS | 4.4b |
 | 7 | Register the admin Mac and approve it (over public SSH) | VPS | 4.5, 6 |
 | 8 | Apply the firewall and confirm it | VPS | 4.6, 4.7 |
 | 9 | Remove 22/tcp from the Hostinger panel firewall | Hostinger | 4.11 |
@@ -93,7 +97,9 @@ step 4 of this guide.
 
 ### Prerequisites
 
-- A VPS with **AlmaLinux 10** and SELinux in enforcing mode (the default). Check it in step 2.0.
+- A VPS with **AlmaLinux 10**. SELinux ends in enforcing mode. Hostinger's image boots with
+  SELinux disabled (`selinux=0` on the kernel command line); steps 2.0b, 4.4a and 4.4b turn it
+  on, through Permissive first. Check it in step 2.0.
 - The Hostinger **browser console**: your way back in if SSH over the VPN fails.
 - SSH as `root` with your key, for step 2.0 only. Step 2.0 creates the non-root admin user in
   group `wheel` (AlmaLinux has no group `sudo`), with your SSH public key in
@@ -161,7 +167,7 @@ Everything in this step runs on the VPS over SSH, over the public address for no
    ```bash
    # Runs on: VPS (SSH as root)
    . /etc/os-release && echo "$PRETTY_NAME"        # must say AlmaLinux 10.x
-   getenforce                                       # must say Enforcing
+   getenforce                                       # Enforcing, Permissive, or Disabled (then step 2.0b)
    bash ~/anima-headscale/vps/harden.sh check > ~/anima-inventory.txt 2>&1; less ~/anima-inventory.txt
    ```
 
@@ -208,6 +214,62 @@ Everything in this step runs on the VPS over SSH, over the public address for no
 
    Only when both work, close the root session. Root login over SSH stays possible until
    `harden.sh ssh` (step 4.2) turns it off. Every step from here on runs as `<ADMIN_USER>`.
+
+**Operator change 0a, 2a (confirm in chat first: VPS-005).**
+
+0a. **Existing workloads.** If step 0 listed containers, collect these (all read-only) and send
+   them to the programme. Agree with the programme how each container is treated before going
+   on:
+
+   ```bash
+   # Runs on: VPS (SSH as <ADMIN_USER>)
+   cat /proc/cmdline                                        # selinux=0 means step 2.0b is needed
+   rpm -q selinux-policy-targeted container-selinux policycoreutils
+   sudo docker version --format '{{.Server.Version}}'       # 28 or newer
+   sudo docker inspect -f '{{.Name}} restart={{.HostConfig.RestartPolicy.Name}} {{range .Mounts}}{{.Type}}:{{.Source}}->{{.Destination}} {{end}}' $(sudo docker ps -q)
+   sudo sshd -T | grep -i authorizedkeyscommand            # none (sssd is not in the SSH login path)
+   ```
+
+   Also note where each project's compose file is, and where a tunnel such as cloudflared sends
+   its traffic: a container name works through the firewall; the host's own address does not
+   (the firewall closes host ports to containers). **Stop** if a container has no restart policy
+   (`no`): the Docker restart (step 4.4) and every reboot leave it stopped. Add
+   `restart: unless-stopped` to its compose file first. **Stop** if `container-selinux` is
+   missing, or Docker is older than 28.
+
+   What the Anima changes do to those containers: the firewall (step 4.6) replaces only its own
+   table and keeps Docker's; forwarding stays Docker's to decide; containers keep reaching the
+   internet and each other. A port published as `0.0.0.0:PORT` would bypass the host firewall
+   (Docker's DNAT does not pass the input chain), so publish nothing on a shared host; reach the
+   service through its tunnel.
+
+0b. **SELinux on, in Permissive (only if `getenforce` said Disabled).** On AlmaLinux 10 the
+   config file alone cannot disable SELinux, so Disabled means `selinux=0` on the kernel command
+   line. Remove it, set Permissive (log denials, enforce nothing) and relabel the whole file
+   system at the next boot. Keep the Hostinger browser console open: the relabel reboots twice
+   and takes some minutes.
+
+   ```bash
+   # Runs on: VPS (SSH as <ADMIN_USER>)
+   sudo grubby --update-kernel ALL --remove-args selinux
+   sudo sed -i 's/^SELINUX=.*/SELINUX=permissive/' /etc/selinux/config
+   sudo touch /.autorelabel
+   sudo systemctl reboot
+   ```
+
+   Check, after you log in again:
+
+   ```bash
+   # Runs on: VPS (SSH as <ADMIN_USER>)
+   getenforce                                  # Permissive
+   grep -c selinux=0 /proc/cmdline             # 0
+   ls -Zd /home/<ADMIN_USER>/.ssh              # ...:ssh_home_t:...
+   sudo docker ps                              # the containers from step 0 are up again
+   ```
+
+   Check each existing service as its owner would (for a tunnelled web app: open it). Undo:
+   `sudo sed -i 's/^SELINUX=.*/SELINUX=disabled/' /etc/selinux/config`,
+   `sudo grubby --update-kernel ALL --args selinux=0`, `sudo systemctl reboot`.
 
 **Operator change 3, 4 (confirm in chat first: VPS-005).**
 
@@ -431,7 +493,7 @@ The script `deploy/headscale/vps/harden.sh` changes the VPS in small steps, each
 against locking you out. Run it from a copy of the repository folder on the VPS (the script reads
 the config files beside it). Do these in order, one command at a time.
 
-**Operator change 6, 7, 8, 9 (confirm in chat first: VPS-005).** Every `harden.sh` command has
+**Operator change 6, 6a, 6b, 7, 8, 9 (confirm in chat first: VPS-005).** Every `harden.sh` command has
 `--dry-run` (for example `./harden.sh --dry-run firewall`), which prints what it would do and
 changes nothing.
 
@@ -516,7 +578,8 @@ changes nothing.
    with, so Headscale stays unconfined (`spc_t`) until it is created again. Clients reconnect
    within seconds.
 
-   **If Docker was installed before this guide (step 2.2), decide with the programme first.**
+   **If Docker was installed before this guide (step 2.2), decide with the programme first**
+   (step 2.0a), and recreate the other containers in step 4a.
    This step changes Docker for every container on the VPS. Each container that publishes a port
    without an address (`-p 8080:80`) moves to `127.0.0.1:8080` the next time it is created, so a
    service reached from outside stops working. Each container with a bind mount that is not
@@ -538,6 +601,40 @@ changes nothing.
    shows denials for Headscale, or it is not healthy, undo: restore
    `/var/lib/anima/daemon.json.previous` (or delete `/etc/docker/daemon.json`), restart Docker,
    recreate Headscale as above, and report the denial lines.
+
+4a. **Other containers, then 24 hours in Permissive.** Only containers created after this step
+   run confined. The owner of each other project recreates it with its own compose file
+   (`sudo docker compose up -d --force-recreate` in its folder) and checks the service works.
+   Then wait at least 24 hours, so every scheduled job has run once, and read the denials since
+   then:
+
+   ```bash
+   # Runs on: VPS (SSH)
+   sudo docker ps -q | xargs sudo docker inspect -f '{{.Name}} {{.ProcessLabel}}'   # all container_t
+   sudo ausearch -m avc -ts <TIME_OF_STEP_4A> | audit2why
+   ```
+
+   A denial for a bind mount of another project is fixed in that project's compose file (`:z`
+   on that mount), or with `sudo semanage fcontext -a -t container_file_t '<DIR>(/.*)?'` and
+   `sudo restorecon -R <DIR>`. Docker labels named volumes itself. Never label
+   `/opt/anima/headscale` for another container (D-9). **Stop and report** any denial you cannot
+   explain, including those for host agents such as `monarx-agent` or `sssd`; step 4b would block
+   it.
+
+4b. **Enforcing.** Turn enforcement on now, before the firewall: its rollback probe (step 4.6)
+   must run under the SELinux mode a real rollback would meet.
+
+   ```bash
+   # Runs on: VPS (SSH)
+   sudo setenforce 1
+   sudo sed -i 's/^SELINUX=.*/SELINUX=enforcing/' /etc/selinux/config
+   getenforce                                  # Enforcing
+   sudo ausearch -m avc -ts recent             # <no matches>
+   sudo ./harden.sh check                      # no SELinux line
+   ```
+
+   Check Headscale and each other service again. Undo: `sudo setenforce 0` and
+   `sudo sed -i 's/^SELINUX=.*/SELINUX=permissive/' /etc/selinux/config`.
 
 5. Before the firewall: the Mac you administer from must be on the VPN. Do section 6, A to C,
    for that Mac now. The VPN is not closed yet, so you approve it from an SSH session over the
