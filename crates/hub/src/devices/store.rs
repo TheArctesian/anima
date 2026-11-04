@@ -76,8 +76,8 @@ pub(super) async fn create_device(
 ) -> Result<Device, Error> {
     let mut tx = conn.begin().await?;
     sqlx::query(
-        "INSERT INTO devices.devices (id, site_id, name, host, kind, os, created_at, updated_at) \
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $7)",
+        "INSERT INTO devices.devices (id, site_id, name, host, ip, kind, os, created_at, updated_at) \
+         VALUES ($1, $2, $3, $4, $8, $5, $6, $7, $7)",
     )
     .bind(id)
     .bind(device.site)
@@ -86,6 +86,7 @@ pub(super) async fn create_device(
     .bind(&device.kind)
     .bind(device.os.as_str())
     .bind(now)
+    .bind(device.ip())
     .execute(&mut *tx)
     .await
     .map_err(write_error)?;
@@ -130,7 +131,8 @@ pub(super) async fn update_device(
     let updated = sqlx::query(
         "UPDATE devices.devices SET site_id = COALESCE($2, site_id), name = COALESCE($3, name), \
                 host = COALESCE($4, host), kind = COALESCE($5, kind), os = COALESCE($6, os), \
-                maintenance = COALESCE($7, maintenance), updated_at = $8 WHERE id = $1",
+                maintenance = COALESCE($7, maintenance), updated_at = $8, \
+                ip = CASE WHEN $4::text IS NULL THEN ip ELSE $9::inet END WHERE id = $1",
     )
     .bind(id)
     .bind(change.site)
@@ -140,6 +142,7 @@ pub(super) async fn update_device(
     .bind(change.os.map(OperatingSystem::as_str))
     .bind(change.maintenance)
     .bind(now)
+    .bind(change.ip())
     .execute(&mut *tx)
     .await
     .map_err(write_error)?;

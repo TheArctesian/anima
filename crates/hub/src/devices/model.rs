@@ -11,6 +11,7 @@ use async_graphql::Enum;
 use chrono::{DateTime, Utc};
 use ipnet::IpNet;
 
+use super::text::ip_literal;
 use crate::{
     ids::{DeviceId, SiteId},
     scalars::Cidr,
@@ -171,7 +172,20 @@ pub(super) struct DeviceChange {
     pub ssh: Option<SshSettings>,
 }
 
+impl NewDevice {
+    /// The host as an address when it is an IP literal (R-026).
+    pub(super) fn ip(&self) -> Option<IpAddr> {
+        ip_literal(&self.host)
+    }
+}
+
 impl DeviceChange {
+    /// The address the new host spells out; `None` for a name or when the host is not set.
+    /// The store writes it only when the host is set; otherwise WP-09 owns `ip` (R-026).
+    pub(super) fn ip(&self) -> Option<IpAddr> {
+        self.host.as_deref().and_then(ip_literal)
+    }
+
     /// Whether the update changes nothing.
     pub(super) fn is_empty(&self) -> bool {
         *self == Self::default()
