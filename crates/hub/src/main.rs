@@ -1,21 +1,22 @@
 //! Hub binary: reads the environment, builds the dependencies and serves the router, or runs
-//! `anima-hub migrate` (R-016) or `anima-hub operator set <username>` (D-9).
+//! `anima-hub migrate` (R-016), `anima-hub operator set <username>` or
+//! `anima-hub operator totp <username> [--disable]` (D-9).
 
 use std::{
     io::{BufRead as _, IsTerminal as _},
-    net::SocketAddr,
     process::ExitCode,
     sync::Arc,
 };
 
 use anima_hub::{
-    access,
+    DRAIN_LIMIT, Shutdown, access,
     clock::{Clock as _, SystemClock},
     config::{self, Config},
     credentials::Vault,
     events::{self, Bus, process_log},
     router,
     schema::{Dependencies, build_schema},
+    serve_until, sessions,
 };
 use sqlx::PgPool;
 
@@ -42,10 +43,18 @@ enum StartError {
     },
     #[error("{0}")]
     RuntimeRole(#[from] events::RoleError),
+    /// The source's text is fixed and holds no value (LOG-007).
+    #[error("the sessions a previous hub left open cannot be ended ({0})")]
+    StaleSessions(#[from] sessions::Error),
     #[error("hub failed to serve")]
     Serve(#[from] std::io::Error),
-    #[error("usage: anima-hub [migrate | operator set <username>]")]
+    #[error(
+        "usage: anima-hub [migrate | operator set <username> | operator totp <username> [--disable]]"
+    )]
     Usage,
+    /// The enrolment URI holds the secret, so it is shown only on a terminal (LOG-007).
+    #[error("run operator totp on a terminal: the enrolment URI is shown only there")]
+    NotATerminal,
     #[error("the password cannot be read from standard input")]
     Stdin,
     #[error("{0}")]
@@ -77,19 +86,21 @@ async fn run() -> Result<(), StartError> {
         [] => serve(config).await,
         ["migrate"] => migrate(&config).await,
         ["operator", "set", username] => set_operator(&config, username).await,
+        // `--disable` is a valid username, so it alone is refused rather than enrolled.
+        ["operator", "totp", "--disable"] => Err(StartError::Usage),
+        ["operator", "totp", username] => enrol_totp(&config, username).await,
+        ["operator", "totp", username, "--disable"] => disable_totp(&config, username).await,
         _ => Err(StartError::Usage),
     }
 }
 
 async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     process_log::init(&config.log)?;
-    let vault = Vault::from_key_file(&config.key_file).map_err(|source| StartError::Key {
-        path: config.key_file.display().to_string(),
-        source,
-    })?;
+    let vault = vault(&config)?;
     let pool = connect(&config).await?;
     events::check_runtime_role(&pool).await?;
     let clock: Arc<dyn anima_hub::clock::Clock> = Arc::new(SystemClock);
+    let live = open_sessions(&pool, clock.now()).await?;
     let listener = tokio::net::TcpListener::bind(config.listen).await?;
     tracing::info!(listen = %config.listen, "hub started");
     let schema = build_schema(Dependencies {
@@ -98,9 +109,99 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         pool: pool.clone(),
         bus: Bus::new(BUS_CAPACITY),
         vault,
+        live: live.clone(),
     });
-    let app = router(schema, pool, clock).into_make_service_with_connect_info::<SocketAddr>();
-    Ok(axum::serve(listener, app).await?)
+    let upkeep = spawn_upkeep(&pool, &clock);
+    // `/tunnel` mounts here only behind `access::permitted_networks_layer` (WP-05 T4, R-040).
+    let app = router(schema, pool.clone(), clock.clone());
+    let shutdown = Shutdown {
+        db: pool,
+        live,
+        clock,
+        drain_limit: DRAIN_LIMIT,
+    };
+    let served = serve_until(listener, app, shutdown, first_stop_signal()).await;
+    upkeep.iter().for_each(tokio::task::JoinHandle::abort);
+    Ok(served?)
+}
+
+/// Opens the sessions before the hub binds, and logs how many stale rows ended (a number only).
+async fn open_sessions(
+    pool: &PgPool,
+    now: chrono::DateTime<chrono::Utc>,
+) -> Result<sessions::Live, StartError> {
+    let (live, ended) = sessions::open(pool, now).await?;
+    tracing::info!(ended, "stale sessions ended");
+    Ok(live)
+}
+
+/// The first stop signal. A second one ends the process at once, without waiting for the
+/// sessions or the drain.
+async fn first_stop_signal() {
+    stop_signal().await;
+    tracing::info!("hub stopping");
+    tokio::spawn(async {
+        stop_signal().await;
+        tracing::warn!("second stop signal; exiting now");
+        std::process::exit(1);
+    });
+}
+
+/// Resolves on Ctrl-C or SIGTERM. A signal that cannot be watched is logged and never
+/// resolves, so the other one still stops the hub.
+async fn stop_signal() {
+    let interrupt = async {
+        if let Err(error) = tokio::signal::ctrl_c().await {
+            tracing::warn!(%error, "cannot watch Ctrl-C");
+            std::future::pending::<()>().await;
+        }
+    };
+    let terminate = async {
+        match tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()) {
+            Ok(mut terminate) => {
+                terminate.recv().await;
+            }
+            Err(error) => {
+                tracing::warn!(%error, "cannot watch SIGTERM");
+                std::future::pending::<()>().await;
+            }
+        }
+    };
+    tokio::select! {
+        () = interrupt => {}
+        () = terminate => {}
+    }
+}
+
+/// Starts the daily jobs, each run now and then daily (D-4, DB-004, DB-005, K2 retention):
+/// day partitions ahead and expired ones dropped, and old login attempts and expired tokens
+/// deleted.
+fn spawn_upkeep(
+    pool: &PgPool,
+    clock: &Arc<dyn anima_hub::clock::Clock>,
+) -> [tokio::task::JoinHandle<()>; 2] {
+    let partitions = {
+        let db = pool.clone();
+        events::run_daily("partitions", clock.clone(), move |now| {
+            let db = db.clone();
+            async move {
+                events::keep_partitions(&db, now)
+                    .await
+                    .map_err(|e| e.fault())
+            }
+        })
+    };
+    let prune = {
+        let db = pool.clone();
+        events::run_daily("access_prune", clock.clone(), move |now| {
+            let db = db.clone();
+            async move {
+                let pruned = access::prune(&db, now).await;
+                pruned.map(drop).map_err(|e| e.fault().unwrap_or("access"))
+            }
+        })
+    };
+    [tokio::spawn(partitions), tokio::spawn(prune)]
 }
 
 /// Applies the migrations as the owner role and exits; serving never migrates (R-016).
@@ -123,6 +224,37 @@ async fn set_operator(config: &Config, username: &str) -> Result<(), StartError>
     .await?;
     println!("Operator {username} is set.");
     Ok(())
+}
+
+/// Enrols TOTP and writes the `otpauth://` URI once, to the terminal only: never to a pipe,
+/// a file or the process log (LOG-007).
+async fn enrol_totp(config: &Config, username: &str) -> Result<(), StartError> {
+    if !std::io::stdout().is_terminal() {
+        return Err(StartError::NotATerminal);
+    }
+    let vault = vault(config)?;
+    let pool = connect(config).await?;
+    let enrolment = access::enrol_totp(&pool, &vault, username).await?;
+    println!(
+        "Add this to an authenticator app, then sign in again with its code:\n{}",
+        enrolment.uri()
+    );
+    Ok(())
+}
+
+/// Turns TOTP off: the password alone signs in again.
+async fn disable_totp(config: &Config, username: &str) -> Result<(), StartError> {
+    let pool = connect(config).await?;
+    access::disable_totp(&pool, username).await?;
+    println!("TOTP is off for operator {username}.");
+    Ok(())
+}
+
+fn vault(config: &Config) -> Result<Vault, StartError> {
+    Vault::from_key_file(&config.key_file).map_err(|source| StartError::Key {
+        path: config.key_file.display().to_string(),
+        source,
+    })
 }
 
 /// The password from standard input: prompted without echo on a terminal, else one line.

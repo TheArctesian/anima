@@ -1,11 +1,15 @@
 mod credentials;
 mod devices;
 mod edge;
+mod events;
 mod graphql;
 mod hub;
 mod login;
 mod logs;
 mod operator;
+mod sessions;
 mod start;
 mod tokens;
+mod totp;
 mod transport;
+mod wiring;

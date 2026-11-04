@@ -11,8 +11,12 @@ use super::{
     store::{self, Account, AttemptKey, NewToken, Outcome},
     throttle,
     tokens::{LOGIN_LIFETIME, Scope, TOKEN_BYTES, Token},
+    totp::{self, SecondFactor},
 };
-use crate::events::{self, AuditAction, AuditTarget, Bus, NewAudit, NewEvent, Severity, Source};
+use crate::{
+    credentials::Vault,
+    events::{self, AuditAction, AuditTarget, Bus, NewAudit, NewEvent, Severity, Source},
+};
 
 /// Password checks that run at once. Each takes 19 MiB and a CPU for tens of milliseconds,
 /// so a burst of attempts queues here instead of exhausting memory.
@@ -25,7 +29,7 @@ const MAX_STORED_USERNAME: usize = 128;
 pub(super) struct Attempt {
     pub username: String,
     pub password: Password,
-    /// Ignored until TOTP lands (WP-05 T6); an enrolled operator cannot sign in before then.
+    /// The TOTP code; required when the operator has enrolled TOTP.
     pub totp_code: Option<String>,
     pub client: ClientAddr,
     pub at: DateTime<Utc>,
@@ -40,38 +44,69 @@ pub(super) struct SignedIn {
 
 /// Signs the operator in and issues a `write` token valid for 30 days.
 ///
-/// Every attempt is recorded. A wrong password, an unknown username, an enrolled second
-/// factor (until T6) and a throttled attempt all give `Error::WrongCredentials`.
-pub(super) async fn login(db: &PgPool, bus: &Bus, attempt: Attempt) -> Result<SignedIn, Error> {
+/// Every attempt is recorded. A wrong password, an unknown username, a wrong, reused or
+/// missing TOTP code, a TOTP secret that does not open, an account changed during the check
+/// and a throttled attempt all give the answer of `Error::WrongCredentials`, and all but the
+/// throttled one count toward the throttle.
+pub(super) async fn login(
+    db: &PgPool,
+    bus: &Bus,
+    vault: &Vault,
+    attempt: Attempt,
+) -> Result<SignedIn, Error> {
     let stored_name = stored_username(&attempt.username);
     let key = AttemptKey {
         id: store::start_attempt(db, attempt.at, &stored_name, attempt.client.0).await?,
         at: attempt.at,
         client: attempt.client.0,
     };
-    let account = {
-        let mut conn = db.acquire().await?;
-        let failures = store::failures(&mut conn, &key, attempt.at - throttle::LOOKBACK).await?;
-        if throttle::refused(&failures, attempt.at) {
-            store::finish_attempt(&mut *conn, key.id, Outcome::Refused).await?;
-            return Err(Error::WrongCredentials);
-        }
-        if possible_username(&attempt.username) {
-            store::account_by_username(&mut *conn, &attempt.username).await?
-        } else {
-            None
-        }
-    };
+    let account = unthrottled_account(db, &key, &attempt.username).await?;
     let verified = password_matches(attempt.password, account.as_ref()).await?;
-    match account {
-        Some(account) if verified && second_factor(&account, attempt.totp_code.as_deref()) => {
-            succeed(db, bus, &key, account).await
+    let factor = match &account {
+        Some(account) if verified => {
+            totp::second_factor(vault, account, attempt.totp_code.as_deref(), attempt.at)
         }
-        account => {
-            record_failure(db, bus, &key, account.as_ref()).await?;
-            Err(Error::WrongCredentials)
+        _ => SecondFactor::Refuse,
+    };
+    let name = account.as_ref().map(|account| account.username.clone());
+    if let Some(account) = account
+        && factor.passes()
+    {
+        let checked = Checked {
+            account,
+            step: factor.step(),
+        };
+        if let Some(signed_in) = succeed(db, bus, &key, checked).await? {
+            return Ok(signed_in);
         }
     }
+    record_failure(db, bus, &key, name.as_deref()).await?;
+    match factor {
+        SecondFactor::Unopenable(error) => {
+            record_unopenable(db, bus, &key, name.as_deref()).await?;
+            Err(Error::TotpSecret(error))
+        }
+        _ => Err(Error::WrongCredentials),
+    }
+}
+
+/// The account for `username`, or `None` when no operator could have it. Refuses with
+/// `Error::WrongCredentials` when the throttle turns the attempt away (D-8).
+async fn unthrottled_account(
+    db: &PgPool,
+    key: &AttemptKey,
+    username: &str,
+) -> Result<Option<Account>, Error> {
+    let mut conn = db.acquire().await?;
+    let failures = store::failures(&mut conn, key, key.at - throttle::LOOKBACK).await?;
+    if throttle::refused(&failures, key.at) {
+        store::finish_attempt(&mut *conn, key.id, Outcome::Refused).await?;
+        return Err(Error::WrongCredentials);
+    }
+    if !possible_username(username) {
+        return Ok(None);
+    }
+    Ok(store::account_by_username(&mut *conn, username).await?)
 }
 
 /// Deletes the identity's token and audits the sign-out.
@@ -114,20 +149,27 @@ async fn password_matches(password: Password, account: Option<&Account>) -> Resu
     Ok(known && matched)
 }
 
-/// The second-factor check. Until TOTP lands (WP-05 T6) an operator with an enrolled secret
-/// cannot sign in; T6 replaces this with the RFC 6238 check of `code`.
-fn second_factor(account: &Account, code: Option<&str>) -> bool {
-    let _ = code;
-    !account.totp_enabled
+/// An account whose password and second factor were checked, and the TOTP step to claim.
+struct Checked {
+    account: Account,
+    step: Option<i64>,
 }
 
-/// Records the success, the token, the audit entry and the event in one transaction.
+/// Records the success, the token, the audit entry and the event in one transaction, or
+/// `None` when the account changed since it was checked.
+///
+/// The transaction locks the operator row and checks that its password hash and TOTP secret
+/// are still the ones checked, so an `operator set` or `operator totp` that commits during
+/// the password check cannot leave a token it should have deleted: one that commits later
+/// waits for the lock and then deletes the new token. The TOTP step is claimed in the same
+/// transaction, so a sign-in that fails after the claim rolls it back and no step is lost.
 async fn succeed(
     db: &PgPool,
     bus: &Bus,
     attempt: &AttemptKey,
-    account: Account,
-) -> Result<SignedIn, Error> {
+    checked: Checked,
+) -> Result<Option<SignedIn>, Error> {
+    let Checked { account, step } = checked;
     let client = ClientAddr(attempt.client);
     let token = Token::from_random(random::<TOKEN_BYTES>()?);
     let expires_at = attempt.at + LOGIN_LIFETIME;
@@ -142,6 +184,15 @@ async fn succeed(
         name: account.username.clone(),
     };
     let mut tx = db.begin().await?;
+    if !store::lock_unchanged(&mut tx, &account).await? {
+        return Ok(None);
+    }
+    if let Some(step) = step {
+        let sealed = account.totp_secret_enc.as_deref().unwrap_or_default();
+        if !store::claim_totp_step(&mut *tx, account.id, sealed, step).await? {
+            return Ok(None);
+        }
+    }
     store::finish_attempt(&mut *tx, attempt.id, Outcome::Ok).await?;
     store::insert_token(&mut tx, &new_token, attempt.at).await?;
     let message = format!("Operator {} signed in.", operator.name);
@@ -159,11 +210,11 @@ async fn succeed(
     )
     .await?;
     tx.commit().await?;
-    Ok(SignedIn {
+    Ok(Some(SignedIn {
         token,
         expires_at,
         account,
-    })
+    }))
 }
 
 /// Records a failed sign-in as an `ACCESS` warning. The typed username is named only when it
@@ -172,21 +223,40 @@ async fn record_failure(
     db: &PgPool,
     bus: &Bus,
     attempt: &AttemptKey,
-    account: Option<&Account>,
+    operator: Option<&str>,
 ) -> Result<(), Error> {
-    let who = account.map_or_else(
+    let who = operator.map_or_else(
         || "an unknown username".to_owned(),
-        |account| format!("operator {}", account.username),
+        |name| format!("operator {name}"),
     );
     let message = format!("Sign-in failed for {who} from {}.", attempt.client);
+    record_access(db, bus, attempt, access_event(Severity::Warning, message)).await
+}
+
+/// Records, as an `ACCESS` error, that the operator's TOTP secret does not open with the hub
+/// key, so the operator cannot sign in until it is enrolled again. Names no secret.
+async fn record_unopenable(
+    db: &PgPool,
+    bus: &Bus,
+    attempt: &AttemptKey,
+    operator: Option<&str>,
+) -> Result<(), Error> {
+    let name = operator.unwrap_or_default();
+    let message = format!(
+        "The second factor of operator {name} cannot be checked: its TOTP secret does not \
+         open with the hub key. Enrol it again with anima-hub operator totp."
+    );
+    record_access(db, bus, attempt, access_event(Severity::Error, message)).await
+}
+
+async fn record_access(
+    db: &PgPool,
+    bus: &Bus,
+    attempt: &AttemptKey,
+    event: NewEvent,
+) -> Result<(), Error> {
     let mut conn = db.acquire().await?;
-    events::record(
-        &mut conn,
-        bus,
-        attempt.at,
-        access_event(Severity::Warning, message),
-    )
-    .await?;
+    events::record(&mut conn, bus, attempt.at, event).await?;
     Ok(())
 }
 

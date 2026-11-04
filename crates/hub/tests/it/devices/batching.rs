@@ -26,6 +26,7 @@ use anima_hub::{
     clock::{Clock, FixedClock},
     devices::graphql::{Mutation, Query, credential_loader, devices_by_site_loader, site_loader},
     events::Bus,
+    sessions::graphql::host_key_loader,
 };
 use async_graphql::{EmptySubscription, Schema};
 use serde_json::{Value, json};
@@ -109,7 +110,7 @@ impl Upstream {
 }
 
 /// A pool on the same database whose statements are counted.
-async fn counting_pool(hub: &PgPool) -> (PgPool, Arc<AtomicUsize>) {
+pub(crate) async fn counting_pool(hub: &PgPool) -> (PgPool, Arc<AtomicUsize>) {
     let real = hub.connect_options();
     let upstream = real.get_socket().map_or_else(
         || Upstream::Tcp(real.get_host().to_owned(), real.get_port()),
@@ -228,6 +229,68 @@ async fn api_005_credential_stored_costs_a_constant_few_statements_for_13_or_163
     assert_eq!(stored_flags(&many), (vec!["pve-01"], 163));
     // The batched cost is 3: the page, its count, one batch of secrets for every device. A
     // per-device lookup costs one statement per device, at least 15 on this data.
+    assert!(
+        few_statements <= BATCHED_AT_MOST && many_statements <= BATCHED_AT_MOST,
+        "{few_statements} statements for 13 devices, {many_statements} for 163"
+    );
+}
+
+const HOST_KEYS: &str =
+    "{ devices(first: 200) { edges { node { name ssh { hostKey { fingerprintSha256 } } } } } }";
+
+/// An ed25519 key and its fingerprint (throwaway, from `ssh-keygen`; the private half deleted).
+const KEY: &str = "AAAAC3NzaC1lZDI1NTE5AAAAIPTJnBUBJyxtaF5R3VPI+WZbUsZP0DeocOVAgFsBtx/m";
+const FINGERPRINT: &str = "SHA256:4eECQSeWmB0ww/ND7ZkydOxBUAgciI4AwfhKt8R8Nbk";
+
+/// Stores `KEY` as PVE-01's accepted host key, accepted by a new operator.
+async fn accept_key(pool: &PgPool) {
+    sqlx::query(
+        "with operator as (insert into access.operators (id, username, password_hash, created_at) \
+             values (gen_random_uuid(), 'operator', '$argon2id$x', now()) returning id) \
+         insert into sessions.host_keys (device_id, algorithm, fingerprint_sha256, public_key, \
+             first_seen_at, accepted_at, accepted_by) \
+         select $1::text::uuid, 'ssh-ed25519', $2, $3, now(), now(), id from operator",
+    )
+    .bind(PVE_01)
+    .bind(FINGERPRINT)
+    .bind(KEY)
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
+/// The fingerprints shown, and how many devices there are.
+fn host_keys(result: &Value) -> (Vec<&str>, usize) {
+    let edges = result["devices"]["edges"].as_array().unwrap();
+    let keys = edges
+        .iter()
+        .filter_map(|edge| edge["node"]["ssh"]["hostKey"]["fingerprintSha256"].as_str())
+        .collect();
+    (keys, edges.len())
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn api_005_host_key_costs_a_constant_few_statements_for_13_or_163_devices(pool: PgPool) {
+    let (counted, statements) = counting_pool(&pool).await;
+    let schema = Schema::build(Query, Mutation, EmptySubscription)
+        .data(counted.clone())
+        .data(test_clock())
+        .data(host_key_loader(counted.clone()).delay(BATCH_WINDOW))
+        .finish();
+    accept_key(&pool).await;
+
+    let few = data(&schema, HOST_KEYS).await;
+    let few_statements = statements.swap(0, Ordering::SeqCst);
+    add_bulk(&pool, SITES, 150).await;
+    let many = data(&schema, HOST_KEYS).await;
+    let many_statements = statements.load(Ordering::SeqCst);
+
+    assert_eq!(host_keys(&few), (vec![FINGERPRINT], 13));
+    assert_eq!(host_keys(&many), (vec![FINGERPRINT], 163));
+    // The page, its count, one batch of host keys for every device (WP-10 T3).
     assert!(
         few_statements <= BATCHED_AT_MOST && many_statements <= BATCHED_AT_MOST,
         "{few_statements} statements for 13 devices, {many_statements} for 163"

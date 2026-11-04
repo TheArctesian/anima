@@ -133,7 +133,7 @@ export default tseslint.config(
   tseslint.configs.stylistic,
   svelte.configs.recommended,
   {
-    files: ['apps/client/**/*.{ts,js,svelte}', 'quality/**/*.ts', 'design/**/*.ts'],
+    files: ['apps/client/**/*.{ts,js,svelte}', 'quality/**/*.ts', 'deploy/**/*.ts', 'design/**/*.ts'],
     languageOptions: { globals: { ...globals.browser, ...globals.node } },
     plugins: { '@eslint-community/eslint-comments': comments },
     rules: {

@@ -20,7 +20,7 @@ use async_graphql::{Context, ID, Object, Result, dataloader::DataLoader};
 use sqlx::{PgPool, Postgres, Transaction};
 use uuid::Uuid;
 
-pub use self::{credential_input::SshCredential, ssh::CredentialStored};
+pub use self::{credential_input::SshCredential, input::SshSettingsInput, ssh::CredentialStored};
 
 use self::{
     connection::{DEFAULT_FIRST, DeviceConnection},
@@ -84,7 +84,8 @@ async fn commit(tx: Transaction<'static, Postgres>) -> Result<()> {
 #[derive(Default)]
 pub struct Query;
 
-#[Object]
+/// Merged into the root `Query`; the name only keeps it apart from the other parts.
+#[Object(name = "DevicesQuery")]
 impl Query {
     #[graphql(guard = "Authenticated")]
     async fn sites(&self, ctx: &Context<'_>) -> Result<Vec<Site>> {
@@ -142,7 +143,8 @@ impl Query {
 #[derive(Default)]
 pub struct Mutation;
 
-#[Object]
+/// Merged into the root `Mutation`.
+#[Object(name = "DevicesMutation")]
 impl Mutation {
     #[graphql(guard = "Authenticated")]
     async fn create_site(&self, ctx: &Context<'_>, name: String, subnet: Cidr) -> Result<Site> {

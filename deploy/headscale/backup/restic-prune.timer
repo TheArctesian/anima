@@ -1,0 +1,13 @@
+# Home Linux PC: run restic-prune.service once a week (VPS-006, decision D-12).
+# Install as /etc/systemd/system/restic-prune.timer (see README.md).
+[Unit]
+Description=Weekly retention for the Headscale backups
+
+[Timer]
+OnCalendar=Sun *-*-* 05:00:00
+RandomizedDelaySec=30m
+Persistent=true
+Unit=restic-prune.service
+
+[Install]
+WantedBy=timers.target

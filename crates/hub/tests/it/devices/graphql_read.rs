@@ -26,7 +26,7 @@ fn names(connection: &Value) -> Vec<&str> {
 }
 
 /// Adds `sites` empty sites and `devices` devices spread over every site, with SSH settings.
-pub async fn add_bulk(pool: &PgPool, sites: i32, devices: i32) {
+pub(crate) async fn add_bulk(pool: &PgPool, sites: i32, devices: i32) {
     sqlx::query(
         "INSERT INTO devices.sites (id, name, subnet) \
          SELECT gen_random_uuid(), 'bulk-site-' || g, ('10.100.' || g || '.0/24')::cidr \
