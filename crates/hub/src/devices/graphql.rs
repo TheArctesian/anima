@@ -180,6 +180,10 @@ impl Mutation {
             .collect();
         let change = checked(validate_change(&form), bad_ids)?;
         let id = id.map_err(|error| invalid(&[error]))?;
+        if change.is_empty() {
+            // Nothing to write: no new `updated_at`, no event, no audit entry.
+            return store::get(pool(ctx)?, id).await.map_err(to_graphql);
+        }
         let trail = Trail::from_context(ctx)?;
         let mut tx = begin(ctx).await?;
         let device = store::update_device(&mut tx, id, trail.now, &change)

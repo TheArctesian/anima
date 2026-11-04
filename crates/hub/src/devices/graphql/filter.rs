@@ -9,7 +9,7 @@ use async_graphql::{Enum, ID, InputObject};
 
 use super::connection::paging;
 use crate::{
-    devices::{FieldError, model::DeviceFilter},
+    devices::{FieldError, model::DeviceFilter, rules::validate_filter},
     ids::SiteId,
 };
 
@@ -31,19 +31,27 @@ pub(super) struct DeviceFilterInput {
 }
 
 impl DeviceFilterInput {
-    fn into_filter(self) -> Result<DeviceFilter, FieldError> {
+    fn into_filter(self) -> Result<DeviceFilter, Vec<FieldError>> {
         let site = self
             .site_id
             .map(|id| {
                 id.parse::<SiteId>()
                     .map_err(|_| FieldError::new("siteId", "That site id is not valid."))
             })
-            .transpose()?;
-        Ok(DeviceFilter {
+            .transpose();
+        let sized = validate_filter(DeviceFilter {
             name: self.name,
             tags: self.tags.unwrap_or_default(),
-            site,
-        })
+            site: None,
+        });
+        match (site, sized) {
+            (Ok(site), Ok(filter)) => Ok(DeviceFilter { site, ..filter }),
+            (site, sized) => Err(site
+                .err()
+                .into_iter()
+                .chain(sized.err().into_iter().flatten())
+                .collect()),
+        }
     }
 }
 
@@ -63,7 +71,7 @@ pub(super) fn list_args(
             .err()
             .into_iter()
             .flatten()
-            .chain(filter.err())
+            .chain(filter.err().into_iter().flatten())
             .collect()),
     }
 }

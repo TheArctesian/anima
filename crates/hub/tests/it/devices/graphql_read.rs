@@ -165,6 +165,17 @@ fixture_test! {
         assert_eq!(validation_fields(&error), ["siteId"]);
     }
 
+    async fn dev_010_a_filter_over_its_limits_is_validation_on_each_field(pool: PgPool) {
+        let schema = schema_for(&pool);
+        let name = "n".repeat(65);
+        let tags = vec!["t"; 33].join(r#"", ""#);
+        let query = format!(r#"{{ devices(filter: {{ name: "{name}", tags: ["{tags}"] }}) {{ totalCount }} }}"#);
+        let error = only_error(&schema, &query).await;
+        assert_eq!(validation_fields(&error), ["name", "tags"]);
+        let at_limit = format!(r#"{{ devices(filter: {{ name: "{}" }}) {{ totalCount }} }}"#, "n".repeat(64));
+        assert_eq!(data(&schema, &at_limit).await["devices"]["totalCount"], 0);
+    }
+
     async fn api_006_name_filter_is_a_case_insensitive_substring_and_tags_are_all_of(pool: PgPool) {
         let schema = schema_for(&pool);
         let by_name = data(&schema, r#"{ devices(filter: { name: "MAC-OFF" }) { totalCount edges { node { name } } } }"#).await;
@@ -272,5 +283,27 @@ async fn k7_missing_schema_data_is_internal_without_rust_type_names() {
     let text = error.to_string();
     for leak in ["PgPool", "sqlx", "Data `", "does not exist"] {
         assert!(!text.contains(leak), "{text}");
+    }
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn api_010_a_missing_site_devices_loader_is_internal_without_rust_type_names(pool: PgPool) {
+    let schema = Schema::build(Query, Mutation, EmptySubscription)
+        .data(pool)
+        .finish();
+    let response = schema
+        .execute(signed_in("{ sites { devices { totalCount } } }"))
+        .await;
+    assert_eq!(response.errors.len(), 3);
+    for error in &response.errors {
+        let error = serde_json::to_value(error).unwrap();
+        assert_eq!(error["extensions"]["code"], "INTERNAL", "{error}");
+        let text = error.to_string();
+        for leak in ["DataLoader", "DevicesBySite", "Data `", "does not exist"] {
+            assert!(!text.contains(leak), "{text}");
+        }
     }
 }

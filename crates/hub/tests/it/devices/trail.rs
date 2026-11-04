@@ -6,7 +6,8 @@ use serde_json::{Value, json};
 use sqlx::PgPool;
 
 use super::harness::{
-    CLIENT_ADDR, OPERATOR_ID, error_json, schema_for, schema_with_bus, with_variables,
+    CLIENT_ADDR, OPERATOR_ID, TickingClock, error_json, schema_for, schema_with_bus,
+    schema_with_clock, with_variables,
 };
 
 const HOME_SITE: &str = "0190a000-0000-7000-8001-000000000001";
@@ -106,6 +107,36 @@ fixture_test! {
         assert_eq!(audit["change"], json!({ "name": "pve-01", "host": "pve-01.home.lan", "siteId": HOME_SITE }));
     }
 
+    async fn log_004_a_mutation_reads_the_clock_once_for_the_write_the_event_and_the_audit_entry(pool: PgPool) {
+        let (schema, _) = schema_with_clock(&pool, std::sync::Arc::new(TickingClock::new()));
+        let query = "mutation($id: ID!, $input: UpdateDeviceInput!) { updateDevice(id: $id, input: $input) { updatedAt } }";
+        let vars = json!({ "id": PVE_01, "input": { "maintenance": true } });
+        let response = with_variables(&schema, query, vars).await;
+        assert!(response.errors.is_empty(), "{:?}", response.errors);
+        let updated = response.data.into_json().unwrap()["updateDevice"]["updatedAt"].clone();
+        let (events, audits) = (rows(&pool, "event_log").await, rows(&pool, "audit_log").await);
+        let at = |value: &Value| value.as_str().unwrap().parse::<chrono::DateTime<chrono::Utc>>().unwrap();
+        assert_eq!(at(&updated), at(&events[0]["at"]));
+        assert_eq!(at(&updated), at(&audits[0]["at"]));
+    }
+
+    async fn log_005_an_update_with_no_fields_returns_the_device_and_writes_nothing(pool: PgPool) {
+        let (schema, bus) = schema_with_bus(&pool);
+        let mut receiver = bus.subscribe();
+        let query = "mutation($id: ID!) { updateDevice(id: $id, input: {}) { name maintenance updatedAt } }";
+        let response = with_variables(&schema, query, json!({ "id": PVE_01 })).await;
+        assert!(response.errors.is_empty(), "{:?}", response.errors);
+        let device = &response.data.into_json().unwrap()["updateDevice"];
+        assert_eq!(device["name"], "pve-01");
+        assert!(device["updatedAt"].as_str().unwrap().starts_with("2026-11-01"), "{device}");
+        assert!(rows(&pool, "event_log").await.is_empty());
+        assert!(rows(&pool, "audit_log").await.is_empty());
+        assert!(receiver.try_recv().is_err());
+        let unknown = json!({ "id": "0190a000-0000-7000-8002-0000000000ff" });
+        let error = error_json(&with_variables(&schema, query, unknown).await);
+        assert_eq!(error["extensions"]["code"], "NOT_FOUND");
+    }
+
     async fn log_010_the_bus_receives_the_event_of_a_mutation(pool: PgPool) {
         let (schema, bus) = schema_with_bus(&pool);
         let mut receiver = bus.subscribe();
@@ -123,7 +154,8 @@ fixture_test! {
 
     async fn log_005_a_failed_audit_rolls_back_the_device_write_and_returns_internal_without_sql(pool: PgPool) {
         sqlx::query("DROP TABLE events.audit_log").execute(&pool).await.unwrap();
-        let schema = schema_for(&pool);
+        let (schema, bus) = schema_with_bus(&pool);
+        let mut receiver = bus.subscribe();
         let calls = [
             (CREATE, pve_02()),
             ("mutation($id: ID!, $input: UpdateDeviceInput!) { updateDevice(id: $id, input: $input) { id } }",
@@ -150,6 +182,8 @@ fixture_test! {
         .await
         .unwrap();
         assert_eq!(stored, (13, 3, 0, "pve-01".to_owned()));
+        // D-5: the audit row is written first, so no subscriber saw an event that was rolled back.
+        assert!(receiver.try_recv().is_err());
     }
 }
 

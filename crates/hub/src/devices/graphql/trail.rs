@@ -50,8 +50,23 @@ impl<'a> Trail<'a> {
         })
     }
 
-    /// Writes the event, then the audit entry. The caller commits both with its own write.
+    /// Writes the audit entry, then the event. The caller commits both with its own write.
+    ///
+    /// The event goes last because `events::record` publishes it on the bus at once (D-5): if
+    /// the audit write fails, no subscriber has seen an event for a change that is rolled
+    /// back. A commit that fails after this still publishes an event that is not stored; the
+    /// stored event list is the truth.
     pub(super) async fn write(self, conn: &mut PgConnection, entry: Entry) -> Result<()> {
+        let audit = NewAudit {
+            operator: self.operator,
+            action: entry.action,
+            target: entry.target,
+            client: self.client,
+            change: entry.change,
+        };
+        events::audit(conn, self.now, audit)
+            .await
+            .map_err(internal)?;
         let event = NewEvent {
             severity: Severity::Info,
             source: Source::Device,
@@ -60,15 +75,8 @@ impl<'a> Trail<'a> {
         };
         events::record(conn, self.bus, self.now, event)
             .await
-            .map_err(internal)?;
-        let audit = NewAudit {
-            operator: self.operator,
-            action: entry.action,
-            target: entry.target,
-            client: self.client,
-            change: entry.change,
-        };
-        events::audit(conn, self.now, audit).await.map_err(internal)
+            .map(drop)
+            .map_err(internal)
     }
 }
 

@@ -7,14 +7,12 @@ use crate::{
     devices::{
         FieldError, OperatingSystem, SshAuth,
         model::{DeviceChangeInput, NewDeviceInput, SshInput},
+        rules::DEFAULT_KIND,
     },
     ids::{DeviceId, SiteId},
 };
 
 use super::error::invalid;
-
-/// K1's default for `kind`.
-const DEFAULT_KIND: &str = "server";
 
 #[derive(InputObject)]
 #[graphql(name = "SshSettingsInput")]

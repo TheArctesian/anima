@@ -13,6 +13,7 @@ macro_rules! store_test {
 
 mod graphql_error;
 mod host;
+mod input_limits;
 mod page;
 mod rules;
 mod store_read;

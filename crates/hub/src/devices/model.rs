@@ -171,6 +171,13 @@ pub(super) struct DeviceChange {
     pub ssh: Option<SshSettings>,
 }
 
+impl DeviceChange {
+    /// Whether the update changes nothing.
+    pub(super) fn is_empty(&self) -> bool {
+        *self == Self::default()
+    }
+}
+
 /// Which devices a list returns; every part that is set must match.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(super) struct DeviceFilter {

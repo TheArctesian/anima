@@ -125,6 +125,18 @@ fixture_test! {
         assert_eq!(logged(&pool).await, (0, 0));
     }
 
+    async fn log_004_control_and_direction_characters_in_a_name_are_validation_not_internal(pool: PgPool) {
+        for bad in ["a\nb", "a\u{202E}b", "a\u{0000}b"] {
+            let mut input = pve_02();
+            input["name"] = json!(bad);
+            let error = failed(&pool, CREATE_DEVICE, json!({ "input": input })).await;
+            assert_eq!(validation_fields(&error), ["name"], "{bad:?}");
+            let site = failed(&pool, CREATE_SITE, json!({ "name": bad, "subnet": "10.40.0.0/24" })).await;
+            assert_eq!(validation_fields(&site), ["name"], "{bad:?}");
+        }
+        assert_eq!(logged(&pool).await, (0, 0));
+    }
+
     async fn dev_010_every_bad_field_is_reported_at_once_including_a_malformed_site_id(pool: PgPool) {
         let input = json!({ "siteId": "nope", "name": "", "host": "bad host", "ssh": { "enabled": true, "username": "", "auth": "PASSWORD" } });
         let error = failed(&pool, CREATE_DEVICE, json!({ "input": input })).await;

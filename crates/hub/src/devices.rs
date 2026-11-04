@@ -9,6 +9,7 @@ mod rules;
 mod store;
 #[cfg(test)]
 mod tests;
+mod text;
 
 use sqlx::PgPool;
 

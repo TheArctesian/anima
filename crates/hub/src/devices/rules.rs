@@ -4,17 +4,23 @@
 
 use std::net::IpAddr;
 
-use super::model::{
-    DeviceChange, DeviceChangeInput, NewDevice, NewDeviceInput, NewSite, NewSiteInput, SshInput,
-    SshSettings,
+use super::{
+    model::{
+        DeviceChange, DeviceChangeInput, DeviceFilter, NewDevice, NewDeviceInput, NewSite,
+        NewSiteInput, SshInput, SshSettings,
+    },
+    text::is_plain,
 };
 
 const NAME_MAX: usize = 64;
 const TAG_MAX: usize = 32;
 const HOST_MAX: usize = 253;
 const LABEL_MAX: usize = 63;
-const DEFAULT_KIND: &str = "server";
+/// What a blank kind becomes; K1's schema default for `kind` is the same text.
+pub(in crate::devices) const DEFAULT_KIND: &str = "server";
 const DEFAULT_SSH_PORT: i32 = 22;
+const TAGS_MAX: usize = 32;
+const USERNAME_MAX: usize = 64;
 
 /// One input field the operator must fix. `field` is the GraphQL input field name.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -165,7 +171,12 @@ fn site_name(text: &str) -> Result<String, FieldError> {
 
 fn name(text: &str, noun: &str) -> Result<String, FieldError> {
     let name = text.trim();
-    if length_between(name, NAME_MAX) {
+    if !is_plain(name) {
+        Err(FieldError::new(
+            "name",
+            format!("The {noun} cannot contain control characters or text-direction marks."),
+        ))
+    } else if length_between(name, NAME_MAX) {
         Ok(name.to_owned())
     } else {
         Err(FieldError::new(
@@ -177,7 +188,12 @@ fn name(text: &str, noun: &str) -> Result<String, FieldError> {
 
 fn kind(text: &str) -> Result<String, FieldError> {
     let kind = text.trim();
-    if kind.is_empty() {
+    if !is_plain(kind) {
+        Err(FieldError::new(
+            "kind",
+            "The kind cannot contain control characters or text-direction marks.",
+        ))
+    } else if kind.is_empty() {
         Ok(DEFAULT_KIND.to_owned())
     } else if length_between(kind, NAME_MAX) {
         Ok(kind.to_owned())
@@ -244,11 +260,25 @@ fn is_host_label(label: &str) -> bool {
 
 /// Trimmed tags without repeats, in first-seen order.
 fn tags(raw: &[String]) -> Result<Vec<String>, FieldError> {
+    if raw.len() > TAGS_MAX {
+        return Err(FieldError::new(
+            "tags",
+            format!("A device can have at most {TAGS_MAX} tags."),
+        ));
+    }
     let mut kept: Vec<String> = Vec::with_capacity(raw.len());
     for (index, tag) in raw.iter().map(|tag| tag.trim()).enumerate() {
         let position = index + 1;
         if tag.is_empty() {
             return Err(FieldError::new("tags", format!("Tag {position} is empty.")));
+        }
+        if !is_plain(tag) {
+            return Err(FieldError::new(
+                "tags",
+                format!(
+                    "Tag {position} cannot contain control characters or text-direction marks."
+                ),
+            ));
         }
         if !length_between(tag, TAG_MAX) {
             return Err(FieldError::new(
@@ -288,6 +318,18 @@ fn ssh_username(text: &str, enabled: bool) -> Result<String, FieldError> {
     if enabled && username.is_empty() {
         return Err(FieldError::new("ssh.username", "Enter the SSH user name."));
     }
+    if username.chars().count() > USERNAME_MAX {
+        return Err(FieldError::new(
+            "ssh.username",
+            format!("The SSH user name can be at most {USERNAME_MAX} characters."),
+        ));
+    }
+    if !is_plain(username) {
+        return Err(FieldError::new(
+            "ssh.username",
+            "The SSH user name cannot contain control characters or text-direction marks.",
+        ));
+    }
     if username.chars().any(char::is_whitespace) {
         return Err(FieldError::new(
             "ssh.username",
@@ -295,4 +337,29 @@ fn ssh_username(text: &str, enabled: bool) -> Result<String, FieldError> {
         ));
     }
     Ok(username.to_owned())
+}
+
+/// Checks the size of a device filter; a longer name or tag list cannot match anything useful.
+///
+/// # Errors
+/// Every field over its limit, all at once.
+pub(super) fn validate_filter(filter: DeviceFilter) -> Result<DeviceFilter, Vec<FieldError>> {
+    let mut problems = Problems::default();
+    if filter
+        .name
+        .as_ref()
+        .is_some_and(|n| n.chars().count() > NAME_MAX)
+    {
+        problems.0.push(FieldError::new(
+            "name",
+            format!("The name filter can be at most {NAME_MAX} characters."),
+        ));
+    }
+    if filter.tags.len() > TAGS_MAX {
+        problems.0.push(FieldError::new(
+            "tags",
+            format!("The tag filter can have at most {TAGS_MAX} tags."),
+        ));
+    }
+    problems.finish(Some(filter))
 }

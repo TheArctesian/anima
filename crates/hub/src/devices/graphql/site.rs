@@ -4,7 +4,7 @@ use async_graphql::{Context, ID, Object, Result, dataloader::DataLoader};
 
 use super::{
     connection::{DEFAULT_FIRST, DeviceConnection, paging},
-    error::{internal, invalid, to_graphql},
+    error::{internal, invalid, schema_dependency, to_graphql},
 };
 use crate::{
     devices::{DevicesBySite, model::Site, page::page_after},
@@ -39,8 +39,7 @@ impl Site {
     ) -> Result<DeviceConnection> {
         let (size, after) =
             paging(first.unwrap_or(DEFAULT_FIRST), after.as_deref()).map_err(|e| invalid(&e))?;
-        let all = ctx
-            .data::<DataLoader<DevicesBySite>>()?
+        let all = schema_dependency::<DataLoader<DevicesBySite>>(ctx)?
             .load_one(self.id)
             .await
             .map_err(to_graphql)?

@@ -1,6 +1,9 @@
 //! The test schema as `schema.rs` builds it, and requests from a signed-in operator.
 
-use std::sync::Arc;
+use std::sync::{
+    Arc,
+    atomic::{AtomicI64, Ordering},
+};
 
 use anima_hub::{
     clock::{Clock, FixedClock},
@@ -9,7 +12,7 @@ use anima_hub::{
     ids::OperatorId,
 };
 use async_graphql::{EmptySubscription, Request, Response, Schema};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, TimeDelta, Utc};
 use serde_json::Value;
 use sqlx::PgPool;
 
@@ -23,10 +26,29 @@ pub fn now() -> DateTime<Utc> {
     "2026-11-04T09:00:00Z".parse().unwrap()
 }
 
+/// A clock that reports one second later on every call, so a mutation that reads it twice
+/// stamps two different times.
+pub struct TickingClock(AtomicI64);
+
+impl TickingClock {
+    pub fn new() -> Self {
+        Self(AtomicI64::new(0))
+    }
+}
+
+impl Clock for TickingClock {
+    fn now(&self) -> DateTime<Utc> {
+        now() + TimeDelta::seconds(self.0.fetch_add(1, Ordering::SeqCst))
+    }
+}
+
 /// The schema with a fresh bus; the bus is returned so a test can subscribe.
 pub fn schema_with_bus(pool: &PgPool) -> (TestSchema, Bus) {
+    schema_with_clock(pool, Arc::new(FixedClock(now())))
+}
+
+pub fn schema_with_clock(pool: &PgPool, clock: Arc<dyn Clock>) -> (TestSchema, Bus) {
     let bus = Bus::new(16);
-    let clock: Arc<dyn Clock> = Arc::new(FixedClock(now()));
     let schema = Schema::build(Query, Mutation, EmptySubscription)
         .data(pool.clone())
         .data(site_loader(pool.clone()))
