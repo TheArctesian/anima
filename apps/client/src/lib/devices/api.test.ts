@@ -80,4 +80,14 @@ describe('devicesApi', () => {
     fake.fail('DeviceStatusChanged', DENIED);
     expect(heard).toEqual([DENIED]);
   });
+
+  it('DEV-003 forwards the end of the subscription, also when the hub closes', async () => {
+    const fake = fakeHub();
+    const { heard, sink } = sinkOf();
+    devicesApi(fake.hub).watchStatus(sink);
+    await fake.hub.close();
+    devicesApi(fake.hub).watchStatus(sink);
+    expect(heard).toEqual(['complete', 'complete']);
+    expect(fake.listeners('DeviceStatusChanged')).toBe(0);
+  });
 });

@@ -12,12 +12,14 @@ export interface Recorded {
  * A fake `Hub` for tests of any domain client (D-13).
  * `answers` maps an operation name to the value `request` returns, or to a `HubError` it returns as a failure;
  * an operation without an answer is `unreachable`. `requests` and `subscriptions` list what arrived, in order.
+ * `hub.close()` completes every live sink and makes later subscriptions complete at once, as the real hub does.
  * `push` and `fail` reach the sinks of an operation that are still subscribed; `listeners` counts them.
  */
 export function fakeHub(answers: Readonly<Record<string, unknown>> = {}) {
   const requests: Recorded[] = [];
   const subscriptions: Recorded[] = [];
   const sinks = new Map<string, Set<Sink<never>>>();
+  let closed = false;
 
   const hub: Hub = {
     address: { origin: 'https://hub.test', http: 'https://hub.test/graphql', socket: 'wss://hub.test/graphql' },
@@ -29,6 +31,10 @@ export function fakeHub(answers: Readonly<Record<string, unknown>> = {}) {
     subscribe: <R, V extends Variables>(document: TypedDocumentNode<R, V>, variables: V, sink: Sink<R>) => {
       const operation = operationName(document);
       subscriptions.push({ operation, variables });
+      if (closed) {
+        sink.complete();
+        return () => undefined;
+      }
       const group = sinks.get(operation) ?? new Set<Sink<never>>();
       sinks.set(operation, group);
       const listener = sink as Sink<never>;
@@ -38,7 +44,14 @@ export function fakeHub(answers: Readonly<Record<string, unknown>> = {}) {
       };
     },
     status: { current: { connection: 'connected', lastContactAt: new Date(0) } },
-    close: () => Promise.resolve(),
+    close: () => {
+      closed = true;
+      for (const group of sinks.values()) {
+        for (const sink of group) sink.complete();
+        group.clear();
+      }
+      return Promise.resolve();
+    },
   };
 
   return {

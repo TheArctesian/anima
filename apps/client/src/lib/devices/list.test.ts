@@ -59,6 +59,11 @@ describe('compareDevices (E-1, DEV-004)', () => {
     const devices = [device('\u{1F600}'), device('Ａ'), device('B'), device('a')];
     expect(names(devices.toSorted(compareDevices('NAME')))).toEqual(['B', 'a', 'Ａ', '\u{1F600}']);
   });
+
+  it('DEV-004 orders a name before a longer name that starts with it', () => {
+    const devices = [device('ab'), device('a')];
+    expect(names(devices.toSorted(compareDevices('NAME')))).toEqual(['a', 'ab']);
+  });
 });
 
 describe('device list pages (DEV-001)', () => {
@@ -87,14 +92,14 @@ describe('live status (DEV-003, DEV-004)', () => {
     expect(list.devices[1]?.status).toBe('UP');
   });
 
-  it('DEV-002 removes a device that no longer matches the status filter', () => {
+  it('DEV-003 removes a device that no longer matches the status filter', () => {
     const query: ListQuery = { ...DEFAULT_QUERY, statuses: ['UP'] };
     const next = applyStatus(list, change('b', 'DOWN'), query);
     expect(names(next.devices)).toEqual(['a', 'c']);
     expect(next.totalCount).toBe(2);
   });
 
-  it('DEV-002 keeps a device whose new status the filter admits', () => {
+  it('DEV-003 keeps a device whose new status the filter admits', () => {
     const query: ListQuery = { ...DEFAULT_QUERY, statuses: ['UP', 'DOWN'] };
     const next = applyStatus(list, change('b', 'DOWN'), query);
     expect(names(next.devices)).toEqual(['a', 'b', 'c']);
