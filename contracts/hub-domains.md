@@ -159,7 +159,8 @@ The GraphQL mutations `setSshCredential` and `clearSshCredential` belong to `dev
 // HeartbeatSummary is events::HeartbeatSummary (R-019).
 pub async fn device_status(db: &Db, device: DeviceId, now: DateTime<Utc>) -> Result<Status, Error>;   // CHK-004
 /// Started by main.rs; owns the scheduler task, the watchdog (CHK-010) and retention (DB-005).
-pub fn spawn_scheduler(db: Db, bus: events::Bus, clock: Clock, vault: credentials::Vault) -> tokio::task::JoinHandle<()>;   // vault: R-028
+pub struct Probing { pub vault: credentials::Vault, pub policy: AddressPolicy }   // R-030; main.rs builds AddressPolicy::new(config.probe_deny)
+pub fn spawn_scheduler(db: Db, bus: events::Bus, clock: Clock, probing: Probing) -> tokio::task::JoinHandle<()>;   // R-028, R-030
 /// PUSH checks (CHK-*): `GET|POST /push/{token}`; the token is the only authentication. main.rs mounts it behind the NET-002 layer (R-028).
 pub fn push_router(db: Db, bus: events::Bus, clock: Clock) -> axum::Router;
 ```
@@ -178,7 +179,7 @@ pub async fn resolved_ips(db: &Db, devices: &[DeviceId]) -> Result<HashMap<Devic
 
 `checks::graphql::Subscription` owns K1 `deviceStatusChanged` and `heartbeatAdded`, built from the Bus (R-028). HTTP check secrets (basic password, bearer token, Authorization and Cookie header values) are sealed by checks with `credentials::Vault`, context `checks.checks.http:<check_id>` (R-028, SEC-003).
 
-Check evaluation is pure: `fn evaluate(prev: &CheckState, probe: ProbeResult, cfg: &CheckConfig, now) -> (CheckState, Status)`.
+Check evaluation is pure: `fn evaluate(prev: &CheckState, probe: ProbeResult, settings: &CheckSettings, now) -> (CheckState, Status)`. `CheckSettings` holds interval, retries, retry interval, degraded threshold and invert; `CheckConfig` is the probe configuration, the K1 union (R-030).
 
 ## maintenance (WP-09)
 
