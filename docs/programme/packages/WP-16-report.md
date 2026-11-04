@@ -1,7 +1,7 @@
 # WP-16 report (package orchestrator)
 
-Status: **done**. Branch `claude/wp-16-tauri-shell`, with the latest `phase-1` (`ae17d36`) merged in. Not pushed, not merged.
-`bun run gates` on the tip: **GATES_RESULT**. Plan, decisions D-1..D-8, handoffs and the review log: [WP-16.md](WP-16.md).
+Status: **done**. Branch `claude/wp-16-tauri-shell`, with the latest `phase-1` (`b3d4b4d`) merged in. Not pushed, not merged.
+`bun run gates` on the tip: **12/12 pass** (at `7af8b58`). Plan, decisions D-1..D-8, handoffs and the review log: [WP-16.md](WP-16.md).
 
 ## What is delivered
 
