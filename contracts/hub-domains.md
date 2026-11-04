@@ -77,7 +77,7 @@ impl Bus { pub fn publish(&self, s: Signal); pub fn subscribe(&self) -> tokio::s
 | `events` | — |
 | `credentials` | — |
 | `access` | `events`, `credentials` (Vault only, for TOTP secrets) |
-| `devices` | `events`, `credentials` (`has_ssh` only, for `credentialStored`) |
+| `devices` | `events`, `credentials` (`Vault`, `SshSecret`, `has_ssh`, `store_ssh`, `clear_ssh`; R-010) |
 | `maintenance` | — (pure rules and its own store; callers pass the device, check and tags) |
 | `checks` | `devices`, `maintenance`, `events` |
 | `sessions` | `access`, `devices`, `credentials`, `events` |
@@ -108,8 +108,10 @@ Delete (DEV-015) is one `DELETE` in `devices`: foreign keys cascade to `device_t
 #[derive(Clone)] pub struct Vault { /* key material, zeroized on drop */ }
 impl Vault {
     pub fn from_key_file(path: &Path) -> Result<Self, Error>;
-    pub fn seal(&self, plaintext: &Secret) -> Sealed;                 // nonce + ciphertext + key_id
-    pub fn open(&self, sealed: &Sealed) -> Result<Secret, Error>;
+    /// `context` is authenticated but not encrypted (AEAD associated data). It binds the
+    /// ciphertext to its row, so a sealed value copied to another row does not open (R-010).
+    pub fn seal(&self, plaintext: &Secret, context: &[u8]) -> Sealed;     // nonce + ciphertext + key_id
+    pub fn open(&self, sealed: &Sealed, context: &[u8]) -> Result<Secret, Error>;
 }
 /// Secret bytes: zeroized on drop; no Debug, Display, Serialize or Clone (LOG-007, SEC-005).
 pub struct Secret(/* zeroize::Zeroizing<Vec<u8>> */);
@@ -118,9 +120,20 @@ pub enum SshSecret { Password(Secret), PrivateKey { key: Secret, passphrase: Opt
 pub async fn store_ssh(conn: &mut PgConnection, vault: &Vault, device: DeviceId, s: SshSecret) -> Result<(), Error>;
 pub async fn load_ssh(db: &Db, vault: &Vault, device: DeviceId) -> Result<Option<SshSecret>, Error>;
 pub async fn has_ssh(db: &Db, device: DeviceId) -> Result<bool, Error>;
+/// Deletes every SSH secret of the device. Returns true if a secret was removed (R-010).
+pub async fn clear_ssh(conn: &mut PgConnection, device: DeviceId) -> Result<bool, Error>;
 ```
 
-`load_ssh` has exactly one caller: `sessions` (and the connection test). The GraphQL API never returns a secret, only `credentialStored: Boolean`.
+Context values (R-010). Each caller uses exactly this byte string, so a value sealed for one row cannot be opened for another:
+
+| Use | `context` |
+| --- | --- |
+| SSH secret (inside `credentials`) | `credentials.secrets:<device_id>:<kind>` |
+| TOTP secret (WP-05) | `access.operators.totp:<operator_id>` |
+
+The GraphQL mutations `setSshCredential` and `clearSshCredential` belong to `devices` (they return `SshSettings`). They call `store_ssh` / `clear_ssh` in the same transaction as the audit entry (`events::audit`), and the audit `change` never contains the secret.
+
+`load_ssh` has exactly one caller: `sessions` (and the connection test, which `sessions` owns). The GraphQL API never returns a secret, only `credentialStored: Boolean`.
 
 ## checks (WP-09)
 
