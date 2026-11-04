@@ -1,7 +1,7 @@
 //! Which addresses a session or an SSH probe may reach (R-032): never the gateway's own
 //! machine, a link-local neighbour or a group address. Pure.
 
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 
 /// Whether an IPv4 address points back at the gateway's own machine or at no single host.
 fn is_refused_v4(v4: Ipv4Addr) -> bool {
@@ -61,5 +61,13 @@ impl TargetRule {
     /// Whether a probe must not connect to `ip`.
     pub(super) fn refuses(self, ip: IpAddr) -> bool {
         is_refused_target(ip) && !(self.loopback && ip.is_loopback())
+    }
+
+    /// The addresses a host resolved to, when the probe may connect to every one; `None` when
+    /// any is refused, so a name that also points at the gateway is refused whichever address
+    /// would answer first.
+    pub(super) fn checked(self, addresses: Vec<SocketAddr>) -> Option<Vec<SocketAddr>> {
+        let refused = addresses.iter().any(|address| self.refuses(address.ip()));
+        (!refused).then_some(addresses)
     }
 }
