@@ -29,7 +29,7 @@ The operator approved all seven contracts on 2026-11-03 (checkpoint 1). Only a r
 | WP-06 Devices | 1 | Accepted, merged into `phase-1` (5cdc99c) | own worktree from `phase-1` | `wp-06-devices` |
 | WP-07 Credentials | 1 | Accepted, merged into `phase-1` (3f1f830) | own worktree from `phase-1` | `wp-07-credentials` |
 | WP-08 guac-protocol | 1 | Accepted, merged into `phase-1` (c19ad06) | own worktree from `phase-1` | `wp-08-guac` |
-| WP-09 Checks and maintenance | 2 | Waiting (WP-05, WP-06) | — | — |
+| WP-09 Checks and maintenance | 2 | Building (starts on the WP-05 interface already on `phase-1`) | `claude/wp-09-checks` | `wp-07-credentials` session, reused (R-027) |
 | WP-10 Sessions | 2 | Waiting (WP-05–WP-08) | — | — |
 | WP-11 Client shell | 2 | Building | own worktree from `phase-1` | `wp-11-client-shell` |
 | WP-12 Devices page | 3 | Waiting (WP-11) | — | — |
@@ -79,6 +79,7 @@ Integration branch: `phase-1`. Merge to `main` only after operator checkpoint 4.
 - **R-024 (operator, 2026-11-04).** The programme orchestrator runs Phase 1 on its own: it merges reviewed work that passes 12/12 into `phase-1`, makes rulings and starts packages in plan order without asking. It still asks the operator before a push, any merge into `main`, any change on the VPS, Headscale, Cloudflare or another account (VPS-005, DNS-008), and anything that touches secrets.
 - **R-025 (operator, 2026-11-04, overnight run).** The operator widens R-024: merge every accepted package into `phase-1` without asking, and apply the VPS, Headscale and Cloudflare changes from WP-03 and WP-04 directly (the operator's chat confirmation for VPS-005 and DNS-008 covers this run). Finish all of Phase 1. The orchestrator logs each cloud change it makes in `docs/programme/operator-changes.md`. Unchanged: never read secret files, never print or commit a secret, and do not merge into `main` or push without the operator.
 - **R-026 (Wave 1, from WP-06).** (1) `deleteDevice` calls `credentials::clear_ssh` and then deletes the device: two DELETEs in one transaction, in the R-007/WP-07 lock order. This replaces the "one DELETE plus cascades" wording of R-004 for devices; other cascades stay. (2) K3's devices row also names `credentials::Secret` and `credentials::Error`. (3) Q-2: `createDevice` and `updateDevice` set `Device.ip` to the host when the host is an IP literal, else null; WP-09 sets it to the address a check resolved. K1 documents this. (4) Q-1: `health` leaves GraphQL. It becomes `GET /health` (no sign-in, body `ok`) in `main.rs`; WP-05 makes the change with its `main.rs` wiring, so K1 does not gain it and CON-002 stays exact.
+- **R-027 (programme, overnight run).** A package may start when the interfaces it uses are on `phase-1`, even if its dependency package is still finishing (WAVE-001 relaxed): WP-09 uses only WP-05's merged events and access interface. The app cannot start new sessions without the operator, so a finished package's session is reused as the orchestrator for a new package, in a fresh worktree from `phase-1`.
 
 ## Escalations
 
