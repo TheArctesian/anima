@@ -9,7 +9,7 @@ use async_graphql::parser::{
 
 use super::harness::schema_for;
 
-const CHECKED: [&str; 17] = [
+const CHECKED: [&str; 19] = [
     "Query",
     "Mutation",
     "CreateDeviceInput",
@@ -27,6 +27,8 @@ const CHECKED: [&str; 17] = [
     "SshAuth",
     "SshCredentialInput",
     "PrivateKeyInput",
+    "Status",
+    "UptimeWindow",
 ];
 
 /// For each named type, member name → signature (arguments, type, default).
@@ -99,15 +101,8 @@ async fn k1_every_devices_member_of_the_hub_schema_exists_in_k1_with_the_same_ty
             assert_eq!(theirs.get(member), Some(ours), "{name}.{member}");
         }
     }
-    // The R-011 fields that need other domains are not declared yet.
-    for (type_name, member) in [
-        ("Device", "status"),
-        ("Device", "checks"),
-        ("SshSettings", "hostKey"),
-        ("DeviceSort", "STATUS"),
-    ] {
-        assert!(!hub[type_name].contains_key(member), "{type_name}.{member}");
-    }
+    // The R-011 fields that join checks are declared now; the SSH host key is WP-10's.
+    assert!(!hub["SshSettings"].contains_key("hostKey"));
 }
 
 #[tokio::test]
@@ -127,16 +122,8 @@ fn schema_for_sdl() -> String {
     schema_for(&pool).sdl()
 }
 
-/// K1 members that need other domains: WP-09 (status, checks, uptime) and WP-10 (hostKey).
-const LATER: [(&str, &str); 7] = [
-    ("Device", "status"),
-    ("Device", "checks"),
-    ("Device", "uptime"),
-    ("SshSettings", "hostKey"),
-    ("DeviceSort", "STATUS"),
-    ("DeviceSort", "UPTIME"),
-    ("DeviceFilter", "status"),
-];
+/// K1 members that need another package: WP-10's host key.
+const LATER: [(&str, &str); 1] = [("SshSettings", "hostKey")];
 
 /// The K1 root fields WP-06 builds; the others belong to other packages.
 const OWNED_ROOT: [&str; 10] = [

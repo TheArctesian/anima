@@ -81,7 +81,7 @@ fixture_test! {
         assert_eq!((audit["action"].clone(), audit["target_type"].clone()), (json!("create"), json!("device")));
         assert_eq!(audit["change"], json!({
             "siteId": HOME_SITE, "name": "pve-02", "host": "pve-02.home.lan", "kind": "server",
-            "os": "other", "tags": [],
+            "os": "other", "tags": [], "defaultCheck": true,
             "ssh": { "enabled": true, "port": 22, "username": "operator", "signIn": "password" },
         }));
     }

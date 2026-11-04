@@ -47,8 +47,7 @@ pub(super) struct CreateDeviceInput {
     #[graphql(default_with = "Some(Vec::<String>::new())")]
     tags: Option<Vec<String>>,
     ssh: Option<SshSettingsInput>,
-    /// When true (the default), the hub adds one ICMP check (spec 6.2). Accepted and ignored
-    /// until checks add the behaviour.
+    /// When true (the default), the hub adds one ICMP check (spec 6.2).
     #[graphql(default_with = "Some(true)")]
     add_default_check: Option<bool>,
 }
@@ -77,6 +76,11 @@ pub(super) fn device_id(id: &ID) -> Result<DeviceId, FieldError> {
 }
 
 impl CreateDeviceInput {
+    /// Whether to add the default check; true unless the operator sent false.
+    pub(super) fn add_default_check(&self) -> bool {
+        self.add_default_check.unwrap_or(true)
+    }
+
     /// The form to validate, and the malformed `siteId` if there is one. A malformed id is
     /// replaced by the nil id so the other fields are still checked and reported together.
     pub(super) fn into_form(self) -> (NewDeviceInput, Option<FieldError>) {

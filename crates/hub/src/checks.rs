@@ -2,7 +2,7 @@
 //! uptime they add up to (spec 6.4).
 //!
 //! Other domains use only the K3 functions: [`statuses`], [`uptimes`], [`for_device`],
-//! [`add_default_check`], [`device_status`], [`resolved_ips`] and [`evaluate`]. The writes,
+//! [`for_devices`], [`add_default_check`], [`device_status`], [`resolved_ips`] and [`evaluate`]. The writes,
 //! [`record_beat`], [`due_checks`] and the retention functions serve this domain's GraphQL,
 //! push route and scheduler; they are public so the integration tests can drive them.
 //!
@@ -147,6 +147,22 @@ pub async fn uptimes(
 /// `Unreadable` when a stored configuration cannot be read.
 pub async fn for_device(db: &PgPool, device: DeviceId) -> Result<Vec<Check>, Error> {
     store::by_devices(db, &[device]).await
+}
+
+/// The checks of each device, each device's in byte order of the name, in one query
+/// (API-005). A device with no checks is absent.
+///
+/// # Errors
+/// `Unreadable` when a stored configuration cannot be read.
+pub async fn for_devices(
+    db: &PgPool,
+    devices: &[DeviceId],
+) -> Result<HashMap<DeviceId, Vec<Check>>, Error> {
+    let mut grouped: HashMap<DeviceId, Vec<Check>> = HashMap::new();
+    for check in store::by_devices(db, devices).await? {
+        grouped.entry(check.device).or_default().push(check);
+    }
+    Ok(grouped)
 }
 
 /// The check with this id.

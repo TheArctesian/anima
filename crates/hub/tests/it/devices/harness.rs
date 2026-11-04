@@ -11,7 +11,10 @@ use std::{
 use anima_hub::{
     clock::{Clock, FixedClock},
     credentials::Vault,
-    devices::graphql::{Mutation, Query, credential_loader, devices_by_site_loader, site_loader},
+    devices::graphql::{
+        Mutation, Query, checks_loader, credential_loader, devices_by_site_loader,
+        resolved_ip_loader, site_loader, status_loader, uptime_loader,
+    },
     events::{Bus, ClientAddr, Operator},
     ids::OperatorId,
     schema::harden,
@@ -76,6 +79,10 @@ fn builder(
         .data(site_loader(pool.clone()))
         .data(devices_by_site_loader(pool.clone()))
         .data(credential_loader(pool.clone()))
+        .data(status_loader(pool.clone(), Arc::clone(&clock)))
+        .data(uptime_loader(pool.clone(), Arc::clone(&clock)))
+        .data(checks_loader(pool.clone()))
+        .data(resolved_ip_loader(pool.clone()))
         .data(vault())
         .data(bus.clone())
         .data(clock)
