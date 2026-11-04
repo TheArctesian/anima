@@ -55,6 +55,8 @@ fn log_007_redaction_masks_only_the_credential_after_bearer_basic_or_token() {
         ("token: dXNlcjpodW50ZXIy", "token: [redacted]"),
         ("TOKEN:abc12345xyz", "TOKEN:[redacted]"),
         ("(bearer ghp_AAAAsecret)", "(bearer [redacted])"),
+        ("token: ab12cd34", "token: [redacted]"),
+        ("basic a+b/c=de", "basic [redacted]"),
     ]);
     keeps(&[
         "Basic connectivity check passed",
@@ -65,6 +67,7 @@ fn log_007_redaction_masks_only_the_credential_after_bearer_basic_or_token() {
         "Bearer Required",
         "token expired after a restart",
         "token 1234567",
+        "tokenization2024 run",
     ]);
     assert_eq!(
         redact(json!({ "plan": "Basic tier" })),
@@ -81,6 +84,7 @@ fn log_007_redaction_masks_a_jwt_anywhere() {
         ),
         ("(eyJhbGciOiJub25lIn0.eyJzdWIiOiIxIn0.)", "([redacted])"),
         ("eyJa.eyJb.c.", "[redacted]."),
+        ("eyJa.b..", "[redacted]."),
     ]);
     keeps(&["eyJa.b", "keyJa.b.c", "eyJ..c", "eyJa.b.c.d"]);
 }
@@ -106,6 +110,7 @@ fn log_007_redaction_masks_secret_key_value_pairs() {
     ]);
     keeps(&[
         "cwd=/tmp",
+        "OLDPWD=/home/op",
         "passwordless=true",
         "password=",
         "password='' x",
@@ -148,6 +153,7 @@ fn log_007_redaction_masks_the_password_in_a_url() {
             "https://[redacted]@github.com/o/r",
         ),
         ("http://u:p@[::1]:8080/", "http://u:[redacted]@[::1]:8080/"),
+        ("https://u:/pw@h", "https://u:[redacted]@h"),
     ]);
     keeps(&[
         "https://user@host.example/path",
@@ -158,5 +164,8 @@ fn log_007_redaction_masks_the_password_in_a_url() {
         "ssh://root@host",
         "ssh://deploy-user@host:22",
         "see https://example.com:abc",
+        "see https://example.com:abc then me@x.example",
+        "https://h.example:8443?q=a@b",
+        "https://h.example:8443#a@b",
     ]);
 }

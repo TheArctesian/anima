@@ -128,7 +128,7 @@ fn scheme_credential(rest: &str) -> Option<(usize, usize)> {
 }
 
 /// Replaces every JWT: `eyJ` starting a word, then three base64url segments split by `.`, the
-/// first two not empty.
+/// payload not empty and the signature possibly empty (unsigned); a `.` right after it is kept.
 fn mask_jwts(text: &str) -> String {
     let mut masked = String::with_capacity(text.len());
     let mut copied = 0;
@@ -145,9 +145,7 @@ fn mask_jwts(text: &str) -> String {
         // `header.payload.` is an unsigned JWT; a fourth, empty part is a full stop after one.
         let jwt_len = match parts.as_slice() {
             [_, payload, _] if !payload.is_empty() => Some(run.len()),
-            [_, payload, signature, ""] if !payload.is_empty() && !signature.is_empty() => {
-                Some(run.len() - 1)
-            }
+            [_, payload, _, ""] if !payload.is_empty() => Some(run.len() - 1),
             _ => None,
         };
         if let Some(jwt_len) = jwt_len {
