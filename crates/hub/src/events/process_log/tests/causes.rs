@@ -221,3 +221,56 @@ async fn h_5_a_long_chain_is_cut_after_eight_links() {
     assert!(line.contains("link 5: …"), "{line}");
     assert!(!line.contains("link 4"), "{line}");
 }
+
+#[test]
+fn h_5_a_database_error_is_described_by_kind_never_by_its_text() {
+    let io = std::io::Error::new(std::io::ErrorKind::ConnectionRefused, SECRET);
+    let boxed = || -> Box<dyn StdError + Send + Sync> { SECRET.into() };
+    let cases = [
+        (
+            sqlx::Error::Io(io),
+            "database connection: ConnectionRefused",
+        ),
+        (sqlx::Error::PoolTimedOut, "database pool timed out"),
+        (sqlx::Error::PoolClosed, "database pool closed"),
+        (sqlx::Error::Tls(boxed()), "database tls"),
+        (
+            sqlx::Error::Protocol(SECRET.to_owned()),
+            "database protocol",
+        ),
+        (sqlx::Error::RowNotFound, "database row not found"),
+        (
+            sqlx::Error::TypeNotFound {
+                type_name: SECRET.to_owned(),
+            },
+            "database type not found",
+        ),
+        (
+            sqlx::Error::ColumnNotFound(SECRET.to_owned()),
+            "database column not found",
+        ),
+        (
+            sqlx::Error::ColumnIndexOutOfBounds { index: 1, len: 0 },
+            "database column not found",
+        ),
+        (
+            sqlx::Error::ColumnDecode {
+                index: SECRET.to_owned(),
+                source: boxed(),
+            },
+            "database decode",
+        ),
+        (sqlx::Error::Decode(boxed()), "database decode"),
+        (sqlx::Error::Encode(boxed()), "database encode"),
+        (
+            sqlx::Error::Configuration(boxed()),
+            "database configuration",
+        ),
+        (sqlx::Error::WorkerCrashed, "database worker crashed"),
+        (sqlx::Error::BeginFailed, "database"),
+        (database("40001", None), "database error 40001"),
+    ];
+    for (error, kind) in cases {
+        assert_eq!(super::super::causes::database_kind(&error), kind);
+    }
+}

@@ -52,7 +52,7 @@ fn links(first: &(dyn StdError + 'static)) -> String {
 
 /// A database error by kind: the SQLSTATE and constraint name for a server error, a fixed
 /// word otherwise. Never the server's message, which can quote a value.
-fn database_kind(error: &sqlx::Error) -> String {
+pub(super) fn database_kind(error: &sqlx::Error) -> String {
     match error {
         sqlx::Error::Database(database) => {
             let code = database.code().unwrap_or_default();

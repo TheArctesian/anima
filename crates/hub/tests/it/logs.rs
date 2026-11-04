@@ -8,6 +8,10 @@ use std::{
 };
 
 use anima_hub::events::process_log;
+use axum::{
+    body::Body,
+    http::{Request, StatusCode},
+};
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use serde_json::json;
 use sqlx::postgres::PgPoolOptions;
@@ -36,6 +40,29 @@ impl Capture {
     fn text(&self) -> String {
         String::from_utf8(self.0.lock().expect("capture lock").clone()).unwrap()
     }
+}
+
+#[tokio::test]
+async fn log_002_the_hub_router_logs_each_request_by_its_route() {
+    let capture = Capture::default();
+    let writer = capture.clone();
+    let subscriber = process_log::subscriber("info", move || writer.clone()).unwrap();
+    let _default = tracing::subscriber::set_default(subscriber);
+    tracing::callsite::rebuild_interest_cache();
+    let hub = unreachable_hub();
+
+    let health = Request::get("/health").body(Body::empty()).unwrap();
+    assert_eq!(hub.send(health).await.0, StatusCode::OK);
+    hub.post(None, "{ __typename }", json!({})).await;
+
+    let served: Vec<serde_json::Value> = capture
+        .text()
+        .lines()
+        .map(|line| serde_json::from_str::<serde_json::Value>(line).unwrap())
+        .filter(|line| line["fields"]["message"] == "request served")
+        .collect();
+    let paths: Vec<_> = served.iter().map(|line| &line["span"]["path"]).collect();
+    assert_eq!(paths, [&json!("/health"), &json!("/graphql")], "{served:?}");
 }
 
 /// A hub whose database cannot be reached: each query fails with a pool or I/O error.

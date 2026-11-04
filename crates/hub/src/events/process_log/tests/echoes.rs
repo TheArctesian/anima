@@ -1,13 +1,16 @@
 //! Syntax and validation errors keep their position and code but never quote the request
 //! (H-6 (e) and (f), LOG-007).
 
+use std::collections::BTreeMap;
+
 use async_graphql::{
-    EmptyMutation, EmptySubscription, Enum, InputObject, Object, Request, Response, Schema,
-    Variables,
+    EmptyMutation, EmptySubscription, Enum, InputObject, Object, Pos, Request, Response, Schema,
+    ServerError, Variables,
 };
 use serde_json::{Value, json};
 
 use super::{
+    super::echoes::coerced_argument,
     capture::capture_log,
     leaks::{SECRET, hardened},
 };
@@ -134,4 +137,24 @@ async fn h_6_f_other_validation_errors_pass_unchanged() {
         error["message"],
         r#"Unknown field "nosuch" on type "Query"."#
     );
+}
+
+#[test]
+fn log_007_without_the_document_a_coercion_error_is_known_by_its_text() {
+    let at = Some(Pos { line: 1, column: 3 });
+    for message in [
+        r#"Failed to parse "Pin": x"#,
+        r#"Expected input type "Int", found "x"."#,
+    ] {
+        assert_eq!(
+            coerced_argument(&ServerError::new(message, at), None),
+            Some("")
+        );
+    }
+    let resolver = ServerError::new("connection refused", at);
+    assert_eq!(coerced_argument(&resolver, None), None);
+    let elsewhere = BTreeMap::from([(Pos { line: 1, column: 9 }, "pin".to_owned())]);
+    assert_eq!(coerced_argument(&resolver, Some(&elsewhere)), None);
+    let here = BTreeMap::from([(Pos { line: 1, column: 3 }, "pin".to_owned())]);
+    assert_eq!(coerced_argument(&resolver, Some(&here)), Some("pin"));
 }

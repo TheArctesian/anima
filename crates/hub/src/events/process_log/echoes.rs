@@ -14,8 +14,8 @@ use async_graphql::{
     value,
 };
 
-pub(super) const SYNTAX_MESSAGE: &str = "The request is not valid GraphQL.";
-pub(super) const ARGUMENT_MESSAGE: &str = "An argument has the wrong type or shape.";
+const SYNTAX_MESSAGE: &str = "The request is not valid GraphQL.";
+const ARGUMENT_MESSAGE: &str = "An argument has the wrong type or shape.";
 const CODE: &str = "code";
 const VALIDATION: &str = "VALIDATION";
 
@@ -88,7 +88,6 @@ pub(super) fn coerced_argument<'a>(
 /// may set its own code and still quote the value (COULD 2).
 pub(super) fn refuse(error: &mut ServerError, field: &str) {
     ARGUMENT_MESSAGE.clone_into(&mut error.message);
-    error.source = None;
     let extensions = error.extensions.insert(ErrorExtensionValues::default());
     extensions.set(CODE, VALIDATION);
     extensions.set(

@@ -94,8 +94,10 @@ fixture_test! {
         assert_eq!(node["os"], "LINUX");
         assert_eq!(node["tags"], json!(["infra", "proxmox"]));
         assert_eq!(node["maintenance"], false);
-        assert!(node["createdAt"].as_str().unwrap().starts_with("2026-11-01T00:00:00"));
-        assert_eq!(node["updatedAt"], node["createdAt"]);
+        // R-033: compare instants, not text.
+        let instant = |value: &Value| value.as_str().unwrap().parse::<chrono::DateTime<chrono::Utc>>().unwrap();
+        assert_eq!(instant(&node["createdAt"]), "2026-11-01T00:00:00Z".parse::<chrono::DateTime<chrono::Utc>>().unwrap());
+        assert_eq!(instant(&node["updatedAt"]), instant(&node["createdAt"]));
         assert_eq!(node["ssh"], json!({ "enabled": true, "port": 22, "username": "operator", "auth": "PRIVATE_KEY" }));
         assert_eq!(node["site"], json!({ "id": HOME_SITE, "name": "home" }));
 
