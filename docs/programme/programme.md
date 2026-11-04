@@ -27,7 +27,7 @@ The operator approved all seven contracts on 2026-11-03 (checkpoint 1). Only a r
 | WP-04 Deployment, stage B (releases and self-update, R-006) | 3 | Waiting (WP-15, WP-16; operator sets secrets) | — | — |
 | WP-05 Access and logs | 1 | Building | own worktree from `phase-1` | `wp-05-access` |
 | WP-06 Devices | 1 | Building; T1 migrations merged early into `phase-1` (668c898) | own worktree from `phase-1` | `wp-06-devices` |
-| WP-07 Credentials | 1 | Building; T1 vault merged early into `phase-1` (78a6461) | own worktree from `phase-1` | `wp-07-credentials` |
+| WP-07 Credentials | 1 | Building; T1 vault (78a6461) and T2 SSH store (4d61119) merged early into `phase-1` | own worktree from `phase-1` | `wp-07-credentials` |
 | WP-08 guac-protocol | 1 | Building | own worktree from `phase-1` | `wp-08-guac` |
 | WP-09 Checks and maintenance | 2 | Waiting (WP-05, WP-06) | — | — |
 | WP-10 Sessions | 2 | Waiting (WP-05–WP-08) | — | — |
@@ -68,6 +68,8 @@ Integration branch: `phase-1`. Merge to `main` only after operator checkpoint 4.
 
 - **R-014 (Wave 1, from WP-06; changes K3).** K1's `PageInfo` is `paging::PageEnd` (GraphQL name `PageInfo`) in the leaf module `crates/hub/src/paging.rs`; no domain defines its own or uses async-graphql's built-in connection `PageInfo`. Data loaders (API-005): each domain exposes a constructor in its `graphql.rs` (for example `devices::graphql::site_loader(pool)`), and `schema.rs` registers it with `.data(..)` as a wiring handoff. The loaders have no cache, so one schema-wide instance is safe.
 - **R-015 (Wave 1, from WP-05; changes the limits gate).** A Rust module face `name.rs` that has a sibling folder `name/` is one unit with that folder (CQ-004). It does not count as a file in its parent folder for REPO-005. So the hub crate root counts `lib.rs`, `main.rs`, `schema.rs`, the leaf modules and the face of each domain that has no folder yet. Do not move the leaf modules; K3 paths do not change. A domain that grows past one file gets its folder.
+- **R-016 (Wave 1, from WP-05; changes K2 and spec 3.6).** LOG-006 needs a runtime role that cannot change the audit log, so migrations and serving use different roles (K2 "Roles"). The hub binary gets a `migrate` subcommand that applies the migrations and exits. Compose runs it as a one-shot service with the owner role's secret, and the hub service starts only after it completes; the hub service has only the runtime login's secret. Owners: WP-05 writes migration `0001`'s runtime group and default privileges, migration `0500`'s restrictions and partition functions, and `events::check_runtime_role` (the start check); `main.rs` gets the `migrate` subcommand and the start-check call as wiring handoffs. WP-04 stage A writes the two roles, the two secrets and the one-shot service. WP-09 adds the partition functions for `checks.heartbeats`. Merged migrations do not change, because the default privileges cover tables made later in the same run.
+- **R-017 (Wave 1, from WP-06; changes K3).** `credentials` adds `with_ssh(db, devices: &[DeviceId]) -> Result<HashSet<DeviceId>, Error>`, one query with `device_id = ANY($1)`, so `SshSettings.credentialStored` batches through a loader (API-005). `has_ssh` stays for single-device callers. WP-07 owns it, with a test that an empty slice returns an empty set without a query error; WP-06 uses it from a `CredentialStored` loader.
 
 ## Escalations
 
