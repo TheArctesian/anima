@@ -37,7 +37,8 @@ function logOf(ids: string[]): EventLog {
 }
 
 function fullLog(): EventLog {
-  return logOf(Array.from({ length: LOG_CAP }, (_, index) => `e${String(index)}`));
+  const rows = Array.from({ length: LOG_CAP }, (_, index) => event(`e${String(index)}`));
+  return { rows, endCursor: 'c1', hasNextPage: true };
 }
 
 const filterWith = (changes: Partial<LogFilter>): LogFilter => ({ ...DEFAULT_LOG_FILTER, ...changes });
