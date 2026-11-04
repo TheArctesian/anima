@@ -130,7 +130,7 @@ enum Outcome {
 }
 
 /// Evaluates the report against the check's settings and records the beat in one transaction.
-/// `None` when the store skipped it (the check is paused or the beat is stale). This is the one
+/// `None` when the store skipped it (the beat is not newer than the last one). This is the one
 /// place that decides the state the beat is evaluated against.
 async fn store_beat(
     db: &PgPool,
@@ -162,7 +162,9 @@ async fn record(
     };
     let now = state.clock.now();
     let Some(beat) = store_beat(&state.db, &check, report.into_probe(), now).await? else {
-        return Ok(Outcome::NotFound);
+        // Skipped: a push at the instant of the last beat has nothing new to record. The
+        // device did report in, so it is answered as a success, and nothing is published.
+        return Ok(Outcome::Recorded);
     };
     state.bus.publish(Signal::Heartbeat {
         check: check.id,

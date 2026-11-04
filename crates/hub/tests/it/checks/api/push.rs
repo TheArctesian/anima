@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use anima_hub::{
     checks::push_router,
-    clock::Clock,
+    clock::{Clock, FixedClock},
     events::{Bus, Signal},
     status::Status,
 };
@@ -271,5 +271,20 @@ fixture_test! {
         let short = &path[..path.len() - 1];
         assert_eq!(rig.get(short).await.0, StatusCode::NOT_FOUND);
         assert_eq!(rig.get(&path).await.0, StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    async fn chk_003_a_push_at_the_instant_of_the_last_beat_is_a_success_that_records_nothing(pool: PgPool) {
+        let at = database_now(&pool).await;
+        let (schema, bus) = schema_at(&pool, at);
+        let clock: Arc<dyn Clock> = Arc::new(FixedClock(at));
+        let router = push_router(pool.clone(), bus.clone(), clock);
+        let rig = Rig { pool, schema, bus, router };
+        let (id, path) = rig.push_check("backup").await;
+        assert_eq!(rig.get(&path).await.0, StatusCode::OK);
+        let mut receiver = rig.bus.subscribe();
+        let (status, body) = rig.get(&path).await;
+        assert_eq!((status, body.as_slice()), (StatusCode::OK, b"ok".as_slice()));
+        assert_eq!(rig.beats(&id).await.len(), 1);
+        assert!(receiver.try_recv().is_err(), "nothing was recorded, so nothing is published");
     }
 }
