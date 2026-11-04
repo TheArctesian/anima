@@ -278,3 +278,29 @@ describe('ESLint hub boundaries', () => {
     expect(await eslint.isPathIgnored(`${root}apps/client/src/lib/hub/generated/graphql.ts`)).toBe(true);
   });
 });
+
+describe('ESLint desktop boundary', () => {
+  const tauriImport = "import { invoke } from '@tauri-apps/api/core';\nexport const i = invoke;\n";
+  const desktopFile = 'apps/client/src/lib/desktop/sample.ts';
+
+  it('CLI-003: @tauri-apps is imported only in $lib/desktop', async () => {
+    expect(await rulesFired(tauriImport, desktopFile)).toEqual([]);
+    expect(await rulesFired(tauriImport, lib)).toContain('no-restricted-imports');
+    expect(await rulesFired(tauriImport, hubFile)).toContain('no-restricted-imports');
+    expect(await rulesFired(tauriImport, motionFile)).toContain('no-restricted-imports');
+  });
+
+  it('CLI-003: every @tauri-apps package is refused outside $lib/desktop', async () => {
+    const code = "import { x } from '@tauri-apps/plugin-fs';\nexport const c = x;\n";
+    expect(await rulesFired(code, lib)).toContain('no-restricted-imports');
+  });
+
+  it('CLI-003: graphql-ws is still refused inside $lib/desktop', async () => {
+    const code = "import { createClient } from 'graphql-ws';\nexport const c = createClient;\n";
+    expect(await rulesFired(code, desktopFile)).toContain('no-restricted-imports');
+  });
+
+  it('CLI-003: motion is still refused inside $lib/desktop', async () => {
+    expect(await rulesFired(motionImport, desktopFile)).toContain('no-restricted-imports');
+  });
+});
