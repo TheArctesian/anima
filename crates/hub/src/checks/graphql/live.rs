@@ -1,4 +1,4 @@
-//! The live views: `DeviceStatusChange` and `HeartbeatAdded` from the bus (LOG-010, E-4).
+//! The live views: `DeviceStatusChange` and `HeartbeatAdded` from the bus (LOG-010).
 
 use async_graphql::{
     ID, SimpleObject,

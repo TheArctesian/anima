@@ -38,7 +38,7 @@ async fn commit(tx: Transaction<'static, Postgres>) -> Result<()> {
 }
 
 /// A new push token from 32 random bytes of the operating system's generator: the I/O edge
-/// of token making (R-028).
+/// of token making.
 fn fresh_token() -> PushToken {
     let mut bytes = [0_u8; 32];
     rand::fill(&mut bytes);

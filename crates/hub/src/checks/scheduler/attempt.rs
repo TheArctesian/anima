@@ -22,9 +22,9 @@ use crate::{
     maintenance,
 };
 
-/// What probes need: the vault that opens HTTP secrets and the addresses they may reach
-/// (R-030). The policy always refuses loopback, link-local and multicast addresses; the
-/// deny list only refuses more (D-8).
+/// What probes need: the vault that opens HTTP secrets and the addresses they may reach.
+/// The policy always refuses loopback, link-local and multicast addresses; the
+/// deny list only refuses more.
 pub struct Probing {
     pub vault: Vault,
     pub policy: AddressPolicy,

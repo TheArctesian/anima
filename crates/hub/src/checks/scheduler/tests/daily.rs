@@ -1,5 +1,5 @@
 //! The daily jobs through the tick: partitions ahead and dropped, aggregates trimmed and
-//! orphan heartbeats swept, once a day (DB-004, DB-005, DB-009, R-004).
+//! orphan heartbeats swept, once a day (DB-004, DB-005, DB-009).
 
 use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::PgPool;

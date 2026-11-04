@@ -1,5 +1,5 @@
 //! What the checks domain adds to `Device` and `Query.devices`: the loaders behind
-//! `status`, `uptime`, `checks` and `ip`, and the status filter and orders (R-011, API-005).
+//! `status`, `uptime`, `checks` and `ip`, and the status filter and orders (API-005).
 
 mod listing;
 mod loaders;

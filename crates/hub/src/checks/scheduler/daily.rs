@@ -1,5 +1,5 @@
 //! The daily jobs: heartbeat partitions ahead, old partitions dropped, aggregates trimmed and
-//! orphan heartbeats swept (DB-004, DB-005, DB-009, R-004, HUB-005).
+//! orphan heartbeats swept (DB-004, DB-005, DB-009, HUB-005).
 
 use chrono::{DateTime, Days, Utc};
 use sqlx::PgPool;

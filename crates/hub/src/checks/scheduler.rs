@@ -1,6 +1,6 @@
 //! The check scheduler: one task that probes each check at its interval, records and
 //! publishes the beats, reports status changes and late checks, and runs the daily jobs
-//! (HUB-003, CHK-001, CHK-002, CHK-010, DB-005, DB-009; D-7).
+//! (HUB-003, CHK-001, CHK-002, CHK-010, DB-005, DB-009).
 //!
 //! The decisions are pure and live in `schedule`; `tick` holds the loop state and the I/O.
 
@@ -28,7 +28,7 @@ use tick::{Limits, Scheduler};
 
 /// The time between ticks.
 const TICK: Duration = Duration::from_secs(1);
-/// The most probes that run at the same time (D-7), and the most due checks read per tick.
+/// The most probes that run at the same time, and the most due checks read per tick.
 const LIMITS: Limits = Limits {
     probes: 32,
     due_per_tick: 256,

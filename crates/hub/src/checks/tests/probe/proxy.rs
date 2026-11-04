@@ -1,4 +1,4 @@
-//! The HTTP probe ignores proxy variables in the environment (D-8 network limits).
+//! The HTTP probe ignores proxy variables in the environment.
 
 use super::support::{Reply, env, serve, target};
 use crate::checks::{

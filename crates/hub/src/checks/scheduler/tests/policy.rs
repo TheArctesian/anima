@@ -1,5 +1,5 @@
 //! The probe policy the scheduler is given always refuses loopback, link-local and
-//! multicast addresses, whatever the deny list holds (R-030, D-8).
+//! multicast addresses, whatever the deny list holds.
 
 use std::net::IpAddr;
 

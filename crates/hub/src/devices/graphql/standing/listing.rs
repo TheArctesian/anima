@@ -1,5 +1,5 @@
 //! `Query.devices`: the SQL path for the name order, and the in-memory path that joins the
-//! checks domain for a status filter or a STATUS or UPTIME order (R-011, API-006).
+//! checks domain for a status filter or a STATUS or UPTIME order (API-006).
 //!
 //! The in-memory path loads every device that passes the SQL filters, with no cap, reads their
 //! statuses and uptimes in one call each, then filters, orders and pages. Loading every

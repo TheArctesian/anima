@@ -29,7 +29,7 @@ impl AddressPolicy {
         }
     }
 
-    /// Also allows loopback, for the in-crate tests that probe local listeners only (R-030).
+    /// Also allows loopback, for the in-crate tests that probe local listeners only.
     #[cfg(test)]
     #[must_use]
     pub(crate) fn allowing_loopback(mut self) -> Self {

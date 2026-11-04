@@ -160,7 +160,7 @@ pub(super) async fn by_push_token(db: &PgPool, token: &str) -> Result<Option<Che
 }
 
 /// For each device, the address of the ICMP, TCP or TLS check with the latest beat that has
-/// one. Only those probe the device's own host; an HTTP or DNS check can name another (R-026).
+/// one. Only those probe the device's own host; an HTTP or DNS check can name another.
 pub(super) async fn resolved_ips(
     db: &PgPool,
     devices: &[DeviceId],

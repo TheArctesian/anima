@@ -1,4 +1,4 @@
-//! The push route: a device reports its own result to `/push/{token}` (CHK-003, R-028).
+//! The push route: a device reports its own result to `/push/{token}` (CHK-003).
 //!
 //! The token in the path is the only authentication, so a request never needs a sign-in and
 //! the route answers 404 with an empty body for every token that is not a live PUSH check's.

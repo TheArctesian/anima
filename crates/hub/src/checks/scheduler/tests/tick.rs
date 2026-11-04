@@ -1,5 +1,5 @@
 //! One tick against the database: beats, first runs, pause, the in-flight guard and the
-//! limits (CHK-001, CHK-003, CHK-005, HUB-003, D-7).
+//! limits (CHK-001, CHK-003, CHK-005, HUB-003).
 
 use chrono::TimeDelta;
 

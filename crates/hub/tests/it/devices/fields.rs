@@ -1,6 +1,6 @@
 //! The fields that join the checks domain into devices: `status`, `uptime`, `checks`, `ip`,
-//! the status filter, the STATUS and UPTIME orders and `addDefaultCheck` (R-011, CHK-004,
-//! CHK-011, API-005, API-006, R-026).
+//! the status filter, the STATUS and UPTIME orders and `addDefaultCheck` (CHK-004,
+//! CHK-011, API-005, API-006).
 
 mod batching;
 mod byte_order;

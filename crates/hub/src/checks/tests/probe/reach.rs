@@ -1,4 +1,4 @@
-//! The address policy and the probes that must obey it (CHK-001, D-8 network limits).
+//! The address policy and the probes that must obey it (CHK-001).
 
 use std::net::IpAddr;
 

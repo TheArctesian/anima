@@ -1,5 +1,5 @@
 //! `Heartbeat` and the connection `Check.heartbeats` returns, paged by a keyset cursor on the
-//! time of the beat, newest first (API-006, R-014).
+//! time of the beat, newest first (API-006).
 
 use async_graphql::{Object, SimpleObject};
 use chrono::{DateTime, Datelike as _, Utc};

@@ -1,4 +1,4 @@
-//! R-044: the STATUS order is worst first (DOWN, DEGRADED, UNKNOWN, MAINTENANCE, UP) and the
+//! The STATUS order is worst first (DOWN, DEGRADED, UNKNOWN, MAINTENANCE, UP) and the
 //! UPTIME order is lowest 24 h uptime first with no figure last; both break ties by name in
 //! byte order, so an upper-case name comes before a lower-case one.
 

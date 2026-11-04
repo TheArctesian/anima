@@ -2,7 +2,7 @@
 //! `UpdateCheckInput` and the configuration inputs below them). They only describe the
 //! shape; `form` turns them into domain values and checks the numbers.
 //!
-//! Input types that never quote what they could not read (LOG-007, WP-06 H-4).
+//! Input types that never quote what they could not read (LOG-007).
 //!
 //! async-graphql's derived parse errors quote the whole value they could not parse, and the
 //! process log keeps the message of an error without a code. A check input can carry an HTTP

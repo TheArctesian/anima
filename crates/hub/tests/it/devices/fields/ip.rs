@@ -1,5 +1,4 @@
-//! `Device.ip`: the host when it is an IP literal, else the address the last check resolved
-//! (R-026(3), R-028).
+//! `Device.ip`: the host when it is an IP literal, else the address the last check resolved.
 
 use serde_json::{Value, json};
 use sqlx::PgPool;

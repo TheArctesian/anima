@@ -1,4 +1,4 @@
-//! Batched reads that join the checks domain into `Device` (R-011, API-005).
+//! Batched reads that join the checks domain into `Device` (API-005).
 //!
 //! Each loader makes one call to the checks face per batch (per window for uptime). The
 //! status and uptime loaders read the schema clock once per batch, so every device in the
@@ -82,7 +82,7 @@ impl Loader<DeviceId> for ChecksOf {
 }
 
 /// The address the last check resolved for each device, for `Device.ip` when the host is a
-/// name (R-026(3)).
+/// name.
 pub struct ResolvedIpOf(pub(in crate::devices::graphql) PgPool);
 
 impl Loader<DeviceId> for ResolvedIpOf {

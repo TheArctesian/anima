@@ -40,7 +40,7 @@ const SETTLE_RETRY: TimeDelta = TimeDelta::seconds(5);
 /// How much one scheduler does at once.
 #[derive(Clone, Copy, Debug)]
 pub(super) struct Limits {
-    /// Probes running at the same time (D-7).
+    /// Probes running at the same time.
     pub(super) probes: usize,
     pub(super) due_per_tick: u32,
 }
