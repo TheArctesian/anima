@@ -13,22 +13,40 @@ use super::{
 };
 use crate::ids::{DeviceId, EventId, OperatorId};
 
+mod partition_grants;
 mod partitions;
 mod privileges;
+mod redaction;
 mod retention;
+mod runtime_group;
 mod runtime_role;
 
 const DEVICE: &str = "0192f5a0-7c3e-7a52-9d1b-3f4e5a6b7c8d";
 const OPERATOR: &str = "0192f5a0-7c3e-7a52-9d1b-000000000001";
 
-/// A one-connection pool on the test database whose session runs as `role`.
+/// A one-connection pool on the test database: the test superuser logs in, and its session
+/// runs as `role` (like `SET ROLE`).
 async fn pool_as(pool: &PgPool, role: &str) -> PgPool {
-    let options = (*pool.connect_options()).clone().options([("role", role)]);
+    connect((*pool.connect_options()).clone().options([("role", role)])).await
+}
+
+/// A one-connection pool on the test database that logs in as the LOGIN role `login`. The
+/// throwaway server trusts local connections, so no password is needed (R-009).
+async fn login_pool(pool: &PgPool, login: &str) -> PgPool {
+    connect((*pool.connect_options()).clone().username(login)).await
+}
+
+async fn connect(options: sqlx::postgres::PgConnectOptions) -> PgPool {
     sqlx::postgres::PgPoolOptions::new()
         .max_connections(1)
         .connect_with(options)
         .await
         .unwrap()
+}
+
+/// A cluster-wide role name no other test uses.
+fn test_role(purpose: &str) -> String {
+    format!("anima_test_{}_{purpose}", Uuid::now_v7().simple())
 }
 
 fn day(year: i32, month: u32, date: u32) -> DateTime<Utc> {
@@ -225,25 +243,6 @@ async fn log_005_audit_records_operator_client_and_change(pool: PgPool) {
     assert_eq!(row.get::<&str, _>("partition"), "events.audit_log_20310630");
 }
 
-#[sqlx::test(migrations = "./migrations")]
-async fn log_007_audit_stores_secret_values_redacted(pool: PgPool) {
-    let mut conn = pool.acquire().await.unwrap();
-    let change = json!({ "ssh": { "username": "admin", "password": "hunter2" } });
-
-    audit(&mut conn, day(2026, 3, 14), new_audit(change))
-        .await
-        .unwrap();
-
-    let stored: Value = sqlx::query_scalar("select change from events.audit_log")
-        .fetch_one(&mut *conn)
-        .await
-        .unwrap();
-    assert_eq!(
-        stored,
-        json!({ "ssh": { "username": "admin", "password": "[redacted]" } })
-    );
-}
-
 #[test]
 fn audit_action_and_target_have_stable_stored_text() {
     let device: DeviceId = DEVICE.parse().unwrap();
@@ -258,15 +257,28 @@ fn audit_action_and_target_have_stable_stored_text() {
     assert_eq!(AuditTarget::Credential(device).id(), DEVICE);
 }
 
+fn device_down() -> Signal {
+    Signal::DeviceStatus {
+        device: DEVICE.parse().unwrap(),
+        status: crate::status::Status::Down,
+        at: "2026-11-04T09:30:00Z".parse().unwrap(),
+    }
+}
+
 #[test]
 fn bus_publish_without_subscribers_is_not_an_error() {
     let bus = Bus::new(1);
-    bus.publish(Signal::DeviceStatus {
-        device: DEVICE.parse().unwrap(),
-        status: crate::status::Status::Down,
-    });
+    bus.publish(device_down());
     let mut late = bus.subscribe();
     assert_eq!(late.try_recv(), Err(TryRecvError::Empty));
+}
+
+#[test]
+fn log_010_r_028_a_subscriber_receives_the_status_change_with_its_time() {
+    let bus = Bus::new(1);
+    let mut live = bus.subscribe();
+    bus.publish(device_down());
+    assert_eq!(live.try_recv(), Ok(device_down()));
 }
 
 struct Query;

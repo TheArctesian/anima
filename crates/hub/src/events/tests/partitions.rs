@@ -184,10 +184,6 @@ async fn finish<T>(tx: Transaction<'_, Postgres>, outcome: Result<T, Error>) -> 
                 .and_then(sqlx::error::DatabaseError::code);
             Some(code.map_or_else(|| error.to_string(), Into::into))
         }
-        Err(other) => {
-            tx.rollback().await.unwrap();
-            Some(other.to_string())
-        }
     }
 }
 

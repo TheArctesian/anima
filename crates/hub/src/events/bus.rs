@@ -1,5 +1,6 @@
 //! In-process broadcast of new events and status changes for subscriptions (LOG-010).
 
+use chrono::{DateTime, Utc};
 use tokio::sync::broadcast;
 
 use super::model::{EventSummary, HeartbeatSummary};
@@ -12,9 +13,11 @@ use crate::{
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Signal {
     Event(EventSummary),
+    /// A device's status changed at `at` (R-028).
     DeviceStatus {
         device: DeviceId,
         status: Status,
+        at: DateTime<Utc>,
     },
     Heartbeat {
         check: CheckId,
