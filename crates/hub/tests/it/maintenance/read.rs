@@ -120,7 +120,10 @@ fixture_test! {
         assert_eq!(ours[2]["everyDays"], 3);
         assert_eq!(ours[4]["daysOfMonth"], json!([1, -1]));
         assert_eq!(ours[4]["durationMinutes"], 10_080);
-        assert_eq!(ours[1]["startsAt"], "2026-11-04T09:00:00+00:00");
+        assert_eq!(
+            instant(ours[1]["startsAt"].as_str().unwrap()),
+            instant("2026-11-04T09:00:00Z")
+        );
     }
 
     async fn mw_003_a_window_lists_its_targets_by_type_and_value(pool: PgPool) {
