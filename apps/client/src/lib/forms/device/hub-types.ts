@@ -74,3 +74,9 @@ export interface ConnectionTestResult {
   readonly hostKeyChanged: boolean;
   readonly message?: string | null;
 }
+
+/** A site the Add device form can place the device in. */
+export interface SiteOption {
+  readonly id: string;
+  readonly name: string;
+}

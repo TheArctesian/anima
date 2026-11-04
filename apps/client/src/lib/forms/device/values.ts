@@ -73,7 +73,7 @@ export function portToSend(ssh: { readonly enabled: boolean; readonly port: stri
 }
 
 /** Tags trimmed, empty ones dropped, duplicates removed; the first occurrence wins. */
-function normalizeTags(tags: readonly string[]): string[] {
+export function normalizeTags(tags: readonly string[]): string[] {
   return [...new Set(tags.map((tag) => tag.trim()).filter((tag) => tag !== ''))];
 }
 
