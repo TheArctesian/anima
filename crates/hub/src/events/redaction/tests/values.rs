@@ -162,6 +162,7 @@ fn log_007_redaction_masks_the_password_in_a_url() {
         "http://[::1]:8080/@me",
         "rtsp://cam.local:554/stream@main",
         "ssh://root@host",
+        "imap://first.last%40example.com@mail.example",
         "ssh://deploy-user@host:22",
         "see https://example.com:abc",
         "see https://example.com:abc then me@x.example",
