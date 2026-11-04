@@ -1,7 +1,8 @@
 -- Remote sessions and accepted SSH host keys (K2 range 0600-0699; RA-008, SEC-006, SEC-007).
 --
--- No grants here: anima_runtime gets SELECT, INSERT, UPDATE and DELETE on these tables from
--- the default privileges that migration 0001 sets for the owner role (R-016, K2 "Roles").
+-- Privileges (R-016, K2 "Roles"): anima_runtime gets SELECT, INSERT, UPDATE and DELETE on
+-- these tables from the default privileges that migration 0001 sets for the owner role. The
+-- one exception is at the end of this file: session history is append-and-end only.
 
 create schema sessions;
 
@@ -23,7 +24,7 @@ create table sessions.sessions (
     -- K1 SessionEndReason in lower_snake case.
     constraint sessions_end_reason_check check (end_reason in (
         'operator', 'remote_closed', 'gateway_error', 'auth_failed', 'host_key_mismatch',
-        'timeout', 'hub_shutdown'
+        'protocol_error', 'timeout', 'hub_shutdown'
     )),
     constraint sessions_end_pair_check check ((ended_at is null) = (end_reason is null))
 );
@@ -53,10 +54,20 @@ create table sessions.host_keys (
         references access.operators (id),
     -- An SSH algorithm name: no space or line break can reach a known_hosts line.
     constraint host_keys_algorithm_check check (algorithm ~ '^[A-Za-z0-9@._+-]{1,64}$'),
-    -- Whole base64 quanta, so `decode` below never raises.
+    -- Whole base64 quanta, so `decode` below never raises. 10920 characters is the 8190-byte
+    -- blob cap of `sessions::public_key::MAX_BLOB` (2730 quanta); keep the two equal.
     constraint host_keys_public_key_check check (
-        char_length(public_key) between 4 and 16384
+        char_length(public_key) between 4 and 10920
         and public_key ~ '^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$'
+    ),
+    -- Canonical base64, as the hub's reader requires: `decode` ignores pad bits that are not
+    -- zero (`/mAP==`), and re-encoding shows them. Guarded like the check below.
+    constraint host_keys_public_key_canonical check (
+        case
+            when public_key ~ '^([A-Za-z0-9+/]{4})*([A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$'
+            then translate(encode(decode(public_key, 'base64'), 'base64'), E'\n', '')
+                = public_key
+        end
     ),
     constraint host_keys_fingerprint_check check (
         fingerprint_sha256 ~ '^SHA256:[A-Za-z0-9+/]{43}$'
@@ -71,3 +82,9 @@ create table sessions.host_keys (
         end
     )
 );
+
+-- Session history is append-and-end only for the runtime role (RA-008): it may insert a row
+-- and set its end, but never delete a row or change who, what or when it started.
+-- `sessions.host_keys` keeps the default privileges: accepting a key upserts it.
+revoke delete, update on sessions.sessions from anima_runtime;
+grant update (ended_at, end_reason) on sessions.sessions to anima_runtime;

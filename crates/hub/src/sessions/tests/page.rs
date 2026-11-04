@@ -18,11 +18,35 @@ fn cursor(micros: i64) -> Cursor {
     }
 }
 
-/// A well-formed cursor whose time (`i64::MAX` microseconds) is past chrono's range.
-fn past_chrono_range() -> String {
+/// A well-formed cursor whose time is `micros` microseconds after the epoch.
+fn at_micros(micros: i64) -> String {
     let mut bytes = [0_u8; 24];
-    bytes[..8].copy_from_slice(&i64::MAX.to_be_bytes());
+    bytes[..8].copy_from_slice(&micros.to_be_bytes());
     format!("s1.{}", URL_SAFE_NO_PAD.encode(bytes))
+}
+
+#[test]
+fn api_010_a_cursor_time_outside_years_1_to_9999_is_refused() {
+    let first = -62_135_596_800_000_000;
+    let last = 253_402_300_799_999_999;
+    for micros in [first, last] {
+        assert!(decode_cursor(&at_micros(micros)).is_ok(), "{micros}");
+    }
+    let refused = [
+        first - 1,
+        last + 1,
+        DateTime::<Utc>::MIN_UTC.timestamp_micros(),
+        DateTime::<Utc>::MAX_UTC.timestamp_micros(),
+        i64::MIN,
+        i64::MAX,
+    ];
+    for micros in refused {
+        assert_eq!(
+            decode_cursor(&at_micros(micros)).unwrap_err().field,
+            "after",
+            "{micros}"
+        );
+    }
 }
 
 #[test]
@@ -56,7 +80,7 @@ fn api_006_text_that_is_not_our_cursor_is_refused_on_after() {
         good[..good.len() - 1].to_owned(),
         format!("s1.+{}", &good[4..]),
         "n1.6162".to_owned(),
-        past_chrono_range(),
+        at_micros(i64::MAX),
         format!("s1.{}", "A".repeat(10_000)),
     ];
     for text in refused {

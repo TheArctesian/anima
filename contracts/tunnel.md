@@ -84,16 +84,17 @@ The hub sends a `nop` to the client when the gateway has sent nothing for 5 seco
 | Gateway sends `error` with status 0x0300–0x03FF (upstream) | 1011 after relaying `error` | `GATEWAY_ERROR` |
 | Gateway `error` with status 0x0301 / 0x0303 (unauthorized / forbidden) | 1011 after relaying `error` | `AUTH_FAILED` |
 | Host key mismatch | 4001 after the hub sends `error` `"Host key changed"` `0x0303` | `HOST_KEY_MISMATCH` |
+| Client sends an instruction that does not decode (GW-011) | 1002 | `PROTOCOL_ERROR` |
 | Idle timeout | 4002 | `TIMEOUT` |
 | Hub shutdown | 1001 | `HUB_SHUTDOWN` |
 
-On every end the hub: closes both sockets; sets `ended_at` and `end_reason` on the session row; publishes an `events::Signal::Event` (`Source::Session`, severity Info; Error for `HOST_KEY_MISMATCH`; Warning for `AUTH_FAILED` and `GATEWAY_ERROR`; R-032); writes the audit entry `session.end`. The hub never records session content (RA-008).
+On every end the hub: closes both sockets; sets `ended_at` and `end_reason` on the session row; publishes an `events::Signal::Event` (`Source::Session`, severity Info; Error for `HOST_KEY_MISMATCH`; Warning for `AUTH_FAILED`, `GATEWAY_ERROR` and `PROTOCOL_ERROR`; R-032, R-034); writes the audit entry `session.end`. The hub never records session content (RA-008).
 
 ## 6. Host keys (SEC-006, SEC-007)
 
 - The connection test (`testConnection`) reads the host key before any session. If none is recorded, the result has `hostKey` set and `hostKeyChanged: false`; the client shows the fingerprint and calls `acceptHostKey`.
 - `startSession` refuses with `CONFLICT` when no host key is accepted yet.
-- When the gateway reports a key that differs from the recorded `host-key`, the session ends with `HOST_KEY_MISMATCH`, an Error event is written and the client shows the warning modal. Only a new `testConnection` + `acceptHostKey` replaces the key, and that writes an audit entry.
+- Before the gateway handshake, the hub reads the device's SSH host key itself (the same no-auth key exchange `testConnection` uses), because guacd reports a mismatch only as a generic `error` 0x0200 (R-034). When the hub reads a key that differs from the recorded key, it sends `error` `"Host key changed"` `0x0303` and the session ends with `HOST_KEY_MISMATCH`, an Error event is written and the client shows the warning modal. guacd still pins `host-key`, so a key that changes between the hub's read and guacd's connect fails closed as `GATEWAY_ERROR`. Only a new `testConnection` + `acceptHostKey` replaces the key, and that writes an audit entry.
 
 ## 7. Tests the owners must have
 

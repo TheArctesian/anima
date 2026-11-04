@@ -1,0 +1,13 @@
+# Home Linux PC: run anima-db-prune.service once a week (VPS-006).
+# Install as /etc/systemd/system/anima-db-prune.timer (see ../README.md).
+[Unit]
+Description=Weekly retention for the Anima database backups
+
+[Timer]
+OnCalendar=Sun *-*-* 05:30:00
+RandomizedDelaySec=30m
+Persistent=true
+Unit=anima-db-prune.service
+
+[Install]
+WantedBy=timers.target
