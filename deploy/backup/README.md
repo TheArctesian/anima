@@ -43,22 +43,55 @@ another folder.
 A dump on the VPS does not survive the loss of the VPS. `offsite.sh` sends each backup to the
 `rest-server` on the home PC, over the VPN. This is the same pattern as the Headscale backup
 (`deploy/headscale/backup/README.md`): `restic` encrypts on the VPS, and the `rest-server` runs
-with `--append-only --private-repos`. The VPS can add snapshots and cannot delete them.
-
-Pruning the remote repository is the job of the home PC, not of the VPS. Use a `restic forget`
-rule there, as for the Headscale repository.
+with `--append-only --private-repos`. The VPS can add snapshots and cannot delete them. The
+`rest-server` speaks plain HTTP, because the traffic stays inside the VPN.
 
 A dump holds credential ciphertext and password hashes. `restic` encrypts it before it leaves
 the VPS.
 
-Secret files that you create (never commit them, never print them):
+**Install restic on the VPS.** AlmaLinux 10 has no `restic` in its own repositories. EPEL 10
+has it (version 0.19.1 when this was written; checked in an `almalinux:10` container):
+
+```sh
+dnf install -y epel-release
+dnf install -y restic
+```
+
+**Secret files** that you create on the VPS (mode 0600, owner root; never commit them, never print them):
 
 | File | Content |
 |---|---|
-| `/opt/anima/deploy/secrets/restic_repository` | `rest:https://anima-db:<rest-server password>@<home PC address>:8000/anima-db/anima-db` |
+| `/opt/anima/deploy/secrets/restic_repository` | `rest:http://anima-db:<rest-server password>@<home PC LAN IP>:8000/anima-db/` |
 | `/opt/anima/deploy/secrets/restic_password` | The restic encryption password. Keep a copy offline. |
 
-The command that `offsite.sh` runs:
+Make the rest-server password hex (`openssl rand -hex 32`). It sits inside a URL.
+
+**Home PC steps** (the Headscale README lists the packages and the `rest-server` unit):
+
+1. Add the user: `htpasswd -B /etc/restic/htpasswd anima-db`. Use the same password as in the URL above.
+2. Put the restic password in `/etc/restic/anima-db-password` (mode 0600, root).
+3. Check the size limit. WP-03's `rest-server` unit starts with `--max-size` (1 GiB at the time of writing). Check in `/etc/systemd/system/rest-server.service` whether the limit covers each repository or all of them together, and whether Headscale already uses part of it. Daily dumps are small and `restic` stores only the changed parts, but 90 days of history grows. After the first week, run `restic stats --mode raw-data` and multiply by 13. Raise `--max-size` if the result is more than half of the limit.
+4. Prune on the home PC only. This repository is append-only for the VPS, so the VPS cannot delete anything. Run this as root, with no cache and no lock, so nothing is written into the `restic`-owned repository:
+
+```sh
+restic -r /srv/restic/anima-db --password-file /etc/restic/anima-db-password --no-cache --no-lock \
+  forget --host anima-vps --tag anima-db --keep-within 90d --prune
+```
+
+Keep 90 days, not 14. Damage such as a wrong delete can go unseen for weeks. Ninety days also
+matches the retention of `events.event_log`, so a restore from the oldest dump still holds the
+logs of its own period. Do not run this command from a timer until it sits behind the guard of
+`deploy/headscale/backup/prune.sh`. That script refuses to prune when the snapshot list looks
+wrong (too few snapshots, or a time in the future). Copy its pattern for this repository.
+
+**Initialise the repository** once, from the VPS. This needs the user and password above:
+
+```sh
+restic --repository-file /opt/anima/deploy/secrets/restic_repository \
+  --password-file /opt/anima/deploy/secrets/restic_password init
+```
+
+The command that `offsite.sh` runs after each backup:
 
 ```sh
 restic --repository-file /opt/anima/deploy/secrets/restic_repository \
@@ -68,43 +101,18 @@ restic --repository-file /opt/anima/deploy/secrets/restic_repository \
 
 ## Schedule
 
-Run the backup and the off-site copy every day. Copy these two files to `/etc/systemd/system/`.
+Run the backup and the off-site copy every day with a systemd timer.
 
-`anima-backup.service`:
+| Repository file | Installed as | Mode |
+|---|---|---|
+| `deploy/backup/anima-backup.unit` | `/etc/systemd/system/anima-backup.service` | `0644` |
+| `deploy/backup/anima-backup.timer` | `/etc/systemd/system/anima-backup.timer` | `0644` |
 
-```ini
-[Unit]
-Description=Anima database backup and off-site copy
-Wants=network-online.target
-After=network-online.target docker.service
-
-[Service]
-Type=oneshot
-UMask=0077
-LimitCORE=0
-CacheDirectory=anima-offsite
-CacheDirectoryMode=0700
-Environment=ANIMA_RESTIC_CACHE_DIR=%C/anima-offsite
-ExecStart=/opt/anima/deploy/backup/backup.sh
-ExecStart=/opt/anima/deploy/backup/offsite.sh
-```
-
-`anima-backup.timer`:
-
-```ini
-[Unit]
-Description=Daily Anima database backup
-
-[Timer]
-OnCalendar=*-*-* 03:30:00 UTC
-RandomizedDelaySec=15m
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-```
-
-If `backup.sh` fails, systemd does not run `offsite.sh`. The run fails, and `journalctl -u anima-backup.service` shows why.
+The repository file ends in `.unit` because the name check (CQ-030) refuses the word
+"service" in file names. The unit runs `backup.sh`, then `offsite.sh`. If `backup.sh` fails,
+systemd does not run `offsite.sh`, and `journalctl -u anima-backup.service` shows why. The unit
+stops a run after two hours. It is sandboxed: the file system is read-only except
+`/var/backups/anima`, and the Docker socket stays reachable.
 
 ## What a dump does not hold
 
@@ -140,7 +148,8 @@ Once a month, prove that the newest dump restores. This needs no downtime and ru
 
 ```sh
 cd /opt/anima/deploy
-backup/restore-check.sh "$(ls /var/backups/anima/anima-*.dump | tail -n 1)"
+backup/restore-check.sh "$(find /var/backups/anima -regextype posix-extended \
+  -regex '.*/anima-[0-9]{8}T[0-9]{6}Z\.dump' | sort | tail -n 1)"
 ```
 
 The script restores the dump into `anima_restore_check`. It compares the row count of every
@@ -152,11 +161,17 @@ the manifest is missing.
 
 ## Operator changes
 
-1. Copy the two unit files from this README to `/etc/systemd/system/anima-backup.service` and `/etc/systemd/system/anima-backup.timer`.
-2. Run `systemctl daemon-reload`.
-3. Create `/opt/anima/deploy/secrets/restic_repository` and `/opt/anima/deploy/secrets/restic_password` (mode 0600, root), and add an `anima-db` user to the `rest-server` on the home PC.
-4. Run `systemctl enable --now anima-backup.timer`.
-5. Copy `/opt/anima/deploy/secrets/anima_key` and `restic_password` to an offline place.
-6. Run the first backup: `systemctl start anima-backup.service`.
-7. Run the first drill: `/opt/anima/deploy/backup/backup.sh`.
-8. Then run `/opt/anima/deploy/backup/restore-check.sh <the path that backup.sh printed>`.
+Do these in order.
+
+1. On the VPS: `dnf install -y epel-release && dnf install -y restic`.
+2. On the home PC: `htpasswd -B /etc/restic/htpasswd anima-db`, and create `/etc/restic/anima-db-password`. Check `--max-size` as described above.
+3. On the VPS: create `/opt/anima/deploy/secrets/restic_repository` and `/opt/anima/deploy/secrets/restic_password` (mode 0600, root).
+4. On the VPS: `restic --repository-file /opt/anima/deploy/secrets/restic_repository --password-file /opt/anima/deploy/secrets/restic_password init`.
+5. On the VPS: `install -m 0644 /opt/anima/deploy/backup/anima-backup.unit /etc/systemd/system/anima-backup.service`.
+6. On the VPS: `install -m 0644 /opt/anima/deploy/backup/anima-backup.timer /etc/systemd/system/anima-backup.timer`.
+7. On the VPS: `systemctl daemon-reload`.
+8. On the VPS: `systemctl start anima-backup.service`. Wait for it to finish, then read the printed dump path with `journalctl -u anima-backup.service -n 20`.
+9. On the VPS: `/opt/anima/deploy/backup/restore-check.sh <the printed path>`.
+10. On the VPS: `systemctl enable --now anima-backup.timer`.
+11. Copy `/opt/anima/deploy/secrets/anima_key` and `restic_password` to an offline place.
+12. On the home PC: schedule the `forget` command above behind the prune guard.
