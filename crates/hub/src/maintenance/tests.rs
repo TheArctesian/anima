@@ -3,6 +3,7 @@
 
 mod coverage;
 mod daylight_saving;
+mod form_text;
 mod kinds;
 mod month_end;
 mod validation;
