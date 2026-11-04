@@ -13,6 +13,7 @@ mod store;
 #[cfg(test)]
 mod tests;
 mod tickets;
+mod tunnel;
 
 use std::collections::HashMap;
 
