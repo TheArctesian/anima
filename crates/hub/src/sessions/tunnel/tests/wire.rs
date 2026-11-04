@@ -5,6 +5,7 @@
 mod bench;
 mod causes;
 mod fake_guacd;
+mod host_keys;
 mod interruption;
 mod refusals;
 mod relaying;
