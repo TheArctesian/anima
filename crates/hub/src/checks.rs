@@ -196,27 +196,6 @@ pub async fn check_uptime(
     Ok(uptime::ratio(tally))
 }
 
-/// Up to `limit` heartbeats of the check recorded before `before`, newest first.
-///
-/// # Errors
-/// `Database` when the query fails.
-pub async fn heartbeats(
-    db: &PgPool,
-    check: CheckId,
-    before: Option<DateTime<Utc>>,
-    limit: u32,
-) -> Result<Vec<Heartbeat>, Error> {
-    store::heartbeats_before(db, check, before, i64::from(limit)).await
-}
-
-/// The PUSH check that holds this token, or `None` (R-028).
-///
-/// # Errors
-/// `Database` when the query fails; `Unreadable` when the stored configuration is not.
-pub async fn push_check(db: &PgPool, token: &str) -> Result<Option<Check>, Error> {
-    store::by_push_token(db, token).await
-}
-
 /// For each device, the address that its check with the latest beat resolved.
 ///
 /// # Errors

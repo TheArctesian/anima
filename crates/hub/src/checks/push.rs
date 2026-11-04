@@ -22,7 +22,7 @@ use subtle::ConstantTimeEq as _;
 use super::{
     Beat, Check, Error, Recorded, evaluate,
     probe::{ProbeResult, clean_message},
-    push_check, record_beat,
+    record_beat, store,
 };
 use crate::{
     clock::Clock,
@@ -151,7 +151,7 @@ async fn record(
     token: &str,
     query: Result<Query<PushQuery>, QueryRejection>,
 ) -> Result<Outcome, Error> {
-    let Some(check) = push_check(&state.db, token).await? else {
+    let Some(check) = store::by_push_token(&state.db, token).await? else {
         return Ok(Outcome::NotFound);
     };
     if !accepts(&check, token) {

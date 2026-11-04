@@ -14,7 +14,7 @@ use super::{
     heartbeat::{HeartbeatConnection, connection, paging},
 };
 use crate::{
-    checks::{self, Check, Error, Heartbeat, UptimeWindow},
+    checks::{self, Check, Error, Heartbeat, UptimeWindow, store},
     clock::Clock,
     devices::{self, Device},
     status::Status,
@@ -100,7 +100,7 @@ impl Check {
     }
 
     async fn last_heartbeat(&self, ctx: &Context<'_>) -> Result<Option<Heartbeat>> {
-        let latest = checks::heartbeats(pool(ctx)?, self.id, None, 1)
+        let latest = store::heartbeats_before(pool(ctx)?, self.id, None, 1)
             .await
             .map_err(to_graphql)?;
         Ok(latest.into_iter().next())
@@ -126,7 +126,7 @@ impl Check {
         let (size, before) =
             paging(first.unwrap_or(100), after.as_deref()).map_err(|e| invalid(&e))?;
         let limit = u32::try_from(size + 1).unwrap_or(u32::MAX);
-        let fetched = checks::heartbeats(pool(ctx)?, self.id, before, limit)
+        let fetched = store::heartbeats_before(pool(ctx)?, self.id, before, i64::from(limit))
             .await
             .map_err(to_graphql)?;
         Ok(connection(fetched, size))

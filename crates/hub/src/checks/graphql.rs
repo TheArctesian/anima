@@ -15,6 +15,7 @@ mod heartbeat;
 mod input;
 mod live;
 mod opaque;
+mod settings;
 mod trail;
 mod write;
 

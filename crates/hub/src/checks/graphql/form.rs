@@ -8,6 +8,7 @@ use super::input::{
     AuthShape, ConfigShape, CreateShape, DnsShape, HttpShape, IcmpShape, TcpShape, TlsShape,
     UpdateShape,
 };
+use super::settings::RawSettings;
 use crate::{
     checks::{
         CheckChange, CheckSettings, Definition, FieldError, NewCheck, PushToken,
@@ -35,7 +36,7 @@ impl ConfigForm {
     }
 }
 
-fn number<T: TryFrom<i32>>(field: &'static str, value: i32) -> Result<T, FieldError> {
+pub(super) fn number<T: TryFrom<i32>>(field: &'static str, value: i32) -> Result<T, FieldError> {
     T::try_from(value).map_err(|_| FieldError::new(field, "This number is out of range."))
 }
 
@@ -53,7 +54,7 @@ fn id<T: std::str::FromStr>(field: &'static str, id: &ID) -> Result<T, FieldErro
 }
 
 /// Records the error and gives `None`, so one pass reports every field in error.
-fn keep<T>(result: Result<T, FieldError>, errors: &mut Vec<FieldError>) -> Option<T> {
+pub(super) fn keep<T>(result: Result<T, FieldError>, errors: &mut Vec<FieldError>) -> Option<T> {
     result.map_err(|error| errors.push(error)).ok()
 }
 
@@ -173,48 +174,6 @@ pub(super) fn config(shape: ConfigShape, token: PushToken) -> Result<ConfigForm,
             children: Some(children(&shape.child_ids)?),
             sealed: false,
         }),
-    }
-}
-
-/// The common settings an operator sent, in range or reported.
-struct Settings {
-    interval_seconds: Option<u32>,
-    retries: Option<u8>,
-    retry_interval_seconds: Option<u32>,
-    degraded_threshold_ms: Option<u32>,
-}
-
-struct RawSettings {
-    interval_seconds: Option<i32>,
-    retries: Option<i32>,
-    retry_interval_seconds: Option<i32>,
-    degraded_threshold_ms: Option<i32>,
-}
-
-fn optional<T: TryFrom<i32>>(
-    field: &'static str,
-    value: Option<i32>,
-    errors: &mut Vec<FieldError>,
-) -> Option<T> {
-    value.and_then(|value| keep(number(field, value), errors))
-}
-
-impl RawSettings {
-    fn convert(self, errors: &mut Vec<FieldError>) -> Settings {
-        Settings {
-            interval_seconds: optional("intervalSeconds", self.interval_seconds, errors),
-            retries: optional("retries", self.retries, errors),
-            retry_interval_seconds: optional(
-                "retryIntervalSeconds",
-                self.retry_interval_seconds,
-                errors,
-            ),
-            degraded_threshold_ms: optional(
-                "degradedThresholdMs",
-                self.degraded_threshold_ms,
-                errors,
-            ),
-        }
     }
 }
 
