@@ -191,6 +191,8 @@ pub async fn set_operator(
     let hash = tokio::task::spawn_blocking(move || password::hash(&password, &salt)).await??;
     let mut tx = db.begin().await?;
     let (id, previous) = store::replace_operator(&mut tx, username, &hash, now).await?;
+    // Write the operator row before deleting tokens: a sign-in issues its token under that
+    // row's lock, so the delete then sees it (D-9).
     store::delete_operator_tokens(&mut tx, id).await?;
     let mut usernames = vec![username];
     usernames.extend(previous.as_deref());
@@ -228,6 +230,7 @@ pub async fn enrol_totp(db: &PgPool, vault: &Vault, username: &str) -> Result<En
         .ok_or(UNKNOWN_OPERATOR)?;
     let sealed = vault.seal(&secret, totp::context(account.id).as_bytes());
     store::set_totp(&mut *tx, account.id, Some(&sealed.to_bytes())).await?;
+    // Row first, tokens second, as in `replace_operator` above (D-9).
     store::delete_operator_tokens(&mut tx, account.id).await?;
     tx.commit().await?;
     Ok(Enrolment(totp::otpauth_uri(
