@@ -51,7 +51,7 @@ fn wanted<T: std::str::FromStr>(field: &'static str, id: Option<&ID>) -> Result<
 #[derive(Default)]
 pub struct Query;
 
-#[Object]
+#[Object(name = "ChecksQuery")]
 impl Query {
     #[graphql(guard = "Authenticated")]
     async fn check(&self, ctx: &Context<'_>, id: ID) -> Result<Option<Check>> {
@@ -69,7 +69,7 @@ impl Query {
 #[derive(Default)]
 pub struct Mutation;
 
-#[Object]
+#[Object(name = "ChecksMutation")]
 impl Mutation {
     #[graphql(guard = "Authenticated")]
     async fn create_check(&self, ctx: &Context<'_>, input: Opaque<CreateShape>) -> Result<Check> {
@@ -102,7 +102,7 @@ impl Mutation {
 #[derive(Default)]
 pub struct Subscription;
 
-#[Subscription]
+#[Subscription(name = "ChecksSubscription")]
 impl Subscription {
     #[expect(
         clippy::unused_async,
