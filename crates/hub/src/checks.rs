@@ -11,8 +11,10 @@
 
 pub mod config;
 mod evaluation;
+pub mod graphql;
 mod model;
 pub mod probe;
+mod push;
 mod rules;
 mod scheduler;
 mod status;
@@ -41,8 +43,10 @@ use rules::Prepared;
 pub use evaluation::{CheckSettings, CheckState, evaluate};
 pub(in crate::checks) use model::Attempt;
 pub use model::{
-    Beat, Check, CheckChange, Definition, Due, FieldError, Missing, NewCheck, PushToken, Recorded,
+    Beat, Check, CheckChange, Definition, Due, FieldError, Heartbeat, Missing, NewCheck, PushToken,
+    Recorded,
 };
+pub use push::push_router;
 pub use scheduler::{Probing, spawn_scheduler};
 pub use store::Trimmed;
 pub use uptime::UptimeWindow;

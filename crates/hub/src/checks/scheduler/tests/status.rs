@@ -66,6 +66,34 @@ tick_test! {
         assert_eq!(seen.expect("no heartbeat signal").unwrap(), (id, Status::Up, 1));
     }
 
+    async fn log_010_the_heartbeat_signal_carries_the_message_that_was_stored(pool: PgPool) {
+        let device = on_loopback(&pool, DOCKER_HOST).await;
+        // Nothing listens on port 1, so the attempt fails with a message.
+        let id = add(&pool, device, tcp(1), 0).await;
+        let now = database_now(&pool).await;
+        due_at(&pool, id, now).await;
+        let bus = Bus::new(16);
+        let mut receiver = bus.subscribe();
+        let mut scheduler = scheduler(&pool, &bus);
+
+        scheduler.tick(now, &mut rng()).await;
+        scheduler.finish_running(now).await;
+
+        let signalled = loop {
+            if let Signal::Heartbeat { beat, .. } = receiver.try_recv().expect("a heartbeat signal") {
+                break beat.message;
+            }
+        };
+        let stored: Option<String> =
+            sqlx::query_scalar("SELECT message FROM checks.heartbeats WHERE check_id = $1")
+                .bind(id)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert!(stored.is_some(), "the failed attempt has a message");
+        assert_eq!(signalled, stored);
+    }
+
     async fn log_004_a_status_change_gives_one_event_and_one_signal(pool: PgPool) {
         let listener = Listener::start().await;
         let device = on_loopback(&pool, DOCKER_HOST).await;

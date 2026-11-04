@@ -85,6 +85,7 @@ pub(super) async fn run(ctx: &Context, due: Due, now: DateTime<Utc>) -> Finished
                     at: beat.at,
                     status: beat.status,
                     response_time_ms: beat.response_time_ms,
+                    message: beat.message.clone(),
                 },
             });
             finished.recorded = Some(Timing {

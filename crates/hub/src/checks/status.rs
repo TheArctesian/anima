@@ -82,6 +82,28 @@ pub(super) fn device_status(checks: &[Standing], covered: &dyn Fn(CheckId) -> bo
         .unwrap_or(Status::Unknown)
 }
 
+/// The status one check shows, with its device's maintenance flag, tags and the active
+/// windows applied: the same rules that [`device_status`] combines (CHK-004, CHK-006).
+pub(super) fn of_check(
+    id: CheckId,
+    device: &Device,
+    checks: &[Standing],
+    active: &ActiveTargets,
+) -> Status {
+    let cover = Cover {
+        manual: device.maintenance,
+        active,
+        device: device.id,
+        tags: &device.tags,
+    };
+    checks
+        .iter()
+        .find(|check| check.id == id)
+        .map_or(Status::Unknown, |check| {
+            shown(check, checks, &|each| cover.covers(each))
+        })
+}
+
 /// The status of each requested device. A device that `known` does not hold has no manual
 /// flag and no tags.
 pub(super) fn by_device(

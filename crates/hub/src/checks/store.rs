@@ -20,6 +20,7 @@ macro_rules! select_check {
 
 mod attempts;
 mod beats;
+mod heartbeats;
 mod retention;
 mod rows;
 mod sealed;
@@ -40,13 +41,14 @@ use crate::ids::{CheckId, DeviceId};
 
 pub(super) use attempts::record_attempt;
 pub(super) use beats::record_beat;
+pub(super) use heartbeats::{latest as latest_heartbeats, pages as heartbeat_pages};
 pub use retention::Trimmed;
 pub(super) use retention::{
     create_days_ahead, delete_orphan_heartbeats, drop_heartbeat_days_before, trim_aggregates,
 };
 use rows::{CheckRow, StandingRow, to_checks};
 pub(super) use sealed::seal;
-pub(super) use uptime::tallies;
+pub(super) use uptime::{check_tallies, tallies};
 pub(super) use writes::{
     Change, Current, Insert, delete, insert, load_http_secrets, lock, set_next_due, set_paused,
     update,
@@ -59,6 +61,35 @@ pub(super) async fn fetch<'e>(db: impl PgExecutor<'e>, id: CheckId) -> Result<Ch
         .await?
         .ok_or(Error::NotFound(Missing::Check(id)))?;
     Check::try_from(row)
+}
+
+/// The check as it is now, its row locked until the caller's transaction ends, so what an audit
+/// entry compares against cannot change underneath it.
+pub(super) async fn fetch_for_update(
+    conn: &mut sqlx::PgConnection,
+    id: CheckId,
+) -> Result<Check, Error> {
+    let row = sqlx::query_as::<_, CheckRow>(select_check!("WHERE id = $1 FOR UPDATE"))
+        .bind(id)
+        .fetch_optional(conn)
+        .await?
+        .ok_or(Error::NotFound(Missing::Check(id)))?;
+    Check::try_from(row)
+}
+
+/// The children of a group, their rows locked until the caller's transaction ends: a child
+/// that another transaction is moving is waited for, so the answer is what was committed.
+pub(super) async fn children_for_update(
+    conn: &mut sqlx::PgConnection,
+    group: CheckId,
+) -> Result<Vec<CheckId>, Error> {
+    let ids = sqlx::query_scalar(
+        "SELECT id FROM checks.checks WHERE parent_id = $1 ORDER BY id FOR UPDATE",
+    )
+    .bind(group)
+    .fetch_all(conn)
+    .await?;
+    Ok(ids)
 }
 
 /// The checks of the devices, each device's in byte order of the name.
@@ -82,6 +113,27 @@ pub(super) async fn standings(db: &PgPool, devices: &[DeviceId]) -> Result<Vec<S
     .fetch_all(db)
     .await?;
     rows.into_iter().map(Standing::try_from).collect()
+}
+
+/// The device of each of the checks, in one query.
+pub(super) async fn devices_of(
+    db: &PgPool,
+    checks: &[CheckId],
+) -> Result<Vec<(CheckId, DeviceId)>, Error> {
+    let rows = sqlx::query_as("SELECT id, device_id FROM checks.checks WHERE id = ANY($1)")
+        .bind(checks)
+        .fetch_all(db)
+        .await?;
+    Ok(rows)
+}
+
+/// The PUSH check that holds this token, if any.
+pub(super) async fn by_push_token(db: &PgPool, token: &str) -> Result<Option<Check>, Error> {
+    let row = sqlx::query_as::<_, CheckRow>(select_check!("WHERE push_token = $1"))
+        .bind(token)
+        .fetch_optional(db)
+        .await?;
+    row.map(Check::try_from).transpose()
 }
 
 /// For each device, the address of the check with the latest beat that has one.
