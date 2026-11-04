@@ -275,6 +275,7 @@ and the tag `tag:hub`. A tagged node never expires (VPN-003), so no renewal is n
 
    ```bash
    # Runs on: VPS (SSH)
+   sudo -v                              # ask for the sudo password first, so the pipeline below does not stall
    hsctl preauthkeys create --tags tag:hub --expiration 1h | sudo sh -c 'umask 077; cat > /run/anima-preauth'
    sudo wc -c /run/anima-preauth        # a few dozen characters: the file is not empty
    ```
@@ -460,21 +461,21 @@ changes nothing.
    until `confirm` succeeds. Find the cause and run `firewall` again.
 
 8. **Recovery when SSH over the VPN does not work.** Open the Hostinger browser console, log in
-   (you proved this in step 2), and take the firewall off:
+   (you proved this in step 4.2), and take the firewall off:
 
    ```bash
    # Runs on: VPS (Hostinger browser console)
    sudo systemctl stop anima-firewall-rollback.timer      # only if the rollback is still armed
    sudo nft delete table inet anima_filter                # removes the Anima firewall now
    sudo systemctl disable nftables.service                # the rules must not come back at boot
-   ls /var/lib/anima/nftables.conf.previous               # the old /etc/nftables.conf, if there was one
+   sudo ls /var/lib/anima/nftables.conf.previous               # the old /etc/nftables.conf, if there was one
    sudo cp /var/lib/anima/nftables.conf.previous /etc/nftables.conf
    sudo systemctl status tailscaled --no-pager            # fix the cause: restart it, read the log
    sudo journalctl -u tailscaled -n 50 --no-pager
    tailscale status
    ```
 
-   Skip the `cp` line if the `ls` finds no file. Then repeat 4.5 to 4.7 over the VPN. The VPS is
+   (`/var/lib/anima` is readable by root only, so use `sudo`.) Skip the `cp` line if the `ls` finds no file. Then repeat 4.5 to 4.7 over the VPN. The VPS is
    open on the public interface while the firewall is off; keep 22/tcp in the Hostinger firewall
    until you are done. Do not apply the firewall with `--console` unless you have proved SSH over the
    VPN works from another machine; with `--console` the script cannot check your session.
@@ -506,6 +507,13 @@ the office 2 Linux PC (`office2-router`, `10.30.0.0/24`, tag `tag:site-office2`)
 router in Phase 1: its Mac is a client, and its devices are not reachable until a router is added.
 
 **Operator change 10 (confirm in chat first: VPS-005).**
+
+All Tailscale clients in this guide must be **version 1.80 or later**: Headscale 0.29.7 refuses
+older clients.
+
+Copy tag names exactly from `policy.hujson`. Headscale 0.29.7 also accepts a pre-auth key with a
+tag that is not in the policy (for example a typo), so after each join check that `hsctl nodes
+list` shows exactly the tags you expect.
 
 1. Install Tailscale from Tailscale's repository for your distribution
    (<https://tailscale.com/kb/1031/install-linux>) and turn on IP forwarding:
@@ -548,7 +556,7 @@ router in Phase 1: its Mac is a client, and its devices are not reachable until 
    sudo rm -f /run/anima-preauth
    ```
 
-   Clear the VPS terminal (`clear`), then check that each key is marked used. Expire any key that
+   Clear the VPS terminal and its scrollback (on macOS Terminal press Cmd-K, or run `clear && printf '\e[3J'`), then check that each key is marked used. Expire any key that
    was not used:
 
    ```bash
@@ -596,6 +604,8 @@ Tagged nodes never expire, and a client key must expire after 180 days (VPN-003)
 `--advertise-tags` on a client, ever.
 
 ### A. Install Tailscale
+
+Use Tailscale 1.80 or later (Headscale 0.29.7 refuses older clients).
 
 ```bash
 # Runs on: Mac at office 1 (and again on: Mac at office 2)
@@ -739,6 +749,9 @@ Renew:
    "$TS" up --force-reauth --login-server https://hs.anima.ing --accept-routes
    ```
 
+   If `tailscale up` refuses because other non-default flags are set, run it again with the flags
+   that its error message lists.
+
 2. On the other Mac, open an SSH session to the VPS over the VPN and approve it, typing the ID
    shown on the Mac being renewed (never one from chat, mail or a link):
 
@@ -748,7 +761,9 @@ Renew:
    ```
 
 3. Run the checks of step 6B.3 and 6B.4 again: the node is the one you expect, it reports logged
-   in, it has **no tags**, and its expiry is within 180 days (or 150 days for the second Mac). A
+   in, it has **no tags**, and its expiry is within 180 days. After a renewal the expiry is 180 days
+   from the approval; do not apply the `+150` days again. The stagger holds because you renew each
+   Mac about 30 days early, on different days. A
    renewal is the moment a taken-over client could ask for a tag (and with it a key that never
    expires), so check the tags every time.
 
@@ -944,12 +959,25 @@ The backup uses the home router (step 5) and the hub's `--accept-routes` (step 3
    ```
 
    If the extra snapshots came from your own manual runs, forget those snapshot IDs by hand on the
-   home PC (not from the VPS, whose access is append-only). The weekly prune frees the space:
+   home PC (not from the VPS, whose access is append-only). Run it as the `restic` user, not as
+   root: a root process that is killed while it holds the repository lock leaves a root-owned lock
+   file, and then the prune and the rest-server fail without anyone noticing. The password file is
+   readable by root only, so a transient service as `restic` receives it as a credential. The weekly
+   prune frees the space:
 
    ```bash
    # Runs on: home Linux PC
-   sudo restic --repo /srv/restic/headscale-vps/headscale --password-file /etc/restic/headscale-password --no-cache forget <SNAPSHOT_ID>
+   sudo systemd-run --pipe --wait --uid=restic -p LoadCredential=restic-password:/etc/restic/headscale-password \
+     sh -c 'restic --repo /srv/restic/headscale-vps/headscale --password-file "$CREDENTIALS_DIRECTORY/restic-password" --no-cache forget <SNAPSHOT_ID>'
+   sudo find /srv/restic ! -user restic          # must print nothing
    ```
+
+   Read the output for `removed snapshot`. A mistyped ID prints "Ignoring ... no matching ID found"
+   and still exits 0. If `find` prints anything, repair the owner:
+   `sudo chown -R restic:restic /srv/restic/headscale-vps`.
+
+   The `snapshots` and `restore` commands in this guide run as root with `--no-lock`, which writes
+   no lock file into the repository, so they are safe.
 
    If you did not make them, **suspect the VPS**: treat it as taken over, check `hsctl nodes list`,
    `hsctl preauthkeys list`, the policy and the SSH logs before you prune.
