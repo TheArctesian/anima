@@ -34,6 +34,21 @@ impl Display {
     }
 }
 
+/// Longest accepted time zone, in characters.
+const MAX_TIMEZONE_CHARS: usize = 64;
+
+/// True for 1..=64 characters of `[A-Za-z0-9_+-/]`, the shape of an IANA zone
+/// name such as `America/Argentina/Buenos_Aires` or `Etc/GMT+5`.
+///
+/// The time zone comes from the client and reaches the SSH server as `TZ`, so
+/// anything else (control characters, spaces, `:`-paths) is refused (GW-012).
+pub(crate) fn is_timezone(text: &str) -> bool {
+    (1..=MAX_TIMEZONE_CHARS).contains(&text.len())
+        && text
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'+' | b'-' | b'/'))
+}
+
 /// Hub-trusted `connect` values by argument name.
 ///
 /// Holds passwords and keys, so it implements neither `Debug` nor `Display`

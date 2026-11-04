@@ -1,12 +1,11 @@
-//! The handshake reply to recorded guacd `args` (GW-010, GW-013, GW-014).
+//! The handshake reply to guacd `args` fixtures (GW-010, GW-013, GW-014).
 
 use guac_protocol::{
-    ArgValues, Display, Handshake, HandshakeError, HandshakeStep, Instruction,
-    MAX_INSTRUCTION_BYTES, encode,
+    ArgValues, Handshake, HandshakeError, HandshakeStep, Instruction, MAX_INSTRUCTION_BYTES, encode,
 };
 
 use crate::guacd::{
-    ARGS_1_5_5, ARGS_1_6_0, DISPLAY, K4_PASSWORD_VALUES, both_fixtures, connect_of, decode_args,
+    ARGS_1_5_5, ARGS_1_6_0, DISPLAY, K4_PASSWORD_VALUES, all_fixtures, connect_of, decode_args,
     params, reply, value_for, values_of,
 };
 
@@ -37,16 +36,19 @@ fn handshake_after_args() -> Handshake {
 
 #[test]
 fn gw_010_fixtures_decode_to_versioned_ssh_args() {
-    let [old, new] = both_fixtures();
-    for (args, names) in [(&old, 39), (&new, 43)] {
+    for (args, names) in all_fixtures() {
         assert_eq!(args.opcode, "args");
         assert_eq!(args.args[0], "VERSION_1_5_0");
         assert_eq!(args.args.len(), names + 1);
     }
+    let [old, new, old_agent, new_agent] = all_fixtures().map(|(args, _)| args);
     for name in ONLY_IN_1_6 {
         assert!(!old.args.iter().any(|n| n == name));
         assert!(new.args.iter().any(|n| n == name));
     }
+    let has_agent = |args: &Instruction| args.args.iter().any(|n| n == "enable-agent");
+    assert!(!has_agent(&old) && !has_agent(&new));
+    assert!(has_agent(&old_agent) && has_agent(&new_agent));
 }
 
 #[test]
@@ -76,7 +78,7 @@ fn gw_010_reply_sends_display_media_timezone_and_name_before_connect() {
 
 #[test]
 fn gw_010_connect_has_version_then_one_value_per_name_in_order() {
-    for args in both_fixtures() {
+    for (args, _) in all_fixtures() {
         let send = k4_reply(&args);
         let connect = connect_of(&send);
         assert_eq!(connect.args.len(), args.args.len());
@@ -91,7 +93,7 @@ fn gw_010_connect_has_version_then_one_value_per_name_in_order() {
     }
 }
 
-/// `(position in connect, value)` for the K4 values of each recorded fixture.
+/// `(position in connect, value)` for the K4 values in the official-image fixtures.
 const POSITIONS_1_5_5: [(usize, &str); 12] = [
     (1, "10.20.0.15"),
     (
@@ -104,10 +106,10 @@ const POSITIONS_1_5_5: [(usize, &str); 12] = [
     (6, "OpenDyslexicM Nerd Font Mono"),
     (7, "12"),
     (12, ""),
-    (15, "foreground:rgb:d8/de/e9;background:rgb:2e/34/40"),
-    (27, "30"),
-    (29, "xterm-256color"),
-    (30, "5000"),
+    (14, "foreground:rgb:d8/de/e9;background:rgb:2e/34/40"),
+    (26, "30"),
+    (28, "xterm-256color"),
+    (29, "5000"),
 ];
 const POSITIONS_1_6_0: [(usize, &str); 12] = [
     (1, "10.20.0.15"),
@@ -118,14 +120,14 @@ const POSITIONS_1_6_0: [(usize, &str); 12] = [
     (7, "OpenDyslexicM Nerd Font Mono"),
     (8, "12"),
     (15, ""),
-    (17, "foreground:rgb:d8/de/e9;background:rgb:2e/34/40"),
-    (31, "30"),
-    (33, "xterm-256color"),
-    (34, "5000"),
+    (16, "foreground:rgb:d8/de/e9;background:rgb:2e/34/40"),
+    (30, "30"),
+    (32, "xterm-256color"),
+    (33, "5000"),
 ];
 
 #[test]
-fn gw_010_connect_places_k4_values_at_their_recorded_positions() {
+fn gw_010_connect_places_k4_values_at_their_fixture_positions() {
     for (fixture, positions) in [(ARGS_1_5_5, POSITIONS_1_5_5), (ARGS_1_6_0, POSITIONS_1_6_0)] {
         let send = k4_reply(&decode_args(fixture));
         let connect = &connect_of(&send).args;
@@ -179,6 +181,8 @@ fn gw_010_refuses_old_or_unparseable_versions() {
         "VERSION_1_+5_0",
         "VERSION_1__5_0",
         "version_1_5_0",
+        "1_5_0",
+        "XVERSION_1_5_0",
         "",
     ];
     for version in refused {
@@ -247,27 +251,6 @@ fn gw_010_nop_is_ignored_before_ready() {
         handshake.on_instruction(Instruction::new("ready", ["$id"])),
         Ok(HandshakeStep::Ready { .. })
     ));
-}
-
-#[test]
-fn display_bounds_are_inclusive() {
-    let at = |width, height, dpi| Display { width, height, dpi }.within_bounds();
-    assert!(at(
-        Display::MIN_SIDE_PX,
-        Display::MIN_SIDE_PX,
-        Display::MIN_DPI
-    ));
-    assert!(at(
-        Display::MAX_SIDE_PX,
-        Display::MAX_SIDE_PX,
-        Display::MAX_DPI
-    ));
-    assert!(!at(0, 768, 96));
-    assert!(!at(1024, 0, 96));
-    assert!(!at(8193, 768, 96));
-    assert!(!at(1024, 8193, 96));
-    assert!(!at(1024, 768, 47));
-    assert!(!at(1024, 768, 481));
 }
 
 #[test]

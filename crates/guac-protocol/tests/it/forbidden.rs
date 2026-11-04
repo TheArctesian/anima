@@ -2,14 +2,15 @@
 //!
 //! The client controls only `Display` and the time zone (GW-012). Whatever
 //! they hold, every `connect` value is the hub's value for that name (or `""`),
-//! and the encoded reply decodes back to exactly the instructions sent.
+//! and the encoded reply decodes back to exactly the instructions sent. A time
+//! zone outside the zone-name charset is refused before anything is sent.
 
 use std::collections::HashMap;
 
-use guac_protocol::{ArgValues, Decoder, Display, Instruction, encode};
+use guac_protocol::{ArgValues, Decoder, Display, Handshake, HandshakeError, Instruction, encode};
 use proptest::prelude::*;
 
-use crate::guacd::{ARGS_1_5_5, ARGS_1_6_0, connect_of, decode_args, params, reply};
+use crate::guacd::{AGENT_ARGS_1_6_0, all_fixtures, connect_of, decode_args, params, reply};
 
 /// Names the client must never set, plus every `wol-*` name (GW-013).
 const FORBIDDEN: [&str; 11] = [
@@ -42,26 +43,45 @@ fn display() -> impl Strategy<Value = Display> {
         .prop_map(|(width, height, dpi)| Display { width, height, dpi })
 }
 
-/// Time zones shaped like argument names, assignments and wire instructions.
+/// Valid zone names, including ones spelled like argument names (GW-012).
 fn timezone() -> impl Strategy<Value = String> {
     prop_oneof![
         Just("hostname".to_owned()),
+        Just("port".to_owned()),
+        Just("wol-send-packet".to_owned()),
+        Just("private-key/password".to_owned()),
+        Just("Etc/GMT+5".to_owned()),
+        "[A-Za-z0-9_+/-]{1,64}",
+    ]
+}
+
+/// True for a character a zone name may hold.
+fn zone_char(c: char) -> bool {
+    c.is_ascii_alphanumeric() || matches!(c, '_' | '+' | '-' | '/')
+}
+
+/// Time zones that are not zone names: hostile shapes and any text with a
+/// character outside the charset, or longer than 64 characters.
+fn bad_timezone() -> impl Strategy<Value = String> {
+    prop_oneof![
+        Just(String::new()),
         Just("port=22".to_owned()),
         Just(";".to_owned()),
         Just("4.port,2.22;".to_owned()),
         Just("8.hostname,9.evil.host;7.connect;".to_owned()),
         Just("Europe/Zürich 東京 😀".to_owned()),
-        text(64),
+        "[A-Za-z0-9_+/-]{65,80}",
+        text(64).prop_filter("has a non-zone character", |t| !t.chars().all(zone_char)),
     ]
 }
 
 fn fixture() -> impl Strategy<Value = Instruction> {
-    prop_oneof![Just(decode_args(ARGS_1_5_5)), Just(decode_args(ARGS_1_6_0))]
+    prop::sample::select(all_fixtures().map(|(args, _)| args).to_vec())
 }
 
 /// Hub values: names from the fixtures or arbitrary, short values. Later pairs win.
 fn hub_pairs() -> impl Strategy<Value = Vec<(String, String)>> {
-    let names: Vec<String> = decode_args(ARGS_1_6_0).args[1..].to_vec();
+    let names: Vec<String> = decode_args(AGENT_ARGS_1_6_0).args[1..].to_vec();
     let name = prop_oneof![prop::sample::select(names), text(16)];
     prop::collection::vec((name, text(32)), 0..48)
 }
@@ -125,5 +145,16 @@ proptest! {
         let one = reply(args.clone(), params(first.0, &first.1, hub_values(&pairs)));
         let two = reply(args, params(second.0, &second.1, hub_values(&pairs)));
         prop_assert_eq!(connect_of(&one), connect_of(&two));
+    }
+
+    #[test]
+    fn gw_012_time_zone_outside_the_charset_is_refused(
+        args in fixture(),
+        display in display(),
+        timezone in bad_timezone(),
+        pairs in hub_pairs(),
+    ) {
+        let (mut handshake, _) = Handshake::new("ssh", params(display, &timezone, hub_values(&pairs)));
+        prop_assert_eq!(handshake.on_instruction(args), Err(HandshakeError::InvalidTimezone));
     }
 }

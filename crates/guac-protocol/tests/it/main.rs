@@ -1,3 +1,4 @@
+mod client_input;
 mod codec;
 mod decoder_props;
 mod forbidden;

@@ -13,8 +13,8 @@ pub struct Instruction {
     pub args: Vec<String>,
 }
 
-/// Longest prefix of a peer-supplied name that `Debug` and errors print.
-const DEBUG_OPCODE_CHARS: usize = 32;
+/// Longest prefix of a peer-supplied opcode or name that `Debug` and errors print.
+pub(crate) const NAME_CHARS: usize = 32;
 
 impl Instruction {
     #[must_use]
@@ -33,19 +33,19 @@ impl Instruction {
 impl fmt::Debug for Instruction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Instruction")
-            .field("opcode", &truncated(&self.opcode))
+            .field("opcode", &truncated(&self.opcode, NAME_CHARS))
             .field("arg_count", &self.args.len())
             .finish()
     }
 }
 
-/// The first 32 characters of `name`, then `…` when it is longer.
+/// The first `max_chars` characters of `text`, then `…` when it is longer.
 ///
-/// Opcodes and argument names come from the peer, so they are bounded before
+/// Opcodes, names and messages come from the peer, so they are bounded before
 /// they reach `Debug` or an error message.
-pub(crate) fn truncated(name: &str) -> String {
-    let mut prefix: String = name.chars().take(DEBUG_OPCODE_CHARS).collect();
-    if name.chars().nth(DEBUG_OPCODE_CHARS).is_some() {
+pub(crate) fn truncated(text: &str, max_chars: usize) -> String {
+    let mut prefix: String = text.chars().take(max_chars).collect();
+    if text.chars().nth(max_chars).is_some() {
         prefix.push('…');
     }
     prefix

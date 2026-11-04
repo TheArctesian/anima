@@ -5,9 +5,11 @@
 //! after the first error the handshake returns that error for every later
 //! instruction, because the caller closes the gateway connection.
 
-use crate::connect::{ConnectParams, Display};
+use std::fmt;
+
+use crate::connect::{ConnectParams, Display, is_timezone};
 use crate::decoder::{MAX_ELEMENTS, MAX_INSTRUCTION_BYTES};
-use crate::instruction::{Instruction, encode, truncated};
+use crate::instruction::{Instruction, NAME_CHARS, encode, truncated};
 
 /// The protocol version this crate implements and always answers with.
 const VERSION: &str = "VERSION_1_5_0";
@@ -15,9 +17,14 @@ const VERSION: &str = "VERSION_1_5_0";
 const MIN_VERSION: (u32, u32, u32) = (1, 5, 0);
 /// Image formats the client can display.
 const IMAGE_TYPES: [&str; 3] = ["image/png", "image/jpeg", "image/webp"];
+/// Longest prefix of a gateway `error` message that a [`HandshakeError`] keeps.
+const GATEWAY_MESSAGE_CHARS: usize = 128;
 
 /// What the caller does after an instruction from guacd.
-#[derive(Debug, Clone, PartialEq, Eq)]
+///
+/// `Debug` redacts `connection_id`: anyone who reaches guacd with it can join
+/// the session (GW-014, LOG-007).
+#[derive(Clone, PartialEq, Eq)]
 pub enum HandshakeStep {
     /// Send these instructions to guacd, in order. Empty for a `nop`.
     ///
@@ -29,8 +36,21 @@ pub enum HandshakeStep {
     Ready { connection_id: String },
 }
 
+impl fmt::Debug for HandshakeStep {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Send(instructions) => f.debug_tuple("Send").field(instructions).finish(),
+            Self::Ready { .. } => f
+                .debug_struct("Ready")
+                .field("connection_id", &"<redacted>")
+                .finish(),
+        }
+    }
+}
+
 /// Why the handshake failed. No variant carries an argument value (LOG-007);
-/// names and opcodes from guacd are cut to 32 characters.
+/// names and opcodes from guacd are cut to 32 characters, its error message
+/// to 128.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum HandshakeError {
     /// The first `args` value is missing, not `VERSION_X_Y_Z`, or older than 1.5.0.
@@ -39,6 +59,9 @@ pub enum HandshakeError {
     /// The display is outside the bounds of [`Display::within_bounds`].
     #[error("display size or DPI is out of bounds")]
     InvalidDisplay,
+    /// The time zone is not 1..=64 characters of `[A-Za-z0-9_+-/]`.
+    #[error("time zone is not a zone name")]
+    InvalidTimezone,
     /// A value to send holds a NUL byte, where guacd would cut it short.
     #[error("the {opcode} value for {argument:?} contains a NUL byte")]
     NulInValue {
@@ -58,6 +81,8 @@ pub enum HandshakeError {
     Gateway {
         /// The Guacamole status code, or `None` when guacd sent none or a non-number.
         status: Option<u16>,
+        /// guacd's text, cut to 128 characters. It is gateway text for the
+        /// process log only; never send it to the client.
         message: String,
     },
     /// guacd sent an instruction this step of the handshake does not accept.
@@ -83,8 +108,11 @@ pub struct Handshake {
 }
 
 impl Handshake {
-    /// Starts a handshake for `protocol` (a hub constant such as `ssh`) and
-    /// returns the `select` instruction to send first.
+    /// Starts a handshake for `protocol` and returns the `select` instruction
+    /// to send first.
+    ///
+    /// `protocol` must be a hub constant such as `ssh`, without NUL; it is not
+    /// checked.
     #[must_use]
     pub fn new(protocol: &str, params: ConnectParams) -> (Self, Instruction) {
         let handshake = Self {
@@ -153,15 +181,15 @@ fn reply_to_args(
     if !params.display.within_bounds() {
         return Err(HandshakeError::InvalidDisplay);
     }
+    if !is_timezone(&params.timezone) {
+        return Err(HandshakeError::InvalidTimezone);
+    }
     let reply = vec![
         size(params.display),
         Instruction::new("audio", Vec::<String>::new()),
         Instruction::new("video", Vec::<String>::new()),
         Instruction::new("image", IMAGE_TYPES),
-        Instruction::new(
-            "timezone",
-            [checked("timezone", "timezone", &params.timezone)?],
-        ),
+        Instruction::new("timezone", [params.timezone.as_str()]),
         Instruction::new("name", [checked("name", "name", &params.name)?]),
         connect(params, names)?,
     ];
@@ -201,7 +229,7 @@ fn checked(opcode: &'static str, argument: &str, value: &str) -> Result<String, 
     if value.contains('\0') {
         return Err(HandshakeError::NulInValue {
             opcode,
-            argument: truncated(argument),
+            argument: truncated(argument, NAME_CHARS),
         });
     }
     Ok(value.to_owned())
@@ -210,7 +238,7 @@ fn checked(opcode: &'static str, argument: &str, value: &str) -> Result<String, 
 /// `(major, minor, patch)` from `VERSION_<major>_<minor>_<patch>`, digits only.
 fn parse_version(text: &str) -> Option<(u32, u32, u32)> {
     let mut parts = text.strip_prefix("VERSION_")?.split('_').map(|part| {
-        if part.is_empty() || !part.bytes().all(|b| b.is_ascii_digit()) {
+        if !part.bytes().all(|b| b.is_ascii_digit()) {
             return None;
         }
         part.parse::<u32>().ok()
@@ -223,13 +251,17 @@ fn parse_version(text: &str) -> Option<(u32, u32, u32)> {
 fn gateway_error(i: &Instruction) -> HandshakeError {
     HandshakeError::Gateway {
         status: i.args.get(1).and_then(|status| status.parse().ok()),
-        message: i.args.first().cloned().unwrap_or_default(),
+        message: i
+            .args
+            .first()
+            .map(|message| truncated(message, GATEWAY_MESSAGE_CHARS))
+            .unwrap_or_default(),
     }
 }
 
 fn unexpected(expected: &'static str, i: &Instruction) -> HandshakeError {
     HandshakeError::UnexpectedInstruction {
         expected,
-        opcode: truncated(&i.opcode),
+        opcode: truncated(&i.opcode, NAME_CHARS),
     }
 }

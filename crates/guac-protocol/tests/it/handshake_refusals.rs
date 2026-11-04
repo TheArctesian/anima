@@ -2,7 +2,8 @@
 //! replies guacd would misread (GW-010, GW-013, LOG-007).
 
 use guac_protocol::{
-    ConnectParams, Display, Handshake, HandshakeError, HandshakeStep, Instruction, MAX_ELEMENTS,
+    ConnectParams, Handshake, HandshakeError, HandshakeStep, Instruction, MAX_ELEMENTS,
+    MAX_INSTRUCTION_BYTES,
 };
 
 use crate::guacd::{
@@ -124,34 +125,6 @@ fn gw_010_unexpected_opcode_is_cut_to_32_characters() {
 }
 
 #[test]
-fn gw_013_display_out_of_bounds_is_refused_before_anything_is_sent() {
-    let displays = [
-        Display {
-            width: 0,
-            ..DISPLAY
-        },
-        Display {
-            height: 8193,
-            ..DISPLAY
-        },
-        Display { dpi: 47, ..DISPLAY },
-        Display {
-            dpi: 481,
-            ..DISPLAY
-        },
-    ];
-    for display in displays {
-        let mut handshake = started(params(display, "UTC", values_of(&K4_PASSWORD_VALUES)));
-        let error = HandshakeError::InvalidDisplay;
-        assert_eq!(
-            handshake.on_instruction(decode_args(ARGS_1_5_5)).as_ref(),
-            Err(&error)
-        );
-        assert_stays_failed(&mut handshake, &error);
-    }
-}
-
-#[test]
 fn gw_013_nul_in_a_connect_value_is_refused_without_the_value() {
     let mut values = values_of(&K4_PASSWORD_VALUES);
     values.set("password", "hunter2\0hostname");
@@ -171,21 +144,71 @@ fn gw_013_nul_in_a_connect_value_is_refused_without_the_value() {
 }
 
 #[test]
-fn gw_013_nul_in_timezone_or_name_is_refused() {
-    let mut zoned = k4_params();
-    zoned.timezone = "UTC\0Europe/Berlin".to_owned();
+fn gw_013_nul_in_name_is_refused() {
     let mut named = k4_params();
     named.name = "operator\0root".to_owned();
-    for (params, opcode) in [(zoned, "timezone"), (named, "name")] {
-        let mut handshake = started(params);
-        assert_eq!(
-            handshake.on_instruction(decode_args(ARGS_1_6_0)),
-            Err(HandshakeError::NulInValue {
-                opcode,
-                argument: opcode.to_owned()
-            })
-        );
-    }
+    let mut handshake = started(named);
+    assert_eq!(
+        handshake.on_instruction(decode_args(ARGS_1_6_0)),
+        Err(HandshakeError::NulInValue {
+            opcode: "name",
+            argument: "name".to_owned()
+        })
+    );
+}
+
+#[test]
+fn log_007_nul_error_cuts_a_long_argument_name_to_32_characters() {
+    let long_name = "n".repeat(100);
+    let mut values = values_of(&K4_PASSWORD_VALUES);
+    values.set(long_name.clone(), "secret\0value");
+    let args = Instruction::new("args", ["VERSION_1_5_0".to_owned(), long_name]);
+    let mut handshake = started(params(DISPLAY, "UTC", values));
+    assert_eq!(
+        handshake.on_instruction(args),
+        Err(HandshakeError::NulInValue {
+            opcode: "connect",
+            argument: format!("{}…", "n".repeat(32))
+        })
+    );
+}
+
+#[test]
+fn gw_013_long_name_is_refused_as_too_large() {
+    let mut named = k4_params();
+    named.name = "o".repeat(MAX_INSTRUCTION_BYTES);
+    let mut handshake = started(named);
+    assert_eq!(
+        handshake.on_instruction(decode_args(ARGS_1_5_5)),
+        Err(HandshakeError::InstructionTooLarge {
+            opcode: "name".to_owned()
+        })
+    );
+}
+
+#[test]
+fn log_007_gateway_message_is_cut_to_128_characters() {
+    let mut handshake = started(k4_params());
+    let message = "m".repeat(8000);
+    assert_eq!(
+        handshake.on_instruction(Instruction::new("error", [message.as_str(), "512"])),
+        Err(HandshakeError::Gateway {
+            status: Some(512),
+            message: format!("{}…", "m".repeat(128))
+        })
+    );
+}
+
+#[test]
+fn gw_014_debug_of_ready_redacts_the_connection_id() {
+    let mut handshake = after_args();
+    let step = handshake
+        .on_instruction(Instruction::new("ready", ["$4c1f6a0e-secret-id"]))
+        .expect("ready");
+    let debug = format!("{step:?}");
+    assert!(debug.contains("Ready"));
+    assert!(debug.contains("<redacted>"));
+    assert!(!debug.contains("4c1f6a0e"));
 }
 
 #[test]

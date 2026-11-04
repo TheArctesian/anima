@@ -1,11 +1,15 @@
-//! Recorded guacd `args` fixtures and the hub values of K4 Section 3.
+//! guacd `args` fixtures and the hub values of K4 Section 3.
 
 use guac_protocol::{
     ArgValues, ConnectParams, Decoder, Display, Handshake, HandshakeStep, Instruction,
 };
 
+/// `args` of the official guacamole/guacd image (no `--enable-ssh-agent`, GW-001).
 pub const ARGS_1_5_5: &[u8] = include_bytes!("fixtures/guacd-1.5.5-ssh-args.guac");
 pub const ARGS_1_6_0: &[u8] = include_bytes!("fixtures/guacd-1.6.0-ssh-args.guac");
+/// `args` of guacd built with `--enable-ssh-agent` (adds `enable-agent`).
+pub const AGENT_ARGS_1_5_5: &[u8] = include_bytes!("fixtures/guacd-1.5.5-ssh-agent-args.guac");
+pub const AGENT_ARGS_1_6_0: &[u8] = include_bytes!("fixtures/guacd-1.6.0-ssh-agent-args.guac");
 
 pub const DISPLAY: Display = Display {
     width: 1024,
@@ -41,9 +45,14 @@ pub fn decode_args(bytes: &[u8]) -> Instruction {
     decoded.remove(0)
 }
 
-/// Both recorded fixtures, 1.5.5 first.
-pub fn both_fixtures() -> [Instruction; 2] {
-    [decode_args(ARGS_1_5_5), decode_args(ARGS_1_6_0)]
+/// Every fixture with its number of names after the version.
+pub fn all_fixtures() -> [(Instruction, usize); 4] {
+    [
+        (decode_args(ARGS_1_5_5), 38),
+        (decode_args(ARGS_1_6_0), 42),
+        (decode_args(AGENT_ARGS_1_5_5), 39),
+        (decode_args(AGENT_ARGS_1_6_0), 43),
+    ]
 }
 
 pub fn values_of(pairs: &[(&str, &str)]) -> ArgValues {
