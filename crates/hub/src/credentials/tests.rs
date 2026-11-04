@@ -248,6 +248,41 @@ fn sec_003_from_parts_rejects_a_short_nonce() {
 }
 
 #[test]
+fn sec_003_from_parts_rejects_an_empty_or_overlong_key_id() {
+    for key_id in [String::new(), "a".repeat(256)] {
+        let result = Sealed::from_parts(&[0; 24], vec![0; 16], key_id);
+        assert!(matches!(result, Err(Error::Malformed)));
+    }
+}
+
+#[test]
+fn sec_003_longest_key_id_round_trips_through_bytes() {
+    let sealed = Sealed::from_parts(&[7; 24], vec![9; 16], "a".repeat(255)).unwrap();
+    assert_eq!(Sealed::from_bytes(&sealed.to_bytes()).unwrap(), sealed);
+}
+
+fn bytes_from_hex(hex: &str) -> Vec<u8> {
+    (0..hex.len())
+        .step_by(2)
+        .map(|at| u8::from_str_radix(&hex[at..at + 2], 16).unwrap())
+        .collect()
+}
+
+/// Known answer: a value sealed by the first release with the test key. It pins the
+/// associated-data encoding (format tag, key id, context, length prefixes). If this value
+/// must change, every secret already stored no longer opens.
+#[test]
+fn sec_003_known_sealed_value_still_opens() {
+    let stored = bytes_from_hex(concat!(
+        "011032343037393733626639663261333239826c7d6a1e9b21f907ccb2d9892a",
+        "9038092a1be8ea4ddacd5a7f5a32caa874ce5ff1a2ff6c8ee9295514c2",
+    ));
+    let sealed = Sealed::from_bytes(&stored).unwrap();
+    let opened = vault_from(test_key()).open(&sealed, b"credentials.secrets:dev:ssh_password");
+    assert_eq!(opened.unwrap().expose(), b"kat");
+}
+
+#[test]
 fn sec_004_key_id_is_pinned_for_a_fixed_key() {
     let sealed = vault_from(test_key()).seal(&secret("s"), CONTEXT);
     assert_eq!(sealed.key_id(), "2407973bf9f2a329");
