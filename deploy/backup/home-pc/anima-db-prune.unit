@@ -1,0 +1,42 @@
+# Home Linux PC: apply retention (90 days) to the Anima database backups (VPS-006).
+# Install as /etc/systemd/system/anima-db-prune.service (see ../README.md).
+# It runs as the `restic` user that owns the repository, so no file in the repository
+# ever belongs to root. The encryption password reaches it as a systemd credential.
+[Unit]
+Description=Retention and prune for the Anima database backups
+
+[Service]
+Type=oneshot
+User=restic
+Group=restic
+Environment=RESTIC_REPOSITORY=/srv/restic/anima-db
+LoadCredential=restic-password:/etc/restic/anima-db-password
+Environment=RESTIC_PASSWORD_FILE=%d/restic-password
+Environment=RESTIC_CACHE_DIR=/var/cache/anima-db-prune
+CacheDirectory=anima-db-prune
+CacheDirectoryMode=0700
+ExecStart=/usr/bin/restic forget --host anima-vps --tag anima-db --group-by host,tags --keep-within 90d --prune
+UMask=0077
+LimitCORE=0
+
+CapabilityBoundingSet=
+AmbientCapabilities=
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/srv/restic/anima-db
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+PrivateNetwork=yes
+IPAddressDeny=any
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native

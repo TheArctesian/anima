@@ -42,7 +42,7 @@ The hub, not the client, does the handshake with the `guac-protocol` `Handshake`
 
 1. `select` with `ssh`.
 2. Read `args`. The first arg is the protocol version (`VERSION_1_5_0` or later). The hub answers with `VERSION_1_5_0`, the newest version it implements, not the version guacd sends (R-018).
-3. Send `size` (width, height, DPI from `DisplayInput`), `audio` (empty), `video` (empty), `image` (`image/png`, `image/jpeg`, `image/webp`), `timezone` (from `DisplayInput`, else the device site's zone, else UTC), `name` (operator username).
+3. Send `size` (width, height, DPI from `DisplayInput`), `audio` (empty), `video` (empty), `image` (`image/png`, `image/jpeg`, `image/webp`), `timezone` (from `DisplayInput` when it is an IANA zone name, else UTC; sites have no zone in Phase 1, R-032), `name` (operator username).
 4. Send `connect` with one value per name in `args`, in the same order. Values come only from the database and the credential store (GW-012). Unknown names get an empty value. The client never supplies `hostname`, `port`, credentials or any path (GW-013).
 5. Read `ready`. Its argument is the gateway connection ID. The hub keeps it with the session and never sends it to the client (GW-014).
 
@@ -65,13 +65,16 @@ Phase 1 SSH argument values:
 After `ready`, the hub sends to the client, in this order:
 
 1. The internal instruction `0.,36.<tunnel-uuid>;` (empty opcode, one arg: a new UUID). `guacamole-common-js` needs it to mark the tunnel open. The UUID is not the gateway connection ID.
-2. Every gateway instruction, unchanged, as one WebSocket text message per complete instruction (the `Decoder` gives complete instructions only).
+2. Every gateway instruction, unchanged, as one WebSocket text message per complete instruction (the `Decoder` gives complete instructions only), except `error`: the hub relays its status code with the fixed text `"Aborted. See logs."`, so no gateway error detail reaches the client (GW-014, LOG-007, R-035).
 
 From the client, the hub:
 
 - answers the internal instruction `0.,4.ping,<n>.<ts>;` with the same instruction, and does not forward it;
-- forwards every other complete instruction to the gateway unchanged, except `size`, which it forwards only when width and height are 1..8192 and DPI, when present, is 48..480 (R-018);
-- closes the tunnel if an instruction does not decode (GW-011), with close code 1002.
+- forwards only allow-listed instructions (R-035), each with at least the argument count guacd's handler reads: `key` (2), `mouse` (3), `touch` (7), `size` (2–3), `clipboard` (2), `blob` (2), `end` (1), `ack` (3), `sync` (1), `nop`, `disconnect`, `argv` (3);
+  - `size` is rebuilt from plain decimal numbers and forwarded only when width and height are 1..8192 and DPI, when present, is 48..480 (R-018);
+  - `blob` and `end` only on streams the client opened;
+  - `argv` only for `color-scheme`, or once per gateway `required` for `username`, `password`, `passphrase` or `domain` (GW-013 before GW-015);
+- closes the tunnel with close code 1002 (`PROTOCOL_ERROR`) if an instruction does not decode (GW-011) or is not allow-listed.
 
 The hub sends a `nop` to the client when the gateway has sent nothing for 5 seconds. If the client sends nothing for 15 seconds (no ping, no input), the hub ends the session with `TIMEOUT`.
 
@@ -84,16 +87,17 @@ The hub sends a `nop` to the client when the gateway has sent nothing for 5 seco
 | Gateway sends `error` with status 0x0300–0x03FF (upstream) | 1011 after relaying `error` | `GATEWAY_ERROR` |
 | Gateway `error` with status 0x0301 / 0x0303 (unauthorized / forbidden) | 1011 after relaying `error` | `AUTH_FAILED` |
 | Host key mismatch | 4001 after the hub sends `error` `"Host key changed"` `0x0303` | `HOST_KEY_MISMATCH` |
+| Client sends an instruction that does not decode (GW-011) | 1002 | `PROTOCOL_ERROR` |
 | Idle timeout | 4002 | `TIMEOUT` |
 | Hub shutdown | 1001 | `HUB_SHUTDOWN` |
 
-On every end the hub: closes both sockets; sets `ended_at` and `end_reason` on the session row; publishes an `events::Signal::Event` (`Source::Session`, severity Info, or Warning for `HOST_KEY_MISMATCH`, `AUTH_FAILED`, `GATEWAY_ERROR`); writes the audit entry `session.end`. The hub never records session content (RA-008).
+On every end the hub: closes both sockets; sets `ended_at` and `end_reason` on the session row; publishes an `events::Signal::Event` (`Source::Session`, severity Info; Error for `HOST_KEY_MISMATCH`; Warning for `AUTH_FAILED`, `GATEWAY_ERROR` and `PROTOCOL_ERROR`; R-032, R-034); writes the audit entry `session.end`. The hub never records session content (RA-008).
 
 ## 6. Host keys (SEC-006, SEC-007)
 
 - The connection test (`testConnection`) reads the host key before any session. If none is recorded, the result has `hostKey` set and `hostKeyChanged: false`; the client shows the fingerprint and calls `acceptHostKey`.
 - `startSession` refuses with `CONFLICT` when no host key is accepted yet.
-- When the gateway reports a key that differs from the recorded `host-key`, the session ends with `HOST_KEY_MISMATCH`, an Error event is written and the client shows the warning modal. Only a new `testConnection` + `acceptHostKey` replaces the key, and that writes an audit entry.
+- Before the gateway handshake, the hub reads the device's SSH host key itself (the same no-auth key exchange `testConnection` uses), because guacd reports a mismatch only as a generic `error` 0x0200 (R-034). When the hub reads a key that differs from the recorded key, it sends `error` `"Host key changed"` `0x0303` and the session ends with `HOST_KEY_MISMATCH`, an Error event is written and the client shows the warning modal. guacd still pins `host-key`, so a key that changes between the hub's read and guacd's connect fails closed as `GATEWAY_ERROR`. Only a new `testConnection` + `acceptHostKey` replaces the key, and that writes an audit entry.
 
 ## 7. Tests the owners must have
 

@@ -53,7 +53,7 @@ pub async fn operator_for_token(db: &Db, token: &str, now: DateTime<Utc>) -> Res
 ```rust
 pub struct Operator { pub id: OperatorId, pub name: String }   // re-exported by access (R-019)
 pub struct ClientAddr(pub std::net::IpAddr);                     // re-exported by access (R-019)
-pub struct HeartbeatSummary { pub at: DateTime<Utc>, pub status: Status, pub response_time_ms: Option<u32> }   // used by checks (R-019)
+pub struct HeartbeatSummary { pub at: DateTime<Utc>, pub status: Status, pub response_time_ms: Option<u32>, pub message: Option<String> }   // used by checks (R-019); `message` as stored: cleaned, at most MESSAGE_MAX chars; Clone, not Copy (R-036)
 pub enum Severity { Info, Warning, Error }
 pub enum Source { Check, Session, Device, Access, Hub }        // Proxmox, Metrics later
 pub struct NewEvent { pub severity: Severity, pub source: Source,
@@ -195,11 +195,17 @@ impl ActiveTargets { pub fn covers(&self, device: DeviceId, check: Option<CheckI
 ## sessions (WP-10)
 
 ```rust
-pub async fn start(db: &Db, clock: &Clock, op: &Operator, client: ClientAddr, req: StartRequest) -> Result<Ticket, Error>;
+/// Tickets, live tunnels and host-key observations; built once in main.rs, added with `.data(live.clone())` (R-032).
+#[derive(Clone)] pub struct Live { /* Arc inside */ }
+pub async fn start(db: &Db, clock: &Clock, live: &Live, op: &Operator, client: ClientAddr, req: StartRequest) -> Result<Ticket, Error>;
 /// For `SshSettings.hostKey` (R-011; WP-10 adds its use in `devices/graphql.rs`).
 pub async fn host_key(db: &Db, device: DeviceId) -> Result<Option<HostKey>, Error>;
-/// axum route for GET /tunnel (see tunnel.md).
-pub fn tunnel_router(db: Db, vault: credentials::Vault, bus: events::Bus, clock: Clock, guacd: SocketAddr) -> axum::Router;
+/// One query for the `SshSettings.hostKey` loader (API-005, R-032).
+pub async fn host_keys(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, HostKey>, Error>;
+/// axum route for GET /tunnel (see tunnel.md). `guacd` is the K7 `host:port` text, resolved at connect time (R-032).
+pub fn tunnel_router(db: Db, vault: credentials::Vault, bus: events::Bus, clock: Clock, guacd: String, live: Live) -> axum::Router;
+/// Wiring only: at start, end rows a crashed hub left open with HUB_SHUTDOWN (R-032).
+pub async fn close_stale(db: &Db, now: DateTime<Utc>) -> Result<u64, Error>;
 ```
 
 ## guac-protocol crate (WP-08)
