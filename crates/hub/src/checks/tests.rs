@@ -3,6 +3,7 @@
 
 mod beat;
 mod evaluation;
+mod heartbeat_cost;
 mod probe;
 mod standing;
 mod stored_config;

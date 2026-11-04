@@ -9,6 +9,25 @@ use crate::{
     ids::CheckId,
 };
 
+/// One lateral index scan per check: `(check_id, at)` is the primary key of every partition, so
+/// each scan stops after `$3` rows instead of reading the check's whole history (API-005).
+pub(in crate::checks) const PAGES_SQL: &str = "\
+    SELECT c.id, h.at, h.status, h.response_time_ms, h.message \
+    FROM unnest($1::uuid[]) AS c(id) \
+    CROSS JOIN LATERAL ( \
+        SELECT at, status, response_time_ms, message FROM checks.heartbeats \
+        WHERE check_id = c.id AND at < COALESCE($2::timestamptz, 'infinity') \
+        ORDER BY at DESC LIMIT $3) h \
+    ORDER BY c.id, h.at DESC";
+
+/// The newest heartbeat of each check, by the same lateral scan with `LIMIT 1` (API-005).
+pub(in crate::checks) const LATEST_SQL: &str = "\
+    SELECT c.id, h.at, h.status, h.response_time_ms, h.message \
+    FROM unnest($1::uuid[]) AS c(id) \
+    CROSS JOIN LATERAL ( \
+        SELECT at, status, response_time_ms, message FROM checks.heartbeats \
+        WHERE check_id = c.id ORDER BY at DESC LIMIT 1) h";
+
 type Row = (DateTime<Utc>, String, Option<i32>, Option<String>);
 
 fn heartbeat((at, status, response_time_ms, message): Row) -> Result<Heartbeat, Error> {
@@ -29,19 +48,12 @@ pub(in crate::checks) async fn pages(
     limit: i64,
 ) -> Result<Vec<(CheckId, Heartbeat)>, Error> {
     type Paged = (CheckId, DateTime<Utc>, String, Option<i32>, Option<String>);
-    let rows: Vec<Paged> = sqlx::query_as(
-        "SELECT check_id, at, status, response_time_ms, message FROM ( \
-             SELECT check_id, at, status, response_time_ms, message, \
-                    row_number() OVER (PARTITION BY check_id ORDER BY at DESC) AS place \
-             FROM checks.heartbeats \
-             WHERE check_id = ANY($1) AND ($2::timestamptz IS NULL OR at < $2)) paged \
-         WHERE place <= $3 ORDER BY check_id, at DESC",
-    )
-    .bind(checks)
-    .bind(before)
-    .bind(limit)
-    .fetch_all(db)
-    .await?;
+    let rows: Vec<Paged> = sqlx::query_as(PAGES_SQL)
+        .bind(checks)
+        .bind(before)
+        .bind(limit)
+        .fetch_all(db)
+        .await?;
     rows.into_iter()
         .map(|(check, at, status, ms, message)| Ok((check, heartbeat((at, status, ms, message))?)))
         .collect()
@@ -53,13 +65,10 @@ pub(in crate::checks) async fn latest(
     checks: &[CheckId],
 ) -> Result<Vec<(CheckId, Heartbeat)>, Error> {
     type Latest = (CheckId, DateTime<Utc>, String, Option<i32>, Option<String>);
-    let rows: Vec<Latest> = sqlx::query_as(
-        "SELECT DISTINCT ON (check_id) check_id, at, status, response_time_ms, message \
-             FROM checks.heartbeats WHERE check_id = ANY($1) ORDER BY check_id, at DESC",
-    )
-    .bind(checks)
-    .fetch_all(db)
-    .await?;
+    let rows: Vec<Latest> = sqlx::query_as(LATEST_SQL)
+        .bind(checks)
+        .fetch_all(db)
+        .await?;
     rows.into_iter()
         .map(|(check, at, status, ms, message)| Ok((check, heartbeat((at, status, ms, message))?)))
         .collect()

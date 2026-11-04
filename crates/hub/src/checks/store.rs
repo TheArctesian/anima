@@ -41,6 +41,8 @@ use crate::ids::{CheckId, DeviceId};
 
 pub(super) use attempts::record_attempt;
 pub(super) use beats::record_beat;
+#[cfg(test)]
+pub(in crate::checks) use heartbeats::{LATEST_SQL, PAGES_SQL};
 pub(super) use heartbeats::{latest as latest_heartbeats, pages as heartbeat_pages};
 pub use retention::Trimmed;
 pub(super) use retention::{
