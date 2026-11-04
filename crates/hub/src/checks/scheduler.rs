@@ -23,6 +23,7 @@ use crate::{clock::Clock, events::Bus};
 
 use attempt::Context;
 pub use attempt::Probing;
+pub(super) use attempt::in_maintenance;
 use tick::{Limits, Scheduler};
 
 /// The time between ticks.

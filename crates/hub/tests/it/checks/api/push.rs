@@ -1,4 +1,4 @@
-//! The push route: the token is the only authentication (CHK-003, CHK-005, LOG-007, R-028).
+//! The push route: the token is the only authentication (CHK-003, CHK-005, LOG-007).
 
 use std::sync::Arc;
 
@@ -34,6 +34,8 @@ macro_rules! fixture_test {
     )+};
 }
 
+mod maintenance;
+
 struct Rig {
     pool: PgPool,
     schema: TestSchema,
@@ -58,8 +60,13 @@ impl Rig {
     /// A push check with no retries, so one `down` report is Down at once. Returns the id and
     /// its path.
     async fn push_check(&self, name: &str) -> (String, String) {
-        let mut new = input(PVE_01, name, json!({ "push": true }));
-        new["retries"] = json!(0);
+        self.push_check_on(PVE_01, name, 0).await
+    }
+
+    /// A push check on the device with these retries. Returns the id and its path.
+    async fn push_check_on(&self, device: &str, name: &str, retries: u8) -> (String, String) {
+        let mut new = input(device, name, json!({ "push": true }));
+        new["retries"] = json!(retries);
         let id = create(&self.schema, new).await;
         let query =
             "query($id: ID!) { check(id: $id) { config { ... on PushConfig { pushPath } } } }";
@@ -239,10 +246,7 @@ fixture_test! {
 
     async fn chk_002_a_down_report_stays_pending_until_the_retries_are_used_up(pool: PgPool) {
         let rig = rig(pool).await;
-        let created = create(&rig.schema, input(PVE_01, "backup", json!({ "push": true }))).await;
-        let query = "query($id: ID!) { check(id: $id) { config { ... on PushConfig { pushPath } } } }";
-        let read = data_with(&rig.schema, query, json!({ "id": created })).await;
-        let path = read["check"]["config"]["pushPath"].as_str().unwrap().to_owned();
+        let (created, path) = rig.push_check_on(PVE_01, "backup", 3).await;
         for _ in 0..4 {
             assert_eq!(rig.get(&format!("{path}?status=down&msg=late")).await.0, StatusCode::OK);
         }

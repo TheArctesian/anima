@@ -136,6 +136,10 @@ pub enum Failure {
     /// The sealed HTTP secrets do not open for the check (SEC-003).
     #[error("the check secrets cannot be opened")]
     Secrets,
+    /// The sealed HTTP secrets were given for another destination than the stored
+    /// configuration names, so they are not sent (SEC-005).
+    #[error("the check secrets do not match its configuration")]
+    SecretsUnbound,
     /// A PUSH check got no push within its interval (CHK-002).
     #[error("no push received")]
     NoPush,

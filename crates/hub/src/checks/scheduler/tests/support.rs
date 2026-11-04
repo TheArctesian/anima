@@ -55,17 +55,30 @@ pub fn rng() -> StdRng {
     StdRng::seed_from_u64(7)
 }
 
-/// A scheduler with this policy.
-pub fn scheduler_with(pool: &PgPool, bus: &Bus, policy: AddressPolicy) -> Scheduler {
-    let probing = Probing {
-        vault: vault(),
-        policy,
-    };
-    let ctx = Context {
+/// What the attempts of a test share, with this policy.
+fn context_with(pool: &PgPool, bus: &Bus, policy: AddressPolicy) -> Context {
+    Context {
         db: pool.clone(),
         bus: bus.clone(),
-        probing,
-    };
+        probing: Probing {
+            vault: vault(),
+            policy,
+        },
+    }
+}
+
+/// What one attempt needs to reach the local listeners.
+pub fn context(pool: &PgPool) -> Context {
+    context_with(
+        pool,
+        &Bus::new(16),
+        AddressPolicy::default().allowing_loopback(),
+    )
+}
+
+/// A scheduler with this policy.
+pub fn scheduler_with(pool: &PgPool, bus: &Bus, policy: AddressPolicy) -> Scheduler {
+    let ctx = context_with(pool, bus, policy);
     Scheduler::new(
         ctx,
         Limits {

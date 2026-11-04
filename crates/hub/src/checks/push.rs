@@ -22,10 +22,12 @@ use subtle::ConstantTimeEq as _;
 use super::{
     Attempt, Beat, Check, Error,
     probe::{ProbeResult, clean_message},
+    scheduler::in_maintenance,
     store,
 };
 use crate::{
     clock::Clock,
+    devices,
     events::{Bus, HeartbeatSummary, Signal},
 };
 
@@ -132,16 +134,23 @@ enum Outcome {
 /// Records the report as an attempt: the store evaluates it against the check's state and
 /// settings under the row lock, so a push and a scheduled attempt never count from a stale
 /// state. `None` when nothing was written (the check is paused or has a beat at least as
-/// new). A push is never in maintenance: it cannot produce Maintenance (D-5).
+/// new). Maintenance covers a push as it covers a scheduled attempt, so a pushed `down`
+/// under maintenance is recorded as Maintenance (CHK-006).
 async fn store_beat(
     db: &PgPool,
     check: &Check,
     probe: &ProbeResult,
     now: DateTime<Utc>,
 ) -> Result<Option<Beat>, Error> {
+    let device = devices::get(db, check.device)
+        .await
+        .map_err(Error::Devices)?;
+    let in_maintenance = in_maintenance(db, &device, (check.id, check.parent), now)
+        .await
+        .map_err(Error::Maintenance)?;
     let attempt = Attempt {
         result: probe,
-        in_maintenance: false,
+        in_maintenance,
         at: now,
     };
     let mut tx = db.begin().await?;

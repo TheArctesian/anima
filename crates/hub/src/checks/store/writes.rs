@@ -14,7 +14,7 @@ use crate::{
         Error,
         config::{CheckConfig, HttpSecrets},
         evaluation::CheckSettings,
-        model::{Check, CheckChange, Missing, PushToken},
+        model::{Check, CheckChange, HttpSetup, Missing, PushToken},
         rules::StoredHttp,
     },
     credentials::Vault,
@@ -209,26 +209,29 @@ pub(in crate::checks) async fn set_paused(
     Check::try_from(row)
 }
 
-/// The opened HTTP secrets of the check, for its probe; `None` when it has none. They open
-/// only for the origin and secret headers the stored configuration names.
+/// The stored HTTP setup of the check, its configuration and opened secrets read in one
+/// statement, so a probe never sends the secrets where an older read pointed (SEC-005).
+/// `None` when the check is not an HTTP check and holds no secrets.
 pub(in crate::checks) async fn load_http_secrets<'e>(
     db: impl PgExecutor<'e>,
     vault: &Vault,
     id: CheckId,
-) -> Result<Option<HttpSecrets>, Error> {
+) -> Result<Option<HttpSetup>, Error> {
     let row: Option<(String, Value, Option<Vec<u8>>)> =
         sqlx::query_as("SELECT type, config, secrets_sealed FROM checks.checks WHERE id = $1")
             .bind(id)
             .fetch_optional(db)
             .await?;
     let (kind, config, sealed) = row.ok_or(Error::NotFound(Missing::Check(id)))?;
-    let Some(bytes) = sealed else {
-        return Ok(None);
+    let config = match config_of(&kind, config) {
+        Some(CheckConfig::Http(config)) => config,
+        _ if sealed.is_none() => return Ok(None),
+        _ => return Err(Error::Unreadable(id)),
     };
-    let Some(CheckConfig::Http(config)) = config_of(&kind, config) else {
-        return Err(Error::Unreadable(id));
-    };
-    open(vault, id, &config, &bytes).map(Some)
+    let secrets = sealed
+        .map(|bytes| open(vault, id, &config, &bytes))
+        .transpose()?;
+    Ok(Some(HttpSetup { config, secrets }))
 }
 
 /// Moves the check's due time from `expected` to `at`; returns whether it moved. A check

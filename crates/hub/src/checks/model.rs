@@ -6,7 +6,7 @@ use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use chrono::{DateTime, Utc};
 
 use super::{
-    config::{CheckConfig, CheckType, HttpInput},
+    config::{CheckConfig, CheckType, HttpConfig, HttpInput, HttpSecrets},
     evaluation::{CheckSettings, CheckState},
     probe::ProbeResult,
 };
@@ -249,6 +249,15 @@ pub enum Recorded {
     Written,
     /// Nothing was written: the check is paused, or the beat is not newer than its last beat.
     Skipped,
+}
+
+/// The stored HTTP configuration of a check and the secrets that open for it: what one HTTP
+/// probe sends, read together so the secrets go only where this configuration points
+/// (SEC-005). Like [`HttpSecrets`] it has no `Debug` or `Clone`.
+pub struct HttpSetup {
+    pub config: HttpConfig,
+    /// `None` when the check holds no secrets.
+    pub secrets: Option<HttpSecrets>,
 }
 
 /// A check whose next probe is due, as the scheduler needs it.
