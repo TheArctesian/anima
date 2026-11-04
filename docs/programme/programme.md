@@ -28,7 +28,7 @@ The operator approved all seven contracts on 2026-11-03 (checkpoint 1). Only a r
 | WP-05 Access and logs | 1 | Building | own worktree from `phase-1` | `wp-05-access` |
 | WP-06 Devices | 1 | Building; T1 migrations merged early into `phase-1` (668c898) | own worktree from `phase-1` | `wp-06-devices` |
 | WP-07 Credentials | 1 | Building; T1 vault (78a6461) and T2 SSH store (4d61119) merged early into `phase-1` | own worktree from `phase-1` | `wp-07-credentials` |
-| WP-08 guac-protocol | 1 | Building | own worktree from `phase-1` | `wp-08-guac` |
+| WP-08 guac-protocol | 1 | Accepted by package review (6abd568); waiting for operator merge | own worktree from `phase-1` | `wp-08-guac` |
 | WP-09 Checks and maintenance | 2 | Waiting (WP-05, WP-06) | — | — |
 | WP-10 Sessions | 2 | Waiting (WP-05–WP-08) | — | — |
 | WP-11 Client shell | 2 | Waiting (WP-02, K1) | — | — |
