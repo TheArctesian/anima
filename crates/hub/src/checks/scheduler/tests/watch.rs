@@ -56,7 +56,8 @@ tick_test! {
         scheduler.tick(now, &mut rng()).await;
         scheduler.finish_running(now).await;
 
-        assert_eq!(seen.await.unwrap(), (id, Status::Up, 1));
+        let seen = tokio::time::timeout(std::time::Duration::from_secs(5), seen).await;
+        assert_eq!(seen.expect("no heartbeat signal").unwrap(), (id, Status::Up, 1));
     }
 
     async fn log_004_a_status_change_gives_one_event_and_one_signal(pool: PgPool) {

@@ -21,9 +21,9 @@ async fn partition_exists(pool: &PgPool, day: DateTime<Utc>) -> bool {
         .unwrap()
 }
 
-/// As the owner, creates the heartbeat partition of the day 40 days before `now`.
-async fn old_partition(pool: &PgPool, now: DateTime<Utc>) -> DateTime<Utc> {
-    let old = now - TimeDelta::days(40);
+/// As the owner, creates the heartbeat partition of the day `days` days before `now`.
+async fn old_partition(pool: &PgPool, now: DateTime<Utc>, days: i64) -> DateTime<Utc> {
+    let old = now - TimeDelta::days(days);
     let day = old.date_naive();
     let next = day.succ_opt().unwrap();
     sqlx::query(&format!(
@@ -68,12 +68,16 @@ const BEATS: &str = "SELECT count(*) FROM checks.heartbeats WHERE check_id = $1"
 tick_test! {
     async fn db_005_the_first_tick_creates_days_ahead_and_drops_old_days(pool: PgPool) {
         let now = database_now(&pool).await;
-        let old = old_partition(&pool, now).await;
+        let old = old_partition(&pool, now, 40).await;
+        let oldest_dropped = old_partition(&pool, now, 31).await;
+        let oldest_kept = old_partition(&pool, now, 30).await;
         let mut scheduler = scheduler(&pool, &Bus::new(16));
 
         scheduler.tick(now, &mut rng()).await;
 
         assert!(!partition_exists(&pool, old).await);
+        assert!(!partition_exists(&pool, oldest_dropped).await);
+        assert!(partition_exists(&pool, oldest_kept).await);
         for days in 0..=7 {
             assert!(partition_exists(&pool, now + TimeDelta::days(days)).await, "day {days}");
         }

@@ -1,5 +1,5 @@
 //! Checks: what each device is checked for, the results, the status they give and the
-//! uptime they add up to (spec 6.4).
+//! uptime they add up to (spec 6.4). main.rs starts [`spawn_scheduler`] (HUB-003).
 //!
 //! Other domains use only the K3 functions: [`statuses`], [`uptimes`], [`for_device`],
 //! [`add_default_check`], [`device_status`], [`resolved_ips`] and [`evaluate`]. The writes,
