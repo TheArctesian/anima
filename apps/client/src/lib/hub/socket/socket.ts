@@ -16,7 +16,6 @@ export interface Sink<T> {
 /** What the subscription socket needs; every part is injected so that tests need no network (CQ-021). */
 interface SocketTransport {
   readonly address: HubAddress;
-  readonly endpoint: string;
   readonly WebSocket: typeof WebSocket;
   readonly token: TokenProvider;
   readonly signal: (signal: StatusSignal) => void;
@@ -145,7 +144,7 @@ function lifecycle(transport: SocketTransport, state: SocketState, refuse: () =>
 function connect(transport: SocketTransport, state: SocketState, refuse: () => void): Client {
   const events = lifecycle(transport, state, refuse);
   return createClient({
-    url: transport.endpoint,
+    url: transport.address.socket,
     webSocketImpl: transport.WebSocket,
     // Connect at once and stay connected, so the status is true without any subscription (NAV-003, NET-004).
     lazy: false,

@@ -77,7 +77,6 @@ export function createHub(options: HubOptions): Hub {
   const connection = createConnection(options.now ?? (() => new Date()));
   const http = {
     address,
-    endpoint: address.http,
     fetch: options.fetch ?? globalThis.fetch.bind(globalThis),
     token,
     signal: connection.signal,
@@ -85,7 +84,6 @@ export function createHub(options: HubOptions): Hub {
   };
   const socket = createSocket({
     address,
-    endpoint: address.socket,
     WebSocket: options.WebSocket ?? globalThis.WebSocket,
     token,
     signal: connection.signal,

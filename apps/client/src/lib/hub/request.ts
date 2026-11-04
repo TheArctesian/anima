@@ -13,7 +13,6 @@ export type TokenProvider = (address: HubAddress) => Promise<string | null>;
 /** What one HTTP GraphQL call needs; every part is injected so that tests need no network (CQ-021). */
 interface HttpTransport {
   readonly address: HubAddress;
-  readonly endpoint: string;
   readonly fetch: typeof fetch;
   readonly token: TokenProvider;
   readonly signal: (signal: StatusSignal) => void;
@@ -46,7 +45,7 @@ async function answerText(transport: HttpTransport, token: string | null, body: 
   const timer = setTimeout(() => abort.abort(), transport.timeoutMs);
   try {
     const init = { method: 'POST', headers: headersFor(token), body, signal: abort.signal };
-    const response = await transport.fetch(transport.endpoint, init);
+    const response = await transport.fetch(transport.address.http, init);
     return await response.text();
   } catch {
     // fetch rejects only when no answer arrived (network, TLS, reset, timeout); the reason is the same for the operator.

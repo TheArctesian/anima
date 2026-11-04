@@ -209,20 +209,14 @@ it('CQ-045: unmounting the layout closes the hub, and a rejected close is handle
   warn.mockRestore();
 });
 
-it('H-2: the hub is created with the stored address and a token read from the key store for that origin', async () => {
+it('H-2: the hub is created with the stored address and the key store as its token provider', () => {
   localStorage.setItem('anima.hubAddress', 'https://my-hub.example');
   onTestFinished(() => {
     localStorage.clear();
   });
-  keyStore.read.mockResolvedValue('s3cret-token');
   show();
   expect(fake.options?.address.origin).toBe('https://my-hub.example');
-  await expect(fake.options?.token(fake.options.address as never)).resolves.toBe('s3cret-token');
-  expect(keyStore.read).toHaveBeenCalledExactlyOnceWith({
-    origin: 'https://my-hub.example',
-    http: 'https://my-hub.example/graphql',
-    socket: 'wss://my-hub.example/graphql',
-  });
+  expect(fake.options?.token).toBe(keyStore.read);
 });
 
 it('H-2: with nothing stored the hub is the default one', () => {

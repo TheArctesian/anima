@@ -56,16 +56,21 @@ describe('a hub reads the token for its own address only', () => {
     void hub.close();
   });
 
-  it('CLI-002: changing the caller object after createHub changes neither the endpoint nor the address the provider hears', async () => {
+  it('CLI-002: changing the caller object after createHub changes neither the endpoints (HTTP and socket) nor the address the provider hears', async () => {
     const mine = { ...addressOf('evil.example') };
     const { read, reads } = keyStore();
     const { fetch, sent } = answering();
     const hub = createHub({ address: mine, token: read, fetch, WebSocket: FAKE_WEBSOCKET });
     Object.assign(mine, DEFAULT_HUB_ADDRESS);
     await hub.request(ME, {});
-    expect(reads).toEqual([addressOf('evil.example')]);
+    hub.subscribe(STATUS_CHANGED, { deviceId: 'd1' }, recordingSink().sink);
+    await settle();
+    FakeSocket.opened[0]?.accept();
+    await settle();
+    expect(reads).toEqual([addressOf('evil.example'), addressOf('evil.example')]);
+    expect(reads.every((read) => Object.isFrozen(read))).toBe(true);
     expect(sent).toEqual([{ url: 'https://evil.example/graphql', authorization: undefined }]);
-    expect(Object.isFrozen(reads[0])).toBe(true);
+    expect(FakeSocket.opened[0]?.url).toBe('wss://evil.example/graphql');
     void hub.close();
   });
 });
