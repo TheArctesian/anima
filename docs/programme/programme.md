@@ -26,7 +26,7 @@ The operator approved all seven contracts on 2026-11-03 (checkpoint 1). Only a r
 | WP-04 Deployment, stage A (hub) | 1 | Ready | — | — |
 | WP-04 Deployment, stage B (releases and self-update, R-006) | 3 | Waiting (WP-15, WP-16; operator sets secrets) | — | — |
 | WP-05 Access and logs | 1 | Building | own worktree from `phase-1` | `wp-05-access` |
-| WP-06 Devices | 1 | Building | own worktree from `phase-1` | `wp-06-devices` |
+| WP-06 Devices | 1 | Building; T1 migrations merged early into `phase-1` (668c898) | own worktree from `phase-1` | `wp-06-devices` |
 | WP-07 Credentials | 1 | Building | own worktree from `phase-1` | `wp-07-credentials` |
 | WP-08 guac-protocol | 1 | Building | own worktree from `phase-1` | `wp-08-guac` |
 | WP-09 Checks and maintenance | 2 | Waiting (WP-05, WP-06) | — | — |
