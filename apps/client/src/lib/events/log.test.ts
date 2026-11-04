@@ -138,7 +138,9 @@ describe('event log', () => {
     const log = logOf(['a']);
     expect(addLive(log, event('a'), DEFAULT_LOG_FILTER, NOW)).toBe(log);
   });
+});
 
+describe('event log cap', () => {
   it('LOG-010 the list holds at 500 rows, drops the oldest and offers no older page', () => {
     const next = addLive(fullLog(), event('new'), DEFAULT_LOG_FILTER, NOW);
     expect(next.rows).toHaveLength(LOG_CAP);
