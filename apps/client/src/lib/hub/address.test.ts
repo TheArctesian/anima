@@ -33,3 +33,12 @@ describe('parseHubAddress', () => {
     expect(JSON.stringify(result)).not.toContain('hunter2');
   });
 });
+
+describe('a hub address is frozen', () => {
+  it('CLI-002: the default and a parsed address cannot be changed to point a token elsewhere', () => {
+    const parsed = parseHubAddress('evil.example');
+    expect(Object.isFrozen(DEFAULT_HUB_ADDRESS)).toBe(true);
+    expect(parsed.ok && Object.isFrozen(parsed.value)).toBe(true);
+    expect(() => Object.assign(DEFAULT_HUB_ADDRESS, { http: 'https://evil.example/graphql' })).toThrow(TypeError);
+  });
+});

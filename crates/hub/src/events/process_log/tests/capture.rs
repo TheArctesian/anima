@@ -11,7 +11,7 @@ use tracing::{Event, Metadata, Subscriber, span, subscriber::Interest};
 use super::super::subscriber;
 
 #[derive(Clone, Default)]
-pub(super) struct Capture(Arc<Mutex<Vec<u8>>>);
+pub(crate) struct Capture(Arc<Mutex<Vec<u8>>>);
 
 impl io::Write for Capture {
     fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
@@ -25,11 +25,11 @@ impl io::Write for Capture {
 }
 
 impl Capture {
-    pub(super) fn text(&self) -> String {
+    pub(crate) fn text(&self) -> String {
         String::from_utf8(self.0.lock().unwrap().clone()).unwrap()
     }
 
-    pub(super) fn lines(&self) -> Vec<Value> {
+    pub(crate) fn lines(&self) -> Vec<Value> {
         self.text()
             .lines()
             .map(|line| serde_json::from_str(line).unwrap())
@@ -69,7 +69,7 @@ impl Subscriber for Undecided {
 
 /// Routes this thread's log to a buffer. Rebuilding the callsite cache after the scoped
 /// subscriber is set makes callsites first seen before it ask again.
-pub(super) fn capture_log(filter: &str) -> (Capture, tracing::subscriber::DefaultGuard) {
+pub(crate) fn capture_log(filter: &str) -> (Capture, tracing::subscriber::DefaultGuard) {
     static UNDECIDED: Once = Once::new();
     UNDECIDED.call_once(|| {
         tracing::subscriber::set_global_default(Undecided).expect("no other global subscriber");

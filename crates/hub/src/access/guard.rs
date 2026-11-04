@@ -3,12 +3,14 @@
 
 use std::{
     future::{Future, ready},
-    sync::Arc,
+    sync::{Arc, OnceLock},
 };
 
 use async_graphql::{
-    Context, Guard, Pos, Positioned, ServerResult, Variables,
-    extensions::{Extension, ExtensionContext, ExtensionFactory, NextParseQuery},
+    Context, Guard, Positioned, Response, ServerError, ServerResult, ValidationResult, Variables,
+    extensions::{
+        Extension, ExtensionContext, ExtensionFactory, NextParseQuery, NextRequest, NextValidation,
+    },
     parser::types::{
         DocumentOperations, ExecutableDocument, OperationDefinition, OperationType, Selection,
     },
@@ -23,7 +25,8 @@ use crate::clock::Clock;
 /// token and attach an [`Identity`] with its `Operator`. This guard passes only when the
 /// identity is there and has not expired by the context's `Arc<dyn Clock>`, and refuses with
 /// `UNAUTHENTICATED` otherwise. An `Operator` alone does not pass. A schema without a clock
-/// refuses every identity with `INTERNAL`: the hub is miswired, not the operator signed out.
+/// refuses every identity with `INTERNAL` and writes the fault (`missing_context`) to the
+/// process log: the hub is miswired, not the operator signed out.
 pub struct Authenticated;
 
 impl Guard for Authenticated {
@@ -33,11 +36,11 @@ impl Guard for Authenticated {
         let verdict = if identity.is_some() && clock.is_none() {
             let error = Error::Unavailable;
             error.log();
-            Err(error.to_graphql())
+            Err(error.into_graphql())
         } else if signed_in(identity, clock) {
             Ok(())
         } else {
-            Err(Error::Unauthenticated.to_graphql())
+            Err(Error::Unauthenticated.into_graphql())
         };
         ready(verdict)
     }
@@ -60,25 +63,67 @@ fn current<'a>(
         .map(|(identity, _)| identity)
 }
 
-/// Schema extension (API-003 backstop, ruling H-6(a)). It runs in `parse_query`, after the
-/// document is parsed and before validation, variable coercion or any resolver, so a
-/// signed-out client learns nothing about field names or argument rules:
-/// - without a valid identity, a document is allowed only when every operation selects just
+/// Schema extension (API-003 backstop, ruling H-6(a)). Without a valid identity:
+/// - in `parse_query`, after the document is parsed and before validation, variable
+///   coercion or any resolver, a document is allowed only when every operation selects just
 ///   `__typename`, or is a mutation with exactly one root field, `login`. Anything else
-///   (other fields, several `login`s, introspection, fragments) gets one `UNAUTHENTICATED`
-///   error and nothing else;
-/// - with a `read` token, a mutation that selects more than `login`, `logout` and
-///   `__typename` is refused with `FORBIDDEN`.
+///   (other fields, several `login`s, introspection, root fragments) gets one
+///   `UNAUTHENTICATED` error and nothing else;
+/// - in `validation`, an allowed document that fails validation gets one `UNAUTHENTICATED`
+///   error in place of all its validation errors. The root check does not look at fragment
+///   definitions, variable types or directives, and their validation errors would name
+///   schema types and fields, so a signed-out client cannot map the schema through them
+///   (T3 security SHOULD 1). A `login` whose argument cannot be coerced while resolving is
+///   still answered with the fixed `VALIDATION` text of the API boundary;
+/// - in `request`, a response holding an error with neither a path nor a code (a syntax
+///   error, an `operationName` the document lacks) becomes the same one `UNAUTHENTICATED`
+///   (T8 round 2).
+///
+/// Accepted (issue #1): signed out, a valid `login` document runs, so its sub-selection and
+/// input fields can be told apart from invalid ones, one throttled attempt per probe.
+///
+/// With a `read` token, a mutation that selects more than `login`, `logout` and
+/// `__typename` is refused with `FORBIDDEN`.
 pub struct SignInRequired;
 
 impl ExtensionFactory for SignInRequired {
     fn create(&self) -> Arc<dyn Extension> {
-        Arc::new(SignInRequired)
+        Arc::new(SignInCheck::default())
     }
 }
 
+/// One request's backstop. Whether it came without a valid identity is recorded when its
+/// document is parsed: the `request` hook cannot read the request's data.
+/// It covers `execute` only: `execute_stream` never calls the `request` hook. A subscription
+/// needs a signed-in `connection_init` first, and `InternalErrors::subscribe` masks its texts.
+#[derive(Default)]
+struct SignInCheck {
+    signed_out: OnceLock<bool>,
+}
+
+/// Whether the error came from neither a resolver nor a refusal: no path and no code.
+fn unexplained(error: &ServerError) -> bool {
+    error.path.is_empty()
+        && error
+            .extensions
+            .as_ref()
+            .and_then(|extensions| extensions.get("code"))
+            .is_none()
+}
+
 #[async_graphql::async_trait::async_trait]
-impl Extension for SignInRequired {
+impl Extension for SignInCheck {
+    async fn request(&self, ctx: &ExtensionContext<'_>, next: NextRequest<'_>) -> Response {
+        let response = next.run(ctx).await;
+        if self.signed_out.get() == Some(&true) && response.errors.iter().any(unexplained) {
+            let mut refused =
+                Response::from_errors(vec![Error::Unauthenticated.into_response_error()]);
+            refused.http_headers = response.http_headers;
+            return refused;
+        }
+        response
+    }
+
     async fn parse_query(
         &self,
         ctx: &ExtensionContext<'_>,
@@ -86,8 +131,10 @@ impl Extension for SignInRequired {
         variables: &Variables,
         next: NextParseQuery<'_>,
     ) -> ServerResult<ExecutableDocument> {
+        let identity = current(ctx.data_opt(), ctx.data_opt());
+        let _ = self.signed_out.set(identity.is_none());
         let document = next.run(ctx, query, variables).await?;
-        let refusal = match current(ctx.data_opt(), ctx.data_opt()) {
+        let refusal = match identity {
             None => (!signed_out_allowed(&document)).then_some(Error::Unauthenticated),
             Some(identity)
                 if identity.scope() == Scope::Read
@@ -98,9 +145,21 @@ impl Extension for SignInRequired {
             Some(_) => None,
         };
         match refusal {
-            Some(error) => Err(error.to_graphql().into_server_error(Pos::default())),
+            Some(error) => Err(error.into_response_error()),
             None => Ok(document),
         }
+    }
+
+    async fn validation(
+        &self,
+        ctx: &ExtensionContext<'_>,
+        next: NextValidation<'_>,
+    ) -> Result<ValidationResult, Vec<ServerError>> {
+        let result = next.run(ctx).await;
+        if result.is_err() && current(ctx.data_opt(), ctx.data_opt()).is_none() {
+            return Err(vec![Error::Unauthenticated.into_response_error()]);
+        }
+        result
     }
 }
 

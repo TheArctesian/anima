@@ -3,7 +3,9 @@
   import { tick, untrack, type Snippet } from 'svelte';
   import '../styles/global.css';
   import { provideHub } from '$lib/hub/context';
-  import { DEFAULT_HUB_ADDRESS, createHub } from '$lib/hub/hub';
+  import { storedHubAddress } from '$lib/desktop/address';
+  import { readAccessToken } from '$lib/desktop/token';
+  import { createHub } from '$lib/hub/hub';
   import { crossFade } from '$lib/motion/roles/transitions';
   import { DATA_AGE_REFRESH_MS } from '$lib/nav/nav';
   import { createClock } from '$lib/nav/clock.svelte';
@@ -17,8 +19,9 @@
 
   const { children }: { children: Snippet } = $props();
 
-  // WP-16 supplies the key-store token and the stored hub address here (handoff H-2).
-  const hub = createHub({ address: DEFAULT_HUB_ADDRESS, token: () => Promise.resolve(null) });
+  // The hub address is the stored setting (CLI-002); the token is read from the desktop key store per call (CLI-003).
+  const address = storedHubAddress(localStorage);
+  const hub = createHub({ address, token: readAccessToken });
   provideHub(hub);
   const clock = createClock(DATA_AGE_REFRESH_MS);
 
