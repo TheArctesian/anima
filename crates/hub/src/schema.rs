@@ -4,13 +4,13 @@
 //! `build_schema`; a domain with state `main.rs` builds once (such as `sessions::Live`) also
 //! adds a `Dependencies` field.
 
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use async_graphql::{MergedObject, MergedSubscription, Object, Schema, SchemaBuilder};
 use sqlx::PgPool;
 
 use crate::{
-    access,
+    access, checks,
     clock::Clock,
     config::Config,
     credentials::Vault,
@@ -19,6 +19,7 @@ use crate::{
         self, Bus,
         process_log::{InternalErrors, RequestSpan},
     },
+    maintenance,
     sessions::{self, Live},
 };
 
@@ -37,8 +38,10 @@ impl Health {
 #[derive(MergedObject, Default)]
 pub struct Query(
     access::graphql::Query,
+    checks::graphql::Query,
     devices::graphql::Query,
     events::graphql::Query,
+    maintenance::graphql::Query,
     sessions::graphql::Query,
     Health,
 );
@@ -46,12 +49,14 @@ pub struct Query(
 #[derive(MergedObject, Default)]
 pub struct Mutation(
     access::graphql::Mutation,
+    checks::graphql::Mutation,
     devices::graphql::Mutation,
+    maintenance::graphql::Mutation,
     sessions::graphql::Mutation,
 );
 
 #[derive(MergedSubscription, Default)]
-pub struct Subscription(events::graphql::Subscription);
+pub struct Subscription(checks::graphql::Subscription, events::graphql::Subscription);
 
 pub type HubSchema = Schema<Query, Mutation, Subscription>;
 
@@ -95,7 +100,7 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .extension(access::SignInRequired)
     // Shared dependencies (K3 wiring).
     .data(config)
-    .data(clock)
+    .data(clock.clone())
     .data(pool.clone())
     .data(bus)
     .data(vault)
@@ -104,6 +109,18 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .data(devices::graphql::site_loader(pool.clone()))
     .data(devices::graphql::devices_by_site_loader(pool.clone()))
     .data(devices::graphql::credential_loader(pool.clone()))
+    // devices fields that join checks (API-005)
+    .data(devices::graphql::status_loader(pool.clone(), clock.clone()).delay(CHECK_BATCH_WINDOW))
+    .data(devices::graphql::uptime_loader(pool.clone(), clock.clone()).delay(CHECK_BATCH_WINDOW))
+    .data(devices::graphql::checks_loader(pool.clone()).delay(CHECK_BATCH_WINDOW))
+    .data(devices::graphql::resolved_ip_loader(pool.clone()).delay(CHECK_BATCH_WINDOW))
+    // checks
+    .data(
+        checks::graphql::check_status_loader(pool.clone(), clock.clone()).delay(CHECK_BATCH_WINDOW),
+    )
+    .data(checks::graphql::last_heartbeat_loader(pool.clone()).delay(CHECK_BATCH_WINDOW))
+    .data(checks::graphql::heartbeats_loader(pool.clone()).delay(CHECK_BATCH_WINDOW))
+    .data(checks::graphql::check_uptime_loader(pool.clone(), clock).delay(CHECK_BATCH_WINDOW))
     // sessions (R-032)
     .data(sessions::graphql::host_key_loader(pool.clone()))
     .data(live)
@@ -117,6 +134,12 @@ const fn production_build() -> bool {
 
 #[cfg(test)]
 mod tests;
+
+/// API-005: how long the loaders that read checks wait to gather keys. A device page reads
+/// several of them per check, and the 1 ms default splits their batches once a page holds a few
+/// hundred checks (342 statements for 163 devices in a debug build, against 15 for 13); each
+/// split repeats the reads of a batch. 10 ms costs that much latency per nesting level.
+const CHECK_BATCH_WINDOW: Duration = Duration::from_millis(10);
 
 /// API-004: deepest query accepted.
 const MAX_DEPTH: usize = 10;
