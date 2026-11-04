@@ -30,11 +30,11 @@ pub struct OperatorProfile {
     totp_enabled: bool,
 }
 
-impl From<Account> for OperatorProfile {
-    fn from(account: Account) -> Self {
+impl From<&Account> for OperatorProfile {
+    fn from(account: &Account) -> Self {
         Self {
             id: ID(account.id.to_string()),
-            username: account.username,
+            username: account.username.clone(),
             totp_enabled: account.totp_enabled,
         }
     }
@@ -55,11 +55,7 @@ impl AuthPayload {
     }
 
     async fn operator(&self) -> OperatorProfile {
-        OperatorProfile {
-            id: ID(self.0.account.id.to_string()),
-            username: self.0.account.username.clone(),
-            totp_enabled: self.0.account.totp_enabled,
-        }
+        (&self.0.account).into()
     }
 }
 
@@ -79,9 +75,9 @@ impl Query {
         let identity = need::<Identity>(ctx)?;
         let account = store::account_by_id(need::<PgPool>(ctx)?, identity.operator().id)
             .await
-            .map_err(|error| Error::from(error).to_graphql())?
+            .map_err(|error| answer(error.into()))?
             .ok_or_else(|| Error::Unauthenticated.to_graphql())?;
-        Ok(account.into())
+        Ok((&account).into())
     }
 }
 
@@ -104,7 +100,7 @@ impl Mutation {
         login::login(need::<PgPool>(ctx)?, need::<Bus>(ctx)?, attempt)
             .await
             .map(AuthPayload)
-            .map_err(|error| error.to_graphql())
+            .map_err(answer)
     }
 
     /// Deletes the token of this request.
@@ -114,14 +110,24 @@ impl Mutation {
         let client = *need::<ClientAddr>(ctx)?;
         login::logout(need::<PgPool>(ctx)?, need::<Identity>(ctx)?, client, now)
             .await
-            .map_err(|error| error.to_graphql())?;
+            .map_err(answer)?;
         Ok(true)
     }
+}
+
+/// The GraphQL error for `error`, after a hub fault is written to the process log (K7).
+#[expect(
+    clippy::needless_pass_by_value,
+    reason = "called as `map_err(answer)`; the error ends here"
+)]
+fn answer(error: Error) -> async_graphql::Error {
+    error.log();
+    error.to_graphql()
 }
 
 /// Context data the edge or the schema must provide; its absence is a wiring fault, shown
 /// as `INTERNAL` without naming the type.
 fn need<'a, T: Any + Send + Sync>(ctx: &Context<'a>) -> async_graphql::Result<&'a T> {
     ctx.data_opt::<T>()
-        .ok_or_else(|| Error::Unavailable.to_graphql())
+        .ok_or_else(|| answer(Error::Unavailable))
 }

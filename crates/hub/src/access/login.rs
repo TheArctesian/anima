@@ -52,9 +52,14 @@ pub(super) async fn login(db: &PgPool, bus: &Bus, attempt: Attempt) -> Result<Si
     };
     let account = {
         let mut conn = db.acquire().await?;
-        let (by_username, by_client) =
-            store::failures(&mut conn, &key, attempt.at - throttle::LOOKBACK).await?;
-        if throttle::refused(&by_username, &by_client, attempt.at) {
+        let failures = store::failures(&mut conn, &key, attempt.at - throttle::LOOKBACK).await?;
+        let by_client: Vec<_> = failures.iter().map(|(at, _)| *at).collect();
+        let by_pair: Vec<_> = failures
+            .iter()
+            .filter(|(_, same)| *same)
+            .map(|(at, _)| *at)
+            .collect();
+        if throttle::refused(&by_pair, &by_client, attempt.at) {
             store::finish_attempt(&mut *conn, key.id, Outcome::Refused).await?;
             return Err(Error::WrongCredentials);
         }
@@ -221,7 +226,7 @@ pub(super) fn possible_username(username: &str) -> bool {
 
 /// The username as `login_attempts` keeps it: at most 128 characters, no NUL (which
 /// PostgreSQL text refuses).
-fn stored_username(username: &str) -> String {
+pub(super) fn stored_username(username: &str) -> String {
     username
         .chars()
         .take(MAX_STORED_USERNAME)

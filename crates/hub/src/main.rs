@@ -1,7 +1,12 @@
 //! Hub binary: reads the environment, builds the dependencies and serves the router, or runs
 //! `anima-hub migrate` (R-016) or `anima-hub operator set <username>` (D-9).
 
-use std::{io::BufRead as _, net::SocketAddr, sync::Arc};
+use std::{
+    io::{BufRead as _, IsTerminal as _},
+    net::SocketAddr,
+    process::ExitCode,
+    sync::Arc,
+};
 
 use anima_hub::{
     access,
@@ -36,8 +41,19 @@ enum StartError {
     Operator(#[from] access::Error),
 }
 
+/// Prints the plain error (`Display`, never `Debug`) and exits with a failure code.
 #[tokio::main]
-async fn main() -> Result<(), StartError> {
+async fn main() -> ExitCode {
+    match run().await {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => {
+            eprintln!("anima-hub: {error}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+async fn run() -> Result<(), StartError> {
     let env = config::collect_env(std::env::vars_os())?;
     let config = Arc::new(config::from_env(&env)?);
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -71,15 +87,9 @@ async fn migrate(config: &Config) -> Result<(), StartError> {
     Ok(())
 }
 
-/// Reads one line from standard input as the password and creates or replaces the operator.
+/// Reads the password (without echo on a terminal, one line when piped) and sets the operator.
 async fn set_operator(config: &Config, username: &str) -> Result<(), StartError> {
-    let mut line = String::new();
-    std::io::stdin()
-        .lock()
-        .read_line(&mut line)
-        .map_err(|_| StartError::Stdin)?;
-    let typed = line.trim_end_matches(['\r', '\n']).to_owned();
-    zeroize::Zeroize::zeroize(&mut line);
+    let typed = read_password().map_err(|_| StartError::Stdin)?;
     let pool = connect(config).await?;
     access::set_operator(
         &pool,
@@ -90,6 +100,18 @@ async fn set_operator(config: &Config, username: &str) -> Result<(), StartError>
     .await?;
     println!("Operator {username} is set.");
     Ok(())
+}
+
+/// The password from standard input: prompted without echo on a terminal, else one line.
+fn read_password() -> std::io::Result<String> {
+    if std::io::stdin().is_terminal() {
+        return rpassword::prompt_password("Password: ");
+    }
+    let mut line = String::new();
+    std::io::stdin().lock().read_line(&mut line)?;
+    let typed = line.trim_end_matches(['\r', '\n']).to_owned();
+    zeroize::Zeroize::zeroize(&mut line);
+    Ok(typed)
 }
 
 /// Connects to the database named in `ANIMA_DATABASE_URL_FILE` (DB-002).

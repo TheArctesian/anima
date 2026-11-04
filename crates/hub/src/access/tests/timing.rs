@@ -33,7 +33,7 @@ fn shortest(runs: [Duration; 3]) -> Duration {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn d_8_an_unknown_username_still_runs_one_password_check(pool: PgPool) {
+async fn sec_002_d_8_an_unknown_username_still_runs_one_password_check(pool: PgPool) {
     let typed = Password::new("correct horse battery staple".to_owned());
     let mut checks = [Duration::ZERO; 3];
     for run in &mut checks {

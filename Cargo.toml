@@ -31,6 +31,8 @@ static_assertions = "1.1"
 tempfile = "3.27"
 argon2 = { version = "0.6", default-features = false, features = ["alloc", "password-hash", "zeroize"] }
 getrandom = "0.4"
+tracing = "0.1"
+rpassword = "7.5"
 
 [workspace.lints.rust]
 warnings = "deny"

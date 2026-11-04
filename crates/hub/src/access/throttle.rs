@@ -1,5 +1,7 @@
-//! The login throttle rule (D-8): five failed attempts for one username or one client address
-//! within 15 minutes refuse further attempts for the 15 minutes after the fifth.
+//! The login throttle rule (D-8): five failed attempts for one (username, client address) pair,
+//! or from one client address for any username, within 15 minutes refuse further attempts from
+//! that address for the 15 minutes after the fifth. There is no username-wide lock, so another
+//! device cannot lock the operator out.
 //!
 //! Pure: the store passes the failure times, the caller passes `now`.
 
@@ -17,7 +19,7 @@ const LOCKOUT: TimeDelta = TimeDelta::minutes(15);
 /// Failures older than this cannot affect `now`; the store reads only the newer ones.
 pub(super) const LOOKBACK: TimeDelta = WINDOW.checked_add(&LOCKOUT).expect("30 minutes");
 
-/// Whether the failures of one username or of one address lock it at `now`.
+/// Whether the failures of one pair or of one address lock it at `now`.
 ///
 /// `failures` are the times of checked failed attempts (refused attempts excluded, so
 /// retrying during a lockout does not extend it), oldest first.
@@ -28,12 +30,12 @@ fn locked(failures: &[DateTime<Utc>], now: DateTime<Utc>) -> bool {
     })
 }
 
-/// Whether an attempt at `now` is refused, from the failure times of its username and of its
-/// client address, each oldest first.
+/// Whether an attempt at `now` is refused, from the failure times of its (username, client
+/// address) pair and of its client address, each oldest first.
 pub(super) fn refused(
-    username_failures: &[DateTime<Utc>],
+    pair_failures: &[DateTime<Utc>],
     client_failures: &[DateTime<Utc>],
     now: DateTime<Utc>,
 ) -> bool {
-    locked(username_failures, now) || locked(client_failures, now)
+    locked(pair_failures, now) || locked(client_failures, now)
 }

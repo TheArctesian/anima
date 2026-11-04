@@ -9,7 +9,7 @@ use sha2::{Digest as _, Sha256};
 
 use super::now;
 use crate::access::{
-    Password, identity,
+    Error, Password, Scope, check_credentials, identity, login,
     password::{self, DUMMY_HASH},
     throttle,
     tokens::{self, Token},
@@ -57,7 +57,7 @@ fn sec_002_throttle_ignores_five_failures_spread_over_more_than_15_minutes() {
 }
 
 #[test]
-fn d_7_token_text_is_unpadded_base64url_of_the_random_bytes() {
+fn sec_002_d_7_token_text_is_unpadded_base64url_of_the_random_bytes() {
     let bytes = [0xfb; tokens::TOKEN_BYTES];
     let token = Token::from_random(bytes);
     assert_eq!(token.expose(), URL_SAFE_NO_PAD.encode(bytes));
@@ -67,7 +67,7 @@ fn d_7_token_text_is_unpadded_base64url_of_the_random_bytes() {
 }
 
 #[test]
-fn d_7_only_a_canonical_token_has_a_hash() {
+fn sec_002_d_7_only_a_canonical_token_has_a_hash() {
     let token = Token::from_random([7; tokens::TOKEN_BYTES]);
     let text = token.expose();
     assert!(tokens::hash_of(text).is_some());
@@ -88,7 +88,7 @@ fn d_7_only_a_canonical_token_has_a_hash() {
 }
 
 #[test]
-fn d_7_token_is_usable_until_its_expiry_and_touched_once_a_minute() {
+fn sec_002_d_7_token_is_usable_until_its_expiry_and_touched_once_a_minute() {
     let at = now();
     assert!(tokens::usable(at, at - TimeDelta::seconds(1)));
     assert!(!tokens::usable(at, at));
@@ -114,7 +114,7 @@ fn api_003_bearer_header_is_read_once_case_insensitively() {
 }
 
 #[test]
-fn d_8_dummy_hash_has_the_same_parameters_as_a_new_hash() {
+fn sec_002_d_8_dummy_hash_has_the_same_parameters_as_a_new_hash() {
     let fresh = password::hash(&Password::new("x".repeat(12)), &[1; password::SALT_LEN]).unwrap();
     let parameters = |phc: &str| phc.split('$').take(4).collect::<Vec<_>>().join("$");
     assert_eq!(parameters(DUMMY_HASH), parameters(&fresh));
@@ -131,4 +131,83 @@ fn sec_002_password_matches_only_its_hash() {
     let too_long = Password::new("x".repeat(password::MAX_PASSWORD_LEN + 1));
     assert!(!password::matches(&too_long, DUMMY_HASH).unwrap());
     assert!(password::matches(&Password::new(String::new()), "not a hash").is_err());
+}
+
+#[test]
+fn sec_002_d_8_throttle_window_includes_exactly_15_minutes() {
+    let start = now();
+    let mut edge: Vec<_> = (0..4).map(|i| start + minutes(i)).collect();
+    edge.push(start + minutes(15));
+    assert!(
+        throttle::refused(&edge, &[], start + minutes(15)),
+        "span of exactly 15 minutes"
+    );
+    let mut over: Vec<_> = (0..4).map(|i| start + minutes(i)).collect();
+    over.push(start + minutes(15) + TimeDelta::seconds(1));
+    assert!(
+        !throttle::refused(&over, &[], start + minutes(16)),
+        "span over 15 minutes"
+    );
+}
+
+fn refused_field(username: &str, password: &str) -> Option<&'static str> {
+    match check_credentials(username, &Password::new(password.to_owned())) {
+        Ok(()) => None,
+        Err(Error::Validation { field, .. }) => Some(field),
+        Err(other) => panic!("unexpected {other}"),
+    }
+}
+
+#[test]
+fn sec_002_d_9_operator_set_password_needs_12_characters_and_at_most_1024_bytes() {
+    let name = "operator";
+    assert_eq!(refused_field(name, &"p".repeat(11)), Some("password"));
+    assert_eq!(refused_field(name, &"p".repeat(12)), None);
+    assert_eq!(
+        refused_field(name, &"\u{e9}".repeat(12)),
+        None,
+        "characters, not bytes"
+    );
+    assert_eq!(refused_field(name, &"p".repeat(1024)), None);
+    assert_eq!(refused_field(name, &"p".repeat(1025)), Some("password"));
+    assert_eq!(
+        refused_field(name, &"\u{e9}".repeat(513)),
+        Some("password"),
+        "1026 bytes"
+    );
+}
+
+#[test]
+fn sec_002_d_9_operator_set_username_is_1_to_64_plain_characters() {
+    let password = "correct horse battery staple";
+    for good in ["a", "op.er_at-or9", &"a".repeat(64)] {
+        assert_eq!(refused_field(good, password), None, "{good}");
+    }
+    for bad in [
+        "",
+        "an operator",
+        "op\0",
+        "op\u{e9}",
+        "op/x",
+        &"a".repeat(65),
+    ] {
+        assert_eq!(refused_field(bad, password), Some("username"), "{bad:?}");
+    }
+}
+
+#[test]
+fn sec_002_login_attempts_keep_at_most_128_characters_without_nul() {
+    let long = "\u{e9}".repeat(200);
+    assert_eq!(login::stored_username(&long), "\u{e9}".repeat(128));
+    assert_eq!(login::stored_username("a\0b"), "a\u{fffd}b");
+    assert_eq!(login::stored_username("operator"), "operator");
+}
+
+#[test]
+fn sec_002_d_7_scope_round_trips_its_stored_text() {
+    for scope in [Scope::Read, Scope::Write] {
+        assert_eq!(Scope::from_stored(scope.as_str()), Some(scope));
+    }
+    assert_eq!(Scope::from_stored("read"), Some(Scope::Read));
+    assert_eq!(Scope::from_stored("admin"), None);
 }

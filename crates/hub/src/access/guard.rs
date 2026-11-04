@@ -14,7 +14,7 @@ use async_graphql::{
     },
 };
 
-use super::{Error, Identity};
+use super::{Error, Identity, Scope};
 use crate::clock::Clock;
 
 /// GraphQL guard: requires a valid token; puts `Operator` in the context (API-003).
@@ -39,14 +39,26 @@ impl Guard for Authenticated {
 /// Whether the request data holds an identity that is valid now. Without a clock nothing is
 /// valid: the check fails closed.
 fn signed_in(identity: Option<&Identity>, clock: Option<&Arc<dyn Clock>>) -> bool {
-    identity
-        .zip(clock)
-        .is_some_and(|(identity, clock)| identity.valid_at(clock.now()))
+    current(identity, clock).is_some()
 }
 
-/// Schema extension: refuses, with `UNAUTHENTICATED`, any operation without a valid identity
-/// unless every root selection is `login` or `__typename` (API-003 backstop). Introspection
-/// (`__schema`, `__type`) is refused without an identity too.
+/// The identity, if it is valid now by the clock.
+fn current<'a>(
+    identity: Option<&'a Identity>,
+    clock: Option<&Arc<dyn Clock>>,
+) -> Option<&'a Identity> {
+    identity
+        .zip(clock)
+        .filter(|(identity, clock)| identity.valid_at(clock.now()))
+        .map(|(identity, _)| identity)
+}
+
+/// Schema extension (API-003 backstop):
+/// - without a valid identity, refuses with `UNAUTHENTICATED` any operation unless every
+///   root selection is `__typename`, or `login` in a mutation. Introspection (`__schema`,
+///   `__type`) is refused too;
+/// - with a `read` token, refuses with `FORBIDDEN` any mutation that selects more than
+///   `login`, `logout` and `__typename`.
 pub struct SignInRequired;
 
 impl ExtensionFactory for SignInRequired {
@@ -65,39 +77,63 @@ impl Extension for SignInRequired {
         next: NextParseQuery<'_>,
     ) -> ServerResult<ExecutableDocument> {
         let document = next.run(ctx, query, variables).await?;
-        if signed_in(ctx.data_opt(), ctx.data_opt()) || anonymous_allowed(&document) {
-            Ok(document)
-        } else {
-            Err(Error::Unauthenticated
-                .to_graphql()
-                .into_server_error(Pos::default()))
+        let refusal = match current(ctx.data_opt(), ctx.data_opt()) {
+            None if !roots_only(&document, Roots::Only(&[]), Roots::Only(&["login"])) => {
+                Some(Error::Unauthenticated)
+            }
+            Some(identity)
+                if identity.scope() == Scope::Read
+                    && !roots_only(&document, Roots::Any, Roots::Only(&["login", "logout"])) =>
+            {
+                Some(Error::ReadOnly)
+            }
+            _ => None,
+        };
+        match refusal {
+            Some(error) => Err(error.to_graphql().into_server_error(Pos::default())),
+            None => Ok(document),
         }
     }
 }
 
-/// Whether every operation in the document selects only `__typename`, or `login` in a
-/// mutation, at its root. A fragment at the root is refused rather than followed.
-fn anonymous_allowed(document: &ExecutableDocument) -> bool {
-    match &document.operations {
-        DocumentOperations::Single(operation) => only_login(&operation.node),
-        DocumentOperations::Multiple(operations) => operations
-            .values()
-            .all(|operation| only_login(&operation.node)),
-    }
+/// The root fields an operation may select, besides `__typename`.
+#[derive(Clone, Copy)]
+enum Roots<'a> {
+    Any,
+    Only(&'a [&'a str]),
 }
 
-fn only_login(operation: &OperationDefinition) -> bool {
-    let mutation = operation.ty == OperationType::Mutation;
-    operation
-        .selection_set
-        .node
-        .items
-        .iter()
-        .all(|selection| match &selection.node {
-            Selection::Field(field) => {
-                let name = field.node.name.node.as_str();
-                name == "__typename" || (mutation && name == "login")
-            }
-            Selection::FragmentSpread(_) | Selection::InlineFragment(_) => false,
-        })
+/// Whether every operation in the document selects at its root only `__typename` and the
+/// listed fields: `queries` for query and subscription operations, `mutations` for mutations.
+/// A fragment at the root is refused rather than followed.
+fn roots_only(document: &ExecutableDocument, queries: Roots<'_>, mutations: Roots<'_>) -> bool {
+    let allowed = |operation: &OperationDefinition| {
+        let fields = if operation.ty == OperationType::Mutation {
+            mutations
+        } else {
+            queries
+        };
+        operation
+            .selection_set
+            .node
+            .items
+            .iter()
+            .all(|selection| match &selection.node {
+                Selection::Field(field) => {
+                    let name = field.node.name.node.as_str();
+                    name == "__typename"
+                        || match fields {
+                            Roots::Any => true,
+                            Roots::Only(names) => names.contains(&name),
+                        }
+                }
+                Selection::FragmentSpread(_) | Selection::InlineFragment(_) => false,
+            })
+    };
+    match &document.operations {
+        DocumentOperations::Single(operation) => allowed(&operation.node),
+        DocumentOperations::Multiple(operations) => operations
+            .values()
+            .all(|operation| allowed(&operation.node)),
+    }
 }

@@ -14,7 +14,7 @@ use axum::{
     Router,
     body::Body,
     extract::ConnectInfo,
-    http::{Request, header},
+    http::{Request, StatusCode, header},
 };
 use chrono::{DateTime, TimeZone, Utc};
 use http_body_util::BodyExt;
@@ -34,10 +34,16 @@ pub fn start() -> DateTime<Utc> {
 pub struct Hub {
     router: Router,
     pub bus: Bus,
+    client: &'static str,
 }
 
 impl Hub {
     pub fn new(pool: &PgPool, now: DateTime<Utc>) -> Self {
+        Self::from_client(pool, now, CLIENT)
+    }
+
+    /// A hub whose requests come from `client` instead of `CLIENT`.
+    pub fn from_client(pool: &PgPool, now: DateTime<Utc>, client: &'static str) -> Self {
         let config = Arc::new(config::from_env(&BTreeMap::new()).unwrap());
         let clock: Arc<dyn Clock> = Arc::new(FixedClock(now));
         let bus = Bus::new(16);
@@ -45,10 +51,22 @@ impl Hub {
         Self {
             router: router(schema, pool.clone(), clock),
             bus,
+            client,
         }
     }
 
-    /// Posts a GraphQL request from `CLIENT`; returns the response body as JSON text.
+    /// Sends a raw request from this hub's client; returns the status and the body text.
+    pub async fn send(&self, request: Request<Body>) -> (StatusCode, String) {
+        let mut request = request;
+        let peer: SocketAddr = format!("{}:50000", self.client).parse().unwrap();
+        request.extensions_mut().insert(ConnectInfo(peer));
+        let response = self.router.clone().oneshot(request).await.unwrap();
+        let status = response.status();
+        let bytes = response.into_body().collect().await.unwrap().to_bytes();
+        (status, String::from_utf8_lossy(&bytes).into_owned())
+    }
+
+    /// Posts a GraphQL request; returns the response body as JSON text.
     pub async fn post_text(&self, token: Option<&str>, query: &str, variables: Value) -> String {
         let body = json!({ "query": query, "variables": variables }).to_string();
         let mut request =
@@ -56,13 +74,9 @@ impl Hub {
         if let Some(token) = token {
             request = request.header(header::AUTHORIZATION, format!("Bearer {token}"));
         }
-        let mut request = request.body(Body::from(body)).unwrap();
-        let peer: SocketAddr = format!("{CLIENT}:50000").parse().unwrap();
-        request.extensions_mut().insert(ConnectInfo(peer));
-        let response = self.router.clone().oneshot(request).await.unwrap();
-        assert!(response.status().is_success(), "{}", response.status());
-        let bytes = response.into_body().collect().await.unwrap().to_bytes();
-        String::from_utf8(bytes.to_vec()).unwrap()
+        let (status, text) = self.send(request.body(Body::from(body)).unwrap()).await;
+        assert!(status.is_success(), "{status} {text}");
+        text
     }
 
     pub async fn post(&self, token: Option<&str>, query: &str, variables: Value) -> Value {

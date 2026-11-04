@@ -14,6 +14,7 @@ use crate::clock::{Clock, FixedClock};
 
 mod rules;
 mod runtime;
+mod scope;
 mod timing;
 
 fn now() -> DateTime<Utc> {

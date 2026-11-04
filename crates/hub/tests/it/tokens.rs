@@ -27,7 +27,7 @@ async fn api_003_me_answers_with_a_token(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn d_7_token_is_stored_only_as_its_hash(pool: PgPool) {
+async fn sec_002_d_7_token_is_stored_only_as_its_hash(pool: PgPool) {
     set_operator(&pool).await;
     let hub = Hub::new(&pool, start());
     let login = hub.login(USERNAME, PASSWORD).await;
@@ -181,47 +181,90 @@ async fn log_007_a_token_never_appears_in_a_response_error(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn d_9_operator_set_replaces_the_password_and_revokes_tokens(pool: PgPool) {
+async fn sec_002_d_9_operator_set_replaces_the_one_operator_and_revokes_tokens(pool: PgPool) {
     set_operator(&pool).await;
     let hub = Hub::new(&pool, start());
     let token = hub.token().await;
-    let replaced = "a different long passphrase";
-    let id = access::set_operator(&pool, USERNAME, Password::new(replaced.to_owned()), start())
-        .await
-        .unwrap();
-
-    let count: i64 = sqlx::query_scalar("select count(*) from access.operators")
+    let first_id: uuid::Uuid = sqlx::query_scalar("select id from access.operators")
         .fetch_one(&pool)
         .await
         .unwrap();
-    assert_eq!(count, 1);
-    assert_eq!(
-        error(&hub.post(Some(&token), ME, json!({})).await),
-        unauthenticated()
-    );
-    assert!(hub.login(USERNAME, PASSWORD).await["errors"].is_array());
-    let response = hub.login(USERNAME, replaced).await;
-    assert_eq!(response["data"]["login"]["operator"]["id"], id.to_string());
-
-    let short = access::set_operator(&pool, USERNAME, Password::new("short".to_owned()), start());
-    assert!(matches!(
-        short.await,
-        Err(access::Error::Validation {
-            field: "password",
-            ..
-        })
-    ));
-    let spaced = access::set_operator(
+    let replaced = "a different long passphrase";
+    let id = access::set_operator(
         &pool,
-        "an operator",
+        "newname",
         Password::new(replaced.to_owned()),
         start(),
+    )
+    .await
+    .unwrap();
+
+    let names: Vec<String> = sqlx::query_scalar("select username from access.operators")
+        .fetch_all(&pool)
+        .await
+        .unwrap();
+    assert_eq!(names, ["newname"], "exactly one operator (OD-2)");
+    assert_eq!(
+        id.to_string(),
+        first_id.to_string(),
+        "the account is replaced, not added"
     );
-    assert!(matches!(
-        spaced.await,
-        Err(access::Error::Validation {
-            field: "username",
-            ..
-        })
-    ));
+    let me = hub.post(Some(&token), ME, json!({})).await;
+    assert_eq!(error(&me), unauthenticated());
+    assert!(hub.login(USERNAME, PASSWORD).await["errors"].is_array());
+    assert!(hub.login(USERNAME, replaced).await["errors"].is_array());
+    let response = hub.login("newname", replaced).await;
+    assert_eq!(response["data"]["login"]["operator"]["id"], id.to_string());
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn sec_002_d_9_the_database_refuses_a_second_operator(pool: PgPool) {
+    set_operator(&pool).await;
+    let second = sqlx::query(
+        "insert into access.operators (id, username, password_hash, created_at) \
+         values (gen_random_uuid(), 'second', 'x', now())",
+    )
+    .execute(&pool)
+    .await;
+    let constraint = second
+        .unwrap_err()
+        .as_database_error()
+        .and_then(|e| e.constraint().map(str::to_owned));
+    assert_eq!(constraint.as_deref(), Some("operators_single"));
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn sec_002_prune_deletes_old_attempts_and_expired_tokens(pool: PgPool) {
+    set_operator(&pool).await;
+    let old = Hub::new(&pool, start());
+    old.login(USERNAME, "wrong password").await;
+    let expired = old.token().await;
+    let later = start() + TimeDelta::days(91);
+    let current = Hub::new(&pool, later);
+    current.login(USERNAME, "wrong password").await;
+    let fresh = current.token().await;
+
+    let pruned = access::prune(&pool, later).await.unwrap();
+    assert_eq!(
+        pruned,
+        access::Pruned {
+            attempts: 2,
+            tokens: 1
+        }
+    );
+    let left: i64 = sqlx::query_scalar("select count(*) from access.login_attempts")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(left, 2);
+    assert!(
+        access::operator_for_token(&pool, &expired, start())
+            .await
+            .is_err()
+    );
+    assert!(
+        access::operator_for_token(&pool, &fresh, later)
+            .await
+            .is_ok()
+    );
 }

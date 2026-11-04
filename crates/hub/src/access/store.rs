@@ -46,26 +46,68 @@ pub(super) async fn account_by_id(
     .await
 }
 
-/// Creates the operator, or replaces the password of the one with this username. Returns
-/// its id.
-pub(super) async fn put_operator(
+/// Makes the one operator account (OD-2, D-9) have this username and hash: updates the
+/// existing row, or inserts the first one. Returns its id and its previous username.
+pub(super) async fn replace_operator(
     conn: &mut PgConnection,
     username: &str,
     password_hash: &str,
     now: DateTime<Utc>,
-) -> Result<OperatorId, sqlx::Error> {
-    sqlx::query_scalar(
+) -> Result<(OperatorId, Option<String>), sqlx::Error> {
+    let existing: Option<(OperatorId, String)> =
+        sqlx::query_as("select id, username from access.operators for update")
+            .fetch_optional(&mut *conn)
+            .await?;
+    if let Some((id, previous)) = existing {
+        sqlx::query("update access.operators set username = $2, password_hash = $3 where id = $1")
+            .bind(id)
+            .bind(username)
+            .bind(password_hash)
+            .execute(&mut *conn)
+            .await?;
+        return Ok((id, Some(previous)));
+    }
+    let id = sqlx::query_scalar(
         "insert into access.operators (id, username, password_hash, created_at) \
-         values ($1, $2, $3, $4) \
-         on conflict (username) do update set password_hash = excluded.password_hash \
-         returning id",
+         values ($1, $2, $3, $4) returning id",
     )
     .bind(Uuid::now_v7())
     .bind(username)
     .bind(password_hash)
     .bind(now)
-    .fetch_one(conn)
-    .await
+    .fetch_one(&mut *conn)
+    .await?;
+    Ok((id, None))
+}
+
+/// Deletes the login attempts of these usernames, so a reset operator can sign in at once.
+pub(super) async fn delete_attempts_of(
+    conn: &mut PgConnection,
+    usernames: &[&str],
+) -> Result<(), sqlx::Error> {
+    sqlx::query("delete from access.login_attempts where username = any($1)")
+        .bind(usernames)
+        .execute(conn)
+        .await?;
+    Ok(())
+}
+
+/// Deletes login attempts at or before `cutoff` and tokens expired at `now` (K2 retention).
+/// Returns how many of each.
+pub(super) async fn prune(
+    conn: &mut PgConnection,
+    cutoff: DateTime<Utc>,
+    now: DateTime<Utc>,
+) -> Result<(u64, u64), sqlx::Error> {
+    let attempts = sqlx::query("delete from access.login_attempts where at <= $1")
+        .bind(cutoff)
+        .execute(&mut *conn)
+        .await?;
+    let tokens = sqlx::query("delete from access.api_tokens where expires_at <= $1")
+        .bind(now)
+        .execute(&mut *conn)
+        .await?;
+    Ok((attempts.rows_affected(), tokens.rows_affected()))
 }
 
 /// Deletes every token of the operator.
@@ -203,34 +245,25 @@ pub(super) async fn finish_attempt(
     Ok(())
 }
 
-/// Times of the checked failures in `(since, until]` other than attempt `except`, oldest
-/// first: those of `username` and those of `client`.
+/// Checked failures from the attempt's client address in `(since, attempt.at]`, other than
+/// the attempt itself, oldest first; `true` where the username is the attempt's too.
 pub(super) async fn failures(
     conn: &mut PgConnection,
     attempt: &AttemptKey<'_>,
     since: DateTime<Utc>,
-) -> Result<(Vec<DateTime<Utc>>, Vec<DateTime<Utc>>), sqlx::Error> {
-    const BY_USERNAME: &str = "select at from access.login_attempts \
-        where username = $1 and not ok and not refused and at > $2 and at <= $3 and id <> $4 \
-        order by at";
-    const BY_CLIENT: &str = "select at from access.login_attempts \
-        where client_addr = $1 and not ok and not refused and at > $2 and at <= $3 and id <> $4 \
-        order by at";
-    let by_username = sqlx::query_scalar(BY_USERNAME)
-        .bind(attempt.username)
-        .bind(since)
-        .bind(attempt.at)
-        .bind(attempt.id)
-        .fetch_all(&mut *conn)
-        .await?;
-    let by_client = sqlx::query_scalar(BY_CLIENT)
-        .bind(attempt.client)
-        .bind(since)
-        .bind(attempt.at)
-        .bind(attempt.id)
-        .fetch_all(&mut *conn)
-        .await?;
-    Ok((by_username, by_client))
+) -> Result<Vec<(DateTime<Utc>, bool)>, sqlx::Error> {
+    sqlx::query_as(
+        "select at, username = $1 from access.login_attempts \
+         where client_addr = $2 and not ok and not refused and at > $3 and at <= $4 \
+         and id <> $5 order by at",
+    )
+    .bind(attempt.username)
+    .bind(attempt.client)
+    .bind(since)
+    .bind(attempt.at)
+    .bind(attempt.id)
+    .fetch_all(conn)
+    .await
 }
 
 /// The attempt whose throttle state is read.

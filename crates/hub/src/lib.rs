@@ -14,14 +14,20 @@ pub mod status;
 
 use std::sync::Arc;
 
-use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
+use async_graphql_axum::GraphQLResponse;
 use axum::{
     Router,
-    extract::State,
-    http::{Extensions, HeaderMap},
+    body::Bytes,
+    extract::{DefaultBodyLimit, State},
+    http::{Extensions, HeaderMap, StatusCode, header::CONTENT_TYPE},
+    response::{IntoResponse, Response},
     routing::post,
 };
 use sqlx::PgPool;
+
+/// Largest `/graphql` request body. A bigger one gets 413 before it is parsed or any token
+/// or password is checked (SEC-002).
+pub const BODY_LIMIT: usize = 1024 * 1024;
 
 /// What the `/graphql` handler needs besides the request.
 #[derive(Clone)]
@@ -34,26 +40,42 @@ struct Edge {
 pub fn router(schema: schema::HubSchema, db: PgPool, clock: Arc<dyn clock::Clock>) -> Router {
     Router::new()
         .route("/graphql", post(graphql))
+        .layer(DefaultBodyLimit::max(BODY_LIMIT))
         .with_state(Edge { schema, db, clock })
 }
 
-/// Resolves the bearer token and the client address once, then runs the request (D-6).
+/// Reads one JSON request of at most [`BODY_LIMIT`] bytes (no batch, no multipart), resolves
+/// the bearer token and the client address once, then runs it (D-6).
 async fn graphql(
     State(edge): State<Edge>,
     headers: HeaderMap,
     extensions: Extensions,
-    request: GraphQLRequest,
-) -> GraphQLResponse {
-    let mut request = request.into_inner();
+    body: Bytes,
+) -> Response {
+    let json = headers
+        .get(CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|value| value.starts_with("application/json"));
+    if !json {
+        return (StatusCode::UNSUPPORTED_MEDIA_TYPE, "Send one JSON request.").into_response();
+    }
+    let Ok(mut request) = serde_json::from_slice::<async_graphql::Request>(&body) else {
+        return (
+            StatusCode::BAD_REQUEST,
+            "The request is not a GraphQL request.",
+        )
+            .into_response();
+    };
     if let Some(client) = access::client_addr(&extensions) {
         request = request.data(client);
     }
-    match access::identify(&edge.db, &headers, edge.clock.now()).await {
-        Ok(Some(identity)) => request = identity.attach(request),
-        Ok(None) => {}
+    let response = match access::identify(&edge.db, &headers, edge.clock.now()).await {
+        Ok(Some(identity)) => edge.schema.execute(identity.attach(request)).await,
+        Ok(None) => edge.schema.execute(request).await,
         Err(error) => {
-            return async_graphql::Response::from_errors(vec![error.to_server_error()]).into();
+            error.log();
+            async_graphql::Response::from_errors(vec![error.to_server_error()])
         }
-    }
-    edge.schema.execute(request).await.into()
+    };
+    GraphQLResponse::from(response).into_response()
 }

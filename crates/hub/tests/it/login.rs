@@ -182,3 +182,45 @@ async fn log_005_sign_in_events_name_the_operator_and_never_the_password(pool: P
         ]
     );
 }
+
+#[sqlx::test(migrations = "./migrations")]
+async fn sec_002_d_8_failures_from_another_address_do_not_lock_the_operator_out(pool: PgPool) {
+    set_operator(&pool).await;
+    let attacker = Hub::from_client(&pool, start(), "100.64.0.99");
+    five_failures(&attacker).await;
+    assert_eq!(
+        error(&attacker.login(USERNAME, PASSWORD).await),
+        wrong_credentials()
+    );
+
+    let operator = Hub::new(&pool, start()).login(USERNAME, PASSWORD).await;
+    assert!(operator["data"]["login"]["token"].is_string(), "{operator}");
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn sec_002_d_8_failures_spread_over_12_minutes_still_lock(pool: PgPool) {
+    set_operator(&pool).await;
+    for minute in [0, 3, 6, 9, 12] {
+        let hub = Hub::new(&pool, start() + TimeDelta::minutes(minute));
+        hub.login(USERNAME, "wrong password").await;
+    }
+    let after = Hub::new(&pool, start() + TimeDelta::minutes(13));
+    assert_eq!(
+        error(&after.login(USERNAME, PASSWORD).await),
+        wrong_credentials()
+    );
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn sec_002_d_9_operator_set_clears_the_attempts_so_the_operator_gets_back_in(pool: PgPool) {
+    set_operator(&pool).await;
+    let hub = Hub::new(&pool, start());
+    five_failures(&hub).await;
+    assert_eq!(
+        error(&hub.login(USERNAME, PASSWORD).await),
+        wrong_credentials()
+    );
+
+    set_operator(&pool).await;
+    assert!(hub.login(USERNAME, PASSWORD).await["data"]["login"]["token"].is_string());
+}

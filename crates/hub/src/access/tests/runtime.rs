@@ -31,7 +31,7 @@ async fn stand_in_runtime_role(pool: &PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn r_016_runtime_role_runs_the_login_flow_on_access_tables(pool: PgPool) {
+async fn log_006_r_016_runtime_role_runs_the_login_flow_on_access_tables(pool: PgPool) {
     stand_in_runtime_role(&pool).await;
     let mut conn = pool.acquire().await.unwrap();
     sqlx::query("set role anima_runtime")
@@ -39,7 +39,7 @@ async fn r_016_runtime_role_runs_the_login_flow_on_access_tables(pool: PgPool) {
         .await
         .unwrap();
 
-    let id = store::put_operator(&mut conn, "operator", "$argon2id$x", now())
+    let (id, _) = store::replace_operator(&mut conn, "operator", "$argon2id$x", now())
         .await
         .unwrap();
     let token = Token::from_random([3; 32]);
@@ -81,6 +81,10 @@ async fn r_016_runtime_role_runs_the_login_flow_on_access_tables(pool: PgPool) {
         .unwrap();
     assert!(store::delete_token(&mut conn, token_id).await.unwrap());
     store::delete_operator_tokens(&mut conn, id).await.unwrap();
+    store::delete_attempts_of(&mut conn, &["operator"])
+        .await
+        .unwrap();
+    store::prune(&mut conn, now(), now()).await.unwrap();
 
     sqlx::query("reset role").execute(&mut *conn).await.unwrap();
 }
