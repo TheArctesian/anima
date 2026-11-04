@@ -8,6 +8,7 @@ mod public_key;
 mod store;
 #[cfg(test)]
 mod tests;
+mod tunnel;
 
 use std::collections::HashMap;
 
