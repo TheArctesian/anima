@@ -14,7 +14,10 @@ const CLIPBOARD_MARKER = 'CLIPBOARDMARKER-secret-paste';
 const KEYSYM_MARKER = 0x1008ff13;
 const MARKERS = [TOKEN_MARKER, CLIPBOARD_MARKER, String(KEYSYM_MARKER), 'Aborted. See logs.'];
 
-const METHODS = ['log', 'info', 'warn', 'error', 'debug', 'trace'] as const;
+/** Every function on `console` (log, info, warn, error, debug, trace, dir, dirxml, table, …), read at run time. */
+const METHODS = Object.keys(console).filter(
+  (key): key is keyof Console => typeof (console as unknown as Record<string, unknown>)[key] === 'function',
+);
 let restoreCanvas: () => void = () => undefined;
 
 beforeEach(() => {
@@ -38,7 +41,7 @@ function spyOnConsole() {
  * `String(e)`, `e.message`, `e.stack` and `inspect(e)` (which includes the cause and own properties).
  */
 function rendered(value: unknown): string {
-  const inspected = inspect(value, { depth: 8, showHidden: true });
+  const inspected = inspect(value, { depth: Infinity, showHidden: true });
   if (typeof value === 'string') return value;
   if (value instanceof Error) return [String(value), value.message, value.stack ?? '', inspected].join('\n');
   return inspected;
@@ -100,14 +103,20 @@ describe('session paths keep secrets out of logs (LOG-007, SEC-002)', () => {
     expect(logged(spies)).toEqual([]);
   });
 
+});
+
+describe('the log check itself (LOG-007)', () => {
   it('LOG-007: the log check sees a token inside an Error, which JSON.stringify would hide', () => {
     const spies = spyOnConsole();
     const leak = new Error(`tunnel failed for ${TOKEN_MARKER}`);
     console.error(leak);
     console.debug({ cause: new Error('wrapped', { cause: TOKEN_MARKER }) });
+    console.dir(new Error('x', { cause: TOKEN_MARKER }));
+    console.dirxml({ a: { b: { c: { d: { e: { f: { g: { h: { i: TOKEN_MARKER } } } } } } } } });
     expect(JSON.stringify(leak)).toBe('{}');
+    expect(METHODS).toEqual(expect.arrayContaining(['log', 'info', 'warn', 'error', 'debug', 'trace', 'dir', 'dirxml']));
     const lines = logged(spies);
-    expect(lines).toHaveLength(2);
+    expect(lines).toHaveLength(4);
     for (const line of lines) expect(line).toContain(TOKEN_MARKER);
   });
 });

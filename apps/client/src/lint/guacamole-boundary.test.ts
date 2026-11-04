@@ -38,6 +38,9 @@ describe('ESLint Guacamole boundary (D-2, R-045)', () => {
     });
   }
 
+});
+
+describe('ESLint dynamic import boundary (D-2, R-045)', () => {
   for (const path of ['../tunnel/vendor/guacamole.js', '../tunnel/./vendor/guacamole', 'guacamole-common-js']) {
     it(`D-2: a dynamic import() of ${path} is refused, with a string or a template literal`, async () => {
       expect(await rulesFired(`export const g = () => import('${path}');\n`, viewFile)).toContain('no-restricted-syntax');
@@ -51,8 +54,42 @@ describe('ESLint Guacamole boundary (D-2, R-045)', () => {
 
   it('D-2: other dynamic imports are allowed', async () => {
     expect(await rulesFired("export const g = () => import('./display');\n", viewFile)).toEqual([]);
+    expect(await rulesFired('export const g = () => import(`./display`);\n', viewFile)).toEqual([]);
   });
 
+  // `\x2f` is a `/` only once evaluated: the raw text never spells the path, the cooked value does.
+  const escaped = String.raw`export const g = () => import(` + '`' + String.raw`..\x2ftunnel\x2fvendor\x2fguacamole.js` + '`);\n';
+  it('D-2: a template whose evaluated text names the vendored client is refused, in the tunnel too', async () => {
+    for (const file of [viewFile, tunnelFile]) {
+      const [result] = await eslint.lintText(escaped, { filePath: `${root}${file}` });
+      expect(result?.messages.map((m) => m.message)).toContainEqual(expect.stringContaining('$lib/sessions/tunnel'));
+    }
+  });
+
+  const computed = [
+    'export const g = (name: string) => import(name);\n',
+    "export const g = (name: string) => import('./' + name);\n",
+    'export const g = (name: string) => import(`./${name}`);\n',
+  ];
+  for (const code of computed) {
+    it(`D-2: a computed import() is refused outside the tunnel: ${code.trim()}`, async () => {
+      const [result] = await eslint.lintText(code, { filePath: `${root}${viewFile}` });
+      expect(result?.messages.map((m) => m.message)).toContainEqual(expect.stringContaining('computed import()'));
+      expect(await rulesFired(code, tunnelFile)).toEqual([]);
+    });
+  }
+
+  for (const extension of ['mts', 'cts', 'mjs', 'cjs']) {
+    it(`D-2: the boundary covers .${extension} client files`, async () => {
+      const file = `apps/client/src/lib/sessions/view/display.${extension}`;
+      expect(await rulesFired("import G from '../tunnel/vendor/guacamole.js';\nexport const g = G;\n", file)).toContain('no-restricted-imports');
+      expect(await rulesFired('export const g = (name) => import(name);\n', file)).toContain('no-restricted-syntax');
+    });
+  }
+
+});
+
+describe('ESLint Guacamole boundary in other folders (D-2, R-045)', () => {
   it('R-045: the npm guacamole-common-js is refused everywhere, the tunnel included', async () => {
     expect(await rulesFired(importFrom('guacamole-common-js'), viewFile)).toContain('no-restricted-imports');
     expect(await rulesFired(importFrom('guacamole-common-js'), tunnelFile)).toContain('no-restricted-imports');
