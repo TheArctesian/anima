@@ -7,19 +7,23 @@
 //! re-check (every 15 seconds) after the token is deleted by `logout`, `operator set` or
 //! `prune`. Re-checking the stored token, rather than a bus signal, also sees `operator set`,
 //! which runs in another process, and needs no new `events::Signal` (K3).
+//!
+//! Every write is bounded: it gives way to the sign-in deadline or the lease's end, and a write
+//! that takes longer than [`WRITE_TIMEOUT`] closes the socket, so a client that stops reading
+//! cannot hold it open (H-6(b)).
+
+mod intake;
 
 use std::{
+    future::Future,
     pin::{Pin, pin},
-    sync::{
-        Arc,
-        atomic::{AtomicBool, Ordering},
-    },
+    sync::Arc,
     time::Duration,
 };
 
 use async_graphql::{
     Data, Executor,
-    futures_util::{Sink, SinkExt as _, Stream, StreamExt as _, future},
+    futures_util::{Sink, SinkExt as _, Stream, StreamExt as _},
     http::{WebSocket as Protocol, WebSocketProtocols, WsMessage},
 };
 use axum::{
@@ -32,6 +36,7 @@ use sqlx::PgPool;
 use tokio::sync::oneshot;
 use uuid::Uuid;
 
+use self::intake::Intake;
 use super::{ClientAddr, Error, identity::identify_connection, store, tokens};
 use crate::clock::Clock;
 
@@ -44,6 +49,8 @@ pub const MESSAGE_LIMIT: usize = 64 * 1024;
 const RECHECK: Duration = Duration::from_secs(15);
 /// How long a client may take to send `connection_init`.
 const INIT_TIMEOUT: Duration = Duration::from_secs(10);
+/// The longest one write to the client may take.
+const WRITE_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// What a connection needs to check its sign-in.
 #[derive(Clone)]
@@ -128,6 +135,13 @@ enum Closing {
     Forbidden,
     /// The token could not be checked; the connection fails closed.
     Unavailable,
+    /// A write took longer than [`WRITE_TIMEOUT`]: the client does not read, so no close frame
+    /// is sent either.
+    Stalled,
+    /// A `subscribe` reused the id of a running operation.
+    DuplicateOperation,
+    /// A `subscribe` would run more than 32 operations at once.
+    TooManyOperations,
     /// The protocol closed the connection with this code.
     Protocol(u16),
 }
@@ -137,8 +151,10 @@ impl Closing {
     /// own reason may quote the client's message, token included.
     const fn frame(self) -> Option<(u16, &'static str)> {
         match self {
-            Self::ClientLeft => None,
+            Self::ClientLeft | Self::Stalled => None,
             Self::Unreadable => Some((1008, "Message refused")),
+            Self::DuplicateOperation => Some((4409, "Subscriber already exists")),
+            Self::TooManyOperations => Some((1008, "Too many operations")),
             Self::InitTimeout => Some((4408, "Connection initialisation timeout")),
             Self::Forbidden => Some((4403, "Forbidden")),
             Self::Unavailable => Some((1011, "Sign-in cannot be checked")),
@@ -154,36 +170,24 @@ impl Closing {
 /// Serves one upgraded connection until it ends, then sends the close frame that says why.
 async fn serve<E: Executor>(socket: WebSocket, executor: E, access: SocketAccess) {
     let (mut sink, source) = socket.split();
-    let unreadable = Arc::new(AtomicBool::new(false));
-    let read_failed = unreadable.clone();
-    let input = source
-        .take_while(move |read| {
-            if read.is_err() {
-                read_failed.store(true, Ordering::Relaxed);
-            }
-            future::ready(read.is_ok())
-        })
-        .filter_map(|read| {
-            future::ready(match read {
-                Ok(message @ (Message::Text(_) | Message::Binary(_))) => Some(message.into_data()),
-                _ => None,
-            })
-        });
+    let intake = Intake::default();
+    let input = intake.clone().read(source);
     let (verdict, decided) = oneshot::channel();
     let checks = access.clone();
+    let sent = intake.clone();
     let protocol = Protocol::new(executor, input, WebSocketProtocols::GraphQLWS)
-        .on_connection_init(move |payload| sign_in(checks, payload, verdict));
-    let mut closing = converse(&mut sink, protocol, decided, &access).await;
-    if closing == Closing::ClientLeft && unreadable.load(Ordering::Relaxed) {
-        closing = Closing::Unreadable;
-    }
+        .on_connection_init(move |payload| sign_in(checks, payload, verdict))
+        .inspect(move |message| sent.sent(message));
+    let closing = intake.reason(converse(&mut sink, protocol, decided, &access).await);
     if let Some((code, reason)) = closing.frame() {
         let frame = CloseFrame {
             code,
             reason: reason.into(),
         };
-        // Fails only when the client is gone already, and then there is nobody to tell.
-        let _ = sink.send(Message::Close(Some(frame))).await;
+        // Bounded like every write. It fails only when the client is gone or does not read,
+        // and then there is nobody to tell.
+        let close = sink.send(Message::Close(Some(frame)));
+        let _ = tokio::time::timeout(WRITE_TIMEOUT, close).await;
     }
 }
 
@@ -233,14 +237,13 @@ async fn converse<S: Sink<Message> + Unpin>(
     };
     let mut lapse = pin!(lapse(access, lease));
     loop {
-        tokio::select! {
+        let message = tokio::select! {
             biased;
             closing = &mut lapse => return closing,
-            message = protocol.next() => {
-                if let Err(closing) = relay(sink, message, None).await {
-                    return closing;
-                }
-            }
+            message = protocol.next() => message,
+        };
+        if let Err(closing) = relay(sink, message, None, lapse.as_mut()).await {
+            return closing;
         }
     }
 }
@@ -252,14 +255,18 @@ async fn signed_in<S: Sink<Message> + Unpin>(
     mut decided: oneshot::Receiver<Verdict>,
     init_timeout: Duration,
 ) -> Result<Lease, Closing> {
-    let mut deadline = pin!(tokio::time::sleep(init_timeout));
+    let mut deadline = pin!(async move {
+        tokio::time::sleep(init_timeout).await;
+        Closing::InitTimeout
+    });
     loop {
-        tokio::select! {
+        let message = tokio::select! {
             biased;
             verdict = &mut decided => return lease_of(verdict.ok()),
-            () = &mut deadline => return Err(Closing::InitTimeout),
-            message = protocol.next() => relay(sink, message, Some(&mut decided)).await?,
-        }
+            closing = &mut deadline => return Err(closing),
+            message = protocol.next() => message,
+        };
+        relay(sink, message, Some(&mut decided), deadline.as_mut()).await?;
     }
 }
 
@@ -272,12 +279,14 @@ fn lease_of(verdict: Option<Verdict>) -> Result<Lease, Closing> {
     }
 }
 
-/// Sends one protocol message to the client; `Err` with the reason when the connection ends.
-/// A close that follows a refused `connection_init` becomes the refusal.
+/// Sends one protocol message to the client unless `stop` ends the connection first; `Err` with
+/// the reason when the connection ends. A close that follows a refused `connection_init`
+/// becomes the refusal.
 async fn relay<S: Sink<Message> + Unpin>(
     sink: &mut S,
     message: Option<WsMessage>,
     decided: Option<&mut oneshot::Receiver<Verdict>>,
+    stop: Pin<&mut impl Future<Output = Closing>>,
 ) -> Result<(), Closing> {
     match message {
         None => Err(Closing::ClientLeft),
@@ -288,10 +297,24 @@ async fn relay<S: Sink<Message> + Unpin>(
                 Some(Verdict::Leased(_)) | None => Closing::Protocol(code),
             })
         }
-        Some(WsMessage::Text(text)) => sink
-            .send(Message::Text(text.into()))
-            .await
-            .map_err(|_| Closing::ClientLeft),
+        Some(WsMessage::Text(text)) => deliver(sink, Message::Text(text.into()), stop).await,
+    }
+}
+
+/// Writes `message` within [`WRITE_TIMEOUT`], unless `stop` ends the connection first.
+async fn deliver<S: Sink<Message> + Unpin>(
+    sink: &mut S,
+    message: Message,
+    stop: Pin<&mut impl Future<Output = Closing>>,
+) -> Result<(), Closing> {
+    tokio::select! {
+        biased;
+        closing = stop => Err(closing),
+        written = tokio::time::timeout(WRITE_TIMEOUT, sink.send(message)) => match written {
+            Ok(Ok(())) => Ok(()),
+            Ok(Err(_)) => Err(Closing::ClientLeft),
+            Err(_) => Err(Closing::Stalled),
+        },
     }
 }
 
@@ -303,6 +326,9 @@ async fn lapse(access: &SocketAccess, lease: Lease) -> Closing {
             return Closing::Forbidden;
         };
         tokio::time::sleep(wait).await;
+        if !tokens::usable(lease.expires_at, access.clock.now()) {
+            return Closing::Forbidden;
+        }
         match store::token_exists(&access.db, lease.token).await {
             Ok(true) => {}
             Ok(false) => return Closing::Forbidden,
