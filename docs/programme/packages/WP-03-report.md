@@ -1,7 +1,7 @@
 # WP-03 report (package orchestrator)
 
-Status: **done**. Branch `claude/wp-03-vpn`, based on `phase-1` (bdbc9e7, R-024, merged in). Tip: see the last line. Not pushed, not merged.
-`bun run gates` on the tip: **TIP_GATES**. Plan, decisions D-1..D-14 and the review log are in [WP-03.md](WP-03.md).
+Status: **done**. Branch `claude/wp-03-vpn`, based on `phase-1` (decc2e4, WP-04 stage A, merged in). Code tip **f02a3dd** (T7 merge); this report is committed on top of it. Not pushed, not merged.
+`BASE_REF=phase-1 bun run gates`: **12/12 pass** on 0bbcc26, whose tree is identical to f02a3dd. `bun test deploy/headscale deploy/dns`: **441 pass, 0 fail** (20 files); `shellcheck -x` is clean. Plan, decisions D-1..D-14 and the review log are in [WP-03.md](WP-03.md).
 
 Nothing was run against the Hostinger VPS, the Hostinger account, Cloudflare or a Headscale server. Everything is files and scripts. Reviewers tested locally: Headscale 0.29.7 with network none, Tailscale 1.80/1.104 in userspace, ubuntu:24.04 with systemd 255, nftables 1.0.9, restic 0.16.4 and network namespaces. T7 re-proved the VPS side on almalinux:10 (systemd 257, nftables 1.1.5, firewalld 2.4.3, Docker CE 29.9.3, restic 0.19.1, OpenSSH 9.9p1); the VPS runs AlmaLinux 10. That container kernel had no SELinux: the labels and unit contexts were checked only against the policy (`sesearch`), so the `ausearch -m avc` steps after rows 6, 8 and 13 are the real proof (open question 2).
 
@@ -40,7 +40,7 @@ hsctl() { sudo docker compose -f /opt/anima/headscale/compose.yaml exec -T heads
 
 **Secret** = a secret value. Its name is given; the value is never shown here. **Device** = needs a person at a physical machine or a browser session that the orchestrator cannot drive.
 
-**Gate.** Step 1 is done. Steps 0 and 2–7 can start now; step 0 comes first and can stop the run. **Do not start step 8 (firewall) until I send "final review clear".** The package-level security review is still running.
+**Gate.** Step 1 is done. Steps 0 and 2–7 can start now; step 0 comes first and can stop the run. The package review and the T7 (AlmaLinux 10) reviews are accepted, so the step 8 gate is lifted. Step 8 still needs step 6's proven console login and step 7's VPN SSH login.
 
 | # | Step | Host / API | Commands | Check | Undo |
 |---|---|---|---|---|---|
@@ -74,7 +74,8 @@ hsctl() { sudo docker compose -f /opt/anima/headscale/compose.yaml exec -T heads
 
 ## Handoffs (PKG-001)
 
-- **Programme orchestrator, root `package.json`:** add `"deploy/headscale"` and `"deploy/dns"` to `workspaces` and refresh `bun.lock`. Until then, `bun run --filter '*'` skips them and their `tsc` fails with TS2688 (no `@types/bun`). Their tests run with `bun test deploy/`. R-021(5) lets WP-04 add `deploy` as a workspace. If it does, it must list the two nested packages, or make `deploy` a glob such as `deploy/*`, rather than a package that contains them.
+- **WP-04 (`deploy` workspace):** since decc2e4, `@anima/deploy` lints and tests `deploy/headscale` and `deploy/dns`. Its `tsconfig.json` has `"include": ["test"]`, so `bun run check` does not type-check them. Their own tsconfigs pass with `tsc --noEmit -p` in each folder. Fix: add them to `include` (or use project references), or drop the nested `package.json`/`tsconfig.json` files. This is a WP-04 file; WP-03 did not edit it.
+- **WP-04 (eslint):** phase-1's function limit for `deploy/**` split 11 WP-03 test blocks. They were moved, not rewritten.
 - **WP-04 (hub deployment):**
   - Publish the hub only on the hub's VPN address (R-021(3) bridge plus a VPN-address publish works). The prerouting drop lets DNAT to a bridge container through when the packet came in on `tailscale0`.
   - A bridge container cannot reach the host's own VPN address. It can reach tailnet peers, MagicDNS and the site subnets.
@@ -92,6 +93,7 @@ hsctl() { sudo docker compose -f /opt/anima/headscale/compose.yaml exec -T heads
 - **Unit files are `*.unit` in the repository** (the names gate bans "service") and install as `.service`/`.timer`.
 - **Headscale binds the public IPv4 only**, not `0.0.0.0`, so the hub can use `<VPN>:443` (D-6, D-7).
 - **Backup retention is `--keep-within 1y`**, not count-based, so a compromised VPS cannot evict real snapshots (D-12).
+- **The VPS runs AlmaLinux 10, not Ubuntu** (D-9, T7): dnf repositories, dnf-automatic, the `sshd` unit with a `00-anima.conf` drop-in, group `wheel`, SELinux enforcing with `container_file_t` labels and Docker `selinux-enabled`. firewalld is **masked** in favour of the `inet anima_filter` table, after a guard refuses to close any port or firewalld opening in use. A new step 0 creates the non-root admin user.
 - **Extra files beyond the brief:** `deploy/headscale/src/*` (policy evaluator, HuJSON, durations, nftables parser), `deploy/dns/fill.ts` and `address.ts`, `vps/nftables-unit.conf`, `backup/rest-server-allow.conf`.
 
 ## Deferred (for issue #1, R-007)
@@ -100,12 +102,14 @@ hsctl() { sudo docker compose -f /opt/anima/headscale/compose.yaml exec -T heads
 - An automated node-inventory check against an expected list (OD-10 detection; manual in the guide today).
 - `_acme-challenge` CNAME delegation to a separate zone, so the hub DNS-01 token cannot edit the main zone (DNS-003).
 - Filesystem snapshots or an offline copy of the home PC's restic repository (protects against a home-PC compromise).
-- Verify pack data before prune (`restic check --read-data` or a subset): the VPS holds the repository key and can append crafted index or pack data, not only snapshots.
 - A test that every `harden.sh` subcommand, flag and path named in the guide exists.
 - Verify pack data before prune (`restic check --read-data-subset` or `repair index --read-all-packs`). The VPS holds the repository key and could append crafted index or pack data (final review S4).
 - An automated check that the home PC's `allow.conf` holds the current hub VPN IPv4 (alerts on hub re-registration).
 - DHCPv6 accept rule in the firewall, only if the VPS gets IPv6 by DHCPv6.
 - An `excludepkgs` or `dnf versionlock` so dnf-automatic does not cross Docker major versions.
+- Docker networks outside 172.16/12, and IPv6 Docker networks, in routed mode or with direct routing, are not covered by the C-3 drop. Docker 29 in NAT mode blocks them itself. Fix: match Docker bridges by interface in the forward chain (`oifname { docker0, br-* } … ct status != dnat drop`) (T7 r4 C7).
+- Only Docker-owned `br-*` bridges should pass the guard and the rules. A provider bridge named `br-*` passes today (T7 r4 C8).
+- macvlan/ipvlan Docker networks are not marked `!` in the inventory and not reported by `check` (T7 r4 C9). Step 0 stops on any running container meanwhile.
 - A separate tag-owner identity for `tag:hub`/`tag:router` if tags ever need non-empty owners.
 
 ## Open questions
@@ -128,7 +132,6 @@ hsctl() { sudo docker compose -f /opt/anima/headscale/compose.yaml exec -T heads
 
 ## Notes
 
-- Task branches `wp/03-vpn/{dns,server,policy,vps,backup,guide}` are merged into the package branch and can be deleted. So can their agent worktrees.
+- Task branches `wp/03-vpn/{dns,server,policy,vps,backup,guide,el10}` are merged into the package branch and can be deleted. So can their agent worktrees.
 - R-019 was passed to every builder, reviewer and gate run: DATABASE_URL was left unset.
 
-Tip: TIP_SHA
