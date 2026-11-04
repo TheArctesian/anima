@@ -1,7 +1,8 @@
 //! GraphQL schema root: merges each domain's `Query`, `Mutation` and `Subscription` (CQ-033, K3).
 //!
-//! A domain joins in two places: one line in each root it has, and one block of its data in
-//! `build_schema`.
+//! A domain joins with one line in each root it has and one block of its data in
+//! `build_schema`; a domain with state `main.rs` builds once (such as `sessions::Live`) also
+//! adds a `Dependencies` field.
 
 use std::sync::Arc;
 

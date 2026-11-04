@@ -101,5 +101,9 @@ async fn log_007_a_token_in_the_url_never_reaches_the_process_log(pool: PgPool) 
         logged.contains("log_007 capture marker"),
         "the capture works: {logged}"
     );
+    assert!(
+        logged.contains("graphql_request"),
+        "the hub's own events reach the capture: {logged}"
+    );
     assert!(!logged.contains(MARKER), "logged: {logged}");
 }

@@ -14,7 +14,12 @@ pub mod schema;
 pub mod sessions;
 pub mod status;
 
-use std::{future::Future, net::SocketAddr, sync::Arc};
+use std::{
+    future::{Future, IntoFuture as _},
+    net::SocketAddr,
+    sync::Arc,
+    time::Duration,
+};
 
 use async_graphql_axum::GraphQLResponse;
 use axum::{
@@ -49,64 +54,65 @@ pub fn router(schema: schema::HubSchema, db: PgPool, clock: Arc<dyn clock::Clock
         .with_state(Edge { schema, db, clock })
 }
 
-/// The sessions this hub process holds, with what ends them when it stops (R-040).
-pub struct HeldSessions {
-    db: PgPool,
-    live: sessions::Live,
-    clock: Arc<dyn clock::Clock>,
-}
+/// The longest the drain may wait for open requests after the stop signal. A client can hold
+/// a request open for ever (a partial body, say); past this the hub stops anyway, and its
+/// sessions have already ended (R-040).
+pub const DRAIN_LIMIT: Duration = Duration::from_secs(10);
 
-impl HeldSessions {
-    /// A clone of the process's one `Live`, for the schema and the tunnel router (R-032).
-    #[must_use]
-    pub fn live(&self) -> sessions::Live {
-        self.live.clone()
-    }
-}
-
-/// Ends, with `HUB_SHUTDOWN`, the sessions a previous hub process left open and logs how many
-/// (a number only), then holds a new `Live` (R-040, D-13). Call once, before binding: only
-/// its `Live` issues tickets, so the stale rows end before any request is served.
-///
-/// # Errors
-/// When the stale rows cannot be ended; then none is.
-pub async fn hold_sessions(
-    db: PgPool,
-    clock: Arc<dyn clock::Clock>,
-) -> Result<HeldSessions, sessions::Error> {
-    let ended = sessions::close_stale(&db, clock.now()).await?;
-    tracing::info!(ended, "stale sessions ended");
-    Ok(HeldSessions {
-        db,
-        live: sessions::Live::default(),
-        clock,
-    })
+/// What the hub ends when it stops, and how long it waits for open requests (R-040).
+pub struct Shutdown {
+    pub db: PgPool,
+    /// The `Live` the schema and the tunnel serve with.
+    pub live: sessions::Live,
+    pub clock: Arc<dyn clock::Clock>,
+    /// [`DRAIN_LIMIT`] in the hub.
+    pub drain_limit: Duration,
 }
 
 /// Serves `app`, with each request's TCP peer as its connect info, until `signal` resolves.
-/// Then, in order: ends every held session with `HUB_SHUTDOWN`, because the drain does not
-/// end upgraded connections such as tunnels; then drains the open requests (R-040).
+/// Then, in order: ends every session `shutdown.live` holds with `HUB_SHUTDOWN`, because the
+/// drain does not end upgraded connections such as tunnels; then drains the open requests for
+/// at most `shutdown.drain_limit` (R-040).
 ///
 /// # Errors
 /// When the server fails to serve.
 pub async fn serve_until(
     listener: TcpListener,
     app: Router,
-    held: HeldSessions,
+    shutdown: Shutdown,
     signal: impl Future<Output = ()> + Send + 'static,
 ) -> std::io::Result<()> {
+    let Shutdown {
+        db,
+        live,
+        clock,
+        drain_limit,
+    } = shutdown;
+    let (sessions_ended, draining) = tokio::sync::oneshot::channel();
     let stop = async move {
         signal.await;
-        let HeldSessions { db, live, clock } = held;
         if let Err(error) = sessions::shut_down(&db, &live, clock.now()).await {
             // The error's text is fixed and holds no value (sessions::Error, LOG-007).
             tracing::error!(%error, "sessions did not all end at shutdown");
         }
+        sessions_ended.send(()).ok();
     };
     let app = app.into_make_service_with_connect_info::<SocketAddr>();
-    axum::serve(listener, app)
+    // If serving fails, the sessions are not shut down; the next start's `close_stale` ends
+    // their rows.
+    let server = axum::serve(listener, app)
         .with_graceful_shutdown(stop)
-        .await
+        .into_future();
+    tokio::pin!(server);
+    tokio::select! {
+        result = &mut server => return result,
+        Ok(()) = draining => {}
+    }
+    if let Ok(result) = tokio::time::timeout(drain_limit, server).await {
+        return result;
+    }
+    tracing::warn!("drain limit reached; open requests are dropped");
+    Ok(())
 }
 
 /// Whether the media type is exactly `application/json`, in any case, parameters allowed.

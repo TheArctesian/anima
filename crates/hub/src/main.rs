@@ -9,12 +9,12 @@ use std::{
 };
 
 use anima_hub::{
-    access,
+    DRAIN_LIMIT, Shutdown, access,
     clock::{Clock as _, SystemClock},
     config::{self, Config},
     credentials::Vault,
     events::{self, Bus, process_log},
-    hold_sessions, router,
+    router,
     schema::{Dependencies, build_schema},
     serve_until, sessions,
 };
@@ -100,7 +100,7 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     let pool = connect(&config).await?;
     events::check_runtime_role(&pool).await?;
     let clock: Arc<dyn anima_hub::clock::Clock> = Arc::new(SystemClock);
-    let held = hold_sessions(pool.clone(), clock.clone()).await?;
+    let live = open_sessions(&pool, clock.now()).await?;
     let listener = tokio::net::TcpListener::bind(config.listen).await?;
     tracing::info!(listen = %config.listen, "hub started");
     let schema = build_schema(Dependencies {
@@ -109,21 +109,50 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         pool: pool.clone(),
         bus: Bus::new(BUS_CAPACITY),
         vault,
-        live: held.live(),
+        live: live.clone(),
     });
     let upkeep = spawn_upkeep(&pool, &clock);
     // `/tunnel` mounts here only behind `access::permitted_networks_layer` (WP-05 T4, R-040).
-    let app = router(schema, pool, clock);
-    let served = serve_until(listener, app, held, stop_signal()).await;
+    let app = router(schema, pool.clone(), clock.clone());
+    let shutdown = Shutdown {
+        db: pool,
+        live,
+        clock,
+        drain_limit: DRAIN_LIMIT,
+    };
+    let served = serve_until(listener, app, shutdown, first_stop_signal()).await;
     upkeep.iter().for_each(tokio::task::JoinHandle::abort);
     Ok(served?)
 }
 
-/// Resolves on Ctrl-C or SIGTERM. A signal that cannot be watched never resolves, so the
-/// other one still stops the hub.
+/// Opens the sessions before the hub binds, and logs how many stale rows ended (a number only).
+async fn open_sessions(
+    pool: &PgPool,
+    now: chrono::DateTime<chrono::Utc>,
+) -> Result<sessions::Live, StartError> {
+    let (live, ended) = sessions::open(pool, now).await?;
+    tracing::info!(ended, "stale sessions ended");
+    Ok(live)
+}
+
+/// The first stop signal. A second one ends the process at once, without waiting for the
+/// sessions or the drain.
+async fn first_stop_signal() {
+    stop_signal().await;
+    tracing::info!("hub stopping");
+    tokio::spawn(async {
+        stop_signal().await;
+        tracing::warn!("second stop signal; exiting now");
+        std::process::exit(1);
+    });
+}
+
+/// Resolves on Ctrl-C or SIGTERM. A signal that cannot be watched is logged and never
+/// resolves, so the other one still stops the hub.
 async fn stop_signal() {
     let interrupt = async {
-        if tokio::signal::ctrl_c().await.is_err() {
+        if let Err(error) = tokio::signal::ctrl_c().await {
+            tracing::warn!(%error, "cannot watch Ctrl-C");
             std::future::pending::<()>().await;
         }
     };
@@ -132,14 +161,16 @@ async fn stop_signal() {
             Ok(mut terminate) => {
                 terminate.recv().await;
             }
-            Err(_) => std::future::pending::<()>().await,
+            Err(error) => {
+                tracing::warn!(%error, "cannot watch SIGTERM");
+                std::future::pending::<()>().await;
+            }
         }
     };
     tokio::select! {
         () = interrupt => {}
         () = terminate => {}
     }
-    tracing::info!("hub stopping");
 }
 
 /// Starts the daily jobs, each run now and then daily (D-4, DB-004, DB-005, K2 retention):

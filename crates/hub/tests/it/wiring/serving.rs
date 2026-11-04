@@ -1,14 +1,19 @@
 //! WP-10 handoffs 5–7: the hub ends stale sessions before it serves, serves over TCP with the
 //! socket peer as the client address, and on the stop signal ends its sessions with
-//! `HUB_SHUTDOWN` before serving returns (R-040, D-13, NET-002).
+//! `HUB_SHUTDOWN` and drains for a bounded time before serving returns (R-040, D-13, NET-002).
 
-use std::{net::SocketAddr, time::Duration};
+use std::{
+    net::SocketAddr,
+    time::{Duration, Instant},
+};
 
 use anima_hub::{
+    Shutdown,
     access::{self, Password},
-    hold_sessions, router,
+    router,
     schema::build_schema,
     serve_until,
+    sessions::{self, Live},
 };
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -16,6 +21,7 @@ use tokio::{
     io::{AsyncReadExt as _, AsyncWriteExt as _},
     net::{TcpListener, TcpStream},
     sync::oneshot,
+    task::JoinHandle,
 };
 
 use super::{
@@ -29,7 +35,7 @@ const STALE: &str = "0190a000-0000-7000-8010-000000000001";
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
 )]
-async fn r_040_holding_sessions_first_ends_a_row_a_previous_hub_left_live(pool: PgPool) {
+async fn r_040_opening_sessions_ends_a_row_a_previous_hub_left_live(pool: PgPool) {
     add_operator(&pool).await;
     sqlx::query(
         "insert into sessions.sessions (id, device_id, device_name, protocol, operator_id, \
@@ -46,9 +52,10 @@ async fn r_040_holding_sessions_first_ends_a_row_a_previous_hub_left_live(pool: 
     .unwrap();
 
     // The schema needs the `Live` this returns, so nothing is served before it.
-    let held = hold_sessions(pool.clone(), clock()).await.unwrap();
-    drop(build_schema(wired(&pool, &held.live())));
+    let (live, ended) = sessions::open(&pool, now()).await.unwrap();
+    drop(build_schema(wired(&pool, &live)));
 
+    assert_eq!(ended, 1);
     assert_eq!(
         session_end(&pool, STALE).await,
         (true, Some("hub_shutdown".to_owned()))
@@ -121,6 +128,49 @@ async fn stored_client(pool: &PgPool, id: &str) -> String {
         .unwrap()
 }
 
+/// A hub serving on a free local port until the returned sender fires, then draining for at
+/// most `drain_limit`.
+struct Served {
+    addr: SocketAddr,
+    stop: oneshot::Sender<()>,
+    serving: JoinHandle<std::io::Result<()>>,
+}
+
+async fn serve(pool: &PgPool, live: Live, drain_limit: Duration) -> Served {
+    let schema = build_schema(wired(pool, &live));
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let (stop, signal) = oneshot::channel::<()>();
+    let app = router(schema, pool.clone(), clock());
+    let shutdown = Shutdown {
+        db: pool.clone(),
+        live,
+        clock: clock(),
+        drain_limit,
+    };
+    let serving = tokio::spawn(serve_until(listener, app, shutdown, async {
+        signal.await.ok();
+    }));
+    Served {
+        addr,
+        stop,
+        serving,
+    }
+}
+
+impl Served {
+    /// Fires the stop signal; returns what serving returned and how long that took.
+    async fn stop(self) -> (std::io::Result<()>, Duration) {
+        let began = Instant::now();
+        self.stop.send(()).unwrap();
+        let served = tokio::time::timeout(Duration::from_secs(10), self.serving)
+            .await
+            .expect("serving returns after the stop signal")
+            .unwrap();
+        (served, began.elapsed())
+    }
+}
+
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
@@ -130,18 +180,11 @@ async fn r_040_the_stop_signal_ends_a_pending_ticket_and_serving_returns(pool: P
         .await
         .unwrap();
     accept_key(&pool, PVE_01, USERNAME).await;
-    let held = hold_sessions(pool.clone(), clock()).await.unwrap();
-    let schema = build_schema(wired(&pool, &held.live()));
-    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let addr = listener.local_addr().unwrap();
-    let (stop, signal) = oneshot::channel::<()>();
-    let app = router(schema, pool.clone(), clock());
-    let serving = tokio::spawn(serve_until(listener, app, held, async {
-        signal.await.ok();
-    }));
+    let (live, _) = sessions::open(&pool, now()).await.unwrap();
+    let hub = serve(&pool, live, Duration::from_secs(5)).await;
 
-    let token = login(addr).await;
-    let session = start_spoofed(addr, &token).await;
+    let token = login(hub.addr).await;
+    let session = start_spoofed(hub.addr, &token).await;
     // NET-002, LOG-005: the address is the socket peer, never a header.
     assert_eq!(stored_client(&pool, &session).await, "127.0.0.1");
     assert_eq!(
@@ -150,11 +193,7 @@ async fn r_040_the_stop_signal_ends_a_pending_ticket_and_serving_returns(pool: P
     );
     assert_eq!(session_end(&pool, &session).await, (false, None));
 
-    stop.send(()).unwrap();
-    let served = tokio::time::timeout(Duration::from_secs(10), serving)
-        .await
-        .expect("serving returns after the stop signal")
-        .unwrap();
+    let (served, _) = hub.stop().await;
 
     assert!(served.is_ok(), "{served:?}");
     assert_eq!(
@@ -165,4 +204,27 @@ async fn r_040_the_stop_signal_ends_a_pending_ticket_and_serving_returns(pool: P
         audit_clients(&pool, &session, "end").await,
         vec!["127.0.0.1"]
     );
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn r_040_a_request_held_open_cannot_hold_the_drain_past_its_limit(pool: PgPool) {
+    let limit = Duration::from_millis(300);
+    let hub = serve(&pool, Live::default(), limit).await;
+    let mut client = TcpStream::connect(hub.addr).await.unwrap();
+    // A body announced at 1000 bytes, one sent, the connection kept open.
+    let partial = "POST /graphql HTTP/1.1\r\nhost: hub\r\ncontent-type: application/json\r\n\
+                   content-length: 1000\r\n\r\n{";
+    client.write_all(partial.as_bytes()).await.unwrap();
+    // Give the server time to accept the connection and read the request head.
+    tokio::time::sleep(Duration::from_millis(200)).await;
+
+    let (served, took) = hub.stop().await;
+
+    assert!(served.is_ok(), "{served:?}");
+    // At least the limit: the drain waited for the open request, then gave up.
+    assert!(
+        took >= limit,
+        "returned after {took:?}, before the drain limit"
+    );
+    drop(client);
 }

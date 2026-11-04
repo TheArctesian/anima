@@ -110,7 +110,7 @@ impl Upstream {
 }
 
 /// A pool on the same database whose statements are counted.
-pub async fn counting_pool(hub: &PgPool) -> (PgPool, Arc<AtomicUsize>) {
+pub(crate) async fn counting_pool(hub: &PgPool) -> (PgPool, Arc<AtomicUsize>) {
     let real = hub.connect_options();
     let upstream = real.get_socket().map_or_else(
         || Upstream::Tcp(real.get_host().to_owned(), real.get_port()),
