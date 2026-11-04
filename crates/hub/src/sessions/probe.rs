@@ -167,12 +167,10 @@ async fn connect(target: Target<'_>) -> Result<TcpStream, ProbeError> {
     if addresses.is_empty() {
         return Err(ProbeError::Unresolved);
     }
-    if addresses
-        .iter()
-        .any(|address| target.rule.refuses(address.ip()))
-    {
-        return Err(ProbeError::RefusedTarget);
-    }
+    let addresses = target
+        .rule
+        .checked(addresses)
+        .ok_or(ProbeError::RefusedTarget)?;
     for address in addresses {
         if let Ok(stream) = TcpStream::connect(address).await {
             return Ok(stream);

@@ -60,16 +60,25 @@ async fn logged(schema: &TestSchema, request: Request) -> (String, Response) {
     (text, response)
 }
 
-/// The sessions schema with the process-log extensions `schema.rs` adds, so an error without
-/// a code reaches the log.
-fn hardened(pool: &PgPool) -> TestSchema {
+/// The sessions schema, with the process-log extensions `schema.rs` adds when `hardened` (an
+/// error without a code then reaches the log, and argument errors are masked in the response).
+/// The plain schema shows what the input type itself lets out.
+fn schema_with(pool: &PgPool, hardened: bool) -> TestSchema {
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(now()));
     let builder = Schema::build(Query, Mutation, EmptySubscription)
         .data(pool.clone())
         .data(loopback_live())
         .data(vault())
         .data(clock);
-    harden(builder, false).finish()
+    if hardened {
+        harden(builder, false).finish()
+    } else {
+        builder.finish()
+    }
+}
+
+fn hardened(pool: &PgPool) -> TestSchema {
+    schema_with(pool, true)
 }
 
 const INLINE: &str = "hunter2-inline-secret";
@@ -116,6 +125,11 @@ fn malformed() -> Vec<(Request, &'static str, Refusal)> {
         (inline(&both), INLINE, Refusal::Static),
         (signed_in(&json!(VARIABLE)), VARIABLE, Refusal::Parse),
         (
+            signed_in(&json!([{ "deviceId": PVE_01, "credential": { "password": VARIABLE } }])),
+            VARIABLE,
+            Refusal::Parse,
+        ),
+        (
             signed_in(&json!({ "deviceId": PVE_01, "credential": VARIABLE })),
             VARIABLE,
             Refusal::Parse,
@@ -146,9 +160,14 @@ fn malformed() -> Vec<(Request, &'static str, Refusal)> {
 async fn log_007_a_connection_test_input_that_does_not_parse_never_quotes_its_credential(
     pool: PgPool,
 ) {
-    let schema = hardened(&pool);
+    for hardened in [true, false] {
+        refused_without_quoting(&schema_with(&pool, hardened)).await;
+    }
+}
+
+async fn refused_without_quoting(schema: &TestSchema) {
     for (index, (request, secret, refusal)) in malformed().into_iter().enumerate() {
-        let (log, response) = logged(&schema, request).await;
+        let (log, response) = logged(schema, request).await;
         let error = error_json(&response);
         let places = [
             error.to_string(),

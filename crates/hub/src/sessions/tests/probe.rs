@@ -2,7 +2,10 @@
 //! port, a host that never answers and one that does not speak SSH. The key exchange and the
 //! sign-in run against an in-process server in `tests/it/sessions/host_keys`.
 
-use std::{net::IpAddr, time::Duration};
+use std::{
+    net::{IpAddr, SocketAddr},
+    time::Duration,
+};
 
 use tokio::{io::AsyncWriteExt, net::TcpListener};
 
@@ -82,6 +85,24 @@ fn r_032_the_test_rule_lets_only_plain_loopback_through() {
     for refused in ["127.0.0.1", "::1"] {
         let ip = refused.parse::<IpAddr>().unwrap();
         assert!(TargetRule::STRICT.refuses(ip), "{refused}");
+    }
+}
+
+#[test]
+fn r_032_a_name_is_refused_when_any_of_its_addresses_is() {
+    let addresses = |list: &[&str]| -> Vec<SocketAddr> {
+        list.iter()
+            .map(|ip| SocketAddr::new(ip.parse().unwrap(), 22))
+            .collect()
+    };
+    let public = addresses(&["10.10.0.2", "2001:db8::1"]);
+    assert_eq!(TargetRule::STRICT.checked(public.clone()), Some(public));
+    for mixed in [
+        addresses(&["10.10.0.2", "127.0.0.1"]),
+        addresses(&["::1", "10.10.0.2"]),
+        addresses(&["10.10.0.2", "169.254.169.254", "10.10.0.3"]),
+    ] {
+        assert_eq!(TargetRule::STRICT.checked(mixed.clone()), None, "{mixed:?}");
     }
 }
 
