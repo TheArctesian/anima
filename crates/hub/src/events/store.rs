@@ -1,23 +1,42 @@
 //! The only SQL for `events.event_log` and `events.audit_log`.
 
 use chrono::{DateTime, Utc};
-use sqlx::PgConnection;
+use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
 use super::model::{EventSummary, NewAudit, NewEvent};
 use crate::ids::EventId;
 
+const ENSURE_DAY_PARTITION: &str = "select events.ensure_day_partition($1, $2)";
+
 /// Creates the UTC-day partition of `parent` that holds `at`, if it does not exist yet (D-4).
+/// Inside the caller's transaction; takes no lock when the partition exists.
 async fn ensure_day_partition(
     conn: &mut PgConnection,
     parent: &str,
     at: DateTime<Utc>,
 ) -> Result<(), sqlx::Error> {
-    sqlx::query("select events.ensure_day_partition($1, $2)")
+    sqlx::query(ENSURE_DAY_PARTITION)
         .bind(parent)
         .bind(at)
         .execute(&mut *conn)
         .await?;
+    Ok(())
+}
+
+/// Creates the day partitions of both logs that hold `at`. Each call is its own statement
+/// outside any transaction, so the lock it takes on a parent ends at once.
+pub(super) async fn create_day_partitions(
+    db: &PgPool,
+    at: DateTime<Utc>,
+) -> Result<(), sqlx::Error> {
+    for parent in ["event_log", "audit_log"] {
+        sqlx::query(ENSURE_DAY_PARTITION)
+            .bind(parent)
+            .bind(at)
+            .execute(db)
+            .await?;
+    }
     Ok(())
 }
 

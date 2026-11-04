@@ -8,8 +8,8 @@ mod store;
 #[cfg(test)]
 mod tests;
 
-use chrono::{DateTime, Utc};
-use sqlx::PgConnection;
+use chrono::{DateTime, TimeDelta, Utc};
+use sqlx::{PgConnection, PgPool};
 
 pub use bus::{Bus, Signal};
 pub use model::{
@@ -26,7 +26,36 @@ pub enum Error {
     Database(#[from] sqlx::Error),
 }
 
+/// Creates the day partitions of both logs for `today` and the `days` days after it, each in
+/// its own short transaction (D-4).
+///
+/// Call it at start and daily, so the partition already exists when `record` or `audit` runs.
+/// Both still create a missing partition as a fallback, but that holds an `ACCESS EXCLUSIVE`
+/// lock on the parent table until the caller's transaction ends, which blocks readers and can
+/// deadlock two transactions that write both logs in opposite order. When the partition exists
+/// the fallback takes no lock.
+///
+/// # Errors
+///
+/// `Error::Database` if a partition cannot be created.
+pub async fn create_partitions_ahead(
+    db: &PgPool,
+    today: DateTime<Utc>,
+    days: u32,
+) -> Result<(), Error> {
+    for offset in 0..=days {
+        store::create_day_partitions(db, today + TimeDelta::days(i64::from(offset))).await?;
+    }
+    Ok(())
+}
+
 /// Stores the event, then publishes it on `bus` as `Signal::Event`.
+///
+/// `message` is stored and broadcast as is: it must never hold a password, key, token or
+/// session content (LOG-007).
+///
+/// If the day partition is missing, it is created inside the caller's transaction (see
+/// `create_partitions_ahead` for the lock this takes).
 ///
 /// The publish happens inside the caller's transaction: if the caller rolls back, subscribers
 /// have seen an event that is not stored (D-5). The subscription is a live view; the stored
@@ -49,6 +78,9 @@ pub async fn record(
 
 /// Stores an audit entry. Secret values in `change` are replaced with `"[redacted]"` first
 /// (LOG-007); callers should not pass secrets, this is the backstop.
+///
+/// If the day partition is missing, it is created inside the caller's transaction (see
+/// `create_partitions_ahead` for the lock this takes).
 ///
 /// # Errors
 ///

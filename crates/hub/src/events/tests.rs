@@ -13,6 +13,9 @@ use super::{
 };
 use crate::ids::{DeviceId, EventId, OperatorId};
 
+mod partitions;
+mod privileges;
+
 const DEVICE: &str = "0192f5a0-7c3e-7a52-9d1b-3f4e5a6b7c8d";
 const OPERATOR: &str = "0192f5a0-7c3e-7a52-9d1b-000000000001";
 
@@ -42,6 +45,31 @@ fn new_audit(change: Value) -> NewAudit {
     }
 }
 
+const SEVERITIES: [(Severity, &str); 3] = [
+    (Severity::Info, "info"),
+    (Severity::Warning, "warning"),
+    (Severity::Error, "error"),
+];
+
+const SOURCES: [(Source, &str); 5] = [
+    (Source::Check, "check"),
+    (Source::Session, "session"),
+    (Source::Device, "device"),
+    (Source::Access, "access"),
+    (Source::Hub, "hub"),
+];
+
+/// The value whose contract text is `text`; panics on text the contract does not list.
+fn from_stored<T: Copy>(table: &[(T, &str)], text: &str) -> T {
+    table
+        .iter()
+        .find(|(_, stored)| *stored == text)
+        .map_or_else(
+            || panic!("unexpected stored text {text:?}"),
+            |(value, _)| *value,
+        )
+}
+
 async fn stored_event(conn: &mut PgConnection, id: EventId) -> EventSummary {
     let row = sqlx::query(
         "select at, severity, source, device_id, device_name, message \
@@ -51,19 +79,13 @@ async fn stored_event(conn: &mut PgConnection, id: EventId) -> EventSummary {
     .fetch_one(conn)
     .await
     .unwrap();
-    let severity = match row.get::<&str, _>("severity") {
-        "info" => Severity::Info,
-        "warning" => Severity::Warning,
-        _ => Severity::Error,
-    };
-    assert_eq!(row.get::<&str, _>("source"), "check");
     let device_id: Option<DeviceId> = row.get("device_id");
     let device_name: Option<String> = row.get("device_name");
     EventSummary {
         id,
         at: row.get("at"),
-        severity,
-        source: Source::Check,
+        severity: from_stored(&SEVERITIES, row.get("severity")),
+        source: from_stored(&SOURCES, row.get("source")),
         device: device_id.zip(device_name),
         message: row.get("message"),
     }
@@ -137,59 +159,24 @@ async fn log_004_record_without_a_device_or_subscriber_succeeds(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn db_004_record_creates_a_day_partition_for_any_date(pool: PgPool) {
+async fn log_004_every_severity_and_source_round_trips_through_its_stored_text(pool: PgPool) {
     let mut conn = pool.acquire().await.unwrap();
-    let bus = Bus::new(4);
+    let bus = Bus::new(1);
+    for (severity, _) in SEVERITIES {
+        for (source, _) in SOURCES {
+            let event = NewEvent {
+                severity,
+                source,
+                ..device_event("round trip")
+            };
 
-    let first = record(&mut conn, &bus, day(2026, 1, 1), device_event("a"))
-        .await
-        .unwrap();
-    let same_day = record(&mut conn, &bus, day(2026, 1, 1), device_event("b"))
-        .await
-        .unwrap();
-    let later = record(&mut conn, &bus, day(2031, 6, 30), device_event("c"))
-        .await
-        .unwrap();
-
-    assert_eq!(
-        partition_of(&mut conn, first).await,
-        "events.event_log_20260101"
-    );
-    assert_eq!(
-        partition_of(&mut conn, same_day).await,
-        "events.event_log_20260101"
-    );
-    assert_eq!(
-        partition_of(&mut conn, later).await,
-        "events.event_log_20310630"
-    );
-}
-
-#[sqlx::test(migrations = "./migrations")]
-async fn db_004_concurrent_records_on_a_new_day_all_succeed(pool: PgPool) {
-    let bus = Bus::new(16);
-    let at = day(2029, 2, 28);
-    let mut writers = tokio::task::JoinSet::new();
-    for _ in 0..8 {
-        let (pool, bus) = (pool.clone(), bus.clone());
-        writers.spawn(async move {
-            let mut tx = pool.begin().await.unwrap();
-            let id = record(&mut tx, &bus, at, device_event("racing"))
+            let id = record(&mut conn, &bus, day(2026, 3, 14), event)
                 .await
                 .unwrap();
-            tx.commit().await.unwrap();
-            id
-        });
-    }
 
-    let ids = writers.join_all().await;
-
-    let mut conn = pool.acquire().await.unwrap();
-    for id in ids {
-        assert_eq!(
-            partition_of(&mut conn, id).await,
-            "events.event_log_20290228"
-        );
+            let stored = stored_event(&mut conn, id).await;
+            assert_eq!((stored.severity, stored.source), (severity, source));
+        }
     }
 }
 

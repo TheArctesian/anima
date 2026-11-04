@@ -48,6 +48,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tower",
+ "unicode-normalization",
  "uuid",
 ]
 

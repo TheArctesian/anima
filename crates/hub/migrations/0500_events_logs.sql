@@ -35,10 +35,17 @@ create table events.audit_log (
 create index audit_log_target_at on events.audit_log (target_type, target_id, at desc);
 
 -- Creates events.<parent>_YYYYMMDD for the UTC day that holds `instant`, if it is missing.
--- Safe under concurrent calls: a racing creator makes this call a no-op.
+-- Safe under concurrent calls: a racing creator makes this call a no-op. When the partition
+-- exists the function takes no lock on the parent.
+--
+-- SECURITY DEFINER: only the table owner may create a partition, and the hub role must not
+-- own the tables, because an owner can always UPDATE, DELETE, TRUNCATE or DROP the audit log
+-- (LOG-006). The function runs as its owner (the migration role), so partitions it creates
+-- are owned by that role too. search_path is pinned and every name is schema-qualified.
 create function events.ensure_day_partition(parent text, instant timestamptz)
 returns void
 language plpgsql
+security definer
 set search_path = pg_catalog
 as $$
 declare
@@ -53,12 +60,13 @@ begin
         return;
     end if;
     begin
+        -- Bounds as ISO text with an explicit offset, independent of DateStyle and TimeZone.
         execute format(
             'create table events.%I partition of events.%I for values from (%L) to (%L)',
             child,
             parent,
-            (utc_day::timestamp at time zone 'UTC'),
-            ((utc_day + 1)::timestamp at time zone 'UTC')
+            to_char(utc_day, 'YYYY-MM-DD') || ' 00:00:00+00',
+            to_char(utc_day + 1, 'YYYY-MM-DD') || ' 00:00:00+00'
         );
     exception
         when duplicate_table or unique_violation then
@@ -66,3 +74,25 @@ begin
     end;
 end;
 $$;
+
+revoke execute on function events.ensure_day_partition(text, timestamptz) from public;
+
+-- The group role the hub login role belongs to (LOG-006, K2): it may read and append, never
+-- change or remove. Roles are cluster-wide, so another database (or a concurrent migration)
+-- may have created it already.
+do $$
+begin
+    if not exists (select from pg_catalog.pg_roles where rolname = 'anima_events_writer') then
+        begin
+            create role anima_events_writer nologin;
+        exception
+            when duplicate_object or unique_violation then
+                null;
+        end;
+    end if;
+end;
+$$;
+
+grant usage on schema events to anima_events_writer;
+grant select, insert on events.event_log, events.audit_log to anima_events_writer;
+grant execute on function events.ensure_day_partition(text, timestamptz) to anima_events_writer;
