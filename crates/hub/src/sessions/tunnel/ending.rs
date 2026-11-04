@@ -45,12 +45,7 @@ pub(super) struct Ending {
 }
 
 impl EndCause {
-    /// The K4 Section 5 row for this cause.
-    ///
-    /// `InvalidInstruction` has no `SessionEndReason` of its own in K1. It ends `OPERATOR`,
-    /// because the operator's side of the tunnel broke the protocol (not the device, not
-    /// guacd), with a Warning event so it is not mistaken for a clean close. This is an open
-    /// question for the programme: K1 may add a protocol-error reason.
+    /// The K4 Section 5 row for this cause; `InvalidInstruction` ends `PROTOCOL_ERROR` (R-034).
     pub(super) const fn ending(self) -> Ending {
         let (close_code, reason, severity) = match self {
             Self::OperatorClosed => (1000, EndReason::Operator, Severity::Info),
@@ -60,7 +55,7 @@ impl EndCause {
             Self::HostKeyMismatch => (4001, EndReason::HostKeyMismatch, Severity::Error),
             Self::Timeout => (4002, EndReason::Timeout, Severity::Info),
             Self::HubShutdown => (1001, EndReason::HubShutdown, Severity::Info),
-            Self::InvalidInstruction => (1002, EndReason::Operator, Severity::Warning),
+            Self::InvalidInstruction => (1002, EndReason::ProtocolError, Severity::Warning),
         };
         Ending {
             close_code,

@@ -64,25 +64,3 @@ pub(super) const PROMPTABLE: [&str; 4] = ["username", "password", "passphrase", 
 /// in guacamole-server 1.6.0 and 64 in 1.5.5 (`src/libguac/guacamole/user-constants.h:38`);
 /// 1.5.5 refuses 64..512 itself with an `ack`.
 pub(super) const MAX_CLIENT_STREAMS: u16 = 512;
-
-impl Relay {
-    #[must_use]
-    pub(super) fn new() -> Self {
-        Self::default()
-    }
-}
-
-/// The internal instruction that tells guacamole-common-js the tunnel is open (K4 Section 4,
-/// WP-08 H-7). `tunnel_id` is a new UUID, never guacd's connection ID (GW-014).
-pub(super) fn tunnel_opened(tunnel_id: &str) -> Instruction {
-    Instruction::new("", [tunnel_id])
-}
-
-/// A decimal number of 1..=`max_digits` ASCII digits; no sign, no `+`, no space.
-/// `u32::from_str` alone would accept a leading `+`. `max_digits` is at most 9, so it fits.
-pub(super) fn decimal(text: &str, max_digits: usize) -> Option<u32> {
-    if text.is_empty() || text.len() > max_digits || !text.bytes().all(|b| b.is_ascii_digit()) {
-        return None;
-    }
-    text.parse().ok()
-}

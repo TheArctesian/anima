@@ -7,7 +7,7 @@
 
 use guac_protocol::{ArgValues, is_zone_name};
 
-use super::known_hosts::known_hosts_line;
+use super::known_hosts::{BadHost, known_hosts_line};
 use crate::credentials::{Secret, SshSecret};
 use crate::devices::Device;
 use crate::sessions::HostKey;
@@ -29,6 +29,12 @@ pub(super) enum BadConnectValue {
     Host,
     #[error("the stored {argument} is not UTF-8 text")]
     NotText { argument: &'static str },
+}
+
+impl From<BadHost> for BadConnectValue {
+    fn from(_: BadHost) -> Self {
+        Self::Host
+    }
 }
 
 /// The `connect` values by guacd argument name for an SSH session to `device`, pinned to
@@ -83,7 +89,8 @@ pub(super) fn time_zone(requested: Option<&str>) -> String {
         .to_owned()
 }
 
-/// The secret as text, without a copy that outlives the borrow.
+/// The secret as text, borrowed. `ArgValues::set` then copies it into a plain `String`
+/// that is not zeroed on drop (guac-protocol, issue #1).
 fn text<'a>(argument: &'static str, secret: &'a Secret) -> Result<&'a str, BadConnectValue> {
     std::str::from_utf8(secret.expose()).map_err(|_| BadConnectValue::NotText { argument })
 }

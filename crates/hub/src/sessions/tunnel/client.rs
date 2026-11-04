@@ -8,8 +8,9 @@
 
 use guac_protocol::{Display, Instruction};
 
+use super::decimal::decimal;
 use super::ending::EndCause;
-use super::relay::{ClientStep, MAX_CLIENT_STREAMS, PROMPTABLE, Relay, decimal};
+use super::relay::{ClientStep, MAX_CLIENT_STREAMS, PROMPTABLE, Relay};
 
 /// The client may always set the terminal colour scheme (GW-012, guacd SSH `argv`).
 const COLOR_SCHEME: &str = "color-scheme";

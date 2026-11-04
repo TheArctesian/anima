@@ -5,7 +5,7 @@ use guac_protocol::Instruction;
 use super::super::relay::{ClientStep, Relay};
 
 fn size(args: &[&str]) -> ClientStep {
-    Relay::new().on_client(Instruction::new("size", args.iter().copied()))
+    Relay::default().on_client(Instruction::new("size", args.iter().copied()))
 }
 
 fn sized(args: &[&str]) -> ClientStep {
@@ -28,10 +28,11 @@ fn k4_size_is_forwarded_within_bounds_with_or_without_dpi() {
 fn k4_size_leading_zeros_are_forwarded_as_plain_numbers() {
     assert_eq!(size(&["01024", "0768"]), sized(&["1024", "768"]));
     assert_eq!(
-        size(&["000001024", "768"]),
+        size(&["001024", "768"]),
         ClientStep::Drop,
         "more than five digits"
     );
+    assert_eq!(size(&["1024", "000768"]), ClientStep::Drop);
 }
 
 #[test]

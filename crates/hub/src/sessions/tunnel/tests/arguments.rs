@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use guac_protocol::{ConnectParams, Decoder, Display, Handshake, HandshakeStep, Instruction};
 
 use super::super::arguments::{BadConnectValue, connect_values, time_zone};
-use super::super::known_hosts::known_hosts_line;
+use super::super::known_hosts::{BadHost, known_hosts_line};
 use super::{device, host_key};
 use crate::credentials::{Secret, SshSecret};
 use crate::sessions::tests::{ED25519, Inputs};
@@ -262,18 +262,33 @@ fn sec_006_host_key_line_refuses_a_host_that_would_change_the_line() {
         &long,
     ];
     for host in bad {
-        assert_eq!(
-            known_hosts_line(host, 22, &key),
-            Err(BadConnectValue::Host),
-            "{host:?}"
-        );
+        assert_eq!(known_hosts_line(host, 22, &key), Err(BadHost), "{host:?}");
     }
-    let edge = "a".repeat(250);
-    assert!(known_hosts_line(&edge, 22, &key).is_ok());
-    assert_eq!(
-        known_hosts_line(&edge, 2222, &key),
-        Err(BadConnectValue::Host)
-    );
+}
+
+#[test]
+fn sec_006_host_key_line_host_field_is_at_most_254_bytes() {
+    let key = host_key().public_key;
+    assert!(known_hosts_line(&"a".repeat(254), 22, &key).is_ok());
+    assert_eq!(known_hosts_line(&"a".repeat(255), 22, &key), Err(BadHost));
+    // `[` + 247 + `]:2222` is 254 bytes; one more is 255.
+    assert!(known_hosts_line(&"a".repeat(247), 2222, &key).is_ok());
+    assert_eq!(known_hosts_line(&"a".repeat(248), 2222, &key), Err(BadHost));
+}
+
+#[test]
+fn sec_006_host_key_line_keeps_an_underscore_host() {
+    let key = host_key().public_key;
+    let line = known_hosts_line("db_1.example", 22, &key).unwrap();
+    assert_eq!(line, format!("db_1.example ssh-ed25519 {ED25519}"));
+}
+
+#[test]
+fn sec_006_a_host_that_cannot_be_pinned_refuses_the_connect_values() {
+    let error = connect_values(&device("db host", 22), None, &host_key())
+        .err()
+        .unwrap();
+    assert_eq!(error, BadConnectValue::Host);
 }
 
 #[test]

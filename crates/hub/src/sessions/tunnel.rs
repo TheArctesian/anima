@@ -12,6 +12,7 @@
 
 mod arguments;
 mod client;
+mod decimal;
 mod ending;
 mod gateway;
 mod known_hosts;

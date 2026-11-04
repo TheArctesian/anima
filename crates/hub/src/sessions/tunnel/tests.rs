@@ -56,7 +56,7 @@ fn decoded(wire: &str) -> Instruction {
 
 /// A relay after guacd has asked for `names` with `required`.
 fn prompted(names: &[&str]) -> Relay {
-    let mut relay = Relay::new();
+    let mut relay = Relay::default();
     relay.on_gateway(Instruction::new("required", names.iter().copied()));
     relay
 }

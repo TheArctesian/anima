@@ -5,7 +5,7 @@ use std::time::Duration;
 use guac_protocol::encode;
 
 use super::super::ending::{CLIENT_IDLE, EndCause, Ending, GATEWAY_SILENCE};
-use super::super::relay::tunnel_opened;
+use super::super::gateway::tunnel_opened;
 use crate::events::Severity;
 use crate::sessions::EndReason;
 
@@ -60,8 +60,8 @@ fn k4_hub_shutdown_ends_1001_hub_shutdown_info() {
 }
 
 #[test]
-fn gw_011_an_invalid_instruction_ends_1002_operator_warning() {
-    let expected = row(1002, EndReason::Operator, Severity::Warning);
+fn gw_011_an_invalid_instruction_ends_1002_protocol_error_warning() {
+    let expected = row(1002, EndReason::ProtocolError, Severity::Warning);
     assert_eq!(EndCause::InvalidInstruction.ending(), expected);
 }
 
