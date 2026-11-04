@@ -7,6 +7,7 @@ mod public_key;
 mod start;
 mod store;
 mod tickets;
+mod tunnels;
 
 /// Two real OpenSSH public keys (throwaway, made with `ssh-keygen`; the private halves were
 /// deleted) and the fingerprints `ssh-keygen -l` printed for them.

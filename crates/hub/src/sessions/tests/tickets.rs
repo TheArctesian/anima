@@ -1,12 +1,7 @@
 //! Ticket rules and the in-memory table (K4 §1, API-009, LOG-007), and the end signal of an
 //! open tunnel (D-10). Deterministic: every time comes from a `FixedClock`.
 
-use std::{
-    net::IpAddr,
-    sync::{Arc, Barrier},
-    thread,
-    time::Duration,
-};
+use std::net::IpAddr;
 
 use chrono::{DateTime, TimeDelta, Utc};
 use proptest::prelude::*;
@@ -16,29 +11,29 @@ use crate::{
     events::{ClientAddr, Operator},
     ids::{DeviceId, OperatorId, SessionId},
     sessions::{
-        Actor, EndCause, EndReason, Protocol,
-        live::{Ending, Live, MAX_PENDING, Refused, Unavailable},
+        Protocol,
+        live::{Live, MAX_PENDING, Refused, Unavailable},
         tickets::{LIFETIME, PendingTicket, TOKEN_BYTES, Ticket, TicketToken, hash_of},
     },
 };
 
-const CLIENT: &str = "10.10.0.77";
+pub(super) const CLIENT: &str = "10.10.0.77";
 
-fn issued_at() -> DateTime<Utc> {
+pub(super) fn issued_at() -> DateTime<Utc> {
     FixedClock("2026-11-04T09:00:00Z".parse().unwrap()).now()
 }
 
-fn client(text: &str) -> ClientAddr {
+pub(super) fn client(text: &str) -> ClientAddr {
     ClientAddr(text.parse::<IpAddr>().unwrap())
 }
 
-fn session(n: u128) -> SessionId {
+pub(super) fn session(n: u128) -> SessionId {
     SessionId::from(uuid::Uuid::from_u128(
         0x0190_a000_0000_7000_8010_0000_0000_0000 + n,
     ))
 }
 
-fn pending(n: u128) -> PendingTicket {
+pub(super) fn pending(n: u128) -> PendingTicket {
     PendingTicket {
         operator: Operator {
             id: "0190a000-0000-7000-8000-000000000001"
@@ -63,12 +58,12 @@ fn pending(n: u128) -> PendingTicket {
 }
 
 /// A token made from `seed`, so each test's tokens are fixed and distinct.
-fn token(seed: u8) -> TicketToken {
+pub(super) fn token(seed: u8) -> TicketToken {
     TicketToken::from_random([seed; TOKEN_BYTES])
 }
 
 /// Issues ticket `n` with the token from `seed` and returns the token's text.
-fn issue(live: &Live, n: u128, seed: u8) -> String {
+pub(super) fn issue(live: &Live, n: u128, seed: u8) -> String {
     let token = token(seed);
     live.issue(token.hash(), pending(n)).unwrap();
     token.expose().to_owned()
@@ -240,136 +235,4 @@ fn api_009_spent_tickets_count_toward_the_bound_until_swept() {
     );
     assert_eq!(live.take_expired(pending(0).expires_at).len(), MAX_PENDING);
     assert!(live.issue(token(255).hash(), pending(999)).is_ok());
-}
-
-fn operator_actor() -> Actor {
-    Actor {
-        operator: pending(1).operator,
-        client: client("10.10.0.80"),
-        at: issued_at() + TimeDelta::seconds(3),
-    }
-}
-
-#[tokio::test]
-async fn ra_008_end_by_signals_operator_with_who_asked_and_finishes_when_the_tunnel_drops() {
-    let live = Live::default();
-    let text = issue(&live, 1, 4);
-    let mut tunnel = live
-        .redeem(&text, client(CLIENT), issued_at())
-        .unwrap()
-        .tunnel;
-
-    let Ending::Signalled(closing) = live.end_by(session(1), &operator_actor()) else {
-        panic!("the tunnel is registered");
-    };
-    let expected = EndCause {
-        reason: EndReason::Operator,
-        by: Some(operator_actor()),
-    };
-    assert_eq!(tunnel.ended().await, expected);
-    let finished = tokio::spawn(closing.finished());
-    tokio::task::yield_now().await;
-    assert!(!finished.is_finished(), "waits for the tunnel to drop");
-    drop(tunnel);
-    tokio::time::timeout(Duration::from_secs(5), finished)
-        .await
-        .unwrap()
-        .unwrap();
-    assert!(
-        matches!(live.end_by(session(1), &operator_actor()), Ending::Neither),
-        "dropping deregisters"
-    );
-}
-
-#[test]
-fn ra_008_end_by_withdraws_a_pending_or_spent_ticket() {
-    let live = Live::default();
-    issue(&live, 1, 1);
-    let spent = issue(&live, 2, 2);
-    assert!(
-        live.redeem(&spent, client("10.10.0.99"), issued_at())
-            .is_err()
-    );
-    for n in [1, 2] {
-        let Ending::Withdrawn(ticket) = live.end_by(session(n), &operator_actor()) else {
-            panic!("ticket {n} is pending or spent");
-        };
-        assert_eq!(ticket.session, session(n));
-        assert!(matches!(
-            live.end_by(session(n), &operator_actor()),
-            Ending::Neither
-        ));
-    }
-    assert_eq!(live.take_expired(pending(1).expires_at).len(), 0);
-}
-
-/// D-10 regression: `endSession` and a redemption racing on real threads. Under one lock the
-/// outcome is always consistent: the tunnel opened and was told to end, or the ticket was
-/// withdrawn and the redemption refused. Never an open tunnel nobody signalled.
-#[test]
-fn ra_008_end_by_and_redeem_never_both_miss_on_real_threads() {
-    let runtime = tokio::runtime::Builder::new_current_thread()
-        .build()
-        .unwrap();
-    for round in 0..20_000_usize {
-        let live = Live::default();
-        let text = issue(&live, 1, u8::try_from(round % 251).unwrap());
-        let barrier = Arc::new(Barrier::new(2));
-        let (redeemed, ending) = thread::scope(|scope| {
-            let redeemer = scope.spawn(|| {
-                barrier.wait();
-                live.redeem(&text, client(CLIENT), issued_at())
-            });
-            let ender = scope.spawn(|| {
-                barrier.wait();
-                live.end_by(session(1), &operator_actor())
-            });
-            (redeemer.join().unwrap(), ender.join().unwrap())
-        });
-        match (redeemed, ending) {
-            (Ok(mut redeemed), Ending::Signalled(_)) => {
-                let cause = runtime.block_on(redeemed.tunnel.ended());
-                assert_eq!(cause.reason, EndReason::Operator, "round {round}");
-            }
-            (Err(Refused), Ending::Withdrawn(_)) => {}
-            (redeemed, _) => panic!("round {round}: inconsistent, redeemed {}", redeemed.is_ok()),
-        }
-    }
-}
-
-#[tokio::test]
-async fn ra_008_shut_down_signals_hub_shutdown_to_every_tunnel_and_refuses_new_ones() {
-    let live = Live::default();
-    let first = issue(&live, 1, 1);
-    let second = issue(&live, 2, 2);
-    let pending_third = issue(&live, 3, 3);
-    let mut one = live
-        .redeem(&first, client(CLIENT), issued_at())
-        .unwrap()
-        .tunnel;
-    let mut two = live
-        .redeem(&second, client(CLIENT), issued_at())
-        .unwrap()
-        .tunnel;
-
-    let shutdown = EndCause {
-        reason: EndReason::HubShutdown,
-        by: None,
-    };
-    let closing = live.shut_down();
-    assert_eq!(one.ended().await, shutdown);
-    assert_eq!(two.ended().await, shutdown);
-    // The first cause wins: a later endSession does not change it.
-    drop(live.end_by(session(1), &operator_actor()));
-    assert_eq!(one.ended().await, shutdown);
-    assert_eq!(
-        live.redeem(&pending_third, client(CLIENT), issued_at())
-            .err(),
-        Some(Refused)
-    );
-    assert_eq!(live.issue(token(9).hash(), pending(9)), Err(Unavailable));
-    drop((one, two));
-    tokio::time::timeout(Duration::from_secs(5), closing.finished())
-        .await
-        .unwrap();
 }
