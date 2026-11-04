@@ -1,11 +1,43 @@
 //! Signed out, validation errors are not shown: they would map the schema (T3 security
 //! SHOULD 1). Signed in, they are. A guard without a clock writes its fault to the log.
 
-use async_graphql::{EmptySubscription, Request, Schema};
+use async_graphql::{EmptySubscription, Object, Request, Schema};
 use chrono::TimeDelta;
 
-use super::{Mutation, Query, assert_unauthenticated, backstopped, identity, now};
-use crate::events::process_log::tests::capture::capture_log;
+use super::{Mutation, Query, assert_unauthenticated, backstopped, clock, identity, now};
+use crate::{
+    access::SignInRequired, events::process_log::tests::capture::capture_log, schema::harden,
+};
+
+/// A `login` that fails inside the hub, with no code: a fault, not a refusal.
+struct FaultyLogin;
+
+#[expect(
+    clippy::unused_async,
+    clippy::unused_async_trait_impl,
+    reason = "async-graphql resolvers must be async"
+)]
+#[Object]
+impl FaultyLogin {
+    async fn login(&self) -> async_graphql::Result<bool> {
+        Err(async_graphql::Error::new("the disk is full"))
+    }
+}
+
+#[tokio::test]
+async fn api_010_signed_out_a_resolver_fault_is_internal_and_logged_not_a_refusal() {
+    let (capture, _guard) = capture_log("trace");
+    let builder = Schema::build(Query, FaultyLogin, EmptySubscription).data(clock(now()));
+    let schema = harden(builder, true).extension(SignInRequired).finish();
+
+    let response = schema.execute("mutation { login }").await;
+
+    let [error] = response.errors.as_slice() else {
+        panic!("one error: {:?}", response.errors);
+    };
+    assert_eq!(error.message, "Something went wrong on the hub.");
+    assert!(capture.text().contains("the disk is full"));
+}
 
 /// Documents the root check allows whose validation fails, each naming a schema part.
 const MAPPING: [&str; 4] = [
