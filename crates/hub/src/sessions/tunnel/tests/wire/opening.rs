@@ -1,6 +1,7 @@
 //! The session task owns the ticket from redeem to end (MV-003, SEC-002): a client that
 //! leaves during the opening, an `endSession` during the opening, and a task that panics
-//! each end the session once.
+//! each end the session once; the known gap of a client that leaves after a stray byte; and
+//! the end's write is retried once (LOG-005).
 
 use std::{sync::Arc, time::Duration};
 
@@ -13,7 +14,10 @@ use tokio::{
 };
 
 use super::{
-    super::super::record::Unfinished,
+    super::super::{
+        ending::{Cause, End},
+        record::{Unfinished, finish},
+    },
     Bench,
     bench::{LOOPBACK, PASSWORD, Setup, address, bench, now, operator},
     ended_once,
@@ -110,7 +114,8 @@ async fn sec_002_d_10_end_session_during_the_opening_sends_guacd_no_credential(p
         after_args.iter().all(|i| i.opcode != "connect"),
         "{after_args:?}"
     );
-    assert!(!format!("{after_args:?}").contains(PASSWORD));
+    let mut sent = after_args.iter().flat_map(|i| &i.args);
+    assert!(sent.all(|arg| !arg.contains(PASSWORD)), "no credential");
     assert!(row.end.is_some(), "the tunnel ended its row in time");
     assert_eq!(
         status_line(&mut raw).await,
@@ -147,4 +152,83 @@ async fn mv_003_a_session_task_that_panics_still_ends_the_session(pool: PgPool) 
         ended.events[0].3,
         "The hub's tunnel stopped unexpectedly and closed the SSH session."
     );
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
+)]
+async fn d_9_a_session_task_that_panics_after_end_session_ends_with_the_enders_cause(pool: PgPool) {
+    let bench = bench(&pool, "127.0.0.1:9", Setup::default()).await;
+    let redeemed = bench
+        .live
+        .redeem(&bench.token, address(LOOPBACK), now())
+        .unwrap();
+    let by = Actor {
+        operator: operator(),
+        client: address("10.10.0.80"),
+        at: now() + TimeDelta::seconds(5),
+    };
+    bench.live.end_by(bench.session, &by);
+    let route = Arc::new(bench.route.clone());
+    let task = tokio::spawn(async move {
+        let _unfinished = Unfinished::new(route, redeemed);
+        panic!("the session task fails after the end signal");
+    });
+    assert!(task.await.unwrap_err().is_panic());
+    let ended = ended(&pool, bench.session).await;
+    ended_once(&ended, "operator", "info", "10.10.0.80");
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
+)]
+async fn sec_002_known_gap_a_client_that_leaves_after_a_stray_byte_is_seen_only_at_the_wait(
+    pool: PgPool,
+) {
+    // Pins today's behaviour (issue #1): hyper does not notice an EOF while it holds an
+    // unread byte, so the opening carries on until its own wait runs out.
+    let setup = Setup::route(|route| route.timing.handshake = Duration::from_millis(500));
+    let (mut guacd, bench) = stalled(&pool, setup).await;
+    let mut raw = request_reaching_guacd(&bench, &mut guacd).await;
+    raw.write_all(b"x").await.unwrap();
+    drop(raw);
+    let ended = ended(&pool, bench.session).await;
+    ended_once(&ended, "gateway_error", "warning", LOOPBACK);
+    assert_eq!(
+        ended.events[0].3,
+        "The gateway did not open the SSH session."
+    );
+}
+
+/// Makes the first transaction that updates a session row fail at commit, and only that one.
+async fn fail_first_commit_on_update(pool: &PgPool) {
+    for statement in [
+        "create sequence public.refusals",
+        "create function public.refuse_first_commit() returns trigger language plpgsql \
+         as $$ begin if nextval('public.refusals') = 1 then \
+         raise exception 'refused at commit'; end if; return null; end $$",
+        "create constraint trigger refuse_first_commit after update on sessions.sessions \
+         deferrable initially deferred for each row \
+         execute function public.refuse_first_commit()",
+    ] {
+        sqlx::query(statement).execute(pool).await.unwrap();
+    }
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
+)]
+async fn log_005_an_end_whose_first_commit_fails_is_written_by_the_retry(pool: PgPool) {
+    let bench = bench(&pool, "127.0.0.1:9", Setup::default()).await;
+    let redeemed = bench
+        .live
+        .redeem(&bench.token, address(LOOPBACK), now())
+        .unwrap();
+    fail_first_commit_on_update(&pool).await;
+    finish(&bench.route, redeemed, &End::from(Cause::OperatorClosed)).await;
+    let ended = ended(&pool, bench.session).await;
+    ended_once(&ended, "operator", "info", LOOPBACK);
 }

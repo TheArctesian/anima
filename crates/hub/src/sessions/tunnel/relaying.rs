@@ -5,6 +5,14 @@
 //! The task, not the request handler, owns the ticket: hyper drops the handler when the
 //! client goes, and the session must still end (MV-003). It holds the ticket in an
 //! [`Unfinished`] guard, so even a panic ends the row.
+//!
+//! A known gap, accepted (SEC-002, issue #1): the opening stops when the client leaves only
+//! if hyper notices, and hyper notices an EOF during a request only while its read buffer is
+//! empty. A client that sends even one byte after the request headers and then leaves is not
+//! seen: the opening carries on, the credential still reaches guacd, and the session ends
+//! when the upgrade never comes (or the opening fails) instead of at once. Only the holder of
+//! a valid ticket, from the address it is bound to, can do this, and the session still ends
+//! once.
 
 mod link;
 mod writes;

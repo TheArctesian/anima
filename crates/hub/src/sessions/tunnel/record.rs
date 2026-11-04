@@ -23,8 +23,13 @@ const TASK_STOPPED: &str = "The hub's tunnel stopped unexpectedly and closed the
 
 /// A redeemed session whose end is not written yet. The session task holds it from the
 /// moment it owns the ticket; [`Unfinished::finish`] writes the end. If the task stops
-/// before that (a panic), dropping this writes a `GATEWAY_ERROR` end from a new task, so the
-/// row never stays live (MV-003, LOG-005).
+/// before that (a panic), dropping this writes the end from a new task (MV-003, LOG-005):
+/// the cause `endSession` or shutdown had already signalled, with who asked, else
+/// `GATEWAY_ERROR` (D-9).
+///
+/// A runtime that is shutting down drops that new task unrun, and so does a drop with no
+/// runtime at all; the row then stays live until the hub's next start ends it
+/// `HUB_SHUTDOWN` (`close_stale`, handoff H-2).
 pub(super) struct Unfinished {
     route: Arc<Route>,
     redeemed: Option<Redeemed>,
@@ -61,9 +66,10 @@ impl Drop for Unfinished {
         let session = redeemed.ticket.session;
         tracing::error!(%session, "the tunnel task stopped before the session ended");
         let route = Arc::clone(&self.route);
-        let end = End::explained(Cause::GatewayError, TASK_STOPPED);
-        // With no runtime left the hub is stopping; the next start ends the row
-        // `HUB_SHUTDOWN` (`close_stale`).
+        let end = redeemed.tunnel.signalled().map_or_else(
+            || End::explained(Cause::GatewayError, TASK_STOPPED),
+            End::from,
+        );
         if let Ok(runtime) = Handle::try_current() {
             runtime.spawn(async move { finish(&route, redeemed, &end).await });
         }

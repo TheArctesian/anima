@@ -144,3 +144,57 @@ async fn d_9_end_session_wins_over_a_client_that_stopped_reading(pool: PgPool) {
         "10.10.0.80",
     );
 }
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
+)]
+async fn d_9_end_session_wins_over_a_guacd_that_stopped_reading(pool: PgPool) {
+    // guacd reads nothing more while the client sends clipboard data, so the hub's write to
+    // guacd stalls; the idle wait is long, so only the end signal can end it in time.
+    let (guacd, bench, mut client) = session(&pool, Setup::default()).await;
+    guacd.act.send(Act::Stall).ok();
+    client.send("9.clipboard,1.0,10.text/plain;").await;
+    let blobs = format!("4.blob,1.0,8000.{};", "A".repeat(8_000)).repeat(7);
+    client.flood(&blobs, 4_000).await;
+    let by = Actor {
+        operator: operator(),
+        client: address("10.10.0.80"),
+        at: now() + TimeDelta::seconds(5),
+    };
+    let started = Instant::now();
+    let row = end_session(&pool, &bench.live, bench.session, &by)
+        .await
+        .unwrap();
+    assert_eq!(row.end.map(|end| end.reason), Some(EndReason::Operator));
+    let took = started.elapsed();
+    assert!(took < Duration::from_secs(4), "{took:?}");
+    ended_once(
+        &ended(&pool, bench.session).await,
+        "operator",
+        "info",
+        "10.10.0.80",
+    );
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
+)]
+async fn k4_5_a_client_write_stalled_past_the_idle_wait_is_4002_timeout(pool: PgPool) {
+    let idle = Duration::from_secs(1);
+    let setup = Setup::route(move |route| route.timing.client_idle = idle);
+    let (guacd, bench, mut client) = session(&pool, setup).await;
+    let blob = format!("4.blob,1.0,8000.{};", "A".repeat(8_000));
+    guacd.act.send(Act::Send(blob.repeat(4_000))).ok();
+    // The client reads nothing until the hub's write has stalled past the idle wait, then
+    // drains while the hub's close is still on its way.
+    tokio::time::sleep(idle + Duration::from_millis(500)).await;
+    assert_eq!(client.close_code().await, Some(4002));
+    let ended = ended(&pool, bench.session).await;
+    ended_once(&ended, "timeout", "info", LOOPBACK);
+    assert_eq!(
+        ended.events[0].3,
+        "The client stopped reading what the hub sent, so the hub closed the SSH session."
+    );
+}

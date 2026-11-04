@@ -112,6 +112,12 @@ pub struct Tunnel {
 }
 
 impl Tunnel {
+    /// The cause signalled so far, if any, without waiting: for a tunnel task that can no
+    /// longer await, such as one being dropped.
+    pub(super) fn signalled(&self) -> Option<EndCause> {
+        self.cause.borrow().clone()
+    }
+
     /// Resolves with the first cause signalled for this tunnel. Cancel safe, so it can sit in
     /// a `select!`. The sender lives until this registration drops, so a closed channel means
     /// the hub's state is being torn down: that is a shutdown.

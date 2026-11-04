@@ -20,13 +20,13 @@ use zeroize::Zeroizing;
 
 use super::{
     super::{
-        ending::{Cause, End},
+        ending::{Cause, End, GATEWAY_LOST},
         gateway::tunnel_opened,
         guacd::{Connected, ConnectionId, READ_BYTES},
         relay::{ClientStep, GatewayStep, Relay},
         route::Timing,
     },
-    writes::{GATEWAY_LOST, close_client, leave_gateway, send_text, write_gateway},
+    writes::{close_client, leave_gateway, send_text, write_gateway},
 };
 use crate::sessions::{EndCause, Tunnel};
 
@@ -99,8 +99,6 @@ impl Link<'_> {
         if let Some(end) = self.relay_gateway(after_ready).await {
             return end;
         }
-        self.gateway_quiet = Instant::now() + self.timing.gateway_silence;
-        self.client_quiet = Instant::now() + self.timing.client_idle;
         loop {
             let turn = self.next_turn().await;
             if let Some(end) = self.on_turn(turn).await {
@@ -121,7 +119,8 @@ impl Link<'_> {
     }
 
     /// Acts on one turn; `Some` when the session ends. Any client message restarts the idle
-    /// wait; any guacd read restarts the silence wait, and so does the `nop` it causes. Each
+    /// wait, a WebSocket ping or pong included (the browser's keep-alive counts as activity);
+    /// any guacd read restarts the silence wait, and so does the `nop` it causes. Each
     /// wait restarts once the turn is handled, so the time the hub spends writing to the
     /// other side, held back by it, never counts as this side's silence.
     async fn on_turn(&mut self, turn: Turn) -> Option<End> {

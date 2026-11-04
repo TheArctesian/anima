@@ -1,7 +1,7 @@
 //! How a tunnel ends: the one table from cause to close code, end reason and event severity
 //! (K4 Section 5, R-032, WP-10 D-9).
 
-use std::time::Duration;
+use std::{io, time::Duration};
 
 use crate::events::Severity;
 use crate::sessions::{Actor, EndCause, EndReason};
@@ -145,5 +145,22 @@ impl From<EndCause> for End {
             by: signal.by,
             message: cause.message(),
         }
+    }
+}
+
+/// The event message when the connection to guacd fails.
+pub(super) const GATEWAY_LOST: &str =
+    "The connection to the gateway failed, so the hub closed the SSH session.";
+/// The event message when a write to guacd stalls.
+const GATEWAY_STOPPED_READING: &str =
+    "The gateway stopped reading what the hub sent, so the hub closed the SSH session.";
+
+/// What one write to guacd means for the session: nothing when it went through, else a
+/// gateway error. `None` is a write that stalled past its wait.
+pub(super) fn gateway_written(written: Option<&io::Result<()>>) -> Result<(), End> {
+    match written {
+        Some(Ok(())) => Ok(()),
+        Some(Err(_)) => Err(End::explained(Cause::GatewayError, GATEWAY_LOST)),
+        None => Err(End::explained(Cause::GatewayError, GATEWAY_STOPPED_READING)),
     }
 }

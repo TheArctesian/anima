@@ -1,10 +1,10 @@
 //! The end table (K4 Section 5 as amended by R-032, D-9) and the relay timings.
 
-use std::time::Duration;
+use std::{io, time::Duration};
 
 use guac_protocol::encode;
 
-use super::super::ending::{CLIENT_IDLE, Cause, Ending, GATEWAY_SILENCE};
+use super::super::ending::{CLIENT_IDLE, Cause, Ending, GATEWAY_SILENCE, gateway_written};
 use super::super::gateway::tunnel_opened;
 use crate::events::Severity;
 use crate::sessions::EndReason;
@@ -69,6 +69,24 @@ fn gw_011_an_invalid_instruction_ends_1002_protocol_error_warning() {
 fn k4_relay_timings_are_5_and_15_seconds() {
     assert_eq!(GATEWAY_SILENCE, Duration::from_secs(5));
     assert_eq!(CLIENT_IDLE, Duration::from_secs(15));
+}
+
+#[test]
+fn k4_5_a_guacd_write_that_fails_or_stalls_is_gateway_error() {
+    assert_eq!(gateway_written(Some(&Ok(()))), Ok(()));
+    let broken = Err(io::ErrorKind::BrokenPipe.into());
+    let failed = gateway_written(Some(&broken)).unwrap_err();
+    assert_eq!(failed.cause, Cause::GatewayError);
+    assert_eq!(
+        failed.message,
+        "The connection to the gateway failed, so the hub closed the SSH session."
+    );
+    let stalled = gateway_written(None).unwrap_err();
+    assert_eq!(stalled.cause, Cause::GatewayError);
+    assert_eq!(
+        stalled.message,
+        "The gateway stopped reading what the hub sent, so the hub closed the SSH session."
+    );
 }
 
 #[test]

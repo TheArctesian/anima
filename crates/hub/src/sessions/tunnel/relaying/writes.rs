@@ -10,7 +10,7 @@ use futures_util::SinkExt;
 use guac_protocol::{Instruction, encode};
 use tokio::{io::AsyncWriteExt as _, net::TcpStream, time::timeout};
 
-use super::super::ending::{CLOSE_WAIT, Cause, End};
+use super::super::ending::{CLOSE_WAIT, Cause, End, gateway_written};
 use crate::sessions::Tunnel;
 
 /// What the hub tells guacd when it leaves first.
@@ -19,12 +19,6 @@ const DISCONNECT: &[u8] = b"10.disconnect;";
 /// The event message when a write to the client stalls.
 const CLIENT_STOPPED_READING: &str =
     "The client stopped reading what the hub sent, so the hub closed the SSH session.";
-/// The event message when a write to guacd stalls.
-const GATEWAY_STOPPED_READING: &str =
-    "The gateway stopped reading what the hub sent, so the hub closed the SSH session.";
-/// The event message when the connection to guacd fails.
-pub(super) const GATEWAY_LOST: &str =
-    "The connection to the gateway failed, so the hub closed the SSH session.";
 
 /// Sends one instruction to the client as one text message, unless the session ends first. A
 /// failed send is the client leaving; one that stalls past `wait` is a timeout.
@@ -55,11 +49,7 @@ pub(super) async fn write_gateway(
 ) -> Result<(), End> {
     tokio::select! {
         signal = tunnel.ended() => Err(End::from(signal)),
-        written = timeout(wait, gateway.write_all(wire)) => match written {
-            Ok(Ok(())) => Ok(()),
-            Ok(Err(_)) => Err(End::explained(Cause::GatewayError, GATEWAY_LOST)),
-            Err(_) => Err(End::explained(Cause::GatewayError, GATEWAY_STOPPED_READING)),
-        },
+        written = timeout(wait, gateway.write_all(wire)) => gateway_written(written.ok().as_ref()),
     }
 }
 
