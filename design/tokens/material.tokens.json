@@ -1,0 +1,63 @@
+{
+  "depth": {
+    "material": {
+      "$type": "material",
+      "chrome": {
+        "$value": {
+          "base": "{color.surface}",
+          "opacityPercent": 82,
+          "blur": "20px",
+          "saturatePercent": 140
+        },
+        "$description": "Navigation bar, session toolbar. Reduced transparency: surface, no blur"
+      },
+      "panel": {
+        "$value": {
+          "base": "{color.surface}",
+          "opacityPercent": 90,
+          "blur": "12px",
+          "saturatePercent": 100
+        },
+        "$description": "Logs panel, side panels. Reduced transparency: surface, no blur"
+      },
+      "overlay": {
+        "$value": {
+          "base": "{color.surface-raised}",
+          "opacityPercent": 92,
+          "blur": "24px",
+          "saturatePercent": 100
+        },
+        "$description": "Menus, popovers, toasts. Reduced transparency: surface-raised, no blur"
+      }
+    },
+    "elevation": {
+      "$type": "elevation",
+      "0": {
+        "$value": "none",
+        "$description": "Flat"
+      },
+      "1": {
+        "$value": "none",
+        "$description": "Cards: a 1 px border and no shadow (5.6); the component draws the border"
+      },
+      "2": {
+        "$value": {
+          "offsetY": "4px",
+          "blur": "16px",
+          "color": "{color.nord.0}",
+          "alphaPercent": 40
+        },
+        "$description": "Popovers, menus"
+      },
+      "3": {
+        "$value": {
+          "offsetY": "12px",
+          "blur": "40px",
+          "color": "{color.nord.0}",
+          "alphaPercent": 55
+        },
+        "$description": "Modal dialogs, sheets"
+      }
+    }
+  }
+}

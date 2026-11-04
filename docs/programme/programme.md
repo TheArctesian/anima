@@ -21,13 +21,13 @@ The operator approved all seven contracts on 2026-11-03 (checkpoint 1). Only a r
 | Package | Wave | State | Branch | Session |
 | --- | --- | --- | --- | --- |
 | WP-01 Skeleton and gates | 0 | Accepted, merged into `phase-1` (gates 12/12) | `claude/wp-01-skeleton-212429` | `wp-01-skeleton` |
-| WP-02 Tokens and fonts | 1 | Building | own worktree from `phase-1` | `wp-02-tokens` |
-| WP-03 VPN and network | 1 | Ready (operator checkpoint 2 for each VPS change) | — | — |
+| WP-02 Tokens and fonts | 1 | Accepted, merged into `phase-1` (965feb2) | `claude/wp-02-tokens-327209` | `wp-02-tokens` |
+| WP-03 VPN and network | 1 | Building (prepares files only; operator confirms each VPS, Headscale and Cloudflare change) | own worktree from `phase-1` | `wp-03-vpn-and-network` |
 | WP-04 Deployment, stage A (hub) | 1 | Ready | — | — |
 | WP-04 Deployment, stage B (releases and self-update, R-006) | 3 | Waiting (WP-15, WP-16; operator sets secrets) | — | — |
 | WP-05 Access and logs | 1 | Building | own worktree from `phase-1` | `wp-05-access` |
-| WP-06 Devices | 1 | Building | own worktree from `phase-1` | `wp-06-devices` |
-| WP-07 Credentials | 1 | Building | own worktree from `phase-1` | `wp-07-credentials` |
+| WP-06 Devices | 1 | Building; T1 migrations merged early into `phase-1` (668c898) | own worktree from `phase-1` | `wp-06-devices` |
+| WP-07 Credentials | 1 | Building; T1 vault merged early into `phase-1` (78a6461) | own worktree from `phase-1` | `wp-07-credentials` |
 | WP-08 guac-protocol | 1 | Building | own worktree from `phase-1` | `wp-08-guac` |
 | WP-09 Checks and maintenance | 2 | Waiting (WP-05, WP-06) | — | — |
 | WP-10 Sessions | 2 | Waiting (WP-05–WP-08) | — | — |
@@ -61,6 +61,13 @@ Integration branch: `phase-1`. Merge to `main` only after operator checkpoint 4.
 - **R-010 (Wave 1, from WP-07; changes K3).** (a) `devices` owns the GraphQL mutations `setSshCredential` and `clearSshCredential` and may call `credentials::{Vault, SshSecret, has_ssh, store_ssh, clear_ssh}`. `clear_ssh(conn, device) -> Result<bool, Error>` is added to `credentials`. (b) `Vault::seal` and `Vault::open` take a `context: &[u8]` that is bound as AEAD associated data, with the fixed context strings in K3, so a sealed value moved to another row does not open. Affects WP-05 (TOTP), WP-06, WP-07.
 
 - **R-011 (Wave 1, from WP-06; changes K3).** (a) A domain's `graphql.rs` may import extra domains listed under `graphql` in `quality/hub-modules.json`, only to resolve K1 fields that join domains; never a `store`, and these edges do not count toward cycles. `devices/graphql.rs` may import `checks` and `sessions`. (b) WP-06 builds `Device` and `SshSettings` with the fields devices owns, `DeviceFilter` name/tags/siteId and `DeviceSort.NAME`; it does not declare the fields that need other domains. WP-09 adds `Device.status`, `checks`, `uptime`, `DeviceFilter.status`, `DeviceSort.STATUS`/`UPTIME` and the `addDefaultCheck` behaviour to `devices/graphql.rs` after WP-06 is accepted; WP-10 adds `SshSettings.hostKey`. One owner at a time (PKG-001). (c) Until WP-17, the schema contract check (CON-002) requires only that every hub field matches K1; WP-17 checks that K1 is complete.
+
+- **R-012 (Wave 1, from WP-06; changes K3).** The K1 scalars `IpAddr` and `Cidr` live in the leaf module `crates/hub/src/scalars.rs` (programme-owned, like R-003). `Cidr` rejects host bits. `DateTime` and `JSON` are async-graphql's built-in chrono and `Json<T>` scalars. A domain must not define a scalar with a K1 name. Storage conversion (for example to `ipnet::IpNet` for sqlx) stays in each domain's `store.rs`.
+
+- **R-013 (Wave 1, from WP-02; changes K5).** K5 adds `projection-deceleration` (0.998) and `rubberband-constant` (0.55), TypeScript only, in a `gesture` object (MOT-032, MOT-033). The TypeScript `reducedMotion` and `breakpoint` objects are a correct reading of K5: they carry values, not new names.
+
+- **R-014 (Wave 1, from WP-06; changes K3).** K1's `PageInfo` is `paging::PageEnd` (GraphQL name `PageInfo`) in the leaf module `crates/hub/src/paging.rs`; no domain defines its own or uses async-graphql's built-in connection `PageInfo`. Data loaders (API-005): each domain exposes a constructor in its `graphql.rs` (for example `devices::graphql::site_loader(pool)`), and `schema.rs` registers it with `.data(..)` as a wiring handoff. The loaders have no cache, so one schema-wide instance is safe.
+- **R-015 (Wave 1, from WP-05; changes the limits gate).** A Rust module face `name.rs` that has a sibling folder `name/` is one unit with that folder (CQ-004). It does not count as a file in its parent folder for REPO-005. So the hub crate root counts `lib.rs`, `main.rs`, `schema.rs`, the leaf modules and the face of each domain that has no folder yet. Do not move the leaf modules; K3 paths do not change. A domain that grows past one file gets its folder.
 
 ## Escalations
 
