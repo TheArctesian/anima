@@ -181,3 +181,44 @@ pub(super) struct DeviceFilter {
     pub tags: Vec<String>,
     pub site: Option<SiteId>,
 }
+
+/// SSH settings as typed in the form; `port` is the raw GraphQL integer.
+#[derive(Clone, Debug)]
+pub(super) struct SshInput {
+    pub(super) enabled: bool,
+    pub(super) port: Option<i32>,
+    pub(super) username: String,
+    pub(super) auth: SshAuth,
+}
+
+/// A device to create, as typed in the form.
+#[derive(Clone, Debug)]
+pub(super) struct NewDeviceInput {
+    pub(super) site: SiteId,
+    pub(super) name: String,
+    pub(super) host: String,
+    pub(super) kind: String,
+    pub(super) os: OperatingSystem,
+    pub(super) tags: Vec<String>,
+    pub(super) ssh: Option<SshInput>,
+}
+
+/// A device update as typed in the form; absent fields stay as they are.
+#[derive(Clone, Debug, Default)]
+pub(super) struct DeviceChangeInput {
+    pub(super) site: Option<SiteId>,
+    pub(super) name: Option<String>,
+    pub(super) host: Option<String>,
+    pub(super) kind: Option<String>,
+    pub(super) os: Option<OperatingSystem>,
+    pub(super) tags: Option<Vec<String>>,
+    pub(super) maintenance: Option<bool>,
+    pub(super) ssh: Option<SshInput>,
+}
+
+/// A site to create, as typed in the form.
+#[derive(Clone, Debug)]
+pub(super) struct NewSiteInput {
+    pub(super) name: String,
+    pub(super) subnet: String,
+}
