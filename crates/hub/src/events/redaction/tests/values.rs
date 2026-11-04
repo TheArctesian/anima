@@ -257,3 +257,29 @@ fn log_007_redaction_masks_the_password_in_a_url() {
         "https://h.example:8443#a@b",
     ]);
 }
+
+#[test]
+fn log_007_redaction_masks_a_scheme_credential_inside_a_secret_key_value() {
+    masks(&[
+        (
+            "authorization=Basic dXNlcjpwYXNz",
+            "authorization=[redacted] [redacted]",
+        ),
+        (
+            "Authorization : Basic dXNlcjpwYXNz",
+            "Authorization : [redacted] [redacted]",
+        ),
+        (
+            "password: Basic dXNlcjpwYXNz",
+            "password: [redacted] [redacted]",
+        ),
+        (
+            "token=Bearer ghp_AAAAsecret1",
+            "token=[redacted] [redacted]",
+        ),
+        (
+            "{\"password\":\n  \"hunter2\"}",
+            "{\"password\":\n  \"[redacted]\"}",
+        ),
+    ]);
+}

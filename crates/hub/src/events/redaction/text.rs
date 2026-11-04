@@ -27,8 +27,10 @@ pub(in crate::events) fn redact_text(text: &str) -> String {
         return REDACTED.to_owned();
     }
     let masked = mask_url_userinfo(text);
-    let masked = mask_key_values(&masked);
+    // Schemes before keys: a key value ends at whitespace, so masking `authorization=Basic`
+    // first would hide the scheme word and leave the credential after it.
     let masked = mask_after_words(&masked, &SCHEMES, scheme_credential);
+    let masked = mask_key_values(&masked);
     mask_jwts(&masked)
 }
 
@@ -151,7 +153,7 @@ fn key_before(text: &str, separator: usize) -> Option<&str> {
 fn value_after(text: &str, from: usize) -> Option<(usize, usize)> {
     let bytes = text.as_bytes();
     let mut start = from;
-    while start < bytes.len() && matches!(bytes[start], b' ' | b'\t') {
+    while start < bytes.len() && matches!(bytes[start], b' ' | b'\t' | b'\r' | b'\n') {
         start += 1;
     }
     // A found closing quote ends a masked value and the caller resumes after it; a search fails
