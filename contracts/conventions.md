@@ -34,6 +34,12 @@ Status: **frozen for Phase 1** (change only through a programme ruling, CON-001)
 
 - Messages are plain sentences for the operator. They never contain SQL, file paths, secrets or stack traces.
 
+## Authentication transport (R-020)
+
+- HTTP `POST /graphql`: header `Authorization: Bearer <token>`.
+- `graphql-transport-ws` (API-002): the client sends the token in the `connection_init` payload as `{ "authorization": "Bearer <token>" }`. Browsers cannot set headers on a WebSocket, and a query parameter would put the token in logs (LOG-007). The hub resolves it in its connection-init handler with `access::operator_for_token` and closes the socket with code `4403` (Forbidden) when the token is missing or not valid.
+- The token never goes in a URL. The tunnel (K4) uses its own single-use ticket instead.
+
 ## Logging (process log)
 
 - `tracing` with JSON output (LOG-001). Standard fields: `request_id`, `operator_id`, `device_id`, `session_id`, `domain`.

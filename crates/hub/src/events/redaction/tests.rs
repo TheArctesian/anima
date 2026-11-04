@@ -2,6 +2,9 @@ use serde_json::{Value, json};
 
 use super::redact;
 
+mod holders;
+mod values;
+
 const PEM: &str =
     "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXk=\n-----END OPENSSH PRIVATE KEY-----";
 
@@ -77,7 +80,7 @@ fn log_007_redaction_covers_every_secret_word_and_spelling() {
         "otpCode",
         "totpSecret",
         "otpauthUri",
-        "auth",
+        "authKey",
         "sshKeyPem",
     ]);
     hidden(&[
@@ -151,76 +154,18 @@ fn log_007_redaction_hides_everything_beside_a_label_that_names_a_secret() {
 }
 
 #[test]
-fn log_007_redaction_hides_private_keys_and_otpauth_uris_under_any_key() {
-    let change = json!({
-        "notes": PEM,
-        "lines": ["fine", PEM],
-        "enrolment": "otpauth://totp/anima:operator?secret=JBSWY3DPEHPK3PXP",
-    });
-
-    assert_eq!(
-        redact(change),
-        json!({ "notes": "[redacted]", "lines": ["fine", "[redacted]"], "enrolment": "[redacted]" })
-    );
-    assert_eq!(redact(json!(PEM)), json!("[redacted]"));
-}
-
-#[test]
-fn log_007_redaction_hides_http_credentials_and_putty_keys_under_any_key() {
-    let change = json!([
-        "Bearer eyJhbGciOi",
-        "  basic YWRtaW46aHVudGVyMg==",
-        "curl -H 'Authorization: Bearer x' https://hub",
-        "see OTPAUTH://totp/x?secret=Y",
-        "PuTTY-User-Key-File-3: ssh-ed25519",
+fn log_007_redaction_hides_private_keys_named_like_public_keys() {
+    hidden(&[
+        "privateHostKey",
+        "privateNodeKey",
+        "hostKeyPrivate",
+        "privHostKey",
+        "private_public_key",
+        "privateHostKeys",
+        "secretHostKey",
+        "passwordNodeKey",
     ]);
-
-    assert_eq!(redact(change), Value::Array(vec![json!("[redacted]"); 5]));
-    kept(&json!([
-        "not a Bearer token",
-        "basically fine",
-        "authorization pending"
-    ]));
-}
-
-#[test]
-fn log_007_redaction_masks_the_password_in_a_url() {
-    let change = json!({
-        "url": "postgres://anima:hunter2@db:5432/anima",
-        "mirrors": "https://a:b@one.example/x and ftp://c:d:e@two.example",
-        "plain": "https://user@host.example/path",
-        "other": "https://host.example/a:b@c",
-    });
-
-    assert_eq!(
-        redact(change),
-        json!({
-            "url": "postgres://anima:[redacted]@db:5432/anima",
-            "mirrors": "https://a:[redacted]@one.example/x and ftp://c:[redacted]@two.example",
-            "plain": "https://user@host.example/path",
-            "other": "https://host.example/a:b@c",
-        })
-    );
-}
-
-#[test]
-fn log_007_redaction_searches_a_credential_object_instead_of_hiding_it() {
-    let change = json!({
-        "credential": { "kind": "password", "username": "admin", "id": "c1", "password": "x" },
-        "sshCredentials": [{ "username": "root", "privateKey": "y" }],
-        "credentialId": "c1",
-        "label": { "credential": "z" },
-    });
-
-    assert_eq!(
-        redact(change),
-        json!({
-            "credential": { "kind": "password", "username": "admin", "id": "c1", "password": "[redacted]" },
-            "sshCredentials": [{ "username": "root", "privateKey": "[redacted]" }],
-            "credentialId": "c1",
-            "label": { "credential": "[redacted]" },
-        })
-    );
+    kept(&json!({ "privateIp": "10.0.0.1", "privateNetwork": "lab", "privilegeLevel": 2 }));
 }
 
 #[test]
@@ -267,5 +212,25 @@ fn log_007_redaction_over_matches_timestamps_named_for_secrets_deliberately() {
             { "tokenExpiresAt": "[redacted]", "passwordChangedAt": "[redacted]" },
             { "op": "replace", "path": "/passwordPolicy/minLength", "value": "[redacted]" },
         ])
+    );
+}
+
+#[test]
+fn log_007_redaction_keeps_method_names_and_enum_values() {
+    kept(&json!({
+        "auth": "password",
+        "authType": "private_key",
+        "method": "password",
+        "signIn": "operator",
+        "ssh": { "auth": "password", "enabled": true },
+    }));
+}
+
+#[test]
+fn log_007_redaction_hides_pre_shared_keys_and_splits_labels_at_dots() {
+    hidden(&["psk", "wifiPsk", "psk_value"]);
+    assert_eq!(
+        redact(json!({ "field": "ssh.key.type", "value": "ed25519" })),
+        json!({ "field": "ssh.key.type", "value": "[redacted]" })
     );
 }

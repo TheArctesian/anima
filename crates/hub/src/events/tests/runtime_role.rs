@@ -1,173 +1,327 @@
-//! The start check refuses a hub role that could change the audit log (K2 "Roles", R-016,
-//! LOG-006).
+//! The start check refuses a hub login that could change the logs (K2 "Start check", R-016,
+//! R-023, LOG-006). Every case logs in as a real LOGIN role.
 
-use sqlx::PgPool;
-use uuid::Uuid;
+use sqlx::{PgConnection, PgPool};
 
-use super::{pool_as, privileges::execute};
-use crate::events::{Error, check_runtime_role};
+use super::{login_pool, privileges::execute, test_role};
+use crate::events::{Refusal, RoleError, check_runtime_role};
 
-/// Runs the start check on a session whose role is `role`.
-async fn check_as(pool: &PgPool, role: &str) -> Result<(), Error> {
-    let session = pool_as(pool, role).await;
-    let outcome = check_runtime_role(&session).await;
-    session.close().await;
-    outcome
+/// Runs `sql`, which may hold several statements, with `{role}` replaced by `role` and `{db}`
+/// by the test database's name.
+async fn run_for(conn: &mut PgConnection, sql: &str, role: &str) {
+    let db: String = sqlx::query_scalar("select current_database()::text")
+        .fetch_one(&mut *conn)
+        .await
+        .unwrap();
+    let sql = sql.replace("{role}", role).replace("{db}", &db);
+    sqlx::raw_sql(&sql).execute(conn).await.unwrap();
 }
 
-fn test_role(purpose: &str) -> String {
-    format!("anima_test_{}_{purpose}", Uuid::now_v7().simple())
+/// Creates both logs' partitions for 2030-05-05 and takes USAGE on schema `events` away from
+/// `anima_runtime`, so the check must work from the catalog alone.
+async fn partitions_without_schema_usage(conn: &mut PgConnection) {
+    for log in ["event_log", "audit_log"] {
+        execute(
+            conn,
+            &format!("select events.ensure_day_partition('{log}', '2030-05-05 12:00+00')"),
+        )
+        .await;
+    }
+    execute(conn, "revoke usage on schema events from anima_runtime").await;
+}
+
+/// The refusal for each `(setup, teardown)`: a new LOGIN role `{role}` in `anima_runtime` gets
+/// `setup`, logs in and runs the start check, then `teardown` and the role are removed.
+async fn outcomes(pool: &PgPool, cases: &[(&str, &str)]) -> Vec<Option<Refusal>> {
+    let mut conn = pool.acquire().await.unwrap();
+    partitions_without_schema_usage(&mut conn).await;
+    let mut found = Vec::new();
+    for (setup, teardown) in cases {
+        let role = test_role("hub");
+        execute(
+            &mut conn,
+            &format!("create role {role} login in role anima_runtime"),
+        )
+        .await;
+        run_for(&mut conn, setup, &role).await;
+        let login = login_pool(pool, &role).await;
+        let outcome = check_runtime_role(&login).await;
+        login.close().await;
+        run_for(&mut conn, teardown, &role).await;
+        execute(&mut conn, &format!("drop owned by {role}")).await;
+        execute(&mut conn, &format!("drop role {role}")).await;
+        found.push(match outcome {
+            Ok(()) => None,
+            Err(RoleError::Refused(refusal)) => Some(refusal),
+            Err(error) => panic!("{setup}: {error:?}"),
+        });
+    }
+    found
+}
+
+/// Asserts that every case is refused with `expected`.
+async fn assert_refused(pool: &PgPool, cases: &[(&str, &str)], expected: Refusal) {
+    let found = outcomes(pool, cases).await;
+    for ((setup, _), outcome) in cases.iter().zip(found) {
+        assert_eq!(outcome, Some(expected), "{setup}");
+    }
 }
 
 #[sqlx::test(migrations = "./migrations")]
 async fn r_016_start_check_refuses_a_superuser(pool: PgPool) {
     let outcome = check_runtime_role(&pool).await;
 
-    assert!(matches!(outcome, Err(Error::Superuser)), "{outcome:?}");
-}
-
-#[sqlx::test(migrations = "./migrations")]
-async fn r_016_start_check_refuses_a_role_that_can_become_a_superuser(pool: PgPool) {
-    let mut conn = pool.acquire().await.unwrap();
-    let superuser: String = sqlx::query_scalar("select current_user::text")
-        .fetch_one(&mut *conn)
-        .await
-        .unwrap();
-    let role = test_role("climber");
-    execute(
-        &mut conn,
-        &format!("create role {role} nologin in role \"{superuser}\""),
-    )
-    .await;
-
-    let outcome = check_as(&pool, &role).await;
-
-    execute(&mut conn, &format!("drop role {role}")).await;
-    assert!(matches!(outcome, Err(Error::Superuser)), "{outcome:?}");
-}
-
-#[sqlx::test(migrations = "./migrations")]
-async fn r_016_start_check_refuses_the_audit_log_owner_and_its_members(pool: PgPool) {
-    let mut conn = pool.acquire().await.unwrap();
-    let (owner, member) = (test_role("owner"), test_role("member"));
-    execute(&mut conn, &format!("create role {owner} nologin")).await;
-    execute(
-        &mut conn,
-        &format!("create role {member} nologin in role {owner}"),
-    )
-    .await;
-    execute(
-        &mut conn,
-        &format!("alter table events.audit_log owner to {owner}"),
-    )
-    .await;
-
-    let as_owner = check_as(&pool, &owner).await;
-    let as_member = check_as(&pool, &member).await;
-
-    execute(
-        &mut conn,
-        "alter table events.audit_log owner to current_user",
-    )
-    .await;
-    execute(&mut conn, &format!("drop role {member}")).await;
-    execute(&mut conn, &format!("drop role {owner}")).await;
-    assert!(matches!(as_owner, Err(Error::OwnsAuditLog)), "{as_owner:?}");
     assert!(
-        matches!(as_member, Err(Error::OwnsAuditLog)),
-        "{as_member:?}"
+        matches!(outcome, Err(RoleError::Refused(Refusal::Superuser))),
+        "{outcome:?}"
+    );
+}
+
+/// The login's rights count, not the session role's: a superuser login whose session runs as
+/// `anima_runtime` is refused as a superuser (R-023).
+#[sqlx::test(migrations = "./migrations")]
+async fn r_023_start_check_refuses_a_superuser_login_behind_a_session_role(pool: PgPool) {
+    let session = super::pool_as(&pool, "anima_runtime").await;
+    let outcome = check_runtime_role(&session).await;
+    session.close().await;
+
+    assert!(
+        matches!(outcome, Err(RoleError::Refused(Refusal::Superuser))),
+        "{outcome:?}"
     );
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn r_016_start_check_passes_a_plain_member_of_anima_runtime(pool: PgPool) {
+async fn r_016_start_check_refuses_a_login_that_can_become_a_superuser(pool: PgPool) {
+    let cases = [(
+        "do $$ begin execute format('grant %I to {role}', current_user); end $$",
+        "",
+    )];
+
+    assert_refused(&pool, &cases, Refusal::Superuser).await;
+}
+
+/// A session role hides the login's own rights from `current_user`; `SET ROLE` or `RESET
+/// ROLE` brings them back (R-023).
+#[sqlx::test(migrations = "./migrations")]
+async fn r_023_start_check_refuses_a_login_whose_session_runs_as_another_role(pool: PgPool) {
+    let cases = [("alter role {role} set role = 'anima_runtime'", "")];
+    assert_refused(&pool, &cases, Refusal::SessionRole).await;
+
     let mut conn = pool.acquire().await.unwrap();
     let role = test_role("hub");
     execute(
         &mut conn,
-        &format!("create role {role} nologin in role anima_runtime"),
+        &format!("create role {role} login in role anima_runtime"),
     )
     .await;
-
-    let outcome = check_as(&pool, &role).await;
-
+    let options = (*pool.connect_options())
+        .clone()
+        .username(&role)
+        .options([("role", "anima_runtime")]);
+    let session = super::connect(options).await;
+    let outcome = check_runtime_role(&session).await;
+    session.close().await;
     execute(&mut conn, &format!("drop role {role}")).await;
-    assert!(outcome.is_ok(), "{outcome:?}");
+    assert!(
+        matches!(outcome, Err(RoleError::Refused(Refusal::SessionRole))),
+        "{outcome:?}"
+    );
+}
+
+/// Owning the database, schema `events`, a log parent or a partition, or being a member of
+/// such an owner, is refused.
+#[sqlx::test(migrations = "./migrations")]
+async fn r_023_start_check_refuses_an_owner_of_the_database_schema_or_logs(pool: PgPool) {
+    let mut cases = vec![
+        (
+            "alter database \"{db}\" owner to {role}".to_owned(),
+            "alter database \"{db}\" owner to current_user".to_owned(),
+        ),
+        (
+            "create role {role}_o nologin; grant {role}_o to {role}; \
+             alter schema events owner to {role}_o"
+                .to_owned(),
+            "alter schema events owner to current_user; drop role {role}_o".to_owned(),
+        ),
+    ];
+    for table in [
+        "audit_log",
+        "event_log",
+        "audit_log_20300505",
+        "event_log_20300505",
+    ] {
+        cases.push((
+            format!("alter table events.{table} owner to {{role}}"),
+            format!("alter table events.{table} owner to current_user"),
+        ));
+        cases.push((
+            format!(
+                "create role {{role}}_o nologin; grant {{role}}_o to {{role}}; \
+                 alter table events.{table} owner to {{role}}_o"
+            ),
+            format!("alter table events.{table} owner to current_user; drop role {{role}}_o"),
+        ));
+    }
+    let cases: Vec<(&str, &str)> = cases
+        .iter()
+        .map(|(setup, teardown)| (setup.as_str(), teardown.as_str()))
+        .collect();
+
+    assert_refused(&pool, &cases, Refusal::Owner).await;
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn r_023_start_check_refuses_members_of_server_file_program_and_maintain_roles(pool: PgPool) {
+    let cases = [
+        ("grant pg_execute_server_program to {role}", ""),
+        ("grant pg_write_server_files to {role}", ""),
+        ("grant pg_read_server_files to {role}", ""),
+        ("grant pg_maintain to {role}", ""),
+    ];
+
+    assert_refused(&pool, &cases, Refusal::ServerAccess).await;
+}
+
+/// Each case gives the login one right that could change, remove, lock or pin log entries.
+const CHANGE_RIGHTS: [(&str, &str); 14] = [
+    ("grant pg_write_all_data to {role}", ""),
+    ("grant update on events.audit_log_20300505 to {role}", ""),
+    (
+        "grant update (operator_name) on events.audit_log_20300505 to {role}",
+        "",
+    ),
+    ("grant delete on events.event_log_20300505 to {role}", ""),
+    ("grant truncate on events.audit_log to {role}", ""),
+    ("grant trigger on events.event_log to {role}", ""),
+    ("grant maintain on events.audit_log_20300505 to {role}", ""),
+    ("grant references on events.audit_log to {role}", ""),
+    (
+        "grant references (id) on events.event_log_20300505 to {role}",
+        "",
+    ),
+    ("grant create on schema events to {role}", ""),
+    (
+        "grant delete on events.audit_log_20300505 to public",
+        "revoke delete on events.audit_log_20300505 from public",
+    ),
+    (
+        "create role {role}_w nologin; \
+         grant update on events.event_log_20300505 to {role}_w; \
+         grant {role}_w to {role} with inherit false",
+        "drop owned by {role}_w; drop role {role}_w",
+    ),
+    (
+        "create role {role}_w nologin; \
+         grant pg_write_all_data to {role}_w; \
+         grant {role}_w to {role} with inherit false, set true",
+        "drop role {role}_w",
+    ),
+    (
+        "create role {role}_w nologin; \
+         grant truncate on events.audit_log to {role}_w; \
+         grant {role}_w to {role} with admin true, inherit false, set false",
+        "drop owned by {role}_w; drop role {role}_w",
+    ),
+];
+
+#[sqlx::test(migrations = "./migrations")]
+async fn r_016_start_check_refuses_a_login_that_can_change_log_entries(pool: PgPool) {
+    assert_refused(&pool, &CHANGE_RIGHTS, Refusal::CanChangeLogs).await;
+}
+
+/// Default privileges that would give the login, a role it may become, or PUBLIC write rights
+/// on tables created later, globally or in schema `events` (R-023).
+const DEFAULT_RIGHTS: [(&str, &str); 5] = [
+    (
+        "alter default privileges grant update on tables to {role}",
+        "alter default privileges revoke update on tables from {role}",
+    ),
+    (
+        "alter default privileges grant delete on tables to public",
+        "alter default privileges revoke delete on tables from public",
+    ),
+    (
+        "alter default privileges in schema events grant truncate on tables to public",
+        "alter default privileges in schema events revoke truncate on tables from public",
+    ),
+    (
+        "create role {role}_w nologin; grant {role}_w to {role}; \
+         alter default privileges in schema events grant maintain, references on tables \
+         to {role}_w",
+        "alter default privileges in schema events revoke maintain, references on tables \
+         from {role}_w; drop role {role}_w",
+    ),
+    (
+        "alter default privileges grant trigger on tables to {role}",
+        "alter default privileges revoke trigger on tables from {role}",
+    ),
+];
+
+#[sqlx::test(migrations = "./migrations")]
+async fn r_023_start_check_refuses_write_rights_through_default_privileges(pool: PgPool) {
+    assert_refused(&pool, &DEFAULT_RIGHTS, Refusal::DefaultPrivileges).await;
+}
+
+/// A plain member passes, also with read-only and monitoring roles, without USAGE on `events`
+/// and beside 0001's own default privileges for `anima_runtime` and defaults outside `events`
+/// and for sequences.
+#[sqlx::test(migrations = "./migrations")]
+async fn r_023_start_check_passes_a_plain_member_of_anima_runtime(pool: PgPool) {
+    let cases = [
+        ("", ""),
+        (
+            "grant pg_read_all_data, pg_monitor, pg_signal_backend to {role}",
+            "",
+        ),
+        (
+            "create schema {role}_s; \
+             alter default privileges in schema {role}_s grant update on tables to {role}; \
+             alter default privileges grant update on sequences to {role}",
+            "alter default privileges in schema {role}_s revoke update on tables from {role}; \
+             alter default privileges revoke update on sequences from {role}; \
+             drop schema {role}_s",
+        ),
+    ];
+
+    let found = outcomes(&pool, &cases).await;
+
+    assert_eq!(found, [None, None, None]);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn r_016_start_check_refuses_a_database_without_the_events_schema(pool: PgPool) {
+    let mut conn = pool.acquire().await.unwrap();
+    execute(&mut conn, "drop schema events cascade").await;
+
+    let outcome = check_runtime_role(&pool).await;
+
+    assert!(
+        matches!(outcome, Err(RoleError::Refused(Refusal::NotMigrated))),
+        "{outcome:?}"
+    );
 }
 
 #[test]
 fn api_010_start_check_errors_are_plain_sentences() {
-    for error in [Error::Superuser, Error::OwnsAuditLog] {
-        let message = error.to_string();
-        assert!(message.starts_with("The hub's database role"), "{message}");
+    let refusals = [
+        Refusal::Superuser,
+        Refusal::SessionRole,
+        Refusal::Owner,
+        Refusal::ServerAccess,
+        Refusal::CanChangeLogs,
+        Refusal::DefaultPrivileges,
+    ];
+    for refusal in refusals {
+        let message = RoleError::from(refusal).to_string();
+        assert!(message.starts_with("The hub's database login"), "{message}");
         assert!(message.ends_with('.'), "{message}");
     }
-}
-
-/// Migration 0001 as written; tests run it for a stand-in group name.
-const MIGRATION_0001: &str = include_str!("../../../migrations/0001_access_runtime_role.sql");
-
-/// Runs migration 0001 with `group` in place of `anima_runtime`, so a test can give the
-/// stand-in extra rights without touching the cluster-wide group other tests use. Returns the
-/// SQLSTATE, or `None` if it succeeded.
-async fn migrate_0001_for(conn: &mut sqlx::PgConnection, group: &str) -> Option<String> {
-    let sql = MIGRATION_0001.replace("anima_runtime", group);
-    let error = sqlx::raw_sql(&sql).execute(conn).await.err()?;
-    let code = error
-        .as_database_error()
-        .and_then(sqlx::error::DatabaseError::code);
-    Some(code.map_or_else(|| error.to_string(), Into::into))
-}
-
-#[sqlx::test(migrations = "./migrations")]
-async fn r_016_migration_0001_refuses_a_runtime_group_with_more_rights_than_a_plain_group(
-    pool: PgPool,
-) {
-    let mut conn = pool.acquire().await.unwrap();
-    let parent = test_role("parent");
-    execute(&mut conn, &format!("create role {parent} nologin")).await;
-    let member_of_parent = format!("nologin in role {parent}");
-    let cases = [
-        ("login", Some("P0001")),
-        ("nologin superuser", Some("P0001")),
-        ("nologin createrole", Some("P0001")),
-        ("nologin createdb", Some("P0001")),
-        ("nologin bypassrls", Some("P0001")),
-        (member_of_parent.as_str(), Some("P0001")),
-        ("nologin", None),
-    ];
-    let mut outcomes = Vec::new();
-    for (attributes, _) in &cases {
-        let group = test_role("group");
-        execute(&mut conn, &format!("create role {group} {attributes}")).await;
-        outcomes.push(migrate_0001_for(&mut conn, &group).await);
-        execute(&mut conn, &format!("drop owned by {group}")).await;
-        execute(&mut conn, &format!("drop role {group}")).await;
+    for message in [
+        RoleError::from(Refusal::NotMigrated).to_string(),
+        RoleError::Database(sqlx::Error::PoolTimedOut).to_string(),
+    ] {
+        assert!(message.starts_with("The "), "{message}");
+        assert!(message.ends_with('.'), "{message}");
     }
-
-    execute(&mut conn, &format!("drop role {parent}")).await;
-    for ((attributes, expected), outcome) in cases.iter().zip(outcomes) {
-        assert_eq!(outcome.as_deref(), *expected, "{attributes}");
-    }
-}
-
-#[sqlx::test(migrations = "./migrations")]
-async fn r_016_migration_0001_creates_a_missing_runtime_group_as_a_plain_group(pool: PgPool) {
-    let mut conn = pool.acquire().await.unwrap();
-    let group = test_role("group");
-
-    let outcome = migrate_0001_for(&mut conn, &group).await;
-    let attributes: (bool, bool, bool, bool, bool) = sqlx::query_as(
-        "select rolcanlogin, rolsuper, rolcreaterole, rolcreatedb, rolbypassrls \
-         from pg_catalog.pg_roles where rolname = $1",
-    )
-    .bind(&group)
-    .fetch_one(&mut *conn)
-    .await
-    .unwrap();
-
-    execute(&mut conn, &format!("drop owned by {group}")).await;
-    execute(&mut conn, &format!("drop role {group}")).await;
-    assert_eq!(outcome, None);
-    assert_eq!(attributes, (false, false, false, false, false));
 }

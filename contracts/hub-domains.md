@@ -67,7 +67,7 @@ pub async fn audit(conn: &mut PgConnection, at: DateTime<Utc>, a: NewAudit) -> R
 
 /// Broadcast of new events and status changes for subscriptions (LOG-010).
 #[derive(Clone)] pub struct Bus { /* tokio::sync::broadcast */ }
-pub enum Signal { Event(EventSummary), DeviceStatus { device: DeviceId, status: Status },
+pub enum Signal { Event(EventSummary), DeviceStatus { device: DeviceId, status: Status, at: DateTime<Utc> },   // `at` added by R-028
                   Heartbeat { check: CheckId, device: DeviceId, beat: HeartbeatSummary } }
 impl Bus { pub fn publish(&self, s: Signal); pub fn subscribe(&self) -> tokio::sync::broadcast::Receiver<Signal>; }
 ```
@@ -83,16 +83,20 @@ Wiring only (called from `main.rs`, never from another domain): `create_partitio
 | `events` | — |
 | `credentials` | — |
 | `access` | `events`, `credentials` (Vault only, for TOTP secrets) |
-| `devices` | `events`, `credentials` (`Vault`, `SshSecret`, `has_ssh`, `with_ssh`, `store_ssh`, `clear_ssh`; R-010, R-017) |
-| `maintenance` | — (pure rules and its own store; callers pass the device, check and tags) |
-| `checks` | `devices`, `maintenance`, `events` |
+| `devices` | `events`, `credentials` (`Vault`, `Secret`, `SshSecret`, `Error`, `has_ssh`, `with_ssh`, `store_ssh`, `clear_ssh`; R-010, R-017, R-026) |
+| `maintenance` | `events` (R-029; audit and events for window changes, LOG-005) |
+| `checks` | `devices`, `maintenance`, `events`, `credentials` (`Vault`, `Secret`, `Sealed` only; R-028) |
 | `sessions` | `access`, `devices`, `credentials`, `events` |
 
 GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also import these domains' public faces, to resolve K1 fields that join domains. These edges never permit a `store` import and do not count toward cycles. They live in `quality/hub-modules.json` under `graphql`.
 
 | Domain `graphql.rs` | May also import | For |
 | --- | --- | --- |
-| `devices` | `checks`, `sessions` | `Device.status`, `Device.checks`, `Device.uptime`, `DeviceFilter.status`, `DeviceSort.STATUS`/`UPTIME`, `createDevice(addDefaultCheck)`, `SshSettings.hostKey` |
+| `devices` | `access` (R-022), `checks`, `sessions` | the `Authenticated` guard; `Device.status`, `Device.checks`, `Device.uptime`, `DeviceFilter.status`, `DeviceSort.STATUS`/`UPTIME`, `createDevice(addDefaultCheck)`, `SshSettings.hostKey` |
+
+| `checks`, `maintenance`, `events` | `access` (R-022) | the `Authenticated` guard on their root fields (API-003) |
+
+`sessions` already depends on `access`. Through these edges a `graphql.rs` uses only `access::Authenticated`; `Operator` and `ClientAddr` come from `events` (R-019).
 
 Outside `graphql.rs`, `devices` never imports `checks` (that edge would make a cycle). Device deletion relies on foreign keys and the checks retention job instead (see below).
 
@@ -155,7 +159,9 @@ The GraphQL mutations `setSshCredential` and `clearSshCredential` belong to `dev
 // HeartbeatSummary is events::HeartbeatSummary (R-019).
 pub async fn device_status(db: &Db, device: DeviceId, now: DateTime<Utc>) -> Result<Status, Error>;   // CHK-004
 /// Started by main.rs; owns the scheduler task, the watchdog (CHK-010) and retention (DB-005).
-pub fn spawn_scheduler(db: Db, bus: events::Bus, clock: Clock) -> tokio::task::JoinHandle<()>;
+pub fn spawn_scheduler(db: Db, bus: events::Bus, clock: Clock, vault: credentials::Vault) -> tokio::task::JoinHandle<()>;   // vault: R-028
+/// PUSH checks (CHK-*): `GET|POST /push/{token}`; the token is the only authentication. main.rs mounts it behind the NET-002 layer (R-028).
+pub fn push_router(db: Db, bus: events::Bus, clock: Clock) -> axum::Router;
 ```
 
 Functions for the devices GraphQL composition (R-011; WP-09 adds them and their use in `devices/graphql.rs`):
@@ -166,7 +172,11 @@ pub async fn uptimes(db: &Db, devices: &[DeviceId], window: UptimeWindow, now: D
 pub async fn for_device(db: &Db, device: DeviceId) -> Result<Vec<Check>, Error>;
 /// Adds the default ICMP check in the caller's transaction (spec 6.2).
 pub async fn add_default_check(conn: &mut PgConnection, device: DeviceId) -> Result<CheckId, Error>;
+/// The last address a check resolved for each device (R-028); `Device.ip` uses it when the host is a name.
+pub async fn resolved_ips(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, IpAddr>, Error>;
 ```
+
+`checks::graphql::Subscription` owns K1 `deviceStatusChanged` and `heartbeatAdded`, built from the Bus (R-028). HTTP check secrets (basic password, bearer token, Authorization and Cookie header values) are sealed by checks with `credentials::Vault`, context `checks.checks.http:<check_id>` (R-028, SEC-003).
 
 Check evaluation is pure: `fn evaluate(prev: &CheckState, probe: ProbeResult, cfg: &CheckConfig, now) -> (CheckState, Status)`.
 
@@ -176,6 +186,9 @@ Check evaluation is pure: `fn evaluate(prev: &CheckState, probe: ProbeResult, cf
 /// Pure (MW-001..004). No clock read.
 pub fn is_active(rule: &WindowRule, tz: chrono_tz::Tz, now: DateTime<Utc>) -> bool;
 pub async fn active_for(db: &Db, device: DeviceId, check: Option<CheckId>, tags: &[String], now: DateTime<Utc>) -> Result<bool, Error>;
+/// Every window active at `now`, in one query (API-005, R-028).
+pub async fn active_targets(db: &Db, now: DateTime<Utc>) -> Result<ActiveTargets, Error>;
+impl ActiveTargets { pub fn covers(&self, device: DeviceId, check: Option<CheckId>, tags: &[String]) -> bool; }
 ```
 
 ## sessions (WP-10)
