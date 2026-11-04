@@ -3,7 +3,7 @@
 //! Every function is pure. The validator reports all field errors at once so the form can show
 //! them together.
 
-use std::str::FromStr;
+use std::{collections::HashSet, hash::Hash, str::FromStr};
 
 use chrono::NaiveTime;
 use chrono_tz::Tz;
@@ -14,7 +14,12 @@ use super::{
 };
 
 const NAME_MAX: usize = 100;
-const DURATION_MAX_MINUTES: i32 = 7 * 24 * 60;
+/// Seven days; the database constraint on a stored rule says the same.
+pub(super) const DURATION_MAX_MINUTES: u32 = 7 * 24 * 60;
+/// Days 1 to 31 and -1: no list of distinct days is longer. Lengths are checked before any
+/// scan of the list, so an oversized input costs nothing (API-005).
+const DAYS_OF_MONTH_MAX: usize = 32;
+const WEEKDAYS_MAX: usize = 7;
 
 /// One input field the operator must fix. `field` is the GraphQL input field name.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -241,7 +246,7 @@ fn every_days(days: i32) -> Result<u32, FieldError> {
 fn duration(minutes: i32) -> Result<u32, FieldError> {
     u32::try_from(minutes)
         .ok()
-        .filter(|_| (1..=DURATION_MAX_MINUTES).contains(&minutes))
+        .filter(|minutes| (1..=DURATION_MAX_MINUTES).contains(minutes))
         .ok_or_else(|| {
             FieldError::new(
                 "durationMinutes",
@@ -265,6 +270,11 @@ fn start_time(text: &str) -> Result<NaiveTime, FieldError> {
 fn weekdays(days: &[Weekday]) -> Result<Vec<Weekday>, FieldError> {
     if days.is_empty() {
         Err(FieldError::new("weekdays", "Choose at least one weekday."))
+    } else if days.len() > WEEKDAYS_MAX {
+        Err(FieldError::new(
+            "weekdays",
+            format!("A week has {WEEKDAYS_MAX} days."),
+        ))
     } else if has_repeat(days) {
         Err(FieldError::new("weekdays", "Each weekday can appear once."))
     } else {
@@ -276,6 +286,9 @@ fn days_of_month(days: &[i32]) -> Result<Vec<i8>, FieldError> {
     let message = "Use days 1 to 31, or -1 for the last day of the month.";
     if days.is_empty() {
         return Err(FieldError::new("daysOfMonth", "Choose at least one day."));
+    }
+    if days.len() > DAYS_OF_MONTH_MAX {
+        return Err(FieldError::new("daysOfMonth", message));
     }
     if has_repeat(days) {
         return Err(FieldError::new("daysOfMonth", "Each day can appear once."));
@@ -290,9 +303,7 @@ fn days_of_month(days: &[i32]) -> Result<Vec<i8>, FieldError> {
         .collect()
 }
 
-fn has_repeat<T: PartialEq>(values: &[T]) -> bool {
-    values
-        .iter()
-        .enumerate()
-        .any(|(index, value)| values[..index].contains(value))
+fn has_repeat<T: Eq + Hash>(values: &[T]) -> bool {
+    let mut seen = HashSet::with_capacity(values.len());
+    values.iter().any(|value| !seen.insert(value))
 }

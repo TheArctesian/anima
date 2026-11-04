@@ -13,6 +13,19 @@ fn mw_004_a_manual_rule_is_never_active_on_its_own() {
 }
 
 #[test]
+fn mw_004_a_stored_duration_beyond_seven_days_is_clamped_and_stays_fast() {
+    let rule = monthly(&[2], "00:00", u32::MAX);
+    let started = std::time::Instant::now();
+    assert!(is_active(&rule, UTC, at("2026-11-08T23:00:00Z")));
+    assert!(!is_active(&rule, UTC, at("2026-11-12T00:00:00Z")));
+    assert!(
+        started.elapsed() < std::time::Duration::from_millis(50),
+        "{:?}",
+        started.elapsed()
+    );
+}
+
+#[test]
 fn mw_004_a_manual_window_follows_its_stored_switch() {
     let window = |active_manual| Window {
         id: WindowId::from(uuid::Uuid::nil()),

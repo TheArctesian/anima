@@ -255,3 +255,47 @@ fn mw_004_every_invalid_field_is_reported_together() {
         ]
     );
 }
+
+fn refused_fast(form: &WindowForm, field: &str) {
+    let started = std::time::Instant::now();
+    let errors = validate(form).unwrap_err();
+    assert!(
+        started.elapsed() < std::time::Duration::from_millis(500),
+        "{:?}",
+        started.elapsed()
+    );
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].field, field);
+}
+
+#[test]
+fn api_005_an_oversized_days_of_month_list_is_refused_at_once() {
+    let form = WindowForm {
+        days_of_month: Some((1..=150_000).collect()),
+        ..day_form()
+    };
+    refused_fast(&form, "daysOfMonth");
+}
+
+#[test]
+fn api_005_an_oversized_weekdays_list_is_refused_at_once() {
+    let form = WindowForm {
+        weekdays: Some(vec![Weekday::Sun; 150_000]),
+        ..weekday_form()
+    };
+    refused_fast(&form, "weekdays");
+}
+
+#[test]
+fn mw_004_a_repeated_day_of_month_or_weekday_is_still_refused() {
+    let days = WindowForm {
+        days_of_month: Some(vec![1, 15, 1]),
+        ..day_form()
+    };
+    refused_fast(&days, "daysOfMonth");
+    let week = WindowForm {
+        weekdays: Some(vec![Weekday::Mon, Weekday::Mon]),
+        ..weekday_form()
+    };
+    refused_fast(&week, "weekdays");
+}

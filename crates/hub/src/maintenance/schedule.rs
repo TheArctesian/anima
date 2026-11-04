@@ -17,7 +17,10 @@ use chrono::{
 };
 use chrono_tz::Tz;
 
-use super::model::{Weekday, WindowRule};
+use super::{
+    model::{Weekday, WindowRule},
+    rules::DURATION_MAX_MINUTES,
+};
 
 const MINUTES_PER_DAY: u32 = 24 * 60;
 /// The longest spring-forward gap the search steps over (two days; Samoa once skipped one).
@@ -41,6 +44,9 @@ pub fn is_active(rule: &WindowRule, tz: Tz, now: DateTime<Utc>) -> bool {
 /// Checks the local day of `now` and every earlier day an occurrence could still run from: as
 /// many days as the duration spans, plus one because a day with a clock change is shorter.
 fn recurring_is_active(rule: &WindowRule, tz: Tz, now: DateTime<Utc>, minutes: u32) -> bool {
+    // A stored duration is bounded like the form's, so a bad row cannot cost a scan of
+    // millions of days on every attempt (MW-004, API-005).
+    let minutes = minutes.min(DURATION_MAX_MINUTES);
     let length = TimeDelta::minutes(i64::from(minutes));
     let today = now.with_timezone(&tz).date_naive();
     let days_back = u64::from(minutes.div_ceil(MINUTES_PER_DAY)) + 1;
