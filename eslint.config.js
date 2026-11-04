@@ -70,19 +70,19 @@ const motionHint =
   'Use $lib/motion (MV-008, MOT-020): the motion library is imported only in apps/client/src/lib/motion/.';
 const wsHint =
   'Use a domain client in $lib/<domain>/api.ts built on $lib/hub (CQ-045): graphql-ws is imported only in apps/client/src/lib/hub/.';
-const fetchHint =
+const transportHint =
   'Use a domain client in $lib/<domain>/api.ts built on $lib/hub (CQ-045): fetch, WebSocket, EventSource and XMLHttpRequest are used only in apps/client/src/lib/hub/.';
 // A regex, not a gitignore group: 'motion/*' would also match '$lib/motion/tokens'.
 const motionImports = [{ regex: String.raw`^(?:motion|motion-dom|framer-motion)(?:/|$)`, message: motionHint }];
 const wsImports = [{ regex: String.raw`^graphql-ws(?:/|$)`, message: wsHint }];
-const fetchGlobals = ['fetch', 'WebSocket', 'EventSource', 'XMLHttpRequest'].map((name) => ({
+const transportGlobals = ['fetch', 'WebSocket', 'EventSource', 'XMLHttpRequest'].map((name) => ({
   name,
-  message: fetchHint,
+  message: transportHint,
 }));
 const fetchProperties = ['window', 'globalThis', 'self'].map((object) => ({
   object,
   property: 'fetch',
-  message: fetchHint,
+  message: transportHint,
 }));
 const clientFiles = ['apps/client/**/*.{ts,js,svelte}'];
 const clientTests = ['**/*.test.ts'];
@@ -97,7 +97,7 @@ const boundaryRules = [
     ignores: clientTests,
     rules: {
       ...importsRule([...motionImports, ...wsImports]),
-      'no-restricted-globals': ['error', ...fetchGlobals],
+      'no-restricted-globals': ['error', ...transportGlobals],
       'no-restricted-properties': ['error', ...fetchProperties],
     },
   },
