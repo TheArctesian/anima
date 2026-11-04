@@ -328,3 +328,53 @@ it('6.1 card: in the grid an empty ip shows no IP', async () => {
   await show([device('c', { ip: '' })]);
   expect(document.querySelectorAll('article .ip')).toHaveLength(0);
 });
+
+it('WebKit: every card and table control has tabindex 0, or Tab skips it (NAV-005)', async () => {
+  for (const view of ['grid', 'table'] as const) {
+    await show([device('a', { ssh: { enabled: true } })], { ...DEFAULT_QUERY, view });
+    const controls = [...document.querySelectorAll('button, a[href]')];
+    expect(controls.length).toBeGreaterThan(6);
+    expect(controls.filter((node) => node.getAttribute('tabindex') !== '0')).toEqual([]);
+    await unmount(app as object);
+    document.body.innerHTML = '';
+  }
+});
+
+it('WebKit: the empty-state, Load more and Retry buttons have tabindex 0', async () => {
+  await show([], DEFAULT_QUERY);
+  expect(document.querySelector('.empty button')?.getAttribute('tabindex')).toBe('0');
+  await unmount(app as object);
+  document.body.innerHTML = '';
+  await show([device('a')], DEFAULT_QUERY, { Devices: devicesAnswer([device('a')], 'c1') });
+  expect(button('Load more').getAttribute('tabindex')).toBe('0');
+  await unmount(app as object);
+  document.body.innerHTML = '';
+  await show([], DEFAULT_QUERY, { Devices: { code: 'unreachable', message: 'down' } });
+  expect(button('Retry').getAttribute('tabindex')).toBe('0');
+});
+
+it.each(['grid', 'table'] as const)('Reorder: when a %s item leaves, the items after it slide into its place', async (view) => {
+  const place = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+    const top = this.tagName === 'LI' || this.tagName === 'TR' ? [...(this.parentElement?.children ?? [])].indexOf(this) * 100 : 0;
+    return { left: 0, right: 0, top, bottom: top, width: 0, height: 0, x: 0, y: top, toJSON: () => ({}) };
+  });
+  await show([device('a'), device('b'), device('c')], { ...DEFAULT_QUERY, view, statuses: ['UP'] });
+  runs.length = 0;
+  fake.push('DeviceStatusChanged', { deviceStatusChanged: { deviceId: 'a', status: 'DOWN', at: 'now' } });
+  await settle();
+  await vi.waitFor(() => {
+    expect(names().length + document.querySelectorAll('tbody tr').length).toBeGreaterThan(0);
+    expect(document.querySelectorAll(view === 'grid' ? 'article' : 'tbody tr')).toHaveLength(2);
+  });
+  await settle();
+  expect(runs.filter((run) => run.options['type'] === 'spring').length).toBeGreaterThan(0);
+  place.mockRestore();
+});
+
+it('Loading: a list on screen stays while the next one loads, and no skeleton replaces it', async () => {
+  await show([device('a')]);
+  url.query = { ...DEFAULT_QUERY, sort: 'STATUS' };
+  await settle();
+  expect(document.querySelectorAll('li.place')).toHaveLength(0);
+  expect(document.querySelectorAll('article')).toHaveLength(1);
+});

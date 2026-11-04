@@ -29,7 +29,7 @@
 
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(var(--device-card-min-inline-size), 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--device-card-min-inline-size)), 1fr));
     gap: var(--space-4);
   }
 

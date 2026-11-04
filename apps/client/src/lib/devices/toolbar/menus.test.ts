@@ -146,3 +146,25 @@ it('Menu: a press outside does not steal focus that is somewhere else', () => {
   flushSync();
   expect(document.activeElement).toBe(input);
 });
+
+it('Menu: Escape closes a menu a mouse click opened, with focus outside it (WebKit does not focus the button)', async () => {
+  show();
+  control('Sort').click();
+  flushSync();
+  (document.activeElement as HTMLElement | null)?.blur();
+  document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  flushSync();
+  await vi.waitFor(() => {
+    expect(panel()).toBeNull();
+  });
+  expect(document.activeElement).toBe(control('Sort'));
+});
+
+it('WebKit: every button and option has tabindex 0, or Tab skips it (NAV-005)', () => {
+  show();
+  control('Status').click();
+  flushSync();
+  const controls = [...document.querySelectorAll('button, a[href], input[type=checkbox], input[type=radio]')];
+  expect(controls.length).toBeGreaterThan(8);
+  expect(controls.filter((node) => node.getAttribute('tabindex') !== '0')).toEqual([]);
+});

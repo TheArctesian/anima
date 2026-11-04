@@ -25,20 +25,34 @@ export function reorderMotion(
     before = measure(items.values());
   });
 
-  $effect(() => {
-    order();
-    const places = before;
-    before = undefined;
-    if (places === undefined) return;
+  /** Slides the items that are not where they were. */
+  function play(places: Places): void {
     const moved = [...places].filter(([element, place]) => !samePlace(place, element.getBoundingClientRect()));
     if (moved.length === 0) return;
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- passed once to flip, not state
     flip(new Map(moved), { preference });
+  }
+
+  $effect(() => {
+    order();
+    const places = before;
+    before = undefined;
+    if (places !== undefined) play(places);
   });
+
+  /** A leaving item keeps its place until its fade ends; the items after it then close the gap by FLIP. */
+  function closeGap(): void {
+    const places = measure(items.values());
+    queueMicrotask(() => {
+      play(places);
+    });
+  }
 
   return (id) => (element) => {
     items.set(id, element);
+    element.addEventListener('outroend', closeGap);
     return () => {
+      element.removeEventListener('outroend', closeGap);
       if (items.get(id) === element) items.delete(id);
     };
   };

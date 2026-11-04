@@ -25,14 +25,20 @@
   <StatusEdge status={device.status} />
   <header>
     <h2>
-      <a href="{resolve('/devices')}/{encodeURIComponent(device.id)}" data-device-id={device.id} {@attach press()}>
+      <a
+        href="{resolve('/devices')}/{encodeURIComponent(device.id)}"
+        title={device.name}
+        tabindex="0"
+        data-device-id={device.id}
+        {@attach press()}
+      >
         {device.name}
       </a>
     </h2>
     <StatusPill status={device.status} deviceId={device.id} />
   </header>
   <p class="host">
-    <span>{line.host}</span>
+    <span title={line.host}>{line.host}</span>
     {#if line.ip !== null}<span class="ip">{line.ip}</span>{/if}
   </p>
   <p class="uptime"><span>Uptime, 24 h</span> <strong>{uptimeText(device.uptime)}</strong></p>
@@ -41,6 +47,7 @@
     {#if device.ssh.enabled}
       <button
         type="button"
+        tabindex="0"
         aria-label="SSH to {device.name}"
         onclick={(event) => {
           onConnect(device.id, event.currentTarget);
@@ -57,6 +64,7 @@
     position: relative;
     box-sizing: border-box;
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: repeat(3, auto) 1fr;
     gap: var(--space-2);
     block-size: var(--device-card-block-size);
@@ -69,6 +77,7 @@
   }
 
   header {
+    min-inline-size: 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -80,12 +89,14 @@
     min-inline-size: 0;
     font-size: var(--text-md);
     line-height: var(--leading-tight);
+  }
+
+  /* A block, so the press can scale it; a long name ends in an ellipsis. */
+  a {
+    display: block;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-
-  a {
     color: var(--text);
     text-decoration: none;
     transition: color var(--duration-fast) var(--ease-enter);
@@ -95,8 +106,13 @@
     color: var(--accent);
   }
 
+  a:active {
+    color: var(--text-muted);
+  }
+
   .host,
   .uptime {
+    min-inline-size: 0;
     display: flex;
     gap: var(--space-2);
     margin: 0;
@@ -107,7 +123,14 @@
     white-space: nowrap;
   }
 
+  .host span {
+    min-inline-size: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .ip {
+    flex: none;
     font-family: var(--font-mono);
   }
 
@@ -135,7 +158,8 @@
     transition: background-color var(--duration-fast) var(--ease-enter);
   }
 
-  button:hover {
+  button:hover,
+  button:active {
     background: var(--border);
   }
 

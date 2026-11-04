@@ -52,11 +52,13 @@
   }
 
   main {
+    min-inline-size: 0;
     display: grid;
     padding: var(--space-6);
   }
 
   .page {
     grid-area: 1 / 1;
+    min-inline-size: 0;
   }
 </style>

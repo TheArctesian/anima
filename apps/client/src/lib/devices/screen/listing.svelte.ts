@@ -117,7 +117,8 @@ export class Listing {
     this.#generation += 1;
     const mine = this.#generation;
     this.loadingMore = false;
-    this.#gate.begin();
+    // The skeleton stands in for a list that is not there; a list on screen stays while the next one loads.
+    if (this.list === null) this.#gate.begin();
     const result = await this.#devices.list(listVariables(this.#query));
     if (mine !== this.#generation) return;
     this.#gate.end();

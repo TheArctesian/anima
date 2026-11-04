@@ -53,6 +53,7 @@
     <p>{listing.error.message}</p>
     <button
       type="button"
+      tabindex="0"
       onclick={() => {
         void listing.retry();
       }}
@@ -72,6 +73,7 @@
             <p>No devices match</p>
             <button
               type="button"
+              tabindex="0"
               onclick={() => {
                 onQueryChange(withoutFilters(query));
               }}
@@ -79,7 +81,7 @@
             >
           {:else}
             <p>No devices yet</p>
-            <button type="button" onclick={onAddDevice} {@attach press()}>Add device</button>
+            <button type="button" tabindex="0" onclick={onAddDevice} {@attach press()}>Add device</button>
           {/if}
         </div>
       {:else if query.view === 'table'}
@@ -92,6 +94,7 @@
           {#if listing.moreError !== null}<p role="alert">{listing.moreError.message}</p>{/if}
           <button
             type="button"
+            tabindex="0"
             disabled={listing.loadingMore}
             onclick={() => {
               void listing.loadMore();
@@ -106,12 +109,14 @@
 
 <style>
   .results {
+    min-inline-size: 0;
     display: grid;
     margin-block-start: var(--space-4);
   }
 
   .layer {
     grid-area: 1 / 1;
+    min-inline-size: 0;
   }
 
   .notice,
@@ -153,7 +158,8 @@
     transition: background-color var(--duration-fast) var(--ease-enter);
   }
 
-  button:hover:not(:disabled) {
+  button:hover:not(:disabled),
+  button:active:not(:disabled) {
     background: var(--border);
   }
 
