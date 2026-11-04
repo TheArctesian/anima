@@ -7,7 +7,7 @@ use std::{
 
 use sqlx::PgPool;
 
-use super::now;
+use super::{now, test_vault};
 use crate::{
     access::{
         ClientAddr, Error, Password,
@@ -42,11 +42,11 @@ async fn sec_002_d_8_an_unknown_username_still_runs_one_password_check(pool: PgP
         *run = started.elapsed();
     }
 
-    let bus = Bus::new(4);
+    let (bus, vault) = (Bus::new(4), test_vault(7));
     let mut logins = [Duration::ZERO; 3];
     for (run, name) in logins.iter_mut().zip(["nobody", "noone", "nemo"]) {
         let started = Instant::now();
-        let result = login::login(&pool, &bus, attempt(name)).await;
+        let result = login::login(&pool, &bus, &vault, attempt(name)).await;
         *run = started.elapsed();
         assert!(matches!(result, Err(Error::WrongCredentials)));
     }

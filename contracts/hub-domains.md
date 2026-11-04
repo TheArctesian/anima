@@ -53,7 +53,7 @@ pub async fn operator_for_token(db: &Db, token: &str, now: DateTime<Utc>) -> Res
 ```rust
 pub struct Operator { pub id: OperatorId, pub name: String }   // re-exported by access (R-019)
 pub struct ClientAddr(pub std::net::IpAddr);                     // re-exported by access (R-019)
-pub struct HeartbeatSummary { pub at: DateTime<Utc>, pub status: Status, pub response_time_ms: Option<u32> }   // used by checks (R-019)
+pub struct HeartbeatSummary { pub at: DateTime<Utc>, pub status: Status, pub response_time_ms: Option<u32>, pub message: Option<String> }   // used by checks (R-019); `message` as stored: cleaned, at most MESSAGE_MAX chars; Clone, not Copy (R-036)
 pub enum Severity { Info, Warning, Error }
 pub enum Source { Check, Session, Device, Access, Hub }        // Proxmox, Metrics later
 pub struct NewEvent { pub severity: Severity, pub source: Source,
@@ -74,7 +74,7 @@ impl Bus { pub fn publish(&self, s: Signal); pub fn subscribe(&self) -> tokio::s
 
 `Status`, `CheckId` and `DeviceId` come from the leaf modules, and `events` defines the three shared value types above, so `events` imports no domain (R-019).
 
-Wiring only (called from `main.rs`, never from another domain): `create_partitions_ahead`, `drop_expired_partitions`, `check_runtime_role` (R-016, R-019).
+Wiring only (called from `main.rs`, never from another domain): `create_partitions_ahead`, `drop_expired_partitions`, `check_runtime_role`, `run_daily`, `keep_partitions` (R-016, R-019; WP-05 T2).
 
 ### Allowed domain dependencies (the import-graph gate enforces this list; REPO-004)
 
@@ -171,6 +171,7 @@ Functions for the devices GraphQL composition (R-011; WP-09 adds them and their 
 pub async fn statuses(db: &Db, devices: &[DeviceId], now: DateTime<Utc>) -> Result<HashMap<DeviceId, Status>, Error>;
 pub async fn uptimes(db: &Db, devices: &[DeviceId], window: UptimeWindow, now: DateTime<Utc>) -> Result<HashMap<DeviceId, f64>, Error>;
 pub async fn for_device(db: &Db, device: DeviceId) -> Result<Vec<Check>, Error>;
+pub async fn for_devices(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, Vec<Check>>, Error>;   // every requested device has an entry (empty when none); checks in name order; API-005 batch for Device.checks (R-037)
 /// Adds the default ICMP check in the caller's transaction (spec 6.2).
 pub async fn add_default_check(conn: &mut PgConnection, device: DeviceId) -> Result<CheckId, Error>;
 /// The last address a check resolved for each device (R-028); `Device.ip` uses it when the host is a name.

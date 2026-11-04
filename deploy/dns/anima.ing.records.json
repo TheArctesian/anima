@@ -1,0 +1,36 @@
+{
+  "zone": "anima.ing",
+  "records": [
+    {
+      "type": "A",
+      "name": "hs.anima.ing",
+      "content": "${VPS_PUBLIC_IPV4}",
+      "proxied": false,
+      "ttl": 300,
+      "comment": "Headscale control server on the VPS; not proxied (DNS-004)"
+    },
+    {
+      "type": "A",
+      "name": "hub.anima.ing",
+      "content": "${HUB_VPN_IPV4}",
+      "proxied": false,
+      "ttl": 300,
+      "comment": "Hub VPN address in 100.64.0.0/10; unreachable outside the VPN (DNS-004, DNS-005, NET-005)"
+    },
+    {
+      "type": "AAAA",
+      "name": "updates.anima.ing",
+      "content": "100::",
+      "proxied": true,
+      "ttl": 1,
+      "comment": "Placeholder origin for the update redirect rule (WP-04 stage B, DNS-007)"
+    },
+    {
+      "type": "CAA",
+      "name": "anima.ing",
+      "data": { "flags": 0, "tag": "issue", "value": "letsencrypt.org" },
+      "ttl": 300,
+      "comment": "Let's Encrypt issues for hs and hub (DNS-002); Cloudflare adds its own CAs for Universal SSL"
+    }
+  ]
+}

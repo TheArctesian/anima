@@ -65,13 +65,16 @@ Phase 1 SSH argument values:
 After `ready`, the hub sends to the client, in this order:
 
 1. The internal instruction `0.,36.<tunnel-uuid>;` (empty opcode, one arg: a new UUID). `guacamole-common-js` needs it to mark the tunnel open. The UUID is not the gateway connection ID.
-2. Every gateway instruction, unchanged, as one WebSocket text message per complete instruction (the `Decoder` gives complete instructions only).
+2. Every gateway instruction, unchanged, as one WebSocket text message per complete instruction (the `Decoder` gives complete instructions only), except `error`: the hub relays its status code with the fixed text `"Aborted. See logs."`, so no gateway error detail reaches the client (GW-014, LOG-007, R-035).
 
 From the client, the hub:
 
 - answers the internal instruction `0.,4.ping,<n>.<ts>;` with the same instruction, and does not forward it;
-- forwards every other complete instruction to the gateway unchanged, except `size`, which it forwards only when width and height are 1..8192 and DPI, when present, is 48..480 (R-018);
-- closes the tunnel if an instruction does not decode (GW-011), with close code 1002.
+- forwards only allow-listed instructions (R-035), each with at least the argument count guacd's handler reads: `key` (2), `mouse` (3), `touch` (7), `size` (2–3), `clipboard` (2), `blob` (2), `end` (1), `ack` (3), `sync` (1), `nop`, `disconnect`, `argv` (3);
+  - `size` is rebuilt from plain decimal numbers and forwarded only when width and height are 1..8192 and DPI, when present, is 48..480 (R-018);
+  - `blob` and `end` only on streams the client opened;
+  - `argv` only for `color-scheme`, or once per gateway `required` for `username`, `password`, `passphrase` or `domain` (GW-013 before GW-015);
+- closes the tunnel with close code 1002 (`PROTOCOL_ERROR`) if an instruction does not decode (GW-011) or is not allow-listed.
 
 The hub sends a `nop` to the client when the gateway has sent nothing for 5 seconds. If the client sends nothing for 15 seconds (no ping, no input), the hub ends the session with `TIMEOUT`.
 

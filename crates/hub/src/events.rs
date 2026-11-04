@@ -2,13 +2,16 @@
 //! and the live broadcast of new events and status changes (LOG-010).
 
 mod bus;
+pub mod graphql;
 mod model;
+mod page;
 pub mod process_log;
 mod redaction;
 mod retention;
 mod store;
 #[cfg(test)]
 mod tests;
+mod upkeep;
 
 use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::{PgConnection, PgPool};
@@ -18,14 +21,55 @@ pub use model::{
     AuditAction, AuditTarget, ClientAddr, EventSummary, HeartbeatSummary, NewAudit, NewEvent,
     Operator, Severity, Source,
 };
+pub use upkeep::run_daily;
 
 use crate::ids::EventId;
+
+/// Days after today whose partitions [`keep_partitions`] creates, so a week of hub downtime
+/// or failed runs still finds each day's partition in place (D-4).
+const PARTITION_DAYS_AHEAD: u32 = 7;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// The message stays generic: the source error may hold SQL text (API-010).
     #[error("the event store is unavailable")]
     Database(#[from] sqlx::Error),
+}
+
+impl Error {
+    /// For the process log: what failed, as a fixed word, never the source text (LOG-007,
+    /// API-010). `lock_timeout` when a scheduled partition change gave up waiting for a lock.
+    #[must_use]
+    pub fn fault(&self) -> &'static str {
+        let Self::Database(error) = self;
+        let code = error
+            .as_database_error()
+            .and_then(sqlx::error::DatabaseError::code);
+        if code.as_deref() == Some(LOCK_NOT_AVAILABLE) {
+            "lock_timeout"
+        } else {
+            "database"
+        }
+    }
+}
+
+/// SQLSTATE `lock_not_available`, which `lock_timeout` raises.
+const LOCK_NOT_AVAILABLE: &str = "55P03";
+
+/// The daily partition upkeep (D-4, DB-004, DB-005): creates the partitions of both logs for
+/// the UTC day of `now` and the week after it, then drops the expired ones. Each change runs
+/// in a short transaction of its own that waits at most 2 seconds for a lock and then fails,
+/// so a long reader or writer delays the job, never the other way round; [`run_daily`]
+/// retries it.
+///
+/// # Errors
+///
+/// `Error::Database` if a partition cannot be created or dropped, or a lock is not granted in
+/// time.
+pub async fn keep_partitions(db: &PgPool, now: DateTime<Utc>) -> Result<(), Error> {
+    create_partitions_ahead(db, now, PARTITION_DAYS_AHEAD).await?;
+    drop_expired_partitions(db, now).await?;
+    Ok(())
 }
 
 /// The start check failed (K2 "Start check", R-016, R-023, LOG-006). Only
@@ -99,7 +143,8 @@ pub async fn check_runtime_role(db: &PgPool) -> Result<(), RoleError> {
 /// Drops the day partitions older than each log's retention at `now` (90 days for events,
 /// 1 year for the audit log; DB-005) and returns the names of the dropped partitions. The
 /// database refuses to drop anything inside retention, by `now` and by its own clock
-/// (LOG-006). Schedule it daily.
+/// (LOG-006). Each log's drop runs in a short transaction of its own that waits at most 2
+/// seconds for a lock. Schedule it daily.
 ///
 /// # Errors
 ///
@@ -117,7 +162,8 @@ pub async fn drop_expired_partitions(
 }
 
 /// Creates the day partitions of both logs for `today` and the `days` days after it, each in
-/// its own short transaction (D-4).
+/// its own short transaction, never the caller's (D-4). Each waits at most 2 seconds for a
+/// lock on a log and then fails with SQLSTATE `55P03`.
 ///
 /// Call it at start and daily, so the partition already exists when `record` or `audit` runs.
 /// Both still create a missing partition as a fallback, but that holds an `ACCESS EXCLUSIVE`
