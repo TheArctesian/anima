@@ -1,0 +1,702 @@
+# K1 — GraphQL schema for Phase 1
+#
+# Status: frozen for Phase 1 (change only through a programme ruling, CON-001).
+# The hub writes its real schema to `crates/hub/schema.graphql` at build time
+# (API-008). A gate compares that file with this one: the hub may add fields,
+# it must not remove or rename them. Conventions: contracts/conventions.md.
+# Every operation needs a valid token, except `login` (API-003).
+
+scalar DateTime # RFC 3339, UTC
+scalar IpAddr # "10.10.0.12" or an IPv6 address
+scalar Cidr # "10.10.0.0/24"
+scalar JSON # only for audit change records
+
+directive @oneOf on INPUT_OBJECT
+
+# ---------------------------------------------------------------- shared
+
+enum Status {
+  UP
+  DOWN
+  DEGRADED
+  MAINTENANCE
+  UNKNOWN
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  endCursor: String
+}
+
+# ---------------------------------------------------------------- access (WP-05)
+
+type Operator {
+  id: ID!
+  username: String!
+  totpEnabled: Boolean!
+}
+
+type AuthPayload {
+  "Bearer token. The client keeps it in the OS key store (SEC-002)."
+  token: String!
+  expiresAt: DateTime!
+  operator: Operator!
+}
+
+input LoginInput {
+  username: String!
+  password: String!
+  totpCode: String
+}
+
+# ---------------------------------------------------------------- devices (WP-06)
+
+enum OperatingSystem {
+  LINUX
+  MACOS
+  WINDOWS
+  OTHER
+}
+
+type Site {
+  id: ID!
+  name: String!
+  subnet: Cidr!
+  devices(first: Int = 50, after: String): DeviceConnection!
+}
+
+enum SshAuth {
+  PASSWORD
+  PRIVATE_KEY
+}
+
+type SshSettings {
+  enabled: Boolean!
+  port: Int!
+  username: String!
+  auth: SshAuth!
+  "True when the hub holds a secret for this device. Secrets are never returned."
+  credentialStored: Boolean!
+  hostKey: HostKey
+}
+
+type HostKey {
+  algorithm: String!
+  fingerprintSha256: String!
+  firstSeenAt: DateTime!
+}
+
+type Device {
+  id: ID!
+  site: Site!
+  name: String!
+  host: String!
+  ip: IpAddr
+  kind: String!
+  os: OperatingSystem!
+  tags: [String!]!
+  "Manual maintenance flag (CHK-006). The effective status already includes windows."
+  maintenance: Boolean!
+  "Worst status of the device's checks (CHK-004)."
+  status: Status!
+  ssh: SshSettings!
+  checks: [Check!]!
+  "Uptime ratio 0..1 from aggregate tables (CHK-011)."
+  uptime(window: UptimeWindow!): Float
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type DeviceEdge {
+  cursor: String!
+  node: Device!
+}
+
+type DeviceConnection {
+  edges: [DeviceEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+enum DeviceSort {
+  NAME
+  STATUS
+  UPTIME
+}
+
+input DeviceFilter {
+  status: [Status!]
+  tags: [String!]
+  "Case-insensitive substring of the name."
+  name: String
+  siteId: ID
+}
+
+input SshSettingsInput {
+  enabled: Boolean!
+  port: Int = 22
+  username: String!
+  auth: SshAuth!
+}
+
+input CreateDeviceInput {
+  siteId: ID!
+  name: String!
+  host: String!
+  kind: String = "server"
+  os: OperatingSystem = OTHER
+  tags: [String!] = []
+  ssh: SshSettingsInput
+  "When true (the default), the hub adds one ICMP check (spec 6.2)."
+  addDefaultCheck: Boolean = true
+}
+
+input UpdateDeviceInput {
+  siteId: ID
+  name: String
+  host: String
+  kind: String
+  os: OperatingSystem
+  tags: [String!]
+  maintenance: Boolean
+  ssh: SshSettingsInput
+}
+
+input SshCredentialInput @oneOf {
+  password: String
+  privateKey: PrivateKeyInput
+}
+
+input PrivateKeyInput {
+  key: String!
+  passphrase: String
+}
+
+type ConnectionTestResult {
+  reachable: Boolean!
+  authenticated: Boolean!
+  "Present when the host key is not yet accepted or has changed (SEC-006, SEC-007)."
+  hostKey: HostKey
+  hostKeyChanged: Boolean!
+  message: String
+}
+
+input ConnectionTestInput {
+  "Test a saved device, or test unsaved values from the form (DEV-013)."
+  deviceId: ID
+  host: String
+  ssh: SshSettingsInput
+  credential: SshCredentialInput
+}
+
+# ---------------------------------------------------------------- checks (WP-09)
+
+"Identifiers are fixed forever (CHK-009)."
+enum CheckType {
+  ICMP
+  TCP
+  TLS
+  HTTP
+  DNS
+  PUSH
+  GROUP
+}
+
+type Check {
+  id: ID!
+  device: Device!
+  parent: Check
+  type: CheckType!
+  name: String!
+  intervalSeconds: Int!
+  retries: Int!
+  retryIntervalSeconds: Int!
+  degradedThresholdMs: Int!
+  invert: Boolean!
+  paused: Boolean!
+  config: CheckConfig!
+  status: Status!
+  lastHeartbeat: Heartbeat
+  "Days until the TLS certificate expires (CHK-007). Only TLS and HTTPS checks."
+  certificateDaysLeft: Int
+  heartbeats(first: Int = 100, after: String): HeartbeatConnection!
+  uptime(window: UptimeWindow!): Float
+}
+
+union CheckConfig = IcmpConfig | TcpConfig | TlsConfig | HttpConfig | DnsConfig | PushConfig | GroupConfig
+
+enum IpVersion {
+  V4
+  V6
+}
+
+type IcmpConfig {
+  timeoutMs: Int!
+  ipVersion: IpVersion!
+}
+
+type TcpConfig {
+  port: Int!
+  timeoutMs: Int!
+}
+
+type TlsConfig {
+  port: Int!
+  serverName: String
+  timeoutMs: Int!
+}
+
+enum HttpMethod {
+  GET
+  HEAD
+  POST
+  PUT
+  PATCH
+  DELETE
+  OPTIONS
+}
+
+type HttpHeader {
+  name: String!
+  "Values of headers named Authorization or Cookie are never returned."
+  value: String
+}
+
+type StatusRange {
+  from: Int!
+  to: Int!
+}
+
+enum HttpAuthKind {
+  NONE
+  BASIC
+  BEARER
+}
+
+type HttpConfig {
+  url: String!
+  method: HttpMethod!
+  headers: [HttpHeader!]!
+  body: String
+  maxRedirects: Int!
+  acceptedStatus: [StatusRange!]!
+  keyword: String
+  jsonQuery: String
+  jsonExpected: String
+  authKind: HttpAuthKind!
+  verifyTls: Boolean!
+  timeoutMs: Int!
+}
+
+enum DnsRecordType {
+  A
+  AAAA
+  CNAME
+  MX
+  NS
+  TXT
+  SRV
+  PTR
+}
+
+type DnsConfig {
+  name: String!
+  recordType: DnsRecordType!
+  resolver: IpAddr
+  expected: String
+}
+
+type PushConfig {
+  "Path on the hub that the device calls. The token is part of the path."
+  pushPath: String!
+}
+
+type GroupConfig {
+  children: [Check!]!
+}
+
+input CheckConfigInput @oneOf {
+  icmp: IcmpConfigInput
+  tcp: TcpConfigInput
+  tls: TlsConfigInput
+  http: HttpConfigInput
+  dns: DnsConfigInput
+  push: Boolean
+  group: GroupConfigInput
+}
+
+input IcmpConfigInput {
+  timeoutMs: Int = 2000
+  ipVersion: IpVersion = V4
+}
+
+input TcpConfigInput {
+  port: Int!
+  timeoutMs: Int = 5000
+}
+
+input TlsConfigInput {
+  port: Int = 443
+  serverName: String
+  timeoutMs: Int = 5000
+}
+
+input HttpHeaderInput {
+  name: String!
+  value: String!
+}
+
+input StatusRangeInput {
+  from: Int!
+  to: Int!
+}
+
+input HttpAuthInput @oneOf {
+  basic: BasicAuthInput
+  bearerToken: String
+}
+
+input BasicAuthInput {
+  username: String!
+  password: String!
+}
+
+input HttpConfigInput {
+  url: String!
+  method: HttpMethod = GET
+  headers: [HttpHeaderInput!] = []
+  body: String
+  maxRedirects: Int = 10
+  acceptedStatus: [StatusRangeInput!] = [{ from: 200, to: 299 }]
+  keyword: String
+  jsonQuery: String
+  jsonExpected: String
+  auth: HttpAuthInput
+  verifyTls: Boolean = true
+  timeoutMs: Int = 10000
+}
+
+input DnsConfigInput {
+  name: String!
+  recordType: DnsRecordType = A
+  resolver: IpAddr
+  expected: String
+}
+
+input GroupConfigInput {
+  childIds: [ID!]!
+}
+
+input CreateCheckInput {
+  deviceId: ID!
+  parentId: ID
+  name: String!
+  config: CheckConfigInput!
+  intervalSeconds: Int = 60
+  retries: Int = 3
+  retryIntervalSeconds: Int = 20
+  degradedThresholdMs: Int = 1000
+  invert: Boolean = false
+}
+
+input UpdateCheckInput {
+  parentId: ID
+  name: String
+  config: CheckConfigInput
+  intervalSeconds: Int
+  retries: Int
+  retryIntervalSeconds: Int
+  degradedThresholdMs: Int
+  invert: Boolean
+}
+
+type Heartbeat {
+  at: DateTime!
+  status: Status!
+  responseTimeMs: Int
+  message: String
+}
+
+type HeartbeatEdge {
+  cursor: String!
+  node: Heartbeat!
+}
+
+type HeartbeatConnection {
+  edges: [HeartbeatEdge!]!
+  pageInfo: PageInfo!
+}
+
+enum UptimeWindow {
+  DAY
+  WEEK
+  MONTH
+  YEAR
+}
+
+# ---------------------------------------------------------------- maintenance (WP-09)
+
+enum WindowKind {
+  MANUAL
+  SINGLE
+  RECURRING_INTERVAL
+  RECURRING_WEEKDAY
+  RECURRING_DAY_OF_MONTH
+}
+
+enum Weekday {
+  MON
+  TUE
+  WED
+  THU
+  FRI
+  SAT
+  SUN
+}
+
+enum TargetType {
+  DEVICE
+  CHECK
+  TAG
+}
+
+type WindowTarget {
+  type: TargetType!
+  "Device ID, check ID or tag name."
+  target: String!
+}
+
+"A rule with fields, never cron text (MW-004). Times are local to `timezone` (MW-001)."
+type MaintenanceWindow {
+  id: ID!
+  name: String!
+  kind: WindowKind!
+  timezone: String!
+  "MANUAL only."
+  activeManual: Boolean
+  "SINGLE only."
+  startsAt: DateTime
+  endsAt: DateTime
+  "RECURRING_INTERVAL only."
+  firstStartAt: DateTime
+  everyDays: Int
+  "RECURRING_WEEKDAY and RECURRING_DAY_OF_MONTH. HH:MM local; may end after midnight (MW-002)."
+  weekdays: [Weekday!]
+  "1..31, or -1 for the last day of the month."
+  daysOfMonth: [Int!]
+  startTime: String
+  durationMinutes: Int
+  targets: [WindowTarget!]!
+  activeNow: Boolean!
+}
+
+input WindowTargetInput {
+  type: TargetType!
+  target: String!
+}
+
+input MaintenanceWindowInput {
+  name: String!
+  kind: WindowKind!
+  timezone: String!
+  startsAt: DateTime
+  endsAt: DateTime
+  firstStartAt: DateTime
+  everyDays: Int
+  weekdays: [Weekday!]
+  daysOfMonth: [Int!]
+  startTime: String
+  durationMinutes: Int
+  targets: [WindowTargetInput!]!
+}
+
+# ---------------------------------------------------------------- events (WP-05)
+
+enum Severity {
+  INFO
+  WARNING
+  ERROR
+}
+
+enum EventSource {
+  CHECK
+  SESSION
+  DEVICE
+  ACCESS
+  HUB
+}
+
+type Event {
+  id: ID!
+  at: DateTime!
+  severity: Severity!
+  source: EventSource!
+  deviceId: ID
+  deviceName: String
+  message: String!
+}
+
+type EventEdge {
+  cursor: String!
+  node: Event!
+}
+
+type EventConnection {
+  edges: [EventEdge!]!
+  pageInfo: PageInfo!
+}
+
+input EventFilter {
+  severity: [Severity!]
+  source: [EventSource!]
+  deviceId: ID
+  since: DateTime
+}
+
+type AuditEntry {
+  id: ID!
+  at: DateTime!
+  operatorName: String!
+  action: String!
+  targetType: String!
+  targetId: String!
+  clientAddr: IpAddr!
+  "Changed fields. Secret values are replaced with \"[redacted]\"."
+  change: JSON!
+}
+
+type AuditEdge {
+  cursor: String!
+  node: AuditEntry!
+}
+
+type AuditConnection {
+  edges: [AuditEdge!]!
+  pageInfo: PageInfo!
+}
+
+# ---------------------------------------------------------------- sessions (WP-10)
+
+enum Protocol {
+  SSH
+}
+
+enum SessionEndReason {
+  OPERATOR
+  REMOTE_CLOSED
+  GATEWAY_ERROR
+  AUTH_FAILED
+  HOST_KEY_MISMATCH
+  TIMEOUT
+  HUB_SHUTDOWN
+}
+
+type Session {
+  id: ID!
+  deviceId: ID
+  deviceName: String!
+  protocol: Protocol!
+  operatorName: String!
+  startedAt: DateTime!
+  endedAt: DateTime
+  endReason: SessionEndReason
+}
+
+type SessionEdge {
+  cursor: String!
+  node: Session!
+}
+
+type SessionConnection {
+  edges: [SessionEdge!]!
+  pageInfo: PageInfo!
+}
+
+"Single-use ticket for the WebSocket tunnel (API-009). See contracts/tunnel.md."
+type SessionTicket {
+  sessionId: ID!
+  token: String!
+  tunnelPath: String!
+  expiresAt: DateTime!
+}
+
+input DisplayInput {
+  "Only these values come from the client (GW-012)."
+  widthPx: Int!
+  heightPx: Int!
+  dpi: Int = 96
+  timezone: String
+}
+
+input StartSessionInput {
+  deviceId: ID!
+  protocol: Protocol!
+  display: DisplayInput!
+}
+
+# ---------------------------------------------------------------- root types
+
+type Query {
+  me: Operator!
+
+  sites: [Site!]!
+  device(id: ID!): Device
+  devices(filter: DeviceFilter, sort: DeviceSort = NAME, first: Int = 50, after: String): DeviceConnection!
+  tags: [String!]!
+
+  check(id: ID!): Check
+
+  maintenanceWindows: [MaintenanceWindow!]!
+
+  events(filter: EventFilter, first: Int = 100, after: String): EventConnection!
+  audit(first: Int = 100, after: String): AuditConnection!
+
+  sessions(deviceId: ID, live: Boolean, first: Int = 50, after: String): SessionConnection!
+}
+
+type Mutation {
+  login(input: LoginInput!): AuthPayload!
+  logout: Boolean!
+
+  createSite(name: String!, subnet: Cidr!): Site!
+  createDevice(input: CreateDeviceInput!): Device!
+  updateDevice(id: ID!, input: UpdateDeviceInput!): Device!
+  "Deletes credentials, checks, heartbeats and metrics too (DEV-015). Returns the deleted ID."
+  deleteDevice(id: ID!): ID!
+  setSshCredential(deviceId: ID!, credential: SshCredentialInput!): SshSettings!
+  clearSshCredential(deviceId: ID!): SshSettings!
+  testConnection(input: ConnectionTestInput!): ConnectionTestResult!
+  "The fingerprint must equal the one the hub saw, or the hub returns CONFLICT."
+  acceptHostKey(deviceId: ID!, fingerprintSha256: String!): HostKey!
+
+  createCheck(input: CreateCheckInput!): Check!
+  updateCheck(id: ID!, input: UpdateCheckInput!): Check!
+  deleteCheck(id: ID!): ID!
+  setCheckPaused(id: ID!, paused: Boolean!): Check!
+
+  createMaintenanceWindow(input: MaintenanceWindowInput!): MaintenanceWindow!
+  updateMaintenanceWindow(id: ID!, input: MaintenanceWindowInput!): MaintenanceWindow!
+  deleteMaintenanceWindow(id: ID!): ID!
+  setManualWindowActive(id: ID!, active: Boolean!): MaintenanceWindow!
+
+  startSession(input: StartSessionInput!): SessionTicket!
+  endSession(id: ID!): Session!
+}
+
+type Subscription {
+  deviceStatusChanged(deviceId: ID): DeviceStatusChange!
+  heartbeatAdded(checkId: ID, deviceId: ID): HeartbeatAdded!
+  eventAdded(minSeverity: Severity = INFO): Event!
+}
+
+type DeviceStatusChange {
+  deviceId: ID!
+  status: Status!
+  at: DateTime!
+}
+
+type HeartbeatAdded {
+  checkId: ID!
+  deviceId: ID!
+  heartbeat: Heartbeat!
+}
