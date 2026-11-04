@@ -21,13 +21,13 @@ The operator approved all seven contracts on 2026-11-03 (checkpoint 1). Only a r
 | Package | Wave | State | Branch | Session |
 | --- | --- | --- | --- | --- |
 | WP-01 Skeleton and gates | 0 | Accepted, merged into `phase-1` (gates 12/12) | `claude/wp-01-skeleton-212429` | `wp-01-skeleton` |
-| WP-02 Tokens and fonts | 1 | Building | own worktree from `phase-1` | `wp-02-tokens` |
+| WP-02 Tokens and fonts | 1 | Accepted, merged into `phase-1` (965feb2) | `claude/wp-02-tokens-327209` | `wp-02-tokens` |
 | WP-03 VPN and network | 1 | Ready (operator checkpoint 2 for each VPS change) | — | — |
 | WP-04 Deployment, stage A (hub) | 1 | Ready | — | — |
 | WP-04 Deployment, stage B (releases and self-update, R-006) | 3 | Waiting (WP-15, WP-16; operator sets secrets) | — | — |
 | WP-05 Access and logs | 1 | Building | own worktree from `phase-1` | `wp-05-access` |
 | WP-06 Devices | 1 | Building; T1 migrations merged early into `phase-1` (668c898) | own worktree from `phase-1` | `wp-06-devices` |
-| WP-07 Credentials | 1 | Building | own worktree from `phase-1` | `wp-07-credentials` |
+| WP-07 Credentials | 1 | Building; T1 vault merged early into `phase-1` (78a6461) | own worktree from `phase-1` | `wp-07-credentials` |
 | WP-08 guac-protocol | 1 | Building | own worktree from `phase-1` | `wp-08-guac` |
 | WP-09 Checks and maintenance | 2 | Waiting (WP-05, WP-06) | — | — |
 | WP-10 Sessions | 2 | Waiting (WP-05–WP-08) | — | — |
