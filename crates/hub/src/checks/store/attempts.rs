@@ -1,6 +1,7 @@
 //! An attempt evaluated on the check's current state and recorded in one transaction
 //! (CHK-002, CHK-003, CHK-005).
 
+use chrono::{DateTime, Utc};
 use sqlx::{Connection as _, PgConnection};
 
 use super::{
@@ -18,25 +19,21 @@ use crate::{
 };
 
 /// Locks the check's state row, evaluates the attempt on it and records the beat. Returns the
-/// beat when it was written; `None` when the check is paused or has a later beat.
+/// beat when it was written; `None` when `record_beat` skipped it because the check is
+/// paused or has a later beat.
 pub(in crate::checks) async fn record_attempt(
     conn: &mut PgConnection,
     check: CheckId,
     attempt: &Attempt<'_>,
 ) -> Result<Option<Beat>, Error> {
     let mut tx = conn.begin().await?;
-    let row: Option<(String, i32, Option<chrono::DateTime<chrono::Utc>>, bool)> = sqlx::query_as(
-        "SELECT status, failures, next_due_at, paused FROM checks.checks \
-             WHERE id = $1 FOR UPDATE",
+    let row: Option<(String, i32, Option<DateTime<Utc>>)> = sqlx::query_as(
+        "SELECT status, failures, next_due_at FROM checks.checks WHERE id = $1 FOR UPDATE",
     )
     .bind(check)
     .fetch_optional(&mut *tx)
     .await?;
-    let (status, failures, next_due_at, paused) =
-        row.ok_or(Error::NotFound(Missing::Check(check)))?;
-    if paused {
-        return Ok(None);
-    }
+    let (status, failures, next_due_at) = row.ok_or(Error::NotFound(Missing::Check(check)))?;
     let current = CheckState {
         status: status_of(&status)?,
         failures: number(failures)?,
