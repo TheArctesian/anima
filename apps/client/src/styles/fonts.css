@@ -1,0 +1,53 @@
+/*
+ * Bundled font faces (UI-010, UI-011, UI-017, UI-022).
+ * Files live in ./fonts/ and are listed with SHA-256 hashes in ./fonts/fonts.lock.json.
+ * Family names must match the font-ui, font-mono and font-icon tokens.
+ */
+
+@font-face {
+  font-family: "OpenDyslexic Nerd Font Propo";
+  src: url("./fonts/OpenDyslexicNerdFontPropo-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "OpenDyslexic Nerd Font Propo";
+  src: url("./fonts/OpenDyslexicNerdFontPropo-Bold.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "OpenDyslexic Nerd Font Propo";
+  src: url("./fonts/OpenDyslexicNerdFontPropo-Italic.otf") format("opentype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "OpenDyslexic Nerd Font Propo";
+  src: url("./fonts/OpenDyslexicNerdFontPropo-BoldItalic.otf") format("opentype");
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "OpenDyslexicM Nerd Font Mono";
+  src: url("./fonts/OpenDyslexicMNerdFontMono-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Symbols Nerd Font";
+  src: url("./fonts/SymbolsNerdFont-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}

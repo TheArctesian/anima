@@ -1,0 +1,53 @@
+{
+  "commit": "f034eeafc0ccf79afa8dd952feb86b18e5d0469e",
+  "files": [
+    {
+      "file": "OpenDyslexicNerdFontPropo-Regular.otf",
+      "url": "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/f034eeafc0ccf79afa8dd952feb86b18e5d0469e/patched-fonts/OpenDyslexic/Regular/OpenDyslexicNerdFontPropo-Regular.otf",
+      "sha256": "fcc805d5d175d75780ec0c99ca97b642f3982fe9835ec127dac04a4f1b637561",
+      "bytes": 2264824
+    },
+    {
+      "file": "OpenDyslexicNerdFontPropo-Bold.otf",
+      "url": "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/f034eeafc0ccf79afa8dd952feb86b18e5d0469e/patched-fonts/OpenDyslexic/Regular/OpenDyslexicNerdFontPropo-Bold.otf",
+      "sha256": "c506b49f05ce87cefb2d6d7716b88ab08783fabcac3f04c61c74f2850afd83e5",
+      "bytes": 2261584
+    },
+    {
+      "file": "OpenDyslexicNerdFontPropo-Italic.otf",
+      "url": "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/f034eeafc0ccf79afa8dd952feb86b18e5d0469e/patched-fonts/OpenDyslexic/Regular/OpenDyslexicNerdFontPropo-Italic.otf",
+      "sha256": "c160e04d8c0e7b2c24268a667781ee176434f44f041c31e3dc873564ea8754ee",
+      "bytes": 2290468
+    },
+    {
+      "file": "OpenDyslexicNerdFontPropo-BoldItalic.otf",
+      "url": "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/f034eeafc0ccf79afa8dd952feb86b18e5d0469e/patched-fonts/OpenDyslexic/Regular/OpenDyslexicNerdFontPropo-BoldItalic.otf",
+      "sha256": "2a41177acfa1438599cb3c3ff38f8717653e253f70ea5567c040571c0913d806",
+      "bytes": 2299764
+    },
+    {
+      "file": "OpenDyslexicMNerdFontMono-Regular.otf",
+      "url": "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/f034eeafc0ccf79afa8dd952feb86b18e5d0469e/patched-fonts/OpenDyslexic/Mono-Regular/OpenDyslexicMNerdFontMono-Regular.otf",
+      "sha256": "6a17d6675bdf9838ae1be5273af479fe3f5c2d79a79feb062c0e24c9bba35fb3",
+      "bytes": 2352304
+    },
+    {
+      "file": "SymbolsNerdFont-Regular.ttf",
+      "url": "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/f034eeafc0ccf79afa8dd952feb86b18e5d0469e/patched-fonts/NerdFontsSymbolsOnly/SymbolsNerdFont-Regular.ttf",
+      "sha256": "2839f0a572d4559f3f17a6fb74b8772e183f0c0a47150998ab194932cad55829",
+      "bytes": 2538772
+    },
+    {
+      "file": "OFL.txt",
+      "url": "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/f034eeafc0ccf79afa8dd952feb86b18e5d0469e/patched-fonts/OpenDyslexic/Regular/LICENSE.txt",
+      "sha256": "c9838b435817b7319ec53239c9785f47ddce643e6c6b2f2dc160cb4aa00df043",
+      "bytes": 2447
+    },
+    {
+      "file": "LICENSE-NerdFonts.txt",
+      "url": "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/f034eeafc0ccf79afa8dd952feb86b18e5d0469e/LICENSE",
+      "sha256": "1f6ad4edae6479aaace3112ede5279a23284ae54b2a34db66357aef5f64df160",
+      "bytes": 6200
+    }
+  ]
+}

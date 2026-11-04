@@ -1,5 +1,5 @@
 {
-  "ignoreFiles": ["**/node_modules/**", "**/.svelte-kit/**", "**/build/**", "**/src/styles/tokens.css"],
+  "ignoreFiles": ["**/node_modules/**", "**/.svelte-kit/**", "**/build/**", "**/src/styles/tokens.css", "**/src/styles/fonts.css"],
   "overrides": [
     { "files": ["**/*.svelte"], "customSyntax": "postcss-html" }
   ],
