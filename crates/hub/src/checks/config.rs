@@ -7,16 +7,15 @@
 
 mod http;
 mod rules;
+mod secrets;
 
 use std::{net::IpAddr, time::Duration};
 
 use serde::{Deserialize, Serialize};
 
-pub use http::{
-    HttpAuth, HttpConfig, HttpCredentials, HttpHeader, HttpInput, HttpMethod, HttpSecrets,
-    StatusRange,
-};
+pub use http::{HttpAuth, HttpConfig, HttpHeader, HttpMethod, StatusRange};
 pub use rules::{ConfigError, Reason, is_secret_header};
+pub use secrets::{HttpCredentials, HttpInput, HttpSecrets};
 
 /// The fixed database identifier of a check type (CHK-009).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
