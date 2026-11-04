@@ -38,8 +38,18 @@
   },
   "graphql": {
     "devices": [
+      "access",
       "checks",
       "sessions"
+    ],
+    "checks": [
+      "access"
+    ],
+    "maintenance": [
+      "access"
+    ],
+    "events": [
+      "access"
     ]
   }
 }

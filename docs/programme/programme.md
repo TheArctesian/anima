@@ -23,7 +23,7 @@ The operator approved all seven contracts on 2026-11-03 (checkpoint 1). Only a r
 | WP-01 Skeleton and gates | 0 | Accepted, merged into `phase-1` (gates 12/12) | `claude/wp-01-skeleton-212429` | `wp-01-skeleton` |
 | WP-02 Tokens and fonts | 1 | Accepted, merged into `phase-1` (965feb2) | `claude/wp-02-tokens-327209` | `wp-02-tokens` |
 | WP-03 VPN and network | 1 | Building (prepares files only; operator confirms each VPS, Headscale and Cloudflare change) | own worktree from `phase-1` | `wp-03-vpn-and-network` |
-| WP-04 Deployment, stage A (hub) | 1 | Ready | — | — |
+| WP-04 Deployment, stage A (hub) | 1 | Building (prepares files only; operator confirms each host and Cloudflare change) | own worktree from `phase-1` | `wp-04-hub-deploy` |
 | WP-04 Deployment, stage B (releases and self-update, R-006) | 3 | Waiting (WP-15, WP-16; operator sets secrets) | — | — |
 | WP-05 Access and logs | 1 | Building; T1 and T7 merged early into `phase-1` (2581982) | own worktree from `phase-1` | `wp-05-access` |
 | WP-06 Devices | 1 | Building; T1 migrations merged early into `phase-1` (668c898) | own worktree from `phase-1` | `wp-06-devices` |
@@ -31,7 +31,7 @@ The operator approved all seven contracts on 2026-11-03 (checkpoint 1). Only a r
 | WP-08 guac-protocol | 1 | Accepted, merged into `phase-1` (c19ad06) | own worktree from `phase-1` | `wp-08-guac` |
 | WP-09 Checks and maintenance | 2 | Waiting (WP-05, WP-06) | — | — |
 | WP-10 Sessions | 2 | Waiting (WP-05–WP-08) | — | — |
-| WP-11 Client shell | 2 | Waiting (WP-02, K1) | — | — |
+| WP-11 Client shell | 2 | Building | own worktree from `phase-1` | `wp-11-client-shell` |
 | WP-12 Devices page | 3 | Waiting (WP-11) | — | — |
 | WP-13 Detail and form | 3 | Waiting (WP-11) | — | — |
 | WP-14 SSH tab | 3 | Waiting (WP-11, K4) | — | — |
@@ -72,6 +72,9 @@ Integration branch: `phase-1`. Merge to `main` only after operator checkpoint 4.
 - **R-017 (Wave 1, from WP-06; changes K3).** `credentials` adds `with_ssh(db, devices: &[DeviceId]) -> Result<HashSet<DeviceId>, Error>`, one query with `device_id = ANY($1)`, so `SshSettings.credentialStored` batches through a loader (API-005). `has_ssh` stays for single-device callers. WP-07 owns it, with a test that an empty slice returns an empty set without a query error; WP-06 uses it from a `CredentialStored` loader.
 - **R-018 (Wave 1, from WP-08; changes K4 wording).** Q-1: the hub answers guacd's `args` with `VERSION_1_5_0`, because echoing a newer version would claim features the hub does not have. Q-2: a relayed `size` may omit DPI (guacamole-common-js 1.5.5 and 1.6.0 do); when present it must be 48..480. No code changes; WP-10 follows the new wording.
 - **R-019 (Wave 1, from WP-05; changes K2, K3 and test practice).** (a) K3 placed `Operator`, `ClientAddr` and `HeartbeatSummary` in access and checks, but `events` uses them and imports no domain. They are defined in `events`; access re-exports `Operator` and `ClientAddr`, and checks uses `events::HeartbeatSummary`. K3 lists `create_partitions_ahead`, `drop_expired_partitions` and `check_runtime_role` as wiring-only. (b) K2: one PostgreSQL cluster per installation, because `anima_runtime` is cluster-wide. (c) No release-build gate for API-007: `harden` takes the production flag as a parameter and the tests cover both values; the one `cfg!(debug_assertions)` line is checked in review. (d) Agents and reviewers leave `DATABASE_URL` unset, so each run gets its own with-postgres server. sqlx names test databases by test path, so two worktrees that share one server destroy each other's databases (the 23505 and 3D000 failures).
+- **R-020 (Wave 1, from WP-11; changes K7).** Token transport is in K7 "Authentication transport": a bearer header on HTTP, the `connection_init` payload on `graphql-transport-ws`, close code 4403 when it is missing or not valid. WP-05 T3 implements the hub side. Until the hub writes its own SDL file, WP-11 generates the client's TypeScript types (API-008) from `contracts/schema.graphql`; WP-17 switches the source when the CON-002 check lands.
+- **R-021 (Wave 1, from WP-04; changes K2 wording).** (1) The deployment's PostgreSQL init script (first start of an empty volume) creates `anima_runtime`, `anima_owner` (no CREATEROLE, CREATEDB or SUPERUSER) and `anima_hub` (member of `anima_runtime`), and the database `anima` owned by `anima_owner`. (2) `anima-hub migrate` reads its URL from `ANIMA_DATABASE_URL_FILE` like the server; compose points it at the owner's secret. (3) The hub's bind check accepts RFC 1918 addresses, because compose binds a fixed private bridge address and publishes it only on the VPN address. (4) The hub reloads its TLS certificate when the files change (DNS-002 renewal); WP-05 owns it in its TLS task. (5) WP-04 may add `deploy` to the root `package.json` workspaces and `bun.lock` as a handoff line.
+- **R-022 (Wave 1, from WP-06; changes K3 and the import allow-list).** Every domain `graphql.rs` needs the `access::Authenticated` guard (API-003). `access` is added as a GraphQL composition edge (R-011) for `devices`, `checks`, `maintenance` and `events`; `sessions` already has it. These edges use only `Authenticated`, never `store`, and do not count toward cycles. The guard stays in `access`, not in a leaf.
 
 ## Escalations
 
