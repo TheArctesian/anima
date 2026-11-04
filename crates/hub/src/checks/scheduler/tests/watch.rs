@@ -6,9 +6,13 @@ use sqlx::PgPool;
 
 use super::support::{
     DOCKER_HOST, Listener, add, allow_event_writes, database_now, due_at, events_of,
-    fail_event_writes, on_loopback, rng, scheduler, tcp,
+    fail_event_writes, limited, on_loopback, rng, scheduler, tcp,
 };
-use crate::{checks::scheduler::tick::Scheduler, events::Bus, ids::DeviceId};
+use crate::{
+    checks::scheduler::tick::{Limits, Scheduler},
+    events::Bus,
+    ids::DeviceId,
+};
 
 const LATE: &str = "Check Service port on docker-host is late by more than 2 intervals";
 
@@ -79,6 +83,23 @@ tick_test! {
         scheduler.finish_running(slow).await;
 
         assert_eq!(errors(&pool, device).await, [LATE]);
+    }
+
+    async fn chk_010_a_late_check_that_stopped_being_due_starts_a_new_episode(pool: PgPool) {
+        let device = on_loopback(&pool, DOCKER_HOST).await;
+        let late = add(&pool, device, tcp(22), 2).await;
+        let now = database_now(&pool).await;
+        let mut scheduler = limited(&pool, Limits { probes: 0, due_per_tick: 256 });
+        scheduler.tick(now - TimeDelta::seconds(60), &mut rng()).await;
+
+        due_at(&pool, late, now - TimeDelta::seconds(25)).await;
+        scheduler.tick(now, &mut rng()).await;
+        due_at(&pool, late, now + TimeDelta::hours(1)).await;
+        scheduler.tick(now + TimeDelta::seconds(1), &mut rng()).await;
+        due_at(&pool, late, now - TimeDelta::seconds(23)).await;
+        scheduler.tick(now + TimeDelta::seconds(2), &mut rng()).await;
+
+        assert_eq!(errors(&pool, device).await, [LATE, LATE]);
     }
 
     async fn chk_010_a_check_within_2_intervals_is_not_late(pool: PgPool) {

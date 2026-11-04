@@ -4,7 +4,7 @@
 //! Maintenance is decided when the beat is recorded, so a window that starts or ends shows
 //! on the check's next beat; the status rules apply it to the stored state at once.
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::PgPool;
 
 use super::schedule::{self, Timing};
@@ -13,6 +13,7 @@ use crate::{
         self, Attempt, Beat, Due, Error,
         config::CheckConfig,
         probe::{AddressPolicy, Failure, ProbeEnv, ProbeResult, ProbeTarget, probe},
+        store,
     },
     credentials::Vault,
     devices::{self, Device},
@@ -57,55 +58,86 @@ pub(super) fn warn(due: &Due, what: &str, error: &dyn std::fmt::Display) {
     );
 }
 
-/// Runs the attempt. Every failure is logged here and leaves the check due, so a later tick
-/// tries again.
+/// What became of an attempt.
+enum Outcome {
+    Written(Beat),
+    /// Nothing to record: the check is paused, has a newer beat or was deleted.
+    Skipped,
+    /// A read or write failed; it was logged.
+    Failed,
+}
+
+/// Runs the attempt. After a failed read or write the check is tried again only after its
+/// retry interval, so a write that keeps failing neither probes on every tick nor starves
+/// the other checks (CHK-001).
 pub(super) async fn run(ctx: &Context, due: Due, now: DateTime<Utc>) -> Finished {
     let mut finished = Finished {
         check: due.id,
         device: due.device,
         recorded: None,
     };
+    match attempt(ctx, &due, now).await {
+        Outcome::Written(beat) => {
+            ctx.bus.publish(Signal::Heartbeat {
+                check: due.id,
+                device: due.device,
+                beat: HeartbeatSummary {
+                    at: beat.at,
+                    status: beat.status,
+                    response_time_ms: beat.response_time_ms,
+                },
+            });
+            finished.recorded = Some(Timing {
+                next_due_at: beat.state.next_due_at,
+                interval_seconds: due.settings.interval_seconds,
+            });
+        }
+        Outcome::Skipped => {}
+        Outcome::Failed => back_off(ctx, &due, now).await,
+    }
+    finished
+}
+
+async fn attempt(ctx: &Context, due: &Due, now: DateTime<Utc>) -> Outcome {
     let device = match devices::get(&ctx.db, due.device).await {
         Ok(device) => device,
         Err(error) => {
-            warn(&due, "the device of a due check cannot be read", &error);
-            return finished;
+            warn(due, "the device of a due check cannot be read", &error);
+            return Outcome::Failed;
         }
     };
-    let Some(result) = observe(ctx, &due, &device, now).await else {
-        return finished;
+    let Some(result) = observe(ctx, due, &device, now).await else {
+        return Outcome::Failed;
     };
-    let Some(covered) = covered(ctx, &due, &device, (&result, now)).await else {
-        return finished;
+    let Some(in_maintenance) = in_maintenance(ctx, due, &device, now).await else {
+        return Outcome::Failed;
     };
     let attempt = Attempt {
         result: &result,
-        settings: &due.settings,
-        covered,
+        in_maintenance,
         at: now,
     };
-    let beat = match record(&ctx.db, due.id, &attempt).await {
-        Ok(Some(beat)) => beat,
-        Ok(None) => return finished,
-        Err(error) => {
-            warn(&due, "the heartbeat cannot be recorded", &error);
-            return finished;
+    match record(&ctx.db, due.id, &attempt).await {
+        Ok(Some(beat)) => Outcome::Written(beat),
+        Ok(None) => Outcome::Skipped,
+        Err(Error::NotFound(_)) => {
+            tracing::debug!(domain = "checks", check_id = %due.id, "the check was deleted");
+            Outcome::Skipped
         }
-    };
-    ctx.bus.publish(Signal::Heartbeat {
-        check: due.id,
-        device: due.device,
-        beat: HeartbeatSummary {
-            at: beat.at,
-            status: beat.status,
-            response_time_ms: beat.response_time_ms,
-        },
-    });
-    finished.recorded = Some(Timing {
-        next_due_at: beat.state.next_due_at,
-        interval_seconds: due.settings.interval_seconds,
-    });
-    finished
+        Err(error) => {
+            warn(due, "the heartbeat cannot be recorded", &error);
+            Outcome::Failed
+        }
+    }
+}
+
+/// Moves the due time past the retry interval, unless a beat moved it meanwhile.
+async fn back_off(ctx: &Context, due: &Due, now: DateTime<Utc>) {
+    let retry = TimeDelta::seconds(i64::from(due.settings.retry_interval_seconds));
+    let moved = store::set_next_due(&ctx.db, due.id, due.state.next_due_at, now + retry).await;
+    if let Err(error) = moved {
+        warn(due, "the retry time cannot be stored", &error);
+    }
 }
 
 /// The raw result of the attempt, or `None` when a database read failed. PUSH checks are
@@ -141,17 +173,17 @@ async fn observe(
 }
 
 /// Whether maintenance covers the check: the device's manual flag, or an active window on
-/// the device, the check, its group or a tag (CHK-006). Windows are read only for a failed
-/// result, the only kind that can be Down. `None` when the windows cannot be read.
-async fn covered(
+/// the device, the check, its group or a tag (CHK-006). Read for every result, because the
+/// settings that decide Down are read only when the beat is written. `None` when the
+/// windows cannot be read.
+async fn in_maintenance(
     ctx: &Context,
     due: &Due,
     device: &Device,
-    (result, now): (&ProbeResult, DateTime<Utc>),
+    now: DateTime<Utc>,
 ) -> Option<bool> {
-    let failed = result.ok == due.settings.invert;
-    if device.maintenance || !failed {
-        return Some(device.maintenance);
+    if device.maintenance {
+        return Some(true);
     }
     match maintenance::active_targets(&ctx.db, now).await {
         Ok(active) => Some(

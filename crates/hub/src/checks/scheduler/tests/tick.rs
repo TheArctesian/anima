@@ -98,6 +98,37 @@ tick_test! {
         assert_eq!(beats(&pool, id).await.len(), 1);
     }
 
+    async fn chk_001_a_check_whose_write_keeps_failing_waits_its_retry_interval(pool: PgPool) {
+        let listener = Listener::start().await;
+        let device = on_loopback(&pool, DOCKER_HOST).await;
+        let id = add(&pool, device, tcp(listener.port), 2).await;
+        let now = database_now(&pool).await;
+        due_at(&pool, id, now).await;
+        for sql in [
+            "CREATE FUNCTION checks.refuse_beat() RETURNS trigger LANGUAGE plpgsql AS \
+             $$ BEGIN RAISE EXCEPTION 'refused'; END $$",
+            "CREATE TRIGGER refuse_beat BEFORE INSERT ON checks.uptime_minute \
+             FOR EACH ROW EXECUTE FUNCTION checks.refuse_beat()",
+        ] {
+            sqlx::query(sql).execute(&pool).await.unwrap();
+        }
+        let mut scheduler = scheduler(&pool, &Bus::new(16));
+
+        for second in 0..5 {
+            let at = now + TimeDelta::seconds(second);
+            scheduler.tick(at, &mut rng()).await;
+            scheduler.finish_running(at).await;
+        }
+        assert_eq!(listener.accepted(), 1);
+        let retry = now + TimeDelta::seconds(5);
+        assert_eq!(stored(&pool, id).await.state.next_due_at, Some(retry));
+        scheduler.tick(retry, &mut rng()).await;
+        scheduler.finish_running(retry).await;
+
+        listener.wait_for(2).await;
+        assert_eq!(beats(&pool, id).await.len(), 0);
+    }
+
     async fn chk_005_a_paused_check_is_not_probed(pool: PgPool) {
         let listener = Listener::start().await;
         let device = on_loopback(&pool, DOCKER_HOST).await;
@@ -125,7 +156,7 @@ tick_test! {
             due_at(&pool, id, now).await;
             ids.push(id);
         }
-        let mut scheduler = limited(&pool, Limits { probes: 1, due: 256 });
+        let mut scheduler = limited(&pool, Limits { probes: 1, due_per_tick: 256 });
 
         scheduler.tick(now, &mut rng()).await;
         listener.wait_for(1).await;
@@ -141,7 +172,7 @@ tick_test! {
         }
     }
 
-    async fn rev_a_held_permit_blocks_a_later_tick(pool: PgPool) {
+    async fn d_7_a_held_permit_blocks_a_later_tick(pool: PgPool) {
         let listener = Listener::start().await;
         let device = on_loopback(&pool, DOCKER_HOST).await;
         let now = database_now(&pool).await;
@@ -149,7 +180,7 @@ tick_test! {
             let id = add_check(&pool, new_check(device, name, listener.silent_tls(), 2)).await;
             due_at(&pool, id, now).await;
         }
-        let mut scheduler = limited(&pool, Limits { probes: 1, due: 256 });
+        let mut scheduler = limited(&pool, Limits { probes: 1, due_per_tick: 256 });
 
         scheduler.tick(now, &mut rng()).await;
         listener.wait_for(1).await;
@@ -168,7 +199,7 @@ tick_test! {
             let id = add_check(&pool, new_check(device, name, listener.silent_tls(), 2)).await;
             due_at(&pool, id, now).await;
         }
-        let mut scheduler = limited(&pool, Limits { probes: 32, due: 2 });
+        let mut scheduler = limited(&pool, Limits { probes: 32, due_per_tick: 2 });
 
         scheduler.tick(now, &mut rng()).await;
         listener.wait_for(2).await;

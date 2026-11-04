@@ -7,8 +7,8 @@ use chrono::{DateTime, Utc};
 
 use super::{
     attempt::{Context, warn},
+    log::{logged, warned},
     schedule,
-    tick::logged,
 };
 use crate::{
     checks::{self, Due, Missing},
@@ -68,7 +68,7 @@ pub(super) async fn settle(
 
 /// Logs why the device stays unsettled; always false.
 fn unsettled(device: DeviceId, what: &'static str, error: &dyn std::fmt::Display) -> bool {
-    logged::<(), _>(Some(device), what, Err(error.to_string()));
+    warned(Some(device), what, error);
     false
 }
 
@@ -87,21 +87,20 @@ pub(super) async fn report_late(ctx: &Context, check: &Due, now: DateTime<Utc>) 
             .name;
         Ok::<_, checks::Error>((name, device))
     };
-    let written = match names.await {
-        Ok((name, device)) => {
-            let event = NewEvent {
-                severity: Severity::Error,
-                source: Source::Check,
-                device: Some((check.device, device.clone())),
-                message: schedule::late_message(&name, &device),
-            };
-            write_event(ctx, event, now)
-                .await
-                .map_err(|e| e.to_string())
+    let (name, device) = match names.await {
+        Ok(names) => names,
+        Err(error) => {
+            warn(check, "the late check cannot be read", &error);
+            return false;
         }
-        Err(error) => Err(error.to_string()),
     };
-    match written {
+    let event = NewEvent {
+        severity: Severity::Error,
+        source: Source::Check,
+        device: Some((check.device, device.clone())),
+        message: schedule::late_message(&name, &device),
+    };
+    match write_event(ctx, event, now).await {
         Ok(()) => true,
         Err(error) => {
             warn(check, "the late check event cannot be written", &error);

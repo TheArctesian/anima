@@ -7,11 +7,10 @@
 
 use std::{
     collections::{HashMap, HashSet},
-    fmt::Display,
     sync::Arc,
 };
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, TimeDelta, Utc};
 use rand::Rng;
 use tokio::{
     sync::{OwnedSemaphorePermit, Semaphore},
@@ -20,7 +19,9 @@ use tokio::{
 
 use super::{
     attempt::{self, Context, Finished, warn},
-    daily, notices,
+    daily,
+    log::logged,
+    notices,
     schedule::{self, Timing, Watchdog},
 };
 use crate::{
@@ -30,31 +31,23 @@ use crate::{
     status::Status,
 };
 
-/// The value, with a failure logged at this I/O boundary. Errors hold no secret (LOG-007).
-pub(super) fn logged<T, E: Display>(
-    device: Option<DeviceId>,
-    what: &'static str,
-    result: Result<T, E>,
-) -> Option<T> {
-    result
-        .inspect_err(|error| {
-            tracing::warn!(domain = "checks", device_id = ?device, %error, "{what}");
-        })
-        .ok()
-}
+/// How far back each tick looks for new beats beyond the previous tick: a writer reads the
+/// clock before it commits, so its beat can be older than a tick that missed it (LOG-004).
+const BEAT_OVERLAP: TimeDelta = TimeDelta::seconds(5);
+/// How long a device whose status could not be settled waits before the next try.
+const SETTLE_RETRY: TimeDelta = TimeDelta::seconds(5);
 
 /// How much one scheduler does at once.
 #[derive(Clone, Copy, Debug)]
 pub(super) struct Limits {
     /// Probes running at the same time (D-7).
     pub(super) probes: usize,
-    /// Due checks read in one tick.
-    pub(super) due: u32,
+    pub(super) due_per_tick: u32,
 }
 
 pub(super) struct Scheduler {
     ctx: Arc<Context>,
-    due_limit: u32,
+    due_per_tick: u32,
     permits: Arc<Semaphore>,
     running: JoinSet<Finished>,
     /// The check of each running attempt; a check here is never started again.
@@ -62,8 +55,8 @@ pub(super) struct Scheduler {
     watchdog: Watchdog,
     /// The last device status published, or read before the device's next beat.
     known: HashMap<DeviceId, Status>,
-    /// Devices whose status must be compared with `known` again.
-    unsettled: HashSet<DeviceId>,
+    /// Devices whose status must be compared with `known` again, and from when.
+    unsettled: HashMap<DeviceId, DateTime<Utc>>,
     started_at: Option<DateTime<Utc>>,
     last_tick: Option<DateTime<Utc>>,
     next_daily: Option<DateTime<Utc>>,
@@ -73,13 +66,13 @@ impl Scheduler {
     pub(super) fn new(ctx: Context, limits: Limits) -> Self {
         Self {
             ctx: Arc::new(ctx),
-            due_limit: limits.due,
+            due_per_tick: limits.due_per_tick,
             permits: Arc::new(Semaphore::new(limits.probes)),
             running: JoinSet::new(),
             in_flight: HashMap::new(),
             watchdog: Watchdog::default(),
             known: HashMap::new(),
-            unsettled: HashSet::new(),
+            unsettled: HashMap::new(),
             started_at: None,
             last_tick: None,
             next_daily: None,
@@ -101,14 +94,14 @@ impl Scheduler {
             let succeeded = daily::run(&self.ctx.db, now).await;
             self.next_daily = Some(schedule::next_daily(succeeded, now));
         }
-        let due = checks::due_checks(&self.ctx.db, now, self.due_limit).await;
+        let due = checks::due_checks(&self.ctx.db, now, self.due_per_tick).await;
         let Some(due) = logged(None, "the due checks cannot be read", due) else {
             return;
         };
         if !self.seed(&due, now).await {
             return;
         }
-        if due.len() < usize::try_from(self.due_limit).unwrap_or(usize::MAX) {
+        if due.len() < usize::try_from(self.due_per_tick).unwrap_or(usize::MAX) {
             self.watchdog
                 .retain(&due.iter().map(|check| check.id).collect());
         }
@@ -183,33 +176,51 @@ impl Scheduler {
             }
         };
         if let Some(timing) = finished.recorded {
-            self.unsettled.insert(finished.device);
+            self.unsettled.entry(finished.device).or_insert(now);
             if !schedule::is_late(timing, started, now) {
                 self.watchdog.clear(finished.check);
             }
         }
     }
 
-    /// Marks the devices whose checks had a beat since the last tick from any writer, such
-    /// as the push route (LOG-004). On a failed read the same interval is read next time.
+    /// Marks the devices whose checks had a beat since the last tick, less the overlap, from
+    /// any writer such as the push route (LOG-004). `known` makes a second look free. On a
+    /// failed read the same interval is read next time.
     async fn collect_beaten(&mut self, now: DateTime<Utc>) {
         if let Some(since) = self.last_tick {
-            let beaten = store::devices_beaten_since(&self.ctx.db, since).await;
+            let beaten = store::devices_beaten_since(&self.ctx.db, since - BEAT_OVERLAP).await;
             let Some(beaten) = logged(None, "the devices with new beats cannot be read", beaten)
             else {
                 return;
             };
-            self.unsettled.extend(beaten);
+            for device in beaten {
+                self.unsettled.entry(device).or_insert(now);
+            }
         }
         self.last_tick = Some(now);
     }
 
+    /// Settles the devices whose turn has come; one that fails waits [`SETTLE_RETRY`].
     async fn settle_devices(&mut self, now: DateTime<Utc>) {
-        for device in self.unsettled.clone() {
+        let ready: Vec<DeviceId> = self
+            .unsettled
+            .iter()
+            .filter(|(_, at)| **at <= now)
+            .map(|(device, _)| *device)
+            .collect();
+        for device in ready {
             if notices::settle(&self.ctx, &mut self.known, device, now).await {
                 self.unsettled.remove(&device);
+            } else {
+                self.unsettled.insert(device, now + SETTLE_RETRY);
             }
         }
+    }
+
+    /// Whether the scheduler still tracks the device's status.
+    #[cfg(test)]
+    pub(super) fn tracks(&self, device: DeviceId) -> bool {
+        self.known.contains_key(&device) || self.unsettled.contains_key(&device)
     }
 
     /// Reads the status of every device once, before the first tick's beats.

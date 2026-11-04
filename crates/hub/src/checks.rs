@@ -39,9 +39,9 @@ use config::{CheckConfig, HttpSecrets, IpVersion};
 use rules::Prepared;
 
 pub use evaluation::{CheckSettings, CheckState, evaluate};
+pub(in crate::checks) use model::Attempt;
 pub use model::{
-    Attempt, Beat, Check, CheckChange, Definition, Due, FieldError, Missing, NewCheck, PushToken,
-    Recorded,
+    Beat, Check, CheckChange, Definition, Due, FieldError, Missing, NewCheck, PushToken, Recorded,
 };
 pub use scheduler::{Probing, spawn_scheduler};
 pub use store::Trimmed;
@@ -358,13 +358,13 @@ pub async fn record_beat(
 }
 
 /// Records one attempt in the caller's transaction: locks the check, evaluates the result on
-/// its current state, so a beat or pause that landed meanwhile is not overwritten, and
-/// writes the beat with [`record_beat`] (CHK-002, CHK-005). Returns the beat written, or
-/// `None` when the check is paused or already has a later beat.
+/// its current state and settings, so a beat, pause or change that landed meanwhile applies,
+/// and writes the beat with [`record_beat`] (CHK-002, CHK-005). Returns the beat written, or
+/// `None` when the check is paused or already has a beat at least as new.
 ///
 /// # Errors
 /// `NotFound` when the check no longer exists.
-pub async fn record_attempt(
+pub(in crate::checks) async fn record_attempt(
     conn: &mut PgConnection,
     check: CheckId,
     attempt: &Attempt<'_>,

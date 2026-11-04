@@ -6,6 +6,7 @@
 
 mod attempt;
 mod daily;
+mod log;
 mod notices;
 mod schedule;
 #[cfg(test)]
@@ -29,7 +30,7 @@ const TICK: Duration = Duration::from_secs(1);
 /// The most probes that run at the same time (D-7), and the most due checks read per tick.
 const LIMITS: Limits = Limits {
     probes: 32,
-    due: 256,
+    due_per_tick: 256,
 };
 
 /// Starts the scheduler. It ticks about once a second at the clock's time and runs until

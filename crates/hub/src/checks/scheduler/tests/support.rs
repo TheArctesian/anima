@@ -70,7 +70,7 @@ pub fn scheduler_with(pool: &PgPool, bus: &Bus, policy: AddressPolicy) -> Schedu
         ctx,
         Limits {
             probes: 32,
-            due: 256,
+            due_per_tick: 256,
         },
     )
 }

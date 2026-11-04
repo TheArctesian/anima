@@ -204,14 +204,15 @@ impl Beat {
 }
 
 /// One attempt to record with `record_attempt`: the evaluation runs on the check's stored
-/// state inside the write, so a beat or pause that landed during the probe is not lost.
+/// state and settings inside the write, so a beat, pause or change that landed during the
+/// probe is not lost.
 #[derive(Clone, Copy, Debug)]
-pub struct Attempt<'a> {
-    pub result: &'a ProbeResult,
-    pub settings: &'a CheckSettings,
-    /// Maintenance covers the check: a Down beat is recorded as Maintenance (CHK-006).
-    pub covered: bool,
-    pub at: DateTime<Utc>,
+pub(in crate::checks) struct Attempt<'a> {
+    pub(in crate::checks) result: &'a ProbeResult,
+    /// Maintenance covers the check. It only turns a Down beat into a Maintenance beat
+    /// (CHK-006); every other status is recorded as evaluated.
+    pub(in crate::checks) in_maintenance: bool,
+    pub(in crate::checks) at: DateTime<Utc>,
 }
 
 /// What `record_beat` did with a beat.

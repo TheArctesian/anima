@@ -105,7 +105,7 @@ tick_test! {
         assert_eq!(events_of(&pool, device).await, [up, event("error", "docker-host is Down")]);
     }
 
-    async fn rev_a_status_event_that_cannot_be_written_is_retried_before_its_signal(pool: PgPool) {
+    async fn log_004_a_status_event_that_cannot_be_written_is_retried_before_its_signal(pool: PgPool) {
         let listener = Listener::start().await;
         let device = on_loopback(&pool, DOCKER_HOST).await;
         let id = add(&pool, device, tcp(listener.port), 0).await;
@@ -121,7 +121,9 @@ tick_test! {
         assert_eq!(device_statuses(&drain(&mut receiver)).len(), 0);
         assert_eq!(events_of(&pool, device).await.len(), 0);
         allow_event_writes(&pool).await;
-        scheduler.tick(now + TimeDelta::seconds(1), &mut rng()).await;
+        scheduler.tick(now + TimeDelta::seconds(4), &mut rng()).await;
+        assert_eq!(device_statuses(&drain(&mut receiver)).len(), 0, "retried before 5 s");
+        scheduler.tick(now + TimeDelta::seconds(5), &mut rng()).await;
 
         assert_eq!(device_statuses(&drain(&mut receiver)), [Status::Up]);
         assert_eq!(events_of(&pool, device).await, [event("info", "docker-host is Up")]);

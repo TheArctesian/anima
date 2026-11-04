@@ -14,6 +14,7 @@ macro_rules! tick_test {
     )+};
 }
 
+mod beaten;
 mod daily;
 mod decisions;
 mod policy;

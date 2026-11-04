@@ -4,7 +4,7 @@
 use chrono::{DateTime, Days, Utc};
 use sqlx::PgPool;
 
-use super::tick::logged;
+use super::log::logged;
 use crate::checks;
 
 /// Days of heartbeat partitions created after today (DB-004).

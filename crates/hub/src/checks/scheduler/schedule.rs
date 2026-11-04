@@ -91,8 +91,9 @@ impl Watchdog {
     }
 }
 
-/// Whether the daily jobs run at `now`: never run, due, or the clock went back more than a
-/// day since they were scheduled (DB-005, CQ-021).
+/// Whether the daily jobs run at `now`: they never ran, they are due, or the clock is more
+/// than a day before their next run, which after a success means before the last run
+/// (DB-005, CQ-021).
 pub(super) fn daily_due(next_daily: Option<DateTime<Utc>>, now: DateTime<Utc>) -> bool {
     next_daily.is_none_or(|at| now >= at || now < at - DAY)
 }
