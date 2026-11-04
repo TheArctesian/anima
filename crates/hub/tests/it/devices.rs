@@ -22,6 +22,14 @@ fn constraint_of(error: &sqlx::Error) -> Option<&str> {
     error.as_database_error().and_then(|e| e.constraint())
 }
 
+async fn row_count(pool: &PgPool, table: &str) -> usize {
+    let total: i64 = sqlx::query_scalar(&format!("SELECT count(*) FROM devices.{table}"))
+        .fetch_one(pool)
+        .await
+        .unwrap();
+    usize::try_from(total).unwrap()
+}
+
 async fn count(pool: &PgPool, sql: &str, device_id: &str) -> i64 {
     sqlx::query_scalar(sql)
         .bind(device_id.parse::<uuid::Uuid>().unwrap())
@@ -38,12 +46,13 @@ async fn k6_devices_fixture_matches_phase1_json(pool: PgPool) {
     let json = phase1();
 
     for site in json["sites"].as_array().unwrap() {
-        let row: (String, String) =
-            sqlx::query_as("SELECT name, subnet::text FROM devices.sites WHERE id = $1::uuid")
-                .bind(text(&site["id"]))
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let row: (String, String) = sqlx::query_as(
+            "SELECT name, subnet::text FROM devices.sites WHERE id = $1::text::uuid",
+        )
+        .bind(text(&site["id"]))
+        .fetch_one(&pool)
+        .await
+        .unwrap();
         assert_eq!(
             row,
             (text(&site["name"]).into(), text(&site["subnet"]).into())
@@ -51,17 +60,23 @@ async fn k6_devices_fixture_matches_phase1_json(pool: PgPool) {
     }
 
     let devices = json["devices"].as_array().unwrap();
-    let stored: i64 = sqlx::query_scalar("SELECT count(*) FROM devices.devices")
-        .fetch_one(&pool)
-        .await
-        .unwrap();
-    assert_eq!(usize::try_from(stored).unwrap(), devices.len());
+    let tag_total: usize = devices
+        .iter()
+        .map(|d| d["tags"].as_array().unwrap().len())
+        .sum();
+    assert_eq!(
+        row_count(&pool, "sites").await,
+        json["sites"].as_array().unwrap().len()
+    );
+    assert_eq!(row_count(&pool, "devices").await, devices.len());
+    assert_eq!(row_count(&pool, "device_tags").await, tag_total);
+    assert_eq!(row_count(&pool, "ssh_settings").await, devices.len());
 
     for device in devices {
         let id = text(&device["id"]);
         let row: (String, String, Option<String>, String, String, bool, String) = sqlx::query_as(
             "SELECT name, host, host(ip), kind, os, maintenance, site_id::text \
-             FROM devices.devices WHERE id = $1::uuid",
+             FROM devices.devices WHERE id = $1::text::uuid",
         )
         .bind(id)
         .fetch_one(&pool)
@@ -78,12 +93,13 @@ async fn k6_devices_fixture_matches_phase1_json(pool: PgPool) {
         );
         assert_eq!(row, expected, "device {id}");
 
-        let tags: Vec<String> =
-            sqlx::query_scalar("SELECT tag FROM devices.device_tags WHERE device_id = $1::uuid")
-                .bind(id)
-                .fetch_all(&pool)
-                .await
-                .unwrap();
+        let tags: Vec<String> = sqlx::query_scalar(
+            "SELECT tag FROM devices.device_tags WHERE device_id = $1::text::uuid",
+        )
+        .bind(id)
+        .fetch_all(&pool)
+        .await
+        .unwrap();
         let expected_tags: BTreeSet<&str> = device["tags"]
             .as_array()
             .unwrap()
@@ -97,7 +113,7 @@ async fn k6_devices_fixture_matches_phase1_json(pool: PgPool) {
 
         let ssh: (bool, i32, String, String) = sqlx::query_as(
             "SELECT enabled, port, username, auth FROM devices.ssh_settings \
-             WHERE device_id = $1::uuid",
+             WHERE device_id = $1::text::uuid",
         )
         .bind(id)
         .fetch_one(&pool)
@@ -153,7 +169,7 @@ async fn dev_015_deleting_a_device_removes_its_tags_and_ssh_settings(pool: PgPoo
     assert_eq!(count(&pool, tags, PVE_01).await, 2);
     assert_eq!(count(&pool, ssh, PVE_01).await, 1);
 
-    sqlx::query("DELETE FROM devices.devices WHERE id = $1::uuid")
+    sqlx::query("DELETE FROM devices.devices WHERE id = $1::text::uuid")
         .bind(PVE_01)
         .execute(&pool)
         .await
@@ -169,14 +185,88 @@ async fn dev_015_deleting_a_device_removes_its_tags_and_ssh_settings(pool: PgPoo
     migrations = "./migrations",
     fixtures(path = "../fixtures", scripts("devices"))
 )]
-async fn dev_001_duplicate_device_name_fails_on_the_named_constraint(pool: PgPool) {
+async fn k2_duplicate_device_name_fails_on_the_named_constraint(pool: PgPool) {
     let error = sqlx::query(
         "INSERT INTO devices.devices (id, site_id, name, host, kind, os, created_at, updated_at) \
-         VALUES (gen_random_uuid(), $1::uuid, 'pve-01', 'other.lan', 'Server', 'linux', now(), now())",
+         VALUES (gen_random_uuid(), $1::text::uuid, 'pve-01', 'other.lan', 'Server', 'linux', now(), now())",
     )
     .bind("0190a000-0000-7000-8001-000000000002")
     .execute(&pool)
     .await
     .unwrap_err();
     assert_eq!(constraint_of(&error), Some("devices_name_key"));
+}
+
+const HOME_SITE: &str = "0190a000-0000-7000-8001-000000000001";
+const NEW_DEVICE: &str = "0190a000-0000-7000-8002-0000000000f1";
+
+async fn insert_device(pool: &PgPool, site_id: Option<&str>, os: &str) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "INSERT INTO devices.devices (id, site_id, name, host, kind, os, created_at, updated_at) \
+         VALUES ($1::text::uuid, $2::text::uuid, 'fresh', 'fresh.lan', 'Server', $3, now(), now())",
+    )
+    .bind(NEW_DEVICE)
+    .bind(site_id)
+    .bind(os)
+    .execute(pool)
+    .await
+    .map(|_| ())
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../fixtures", scripts("devices"))
+)]
+async fn vpn_002_deleting_a_site_that_still_has_devices_is_rejected(pool: PgPool) {
+    let error = sqlx::query("DELETE FROM devices.sites WHERE id = $1::text::uuid")
+        .bind(HOME_SITE)
+        .execute(&pool)
+        .await
+        .unwrap_err();
+    assert_eq!(constraint_of(&error), Some("devices_site_id_fkey"));
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../fixtures", scripts("devices"))
+)]
+async fn vpn_002_a_device_without_a_site_is_rejected(pool: PgPool) {
+    let error = insert_device(&pool, None, "linux").await.unwrap_err();
+    let database = error.as_database_error().unwrap();
+    assert_eq!(database.code().as_deref(), Some("23502"));
+    assert_eq!(database.column_name_hint(), Some("site_id"));
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../fixtures", scripts("devices"))
+)]
+async fn k2_bad_os_port_and_auth_values_are_rejected_by_named_checks(pool: PgPool) {
+    let bad_os = insert_device(&pool, Some(HOME_SITE), "beos")
+        .await
+        .unwrap_err();
+    assert_eq!(constraint_of(&bad_os), Some("devices_os_check"));
+
+    let cases = [
+        (0, "password", "ssh_settings_port_check"),
+        (65536, "password", "ssh_settings_port_check"),
+        (22, "kerberos", "ssh_settings_auth_check"),
+    ];
+    for (port, auth, expected) in cases {
+        let error = sqlx::query(
+            "UPDATE devices.ssh_settings SET port = $1, auth = $2 \
+             WHERE device_id = $3::text::uuid",
+        )
+        .bind(port)
+        .bind(auth)
+        .bind(PVE_01)
+        .execute(&pool)
+        .await
+        .unwrap_err();
+        assert_eq!(
+            constraint_of(&error),
+            Some(expected),
+            "port {port} auth {auth}"
+        );
+    }
 }

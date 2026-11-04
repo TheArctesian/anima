@@ -11,7 +11,7 @@ CREATE TABLE devices.sites (
 
 CREATE TABLE devices.devices (
     id uuid PRIMARY KEY,
-    site_id uuid NOT NULL REFERENCES devices.sites (id),
+    site_id uuid NOT NULL,
     name text NOT NULL,
     host text NOT NULL,
     ip inet,
@@ -20,6 +20,7 @@ CREATE TABLE devices.devices (
     maintenance boolean NOT NULL DEFAULT false,
     created_at timestamptz NOT NULL,
     updated_at timestamptz NOT NULL,
+    CONSTRAINT devices_site_id_fkey FOREIGN KEY (site_id) REFERENCES devices.sites (id),
     CONSTRAINT devices_name_key UNIQUE (name),
     CONSTRAINT devices_os_check CHECK (os IN ('linux', 'macos', 'windows', 'other'))
 );
@@ -27,19 +28,23 @@ CREATE TABLE devices.devices (
 CREATE INDEX devices_site_id_idx ON devices.devices (site_id);
 
 CREATE TABLE devices.device_tags (
-    device_id uuid NOT NULL REFERENCES devices.devices (id) ON DELETE CASCADE,
+    device_id uuid NOT NULL,
     tag text NOT NULL,
+    CONSTRAINT device_tags_device_id_fkey FOREIGN KEY (device_id)
+        REFERENCES devices.devices (id) ON DELETE CASCADE,
     PRIMARY KEY (device_id, tag)
 );
 
 CREATE INDEX device_tags_tag_idx ON devices.device_tags (tag);
 
 CREATE TABLE devices.ssh_settings (
-    device_id uuid PRIMARY KEY REFERENCES devices.devices (id) ON DELETE CASCADE,
+    device_id uuid PRIMARY KEY,
     enabled boolean NOT NULL,
     port integer NOT NULL DEFAULT 22,
     username text NOT NULL,
     auth text NOT NULL,
+    CONSTRAINT ssh_settings_device_id_fkey FOREIGN KEY (device_id)
+        REFERENCES devices.devices (id) ON DELETE CASCADE,
     CONSTRAINT ssh_settings_port_check CHECK (port BETWEEN 1 AND 65535),
     CONSTRAINT ssh_settings_auth_check CHECK (auth IN ('password', 'private_key'))
 );
