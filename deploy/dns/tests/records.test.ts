@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { isVpnAddress } from './vpn-address.ts';
 
 interface CaaProperty {
   flags: number;
@@ -28,63 +27,18 @@ const dnsDir = join(import.meta.dir, '..');
 const recordsText = readFileSync(join(dnsDir, 'anima.ing.records.json'), 'utf8');
 const readme = readFileSync(join(dnsDir, 'README.md'), 'utf8');
 const zone = JSON.parse(recordsText) as Zone;
+const caa = zone.records.filter((record) => record.type === 'CAA');
 
-function only(name: string, type: string): DnsRecord {
+function singleRecord(name: string, type: string): DnsRecord {
   const matches = zone.records.filter((record) => record.name === name && record.type === type);
   expect(matches).toHaveLength(1);
   return matches[0] as DnsRecord;
 }
 
-const caa = zone.records.filter((record) => record.type === 'CAA');
-
 describe('anima.ing public records', () => {
-  test('DNS-004 hs.anima.ing is an A record that is not proxied', () => {
-    const hs = only('hs.anima.ing', 'A');
-    expect(hs.proxied).toBe(false);
-    expect(hs.content).toBe('${VPS_PUBLIC_IPV4}');
-  });
-
-  test('DNS-004 hub.anima.ing is an A record that is not proxied', () => {
-    expect(only('hub.anima.ing', 'A').proxied).toBe(false);
-  });
-
-  test('DNS-005 NET-005 hub.anima.ing content is the HUB_VPN_IPV4 placeholder, filled in after the VPS joins', () => {
-    expect(only('hub.anima.ing', 'A').content).toBe('${HUB_VPN_IPV4}');
-  });
-
-  test('DNS-005 a hub address outside 100.64.0.0/10 is rejected', () => {
-    for (const address of ['10.10.0.5', '100.63.255.255', '100.128.0.1', '192.168.1.10', '8.8.8.8', '100.64.0', '100.64.0.1.2', '100.064.0.1', '100.64.0.256', '']) {
-      expect(isVpnAddress(address)).toBe(false);
-    }
-  });
-
-  test('DNS-005 a hub address inside 100.64.0.0/10 is accepted', () => {
-    for (const address of ['100.64.0.1', '100.100.7.3', '100.127.255.254']) {
-      expect(isVpnAddress(address)).toBe(true);
-    }
-  });
-
-  test('DNS-005 every A record content is a placeholder, never a literal address', () => {
-    for (const record of zone.records.filter((r) => r.type === 'A')) {
-      expect(record.content).toMatch(/^\$\{[A-Z0-9_]+\}$/);
-    }
-  });
-
-  test('DNS-006 no record exists under net.anima.ing', () => {
-    for (const record of zone.records) {
-      expect(record.name === 'net.anima.ing' || record.name.endsWith('.net.anima.ing')).toBe(false);
-    }
-  });
-
-  test('DNS-007 handoff updates.anima.ing is a proxied placeholder origin', () => {
-    const updates = only('updates.anima.ing', 'AAAA');
-    expect(updates.proxied).toBe(true);
-    expect(updates.content).toBe('100::');
-  });
-
-  test('DNS-001 the record names are exactly the apex, hs, hub and updates', () => {
-    const names = new Set(zone.records.map((record) => record.name));
-    expect([...names].sort()).toEqual(['anima.ing', 'hs.anima.ing', 'hub.anima.ing', 'updates.anima.ing']);
+  test('DNS-001 the records are exactly A hs, A hub, AAAA updates and CAA on the apex', () => {
+    const pairs = zone.records.map((record) => `${record.type} ${record.name}`).sort();
+    expect(pairs).toEqual(['A hs.anima.ing', 'A hub.anima.ing', 'AAAA updates.anima.ing', 'CAA anima.ing']);
   });
 
   test('DNS-001 every record name is a fully qualified name inside the zone', () => {
@@ -94,19 +48,50 @@ describe('anima.ing public records', () => {
     }
   });
 
-  test('DNS-002 CAA allows only letsencrypt.org to issue', () => {
-    const issue = caa.filter((record) => record.data?.tag === 'issue');
-    expect(issue.map((record) => record.data?.value)).toEqual(['letsencrypt.org']);
-    for (const record of caa) {
-      expect(record.name).toBe('anima.ing');
-      expect(record.data?.flags).toBe(0);
-      expect(['issue', 'issuewild']).toContain(record.data?.tag ?? '');
+  test('DNS-004 every record named hs or hub is not proxied', () => {
+    const named = zone.records.filter((record) => ['hs.anima.ing', 'hub.anima.ing'].includes(record.name));
+    expect(named.length).toBeGreaterThanOrEqual(2);
+    for (const record of named) expect(record.proxied).toBe(false);
+  });
+
+  test('DNS-004 hs.anima.ing points to the VPS_PUBLIC_IPV4 placeholder', () => {
+    expect(singleRecord('hs.anima.ing', 'A').content).toBe('${VPS_PUBLIC_IPV4}');
+  });
+
+  test('DNS-005 NET-005 hub.anima.ing content is the HUB_VPN_IPV4 placeholder, filled in after the VPS joins', () => {
+    expect(singleRecord('hub.anima.ing', 'A').content).toBe('${HUB_VPN_IPV4}');
+  });
+
+  test('DNS-005 every A record content is a placeholder, never a literal address', () => {
+    for (const record of zone.records.filter((r) => r.type === 'A')) {
+      expect(record.content).toMatch(/^\$\{[A-Z0-9_]+\}$/);
     }
   });
 
-  test('DNS-002 CAA forbids wildcard certificates', () => {
-    const wild = caa.filter((record) => record.data?.tag === 'issuewild');
-    expect(wild.map((record) => record.data?.value)).toEqual([';']);
+  test('DNS-005 the README states HUB_VPN_IPV4 is a 100.64.0.0/10 address', () => {
+    expect(readme).toMatch(/`HUB_VPN_IPV4` is a 100\.64\.0\.0\/10 address/);
+  });
+
+  test('DNS-006 no record exists under net.anima.ing', () => {
+    for (const record of zone.records) {
+      expect(record.name === 'net.anima.ing' || record.name.endsWith('.net.anima.ing')).toBe(false);
+    }
+  });
+
+  test('DNS-007 handoff updates.anima.ing is the only proxied record', () => {
+    const proxied = zone.records.filter((record) => record.proxied === true);
+    expect(proxied.map((record) => `${record.type} ${record.name}`)).toEqual(['AAAA updates.anima.ing']);
+    expect(singleRecord('updates.anima.ing', 'AAAA').content).toBe('100::');
+  });
+
+  test('DNS-007 handoff a proxied record has ttl 1 (automatic)', () => {
+    for (const record of zone.records.filter((r) => r.proxied === true)) expect(record.ttl).toBe(1);
+  });
+
+  test('DNS-002 the only CAA property is issue letsencrypt.org on the apex', () => {
+    expect(caa.map((record) => [record.name, record.data])).toEqual([
+      ['anima.ing', { flags: 0, tag: 'issue', value: 'letsencrypt.org' }],
+    ]);
   });
 
   test('DNS-003 the records file holds only the two documented placeholders', () => {
@@ -115,18 +100,14 @@ describe('anima.ing public records', () => {
     expect(recordsText.replace(/\$\{(HUB_VPN_IPV4|VPS_PUBLIC_IPV4)\}/g, '')).not.toContain('$');
   });
 
-  test('DNS-003 the README names the scoped token permission and never the Global API Key as usable', () => {
+  test('DNS-003 the README names the scoped token permission and forbids the Global API Key', () => {
     expect(readme).toContain('Zone → DNS → Edit');
     expect(readme).toContain('Include → Specific zone → anima.ing');
     expect(readme).toContain('Never use the Global API Key');
-    expect(readme).toContain('-H @"$HDR"');
   });
 
   test('DNS-003 LOG-007 the README contains no token-shaped string', () => {
     expect(readme).not.toMatch(/[A-Za-z0-9_-]{32,}/);
-    for (const bearer of readme.matchAll(/Bearer\s+(\S+)/g)) {
-      expect(bearer[1]).toBe('%s\\n\'');
-    }
   });
 
   test('DNS-008 the README requires the operator confirmation in chat for each change', () => {

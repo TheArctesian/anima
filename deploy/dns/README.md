@@ -1,123 +1,171 @@
 # Public DNS for anima.ing
 
 `anima.ing.records.json` lists every public record in the `anima.ing` zone (Cloudflare),
-in the Cloudflare API v4 "create DNS record" shape. The tests in `tests/` check it.
+in the Cloudflare API v4 "create DNS record" shape. `fill.ts` fills its placeholders after
+checking them. The tests in `tests/` check both.
 
 | Name | Type | Content | Proxied | Why |
 | --- | --- | --- | --- | --- |
 | `hs.anima.ing` | A | `${VPS_PUBLIC_IPV4}` | no | Headscale on the VPS (DNS-004) |
-| `hub.anima.ing` | A | `${HUB_VPN_IPV4}` | no | The hub node's VPN address in `100.64.0.0/10` (DNS-004, DNS-005, NET-005) |
+| `hub.anima.ing` | A | `${HUB_VPN_IPV4}` | no | The hub node's VPN address (DNS-004, DNS-005, NET-005) |
 | `updates.anima.ing` | AAAA | `100::` | yes | Placeholder origin for the update redirect rule (WP-04 stage B, DNS-007) |
-| `anima.ing` | CAA | `0 issue "letsencrypt.org"` | no | Only Let's Encrypt may issue certificates |
-| `anima.ing` | CAA | `0 issuewild ";"` | no | No CA may issue wildcard certificates |
+| `anima.ing` | CAA | `0 issue "letsencrypt.org"` | no | Keeps CAs other than Let's Encrypt and Cloudflare's out |
+
+`HUB_VPN_IPV4` is a 100.64.0.0/10 address: the address Headscale gave the VPS host node `hub`.
+It is known only after the VPS has joined the VPN (`tailscale ip -4` on the VPS).
+`VPS_PUBLIC_IPV4` is the VPS public IPv4 address.
 
 Names under `net.anima.ing` (the Headscale MagicDNS domain) have **no** public records (DNS-006).
 
-The CAA records restrict issuance for the whole zone, so the certificates for `hs.anima.ing`
-(Headscale, TLS-ALPN-01) and `hub.anima.ing` (hub, DNS-01, DNS-002) can come only from Let's
-Encrypt, and nobody can get a wildcard certificate for `*.anima.ing`. Cloudflare adds hidden CAA
-records for its own certificate authorities when Universal SSL is on, so the proxied
-`updates.anima.ing` keeps its edge certificate; check that after applying (see Verify).
+### What the CAA record does
+
+The CAA record covers the whole zone. Let's Encrypt issues the certificates for `hs.anima.ing`
+(Headscale, TLS-ALPN-01) and `hub.anima.ing` (hub, DNS-01, DNS-002). The proxied
+`updates.anima.ing` needs Cloudflare Universal SSL, and with Universal SSL on, Cloudflare adds
+its own CAA entries for the CAs it uses. These entries are hidden in the dashboard but are
+served in DNS. So the effective set of allowed issuers is Let's Encrypt plus Cloudflare's CAs.
+The record still keeps every other CA out. There is no `issuewild` record, so wildcard issuance
+follows the same `issue` set.
 
 ## Rules
 
 - **DNS-008.** Each change to the Cloudflare account or the `anima.ing` zone needs the
-  operator's confirmation in chat. Agents prepare this file; they never apply it.
-- **DNS-003.** Never use the Global API Key. Create tokens in Cloudflare → My Profile →
+  operator's confirmation in chat. Agents prepare these files; they never apply them.
+- **DNS-003.** Never use the Global API Key. Create each token in Cloudflare → My Profile →
   API Tokens → Create Token → template "Edit zone DNS", and keep only:
   - Permissions: **Zone → DNS → Edit** (nothing else).
   - Zone Resources: **Include → Specific zone → anima.ing**.
-  - TTL: an end date.
-  - Client IP Address Filtering: optional; restrict to the machine that uses the token.
-- Use two separate tokens:
-  1. **Operator token**: short-lived (end date today), used only to apply these records,
-     revoked in the dashboard as soon as you finish.
-  2. **Hub DNS-01 token**: used by the hub to renew `hub.anima.ing` (DNS-002). WP-04 keeps it
-     in a Docker secret (SEC-004). It is never logged, never in an environment file, never in git.
-- The token never appears on a command line, in shell history or in this repository. `curl`
-  reads it from a header file (`-H @file`, curl 7.55 or later).
+  - TTL and Client IP Address Filtering as below.
+- There are two separate tokens:
+  1. **Operator token.** Used only to apply these records. TTL end date: the day you use it.
+     Client IP filtering: optional (your current address). Revoke it in the dashboard as soon
+     as you finish, even before it expires.
+  2. **Hub DNS-01 token.** Used by the hub to renew `hub.anima.ing` (DNS-002). Client IP
+     Address Filtering is **required**: only the VPS public IPv4 (`VPS_PUBLIC_IPV4`). TTL: an
+     end date one year after creation, written into the operator's calendar with a reminder
+     two weeks before. Rotate it by then: create a new token, replace the Docker secret, restart
+     the hub, check renewal, revoke the old token. It does not expire silently. WP-04 keeps it in
+     a Docker secret (SEC-004). It is never logged, never in an environment file, never in git.
+- **Accepted risk.** "Zone DNS Edit" covers every record in `anima.ing`: Cloudflare cannot
+  scope a token to one record. Someone who has the hub token can change any record in the zone
+  until it is revoked. The IP filter limits use to the VPS. Later hardening: a CNAME from
+  `_acme-challenge.hub.anima.ing` to a record in a separate zone that only the hub token can
+  edit, so the hub token no longer covers `anima.ing`.
+- The token never appears on a command line, in shell history, in a trace or in this
+  repository. `curl` reads it from a header file (`-H @file`, curl 7.55 or later).
+  **Never add `-v`, `--verbose`, `--trace` or `--trace-ascii` to these curl commands**: they
+  print the `Authorization` header.
 
 ## Apply
 
-Run on the operator's machine (not the VPS), with `curl`, `jq` and `envsubst` (gettext) installed.
+Run every command **from the repository root** on the operator's machine (not the VPS), with
+`bun`, `curl` and `jq` installed. Use a child shell, so the `umask`, the trap and the variables
+go away when you finish:
 
-1. Write the token to a header file readable only by you. `read -rs` does not echo, and
-   `printf` is a shell builtin, so the token is not in any process's argv or in history:
+1. Start the child shell, turn off tracing and set up cleanup:
 
    ```sh
-   umask 077
-   mkdir -p ~/.config/anima
-   HDR=~/.config/anima/cloudflare-dns.header
-   read -rs CF_TOKEN && printf 'Authorization: Bearer %s\n' "$CF_TOKEN" > "$HDR"; unset CF_TOKEN
-   chmod 600 "$HDR"
+   bash --noprofile --norc
+   set +x                                  # in zsh instead: unsetopt xtrace
+   umask 077                               # only in this child shell
+   HDR=$(mktemp "${TMPDIR:-/tmp}/cf.XXXXXX")
+   FILLED=$(mktemp "${TMPDIR:-/tmp}/records.XXXXXX")
+   trap 'rm -f "$HDR" "$FILLED"' EXIT
    API=https://api.cloudflare.com/client/v4
+   ```
+
+2. Write the operator token to the header file. `read -rs` does not echo it, and `printf` is a
+   shell builtin, so the token is in no process's argv and not in history:
+
+   ```sh
+   read -rs CF_TOKEN && printf 'Authorization: Bearer %s\n' "$CF_TOKEN" > "$HDR"; unset CF_TOKEN
    curl -sS -H @"$HDR" "$API/user/tokens/verify" | jq '{success, status: .result.status}'
    ```
 
    Expected: `"success": true` and `"status": "active"`.
 
-2. Find the zone ID: Cloudflare dashboard → `anima.ing` → Overview → API → Zone ID (the
+3. Find the zone ID: Cloudflare dashboard → `anima.ing` → Overview → API → Zone ID (the
    scoped token has no permission to list zones). Then:
 
    ```sh
    ZONE_ID=<zone id from the dashboard>
    ```
 
-3. Fill the placeholders. `envsubst` gets an explicit list, so nothing else is replaced.
-   `HUB_VPN_IPV4` is known only after the VPS has joined the VPN: on the VPS run
-   `tailscale ip -4`; it must start with `100.` and be in `100.64.0.0/10`.
+4. Fill the records you are about to apply. `fill.ts` refuses (exit code not 0, nothing
+   written) an unset or empty value, a value that is not a strict dotted quad, a
+   `HUB_VPN_IPV4` outside 100.64.0.0/10, and a `VPS_PUBLIC_IPV4` that is private, CGNAT,
+   loopback, link-local, documentation or reserved. Its messages never repeat the value.
+   Name the records to fill only the placeholders they need:
 
    ```sh
    export VPS_PUBLIC_IPV4=<VPS public IPv4>
-   export HUB_VPN_IPV4=<hub VPN IPv4>   # only once known; then run this step again
-   IFS=. read -r a b _ <<<"$HUB_VPN_IPV4"
-   [ "$a" = 100 ] && [ "$b" -ge 64 ] && [ "$b" -le 127 ] && echo "hub address in 100.64.0.0/10"
-   FILLED=$(mktemp)
-   envsubst '${VPS_PUBLIC_IPV4} ${HUB_VPN_IPV4}' < deploy/dns/anima.ing.records.json > "$FILLED"
+   bun deploy/dns/fill.ts --out "$FILLED" hs.anima.ing anima.ing
    jq '.records[] | {type, name, content, data, proxied}' "$FILLED"
    ```
 
-   Check the output before you continue. An unset variable becomes an empty `content`: apply
-   a record only once its placeholder is filled, and `hub` only after the range check prints.
+   Check the output before you continue.
 
-4. Define one helper that posts each selected record on its own (one `curl` POST per record):
+5. Define the two helpers. `absent NAME TYPE` succeeds only when the API answers and the zone
+   has no such record; when one exists it prints it and fails, so update or delete that record
+   in the dashboard instead of adding a duplicate. `post FILTER` sends each selected record in
+   its own `curl` POST and refuses an A or AAAA record with empty content:
 
    ```sh
+   absent() {
+     curl -sS -H @"$HDR" "$API/zones/$ZONE_ID/dns_records?name=$1&type=$2" |
+       jq -e '.success == true and (.result | length) == 0' > /dev/null && return 0
+     echo "absent: $2 $1 exists or the lookup failed; not posting" >&2
+     return 1
+   }
    post() {
      jq -c ".records[] | select($1)" "$FILLED" | while read -r rec; do
+       if printf '%s' "$rec" | jq -e '(.type == "A" or .type == "AAAA") and ((.content // "") == "")' > /dev/null; then
+         echo "post: refusing a record with empty content" >&2
+         return 1
+       fi
        printf '%s' "$rec" | curl -sS -X POST -H @"$HDR" -H 'Content-Type: application/json' \
          --data @- "$API/zones/$ZONE_ID/dns_records" | jq '{success, errors, id: .result.id, name: .result.name}'
      done
    }
-   exists() {
-     curl -sS -H @"$HDR" "$API/zones/$ZONE_ID/dns_records?name=$1" | jq '.result[] | {id, type, name, content}'
-   }
    ```
 
-   Run `exists <name>` first; if a record already exists, update or delete it in the
-   dashboard instead of adding a duplicate.
+6. Apply in this order, each after confirmation in chat (DNS-008):
 
-5. Apply in this order, each after confirmation in chat (DNS-008):
-
-   | Step | When | Command |
+   | Step | When | Commands |
    | --- | --- | --- |
-   | hs | Before Headscale first starts and requests its certificate | `exists hs.anima.ing; post '.name == "hs.anima.ing"'` |
-   | CAA | With `hs`, before any certificate is requested | `exists anima.ing; post '.type == "CAA"'` |
-   | hub | After the VPS has joined the VPN and `HUB_VPN_IPV4` is set and filled (step 3) | `exists hub.anima.ing; post '.name == "hub.anima.ing"'` |
-   | updates | With WP-04 stage B (the redirect rule) | `exists updates.anima.ing; post '.name == "updates.anima.ing"'` |
+   | hs | Before Headscale first starts and requests its certificate | `absent hs.anima.ing A && post '.name == "hs.anima.ing"'` |
+   | CAA | With `hs`, before any certificate is requested | `absent anima.ing CAA && post '.type == "CAA"'` |
+   | hub | After the VPS has joined the VPN | `export HUB_VPN_IPV4=<address>`, then `bun deploy/dns/fill.ts --out "$FILLED" hub.anima.ing`, then `absent hub.anima.ing A && post '.name == "hub.anima.ing"'` |
+   | updates | With WP-04 stage B (the redirect rule) | `bun deploy/dns/fill.ts --out "$FILLED" updates.anima.ing`, then `absent updates.anima.ing AAAA && post '.name == "updates.anima.ing"'` |
 
-6. Clean up: `rm -f "$FILLED" "$HDR"`, then revoke the operator token in the dashboard.
+7. Finish: `exit` (the trap deletes the header file and the filled records), then revoke the
+   operator token in the dashboard.
 
 ## Verify
 
 ```sh
 dig +short hs.anima.ing @1.1.1.1      # the VPS public IPv4
-dig +short hub.anima.ing @1.1.1.1     # the hub VPN address, 100.64.0.0/10
+dig +short hub.anima.ing @1.1.1.1     # the hub VPN address, in 100.64.0.0/10
 dig +short hub.anima.ing              # same answer through the local resolver
-dig +short CAA anima.ing @1.1.1.1     # 0 issue "letsencrypt.org" and 0 issuewild ";"
-                                      # (Cloudflare may add its own CA entries)
+dig +short CAA anima.ing @1.1.1.1
 curl -sSI https://updates.anima.ing/  # after WP-04 stage B: a valid certificate and a 302
 ```
+
+`dig +short CAA anima.ing` should show the record from this file and the entries Cloudflare
+adds, for example:
+
+```text
+0 issue "letsencrypt.org"
+0 issue "pki.goog; cansignhttpexchanges=yes"
+0 issue "ssl.com"
+0 issuewild "letsencrypt.org"
+0 issuewild "pki.goog; cansignhttpexchanges=yes"
+0 issuewild "ssl.com"
+```
+
+Compare every CA in the answer with Cloudflare's documented list of CAs (dashboard: SSL/TLS →
+Edge Certificates, and the Cloudflare docs on CAA records). Flag any CA that is in neither that
+list nor this file.
 
 DNS-005: from a machine **outside** the VPN (Tailscale off, for example on a phone hotspot),
 `curl --max-time 10 https://hub.anima.ing` must fail (timeout or connection error). If it

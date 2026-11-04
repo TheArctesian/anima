@@ -30,14 +30,7 @@
       "name": "anima.ing",
       "data": { "flags": 0, "tag": "issue", "value": "letsencrypt.org" },
       "ttl": 300,
-      "comment": "Only Let's Encrypt may issue certificates (DNS-002)"
-    },
-    {
-      "type": "CAA",
-      "name": "anima.ing",
-      "data": { "flags": 0, "tag": "issuewild", "value": ";" },
-      "ttl": 300,
-      "comment": "No CA may issue wildcard certificates"
+      "comment": "Let's Encrypt issues for hs and hub (DNS-002); Cloudflare adds its own CAs for Universal SSL"
     }
   ]
 }
