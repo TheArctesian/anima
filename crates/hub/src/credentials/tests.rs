@@ -4,6 +4,7 @@ mod disclosure;
 mod key;
 mod layout;
 mod sealing;
+mod ssh;
 
 use zeroize::Zeroizing;
 
