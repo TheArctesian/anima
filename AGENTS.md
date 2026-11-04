@@ -84,5 +84,11 @@ fix the test. Rust integration tests live in one crate per binary (`tests/it/mai
 cargo fmt --check
 cargo clippy --all-targets -- -D warnings
 cargo test
-pnpm -r lint && pnpm -r check && pnpm -r test
+bun run lint
+bun run check
+bun run test
+bun run quality:limits
+bun run quality:names
+bun run quality:imports
+bun run quality:baseline -- --base origin/phase-1
 ```
