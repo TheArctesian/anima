@@ -23,11 +23,35 @@ describe('ESLint Guacamole boundary (D-2, R-045)', () => {
     expect(await rulesFired(importFrom('./vendor/guacamole.js'), tunnelFile)).toEqual([]);
   });
 
-  for (const path of ['../tunnel/vendor/guacamole.js', '$lib/sessions/tunnel/vendor/guacamole.js', './tunnel/vendor']) {
+  const vendorPaths = [
+    '../tunnel/vendor/guacamole.js',
+    '$lib/sessions/tunnel/vendor/guacamole.js',
+    './tunnel/vendor',
+    // Paths that do not spell `tunnel/vendor` but still reach the vendored file.
+    '../tunnel/./vendor/guacamole.js',
+    '$lib/sessions/tunnel//vendor/guacamole',
+    '/src/lib/sessions/tunnel/vendor/guacamole.js?raw',
+  ];
+  for (const path of vendorPaths) {
     it(`D-2: ${path} is refused outside $lib/sessions/tunnel`, async () => {
       expect(await rulesFired(importFrom(path), viewFile)).toContain('no-restricted-imports');
     });
   }
+
+  for (const path of ['../tunnel/vendor/guacamole.js', '../tunnel/./vendor/guacamole', 'guacamole-common-js']) {
+    it(`D-2: a dynamic import() of ${path} is refused, with a string or a template literal`, async () => {
+      expect(await rulesFired(`export const g = () => import('${path}');\n`, viewFile)).toContain('no-restricted-syntax');
+      expect(await rulesFired(`export const g = () => import(\`${path}\`);\n`, viewFile)).toContain('no-restricted-syntax');
+    });
+  }
+
+  it('D-2: the tunnel imports the client statically; a dynamic import is refused there too', async () => {
+    expect(await rulesFired("export const g = () => import('./vendor/guacamole.js');\n", tunnelFile)).toContain('no-restricted-syntax');
+  });
+
+  it('D-2: other dynamic imports are allowed', async () => {
+    expect(await rulesFired("export const g = () => import('./display');\n", viewFile)).toEqual([]);
+  });
 
   it('R-045: the npm guacamole-common-js is refused everywhere, the tunnel included', async () => {
     expect(await rulesFired(importFrom('guacamole-common-js'), viewFile)).toContain('no-restricted-imports');

@@ -47,6 +47,17 @@ describe('ending (K4 §5, D-4, RA-007)', () => {
     expect(recordedEnding(provisional, undefined)).toBe(provisional);
   });
 
+  it('D-4: a recorded reason this client does not know gets fixed text, never its name', () => {
+    const newer = 'GATEWAY_RESTARTED' as SessionEndReason;
+    expect(recordedEnding(ending(opened(1000)), newer).text).toBe('The session ended for a reason this version of Anima does not know.');
+    expect(recordedEnding(ending({ closeCode: 1006, gatewayError: undefined, opened: false }), newer).text).toBe(
+      'Could not open the session. The session ended for a reason this version of Anima does not know.',
+    );
+    expect(recordedEnding(ending(opened(1000)), 'toString' as SessionEndReason).text).toBe(
+      'The session ended for a reason this version of Anima does not know.',
+    );
+  });
+
   it('R-035: every text is fixed English and names a cause', () => {
     const reasons: SessionEndReason[] = ['OPERATOR', 'REMOTE_CLOSED', 'GATEWAY_ERROR', 'AUTH_FAILED', 'HOST_KEY_MISMATCH', 'PROTOCOL_ERROR', 'TIMEOUT', 'HUB_SHUTDOWN'];
     const texts = reasons.map((reason) => recordedEnding(ending(opened(1000)), reason).text);

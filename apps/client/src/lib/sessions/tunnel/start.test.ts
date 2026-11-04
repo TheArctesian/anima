@@ -2,8 +2,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { HubResult } from '$lib/hub/hub';
 import type { EndedSession, SessionDisplay, SessionsApi, SessionTicket } from '../api';
-import { installBlankCanvas } from './canvas.fixture';
-import { FAKE_TUNNEL_SOCKET, FakeTunnelSocket } from './socket.fixture';
+import { installBlankCanvas } from './fake/canvas.fixture';
+import { FAKE_TUNNEL_SOCKET, FakeTunnelSocket } from './fake/socket.fixture';
 import { startTunnel, type StartedTunnel } from './start';
 
 const DISPLAY: SessionDisplay = { widthPx: 1280, heightPx: 800, dpi: 192, timezone: 'Europe/London' };

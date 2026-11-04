@@ -1818,7 +1818,36 @@ Guacamole.Client = function(tunnel) {
     var currentState = STATE_IDLE;
     
     var currentTimestamp = 0;
-    var pingInterval = null;
+
+    /**
+     * The rough number of milliseconds to wait between sending keep-alive
+     * pings. This may vary depending on how frequently the browser allows
+     * timers to run, as well as how frequently the client receives messages
+     * from the server.
+     *
+     * @private
+     * @constant
+     * @type {!number}
+     */
+    var KEEP_ALIVE_FREQUENCY = 5000;
+
+    /**
+     * The current keep-alive ping timeout ID, if any. This will only be set
+     * upon connecting.
+     *
+     * @private
+     * @type {number}
+     */
+    var keepAliveTimeout = null;
+
+    /**
+     * The timestamp of the point in time that the last keep-live ping was
+     * sent, in milliseconds elapsed since midnight of January 1, 1970 UTC.
+     *
+     * @private
+     * @type {!number}
+     */
+    var lastSentKeepAlive = 0;
 
     /**
      * Translation from Guacamole protocol line caps to Layer line caps.
@@ -3514,11 +3543,62 @@ Guacamole.Client = function(tunnel) {
 
     };
 
+    /**
+     * Sends a keep-alive ping to the Guacamole server, advising the server
+     * that the client is still connected and responding. The lastSentKeepAlive
+     * timestamp is automatically updated as a result of calling this function.
+     *
+     * @private
+     */
+    var sendKeepAlive = function sendKeepAlive() {
+        tunnel.sendMessage('nop');
+        lastSentKeepAlive = new Date().getTime();
+    };
+
+    /**
+     * Schedules the next keep-alive ping based on the KEEP_ALIVE_FREQUENCY and
+     * the time that the last ping was sent, if ever. If enough time has
+     * elapsed that a ping should have already been sent, calling this function
+     * will send that ping immediately.
+     *
+     * @private
+     */
+    var scheduleKeepAlive = function scheduleKeepAlive() {
+
+        window.clearTimeout(keepAliveTimeout);
+
+        var currentTime = new Date().getTime();
+        var keepAliveDelay = Math.max(lastSentKeepAlive + KEEP_ALIVE_FREQUENCY - currentTime, 0);
+
+        // Ping server regularly to keep connection alive, but send the ping
+        // immediately if enough time has elapsed that it should have already
+        // been sent
+        if (keepAliveDelay > 0)
+            keepAliveTimeout = window.setTimeout(sendKeepAlive, keepAliveDelay);
+        else
+            sendKeepAlive();
+
+    };
+
+    /**
+     * Stops sending any further keep-alive pings. If a keep-alive ping was
+     * scheduled to be sent, that ping is cancelled.
+     *
+     * @private
+     */
+    var stopKeepAlive = function stopKeepAlive() {
+        window.clearTimeout(keepAliveTimeout);
+    };
+
     tunnel.oninstruction = function(opcode, parameters) {
 
         var handler = instructionHandlers[opcode];
         if (handler)
             handler(parameters);
+
+        // Leverage network activity to ensure the next keep-alive ping is
+        // sent, even if the browser is currently throttling timers
+        scheduleKeepAlive();
 
     };
 
@@ -3533,9 +3613,8 @@ Guacamole.Client = function(tunnel) {
 
             setState(STATE_DISCONNECTING);
 
-            // Stop ping
-            if (pingInterval)
-                window.clearInterval(pingInterval);
+            // Stop sending keep-alive messages
+            stopKeepAlive();
 
             // Send disconnect message and disconnect
             tunnel.sendMessage("disconnect");
@@ -3569,10 +3648,9 @@ Guacamole.Client = function(tunnel) {
             throw status;
         }
 
-        // Ping every 5 seconds (ensure connection alive)
-        pingInterval = window.setInterval(function() {
-            tunnel.sendMessage("nop");
-        }, 5000);
+        // Regularly send keep-alive ping to ensure the server knows we're
+        // still here, even if not active
+        scheduleKeepAlive();
 
         setState(STATE_WAITING);
     };
@@ -11605,14 +11683,16 @@ var Guacamole = Guacamole || {};
 /**
  * Simple Guacamole protocol parser that invokes an oninstruction event when
  * full instructions are available from data received via receive().
- * 
+ *
  * @constructor
  */
-Guacamole.Parser = function() {
+Guacamole.Parser = function Parser() {
 
     /**
      * Reference to this parser.
+     *
      * @private
+     * @type {!Guacamole.Parser}
      */
     var parser = this;
 
@@ -11620,24 +11700,74 @@ Guacamole.Parser = function() {
      * Current buffer of received data. This buffer grows until a full
      * element is available. After a full element is available, that element
      * is flushed into the element buffer.
-     * 
+     *
      * @private
+     * @type {!string}
      */
-    var buffer = "";
+    var buffer = '';
 
     /**
      * Buffer of all received, complete elements. After an entire instruction
      * is read, this buffer is flushed, and a new instruction begins.
-     * 
+     *
      * @private
+     * @type {!string[]}
      */
-    var element_buffer = [];
+    var elementBuffer = [];
 
-    // The location of the last element's terminator
-    var element_end = -1;
+    /**
+     * The character offset within the buffer of the current or most recently
+     * parsed element's terminator. If sufficient characters have not yet been
+     * read via calls to receive(), this may point to an offset well beyond the
+     * end of the buffer. If no characters for an element have yet been read,
+     * this will be -1.
+     *
+     * @private
+     * @type {!number}
+     */
+    var elementEnd = -1;
 
-    // Where to start the next length search or the next element
-    var start_index = 0;
+    /**
+     * The character offset within the buffer of the location that the parser
+     * should start looking for the next element length search or next element
+     * value.
+     *
+     * @private
+     * @type {!number}
+     */
+    var startIndex = 0;
+
+    /**
+     * The declared length of the current element being parsed, in Unicode
+     * codepoints.
+     *
+     * @private
+     * @type {!number}
+     */
+    var elementCodepoints = 0;
+
+    /**
+     * The number of parsed characters that must accumulate in the begining of
+     * the parse buffer before processing time is expended to truncate that
+     * buffer and conserve memory.
+     *
+     * @private
+     * @constant
+     * @type {!number}
+     */
+    var BUFFER_TRUNCATION_THRESHOLD = 4096;
+
+    /**
+     * The lowest Unicode codepoint to require a surrogate pair when encoded
+     * with UTF-16. In UTF-16, characters with codepoints at or above this
+     * value are represented with a surrogate pair, while characters with
+     * codepoints below this value are represented with a single character.
+     *
+     * @private
+     * @constant
+     * @type {!number}
+     */
+    var MIN_CODEPOINT_REQUIRES_SURROGATE = 0x10000;
 
     /**
      * Appends the given instruction data packet to the internal buffer of
@@ -11646,80 +11776,135 @@ Guacamole.Parser = function() {
      *
      * @param {!string} packet
      *     The instruction data to receive.
+     *
+     * @param {!boolean} [isBuffer=false]
+     *     Whether the provided data should be treated as an instruction buffer
+     *     that grows continuously. If true, the data provided to receive()
+     *     MUST always start with the data provided to the previous call. If
+     *     false (the default), only the new data should be provided to
+     *     receive(), and previously-received data will automatically be
+     *     buffered by the parser as needed.
      */
-    this.receive = function(packet) {
+    this.receive = function receive(packet, isBuffer) {
 
-        // Truncate buffer as necessary
-        if (start_index > 4096 && element_end >= start_index) {
+        if (isBuffer)
+            buffer = packet;
 
-            buffer = buffer.substring(start_index);
+        else {
 
-            // Reset parse relative to truncation
-            element_end -= start_index;
-            start_index = 0;
+            // Truncate buffer as necessary
+            if (startIndex > BUFFER_TRUNCATION_THRESHOLD && elementEnd >= startIndex) {
+
+                buffer = buffer.substring(startIndex);
+
+                // Reset parse relative to truncation
+                elementEnd -= startIndex;
+                startIndex = 0;
+
+            }
+
+            // Append data to buffer ONLY if there is outstanding data present. It
+            // is otherwise much faster to simply parse the received buffer as-is,
+            // and tunnel implementations can take advantage of this by preferring
+            // to send only complete instructions. Both the HTTP and WebSocket
+            // tunnel implementations included with Guacamole already do this.
+            if (buffer.length)
+                buffer += packet;
+            else
+                buffer = packet;
 
         }
 
-        // Append data to buffer
-        buffer += packet;
-
         // While search is within currently received data
-        while (element_end < buffer.length) {
+        while (elementEnd < buffer.length) {
 
             // If we are waiting for element data
-            if (element_end >= start_index) {
+            if (elementEnd >= startIndex) {
+
+                // If we have enough data in the buffer to fill the element
+                // value, but the number of codepoints in the expected substring
+                // containing the element value value is less that its declared
+                // length, that can only be because the element contains
+                // characters split between high and low surrogates, and the
+                // actual end of the element value is further out. The minimum
+                // number of additional characters that must be read to satisfy
+                // the declared length is simply the difference between the
+                // number of codepoints actually present vs. the expected
+                // length.
+                var codepoints = Guacamole.Parser.codePointCount(buffer, startIndex, elementEnd);
+                if (codepoints < elementCodepoints) {
+                    elementEnd += elementCodepoints - codepoints;
+                    continue;
+                }
+
+                // If the current element ends with a character involving both
+                // a high and low surrogate, elementEnd points to the low
+                // surrogate and NOT the element terminator. We must shift the
+                // end and reevaluate.
+                else if (elementCodepoints && buffer.codePointAt(elementEnd - 1) >= MIN_CODEPOINT_REQUIRES_SURROGATE) {
+                    elementEnd++;
+                    continue;
+                }
 
                 // We now have enough data for the element. Parse.
-                var element = buffer.substring(start_index, element_end);
-                var terminator = buffer.substring(element_end, element_end+1);
+                var element = buffer.substring(startIndex, elementEnd);
+                var terminator = buffer.substring(elementEnd, elementEnd + 1);
 
                 // Add element to array
-                element_buffer.push(element);
+                elementBuffer.push(element);
 
                 // If last element, handle instruction
-                if (terminator == ";") {
+                if (terminator === ';') {
 
                     // Get opcode
-                    var opcode = element_buffer.shift();
+                    var opcode = elementBuffer.shift();
 
                     // Call instruction handler.
-                    if (parser.oninstruction != null)
-                        parser.oninstruction(opcode, element_buffer);
+                    if (parser.oninstruction !== null)
+                        parser.oninstruction(opcode, elementBuffer);
 
                     // Clear elements
-                    element_buffer.length = 0;
+                    elementBuffer = [];
+
+                    // Immediately truncate buffer if its contents have been
+                    // completely parsed, so that the next call to receive()
+                    // need not append to the buffer unnecessarily
+                    if (!isBuffer && elementEnd + 1 === buffer.length) {
+                        elementEnd = -1;
+                        buffer = '';
+                    }
 
                 }
-                else if (terminator != ',')
-                    throw new Error("Illegal terminator.");
+                else if (terminator !== ',')
+                    throw new Error('Element terminator of instruction was not ";" nor ",".');
 
                 // Start searching for length at character after
                 // element terminator
-                start_index = element_end + 1;
+                startIndex = elementEnd + 1;
 
             }
 
             // Search for end of length
-            var length_end = buffer.indexOf(".", start_index);
-            if (length_end != -1) {
+            var lengthEnd = buffer.indexOf('.', startIndex);
+            if (lengthEnd !== -1) {
 
                 // Parse length
-                var length = parseInt(buffer.substring(element_end+1, length_end));
-                if (isNaN(length))
-                    throw new Error("Non-numeric character in element length.");
+                elementCodepoints = parseInt(buffer.substring(elementEnd + 1, lengthEnd));
+                if (isNaN(elementCodepoints))
+                    throw new Error('Non-numeric character in element length.');
 
                 // Calculate start of element
-                start_index = length_end + 1;
+                startIndex = lengthEnd + 1;
 
                 // Calculate location of element terminator
-                element_end = start_index + length;
+                elementEnd = startIndex + elementCodepoints;
 
             }
-            
+
             // If no period yet, continue search when more data
             // is received
             else {
-                start_index = buffer.length;
+                startIndex = buffer.length;
                 break;
             }
 
@@ -11729,7 +11914,7 @@ Guacamole.Parser = function() {
 
     /**
      * Fired once for every complete Guacamole instruction received, in order.
-     * 
+     *
      * @event
      * @param {!string} opcode
      *     The Guacamole instruction opcode.
@@ -11738,6 +11923,88 @@ Guacamole.Parser = function() {
      *     The parameters provided for the instruction, if any.
      */
     this.oninstruction = null;
+
+};
+
+/**
+ * Returns the number of Unicode codepoints (not code units) within the given
+ * string. If character offsets are provided, only codepoints between those
+ * offsets are counted. Unlike the length property of a string, this function
+ * counts proper surrogate pairs as a single codepoint. High and low surrogate
+ * characters that are not part of a proper surrogate pair are counted
+ * separately as individual codepoints.
+ *
+ * @param {!string} str
+ *     The string whose contents should be inspected.
+ *
+ * @param {number} [start=0]
+ *     The index of the location in the given string where codepoint counting
+ *     should start. If omitted, counting will begin at the start of the
+ *     string.
+ *
+ * @param {number} [end]
+ *     The index of the first location in the given string after where counting
+ *     should stop (the character after the last character being counted). If
+ *     omitted, all characters after the start location will be counted.
+ *
+ * @returns {!number}
+ *     The number of Unicode codepoints within the requested portion of the
+ *     given string.
+ */
+Guacamole.Parser.codePointCount = function codePointCount(str, start, end) {
+
+    // Count only characters within the specified region
+    str = str.substring(start || 0, end);
+
+    // Locate each proper Unicode surrogate pair (one high surrogate followed
+    // by one low surrogate)
+    var surrogatePairs = str.match(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g);
+
+    // Each surrogate pair represents a single codepoint but is represented by
+    // two characters in a JavaScript string, and thus is counted twice toward
+    // string length. Subtracting the number of surrogate pairs adjusts that
+    // length value such that it gives us the number of codepoints.
+    return str.length - (surrogatePairs ? surrogatePairs.length : 0);
+
+};
+
+/**
+ * Converts each of the values within the given array to strings, formatting
+ * those strings as length-prefixed elements of a complete Guacamole
+ * instruction.
+ *
+ * @param {!Array.<*>} elements
+ *     The values that should be encoded as the elements of a Guacamole
+ *     instruction. Order of these elements is preserved. This array MUST have
+ *     at least one element.
+ *
+ * @returns {!string}
+ *     A complete Guacamole instruction consisting of each of the provided
+ *     element values, in order.
+ */
+Guacamole.Parser.toInstruction = function toInstruction(elements) {
+
+    /**
+     * Converts the given value to a length/string pair for use as an
+     * element in a Guacamole instruction.
+     *
+     * @private
+     * @param {*} value
+     *     The value to convert.
+     *
+     * @return {!string}
+     *     The converted value.
+     */
+    var toElement = function toElement(value) {
+        var str = '' + value;
+        return Guacamole.Parser.codePointCount(str) + "." + str;
+    };
+
+    var instr = toElement(elements[0]);
+    for (var i = 1; i < elements.length; i++)
+        instr += ',' + toElement(elements[i]);
+
+    return instr + ';';
 
 };
 /*
@@ -12404,8 +12671,10 @@ Guacamole.SessionRecording = function SessionRecording(source) {
     };
 
     // Read instructions from provided blob, extracting each frame
-    if (source instanceof Blob)
+    if (source instanceof Blob) {
+        recordingBlob = source;
         parseBlob(recordingBlob, loadInstruction, notifyLoaded);
+    }
 
     // If tunnel provided instead of Blob, extract frames, etc. as instructions
     // are received, buffering things into a Blob for future seeks
@@ -14380,12 +14649,16 @@ Guacamole.HTTPTunnel = function(tunnelURL, crossDomain, extraTunnelHeaders) {
     }
 
     /**
-     * Initiates a timeout which, if data is not received, causes the tunnel
-     * to close with an error.
-     * 
+     * Resets the state of timers tracking network activity and stability. If
+     * those timers are not yet started, invoking this function starts them.
+     * This function should be invoked when the tunnel is established and every
+     * time there is network activity on the tunnel, such that the timers can
+     * safely assume the network and/or server are not responding if this
+     * function has not been invoked for a significant period of time.
+     *
      * @private
      */
-    function reset_timeout() {
+    var resetTimers = function resetTimers() {
 
         // Get rid of old timeouts (if any)
         window.clearTimeout(receive_timeout);
@@ -14405,7 +14678,7 @@ Guacamole.HTTPTunnel = function(tunnelURL, crossDomain, extraTunnelHeaders) {
             tunnel.setState(Guacamole.Tunnel.State.UNSTABLE);
         }, tunnel.unstableThreshold);
 
-    }
+    };
 
     /**
      * Closes this tunnel, signaling the given status and corresponding
@@ -14456,37 +14729,11 @@ Guacamole.HTTPTunnel = function(tunnelURL, crossDomain, extraTunnelHeaders) {
             return;
 
         // Do not attempt to send empty messages
-        if (arguments.length === 0)
+        if (!arguments.length)
             return;
 
-        /**
-         * Converts the given value to a length/string pair for use as an
-         * element in a Guacamole instruction.
-         * 
-         * @private
-         * @param value
-         *     The value to convert.
-         *
-         * @return {!string}
-         *     The converted value.
-         */
-        function getElement(value) {
-            var string = new String(value);
-            return string.length + "." + string; 
-        }
-
-        // Initialized message with first element
-        var message = getElement(arguments[0]);
-
-        // Append remaining elements
-        for (var i=1; i<arguments.length; i++)
-            message += "," + getElement(arguments[i]);
-
-        // Final terminator
-        message += ";";
-
         // Add message to buffer
-        outputMessageBuffer += message;
+        outputMessageBuffer += Guacamole.Parser.toInstruction(arguments);
 
         // Send if not currently sending
         if (!sendingMessages)
@@ -14515,7 +14762,7 @@ Guacamole.HTTPTunnel = function(tunnelURL, crossDomain, extraTunnelHeaders) {
             message_xmlhttprequest.onreadystatechange = function() {
                 if (message_xmlhttprequest.readyState === 4) {
 
-                    reset_timeout();
+                    resetTimers();
 
                     // If an error occurs during send, handle it
                     if (message_xmlhttprequest.status !== 200)
@@ -14566,14 +14813,36 @@ Guacamole.HTTPTunnel = function(tunnelURL, crossDomain, extraTunnelHeaders) {
 
         var dataUpdateEvents = 0;
 
-        // The location of the last element's terminator
-        var elementEnd = -1;
+        var parser = new Guacamole.Parser();
+        parser.oninstruction = function instructionReceived(opcode, args) {
 
-        // Where to start the next length search or the next element
-        var startIndex = 0;
+            // Switch to next request if end-of-stream is signalled
+            if (opcode === Guacamole.Tunnel.INTERNAL_DATA_OPCODE && args.length === 0) {
 
-        // Parsed elements
-        var elements = new Array();
+                // Reset parser state by simply switching to an entirely new
+                // parser
+                parser = new Guacamole.Parser();
+                parser.oninstruction = instructionReceived;
+
+                // Clean up interval if polling
+                if (interval)
+                    clearInterval(interval);
+
+                // Clean up object
+                xmlhttprequest.onreadystatechange = null;
+                xmlhttprequest.abort();
+
+                // Start handling next request
+                if (nextRequest)
+                    handleResponse(nextRequest);
+
+            }
+
+            // Call instruction handler.
+            else if (opcode !== Guacamole.Tunnel.INTERNAL_DATA_OPCODE && tunnel.oninstruction)
+                tunnel.oninstruction(opcode, args);
+
+        };
 
         function parseResponse() {
 
@@ -14605,7 +14874,7 @@ Guacamole.HTTPTunnel = function(tunnelURL, crossDomain, extraTunnelHeaders) {
             if (xmlhttprequest.readyState === 3 ||
                 xmlhttprequest.readyState === 4) {
 
-                reset_timeout();
+                resetTimers();
 
                 // Also poll every 30ms (some browsers don't repeatedly call onreadystatechange for new data)
                 if (pollingMode === POLLING_ENABLED) {
@@ -14634,83 +14903,13 @@ Guacamole.HTTPTunnel = function(tunnelURL, crossDomain, extraTunnelHeaders) {
                 // Do not attempt to parse if data could not be read
                 catch (e) { return; }
 
-                // While search is within currently received data
-                while (elementEnd < current.length) {
-
-                    // If we are waiting for element data
-                    if (elementEnd >= startIndex) {
-
-                        // We now have enough data for the element. Parse.
-                        var element = current.substring(startIndex, elementEnd);
-                        var terminator = current.substring(elementEnd, elementEnd+1);
-
-                        // Add element to array
-                        elements.push(element);
-
-                        // If last element, handle instruction
-                        if (terminator === ";") {
-
-                            // Get opcode
-                            var opcode = elements.shift();
-
-                            // Call instruction handler.
-                            if (tunnel.oninstruction)
-                                tunnel.oninstruction(opcode, elements);
-
-                            // Clear elements
-                            elements.length = 0;
-
-                        }
-
-                        // Start searching for length at character after
-                        // element terminator
-                        startIndex = elementEnd + 1;
-
-                    }
-
-                    // Search for end of length
-                    var lengthEnd = current.indexOf(".", startIndex);
-                    if (lengthEnd !== -1) {
-
-                        // Parse length
-                        var length = parseInt(current.substring(elementEnd+1, lengthEnd));
-
-                        // If we're done parsing, handle the next response.
-                        if (length === 0) {
-
-                            // Clean up interval if polling
-                            if (interval)
-                                clearInterval(interval);
-                           
-                            // Clean up object
-                            xmlhttprequest.onreadystatechange = null;
-                            xmlhttprequest.abort();
-
-                            // Start handling next request
-                            if (nextRequest)
-                                handleResponse(nextRequest);
-
-                            // Done parsing
-                            break;
-
-                        }
-
-                        // Calculate start of element
-                        startIndex = lengthEnd + 1;
-
-                        // Calculate location of element terminator
-                        elementEnd = startIndex + length;
-
-                    }
-                    
-                    // If no period yet, continue search when more data
-                    // is received
-                    else {
-                        startIndex = current.length;
-                        break;
-                    }
-
-                } // end parse loop
+                try {
+                    parser.receive(current, true);
+                }
+                catch (e) {
+                    close_tunnel(new Guacamole.Status(Guacamole.Status.Code.SERVER_ERROR, e.message));
+                    return;
+                }
 
             }
 
@@ -14766,7 +14965,7 @@ Guacamole.HTTPTunnel = function(tunnelURL, crossDomain, extraTunnelHeaders) {
     this.connect = function(data) {
 
         // Start waiting for connect
-        reset_timeout();
+        resetTimers();
 
         // Mark the tunnel as connecting
         tunnel.setState(Guacamole.Tunnel.State.CONNECTING);
@@ -14784,7 +14983,7 @@ Guacamole.HTTPTunnel = function(tunnelURL, crossDomain, extraTunnelHeaders) {
                 return;
             }
 
-            reset_timeout();
+            resetTimers();
 
             // Get UUID and HTTP-specific tunnel session token from response
             tunnel.setUUID(connect_xmlhttprequest.responseText);
@@ -14844,6 +15043,16 @@ Guacamole.WebSocketTunnel = function(tunnelURL) {
     var tunnel = this;
 
     /**
+     * The parser that this tunnel will use to parse received Guacamole
+     * instructions. The parser is created when the tunnel is (re-)connected.
+     * Initially, this will be null.
+     *
+     * @private
+     * @type {Guacamole.Parser}
+     */
+    var parser = null;
+
+    /**
      * The WebSocket used by this tunnel.
      * 
      * @private
@@ -14868,13 +15077,13 @@ Guacamole.WebSocketTunnel = function(tunnelURL) {
     var unstableTimeout = null;
 
     /**
-     * The current connection stability test ping interval ID, if any. This
+     * The current connection stability test ping timeout ID, if any. This
      * will only be set upon successful connection.
      *
      * @private
      * @type {number}
      */
-    var pingInterval = null;
+    var pingTimeout = null;
 
     /**
      * The WebSocket protocol corresponding to the protocol used for the current
@@ -14897,6 +15106,16 @@ Guacamole.WebSocketTunnel = function(tunnelURL) {
      * @type {!number}
      */
     var PING_FREQUENCY = 500;
+
+    /**
+     * The timestamp of the point in time that the last connection stability
+     * test ping was sent, in milliseconds elapsed since midnight of January 1,
+     * 1970 UTC.
+     *
+     * @private
+     * @type {!number}
+     */
+    var lastSentPing = 0;
 
     // Transform current URL to WebSocket URL
 
@@ -14932,16 +15151,35 @@ Guacamole.WebSocketTunnel = function(tunnelURL) {
     }
 
     /**
-     * Initiates a timeout which, if data is not received, causes the tunnel
-     * to close with an error.
-     * 
+     * Sends an internal "ping" instruction to the Guacamole WebSocket
+     * endpoint, verifying network connection stability. If the network is
+     * stable, the Guacamole server will receive this instruction and respond
+     * with an identical ping.
+     *
      * @private
      */
-    function reset_timeout() {
+    var sendPing = function sendPing() {
+        var currentTime = new Date().getTime();
+        tunnel.sendMessage(Guacamole.Tunnel.INTERNAL_DATA_OPCODE, 'ping', currentTime);
+        lastSentPing = currentTime;
+    };
+
+    /**
+     * Resets the state of timers tracking network activity and stability. If
+     * those timers are not yet started, invoking this function starts them.
+     * This function should be invoked when the tunnel is established and every
+     * time there is network activity on the tunnel, such that the timers can
+     * safely assume the network and/or server are not responding if this
+     * function has not been invoked for a significant period of time.
+     *
+     * @private
+     */
+    var resetTimers = function resetTimers() {
 
         // Get rid of old timeouts (if any)
         window.clearTimeout(receive_timeout);
         window.clearTimeout(unstableTimeout);
+        window.clearTimeout(pingTimeout);
 
         // Clear unstable status
         if (tunnel.state === Guacamole.Tunnel.State.UNSTABLE)
@@ -14957,7 +15195,17 @@ Guacamole.WebSocketTunnel = function(tunnelURL) {
             tunnel.setState(Guacamole.Tunnel.State.UNSTABLE);
         }, tunnel.unstableThreshold);
 
-    }
+        var currentTime = new Date().getTime();
+        var pingDelay = Math.max(lastSentPing + PING_FREQUENCY - currentTime, 0);
+
+        // Ping tunnel endpoint regularly to test connection stability, sending
+        // the ping immediately if enough time has already elapsed
+        if (pingDelay > 0)
+            pingTimeout = window.setTimeout(sendPing, pingDelay);
+        else
+            sendPing();
+
+    };
 
     /**
      * Closes this tunnel, signaling the given status and corresponding
@@ -14973,9 +15221,7 @@ Guacamole.WebSocketTunnel = function(tunnelURL) {
         // Get rid of old timeouts (if any)
         window.clearTimeout(receive_timeout);
         window.clearTimeout(unstableTimeout);
-
-        // Cease connection test pings
-        window.clearInterval(pingInterval);
+        window.clearTimeout(pingTimeout);
 
         // Ignore if already closed
         if (tunnel.state === Guacamole.Tunnel.State.CLOSED)
@@ -14999,58 +15245,46 @@ Guacamole.WebSocketTunnel = function(tunnelURL) {
             return;
 
         // Do not attempt to send empty messages
-        if (arguments.length === 0)
+        if (!arguments.length)
             return;
 
-        /**
-         * Converts the given value to a length/string pair for use as an
-         * element in a Guacamole instruction.
-         * 
-         * @private
-         * @param {*} value
-         *     The value to convert.
-         *
-         * @return {!string}
-         *     The converted value.
-         */
-        function getElement(value) {
-            var string = new String(value);
-            return string.length + "." + string; 
-        }
-
-        // Initialized message with first element
-        var message = getElement(arguments[0]);
-
-        // Append remaining elements
-        for (var i=1; i<arguments.length; i++)
-            message += "," + getElement(arguments[i]);
-
-        // Final terminator
-        message += ";";
-
-        socket.send(message);
+        socket.send(Guacamole.Parser.toInstruction(arguments));
 
     };
 
     this.connect = function(data) {
 
-        reset_timeout();
+        resetTimers();
 
         // Mark the tunnel as connecting
         tunnel.setState(Guacamole.Tunnel.State.CONNECTING);
+
+        parser = new Guacamole.Parser();
+        parser.oninstruction = function instructionReceived(opcode, args) {
+
+            // Update state and UUID when first instruction received
+            if (tunnel.uuid === null) {
+
+                // Associate tunnel UUID if received
+                if (opcode === Guacamole.Tunnel.INTERNAL_DATA_OPCODE && args.length === 1)
+                    tunnel.setUUID(args[0]);
+
+                // Tunnel is now open and UUID is available
+                tunnel.setState(Guacamole.Tunnel.State.OPEN);
+
+            }
+
+            // Call instruction handler.
+            if (opcode !== Guacamole.Tunnel.INTERNAL_DATA_OPCODE && tunnel.oninstruction)
+                tunnel.oninstruction(opcode, args);
+
+        };
 
         // Connect socket
         socket = new WebSocket(tunnelURL + "?" + data, "guacamole");
 
         socket.onopen = function(event) {
-            reset_timeout();
-
-            // Ping tunnel endpoint regularly to test connection stability
-            pingInterval = setInterval(function sendPing() {
-                tunnel.sendMessage(Guacamole.Tunnel.INTERNAL_DATA_OPCODE,
-                    "ping", new Date().getTime());
-            }, PING_FREQUENCY);
-
+            resetTimers();
         };
 
         socket.onclose = function(event) {
@@ -15072,74 +15306,14 @@ Guacamole.WebSocketTunnel = function(tunnelURL) {
         
         socket.onmessage = function(event) {
 
-            reset_timeout();
+            resetTimers();
 
-            var message = event.data;
-            var startIndex = 0;
-            var elementEnd;
-
-            var elements = [];
-
-            do {
-
-                // Search for end of length
-                var lengthEnd = message.indexOf(".", startIndex);
-                if (lengthEnd !== -1) {
-
-                    // Parse length
-                    var length = parseInt(message.substring(elementEnd+1, lengthEnd));
-
-                    // Calculate start of element
-                    startIndex = lengthEnd + 1;
-
-                    // Calculate location of element terminator
-                    elementEnd = startIndex + length;
-
-                }
-                
-                // If no period, incomplete instruction.
-                else
-                    close_tunnel(new Guacamole.Status(Guacamole.Status.Code.SERVER_ERROR, "Incomplete instruction."));
-
-                // We now have enough data for the element. Parse.
-                var element = message.substring(startIndex, elementEnd);
-                var terminator = message.substring(elementEnd, elementEnd+1);
-
-                // Add element to array
-                elements.push(element);
-
-                // If last element, handle instruction
-                if (terminator === ";") {
-
-                    // Get opcode
-                    var opcode = elements.shift();
-
-                    // Update state and UUID when first instruction received
-                    if (tunnel.uuid === null) {
-
-                        // Associate tunnel UUID if received
-                        if (opcode === Guacamole.Tunnel.INTERNAL_DATA_OPCODE)
-                            tunnel.setUUID(elements[0]);
-
-                        // Tunnel is now open and UUID is available
-                        tunnel.setState(Guacamole.Tunnel.State.OPEN);
-
-                    }
-
-                    // Call instruction handler.
-                    if (opcode !== Guacamole.Tunnel.INTERNAL_DATA_OPCODE && tunnel.oninstruction)
-                        tunnel.oninstruction(opcode, elements);
-
-                    // Clear elements
-                    elements.length = 0;
-
-                }
-
-                // Start searching for length at character after
-                // element terminator
-                startIndex = elementEnd + 1;
-
-            } while (startIndex < message.length);
+            try {
+                parser.receive(event.data);
+            }
+            catch (e) {
+                close_tunnel(new Guacamole.Status(Guacamole.Status.Code.SERVER_ERROR, e.message));
+            }
 
         };
 
@@ -15260,11 +15434,16 @@ Guacamole.ChainedTunnel = function(tunnelChain) {
             tunnel.onstatechange = chained_tunnel.onstatechange;
             tunnel.oninstruction = chained_tunnel.oninstruction;
             tunnel.onerror = chained_tunnel.onerror;
-            tunnel.onuuid = chained_tunnel.onuuid;
 
             // Assign UUID if already known
             if (tunnel.uuid)
                 chained_tunnel.setUUID(tunnel.uuid);
+
+            // Assign any future received UUIDs such that they are
+            // accessible from the main uuid property of the chained tunnel
+            tunnel.onuuid = function uuidReceived(uuid) {
+                chained_tunnel.setUUID(uuid);
+            };
 
             committedTunnel = tunnel;
 
@@ -15643,7 +15822,7 @@ var Guacamole = Guacamole || {};
  *
  * @type {!string}
  */
-Guacamole.API_VERSION = "1.5.0";
+Guacamole.API_VERSION = "1.5.4";
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file

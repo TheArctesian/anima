@@ -37,6 +37,8 @@ const REASON_TEXT: Readonly<Record<SessionEndReason, string>> = {
 
 const NOT_OPENED = 'Could not open the session.';
 const LOST = 'The connection to the hub was lost.';
+/** For a reason this client does not know yet (a newer hub); never the reason's own name or text. */
+const UNKNOWN_REASON = 'The session ended for a reason this version of Anima does not know.';
 
 /** The reason a close code gives by itself, before any gateway error is considered. */
 const BY_CODE: ReadonlyMap<number, SessionEndReason> = new Map([
@@ -65,9 +67,14 @@ function openedReason({ closeCode, gatewayError }: TunnelClose): SessionEndReaso
   return undefined;
 }
 
+/** The text for a known reason; the lookup is checked because the hub may send a value newer than the schema. */
+function reasonText(reason: SessionEndReason): string {
+  return Object.hasOwn(REASON_TEXT, reason) ? REASON_TEXT[reason] : UNKNOWN_REASON;
+}
+
 function textFor(reason: SessionEndReason | undefined, opened: boolean): string {
-  if (!opened) return reason === undefined ? NOT_OPENED : `${NOT_OPENED} ${REASON_TEXT[reason]}`;
-  return reason === undefined ? LOST : REASON_TEXT[reason];
+  if (!opened) return reason === undefined ? NOT_OPENED : `${NOT_OPENED} ${reasonText(reason)}`;
+  return reason === undefined ? LOST : reasonText(reason);
 }
 
 /**
