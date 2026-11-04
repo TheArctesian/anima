@@ -3,11 +3,7 @@
 //! Every function is pure. The validator reports all field errors at once so the form can show
 //! them together.
 
-use std::{
-    collections::HashSet,
-    hash::Hash,
-    str::FromStr,
-};
+use std::{collections::HashSet, hash::Hash, str::FromStr};
 
 use chrono::NaiveTime;
 use chrono_tz::Tz;

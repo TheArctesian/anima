@@ -8,8 +8,10 @@ use ipnet::IpNet;
 ///
 /// The default refuses every address a probe must never touch: loopback, unspecified,
 /// `0.0.0.0/8`, link-local (`169.254.0.0/16`, home of cloud metadata, and `fe80::/10`),
-/// multicast, broadcast and reserved `240.0.0.0/4`, the AWS IPv6 metadata address, Teredo (`2001::/32`), site-local (`fec0::/10`), and the
-/// IPv4-mapped, IPv4-compatible, NAT64 and 6to4 forms of the IPv4 ones. Private ranges
+/// multicast, broadcast and reserved `240.0.0.0/4`, the AWS IPv6 metadata address, Teredo
+/// (`2001::/32`), site-local (`fec0::/10`), Tailscale's `100.100.100.0/24`, the IETF protocol
+/// assignments `192.0.0.0/24`, Azure's `168.63.129.16`, all of the local-use NAT64
+/// `64:ff9b:1::/48`, and the IPv4-mapped, IPv4-compatible, NAT64 and 6to4 forms of the IPv4 ones. Private ranges
 /// (`10/8`, `172.16/12`, `192.168/16`, `100.64/10`, `fc00::/7`) stay allowed, because
 /// devices live there; `extra_deny` removes more, such as the hub's own network.
 #[derive(Clone, Debug, Default)]
@@ -49,7 +51,7 @@ impl AddressPolicy {
         if canonical.is_loopback() && self.allow_loopback {
             return true;
         }
-        !always_refused(canonical)
+        !always_refused(canonical) && !local_use_nat64(ip)
     }
 }
 
@@ -83,6 +85,12 @@ fn canonical(ip: IpAddr) -> IpAddr {
     }
 }
 
+/// `64:ff9b:1::/48`, whatever it embeds: the prefix is local-use, so a translator may place
+/// an IPv4 address in it by a rule this policy cannot know (CHK-012).
+fn local_use_nat64(ip: IpAddr) -> bool {
+    matches!(ip, IpAddr::V6(v6) if v6.segments()[..3] == [0x64, 0xff9b, 1])
+}
+
 fn always_refused(ip: IpAddr) -> bool {
     match ip {
         IpAddr::V4(v4) => {
@@ -93,6 +101,9 @@ fn always_refused(ip: IpAddr) -> bool {
                 || v4.is_link_local()
                 || v4.is_multicast()
                 || o[0] >= 240
+                || o[..3] == [100, 100, 100] // Tailscale 100.100.100.0/24 (quad-100)
+                || o[..3] == [192, 0, 0] // 192.0.0.0/24 IETF protocol assignments
+                || v4 == Ipv4Addr::new(168, 63, 129, 16) // Azure wire server
         }
         IpAddr::V6(v6) => {
             let [first, second, ..] = v6.segments();

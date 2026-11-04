@@ -166,6 +166,25 @@ fixture_test! {
         assert!(matches!(error, Error::NotFound(Missing::Device(id)) if id == stranger), "{error:?}");
     }
 
+    async fn r_026_an_http_or_dns_check_does_not_tell_the_address_of_the_device(pool: PgPool) {
+        let at = database_now(&pool).await;
+        let mut other_host = beat(at, Status::Up, Some(3));
+        other_host.resolved_ip = Some("93.184.216.34".parse().unwrap());
+        // The HTTP check of the device ...04 and the HTTP and DNS checks of ...05.
+        for id in [
+            "0190a000-0000-7000-8003-000000000019",
+            "0190a000-0000-7000-8003-00000000001b",
+            "0190a000-0000-7000-8003-00000000001c",
+        ] {
+            record(&pool, check(id), &other_host).await;
+        }
+        let devices = [
+            device("0190a000-0000-7000-8002-000000000004"),
+            device("0190a000-0000-7000-8002-000000000005"),
+        ];
+        assert!(checks::resolved_ips(&pool, &devices).await.unwrap().is_empty());
+    }
+
     async fn resolved_ips_take_the_check_with_the_latest_beat(pool: PgPool) {
         let at = database_now(&pool).await;
         let mut ping = beat(at, Status::Up, Some(3));

@@ -32,9 +32,17 @@ fn weekly(minutes: Value) -> Value {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn mw_004_a_stored_duration_over_seven_days_is_refused_by_the_database(pool: PgPool) {
-    for minutes in [json!(4_294_967_295_u64), json!(10_081), json!(0), json!("60")] {
+    for minutes in [
+        json!(4_294_967_295_u64),
+        json!(10_081),
+        json!(0),
+        json!("60"),
+    ] {
         let refused = store(&pool, "recurring_weekday", weekly(minutes)).await;
-        assert_eq!(refused_by(refused).as_deref(), Some("windows_rule_bounds_check"));
+        assert_eq!(
+            refused_by(refused).as_deref(),
+            Some("windows_rule_bounds_check")
+        );
     }
     store(&pool, "recurring_weekday", weekly(json!(10_080)))
         .await
