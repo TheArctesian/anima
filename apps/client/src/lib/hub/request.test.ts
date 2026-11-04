@@ -1,13 +1,15 @@
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import { parse } from 'graphql';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createHub, DEFAULT_HUB_ADDRESS, HUB_TIMEOUT_MS, type Hub, type TokenProvider } from './hub';
+import { createHub, DEFAULT_HUB_ADDRESS, type Hub, type TokenProvider } from './hub';
 
 const ME = parse('query Me($first: Int) { me { username } }') as TypedDocumentNode<
   { me: { username: string } },
   { first?: number }
 >;
 const CONTACT_AT = new Date('2026-11-04T10:00:00Z');
+/** The `createHub` timeout when none is given. */
+const DEFAULT_TIMEOUT_MS = 10_000;
 
 interface Sent {
   readonly url: string;
@@ -107,7 +109,7 @@ describe('Hub.request on a stalled link', () => {
       settled = true;
       return result;
     });
-    await vi.advanceTimersByTimeAsync(HUB_TIMEOUT_MS - 1);
+    await vi.advanceTimersByTimeAsync(DEFAULT_TIMEOUT_MS - 1);
     expect(settled).toBe(false);
     await vi.advanceTimersByTimeAsync(1);
     const result = await pending;
