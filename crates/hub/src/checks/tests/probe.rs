@@ -3,6 +3,7 @@
 
 mod config;
 mod dns;
+mod downgrade;
 mod http;
 mod icmp;
 mod proxy;

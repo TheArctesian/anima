@@ -111,6 +111,8 @@ pub enum Failure {
     Request,
     #[error("too many redirects")]
     TooManyRedirects,
+    #[error("a redirect left HTTPS while secrets are attached")]
+    InsecureRedirect,
     #[error("unexpected status {0}")]
     Status(u16),
     #[error("the keyword was not found in the first 1 MiB of the body")]
