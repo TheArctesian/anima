@@ -6,8 +6,9 @@
 //! this module writes no logs (LOG-007).
 //!
 //! SSH credentials live in `credentials.secrets`, one sealed row per part, each bound to its
-//! device and kind, so a value moved to another row does not open. Only sessions read them back ([`load_ssh`]); the API sees
-//! [`has_ssh`] alone (SEC-005).
+//! device and kind, so a value moved to another row does not open. Only sessions read them
+//! back ([`load_ssh`]); the API sees only whether one exists ([`has_ssh`], [`with_ssh`])
+//! (SEC-005).
 
 mod secret;
 mod ssh;
