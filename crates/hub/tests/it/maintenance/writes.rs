@@ -35,13 +35,9 @@ async fn target_count(pool: &PgPool) -> i64 {
         .unwrap()
 }
 
-fn input_vars(input: Value) -> Value {
-    json!({ "input": input })
-}
-
 fixture_test! {
     async fn mw_004_create_returns_the_stored_window_with_the_fields_as_typed(pool: PgPool) {
-        let created = data_with(&schema_for(&pool), &create_query(), input_vars(weekday_input("Patch"))).await;
+        let created = data_with(&schema_for(&pool), &create_query(), json!({ "input": weekday_input("Patch") })).await;
         let window = &created["createMaintenanceWindow"];
         assert_eq!(window["name"], "Patch");
         assert_eq!(window["kind"], "RECURRING_WEEKDAY");
@@ -62,7 +58,7 @@ fixture_test! {
             { "type": "TAG", "target": "infra" },
             { "type": "DEVICE", "target": "0190A000-0000-7000-8002-000000000001" },
         ]);
-        let created = data_with(&schema_for(&pool), &create_query(), input_vars(input)).await;
+        let created = data_with(&schema_for(&pool), &create_query(), json!({ "input": input })).await;
         assert_eq!(created["createMaintenanceWindow"]["targets"], json!([
             { "type": "DEVICE", "target": "0190a000-0000-7000-8002-000000000001" },
             { "type": "TAG", "target": "infra" },
@@ -73,7 +69,7 @@ fixture_test! {
     async fn mw_001_a_bad_time_zone_is_a_validation_error_and_stores_nothing(pool: PgPool) {
         let mut input = weekday_input("Patch");
         input["timezone"] = json!("Mars/Olympus_Mons");
-        let response = with_variables(&schema_for(&pool), &create_query(), input_vars(input)).await;
+        let response = with_variables(&schema_for(&pool), &create_query(), json!({ "input": input })).await;
         assert_eq!(validation_fields(&error_json(&response)), ["timezone"]);
         assert_eq!((window_count(&pool).await, target_count(&pool).await), (2, 2));
     }
@@ -84,14 +80,14 @@ fixture_test! {
             "weekdays": [], "startTime": "7pm", "durationMinutes": 0, "everyDays": 2,
             "targets": [],
         });
-        let response = with_variables(&schema_for(&pool), &create_query(), input_vars(input)).await;
+        let response = with_variables(&schema_for(&pool), &create_query(), json!({ "input": input })).await;
         let error = error_json(&response);
         assert_eq!(
             validation_fields(&error),
             ["name", "timezone", "everyDays", "weekdays", "startTime", "durationMinutes", "targets"]
         );
         for field in error["extensions"]["fields"].as_array().unwrap() {
-            assert!(!field["message"].as_str().unwrap().is_empty());
+            assert_ne!(field["message"].as_str().unwrap(), "");
         }
         assert_eq!(window_count(&pool).await, 2);
     }
@@ -99,13 +95,13 @@ fixture_test! {
     async fn mw_004_a_field_of_another_kind_is_refused_by_name(pool: PgPool) {
         let mut input = manual_input("Manual with a rule");
         input["startTime"] = json!("03:00");
-        let response = with_variables(&schema_for(&pool), &create_query(), input_vars(input)).await;
+        let response = with_variables(&schema_for(&pool), &create_query(), json!({ "input": input })).await;
         assert_eq!(validation_fields(&error_json(&response)), ["startTime"]);
     }
 
     async fn mw_001_a_name_already_in_use_is_a_validation_error_on_name(pool: PgPool) {
         let response = with_variables(
-            &schema_for(&pool), &create_query(), input_vars(weekday_input("Sunday updates")),
+            &schema_for(&pool), &create_query(), json!({ "input": weekday_input("Sunday updates") }),
         ).await;
         assert_eq!(validation_fields(&error_json(&response)), ["name"]);
         assert_eq!(window_count(&pool).await, 2);

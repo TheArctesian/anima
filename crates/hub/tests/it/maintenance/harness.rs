@@ -124,7 +124,7 @@ pub fn switch_query() -> String {
 
 pub const DELETE: &str = "mutation($id: ID!) { deleteMaintenanceWindow(id: $id) }";
 
-/// A valid MANUAL window input applying to the tag `infra`.
+/// A valid `MANUAL` window input applying to the tag `infra`.
 pub fn manual_input(name: &str) -> Value {
     serde_json::json!({
         "name": name, "kind": "MANUAL", "timezone": "UTC",
@@ -132,7 +132,7 @@ pub fn manual_input(name: &str) -> Value {
     })
 }
 
-/// A valid RECURRING_WEEKDAY input: Sundays 03:00 for an hour in Auckland, applying to `infra`.
+/// A valid `RECURRING_WEEKDAY` input: Sundays 03:00 for an hour in Auckland, applying to `infra`.
 pub fn weekday_input(name: &str) -> Value {
     serde_json::json!({
         "name": name, "kind": "RECURRING_WEEKDAY", "timezone": "Pacific/Auckland",

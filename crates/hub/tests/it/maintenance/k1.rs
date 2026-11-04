@@ -32,7 +32,9 @@ const OWNED_ROOT: [&str; 5] = [
 ];
 
 /// For each named type, member name to signature (arguments, type, default).
-fn members(document: &ServiceDocument) -> BTreeMap<String, BTreeMap<String, String>> {
+type Members = BTreeMap<String, BTreeMap<String, String>>;
+
+fn members(document: &ServiceDocument) -> Members {
     let mut types = BTreeMap::new();
     for definition in &document.definitions {
         let TypeSystemDefinition::Type(definition) = definition else {
@@ -81,10 +83,7 @@ fn signature(input: &InputValueDefinition) -> String {
     format!("{}: {}{default}", input.name.node, input.ty.node)
 }
 
-fn hub_and_k1() -> (
-    BTreeMap<String, BTreeMap<String, String>>,
-    BTreeMap<String, BTreeMap<String, String>>,
-) {
+fn hub_and_k1() -> (Members, Members) {
     // The schema never touches the database for its SDL, so a lazy pool is enough.
     let pool = sqlx::PgPool::connect_lazy("postgres://unused@127.0.0.1:1/none").unwrap();
     let hub = members(&parse_schema(schema_for(&pool).sdl()).expect("hub sdl parses"));

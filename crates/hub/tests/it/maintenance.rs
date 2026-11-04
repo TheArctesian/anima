@@ -37,8 +37,7 @@ fn constraint_of(error: &sqlx::Error) -> Option<&str> {
 async fn insert_window(
     pool: &PgPool,
     name: &str,
-    kind: &str,
-    rule_kind: &str,
+    (kind, rule_kind): (&str, &str),
     active_manual: bool,
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
@@ -93,24 +92,24 @@ fixture_test! {
     }
 
     async fn k2_a_duplicate_window_name_fails_on_the_named_constraint(pool: PgPool) {
-        let error = insert_window(&pool, "Sunday updates", "manual", "manual", false).await.unwrap_err();
+        let error = insert_window(&pool, "Sunday updates", ("manual", "manual"), false).await.unwrap_err();
         assert_eq!(constraint_of(&error), Some("windows_name_key"));
     }
 
     async fn k2_an_unknown_kind_fails_on_the_named_check(pool: PgPool) {
-        let error = insert_window(&pool, "x", "cron", "cron", false).await.unwrap_err();
+        let error = insert_window(&pool, "x", ("cron", "cron"), false).await.unwrap_err();
         assert_eq!(constraint_of(&error), Some("windows_kind_check"));
     }
 
     async fn mw_004_the_rule_must_carry_the_kind_of_its_row(pool: PgPool) {
-        let error = insert_window(&pool, "x", "manual", "single", false).await.unwrap_err();
+        let error = insert_window(&pool, "x", ("manual", "single"), false).await.unwrap_err();
         assert_eq!(constraint_of(&error), Some("windows_rule_kind_check"));
     }
 
     async fn mw_004_only_a_manual_window_can_be_switched_on(pool: PgPool) {
-        let error = insert_window(&pool, "x", "single", "single", true).await.unwrap_err();
+        let error = insert_window(&pool, "x", ("single", "single"), true).await.unwrap_err();
         assert_eq!(constraint_of(&error), Some("windows_active_manual_check"));
-        insert_window(&pool, "y", "manual", "manual", true).await.unwrap();
+        insert_window(&pool, "y", ("manual", "manual"), true).await.unwrap();
 
         let error = sqlx::query(
             "UPDATE maintenance.windows SET active_manual = true WHERE id = $1::text::uuid",
