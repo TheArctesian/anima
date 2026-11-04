@@ -25,8 +25,9 @@ fn names(connection: &Value) -> Vec<&str> {
         .collect()
 }
 
-/// Adds `sites` empty sites and `devices` devices spread over every site, with SSH settings.
-pub async fn add_bulk(pool: &PgPool, sites: i32, devices: i32) {
+/// Adds `sites` empty sites and `devices` devices spread over every site, with SSH settings
+/// and two checks each.
+pub(crate) async fn add_bulk(pool: &PgPool, sites: i32, devices: i32) {
     sqlx::query(
         "INSERT INTO devices.sites (id, name, subnet) \
          SELECT gen_random_uuid(), 'bulk-site-' || g, ('10.100.' || g || '.0/24')::cidr \
@@ -51,6 +52,17 @@ pub async fn add_bulk(pool: &PgPool, sites: i32, devices: i32) {
     sqlx::query(
         "INSERT INTO devices.ssh_settings (device_id, enabled, port, username, auth) \
          SELECT id, false, 22, '', 'private_key' FROM devices.devices WHERE name LIKE 'bulk-%'",
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+    sqlx::query(
+        "INSERT INTO checks.checks (id, device_id, type, name, config) \
+         SELECT gen_random_uuid(), id, 'icmp', 'Ping', '{\"timeoutMs\":2000,\"ipVersion\":\"V4\"}'::jsonb \
+         FROM devices.devices WHERE name LIKE 'bulk-%' \
+         UNION ALL \
+         SELECT gen_random_uuid(), id, 'tcp', 'SSH port', '{\"port\":22,\"timeoutMs\":5000}'::jsonb \
+         FROM devices.devices WHERE name LIKE 'bulk-%'",
     )
     .execute(pool)
     .await

@@ -74,7 +74,7 @@ impl Bus { pub fn publish(&self, s: Signal); pub fn subscribe(&self) -> tokio::s
 
 `Status`, `CheckId` and `DeviceId` come from the leaf modules, and `events` defines the three shared value types above, so `events` imports no domain (R-019).
 
-Wiring only (called from `main.rs`, never from another domain): `create_partitions_ahead`, `drop_expired_partitions`, `check_runtime_role` (R-016, R-019).
+Wiring only (called from `main.rs`, never from another domain): `create_partitions_ahead`, `drop_expired_partitions`, `check_runtime_role`, `run_daily`, `keep_partitions` (R-016, R-019; WP-05 T2).
 
 ### Allowed domain dependencies (the import-graph gate enforces this list; REPO-004)
 
@@ -205,8 +205,13 @@ pub async fn host_key(db: &Db, device: DeviceId) -> Result<Option<HostKey>, Erro
 pub async fn host_keys(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, HostKey>, Error>;
 /// axum route for GET /tunnel (see tunnel.md). `guacd` is the K7 `host:port` text, resolved at connect time (R-032).
 pub fn tunnel_router(db: Db, vault: credentials::Vault, bus: events::Bus, clock: Clock, guacd: String, live: Live) -> axum::Router;
-/// Wiring only: at start, end rows a crashed hub left open with HUB_SHUTDOWN (R-032).
+/// Wiring only: at start, ends what a previous process left open (as close_stale) and returns the Live that issues tickets, with how many rows it ended (R-041).
+pub async fn open(db: &Db, now: DateTime<Utc>) -> Result<(Live, u64), Error>;
+/// Wiring only: at start, end rows a crashed hub left open with HUB_SHUTDOWN, one `session.end` audit entry per row in the same transaction (R-032, R-040).
 pub async fn close_stale(db: &Db, now: DateTime<Utc>) -> Result<u64, Error>;
+/// Wiring only: call on the shutdown signal, before the runtime stops; upgraded tunnels are not ended by the server's drain.
+/// Signals tunnels, withdraws pending and spent tickets and refuses new ones, ends those rows HUB_SHUTDOWN with audit, waits up to 5 s (R-040).
+pub async fn shut_down(db: &Db, live: &Live, now: DateTime<Utc>) -> Result<(), Error>;
 ```
 
 ## guac-protocol crate (WP-08)

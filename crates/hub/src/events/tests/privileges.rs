@@ -53,16 +53,14 @@ pub(super) async fn refusal(conn: &mut PgConnection, sql: &str) -> Option<String
     Some(code.map_or_else(|| error.to_string(), Into::into))
 }
 
-/// Runs `body` on `conn` as `anima_runtime`, then resets the role. `body` returns its findings
-/// instead of asserting, so the reset runs before the caller asserts.
+/// Runs `body` on `conn` as `anima_runtime`. `conn` must be detached from the pool (R-019), so
+/// the role dies with the connection.
 pub(super) async fn as_runtime<T>(
     conn: &mut PgConnection,
     body: impl AsyncFnOnce(&mut PgConnection) -> T,
 ) -> T {
     execute(conn, "set role anima_runtime").await;
-    let findings = body(conn).await;
-    execute(conn, "reset role").await;
-    findings
+    body(conn).await
 }
 
 /// Records one event and one audit entry on a day without partitions.
@@ -78,7 +76,7 @@ async fn write_both(conn: &mut PgConnection) -> Result<(), String> {
 
 #[sqlx::test(migrations = "./migrations")]
 async fn log_006_runtime_role_appends_but_cannot_change_or_remove_entries(pool: PgPool) {
-    let mut conn = pool.acquire().await.unwrap();
+    let mut conn = pool.acquire().await.unwrap().detach();
 
     let (wrote, refusals) = as_runtime(&mut conn, async |conn| {
         let wrote = write_both(conn).await;
@@ -98,7 +96,7 @@ async fn log_006_runtime_role_appends_but_cannot_change_or_remove_entries(pool: 
 
 #[sqlx::test(migrations = "./migrations")]
 async fn log_006_runtime_role_cannot_run_code_as_the_partition_owner_through_pg_temp(pool: PgPool) {
-    let mut conn = pool.acquire().await.unwrap();
+    let mut conn = pool.acquire().await.unwrap().detach();
 
     let (wrote, injected) = as_runtime(&mut conn, async |conn| {
         execute(conn, "create temp table injected (via text)").await;

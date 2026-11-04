@@ -65,12 +65,12 @@ const propo = 'OpenDyslexic Nerd Font Propo';
 const mono = 'OpenDyslexicM Nerd Font Mono';
 const symbols = 'Symbols Nerd Font';
 const expectedFaces: FontFace[] = [
-  { family: propo, weight: 400, style: 'normal', display: 'swap', file: 'OpenDyslexicNerdFontPropo-Regular.otf', format: 'opentype' },
-  { family: propo, weight: 700, style: 'normal', display: 'swap', file: 'OpenDyslexicNerdFontPropo-Bold.otf', format: 'opentype' },
-  { family: propo, weight: 400, style: 'italic', display: 'swap', file: 'OpenDyslexicNerdFontPropo-Italic.otf', format: 'opentype' },
-  { family: propo, weight: 700, style: 'italic', display: 'swap', file: 'OpenDyslexicNerdFontPropo-BoldItalic.otf', format: 'opentype' },
-  { family: mono, weight: 400, style: 'normal', display: 'swap', file: 'OpenDyslexicMNerdFontMono-Regular.otf', format: 'opentype' },
-  { family: symbols, weight: 400, style: 'normal', display: 'swap', file: 'SymbolsNerdFont-Regular.ttf', format: 'truetype' },
+  { family: propo, weight: 400, style: 'normal', display: 'block', file: 'OpenDyslexicNerdFontPropo-Regular.otf', format: 'opentype' },
+  { family: propo, weight: 700, style: 'normal', display: 'block', file: 'OpenDyslexicNerdFontPropo-Bold.otf', format: 'opentype' },
+  { family: propo, weight: 400, style: 'italic', display: 'block', file: 'OpenDyslexicNerdFontPropo-Italic.otf', format: 'opentype' },
+  { family: propo, weight: 700, style: 'italic', display: 'block', file: 'OpenDyslexicNerdFontPropo-BoldItalic.otf', format: 'opentype' },
+  { family: mono, weight: 400, style: 'normal', display: 'block', file: 'OpenDyslexicMNerdFontMono-Regular.otf', format: 'opentype' },
+  { family: symbols, weight: 400, style: 'normal', display: 'block', file: 'SymbolsNerdFont-Regular.ttf', format: 'truetype' },
 ];
 
 describe('@font-face declarations (UI-010, UI-011, UI-014)', () => {
@@ -78,9 +78,9 @@ describe('@font-face declarations (UI-010, UI-011, UI-014)', () => {
     expect([...parseFontFaces(fontsCss)].sort(byFace)).toEqual([...expectedFaces].sort(byFace));
   });
 
-  it('uses font-display swap on every face', () => {
+  it('uses font-display block on every face (bundled fonts, no first-paint shift, R-042)', () => {
     for (const face of parseFontFaces(fontsCss)) {
-      expect(face.display, `${face.family} ${face.weight} ${face.style}`).toBe('swap');
+      expect(face.display, `${face.family} ${face.weight} ${face.style}`).toBe('block');
     }
   });
 });

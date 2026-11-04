@@ -145,10 +145,8 @@ async fn secret_rows(pool: &PgPool) -> i64 {
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
 )]
-async fn api_010_without_the_vault_or_the_credential_loader_the_operator_gets_internal(
-    pool: PgPool,
-) {
-    // Everything the mutation and the field need except the vault and the loader, behind the
+async fn api_010_without_the_vault_or_a_loader_the_operator_gets_internal(pool: PgPool) {
+    // Everything the mutation and the fields need except the vault and the loaders, behind the
     // API boundary as `schema.rs` builds it.
     let (bus, clock) = (Bus::new(4), Arc::new(FixedClock(now())) as Arc<dyn Clock>);
     let builder = Schema::build(Query, Mutation, EmptySubscription)
@@ -160,12 +158,22 @@ async fn api_010_without_the_vault_or_the_credential_loader_the_operator_gets_in
     let read = signed_in(&format!(
         r#"{{ device(id: "{PVE_01}") {{ ssh {{ credentialStored }} }} }}"#
     ));
-    for request in [set, read] {
+    let read_key = signed_in(&format!(
+        r#"{{ device(id: "{PVE_01}") {{ ssh {{ hostKey {{ algorithm }} }} }} }}"#
+    ));
+    for request in [set, read, read_key] {
         let (log, response) = captured(|| schema.execute(request)).await;
         let error = error_json(&response);
         assert_eq!(error["extensions"]["code"], "INTERNAL", "{error}");
         let text = error.to_string();
-        for leak in ["Vault", "DataLoader", "CredentialStored", "Data `"] {
+        let leaks = [
+            "Vault",
+            "DataLoader",
+            "CredentialStored",
+            "HostKeysByDevice",
+            "Data `",
+        ];
+        for leak in leaks {
             assert!(!text.contains(leak), "{text}");
         }
         // H-5: the hidden cause reaches the log through the boundary.
