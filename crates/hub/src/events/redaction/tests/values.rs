@@ -48,6 +48,7 @@ fn log_007_redaction_masks_the_password_in_a_url() {
         "other": "https://host.example/a:b@c",
         "slash": "https://u:pa/ss@host.example/x",
         "query": "postgres://u:p?w#d@db/anima ok",
+        "at_sign": "postgres://u:p@ss@db/anima",
         "nested": "https://host.example/?next=https://v:q@k.example",
     });
 
@@ -60,6 +61,7 @@ fn log_007_redaction_masks_the_password_in_a_url() {
             "other": "https://host.example/a:b@c",
             "slash": "https://u:[redacted]@host.example/x",
             "query": "postgres://u:[redacted]@db/anima ok",
+            "at_sign": "postgres://u:[redacted]@db/anima",
             "nested": "https://host.example/?next=https://v:[redacted]@k.example",
         })
     );

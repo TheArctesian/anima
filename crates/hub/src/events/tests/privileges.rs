@@ -274,6 +274,16 @@ async fn r_023_new_partitions_get_select_and_insert_for_anima_runtime_only(pool:
     .fetch_all(&mut *conn)
     .await
     .unwrap();
+    // The owner keeps its own grants on the partition, so it can still maintain it directly.
+    let owner_grants: i64 = sqlx::query_scalar(
+        "select count(*) \
+         from pg_catalog.pg_class c cross join lateral pg_catalog.aclexplode(c.relacl) a \
+         where c.relname in ('event_log_20300606', 'audit_log_20300606') \
+             and a.grantee = c.relowner and a.privilege_type = 'DELETE'",
+    )
+    .fetch_one(&mut *conn)
+    .await
+    .unwrap();
 
     execute(&mut conn, &format!("drop owned by {group}")).await;
     execute(&mut conn, &format!("drop role {group}")).await;
@@ -295,4 +305,5 @@ async fn r_023_new_partitions_get_select_and_insert_for_anima_runtime_only(pool:
         })
         .collect();
     assert_eq!(grants, expected);
+    assert_eq!(owner_grants, 2);
 }

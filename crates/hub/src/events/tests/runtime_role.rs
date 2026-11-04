@@ -77,6 +77,20 @@ async fn r_016_start_check_refuses_a_superuser(pool: PgPool) {
     );
 }
 
+/// The login's rights count, not the session role's: a superuser login whose session runs as
+/// `anima_runtime` is refused as a superuser (R-023).
+#[sqlx::test(migrations = "./migrations")]
+async fn r_023_start_check_refuses_a_superuser_login_behind_a_session_role(pool: PgPool) {
+    let session = super::pool_as(&pool, "anima_runtime").await;
+    let outcome = check_runtime_role(&session).await;
+    session.close().await;
+
+    assert!(
+        matches!(outcome, Err(RoleError::Refused(Refusal::Superuser))),
+        "{outcome:?}"
+    );
+}
+
 #[sqlx::test(migrations = "./migrations")]
 async fn r_016_start_check_refuses_a_login_that_can_become_a_superuser(pool: PgPool) {
     let cases = [(
