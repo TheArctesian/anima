@@ -158,9 +158,12 @@
     transition: background-color var(--duration-fast) var(--ease-enter);
   }
 
-  button:hover:not(:disabled),
-  button:active:not(:disabled) {
+  button:hover:not(:disabled) {
     background: var(--border);
+  }
+
+  button:active:not(:disabled) {
+    background: var(--accent-tint);
   }
 
   button:focus-visible {

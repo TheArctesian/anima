@@ -158,9 +158,12 @@
     transition: background-color var(--duration-fast) var(--ease-enter);
   }
 
-  button:hover,
-  button:active {
+  button:hover {
     background: var(--border);
+  }
+
+  button:active {
+    background: var(--accent-tint);
   }
 
   a:focus-visible,

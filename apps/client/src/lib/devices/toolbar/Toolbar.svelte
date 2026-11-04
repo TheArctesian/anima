@@ -103,6 +103,9 @@
   }
 
   .search {
+    flex: 1 1 calc(var(--space-16) * 3);
+    min-inline-size: 0;
+    max-inline-size: calc(var(--space-16) * 6);
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
@@ -126,6 +129,8 @@
   }
 
   input {
+    flex: 1;
+    min-inline-size: 0;
     border: 0;
     background: transparent;
     color: var(--text);
