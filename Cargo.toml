@@ -31,7 +31,6 @@ zeroize = "1.9"
 sha2 = { version = "0.11", features = ["zeroize"] }
 base64 = "0.23"
 rand = { version = "0.9", default-features = false, features = ["std", "std_rng", "os_rng", "thread_rng"] }
-subtle = "2"
 static_assertions = "1.1"
 tempfile = "3.27"
 surge-ping = "0.9"

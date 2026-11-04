@@ -40,3 +40,21 @@ pub(in crate::checks) async fn before(
     .await?;
     rows.into_iter().map(heartbeat).collect()
 }
+
+/// The newest heartbeat of each of the checks that has one, in one query.
+pub(in crate::checks) async fn latest(
+    db: &PgPool,
+    checks: &[CheckId],
+) -> Result<Vec<(CheckId, Heartbeat)>, Error> {
+    type Latest = (CheckId, DateTime<Utc>, String, Option<i32>, Option<String>);
+    let rows: Vec<Latest> = sqlx::query_as(
+        "SELECT DISTINCT ON (check_id) check_id, at, status, response_time_ms, message \
+             FROM checks.heartbeats WHERE check_id = ANY($1) ORDER BY check_id, at DESC",
+    )
+    .bind(checks)
+    .fetch_all(db)
+    .await?;
+    rows.into_iter()
+        .map(|(check, at, status, ms, message)| Ok((check, heartbeat((at, status, ms, message))?)))
+        .collect()
+}

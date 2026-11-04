@@ -39,14 +39,14 @@ use super::{
 use crate::ids::{CheckId, DeviceId};
 
 pub(super) use beats::record_beat;
-pub(super) use heartbeats::before as heartbeats_before;
+pub(super) use heartbeats::{before as heartbeats_before, latest as latest_heartbeats};
 pub use retention::Trimmed;
 pub(super) use retention::{
     create_days_ahead, delete_orphan_heartbeats, drop_heartbeat_days_before, trim_aggregates,
 };
 use rows::{CheckRow, StandingRow, to_checks};
 pub(super) use sealed::seal;
-pub(super) use uptime::{check_tally, tallies};
+pub(super) use uptime::{check_tallies, check_tally, tallies};
 pub(super) use writes::{
     Change, Current, Insert, delete, insert, load_http_secrets, lock, set_paused, update,
 };
@@ -110,6 +110,18 @@ pub(super) async fn standings(db: &PgPool, devices: &[DeviceId]) -> Result<Vec<S
     .fetch_all(db)
     .await?;
     rows.into_iter().map(Standing::try_from).collect()
+}
+
+/// The device of each of the checks, in one query.
+pub(super) async fn devices_of(
+    db: &PgPool,
+    checks: &[CheckId],
+) -> Result<Vec<(CheckId, DeviceId)>, Error> {
+    let rows = sqlx::query_as("SELECT id, device_id FROM checks.checks WHERE id = ANY($1)")
+        .bind(checks)
+        .fetch_all(db)
+        .await?;
+    Ok(rows)
 }
 
 /// The PUSH check that holds this token, if any.

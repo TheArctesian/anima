@@ -14,12 +14,18 @@ mod form;
 mod heartbeat;
 mod input;
 mod live;
+mod loaders;
 mod opaque;
 mod settings;
 mod trail;
 mod write;
 
 use async_graphql::{Context, ID, Object, Result, Subscription, futures_util::stream::Stream};
+
+pub use self::loaders::{
+    CheckStatuses, CheckUptimes, LastHeartbeats, check_status_loader, check_uptime_loader,
+    last_heartbeat_loader,
+};
 
 use self::{
     error::{invalid, schema_dependency, to_graphql},
