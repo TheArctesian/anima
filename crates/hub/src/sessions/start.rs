@@ -98,9 +98,19 @@ fn embedded_v4(v6: Ipv6Addr) -> Option<Ipv4Addr> {
     embeds.then(|| Ipv4Addr::from((u32::from(high) << 16) | u32::from(low)))
 }
 
+/// Whether the IPv6 address is a tunnel address that carries an IPv4 address elsewhere in it:
+/// 6to4 `2002::/16` (bits 16–47) and Teredo `2001::/32` (server in bits 32–63, client
+/// inverted in the last 32). Refused outright rather than decoded: a LAN device is not
+/// reached through either, and decoding both forms is easy to get wrong.
+fn is_ipv4_tunnel(v6: Ipv6Addr) -> bool {
+    let [first, second, ..] = v6.segments();
+    first == 0x2002 || (first, second) == (0x2001, 0)
+}
+
 /// Whether `ip` points back at the gateway's own machine or at no single host: loopback,
 /// link-local, multicast, broadcast, unspecified or "this network" (`0.0.0.0/8`). An IPv6
-/// address that embeds an IPv4 address is also refused when that address is.
+/// address that embeds an IPv4 address is also refused when that address is, and 6to4 and
+/// Teredo addresses are refused whatever they carry.
 pub(super) fn is_refused_target(ip: IpAddr) -> bool {
     match ip {
         IpAddr::V4(v4) => is_refused_v4(v4),
@@ -109,6 +119,7 @@ pub(super) fn is_refused_target(ip: IpAddr) -> bool {
                 || v6.is_unicast_link_local()
                 || v6.is_multicast()
                 || v6.is_unspecified()
+                || is_ipv4_tunnel(v6)
                 || embedded_v4(v6).is_some_and(is_refused_v4)
         }
     }
@@ -201,7 +212,12 @@ pub async fn start(
     live.issue(token.hash(), pending.clone())
         .map_err(|_| Error::Unavailable)?;
     if let Err(error) = tx.commit().await {
-        live.withdraw(pending.session);
+        // The commit may have reached the database before it failed, leaving a live row.
+        // The ticket goes back without its token: never redeemable, and the sweep ends any
+        // such row `TIMEOUT` at expiry (a missing row is a no-op for `end_row`).
+        if let Some(ticket) = live.withdraw(pending.session) {
+            live.restore(vec![ticket]);
+        }
         return Err(error.into());
     }
     Ok(Ticket::new(pending.session, token, pending.expires_at))

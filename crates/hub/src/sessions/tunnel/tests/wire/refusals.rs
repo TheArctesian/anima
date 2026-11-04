@@ -199,9 +199,12 @@ async fn log_007_gw_014_the_token_password_and_connection_id_never_reach_the_log
     let capture = Capture::default();
     let writer = capture.clone();
     let subscriber = process_log::subscriber("trace", move || writer.clone()).unwrap();
+    // While exactly one dispatcher is registered, tracing-core builds a callsite's interest
+    // from the registering thread's own default, so another test thread with no subscriber
+    // would cache the tunnel's callsites as disabled for this one too. A second registered
+    // dispatcher makes every registration ask all of them.
+    let _second = tracing::Dispatch::new(tracing::subscriber::NoSubscriber::default());
     let _default = tracing::subscriber::set_default(subscriber);
-    // Another test thread may have cached a callsite as disabled while this subscriber was
-    // being installed (tracing-core interest race); recompute so the tunnel's lines show.
     tracing::callsite::rebuild_interest_cache();
     tracing::info!("log_007 capture marker");
 

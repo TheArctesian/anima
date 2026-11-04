@@ -277,6 +277,13 @@ impl Live {
 
     /// Puts back withdrawn tickets whose rows could not be ended. They go back without a
     /// token, so they stay refused, and the next sweep ends them once they expire.
+    ///
+    /// Restored tickets are never dropped, so the held count may pass `MAX_PENDING`: tickets
+    /// issued while these were out count against the cap, and these come back on top. One
+    /// failed sweep or end therefore adds at most `MAX_PENDING` beyond the cap (`2 ×
+    /// MAX_PENDING` held), and `issue` refuses every new ticket while the count is over it.
+    /// It can grow further only if the database keeps failing across sweeps; the first sweep
+    /// that commits removes every expired ticket and brings it back under the cap.
     pub(super) fn restore(&self, tickets: Vec<PendingTicket>) {
         self.state()
             .spent

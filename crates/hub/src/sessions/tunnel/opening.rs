@@ -13,18 +13,42 @@ use super::{
     route::Route,
 };
 use crate::{
-    credentials, devices,
+    credentials,
+    devices::{self, Device},
     sessions::{self, PendingTicket, PublicKey, start::is_refused_target},
 };
 
-/// The device's host key could not be read. Holds no detail: the reader logs its own.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) struct HostKeyUnread;
+/// The key a device presented and the address it was read from: the address the reader
+/// resolved the host to and checked against the target rule (WP-10 T3 `KeyRead`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(super) struct HostKeyRead {
+    pub(super) key: PublicKey,
+    pub(super) address: SocketAddr,
+}
 
-/// Reads the SSH host key the device presents at an address, without signing in (R-034,
-/// the `testConnection` probe). The tunnel bounds the wait.
+/// Why the reader found no key, in the tunnel's terms (from WP-10 T3 `ProbeError`: its
+/// `Unresolved` and `RefusedTarget` map to the same names, everything else to `Unreadable`).
+/// Holds no detail: the reader logs its own.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "built by the WP-10 T3 probe once tunnel_router wires it in"
+    )
+)]
+pub(super) enum HostKeyUnread {
+    Unresolved,
+    RefusedTarget,
+    Unreadable,
+}
+
+/// Reads the SSH host key the device presents at `host` and `port`, without signing in
+/// (R-034, the `testConnection` probe). The reader resolves the host and applies the target
+/// rule, so the tunnel resolves nothing itself and sends guacd the address the key came
+/// from. The tunnel bounds the wait.
 pub(super) type ReadHostKey = Arc<
-    dyn Fn(SocketAddr) -> Pin<Box<dyn Future<Output = Result<PublicKey, HostKeyUnread>> + Send>>
+    dyn Fn(String, u16) -> Pin<Box<dyn Future<Output = Result<HostKeyRead, HostKeyUnread>> + Send>>
         + Send
         + Sync,
 >;
@@ -133,11 +157,8 @@ pub(super) async fn open(route: &Route, ticket: &PendingTicket) -> Result<Openin
         .await
         .map_err(NotOpened::Sessions)?
         .ok_or(NotOpened::NoHostKey)?;
-    let wait = route.timing.connect;
-    let target = timeout(wait, target(&device.host, device.ssh.port))
-        .await
-        .map_err(|_| NotOpened::Unresolved)??;
-    if check_host_key(route, target, &accepted.public_key).await? == HostKeyCheck::Changed {
+    let (target, check) = check_host_key(route, &device, &accepted.public_key).await?;
+    if check == HostKeyCheck::Changed {
         return Ok(Opening::HostKeyChanged);
     }
     let secret = credentials::load_ssh(&route.db, &route.vault, device.id)
@@ -172,22 +193,34 @@ async fn target(host: &str, port: u16) -> Result<SocketAddr, NotOpened> {
     Ok(SocketAddr::new(ip, port))
 }
 
-/// The hub's own host-key check before the guacd handshake (R-034), where the reader runs.
+/// The hub's own host-key check before the guacd handshake (R-034), and the address guacd
+/// is sent to: the one the key was read from. Without a reader the host is resolved and
+/// checked here, and the key is left to guacd's pin.
 async fn check_host_key(
     route: &Route,
-    target: SocketAddr,
+    device: &Device,
     accepted: &PublicKey,
-) -> Result<HostKeyCheck, NotOpened> {
+) -> Result<(SocketAddr, HostKeyCheck), NotOpened> {
+    let (host, port) = (device.host.clone(), device.ssh.port);
+    let wait = route.timing.connect;
     let Some(read) = &route.read_host_key else {
-        return Ok(HostKeyCheck::Accepted);
+        let target = timeout(wait, target(&host, port))
+            .await
+            .map_err(|_| NotOpened::Unresolved)??;
+        return Ok((target, HostKeyCheck::Accepted));
     };
-    let presented = timeout(route.timing.connect, read(target))
+    let read = timeout(wait, read(host, port))
         .await
         .map_err(|_| NotOpened::HostKeyUnread)?
-        .map_err(|HostKeyUnread| NotOpened::HostKeyUnread)?;
-    Ok(if presented == *accepted {
+        .map_err(|unread| match unread {
+            HostKeyUnread::Unresolved => NotOpened::Unresolved,
+            HostKeyUnread::RefusedTarget => NotOpened::RefusedTarget,
+            HostKeyUnread::Unreadable => NotOpened::HostKeyUnread,
+        })?;
+    let check = if read.key == *accepted {
         HostKeyCheck::Accepted
     } else {
         HostKeyCheck::Changed
-    })
+    };
+    Ok((read.address, check))
 }

@@ -14,7 +14,7 @@ use super::{
     heard, session,
     socket::open_with,
 };
-use crate::sessions::{Actor, end::end_session};
+use crate::sessions::{Actor, EndReason, SessionEnd, end::end_session, store};
 
 const LOOPBACK: &str = "127.0.0.1";
 
@@ -84,4 +84,28 @@ async fn mv_003_end_session_racing_a_client_close_ends_once(pool: PgPool) {
     tokio::time::sleep(Duration::from_millis(200)).await;
     let again = super::bench::ended(&pool, bench.session).await;
     assert_eq!((again.audits.len(), again.events.len()), (1, 1));
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
+)]
+async fn d_9_a_row_already_ended_elsewhere_gets_no_second_end_or_event(pool: PgPool) {
+    let (mut guacd, bench, mut client) = session(&pool, Setup::default()).await;
+    // As `close_stale` would leave it after a hub restart.
+    let first = SessionEnd {
+        at: now(),
+        reason: EndReason::HubShutdown,
+    };
+    assert!(store::end(&pool, bench.session, first).await.unwrap());
+    assert_eq!(client.close().await, Some(1000));
+    assert_eq!(heard(&mut guacd).await.opcode, "disconnect");
+    // The tunnel's end write comes after it leaves guacd; give it a moment.
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    let ended = ended(&pool, bench.session).await;
+    assert_eq!(ended.reason, "hub_shutdown", "the first end wins");
+    assert!(
+        ended.audits.is_empty() && ended.events.is_empty(),
+        "{ended:?}"
+    );
 }

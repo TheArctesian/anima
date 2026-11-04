@@ -47,6 +47,7 @@ async fn opened(client: &mut Socket) {
     assert_eq!(open.opcode, "");
     assert_eq!(open.args.len(), 1);
     assert!(Uuid::parse_str(&open.args[0]).is_ok(), "{:?}", open.args);
+    assert_eq!(open.args[0].len(), 36, "K4 Section 4: `0.,36.<uuid>;`");
     assert_ne!(open.args[0], CONNECTION_ID);
 }
 
