@@ -129,8 +129,8 @@ fixture_test! {
         let device = &response.data.into_json().unwrap()["updateDevice"];
         assert_eq!(device["name"], "pve-01");
         assert!(device["updatedAt"].as_str().unwrap().starts_with("2026-11-01"), "{device}");
-        assert!(rows(&pool, "event_log").await.is_empty());
-        assert!(rows(&pool, "audit_log").await.is_empty());
+        assert_eq!(rows(&pool, "event_log").await.len(), 0);
+        assert_eq!(rows(&pool, "audit_log").await.len(), 0);
         assert!(receiver.try_recv().is_err());
         let unknown = json!({ "id": "0190a000-0000-7000-8002-0000000000ff" });
         let error = error_json(&with_variables(&schema, query, unknown).await);
