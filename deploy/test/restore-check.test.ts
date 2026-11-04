@@ -54,6 +54,9 @@ describe("restore-check.sh against the manifest (DB-007)", () => {
     expect(result.stderr).toContain("warning: could not drop database anima_restore_check");
   });
 
+});
+
+describe("restore-check.sh failures (DB-007)", () => {
   test("DB-007: the output never holds row contents", () => {
     const path = backUp();
     owner("select 1");
