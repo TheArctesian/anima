@@ -931,7 +931,7 @@ The view has these tabs:
 ## 7. Settings page
 
 - **SET-001.** The Settings page must be available from the navigation bar.
-- **SET-002.** In Phase 1, the Settings page must show only the page title "Settings" and, in the desktop app, the "Updates" row (UPD-006).
+- **SET-002.** In Phase 1, the Settings page must show only the page title "Settings", a "Signed in as <name>" row with "Sign out" (R-048), and, in the desktop app, the "Updates" row (UPD-006).
 
 A later version adds these items to the Settings page:
 
