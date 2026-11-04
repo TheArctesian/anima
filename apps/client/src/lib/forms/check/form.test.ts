@@ -110,7 +110,7 @@ it('CHK-009: the form refuses to save an invalid check and shows the error besid
 });
 
 it('CHK-009: a valid form saves the typed values', async () => {
-  const onSave = vi.fn((_values: CheckFormValues) => Promise.resolve(OK));
+  const onSave = vi.fn<(values: CheckFormValues) => Promise<HubResult<unknown>>>(() => Promise.resolve(OK));
   const form = show({ onSave });
   type('Name', 'ssh');
   choose('Type', 'TCP');
