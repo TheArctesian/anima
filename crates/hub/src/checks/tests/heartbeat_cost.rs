@@ -10,6 +10,7 @@ use crate::checks::store::{LATEST_SQL, PAGES_SQL};
 const DEVICE: &str = "0190a000-0000-7000-8002-000000000001";
 const BEATS: i32 = 6000;
 const LIMIT: i64 = 20;
+const LIMIT_ROWS: f64 = 20.0;
 
 async fn check_with_history(pool: &PgPool) -> Uuid {
     let id = Uuid::now_v7();
@@ -71,7 +72,7 @@ async fn api_005_a_page_of_heartbeats_reads_the_page_not_the_history(pool: PgPoo
     let id = check_with_history(&pool).await;
     let read = rows_read(&plan_of(&pool, PAGES_SQL, id, Some(LIMIT)).await);
     assert!(
-        read < 10.0 * LIMIT as f64,
+        read < 10.0 * LIMIT_ROWS,
         "read {read} rows for a page of {LIMIT} out of {BEATS}"
     );
 }

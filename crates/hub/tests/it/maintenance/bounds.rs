@@ -25,7 +25,7 @@ fn refused_by(result: Result<(), sqlx::Error>) -> Option<String> {
         .map(str::to_owned)
 }
 
-fn weekly(minutes: Value) -> Value {
+fn weekly(minutes: &Value) -> Value {
     json!({ "kind": "recurring_weekday", "weekdays": ["mon"], "startTime": "03:00:00",
             "durationMinutes": minutes })
 }
@@ -38,13 +38,13 @@ async fn mw_004_a_stored_duration_over_seven_days_is_refused_by_the_database(poo
         json!(0),
         json!("60"),
     ] {
-        let refused = store(&pool, "recurring_weekday", weekly(minutes)).await;
+        let refused = store(&pool, "recurring_weekday", weekly(&minutes)).await;
         assert_eq!(
             refused_by(refused).as_deref(),
             Some("windows_rule_bounds_check")
         );
     }
-    store(&pool, "recurring_weekday", weekly(json!(10_080)))
+    store(&pool, "recurring_weekday", weekly(&json!(10_080)))
         .await
         .unwrap();
 }
