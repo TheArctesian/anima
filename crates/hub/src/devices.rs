@@ -2,6 +2,7 @@
 
 mod model;
 mod page;
+mod row;
 mod rules;
 mod store;
 #[cfg(test)]

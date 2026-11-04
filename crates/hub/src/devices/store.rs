@@ -1,18 +1,13 @@
-//! All SQL on schema `devices`: I/O and row mapping only. Ids and time come in as parameters.
-
-use std::net::IpAddr;
+//! All SQL on schema `devices`: I/O only; rows are mapped in `row`. Ids and time come in as parameters.
 
 use chrono::{DateTime, Utc};
-use ipnet::IpNet;
 use sqlx::{Connection, PgConnection, PgExecutor, PgPool};
 
 use super::{
-    Error, FieldError, Missing,
-    model::{
-        Device, DeviceChange, DeviceFilter, NewDevice, NewSite, OperatingSystem, Site, SshAuth,
-        SshSettings,
-    },
+    Error, Missing,
+    model::{Device, DeviceChange, DeviceFilter, NewDevice, NewSite, OperatingSystem, Site},
     page::split_page,
+    row::{DeviceRow, to_devices, to_site, write_error},
 };
 use crate::ids::{DeviceId, SiteId};
 
@@ -37,83 +32,6 @@ macro_rules! device_filter {
           AND $2::text[] <@ ARRAY(SELECT t.tag FROM devices.device_tags t WHERE t.device_id = d.id) \
           AND ($3::uuid IS NULL OR d.site_id = $3))"
     };
-}
-
-#[derive(sqlx::FromRow)]
-struct DeviceRow {
-    id: DeviceId,
-    site_id: SiteId,
-    name: String,
-    host: String,
-    ip: Option<IpAddr>,
-    kind: String,
-    os: String,
-    maintenance: bool,
-    created_at: DateTime<Utc>,
-    updated_at: DateTime<Utc>,
-    enabled: bool,
-    port: i32,
-    username: String,
-    auth: String,
-    tags: Vec<String>,
-}
-
-fn decode<E: std::error::Error + Send + Sync + 'static>(error: E) -> sqlx::Error {
-    sqlx::Error::Decode(Box::new(error))
-}
-
-impl TryFrom<DeviceRow> for Device {
-    type Error = sqlx::Error;
-
-    fn try_from(row: DeviceRow) -> Result<Self, sqlx::Error> {
-        Ok(Self {
-            id: row.id,
-            site: row.site_id,
-            name: row.name,
-            host: row.host,
-            ip: row.ip,
-            kind: row.kind,
-            os: row.os.parse::<OperatingSystem>().map_err(decode)?,
-            tags: row.tags,
-            maintenance: row.maintenance,
-            ssh: SshSettings {
-                enabled: row.enabled,
-                port: u16::try_from(row.port).map_err(decode)?,
-                username: row.username,
-                auth: row.auth.parse::<SshAuth>().map_err(decode)?,
-            },
-            created_at: row.created_at,
-            updated_at: row.updated_at,
-        })
-    }
-}
-
-fn to_devices(rows: Vec<DeviceRow>) -> Result<Vec<Device>, Error> {
-    Ok(rows
-        .into_iter()
-        .map(Device::try_from)
-        .collect::<Result<_, _>>()?)
-}
-
-#[cfg_attr(not(test), expect(dead_code, reason = "used by devices GraphQL"))]
-fn to_site((id, name, subnet): (SiteId, String, IpNet)) -> Site {
-    Site { id, name, subnet }
-}
-
-/// Turns a violated constraint into the field the operator must fix.
-#[cfg_attr(not(test), expect(dead_code, reason = "used by devices GraphQL"))]
-fn write_error(error: sqlx::Error) -> Error {
-    let field = match error.as_database_error().and_then(|e| e.constraint()) {
-        Some("sites_name_key" | "devices_name_key") => {
-            FieldError::new("name", "That name is already taken. Choose another.")
-        }
-        Some("sites_subnet_key" | "sites_subnet_no_overlap") => {
-            FieldError::new("subnet", "This subnet overlaps an existing site subnet.")
-        }
-        Some("devices_site_id_fkey") => FieldError::new("siteId", "There is no such site."),
-        _ => return Error::Database(error),
-    };
-    Error::Validation(vec![field])
 }
 
 #[cfg_attr(not(test), expect(dead_code, reason = "used by devices GraphQL"))]
