@@ -54,6 +54,11 @@ export const threshold = {
   loadingMin: 500,
 } as const;
 
+export const gesture = {
+  projectionDeceleration: 0.998,
+  rubberbandConstant: 0.55,
+} as const;
+
 export const breakpoint = {
   compact: {
     minPx: 0,

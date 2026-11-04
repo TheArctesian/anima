@@ -1,4 +1,4 @@
-import { GENERATED_NOTICE, bezierOf, fieldsOf, leadingNumber, springOf, trimmedDecimal, type Token } from './model.ts';
+import { GENERATED_NOTICE, bezierOf, fieldsOf, leadingNumber, numberOf, springOf, trimmedDecimal, type Token } from './model.ts';
 import { toLibraryForm } from './spring.ts';
 
 interface LiteralObject {
@@ -13,6 +13,7 @@ export const EXPORTS = [
   { group: 'motion.ease', export: 'ease', prefix: 'ease-' },
   { group: 'motion.stagger', export: 'stagger', prefix: 'stagger-' },
   { group: 'motion.threshold', export: 'threshold', prefix: 'threshold-' },
+  { group: 'gesture', export: 'gesture', prefix: '' },
   { group: 'layout.bp', export: 'breakpoint', prefix: 'bp-' },
 ] as const;
 
@@ -45,6 +46,8 @@ function exportedValue(token: Token): Literal {
   switch (token.type) {
     case 'spring':
       return springValue(token);
+    case 'gesture':
+      return numberOf(token.value);
     case 'duration':
     case 'dimension':
       return leadingNumber(token.value);
@@ -78,7 +81,7 @@ function reducedSection(tokens: readonly Token[]): string {
   ].join('\n');
 }
 
-/** tokens.ts: the typed constants for springs, durations, easing, stagger, thresholds and breakpoints (K5). */
+/** tokens.ts: the typed constants for springs, durations, easing, stagger, thresholds, gesture constants and breakpoints (K5). */
 export function renderTypescript(tokens: readonly Token[]): string {
   const springNote = '// Spring: stiffness = (2π / responseS)², damping = 4π × dampingRatio / responseS, mass 1 (5.7.2).';
   return [

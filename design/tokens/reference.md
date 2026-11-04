@@ -127,6 +127,13 @@ Generated from `design/tokens/*.tokens.json` (TOK-001). Names follow contract K5
 | `threshold-loading` | `--threshold-loading: 300ms` | Wait before a skeleton or spinner shows |
 | `threshold-loading-min` | `--threshold-loading-min: 500ms` | Minimum display time of a spinner after it shows |
 
+## gesture
+
+| Token | CSS value | Use |
+| --- | --- | --- |
+| `projection-deceleration` | `0.998` (TypeScript only) | Deceleration rate that projects where a flick lands (MOT-032) |
+| `rubberband-constant` | `0.55` (TypeScript only) | Constant of the rubber-band curve past a scroll or sheet edge (MOT-033) |
+
 ## layout.bp
 
 | Token | CSS value | Use |
@@ -243,6 +250,8 @@ Generated from `design/tokens/*.tokens.json` (TOK-001). Names follow contract K5
 | `threshold-drag` | `threshold.drag` |
 | `threshold-loading` | `threshold.loading` |
 | `threshold-loading-min` | `threshold.loadingMin` |
+| `projection-deceleration` | `gesture.projectionDeceleration` |
+| `rubberband-constant` | `gesture.rubberbandConstant` |
 | `bp-compact` | `breakpoint.compact` |
 | `bp-medium` | `breakpoint.medium` |
 | `bp-wide` | `breakpoint.wide` |

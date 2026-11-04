@@ -19,7 +19,7 @@ function k5Names(): string[] {
   const section = text.slice(text.indexOf('## Names'), text.indexOf('## Rules for consumers'));
   const rows = section.split('\n').filter((line) => line.startsWith('| ') && !line.startsWith('| Group') && !line.startsWith('| ---'));
   return rows.flatMap((row) => {
-    const cell = row.split('|')[2] ?? '';
+    const cell = (row.split('|')[2] ?? '').split('(')[0] ?? '';
     const names = [...cell.matchAll(/`([a-z][a-z0-9-]*)`/g)].map((match) => match[1] ?? '');
     const range = /`([a-z]+)-(\d+)` … `[a-z]+-(\d+)`/.exec(cell);
     if (!range) return names;
@@ -28,6 +28,8 @@ function k5Names(): string[] {
   });
 }
 
+const TYPESCRIPT_ONLY = /^(bp-|projection-deceleration$|rubberband-constant$)/;
+
 function declared(name: string): boolean {
   return css.includes(`  --${name}:`) || css.includes(`  --${name}-bg:`);
 }
@@ -35,19 +37,34 @@ function declared(name: string): boolean {
 describe('K5 names', () => {
   test('TOK-001 the K5 table parser finds the names at both ends of its ranges', () => {
     const names = k5Names();
-    for (const name of ['nord-0', 'nord-15', 'bg', 'spring-momentum', 'threshold-loading-min', 'bp-wide']) {
+    for (const name of ['nord-0', 'nord-15', 'bg', 'spring-momentum', 'threshold-loading-min', 'bp-wide', 'projection-deceleration', 'rubberband-constant']) {
       expect(names).toContain(name);
     }
   });
 
-  test('TOK-001 every K5 name except breakpoints is a custom property in tokens.css', () => {
-    const missing = k5Names().filter((name) => !name.startsWith('bp-') && !declared(name));
+  test('TOK-001 every K5 name except breakpoints and gesture constants is a custom property in tokens.css', () => {
+    const missing = k5Names().filter((name) => !TYPESCRIPT_ONLY.test(name) && !declared(name));
     expect(missing).toEqual([]);
   });
 
   test('TOK-001 breakpoints are in TypeScript and not in CSS', () => {
     expect(css).not.toContain('--bp-');
     for (const key of ['compact', 'medium', 'wide']) expect(typescript).toContain(`  ${key}: {`);
+  });
+
+  test('MOT-032 MOT-033 gesture constants are in tokens.ts with the spec values and absent from tokens.css (R-013)', () => {
+    expect(typescript).toContain('export const gesture = {\n  projectionDeceleration: 0.998,\n  rubberbandConstant: 0.55,\n} as const;');
+    for (const name of ['projection-deceleration', 'rubberband-constant']) {
+      expect(css).not.toContain(name);
+      expect(k5Names()).toContain(name);
+    }
+  });
+
+  test('MOT-032 MOT-033 reduced motion leaves the gesture constants unchanged', () => {
+    const reduced = typescript.slice(typescript.indexOf('export const reducedMotion'));
+    expect(reduced).not.toContain('gesture');
+    expect(reduced).not.toContain('projectionDeceleration');
+    expect(reduced).not.toContain('rubberbandConstant');
   });
 
   test('TOK-001 every generated file starts with the generated header', () => {
