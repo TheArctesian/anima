@@ -38,6 +38,25 @@ pub const K4_PASSWORD_VALUES: [(&str, &str); 11] = [
     ("server-alive-interval", "30"),
 ];
 
+/// The K4 password values with the test display and `UTC`.
+pub fn k4_params() -> ConnectParams {
+    params(DISPLAY, "UTC", values_of(&K4_PASSWORD_VALUES))
+}
+
+/// A handshake that has sent `select` and waits for `args`.
+pub fn started(params: ConnectParams) -> Handshake {
+    Handshake::new("ssh", params).0
+}
+
+/// A K4 handshake that has answered the guacd 1.5.5 `args` and waits for `ready`.
+pub fn after_args() -> Handshake {
+    let mut handshake = started(k4_params());
+    handshake
+        .on_instruction(decode_args(ARGS_1_5_5))
+        .expect("args accepted");
+    handshake
+}
+
 /// The `args` instruction in `bytes`, decoded with the crate's own decoder.
 pub fn decode_args(bytes: &[u8]) -> Instruction {
     let mut decoded = Decoder::new().feed(bytes).expect("fixture decodes");
@@ -73,8 +92,7 @@ pub fn params(display: Display, timezone: &str, values: ArgValues) -> ConnectPar
 
 /// Runs `select` then `args` and returns what the hub sends to guacd.
 pub fn reply(args: Instruction, params: ConnectParams) -> Vec<Instruction> {
-    let (mut handshake, _select) = Handshake::new("ssh", params);
-    match handshake.on_instruction(args) {
+    match started(params).on_instruction(args) {
         Ok(HandshakeStep::Send(send)) => send,
         Ok(HandshakeStep::Ready { .. }) => panic!("args does not end the handshake"),
         Err(error) => panic!("handshake refused: {error}"),

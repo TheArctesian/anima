@@ -1,17 +1,15 @@
 //! The client's display and time zone are checked before anything reaches guacd
-//! (GW-012, GW-013).
+//! (GW-012).
 
-use guac_protocol::{Display, Handshake, HandshakeError, HandshakeStep};
+use guac_protocol::{Display, HandshakeError, HandshakeStep, is_zone_name};
 
 use crate::guacd::{
-    ARGS_1_5_5, DISPLAY, K4_PASSWORD_VALUES, connect_of, decode_args, params, reply, values_of,
+    ARGS_1_5_5, DISPLAY, K4_PASSWORD_VALUES, connect_of, decode_args, params, reply, started,
+    values_of,
 };
 
 fn after_refusal(display: Display, timezone: &str) -> Result<HandshakeStep, HandshakeError> {
-    let (mut handshake, _) = Handshake::new(
-        "ssh",
-        params(display, timezone, values_of(&K4_PASSWORD_VALUES)),
-    );
+    let mut handshake = started(params(display, timezone, values_of(&K4_PASSWORD_VALUES)));
     let first = handshake.on_instruction(decode_args(ARGS_1_5_5));
     assert_eq!(
         handshake.on_instruction(decode_args(ARGS_1_5_5)),
@@ -22,7 +20,7 @@ fn after_refusal(display: Display, timezone: &str) -> Result<HandshakeStep, Hand
 }
 
 #[test]
-fn gw_013_display_bounds_are_inclusive() {
+fn gw_012_display_bounds_are_inclusive() {
     let at = |width, height, dpi| Display { width, height, dpi }.within_bounds();
     assert!(at(
         Display::MIN_SIDE_PX,
@@ -43,7 +41,7 @@ fn gw_013_display_bounds_are_inclusive() {
 }
 
 #[test]
-fn gw_013_display_out_of_bounds_is_refused_before_anything_is_sent() {
+fn gw_012_display_out_of_bounds_is_refused_before_anything_is_sent() {
     let displays = [
         Display {
             width: 0,
@@ -78,6 +76,7 @@ fn gw_012_zone_names_are_sent_as_the_timezone() {
     ];
     let longest = "a".repeat(64);
     for zone in zones.into_iter().chain([longest.as_str()]) {
+        assert!(is_zone_name(zone), "{zone:?}");
         let send = reply(
             decode_args(ARGS_1_5_5),
             params(DISPLAY, zone, values_of(&K4_PASSWORD_VALUES)),
@@ -120,6 +119,7 @@ fn gw_012_time_zone_outside_the_zone_charset_is_refused() {
         "5Etc/UTC",
     ];
     for zone in refused {
+        assert!(!is_zone_name(zone), "{zone:?}");
         assert_eq!(
             after_refusal(DISPLAY, zone),
             Err(HandshakeError::InvalidTimezone),

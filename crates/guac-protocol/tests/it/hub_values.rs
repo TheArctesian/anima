@@ -10,6 +10,7 @@ use std::collections::HashMap;
 use guac_protocol::{ArgValues, Decoder, Display, Handshake, HandshakeError, Instruction, encode};
 use proptest::prelude::*;
 
+use crate::arbitrary::text;
 use crate::guacd::{AGENT_ARGS_1_6_0, all_fixtures, connect_of, decode_args, params, reply};
 
 /// Names the client must never set, plus every `wol-*` name (GW-013).
@@ -29,12 +30,6 @@ const FORBIDDEN: [&str; 11] = [
 
 fn is_forbidden(name: &str) -> bool {
     FORBIDDEN.contains(&name) || name.starts_with("wol-")
-}
-
-/// Any Unicode text but NUL (the handshake refuses NUL values by design).
-fn text(max_chars: usize) -> impl Strategy<Value = String> {
-    let non_nul = any::<char>().prop_filter("no NUL", |c| *c != '\0');
-    prop::collection::vec(non_nul, 0..=max_chars).prop_map(String::from_iter)
 }
 
 fn display() -> impl Strategy<Value = Display> {
@@ -156,7 +151,7 @@ proptest! {
     }
 
     #[test]
-    fn gw_012_time_zone_outside_the_charset_is_refused(
+    fn gw_012_any_bad_zone_shape_is_refused(
         args in fixture(),
         display in display(),
         timezone in bad_timezone(),

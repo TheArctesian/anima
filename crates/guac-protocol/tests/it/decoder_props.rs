@@ -5,11 +5,7 @@ use guac_protocol::{
 };
 use proptest::prelude::*;
 
-/// Any Unicode text but NUL (guacd ends an element there), short enough to stay in limits.
-fn text(max_chars: usize) -> impl Strategy<Value = String> {
-    let non_nul = any::<char>().prop_filter("NUL is rejected", |c| *c != '\0');
-    prop::collection::vec(non_nul, 0..=max_chars).prop_map(String::from_iter)
-}
+use crate::arbitrary::text;
 
 fn instruction(max_chars: usize, max_args: usize) -> impl Strategy<Value = Instruction> {
     (
