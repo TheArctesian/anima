@@ -60,6 +60,8 @@ Integration branch: `phase-1`. Merge to `main` only after operator checkpoint 4.
 
 - **R-010 (Wave 1, from WP-07; changes K3).** (a) `devices` owns the GraphQL mutations `setSshCredential` and `clearSshCredential` and may call `credentials::{Vault, SshSecret, has_ssh, store_ssh, clear_ssh}`. `clear_ssh(conn, device) -> Result<bool, Error>` is added to `credentials`. (b) `Vault::seal` and `Vault::open` take a `context: &[u8]` that is bound as AEAD associated data, with the fixed context strings in K3, so a sealed value moved to another row does not open. Affects WP-05 (TOTP), WP-06, WP-07.
 
+- **R-011 (Wave 1, from WP-06; changes K3).** (a) A domain's `graphql.rs` may import extra domains listed under `graphql` in `quality/hub-modules.json`, only to resolve K1 fields that join domains; never a `store`, and these edges do not count toward cycles. `devices/graphql.rs` may import `checks` and `sessions`. (b) WP-06 builds `Device` and `SshSettings` with the fields devices owns, `DeviceFilter` name/tags/siteId and `DeviceSort.NAME`; it does not declare the fields that need other domains. WP-09 adds `Device.status`, `checks`, `uptime`, `DeviceFilter.status`, `DeviceSort.STATUS`/`UPTIME` and the `addDefaultCheck` behaviour to `devices/graphql.rs` after WP-06 is accepted; WP-10 adds `SshSettings.hostKey`. One owner at a time (PKG-001). (c) Until WP-17, the schema contract check (CON-002) requires only that every hub field matches K1; WP-17 checks that K1 is complete.
+
 ## Escalations
 
 None open.
