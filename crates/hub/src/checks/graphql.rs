@@ -22,8 +22,8 @@ mod write;
 use async_graphql::{Context, ID, Object, Result, Subscription, futures_util::stream::Stream};
 
 pub use self::loaders::{
-    CheckStatuses, CheckUptimes, LastHeartbeats, check_status_loader, check_uptime_loader,
-    last_heartbeat_loader,
+    CheckStatuses, CheckUptimes, HeartbeatPages, LastHeartbeats, check_status_loader,
+    check_uptime_loader, heartbeats_loader, last_heartbeat_loader,
 };
 
 use self::{

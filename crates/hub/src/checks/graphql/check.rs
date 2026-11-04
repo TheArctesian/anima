@@ -12,10 +12,10 @@ use super::{
     enums::CheckKind,
     error::{from_devices, from_shared, invalid, schema_dependency, to_graphql},
     heartbeat::{HeartbeatConnection, connection, paging},
-    loaders::{CheckStatuses, CheckUptimes, LastHeartbeats},
+    loaders::{CheckStatuses, CheckUptimes, HeartbeatPages, LastHeartbeats},
 };
 use crate::{
-    checks::{self, Check, Error, Heartbeat, UptimeWindow, store},
+    checks::{self, Check, Error, Heartbeat, UptimeWindow},
     clock::Clock,
     devices::{self, Device},
     status::Status,
@@ -129,9 +129,11 @@ impl Check {
         let (size, before) =
             paging(first.unwrap_or(100), after.as_deref()).map_err(|e| invalid(&e))?;
         let limit = u32::try_from(size + 1).unwrap_or(u32::MAX);
-        let fetched = store::heartbeats_before(pool(ctx)?, self.id, before, i64::from(limit))
+        let fetched = schema_dependency::<DataLoader<HeartbeatPages>>(ctx)?
+            .load_one((self.id, limit, before))
             .await
-            .map_err(to_graphql)?;
+            .map_err(from_shared)?
+            .unwrap_or_default();
         Ok(connection(fetched, size))
     }
 

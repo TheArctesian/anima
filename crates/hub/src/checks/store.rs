@@ -41,7 +41,7 @@ use crate::ids::{CheckId, DeviceId};
 
 pub(super) use attempts::record_attempt;
 pub(super) use beats::record_beat;
-pub(super) use heartbeats::{before as heartbeats_before, latest as latest_heartbeats};
+pub(super) use heartbeats::{latest as latest_heartbeats, pages as heartbeat_pages};
 pub use retention::Trimmed;
 pub(super) use retention::{
     create_days_ahead, delete_orphan_heartbeats, drop_heartbeat_days_before, trim_aggregates,

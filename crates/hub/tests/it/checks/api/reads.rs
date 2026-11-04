@@ -140,6 +140,42 @@ fixture_test! {
         assert_eq!(all["check"]["heartbeats"]["pageInfo"]["hasNextPage"], false);
     }
 
+    async fn api_006_checks_paged_together_keep_their_own_pages_and_cursors(pool: PgPool) {
+        let schema = schema_for(&pool);
+        let long = create(&schema, input(PVE_01, "long", tcp())).await;
+        let short = create(&schema, input(PVE_01, "short", json!({ "tcp": { "port": 23 } }))).await;
+        let base = database_now(&pool).await;
+        for seconds in (0..5).rev() {
+            let at = base - TimeDelta::seconds(seconds);
+            record(&pool, &long, &beat(at, Status::Up, Some(u32::try_from(seconds).unwrap()))).await;
+        }
+        for seconds in (0..3).rev() {
+            let at = base - TimeDelta::seconds(seconds);
+            record(&pool, &short, &beat(at, Status::Down, None)).await;
+        }
+        let query = "query($a: ID!, $b: ID!, $ca: String, $cb: String) { \
+            a: check(id: $a) { heartbeats(first: 2, after: $ca) { edges { node { status responseTimeMs } } \
+              pageInfo { hasNextPage endCursor } } } \
+            b: check(id: $b) { heartbeats(first: 2, after: $cb) { edges { node { status responseTimeMs } } \
+              pageInfo { hasNextPage endCursor } } } }";
+        let first = data_with(&schema, query, json!({ "a": long, "b": short })).await;
+        let (a, b) = (&first["a"]["heartbeats"], &first["b"]["heartbeats"]);
+        assert_eq!(a["edges"].as_array().unwrap().len(), 2);
+        assert_eq!(a["edges"][0]["node"]["responseTimeMs"], 0);
+        assert_eq!((a["pageInfo"]["hasNextPage"].clone(), b["pageInfo"]["hasNextPage"].clone()), (json!(true), json!(true)));
+        // Each check continues from its own cursor, in the same request.
+        let vars = json!({ "a": long, "b": short,
+            "ca": a["pageInfo"]["endCursor"], "cb": b["pageInfo"]["endCursor"] });
+        let second = data_with(&schema, query, vars).await;
+        let (a, b) = (&second["a"]["heartbeats"], &second["b"]["heartbeats"]);
+        assert_eq!(a["edges"].as_array().unwrap().len(), 2);
+        assert_eq!(a["edges"][0]["node"]["responseTimeMs"], 2);
+        assert_eq!(a["pageInfo"]["hasNextPage"], true);
+        assert_eq!(b["edges"].as_array().unwrap().len(), 1);
+        assert_eq!(b["edges"][0]["node"]["status"], "DOWN");
+        assert_eq!(b["pageInfo"]["hasNextPage"], false);
+    }
+
     async fn api_006_a_cursor_outside_the_stored_range_is_a_validation_error(pool: PgPool) {
         let schema = schema_for(&pool);
         let id = create(&schema, input(PVE_01, "ssh", tcp())).await;

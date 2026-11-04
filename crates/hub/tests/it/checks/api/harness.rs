@@ -15,7 +15,7 @@ use anima_hub::{
         self, Beat, CheckState,
         graphql::{
             Mutation, Query, Subscription, check_status_loader, check_uptime_loader,
-            last_heartbeat_loader,
+            heartbeats_loader, last_heartbeat_loader,
         },
     },
     clock::{Clock, FixedClock},
@@ -58,6 +58,7 @@ pub fn schema_at(pool: &PgPool, at: DateTime<Utc>) -> (TestSchema, Bus) {
         .data(bus.clone())
         .data(check_status_loader(pool.clone(), clock.clone()))
         .data(last_heartbeat_loader(pool.clone()))
+        .data(heartbeats_loader(pool.clone()))
         .data(check_uptime_loader(pool.clone(), clock.clone()))
         .data(clock)
         .finish();
@@ -81,6 +82,7 @@ pub fn hardened_schema(pool: &PgPool) -> TestSchema {
         .data(Bus::new(16))
         .data(check_status_loader(pool.clone(), clock.clone()))
         .data(last_heartbeat_loader(pool.clone()))
+        .data(heartbeats_loader(pool.clone()))
         .data(check_uptime_loader(pool.clone(), clock.clone()))
         .data(clock);
     harden(builder, false).finish()

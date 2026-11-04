@@ -7,6 +7,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use async_graphql::dataloader::{DataLoader, Loader};
+use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 
 use crate::{
@@ -77,6 +78,48 @@ impl Loader<CheckId> for LastHeartbeats {
     }
 }
 
+/// A page of heartbeats: how many, and the instant they must be before.
+pub type PageKey = (CheckId, u32, Option<DateTime<Utc>>);
+
+/// Pages of heartbeats, newest first. Keys with the same size and cursor are loaded together,
+/// so a page for many checks costs one statement.
+pub struct HeartbeatPages(PgPool);
+
+impl Loader<PageKey> for HeartbeatPages {
+    type Value = Vec<Heartbeat>;
+    type Error = Arc<Error>;
+
+    async fn load(
+        &self,
+        keys: &[PageKey],
+    ) -> Result<HashMap<PageKey, Vec<Heartbeat>>, Self::Error> {
+        let mut shapes: Vec<(u32, Option<DateTime<Utc>>)> = Vec::new();
+        for (_, limit, before) in keys {
+            if !shapes.contains(&(*limit, *before)) {
+                shapes.push((*limit, *before));
+            }
+        }
+        let mut pages: HashMap<PageKey, Vec<Heartbeat>> = HashMap::new();
+        for (limit, before) in shapes {
+            let checks: Vec<CheckId> = keys
+                .iter()
+                .filter(|key| key.1 == limit && key.2 == before)
+                .map(|key| key.0)
+                .collect();
+            let rows = store::heartbeat_pages(&self.0, &checks, before, i64::from(limit))
+                .await
+                .map_err(Arc::new)?;
+            for (check, heartbeat) in rows {
+                pages
+                    .entry((check, limit, before))
+                    .or_default()
+                    .push(heartbeat);
+            }
+        }
+        Ok(pages)
+    }
+}
+
 /// The uptime of each check over a window, from the aggregate tables; a check with no counted
 /// beats is absent (CHK-011).
 pub struct CheckUptimes {
@@ -130,6 +173,12 @@ pub fn check_status_loader(pool: PgPool, clock: Arc<dyn Clock>) -> DataLoader<Ch
 #[must_use]
 pub fn last_heartbeat_loader(pool: PgPool) -> DataLoader<LastHeartbeats> {
     DataLoader::new(LastHeartbeats(pool), tokio::spawn)
+}
+
+/// The loader behind `Check.heartbeats`: one statement per page size and cursor per batch.
+#[must_use]
+pub fn heartbeats_loader(pool: PgPool) -> DataLoader<HeartbeatPages> {
+    DataLoader::new(HeartbeatPages(pool), tokio::spawn)
 }
 
 /// The loader behind `Check.uptime`: one query per window per batch of check ids.

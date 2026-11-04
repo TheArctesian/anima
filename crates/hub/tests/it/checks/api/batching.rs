@@ -35,16 +35,18 @@ const DEVICES: [&str; 5] = [
     "0190a000-0000-7000-8002-000000000005",
 ];
 
+const FIELDS: &str = "status lastHeartbeat { status } uptime(window: DAY)";
+
 /// The statements the query needs, less the two each group takes to be read and to list its
 /// children.
-async fn loader_statements(schema: &TestSchema, groups: &[String]) -> usize {
+async fn loader_statements(schema: &TestSchema, groups: &[String], selection: &str) -> usize {
     let fields: Vec<String> = groups
         .iter()
         .enumerate()
         .map(|(index, id)| {
             format!(
                 "g{index}: check(id: \"{id}\") {{ config {{ ... on GroupConfig {{ children {{ \
-                 status lastHeartbeat {{ status }} uptime(window: DAY) }} }} }} }}"
+                 {selection} }} }} }} }}"
             )
         })
         .collect();
@@ -84,8 +86,8 @@ async fn api_005_status_last_heartbeat_and_uptime_cost_a_bounded_number_of_state
         let config = json!({ "group": { "childIds": children } });
         groups.push(create(&schema, input(device, "group", config)).await);
     }
-    let one = loader_statements(&schema, &groups[..1]).await;
-    let many = loader_statements(&schema, &groups).await;
+    let one = loader_statements(&schema, &groups[..1], FIELDS).await;
+    let many = loader_statements(&schema, &groups, FIELDS).await;
     // Per check the three fields would take about three statements each: 12 for 4 checks and
     // 60 for 20. Batched, the cost is a few statements per batch, whatever the number of checks.
     assert!(one <= 8, "4 checks took {one} statements");
@@ -122,4 +124,43 @@ async fn api_005_the_loaders_agree_with_the_per_check_rules(pool: PgPool) {
         read["b"],
         json!({ "status": "DOWN", "lastHeartbeat": { "status": "DOWN" }, "uptime": 0.0 })
     );
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../fixtures", scripts("devices"))
+)]
+async fn api_005_heartbeat_pages_of_many_checks_on_many_devices_take_a_bounded_number_of_statements(
+    pool: PgPool,
+) {
+    let at = database_now(&pool).await;
+    let schema = schema_at(&pool, at).0;
+    let devices: Vec<String> =
+        sqlx::query_scalar("SELECT id::text FROM devices.devices ORDER BY id")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+    assert_eq!(devices.len(), 13);
+    let mut groups = Vec::new();
+    for (device_index, device) in devices.iter().enumerate() {
+        let mut children = Vec::new();
+        for port in 0..2 {
+            let name = format!("port-{device_index}-{port}");
+            let tcp = json!({ "tcp": { "port": 22 + port } });
+            let id = create(&schema, input(device, &name, tcp)).await;
+            for seconds in (0..3).rev() {
+                let when = at - chrono::TimeDelta::seconds(seconds);
+                record(&pool, &id, &beat(when, Status::Up, Some(3))).await;
+            }
+            children.push(id);
+        }
+        let config = json!({ "group": { "childIds": children } });
+        groups.push(create(&schema, input(device, "group", config)).await);
+    }
+    let pages = "heartbeats(first: 50) { edges { node { status } } pageInfo { hasNextPage } }";
+    let one = loader_statements(&schema, &groups[..1], pages).await;
+    let many = loader_statements(&schema, &groups, pages).await;
+    // One statement per batch, not one per check: 26 checks would take 26 by themselves.
+    assert!(one <= 3, "2 checks took {one} statements");
+    assert!(many <= 6, "26 checks on 13 devices took {many} statements");
 }
