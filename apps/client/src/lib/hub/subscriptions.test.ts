@@ -1,108 +1,16 @@
-import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
-import { parse } from 'graphql';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createHub, DEFAULT_HUB_ADDRESS, HUB_TIMEOUT_MS, type HubError, type Sink, type TokenProvider } from './hub';
-
-const STATUS_CHANGED = parse('subscription S($deviceId: ID) { deviceStatusChanged(deviceId: $deviceId) { status } }') as TypedDocumentNode<
-  { deviceStatusChanged: { status: string } },
-  { deviceId?: string }
->;
-const NOW = new Date('2026-11-04T10:00:00Z');
-/** The first reconnect waits 1 s. */
-const FIRST_RETRY_MS = 1000;
-
-/** The hub side of one fake graphql-transport-ws connection. */
-class FakeSocket {
-  static readonly CONNECTING = 0;
-  static readonly OPEN = 1;
-  static readonly CLOSING = 2;
-  static readonly CLOSED = 3;
-  static opened: FakeSocket[] = [];
-
-  readyState = FakeSocket.CONNECTING;
-  closedWith: number | undefined;
-  readonly sent: Record<string, unknown>[] = [];
-  onopen: ((event: unknown) => void) | null = null;
-  onclose: ((event: unknown) => void) | null = null;
-  onerror: ((event: unknown) => void) | null = null;
-  onmessage: ((event: { data: string }) => void) | null = null;
-
-  constructor(
-    readonly url: string,
-    readonly protocol: string,
-  ) {
-    FakeSocket.opened.push(this);
-  }
-
-  send(text: string): void {
-    this.sent.push(JSON.parse(text) as Record<string, unknown>);
-  }
-
-  close(code = 1000, reason = ''): void {
-    if (this.readyState === FakeSocket.CLOSED) return;
-    this.readyState = FakeSocket.CLOSED;
-    this.closedWith = code;
-    this.onclose?.({ code, reason, wasClean: code === 1000 });
-  }
-
-  accept(): void {
-    this.readyState = FakeSocket.OPEN;
-    this.onopen?.({});
-  }
-
-  receive(message: Record<string, unknown>): void {
-    this.onmessage?.({ data: JSON.stringify(message) });
-  }
-
-  subscribeId(): string {
-    const message = this.sent.find((sent) => sent.type === 'subscribe');
-    return typeof message?.id === 'string' ? message.id : '';
-  }
-}
-
-function recordingSink() {
-  const events: { next: unknown[]; errors: HubError[]; completed: number } = { next: [], errors: [], completed: 0 };
-  const sink: Sink<unknown> = {
-    next: (value) => events.next.push(value),
-    error: (error) => events.errors.push(error),
-    complete: () => {
-      events.completed += 1;
-    },
-  };
-  return { events, sink };
-}
-
-function newHub(token: TokenProvider = () => Promise.resolve('s3cret-token')) {
-  return createHub({
-    address: DEFAULT_HUB_ADDRESS,
-    token,
-    WebSocket: FakeSocket as unknown as typeof WebSocket,
-    now: () => NOW,
-  });
-}
-
-/** Run pending promise callbacks and timers due by `ms`. */
-async function settle(ms = 0): Promise<void> {
-  await vi.advanceTimersByTimeAsync(ms);
-}
-
-function onlySocket(): FakeSocket {
-  const [socket] = FakeSocket.opened;
-  if (socket === undefined) throw new Error('no socket was opened');
-  return socket;
-}
-
-/** Open a socket, subscribe and acknowledge; returns the socket. */
-async function liveSubscription(hub: ReturnType<typeof newHub>, sink: Sink<unknown>) {
-  const stop = hub.subscribe(STATUS_CHANGED, { deviceId: 'd1' }, sink);
-  await settle();
-  const socket = onlySocket();
-  socket.accept();
-  await settle();
-  socket.receive({ type: 'connection_ack' });
-  await settle();
-  return { socket, stop };
-}
+import {
+  DEFAULT_TIMEOUT_MS,
+  FakeSocket,
+  FIRST_RETRY_MS,
+  liveSubscription,
+  newHub,
+  NOW,
+  onlySocket,
+  recordingSink,
+  settle,
+  STATUS_CHANGED,
+} from './fake/socket';
 
 beforeEach(() => {
   FakeSocket.opened = [];
@@ -289,7 +197,7 @@ describe('Hub.subscribe on a stalled link', () => {
     hub.subscribe(STATUS_CHANGED, {}, sink);
     await settle();
     onlySocket().accept();
-    await settle(HUB_TIMEOUT_MS);
+    await settle(DEFAULT_TIMEOUT_MS);
     expect(onlySocket().closedWith).toBe(4504);
     expect(hub.status.current.connection).toBe('unreachable');
     await settle(FIRST_RETRY_MS);
@@ -312,5 +220,102 @@ describe('Hub.subscribe with an unreadable token', () => {
     expect(JSON.stringify(events.errors)).not.toContain('s3cret-token');
     expect(FakeSocket.opened).toHaveLength(1);
     expect(hub.status.current.connection).toBe('connecting');
+  });
+});
+
+describe('Hub.subscribe connect deadline', () => {
+  it('NET-004: a socket that never opens reads unreachable within the timeout', async () => {
+    const hub = newHub();
+    hub.subscribe(STATUS_CHANGED, {}, recordingSink().sink);
+    await settle(DEFAULT_TIMEOUT_MS - 1);
+    expect(hub.status.current.connection).toBe('connecting');
+    await settle(1);
+    expect(hub.status.current.connection).toBe('unreachable');
+    hub.close();
+  });
+
+  it('NET-004: an acknowledged socket stays connected past the timeout', async () => {
+    const hub = newHub();
+    await liveSubscription(hub, recordingSink().sink);
+    await settle(DEFAULT_TIMEOUT_MS * 3);
+    expect(hub.status.current.connection).toBe('connected');
+    hub.close();
+  });
+});
+
+describe('Hub.subscribe recovery', () => {
+  it('NET-004: after one unreadable token the next connection reads it again and a drop is retried', async () => {
+    let reads = 0;
+    const hub = newHub(() => {
+      reads += 1;
+      return reads === 1 ? Promise.reject(new Error('locked')) : Promise.resolve('s3cret-token');
+    });
+    const first = recordingSink();
+    hub.subscribe(STATUS_CHANGED, {}, first.sink);
+    await settle();
+    onlySocket().accept();
+    await settle();
+    expect(first.events.errors.map((error) => error.code)).toEqual(['UNAUTHENTICATED']);
+    const second = recordingSink();
+    hub.subscribe(STATUS_CHANGED, {}, second.sink);
+    await settle();
+    const socket = FakeSocket.opened.at(-1);
+    socket?.accept();
+    await settle();
+    expect(socket?.sent[0]).toEqual({ type: 'connection_init', payload: { authorization: 'Bearer s3cret-token' } });
+    socket?.receive({ type: 'connection_ack' });
+    await settle();
+    const opened = FakeSocket.opened.length;
+    socket?.close(1006);
+    await settle(FIRST_RETRY_MS);
+    expect(FakeSocket.opened).toHaveLength(opened + 1);
+    expect(second.events.errors).toEqual([]);
+    hub.close();
+  });
+
+  it.each([4500, 4005])('a close %i from the hub ends the subscription as INTERNAL', async (code) => {
+    const hub = newHub();
+    const { events, sink } = recordingSink();
+    const { socket } = await liveSubscription(hub, sink);
+    socket.close(code);
+    await settle();
+    expect(events.errors.map((error) => error.code)).toEqual(['INTERNAL']);
+    hub.close();
+  });
+
+  it('API-002: close during a retry wait opens no new socket and resolves', async () => {
+    const hub = newHub();
+    const { socket } = await liveSubscription(hub, recordingSink().sink);
+    socket.close(1006);
+    await settle();
+    const closing = hub.close();
+    await settle(60_000);
+    expect(FakeSocket.opened).toHaveLength(1);
+    await expect(closing).resolves.toBeUndefined();
+  });
+});
+
+describe('Hub.close with a connection attempt pending', () => {
+  it('NET-004: close stops the connect deadline, so the status does not change afterwards', async () => {
+    const hub = newHub();
+    hub.subscribe(STATUS_CHANGED, {}, recordingSink().sink);
+    await settle();
+    void hub.close();
+    await settle(DEFAULT_TIMEOUT_MS * 2);
+    expect(hub.status.current.connection).toBe('connecting');
+  });
+
+  it.each([
+    ['an abnormal close', (socket: FakeSocket) => socket.close(1006), { code: 1006 }],
+    ['a socket error without a code', (socket: FakeSocket) => socket.onerror?.({ type: 'error' }), { type: 'error' }],
+  ])('CQ-024: close rejects when the pending attempt ends with %s', async (_label, fail, reason) => {
+    const hub = newHub();
+    hub.subscribe(STATUS_CHANGED, {}, recordingSink().sink);
+    await settle();
+    const closing = hub.close();
+    const outcome = expect(closing).rejects.toMatchObject(reason);
+    fail(onlySocket());
+    await settle();
+    await outcome;
   });
 });

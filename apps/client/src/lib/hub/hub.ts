@@ -18,7 +18,7 @@ export type { Sink } from './subscriptions';
 export type Variables = Record<string, unknown>;
 
 /** How long a request waits for its answer, and the socket for `connection_ack`, before the hub counts as unreachable (NET-004). */
-export const HUB_TIMEOUT_MS = 10_000;
+const HUB_TIMEOUT_MS = 10_000;
 
 /**
  * The one GraphQL transport of the client (CQ-045). Domain clients in `$lib/<domain>/api.ts` take a `Hub`.
@@ -47,8 +47,10 @@ export interface Hub {
   /**
    * End every subscription (each sink hears `complete`) and close the socket. A later `subscribe`
    * completes at once without connecting; `request` keeps working, since HTTP holds no connection.
+   * Subscriptions end synchronously; the promise resolves when the socket is closed and rejects with the
+   * reason when a connection attempt that was still pending failed instead.
    */
-  close(): void;
+  close(): Promise<void>;
 }
 
 export interface HubOptions {
@@ -57,7 +59,7 @@ export interface HubOptions {
   readonly fetch?: typeof fetch;
   readonly WebSocket?: typeof WebSocket;
   readonly now?: () => Date;
-  /** Defaults to `HUB_TIMEOUT_MS`. */
+  /** How long to wait for an answer or `connection_ack`; defaults to 10 s (NET-004). */
   readonly timeoutMs?: number;
 }
 

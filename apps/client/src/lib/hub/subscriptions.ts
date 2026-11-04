@@ -29,8 +29,11 @@ export interface Socket {
     variables: TVariables,
     sink: Sink<TResult>,
   ): () => void;
-  /** End every subscription with `complete` and close the socket; later subscriptions complete at once. */
-  close(): void;
+  /**
+   * End every subscription with `complete` at once and close the socket; later subscriptions complete at once.
+   * Resolves when the socket is closed; rejects with the reason when a pending connection attempt failed instead.
+   */
+  close(): Promise<void>;
 }
 
 /** The hub closes with 4403 when the token is missing or invalid (graphql-transport-ws `Forbidden`). */
@@ -72,12 +75,20 @@ function subscriptionError(reason: unknown, tokenUnreadable: boolean): HubError 
   return code >= 4000 && code <= 4999 ? MALFORMED : UNREACHABLE;
 }
 
-/** Per-socket state that graphql-ws callbacks share: whether the current connection could not read the token. */
-interface TokenState {
-  unreadable: boolean;
+/** Per-socket state that graphql-ws callbacks share. */
+interface SocketState {
+  /** The current connection could not read the token. */
+  tokenUnreadable: boolean;
+  /** Fires `failed` when a connection attempt has no `connection_ack` within the timeout, even if it never opens. */
+  deadline: ReturnType<typeof setTimeout> | undefined;
 }
 
-function connect(transport: SocketTransport, token: TokenState): Client {
+function clearDeadline(state: SocketState): void {
+  clearTimeout(state.deadline);
+  state.deadline = undefined;
+}
+
+function connect(transport: SocketTransport, state: SocketState): Client {
   return createClient({
     url: transport.endpoint,
     webSocketImpl: transport.WebSocket,
@@ -85,7 +96,7 @@ function connect(transport: SocketTransport, token: TokenState): Client {
     connectionParams: async () => {
       const read = await readToken(transport.token);
       if (!read.ok) {
-        token.unreadable = true;
+        state.tokenUnreadable = true;
         // graphql-ws closes with 4005; the message is ours, never the provider's.
         throw new Error(read.error.message);
       }
@@ -95,13 +106,19 @@ function connect(transport: SocketTransport, token: TokenState): Client {
     retryAttempts: Number.POSITIVE_INFINITY,
     retryWait: (retries) => new Promise((resolve) => setTimeout(resolve, retryDelayMs(retries))),
     // Retry every failure except a refused or unreadable token: retrying cannot succeed.
-    shouldRetry: (reason) => !token.unreadable && closeCode(reason) !== REFUSED_CLOSE_CODE,
+    shouldRetry: (reason) => !state.tokenUnreadable && closeCode(reason) !== REFUSED_CLOSE_CODE,
     on: {
       connecting: () => {
-        token.unreadable = false;
+        state.tokenUnreadable = false;
+        clearDeadline(state);
+        state.deadline = setTimeout(() => transport.signal('failed'), transport.timeoutMs);
       },
-      connected: () => transport.signal('acknowledged'),
+      connected: () => {
+        clearDeadline(state);
+        transport.signal('acknowledged');
+      },
       closed: (event) => {
+        clearDeadline(state);
         const signal = closeSignal(event);
         if (signal !== undefined) transport.signal(signal);
       },
@@ -125,10 +142,10 @@ function deliverTo<T>(sink: Sink<T>, tokenUnreadable: () => boolean): ClientSink
 
 /** The single graphql-transport-ws socket of one hub (API-002); it opens lazily and retries until the hub answers. */
 export function createSocket(transport: SocketTransport): Socket {
-  const token: TokenState = { unreadable: false };
+  const state: SocketState = { tokenUnreadable: false, deadline: undefined };
   let closed = false;
   const live = new Set<() => void>();
-  const client = connect(transport, token);
+  const client = connect(transport, state);
   return {
     subscribe(document, variables, sink) {
       if (closed) {
@@ -153,13 +170,18 @@ export function createSocket(transport: SocketTransport): Socket {
         complete: finish,
       };
       live.add(finish);
-      stop = client.subscribe({ query: print(document), variables }, deliverTo(guarded, () => token.unreadable));
+      stop = client.subscribe({ query: print(document), variables }, deliverTo(guarded, () => state.tokenUnreadable));
       return () => end(() => undefined);
     },
     close() {
       closed = true;
+      clearDeadline(state);
       for (const finish of [...live]) finish();
-      void client.dispose();
+      // dispose waits for a pending connection attempt; one abandoned during a retry wait rejects with a
+      // normal close ("All Subscriptions Gone"), which is the outcome close asks for. Anything else is passed on.
+      return Promise.resolve(client.dispose()).catch((reason: unknown) => {
+        if (closeCode(reason) !== NORMAL_CLOSE_CODE) throw reason;
+      });
     },
   };
 }
