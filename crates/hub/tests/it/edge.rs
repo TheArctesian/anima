@@ -58,13 +58,45 @@ async fn sec_002_only_one_json_request_per_post_is_accepted(pool: PgPool) {
         .body(Body::empty())
         .unwrap();
     assert_eq!(hub.send(get).await.0, StatusCode::METHOD_NOT_ALLOWED);
-    let (status, text) = hub
-        .send(post("application/json", r#"{"query":"{ a: __typename }"}"#))
+    let typename = r#"{"query":"{ __typename }"}"#;
+    assert_eq!(
+        hub.send(post("application/jsonx", typename)).await.0,
+        StatusCode::UNSUPPORTED_MEDIA_TYPE
+    );
+    assert_eq!(
+        hub.send(post("text/plain", typename)).await.0,
+        StatusCode::UNSUPPORTED_MEDIA_TYPE
+    );
+    let (status, _) = hub
+        .send(post("Application/JSON; charset=utf-8", typename))
         .await;
     assert_eq!(
-        (status, text.as_str()),
-        (StatusCode::OK, r#"{"data":{"a":"Query"}}"#)
+        status,
+        StatusCode::OK,
+        "case-insensitive, parameters allowed"
     );
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn api_003_signed_out_documents_may_hold_only_one_login(pool: PgPool) {
+    set_operator(&pool).await;
+    let hub = Hub::new(&pool, start());
+    let typename = hub.post(None, "{ a: __typename }", json!({})).await;
+    assert_eq!(
+        typename["errors"][0]["extensions"]["code"],
+        "UNAUTHENTICATED"
+    );
+
+    let input = json!({ "username": USERNAME, "password": "guess" });
+    let query = "mutation($i: LoginInput!) { a0: login(input: $i) { token } a1: login(input: $i) { token } }";
+    let several = hub.post(None, query, json!({ "i": input })).await;
+    assert_eq!(several["data"], json!(null), "{several}");
+    assert_eq!(
+        several["errors"][0]["extensions"]["code"], "VALIDATION",
+        "{several}"
+    );
+    let rows = attempts(&pool, "select count(*) from access.login_attempts").await;
+    assert_eq!(rows, 0, "refused before any database work");
 }
 
 #[sqlx::test(migrations = "./migrations")]

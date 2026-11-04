@@ -50,3 +50,13 @@ async fn api_003_a_read_token_may_query_and_sign_out() {
         .await;
     assert!(login.errors.is_empty(), "{:?}", login.errors);
 }
+
+#[tokio::test]
+async fn api_003_a_read_token_may_query_through_a_root_fragment() {
+    let document = "query { ...F } fragment F on Query { open }";
+    let response = backstopped()
+        .execute(read_identity().attach(Request::new(document)))
+        .await;
+    assert!(response.errors.is_empty(), "{:?}", response.errors);
+    assert_eq!(response.data, value!({ "open": "open" }));
+}

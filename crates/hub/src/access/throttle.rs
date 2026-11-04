@@ -1,7 +1,7 @@
-//! The login throttle rule (D-8): five failed attempts for one (username, client address) pair,
-//! or from one client address for any username, within 15 minutes refuse further attempts from
-//! that address for the 15 minutes after the fifth. There is no username-wide lock, so another
-//! device cannot lock the operator out.
+//! The login throttle rule (D-8): five failed attempts from one client address, for any
+//! usernames, within 15 minutes refuse further attempts from that address for the 15 minutes
+//! after the fifth. There is no username-wide lock, so another device cannot lock the operator
+//! out.
 //!
 //! Pure: the store passes the failure times, the caller passes `now`.
 
@@ -19,23 +19,12 @@ const LOCKOUT: TimeDelta = TimeDelta::minutes(15);
 /// Failures older than this cannot affect `now`; the store reads only the newer ones.
 pub(super) const LOOKBACK: TimeDelta = WINDOW.checked_add(&LOCKOUT).expect("30 minutes");
 
-/// Whether the failures of one pair or of one address lock it at `now`.
-///
-/// `failures` are the times of checked failed attempts (refused attempts excluded, so
-/// retrying during a lockout does not extend it), oldest first.
-fn locked(failures: &[DateTime<Utc>], now: DateTime<Utc>) -> bool {
+/// Whether an attempt from a client address is refused at `now`, from the times of that
+/// address's checked failed attempts, oldest first. Refused attempts are not among them, so
+/// retrying during a lockout does not extend it.
+pub(super) fn refused(failures: &[DateTime<Utc>], now: DateTime<Utc>) -> bool {
     failures.windows(FAILURES).any(|run| {
         let (first, fifth) = (run[0], run[FAILURES - 1]);
         fifth - first <= WINDOW && now < fifth + LOCKOUT
     })
-}
-
-/// Whether an attempt at `now` is refused, from the failure times of its (username, client
-/// address) pair and of its client address, each oldest first.
-pub(super) fn refused(
-    pair_failures: &[DateTime<Utc>],
-    client_failures: &[DateTime<Utc>],
-    now: DateTime<Utc>,
-) -> bool {
-    locked(pair_failures, now) || locked(client_failures, now)
 }

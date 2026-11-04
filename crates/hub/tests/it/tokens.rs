@@ -116,24 +116,6 @@ async fn sec_002_operator_for_token_resolves_and_touches_once_a_minute(pool: PgP
     assert!(matches!(junk, Err(access::Error::Unauthenticated)));
 }
 
-#[sqlx::test(migrations = "./migrations")]
-async fn api_003_connection_init_payload_identifies_a_websocket(pool: PgPool) {
-    set_operator(&pool).await;
-    let token = Hub::new(&pool, start()).token().await;
-    let payload = json!({ "token": token });
-    let identity = access::identify_connection(&pool, &payload, start())
-        .await
-        .unwrap();
-    assert_eq!(
-        identity.map(|i| i.operator().name.clone()),
-        Some(USERNAME.to_owned())
-    );
-    let missing = access::identify_connection(&pool, &json!({}), start())
-        .await
-        .unwrap();
-    assert!(missing.is_none());
-}
-
 /// The root field names of the hub schema, per operation type, by introspection.
 async fn root_fields(hub: &Hub, token: &str) -> Vec<(&'static str, String)> {
     let query = "{ __schema { queryType { fields { name } } mutationType { fields { name } } } }";

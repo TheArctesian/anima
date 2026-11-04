@@ -105,7 +105,10 @@ pub async fn identify(
 }
 
 /// The identity of a WebSocket connection from its `connection_init` payload
-/// `{ "token": "<token>" }`. `None` as for [`identify`].
+/// `{ "authorization": "Bearer <token>" }` (K7 "Authentication transport", R-020), with the
+/// same scheme rule as the HTTP header. `None` when the key is missing or not a string, for
+/// another scheme, and for a token that is malformed, unknown or expired. A token is never
+/// taken from a URL query.
 ///
 /// # Errors
 ///
@@ -115,7 +118,10 @@ pub async fn identify_connection(
     payload: &serde_json::Value,
     now: DateTime<Utc>,
 ) -> Result<Option<Identity>, Error> {
-    match payload.get("token").and_then(serde_json::Value::as_str) {
+    let authorization = payload
+        .get("authorization")
+        .and_then(serde_json::Value::as_str);
+    match authorization.and_then(bearer_token) {
         Some(token) => resolve(db, token, now).await,
         None => Ok(None),
     }
@@ -128,7 +134,12 @@ pub(super) fn bearer(headers: &HeaderMap) -> Option<&str> {
     if values.next().is_some() {
         return None;
     }
-    let (scheme, token) = value.to_str().ok()?.split_once(' ')?;
+    bearer_token(value.to_str().ok()?)
+}
+
+/// The token in an authorization value `Bearer <token>`; the scheme is case-insensitive.
+pub(super) fn bearer_token(authorization: &str) -> Option<&str> {
+    let (scheme, token) = authorization.split_once(' ')?;
     scheme.eq_ignore_ascii_case("bearer").then(|| token.trim())
 }
 

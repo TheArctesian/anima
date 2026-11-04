@@ -40,7 +40,6 @@ async fn log_006_r_016_runtime_role_runs_the_login_flow_on_access_tables(pool: P
     let key = AttemptKey {
         id: attempt,
         at: now(),
-        username: "operator",
         client,
     };
     store::failures(&mut conn, &key, now() - TimeDelta::minutes(30))

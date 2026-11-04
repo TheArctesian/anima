@@ -47,19 +47,12 @@ pub(super) async fn login(db: &PgPool, bus: &Bus, attempt: Attempt) -> Result<Si
     let key = AttemptKey {
         id: store::start_attempt(db, attempt.at, &stored_name, attempt.client.0).await?,
         at: attempt.at,
-        username: &stored_name,
         client: attempt.client.0,
     };
     let account = {
         let mut conn = db.acquire().await?;
         let failures = store::failures(&mut conn, &key, attempt.at - throttle::LOOKBACK).await?;
-        let by_client: Vec<_> = failures.iter().map(|(at, _)| *at).collect();
-        let by_pair: Vec<_> = failures
-            .iter()
-            .filter(|(_, same)| *same)
-            .map(|(at, _)| *at)
-            .collect();
-        if throttle::refused(&by_pair, &by_client, attempt.at) {
+        if throttle::refused(&failures, attempt.at) {
             store::finish_attempt(&mut *conn, key.id, Outcome::Refused).await?;
             return Err(Error::WrongCredentials);
         }
@@ -132,7 +125,7 @@ fn second_factor(account: &Account, code: Option<&str>) -> bool {
 async fn succeed(
     db: &PgPool,
     bus: &Bus,
-    attempt: &AttemptKey<'_>,
+    attempt: &AttemptKey,
     account: Account,
 ) -> Result<SignedIn, Error> {
     let client = ClientAddr(attempt.client);
@@ -178,7 +171,7 @@ async fn succeed(
 async fn record_failure(
     db: &PgPool,
     bus: &Bus,
-    attempt: &AttemptKey<'_>,
+    attempt: &AttemptKey,
     account: Option<&Account>,
 ) -> Result<(), Error> {
     let who = account.map_or_else(

@@ -140,19 +140,31 @@ async fn api_003_backstop_refuses_an_unguarded_field_without_an_identity() {
 }
 
 #[tokio::test]
-async fn api_003_backstop_lets_login_and_typename_through_without_an_identity() {
-    let login = backstopped().execute("mutation { login __typename }").await;
-    assert_eq!(
-        login.data,
-        value!({ "login": "signed in", "__typename": "Mutation" })
-    );
-    let typename = backstopped().execute("{ __typename }").await;
-    assert_eq!(typename.data, value!({ "__typename": "Query" }));
+async fn api_003_backstop_lets_exactly_one_login_through_without_an_identity() {
+    let login = backstopped().execute("mutation { login }").await;
+    assert_eq!(login.data, value!({ "login": "signed in" }));
+    let renamed = backstopped().execute("mutation { signIn: login }").await;
+    assert_eq!(renamed.data, value!({ "signIn": "signed in" }));
+}
+
+#[tokio::test]
+async fn api_003_backstop_refuses_several_logins_as_validation() {
+    let response = backstopped()
+        .execute("mutation { a0: login a1: login a2: login }")
+        .await;
+    assert_eq!(response.data, Value::Null);
+    let [error] = response.errors.as_slice() else {
+        panic!("expected one error, got {:?}", response.errors);
+    };
+    let code = error.extensions.as_ref().and_then(|e| e.get("code"));
+    assert_eq!(code, Some(&value!("VALIDATION")));
 }
 
 #[tokio::test]
 async fn api_003_backstop_refuses_mixed_fragment_and_introspection_documents() {
     let documents = [
+        "{ __typename }",
+        "mutation { login __typename }",
         "mutation { login open }",
         "mutation { renamed: open }",
         "mutation { ...F } fragment F on Mutation { login }",

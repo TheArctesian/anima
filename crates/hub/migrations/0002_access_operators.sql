@@ -29,8 +29,10 @@ create table access.api_tokens (
 
 create index api_tokens_operator on access.api_tokens (operator_id);
 
--- One row per attempt. `refused` marks an attempt the throttle turned away before any
--- password check; the throttle counts only failures that were checked (D-8).
+-- One row per attempt. The throttle counts failures per client address only (D-8);
+-- `username` is kept for the record and for `operator set`, which clears that username's
+-- attempts (D-9). `refused` marks an attempt the throttle turned away before any password
+-- check; the throttle counts only failures that were checked.
 create table access.login_attempts (
     id uuid primary key,
     at timestamptz not null,
@@ -41,13 +43,12 @@ create table access.login_attempts (
     check (not (ok and refused))
 );
 
-create index login_attempts_pair_at on access.login_attempts (username, client_addr, at)
-    where not ok and not refused;
 create index login_attempts_client_at on access.login_attempts (client_addr, at)
     where not ok and not refused;
 -- Retention (90 days, K2) deletes by age; expired tokens are deleted too.
 create index api_tokens_expires_at on access.api_tokens (expires_at);
 create index login_attempts_at on access.login_attempts (at);
+create index login_attempts_username on access.login_attempts (username);
 
 -- No grants here: anima_runtime gets its table privileges from the default privileges that
 -- migration 0001 sets for the owner role (R-016, K2 "Roles").

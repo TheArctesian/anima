@@ -54,6 +54,9 @@ pub(super) async fn replace_operator(
     password_hash: &str,
     now: DateTime<Utc>,
 ) -> Result<(OperatorId, Option<String>), sqlx::Error> {
+    // `for update` holds the one row until commit, so a concurrent `operator set` waits and
+    // then updates the same account instead of reading a stale username. On an empty table it
+    // locks nothing: a racing first insert fails on `operators_single`.
     let existing: Option<(OperatorId, String)> =
         sqlx::query_as("select id, username from access.operators for update")
             .fetch_optional(&mut *conn)
@@ -80,15 +83,20 @@ pub(super) async fn replace_operator(
     Ok((id, None))
 }
 
-/// Deletes the login attempts of these usernames, so a reset operator can sign in at once.
+/// Deletes the login attempts of these usernames and every attempt from an address where one
+/// of them was tried, so a reset operator can sign in at once, even after typos that locked
+/// the address (D-8, D-9).
 pub(super) async fn delete_attempts_of(
     conn: &mut PgConnection,
     usernames: &[&str],
 ) -> Result<(), sqlx::Error> {
-    sqlx::query("delete from access.login_attempts where username = any($1)")
-        .bind(usernames)
-        .execute(conn)
-        .await?;
+    sqlx::query(
+        "delete from access.login_attempts where username = any($1) or client_addr in \
+         (select client_addr from access.login_attempts where username = any($1))",
+    )
+    .bind(usernames)
+    .execute(conn)
+    .await?;
     Ok(())
 }
 
@@ -245,19 +253,18 @@ pub(super) async fn finish_attempt(
     Ok(())
 }
 
-/// Checked failures from the attempt's client address in `(since, attempt.at]`, other than
-/// the attempt itself, oldest first; `true` where the username is the attempt's too.
+/// Times of the checked failures from the attempt's client address in `(since, attempt.at]`,
+/// other than the attempt itself, oldest first.
 pub(super) async fn failures(
     conn: &mut PgConnection,
-    attempt: &AttemptKey<'_>,
+    attempt: &AttemptKey,
     since: DateTime<Utc>,
-) -> Result<Vec<(DateTime<Utc>, bool)>, sqlx::Error> {
-    sqlx::query_as(
-        "select at, username = $1 from access.login_attempts \
-         where client_addr = $2 and not ok and not refused and at > $3 and at <= $4 \
-         and id <> $5 order by at",
+) -> Result<Vec<DateTime<Utc>>, sqlx::Error> {
+    sqlx::query_scalar(
+        "select at from access.login_attempts \
+         where client_addr = $1 and not ok and not refused and at > $2 and at <= $3 \
+         and id <> $4 order by at",
     )
-    .bind(attempt.username)
     .bind(attempt.client)
     .bind(since)
     .bind(attempt.at)
@@ -267,9 +274,8 @@ pub(super) async fn failures(
 }
 
 /// The attempt whose throttle state is read.
-pub(super) struct AttemptKey<'a> {
+pub(super) struct AttemptKey {
     pub id: Uuid,
     pub at: DateTime<Utc>,
-    pub username: &'a str,
     pub client: IpAddr,
 }

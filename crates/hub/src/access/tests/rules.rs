@@ -26,14 +26,10 @@ fn minutes(n: i64) -> TimeDelta {
 fn sec_002_throttle_refuses_after_five_failures_within_15_minutes() {
     let start = now();
     let four: Vec<_> = (0..4).map(|i| start + minutes(i)).collect();
-    assert!(!throttle::refused(&four, &[], start + minutes(4)));
+    assert!(!throttle::refused(&four, start + minutes(4)));
 
     let five: Vec<_> = (0..5).map(|i| start + minutes(i)).collect();
-    assert!(throttle::refused(&five, &[], start + minutes(4)));
-    assert!(
-        throttle::refused(&[], &five, start + minutes(4)),
-        "by address"
-    );
+    assert!(throttle::refused(&five, start + minutes(4)));
 }
 
 #[test]
@@ -43,17 +39,16 @@ fn sec_002_throttle_releases_15_minutes_after_the_fifth_failure() {
     let fifth = start + minutes(4);
     assert!(throttle::refused(
         &five,
-        &[],
         fifth + minutes(15) - TimeDelta::seconds(1)
     ));
-    assert!(!throttle::refused(&five, &[], fifth + minutes(15)));
+    assert!(!throttle::refused(&five, fifth + minutes(15)));
 }
 
 #[test]
 fn sec_002_throttle_ignores_five_failures_spread_over_more_than_15_minutes() {
     let start = now();
     let spread: Vec<_> = (0..5).map(|i| start + minutes(4 * i)).collect();
-    assert!(!throttle::refused(&spread, &[], start + minutes(16)));
+    assert!(!throttle::refused(&spread, start + minutes(16)));
 }
 
 #[test]
@@ -139,13 +134,13 @@ fn sec_002_d_8_throttle_window_includes_exactly_15_minutes() {
     let mut edge: Vec<_> = (0..4).map(|i| start + minutes(i)).collect();
     edge.push(start + minutes(15));
     assert!(
-        throttle::refused(&edge, &[], start + minutes(15)),
+        throttle::refused(&edge, start + minutes(15)),
         "span of exactly 15 minutes"
     );
     let mut over: Vec<_> = (0..4).map(|i| start + minutes(i)).collect();
     over.push(start + minutes(15) + TimeDelta::seconds(1));
     assert!(
-        !throttle::refused(&over, &[], start + minutes(16)),
+        !throttle::refused(&over, start + minutes(16)),
         "span over 15 minutes"
     );
 }
@@ -214,7 +209,8 @@ fn sec_002_d_7_scope_round_trips_its_stored_text() {
 
 #[test]
 fn api_010_an_unreachable_database_is_unavailable_and_logged_by_kind_only() {
-    for source in [sqlx::Error::PoolTimedOut, sqlx::Error::PoolClosed] {
+    let io = sqlx::Error::Io(std::io::Error::from(std::io::ErrorKind::ConnectionRefused));
+    for source in [sqlx::Error::PoolTimedOut, sqlx::Error::PoolClosed, io] {
         let error = Error::from(source);
         assert_eq!(error.code(), "UNAVAILABLE");
         assert_eq!(error.fault(), Some("database_unreachable"));
@@ -226,4 +222,13 @@ fn api_010_an_unreachable_database_is_unavailable_and_logged_by_kind_only() {
     );
     assert_eq!(other.to_string(), "Something went wrong on the hub.");
     assert_eq!(Error::WrongCredentials.fault(), None);
+}
+
+#[test]
+fn api_003_r_020_bearer_token_reads_one_case_insensitive_scheme() {
+    assert_eq!(identity::bearer_token("Bearer abc"), Some("abc"));
+    assert_eq!(identity::bearer_token("bEaReR  abc "), Some("abc"));
+    assert_eq!(identity::bearer_token("Basic abc"), None);
+    assert_eq!(identity::bearer_token("Bearerabc"), None);
+    assert_eq!(identity::bearer_token("abc"), None);
 }
