@@ -51,7 +51,9 @@ fn timezone() -> impl Strategy<Value = String> {
         Just("wol-send-packet".to_owned()),
         Just("private-key/password".to_owned()),
         Just("Etc/GMT+5".to_owned()),
-        "[A-Za-z0-9_+/-]{1,64}",
+        Just("Etc/GMT-14".to_owned()),
+        // A letter, then up to three non-empty `/` segments: at most 63 characters.
+        "[A-Za-z][A-Za-z0-9_+-]{0,20}(/[A-Za-z0-9_+-]{1,20}){0,2}",
     ]
 }
 
@@ -60,8 +62,8 @@ fn zone_char(c: char) -> bool {
     c.is_ascii_alphanumeric() || matches!(c, '_' | '+' | '-' | '/')
 }
 
-/// Time zones that are not zone names: hostile shapes and any text with a
-/// character outside the charset, or longer than 64 characters.
+/// Time zones that are not zone names: hostile shapes, zone characters in a
+/// non-IANA shape, more than 64 characters, or any character outside the charset.
 fn bad_timezone() -> impl Strategy<Value = String> {
     prop_oneof![
         Just(String::new()),
@@ -71,6 +73,12 @@ fn bad_timezone() -> impl Strategy<Value = String> {
         Just("8.hostname,9.evil.host;7.connect;".to_owned()),
         Just("Europe/Zürich 東京 😀".to_owned()),
         "[A-Za-z0-9_+/-]{65,80}",
+        // Zone characters in a non-IANA shape: leading `/` (a glibc file path),
+        // leading non-letter, empty segment, trailing `/`.
+        "/[A-Za-z0-9_+/-]{0,20}",
+        "[0-9_+-][A-Za-z0-9_+/-]{0,20}",
+        "[A-Za-z][A-Za-z0-9_+-]{0,10}//[A-Za-z0-9_+/-]{0,10}",
+        "[A-Za-z][A-Za-z0-9_+/-]{0,20}/",
         text(64).prop_filter("has a non-zone character", |t| !t.chars().all(zone_char)),
     ]
 }

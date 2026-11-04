@@ -104,6 +104,19 @@ fn gw_012_time_zone_outside_the_zone_charset_is_refused() {
         "Europe/Zürich",
         "東京",
         "UTC\0",
+        "../etc/passwd",
+        "Etc/../UTC",
+        ".",
+        "/etc/shadow",
+        "/dev/stdin",
+        "/",
+        "//",
+        "Europe//London",
+        "Europe/",
+        "-UTC",
+        "+05",
+        "_x",
+        "5Etc/UTC",
     ];
     for zone in refused {
         assert_eq!(

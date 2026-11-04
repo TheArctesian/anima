@@ -37,16 +37,21 @@ impl Display {
 /// Longest accepted time zone, in characters.
 const MAX_TIMEZONE_CHARS: usize = 64;
 
-/// True for 1..=64 characters of `[A-Za-z0-9_+-/]`, the shape of an IANA zone
-/// name such as `America/Argentina/Buenos_Aires` or `Etc/GMT+5`.
+/// True for an IANA-shaped zone name such as `America/Argentina/Buenos_Aires`
+/// or `Etc/GMT+5`: 1..=64 characters of `[A-Za-z0-9_+-/]`, starting with an
+/// ASCII letter, with no empty `/` segment.
 ///
 /// The time zone comes from the client and reaches the SSH server as `TZ`, so
-/// anything else (control characters, spaces, `:`-paths) is refused (GW-012).
+/// anything else is refused (GW-012): control characters, spaces, `:`-paths,
+/// `.` and `..`, and a leading `/`, which glibc reads as an absolute file path.
 pub(crate) fn is_timezone(text: &str) -> bool {
-    (1..=MAX_TIMEZONE_CHARS).contains(&text.len())
+    // The first-letter test also refuses the empty string.
+    text.len() <= MAX_TIMEZONE_CHARS
+        && text.bytes().next().is_some_and(|b| b.is_ascii_alphabetic())
         && text
             .bytes()
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'+' | b'-' | b'/'))
+        && text.split('/').all(|segment| !segment.is_empty())
 }
 
 /// Hub-trusted `connect` values by argument name.
