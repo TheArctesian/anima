@@ -354,7 +354,11 @@ cmd_firewall() {
 
 # Refuse unless a new SSH session over the VPN (not the one that ran firewall) confirms.
 require_new_vpn_session() {
-  [ "$CONSOLE" -eq 0 ] || return 0
+  if [ "$CONSOLE" -eq 1 ]; then
+    say "WARNING: --console skips the check that SSH over the VPN works with the new rules."
+    say "WARNING: before you close the console, test a NEW SSH login over the VPN."
+    return 0
+  fi
   vpn_session || refuse "confirm from a NEW SSH session over the VPN, or use --console"
   [ -f "$(path "$SESSION")" ] || refuse "no recorded firewall session; run firewall again"
   [ "$(cat "$(path "$SESSION")")" != "${SSH_CONNECTION:-}" ] \

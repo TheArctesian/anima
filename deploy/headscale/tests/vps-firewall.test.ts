@@ -130,7 +130,17 @@ describe("harden.sh confirm", () => {
     expect(host.exists("etc/nftables.conf")).toBe(false);
   });
 
-  test("VPS-002: --console confirms without an SSH session", () => {
-    expect(host.run(["--console", "confirm"]).code).toBe(0);
+  test("VPS-002: confirm fails when the rollback starts while the timer is being stopped", () => {
+    const run = host.run(["confirm"], { ...second, FAKE_STOP_STARTS_ROLLBACK: "1" });
+    expect(run.code).toBe(1);
+    expect(run.out).toContain("the rollback started while confirming");
+    expect(host.exists("etc/nftables.conf")).toBe(false);
+  });
+
+  test("VPS-002: --console confirms without an SSH session and warns that SSH was not proven", () => {
+    const run = host.run(["--console", "confirm"]);
+    expect(run.code).toBe(0);
+    expect(run.out).toContain("WARNING: --console skips the check that SSH over the VPN works");
+    expect(run.out).toContain("test a NEW SSH login over the VPN");
   });
 });

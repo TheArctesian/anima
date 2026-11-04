@@ -42,6 +42,7 @@ esac`,
   SYSTEMCTL: `case "$1" in
   is-active) exit "\${FAKE_ACTIVE:-0}";; is-enabled) exit "\${FAKE_ENABLED:-0}";;
   show) echo "\${FAKE_SUBSTATE:-waiting}";; reload) exit "\${FAKE_RELOAD:-0}";;
+  stop) [ -z "\${FAKE_STOP_STARTS_ROLLBACK:-}" ] || : > "$FAKE_ROOT/var/lib/anima/firewall-rolled-back";;
 esac`,
   SYSTEMD_RUN: "exit 0",
   SSHD: `[ "$1" = -T ] || exit "\${FAKE_SSHD_SYNTAX:-0}"

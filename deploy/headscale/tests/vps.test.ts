@@ -36,21 +36,32 @@ describe("nftables.conf", () => {
     expect(ruleset.chains.filter((chain) => chain.hook === "forward" && chain.policy === "drop")).toEqual([]);
   });
 
-  const VPN_DROPS = [
-    'iifname != { "lo", "tailscale0" } ip daddr 100.64.0.0/10 drop',
-    'iifname != { "lo", "tailscale0" } ip6 daddr fd7a:115c:a1e0::/48 drop',
+  // These tests read the rules as text; they cannot prove what packets do. The packet
+  // behaviour (neighbour blocked, VPN peer reaches a DNAT-published port, container
+  // reaches a tailnet peer) was checked in network namespaces on ubuntu:24.04.
+  const OFF_VPN = 'iifname != { "lo", "tailscale0" }';
+  const LOCAL_VPN_DROPS = [
+    `${OFF_VPN} fib daddr type local ip daddr 100.64.0.0/10 drop`,
+    `${OFF_VPN} fib daddr type local ip6 daddr fd7a:115c:a1e0::/48 drop`,
   ];
 
-  test("DNS-005: prerouting drops VPN and loopback destinations before Docker's DNAT", () => {
+  test("DNS-005: prerouting drops the host's own VPN and loopback addresses before Docker's DNAT", () => {
     const prerouting = hooked("prerouting");
     expect(prerouting.table).toBe("inet anima_filter");
     expect(prerouting.priority).toBeLessThanOrEqual(DSTNAT_PRIORITY);
-    expect(prerouting.rules).toEqual(expect.arrayContaining([...VPN_DROPS, 'iifname != "lo" ip daddr 127.0.0.0/8 drop']));
+    expect(prerouting.rules).toEqual([...LOCAL_VPN_DROPS, 'iifname != "lo" ip daddr 127.0.0.0/8 drop']);
+  });
+
+  test("DNS-005: forwarding into tailscale0 is allowed only from the VPN, loopback and Docker bridges", () => {
+    const forward = hooked("forward");
+    expect(forward.table).toBe("inet anima_filter");
+    expect(forward.policy).toBe("accept");
+    expect(forward.rules).toEqual(['oifname "tailscale0" iifname != { "lo", "tailscale0", "docker0", "br-*" } drop']);
   });
 
   test("VPS-002/DNS-005: the input chain drops VPN destinations off tailscale0 before any accept", () => {
     const firstAccept = input.rules.findIndex((rule) => rule.endsWith("accept"));
-    for (const rule of VPN_DROPS) {
+    for (const rule of [`${OFF_VPN} ip daddr 100.64.0.0/10 drop`, `${OFF_VPN} ip6 daddr fd7a:115c:a1e0::/48 drop`]) {
       expect(input.rules.indexOf(rule)).toBeGreaterThanOrEqual(0);
       expect(input.rules.indexOf(rule)).toBeLessThan(firstAccept);
     }
@@ -77,11 +88,18 @@ describe("nftables.conf", () => {
 });
 
 describe("configuration files", () => {
-  test("VPS-002: the nftables.service drop-in stops by deleting only the Anima table", () => {
-    const dropIn = readVps("nftables-unit.conf");
-    const settings = dropIn.split("\n").filter((line) => !line.startsWith("#"));
-    expect(settings.filter((line) => line.includes("flush"))).toEqual([]);
-    expect(dropIn).toMatch(/^\[Service\]\nExecStop=\nExecStop=-\/usr\/sbin\/nft delete table inet anima_filter$/m);
+  test("VPS-002: the nftables.service drop-in clears Ubuntu's flush-on-stop and replaces it with nothing", () => {
+    const settings = readVps("nftables-unit.conf")
+      .split("\n")
+      .filter((line) => line !== "" && !line.startsWith("#"));
+    expect(settings).toEqual(["[Service]", "ExecStop="]);
+  });
+
+  test("VPS-002: stopping nftables.service never deletes or flushes the live rules", () => {
+    const execStops = readVps("nftables-unit.conf")
+      .split("\n")
+      .filter((line) => line.startsWith("ExecStop="));
+    expect(execStops.filter((line) => /delete|flush/.test(line))).toEqual([]);
   });
 
   test("VPS-001: the sshd drop-in disables password, keyboard-interactive and root login", () => {
