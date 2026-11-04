@@ -10,7 +10,7 @@ use unicode_normalization::UnicodeNormalization;
 const REDACTED: &str = "[redacted]";
 
 /// A normalised name that contains one of these names a secret.
-const SECRET_PARTS: [&str; 12] = [
+const SECRET_PARTS: [&str; 11] = [
     "password",
     "passwd",
     "passphrase",
@@ -22,8 +22,11 @@ const SECRET_PARTS: [&str; 12] = [
     "bearer",
     "privatekey",
     "totp",
-    "otp",
 ];
+
+/// A name with one of these as a whole word names a secret (`otp`, `otpCode`), while
+/// `notPaused`, `footprint` and `hotplug` do not.
+const SECRET_WORDS: [&str; 1] = ["otp"];
 
 /// A normalised name equal to one of these names a secret.
 const SECRET_NAMES: [&str; 3] = ["pass", "pwd", "key"];
@@ -76,6 +79,9 @@ fn names_secret(name: &str) -> bool {
     let joined = words.concat();
     SECRET_PARTS.iter().any(|part| joined.contains(part))
         || SECRET_NAMES.contains(&joined.as_str())
+        || words
+            .iter()
+            .any(|word| SECRET_WORDS.contains(&word.as_str()))
         || words.last().is_some_and(|word| word == "key")
         || KEY_COMPOUNDS
             .iter()
@@ -133,6 +139,7 @@ mod tests {
             "name": "lab-router",
             "ssh": { "PRIVATE_KEY": "b", "privateKey": "c", "passphrase": "d", "port": 22 },
             "steps": [{ "totpCode": "123456" }, { "otp": "654321" }, [{ "Token": "e" }]],
+            "codes": { "otpCode": "1", "OTP": "2", "totpSecret": "3" },
             "apiSecret": { "nested": "f" },
             "newPassword": "g",
             "headers": { "Authorization": "Bearer x", "Cookie": "y", "passwd": "z" },
@@ -152,6 +159,7 @@ mod tests {
                     "port": 22,
                 },
                 "steps": [{ "totpCode": "[redacted]" }, { "otp": "[redacted]" }, [{ "Token": "[redacted]" }]],
+                "codes": { "otpCode": "[redacted]", "OTP": "[redacted]", "totpSecret": "[redacted]" },
                 "apiSecret": "[redacted]",
                 "newPassword": "[redacted]",
                 "headers": { "Authorization": "[redacted]", "Cookie": "[redacted]", "passwd": "[redacted]" },
@@ -213,6 +221,7 @@ mod tests {
     fn log_007_redaction_keeps_values_without_secret_keys() {
         kept(&json!(["password", { "username": "admin", "port": 22, "tags": ["token"] }, null]));
         kept(&json!({ "keyboard": "us", "monkey": 1, "name": "lab-router", "deviceName": "x" }));
+        kept(&json!({ "notPaused": true, "footprint": "small", "hotplug": false }));
         kept(&json!({ "field": "name", "from": "lab-router", "to": "core-router" }));
     }
 
