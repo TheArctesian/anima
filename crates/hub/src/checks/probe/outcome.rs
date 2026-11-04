@@ -7,6 +7,15 @@ use chrono::{DateTime, Utc};
 /// Longest failure message kept (CHK-003).
 pub const MESSAGE_MAX: usize = 512;
 
+/// A message as stored: control characters removed, at most [`MESSAGE_MAX`] characters.
+#[must_use]
+pub fn clean_message(text: &str) -> String {
+    text.chars()
+        .filter(|c| !c.is_control())
+        .take(MESSAGE_MAX)
+        .collect()
+}
+
 /// The raw result of one probe. Invert, retries and status are applied later.
 ///
 /// A failed network attempt is `ok: false` with a short message; the message never holds a
@@ -37,12 +46,7 @@ impl ProbeResult {
     /// A failed probe. The message is stripped of control characters and capped.
     #[must_use]
     pub fn failed(failure: &Failure) -> Self {
-        let text: String = failure
-            .to_string()
-            .chars()
-            .filter(|c| !c.is_control())
-            .take(MESSAGE_MAX)
-            .collect();
+        let text = clean_message(&failure.to_string());
         Self {
             ok: false,
             response_time: None,

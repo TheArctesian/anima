@@ -23,7 +23,7 @@ use std::{collections::HashMap, net::IpAddr, sync::Arc};
 use chrono::{DateTime, Utc};
 
 pub use http::BODY_CAP;
-pub use outcome::{Failure, MESSAGE_MAX, ProbeResult};
+pub use outcome::{Failure, MESSAGE_MAX, ProbeResult, clean_message};
 pub use reach::AddressPolicy;
 
 use crate::checks::config::{CheckConfig, HttpSecrets};
