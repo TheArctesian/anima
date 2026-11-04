@@ -99,22 +99,32 @@ async fn an_invalid_stored_configuration_fails_without_a_network_call() {
     );
 }
 
+fn rust_sources(dir: &std::path::Path, found: &mut Vec<std::path::PathBuf>) {
+    for entry in std::fs::read_dir(dir).unwrap() {
+        let path = entry.unwrap().path();
+        if path.is_dir() {
+            rust_sources(&path, found);
+        } else if path.extension().is_some_and(|e| e == "rs") {
+            found.push(path);
+        }
+    }
+}
+
 #[test]
-fn chk_012_no_probe_source_starts_a_process() {
-    let sources = [
-        include_str!("../probe.rs"),
-        include_str!("../probe/dns.rs"),
-        include_str!("../probe/http.rs"),
-        include_str!("../probe/icmp.rs"),
-        include_str!("../probe/outcome.rs"),
-        include_str!("../probe/reach.rs"),
-        include_str!("../probe/resolve.rs"),
-        include_str!("../probe/tcp.rs"),
-        include_str!("../probe/tls.rs"),
-    ];
-    for source in sources {
+fn chk_012_no_check_source_starts_a_process() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let mut files = vec![root.join("checks.rs")];
+    rust_sources(&root.join("checks"), &mut files);
+    files.retain(|f| !f.components().any(|c| c.as_os_str() == "tests"));
+    assert!(files.len() >= 15, "found only {} sources", files.len());
+    for file in files {
+        let source = std::fs::read_to_string(&file).unwrap();
         for forbidden in ["std::process", "tokio::process", "Command::new"] {
-            assert!(!source.contains(forbidden), "{forbidden}");
+            assert!(
+                !source.contains(forbidden),
+                "{forbidden} in {}",
+                file.display()
+            );
         }
     }
 }

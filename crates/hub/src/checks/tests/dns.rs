@@ -1,6 +1,8 @@
 //! DNS probe against a hand-written local UDP server.
 
-use super::support::{LOOPBACK, dns_server, env, silent_dns_server, strict_env, target, wire_name};
+use super::support::{
+    LOOPBACK, dns_records, dns_server, env, silent_dns_server, strict_env, target, wire_name,
+};
 use crate::checks::{
     config::{CheckConfig, DnsRecordType},
     probe::{ProbeEnv, ProbeResult, probe},
@@ -149,4 +151,21 @@ async fn dns_resolver_address_is_checked_by_the_policy() {
             "{refused}"
         );
     }
+}
+
+#[tokio::test]
+async fn chk_001_dns_expected_never_matches_a_record_of_another_type() {
+    let decoy = [&[5u8][..], b"decoy"].concat();
+    let port = dns_records(vec![(1, vec![192, 168, 1, 10]), (16, decoy)]).await;
+    assert!(
+        run(&query(DnsRecordType::A, Some("192.168.1.10")), port)
+            .await
+            .ok
+    );
+    let result = run(&query(DnsRecordType::A, Some("decoy")), port).await;
+    assert!(!result.ok);
+    assert_eq!(
+        result.message.as_deref(),
+        Some("the DNS answer is not the expected one")
+    );
 }

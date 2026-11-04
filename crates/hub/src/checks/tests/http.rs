@@ -77,7 +77,7 @@ async fn chk_001_http_keyword_must_be_in_the_body() {
 
 #[tokio::test]
 async fn chk_001_http_json_pointer_value_must_equal_the_expected_text() {
-    let body = r#"{"status":"ok","n":3,"flag":true,"deep":{"list":[{"v":"x"}]}}"#;
+    let body = r#"{"status":"ok","n":3,"f":3.0,"flag":true,"deep":{"list":[{"v":"x"}]}}"#;
     let server = serve(None, move |r| {
         if r.path == "/text" {
             Reply::ok("not json")
@@ -97,6 +97,12 @@ async fn chk_001_http_json_pointer_value_must_equal_the_expected_text() {
     assert!(run(json("/flag", Some("true"))).await.ok);
     assert!(run(json("/deep/list/0/v", Some("x"))).await.ok);
     assert!(run(json("/status", None)).await.ok);
+    // Equal length, a prefix, and the rendering of a float (serde: 3.0 stays "3.0").
+    assert!(!run(json("/status", Some("ox"))).await.ok);
+    assert!(!run(json("/status", Some("o"))).await.ok);
+    assert!(!run(json("/status", Some("okk"))).await.ok);
+    assert!(!run(json("/f", Some("3"))).await.ok);
+    assert!(run(json("/f", Some("3.0"))).await.ok);
     assert_eq!(
         message(&run(json("/status", Some("bad"))).await),
         "the JSON value is not the expected one"
