@@ -231,6 +231,11 @@ pub fn acceptor(from_year: i32, to_year: i32) -> TlsAcceptor {
 
 /// A UDP DNS server that answers every query with one record. Returns its port.
 pub async fn dns_server(record_type: u16, rdata: Vec<u8>) -> u16 {
+    dns_records(vec![(record_type, rdata)]).await
+}
+
+/// A UDP DNS server that answers every query with all the given `(type, rdata)` records.
+pub async fn dns_records(records: Vec<(u16, Vec<u8>)>) -> u16 {
     let socket = UdpSocket::bind("127.0.0.1:0").await.unwrap();
     let port = socket.local_addr().unwrap().port();
     tokio::spawn(async move {
@@ -238,13 +243,16 @@ pub async fn dns_server(record_type: u16, rdata: Vec<u8>) -> u16 {
         while let Ok((len, from)) = socket.recv_from(&mut buf).await {
             let query = &buf[..len];
             let end = 12 + query[12..].iter().position(|b| *b == 0).unwrap() + 5;
-            let mut reply = vec![query[0], query[1], 0x81, 0x80, 0, 1, 0, 1, 0, 0, 0, 0];
+            let count = u8::try_from(records.len()).unwrap();
+            let mut reply = vec![query[0], query[1], 0x81, 0x80, 0, 1, 0, count, 0, 0, 0, 0];
             reply.extend_from_slice(&query[12..end]);
-            reply.extend_from_slice(&[0xC0, 0x0C]);
-            reply.extend_from_slice(&record_type.to_be_bytes());
-            reply.extend_from_slice(&[0, 1, 0, 0, 0, 60]);
-            reply.extend_from_slice(&u16::try_from(rdata.len()).unwrap().to_be_bytes());
-            reply.extend_from_slice(&rdata);
+            for (record_type, rdata) in &records {
+                reply.extend_from_slice(&[0xC0, 0x0C]);
+                reply.extend_from_slice(&record_type.to_be_bytes());
+                reply.extend_from_slice(&[0, 1, 0, 0, 0, 60]);
+                reply.extend_from_slice(&u16::try_from(rdata.len()).unwrap().to_be_bytes());
+                reply.extend_from_slice(rdata);
+            }
             let _ = socket.send_to(&reply, from).await;
         }
     });

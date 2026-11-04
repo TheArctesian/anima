@@ -58,9 +58,14 @@ struct Wire<'a> {
     headers: Vec<Cow<'a, str>>,
 }
 
-fn text(secret: &Secret) -> &str {
-    // Secrets are built from `String`s, so the bytes are valid UTF-8.
-    std::str::from_utf8(secret.expose()).unwrap_or_default()
+/// The secret as text, for a field that must be UTF-8. The error names the field only.
+fn text<'a>(field: &'static str, secret: &'a Secret) -> Result<&'a str, ConfigError> {
+    std::str::from_utf8(secret.expose()).map_err(|_| err(field, Reason::Invalid))
+}
+
+/// The secret as text for sealing; bytes that are not UTF-8 are replaced, never dropped.
+fn lossy(secret: &Secret) -> Cow<'_, str> {
+    String::from_utf8_lossy(secret.expose())
 }
 
 impl HttpSecrets {
@@ -73,13 +78,9 @@ impl HttpSecrets {
     #[must_use]
     pub fn encode(&self) -> Secret {
         let wire = Wire {
-            password: self.password.as_ref().map(|s| Cow::Borrowed(text(s))),
-            bearer_token: self.bearer_token.as_ref().map(|s| Cow::Borrowed(text(s))),
-            headers: self
-                .headers
-                .iter()
-                .map(|s| Cow::Borrowed(text(s)))
-                .collect(),
+            password: self.password.as_ref().map(lossy),
+            bearer_token: self.bearer_token.as_ref().map(lossy),
+            headers: self.headers.iter().map(lossy).collect(),
         };
         Secret::new(serde_json::to_vec(&wire).unwrap_or_default())
     }
@@ -111,23 +112,25 @@ impl HttpInput {
         for (name, value) in self.headers {
             if is_secret_header(&name) {
                 rules::header_name("headers", &name)?;
-                rules::header_value("headers", text(&value))?;
+                rules::header_value("headers", text("headers", &value)?)?;
                 secrets.headers.push(value);
                 headers.push(HttpHeader { name, value: None });
             } else {
                 headers.push(HttpHeader {
                     name,
-                    value: Some(text(&value).to_owned()),
+                    value: Some(text("headers", &value)?.to_owned()),
                 });
             }
         }
         let auth = match self.credentials {
             HttpCredentials::None => HttpAuth::None,
             HttpCredentials::Basic { username, password } => {
+                text("auth", &password)?;
                 secrets.password = Some(password);
                 HttpAuth::Basic { username }
             }
             HttpCredentials::Bearer(token) => {
+                text("auth", &token)?;
                 secrets.bearer_token = Some(token);
                 HttpAuth::Bearer
             }

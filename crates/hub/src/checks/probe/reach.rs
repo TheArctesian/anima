@@ -8,7 +8,7 @@ use ipnet::IpNet;
 ///
 /// The default refuses every address a probe must never touch: loopback, unspecified,
 /// `0.0.0.0/8`, link-local (`169.254.0.0/16`, home of cloud metadata, and `fe80::/10`),
-/// multicast, broadcast and reserved `240.0.0.0/4`, the AWS IPv6 metadata address, and the
+/// multicast, broadcast and reserved `240.0.0.0/4`, the AWS IPv6 metadata address, Teredo (`2001::/32`), site-local (`fec0::/10`), and the
 /// IPv4-mapped, IPv4-compatible, NAT64 and 6to4 forms of the IPv4 ones. Private ranges
 /// (`10/8`, `172.16/12`, `192.168/16`, `100.64/10`, `fc00::/7`) stay allowed, because
 /// devices live there; `extra_deny` removes more, such as the hub's own network.
@@ -60,8 +60,13 @@ fn embedded_v4(ip: Ipv6Addr) -> Option<Ipv4Addr> {
     // ::a.b.c.d, but neither :: nor ::1, which stay IPv6 addresses.
     let compatible = o[..12] == [0; 12] && o[12..] != [0; 4] && o[12..] != [0, 0, 0, 1];
     let nat64 = o[..12] == [0, 0x64, 0xff, 0x9b, 0, 0, 0, 0, 0, 0, 0, 0];
-    if mapped || compatible || nat64 {
+    // ::ffff:0:a.b.c.d (IPv4-translated, SIIT)
+    let translated = o[..8] == [0; 8] && o[8..12] == [0xff, 0xff, 0, 0];
+    if mapped || compatible || nat64 || translated {
         Some(v4(12))
+    } else if o[..6] == [0, 0x64, 0xff, 0x9b, 0, 1] {
+        // 64:ff9b:1::/48 (local-use NAT64): the address sits around the reserved octet 8.
+        Some(Ipv4Addr::new(o[6], o[7], o[9], o[10]))
     } else if o[0] == 0x20 && o[1] == 0x02 {
         Some(v4(2)) // 2002::/16 (6to4)
     } else {
@@ -89,8 +94,10 @@ fn always_refused(ip: IpAddr) -> bool {
                 || o[0] >= 240
         }
         IpAddr::V6(v6) => {
-            let first = v6.segments()[0];
+            let [first, second, ..] = v6.segments();
             v6.is_loopback()
+                || (first == 0x2001 && second == 0) // 2001::/32 Teredo
+                || first & 0xffc0 == 0xfec0 // fec0::/10 site-local
                 || v6.is_unspecified()
                 || v6.is_multicast()
                 || first & 0xffc0 == 0xfe80
