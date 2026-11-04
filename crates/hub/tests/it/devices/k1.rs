@@ -173,5 +173,8 @@ async fn k1_every_devices_member_wp06_owns_is_in_the_hub() {
             }
         }
     }
-    assert!(missing.is_empty(), "K1 members missing from the hub: {missing:?}");
+    assert!(
+        missing.is_empty(),
+        "K1 members missing from the hub: {missing:?}"
+    );
 }

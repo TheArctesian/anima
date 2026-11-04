@@ -303,6 +303,11 @@ pub(super) fn validate_filter(filter: DeviceFilter) -> Result<DeviceFilter, Vec<
             "tags",
             format!("The tag filter can have at most {TAGS_MAX} tags."),
         ));
+    } else if filter.tags.iter().any(|t| t.chars().count() > TAG_MAX) {
+        problems.0.push(FieldError::new(
+            "tags",
+            format!("A tag in the filter can be at most {TAG_MAX} characters."),
+        ));
     }
     problems.finish(Some(filter))
 }

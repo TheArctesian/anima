@@ -117,6 +117,17 @@ fn dev_010_a_filter_has_a_name_of_at_most_64_characters_and_at_most_32_tags() {
 }
 
 #[test]
+fn dev_010_a_filter_tag_has_at_most_32_characters() {
+    let filter = |length: usize| DeviceFilter {
+        name: None,
+        tags: vec!["ok".into(), "t".repeat(length)],
+        site: None,
+    };
+    assert!(validate_filter(filter(32)).is_ok());
+    assert_eq!(fields(&validate_filter(filter(33)).unwrap_err()), ["tags"]);
+}
+
+#[test]
 fn dev_010_the_k1_default_of_kind_is_the_rule_default() {
     use async_graphql::{EmptySubscription, Schema};
 
