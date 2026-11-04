@@ -47,6 +47,7 @@ name = "anima-hub"
 version = "0.1.0"
 dependencies = [
  "anima-hub",
+ "anima-theme",
  "argon2",
  "async-graphql",
  "async-graphql-axum",

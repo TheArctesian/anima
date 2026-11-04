@@ -31,6 +31,7 @@ argon2.workspace = true
 getrandom.workspace = true
 rpassword.workspace = true
 guac-protocol = { path = "../guac-protocol" }
+anima-theme = { path = "../theme" }
 
 [features]
 # `access::Identity::for_tests`, for integration tests of guarded domains (D-6). Turned on
