@@ -1,7 +1,7 @@
 import type { Attachment } from 'svelte/attachments';
 import { forwardPointer, sendClipboard, type KeyRoute } from '../tunnel/input';
 import type { SessionTunnel } from '../tunnel/tunnel';
-import { PASTE_STROKES, keyFilter, keyStrokes, type KeyCombination, type KeyStroke } from './keys';
+import { pasteStrokes, keyStrokes, type KeyCombination, type KeyFilter, type KeyStroke } from './keys';
 
 type Client = SessionTunnel['client'];
 
@@ -9,9 +9,8 @@ function send(client: Client, strokes: readonly KeyStroke[]): void {
   for (const [pressed, keysym] of strokes) client.sendKeyEvent(pressed, keysym);
 }
 
-/** The route of the pane's keyboard to `client`: keys the filter passes are sent as 1 or 0 (T1 note F-3). */
-export function keyRoute(client: Client): KeyRoute {
-  const filter = keyFilter();
+/** The route of the pane's keyboard to `client`: keys `filter` passes are sent as 1 or 0 (T1 note F-3). */
+export function keyRoute(client: Client, filter: KeyFilter): KeyRoute {
   return {
     down: (keysym) => {
       if (!filter.down(keysym)) return true;
@@ -31,12 +30,13 @@ export function sendCombination(client: Client, combination: KeyCombination): vo
 
 /**
  * Paste `text` into the terminal (D-9): one `text/plain` clipboard stream, then guacd's terminal paste shortcut,
- * which types the clipboard it now holds. Empty text sends nothing.
+ * which types the clipboard it now holds, leaving down any key in `held` (the keys the device holds). Empty text
+ * sends nothing.
  */
-export function pasteText(client: Client, text: string): void {
+export function pasteText(client: Client, text: string, held: ReadonlySet<number>): void {
   if (text === '') return;
   sendClipboard(client, text);
-  send(client, PASTE_STROKES);
+  send(client, pasteStrokes(held));
 }
 
 /**

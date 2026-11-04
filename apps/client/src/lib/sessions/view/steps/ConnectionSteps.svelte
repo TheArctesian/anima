@@ -52,12 +52,17 @@
     line-height: var(--leading-tight);
   }
 
+  /* A fixed icon cell: the mark glyphs differ in width, and an `auto` column would move the label (MOT-007). */
   .step {
     display: grid;
-    grid-template-columns: auto 1fr;
+    grid-template-columns: var(--icon-md) 1fr;
     column-gap: var(--space-1);
     align-items: center;
     color: var(--text-muted);
+  }
+
+  .step > :global(.icon) {
+    justify-self: center;
   }
 
   .mark {

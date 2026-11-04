@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { KEY_COMBINATIONS, PASTE_STROKES, keyFilter, keyStrokes } from './keys';
+import { KEY_COMBINATIONS, PASTE_STROKES, keyFilter, keyStrokes, pasteStrokes } from './keys';
 
 const CTRL = 0xffe3;
 const ALT = 0xffe9;
@@ -34,6 +34,14 @@ describe('Keys menu table (RA-006, D-10)', () => {
       [0, CTRL],
     ]);
   });
+});
+
+it.each([
+  ['Ctrl', new Set([CTRL]), [[1, SHIFT], [1, 0x56], [0, 0x56], [0, SHIFT]]],
+  ['right Ctrl and Shift', new Set([0xffe4, SHIFT]), [[1, 0x56], [0, 0x56]]],
+  ['Shift', new Set([0xffe2]), [[1, CTRL], [1, 0x56], [0, 0x56], [0, CTRL]]],
+])('D-9: with %s held on the device, the paste keys leave it down', (_name, held, expected) => {
+  expect(pasteStrokes(held)).toEqual(expected);
 });
 
 describe('keyFilter (D-8, D-9)', () => {

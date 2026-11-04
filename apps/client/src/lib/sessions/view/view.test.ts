@@ -135,6 +135,11 @@ describe('MAT-008: the remote display', () => {
     }
   });
 
+  it('MOT-007: the connection step icon cell has a fixed width, so a mark glyph of another width moves no label', () => {
+    const columns = componentRules('./steps/ConnectionSteps.svelte').get('.step')?.get('grid-template-columns') ?? '';
+    expect(columns).toMatch(/^var\(--icon-[a-z]+\) 1fr$/);
+  });
+
   it('UI-M1, D-7: the display makes its own stacking context, so the library layers (z-index -1) paint in front of the session', () => {
     expect(rules.get('.display')?.get('isolation')).toBe('isolate');
   });
@@ -254,7 +259,16 @@ describe('LOG-007', () => {
     Object.defineProperty(paste, 'clipboardData', { value: { getData: () => 'PASTE-MARKER-4b1e' } });
     pane.dispatchEvent(paste);
     systemClipboard.refuse = true;
+    pane.focus();
+    flushSync();
     socket.clipboard('REFUSED-CLIP-MARKER');
+    await settle();
+    expect(target.textContent).toContain('Could not copy the text to your clipboard.');
+    trigger?.click();
+    flushSync();
+    menuItems().at(-1)?.click();
+    await settle();
+    expect(target.textContent).toContain('Could not read your clipboard.');
     socket.gatewayError(0x0301);
     socket.closeWith(1011);
     await settle();

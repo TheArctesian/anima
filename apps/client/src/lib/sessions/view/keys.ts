@@ -59,15 +59,21 @@ export function keyStrokes(combination: KeyCombination): readonly KeyStroke[] {
 }
 
 /**
- * guacd's terminal paste shortcut, Ctrl+Shift+V: after a clipboard stream it types the clipboard it holds (D-9).
- * The shifted letter is the keysym `V`.
+ * guacd's terminal paste shortcut, Ctrl+Shift+V, for a device that holds no key in `held`: after a clipboard stream it
+ * types the clipboard guacd holds (D-9). A Ctrl or Shift the device already holds is neither pressed again nor
+ * released, so the operator's held Ctrl stays down on the device. The shifted letter is the keysym `V`.
  */
-export const PASTE_STROKES: readonly KeyStroke[] = keyStrokes({
-  id: 'paste',
-  label: 'Paste',
-  hint: 'Send the clipboard',
-  keysyms: [KEYSYM.controlLeft, KEYSYM.shiftLeft, KEYSYM.shiftedV],
-});
+export function pasteStrokes(held: ReadonlySet<number>): readonly KeyStroke[] {
+  const holds = (keys: ReadonlySet<number>) => [...keys].some((key) => held.has(key));
+  const modifiers = [
+    ...(holds(CONTROL) ? [] : [KEYSYM.controlLeft]),
+    ...(holds(SHIFT) ? [] : [KEYSYM.shiftLeft]),
+  ];
+  return keyStrokes({ id: 'paste', label: 'Paste', hint: 'Send the clipboard', keysyms: [...modifiers, KEYSYM.shiftedV] });
+}
+
+/** The paste shortcut when the device holds no key. */
+export const PASTE_STROKES: readonly KeyStroke[] = pasteStrokes(new Set());
 
 /** Decides which keyboard events reach the device. */
 export interface KeyFilter {
@@ -75,6 +81,8 @@ export interface KeyFilter {
   down(keysym: number): boolean;
   /** Whether to send this release: only keys whose press was sent are released. */
   up(keysym: number): boolean;
+  /** The keys the device holds down: every press sent and not yet released. */
+  readonly held: ReadonlySet<number>;
 }
 
 /** Whether `keysym`, pressed while `held` are down, is the operator's paste shortcut (Ctrl+Shift+V or Shift+Insert). */
@@ -106,5 +114,6 @@ export function keyFilter(): KeyFilter {
       system.delete(keysym);
       return sent.delete(keysym);
     },
+    held: sent,
   };
 }

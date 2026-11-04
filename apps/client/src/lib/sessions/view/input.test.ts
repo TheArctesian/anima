@@ -120,7 +120,10 @@ describe('keyboard across hide and show (D-8)', () => {
   });
 });
 
-/** Press Backspace on the pane, do `leave`, release it wherever focus is, and count the presses the device got. */
+/**
+ * Press Backspace on the pane, do `leave`, release it outside the pane (where the pane's keyboard cannot hear it),
+ * and give the key-repeat timer 10 s: only the listener for `leave` can release the key on the device.
+ */
 async function holdAndLeave(leave: (pane: HTMLElement, trigger: HTMLElement) => void) {
   const { socket, pane, target } = await connected();
   key(pane, 'keydown', { key: 'Backspace', code: 'Backspace', keyCode: 8 });
@@ -128,7 +131,7 @@ async function holdAndLeave(leave: (pane: HTMLElement, trigger: HTMLElement) => 
   if (trigger === null) throw new Error('no Keys button');
   leave(pane, trigger);
   flushSync();
-  key(document.activeElement ?? document.body, 'keyup', { key: 'Backspace', code: 'Backspace', keyCode: 8 });
+  key(document.body, 'keyup', { key: 'Backspace', code: 'Backspace', keyCode: 8 });
   vi.advanceTimersByTime(10_000);
   return { socket, pane, strokes: strokes(socket) };
 }
@@ -172,6 +175,32 @@ describe('keyboard and DOM focus (D-8, SEC-M1)', () => {
 });
 
 describe('paste shortcuts (D-9, SEC-S2)', () => {
+  it('D-9: after Ctrl+Shift+V with Ctrl still held, the device still holds Ctrl, so the next Ctrl+C is Ctrl+C', async () => {
+    const { socket, pane } = await connected();
+    const ctrl = { key: 'Control', code: 'ControlLeft', keyCode: 17, location: 1, ctrlKey: true };
+    const shift = { key: 'Shift', code: 'ShiftLeft', keyCode: 16, location: 1, ctrlKey: true, shiftKey: true };
+    const v = { key: 'V', code: 'KeyV', keyCode: 86, ctrlKey: true, shiftKey: true };
+    key(pane, 'keydown', ctrl);
+    key(pane, 'keydown', shift);
+    key(pane, 'keydown', v);
+    const paste = new Event('paste', { bubbles: true, cancelable: true });
+    Object.defineProperty(paste, 'clipboardData', { value: { getData: () => 'echo hi' } });
+    pane.dispatchEvent(paste);
+    key(pane, 'keyup', v);
+    key(pane, 'keyup', { ...shift, shiftKey: false });
+    key(pane, 'keydown', { key: 'c', code: 'KeyC', keyCode: 67, ctrlKey: true });
+    const heard = strokes(socket);
+    const c = heard.findIndex(([pressed, keysym]) => pressed === 1 && keysym === 0x63);
+    const lastCtrl = heard.slice(0, c).filter(([, keysym]) => keysym === 0xffe3).at(-1);
+    expect(c).toBeGreaterThan(-1);
+    expect(lastCtrl).toEqual([1, 0xffe3]);
+    // The paste keys pressed and released only V: Ctrl and Shift were already down on the device.
+    expect(heard.filter(([, keysym]) => keysym === 0x56)).toEqual([
+      [1, 0x56],
+      [0, 0x56],
+    ]);
+  });
+
   const CTRL = { key: 'Control', code: 'ControlLeft', keyCode: 17, location: 1, ctrlKey: true };
   const SHIFT = { key: 'Shift', code: 'ShiftLeft', keyCode: 16, location: 1, shiftKey: true };
 

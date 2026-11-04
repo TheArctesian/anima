@@ -7,7 +7,7 @@
   import EndedPanel from './EndedPanel.svelte';
   import HostKeyModal from './hostkey/HostKeyModal.svelte';
   import { followPaneFocus, keyRoute, pasteText, sendCombination, showDisplay } from './input';
-  import type { KeyCombination } from './keys';
+  import { keyFilter, type KeyCombination, type KeyFilter } from './keys';
   import KeysMenu from './menu/KeysMenu.svelte';
   import { SessionConnection, progressOf, type Stage } from './session.svelte';
   import type { SessionStart } from './start';
@@ -40,6 +40,8 @@
   let paneSize: Size | undefined = $state();
   let startedAt: Size = { width: 0, height: 0 };
   let sizes: SizeSender | undefined;
+  /** What the device holds and which keys reach it, for the open tunnel; the paste reads it too (D-9). */
+  let filter: KeyFilter = keyFilter();
   let notice: string | undefined = $state();
   let dismissed: Stage | undefined = $state();
   /** Whether the keyboard focus is inside the pane, and the window has it (D-8). */
@@ -76,7 +78,7 @@
   function paste(event: ClipboardEvent) {
     if (client === undefined || !ready) return;
     event.preventDefault();
-    pasteText(client, event.clipboardData?.getData('text/plain') ?? '');
+    pasteText(client, event.clipboardData?.getData('text/plain') ?? '', filter.held);
   }
 
   function sendKeys(combination: KeyCombination) {
@@ -87,7 +89,7 @@
     const target = client;
     navigator.clipboard.readText().then(
       (text) => {
-        if (target !== undefined && target === client) pasteText(target, text);
+        if (target !== undefined && target === client) pasteText(target, text, filter.held);
       },
       () => {
         notice = PASTE_FAILED;
@@ -134,6 +136,7 @@
       clear: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
     });
     sizes = sender;
+    filter = keyFilter();
     const now = untrack(() => paneSize);
     if (now !== undefined) resized(now);
     // Text the gateway sends while the pane is not bound is dropped, so a background session never writes the
@@ -157,7 +160,7 @@
   $effect(() => {
     if (!bound || client === undefined || keyboard === undefined) return;
     const bindTo = keyboard;
-    bindTo.bind(keyRoute(client));
+    bindTo.bind(keyRoute(client, filter));
     return () => {
       bindTo.unbind();
     };
