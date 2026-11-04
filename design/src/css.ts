@@ -64,9 +64,9 @@ function valueOf(token: Token): string {
   }
 }
 
-/** The custom properties a token declares. Breakpoints are TypeScript only (K5). */
+/** The custom properties a token declares. Breakpoints and gesture constants are TypeScript only (K5). */
 export function declarations(token: Token): Declaration[] {
-  if (token.type === 'breakpoint') return [];
+  if (token.type === 'breakpoint' || token.type === 'gesture') return [];
   if (token.type === 'material') return material(token);
   return [[`--${token.name}`, valueOf(token)]];
 }

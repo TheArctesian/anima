@@ -15,6 +15,7 @@ function shown(value: string): string {
 function valueCell(token: Token): string {
   const lines = declarations(token).map(([property, value]) => `\`${property}: ${shown(value)}\``);
   if (token.type === 'breakpoint') return `\`${JSON.stringify(token.value)}\` (TypeScript only)`;
+  if (token.type === 'gesture') return `\`${String(token.value)}\` (TypeScript only)`;
   const resolved = token.type === 'color' && aliasName(token.source) ? ` = \`${String(token.value)}\`` : '';
   return `${lines.join('<br>')}${resolved}`;
 }

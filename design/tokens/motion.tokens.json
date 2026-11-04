@@ -116,6 +116,17 @@
       }
     }
   },
+  "gesture": {
+    "$type": "gesture",
+    "projection-deceleration": {
+      "$value": 0.998,
+      "$description": "Deceleration rate that projects where a flick lands (MOT-032)"
+    },
+    "rubberband-constant": {
+      "$value": 0.55,
+      "$description": "Constant of the rubber-band curve past a scroll or sheet edge (MOT-033)"
+    }
+  },
   "layout": {
     "bp": {
       "$type": "breakpoint",
