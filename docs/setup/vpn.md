@@ -603,7 +603,8 @@ changes nothing.
 4. `docker` merges `daemon.json` into `/etc/docker/daemon.json`: published ports bind to
    `127.0.0.1` by default (Docker would otherwise bypass the firewall), `selinux-enabled` makes
    Docker run containers confined (`container_t`; Docker CE on AlmaLinux does not do this by
-   default, so Headscale would run unconfined as `spc_t`), logs are rotated, and `live-restore`
+   default, so Headscale would run unconfined as `spc_t`), logs are rotated (unless the existing
+   file sets its own `log-driver` or `log-opts`: those win, R-050), and `live-restore`
    keeps containers running while Docker restarts. It refuses while Headscale's folders are not
    labelled `container_file_t` (step 2.5). With `--restart-docker` it first reloads Docker, which
    turns `live-restore` on from the new file, refuses to go on unless it is on, then restarts

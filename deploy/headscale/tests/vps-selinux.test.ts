@@ -98,11 +98,21 @@ describe("harden.sh docker", () => {
     expect(run.out).toContain("jq is required");
   });
 
-  test("D-10: merging keeps the operator's other log options and the Anima ones win", () => {
-    host.write("etc/docker/daemon.json", '{"log-opts": {"max-size": "1g", "labels": "team", "compress": "true"}}');
+  test("R-050: the operator's log settings win over the Anima defaults, which fill only what is missing", () => {
+    host.write("etc/docker/daemon.json", '{"log-driver": "local", "log-opts": {"max-file": "3", "labels": "team"}}');
     expect(host.run(["docker"]).code).toBe(0);
     const merged = JSON.parse(host.read("etc/docker/daemon.json")) as Record<string, unknown>;
-    expect(merged["log-opts"]).toEqual({ "max-size": "10m", "max-file": "5", labels: "team", compress: "true" });
+    expect(merged["log-driver"]).toBe("local");
+    expect(merged["log-opts"]).toEqual({ "max-size": "10m", "max-file": "3", labels: "team" });
+  });
+
+  test("R-050: the operator's file cannot turn off the forced keys", () => {
+    host.write("etc/docker/daemon.json", '{"ip": "0.0.0.0", "live-restore": false, "selinux-enabled": false, "default-address-pools": [{"base": "172.17.0.0/12", "size": 24}]}');
+    expect(host.run(["docker"]).code).toBe(0);
+    expect(JSON.parse(host.read("etc/docker/daemon.json"))).toEqual({
+      ip: "127.0.0.1", "live-restore": true, "selinux-enabled": true, "log-driver": "json-file",
+      "log-opts": { "max-size": "10m", "max-file": "5" }, "default-address-pools": [{ base: "172.17.0.0/12", size: 24 }],
+    });
   });
 
   test("D-9: docker tells the operator to recreate Headscale, which keeps its old label", () => {
