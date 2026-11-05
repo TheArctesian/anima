@@ -11,6 +11,7 @@ mod host_key_rows;
 mod host_keys;
 mod k1;
 mod leak;
+mod mount;
 mod privileges;
 mod start;
 mod starting;

@@ -140,6 +140,14 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         vault: vault.clone(),
         policy: AddressPolicy::new(config.probe_deny.clone()),
     };
+    let tunnel = sessions::tunnel_router(
+        pool.clone(),
+        vault.clone(),
+        bus.clone(),
+        clock.clone(),
+        config.guacd.clone(),
+        live.clone(),
+    );
     let schema = build_schema(Dependencies {
         config,
         clock: clock.clone(),
@@ -150,15 +158,13 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     });
     let upkeep = spawn_upkeep(&pool, &clock);
     let scheduler = checks::spawn_scheduler(pool.clone(), bus.clone(), clock.clone(), probing);
-    let push = logged(checks::push_router(
-        pool.clone(),
-        bus.clone(),
-        clock.clone(),
-    ));
-    // `/tunnel` mounts here only behind `access::permitted_networks_layer` (WP-05 T4, R-040).
+    let push = checks::push_router(pool.clone(), bus.clone(), clock.clone());
+    // `/tunnel` and `/push` are behind the same permitted-networks check as every route, and
+    // logged by their templates only, never their tokens (K3, NET-002, LOG-007, R-028, R-051).
     let edge = access::Edge::new(pool.clone(), bus, clock.clone());
     let app = router(schema, pool.clone(), clock.clone())
-        .merge(push)
+        .merge(logged(tunnel))
+        .merge(logged(push))
         .layer(access::permitted_networks_layer(edge.clone()));
     let shutdown = Shutdown {
         db: pool,
