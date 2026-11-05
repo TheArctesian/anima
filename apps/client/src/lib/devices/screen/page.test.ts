@@ -2,7 +2,7 @@
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import Page from '../../../routes/devices/+page.svelte';
-import { type } from '../../forms/device/form/form.fixture';
+import { button, type } from '../../forms/device/form/form.fixture';
 import { fakeHub } from '../hub.fixture';
 import { endTransitionsAtOnce } from '../transitions.fixture';
 import { device, devicesAnswer, url } from './screen.fixture.svelte';
@@ -120,11 +120,60 @@ it('WP-13 H-1: a device created in the modal opens its detail page', async () =>
   expect(current.goto.map(([href]) => href)).toEqual(['/devices/new%201']);
 });
 
+const DETAIL = { id: 'd9', name: 'nas', host: 'nas.lan' };
+
+async function settleAll(): Promise<void> {
+  for (let round = 0; round < 10; round += 1) await Promise.resolve();
+  flushSync();
+}
+
+/** Opens the modal, fills a device with SSH on and a typed password, and presses Save. */
+async function addWithPassword(answers: Record<string, unknown>): Promise<ReturnType<typeof fakeHub>> {
+  const fake = await show([device('a')], { CreateDevice: { createDevice: DETAIL }, ...answers });
+  await openAddDevice();
+  type('name', 'nas');
+  type('host', 'nas.lan');
+  document.querySelector<HTMLInputElement>('[role="dialog"] input[type="checkbox"]')?.click();
+  flushSync();
+  type('ssh-username', 'root');
+  type('credential-password', 'hunter2');
+  return fake;
+}
+
+it('DEV-011: Save with a typed SSH password stores it for the new device ID', async () => {
+  const fake = await addWithPassword({ SetSshCredential: { setSshCredential: { credentialStored: true } } });
+  button('Save').click();
+  await settleAll();
+  expect(fake.requests.find((request) => request.operation === 'SetSshCredential')?.variables).toEqual({
+    deviceId: 'd9',
+    credential: { password: 'hunter2' },
+  });
+  expect(current.goto).toEqual([['/devices/d9', { state: {} }]]);
+});
+
+it('Predictable: a credential the hub did not store still opens the device, carrying only the hub message in page state', async () => {
+  await addWithPassword({ SetSshCredential: { code: 'UNAVAILABLE', message: 'The vault is locked.' } });
+  button('Save').click();
+  await settleAll();
+  expect(current.goto).toEqual([['/devices/d9', { state: { credentialError: 'The vault is locked.' } }]]);
+  expect(JSON.stringify(current.goto)).not.toContain('hunter2');
+});
+
+it('DEV-013: Test connection in the modal sends the unsaved form values to the hub', async () => {
+  const result = { reachable: true, authenticated: true, hostKey: null, hostKeyChanged: false, message: null };
+  const fake = await addWithPassword({ TestConnection: { testConnection: result } });
+  button('Test connection').click();
+  await settleAll();
+  const sent = fake.requests.find((request) => request.operation === 'TestConnection')?.variables as { input: Record<string, unknown> };
+  expect(sent.input).toMatchObject({ host: 'nas.lan', ssh: { enabled: true, username: 'root' }, credential: { password: 'hunter2' } });
+  expect(sent.input).not.toHaveProperty('deviceId');
+});
+
 it('WP-13 H-1: when the sites cannot be read the modal stays closed and the page says why', async () => {
   await show([device('a')], { Sites: { code: 'unreachable', message: 'The hub did not answer.' } });
   await openAddDevice();
   expect(dialog()).toBeNull();
-  expect(document.querySelector('[role="alert"]')?.textContent).toContain('The hub did not answer.');
+  expect(document.querySelector('section > [role="alert"]')?.textContent).toBe('Could not open Add device: The hub did not answer.');
 });
 
 it('WP-13 H-1: Escape inside the modal closes the modal only; an open toolbar menu stays open', async () => {

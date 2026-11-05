@@ -10,7 +10,7 @@
   import type { DeviceFormValues, SiteOption } from '$lib/forms/device/values';
   import { useHub } from '$lib/hub/context';
   import type { HubError } from '$lib/hub/error';
-  import { sessionsApi, type ConnectionTestInput } from '$lib/sessions/api';
+  import { sessionsApi } from '$lib/sessions/api';
   import { useSessions } from '$lib/sessions/sessions.svelte';
 
   const sessions = useSessions();
@@ -21,6 +21,7 @@
   let sites = $state<readonly SiteOption[]>([]);
   let adding = $state(false);
   let addError = $state<HubError | null>(null);
+  let loadingSites = false;
 
   const query = $derived(parseListQuery(page.url.searchParams));
 
@@ -37,7 +38,10 @@
 
   /** Add device (DEV-010, WP-13 H-1): the sites are read first, because the form needs a site to place the device in. */
   async function addDevice(): Promise<void> {
+    if (loadingSites || adding) return;
+    loadingSites = true;
     const result = await devices.sites();
+    loadingSites = false;
     addError = result.ok ? null : result.error;
     if (!result.ok) return;
     sites = result.value;
@@ -51,14 +55,12 @@
     });
   }
 
-  function test(input: ConnectionTestInput) {
-    return connections.testConnection(input);
-  }
-
   function created(added: AddedDevice): void {
     adding = false;
+    // The hub's message goes in page state, not the URL, so a reload does not replay it and no secret is involved (LOG-007).
+    const state = added.credentialError === null ? {} : { credentialError: added.credentialError.message };
     // eslint-disable-next-line svelte/no-navigation-without-resolve -- the path comes from resolve(); the ID is the hub's and is encoded
-    void goto(`${resolve('/devices')}/${encodeURIComponent(added.id)}`);
+    void goto(`${resolve('/devices')}/${encodeURIComponent(added.id)}`, { state });
   }
 
   /** Opens an SSH tab that grows from the button (WP-14 H-1, MOT-005). */
@@ -84,7 +86,7 @@
   open={adding}
   {sites}
   onCreate={create}
-  onTest={test}
+  onTest={connections.testConnection}
   onClose={() => {
     adding = false;
   }}
