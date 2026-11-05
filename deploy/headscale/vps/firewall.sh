@@ -278,10 +278,13 @@ install_boot_include() {
 
 # firewalld would filter beside the Anima table, outside the rollback; the Anima table is
 # the only host firewall (D-10). Docker keeps its own rules without firewalld.
+# firewalld may not be installed at all (the AlmaLinux 10 VPS image of R-050): the mask still
+# keeps a later install from starting it, and there is nothing to stop.
 mask_firewalld() {
-  if $SYSTEMCTL is-active --quiet firewalld.service; then : >"$(path "$FIREWALLD_WAS_ACTIVE")"; fi
+  local active=0
+  if $SYSTEMCTL is-active --quiet firewalld.service; then active=1; : >"$(path "$FIREWALLD_WAS_ACTIVE")"; fi
   $SYSTEMCTL mask firewalld.service || fail "could not mask firewalld; the Anima firewall is installed"
-  $SYSTEMCTL stop firewalld.service || fail "could not stop firewalld; the Anima firewall is installed"
+  [ "$active" -eq 0 ] || $SYSTEMCTL stop firewalld.service || fail "could not stop firewalld; the Anima firewall is installed"
 }
 
 cmd_confirm() {
