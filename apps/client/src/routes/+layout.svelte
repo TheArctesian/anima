@@ -5,7 +5,9 @@
   import { guardStart } from '$lib/access/navigation';
   import { provideHub } from '$lib/hub/context';
   import { storedHubAddress } from '$lib/desktop/address';
-  import { readAccessToken } from '$lib/desktop/token';
+  import { keyStoreAvailable, readAccessToken } from '$lib/desktop/token';
+  import { desktopUpdater } from '$lib/desktop/updater';
+  import { warnToProcessLog } from '$lib/desktop/processLog';
   import { createHub } from '$lib/hub/hub';
   import { crossFade } from '$lib/motion/roles/transitions';
   import { DATA_AGE_REFRESH_MS } from '$lib/nav/nav';
@@ -16,6 +18,8 @@
   import { createSessions, provideSessions, type SessionPort } from '$lib/sessions/sessions.svelte';
   import SessionPanes from '$lib/sessions/strip/SessionPanes.svelte';
   import SessionTabs from '$lib/sessions/strip/SessionTabs.svelte';
+  import UpdateBanner from '$lib/updates/UpdateBanner.svelte';
+  import { provideUpdates, Updates } from '$lib/updates/updates.svelte';
   import { sessionStart } from '$lib/sessions/view/start';
 
   const { children }: { children: Snippet } = $props();
@@ -64,6 +68,11 @@
     });
   });
 
+  // Only the desktop production app checks for updates; dev shells have no updater plugin (UPD-001).
+  const updates = new Updates(desktopUpdater, { warn: warnToProcessLog });
+  provideUpdates(updates);
+  $effect(() => (keyStoreAvailable() && !import.meta.env.DEV ? updates.start() : undefined));
+
   function navigate() {
     covered = null;
     sessions.deselect();
@@ -94,6 +103,7 @@
       <SessionPanes {api} />
     </div>
   </main>
+  <UpdateBanner />
 </div>
 
 <style>

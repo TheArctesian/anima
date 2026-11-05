@@ -1,12 +1,19 @@
 <script lang="ts">
   import SignOutRow from '$lib/access/SignOutRow.svelte';
+  import { keyStoreAvailable } from '$lib/desktop/token';
+  import LogFolderRow from '$lib/process-log/LogFolderRow.svelte';
+  import UpdatesRow from '$lib/updates/UpdatesRow.svelte';
 </script>
 
 <h1>Settings</h1>
 
 <SignOutRow />
 
-<!-- WP-04 stage B mounts the desktop "Updates" row here (UPD-006, R-006). -->
+<!-- The desktop app alone updates itself and keeps a process log (UPD-006, LOG-008). -->
+{#if keyStoreAvailable()}
+  <UpdatesRow />
+  <LogFolderRow />
+{/if}
 
 <style>
   /* The title's line height is reserved from tokens, so the font load cannot move it (WP-11 H-7, R-042). */
