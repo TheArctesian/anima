@@ -3,6 +3,8 @@ import { flushSync } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { HubResult } from '$lib/hub/error';
 import { installAnimations } from '../../animations.fixture';
+import type { ConnectionTestResult } from '../connection-test';
+import { testResult } from '../result.fixture';
 import { HOST_KEY, SAVED, button, input, leave, save, settle, show, type } from './form.fixture';
 
 vi.mock('motion', async (importOriginal) => ({
@@ -16,9 +18,9 @@ beforeEach(() => {
 
 afterEach(leave);
 
-const NEW_KEY: HubResult<{ reachable: boolean; authenticated: boolean; hostKeyChanged: boolean; hostKey: typeof HOST_KEY }> = {
+const NEW_KEY: HubResult<ConnectionTestResult> = {
   ok: true,
-  value: { reachable: true, authenticated: false, hostKeyChanged: false, hostKey: HOST_KEY },
+  value: testResult({ reachable: true, authenticated: false, hostKeyChanged: false, hostKey: HOST_KEY }),
 };
 
 async function test(): Promise<void> {
@@ -74,7 +76,7 @@ it('DEV-013: a change to the name keeps the result of the test', async () => {
 });
 
 it('SEC-007: a changed key whose fingerprint is unknown is styled as a warning; a good result is not', async () => {
-  show(SAVED, {}, { ok: true, value: { reachable: true, authenticated: true, hostKeyChanged: true } });
+  show(SAVED, {}, { ok: true, value: testResult({ reachable: true, authenticated: true, hostKeyChanged: true }) });
   await test();
   expect(document.querySelector('.test [role="status"] p')?.classList.contains('warning')).toBe(true);
   leave();

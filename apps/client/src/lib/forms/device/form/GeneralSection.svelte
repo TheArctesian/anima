@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { FieldError } from '$lib/hub/error';
-  import type { OperatingSystem, SiteOption } from '../hub-types';
+  import type { OperatingSystem } from '$lib/hub/generated/graphql';
+  import type { SiteOption } from '../values';
   import type { EditedValues } from './editing';
   import Field from './Field.svelte';
   import TagsField from './TagsField.svelte';

@@ -2,8 +2,15 @@
   import type { HubError, HubResult } from '$lib/hub/error';
   import FormButton from '../../FormButton.svelte';
   import HostKeyModal from '../../modal/HostKeyModal.svelte';
-  import { connectionTestInput, testOutcome, testsSavedRecord, testsStoredCredential, type TestOutcome } from '../connection-test';
-  import type { ConnectionTestInput, ConnectionTestResult } from '../hub-types';
+  import {
+    connectionTestInput,
+    testOutcome,
+    testsSavedRecord,
+    testsStoredCredential,
+    type ConnectionTestResult,
+    type TestOutcome,
+  } from '../connection-test';
+  import type { ConnectionTestInput } from '$lib/hub/generated/graphql';
   import { credentialInput } from '../input';
   import type { DeviceFormValues } from '../values';
   import { isWarning, outcomeText } from './errors';

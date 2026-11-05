@@ -50,9 +50,21 @@ describe('sessionsApi (K1, CQ-045)', () => {
   it('K1: testConnection tests the saved device by ID only', async () => {
     const test = { reachable: true, authenticated: true, hostKey: null, hostKeyChanged: false, message: null };
     const { api, sent } = hubAnswering({ data: { testConnection: test } });
-    expect(await api.testConnection('d-1')).toEqual({ ok: true, value: test });
-    expect(sent[0]?.query).toContain('testConnection(input: { deviceId: $deviceId })');
-    expect(sent[0]?.variables).toEqual({ deviceId: 'd-1' });
+    expect(await api.testConnection({ deviceId: 'd-1' })).toEqual({ ok: true, value: test });
+    expect(sent[0]?.query).toContain('testConnection(input: $input)');
+    expect(sent[0]?.variables).toEqual({ input: { deviceId: 'd-1' } });
+  });
+
+  it('DEV-013: testConnection sends unsaved host, SSH settings and credential without a device ID', async () => {
+    const test = { reachable: true, authenticated: false, hostKey: null, hostKeyChanged: false, message: 'Bad password' };
+    const { api, sent } = hubAnswering({ data: { testConnection: test } });
+    const input = {
+      host: 'nas.lan',
+      ssh: { enabled: true, port: 2222, username: 'root', auth: 'PASSWORD' as const },
+      credential: { password: 'hunter2' },
+    };
+    expect(await api.testConnection(input)).toEqual({ ok: true, value: test });
+    expect(sent[0]?.variables).toEqual({ input });
   });
 
   it('K1: acceptHostKey sends exactly the fingerprint given', async () => {

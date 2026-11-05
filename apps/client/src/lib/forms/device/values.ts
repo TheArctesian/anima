@@ -1,5 +1,16 @@
-import type { DeviceFields, OperatingSystem, SshAuth } from './hub-types';
+import type { AcceptHostKeyMutation, DeviceQuery, OperatingSystem, SitesQuery, SshAuth } from '$lib/hub/generated/graphql';
 import { normalizeHost } from './host';
+
+/** The part of a hub `Device` the form edits. */
+export type DeviceFields = Pick<NonNullable<DeviceQuery['device']>, 'name' | 'host' | 'kind' | 'os' | 'tags'> & {
+  readonly ssh: Pick<NonNullable<DeviceQuery['device']>['ssh'], 'enabled' | 'port' | 'username' | 'auth'>;
+};
+
+/** A site the Add device form can place the device in. */
+export type SiteOption = SitesQuery['sites'][number];
+
+/** A host key the hub saw, as the connection test and the host key modal show it. */
+export type HostKey = AcceptHostKeyMutation['acceptHostKey'];
 
 /** What the operator typed. Text fields stay text so that "abc" in the port box is reportable. */
 export interface DeviceFormValues {

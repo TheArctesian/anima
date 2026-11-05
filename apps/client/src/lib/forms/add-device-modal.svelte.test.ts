@@ -3,6 +3,7 @@ import { flushSync, mount, tick, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import AddDeviceModal from './AddDeviceModal.svelte';
 import { installAnimations } from './animations.fixture';
+import { testResult } from './device/result.fixture';
 
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
@@ -64,7 +65,7 @@ it('SEC-006: the host key dialog opened from inside Add device is a child of bod
       open: true,
       sites: [{ id: 's1', name: 'Home' }],
       onCreate: () => Promise.reject(new Error('not used')),
-      onTest: () => Promise.resolve({ ok: true as const, value: { reachable: true, authenticated: false, hostKeyChanged: false, hostKey } }),
+      onTest: () => Promise.resolve({ ok: true as const, value: testResult({ reachable: true, authenticated: false, hostKeyChanged: false, hostKey }) }),
       onClose: () => undefined,
       onCreated: () => undefined,
     },

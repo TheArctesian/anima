@@ -1,6 +1,9 @@
-import type { ConnectionTestInput, ConnectionTestResult, HostKey } from './hub-types';
+import type { ConnectionTestInput, TestConnectionMutation } from '$lib/hub/generated/graphql';
 import { credentialInput, sameSsh, sshInput } from './input';
-import { normalizedValues, type DeviceFormValues } from './values';
+import { normalizedValues, type DeviceFormValues, type HostKey } from './values';
+
+/** The hub's answer to a connection test (DEV-013). */
+export type ConnectionTestResult = TestConnectionMutation['testConnection'];
 
 /** Whether the saved device's host and SSH settings are as saved, so that the test can run against the stored record. */
 export function testsSavedRecord(initial: DeviceFormValues | null, values: DeviceFormValues, deviceId: string | null): initial is DeviceFormValues {

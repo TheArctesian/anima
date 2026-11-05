@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import type { HubError } from '$lib/hub/error';
 import { connectionTestInput, testOutcome, testsSavedRecord, testsStoredCredential } from './connection-test';
 import { FORM_FIELD, fieldErrorsFrom } from './field-errors';
-import type { DeviceFields, HostKey } from './hub-types';
+import { testResult } from './result.fixture';
 import { createInput, credentialInput, updateInput } from './input';
 import { validateDevice } from './validate';
-import { formValues, type DeviceFormValues } from './values';
+import { formValues, type DeviceFields, type DeviceFormValues, type HostKey } from './values';
 
 const SAVED: DeviceFields = {
   name: 'nas',
@@ -295,7 +295,7 @@ describe('connectionTestInput', () => {
 });
 
 describe('testOutcome', () => {
-  const base = { reachable: true, authenticated: true, hostKeyChanged: false } as const;
+  const base = testResult({ reachable: true, authenticated: true, hostKeyChanged: false });
 
   it('DEV-013: reachable and authenticated is ok', () => {
     expect(testOutcome(base)).toEqual({ kind: 'ok' });

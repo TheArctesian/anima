@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { HubError, HubResult } from '$lib/hub/error';
   import FormButton from '../FormButton.svelte';
-  import type { HostKey } from '../device/hub-types';
+  import type { HostKey } from '../device/values';
   import Modal from './Modal.svelte';
 
   interface Props {
