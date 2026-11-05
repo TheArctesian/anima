@@ -2,6 +2,7 @@
   import { page } from '$app/state';
   import { tick, untrack, type Snippet } from 'svelte';
   import '../styles/global.css';
+  import { guardStart } from '$lib/access/navigation';
   import { provideHub } from '$lib/hub/context';
   import { storedHubAddress } from '$lib/desktop/address';
   import { readAccessToken } from '$lib/desktop/token';
@@ -23,6 +24,7 @@
   const address = storedHubAddress(localStorage);
   const hub = createHub({ address, token: readAccessToken });
   provideHub(hub);
+  guardStart(page.url.pathname, hub.address);
   const clock = createClock(DATA_AGE_REFRESH_MS);
 
   // Each session view starts its own sessions, since only it knows its display (D-7); the store ends them (D-11).
