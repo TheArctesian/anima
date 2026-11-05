@@ -55,19 +55,8 @@ It must show `HTTP/2 302` and a `location:` header with `.../releases/latest/dow
 - Turn on two-factor authentication on GitHub and on Cloudflare.
 - Keep every action pinned by full commit SHA (a test enforces it). Update a pin only after you read the new code.
 
-## Signing keys and secrets in the workflow
-
-- **macOS.** The build compiles with no secret in the environment (`tauri build --no-bundle`). The next step (`tauri bundle`) holds the signing key and the Apple secrets, because Tauri signs inside that command.
-- **Linux.** The build job never sees the key. `tauri bundle --no-sign` downloads linuxdeploy with no hash check, then uploads the unsigned AppImage as `linux-unsigned`. The job `sign-linux` runs on a fresh runner, installs only the Tauri CLI that the lockfile pins (`bun install --frozen-lockfile --ignore-scripts --filter @anima/desktop`: exact versions, no install scripts, only the desktop workspace), and runs `tauri signer sign --app-version` on the AppImage as data. Linux is listed in the feed only when `sign-linux` succeeded.
-- **Residual risk on macOS.** The split stops only direct reads of the environment during the compile. The compile and the key step share one runner, so build-time code (`build.rs`, proc-macros, vite plugins, npm and Cargo dependencies) could change `PATH` or `node_modules` for the key step. On macOS, treat the build-time dependencies as trusted as much as the key. Developer ID signing and an external signer would reduce this later.
-
-## What protects the feed
-
-- Before the draft release is created, `make-feed` decodes each `.sig` and fails the run unless its trusted comment says `version:<this version>`. The apps use `requireSignedVersion`, so a `.sig` with no version or the wrong one would make every installed app refuse the update with no message.
-- With `allowDowngrades: true`, `requireSignedVersion` stops mislabelled versions, not rollbacks. Anyone who controls the feed (`updates.anima.ing`, the Cloudflare account or the GitHub release) can send apps back to any older signed release. The protection is TLS and who controls those accounts, so keep two-factor authentication on both.
-- Every hop of the DNS-007 redirect must be https. The updater follows an https-to-http redirect and only warns. The Cloudflare rule targets `https://github.com/...` only; check the `location:` header after any change.
-
 **h. First release.**
+0. If any workflow run has already happened, run `gh cache delete --all` first, so no old cache is restored.
 1. Create `main` from a `phase-1` commit whose gates passed (and do step c first).
 2. Watch the run in the Actions tab.
 3. Check `curl -sL https://updates.anima.ing/latest.json`: the version is `0.1.<n>` and both platforms are listed.
@@ -77,9 +66,21 @@ It must show `HTTP/2 302` and a `location:` header with `.../releases/latest/dow
 1. A second merge to `main` produces `v0.1.<n+1>`.
 2. The installed app shows "Anima 0.1.<n+1> is installed" within 4 hours, or at once through Settings > "Check for updates".
 3. "Restart to update" runs the new version, and Settings shows it.
-4. Test a bad signature without touching real releases: build locally with a throwaway `--config` whose updater endpoint is a local https feed with a signature that does not match. The app logs "Update install failed." in `~/Library/Logs/ing.anima.desktop/Anima.log` and keeps running.
+4. Test a bad signature without touching real releases. Build locally with a release `tauri build` (a debug build never checks) and a throwaway `--config` whose updater endpoint is a local https feed with a signature that does not match. The feed needs a certificate the system trusts. The app logs "Update install failed." and keeps running. The log is `~/Library/Logs/ing.anima.desktop/Anima.log` on macOS and `$XDG_DATA_HOME/ing.anima.desktop/logs` on Linux.
 
 **Keychain prompts.** With ad-hoc signing, each update has a new code hash, so macOS will probably ask again for Keychain access to the stored token after each update. Developer ID signing (step f) avoids that.
+
+## Signing keys and secrets in the workflow
+
+- **macOS.** The build compiles with no secret in the environment (`tauri build --no-bundle`). The next step (`tauri bundle`) holds the signing key and the Apple secrets, because Tauri signs inside that command.
+- **Linux.** The build job never sees the key. `tauri bundle --no-sign` downloads linuxdeploy with no hash check, then uploads the unsigned AppImage as `linux-unsigned`. The job `sign-linux` runs on a fresh runner (every `setup-bun` step sets `no-cache: true` and no job uses `actions/cache`, so nothing the build wrote is restored), installs only the Tauri CLI that the lockfile pins (`bun install --frozen-lockfile --ignore-scripts --filter @anima/desktop`: exact versions, no install scripts, only the desktop workspace), and runs `tauri signer sign --app-version` on the AppImage as data. Linux is listed in the feed only when `sign-linux` succeeded.
+- **Residual risk on macOS.** The split stops only direct reads of the environment during the compile. The compile and the key step share one runner, so build-time code (`build.rs`, proc-macros, vite plugins, npm and Cargo dependencies) could change `PATH` or `node_modules` for the key step. On macOS, treat the build-time dependencies as trusted as much as the key. Developer ID signing and an external signer would reduce this later.
+
+## What protects the feed
+
+- Before the draft release is created, `make-feed` decodes each `.sig` and fails the run unless its trusted comment says `version:<this version>`. The apps use `requireSignedVersion`, so a `.sig` with no version or the wrong one would make every installed app refuse the update with no message.
+- With `allowDowngrades: true`, `requireSignedVersion` stops mislabelled versions, not rollbacks. Anyone who controls the feed (`updates.anima.ing`, the Cloudflare account or the GitHub release) can send apps back to any older signed release. The protection is TLS and who controls those accounts, so keep two-factor authentication on both.
+- Every hop of the DNS-007 redirect must be https. The updater follows an https-to-http redirect and only warns. The Cloudflare rule targets `https://github.com/...` only; check the `location:` header after any change.
 
 ## Known issue
 

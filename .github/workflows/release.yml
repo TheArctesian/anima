@@ -57,6 +57,8 @@ jobs:
         with:
           persist-credentials: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          no-cache: true
       - run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
       - run: bun install --frozen-lockfile
       # Compile with no secret in the environment: vite, npm packages, build.rs and proc-macros run here.
@@ -119,6 +121,8 @@ jobs:
         with:
           persist-credentials: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          no-cache: true
       - name: Install the packages the Tauri shell needs
         run: |
           sudo apt-get update
@@ -163,6 +167,8 @@ jobs:
         with:
           persist-credentials: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          no-cache: true
       - run: bun install --frozen-lockfile --ignore-scripts --filter @anima/desktop
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
@@ -203,6 +209,8 @@ jobs:
         with:
           persist-credentials: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          no-cache: true
       # Only a build that passed in this run is downloaded, so the feed lists no other platform (UPD-009).
       - if: needs.build-macos.result == 'success'
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4

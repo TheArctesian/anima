@@ -316,3 +316,12 @@ describe("Linux signing and version binding (UPD-012, UPD-009)", () => {
     expect(conf.build["beforeBundleCommand"]).toBeUndefined();
   });
 });
+
+describe("no cache between jobs (UPD-012)", () => {
+  test("UPD-012 every setup-bun step sets no-cache and no job uses actions/cache", () => {
+    const bun = allSteps.filter((step) => step.uses?.startsWith("oven-sh/setup-bun@"));
+    expect(bun).toHaveLength(4);
+    for (const step of bun) expect(String(step.with?.["no-cache"])).toBe("true");
+    expect(allSteps.filter((step) => step.uses?.startsWith("actions/cache"))).toEqual([]);
+  });
+});
