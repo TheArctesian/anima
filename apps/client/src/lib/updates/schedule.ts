@@ -1,15 +1,18 @@
 import type { UpdaterPort } from '$lib/desktop/updater';
 
-/** Where the schedule records a failure; fixed text only, since the process log is a file on disk (LOG-007). */
-export interface UpdateLog {
-  warn(text: string): void;
-}
-
 /** The feed is checked at start and then every 4 hours (UPD-001). */
 export const CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;
 
 export const CHECK_FAILED_LINE = 'Update check failed.';
 export const INSTALL_FAILED_LINE = 'Update install failed.';
+
+/** The only lines the schedule may write: fixed text, since the process log is a file on disk (LOG-007). */
+export type UpdateLine = typeof CHECK_FAILED_LINE | typeof INSTALL_FAILED_LINE;
+
+/** Where the schedule records a failure; any other text fails to compile. */
+export interface UpdateLog {
+  warn(text: UpdateLine): void;
+}
 
 export type UpdateState =
   | { readonly kind: 'unchecked' }
@@ -70,7 +73,7 @@ export function createUpdateSchedule({ port, log, repeat, now, onChange }: Sched
     onChange({ state, nextCheckAt });
   }
 
-  function fail(line: string): void {
+  function fail(line: UpdateLine): void {
     log.warn(line);
     set({ kind: 'failed' });
   }

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, expect, it, vi } from 'vitest';
-import Page from './+page.svelte';
+import Page from '../../../routes/settings/+page.svelte';
 
 const desktop = vi.hoisted(() => ({ available: false }));
 vi.mock('$lib/desktop/token', () => ({ keyStoreAvailable: () => desktop.available }));
