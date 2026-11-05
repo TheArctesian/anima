@@ -52,7 +52,7 @@ export function buildFeed(input: { version: string; baseUrl: string; date: Date;
     if (!usable(update)) continue;
     const entry = {
       signature: update.signature.trim(),
-      url: `${input.baseUrl.replace(/\/+$/, "")}/${encodeURIComponent(update.file)}`,
+      url: `${input.baseUrl}/${encodeURIComponent(update.file)}`,
     };
     for (const key of keys) platforms[key] = entry;
   }

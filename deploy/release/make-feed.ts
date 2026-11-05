@@ -21,8 +21,12 @@ function filesUnder(folder: string): string[] {
 /** The updater bundle with the given suffix and the text of its `.sig` file, if both exist. */
 function updateFile(paths: string[], suffix: string): UpdateFile | undefined {
   const bundle = paths.find((path) => path.endsWith(suffix));
-  const sig = paths.find((path) => bundle !== undefined && path === `${bundle}.sig`);
-  if (bundle === undefined || sig === undefined) return undefined;
+  if (bundle === undefined) return undefined;
+  const sig = `${bundle}.sig`;
+  if (!paths.includes(sig)) {
+    console.error(`warning: ${basename(bundle)} has no .sig file, so its platform is left out of the feed`);
+    return undefined;
+  }
   return { file: basename(bundle), signature: readFileSync(sig, "utf8") };
 }
 
@@ -37,6 +41,10 @@ const { values } = parseArgs({
 const { version, tag, artifacts, out } = values;
 if (!version || !tag || !artifacts || !out) {
   console.error("usage: make-feed.ts --version V --tag T --artifacts DIR --out DIR");
+  process.exit(2);
+}
+if (!/^\d+\.\d+\.\d+$/.test(version)) {
+  console.error(`version must be MAJOR.MINOR.PATCH with no "v": ${version}`);
   process.exit(2);
 }
 

@@ -1,6 +1,6 @@
 // Behaviour of the release feed (UPD-009, UPD-010, DNS-007) and of the CLI that writes it.
-import { describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { afterAll, describe, expect, test } from "bun:test";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { buildFeed, checksums, NoPlatformsError, stableName } from "../release/feed.ts";
@@ -66,47 +66,115 @@ describe("stable names and sums (UPD-010)", () => {
   });
 });
 
-describe("make-feed CLI (UPD-009, UPD-010)", () => {
-  const script = join(import.meta.dir, "..", "release", "make-feed.ts");
+const script = join(import.meta.dir, "..", "release", "make-feed.ts");
+const roots: string[] = [];
+afterAll(() => {
+  for (const root of roots) rmSync(root, { recursive: true, force: true });
+});
 
-  function run(artifacts: string, out: string) {
-    return Bun.spawnSync(
-      ["bun", script, "--version", "0.1.7", "--tag", "v0.1.7", "--artifacts", artifacts, "--out", out],
-      { stdout: "pipe", stderr: "pipe" },
-    );
-  }
+function folder(): string {
+  const root = mkdtempSync(join(tmpdir(), "anima-feed-"));
+  roots.push(root);
+  return root;
+}
 
-  test("UPD-009 a missing platform folder leaves the platform out; files, stable names and sums are written", () => {
-    const root = mkdtempSync(join(tmpdir(), "anima-feed-"));
-    const mac = join(root, "artifacts", "macos", "nested");
-    mkdirSync(mac, { recursive: true });
-    writeFileSync(join(mac, "Anima.app.tar.gz"), "app");
-    writeFileSync(join(mac, "Anima.app.tar.gz.sig"), "SIG-MAC\n");
-    writeFileSync(join(mac, "Anima_0.1.7_universal.dmg"), "dmg");
-    const out = join(root, "out");
+function put(root: string, path: string, text: string): void {
+  mkdirSync(join(root, path, ".."), { recursive: true });
+  writeFileSync(join(root, path), text);
+}
 
-    const result = run(join(root, "artifacts"), out);
-    expect(result.exitCode).toBe(0);
+function run(root: string, version = "0.1.7") {
+  return Bun.spawnSync(
+    ["bun", script, "--version", version, "--tag", "v0.1.7", "--artifacts", join(root, "artifacts"), "--out", join(root, "out")],
+    { stdout: "pipe", stderr: "pipe" },
+  );
+}
 
-    expect(readdirSync(out).sort()).toEqual([
+const sha = (text: string) => new Bun.CryptoHasher("sha256").update(text).digest("hex");
+const read = (root: string, name: string) => readFileSync(join(root, "out", name), "utf8");
+
+function bothPlatforms(): string {
+  const root = folder();
+  put(root, "artifacts/macos/x/Anima.app.tar.gz", "app");
+  put(root, "artifacts/macos/x/Anima.app.tar.gz.sig", "SIG-MAC\n");
+  put(root, "artifacts/macos/y/Anima_0.1.7_universal.dmg", "dmg");
+  put(root, "artifacts/linux/Anima_0.1.7_amd64.AppImage", "img");
+  put(root, "artifacts/linux/Anima_0.1.7_amd64.AppImage.sig", "SIG-LINUX\n");
+  expect(run(root).exitCode).toBe(0);
+  return root;
+}
+
+describe("make-feed CLI with both platforms (UPD-009, UPD-010)", () => {
+  test("UPD-010 writes every file, the stable names, SHA256SUMS and latest.json", () => {
+    const root = bothPlatforms();
+    expect(readdirSync(join(root, "out")).sort()).toEqual([
+      "Anima-x86_64.AppImage",
       "Anima.app.tar.gz",
       "Anima.app.tar.gz.sig",
       "Anima.dmg",
+      "Anima_0.1.7_amd64.AppImage",
+      "Anima_0.1.7_amd64.AppImage.sig",
       "Anima_0.1.7_universal.dmg",
       "SHA256SUMS",
       "latest.json",
     ]);
-    const feed = JSON.parse(readFileSync(join(out, "latest.json"), "utf8")) as { platforms: object };
-    expect(Object.keys(feed.platforms).sort()).toEqual(["darwin-aarch64", "darwin-x86_64"]);
-    const sums = readFileSync(join(out, "SHA256SUMS"), "utf8");
-    expect(sums).toContain("  Anima.dmg\n");
-    expect(sums).not.toContain("latest.json");
+  });
+
+  test("UPD-009 latest.json holds the version, the .sig texts and the /v0.1.7/ URLs", () => {
+    const feed = JSON.parse(read(bothPlatforms(), "latest.json")) as Record<string, unknown>;
+    const base = "https://github.com/TheArctesian/anima/releases/download/v0.1.7";
+    const actual: Record<string, unknown> = { ...feed, pub_date: "" };
+    expect(actual).toEqual({
+      version: "0.1.7",
+      notes: "Anima 0.1.7",
+      pub_date: "",
+      platforms: {
+        "darwin-aarch64": { signature: "SIG-MAC", url: `${base}/Anima.app.tar.gz` },
+        "darwin-x86_64": { signature: "SIG-MAC", url: `${base}/Anima.app.tar.gz` },
+        "linux-x86_64": { signature: "SIG-LINUX", url: `${base}/Anima_0.1.7_amd64.AppImage` },
+      },
+    });
+  });
+
+  test("UPD-010 SHA256SUMS lists the content hash of each file except latest.json", () => {
+    const sums = read(bothPlatforms(), "SHA256SUMS").trimEnd().split("\n");
+    expect(sums).toHaveLength(7);
+    expect(sums).toContain(`${sha("dmg")}  Anima.dmg`);
+    expect(sums).toContain(`${sha("img")}  Anima-x86_64.AppImage`);
+    expect(sums).toContain(`${sha("app")}  Anima.app.tar.gz`);
+    expect(sums.join("\n")).not.toContain("latest.json");
+  });
+});
+
+describe("make-feed CLI with missing pieces (UPD-009)", () => {
+  test("UPD-009 a missing platform folder leaves the platform out", () => {
+    const root = folder();
+    put(root, "artifacts/linux/a.AppImage", "img");
+    put(root, "artifacts/linux/a.AppImage.sig", "S");
+    expect(run(root).exitCode).toBe(0);
+    const feed = JSON.parse(read(root, "latest.json")) as { platforms: object };
+    expect(Object.keys(feed.platforms)).toEqual(["linux-x86_64"]);
+  });
+
+  test("UPD-009 a bundle with no .sig is left out and a warning is printed", () => {
+    const root = folder();
+    put(root, "artifacts/macos/Anima.app.tar.gz", "app");
+    put(root, "artifacts/linux/a.AppImage", "img");
+    put(root, "artifacts/linux/a.AppImage.sig", "S");
+    const result = run(root);
+    expect(result.exitCode).toBe(0);
+    expect(result.stderr.toString()).toContain("Anima.app.tar.gz has no .sig");
+    const feed = JSON.parse(read(root, "latest.json")) as { platforms: object };
+    expect(Object.keys(feed.platforms)).toEqual(["linux-x86_64"]);
   });
 
   test("UPD-009 no artifact at all fails and writes no latest.json", () => {
-    const root = mkdtempSync(join(tmpdir(), "anima-feed-"));
-    const out = join(root, "out");
-    expect(run(join(root, "artifacts"), out).exitCode).not.toBe(0);
-    expect(readdirSync(out)).not.toContain("latest.json");
+    const root = folder();
+    expect(run(root).exitCode).not.toBe(0);
+    expect(readdirSync(join(root, "out"))).not.toContain("latest.json");
+  });
+
+  test("UPD-009 a version with a leading v is refused", () => {
+    expect(run(folder(), "v0.1.7").exitCode).toBe(2);
   });
 });

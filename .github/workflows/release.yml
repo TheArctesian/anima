@@ -16,6 +16,10 @@ permissions:
 
 jobs:
   version:
+    # A manual run on another branch must not publish (UPD-007). The environment holds the
+    # signing secrets and allows only main; the version job needs it to read the key check.
+    if: github.ref == 'refs/heads/main'
+    environment: release
     runs-on: ubuntu-24.04
     outputs:
       version: ${{ steps.number.outputs.version }}
@@ -46,6 +50,7 @@ jobs:
 
   build-macos:
     needs: version
+    environment: release
     runs-on: macos-15
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -54,7 +59,16 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
       - run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
       - run: bun install --frozen-lockfile
-      - name: Build the universal app
+      # Compile with no secret in the environment: vite, npm packages, build.rs and proc-macros run here.
+      - name: Compile the universal app
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          CI: "true"
+        run: |
+          bun run --cwd apps/desktop tauri build --no-bundle --target universal-apple-darwin \
+            --config "{\"version\":\"${VERSION}\"}"
+      # Only this step holds the signing secrets. It bundles and signs; it does not compile.
+      - name: Bundle and sign the universal app
         env:
           VERSION: ${{ needs.version.outputs.version }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -75,7 +89,7 @@ jobs:
             export APPLE_SIGNING_IDENTITY=-
             echo "Apple secrets are not all set: ad-hoc signing."
           fi
-          bun run --cwd apps/desktop tauri build --target universal-apple-darwin \
+          bun run --cwd apps/desktop tauri bundle --target universal-apple-darwin --bundles app dmg \
             --config "{\"version\":\"${VERSION}\"}"
       - name: Verify the bundle (UPD-011)
         run: |
@@ -98,6 +112,7 @@ jobs:
 
   build-linux:
     needs: version
+    environment: release
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -112,7 +127,14 @@ jobs:
             libwebkit2gtk-4.1-dev libsoup-3.0-dev librsvg2-dev libdbus-1-dev \
             libayatana-appindicator3-dev
       - run: bun install --frozen-lockfile
-      - name: Build the AppImage
+      - name: Compile the app
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          CI: "true"
+        run: |
+          bun run --cwd apps/desktop tauri build --no-bundle \
+            --config "{\"version\":\"${VERSION}\"}"
+      - name: Bundle and sign the AppImage
         env:
           VERSION: ${{ needs.version.outputs.version }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -120,7 +142,7 @@ jobs:
           APPIMAGE_EXTRACT_AND_RUN: "1"
           CI: "true"
         run: |
-          bun run --cwd apps/desktop tauri build --bundles appimage \
+          bun run --cwd apps/desktop tauri bundle --bundles appimage \
             --config "{\"version\":\"${VERSION}\"}"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -133,13 +155,13 @@ jobs:
   publish:
     needs: [version, build-macos, build-linux]
     if: >-
-      always() && needs.version.result == 'success' &&
+      !cancelled() && needs.version.result == 'success' &&
       (needs.build-macos.result == 'success' || needs.build-linux.result == 'success')
+    environment: release
     runs-on: ubuntu-24.04
     permissions:
       contents: write
     env:
-      GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
       VERSION: ${{ needs.version.outputs.version }}
       TAG: ${{ needs.version.outputs.tag }}
@@ -162,13 +184,22 @@ jobs:
       - name: Make latest.json, the stable names and SHA256SUMS (UPD-009, UPD-010)
         run: bun deploy/release/make-feed.ts --version "$VERSION" --tag "$TAG" --artifacts artifacts --out release-files
       - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: gh release create "$TAG" --draft --target "$GITHUB_SHA" --title "Anima $VERSION" --notes "Anima $VERSION"
       - name: Upload every file except latest.json
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           for file in release-files/*; do
-            [ "$(basename "$file")" = latest.json ] || gh release upload "$TAG" "$file"
+            [ "$(basename "$file")" = latest.json ] && continue
+            gh release upload "$TAG" "$file"
           done
       - name: Upload latest.json last
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: gh release upload "$TAG" release-files/latest.json
       - name: Publish the release (UPD-008)
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: gh release edit "$TAG" --draft=false --latest

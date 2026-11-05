@@ -5,7 +5,7 @@ Spec: Section 3.9 (UPD-001 to UPD-012) and DNS-007. The workflow is `.github/wor
 ## How a release happens
 
 1. A push to `main` (or "Run workflow" by hand) starts the workflow. Pull requests never do. No gate or test runs there (R-005); run `bun run gates` on your machine before you merge.
-2. The `version` job fails at once if `plugins.updater.pubkey` is still `REPLACE_WITH_OPERATOR_PUBLIC_KEY` or the `TAURI_SIGNING_PRIVATE_KEY` secret is empty. The version is `0.1.<run number>`; nothing is committed.
+2. The `version` job runs only on `main` and fails at once if `plugins.updater.pubkey` is still `REPLACE_WITH_OPERATOR_PUBLIC_KEY` or the `TAURI_SIGNING_PRIVATE_KEY` environment secret is empty. The version is `0.1.<run number>`; nothing is committed.
 3. `build-macos` (universal app, ad-hoc signed unless every Apple secret is set) and `build-linux` (AppImage) run in parallel. macOS also checks `codesign --verify --deep --strict` and that `lipo -archs` gives `x86_64` and `arm64`.
 4. `publish` runs when the version job and at least one build passed. It lists only the platforms that built in this run in `latest.json`, adds `Anima.dmg`, `Anima-x86_64.AppImage` and `SHA256SUMS`, creates the release as a draft, uploads every file with `latest.json` last, then publishes it as "latest".
 5. Installed apps read `https://updates.anima.ing/latest.json`, which redirects to the latest release.
@@ -14,29 +14,32 @@ Spec: Section 3.9 (UPD-001 to UPD-012) and DNS-007. The workflow is `.github/wor
 
 Agents never do these steps (UPD-012). Steps marked 🔒 touch a secret: never paste the value into chat, a commit or a log.
 
-**a. 🔒 Make the update key pair** (file `~/.tauri/anima-updater.key`, public half `~/.tauri/anima-updater.key.pub`):
+**0. The branch.** The repository's default branch is not `main` today (it is `claude/extensions-planning-c47471`). The push trigger fires only when `main` exists and holds `release.yml`. A manual "Run workflow" from the UI needs the file on the default branch, and you must pick `main` as the branch: the `version` job refuses any other ref (UPD-007).
+
+**a. 🔒 Make the update key pair** (file `~/.tauri/anima-updater.key`, public half `~/.tauri/anima-updater.key.pub`). Use the repository's own CLI. Do not run `tauri` through bunx or npx: that name resolves to an old unrelated npm package.
 
 ```sh
-bunx tauri signer generate -w ~/.tauri/anima-updater.key
+bun run --cwd apps/desktop tauri signer generate -w ~/.tauri/anima-updater.key
+chmod 600 ~/.tauri/anima-updater.key
 ```
 
-Back up the private key and its password offline. If you lose them, every installed app must be installed again by hand.
+Back up the private key and its password offline: attach the key file to an entry in your password manager and store the password in the same entry, then keep an encrypted copy on a USB stick in a safe place. If you lose them, every installed app must be installed again by hand.
 
 **b. Public key into the app.** Put the text of `~/.tauri/anima-updater.key.pub` in `apps/desktop/src-tauri/tauri.conf.json` as `plugins.updater.pubkey`, and commit it. The public key is not a secret.
 
-**c. 🔒 GitHub secrets** (file `~/.tauri/anima-updater.key`):
+**c. The `release` environment.** In the repository settings, create an environment named `release`. Set its deployment branch policy to `main` only. All three build and publish jobs use it, so a run from another branch cannot read the secrets.
+
+**d. 🔒 Environment secrets** (file `~/.tauri/anima-updater.key`). Store them in the `release` environment, not as repository secrets:
 
 ```sh
-gh secret set TAURI_SIGNING_PRIVATE_KEY < ~/.tauri/anima-updater.key
-gh secret set TAURI_SIGNING_PRIVATE_KEY_PASSWORD   # only if you set a password; it prompts
+gh secret set --env release TAURI_SIGNING_PRIVATE_KEY < ~/.tauri/anima-updater.key
+gh secret set --env release TAURI_SIGNING_PRIVATE_KEY_PASSWORD   # only if you set a password; it prompts
 ```
 
-**d. Cloudflare redirect (DNS-007).** In the `anima.ing` zone:
+**e. Cloudflare redirect (DNS-007).** In the `anima.ing` zone:
 
 1. Add a proxied DNS record for `updates` (for example an `AAAA` record for `100::`). The proxy must be on (orange cloud), or the redirect rule does not run.
-2. Add a Redirect Rule for host `updates.anima.ing`, status 302:
-   - `/latest.json` to `https://github.com/TheArctesian/anima/releases/latest/download/latest.json`;
-   - every other path `/<file>` to the same file of the latest release, with the dynamic expression `concat("https://github.com/TheArctesian/anima/releases/latest/download", http.request.uri.path)`.
+2. Add one Redirect Rule (dynamic) for host `updates.anima.ing`, status 302, only for these four paths: `/latest.json`, `/Anima.dmg`, `/Anima-x86_64.AppImage`, `/SHA256SUMS`. Target: `concat("https://github.com/TheArctesian/anima/releases/latest/download", http.request.uri.path)`. Every other path stays a 404. Turn "Preserve query string" off. Turn "Normalize incoming URLs" on.
 3. Check:
 
 ```sh
@@ -45,7 +48,20 @@ curl -sI https://updates.anima.ing/latest.json
 
 It must show `HTTP/2 302` and a `location:` header with `.../releases/latest/download/latest.json`.
 
-**e. 🔒 Optional: Developer ID signing and notarization.** Set all six secrets, or none (a partial set gives the ad-hoc signature): `APPLE_CERTIFICATE` (base64 `.p12`), `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD` (an app-specific password), `APPLE_TEAM_ID`. Set each with `gh secret set NAME`.
+**f. 🔒 Optional: Developer ID signing and notarization.** Set all six as `release` environment secrets, or none (a partial set gives the ad-hoc signature): `APPLE_CERTIFICATE` (base64 `.p12`), `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD` (an app-specific password), `APPLE_TEAM_ID`. Set each with `gh secret set --env release NAME`.
+
+**g. Keep the release path hard to attack.**
+- Turn on immutable releases for the repository, so a published release cannot be changed.
+- Turn on two-factor authentication on GitHub and on Cloudflare.
+- Keep every action pinned by full commit SHA (a test enforces it). Update a pin only after you read the new code.
+
+## Signing keys and secrets in the workflow
+
+Each build compiles with no secret in the environment (`tauri build --no-bundle`: vite, npm packages, `build.rs` and proc-macros run here). Only the next step (`tauri bundle`) holds the signing key and the Apple secrets.
+
+## Known issue
+
+If linuxdeploy fails with a `strip` error on `ubuntu-24.04`, set `NO_STRIP: true` on the Linux bundle step. It is not set today because the failure has not been seen.
 
 ## Roll back
 
@@ -55,7 +71,7 @@ Each release's feed points at its own files, so an older release works as it was
 gh release edit v0.1.<n> --latest
 ```
 
-The apps run with `allowDowngrades`, so at the next check they install that version. Do not delete the bad release until the rollback is in place.
+The apps run with `allowDowngrades` (set in the app's updater code, not in the workflow), so at the next check they install that version. Do not delete the bad release until the rollback is in place.
 
 ## If a run fails
 

@@ -13,11 +13,14 @@ interface Step {
   if?: string;
   run?: string;
   env?: Record<string, string>;
+  with?: Record<string, string>;
 }
 interface Job {
+  environment?: string;
   needs?: string | string[];
   if?: string;
   permissions?: Record<string, string>;
+  env?: Record<string, string>;
   steps: Step[];
 }
 interface Workflow {
@@ -86,7 +89,8 @@ describe("job order (UPD-008, UPD-009)", () => {
 
   test("UPD-009 publish runs after a failed build only when the version job and one build passed", () => {
     const condition = publish.if ?? "";
-    expect(condition).toContain("always()");
+    expect(condition).toContain("!cancelled()");
+    expect(condition).not.toContain("always()");
     expect(condition).toContain("needs.version.result == 'success'");
     expect(condition).toContain("needs.build-macos.result == 'success'");
     expect(condition).toContain("needs.build-linux.result == 'success'");
@@ -102,6 +106,8 @@ describe("job order (UPD-008, UPD-009)", () => {
 
   test("UPD-008 the release is a draft, latest.json is uploaded after the other files, and publishing is last", () => {
     const at = (pattern: RegExp) => publish.steps.findIndex((step) => pattern.test(step.run ?? ""));
+    const loop = publish.steps.find((step) => /gh release upload .*\$file/.test(step.run ?? ""));
+    expect(loop?.run).toMatch(/= latest\.json \] && continue/);
     const create = at(/gh release create .*--draft/);
     const files = at(/gh release upload .*\$file/);
     const feed = at(/gh release upload .*latest\.json$/m);
@@ -125,25 +131,126 @@ describe("build checks (UPD-011, UPD-012)", () => {
 
   test("UPD-012 the version job stops on the placeholder public key and on an empty private key", () => {
     const text = runText(jobs["version"] as Job);
-    expect(text).toContain("REPLACE_WITH_OPERATOR_PUBLIC_KEY");
+    expect(text).toContain('if [ -z "$pubkey" ] || [ "$pubkey" = "REPLACE_WITH_OPERATOR_PUBLIC_KEY" ]; then');
+    expect(text).toContain('if [ "$KEY_IS_SET" != "true" ]; then');
+    expect(text.match(/\bexit 1\b/g)).toHaveLength(2);
     expect(text).toContain("plugins.updater.pubkey");
     const step = (jobs["version"] as Job).steps.find((s) => s.env?.["KEY_IS_SET"] !== undefined);
     expect(step?.env?.["KEY_IS_SET"]).toBe("${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}");
   });
 
-  test("UPD-012 builds wait for the version job, and the signing key reaches only a build step", () => {
+  test("UPD-012 builds wait for the version job", () => {
     for (const name of ["build-macos", "build-linux"]) expect(needsOf(jobs[name] as Job)).toEqual(["version"]);
+  });
+
+  test("UPD-012 only the bundle step of a build job carries a secret; the compile step carries none", () => {
     for (const [name, job] of Object.entries(jobs)) {
       for (const step of job.steps) {
-        const holdsKey = Object.values(step.env ?? {}).some((v) =>
-          /secrets\.TAURI_SIGNING_PRIVATE_KEY(_PASSWORD)?\s*\}\}/.test(v),
-        );
-        expect(holdsKey).toBe(name.startsWith("build-") && (step.run ?? "").includes("tauri build"));
+        const secrets = Object.values(step.env ?? {}).filter((v) => v.includes("secrets."));
+        const bundles = (step.run ?? "").includes("tauri bundle");
+        const checksKey = name === "version" && secrets.length === 1 && !/secrets\.\w+\s*\}\}/.test(secrets[0] ?? "");
+        expect(secrets.length > 0).toBe(name.startsWith("build-") ? bundles : checksKey);
       }
+    }
+  });
+
+  test("UPD-012 each build compiles with --no-bundle and bundles without a second build", () => {
+    for (const name of ["build-macos", "build-linux"]) {
+      const runs = (jobs[name] as Job).steps.map((step) => step.run ?? "");
+      const compile = runs.findIndex((r) => r.includes("tauri build --no-bundle"));
+      const bundle = runs.findIndex((r) => r.includes("tauri bundle"));
+      expect(compile).toBeGreaterThanOrEqual(0);
+      expect(bundle).toBeGreaterThan(compile);
+      expect(runs.filter((r) => /tauri build(?! --no-bundle)/.test(r))).toEqual([]);
+    }
+    expect(runText(jobs["build-macos"] as Job)).toContain("--target universal-apple-darwin --bundles app dmg");
+    expect(runText(jobs["build-linux"] as Job)).toContain("tauri bundle --bundles appimage");
+  });
+
+  test("UPD-012 the signing key is set on the bundle step with its password", () => {
+    for (const name of ["build-macos", "build-linux"]) {
+      const step = (jobs[name] as Job).steps.find((s) => (s.run ?? "").includes("tauri bundle"));
+      expect(step?.env?.["TAURI_SIGNING_PRIVATE_KEY"]).toBe("${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}");
+      expect(step?.env?.["TAURI_SIGNING_PRIVATE_KEY_PASSWORD"]).toBe(
+        "${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}",
+      );
     }
   });
 
   test("UPD-012 no step echoes a secret", () => {
     expect(RAW).not.toMatch(/echo[^\n]*(secrets\.|\$\{?(TAURI_SIGNING|APPLE_))/);
+  });
+});
+
+describe("manual runs and environment (UPD-007, UPD-012)", () => {
+  test("UPD-007 the version job runs only on main, and every other job needs it", () => {
+    expect((jobs["version"] as Job).if).toBe("github.ref == 'refs/heads/main'");
+    for (const name of ["build-macos", "build-linux", "publish"]) expect(needsOf(jobs[name] as Job)).toContain("version");
+  });
+
+  test("UPD-012 every job that reads a secret or publishes uses the release environment", () => {
+    for (const job of Object.values(jobs)) expect(job.environment).toBe("release");
+  });
+});
+
+describe("artifacts, tokens and version format (UPD-008, UPD-009)", () => {
+  const uses = (job: Job, action: string) => job.steps.filter((s) => s.uses?.startsWith(`${action}@`));
+
+  test("UPD-009 the macOS and Linux uploads name the bundle paths and fail when empty", () => {
+    const mac = uses(jobs["build-macos"] as Job, "actions/upload-artifact")[0]?.with;
+    const lin = uses(jobs["build-linux"] as Job, "actions/upload-artifact")[0]?.with;
+    expect(mac?.["name"]).toBe("macos");
+    expect(mac?.["path"].split("\n").filter(Boolean)).toEqual([
+      "target/universal-apple-darwin/release/bundle/macos/*.app.tar.gz",
+      "target/universal-apple-darwin/release/bundle/macos/*.app.tar.gz.sig",
+      "target/universal-apple-darwin/release/bundle/dmg/*.dmg",
+    ]);
+    expect(lin?.["name"]).toBe("linux");
+    expect(lin?.["path"].split("\n").filter(Boolean)).toEqual([
+      "target/release/bundle/appimage/*.AppImage",
+      "target/release/bundle/appimage/*.AppImage.sig",
+    ]);
+    expect(mac?.["if-no-files-found"]).toBe("error");
+    expect(lin?.["if-no-files-found"]).toBe("error");
+  });
+
+  test("UPD-009 the downloads put each platform in its own folder for make-feed", () => {
+    const paths = uses(publish, "actions/download-artifact").map((s) => `${s.with?.["name"]}:${s.with?.["path"]}`);
+    expect(paths.sort()).toEqual(["linux:artifacts/linux", "macos:artifacts/macos"]);
+  });
+
+  test("UPD-008 every checkout drops the git credential", () => {
+    const checkouts = allSteps.filter((s) => s.uses?.startsWith("actions/checkout@"));
+    expect(checkouts).toHaveLength(4);
+    for (const step of checkouts) expect(String(step.with?.["persist-credentials"])).toBe("false");
+  });
+
+  test("UPD-007 the version is 0.1.<run number> and the tag is v0.1.<run number>", () => {
+    const step = (jobs["version"] as Job).steps.find((s) => s.run?.includes("GITHUB_OUTPUT"));
+    expect(step?.env?.["RUN_NUMBER"]).toBe("${{ github.run_number }}");
+    expect(step?.run).toContain('echo "version=0.1.${RUN_NUMBER}"');
+    expect(step?.run).toContain('echo "tag=v0.1.${RUN_NUMBER}"');
+  });
+
+  test("UPD-012 the GitHub token is set only on steps that run gh", () => {
+    expect(publish.env?.["GH_TOKEN"]).toBeUndefined();
+    for (const step of allSteps) {
+      expect(step.env?.["GH_TOKEN"] !== undefined).toBe(/\bgh release\b/.test(step.run ?? ""));
+    }
+  });
+});
+
+describe("operator guide (UPD-012, DNS-007)", () => {
+  const guide = readFileSync(join(ROOT, "docs", "releases.md"), "utf8");
+
+  test("UPD-012 the guide never tells the operator to run bunx tauri", () => {
+    expect(guide).not.toMatch(/bunx tauri|npx tauri/);
+    expect(guide).toContain("bun run --cwd apps/desktop tauri signer generate");
+  });
+
+  test("UPD-012 secrets are set in the release environment, never as repository secrets", () => {
+    const sets = guide.match(/gh secret set[^\n]*/g) ?? [];
+    expect(sets.length).toBeGreaterThan(0);
+    for (const line of sets) expect(line).toContain("--env release");
   });
 });
