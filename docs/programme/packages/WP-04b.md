@@ -39,7 +39,7 @@
 
 ## Proposals
 
-- **P-1 (asked).** The Tauri JS API may be imported only in `$lib/desktop/` (WP-16's folder, R-043 P-3). Stage B adds two new files there and changes nothing else in that folder:
+- **P-1 (accepted as R-056).** The Tauri JS API may be imported only in `$lib/desktop/` (WP-16's folder, R-043 P-3). Stage B adds two new files there and changes nothing else in that folder:
   - `updater.ts`: the updater and process plugin calls, behind the D-4 port;
   - `processLog.ts`: `log` and `process_log_folder_open`.
 
