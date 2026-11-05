@@ -1,0 +1,174 @@
+# Desktop release (UPD-007 to UPD-012). It runs on a push to main and by hand, never on a
+# pull request (R-005: gates and tests run on the operator's machine, not here).
+name: release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.number.outputs.version }}
+      tag: ${{ steps.number.outputs.tag }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Stop early when the updater key is not set up (UPD-012)
+        env:
+          KEY_IS_SET: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
+        run: |
+          pubkey=$(jq -r '.plugins.updater.pubkey // ""' apps/desktop/src-tauri/tauri.conf.json)
+          if [ -z "$pubkey" ] || [ "$pubkey" = "REPLACE_WITH_OPERATOR_PUBLIC_KEY" ]; then
+            echo "::error::plugins.updater.pubkey is still the placeholder. See docs/releases.md."
+            exit 1
+          fi
+          if [ "$KEY_IS_SET" != "true" ]; then
+            echo "::error::The TAURI_SIGNING_PRIVATE_KEY secret is empty. See docs/releases.md."
+            exit 1
+          fi
+      - id: number
+        env:
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          echo "version=0.1.${RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          echo "tag=v0.1.${RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+
+  build-macos:
+    needs: version
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+      - run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+      - run: bun install --frozen-lockfile
+      - name: Build the universal app
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CI: "true"
+        run: |
+          # Developer ID signing and notarization only when every Apple secret is set.
+          if [ -z "$APPLE_CERTIFICATE" ] || [ -z "$APPLE_CERTIFICATE_PASSWORD" ] \
+            || [ -z "$APPLE_SIGNING_IDENTITY" ] || [ -z "$APPLE_ID" ] \
+            || [ -z "$APPLE_PASSWORD" ] || [ -z "$APPLE_TEAM_ID" ]; then
+            unset APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID
+            export APPLE_SIGNING_IDENTITY=-
+            echo "Apple secrets are not all set: ad-hoc signing."
+          fi
+          bun run --cwd apps/desktop tauri build --target universal-apple-darwin \
+            --config "{\"version\":\"${VERSION}\"}"
+      - name: Verify the bundle (UPD-011)
+        run: |
+          app=target/universal-apple-darwin/release/bundle/macos/Anima.app
+          codesign --verify --deep --strict "$app"
+          binary=$(find "$app/Contents/MacOS" -type f | head -n 1)
+          archs=$(lipo -archs "$binary" | tr ' ' '\n' | sort | tr '\n' ' ')
+          if [ "$archs" != "arm64 x86_64 " ]; then
+            echo "::error::Expected x86_64 and arm64, found: $archs"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: macos
+          path: |
+            target/universal-apple-darwin/release/bundle/macos/*.app.tar.gz
+            target/universal-apple-darwin/release/bundle/macos/*.app.tar.gz.sig
+            target/universal-apple-darwin/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+
+  build-linux:
+    needs: version
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+      - name: Install the packages the Tauri shell needs
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential curl file patchelf libssl-dev libxdo-dev \
+            libwebkit2gtk-4.1-dev libsoup-3.0-dev librsvg2-dev libdbus-1-dev \
+            libayatana-appindicator3-dev
+      - run: bun install --frozen-lockfile
+      - name: Build the AppImage
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+          CI: "true"
+        run: |
+          bun run --cwd apps/desktop tauri build --bundles appimage \
+            --config "{\"version\":\"${VERSION}\"}"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: linux
+          path: |
+            target/release/bundle/appimage/*.AppImage
+            target/release/bundle/appimage/*.AppImage.sig
+          if-no-files-found: error
+
+  publish:
+    needs: [version, build-macos, build-linux]
+    if: >-
+      always() && needs.version.result == 'success' &&
+      (needs.build-macos.result == 'success' || needs.build-linux.result == 'success')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      VERSION: ${{ needs.version.outputs.version }}
+      TAG: ${{ needs.version.outputs.tag }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+      # Only a build that passed in this run is downloaded, so the feed lists no other platform (UPD-009).
+      - if: needs.build-macos.result == 'success'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: macos
+          path: artifacts/macos
+      - if: needs.build-linux.result == 'success'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: linux
+          path: artifacts/linux
+      - name: Make latest.json, the stable names and SHA256SUMS (UPD-009, UPD-010)
+        run: bun deploy/release/make-feed.ts --version "$VERSION" --tag "$TAG" --artifacts artifacts --out release-files
+      - name: Create the draft release
+        run: gh release create "$TAG" --draft --target "$GITHUB_SHA" --title "Anima $VERSION" --notes "Anima $VERSION"
+      - name: Upload every file except latest.json
+        run: |
+          for file in release-files/*; do
+            [ "$(basename "$file")" = latest.json ] || gh release upload "$TAG" "$file"
+          done
+      - name: Upload latest.json last
+        run: gh release upload "$TAG" release-files/latest.json
+      - name: Publish the release (UPD-008)
+        run: gh release edit "$TAG" --draft=false --latest
