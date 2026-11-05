@@ -84,7 +84,7 @@ describe("permissions and pinning", () => {
 
 describe("job order (UPD-008, UPD-009)", () => {
   test("UPD-009 publish waits for the version job and both builds", () => {
-    expect(needsOf(publish).sort()).toEqual(["build-linux", "build-macos", "version"]);
+    expect(needsOf(publish).sort()).toEqual(["build-macos", "sign-linux", "version"]);
   });
 
   test("UPD-009 publish runs after a failed build only when the version job and one build passed", () => {
@@ -93,14 +93,19 @@ describe("job order (UPD-008, UPD-009)", () => {
     expect(condition).not.toContain("always()");
     expect(condition).toContain("needs.version.result == 'success'");
     expect(condition).toContain("needs.build-macos.result == 'success'");
-    expect(condition).toContain("needs.build-linux.result == 'success'");
+    expect(condition).toContain("needs.sign-linux.result == 'success'");
+    expect(condition).not.toContain("needs.build-linux");
+  });
+
+  test("UPD-012 the Linux key job waits for the Linux build and the version", () => {
+    expect(needsOf(jobs["sign-linux"] as Job).sort()).toEqual(["build-linux", "version"]);
   });
 
   test("UPD-009 each artifact is downloaded only when its build succeeded", () => {
     const downloads = publish.steps.filter((step) => step.uses?.startsWith("actions/download-artifact@"));
     expect(downloads.map((step) => step.if).sort()).toEqual([
-      "needs.build-linux.result == 'success'",
       "needs.build-macos.result == 'success'",
+      "needs.sign-linux.result == 'success'",
     ]);
   });
 
@@ -143,13 +148,15 @@ describe("build checks (UPD-011, UPD-012)", () => {
     for (const name of ["build-macos", "build-linux"]) expect(needsOf(jobs[name] as Job)).toEqual(["version"]);
   });
 
-  test("UPD-012 only the bundle step of a build job carries a secret; the compile step carries none", () => {
+  test("UPD-012 only the macOS bundle step and the Linux sign job carry a secret", () => {
     for (const [name, job] of Object.entries(jobs)) {
       for (const step of job.steps) {
         const secrets = Object.values(step.env ?? {}).filter((v) => v.includes("secrets."));
-        const bundles = /tauri bundle|signer sign/.test(step.run ?? "") && !(step.run ?? "").includes("--no-sign");
+        const holdsKey =
+          (name === "build-macos" && (step.run ?? "").includes("tauri bundle")) ||
+          (name === "sign-linux" && (step.run ?? "").includes("signer sign"));
         const checksKey = name === "version" && secrets.length === 1 && !/secrets\.\w+\s*\}\}/.test(secrets[0] ?? "");
-        expect(secrets.length > 0).toBe(name.startsWith("build-") ? bundles : checksKey);
+        expect(secrets.length > 0).toBe(name === "version" ? checksKey : holdsKey);
       }
     }
   });
@@ -157,6 +164,7 @@ describe("build checks (UPD-011, UPD-012)", () => {
   test("UPD-012 each build compiles with --no-bundle and bundles without a second build", () => {
     for (const name of ["build-macos", "build-linux"]) {
       const runs = (jobs[name] as Job).steps.map((step) => step.run ?? "");
+      if (name === "build-linux") expect(runs.join("\n")).not.toContain("signer sign");
       const compile = runs.findIndex((r) => r.includes("tauri build --no-bundle"));
       const bundle = runs.findIndex((r) => r.includes("tauri bundle"));
       expect(compile).toBeGreaterThanOrEqual(0);
@@ -168,8 +176,8 @@ describe("build checks (UPD-011, UPD-012)", () => {
   });
 
   test("UPD-012 the signing key is set on the bundle step with its password", () => {
-    for (const name of ["build-macos", "build-linux"]) {
-      const step = (jobs[name] as Job).steps.find((s) => /tauri bundle|signer sign/.test(s.run ?? "") && !(s.run ?? "").includes("--no-sign"));
+    for (const [name, command] of [["build-macos", "tauri bundle"], ["sign-linux", "signer sign"]] as const) {
+      const step = (jobs[name] as Job).steps.find((s) => (s.run ?? "").includes(command));
       expect(step?.env?.["TAURI_SIGNING_PRIVATE_KEY"]).toBe("${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}");
       expect(step?.env?.["TAURI_SIGNING_PRIVATE_KEY_PASSWORD"]).toBe(
         "${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}",
@@ -205,11 +213,12 @@ describe("artifacts, tokens and version format (UPD-008, UPD-009)", () => {
       "target/universal-apple-darwin/release/bundle/macos/*.app.tar.gz.sig",
       "target/universal-apple-darwin/release/bundle/dmg/*.dmg",
     ]);
-    expect(lin?.["name"]).toBe("linux");
-    expect(lin?.["path"].split("\n").filter(Boolean)).toEqual([
-      "target/release/bundle/appimage/*.AppImage",
-      "target/release/bundle/appimage/*.AppImage.sig",
-    ]);
+    expect(lin?.["name"]).toBe("linux-unsigned");
+    expect(lin?.["path"]).toBe("target/release/bundle/appimage/*.AppImage");
+    const signed = uses(jobs["sign-linux"] as Job, "actions/upload-artifact")[0]?.with;
+    expect(signed?.["name"]).toBe("linux");
+    expect(signed?.["path"].split("\n").filter(Boolean)).toEqual(["unsigned/*.AppImage", "unsigned/*.AppImage.sig"]);
+    expect(signed?.["if-no-files-found"]).toBe("error");
     expect(mac?.["if-no-files-found"]).toBe("error");
     expect(lin?.["if-no-files-found"]).toBe("error");
   });
@@ -221,7 +230,7 @@ describe("artifacts, tokens and version format (UPD-008, UPD-009)", () => {
 
   test("UPD-008 every checkout drops the git credential", () => {
     const checkouts = allSteps.filter((s) => s.uses?.startsWith("actions/checkout@"));
-    expect(checkouts).toHaveLength(4);
+    expect(checkouts).toHaveLength(5);
     for (const step of checkouts) expect(String(step.with?.["persist-credentials"])).toBe("false");
   });
 
@@ -257,23 +266,36 @@ describe("operator guide (UPD-012, DNS-007)", () => {
 
 describe("Linux signing and version binding (UPD-012, UPD-009)", () => {
   const linux = (jobs["build-linux"] as Job).steps;
-  const stepWith = (text: string) => linux.find((step) => (step.run ?? "").includes(text));
+  const signJob = jobs["sign-linux"] as Job;
+  const stepWith = (steps: Step[], text: string) => steps.find((step) => (step.run ?? "").includes(text));
 
-  test("UPD-012 the Linux step that downloads linuxdeploy holds no key and no secret", () => {
-    const bundle = stepWith("tauri bundle");
+  test("UPD-012 the Linux build job that downloads linuxdeploy holds no key, no secret and does not sign", () => {
+    const bundle = stepWith(linux, "tauri bundle");
     expect(bundle?.run).toContain("--no-sign");
-    expect(JSON.stringify(bundle?.env ?? {})).not.toMatch(/secrets\.|SIGNING/);
+    expect(JSON.stringify(linux.map((step) => step.env ?? {}))).not.toMatch(/secrets\.|SIGNING/);
+  });
+
+  test("UPD-012 sign-linux installs the CLI from the lockfile with no scripts, before it gets the key", () => {
+    const install = stepWith(signJob.steps, "bun install");
+    expect(install?.run).toContain("--frozen-lockfile");
+    expect(install?.run).toContain("--ignore-scripts");
+    expect(install?.run).toContain("--filter @anima/desktop");
+    expect(install?.env).toBeUndefined();
+    expect(signJob.steps.indexOf(install as Step)).toBeLessThan(signJob.steps.indexOf(stepWith(signJob.steps, "signer sign") as Step));
+    expect(runText(signJob)).not.toContain("tauri build");
   });
 
   test("UPD-012 the Linux sign step binds the signature to the version and holds only the signing key", () => {
-    const sign = stepWith("signer sign");
+    const sign = stepWith(signJob.steps, "signer sign");
     expect(sign?.run).toContain('--app-version "$VERSION"');
     expect(Object.keys(sign?.env ?? {}).sort()).toEqual([
       "TAURI_SIGNING_PRIVATE_KEY",
       "TAURI_SIGNING_PRIVATE_KEY_PASSWORD",
       "VERSION",
     ]);
-    expect(linux.indexOf(sign as Step)).toBeGreaterThan(linux.indexOf(stepWith("tauri bundle") as Step));
+    const download = signJob.steps.find((step) => step.uses?.startsWith("actions/download-artifact@"));
+    expect(download?.with?.["name"]).toBe("linux-unsigned");
+    expect(signJob.steps.indexOf(download as Step)).toBeLessThan(signJob.steps.indexOf(sign as Step));
   });
 
   test("UPD-009 every tauri build and bundle step passes the version from the version job", () => {
