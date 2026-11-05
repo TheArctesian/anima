@@ -85,10 +85,10 @@ afterEach(async () => {
 
 it('NAV-001: Devices comes first, then the divider, then the status, then Settings last', () => {
   const nav = show();
-  const children = [...nav.children];
-  expect(children.map((child) => child.tagName)).toEqual(['A', 'DIV', 'HR', 'P', 'A']);
-  expect(children[0]?.textContent).toContain('Devices');
-  expect(children[4]?.textContent).toContain('Settings');
+  const destinations = [...nav.querySelectorAll('a, hr, .status')];
+  expect(destinations.map((node) => node.getAttribute('href') ?? node.textContent?.trim())).toEqual([
+    '/devices', '', 'Connected', '/settings',
+  ]);
 });
 
 it('NAV-002: only the active item has aria-current="page"', () => {

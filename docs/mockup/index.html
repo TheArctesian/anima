@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Anima — UI mockup</title>
+<link rel="icon" type="image/png" href="../../apps/client/static/favicon.png">
 <style>
 /* Fonts (Section 5.2). Mockup only: loaded from GitHub at a pinned commit. The app bundles them (UI-017). */
 @font-face{font-family:"OpenDyslexic Nerd Font Propo";src:url("https://raw.githubusercontent.com/ryanoasis/nerd-fonts/f034eeafc0ccf79afa8dd952feb86b18e5d0469e/patched-fonts/OpenDyslexic/Regular/OpenDyslexicNerdFontPropo-Regular.otf") format("opentype");font-weight:400;font-display:swap}
@@ -67,7 +68,7 @@ p{margin:0}
 .app{display:grid;grid-template-columns:200px minmax(0,1fr);height:100vh}
 .nav{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:var(--s3) var(--s2);gap:var(--s1);min-height:0}
 .brand{display:flex;align-items:center;gap:var(--s2);padding:var(--s1) var(--s2) var(--s4);font-weight:650;font-size:15px;letter-spacing:.01em}
-.brand svg{width:24px;height:24px;color:var(--accent)}
+.brand img{width:40px;height:40px;object-fit:contain}
 .nav ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
 .nav-item{position:relative;width:100%;display:flex;align-items:center;gap:var(--s3);height:36px;padding:0 var(--s3);border:0;background:none;border-radius:var(--r);cursor:pointer;color:var(--text-muted);text-align:left}
 .nav-item:hover{background:var(--surface-raised);color:var(--text)}
@@ -739,7 +740,7 @@ const NF = {
   arrowRight:['nf-md-arrow_right', 0xf0054]
 };
 const icon = (n, cls = '') => { const g = NF[n]; return g ? `<i class="ic nf ${cls}" data-nf="${g[0]}" aria-hidden="true">${String.fromCodePoint(g[1])}</i>` : ''; };
-const LOGO = `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M5.5 12.5h3l1.8-4 3.2 8 1.8-4h3.2"/></svg>`;
+const LOGO = `<img src="../../design/brand/logo.png" alt="" width="40" height="40">`;
 
 /* =====================================================================
    Status model
