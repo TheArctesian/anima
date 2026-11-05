@@ -1,7 +1,8 @@
-import { beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { HARDEN_TIMEOUT_MS, ALLOWED_SS, fakeHost, mutatingCalls, type Host } from "./vps-host.ts";
+import { afterEach, beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { HARDEN_TIMEOUT_MS, ALLOWED_SS, fakeHost, removeHosts, mutatingCalls, type Host } from "./vps-host.ts";
 
 setDefaultTimeout(HARDEN_TIMEOUT_MS);
+afterEach(removeHosts);
 
 let host: Host;
 

@@ -2,7 +2,7 @@
  * A fake VPS for the harden.sh tests (D-14): a temporary root, a copy of `vps/`, and fake
  * system commands that log every call and act on FAKE_* variables.
  */
-import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -207,8 +207,16 @@ function runHarden(work: string, args: string[], env: Record<string, string>): R
   return { code: result.exitCode, out: result.stdout.toString() + result.stderr.toString(), calls };
 }
 
+const works: string[] = [];
+
+/** Removes every fake host made so far; call from `afterEach` in each test file. */
+export function removeHosts(): void {
+  for (const work of works.splice(0)) rmSync(work, { recursive: true, force: true });
+}
+
 export function fakeHost(): Host {
   const work = mkdtempSync(join(tmpdir(), "anima-vps-"));
+  works.push(work);
   const root = join(work, "root");
   const vps = join(work, "vps");
   cpSync(VPS_DIR, vps, { recursive: true });
