@@ -476,12 +476,15 @@ and the tag `tag:hub`. A tagged node never expires (VPN-003), so no renewal is n
    ```bash
    # Runs on: VPS (SSH)
    sudo systemctl enable --now tailscaled
-   sudo tailscale up --login-server https://hs.anima.ing --auth-key=file:/run/anima-preauth --hostname hub --accept-routes
+   sudo tailscale up --login-server https://hs.anima.ing --auth-key=file:/run/anima-preauth --hostname hub --accept-routes --accept-dns=false
    sudo rm -f /run/anima-preauth
    hsctl preauthkeys list               # the key shows as used
    ```
 
    `--accept-routes` lets the hub reach the site subnets once the routers are approved (step 5).
+   `--accept-dns=false` leaves the VPS's resolver alone (R-050): without systemd-resolved,
+   tailscaled would rewrite `/etc/resolv.conf` to `100.100.100.100`, and every container started
+   later would depend on it for all DNS. Nothing on the VPS needs MagicDNS names.
    If the key is not marked used (the join failed), expire it:
    `hsctl preauthkeys expire --id <KEY_ID>`.
 
@@ -504,15 +507,13 @@ and the tag `tag:hub`. A tagged node never expires (VPN-003), so no renewal is n
    dig +short hub.anima.ing @1.1.1.1     # must print <HUB_VPN_IPV4>
    ```
 
-5. Check the MagicDNS name inside the VPN. This works from any machine that is on the VPN. On
-   the VPS:
+5. Check the MagicDNS name inside the VPN, from a client (the VPS joined with
+   `--accept-dns=false`, so it does not resolve `net.anima.ing` names itself):
 
    ```bash
-   # Runs on: VPS (SSH)
-   getent hosts hub.net.anima.ing        # must print <HUB_VPN_IPV4>
+   # Runs on: a client on the VPN (step 6)
+   getent hosts hub.net.anima.ing        # must print <HUB_VPN_IPV4> (macOS: dscacheutil -q host -a name hub.net.anima.ing)
    ```
-
-   Repeat it on each client in step 6.
 
 The hub program itself, and the separate Cloudflare token it uses for its certificate (DNS-002,
 DNS-003), come with the hub guide (WP-04). Until then nothing listens on `hub.anima.ing`. If the
@@ -580,7 +581,12 @@ changes nothing.
    sudo --preserve-env=ANIMA_ADMIN_USER ./harden.sh ssh
    ```
 
-3. `updates` turns on automatic updates (VPS-004) with `dnf-automatic` (AlmaLinux 10 uses dnf 4;
+3. **If other containers run and Docker's `live-restore` is off** (`docker info --format
+   '{{.LiveRestoreEnabled}}'` says `false`), do step 4 before this one: the first automatic
+   update of `docker-ce` or `containerd.io` would otherwise restart Docker and stop every
+   container (R-050).
+
+   `updates` turns on automatic updates (VPS-004) with `dnf-automatic` (AlmaLinux 10 uses dnf 4;
    there is no dnf5 plugin). It installs **all** updates, not only those marked as security
    fixes: dnf finds security fixes through advisories, and Tailscale's repository publishes none,
    so a security-only setting would never update `tailscaled`. Every enabled repository is
@@ -603,7 +609,8 @@ changes nothing.
 4. `docker` merges `daemon.json` into `/etc/docker/daemon.json`: published ports bind to
    `127.0.0.1` by default (Docker would otherwise bypass the firewall), `selinux-enabled` makes
    Docker run containers confined (`container_t`; Docker CE on AlmaLinux does not do this by
-   default, so Headscale would run unconfined as `spc_t`), logs are rotated, and `live-restore`
+   default, so Headscale would run unconfined as `spc_t`), logs are rotated (unless the existing
+   file sets its own `log-driver` or `log-opts`: those win, R-050), and `live-restore`
    keeps containers running while Docker restarts. It refuses while Headscale's folders are not
    labelled `container_file_t` (step 2.5). With `--restart-docker` it first reloads Docker, which
    turns `live-restore` on from the new file, refuses to go on unless it is on, then restarts
