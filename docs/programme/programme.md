@@ -25,7 +25,7 @@ The operator approved all seven contracts on 2026-11-03 (checkpoint 1). Only a r
 | WP-03 VPN and network | 1 | Accepted, merged at bdfc785 (12/12). Runbook (AlmaLinux 10, rows 0–19) waits for SSH access to the VPS | own worktree from `phase-1` | `wp-03-vpn-and-network` |
 | WP-04 Deployment, stage A (hub) | 1 | Accepted, merged at decc2e4 (12/12). Runbook step 10 (compose up on the VPS) waits for WP-05 H-2 TLS | own worktree from `phase-1` | `wp-04-hub-deploy` |
 | WP-04 Deployment, stage B (releases and self-update, R-006) | 3 | Waiting (WP-15, WP-16; operator sets secrets) | — | — |
-| WP-05 Access and logs | 1 | Building; T1, T7, T5, T3 merged early into `phase-1` (2f28917) | own worktree from `phase-1` | `wp-05-access` |
+| WP-05 Access and logs | 1 | Merged (5d86152; gates 12/12 on the merge) | own worktree from `phase-1` | `wp-05-access` |
 | WP-06 Devices | 1 | Accepted, merged into `phase-1` (5cdc99c) | own worktree from `phase-1` | `wp-06-devices` |
 | WP-07 Credentials | 1 | Accepted, merged into `phase-1` (3f1f830) | own worktree from `phase-1` | `wp-07-credentials` |
 | WP-08 guac-protocol | 1 | Accepted, merged into `phase-1` (c19ad06) | own worktree from `phase-1` | `wp-08-guac` |
