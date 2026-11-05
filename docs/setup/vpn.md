@@ -581,7 +581,12 @@ changes nothing.
    sudo --preserve-env=ANIMA_ADMIN_USER ./harden.sh ssh
    ```
 
-3. `updates` turns on automatic updates (VPS-004) with `dnf-automatic` (AlmaLinux 10 uses dnf 4;
+3. **If other containers run and Docker's `live-restore` is off** (`docker info --format
+   '{{.LiveRestoreEnabled}}'` says `false`), do step 4 before this one: the first automatic
+   update of `docker-ce` or `containerd.io` would otherwise restart Docker and stop every
+   container (R-050).
+
+   `updates` turns on automatic updates (VPS-004) with `dnf-automatic` (AlmaLinux 10 uses dnf 4;
    there is no dnf5 plugin). It installs **all** updates, not only those marked as security
    fixes: dnf finds security fixes through advisories, and Tailscale's repository publishes none,
    so a security-only setting would never update `tailscaled`. Every enabled repository is
