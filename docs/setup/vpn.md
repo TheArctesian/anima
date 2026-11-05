@@ -476,12 +476,15 @@ and the tag `tag:hub`. A tagged node never expires (VPN-003), so no renewal is n
    ```bash
    # Runs on: VPS (SSH)
    sudo systemctl enable --now tailscaled
-   sudo tailscale up --login-server https://hs.anima.ing --auth-key=file:/run/anima-preauth --hostname hub --accept-routes
+   sudo tailscale up --login-server https://hs.anima.ing --auth-key=file:/run/anima-preauth --hostname hub --accept-routes --accept-dns=false
    sudo rm -f /run/anima-preauth
    hsctl preauthkeys list               # the key shows as used
    ```
 
    `--accept-routes` lets the hub reach the site subnets once the routers are approved (step 5).
+   `--accept-dns=false` leaves the VPS's resolver alone (R-050): without systemd-resolved,
+   tailscaled would rewrite `/etc/resolv.conf` to `100.100.100.100`, and every container started
+   later would depend on it for all DNS. Nothing on the VPS needs MagicDNS names.
    If the key is not marked used (the join failed), expire it:
    `hsctl preauthkeys expire --id <KEY_ID>`.
 
@@ -504,15 +507,13 @@ and the tag `tag:hub`. A tagged node never expires (VPN-003), so no renewal is n
    dig +short hub.anima.ing @1.1.1.1     # must print <HUB_VPN_IPV4>
    ```
 
-5. Check the MagicDNS name inside the VPN. This works from any machine that is on the VPN. On
-   the VPS:
+5. Check the MagicDNS name inside the VPN, from a client (the VPS joined with
+   `--accept-dns=false`, so it does not resolve `net.anima.ing` names itself):
 
    ```bash
-   # Runs on: VPS (SSH)
-   getent hosts hub.net.anima.ing        # must print <HUB_VPN_IPV4>
+   # Runs on: a client on the VPN (step 6)
+   getent hosts hub.net.anima.ing        # must print <HUB_VPN_IPV4> (macOS: dscacheutil -q host -a name hub.net.anima.ing)
    ```
-
-   Repeat it on each client in step 6.
 
 The hub program itself, and the separate Cloudflare token it uses for its certificate (DNS-002,
 DNS-003), come with the hub guide (WP-04). Until then nothing listens on `hub.anima.ing`. If the
