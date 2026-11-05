@@ -164,4 +164,8 @@ describe("configuration files", () => {
   test("D-10: daemon.json binds published ports to 127.0.0.1 and labels containers (D-9)", () => {
     expect(JSON.parse(readVps("daemon.json"))).toMatchObject({ ip: "127.0.0.1", "selinux-enabled": true, "live-restore": true });
   });
+
+  test("NET-002: daemon.json forwards published ports by DNAT, so the hub sees the VPN client's address", () => {
+    expect(JSON.parse(readVps("daemon.json"))).toMatchObject({ "userland-proxy": false });
+  });
 });

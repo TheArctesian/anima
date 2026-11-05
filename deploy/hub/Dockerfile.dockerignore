@@ -1,6 +1,8 @@
-# Allow-list: the build needs the workspace manifests, the lock file and the crates.
+# Allow-list: the build needs the workspace manifests, the lock file and every workspace member
+# (cargo loads each member's manifest even when it builds only anima-hub).
 *
 !Cargo.toml
 !Cargo.lock
 !crates/
+!apps/desktop/src-tauri/
 **/target

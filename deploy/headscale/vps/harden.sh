@@ -70,7 +70,7 @@ Commands (run as root):
             With SELinux disabled it refuses, unless /etc/anima/selinux-disabled
             records the deviation (R-050).
   docker    Merge daemon.json into /etc/docker/daemon.json (default bind 127.0.0.1,
-            SELinux labels on, live-restore). Needs jq and, under SELinux, the selinux
+            SELinux labels on, live-restore, no userland proxy). Needs jq and, under SELinux, the selinux
             step first. Only with --restart-docker: reload Docker (turns live-restore
             on), then restart it; running containers keep running.
   firewall  Validate and apply nftables.conf, armed with a 180 s rollback. Refuses while
@@ -237,7 +237,7 @@ cmd_docker() {
     $JQ -e -s 'length == 1 and (.[0] | type == "object")' "$target" >/dev/null 2>&1 \
       || refuse "$target is not a single JSON object; fix it by hand first"
     # The Anima log settings are defaults: the operator's log-driver and log-opts win (R-050).
-    # ip, selinux-enabled and live-restore are forced.
+    # ip, selinux-enabled, live-restore and userland-proxy are forced.
     merged=$($JQ -s '.[1] * .[0] * (.[1] | del(."log-driver", ."log-opts"))' "$target" "$HERE/daemon.json") \
       || fail "jq could not merge daemon.json"
     save_previous /etc/docker/daemon.json daemon.json.previous
