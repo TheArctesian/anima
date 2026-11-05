@@ -1,7 +1,7 @@
 //! The daily jobs through the tick: partitions ahead and dropped, aggregates trimmed and
 //! orphan heartbeats swept, once a day (DB-004, DB-005, DB-009).
 
-use chrono::{DateTime, TimeDelta, Utc};
+use chrono::{DateTime, Days, NaiveTime, TimeDelta, Utc};
 use sqlx::PgPool;
 
 use super::support::{DOCKER_HOST, JELLYFIN, add, database_now, device, rng, scheduler, tcp};
@@ -66,6 +66,41 @@ async fn count(pool: &PgPool, sql: &str, id: CheckId) -> i64 {
 
 const BEATS: &str = "SELECT count(*) FROM checks.heartbeats WHERE check_id = $1";
 
+/// `time` on the UTC day two days before the database's. The ticks after it stay behind the
+/// database clock, which bounds the partitions the daily jobs may create and drop (DB-004,
+/// DB-005), so the hour of the run cannot change what they do.
+async fn two_days_ago_at(pool: &PgPool, time: &str) -> DateTime<Utc> {
+    let day = database_now(pool).await.date_naive() - Days::new(2);
+    day.and_time(time.parse::<NaiveTime>().unwrap()).and_utc()
+}
+
+/// A daily run that fails at `time` is not retried 59 minutes later and is an hour later.
+async fn retried_within_the_hour(pool: &PgPool, time: &str) {
+    let now = two_days_ago_at(pool, time).await;
+    for sql in [
+        "CREATE FUNCTION checks.refuse() RETURNS trigger LANGUAGE plpgsql AS \
+         $$ BEGIN RAISE EXCEPTION 'refused'; END $$",
+        "CREATE TRIGGER refuse BEFORE DELETE ON checks.uptime_minute \
+         FOR EACH STATEMENT EXECUTE FUNCTION checks.refuse()",
+    ] {
+        sqlx::query(sql).execute(pool).await.unwrap();
+    }
+    let mut scheduler = scheduler(pool, &Bus::new(16));
+    scheduler.tick(now, &mut rng()).await;
+    let old = old_partition(pool, now, 40).await;
+    sqlx::query("DROP TRIGGER refuse ON checks.uptime_minute")
+        .execute(pool)
+        .await
+        .unwrap();
+
+    scheduler
+        .tick(now + TimeDelta::minutes(59), &mut rng())
+        .await;
+    assert!(partition_exists(pool, old).await, "at {time}");
+    scheduler.tick(now + TimeDelta::hours(1), &mut rng()).await;
+    assert!(!partition_exists(pool, old).await, "at {time}");
+}
+
 tick_test! {
     async fn db_005_the_first_tick_creates_days_ahead_and_drops_old_days(pool: PgPool) {
         let now = database_now(&pool).await;
@@ -115,28 +150,12 @@ tick_test! {
         assert_eq!(count(&pool, BEATS, gone).await, 0);
     }
 
-    async fn db_005_a_failed_daily_run_is_retried_within_the_hour(pool: PgPool) {
-        let now = database_now(&pool).await;
-        for sql in [
-            "CREATE FUNCTION checks.refuse() RETURNS trigger LANGUAGE plpgsql AS \
-             $$ BEGIN RAISE EXCEPTION 'refused'; END $$",
-            "CREATE TRIGGER refuse BEFORE DELETE ON checks.uptime_minute \
-             FOR EACH STATEMENT EXECUTE FUNCTION checks.refuse()",
-        ] {
-            sqlx::query(sql).execute(&pool).await.unwrap();
-        }
-        let mut scheduler = scheduler(&pool, &Bus::new(16));
-        scheduler.tick(now, &mut rng()).await;
-        let old = old_partition(&pool, now, 40).await;
-        sqlx::query("DROP TRIGGER refuse ON checks.uptime_minute")
-            .execute(&pool)
-            .await
-            .unwrap();
+    async fn db_005_a_failed_daily_run_is_retried_within_the_hour_after_midnight(pool: PgPool) {
+        retried_within_the_hour(&pool, "00:00:30").await;
+    }
 
-        scheduler.tick(now + TimeDelta::minutes(59), &mut rng()).await;
-        assert!(partition_exists(&pool, old).await);
-        scheduler.tick(now + TimeDelta::hours(1), &mut rng()).await;
-        assert!(!partition_exists(&pool, old).await);
+    async fn db_005_a_failed_daily_run_is_retried_within_the_hour_before_midnight(pool: PgPool) {
+        retried_within_the_hour(&pool, "23:59:30").await;
     }
 
     async fn cq_021_the_daily_jobs_run_again_when_the_clock_goes_back(pool: PgPool) {
