@@ -87,6 +87,22 @@ describe('HTTP text limits', () => {
   });
 });
 
+describe('lengths are measured as the hub measures them', () => {
+  it('CHK-009: a JSON pointer is measured in bytes: 513 bytes in 257 characters is refused', () => {
+    expect(fieldsOf(http((h) => (h.jsonQuery = `/${repeat(256, 'é')}`)))).toEqual(['jsonQuery']);
+  });
+
+  it('CHK-009: a JSON pointer of exactly 512 bytes is accepted, with multi-byte characters', () => {
+    expect(fieldsOf(http((h) => (h.jsonQuery = `/${repeat(255, 'é')}a`)))).toEqual([]);
+    expect(fieldsOf(http((h) => (h.jsonQuery = `/${repeat(511)}`)))).toEqual([]);
+  });
+
+  it('CHK-009: a name is measured in characters: 200 emoji are accepted, 201 are not', () => {
+    expect(fieldsOf(fresh('ICMP', (form) => (form.name = repeat(200, '😀'))))).toEqual([]);
+    expect(fieldsOf(fresh('ICMP', (form) => (form.name = repeat(201, '😀'))))).toEqual(['name']);
+  });
+});
+
 describe('counts', () => {
   const headers = (count: number) => Array.from({ length: count }, (_, index) => ({ name: `X-${String(index)}`, value: 'v', stored: false }));
   const ranges = (count: number) => Array.from({ length: count }, () => ({ from: '200', to: '299' }));

@@ -3,7 +3,7 @@ import { flushSync } from 'svelte';
 import { expect, it, vi } from 'vitest';
 import type { HubResult } from '$lib/hub/error';
 import { BEARER_SAVED, HTTP_SAVED, saved } from './check.fixture';
-import { button, choose, hasInput, input, installFormHarness, messageOf, OK, settle, show, submit, type } from './form.fixture';
+import { button, choose, hasInput, input, installFormHarness, messageOf, messageOfHint, OK, settle, show, submit, type } from './form.fixture';
 import type { SiblingCheck } from './model/group';
 import type { CheckFormValues } from './model/values';
 
@@ -86,6 +86,18 @@ it('CHK-009: edit mode validates against the saved values: a rename of a basic-a
 
   expect(onSave).toHaveBeenCalledOnce();
   expect(document.querySelector('[aria-invalid="true"]')).toBeNull();
+});
+
+it('R-048: a stored basic-auth check says the password must be typed again when the user name changes', () => {
+  show({ check: HTTP_SAVED });
+  expect(messageOfHint('User name')).toContain('type the password again');
+});
+
+it('R-048: a new basic-auth check shows no such hint', () => {
+  show();
+  choose('Type', 'HTTP');
+  choose('Authentication', 'BASIC');
+  expect(messageOfHint('User name')).toBe('');
 });
 
 it('CHK-009: secret inputs are password fields and are never prefilled', () => {

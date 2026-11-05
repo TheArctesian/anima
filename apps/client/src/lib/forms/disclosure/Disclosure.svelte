@@ -10,13 +10,19 @@
   interface Props {
     /** The button text; the state is carried by `aria-expanded`, not by the text. */
     label: string;
-    /** Bindable so that a form can open the section when one of its inputs is wrong. */
+    /**
+     * Bindable so that a form can open the section when one of its inputs is wrong. Opening it by
+     * setting this from outside (an effect, an error) shows the content at once and does not animate:
+     * only the operator's click does.
+     */
     open?: boolean;
     preference?: MotionPreference;
+    /** Wraps the button in a heading of this level, as the disclosure pattern allows. */
+    level?: 2 | 3 | 4 | 5 | 6;
     children: Snippet;
   }
 
-  let { label, open = $bindable(false), preference = motionPreference(), children }: Props = $props();
+  let { label, open = $bindable(false), preference = motionPreference(), level, children }: Props = $props();
   const id = $props.id();
 
   let root: HTMLElement | undefined = $state();
@@ -24,7 +30,6 @@
   /** The content is in the document while it is open and while it fades out. */
   let present = $state(untrack(() => open));
   let leaving = $state(false);
-  let turn = 0;
 
   $effect(() => {
     if (open && !present) present = true;
@@ -33,13 +38,26 @@
 
   const fade = () => tweenMotion('base', 'enter', preference.reduced);
 
-  /** The elements after this section in the same parent: what moves when the section opens or closes. */
-  function below(): Animatable[] {
+  /** The elements after `node` in its parent. */
+  function followers(node: Element): Animatable[] {
     const found: Animatable[] = [];
-    for (let next = root?.nextElementSibling; next; next = next.nextElementSibling) {
+    for (let next = node.nextElementSibling; next; next = next.nextElementSibling) {
       if (next instanceof HTMLElement) found.push(next);
     }
     return found;
+  }
+
+  /**
+   * What moves when the section opens or closes: the elements after it. When it is wrapped and is
+   * the last child of its wrapper, the search climbs to the wrapper's followers, up to the form or body.
+   */
+  function below(): Animatable[] {
+    for (let node = root; node; node = node.parentElement) {
+      const found = followers(node);
+      if (found.length > 0) return found;
+      if (node.parentElement === null || ['FORM', 'BODY'].includes(node.parentElement.tagName)) break;
+    }
+    return [];
   }
 
   /**
@@ -49,7 +67,6 @@
    * Under reduced motion the layout change is instant and the fade takes `duration-base`.
    */
   async function toggle(): Promise<void> {
-    const mine = ++turn;
     const first = measure(below());
     if (open) {
       open = false;
@@ -58,7 +75,7 @@
       await tick();
       flip(first, { spring: 'default', preference });
       if (region) await animate(region, { opacity: 0 }, fade()).finished;
-      if (mine !== turn) return;
+      // If it was reopened meanwhile, the effect above puts `present` back at once.
       leaving = false;
       present = false;
       return;
@@ -69,14 +86,13 @@
     await tick();
     flip(first, { spring: 'default', preference });
     if (region) {
-      region.style.top = '';
       animate(region, { opacity: 0 }, { type: 'instant' });
       void animate(region, { opacity: 1 }, fade());
     }
   }
 </script>
 
-<div class="disclosure" bind:this={root}>
+{#snippet trigger()}
   <button
     type="button"
     aria-expanded={open}
@@ -87,6 +103,14 @@
     <Icon name={open ? 'nf-md-chevron_down' : 'nf-md-chevron_right'} size="sm" />
     <span>{label}</span>
   </button>
+{/snippet}
+
+<div class="disclosure" bind:this={root}>
+  {#if level === undefined}
+    {@render trigger()}
+  {:else}
+    <svelte:element this={`h${String(level)}`} class="heading">{@render trigger()}</svelte:element>
+  {/if}
   <div {id} class="region" class:leaving hidden={!present} inert={leaving} bind:this={region}>
     {@render children()}
   </div>
@@ -95,6 +119,11 @@
 <style>
   .disclosure {
     position: relative;
+  }
+
+  .heading {
+    margin: 0;
+    font: inherit;
   }
 
   button {

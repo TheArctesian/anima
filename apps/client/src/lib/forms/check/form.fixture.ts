@@ -79,6 +79,17 @@ export async function submit(form: HTMLFormElement): Promise<void> {
   await settle();
 }
 
+/** The hint text shown for `label`'s input through `aria-describedby`; empty when there is none. */
+export function messageOfHint(label: string): string {
+  const described = input(label).getAttribute('aria-describedby') ?? '';
+  return described
+    .split(' ')
+    .map((id) => document.getElementById(id))
+    .filter((element) => element !== null && !element.classList.contains('error'))
+    .map((element) => element?.textContent ?? '')
+    .join(' ');
+}
+
 /** The message shown for `field`'s input through `aria-describedby`. */
 export function messageOf(label: string): string | undefined {
   const described = input(label).getAttribute('aria-describedby') ?? '';
