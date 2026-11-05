@@ -12,6 +12,7 @@ use std::{
 use anima_hub::{
     DRAIN_LIMIT, Shutdown,
     access::{self, listen},
+    checks::{self, probe::AddressPolicy},
     clock::{Clock as _, SystemClock},
     config::{self, Config},
     credentials::Vault,
@@ -135,6 +136,10 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     let live = open_sessions(&pool, clock.now()).await?;
     tracing::info!(listen = %listening.local_addr()?, "hub started");
     let bus = Bus::new(BUS_CAPACITY);
+    let probing = checks::Probing {
+        vault: vault.clone(),
+        policy: AddressPolicy::new(config.probe_deny.clone()),
+    };
     let tunnel = sessions::tunnel_router(
         pool.clone(),
         vault.clone(),
@@ -152,11 +157,14 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         live: live.clone(),
     });
     let upkeep = spawn_upkeep(&pool, &clock);
-    // `/tunnel` is behind the same permitted-networks check as every route, and logged by its
-    // template only, never its token (K3, NET-002, LOG-007, R-051).
+    let scheduler = checks::spawn_scheduler(pool.clone(), bus.clone(), clock.clone(), probing);
+    let push = checks::push_router(pool.clone(), bus.clone(), clock.clone());
+    // `/tunnel` and `/push` are behind the same permitted-networks check as every route, and
+    // logged by their templates only, never their tokens (K3, NET-002, LOG-007, R-028, R-051).
     let edge = access::Edge::new(pool.clone(), bus, clock.clone());
     let app = router(schema, pool.clone(), clock.clone())
         .merge(logged(tunnel))
+        .merge(logged(push))
         .layer(access::permitted_networks_layer(edge.clone()));
     let shutdown = Shutdown {
         db: pool,
@@ -172,6 +180,7 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     )
     .await;
     upkeep.iter().for_each(tokio::task::JoinHandle::abort);
+    scheduler.abort();
     Ok(())
 }
 
