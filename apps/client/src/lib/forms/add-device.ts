@@ -1,5 +1,5 @@
 import type { HubError, HubResult } from '$lib/hub/error';
-import type { CreateDeviceInput, SshCredentialInput } from './device/hub-types';
+import type { CreateDeviceInput, SshCredentialInput } from '$lib/hub/generated/graphql';
 import { createInput, credentialInput } from './device/input';
 import type { DeviceFormValues } from './device/values';
 

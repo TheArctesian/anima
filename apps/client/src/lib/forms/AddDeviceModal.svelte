@@ -2,8 +2,9 @@
   import type { HubResult } from '$lib/hub/error';
   import type { AddedDevice } from './add-device';
   import DeviceForm from './device/form/DeviceForm.svelte';
-  import type { ConnectionTestInput, ConnectionTestResult, SiteOption } from './device/hub-types';
-  import type { DeviceFormValues } from './device/values';
+  import type { ConnectionTestInput } from '$lib/hub/generated/graphql';
+  import type { ConnectionTestResult } from './device/connection-test';
+  import type { DeviceFormValues, SiteOption } from './device/values';
   import Modal from './modal/Modal.svelte';
 
   interface Props {

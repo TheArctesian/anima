@@ -1,6 +1,7 @@
 import { graphql } from '$lib/hub/generated';
 import type {
   AcceptHostKeyMutation,
+  ConnectionTestInput,
   EndSessionMutation,
   StartSessionInput,
   StartSessionMutation,
@@ -34,8 +35,8 @@ const EndSession = graphql(`
 `);
 
 const TestConnection = graphql(`
-  mutation TestConnection($deviceId: ID!) {
-    testConnection(input: { deviceId: $deviceId }) {
+  mutation TestConnection($input: ConnectionTestInput!) {
+    testConnection(input: $input) {
       reachable
       authenticated
       hostKey {
@@ -68,7 +69,10 @@ export type EndedSession = EndSessionMutation['endSession'];
 /** The display a session asks for (GW-012): pixels, DPI and an IANA time zone. */
 export type SessionDisplay = StartSessionInput['display'];
 
-/** The connection test of a saved device (SEC-006, SEC-007). */
+/** What a connection test is given: a saved device's ID, or unsaved host, SSH settings and credential (DEV-013). */
+export type { ConnectionTestInput };
+
+/** The result of a connection test (SEC-006, SEC-007). */
 export type ConnectionTest = TestConnectionMutation['testConnection'];
 
 /** A host key the hub has accepted. */
@@ -80,7 +84,8 @@ export interface SessionsApi {
   startSession(deviceId: string, display: SessionDisplay): Promise<HubResult<SessionTicket>>;
   /** End the session, or return an ended one unchanged with its recorded `endReason` (D-4). */
   endSession(id: string): Promise<HubResult<EndedSession>>;
-  testConnection(deviceId: string): Promise<HubResult<ConnectionTest>>;
+  /** Test a saved device (`{ deviceId }`) or unsaved form values (DEV-013); the hub refuses both at once. */
+  testConnection(input: ConnectionTestInput): Promise<HubResult<ConnectionTest>>;
   /** Accept exactly `fingerprintSha256`; `CONFLICT` when it is not the key the hub saw. */
   acceptHostKey(deviceId: string, fingerprintSha256: string): Promise<HubResult<AcceptedHostKey>>;
 }
@@ -95,8 +100,8 @@ export function sessionsApi(hub: Hub): SessionsApi {
       const result = await hub.request(EndSession, { id });
       return result.ok ? { ok: true, value: result.value.endSession } : result;
     },
-    testConnection: async (deviceId) => {
-      const result = await hub.request(TestConnection, { deviceId });
+    testConnection: async (input) => {
+      const result = await hub.request(TestConnection, { input });
       return result.ok ? { ok: true, value: result.value.testConnection } : result;
     },
     acceptHostKey: async (deviceId, fingerprintSha256) => {

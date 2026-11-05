@@ -57,8 +57,8 @@ export function fakeApi() {
       };
       return Promise.resolve({ ok: true, value: ended });
     },
-    testConnection: (deviceId) => {
-      calls.testConnection.push(deviceId);
+    testConnection: ({ deviceId }) => {
+      calls.testConnection.push(deviceId ?? '');
       return Promise.resolve(answers.test);
     },
     acceptHostKey: (deviceId, fingerprint) => {

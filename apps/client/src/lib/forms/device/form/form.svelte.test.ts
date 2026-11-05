@@ -4,7 +4,8 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { HubResult } from '$lib/hub/error';
 import { installAnimations } from '../../animations.fixture';
 import { credentialInput } from '../input';
-import type { ConnectionTestResult } from '../hub-types';
+import { testResult } from '../result.fixture';
+import type { ConnectionTestResult } from '../connection-test';
 import { HOST_KEY, KEY, SAVED, button, choose, input, leave, save, settle, show, type } from './form.fixture';
 
 vi.mock('motion', async (importOriginal) => ({
@@ -136,11 +137,11 @@ it('DEV-013: a refused test is not run on an invalid host', async () => {
 });
 
 const OUTCOMES: readonly [string, ConnectionTestResult, string][] = [
-  ['unreachable', { reachable: false, authenticated: false, hostKeyChanged: false, message: 'Connection timed out.' }, 'Connection timed out.'],
-  ['authentication failed', { reachable: true, authenticated: false, hostKeyChanged: false }, 'The device refused the credential.'],
+  ['unreachable', testResult({ reachable: false, authenticated: false, hostKeyChanged: false, message: 'Connection timed out.' }), 'Connection timed out.'],
+  ['authentication failed', testResult({ reachable: true, authenticated: false, hostKeyChanged: false }), 'The device refused the credential.'],
   [
     'changed key without a key',
-    { reachable: true, authenticated: false, hostKeyChanged: true },
+    testResult({ reachable: true, authenticated: false, hostKeyChanged: true }),
     'The host key changed. Do not trust this device until you check it.',
   ],
 ];
@@ -167,7 +168,7 @@ it('DEV-013: a hub error from the test is shown as an alert', async () => {
 it('DEV-013, SEC-006: a new host key opens the host key modal; Accept on a saved device sends the fingerprint', async () => {
   const { onAcceptHostKey } = show(SAVED, {}, {
     ok: true,
-    value: { reachable: true, authenticated: false, hostKeyChanged: false, hostKey: HOST_KEY },
+    value: testResult({ reachable: true, authenticated: false, hostKeyChanged: false, hostKey: HOST_KEY }),
   });
 
   button('Test connection').click();
@@ -183,7 +184,7 @@ it('DEV-013, SEC-006: a new host key opens the host key modal; Accept on a saved
 it('SEC-007: a changed host key opens the modal as a warning', async () => {
   show(SAVED, {}, {
     ok: true,
-    value: { reachable: true, authenticated: true, hostKeyChanged: true, hostKey: HOST_KEY },
+    value: testResult({ reachable: true, authenticated: true, hostKeyChanged: true, hostKey: HOST_KEY }),
   });
 
   button('Test connection').click();

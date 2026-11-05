@@ -1,4 +1,4 @@
-import type { CreateDeviceInput, SshCredentialInput, SshSettingsInput, UpdateDeviceInput } from './hub-types';
+import type { CreateDeviceInput, SshCredentialInput, SshSettingsInput, UpdateDeviceInput } from '$lib/hub/generated/graphql';
 import { normalizedValues, portToSend, type DeviceFormValues } from './values';
 
 type NormalizedSsh = ReturnType<typeof normalizedValues>['ssh'];
@@ -28,7 +28,7 @@ export function createInput(values: DeviceFormValues, siteId: string): CreateDev
     host: now.host,
     kind: now.kind,
     os: now.os,
-    tags: now.tags,
+    tags: [...now.tags],
     ...(now.ssh.enabled ? { ssh: sshInput(now.ssh) } : {}),
     addDefaultCheck: true,
   };
@@ -43,7 +43,7 @@ export function updateInput(initial: DeviceFormValues, values: DeviceFormValues)
     ...(now.host !== before.host ? { host: now.host } : {}),
     ...(now.kind !== before.kind ? { kind: now.kind } : {}),
     ...(now.os !== before.os ? { os: now.os } : {}),
-    ...(sameTags(now.tags, before.tags) ? {} : { tags: now.tags }),
+    ...(sameTags(now.tags, before.tags) ? {} : { tags: [...now.tags] }),
     ...(sameSsh(before.ssh, now.ssh) ? {} : { ssh: sshInput(now.ssh, before.ssh.port) }),
   };
 }

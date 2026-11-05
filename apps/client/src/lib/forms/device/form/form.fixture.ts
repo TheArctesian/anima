@@ -1,8 +1,10 @@
 import { flushSync, mount, tick, unmount } from 'svelte';
 import { vi } from 'vitest';
 import type { HubResult } from '$lib/hub/error';
-import type { ConnectionTestInput, ConnectionTestResult, DeviceFields, HostKey } from '../hub-types';
-import type { DeviceFormValues } from '../values';
+import type { ConnectionTestInput } from '$lib/hub/generated/graphql';
+import type { ConnectionTestResult } from '../connection-test';
+import { testResult } from '../result.fixture';
+import type { DeviceFields, DeviceFormValues, HostKey } from '../values';
 import DeviceForm from './DeviceForm.svelte';
 
 export const OK: HubResult<unknown> = { ok: true, value: undefined };
@@ -35,7 +37,7 @@ export interface Calls {
 export function show(device: DeviceFields | null, options: Record<string, unknown> = {}, tested?: HubResult<ConnectionTestResult>): Calls {
   const calls: Calls = {
     onSave: vi.fn(() => Promise.resolve(OK)),
-    onTest: vi.fn(() => Promise.resolve(tested ?? { ok: true as const, value: { reachable: true, authenticated: true, hostKeyChanged: false } })),
+    onTest: vi.fn(() => Promise.resolve(tested ?? { ok: true as const, value: testResult({ reachable: true, authenticated: true, hostKeyChanged: false }) })),
     onAcceptHostKey: vi.fn(() => Promise.resolve(OK)),
   };
   app = mount(DeviceForm, {

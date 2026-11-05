@@ -3,9 +3,10 @@
   import type { FieldError, HubResult } from '$lib/hub/error';
   import FormButton from '../../FormButton.svelte';
   import { fieldErrorsFrom } from '../field-errors';
-  import type { ConnectionTestInput, ConnectionTestResult, DeviceFields, SiteOption } from '../hub-types';
+  import type { ConnectionTestInput } from '$lib/hub/generated/graphql';
+  import type { ConnectionTestResult } from '../connection-test';
   import { validateDevice } from '../validate';
-  import { formValues, type DeviceFormValues } from '../values';
+  import { formValues, type DeviceFields, type DeviceFormValues, type SiteOption } from '../values';
   import type { EditedValues } from './editing';
   import DisclosureSection from './DisclosureSection.svelte';
   import { firstInvalidField, formErrors, inputId, replaceField } from './errors';

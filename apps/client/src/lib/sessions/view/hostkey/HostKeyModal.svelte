@@ -31,7 +31,7 @@
 
   async function review() {
     if (apply({ event: 'review' }) === undefined) return;
-    const result = await api.testConnection(device.id);
+    const result = await api.testConnection({ deviceId: device.id });
     apply({ event: 'reviewed', result });
   }
 
