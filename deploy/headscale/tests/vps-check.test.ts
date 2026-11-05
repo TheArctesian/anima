@@ -1,7 +1,8 @@
-import { beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { HARDEN_TIMEOUT_MS, ALLOWED_SS, fakeHost, mutatingCalls, type Host } from "./vps-host.ts";
+import { afterEach, beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { HARDEN_TIMEOUT_MS, ALLOWED_SS, fakeHost, removeHosts, mutatingCalls, type Host } from "./vps-host.ts";
 
 setDefaultTimeout(HARDEN_TIMEOUT_MS);
+afterEach(removeHosts);
 
 let host: Host;
 
@@ -137,14 +138,14 @@ describe("harden.sh check (updates, Docker, OS)", () => {
   });
 });
 
-describe("harden.sh check inventory (VPS-005)", () => {
-  const section = (out: string, title: string): string[] => {
-    const lines = out.split("\n");
-    const start = lines.findIndex((line) => line.startsWith(`== ${title}`));
-    const end = lines.findIndex((line, i) => i > start && line.startsWith("=="));
-    return lines.slice(start + 1, end);
-  };
+const section = (out: string, title: string): string[] => {
+  const lines = out.split("\n");
+  const start = lines.findIndex((line) => line.startsWith(`== ${title}`));
+  const end = lines.findIndex((line, i) => i > start && line.startsWith("=="));
+  return lines.slice(start + 1, end);
+};
 
+describe("harden.sh check inventory (VPS-005)", () => {
   test("marks a listener whose program is not expected, with its unit", () => {
     host.setListeners([
       'tcp LISTEN 0 128 0.0.0.0:22 0.0.0.0:* users:(("sshd",pid=900,fd=3))',
@@ -160,9 +161,15 @@ describe("harden.sh check inventory (VPS-005)", () => {
     expect(lines).toEqual(["! tcp 0.0.0.0:8080 docker-proxy docker.service"]);
   });
 
-  test("lists running containers", () => {
-    const run = host.run(["check"], { FAKE_CONTAINERS: "blog wordpress:6 0.0.0.0:80->80/tcp" });
-    expect(section(run.out, "Running containers")).toEqual(["blog wordpress:6 0.0.0.0:80->80/tcp"]);
+  test("marks each running container that is neither Headscale nor a known workload", () => {
+    const containers = "headscale-headscale-1 docker.io/headscale/headscale:0.29.7\\nblog wordpress:6 0.0.0.0:80->80/tcp\\ndawarich_db postgis/postgis:17-3.5";
+    host.write("etc/anima/known-workloads", "# agreed in R-050\ncontainer dawarich_db\nservice blog # not a container entry\n");
+    const run = host.run(["check"], { FAKE_CONTAINERS: containers });
+    expect(section(run.out, "Running containers")).toEqual([
+      "  headscale-headscale-1 docker.io/headscale/headscale:0.29.7",
+      "! blog wordpress:6 0.0.0.0:80->80/tcp",
+      "= dawarich_db postgis/postgis:17-3.5",
+    ]);
   });
 
   test("names each bridge and marks one the forward chain would not let into the VPN", () => {
@@ -188,6 +195,29 @@ describe("harden.sh check inventory (VPS-005)", () => {
       "docker (active)", "public (active)", "policies:", "allow-host-ipv6", "direct rules:", "ipv4 filter INPUT 0 -j ACCEPT",
     ]);
     expect(zones).toContain("  services: ssh");
+  });
+});
+
+describe("harden.sh check inventory (known workloads, R-050)", () => {
+  test("R-050: a known container that publishes a public port is still a violation", () => {
+    host.harden();
+    host.write("etc/anima/known-workloads", "container dawarich_db\n");
+    host.setListeners([...ALLOWED_SS, 'tcp LISTEN 0 4096 0.0.0.0:5432 0.0.0.0:* users:(("docker-proxy",pid=1300,fd=7))']);
+    const run = host.run(["check"], { FAKE_CONTAINERS: "dawarich_db postgis/postgis:17-3.5 0.0.0.0:5432->5432/tcp", FAKE_UNIT: "docker.service" });
+    expect(run.code).toBe(1);
+    expect(section(run.out, "Listening sockets")).toContain("! tcp 0.0.0.0:5432 docker-proxy docker.service");
+    expect(run.out).toMatch(/VIOLATION: public listener .*:5432 /);
+  });
+
+  test("R-050: marks a known service = and changes no check", () => {
+    host.harden();
+    const units = "sshd.service enabled enabled\\nmonarx-agent.service enabled enabled\\nsssd.service enabled enabled";
+    const before = host.run(["check"], { FAKE_UNITS: units });
+    host.write("etc/anima/known-workloads", "service monarx-agent.service\nservice sssd.service\n");
+    const after = host.run(["check"], { FAKE_UNITS: units });
+    expect(section(before.out, "Enabled services")).toEqual(["! monarx-agent.service", "! sssd.service"]);
+    expect(section(after.out, "Enabled services")).toEqual(["= monarx-agent.service", "= sssd.service"]);
+    expect(after.code).toBe(before.code);
   });
 });
 
