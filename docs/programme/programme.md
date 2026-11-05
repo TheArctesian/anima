@@ -24,7 +24,7 @@ The operator approved all seven contracts on 2026-11-03 (checkpoint 1). Only a r
 | WP-02 Tokens and fonts | 1 | Accepted, merged into `phase-1` (965feb2) | `claude/wp-02-tokens-327209` | `wp-02-tokens` |
 | WP-03 VPN and network | 1 | Accepted, merged at bdfc785 (12/12). Runbook (AlmaLinux 10, rows 0–19) waits for SSH access to the VPS | own worktree from `phase-1` | `wp-03-vpn-and-network` |
 | WP-04 Deployment, stage A (hub) | 1 | Accepted, merged at decc2e4; smoke-strict, userland-proxy off and image fix merged at 9a4623e (12/12). Hub compose-up on the VPS follows WP-03 step 8 | own worktree from `phase-1` | `wp-04-hub-deploy` |
-| WP-04 Deployment, stage B (releases and self-update, R-006) | 3 | Building (from 9a4623e; includes LOG-008, R-053) | own worktree from `phase-1` | `wp-04-hub-deploy` |
+| WP-04 Deployment, stage B (releases and self-update, R-006) | 3 | Merged (f59f96d; gates 12/12 on the merge). Not run on GitHub yet; operator steps 0–7 in docs/releases.md | own worktree from `phase-1` | `wp-04-hub-deploy` |
 | WP-05 Access and logs | 1 | Merged (5d86152; gates 12/12 on the merge) | own worktree from `phase-1` | `wp-05-access` |
 | WP-06 Devices | 1 | Accepted, merged into `phase-1` (5cdc99c) | own worktree from `phase-1` | `wp-06-devices` |
 | WP-07 Credentials | 1 | Accepted, merged into `phase-1` (3f1f830) | own worktree from `phase-1` | `wp-07-credentials` |
