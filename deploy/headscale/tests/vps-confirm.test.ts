@@ -45,6 +45,24 @@ describe("harden.sh firewall and confirm keep the boot file to the Anima include
     expect(check).toBeGreaterThan(run.calls.indexOf("SYSTEMCTL enable nftables.service"));
     expect(check).toBeLessThan(run.calls.indexOf("SYSTEMCTL mask firewalld.service"));
   });
+
+  test("confirm masks firewalld that is not running or not installed, and stops nothing", () => {
+    expect(host.run(["firewall"], vpn).code).toBe(0);
+    const run = host.run(["confirm"], second);
+    expect(run.code).toBe(0);
+    expect(run.calls).toContain("SYSTEMCTL mask firewalld.service");
+    expect(run.calls).not.toContain("SYSTEMCTL stop firewalld.service");
+    expect(host.exists("var/lib/anima/firewalld-was-active")).toBe(false);
+  });
+
+  test("confirm stops a running firewalld and records that it ran", () => {
+    const active = { FAKE_FIREWALLD_ACTIVE: "0", FAKE_FIREWALLD: "enabled" };
+    expect(host.run(["firewall"], { ...vpn, ...active }).code).toBe(0);
+    const run = host.run(["confirm"], { ...second, ...active });
+    expect(run.code).toBe(0);
+    expect(run.calls.indexOf("SYSTEMCTL stop firewalld.service")).toBeGreaterThan(run.calls.indexOf("SYSTEMCTL mask firewalld.service"));
+    expect(host.exists("var/lib/anima/firewalld-was-active")).toBe(true);
+  });
 });
 
 describe("harden.sh confirm needs a connection opened after firewall (VPS-002)", () => {

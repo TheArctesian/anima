@@ -212,7 +212,6 @@ describe("harden.sh confirm", () => {
     expect(indexOf(run, /^SYSTEMCTL daemon-reload$/)).toBeLessThan(indexOf(run, /^SYSTEMCTL enable nftables\.service$/));
     const mask = indexOf(run, /^SYSTEMCTL mask firewalld\.service$/);
     expect(mask).toBeGreaterThan(indexOf(run, /^SYSTEMCTL enable nftables\.service$/));
-    expect(indexOf(run, /^SYSTEMCTL stop firewalld\.service$/)).toBeGreaterThan(mask);
     expect(host.exists("var/lib/anima/nftables.pending")).toBe(false);
   });
 
