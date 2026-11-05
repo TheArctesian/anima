@@ -57,7 +57,7 @@ fn checked_update(id: &ID, input: MaintenanceWindowInput) -> Result<(WindowId, N
 #[derive(Default)]
 pub struct Query;
 
-#[Object]
+#[Object(name = "MaintenanceQuery")]
 impl Query {
     #[graphql(guard = "Authenticated")]
     async fn maintenance_windows(&self, ctx: &Context<'_>) -> Result<Vec<Window>> {
@@ -68,7 +68,7 @@ impl Query {
 #[derive(Default)]
 pub struct Mutation;
 
-#[Object]
+#[Object(name = "MaintenanceMutation")]
 impl Mutation {
     #[graphql(guard = "Authenticated")]
     async fn create_maintenance_window(

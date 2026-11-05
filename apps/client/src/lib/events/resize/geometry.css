@@ -1,0 +1,9 @@
+/*
+ * The logs panel's header has a fixed block size, so its collapsed height is right from first paint and the font swap moves
+ * nothing. DeviceScreen reserves scroll room from the same values; the two shares are THIRD_SHARE and TWO_THIRDS_SHARE in resize.ts.
+ */
+:root {
+  --logs-header-size: calc(var(--target-min-desktop) + var(--space-3));
+  --logs-third: 33vh;
+  --logs-two-thirds: 66vh;
+}

@@ -1,4 +1,4 @@
-//! The devices part of the hub schema is a subset of K1 (R-011(c)).
+//! The hub schema is a subset of K1, and its devices part is complete (R-011(c), CON-002).
 
 use std::collections::BTreeMap;
 
@@ -116,6 +116,30 @@ async fn k1_ssh_credential_input_is_a_oneof_input_as_in_k1() {
         "/../../contracts/schema.graphql"
     );
     assert!(std::fs::read_to_string(path).unwrap().contains(line));
+}
+
+fn k1() -> BTreeMap<String, BTreeMap<String, String>> {
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../contracts/schema.graphql"
+    );
+    members(&parse_schema(std::fs::read_to_string(path).unwrap()).expect("K1 parses"))
+}
+
+#[tokio::test]
+async fn con_002_every_member_of_the_hub_schema_exists_in_k1_with_the_same_type() {
+    let hub = members(&parse_schema(hub_sdl()).expect("hub sdl parses"));
+    let k1 = k1();
+    assert!(hub.len() >= CHECKED.len(), "{:?}", hub.keys());
+    for (name, ours) in &hub {
+        let theirs = k1.get(name).unwrap_or_else(|| panic!("K1 declares {name}"));
+        for (member, ours) in ours {
+            assert_eq!(theirs.get(member), Some(ours), "{name}.{member}");
+        }
+    }
+    // R-026(4): the liveness probe is `GET /health`, not a field.
+    assert!(!hub["Query"].contains_key("health"));
+    assert!(hub["Query"].contains_key("me") && hub["Mutation"].contains_key("login"));
 }
 
 /// The K1 root fields WP-06 builds; the others belong to other packages.

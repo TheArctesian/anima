@@ -42,8 +42,15 @@ pub use events::{Operator, ClientAddr};   // defined in events (R-019)
 
 /// GraphQL guard: requires a valid token; puts `Operator` in the context (API-003).
 pub struct Authenticated;
-/// axum middleware: refuses addresses outside permitted networks, logs the refusal (NET-002).
-pub fn permitted_networks_layer(db: Db, bus: events::Bus, clock: Clock) -> impl tower::Layer<axum::routing::Route> + Clone;
+/// The permitted networks and the refusals written, built once in main.rs and shared by the
+/// listener's accept-time check and the layer, so both give one answer (NET-002, R-051).
+pub struct Edge;
+impl Edge { pub fn new(db: Db, bus: events::Bus, clock: Clock) -> Self; }
+/// axum middleware: refuses addresses outside the permitted networks of `edge`, logs the refusal (NET-002).
+pub fn permitted_networks_layer(edge: Edge) -> impl tower::Layer<axum::routing::Route> + Clone;
+/// The hub's TLS listener: drops refused peers at TCP accept, before TLS (R-051). main.rs and
+/// the `health` subcommand use it; no other domain does.
+pub mod listen; // listen, Listening, Entrance, TlsFiles, TlsListener, Fault, Error, check_health, HealthError
 /// Used by the tunnel: resolve a bearer token to an operator.
 pub async fn operator_for_token(db: &Db, token: &str, now: DateTime<Utc>) -> Result<Operator, Error>;
 ```

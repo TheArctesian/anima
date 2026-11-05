@@ -75,9 +75,21 @@ pub async fn probe(
     if config.validate().is_err() {
         return ProbeResult::failed(&Failure::BadConfig);
     }
-    let attempt = run(target, config, secrets, env);
+    within(config, run(target, config, secrets, env)).await
+}
+
+/// `attempt`, cut off at the check's time limit. This is the only timer that decides the
+/// outcome: an ICMP echo still waiting at the limit had no reply, whichever timer fires first,
+/// so the same case always gives the same message (CHK-001).
+pub(super) async fn within(
+    config: &CheckConfig,
+    attempt: impl Future<Output = ProbeResult>,
+) -> ProbeResult {
     match tokio::time::timeout(config.timeout(), attempt).await {
         Ok(result) => result,
+        Err(_) if matches!(config, CheckConfig::Icmp { .. }) => {
+            ProbeResult::failed(&Failure::NoReply)
+        }
         Err(_) => ProbeResult::failed(&Failure::TimedOut),
     }
 }

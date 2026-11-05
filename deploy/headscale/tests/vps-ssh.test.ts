@@ -1,9 +1,10 @@
-import { beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { chmodSync } from "node:fs";
 import { join } from "node:path";
-import { HARDEN_TIMEOUT_MS, fakeHost, type Host } from "./vps-host.ts";
+import { HARDEN_TIMEOUT_MS, fakeHost, removeHosts, type Host } from "./vps-host.ts";
 
 setDefaultTimeout(HARDEN_TIMEOUT_MS);
+afterEach(removeHosts);
 
 const DROP_IN = "etc/ssh/sshd_config.d/00-anima.conf";
 let host: Host;

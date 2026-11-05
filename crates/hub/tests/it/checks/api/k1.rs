@@ -128,7 +128,17 @@ fn signature(input: &InputValueDefinition) -> String {
 fn hub_and_k1() -> (Members, Members) {
     // The schema never touches the database for its SDL, so a lazy pool is enough.
     let pool = sqlx::PgPool::connect_lazy("postgres://unused@127.0.0.1:1/none").unwrap();
-    let hub = members(&parse_schema(schema_for(&pool).sdl()).expect("hub sdl parses"));
+    let mut hub = members(&parse_schema(schema_for(&pool).sdl()).expect("hub sdl parses"));
+    // The domain's roots are this schema's root types, under their own names.
+    for (domain, root) in [
+        ("ChecksQuery", "Query"),
+        ("ChecksMutation", "Mutation"),
+        ("ChecksSubscription", "Subscription"),
+    ] {
+        if let Some(fields) = hub.remove(domain) {
+            hub.insert(root.to_owned(), fields);
+        }
+    }
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/../../contracts/schema.graphql"

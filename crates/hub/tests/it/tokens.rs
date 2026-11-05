@@ -22,8 +22,6 @@ async fn api_003_me_answers_with_a_token(pool: PgPool) {
     assert_eq!(response["data"]["me"], login["data"]["login"]["operator"]);
     assert_eq!(response["data"]["me"]["username"], USERNAME);
     assert_eq!(response["data"]["me"]["totpEnabled"], false);
-    let health = hub.post(Some(token), "{ health }", json!({})).await;
-    assert_eq!(health, json!({ "data": { "health": "ok" } }));
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -32,10 +30,13 @@ async fn sec_002_d_7_token_is_stored_only_as_its_hash(pool: PgPool) {
     let hub = Hub::new(&pool, start());
     let login = hub.login(USERNAME, PASSWORD).await;
     let token = login["data"]["login"]["token"].as_str().unwrap();
-    assert_eq!(
-        login["data"]["login"]["expiresAt"],
-        "2030-06-04T12:00:00+00:00"
-    );
+    // R-033: compare instants, not text.
+    let expires_at: chrono::DateTime<chrono::Utc> = login["data"]["login"]["expiresAt"]
+        .as_str()
+        .unwrap()
+        .parse()
+        .unwrap();
+    assert_eq!(expires_at, start() + TimeDelta::days(30));
 
     let rows: Vec<String> = sqlx::query_scalar(
         "select row_to_json(t)::text from access.api_tokens t \

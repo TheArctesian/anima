@@ -1,14 +1,18 @@
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import { print } from 'graphql';
+import type { HubAddress } from './address';
 import { isGraphQLResponse, MALFORMED, parseResponse, TOKEN_UNREADABLE, UNREACHABLE, type HubResult } from './error';
 import type { StatusSignal } from './status/status';
 
-/** Reads the operator's access token, or `null` before login. The token is read per call, never stored here. */
-export type TokenProvider = () => Promise<string | null>;
+/**
+ * Reads the operator's access token for one hub, or `null` before login. The token is read per call, never stored here.
+ * The hub passes its own address, so a provider cannot be bound to a different hub than the one it is sent to (CLI-002, CLI-003).
+ */
+export type TokenProvider = (address: HubAddress) => Promise<string | null>;
 
 /** What one HTTP GraphQL call needs; every part is injected so that tests need no network (CQ-021). */
 interface HttpTransport {
-  readonly endpoint: string;
+  readonly address: HubAddress;
   readonly fetch: typeof fetch;
   readonly token: TokenProvider;
   readonly signal: (signal: StatusSignal) => void;
@@ -17,9 +21,9 @@ interface HttpTransport {
 }
 
 /** The token, or `TOKEN_UNREADABLE` when the provider rejects; nothing from the rejection is kept (LOG-007). */
-export async function readToken(token: TokenProvider): Promise<HubResult<string | null>> {
+export async function readToken(token: TokenProvider, address: HubAddress): Promise<HubResult<string | null>> {
   try {
-    return { ok: true, value: await token() };
+    return { ok: true, value: await token(address) };
   } catch {
     // The reason may describe the key store; the operator only needs to know the token is missing.
     return { ok: false, error: TOKEN_UNREADABLE };
@@ -41,7 +45,7 @@ async function answerText(transport: HttpTransport, token: string | null, body: 
   const timer = setTimeout(() => abort.abort(), transport.timeoutMs);
   try {
     const init = { method: 'POST', headers: headersFor(token), body, signal: abort.signal };
-    const response = await transport.fetch(transport.endpoint, init);
+    const response = await transport.fetch(transport.address.http, init);
     return await response.text();
   } catch {
     // fetch rejects only when no answer arrived (network, TLS, reset, timeout); the reason is the same for the operator.
@@ -69,7 +73,7 @@ export async function sendRequest<TResult, TVariables>(
   document: TypedDocumentNode<TResult, TVariables>,
   variables: TVariables,
 ): Promise<HubResult<TResult>> {
-  const token = await readToken(transport.token);
+  const token = await readToken(transport.token, transport.address);
   if (!token.ok) return token;
   const text = await answerText(transport, token.value, JSON.stringify({ query: print(document), variables }));
   if (text === undefined) {

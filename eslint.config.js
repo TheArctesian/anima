@@ -18,7 +18,8 @@ const limits = {
 // disable the line with a reason when that is intended. URL fragments such as
 // 'https://x.io/#abc123' are refused too; build the URL from parts.
 // Do not set no-restricted-syntax for apps/client files in another config object: it
-// replaces this list. Extend tokenLiterals instead.
+// replaces this list. Extend tokenLiterals (or the lists it is spread into) instead; the one
+// folder object that sets it (the tunnel) spreads tokenLiterals too.
 const textRules = [
   [
     String.raw`(?<![\w&])#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})(?![\w-])`,
@@ -68,26 +69,53 @@ const tokenLiterals = [
 // folders that own a library get their own object listing only the other bans.
 const motionHint =
   'Use $lib/motion (MV-008, MOT-020): the motion library is imported only in apps/client/src/lib/motion/.';
+const guacamoleHint =
+  'Use $lib/sessions/tunnel (D-2, R-045): the vendored Guacamole client is imported only in apps/client/src/lib/sessions/tunnel/.';
 const wsHint =
   'Use a domain client in $lib/<domain>/api.ts built on $lib/hub (CQ-045): graphql-ws is imported only in apps/client/src/lib/hub/.';
 const transportHint =
   'Use a domain client in $lib/<domain>/api.ts built on $lib/hub (CQ-045): fetch, WebSocket, EventSource and XMLHttpRequest are used only in apps/client/src/lib/hub/.';
 // A regex, not a gitignore group: 'motion/*' would also match '$lib/motion/tokens'.
 const motionImports = [{ regex: String.raw`^(?:motion|motion-dom|framer-motion)(?:/|$)`, message: motionHint }];
+const tauriHint = 'Use $lib/desktop (CLI-003): the Tauri API is imported only in apps/client/src/lib/desktop/.';
+const tauriImports = [{ regex: String.raw`^@tauri-apps(?:/|$)`, message: tauriHint }];
 const wsImports = [{ regex: String.raw`^graphql-ws(?:/|$)`, message: wsHint }];
-const transportGlobals = ['fetch', 'WebSocket', 'EventSource', 'XMLHttpRequest'].map((name) => ({
-  name,
-  message: transportHint,
-}));
+// The vendored Apache Guacamole client (R-045), and the npm repackaging it replaces.
+const npmGuacamoleImports = [{ regex: String.raw`^guacamole-common-js(?:/|$)`, message: guacamoleHint }];
+// Any path that names the vendor folder or the vendored file, however it is reached.
+const vendorPath = String.raw`(?:^|/)tunnel/vendor(?:/|$)|vendor/guacamole`;
+const guacamoleImports = [...npmGuacamoleImports, { regex: vendorPath, message: guacamoleHint }];
+// `import()` is not covered by no-restricted-imports; the tunnel imports the client statically, so a dynamic
+// import of it is refused everywhere (added to the no-restricted-syntax lists below). A template is checked as
+// written (`raw`) and as evaluated (`cooked`, where `\x2f` is a `/`).
+// esquery ends a regex at an unescaped `/`, so the selector escapes them.
+const guacamoleSelectorPath = `${vendorPath}|^guacamole-common-js(?:/|$)`.replaceAll('/', String.raw`\/`);
+const guacamoleDynamicImports = [
+  `ImportExpression > Literal[value=/${guacamoleSelectorPath}/]`,
+  `ImportExpression > TemplateLiteral > TemplateElement[value.raw=/${guacamoleSelectorPath}/]`,
+  `ImportExpression > TemplateLiteral > TemplateElement[value.cooked=/${guacamoleSelectorPath}/]`,
+].map((selector) => ({ selector, message: guacamoleHint }));
+// A computed `import()` (a variable, a concatenation, a template with expressions) cannot be checked against
+// the boundary, so client code outside the tunnel refuses it; the client has none (D-2).
+const computedImports = [
+  {
+    selector: "ImportExpression:not([source.type='Literal']):not([source.type='TemplateLiteral'][source.expressions.length=0])",
+    message: 'Import a module by a literal path (D-2): a computed import() cannot be checked against the import boundaries.',
+  },
+];
+const transportGlobal = (name) => ({ name, message: transportHint });
+const transportGlobals = ['fetch', 'WebSocket', 'EventSource', 'XMLHttpRequest'].map(transportGlobal);
 const fetchProperties = ['window', 'globalThis', 'self'].map((object) => ({
   object,
   property: 'fetch',
   message: transportHint,
 }));
-const clientFiles = ['apps/client/**/*.{ts,js,svelte}'];
+const clientFiles = ['apps/client/**/*.{ts,mts,cts,js,mjs,cjs,svelte}'];
 const clientTests = ['**/*.test.ts'];
 const hubFolder = ['apps/client/src/lib/hub/**'];
 const motionFolder = ['apps/client/src/lib/motion/**'];
+const tunnelFolder = ['apps/client/src/lib/sessions/tunnel/**'];
+const desktopFolder = ['apps/client/src/lib/desktop/**'];
 const importsRule = (patterns) => ({
   'no-restricted-imports': ['error', { patterns }],
 });
@@ -96,7 +124,7 @@ const boundaryRules = [
     files: clientFiles,
     ignores: clientTests,
     rules: {
-      ...importsRule([...motionImports, ...wsImports]),
+      ...importsRule([...motionImports, ...wsImports, ...guacamoleImports, ...tauriImports]),
       'no-restricted-globals': ['error', ...transportGlobals],
       'no-restricted-properties': ['error', ...fetchProperties],
     },
@@ -104,15 +132,29 @@ const boundaryRules = [
   {
     files: motionFolder,
     ignores: clientTests,
-    rules: importsRule(wsImports),
+    rules: importsRule([...wsImports, ...guacamoleImports, ...tauriImports]),
+  },
+  {
+    files: desktopFolder,
+    ignores: clientTests,
+    rules: importsRule([...motionImports, ...wsImports, ...guacamoleImports]),
   },
   {
     files: hubFolder,
     ignores: clientTests,
     rules: {
-      ...importsRule(motionImports),
+      ...importsRule([...motionImports, ...guacamoleImports, ...tauriImports]),
       'no-restricted-globals': 'off',
       'no-restricted-properties': 'off',
+    },
+  },
+  {
+    // The Guacamole tunnel opens its own WebSocket (K4 §2); `socket.ts` observes its close code.
+    files: tunnelFolder,
+    ignores: clientTests,
+    rules: {
+      ...importsRule([...motionImports, ...wsImports, ...npmGuacamoleImports, ...tauriImports]),
+      'no-restricted-globals': ['error', ...['fetch', 'EventSource', 'XMLHttpRequest'].map(transportGlobal)],
     },
   },
 ];
@@ -126,6 +168,7 @@ export default tseslint.config(
       '**/dist/**',
       '**/target/**',
       'apps/client/src/lib/hub/generated/**',
+      'apps/client/src/lib/sessions/tunnel/vendor/guacamole.js',
     ],
   },
   js.configs.recommended,
@@ -133,7 +176,7 @@ export default tseslint.config(
   tseslint.configs.stylistic,
   svelte.configs.recommended,
   {
-    files: ['apps/client/**/*.{ts,js,svelte}', 'quality/**/*.ts', 'deploy/**/*.ts', 'design/**/*.ts'],
+    files: [...clientFiles, 'quality/**/*.ts', 'deploy/**/*.ts', 'design/**/*.ts'],
     languageOptions: { globals: { ...globals.browser, ...globals.node } },
     plugins: { '@eslint-community/eslint-comments': comments },
     rules: {
@@ -145,9 +188,15 @@ export default tseslint.config(
     },
   },
   {
-    files: ['apps/client/**/*.{ts,js,svelte}'],
+    files: clientFiles,
     ignores: ['apps/client/src/lib/motion/tokens.ts', '**/*.test.ts'],
-    rules: { 'no-restricted-syntax': ['error', ...tokenLiterals] },
+    rules: { 'no-restricted-syntax': ['error', ...tokenLiterals, ...guacamoleDynamicImports, ...computedImports] },
+  },
+  {
+    // The tunnel keeps every syntax ban but the one on computed imports (this object replaces the list above).
+    files: tunnelFolder,
+    ignores: ['**/*.test.ts'],
+    rules: { 'no-restricted-syntax': ['error', ...tokenLiterals, ...guacamoleDynamicImports] },
   },
   {
     files: ['**/*.svelte'],

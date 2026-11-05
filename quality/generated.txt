@@ -6,3 +6,4 @@ apps/client/src/lib/motion/tokens.ts
 crates/theme/src/generated.rs
 crates/hub/migrations/**
 apps/client/src/lib/hub/generated/**
+apps/client/src/lib/sessions/tunnel/vendor/guacamole.js
