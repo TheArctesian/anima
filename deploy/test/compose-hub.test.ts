@@ -110,4 +110,14 @@ describe("hub image build", () => {
       expect(dockerfile).not.toContain(flag);
     }
   });
+
+  test("SEC-005 every workspace member is in the hub build context, so cargo can load the workspace", () => {
+    const manifest = readFileSync(join(ROOT, "Cargo.toml"), "utf8");
+    const members = [...(/^members = \[(.*)\]$/m.exec(manifest)?.[1] ?? "").matchAll(/"([^"]+)"/g)].map((match) => match[1] ?? "");
+    const copied = dockerfile.split("\n").filter((line) => line.startsWith("COPY ") && !line.includes("--from")).map((line) => line.split(" ")[1] ?? "");
+    expect(members.length).toBeGreaterThan(0);
+    for (const member of members) {
+      expect(copied.some((source) => member === source || member.startsWith(`${source}/`))).toBe(true);
+    }
+  });
 });

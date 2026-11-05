@@ -4,6 +4,8 @@ FROM rust:1.93-bookworm AS build
 WORKDIR /src
 COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
+# A workspace member: cargo reads its manifest, but builds nothing of it here.
+COPY apps/desktop/src-tauri ./apps/desktop/src-tauri
 RUN cargo build --release --locked --bin anima-hub
 
 FROM debian:bookworm-20261027-slim

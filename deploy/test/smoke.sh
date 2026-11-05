@@ -32,9 +32,10 @@ step "Docker Engine version (NET-003)"
 sh "$repo/deploy/bin/preflight" docker "$(docker version --format '{{.Server.Version}}')"
 
 step "Prepare a temporary copy of deploy/ in $work"
-mkdir -p "$work/deploy" "$work/apps/client/src/styles"
+mkdir -p "$work/deploy" "$work/apps/client/src/styles" "$work/apps/desktop"
 cp -R "$repo/deploy/compose.yaml" "$repo/deploy/postgres" "$repo/deploy/certs" "$repo/deploy/gateway" "$repo/deploy/hub" "$work/deploy/"
 cp -R "$repo/Cargo.toml" "$repo/Cargo.lock" "$repo/crates" "$work/"
+cp -R "$repo/apps/desktop/src-tauri" "$work/apps/desktop/src-tauri"
 cp -R "$repo/apps/client/src/styles/fonts" "$work/apps/client/src/styles/fonts"
 printf '%s\n' 'smoke-test-not-a-token' |
     ANIMA_SECRETS_CHOWN=0 sh "$repo/deploy/bin/make-secrets" --cloudflare-token-stdin "$work/deploy/secrets"

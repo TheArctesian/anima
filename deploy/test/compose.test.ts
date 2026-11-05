@@ -229,7 +229,7 @@ describe("hardening and images (SEC-001)", () => {
       .split("\n")
       .filter((line) => line !== "" && !line.startsWith("#"));
     expect(lines[0]).toBe("*");
-    expect(lines.filter((line) => line.startsWith("!")).sort()).toEqual(["!Cargo.lock", "!Cargo.toml", "!crates/"]);
+    expect(lines.filter((line) => line.startsWith("!")).sort()).toEqual(["!Cargo.lock", "!Cargo.toml", "!apps/desktop/src-tauri/", "!crates/"]);
   });
 
   test("GW-001 RA-011 the gateway adds only the font and its licence to guacd", () => {
