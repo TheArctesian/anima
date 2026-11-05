@@ -5,7 +5,7 @@
 use std::{
     collections::HashSet,
     ops::ControlFlow,
-    sync::{Arc, Mutex, MutexGuard, PoisonError},
+    sync::{Arc, Mutex},
 };
 
 use async_graphql::{
@@ -16,6 +16,7 @@ use axum::{body::Bytes, extract::ws::Message};
 use serde::Deserialize;
 
 use super::Closing;
+use crate::access::lock;
 
 /// The client's side of one connection, shared by the input stream and the relay. The locks
 /// are held for one map update, never across an await.
@@ -23,10 +24,6 @@ use super::Closing;
 pub(super) struct Intake {
     live: Arc<Mutex<Live>>,
     ended: Arc<Mutex<Option<Closing>>>,
-}
-
-fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
-    mutex.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
 impl Intake {

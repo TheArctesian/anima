@@ -38,7 +38,7 @@ pub const BODY_LIMIT: usize = 1024 * 1024;
 
 /// What the `/graphql` handler needs besides the request.
 #[derive(Clone)]
-struct Edge {
+struct GraphqlRoute {
     schema: schema::HubSchema,
     db: PgPool,
     clock: Arc<dyn clock::Clock>,
@@ -52,7 +52,7 @@ pub fn router(schema: schema::HubSchema, db: PgPool, clock: Arc<dyn clock::Clock
             .route("/graphql", post(graphql).get(subscriptions))
             .route("/health", get(health))
             .layer(DefaultBodyLimit::max(BODY_LIMIT))
-            .with_state(Edge { schema, db, clock }),
+            .with_state(GraphqlRoute { schema, db, clock }),
     )
 }
 
@@ -123,7 +123,7 @@ fn is_json(headers: &HeaderMap) -> bool {
 /// Reads one JSON request of at most [`BODY_LIMIT`] bytes (no batch, no multipart), resolves
 /// the bearer token and the client address once, then runs it (D-6).
 async fn graphql(
-    State(edge): State<Edge>,
+    State(route): State<GraphqlRoute>,
     headers: HeaderMap,
     extensions: Extensions,
     body: Bytes,
@@ -141,10 +141,10 @@ async fn graphql(
     if let Some(client) = access::client_addr(&extensions) {
         request = request.data(client);
     }
-    let response = match access::identify(&edge.db, &headers, edge.clock.now()).await {
-        Ok(Some(identity)) => edge.schema.execute(identity.attach(request)).await,
-        Ok(None) => edge.schema.execute(request).await,
-        // The schema's boundary never sees this error, so the edge logs its cause chain (H-5).
+    let response = match access::identify(&route.db, &headers, route.clock.now()).await {
+        Ok(Some(identity)) => route.schema.execute(identity.attach(request)).await,
+        Ok(None) => route.schema.execute(request).await,
+        // The schema's boundary never sees this error, so the route logs its cause chain (H-5).
         Err(error) => {
             let error = error.into_response_error();
             events::process_log::log_failure(&error);
@@ -158,13 +158,13 @@ async fn graphql(
 /// the `connection_init` payload, never from the URL (R-020). A `GET` that is not a WebSocket
 /// upgrade gets 405: queries are never read from a URL.
 async fn subscriptions(
-    State(edge): State<Edge>,
+    State(route): State<GraphqlRoute>,
     extensions: Extensions,
     upgrade: Result<WebSocketUpgrade, WebSocketUpgradeRejection>,
 ) -> Response {
     let Ok(upgrade) = upgrade else {
         return StatusCode::METHOD_NOT_ALLOWED.into_response();
     };
-    let access = access::SocketAccess::new(edge.db, edge.clock, access::client_addr(&extensions));
-    access::accept_socket(upgrade, edge.schema, access)
+    let access = access::SocketAccess::new(route.db, route.clock, access::client_addr(&extensions));
+    access::accept_socket(upgrade, route.schema, access)
 }

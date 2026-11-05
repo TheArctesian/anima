@@ -18,7 +18,7 @@ mod throttle;
 mod tokens;
 mod totp;
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use async_graphql::{ErrorExtensions as _, Pos, ServerError};
 use chrono::{DateTime, TimeDelta, Utc};
@@ -377,4 +377,10 @@ pub async fn prune(db: &PgPool, now: DateTime<Utc>) -> Result<Pruned, Error> {
     let mut conn = db.acquire().await?;
     let (attempts, tokens) = store::prune(&mut conn, now - ATTEMPTS_KEPT, now).await?;
     Ok(Pruned { attempts, tokens })
+}
+
+/// The guarded value: the access state behind a lock (counts, maps and timestamps) stays valid
+/// when a panic elsewhere poisoned the lock, so serving goes on.
+fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex.lock().unwrap_or_else(PoisonError::into_inner)
 }

@@ -11,12 +11,13 @@ use std::{
 
 use axum::Router;
 use ipnet::IpNet;
+use sqlx::PgPool;
 use tokio::{
-    io::{AsyncRead, AsyncReadExt as _},
+    io::{AsyncRead, AsyncReadExt as _, AsyncWriteExt as _},
     net::{TcpListener, TcpStream},
     task::{JoinHandle, JoinSet},
 };
-use tokio_rustls::TlsAcceptor;
+use tokio_rustls::{TlsAcceptor, client::TlsStream, rustls::pki_types::ServerName};
 
 use super::super::{
     certificate::{self, Current},
@@ -24,7 +25,7 @@ use super::super::{
     slots::Slots,
     tls,
 };
-use super::serving::{get_over_tls, peer_router};
+use super::serving::{connector, get_over_tls, peer_router};
 use super::{Throwaway, now, pem, provider, throwaway};
 use crate::{
     access::layer::{CONNECTION, Edge, REQUEST, Verdict},
@@ -142,7 +143,7 @@ async fn assert_served(door: &Door) {
 }
 
 #[tokio::test]
-async fn attack_handshake_slots_starve_legitimate_clients_from_one_permitted_ip() {
+async fn net_002_one_peer_holds_at_most_8_handshakes_and_others_are_served() {
     let door = door(peer_router(), SERVED, |n| {
         ip(if n < 256 { "10.0.0.66" } else { "10.0.0.7" })
     })
@@ -156,8 +157,35 @@ async fn attack_handshake_slots_starve_legitimate_clients_from_one_permitted_ip(
     );
 }
 
+/// A TLS connection whose handshake the server has finished: it has answered one request on
+/// it. Kept alive for as long as the value.
+async fn answered(door: &Door) -> TlsStream<TcpStream> {
+    let tcp = TcpStream::connect(door.addr).await.unwrap();
+    let name = ServerName::try_from("localhost").unwrap();
+    let mut tls = connector(&door.made).connect(name, tcp).await.unwrap();
+    tls.write_all(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+        .await
+        .unwrap();
+    let mut head = [0; 12];
+    tls.read_exact(&mut head).await.unwrap();
+    assert_eq!(&head, b"HTTP/1.1 200");
+    tls
+}
+
 #[tokio::test]
-async fn attack_handshake_slots_starve_legitimate_clients_from_many_permitted_ips() {
+async fn net_002_sec_001_a_finished_handshake_gives_its_place_back() {
+    let door = door(peer_router(), SERVED, |_| ip("10.0.0.7")).await;
+    let mut held = Vec::new();
+    for _ in 0..=SERVED.handshakes_per_peer {
+        let open = tokio::time::timeout(DEADLINE, answered(&door)).await;
+        held.push(open.expect("a handshake place"));
+    }
+    assert_served(&door).await;
+    drop(held);
+}
+
+#[tokio::test]
+async fn net_002_many_peers_hold_handshakes_with_no_total_cap_and_others_are_served() {
     let door = door(peer_router(), SERVED, |n| match u8::try_from(n) {
         Ok(n) => IpAddr::from([10, 0, 1, n]),
         Err(_) => ip("10.0.0.7"),
@@ -222,7 +250,6 @@ fn net_002_sec_001_the_hub_serves_with_the_reviewed_limits() {
         body_time,
         answer_time,
         write_stall,
-        drain_limit: _,
     } = SERVED;
     assert_eq!(
         (connections, connections_per_peer, handshakes_per_peer),
@@ -289,6 +316,41 @@ async fn d_11_a_peer_refused_at_accept_and_by_the_layer_is_written_once() {
         edge.verdict(ip("10.1.2.3"), CONNECTION).await,
         Verdict::Permitted
     ));
+}
+
+/// The `access` warnings in the event log.
+async fn access_warnings(pool: &PgPool) -> Vec<String> {
+    let query = "select message from events.event_log \
+                 where source = 'access' and severity = 'warning' order by at, id";
+    sqlx::query_scalar(query).fetch_all(pool).await.unwrap()
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn net_002_d_11_a_peer_refused_at_accept_is_written_once_a_minute(pool: PgPool) {
+    let permitted = ["10.0.0.0/8".parse().unwrap()];
+    crate::access::permit_networks(&pool, &permitted)
+        .await
+        .unwrap();
+    let clock = Arc::new(FixedClock(now()));
+    let edge = Edge::new(pool.clone(), crate::events::Bus::new(4), clock);
+    let door = door_with(edge, peer_router(), SERVED, |_| ip("192.0.2.1")).await;
+    let refused =
+        ["Refused a connection from 192.0.2.1: the address is not in a permitted network."];
+    let mut first = TcpStream::connect(door.addr).await.unwrap();
+    assert!(closes(&mut first, DEADLINE).await, "closed at accept");
+    let started = Instant::now();
+    while access_warnings(&pool).await.is_empty() && started.elapsed() < DEADLINE {
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    assert_eq!(access_warnings(&pool).await, refused);
+    let mut second = TcpStream::connect(door.addr).await.unwrap();
+    assert!(closes(&mut second, DEADLINE).await, "closed at accept");
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    assert_eq!(
+        access_warnings(&pool).await,
+        refused,
+        "once a minute per address"
+    );
 }
 
 #[tokio::test]

@@ -4,7 +4,7 @@
 use std::{
     convert::Infallible,
     net::{IpAddr, SocketAddr},
-    sync::{Arc, Mutex, MutexGuard, PoisonError},
+    sync::{Arc, Mutex},
 };
 
 use async_graphql_axum::GraphQLResponse;
@@ -21,7 +21,7 @@ use sqlx::PgPool;
 use tower::{Layer, Service};
 
 use super::{
-    ClientAddr, Error,
+    ClientAddr, Error, lock,
     networks::{self, Loaded, OncePerSpan, REFUSALS_PER_SPAN, Refusals},
     store,
 };
@@ -45,7 +45,7 @@ pub struct Edge {
 /// The events a refusal writes, decided under the D-11 limit when the client was refused:
 /// written with [`Edge::write`] after the client is answered or closed.
 #[must_use]
-pub(super) struct Refusal {
+pub(super) struct RefusalEvents {
     now: DateTime<Utc>,
     messages: Vec<String>,
 }
@@ -54,7 +54,7 @@ pub(super) struct Refusal {
 pub(super) enum Verdict {
     Permitted,
     /// Outside the permitted networks, or a container or proxy address; the events to write.
-    Refused(Refusal),
+    Refused(RefusalEvents),
     /// The list cannot be read.
     Unavailable(Error),
 }
@@ -184,7 +184,7 @@ impl Edge {
 
     /// The events for refusing `client` at `now`: `message`, unless the limit says it was
     /// written recently, and once a minute how many refusals the limit left out.
-    fn refused(&self, client: IpAddr, now: DateTime<Utc>, message: String) -> Refusal {
+    fn refused(&self, client: IpAddr, now: DateTime<Utc>, message: String) -> RefusalEvents {
         let mut refusals = lock(&self.refusals);
         let mut messages = Vec::new();
         if refusals.admit(client, now) {
@@ -196,12 +196,12 @@ impl Edge {
                  recorded a minute."
             ));
         }
-        Refusal { now, messages }
+        RefusalEvents { now, messages }
     }
 
     /// Writes the events of `refusal`. A write that fails is logged by kind; the client is
     /// refused either way.
-    pub(super) async fn write(&self, refusal: Refusal) {
+    pub(super) async fn write(&self, refusal: RefusalEvents) {
         for message in refusal.messages {
             let event = NewEvent {
                 severity: Severity::Warning,
@@ -239,7 +239,7 @@ impl Edge {
 }
 
 #[cfg(test)]
-impl Refusal {
+impl RefusalEvents {
     /// The events this refusal writes.
     pub(super) fn messages(&self) -> &[String] {
         &self.messages
@@ -252,9 +252,4 @@ fn refusal(status: StatusCode, error: Error) -> Response {
     let mut response = GraphQLResponse::from(body).into_response();
     *response.status_mut() = status;
     response
-}
-
-/// The guarded value; a panic elsewhere while holding the lock leaves plain data, still valid.
-fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
-    mutex.lock().unwrap_or_else(PoisonError::into_inner)
 }

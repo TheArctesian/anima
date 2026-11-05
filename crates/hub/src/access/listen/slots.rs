@@ -4,8 +4,10 @@
 use std::{
     collections::HashMap,
     net::IpAddr,
-    sync::{Arc, Mutex, MutexGuard, PoisonError},
+    sync::{Arc, Mutex},
 };
+
+use crate::access::lock;
 
 /// The places in use and the caps on them.
 #[derive(Debug)]
@@ -78,9 +80,4 @@ impl Drop for Slot {
             }
         }
     }
-}
-
-/// The guarded value; a panic elsewhere while holding the lock leaves plain counts, still valid.
-fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
-    mutex.lock().unwrap_or_else(PoisonError::into_inner)
 }

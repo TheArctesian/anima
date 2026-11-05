@@ -143,32 +143,19 @@ impl Entrance {
         stop: impl Future<Output = ()>,
         drain_limit: Duration,
     ) {
-        let limits = serve::Limits {
-            drain_limit,
-            ..serve::SERVED
-        };
-        self.serve_within(router, stop, limits).await;
-    }
-
-    async fn serve_within(
-        self,
-        router: Router,
-        stop: impl Future<Output = ()>,
-        limits: serve::Limits,
-    ) {
         let Self { listening, edge } = self;
         match listening {
             Listening::Plain(tcp) => {
-                let serving = Serving::new(router, edge, None, limits);
-                serve::run(tcp, serving, stop).await;
+                let serving = Serving::new(router, edge, None, serve::SERVED);
+                serve::run(tcp, serving, stop, drain_limit).await;
             }
             Listening::Tls(TlsListener {
                 tcp,
                 acceptor,
                 reload: _reload,
             }) => {
-                let serving = Serving::new(router, edge, Some(acceptor), limits);
-                serve::run(tcp, serving, stop).await;
+                let serving = Serving::new(router, edge, Some(acceptor), serve::SERVED);
+                serve::run(tcp, serving, stop, drain_limit).await;
             }
         }
     }

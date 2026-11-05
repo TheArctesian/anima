@@ -67,6 +67,9 @@ enum StartError {
     Stdin,
     #[error("{0}")]
     Operator(#[from] access::Error),
+    /// The cause is in the process log, by fault word and SQLSTATE (LOG-007).
+    #[error("the permitted networks cannot be stored")]
+    PermittedNetworks,
 }
 
 /// Prints the plain error (`Display`, never `Debug`) and exits with a failure code.
@@ -128,7 +131,7 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     let vault = vault(&config)?;
     let pool = connect(&config).await?;
     events::check_runtime_role(&pool).await?;
-    access::permit_networks(&pool, &config.permitted_networks).await?;
+    permit_networks(&pool, &config).await?;
     let live = open_sessions(&pool, clock.now()).await?;
     tracing::info!(listen = %listening.local_addr()?, "hub started");
     let bus = Bus::new(BUS_CAPACITY);
@@ -160,6 +163,20 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     .await;
     upkeep.iter().for_each(tokio::task::JoinHandle::abort);
     Ok(())
+}
+
+/// Stores `ANIMA_PERMITTED_NETWORKS` (D-10). A hub fault is logged by its fault word and
+/// SQLSTATE, as the API boundary logs it, never with content (LOG-007); a refused network
+/// keeps its plain message.
+async fn permit_networks(pool: &PgPool, config: &Config) -> Result<(), StartError> {
+    let stored = access::permit_networks(pool, &config.permitted_networks).await;
+    stored.map_err(|error| {
+        if error.fault().is_none() {
+            return StartError::Operator(error);
+        }
+        process_log::log_failure(&error.into_response_error());
+        StartError::PermittedNetworks
+    })
 }
 
 /// Opens the sessions before the hub serves, and logs how many stale rows ended (a number only).

@@ -54,8 +54,6 @@ pub(super) struct Limits {
     pub answer_time: Duration,
     /// A write that makes no progress for this closes the connection.
     pub write_stall: Duration,
-    /// After the stop signal, how long open connections may take to finish (R-040).
-    pub drain_limit: Duration,
 }
 
 /// The limits the hub serves with.
@@ -68,7 +66,6 @@ pub(super) const SERVED: Limits = Limits {
     body_time: Duration::from_secs(30),
     answer_time: Duration::from_mins(1),
     write_stall: Duration::from_secs(30),
-    drain_limit: Duration::from_secs(10),
 };
 
 /// After an accept error other than a reset connection (for example too many open files).
@@ -180,8 +177,13 @@ fn late() -> Response {
 }
 
 /// Serves every connection `tcp` accepts until `stop` resolves; then stops accepting and
-/// drains the open connections for at most the drain limit before aborting the rest (R-040).
-pub(super) async fn run(tcp: TcpListener, serving: Arc<Serving>, stop: impl Future<Output = ()>) {
+/// drains the open connections for at most `drain_limit` before aborting the rest (R-040).
+pub(super) async fn run(
+    tcp: TcpListener,
+    serving: Arc<Serving>,
+    stop: impl Future<Output = ()>,
+    drain_limit: Duration,
+) {
     let mut connections = JoinSet::new();
     tokio::pin!(stop);
     loop {
@@ -196,7 +198,7 @@ pub(super) async fn run(tcp: TcpListener, serving: Arc<Serving>, stop: impl Futu
     }
     drop(tcp);
     serving.stopping.send_replace(true);
-    drain(connections, serving.limits.drain_limit).await;
+    drain(connections, drain_limit).await;
 }
 
 /// Waits at most `limit` for `connections` to finish; the rest are aborted when dropped.
