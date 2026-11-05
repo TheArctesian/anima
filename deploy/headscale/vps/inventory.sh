@@ -3,7 +3,12 @@
 # units, containers, Docker networks, extra enabled units, firewalld and nftables tables.
 # Nothing here changes the system: the operator sends this to the programme before the
 # first change, because the VPS may already host other services. Sourced by harden.sh;
-# needs its say, and SS, PS, DOCKER, SYSTEMCTL, FIREWALL_CMD, NFT and HERE.
+# needs its say and path, and SS, PS, DOCKER, SYSTEMCTL, FIREWALL_CMD, NFT and HERE.
+
+# The operator's services that the programme has agreed to keep (R-050), one per line:
+# "service NAME.service" or "container NAME"; "#" starts a comment. The inventory marks
+# them "=" instead of "!". The list changes no check: it only records what was agreed.
+KNOWN_WORKLOADS=/etc/anima/known-workloads
 
 # Programs expected to listen on the VPS (ss shows at most 15 characters of a name).
 # Headscale uses the host network, so any docker-proxy is a port another container
@@ -22,6 +27,27 @@ listener_inventory() {
     case $EXPECTED_PROGRAMS in *" ${program:-?} "*) mark="  " ;; *) mark="! " ;; esac
     say "$mark$netid $local_address ${program:-?} ${unit:-?}"
   done <<<"$sockets"
+}
+
+# Exit 0 if the known-workloads file lists KIND NAME.
+known_workload() {
+  [ -f "$(path "$KNOWN_WORKLOADS")" ] || return 1
+  awk -v kind="$1" -v name="$2" '{ sub(/#.*/, "") } $1 == kind && $2 == name && NF == 2 { found = 1 } END { exit !found }' \
+    "$(path "$KNOWN_WORKLOADS")"
+}
+
+# Print each running container; mark it unless it is Headscale or a known workload.
+container_inventory() {
+  local containers name image ports mark
+  containers=$($DOCKER ps --format '{{.Names}} {{.Image}} {{.Ports}}' 2>/dev/null) || { say "(docker ps failed)"; return; }
+  while read -r name image ports; do
+    [ -n "${name:-}" ] || continue
+    case $image in
+      headscale/headscale:* | docker.io/headscale/headscale:*) mark="  " ;;
+      *) if known_workload container "$name"; then mark="= "; else mark="! "; fi ;;
+    esac
+    say "$mark$name $image${ports:+ $ports}"
+  done <<<"$containers"
 }
 
 # Print each Docker network with its bridge; mark bridges the forward chain does not allow.
@@ -45,7 +71,8 @@ network_inventory() {
 unit_inventory() {
   local unit
   while read -r unit _; do
-    grep -qxF "$unit" "$HERE/stock-units.txt" || say "! $unit"
+    grep -qxF "$unit" "$HERE/stock-units.txt" && continue
+    if known_workload service "$unit"; then say "= $unit"; else say "! $unit"; fi
   done < <($SYSTEMCTL list-unit-files --type=service --state=enabled --no-legend)
 }
 
@@ -67,11 +94,11 @@ firewalld_inventory() {
 inventory() {
   say "== Listening sockets (! = not sshd, Headscale, tailscaled, chronyd or resolved; docker-proxy is a port Docker publishes)"
   listener_inventory
-  say "== Running containers"
-  $DOCKER ps --format '{{.Names}} {{.Image}} {{.Ports}}' 2>/dev/null || say "(docker ps failed)"
+  say "== Running containers (! = not Headscale and not in $KNOWN_WORKLOADS; = known)"
+  container_inventory
   say "== Docker networks (! = bridge name not docker0 or br-*: no route into the VPN)"
   network_inventory
-  say "== Enabled services not in the stock list (stock-units.txt)"
+  say "== Enabled services not in the stock list (stock-units.txt; = in $KNOWN_WORKLOADS)"
   unit_inventory
   say "== firewalld"
   firewalld_inventory

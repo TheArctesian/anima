@@ -35,6 +35,7 @@ ROOT=/
 DRY_RUN=0
 CONSOLE=0
 RESTART_DOCKER=0
+LIVE_RESTORE_WAIT=${HARDEN_LIVE_RESTORE_WAIT:-10}
 ALLOW_CLOSING=
 STATE_DIR=/var/lib/anima
 HEADSCALE_DIR=/opt/anima/headscale
@@ -66,9 +67,12 @@ Commands (run as root):
   updates   Install dnf-automatic: all updates daily at 03:45 UTC, reboot at 04:30 when
             needed.
   selinux   Label Headscale's config/ and lib/ container_file_t (semanage, restorecon).
+            With SELinux disabled it refuses, unless /etc/anima/selinux-disabled
+            records the deviation (R-050).
   docker    Merge daemon.json into /etc/docker/daemon.json (default bind 127.0.0.1,
-            SELinux labels on). Needs jq and, under SELinux, the selinux step first.
-            Docker is restarted only with --restart-docker.
+            SELinux labels on, live-restore). Needs jq and, under SELinux, the selinux
+            step first. Only with --restart-docker: reload Docker (turns live-restore
+            on), then restart it; running containers keep running.
   firewall  Validate and apply nftables.conf, armed with a 180 s rollback. Refuses while
             a public port that is open now would close (see --allow-closing and
             /etc/anima/firewall-allow). Needs tailscale0 and an SSH session over the VPN,
@@ -81,7 +85,7 @@ Options:
   --root DIR        Treat DIR as the file system root (tests). Default /.
   --dry-run         Print the actions; write and change nothing.
   --console         firewall, confirm: you are on the provider console, not on SSH.
-  --restart-docker  docker: restart Docker after the change.
+  --restart-docker  docker: reload, then restart Docker, keeping containers running.
   --allow-closing L firewall, confirm: close these open ports on purpose, for example
                     --allow-closing 9090/tcp,546/udp. Ports to keep open go in
                     /etc/anima/firewall-allow, one PORT/PROTO per line.
@@ -175,6 +179,50 @@ docker_version_problem() {
   fi
 }
 
+# Print "ID STARTED_AT" for each running container. A container that Docker stopped and
+# started again keeps its ID but gets a new start time.
+container_starts() {
+  local ids
+  ids=$($DOCKER ps -q --no-trunc) || return 1
+  [ -n "$ids" ] || return 0
+  read -r -a ids <<<"${ids//$'\n'/ }"
+  $DOCKER inspect -f '{{.Id}} {{.State.StartedAt}}' "${ids[@]}"
+}
+
+# Wait up to LIVE_RESTORE_WAIT seconds for live-restore: dockerd applies a reload after
+# `systemctl reload` returns. Fail unless it is on.
+await_live_restore() {
+  local tries=0 state
+  while :; do
+    state=$($DOCKER info --format '{{.LiveRestoreEnabled}}' 2>/dev/null) \
+      || fail "docker info failed after the reload; Docker was not restarted"
+    [ "$state" != true ] || return 0
+    tries=$((tries + 1))
+    [ "$tries" -lt "$LIVE_RESTORE_WAIT" ] \
+      || fail "live-restore is not on after the reload; Docker was not restarted (a restart would stop every container)"
+    sleep 1
+  done
+}
+
+# Restart Docker without stopping a container (R-050). A daemon started without
+# live-restore stops every container when it stops, so first reload it (SIGHUP), which
+# turns live-restore on from daemon.json; the other options need the restart. Refuse to
+# restart unless live-restore is on, and fail naming each container that was stopped.
+restart_docker_live() {
+  local before after line id gone=
+  if dry; then say "[dry-run] $SYSTEMCTL reload docker, check live-restore, $SYSTEMCTL restart docker"; return; fi
+  "$SYSTEMCTL" reload docker || fail "systemctl reload docker failed; Docker was not restarted"
+  await_live_restore
+  before=$(container_starts) || fail "docker ps failed; Docker was not restarted"
+  "$SYSTEMCTL" restart docker || fail "systemctl restart docker failed"
+  after=$(container_starts) || fail "docker ps failed after the restart"
+  while IFS= read -r line; do
+    [ -z "$line" ] || grep -qxF "$line" <<<"$after" || { id=${line%% *}; gone="$gone ${id:0:12}"; }
+  done <<<"$before"
+  [ -z "$gone" ] || fail "containers stopped by the restart:$gone; check them (docker ps -a) and start any that are down"
+  say "Docker restarted; every running container kept running (live-restore)."
+}
+
 cmd_docker() {
   local target merged problems
   require_root
@@ -195,9 +243,9 @@ cmd_docker() {
   fi
   write_file /etc/docker/daemon.json 0644 <<<"$merged"
   if [ "$RESTART_DOCKER" -eq 1 ]; then
-    run "$SYSTEMCTL" restart docker
+    restart_docker_live
   else
-    say "Restart Docker to apply: systemctl restart docker."
+    say "Apply it with: $SELF --restart-docker docker (a plain restart would stop every container)."
   fi
   say "Then recreate Headscale, which keeps its old label until then:"
   say "  docker compose -f $HEADSCALE_DIR/compose.yaml up -d --force-recreate"
@@ -208,6 +256,10 @@ cmd_check() {
   require_root
   inventory
   os_warnings
+  line=$(selinux_deviation)
+  if [ -n "$line" ] && [ "$($GETENFORCE 2>/dev/null)" = Disabled ]; then
+    say "note: SELinux stays disabled, a recorded deviation: $line"
+  fi
   problems=$(docker_version_problem; admin_problem; match_problems; sshd_mismatches "${ANIMA_ADMIN_USER:-}"; update_problems
     selinux_problems; firewall_problems; listener_violations)
   if [ -z "$problems" ]; then say "ok: no violations"; return 0; fi

@@ -1,9 +1,10 @@
-import { beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
 import { rmSync } from "node:fs";
 import { join } from "node:path";
-import { HARDEN_TIMEOUT_MS, fakeHost, VPN_SESSION, type Host } from "./vps-host.ts";
+import { HARDEN_TIMEOUT_MS, fakeHost, removeHosts, VPN_SESSION, type Host } from "./vps-host.ts";
 
 setDefaultTimeout(HARDEN_TIMEOUT_MS);
+afterEach(removeHosts);
 
 // The guards around the boot file (S2, S3) and the sessions that may confirm (S4).
 const vpn = { SSH_CONNECTION: VPN_SESSION };

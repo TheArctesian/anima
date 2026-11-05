@@ -1,7 +1,8 @@
-import { beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
-import { HARDEN_TIMEOUT_MS, fakeHost, VPN_SESSION, type Host } from "./vps-host.ts";
+import { afterEach, beforeEach, describe, expect, setDefaultTimeout, test } from "bun:test";
+import { HARDEN_TIMEOUT_MS, fakeHost, removeHosts, VPN_SESSION, type Host } from "./vps-host.ts";
 
 setDefaultTimeout(HARDEN_TIMEOUT_MS);
+afterEach(removeHosts);
 
 // What must hold before the firewall and the Docker settings go on: Docker 28 or newer
 // (WP-04 preflight) and no interface beside the bridges in Docker's range (NET-002, C-3).

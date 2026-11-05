@@ -2,7 +2,7 @@
  * A fake VPS for the harden.sh tests (D-14): a temporary root, a copy of `vps/`, and fake
  * system commands that log every call and act on FAKE_* variables.
  */
-import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -88,7 +88,7 @@ case "$1" in
   list-unit-files) printf '%b\\n' "\${FAKE_UNITS:-sshd.service enabled enabled}";;
   show) [ "$unit" = nftables.service ] || { echo "\${FAKE_SUBSTATE:-waiting}"; exit 0; }
         f=stock; [ ! -f "$FAKE_ROOT/etc/systemd/system/nftables.service.d/anima.conf" ] || f=anima
-        sed "\${FAKE_NFT_UNIT_EDIT:-}" "$FAKE_DIR/nft-unit-$f"; printf '%b' "\${FAKE_NFT_UNIT_EXTRA:-}";; reload) exit "\${FAKE_RELOAD:-0}";; mask) exit "\${FAKE_MASK:-0}";;
+        sed "\${FAKE_NFT_UNIT_EDIT:-}" "$FAKE_DIR/nft-unit-$f"; printf '%b' "\${FAKE_NFT_UNIT_EXTRA:-}";; reload) exit "\${FAKE_RELOAD:-0}";; restart) [ "$unit" != docker ] || : > "$FAKE_DIR/docker-restarted"; exit "\${FAKE_RESTART:-0}";; mask) exit "\${FAKE_MASK:-0}";;
   stop) [ -z "\${FAKE_STOP_STARTS_ROLLBACK:-}" ] || : > "$FAKE_ROOT/var/lib/anima/firewall-rolled-back";;
 esac`,
   SYSTEMD_RUN: `[ "$1" != --wait ] || exit "\${FAKE_PROBE:-0}"`,
@@ -128,10 +128,19 @@ printf '%b\\n' "\${FAKE_ADDRS:-${ADDRS}}"`,
 esac`,
   DOCKER: `case "$1" in
   version) [ -z "\${FAKE_DOCKER_DOWN:-}" ] || exit 1; echo "\${FAKE_DOCKER_VERSION:-29.9.3}";;
-  info) echo "\${FAKE_DOCKER_SECURITY:-[name=seccomp,profile=builtin name=selinux]}";;
-  ps) [ "$2" != -q ] || { printf '%b' "\${FAKE_HEADSCALE_ID-0123abcd\\n}"; exit 0; }
+  info) case "$*" in *LiveRestoreEnabled*) [ -z "\${FAKE_DOCKER_DOWN_INFO:-}" ] || exit 1; echo "\${FAKE_LIVE_RESTORE:-true}";;
+          *) echo "\${FAKE_DOCKER_SECURITY:-[name=seccomp,profile=builtin name=selinux]}";; esac;;
+  ps) if [ "$2" = -q ] && [ "$3" = --no-trunc ]; then
+        if [ -f "$FAKE_DIR/docker-restarted" ]; then printf '%b' "\${FAKE_IDS_AFTER-\${FAKE_IDS:-aaa\\nbbb\\n}}"; else printf '%b' "\${FAKE_IDS:-aaa\\nbbb\\n}"; fi
+        exit 0
+      fi
+      [ "$2" != -q ] || { printf '%b' "\${FAKE_HEADSCALE_ID-0123abcd\\n}"; exit 0; }
       printf '%b\\n' "\${FAKE_CONTAINERS:-headscale-headscale-1 docker.io/headscale/headscale:0.29.7 }";;
-  inspect) echo "\${FAKE_PROCESS_LABEL-system_u:system_r:container_t:s0:c241,c692}";;
+  inspect) case "$3" in *StartedAt*) shift 3
+        for id; do t=\${FAKE_STARTED:-2026-11-01T00:00:00Z}
+          if [ -f "$FAKE_DIR/docker-restarted" ]; then case " \${FAKE_STARTED_AFTER_IDS:-} " in *" $id "*) t=2026-11-05T00:00:00Z;; esac; fi
+          echo "$id $t"; done;;
+      *) echo "\${FAKE_PROCESS_LABEL-system_u:system_r:container_t:s0:c241,c692}";; esac;;
   network) case "$2" in
       ls) printf '%b\\n' "\${FAKE_NETWORKS:-bridge bridge 2673f396533215b1e304\\nhost host 3779e81102d984fcc41a}";;
       inspect) case "$5" in bridge) echo docker0;; *) echo "\${FAKE_BRIDGE:-<no value>}";; esac;;
@@ -198,8 +207,16 @@ function runHarden(work: string, args: string[], env: Record<string, string>): R
   return { code: result.exitCode, out: result.stdout.toString() + result.stderr.toString(), calls };
 }
 
+const works: string[] = [];
+
+/** Removes every fake host made so far; call from `afterEach` in each test file. */
+export function removeHosts(): void {
+  for (const work of works.splice(0)) rmSync(work, { recursive: true, force: true });
+}
+
 export function fakeHost(): Host {
   const work = mkdtempSync(join(tmpdir(), "anima-vps-"));
+  works.push(work);
   const root = join(work, "root");
   const vps = join(work, "vps");
   cpSync(VPS_DIR, vps, { recursive: true });
