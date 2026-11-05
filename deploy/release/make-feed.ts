@@ -7,6 +7,7 @@
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { parseArgs } from "node:util";
+import { assertSignedVersion } from "./signed-version.ts";
 import { buildFeed, checksums, stableName, type BuiltPlatforms, type NamedBytes, type UpdateFile } from "./feed.ts";
 
 const RELEASES = "https://github.com/TheArctesian/anima/releases/download";
@@ -19,7 +20,7 @@ function filesUnder(folder: string): string[] {
 }
 
 /** The updater bundle with the given suffix and the text of its `.sig` file, if both exist. */
-function updateFile(paths: string[], suffix: string): UpdateFile | undefined {
+function updateFile(paths: string[], suffix: string, version: string): UpdateFile | undefined {
   const bundle = paths.find((path) => path.endsWith(suffix));
   if (bundle === undefined) return undefined;
   const sig = `${bundle}.sig`;
@@ -27,7 +28,9 @@ function updateFile(paths: string[], suffix: string): UpdateFile | undefined {
     console.error(`warning: ${basename(bundle)} has no .sig file, so its platform is left out of the feed`);
     return undefined;
   }
-  return { file: basename(bundle), signature: readFileSync(sig, "utf8") };
+  const signature = readFileSync(sig, "utf8");
+  assertSignedVersion(basename(bundle), signature, version);
+  return { file: basename(bundle), signature };
 }
 
 const { values } = parseArgs({
@@ -51,8 +54,8 @@ if (!/^\d+\.\d+\.\d+$/.test(version)) {
 const macos = filesUnder(join(artifacts, "macos"));
 const linux = filesUnder(join(artifacts, "linux"));
 const built: BuiltPlatforms = {
-  macos: updateFile(macos, ".app.tar.gz"),
-  linux: updateFile(linux, ".AppImage"),
+  macos: updateFile(macos, ".app.tar.gz", version),
+  linux: updateFile(linux, ".AppImage", version),
 };
 
 mkdirSync(out, { recursive: true });

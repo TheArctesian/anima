@@ -59,6 +59,12 @@ It must show `HTTP/2 302` and a `location:` header with `.../releases/latest/dow
 
 Each build compiles with no secret in the environment (`tauri build --no-bundle`: vite, npm packages, `build.rs` and proc-macros run here). On macOS the next step (`tauri bundle`) holds the signing key and the Apple secrets. On Linux, `tauri bundle --no-sign` downloads linuxdeploy with no hash check, so it holds no key; a separate step runs `tauri signer sign --app-version` on the AppImage with only the updater key.
 
+## What protects the feed
+
+- Before the draft release is created, `make-feed` decodes each `.sig` and fails the run unless its trusted comment says `version:<this version>`. The apps use `requireSignedVersion`, so a `.sig` with no version or the wrong one would make every installed app refuse the update with no message.
+- With `allowDowngrades: true`, `requireSignedVersion` stops mislabelled versions, not rollbacks. Anyone who controls the feed (`updates.anima.ing`, the Cloudflare account or the GitHub release) can send apps back to any older signed release. The protection is TLS and who controls those accounts, so keep two-factor authentication on both.
+- Every hop of the DNS-007 redirect must be https. The updater follows an https-to-http redirect and only warns. The Cloudflare rule targets `https://github.com/...` only; check the `location:` header after any change.
+
 ## Known issue
 
 If linuxdeploy fails with a `strip` error on `ubuntu-24.04`, set `NO_STRIP: true` on the Linux bundle step. It is not set today because the failure has not been seen.
