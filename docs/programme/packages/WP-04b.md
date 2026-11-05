@@ -169,7 +169,14 @@ This needs the operator's key, the secret and the Cloudflare redirect, so it run
   - C-2: the `allowDowngrades` sentence in the docs;
   - C-3: make the fixed log lines a type;
   - C-4: Keychain prompts after ad-hoc updates.
-- Fixes: see the commits after `21f8b8f`.
+- Fixed:
+  - `d0f4c54`: a `sign-linux` job on a fresh runner that installs only `@tauri-apps/cli` with `--ignore-scripts` from the lockfile; steps h and i; C-2 and C-4.
+  - `1ede9c9`: the test files moved to `$lib/updates/tests/`; `UpdateLine` is a literal union.
+  - `ba9da7c`: C-1.
+- Re-check of `d0f4c54`:
+  - **must** M-1: setup-bun's default binary cache let compile-time code in `build-linux` replace the `bun` that `sign-linux` (key) and `publish` (`GH_TOKEN`) restore and run.
+  - Fixed in `c0ccdf5`: `no-cache: true` on all four setup-bun steps, no `actions/cache`, with a test; the operator runs `gh cache delete --all` if any run happened before the first release.
+- Accepted with M-1 fixed, checked by the orchestrator.
 
 ## Handoffs
 
