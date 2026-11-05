@@ -65,4 +65,114 @@ This needs the operator's key, the secret and the Cloudflare redirect, so it run
 
 ## Review log
 
-(filled in as tasks run)
+### T1 `release-workflow`
+- Build `e42d3b1` (builder).
+- Round 1:
+  - reviewer: no must. Shoulds:
+    - a manual run from any branch publishes;
+    - the `latest.json` upload order is untested;
+    - CLI mutants survive (signature, URL tag, Linux, `--version`);
+    - the key-check mutants survive;
+    - `bunx tauri` in the docs.
+  - reviewer-security:
+    - **must**: a `workflow_dispatch` run on any branch publishes a production-signed latest release.
+    - shoulds:
+      - the key and the Apple secrets are visible to `beforeBuildCommand` and to cargo build scripts;
+      - `bunx tauri` resolves to npm `tauri@0.15.0`;
+      - `always()` publishes a cancelled run.
+    - coulds:
+      - `GH_TOKEN` is set job-wide;
+      - the Cloudflare wildcard redirect.
+  - Fixed in `87ad946`:
+    - a main-only guard and the `release` environment;
+    - compile with `--no-bundle`, then bundle with the secrets;
+    - `!cancelled()`;
+    - the four-path redirect;
+    - stronger tests.
+- Round 2 (reviewer-security): accepted with conditions. Fixed in `8f37a44`:
+  - the Linux bundle step downloads unhashed tools while holding the key, so the AppImage is now bundled with `--no-sign` and signed in its own step with `--app-version`;
+  - the environment is created before `main` exists;
+  - the exact filter expression;
+  - no `beforeBundleCommand`.
+- Round 3 (from the T2 review): fixed in `2caca3a`:
+  - `make-feed` refuses a `.sig` whose signed version is not the release version;
+  - the docs say `requireSignedVersion` stops mislabelled versions, not rollbacks;
+  - every redirect hop must be https.
+- Accepted.
+
+### T2 `shell-updater`
+- Build `23f49fe` (builder-heavy).
+- Round 1 (reviewer-security): accepted with fixes. Shoulds:
+  - the UPD-002 claim in the commit overstates rollback protection (fixed in the docs, T1 round 3);
+  - a missing signed version would fail silently (T1's check);
+  - the formatter wiring is untested (mutant M10);
+  - gates never compile the release cfg (handoff H-1).
+- Side edits accepted, both forced by the R-006 and R-053 edits:
+  - the `process_log_folder_open` entry in `build.rs`'s command list;
+  - `serde_json` moved to normal dependencies, because `generate_context!` needs it once `plugins` config exists.
+- Fixed in `f4f29c5`:
+  - a tested `line_of`;
+  - C1 and bidi escapes;
+  - a bounded opener wait;
+  - 12 of 12 mutants killed.
+- Accepted.
+
+### T3 `client-updates`
+- Build `201aa82` (builder).
+- Round 1:
+  - reviewer: no must. Shoulds:
+    - "Up to date" is shown before any check;
+    - the root layout gained 10 lines where R-006 allows one mount line.
+  - reviewer-interface: one must, downgraded because the app's `minWidth` is 960:
+    - the banner covers the Settings nav link below about 622 px.
+  - reviewer-interface shoulds:
+    - the state text wraps and moves the rows (CLS 0.00115 at 480 px);
+    - the disabled button looks enabled;
+    - the `role="status"` element is inserted with its content already in it;
+    - the motion is not the toast role. `crossFade` is kept as a decision: a persistent status banner, and `$lib/motion` is another package's code.
+  - Fixed in `a1e66e8`:
+    - an `unchecked` state;
+    - `provideDesktopUpdates()` and `DesktopRows`;
+    - the banner width is bounded by the nav;
+    - two reserved lines;
+    - a persistent status region;
+    - race tests.
+- Round 2: the type-only cycle between `$lib/updates` and `$lib/desktop` is broken in `21f8b8f` (the port types moved to `$lib/desktop/updater.ts`).
+- Edits in accepted packages:
+  - `routes/+layout.svelte` gains 4 lines (2 imports, `provideDesktopUpdates()`, `<UpdateBanner />`). That is over R-006's one mount line, because the Settings rows read the context that the call provides. Recorded as a deviation.
+  - `routes/settings/+page.svelte` gains 1 import and 1 line.
+  - The `page.test.ts` mock gains `keyStoreAvailable`.
+- Accepted.
+
+### T4 `package`
+- `tauri build --bundles app` (release) with a throwaway config: `createUpdaterArtifacts` false and the endpoint `https://127.0.0.1:9/latest.json`. It built `Anima.app` (21.36 MiB).
+- The app ran for 20 s:
+  - the updater checked at start, and `Anima.log` holds the updater's error line and the client's fixed line, "Update check failed.";
+  - no dialog appeared and the app kept running (UPD-001, UPD-002, UPD-006, LOG-008);
+  - `~/Library/Logs/ing.anima.desktop/` was created.
+- Not exercised by hand:
+  - the banner and "Restart to update" (this needs a signed feed);
+  - "Open log folder" in Finder (it is unit-tested with stand-in openers).
+
+### Final package review (reviewer-security, `9a4623e...21f8b8f`)
+- Accepted on conditions; no must.
+- The end-to-end version chain holds:
+  - `tauri bundle` merges `--config` and signs with `settings.version_string()`;
+  - `make-feed` checks every `.sig`;
+  - the plugin checks the signed version after the signature.
+- Shoulds:
+  - S-1: compile-time code shares the runner with the key step (through `GITHUB_PATH` and `GITHUB_ENV`), so the AppImage is now signed in a separate job, and the macOS residual risk is documented.
+  - S-2: the first-release and acceptance-16 runbook steps were missing.
+  - S-3: two test-only files sat in WP-15's route folder.
+- Coulds:
+  - C-1: the updater commands' web-view arguments (noted in `desktop.json`);
+  - C-2: the `allowDowngrades` sentence in the docs;
+  - C-3: make the fixed log lines a type;
+  - C-4: Keychain prompts after ad-hoc updates.
+- Fixes: see the commits after `21f8b8f`.
+
+## Handoffs
+
+- **H-1 WP-01 (gates).** Add `cargo clippy -p anima-desktop --release --all-targets -- -D warnings` to the gates, or an equivalent release-cfg compile. The updater and process registration is compiled only in release, so gates 1–3 never build it (T2 review S4).
+- **H-2 WP-15 (could).** "Sign out" looks the same when disabled or busy. Add a `button:disabled` style from tokens, as in `UpdatesRow` (T3 interface review S3).
+- **H-3 spec (SET-002).** SET-002 lists only the title, the Signed in row and the Updates row. The "Open log folder" row is there by R-053 (LOG-008); amend SET-002 to match.
