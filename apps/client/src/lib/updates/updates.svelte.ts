@@ -1,6 +1,6 @@
 import { createContext } from 'svelte';
-import type { UpdateLog, UpdaterPort } from './port';
-import { createUpdateSchedule, type Repeat, type UpdateSnapshot } from './schedule';
+import type { UpdaterPort } from '$lib/desktop/updater';
+import { createUpdateSchedule, type Repeat, type UpdateLog, type UpdateSnapshot } from './schedule';
 
 const everyInterval: Repeat = (run, ms) => {
   const timer = setInterval(run, ms);

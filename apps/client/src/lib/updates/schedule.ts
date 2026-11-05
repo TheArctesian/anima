@@ -1,4 +1,9 @@
-import type { UpdateLog, UpdaterPort } from './port';
+import type { UpdaterPort } from '$lib/desktop/updater';
+
+/** Where the schedule records a failure; fixed text only, since the process log is a file on disk (LOG-007). */
+export interface UpdateLog {
+  warn(text: string): void;
+}
 
 /** The feed is checked at start and then every 4 hours (UPD-001). */
 export const CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;

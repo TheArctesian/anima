@@ -1,7 +1,7 @@
 // Test support: a scripted updater port and a log that records what it is given.
 import { vi, expect } from 'vitest';
-import type { AvailableUpdate, UpdateLog, UpdaterPort } from '../port';
-import { CHECK_INTERVAL_MS, createUpdateSchedule, type Repeat, type UpdateSnapshot } from '../schedule';
+import type { AvailableUpdate, UpdaterPort } from '$lib/desktop/updater';
+import { CHECK_INTERVAL_MS, createUpdateSchedule, type Repeat, type UpdateLog, type UpdateSnapshot } from '../schedule';
 
 export interface FakeUpdater extends UpdaterPort {
   checks: number;
