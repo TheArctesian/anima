@@ -31,15 +31,9 @@ pub fn plugin<R: Runtime>() -> TauriPlugin<R> {
         .rotation_strategy(RotationStrategy::KeepSome(KEPT_FILES))
         .timezone_strategy(TimezoneStrategy::UseUtc)
         .format(|out, message, record| {
-            let now = TimezoneStrategy::UseUtc.get_now();
-            let stamp = line::Stamp {
-                date: (now.year(), u8::from(now.month()), now.day()),
-                time: (now.hour(), now.minute(), now.second()),
-            };
-            let message = message.to_string();
             out.finish(format_args!(
                 "{}",
-                line::render(&stamp, record.level(), record.target(), &message)
+                line::line_of(&line::Stamp::now(), record, message)
             ));
         })
         .build()
@@ -52,11 +46,12 @@ pub async fn process_log_folder_open<R: Runtime>(app: AppHandle<R>) -> Result<()
         .path()
         .app_log_dir()
         .map_err(|_| ProcessLogError::Unavailable)?;
-    let opened =
-        tauri::async_runtime::spawn_blocking(move || folder::open_with(&folder, folder::OPENER))
-            .await
-            .map_err(|_| ProcessLogError::Failed)
-            .flatten();
+    let opened = tauri::async_runtime::spawn_blocking(move || {
+        folder::open_with(&folder, folder::OPENER, folder::PATIENCE)
+    })
+    .await
+    .map_err(|_| ProcessLogError::Failed)
+    .flatten();
     if let Err(error) = opened {
         log::warn!("the log folder did not open: {}", error.code());
     }
