@@ -27,7 +27,7 @@ Back up the private key and its password offline: attach the key file to an entr
 
 **b. Public key into the app.** Put the text of `~/.tauri/anima-updater.key.pub` in `apps/desktop/src-tauri/tauri.conf.json` as `plugins.updater.pubkey`, and commit it. The public key is not a secret.
 
-**c. The `release` environment.** In the repository settings, create an environment named `release`. Set its deployment branch policy to `main` only. All three build and publish jobs use it, so a run from another branch cannot read the secrets.
+**c. The `release` environment.** Do this BEFORE `main` exists or `release.yml` reaches it: GitHub creates an unprotected environment on first use. In the repository settings, create an environment named `release` and set its deployment branch policy to `main` only. All four jobs (`version`, both builds and `publish`) use it, so a run from another branch cannot read the secrets.
 
 **d. 🔒 Environment secrets** (file `~/.tauri/anima-updater.key`). Store them in the `release` environment, not as repository secrets:
 
@@ -39,7 +39,7 @@ gh secret set --env release TAURI_SIGNING_PRIVATE_KEY_PASSWORD   # only if you s
 **e. Cloudflare redirect (DNS-007).** In the `anima.ing` zone:
 
 1. Add a proxied DNS record for `updates` (for example an `AAAA` record for `100::`). The proxy must be on (orange cloud), or the redirect rule does not run.
-2. Add one Redirect Rule (dynamic) for host `updates.anima.ing`, status 302, only for these four paths: `/latest.json`, `/Anima.dmg`, `/Anima-x86_64.AppImage`, `/SHA256SUMS`. Target: `concat("https://github.com/TheArctesian/anima/releases/latest/download", http.request.uri.path)`. Every other path stays a 404. Turn "Preserve query string" off. Turn "Normalize incoming URLs" on.
+2. Add one Redirect Rule (dynamic) for host `updates.anima.ing`, status 302, only for these four paths. Filter expression: `http.host eq "updates.anima.ing" and http.request.uri.path in {"/latest.json" "/Anima.dmg" "/Anima-x86_64.AppImage" "/SHA256SUMS"}`. Target: `concat("https://github.com/TheArctesian/anima/releases/latest/download", http.request.uri.path)`. Any other path gets a Cloudflare error page, not a 404, unless you add a rule that answers 404. Turn "Preserve query string" off. Turn "Normalize incoming URLs" on.
 3. Check:
 
 ```sh
@@ -57,7 +57,7 @@ It must show `HTTP/2 302` and a `location:` header with `.../releases/latest/dow
 
 ## Signing keys and secrets in the workflow
 
-Each build compiles with no secret in the environment (`tauri build --no-bundle`: vite, npm packages, `build.rs` and proc-macros run here). Only the next step (`tauri bundle`) holds the signing key and the Apple secrets.
+Each build compiles with no secret in the environment (`tauri build --no-bundle`: vite, npm packages, `build.rs` and proc-macros run here). On macOS the next step (`tauri bundle`) holds the signing key and the Apple secrets. On Linux, `tauri bundle --no-sign` downloads linuxdeploy with no hash check, so it holds no key; a separate step runs `tauri signer sign --app-version` on the AppImage with only the updater key.
 
 ## Known issue
 

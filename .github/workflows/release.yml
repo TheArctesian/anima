@@ -134,16 +134,25 @@ jobs:
         run: |
           bun run --cwd apps/desktop tauri build --no-bundle \
             --config "{\"version\":\"${VERSION}\"}"
-      - name: Bundle and sign the AppImage
+      # This step downloads and runs linuxdeploy and AppRun with no hash check, so it holds no
+      # key. It makes no updater file; the next step signs the AppImage.
+      - name: Bundle the AppImage
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+          CI: "true"
+        run: |
+          bun run --cwd apps/desktop tauri bundle --bundles appimage --no-sign \
+            --config "{\"version\":\"${VERSION}\",\"bundle\":{\"createUpdaterArtifacts\":false}}"
+      # Only this step holds the key. The signature is bound to the feed version (requireSignedVersion).
+      - name: Sign the AppImage
         env:
           VERSION: ${{ needs.version.outputs.version }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          APPIMAGE_EXTRACT_AND_RUN: "1"
-          CI: "true"
         run: |
-          bun run --cwd apps/desktop tauri bundle --bundles appimage \
-            --config "{\"version\":\"${VERSION}\"}"
+          image=$(find target/release/bundle/appimage -maxdepth 1 -name '*.AppImage' | head -n 1)
+          bun run --cwd apps/desktop tauri signer sign --app-version "$VERSION" "$PWD/$image"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: linux

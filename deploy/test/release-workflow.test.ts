@@ -147,7 +147,7 @@ describe("build checks (UPD-011, UPD-012)", () => {
     for (const [name, job] of Object.entries(jobs)) {
       for (const step of job.steps) {
         const secrets = Object.values(step.env ?? {}).filter((v) => v.includes("secrets."));
-        const bundles = (step.run ?? "").includes("tauri bundle");
+        const bundles = /tauri bundle|signer sign/.test(step.run ?? "") && !(step.run ?? "").includes("--no-sign");
         const checksKey = name === "version" && secrets.length === 1 && !/secrets\.\w+\s*\}\}/.test(secrets[0] ?? "");
         expect(secrets.length > 0).toBe(name.startsWith("build-") ? bundles : checksKey);
       }
@@ -164,12 +164,12 @@ describe("build checks (UPD-011, UPD-012)", () => {
       expect(runs.filter((r) => /tauri build(?! --no-bundle)/.test(r))).toEqual([]);
     }
     expect(runText(jobs["build-macos"] as Job)).toContain("--target universal-apple-darwin --bundles app dmg");
-    expect(runText(jobs["build-linux"] as Job)).toContain("tauri bundle --bundles appimage");
+    expect(runText(jobs["build-linux"] as Job)).toContain("tauri bundle --bundles appimage --no-sign");
   });
 
   test("UPD-012 the signing key is set on the bundle step with its password", () => {
     for (const name of ["build-macos", "build-linux"]) {
-      const step = (jobs[name] as Job).steps.find((s) => (s.run ?? "").includes("tauri bundle"));
+      const step = (jobs[name] as Job).steps.find((s) => /tauri bundle|signer sign/.test(s.run ?? "") && !(s.run ?? "").includes("--no-sign"));
       expect(step?.env?.["TAURI_SIGNING_PRIVATE_KEY"]).toBe("${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}");
       expect(step?.env?.["TAURI_SIGNING_PRIVATE_KEY_PASSWORD"]).toBe(
         "${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}",
@@ -252,5 +252,45 @@ describe("operator guide (UPD-012, DNS-007)", () => {
     const sets = guide.match(/gh secret set[^\n]*/g) ?? [];
     expect(sets.length).toBeGreaterThan(0);
     for (const line of sets) expect(line).toContain("--env release");
+  });
+});
+
+describe("Linux signing and version binding (UPD-012, UPD-009)", () => {
+  const linux = (jobs["build-linux"] as Job).steps;
+  const stepWith = (text: string) => linux.find((step) => (step.run ?? "").includes(text));
+
+  test("UPD-012 the Linux step that downloads linuxdeploy holds no key and no secret", () => {
+    const bundle = stepWith("tauri bundle");
+    expect(bundle?.run).toContain("--no-sign");
+    expect(JSON.stringify(bundle?.env ?? {})).not.toMatch(/secrets\.|SIGNING/);
+  });
+
+  test("UPD-012 the Linux sign step binds the signature to the version and holds only the signing key", () => {
+    const sign = stepWith("signer sign");
+    expect(sign?.run).toContain('--app-version "$VERSION"');
+    expect(Object.keys(sign?.env ?? {}).sort()).toEqual([
+      "TAURI_SIGNING_PRIVATE_KEY",
+      "TAURI_SIGNING_PRIVATE_KEY_PASSWORD",
+      "VERSION",
+    ]);
+    expect(linux.indexOf(sign as Step)).toBeGreaterThan(linux.indexOf(stepWith("tauri bundle") as Step));
+  });
+
+  test("UPD-009 every tauri build and bundle step passes the version from the version job", () => {
+    for (const name of ["build-macos", "build-linux"]) {
+      const steps = (jobs[name] as Job).steps.filter((s) => /tauri (build|bundle)/.test(s.run ?? ""));
+      expect(steps.length).toBe(2);
+      for (const step of steps) {
+        expect(step.env?.["VERSION"]).toBe("${{ needs.version.outputs.version }}");
+        expect(step.run).toContain('"version\\":\\"${VERSION}\\"');
+      }
+    }
+  });
+
+  test("UPD-012 tauri.conf.json has no beforeBundleCommand, which would run beside the key", () => {
+    const conf = JSON.parse(readFileSync(join(ROOT, "apps", "desktop", "src-tauri", "tauri.conf.json"), "utf8")) as {
+      build: Record<string, unknown>;
+    };
+    expect(conf.build["beforeBundleCommand"]).toBeUndefined();
   });
 });
