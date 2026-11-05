@@ -35,6 +35,15 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "macOS": { "minimumSystemVersion": "14.2" }
+    "macOS": { "minimumSystemVersion": "14.2" },
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "REPLACE_WITH_OPERATOR_PUBLIC_KEY",
+      "endpoints": ["https://updates.anima.ing/latest.json"],
+      "allowDowngrades": true,
+      "requireSignedVersion": true
+    }
   }
 }
