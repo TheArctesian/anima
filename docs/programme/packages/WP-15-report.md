@@ -1,7 +1,11 @@
 # WP-15 report (package orchestrator)
 
-Status: **done**. Branch `claude/wp-15-settings`, with the latest `phase-1` (`b264fe6`) merged in. Not pushed, not merged.
-`bun run gates` on the tip: **GATES_RESULT**. Plan, decisions D-1..D-5, handoffs and review log: [WP-15.md](WP-15.md).
+Status: **done**. Branch `claude/wp-15-settings`, with the latest `phase-1` (`c1a48b7`) merged in. Not pushed, not merged.
+`bun run gates` on the tip: **gates 1–2 and 4–12 pass, and gate 3 passes with three time-of-day WP-09 tests skipped** (at `c45915a`, 00:06 UTC; the later merge of `c1a48b7` changes four doc lines only). Full runs stopped at gate 3 because of the clock, never because of WP-15 code:
+  - 23:13 UTC: `db_005_a_failed_daily_run_is_retried_within_the_hour` failed. Its `now + 1h` tick crosses midnight.
+  - 00:05 UTC: two `checks::tests::heartbeat_cost::api_005_*` tests failed. They insert 6000 s of history before `now()` but create only today's partition, so they fail from 00:00 to 01:40 UTC.
+
+  WP-15 changes no Rust. A full 12/12 run passes between 01:40 and 23:00 UTC; see H-4.. Plan, decisions D-1..D-5, handoffs and review log: [WP-15.md](WP-15.md).
 
 ## What is delivered
 
@@ -52,7 +56,11 @@ Tests: 841 client tests in total. The new ones cover the Settings page, the sign
 - **H-1 WP-12, WP-13 (pages):** on a failed hub result, call `signInNeeded(error, goToSignIn)` from `$lib/access/guard` and `$lib/access/navigation`. When it returns true it has already navigated, so show no error.
 - **H-2 WP-04 stage B:** mount the desktop Updates row at the marked comment in `routes/settings/+page.svelte`, after `<SignOutRow />`. Use `keyStoreAvailable()` for the desktop check.
 - **H-3 WP-16 owners (`lib/desktop`):** `keyStoreAvailable()` was added. Sign-in relies on `AccessTokenError` `not-desktop` and on `TOKEN_UNREADABLE` (compared by identity), so keep both stable.
-- **H-4 programme (WP-09):** `checks::scheduler::tests::daily::db_005_a_failed_daily_run_is_retried_within_the_hour` fails when run between 23:00 and 00:00 UTC. Its `now + 1h` tick crosses UTC midnight. The test should take its time from a fixed point instead of `database_now`.
+- **H-4 programme (WP-09):** three hub tests depend on the time of day, so gate 3 fails at some hours:
+  - `checks::scheduler::tests::daily::db_005_a_failed_daily_run_is_retried_within_the_hour` fails from 23:00 to 00:00 UTC, because its `now + 1h` tick crosses midnight.
+  - `checks::tests::heartbeat_cost::api_005_a_page_of_heartbeats_reads_the_page_not_the_history` and `…api_005_the_latest_heartbeat_reads_a_few_rows_not_the_history` fail from 00:00 to 01:40 UTC. They write 6000 s of heartbeats before `now()` but call `ensure_day_partition(now())` only, so yesterday has no partition.
+
+  Fix: take a fixed time, or create the partitions for every day the test writes.
 
 ## Contract change requests (CON-001)
 
