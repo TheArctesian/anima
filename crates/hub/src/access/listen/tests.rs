@@ -7,6 +7,7 @@ mod bodies;
 mod edge;
 mod heads;
 mod health;
+mod refused;
 mod reload;
 mod serving;
 mod stopping;
