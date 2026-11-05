@@ -35,6 +35,7 @@ ROOT=/
 DRY_RUN=0
 CONSOLE=0
 RESTART_DOCKER=0
+LIVE_RESTORE_WAIT=${HARDEN_LIVE_RESTORE_WAIT:-10}
 ALLOW_CLOSING=
 STATE_DIR=/var/lib/anima
 HEADSCALE_DIR=/opt/anima/headscale
@@ -178,23 +179,47 @@ docker_version_problem() {
   fi
 }
 
+# Print "ID STARTED_AT" for each running container. A container that Docker stopped and
+# started again keeps its ID but gets a new start time.
+container_starts() {
+  local ids
+  ids=$($DOCKER ps -q --no-trunc) || return 1
+  [ -n "$ids" ] || return 0
+  read -r -a ids <<<"${ids//$'\n'/ }"
+  $DOCKER inspect -f '{{.Id}} {{.State.StartedAt}}' "${ids[@]}"
+}
+
+# Wait up to LIVE_RESTORE_WAIT seconds for live-restore: dockerd applies a reload after
+# `systemctl reload` returns. Fail unless it is on.
+await_live_restore() {
+  local tries=0 state
+  while :; do
+    state=$($DOCKER info --format '{{.LiveRestoreEnabled}}' 2>/dev/null) \
+      || fail "docker info failed after the reload; Docker was not restarted"
+    [ "$state" != true ] || return 0
+    tries=$((tries + 1))
+    [ "$tries" -lt "$LIVE_RESTORE_WAIT" ] \
+      || fail "live-restore is not on after the reload; Docker was not restarted (a restart would stop every container)"
+    sleep 1
+  done
+}
+
 # Restart Docker without stopping a container (R-050). A daemon started without
 # live-restore stops every container when it stops, so first reload it (SIGHUP), which
 # turns live-restore on from daemon.json; the other options need the restart. Refuse to
-# restart unless live-restore is on, and report any container that is gone afterwards.
+# restart unless live-restore is on, and fail naming each container that was stopped.
 restart_docker_live() {
-  local before after id gone=
+  local before after line id gone=
   if dry; then say "[dry-run] $SYSTEMCTL reload docker, check live-restore, $SYSTEMCTL restart docker"; return; fi
   "$SYSTEMCTL" reload docker || fail "systemctl reload docker failed; Docker was not restarted"
-  [ "$($DOCKER info --format '{{.LiveRestoreEnabled}}' 2>/dev/null)" = true ] \
-    || fail "live-restore is not on after the reload; Docker was not restarted (a restart would stop every container)"
-  before=$($DOCKER ps -q --no-trunc) || fail "docker ps failed; Docker was not restarted"
+  await_live_restore
+  before=$(container_starts) || fail "docker ps failed; Docker was not restarted"
   "$SYSTEMCTL" restart docker || fail "systemctl restart docker failed"
-  after=$($DOCKER ps -q --no-trunc) || fail "docker ps failed after the restart"
-  for id in $before; do
-    grep -qxF "$id" <<<"$after" || gone="$gone ${id:0:12}"
-  done
-  [ -z "$gone" ] || fail "containers stopped by the restart:$gone; start them again (docker start)"
+  after=$(container_starts) || fail "docker ps failed after the restart"
+  while IFS= read -r line; do
+    [ -z "$line" ] || grep -qxF "$line" <<<"$after" || { id=${line%% *}; gone="$gone ${id:0:12}"; }
+  done <<<"$before"
+  [ -z "$gone" ] || fail "containers stopped by the restart:$gone; check them (docker ps -a) and start any that are down"
   say "Docker restarted; every running container kept running (live-restore)."
 }
 
@@ -220,7 +245,7 @@ cmd_docker() {
   if [ "$RESTART_DOCKER" -eq 1 ]; then
     restart_docker_live
   else
-    say "Restart Docker to apply: systemctl reload docker, then systemctl restart docker."
+    say "Apply it with: $SELF --restart-docker docker (a plain restart would stop every container)."
   fi
   say "Then recreate Headscale, which keeps its old label until then:"
   say "  docker compose -f $HEADSCALE_DIR/compose.yaml up -d --force-recreate"
@@ -232,7 +257,9 @@ cmd_check() {
   inventory
   os_warnings
   line=$(selinux_deviation)
-  [ -z "$line" ] || say "note: SELinux stays disabled, a recorded deviation: $line"
+  if [ -n "$line" ] && [ "$($GETENFORCE 2>/dev/null)" = Disabled ]; then
+    say "note: SELinux stays disabled, a recorded deviation: $line"
+  fi
   problems=$(docker_version_problem; admin_problem; match_problems; sshd_mismatches "${ANIMA_ADMIN_USER:-}"; update_problems
     selinux_problems; firewall_problems; listener_violations)
   if [ -z "$problems" ]; then say "ok: no violations"; return 0; fi

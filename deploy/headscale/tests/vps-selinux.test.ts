@@ -112,7 +112,9 @@ describe("harden.sh docker", () => {
     expect(host.run(["docker"]).calls).not.toContain("SYSTEMCTL restart docker");
     expect(host.run(["--restart-docker", "docker"]).calls).toContain("SYSTEMCTL restart docker");
   });
+});
 
+describe("harden.sh docker --restart-docker (R-050)", () => {
   test("R-050: docker reloads Docker to turn live-restore on before it restarts it", () => {
     const run = host.run(["--restart-docker", "docker"]);
     expect(run.code).toBe(0);
@@ -124,10 +126,27 @@ describe("harden.sh docker", () => {
   });
 
   test("R-050: docker does not restart Docker when live-restore is still off, which would stop every container", () => {
-    const run = host.run(["--restart-docker", "docker"], { FAKE_LIVE_RESTORE: "false" });
+    const run = host.run(["--restart-docker", "docker"], { FAKE_LIVE_RESTORE: "false", HARDEN_LIVE_RESTORE_WAIT: "2" });
     expect(run.code).toBe(1);
     expect(run.out).toContain("live-restore is not on");
     expect(run.calls).not.toContain("SYSTEMCTL restart docker");
+  });
+
+  test("R-050: docker does not restart Docker when docker info fails after the reload", () => {
+    const run = host.run(["--restart-docker", "docker"], { FAKE_DOCKER_DOWN_INFO: "1" });
+    expect(run.code).toBe(1);
+    expect(run.out).toContain("docker info failed after the reload");
+    expect(run.calls).not.toContain("SYSTEMCTL restart docker");
+  });
+
+  test("R-050: docker fails naming a container that the restart stopped and started again", () => {
+    const run = host.run(["--restart-docker", "docker"], { FAKE_IDS: "aaa111\\nbbb222\\n", FAKE_STARTED_AFTER_IDS: "bbb222" });
+    expect(run.code).toBe(1);
+    expect(run.out).toContain("containers stopped by the restart: bbb222");
+  });
+
+  test("R-050: without --restart-docker, docker points to it instead of a plain restart", () => {
+    expect(host.run(["docker"]).out).toContain("--restart-docker docker (a plain restart would stop every container)");
   });
 
   test("R-050: docker does not restart Docker when the reload fails", () => {
@@ -177,6 +196,22 @@ describe("harden.sh check (Headscale's process label)", () => {
     const run = host.run(["check"], { FAKE_ENFORCE: "Disabled", FAKE_DOCKER_SECURITY: "[name=seccomp,profile=builtin]" });
     expect(run.code).toBe(0);
     expect(run.out).toContain("note: SELinux stays disabled, a recorded deviation: R-050: keep the operator's services running");
+  });
+
+  test("R-050: the SELinux deviation does not silence other violations", () => {
+    host.write("etc/anima/selinux-disabled", "R-050\n");
+    host.setListeners(['tcp LISTEN 0 511 0.0.0.0:80 0.0.0.0:* users:(("nginx",pid=1200,fd=6))']);
+    const run = host.run(["check"], { FAKE_ENFORCE: "Disabled", FAKE_DOCKER_SECURITY: "[name=seccomp,profile=builtin]" });
+    expect(run.code).toBe(1);
+    expect(run.out).toMatch(/VIOLATION: public listener .*:80 /);
+  });
+
+  test("R-050: check reports a deviation file while SELinux is permissive, without the disabled note", () => {
+    host.write("etc/anima/selinux-disabled", "R-050\n");
+    const run = host.run(["check"], { FAKE_ENFORCE: "Permissive" });
+    expect(run.code).toBe(1);
+    expect(run.out).toContain("records SELinux as disabled, but it is Permissive");
+    expect(run.out).not.toContain("note: SELinux stays disabled");
   });
 
   test("R-050: check reports disabled SELinux without a deviation", () => {

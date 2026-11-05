@@ -245,7 +245,7 @@ Everything in this step runs on the VPS over SSH, over the public address for no
    sudo install -d -m 0755 /etc/anima
    printf '%s\n' '# R-050: kept running by the operator' \
      'container <CONTAINER_NAME>' 'service <UNIT>.service' | sudo tee /etc/anima/known-workloads
-   sudo bash ~/anima-headscale/vps/harden.sh check | sed -n '/== Running/,/== firewalld/p'   # no ! lines
+   sudo bash ~/anima-headscale/vps/harden.sh check | sed -n '/== Listening/,/== firewalld/p'   # no ! lines
    ```
 
    Undo: `sudo rm /etc/anima/known-workloads`.
@@ -634,9 +634,22 @@ changes nothing.
 
    With the SELinux deviation (2.0b), skip the three SELinux lines: `docker info` does not list
    `name=selinux` and the label is empty. `harden.sh check` reports a Headscale container that is not `container_t`. If `ausearch`
-   shows denials for Headscale, or it is not healthy, undo: restore
-   `/var/lib/anima/daemon.json.previous` (or delete `/etc/docker/daemon.json`), restart Docker,
-   recreate Headscale as above, and report the denial lines.
+   shows denials for Headscale, or it is not healthy, undo, and report the denial lines. The undo
+   keeps `live-restore` on (R-050): a Docker daemon that starts without it stops every container
+   it finds running.
+
+   ```bash
+   # Runs on: VPS (SSH)
+   sudo docker info --format '{{.LiveRestoreEnabled}}'     # must say true; otherwise stop and report
+   if [ -f /var/lib/anima/daemon.json.previous ]; then
+     sudo jq '. + {"live-restore": true}' /var/lib/anima/daemon.json.previous | sudo tee /etc/docker/daemon.json
+   else
+     echo '{"live-restore": true}' | sudo tee /etc/docker/daemon.json
+   fi
+   sudo systemctl restart docker
+   sudo docker ps                                           # the containers of step 0 are still up
+   sudo docker compose -f /opt/anima/headscale/compose.yaml up -d --force-recreate
+   ```
 
 4a. **Only when SELinux was turned on (2.0b): other containers, then 24 hours in Permissive.**
    Only containers created after this step run confined. The owner of each other project, when

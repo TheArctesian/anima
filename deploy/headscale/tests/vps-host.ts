@@ -128,7 +128,7 @@ printf '%b\\n' "\${FAKE_ADDRS:-${ADDRS}}"`,
 esac`,
   DOCKER: `case "$1" in
   version) [ -z "\${FAKE_DOCKER_DOWN:-}" ] || exit 1; echo "\${FAKE_DOCKER_VERSION:-29.9.3}";;
-  info) case "$*" in *LiveRestoreEnabled*) echo "\${FAKE_LIVE_RESTORE:-true}";;
+  info) case "$*" in *LiveRestoreEnabled*) [ -z "\${FAKE_DOCKER_DOWN_INFO:-}" ] || exit 1; echo "\${FAKE_LIVE_RESTORE:-true}";;
           *) echo "\${FAKE_DOCKER_SECURITY:-[name=seccomp,profile=builtin name=selinux]}";; esac;;
   ps) if [ "$2" = -q ] && [ "$3" = --no-trunc ]; then
         if [ -f "$FAKE_DIR/docker-restarted" ]; then printf '%b' "\${FAKE_IDS_AFTER-\${FAKE_IDS:-aaa\\nbbb\\n}}"; else printf '%b' "\${FAKE_IDS:-aaa\\nbbb\\n}"; fi
@@ -136,7 +136,11 @@ esac`,
       fi
       [ "$2" != -q ] || { printf '%b' "\${FAKE_HEADSCALE_ID-0123abcd\\n}"; exit 0; }
       printf '%b\\n' "\${FAKE_CONTAINERS:-headscale-headscale-1 docker.io/headscale/headscale:0.29.7 }";;
-  inspect) echo "\${FAKE_PROCESS_LABEL-system_u:system_r:container_t:s0:c241,c692}";;
+  inspect) case "$3" in *StartedAt*) shift 3
+        for id; do t=\${FAKE_STARTED:-2026-11-01T00:00:00Z}
+          if [ -f "$FAKE_DIR/docker-restarted" ]; then case " \${FAKE_STARTED_AFTER_IDS:-} " in *" $id "*) t=2026-11-05T00:00:00Z;; esac; fi
+          echo "$id $t"; done;;
+      *) echo "\${FAKE_PROCESS_LABEL-system_u:system_r:container_t:s0:c241,c692}";; esac;;
   network) case "$2" in
       ls) printf '%b\\n' "\${FAKE_NETWORKS:-bridge bridge 2673f396533215b1e304\\nhost host 3779e81102d984fcc41a}";;
       inspect) case "$5" in bridge) echo docker0;; *) echo "\${FAKE_BRIDGE:-<no value>}";; esac;;
