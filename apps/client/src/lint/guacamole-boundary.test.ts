@@ -1,0 +1,118 @@
+import { fileURLToPath } from 'node:url';
+import { ESLint } from 'eslint';
+import { describe, expect, it, vi } from 'vitest';
+
+// Linting loads the whole config; under a parallel workspace run it can pass 5 s.
+vi.setConfig({ testTimeout: 30_000 });
+
+const root = fileURLToPath(new URL('../../../../', import.meta.url));
+const eslint = new ESLint({ cwd: root });
+
+async function rulesFired(code: string, filePath: string) {
+  const [result] = await eslint.lintText(code, { filePath: `${root}${filePath}` });
+  return result?.messages.map((m) => m.ruleId) ?? [];
+}
+
+const tunnelFile = 'apps/client/src/lib/sessions/tunnel/tunnel.ts';
+const viewFile = 'apps/client/src/lib/sessions/view/display.ts';
+const vendored = 'apps/client/src/lib/sessions/tunnel/vendor/guacamole.js';
+const importFrom = (path: string) => `import Guacamole from '${path}';\nexport const g = Guacamole;\n`;
+
+describe('ESLint Guacamole boundary (D-2, R-045)', () => {
+  it('R-045: $lib/sessions/tunnel imports the vendored client', async () => {
+    expect(await rulesFired(importFrom('./vendor/guacamole.js'), tunnelFile)).toEqual([]);
+  });
+
+  const vendorPaths = [
+    '../tunnel/vendor/guacamole.js',
+    '$lib/sessions/tunnel/vendor/guacamole.js',
+    './tunnel/vendor',
+    // Paths that do not spell `tunnel/vendor` but still reach the vendored file.
+    '../tunnel/./vendor/guacamole.js',
+    '$lib/sessions/tunnel//vendor/guacamole',
+    '/src/lib/sessions/tunnel/vendor/guacamole.js?raw',
+  ];
+  for (const path of vendorPaths) {
+    it(`D-2: ${path} is refused outside $lib/sessions/tunnel`, async () => {
+      expect(await rulesFired(importFrom(path), viewFile)).toContain('no-restricted-imports');
+    });
+  }
+
+});
+
+describe('ESLint dynamic import boundary (D-2, R-045)', () => {
+  for (const path of ['../tunnel/vendor/guacamole.js', '../tunnel/./vendor/guacamole', 'guacamole-common-js']) {
+    it(`D-2: a dynamic import() of ${path} is refused, with a string or a template literal`, async () => {
+      expect(await rulesFired(`export const g = () => import('${path}');\n`, viewFile)).toContain('no-restricted-syntax');
+      expect(await rulesFired(`export const g = () => import(\`${path}\`);\n`, viewFile)).toContain('no-restricted-syntax');
+    });
+  }
+
+  it('D-2: the tunnel imports the client statically; a dynamic import is refused there too', async () => {
+    expect(await rulesFired("export const g = () => import('./vendor/guacamole.js');\n", tunnelFile)).toContain('no-restricted-syntax');
+  });
+
+  it('D-2: other dynamic imports are allowed', async () => {
+    expect(await rulesFired("export const g = () => import('./display');\n", viewFile)).toEqual([]);
+    expect(await rulesFired('export const g = () => import(`./display`);\n', viewFile)).toEqual([]);
+  });
+
+  // `\x2f` is a `/` only once evaluated: the raw text never spells the path, the cooked value does.
+  const escaped = String.raw`export const g = () => import(` + '`' + String.raw`..\x2ftunnel\x2fvendor\x2fguacamole.js` + '`);\n';
+  it('D-2: a template whose evaluated text names the vendored client is refused, in the tunnel too', async () => {
+    for (const file of [viewFile, tunnelFile]) {
+      const [result] = await eslint.lintText(escaped, { filePath: `${root}${file}` });
+      expect(result?.messages.map((m) => m.message)).toContainEqual(expect.stringContaining('$lib/sessions/tunnel'));
+    }
+  });
+
+  const computed = [
+    'export const g = (name: string) => import(name);\n',
+    "export const g = (name: string) => import('./' + name);\n",
+    'export const g = (name: string) => import(`./${name}`);\n',
+  ];
+  for (const code of computed) {
+    it(`D-2: a computed import() is refused outside the tunnel: ${code.trim()}`, async () => {
+      const [result] = await eslint.lintText(code, { filePath: `${root}${viewFile}` });
+      expect(result?.messages.map((m) => m.message)).toContainEqual(expect.stringContaining('computed import()'));
+      expect(await rulesFired(code, tunnelFile)).toEqual([]);
+    });
+  }
+
+  for (const extension of ['mts', 'cts', 'mjs', 'cjs']) {
+    it(`D-2: the boundary covers .${extension} client files`, async () => {
+      const file = `apps/client/src/lib/sessions/view/display.${extension}`;
+      expect(await rulesFired("import G from '../tunnel/vendor/guacamole.js';\nexport const g = G;\n", file)).toContain('no-restricted-imports');
+      expect(await rulesFired('export const g = (name) => import(name);\n', file)).toContain('no-restricted-syntax');
+    });
+  }
+
+});
+
+describe('ESLint Guacamole boundary in other folders (D-2, R-045)', () => {
+  it('R-045: the npm guacamole-common-js is refused everywhere, the tunnel included', async () => {
+    expect(await rulesFired(importFrom('guacamole-common-js'), viewFile)).toContain('no-restricted-imports');
+    expect(await rulesFired(importFrom('guacamole-common-js'), tunnelFile)).toContain('no-restricted-imports');
+  });
+
+  it('D-2: the vendored client is refused in $lib/hub and $lib/motion too', async () => {
+    const path = '$lib/sessions/tunnel/vendor/guacamole.js';
+    expect(await rulesFired(importFrom(path), 'apps/client/src/lib/hub/sample.ts')).toContain('no-restricted-imports');
+    expect(await rulesFired(importFrom(path), 'apps/client/src/lib/motion/sample.ts')).toContain('no-restricted-imports');
+  });
+
+  it('D-2: the message names $lib/sessions/tunnel', async () => {
+    const [result] = await eslint.lintText(importFrom('../tunnel/vendor/guacamole.js'), { filePath: `${root}${viewFile}` });
+    expect(result?.messages[0]?.message).toContain('$lib/sessions/tunnel');
+  });
+
+  it('K4 §2: the tunnel may use WebSocket; motion and graphql-ws stay refused there', async () => {
+    expect(await rulesFired("export const s = (url: string) => new WebSocket(url, 'guacamole');\n", tunnelFile)).toEqual([]);
+    expect(await rulesFired("export const f = () => fetch('/x');\n", tunnelFile)).toContain('no-restricted-globals');
+    expect(await rulesFired("import { animate } from 'motion';\nexport const a = animate;\n", tunnelFile)).toContain('no-restricted-imports');
+  });
+
+  it('R-045: the vendored file is not linted', async () => {
+    expect(await eslint.isPathIgnored(`${root}${vendored}`)).toBe(true);
+  });
+});
