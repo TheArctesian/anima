@@ -60,6 +60,11 @@ subtle = "2.6"
 tauri = { version = "2", default-features = false, features = ["wry", "compression"] }
 tauri-build = "2"
 keyring = { version = "3.6", default-features = false, features = ["apple-native", "sync-secret-service", "crypto-rust"] }
+# Desktop releases (WP-04 stage B, R-006, R-053): self-update, relaunch and the process log.
+# The updater fetches over rustls (ring), not OpenSSL; `zip` unpacks the Linux updater archive.
+tauri-plugin-updater = { version = "2.14", default-features = false, features = ["rustls-tls", "zip"] }
+tauri-plugin-process = "2.4"
+tauri-plugin-log = { version = "2.10", default-features = false }
 
 [workspace.lints.rust]
 warnings = "deny"

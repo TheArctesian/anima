@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-process-log-folder-open"
+description = "Enables the process_log_folder_open command without any pre-configured scope."
+commands.allow = ["process_log_folder_open"]
+
+[[permission]]
+identifier = "deny-process-log-folder-open"
+description = "Denies the process_log_folder_open command without any pre-configured scope."
+commands.deny = ["process_log_folder_open"]

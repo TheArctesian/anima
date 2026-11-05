@@ -8,7 +8,7 @@ import Page from './+page.svelte';
 const mocks = vi.hoisted(() => ({ hub: undefined as unknown, clearAccessToken: vi.fn(), goToSignIn: vi.fn() }));
 
 vi.mock('$lib/hub/context', () => ({ useHub: () => mocks.hub }));
-vi.mock('$lib/desktop/token', () => ({ clearAccessToken: mocks.clearAccessToken }));
+vi.mock('$lib/desktop/token', () => ({ clearAccessToken: mocks.clearAccessToken, keyStoreAvailable: () => false }));
 vi.mock('$lib/access/navigation', () => ({ goToSignIn: mocks.goToSignIn }));
 
 let app: ReturnType<typeof mount> | undefined;

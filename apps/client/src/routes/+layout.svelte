@@ -17,6 +17,8 @@
   import SessionPanes from '$lib/sessions/strip/SessionPanes.svelte';
   import SessionTabs from '$lib/sessions/strip/SessionTabs.svelte';
   import { sessionStart } from '$lib/sessions/view/start';
+  import { provideDesktopUpdates } from '$lib/updates/desktop.svelte';
+  import UpdateBanner from '$lib/updates/UpdateBanner.svelte';
 
   const { children }: { children: Snippet } = $props();
 
@@ -26,6 +28,7 @@
   provideHub(hub);
   guardStart(page.url.pathname, hub.address);
   const clock = createClock(DATA_AGE_REFRESH_MS);
+  provideDesktopUpdates();
 
   // Each session view starts its own sessions, since only it knows its display (D-7); the store ends them (D-11).
   const api = sessionsApi(hub);
@@ -94,6 +97,7 @@
       <SessionPanes {api} />
     </div>
   </main>
+  <UpdateBanner />
 </div>
 
 <style>
