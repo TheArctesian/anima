@@ -58,9 +58,9 @@ pub fn router(schema: schema::HubSchema, db: PgPool, clock: Arc<dyn clock::Clock
 
 /// Runs every route of `routes` in an `http_request` span that records the route template,
 /// never a path value, so `/push/{token}` is logged as `/push/[redacted]` (LOG-007, R-028).
-/// Apply it to the whole router after the last route is added; WP-09 widens it when the push
-/// router is merged in.
-pub(crate) fn logged(routes: Router) -> Router {
+/// Apply it to a router after its last route is added; `main.rs` wraps each router it merges
+/// in, such as `/tunnel`.
+pub fn logged(routes: Router) -> Router {
     routes.layer(middleware::from_fn(events::process_log::http_request))
 }
 
