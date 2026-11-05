@@ -16,12 +16,7 @@ pub mod schema;
 pub mod sessions;
 pub mod status;
 
-use std::{
-    future::{Future, IntoFuture as _},
-    net::SocketAddr,
-    sync::Arc,
-    time::Duration,
-};
+use std::{future::Future, sync::Arc, time::Duration};
 
 use async_graphql_axum::GraphQLResponse;
 use axum::{
@@ -36,7 +31,6 @@ use axum::{
     routing::{get, post},
 };
 use sqlx::PgPool;
-use tokio::net::TcpListener;
 
 /// Largest `/graphql` request body. A bigger one gets 413 before it is parsed or any token
 /// or password is checked (SEC-002).
@@ -90,50 +84,31 @@ pub struct Shutdown {
     pub drain_limit: Duration,
 }
 
-/// Serves `app`, with each request's TCP peer as its connect info, until `signal` resolves.
-/// Then, in order: ends every session `shutdown.live` holds with `HUB_SHUTDOWN`, because the
-/// drain does not end upgraded connections such as tunnels; then drains the open requests for
+/// Serves `app` through `entrance` (the NET-002 accept-time check, TLS when configured), with
+/// each request's TCP peer as its connect info, until `signal` resolves. Then, in order: ends
+/// every session `shutdown.live` holds with `HUB_SHUTDOWN`, because the drain does not end
+/// upgraded connections such as tunnels; then stops accepting and drains the open requests for
 /// at most `shutdown.drain_limit` (R-040).
-///
-/// # Errors
-/// When the server fails to serve.
 pub async fn serve_until(
-    listener: TcpListener,
+    entrance: access::listen::Entrance,
     app: Router,
     shutdown: Shutdown,
     signal: impl Future<Output = ()> + Send + 'static,
-) -> std::io::Result<()> {
+) {
     let Shutdown {
         db,
         live,
         clock,
         drain_limit,
     } = shutdown;
-    let (sessions_ended, draining) = tokio::sync::oneshot::channel();
     let stop = async move {
         signal.await;
         if let Err(error) = sessions::shut_down(&db, &live, clock.now()).await {
             // The error's text is fixed and holds no value (sessions::Error, LOG-007).
             tracing::error!(%error, "sessions did not all end at shutdown");
         }
-        sessions_ended.send(()).ok();
     };
-    let app = app.into_make_service_with_connect_info::<SocketAddr>();
-    // If serving fails, the sessions are not shut down; the next start's `close_stale` ends
-    // their rows.
-    let server = axum::serve(listener, app)
-        .with_graceful_shutdown(stop)
-        .into_future();
-    tokio::pin!(server);
-    tokio::select! {
-        result = &mut server => return result,
-        Ok(()) = draining => {}
-    }
-    if let Ok(result) = tokio::time::timeout(drain_limit, server).await {
-        return result;
-    }
-    tracing::warn!("drain limit reached; open requests are dropped");
-    Ok(())
+    entrance.serve_until(app, stop, drain_limit).await;
 }
 
 /// Whether the media type is exactly `application/json`, in any case, parameters allowed.

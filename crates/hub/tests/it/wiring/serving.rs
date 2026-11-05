@@ -9,7 +9,7 @@ use std::{
 
 use anima_hub::{
     Shutdown,
-    access::{self, Password},
+    access::{self, Edge, Password, listen},
     router,
     schema::build_schema,
     serve_until,
@@ -19,7 +19,7 @@ use serde_json::{Value, json};
 use sqlx::PgPool;
 use tokio::{
     io::{AsyncReadExt as _, AsyncWriteExt as _},
-    net::{TcpListener, TcpStream},
+    net::TcpStream,
     sync::oneshot,
     task::JoinHandle,
 };
@@ -133,13 +133,15 @@ async fn stored_client(pool: &PgPool, id: &str) -> String {
 struct Served {
     addr: SocketAddr,
     stop: oneshot::Sender<()>,
-    serving: JoinHandle<std::io::Result<()>>,
+    serving: JoinHandle<()>,
 }
 
 async fn serve(pool: &PgPool, live: Live, drain_limit: Duration) -> Served {
     let schema = build_schema(wired(pool, &live));
-    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let addr = listener.local_addr().unwrap();
+    let any_port: SocketAddr = "127.0.0.1:0".parse().unwrap();
+    let listening = listen::listen(any_port, None, clock()).await.unwrap();
+    let addr = listening.local_addr().unwrap();
+    let edge = Edge::new(pool.clone(), anima_hub::events::Bus::new(16), clock());
     let (stop, signal) = oneshot::channel::<()>();
     let app = router(schema, pool.clone(), clock());
     let shutdown = Shutdown {
@@ -148,9 +150,14 @@ async fn serve(pool: &PgPool, live: Live, drain_limit: Duration) -> Served {
         clock: clock(),
         drain_limit,
     };
-    let serving = tokio::spawn(serve_until(listener, app, shutdown, async {
-        signal.await.ok();
-    }));
+    let serving = tokio::spawn(serve_until(
+        listening.admitting(edge),
+        app,
+        shutdown,
+        async {
+            signal.await.ok();
+        },
+    ));
     Served {
         addr,
         stop,
@@ -159,15 +166,15 @@ async fn serve(pool: &PgPool, live: Live, drain_limit: Duration) -> Served {
 }
 
 impl Served {
-    /// Fires the stop signal; returns what serving returned and how long that took.
-    async fn stop(self) -> (std::io::Result<()>, Duration) {
+    /// Fires the stop signal; returns how long serving took to return.
+    async fn stop(self) -> Duration {
         let began = Instant::now();
         self.stop.send(()).unwrap();
-        let served = tokio::time::timeout(Duration::from_secs(10), self.serving)
+        tokio::time::timeout(Duration::from_secs(10), self.serving)
             .await
             .expect("serving returns after the stop signal")
             .unwrap();
-        (served, began.elapsed())
+        began.elapsed()
     }
 }
 
@@ -193,9 +200,8 @@ async fn r_040_the_stop_signal_ends_a_pending_ticket_and_serving_returns(pool: P
     );
     assert_eq!(session_end(&pool, &session).await, (false, None));
 
-    let (served, _) = hub.stop().await;
+    hub.stop().await;
 
-    assert!(served.is_ok(), "{served:?}");
     assert_eq!(
         session_end(&pool, &session).await,
         (true, Some("hub_shutdown".to_owned()))
@@ -218,9 +224,8 @@ async fn r_040_a_request_held_open_cannot_hold_the_drain_past_its_limit(pool: Pg
     // Give the server time to accept the connection and read the request head.
     tokio::time::sleep(Duration::from_millis(200)).await;
 
-    let (served, took) = hub.stop().await;
+    let took = hub.stop().await;
 
-    assert!(served.is_ok(), "{served:?}");
     // At least the limit: the drain waited for the open request, then gave up.
     assert!(
         took >= limit,
