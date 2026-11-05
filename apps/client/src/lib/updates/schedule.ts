@@ -7,6 +7,7 @@ export const CHECK_FAILED_LINE = 'Update check failed.';
 export const INSTALL_FAILED_LINE = 'Update install failed.';
 
 export type UpdateState =
+  | { readonly kind: 'unchecked' }
   | { readonly kind: 'idle' }
   | { readonly kind: 'checking' }
   | { readonly kind: 'downloading'; readonly version: string }
@@ -33,18 +34,18 @@ export interface ScheduleDeps {
 export interface UpdateSchedule {
   /** Checks now and then every 4 hours. Does nothing when already started. */
   start(): void;
-  /** Stops the scheduled checks; an installed update stays installed. */
+  /** Stops the scheduled checks; an installed update stays installed. Work already running is not aborted. */
   stop(): void;
   /** One check now (UPD-006), unless one is running or an update is installed. The 4-hour cadence is not moved. */
   checkNow(): Promise<void>;
 }
 
 /**
- * The update state machine: idle, checking, downloading, installed, failed. A failure is logged once and waits for
+ * The update state machine: unchecked (before the first check), idle (checked, current), checking, downloading, installed, failed. A failure is logged once and waits for
  * the next scheduled check (UPD-002, UPD-006); once an update is installed no check runs until restart (UPD-005).
  */
 export function createUpdateSchedule({ port, log, repeat, now, onChange }: ScheduleDeps): UpdateSchedule {
-  let state: UpdateState = { kind: 'idle' };
+  let state: UpdateState = { kind: 'unchecked' };
   let nextCheckAt: number | null = null;
   let cancel: (() => void) | null = null;
 

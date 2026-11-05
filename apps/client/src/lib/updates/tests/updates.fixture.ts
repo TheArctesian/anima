@@ -1,7 +1,7 @@
 // Test support: a scripted updater port and a log that records what it is given.
 import { vi, expect } from 'vitest';
-import type { AvailableUpdate, UpdateLog, UpdaterPort } from './port';
-import { CHECK_INTERVAL_MS, createUpdateSchedule, type Repeat, type UpdateSnapshot } from './schedule';
+import type { AvailableUpdate, UpdateLog, UpdaterPort } from '../port';
+import { CHECK_INTERVAL_MS, createUpdateSchedule, type Repeat, type UpdateSnapshot } from '../schedule';
 
 export interface FakeUpdater extends UpdaterPort {
   checks: number;
@@ -73,6 +73,14 @@ export function scheduleHarness() {
     timers.filter((t) => !t.cancelled).forEach((t) => { t.run(); });
     await vi.waitFor(() => { expect(last().state.kind).not.toBe('checking'); });
   };
-  const last = () => history.at(-1) ?? { state: { kind: 'idle' as const }, nextCheckAt: null };
-  return { port, log, schedule, timers, history, tick, last };
+  const last = () => history.at(-1) ?? { state: { kind: 'unchecked' as const }, nextCheckAt: null };
+  /** Moves the clock on without firing a timer. */
+  const advance = (ms: number) => {
+    clock += ms;
+  };
+  /** Fires the live timers at once, without waiting for the check to finish. */
+  const fire = () => {
+    timers.filter((t) => !t.cancelled).forEach((t) => { t.run(); });
+  };
+  return { port, log, schedule, timers, history, tick, last, advance, fire };
 }

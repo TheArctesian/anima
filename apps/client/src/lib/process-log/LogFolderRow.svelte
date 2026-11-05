@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { openLogFolder } from '$lib/desktop/processLog';
+  import { LogFolderError, openLogFolder } from '$lib/desktop/processLog';
   import { press } from '$lib/motion/roles/press';
 
   let problem = $state<string | null>(null);
@@ -8,8 +8,11 @@
     problem = null;
     try {
       await openLogFolder();
-    } catch {
-      problem = 'Anima could not open the log folder.';
+    } catch (reason) {
+      problem =
+        reason instanceof LogFolderError && reason.problem === 'unavailable'
+          ? 'Opening the log folder is not available on this system.'
+          : 'Anima could not open the log folder.';
     }
   }
 </script>

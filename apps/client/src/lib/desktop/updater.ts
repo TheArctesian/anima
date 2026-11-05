@@ -45,7 +45,9 @@ export const desktopUpdater: UpdaterPort = {
             await found.downloadAndInstall();
           } finally {
             // Frees the shell's handle; a failure to free it does not change whether the install worked.
-            await found.close().catch(() => undefined);
+            await found.close().catch(() => {
+              console.warn('The update handle could not be closed.');
+            });
           }
         }),
     };

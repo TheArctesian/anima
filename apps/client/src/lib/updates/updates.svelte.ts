@@ -11,7 +11,7 @@ const everyInterval: Repeat = (run, ms) => {
 
 /** The update schedule as Svelte state for the banner and the Settings row. */
 export class Updates {
-  snapshot = $state<UpdateSnapshot>({ state: { kind: 'idle' }, nextCheckAt: null });
+  snapshot = $state<UpdateSnapshot>({ state: { kind: 'unchecked' }, nextCheckAt: null });
   /** The running app's version, once `loadVersion` has read it. */
   current = $state<string | null>(null);
 

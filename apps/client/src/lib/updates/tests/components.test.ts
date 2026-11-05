@@ -1,20 +1,20 @@
 // @vitest-environment jsdom
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, expect, it, vi } from 'vitest';
-import { endTransitionsAtOnce } from '../devices/transitions.fixture';
+import { endTransitionsAtOnce } from '../../devices/transitions.fixture';
 import { fakeUpdater, offering, recordingLog, type FakeUpdater } from './updates.fixture';
-import { Updates } from './updates.svelte';
-import UpdateBanner from './UpdateBanner.svelte';
-import UpdatesRow from './UpdatesRow.svelte';
+import { Updates } from '../updates.svelte';
+import UpdateBanner from '../UpdateBanner.svelte';
+import UpdatesRow from '../UpdatesRow.svelte';
 
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
-  animate: (await import('../motion/engine.fixture')).fakeRun,
+  animate: (await import('../../motion/engine.fixture')).fakeRun,
 }));
 
 const current = vi.hoisted(() => ({ updates: undefined as unknown }));
-vi.mock('./updates.svelte', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('./updates.svelte')>()),
+vi.mock('../updates.svelte', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../updates.svelte')>()),
   useUpdates: () => current.updates,
 }));
 
@@ -43,9 +43,12 @@ const settle = async () => {
 
 const button = (name: string) => [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === name);
 
-it('UPD-004: nothing shows until an update is installed', () => {
+it('UPD-004: before an update is installed the status region is in the page and empty', () => {
   show(UpdateBanner);
-  expect(document.querySelector('[role="status"]')).toBeNull();
+  const region = document.querySelector('[role="status"]');
+  expect(region).not.toBeNull();
+  expect(region?.textContent.trim()).toBe('');
+  expect(button('Restart to update')).toBeUndefined();
 });
 
 it('UPD-004: an installed update shows a role=status banner with the version and a Restart button', async () => {
@@ -86,8 +89,17 @@ it('UPD-006: the row shows the current version, the state and an enabled Check f
   show(UpdatesRow);
   await settle();
   expect(document.body.textContent).toContain('Anima 1.0.0');
-  expect(document.body.textContent).toContain('Up to date');
+  expect(document.body.textContent).toContain('Not checked yet');
+  expect(document.body.textContent).not.toContain('Up to date');
   expect(button('Check for updates')?.disabled).toBe(false);
+});
+
+it('UPD-006: after a check that finds nothing the row says Up to date, in a polite live region', async () => {
+  const { updates } = show(UpdatesRow);
+  await updates.checkNow();
+  flushSync();
+  expect(document.body.textContent).toContain('Up to date');
+  expect(document.querySelector('[aria-live="polite"]')?.textContent).toBe('Up to date');
 });
 
 it('UPD-006: pressing Check for updates runs one check, disabled while it runs', async () => {
@@ -111,7 +123,7 @@ it('UPD-006: a failed check is plain text in the row, with no dialog or alert', 
   show(UpdatesRow, port);
   button('Check for updates')?.click();
   await settle();
-  expect(document.body.textContent).toContain('The last check failed');
+  expect(document.body.textContent).toContain('The last update attempt failed');
   expect(document.querySelector('[role="alert"], [role="alertdialog"], dialog')).toBeNull();
 });
 

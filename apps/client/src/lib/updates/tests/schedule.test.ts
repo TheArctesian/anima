@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CHECK_FAILED_LINE, CHECK_INTERVAL_MS, INSTALL_FAILED_LINE } from './schedule';
+import { CHECK_FAILED_LINE, CHECK_INTERVAL_MS, INSTALL_FAILED_LINE } from '../schedule';
 import { offering, scheduleHarness as setup, START } from './updates.fixture';
 
 beforeEach(() => {
@@ -98,6 +98,7 @@ describe('manual checks', () => {
     s.schedule.start();
     await vi.waitFor(() => { expect(s.last().state.kind).toBe('idle'); });
     const before = s.last().nextCheckAt;
+    s.advance(60 * 60 * 1000);
     await s.schedule.checkNow();
     expect(s.port.checks).toBe(2);
     expect(s.last().nextCheckAt).toBe(before);

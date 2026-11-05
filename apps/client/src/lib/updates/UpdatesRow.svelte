@@ -18,7 +18,7 @@
   <p class="version">
     {#if updates.current !== null}Anima <strong>{updates.current}</strong>{/if}
   </p>
-  <p class="state">{describeUpdate(snapshot, time)}</p>
+  <p class="state" aria-live="polite">{describeUpdate(snapshot, time)}</p>
   <button type="button" tabindex="0" disabled={!canCheck(snapshot)} onclick={() => void updates.checkNow()} {@attach press()}>
     Check for updates
   </button>
@@ -40,7 +40,9 @@
     line-height: var(--leading-tight);
   }
 
+  /* Two lines are reserved, so a wrapped sentence does not move the rows below it (MOT-007). */
   .state {
+    min-block-size: calc(2 * var(--text-md) * var(--leading-tight));
     color: var(--text-muted);
   }
 
@@ -58,6 +60,11 @@
 
   button:hover:enabled {
     background: var(--surface-raised);
+  }
+
+  button:disabled {
+    color: var(--text-muted);
+    cursor: default;
   }
 
   button:focus-visible {

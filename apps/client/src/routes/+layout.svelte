@@ -5,9 +5,7 @@
   import { guardStart } from '$lib/access/navigation';
   import { provideHub } from '$lib/hub/context';
   import { storedHubAddress } from '$lib/desktop/address';
-  import { keyStoreAvailable, readAccessToken } from '$lib/desktop/token';
-  import { desktopUpdater } from '$lib/desktop/updater';
-  import { warnToProcessLog } from '$lib/desktop/processLog';
+  import { readAccessToken } from '$lib/desktop/token';
   import { createHub } from '$lib/hub/hub';
   import { crossFade } from '$lib/motion/roles/transitions';
   import { DATA_AGE_REFRESH_MS } from '$lib/nav/nav';
@@ -18,9 +16,9 @@
   import { createSessions, provideSessions, type SessionPort } from '$lib/sessions/sessions.svelte';
   import SessionPanes from '$lib/sessions/strip/SessionPanes.svelte';
   import SessionTabs from '$lib/sessions/strip/SessionTabs.svelte';
-  import UpdateBanner from '$lib/updates/UpdateBanner.svelte';
-  import { provideUpdates, Updates } from '$lib/updates/updates.svelte';
   import { sessionStart } from '$lib/sessions/view/start';
+  import { provideDesktopUpdates } from '$lib/updates/desktop.svelte';
+  import UpdateBanner from '$lib/updates/UpdateBanner.svelte';
 
   const { children }: { children: Snippet } = $props();
 
@@ -30,6 +28,7 @@
   provideHub(hub);
   guardStart(page.url.pathname, hub.address);
   const clock = createClock(DATA_AGE_REFRESH_MS);
+  provideDesktopUpdates();
 
   // Each session view starts its own sessions, since only it knows its display (D-7); the store ends them (D-11).
   const api = sessionsApi(hub);
@@ -67,11 +66,6 @@
       }
     });
   });
-
-  // Only the desktop production app checks for updates; dev shells have no updater plugin (UPD-001).
-  const updates = new Updates(desktopUpdater, { warn: warnToProcessLog });
-  provideUpdates(updates);
-  $effect(() => (keyStoreAvailable() && !import.meta.env.DEV ? updates.start() : undefined));
 
   function navigate() {
     covered = null;

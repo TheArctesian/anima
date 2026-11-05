@@ -16,28 +16,39 @@
   }
 </script>
 
-<!-- Fixed over the page, so it never moves the content (UI-009). It restarts only when the operator presses the button (UPD-003). -->
-{#if shown.kind === 'installed'}
-  <div class="banner" role="status" transition:crossFade>
-    <p>Anima {shown.version} is installed</p>
-    <button type="button" tabindex="0" onclick={restart} {@attach press()}>Restart to update</button>
-    {#if problem !== null}
-      <p class="problem">{problem}</p>
-    {/if}
-  </div>
-{/if}
+<!--
+  The status region is always in the page and empty until an update is installed, so screen readers announce what is put
+  into it (UPD-004). It is fixed over the page, so it never moves the content (UI-009), and it restarts only when the
+  operator presses the button (UPD-003). The banner fades with `crossFade`: it is a status that stays until restart, not a
+  transient toast, so the toast role does not apply.
+-->
+<div class="live" role="status">
+  {#if shown.kind === 'installed'}
+    <div class="banner" transition:crossFade>
+      <p>Anima {shown.version} is installed</p>
+      <button type="button" tabindex="0" onclick={restart} {@attach press()}>Restart to update</button>
+      {#if problem !== null}
+        <p class="problem">{problem}</p>
+      {/if}
+    </div>
+  {/if}
+</div>
 
 <style>
-  .banner {
+  .live {
     position: fixed;
     inset-block-end: var(--space-6);
     inset-inline-end: var(--space-6);
     z-index: var(--layer-toast);
+    /* Never reaches the nav, however narrow the window (NAV-005). */
+    max-inline-size: calc(100vw - var(--nav-inline-size) - var(--space-12));
+  }
+
+  .banner {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-3);
-    max-inline-size: calc(100vw - var(--space-12));
     padding: var(--space-3) var(--space-4);
     border: var(--border-thin) solid var(--border);
     border-radius: var(--radius-md);
@@ -45,6 +56,7 @@
     box-shadow: var(--elevation-2);
     color: var(--text);
     font-family: var(--font-ui);
+    font-size: var(--text-md);
   }
 
   p {
@@ -65,7 +77,7 @@
   }
 
   button:hover {
-    background: var(--accent-tint);
+    background: var(--surface-raised);
   }
 
   button:focus-visible {
