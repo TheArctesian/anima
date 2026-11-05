@@ -221,7 +221,11 @@ user) or in Cloudflare. Nothing in this repository does them.
    `iifname != { "lo", "tailscale0" } fib daddr type local ip daddr 100.64.0.0/10 drop`.
    That rule drops hub-port traffic for the VPN address that does not arrive on
    `tailscale0`. If the table or the rule is missing, stop and apply WP-03's firewall first.
-   WP-03's `daemon.json` makes Docker publish on `127.0.0.1` by default, so `compose.yaml`
+   WP-03's `daemon.json` turns Docker's userland proxy off (`"userland-proxy": false`), so a
+   VPN client reaches the hub by DNAT with its own 100.64 address; through the proxy the hub
+   would see a 172.16.0.0/12 peer and refuse it (NET-002). Check with
+   `sudo jq '."userland-proxy"' /etc/docker/daemon.json`, which must print `false`.
+   That file also makes Docker publish on `127.0.0.1` by default, so `compose.yaml`
    names `ANIMA_HUB_ADDRESS` in the hub's `ports` entry. Keep it. The compose file sets no
    bridge name on any network, because the forward chain relies on the default `br-*` names.
 10. Run the first start (First start, steps 3 and 4) and check `docker compose ps`.

@@ -611,8 +611,10 @@ changes nothing.
    `127.0.0.1` by default (Docker would otherwise bypass the firewall), `selinux-enabled` makes
    Docker run containers confined (`container_t`; Docker CE on AlmaLinux does not do this by
    default, so Headscale would run unconfined as `spc_t`), logs are rotated (unless the existing
-   file sets its own `log-driver` or `log-opts`: those win, R-050), and `live-restore`
-   keeps containers running while Docker restarts. It refuses while Headscale's folders are not
+   file sets its own `log-driver` or `log-opts`: those win, R-050), `live-restore`
+   keeps containers running while Docker restarts, and `userland-proxy: false` makes Docker
+   forward published ports by DNAT, so a container sees the client's own address instead of
+   Docker's proxy (the hub refuses 172.16.0.0/12 peers, NET-002). It refuses while Headscale's folders are not
    labelled `container_file_t` (step 2.5). With `--restart-docker` it first reloads Docker, which
    turns `live-restore` on from the new file, refuses to go on unless it is on, then restarts
    Docker: every running container keeps running, and it fails naming any container that did not.

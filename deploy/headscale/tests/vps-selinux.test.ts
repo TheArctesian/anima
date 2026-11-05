@@ -107,10 +107,10 @@ describe("harden.sh docker", () => {
   });
 
   test("R-050: the operator's file cannot turn off the forced keys", () => {
-    host.write("etc/docker/daemon.json", '{"ip": "0.0.0.0", "live-restore": false, "selinux-enabled": false, "default-address-pools": [{"base": "172.17.0.0/12", "size": 24}]}');
+    host.write("etc/docker/daemon.json", '{"ip": "0.0.0.0", "live-restore": false, "selinux-enabled": false, "userland-proxy": true, "default-address-pools": [{"base": "172.17.0.0/12", "size": 24}]}');
     expect(host.run(["docker"]).code).toBe(0);
     expect(JSON.parse(host.read("etc/docker/daemon.json"))).toEqual({
-      ip: "127.0.0.1", "live-restore": true, "selinux-enabled": true, "log-driver": "json-file",
+      ip: "127.0.0.1", "live-restore": true, "selinux-enabled": true, "userland-proxy": false, "log-driver": "json-file",
       "log-opts": { "max-size": "10m", "max-file": "5" }, "default-address-pools": [{ base: "172.17.0.0/12", size: 24 }],
     });
   });
