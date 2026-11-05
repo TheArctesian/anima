@@ -1,11 +1,15 @@
 //! Who may use the hub: operator accounts, sign-in, API tokens and the GraphQL guard
-//! (SEC-002, API-003).
+//! (SEC-002, API-003), and from where: permitted networks and the listening edge (NET-001 to
+//! NET-003, SEC-001, SEC-008).
 
 mod connection;
 pub mod graphql;
 mod guard;
 mod identity;
+mod layer;
+pub mod listen;
 mod login;
+mod networks;
 mod password;
 mod store;
 #[cfg(test)]
@@ -14,10 +18,11 @@ mod throttle;
 mod tokens;
 mod totp;
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use async_graphql::{ErrorExtensions as _, Pos, ServerError};
 use chrono::{DateTime, TimeDelta, Utc};
+use ipnet::IpNet;
 use sqlx::PgPool;
 use zeroize::Zeroizing;
 
@@ -25,6 +30,7 @@ pub use crate::events::{ClientAddr, Operator};
 pub use connection::{MESSAGE_LIMIT, SUBPROTOCOL, SocketAccess, accept_socket};
 pub use guard::{Authenticated, SignInRequired};
 pub use identity::{Identity, client_addr, identify, identify_connection};
+pub use layer::{Edge, permitted_networks_layer};
 pub use password::Password;
 pub use tokens::Scope;
 
@@ -35,6 +41,9 @@ use crate::{
 
 /// Login attempts are kept this long (K2 retention).
 const ATTEMPTS_KEPT: TimeDelta = TimeDelta::days(90);
+
+/// The label of the networks that come from `ANIMA_PERMITTED_NETWORKS` (D-10).
+const CONFIGURED_NETWORKS: &str = "ANIMA_PERMITTED_NETWORKS";
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -47,6 +56,9 @@ pub enum Error {
     /// A `read` token asked for a mutation.
     #[error("This token may only read.")]
     ReadOnly,
+    /// The client address is outside every permitted network (NET-002).
+    #[error("This address is not in a permitted network.")]
+    NotPermitted,
     #[error("{message}")]
     Validation {
         field: &'static str,
@@ -99,7 +111,7 @@ impl Error {
             Self::Unauthenticated | Self::WrongCredentials | Self::TotpSecret(_) => {
                 "UNAUTHENTICATED"
             }
-            Self::ReadOnly => "FORBIDDEN",
+            Self::ReadOnly | Self::NotPermitted => "FORBIDDEN",
             Self::Validation { .. } => "VALIDATION",
             Self::Unreachable(_) => "UNAVAILABLE",
             Self::Database(_)
@@ -118,6 +130,7 @@ impl Error {
             Self::Unauthenticated
             | Self::WrongCredentials
             | Self::ReadOnly
+            | Self::NotPermitted
             | Self::Validation { .. } => None,
             Self::Unreachable(_) => Some("database_unreachable"),
             Self::Database(_) => Some("database"),
@@ -173,6 +186,7 @@ impl Error {
             Self::Unauthenticated
             | Self::WrongCredentials
             | Self::ReadOnly
+            | Self::NotPermitted
             | Self::Validation { .. }
             | Self::Unavailable => None,
         }
@@ -318,6 +332,34 @@ fn check_credentials(username: &str, password: &Password) -> Result<(), Error> {
     Ok(())
 }
 
+/// Makes the networks from `ANIMA_PERMITTED_NETWORKS` the stored ones with that label, at
+/// start (D-10): adds the new ones and removes those no longer listed, so taking a network out
+/// of the variable stops permitting it. Networks are stored without host bits, and an
+/// IPv4-mapped IPv6 network as IPv4. A network stored under another label is left alone.
+///
+/// # Errors
+///
+/// `Error::Validation` for a network inside `172.16.0.0/12`, whose addresses are never
+/// taken as clients; `Error::Database` if the networks cannot be written.
+pub async fn permit_networks(db: &PgPool, configured: &[IpNet]) -> Result<(), Error> {
+    if configured.iter().any(|net| networks::only_untrusted(*net)) {
+        return Err(Error::Validation {
+            field: CONFIGURED_NETWORKS,
+            message: "ANIMA_PERMITTED_NETWORKS may not name a network inside 172.16.0.0/12: \
+                      those are container and proxy addresses, never clients.",
+        });
+    }
+    let wanted: Vec<IpNet> = configured
+        .iter()
+        .copied()
+        .map(networks::canonical_net)
+        .collect();
+    let mut tx = db.begin().await?;
+    store::replace_labelled_networks(&mut tx, CONFIGURED_NETWORKS, &wanted).await?;
+    tx.commit().await?;
+    Ok(())
+}
+
 /// What [`prune`] deleted.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Pruned {
@@ -335,4 +377,10 @@ pub async fn prune(db: &PgPool, now: DateTime<Utc>) -> Result<Pruned, Error> {
     let mut conn = db.acquire().await?;
     let (attempts, tokens) = store::prune(&mut conn, now - ATTEMPTS_KEPT, now).await?;
     Ok(Pruned { attempts, tokens })
+}
+
+/// The guarded value: the access state behind a lock (counts, maps and timestamps) stays valid
+/// when a panic elsewhere poisoned the lock, so serving goes on.
+fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex.lock().unwrap_or_else(PoisonError::into_inner)
 }

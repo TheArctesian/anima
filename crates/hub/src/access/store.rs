@@ -1,10 +1,15 @@
-//! The only SQL for `access.operators`, `access.api_tokens` and `access.login_attempts`.
+//! The only SQL for `access.operators`, `access.api_tokens`, `access.login_attempts` and
+//! `access.permitted_networks` (in `store/permitted.rs`).
+
+mod permitted;
 
 use std::net::IpAddr;
 
 use chrono::{DateTime, Utc};
 use sqlx::{FromRow, PgConnection, PgExecutor};
 use uuid::Uuid;
+
+pub(super) use permitted::{permitted_networks, replace_labelled_networks};
 
 use super::tokens::{Scope, TokenHash};
 use crate::ids::OperatorId;

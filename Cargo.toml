@@ -44,6 +44,9 @@ rcgen = { version = "0.14", default-features = false, features = ["ring", "pem"]
 argon2 = { version = "0.6", default-features = false, features = ["alloc", "password-hash", "zeroize"] }
 getrandom = "0.4"
 rpassword = "7.5"
+# The hub's own HTTP/1 serving, for header deadlines and connection caps (SEC-001, NET-002).
+hyper = { version = "1", features = ["http1", "server"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
 # SSH host-key probe and connection test (WP-10 T3, R-032 E-3). `ring` is the crypto backend
 # (no OpenSSL, no CMake); `rsa` so RSA host keys and RSA private keys work.
 russh = { version = "0.65", default-features = false, features = ["ring", "rsa"] }

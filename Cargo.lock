@@ -134,6 +134,8 @@ dependencies = [
  "hickory-resolver",
  "hmac 0.13.0",
  "http-body-util",
+ "hyper",
+ "hyper-util",
  "ipnet",
  "proptest",
  "rand 0.10.3",

@@ -1,6 +1,7 @@
 //! Hub binary: reads the environment, builds the dependencies and serves the router, or runs
-//! `anima-hub migrate` (R-016), `anima-hub operator set <username>` or
-//! `anima-hub operator totp <username> [--disable]` (D-9).
+//! `anima-hub migrate` (R-016), `anima-hub operator set <username>`,
+//! `anima-hub operator totp <username> [--disable]` (D-9) or `anima-hub health` (the compose
+//! healthcheck).
 
 use std::{
     io::{BufRead as _, IsTerminal as _},
@@ -9,7 +10,8 @@ use std::{
 };
 
 use anima_hub::{
-    DRAIN_LIMIT, Shutdown, access,
+    DRAIN_LIMIT, Shutdown,
+    access::{self, listen},
     clock::{Clock as _, SystemClock},
     config::{self, Config},
     credentials::Vault,
@@ -48,8 +50,14 @@ enum StartError {
     StaleSessions(#[from] sessions::Error),
     #[error("hub failed to serve")]
     Serve(#[from] std::io::Error),
+    /// Names the address or the certificate fault kind, never file content (SEC-001).
+    #[error("{0}")]
+    Listen(#[from] listen::Error),
+    #[error("the hub is not healthy: {0}")]
+    Health(#[from] listen::HealthError),
     #[error(
-        "usage: anima-hub [migrate | operator set <username> | operator totp <username> [--disable]]"
+        "usage: anima-hub [migrate | operator set <username> | operator totp <username> \
+         [--disable] | health]"
     )]
     Usage,
     /// The enrolment URI holds the secret, so it is shown only on a terminal (LOG-007).
@@ -59,6 +67,9 @@ enum StartError {
     Stdin,
     #[error("{0}")]
     Operator(#[from] access::Error),
+    /// The cause is in the process log, by fault word and SQLSTATE (LOG-007).
+    #[error("the permitted networks cannot be stored")]
+    PermittedNetworks,
 }
 
 /// Prints the plain error (`Display`, never `Debug`) and exits with a failure code.
@@ -86,6 +97,7 @@ async fn run() -> Result<(), StartError> {
         [] => serve(config).await,
         ["migrate"] => migrate(&config).await,
         ["operator", "set", username] => set_operator(&config, username).await,
+        ["health"] => Ok(listen::check_health(config.listen, tls_files(&config)).await?),
         // `--disable` is a valid username, so it alone is refused rather than enrolled.
         ["operator", "totp", "--disable"] => Err(StartError::Usage),
         ["operator", "totp", username] => enrol_totp(&config, username).await,
@@ -94,38 +106,80 @@ async fn run() -> Result<(), StartError> {
     }
 }
 
+/// The certificate files when both TLS variables are set (WP-04 names one `tls.pem` twice).
+fn tls_files(config: &Config) -> Option<listen::TlsFiles> {
+    let files = config
+        .tls_cert_file
+        .clone()
+        .zip(config.tls_key_file.clone());
+    files.map(|(cert, key)| listen::TlsFiles { cert, key })
+}
+
+/// An empty `ANIMA_PROBE_DENY` is allowed but logged at start (R-030, K7).
+fn warn_without_probe_deny(config: &Config) {
+    if config.probe_deny.is_empty() {
+        tracing::warn!("ANIMA_PROBE_DENY is empty: checks may probe the hub's own networks");
+    }
+}
+
 async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     process_log::init(&config.log)?;
+    let clock: Arc<dyn anima_hub::clock::Clock> = Arc::new(SystemClock);
+    // Bind check and certificate first: a refused address needs no key or database (NET-003).
+    let listening = listen::listen(config.listen, tls_files(&config), clock.clone()).await?;
+    warn_without_probe_deny(&config);
     let vault = vault(&config)?;
     let pool = connect(&config).await?;
     events::check_runtime_role(&pool).await?;
-    let clock: Arc<dyn anima_hub::clock::Clock> = Arc::new(SystemClock);
+    permit_networks(&pool, &config).await?;
     let live = open_sessions(&pool, clock.now()).await?;
-    let listener = tokio::net::TcpListener::bind(config.listen).await?;
-    tracing::info!(listen = %config.listen, "hub started");
+    tracing::info!(listen = %listening.local_addr()?, "hub started");
+    let bus = Bus::new(BUS_CAPACITY);
     let schema = build_schema(Dependencies {
         config,
         clock: clock.clone(),
         pool: pool.clone(),
-        bus: Bus::new(BUS_CAPACITY),
+        bus: bus.clone(),
         vault,
         live: live.clone(),
     });
     let upkeep = spawn_upkeep(&pool, &clock);
     // `/tunnel` mounts here only behind `access::permitted_networks_layer` (WP-05 T4, R-040).
-    let app = router(schema, pool.clone(), clock.clone());
+    let edge = access::Edge::new(pool.clone(), bus, clock.clone());
+    let app = router(schema, pool.clone(), clock.clone())
+        .layer(access::permitted_networks_layer(edge.clone()));
     let shutdown = Shutdown {
         db: pool,
         live,
         clock,
         drain_limit: DRAIN_LIMIT,
     };
-    let served = serve_until(listener, app, shutdown, first_stop_signal()).await;
+    serve_until(
+        listening.admitting(edge),
+        app,
+        shutdown,
+        first_stop_signal(),
+    )
+    .await;
     upkeep.iter().for_each(tokio::task::JoinHandle::abort);
-    Ok(served?)
+    Ok(())
 }
 
-/// Opens the sessions before the hub binds, and logs how many stale rows ended (a number only).
+/// Stores `ANIMA_PERMITTED_NETWORKS` (D-10). A hub fault is logged by its fault word and
+/// SQLSTATE, as the API boundary logs it, never with content (LOG-007); a refused network
+/// keeps its plain message.
+async fn permit_networks(pool: &PgPool, config: &Config) -> Result<(), StartError> {
+    let stored = access::permit_networks(pool, &config.permitted_networks).await;
+    stored.map_err(|error| {
+        if error.fault().is_none() {
+            return StartError::Operator(error);
+        }
+        process_log::log_failure(&error.into_response_error());
+        StartError::PermittedNetworks
+    })
+}
+
+/// Opens the sessions before the hub serves, and logs how many stale rows ended (a number only).
 async fn open_sessions(
     pool: &PgPool,
     now: chrono::DateTime<chrono::Utc>,
