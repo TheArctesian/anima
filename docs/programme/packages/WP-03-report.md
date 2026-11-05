@@ -35,7 +35,7 @@ None of these has been done. Under R-025 the programme orchestrator applies them
 
 `hsctl` is the shell function from guide §2.7. Define it again in each new VPS session:
 ```bash
-hsctl() { sudo docker compose -f /opt/anima/headscale/compose.yaml exec -T headscale headscale "$@"; }
+hsctl() { sudo docker compose -f /opt/anima/headscale/compose.yaml exec -T headscale headscale "$@" </dev/null; }
 ```
 
 **Secret** = a secret value. Its name is given; the value is never shown here. **Device** = needs a person at a physical machine or a browser session that the orchestrator cannot drive.

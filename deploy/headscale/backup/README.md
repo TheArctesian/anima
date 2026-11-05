@@ -205,7 +205,7 @@ session over the VPN, so do this part at the Hostinger browser console:
 
 ```sh
 # VPS (Hostinger browser console on the same VPS; SSH on a new VPS)
-hsctl() { sudo docker compose -f /opt/anima/headscale/compose.yaml exec -T headscale headscale "$@"; }
+hsctl() { sudo docker compose -f /opt/anima/headscale/compose.yaml exec -T headscale headscale "$@" </dev/null; }
 sudo tailscale logout                                 # same VPS only
 hsctl nodes list                                      # note the ID of the old hub
 hsctl nodes delete --identifier <OLD_HUB_NODE_ID>

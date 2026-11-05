@@ -402,12 +402,13 @@ Everything in this step runs on the VPS over SSH, over the public address for no
 
 7. Start Headscale and define a shorthand for its CLI. The CLI talks to Headscale over a unix
    socket inside the container; there is no other admin interface (VPS-003). The shorthand lasts
-   only in this SSH session; define it again in each new session. `-T` lets you pipe its output.
+   only in this SSH session; define it again in each new session. `-T` lets you pipe its output;
+   `</dev/null` stops it from reading the rest of a script you feed to `bash -s`.
 
    ```bash
    # Runs on: VPS (SSH)
    sudo docker compose -f /opt/anima/headscale/compose.yaml up -d
-   hsctl() { sudo docker compose -f /opt/anima/headscale/compose.yaml exec -T headscale headscale "$@"; }
+   hsctl() { sudo docker compose -f /opt/anima/headscale/compose.yaml exec -T headscale headscale "$@" </dev/null; }
    sudo docker compose -f /opt/anima/headscale/compose.yaml ps        # headscale: healthy
    sudo docker compose -f /opt/anima/headscale/compose.yaml logs --tail 30 headscale
    ```
