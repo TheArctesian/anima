@@ -90,6 +90,8 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
         production_build(),
     )
     .disable_suggestions()
+    // No field returns it until `Device.webInterfaceSuggestions` exists (WP-30 D-2).
+    .register_output_type::<web_interfaces::Suggestion>()
     .extension(access::SignInRequired)
     // Shared dependencies (K3 wiring).
     .data(config)

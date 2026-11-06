@@ -63,8 +63,9 @@ pub(super) struct WebInterfaceFields {
     /// Defaults to the URL's host.
     label: Option<String>,
     url: String,
-    #[graphql(default_with = "OpenInValue::AnimaTab")]
-    open_in: OpenInValue,
+    /// K1 types it nullable with a default; a null means the default.
+    #[graphql(default_with = "Some(OpenInValue::AnimaTab)")]
+    open_in: Option<OpenInValue>,
 }
 
 impl From<WebInterfaceFields> for WebInterfaceInput {
@@ -72,7 +73,7 @@ impl From<WebInterfaceFields> for WebInterfaceInput {
         Self {
             label: fields.label,
             url: fields.url,
-            open_in: fields.open_in.into(),
+            open_in: fields.open_in.unwrap_or(OpenInValue::AnimaTab).into(),
         }
     }
 }
