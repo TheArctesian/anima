@@ -21,6 +21,7 @@ use crate::{
     },
     maintenance,
     sessions::{self, Live},
+    web_interfaces,
 };
 
 // One line per domain in each root (K3).
@@ -41,6 +42,7 @@ pub struct Mutation(
     devices::graphql::Mutation,
     maintenance::graphql::Mutation,
     sessions::graphql::Mutation,
+    web_interfaces::graphql::Mutation,
 );
 
 #[derive(MergedSubscription, Default)]

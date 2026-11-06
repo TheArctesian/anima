@@ -6,6 +6,7 @@
 //! entry in the same transaction (LOG-005). Messages in [`Error`] hold no input value
 //! (LOG-007).
 
+pub mod graphql;
 mod model;
 mod rules;
 mod store;

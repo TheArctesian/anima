@@ -58,6 +58,9 @@
     ],
     "events": [
       "access"
+    ],
+    "web_interfaces": [
+      "access"
     ]
   }
 }
