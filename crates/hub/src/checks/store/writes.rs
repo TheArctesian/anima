@@ -145,7 +145,7 @@ pub(in crate::checks) async fn update(
             retries = COALESCE($9, retries), \
             retry_interval_seconds = COALESCE($10, retry_interval_seconds), \
             degraded_threshold_ms = COALESCE($11, degraded_threshold_ms), \
-            invert = COALESCE($12, invert), operator_edited = true, updated_at = now() \
+            invert = COALESCE($12, invert), operator_edited = operator_edited OR $13, updated_at = now() \
          WHERE id = $1",
     )
     .bind(id)
@@ -160,6 +160,7 @@ pub(in crate::checks) async fn update(
     .bind(fields.retry_interval_seconds.map(small))
     .bind(fields.degraded_threshold_ms.map(small))
     .bind(fields.invert)
+    .bind(!fields.regrouping)
     .execute(&mut *conn)
     .await
     .map_err(write_error)?;

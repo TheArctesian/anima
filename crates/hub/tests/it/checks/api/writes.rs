@@ -206,6 +206,27 @@ fixture_test! {
         assert_eq!(marker(&pool, &child).await, (false, false));
     }
 
+    async fn chk_013_creating_a_group_with_children_does_not_mark_them_edited(pool: PgPool) {
+        let schema = schema_for(&pool);
+        let child = create(&schema, input(PVE_01, "ssh", ssh_port())).await;
+        let group = create(&schema, input(PVE_01, "group", json!({ "group": { "childIds": [child] } }))).await;
+        assert_eq!(marker(&pool, &child).await, (false, false));
+        assert_eq!(marker(&pool, &group).await, (false, false));
+    }
+
+    async fn chk_013_regrouping_by_a_group_update_marks_the_group_but_not_the_child(pool: PgPool) {
+        let schema = schema_for(&pool);
+        let child = create(&schema, input(PVE_01, "ssh", ssh_port())).await;
+        let group = create(&schema, input(PVE_01, "group", json!({ "group": { "childIds": [] } }))).await;
+        let vars = json!({ "id": group, "input": { "config": { "group": { "childIds": [child] } } } });
+        data_with(&schema, UPDATE, vars).await;
+        assert_eq!(marker(&pool, &group).await, (true, false));
+        assert_eq!(marker(&pool, &child).await, (false, false));
+        let vars = json!({ "id": group, "input": { "config": { "group": { "childIds": [] } } } });
+        data_with(&schema, UPDATE, vars).await;
+        assert_eq!(marker(&pool, &child).await, (false, false));
+    }
+
     async fn chk_013_the_backfill_marks_only_checks_with_an_audited_update(pool: PgPool) {
         let schema = schema_for(&pool);
         let edited = create(&schema, input(PVE_01, "ssh", ssh_port())).await;

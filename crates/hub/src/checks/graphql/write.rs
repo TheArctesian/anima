@@ -115,6 +115,7 @@ async fn regroup(
     for (child, parent) in moves {
         let change = CheckChange {
             parent: Some(parent),
+            regrouping: true,
             ..CheckChange::default()
         };
         checks::update_check(conn, vault, child, change)
