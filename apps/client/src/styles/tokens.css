@@ -32,6 +32,15 @@
   --status-warning: var(--nord-12);
   --status-maintenance: var(--nord-15);
   --status-unknown: var(--nord-3);
+  --chart-grid: var(--nord-3);
+  --chart-axis: var(--nord-4);
+  --chart-threshold: var(--nord-13);
+  --chart-series-1: var(--nord-8);
+  --chart-series-2: var(--nord-9);
+  --chart-series-3: var(--nord-10);
+  --chart-series-4: var(--nord-7);
+  --chart-series-5: var(--nord-15);
+  --chart-series-6: var(--nord-12);
   --accent-tint: color-mix(in srgb, var(--accent) 12%, var(--surface));
   --status-up-tint: color-mix(in srgb, var(--status-up) 12%, var(--surface));
   --status-down-tint: color-mix(in srgb, var(--status-down) 12%, var(--surface));
