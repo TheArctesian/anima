@@ -1,4 +1,4 @@
-//! Acceptance criterion 6: deleting a device removes everything that belongs to it and keeps
+//! Deleting a device removes everything that belongs to it and keeps
 //! what the operator must still be able to read (DEV-015, RA-008, LOG-005, R-004).
 
 use anima_hub::{
@@ -25,7 +25,10 @@ const CREATE_CHECK: &str =
 const DELETE_DEVICE: &str = "mutation($id: ID!) { deleteDevice(id: $id) }";
 
 /// Everything of the device that must go with it, each with the count query for its id.
-const CHAIN: [(&str, &str); 7] = [
+/// The secret goes by `clear_ssh` and by the secrets foreign key's cascade; each alone is
+/// covered by `credentials::schema::dev_015_deleting_the_device_deletes_its_secrets` and
+/// `devices::credential::dev_015_deleting_a_device_removes_its_secret`.
+const CHAIN: [(&str, &str); 6] = [
     (
         "device",
         "select count(*) from devices.devices where id = $1::text::uuid",
@@ -47,13 +50,24 @@ const CHAIN: [(&str, &str); 7] = [
         "select count(*) from checks.checks where device_id = $1::text::uuid",
     ),
     (
-        "uptime",
-        "select count(*) from checks.uptime_minute u join checks.checks c on c.id = u.check_id \
-         where c.device_id = $1::text::uuid",
-    ),
-    (
         "host key",
         "select count(*) from sessions.host_keys where device_id = $1::text::uuid",
+    ),
+];
+
+/// Each rollup table that holds a row per check, counted by the check's id (DB-008).
+const UPTIME: [(&str, &str); 3] = [
+    (
+        "uptime_minute",
+        "select count(*) from checks.uptime_minute where check_id = $1::text::uuid",
+    ),
+    (
+        "uptime_hour",
+        "select count(*) from checks.uptime_hour where check_id = $1::text::uuid",
+    ),
+    (
+        "uptime_day",
+        "select count(*) from checks.uptime_day where check_id = $1::text::uuid",
     ),
 ];
 
@@ -155,6 +169,12 @@ async fn dev_015_deleting_a_device_removes_its_whole_chain_and_keeps_its_history
             "before the delete: {what}"
         );
     }
+    for (what, sql) in UPTIME {
+        assert!(
+            count(&pool, sql, &check_id).await >= 1,
+            "before the delete: {what}"
+        );
+    }
     let beats = "select count(*) from checks.heartbeats where check_id = $1::text::uuid";
     assert_eq!(count(&pool, beats, &check_id).await, 3);
 
@@ -170,6 +190,13 @@ async fn dev_015_deleting_a_device_removes_its_whole_chain_and_keeps_its_history
     for (what, sql) in CHAIN {
         assert_eq!(
             count(&pool, sql, &device).await,
+            0,
+            "after the delete: {what}"
+        );
+    }
+    for (what, sql) in UPTIME {
+        assert_eq!(
+            count(&pool, sql, &check_id).await,
             0,
             "after the delete: {what}"
         );
