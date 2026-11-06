@@ -109,6 +109,41 @@ describe('the Guacamole pointer and keyboard (D-8)', () => {
   });
 });
 
+describe('forwardPointer (D-8)', () => {
+  function mouse(target: Element, type: string, x: number, y: number) {
+    target.dispatchEvent(new MouseEvent(type, { clientX: x, clientY: y, bubbles: true, cancelable: true }));
+  }
+
+  it('D-8: a pointer position is sent in remote pixels, undoing the display scale', () => {
+    const { tunnel, sent } = connected();
+    const host = document.createElement('div');
+    document.body.append(host);
+    tunnel.client.getDisplay().scale(0.5);
+    const stop = showDisplay(tunnel.client)(host);
+    const element = host.firstElementChild;
+    if (element === null) throw new Error('no display');
+    mouse(element, 'mousemove', 100, 50);
+    expect(sent('mouse').at(-1)?.slice(0, 2)).toEqual(['200', '100']);
+    if (typeof stop === 'function') stop();
+  });
+
+  it('D-8: once stopped, the pointer on the display sends nothing', () => {
+    const { tunnel, sent } = connected();
+    const host = document.createElement('div');
+    document.body.append(host);
+    const stop = showDisplay(tunnel.client)(host);
+    const element = host.firstElementChild;
+    if (element === null || typeof stop !== 'function') throw new Error('no display');
+    mouse(element, 'mousemove', 10, 10);
+    const before = sent('mouse').length;
+    expect(before).toBeGreaterThan(0);
+    stop();
+    mouse(element, 'mousemove', 20, 20);
+    mouse(element, 'mousedown', 20, 20);
+    expect(sent('mouse')).toHaveLength(before);
+  });
+});
+
 describe('the Guacamole paste and focus (D-8, RA-005)', () => {
   it('RA-005: pasted text goes as one text/plain clipboard stream, then Ctrl+V; empty text sends nothing', () => {
     const { tunnel, sent } = connected();
