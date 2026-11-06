@@ -11,7 +11,7 @@
   import EndedPanel from './EndedPanel.svelte';
   import HostKeyModal from './hostkey/HostKeyModal.svelte';
   import KeysMenu from './menu/KeysMenu.svelte';
-  import type { KeySequence } from './menu/sequences';
+  import { KEY_SEQUENCES, type KeySequence } from './menu/sequences';
   import FindBar from './pane/FindBar.svelte';
   import LinkConfirm from './pane/LinkConfirm.svelte';
   import Notice from './pane/Notice.svelte';
@@ -176,7 +176,7 @@
 
 <section class="session" hidden={!visible} aria-label="SSH session on {device.name}">
   <div class="toolbar">
-    <KeysMenu disabled={!ready} onkeys={sendKeys} onpaste={pasteFromClipboard} pasteOff={rules.pasteOff} />
+    <KeysMenu disabled={!ready} entries={KEY_SEQUENCES} onkeys={sendKeys} onpaste={pasteFromClipboard} pasteOff={rules.pasteOff} />
     <button
       type="button"
       class="find"

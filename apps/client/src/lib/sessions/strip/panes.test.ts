@@ -301,3 +301,14 @@ describe('covered pages keep their scroll (WP-14 E-2)', () => {
   });
 });
 
+
+it('RA-001: RDP and VNC tabs show the remote view, named for their protocol, beside an SSH tab', () => {
+  const sessions = show();
+  sessions.openSession({ ...request, origin: null });
+  sessions.openSession({ ...request, deviceName: 'desk', protocol: 'RDP', origin: null });
+  sessions.openSession({ ...request, deviceName: 'nas', protocol: 'VNC', origin: null });
+  flushSync();
+  const labels = [...document.querySelectorAll('[role="tabpanel"] section')].map((section) => section.getAttribute('aria-label'));
+  expect(labels).toEqual(['SSH session on web-1', 'RDP session on desk', 'VNC session on nas']);
+  expect(document.querySelectorAll('[role="tabpanel"] [role="application"]')).toHaveLength(2);
+});

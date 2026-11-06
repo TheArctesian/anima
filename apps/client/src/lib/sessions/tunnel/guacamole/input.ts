@@ -63,14 +63,21 @@ const PLAIN_TEXT = 'text/plain';
 
 /**
  * Hear the gateway's clipboard (D-9): each `text/plain` stream, read with a `StringReader`, is given to `deliver`
- * once it ends. Other types and text over `CLIPBOARD_LIMIT` are ignored. The text is held only while its stream
- * is open; nothing here logs or keeps it.
+ * once it ends. Other types and text over `CLIPBOARD_LIMIT` are ignored. One stream is read at a time: a newer
+ * one replaces an older one still open, whose text is dropped, so a gateway cannot make the client hold many
+ * buffers at once. The text is held only while its stream is open; nothing here logs or keeps it.
  */
 export function receiveClipboard(client: Client, deliver: (text: string) => void): void {
+  // Drops the text of the stream being read, if any.
+  let dropOpen: (() => void) | undefined;
   client.onclipboard = (stream, mimetype) => {
     if (mimetype.split(';')[0]?.trim().toLowerCase() !== PLAIN_TEXT) return;
+    dropOpen?.();
     const reader = new Guacamole.StringReader(stream);
     let text: string | undefined = '';
+    dropOpen = () => {
+      text = undefined;
+    };
     reader.ontext = (part) => {
       if (text === undefined) return;
       text = text.length + part.length > CLIPBOARD_LIMIT ? undefined : text + part;
