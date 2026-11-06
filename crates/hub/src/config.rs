@@ -27,7 +27,7 @@ pub struct Config {
     /// Where guacd stores shared drives (RA-021): a path inside the guacd container, not the
     /// hub's filesystem, so it must be absolute.
     pub guacd_drive_root: PathBuf,
-    /// `host:port` of the Tailscale LocalAPI proxy (D-4). `None` when unset or empty: Tailscale
+    /// `host:port` of the Tailscale `LocalAPI` proxy (D-4). `None` when unset or empty: Tailscale
     /// ping checks then report Unknown.
     pub tailscale_localapi: Option<String>,
     pub permitted_networks: Vec<ipnet::IpNet>,
