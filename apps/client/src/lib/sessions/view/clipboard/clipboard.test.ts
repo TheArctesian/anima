@@ -112,6 +112,27 @@ describe('copy out of the terminal (RA-033, K4 §8.7)', () => {
   });
 });
 
+describe('copy with no open session (RA-033)', () => {
+  it('a copy-on device copies nothing once its session ended, nor while the next one starts', async () => {
+    const { socket, screen, field, target } = await connected(ON);
+    selected(socket, screen, 'needle');
+    socket.closeWith(1006);
+    await settle();
+    const ended = clipboardEvent('copy');
+    field.dispatchEvent(ended.event);
+    key(field, { ...C, ctrlKey: true, shiftKey: true });
+    await settle();
+    expect(ended.event.defaultPrevented).toBe(true);
+    expect(ended.setData).not.toHaveBeenCalled();
+    expect(systemClipboard.written).toEqual([]);
+    // Reconnect has asked for a new ticket and the hub has not answered yet.
+    target.querySelector<HTMLButtonElement>('.panel button')?.click();
+    const starting = clipboardEvent('copy');
+    field.dispatchEvent(starting.event);
+    expect(starting.event.defaultPrevented).toBe(true);
+  });
+});
+
 describe('paste into the terminal (RA-033, K4 §8.7)', () => {
   it.each([
     ['on', ON, '\x1b[200~ls\x1b[201~'],
@@ -166,7 +187,7 @@ describe('paste into the terminal (RA-033, K4 §8.7)', () => {
 });
 
 describe('typing and other edits of the text field (RA-003, RA-033)', () => {
-  it.each(['insertFromPaste', 'insertFromDrop', 'insertFromYank'])('an edit of type %s cannot put outside text into the text field', async (inputType) => {
+  it.each(['insertFromPaste', 'insertFromPasteAsQuotation', 'insertFromDrop', 'insertFromYank'])('an edit of type %s cannot put outside text into the text field', async (inputType) => {
     const { field } = await connected(ON);
     const event = new InputEvent('beforeinput', { inputType, data: 'ls', bubbles: true, cancelable: true });
     field.dispatchEvent(event);
