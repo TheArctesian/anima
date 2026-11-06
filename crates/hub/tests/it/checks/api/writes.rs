@@ -33,6 +33,42 @@ pub fn ssh_port() -> Value {
     json!({ "tcp": { "port": 22 } })
 }
 
+/// (`operator_edited`, `repair_tried_at` is set) of the check (CHK-013).
+async fn marker(pool: &PgPool, id: &str) -> (bool, bool) {
+    sqlx::query_as(
+        "SELECT operator_edited, repair_tried_at IS NOT NULL FROM checks.checks WHERE id = $1::uuid",
+    )
+    .bind(id)
+    .fetch_one(pool)
+    .await
+    .unwrap()
+}
+
+async fn audit(pool: &PgPool, target_type: &str, target_id: &str, action: &str) {
+    sqlx::query(
+        "INSERT INTO events.audit_log \
+         (id, at, operator_id, operator_name, action, target_type, target_id, client_addr, change) \
+         VALUES (gen_random_uuid(), $1, gen_random_uuid(), 'op', $2, $3, $4, '127.0.0.1', '{}')",
+    )
+    .bind(now())
+    .bind(action)
+    .bind(target_type)
+    .bind(target_id)
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
+/// The `do $$ ... $$` block of migration 0302, which the test runs against seeded audit rows.
+fn backfill_block() -> String {
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/migrations/0302_checks_method_repair.sql"
+    );
+    let sql = std::fs::read_to_string(path).unwrap();
+    sql[sql.find("do $$").unwrap()..].to_owned()
+}
+
 const DELETE: &str = "mutation($id: ID!) { deleteCheck(id: $id) }";
 const PAUSE: &str = "mutation($id: ID!, $paused: Boolean!) { \
     setCheckPaused(id: $id, paused: $paused) { id paused } }";
@@ -146,6 +182,42 @@ fixture_test! {
         let missing = json!({ "id": "0190a000-0000-7000-8003-0000000000ff", "paused": true });
         let error = error_json(&with_variables(&schema, PAUSE, missing).await);
         assert_eq!(code(&error), "NOT_FOUND");
+    }
+
+    async fn chk_013_only_an_operator_update_marks_a_check_edited(pool: PgPool) {
+        let schema = schema_for(&pool);
+        let id = create(&schema, input(PVE_01, "ssh", ssh_port())).await;
+        assert_eq!(marker(&pool, &id).await, (false, false));
+        data_with(&schema, PAUSE, json!({ "id": id, "paused": true })).await;
+        data_with(&schema, PAUSE, json!({ "id": id, "paused": false })).await;
+        assert_eq!(marker(&pool, &id).await, (false, false));
+        data_with(&schema, UPDATE, json!({ "id": id, "input": { "retries": 5 } })).await;
+        assert_eq!(marker(&pool, &id).await, (true, false));
+    }
+
+    async fn chk_013_a_group_update_does_not_mark_its_children(pool: PgPool) {
+        let schema = schema_for(&pool);
+        let group = create(&schema, input(PVE_01, "group", json!({ "group": { "childIds": [] } }))).await;
+        let mut child = input(PVE_01, "ssh", ssh_port());
+        child["parentId"] = json!(group);
+        let child = create(&schema, child).await;
+        data_with(&schema, UPDATE, json!({ "id": group, "input": { "name": "renamed" } })).await;
+        assert_eq!(marker(&pool, &group).await, (true, false));
+        assert_eq!(marker(&pool, &child).await, (false, false));
+    }
+
+    async fn chk_013_the_backfill_marks_only_checks_with_an_audited_update(pool: PgPool) {
+        let schema = schema_for(&pool);
+        let edited = create(&schema, input(PVE_01, "ssh", ssh_port())).await;
+        let untouched = create(&schema, input(PVE_01, "other", ssh_port())).await;
+        sqlx::query("UPDATE checks.checks SET operator_edited = false").execute(&pool).await.unwrap();
+        // Another target type with the same id, and a pause entry: neither counts.
+        audit(&pool, "device", &untouched, "update").await;
+        audit(&pool, "check", &untouched, "pause").await;
+        audit(&pool, "check", &edited, "update").await;
+        sqlx::raw_sql(&backfill_block()).execute(&pool).await.unwrap();
+        assert_eq!(marker(&pool, &edited).await, (true, false));
+        assert_eq!(marker(&pool, &untouched).await, (false, false));
     }
 
     async fn api_003_a_bad_name_or_device_is_a_validation_error_that_stores_nothing(pool: PgPool) {
