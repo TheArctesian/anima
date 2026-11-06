@@ -71,7 +71,7 @@ The desktop applications are the first priority. Do not start the web and iOS wo
 | Device | A computer, server, virtual machine or network appliance that Anima manages. |
 | Client | The Anima application that the operator uses: desktop, web or iOS. |
 | Hub | The Anima server process. It runs all the time on the private network. |
-| Gateway | The `guacd` process. It converts SSH and RDP into the Guacamole protocol. |
+| Gateway | The `guacd` process. It converts RDP and VNC into the Guacamole protocol. SSH does not use it: the hub runs SSH itself (R-062). |
 | Session | One remote access connection from the client to a device. |
 | Check | One test that finds if a device or a service is available. |
 | Heartbeat | The result of one check at one time. |
@@ -146,19 +146,19 @@ Anima has three components: the client, the hub and the gateway.
 
 ### 3.5 Gateway
 
-- **GW-001.** The gateway must use the official `guacamole/guacd` Docker image as its base. The Anima image adds only fonts (RA-011).
+- **GW-001.** The gateway must use the official `guacamole/guacd` Docker image as its base. The Anima image adds only fonts (RA-011; since R-062 SSH no longer needs the terminal font in the gateway).
 - **GW-002.** Only the hub must connect to the gateway. Do not publish port 4822 outside the Docker network.
 - **GW-003.** The gateway has no authentication. A process that can connect to port 4822 can open a connection to any host. Thus GW-002 is a security requirement.
 - **GW-004.** If the gateway runs on a different host in a later version, the hub must connect to it with TLS.
 
-The gateway does only the protocol work: SSH, RDP and VNC connections, the display, recordings, file streams and joins to a shared session. The Guacamole Java web application does all other work. Anima does not use the Java web application. Thus the hub must do this work:
+The gateway does only the protocol work: RDP and VNC connections (SSH goes through the hub's terminal tunnel, R-062), the display, recordings, file streams and joins to a shared session. The Guacamole Java web application does all other work. Anima does not use the Java web application. Thus the hub must do this work:
 
 - **GW-010. Handshake.** The hub must send `select`, read `args` and agree the protocol version. Then the hub must send `size`, `audio`, `video`, `image`, `timezone` and `name`. The hub must send `connect` last, with a value for each argument. Then the hub must read `ready`.
 - **GW-011. Tunnel.** The hub must relay the WebSocket subprotocol `guacamole` to the gateway. The hub must answer the internal tunnel instructions and `ping`. The hub must close the tunnel when it gets an instruction that is not valid.
 - **GW-012. Parameters.** The hub must make all connection arguments from the database and the credential store. The client can set only these values: screen size, DPI, time zone and terminal colour scheme.
 - **GW-013. Forbidden client values.** The client must not set `hostname`, `port`, credentials, `recording-path`, `drive-path`, `sftp-root-directory`, `typescript-path` or `wol-*` values.
 - **GW-014. Session control.** The hub must keep the gateway connection ID of each live session. The client must not see this ID.
-- **GW-015. Credential prompt.** If the gateway asks for a missing credential with `required`, the client must ask the operator. The hub must not keep this value unless the operator selects "Save".
+- **GW-015. Credential prompt.** If the gateway asks for a missing credential with `required`, the client must ask the operator (RDP and VNC; SSH has no prompt for a missing credential since R-062, K4 Section 8.2). The hub must not keep this value unless the operator selects "Save".
 
 ### 3.6 Database
 
@@ -479,7 +479,7 @@ A design token is a named design value, for example a colour, a space or a sprin
 | Build tool | Style Dictionary (version 4 or later) |
 | Output: interface | `apps/client/src/styles/tokens.css` (CSS custom properties on `:root`) |
 | Output: animation code | `apps/client/src/lib/motion/tokens.ts` (typed constants for springs and thresholds) |
-| Output: hub | `crates/theme` (the Nord terminal colour scheme for the gateway, RA-010) |
+| Output: hub | `crates/theme` (the Nord colour table, and the gateway's terminal colour scheme for the Guacamole tunnel; the SSH terminal's theme comes from `tokens.css`, RA-010) |
 | Output: documentation | A generated token page in the design documentation |
 
 - **TOK-001.** The token files are the single source of truth. Do not edit the generated files.
@@ -714,10 +714,9 @@ Session procedure:
 
 1. The client sends a session request to the hub.
 2. The hub reads the credential and the connection settings of the device.
-3. The hub opens a connection to the gateway.
-4. The gateway connects to the device.
-5. The hub sends the Guacamole stream to the client through the WebSocket tunnel.
-6. The client shows the session in a new tab in the main window.
+3. SSH: the hub connects to the device itself (R-062, K4 Section 8). RDP and VNC: the hub opens a connection to the gateway, and the gateway connects to the device.
+4. The hub sends the stream to the client through the WebSocket tunnel: terminal bytes for SSH, the Guacamole stream for RDP and VNC.
+5. The client shows the session in a new tab in the main window.
 
 - **RA-001.** The client must show each session in a tab. The operator must be able to open more than one session.
 - **RA-002.** The operator must be able to move a session tab into a separate window on desktop.
@@ -992,7 +991,7 @@ The gateway cannot open a Proxmox console. Proxmox sends VNC and terminal data o
 - **PVE-030.** The hub must relay the console WebSocket. The hub must call `vncproxy` or `termproxy` and then connect to `vncwebsocket` at once, because the ticket expires after about 10 seconds.
 - **PVE-031.** The client must use noVNC for a virtual machine console. The client must use xterm.js for a container console and a node shell.
 - **PVE-032.** Test if an API token can open a console. If it cannot, the hub must use a separate console user and renew its ticket every 90 minutes.
-- **PVE-033.** For a guest with an IP address, SSH and RDP through the gateway are the preferred methods. The console is for a guest without network access.
+- **PVE-033.** For a guest with an IP address, SSH (the hub's terminal tunnel, R-062) and RDP (through the gateway) are the preferred methods. The console is for a guest without network access.
 
 ### 8.5 Later functions (Phase 6 or later)
 
@@ -1221,7 +1220,7 @@ anima/
 │       └── src-tauri/         Tauri shell: windows, key store, web views (WEB-004)
 └── deploy/
     ├── compose.yaml           Hub, gateway, PostgreSQL (DB-007 backup)
-    ├── gateway/               guacd image with fonts (RA-011)
+    ├── gateway/               guacd image with fonts (GW-001; RDP and VNC)
     └── headscale/             Headscale configuration and ACLs (VPN-004)
 ```
 
