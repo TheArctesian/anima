@@ -91,6 +91,9 @@ describe('receiveClipboard streams and the limit (D-9)', () => {
     expect(heard).toEqual(['once']);
   });
 
+});
+
+describe('receiveClipboard one stream at a time (D-9)', () => {
   it('D-9: one stream is read at a time: a newer one replaces an older one still open, whose text is dropped', () => {
     const { client, typed } = fakeClient();
     const heard: string[] = [];

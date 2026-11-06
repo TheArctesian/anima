@@ -106,6 +106,9 @@ describe('RA-005, RA-033: system to device (paste)', () => {
     ]);
   });
 
+});
+
+describe('RA-033: paste off (system to device)', () => {
   it('RA-033: with paste off, "Paste" is off with its reason, and neither it nor the shortcut sends anything', async () => {
     const read = vi.spyOn(systemClipboard, 'readText');
     const { socket, pane, target } = await connected({ copy: true, paste: false });
@@ -134,6 +137,9 @@ describe('RA-005, RA-033: system to device (paste)', () => {
     ]);
   });
 
+});
+
+describe('RA-005: pastes that must not reach the device', () => {
   it('RA-005: a paste before the first frame (the tunnel open, not yet connected) sends nothing', async () => {
     const view = showRemote();
     cleanups.push(view.close);

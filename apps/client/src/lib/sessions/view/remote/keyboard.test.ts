@@ -110,6 +110,9 @@ describe('D-8: held keys are released when the pane loses the keyboard', () => {
     ]);
   });
 
+});
+
+describe('D-8: the page and the document', () => {
   it('D-8: a hidden page releases a held key and unbinds the keyboard while the focus stays in the pane', async () => {
     const { target } = show();
     const socket = await connectRemote();
