@@ -5,7 +5,7 @@
   import { tweenMotion } from '$lib/motion/options';
   import { motionPreference, type MotionPreference } from '$lib/motion/preference';
   import { press } from '$lib/motion/roles/press';
-  import { flip, measure } from '$lib/motion/roles/flip';
+  import { flip, measure, type Places } from '$lib/motion/roles/flip';
 
   interface Props {
     /** The button text; the state is carried by `aria-expanded`, not by the text. */
@@ -48,16 +48,26 @@
   }
 
   /**
-   * What moves when the section opens or closes: the elements after it. When it is wrapped and is
-   * the last child of its wrapper, the search climbs to the wrapper's followers, up to the form or body.
+   * What the section's change of height can move: the elements after it and after each of its
+   * ancestors, up to the body. A form section moves the form's actions and whatever follows the form.
    */
   function below(): Animatable[] {
-    for (let node = root; node; node = node.parentElement) {
-      const found = followers(node);
-      if (found.length > 0) return found;
-      if (node.parentElement === null || ['FORM', 'BODY'].includes(node.parentElement.tagName)) break;
-    }
-    return [];
+    const found: Animatable[] = [];
+    for (let node: HTMLElement | null = root ?? null; node && node !== document.body; node = node.parentElement) found.push(...followers(node));
+    return found;
+  }
+
+  /**
+   * The measured elements whose place on screen changed. The others keep any motion in flight and get
+   * no `translate`, which would make a container the containing block of its fixed children.
+   */
+  function moved(first: Places): Places {
+    return new Map(
+      [...first].filter(([element, before]) => {
+        const after = element.getBoundingClientRect();
+        return after.top !== before.top || after.left !== before.left;
+      }),
+    );
   }
 
   /**
@@ -73,7 +83,7 @@
       leaving = true;
       if (region) region.style.top = `${String(region.offsetTop)}px`;
       await tick();
-      flip(first, { spring: 'default', preference });
+      flip(moved(first), { spring: 'default', preference });
       if (region) await animate(region, { opacity: 0 }, fade()).finished;
       // If it was reopened meanwhile, the effect above puts `present` back at once. A reopen from
       // outside (a form showing an error) did not run the open path, so undo the fade here.
@@ -89,7 +99,7 @@
     leaving = false;
     present = true;
     await tick();
-    flip(first, { spring: 'default', preference });
+    flip(moved(first), { spring: 'default', preference });
     if (region) {
       animate(region, { opacity: 0 }, { type: 'instant' });
       void animate(region, { opacity: 1 }, fade());

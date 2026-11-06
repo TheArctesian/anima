@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import { crossFade, modal } from '$lib/motion/roles/transitions';
-  import { initialFocusIn, trapTab } from './focus';
+  import { clickedControl, initialFocusIn, openerOf, trapTab } from './focus';
 
   interface Props {
     open: boolean;
@@ -14,12 +14,25 @@
   const { open, title, onClose, children }: Props = $props();
   const titleId = $props.id();
 
+  /** The control of the latest click, for WebKit, where a clicked button does not take the focus. */
+  let clicked: HTMLElement | null = null;
+
+  $effect(() => {
+    const record = (event: MouseEvent) => {
+      clicked = clickedControl(event.target);
+    };
+    document.addEventListener('click', record, { capture: true });
+    return () => {
+      document.removeEventListener('click', record, { capture: true });
+    };
+  });
+
   // The opener is read before the dialog is in the DOM; focus goes back to it as soon as `open` is false.
   $effect.pre(() => {
     if (!open) return;
-    const opener = document.activeElement;
+    const opener = openerOf(document.activeElement, clicked);
     return () => {
-      if (opener instanceof HTMLElement) opener.focus();
+      opener?.focus();
     };
   });
 
@@ -96,9 +109,14 @@
     background: var(--scrim);
   }
 
+  /*
+   * The surface's top is fixed, so a section that opens inside it grows the surface downward and never
+   * moves the control the operator clicked (MOT-007); past the window's height the surface scrolls.
+   */
   .frame {
     display: grid;
-    place-items: center;
+    justify-items: center;
+    align-items: start;
     padding: var(--space-4);
   }
 

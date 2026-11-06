@@ -1,26 +1,28 @@
 import { expect, it } from 'vitest';
-import { wrapTarget } from './focus';
+import { tabTarget } from './focus';
 
-const ELEMENTS = ['a', 'b', 'c'];
+const STOPS = ['a', 'b', 'c'];
 
-it('Modal: Tab from the last element goes to the first', () => {
-  expect(wrapTarget(ELEMENTS, 'c', false)).toBe('a');
+it('Modal: Tab goes to the next stop, also between the first and the last', () => {
+  expect(tabTarget(STOPS, 'a', false)).toBe('b');
+  expect(tabTarget(STOPS, 'b', false)).toBe('c');
 });
 
-it('Modal: Shift+Tab from the first element goes to the last', () => {
-  expect(wrapTarget(ELEMENTS, 'a', true)).toBe('c');
+it('Modal: Shift+Tab goes to the previous stop', () => {
+  expect(tabTarget(STOPS, 'c', true)).toBe('b');
+  expect(tabTarget(STOPS, 'b', true)).toBe('a');
 });
 
-it('Modal: inside the dialog the browser steps by itself', () => {
-  expect(wrapTarget(ELEMENTS, 'b', false)).toBeNull();
-  expect(wrapTarget(ELEMENTS, 'b', true)).toBeNull();
+it('Modal: Tab from the last stop goes to the first, and Shift+Tab from the first to the last', () => {
+  expect(tabTarget(STOPS, 'c', false)).toBe('a');
+  expect(tabTarget(STOPS, 'a', true)).toBe('c');
 });
 
-it('Modal: focus outside the dialog is pulled back in', () => {
-  expect(wrapTarget(ELEMENTS, 'outside', false)).toBe('a');
-  expect(wrapTarget(ELEMENTS, 'outside', true)).toBe('c');
+it('Modal: focus outside the stops is pulled back in at the near end', () => {
+  expect(tabTarget(STOPS, 'outside', false)).toBe('a');
+  expect(tabTarget(STOPS, 'outside', true)).toBe('c');
 });
 
-it('Modal: a dialog with nothing to focus leaves Tab alone', () => {
-  expect(wrapTarget([], null, false)).toBeNull();
+it('Modal: a dialog with no stops has no Tab target', () => {
+  expect(tabTarget([], null, false)).toBeNull();
 });
