@@ -46,4 +46,7 @@ These items are not blocking. The programme orchestrator collects them here and 
 
 ## Programme
 
-- [ ] Two tests fail under load: `k4_8_5` (WP-22 is fixing it) and the deploy test DNS-003 for the `make-secrets` interrupt timing.
+- [ ] Three tests fail under load:
+  - `k4_8_5` (WP-22 is fixing it);
+  - the deploy test DNS-003, for the `make-secrets` interrupt timing;
+  - `checks::api::batching::api_005_status_last_heartbeat…`. With the 10 ms loader window under load, the run took 24 statements against a limit of 20, and it passed 3/3 alone. WP-29, which owns checks, should give the test schema a longer batch window.
