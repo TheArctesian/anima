@@ -13,7 +13,6 @@ mod dns;
 mod http;
 mod icmp;
 mod outcome;
-mod reach;
 mod resolve;
 mod tcp;
 mod tls;
@@ -24,9 +23,11 @@ use chrono::{DateTime, Utc};
 
 pub use http::BODY_CAP;
 pub use outcome::{Failure, MESSAGE_MAX, ProbeResult, clean_message};
-pub use reach::AddressPolicy;
 
-use crate::checks::config::{CheckConfig, HttpSecrets};
+use crate::{
+    checks::config::{CheckConfig, HttpSecrets},
+    targets::AddressPolicy,
+};
 
 /// The device a probe is aimed at. HTTP and DNS checks name their own target in the
 /// configuration and ignore the host.

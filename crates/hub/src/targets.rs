@@ -1,10 +1,11 @@
-//! Which addresses a probe may connect to (SSRF protection).
+//! Which addresses the hub may connect to for probes and, from Phase 2, sessions and metrics
+//! (SSRF protection, P2-004).
 
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 use ipnet::IpNet;
 
-/// The addresses probes may reach.
+/// The addresses the hub may connect to.
 ///
 /// The default refuses every address a probe must never touch: loopback, unspecified,
 /// `0.0.0.0/8`, link-local (`169.254.0.0/16`, home of cloud metadata, and `fe80::/10`),

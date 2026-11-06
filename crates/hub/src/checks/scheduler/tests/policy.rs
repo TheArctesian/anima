@@ -8,10 +8,7 @@ use ipnet::IpNet;
 use super::support::{
     DOCKER_HOST, Listener, add, database_now, due_at, on_loopback, rng, scheduler_with, tcp,
 };
-use crate::{
-    checks::{probe::AddressPolicy, scheduler::Probing},
-    events::Bus,
-};
+use crate::{checks::scheduler::Probing, events::Bus, targets::AddressPolicy};
 
 fn nets(texts: &[&str]) -> Vec<IpNet> {
     texts.iter().map(|text| text.parse().unwrap()).collect()

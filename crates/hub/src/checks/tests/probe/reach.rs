@@ -5,8 +5,9 @@ use std::net::IpAddr;
 use super::support::{Reply, env, serve, strict_env, target};
 use crate::checks::{
     config::{CheckConfig, HttpConfig},
-    probe::{AddressPolicy, Failure, ProbeResult, probe},
+    probe::{Failure, ProbeResult, probe},
 };
+use crate::targets::AddressPolicy;
 
 fn ip(text: &str) -> IpAddr {
     text.parse().unwrap()

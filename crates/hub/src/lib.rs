@@ -15,6 +15,7 @@ pub mod scalars;
 pub mod schema;
 pub mod sessions;
 pub mod status;
+pub mod targets;
 
 use std::{future::Future, sync::Arc, time::Duration};
 
