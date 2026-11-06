@@ -1,4 +1,5 @@
 import type { DeviceCheck } from '$lib/checks/api';
+import type { CheckType } from '$lib/hub/generated/graphql';
 
 /** The K1 check shapes the check form reads and writes, from the generated types (T4, API-008). */
 export type {
@@ -13,6 +14,9 @@ export type {
   IpVersion,
   UpdateCheckInput,
 } from '$lib/hub/generated/graphql';
+
+/** The check types the form has editors for; the Phase 2 types get editors in WP-25. */
+export type EditableCheckType = Exclude<CheckType, 'DOCKER' | 'SNMP' | 'TAILSCALE_PING' | 'SYSTEMD'>;
 
 /** The part of K1 `CheckConfig` the form reads, discriminated like the GraphQL union. */
 export type CheckConfigFields = DeviceCheck['config'];

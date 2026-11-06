@@ -132,3 +132,10 @@ describe('group children', () => {
     expect(siblingOf(check)).toEqual({ id: 'chk-1', name: 'check', type: 'GROUP', childIds: ['z', 'a'] });
   });
 });
+
+describe('a saved check of a Phase 2 type', () => {
+  it('R-065: opens in the form with its common settings and does not throw', () => {
+    const values = checkValues(saved('DOCKER', { __typename: 'DockerConfig' }, { name: 'web container', retries: 5 }), 'ICMP');
+    expect(values).toMatchObject({ name: 'web container', retries: '5' });
+  });
+});

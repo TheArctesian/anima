@@ -13,7 +13,7 @@
   import TypeFields from './fields/TypeFields.svelte';
   import { messageFor, placeHubErrors, shownFields, touchesAdvanced, unplaced } from './model/errors';
   import { groupCandidates, type SiblingCheck } from './model/group';
-  import type { CheckFields, CheckType } from './model/hub-types';
+  import type { CheckFields, EditableCheckType } from './model/hub-types';
   import { validateCheck } from './model/validate';
   import { secretWarnings } from './model/warnings';
   import { checkValues, type CheckFormValues } from './model/values';
@@ -30,7 +30,7 @@
 
   const { check, siblings, onSave, onCancel }: Props = $props();
 
-  const TYPES: readonly { value: CheckType; label: string }[] = [
+  const TYPES: readonly { value: EditableCheckType; label: string }[] = [
     { value: 'ICMP', label: 'Ping (ICMP)' },
     { value: 'TCP', label: 'TCP port' },
     { value: 'TLS', label: 'TLS certificate' },

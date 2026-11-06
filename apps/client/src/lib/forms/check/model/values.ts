@@ -2,6 +2,7 @@ import type {
   CheckConfigFields,
   CheckFields,
   CheckType,
+  EditableCheckType,
   DnsRecordType,
   HttpAuthKind,
   HttpMethod,
@@ -22,7 +23,7 @@ export interface StatusRow {
 
 /** What the operator typed. Number fields stay text so that "abc" in the port box is reportable. */
 export interface CheckFormValues {
-  type: CheckType;
+  type: EditableCheckType;
   name: string;
   intervalSeconds: string;
   retries: string;
@@ -62,7 +63,7 @@ export interface CheckFormValues {
 /** CHK-008 and K1 `CreateCheckInput` defaults. */
 const DEFAULTS = { intervalSeconds: '60', retries: '3', retryIntervalSeconds: '20', degradedThresholdMs: '1000' } as const;
 
-function blank(type: CheckType): CheckFormValues {
+function blank(type: EditableCheckType): CheckFormValues {
   return {
     type,
     name: '',
@@ -144,6 +145,23 @@ function withConfig(values: CheckFormValues, config: CheckConfigFields): CheckFo
       return { ...values, push: { path: config.pushPath } };
     case 'GroupConfig':
       return { ...values, group: { childIds: config.children.map((child) => child.id) } };
+    default: // Phase 2 configs (Docker, SNMP, Tailscale ping, systemd) get editors in WP-25.
+      return values;
+  }
+}
+
+const FALLBACK_TYPE: EditableCheckType = 'ICMP';
+
+/** `type` when the form has an editor for it, else `null` (a Phase 2 type until WP-25). */
+function editableType(type: CheckType): EditableCheckType | null {
+  switch (type) {
+    case 'DOCKER':
+    case 'SNMP':
+    case 'TAILSCALE_PING':
+    case 'SYSTEMD':
+      return null;
+    default:
+      return type;
   }
 }
 
@@ -152,10 +170,10 @@ function withConfig(values: CheckFormValues, config: CheckConfigFields): CheckFo
  * An existing check keeps its own type; `type` is then ignored. No secret is ever filled in.
  */
 export function checkValues(check: CheckFields | null, type: CheckType): CheckFormValues {
-  if (check === null) return blank(type);
+  if (check === null) return blank(editableType(type) ?? FALLBACK_TYPE);
   return withConfig(
     {
-      ...blank(check.type),
+      ...blank(editableType(check.type) ?? FALLBACK_TYPE),
       name: check.name,
       intervalSeconds: String(check.intervalSeconds),
       retries: String(check.retries),
