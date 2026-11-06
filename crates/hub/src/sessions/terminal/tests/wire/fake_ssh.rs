@@ -6,6 +6,7 @@
 //! `FakeSsh`.
 
 mod device;
+mod rounds;
 
 use std::{
     net::Shutdown,

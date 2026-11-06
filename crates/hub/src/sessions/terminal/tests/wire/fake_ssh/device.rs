@@ -13,7 +13,7 @@ use russh::{
 };
 use tokio::sync::{mpsc, watch};
 
-use super::{Heard, Hold, Ledger, Prompts, Script, USER};
+use super::{Heard, Hold, Ledger, Script, USER};
 
 pub(super) struct Device {
     pub(super) script: Script,
@@ -46,27 +46,9 @@ impl Device {
             }
         }
     }
-
-    /// The script's prompts in one keyboard-interactive round.
-    fn prompt_count(&self) -> usize {
-        match self.script.prompts {
-            Prompts::Round(count) => count,
-            Prompts::Endless | Prompts::Rounds(_) => 1,
-        }
-    }
-
-    /// A keyboard-interactive round.
-    fn prompts(&self) -> Auth {
-        let prompt = ("Password: ".into(), false);
-        Auth::Partial {
-            name: "".into(),
-            instructions: "".into(),
-            prompts: vec![prompt; self.prompt_count()].into(),
-        }
-    }
 }
 
-fn verdict(right: bool) -> Auth {
+pub(super) fn verdict(right: bool) -> Auth {
     if right { Auth::Accept } else { Auth::reject() }
 }
 
@@ -118,25 +100,10 @@ impl server::Handler for Device {
         response: Option<Response<'a>>,
     ) -> impl Future<Output = Result<Auth, Self::Error>> + Send {
         self.hear(Heard::Auth("keyboard-interactive"));
-        let Some(response) = response else {
-            return ready(Ok(self.prompts()));
-        };
-        if self.script.prompts == Prompts::Endless {
-            return ready(Ok(self.prompts()));
-        }
-        let answers: Vec<_> = response.collect();
-        let password = self.script.password.as_bytes();
-        let right = user == USER
-            && answers.len() == self.prompt_count()
-            && answers.iter().all(|answer| answer.as_ref() == password);
-        self.answered += 1;
-        if let Prompts::Rounds(rounds) = self.script.prompts
-            && right
-            && self.answered < rounds
-        {
-            return ready(Ok(self.prompts()));
-        }
-        ready(Ok(verdict(right)))
+        ready(Ok(match response {
+            None => self.prompts(),
+            Some(response) => self.answered_round(user, response),
+        }))
     }
 
     async fn channel_open_session(
