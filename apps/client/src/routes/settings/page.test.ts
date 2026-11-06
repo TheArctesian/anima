@@ -55,12 +55,15 @@ it('SET-001: the nav link to Settings is /settings and the page renders the h1 "
   expect(target.querySelector('h1')?.textContent).toBe(SETTINGS.label);
 });
 
-it('SET-002: the page holds the title, "Signed in as <name>" and "Sign out", and nothing else', async () => {
+it('SET-002: the page holds the title, "Signed in as <name>", "Sign out" and the two font choices, and nothing else', async () => {
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
-  expect(target.textContent.replace(/\s+/g, ' ').trim()).toBe('Settings Signed in as ann Sign out');
+  const texts = [...target.querySelectorAll('h1, p, button, span, option')].map((element) => element.textContent.trim());
+  const fonts = ['Fira Code', 'OpenDyslexic'];
+  expect(texts).toEqual(['Settings', 'Signed in as ann', 'Sign out', 'Interface font', ...fonts, 'Monospace font', ...fonts]);
   const elements = [...target.querySelectorAll('*')].map((element) => element.tagName.toLowerCase());
-  expect(elements).toEqual(['h1', 'section', 'p', 'strong', 'button']);
-  expect(target.querySelectorAll('[role="switch"], img, input, select, textarea, a, [tabindex]:not(button)')).toHaveLength(0);
+  const fontRow = ['label', 'span', 'select', 'option', 'option'];
+  expect(elements).toEqual(['h1', 'section', 'p', 'strong', 'button', 'section', ...fontRow, ...fontRow]);
+  expect(target.querySelectorAll('[role="switch"], img, input, textarea, a, [tabindex]:not(button)')).toHaveLength(0);
   expect(signOutButton(target).textContent).toBe('Sign out');
 });
 
@@ -124,12 +127,12 @@ it('MOT-007: the Sign out button has the same place before and after the name ar
     release = resolve;
   });
   const target = await open({ Me: pending });
-  const before = [...target.querySelectorAll('section > *')].map((element) => element.tagName);
+  const before = [...target.querySelectorAll('section[aria-label="Account"] > *')].map((element) => element.tagName);
   expect(before).toEqual(['P', 'BUTTON']);
-  expect(target.querySelector('section > p')?.textContent.trim()).toBe('');
+  expect(target.querySelector('section[aria-label="Account"] > p')?.textContent.trim()).toBe('');
   release(ok({ me: { username: 'ann' } }));
   await settled();
-  const after = [...target.querySelectorAll('section > *')].map((element) => element.tagName);
+  const after = [...target.querySelectorAll('section[aria-label="Account"] > *')].map((element) => element.tagName);
   expect(after).toEqual(before);
 });
 

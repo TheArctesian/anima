@@ -2,10 +2,12 @@ import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { DEFAULT_TYPEFACE, TEXT_ROLES, TYPEFACES } from '$lib/typeface/typeface';
 
 const stylesDir = fileURLToPath(new URL('./', import.meta.url));
 const fontsDir = `${stylesDir}fonts/`;
 const pinnedCommit = 'f034eeafc0ccf79afa8dd952feb86b18e5d0469e';
+const firaCodeRelease = '6.2';
 
 interface LockEntry {
   file: string;
@@ -17,6 +19,7 @@ interface LockEntry {
 
 interface FontLock {
   commit: string;
+  firaCodeRelease: string;
   files: LockEntry[];
 }
 
@@ -64,6 +67,7 @@ const byFace = (a: FontFace, b: FontFace) =>
 const propo = 'OpenDyslexic Nerd Font Propo';
 const mono = 'OpenDyslexicM Nerd Font Mono';
 const symbols = 'Symbols Nerd Font';
+const fira = 'Fira Code';
 const expectedFaces: FontFace[] = [
   { family: propo, weight: 400, style: 'normal', display: 'block', file: 'OpenDyslexicNerdFontPropo-Regular.otf', format: 'opentype' },
   { family: propo, weight: 700, style: 'normal', display: 'block', file: 'OpenDyslexicNerdFontPropo-Bold.otf', format: 'opentype' },
@@ -71,10 +75,12 @@ const expectedFaces: FontFace[] = [
   { family: propo, weight: 700, style: 'italic', display: 'block', file: 'OpenDyslexicNerdFontPropo-BoldItalic.otf', format: 'opentype' },
   { family: mono, weight: 400, style: 'normal', display: 'block', file: 'OpenDyslexicMNerdFontMono-Regular.otf', format: 'opentype' },
   { family: symbols, weight: 400, style: 'normal', display: 'block', file: 'SymbolsNerdFont-Regular.ttf', format: 'truetype' },
+  { family: fira, weight: 400, style: 'normal', display: 'block', file: 'FiraCode-Regular.woff2', format: 'woff2' },
+  { family: fira, weight: 700, style: 'normal', display: 'block', file: 'FiraCode-Bold.woff2', format: 'woff2' },
 ];
 
-describe('@font-face declarations (UI-010, UI-011, UI-014)', () => {
-  it('declares exactly the six faces the design uses, each with its file', () => {
+describe('@font-face declarations (UI-010, UI-011, UI-014, UI-020)', () => {
+  it('declares exactly the eight faces the design uses, each with its file', () => {
     expect([...parseFontFaces(fontsCss)].sort(byFace)).toEqual([...expectedFaces].sort(byFace));
   });
 
@@ -86,10 +92,13 @@ describe('@font-face declarations (UI-010, UI-011, UI-014)', () => {
 });
 
 describe('bundled font files (UI-022)', () => {
-  it('pins every lock entry to the nerd-fonts commit', () => {
+  it('pins every lock entry to the nerd-fonts commit or the Fira Code release', () => {
     expect(lock.commit).toBe(pinnedCommit);
+    expect(lock.firaCodeRelease).toBe(firaCodeRelease);
+    const pins = [`/ryanoasis/nerd-fonts/${pinnedCommit}/`, `/tonsky/FiraCode/releases/download/${firaCodeRelease}/`, `/tonsky/FiraCode/${firaCodeRelease}/`];
     for (const entry of lock.files) {
-      expect(entry.url, entry.file).toContain(`/nerd-fonts/${pinnedCommit}/`);
+      expect(entry.url.startsWith('https://'), entry.file).toBe(true);
+      expect(pins.some((pin) => entry.url.includes(pin)), entry.file).toBe(true);
     }
   });
 
@@ -142,6 +151,15 @@ describe('fonts load from the application package (UI-017)', () => {
     }
   });
 
+  it('UI-020: global.css points each role’s token at every typeface but the default', () => {
+    for (const typeface of TYPEFACES.filter((each) => each.id !== DEFAULT_TYPEFACE)) {
+      for (const role of TEXT_ROLES) {
+        const rule = new RegExp(`:root\\[data-font-${role.id}="${typeface.id}"\\]\\s*\\{\\s*--font-${role.id}: var\\(--font-${role.id}-${typeface.id}\\);\\s*\\}`);
+        expect(stripComments(globalCss), `${role.id} ${typeface.id}`).toMatch(rule);
+      }
+    }
+  });
+
   it('imports tokens.css and then fonts.css from global.css', () => {
     const imports = [...stripComments(globalCss).matchAll(/@import\s+["']([^"']+)["']\s*;/g)].map((m) => m[1]);
     expect(imports).toEqual(['./tokens.css', './fonts.css']);
@@ -149,7 +167,7 @@ describe('fonts load from the application package (UI-017)', () => {
 });
 
 describe('font licences (UI-018)', () => {
-  for (const licence of ['LICENSE-OpenDyslexic.txt', 'LICENSE-SymbolsNerdFont.txt', 'LICENSE-NerdFonts.txt']) {
+  for (const licence of ['LICENSE-OpenDyslexic.txt', 'LICENSE-SymbolsNerdFont.txt', 'LICENSE-NerdFonts.txt', 'LICENSE-FiraCode.txt']) {
     it(`ships ${licence} as a non-empty file`, () => {
       const path = `${fontsDir}${licence}`;
       expect(existsSync(path)).toBe(true);

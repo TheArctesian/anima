@@ -258,3 +258,15 @@ it('D-4: outside the desktop app the layout does not go to /sign-in', async () =
   await vi.advanceTimersByTimeAsync(0);
   expect(router.goto).not.toHaveBeenCalled();
 });
+
+it('UI-020: the layout applies the stored fonts before the page shows, and Fira Code when nothing is stored', () => {
+  localStorage.setItem('anima.typeface.ui', 'opendyslexic');
+  onTestFinished(() => {
+    localStorage.clear();
+    delete document.documentElement.dataset['fontUi'];
+    delete document.documentElement.dataset['fontMono'];
+  });
+  show();
+  expect(document.documentElement.dataset['fontUi']).toBe('opendyslexic');
+  expect(document.documentElement.dataset['fontMono']).toBe('fira-code');
+});

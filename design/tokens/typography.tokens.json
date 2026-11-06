@@ -4,20 +4,37 @@
       "$type": "fontFamily",
       "ui": {
         "$value": [
+          "Fira Code",
+          "system-ui",
+          "-apple-system",
+          "sans-serif"
+        ],
+        "$description": "Interface text, the default typeface (UI-010); the system font is the fallback (UI-020)"
+      },
+      "mono": {
+        "$value": [
+          "Fira Code",
+          "ui-monospace",
+          "monospace"
+        ],
+        "$description": "IP addresses, host names, code, the default typeface (UI-011)"
+      },
+      "ui-opendyslexic": {
+        "$value": [
           "OpenDyslexic Nerd Font Propo",
           "system-ui",
           "-apple-system",
           "sans-serif"
         ],
-        "$description": "Interface text (UI-010); the system font is the fallback (UI-020)"
+        "$description": "Interface text when the operator chooses OpenDyslexic (UI-020)"
       },
-      "mono": {
+      "mono-opendyslexic": {
         "$value": [
           "OpenDyslexicM Nerd Font Mono",
           "ui-monospace",
           "monospace"
         ],
-        "$description": "Terminal, IP addresses, host names, code (UI-011)"
+        "$description": "IP addresses, host names, code when the operator chooses OpenDyslexic (UI-020)"
       },
       "icon": {
         "$value": [
