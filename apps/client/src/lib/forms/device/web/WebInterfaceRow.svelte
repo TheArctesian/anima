@@ -18,7 +18,8 @@
   }
 
   const { saved, rowKey, onSave, onDelete, onCancel }: Props = $props();
-  // svelte-ignore state_referenced_locally -- the row starts from the stored interface and then holds the operator's edits
+  // The row starts from the stored interface and then holds the operator's edits.
+  // svelte-ignore state_referenced_locally
   let values = $state(webValuesFrom(saved));
   let errors = $state<FieldError[]>([]);
   let busy = $state(false);
