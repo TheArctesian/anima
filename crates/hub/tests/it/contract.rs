@@ -28,6 +28,15 @@ pub struct Declaration {
     variants: Option<Variants>,
 }
 
+impl Declaration {
+    /// The member names the hub must serve today: those K1 does not mark `@pending` (P2-002).
+    pub fn served_members(&self) -> impl Iterator<Item = &String> {
+        self.members
+            .keys()
+            .filter(|member| !self.pending.members.contains(*member))
+    }
+}
+
 /// Every named declaration of an SDL document, by name. Directive definitions appear as
 /// `@name`.
 pub type Schema = BTreeMap<String, Declaration>;
