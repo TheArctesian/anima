@@ -1,4 +1,5 @@
 import { normalizeHost } from '$lib/forms/device/host';
+import type { PendingCheckConfigInput } from '$lib/forms/hub-pending';
 import type { CheckConfigInput, HttpAuthInput, HttpConfigInput } from './hub-types';
 import { probeInput } from '../probes/config-input';
 import { toNumber } from './range';
@@ -51,8 +52,11 @@ function httpInput(http: CheckFormValues['http']): HttpConfigInput {
   };
 }
 
-/** The `@oneOf` config of `values.type`; settings of the other types are ignored. */
-export function configInput(values: CheckFormValues): CheckConfigInput {
+/**
+ * The `@oneOf` config of `values.type`; settings of the other types are ignored. The Phase 2 types
+ * are not in the generated input yet (D-1), so their config is typed through the cast below.
+ */
+export function configInput(values: CheckFormValues): CheckConfigInput & PendingCheckConfigInput {
   switch (values.type) {
     case 'ICMP':
       return { icmp: { timeoutMs: toNumber(values.icmp.timeoutMs), ipVersion: values.icmp.ipVersion } };
@@ -81,7 +85,7 @@ export function configInput(values: CheckFormValues): CheckConfigInput {
     case 'GROUP':
       return { group: { childIds: [...values.group.childIds].sort() } };
     default:
-      return probeInput(values, values.type);
+      return probeInput(values, values.type) as CheckConfigInput & PendingCheckConfigInput;
   }
 }
 

@@ -1,3 +1,5 @@
+import type { PendingCheckConfigInput } from '$lib/forms/hub-pending';
+import type { UpdateCheckInput } from '../model/hub-types';
 import { describe, expect, it } from 'vitest';
 import { fresh, saved } from '../check.fixture';
 import { configChanged, configInput } from '../model/config-input';
@@ -5,6 +7,8 @@ import { createCheckInput, updateCheckInput } from '../model/input';
 import { validateCheck } from '../model/validate';
 import { checkValues } from '../model/values';
 
+/** The update input is typed by the generated schema, which has no SNMP config yet (D-1). */
+const sentSnmp = (input: UpdateCheckInput) => (input.config as PendingCheckConfigInput | undefined)?.snmp;
 const fields = (errors: readonly { field: string }[]) => errors.map((error) => error.field);
 
 const SNMP_SAVED = saved('SNMP', {
@@ -152,7 +156,7 @@ describe('SEC-005: SNMP secrets on edit', () => {
   it('a changed OID sends the whole config with the secrets empty (keep)', () => {
     const values = edit();
     values.snmp.oid = '1.3.6.1.2.1.1.5.0';
-    expect(updateCheckInput(edit(), values).config?.snmp).toMatchObject({ authPassword: '', privacyPassword: '', username: 'monitor' });
+    expect(sentSnmp(updateCheckInput(edit(), values))).toMatchObject({ authPassword: '', privacyPassword: '', username: 'monitor' });
   });
 
   it('switching the version asks for the new version\'s secrets', () => {
@@ -165,6 +169,6 @@ describe('SEC-005: SNMP secrets on edit', () => {
     const values = edit();
     values.snmp.authPassword = 'new-secret';
     expect(configChanged(edit(), values)).toBe(true);
-    expect(updateCheckInput(edit(), values).config?.snmp?.authPassword).toBe('new-secret');
+    expect(sentSnmp(updateCheckInput(edit(), values))?.authPassword).toBe('new-secret');
   });
 });
