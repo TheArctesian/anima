@@ -1,6 +1,7 @@
 import { easeCurve, springCurve } from '$lib/motion/animate';
 import { modeTokens, springMotion } from '$lib/motion/options';
 import { motionPreference, type MotionPreference } from '$lib/motion/preference';
+import { firstDirection, scaledFade } from '$lib/motion/roles/path';
 import type { RoleTransition } from '$lib/motion/roles/transitions';
 import type { Origin } from '../tabs';
 
@@ -15,8 +16,6 @@ interface Path {
   readonly atZero: number;
   readonly origin?: string;
 }
-
-const opacity = (t: number) => `opacity: ${String(t)};`;
 
 /** A closing tab shrinks to nothing about its own centre, in its place in the strip (5.7.3). */
 const closing: Path = { atZero: 0 };
@@ -48,9 +47,7 @@ function opening(origin: Origin, tab: DOMRectReadOnly): Path {
 
 /** The style at progress `t` along `path`; with no path, a fade only. */
 function draw(path: Path | null) {
-  if (path === null) return opacity;
-  const at = path.origin === undefined ? '' : ` transform-origin: ${path.origin};`;
-  return (t: number) => `${opacity(t)} scale: ${String(path.atZero + (1 - path.atZero) * t)};${at}`;
+  return scaledFade(path?.atZero, path?.origin);
 }
 
 /**
@@ -61,9 +58,8 @@ function draw(path: Path | null) {
  */
 export function grow(node: Element, { origin, preference = motionPreference() }: GrowParams): RoleTransition {
   const { reduced } = preference;
-  // Unset until the first direction; `null` once fixed is a fade only, so it is kept too.
-  let fixed: { readonly path: Path | null } | undefined;
-  const first = (path: () => Path | null) => (fixed ??= { path: path() }).path;
+  // `null` once fixed is a fade only, so it is kept too.
+  const first = firstDirection<Path | null>();
   return ({ direction } = {}) => {
     if (direction === 'out') {
       const css = draw(first(() => (reduced ? null : closing)));

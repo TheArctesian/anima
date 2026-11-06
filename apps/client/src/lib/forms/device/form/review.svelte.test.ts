@@ -196,3 +196,11 @@ it('D-4: a test result does not outlive a successful save', async () => {
 
   expect(status()).toBe('');
 });
+
+it('Settings tab: outside a modal, Cancel and Save stay at the end of the form, after the sections', () => {
+  show(SAVED);
+
+  const form = document.querySelector('form');
+  expect(form?.lastElementChild?.contains(button('Save'))).toBe(true);
+  expect(form?.contains(button('Cancel'))).toBe(true);
+});

@@ -53,7 +53,7 @@
 
   /**
    * What the section's change of height can move: the elements after it and after each of its
-   * ancestors, up to the nearest scroll container (a modal's surface) or the body. A form section
+   * ancestors, up to the nearest scroll container (a modal's body) or the page's body. A form section
    * moves the form's actions and whatever follows the form, such as the Settings tab's delete block.
    */
   function below(): Animatable[] {
@@ -64,27 +64,52 @@
     return found;
   }
 
+  /** The nearest scroll container around the section, such as a modal's body; null for the page. */
+  function scroller(): HTMLElement | null {
+    for (let node = root?.parentElement ?? null; node && node !== document.body; node = node.parentElement) {
+      if (scrolls(node)) return node;
+    }
+    return null;
+  }
+
   /**
-   * The measured elements whose place on screen changed. The others keep any motion in flight and get
-   * no `translate`, which would make a container the containing block of its fixed children.
+   * The scroll container's own children. When a closing section makes the container shorter than its
+   * scroll position allows, the browser moves the position back and all of them with it; measured, they
+   * spring from where they were, with the clicked control, instead of stepping in one frame.
+   */
+  function scrollerChildren(): Animatable[] {
+    return [...(scroller()?.children ?? [])].filter((child) => child instanceof HTMLElement);
+  }
+
+  /**
+   * The measured elements whose place on screen changed, and those inside one of them: an element that
+   * stayed put while its container moved needs a `translate` of its own, or the container's would carry
+   * it away (a row below a closed section, when the scroll position moved back by the section's height).
+   * The others keep any motion in flight and get no `translate`, which would make a container the
+   * containing block of its fixed children.
    */
   function moved(first: Places): Places {
-    return new Map(
-      [...first].filter(([element, before]) => {
-        const after = element.getBoundingClientRect();
-        return after.top !== before.top || after.left !== before.left;
-      }),
+    const changed = new Set(
+      [...first]
+        .filter(([element, before]) => {
+          const after = element.getBoundingClientRect();
+          return after.top !== before.top || after.left !== before.left;
+        })
+        .map(([element]) => element),
     );
+    const carried = (element: Animatable) => [...changed].some((outer) => outer !== element && outer.contains(element));
+    return new Map([...first].filter(([element]) => changed.has(element) || carried(element)));
   }
 
   /**
    * Disclosure (5.7.3): the content fades, and what lies below moves by FLIP on `spring-default`
    * instead of animating a height (MOT-006). On close the content leaves the layout at once (it is
    * held in place and fades out), so the FLIP is measured after it left and nothing snaps at the end.
-   * Under reduced motion the layout change is instant and the fade takes `duration-base`.
+   * Under reduced motion the layout change is instant and the fade takes `duration-base`. A scroll
+   * position the browser moves back when the content gets shorter is part of the same motion.
    */
   async function toggle(): Promise<void> {
-    const first = measure(below());
+    const first = measure([...below(), ...scrollerChildren()]);
     if (open) {
       open = false;
       leaving = true;
@@ -95,7 +120,10 @@
       // If it was reopened meanwhile, the effect above puts `present` back at once. A reopen from
       // outside (a form showing an error) did not run the open path, so undo the fade here.
       leaving = false;
+      const held = measure(scrollerChildren());
       present = false;
+      await tick();
+      flip(moved(held), { spring: 'default', preference });
       if (open && region) {
         region.style.top = '';
         animate(region, { opacity: 1 }, { type: 'instant' });
@@ -139,8 +167,15 @@
 </div>
 
 <style>
+  /*
+   * Layout containment: the content that fades out after a close, held in place below the section, does
+   * not keep a scroll container's extent. The container gets shorter at the close itself, so a scroll
+   * position moved back is undone by the same FLIP; if the fading content set the extent, the FLIP's
+   * own translate would shorten it again and the content would step.
+   */
   .disclosure {
     position: relative;
+    contain: layout;
   }
 
   .heading {
