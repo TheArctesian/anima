@@ -47,6 +47,8 @@ fn web_001_refuses_every_bad_url_shape_on_the_url_field() {
         "https://nas.lan/a b",
         "https://nas.lan/\nx",
         "https://nas.\tlan/",
+        "http://@nas.lan/",
+        "http://:@nas.lan/",
         long.as_str(),
     ] {
         let errors = validate(&input(None, bad)).err().unwrap_or_default();
@@ -56,6 +58,23 @@ fn web_001_refuses_every_bad_url_shape_on_the_url_field() {
             !errors[0].message.contains("pw@"),
             "no input in the message"
         );
+    }
+}
+
+#[test]
+fn web_001_refuses_invisible_format_characters_in_a_url() {
+    for c in [
+        '\u{200b}',
+        '\u{202e}',
+        '\u{feff}',
+        '\u{2060}',
+        '\u{ad}',
+        '\u{e0041}',
+    ] {
+        let url = format!("https://nas{c}.lan/");
+        let errors = validate(&input(None, &url)).err().unwrap_or_default();
+        assert_eq!(errors.len(), 1, "{c:?}");
+        assert_eq!(errors[0].field, "url");
     }
 }
 

@@ -16,7 +16,7 @@ mod tests;
 use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
-use sqlx::{PgConnection, PgPool};
+use sqlx::{Connection, PgConnection, PgPool};
 use uuid::Uuid;
 
 use crate::{
@@ -196,7 +196,10 @@ pub async fn accept_suggestion(
         open_in: OpenIn::AnimaTab,
     };
     let new = rules::validate(&input).map_err(Error::Validation)?;
-    let existing = store::for_devices(&mut *conn, &[device]).await?;
+    // The device lock serialises accepts; it lasts to the end of the caller's transaction.
+    let mut tx = conn.begin().await?;
+    store::lock_device(&mut tx, device).await?;
+    let existing = store::for_devices(&mut *tx, &[device]).await?;
     if let Some(interface) = existing
         .into_iter()
         .find(|interface| suggestion::same_url(&interface.url, &new.url))
@@ -206,7 +209,8 @@ pub async fn accept_suggestion(
             created: false,
         });
     }
-    let interface = store::insert(conn, born(device, now), &new).await?;
+    let interface = store::insert(&mut tx, born(device, now), &new).await?;
+    tx.commit().await?;
     Ok(Accepted {
         interface,
         created: true,
@@ -230,7 +234,9 @@ pub async fn dismiss_suggestion(
 }
 
 /// Pins the certificate of an `https` interface, replacing an earlier pin (D-5). Returns the
-/// interface with its new pin.
+/// interface with its new pin. The interface row stays locked from the check to the pin, so a
+/// concurrent update cannot move it to another origin in between; inside the caller's
+/// transaction the lock lasts to its end.
 ///
 /// # Errors
 /// `NotFound` when there is no such interface; `Validation` (`fingerprintSha256`) when the
@@ -240,7 +246,8 @@ pub async fn accept_certificate(
     id: WebInterfaceId,
     acceptance: Acceptance<'_>,
 ) -> Result<WebInterface, Error> {
-    let interface = store::get(&mut *conn, id).await?;
+    let mut tx = conn.begin().await?;
+    let interface = store::get_locked(&mut tx, id).await?;
     let fingerprint =
         rules::fingerprint(acceptance.fingerprint).map_err(|e| Error::Validation(vec![e]))?;
     if !rules::is_https(&interface.url) {
@@ -253,7 +260,8 @@ pub async fn accept_certificate(
         fingerprint,
         at: acceptance.at,
     };
-    store::set_pin(conn, id, &pin, acceptance.operator).await?;
+    store::set_pin(&mut tx, id, &pin, acceptance.operator).await?;
+    tx.commit().await?;
     Ok(WebInterface {
         pin: Some(pin),
         ..interface

@@ -332,3 +332,49 @@ db_test! {
         web_interfaces::delete(&mut conn, id).await.unwrap();
     }
 }
+
+db_test! {
+    async fn web_008_a_pin_cannot_land_on_an_interface_moved_to_http_meanwhile(pool: PgPool) {
+        add_operator(&pool).await;
+        let mut setup = pool.acquire().await.unwrap();
+        let id = make(&mut setup, "https://pve.lan/").await;
+        drop(setup);
+
+        let mut mover = pool.begin().await.unwrap();
+        web_interfaces::update(&mut mover, id, &input("http://evil.lan/")).await.unwrap();
+        let racer = pool.clone();
+        let accept = tokio::spawn(async move {
+            let mut conn = racer.acquire().await.unwrap();
+            web_interfaces::accept_certificate(&mut conn, id, acceptance(HEX)).await
+        });
+        tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+        assert!(!accept.is_finished(), "the accept waits for the row lock");
+        mover.commit().await.unwrap();
+
+        assert!(matches!(accept.await.unwrap(), Err(Error::Validation(_))));
+        assert_eq!(count(&pool, "pins").await, 0);
+    }
+}
+
+db_test! {
+    async fn web_002_two_concurrent_accepts_create_one_interface(pool: PgPool) {
+        let mut first = pool.begin().await.unwrap();
+        let one = web_interfaces::accept_suggestion(&pool, &mut first, check(HTTP_CHECK), now())
+            .await
+            .unwrap();
+        let racer = pool.clone();
+        let second = tokio::spawn(async move {
+            let mut conn = racer.acquire().await.unwrap();
+            web_interfaces::accept_suggestion(&racer, &mut conn, check(HTTP_CHECK), now()).await
+        });
+        tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+        assert!(!second.is_finished(), "the second accept waits for the device lock");
+        first.commit().await.unwrap();
+
+        let two = second.await.unwrap().unwrap();
+        assert!(one.created);
+        assert!(!two.created);
+        assert_eq!(two.interface.id, one.interface.id);
+        assert_eq!(count(&pool, "interfaces").await, 1);
+    }
+}
