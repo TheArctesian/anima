@@ -63,7 +63,7 @@ describe('edit round trip', () => {
     [saved('TLS', { __typename: 'TlsConfig', port: 8443, serverName: 'a.example', timeoutMs: 5000 }), { tls: { port: 8443, serverName: 'a.example', timeoutMs: 5000 } }],
     [saved('DNS', { __typename: 'DnsConfig', name: 'a.example', recordType: 'MX', resolver: '1.1.1.1', expected: null }), { dns: { name: 'a.example', recordType: 'MX', resolver: '1.1.1.1' } }],
     [saved('PUSH', { __typename: 'PushConfig', pushPath: '/push/abc' }), { push: true }],
-    [saved('GROUP', { __typename: 'GroupConfig', children: [{ id: 'b' }, { id: 'a' }] }), { group: { childIds: ['a', 'b'] } }],
+    [saved('GROUP', { __typename: 'GroupConfig', children: [{ id: 'b', name: 'b' }, { id: 'a', name: 'a' }] }), { group: { childIds: ['a', 'b'] } }],
   ] as const)('CHK-009: a saved %s check gives back its own config and no changes', (check, config) => {
     const initial = checkValues(check, 'ICMP');
     expect(configInput(initial)).toEqual(config);
@@ -127,7 +127,7 @@ describe('group children', () => {
   });
 
   it('CHK-009: a saved group lists its children, sorted, in the input', () => {
-    const check = saved('GROUP', { __typename: 'GroupConfig', children: [{ id: 'z' }, { id: 'a' }] });
+    const check = saved('GROUP', { __typename: 'GroupConfig', children: [{ id: 'z', name: 'z' }, { id: 'a', name: 'a' }] });
     expect(configInput(checkValues(check, 'ICMP'))).toEqual({ group: { childIds: ['a', 'z'] } });
     expect(siblingOf(check)).toEqual({ id: 'chk-1', name: 'check', type: 'GROUP', childIds: ['z', 'a'] });
   });
