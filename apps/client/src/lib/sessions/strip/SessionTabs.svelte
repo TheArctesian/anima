@@ -185,8 +185,8 @@
     display: inline-flex;
     flex: none;
     align-items: center;
-    /* Never wider than the strip's visible box, so a long name cannot push the close button out of it. */
-    max-inline-size: min(calc(var(--space-16) * 4), 100%);
+    /* One width for every tab, never wider than the strip's visible box, so a title cannot move the tab or push the close button out (MOT-007). */
+    inline-size: min(calc(var(--space-16) * 4), 100%);
     border-radius: var(--radius-md);
     background: var(--surface);
     touch-action: none;
