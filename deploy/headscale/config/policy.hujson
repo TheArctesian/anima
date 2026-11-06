@@ -38,8 +38,10 @@
     {"src": ["tag:site-home"], "dst": ["site-home"], "ip": ["*"]},
     {"src": ["tag:site-office1"], "dst": ["site-office1"], "ip": ["*"]},
     {"src": ["tag:site-office2"], "dst": ["site-office2"], "ip": ["*"]},
-    // The hub reaches a client the operator added as a device, on SSH only (R-061).
-    {"src": ["tag:hub"], "dst": ["device-stephens-mac"], "ip": ["tcp:22"]},
+    // The hub reaches a client the operator added as a device on SSH and VNC (Screen
+    // Sharing), TCP only (R-061). Each RDP or VNC client device gets one host entry and
+    // one grant like this, from tag:hub only.
+    {"src": ["tag:hub"], "dst": ["device-stephens-mac"], "ip": ["tcp:22", "tcp:5900"]},
     // No other grant targets a client address: devices, routers and the hub cannot start
     // a connection to any other client; replies to permitted connections still flow.
   ],
@@ -66,8 +68,8 @@
     {
       "src": "tag:hub",
       "proto": "tcp",
-      "accept": ["10.10.0.5:161", "10.20.0.5:22", "10.30.0.5:5900", "100.64.0.2:22"],
-      "deny": ["operator@:443", "100.64.0.2:5900"],
+      "accept": ["10.10.0.5:161", "10.20.0.5:22", "10.30.0.5:5900", "100.64.0.2:22", "100.64.0.2:5900"],
+      "deny": ["operator@:443", "100.64.0.2:3389"],
     },
     {"src": "tag:hub", "deny": ["operator@:53", "100.64.0.2:3389"]},
   ],

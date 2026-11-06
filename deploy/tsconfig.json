@@ -11,5 +11,5 @@
     "skipLibCheck": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["test", "release"]
+  "include": ["test", "release", "localapi"]
 }
