@@ -1,7 +1,8 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import { crossFade, modal } from '$lib/motion/roles/transitions';
-  import { clickedControl, initialFocusIn, openerOf, trapTab } from './focus';
+  import { initialFocusIn, trapTab } from './focus';
+  import { takeOpener, watchClicks } from './opener';
 
   interface Props {
     open: boolean;
@@ -14,23 +15,13 @@
   const { open, title, onClose, children }: Props = $props();
   const titleId = $props.id();
 
-  /** The control of the latest click, for WebKit, where a clicked button does not take the focus. */
-  let clicked: HTMLElement | null = null;
-
-  $effect(() => {
-    const record = (event: MouseEvent) => {
-      clicked = clickedControl(event.target);
-    };
-    document.addEventListener('click', record, { capture: true });
-    return () => {
-      document.removeEventListener('click', record, { capture: true });
-    };
-  });
+  // The click that opens the dialog comes before `open`, so clicks are watched while it is closed too.
+  $effect(watchClicks);
 
   // The opener is read before the dialog is in the DOM; focus goes back to it as soon as `open` is false.
   $effect.pre(() => {
     if (!open) return;
-    const opener = openerOf(document.activeElement, clicked);
+    const opener = takeOpener(document.activeElement);
     return () => {
       opener?.focus();
     };

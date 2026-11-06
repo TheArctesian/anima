@@ -1,4 +1,4 @@
-const FOCUSABLE = 'a[href], button, input:not([type="hidden"]), select, textarea, [tabindex]';
+export const FOCUSABLE = 'a[href], button, input:not([type="hidden"]), select, textarea, [tabindex]';
 
 function reachable(element: HTMLElement): boolean {
   return (
@@ -9,11 +9,23 @@ function reachable(element: HTMLElement): boolean {
   );
 }
 
-/** A radio button that is not its group's Tab stop: the group is one stop, at its checked button or else its first. */
-function inactiveRadio(element: HTMLElement, all: readonly HTMLElement[], active: Element | null): boolean {
-  if (!(element instanceof HTMLInputElement) || element.type !== 'radio' || element.name === '') return false;
-  const group = all.filter((other) => other instanceof HTMLInputElement && other.type === 'radio' && other.name === element.name);
-  const stop = group.find((radio) => radio === active) ?? group.find((radio) => (radio as HTMLInputElement).checked) ?? group[0];
+function radioGroup(element: HTMLElement, all: readonly HTMLElement[]): HTMLInputElement[] | null {
+  if (!(element instanceof HTMLInputElement) || element.type !== 'radio' || element.name === '') return null;
+  return all.filter(
+    (other): other is HTMLInputElement =>
+      other instanceof HTMLInputElement && other.type === 'radio' && other.name === element.name && other.form === element.form,
+  );
+}
+
+/**
+ * A radio button that is not its group's Tab stop. The group is one stop: the focused button, else the
+ * checked one, else the first (the last when Tab goes backwards), as in the browser.
+ */
+function inactiveRadio(element: HTMLElement, all: readonly HTMLElement[], active: Element | null, backwards: boolean): boolean {
+  const group = radioGroup(element, all);
+  if (group === null) return false;
+  const edge = backwards ? group.at(-1) : group[0];
+  const stop = group.find((radio) => radio === active) ?? group.find((radio) => radio.checked) ?? edge;
   return element !== stop;
 }
 
@@ -21,9 +33,9 @@ function inactiveRadio(element: HTMLElement, all: readonly HTMLElement[], active
  * The elements inside `root` that Tab stops on, in document order. A hidden, inert or disabled
  * element is left out, and a group of radio buttons is one stop, as in the browser.
  */
-export function focusableIn(root: HTMLElement, active: Element | null = document.activeElement): HTMLElement[] {
+export function focusableIn(root: HTMLElement, active: Element | null = document.activeElement, backwards = false): HTMLElement[] {
   const all = [...root.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(reachable);
-  return all.filter((element) => !inactiveRadio(element, all, active));
+  return all.filter((element) => !inactiveRadio(element, all, active, backwards));
 }
 
 /**
@@ -48,9 +60,9 @@ export function initialFocusIn(dialog: HTMLElement): HTMLElement {
  * focus (one not rendered) is passed over. Returns whether it handled the event.
  */
 export function trapTab(event: KeyboardEvent, dialog: HTMLElement): boolean {
-  if (event.key !== 'Tab') return false;
+  if (event.key !== 'Tab' || event.ctrlKey || event.altKey || event.metaKey) return false;
   event.preventDefault();
-  const stops = focusableIn(dialog);
+  const stops = focusableIn(dialog, document.activeElement, event.shiftKey);
   const tried = new Set<HTMLElement>();
   let target = tabTarget(stops, document.activeElement, event.shiftKey);
   while (target !== null && !tried.has(target)) {
@@ -61,19 +73,4 @@ export function trapTab(event: KeyboardEvent, dialog: HTMLElement): boolean {
   }
   dialog.focus();
   return true;
-}
-
-/** The control a click landed on, if any: the focusable element at or around its target. */
-export function clickedControl(target: EventTarget | null): HTMLElement | null {
-  return target instanceof Element ? target.closest<HTMLElement>(FOCUSABLE) : null;
-}
-
-/**
- * The control that opened a dialog, for focus to go back to. WebKit does not focus a button on click,
- * so `active` is then the body or a container around the button; the clicked control is taken when it
- * is inside `active` (or is it), else `active` (a dialog opened from the keyboard or by the app).
- */
-export function openerOf(active: Element | null, clicked: HTMLElement | null): HTMLElement | null {
-  if (clicked?.isConnected === true && (active === null || active.contains(clicked))) return clicked;
-  return active instanceof HTMLElement ? active : null;
 }

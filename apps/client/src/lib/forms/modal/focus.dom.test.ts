@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it } from 'vitest';
-import { clickedControl, focusableIn, initialFocusIn, openerOf, trapTab } from './focus';
+import { focusableIn, initialFocusIn, trapTab } from './focus';
 
 afterEach(() => {
   document.body.replaceChildren();
@@ -14,8 +14,8 @@ function dialog(html: string): HTMLElement {
   return root;
 }
 
-function tab(root: HTMLElement, shiftKey = false): KeyboardEvent {
-  const event = new KeyboardEvent('keydown', { key: 'Tab', shiftKey, cancelable: true });
+function tab(root: HTMLElement, shiftKey = false, init: KeyboardEventInit = {}): KeyboardEvent {
+  const event = new KeyboardEvent('keydown', { key: 'Tab', shiftKey, cancelable: true, ...init });
   trapTab(event, root);
   return event;
 }
@@ -101,28 +101,49 @@ it('Modal: Tab in a dialog with no stops keeps the focus on the dialog', () => {
   expect(document.activeElement).toBe(root);
 });
 
-it('Modal: a clicked button that did not take the focus is the opener, not the panel around it', () => {
-  const panel = dialog('<span id="icon-host"><button id="delete"><span id="icon">x</span></button></span>');
-  const clicked = clickedControl(document.getElementById('icon'));
+it('Modal: Tab from the radio button the operator arrowed to leaves the group, even when that one is not checked', () => {
+  const root = dialog(`
+    <button id="before">Before</button>
+    <input type="radio" name="auth" id="password" checked />
+    <input type="radio" name="auth" id="key" />
+    <button id="after">After</button>`);
+  document.getElementById('key')?.focus();
 
-  expect(clicked?.id).toBe('delete');
-  expect(openerOf(panel, clicked)?.id).toBe('delete');
-  expect(openerOf(document.body, clicked)?.id).toBe('delete');
+  tab(root);
+
+  expect(document.activeElement?.id).toBe('after');
 });
 
-it('Modal: a dialog opened while focus is elsewhere returns the focus there, not to an older click', () => {
-  const root = dialog('<button id="old">Old</button><input id="field" />');
-  const field = document.getElementById('field') as HTMLElement;
+it('Modal: with no radio button checked, Tab enters the group at its first and Shift+Tab at its last', () => {
+  const root = dialog(`
+    <button id="before">Before</button>
+    <input type="radio" name="auth" id="password" />
+    <input type="radio" name="auth" id="key" />
+    <button id="after">After</button>`);
+  document.getElementById('before')?.focus();
+  tab(root);
+  expect(document.activeElement?.id).toBe('password');
 
-  expect(openerOf(field, clickedControl(document.getElementById('old')))).toBe(field);
-  expect(openerOf(root, null)).toBe(root);
+  document.getElementById('after')?.focus();
+  tab(root, true);
+  expect(document.activeElement?.id).toBe('key');
 });
 
-it('Modal: a clicked control that left the document is not the opener', () => {
-  const root = dialog('<button id="gone">Gone</button>');
-  const clicked = clickedControl(document.getElementById('gone'));
-  clicked?.remove();
+it('Modal: radio buttons with one name in two forms are two groups', () => {
+  const root = dialog(`
+    <form><input type="radio" name="mode" id="first-form" /></form>
+    <form><input type="radio" name="mode" id="second-form" /></form>`);
 
-  expect(openerOf(root, clicked)).toBe(root);
-  expect(clickedControl(document.body)).toBeNull();
+  expect(ids(focusableIn(root))).toEqual(['first-form', 'second-form']);
+});
+
+it('Modal: Tab with Ctrl, Alt or Meta is left to the browser and the system', () => {
+  const root = dialog('<button id="a">A</button><button id="b">B</button>');
+  document.getElementById('a')?.focus();
+
+  for (const modifier of ['ctrlKey', 'altKey', 'metaKey'] as const) {
+    const event = tab(root, false, { [modifier]: true });
+    expect(event.defaultPrevented).toBe(false);
+    expect(document.activeElement?.id).toBe('a');
+  }
 });

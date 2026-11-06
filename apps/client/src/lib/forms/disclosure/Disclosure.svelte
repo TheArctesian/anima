@@ -47,13 +47,20 @@
     return found;
   }
 
+  function scrolls(node: Element): boolean {
+    return ['auto', 'scroll'].includes(getComputedStyle(node).overflowY);
+  }
+
   /**
    * What the section's change of height can move: the elements after it and after each of its
-   * ancestors, up to the body. A form section moves the form's actions and whatever follows the form.
+   * ancestors, up to the nearest scroll container (a modal's surface) or the body. A form section
+   * moves the form's actions and whatever follows the form, such as the Settings tab's delete block.
    */
   function below(): Animatable[] {
     const found: Animatable[] = [];
-    for (let node: HTMLElement | null = root ?? null; node && node !== document.body; node = node.parentElement) found.push(...followers(node));
+    for (let node: HTMLElement | null = root ?? null; node && node !== document.body && !scrolls(node); node = node.parentElement) {
+      found.push(...followers(node));
+    }
     return found;
   }
 

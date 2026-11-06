@@ -192,6 +192,25 @@ it('Modal: Tab reaches every button of the dialog in order, not only the two end
   expect(order).toEqual(['Cancel', 'Delete nas', 'Cancel']);
 });
 
+it('Modal: mounted dialogs, open or closed, share one click listener, and it is gone after they unmount', () => {
+  const add = vi.spyOn(document, 'addEventListener');
+  const remove = vi.spyOn(document, 'removeEventListener');
+  const clicks = (spy: typeof add) => spy.mock.calls.filter(([type, , options]) => type === 'click' && typeof options === 'object' && options.capture === true).length;
+  const props = { open: false, title: 'Delete nas?', body: 'Gone.', confirmLabel: 'Delete nas', onConfirm: () => Promise.resolve(OK), onCancel: () => undefined };
+  const first = mount(ConfirmModal, { target: document.body, props });
+  const second = mount(ConfirmModal, { target: document.body, props: { ...props, open: true } });
+  flushSync();
+  expect(clicks(add)).toBe(1);
+
+  void unmount(first);
+  void unmount(second);
+  flushSync();
+
+  expect(clicks(remove)).toBe(1);
+  add.mockRestore();
+  remove.mockRestore();
+});
+
 it('Modal, MOT-042: closing uses no timer', () => {
   const timers = vi.spyOn(globalThis, 'setTimeout');
   opener();
