@@ -49,7 +49,7 @@ it('UI-020: choosing OpenDyslexic for the interface changes only the interface f
   const target = show();
   choose(select(target, 'Interface font'), 'opendyslexic');
   expect(document.documentElement.dataset).toMatchObject({ fontUi: 'opendyslexic', fontMono: 'fira-code' });
-  await unmount(app);
+  if (app !== undefined) await unmount(app);
   app = undefined;
   document.body.innerHTML = '';
   const again = show();
@@ -67,4 +67,16 @@ it('UI-020: a storage that refuses to save still applies the font and says it wi
   expect(target.querySelector('[role="alert"]')?.textContent).toBe(
     'Anima could not save this choice on this device; it lasts until the app restarts.',
   );
+});
+
+it('UI-020: the "could not save" message goes once a later choice is saved', () => {
+  const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementationOnce(() => {
+    throw new Error('quota');
+  });
+  const target = show();
+  choose(select(target, 'Monospace font'), 'opendyslexic');
+  expect(target.querySelector('[role="alert"]')).not.toBeNull();
+  choose(select(target, 'Monospace font'), 'fira-code');
+  expect(setItem).toHaveBeenCalledTimes(2);
+  expect(target.querySelector('[role="alert"]')).toBeNull();
 });

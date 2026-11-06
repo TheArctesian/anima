@@ -227,7 +227,7 @@ Generated from `design/tokens/*.tokens.json` (TOK-001). Names follow contract K5
 
 | Token | CSS value | Use |
 | --- | --- | --- |
-| `font-ui` | `--font-ui: "Fira Code", system-ui, -apple-system, sans-serif` | Interface text, the default typeface (UI-010); the system font is the fallback (UI-020) |
+| `font-ui` | `--font-ui: "Fira Code", system-ui, -apple-system, sans-serif` | Interface text, the default typeface (UI-010); the system font is the fallback (UI-021) |
 | `font-mono` | `--font-mono: "Fira Code", ui-monospace, monospace` | IP addresses, host names, code, the default typeface (UI-011) |
 | `font-ui-opendyslexic` | `--font-ui-opendyslexic: "OpenDyslexic Nerd Font Propo", system-ui, -apple-system, sans-serif` | Interface text when the operator chooses OpenDyslexic (UI-020) |
 | `font-mono-opendyslexic` | `--font-mono-opendyslexic: "OpenDyslexicM Nerd Font Mono", ui-monospace, monospace` | IP addresses, host names, code when the operator chooses OpenDyslexic (UI-020) |
