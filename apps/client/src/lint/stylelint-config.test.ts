@@ -57,6 +57,8 @@ const bad: Record<string, string> = {
   'a primitive nord token with a fallback': 'a { background-color: var(--nord-10, var(--bg)); }',
   'an upper-case 0.2S duration in transition': 'a { transition: opacity 0.2S var(--ease); }',
   'an upper-case EASE keyword in transition': 'a { transition: opacity var(--d) EASE; }',
+  'a @keyframes rule': '@keyframes spin { to { opacity: 0; } }',
+  'a vendor @-webkit-keyframes rule': '@-webkit-keyframes spin { to { opacity: 0; } }',
 };
 
 const expectedRule: Record<string, string> = {
@@ -88,6 +90,8 @@ const expectedRule: Record<string, string> = {
   'a calc() of literals in a layer custom property': 'declaration-property-value-disallowed-list',
   'a primitive nord token in a colour': 'declaration-property-value-disallowed-list',
   'a primitive nord token in a custom property': 'declaration-property-value-disallowed-list',
+  'a @keyframes rule': 'at-rule-disallowed-list',
+  'a vendor @-webkit-keyframes rule': 'at-rule-disallowed-list',
 };
 
 describe('Stylelint token gate', () => {
@@ -106,6 +110,7 @@ describe('Stylelint token gate', () => {
     ['a raw cubic-bezier() curve', bad['a raw cubic-bezier() curve']],
     ['a raw z-index', bad['a raw z-index']],
     ['a raw font-family', bad['a raw font-family']],
+    ['a @keyframes rule', bad['a @keyframes rule']],
   ] as const) {
     it(`TOK-003 refuses ${name} in a .svelte <style>`, async () => {
       expect((await warnings(inSvelte(css), svelteFile)).length).toBeGreaterThan(0);

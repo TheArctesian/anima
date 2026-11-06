@@ -4,7 +4,7 @@ import { report } from "../src/report.ts";
 
 let ref: string;
 try {
-  ref = baseRefFrom(process.argv, "phase-1");
+  ref = baseRefFrom(process.argv, "phase-2");
 } catch (error) {
   if (!(error instanceof BaseRefError)) throw error;
   console.error(`baseline: ${error.message}`);
