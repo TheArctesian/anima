@@ -677,26 +677,46 @@ The engine freezes these contracts. An extension workflow uses them and does not
 - **ENG-012.** At the end of E0, the programme orchestrator must write one launch brief for each extension in `docs/programme/extensions/XP-NN.md`. A brief contains: the goal, the plan section, the owned paths, the contracts that it uses, the sources and keys, the acceptance criteria of Section 5.3, the gates and the builder models.
 - **ENG-013.** The operator starts each extension workflow from its launch brief. A workflow needs no other context.
 
+The engine and the grouped items are GitHub issues with the `extensions` label:
+
+| Issue | Item |
+| --- | --- |
+| #4 | E0-1: Regroup hub folders |
+| #5 | E0-2: Sources framework and Settings > Integrations |
+| #6 | E0-3: Collector and redaction |
+| #7 | E0-4: Timeline and record links |
+| #8 | E0-5: Places, file store and photo field reading |
+| #9 | E0-6: Vault and its security review |
+| #10 | E0-7: Reminder engine and ntfy delivery |
+| #11 | E0-8: Extension registry, nav groups and launch briefs |
+| #26 | SPEC: Approve the design spec changes (Section 1.2) |
+| #27 | OD-E1: Decide: where Class B data lives |
+| #28 | OD-E4: Decide: hosted vision model |
+| #29 | OD-E10: Decide: price source |
+| #30 | OD-E3: Check SimpleFIN coverage |
+| #31 | KEYS: Accounts, keys and setup checks (Section 9) |
+| #32 | SEAMS: Seam tasks (Section 5.4) |
+
 ### 5.2 Extension work packages
 
 Each extension owns only its paths. It adds one line to each registry of the engine (K-E1, K-E2, K-E7). The orchestrator of the workflow merges these registry lines.
 
-| ID | Extension | Section | Hub domain | Client | Other owned paths | Migrations | Tags |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| XP-01 | Map | 4.1 | `life/locations/` | `routes/map/`, `$lib/map/` | `providers/location/`, PMTiles and Photon in `deploy/` | 2100–2199 | — |
-| XP-02 | Projects | 4.2 | `work/projects/` | `routes/projects/`, `$lib/projects/` | `providers/{github,vercel,neon,hostinger,posthog}/` | 2200–2299 | security (tokens, PRJ-003) |
-| XP-03 | Writing | 4.3 | `work/writing/` | `routes/writing/`, `$lib/writing/` | `collector/obsidian/` | 2300–2399 | Part of E0 (ENG-010) |
-| XP-04 | Secrets | 4.4 | `vault/secrets/` | `routes/secrets/`, `$lib/secrets/` | `crates/anima-cli/` | 2400–2499 | security |
-| XP-05 | People | 4.6 | `life/people/` | `routes/people/`, `$lib/people/` | `collector/{contacts,imessage}/`, `providers/{instagram,x}/` | 2500–2599 | — |
-| XP-06 | Money | 4.7 | `life/money/` | `routes/money/`, `$lib/money/` | `providers/{wise,simplefin,gemini,coinbase,etherscan,ibkr}/`, statement parsers | 2600–2699 | security (financial data) |
-| XP-07 | History | 4.8 | `life/history/` (queries only) | `routes/history/`, `$lib/history/` | — | none | — |
-| XP-08 | Health | 4.9 | `life/health/` | `routes/health/`, `$lib/health/` | `providers/{strava,whoop,oura,garmin,apple_health,inbody}/`, `deploy/garmin-bridge/` | 2800–2899 | — |
-| XP-09 | Documents | 4.10 | `vault/identity_documents/` | `routes/documents/`, `$lib/documents/` | on-client extraction in `$lib/documents/` | 2900–2999 | security |
-| XP-10 | Reminders page | 4.11 | none (engine) | `routes/reminders/`, `$lib/reminders/` | — | none | — |
-| XP-11 | AI coding sessions | 4.12 | `work/assistant_sessions/` | `routes/ai-sessions/`, `$lib/assistant-sessions/` | `collector/{claude_code,codex}/`, `providers/chatgpt/` | 3100–3199 | security (redaction) |
-| XP-12 | Wardrobe | 4.13 | `life/belongings/wardrobe/` | `routes/wardrobe/`, `$lib/wardrobe/` | — | 3200–3299 | — |
-| XP-13 | Library | 4.14 | `life/belongings/library/` | `routes/library/`, `$lib/library/` | `providers/{open_library,goodreads,letterboxd,kindle}/` | 3300–3399 | — |
-| XP-14 | Project design and map | 4.2.1 | `work/projects/design/` | `$lib/projects/design/`, `$lib/projects/map/` | — | 3400–3499 | Needs XP-02 first |
+| ID | Issue | Extension | Section | Hub domain | Client | Other owned paths | Migrations | Tags |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| XP-01 | #12 | Map | 4.1 | `life/locations/` | `routes/map/`, `$lib/map/` | `providers/location/`, PMTiles and Photon in `deploy/` | 2100–2199 | — |
+| XP-02 | #13 | Projects | 4.2 | `work/projects/` | `routes/projects/`, `$lib/projects/` | `providers/{github,vercel,neon,hostinger,posthog}/` | 2200–2299 | security (tokens, PRJ-003) |
+| XP-03 | #14 | Writing | 4.3 | `work/writing/` | `routes/writing/`, `$lib/writing/` | `collector/obsidian/` | 2300–2399 | Part of E0 (ENG-010) |
+| XP-04 | #15 | Secrets | 4.4 | `vault/secrets/` | `routes/secrets/`, `$lib/secrets/` | `crates/anima-cli/` | 2400–2499 | security |
+| XP-05 | #16 | People | 4.6 | `life/people/` | `routes/people/`, `$lib/people/` | `collector/{contacts,imessage}/`, `providers/{instagram,x}/` | 2500–2599 | — |
+| XP-06 | #17 | Money | 4.7 | `life/money/` | `routes/money/`, `$lib/money/` | `providers/{wise,simplefin,gemini,coinbase,etherscan,ibkr}/`, statement parsers | 2600–2699 | security (financial data) |
+| XP-07 | #18 | History | 4.8 | `life/history/` (queries only) | `routes/history/`, `$lib/history/` | — | none | — |
+| XP-08 | #19 | Health | 4.9 | `life/health/` | `routes/health/`, `$lib/health/` | `providers/{strava,whoop,oura,garmin,apple_health,inbody}/`, `deploy/garmin-bridge/` | 2800–2899 | — |
+| XP-09 | #20 | Documents | 4.10 | `vault/identity_documents/` | `routes/documents/`, `$lib/documents/` | on-client extraction in `$lib/documents/` | 2900–2999 | security |
+| XP-10 | #21 | Reminders page | 4.11 | none (engine) | `routes/reminders/`, `$lib/reminders/` | — | none | — |
+| XP-11 | #22 | AI coding sessions | 4.12 | `work/assistant_sessions/` | `routes/ai-sessions/`, `$lib/assistant-sessions/` | `collector/{claude_code,codex}/`, `providers/chatgpt/` | 3100–3199 | security (redaction) |
+| XP-12 | #23 | Wardrobe | 4.13 | `life/belongings/wardrobe/` | `routes/wardrobe/`, `$lib/wardrobe/` | — | 3200–3299 | — |
+| XP-13 | #24 | Library | 4.14 | `life/belongings/library/` | `routes/library/`, `$lib/library/` | `providers/{open_library,goodreads,letterboxd,kindle}/` | 3300–3399 | — |
+| XP-14 | #25 | Project design and map | 4.2.1 | `work/projects/design/` | `$lib/projects/design/`, `$lib/projects/map/` | — | 3400–3499 | Needs XP-02 first |
 
 - **XP-001.** An extension workflow must not change an engine path or a path of a different extension. If it needs an engine change, it stops and reports a contract change request to the operator.
 - **XP-002.** Each workflow uses the task loop of the implementation plan (Section 3.1): plan, build, gate, review, fix. A task with a security tag needs the security reviewer (AGT-004).
