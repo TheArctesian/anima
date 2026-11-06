@@ -118,6 +118,25 @@ describe('the socket (K4 §8.1, §8.4)', () => {
   });
 });
 
+describe('a flood from the device (K4 §8.5)', () => {
+  it('K4 §8.5: output beyond what can be drawn is skipped with one fixed notice; nothing throws and the session goes on', async () => {
+    const { socket, target } = await connected();
+    const errors: unknown[] = [];
+    const caught = (event: ErrorEvent) => errors.push(event.error);
+    window.addEventListener('error', caught);
+    const chunk = new Uint8Array(4 * 1024 * 1024).fill(0x78);
+    for (let frame = 0; frame < 8; frame += 1) socket.output(chunk);
+    await settle();
+    window.removeEventListener('error', caught);
+    expect(errors).toEqual([]);
+    const notices = [...target.querySelectorAll('[role="status"]')].filter((entry) => entry.textContent.includes('some was skipped'));
+    expect(notices).toHaveLength(1);
+    expect(notices[0]?.textContent).toBe('Output arrived faster than it could be drawn, so some was skipped. Press Ctrl+L to redraw.');
+    expect(socket.closedByClient).toBeUndefined();
+    expect(target.querySelector('[data-reason]')).toBeNull();
+  });
+});
+
 describe('typing and output (RA-003)', () => {
   it('RA-003: what the hub sends is drawn, and a message of another type is ignored', async () => {
     const { socket, target } = await connected();

@@ -6,8 +6,9 @@ import { TITLE_MAX, cleanTitle, guardEscapes } from './escapes';
 const RANGE = { start: { x: 1, y: 1 }, end: { x: 2, y: 1 } };
 
 /** A terminal with the guards on, and what they reported once `output` was written. */
-async function after(output: string) {
+async function after(output: string, earlier?: (data: string) => boolean) {
   const terminal = new Terminal({ allowProposedApi: true });
+  if (earlier !== undefined) terminal.parser.registerOscHandler(52, earlier);
   const hooks = { ontitle: vi.fn<(title: string) => void>(), onlink: vi.fn<(address: string) => void>() };
   guardEscapes(terminal, hooks);
   await new Promise<void>((done) => {
@@ -44,6 +45,19 @@ describe('window title (K4 §8.7)', () => {
 });
 
 describe('what the remote may do (K4 §8.7)', () => {
+  it('K4 §8.7: the OSC 52 guard takes the sequence before any other handler: one registered earlier never hears it', async () => {
+    const earlier = vi.fn(() => true);
+    await after('\u001b]52;c;U0VDUkVU\u0007', earlier);
+    expect(earlier).not.toHaveBeenCalled();
+    const unguarded = new Terminal({ allowProposedApi: true });
+    const heard = vi.fn(() => true);
+    unguarded.parser.registerOscHandler(52, heard);
+    await new Promise<void>((done) => {
+      unguarded.write('\u001b]52;c;U0VDUkVU\u0007', done);
+    });
+    expect(heard).toHaveBeenCalledOnce();
+  });
+
   it('K4 §8.7: OSC 52 is swallowed: it neither fails the parser nor reaches a hook, and text after it still draws', async () => {
     const { terminal, hooks } = await after('\u001b]52;c;U0VDUkVU\u0007\u001b]52;c;?\u0007visible');
     expect(terminal.buffer.active.getLine(0)?.translateToString(true)).toBe('visible');

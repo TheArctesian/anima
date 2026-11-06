@@ -15,7 +15,18 @@ vi.mock('@xterm/addon-webgl', () => ({
   },
 }));
 
-const hooks = { oninput: vi.fn(), onresize: vi.fn(), oncopy: vi.fn(), onfind: vi.fn(), ontitle: vi.fn(), onlink: vi.fn() };
+const links = vi.hoisted(() => ({ handler: undefined as undefined | ((event: MouseEvent, address: string) => void) }));
+vi.mock('@xterm/addon-web-links', () => ({
+  WebLinksAddon: class {
+    activate = () => undefined;
+    dispose = () => undefined;
+    constructor(handler: (event: MouseEvent, address: string) => void) {
+      links.handler = handler;
+    }
+  },
+}));
+
+const hooks = { oninput: vi.fn(), onresize: vi.fn(), oncopy: vi.fn(), onfind: vi.fn(), onoverflow: vi.fn(), ontitle: vi.fn(), onlink: vi.fn() };
 let saved: typeof window.matchMedia;
 
 beforeEach(() => {
@@ -50,4 +61,14 @@ it('D-4: the addon\'s own context loss report is the backstop, and the addon is 
   host.querySelector('.xterm-screen')?.dispatchEvent(new Event('webglcontextlost'));
   webgl.loseContext?.();
   expect(webgl.disposed).toBe(1);
+});
+
+it.each(['http://example.com/', 'javascript:alert(1)'])('K4 §8.7: a detected link %s goes to the owner to decide, and nothing opens here', async (address) => {
+  const open = vi.spyOn(window, 'open').mockReturnValue(null);
+  hooks.onlink.mockClear();
+  await opened();
+  links.handler?.(new MouseEvent('click'), address);
+  expect(hooks.onlink.mock.calls).toEqual([[address]]);
+  expect(open).not.toHaveBeenCalled();
+  open.mockRestore();
 });

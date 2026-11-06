@@ -37,6 +37,7 @@
   const { device, start, api, openScreen, visible, focused, onended, onretitle }: Props = $props();
   const COPY_FAILED = 'Could not copy the text to your clipboard.';
   const PASTE_FAILED = 'Could not read your clipboard. Allow clipboard access, or paste with the keyboard.';
+  const OVERFLOW = 'Output arrived faster than it could be drawn, so some was skipped. Press Ctrl+L to redraw.';
   const LINK_REFUSED = 'The device asked to open a link that is not http or https. Anima did not open it.';
   /** The size of the first `resize` when the pane could not be fitted yet (a hidden pane); a fit corrects it. */
   const UNFITTED: CellSize = { cols: 80, rows: 24 };
@@ -71,6 +72,7 @@
     ontitle: (title) => onretitle?.(title),
     oncopy: (text) => copyToSystem(text),
     onfind: () => (finding = true),
+    onoverflow: () => (notice = OVERFLOW),
     onlink: (address) => {
       confirming = linkTarget(address);
       if (confirming === undefined) notice = LINK_REFUSED;

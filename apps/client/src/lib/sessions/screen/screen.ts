@@ -6,6 +6,7 @@ import { WebglAddon } from '@xterm/addon-webgl';
 import { Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
 import type { CellSize } from '../tunnel/terminal/codec';
+import { outputFlow } from './flow';
 import { guardEscapes, type EscapeHooks } from './remote/escapes';
 import { safePaste } from './operator/paste';
 import { shortcutOf, type ShortcutAction } from './operator/shortcuts';
@@ -27,6 +28,8 @@ export interface ScreenHooks extends EscapeHooks {
   readonly oncopy: (text: string) => void;
   /** The operator asked to find (Cmd+F, Ctrl+Shift+F). */
   readonly onfind: () => void;
+  /** Output arrived faster than it could be drawn, so some is skipped (once per episode). */
+  readonly onoverflow: () => void;
 }
 
 /** The xterm.js terminal of one session pane. It is the only thing that touches xterm.js outside this folder's files. */
@@ -162,15 +165,28 @@ export const openScreen: ScreenOpener = async (host, hooks) => {
   );
   enableWebgl(terminal);
   fit.fit();
-  return screenOf(terminal, fit, search);
+  return screenOf(terminal, fit, search, hooks);
 };
 
 /** The screen over an open `terminal`. */
-function screenOf(terminal: Terminal, fit: FitAddon, search: SearchAddon): TerminalScreen {
+function screenOf(terminal: Terminal, fit: FitAddon, search: SearchAddon, hooks: ScreenHooks): TerminalScreen {
+  const flow = outputFlow();
   return {
     size: () => ({ cols: terminal.cols, rows: terminal.rows }),
     write: (bytes) => {
-      terminal.write(bytes);
+      const admission = flow.admit(bytes.length);
+      if (admission !== 'draw') {
+        if (admission === 'skip-and-tell') hooks.onoverflow();
+        return;
+      }
+      try {
+        terminal.write(bytes, () => {
+          flow.drawn(bytes.length);
+        });
+      } catch {
+        // xterm.js refuses a write once its own limit is reached: the output is lost, the session is not (K4 §8.5).
+        flow.drawn(bytes.length);
+      }
     },
     reset: () => {
       terminal.reset();
