@@ -54,9 +54,15 @@ export function hiddenEdges(scrollStart: number, clientSize: number, scrollSize:
   return { start: scrollStart > 0, end: scrollStart + clientSize < scrollSize - 1 };
 }
 
-/** The scroll position that shows a tab at `tabStart` that is `tabSize` wide, moving as little as it can. */
-export function scrolledToShow(scrollStart: number, clientSize: number, tabStart: number, tabSize: number): number {
-  if (tabStart < scrollStart) return tabStart;
-  const tabEnd = tabStart + tabSize;
-  return tabEnd > scrollStart + clientSize ? tabEnd - clientSize : scrollStart;
+/** An interval along the strip: where it starts and how long it is. */
+interface Span {
+  readonly start: number;
+  readonly size: number;
+}
+
+/** The scroll position that shows `tab` inside the visible `view`, `margin` clear of the edge fades, moving as little as it can. */
+export function scrolledToShow(view: Span, tab: Span, margin: number): number {
+  if (tab.start - margin < view.start) return Math.max(0, tab.start - margin);
+  const tabEnd = tab.start + tab.size + margin;
+  return tabEnd > view.start + view.size ? tabEnd - view.size : view.start;
 }

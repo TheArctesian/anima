@@ -137,6 +137,11 @@
     padding: var(--space-6);
   }
 
+  /* Below the compact breakpoint the unreachable strip takes the top of the window; the page starts below it. */
+  :global(:root[data-nav='icons']) .shell:has(:global(.notice .banner)) main {
+    padding-block-start: calc(var(--space-6) + var(--nav-banner-block-size));
+  }
+
   /* One column that may shrink below its content, so neither the pages nor a session widen the document (UI-009). */
   .stage,
   .pages {

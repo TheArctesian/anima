@@ -179,8 +179,9 @@ it('NAV-005: a strip shows a fade at each end that has tabs past it', () => {
   expect(hiddenEdges(0, 400, 400)).toEqual({ start: false, end: false });
 });
 
-it('NAV-005: a focused tab past either edge of the strip is scrolled into view, and one inside it is left alone', () => {
-  expect(scrolledToShow(0, 200, 300, 80)).toBe(180);
-  expect(scrolledToShow(150, 200, 100, 80)).toBe(100);
-  expect(scrolledToShow(50, 200, 100, 80)).toBe(50);
+it('NAV-005: a focused tab past either edge of the strip is scrolled into view clear of the fade, and one inside it is left alone', () => {
+  expect(scrolledToShow({ start: 0, size: 200 }, { start: 300, size: 80 }, 32)).toBe(212);
+  expect(scrolledToShow({ start: 150, size: 200 }, { start: 100, size: 80 }, 32)).toBe(68);
+  expect(scrolledToShow({ start: 150, size: 200 }, { start: 10, size: 80 }, 32)).toBe(0);
+  expect(scrolledToShow({ start: 50, size: 300 }, { start: 100, size: 80 }, 32)).toBe(50);
 });

@@ -85,7 +85,12 @@
   onscroll={markEdges}
   onfocusin={(event) => {
     if (list === undefined || !(event.target instanceof HTMLElement)) return;
-    list.scrollLeft = scrolledToShow(list.scrollLeft, list.clientWidth, event.target.offsetLeft, event.target.offsetWidth);
+    const fade = Number.parseFloat(getComputedStyle(list).scrollPaddingInlineStart) || 0;
+    list.scrollLeft = scrolledToShow(
+      { start: list.scrollLeft, size: list.clientWidth },
+      { start: event.target.offsetLeft, size: event.target.offsetWidth },
+      fade,
+    );
   }}
 >
   {#each TABS as tab (tab.name)}
@@ -115,7 +120,11 @@
     overflow-y: hidden;
     gap: var(--space-1);
     margin-block-end: var(--space-4);
-    border-block-end: var(--border-thin) solid var(--border);
+    padding-block-end: var(--border-thin);
+    /* The rule is drawn inside the strip, so the clipped strip keeps the underline where the border was. */
+    box-shadow: inset 0 calc(var(--border-thin) * -1) 0 var(--border);
+    scroll-padding-inline: var(--space-8);
+    scrollbar-width: none;
   }
 
   /* An edge fade where tabs lie past the edge. */
