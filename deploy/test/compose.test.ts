@@ -23,7 +23,7 @@ interface Container {
   cap_add?: string[];
   restart?: string;
   tmpfs?: string[];
-  volumes?: (string | { type?: string; bind?: { selinux?: string } })[];
+  volumes?: (string | { type?: string; source?: string; target?: string; read_only?: boolean; bind?: { selinux?: string } })[];
   healthcheck?: { test: string[]; interval?: string; retries?: number };
   init?: boolean;
   build?: { additional_contexts?: Record<string, string> };
@@ -41,6 +41,17 @@ const services = Object.entries(compose.services);
 function networksOf(service: Container): string[] {
   const networks = service.networks ?? [];
   return Array.isArray(networks) ? networks : Object.keys(networks);
+}
+
+// The mode ("rw" or "ro") and target of every mount of one named volume in one service.
+function namedMounts(service: Container, volume: string): string[] {
+  return (service.volumes ?? []).flatMap((entry) => {
+    if (typeof entry === "string") {
+      const [source, target, mode = "rw"] = entry.split(":");
+      return source === volume ? [`${target} ${mode}`] : [];
+    }
+    return entry.source === volume ? [`${entry.target} ${entry.read_only === true ? "ro" : "rw"}`] : [];
+  });
 }
 
 function secretsOf(service: Container): string[] {
@@ -266,6 +277,40 @@ describe("hardening and images (SEC-001)", () => {
 
   test("GW-002 guacd has a tmpfs for its cache", () => {
     expect(compose.services["guacd"]?.tmpfs).toContain("/tmp");
+  });
+});
+
+describe("drives (RA-021, GW-001, GW-002)", () => {
+  // Built from two parts, as in the last test of this file, so the literal word is not in the source.
+  const makeDir = ["mk", "dir"].join("");
+
+  test("RA-021 the gateway_drives volume is mounted only in guacd, read-write, at the drives root", () => {
+    const mounts = services.flatMap(([name, service]) => namedMounts(service, "gateway_drives").map((mount) => `${name} ${mount}`));
+    expect(mounts).toEqual(["guacd /var/lib/guacd/drives rw"]);
+    expect(compose.volumes).toHaveProperty("gateway_drives");
+  });
+
+  test("GW-002 guacd keeps its read-only root, no capability and no port with the drives volume", () => {
+    const guacd = compose.services["guacd"] as Container;
+    expect(guacd.read_only).toBe(true);
+    expect(guacd.cap_drop).toEqual(["ALL"]);
+    expect(guacd.ports).toBeUndefined();
+  });
+
+  test("RA-021 the hub's ANIMA_GUACD_DRIVE_ROOT equals the guacd mount target", () => {
+    const target = namedMounts(compose.services["guacd"] as Container, "gateway_drives")[0]?.split(" ")[0];
+    expect(target).toBe("/var/lib/guacd/drives");
+    expect(compose.services["hub"]?.environment?.["ANIMA_GUACD_DRIVE_ROOT"]).toBe(target);
+  });
+
+  test("GW-001 RA-021 the gateway image starts FROM the pinned guacd, creates the drives folder and ends as guacd", () => {
+    const dockerfile = readFileSync(join(ROOT, "deploy", "gateway", "Dockerfile"), "utf8");
+    const lines = dockerfile.split("\n");
+    expect(lines.filter((line) => line.startsWith("FROM "))[0]).toBe("FROM guacamole/guacd:1.6.0");
+    expect(lines.filter((line) => line.startsWith("USER ")).at(-1)).toBe("USER guacd");
+    expect(dockerfile).toContain(`${makeDir} -p /var/lib/guacd/drives`);
+    expect(dockerfile).toContain("chown guacd:guacd /var/lib/guacd/drives");
+    expect(dockerfile).toContain("chmod 0700 /var/lib/guacd/drives");
   });
 });
 

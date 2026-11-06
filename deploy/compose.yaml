@@ -119,6 +119,9 @@ services:
       # The root is read-only; fontconfig writes its cache here.
       XDG_CACHE_HOME: /tmp
     tmpfs: ["/tmp"]
+    volumes:
+      # One folder per device under this root, made by guacd (RA-021). The root filesystem stays read-only.
+      - gateway_drives:/var/lib/guacd/drives
     # The image's own check runs every 5 minutes, so guacd would stay "starting" that long.
     healthcheck:
       test: ["CMD-SHELL", "nc -z 127.0.0.1 4822 || exit 1"]
@@ -139,6 +142,7 @@ services:
       ANIMA_TLS_CERT_FILE: /certs/hub/tls.pem
       ANIMA_TLS_KEY_FILE: /certs/hub/tls.pem
       ANIMA_GUACD: guacd:4822
+      ANIMA_GUACD_DRIVE_ROOT: /var/lib/guacd/drives
       ANIMA_PERMITTED_NETWORKS: ${ANIMA_PERMITTED_NETWORKS:-100.64.0.0/10}
       # Checks never probe the hub's own networks or the VPS public address, so a device
       # entry cannot reach PostgreSQL or guacd.
@@ -197,6 +201,7 @@ volumes:
   postgres_data: {}
   certs: {}
   lego_state: {}
+  gateway_drives: {}
 
 secrets:
   postgres_password:
