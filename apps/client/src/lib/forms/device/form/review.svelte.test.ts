@@ -100,13 +100,15 @@ it('SEC-006: after Accept succeeds the result and the dialog are gone', async ()
 it('DEV-010: an invalid SSH field opens a collapsed SSH section and gets the focus', async () => {
   const { onSave } = show(SAVED);
   type('ssh-port', 'abc');
-  document.querySelector<HTMLButtonElement>('[data-section="ssh"] h3 button')?.click();
+  const trigger = document.querySelector<HTMLButtonElement>('[data-section="ssh"] h3 button');
+  trigger?.click();
   flushSync();
-  expect(document.getElementById('device-ssh-port')).toBeNull();
+  expect(trigger?.getAttribute('aria-expanded')).toBe('false');
 
   await save();
 
   expect(onSave).not.toHaveBeenCalled();
+  expect(trigger?.getAttribute('aria-expanded')).toBe('true');
   expect(document.activeElement).toBe(input('ssh-port'));
 });
 

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { tick, untrack } from 'svelte';
   import type { FieldError, HubResult } from '$lib/hub/error';
+  import Disclosure from '../../disclosure/Disclosure.svelte';
   import FormButton from '../../FormButton.svelte';
   import { fieldErrorsFrom } from '../field-errors';
   import type { ConnectionTestInput } from '$lib/hub/generated/graphql';
@@ -8,7 +9,6 @@
   import { validateDevice } from '../validate';
   import { formValues, type DeviceFields, type DeviceFormValues, type SiteOption } from '../values';
   import type { EditedValues } from './editing';
-  import DisclosureSection from './DisclosureSection.svelte';
   import { firstInvalidField, formErrors, inputId, replaceField } from './errors';
   import GeneralSection from './GeneralSection.svelte';
   import SshSection from './SshSection.svelte';
@@ -131,24 +131,24 @@
       {/each}
     </div>
     <div data-section="general">
-      <DisclosureSection title="General" bind:open={general}>
+      <Disclosure label="General" level={3} bind:open={general}>
         <GeneralSection bind:values {errors} sites={creating ? sites : []} bind:siteId onHostBlur={checkHost} />
-      </DisclosureSection>
+      </Disclosure>
     </div>
     <div data-section="ssh">
-      <DisclosureSection title="SSH" bind:open={ssh}>
+      <Disclosure label="SSH" level={3} bind:open={ssh}>
         <SshSection bind:values {errors} {credentialStored} {clearing} onClearCredential={clearCredential} />
         {#if values.ssh.enabled}
           {#key saves}
           <TestConnection {initial} {values} {deviceId} {canTest} {onTest} {onAcceptHostKey} />
         {/key}
         {/if}
-      </DisclosureSection>
+      </Disclosure>
     </div>
     <div data-section="rdp">
-      <DisclosureSection title="Remote Desktop (RDP)" bind:open={rdp}>
+      <Disclosure label="Remote Desktop (RDP)" level={3} bind:open={rdp}>
         <p>RDP comes in a later version of Anima.</p>
-      </DisclosureSection>
+      </Disclosure>
     </div>
     <div class="actions">
       <FormButton onclick={onCancel}>Cancel</FormButton>
