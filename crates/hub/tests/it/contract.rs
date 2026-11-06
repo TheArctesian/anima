@@ -1,34 +1,53 @@
 //! The hub schema and K1 declare the same types, member for member (CON-002, R-011(c)).
 
+mod pending;
+#[cfg(test)]
+mod tests;
+
 use std::collections::BTreeMap;
 
 use async_graphql::parser::{
     Positioned, parse_schema,
     types::{
-        ConstDirective, DirectiveDefinition, InputValueDefinition, TypeDefinition, TypeKind,
-        TypeSystemDefinition,
+        ConstDirective, DirectiveDefinition, EnumType, FieldDefinition, InputObjectType,
+        InputValueDefinition, TypeDefinition, TypeKind, TypeSystemDefinition,
     },
 };
 
+use self::pending::{FieldParts, Pending, Variants, is_pending, is_pending_directive};
 use crate::hub::hub_sdl;
 
 /// One declaration: what kind it is (with directives, union members and interfaces), then each
-/// member's name → signature.
-#[derive(Debug, PartialEq, Eq)]
+/// member's name → signature, and what K1 marks `@pending` in it.
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct Declaration {
     header: String,
     pub members: BTreeMap<String, String>,
+    pending: Pending,
+    fields: BTreeMap<String, FieldParts>,
+    variants: Option<Variants>,
+}
+
+impl Declaration {
+    /// The member names the hub must serve today: those K1 does not mark `@pending` (P2-002).
+    pub fn served_members(&self) -> impl Iterator<Item = &String> {
+        self.members
+            .keys()
+            .filter(|member| !self.pending.members.contains(*member))
+    }
 }
 
 /// Every named declaration of an SDL document, by name. Directive definitions appear as
 /// `@name`.
 pub type Schema = BTreeMap<String, Declaration>;
 
-/// Directives are compared by name only. K1 uses no directive arguments, directives on enum
-/// values, `extend` blocks or `schema {}` block today; add them here if it ever does.
+/// Directives are compared by name only, apart from `@pending`, which is not compared at all.
+/// K1 uses no directive arguments, `extend` blocks or `schema {}` block today; add them here if
+/// it ever does.
 fn directives(list: &[Positioned<ConstDirective>]) -> String {
     let mut names: Vec<String> = list
         .iter()
+        .filter(|d| !is_pending_directive(d))
         .map(|d| format!(" @{}", d.node.name.node))
         .collect();
     names.sort();
@@ -48,31 +67,67 @@ fn argument(input: &InputValueDefinition) -> String {
     )
 }
 
-fn field_signatures(
-    fields: &[Positioned<async_graphql::parser::types::FieldDefinition>],
-) -> BTreeMap<String, String> {
-    fields
+fn field_parts(field: &FieldDefinition) -> FieldParts {
+    let mut arguments: Vec<_> = field
+        .arguments
         .iter()
-        .map(|field| {
-            let field = &field.node;
-            let mut args: Vec<_> = field.arguments.iter().map(|a| argument(&a.node)).collect();
-            args.sort();
-            (
-                field.name.node.to_string(),
-                format!(
-                    "({}): {}{}",
-                    args.join(", "),
-                    field.ty.node,
-                    directives(&field.directives)
-                ),
-            )
-        })
-        .collect()
+        .map(|a| (a.node.name.node.to_string(), argument(&a.node)))
+        .collect();
+    arguments.sort_by(|a, b| a.1.cmp(&b.1));
+    FieldParts {
+        arguments,
+        pending: (field.arguments.iter())
+            .filter(|a| is_pending(&a.node.directives))
+            .map(|a| a.node.name.node.to_string())
+            .collect(),
+        result: format!("{}{}", field.ty.node, directives(&field.directives)),
+    }
+}
+
+fn field_members(fields: &[Positioned<FieldDefinition>]) -> Declaration {
+    let mut declaration = Declaration::default();
+    for field in fields {
+        let name = field.node.name.node.to_string();
+        let parts = field_parts(&field.node);
+        if is_pending(&field.node.directives) {
+            declaration.pending.members.insert(name.clone());
+        }
+        declaration
+            .members
+            .insert(name.clone(), parts.signature_without(&parts.pending));
+        declaration.fields.insert(name, parts);
+    }
+    declaration
+}
+
+fn enum_members(enumeration: &EnumType) -> Declaration {
+    let mut declaration = Declaration::default();
+    for value in &enumeration.values {
+        let name = value.node.value.node.to_string();
+        if is_pending(&value.node.directives) {
+            declaration.pending.members.insert(name.clone());
+        }
+        declaration.members.insert(name, String::new());
+    }
+    declaration
+}
+
+fn input_members(input: &InputObjectType) -> Declaration {
+    let mut declaration = Declaration::default();
+    for field in &input.fields {
+        let name = field.node.name.node.to_string();
+        if is_pending(&field.node.directives) {
+            declaration.pending.members.insert(name.clone());
+        }
+        declaration.members.insert(name, argument(&field.node));
+    }
+    declaration
 }
 
 fn type_declaration(definition: &TypeDefinition) -> Declaration {
+    let suffix = directives(&definition.directives);
     let (kind, members) = match &definition.kind {
-        TypeKind::Scalar => ("scalar".to_owned(), BTreeMap::new()),
+        TypeKind::Scalar => ("scalar".to_owned(), Declaration::default()),
         TypeKind::Object(object) => {
             let mut implements: Vec<_> = object
                 .implements
@@ -82,38 +137,36 @@ fn type_declaration(definition: &TypeDefinition) -> Declaration {
             implements.sort();
             (
                 format!("type implements [{}]", implements.join(", ")),
-                field_signatures(&object.fields),
+                field_members(&object.fields),
             )
         }
         TypeKind::Interface(interface) => {
-            ("interface".to_owned(), field_signatures(&interface.fields))
+            ("interface".to_owned(), field_members(&interface.fields))
         }
         TypeKind::Union(union) => {
             let mut names: Vec<_> = union.members.iter().map(|n| n.node.to_string()).collect();
             names.sort();
-            (format!("union = {}", names.join(" | ")), BTreeMap::new())
+            let variants = Variants {
+                names,
+                directives: suffix.clone(),
+            };
+            (
+                format!("union = {}", variants.names.join(" | ")),
+                Declaration {
+                    variants: Some(variants),
+                    ..Declaration::default()
+                },
+            )
         }
-        TypeKind::Enum(enumeration) => (
-            "enum".to_owned(),
-            enumeration
-                .values
-                .iter()
-                .map(|v| (v.node.value.node.to_string(), String::new()))
-                .collect(),
-        ),
-        TypeKind::InputObject(input) => (
-            "input".to_owned(),
-            input
-                .fields
-                .iter()
-                .map(|f| (f.node.name.node.to_string(), argument(&f.node)))
-                .collect(),
-        ),
+        TypeKind::Enum(enumeration) => ("enum".to_owned(), enum_members(enumeration)),
+        TypeKind::InputObject(input) => ("input".to_owned(), input_members(input)),
     };
-    Declaration {
-        header: format!("{kind}{}", directives(&definition.directives)),
-        members,
-    }
+    let mut declaration = Declaration {
+        header: format!("{kind}{suffix}"),
+        ..members
+    };
+    declaration.pending.declaration = is_pending(&definition.directives);
+    declaration
 }
 
 fn directive_declaration(directive: &DirectiveDefinition) -> Declaration {
@@ -135,7 +188,12 @@ fn directive_declaration(directive: &DirectiveDefinition) -> Declaration {
             args.join(", "),
             locations.join(" | ")
         ),
-        members: BTreeMap::new(),
+        // The `@pending` definition is K1-only: the hub is never required to declare it.
+        pending: Pending {
+            declaration: directive.name.node.as_str() == "pending",
+            ..Pending::default()
+        },
+        ..Declaration::default()
     }
 }
 
@@ -197,7 +255,8 @@ fn hub(k1: &Schema) -> Schema {
     hub
 }
 
-/// Every way `hub` and `k1` differ, one line each.
+/// Every way `hub` and `k1` differ, one line each. A name or member K1 marks `@pending` counts
+/// only once the hub declares it.
 fn differences(hub: &Schema, k1: &Schema) -> Vec<String> {
     let mut differences = Vec::new();
     for name in hub.keys().filter(|n| !k1.contains_key(*n)) {
@@ -205,111 +264,44 @@ fn differences(hub: &Schema, k1: &Schema) -> Vec<String> {
     }
     for (name, theirs) in k1 {
         let Some(ours) = hub.get(name) else {
-            differences.push(format!("{name}: declared by K1, not in the hub"));
+            if !theirs.pending.declaration {
+                differences.push(format!("{name}: declared by K1, not in the hub"));
+            }
             continue;
         };
-        if ours.header != theirs.header {
+        if theirs.pending.declaration {
+            differences.push(format!("{name}: declared by the hub, still @pending in K1"));
+            continue;
+        }
+        let theirs_header = pending::k1_header(theirs, hub, k1);
+        if ours.header != theirs_header {
             differences.push(format!(
-                "{name}: hub `{}`, K1 `{}`",
-                ours.header, theirs.header
+                "{name}: hub `{}`, K1 `{theirs_header}`",
+                ours.header
             ));
         }
-        for member in ours
-            .members
-            .keys()
-            .filter(|m| !theirs.members.contains_key(*m))
-        {
-            differences.push(format!("{name}.{member}: in the hub, not in K1"));
-        }
-        for (member, signature) in &theirs.members {
-            match ours.members.get(member) {
-                None => differences.push(format!("{name}.{member}: in K1, not in the hub")),
-                Some(own) if own != signature => {
-                    differences.push(format!("{name}.{member}: hub `{own}`, K1 `{signature}`"));
-                }
-                Some(_) => {}
-            }
-        }
+        differences.extend(member_differences(name, ours, theirs));
     }
     differences
 }
 
-#[tokio::test]
-async fn con_002_the_hub_schema_and_k1_declare_the_same_types_with_the_same_members() {
-    let k1 = k1();
-    let hub = hub(&k1);
-    let differences = differences(&hub, &k1);
-    assert!(
-        differences.is_empty(),
-        "CON-002 differences:\n{}",
-        differences.join("\n")
-    );
-    // R-026(4): the liveness probe is `GET /health`, not a field.
-    assert!(!hub["Query"].members.contains_key("health"));
-    assert!(
-        hub["Query"].members.contains_key("me") && hub["Mutation"].members.contains_key("login")
-    );
-}
-
-#[tokio::test]
-async fn con_002_a_missing_member_a_changed_signature_and_a_stray_type_are_each_reported() {
-    let k1 = k1();
-    let mut hub = hub(&k1);
-    hub.get_mut("Device").unwrap().members.remove("name");
-    hub.get_mut("Site")
-        .unwrap()
-        .members
-        .insert("extra".into(), "(): Int".into());
-    hub.get_mut("Query")
-        .unwrap()
-        .members
-        .insert("me".into(), "(): Int".into());
-    hub.insert(
-        "Stray".into(),
-        Declaration {
-            header: "enum".into(),
-            members: BTreeMap::new(),
-        },
-    );
-    hub.remove("Mutation");
-    let header = |hub: &mut Schema, name: &str, header: &str| {
-        hub.get_mut(name).unwrap().header = header.into();
-    };
-    header(&mut hub, "SshCredentialInput", "input");
-    header(&mut hub, "CheckConfig", "union = IcmpConfig | TcpConfig");
-
-    let found = differences(&hub, &k1);
-    for expected in [
-        "Device.name: in K1, not in the hub",
-        "Site.extra: in the hub, not in K1",
-        "Stray: declared by the hub, not in K1",
-        "Mutation: declared by K1, not in the hub",
-    ] {
-        assert!(
-            found.iter().any(|d| d == expected),
-            "{expected} in {found:?}"
-        );
+fn member_differences(name: &str, ours: &Declaration, theirs: &Declaration) -> Vec<String> {
+    let mut differences = Vec::new();
+    for member in (ours.members.keys()).filter(|m| !theirs.members.contains_key(*m)) {
+        differences.push(format!("{name}.{member}: in the hub, not in K1"));
     }
-    for (name, theirs) in [
-        ("SshCredentialInput", "input @oneOf"),
-        (
-            "CheckConfig",
-            "union = DnsConfig | GroupConfig | HttpConfig | IcmpConfig | PushConfig | TcpConfig | TlsConfig",
-        ),
-    ] {
-        let prefix = format!("{name}: hub `");
-        let suffix = format!("K1 `{theirs}`");
-        assert!(
-            found
-                .iter()
-                .any(|d| d.starts_with(&prefix) && d.ends_with(&suffix)),
-            "{name} header in {found:?}"
-        );
+    for member in theirs.members.keys() {
+        let is_pending = theirs.pending.members.contains(member);
+        match (ours.members.get(member), is_pending) {
+            (None, true) => {}
+            (None, false) => differences.push(format!("{name}.{member}: in K1, not in the hub")),
+            (Some(_), true) => {
+                differences.push(format!("{name}.{member}: in the hub, still @pending in K1"));
+            }
+            (Some(_), false) => {
+                differences.extend(pending::signature_differences(name, member, ours, theirs));
+            }
+        }
     }
-    assert!(
-        found
-            .iter()
-            .any(|d| d.starts_with("Query.me: hub `(): Int`")),
-        "{found:?}"
-    );
+    differences
 }

@@ -9,6 +9,10 @@ const TYPE_LABELS: Record<CheckType, string> = {
   DNS: 'DNS',
   PUSH: 'Push',
   GROUP: 'Group',
+  DOCKER: 'Docker',
+  SNMP: 'SNMP',
+  TAILSCALE_PING: 'Tailscale ping',
+  SYSTEMD: 'systemd',
 };
 
 const NONE = '—';

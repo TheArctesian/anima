@@ -8,6 +8,7 @@ import type {
   IpVersion,
 } from './hub-types';
 import { blankProbes, withProbeConfig, type ProbeValues } from '../probes/values';
+import type { PendingCheckConfig } from '$lib/forms/hub-pending';
 
 export interface HeaderRow {
   name: string;
@@ -147,7 +148,9 @@ function withConfig(values: CheckFormValues, config: CheckConfigFields): CheckFo
     case 'GroupConfig':
       return { ...values, group: { childIds: config.children.map((child) => child.id) } };
     default:
-      return withProbeConfig(values, config);
+      // The generated K1 union names the Phase 2 configs without their fields until the check query
+      // selects them; WP-25 replaces this cast when it moves the form onto the generated types.
+      return withProbeConfig(values, config as PendingCheckConfig);
   }
 }
 

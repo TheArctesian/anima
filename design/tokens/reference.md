@@ -51,6 +51,15 @@ Generated from `design/tokens/*.tokens.json` (TOK-001). Names follow contract K5
 | `status-warning` | `--status-warning: var(--nord-12)` = `#D08770` | Warnings. Host key changed |
 | `status-maintenance` | `--status-maintenance: var(--nord-15)` = `#B48EAD` | Device is in maintenance |
 | `status-unknown` | `--status-unknown: var(--nord-3)` = `#4C566A` | No data, or the check is paused |
+| `chart-grid` | `--chart-grid: var(--nord-3)` = `#4C566A` | Chart grid lines (K5, MET-004). Same colour as border |
+| `chart-axis` | `--chart-axis: var(--nord-4)` = `#D8DEE9` | Chart axis labels (K5, MET-004). Same colour as text-muted |
+| `chart-threshold` | `--chart-threshold: var(--nord-13)` = `#EBCB8B` | Chart 85 % threshold line (K5, MET-004). Same colour as status-degraded |
+| `chart-series-1` | `--chart-series-1: var(--nord-8)` = `#88C0D0` | Chart series 1 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone |
+| `chart-series-2` | `--chart-series-2: var(--nord-9)` = `#81A1C1` | Chart series 2 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone |
+| `chart-series-3` | `--chart-series-3: var(--nord-10)` = `#5E81AC` | Chart series 3 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone |
+| `chart-series-4` | `--chart-series-4: var(--nord-7)` = `#8FBCBB` | Chart series 4 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone |
+| `chart-series-5` | `--chart-series-5: var(--nord-15)` = `#B48EAD` | Chart series 5 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone |
+| `chart-series-6` | `--chart-series-6: var(--nord-12)` = `#D08770` | Chart series 6 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone |
 | `accent-tint` | `--accent-tint: color-mix(in srgb, var(--accent) 12%, var(--surface))` | accent at 12 % on surface (5.5.3) |
 | `status-up-tint` | `--status-up-tint: color-mix(in srgb, var(--status-up) 12%, var(--surface))` | status-up at 12 % on surface (5.5.3) |
 | `status-down-tint` | `--status-down-tint: color-mix(in srgb, var(--status-down) 12%, var(--surface))` | status-down at 12 % on surface (5.5.3) |

@@ -5,6 +5,7 @@
   ],
   "plugins": ["stylelint-declaration-strict-value"],
   "rules": {
+    "at-rule-disallowed-list": [["keyframes", "-webkit-keyframes"], { "message": "No @keyframes: motion goes through $lib/motion/ (MV-008)." }],
     "color-no-hex": true,
     "color-named": "never",
     "function-disallowed-list": ["/^(rgb|rgba|hsl|hsla|hwb|lab|lch|oklab|oklch|color|color-mix|cubic-bezier|steps|linear)$/i"],

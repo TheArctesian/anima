@@ -24,6 +24,7 @@ const REASONS: Record<SessionEndReason, string> = {
   PROTOCOL_ERROR: 'Protocol error',
   TIMEOUT: 'Timed out',
   HUB_SHUTDOWN: 'Hub stopped',
+  SERVER_CERTIFICATE_MISMATCH: 'Certificate changed',
 };
 
 const MINUTE_S = 60;

@@ -1,7 +1,7 @@
 import { formatGateEvent, gateList, runGates } from "../src/gates/gates.ts";
 import { REPO_ROOT } from "../src/repository.ts";
 
-const baseRef = process.env["BASE_REF"] || "phase-1";
+const baseRef = process.env["BASE_REF"] || "phase-2";
 
 const outcome = runGates(
   gateList(baseRef),

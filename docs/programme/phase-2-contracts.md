@@ -1,6 +1,6 @@
 # Phase 2 contract deltas (K1–K7)
 
-Status: **Phase 2 freeze, proposed.** Not in force until the operator approves it (checkpoint 1).
+Status: **Adopted.** The deltas are now in `contracts/` (WP-20, R-065); this file is the record of the proposal.
 Plan: [phase-2-plan.md](phase-2-plan.md).
 
 Why this file and not `contracts/`: the CON-002 test (`crates/hub/tests/it/contract.rs`) requires the hub

@@ -5,7 +5,8 @@
     "clock",
     "config",
     "scalars",
-    "paging"
+    "paging",
+    "targets"
   ],
   "wiring": [
     "main",

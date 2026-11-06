@@ -9,6 +9,8 @@ const LISTEN: &str = "ANIMA_LISTEN";
 const DATABASE_URL_FILE: &str = "ANIMA_DATABASE_URL_FILE";
 const KEY_FILE: &str = "ANIMA_KEY_FILE";
 const GUACD: &str = "ANIMA_GUACD";
+const GUACD_DRIVE_ROOT: &str = "ANIMA_GUACD_DRIVE_ROOT";
+const TAILSCALE_LOCALAPI: &str = "ANIMA_TAILSCALE_LOCALAPI";
 const PERMITTED_NETWORKS: &str = "ANIMA_PERMITTED_NETWORKS";
 const PROBE_DENY: &str = "ANIMA_PROBE_DENY";
 const LOG: &str = "ANIMA_LOG";
@@ -22,6 +24,12 @@ pub struct Config {
     pub key_file: PathBuf,
     /// Gateway `host:port`; the host is a DNS name, so this is not a `SocketAddr`.
     pub guacd: String,
+    /// Where guacd stores shared drives (RA-021): a path inside the guacd container, not the
+    /// hub's filesystem, so it must be absolute.
+    pub guacd_drive_root: PathBuf,
+    /// `host:port` of the Tailscale `LocalAPI` proxy (D-4). `None` when unset or empty: Tailscale
+    /// ping checks then report Unknown.
+    pub tailscale_localapi: Option<String>,
     pub permitted_networks: Vec<ipnet::IpNet>,
     /// Networks checks must never probe: the hub's own Docker networks and public address
     /// (R-030). Empty when unset; `main.rs` warns at start.
@@ -43,8 +51,16 @@ pub enum Error {
     },
     #[error("environment variable {name:?} is not valid unicode")]
     NotUnicode { name: String },
-    #[error("{GUACD}={value:?} is not host:port")]
-    Guacd { value: String },
+    #[error("{variable}={value:?} is not host:port")]
+    HostPort {
+        variable: &'static str,
+        value: String,
+    },
+    #[error("{variable}={value:?} is not an absolute path")]
+    NotAbsolute {
+        variable: &'static str,
+        value: String,
+    },
     #[error("{variable} has an empty entry")]
     NetworkEmpty { variable: &'static str },
     #[error("{variable} entry {entry:?} is not a CIDR network")]
@@ -82,8 +98,9 @@ fn optional_path(env: &BTreeMap<String, String>, name: &str) -> Option<PathBuf> 
 }
 
 /// `host:port` where an IPv6 host must be bracketed.
-fn guacd(text: &str) -> Result<String, Error> {
-    let invalid = || Error::Guacd {
+fn host_port(variable: &'static str, text: &str) -> Result<String, Error> {
+    let invalid = || Error::HostPort {
+        variable,
         value: text.to_owned(),
     };
     let (host, port) = text.rsplit_once(':').ok_or_else(invalid)?;
@@ -92,6 +109,19 @@ fn guacd(text: &str) -> Result<String, Error> {
         return Err(invalid());
     }
     Ok(text.to_owned())
+}
+
+/// A path in another filesystem (the guacd container), which only an absolute path names.
+fn absolute_path(variable: &'static str, text: &str) -> Result<PathBuf, Error> {
+    let path = PathBuf::from(text);
+    if path.is_absolute() {
+        Ok(path)
+    } else {
+        Err(Error::NotAbsolute {
+            variable,
+            value: text.to_owned(),
+        })
+    }
 }
 
 /// Comma-separated CIDR networks from `variable`.
@@ -166,7 +196,15 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {
         })?,
         database_url_file: value(env, DATABASE_URL_FILE, "/run/secrets/database_url")?.into(),
         key_file: value(env, KEY_FILE, "/run/secrets/anima_key")?.into(),
-        guacd: guacd(value(env, GUACD, "guacd:4822")?)?,
+        guacd: host_port(GUACD, value(env, GUACD, "guacd:4822")?)?,
+        guacd_drive_root: absolute_path(
+            GUACD_DRIVE_ROOT,
+            value(env, GUACD_DRIVE_ROOT, "/var/lib/guacd/drives")?,
+        )?,
+        tailscale_localapi: match env.get(TAILSCALE_LOCALAPI).map(String::as_str) {
+            None | Some("") => None,
+            Some(text) => Some(host_port(TAILSCALE_LOCALAPI, text)?),
+        },
         permitted_networks: networks(
             PERMITTED_NETWORKS,
             value(env, PERMITTED_NETWORKS, "100.64.0.0/10")?,

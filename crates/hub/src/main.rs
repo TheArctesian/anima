@@ -12,7 +12,7 @@ use std::{
 use anima_hub::{
     DRAIN_LIMIT, Shutdown,
     access::{self, listen},
-    checks::{self, probe::AddressPolicy},
+    checks,
     clock::{Clock as _, SystemClock},
     config::{self, Config},
     credentials::Vault,
@@ -20,6 +20,7 @@ use anima_hub::{
     logged, router,
     schema::{Dependencies, build_schema},
     serve_until, sessions,
+    targets::AddressPolicy,
 };
 use sqlx::PgPool;
 

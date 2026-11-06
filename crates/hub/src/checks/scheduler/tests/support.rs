@@ -18,7 +18,6 @@ use crate::{
     checks::{
         self, Check, CheckSettings, Definition, NewCheck,
         config::CheckConfig,
-        probe::AddressPolicy,
         scheduler::{
             Probing,
             attempt::Context,
@@ -28,6 +27,7 @@ use crate::{
     credentials::Vault,
     events::Bus,
     ids::{CheckId, DeviceId},
+    targets::AddressPolicy,
 };
 
 /// `docker-host` in the K6 fixtures: no maintenance.
