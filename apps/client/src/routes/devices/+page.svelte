@@ -10,7 +10,7 @@
   import { addDevice as createWithCredential, type AddedDevice } from '$lib/forms/add-device';
   import AddDeviceModal from '$lib/forms/AddDeviceModal.svelte';
   import type { DeviceFormValues, SiteOption } from '$lib/forms/device/values';
-  import { machineToOffer, thisMachinePrompt } from '$lib/forms/this-machine';
+  import { machineToOffer, offeredMachine, thisMachinePrompt, type MachineOffer } from '$lib/forms/this-machine';
   import { useHub } from '$lib/hub/context';
   import type { HubError, HubResult } from '$lib/hub/error';
   import { sessionsApi } from '$lib/sessions/api';
@@ -53,6 +53,13 @@
     adding = true;
   }
 
+  /** Reads whether this computer can be offered; once it is found to be a device, the prompt stops looking. */
+  async function readOffer(): Promise<MachineOffer> {
+    const offer = await machineToOffer(readThisMachine, devices.hosts);
+    if (offer.kind === 'device') thisMachinePrompt.isADevice();
+    return offer;
+  }
+
   /**
    * Add device (DEV-010, WP-13 H-1): the sites are read first, because the form needs a site to place the device
    * in. This computer is read at the same time, so the form can offer it (R-060).
@@ -60,9 +67,9 @@
   async function addDevice(): Promise<void> {
     if (loadingSites || adding) return;
     loadingSites = true;
-    const [found, offered] = await Promise.all([devices.sites(), machineToOffer(readThisMachine, devices.hosts)]);
+    const [found, offer] = await Promise.all([devices.sites(), readOffer()]);
     loadingSites = false;
-    show(found, offered, false);
+    show(found, offeredMachine(offer), false);
   }
 
   /**
@@ -72,9 +79,10 @@
   async function askAboutThisMachine(): Promise<void> {
     if (!thisMachinePrompt.due || loadingSites || adding) return;
     loadingSites = true;
-    const offered = await machineToOffer(readThisMachine, devices.hosts);
+    const offered = offeredMachine(await readOffer());
     const found = offered === null ? null : await devices.sites();
     loadingSites = false;
+    // The operator may have turned the prompt off, or opened Add device, while the reads were pending.
     if (offered === null || found === null || !found.ok || !thisMachinePrompt.due || adding) return;
     thisMachinePrompt.asked();
     show(found, offered, true);

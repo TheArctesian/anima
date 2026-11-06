@@ -26,19 +26,34 @@ export function dontAskLabel(os: ThisMachine['os']): string {
 }
 
 /**
- * This computer if it can be offered in Add device: known to the shell and not yet a device. A device is this
+ * What Add device can do about this computer (R-060): `offer` it, pre-filled; nothing because it is already a
+ * `device`; or nothing because it is `unknown` (not the desktop app, off the VPN, or the hosts could not be read,
+ * so the app cannot tell whether it would add a duplicate).
+ */
+export type MachineOffer =
+  | { readonly kind: 'offer'; readonly machine: ThisMachine }
+  | { readonly kind: 'device' }
+  | { readonly kind: 'unknown' };
+
+/**
+ * Whether this computer can be offered in Add device: known to the shell and not yet a device. A device is this
  * computer when its host is the computer's VPN address (R-060; the machine ID of R-058 needs a K-change).
- * `null` too when the hosts cannot be read, since the app cannot then tell whether it would add a duplicate.
  */
 export async function machineToOffer(
   read: () => Promise<ThisMachine | null>,
   hosts: () => Promise<HubResult<readonly string[]>>,
-): Promise<ThisMachine | null> {
+): Promise<MachineOffer> {
   const machine = await read();
-  if (machine === null) return null;
+  if (machine === null) return { kind: 'unknown' };
   const known = await hosts();
-  if (!known.ok) return null;
-  return known.value.some((host) => normalizeHost(host) === machine.vpnAddress) ? null : machine;
+  if (!known.ok) return { kind: 'unknown' };
+  const added = known.value.some((host) => normalizeHost(host) === machine.vpnAddress);
+  return added ? { kind: 'device' } : { kind: 'offer', machine };
+}
+
+/** The machine an offer holds, or `null`. */
+export function offeredMachine(offer: MachineOffer): ThisMachine | null {
+  return offer.kind === 'offer' ? offer.machine : null;
 }
 
 /** The `localStorage` key of "Don't ask again on this Mac". */
@@ -69,6 +84,11 @@ export class ThisMachinePrompt {
 
   /** The prompt was shown; closing it is "Not now", so the next app start asks again. */
   asked(): void {
+    this.#askedThisRun = true;
+  }
+
+  /** This computer is already a device: there is nothing to ask, so the rest of this run does not look again. */
+  isADevice(): void {
     this.#askedThisRun = true;
   }
 

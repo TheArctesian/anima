@@ -20,6 +20,8 @@ const current = vi.hoisted(() => ({
   hub: undefined as unknown,
   desktop: true,
   machine: null as unknown,
+  /** How many times the shell was asked to read this computer. */
+  reads: 0,
   /** One app start: the route's prompt; a test makes a new one for a new start. */
   prompt: undefined as unknown,
 }));
@@ -29,8 +31,11 @@ vi.mock('$app/navigation', () => ({ goto: () => Promise.resolve() }));
 vi.mock('$app/state', () => ({ page: { url: new URL('/devices', 'http://localhost') } }));
 vi.mock('@tauri-apps/api/core', () => ({
   isTauri: () => current.desktop,
-  invoke: (command: string) =>
-    command === 'this_machine_read' ? Promise.resolve(current.machine) : Promise.reject(new Error(`unexpected ${command}`)),
+  invoke: (command: string) => {
+    if (command !== 'this_machine_read') return Promise.reject(new Error(`unexpected ${command}`));
+    current.reads += 1;
+    return Promise.resolve(current.machine);
+  },
 }));
 vi.mock('$lib/forms/this-machine', async (importOriginal) => ({
   ...(await importOriginal<typeof import('$lib/forms/this-machine')>()),
@@ -62,6 +67,30 @@ async function visit(hosts: readonly string[] = ['nas.lan'], answers: Record<str
   return fake;
 }
 
+/** Mounts /devices with the `DeviceHosts` read held until the returned `answer` is called. */
+async function visitWithHostsPending(): Promise<() => Promise<void>> {
+  const list = devicesAnswer([device('d0', { host: 'nas.lan' })]);
+  const fake = fakeHub({ Devices: list, Tags: { tags: [] }, Sites: { sites: [{ id: 's1', name: 'Home' }] } });
+  let release: () => void = () => undefined;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const request = fake.hub.request;
+  current.hub = {
+    ...fake.hub,
+    request: ((document, variables) =>
+      String(JSON.stringify(document)).includes('DeviceHosts')
+        ? held.then(() => ({ ok: true, value: list }))
+        : request(document, variables)) as typeof request,
+  };
+  app = mount(Page, { target: document.body });
+  await settle();
+  return async () => {
+    release();
+    await settle();
+  };
+}
+
 async function leave(): Promise<void> {
   if (app) await unmount(app);
   app = undefined;
@@ -80,6 +109,7 @@ async function openAddDevice(): Promise<void> {
 beforeEach(() => {
   current.desktop = true;
   current.machine = { ...MAC };
+  current.reads = 0;
   localStorage.clear();
   newStart();
 });
@@ -170,4 +200,32 @@ it('R-060: each opening of Add device offers this Mac first, whatever was chosen
   await settle();
   await openAddDevice();
   expect(choice()?.querySelector('[aria-pressed="true"]')?.textContent.trim()).toBe('This Mac');
+});
+
+it('R-060: "Don\'t ask again" chosen while the hosts are still being read means no modal', async () => {
+  const answer = await visitWithHostsPending();
+  expect(dialog()).toBeNull();
+  (current.prompt as ThisMachinePrompt).turnOff();
+  await answer();
+  expect(dialog()).toBeNull();
+});
+
+it('R-060: the same pending read opens the modal when the prompt is still due', async () => {
+  const answer = await visitWithHostsPending();
+  await answer();
+  expect(title()).toBe('Add this Mac?');
+});
+
+it('R-060: once this Mac is found to be a device, later visits in the run do not read it again', async () => {
+  const fake = await visit(['100.64.0.7']);
+  expect(current.reads).toBe(1);
+  await leave();
+  const again = await visit(['100.64.0.7']);
+  expect(current.reads).toBe(1);
+  expect(again.requests.map((request) => request.operation)).not.toContain('DeviceHosts');
+  expect(fake.requests.map((request) => request.operation)).toContain('DeviceHosts');
+  await leave();
+  newStart();
+  await visit(['100.64.0.7']);
+  expect(current.reads).toBe(2);
 });

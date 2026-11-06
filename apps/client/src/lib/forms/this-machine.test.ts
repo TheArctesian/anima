@@ -114,23 +114,23 @@ describe('machineToOffer', () => {
   const hosts = (list: readonly string[]) => vi.fn(() => Promise.resolve({ ok: true as const, value: list }));
 
   it('R-060: offers this computer when no device has its VPN address', async () => {
-    expect(await machineToOffer(read(MAC), hosts(['nas.lan', '100.64.0.8']))).toEqual(MAC);
+    expect(await machineToOffer(read(MAC), hosts(['nas.lan', '100.64.0.8']))).toEqual({ kind: 'offer', machine: MAC });
   });
 
   it('R-060: a device whose host is the VPN address is this computer, so nothing is offered', async () => {
-    expect(await machineToOffer(read(MAC), hosts(['nas.lan', '100.64.0.7']))).toBeNull();
-    expect(await machineToOffer(read(MAC), hosts([' 100.64.0.7 ']))).toBeNull();
+    expect(await machineToOffer(read(MAC), hosts(['nas.lan', '100.64.0.7']))).toEqual({ kind: 'device' });
+    expect(await machineToOffer(read(MAC), hosts([' 100.64.0.7 ']))).toEqual({ kind: 'device' });
   });
 
   it('R-060: nothing is offered for an unknown computer, and the hub is not asked', async () => {
     const known = hosts([]);
-    expect(await machineToOffer(read(null), known)).toBeNull();
+    expect(await machineToOffer(read(null), known)).toEqual({ kind: 'unknown' });
     expect(known).not.toHaveBeenCalled();
   });
 
   it('R-060: nothing is offered when the hosts cannot be read, since it might be a duplicate', async () => {
     const failed = () => Promise.resolve({ ok: false as const, error: { code: 'unreachable' as const, message: 'No answer.' } });
-    expect(await machineToOffer(read(MAC), failed)).toBeNull();
+    expect(await machineToOffer(read(MAC), failed)).toEqual({ kind: 'unknown' });
   });
 });
 
@@ -165,6 +165,14 @@ describe('ThisMachinePrompt', () => {
     expect(storage.getItem(DONT_ASK_KEY)).toBe('true');
     expect(DONT_ASK_KEY.startsWith('anima.')).toBe(true);
     expect(new ThisMachinePrompt(() => storage).due).toBe(false);
+  });
+
+  it('R-060: once this computer is found to be a device, the rest of the run does not look again', () => {
+    const storage = memoryStorage();
+    const run = new ThisMachinePrompt(() => storage);
+    run.isADevice();
+    expect(run.due).toBe(false);
+    expect(new ThisMachinePrompt(() => storage).due).toBe(true);
   });
 
   it('R-060: a storage that refuses or is missing never throws; the prompt stops for this run', () => {
