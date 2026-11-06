@@ -39,6 +39,7 @@ Sec-WebSocket-Protocol: guacamole
   | Case | Status |
   | --- | --- |
   | No token, unknown, used or expired token | 403 |
+  | Ticket whose `tunnelPath` is not this path | 403 |
   | Client address differs from the ticket | 403 |
   | Subprotocol `guacamole` missing | 400 |
   | Gateway unreachable | 503 (and the session ends with `GATEWAY_ERROR`) |
@@ -116,7 +117,7 @@ On every end the hub: closes both sockets; sets `ended_at` and `end_reason` on t
 - Ticket: expired, reused, wrong client address → 403 (property-based on the clock with `FixedClock`).
 - Handshake: a recorded `args` list from guacd 1.5 and 1.6 gives the expected `connect` values; a forbidden name sent by a fake client never reaches `connect`.
 - Relay: a fake guacd (in-process TCP listener) and a fake client run one full session, including `ping`, an invalid instruction (close 1002) and each end cause in Section 5.
-- Terminal (Section 8): a fake SSH server (a `russh` server in the test) and a fake client run one full session: bytes both ways, `resize` reaching the server as a window change, `ping` both ways, and each end cause in Section 8.6. A changed host key ends `HOST_KEY_MISMATCH` and the fake server sees no authentication request; a refused credential ends `AUTH_FAILED`; a ticket that is expired, reused or from another address gets 403 and one without the subprotocol gets 400. Also: a first message that is not `resize`, or binary before it; no first `resize` within the wait; a message over 64 KiB and a text message over 256 bytes; keyboard-interactive; client silence and a stalled send (with injected waits); a client that does not read leaves the output waiting in the device, not the hub; the fake server sees only `pty-req`, `shell` and `window-change` on one channel; no secret in any frame to the client and no token or secret in the log. The control-message parser is property-tested: no input panics, and only the messages in Section 8.4 are accepted. The Guacamole relay tests issue SSH tickets through `Live` directly as their fixture; `/tunnel` is not mounted.
+- Terminal (Section 8): a fake SSH server (a `russh` server in the test) and a fake client run one full session: bytes both ways, `resize` reaching the server as a window change, `ping` both ways, and each end cause in Section 8.6. A changed host key ends `HOST_KEY_MISMATCH` and the fake server sees no authentication request; a refused credential ends `AUTH_FAILED`; a ticket that is expired, reused or from another address gets 403 and one without the subprotocol gets 400. Also: a first message that is not `resize`, or binary before it; no first `resize` within the wait; a message over 64 KiB (also across fragments) and a text message over 256 bytes; keyboard-interactive and its round and prompt limits; a key that does not decode; a WebSocket ping keeps the session alive; client silence, a stalled send, a stalled device write (`GATEWAY_ERROR`, with hub pings continuing meanwhile) and lost keep-alives or a dropped connection, all with the waits shortened through the route's timing parameters; `endSession` and the client leaving during the opening; channels the device opens are refused; a ticket on the wrong path is refused (a pure check while only SSH exists); a client that does not read leaves the output waiting in the device, not the hub; the fake server sees only `pty-req`, `shell` and `window-change` on one channel; no secret in any frame to the client and no token or secret in the log. The control-message parser is property-tested: no input panics, and only the messages in Section 8.4 are accepted. The Guacamole relay tests issue SSH tickets with `sessions::start` as their fixture and call the `/tunnel` router directly; it is not mounted.
 
 ## 8. Terminal tunnel (SSH, R-062)
 
@@ -137,6 +138,7 @@ Sec-WebSocket-Protocol: anima-terminal
   | Case | Status |
   | --- | --- |
   | No token, unknown, used or expired token | 403 |
+  | Ticket whose `tunnelPath` is not this path | 403 |
   | Client address differs from the ticket | 403 |
   | Subprotocol `anima-terminal` missing | 400 (the session ends `PROTOCOL_ERROR`) |
   | Device gone, SSH off, no accepted key, host does not resolve or fails the target rule (R-032), device unreachable, or no SSH key exchange | 503 (the session ends `GATEWAY_ERROR`) |
@@ -147,8 +149,8 @@ Sec-WebSocket-Protocol: anima-terminal
 2. Resolve the host; every address must pass the target rule (R-032). Connect to a checked address, never to the name again.
 3. Key exchange with the host key order the connection test uses, so the device presents the same key it presented to `testConnection`. Pin the key (Section 8.3).
 4. Authenticate as `devices.ssh_settings.username` with the stored credential from `credentials::load_ssh`, one attempt per method:
-   - a password: `password`; when the device offers `keyboard-interactive` and not `password`, each prompt of a round is answered with the password, for at most 4 rounds;
-   - a private key: `publickey` with the key and passphrase (RSA with the device's best supported SHA-2 hash).
+   - a password: `password`; when the device offers `keyboard-interactive` and not `password`, each prompt of a round is answered with the password, for at most 4 rounds of at most 4 prompts each (more is `AUTH_FAILED`);
+   - a private key: `publickey` with the key and passphrase (RSA with the SHA-2 hash the device advertises in `server-sig-algs`; `ssh-rsa` (SHA-1) when it advertises none, as the connection test does).
 
    The secret is decrypted in the hub, used only for this, and dropped (zeroed) after it; it never reaches the client (OD-9, SEC-005). No stored credential, a key or passphrase that does not decode, or a refusal: the opening goes on to the upgrade and the session ends `AUTH_FAILED` (Section 8.6). SSH certificates are not used in Phase 1.
 
@@ -160,7 +162,7 @@ The whole opening has the connection test's limit (8 seconds). The PTY and the s
 
 ### 8.3 Host key
 
-The hub compares the key the device presents in the key exchange with the accepted key in `sessions.host_keys` (byte equality of the key blob). It sends no authentication request unless the two are equal and the exchange signature verified with that key. When they differ, the hub sends no authentication request: it upgrades, sends `end` `HOST_KEY_MISMATCH` and closes 4001 (Section 8.6). A certificate, or a key the hub cannot read, counts as a different key. Only a new `testConnection` + `acceptHostKey` replaces the key (Section 6).
+The hub compares the key the device presents in the key exchange with the accepted key in `sessions.host_keys` (byte equality of the key blob). It sends no authentication request unless the two are equal and the exchange signature verified with that key. When they differ, the hub sends no authentication request: it upgrades, sends `end` `HOST_KEY_MISMATCH` and closes 4001 (Section 8.6). A certificate, or a key `russh` decodes but the hub cannot store, counts as a different key. A key that does not decode at all fails the key exchange: 503 and `GATEWAY_ERROR` (Section 8.1), also with no authentication request. Only a new `testConnection` + `acceptHostKey` replaces the key (Section 6).
 
 ### 8.4 Messages
 
@@ -180,7 +182,9 @@ One WebSocket per session. Frames are of two kinds:
 - The client sets no other PTY value: the terminal type, the command (the login shell) and the environment are the hub's (GW-013). On the one session channel the hub sends `pty-req` (`xterm-256color`, the size, pixel sizes 0, no terminal modes) and then `shell`; it sends no `exec`, `env`, `subsystem`, agent, X11 or port-forwarding request and opens no other channel. `DisplayInput` carries no terminal value for SSH.
 - The client sends `ping` when it has sent nothing for 5 seconds. The hub sends `ping` when it has sent nothing for 5 seconds.
 - "Message" means a whole WebSocket message after reassembly. Any message from the client, WebSocket ping and pong included, counts as the client being alive; only text and binary messages are Section 8.4 messages (a ping or pong is not a first `resize`).
-- When the client has received nothing for 15 seconds, it closes the socket and shows the session as lost, then reads the recorded reason (RA-007). A close without `end` is read by its code (Section 8.6).
+- The hub sends its `ping` and watches client silence independently of any write in flight to the device or the client; a stalled write never stops them.
+- When the client has received nothing for 15 seconds, it closes the socket and shows the session as lost (RA-007).
+- The reason the client shows: the recorded `Session.endReason` (from `endSession`, which returns an ended session unchanged) is authoritative. Until it arrives, the client uses `end` when it came, else the close code: 1000 shows as closed, 1011 as an error on the hub's SSH connection, the other codes as their single reason in Section 8.6.
 
 ### 8.5 Limits
 
@@ -192,7 +196,7 @@ One WebSocket per session. Frames are of two kinds:
 | Client silence (no message of any kind) | 15 seconds; then `TIMEOUT`. The time the hub waits for the device to take client input does not count |
 | One send to the client | 15 seconds; then `TIMEOUT` |
 | One write of client input to the device, or a PTY, shell or window-change request | 15 seconds; then `GATEWAY_ERROR` |
-| SSH channel buffer in the hub | 4 messages |
+| SSH channel buffer in the hub | 4 channel messages (each an SSH data packet of at most 32 KiB) |
 | Text that is not UTF-8 | Protocol error |
 
 Backpressure: the hub reads the next output from the SSH channel only after the previous binary frame was sent, and the channel buffer is bounded (above). A slow client therefore stops the hub reading the device's connection, so the device stops sending, instead of a buffer growing in the hub. The hub reads the next client message only after the previous one was written to the channel, under the channel's window.

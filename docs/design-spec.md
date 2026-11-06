@@ -991,7 +991,7 @@ The gateway cannot open a Proxmox console. Proxmox sends VNC and terminal data o
 - **PVE-030.** The hub must relay the console WebSocket. The hub must call `vncproxy` or `termproxy` and then connect to `vncwebsocket` at once, because the ticket expires after about 10 seconds.
 - **PVE-031.** The client must use noVNC for a virtual machine console. The client must use xterm.js for a container console and a node shell.
 - **PVE-032.** Test if an API token can open a console. If it cannot, the hub must use a separate console user and renew its ticket every 90 minutes.
-- **PVE-033.** For a guest with an IP address, SSH and RDP through the gateway are the preferred methods. The console is for a guest without network access.
+- **PVE-033.** For a guest with an IP address, SSH (the hub's terminal tunnel, R-062) and RDP (through the gateway) are the preferred methods. The console is for a guest without network access.
 
 ### 8.5 Later functions (Phase 6 or later)
 
