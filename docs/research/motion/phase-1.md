@@ -238,3 +238,197 @@ Not findings, recorded so they are not re-reported: the Add device and confirmat
 - Real frame time in WKWebView and WebKitGTK, MAT-007 backdrop cost, `prefers-reduced-transparency` in WebKit, session tab pop-out, `UpdateBanner`, a real hub and SSH session: as in section 6 of the first audit, unchanged.
 - Font loading in the Tauri shell: the Chromium web client no longer shifts (M-3 closed, first render waits for fonts); whether WKWebView loading from the bundle shifts is still not known.
 - The offline strip below 768 px (N-2) can only occur in the web client today; the iOS client (later) will have it.
+
+
+## Final re-audit (WP-17, c6aa80e)
+
+Re-audit of the Phase 1 client at `c6aa80e` (branch `wp/17-acceptance/reaudit-candidate`: package head `878da2e` with F5b, the offline strip FLIP, D-12, plus F5a, the fixed
+form-modal footer, the disclosure scroll-clamp spring and the corner-anchored flip, D-11) against the re-audit at `1eff0a3`. Reviewer: interface reviewer, WP-17 final re-audit.
+The reviewer did not build the fixes. No application code was changed. All data is synthetic (CON-003): K6 `contracts/fixtures/phase1.json`, generated devices, hub address
+`https://hub.test`; a catch-all route aborts every non-local request and WebSocket.
+
+**Verdict for acceptance criterion 14 (Section 9.1): NOT MET.** The first sentence holds again: every Phase 1 role has a reduced-motion form (MOT-040, MOT-041; regression table
+below). The second sentence still fails, on three "layout jump" findings, none a wrong-motion finding:
+**N-6** (closing a disclosure at the scroll end of a form modal: the section below it steps 32 px in one frame, then springs back; reachable at the desktop's minimum height),
+**N-7** (the "Live updates stopped" notice pushes the device list 36 px, 76 px at 390 px, in one frame when the hub drops; in the code since WP-12, not caused by F5) and
+**N-8** (the offline strip's content now moves by spring, but Chromium's layout-shift observer still reports 0.065 to 0.081 per status change below 768 px, all from the
+non-painting container `div.stage`). N-1 and the visible part of N-2 are closed. All 3 earlier "layout jump" findings and the 3 "wrong motion" findings of the first audit stay closed.
+
+### F1. Method
+
+| Item | Value |
+| --- | --- |
+| Build | Production build of `c6aa80e` (`bun run --cwd apps/client build`, exit 0) served by `vite preview` on `127.0.0.1:5399`. Playwright 1.64.0, Chromium 156 (build 1248), WebKit 27.2 (build 2370), headless, both engines on every row. |
+| Harness | Copy of the re-audit harness: `/private/tmp/claude-501/-Users-stephenokita-Scripts-Personal-anima/44a9516e-29ae-4035-8f15-a42b950ef866/scratchpad/finalharness/` (the original is unchanged). New: `f_modal.mjs`, `f_three.mjs` (N-1), `f_offline.mjs`, `f_off_collapsed.mjs` (N-2, N-7), `f_misc.mjs`, `f_contrast.mjs`, `f_panel.mjs`, `f_dbg*.mjs`; `hub.mjs` gained `control.refuse` (a socket drop). Logs in `finalharness/logs/` (`fm-*`, `ft-*`, `fo-*`, `final-*`, `q-final-*`, compared with `logs/prev/` = the `1eff0a3` run). Screenshots: `/private/tmp/claude-501/-Users-stephenokita-Scripts-Personal-anima/44a9516e-29ae-4035-8f15-a42b950ef866/scratchpad/finalshots/` (cited `shots/<name>`). |
+| Modes and sizes | Normal and `reducedMotion: 'reduce'`. N-1 at 1280x800, 900x800, 1280x600 (the desktop `minHeight` is 600). N-2 at 360, 390, 480, 700, 768, 900, 1280. API 0 ms and 400 ms (MV-005) for the regression pass. |
+| Per frame (MV-004) | `requestAnimationFrame` loop: `getBoundingClientRect` of the surface, footer, Save, Cancel, clicked control, the row below it, the body's `scrollTop`; landmark rects (`h1`, search, Add device, results, nav item, logs panel and its header, `main`, `.stage`); `layout-shift` observer (Chromium only; WebKit judged by rects). |
+| Interrupts (MV-003) | Three toggles 60 ms apart. Playwright's `click` waits for a moving control, so it cannot give 60 ms; the triples use `element.click()` in the page. (A first run with `locator.click()` showed a 36 px step about 1 s in; that was Playwright scrolling the body before the late click, not the app, and is discarded.) Offline and back within 60 ms; offline, back and offline again 50 ms apart. |
+| Offline trigger | Below 768 px the status changes on a failed request (`control.fail` plus a logs "Time" change; also a socket drop with `control.refuse`). Real hub drops do both, see N-7. |
+| Gates | `bun run --cwd apps/client lint` (eslint, stylelint, codegen check): exit 0, so the TOK-003 raw-value gate has no hit. `grep` finds 0 `@keyframes` and 0 `startViewTransition` in `apps/client/src` (MV-006, MV-008). |
+
+### F2. N-1 and N-2, re-measured
+
+| ID | Status | Measurement (Chromium / WebKit unless stated) |
+| --- | --- | --- |
+| **N-1** modal bottom edge | **Closed** for the edge, the top, the footer and the actions. Residual: **N-6**. | Add device (3 disclosures) and the check editor ("Advanced settings"), 14 toggles per run (open, close, close at the scroll end, three at 60 ms) in 12 runs (3 sizes x 2 engines x 2 modes), plus 8 runs of three-toggle triples. Surface top, surface bottom, footer, Save and Cancel: **0.00 px step in every frame** (surface 768 high at 800, 568 at 600; top 16, bottom 784 and 584; footer y 739 and 539; body 666.8 and 466.8 constant). Save and the surface bottom inside the window in every frame (`inView` and `surfInView` true in all 12 runs). CLS 0 in every normal run (reduced: 0.0008 and 0.0017 in two runs, the specified instant form). Before at `1eff0a3`: the bottom edge stepped 32 to 460 px in one frame and the actions were clipped by 11 to 439 px. Followers move by `translate` on `spring-default`: Add device SSH 17 frames, max 4.0 / 8.6 px per frame; General collapse and open 27 to 28 frames, max 57 / 76 to 119 px for a 430 to 460 px move (the spring's own first frames; the WebKit run under load gave 119, alone 76 to 90). Reduced: one frame, instant, edge and footer still 0 px. Check editor at 1280x800 and 900x800 (the body scrolls 15 px with "Advanced settings" open): trigger max 4 px, reduced 8 px. Host key, link confirm and the delete confirmation have no disclosure (no `Disclosure` in `HostKeyModal.svelte`, `LinkConfirm.svelte`, `ConfirmModal.svelte`; delete confirmation `aria-expanded` count 0); they open, flip and close as at `1eff0a3`. Three toggles 60 ms apart (Add device SSH and RDP, check Advanced): trigger max 3.5 px, edge, footer and actions 0 px, end state right (SSH collapsed, RDP and Advanced open, one visible region, scrollbar equals content), no orphan, both engines. |
+| Closing at the scroll end | Springs in normal motion; instant in reduced. Residual: **N-6**. | 1280x600, body scrolled to the end. Check "Advanced settings": the control travels 207 px (Chromium) and 177 px (WebKit) in 32 and 30 frames, max 22.2 and 19.9 px per frame, `scrollTop` 215 to 0 in 2 frames (compensated by the flip). Add device RDP: 56 px in 28 frames, max 6.1. Add device SSH: 32 px, control max 3.7 / 4.2 px. Reduced: the control moves 207, 181, 56 and 32 px in 1 to 2 frames after the 200 ms fade (instant), and nothing else moves. |
+| Settings tab and the check form outside a modal | **Unchanged** | Settings tab (`DeviceForm` outside a modal): `.actions.inline` (Cancel, Save) is `position: static` at the end of the form (216, 1121, 640x36 in a form 216, 125, 640x1032), no `.footer` in the DOM. `r_modal` Settings rows against `1eff0a3`: SSH toggle trigger 0 px, actions 0 px, "Delete device" 504 px in 28 frames, max 57.4 to 59.7 (before 57.4 to 63.7), reduced 504 px in 1 frame; three toggles continuous. There is no check editor page; `CheckForm` renders only inside `CheckEditor`'s modal. In a modal: Save is `type=submit` tied by `form=`; Enter in Name and a click on Save both send `CreateDevice`; an empty Save shows the field errors and keeps the footer at y 739 (539 at 600). |
+| **N-2** offline strip, below 768 px | **Visible jump closed; observer not 0: N-8** | 360, 390, 480, 700 px: the content (`h1`, search, Add device, results, nav items) moves 79.4 px by `translate` in 20 to 22 frames, **max 8.3 to 9.7 px per frame, no one-frame step**, both engines, offline and back (`h1` y 24 to 103.4 and back). Two changes 60 ms apart: continuous, max 7.5 to 9.3, reversal from the place on screen (span 17 to 25 px), ends at 24. Three changes 50 ms apart: max 9.2, ends at 24. The fixed logs panel and its header: 0 px in every frame at 360 to 700, panel open and collapsed (y 763 and 764 constant), nav bar 0. Only `translate` and `opacity` are written. 768, 900, 1280: nothing moves, CLS 0 (both engines, both modes, all four sequences). Reduced: instant (WebKit one frame of 79.4 px; Chromium has no sample between, CLS 0.068 to 0.082 for the one shift). The banner fades 200 ms (`opacity`). |
+
+### F3. Regression pass: the Phase 1 role table at `c6aa80e`
+
+Numbers are for Chromium and WebKit; "R" is reduced motion. "Same" means within noise of the `1eff0a3` run, repeated with this harness (`logs/prev/`). Four runs in parallel load the machine; the live-status
+numbers were repeated alone.
+
+| Role | Enter / exit (measured) | Reduced (measured) | Result |
+| --- | --- | --- | --- |
+| Press | Scale 0.97; colour `:active` 0.1 s; hover 0.15 s. New: the log panel's Collapse, `FormButton` (Cancel, Save) and the modal disclosure now change colour on press (67 to 117 ms; before: unchanged) | `minScale 1`; `:active` 0 s; hover 0.15 s | Pass; N-3 **closed** |
+| Hover | Colour 0.15 s on 9 controls | 0.15 s | Pass |
+| Disclosure: logs panel | `translate` 535 to 763 in 25 frames, max 26.6 / 25.4 px per frame; three clicks 60 ms apart max 28.5 / 37.2 (one long WebKit frame); `h1` and cards 0; CLS 0 | 1 frame, 228 px | Pass |
+| Disclosure: form sections, modal | See F2: surface, footer, actions 0 px; followers by FLIP | Instant, fade 200 ms | Pass; **N-6** |
+| Disclosure: Settings tab | See F2: same as `1eff0a3` | Instant | Pass |
+| Menu and popover | 400 ms scale 0.96 to 1 + opacity from the control; exit 150 ms; Escape at 40 ms: reversal step 0.0027 (Chromium), no orphan; 360 to 1280 px menus: 0 of 20 outside the viewport (same) | Opacity 200 / 150 ms | Pass |
+| Modal | Scrim 200 ms, surface scale 0.98 to 1 + opacity; exit 150 ms; Escape at 40 ms reversal 0.0007; gone at about 206 ms; two Escapes no orphan; the surface is top-anchored (16 px) and a form modal has a fixed block size | Fade 200 / 150 ms | Pass |
+| Page change | 200 ms opacity, pair sum 1.000, nav shift 0, CLS 0 (360, 900, 1280; API 0 and 400 ms) | Same | Pass |
+| Card to detail | Name and pill flight; Back at 60, 100, 250, 700 ms: 0 orphan clones, 1 page, `bad` empty, both engines; the same inline `translate: 0px; scale: 1` as before | Cross-fade; the header pill settles as before | Pass |
+| Session tab open | Tab grows from the control: first frame 55.5 px wide, centre x 683.2 = button centre, centre y 233.8 against 249.8 (as at `1eff0a3`); 400 ms; close 150 ms; close at 20 ms stays on the enter path (0.269/0.067 to 0.497/0.357 then back) | Fade 200 / 150 ms | Pass; C-2 unchanged |
+| Session tab reorder | Same drag, order `[216, 476]` | Instant | Pass |
+| Reorder (sort, filter, live) | FLIP on `spring-move` (`li` translate 618 / 624 writes, filter 172 / 179), no skeleton flash, CLS 0 | Instant, leaving cards fade 150 ms | Pass |
+| Status change | Pill cross-fade 200 ms, pair sum 1.000 (13 frames); slot moves 0; card edge 1 to 0 over 1.46 s | Same | Pass; N-5 unchanged |
+| New heartbeat | 5 px `translate`, settles 308 / 315 ms; three beats 60 ms apart max step 4.47 | Instant (0 frames) | Pass |
+| New log row | From -25 px, panel moves 0; two rows 60 ms apart continuous (max 4.5) | Instant | Pass |
+| Chart update | One step per heartbeat, exact | Instant | Pass |
+| Loading: grid, table, logs, header, tabs (API 400 ms) | Skeleton at about 340 ms, hold, 200 ms handoff; offsets 0.0 px on the grid card, the table rows (360, 900, 1280) and the header (131.6 high at 360); the log skeleton row is one line (25 px) against 45 / 85 px data rows at 900 / 360 | Same, static | Pass; N-4 unchanged |
+| Connection steps | No animation on `.steps` | Same | Pass |
+| Icon-only nav | Switches in one frame at 768 (192 to 68 and back), 0 running animations | Same | Pass |
+| Offline strip | At 768 px and wider: 0 px, CLS 0. Below: spring, max 9.7 px per frame; see F2 | Instant | Pass for the content; **N-8**; **N-7** |
+| Logs panel resize | Edge follows the pointer (offset -5 to 0); flick 535 to 271, overshoot -2.24 / -2.29, settles 548 / 498 ms; keys reach the stops | Snap in 1 frame | Pass |
+| Toast, theme change, other charts, sheets | Not in Phase 1 | n/a | Not in Phase 1 |
+
+Also checked and unchanged: MOT-006 (inline writes are `translate`, `scale`, `opacity`; the pinned `top` on a leaving region and `caret-color` once per focus, as before); materials (MAT-006
+unchanged); keyboard (Add device tab order: Name, Host, Site, Kind, OS, Tags, SSH, the SSH field, RDP, Cancel, Save, then back to General; the trap holds in both engines; nothing off screen at
+1280x600; names on all icon controls, 0 unnamed on Devices, detail and Settings at 360 and 1280); UI-013 (Cancel 93x24, Save 73x24; the logs resize edge 292x8 is C-8c, unchanged); contrast
+(offline banner 7.49:1; Cancel 7.49:1; the primary button 3.5:1 is C-6, unchanged).
+
+### F4. New findings
+
+Ranked by what the operator sees (MV-007).
+
+| ID | Class (MV-002) | Sev | Spec | Measurement | Engine | Cause | Screenshot |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| **N-7** | **Layout jump** (pre-existing, newly measured) | should | MOT-007, MV-002 | When the hub drops, the in-page notice "Live updates stopped: ..." mounts above the results with no motion. The device list steps **36 px in one frame at 900 and 1280** and **76 px at 390** (the notice wraps to three lines); Chromium CLS 0.0195 (1280) and 0.0234 (900). At 390 px it adds to the strip's 79.4 px spring: `results` y 240.8 to 396.2 (155.4 px), 76 of them in one frame. Reduced motion: instant, as specified. The notice's removal was not measured (the synthetic hub does not reconnect the socket). The same markup is on the detail page and was not measured there. The code is unchanged since WP-12 (`be66b6d`; no diff against `1eff0a3`), so the first audit and the re-audit did not trigger a socket drop. Not a regression, but it is the scenario that N-2 was written for. | Chromium, WebKit | `lib/devices/screen/DeviceScreen.svelte:50-52`, `routes/devices/[id]/+page.svelte:155` (a `{#if}` block with no `transition` and no FLIP of the list below) | `/private/tmp/claude-501/-Users-stephenokita-Scripts-Personal-anima/44a9516e-29ae-4035-8f15-a42b950ef866/scratchpad/finalshots/foc-webkit-normal-w390-off-collapsed.png` |
+| **N-6** | **Layout jump** (modal, disclosure scroll clamp) | should | MOT-007, MOT-002, 5.7.3 Disclosure | A form modal whose body scrolls (window under about 700 px high; the desktop `minHeight` is 600): closing a section that is not the last, with the body at the scroll end, moves the row **below** the section **-32 px in one frame**, then springs it back +32 px over about 450 ms. Add device at 1280x600: the "Remote Desktop (RDP)" button y 503.19 to 471.19 in one frame, then 471.19 to 503.19 by spring; the clicked "SSH" control stays at 439.19 and springs to 471.19 (max step 3.7 / 4.2). Measured with the frames before the click in the series, with `locator.click()` and with `element.click()`, and in the single closes of the 1280x600 runs: every run, both engines. Three toggles 60 ms apart do not show it (row below max 6.2 / 5.7 px, though `scrollTop` still clamps 32 px in one frame). Not at 1280x800 or 900x800 (no scrolling: followers max 4 to 9 px). Reduced: clean (the control moves 32 px in one frame, the row below 0). The clicked control and the actions are fine; the row below the section is the one that jumps. | Chromium, WebKit | `lib/forms/disclosure/Disclosure.svelte:104-125` (close path: the first flip measures `below()` and `scrolled()` before the clamp; the nested-offset rule `lib/motion/roles/flip.ts:42-75` subtracts the form's offset from the follower's. Suspected seam, not confirmed) | `/private/tmp/claude-501/-Users-stephenokita-Scripts-Personal-anima/44a9516e-29ae-4035-8f15-a42b950ef866/scratchpad/finalshots/fm-1280x600-chromium-normal-add-scrollend-SSH-120.png`, `fm-1280x600-webkit-normal-add-scrollend-SSH-40.png` |
+| **N-8** | **Layout jump** (instrument only; no visible element steps) | could (the letter of MOT-007 says CLS 0) | MOT-007, MV-004 | Offline strip below 768 px, Chromium, normal motion: one `layout-shift` entry per status change, **0.0652 (360), 0.0676 (390), 0.073 (480), 0.0803 (700)**; two changes 0.1305 to 0.1606; three 0.196 to 0.241. Before: 0.0701 at 390. The only source node is `div.stage`; every visible landmark moves by spring (F2). `div.stage` is the in-flow wrapper of the pages and the logs panel; it paints nothing, is not translated (it holds the fixed panel, so `bannerShift.ts` moves its children instead) and its box moves 79.4 px in one frame (WebKit rects: `.stage` 79.4 in 1 frame; `main` 79.4 in 1 frame, padding). At 768 px and wider: 0. With a real user input within 500 ms the observer ignores the entry, as MV-004 warns (the `r_nav` run, which clicks first, reads 0 in normal motion and 0.0701 in reduced). | Chromium (observer), WebKit (rects) | `routes/+layout.svelte:97-99` and `:141-143` (padding added when the strip shows), `lib/nav/bannerShift.ts:29-45` (`shifting` skips the container with a fixed descendant) | `/private/tmp/claude-501/-Users-stephenokita-Scripts-Personal-anima/44a9516e-29ae-4035-8f15-a42b950ef866/scratchpad/finalshots/fo-webkit-normal-w390-off-390-open.png`, `fo-chromium-normal-w700-off-700-open.png` |
+
+Closed since the re-audit: N-1 (edge, top, footer, actions), the visible part of N-2, N-3 (press colour on the log Collapse, `FormButton` and the modal disclosure).
+
+Still open and unchanged (not criterion 14 classes): C-2 (the tab grows from an empty pane; centre y 16 px above the button centre), C-6 (primary button 3.5:1), C-8a (table 1202 px in a 1040 px scroller) and C-8c (logs resize edge 8 px), N-4 (log skeleton row height), N-5 (three pill layers sum 0.80 / 0.85 at the worst frame). No wrong-motion finding is open.
+
+No finding is a wrong-motion class: every property, token and curve conforms (only `translate`, `scale`, `opacity` animate; springs are interruptible; every role has a reduced form).
+
+### F5. Not measured headless (operator to confirm)
+
+- As in section 6 of the first audit and R5: real frame time in WKWebView and WebKitGTK, `prefers-reduced-transparency` in WebKit, session pop-out, `UpdateBanner`, a real hub.
+- N-6 at a real window height of 600 in the Tauri shell (the web run at 1280x600 stands in for it), and N-7 on the detail page and on the removal of the notice when the socket reconnects.
+- The strip below 768 px can occur only in the web client until the iOS client exists (D-9).
+
+
+## Last re-measure (WP-17, 4d5fa21)
+
+Last re-measure of the Phase 1 client at `4d5fa21` (package head, detached worktree `.../scratchpad/last-wt`; contains F5a round 2 and F6) against the final re-audit at `c6aa80e`. Reviewer: interface reviewer, WP-17 last re-measure. The reviewer did not build any of the fixes. No application code was changed and nothing was committed (`git status` of the worktree is clean; `node_modules` and `build` are ignored). All data is synthetic (CON-003): K6 `contracts/fixtures/phase1.json`, generated devices, hub address `https://hub.test`; a catch-all route aborts every non-local request and WebSocket.
+
+**Verdict for acceptance criterion 14 (Section 9.1) under D-13: NOT MET, one blocking item: N-9.** The first sentence holds (every Phase 1 role has a reduced-motion form, MOT-040, MOT-041; regression table below). N-6 and N-7 are closed: no visible element steps in one frame in normal motion in either, at any size measured. N-8 is unchanged and deferred. The blocking item is a new find that no WP-17 fix caused: the logs panel's own "Live logs stopped" notice (in `LogList.svelte`, since WP-12) mounts with no motion when the hub drops and pushes the log rows **108 px in one frame at 360, 390 and 420 px** in both engines. That is a step of at least 100 px, which D-13 names as blocking whatever its cause. It is 88 px at 480 to 768 px and 68 px at 900 px and wider (the desktop window's `minWidth` is 960, so the desktop app sees 68 px). If the orchestrator rules that D-13's 100 px clause does not apply to a pre-existing panel notice below the desktop minimum width, the verdict becomes **MET with open items**: N-8, N-9, the reduced-motion CLS of the notice, and the items in L5. I do not make that ruling.
+
+### L1. Method
+
+| Item | Value |
+| --- | --- |
+| Build | `bun install --frozen-lockfile` (the new worktree had no `node_modules`), then `bun run --cwd apps/client build` (exit 0) of `4d5fa21`, served by `vite preview` on `127.0.0.1:5499`. Playwright 1.64.0, Chromium 156 (build 1248), WebKit 27.2 (build 2370), headless, both engines on every row, normal and `reducedMotion: 'reduce'`. |
+| Harness | Copy of the final harness: `/private/tmp/claude-501/-Users-stephenokita-Scripts-Personal-anima/44a9516e-29ae-4035-8f15-a42b950ef866/scratchpad/lastharness/` (the original `finalharness/` is unchanged). Changed in the copy: `hub.mjs` reads the `4d5fa21` worktree; `f_modal.mjs` and `f_three.mjs` record every control in the modal body (`data-ctl` tags, per-frame `y` step per control), close the General section at the scroll end, and run three toggles at the scroll end with `element.click()`. New: `l_notice.mjs` (N-7), `l_logs.mjs`, `l_logshot.mjs`, `l_dbg.mjs` (N-9), `l_modal.sh`, `l_notice.sh`, `l_off.sh`, `l_reg.sh`, summarisers `l_sum.py`, `l_nsum.py`, `l_sumoff.py`, `cmp3.py`. Logs are in `lastharness/logs/` (`l-modal-*`, `l-three-*`, `ln-*`, `l-logs.log`, `lo-*`, `loc-*`, `last-*`, `q-last-*`). Screenshots: `/private/tmp/claude-501/-Users-stephenokita-Scripts-Personal-anima/44a9516e-29ae-4035-8f15-a42b950ef866/scratchpad/lastshots/` (cited `shots/<name>`). |
+| Sizes | N-6: 1280x600 (the desktop `minHeight`) and 900x800. N-7: 360, 390, 900, 1280 (the log panel step also at 420, 480, 600, 700, 768). N-8: 360, 390, 480, 700. API 0 ms and 400 ms in the regression pass (MV-005). |
+| Per frame (MV-004) | `requestAnimationFrame` loop with `getBoundingClientRect`: surface, footer, Save, Cancel, the clicked control, the last child of the form, every `input`, `select`, `textarea`, `button` and `a` in the modal body (10 on Add device, 12 to 13 on the check editor), the body's `scrollTop`; for N-7 and N-8 the landmarks `nav`, `h1`, search, Add device, `.results`, first card, tabs, panel body, `main`, `.stage`, `.slot`, the logs panel, its header and its first row. `layout-shift` observer in Chromium (WebKit judged by rects). |
+| Interrupts (MV-003) | Three toggles 60 ms apart with `element.click()` inside the page (Add device SSH, RDP, General; check "Advanced settings"; also with the body at its scroll end). Hub drop twice 60 ms apart (the second drop after `refuse` was cleared). Offline and back within 60 ms; offline, back, offline 50 ms apart. |
+| Hub drop | `control.refuse = true` and every open socket closed with code 1006. Below 768 px this also shows the offline strip, as a real drop does. |
+| Gates | `bun run --cwd apps/client lint` (eslint, stylelint, codegen check): **exit 0**, so the TOK-003 raw-value gate has no hit. `grep -rn "@keyframes\|startViewTransition" apps/client/src`: **0 hits** (MV-006, MV-008). Log: `.../scratchpad/last-lint.log`. |
+| Rule applied | D-13. "Step" means one frame in normal motion. Reduced motion is the specified instant form (MOT-040): its one-frame steps (36, 79.4, 155.4, 430 to 460 px) are not findings; its CLS is recorded only. |
+
+### L2. N-6 (closing a disclosure at the scroll end of a form modal)
+
+| Status | Measurement (Chromium / WebKit) |
+| --- | --- |
+| **Closed** | 16 runs (2 sizes x 2 engines x 2 modes x `f_modal` and `f_three`), 34 sections closed or opened per run, every control in the body recorded. **Surface top, surface bottom, footer, Save, Cancel: 0.00 px in every frame of every run** (1280x600: surface 16 to 584, footer y 539, Save y 539, body 466.8 constant; 900x800: surface 16 to 784). Save and the surface bottom are inside the window in every frame (`inView` and `surfInView` true in all runs). No row below the closing section steps: with the body at the scroll end at 1280x600, **Add device SSH close: row below max 0 / 0 px (before, c6aa80e: 32 px in one frame)**, clicked control max 3.6 / 4.3 px per frame; RDP (last section) close: control max 7.6 / 10.5; **General (first section) close: SSH row max 51.4 to 54.4 (Chromium), 49 to 98.4 (WebKit alone, five runs) per frame** over a 430 to 460 px move in 27 to 28 frames, the spring's own first frames; **check "Advanced settings" (the last section) close at the scroll end: control max 25.4 / 23.1** over 207 / 177 px (`scrollTop` 215 to 0 in one frame is compensated by the flip). Largest body control step in any non-General close: 7.6 px. Three toggles 60 ms apart (also at the scroll end, 18 sequences): top, bottom, footer, Save, Cancel 0; followers max 4.4 (SSH), 7.4 (RDP), 25 (check Advanced), 54 (General); ends right (`aria-expanded` as clicked an odd number of times, no orphan region, no scrollbar left behind). `contain: layout` path: the last section closes with no step (control 7.6 / 25.4 px max). CLS 0 in every normal run. |
+| Reduced | One frame, instant (32 px SSH, 64 px RDP, 215 px check, 430 to 460 px General); surface, footer and actions still 0. CLS in reduced: 0.0007 to 0.0081 (one SSH close), 0.0924 (1280x600 General close at the scroll end) and 0.2804 (900x800 General close): the specified instant form, recorded only. |
+| Evidence | `lastharness/logs/l-modal-*.log`, `l-three-*.log`, `l-alone-webkit-*.log`; `shots/l600-webkit-normal-add-scrollend-SSH-40.png` (SSH close at 40 ms: surface edge and Save fixed, section below in place), `shots/l600-webkit-normal-add-scrollend-General-120.png` (General close mid-spring: edge fixed, followers rising), `shots/l600-chromium-normal-check-scrollend-Advanced settings-120.png`. |
+
+### L3. N-7 (the "Live updates stopped" notice), N-2 and N-8
+
+**N-7 (`LiveNotice.svelte`): closed for the notice.** Device list at 360, 390, 900, 1280 and device page at the same widths, single drop and a second drop 60 ms later, both engines, normal and reduced.
+
+| Width | Measurement (normal motion) | Reduced |
+| --- | --- | --- |
+| 1280 and 900, list | The notice fades in (opacity 0 to 1 over about 200 ms; only `opacity` animates) and the list springs: results and first card **max 3.8 to 4.3 px per frame over 17 to 18 frames for the 36 px** (before: 36 px in one frame). Header, search, Add device: 0. Logs panel and its header 0. Double drop: continuous, one notice (`count` 1). | One frame, 36 px, fade 200 ms. |
+| 1280 and 900, device page | Tabs and panel body **max 3.9 to 4.3 px per frame over 17 to 18 frames**; `h1` 0; double drop the same. | One frame, 36 px. |
+| 390 and 360, list | The strip's 79.4 px and the notice's 76 px move by spring together: `h1`, search, Add device max 8.4 to 9.4 px per frame (21 to 22 frames), results and first card **max 16.5 to 19.1 px per frame** over 155.4 px (24 to 25 frames); `.stage` 79.4 in one frame is the unpainted wrapper (N-8). Double drop: continuous. | One frame, 155.4 px (79.4 + 76). |
+| 390 and 360, device page | `h1` max 8.7 to 9.3, tabs and panel body **max 17.1 to 18.3 px per frame** over 155.4 px (23 to 25 frames); `stage` moves by `translate` here. A first WebKit run gave 20.4 and 39.8 under load; two reruns alone gave 9.1 to 9.3 and 18 to 18.3. | One frame, 155.4 px. |
+
+CLS (Chromium): the page shows **0 at 900 and 1280**, **0.0001 at 360 and 390** (a tab indicator), so the notice itself adds none. The device list shows **0.0104 (1280), 0.0109 (900), 0.0896 (360), 0.0931 (390)**; the source of the 0.0104 and 0.0109 is the logs panel's rows (previous rect y 612, h 188; current y 680, h 120), not the notice (see N-9); at 360 and 390 it is the sum of N-8 (`div.stage`) and N-9. Reduced: list 0.037 (1280), 0.0446 (900), 0.134 (360), 0.1387 (390); page 0.0059 (1280), 0.009 (900), 0.1282 (360), 0.1323 (390), the specified instant form (deferred to issue #1 by ruling). WebKit: no layout-shift observer; rects as above. Not measured: the notice's removal (no screen clears `liveError`; only the unit tests reach the leaving branch). Evidence: `lastharness/logs/ln-*.log`, `l-logs.log`; `shots/n-chromium-normal-list-single.png`, `shots/n-chromium-normal-w390-page-single.png`, `shots/n-webkit-normal-w360-list-single.png`.
+
+**N-2 (fixed logs panel): still closed.** At 360, 390, 480, 700 px, panel open and collapsed, both engines: the logs panel and its header **0 px in every frame** (y 763 and 764 constant); nav bar 0; content (`h1`, search, Add device, results, nav items) moves 79.4 px by `translate` in 20 to 22 frames, **max 7.2 to 9.9 px per frame**; double toggle (offline and back within 60 ms) max 7.2 to 9.9 with a 17 to 25 px span and ends at 24; triple (50 ms apart) max 7.5 to 9.4. 768 px and wider: nothing moves. Reduced: instant (79.4 px in one frame). `lastharness/logs/lo-*.log`, `loc-*.log`.
+
+**N-8 (`div.stage` CLS, Chromium, below 768 px, deferred to issue #1): unchanged.** One `layout-shift` entry per status change: **0.0652 (360), 0.0676 (390), 0.073 (480), 0.0803 (700)** (c6aa80e: the same four numbers); two changes 0.1305 / 0.1353 / 0.146 / 0.1606; three 0.1957 / 0.2029 / 0.219 / 0.2409. Reduced: 0.0679, 0.0701, 0.075, 0.0817 (one shift). `div.stage` is the only source and paints nothing; every visible element moves by spring. New detail for issue #1: on the device page `.stage` moves by `translate` (no fixed descendant) and the CLS is 0.0001, so N-8 occurs only where the fixed logs panel is inside `.stage` (the device list). WebKit: 0.
+
+### L4. Regression pass: the Phase 1 role table at `4d5fa21`
+
+Numbers are Chromium / WebKit; "R" is reduced motion. "Same" means within timing noise of the `c6aa80e` run (`cmp3.py` over every `last-*` and `q-last-*` log against its `final-*` log: all differences are frame-timing noise or run labels; no property, curve, duration or count changed). Two engines ran in parallel for the batch; the modal and notice numbers above were repeated alone where a frame was long.
+
+| Role | Enter / exit (measured) | Reduced (measured) | Result |
+| --- | --- | --- | --- |
+| Press | Scale 0.97 (first change 26 to 34 ms, reached 109 to 118 ms, spring back 338 to 347 ms); colour `:active` 0.1 s, hover 0.15 s on the log Collapse, `FormButton` and the modal disclosure | `minScale 1`; `:active` 0 s; hover 0.15 s | Pass (same) |
+| Hover | Colour 0.15 s on every control | 0.15 s | Pass |
+| Disclosure: logs panel | `translate` 535 to 763, `h1` and cards 0, CLS 0; flick 535 to 271, overshoot -2.24 / -2.27, settles 551 / 498 ms | Snap in 1 frame | Pass |
+| Disclosure: form sections, modal | See L2: surface, footer, actions 0 px; followers by FLIP, max 4 to 54 px per frame (WebKit General first frames up to 98.4) | Instant, 200 ms fade | Pass; N-6 closed |
+| Disclosure: Settings tab | `DeviceForm` outside a modal: `.actions.inline` is `position: static` at the form end (216, 1121, 640x36 in a form 216, 125, 640x1032; WebKit 1106 and 1017), no `.footer`; SSH toggle control 0 px; actions, note and "Delete device" move by `translate` (39 / 40 writes), "Delete device" 504 px in 29 to 30 frames, max 54 to 62.9 per frame (c6aa80e: 57.4 to 59.7); three toggles continuous (`setInterrupt` max 59.6 / 59.5); **form actions unchanged** | 504 px in 1 frame | Pass (same) |
+| Menu and popover | 400 ms scale 0.96 to 1 + opacity; exit 150 ms; Escape at 40 ms no orphan; 360 to 1280 px menus: none outside the viewport | Opacity 200 / 150 ms | Pass |
+| Modal | Scrim 200 ms, surface scale 0.98 to 1 + opacity; exit 150 ms; two Escapes no orphan; surface top-anchored (16 px), form modal 768 high at 800 and 568 at 600 | Fade 200 / 150 ms | Pass |
+| Page change | 200 ms opacity, pair sum 1.000, nav shift 0, CLS 0 (360, 900, 1280; API 0 and 400 ms, both modes) | Same | Pass |
+| Card to detail | Name and pill flight; Back at 60, 100, 250, 700 ms: 0 clones, 1 page, `bad` empty, both engines | Cross-fade | Pass (same) |
+| Session tab open | Tab grows from the control: first frame 55.5 px wide, centre x 683.2 = button centre, centre y 233.8 against 249.8 (C-2 unchanged); 400 ms; close 150 ms | Fade 200 / 150 ms | Pass; C-2 unchanged |
+| Session tab reorder | Same drag order | Instant | Pass |
+| Reorder (sort, filter, live) | FLIP on `spring-move` (`li` translate 618 / 624 writes), no skeleton flash, CLS 0, `home-assistant` 17.1 / 18.4 px per frame over 34 frames | Instant (176 px, 528 px in one frame), leaving cards fade | Pass |
+| Status change | Pill cross-fade 200 ms, pair sum 1.000; slot moves 0 | Same | Pass; N-5 unchanged |
+| New heartbeat | 5 px `translate`, settles 308 ms; three beats 60 ms apart max step 4.41 | Instant | Pass |
+| New log row | From -25 px, panel moves 0 | Instant | Pass |
+| Chart update | One step per heartbeat (10.16 px), first-frame jump 0.00 | Instant | Pass |
+| Loading: grid, table, logs, header, tabs (API 400 ms) | Skeleton at about 340 ms, hold, 200 ms handoff; offsets 0.0 px on the grid card, table rows and header; CLS 0 on `/devices`, `/devices/{id}`, `/settings` at 360, 900, 1280 (API 0 and 400 ms, normal and reduced) | Same | Pass; N-4 unchanged |
+| Connection steps | No animation on `.steps` | Same | Pass |
+| Icon-only nav | Switches in one frame at 768 (192 to 68 and back), 0 running animations | Same | Pass |
+| Offline strip | 768 px and wider: 0 px. Below: spring, max 9.9 px per frame; logs panel 0 | Instant | Pass for the content; N-8 open (deferred) |
+| Live notice (new role, F6) | Fade 200 ms + list FLIP on `spring-default` (L3) | Fade 200 ms, layout instant | Pass; N-9 is the panel's notice, a different component |
+| Logs panel resize | Edge follows the pointer (offset -5 to 0) | Snap in 1 frame | Pass |
+| Toast, theme change, other charts, sheets | Not in Phase 1 | n/a | Not in Phase 1 |
+
+Also checked and unchanged: MOT-006 (inline writes only `translate`, `scale`, `opacity`, the pinned `top` on a leaving region and `caret-color` once per focus; `animProps` in every notice and strip run is `opacity` only); materials (default, `prefers-contrast: more` and reduced transparency as before; WebKit does not emulate reduced transparency headless); keyboard (Add device tab order Name, Host, Site, Kind, OS, Tags, SSH, the SSH field, RDP, Cancel, Save, then back to General, trap holds; Enter in Name and a click on Save both send `CreateDevice`); names on icon controls (0 unnamed on Devices, detail and Settings at 360 and 1280, both engines); UI-013 (Cancel 93x24, Save 73x24; the logs resize edge 292x8 and 1088x8 is C-8c, unchanged); contrast (modal Cancel 7.49:1, offline banner 7.49:1, primary button 3.5:1 is C-6, unchanged).
+
+### L5. New findings
+
+Ranked by what the operator sees (MV-007).
+
+| ID | Class (MV-002) | Sev | Spec | Measurement | Engine | Caused by a WP-17 fix? | Screenshot |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| **N-9** | **Layout jump** | should (**blocks under D-13**: one-frame step of at least 100 px, at 360 to 420 px) | MOT-007, MV-002, NET-004 | When the hub drops, the panel's "Live logs stopped: The hub did not answer. Check the VPN client." mounts above the log rows with no motion and no fade. The first log row steps **108 px in one frame at 360, 390 and 420 px** (it leaves the viewport: y 728 to 836 at 360, 692 to 800 at 390), **88 px at 480, 600, 700, 768 px**, **68 px at 900 and 1280 px**. Same in reduced motion (instant, the specified form there). The panel itself (top, header) moves 0. Chromium CLS 0.0104 (1280) and 0.0109 (900) is this step; the earlier 0.0195 and 0.0234 of the final re-audit were the sum of this and the device-list notice. Both engines, normal and reduced. | Chromium, WebKit | **No.** `LogList.svelte:42-44` is from WP-12 (`e9cd04d`); `LogList.svelte` was last changed by F3 for the skeleton, not for this notice. The final re-audit did not separate it from N-7 (it recorded the device list only). | `shots/logs360-before.png`, `shots/logs360-after.png`, `shots/logs360-40ms.png` (WebKit 360: the "04:00:00 Error Check" row has left the view), `shots/n-chromium-normal-list-single.png` (1280: rows 68 px lower) |
+| N-8 | Layout jump (instrument only) | could | MOT-007 | See L3: 0.0652 to 0.0803 per status change below 768 px, Chromium, `div.stage` only; none on the device page | Chromium | No (deferred by ruling) | `lastharness/logs/lo-chromium-390-normal.log`, `loc-chromium-390-normal.log` |
+| N-10 | Layout jump, reduced motion | could | MOT-007, MOT-040 | Reduced motion, instant form: list CLS 0.037 to 0.1387 and page 0.0059 to 0.1323 on a hub drop; General close at 900x800 0.2804. Specified instant layout, no fade-in of the displaced content | Chromium | No (deferred by ruling) | none |
+
+Closed since `c6aa80e`: **N-6** (L2) and **N-7** (L3). Still open and unchanged (not criterion 14 classes): C-2, C-6, C-8a, C-8c, N-4, N-5. No wrong-motion finding is open: every property, token and curve conforms.
+
+### L6. For issue #1 (could items)
+
+1. **N-9** (if the orchestrator waives the 100 px clause, or after the fix): give the log panel's "Live logs stopped" notice the same fade and FLIP of the rows below as `LiveNotice` (it can reuse `LiveNotice` with a slot; the fix is a design choice, not made here). At 360 to 420 px the step is 108 px.
+2. **N-8**: `div.stage` CLS 0.065 to 0.080 per status change below 768 px in Chromium; occurs only on the device list (fixed logs panel inside `.stage`). The device page has none.
+3. **N-10**: reduced-motion CLS of the live notice and the form modal (instant layout is specified; the observer counts it).
+4. Notice removal (no screen clears `liveError`) is untested; the leaving branch is only reached by unit tests.
+5. WebKit General close in a form modal shows up to 98.4 px in a first spring frame on a long frame (49 to 74 in most runs), under the 100 px line by 1.6 px; a stiffer clamp of the first frame would remove it.
+
+### L7. Not measured headless (operator to confirm)
+
+As in F5 of the final re-audit: real frame time in WKWebView and WebKitGTK, `prefers-reduced-transparency` in WebKit, session pop-out, `UpdateBanner`, a real hub. Also N-6 at a real window height of 600 in the Tauri shell (the web run at 1280x600 stands in), and the notice on a real socket reconnect.
