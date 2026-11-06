@@ -110,8 +110,10 @@
   --tracking-small: 0.01em;
   --weight-regular: 400;
   --weight-bold: 700;
-  --font-ui: "OpenDyslexic Nerd Font Propo", system-ui, -apple-system, sans-serif;
-  --font-mono: "OpenDyslexicM Nerd Font Mono", ui-monospace, monospace;
+  --font-ui: "Fira Code", system-ui, -apple-system, sans-serif;
+  --font-mono: "Fira Code", ui-monospace, monospace;
+  --font-ui-opendyslexic: "OpenDyslexic Nerd Font Propo", system-ui, -apple-system, sans-serif;
+  --font-mono-opendyslexic: "OpenDyslexicM Nerd Font Mono", ui-monospace, monospace;
   --font-icon: "OpenDyslexic Nerd Font Propo", "Symbols Nerd Font";
 }
 /* Motion changes (D-5): press and stagger are instant, springs jump; thresholds never change (MOT-021). */

@@ -5,7 +5,7 @@ members = ["crates/hub", "crates/guac-protocol", "crates/theme", "apps/desktop/s
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
-license = "UNLICENSED"
+license = "AGPL-3.0-or-later"
 publish = false
 
 [workspace.dependencies]
@@ -15,6 +15,7 @@ axum = { version = "0.8", features = ["ws"] }
 tokio = { version = "1.54", features = ["macros", "rt-multi-thread", "net", "sync", "time", "io-util"] }
 tokio-tungstenite = "0.29"
 tower = { version = "0.5", features = ["util"] }
+tower-http = { version = "0.6", default-features = false, features = ["cors"] }
 http-body-util = "0.1"
 thiserror = "2"
 tracing = "0.1"
@@ -44,6 +45,9 @@ rcgen = { version = "0.14", default-features = false, features = ["ring", "pem"]
 argon2 = { version = "0.6", default-features = false, features = ["alloc", "password-hash", "zeroize"] }
 getrandom = "0.4"
 rpassword = "7.5"
+# The hub's own HTTP/1 serving, for header deadlines and connection caps (SEC-001, NET-002).
+hyper = { version = "1", features = ["http1", "server"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
 # SSH host-key probe and connection test (WP-10 T3, R-032 E-3). `ring` is the crypto backend
 # (no OpenSSL, no CMake); `rsa` so RSA host keys and RSA private keys work.
 russh = { version = "0.65", default-features = false, features = ["ring", "rsa"] }
@@ -57,6 +61,11 @@ subtle = "2.6"
 tauri = { version = "2", default-features = false, features = ["wry", "compression"] }
 tauri-build = "2"
 keyring = { version = "3.6", default-features = false, features = ["apple-native", "sync-secret-service", "crypto-rust"] }
+# Desktop releases (WP-04 stage B, R-006, R-053): self-update, relaunch and the process log.
+# The updater fetches over rustls (ring), not OpenSSL; `zip` unpacks the Linux updater archive.
+tauri-plugin-updater = { version = "2.14", default-features = false, features = ["rustls-tls", "zip"] }
+tauri-plugin-process = "2.4"
+tauri-plugin-log = { version = "2.10", default-features = false }
 
 [workspace.lints.rust]
 warnings = "deny"

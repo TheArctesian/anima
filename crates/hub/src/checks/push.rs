@@ -37,19 +37,56 @@ const BODY_LIMIT: usize = 1024;
 const TOKEN_LENGTH: usize = 43;
 /// The longest response time a device may report, in milliseconds.
 const PING_MAX_MS: u32 = 600_000;
+/// The longest a push may take to answer. A push is one small write, so a slower one is a
+/// stuck database, and the device is told to try again rather than held for the edge's
+/// one-minute limit (NET-002).
+const ANSWER_TIME: Duration = Duration::from_secs(10);
 
 #[derive(Clone)]
 struct PushState {
     db: PgPool,
     bus: Bus,
     clock: Arc<dyn Clock>,
+    answer_time: Duration,
 }
 
-/// `GET|POST /push/{token}`. The caller mounts it behind the permitted-networks layer (NET-002).
+/// `GET|POST /push/{token}`, answering within ten seconds. The caller mounts it behind the
+/// permitted-networks layer (NET-002) and inside `crate::logged`, which logs the path as
+/// `/push/[redacted]` (LOG-007).
 pub fn push_router(db: PgPool, bus: Bus, clock: Arc<dyn Clock>) -> Router {
+    push_router_within(db, bus, clock, ANSWER_TIME)
+}
+
+/// [`push_router`] with its answer time as a parameter, so a test need not wait ten seconds.
+pub(in crate::checks) fn push_router_within(
+    db: PgPool,
+    bus: Bus,
+    clock: Arc<dyn Clock>,
+    answer_time: Duration,
+) -> Router {
     Router::new()
         .route("/push/{token}", get(accept).post(accept))
-        .with_state(PushState { db, bus, clock })
+        .with_state(PushState {
+            db,
+            bus,
+            clock,
+            answer_time,
+        })
+}
+
+/// The push's answer, or 503 once `answer_time` has passed. Dropping the late answer rolls
+/// back its transaction, so a timed-out push records nothing.
+async fn accept(
+    State(state): State<PushState>,
+    Path(token): Path<String>,
+    query: Result<Query<PushQuery>, QueryRejection>,
+    request: Request,
+) -> Response {
+    let limit = state.answer_time;
+    let answer = answer(state, token, query, request);
+    tokio::time::timeout(limit, answer)
+        .await
+        .unwrap_or_else(|_| StatusCode::SERVICE_UNAVAILABLE.into_response())
 }
 
 #[derive(Deserialize)]
@@ -192,9 +229,9 @@ async fn record(
     Ok(Outcome::Recorded)
 }
 
-async fn accept(
-    State(state): State<PushState>,
-    Path(token): Path<String>,
+async fn answer(
+    state: PushState,
+    token: String,
     query: Result<Query<PushQuery>, QueryRejection>,
     request: Request,
 ) -> Response {

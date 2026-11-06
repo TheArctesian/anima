@@ -19,7 +19,7 @@ const MARKER: &str = "SECRET-MARKER";
 
 /// Collects everything the process log writes.
 #[derive(Clone, Default)]
-struct Capture(Arc<Mutex<Vec<u8>>>);
+pub(super) struct Capture(pub(super) Arc<Mutex<Vec<u8>>>);
 
 impl io::Write for Capture {
     fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {

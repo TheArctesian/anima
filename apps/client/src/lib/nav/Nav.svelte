@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { resolve } from '$app/paths';
+  import { asset, resolve } from '$app/paths';
   import { useHub } from '$lib/hub/context';
   import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
@@ -35,6 +35,10 @@
 {/snippet}
 
 <nav aria-label="Main">
+  <div class="brand">
+    <img src={asset('/logo.png')} alt="" width="48" height="48" />
+    <span>Anima</span>
+  </div>
   {@render destination(DEVICES)}
   <!-- Always rendered, so a screen reader announces the text when it appears (NET-004). -->
   <div class="notice" role="status">
@@ -83,6 +87,21 @@
     line-height: var(--leading-tight);
     text-decoration: none;
     transition: background-color var(--duration-press) var(--ease-enter);
+  }
+
+  .brand {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: var(--space-2);
+    padding-bottom: var(--space-3);
+    font-size: var(--text-lg);
+    font-weight: var(--weight-bold);
+  }
+
+  .brand img {
+    inline-size: var(--space-12);
+    block-size: var(--space-12);
   }
 
   .item:not([aria-current='page']):hover {

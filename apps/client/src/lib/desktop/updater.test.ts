@@ -1,0 +1,70 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { desktopUpdater, UpdaterError } from './updater';
+
+const plugins = vi.hoisted(() => ({
+  check: vi.fn(),
+  relaunch: vi.fn(),
+  getVersion: vi.fn(),
+}));
+vi.mock('@tauri-apps/plugin-updater', () => ({ check: plugins.check }));
+vi.mock('@tauri-apps/plugin-process', () => ({ relaunch: plugins.relaunch }));
+vi.mock('@tauri-apps/api/app', () => ({ getVersion: plugins.getVersion }));
+
+const SECRET = 'https://user:pw@example.test/latest.json';
+
+function update(download: () => Promise<void> = () => Promise.resolve()) {
+  return { version: '1.2.0', downloadAndInstall: vi.fn(download), close: vi.fn(() => Promise.resolve()) };
+}
+
+beforeEach(() => {
+  Object.values(plugins).forEach((mock) => mock.mockReset());
+});
+
+describe('desktopUpdater', () => {
+  it('UPD-001: check calls the plugin with no options, so allowDowngrades stays in the shell configuration', async () => {
+    plugins.check.mockResolvedValue(null);
+    await expect(desktopUpdater.check()).resolves.toBeNull();
+    expect(plugins.check).toHaveBeenCalledWith();
+  });
+
+  it('UPD-003: an offered update carries its version and installs through downloadAndInstall, then closes', async () => {
+    const found = update();
+    plugins.check.mockResolvedValue(found);
+    const offered = await desktopUpdater.check();
+    expect(offered?.version).toBe('1.2.0');
+    await offered?.install();
+    expect(found.downloadAndInstall).toHaveBeenCalledOnce();
+    expect(found.close).toHaveBeenCalledOnce();
+  });
+
+  it('UPD-002: a failed install (bad signature) rejects with a fixed-text error and closes the update', async () => {
+    const found = update(() => Promise.reject(new Error(`signature failed for ${SECRET}`)));
+    plugins.check.mockResolvedValue(found);
+    const failure = await (await desktopUpdater.check())?.install().catch((reason: unknown) => reason);
+    expect(failure).toBeInstanceOf(UpdaterError);
+    expect(failure).toMatchObject({ step: 'install', message: 'The update could not be installed.' });
+    expect((failure as Error).cause).toBeUndefined();
+    expect(found.close).toHaveBeenCalledOnce();
+  });
+
+  it('LOG-007: a failed check rejects with fixed text and no cause', async () => {
+    plugins.check.mockRejectedValue(new Error(SECRET));
+    const failure = await desktopUpdater.check().catch((reason: unknown) => reason);
+    expect(failure).toMatchObject({ step: 'check', message: 'The update feed could not be checked.' });
+    expect(JSON.stringify(failure)).not.toContain('pw');
+    expect((failure as Error).cause).toBeUndefined();
+  });
+
+  it('UPD-003: restart calls relaunch; a failure is a typed error', async () => {
+    plugins.relaunch.mockResolvedValue(undefined);
+    await desktopUpdater.restart();
+    expect(plugins.relaunch).toHaveBeenCalledOnce();
+    plugins.relaunch.mockRejectedValue(new Error('x'));
+    await expect(desktopUpdater.restart()).rejects.toMatchObject({ step: 'restart' });
+  });
+
+  it('UPD-006: currentVersion is the app version', async () => {
+    plugins.getVersion.mockResolvedValue('1.0.0');
+    await expect(desktopUpdater.currentVersion()).resolves.toBe('1.0.0');
+  });
+});

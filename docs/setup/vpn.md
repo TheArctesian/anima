@@ -141,6 +141,12 @@ allow only these inbound rules:
 | 41641/udp | WireGuard of the VPS node (VPS-002) |
 | 22/tcp | **Temporary.** Remove it at the end of step 4. |
 
+**Sync the firewall after every change.** Rules you add or change after the firewall is
+activated do not apply until it is synced. Sync it in the panel, or with
+`hostinger vps firewall sync <FIREWALL_ID> <VM_ID>`, then check that the firewall reports
+`is_synced: true`. Until then the old rules still apply, and the panel looks right while it is
+not. During a sync, existing connections can drop and 443/tcp can refuse for a few seconds.
+
 If you cannot use a panel firewall, skip this; the host firewall still protects the VPS.
 Your Hostinger and Cloudflare accounts are as powerful as the VPS itself (see step 11): turn on
 two-factor authentication on both.
@@ -604,15 +610,25 @@ changes nothing.
    ```
 
    A Docker or Tailscale upgrade restarts its daemon: containers keep running (`live-restore`),
-   and the VPN drops for a few seconds. The old `/etc/dnf/automatic.conf` is kept as
+   and the VPN drops for a few seconds.
+
+   An update can also bring in a new package that enables its own service. For example, `bluez`
+   arrived as a new dependency and enabled `bluetooth.service`. `check` then marks the service
+   `!` under `== Enabled services`. After an update run, and after its reboot, run `check`
+   again. Disable a new service the VPS does not need (`sudo systemctl disable --now NAME`). If
+   the operator keeps one, add it as a `service NAME` line to `/etc/anima/known-workloads`
+   (step 2.0a). Do not add it to `stock-units.txt`: that file lists AlmaLinux's stock units
+   only. The old `/etc/dnf/automatic.conf` is kept as
    `/var/lib/anima/automatic.conf.previous`.
 
 4. `docker` merges `daemon.json` into `/etc/docker/daemon.json`: published ports bind to
    `127.0.0.1` by default (Docker would otherwise bypass the firewall), `selinux-enabled` makes
    Docker run containers confined (`container_t`; Docker CE on AlmaLinux does not do this by
    default, so Headscale would run unconfined as `spc_t`), logs are rotated (unless the existing
-   file sets its own `log-driver` or `log-opts`: those win, R-050), and `live-restore`
-   keeps containers running while Docker restarts. It refuses while Headscale's folders are not
+   file sets its own `log-driver` or `log-opts`: those win, R-050), `live-restore`
+   keeps containers running while Docker restarts, and `userland-proxy: false` makes Docker
+   forward published ports by DNAT, so a container sees the client's own address instead of
+   Docker's proxy (the hub refuses 172.16.0.0/12 peers, NET-002). It refuses while Headscale's folders are not
    labelled `container_file_t` (step 2.5). With `--restart-docker` it first reloads Docker, which
    turns `live-restore` on from the new file, refuses to go on unless it is on, then restarts
    Docker: every running container keeps running, and it fails naming any container that did not.
@@ -759,6 +775,12 @@ changes nothing.
 
    (Leave out `--allow-closing <PORTS>` if nothing would close.)
 
+   Before it changes anything, `firewall` saves the whole ruleset for the record. On a host where
+   Docker runs, `nft list ruleset` can print warnings about Docker's tables, such as
+   `table ip nat is managed by iptables-nft, do not touch!` and `XT target MASQUERADE not found`.
+   They are harmless: the rollback restores only `inet anima_filter` and never loads that saved
+   file, and Docker's tables are not changed.
+
 7. `confirm`. You have 180 seconds. Open a NEW SSH session over the VPN (a different session from
    the one that ran `firewall`) and run:
 
@@ -779,7 +801,7 @@ changes nothing.
    rest of the file is kept, and its first version is saved as
    `/var/lib/anima/nftables.conf.previous`), installs
    `/etc/systemd/system/nftables.service.d/anima.conf`, enables `nftables.service`, and masks
-   firewalld (`systemctl mask` plus `stop`). The Anima table is then the only host firewall:
+   firewalld (`systemctl mask`, plus `stop` if it is running). The Anima table is then the only host firewall:
    firewalld's rules are not covered by the rollback, and Docker keeps its own rules without it.
 
    AlmaLinux's `nftables.service` flushes the whole ruleset on stop **and on reload**. The drop-in
@@ -839,7 +861,8 @@ changes nothing.
     the site subnets. Treat this as a WP-04 note for the hub's network setup.
 
 11. **Operator change 9 (confirm in chat first: VPS-005).** In the Hostinger panel, remove the 22/tcp rule that you added in step 1
-    of this guide. SSH now works only over the VPN. (`sshd` itself still listens on all addresses;
+    of this guide, then sync the firewall and check `is_synced: true` (step 1). SSH now works
+    only over the VPN. (`sshd` itself still listens on all addresses;
     the `nftables` rules are what restrict port 22 to the VPN interface.)
 
 ## 5. Subnet routers

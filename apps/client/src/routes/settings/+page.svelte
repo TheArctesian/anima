@@ -1,12 +1,16 @@
 <script lang="ts">
   import SignOutRow from '$lib/access/SignOutRow.svelte';
+  import TypefaceRows from '$lib/typeface/TypefaceRows.svelte';
+  import DesktopRows from '$lib/updates/DesktopRows.svelte';
 </script>
 
 <h1>Settings</h1>
 
 <SignOutRow />
 
-<!-- WP-04 stage B mounts the desktop "Updates" row here (UPD-006, R-006). -->
+<TypefaceRows />
+
+<DesktopRows />
 
 <style>
   /* The title's line height is reserved from tokens, so the font load cannot move it (WP-11 H-7, R-042). */

@@ -23,6 +23,7 @@ use crate::{
     checks::{
         self, Attempt, Definition, PushToken,
         probe::{Failure, ProbeResult},
+        push::push_router_within,
         push_router,
     },
     clock::Clock,
@@ -89,5 +90,38 @@ tick_test! {
             assert!(written > 0, "round {round}");
             assert_eq!(i64::from(failures), written, "round {round}");
         }
+    }
+
+    async fn net_002_a_push_held_past_its_answer_time_gets_503_and_records_nothing(pool: PgPool) {
+        let token = PushToken::from_random(&[9; 32]);
+        let path = format!("/push/{}", token.expose());
+        let new = new_check(device(DOCKER_HOST), "Held", Definition::Push(token), 10);
+        let id = add_check(&pool, new).await;
+        let clock: Arc<dyn Clock> = Arc::new(Stepping(AtomicI64::new(0), database_now(&pool).await));
+        let router = push_router_within(pool.clone(), Bus::new(16), clock, Duration::from_millis(200));
+        let mut holder = pool.begin().await.unwrap();
+        sqlx::query("SELECT 1 FROM checks.checks WHERE id = $1 FOR UPDATE")
+            .bind(id)
+            .execute(&mut *holder)
+            .await
+            .unwrap();
+
+        let request = Request::builder()
+            .uri(format!("{path}?status=down"))
+            .body(Body::empty())
+            .unwrap();
+        let response = tokio::time::timeout(Duration::from_secs(10), router.oneshot(request))
+            .await
+            .expect("the push answers by its answer time")
+            .unwrap();
+        holder.rollback().await.unwrap();
+
+        assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+        let written: i64 = sqlx::query_scalar("SELECT count(*) FROM checks.heartbeats WHERE check_id = $1")
+            .bind(id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(written, 0);
     }
 }

@@ -51,6 +51,11 @@ russh.workspace = true
 hmac.workspace = true
 sha1.workspace = true
 subtle.workspace = true
+hyper.workspace = true
+tower.workspace = true
+tower-http.workspace = true
+hyper-util.workspace = true
+http-body-util.workspace = true
 
 [features]
 # `access::Identity::for_tests`, for integration tests of guarded domains (D-6). Turned on

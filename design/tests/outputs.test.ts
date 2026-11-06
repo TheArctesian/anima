@@ -117,9 +117,17 @@ describe('sizes and type', () => {
     expect(css).toContain('--tracking-small: 0.01em;');
   });
 
-  test('UI-010 the interface font is OpenDyslexic Propo with a system fallback; icons fall back to Symbols', () => {
-    expect(css).toMatch(/--font-ui: "OpenDyslexic Nerd Font Propo", .*sans-serif;/);
-    expect(css).toContain('--font-mono: "OpenDyslexicM Nerd Font Mono", ui-monospace, monospace;');
+  test('UI-010 the default fonts are Fira Code with a system fallback', () => {
+    expect(css).toMatch(/--font-ui: "Fira Code", .*sans-serif;/);
+    expect(css).toContain('--font-mono: "Fira Code", ui-monospace, monospace;');
+  });
+
+  test('UI-020 OpenDyslexic is a token for each text role, for the Settings choice', () => {
+    expect(css).toMatch(/--font-ui-opendyslexic: "OpenDyslexic Nerd Font Propo", .*sans-serif;/);
+    expect(css).toContain('--font-mono-opendyslexic: "OpenDyslexicM Nerd Font Mono", ui-monospace, monospace;');
+  });
+
+  test('UI-014 icons use the Nerd Font glyphs whatever the text font', () => {
     expect(css).toContain('--font-icon: "OpenDyslexic Nerd Font Propo", "Symbols Nerd Font";');
   });
 });

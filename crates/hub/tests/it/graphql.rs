@@ -106,3 +106,55 @@ async fn graphql_endpoint_answers_post_over_http() {
     assert!(status.is_success());
     assert_eq!(body, r#"{"data":{"__typename":"Query"}}"#);
 }
+
+/// A CORS preflight for `POST /graphql` from `origin`, as a web view sends it.
+fn preflight(origin: &str) -> Request<Body> {
+    Request::options("/graphql")
+        .header("origin", origin)
+        .header("access-control-request-method", "POST")
+        .header(
+            "access-control-request-headers",
+            "authorization,content-type",
+        )
+        .body(Body::empty())
+        .unwrap()
+}
+
+/// The `access-control-allow-origin` answer to `request`, if any.
+async fn allowed_origin(request: Request<Body>) -> Option<String> {
+    let (schema, pool, clock) = schema();
+    let response = router(schema, pool, clock).oneshot(request).await.unwrap();
+    response
+        .headers()
+        .get("access-control-allow-origin")
+        .map(|value| value.to_str().unwrap().to_owned())
+}
+
+#[tokio::test]
+async fn the_desktop_web_view_may_post_to_graphql() {
+    for origin in anima_hub::CLIENT_ORIGINS {
+        assert_eq!(
+            allowed_origin(preflight(origin)).await.as_deref(),
+            Some(origin)
+        );
+    }
+}
+
+#[tokio::test]
+async fn another_origin_gets_no_cors_permission() {
+    assert_eq!(allowed_origin(preflight("https://example.com")).await, None);
+}
+
+#[tokio::test]
+async fn a_cross_origin_post_without_a_token_is_still_refused() {
+    let request = Request::post("/graphql")
+        .header("origin", "tauri://localhost")
+        .header("content-type", "application/json")
+        .body(Body::from(
+            json!({ "query": "{ devices { totalCount } }" }).to_string(),
+        ))
+        .unwrap();
+    let (status, body) = send(request).await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(body.contains("UNAUTHENTICATED"), "{body}");
+}

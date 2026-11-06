@@ -7,7 +7,7 @@
 # It contacts neither Let's Encrypt nor Cloudflare: `certs` runs only with a stub entrypoint
 # (the hook on fixture certificates and `/lego --version`), never its real entry point.
 # `migrate` runs the real migrations as the owner role; then `hub` starts with the runtime
-# login only and must pass its start check and answer TLS on the published port.
+# login only, must become healthy, and must answer TLS, never plain HTTP, on the published port.
 #
 #   sh deploy/test/smoke.sh
 set -eu
@@ -32,9 +32,10 @@ step "Docker Engine version (NET-003)"
 sh "$repo/deploy/bin/preflight" docker "$(docker version --format '{{.Server.Version}}')"
 
 step "Prepare a temporary copy of deploy/ in $work"
-mkdir -p "$work/deploy" "$work/apps/client/src/styles"
+mkdir -p "$work/deploy" "$work/apps/client/src/styles" "$work/apps/desktop"
 cp -R "$repo/deploy/compose.yaml" "$repo/deploy/postgres" "$repo/deploy/certs" "$repo/deploy/gateway" "$repo/deploy/hub" "$work/deploy/"
 cp -R "$repo/Cargo.toml" "$repo/Cargo.lock" "$repo/crates" "$work/"
+cp -R "$repo/apps/desktop/src-tauri" "$work/apps/desktop/src-tauri"
 cp -R "$repo/apps/client/src/styles/fonts" "$work/apps/client/src/styles/fonts"
 printf '%s\n' 'smoke-test-not-a-token' |
     ANIMA_SECRETS_CHOWN=0 sh "$repo/deploy/bin/make-secrets" --cloudflare-token-stdin "$work/deploy/secrets"
@@ -145,17 +146,26 @@ run_migrate
 run_migrate >/dev/null
 echo "migrate exited 0 twice (a second run applies nothing)"
 
-step "hub: starts as the runtime login and serves TLS (SEC-001, DB-003)"
-compose up -d --no-deps guacd hub
-sleep 5
-state=$(docker inspect -f '{{.State.Status}}' "$(compose ps -aq hub)")
+step "hub: starts as the runtime login and serves TLS only (SEC-001, DB-003)"
+compose up -d --no-deps --wait --wait-timeout 120 guacd hub ||
+    {
+        compose logs --tail 20 hub
+        docker inspect -f '{{range .State.Health.Log}}{{.ExitCode}} {{.Output}}{{end}}' "$(compose ps -aq hub)"
+        fail "hub did not become healthy (anima-hub health)"
+    }
 compose logs --tail 10 hub
-[ "$state" = running ] || fail "hub is $state, not running"
-if curl -sk -o /dev/null --max-time 10 "https://127.0.0.1:443/graphql"; then
-    echo "hub is running and answers TLS on 127.0.0.1:443"
-elif curl -s -o /dev/null --max-time 10 "http://127.0.0.1:443/graphql"; then
-    echo "WARNING: the hub answers plain HTTP on 127.0.0.1:443, not TLS (SEC-001)."
-    echo "TLS serving from tls.pem belongs to the hub's network edge; until it lands, this is expected."
-else
-    fail "nothing answers on the published hub port"
-fi
+echo "hub is healthy: anima-hub health answered ok over TLS"
+# From this host the published port reaches the hub through Docker's proxy, so the hub sees
+# a 172.16.0.0/12 peer. It closes that connection at accept, before TLS: no HTTP status.
+code=$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 -X POST \
+    -H 'content-type: application/json' -d '{"query":"{__typename}"}' "https://127.0.0.1:443/graphql" || true)
+[ "$code" = 000 ] || fail "a proxied request to /graphql got HTTP status $code, not a closed connection"
+code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "http://127.0.0.1:443/health" || true)
+[ "$code" = 000 ] || fail "the published port answered plain HTTP with status $code"
+echo "the published port closes proxied TLS and plain HTTP without an HTTP answer"
+refusal=$(compose exec -T postgres psql -X -U postgres -d anima -Atc \
+    "select message from events.event_log where source = 'access' order by at desc limit 1")
+case "$refusal" in
+    "Refused a connection from 172."*) echo "the refusal is logged (NET-002): $refusal" ;;
+    *) fail "the newest access event is '$refusal', not a 172.16/12 refusal" ;;
+esac

@@ -69,18 +69,31 @@ describe("hub configuration", () => {
     expect(value).toBe("${ANIMA_PERMITTED_NETWORKS:-100.64.0.0/10}");
   });
 
-  test("DNS-002 certs may take 15 minutes to become healthy before the hub gives up", () => {
-    const check = compose.services["certs"]?.healthcheck;
-    expect((check?.retries ?? 0) * 10).toBeGreaterThanOrEqual(900);
-    expect(check?.interval).toBe("10s");
-  });
-
   test("GW-001 guacd writes its font cache to /tmp", () => {
     expect(compose.services["guacd"]?.environment?.["XDG_CACHE_HOME"]).toBe("/tmp");
   });
 
   test("GW-002 the gateway network keeps its egress and fixed subnet", () => {
     expect(compose.networks["gateway"]?.internal).not.toBe(true);
+  });
+});
+
+describe("healthchecks", () => {
+  test("DNS-002 certs may take 15 minutes to become healthy before the hub gives up", () => {
+    const check = compose.services["certs"]?.healthcheck;
+    expect((check?.retries ?? 0) * 10).toBeGreaterThanOrEqual(900);
+    expect(check?.interval).toBe("10s");
+  });
+
+  test("SEC-001 the hub healthcheck is the token-free anima-hub health probe", () => {
+    const check = compose.services["hub"]?.healthcheck;
+    expect(check?.test).toEqual(["CMD", "anima-hub", "health"]);
+  });
+
+  test("GW-001 guacd reports healthy within a minute, not after the image's 5-minute interval", () => {
+    const check = compose.services["guacd"]?.healthcheck;
+    expect(check?.test.join(" ")).toContain("4822");
+    expect(check?.interval).toBe("30s");
   });
 });
 
@@ -95,6 +108,16 @@ describe("hub image build", () => {
   test("SEC-005 the build never enables test targets or extra features", () => {
     for (const flag of ["--all-targets", "--tests", "--features", "--all-features", "test-support"]) {
       expect(dockerfile).not.toContain(flag);
+    }
+  });
+
+  test("SEC-005 every workspace member is in the hub build context, so cargo can load the workspace", () => {
+    const manifest = readFileSync(join(ROOT, "Cargo.toml"), "utf8");
+    const members = [...(/^members = \[(.*)\]$/m.exec(manifest)?.[1] ?? "").matchAll(/"([^"]+)"/g)].map((match) => match[1] ?? "");
+    const copied = dockerfile.split("\n").filter((line) => line.startsWith("COPY ") && !line.includes("--from")).map((line) => line.split(" ")[1] ?? "");
+    expect(members.length).toBeGreaterThan(0);
+    for (const member of members) {
+      expect(copied.some((source) => member === source || member.startsWith(`${source}/`))).toBe(true);
     }
   });
 });

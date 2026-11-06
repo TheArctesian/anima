@@ -116,7 +116,7 @@ Anima has three components: the client, the hub and the gateway.
 
 | Item | Decision |
 | --- | --- |
-| Fonts and icons | OpenDyslexic Nerd Font. See Section 5.2. |
+| Fonts and icons | Fira Code by default; OpenDyslexic Nerd Font as a Settings choice; Nerd Font icons. See Section 5.2. |
 | Framework | Tauri 2 |
 | Native layer | Rust |
 | User interface | TypeScript in the Tauri web view. See Section 11 for the framework decision. |
@@ -411,25 +411,26 @@ Anima uses the Nord colour scheme. The default theme is dark.
 
 ### 5.2 Typography and spacing
 
-Anima uses OpenDyslexic for text and Nerd Fonts for icons. The Nerd Fonts project supplies OpenDyslexic with the icons already added (patched). Thus one font family gives the text and the icons.
+Anima uses Fira Code for text by default and Nerd Fonts for icons. The operator can change the interface text and the monospace text to OpenDyslexic in Settings, each on its own (UI-020; operator decision, 2026-11-05). The Nerd Fonts project supplies OpenDyslexic with the icons already added (patched), so icons always come from the OpenDyslexic Propo file, whichever text font is chosen.
 
-| Use | Font family | File (from `ryanoasis/nerd-fonts`, `patched-fonts/OpenDyslexic/`) | Licence |
+| Use | Font family | File | Licence |
 | --- | --- | --- | --- |
-| Interface text and icons | OpenDyslexic Nerd Font Propo | `Regular/OpenDyslexicNerdFontPropo-{Regular,Bold,Italic,BoldItalic}.otf` | SIL OFL 1.1 |
-| Terminal, IP addresses, host names, code | OpenDyslexicM Nerd Font Mono | `Mono-Regular/OpenDyslexicMNerdFontMono-Regular.otf` | SIL OFL 1.1 |
+| Interface text, IP addresses, host names, code (default) | Fira Code | `woff2/FiraCode-{Regular,Bold}.woff2` from the `tonsky/FiraCode` 6.2 release | SIL OFL 1.1 |
+| Interface text (choice) and icons | OpenDyslexic Nerd Font Propo | `ryanoasis/nerd-fonts`, `patched-fonts/OpenDyslexic/Regular/OpenDyslexicNerdFontPropo-{Regular,Bold,Italic,BoldItalic}.otf` | SIL OFL 1.1 |
+| Terminal; IP addresses, host names, code (choice) | OpenDyslexicM Nerd Font Mono | `ryanoasis/nerd-fonts`, `patched-fonts/OpenDyslexic/Mono-Regular/OpenDyslexicMNerdFontMono-Regular.otf` | SIL OFL 1.1 |
 | Icon fallback | Symbols Nerd Font | `patched-fonts/NerdFontsSymbolsOnly/SymbolsNerdFont-Regular.ttf` | MIT |
 
-- **UI-010.** Use OpenDyslexic Nerd Font Propo for all interface text.
-- **UI-011.** Use OpenDyslexicM Nerd Font Mono for the terminal, IP addresses, host names and code. Use the "Mono" variant in the terminal, because its icons are one cell wide.
+- **UI-010.** Use Fira Code for all interface text by default. OpenDyslexic Nerd Font Propo is the alternative (UI-020).
+- **UI-011.** Use Fira Code for IP addresses, host names and code by default; OpenDyslexicM Nerd Font Mono is the alternative (UI-020). The server-drawn terminal uses OpenDyslexicM Nerd Font Mono (RA-011). Use the "Mono" variant in the terminal, because its icons are one cell wide.
 - **UI-014.** Use Nerd Font glyphs for all icons. Do not use image files or a second icon library. Use the Propo variant for icons in the interface, because its icons have their natural width.
 - **UI-015.** Each icon must have `aria-hidden="true"`. A button that has only an icon must have a text label for screen readers and a tooltip.
 - **UI-016.** Refer to each icon by its Nerd Font class name in the code, for example `nf-md-server`. Keep a table of the class names and code points in one source file. Do not write raw code points in components.
 - **UI-017.** The client must include the font files in the application package. Do not load fonts from the internet at run time.
 - **UI-022.** The Bold and Italic files of OpenDyslexic Nerd Font Propo are not in the Nerd Fonts v3.4.0 release. They are on the main branch. Pin the font files to commit `f034eeafc0ccf79afa8dd952feb86b18e5d0469e` until a release includes them.
 - **UI-018.** Each font licence file must be in the application package and in the "About" information.
-- **UI-019.** OpenDyslexic is wider and taller than most system fonts. Use `text-md` (0.875 rem) for body text, `text-sm` (0.8125 rem) for dense tables and `leading-normal` (1.5). Test each layout at these sizes. See Section 5.5.
-- **UI-021.** Apple recommends the system font first. Anima uses OpenDyslexic for readability. This is a deliberate exception. UI-020 keeps the system font available.
-- **UI-020.** A later Settings item can let the operator change to the system font. OpenDyslexic is the default.
+- **UI-019.** OpenDyslexic is wider and taller than most system fonts, and Fira Code is monospaced and wide. Use `text-md` (0.875 rem) for body text, `text-sm` (0.8125 rem) for dense tables and `leading-normal` (1.5). Test each layout at these sizes in both typefaces. See Section 5.5.
+- **UI-021.** Apple recommends the system font first. Anima uses Fira Code by default and offers OpenDyslexic for readability. This is a deliberate exception. The system font stays the fallback in every font token.
+- **UI-020.** The Settings page has two choices, "Interface font" and "Monospace font". Each is Fira Code (the default) or OpenDyslexic, and each is saved on the device. The choice changes the `font-ui` and `font-mono` tokens, so no component reads it. A choice applies at once and before the first render after a restart. Icons do not change. More typefaces or text roles can be added to the same choice later.
 - **UI-012.** Use a 4-pixel spacing grid. Use the `space-*` tokens (Section 5.5.3).
 - **UI-013.** Interactive controls must have a minimum target size of 24 by 24 pixels on desktop and 44 by 44 points on iOS.
 
@@ -504,11 +505,11 @@ A design token is a named design value, for example a colour, a space or a sprin
 | Colour, primitive | `nord-0` to `nord-15` | Section 5.1 |
 | Colour, semantic | `bg`, `surface`, `surface-raised`, `border`, `text`, `text-muted`, `accent`, `accent-alt`, `accent-deep`, `info`, `status-*` | Section 5.1 |
 | Colour, tint | `accent-tint`, `status-*-tint` | The colour at 12 % on `surface` |
-| Font family | `font-ui`, `font-mono`, `font-icon` | Section 5.2 |
+| Font family | `font-ui`, `font-mono`, `font-ui-opendyslexic`, `font-mono-opendyslexic`, `font-icon` | Section 5.2 |
 | Font size | `text-xs`, `text-sm`, `text-md`, `text-lg`, `text-xl`, `text-2xl` | 0.75, 0.8125, 0.875, 1, 1.25, 1.5 rem |
 | Line height | `leading-tight`, `leading-normal`, `leading-relaxed` | 1.2, 1.5, 1.7 |
 | Tracking | `tracking-display`, `tracking-body`, `tracking-small` | −0.01 em, 0, +0.01 em |
-| Weight | `weight-regular`, `weight-bold` | 400, 700 (OpenDyslexic has only these two weights) |
+| Weight | `weight-regular`, `weight-bold` | 400, 700 (OpenDyslexic has only these two weights; Fira Code ships these two) |
 | Space | `space-0` to `space-16` | 0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4 rem (4-pixel grid) |
 | Radius | `radius-sm`, `radius-md`, `radius-lg`, `radius-pill` | 4, 6, 10, 999 px |
 | Border width | `border-thin`, `border-focus` | 1, 2 px |
@@ -931,7 +932,7 @@ The view has these tabs:
 ## 7. Settings page
 
 - **SET-001.** The Settings page must be available from the navigation bar.
-- **SET-002.** In Phase 1, the Settings page must show only the page title "Settings", a "Signed in as <name>" row with "Sign out" (R-048), and, in the desktop app, the "Updates" row (UPD-006).
+- **SET-002.** In Phase 1, the Settings page must show only the page title "Settings", a "Signed in as <name>" row with "Sign out" (R-048), the "Interface font" and "Monospace font" choices (UI-020), and, in the desktop app, the "Updates" row (UPD-006).
 
 A later version adds these items to the Settings page:
 

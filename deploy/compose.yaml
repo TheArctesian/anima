@@ -119,6 +119,14 @@ services:
       # The root is read-only; fontconfig writes its cache here.
       XDG_CACHE_HOME: /tmp
     tmpfs: ["/tmp"]
+    # The image's own check runs every 5 minutes, so guacd would stay "starting" that long.
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 4822 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+      start_interval: 2s
     networks: [gateway]
     restart: unless-stopped
 
@@ -143,6 +151,15 @@ services:
     volumes:
       - certs:/certs:ro
     tmpfs: ["/tmp"]
+    # `anima-hub health` asks GET /health over TLS on the listen address, pinned to tls.pem.
+    # After a renewal it fails until the hub's hourly reload; unhealthy restarts nothing.
+    healthcheck:
+      test: ["CMD", "anima-hub", "health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+      start_interval: 2s
     # Only the hub is published, and only on its VPN address (NET-003). The explicit address
     # is required: the host's Docker daemon publishes on 127.0.0.1 by default.
     ports:

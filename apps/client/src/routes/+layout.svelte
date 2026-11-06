@@ -17,8 +17,14 @@
   import SessionPanes from '$lib/sessions/strip/SessionPanes.svelte';
   import SessionTabs from '$lib/sessions/strip/SessionTabs.svelte';
   import { sessionStart } from '$lib/sessions/view/start';
+  import { applyTypefaces, storedTypefaces } from '$lib/typeface/typeface';
+  import { provideDesktopUpdates } from '$lib/updates/desktop.svelte';
+  import UpdateBanner from '$lib/updates/UpdateBanner.svelte';
 
   const { children }: { children: Snippet } = $props();
+
+  // The operator's fonts apply before the first render, so the text does not change family after it shows (UI-020).
+  applyTypefaces(document.documentElement, storedTypefaces(localStorage));
 
   // The hub address is the stored setting (CLI-002); the token is read from the desktop key store per call (CLI-003).
   const address = storedHubAddress(localStorage);
@@ -26,6 +32,7 @@
   provideHub(hub);
   guardStart(page.url.pathname, hub.address);
   const clock = createClock(DATA_AGE_REFRESH_MS);
+  provideDesktopUpdates();
 
   // Each session view starts its own sessions, since only it knows its display (D-7); the store ends them (D-11).
   const api = sessionsApi(hub);
@@ -94,6 +101,7 @@
       <SessionPanes {api} />
     </div>
   </main>
+  <UpdateBanner />
 </div>
 
 <style>
