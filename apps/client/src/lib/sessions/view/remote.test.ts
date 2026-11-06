@@ -101,6 +101,8 @@ describe('find (RA-003)', () => {
     const input = target.querySelector<HTMLInputElement>('input[aria-label="Find in terminal"]');
     if (input === null) throw new Error('no find bar');
     expect(document.activeElement).toBe(input);
+    // UI-009: the find bar has its own row, so the toolbar cannot overflow a narrow pane.
+    expect(target.querySelector('.toolbar')?.contains(input)).toBe(false);
     input.value = 'needle';
     input.dispatchEvent(new Event('input', { bubbles: true }));
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));

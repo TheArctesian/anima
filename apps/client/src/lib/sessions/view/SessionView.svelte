@@ -183,9 +183,12 @@
       <span>Find</span>
     </button>
     <span class="device">{device.name}</span>
-    {#if finding && ready}<FindBar onfind={(text, backwards) => screen?.find(text, backwards) ?? false} onclose={closeFind} />{/if}
     {#if notice !== undefined}<span class="notice" role="status">{notice}</span>{/if}
   </div>
+  {#if finding && ready}
+    <!-- Its own row, so the toolbar never overflows a narrow pane (UI-009); the terminal refits below it. -->
+    <div class="findrow"><FindBar onfind={(text, backwards) => screen?.find(text, backwards) ?? false} onclose={closeFind} /></div>
+  {/if}
   <div class="stage">
     <!-- The terminal draws here; its own hidden text field takes the keyboard (D-8). -->
     <div class="pane" role="group" aria-label="Terminal of {device.name}" {@attach attachPane}></div>
@@ -235,6 +238,15 @@
     flex: none;
     align-items: center;
     gap: var(--space-3);
+    min-inline-size: 0;
+    padding: var(--space-2) var(--space-3);
+    border-bottom: var(--border-thin) solid var(--border);
+    background: var(--surface);
+  }
+
+  .findrow {
+    display: flex;
+    flex: none;
     min-inline-size: 0;
     padding: var(--space-2) var(--space-3);
     border-bottom: var(--border-thin) solid var(--border);

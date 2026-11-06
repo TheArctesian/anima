@@ -63,13 +63,14 @@
   .find {
     display: flex;
     flex: 1;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-1);
     min-inline-size: 0;
   }
 
   input {
-    flex: 1;
+    flex: 1 1 calc(var(--space-16) * 2);
     box-sizing: border-box;
     min-inline-size: 0;
     max-inline-size: calc(var(--space-16) * 4);
