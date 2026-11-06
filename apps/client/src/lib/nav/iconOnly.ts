@@ -14,21 +14,22 @@ const COMPACT_QUERY = `(max-width: ${String(breakpoint.compact.maxPx - 0.02)}px)
 /**
  * Marks `root` with `data-nav="icons"` while the window is below `bp-compact`, and follows the window as it resizes.
  * It is set before the first render, so crossing the breakpoint during load moves nothing (MOT-007).
- * Returns the function that stops watching.
+ * `onChange` hears the state at once and on every change. Returns the function that stops watching.
  */
-export function watchIconOnly(root: HTMLElement, win: MediaWindow): () => void {
+export function watchIconOnly(root: HTMLElement, win: MediaWindow, onChange?: (iconOnly: boolean) => void): () => void {
   const media = win.matchMedia?.(COMPACT_QUERY);
   if (media === undefined) return () => undefined;
   const apply = (iconOnly: boolean): void => {
     if (iconOnly) root.setAttribute(ATTRIBUTE, 'icons');
     else root.removeAttribute(ATTRIBUTE);
+    onChange?.(iconOnly);
   };
   apply(media.matches);
-  const onChange = (event: MediaQueryListEvent): void => {
+  const follow = (event: MediaQueryListEvent): void => {
     apply(event.matches);
   };
-  media.addEventListener('change', onChange);
+  media.addEventListener('change', follow);
   return () => {
-    media.removeEventListener('change', onChange);
+    media.removeEventListener('change', follow);
   };
 }

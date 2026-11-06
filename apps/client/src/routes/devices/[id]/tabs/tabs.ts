@@ -48,3 +48,15 @@ export function placeSearch(place: TabPlace): string {
 export function tabIds(name: TabName): { tab: string; panel: string } {
   return { tab: `device-tab-${name}`, panel: `device-panel-${name}` };
 }
+
+/** Which ends of a scrolling strip have tabs past them: `start` when scrolled away from the beginning, `end` when more lies ahead. */
+export function hiddenEdges(scrollStart: number, clientSize: number, scrollSize: number): { start: boolean; end: boolean } {
+  return { start: scrollStart > 0, end: scrollStart + clientSize < scrollSize - 1 };
+}
+
+/** The scroll position that shows a tab at `tabStart` that is `tabSize` wide, moving as little as it can. */
+export function scrolledToShow(scrollStart: number, clientSize: number, tabStart: number, tabSize: number): number {
+  if (tabStart < scrollStart) return tabStart;
+  const tabEnd = tabStart + tabSize;
+  return tabEnd > scrollStart + clientSize ? tabEnd - clientSize : scrollStart;
+}

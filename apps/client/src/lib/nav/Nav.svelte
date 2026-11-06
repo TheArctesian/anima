@@ -12,9 +12,11 @@
     now: Date;
     /** Called when the operator picks a destination, even the current page (it leaves a session tab). */
     onnavigate?: () => void;
+    /** The bar shows icons only, so each item needs its words as a tooltip (UI-015). */
+    iconOnly?: boolean;
   }
 
-  const { pathname, now, onnavigate }: Props = $props();
+  const { pathname, now, onnavigate, iconOnly = false }: Props = $props();
   const hub = useHub();
   const connected = $derived(hub.status.current.connection === 'connected');
   const banner = $derived(unreachableBanner(hub.status.current, hub.address.origin, now));
@@ -26,7 +28,7 @@
     class="item"
     href={resolve(item.href)}
     tabindex="0"
-    title={item.label}
+    title={iconOnly ? item.label : undefined}
     aria-current={isActive(item, pathname) ? 'page' : undefined}
     onclick={onnavigate}
     {@attach press()}
@@ -46,6 +48,7 @@
   <div class="notice" role="status">
     {#if banner !== null}
       <div class="banner">
+        <span class="alert"><Icon name="nf-md-alert" /></span>
         <strong>{banner.title}</strong>
         <span>{banner.origin}</span>
         <span>{banner.advice}</span>
@@ -54,7 +57,7 @@
     {/if}
   </div>
   <hr />
-  <p class="status" title={statusLabel(hub.status.current)}>
+  <p class="status" title={iconOnly ? statusLabel(hub.status.current) : undefined}>
     <span class="dot" class:connected aria-hidden="true"></span><span class="words">{statusLabel(hub.status.current)}</span>
   </p>
   {@render destination(SETTINGS)}
@@ -134,25 +137,34 @@
     flex: none;
   }
 
+  /*
+   * Connected is a filled dot and anything else a ring, so the state is a shape and not a colour alone (UI-003). The
+   * outline keeps 3:1 against the bar, and `forced-color-adjust` keeps the fill under forced colours.
+   */
   .dot {
     display: none;
     flex: none;
-    inline-size: var(--space-2);
-    block-size: var(--space-2);
+    box-sizing: border-box;
+    inline-size: var(--space-3);
+    block-size: var(--space-3);
+    border: var(--border-thin) solid var(--text);
     border-radius: var(--radius-pill);
-    background: var(--status-down);
+    forced-color-adjust: none;
   }
 
   .dot.connected {
     background: var(--status-up);
   }
 
+  .alert {
+    display: none;
+  }
+
   /*
    * Below the compact breakpoint the bar shows icons only. The words stay in the page as each control's accessible name
    * (UI-015); the width switches at once, never animated (MOT-006).
    */
-  :global(:root[data-nav='icons']) .words,
-  :global(:root[data-nav='icons']) .banner {
+  :global(:root[data-nav='icons']) .words {
     position: absolute;
     inline-size: var(--border-thin);
     block-size: var(--border-thin);
@@ -183,6 +195,35 @@
 
   :global(:root[data-nav='icons']) .dot {
     display: block;
+  }
+
+  /* No blur: a backdrop filter would make the bar the containing block of the fixed strip below. */
+  :global(:root[data-nav='icons']) nav {
+    backdrop-filter: none;
+  }
+
+  /*
+   * When the hub cannot be reached the bar's banner is a strip across the top of the window with its full text. It sits
+   * over the page and takes no room, so nothing moves when it appears (NET-004, MOT-007).
+   */
+  :global(:root[data-nav='icons']) .banner {
+    position: fixed;
+    inset-block-start: 0;
+    inset-inline: 0;
+    box-sizing: border-box;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1) var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border-block-end: var(--border-thin) solid var(--border);
+    border-radius: 0;
+    background: var(--surface-raised);
+    box-shadow: var(--elevation-2);
+  }
+
+  :global(:root[data-nav='icons']) .alert {
+    display: inline-flex;
   }
 
   hr {

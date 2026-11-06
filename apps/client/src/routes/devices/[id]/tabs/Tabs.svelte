@@ -5,7 +5,7 @@
   import { springMotion, type InstantMotion, type SpringMotion } from '$lib/motion/options';
   import { motionPreference, type MotionPreference } from '$lib/motion/preference';
   import { press } from '$lib/motion/roles/press';
-  import { TABS, tabIds, type TabName } from './tabs';
+  import { TABS, hiddenEdges, scrolledToShow, tabIds, type TabName } from './tabs';
 
   interface Props {
     selected: TabName;
@@ -51,6 +51,24 @@
     };
   });
 
+  /** The strip shows an edge fade where tabs lie past its edge (NAV-005: a focused tab is always scrolled into view). */
+  function markEdges(): void {
+    if (list === undefined) return;
+    const edges = hiddenEdges(list.scrollLeft, list.clientWidth, list.scrollWidth);
+    list.toggleAttribute('data-more-before', edges.start);
+    list.toggleAttribute('data-more-after', edges.end);
+  }
+
+  $effect(() => {
+    markEdges();
+    if (list === undefined || typeof ResizeObserver !== 'function') return;
+    const observer = new ResizeObserver(markEdges);
+    observer.observe(list);
+    return () => {
+      observer.disconnect();
+    };
+  });
+
   /** Roving focus (APG tabs, manual activation): arrows, Home and End move focus; Enter or Space selects. */
   function keydown(event: KeyboardEvent): void {
     const tabs = [...(list?.querySelectorAll<HTMLElement>('[role="tab"]') ?? [])];
@@ -62,7 +80,14 @@
   }
 </script>
 
-<div class="tabs" role="tablist" aria-label="Device" tabindex="-1" bind:this={list} onkeydown={keydown}>
+<div class="tabs" role="tablist" aria-label="Device" tabindex="-1" bind:this={list}
+  onkeydown={keydown}
+  onscroll={markEdges}
+  onfocusin={(event) => {
+    if (list === undefined || !(event.target instanceof HTMLElement)) return;
+    list.scrollLeft = scrolledToShow(list.scrollLeft, list.clientWidth, event.target.offsetLeft, event.target.offsetWidth);
+  }}
+>
   {#each TABS as tab (tab.name)}
     <button
       type="button"
@@ -91,6 +116,25 @@
     gap: var(--space-1);
     margin-block-end: var(--space-4);
     border-block-end: var(--border-thin) solid var(--border);
+  }
+
+  /* An edge fade where tabs lie past the edge. */
+  .tabs:global([data-more-after]) {
+    mask-image: linear-gradient(to right, var(--text) calc(100% - var(--space-8)), transparent);
+  }
+
+  .tabs:global([data-more-before]) {
+    mask-image: linear-gradient(to left, var(--text) calc(100% - var(--space-8)), transparent);
+  }
+
+  .tabs:global([data-more-before][data-more-after]) {
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      var(--text) var(--space-8),
+      var(--text) calc(100% - var(--space-8)),
+      transparent
+    );
   }
 
   button {

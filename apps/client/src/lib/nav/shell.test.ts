@@ -114,14 +114,34 @@ it('NAV-005: the items are real links to their pages, with the server and cog ic
   expect(links.map((link) => link.querySelector('.icon')?.textContent)).toEqual(['\u{F048B}', '\u{F0493}']);
 });
 
-it('UI-015: each item keeps its words as its name and as a tooltip, for the icon-only bar', () => {
+it('UI-015: each item keeps its words as its name; the tooltip is set only when the bar shows icons', () => {
+  const wide = show();
+  expect([...wide.querySelectorAll('a')].map((link) => [link.querySelector('.words')?.textContent, link.getAttribute('title')])).toEqual([
+    ['Devices', null],
+    ['Settings', null],
+  ]);
+});
+
+it('UI-015: below bp-compact each item has its words as a tooltip, and the status too', () => {
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    value: (query: string) => ({ matches: query.includes('max-width'), addEventListener: () => undefined, removeEventListener: () => undefined }),
+  });
+  onTestFinished(() => {
+    Reflect.deleteProperty(window, 'matchMedia');
+    document.documentElement.removeAttribute('data-nav');
+  });
   const nav = show();
-  const links = [...nav.querySelectorAll('a')];
-  expect(links.map((link) => [link.querySelector('.words')?.textContent, link.getAttribute('title')])).toEqual([
+  expect([...nav.querySelectorAll('a')].map((link) => [link.querySelector('.words')?.textContent, link.getAttribute('title')])).toEqual([
     ['Devices', 'Devices'],
     ['Settings', 'Settings'],
   ]);
   expect(nav.querySelector('.status')?.getAttribute('title')).toBe('Connected');
+});
+
+it('NET-004: when unreachable the banner has an icon besides its text, so the state is not colour alone', () => {
+  const nav = show('/devices', { connection: 'unreachable', lastContactAt: null });
+  expect(nav.querySelector('.banner .alert .icon')).not.toBeNull();
 });
 
 it('NAV-005: every link is focusable by Tab (tabindex 0 for WebKit)', () => {

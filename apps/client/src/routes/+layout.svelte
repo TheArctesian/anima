@@ -27,7 +27,10 @@
   // The operator's fonts apply before the first render, so the text does not change family after it shows (UI-020).
   applyTypefaces(document.documentElement, storedTypefaces(localStorage));
   // The bar shows icons only below the compact breakpoint; set before the first render so the width never changes after load.
-  const stopWatchingWidth = watchIconOnly(document.documentElement, window);
+  let iconOnly = $state(false);
+  const stopWatchingWidth = watchIconOnly(document.documentElement, window, (now) => {
+    iconOnly = now;
+  });
   $effect(() => stopWatchingWidth);
 
   // The hub address is the stored setting (CLI-002); the token is read from the desktop key store per call (CLI-003).
@@ -90,7 +93,7 @@
 </script>
 
 <div class="shell">
-  <Nav pathname={page.url.pathname} now={clock.current} onnavigate={navigate} />
+  <Nav pathname={page.url.pathname} now={clock.current} onnavigate={navigate} {iconOnly} />
   <main>
     <SessionTabs />
     <div class="stage">

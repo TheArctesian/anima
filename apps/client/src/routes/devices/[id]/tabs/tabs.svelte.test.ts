@@ -7,6 +7,7 @@ import { runs } from '$lib/motion/engine.fixture';
 import { spring, threshold } from '$lib/motion/tokens';
 import TabPanel from './TabPanel.svelte';
 import Tabs from './Tabs.svelte';
+import { hiddenEdges, scrolledToShow } from './tabs';
 import { placeSearch, readPlace, type TabName } from './tabs';
 
 vi.mock('motion', async (importOriginal) => ({
@@ -169,4 +170,17 @@ describe('TabPanel (D-9, Loading role)', () => {
     await tick();
     expect(loaded()).not.toBeNull();
   });
+});
+
+it('NAV-005: a strip shows a fade at each end that has tabs past it', () => {
+  expect(hiddenEdges(0, 200, 400)).toEqual({ start: false, end: true });
+  expect(hiddenEdges(100, 200, 400)).toEqual({ start: true, end: true });
+  expect(hiddenEdges(200, 200, 400)).toEqual({ start: true, end: false });
+  expect(hiddenEdges(0, 400, 400)).toEqual({ start: false, end: false });
+});
+
+it('NAV-005: a focused tab past either edge of the strip is scrolled into view, and one inside it is left alone', () => {
+  expect(scrolledToShow(0, 200, 300, 80)).toBe(180);
+  expect(scrolledToShow(150, 200, 100, 80)).toBe(100);
+  expect(scrolledToShow(50, 200, 100, 80)).toBe(50);
 });

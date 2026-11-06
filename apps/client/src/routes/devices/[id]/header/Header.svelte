@@ -59,21 +59,55 @@
 
 <style>
   /*
-   * One row at a size from tokens, so no font change or late data moves the tabs (D-13, WP-11 H-7). When the name, the pill
-   * and the buttons do not fit in one row, the line wraps, so nothing makes the page wider (DEV-021).
+   * One row at a block size from tokens, so no font change or late data moves the tabs (D-13, WP-11 H-7). The host and tag
+   * details take what the name, the pill and the buttons leave and shrink to nothing first; a name that is too long ends in
+   * an ellipsis with its full text as the tooltip (DEV-021).
    */
   .line {
     box-sizing: border-box;
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-3);
-    min-block-size: var(--target-min-touch);
+    block-size: var(--target-min-touch);
     margin-block-end: var(--space-4);
     min-inline-size: 0;
   }
 
-  /* The pill and the buttons never shrink; the name wraps inside its own box and is never cut (DEV-021). */
+  /*
+   * Below the compact breakpoint four rows of fixed size: the back link and the pill; the name; the details; the buttons. The
+   * block size is the same while the device loads and when it arrives (MOT-007).
+   */
+  :global(:root[data-nav='icons']) .line {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-rows:
+      var(--target-min-touch) calc(var(--text-xl) * var(--leading-tight)) calc(var(--text-sm) * var(--leading-tight))
+      var(--target-min-desktop);
+    gap: var(--space-2) var(--space-3);
+    block-size: calc(
+      var(--target-min-touch) + var(--text-xl) * var(--leading-tight) + var(--text-sm) * var(--leading-tight) +
+        var(--target-min-desktop) + var(--space-2) * 3
+    );
+  }
+
+  :global(:root[data-nav='icons']) .back {
+    grid-area: 1 / 1;
+  }
+
+  :global(:root[data-nav='icons']) .status {
+    grid-area: 1 / 3;
+  }
+
+  :global(:root[data-nav='icons']) h1 {
+    grid-area: 2 / 1 / 3 / -1;
+  }
+
+  :global(:root[data-nav='icons']) .details,
+  :global(:root[data-nav='icons']) .actions {
+    grid-column: 1 / -1;
+  }
+
+  /* The pill and the buttons never shrink (DEV-021). */
   .back,
   .status,
   .actions {
@@ -98,13 +132,15 @@
     flex: 0 1 auto;
     min-inline-size: 0;
     margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-size: var(--text-xl);
     line-height: var(--leading-tight);
-    overflow-wrap: anywhere;
   }
 
   .details {
-    flex: 1 1 auto;
+    flex: 1 1 0;
     display: flex;
     gap: var(--space-2);
     min-inline-size: 0;
@@ -136,7 +172,6 @@
 
   .actions {
     display: flex;
-    flex-wrap: wrap;
     gap: var(--space-2);
   }
 
