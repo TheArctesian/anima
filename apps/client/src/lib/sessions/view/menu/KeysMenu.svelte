@@ -1,20 +1,21 @@
-<script lang="ts">
+<script lang="ts" generics="Entry extends MenuEntry">
   import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
   import { popover } from '$lib/motion/roles/transitions';
-  import { KEY_SEQUENCES, type KeySequence } from './sequences';
-  import { menuAlignment, menuFocus, menuPlacement, type MenuAlignment, type MenuPlacement } from './menu';
+  import { menuAlignment, menuFocus, menuPlacement, type MenuAlignment, type MenuEntry, type MenuPlacement } from './menu';
 
   interface Props {
     /** No session to send to (not ready, or ended). */
     disabled: boolean;
-    onkeys: (sequence: KeySequence) => void;
+    /** The key combinations, in menu order (RA-006). */
+    entries: readonly Entry[];
+    onkeys: (entry: Entry) => void;
     onpaste: () => void;
     /** Why "Paste" is off (RA-033); the item then shows it and sends nothing. */
     pasteOff?: string | undefined;
   }
 
-  const { disabled, onkeys, onpaste, pasteOff }: Props = $props();
+  const { disabled, entries, onkeys, onpaste, pasteOff }: Props = $props();
   const menuId = $props.id();
   let open = $state(false);
   let trigger: HTMLButtonElement | undefined = $state();
@@ -124,7 +125,7 @@
       onkeydown={menuKey}
       transition:popover={{ from: trigger }}
     >
-      {#each KEY_SEQUENCES as combination (combination.id)}
+      {#each entries as combination (combination.id)}
         <button type="button" role="menuitem" tabindex="-1" onclick={() => choose(() => onkeys(combination))}>
           <span class="label">{combination.label}</span>
           <span class="hint">{combination.hint}</span>
