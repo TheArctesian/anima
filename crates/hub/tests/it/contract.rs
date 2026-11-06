@@ -16,7 +16,7 @@ use crate::hub::hub_sdl;
 /// member's name → signature.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Declaration {
-    pub header: String,
+    header: String,
     pub members: BTreeMap<String, String>,
 }
 
@@ -24,6 +24,8 @@ pub struct Declaration {
 /// `@name`.
 pub type Schema = BTreeMap<String, Declaration>;
 
+/// Directives are compared by name only. K1 uses no directive arguments, directives on enum
+/// values, `extend` blocks or `schema {}` block today; add them here if it ever does.
 fn directives(list: &[Positioned<ConstDirective>]) -> String {
     let mut names: Vec<String> = list
         .iter()
@@ -145,16 +147,16 @@ pub fn schema(sdl: &str) -> Schema {
     for definition in &document.definitions {
         match definition {
             TypeSystemDefinition::Type(definition) => {
-                declarations.insert(
-                    definition.node.name.node.to_string(),
-                    type_declaration(&definition.node),
-                );
+                let name = definition.node.name.node.to_string();
+                let previous =
+                    declarations.insert(name.clone(), type_declaration(&definition.node));
+                assert!(previous.is_none(), "duplicate {name}");
             }
             TypeSystemDefinition::Directive(directive) => {
-                declarations.insert(
-                    format!("@{}", directive.node.name.node),
-                    directive_declaration(&directive.node),
-                );
+                let name = format!("@{}", directive.node.name.node);
+                let previous =
+                    declarations.insert(name.clone(), directive_declaration(&directive.node));
+                assert!(previous.is_none(), "duplicate {name}");
             }
             TypeSystemDefinition::Schema(_) => {}
         }
