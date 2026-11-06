@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
 import { flushSync } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Hub } from '$lib/hub/hub';
@@ -225,4 +226,26 @@ it('D-11: a route change (back, goto) shows the pages and keeps the tabs', async
   flushSync();
   expect(sessions.active).toBeNull();
   expect(tabs()).toHaveLength(1);
+});
+
+it('K4 §8.7: a title the shell sets shows in the tab next to the device name, which stays; the full title is its tooltip', async () => {
+  const sessions = show();
+  const id = await openStarted(sessions);
+  sessions.retitle(id, 'user@web-1: ~/src');
+  await settle();
+  const tab = tabs()[0];
+  expect(tab?.querySelector('.name')?.textContent).toBe('web-1');
+  expect(tab?.querySelector('.title')?.textContent).toBe('user@web-1: ~/src');
+  expect(tab?.querySelector('.title')?.getAttribute('title')).toBe('user@web-1: ~/src');
+  sessions.retitle(id, '');
+  await settle();
+  expect(tab?.querySelector('.title')?.textContent).toBe('');
+});
+
+it('MOT-007, MV-004: the tab has one width whatever the title, so a title moves neither the close button nor the protocol', () => {
+  const css = readFileSync(`${import.meta.dirname}/SessionTabs.svelte`, 'utf8');
+  expect(css).toMatch(/\.slot \{[^}]*\n\s+inline-size: min\(/);
+  expect(css).not.toMatch(/\.slot \{[^}]*max-inline-size/);
+  const tab = readFileSync(`${import.meta.dirname}/SessionTab.svelte`, 'utf8');
+  expect(tab).toMatch(/\.title \{[^}]*flex: 1 1 0;/);
 });

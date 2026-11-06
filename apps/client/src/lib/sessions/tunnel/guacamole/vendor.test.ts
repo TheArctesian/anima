@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import Guacamole from './vendor/guacamole.js';
+import Guacamole from '../vendor/guacamole.js';
 
 /**
  * SHA-256 of `vendor/guacamole.js` without its last line (`export default Guacamole;`), which is the Apache
@@ -15,7 +15,7 @@ import Guacamole from './vendor/guacamole.js';
 const APACHE_1_5_5_MODULES_SHA256 = 'd5c167c0c3c40aae5fa25177dc56465b947ec24ab1a5a7f60e7009684525c9df';
 const EXPORT_LINE = 'export default Guacamole;\n';
 
-const vendored = readFileSync(join(import.meta.dirname, 'vendor', 'guacamole.js'), 'utf8');
+const vendored = readFileSync(join(import.meta.dirname, '..', 'vendor', 'guacamole.js'), 'utf8');
 
 describe('vendored Guacamole client (R-045)', () => {
   it('R-046: is the Apache 1.5.5 modules byte for byte, plus one export line', () => {

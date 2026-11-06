@@ -9,6 +9,7 @@ import {
   noTabs,
   opened,
   selected,
+  titled,
   withSession,
   type Origin,
   type SessionProtocol,
@@ -92,6 +93,8 @@ export interface Sessions {
   startIn(id: TabId): SessionStart;
   select(id: TabId): void;
   deselect(): void;
+  /** Show `title` (the remote shell's, cleaned) in the tab; `''` clears it. */
+  retitle(id: TabId, title: string): void;
   /** Removes the tab and ends its session once; rejects with `SessionEndError` when the hub could not end it. */
   close(id: TabId): Promise<void>;
   move(from: number, to: number): void;
@@ -166,6 +169,10 @@ class OpenSessions implements Sessions {
     this.#state = selected(this.#state, id);
   }
 
+  retitle(id: TabId, title: string): void {
+    this.#state = titled(this.#state, id, title);
+  }
+
   deselect(): void {
     this.#state = deselected(this.#state);
   }
@@ -200,7 +207,7 @@ class OpenSessions implements Sessions {
   /** `events`, after the tab gives up the session of `attempt` when its tunnel ends (D-4). */
   #following(id: TabId, attempt: Attempt, events: TunnelEvents): TunnelEvents {
     return {
-      onchange: events.onchange,
+      ...events,
       onend: (state) => {
         attempt.ended = true;
         if (attempt.sessionId !== undefined && this.#find(id)?.sessionId === attempt.sessionId) {

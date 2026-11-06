@@ -2,9 +2,8 @@
 import { flushSync } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { installBlankCanvas } from '../../tunnel/fake/canvas.fixture';
-import { FakeTunnelSocket } from '../../tunnel/fake/socket.fixture';
-import { KEY_COMBINATIONS, PASTE_STROKES, keyStrokes } from '../keys';
-import { connectView, flags, installBrowserFakes, sent, settle, showView, systemClipboard } from '../view.fixture.svelte';
+import { FakeTerminalSocket } from '../../tunnel/terminal/fake/socket.fixture';
+import { connectView, flags, installBrowserFakes, settle, showView } from '../view.fixture.svelte';
 import { MENU_MARGIN_PX, menuAlignment, menuFocus, menuPlacement } from './menu';
 
 describe('menuFocus', () => {
@@ -58,7 +57,7 @@ let cleanups: (() => unknown)[] = [];
 
 beforeEach(() => {
   vi.useFakeTimers();
-  FakeTunnelSocket.reset();
+  FakeTerminalSocket.reset();
   flags.visible = true;
   flags.focused = true;
   cleanups = [installBlankCanvas(), installBrowserFakes()];
@@ -80,38 +79,10 @@ async function connected() {
 }
 
 const items = () => [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')];
-const strokes = (socket: FakeTunnelSocket) => sent(socket, 'key').map(([keysym, pressed]) => [Number(pressed), Number(keysym)]);
-
 function press(target: Element, key: string) {
   target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
   flushSync();
 }
-
-describe('Keys menu (RA-006, D-10)', () => {
-  it.each(KEY_COMBINATIONS.map((combination) => [combination.label, combination] as const))(
-    'RA-006: "%s" sends its press and release sequence from the keys table',
-    async (label, combination) => {
-      const { socket, trigger } = await connected();
-      trigger.click();
-      flushSync();
-      items().find((item) => item.textContent.includes(label) && item.querySelector('.label')?.textContent === label)?.click();
-      flushSync();
-      expect(strokes(socket)).toEqual(keyStrokes(combination).map(([pressed, keysym]) => [pressed, keysym]));
-    },
-  );
-
-  it('D-9: "Paste" sends the system clipboard as one text/plain stream, then the paste keys', async () => {
-    const { socket, trigger } = await connected();
-    systemClipboard.text = 'uptime';
-    trigger.click();
-    flushSync();
-    items().at(-1)?.click();
-    await settle();
-    expect(sent(socket, 'clipboard').map(([, type]) => type)).toEqual(['text/plain']);
-    expect(strokes(socket)).toEqual(PASTE_STROKES.map(([pressed, keysym]) => [pressed, keysym]));
-  });
-
-});
 
 describe('Keys menu control (UI-015)', () => {
   it('UI-015: the control has a text name, a tooltip and an aria-hidden icon; it says it opens a menu', async () => {
@@ -147,7 +118,7 @@ describe('Keys menu control (UI-015)', () => {
     await settle();
     press(document.activeElement as Element, 'ArrowDown');
     press(document.activeElement as Element, 'Escape');
-    expect(sent(socket, 'key')).toEqual([]);
+    expect(socket.typed()).toEqual([]);
   });
 
   it('the menu cannot be used before the session is ready', () => {

@@ -1,17 +1,18 @@
 import { expect, it, vi } from 'vitest';
 import { SessionEndError, createSessions, type SessionPort, type Sessions } from './sessions.svelte';
 import type { TunnelStart } from './tunnel/start';
-import type { SessionTunnel, TunnelState } from './tunnel/tunnel';
+import type { TunnelState } from './tunnel/state';
+import type { TerminalLink } from './tunnel/terminal/link';
 import type { SessionStart, TunnelEvents } from './view/start';
 
 const display = { widthPx: 800, heightPx: 600 };
 const request = { deviceId: 'web-1', deviceName: 'web-1', protocol: 'SSH', origin: null } as const;
 const ENDED = { ok: true, value: undefined } as const;
 const UNAVAILABLE = { ok: false, error: { code: 'UNAVAILABLE', message: 'The hub is not ready.' } } as const;
-const ENDED_STATE: TunnelState = { phase: 'disconnected', opened: true, gatewayError: undefined, closeCode: 1000 };
+const ENDED_STATE: TunnelState = { phase: 'disconnected', opened: true, closeCode: 1000 };
 
 function quiet(): TunnelEvents {
-  return { onchange: vi.fn(), onend: vi.fn() };
+  return { size: () => ({ cols: 80, rows: 24 }), onbytes: vi.fn(), onchange: vi.fn(), onend: vi.fn() };
 }
 
 /**
@@ -26,7 +27,7 @@ function fakeHub() {
     events.push(heard);
     count += 1;
     const sessionId = `session-${String(count)}`;
-    const answer: TunnelStart = { ok: true, value: { sessionId, tunnel: { close: vi.fn() } as unknown as SessionTunnel } };
+    const answer: TunnelStart = { ok: true, value: { sessionId, tunnel: { close: vi.fn() } as unknown as TerminalLink } };
     const wait = held.shift();
     return wait === undefined ? Promise.resolve(answer) : new Promise((resolve) => wait(() => resolve(answer)));
   });
@@ -299,3 +300,14 @@ for (const opened of [true, false]) {
     expect(sessions.tabs).toEqual([]);
   });
 }
+
+it('K4 §8.7: a title reaches its tab only, next to the device name that stays', () => {
+  const sessions = createSessions(fakeHub().port);
+  const first = sessions.openSession(request);
+  const second = sessions.openSession({ ...request, deviceName: 'db-1' });
+  sessions.retitle(second, 'psql');
+  expect(sessions.tabs.map((tab) => [tab.id, tab.deviceName, tab.title])).toEqual([
+    [first, 'web-1', undefined],
+    [second, 'db-1', 'psql'],
+  ]);
+});

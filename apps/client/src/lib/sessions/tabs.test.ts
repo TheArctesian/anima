@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { closed, deselected, moved, noTabs, opened, selected, withSession, type Tab, type Tabs } from './tabs';
+import { closed, deselected, moved, noTabs, opened, selected, titled, withSession, type Tab, type Tabs } from './tabs';
 
 function tab(id: string, sessionId: string | null = null): Tab {
   return { id, deviceId: `device-${id}`, deviceName: id, protocol: 'SSH', origin: null, sessionId };
@@ -57,4 +57,12 @@ it('selecting picks a known tab only; deselecting shows the pages and keeps ever
 it('a started session is recorded on its own tab only', () => {
   const next = withSession(strip(['a', 'b'], 'a'), 'b', 'session-1');
   expect(next.tabs.map((open) => open.sessionId)).toEqual([null, 'session-1']);
+});
+
+it('K4 §8.7: a title is set on its own tab only, and an empty one clears it', () => {
+  const state = strip(['a', 'b'], 'a');
+  const named = titled(state, 'b', 'user@host: ~');
+  expect(named.tabs.map((open) => open.title)).toEqual([undefined, 'user@host: ~']);
+  expect(titled(named, 'b', '').tabs[1]?.title).toBe('');
+  expect(titled(state, 'missing', 'x')).toEqual(state);
 });

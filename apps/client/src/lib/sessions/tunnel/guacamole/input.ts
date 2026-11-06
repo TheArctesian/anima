@@ -1,4 +1,4 @@
-import Guacamole from './vendor/guacamole.js';
+import Guacamole from '../vendor/guacamole.js';
 import type { SessionTunnel } from './tunnel';
 
 type Client = SessionTunnel['client'];

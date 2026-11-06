@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { FAKE_TUNNEL_SOCKET, FakeTunnelSocket } from './fake/socket.fixture';
+import { FAKE_TUNNEL_SOCKET, FakeTunnelSocket } from '../fake/socket.fixture';
 import { withObservedSocket } from './socket';
 
 const real = globalThis.WebSocket;

@@ -2,14 +2,14 @@
 import { flushSync } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { installBlankCanvas } from '../../tunnel/fake/canvas.fixture';
-import { FakeTunnelSocket } from '../../tunnel/fake/socket.fixture';
+import { FakeTerminalSocket } from '../../tunnel/terminal/fake/socket.fixture';
 import { NEW_KEY, connectView, flags, installBrowserFakes, settle, showView } from '../view.fixture.svelte';
 
 let cleanups: (() => unknown)[] = [];
 
 beforeEach(() => {
   vi.useFakeTimers();
-  FakeTunnelSocket.reset();
+  FakeTerminalSocket.reset();
   flags.visible = true;
   flags.focused = true;
   cleanups = [installBlankCanvas(), installBrowserFakes()];
@@ -32,13 +32,13 @@ async function click(name: string) {
   await settle();
 }
 
-/** A session that ends with a host key change: 4001 after the gateway error, as the hub sends it (K4 §5). */
+/** A session that ends with a host key change: the `end` message, then 4001, as the hub sends it (K4 §8.3). */
 async function hostKeyChanged(closeCode = 4001) {
   const view = showView();
   cleanups.push(view.close);
   const socket = await connectView();
   view.answers.endReason = 'HOST_KEY_MISMATCH';
-  socket.gatewayError(0x0303);
+  socket.end('HOST_KEY_MISMATCH');
   socket.closeWith(closeCode);
   await settle();
   return view;
@@ -102,7 +102,7 @@ describe('host key review and accept (SEC-007, D-6)', () => {
     await click('Reconnect');
     expect(dialog()).toBeNull();
     expect(calls.startSession).toHaveLength(2);
-    expect(FakeTunnelSocket.made).toHaveLength(2);
+    expect(FakeTerminalSocket.made).toHaveLength(2);
   });
 
   it('a refused accept shows fixed text and offers no Reconnect', async () => {
