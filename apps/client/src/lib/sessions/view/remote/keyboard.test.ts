@@ -110,6 +110,23 @@ describe('D-8: held keys are released when the pane loses the keyboard', () => {
     ]);
   });
 
+  it('D-8: a hidden page releases a held key and unbinds the keyboard while the focus stays in the pane', async () => {
+    const { target } = show();
+    const socket = await connectRemote();
+    const pane = remotePaneOf(target);
+    keyOn(pane, 'keydown', CONTROL);
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+    cleanups.push(() => Reflect.deleteProperty(document, 'visibilityState'));
+    document.dispatchEvent(new Event('visibilitychange'));
+    flushSync();
+    expect(document.activeElement).toBe(pane);
+    keyOn(pane, 'keydown', ENTER);
+    expect(keysOf(socket)).toEqual([
+      [1, 0xffe3],
+      [0, 0xffe3],
+    ]);
+  });
+
   it('D-8: the keyboard hears the pane only, never the document', async () => {
     show();
     const socket = await connectRemote();

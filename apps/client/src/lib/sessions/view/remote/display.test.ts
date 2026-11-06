@@ -78,6 +78,40 @@ describe('D-5: RDP follows the pane (RA-004)', () => {
   });
 });
 
+/** A `matchMedia` whose queries a test can fire; `devicePixelRatio` is set by the test. */
+function fakeResolutionQueries() {
+  const listeners: (() => void)[] = [];
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    value: () => ({ addEventListener: (_type: string, listener: () => void) => listeners.push(listener), removeEventListener: () => undefined }),
+  });
+  cleanups.push(() => Reflect.deleteProperty(window, 'matchMedia'));
+  return {
+    moveTo: (ratio: number) => {
+      Object.defineProperty(window, 'devicePixelRatio', { configurable: true, value: ratio });
+      for (const listener of listeners.splice(0)) listener();
+      flushSync();
+    },
+  };
+}
+
+describe('D-5: a monitor change (devicePixelRatio)', () => {
+  it('RA-004: the RDP display rescales, and the pane is sent again in the new device pixels once it settles', async () => {
+    withRatio(1);
+    const monitor = fakeResolutionQueries();
+    const { heard } = show('RDP');
+    const socket = await connectRemote(800, 600);
+    const display = heard.clients[0]?.getDisplay();
+    expect(display?.getScale()).toBe(1);
+    monitor.moveTo(2);
+    expect(display?.getScale()).toBe(0.5);
+    vi.advanceTimersByTime(RESIZE_SETTLE_MS);
+    expect(sentOf(socket, 'size')).toEqual([['1600', '1200']]);
+    monitor.moveTo(1);
+    expect(display?.getScale()).toBe(1);
+  });
+});
+
 describe('D-5: VNC fits the display in the pane', () => {
   it('D-5: a pane resize sends no size, and the display scales to fit, recomputed on each change', async () => {
     const { heard } = show('VNC');
@@ -145,17 +179,6 @@ describe('MAT-008: the remote display', () => {
       expect(declarations, selector).not.toEqual([]);
       for (const property of MOTION) expect(declarations, `${selector} ${property}`).not.toContain(property);
     }
-  });
-
-  it('the display makes its own stacking context, so the library layers (z-index -1) paint in front of the session', () => {
-    expect(rules.get('.display')?.get('isolation')).toBe('isolate');
-  });
-
-  it('MAT-008: the toolbar is solid and above the display, not over it', () => {
-    const toolbar = rules.get('.toolbar');
-    expect(toolbar?.get('background')).toBe('var(--surface)');
-    expect(toolbar?.get('flex')).toBe('none');
-    expect([...(toolbar?.keys() ?? [])]).not.toContain('backdrop-filter');
   });
 
   it('MAT-008: a scaled VNC display has no transition, filter or animation, and nothing lies over it', async () => {

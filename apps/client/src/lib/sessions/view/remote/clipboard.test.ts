@@ -5,7 +5,7 @@ import { installBlankCanvas } from '../../tunnel/fake/canvas.fixture';
 import { FakeTunnelSocket } from '../../tunnel/fake/socket.fixture';
 import type { SessionTransfer } from '../../api';
 import { UNREAD_POLICY } from '../../transfer';
-import { installBrowserFakes, settle, systemClipboard } from '../view.fixture.svelte';
+import { FakeResizeObserver, installBrowserFakes, settle, systemClipboard } from '../view.fixture.svelte';
 import { clipboardRules } from './clipboard';
 import { chooseKey, connectRemote, keyOn, keysOf, pasteOn, remoteFlags, remotePaneOf, sentOf, showRemote } from './remote.fixture.svelte';
 
@@ -132,6 +132,37 @@ describe('RA-005, RA-033: system to device (paste)', () => {
       [1, 0xffe3],
       [1, 0x76],
     ]);
+  });
+
+  it('RA-005: a paste before the first frame (the tunnel open, not yet connected) sends nothing', async () => {
+    const view = showRemote();
+    cleanups.push(view.close);
+    FakeResizeObserver.resize(800, 600);
+    await settle();
+    const socket = FakeTunnelSocket.latest();
+    socket.open();
+    flushSync();
+    const event = pasteOn(remotePaneOf(view.target), 'too early');
+    expect(event.defaultPrevented).toBe(false);
+    expect(sentOf(socket, 'clipboard')).toEqual([]);
+    expect(sentOf(socket, 'key')).toEqual([]);
+  });
+
+  it('RA-005: a clipboard read still pending at a Reconnect never reaches the new tunnel', async () => {
+    const { socket, target } = await connected({ copy: true, paste: true });
+    let answer: (text: string) => void = () => undefined;
+    vi.spyOn(systemClipboard, 'readText').mockImplementationOnce(() => new Promise((resolve) => (answer = resolve)));
+    chooseKey(target, 'Paste');
+    socket.closeWith(1000);
+    await settle();
+    [...target.querySelectorAll('button')].find((button) => button.textContent.includes('Reconnect'))?.click();
+    const fresh = await connectRemote();
+    expect(fresh).not.toBe(socket);
+    answer('stale paste');
+    await settle();
+    expect(sentOf(fresh, 'clipboard')).toEqual([]);
+    expect(sentOf(fresh, 'key')).toEqual([]);
+    expect(sentOf(socket, 'clipboard')).toEqual([]);
   });
 
   it('a refused clipboard read shows a fixed notice and sends nothing', async () => {

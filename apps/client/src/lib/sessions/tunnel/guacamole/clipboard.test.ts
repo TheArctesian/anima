@@ -91,18 +91,32 @@ describe('receiveClipboard streams and the limit (D-9)', () => {
     expect(heard).toEqual(['once']);
   });
 
-  it('D-9: each stream is its own text', () => {
+  it('D-9: one stream is read at a time: a newer one replaces an older one still open, whose text is dropped', () => {
     const { client, typed } = fakeClient();
     const heard: string[] = [];
     receiveClipboard(typed, (text) => heard.push(text));
-    const first: Stream = {};
-    const second: Stream = {};
-    client.onclipboard?.(first, 'text/plain');
-    client.onclipboard?.(second, 'text/plain');
-    first.onblob?.(base64('a'));
-    second.onblob?.(base64('b'));
-    second.onend?.();
-    first.onend?.();
-    expect(heard).toEqual(['b', 'a']);
+    const streams: Stream[] = [{}, {}, {}];
+    for (const [index, stream] of streams.entries()) {
+      client.onclipboard?.(stream, 'text/plain');
+      stream.onblob?.(base64(String(index)));
+    }
+    for (const stream of streams) stream.onblob?.(base64('late'));
+    streams[2]?.onend?.();
+    streams[0]?.onend?.();
+    streams[1]?.onend?.();
+    expect(heard).toEqual(['2late']);
+  });
+
+  it('D-9: a stream that opens after the last one ended is read whole', () => {
+    const { client, typed } = fakeClient();
+    const heard: string[] = [];
+    receiveClipboard(typed, (text) => heard.push(text));
+    for (const text of ['a', 'b']) {
+      const stream: Stream = {};
+      client.onclipboard?.(stream, 'text/plain');
+      stream.onblob?.(base64(text));
+      stream.onend?.();
+    }
+    expect(heard).toEqual(['a', 'b']);
   });
 });

@@ -156,6 +156,16 @@ describe('certificate changes and refusals (K4 §1, §3, §5)', () => {
     expect(FakeTunnelSocket.made).toEqual([]);
   });
 
+  it('K4 §1: a CONFLICT for VNC has its own fixed text, with no host key or certificate in it', async () => {
+    const { target, answers } = show('VNC');
+    answers.refuse = 'CONFLICT';
+    FakeResizeObserver.resize(800, 600);
+    await settle();
+    const text = reasonOf(target) ?? '';
+    expect(text).toBe('Could not open the session. The hub refused it for this device: check its VNC settings, then run the connection test.');
+    expect(text).not.toMatch(/host key|certificate|HUB-TEXT-MARKER/);
+  });
+
   it('closing the view closes its tunnel and ignores the end that follows', async () => {
     const { close, calls, heard } = show();
     const socket = await connectRemote();

@@ -15,7 +15,7 @@
   import ConnectionSteps from '../steps/ConnectionSteps.svelte';
   import { clipboardRules, COPY_FAILED, NO_CLIPBOARD, PASTE_FAILED, PASTE_REFUSED } from './clipboard';
   import { displayScale } from './fit';
-  import { remotePane, type RemotePane } from './pane';
+  import { followPixelRatio, remotePane, type RemotePane } from './pane';
 
   type Client = SessionTunnel['client'];
 
@@ -44,7 +44,7 @@
   /** Fixed text for a `CONFLICT` refusal of the start (K4 §1); never the hub's own message (LOG-007). */
   const CONFLICT_TEXT: Readonly<Record<RemoteProtocol, string | undefined>> = {
     RDP: "Could not open the session. The device's RDP certificate is not accepted yet: run the connection test first.",
-    VNC: undefined,
+    VNC: 'Could not open the session. The hub refused it for this device: check its VNC settings, then run the connection test.',
   };
 
   const connection = new SessionConnection<SessionTunnel, GuacamoleState>(
@@ -69,6 +69,8 @@
   let notice: string | undefined = $state();
   /** Whether the keyboard focus is inside the pane, and the window has it (D-8). */
   let paneHasFocus = $state(false);
+  /** `devicePixelRatio`, followed as state so the display scale and the RDP size follow a monitor change. */
+  let pixelRatio = $state(window.devicePixelRatio);
 
   const stage = $derived(connection.stage);
   const client = $derived(connection.tunnel?.client);
@@ -78,7 +80,7 @@
   const wanted = $derived(visible && focused && ready);
   /** Keys are sent only while the focus is really in the pane, so no key is held when it leaves (D-8). */
   const bound = $derived(wanted && paneHasFocus);
-  const scale = $derived(displayScale(protocol, remote, paneSize ?? remote, window.devicePixelRatio));
+  const scale = $derived(displayScale(protocol, remote, paneSize ?? remote, pixelRatio));
 
   function connect(css: Size) {
     const display = displayInput(css, window.devicePixelRatio, Intl.DateTimeFormat().resolvedOptions().timeZone);
@@ -183,6 +185,13 @@
   $effect(() => {
     client?.getDisplay().scale(scale);
   });
+
+  $effect(() =>
+    followPixelRatio((ratio) => {
+      pixelRatio = ratio;
+      pane?.remeasure();
+    }),
+  );
 
   $effect(() => {
     if (wanted) paneElement?.focus({ preventScroll: true });

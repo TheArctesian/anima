@@ -23,7 +23,31 @@ export interface RemotePane {
    * the function that stops it.
    */
   sendSizes(client: SessionTunnel['client'], initial: Size): () => void;
+  /** Hear the pane's last size again, as after a change of `devicePixelRatio`. */
+  remeasure(): void;
   stop(): void;
+}
+
+/**
+ * Call `change` whenever `devicePixelRatio` changes, as when the window moves to another monitor: a `resolution`
+ * media query for the ratio now, made again after each change. Returns the function that stops. Without
+ * `matchMedia` nothing is followed.
+ */
+export function followPixelRatio(change: (ratio: number) => void): () => void {
+  if (typeof window.matchMedia !== 'function') return () => undefined;
+  let query: MediaQueryList | undefined;
+  const listen = () => {
+    query = window.matchMedia(`(resolution: ${String(window.devicePixelRatio)}dppx)`);
+    query.addEventListener('change', changed, { once: true });
+  };
+  const changed = () => {
+    change(window.devicePixelRatio);
+    listen();
+  };
+  listen();
+  return () => {
+    query?.removeEventListener('change', changed);
+  };
 }
 
 /** Follow `element` as a remote pane, reporting to `hooks`. */
@@ -57,6 +81,9 @@ export function remotePane(element: HTMLElement, hooks: PaneHooks): RemotePane {
         mine.cancel();
         if (sender === mine) sender = undefined;
       };
+    },
+    remeasure: () => {
+      if (last !== undefined) resized(last);
     },
     stop: () => {
       sender?.cancel();
