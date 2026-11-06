@@ -2,6 +2,7 @@
   import type { Snippet } from 'svelte';
   import { crossFade, modal } from '$lib/motion/roles/transitions';
   import { initialFocusIn, trapTab } from './focus';
+  import { takeOpener, watchClicks } from './opener';
 
   interface Props {
     open: boolean;
@@ -14,12 +15,15 @@
   const { open, title, onClose, children }: Props = $props();
   const titleId = $props.id();
 
+  // The click that opens the dialog comes before `open`, so clicks are watched while it is closed too.
+  $effect(watchClicks);
+
   // The opener is read before the dialog is in the DOM; focus goes back to it as soon as `open` is false.
   $effect.pre(() => {
     if (!open) return;
-    const opener = document.activeElement;
+    const opener = takeOpener(document.activeElement);
     return () => {
-      if (opener instanceof HTMLElement) opener.focus();
+      opener?.focus();
     };
   });
 
@@ -96,9 +100,14 @@
     background: var(--scrim);
   }
 
+  /*
+   * The surface's top is fixed, so a section that opens inside it grows the surface downward and never
+   * moves the control the operator clicked (MOT-007); past the window's height the surface scrolls.
+   */
   .frame {
     display: grid;
-    place-items: center;
+    justify-items: center;
+    align-items: start;
     padding: var(--space-4);
   }
 

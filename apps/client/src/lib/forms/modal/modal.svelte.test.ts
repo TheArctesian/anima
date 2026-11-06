@@ -141,6 +141,76 @@ it('Modal: focus returns to the opener when the dialog closes, without waiting f
   expect(document.activeElement).toBe(trigger);
 });
 
+it('Modal: after Escape the focus returns to the clicked button, also when the click did not focus it (WebKit)', () => {
+  // A tab panel that holds the focus while its button is clicked; jsdom, like WebKit, does not focus a clicked button.
+  const panel = document.createElement('div');
+  panel.tabIndex = 0;
+  const trigger = document.createElement('button');
+  trigger.textContent = 'Delete device';
+  panel.append(trigger);
+  document.body.append(panel);
+  panel.focus();
+  const state = $state({ open: false });
+  app = mount(ConfirmModal, {
+    target: document.body,
+    props: {
+      get open() {
+        return state.open;
+      },
+      title: 'Delete nas?',
+      body: 'Its credentials, checks and history go too.',
+      confirmLabel: 'Delete nas',
+      onConfirm: () => Promise.resolve(OK),
+      onCancel: () => {
+        state.open = false;
+      },
+    },
+  });
+  flushSync();
+  trigger.addEventListener('click', () => {
+    state.open = true;
+  });
+
+  trigger.click();
+  flushSync();
+  expect(document.activeElement).toBe(button('Cancel'));
+  press('Escape');
+
+  expect(document.activeElement).toBe(trigger);
+});
+
+it('Modal: Tab reaches every button of the dialog in order, not only the two ends', () => {
+  opener();
+  confirmation(() => Promise.resolve(OK), () => undefined);
+  const order = [document.activeElement?.textContent.trim()];
+
+  press('Tab');
+  order.push(document.activeElement?.textContent.trim());
+  press('Tab');
+  order.push(document.activeElement?.textContent.trim());
+
+  expect(order).toEqual(['Cancel', 'Delete nas', 'Cancel']);
+});
+
+it('Modal: mounted dialogs, open or closed, share one click listener, and it is gone after they unmount', () => {
+  const add = vi.spyOn(document, 'addEventListener');
+  const remove = vi.spyOn(document, 'removeEventListener');
+  const clicks = (spy: typeof add) => spy.mock.calls.filter(([type, , options]) => type === 'click' && typeof options === 'object' && options.capture === true).length;
+  const props = { open: false, title: 'Delete nas?', body: 'Gone.', confirmLabel: 'Delete nas', onConfirm: () => Promise.resolve(OK), onCancel: () => undefined };
+  const first = mount(ConfirmModal, { target: document.body, props });
+  const second = mount(ConfirmModal, { target: document.body, props: { ...props, open: true } });
+  flushSync();
+  expect(clicks(add)).toBe(1);
+
+  void unmount(first);
+  void unmount(second);
+  flushSync();
+
+  expect(clicks(remove)).toBe(1);
+  add.mockRestore();
+  remove.mockRestore();
+});
+
 it('Modal, MOT-042: closing uses no timer', () => {
   const timers = vi.spyOn(globalThis, 'setTimeout');
   opener();
