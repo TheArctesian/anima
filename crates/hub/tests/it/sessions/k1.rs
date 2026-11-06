@@ -42,8 +42,7 @@ async fn k1_the_sessions_part_declares_exactly_its_root_fields_as_k1_does() {
 fn ra_008_every_k1_end_reason_is_stored_as_its_lower_snake_name() {
     let k1 = k1();
     let names: Vec<String> = k1["SessionEndReason"]
-        .members
-        .keys()
+        .served_members()
         .map(|n| n.to_lowercase())
         .collect();
     let mut stored: Vec<String> = EndReason::ALL
