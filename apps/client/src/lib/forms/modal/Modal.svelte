@@ -21,13 +21,17 @@
   const { open, title, onClose, size = 'content', children }: Props = $props();
   const titleId = $props.id();
 
-  /** A form's actions, shown below the body by the form inside (see `footer.ts`). */
-  let actions = $state<Snippet>();
+  /**
+   * A form's actions, shown below the body by the form inside (see `footer.ts`). Each showing is its own
+   * entry, so a form that is replaced takes out its own actions and never those of the form after it.
+   */
+  let shown = $state<{ readonly actions: Snippet }>();
   offerFooter({
-    show: (shown) => {
-      actions = shown;
+    show: (actions) => {
+      const entry = { actions };
+      shown = entry;
       return () => {
-        if (actions === shown) actions = undefined;
+        if (shown === entry) shown = undefined;
       };
     },
   });
@@ -102,8 +106,8 @@
         <div class="body">
           {@render children()}
         </div>
-        {#if actions}
-          <div class="footer">{@render actions()}</div>
+        {#if shown}
+          <div class="footer">{@render shown.actions()}</div>
         {/if}
       </div>
     </div>
