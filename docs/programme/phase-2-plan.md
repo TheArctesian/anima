@@ -6,7 +6,7 @@
 | Scope | Phase 2 of [design-spec.md](../design-spec.md) (Section 9): RDP and VNC sessions, web interfaces, Wake-on-LAN, SFTP, the live session list, SSH metrics, four more check types, the device detail view with charts |
 | Base | `phase-2`, cut from `phase-1` at f3c6feb (Phase 1 accepted, PR #3 open against `main`) |
 | Contract deltas | [phase-2-contracts.md](phase-2-contracts.md) |
-| Version | 0.1 (draft, for programme review) |
+| Version | 1.0 (adopted, R-065) |
 | Date | 2026-11-06 |
 | Language | Simplified Technical English |
 

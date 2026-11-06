@@ -118,6 +118,15 @@ Integration branch: `phase-1`. Merge to `main` only after operator checkpoint 4.
 - **R-063 (orchestrator, 2026-11-06; operator report "the ping is saying it is down").** A device added at a VPN address (100.64.0.0/10) with SSH on gets a TCP check on its SSH port ("SSH port", 5 s timeout) instead of the hub's default ICMP check (Section 6.2 "One ICMP check"): the VPN grant for a client device names TCP ports only (R-061), and macOS in stealth mode drops pings, so ICMP would always say Down. The client sends `addDefaultCheck: false` and creates the TCP check after the device; a failed check does not undo the device. Other devices keep the ICMP default. No hub or contract change.
 - **R-064 (operator, 2026-11-06: "find a way for the app to fix the issue itself in the abstract sense").** New requirement CHK-013, a check that repairs its method: an ICMP check that is Down, has never had an Up heartbeat, has used its retries and was never edited by the operator is tested against the device's own connection ports (SSH first) with a TCP connect under the R-032 target rule. If one answers, the hub changes the check to a TCP check on that port, resets it, and writes an Info event and an audit entry naming the old and new method. If none answers, nothing changes and one Warning event says so. A check that was ever Up, or that the operator edited, is never changed, so a real outage is never hidden. Package WP-19. R-063 stays as the default for new VPN computers.
 
+- **R-065 (orchestrator, 2026-11-06; Phase 2 plan).** The Phase 2 plan ([phase-2-plan.md](phase-2-plan.md)) is adopted, and its contract deltas ([phase-2-contracts.md](phase-2-contracts.md)) are the Phase 2 freeze. They move into `contracts/` with `@pending` during WP-20 (D-1).
+  - **Accepted as recommended:** D-1, D-3, D-5, D-6, D-7, D-8, D-9, D-12, D-13, D-14 and D-15.
+  - **D-4 accepted.** The orchestrator makes the VPS change when WP-23 needs it and logs it in operator-changes.md.
+  - **Provisional, the operator to confirm on PR review:**
+    - D-2: a Wake-on-LAN relay per site. It meets CHK-012 because the MAC is rendered by the hub, never taken as operator text.
+    - D-10: RD Gateway and RemoteApp are deferred to issue #1.
+    - D-11: E-1 to "2 intervals plus one probe timeout"; E-3 to `ease-exit`; E-4 to SET-002 listing LOG-008; E-5 to the Modal dropping blur.
+  - **Start:** WP-20 starts now, and Wave 1 (RDP and VNC) follows when WP-20 is merged.
+
 ## Escalations
 
 None open.
