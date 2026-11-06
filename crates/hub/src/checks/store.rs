@@ -21,6 +21,7 @@ macro_rules! select_check {
 mod attempts;
 mod beats;
 mod heartbeats;
+pub(super) mod repairs;
 mod retention;
 mod rows;
 mod sealed;

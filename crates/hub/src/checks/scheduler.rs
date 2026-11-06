@@ -8,6 +8,7 @@ mod attempt;
 mod daily;
 mod log;
 mod notices;
+mod repair;
 mod schedule;
 #[cfg(test)]
 mod tests;
