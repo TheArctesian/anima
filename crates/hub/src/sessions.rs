@@ -7,6 +7,7 @@
 mod admission;
 mod end;
 pub mod graphql;
+mod link;
 mod live;
 mod model;
 mod page;
@@ -37,6 +38,7 @@ use crate::{
 };
 
 pub use end::Actor;
+pub use link::{CommandOutput, Error as LinkError, FixedCommand, SshLink, link};
 pub use live::{EndCause, Live, Redeemed, Refused, Tunnel};
 pub use model::{EndReason, FieldError, HostKey, Protocol, Session, SessionEnd, UnknownValue};
 pub use public_key::{BadFingerprint, BadKey, Fingerprint, PublicKey};
