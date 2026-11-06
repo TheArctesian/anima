@@ -26,21 +26,43 @@ const DELETE_DEVICE: &str = "mutation($id: ID!) { deleteDevice(id: $id) }";
 
 /// Everything of the device that must go with it, each with the count query for its id.
 const CHAIN: [(&str, &str); 7] = [
-    ("device", "select count(*) from devices.devices where id = $1::text::uuid"),
-    ("tags", "select count(*) from devices.device_tags where device_id = $1::text::uuid"),
-    ("ssh settings", "select count(*) from devices.ssh_settings where device_id = $1::text::uuid"),
-    ("credential", "select count(*) from credentials.secrets where device_id = $1::text::uuid"),
-    ("checks", "select count(*) from checks.checks where device_id = $1::text::uuid"),
+    (
+        "device",
+        "select count(*) from devices.devices where id = $1::text::uuid",
+    ),
+    (
+        "tags",
+        "select count(*) from devices.device_tags where device_id = $1::text::uuid",
+    ),
+    (
+        "ssh settings",
+        "select count(*) from devices.ssh_settings where device_id = $1::text::uuid",
+    ),
+    (
+        "credential",
+        "select count(*) from credentials.secrets where device_id = $1::text::uuid",
+    ),
+    (
+        "checks",
+        "select count(*) from checks.checks where device_id = $1::text::uuid",
+    ),
     (
         "uptime",
         "select count(*) from checks.uptime_minute u join checks.checks c on c.id = u.check_id \
          where c.device_id = $1::text::uuid",
     ),
-    ("host key", "select count(*) from sessions.host_keys where device_id = $1::text::uuid"),
+    (
+        "host key",
+        "select count(*) from sessions.host_keys where device_id = $1::text::uuid",
+    ),
 ];
 
 async fn count(pool: &PgPool, sql: &str, id: &str) -> i64 {
-    sqlx::query_scalar(sql).bind(id).fetch_one(pool).await.unwrap()
+    sqlx::query_scalar(sql)
+        .bind(id)
+        .fetch_one(pool)
+        .await
+        .unwrap()
 }
 
 fn up_beat(at: DateTime<Utc>) -> Beat {
@@ -103,7 +125,9 @@ async fn dev_015_deleting_a_device_removes_its_whole_chain_and_keeps_its_history
     let input = json!({ "siteId": HOME_SITE, "name": "pve-99", "host": "pve-99.home.lan",
         "tags": ["edge", "lab"], "addDefaultCheck": false,
         "ssh": { "enabled": true, "username": "operator", "auth": "PASSWORD" } });
-    let created = hub.post(token, CREATE_DEVICE, json!({ "input": input })).await;
+    let created = hub
+        .post(token, CREATE_DEVICE, json!({ "input": input }))
+        .await;
     let device = id_of(&created, "createDevice");
     let secret = json!({ "id": device, "c": { "password": "a long ssh password" } });
     hub.post(token, SET_CREDENTIAL, secret).await;
@@ -112,7 +136,10 @@ async fn dev_015_deleting_a_device_removes_its_whole_chain_and_keeps_its_history
     let check_id = id_of(&made, "createCheck");
     let check: CheckId = check_id.parse().unwrap();
 
-    let db_now: DateTime<Utc> = sqlx::query_scalar("select now()").fetch_one(&pool).await.unwrap();
+    let db_now: DateTime<Utc> = sqlx::query_scalar("select now()")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
     checks::create_days_ahead(&pool, db_now, 1).await.unwrap();
     let mut conn = pool.acquire().await.unwrap();
     for second in 0..3 {
@@ -123,27 +150,60 @@ async fn dev_015_deleting_a_device_removes_its_whole_chain_and_keeps_its_history
     drop(conn);
     add_host_key_and_session(&pool, &device).await;
     for (what, sql) in CHAIN {
-        assert!(count(&pool, sql, &device).await >= 1, "before the delete: {what}");
+        assert!(
+            count(&pool, sql, &device).await >= 1,
+            "before the delete: {what}"
+        );
     }
     let beats = "select count(*) from checks.heartbeats where check_id = $1::text::uuid";
     assert_eq!(count(&pool, beats, &check_id).await, 3);
 
-    let deleted = hub.post(token, DELETE_DEVICE, json!({ "id": device })).await;
-    assert_eq!(deleted["data"]["deleteDevice"], device.as_str(), "{deleted}");
+    let deleted = hub
+        .post(token, DELETE_DEVICE, json!({ "id": device }))
+        .await;
+    assert_eq!(
+        deleted["data"]["deleteDevice"],
+        device.as_str(),
+        "{deleted}"
+    );
 
     for (what, sql) in CHAIN {
-        assert_eq!(count(&pool, sql, &device).await, 0, "after the delete: {what}");
+        assert_eq!(
+            count(&pool, sql, &device).await,
+            0,
+            "after the delete: {what}"
+        );
     }
     let history = "select count(*) from sessions.sessions where device_id = $1::text::uuid";
-    assert_eq!(count(&pool, history, &device).await, 1, "session history stays (RA-008)");
+    assert_eq!(
+        count(&pool, history, &device).await,
+        1,
+        "session history stays (RA-008)"
+    );
     let audits = "select count(*) from events.audit_log where target_id = $1 \
                   and action like '%delete%'";
     let events = "select count(*) from events.event_log where device_id = $1::text::uuid \
                   and message like '%deleted%'";
-    assert_eq!(count(&pool, audits, &device).await, 1, "one audit entry (LOG-005)");
-    assert_eq!(count(&pool, events, &device).await, 1, "one event (LOG-005)");
-    assert_eq!(count(&pool, beats, &check_id).await, 3, "beats wait for the sweep");
+    assert_eq!(
+        count(&pool, audits, &device).await,
+        1,
+        "one audit entry (LOG-005)"
+    );
+    assert_eq!(
+        count(&pool, events, &device).await,
+        1,
+        "one event (LOG-005)"
+    );
+    assert_eq!(
+        count(&pool, beats, &check_id).await,
+        3,
+        "beats wait for the sweep"
+    );
 
     assert_eq!(checks::delete_orphan_heartbeats(&pool).await.unwrap(), 3);
-    assert_eq!(count(&pool, beats, &check_id).await, 0, "the sweep removes them (R-004)");
+    assert_eq!(
+        count(&pool, beats, &check_id).await,
+        0,
+        "the sweep removes them (R-004)"
+    );
 }
