@@ -111,6 +111,7 @@
   }
 
   a:active {
+    transition-duration: var(--duration-press);
     color: var(--text-muted);
   }
 
@@ -168,6 +169,7 @@
   }
 
   button:active {
+    transition-duration: var(--duration-press);
     background: var(--accent-tint);
   }
 

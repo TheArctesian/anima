@@ -32,7 +32,7 @@
     background: var(--surface-raised);
     color: var(--text);
     font: inherit;
-    transition: background-color var(--duration-press) var(--ease-enter);
+    transition: background-color var(--duration-fast) var(--ease-enter);
   }
 
   button:hover:not(:disabled) {

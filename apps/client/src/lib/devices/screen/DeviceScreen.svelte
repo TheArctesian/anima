@@ -180,6 +180,7 @@
   }
 
   button:active:not(:disabled) {
+    transition-duration: var(--duration-press);
     background: var(--accent-tint);
   }
 
