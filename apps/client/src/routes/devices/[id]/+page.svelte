@@ -1,5 +1,5 @@
 <script lang="ts">
-  import LiveNotice from '$lib/devices/screen/LiveNotice.svelte';
+  import LiveNotice from '$lib/devices/notice/LiveNotice.svelte';
   import { untrack } from 'svelte';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';

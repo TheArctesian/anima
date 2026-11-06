@@ -13,7 +13,7 @@
   import { isFiltered, withoutFilters } from '../toolbar/toolbar';
   import { Listing } from './listing.svelte';
   import { browserClock, type LoadingClock } from '$lib/motion/loading/loading';
-  import LiveNotice from './LiveNotice.svelte';
+  import LiveNotice from '../notice/LiveNotice.svelte';
   import Skeleton from './Skeleton.svelte';
 
   interface Props {
