@@ -5,16 +5,17 @@ import { decide } from "./allow.ts";
 export interface LocalApiConfig {
   port: number;
   socketPath: string;
+  upstreamTimeoutMs: number;
 }
 
-export const UPSTREAM_TIMEOUT_MS = 10_000;
+const DEFAULT_UPSTREAM_TIMEOUT_MS = 10_000;
 export const MAX_RESPONSE_BYTES = 1024 * 1024;
 const UPSTREAM_HOST = "http://local-tailscaled.sock";
 
 export function readConfig(env: Record<string, string | undefined>): LocalApiConfig {
   const port = Number(env["ANIMA_LOCALAPI_LISTEN_PORT"] ?? "8080");
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("ANIMA_LOCALAPI_LISTEN_PORT is not a port");
-  return { port, socketPath: env["ANIMA_LOCALAPI_SOCKET"] || "/run/tailscale/tailscaled.sock" };
+  return { port, socketPath: env["ANIMA_LOCALAPI_SOCKET"] || "/run/tailscale/tailscaled.sock", upstreamTimeoutMs: DEFAULT_UPSTREAM_TIMEOUT_MS };
 }
 
 const hasBody = (request: Request): boolean =>
@@ -44,7 +45,7 @@ async function forward(config: LocalApiConfig, method: string, upstream: string,
       method,
       headers: {},
       redirect: "manual",
-      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+      signal: AbortSignal.timeout(config.upstreamTimeoutMs),
     });
     const body = await readCapped(response);
     if (body === null) return reply(502, "upstream response too large\n", line);

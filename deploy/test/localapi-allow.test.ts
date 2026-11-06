@@ -36,7 +36,7 @@ describe("D-4 ping call", () => {
   });
 
   test.each(["ip=100.63.255.255", "ip=100.128.0.1", "ip=10.0.0.1", "ip=100.064.0.1", "ip=100.64.0.01", "ip=100.64.0", "ip=100.64.0.1.1",
-    "ip=100.64.0.256", "ip=fd7a:115c:a1e0::1", "ip=%3A%3A1", "ip=100.64.0.1/32", "ip=+100.64.0.1", "ip=1e2.64.0.1", "ip=", "ip=100.64.0.1%20"])(
+    "ip=100.64.0.256", "ip=fd7a:115c:a1e0::1", "ip=%3A%3A1", "ip=10.64.0.1", "ip=192.100.0.1", "ip=101.64.0.1", "ip=100.64.0.1/32", "ip=+100.64.0.1", "ip=1e2.64.0.1", "ip=", "ip=100.64.0.1%20"])(
     "D-4 ping with %p and type=disco is refused",
     (ipQuery) => expect(refused("POST", "/localapi/v0/ping", `${ipQuery}&type=disco`)).toBe("refuse"),
   );

@@ -1,6 +1,6 @@
 // The LocalAPI proxy against a fake tailscaled on a unix socket (D-4, VPN-005, LOG-007).
 import { afterAll, beforeAll, describe, expect, spyOn, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { localApiHandler, MAX_RESPONSE_BYTES } from "../localapi/server.ts";
@@ -17,6 +17,9 @@ let fake: ReturnType<typeof Bun.serve>;
 let proxy: ReturnType<typeof Bun.serve>;
 let missingProxy: ReturnType<typeof Bun.serve>;
 let big = false;
+let mode: "plain" | "headers" | "redirect" = "plain";
+const SHORT_TIMEOUT_MS = 200;
+const FAKE_PROCESS = join(import.meta.dir, "localapi-fake.ts");
 
 beforeAll(() => {
   dir = mkdtempSync(join(tmpdir(), "anima-localapi-"));
@@ -24,11 +27,13 @@ beforeAll(() => {
     unix: join(dir, "tailscaled.sock"),
     fetch(request) {
       seen.push({ method: request.method, url: new URL(request.url).pathname + new URL(request.url).search, headers: request.headers });
+      if (mode === "headers") return new Response("{}", { headers: { "content-type": "application/json", "set-cookie": "a=b", "x-foo": "bar" } });
+      if (mode === "redirect") return new Response(null, { status: 302, headers: { location: "/localapi/v0/prefs" } });
       return big ? new Response("x".repeat(MAX_RESPONSE_BYTES + 1)) : Response.json({ ok: true });
     },
   });
-  proxy = Bun.serve({ port: 0, fetch: localApiHandler({ port: 0, socketPath: join(dir, "tailscaled.sock") }) });
-  missingProxy = Bun.serve({ port: 0, fetch: localApiHandler({ port: 0, socketPath: join(dir, "absent.sock") }) });
+  proxy = Bun.serve({ port: 0, fetch: localApiHandler({ port: 0, socketPath: join(dir, "tailscaled.sock"), upstreamTimeoutMs: SHORT_TIMEOUT_MS }) });
+  missingProxy = Bun.serve({ port: 0, fetch: localApiHandler({ port: 0, socketPath: join(dir, "absent.sock"), upstreamTimeoutMs: SHORT_TIMEOUT_MS }) });
 });
 
 afterAll(async () => {
@@ -102,6 +107,73 @@ describe("D-4 upstream failures", () => {
       expect((await at(proxy, "/localapi/v0/status")).status).toBe(502);
     } finally {
       big = false;
+    }
+  });
+});
+
+/** Runs the fake tailscaled in its own process, so an unthrottled body cannot block this one. */
+async function withSpawnedFake(behaviour: "endless" | "silent", run: (socketPath: string) => Promise<void>): Promise<void> {
+  const socketPath = join(dir, `${behaviour}.sock`);
+  const child = Bun.spawn(["bun", FAKE_PROCESS, behaviour, socketPath], { stdout: "ignore", stderr: "ignore" });
+  try {
+    for (let tries = 0; tries < 100 && !existsSync(socketPath); tries += 1) await Bun.sleep(50);
+    await run(socketPath);
+  } finally {
+    child.kill();
+    await child.exited;
+  }
+}
+
+const proxyFor = (socketPath: string) => Bun.serve({ port: 0, fetch: localApiHandler({ port: 0, socketPath, upstreamTimeoutMs: SHORT_TIMEOUT_MS }) });
+
+describe("D-4 limits and header filtering", () => {
+  test("D-4 an endless upstream body gives 502 promptly", async () => {
+    await withSpawnedFake("endless", async (socketPath) => {
+      const endless = proxyFor(socketPath);
+      const started = Date.now();
+      try {
+        const response = await at(endless, "/localapi/v0/status", { signal: AbortSignal.timeout(10_000) });
+        expect(response.status).toBe(502);
+        expect(Date.now() - started).toBeLessThan(3000);
+      } finally {
+        await endless.stop(true);
+      }
+    });
+  });
+
+  test("D-4 an upstream that never answers gives 504", async () => {
+    await withSpawnedFake("silent", async (socketPath) => {
+      const silent = proxyFor(socketPath);
+      try {
+        expect((await at(silent, "/localapi/v0/status")).status).toBe(504);
+      } finally {
+        await silent.stop(true);
+      }
+    });
+  });
+
+  test("D-4 the reply carries no upstream header except content-type", async () => {
+    mode = "headers";
+    try {
+      const response = await at(proxy, "/localapi/v0/status");
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toBe("application/json");
+      expect(response.headers.has("set-cookie")).toBe(false);
+      expect(response.headers.has("x-foo")).toBe(false);
+    } finally {
+      mode = "plain";
+    }
+  });
+
+  test("D-4 an upstream redirect is returned as it is, not followed", async () => {
+    mode = "redirect";
+    seen.length = 0;
+    try {
+      const response = await at(proxy, "/localapi/v0/status", { redirect: "manual" });
+      expect(response.status).toBe(302);
+      expect(seen.map((s) => s.url)).toEqual(["/localapi/v0/status"]);
+    } finally {
+      mode = "plain";
     }
   });
 });
