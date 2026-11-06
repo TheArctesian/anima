@@ -1,8 +1,13 @@
 import type { HubError, HubResult } from '$lib/hub/error';
-import type { CreateCheckInput, CreateDeviceInput, SshCredentialInput } from '$lib/hub/generated/graphql';
+import type {
+  CreateCheckInput,
+  CreateDeviceInput,
+  PasswordCredentialInput,
+  SshCredentialInput,
+} from '$lib/hub/generated/graphql';
 import { createInput, credentialInput, tcpDefaultCheckPort } from './device/input';
 import { rdpCredentialInput, vncCredentialInput } from './device/remote/input';
-import type { PasswordCredentialInput } from './hub-pending';
+import { storePassword } from './device/remote/store-password';
 import { siteFieldErrors, type SitePlacement } from './device/site';
 import type { DeviceFormValues } from './device/values';
 
@@ -62,8 +67,6 @@ export async function addDevice(
   return { ok: true, value: { id, credentialError: await storeCredentials(id, values, api) } };
 }
 
-const NOT_STORED: HubError = { code: 'INTERNAL', message: 'The hub cannot store this password yet. Enter it again later.' };
-
 /** Stores each typed credential and returns the first error; a typed password with no call to store it is an error too. */
 async function storeCredentials(id: string, values: DeviceFormValues, api: AddDeviceApi): Promise<HubError | null> {
   const ssh = credentialInput(values);
@@ -71,8 +74,8 @@ async function storeCredentials(id: string, values: DeviceFormValues, api: AddDe
   const vnc = vncCredentialInput(values);
   const results: HubResult<unknown>[] = [];
   if (ssh !== null) results.push(await api.setSshCredential(id, ssh));
-  if (rdp !== null) results.push((await api.setRdpCredential?.(id, rdp)) ?? { ok: false, error: NOT_STORED });
-  if (vnc !== null) results.push((await api.setVncCredential?.(id, vnc)) ?? { ok: false, error: NOT_STORED });
+  if (rdp !== null) results.push(await storePassword(api.setRdpCredential, id, rdp));
+  if (vnc !== null) results.push(await storePassword(api.setVncCredential, id, vnc));
   for (const result of results) if (!result.ok) return result.error;
   return null;
 }

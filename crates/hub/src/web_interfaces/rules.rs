@@ -40,9 +40,12 @@ pub(super) fn parse_url(text: &str) -> Result<(String, Url), FieldError> {
     if text.len() > URL_MAX_BYTES {
         return Err(invalid("The URL is longer than 2048 bytes."));
     }
-    if text.chars().any(|c| c.is_control() || c.is_whitespace()) {
+    if text
+        .chars()
+        .any(|c| c.is_control() || c.is_whitespace() || is_invisible(c))
+    {
         return Err(invalid(
-            "The URL cannot contain spaces or control characters.",
+            "The URL cannot contain spaces, control or invisible characters.",
         ));
     }
     let url = Url::parse(text).map_err(|_| invalid("Enter a full web address."))?;
@@ -51,7 +54,14 @@ pub(super) fn parse_url(text: &str) -> Result<(String, Url), FieldError> {
         .strip_prefix("http://")
         .or_else(|| lower.strip_prefix("https://"));
     // The parser would read `https:///x` as host `x` and `\` as `/`; the operator typed neither.
-    if after_scheme.is_none_or(|rest| rest.starts_with('/') || rest.contains('\\')) {
+    let authority_has_at = |rest: &str| {
+        rest.split(['/', '?'])
+            .next()
+            .is_some_and(|a| a.contains('@'))
+    };
+    if after_scheme
+        .is_none_or(|rest| rest.starts_with('/') || rest.contains('\\') || authority_has_at(rest))
+    {
         return Err(invalid("The URL must start with http:// or https://."));
     }
     if url.host_str().is_none_or(str::is_empty) {
@@ -93,8 +103,17 @@ pub(super) fn host_label(host: &str) -> String {
 }
 
 fn is_unsafe_in_label(c: char) -> bool {
-    c.is_control()
-        || matches!(c, '\u{200e}' | '\u{200f}' | '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}')
+    c.is_control() || is_invisible(c)
+}
+
+/// Format characters (Unicode Cf) that show nothing or reorder text: zero-width marks,
+/// text-direction controls, joiners, the byte order mark and tag characters.
+fn is_invisible(c: char) -> bool {
+    matches!(c,
+        '\u{ad}' | '\u{600}'..='\u{605}' | '\u{61c}' | '\u{6dd}' | '\u{70f}' | '\u{180e}'
+        | '\u{200b}'..='\u{200f}' | '\u{202a}'..='\u{202e}' | '\u{2060}'..='\u{2064}'
+        | '\u{2066}'..='\u{206f}' | '\u{feff}' | '\u{fff9}'..='\u{fffb}'
+        | '\u{e0000}'..='\u{e007f}')
 }
 
 /// The fingerprint in 64 hex digits, colons between byte pairs allowed, any case (D-5).

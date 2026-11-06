@@ -1,10 +1,10 @@
 import type {
   PasswordCredentialInput,
-  PendingDeviceInput,
   RdpSettingsInput,
   TransferPolicyInput,
+  UpdateDeviceInput,
   VncSettingsInput,
-} from '../../hub-pending';
+} from '$lib/hub/generated/graphql';
 import { isValidPort } from '../values';
 import {
   DEFAULT_RDP_PORT,
@@ -14,6 +14,9 @@ import {
   type RemoteSecrets,
   type RemoteValues,
 } from './values';
+
+/** The K1 fields of `CreateDeviceInput` and `UpdateDeviceInput`. On update an empty `macAddress` clears it. */
+type DeviceAdditions = Pick<UpdateDeviceInput, 'rdp' | 'vnc' | 'macAddress' | 'metricsSource' | 'transfer'>;
 
 type Rdp = RemoteValues['rdp'];
 type Vnc = RemoteValues['vnc'];
@@ -59,7 +62,7 @@ function sameJson(a: unknown, b: unknown): boolean {
 }
 
 /** D-2, create: only the K1 additions that differ from the K1 default, so an untouched form is the Phase 1 input. */
-export function createAdditions(values: RemoteValues): PendingDeviceInput {
+export function createAdditions(values: RemoteValues): DeviceAdditions {
   const now = normalizedRemote(values);
   const everyFlagOn = sameJson(now.transfer, defaultRemoteValues().transfer);
   return {
@@ -72,7 +75,7 @@ export function createAdditions(values: RemoteValues): PendingDeviceInput {
 }
 
 /** D-2, update: only the K1 additions that differ from the saved ones; RDP and VNC go whole. An emptied address sends "". */
-export function updateAdditions(initial: RemoteValues, values: RemoteValues): PendingDeviceInput {
+export function updateAdditions(initial: RemoteValues, values: RemoteValues): DeviceAdditions {
   const before = normalizedRemote(initial);
   const now = normalizedRemote(values);
   const rdp = rdpInput(now.rdp, before.rdp.port);

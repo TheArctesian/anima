@@ -1,6 +1,6 @@
 import type { DeviceCheck } from '$lib/checks/api';
-import type { CheckType as HubCheckType } from '$lib/hub/generated/graphql';
-import type { PendingCheckConfig, PendingCheckType } from '$lib/forms/hub-pending';
+import type { CheckType } from '$lib/hub/generated/graphql';
+import type { ProbeConfig } from '../probes/values';
 
 /** The K1 check shapes the check form reads and writes, from the generated types (T4, API-008). */
 export type {
@@ -12,14 +12,12 @@ export type {
   HttpConfigInput,
   HttpMethod,
   IpVersion,
+  CheckType,
   UpdateCheckInput,
 } from '$lib/hub/generated/graphql';
 
-/** The check types the form offers: Phase 1 from the generated types, Phase 2 from the pending ones (D-1). */
-export type CheckType = HubCheckType | PendingCheckType;
-
-/** The part of K1 `CheckConfig` the form reads, discriminated like the GraphQL union. */
-export type CheckConfigFields = DeviceCheck['config'] | PendingCheckConfig;
+/** The part of K1 `CheckConfig` the form reads, discriminated like the GraphQL union; `ProbeConfig` until WP-29 (T5). */
+export type CheckConfigFields = DeviceCheck['config'] | ProbeConfig;
 
 /** The part of K1 `Check` the form edits. */
 export type CheckFields = Pick<

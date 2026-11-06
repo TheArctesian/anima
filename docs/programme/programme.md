@@ -135,6 +135,8 @@ Integration branch: `phase-1`. Merge to `main` only after operator checkpoint 4.
   - **Reports.** A package orchestrator waits on its own builders and reviewers and reads their results itself. Builders and reviewers say in their first line which package and task they belong to. The programme orchestrator checks any package that is silent for more than an hour.
   - **Concurrency.** WAVE-002 is raised to 7 package orchestrators. The per-package limit stays at 3 builders and 3 reviewers.
 
+- **R-067 (operator, 2026-11-06: "merge frequently").** Each package sends the programme orchestrator a task's SHA as soon as the task is accepted, meaning it passes 12/12 and has a review with no must findings. The orchestrator merges that task into `phase-2` straight away instead of waiting for the whole package. Packages rebase onto `phase-2` after each merge. The package report still comes at the end.
+
 ## Escalations
 
 None open.

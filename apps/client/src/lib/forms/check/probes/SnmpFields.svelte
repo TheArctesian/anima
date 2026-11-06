@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { FieldError } from '$lib/hub/error';
-  import type { SnmpVersion } from '$lib/forms/hub-pending';
+  import type { SnmpVersion } from '$lib/hub/generated/graphql';
   import SelectField from '../fields/SelectField.svelte';
   import TextField from '../fields/TextField.svelte';
   import { messageFor } from '../model/errors';
