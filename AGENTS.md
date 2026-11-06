@@ -84,7 +84,7 @@ Run `bun run gates` before you ask for review and before every merge. There is n
 
 ```sh
 bun run gates
-BASE_REF=my-branch bun run gates   # baseline gate compares against this ref (default: phase-1)
+BASE_REF=my-branch bun run gates   # baseline gate compares against this ref (default: phase-2)
 ```
 
 The gates run in this order and stop at the first failure: `cargo fmt --check`,

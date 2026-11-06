@@ -1163,7 +1163,7 @@ anima/
 ├── AGENTS.md                  Agent and contributor rules (Section 12 summary)
 ├── CLAUDE.md                  Points to AGENTS.md
 ├── Cargo.toml                 Rust workspace, [workspace.lints] (CQ-040)
-├── package.json               JavaScript workspace (pnpm)
+├── package.json               JavaScript workspace (bun)
 ├── contracts/                 Frozen interfaces for parallel work (implementation plan, Section 4)
 ├── docs/
 │   ├── design-spec.md         This document
