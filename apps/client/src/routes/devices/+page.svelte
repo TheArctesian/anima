@@ -1,15 +1,18 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
+  import { untrack } from 'svelte';
   import { page } from '$app/state';
+  import { readThisMachine, type ThisMachine } from '$lib/desktop/thisMachine';
   import { devicesApi, type CardDevice } from '$lib/devices/api';
   import { parseListQuery, writeListQuery, type ListQuery } from '$lib/devices/query';
   import DeviceScreen from '$lib/devices/screen/DeviceScreen.svelte';
   import { addDevice as createWithCredential, type AddedDevice } from '$lib/forms/add-device';
   import AddDeviceModal from '$lib/forms/AddDeviceModal.svelte';
   import type { DeviceFormValues, SiteOption } from '$lib/forms/device/values';
+  import { machineToOffer, thisMachinePrompt } from '$lib/forms/this-machine';
   import { useHub } from '$lib/hub/context';
-  import type { HubError } from '$lib/hub/error';
+  import type { HubError, HubResult } from '$lib/hub/error';
   import { sessionsApi } from '$lib/sessions/api';
   import { useSessions } from '$lib/sessions/sessions.svelte';
 
@@ -21,6 +24,10 @@
   let sites = $state<readonly SiteOption[]>([]);
   let adding = $state(false);
   let addError = $state<HubError | null>(null);
+  /** This computer when it is known and not yet a device, so Add device offers it first (R-060). */
+  let machine = $state<ThisMachine | null>(null);
+  /** The app opened Add device itself, to ask about `machine`. */
+  let asking = $state(false);
   let loadingSites = false;
 
   const query = $derived(parseListQuery(page.url.searchParams));
@@ -36,17 +43,47 @@
     });
   }
 
-  /** Add device (DEV-010, WP-13 H-1): the sites are read first, because the form needs a site to place the device in. */
+  /** Shows Add device over the list with the sites it needs, offering `offered` first when it is not null. */
+  function show(found: HubResult<readonly SiteOption[]>, offered: ThisMachine | null, ask: boolean): void {
+    addError = found.ok ? null : found.error;
+    if (!found.ok) return;
+    sites = found.value;
+    machine = offered;
+    asking = ask;
+    adding = true;
+  }
+
+  /**
+   * Add device (DEV-010, WP-13 H-1): the sites are read first, because the form needs a site to place the device
+   * in. This computer is read at the same time, so the form can offer it (R-060).
+   */
   async function addDevice(): Promise<void> {
     if (loadingSites || adding) return;
     loadingSites = true;
-    const result = await devices.sites();
+    const [found, offered] = await Promise.all([devices.sites(), machineToOffer(readThisMachine, devices.hosts)]);
     loadingSites = false;
-    addError = result.ok ? null : result.error;
-    if (!result.ok) return;
-    sites = result.value;
-    adding = true;
+    show(found, offered, false);
   }
+
+  /**
+   * After sign-in, Add device opens by itself, once per app start, when this computer is known and not yet a
+   * device, unless the operator said not to ask again (R-060). A failure to read the sites stays quiet here.
+   */
+  async function askAboutThisMachine(): Promise<void> {
+    if (!thisMachinePrompt.due || loadingSites || adding) return;
+    loadingSites = true;
+    const offered = await machineToOffer(readThisMachine, devices.hosts);
+    const found = offered === null ? null : await devices.sites();
+    loadingSites = false;
+    if (offered === null || found === null || !found.ok || !thisMachinePrompt.due || adding) return;
+    thisMachinePrompt.asked();
+    show(found, offered, true);
+  }
+
+  // Once, when the page mounts; nothing the prompt reads should run it again.
+  $effect(() => {
+    untrack(() => void askAboutThisMachine());
+  });
 
   function create(values: DeviceFormValues, siteId: string) {
     return createWithCredential(values, siteId, {
@@ -85,6 +122,12 @@
 <AddDeviceModal
   open={adding}
   {sites}
+  {machine}
+  {asking}
+  onDontAsk={() => {
+    thisMachinePrompt.turnOff();
+    adding = false;
+  }}
   onCreate={create}
   onTest={connections.testConnection}
   onClose={() => {
