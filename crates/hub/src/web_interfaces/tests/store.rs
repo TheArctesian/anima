@@ -94,7 +94,7 @@ db_test! {
             .await
             .unwrap();
         assert_eq!(read.len(), 1, "a device with none is absent");
-        assert_eq!(read[&device(PVE_01)], [created.clone()]);
+        assert_eq!(read[&device(PVE_01)], std::slice::from_ref(&created));
 
         let replaced = WebInterfaceInput {
             label: None,
@@ -165,7 +165,7 @@ db_test! {
             let id = make(&mut conn, "https://pve.lan:8006/").await;
             web_interfaces::accept_certificate(&mut conn, id, acceptance(HEX)).await.unwrap();
             let changed = web_interfaces::update(&mut conn, id, &input(url)).await.unwrap();
-            assert_eq!(changed.before.pin.is_some(), true);
+            assert!(changed.before.pin.is_some());
             assert_eq!(changed.after.pin, None, "{url}");
             let stored = web_interfaces::for_devices(&pool, &[device(PVE_01)]).await.unwrap();
             let found = stored[&device(PVE_01)].iter().find(|w| w.id == id).unwrap();

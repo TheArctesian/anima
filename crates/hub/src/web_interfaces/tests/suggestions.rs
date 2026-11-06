@@ -78,5 +78,5 @@ fn log_007_never_offers_a_check_url_with_a_user_name_or_one_the_rule_refuses() {
         &[],
         &HashSet::new(),
     );
-    assert!(offered.is_empty());
+    assert_eq!(offered.len(), 0);
 }
