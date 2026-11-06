@@ -4,6 +4,7 @@ import { connectionTestInput, testOutcome, testsSavedRecord, testsStoredCredenti
 import { FORM_FIELD, fieldErrorsFrom } from './field-errors';
 import { testResult } from './result.fixture';
 import { createInput, credentialInput, updateInput } from './input';
+import { defaultRemoteValues } from './remote/values';
 import { validateDevice } from './validate';
 import { formValues, type DeviceFields, type DeviceFormValues, type HostKey } from './values';
 
@@ -41,6 +42,8 @@ describe('formValues', () => {
       tags: [],
       ssh: { enabled: false, port: '22', username: '', auth: 'PASSWORD' },
       credential: { password: '', privateKey: '', passphrase: '' },
+      remoteSecrets: { rdpPassword: '', vncPassword: '' },
+      ...defaultRemoteValues(),
     });
   });
 

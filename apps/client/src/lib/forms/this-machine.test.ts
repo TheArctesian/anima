@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { readThisMachine, thisMachineFrom, type ThisMachine } from '$lib/desktop/thisMachine';
 import { validateDevice } from './device/validate';
+import { defaultRemoteValues } from './device/remote/values';
 import { thisMachineValues } from './device/values';
 import { DONT_ASK_KEY, ThisMachinePrompt, dontAskLabel, machineToOffer, promptTitle, thisMachineLabel } from './this-machine';
 
@@ -97,6 +98,8 @@ describe('thisMachineValues', () => {
       tags: [],
       ssh: { enabled: true, port: '22', username: 'stephen', auth: 'PASSWORD' },
       credential: { password: '', privateKey: '', passphrase: '' },
+      remoteSecrets: { rdpPassword: '', vncPassword: '' },
+      ...defaultRemoteValues(),
     });
   });
 

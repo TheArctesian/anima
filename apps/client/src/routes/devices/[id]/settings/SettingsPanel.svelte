@@ -2,7 +2,7 @@
   import type { DeviceDetail } from '$lib/devices/api';
   import type { ConnectionTestResult } from '$lib/forms/device/connection-test';
   import DeviceForm from '$lib/forms/device/form/DeviceForm.svelte';
-  import type { DeviceFormValues } from '$lib/forms/device/values';
+  import type { DeviceFields, DeviceFormValues } from '$lib/forms/device/values';
   import FormButton from '$lib/forms/FormButton.svelte';
   import ConfirmModal from '$lib/forms/modal/ConfirmModal.svelte';
   import type { ConnectionTestInput } from '$lib/hub/generated/graphql';
@@ -25,15 +25,19 @@
   }
 
   const { device, revision, section, onSave, onTest, onAcceptHostKey, onClearCredential, onCancel, onDelete }: Props = $props();
+  /** The form reads the K1 fields that the devices client does not query yet (D-3). */
+  const fields: DeviceFields = $derived(device);
   let confirming = $state(false);
 </script>
 
 <div class="settings">
   {#key revision}
     <DeviceForm
-      {device}
+      device={fields}
       deviceId={device.id}
       credentialStored={device.ssh.credentialStored}
+      rdpCredentialStored={fields.rdp?.credentialStored ?? false}
+      vncCredentialStored={fields.vnc?.credentialStored ?? false}
       section={section ?? undefined}
       onSave={(values) => onSave(values)}
       {onTest}
