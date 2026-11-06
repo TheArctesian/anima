@@ -126,3 +126,31 @@ fn web_004_popping_out_is_marked_once() {
     assert!(tabs.get(&id("w")).unwrap().popped_out);
     assert_eq!(tabs.pop_out(&id("x")), Err(WebViewError::UnknownTab));
 }
+
+/// Every character in every position: a tab ID is accepted only if each character is one
+/// of `A-Z a-z 0-9 _ -`, so no label can hold another.
+#[test]
+fn d_3_every_character_outside_the_tab_id_set_is_refused_in_any_position() {
+    let probes = (0..=0x2FF_u32)
+        .chain([0x2028, 0x202E, 0xFEFF, 0xFF0F, 0x1F600])
+        .filter_map(char::from_u32);
+    for probe in probes {
+        let allowed = probe.is_ascii_alphanumeric() || probe == '_' || probe == '-';
+        for text in [
+            format!("{probe}"),
+            format!("a{probe}"),
+            format!("{probe}b"),
+            format!("a{probe}b"),
+        ] {
+            let parsed = TabId::parse(&text);
+            assert_eq!(parsed.is_ok(), allowed, "{text:?}");
+            if let Ok(id) = parsed {
+                assert!(
+                    id.view_label()
+                        .bytes()
+                        .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
+                );
+            }
+        }
+    }
+}

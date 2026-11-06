@@ -49,3 +49,28 @@ fn web_006_a_device_id_is_the_hyphenated_uuid_and_nothing_else() {
         assert_eq!(DeviceId::parse(bad), Err(WebViewError::DeviceId), "{bad:?}");
     }
 }
+
+/// A one-character change anywhere in the ID, to any non-hex character, is refused, and a
+/// change to another hex digit is another store: the folder name is always hex and hyphens.
+#[test]
+fn web_006_every_one_character_change_is_refused_or_another_device() {
+    let original = DeviceId::parse(DEVICE).unwrap();
+    for position in 0..DEVICE.len() {
+        for probe in ['/', '.', '\\', ' ', '\0', 'g', 'G', '-', '0', 'f', '%', 'é'] {
+            let mut text: Vec<char> = DEVICE.chars().collect();
+            text[position] = probe;
+            let text: String = text.into_iter().collect();
+            match DeviceId::parse(&text) {
+                Ok(device) => {
+                    let name = device.folder_name();
+                    assert!(
+                        name.bytes().all(|b| b.is_ascii_hexdigit() || b == b'-'),
+                        "{text:?}"
+                    );
+                    assert_eq!(device == original, text == DEVICE, "{text:?}");
+                }
+                Err(error) => assert_eq!(error, WebViewError::DeviceId),
+            }
+        }
+    }
+}
