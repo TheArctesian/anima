@@ -3,16 +3,19 @@ import { describe, expect, it } from 'vitest';
 import { CLIPBOARD_LIMIT, receiveClipboard } from './input';
 import type { SessionTunnel } from './tunnel';
 
+interface Stream {
+  onblob?: (data: string) => void;
+  onend?: () => void;
+}
+
+function fakeClient() {
+  const client = { onclipboard: null as null | ((stream: Stream, mimetype: string) => void) };
+  return { client, typed: client as unknown as SessionTunnel['client'] };
+}
+
+const base64 = (text: string) => btoa(String.fromCharCode(...new TextEncoder().encode(text)));
+
 describe('receiveClipboard (D-9)', () => {
-  interface Stream {
-    onblob?: (data: string) => void;
-    onend?: () => void;
-  }
-  function fakeClient() {
-    const client = { onclipboard: null as null | ((stream: Stream, mimetype: string) => void) };
-    return { client, typed: client as unknown as SessionTunnel['client'] };
-  }
-  const base64 = (text: string) => btoa(String.fromCharCode(...new TextEncoder().encode(text)));
 
   it.each([
     ['text/plain', ['abc']],
@@ -45,6 +48,9 @@ describe('receiveClipboard (D-9)', () => {
     expect(heard).toEqual([]);
   });
 
+});
+
+describe('receiveClipboard streams and the limit (D-9)', () => {
   /** A stream on a fresh client, and the texts it delivered. */
   function opened() {
     const { client, typed } = fakeClient();
