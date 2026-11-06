@@ -51,7 +51,7 @@
   <label class="select">
     <span>Device</span>
     <select
-      class="device"
+      class="by-device"
       value={filter.deviceId ?? ''}
       onchange={(event) => {
         onChange(withDevice(filter, event.currentTarget.value));
@@ -99,7 +99,7 @@
   }
 
   /* One width for any list of names, so devices arriving never widen the select and wrap the row (MOT-007). */
-  select.device {
+  select.by-device {
     inline-size: calc(var(--space-16) * 3);
   }
 

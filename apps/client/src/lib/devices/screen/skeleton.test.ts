@@ -1,11 +1,14 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, expect, it, vi } from 'vitest';
 import { threshold } from '$lib/motion/tokens';
 import { fakeHub } from '../hub.fixture';
 import { DEFAULT_QUERY } from '../query';
 import { manualClock } from './loading/clock.fixture';
+import tableSource from '../card/DeviceTable.svelte?raw';
 import DeviceScreen from './DeviceScreen.svelte';
+import skeletonSource from './Skeleton.svelte?raw';
 import { device, devicesAnswer } from './screen.fixture.svelte';
 import { endTransitionsAtOnce } from '../transitions.fixture';
 
@@ -16,6 +19,8 @@ vi.mock('motion', async (importOriginal) => ({
 
 const current = vi.hoisted(() => ({ hub: undefined as unknown }));
 vi.mock('$lib/hub/context', () => ({ useHub: () => current.hub }));
+
+const geometry = readFileSync('src/lib/devices/card/geometry.css', 'utf8');
 
 endTransitionsAtOnce();
 
@@ -106,10 +111,23 @@ it('Loading: data that arrives while the skeleton shows waits for threshold-load
   expect(document.querySelectorAll('article')).toHaveLength(1);
 });
 
-it('Loading: in table view the skeleton is table rows, not the card grid', async () => {
+it('Loading: in table view the skeleton is a table with a header row and as many rows as the first screen, not the card grid', async () => {
   const { time } = await slowScreen('table');
   time.advance(threshold.loading);
   flushSync();
-  expect(document.querySelector('ul.places.table')).not.toBeNull();
-  expect(document.querySelector('ul.places.grid')).toBeNull();
+  const table = document.querySelector('table.places');
+  expect(table).not.toBeNull();
+  expect(table?.querySelectorAll('thead tr')).toHaveLength(1);
+  expect(table?.querySelectorAll('tbody tr.place')).toHaveLength(8);
+  expect(document.querySelector('ul.places')).toBeNull();
+});
+
+it('Loading: the table skeleton and the table take their row size from the same value', () => {
+  expect(geometry).toContain('--device-row-block-size');
+  for (const source of [skeletonSource, tableSource]) expect(source).toContain('block-size: var(--device-row-block-size)');
+});
+
+it('Loading: the table skeleton has the data table\'s caption, since a caption moves the rows half a border', () => {
+  expect(tableSource).toContain('<caption');
+  expect(skeletonSource).toContain('<caption');
 });

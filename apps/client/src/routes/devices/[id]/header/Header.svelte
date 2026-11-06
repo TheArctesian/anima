@@ -1,8 +1,11 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
   import StatusPill from '$lib/devices/card/StatusPill.svelte';
+  import { skeletonDelay } from '$lib/devices/screen/loading/delay.svelte';
+  import type { LoadingClock } from '$lib/devices/screen/loading/loading';
   import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
+  import { crossFade } from '$lib/motion/roles/transitions';
   import { sharedItem } from '$lib/motion/shared/shared';
   import type { SettingsSection } from '../tabs/tabs';
   import { overflowFade } from './fade';
@@ -15,10 +18,16 @@
     onConnect: (button: HTMLElement) => void;
     /** Opens the Settings tab, at `section` when given (DEV-022). */
     onSettings: (section: SettingsSection | null) => void;
+    /** The device is on its way: after `threshold-loading` a skeleton of the line shows until it arrives (5.7.3, Loading). */
+    loading?: boolean;
+    clock?: LoadingClock;
   }
 
-  const { device, onConnect, onSettings }: Props = $props();
+  const { device, onConnect, onSettings, loading = false, clock }: Props = $props();
   const line = $derived(device === null ? null : headerLine(device));
+  // The clock is fixed for the life of the header.
+  // svelte-ignore state_referenced_locally
+  const skeleton = skeletonDelay(() => loading, clock);
 </script>
 
 <!-- One line, in the order of DEV-020; the buttons are last. -->
@@ -55,6 +64,16 @@
       </button>
     </div>
   {/if}
+  {#if skeleton.visible}
+    <!-- Over the line, after a ghost of the back link that has its width: the real line fades in under it without moving (MOT-007). -->
+    <div class="skeleton" aria-hidden="true" transition:crossFade>
+      <span class="back ghost">Devices</span>
+      <span class="name"></span>
+      <span class="pill"></span>
+      <span class="details-place"></span>
+      <span class="actions-place"></span>
+    </div>
+  {/if}
 </header>
 
 <style>
@@ -67,6 +86,52 @@
     block-size: var(--target-min-touch);
     margin-block-end: var(--space-4);
     min-inline-size: 0;
+    position: relative;
+  }
+
+  .skeleton {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-inline-size: 0;
+    overflow: hidden;
+  }
+
+  .ghost {
+    visibility: hidden;
+  }
+
+  .name,
+  .pill,
+  .details-place,
+  .actions-place {
+    flex: none;
+    border-radius: var(--radius-md);
+    background: var(--surface);
+  }
+
+  .name {
+    inline-size: calc(var(--space-16) * 3);
+    block-size: var(--space-6);
+  }
+
+  .pill {
+    inline-size: var(--space-16);
+    block-size: var(--space-6);
+    border-radius: var(--radius-pill);
+  }
+
+  .details-place {
+    flex: 1 1 auto;
+    min-inline-size: 0;
+    block-size: var(--space-4);
+  }
+
+  .actions-place {
+    inline-size: calc(var(--space-16) * 3);
+    block-size: var(--target-min-desktop);
   }
 
   /* The name, the pill and the buttons never shrink (DEV-021). */

@@ -14,9 +14,13 @@ export interface Beat {
 const NO_UPTIME = '—';
 
 /** Time order; a time that does not parse sorts as the oldest. */
-function when(beat: Beat): number {
-  const time = Date.parse(beat.at);
+function instantOf(at: string): number {
+  const time = Date.parse(at);
   return Number.isNaN(time) ? Number.NEGATIVE_INFINITY : time;
+}
+
+function when(beat: Beat): number {
+  return instantOf(beat.at);
 }
 
 /**
@@ -43,11 +47,21 @@ interface CheckBeats {
 
 /** The device's last `BAR_LENGTH` heartbeats, oldest first, merged from all its checks (D-6). Server order is not trusted. */
 export function latestBeats(checks: readonly CheckBeats[]): readonly Beat[] {
-  const all = checks.flatMap((check) =>
-    check.heartbeats.edges.map(({ node }): Beat => ({ checkId: check.id, ...node })),
-  );
-  const unique = all.filter((beat, index) => all.findIndex((other) => sameBeat(other, beat)) === index);
-  return capped(unique.toSorted((a, b) => when(a) - when(b)));
+  // The instants seen for each check, so a repeat is found in one lookup; the first beat of an instant stays.
+  const seen = new Map<string, Set<number>>();
+  const unique: { readonly beat: Beat; readonly instant: number }[] = [];
+  for (const check of checks) {
+    const instants = seen.get(check.id) ?? new Set<number>();
+    seen.set(check.id, instants);
+    for (const { node } of check.heartbeats.edges) {
+      const instant = instantOf(node.at);
+      if (instants.has(instant)) continue;
+      instants.add(instant);
+      unique.push({ beat: { checkId: check.id, ...node }, instant });
+    }
+  }
+  // Each time is parsed once; sorting by the parsed instants keeps the cost at n log n.
+  return capped(unique.toSorted((a, b) => a.instant - b.instant).map(({ beat }) => beat));
 }
 
 /**
