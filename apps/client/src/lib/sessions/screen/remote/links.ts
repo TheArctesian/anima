@@ -4,7 +4,7 @@ export const LINK_MAX = 2048;
 /**
  * The address a link would open, or `undefined` when it must not open (K4 §8.7): only `http` and `https`, no user
  * name or password (`https://accounts.google.com:443@evil.example/` shows a host that is not the real one), and at
- * most `LINK_MAX` characters. The address is the parsed form, so the confirmation shows what the browser would
+ * most `LINK_MAX` characters, raw and parsed. The address is the parsed form, so the confirmation shows what the browser would
  * really open (an international host name appears in its ASCII form), and `javascript:`, `data:`, `file:` and
  * every other scheme are refused.
  */
@@ -12,7 +12,9 @@ export function linkTarget(raw: string): string | undefined {
   if (raw.length > LINK_MAX || !URL.canParse(raw)) return undefined;
   const url = new URL(raw);
   const web = url.protocol === 'http:' || url.protocol === 'https:';
-  return web && url.username === '' && url.password === '' ? url.href : undefined;
+  // Percent-encoding can make the parsed address far longer than the raw one, and the parsed one is what is shown.
+  const plain = web && url.username === '' && url.password === '' && url.href.length <= LINK_MAX;
+  return plain ? url.href : undefined;
 }
 
 /**

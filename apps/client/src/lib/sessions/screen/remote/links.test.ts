@@ -28,6 +28,7 @@ describe('which links may open (K4 §8.7)', () => {
     'https://accounts.google.com:443@evil.example/login',
     'https://user:secret@example.com/',
     `https://example.com/${'a'.repeat(LINK_MAX)}`,
+    `https://example.com/${'\u00e9'.repeat(LINK_MAX - 'https://example.com/'.length - 18)}`,
     '//example.com/',
     '/relative',
     'example.com',
