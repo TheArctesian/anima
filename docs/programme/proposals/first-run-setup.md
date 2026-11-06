@@ -26,11 +26,13 @@ so a second account could never be limited. One account and no sign-up stay.
    changes.
 2. **Setup code.** At start, an unclaimed hub makes a random setup code (for example 4 groups of
    5 base32 characters, about 100 bits). It keeps only an argon2id hash and an expiry of 1 hour
-   in memory, and writes the code itself once to standard output as a separate line that is not
-   JSON-logged, so it never goes through the log pipeline into files or shipping (LOG-007,
-   SEC-009). `anima-hub setup-code` on the VPS makes a new code and cancels the old one, for when
-   the first one expired. A hub restart also makes a new one. Wrong codes count toward the
-   sign-in throttle.
+   in memory. It writes the code itself only to a root-only file in the secrets folder
+   (`/opt/anima/deploy/secrets/setup_code`, `root:root`, `0400`, through a bind mount the hub can
+   write but no other service mounts), and logs only "setup code written to <path>". The code
+   never reaches stdout, Docker's log files or log shipping (LOG-007, SEC-009). The operator
+   reads it with `sudo cat`. The hub deletes the file when the code is used or expires.
+   `anima-hub setup-code` on the VPS makes a new code and cancels the old one. A hub restart
+   also makes a new one. Wrong codes count toward the sign-in throttle.
 3. **Create account screen.** The client shows "Set up Anima" instead of "Sign in" when
    `setupRequired` is true. Fields: setup code, username, password (with the same rules as
    `operator set`). The hub checks the code and then, in one transaction, does what
@@ -51,10 +53,8 @@ so a second account could never be limited. One account and no sign-up stay.
 - **Someone on the VPN claims the hub first.** They would need the code, which only appears in
   the hub's standard output on the VPS. The window is the time between `docker compose up` and
   the operator's setup.
-- **The code in `docker logs`.** Container stdout is kept by Docker's json-file driver (rotated,
-  3 files). That is the reason for the 1-hour expiry and single use. A stricter option is to
-  write the code only to a root-only file in the secrets folder and print its path instead. The
-  operator decides which.
+- **Where the code lives.** Only in the root-only file and as a hash in hub memory (operator
+  ruling, R-057). Anyone who can read it is already root on the VPS.
 - **New unauthenticated surface.** One query and one mutation, both answering only while
   unclaimed. Inputs are bounded and throttled like sign-in. SEC-002 needs a stated exception
   for them.
@@ -63,7 +63,7 @@ so a second account could never be limited. One account and no sign-up stay.
 
 - A spec change: a setup-screen requirement in the access section, an exception to SEC-002 for
   `setupRequired` and the setup mutation, and the setup-code handling under LOG-007.
-- A ruling on where the code appears (stdout once, or a root-only file).
+- The ruling on where the code appears is made: a root-only file (R-057).
 - A contract change to K3 (access surface) for the new query and mutation, after Phase 1.
 - An issue #1 checklist entry (R-007). This pairs with
   [in-app-enrolment.md](in-app-enrolment.md) (R-055): together they give "install the app,
