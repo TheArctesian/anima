@@ -127,23 +127,66 @@ describe('the transfer policy read at each start (RA-033, K4 §4)', () => {
   });
 });
 
+/** A store whose starts run on the fake hub through the real `sessionStart`. */
+function store(api: ReturnType<typeof fakeHub>['api']) {
+  return createSessions({
+    start: (deviceId) => ({
+      terminal: sessionStart(api, deviceId, ORIGIN, FAKE_TERMINAL_SOCKET).terminal,
+      remote: sessionStart(api, deviceId, ORIGIN, FAKE_TUNNEL_SOCKET).remote,
+    }),
+    end: (id) => api.endSession(id),
+  });
+}
+
+const tab = { deviceId: 'device-1', deviceName: 'desk', origin: null } as const;
+
 describe('the store passes the tab\'s protocol (RA-001)', () => {
   it('K4 §1: a VNC tab starts a VNC session over the Guacamole tunnel; an SSH tab the terminal', async () => {
     const { api, named } = hub();
-    const sessions = createSessions({
-      start: (deviceId) => ({
-        terminal: sessionStart(api, deviceId, ORIGIN, FAKE_TERMINAL_SOCKET).terminal,
-        remote: sessionStart(api, deviceId, ORIGIN, FAKE_TUNNEL_SOCKET).remote,
-      }),
-      end: (id) => api.endSession(id),
-    });
-    const vnc = sessions.openSession({ deviceId: 'device-1', deviceName: 'desk', protocol: 'VNC', origin: null });
-    const ssh = sessions.openSession({ deviceId: 'device-1', deviceName: 'desk', protocol: 'SSH', origin: null });
+    const sessions = store(api);
+    const vnc = sessions.openSession({ ...tab, protocol: 'VNC' });
+    const ssh = sessions.openSession({ ...tab, protocol: 'SSH' });
     kept(await sessions.remoteStartIn(vnc)(DISPLAY, remoteEvents));
     kept(await sessions.startIn(ssh)(DISPLAY, terminalEvents));
     expect(named('StartRemoteSession').map((sent) => sent.variables)).toEqual([{ input: { deviceId: 'device-1', protocol: 'VNC', display: DISPLAY } }]);
     expect(named('StartSession').map((sent) => sent.variables)).toEqual([{ input: { deviceId: 'device-1', protocol: 'SSH', display: DISPLAY } }]);
     expect([FakeTunnelSocket.made.length, FakeTerminalSocket.made.length]).toEqual([1, 1]);
-    expect(sessions.tabs.map((tab) => tab.sessionId)).toEqual(['session-1', 'session-2']);
+    expect(sessions.tabs.map((open) => open.sessionId)).toEqual(['session-1', 'session-2']);
+  });
+
+  it('a start through the other tunnel\'s view asks the hub for nothing', async () => {
+    const { api, sent } = hub();
+    const sessions = store(api);
+    const rdp = sessions.openSession({ ...tab, protocol: 'RDP' });
+    const ssh = sessions.openSession({ ...tab, protocol: 'SSH' });
+    expect(await sessions.startIn(rdp)(DISPLAY, terminalEvents)).toMatchObject({ ok: false, error: { problem: 'not-opened' } });
+    expect(await sessions.remoteStartIn(ssh)(DISPLAY, remoteEvents)).toMatchObject({ ok: false, error: { problem: 'not-opened' } });
+    expect(sent).toEqual([]);
+  });
+
+  it('RA-007: a remote Reconnect ends the live session once before it asks for a new ticket', async () => {
+    const { api, named } = hub({ certificateExempt: true });
+    const sessions = store(api);
+    const id = sessions.openSession({ ...tab, protocol: 'RDP' });
+    kept(await sessions.remoteStartIn(id)(DISPLAY, remoteEvents));
+    kept(await sessions.remoteStartIn(id)(DISPLAY, remoteEvents));
+    expect(named('EndSession').map((sent) => sent.variables)).toEqual([{ id: 'session-1' }]);
+    expect(sessions.tabs.map((open) => open.sessionId)).toEqual(['session-2']);
+  });
+
+  it('K4 §5: once a remote tunnel closes with 4003 the view owns its end; closing the tab ends nothing', async () => {
+    const { api, named } = hub({ certificateExempt: true });
+    const sessions = store(api);
+    const id = sessions.openSession({ ...tab, protocol: 'RDP' });
+    const heard: number[] = [];
+    kept(await sessions.remoteStartIn(id)(DISPLAY, { onchange: () => undefined, onend: (state) => heard.push(state.closeCode ?? 0) }));
+    FakeTunnelSocket.latest().open();
+    FakeTunnelSocket.latest().closeWith(4003);
+    await vi.waitFor(() => {
+      expect(heard).toEqual([4003]);
+    });
+    expect(sessions.tabs.map((open) => open.sessionId)).toEqual([null]);
+    await sessions.close(id);
+    expect(named('EndSession')).toEqual([]);
   });
 });
