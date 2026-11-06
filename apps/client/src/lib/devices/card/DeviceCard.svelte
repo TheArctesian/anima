@@ -111,6 +111,7 @@
   }
 
   a:active {
+    transition-duration: var(--duration-press);
     color: var(--text-muted);
   }
 
