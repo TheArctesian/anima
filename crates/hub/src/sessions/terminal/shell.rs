@@ -142,6 +142,8 @@ impl Link<'_> {
 /// still waiting at `due` ends the session `GATEWAY_ERROR`. The hand-off is to russh's queue
 /// of a few commands, of which the hub uses one at a time, so it waits only when the
 /// connection's task has stopped: there is no ping here, unlike the wait for the answer.
+/// No ping during the hand-off is by design, as K4 Section 8.4 says: it waits only if the
+/// connection's task stopped, and the request wait ends it.
 pub(super) async fn handed(
     tunnel: &mut Tunnel,
     request: impl Future<Output = Result<(), russh::Error>>,

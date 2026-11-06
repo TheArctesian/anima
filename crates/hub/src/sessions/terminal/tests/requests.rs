@@ -49,8 +49,11 @@ async fn d_10_end_session_ends_a_request_still_being_handed_over() {
     };
     live.end_by(session(1), &by);
     let due = tokio::time::Instant::now() + Duration::from_secs(15);
-    let end = handed(&mut tunnel, std::future::pending(), due)
+    // Well before the request wait: only the end signal ends the hand-off within it.
+    let handing = handed(&mut tunnel, std::future::pending(), due);
+    let end = tokio::time::timeout(Duration::from_secs(1), handing)
         .await
+        .expect("the end signal ends the hand-off at once")
         .unwrap_err();
     assert_eq!((end.cause, end.by), (Cause::OperatorClosed, Some(by)));
 }

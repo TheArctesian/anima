@@ -50,7 +50,10 @@ async fn after_response(
     opening: Opening,
     socket: oneshot::Receiver<WebSocket>,
 ) -> End {
-    connected(bench.route.timing, &mut redeemed.tunnel, opening, socket).await
+    let ended = connected(bench.route.timing, &mut redeemed.tunnel, opening, socket);
+    tokio::time::timeout(Duration::from_secs(5), ended)
+        .await
+        .expect("the tunnel ends without an upgraded socket")
 }
 
 #[sqlx::test(
