@@ -141,6 +141,15 @@ describe('find (RA-003)', () => {
     expect(document.activeElement).toBe(field);
   });
 
+  it('UI-013: the find buttons are icon-only with a name each, so the input keeps the width', async () => {
+    const { target, field } = await connected();
+    key(field, { ...F, metaKey: true });
+    await settle();
+    const buttons = [...target.querySelectorAll('.find button')];
+    expect(buttons.map((button) => button.getAttribute('aria-label'))).toEqual(['Previous match', 'Next match', 'Close find']);
+    for (const button of buttons) expect(button.querySelector('.icon')?.getAttribute('aria-hidden')).toBe('true');
+  });
+
   it('RA-003: Ctrl+F alone stays with the shell; the Find button opens the bar', async () => {
     const { socket, target, field } = await connected();
     key(field, { ...F, ctrlKey: true });

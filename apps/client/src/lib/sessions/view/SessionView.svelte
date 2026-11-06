@@ -38,7 +38,7 @@
   const { device, start, api, openScreen, visible, focused, onended, onretitle }: Props = $props();
   const COPY_FAILED = 'Could not copy the text to your clipboard.';
   const PASTE_FAILED = 'Could not read your clipboard. Allow clipboard access, or paste with the keyboard.';
-  const OVERFLOW = 'Output arrived faster than it could be drawn, so some was skipped. Press Ctrl+L to redraw.';
+  const OVERFLOW = 'Press Ctrl+L to redraw: output arrived faster than it could be drawn, so some was skipped.';
   /** The size of the first `resize` when the pane could not be fitted yet (a hidden pane); a fit corrects it. */
   const UNFITTED: CellSize = { cols: 80, rows: 24 };
 
@@ -245,7 +245,6 @@
     box-sizing: border-box;
     display: flex;
     block-size: calc(var(--target-min-desktop) + 2 * var(--space-2) + var(--border-thin));
-    overflow: hidden;
     line-height: var(--leading-normal);
     flex: none;
     align-items: center;
@@ -256,7 +255,7 @@
     background: var(--surface);
   }
 
-  /* Lies over the whole toolbar row: the find bar, or a one-line message with a way to dismiss it. */
+  /* Lies over the whole toolbar row, bounded by `inset: 0` (the toolbar itself is not clipped, so the Keys menu can reach out of it): the find bar, or a one-line message with a way to dismiss it. */
   .cover {
     position: absolute;
     inset: 0;

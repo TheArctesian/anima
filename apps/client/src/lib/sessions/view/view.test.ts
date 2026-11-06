@@ -116,7 +116,8 @@ describe('MAT-008: the terminal', () => {
 
   it('MOT-007: the toolbar has a fixed height and clips, so a notice or the find bar can never move the terminal', () => {
     expect(rules.get('.toolbar')?.get('block-size')).toContain('var(--target-min-desktop)');
-    expect(rules.get('.toolbar')?.get('overflow')).toBe('hidden');
+    // Not clipped: the Keys menu is drawn inside the toolbar and must reach out of it (the overlay is bounded by `inset: 0`).
+    expect(rules.get('.toolbar')?.has('overflow')).toBe(false);
     expect(rules.get('.cover')?.get('position')).toBe('absolute');
     expect(componentRules('./pane/Notice.svelte').get('.notice')?.get('white-space')).toBe('nowrap');
   });

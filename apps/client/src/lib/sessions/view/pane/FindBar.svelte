@@ -47,11 +47,11 @@
     onkeydown={key}
     {@attach focusInput}
   />
-  <button type="button" title="Previous match (Shift+Enter)" onclick={() => find(true)} {@attach press()}>
-    Previous
+  <button type="button" aria-label="Previous match" title="Previous match (Shift+Enter)" onclick={() => find(true)} {@attach press()}>
+    <span class="flip"><Icon name="nf-md-chevron_down" size="sm" /></span>
   </button>
-  <button type="button" title="Next match (Enter)" onclick={() => find(false)} {@attach press()}>
-    Next
+  <button type="button" aria-label="Next match" title="Next match (Enter)" onclick={() => find(false)} {@attach press()}>
+    <Icon name="nf-md-chevron_down" size="sm" />
   </button>
   <button type="button" aria-label="Close find" title="Close (Escape)" onclick={onclose} {@attach press()}>
     <Icon name="nf-md-close" size="sm" />
@@ -71,7 +71,7 @@
   input {
     flex: 1 1 calc(var(--space-16) * 2);
     box-sizing: border-box;
-    min-inline-size: 0;
+    min-inline-size: 8ch;
     max-inline-size: calc(var(--space-16) * 4);
     min-block-size: var(--target-min-desktop);
     padding: 0 var(--space-2);
@@ -104,8 +104,17 @@
     outline-offset: calc(var(--border-focus) * -1);
   }
 
+  /* The chevron points down; the previous-match button turns it up. A fixed turn of a glyph, not motion. */
+  .flip {
+    display: flex;
+    transform: rotate(180deg);
+  }
+
   .status {
-    flex: none;
+    flex: 0 1 auto;
+    min-inline-size: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
     color: var(--text-muted);
     font-size: var(--text-sm);
     white-space: nowrap;

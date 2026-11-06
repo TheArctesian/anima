@@ -130,7 +130,7 @@ describe('a flood from the device (K4 §8.5)', () => {
     expect(errors).toEqual([]);
     const notices = [...target.querySelectorAll('[role="status"]')].filter((entry) => entry.textContent.includes('some was skipped'));
     expect(notices).toHaveLength(1);
-    expect(notices[0]?.textContent).toBe('Output arrived faster than it could be drawn, so some was skipped. Press Ctrl+L to redraw.');
+    expect(notices[0]?.textContent).toBe('Press Ctrl+L to redraw: output arrived faster than it could be drawn, so some was skipped.');
     expect(socket.closedByClient).toBeUndefined();
     expect(target.querySelector('[data-reason]')).toBeNull();
   });
