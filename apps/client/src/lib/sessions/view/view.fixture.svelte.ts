@@ -221,3 +221,11 @@ export function screenText(target: HTMLElement): string {
   vi.advanceTimersByTime(100);
   return target.querySelector('.xterm-rows')?.textContent ?? '';
 }
+
+/** A key press on `target` (xterm.js reads `keyCode`, which the event constructor does not take). */
+export function key(target: Element, init: KeyboardEventInit & { keyCode: number }) {
+  const event = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init });
+  Object.defineProperty(event, 'keyCode', { value: init.keyCode });
+  target.dispatchEvent(event);
+  return event;
+}
