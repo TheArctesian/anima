@@ -58,7 +58,7 @@ Environment variables, read once in `main.rs` into a typed `Config` that is pass
 | `ANIMA_GUACD` | Gateway address | `guacd:4822` |
 | `ANIMA_PERMITTED_NETWORKS` | Comma-separated CIDRs (NET-001) | VPN range + site subnets |
 | `ANIMA_PROBE_DENY` | Comma-separated CIDRs that checks must never probe: the hub's own Docker networks and public address (R-030). (Phase 2) Also applies to session and metrics targets (P2-004) | empty; the hub logs a warning at start when empty |
-| `ANIMA_GUACD_DRIVE_ROOT` (Phase 2) | guacd's path for shared drives | `/var/lib/guacd/drives` |
+| `ANIMA_GUACD_DRIVE_ROOT` (Phase 2) | guacd's path for shared drives; an absolute path, because guacd resolves it in its own file system | `/var/lib/guacd/drives` |
 | `ANIMA_TAILSCALE_LOCALAPI` (Phase 2) | `host:port` of the LocalAPI proxy (D-4); empty: Tailscale ping checks are Unknown with a message | empty |
 | `ANIMA_LOG` | Log level filter (LOG-003) | `info` |
 | `ANIMA_TLS_CERT_FILE`, `ANIMA_TLS_KEY_FILE` | Hub TLS (SEC-001) | — (required outside tests) |
