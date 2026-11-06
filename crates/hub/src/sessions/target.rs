@@ -1,7 +1,13 @@
-//! Which addresses a session or an SSH probe may reach (R-032): never the gateway's own
-//! machine, a link-local neighbour or a group address. Pure.
+//! Which addresses a session or an SSH probe may reach (R-032, P2-004): never the gateway's
+//! own machine, a link-local neighbour, a group address or a network the hub's address policy
+//! refuses. Pure.
 
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
+use std::{
+    net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr},
+    sync::Arc,
+};
+
+use crate::targets::AddressPolicy;
 
 /// Whether an IPv4 address points back at the gateway's own machine or at no single host.
 fn is_refused_v4(v4: Ipv4Addr) -> bool {
@@ -58,32 +64,67 @@ pub(super) fn is_refused_target(ip: IpAddr) -> bool {
     }
 }
 
-/// The rule a probe applies to every address a host resolves to. The hub always uses
-/// [`TargetRule::STRICT`]; tests that run an SSH server on the loopback interface use
-/// [`TargetRule::LOOPBACK_FOR_TESTS`], which no release build contains.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// The rule every session connection applies to every address a host resolves to: the
+/// terminal, the Guacamole tunnel, the SSH probe and `testConnection` (R-032, P2-004). An
+/// address is refused when [`is_refused_target`] refuses it or the hub's [`AddressPolicy`]
+/// does not permit it: the `ANIMA_PROBE_DENY` networks (R-030) and the policy's own
+/// always-refused ranges, such as Tailscale's `100.100.100.0/24` and cloud metadata
+/// addresses. The default holds the policy with no deny list; the hub replaces it with its
+/// own through [`TargetRule::denying`]. Tests that run an SSH server on the loopback
+/// interface add [`TargetRule::reaching_loopback_for_tests`], which no release build contains.
+/// Cheap to clone: the policy is shared.
+#[derive(Clone, Debug, Default)]
 pub(super) struct TargetRule {
     loopback: bool,
+    policy: Arc<AddressPolicy>,
 }
 
 impl TargetRule {
-    /// Refuses every address [`is_refused_target`] refuses.
-    pub(super) const STRICT: Self = Self { loopback: false };
-
-    /// Lets plain loopback addresses (`127.0.0.0/8`, `::1`) through; every other refused
-    /// address stays refused.
-    #[cfg(any(test, feature = "test-support"))]
-    pub(super) const LOOPBACK_FOR_TESTS: Self = Self { loopback: true };
-
-    /// Whether a probe must not connect to `ip`.
-    pub(super) fn refuses(self, ip: IpAddr) -> bool {
-        is_refused_target(ip) && !(self.loopback && ip.is_loopback())
+    /// This rule with `policy` in place of its own; a rule that reaches loopback for tests
+    /// keeps doing so, whichever builder runs first.
+    pub(super) fn denying(self, policy: AddressPolicy) -> Self {
+        Self {
+            policy: Arc::new(policy),
+            ..self
+        }
+        .aligned()
     }
 
-    /// The addresses a host resolved to, when the probe may connect to every one; `None` when
-    /// any is refused, so a name that also points at the gateway is refused whichever address
-    /// would answer first.
-    pub(super) fn checked(self, addresses: Vec<SocketAddr>) -> Option<Vec<SocketAddr>> {
+    /// This rule letting plain loopback addresses (`127.0.0.0/8`, `::1`) through unless the
+    /// policy's deny list holds them; every other refused address stays refused.
+    #[cfg(any(test, feature = "test-support"))]
+    pub(super) fn reaching_loopback_for_tests(self) -> Self {
+        Self {
+            loopback: true,
+            ..self
+        }
+        .aligned()
+    }
+
+    /// This rule with a policy that lets loopback through exactly when the rule does.
+    fn aligned(self) -> Self {
+        #[cfg(any(test, feature = "test-support"))]
+        if self.loopback {
+            let policy = Arc::unwrap_or_clone(self.policy).allowing_loopback();
+            return Self {
+                loopback: true,
+                policy: Arc::new(policy),
+            };
+        }
+        self
+    }
+
+    /// Whether a session must not connect to `ip`. The one check every session connection
+    /// goes through, so none applies the target rule without the deny list.
+    pub(super) fn refuses(&self, ip: IpAddr) -> bool {
+        let refused_target = is_refused_target(ip) && !(self.loopback && ip.is_loopback());
+        refused_target || !self.policy.permits(ip)
+    }
+
+    /// The addresses a host resolved to, when the session may connect to every one; `None`
+    /// when any is refused, so a name that also points at the gateway or a denied network is
+    /// refused whichever address would answer first.
+    pub(super) fn checked(&self, addresses: Vec<SocketAddr>) -> Option<Vec<SocketAddr>> {
         let refused = addresses.iter().any(|address| self.refuses(address.ip()));
         (!refused).then_some(addresses)
     }

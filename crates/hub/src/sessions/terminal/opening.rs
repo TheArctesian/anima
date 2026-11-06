@@ -97,7 +97,8 @@ impl NotOpened {
             Self::Unresolved => "The device's host name does not resolve.",
             Self::RefusedTarget => {
                 "The device's host resolves to a loopback, link-local, multicast or unspecified \
-                 address, which the hub must not reach."
+                 address, or to one in a network the hub refuses (ANIMA_PROBE_DENY), which the \
+                 hub must not reach."
             }
             Self::Unreachable => "The hub could not reach the device's SSH port.",
             Self::Timeout => "The device did not open the SSH session in time.",

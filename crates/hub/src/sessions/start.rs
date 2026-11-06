@@ -15,7 +15,7 @@ use super::{
     live::Live,
     model::{EndReason, FieldError, Protocol, SessionEnd},
     store::{self, NewSession},
-    target::is_refused_target,
+    target::TargetRule,
     tickets::{LIFETIME, PendingTicket, TOKEN_BYTES, Ticket, TicketToken},
 };
 use crate::{
@@ -85,22 +85,28 @@ pub(super) fn checked_display(display: &DisplayRequest) -> Result<Display, Vec<F
     }
 }
 
-/// The host as an IP literal the gateway must not reach, as a field error. Host names are
-/// checked when the tunnel connects (T5), because they resolve only then.
-fn host_problem(host: &str) -> Option<FieldError> {
-    let ip = host.parse::<IpAddr>().ok()?;
-    is_refused_target(ip).then(|| {
+/// The host as an IP literal `rule` refuses, as a field error. Host names are checked when
+/// the tunnel connects, because they resolve only then.
+fn host_problem(host: &str, rule: &TargetRule) -> Option<FieldError> {
+    let ip = host.parse::<IpAddr>().ok()?.to_canonical();
+    rule.refuses(ip).then(|| {
         FieldError::new(
             "host",
-            "The device's host is a loopback, link-local, multicast or unspecified address. \
-             Enter the address the device has on its network.",
+            "The device's host is a loopback, link-local, multicast or unspecified address, \
+             or one in a network the hub refuses (ANIMA_PROBE_DENY). Enter the address the \
+             device has on its network.",
         )
     })
 }
 
 /// The device's state allows a session: display and host acceptable, SSH on, a key accepted.
-async fn admit(db: &PgPool, device: &Device, display: &DisplayRequest) -> Result<Display, Error> {
-    let host = host_problem(&device.host);
+async fn admit(
+    db: &PgPool,
+    live: &Live,
+    device: &Device,
+    display: &DisplayRequest,
+) -> Result<Display, Error> {
+    let host = host_problem(&device.host, live.target_rule());
     let display = match (checked_display(display), host) {
         (Ok(display), None) => display,
         (display, host) => {
@@ -126,8 +132,8 @@ fn random_token() -> Result<TicketToken, Error> {
 }
 
 /// Starts a session (K3, K4 §1): refuses a missing device (`NotFound`), a display outside
-/// K4 §4's bounds or a host that is a loopback, link-local, multicast or unspecified IP
-/// literal (`Validation`), and SSH turned off or no accepted host key (`Conflict`). A time
+/// K4 §4's bounds or a host that is an IP literal the target rule or the hub's deny list
+/// refuses (`Validation`, R-032, P2-004), and SSH turned off or no accepted host key (`Conflict`). A time
 /// zone that is not a zone name is dropped, so the tunnel uses UTC. Then, in one
 /// transaction, it writes the live session row and the audit entry `session.start`, and
 /// holds a ticket that the protocol's tunnel redeems once within 30 s from `client`. Tickets that expired
@@ -153,7 +159,7 @@ pub async fn start(
     req: StartRequest,
 ) -> Result<Ticket, Error> {
     let device = find_device(db, req.device).await?;
-    let display = admit(db, &device, &req.display).await?;
+    let display = admit(db, live, &device, &req.display).await?;
     let now = clock.now();
     sweep(db, live, now).await?;
     let token = random_token()?;

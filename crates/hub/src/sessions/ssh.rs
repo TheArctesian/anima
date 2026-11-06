@@ -3,8 +3,8 @@
 //! presented key (`observer`) and the sign-in with a stored credential (`sign_in`, OD-9).
 //! I/O edge.
 //!
-//! The host is resolved first and every address it resolves to must pass the target rule
-//! (R-032); the connection then goes to a checked address, never to the name again, so a
+//! The host is resolved first and every address it resolves to must pass the target rule,
+//! deny list included (R-032, P2-004); the connection then goes to a checked address, never to the name again, so a
 //! second lookup cannot point it somewhere else. Nothing here logs, and no error holds a
 //! remote text, a host name or a secret (LOG-007).
 
@@ -76,7 +76,7 @@ pub(super) enum SshError {
 pub(super) struct Target<'a> {
     pub(super) host: &'a str,
     pub(super) port: u16,
-    pub(super) rule: TargetRule,
+    pub(super) rule: &'a TargetRule,
 }
 
 /// The algorithm preferences every hub SSH connection uses: [`HOST_KEY_ORDER`] for the host

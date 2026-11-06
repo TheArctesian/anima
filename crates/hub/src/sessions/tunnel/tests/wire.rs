@@ -5,6 +5,7 @@
 
 mod bench;
 mod causes;
+mod deny_list;
 mod fake_guacd;
 mod host_keys;
 mod interruption;
