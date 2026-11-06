@@ -1,22 +1,23 @@
-//! Failed attempts over several ticks: retries, missed pushes, unreadable secrets and
-//! maintenance (CHK-002, CHK-006, SEC-003).
+//! Failed attempts over several ticks: retries, missed pushes, unreadable secrets,
+//! maintenance and how soon a stopped device shows Down (CHK-002, CHK-006, SEC-003).
 
 use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::PgPool;
+use tokio::{sync::broadcast::Receiver, task::JoinHandle};
 
 use super::support::{
-    DOCKER_HOST, JELLYFIN, add, add_check, beats, closed_port, database_now, due_at, new_check,
-    on_loopback, rng, scheduler, stored, tcp, vault_with,
+    DOCKER_HOST, JELLYFIN, add, add_check, beats, closed_port, database_now, due_at, events_of,
+    new_check, on_loopback, rng, scheduler, stored, tcp, vault_with,
 };
 use crate::{
     checks::{
-        self, Definition, PushToken,
+        self, CheckSettings, Definition, NewCheck, PushToken,
         config::{CheckConfig, HttpCredentials, HttpInput, HttpMethod, StatusRange},
         scheduler::tick::Scheduler,
     },
     credentials::Secret,
-    events::Bus,
-    ids::CheckId,
+    events::{Bus, Signal},
+    ids::{CheckId, DeviceId},
     status::Status,
 };
 
@@ -89,7 +90,123 @@ async fn child_of(pool: &PgPool, text: &str) -> (CheckId, CheckId) {
     (group, add_check(pool, child).await)
 }
 
+/// A service port on 127.0.0.1 that accepts until the device stops.
+struct Host {
+    port: u16,
+    accepting: JoinHandle<()>,
+}
+
+impl Host {
+    async fn start() -> Self {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let accepting = tokio::spawn(async move {
+            while let Ok((tcp, _)) = listener.accept().await {
+                drop(tcp);
+            }
+        });
+        Self { port, accepting }
+    }
+
+    /// Stops the device: the listener closes, so every connect is refused.
+    async fn stop(self) {
+        self.accepting.abort();
+        assert!(self.accepting.await.unwrap_err().is_cancelled());
+    }
+}
+
+/// What one tick showed: seconds after the last Up beat, the beat recorded, the check's
+/// status, the device's status (the card, CHK-004) and the device statuses published.
+type Step = (i64, String, Status, Status, Vec<Status>);
+
+fn published(receiver: &mut Receiver<Signal>) -> Vec<Status> {
+    std::iter::from_fn(|| receiver.try_recv().ok())
+        .filter_map(|signal| match signal {
+            Signal::DeviceStatus { status, .. } => Some(status),
+            _ => None,
+        })
+        .collect()
+}
+
+/// Ticks the scheduler at each due time it stored, never earlier, until the check is Down.
+/// A tick one second before each due time must do nothing.
+async fn follow_until_down(
+    pool: &PgPool,
+    scheduler: &mut Scheduler,
+    receiver: &mut Receiver<Signal>,
+    (id, device, last_up): (CheckId, DeviceId, DateTime<Utc>),
+) -> Vec<Step> {
+    let mut steps = Vec::new();
+    while steps.len() < 8 {
+        let due = stored(pool, id)
+            .await
+            .state
+            .next_due_at
+            .expect("a due time");
+        let recorded = beats(pool, id).await;
+        tick_at(scheduler, due - TimeDelta::seconds(1)).await;
+        assert_eq!(
+            beats(pool, id).await,
+            recorded,
+            "probed before its due time"
+        );
+        assert_eq!(published(receiver), [], "published before its due time");
+
+        tick_at(scheduler, due).await;
+        let beat = beats(pool, id).await.pop().unwrap();
+        let check = stored(pool, id).await.state.status;
+        let card = checks::device_status(pool, device, due).await.unwrap();
+        steps.push((
+            (due - last_up).num_seconds(),
+            beat,
+            check,
+            card,
+            published(receiver),
+        ));
+        if check == Status::Down {
+            break;
+        }
+    }
+    steps
+}
+
 tick_test! {
+    // Acceptance criterion 7 of WP-17 with the default settings (spec 6.4): the card stays
+    // Up through the retries and changes to Down on the tick 2 intervals after the last Up
+    // beat, through the signal the `deviceStatusChanged` subscription reads (CHK-001,
+    // CHK-002, CHK-004, LOG-004, LOG-010, DEV-002).
+    async fn chk_002_a_stopped_device_shows_down_within_2_intervals_with_the_defaults(pool: PgPool) {
+        let host = Host::start().await;
+        let device = on_loopback(&pool, DOCKER_HOST).await;
+        let config = serde_json::json!({ "type": "tcp", "port": host.port });
+        let service_port = Definition::Config(serde_json::from_value(config).unwrap());
+        let new = NewCheck {
+            settings: CheckSettings::default(),
+            ..new_check(device, "Service port", service_port, 0)
+        };
+        let id = add_check(&pool, new).await;
+        let last_up = database_now(&pool).await;
+        due_at(&pool, id, last_up).await;
+        let bus = Bus::new(64);
+        let mut receiver = bus.subscribe();
+        let mut scheduler = scheduler(&pool, &bus);
+
+        tick_at(&mut scheduler, last_up).await;
+        assert_eq!(beats(&pool, id).await, ["up"]);
+        assert_eq!(published(&mut receiver), [Status::Up]);
+        host.stop().await;
+        let steps =
+            follow_until_down(&pool, &mut scheduler, &mut receiver, (id, device, last_up)).await;
+
+        let (up, down) = (Status::Up, Status::Down);
+        let pending = |at: i64| (at, "unknown".to_owned(), up, up, Vec::new());
+        let shown_down = (120, "down".to_owned(), down, down, vec![down]);
+        assert_eq!(steps, [pending(60), pending(80), pending(100), shown_down]);
+        let interval = i64::from(CheckSettings::default().interval_seconds);
+        assert!(steps.last().unwrap().0 <= 2 * interval);
+        assert_eq!(events_of(&pool, device).await.last().unwrap().2, "docker-host is Down");
+    }
+
     async fn chk_002_a_closed_port_is_down_only_after_the_retries(pool: PgPool) {
         let device = on_loopback(&pool, DOCKER_HOST).await;
         let id = add(&pool, device, tcp(closed_port()), 2).await;
