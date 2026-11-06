@@ -3,8 +3,8 @@
   import { press } from '$lib/motion/roles/press';
   import type { SessionsApi } from '../api';
   import type { SessionEnding } from '../ending';
-  import { linkTarget, openLink } from '../terminal/links';
-  import type { ScreenHooks, ScreenOpener, TerminalScreen } from '../terminal/screen';
+  import { linkTarget, openLink } from '../screen/remote/links';
+  import type { ScreenHooks, ScreenOpener, TerminalScreen } from '../screen/screen';
   import type { CellSize } from '../tunnel/terminal/codec';
   import { displayInput, type Size } from './display';
   import EndedPanel from './EndedPanel.svelte';
@@ -22,7 +22,7 @@
     /** Starts a session on `device` with a new ticket; see `sessionStart` in `./start`. */
     start: SessionStart;
     api: Pick<SessionsApi, 'endSession' | 'testConnection' | 'acceptHostKey'>;
-    /** Opens the terminal in the pane; the parent passes `openScreen` from `../terminal/screen`. */
+    /** Opens the terminal in the pane; the parent passes `openScreen` from `../screen/screen`. */
     openScreen: ScreenOpener;
     /** The pane is on screen (its tab is selected). */
     visible: boolean;

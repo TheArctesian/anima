@@ -72,7 +72,7 @@ const motionHint =
 const guacamoleHint =
   'Use $lib/sessions/tunnel (D-2, R-045): the vendored Guacamole client is imported only in apps/client/src/lib/sessions/tunnel/.';
 const xtermHint =
-  'Use $lib/sessions/terminal: xterm.js and its add-ons are imported only in apps/client/src/lib/sessions/terminal/.';
+  'Use $lib/sessions/screen: xterm.js and its add-ons are imported only in apps/client/src/lib/sessions/screen/.';
 const wsHint =
   'Use a domain client in $lib/<domain>/api.ts built on $lib/hub (CQ-045): graphql-ws is imported only in apps/client/src/lib/hub/.';
 const transportHint =
@@ -119,14 +119,14 @@ const hubFolder = ['apps/client/src/lib/hub/**'];
 const motionFolder = ['apps/client/src/lib/motion/**'];
 const tunnelFolder = ['apps/client/src/lib/sessions/tunnel/**'];
 const desktopFolder = ['apps/client/src/lib/desktop/**'];
-const terminalFolder = ['apps/client/src/lib/sessions/terminal/**'];
+const screenFolder = ['apps/client/src/lib/sessions/screen/**'];
 const importsRule = (patterns) => ({
   'no-restricted-imports': ['error', { patterns }],
 });
 const boundaryRules = [
   {
     files: clientFiles,
-    ignores: [...clientTests, ...terminalFolder],
+    ignores: [...clientTests, ...screenFolder],
     rules: {
       ...importsRule([...motionImports, ...wsImports, ...guacamoleImports, ...tauriImports, ...xtermImports]),
       'no-restricted-globals': ['error', ...transportGlobals],
@@ -135,7 +135,7 @@ const boundaryRules = [
   },
   {
     // The one folder that owns xterm.js (RA-011); every other ban of the client still applies.
-    files: terminalFolder,
+    files: screenFolder,
     ignores: clientTests,
     rules: {
       ...importsRule([...motionImports, ...wsImports, ...guacamoleImports, ...tauriImports]),

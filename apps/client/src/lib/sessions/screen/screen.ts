@@ -6,9 +6,9 @@ import { WebglAddon } from '@xterm/addon-webgl';
 import { Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
 import type { CellSize } from '../tunnel/terminal/codec';
-import { guardEscapes, type EscapeHooks } from './escapes';
-import { safePaste } from './paste';
-import { shortcutOf, type ShortcutAction } from './shortcuts';
+import { guardEscapes, type EscapeHooks } from './remote/escapes';
+import { safePaste } from './operator/paste';
+import { shortcutOf, type ShortcutAction } from './operator/shortcuts';
 import { MINIMUM_CONTRAST_RATIO, sizeInPx, terminalTheme, tokensOf } from './theme';
 
 /** Lines kept above the visible screen (RA-003). */

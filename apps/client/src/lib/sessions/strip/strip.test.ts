@@ -10,8 +10,8 @@ import type { PopOutPort, SessionPort } from '../sessions.svelte';
 import { cleanup, fake, keyframes, openStarted, prepare, settle, show as mountLayout, tabs, visiblePanels } from './layout.fixture';
 
 // The strip tests are about tabs, not about the terminal inside them: a screen that draws nothing stands in for xterm.js.
-vi.mock('$lib/sessions/terminal/screen', async () => ({
-  openScreen: (await import('../terminal/silent.fixture')).silentScreen,
+vi.mock('$lib/sessions/screen/screen', async () => ({
+  openScreen: (await import('../screen/silent.fixture')).silentScreen,
 }));
 
 vi.mock('motion', async (importOriginal) => ({

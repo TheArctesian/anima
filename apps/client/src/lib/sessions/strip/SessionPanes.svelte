@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { SessionsApi } from '../api';
   import { useSessions } from '../sessions.svelte';
-  import { openScreen } from '../terminal/screen';
+  import { openScreen } from '../screen/screen';
   import SessionView from '../view/SessionView.svelte';
   import { panelId, tabElementId } from './tablist';
 

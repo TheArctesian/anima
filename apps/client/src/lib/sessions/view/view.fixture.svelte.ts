@@ -6,7 +6,7 @@ import { vi } from 'vitest';
 import type { HubResult } from '$lib/hub/hub';
 import type { AcceptedHostKey, ConnectionTest, ConnectionTestInput, EndedSession, SessionDisplay, SessionsApi, SessionTicket } from '../api';
 import type { SessionEndReason, SessionEnding } from '../ending';
-import { openScreen, type ScreenHooks, type ScreenOpener } from '../terminal/screen';
+import { openScreen, type ScreenHooks, type ScreenOpener } from '../screen/screen';
 import { FAKE_TERMINAL_SOCKET, FakeTerminalSocket } from '../tunnel/terminal/fake/socket.fixture';
 import SessionView from './SessionView.svelte';
 import { sessionStart } from './start';
