@@ -173,7 +173,7 @@ fixture_test! {
 
 /// Waits until a lock request in this database is blocked.
 async fn lock_waiter(pool: &PgPool) {
-    for _ in 0..250 {
+    for _ in 0..1500 {
         let waiting: i64 = sqlx::query_scalar(
             "SELECT count(*) FROM pg_locks l JOIN pg_stat_activity a ON a.pid = l.pid \
              WHERE NOT l.granted AND a.datname = current_database()",

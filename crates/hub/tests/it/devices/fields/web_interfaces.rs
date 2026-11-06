@@ -1,9 +1,10 @@
 //! `Device.webInterfaces` and `Device.webInterfaceSuggestions` (WEB-001, WEB-002, API-005).
 
-use std::sync::atomic::Ordering;
+use std::sync::{Arc, atomic::Ordering};
 
-use anima_hub::devices::graphql::{
-    Mutation, Query, web_interface_suggestions_loader, web_interfaces_loader,
+use anima_hub::{
+    clock::{Clock, FixedClock},
+    devices::graphql::{Mutation, Query, web_interface_suggestions_loader, web_interfaces_loader},
 };
 use async_graphql::{EmptySubscription, Schema};
 use serde_json::Value;
@@ -105,6 +106,7 @@ async fn api_005_interfaces_and_suggestions_cost_a_constant_few_statements_for_1
     let (counted, statements) = counting_pool(&pool).await;
     let schema = Schema::build(Query, Mutation, EmptySubscription)
         .data(counted.clone())
+        .data(Arc::new(FixedClock(now())) as Arc<dyn Clock>)
         .data(web_interfaces_loader(counted.clone()).delay(BATCH_WINDOW))
         .data(web_interface_suggestions_loader(counted.clone()).delay(BATCH_WINDOW))
         .finish();
