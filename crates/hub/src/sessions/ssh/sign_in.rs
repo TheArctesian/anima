@@ -100,11 +100,10 @@ async fn answer_prompts(
         .await
         .map_err(|_| SshError::Protocol)?;
     for _ in 0..PROMPT_ROUNDS {
-        let prompts = match reply {
-            KeyboardInteractiveAuthResponse::Success => return Ok(AuthResult::Success),
-            KeyboardInteractiveAuthResponse::Failure { .. } => break,
-            KeyboardInteractiveAuthResponse::InfoRequest { prompts, .. } => prompts.len(),
+        let KeyboardInteractiveAuthResponse::InfoRequest { prompts, .. } = reply else {
+            break;
         };
+        let prompts = prompts.len();
         if prompts > PROMPTS_PER_ROUND {
             return Err(SshError::AuthFailed);
         }
@@ -114,7 +113,11 @@ async fn answer_prompts(
             .await
             .map_err(|_| SshError::Protocol)?;
     }
-    Err(SshError::AuthFailed)
+    // The reply to the last allowed answer counts; another round of prompts does not.
+    match reply {
+        KeyboardInteractiveAuthResponse::Success => Ok(AuthResult::Success),
+        _ => Err(SshError::AuthFailed),
+    }
 }
 
 /// Decodes an `OpenSSH`, PEM or `PuTTY` private key; the decoder's error is dropped unread.

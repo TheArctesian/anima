@@ -22,6 +22,8 @@ pub(super) struct Device {
     pub(super) ledger: Arc<Mutex<Ledger>>,
     /// Opens when the test releases what the script holds.
     pub(super) gate: watch::Receiver<bool>,
+    /// The keyboard-interactive rounds answered so far.
+    pub(super) answered: usize,
 }
 
 impl Device {
@@ -49,7 +51,7 @@ impl Device {
     fn prompt_count(&self) -> usize {
         match self.script.prompts {
             Prompts::Round(count) => count,
-            Prompts::Endless => 1,
+            Prompts::Endless | Prompts::Rounds(_) => 1,
         }
     }
 
@@ -127,6 +129,13 @@ impl server::Handler for Device {
         let right = user == USER
             && answers.len() == self.prompt_count()
             && answers.iter().all(|answer| answer.as_ref() == password);
+        self.answered += 1;
+        if let Prompts::Rounds(rounds) = self.script.prompts
+            && right
+            && self.answered < rounds
+        {
+            return ready(Ok(self.prompts()));
+        }
         ready(Ok(verdict(right)))
     }
 

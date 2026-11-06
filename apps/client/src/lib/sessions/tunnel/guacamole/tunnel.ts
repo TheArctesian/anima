@@ -1,4 +1,4 @@
-// The Guacamole tunnel is kept for RDP and VNC (Phase 2) and no SSH session uses it (WP-18 D-1, R-062). The set kept:
+// The Guacamole tunnel is kept for RDP and VNC, which still use guacd; SSH uses the terminal tunnel, K4 Section 8. The set kept:
 // this folder (`tunnel.ts`, `socket.ts`, `input.ts`, `start.ts`), `../vendor/`, `../fake/` and, in the view,
 // `view/guacamole/` and the size helpers of `view/display.ts`. The SSH path imports none of it.
 import Guacamole from '../vendor/guacamole.js';

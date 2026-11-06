@@ -62,6 +62,8 @@ pub(super) enum Prompts {
     Round(usize),
     /// Rounds of one prompt, each answer earning another.
     Endless,
+    /// This many rounds of one prompt; the last answer is accepted.
+    Rounds(usize),
 }
 
 /// What the server holds until the test calls [`FakeSsh::release`].
@@ -164,6 +166,7 @@ pub(super) async fn fake_ssh(seed: u8, script: Script) -> FakeSsh {
                 shell: Arc::clone(&served_shell),
                 ledger: Arc::clone(&served_ledger),
                 gate: opened.clone(),
+                answered: 0,
             };
             let config = Arc::clone(&config);
             tokio::spawn(async move {

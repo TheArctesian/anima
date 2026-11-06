@@ -209,6 +209,26 @@ async fn d_5_endless_rounds_are_auth_failed_after_four_answers(pool: PgPool) {
     );
 }
 
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
+)]
+async fn d_5_a_device_that_accepts_the_fourth_answer_gives_a_shell(pool: PgPool) {
+    let script = Script {
+        prompts_only: true,
+        prompts: Prompts::Rounds(4),
+        ..Script::default()
+    };
+    let mut bench = bench(&pool, Setup::script(script)).await;
+    let mut client = socket::open(&bench.url).await;
+    client.resize(80, 24).await;
+    assert!(matches!(
+        bench.ssh.next_after_sign_in().await,
+        Heard::Pty { .. }
+    ));
+    assert_eq!(client.close().await, Some(1000));
+}
+
 /// The device's key, as text, and the same key locked with "the right passphrase".
 fn keys() -> (Vec<u8>, Vec<u8>) {
     let key = PrivateKey::from(Ed25519Keypair::from_seed(&[9; 32]));

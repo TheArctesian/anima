@@ -30,10 +30,10 @@ const FORBIDDEN = 0x0303;
 const REASON_TEXT: Readonly<Record<SessionEndReason, string>> = {
   OPERATOR: 'You ended the session.',
   REMOTE_CLOSED: 'The device closed the session.',
-  GATEWAY_ERROR: 'The gateway lost the connection to the device.',
-  AUTH_FAILED: 'The device refused the sign-in.',
+  GATEWAY_ERROR: 'The hub lost the connection to the device.',
+  AUTH_FAILED: 'The device refused the sign-in, or no credential is stored for it.',
   HOST_KEY_MISMATCH: "The device's host key has changed, so Anima did not connect.",
-  PROTOCOL_ERROR: 'The hub ended the session because Anima sent an instruction it could not read.',
+  PROTOCOL_ERROR: 'The app sent something the hub does not accept, so the hub closed the session.',
   TIMEOUT: 'The session timed out because the hub heard nothing from Anima.',
   HUB_SHUTDOWN: 'The hub shut down.',
 };
