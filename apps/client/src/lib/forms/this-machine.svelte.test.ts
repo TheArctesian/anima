@@ -42,7 +42,7 @@ function open(props: Record<string, unknown> = {}) {
   };
   app = mount(AddDeviceModal, {
     target: document.body,
-    props: { open: true, sites: [{ id: 's1', name: 'Home' }], onClose: () => undefined, onCreated: () => undefined, ...calls, ...props },
+    props: { open: true, sites: [{ id: 's1', name: 'Home', subnet: '10.10.0.0/24' }], onClose: () => undefined, onCreated: () => undefined, ...calls, ...props },
   });
   flushSync();
   return calls;
@@ -111,7 +111,7 @@ it('R-060: the operator types only the password; any field stays editable and is
       ssh: { enabled: true, port: '22', username: 'stephen', auth: 'PASSWORD' },
       credential: expect.objectContaining({ password: 'hunter2' }) as unknown,
     }),
-    's1',
+    { kind: 'existing', id: 's1' },
   ]);
 });
 

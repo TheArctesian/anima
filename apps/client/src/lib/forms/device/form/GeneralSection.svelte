@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { FieldError } from '$lib/hub/error';
   import type { OperatingSystem } from '$lib/hub/generated/graphql';
+  import type { NewSite } from '../site';
   import type { SiteOption } from '../values';
   import type { EditedValues } from './editing';
   import Field from './Field.svelte';
@@ -12,10 +13,12 @@
     /** Offered in create mode when there is more than one (D-6). */
     sites: readonly SiteOption[];
     siteId: string;
+    /** The site created with the device when the hub has none yet; null otherwise. */
+    newSite: NewSite | null;
     onHostBlur: () => void;
   }
 
-  let { values = $bindable(), errors, sites, siteId = $bindable(), onHostBlur }: Props = $props();
+  let { values = $bindable(), errors, sites, siteId = $bindable(), newSite = $bindable(), onHostBlur }: Props = $props();
 
   const SYSTEMS: readonly { value: OperatingSystem; label: string }[] = [
     { value: 'LINUX', label: 'Linux' },
@@ -44,6 +47,18 @@
           <option value={site.id}>{site.name}</option>
         {/each}
       </select>
+    {/snippet}
+  </Field>
+{/if}
+{#if newSite !== null}
+  <Field label="Site" field="site.name" {errors} hint="No site exists yet, so Anima creates this one with the device.">
+    {#snippet control(attributes)}
+      <input {...attributes} bind:value={newSite.name} autocomplete="off" />
+    {/snippet}
+  </Field>
+  <Field label="Site subnet" field="site.subnet" {errors} hint="A VPN address belongs in 100.64.0.0/10.">
+    {#snippet control(attributes)}
+      <input {...attributes} bind:value={newSite.subnet} autocomplete="off" spellcheck="false" />
     {/snippet}
   </Field>
 {/if}

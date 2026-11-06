@@ -9,6 +9,7 @@
   import DeviceScreen from '$lib/devices/screen/DeviceScreen.svelte';
   import { addDevice as createWithCredential, type AddedDevice } from '$lib/forms/add-device';
   import AddDeviceModal from '$lib/forms/AddDeviceModal.svelte';
+  import type { SitePlacement } from '$lib/forms/device/site';
   import type { DeviceFormValues, SiteOption } from '$lib/forms/device/values';
   import { machineToOffer, offeredMachine, thisMachinePrompt, type MachineOffer } from '$lib/forms/this-machine';
   import { useHub } from '$lib/hub/context';
@@ -92,8 +93,10 @@
     untrack(() => void askAboutThisMachine());
   });
 
-  function create(values: DeviceFormValues, siteId: string) {
-    return createWithCredential(values, siteId, {
+  function create(values: DeviceFormValues, site: SitePlacement) {
+    return createWithCredential(values, site, {
+      sites: () => devices.sites(),
+      createSite: (name, subnet) => devices.createSite(name, subnet),
       createDevice: (input) => devices.create(input),
       setSshCredential: (deviceId, credential) => devices.setSshCredential(deviceId, credential),
     });

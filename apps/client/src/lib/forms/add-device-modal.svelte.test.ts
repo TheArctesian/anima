@@ -37,7 +37,7 @@ it('D-6: the dialog creates the device in the only site and reports the new ID',
     target: document.body,
     props: {
       open: true,
-      sites: [{ id: 's1', name: 'Home' }],
+      sites: [{ id: 's1', name: 'Home', subnet: '10.10.0.0/24' }],
       onCreate,
       onTest: () => Promise.reject(new Error('not used')),
       onClose: () => undefined,
@@ -53,7 +53,7 @@ it('D-6: the dialog creates the device in the only site and reports the new ID',
   for (let turn = 0; turn < 4; turn += 1) await tick();
 
   expect(onCreate).toHaveBeenCalledOnce();
-  expect(onCreate.mock.calls[0]).toEqual([expect.objectContaining({ name: 'nas', host: 'nas.home.arpa' }), 's1']);
+  expect(onCreate.mock.calls[0]).toEqual([expect.objectContaining({ name: 'nas', host: 'nas.home.arpa' }), { kind: 'existing', id: 's1' }]);
   expect(onCreated).toHaveBeenCalledExactlyOnceWith(added);
 });
 
@@ -63,7 +63,7 @@ it('SEC-006: the host key dialog opened from inside Add device is a child of bod
     target: document.body,
     props: {
       open: true,
-      sites: [{ id: 's1', name: 'Home' }],
+      sites: [{ id: 's1', name: 'Home', subnet: '10.10.0.0/24' }],
       onCreate: () => Promise.reject(new Error('not used')),
       onTest: () => Promise.resolve({ ok: true as const, value: testResult({ reachable: true, authenticated: false, hostKeyChanged: false, hostKey }) }),
       onClose: () => undefined,

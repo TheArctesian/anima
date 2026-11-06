@@ -31,7 +31,8 @@ type Documents = {
     "\n  subscription DeviceStatusChanged {\n    deviceStatusChanged(deviceId: null) {\n      deviceId\n      status\n      at\n    }\n  }\n": typeof types.DeviceStatusChangedDocument,
     "\n  fragment DeviceDetailFields on Device {\n    id\n    name\n    host\n    ip\n    kind\n    os\n    tags\n    maintenance\n    status\n    site {\n      id\n      name\n    }\n    ssh {\n      enabled\n      port\n      username\n      auth\n      credentialStored\n      hostKey {\n        algorithm\n        fingerprintSha256\n        firstSeenAt\n      }\n    }\n    day: uptime(window: DAY)\n    week: uptime(window: WEEK)\n    month: uptime(window: MONTH)\n  }\n": typeof types.DeviceDetailFieldsFragmentDoc,
     "\n  query Device($id: ID!) {\n    device(id: $id) {\n      ...DeviceDetailFields\n    }\n  }\n": typeof types.DeviceDocument,
-    "\n  query Sites {\n    sites {\n      id\n      name\n    }\n  }\n": typeof types.SitesDocument,
+    "\n  query Sites {\n    sites {\n      id\n      name\n      subnet\n    }\n  }\n": typeof types.SitesDocument,
+    "\n  mutation CreateSite($name: String!, $subnet: Cidr!) {\n    createSite(name: $name, subnet: $subnet) {\n      id\n      name\n      subnet\n    }\n  }\n": typeof types.CreateSiteDocument,
     "\n  mutation CreateDevice($input: CreateDeviceInput!) {\n    createDevice(input: $input) {\n      ...DeviceDetailFields\n    }\n  }\n": typeof types.CreateDeviceDocument,
     "\n  mutation UpdateDevice($id: ID!, $input: UpdateDeviceInput!) {\n    updateDevice(id: $id, input: $input) {\n      ...DeviceDetailFields\n    }\n  }\n": typeof types.UpdateDeviceDocument,
     "\n  mutation DeleteDevice($id: ID!) {\n    deleteDevice(id: $id)\n  }\n": typeof types.DeleteDeviceDocument,
@@ -63,7 +64,8 @@ const documents: Documents = {
     "\n  subscription DeviceStatusChanged {\n    deviceStatusChanged(deviceId: null) {\n      deviceId\n      status\n      at\n    }\n  }\n": types.DeviceStatusChangedDocument,
     "\n  fragment DeviceDetailFields on Device {\n    id\n    name\n    host\n    ip\n    kind\n    os\n    tags\n    maintenance\n    status\n    site {\n      id\n      name\n    }\n    ssh {\n      enabled\n      port\n      username\n      auth\n      credentialStored\n      hostKey {\n        algorithm\n        fingerprintSha256\n        firstSeenAt\n      }\n    }\n    day: uptime(window: DAY)\n    week: uptime(window: WEEK)\n    month: uptime(window: MONTH)\n  }\n": types.DeviceDetailFieldsFragmentDoc,
     "\n  query Device($id: ID!) {\n    device(id: $id) {\n      ...DeviceDetailFields\n    }\n  }\n": types.DeviceDocument,
-    "\n  query Sites {\n    sites {\n      id\n      name\n    }\n  }\n": types.SitesDocument,
+    "\n  query Sites {\n    sites {\n      id\n      name\n      subnet\n    }\n  }\n": types.SitesDocument,
+    "\n  mutation CreateSite($name: String!, $subnet: Cidr!) {\n    createSite(name: $name, subnet: $subnet) {\n      id\n      name\n      subnet\n    }\n  }\n": types.CreateSiteDocument,
     "\n  mutation CreateDevice($input: CreateDeviceInput!) {\n    createDevice(input: $input) {\n      ...DeviceDetailFields\n    }\n  }\n": types.CreateDeviceDocument,
     "\n  mutation UpdateDevice($id: ID!, $input: UpdateDeviceInput!) {\n    updateDevice(id: $id, input: $input) {\n      ...DeviceDetailFields\n    }\n  }\n": types.UpdateDeviceDocument,
     "\n  mutation DeleteDevice($id: ID!) {\n    deleteDevice(id: $id)\n  }\n": types.DeleteDeviceDocument,
@@ -163,7 +165,11 @@ export function graphql(source: "\n  query Device($id: ID!) {\n    device(id: $i
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  query Sites {\n    sites {\n      id\n      name\n    }\n  }\n"): (typeof documents)["\n  query Sites {\n    sites {\n      id\n      name\n    }\n  }\n"];
+export function graphql(source: "\n  query Sites {\n    sites {\n      id\n      name\n      subnet\n    }\n  }\n"): (typeof documents)["\n  query Sites {\n    sites {\n      id\n      name\n      subnet\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation CreateSite($name: String!, $subnet: Cidr!) {\n    createSite(name: $name, subnet: $subnet) {\n      id\n      name\n      subnet\n    }\n  }\n"): (typeof documents)["\n  mutation CreateSite($name: String!, $subnet: Cidr!) {\n    createSite(name: $name, subnet: $subnet) {\n      id\n      name\n      subnet\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

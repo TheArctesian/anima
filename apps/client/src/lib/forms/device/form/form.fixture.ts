@@ -3,6 +3,7 @@ import { vi } from 'vitest';
 import type { HubResult } from '$lib/hub/error';
 import type { ConnectionTestInput } from '$lib/hub/generated/graphql';
 import type { ConnectionTestResult } from '../connection-test';
+import type { SitePlacement } from '../site';
 import { testResult } from '../result.fixture';
 import type { DeviceFields, DeviceFormValues, HostKey } from '../values';
 import DeviceForm from './DeviceForm.svelte';
@@ -29,7 +30,7 @@ export function leave(): void {
 }
 
 export interface Calls {
-  onSave: ReturnType<typeof vi.fn<(values: DeviceFormValues, siteId: string | null) => Promise<HubResult<unknown>>>>;
+  onSave: ReturnType<typeof vi.fn<(values: DeviceFormValues, site: SitePlacement | null) => Promise<HubResult<unknown>>>>;
   onTest: ReturnType<typeof vi.fn<(input: ConnectionTestInput) => Promise<HubResult<ConnectionTestResult>>>>;
   onAcceptHostKey: ReturnType<typeof vi.fn<(fingerprint: string) => Promise<HubResult<unknown>>>>;
 }

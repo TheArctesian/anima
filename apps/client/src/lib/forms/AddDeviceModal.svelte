@@ -3,6 +3,7 @@
   import type { HubResult } from '$lib/hub/error';
   import type { ConnectionTestInput } from '$lib/hub/generated/graphql';
   import type { AddedDevice } from './add-device';
+  import type { SitePlacement } from './device/site';
   import DeviceForm from './device/form/DeviceForm.svelte';
   import type { ConnectionTestResult } from './device/connection-test';
   import { thisMachineValues, type DeviceFormValues, type SiteOption } from './device/values';
@@ -23,7 +24,7 @@
     asking?: boolean;
     onDontAsk?: () => void;
     /** The route runs `addDevice` (D-6). */
-    onCreate: (values: DeviceFormValues, siteId: string) => Promise<HubResult<AddedDevice>>;
+    onCreate: (values: DeviceFormValues, site: SitePlacement) => Promise<HubResult<AddedDevice>>;
     onTest: (input: ConnectionTestInput) => Promise<HubResult<ConnectionTestResult>>;
     onClose: () => void;
     /** Called once the device exists; `credentialError` is set when its credential was not stored. */
@@ -51,8 +52,9 @@
   const prefilled = $derived(machine !== null && chosen === 'this' ? machine : null);
   const title = $derived(asking && machine !== null ? promptTitle(machine.os) : 'Add device');
 
-  async function create(values: DeviceFormValues, siteId: string | null): Promise<HubResult<AddedDevice>> {
-    const result = await onCreate(values, siteId ?? '');
+  async function create(values: DeviceFormValues, site: SitePlacement | null): Promise<HubResult<AddedDevice>> {
+    // The form is in create mode here, so it always names a site.
+    const result = await onCreate(values, site ?? { kind: 'existing', id: '' });
     if (result.ok) onCreated(result.value);
     return result;
   }

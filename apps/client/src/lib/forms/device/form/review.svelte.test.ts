@@ -113,7 +113,7 @@ it('DEV-010: an invalid SSH field opens a collapsed SSH section and gets the foc
 });
 
 it('D-6: editing sends no site, even when sites are given', async () => {
-  const { onSave } = show(SAVED, { sites: [{ id: 's1', name: 'Home' }, { id: 's2', name: 'Office' }] });
+  const { onSave } = show(SAVED, { sites: [{ id: 's1', name: 'Home', subnet: '10.10.0.0/24' }, { id: 's2', name: 'Office', subnet: '10.20.0.0/24' }] });
 
   await save();
 

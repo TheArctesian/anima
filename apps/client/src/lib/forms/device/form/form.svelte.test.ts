@@ -227,12 +227,12 @@ it('DEV-010: tags are added with Enter or comma, normalised, and removed with Ba
 });
 
 it('D-6: the site picker shows only in create mode with more than one site, and the chosen site is sent', async () => {
-  show(SAVED, { sites: [{ id: 's1', name: 'Home' }, { id: 's2', name: 'Office' }] });
+  show(SAVED, { sites: [{ id: 's1', name: 'Home', subnet: '10.10.0.0/24' }, { id: 's2', name: 'Office', subnet: '10.20.0.0/24' }] });
   expect(document.getElementById('device-siteId')).toBeNull();
   leave();
   document.body.replaceChildren();
 
-  const { onSave } = show(null, { sites: [{ id: 's1', name: 'Home' }, { id: 's2', name: 'Office' }] });
+  const { onSave } = show(null, { sites: [{ id: 's1', name: 'Home', subnet: '10.10.0.0/24' }, { id: 's2', name: 'Office', subnet: '10.20.0.0/24' }] });
   const picker = document.getElementById('device-siteId') as HTMLSelectElement;
   picker.value = 's2';
   picker.dispatchEvent(new Event('change', { bubbles: true }));
@@ -240,16 +240,64 @@ it('D-6: the site picker shows only in create mode with more than one site, and 
   type('host', 'nas.home.arpa');
   await save();
 
-  expect(onSave.mock.calls[0]?.[1]).toBe('s2');
+  expect(onSave.mock.calls[0]?.[1]).toEqual({ kind: 'existing', id: 's2' });
 });
 
 it('D-6: with one site there is no picker and that site is used', async () => {
-  const { onSave } = show(null, { sites: [{ id: 's1', name: 'Home' }] });
+  const { onSave } = show(null, { sites: [{ id: 's1', name: 'Home', subnet: '10.10.0.0/24' }] });
   type('name', 'nas');
   type('host', 'nas.home.arpa');
 
   await save();
 
   expect(document.getElementById('device-siteId')).toBeNull();
-  expect(onSave.mock.calls[0]?.[1]).toBe('s1');
+  expect(onSave.mock.calls[0]?.[1]).toEqual({ kind: 'existing', id: 's1' });
+});
+
+it('VPN-002: with no site yet, the form offers one from the host, follows a new host, and sends it to create', async () => {
+  const { onSave } = show(null);
+  type('name', 'mac');
+  type('host', '10.10.0.5');
+  input('host').dispatchEvent(new Event('blur'));
+  flushSync();
+  expect([input('site-name').value, input('site-subnet').value]).toEqual(['Local network', '10.10.0.0/24']);
+
+  type('host', '100.64.0.2');
+  input('host').dispatchEvent(new Event('blur'));
+  flushSync();
+  await save();
+
+  expect(onSave.mock.calls[0]?.[1]).toEqual({ kind: 'new', site: { name: 'VPN', subnet: '100.64.0.0/10' } });
+});
+
+it('VPN-002: a site the operator edited is kept when the host changes, and a bad subnet stops the save', async () => {
+  const { onSave } = show(null);
+  type('name', 'nas');
+  type('host', 'nas.home.arpa');
+  type('site-name', 'Home');
+  type('site-subnet', '10.10.0.5/24');
+  type('host', '10.30.0.5');
+  input('host').dispatchEvent(new Event('blur'));
+  flushSync();
+
+  await save();
+
+  expect(onSave).not.toHaveBeenCalled();
+  expect(input('site-subnet').value).toBe('10.10.0.5/24');
+  expect(document.activeElement).toBe(input('site-subnet'));
+});
+
+it('an error that belongs to no field is brought into view', async () => {
+  const { onSave } = show(null, { sites: [{ id: 's1', name: 'Home', subnet: '10.10.0.0/24' }] });
+  onSave.mockResolvedValueOnce({ ok: false, error: { code: 'UNAVAILABLE', message: 'Try again.' } });
+  const alert = document.querySelector('.alert') as HTMLElement;
+  const scrolled = vi.fn();
+  alert.scrollIntoView = scrolled;
+  type('name', 'nas');
+  type('host', 'nas.home.arpa');
+
+  await save();
+
+  expect(alert.textContent).toContain('Try again.');
+  expect(scrolled).toHaveBeenCalledOnce();
 });

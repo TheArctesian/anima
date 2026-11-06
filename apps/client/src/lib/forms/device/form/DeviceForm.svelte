@@ -7,6 +7,7 @@
   import { fieldErrorsFrom } from '../field-errors';
   import type { ConnectionTestInput } from '$lib/hub/generated/graphql';
   import type { ConnectionTestResult } from '../connection-test';
+  import { suggestedSite, validateNewSite, type NewSite, type SitePlacement } from '../site';
   import { validateDevice } from '../validate';
   import { formValues, type DeviceFields, type DeviceFormValues, type SiteOption } from '../values';
   import type { EditedValues } from './editing';
@@ -32,8 +33,8 @@
      * Test connection button (D-8: SSH on without an accepted host key).
      */
     section?: 'general' | 'ssh' | 'rdp' | 'test';
-    /** `siteId` is null when editing. The values are a snapshot with secrets in it: the owner must not keep it. */
-    onSave: (values: DeviceFormValues, siteId: string | null) => Promise<HubResult<unknown>>;
+    /** `site` is null when editing. The values are a snapshot with secrets in it: the owner must not keep it. */
+    onSave: (values: DeviceFormValues, site: SitePlacement | null) => Promise<HubResult<unknown>>;
     onTest: (input: ConnectionTestInput) => Promise<HubResult<ConnectionTestResult>>;
     /** Only for a saved device. */
     onAcceptHostKey: (fingerprint: string) => Promise<HubResult<unknown>>;
@@ -59,6 +60,12 @@
   const initial = untrack(() => (device === null && start !== undefined ? start : formValues(device)));
   let values = $state<EditedValues>(structuredClone(initial) as EditedValues);
   let siteId = $state(untrack(() => sites[0]?.id ?? ''));
+  /** The site to create with the device when the hub has none yet, offered from the host (VPN-002). */
+  let newSite = $state<NewSite | null>(
+    untrack(() => (device === null && sites.length === 0 ? suggestedSite(start?.host ?? '') : null)),
+  );
+  /** The last offer, so a new host replaces the site only while the operator has not edited it. */
+  let offered = untrack(() => (newSite === null ? null : { ...newSite }));
   let errors = $state<FieldError[]>([]);
   let saving = $state(false);
   /** Counts successful saves; the connection test starts afresh after each, so no typed secret outlives the save. */
@@ -102,7 +109,13 @@
   async function show(found: readonly FieldError[]): Promise<void> {
     errors = [...found];
     const field = firstInvalidField(found);
-    if (field === undefined) return;
+    if (field === undefined) {
+      // An error that belongs to no input is shown above the sections, which may be scrolled away.
+      await tick();
+      const alert = root?.querySelector<HTMLElement>('.alert');
+      if (typeof alert?.scrollIntoView === 'function') alert.scrollIntoView({ block: 'nearest' });
+      return;
+    }
     if (field.startsWith('ssh.') || field.startsWith('credential.')) ssh = true;
     await tick();
     root?.querySelector<HTMLElement>(`#${inputId(field)}`)?.focus();
@@ -110,6 +123,16 @@
 
   function checkHost(): void {
     errors = replaceField(errors, 'host', validateDevice(values));
+    if (newSite === null || offered === null) return;
+    if (newSite.name !== offered.name || newSite.subnet !== offered.subnet) return;
+    newSite = suggestedSite(values.host);
+    offered = { ...newSite };
+  }
+
+  /** Where the device goes: null when editing, else the chosen site or the one to create. */
+  function placement(): SitePlacement | null {
+    if (!creating) return null;
+    return newSite === null ? { kind: 'existing', id: siteId } : { kind: 'new', site: { ...newSite } };
   }
 
   /** The test needs a valid host and valid SSH settings, not a name (D-3). */
@@ -122,13 +145,13 @@
   async function save(): Promise<void> {
     if (saving) return;
     const found = validateDevice(values);
-    if (creating && siteId === '') found.push({ field: 'siteId', message: 'Add a site before you add a device.' });
+    if (newSite !== null) found.push(...validateNewSite(newSite));
     if (found.length > 0) {
       await show(found);
       return;
     }
     saving = true;
-    const result = await onSave($state.snapshot(values), creating ? siteId : null);
+    const result = await onSave($state.snapshot(values), placement());
     saving = false;
     if (result.ok) {
       values.credential = { password: '', privateKey: '', passphrase: '' };
@@ -163,7 +186,7 @@
     </div>
     <div data-section="general">
       <Disclosure label="General" level={3} bind:open={general}>
-        <GeneralSection bind:values {errors} sites={creating ? sites : []} bind:siteId onHostBlur={checkHost} />
+        <GeneralSection bind:values {errors} sites={creating ? sites : []} bind:siteId bind:newSite onHostBlur={checkHost} />
       </Disclosure>
     </div>
     <div data-section="ssh">

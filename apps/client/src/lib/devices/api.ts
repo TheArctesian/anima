@@ -136,6 +136,17 @@ const Sites = graphql(`
     sites {
       id
       name
+      subnet
+    }
+  }
+`);
+
+const CreateSite = graphql(`
+  mutation CreateSite($name: String!, $subnet: Cidr!) {
+    createSite(name: $name, subnet: $subnet) {
+      id
+      name
+      subnet
     }
   }
 `);
@@ -225,6 +236,12 @@ async function readHosts(hub: Hub): Promise<HubResult<readonly string[]>> {
   return { ok: false, error: HOSTS_INCOMPLETE };
 }
 
+/** A new site (VPN-001); the hub refuses a subnet that overlaps another site's. */
+async function createSite(hub: Hub, name: string, subnet: string): Promise<HubResult<Site>> {
+  const result = await hub.request(CreateSite, { name, subnet });
+  return result.ok ? { ok: true, value: result.value.createSite } : result;
+}
+
 /** The device list, tags and live status changes through a `Hub` (CQ-045). */
 export function devicesApi(hub: Hub) {
   return {
@@ -247,6 +264,7 @@ export function devicesApi(hub: Hub) {
       const result = await hub.request(Sites, {});
       return result.ok ? { ok: true, value: result.value.sites } : result;
     },
+    createSite: (name: string, subnet: string): Promise<HubResult<Site>> => createSite(hub, name, subnet),
     create: async (input: CreateDeviceInput): Promise<HubResult<DeviceDetail>> => {
       const result = await hub.request(CreateDevice, { input });
       return result.ok ? { ok: true, value: result.value.createDevice } : result;
