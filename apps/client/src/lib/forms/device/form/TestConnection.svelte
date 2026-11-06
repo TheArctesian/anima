@@ -67,7 +67,7 @@
 </script>
 
 <div class="test">
-  <FormButton onclick={test} aria-disabled={testing} aria-busy={testing}>Test connection</FormButton>
+  <FormButton data-connection-test onclick={test} aria-disabled={testing} aria-busy={testing}>Test connection</FormButton>
   {#if advice}
     <p class="advice">
       This test does not use the stored credential, because the host or the SSH settings changed. Enter the credential to

@@ -5,7 +5,7 @@ import { fakeHub } from '$lib/devices/hub.fixture';
 import { endTransitionsAtOnce } from '$lib/devices/transitions.fixture';
 import Page from '../+page.svelte';
 import { parseDeviceId } from '../device-id';
-import { ID, answers, device, route } from '../page.fixture.svelte';
+import { ID, KEY, answers, device, route } from '../page.fixture.svelte';
 
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
@@ -132,5 +132,63 @@ describe('settings tab (D-7, DEV-014)', () => {
     button('Test connection').click();
     await settle();
     expect(fake.requests.find((request) => request.operation === 'TestConnection')?.variables).toEqual({ input: { deviceId: ID } });
+  });
+
+  it('DEV-014: a failed delete shows the hub message and stays on the page', async () => {
+    await show(answers({ DeleteDevice: { code: 'UNAVAILABLE', message: 'The database is unreachable.' } }), '?tab=settings');
+    button('Delete device').click();
+    await settle();
+    button('Delete nas', '[role="dialog"]').click();
+    await settle();
+    expect(document.querySelector('[role="dialog"] [role="alert"]')?.textContent).toContain('The database is unreachable.');
+    expect(current.goto).toEqual([]);
+  });
+
+});
+
+describe('settings tab: credentials, cancel and sections (D-4, DEV-022, SEC-006)', () => {
+  it('SEC-006: accepting the new host key makes SSH start sessions', async () => {
+    const tested = { reachable: true, authenticated: true, hostKey: KEY, hostKeyChanged: false, message: null };
+    await show(
+      answers({ Device: { device: device({}, { hostKey: null }) }, TestConnection: { testConnection: tested }, AcceptHostKey: { acceptHostKey: KEY } }),
+      '?tab=settings',
+    );
+    button('Test connection').click();
+    await settle();
+    button('Accept', '[role="dialog"]').click();
+    await settle();
+    expect(button('SSH to nas')).not.toBeNull();
+  });
+
+  it('D-4: removing the credential leaves the form without a stored one', async () => {
+    const fake = await show(answers({ ClearSshCredential: { clearSshCredential: { credentialStored: false } } }), '?tab=settings');
+    button('Remove credential').click();
+    await settle();
+    expect(fake.requests.at(-1)).toEqual({ operation: 'ClearSshCredential', variables: { deviceId: ID } });
+    expect(document.body.textContent).not.toContain('Credential stored');
+  });
+
+  it('D-2: Cancel puts the saved values back', async () => {
+    await show(answers(), '?tab=settings');
+    const name = document.getElementById('device-name');
+    if (!(name instanceof HTMLInputElement)) throw new Error('no name input');
+    name.value = 'vault';
+    name.dispatchEvent(new Event('input', { bubbles: true }));
+    button('Cancel').click();
+    await settle();
+    expect((document.getElementById('device-name') as HTMLInputElement | null)?.value).toBe('nas');
+  });
+
+  it('DEV-022: a header button with Settings already open opens its section, and the no-key SSH focuses Test connection', async () => {
+    await show(answers(), '?tab=settings&section=ssh');
+    const rdp = button('Remote Desktop (RDP)');
+    expect(rdp.getAttribute('aria-expanded')).toBe('false');
+    route.search = '?tab=settings&section=rdp';
+    await settle();
+    expect(rdp.getAttribute('aria-expanded')).toBe('true');
+    expect(document.activeElement).toBe(rdp);
+    route.search = '?tab=settings&section=test';
+    await settle();
+    expect(document.activeElement).toBe(button('Test connection'));
   });
 });

@@ -9,8 +9,8 @@ export const TABS = [
 
 export type TabName = (typeof TABS)[number]['name'];
 
-/** The Settings section a header button opens (DEV-022): the device form's disclosure sections. */
-export type SettingsSection = 'general' | 'ssh' | 'rdp';
+/** The Settings place a header button opens (DEV-022): a disclosure section, or `test`, the SSH connection test (D-8). */
+export type SettingsSection = 'general' | 'ssh' | 'rdp' | 'test';
 
 export interface TabPlace {
   readonly tab: TabName;
@@ -18,7 +18,7 @@ export interface TabPlace {
   readonly section: SettingsSection | null;
 }
 
-const SECTIONS: readonly SettingsSection[] = ['general', 'ssh', 'rdp'];
+const SECTIONS: readonly SettingsSection[] = ['general', 'ssh', 'rdp', 'test'];
 
 function isTab(text: string | null): text is TabName {
   return TABS.some((tab) => tab.name === text);

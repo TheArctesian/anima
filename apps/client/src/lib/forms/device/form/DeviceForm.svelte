@@ -22,8 +22,11 @@
     /** K1 `credentialStored` of the saved device. */
     credentialStored?: boolean;
     sites?: readonly SiteOption[];
-    /** The section to open and bring into view (DEV-022). */
-    section?: 'general' | 'ssh' | 'rdp';
+    /**
+     * The section to open and bring into view (DEV-022), whenever it changes; `test` is the SSH section's
+     * Test connection button (D-8: SSH on without an accepted host key).
+     */
+    section?: 'general' | 'ssh' | 'rdp' | 'test';
     /** `siteId` is null when editing. The values are a snapshot with secrets in it: the owner must not keep it. */
     onSave: (values: DeviceFormValues, siteId: string | null) => Promise<HubResult<unknown>>;
     onTest: (input: ConnectionTestInput) => Promise<HubResult<ConnectionTestResult>>;
@@ -61,11 +64,32 @@
 
   const creating = $derived(device === null);
 
+  /** The control a `section` names: the section's disclosure button, or Test connection. */
+  const SECTION_TARGETS = {
+    general: '[data-section="general"] button',
+    ssh: '[data-section="ssh"] button',
+    rdp: '[data-section="rdp"] button',
+    test: '[data-section="ssh"] [data-connection-test]',
+  } as const;
+
+  /** Each new `section` opens its disclosure, then focuses and scrolls to its control (DEV-022, D-8). */
   $effect(() => {
-    const target = section === undefined ? null : (root?.querySelector<HTMLElement>(`[data-section="${section}"] button`) ?? null);
-    if (target === null) return;
-    target.focus();
-    if (typeof target.scrollIntoView === 'function') target.scrollIntoView({ block: 'nearest' });
+    const wanted = section;
+    if (wanted === undefined) return;
+    untrack(() => {
+      if (wanted === 'general') general = true;
+      else if (wanted === 'rdp') rdp = true;
+      else ssh = true;
+    });
+    const reach = () => {
+      const target = root?.querySelector<HTMLElement>(SECTION_TARGETS[wanted]) ?? null;
+      if (target === null) return;
+      target.focus();
+      if (typeof target.scrollIntoView === 'function') target.scrollIntoView({ block: 'nearest' });
+    };
+    // At once for a control already shown; again once a section that was closed has opened.
+    reach();
+    void tick().then(reach);
   });
 
   async function show(found: readonly FieldError[]): Promise<void> {

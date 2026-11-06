@@ -189,7 +189,7 @@ describe('header buttons (D-8, DEV-022)', () => {
   it('WP-14 H-1: with SSH on and no host key, SSH opens the connection test in Settings', async () => {
     await show(answers({ Device: { device: device({}, { hostKey: null }) } }));
     button('Test the SSH connection').click();
-    expect(current.goto[0]?.[0]).toBe(`/devices/${ID}?tab=settings&section=ssh`);
+    expect(current.goto[0]?.[0]).toBe(`/devices/${ID}?tab=settings&section=test`);
     expect(current.opened).toEqual([]);
   });
 
@@ -223,24 +223,35 @@ describe('live updates (D-11)', () => {
     expect(document.querySelectorAll('.beats li')).toHaveLength(2);
   });
 
-  it('D-11: the subscriptions stop when the page goes', async () => {
-    const fake = await show();
+  it('D-11: the subscriptions stop when the page goes, the device log\'s too', async () => {
+    const fake = await show(answers({ Events: { events: { pageInfo: { hasNextPage: false }, edges: [] } } }), '?tab=logs');
+    expect(fake.listeners('EventAdded')).toBe(1);
     expect(fake.listeners('DeviceStatusChanged')).toBe(1);
     expect(fake.listeners('HeartbeatAdded')).toBe(1);
     if (app) await unmount(app);
     app = undefined;
     expect(fake.listeners('DeviceStatusChanged')).toBe(0);
     expect(fake.listeners('HeartbeatAdded')).toBe(0);
+    expect(fake.listeners('EventAdded')).toBe(0);
   });
 });
 
 describe('checks tab (CHK-005, Section 6.4)', () => {
+  it.each(['', '?tab=checks'])('K7: with %j a failed checks load shows the message, and Retry loads again', async (search) => {
+    const fake = await show(answers({ DeviceChecks: { code: 'UNAVAILABLE', message: 'The database is unreachable.' } }), search);
+    expect(panel()?.textContent).toContain('The database is unreachable.');
+    expect(panel()?.textContent).not.toContain('No checks');
+    button('Retry').click();
+    await settle();
+    expect(fake.requests.filter((request) => request.operation === 'DeviceChecks')).toHaveLength(2);
+  });
+
   it('CHK-005: the pause toggle calls setCheckPaused and the row shows the paused check', async () => {
     const fake = await show(answers({ SetCheckPaused: { setCheckPaused: check({ paused: true }) } }), '?tab=checks');
     button('Pause ping').click();
     await settle();
     expect(fake.requests.at(-1)).toEqual({ operation: 'SetCheckPaused', variables: { id: 'c1', paused: true } });
-    expect(button('Pause ping').getAttribute('aria-checked')).toBe('true');
+    expect(button('Resume ping').textContent).toContain('Resume');
   });
 
   it('D-10: a row opens a page of 100 heartbeats, and Load older asks for the next page', async () => {

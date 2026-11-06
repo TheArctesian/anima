@@ -26,7 +26,8 @@
   <a class="back" href={resolve('/devices')} {@attach press()}>Devices</a>
   {#if device !== null && line !== null}
     <h1 title={device.name} {@attach sharedItem(`device-name:${device.id}`)}>{device.name}</h1>
-    <span class="status"><StatusPill status={device.status} deviceId={device.id} /></span>
+    <!-- A live region, so a status change is heard as well as seen (D-11). -->
+    <span class="status" aria-live="polite"><StatusPill status={device.status} deviceId={device.id} /></span>
     <p class="details" {@attach overflowFade(line.title)}>
       {#each line.items as item, index (index)}
         <span class="item {item.part}" title={item.text}>{item.text}</span>
@@ -39,7 +40,7 @@
         aria-label={line.ssh === 'set-up' ? 'Set up SSH' : line.ssh === 'test' ? 'Test the SSH connection' : `SSH to ${device.name}`}
         onclick={(event) => {
           if (line.ssh === 'connect') onConnect(event.currentTarget);
-          else onSettings('ssh');
+          else onSettings(line.ssh === 'test' ? 'test' : 'ssh');
         }}
         {@attach press()}
       >
