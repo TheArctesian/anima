@@ -1,4 +1,5 @@
 import type { CreateDeviceInput, SshCredentialInput, SshSettingsInput, UpdateDeviceInput } from '$lib/hub/generated/graphql';
+import { isVpnAddress } from './site';
 import { normalizedValues, portToSend, type DeviceFormValues } from './values';
 
 type NormalizedSsh = ReturnType<typeof normalizedValues>['ssh'];
@@ -19,7 +20,18 @@ function sameTags(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((tag, index) => tag === b[index]);
 }
 
-/** DEV-010: the create mutation input. The hub adds the default ICMP check (Section 6.2). */
+/**
+ * The SSH port a new device's first check probes in place of the hub's ICMP check, or null for the
+ * hub's default. A computer at a VPN address is reached only on the TCP ports its VPN grant names
+ * (R-061, R-063), and macOS drops pings in stealth mode, so ICMP would always say Down.
+ */
+export function tcpDefaultCheckPort(values: DeviceFormValues): number | null {
+  const now = normalizedValues(values);
+  if (!now.ssh.enabled || !isVpnAddress(now.host)) return null;
+  return portToSend(now.ssh, undefined);
+}
+
+/** DEV-010: the create mutation input. The hub adds the default ICMP check (Section 6.2), unless R-063 applies. */
 export function createInput(values: DeviceFormValues, siteId: string): CreateDeviceInput {
   const now = normalizedValues(values);
   return {
@@ -30,7 +42,7 @@ export function createInput(values: DeviceFormValues, siteId: string): CreateDev
     os: now.os,
     tags: [...now.tags],
     ...(now.ssh.enabled ? { ssh: sshInput(now.ssh) } : {}),
-    addDefaultCheck: true,
+    addDefaultCheck: tcpDefaultCheckPort(values) === null,
   };
 }
 

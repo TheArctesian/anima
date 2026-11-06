@@ -1,6 +1,6 @@
 import type { HubError, HubResult } from '$lib/hub/error';
-import type { CreateDeviceInput, SshCredentialInput } from '$lib/hub/generated/graphql';
-import { createInput, credentialInput } from './device/input';
+import type { CreateCheckInput, CreateDeviceInput, SshCredentialInput } from '$lib/hub/generated/graphql';
+import { createInput, credentialInput, tcpDefaultCheckPort } from './device/input';
 import { siteFieldErrors, type SitePlacement } from './device/site';
 import type { DeviceFormValues } from './device/values';
 
@@ -10,6 +10,7 @@ export interface AddDeviceApi {
   createSite: (name: string, subnet: string) => Promise<HubResult<{ readonly id: string }>>;
   createDevice: (input: CreateDeviceInput) => Promise<HubResult<{ readonly id: string }>>;
   setSshCredential: (deviceId: string, credential: SshCredentialInput) => Promise<HubResult<unknown>>;
+  createCheck: (input: CreateCheckInput) => Promise<HubResult<unknown>>;
 }
 
 export interface AddedDevice {
@@ -50,6 +51,9 @@ export async function addDevice(
   const created = await api.createDevice(createInput(values, siteId.value));
   if (!created.ok) return created;
   const { id } = created.value;
+  const port = tcpDefaultCheckPort(values);
+  // A failed check does not undo the device; the Checks tab shows it has none (R-063).
+  if (port !== null) await api.createCheck({ deviceId: id, name: 'SSH port', config: { tcp: { port, timeoutMs: 5000 } } });
   const credential = credentialInput(values);
   if (credential === null) return { ok: true, value: { id, credentialError: null } };
   const stored = await api.setSshCredential(id, credential);
