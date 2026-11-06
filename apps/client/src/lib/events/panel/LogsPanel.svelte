@@ -193,6 +193,11 @@
     background: var(--surface-raised);
   }
 
+  button:active {
+    transition-duration: var(--duration-press);
+    background: var(--border);
+  }
+
   button:focus-visible {
     outline: var(--border-focus) solid var(--accent);
     outline-offset: var(--border-focus);

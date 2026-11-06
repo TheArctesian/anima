@@ -94,7 +94,7 @@
 
 <div class="shell">
   <Nav pathname={page.url.pathname} now={clock.current} onnavigate={navigate} {iconOnly} />
-  <main>
+  <main data-shifts-with-banner>
     <SessionTabs />
     <div class="stage">
       <!-- The pages stay mounted under a selected session tab (WP-14 E-2, R-044). -->
@@ -138,7 +138,7 @@
   }
 
   /* Below the compact breakpoint the unreachable strip takes the top of the window; the page starts below it. */
-  :global(:root[data-nav='icons']) .shell:has(:global(.notice .banner)) main {
+  :global(:root[data-nav='icons'][data-hub-banner]) main {
     padding-block-start: calc(var(--space-6) + var(--nav-banner-block-size));
   }
 

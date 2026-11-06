@@ -6,6 +6,7 @@ import { endTransitionsAtOnce } from '$lib/devices/transitions.fixture';
 import { threshold } from '$lib/motion/tokens';
 import { device } from '../page.fixture.svelte';
 import Header from './Header.svelte';
+import headerSource from './Header.svelte?raw';
 
 endTransitionsAtOnce();
 
@@ -74,4 +75,24 @@ it('Loading: a header that is not loading, such as a missing device, never shows
   time.advance(threshold.loading * 10);
   flushSync();
   expect(skeleton()).toBeNull();
+});
+
+/** jsdom applies no component styles, so the icon-only rules are read from the source: the area each element takes there. */
+function iconOnlyArea(selector: string): string | undefined {
+  const rule = new RegExp(String.raw`:root\[data-nav='icons'\]\) ${selector.replace('.', String.raw`\.`)} \{[^}]*?grid-area: ([^;]+);`);
+  return rule.exec(headerSource)?.[1];
+}
+
+it('MOT-007: below bp-compact the skeleton has the rows of the loaded header, each placeholder over its row', () => {
+  const rows = { back: iconOnlyArea('.back'), status: iconOnlyArea('.status'), name: iconOnlyArea('h1') };
+  expect(rows).toEqual({ back: '1 / 1', status: '1 / 3', name: '2 / 1 / 3 / -1' });
+  // Back link, pill and name share the loaded line's cells; the details and buttons take the full width of rows 3 and 4.
+  expect([
+    iconOnlyArea('.skeleton > .ghost'),
+    iconOnlyArea('.skeleton > .pill'),
+    iconOnlyArea('.skeleton > .name'),
+    iconOnlyArea('.skeleton > .details-place'),
+    iconOnlyArea('.skeleton > .actions-place'),
+  ]).toEqual(['1 / 1', '1 / 3', '2 / 1 / 3 / -1', '3 / 1 / 4 / -1', '4 / 1 / 5 / -1']);
+  expect(headerSource).toMatch(/\.line,\s*:global\(:root\[data-nav='icons'\]\) \.skeleton \{\s*display: grid;/);
 });

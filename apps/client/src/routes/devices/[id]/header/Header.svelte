@@ -142,13 +142,17 @@
    * Below the compact breakpoint four rows of fixed size: the back link and the pill; the name; the details; the buttons. The
    * block size is the same while the device loads and when it arrives (MOT-007).
    */
-  :global(:root[data-nav='icons']) .line {
+  :global(:root[data-nav='icons']) .line,
+  :global(:root[data-nav='icons']) .skeleton {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
     grid-template-rows:
       var(--target-min-touch) calc(var(--text-xl) * var(--leading-tight)) calc(var(--text-sm) * var(--leading-tight))
       var(--target-min-desktop);
     gap: var(--space-2) var(--space-3);
+  }
+
+  :global(:root[data-nav='icons']) .line {
     block-size: calc(
       var(--target-min-touch) + var(--text-xl) * var(--leading-tight) + var(--text-sm) * var(--leading-tight) +
         var(--target-min-desktop) + var(--space-2) * 3
@@ -170,6 +174,31 @@
   :global(:root[data-nav='icons']) .details,
   :global(:root[data-nav='icons']) .actions {
     grid-column: 1 / -1;
+  }
+
+  /* The skeleton has the same rows, so each placeholder lies over the row it stands for (MOT-007, 5.7.3 Loading). */
+  :global(:root[data-nav='icons']) .skeleton > .ghost {
+    grid-area: 1 / 1;
+  }
+
+  :global(:root[data-nav='icons']) .skeleton > .pill {
+    grid-area: 1 / 3;
+    align-self: center;
+  }
+
+  :global(:root[data-nav='icons']) .skeleton > .name {
+    grid-area: 2 / 1 / 3 / -1;
+    align-self: center;
+  }
+
+  :global(:root[data-nav='icons']) .skeleton > .details-place {
+    grid-area: 3 / 1 / 4 / -1;
+    align-self: center;
+  }
+
+  :global(:root[data-nav='icons']) .skeleton > .actions-place {
+    grid-area: 4 / 1 / 5 / -1;
+    justify-self: start;
   }
 
   /* The pill and the buttons never shrink (DEV-021). */
