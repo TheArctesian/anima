@@ -16,6 +16,11 @@ export interface GuacamoleState extends Omit<TunnelState, 'phase'> {
   readonly phase: GuacamolePhase;
   /** The status code of the last gateway `error` instruction; its text is never kept (R-035). */
   readonly gatewayError: number | undefined;
+  /**
+   * The parameter names of the last gateway `required` instruction (GW-015), a new array for each one; kept in the
+   * state so that one that arrives before the start has answered is not lost. The caller checks the names.
+   */
+  readonly required?: readonly string[] | undefined;
 }
 
 export interface TunnelOptions {
@@ -76,6 +81,9 @@ function trackedTunnel(url: string, events: Events) {
   };
   client.onerror = (status) => {
     update({ gatewayError: status.code });
+  };
+  client.onrequired = (parameters) => {
+    update({ required: [...parameters] });
   };
   tunnel.onstatechange = (tunnelState) => {
     if (tunnelState === Guacamole.Tunnel.State.OPEN) update({ opened: true });

@@ -210,6 +210,7 @@
 
   .save {
     display: flex;
+    min-block-size: var(--target-min-desktop);
     align-items: center;
     gap: var(--space-2);
     font-size: var(--text-md);

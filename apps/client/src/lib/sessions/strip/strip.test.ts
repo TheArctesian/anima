@@ -7,7 +7,7 @@ import { runs } from '$lib/motion/engine.fixture';
 import { route } from '$lib/nav/route.fixture.svelte';
 import Layout from '../../../routes/+layout.svelte';
 import type { PopOutPort, SessionPort } from '../sessions.svelte';
-import { cleanup, fake, keyframes, openStarted, prepare, settle, show as mountLayout, tabs, visiblePanels } from './layout.fixture';
+import { cleanup, fake, keyframes, openStarted, prepare, request, settle, show as mountLayout, tabs, visiblePanels } from './layout.fixture';
 
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
@@ -248,4 +248,23 @@ it('MOT-007, MV-004: the tab has one width whatever the title, so a title moves 
   expect(css).not.toMatch(/\.slot \{[^}]*max-inline-size/);
   const tab = readFileSync(`${import.meta.dirname}/SessionTab.svelte`, 'utf8');
   expect(tab).toMatch(/\.title \{[^}]*flex: 1 1 0;/);
+});
+
+describe('RDP and VNC tabs (RA-001, Section 5.7 "Session tab open")', () => {
+  it('MOT-007: an RDP or VNC tab names its protocol in the fixed-width label; an SSH tab keeps its plain text', () => {
+    const sessions = show();
+    for (const protocol of ['SSH', 'RDP', 'VNC'] as const) sessions.openSession({ ...request, protocol, origin: null });
+    flushSync();
+    const labels = tabs().map((tab) => tab.querySelector<HTMLElement>('.protocol'));
+    expect(labels.map((label) => label?.textContent)).toEqual(['SSH', 'RDP', 'VNC']);
+    expect(labels.map((label) => label?.hasAttribute('data-remote'))).toEqual([false, true, true]);
+  });
+
+  it.each(['RDP', 'VNC'] as const)('MOT-005: a new %s tab grows from the control that opened it, as an SSH tab does', (protocol) => {
+    const sessions = show();
+    sessions.openSession({ ...request, protocol, origin: new DOMRect(400, 300, 50, 20) });
+    flushSync();
+    const growing = keyframes.find((frames) => frames.some((frame) => 'transformOrigin' in frame));
+    expect(growing?.[0]?.transformOrigin).toBe('425px 310px');
+  });
 });

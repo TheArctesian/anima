@@ -92,13 +92,16 @@ export function progressOf(stage: Stage<unknown, FollowedState>): Progress {
  * for a `CONFLICT` refusal of the start; without it the host key text is shown.
  */
 export class SessionConnection<Tunnel extends FollowedTunnel<State>, State extends FollowedState> {
-  stage: Stage<Tunnel, State> = $state({ kind: 'starting' });
+  /** Raw, so the tunnel's state keeps its identity: a view compares `required` arrays by reference. */
+  stage: Stage<Tunnel, State> = $state.raw({ kind: 'starting' });
   #attempt = 0;
   #closed = false;
   readonly #start: ConnectionStart<Tunnel, State>;
   readonly #api: Pick<SessionsApi, 'endSession'>;
   readonly #onended: (ending: SessionEnding) => void;
   readonly #conflict: string | undefined;
+  /** The text `stop` gave for the open attempt. */
+  #stoppedWith: string | undefined;
 
   constructor(
     start: ConnectionStart<Tunnel, State>,
@@ -129,6 +132,7 @@ export class SessionConnection<Tunnel extends FollowedTunnel<State>, State exten
   async connect(display: SessionDisplay): Promise<void> {
     if (this.#closed || (this.#attempt > 0 && this.stage.kind !== 'ended')) return;
     const attempt = ++this.#attempt;
+    this.#stoppedWith = undefined;
     this.stage = { kind: 'starting' };
     const early: Early<State> = {};
     const current = () => attempt === this.#attempt && !this.#closed;
@@ -145,6 +149,16 @@ export class SessionConnection<Tunnel extends FollowedTunnel<State>, State exten
     });
     if (result.ok) sessionId = result.value.sessionId;
     this.#started(attempt, result, early);
+  }
+
+  /**
+   * End the open attempt on the operator's side, as when a sign-in prompt is cancelled: close its tunnel, and when
+   * it has ended (and `endSession` answered), show `text` instead of the reason the close would give.
+   */
+  stop(text: string): void {
+    if (this.stage.kind !== 'open') return;
+    this.#stoppedWith = text;
+    this.stage.tunnel.close();
   }
 
   /** Close the open tunnel and ignore everything after; the hub records the end (K4 §5). */
@@ -181,13 +195,21 @@ export class SessionConnection<Tunnel extends FollowedTunnel<State>, State exten
     this.stage = { kind: 'open', tunnel, state, connected, policy: this.stage.policy };
   }
 
+  /** The text `stop` gave wins; otherwise the hub's recorded reason wins over the close (D-4). */
+  #final(provisional: SessionEnding, endReason: SessionEnding['reason'] | null): SessionEnding {
+    const stopped = this.#stoppedWith;
+    if (stopped !== undefined) return { reason: 'OPERATOR', opened: provisional.opened, text: stopped };
+    return recordedEnding(provisional, endReason);
+  }
+
   async #end(attempt: number, sessionId: string, state: State): Promise<void> {
     const progress = { ...progressOf(this.stage), stopped: true };
-    const provisional = ending(state);
+    // A stopped attempt shows its own text at once, not the reason its close would give for a moment.
+    const provisional = this.#final(ending(state), undefined);
     this.stage = { kind: 'ending', ending: provisional, progress };
     const recorded = await this.#api.endSession(sessionId);
     if (attempt !== this.#attempt || this.#closed) return;
-    const final = recorded.ok ? recordedEnding(provisional, recorded.value.endReason) : provisional;
+    const final = this.#final(provisional, recorded.ok ? recorded.value.endReason : undefined);
     const hostKeyChanged = state.closeCode === HOST_KEY_CLOSE || final.reason === 'HOST_KEY_MISMATCH';
     const certificateChanged = state.closeCode === CERTIFICATE_CLOSE || final.reason === 'SERVER_CERTIFICATE_MISMATCH';
     this.stage = { kind: 'ended', ending: final, progress, hostKeyChanged, certificateChanged };

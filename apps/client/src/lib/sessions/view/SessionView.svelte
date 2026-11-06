@@ -55,7 +55,7 @@
     },
   );
   let notice: string | undefined = $state();
-  let dismissed: Stage | undefined = $state();
+  let dismissed: Stage | undefined = $state.raw();
   let finding = $state(false);
   /** An address the device asked to open, waiting for the operator's confirmation (K4 §8.7). */
   let confirming: string | undefined = $state();
