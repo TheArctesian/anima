@@ -150,23 +150,33 @@ describe('MOT-007, MV-004: the modal keeps its layout while it reads', () => {
     const rows = [...(surface?.querySelectorAll('dl > *') ?? [])].map((row) => `${row.tagName}:${row.tagName === 'DT' ? row.textContent : ''}`);
     return { above: above.map((element) => element.tagName), rows };
   };
+  /** Each row's hidden copy of the longest value it can show, which sets the row's height in both states. */
+  const reservesOf = () =>
+    [...(dialog()?.querySelectorAll('dd > [data-reserve]') ?? [])].map((reserve) => ({
+      hidden: reserve.getAttribute('aria-hidden') === 'true',
+      text: reserve.textContent,
+    }));
+  const accept = () => button('Accept new certificate');
 
   it('MV-004: every detail row is there while the certificate is read, so the actions do not move when it arrives', async () => {
     let answer: (value: Awaited<ReturnType<SessionsApi['testConnection']>>) => void = () => undefined;
     const fake = fakeHub({ acceptedFingerprint: 'sha256:old' });
     await showModal({ testConnection: () => new Promise((resolve) => (answer = resolve)) });
-    expect(button('Reading the certificate…')).toBeDefined();
+    expect(accept()?.disabled).toBe(true);
+    expect(accept()?.getAttribute('aria-busy')).toBe('true');
+    expect(dialog()?.querySelector('.pending')?.textContent).toBe('Reading the certificate…');
     const reading = layout();
-    const placeholder = dialog()?.querySelector('[data-placeholder]');
-    expect(placeholder?.getAttribute('aria-hidden')).toBe('true');
-    expect(placeholder?.textContent).toHaveLength('sha256:'.length + 32 * 3 - 1);
+    const reserves = reservesOf();
+    expect(reserves.map((reserve) => reserve.hidden)).toEqual([true, true, true]);
+    expect(reserves[0]?.text).toHaveLength('sha256:'.length + 32 * 3 - 1);
     const read = await fake.api.testConnection({ deviceId: 'device-1', protocol: 'RDP' });
     fake.hub.close();
     answer(read);
     await settle();
-    expect(button('Accept new certificate')).toBeDefined();
+    expect(accept()?.disabled).toBe(false);
+    expect(accept()?.getAttribute('aria-busy')).toBe('false');
     expect(layout()).toEqual(reading);
-    expect(dialog()?.querySelector('[data-placeholder]')).toBeNull();
+    expect(reservesOf()).toEqual(reserves);
   });
 
   it('MV-004: a certificate without subject or end keeps both rows, saying so', async () => {
@@ -175,6 +185,8 @@ describe('MOT-007, MV-004: the modal keeps its layout while it reads', () => {
     const read = await fake.api.testConnection({ deviceId: 'device-1', protocol: 'RDP' });
     fake.hub.close();
     await showModal({ testConnection: () => Promise.resolve(read) });
-    expect([...(dialog()?.querySelectorAll('dd') ?? [])].map((row) => row.textContent)).toEqual([CERTIFICATE.fingerprintSha256, 'Not given', 'Not given']);
+    const values = [...(dialog()?.querySelectorAll('dd > :not([data-reserve])') ?? [])].map((value) => value.textContent);
+    expect(values).toEqual([CERTIFICATE.fingerprintSha256, 'Not given', 'Not given']);
+    expect(reservesOf()).toHaveLength(3);
   });
 });
