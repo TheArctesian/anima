@@ -25,8 +25,10 @@ pub(in crate::checks) struct Facts {
     pub(in crate::checks) operator_edited: bool,
     /// When the hub tried a repair, if it ever did.
     pub(in crate::checks) tried_at: Option<DateTime<Utc>>,
-    /// The stored status, a heartbeat or an uptime bucket was ever Up or Degraded (D-3).
-    pub(in crate::checks) answered: bool,
+    /// Whether the stored status, a heartbeat or an uptime bucket was ever Up or Degraded
+    /// (D-3); `None` when the history was not read because a stored column already rules
+    /// out a repair.
+    pub(in crate::checks) answered: Option<bool>,
 }
 
 /// A check as the repair read it, so the write can refuse a check that changed since.
@@ -38,10 +40,6 @@ pub(in crate::checks) struct Seen {
 }
 
 #[derive(sqlx::FromRow)]
-#[expect(
-    clippy::struct_excessive_bools,
-    reason = "one field per column read, and four columns are booleans"
-)]
 struct FactsRow {
     #[sqlx(rename = "type")]
     kind: String,
@@ -57,23 +55,28 @@ struct FactsRow {
     paused: bool,
     operator_edited: bool,
     repair_tried_at: Option<DateTime<Utc>>,
-    answered: bool,
+    answered: Option<bool>,
 }
 
-/// Heartbeats are kept 30 days and buckets up to 2 years, so each table is asked.
+/// The history is read only when the cheap columns still allow a repair: CASE evaluates its
+/// branch only when the condition holds, so a check that was tried, edited, paused or
+/// inverted costs one row read on each Down beat. Buckets are kept up to 2 years and
+/// heartbeats 30 days; the heartbeats come last, as the widest scan.
 const FACTS_SQL: &str = "SELECT type, config, name, status, failures, interval_seconds, retries, \
         retry_interval_seconds, degraded_threshold_ms, invert, paused, operator_edited, \
         repair_tried_at, \
-        (status IN ('up', 'degraded') \
-         OR EXISTS (SELECT 1 FROM checks.heartbeats h \
-                    WHERE h.check_id = c.id AND h.status IN ('up', 'degraded')) \
+        CASE WHEN type = 'icmp' AND NOT operator_edited AND repair_tried_at IS NULL \
+                  AND NOT paused AND NOT invert \
+        THEN (status IN ('up', 'degraded') \
          OR EXISTS (SELECT 1 FROM checks.uptime_minute u \
                     WHERE u.check_id = c.id AND (u.up_count > 0 OR u.degraded_count > 0)) \
          OR EXISTS (SELECT 1 FROM checks.uptime_hour u \
                     WHERE u.check_id = c.id AND (u.up_count > 0 OR u.degraded_count > 0)) \
          OR EXISTS (SELECT 1 FROM checks.uptime_day u \
-                    WHERE u.check_id = c.id AND (u.up_count > 0 OR u.degraded_count > 0))) \
-        AS answered \
+                    WHERE u.check_id = c.id AND (u.up_count > 0 OR u.degraded_count > 0)) \
+         OR EXISTS (SELECT 1 FROM checks.heartbeats h \
+                    WHERE h.check_id = c.id AND h.status IN ('up', 'degraded'))) \
+        END AS answered \
      FROM checks.checks c WHERE c.id = $1";
 
 /// The check's repair facts, or `None` when it was deleted.

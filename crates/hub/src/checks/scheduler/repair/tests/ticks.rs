@@ -5,9 +5,9 @@ use chrono::TimeDelta;
 use serde_json::json;
 
 use super::support::{
-    Audited, DOCKER_HOST, HOME_ASSISTANT, JELLYFIN, Listener, add_ping, audits_of, beats,
-    closed_port, database_now, on_loopback, repair_events, scheduler, set_ssh_port, settle_briefly,
-    silent_ping, stored, tick_at, tried_at,
+    Audited, DOCKER_HOST, HOME_ASSISTANT, JELLYFIN, Listener, add_ping, audits_of, beat, beats,
+    closed_port, database_now, make_due, on_loopback, other_events, repair_events, scheduler,
+    set_ssh_port, settle_briefly, silent_ping, stored, tick_at, tried_at,
 };
 use crate::{checks::config::CheckConfig, events::Bus, status::Status};
 
@@ -143,5 +143,27 @@ repair_test! {
         assert_eq!(stored(&pool, id).await.config, silent_ping());
         assert_eq!((listener.accepted(), tried_at(&pool, id).await), (0, None));
         assert_eq!(repair_events(&pool, device).await, []);
+    }
+
+    async fn chk_013_a_repaired_device_reports_unknown_then_up_once_each(pool: PgPool) {
+        let listener = Listener::start().await;
+        let device = on_loopback(&pool, DOCKER_HOST, listener.port).await;
+        let now = database_now(&pool).await;
+        let id = add_ping(&pool, device, 1, now).await;
+        // Down before the scheduler starts, with one failure: the next one uses the retry.
+        beat(&pool, id, Status::Down, now - TimeDelta::seconds(20)).await;
+        make_due(&pool, id, now).await;
+        let mut scheduler = scheduler(&pool, &Bus::new(64));
+
+        tick_at(&mut scheduler, now).await;
+        tick_at(&mut scheduler, now + TimeDelta::seconds(1)).await;
+        tick_at(&mut scheduler, now + TimeDelta::seconds(2)).await;
+
+        assert_eq!(beats(&pool, id).await, ["down", "down", "up"]);
+        assert_eq!(repair_events(&pool, device).await.len(), 1);
+        assert_eq!(
+            other_events(&pool, device).await,
+            [event("info", "docker-host is Unknown"), event("info", "docker-host is Up")]
+        );
     }
 }

@@ -14,6 +14,7 @@ macro_rules! repair_test {
 }
 
 mod guards;
+mod races;
 mod rule;
 mod support;
 mod ticks;

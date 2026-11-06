@@ -24,7 +24,7 @@ pub(super) fn is_candidate(facts: &Facts, in_maintenance: bool) -> bool {
         && !facts.settings.invert
         && facts.status == Status::Down
         && facts.failures > u32::from(facts.settings.retries)
-        && !facts.answered
+        && facts.answered == Some(false)
         && !facts.operator_edited
         && facts.tried_at.is_none()
         && !facts.paused

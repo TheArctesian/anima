@@ -47,6 +47,10 @@ impl From<sqlx::Error> for Fault {
 /// Repairs the check if it is a candidate after a Down beat at `now`. A failed read or write
 /// is logged and leaves the check untried, so a later Down beat tries again.
 pub(super) async fn run(ctx: &Context, due: &Due, in_maintenance: bool, now: DateTime<Utc>) {
+    // An inverted check that is Down got replies, so its method works; no read is needed.
+    if due.settings.invert || in_maintenance {
+        return;
+    }
     let seen = match repairs::facts(&ctx.db, due.id).await {
         Ok(Some(seen)) => seen,
         Ok(None) => return,
@@ -128,6 +132,8 @@ async fn switch(
         return Ok(false);
     };
     let mut tx = ctx.db.begin().await?;
+    // The device was read before the connect and is not checked again here: the next TCP
+    // beat probes the device's host and port as they are then.
     if !repairs::lock_unchanged(&mut tx, due.id, seen).await? {
         return Ok(false);
     }

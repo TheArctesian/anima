@@ -37,7 +37,7 @@ fn candidate() -> Facts {
         paused: false,
         operator_edited: false,
         tried_at: None,
-        answered: false,
+        answered: Some(false),
     }
 }
 
@@ -79,8 +79,9 @@ type Spoil = fn(&mut Facts);
 
 #[test]
 fn chk_013_each_condition_alone_blocks_the_repair() {
-    let blocked: [(&str, Spoil); 10] = [
-        ("ever answered", |f| f.answered = true),
+    let blocked: [(&str, Spoil); 11] = [
+        ("ever answered", |f| f.answered = Some(true)),
+        ("history not read", |f| f.answered = None),
         ("edited", |f| f.operator_edited = true),
         ("tried", |f| {
             f.tried_at = Some(Utc.with_ymd_and_hms(2026, 11, 2, 0, 0, 0).unwrap());

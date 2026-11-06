@@ -1,18 +1,16 @@
-//! What a repair never touches: a check that ever answered, a check the operator edited, and
-//! a check that changed between the decision and the write (CHK-013, D-3, D-1, D-8).
+//! What a repair never touches, driven by real ticks: a check that ever answered, that the
+//! operator edited, that is paused, or that is not ICMP (CHK-013, D-1, D-3).
 
 use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::PgPool;
 
-use super::{
-    super::{Candidate, give_up, rule::Port, rule::Protocol, switch},
-    support::{
-        DOCKER_HOST, Listener, add_ping, audits_of, context, database_now, on_loopback,
-        repair_events, scheduler, settle_briefly, silent_ping, stored, tick_at, tried_at, vault,
-    },
+use super::support::{
+    DOCKER_HOST, Listener, add_check, add_ping, beat, beats, closed_port, database_now, edit,
+    make_due, on_loopback, repair_events, scheduler, settle_briefly, silent_ping, stored, tick_at,
+    tried_at,
 };
 use crate::{
-    checks::{self, Beat, CheckChange, CheckState, Due, probe::ProbeResult, store::repairs},
+    checks::{self, config::CheckConfig},
     events::Bus,
     ids::CheckId,
     status::Status,
@@ -25,24 +23,6 @@ const MORE_HOSTS: [&str; 3] = [
     "0190a000-0000-7000-8002-000000000005",
 ];
 
-/// Records a beat with `status` at `at` through the checks domain.
-async fn beat(pool: &PgPool, id: CheckId, status: Status, at: DateTime<Utc>) {
-    let state = CheckState {
-        status,
-        failures: u32::from(status == Status::Down),
-        next_due_at: Some(at + TimeDelta::seconds(10)),
-    };
-    let probe = if status == Status::Down {
-        ProbeResult::failed(&checks::probe::Failure::NoReply)
-    } else {
-        ProbeResult::up(std::time::Duration::from_millis(3))
-    };
-    let mut conn = pool.acquire().await.unwrap();
-    let beat = Beat::of(probe, (state, status), at);
-    let recorded = checks::record_beat(&mut conn, id, &beat).await.unwrap();
-    assert_eq!(recorded, checks::Recorded::Written);
-}
-
 /// One uptime row in `table` with 1 in `column`.
 async fn bucket(pool: &PgPool, id: CheckId, (table, column): (&str, &str), at: DateTime<Utc>) {
     let sql = format!("INSERT INTO checks.{table} (check_id, bucket, {column}) VALUES ($1, $2, 1)");
@@ -52,39 +32,6 @@ async fn bucket(pool: &PgPool, id: CheckId, (table, column): (&str, &str), at: D
         .execute(pool)
         .await
         .unwrap();
-}
-
-async fn make_due(pool: &PgPool, id: CheckId, at: DateTime<Utc>) {
-    sqlx::query("UPDATE checks.checks SET next_due_at = $2 WHERE id = $1")
-        .bind(id)
-        .bind(at)
-        .execute(pool)
-        .await
-        .unwrap();
-}
-
-async fn edit(pool: &PgPool, id: CheckId) {
-    let change = CheckChange {
-        degraded_threshold_ms: Some(2000),
-        ..CheckChange::default()
-    };
-    let mut conn = pool.acquire().await.unwrap();
-    checks::update_check(&mut conn, &vault(), id, change)
-        .await
-        .unwrap();
-}
-
-/// The check as the scheduler reads it when due.
-async fn due_of(pool: &PgPool, id: CheckId) -> Due {
-    let check = stored(pool, id).await;
-    Due {
-        id,
-        device: check.device,
-        parent: None,
-        config: Some(check.config),
-        settings: check.settings,
-        state: check.state,
-    }
 }
 
 repair_test! {
@@ -139,47 +86,40 @@ repair_test! {
         assert_eq!(repair_events(&pool, device).await, []);
     }
 
-    async fn chk_013_an_edit_between_the_decision_and_the_write_wins(pool: PgPool) {
+    async fn chk_013_a_paused_check_is_never_repaired(pool: PgPool) {
         let listener = Listener::start().await;
         let device = on_loopback(&pool, DOCKER_HOST, listener.port).await;
         let now = database_now(&pool).await;
         let id = add_ping(&pool, device, 0, now).await;
-        beat(&pool, id, Status::Down, now).await;
-        let due = due_of(&pool, id).await;
-        let seen = repairs::facts(&pool, id).await.unwrap().unwrap();
-        assert!(super::super::rule::is_candidate(&seen.facts, false));
-        let candidate = Candidate { due: &due, seen: &seen, device: "docker-host" };
-        let ctx = context(&pool, &Bus::new(64));
-        let port = Port { protocol: Protocol::Ssh, number: listener.port };
-
-        edit(&pool, id).await;
-
-        assert!(!switch(&ctx, &candidate, port, now).await.unwrap());
-        assert!(!give_up(&ctx, &candidate, now).await.unwrap());
-        let check = stored(&pool, id).await;
-        assert_eq!((check.config, check.name.as_str()), (silent_ping(), "Ping"));
-        assert_eq!(tried_at(&pool, id).await, None);
-        assert_eq!(repair_events(&pool, device).await, []);
-        let updates = audits_of(&pool, id).await;
-        assert!(updates.iter().all(|entry| entry.operator_name != "Anima"));
-    }
-
-    async fn chk_013_a_pause_between_the_decision_and_the_write_wins(pool: PgPool) {
-        let device = on_loopback(&pool, DOCKER_HOST, 22).await;
-        let now = database_now(&pool).await;
-        let id = add_ping(&pool, device, 0, now).await;
-        beat(&pool, id, Status::Down, now).await;
-        let due = due_of(&pool, id).await;
-        let seen = repairs::facts(&pool, id).await.unwrap().unwrap();
-        let candidate = Candidate { due: &due, seen: &seen, device: "docker-host" };
-        let ctx = context(&pool, &Bus::new(64));
         let mut conn = pool.acquire().await.unwrap();
         checks::set_paused(&mut conn, id, true).await.unwrap();
-        checks::set_paused(&mut conn, id, false).await.unwrap();
+        let mut scheduler = scheduler(&pool, &Bus::new(64));
 
-        assert!(!give_up(&ctx, &candidate, now).await.unwrap());
+        tick_at(&mut scheduler, now).await;
+        tick_at(&mut scheduler, now + TimeDelta::seconds(10)).await;
+        settle_briefly().await;
 
-        assert_eq!(tried_at(&pool, id).await, None);
+        assert_eq!(beats(&pool, id).await, Vec::<String>::new());
+        assert_eq!(stored(&pool, id).await.config, silent_ping());
+        assert_eq!((listener.accepted(), tried_at(&pool, id).await), (0, None));
+        assert_eq!(repair_events(&pool, device).await, []);
+    }
+
+    async fn chk_013_a_check_that_is_not_icmp_is_never_repaired(pool: PgPool) {
+        let listener = Listener::start().await;
+        let device = on_loopback(&pool, DOCKER_HOST, listener.port).await;
+        let now = database_now(&pool).await;
+        let closed = CheckConfig::Tcp { port: closed_port(), timeout_ms: 1000 };
+        let id = add_check(&pool, device, ("Service port", closed.clone(), 0), now).await;
+        let mut scheduler = scheduler(&pool, &Bus::new(64));
+
+        tick_at(&mut scheduler, now).await;
+        settle_briefly().await;
+
+        assert_eq!(beats(&pool, id).await, ["down"]);
+        let check = stored(&pool, id).await;
+        assert_eq!((check.config, check.name.as_str()), (closed, "Service port"));
+        assert_eq!((listener.accepted(), tried_at(&pool, id).await), (0, None));
         assert_eq!(repair_events(&pool, device).await, []);
     }
 }

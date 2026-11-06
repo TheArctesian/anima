@@ -12,9 +12,9 @@ use sqlx::PgPool;
 
 use crate::{
     checks::{
-        self, Check, CheckSettings, Definition, NewCheck,
+        self, Beat, Check, CheckChange, CheckSettings, CheckState, Definition, NewCheck, Recorded,
         config::{CheckConfig, IpVersion},
-        probe::AddressPolicy,
+        probe::{AddressPolicy, Failure, ProbeResult},
         scheduler::{
             Probing,
             attempt::Context,
@@ -24,6 +24,7 @@ use crate::{
     credentials::Vault,
     events::Bus,
     ids::{CheckId, DeviceId},
+    status::Status,
 };
 
 /// `docker-host` in the K6 fixtures: SSH on, no maintenance.
@@ -112,11 +113,21 @@ pub fn silent_ping() -> CheckConfig {
 
 /// Adds an ICMP check named "Ping" with a 10-second interval and `retries`, due at `at`.
 pub async fn add_ping(pool: &PgPool, device: DeviceId, retries: u8, at: DateTime<Utc>) -> CheckId {
+    add_check(pool, device, ("Ping", silent_ping(), retries), at).await
+}
+
+/// Adds a check named `name` with `config`, a 10-second interval and `retries`, due at `at`.
+pub async fn add_check(
+    pool: &PgPool,
+    device: DeviceId,
+    (name, config, retries): (&str, CheckConfig, u8),
+    at: DateTime<Utc>,
+) -> CheckId {
     let new = NewCheck {
         device,
         parent: None,
-        name: "Ping".to_owned(),
-        definition: Definition::Config(silent_ping()),
+        name: name.to_owned(),
+        definition: Definition::Config(config),
         settings: CheckSettings {
             interval_seconds: 10,
             retries,
@@ -129,13 +140,48 @@ pub async fn add_ping(pool: &PgPool, device: DeviceId, retries: u8, at: DateTime
         .await
         .unwrap()
         .id;
+    make_due(pool, id, at).await;
+    id
+}
+
+pub async fn make_due(pool: &PgPool, id: CheckId, at: DateTime<Utc>) {
     sqlx::query("UPDATE checks.checks SET next_due_at = $2 WHERE id = $1")
         .bind(id)
         .bind(at)
         .execute(pool)
         .await
         .unwrap();
-    id
+}
+
+/// Records a beat with `status` at `at` through the checks domain; a Down beat counts one
+/// failure.
+pub async fn beat(pool: &PgPool, id: CheckId, status: Status, at: DateTime<Utc>) {
+    let state = CheckState {
+        status,
+        failures: u32::from(status == Status::Down),
+        next_due_at: Some(at + TimeDelta::seconds(10)),
+    };
+    let probe = if status == Status::Down {
+        ProbeResult::failed(&Failure::NoReply)
+    } else {
+        ProbeResult::up(std::time::Duration::from_millis(3))
+    };
+    let beat = Beat::of(probe, (state, status), at);
+    let mut conn = pool.acquire().await.unwrap();
+    let recorded = checks::record_beat(&mut conn, id, &beat).await.unwrap();
+    assert_eq!(recorded, Recorded::Written);
+}
+
+/// An operator's edit through the checks domain, which marks the check as edited.
+pub async fn edit(pool: &PgPool, id: CheckId) {
+    let change = CheckChange {
+        degraded_threshold_ms: Some(2000),
+        ..CheckChange::default()
+    };
+    let mut conn = pool.acquire().await.unwrap();
+    checks::update_check(&mut conn, &vault(), id, change)
+        .await
+        .unwrap();
 }
 
 pub async fn stored(pool: &PgPool, id: CheckId) -> Check {
@@ -157,6 +203,18 @@ pub async fn beats(pool: &PgPool, id: CheckId) -> Vec<String> {
         .fetch_all(pool)
         .await
         .unwrap()
+}
+
+/// The device's events that are not repair events, oldest first.
+pub async fn other_events(pool: &PgPool, device: DeviceId) -> Vec<(String, String, String)> {
+    sqlx::query_as(
+        "SELECT severity, source, message FROM events.event_log \
+         WHERE device_id = $1 AND message NOT LIKE 'Ping never answered%' ORDER BY at, id",
+    )
+    .bind(device)
+    .fetch_all(pool)
+    .await
+    .unwrap()
 }
 
 /// The device's repair events as (severity, source, message), oldest first.
