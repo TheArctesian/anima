@@ -137,6 +137,12 @@ Integration branch: `phase-1`. Merge to `main` only after operator checkpoint 4.
 
 - **R-067 (operator, 2026-11-06: "merge frequently").** Each package sends the programme orchestrator a task's SHA as soon as the task is accepted, meaning it passes 12/12 and has a review with no must findings. The orchestrator merges that task into `phase-2` straight away instead of waiting for the whole package. Packages rebase onto `phase-2` after each merge. The package report still comes at the end.
 
+- **R-068 (orchestrator, 2026-11-06; machine load about 33, one cargo-test run took 52 minutes).** This rule cuts duplicate gate runs.
+  - **Client-only tasks.** A task with no change under `crates/`, `Cargo.*` or `contracts/` runs gates 4–12 only, one at a time, using the commands `bun run gates` prints for each. It reports that gates 1–3 were not run because no Rust changed.
+  - **Rust and contract tasks.** These still run all 12 gates.
+  - **After merge.** The programme orchestrator runs all 12 gates on `phase-2` after each merge. A failure there goes back to the task that caused it.
+  - **One cargo run at a time.** A package runs at most one `cargo test` or `cargo clippy` at a time.
+
 ## Escalations
 
 None open.
