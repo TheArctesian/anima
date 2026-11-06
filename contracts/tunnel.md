@@ -1,6 +1,6 @@
 # K4 — Remote access tunnel
 
-Status: **frozen for Phase 1** (change only through a programme ruling, CON-001). R-062 split SSH onto the terminal tunnel and added Section 8.
+Status: **frozen for Phase 2** (change only through a programme ruling, CON-001). R-062 split SSH onto the terminal tunnel and added Section 8. Phase 2 additions are marked (Phase 2); Section 9 is new.
 
 The remote access stream does not use GraphQL (API-009). The client gets a ticket from the `startSession` mutation (K1), then opens one WebSocket to the hub. Owners: hub side WP-10 (`sessions`), protocol codec WP-08 (`guac-protocol`), client side WP-14; the terminal tunnel WP-18.
 
@@ -20,9 +20,11 @@ Sections 1, 5 and 6 apply to both tunnels.
 | Lifetime | 30 seconds from issue (`expiresAt` in the ticket) |
 | Use | Single use. The hub removes the token when a tunnel request presents it, valid or not |
 | Binding | Operator ID, session ID, client address. A request from another client address is refused. A ticket is valid only on the path its `tunnelPath` names |
-| `tunnelPath` | `/terminal` for SSH (Section 8). `/tunnel` for RDP and VNC (Phase 2) |
+| `tunnelPath` | `/terminal` for SSH (Section 8). `/tunnel` for RDP and VNC (Phase 2). `/files` for a files ticket (Phase 2, Section 9) |
 
 `startSession` does these steps before it returns the ticket: checks that the device exists and SSH is enabled; checks that a host key is accepted (Section 6); inserts a `sessions.sessions` row with `started_at`; writes an audit entry `session.start`.
+
+(Phase 2) `startSession` checks, per protocol, that the protocol is on. RDP also needs an accepted server certificate unless `security` is `RDP` or `ignoreCertificate` is on (CONFLICT, as for SSH host keys). When the device is Down and has a MAC address and its site has a wake relay, `startSession` sends the packet first and sets `wakeSent`. The opening limit is then 120 seconds instead of 8.
 
 ## 2. Tunnel request (Guacamole, RDP and VNC)
 
@@ -43,6 +45,7 @@ Sec-WebSocket-Protocol: guacamole
   | Client address differs from the ticket | 403 |
   | Subprotocol `guacamole` missing | 400 |
   | Gateway unreachable | 503 (and the session ends with `GATEWAY_ERROR`) |
+  | (Phase 2) Protocol off, no accepted certificate, or target refused by the rule or the deny list (P2-004) | 503 (and the session ends with `GATEWAY_ERROR`) |
 
 ## 3. Handshake (hub ↔ guacd, GW-010; RDP and VNC)
 
@@ -55,6 +58,23 @@ The hub, not the client, does the handshake with the `guac-protocol` `Handshake`
 3. Send `size` (width, height, DPI from `DisplayInput`), `audio` (empty), `video` (empty), `image` (`image/png`, `image/jpeg`, `image/webp`), `timezone` (from `DisplayInput` when it is an IANA zone name, else UTC; sites have no zone in Phase 1, R-032), `name` (operator username).
 4. Send `connect` with one value per name in `args`, in the same order. Values come only from the database and the credential store (GW-012). Unknown names get an empty value. The client never supplies `hostname`, `port`, credentials or any path (GW-013).
 5. Read `ready`. Its argument is the gateway connection ID. The hub keeps it with the session and never sends it to the client (GW-014).
+
+(Phase 2) RDP and VNC: `select` with `rdp` or `vnc`. `audio` lists `audio/L8` and `audio/L16` when `audioOut` is on, else empty. Values (all others empty, `wol-*` always empty, GW-013):
+
+| Argument | RDP | VNC |
+| --- | --- | --- |
+| `hostname`, `port` | checked target address, settings port | same |
+| `username`, `domain` | settings | `username` when set |
+| `password` | `load_password(Rdp)` | `load_password(Vnc)` |
+| `security`, `ignore-cert` | settings | — |
+| `cert-fingerprints` | the accepted `sha256` fingerprint (D-5) | — |
+| `resize-method` | `display-update` or `reconnect` | — |
+| `disable-audio`, `enable-audio-input` | not `audioOut`, `microphone` | — |
+| `enable-drive`, `drive-path`, `create-drive-path` | `sharedDrive`, `<ANIMA_GUACD_DRIVE_ROOT>/<device_id>`, `true` (RA-021) | — |
+| `disable-download`, `disable-upload` | not `download`, not `upload` | — |
+| `disable-copy`, `disable-paste` | not `copy`, not `paste` (RA-033) | same |
+
+Before the handshake, for RDP with TLS or NLA, the hub reads the server certificate itself (X.224 request, then TLS) and compares its SHA-256 with the accepted one. A difference ends the session with `error` `"Certificate changed"` `0x0303`, close 4003, `SERVER_CERTIFICATE_MISMATCH`, an Error event, and the warning modal. `testConnection` with `protocol: RDP` reads it the same way; only `acceptServerCertificate` records it.
 
 Phase 1 SSH argument values:
 
@@ -83,7 +103,11 @@ From the client, the hub:
 - forwards only allow-listed instructions (R-035), each with at least the argument count guacd's handler reads: `key` (2), `mouse` (3), `touch` (7), `size` (2–3), `clipboard` (2), `blob` (2), `end` (1), `ack` (3), `sync` (1), `nop`, `disconnect`, `argv` (3);
   - `size` is rebuilt from plain decimal numbers and forwarded only when width and height are 1..8192 and DPI, when present, is 48..480 (R-018);
   - `blob` and `end` only on streams the client opened;
-  - `argv` only for `color-scheme`, or once per gateway `required` for `username`, `password`, `passphrase` or `domain` (GW-013 before GW-015);
+  - `argv` only for `color-scheme`, or once per gateway `required` for `username`, `password`, `passphrase` or `domain` (GW-013 before GW-015); (Phase 2) for RDP `username`, `password`, `domain`; for VNC `username`, `password` (GW-015);
+  - (Phase 2) the allow-list also takes these, each only when the device's policy permits it:
+    - `clipboard` from the client only when `paste` is on; the hub drops the gateway's `clipboard` streams when `copy` is off (with guacd's own flags as a second guard);
+    - `audio` (2) from the client only when `microphone` is on, with its `blob` and `end`;
+    - `file` (3), `get` (2) and `put` (4) only when `sharedDrive` is on: `file` and `put` need `upload`, `get` of a file needs `download`;
 - closes the tunnel with close code 1002 (`PROTOCOL_ERROR`) if an instruction does not decode (GW-011) or is not allow-listed.
 
 The hub sends a `nop` to the client when the gateway has sent nothing for 5 seconds. If the client sends nothing for 15 seconds (no ping, no input), the hub ends the session with `TIMEOUT`.
@@ -99,11 +123,12 @@ The Guacamole tunnel's causes; Section 8.6 gives the terminal tunnel's causes fo
 | Gateway sends `error` with status 0x0300–0x03FF (upstream) | 1011 after relaying `error` | `GATEWAY_ERROR` |
 | Gateway `error` with status 0x0301 / 0x0303 (unauthorized / forbidden) | 1011 after relaying `error` | `AUTH_FAILED` |
 | Host key mismatch | 4001 after the hub sends `error` `"Host key changed"` `0x0303` | `HOST_KEY_MISMATCH` |
+| (Phase 2) RDP server certificate differs from the accepted one | 4003 after the hub sends `error` `"Certificate changed"` `0x0303` | `SERVER_CERTIFICATE_MISMATCH` |
 | Client sends an instruction that does not decode (GW-011) | 1002 | `PROTOCOL_ERROR` |
 | Idle timeout | 4002 | `TIMEOUT` |
 | Hub shutdown | 1001 | `HUB_SHUTDOWN` |
 
-On every end the hub: closes both sockets; sets `ended_at` and `end_reason` on the session row; publishes an `events::Signal::Event` (`Source::Session`, severity Info; Error for `HOST_KEY_MISMATCH`; Warning for `AUTH_FAILED`, `GATEWAY_ERROR` and `PROTOCOL_ERROR`; R-032, R-034); writes the audit entry `session.end`. The hub never records session content (RA-008).
+On every end the hub: closes both sockets; sets `ended_at` and `end_reason` on the session row; publishes an `events::Signal::Event` (`Source::Session`, severity Info; Error for `HOST_KEY_MISMATCH` and `SERVER_CERTIFICATE_MISMATCH`; Warning for `AUTH_FAILED`, `GATEWAY_ERROR` and `PROTOCOL_ERROR`; R-032, R-034); writes the audit entry `session.end`. The hub never records session content (RA-008).
 
 ## 6. Host keys (SEC-006, SEC-007)
 
@@ -118,6 +143,8 @@ On every end the hub: closes both sockets; sets `ended_at` and `end_reason` on t
 - Handshake: a recorded `args` list from guacd 1.5 and 1.6 gives the expected `connect` values; a forbidden name sent by a fake client never reaches `connect`.
 - Relay: a fake guacd (in-process TCP listener) and a fake client run one full session, including `ping`, an invalid instruction (close 1002) and each end cause in Section 5.
 - Terminal (Section 8): a fake SSH server (a `russh` server in the test) and a fake client run one full session: bytes both ways, `resize` reaching the server as a window change, `ping` both ways, and each end cause in Section 8.6. A changed host key ends `HOST_KEY_MISMATCH` and the fake server sees no authentication request; a refused credential ends `AUTH_FAILED`; a ticket that is expired, reused or from another address gets 403 and one without the subprotocol gets 400. Also: a first message that is not `resize`, or binary before it; no first `resize` within the wait; a message over 64 KiB (also across fragments) and a text message over 256 bytes; keyboard-interactive and its round and prompt limits; a key that does not decode; a WebSocket ping keeps the session alive; client silence, a stalled send, a stalled device write (`GATEWAY_ERROR`, with hub pings continuing meanwhile) and lost keep-alives or a dropped connection, all with the waits shortened through the sessions module's internal router constructor (the K3 `terminal_router` always uses the Section 8.5 values); `endSession` and the client leaving during the opening; channels the device opens are refused; a ticket on the wrong path is refused (a pure check while only SSH exists); a client that does not read leaves the output waiting in the device, not the hub; the fake server sees only `pty-req`, `shell` and `window-change` on one channel; no secret in any frame to the client and no token or secret in the log. The control-message parser is property-tested: no input panics, and only the messages in Section 8.4 are accepted. The Guacamole relay tests issue SSH tickets with `sessions::start` as their fixture and call the `/tunnel` router directly; it is not mounted.
+
+(Phase 2) Add: recorded guacd 1.6.0 `args` for `rdp` and `vnc` give the Section 3 values; a fake guacd sees no `clipboard` when paste is off; a changed certificate ends 4003 before any `connect`. Files (Section 9): a fake SSH server sees only the `sftp` subsystem, each `refused` reason, an upload over `size`, and a ticket for an ended session.
 
 ## 8. Terminal tunnel (SSH, R-062)
 
@@ -226,4 +253,14 @@ The remote host controls the bytes the client draws, so the client sets each of 
 - OSC 8 hyperlinks and detected links: open only after a confirmation that shows the full URL; only `http` and `https`.
 - Window title (OSC 0 and 2): shown in the tab after removing control, format and line or paragraph separator characters (Unicode Cc, Cf, Zl, Zp; this removes bidi overrides), at most 80 characters.
 - No sixel or other image protocols.
+- (Phase 2) With `copy` off the client copies nothing from the terminal; with `paste` off it sends no paste. The hub cannot enforce these for bytes (D-6).
 - Copy and paste go through the operator's own actions only (RA-003): selection and the copy shortcut, the paste event or the Keys menu. Paste uses bracketed paste when the shell asks for it.
+
+## 9. Files tunnel (Phase 2, SFTP, RA-032)
+
+- Request `GET /files?token=<token>`, subprotocol `anima-files`, refusals as Section 8.1. The ticket comes from `openFiles(sessionId)`: the session must be a live SSH session of the same operator and client address. The files tunnel ends when that session ends.
+- The hub opens its own SSH connection through the link (pinned key, stored credential) and requests only the `sftp` subsystem. The terminal connection (Section 8) is unchanged.
+- Client text messages (JSON, closed set, at most 4 KiB): `list {path}`, `download {path}`, `upload {path, size}`, `cancel`, `ping`. Paths: UTF-8, at most 4096 bytes, no NUL. Binary frames from the client carry upload data only after `upload`, at most 64 KiB each, `size` bytes in all.
+- Hub text messages: `entries {path, entries: [{name, kind: file|dir|link, size, modifiedAt}]}` (at most 10 000), `download {size}` then binary frames, `done`, `refused {reason: DOWNLOAD_OFF | UPLOAD_OFF | NOT_FOUND | DENIED | EXISTS}`, `ping`.
+- One transfer at a time. Upload never overwrites (`EXISTS`). The flags are read at each request.
+- Backpressure and silence limits as Sections 8.4 and 8.5. Each finished or refused transfer writes the audit entry `file.upload` or `file.download` with the path and size and no content, and an Info event (LOG-005, LOG-007).

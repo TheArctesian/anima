@@ -1,6 +1,6 @@
 # K3 — Hub domain interfaces
 
-Status: **frozen for Phase 1** (change only through a programme ruling, CON-001).
+Status: **frozen for Phase 2** (change only through a programme ruling, CON-001). Phase 2 additions are marked (Phase 2).
 
 These are the only functions and types one hub domain may use from another. Everything else in a domain is private or `pub(crate)` for its own submodules. Signatures are the contract; parameter names and doc comments may vary. `Db` is `sqlx::PgPool`; functions that must join a caller's transaction take `&mut sqlx::PgConnection` instead.
 
@@ -8,11 +8,12 @@ These are the only functions and types one hub domain may use from another. Ever
 
 | Module | Content |
 | --- | --- |
-| `crates/hub/src/ids.rs` | All entity ID newtypes (see `conventions.md`): `OperatorId`, `SiteId`, `DeviceId`, `CheckId`, `WindowId`, `SessionId`, `EventId` |
+| `crates/hub/src/ids.rs` | All entity ID newtypes (see `conventions.md`): `OperatorId`, `SiteId`, `DeviceId`, `CheckId`, `WindowId`, `SessionId`, `EventId`, and (Phase 2) `WebInterfaceId`, `MetricSeriesId` |
 | `crates/hub/src/status.rs` | `pub enum Status { Up, Down, Degraded, Maintenance, Unknown }` with `fn worst(a, b)` (CHK-004) |
 | `crates/hub/src/clock.rs` | `pub trait Clock: Send + Sync { fn now(&self) -> DateTime<Utc>; }`, `SystemClock`, and `FixedClock` for tests. The only clock read in the hub (CQ-021). |
 | `crates/hub/src/config.rs` | `pub struct Config` from the environment (see `conventions.md`) |
 | `crates/hub/src/paging.rs` | `PageEnd`, exposed as K1 `PageInfo { hasNextPage, endCursor }` (R-014; the Rust name avoids the banned word "info"). Every connection uses it; cursors stay opaque and per domain. |
+| `crates/hub/src/targets.rs` (Phase 2) | `AddressPolicy`, the target rule and deny list (P2-004). It moves here from `checks` (programme-owned, as R-003), so `sessions`, `checks` and `metrics` share one deny-list type without new edges. WP-20 makes the move. |
 | `crates/hub/src/scalars.rs` | GraphQL scalars `IpAddr` and `Cidr` (network only, no host bits) for K1 (R-012). `DateTime` is `chrono::DateTime<Utc>` and `JSON` is `async_graphql::Json<T>`. Domains never define their own scalar with a K1 name. |
 
 ## Wiring (owned by WP-01: `main.rs`, `schema.rs`)
@@ -62,7 +63,7 @@ pub struct Operator { pub id: OperatorId, pub name: String }   // re-exported by
 pub struct ClientAddr(pub std::net::IpAddr);                     // re-exported by access (R-019)
 pub struct HeartbeatSummary { pub at: DateTime<Utc>, pub status: Status, pub response_time_ms: Option<u32>, pub message: Option<String> }   // used by checks (R-019); `message` as stored: cleaned, at most MESSAGE_MAX chars; Clone, not Copy (R-036)
 pub enum Severity { Info, Warning, Error }
-pub enum Source { Check, Session, Device, Access, Hub }        // Proxmox, Metrics later
+pub enum Source { Check, Session, Device, Access, Hub, Metrics }        // Metrics (Phase 2); Proxmox later. No new Signal (D-15)
 pub struct NewEvent { pub severity: Severity, pub source: Source,
                       pub device: Option<(DeviceId, String)>, pub message: String }
 pub struct NewAudit { pub operator: Operator, pub action: AuditAction,
@@ -94,6 +95,9 @@ Wiring only (called from `main.rs`, never from another domain): `create_partitio
 | `maintenance` | `events` (R-029; audit and events for window changes, LOG-005) |
 | `checks` | `devices`, `maintenance`, `events`, `credentials` (`Vault`, `Secret`, `Sealed` only; R-028) |
 | `sessions` | `access`, `devices`, `credentials`, `events` |
+| `checks` (Phase 2, adds) | `sessions` (`link`, `SshLink`, `FixedCommand` only; no cycle: `sessions` does not import `checks`) |
+| `metrics` (Phase 2, new) | `devices`, `sessions` (link only), `credentials` (`Vault` only), `events` |
+| `web_interfaces` (Phase 2, new) | `checks` (`http_urls` only), `events` |
 
 GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also import these domains' public faces, to resolve K1 fields that join domains. These edges never permit a `store` import and do not count toward cycles. They live in `quality/hub-modules.json` under `graphql`.
 
@@ -101,6 +105,8 @@ GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also 
 | --- | --- | --- |
 | `devices` | `access` (R-022), `checks`, `sessions` | the `Authenticated` guard; `Device.status`, `Device.checks`, `Device.uptime`, `DeviceFilter.status`, `DeviceSort.STATUS`/`UPTIME`, `createDevice(addDefaultCheck)`, `SshSettings.hostKey` |
 
+| `devices` (Phase 2, adds) | `metrics`, `web_interfaces` | `Device.readings`, `Device.metrics`, `Device.gpus`, `Device.webInterfaces`, `Device.webInterfaceSuggestions` |
+| `metrics`, `web_interfaces` (Phase 2) | `access` (R-022) | the `Authenticated` guard on their root fields |
 | `checks`, `maintenance`, `events` | `access` (R-022) | the `Authenticated` guard on their root fields (API-003) |
 
 `sessions` already depends on `access`. Through these edges a `graphql.rs` uses only `access::Authenticated`; `Operator` and `ClientAddr` come from `events` (R-019).
@@ -123,6 +129,19 @@ pub async fn in_maintenance(db: &Db, id: DeviceId) -> Result<bool, Error>;
 ```
 
 Delete (DEV-015) is one `DELETE` in `devices`: foreign keys cascade to `device_tags`, `ssh_settings`, `credentials.secrets`, `checks.checks` and `sessions.host_keys`. Heartbeats (partitioned, no foreign key) whose check no longer exists are removed by the checks retention job. Maintenance targets are text; a target that names a deleted device matches nothing. Logs and session history keep their copied names.
+
+(Phase 2, WP-21) `Device` gains the fields of K1 `Device`:
+
+```rust
+pub struct RdpSettings { pub enabled: bool, pub port: u16, pub username: String, pub domain: Option<String>,
+    pub security: RdpSecurity, pub ignore_certificate: bool, pub resize: ResizeMethod, pub audio_out: bool,
+    pub microphone: bool, pub shared_drive: bool }
+pub struct VncSettings { pub enabled: bool, pub port: u16, pub username: Option<String> }
+pub struct TransferPolicy { pub upload: bool, pub download: bool, pub copy: bool, pub paste: bool }
+pub struct MacAddress([u8; 6]);            // parsed at the API edge; Display renders aa:bb:cc:dd:ee:ff
+pub enum MetricsSource { None, Ssh }
+pub async fn wake_relay(db: &Db, site: SiteId) -> Result<Option<Device>, Error>;
+```
 
 ## credentials (WP-07)
 
@@ -160,6 +179,16 @@ The GraphQL mutations `setSshCredential` and `clearSshCredential` belong to `dev
 
 `load_ssh` has exactly one caller: `sessions` (and the connection test, which `sessions` owns). The GraphQL API never returns a secret, only `credentialStored: Boolean`.
 
+(Phase 2, WP-21):
+
+```rust
+pub enum PasswordKind { Rdp, Vnc }         // kinds rdp_password, vnc_password; context as R-010
+pub async fn store_password(conn: &mut PgConnection, vault: &Vault, device: DeviceId, kind: PasswordKind, s: Secret) -> Result<(), Error>;
+pub async fn load_password(db: &Db, vault: &Vault, device: DeviceId, kind: PasswordKind) -> Result<Option<Secret>, Error>;
+pub async fn with_password(db: &Db, devices: &[DeviceId], kind: PasswordKind) -> Result<HashSet<DeviceId>, Error>;
+pub async fn clear_password(conn: &mut PgConnection, device: DeviceId, kind: PasswordKind) -> Result<bool, Error>;
+```
+
 ## checks (WP-09)
 
 ```rust
@@ -188,6 +217,14 @@ pub async fn resolved_ips(db: &Db, devices: &[DeviceId]) -> Result<HashMap<Devic
 `checks::graphql::Subscription` owns K1 `deviceStatusChanged` and `heartbeatAdded`, built from the Bus (R-028). HTTP check secrets (basic password, bearer token, Authorization and Cookie header values) are sealed by checks with `credentials::Vault`, context `checks.checks.http:<check_id>` (R-028, SEC-003).
 
 Check evaluation is pure: `fn evaluate(prev: &CheckState, probe: ProbeResult, settings: &CheckSettings, now) -> (CheckState, Status)`. `CheckSettings` holds interval, retries, retry interval, degraded threshold and invert; `CheckConfig` is the probe configuration, the K1 union (R-030).
+
+(Phase 2, WP-29):
+
+```rust
+pub async fn http_urls(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, Vec<(CheckId, String)>>, Error>;   // WEB-002
+```
+
+`AddressPolicy` is now `crate::targets::AddressPolicy` (see the leaf modules).
 
 ## maintenance (WP-09)
 
@@ -221,6 +258,48 @@ pub async fn close_stale(db: &Db, now: DateTime<Utc>) -> Result<u64, Error>;
 /// Wiring only: call on the shutdown signal, before the runtime stops; upgraded tunnels are not ended by the server's drain.
 /// Signals tunnels, withdraws pending and spent tickets and refuses new ones, ends those rows HUB_SHUTDOWN with audit, waits up to 5 s (R-040).
 pub async fn shut_down(db: &Db, live: &Live, now: DateTime<Utc>) -> Result<(), Error>;
+```
+
+(Phase 2, WP-27): the one SSH path for hub-run work (P2-003).
+
+```rust
+/// A command made only from static text and hub-rendered values; operator text cannot enter it (CHK-012).
+pub struct FixedCommand { /* program: &'static str, args: Vec<Rendered> */ }
+impl FixedCommand { pub const fn new(program: &'static str) -> Self; pub fn mac(self, mac: devices::MacAddress) -> Self; }
+/// A signed-in SSH connection pinned to the accepted host key, to a target that passed the target rule and deny list (P2-004).
+pub struct SshLink { /* russh handle */ }
+pub async fn link(db: &Db, vault: &credentials::Vault, policy: &AddressPolicy, device: &Device, now: DateTime<Utc>) -> Result<SshLink, Error>;
+impl SshLink { pub async fn run(&mut self, c: &FixedCommand, limit: Duration) -> Result<CommandOutput, Error>; }
+pub async fn wake(db: &Db, vault: &credentials::Vault, policy: &AddressPolicy, bus: &events::Bus, device: DeviceId, now: DateTime<Utc>) -> Result<WakeSent, Error>;
+pub fn files_router(db: Db, vault: credentials::Vault, bus: events::Bus, clock: Clock, live: Live) -> axum::Router;   // GET /files, tunnel.md Section 9
+```
+
+(Phase 2, WP-22):
+
+```rust
+pub async fn server_certificates(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, ServerCertificate>, Error>;
+// tunnel_router now serves RDP and VNC and is mounted; Live also broadcasts SessionChange (D-15).
+```
+
+Wake-on-LAN lives in `sessions` (RA-031 is a remote access rule), so a session start can wake a device without a `sessions` and `power` cycle.
+
+## metrics (Phase 2, WP-28)
+
+```rust
+pub struct Collecting { pub vault: credentials::Vault, pub policy: AddressPolicy }
+#[derive(Clone)] pub struct Feed { /* broadcast of MetricsAdded */ }    // D-15
+pub fn spawn_collector(db: Db, feed: Feed, bus: events::Bus, clock: Clock, collecting: Collecting) -> JoinHandle<()>;   // MET-001
+pub async fn readings(db: &Db, devices: &[DeviceId], now: DateTime<Utc>) -> Result<HashMap<DeviceId, Readings>, Error>;
+pub async fn series(db: &Db, device: DeviceId, range: MetricRange, now: DateTime<Utc>) -> Result<Vec<MetricSeries>, Error>;
+pub async fn gpus(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, Vec<Gpu>>, Error>;
+// Wiring only: create_partitions_ahead, drop_expired_partitions (as events and checks).
+```
+
+## web_interfaces (Phase 2, WP-30)
+
+```rust
+pub async fn for_devices(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, Vec<WebInterface>>, Error>;
+pub async fn suggestions(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, Vec<Suggestion>>, Error>;
 ```
 
 ## guac-protocol crate (WP-08)

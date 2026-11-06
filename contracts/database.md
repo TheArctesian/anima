@@ -1,12 +1,12 @@
 # K2 — Database ownership and migrations
 
-Status: **frozen for Phase 1** (change only through a programme ruling, CON-001).
+Status: **frozen for Phase 2** (change only through a programme ruling, CON-001). Phase 2 additions are marked (Phase 2).
 
 ## Rules
 
 - One PostgreSQL **schema per hub domain**. A domain's `store.rs` is the only code that names its schema (CQ-032). The import-graph and grep gates check this: the string `"<schema>.` may appear only under `crates/hub/src/<domain>/`.
 - One migrations folder: `crates/hub/migrations/`, files `NNNN_<domain>_<what>.sql`. Each domain uses only its number range below, so parallel packages never collide (CON-004). sqlx applies any migration not yet applied, so a lower number added later still runs.
-- Migrations are additive within Phase 1. Do not edit a migration after its package is accepted; add a new one.
+- Migrations are additive within Phase 1 and Phase 2. Do not edit a migration after its package is accepted; add a new one.
 - Time-series tables are partitioned by day on their time column (DB-004). Retention drops whole partitions (DB-005). A partition helper (`create_daily_partitions`, `drop_partitions_before`) lives in the owning domain's store.
 - Cross-domain references: a foreign key may point **into** a domain whose range is lower (it already exists). Log tables keep a copy of names instead of a foreign key, so they survive deletion.
 
@@ -16,12 +16,19 @@ Status: **frozen for Phase 1** (change only through a programme ruling, CON-001)
 | --- | --- | --- | --- |
 | 0001–0099 | access (WP-05) | `access` | `operators`, `api_tokens`, `login_attempts`, `permitted_networks` |
 | 0100–0199 | devices (WP-06) | `devices` | `sites`, `devices`, `device_tags`, `ssh_settings` |
+| 0110–0199 (Phase 2) | devices (WP-21) | `devices` | `rdp_settings`, `vnc_settings` (device_id pk fk cascade, columns as K1, defaults in the schema, DB-011); `devices.mac_address macaddr null`, `devices.metrics_source text check in ('none','ssh') default 'none'`, `devices.transfer_upload`, `_download`, `_copy`, `_paste bool default true`; `sites.wake_relay_device_id uuid null fk -> devices.devices on delete set null` |
 | 0200–0299 | credentials (WP-07) | `credentials` | `secrets` |
+| 0210–0299 (Phase 2) | credentials (WP-21) | `credentials` | `secrets.kind` check adds `rdp_password`, `vnc_password` |
 | 0300–0399 | checks (WP-09) | `checks` | `checks`, `heartbeats` (partitioned), `uptime_minute`, `uptime_hour`, `uptime_day` |
+| 0310–0399 (Phase 2) | checks (WP-29) | `checks` | `checks.type` identifiers `docker`, `snmp`, `tailscale_ping`, `systemd`; SNMP secrets sealed in the config with context `checks.checks.snmp:<check_id>` |
 | 0400–0499 | maintenance (WP-09) | `maintenance` | `windows`, `window_targets` |
 | 0500–0599 | events (WP-05) | `events` | `event_log` (partitioned), `audit_log` (partitioned) |
 | 0600–0699 | sessions (WP-10) | `sessions` | `sessions`, `host_keys` |
-| 0700–0999 | reserved (metrics, web interfaces, notifications) | — | Phase 2+ |
+| 0610–0649 (Phase 2) | sessions (WP-22) | `sessions` | `sessions.protocol` check `('ssh','rdp','vnc')`; `end_reason` adds `server_certificate_mismatch`; `server_certificates` (device_id pk fk cascade, fingerprint_sha256, subject null, not_after null, first_seen_at, accepted_by) |
+| 0650–0699 (Phase 2) | sessions (WP-27) | `sessions` | None expected (transfers go to the audit log) |
+| 0700–0799 (Phase 2) | metrics (WP-28) | `metrics` | `series` (id uuid pk, device_id fk cascade, kind, label, gpu_index null, unique (device_id, kind, label)); `samples` (series_id, at, value double precision; partitioned by day on `at`; pk (series_id, at); no fk, as heartbeats); `minute`, `hour`, `day` (series_id, bucket, avg, min, max, count; pk (series_id, bucket)); `gpus` (device_id fk cascade, index, name, vendor, has_vram, found_at; pk (device_id, index)); `discovery` (device_id pk fk cascade, found_at, boot_at) for MET-006 |
+| 0800–0849 (Phase 2) | web_interfaces (WP-30) | `web_interfaces` | `interfaces` (id uuid pk, device_id fk cascade, label, url, open_in check in ('anima_tab','system_browser'), created_at); `pins` (interface_id pk fk cascade, fingerprint_sha256, accepted_by, accepted_at); `dismissed` (check_id pk fk -> checks.checks on delete cascade) |
+| 0850–0999 | reserved | — | Phase 3 (notifications, API keys) |
 
 ## Roles (R-016, LOG-006)
 
@@ -105,3 +112,6 @@ Note on `access.operators`: access (range 0001) cannot reference credentials (02
 | `events.event_log` | 90 days | — |
 | `events.audit_log` | 1 year | — |
 | `access.login_attempts` | 90 days | — |
+| `metrics.samples` (Phase 2) | 30 days | `minute` 7 d, `hour` 90 d, `day` 2 y (DB-009) |
+
+(Phase 2) The metrics retention job removes samples whose series no longer exists (DEV-015, the R-004 pattern). Partition functions follow the "Partitions" rule above (`SECURITY DEFINER`, owner role).
