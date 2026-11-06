@@ -37,7 +37,7 @@ pub(in crate::sessions) enum Cause {
     AuthFailed,
     /// The device's host key is not the accepted one (SEC-007).
     HostKeyMismatch,
-    /// The device's RDP server certificate is not the accepted one (D-5). Only the Guacamole
+    /// The device's RDP server certificate is not the accepted one (SEC-007). Only the Guacamole
     /// tunnel ends with it.
     ServerCertificateMismatch,
     /// The client sent nothing for [`CLIENT_IDLE`], or stopped reading what the hub sends; on

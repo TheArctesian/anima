@@ -48,7 +48,7 @@ fn sec_007_host_key_mismatch_ends_4001_error() {
 }
 
 #[test]
-fn d_5_server_certificate_mismatch_ends_4003_error_and_endsession_maps_back() {
+fn sec_007_server_certificate_mismatch_ends_4003_error_and_endsession_maps_back() {
     let expected = row(4003, EndReason::ServerCertificateMismatch, Severity::Error);
     assert_eq!(Cause::ServerCertificateMismatch.ending(), expected);
     // A reason signalled from outside the tunnel names the same cause, for every reason.

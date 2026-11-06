@@ -1,6 +1,6 @@
 //! The store's writes: a session row starts live and ends once; the runtime role can do all
 //! of it through migration 0001's default privileges alone (RA-008, R-016, K2 "Roles"). An
-//! accepted RDP server certificate replaces the previous one (D-5).
+//! accepted RDP server certificate replaces the previous one (SEC-007).
 
 use std::net::IpAddr;
 
@@ -240,7 +240,7 @@ async fn accept(
     migrations = "./migrations",
     fixtures(path = "../../../tests/fixtures", scripts("devices"))
 )]
-async fn d_5_accepting_a_certificate_replaces_the_device_s_previous_one(pool: PgPool) {
+async fn sec_007_accepting_a_certificate_replaces_the_device_s_previous_one(pool: PgPool) {
     add_operator(&pool).await;
     // The runtime role, as the hub runs; detached so its role never returns to the pool (R-019).
     let mut conn = pool.acquire().await.unwrap().detach();

@@ -99,7 +99,7 @@ fn host_problem(host: &str) -> Option<FieldError> {
 }
 
 /// Why `protocol` is off for `device`, if it is (K4 Section 1). RDP and VNC are off for every
-/// device until devices have their settings (WP-22 D-3), so no ticket reaches `/tunnel`.
+/// device until devices have their settings, so no ticket reaches `/tunnel`.
 const fn protocol_off(device: &Device, protocol: Protocol) -> Option<Conflict> {
     match protocol {
         Protocol::Ssh if device.ssh.enabled => None,
@@ -140,7 +140,7 @@ fn random_token() -> Result<TicketToken, Error> {
 
 /// Starts a session (K3, K4 §1): refuses a missing device (`NotFound`), a display outside
 /// K4 §4's bounds or a host that is a loopback, link-local, multicast or unspecified IP
-/// literal (`Validation`), and the protocol turned off (RDP and VNC always, WP-22 D-3) or no
+/// literal (`Validation`), and the protocol turned off (RDP and VNC always, until devices have their settings) or no
 /// accepted host key (`Conflict`). A time
 /// zone that is not a zone name is dropped, so the tunnel uses UTC. Then, in one
 /// transaction, it writes the live session row and the audit entry `session.start`, and

@@ -1,5 +1,5 @@
 //! Domain types of remote sessions (RA-008), accepted host keys (SEC-006) and accepted RDP
-//! server certificates (SEC-007 for RDP, WP-22 D-5).
+//! server certificates (SEC-007 for RDP).
 
 #![expect(
     clippy::unused_async_trait_impl,
@@ -80,7 +80,7 @@ pub enum EndReason {
     ProtocolError,
     Timeout,
     HubShutdown,
-    /// The RDP certificate differs from the accepted one (D-5).
+    /// The RDP certificate differs from the accepted one (SEC-007).
     ServerCertificateMismatch,
 }
 
@@ -175,7 +175,7 @@ pub struct HostKey {
     pub first_seen_at: DateTime<Utc>,
 }
 
-/// The RDP server certificate the operator accepted for a device (D-5). Every field is what
+/// The RDP server certificate the operator accepted for a device (SEC-007). Every field is what
 /// the device's leaf certificate said when the hub read it; only the fingerprint is pinned.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ServerCertificate {

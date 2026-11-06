@@ -1,5 +1,5 @@
 //! `startSession` for RDP and VNC before devices have their settings: each is off for every
-//! device, so the hub refuses it and writes nothing (WP-22 D-3, K4 §1).
+//! device, so the hub refuses it and writes nothing (K4 §1).
 
 use anima_hub::sessions::Live;
 use sqlx::PgPool;

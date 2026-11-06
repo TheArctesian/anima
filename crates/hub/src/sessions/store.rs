@@ -23,7 +23,7 @@ pub(super) use server_certificates::server_certificates;
     not(test),
     expect(
         unused_imports,
-        reason = "acceptServerCertificate (WP-22 T4) is the first caller outside the tests"
+        reason = "acceptServerCertificate, not yet served, is the first caller outside the tests"
     )
 )]
 pub(super) use server_certificates::{AcceptedCertificate, put_server_certificate};

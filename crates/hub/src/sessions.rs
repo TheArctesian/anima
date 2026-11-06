@@ -80,10 +80,10 @@ pub enum Conflict {
          again and compare the fingerprint."
     )]
     KeyDiffers,
-    /// No device has RDP settings until they exist (WP-22 D-3), so RDP is off for every one.
+    /// No device has RDP settings yet, so RDP is off for every one.
     #[error("RDP is turned off for this device.")]
     RdpDisabled,
-    /// No device has VNC settings until they exist (WP-22 D-3), so VNC is off for every one.
+    /// No device has VNC settings yet, so VNC is off for every one.
     #[error("VNC is turned off for this device.")]
     VncDisabled,
 }
@@ -151,7 +151,7 @@ pub async fn host_keys(
 }
 
 /// The accepted RDP server certificate of each listed device that has one, in one query
-/// (API-005, D-5). An empty list returns an empty map without a query.
+/// (API-005, SEC-007). An empty list returns an empty map without a query.
 ///
 /// # Errors
 /// `Database` when the query fails.

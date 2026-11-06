@@ -1,5 +1,5 @@
 -- RDP and VNC sessions and the accepted RDP server certificate (K2 range 0610-0649; RA-020,
--- RA-030, SEC-007 for RDP, WP-22 D-5).
+-- RA-030, SEC-007 for RDP).
 
 -- A session's protocol may now be RDP or VNC as well as SSH (K1 `Protocol`).
 alter table sessions.sessions
@@ -14,7 +14,7 @@ alter table sessions.sessions
         'protocol_error', 'timeout', 'hub_shutdown', 'server_certificate_mismatch'
     ));
 
--- The one accepted RDP server certificate per device (D-5). The hub gives guacd its
+-- The one accepted RDP server certificate per device. The hub gives guacd its
 -- fingerprint as `cert-fingerprints`, so a changed certificate stops the session (SEC-007).
 -- `fingerprint_sha256` is the SHA-256 of the leaf certificate's DER as FreeRDP writes it:
 -- 32 lower-case hex pairs joined by colons. `subject` and `not_after` are what the device's

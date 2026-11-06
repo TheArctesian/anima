@@ -1,6 +1,6 @@
 //! Migration 0610's `sessions.server_certificates`: its columns and checks, the device delete
 //! that removes a certificate, and a runtime role that may upsert but never delete one (K2,
-//! D-5, R-016).
+//! SEC-007, R-016).
 
 use sqlx::{PgConnection, PgPool};
 
@@ -69,7 +69,7 @@ async fn k2_server_certificates_has_the_contract_columns(pool: PgPool) {
     migrations = "./migrations",
     fixtures(path = "../../../fixtures", scripts("devices"))
 )]
-async fn d_5_a_certificate_row_holds_a_sha_256_fingerprint_and_a_plain_subject(pool: PgPool) {
+async fn sec_007_a_certificate_row_holds_a_sha_256_fingerprint_and_a_plain_subject(pool: PgPool) {
     add_operator(&pool).await;
     let mut conn = pool.acquire().await.unwrap();
     put(
@@ -119,7 +119,7 @@ async fn d_5_a_certificate_row_holds_a_sha_256_fingerprint_and_a_plain_subject(p
     migrations = "./migrations",
     fixtures(path = "../../../fixtures", scripts("devices"))
 )]
-async fn d_5_a_certificate_goes_with_its_device_even_for_the_runtime_role(pool: PgPool) {
+async fn sec_007_a_certificate_goes_with_its_device_even_for_the_runtime_role(pool: PgPool) {
     add_operator(&pool).await;
     let mut owner = pool.acquire().await.unwrap();
     put(&mut owner, PVE_01, &fingerprint("01"), None)
@@ -150,7 +150,7 @@ async fn d_5_a_certificate_goes_with_its_device_even_for_the_runtime_role(pool: 
     migrations = "./migrations",
     fixtures(path = "../../../fixtures", scripts("devices"))
 )]
-async fn d_5_runtime_role_upserts_certificates_but_cannot_delete_or_move_them(pool: PgPool) {
+async fn sec_007_runtime_role_upserts_certificates_but_cannot_delete_or_move_them(pool: PgPool) {
     add_operator(&pool).await;
     let mut conn = as_runtime(&pool).await;
     put(&mut conn, PVE_01, &fingerprint("01"), Some("CN=pve-01"))

@@ -1,5 +1,5 @@
 //! The SQL on `sessions.server_certificates`: the RDP server certificate accepted for each
-//! device (D-5).
+//! device (SEC-007).
 
 use std::collections::HashMap;
 
@@ -60,7 +60,7 @@ pub(in crate::sessions) async fn server_certificates<'e>(
     not(test),
     expect(
         dead_code,
-        reason = "acceptServerCertificate (WP-22 T4) is the first caller outside the tests"
+        reason = "acceptServerCertificate, not yet served, is the first caller outside the tests"
     )
 )]
 pub(in crate::sessions) struct AcceptedCertificate<'a> {
@@ -75,7 +75,7 @@ pub(in crate::sessions) struct AcceptedCertificate<'a> {
     not(test),
     expect(
         dead_code,
-        reason = "acceptServerCertificate (WP-22 T4) is the first caller outside the tests"
+        reason = "acceptServerCertificate, not yet served, is the first caller outside the tests"
     )
 )]
 pub(in crate::sessions) async fn put_server_certificate(

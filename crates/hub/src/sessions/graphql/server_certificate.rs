@@ -1,5 +1,5 @@
-//! `ServerCertificate` as the GraphQL type K1 describes (D-5). No field returns it until
-//! `acceptServerCertificate` and the connection test serve it (WP-22 T4).
+//! `ServerCertificate` as the GraphQL type K1 describes (SEC-007). No field returns it until
+//! `acceptServerCertificate` and the connection test serve it.
 
 use async_graphql::Object;
 use chrono::{DateTime, Utc};
