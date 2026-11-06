@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { untrack, type Snippet } from 'svelte';
-  import { browserClock, skeletonGate, type LoadingClock } from '$lib/devices/screen/loading/loading';
+  import type { Snippet } from 'svelte';
+  import { skeletonDelay } from '$lib/motion/loading/delay.svelte';
+  import type { LoadingClock } from '$lib/motion/loading/loading';
   import { crossFade } from '$lib/motion/roles/transitions';
   import { tabIds, type TabName } from './tabs';
 
@@ -12,32 +13,18 @@
     children: Snippet;
   }
 
-  const { name, loading, clock = browserClock, children }: Props = $props();
+  const { name, loading, clock, children }: Props = $props();
   const ids = $derived(tabIds(name));
-  let skeleton = $state(false);
-  const gate = skeletonGate(untrack(() => clock), (visible) => {
-    skeleton = visible;
-  });
-
-  /** Loading (5.7.3): a skeleton only after `threshold-loading`, kept `threshold-loading-min`, then the data cross-fades in. */
-  $effect(() => {
-    const busy = loading;
-    untrack(() => {
-      if (busy) gate.begin();
-      else gate.end();
-    });
-  });
-
-  $effect(() => () => {
-    gate.stop();
-  });
+  // The clock is fixed for the life of the panel.
+  // svelte-ignore state_referenced_locally
+  const skeleton = skeletonDelay(() => loading, clock);
 
   /** Placeholder rows of the list rows' height; static, so reduced motion needs no change. */
   const ROWS = Array.from({ length: 4 }, (_, index) => index);
 </script>
 
 <div class="panel" role="tabpanel" id={ids.panel} aria-labelledby={ids.tab} tabindex="0" aria-busy={loading}>
-  {#if skeleton}
+  {#if skeleton.visible}
     <ul class="skeleton" aria-hidden="true" transition:crossFade>
       {#each ROWS as row (row)}<li></li>{/each}
     </ul>

@@ -5,9 +5,11 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { threshold } from '$lib/motion/tokens';
 import { fakeHub } from '../hub.fixture';
 import { DEFAULT_QUERY } from '../query';
-import { manualClock } from './loading/clock.fixture';
+import { manualClock } from '$lib/motion/loading/clock.fixture';
 import tableSource from '../card/DeviceTable.svelte?raw';
+import DeviceTable from '../card/DeviceTable.svelte';
 import DeviceScreen from './DeviceScreen.svelte';
+import Skeleton from './Skeleton.svelte';
 import skeletonSource from './Skeleton.svelte?raw';
 import { device, devicesAnswer } from './screen.fixture.svelte';
 import { endTransitionsAtOnce } from '../transitions.fixture';
@@ -122,12 +124,21 @@ it('Loading: in table view the skeleton is a table with a header row and as many
   expect(document.querySelector('ul.places')).toBeNull();
 });
 
+// jsdom does not apply component styles (the document head stays empty), so the shared size can only be read from the sources.
 it('Loading: the table skeleton and the table take their row size from the same value', () => {
   expect(geometry).toContain('--device-row-block-size');
   for (const source of [skeletonSource, tableSource]) expect(source).toContain('block-size: var(--device-row-block-size)');
 });
 
-it('Loading: the table skeleton has the data table\'s caption, since a caption moves the rows half a border', () => {
-  expect(tableSource).toContain('<caption');
-  expect(skeletonSource).toContain('<caption');
+it('Loading: the table skeleton renders the data table\'s caption, since a caption moves the rows half a border', () => {
+  const rendered = (component: typeof Skeleton | typeof DeviceTable, props: Record<string, unknown>) => {
+    const target = document.createElement('div');
+    document.body.append(target);
+    const view = mount(component as never, { target, props });
+    const caption = target.querySelector('table > caption') !== null;
+    void unmount(view);
+    return caption;
+  };
+  expect(rendered(DeviceTable, { devices: [], beats: new Map(), onConnect: () => undefined })).toBe(true);
+  expect(rendered(Skeleton, { view: 'table' })).toBe(true);
 });

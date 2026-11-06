@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { threshold } from '$lib/motion/tokens';
 import { DEFAULT_QUERY, type ListQuery } from '../query';
 import { endTransitionsAtOnce } from '../transitions.fixture';
-import { manualClock } from './loading/clock.fixture';
+import { manualClock } from '$lib/motion/loading/clock.fixture';
 import DeviceScreen from './DeviceScreen.svelte';
 import { heldHub } from './held.fixture';
 import { device, url } from './screen.fixture.svelte';

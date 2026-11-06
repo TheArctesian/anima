@@ -67,11 +67,11 @@ describe('DEV-002: latestBeats on a large device list', () => {
     expect(latestBeats(checks)).toEqual(byDefinition(checks));
   });
 
-  it('merges 200 devices of 10 checks of 50 beats in well under a second', () => {
-    const checks = Array.from({ length: 10 }, (_, index) => check(`c${String(index)}`, Array.from({ length: 50 }, (_, minute) => minute)));
+  it('merges 20000 beats without the quadratic cost (the pairwise version takes many seconds)', () => {
+    const checks = Array.from({ length: 40 }, (_, index) => check(`c${String(index)}`, Array.from({ length: 500 }, (_, minute) => minute)));
     const started = performance.now();
-    for (let device = 0; device < 200; device += 1) latestBeats(checks);
-    expect(performance.now() - started).toBeLessThan(500);
+    expect(latestBeats(checks)).toHaveLength(BAR_LENGTH);
+    expect(performance.now() - started).toBeLessThan(2000);
   });
 });
 

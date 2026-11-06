@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { skeletonDelay } from '$lib/devices/screen/loading/delay.svelte';
-  import type { LoadingClock } from '$lib/devices/screen/loading/loading';
+  import { skeletonDelay } from '$lib/motion/loading/delay.svelte';
+  import type { LoadingClock } from '$lib/motion/loading/loading';
   import { press } from '$lib/motion/roles/press';
   import { crossFade } from '$lib/motion/roles/transitions';
   import type { LogFeed } from './feed.svelte';

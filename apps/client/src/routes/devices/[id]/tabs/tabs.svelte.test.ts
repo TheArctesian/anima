@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { createRawSnippet, flushSync, mount, tick, unmount } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { manualClock } from '$lib/devices/screen/loading/clock.fixture';
+import { manualClock } from '$lib/motion/loading/clock.fixture';
 import { endTransitionsAtOnce } from '$lib/devices/transitions.fixture';
 import { runs } from '$lib/motion/engine.fixture';
 import { spring, threshold } from '$lib/motion/tokens';
