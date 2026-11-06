@@ -16,7 +16,10 @@ use super::{
 };
 use crate::{
     clock::Clock,
-    devices::model::{Device, DeviceChange, NewDevice, Site, SshSettings},
+    devices::{
+        RdpSettings, TransferPolicy, VncSettings,
+        model::{Device, DeviceChange, NewDevice, Site, SshSettings},
+    },
     events::{
         self, AuditAction, AuditTarget, Bus, ClientAddr, NewAudit, NewEvent, Operator, Severity,
         Source,
@@ -93,6 +96,34 @@ fn ssh_json(ssh: &SshSettings) -> Value {
     })
 }
 
+fn rdp_json(rdp: &RdpSettings) -> Value {
+    json!({
+        "enabled": rdp.enabled,
+        "port": rdp.port,
+        "username": rdp.username,
+        "domain": rdp.domain,
+        "security": rdp.security.as_str(),
+        "ignoreCertificate": rdp.ignore_certificate,
+        "resizeMethod": rdp.resize.as_str(),
+        "audioOut": rdp.audio_out,
+        "microphone": rdp.microphone,
+        "sharedDrive": rdp.shared_drive,
+    })
+}
+
+fn vnc_json(vnc: &VncSettings) -> Value {
+    json!({ "enabled": vnc.enabled, "port": vnc.port, "username": vnc.username })
+}
+
+fn transfer_json(transfer: TransferPolicy) -> Value {
+    json!({
+        "upload": transfer.upload,
+        "download": transfer.download,
+        "copy": transfer.copy,
+        "paste": transfer.paste,
+    })
+}
+
 pub(super) fn site_added(site: &Site) -> Entry {
     Entry {
         device: None,
@@ -112,6 +143,11 @@ pub(super) fn device_added(device: &Device, new: &NewDevice, default_check: bool
         "os": new.os.as_str(),
         "tags": new.tags,
         "ssh": ssh_json(&new.ssh),
+        "rdp": rdp_json(&new.remote.rdp),
+        "vnc": vnc_json(&new.remote.vnc),
+        "macAddress": new.remote.mac_address.map(|mac| mac.to_string()),
+        "metricsSource": new.remote.metrics_source.as_str(),
+        "transfer": transfer_json(new.remote.transfer),
     });
     if default_check {
         change["defaultCheck"] = json!(true);
@@ -141,6 +177,24 @@ pub(super) fn device_updated(device: &Device, change: &DeviceChange) -> Entry {
     put("tags", change.tags.as_ref().map(|v| json!(v)));
     put("maintenance", change.maintenance.map(|v| json!(v)));
     put("ssh", change.ssh.as_ref().map(ssh_json));
+    put("rdp", change.remote.rdp.as_ref().map(rdp_json));
+    put("vnc", change.remote.vnc.as_ref().map(vnc_json));
+    // A cleared address is recorded as null.
+    put(
+        "macAddress",
+        change
+            .remote
+            .mac_address
+            .map(|mac| json!(mac.map(|mac| mac.to_string()))),
+    );
+    put(
+        "metricsSource",
+        change
+            .remote
+            .metrics_source
+            .map(|source| json!(source.as_str())),
+    );
+    put("transfer", change.remote.transfer.map(transfer_json));
     Entry {
         device: Some((device.id, device.name.clone())),
         message: format!("Device {} updated.", device.name),

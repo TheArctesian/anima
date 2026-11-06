@@ -13,7 +13,10 @@ use guac_protocol::{Decoder, Instruction};
 use uuid::Uuid;
 
 use super::relay::Relay;
-use crate::devices::{Device, OperatingSystem, SshAuth, SshSettings};
+use crate::devices::{
+    Device, MetricsSource, OperatingSystem, RdpSettings, SshAuth, SshSettings, TransferPolicy,
+    VncSettings,
+};
 use crate::ids::{DeviceId, SiteId};
 use crate::sessions::{HostKey, PublicKey};
 
@@ -35,6 +38,11 @@ fn device(host: &str, port: u16) -> Device {
             username: "ops".to_owned(),
             auth: SshAuth::Password,
         },
+        rdp: RdpSettings::default(),
+        vnc: VncSettings::default(),
+        mac_address: None,
+        metrics_source: MetricsSource::default(),
+        transfer: TransferPolicy::default(),
         created_at: DateTime::UNIX_EPOCH,
         updated_at: DateTime::UNIX_EPOCH,
     }

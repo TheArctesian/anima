@@ -12,6 +12,7 @@ mod device;
 pub(super) mod error;
 mod filter;
 mod input;
+mod remote_input;
 mod site;
 mod ssh;
 mod standing;
@@ -26,6 +27,7 @@ use uuid::Uuid;
 pub use self::{
     credential_input::SshCredential,
     input::SshSettingsInput,
+    remote_input::{RdpSettingsInput, TransferPolicyInput, VncSettingsInput},
     ssh::CredentialStored,
     standing::{ChecksOf, ResolvedIpOf, StatusOf, UptimeOf},
 };

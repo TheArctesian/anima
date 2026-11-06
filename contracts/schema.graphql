@@ -93,7 +93,7 @@ type HostKey {
   firstSeenAt: DateTime!
 }
 
-enum RdpSecurity @pending {
+enum RdpSecurity {
   ANY
   NLA
   NLA_EXT
@@ -102,13 +102,13 @@ enum RdpSecurity @pending {
   RDP
 }
 
-enum RdpResizeMethod @pending {
+enum RdpResizeMethod {
   DISPLAY_UPDATE
   RECONNECT
 }
 
 # PROXMOX joins in Phase 4
-enum MetricsSource @pending {
+enum MetricsSource {
   NONE
   SSH
 }
@@ -244,7 +244,7 @@ input SshSettingsInput {
   auth: SshAuth!
 }
 
-input RdpSettingsInput @pending {
+input RdpSettingsInput {
   enabled: Boolean!
   port: Int = 3389
   username: String!
@@ -257,13 +257,13 @@ input RdpSettingsInput @pending {
   sharedDrive: Boolean = false
 }
 
-input VncSettingsInput @pending {
+input VncSettingsInput {
   enabled: Boolean!
   port: Int = 5900
   username: String
 }
 
-input TransferPolicyInput @pending {
+input TransferPolicyInput {
   upload: Boolean = true
   download: Boolean = true
   copy: Boolean = true
@@ -282,11 +282,11 @@ input CreateDeviceInput {
   os: OperatingSystem = OTHER
   tags: [String!] = []
   ssh: SshSettingsInput
-  rdp: RdpSettingsInput @pending
-  vnc: VncSettingsInput @pending
-  macAddress: String @pending
-  metricsSource: MetricsSource = NONE @pending
-  transfer: TransferPolicyInput @pending
+  rdp: RdpSettingsInput
+  vnc: VncSettingsInput
+  macAddress: String
+  metricsSource: MetricsSource = NONE
+  transfer: TransferPolicyInput
   "When true (the default), the hub adds one ICMP check (spec 6.2)."
   addDefaultCheck: Boolean = true
 }
@@ -300,12 +300,12 @@ input UpdateDeviceInput {
   tags: [String!]
   maintenance: Boolean
   ssh: SshSettingsInput
-  rdp: RdpSettingsInput @pending
-  vnc: VncSettingsInput @pending
+  rdp: RdpSettingsInput
+  vnc: VncSettingsInput
   "An empty string clears the address."
-  macAddress: String @pending
-  metricsSource: MetricsSource @pending
-  transfer: TransferPolicyInput @pending
+  macAddress: String
+  metricsSource: MetricsSource
+  transfer: TransferPolicyInput
 }
 
 input SshCredentialInput @oneOf {
