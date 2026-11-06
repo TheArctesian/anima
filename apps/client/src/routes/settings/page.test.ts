@@ -129,11 +129,15 @@ it('MOT-007: the Sign out button has the same place before and after the name ar
   const target = await open({ Me: pending });
   const before = [...target.querySelectorAll('section[aria-label="Account"] > *')].map((element) => element.tagName);
   expect(before).toEqual(['P', 'BUTTON']);
-  expect(target.querySelector('section[aria-label="Account"] > p')?.textContent.trim()).toBe('');
+  // The two lines are there before the name is: the label is laid out but hidden, and the name's line is empty.
+  const who = () => target.querySelector('section[aria-label="Account"] > p.who');
+  expect(who()?.classList.contains('pending')).toBe(true);
+  expect(who()?.querySelector('strong')?.textContent).toBe('');
   release(ok({ me: { username: 'ann' } }));
   await settled();
   const after = [...target.querySelectorAll('section[aria-label="Account"] > *')].map((element) => element.tagName);
   expect(after).toEqual(before);
+  expect(who()?.classList.contains('pending')).toBe(false);
 });
 
 it('NAV-005: the Sign out button is focusable by Tab in WebKit (tabindex 0)', async () => {

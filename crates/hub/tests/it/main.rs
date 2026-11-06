@@ -1,4 +1,6 @@
+mod acceptance;
 mod checks;
+mod contract;
 mod credentials;
 mod devices;
 mod edge;

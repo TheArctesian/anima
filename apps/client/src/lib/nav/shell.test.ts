@@ -114,6 +114,36 @@ it('NAV-005: the items are real links to their pages, with the server and cog ic
   expect(links.map((link) => link.querySelector('.icon')?.textContent)).toEqual(['\u{F048B}', '\u{F0493}']);
 });
 
+it('UI-015: each item keeps its words as its name; the tooltip is set only when the bar shows icons', () => {
+  const wide = show();
+  expect([...wide.querySelectorAll('a')].map((link) => [link.querySelector('.words')?.textContent, link.getAttribute('title')])).toEqual([
+    ['Devices', null],
+    ['Settings', null],
+  ]);
+});
+
+it('UI-015: below bp-compact each item has its words as a tooltip, and the status too', () => {
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    value: (query: string) => ({ matches: query.includes('max-width'), addEventListener: () => undefined, removeEventListener: () => undefined }),
+  });
+  onTestFinished(() => {
+    Reflect.deleteProperty(window, 'matchMedia');
+    document.documentElement.removeAttribute('data-nav');
+  });
+  const nav = show();
+  expect([...nav.querySelectorAll('a')].map((link) => [link.querySelector('.words')?.textContent, link.getAttribute('title')])).toEqual([
+    ['Devices', 'Devices'],
+    ['Settings', 'Settings'],
+  ]);
+  expect(nav.querySelector('.status')?.getAttribute('title')).toBe('Connected');
+});
+
+it('NET-004: when unreachable the banner has an icon besides its text, so the state is not colour alone', () => {
+  const nav = show('/devices', { connection: 'unreachable', lastContactAt: null });
+  expect(nav.querySelector('.banner .alert .icon')).not.toBeNull();
+});
+
 it('NAV-005: every link is focusable by Tab (tabindex 0 for WebKit)', () => {
   const links = [...show().querySelectorAll('a')];
   expect(links.map((link) => link.getAttribute('tabindex'))).toEqual(['0', '0']);
@@ -269,4 +299,27 @@ it('UI-020: the layout applies the stored fonts before the page shows, and Fira 
   show();
   expect(document.documentElement.dataset['fontUi']).toBe('opendyslexic');
   expect(document.documentElement.dataset['fontMono']).toBe('fira-code');
+});
+
+it('NET-004: the bar sets data-hub-banner on the root while the strip shows, for the bar and the page to make room', async () => {
+  show('/devices', { connection: 'unreachable', lastContactAt: null });
+  await Promise.resolve();
+  flushSync();
+  expect(document.documentElement.hasAttribute('data-hub-banner')).toBe(true);
+  expect(document.querySelector('main')?.hasAttribute('data-shifts-with-banner')).toBe(true);
+  await unmount(app as ReturnType<typeof mount>);
+  app = undefined;
+  expect(document.documentElement.hasAttribute('data-hub-banner')).toBe(false);
+});
+
+it('NET-004: connected, the root has no data-hub-banner', () => {
+  show();
+  flushSync();
+  expect(document.documentElement.hasAttribute('data-hub-banner')).toBe(false);
+});
+
+it('NET-004: the bar and the page are marked for the banner shift, and the strip holder is not shifted', () => {
+  const nav = show('/devices', { connection: 'unreachable', lastContactAt: null });
+  expect(nav.hasAttribute('data-shifts-with-banner')).toBe(true);
+  expect(nav.querySelector('.notice')?.hasAttribute('data-holds-banner')).toBe(true);
 });

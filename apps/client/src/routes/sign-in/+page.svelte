@@ -117,6 +117,7 @@
 
   form {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--space-2);
     max-inline-size: 24rem;
     margin-block-end: var(--space-8);
@@ -136,7 +137,7 @@
   }
 
   button {
-    transition: background-color var(--duration-press) var(--ease-enter);
+    transition: background-color var(--duration-fast) var(--ease-enter);
   }
 
   button:hover {

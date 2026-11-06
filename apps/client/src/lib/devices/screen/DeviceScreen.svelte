@@ -12,7 +12,8 @@
   import { Tags } from '../toolbar/tags.svelte';
   import { isFiltered, withoutFilters } from '../toolbar/toolbar';
   import { Listing } from './listing.svelte';
-  import { browserClock, type LoadingClock } from './loading/loading';
+  import { browserClock, type LoadingClock } from '$lib/motion/loading/loading';
+  import LiveNotice from '$lib/hub/notice/LiveNotice.svelte';
   import Skeleton from './Skeleton.svelte';
 
   interface Props {
@@ -47,9 +48,7 @@
 
 <Toolbar {query} tags={tags.names} tagsNote={tags.note} {onQueryChange} {onAddDevice} />
 
-{#if listing.liveError !== null}
-  <p class="notice" role="status">Live updates stopped: {listing.liveError.message}</p>
-{/if}
+<LiveNotice message={listing.liveError?.message ?? null} />
 
 {#if listing.error !== null}
   <div class="notice" role="alert">
@@ -180,6 +179,7 @@
   }
 
   button:active:not(:disabled) {
+    transition-duration: var(--duration-press);
     background: var(--accent-tint);
   }
 

@@ -159,6 +159,7 @@
   }
 
   button:active {
+    transition-duration: var(--duration-press);
     background: var(--border);
   }
 </style>

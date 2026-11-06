@@ -1,7 +1,7 @@
 <script lang="ts">
   import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
-  import { crossFade, modal } from '$lib/motion/roles/transitions';
+  import { fade, modal } from '$lib/motion/roles/transitions';
   import type { SessionsApi } from '../../api';
   import { trapFocus } from './focus';
   import { WARNED, transition, type HostKeyEvent, type HostKeyStep } from './hostkey';
@@ -51,7 +51,7 @@
 </script>
 
 <div class="layer">
-  <div class="scrim" transition:crossFade><div class="shade"></div></div>
+  <div class="scrim" transition:fade><div class="shade"></div></div>
   <div
     class="surface"
     role="alertdialog"
@@ -218,7 +218,7 @@
     background: var(--surface-raised);
     color: var(--text);
     font: inherit;
-    transition: background-color var(--duration-press) var(--ease-enter);
+    transition: background-color var(--duration-fast) var(--ease-enter);
   }
 
   button:disabled {

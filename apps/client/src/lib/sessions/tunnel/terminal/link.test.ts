@@ -1,9 +1,13 @@
+import { inspect } from 'node:util';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TunnelState } from '../state';
 import { FAKE_TERMINAL_SOCKET, FakeTerminalSocket } from './fake/socket.fixture';
 import { PING_AFTER_MS, RESIZE_SETTLE_MS, SILENCE_LIMIT_MS, openTerminalLink, type LinkOptions } from './link';
 
 const TOKEN = 'TOKEN-MARKER-9d1c';
+const CONSOLE_METHODS = Object.keys(console).filter(
+  (key): key is keyof Console => typeof (console as unknown as Record<string, unknown>)[key] === 'function',
+);
 const TICKET = { tunnelPath: '/terminal', token: TOKEN };
 
 function open(extra: Partial<LinkOptions> = {}) {
@@ -29,6 +33,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 describe('opening (K4 §8.1)', () => {
@@ -61,6 +66,24 @@ describe('opening (K4 §8.1)', () => {
     });
     expect(refused).toMatchObject({ ok: false, error: { problem: 'not-opened' } });
     expect(JSON.stringify(refused)).not.toContain(TOKEN);
+  });
+
+  it('LOG-007: a refused socket logs nothing, and nothing it would print holds the token', () => {
+    const spies = CONSOLE_METHODS.map((method) => vi.spyOn(console, method).mockImplementation(() => undefined));
+    const Throwing = function (url: string): never {
+      throw new DOMException(`Refused to connect to '${url}'`, 'SecurityError');
+    };
+    const refused = openTerminalLink({
+      origin: 'https://hub.anima.ing',
+      ticket: TICKET,
+      WebSocket: Throwing as unknown as typeof WebSocket,
+      size: () => ({ cols: 1, rows: 1 }),
+      onbytes: () => undefined,
+    });
+    const printed = spies.flatMap((spy) => spy.mock.calls.map((args) => args.map((arg) => inspect(arg, { depth: Infinity, showHidden: true })).join(' ')));
+    expect(refused.ok).toBe(false);
+    expect(printed).toEqual([]);
+    expect(inspect(refused, { depth: Infinity, showHidden: true })).not.toContain(TOKEN);
   });
 
   it('SEC-002, LOG-007: neither the state nor anything the link reported holds the token or the address', () => {

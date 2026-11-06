@@ -18,28 +18,26 @@
       ? 'No response times yet'
       : `Response time of the last ${String(Math.min(beats.length, CHART_POINTS))} heartbeats, latest ${msText(beats[0]?.responseTimeMs)}, top of the chart ${msText(lines.maxMs)}`,
   );
-  let svg = $state<SVGSVGElement>();
   let line = $state<SVGGElement>();
   let before: readonly ChartBeat[] | undefined;
 
   /**
    * Chart update (5.7.3): the new point is drawn at the right edge, so the line starts one step to the right and
    * moves left on `spring-default`, from where it is on screen (MOT-002). Instant under reduced motion.
+   * The group's `translate` is in the chart's own units (the viewBox scales it to the screen), so a step is `CHART_STEP`.
    */
   $effect(() => {
     const now = beats;
     const was = before;
     before = now;
-    if (svg === undefined || line === undefined || was === undefined || !gainedNewest(was, now)) return;
-    const pixels = (svg.getBoundingClientRect().width / CHART_BOX.width) * CHART_STEP;
+    if (line === undefined || was === undefined || !gainedNewest(was, now)) return;
     const shown = Number.parseFloat(getComputedStyle(line).translate.split(' ')[0] ?? '') || 0;
-    animate(line, { translate: { x: shown + pixels, y: 0 } }, { type: 'instant' });
+    animate(line, { translate: { x: shown + CHART_STEP, y: 0 } }, { type: 'instant' });
     animate(line, { translate: { x: 0, y: 0 } }, springMotion('default', preference.reduced));
   });
 </script>
 
 <svg
-  bind:this={svg}
   class="chart"
   viewBox="0 0 {CHART_BOX.width} {CHART_BOX.height}"
   preserveAspectRatio="none"

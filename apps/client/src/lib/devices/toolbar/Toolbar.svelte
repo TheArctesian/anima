@@ -119,6 +119,8 @@
 
   .label {
     position: absolute;
+    inline-size: var(--border-thin);
+    block-size: var(--border-thin);
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
@@ -130,6 +132,7 @@
 
   input {
     flex: 1;
+    align-self: stretch;
     min-inline-size: 0;
     border: 0;
     background: transparent;
@@ -169,6 +172,7 @@
   }
 
   button:active {
+    transition-duration: var(--duration-press);
     background: var(--border);
   }
 

@@ -1,8 +1,11 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
   import StatusPill from '$lib/devices/card/StatusPill.svelte';
+  import { skeletonDelay } from '$lib/motion/loading/delay.svelte';
+  import type { LoadingClock } from '$lib/motion/loading/loading';
   import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
+  import { crossFade } from '$lib/motion/roles/transitions';
   import { sharedItem } from '$lib/motion/shared/shared';
   import type { SettingsSection } from '../tabs/tabs';
   import { overflowFade } from './fade';
@@ -15,10 +18,16 @@
     onConnect: (button: HTMLElement) => void;
     /** Opens the Settings tab, at `section` when given (DEV-022). */
     onSettings: (section: SettingsSection | null) => void;
+    /** The device is on its way: after `threshold-loading` a skeleton of the line shows until it arrives (5.7.3, Loading). */
+    loading?: boolean;
+    clock?: LoadingClock;
   }
 
-  const { device, onConnect, onSettings }: Props = $props();
+  const { device, onConnect, onSettings, loading = false, clock }: Props = $props();
   const line = $derived(device === null ? null : headerLine(device));
+  // The clock is fixed for the life of the header.
+  // svelte-ignore state_referenced_locally
+  const skeleton = skeletonDelay(() => loading, clock);
 </script>
 
 <!-- One line, in the order of DEV-020; the buttons are last. -->
@@ -55,10 +64,24 @@
       </button>
     </div>
   {/if}
+  {#if skeleton.visible}
+    <!-- Over the line, after a ghost of the back link that has its width: the real line fades in under it without moving (MOT-007). -->
+    <div class="skeleton" aria-hidden="true" transition:crossFade>
+      <span class="back ghost">Devices</span>
+      <span class="name"></span>
+      <span class="pill"></span>
+      <span class="details-place"></span>
+      <span class="actions-place"></span>
+    </div>
+  {/if}
 </header>
 
 <style>
-  /* A fixed block size from tokens, so no font change or late data moves the tabs (D-13, WP-11 H-7). */
+  /*
+   * One row at a block size from tokens, so no font change or late data moves the tabs (R-042). The host and tag
+   * details take what the name, the pill and the buttons leave and shrink to nothing first; a name that is too long ends in
+   * an ellipsis with its full text as the tooltip (DEV-021).
+   */
   .line {
     box-sizing: border-box;
     display: flex;
@@ -67,11 +90,119 @@
     block-size: var(--target-min-touch);
     margin-block-end: var(--space-4);
     min-inline-size: 0;
+    position: relative;
   }
 
-  /* The name, the pill and the buttons never shrink (DEV-021). */
+  .skeleton {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-inline-size: 0;
+    overflow: hidden;
+  }
+
+  .ghost {
+    visibility: hidden;
+  }
+
+  .name,
+  .pill,
+  .details-place,
+  .actions-place {
+    flex: none;
+    border-radius: var(--radius-md);
+    background: var(--surface);
+  }
+
+  .name {
+    inline-size: calc(var(--space-16) * 3);
+    block-size: var(--space-6);
+  }
+
+  .pill {
+    inline-size: var(--space-16);
+    block-size: var(--space-6);
+    border-radius: var(--radius-pill);
+  }
+
+  .details-place {
+    flex: 1 1 auto;
+    min-inline-size: 0;
+    block-size: var(--space-4);
+  }
+
+  .actions-place {
+    inline-size: calc(var(--space-16) * 3);
+    block-size: var(--target-min-desktop);
+  }
+
+  /*
+   * Below the compact breakpoint four rows of fixed size: the back link and the pill; the name; the details; the buttons. The
+   * block size is the same while the device loads and when it arrives (MOT-007).
+   */
+  :global(:root[data-nav='icons']) .line,
+  :global(:root[data-nav='icons']) .skeleton {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-rows:
+      var(--target-min-touch) calc(var(--text-xl) * var(--leading-tight)) calc(var(--text-sm) * var(--leading-tight))
+      var(--target-min-desktop);
+    gap: var(--space-2) var(--space-3);
+  }
+
+  :global(:root[data-nav='icons']) .line {
+    block-size: calc(
+      var(--target-min-touch) + var(--text-xl) * var(--leading-tight) + var(--text-sm) * var(--leading-tight) +
+        var(--target-min-desktop) + var(--space-2) * 3
+    );
+  }
+
+  :global(:root[data-nav='icons']) .back {
+    grid-area: 1 / 1;
+  }
+
+  :global(:root[data-nav='icons']) .status {
+    grid-area: 1 / 3;
+  }
+
+  :global(:root[data-nav='icons']) h1 {
+    grid-area: 2 / 1 / 3 / -1;
+  }
+
+  :global(:root[data-nav='icons']) .details,
+  :global(:root[data-nav='icons']) .actions {
+    grid-column: 1 / -1;
+  }
+
+  /* The skeleton has the same rows, so each placeholder lies over the row it stands for (MOT-007, 5.7.3 Loading). */
+  :global(:root[data-nav='icons']) .skeleton > .ghost {
+    grid-area: 1 / 1;
+  }
+
+  :global(:root[data-nav='icons']) .skeleton > .pill {
+    grid-area: 1 / 3;
+    align-self: center;
+  }
+
+  :global(:root[data-nav='icons']) .skeleton > .name {
+    grid-area: 2 / 1 / 3 / -1;
+    align-self: center;
+  }
+
+  :global(:root[data-nav='icons']) .skeleton > .details-place {
+    grid-area: 3 / 1 / 4 / -1;
+    align-self: center;
+  }
+
+  :global(:root[data-nav='icons']) .skeleton > .actions-place {
+    grid-area: 4 / 1 / 5 / -1;
+    justify-self: start;
+  }
+
+  /* The pill and the buttons never shrink (DEV-021). */
   .back,
-  h1,
   .status,
   .actions {
     flex: none;
@@ -92,14 +223,18 @@
   }
 
   h1 {
+    flex: 0 1 auto;
+    min-inline-size: 0;
     margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-size: var(--text-xl);
     line-height: var(--leading-tight);
-    white-space: nowrap;
   }
 
   .details {
-    flex: 1 1 auto;
+    flex: 1 1 0;
     display: flex;
     gap: var(--space-2);
     min-inline-size: 0;

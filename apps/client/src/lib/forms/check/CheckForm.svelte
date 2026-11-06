@@ -2,6 +2,7 @@
   import { untrack } from 'svelte';
   import { fieldErrorsFrom } from '$lib/forms/device/field-errors';
   import Disclosure from '$lib/forms/disclosure/Disclosure.svelte';
+  import { modalFooter } from '$lib/forms/modal/footer';
   import type { FieldError, HubResult } from '$lib/hub/error';
   import AdvancedFields from './fields/AdvancedFields.svelte';
   import GroupFields from './fields/GroupFields.svelte';
@@ -39,6 +40,11 @@
     { value: 'GROUP', label: 'Group of checks' },
   ];
 
+  // Inside a modal the actions go to its footer; the submit button is tied to the form by its ID.
+  const footer = modalFooter();
+  const formId = $props.id();
+  $effect.pre(() => footer?.show(actions));
+
   const initial = untrack(() => checkValues(check, 'ICMP'));
   let values = $state(initial);
   let errors = $state<FieldError[]>([]);
@@ -72,7 +78,7 @@
   }
 </script>
 
-<form onsubmit={submit} novalidate>
+<form id={formId} onsubmit={submit} novalidate>
   {#if alerts.length > 0}
     <div class="alert" role="alert">
       {#each alerts as found, index (index)}
@@ -110,11 +116,17 @@
     </div>
   {/if}
 
+  {#if footer === undefined}
+    {@render actions()}
+  {/if}
+</form>
+
+{#snippet actions()}
   <div class="actions">
     <PressButton label="Cancel" onclick={onCancel} />
-    <PressButton label={check === null ? 'Add check' : 'Save check'} kind="primary" submit disabled={saving} />
+    <PressButton label={check === null ? 'Add check' : 'Save check'} kind="primary" submit form={formId} disabled={saving} />
   </div>
-</form>
+{/snippet}
 
 <style>
   form {

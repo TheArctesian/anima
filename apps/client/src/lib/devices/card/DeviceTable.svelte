@@ -1,4 +1,5 @@
 <script lang="ts">
+  import './geometry.css';
   import { resolve } from '$app/paths';
   import HeartbeatBar from '$lib/checks/HeartbeatBar.svelte';
   import { uptimeText, type Beat } from '$lib/checks/heartbeats';
@@ -101,7 +102,7 @@
   th,
   td {
     box-sizing: border-box;
-    block-size: var(--target-min-touch);
+    block-size: var(--device-row-block-size);
     padding: 0 var(--space-3);
     border-bottom: var(--border-thin) solid var(--border);
     text-align: start;
@@ -165,6 +166,7 @@
   }
 
   button:active {
+    transition-duration: var(--duration-press);
     background: var(--accent-tint);
   }
 

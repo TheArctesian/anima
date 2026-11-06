@@ -134,3 +134,37 @@ it('an item removed from the document is skipped', () => {
   flip(first, moving);
   expect(runs).toEqual([]);
 });
+
+it('5.7.3 disclosure: an element that also changed size moves by its corner, so its top starts where it was', () => {
+  const { node, layout } = row(100);
+  const first = measure([node]);
+  layout.top = 52;
+  layout.height = 400;
+
+  flip(first, moving);
+
+  expect(node.getBoundingClientRect().top).toBe(100);
+});
+
+it('5.7.3 disclosure: an element inside another moving one moves by the difference, so on screen both start where they were', () => {
+  const outer = row(100);
+  const inner = row(300);
+  outer.node.append(inner.node);
+  const own = inner.node.getBoundingClientRect.bind(inner.node);
+  // On screen the inner element is carried by the outer one's translate.
+  inner.node.getBoundingClientRect = () => {
+    const [, y] = pair(outer.node.style.translate, 0);
+    const box = own();
+    return new DOMRect(box.left, box.top + y, box.width, box.height);
+  };
+  const first = measure([outer.node, inner.node]);
+  // The browser moved the scroll position back by 48 px and the section above the inner one closed (-200 px).
+  outer.layout.top = 148;
+  inner.layout.top = 300 - 200 + 48;
+
+  flip(first, moving);
+
+  expect(outer.node.getBoundingClientRect().top).toBe(100);
+  expect(inner.node.getBoundingClientRect().top).toBe(300);
+  expect(pair(inner.node.style.translate, 0)[1]).toBe(200);
+});

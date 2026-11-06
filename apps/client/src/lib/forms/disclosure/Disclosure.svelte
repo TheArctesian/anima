@@ -5,7 +5,7 @@
   import { tweenMotion } from '$lib/motion/options';
   import { motionPreference, type MotionPreference } from '$lib/motion/preference';
   import { press } from '$lib/motion/roles/press';
-  import { flip, measure } from '$lib/motion/roles/flip';
+  import { flip, measure, type Places } from '$lib/motion/roles/flip';
 
   interface Props {
     /** The button text; the state is carried by `aria-expanded`, not by the text. */
@@ -47,38 +47,83 @@
     return found;
   }
 
+  function scrolls(node: Element): boolean {
+    return ['auto', 'scroll'].includes(getComputedStyle(node).overflowY);
+  }
+
   /**
-   * What moves when the section opens or closes: the elements after it. When it is wrapped and is
-   * the last child of its wrapper, the search climbs to the wrapper's followers, up to the form or body.
+   * What the section's change of height can move: the elements after it and after each of its
+   * ancestors, up to the nearest scroll container (a modal's body) or the page's body. A form section
+   * moves the form's actions and whatever follows the form, such as the Settings tab's delete block.
    */
   function below(): Animatable[] {
-    for (let node = root; node; node = node.parentElement) {
-      const found = followers(node);
-      if (found.length > 0) return found;
-      if (node.parentElement === null || ['FORM', 'BODY'].includes(node.parentElement.tagName)) break;
+    const found: Animatable[] = [];
+    for (let node: HTMLElement | null = root ?? null; node && node !== document.body && !scrolls(node); node = node.parentElement) {
+      found.push(...followers(node));
     }
-    return [];
+    return found;
+  }
+
+  /** The nearest scroll container around the section, such as a modal's body; null for the page. */
+  function scroller(): HTMLElement | null {
+    for (let node = root?.parentElement ?? null; node && node !== document.body; node = node.parentElement) {
+      if (scrolls(node)) return node;
+    }
+    return null;
+  }
+
+  /**
+   * The scroll container's own children. When a closing section makes the container shorter than its
+   * scroll position allows, the browser moves the position back and all of them with it; measured, they
+   * spring from where they were, with the clicked control, instead of stepping in one frame.
+   */
+  function scrollerChildren(): Animatable[] {
+    return [...(scroller()?.children ?? [])].filter((child) => child instanceof HTMLElement);
+  }
+
+  /**
+   * The measured elements whose place on screen changed, and those inside one of them: an element that
+   * stayed put while its container moved needs a `translate` of its own, or the container's would carry
+   * it away (a row below a closed section, when the scroll position moved back by the section's height).
+   * The others keep any motion in flight and get no `translate`, which would make a container the
+   * containing block of its fixed children.
+   */
+  function moved(first: Places): Places {
+    const changed = new Set(
+      [...first]
+        .filter(([element, before]) => {
+          const after = element.getBoundingClientRect();
+          return after.top !== before.top || after.left !== before.left;
+        })
+        .map(([element]) => element),
+    );
+    const carried = (element: Animatable) => [...changed].some((outer) => outer !== element && outer.contains(element));
+    return new Map([...first].filter(([element]) => changed.has(element) || carried(element)));
   }
 
   /**
    * Disclosure (5.7.3): the content fades, and what lies below moves by FLIP on `spring-default`
    * instead of animating a height (MOT-006). On close the content leaves the layout at once (it is
    * held in place and fades out), so the FLIP is measured after it left and nothing snaps at the end.
-   * Under reduced motion the layout change is instant and the fade takes `duration-base`.
+   * Under reduced motion the layout change is instant and the fade takes `duration-base`. A scroll
+   * position the browser moves back when the content gets shorter is part of the same motion.
    */
   async function toggle(): Promise<void> {
-    const first = measure(below());
+    const first = measure([...below(), ...scrollerChildren()]);
     if (open) {
       open = false;
       leaving = true;
       if (region) region.style.top = `${String(region.offsetTop)}px`;
       await tick();
-      flip(first, { spring: 'default', preference });
+      flip(moved(first), { spring: 'default', preference });
       if (region) await animate(region, { opacity: 0 }, fade()).finished;
       // If it was reopened meanwhile, the effect above puts `present` back at once. A reopen from
       // outside (a form showing an error) did not run the open path, so undo the fade here.
       leaving = false;
+      const held = measure(scrollerChildren());
       present = false;
+      await tick();
+      flip(moved(held), { spring: 'default', preference });
       if (open && region) {
         region.style.top = '';
         animate(region, { opacity: 1 }, { type: 'instant' });
@@ -89,7 +134,7 @@
     leaving = false;
     present = true;
     await tick();
-    flip(first, { spring: 'default', preference });
+    flip(moved(first), { spring: 'default', preference });
     if (region) {
       animate(region, { opacity: 0 }, { type: 'instant' });
       void animate(region, { opacity: 1 }, fade());
@@ -122,8 +167,15 @@
 </div>
 
 <style>
+  /*
+   * Layout containment: the content that fades out after a close, held in place below the section, does
+   * not keep a scroll container's extent. The container gets shorter at the close itself, so a scroll
+   * position moved back is undone by the same FLIP; if the fading content set the extent, the FLIP's
+   * own translate would shorten it again and the content would step.
+   */
   .disclosure {
     position: relative;
+    contain: layout;
   }
 
   .heading {
@@ -143,11 +195,16 @@
     background: var(--surface-raised);
     color: var(--text);
     font: inherit;
-    transition: background-color var(--duration-press) var(--ease-enter);
+    transition: background-color var(--duration-fast) var(--ease-enter);
   }
 
   button:hover {
     background: var(--border);
+  }
+
+  button:active {
+    transition-duration: var(--duration-press);
+    background: var(--accent-tint);
   }
 
   button:focus-visible {

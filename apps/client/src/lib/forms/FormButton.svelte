@@ -24,11 +24,16 @@
     border-radius: var(--radius-md);
     color: var(--text);
     font: inherit;
-    transition: background-color var(--duration-press) var(--ease-enter);
+    transition: background-color var(--duration-fast) var(--ease-enter);
   }
 
   button:hover:not(:disabled, [aria-disabled='true']) {
     background: var(--border);
+  }
+
+  button:active:not(:disabled, [aria-disabled='true']) {
+    transition-duration: var(--duration-press);
+    background: var(--accent-tint);
   }
 
   button:focus-visible {

@@ -111,6 +111,7 @@
   }
 
   a:active {
+    transition-duration: var(--duration-press);
     color: var(--text-muted);
   }
 
@@ -151,6 +152,7 @@
   }
 
   button {
+    flex: none;
     box-sizing: border-box;
     min-block-size: var(--target-min-desktop);
     padding: 0 var(--space-3);
@@ -167,6 +169,7 @@
   }
 
   button:active {
+    transition-duration: var(--duration-press);
     background: var(--accent-tint);
   }
 

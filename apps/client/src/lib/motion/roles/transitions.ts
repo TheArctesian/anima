@@ -2,6 +2,7 @@ import type { TransitionConfig } from 'svelte/transition';
 import { easeCurve, springCurve } from '../animate';
 import { modeTokens, springMotion, staggerDelayMs, type SpringName } from '../options';
 import { motionPreference, type MotionPreference } from '../preference';
+import { firstDirection, opacity, scaledFade } from './path';
 import { roleScale } from './scales';
 
 /*
@@ -28,13 +29,6 @@ export interface ListRowParams extends RoleParams {
 
 export type RoleTransition = (options?: { direction?: 'in' | 'out' }) => TransitionConfig;
 
-const fade = (t: number) => `opacity: ${String(t)};`;
-
-function scaledFade(fromScale: number, origin: string | undefined) {
-  const at = origin === undefined ? '' : ` transform-origin: ${origin};`;
-  return (t: number) => `${fade(t)} scale: ${String(fromScale + (1 - fromScale) * t)};${at}`;
-}
-
 /** `transform-origin` for `surface` at the centre of `control` (MOT-005). */
 function originAt(control: Element, surface: Element): string {
   const from = control.getBoundingClientRect();
@@ -44,30 +38,46 @@ function originAt(control: Element, surface: Element): string {
   return `${String(x)}px ${String(y)}px`;
 }
 
-function enter(spring: SpringName, fromScale: number, reduced: boolean, origin?: string): TransitionConfig {
+function enter(spring: SpringName, atZero: number | undefined, reduced: boolean, origin?: string): TransitionConfig {
   const motion = springMotion(spring, reduced);
   if (motion.type !== 'spring') {
-    return { duration: modeTokens(reduced).duration.base, easing: easeCurve('enter'), css: fade };
+    return { duration: modeTokens(reduced).duration.base, easing: easeCurve('enter'), css: opacity };
   }
   const { easing, durationMs } = springCurve(motion);
-  return { duration: durationMs, easing, css: scaledFade(fromScale, origin) };
+  return { duration: durationMs, easing, css: scaledFade(atZero, origin) };
 }
 
-function exit(toScale: number | undefined, reduced: boolean, origin?: string): TransitionConfig {
-  const css = reduced || toScale === undefined ? fade : scaledFade(toScale, origin);
+function exit(atZero: number | undefined, reduced: boolean, origin?: string): TransitionConfig {
+  const css = reduced ? opacity : scaledFade(atZero, origin);
   return { duration: modeTokens(reduced).duration.fast, easing: easeCurve('exit'), css };
 }
 
 /**
- * A cross-fade over `duration-base` for page change, readings and the modal scrim (5.7.3,
- * MOT-008); the same under reduced motion.
+ * A cross-fade over `duration-base` for page change, status, readings and loaded data (5.7.3,
+ * MOT-008); the same under reduced motion. The outgoing and the incoming layer run on one
+ * curve, `ease-enter`, so their opacities sum to 1 at every frame and the two layers never
+ * show at full strength together. `ease-exit` is for an exit that nothing replaces.
  */
 export function crossFade(_node: Element, { preference = motionPreference() }: RoleParams = {}): RoleTransition {
-  return ({ direction } = {}) => ({
+  return () => ({
     duration: modeTokens(preference.reduced).duration.base,
-    easing: easeCurve(direction === 'out' ? 'exit' : 'enter'),
-    css: fade,
+    easing: easeCurve('enter'),
+    css: opacity,
   });
+}
+
+/**
+ * A fade for a layer that nothing replaces, such as a modal's scrim or a banner (5.7.3 Modal
+ * and Toast): in over `duration-base` with `ease-enter`, out over `duration-fast` with
+ * `ease-exit`. The same under reduced motion.
+ */
+export function fade(_node: Element, { preference = motionPreference() }: RoleParams = {}): RoleTransition {
+  return ({ direction } = {}) => {
+    const { duration } = modeTokens(preference.reduced);
+    return direction === 'out'
+      ? { duration: duration.fast, easing: easeCurve('exit'), css: opacity }
+      : { duration: duration.base, easing: easeCurve('enter'), css: opacity };
+  };
 }
 
 /**
@@ -75,11 +85,12 @@ export function crossFade(_node: Element, { preference = motionPreference() }: R
  * `spring-snappy`; exit fades and scales to 0.98 over `duration-fast`. Reduced: fade only.
  */
 export function popover(node: Element, { preference = motionPreference(), from }: PopoverParams = {}): RoleTransition {
+  const atZero = firstDirection<number | undefined>();
   return ({ direction } = {}) => {
     const origin = from === undefined ? undefined : originAt(from, node);
     return direction === 'out'
-      ? exit(roleScale.popoverExit, preference.reduced, origin)
-      : enter('snappy', roleScale.popoverEnter, preference.reduced, origin);
+      ? exit(atZero(() => roleScale.popoverExit), preference.reduced, origin)
+      : enter('snappy', atZero(() => roleScale.popoverEnter), preference.reduced, origin);
   };
 }
 
@@ -89,10 +100,11 @@ export function popover(node: Element, { preference = motionPreference(), from }
  * because MOT-006 allows only transform and opacity to animate.
  */
 export function modal(_node: Element, { preference = motionPreference() }: RoleParams = {}): RoleTransition {
+  const atZero = firstDirection<number | undefined>();
   return ({ direction } = {}) =>
     direction === 'out'
-      ? exit(roleScale.modal, preference.reduced)
-      : enter('default', roleScale.modal, preference.reduced);
+      ? exit(atZero(() => roleScale.modal), preference.reduced)
+      : enter('default', atZero(() => roleScale.modal), preference.reduced);
 }
 
 /**
@@ -103,9 +115,10 @@ export function listRow(
   _node: Element,
   { preference = motionPreference(), index = 0 }: ListRowParams = {},
 ): RoleTransition {
+  const atZero = firstDirection<number | undefined>();
   return ({ direction } = {}) => {
-    if (direction === 'out') return exit(undefined, preference.reduced);
+    if (direction === 'out') return exit(atZero(() => undefined), preference.reduced);
     const delay = staggerDelayMs(index, preference.reduced);
-    return { ...enter('move', roleScale.listEnter, preference.reduced), delay };
+    return { ...enter('move', atZero(() => roleScale.listEnter), preference.reduced), delay };
   };
 }
