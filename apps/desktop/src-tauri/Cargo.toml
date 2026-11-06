@@ -23,6 +23,11 @@ tauri-plugin-log.workspace = true
 serde_json.workspace = true
 if-addrs.workspace = true
 whoami.workspace = true
+# Certificate pins and the leaf-certificate probe for device web views (WEB-008, D-9).
+sha2.workspace = true
+rustls.workspace = true
+tokio-rustls.workspace = true
+tokio.workspace = true
 
 # Self-update and relaunch: desktop only, registered only in release builds (UPD-001).
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
@@ -32,6 +37,9 @@ tauri-plugin-process.workspace = true
 # Downcasts keyring's macOS PlatformFailure to tell a refused Keychain prompt from a failure.
 [target.'cfg(target_os = "macos")'.dependencies]
 security-framework = "3"
+
+[dev-dependencies]
+rcgen.workspace = true
 
 [lints]
 workspace = true

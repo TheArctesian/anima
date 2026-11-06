@@ -124,15 +124,20 @@ version = "0.1.0"
 dependencies = [
  "if-addrs",
  "keyring",
+ "rcgen",
+ "rustls",
  "security-framework 3.7.0",
  "serde",
  "serde_json",
+ "sha2 0.11.1",
  "tauri",
  "tauri-build",
  "tauri-plugin-log",
  "tauri-plugin-process",
  "tauri-plugin-updater",
  "thiserror 2.0.21",
+ "tokio",
+ "tokio-rustls",
  "whoami 2.1.3",
 ]
 

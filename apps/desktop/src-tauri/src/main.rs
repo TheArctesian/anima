@@ -5,6 +5,15 @@ mod keystore;
 mod process_log;
 mod system_settings;
 mod this_machine;
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        unused_imports,
+        reason = "WP-31 T3 wires the web view commands to these"
+    )
+)]
+mod web_view;
 
 fn main() {
     let builder = tauri::Builder::default().plugin(process_log::plugin());
