@@ -33,7 +33,7 @@ The operator approved all seven contracts on 2026-11-03 (checkpoint 1). Only a r
 | WP-10 Sessions | 2 | Accepted, merged at 1f75518 (12/12). Wiring (and WP-06 H-2 schema wiring) on `claude/wp-10-wiring`; `/tunnel` mount waits for WP-05 T4 | `claude/wp-10-sessions` | `wp-08-guac` session, reused |
 | WP-11 Client shell | 2 | Accepted, merged at bb575fd | own worktree from `phase-1` | `wp-11-client-shell` |
 | WP-12 Devices page | 3 | Merged (bbd9415; gates 12/12 on c8839e7, gates 4–12 on the merge, generated client regenerated) | `claude/wp-12-devices-page` | `wp-06-devices` session, reused |
-| WP-13 Detail and form | 3 | Building (from 91a926c) | `claude/wp-13-device-detail` | `wp-02-tokens` session, reused |
+| WP-13 Detail and form | 3 | Accepted (T1–T6), merged into `phase-1`; interface review of motion goes to WP-17 | `claude/wp-13-device-detail` | `wp-02-tokens` session, reused |
 | WP-14 SSH tab | 3 | Accepted, merged at 1446b54 (12/12) | `claude/wp-14-ssh-tab` | `wp-08-guac` session, reused |
 | WP-15 Settings page | 3 | Merged (ae8ec3d; gates 4–12 pass on the merge, no Rust change; WP-09 time-of-day test fix merged at a93d6c0) | `claude/wp-15-settings` | `wp-11-client-shell` session, reused |
 | WP-16 Tauri shell | 3 | Accepted, merged at 8960ca4 | `claude/wp-16-tauri-shell` | `wp-11-client-shell` session, reused |
