@@ -118,7 +118,7 @@ describe('MAT-008: the terminal', () => {
     expect(rules.get('.toolbar')?.get('block-size')).toContain('var(--target-min-desktop)');
     expect(rules.get('.toolbar')?.get('overflow')).toBe('hidden');
     expect(rules.get('.cover')?.get('position')).toBe('absolute');
-    expect(rules.get('.notice')?.get('white-space')).toBe('nowrap');
+    expect(componentRules('./pane/Notice.svelte').get('.notice')?.get('white-space')).toBe('nowrap');
   });
 
   it('UI-M2: the pane focus ring is drawn after the terminal, over it, without taking pointer input', () => {

@@ -13,6 +13,7 @@
   import type { KeySequence } from './menu/sequences';
   import FindBar from './pane/FindBar.svelte';
   import LinkConfirm from './pane/LinkConfirm.svelte';
+  import Notice from './pane/Notice.svelte';
   import { SessionConnection, progressOf, type Stage } from './session.svelte';
   import type { SessionStart } from './start';
   import ConnectionSteps from './steps/ConnectionSteps.svelte';
@@ -192,10 +193,7 @@
       </div>
     {:else if notice !== undefined}
       <div class="cover">
-        <span class="notice" role="status" title={notice}>{notice}</span>
-        <button type="button" class="dismiss" aria-label="Dismiss the message" onclick={() => (notice = undefined)} {@attach press()}>
-          <Icon name="nf-md-close" size="sm" />
-        </button>
+        <Notice text={notice} ondismiss={() => (notice = undefined)} />
       </div>
     {/if}
   </div>
@@ -270,24 +268,6 @@
     background: var(--surface);
   }
 
-  .dismiss {
-    display: flex;
-    flex: none;
-    align-items: center;
-    justify-content: center;
-    min-inline-size: var(--target-min-desktop);
-    min-block-size: var(--target-min-desktop);
-    border: var(--border-thin) solid var(--border);
-    border-radius: var(--radius-md);
-    background: var(--surface-raised);
-    color: var(--text);
-  }
-
-  .dismiss:focus-visible {
-    outline: var(--border-focus) solid var(--accent);
-    outline-offset: calc(var(--border-focus) * -1);
-  }
-
   /* The bar never sets the pane's width: the name gives way first, and the Keys control keeps its size (UI-009). */
   .device {
     min-inline-size: 0;
@@ -319,15 +299,6 @@
   .find:focus-visible {
     outline: var(--border-focus) solid var(--accent);
     outline-offset: calc(var(--border-focus) * -1);
-  }
-
-  .notice {
-    flex: 1;
-    min-inline-size: 0;
-    overflow: hidden;
-    font-size: var(--text-sm);
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
 
   .stage {
