@@ -11,7 +11,7 @@ const HTTPS_PORT: u16 = 443;
 
 /// A host as compared for pinning: a lower-case name without its trailing dot, or an address.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(super) enum Host {
+pub(in crate::web_view) enum Host {
     Name(String),
     Address(IpAddr),
 }
@@ -35,8 +35,8 @@ impl Host {
 /// host or port drops it, a path change keeps it).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PinnedOrigin {
-    pub(super) host: Host,
-    pub(super) port: u16,
+    pub(in crate::web_view) host: Host,
+    pub(in crate::web_view) port: u16,
 }
 
 /// Why a URL has no pinnable origin. Carries no part of the URL (LOG-007).

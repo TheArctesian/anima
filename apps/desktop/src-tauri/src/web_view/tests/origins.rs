@@ -1,6 +1,6 @@
 //! H-4: only `https` takes a pin; the origin is scheme, host and port.
 
-use crate::web_view::{OriginError, PinnedOrigin, pin::Host};
+use crate::web_view::{OriginError, PinnedOrigin, trust::Host};
 
 fn origin(url: &str) -> PinnedOrigin {
     PinnedOrigin::parse(url).unwrap()

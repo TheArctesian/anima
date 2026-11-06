@@ -14,7 +14,9 @@ path = "src/main.rs"
 tauri-build.workspace = true
 
 [dependencies]
-tauri.workspace = true
+# `unstable`: child web views in the main window and moving them to a window of their own
+# (`Window::add_child`, `Webview::reparent`) for device web views (WEB-004, D-3).
+tauri = { workspace = true, features = ["unstable"] }
 keyring.workspace = true
 serde.workspace = true
 thiserror.workspace = true
@@ -28,6 +30,8 @@ sha2.workspace = true
 rustls.workspace = true
 tokio-rustls.workspace = true
 tokio.workspace = true
+# Device IDs name each device's web store (WEB-006, D-2).
+uuid.workspace = true
 
 # Self-update and relaunch: desktop only, registered only in release builds (UPD-001).
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]

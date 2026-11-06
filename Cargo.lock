@@ -138,6 +138,7 @@ dependencies = [
  "thiserror 2.0.21",
  "tokio",
  "tokio-rustls",
+ "uuid",
  "whoami 2.1.3",
 ]
 

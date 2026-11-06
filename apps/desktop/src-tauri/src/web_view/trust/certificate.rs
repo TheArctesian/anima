@@ -44,7 +44,7 @@ impl CertificateError {
             Self::Address => "address",
             Self::Unreachable => "unreachable",
             Self::Handshake => "handshake",
-            Self::NoCertificate => "no-certificate",
+            Self::NoCertificate => "no_certificate",
             Self::Timeout => "timeout",
         }
     }

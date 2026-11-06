@@ -3,16 +3,9 @@
 
 mod keystore;
 mod process_log;
+mod system_browser;
 mod system_settings;
 mod this_machine;
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        unused_imports,
-        reason = "WP-31 T3 wires the web view commands to these"
-    )
-)]
 mod web_view;
 
 fn main() {
@@ -23,6 +16,7 @@ fn main() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init());
     builder
+        .manage(web_view::Tabs::default())
         .invoke_handler(tauri::generate_handler![
             keystore::access_token_read,
             keystore::access_token_write,
@@ -30,6 +24,16 @@ fn main() {
             process_log::process_log_folder_open,
             system_settings::remote_login_settings_open,
             this_machine::this_machine_read,
+            system_browser::system_browser_open,
+            web_view::commands::web_view_pinning,
+            web_view::commands::web_view_open,
+            web_view::commands::web_view_place,
+            web_view::commands::web_view_show,
+            web_view::commands::web_view_go,
+            web_view::commands::web_view_pin,
+            web_view::commands::web_view_pop_out,
+            web_view::commands::web_view_close,
+            web_view::commands::web_certificate_read,
         ])
         .run(tauri::generate_context!())
         .expect("the Tauri application failed to start");

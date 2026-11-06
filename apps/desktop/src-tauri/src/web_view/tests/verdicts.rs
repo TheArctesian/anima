@@ -1,6 +1,9 @@
 //! D-4: every verdict on a server-trust challenge.
 
-use crate::web_view::{Challenge, Fingerprint, Pin, PinnedOrigin, Verdict, verdict};
+use crate::web_view::{
+    Fingerprint, Pin, PinnedOrigin,
+    trust::{Challenge, Verdict, verdict},
+};
 
 fn fingerprint(byte: u8) -> Fingerprint {
     Fingerprint::of_certificate(&[byte])

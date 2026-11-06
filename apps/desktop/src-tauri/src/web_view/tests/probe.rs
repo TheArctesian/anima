@@ -17,7 +17,7 @@ use tokio::{
 };
 use tokio_rustls::TlsAcceptor;
 
-use crate::web_view::{CertificateError, Fingerprint, PinnedOrigin, leaf_fingerprint, pin::Host};
+use crate::web_view::{CertificateError, Fingerprint, PinnedOrigin, leaf_fingerprint, trust::Host};
 
 const PATIENCE: Duration = Duration::from_secs(5);
 
@@ -135,7 +135,7 @@ fn log_007_certificate_errors_carry_only_a_code() {
         (CertificateError::Address, "address"),
         (CertificateError::Unreachable, "unreachable"),
         (CertificateError::Handshake, "handshake"),
-        (CertificateError::NoCertificate, "no-certificate"),
+        (CertificateError::NoCertificate, "no_certificate"),
         (CertificateError::Timeout, "timeout"),
     ];
     for (error, code) in codes {

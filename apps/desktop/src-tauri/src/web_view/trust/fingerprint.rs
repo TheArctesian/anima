@@ -72,3 +72,10 @@ impl fmt::Display for Fingerprint {
         self.0.iter().try_for_each(|byte| write!(f, "{byte:02x}"))
     }
 }
+
+/// Serialises as the hub's form, 64 lower-case hex digits (D-5).
+impl serde::Serialize for Fingerprint {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.collect_str(self)
+    }
+}

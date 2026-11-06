@@ -1,0 +1,128 @@
+//! D-3: tab IDs become web view labels; the open tabs are bounded and keep each pin.
+
+use crate::web_view::{
+    Fingerprint, PinnedOrigin, Tabs, WebUrl, WebViewError,
+    tabs::{TABS_MAX, Tab, TabId},
+};
+
+fn id(text: &str) -> TabId {
+    TabId::parse(text).unwrap()
+}
+
+fn tab(url: &str) -> Tab {
+    let url = WebUrl::parse(url).unwrap();
+    let origin = url
+        .is_https()
+        .then(|| PinnedOrigin::parse(url.as_str()).unwrap());
+    Tab {
+        url,
+        origin,
+        pin: None,
+        popped_out: false,
+    }
+}
+
+fn fingerprint() -> Fingerprint {
+    "cd".repeat(32).parse().unwrap()
+}
+
+#[test]
+fn d_3_a_tab_id_names_the_web_view_and_its_pop_out_window() {
+    let tab = id("tab_01-A");
+    assert_eq!(tab.view_label(), "web-tab_01-A");
+    assert_eq!(tab.window_label(), "pop-tab_01-A");
+    assert!(TabId::parse(&"x".repeat(128)).is_ok());
+}
+
+#[test]
+fn d_3_a_tab_id_is_1_to_128_letters_digits_underscores_or_hyphens() {
+    for bad in [
+        String::new(),
+        "x".repeat(129),
+        "main".to_owned() + " ",
+        "a/b".to_owned(),
+        "a:b".to_owned(),
+        "a.b".to_owned(),
+        "é".to_owned(),
+        "a\0".to_owned(),
+    ] {
+        assert_eq!(TabId::parse(&bad), Err(WebViewError::TabId), "{bad:?}");
+    }
+}
+
+#[test]
+fn d_3_no_tab_id_can_make_the_main_label() {
+    assert_ne!(id("main").view_label(), "main");
+    assert_ne!(id("main").window_label(), "main");
+}
+
+#[test]
+fn web_004_a_tab_is_reserved_once() {
+    let tabs = Tabs::default();
+    tabs.reserve(id("a"), tab("http://192.0.2.7/")).unwrap();
+    assert_eq!(
+        tabs.reserve(id("a"), tab("http://192.0.2.8/")),
+        Err(WebViewError::TabOpen)
+    );
+    assert_eq!(tabs.get(&id("a")).unwrap(), tab("http://192.0.2.7/"));
+    assert!(tabs.remove(&id("a")).is_some());
+    assert_eq!(tabs.get(&id("a")), Err(WebViewError::UnknownTab));
+    assert!(tabs.remove(&id("a")).is_none());
+}
+
+#[test]
+fn web_004_the_open_tabs_are_bounded() {
+    let tabs = Tabs::default();
+    for index in 0..TABS_MAX {
+        tabs.reserve(id(&format!("t{index}")), tab("http://192.0.2.7/"))
+            .unwrap();
+    }
+    assert_eq!(
+        tabs.reserve(id("one-more"), tab("http://192.0.2.7/")),
+        Err(WebViewError::TabLimit)
+    );
+    tabs.remove(&id("t0"));
+    assert!(
+        tabs.reserve(id("one-more"), tab("http://192.0.2.7/"))
+            .is_ok()
+    );
+}
+
+#[test]
+fn web_008_a_pin_belongs_to_the_tab_s_https_origin() {
+    let tabs = Tabs::default();
+    tabs.reserve(id("s"), tab("https://router.lan:8443/admin"))
+        .unwrap();
+    let pinned = tabs.set_pin(&id("s"), fingerprint()).unwrap();
+    let pin = pinned.pin.unwrap();
+    assert_eq!(pin.fingerprint, fingerprint());
+    assert_eq!(
+        pin.origin,
+        PinnedOrigin::parse("https://router.lan:8443/").unwrap()
+    );
+    assert_eq!(tabs.get(&id("s")).unwrap().pin, Some(pin));
+}
+
+#[test]
+fn web_008_an_http_tab_takes_no_pin() {
+    let tabs = Tabs::default();
+    tabs.reserve(id("p"), tab("http://192.0.2.7/")).unwrap();
+    assert_eq!(
+        tabs.set_pin(&id("p"), fingerprint()),
+        Err(WebViewError::PinScheme)
+    );
+    assert_eq!(
+        tabs.set_pin(&id("missing"), fingerprint()),
+        Err(WebViewError::UnknownTab)
+    );
+}
+
+#[test]
+fn web_004_popping_out_is_marked_once() {
+    let tabs = Tabs::default();
+    tabs.reserve(id("w"), tab("http://192.0.2.7/")).unwrap();
+    assert_eq!(tabs.pop_out(&id("w")), Ok(false));
+    assert_eq!(tabs.pop_out(&id("w")), Ok(true));
+    assert!(tabs.get(&id("w")).unwrap().popped_out);
+    assert_eq!(tabs.pop_out(&id("x")), Err(WebViewError::UnknownTab));
+}
