@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { LINK_MAX, linkTarget, openLink } from './links';
+import { LINK_MAX, checkLink, linkRefusalText, linkTarget, openLink, type LinkRefusal } from './links';
 
 describe('which links may open (K4 §8.7)', () => {
   it.each([
@@ -42,5 +42,23 @@ describe('which links may open (K4 §8.7)', () => {
     openLink('https://example.com/');
     expect(open).toHaveBeenCalledExactlyOnceWith('https://example.com/', '_blank', 'noopener,noreferrer');
     open.mockRestore();
+  });
+});
+
+describe('one fixed message per refusal reason (K4 §8.7)', () => {
+  it.each([
+    ['javascript:alert(1)', 'scheme'],
+    ['not a link', 'scheme'],
+    ['https://user:secret@example.com/', 'credentials'],
+    [`https://example.com/${'a'.repeat(LINK_MAX)}`, 'too-long'],
+  ])('K4 §8.7: %.40s is refused as %s, with a sentence of its own that does not repeat the link', (raw, reason) => {
+    const check = checkLink(raw);
+    expect(check).toEqual({ ok: false, reason });
+    if (check.ok) return;
+    expect(linkRefusalText(check.reason)).not.toContain(raw.slice(0, 12));
+  });
+
+  it('K4 §8.7: the three sentences differ', () => {
+    expect(new Set(['scheme', 'credentials', 'too-long'].map((reason) => linkRefusalText(reason as LinkRefusal))).size).toBe(3);
   });
 });
