@@ -16,6 +16,10 @@ pub(in crate::sessions) const CLIENT_IDLE: Duration = Duration::from_secs(15);
 /// at most this, well inside `endSession`'s wait for the tunnel (D-10).
 pub(in crate::sessions) const CLOSE_WAIT: Duration = Duration::from_secs(2);
 
+/// The event message when a send to the client stalls past [`CLIENT_IDLE`].
+pub(in crate::sessions) const CLIENT_STOPPED_READING: &str =
+    "The client stopped reading what the hub sent, so the hub closed the SSH session.";
+
 /// Why a live tunnel ends. The first cause wins; the tunnel task records it once (D-9).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(in crate::sessions) enum Cause {
@@ -97,6 +101,21 @@ impl Cause {
                  SSH session."
             }
         }
+    }
+}
+
+/// A WebSocket error while reading the client: a message over the size cap or text that is
+/// not UTF-8 breaks the protocol (R-039); anything else is the client leaving.
+pub(in crate::sessions) fn unreadable(error: axum::Error) -> Cause {
+    match error
+        .into_inner()
+        .downcast::<tungstenite::Error>()
+        .as_deref()
+    {
+        Ok(tungstenite::Error::Capacity(_) | tungstenite::Error::Utf8(_)) => {
+            Cause::InvalidInstruction
+        }
+        _ => Cause::OperatorClosed,
     }
 }
 

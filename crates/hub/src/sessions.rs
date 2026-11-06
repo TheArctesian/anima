@@ -1,7 +1,8 @@
 //! Remote sessions: the record of every session (RA-008), the SSH host key accepted for
-//! each device (SEC-006), which the gateway is pinned to (SEC-007), and the single-use
-//! tickets that open the tunnel (K4 §1, API-009). The connection test reads a host's key
-//! and `acceptHostKey` records it (DEV-013, D-5, D-6).
+//! each device (SEC-006), which every SSH connection is pinned to (SEC-007), and the
+//! single-use tickets that open a tunnel (K4 §1, API-009). SSH sessions run on the terminal
+//! tunnel (`terminal`, K4 §8); the Guacamole tunnel (`tunnel`) waits for RDP and VNC. The
+//! connection test reads a host's key and `acceptHostKey` records it (DEV-013, D-5, D-6).
 
 mod admission;
 mod end;
@@ -15,6 +16,7 @@ mod ssh;
 mod start;
 mod store;
 mod target;
+mod terminal;
 #[cfg(test)]
 mod tests;
 mod tickets;
@@ -38,6 +40,7 @@ pub use live::{EndCause, Live, Redeemed, Refused, Tunnel};
 pub use model::{EndReason, FieldError, HostKey, Protocol, Session, SessionEnd, UnknownValue};
 pub use public_key::{BadFingerprint, BadKey, Fingerprint, PublicKey};
 pub use start::{DEFAULT_DPI, DisplayRequest, StartRequest, start};
+pub use terminal::terminal_router;
 pub use tickets::{PendingTicket, Ticket};
 pub use tunnel::tunnel_router;
 

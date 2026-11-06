@@ -34,6 +34,15 @@ impl Protocol {
             Self::Ssh => "ssh",
         }
     }
+
+    /// Where the client opens this protocol's tunnel (K4 Section 1 `tunnelPath`): SSH uses
+    /// the terminal tunnel (K4 Section 8, R-062); RDP and VNC will use `/tunnel`.
+    #[must_use]
+    pub const fn tunnel_path(self) -> &'static str {
+        match self {
+            Self::Ssh => "/terminal",
+        }
+    }
 }
 
 impl FromStr for Protocol {

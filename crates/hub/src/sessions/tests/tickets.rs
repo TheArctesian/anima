@@ -158,7 +158,7 @@ fn log_007_no_ticket_type_or_refusal_shows_the_token() {
     let token = token(5);
     let text = token.expose().to_owned();
     let hash = token.hash();
-    let ticket = Ticket::new(session(1), token, pending(1).expires_at);
+    let ticket = Ticket::new(session(1), Protocol::Ssh, token, pending(1).expires_at);
     let shown = format!(
         "{ticket:?} {:?} {Refused} {Refused:?} {Unavailable}",
         pending(1)

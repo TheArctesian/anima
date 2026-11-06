@@ -43,7 +43,7 @@ async fn r_032_start_session_returns_a_ticket_the_hubs_one_live_redeems(pool: Pg
         ticket["tunnelPath"]
             .as_str()
             .unwrap()
-            .starts_with("/tunnel")
+            .starts_with("/terminal")
     );
     let client = ClientAddr(CLIENT_ADDR.parse().unwrap());
     let redeemed = live.redeem(token, client, now());

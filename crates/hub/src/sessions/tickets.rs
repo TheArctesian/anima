@@ -64,9 +64,11 @@ pub(super) fn hash_of(presented: &str) -> Option<TicketHash> {
     Some(TicketHash(Sha256::digest(&*bytes).into()))
 }
 
-/// What `startSession` gives the client once: the session and the token for `/tunnel`.
+/// What `startSession` gives the client once: the session, its protocol (which names the
+/// tunnel's path) and the token for that tunnel.
 pub struct Ticket {
     pub session: SessionId,
+    pub protocol: Protocol,
     token: TicketToken,
     pub expires_at: DateTime<Utc>,
 }
@@ -74,11 +76,13 @@ pub struct Ticket {
 impl Ticket {
     pub(super) const fn new(
         session: SessionId,
+        protocol: Protocol,
         token: TicketToken,
         expires_at: DateTime<Utc>,
     ) -> Self {
         Self {
             session,
+            protocol,
             token,
             expires_at,
         }
@@ -95,6 +99,7 @@ impl fmt::Debug for Ticket {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Ticket")
             .field("session", &self.session)
+            .field("protocol", &self.protocol)
             .field("token", &"[redacted]")
             .field("expires_at", &self.expires_at)
             .finish()
