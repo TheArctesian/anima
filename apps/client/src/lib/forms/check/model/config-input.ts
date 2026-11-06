@@ -1,5 +1,6 @@
 import { normalizeHost } from '$lib/forms/device/host';
 import type { CheckConfigInput, HttpAuthInput, HttpConfigInput } from './hub-types';
+import { probeInput } from '../probes/config-input';
 import { toNumber } from './range';
 import type { CheckFormValues } from './values';
 
@@ -79,6 +80,8 @@ export function configInput(values: CheckFormValues): CheckConfigInput {
       return { push: true };
     case 'GROUP':
       return { group: { childIds: [...values.group.childIds].sort() } };
+    default:
+      return probeInput(values, values.type);
   }
 }
 
