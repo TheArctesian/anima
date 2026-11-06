@@ -1,5 +1,5 @@
-import type { ConnectionTestInput } from '$lib/hub/generated/graphql';
-import type { PendingConnectionTestInput, PendingConnectionTestResult, Protocol, ServerCertificate } from '../../../hub-pending';
+import type { ConnectionTestInput, Protocol } from '$lib/hub/generated/graphql';
+import type { PendingConnectionTestResult, ServerCertificate } from '../../../hub-pending';
 import type { ConnectionTestResult } from '../../connection-test';
 import { normalizedValues, type DeviceFormValues } from '../../values';
 import { rdpCredentialInput, rdpInput, vncCredentialInput, vncInput } from '../input';
@@ -8,7 +8,7 @@ import { rdpCredentialInput, rdpInput, vncCredentialInput, vncInput } from '../i
 export type RemoteProtocol = Exclude<Protocol, 'SSH'>;
 
 /** The connection test input with the K1 additions (DEV-013). */
-export type RemoteTestInput = ConnectionTestInput & PendingConnectionTestInput;
+export type RemoteTestInput = ConnectionTestInput;
 
 /** The connection test answer; the certificate fields are missing until the hub declares K1. */
 export type RemoteTestResult = ConnectionTestResult & Partial<PendingConnectionTestResult>;

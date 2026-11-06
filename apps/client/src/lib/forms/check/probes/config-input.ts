@@ -1,6 +1,6 @@
-import type { PendingCheckConfigInput, PendingCheckType, SnmpConfigInput } from '$lib/forms/hub-pending';
+import type { CheckConfigInput, SnmpConfigInput } from '$lib/hub/generated/graphql';
 import { toNumber } from '../model/range';
-import type { ProbeValues } from './values';
+import type { ProbeCheckType, ProbeValues } from './values';
 
 function snmpInput({ snmp }: ProbeValues): SnmpConfigInput {
   const expected = snmp.expected.trim();
@@ -21,7 +21,7 @@ function snmpInput({ snmp }: ProbeValues): SnmpConfigInput {
 }
 
 /** The `@oneOf` config of a Phase 2 check type. */
-export function probeInput(values: ProbeValues, type: PendingCheckType): PendingCheckConfigInput {
+export function probeInput(values: ProbeValues, type: ProbeCheckType): CheckConfigInput {
   switch (type) {
     case 'DOCKER':
       return { docker: { container: values.docker.container.trim(), timeoutMs: toNumber(values.docker.timeoutMs) } };
