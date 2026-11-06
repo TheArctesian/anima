@@ -1,5 +1,7 @@
 //! All SQL on schema `sessions`: I/O only. Ids and time come in as parameters.
 
+mod server_certificates;
+
 use std::{collections::HashMap, net::IpAddr};
 
 use chrono::{DateTime, Utc};
@@ -15,6 +17,16 @@ use crate::{
     events::{ClientAddr, Operator},
     ids::{DeviceId, OperatorId, SessionId},
 };
+
+pub(super) use server_certificates::server_certificates;
+#[cfg_attr(
+    not(test),
+    expect(
+        unused_imports,
+        reason = "acceptServerCertificate (WP-22 T4) is the first caller outside the tests"
+    )
+)]
+pub(super) use server_certificates::{AcceptedCertificate, put_server_certificate};
 
 const SESSION_COLUMNS: &str = "id, device_id, device_name, protocol, operator_id, operator_name, \
                                client_addr, started_at, ended_at, end_reason";

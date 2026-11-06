@@ -1,5 +1,7 @@
 //! `startSession`: the row, the audit entry and the ticket, and each refusal (K4 §1, §6,
-//! RA-008, LOG-005, API-009).
+//! RA-008, LOG-005, API-009); `protocols` covers RDP and VNC.
+
+mod protocols;
 
 use anima_hub::sessions::{self, Live, Protocol};
 use chrono::{DateTime, TimeDelta, Utc};

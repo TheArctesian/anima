@@ -37,6 +37,9 @@ pub(in crate::sessions) enum Cause {
     AuthFailed,
     /// The device's host key is not the accepted one (SEC-007).
     HostKeyMismatch,
+    /// The device's RDP server certificate is not the accepted one (D-5). Only the Guacamole
+    /// tunnel ends with it.
+    ServerCertificateMismatch,
     /// The client sent nothing for [`CLIENT_IDLE`], or stopped reading what the hub sends; on
     /// the terminal tunnel also no first `resize` in time.
     Timeout,
@@ -67,6 +70,9 @@ impl Cause {
             Self::GatewayError => (1011, EndReason::GatewayError, Severity::Warning),
             Self::AuthFailed => (1011, EndReason::AuthFailed, Severity::Warning),
             Self::HostKeyMismatch => (4001, EndReason::HostKeyMismatch, Severity::Error),
+            Self::ServerCertificateMismatch => {
+                (4003, EndReason::ServerCertificateMismatch, Severity::Error)
+            }
             Self::Timeout => (4002, EndReason::Timeout, Severity::Info),
             Self::HubShutdown => (1001, EndReason::HubShutdown, Severity::Info),
             Self::InvalidInstruction => (1002, EndReason::ProtocolError, Severity::Warning),
@@ -91,6 +97,11 @@ impl Cause {
                 "The device presented an SSH host key that is not the accepted one, so the hub \
                  closed the session before signing in. Test the connection and check the new \
                  key before accepting it."
+            }
+            Self::ServerCertificateMismatch => {
+                "The device presented an RDP server certificate that is not the accepted one, so \
+                 the hub closed the session before signing in. Test the connection and check the \
+                 new certificate before accepting it."
             }
             Self::Timeout => {
                 "The client sent nothing for too long, so the hub closed the SSH session."
@@ -128,6 +139,7 @@ impl From<EndReason> for Cause {
             EndReason::GatewayError => Self::GatewayError,
             EndReason::AuthFailed => Self::AuthFailed,
             EndReason::HostKeyMismatch => Self::HostKeyMismatch,
+            EndReason::ServerCertificateMismatch => Self::ServerCertificateMismatch,
             EndReason::ProtocolError => Self::InvalidInstruction,
             EndReason::Timeout => Self::Timeout,
             EndReason::HubShutdown => Self::HubShutdown,

@@ -93,8 +93,8 @@ pub(super) struct Route {
     pub(super) live: Live,
     pub(super) timing: Timing,
     /// Where a ticket for each protocol must be opened (K4 Section 1 `tunnelPath`): the hub
-    /// uses `Protocol::tunnel_path`, so this route admits no ticket while only SSH exists;
-    /// its tests send SSH tickets here.
+    /// uses `Protocol::tunnel_path`, so this route admits no ticket while `start` refuses
+    /// RDP and VNC (WP-22 D-3); its tests send SSH tickets here.
     pub(super) tunnel_path: fn(Protocol) -> &'static str,
 }
 

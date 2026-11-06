@@ -12,7 +12,7 @@ use super::{
 
 /// A connection that runs as `anima_runtime`. It is detached from the pool, so the changed role
 /// can never reach a later `pool.acquire()` (R-019).
-async fn as_runtime(pool: &PgPool) -> PgConnection {
+pub(super) async fn as_runtime(pool: &PgPool) -> PgConnection {
     let mut conn = pool.acquire().await.unwrap().detach();
     sqlx::query("set role anima_runtime")
         .execute(&mut conn)
@@ -22,7 +22,7 @@ async fn as_runtime(pool: &PgPool) -> PgConnection {
 }
 
 /// SQLSTATE 42501, insufficient privilege.
-fn is_refused(error: &sqlx::Error) -> bool {
+pub(super) fn is_refused(error: &sqlx::Error) -> bool {
     error
         .as_database_error()
         .and_then(sqlx::error::DatabaseError::code)

@@ -883,8 +883,8 @@ type AuditConnection {
 
 enum Protocol {
   SSH
-  RDP @pending
-  VNC @pending
+  RDP
+  VNC
 }
 
 enum SessionEndReason {
@@ -898,7 +898,7 @@ enum SessionEndReason {
   TIMEOUT
   HUB_SHUTDOWN
   "The RDP certificate differs from the accepted one (D-5)."
-  SERVER_CERTIFICATE_MISMATCH @pending
+  SERVER_CERTIFICATE_MISMATCH
 }
 
 type Session {
@@ -911,7 +911,7 @@ type Session {
   endedAt: DateTime
   endReason: SessionEndReason
   # RA-034: which computer holds it
-  clientAddr: IpAddr! @pending
+  clientAddr: IpAddr!
 }
 
 type SessionEdge {

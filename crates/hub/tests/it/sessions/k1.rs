@@ -5,7 +5,7 @@ use sqlx::PgPool;
 
 use super::harness::schema_for;
 use crate::contract::{Schema, k1, schema};
-use anima_hub::sessions::EndReason;
+use anima_hub::sessions::{EndReason, Protocol};
 
 /// The sessions part alone, for the root fields it declares.
 fn part() -> Schema {
@@ -55,4 +55,29 @@ fn ra_008_every_k1_end_reason_is_stored_as_its_lower_snake_name() {
         assert_eq!(reason.as_str().parse::<EndReason>(), Ok(reason));
     }
     assert!("crashed".parse::<EndReason>().is_err());
+}
+
+#[test]
+fn ra_030_every_k1_protocol_is_stored_as_its_lower_case_name_and_has_its_tunnel() {
+    let k1 = k1();
+    let names: Vec<&String> = k1["Protocol"].served_members().collect();
+    assert_eq!(names, ["RDP", "SSH", "VNC"]);
+    for name in names {
+        let stored = name.to_lowercase();
+        let protocol = stored.parse::<Protocol>().unwrap();
+        assert_eq!(protocol.as_str(), stored);
+        let expected = if protocol == Protocol::Ssh {
+            "/terminal"
+        } else {
+            "/tunnel"
+        };
+        assert_eq!(
+            protocol.tunnel_path(),
+            expected,
+            "K4 §1 tunnelPath of {name}"
+        );
+    }
+    for text in ["SSH", "telnet", "", "rdp "] {
+        assert!(text.parse::<Protocol>().is_err(), "{text:?}");
+    }
 }
