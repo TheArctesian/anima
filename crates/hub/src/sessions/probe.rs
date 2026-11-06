@@ -22,7 +22,9 @@ use super::{public_key::PublicKey, target::TargetRule};
 use crate::credentials::{Secret, SshSecret};
 
 /// How long one probe may take, lookup, connect, key exchange and sign-in included (D-5).
-pub(super) const PROBE_TIMEOUT: Duration = Duration::from_secs(10);
+/// It stays below the client's 10 s request limit (`HUB_TIMEOUT_MS`), so a device that does
+/// not answer is reported as unreachable instead of the hub looking unreachable (NET-004).
+pub(super) const PROBE_TIMEOUT: Duration = Duration::from_secs(8);
 
 /// Host key algorithms in libssh2's order (`hostkey.c`, 1.11), because guacd sets no
 /// preference: the key the probe reads is then the key guacd is pinned to (SEC-007). SHA-1

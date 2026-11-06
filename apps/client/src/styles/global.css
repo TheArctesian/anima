@@ -2,6 +2,11 @@
 @import "./tokens.css";
 @import "./fonts.css";
 
+/* The UI typeface for everything, including modals portalled to `body` outside the shell (UI-020). */
+body {
+  font-family: var(--font-ui);
+}
+
 /* The navigation bar's width; the logs panel starts beside it. */
 :root {
   --nav-inline-size: calc(var(--space-16) * 3);
