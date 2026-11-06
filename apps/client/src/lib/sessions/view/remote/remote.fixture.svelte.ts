@@ -3,10 +3,11 @@
 // browser fakes of the SSH view fixture (ResizeObserver, system clipboard, Web Animations).
 import { flushSync, mount, unmount } from 'svelte';
 import type { HubResult } from '$lib/hub/hub';
-import type { EndedSession, RemoteProtocol, SessionDisplay, SessionsApi, SessionTicket, SessionTransfer } from '../../api';
+import type { ConnectionTestInput, EndedSession, RemoteProtocol, SessionDisplay, SessionsApi, SessionTicket, SessionTransfer } from '../../api';
 import type { SessionEndReason, SessionEnding } from '../../ending';
 import { FAKE_TUNNEL_SOCKET, FakeTunnelSocket } from '../../tunnel/fake/socket.fixture';
 import type { SessionTunnel } from '../../tunnel/guacamole/tunnel';
+import { CERTIFICATE } from '../../fake/hub.fixture';
 import { sessionStart } from '../start';
 import { FakeResizeObserver, TOKEN_MARKER, settle } from '../view.fixture.svelte';
 import RemoteView from './RemoteView.svelte';
@@ -20,19 +21,29 @@ export interface RemoteAnswers {
   transfer: SessionTransfer | 'unread';
   /** A refusal of `startSession`, by K7 code. */
   refuse: 'CONFLICT' | undefined;
+  /** While set, the policy read waits for it, so the start has not answered yet. */
+  policyGate: Promise<void> | undefined;
 }
 
 /** Every call the fake API heard, in order per method. */
 export interface RemoteCalls {
   startSession: [string, string, SessionDisplay][];
   endSession: string[];
+  testConnection: ConnectionTestInput[];
+  acceptServerCertificate: [string, string][];
+  setCredential: [string, string, string][];
 }
 
-type RemoteApi = Pick<SessionsApi, 'startSession' | 'endSession' | 'transferPolicy'>;
+type RemoteApi = Pick<
+  SessionsApi,
+  'startSession' | 'endSession' | 'transferPolicy' | 'testConnection' | 'acceptServerCertificate' | 'setCredential'
+>;
+
+const PHASE_ONE_TEST = { reachable: true, authenticated: true, hostKey: null, hostKeyChanged: false, message: null };
 
 function remoteApi() {
-  const calls: RemoteCalls = { startSession: [], endSession: [] };
-  const answers: RemoteAnswers = { endReason: null, transfer: { copy: true, paste: true }, refuse: undefined };
+  const calls: RemoteCalls = { startSession: [], endSession: [], testConnection: [], acceptServerCertificate: [], setCredential: [] };
+  const answers: RemoteAnswers = { endReason: null, transfer: { copy: true, paste: true }, refuse: undefined, policyGate: undefined };
   let issued = 0;
   const api: RemoteApi = {
     startSession: (deviceId, protocol, display) => {
@@ -56,10 +67,23 @@ function remoteApi() {
       };
       return Promise.resolve({ ok: true, value: ended });
     },
-    transferPolicy: () => {
+    testConnection: (input) => {
+      calls.testConnection.push(input);
+      return Promise.resolve({ ok: true, value: { ...PHASE_ONE_TEST, serverCertificate: CERTIFICATE, certificateChanged: true } });
+    },
+    acceptServerCertificate: (deviceId, fingerprint) => {
+      calls.acceptServerCertificate.push([deviceId, fingerprint]);
+      return Promise.resolve({ ok: true, value: CERTIFICATE });
+    },
+    setCredential: (protocol, deviceId, password) => {
+      calls.setCredential.push([protocol, deviceId, password]);
+      return Promise.resolve({ ok: true, value: { credentialStored: true } });
+    },
+    transferPolicy: async () => {
+      await answers.policyGate;
       const answer: HubResult<SessionTransfer> =
         answers.transfer === 'unread' ? { ok: false, error: { code: 'unreachable', message: 'No answer.' } } : { ok: true, value: answers.transfer };
-      return Promise.resolve(answer);
+      return answer;
     },
   };
   return { api, calls, answers };
@@ -73,7 +97,7 @@ export const REMOTE_DEVICE = { id: 'device-1', name: 'desk' };
 /** Mount a `RemoteView` for `REMOTE_DEVICE` over `protocol`, with `remoteFlags` as its flags. */
 export function showRemote(protocol: RemoteProtocol = 'RDP') {
   const { api, calls, answers } = remoteApi();
-  const heard = { ended: [] as SessionEnding[], certificateChanged: 0, clients: [] as Client[], gone: 0 };
+  const heard = { ended: [] as SessionEnding[], clients: [] as Client[], gone: 0 };
   const target = document.createElement('div');
   document.body.append(target);
   const component = mount(RemoteView, {
@@ -90,9 +114,6 @@ export function showRemote(protocol: RemoteProtocol = 'RDP') {
         return remoteFlags.focused;
       },
       onended: (ending: SessionEnding) => heard.ended.push(ending),
-      oncertificatechanged: () => {
-        heard.certificateChanged += 1;
-      },
       onclient: (client: Client) => {
         heard.clients.push(client);
         return () => {
