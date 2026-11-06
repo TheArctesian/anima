@@ -20,6 +20,8 @@
   let current: CertificateStep = $state.raw(READING);
   let surface: HTMLElement | undefined = $state();
   let closeButton: HTMLButtonElement | undefined = $state();
+  /** Set on Cancel or Escape: an answer that arrives later changes nothing and calls nothing. */
+  let closed = false;
   const certificate = $derived('certificate' in current ? current.certificate : undefined);
   const notice = $derived(current.step === 'shown' || current.step === 'reading' ? current.notice : undefined);
   const problem = $derived(current.step === 'failed' ? current.problem : undefined);
@@ -34,7 +36,7 @@
   async function read() {
     if (current.step !== 'reading') return;
     const result = await api.testConnection({ deviceId: device.id, protocol: 'RDP' });
-    apply({ event: 'readDone', result });
+    if (!closed) apply({ event: 'readDone', result });
   }
 
   function retry() {
@@ -46,9 +48,15 @@
     if (sending?.step !== 'accepting') return;
     // Exactly the fingerprint shown; the step sends it once (SEC-007).
     const result = await api.acceptServerCertificate(device.id, sending.certificate.fingerprintSha256);
+    if (closed) return;
     const next = apply({ event: 'accepted', result });
     if (next?.step === 'accepted') onaccepted();
     else if (next?.step === 'reading') void read();
+  }
+
+  function close() {
+    closed = true;
+    onclose();
   }
 
   onMount(() => void read());
@@ -70,7 +78,7 @@
     aria-describedby="certificate-why"
     bind:this={surface}
     transition:modal
-    {@attach trapFocus(onclose)}
+    {@attach trapFocus(close)}
   >
     <h2 id="certificate-title"><Icon name="nf-md-alert" /> The certificate of {device.name} has changed</h2>
     <div id="certificate-why">
@@ -110,7 +118,9 @@
     {/if}
 
     <div class="actions">
-      <button type="button" bind:this={closeButton} onclick={onclose} {@attach press()}>Cancel</button>
+      <button type="button" bind:this={closeButton} onclick={close} {@attach press()}>
+        {current.step === 'accepted' ? 'Close' : 'Cancel'}
+      </button>
       {#if current.step === 'reading'}
         <button type="button" disabled>Reading the certificate…</button>
       {:else if current.step === 'failed'}

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { RemoteProtocol } from '../../api';
+import type { RemoteProtocol, SessionsApi } from '../../api';
 import { fakeHub } from '../../fake/hub.fixture';
 import { installBrowserFakes } from '../view.fixture.svelte';
 import { fakeArgumentClient } from './argv.fixture';
@@ -27,7 +27,9 @@ async function settle() {
   flushSync();
 }
 
-function showPrompt(protocol: RemoteProtocol, required: string[], refuseCredential = false) {
+/** The prompt over a fake hub; `refuseCredential` makes the hub refuse the save, `setCredential` replaces it. */
+function showPrompt(protocol: RemoteProtocol, required: string[], hub: { refuseCredential?: boolean } & Partial<SessionsApi> = {}) {
+  const { refuseCredential = false, ...calls } = hub;
   const fake = fakeHub({ refuseCredential });
   const argv = fakeArgumentClient();
   const heard = { sent: 0, cancelled: 0 };
@@ -40,7 +42,7 @@ function showPrompt(protocol: RemoteProtocol, required: string[], refuseCredenti
       protocol,
       fields,
       client: argv.client,
-      api: fake.api,
+      api: { ...fake.api, ...calls },
       onsent: () => (heard.sent += 1),
       oncancel: () => (heard.cancelled += 1),
     },
@@ -63,6 +65,20 @@ function type(name: string, value: string) {
   field.dispatchEvent(new Event('input', { bubbles: true }));
   flushSync();
 }
+
+/** A save that answers only when the test calls `answer`, so the prompt can be seen while it waits. */
+function heldSave() {
+  const held: { calls: number; answer: (stored: boolean) => void } = { calls: 0, answer: () => undefined };
+  const setCredential: SessionsApi['setCredential'] = () => {
+    held.calls += 1;
+    return new Promise((resolve) => {
+      held.answer = (stored) => resolve({ ok: true, value: { credentialStored: stored } });
+    });
+  };
+  return { held, setCredential };
+}
+
+const submitEvent = () => new SubmitEvent('submit', { bubbles: true, cancelable: true });
 
 async function submit(save = false) {
   if (save) saveBox()?.click();
@@ -87,8 +103,10 @@ describe('credential prompt (GW-015)', () => {
     expect(saveBox()?.checked).toBe(false);
     type('username', 'ana');
     type('password', PASSWORD);
-    await submit();
-    button('Sign in')?.click();
+    // Two submits before anything settles: the second finds the prompt no longer asking.
+    const form = dialog()?.querySelector('form');
+    form?.dispatchEvent(submitEvent());
+    form?.dispatchEvent(submitEvent());
     await settle();
     expect(argv.sent()).toEqual([
       { mimetype: 'text/plain', name: 'username', text: 'ana', ends: 1 },
@@ -131,7 +149,7 @@ describe('credential prompt (GW-015)', () => {
 describe('credential prompt privacy (GW-015, LOG-007)', () => {
   it('LOG-007: a refused save shows fixed text, never the hub message, and the session goes on', async () => {
     const logs = Object.keys(console).map((method) => vi.spyOn(console, method as 'log').mockImplementation(() => undefined));
-    const { argv, heard } = showPrompt('RDP', ['password'], true);
+    const { argv, heard } = showPrompt('RDP', ['password'], { refuseCredential: true });
     type('password', PASSWORD);
     await submit(true);
     expect(argv.sent()).toHaveLength(1);
@@ -143,17 +161,57 @@ describe('credential prompt privacy (GW-015, LOG-007)', () => {
     expect(logs.flatMap((spy) => spy.mock.calls).join(' ')).not.toContain(PASSWORD);
   });
 
-  it('GW-015: the values are cleared from the prompt once sent', async () => {
-    const { hub } = showPrompt('RDP', ['username', 'password']);
-    let stop: () => void = () => undefined;
-    // Hold the save open, so the prompt is still mounted while the password is on its way.
-    vi.spyOn(hub, 'request').mockImplementation(() => new Promise((resolve) => (stop = () => resolve({ ok: false, error: { code: 'unreachable', message: '' } }))));
+});
+
+describe('credential prompt after Submit (GW-015)', () => {
+  it('GW-015: once sent, the fields are empty, Save is unchecked and focus is on the status, not the page', async () => {
+    const { held, setCredential } = heldSave();
+    showPrompt('RDP', ['username', 'password'], { setCredential });
     type('username', 'ana');
     type('password', PASSWORD);
     await submit(true);
-    expect(dialog()?.textContent).toContain('Saving');
+    expect(held.calls).toBe(1);
+    expect(input('username')?.value).toBe('');
+    expect(input('password')?.value).toBe('');
+    expect(saveBox()?.checked).toBe(false);
+    expect(input('password')?.matches(':disabled')).toBe(true);
     expect(document.body.innerHTML).not.toContain(PASSWORD);
-    expect([...document.querySelectorAll('input')].map((field) => field.value)).not.toContain(PASSWORD);
-    stop();
+    expect(document.activeElement?.textContent.trim()).toBe('Saving the password…');
+    held.answer(true);
+    await settle();
+  });
+
+  it('GW-015: without Save the fields are emptied too, and focus is on the status', async () => {
+    showPrompt('VNC', ['username', 'password']);
+    type('username', 'ana');
+    type('password', PASSWORD);
+    await submit();
+    expect([input('username')?.value, input('password')?.value]).toEqual(['', '']);
+    expect(document.activeElement?.textContent.trim()).toBe('Signing in…');
+  });
+
+  it('GW-015: with Save checked and no password typed, nothing is stored and the empty value is sent', async () => {
+    const { held, setCredential } = heldSave();
+    const { argv, heard } = showPrompt('RDP', ['username', 'password'], { setCredential });
+    type('username', 'ana');
+    await submit(true);
+    expect(held.calls).toBe(0);
+    expect(argv.sent().map(({ name, text }) => [name, text])).toEqual([
+      ['username', 'ana'],
+      ['password', ''],
+    ]);
+    expect(heard.sent).toBe(1);
+  });
+
+  it('GW-015: a save the hub answers with credentialStored false counts as not saved', async () => {
+    const { held, setCredential } = heldSave();
+    const { heard } = showPrompt('VNC', ['password'], { setCredential });
+    type('password', PASSWORD);
+    await submit(true);
+    held.answer(false);
+    await settle();
+    expect(dialog()?.textContent).toContain('did not save the password');
+    expect(heard.sent).toBe(0);
+    expect(document.activeElement).toBe(button('Close'));
   });
 });

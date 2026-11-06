@@ -50,6 +50,16 @@ describe('argument value stream (GW-015, K4 §4)', () => {
     ]);
   });
 
+  it('a one-character value is one blob', () => {
+    const { client, socket } = connected();
+    sendArgument(client, 'username', 'a');
+    expect(streamed(socket)).toEqual([
+      ['argv', '0', 'text/plain', 'username'],
+      ['blob', '0', 'a'],
+      ['end', '0'],
+    ]);
+  });
+
   it('an empty value is an argv stream with no blob', () => {
     const { client, socket } = connected();
     sendArgument(client, 'domain', '');

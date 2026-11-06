@@ -3,7 +3,8 @@
   import { fade, modal } from '$lib/motion/roles/transitions';
   import type { RemoteProtocol, SessionsApi } from '../../api';
   import { trapFocus } from '../hostkey/focus';
-  import { sendArguments, type Answers, type ArgumentClient } from './arguments';
+  import type { ArgumentClient } from '../../tunnel/argv';
+  import { sendArguments, type Answers } from './arguments';
   import type { CredentialField, CredentialName } from './fields';
 
   interface Props {
@@ -30,6 +31,7 @@
   let step: 'asking' | 'saving' | 'sent' | 'unsaved' = $state('asking');
   let surface: HTMLElement | undefined = $state();
   let closeButton: HTMLButtonElement | undefined = $state();
+  let statusLine: HTMLElement | undefined = $state();
   const offersSave = $derived(fields.some((field) => field.secret));
 
   async function submit(event: SubmitEvent) {
@@ -58,10 +60,10 @@
     else if (step === 'unsaved') onsent();
   }
 
-  // When the form goes away with a step change, focus moves to the button that closes the prompt.
+  // After Submit the form is disabled, so focus moves to what the prompt says now, never to the page behind it.
   $effect(() => {
-    void step;
-    if (surface !== undefined && !surface.contains(document.activeElement)) closeButton?.focus();
+    if (step === 'asking' || surface === undefined) return;
+    (step === 'unsaved' ? closeButton : statusLine)?.focus();
   });
 </script>
 
@@ -83,42 +85,46 @@
       password only when you choose "Save password".
     </p>
 
-    {#if step === 'asking'}
+    {#if step !== 'unsaved'}
+      <!-- Disabled, and empty, once sent: what was typed is gone from the prompt (GW-015). -->
       <form onsubmit={submit}>
-        {#each fields as field (field.name)}
-          <label>
-            <span>{field.label}</span>
-            <!--
-              autocomplete="off": these are the device's credentials, not Anima's. A password manager would file them
-              under the hub's address and offer them for every device; the only place Anima keeps one is the hub,
-              and only on "Save password" (GW-015).
-            -->
-            {#if field.secret}
-              <input type="password" name={field.name} autocomplete="off" bind:value={values[field.name]} />
-            {:else}
-              <input
-                type="text"
-                name={field.name}
-                autocomplete="off"
-                autocapitalize="off"
-                spellcheck="false"
-                bind:value={values[field.name]}
-              />
-            {/if}
-          </label>
-        {/each}
-        {#if offersSave}
-          <label class="save"><input type="checkbox" bind:checked={save} /> Save password</label>
-        {/if}
-        <div class="actions">
-          <button type="button" onclick={oncancel} {@attach press()}>Cancel</button>
-          <button type="submit" class="primary" {@attach press()}>Sign in</button>
-        </div>
+        <fieldset disabled={step !== 'asking'}>
+          {#each fields as field (field.name)}
+            <label>
+              <span>{field.label}</span>
+              <!--
+                autocomplete="off": these are the device's credentials, not Anima's. A password manager would file them
+                under the hub's address and offer them for every device; the only place Anima keeps one is the hub,
+                and only on "Save password" (GW-015).
+              -->
+              {#if field.secret}
+                <input type="password" name={field.name} autocomplete="off" bind:value={values[field.name]} />
+              {:else}
+                <input
+                  type="text"
+                  name={field.name}
+                  autocomplete="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  bind:value={values[field.name]}
+                />
+              {/if}
+            </label>
+          {/each}
+          {#if offersSave}
+            <label class="save"><input type="checkbox" bind:checked={save} /> Save password</label>
+          {/if}
+          <div class="actions">
+            <button type="button" onclick={oncancel} {@attach press()}>Cancel</button>
+            <button type="submit" class="primary" {@attach press()}>Sign in</button>
+          </div>
+        </fieldset>
       </form>
-    {:else if step === 'saving'}
-      <p role="status">Saving the password…</p>
-    {:else if step === 'sent'}
-      <p role="status">Signing in…</p>
+      {#if step !== 'asking'}
+        <p class="status" role="status" tabindex="-1" bind:this={statusLine}>
+          {step === 'saving' ? 'Saving the password…' : 'Signing in…'}
+        </p>
+      {/if}
     {:else}
       <p class="problem" role="status">{UNSAVED}</p>
       <div class="actions">
@@ -179,9 +185,21 @@
     margin: 0 0 var(--space-3);
   }
 
-  form {
+  fieldset {
     display: grid;
     gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .status {
+    margin: var(--space-3) 0 0;
+  }
+
+  .status:focus-visible {
+    outline: var(--border-focus) solid var(--accent);
+    outline-offset: var(--border-focus);
   }
 
   label {

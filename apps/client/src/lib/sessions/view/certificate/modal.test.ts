@@ -94,6 +94,45 @@ describe('certificate modal (SEC-007, K4 §3)', () => {
     expect(button('Read again')).toBeDefined();
   });
 
+});
+
+describe('certificate modal closing (SEC-007)', () => {
+  it.each([
+    ['Cancel', 'an accepted certificate', true],
+    ['Escape', 'a CONFLICT', false],
+  ] as const)('SEC-007: after %s, a late answer (%s) neither reconnects nor reads again', async (how, _answer, ok) => {
+    let answer: () => void = () => undefined;
+    const acceptServerCertificate: SessionsApi['acceptServerCertificate'] = (_deviceId, fingerprintSha256) =>
+      new Promise((resolve) => {
+        answer = () =>
+          resolve(ok ? { ok: true, value: { ...CERTIFICATE, fingerprintSha256 } } : { ok: false, error: { code: 'CONFLICT', message: 'hub text' } });
+      });
+    const { named, heard } = await showModal({ acceptServerCertificate });
+    button('Accept new certificate')?.click();
+    await settle();
+    if (how === 'Cancel') button('Cancel')?.click();
+    else document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    answer();
+    await settle();
+    expect(heard).toEqual({ closed: 1, accepted: 0 });
+    expect(named('TestRemoteConnection')).toHaveLength(1);
+  });
+
+  it('once accepted, the remaining button reads Close', async () => {
+    let answer: () => void = () => undefined;
+    const acceptServerCertificate: SessionsApi['acceptServerCertificate'] = (_deviceId, fingerprintSha256) =>
+      new Promise((resolve) => {
+        answer = () => resolve({ ok: true, value: { ...CERTIFICATE, fingerprintSha256 } });
+      });
+    await showModal({ acceptServerCertificate });
+    expect(button('Cancel')).toBeDefined();
+    button('Accept new certificate')?.click();
+    answer();
+    await settle();
+    expect(button('Cancel')).toBeUndefined();
+    expect(button('Close')).toBeDefined();
+  });
+
   it('Cancel and Escape close without accepting', async () => {
     const { named, heard } = await showModal();
     button('Cancel')?.click();

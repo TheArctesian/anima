@@ -1,8 +1,6 @@
 import { sendArgument, type ArgumentClient } from '../../tunnel/argv';
 import type { CredentialField, CredentialName } from './fields';
 
-export type { ArgumentClient };
-
 /** What the operator typed, by parameter name. */
 export type Answers = Readonly<Partial<Record<CredentialName, string>>>;
 

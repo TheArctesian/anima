@@ -1,6 +1,6 @@
 // Test support: a stand-in for the Guacamole client's `createArgumentValueStream` that records each argument value
 // stream as the gateway would read it. The real writer in `tunnel/argv.ts` writes to it. No vitest import here.
-import type { ArgumentClient } from './arguments';
+import type { ArgumentClient } from '../../tunnel/argv';
 
 /** One `argv` stream: the instruction's mimetype and name, the decoded text of its blobs, and its `end`s. */
 export interface ArgumentStream {
