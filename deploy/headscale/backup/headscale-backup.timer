@@ -1,0 +1,13 @@
+# VPS: run headscale-backup.service once a day (VPS-006, decision D-12).
+# Install as /etc/systemd/system/headscale-backup.timer (see README.md).
+[Unit]
+Description=Daily Headscale backup to the home rest-server
+
+[Timer]
+OnCalendar=*-*-* 03:15:00 UTC
+RandomizedDelaySec=15m
+Persistent=true
+Unit=headscale-backup.service
+
+[Install]
+WantedBy=timers.target

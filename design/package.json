@@ -1,0 +1,19 @@
+{
+  "name": "@anima/design",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "tokens": "bun bin/tokens.ts",
+    "tokens:check": "bun bin/tokens.ts --check",
+    "lint": "eslint . && bun run tokens:check",
+    "test": "bun test",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "style-dictionary": "5.7.1"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.0",
+    "typescript": "^6"
+  }
+}

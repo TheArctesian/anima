@@ -1,0 +1,58 @@
+{
+  "leaves": [
+    "ids",
+    "status",
+    "clock",
+    "config",
+    "scalars",
+    "paging"
+  ],
+  "wiring": [
+    "main",
+    "lib",
+    "schema"
+  ],
+  "domains": {
+    "events": [],
+    "credentials": [],
+    "access": [
+      "events",
+      "credentials"
+    ],
+    "devices": [
+      "events",
+      "credentials"
+    ],
+    "maintenance": [
+      "events"
+    ],
+    "checks": [
+      "devices",
+      "maintenance",
+      "events",
+      "credentials"
+    ],
+    "sessions": [
+      "access",
+      "devices",
+      "credentials",
+      "events"
+    ]
+  },
+  "graphql": {
+    "devices": [
+      "access",
+      "checks",
+      "sessions"
+    ],
+    "checks": [
+      "access"
+    ],
+    "maintenance": [
+      "access"
+    ],
+    "events": [
+      "access"
+    ]
+  }
+}

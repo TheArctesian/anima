@@ -1,0 +1,6 @@
+too-many-lines-threshold = 60
+too-many-arguments-threshold = 4
+cognitive-complexity-threshold = 15
+# Clippy counts the function body as level 1 and flags a block at level == threshold,
+# so 5 allows 4 nested blocks (e.g. four `if`s) inside a body and rejects the fifth.
+excessive-nesting-threshold = 5

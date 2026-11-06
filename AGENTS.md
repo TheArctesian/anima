@@ -80,9 +80,17 @@ fix the test. Rust integration tests live in one crate per binary (`tests/it/mai
 
 ## Gates
 
+Run `bun run gates` before you ask for review and before every merge. There is no CI; gates run on the machine that makes the change.
+
 ```sh
-cargo fmt --check
-cargo clippy --all-targets -- -D warnings
-cargo test
-pnpm -r lint && pnpm -r check && pnpm -r test
+bun run gates
+BASE_REF=my-branch bun run gates   # baseline gate compares against this ref (default: phase-1)
 ```
+
+The gates run in this order and stop at the first failure: `cargo fmt --check`,
+`cargo clippy --all-targets -- -D warnings`, `cargo test` (with a throwaway PostgreSQL 17, R-009), `bun install --frozen-lockfile`,
+`bun run lint`, `bun run check`, `bun run test`, `bun run --cwd apps/client build`,
+`bun run quality:limits`, `bun run quality:names`, `bun run quality:imports`,
+`bun run quality:baseline -- --base $BASE_REF`. See [quality/README.md](quality/README.md).
+Leave `DATABASE_URL` unset so each run gets its own PostgreSQL server: sqlx names test databases
+by test path, so two worktrees that share one server destroy each other's databases (R-019).

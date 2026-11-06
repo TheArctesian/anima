@@ -1,0 +1,16 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "desktop",
+  "description": "The main window on desktop: self-update and relaunch (UPD-001-006), the process log and its folder (LOG-008), and the Sharing settings pane for Remote Login (R-059; it fails as unavailable on Linux), and this computer's name, OS user, OS, VPN address and whether SSH answers there, to fill in Add device (R-058, R-060). The updater and process plugins are registered in release builds only, so in a debug build their permissions grant nothing. Known width: a script in the web view may pass headers, timeout, proxy and target to check, and may relaunch the app; it cannot change the key, the endpoints or the downgrade rule (WP-04b final review C-1).",
+  "webviews": ["main"],
+  "platforms": ["macOS", "linux"],
+  "permissions": [
+    "updater:allow-check",
+    "updater:allow-download-and-install",
+    "process:allow-restart",
+    "log:allow-log",
+    "allow-process-log-folder-open",
+    "allow-remote-login-settings-open",
+    "allow-this-machine-read"
+  ]
+}

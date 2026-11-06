@@ -1,0 +1,17 @@
+{
+  "name": "@anima/desktop",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "lint": "echo 'The Rust side is covered by the cargo gates (fmt, clippy).'",
+    "check": "echo 'The Rust side is covered by the cargo gates (clippy, build).'",
+    "test": "echo 'The Rust side is covered by the cargo gates (cargo test).'"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.12.4"
+  }
+}

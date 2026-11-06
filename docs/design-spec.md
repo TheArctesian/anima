@@ -71,7 +71,7 @@ The desktop applications are the first priority. Do not start the web and iOS wo
 | Device | A computer, server, virtual machine or network appliance that Anima manages. |
 | Client | The Anima application that the operator uses: desktop, web or iOS. |
 | Hub | The Anima server process. It runs all the time on the private network. |
-| Gateway | The `guacd` process. It converts SSH and RDP into the Guacamole protocol. |
+| Gateway | The `guacd` process. It converts RDP and VNC into the Guacamole protocol. SSH does not use it: the hub runs SSH itself (R-062). |
 | Session | One remote access connection from the client to a device. |
 | Check | One test that finds if a device or a service is available. |
 | Heartbeat | The result of one check at one time. |
@@ -116,7 +116,7 @@ Anima has three components: the client, the hub and the gateway.
 
 | Item | Decision |
 | --- | --- |
-| Fonts and icons | OpenDyslexic Nerd Font. See Section 5.2. |
+| Fonts and icons | Fira Code by default; OpenDyslexic Nerd Font as a Settings choice; Nerd Font icons. See Section 5.2. |
 | Framework | Tauri 2 |
 | Native layer | Rust |
 | User interface | TypeScript in the Tauri web view. See Section 11 for the framework decision. |
@@ -146,19 +146,19 @@ Anima has three components: the client, the hub and the gateway.
 
 ### 3.5 Gateway
 
-- **GW-001.** The gateway must use the official `guacamole/guacd` Docker image as its base. The Anima image adds only fonts (RA-011).
+- **GW-001.** The gateway must use the official `guacamole/guacd` Docker image as its base. The Anima image adds only fonts (RA-011; since R-062 SSH no longer needs the terminal font in the gateway).
 - **GW-002.** Only the hub must connect to the gateway. Do not publish port 4822 outside the Docker network.
 - **GW-003.** The gateway has no authentication. A process that can connect to port 4822 can open a connection to any host. Thus GW-002 is a security requirement.
 - **GW-004.** If the gateway runs on a different host in a later version, the hub must connect to it with TLS.
 
-The gateway does only the protocol work: SSH, RDP and VNC connections, the display, recordings, file streams and joins to a shared session. The Guacamole Java web application does all other work. Anima does not use the Java web application. Thus the hub must do this work:
+The gateway does only the protocol work: RDP and VNC connections (SSH goes through the hub's terminal tunnel, R-062), the display, recordings, file streams and joins to a shared session. The Guacamole Java web application does all other work. Anima does not use the Java web application. Thus the hub must do this work:
 
 - **GW-010. Handshake.** The hub must send `select`, read `args` and agree the protocol version. Then the hub must send `size`, `audio`, `video`, `image`, `timezone` and `name`. The hub must send `connect` last, with a value for each argument. Then the hub must read `ready`.
 - **GW-011. Tunnel.** The hub must relay the WebSocket subprotocol `guacamole` to the gateway. The hub must answer the internal tunnel instructions and `ping`. The hub must close the tunnel when it gets an instruction that is not valid.
 - **GW-012. Parameters.** The hub must make all connection arguments from the database and the credential store. The client can set only these values: screen size, DPI, time zone and terminal colour scheme.
 - **GW-013. Forbidden client values.** The client must not set `hostname`, `port`, credentials, `recording-path`, `drive-path`, `sftp-root-directory`, `typescript-path` or `wol-*` values.
 - **GW-014. Session control.** The hub must keep the gateway connection ID of each live session. The client must not see this ID.
-- **GW-015. Credential prompt.** If the gateway asks for a missing credential with `required`, the client must ask the operator. The hub must not keep this value unless the operator selects "Save".
+- **GW-015. Credential prompt.** If the gateway asks for a missing credential with `required`, the client must ask the operator (RDP and VNC; SSH has no prompt for a missing credential since R-062, K4 Section 8.2). The hub must not keep this value unless the operator selects "Save".
 
 ### 3.6 Database
 
@@ -168,7 +168,7 @@ Anima uses PostgreSQL. For this version, the database runs on the same host as t
 | --- | --- |
 | Version | PostgreSQL 17 or later |
 | Rust access | `sqlx` with compile-time checked queries |
-| Schema changes | `sqlx` migrations in the hub repository. The hub applies them at start. |
+| Schema changes | `sqlx` migrations in the hub repository. A one-shot `migrate` step applies them as the owner role before the hub starts. The hub serves as a runtime role that owns nothing (LOG-006). |
 | Data volume | A named Docker volume |
 
 - **DB-001.** Only the hub must connect to the database. Do not publish port 5432 outside the Docker network.
@@ -225,6 +225,44 @@ Anima keeps three types of log.
 - **LOG-009.** The client must show the event log in a Logs panel on the Devices page. It must also show it in the Logs tab of the device detail view. The operator must be able to filter it by time, severity, device and source.
 - **LOG-010.** The client must receive new event log entries through a GraphQL subscription.
 
+### 3.9 Desktop releases and updates
+
+The desktop app updates itself, as Sparkle does on macOS. GitHub Actions builds and publishes each release. The app downloads a new version in the background and asks the operator to restart.
+
+```text
+push to main ─► version job ─► build macOS + build Linux (parallel; each signs its updater file)
+                                         │
+                                         ▼
+                 feed job: latest.json lists only the platforms that built ─► publish the release
+                                                                                     │
+desktop app ── at start and every 4 hours ── GET latest.json ── version differs? ── download, verify signature, install
+                                                                                     │
+                                                                  banner "Restart to update" ─► relaunch
+```
+
+| Item | Value |
+| --- | --- |
+| Host | Public GitHub Releases of `TheArctesian/anima` (the repository is public, so the app needs no credential) |
+| Feed URL | `https://updates.anima.ing/latest.json`. It redirects to the latest GitHub release (DNS-007). |
+| Version | `0.1.<workflow run number>`, computed once in the version job. Do not commit version changes. |
+| Platforms | macOS universal (`.app.tar.gz` for the updater, `Anima.dmg` for people), Linux x86_64 (`.AppImage`) |
+| Updater signature | Tauri updater key pair. The public key is in `tauri.conf.json`. The private key is the GitHub secret `TAURI_SIGNING_PRIVATE_KEY`. |
+| macOS signature | Ad-hoc (`APPLE_SIGNING_IDENTITY=-`). The workflow uses Developer ID signing and notarization only when all Apple secrets are present. |
+| Rollback | `allowDowngrades: true`. To roll back, mark an older release as "latest". |
+
+- **UPD-001.** The desktop app must check the feed at start and then every 4 hours. Development builds, the web client and the iOS client must not check and must not load the updater plugin.
+- **UPD-002.** The app must verify the signature of each update with the public key in the app before it installs the update. If the signature is not correct, the app must not install the update. It must record the failure and continue.
+- **UPD-003.** The app must download and install an update without a prompt. The app must not restart until the operator selects "Restart to update", because a restart can stop live sessions.
+- **UPD-004.** When an update is installed, the client must show a banner with the text "Anima <version> is installed" and a "Restart to update" button. The banner must have `role="status"`.
+- **UPD-005.** After one update is installed, the app must stop checking until it restarts.
+- **UPD-006.** The Settings page must show an "Updates" row with the current version, the update state and a "Check for updates" button. A failed check must not show an error dialog; the next check runs at the usual time.
+- **UPD-007.** The release workflow must run only on a push to `main` and on manual start. It must not run on pull requests (CQ-010). It must not cancel a release run that is in progress.
+- **UPD-008.** The workflow must upload all files before it publishes the release. The release becomes "latest", and thus visible to the app, only after `latest.json` is uploaded.
+- **UPD-009.** `latest.json` must list only the platforms whose build passed in this run. Do not list a platform with a file from an older version. (With `allowDowngrades`, the app would install that file again at each check.)
+- **UPD-010.** Each release must have versioned updater files, stable-named files for people (`Anima.dmg`, `Anima-x86_64.AppImage`) and a `SHA256SUMS` file.
+- **UPD-011.** The macOS build job must verify the bundle with `codesign --verify --deep --strict` and must verify that `lipo -archs` gives `x86_64` and `arm64`.
+- **UPD-012.** Only the operator makes the updater key pair and sets the GitHub secrets. Agents must not read the private key file. The operator must keep a backup of the private key: if it is lost, each installed app must be installed again by hand.
+
 ## 4. Security
 
 The hub can open a session to every device. Thus the hub is a high-value target. Obey all the requirements in this section.
@@ -249,7 +287,7 @@ The devices are at more than one site. Example: office 1, home and office 2. A m
 - **NET-002.** The hub must refuse each API request, tunnel request and login from an address that is not in a permitted network. The hub must write the refusal to the event log.
 - **NET-003.** The hub must listen only on its VPN interface and its private network interfaces. Do not bind the hub to a public interface.
 - **NET-004.** If the client cannot connect to the hub, the navigation bar must show "Not on the network" and the hub address. The message must tell the operator to check the VPN client. Data on the screen must show its age.
-- **NET-005.** The client must find the hub by its VPN DNS name (for example `anima-hub`). mDNS does not cross sites, so use mDNS only as a fallback on the local network. The operator can also type the hub address.
+- **NET-005.** The client must find the hub by its DNS name `hub.anima.ing` (DNS-001). mDNS does not cross sites, so use mDNS only as a fallback on the local network. The operator can also type the hub address.
 - **NET-006.** A later version can let the hub find new devices on each site with mDNS and an ARP scan. The operator must accept each found device before Anima adds it.
 
 ### 4.2 Sites and VPN
@@ -306,6 +344,26 @@ VPS security:
 - **VPS-005.** The operator must confirm each change to the VPS or the Hostinger account. Automation must not change the VPS without this confirmation.
 - **VPS-006.** Back up the Headscale database and the Anima database each day to a site that is not the VPS.
 
+#### 4.2.1 Domain names
+
+The operator owns the domain `anima.ing`. Cloudflare holds its DNS.
+
+| Name | Public DNS record | Points to | Purpose |
+| --- | --- | --- | --- |
+| `hs.anima.ing` | A, not proxied | VPS public IP | Headscale control server and DERP relay (Headscale `server_url`) |
+| `hub.anima.ing` | A, not proxied | Hub VPN address (`100.64.0.0/10`) | Hub address for clients. The name is public, but only VPN members can connect. |
+| `updates.anima.ing` | Proxied | Cloudflare redirect rule | Update feed and downloads (Section 3.9) |
+| `<device>.net.anima.ing` | None | Headscale DNS only | VPN names of hosts (Headscale `dns.base_domain` = `net.anima.ing`) |
+
+- **DNS-001.** The client must use `hub.anima.ing` as the default hub address (NET-005).
+- **DNS-002.** The hub must use a Let's Encrypt certificate for `hub.anima.ing`. Get it with the DNS-01 challenge through the Cloudflare API, because the hub has no public port. Renew it automatically. This satisfies SEC-001 with a certificate that the client trusts without a pinned exception.
+- **DNS-003.** The Cloudflare API token for DNS-01 must have only the permission "Zone DNS Edit" for `anima.ing`. Keep it in a Docker secret (SEC-004 rules apply). Do not log it.
+- **DNS-004.** The `hs.anima.ing` and `hub.anima.ing` records must not be proxied. Cloudflare cannot proxy WireGuard, STUN or a VPN address.
+- **DNS-005.** `hub.anima.ing` points to a private address. A connection from outside the VPN must fail. This keeps SEC-008: the public record shows the name and a VPN address only.
+- **DNS-006.** Headscale `dns.base_domain` must be `net.anima.ing`. It must not be `anima.ing`, because Headscale does not permit a base domain that contains the `server_url` host. Device names under `net.anima.ing` do not have public records.
+- **DNS-007.** `updates.anima.ing/latest.json` must redirect (HTTP 302) to `https://github.com/TheArctesian/anima/releases/latest/download/latest.json`. `updates.anima.ing/<file>` must redirect to the same file of the latest release. The app keeps the `updates.anima.ing` URL, so the host can change later without a new app build.
+- **DNS-008.** The operator must confirm each change to the Cloudflare account or the `anima.ing` zone, as for the VPS (VPS-005).
+
 ### 4.3 Traffic data (later)
 
 The VPN encrypts traffic between machines, and most traffic does not go through the VPS. Thus the VPN does not give a central record of traffic. These two sources give traffic data:
@@ -353,25 +411,26 @@ Anima uses the Nord colour scheme. The default theme is dark.
 
 ### 5.2 Typography and spacing
 
-Anima uses OpenDyslexic for text and Nerd Fonts for icons. The Nerd Fonts project supplies OpenDyslexic with the icons already added (patched). Thus one font family gives the text and the icons.
+Anima uses Fira Code for text by default and Nerd Fonts for icons. The operator can change the interface text and the monospace text to OpenDyslexic in Settings, each on its own (UI-020; operator decision, 2026-11-05). The Nerd Fonts project supplies OpenDyslexic with the icons already added (patched), so icons always come from the OpenDyslexic Propo file, whichever text font is chosen.
 
-| Use | Font family | File (from `ryanoasis/nerd-fonts`, `patched-fonts/OpenDyslexic/`) | Licence |
+| Use | Font family | File | Licence |
 | --- | --- | --- | --- |
-| Interface text and icons | OpenDyslexic Nerd Font Propo | `Regular/OpenDyslexicNerdFontPropo-{Regular,Bold,Italic,BoldItalic}.otf` | SIL OFL 1.1 |
-| Terminal, IP addresses, host names, code | OpenDyslexicM Nerd Font Mono | `Mono-Regular/OpenDyslexicMNerdFontMono-Regular.otf` | SIL OFL 1.1 |
+| Interface text, IP addresses, host names, code (default) | Fira Code | `woff2/FiraCode-{Regular,Bold}.woff2` from the `tonsky/FiraCode` 6.2 release | SIL OFL 1.1 |
+| Interface text (choice) and icons | OpenDyslexic Nerd Font Propo | `ryanoasis/nerd-fonts`, `patched-fonts/OpenDyslexic/Regular/OpenDyslexicNerdFontPropo-{Regular,Bold,Italic,BoldItalic}.otf` | SIL OFL 1.1 |
+| Terminal; IP addresses, host names, code (choice) | OpenDyslexicM Nerd Font Mono | `ryanoasis/nerd-fonts`, `patched-fonts/OpenDyslexic/Mono-Regular/OpenDyslexicMNerdFontMono-Regular.otf` | SIL OFL 1.1 |
 | Icon fallback | Symbols Nerd Font | `patched-fonts/NerdFontsSymbolsOnly/SymbolsNerdFont-Regular.ttf` | MIT |
 
-- **UI-010.** Use OpenDyslexic Nerd Font Propo for all interface text.
-- **UI-011.** Use OpenDyslexicM Nerd Font Mono for the terminal, IP addresses, host names and code. Use the "Mono" variant in the terminal, because its icons are one cell wide.
+- **UI-010.** Use Fira Code for all interface text by default. OpenDyslexic Nerd Font Propo is the alternative (UI-020).
+- **UI-011.** Use Fira Code for IP addresses, host names and code by default; OpenDyslexicM Nerd Font Mono is the alternative (UI-020). The SSH terminal uses OpenDyslexicM Nerd Font Mono (RA-011). Use the "Mono" variant in the terminal, because its icons are one cell wide.
 - **UI-014.** Use Nerd Font glyphs for all icons. Do not use image files or a second icon library. Use the Propo variant for icons in the interface, because its icons have their natural width.
 - **UI-015.** Each icon must have `aria-hidden="true"`. A button that has only an icon must have a text label for screen readers and a tooltip.
 - **UI-016.** Refer to each icon by its Nerd Font class name in the code, for example `nf-md-server`. Keep a table of the class names and code points in one source file. Do not write raw code points in components.
 - **UI-017.** The client must include the font files in the application package. Do not load fonts from the internet at run time.
 - **UI-022.** The Bold and Italic files of OpenDyslexic Nerd Font Propo are not in the Nerd Fonts v3.4.0 release. They are on the main branch. Pin the font files to commit `f034eeafc0ccf79afa8dd952feb86b18e5d0469e` until a release includes them.
 - **UI-018.** Each font licence file must be in the application package and in the "About" information.
-- **UI-019.** OpenDyslexic is wider and taller than most system fonts. Use `text-md` (0.875 rem) for body text, `text-sm` (0.8125 rem) for dense tables and `leading-normal` (1.5). Test each layout at these sizes. See Section 5.5.
-- **UI-021.** Apple recommends the system font first. Anima uses OpenDyslexic for readability. This is a deliberate exception. UI-020 keeps the system font available.
-- **UI-020.** A later Settings item can let the operator change to the system font. OpenDyslexic is the default.
+- **UI-019.** OpenDyslexic is wider and taller than most system fonts, and Fira Code is monospaced and wide. Use `text-md` (0.875 rem) for body text, `text-sm` (0.8125 rem) for dense tables and `leading-normal` (1.5). Test each layout at these sizes in both typefaces. See Section 5.5.
+- **UI-021.** Apple recommends the system font first. Anima uses Fira Code by default and offers OpenDyslexic for readability. This is a deliberate exception. The system font stays the fallback in every font token.
+- **UI-020.** The Settings page has two choices, "Interface font" and "Monospace font". Each is Fira Code (the default) or OpenDyslexic, and each is saved on the device. The choice changes the `font-ui` and `font-mono` tokens, so no component reads it. A choice applies at once and before the first render after a restart. Icons do not change. More typefaces or text roles can be added to the same choice later.
 - **UI-012.** Use a 4-pixel spacing grid. Use the `space-*` tokens (Section 5.5.3).
 - **UI-013.** Interactive controls must have a minimum target size of 24 by 24 pixels on desktop and 44 by 44 points on iOS.
 
@@ -420,11 +479,11 @@ A design token is a named design value, for example a colour, a space or a sprin
 | Build tool | Style Dictionary (version 4 or later) |
 | Output: interface | `apps/client/src/styles/tokens.css` (CSS custom properties on `:root`) |
 | Output: animation code | `apps/client/src/lib/motion/tokens.ts` (typed constants for springs and thresholds) |
-| Output: hub | `crates/theme` (the Nord terminal colour scheme for the gateway, RA-010) |
+| Output: hub | `crates/theme` (the Nord colour table, and the gateway's terminal colour scheme for the Guacamole tunnel; the SSH terminal's theme comes from `tokens.css`, RA-010) |
 | Output: documentation | A generated token page in the design documentation |
 
 - **TOK-001.** The token files are the single source of truth. Do not edit the generated files.
-- **TOK-002.** The build must make all outputs from the token files. The CI gate must fail if a generated file is not current.
+- **TOK-002.** The build must make all outputs from the token files. The gate script (CQ-010) must fail if a generated file is not current.
 - **TOK-003.** A CSS gate (Stylelint) must refuse raw values in component code. This applies to colours, durations, easing curves, z-index values and font families. Existing exceptions go in a baseline that can only become smaller.
 - **TOK-004.** A token can change its value. A token must not change its meaning. To change a meaning, add a new token and remove the old token.
 
@@ -446,11 +505,11 @@ A design token is a named design value, for example a colour, a space or a sprin
 | Colour, primitive | `nord-0` to `nord-15` | Section 5.1 |
 | Colour, semantic | `bg`, `surface`, `surface-raised`, `border`, `text`, `text-muted`, `accent`, `accent-alt`, `accent-deep`, `info`, `status-*` | Section 5.1 |
 | Colour, tint | `accent-tint`, `status-*-tint` | The colour at 12 % on `surface` |
-| Font family | `font-ui`, `font-mono`, `font-icon` | Section 5.2 |
+| Font family | `font-ui`, `font-mono`, `font-ui-opendyslexic`, `font-mono-opendyslexic`, `font-icon` | Section 5.2 |
 | Font size | `text-xs`, `text-sm`, `text-md`, `text-lg`, `text-xl`, `text-2xl` | 0.75, 0.8125, 0.875, 1, 1.25, 1.5 rem |
 | Line height | `leading-tight`, `leading-normal`, `leading-relaxed` | 1.2, 1.5, 1.7 |
 | Tracking | `tracking-display`, `tracking-body`, `tracking-small` | −0.01 em, 0, +0.01 em |
-| Weight | `weight-regular`, `weight-bold` | 400, 700 (OpenDyslexic has only these two weights) |
+| Weight | `weight-regular`, `weight-bold` | 400, 700 (OpenDyslexic has only these two weights; Fira Code ships these two) |
 | Space | `space-0` to `space-16` | 0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4 rem (4-pixel grid) |
 | Radius | `radius-sm`, `radius-md`, `radius-lg`, `radius-pill` | 4, 6, 10, 999 px |
 | Border width | `border-thin`, `border-focus` | 1, 2 px |
@@ -601,7 +660,7 @@ At the end of each phase, do a motion audit with the `motion-audit` procedure on
 - **MV-005.** Delay the API by 400 ms in the test, so that staged loading shows.
 - **MV-006.** Check that WebKit supports each view transition that Anima uses. If it does not, use a FLIP animation from the `motion` library.
 - **MV-007.** Write the report to `docs/research/motion/` with a ranked list. A reel that shows the top proposals is optional.
-- **MV-008.** CI gates: transitions must use tokens or the shared motion helpers. Each `@keyframes` rule must be in an allowlist with a reason.
+- **MV-008.** Gates (CQ-010): transitions must use tokens or the shared motion helpers. Each `@keyframes` rule must be in an allowlist with a reason.
 
 ## 6. Devices page
 
@@ -655,10 +714,9 @@ Session procedure:
 
 1. The client sends a session request to the hub.
 2. The hub reads the credential and the connection settings of the device.
-3. The hub opens a connection to the gateway.
-4. The gateway connects to the device.
-5. The hub sends the Guacamole stream to the client through the WebSocket tunnel.
-6. The client shows the session in a new tab in the main window.
+3. SSH: the hub connects to the device itself (R-062, K4 Section 8). RDP and VNC: the hub opens a connection to the gateway, and the gateway connects to the device.
+4. The hub sends the stream to the client through the WebSocket tunnel: terminal bytes for SSH, the Guacamole stream for RDP and VNC.
+5. The client shows the session in a new tab in the main window.
 
 - **RA-001.** The client must show each session in a tab. The operator must be able to open more than one session.
 - **RA-002.** The operator must be able to move a session tab into a separate window on desktop.
@@ -670,6 +728,8 @@ Session procedure:
 - **RA-008.** The hub must record the start time, the end time and the device of each session. The hub must not record the session content, except when the operator sets RA-040 on.
 
 #### 6.3.1 SSH settings (Phase 1)
+
+Since R-062 the hub opens the SSH connection and the client draws the terminal (K4 Section 8). The middle column names the setting as guacd called it; the hub and the client apply the same values.
 
 | Setting | Gateway parameter | Default |
 | --- | --- | --- |
@@ -683,8 +743,8 @@ Session procedure:
 | Scroll-back lines | `scrollback` | 5000 |
 | Terminal type | `terminal-type` | `xterm-256color` |
 
-- **RA-010.** The hub must give the gateway a custom colour scheme from the Nord tokens in Section 5.1.
-- **RA-011.** The gateway renders the terminal on the server. Thus the gateway Docker image must include OpenDyslexicM Nerd Font Mono. Build a small image from `guacamole/guacd` that adds the font file.
+- **RA-010.** The SSH terminal uses a colour scheme from the Nord tokens in Section 5.1 (R-062: the client's xterm.js theme; before, the gateway's custom colour scheme).
+- **RA-011.** The client renders SSH sessions with xterm.js, from the terminal bytes the hub relays (R-062, K4 Section 8). The terminal uses OpenDyslexicM Nerd Font Mono, which the client ships, and the Nord colours from the tokens (RA-010). The gateway image no longer needs the terminal font for SSH.
 
 #### 6.3.2 RDP settings (Phase 2)
 
@@ -776,6 +836,7 @@ Each check has these common settings:
 - **CHK-010.** The hub must have a watchdog for the check scheduler. If checks are late by more than 2 intervals, the hub must write an event log entry with the severity Error.
 - **CHK-011.** The hub must calculate uptime from aggregate tables (DB-008). Do not read all raw heartbeats to calculate uptime.
 - **CHK-012.** The hub must not start a shell command with text that the operator supplied.
+- **CHK-013.** An ICMP check that has never been Up must repair its method (R-064): when it is Down, has used its retries and the operator has not edited it, the hub must try a TCP connect to the device's connection ports (SSH first). If one answers, the hub must change the check to TCP on that port and write an event and an audit entry. The hub must never change a check that was ever Up or that the operator edited.
 
 ### 6.5 Maintenance windows
 
@@ -873,7 +934,7 @@ The view has these tabs:
 ## 7. Settings page
 
 - **SET-001.** The Settings page must be available from the navigation bar.
-- **SET-002.** In Phase 1, the Settings page must show only the page title "Settings" and an empty state.
+- **SET-002.** In Phase 1, the Settings page must show only the page title "Settings", a "Signed in as <name>" row with "Sign out" (R-048), the "Interface font" and "Monospace font" choices (UI-020), and, in the desktop app, the "Updates" row (UPD-006).
 
 A later version adds these items to the Settings page:
 
@@ -931,7 +992,7 @@ The gateway cannot open a Proxmox console. Proxmox sends VNC and terminal data o
 - **PVE-030.** The hub must relay the console WebSocket. The hub must call `vncproxy` or `termproxy` and then connect to `vncwebsocket` at once, because the ticket expires after about 10 seconds.
 - **PVE-031.** The client must use noVNC for a virtual machine console. The client must use xterm.js for a container console and a node shell.
 - **PVE-032.** Test if an API token can open a console. If it cannot, the hub must use a separate console user and renew its ticket every 90 minutes.
-- **PVE-033.** For a guest with an IP address, SSH and RDP through the gateway are the preferred methods. The console is for a guest without network access.
+- **PVE-033.** For a guest with an IP address, SSH (the hub's terminal tunnel, R-062) and RDP (through the gateway) are the preferred methods. The console is for a guest without network access.
 
 ### 8.5 Later functions (Phase 6 or later)
 
@@ -981,7 +1042,8 @@ A later version can manage libvirt hosts and Docker hosts. Prepare for this now:
 12. No log contains a password, a private key or a token.
 13. All colours, spaces, font sizes and motion values come from tokens. The token gate (TOK-003) passes.
 14. Each motion role in Section 5.7.3 that Phase 1 uses has a reduced-motion form. The Phase 1 motion audit (Section 5.8) has no open finding of the classes "layout jump" or "wrong motion".
-15. The CUPID gates (CQ-010, CQ-040, CQ-043) and the import graph check (REPO-004) run in CI and pass. The baseline file is empty.
+15. The CUPID gates (CQ-010, CQ-040, CQ-043) and the import graph check (REPO-004) pass in the gate script (`bun run gates`). The baseline file is empty.
+16. A merge to `main` publishes a release. An installed earlier build downloads it, shows the restart banner, and runs the new version after "Restart to update". A feed with a bad signature is refused and the app continues to run (UPD-001–012).
 
 ## 10. iOS constraints
 
@@ -1044,7 +1106,7 @@ Anima uses the CUPID properties for code quality: Composable, Unix philosophy, P
 | Clock, random, environment or global reads in core modules | P | 0 |
 | Suppressed lints without a reason | I | 0 |
 
-- **CQ-010.** CI must measure each signal in this table. CI must fail when a new file or a changed file is more than a limit.
+- **CQ-010.** The gate script (`bun run gates`) must measure each signal in this table. It must fail when a new file or a changed file is more than a limit. The gates run on the machine that makes the change, before each review and each merge. Do not run gates or tests in GitHub Actions. GitHub Actions is only for deployment.
 - **CQ-011.** The repository starts with an empty baseline file (`quality/baseline.json`). An entry records a file and its current value. An entry can only decrease. Do not add an entry by hand. Do not increase a value to make a change pass. Split the code.
 - **CQ-012.** Generated files (tokens, GraphQL types, migrations) are not measured. List them in `quality/generated.txt`.
 - **CQ-013.** Suppress a lint only with a reason. Rust: `#[expect(clippy::rule, reason = "...")]`. TypeScript: `// eslint-disable-next-line rule -- reason`.
@@ -1159,7 +1221,7 @@ anima/
 │       └── src-tauri/         Tauri shell: windows, key store, web views (WEB-004)
 └── deploy/
     ├── compose.yaml           Hub, gateway, PostgreSQL (DB-007 backup)
-    ├── gateway/               guacd image with fonts (RA-011)
+    ├── gateway/               guacd image with fonts (GW-001; RDP and VNC)
     └── headscale/             Headscale configuration and ACLs (VPN-004)
 ```
 
@@ -1177,8 +1239,8 @@ Each hub domain folder has the same shape. Add only the files that the domain ne
 - **REPO-001.** A new domain is a new folder with a noun from the domain. Do not add a folder named for a technical layer at the top of `src/`.
 - **REPO-002.** `crates/hub/src/main.rs` and `schema.rs` contain wiring only. They contain no business rules.
 - **REPO-003.** The Tauri shell (`apps/desktop/src-tauri`) contains only functions that need the operating system: windows, the key store and web views. All other logic is in the hub or the client.
-- **REPO-004.** A domain must not import the `store` module of a different domain (CQ-032). CI must check the import graph for this rule and for cycles.
-- **REPO-005.** A folder with more than 12 files must be split into sub-domains, for example `checks/types/`.
+- **REPO-004.** A domain must not import the `store` module of a different domain (CQ-032). The gate script must check the import graph for this rule and for cycles.
+- **REPO-005.** A folder with more than 12 files must be split into sub-domains, for example `checks/types/`. A Rust module file `name.rs` that has a folder `name/` belongs to that folder and does not count in its parent folder.
 
 ## 14. References
 

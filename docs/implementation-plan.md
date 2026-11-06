@@ -121,10 +121,10 @@ Each package owns its paths. A package must not change a path that a different p
 
 | ID | Package | Owned paths | Depends on | Builders | Reviewers | Spec IDs |
 | --- | --- | --- | --- | --- | --- | --- |
-| WP-01 | Repository skeleton and quality gates | Root `Cargo.toml`, `package.json`, `quality/`, CI files, lint configurations, `crates/hub/src/main.rs`, `crates/hub/src/schema.rs` | — | Sonnet, Haiku | Sonnet | CQ-010–013, CQ-040, CQ-043, REPO-001–005 |
+| WP-01 | Repository skeleton and quality gates | Root `Cargo.toml`, `package.json`, `quality/`, the gate script (`bun run gates`), lint configurations, `crates/hub/src/main.rs`, `crates/hub/src/schema.rs` | — | Sonnet, Haiku | Sonnet | CQ-010–013, CQ-040, CQ-043, REPO-001–005 |
 | WP-02 | Design tokens and fonts | `design/tokens/`, `apps/client/src/styles/`, `crates/theme/`, token build | WP-01 | Haiku, Sonnet | Sonnet (interface) | TOK-*, UI-010–022 |
-| WP-03 | VPN and network | `deploy/headscale/`, VPN setup guide | WP-01 | Sonnet | Opus (security) | VPN-*, VPS-*, NET-005 |
-| WP-04 | Deployment | `deploy/compose.yaml`, `deploy/gateway/`, backup scripts | WP-01 | Haiku, Sonnet | Sonnet | GW-001–004, DB-001–007, RA-011 |
+| WP-03 | VPN and network | `deploy/headscale/`, `deploy/dns/`, VPN setup guide | WP-01 | Sonnet | Opus (security) | VPN-*, VPS-*, NET-005, DNS-001–006, DNS-008 |
+| WP-04 | Deployment. Stage A: hub deployment (Wave 1). Stage B: desktop releases and self-update (Wave 3, R-006) | A: `deploy/compose.yaml`, `deploy/gateway/`, backup scripts. B: `.github/workflows/release.yml`, `deploy/release/`, `apps/client/src/lib/updates/`, `apps/desktop/src-tauri/capabilities/desktop.json`, `docs/releases.md` | A: WP-01. B: WP-15, WP-16 | Haiku, Sonnet | Sonnet, Opus (security, stage B) | GW-001–004, DB-001–007, RA-011, UPD-001–012, DNS-002 (hub certificate, stage A), DNS-007 (stage B) |
 | WP-05 | Hub access and logs | `crates/hub/src/access/`, `crates/hub/src/events/`, tracing setup | WP-01, K1–K3 | Opus, Sonnet | Opus (security), Sonnet | SEC-*, NET-001–004, LOG-*, API-003, API-007 |
 | WP-06 | Hub devices | `crates/hub/src/devices/` | WP-01, K1–K3 | Sonnet | Sonnet | DEV-010–015, VPN-002 |
 | WP-07 | Hub credentials | `crates/hub/src/credentials/` | WP-01, K3 | Opus | Opus (security) | SEC-003–005, CLI-004 |
@@ -154,7 +154,7 @@ Wave 1 (parallel)  WP-02  WP-03  WP-04  WP-05  WP-06  WP-07  WP-08
                        |                   |      |      |      |
 Wave 2 (parallel)  WP-11 ---------------> WP-09  WP-10 <-------+
                        |
-Wave 3 (parallel)  WP-12  WP-13  WP-14  WP-15  WP-16
+Wave 3 (parallel)  WP-12  WP-13  WP-14  WP-15  WP-16  then WP-04 stage B
                        |
 Wave 4 (serial)    WP-17 integration and acceptance
 ```
@@ -170,13 +170,15 @@ Wave 4 (serial)    WP-17 integration and acceptance
 | Rust format | `cargo fmt --check` | Each task |
 | Rust lint | `cargo clippy --all-targets -- -D warnings` | Each task |
 | Rust tests | `cargo test` (database tests use a throwaway PostgreSQL) | Each task |
-| Client lint and types | `pnpm -r lint && pnpm -r check` | Each task |
-| Client tests | `pnpm -r test` | Each task |
-| CUPID limits and baseline | `quality` check (CQ-010, CQ-011) | Each task |
-| Import graph | Domain `store` imports and cycles (REPO-004) | Each task |
-| Tokens | Stylelint raw-value rule (TOK-003), generated files current (TOK-002) | Each task |
+| Client lint and types | `bun run lint && bun run check` (Stylelint runs inside `lint`) | Each task |
+| Client tests | `bun run test` | Each task |
+| CUPID limits and baseline | `bun run quality:limits`, `bun run quality:names` and `bun run quality:baseline -- --base phase-1` (the local `phase-1` branch; CQ-010, CQ-011) | Each task |
+| Import graph | `bun run quality:imports`: domain `store` imports and cycles (REPO-004) | Each task |
+| Tokens | Stylelint raw-value rule (TOK-003) inside `bun run lint`; generated files current (TOK-002) | Each task |
 | GraphQL contract | Schema comparison (CON-002) | Each hub task |
 | Browser | WebKit and Chromium checks for the interface (spec Section 5.8) | Each interface task |
+
+Run all gates with `bun run gates`. Gates do not run in GitHub Actions (R-005).
 
 ## 8. Files and communication
 
