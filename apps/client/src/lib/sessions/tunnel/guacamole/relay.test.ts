@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { installBlankCanvas } from './fake/canvas.fixture';
-import { codePoints, encodeInstruction, FAKE_TUNNEL_SOCKET, FakeTunnelSocket } from './fake/socket.fixture';
+import { installBlankCanvas } from '../fake/canvas.fixture';
+import { codePoints, encodeInstruction, FAKE_TUNNEL_SOCKET, FakeTunnelSocket } from '../fake/socket.fixture';
 import { openTunnel, type SessionTunnel } from './tunnel';
 
 // The hub relays gateway instructions unchanged, with element lengths in code points (K4 §4, GW-014, R-046).

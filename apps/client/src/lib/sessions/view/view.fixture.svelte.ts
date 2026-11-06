@@ -1,10 +1,13 @@
 // Test support: a fake sessions API, a hand-driven ResizeObserver, a fake system clipboard and Web Animations
-// stand-in for mounting `SessionView` in jsdom with the real tunnel on `FakeTunnelSocket`. No vitest import here.
+// stand-in for mounting `SessionView` in jsdom with the real terminal link on `FakeTerminalSocket` and the real
+// xterm.js (its DOM renderer runs in jsdom).
 import { flushSync, mount, unmount } from 'svelte';
+import { vi } from 'vitest';
 import type { HubResult } from '$lib/hub/hub';
 import type { AcceptedHostKey, ConnectionTest, ConnectionTestInput, EndedSession, SessionDisplay, SessionsApi, SessionTicket } from '../api';
 import type { SessionEndReason, SessionEnding } from '../ending';
-import { FAKE_TUNNEL_SOCKET, FakeTunnelSocket } from '../tunnel/fake/socket.fixture';
+import { openScreen, type ScreenHooks, type ScreenOpener } from '../terminal/screen';
+import { FAKE_TERMINAL_SOCKET, FakeTerminalSocket } from '../tunnel/terminal/fake/socket.fixture';
 import SessionView from './SessionView.svelte';
 import { sessionStart } from './start';
 
@@ -41,7 +44,7 @@ export function fakeApi() {
       calls.startSession.push([deviceId, display]);
       issued += 1;
       const n = String(issued);
-      const ticket: SessionTicket = { sessionId: `session-${n}`, token: `${TOKEN_MARKER}-${n}`, tunnelPath: '/tunnel', expiresAt: '2026-11-04T10:00:30Z' };
+      const ticket: SessionTicket = { sessionId: `session-${n}`, token: `${TOKEN_MARKER}-${n}`, tunnelPath: '/terminal', expiresAt: '2026-11-04T10:00:30Z' };
       return Promise.resolve({ ok: true, value: ticket });
     },
     endSession: (id) => {
@@ -119,6 +122,16 @@ export function installBrowserFakes(): () => void {
   systemClipboard.refuse = false;
   globalThis.ResizeObserver = FakeResizeObserver as unknown as typeof ResizeObserver;
   Object.defineProperty(navigator, 'clipboard', { configurable: true, value: systemClipboard });
+  // xterm.js asks for the colour scheme and the pixel ratio; jsdom has no `matchMedia`.
+  const savedMatchMedia = window.matchMedia;
+  window.matchMedia = ((query: string) => ({
+    matches: false,
+    media: query,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    addListener: () => undefined,
+    removeListener: () => undefined,
+  })) as unknown as typeof window.matchMedia;
   // Svelte's transitions call Web Animations; this one finishes on the next microtask.
   Object.defineProperty(Element.prototype, 'animate', {
     configurable: true,
@@ -130,6 +143,7 @@ export function installBrowserFakes(): () => void {
   });
   return () => {
     globalThis.ResizeObserver = saved;
+    window.matchMedia = savedMatchMedia;
     Reflect.deleteProperty(navigator, 'clipboard');
     Reflect.deleteProperty(Element.prototype, 'animate');
   };
@@ -143,18 +157,30 @@ export async function settle(): Promise<void> {
   flushSync();
 }
 
-/** Mount a `SessionView` for `DEVICE` on the real tunnel over `FakeTunnelSocket`, with `flags` as its flags. */
+/** What a mounted view told its parent, and the hooks the terminal gave it (for events a test cannot make by hand). */
+export interface ViewHeard {
+  ended: SessionEnding[];
+  titles: string[];
+  hooks: ScreenHooks | undefined;
+}
+
+/** Mount a `SessionView` for `DEVICE` on the real link over `FakeTerminalSocket`, with `flags` as its flags. */
 export function showView() {
   const { api, calls, answers } = fakeApi();
-  const ended: SessionEnding[] = [];
+  const heard: ViewHeard = { ended: [], titles: [], hooks: undefined };
+  const opener: ScreenOpener = (host, hooks) => {
+    heard.hooks = hooks;
+    return openScreen(host, hooks);
+  };
   const target = document.createElement('div');
   document.body.append(target);
   const component = mount(SessionView, {
     target,
     props: {
       device: DEVICE,
-      start: sessionStart(api, DEVICE.id, 'https://hub.anima.ing', FAKE_TUNNEL_SOCKET),
+      start: sessionStart(api, DEVICE.id, 'https://hub.anima.ing', FAKE_TERMINAL_SOCKET),
       api,
+      openScreen: opener,
       get visible() {
         return flags.visible;
       },
@@ -162,33 +188,36 @@ export function showView() {
         return flags.focused;
       },
       onended: (ending: SessionEnding) => {
-        ended.push(ending);
+        heard.ended.push(ending);
+      },
+      onretitle: (title: string) => {
+        heard.titles.push(title);
       },
     },
   });
   flushSync();
-  return { calls, answers, ended, target, close: () => unmount(component) };
+  return { calls, answers, heard, ended: heard.ended, target, close: () => unmount(component) };
 }
 
-/** Measure the pane (which starts the session), let the hub answer, open the tunnel and draw the first frame. */
-export async function connectView(width = 800, height = 600): Promise<FakeTunnelSocket> {
+/** Measure the pane (which opens the terminal and starts the session), let the hub answer and open the socket. */
+export async function connectView(width = 800, height = 600): Promise<FakeTerminalSocket> {
   FakeResizeObserver.resize(width, height);
   await settle();
-  const socket = FakeTunnelSocket.latest();
+  const socket = FakeTerminalSocket.latest();
   socket.open();
-  socket.sync();
   flushSync();
   return socket;
 }
 
-/** The pane the keyboard listens to. */
-export function paneOf(target: HTMLElement): HTMLElement {
-  const pane = target.querySelector<HTMLElement>('[role="application"]');
-  if (pane === null) throw new Error('no session pane');
-  return pane;
+/** xterm.js's hidden text field, which takes the keyboard. */
+export function textareaOf(target: HTMLElement): HTMLTextAreaElement {
+  const field = target.querySelector<HTMLTextAreaElement>('textarea.xterm-helper-textarea');
+  if (field === null) throw new Error('no terminal text field');
+  return field;
 }
 
-/** The instructions the client sent with `opcode`, without their opcode. */
-export function sent(socket: FakeTunnelSocket, opcode: string): string[][] {
-  return socket.sentInstructions().filter(([name]) => name === opcode).map(([, ...args]) => args);
+/** The text the DOM renderer shows; xterm.js draws on animation frames, so this advances the fake timers first. */
+export function screenText(target: HTMLElement): string {
+  vi.advanceTimersByTime(100);
+  return target.querySelector('.xterm-rows')?.textContent ?? '';
 }

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { SessionsApi } from '../api';
   import { useSessions } from '../sessions.svelte';
+  import { openScreen } from '../terminal/screen';
   import SessionView from '../view/SessionView.svelte';
   import { panelId, tabElementId } from './tablist';
 
@@ -19,7 +20,7 @@
 <!--
   One panel per open tab, all kept mounted so a hidden session stays alive (D-11); only the
   selected one shows, and a hidden one is inert with its keyboard unbound (D-8). No motion
-  here: the remote display is never animated (MAT-008).
+  here: the terminal is never animated (MAT-008).
 -->
 <div class="panes" hidden={sessions.active === null}>
   {#each sessions.tabs as tab (tab.id)}
@@ -36,8 +37,10 @@
         device={{ id: tab.deviceId, name: tab.deviceName }}
         start={sessions.startIn(tab.id)}
         {api}
+        {openScreen}
         {visible}
         {focused}
+        onretitle={(title) => sessions.retitle(tab.id, title)}
       />
     </div>
   {/each}

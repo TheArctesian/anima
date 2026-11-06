@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ending } from '../ending';
-import { installBlankCanvas } from './fake/canvas.fixture';
-import { decodeInstructions, encodeInstruction, FAKE_TUNNEL_SOCKET, FakeTunnelSocket } from './fake/socket.fixture';
+import { ending } from '../../ending';
+import { installBlankCanvas } from '../fake/canvas.fixture';
+import { decodeInstructions, encodeInstruction, FAKE_TUNNEL_SOCKET, FakeTunnelSocket } from '../fake/socket.fixture';
 import { openTunnel, type SessionTunnel, type TunnelState } from './tunnel';
-import Guacamole from './vendor/guacamole.js';
+import Guacamole from '../vendor/guacamole.js';
 
 /** A ticket token that is easy to find anywhere it should not be (43 base64url characters, K4 §1). */
 const TOKEN = 'TOKENMARKER_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';

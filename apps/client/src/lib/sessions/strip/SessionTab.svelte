@@ -52,6 +52,7 @@
 >
   <Icon name="nf-md-console" size="sm" />
   <span class="name">{tab.deviceName}</span>
+  {#if tab.title}<span class="title" title={tab.title}>{tab.title}</span>{/if}
   <span class="protocol">{tab.protocol}</span>
 </button>
 {#if onpopout !== undefined}
@@ -109,6 +110,17 @@
 
   .tab[aria-selected='true'] {
     box-shadow: inset 0 calc(var(--border-focus) * -1) 0 var(--accent);
+  }
+
+  /* The device name leads and gives way last; a title takes a fixed share, so a changing prompt never moves the tab (MOT-007). */
+  .title {
+    flex: 0 1 calc(var(--space-16) * 2);
+    min-inline-size: 0;
+    overflow: hidden;
+    color: var(--text-muted);
+    font-size: var(--text-xs);
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .name {

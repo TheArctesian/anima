@@ -2,17 +2,18 @@ import type { HubError } from '$lib/hub/hub';
 import type { SessionDisplay, SessionsApi } from '../api';
 import { ending, recordedEnding, type SessionEnding } from '../ending';
 import type { TunnelStart } from '../tunnel/start';
-import type { SessionTunnel, TunnelRefusal, TunnelState } from '../tunnel/tunnel';
-import type { SessionStart } from './start';
+import type { TunnelRefusal, TunnelState } from '../tunnel/state';
+import type { TerminalLink } from '../tunnel/terminal/link';
+import type { TunnelEvents } from './start';
 import type { Progress } from './steps/steps';
 
-/** The K4 §5 close code of a host key change. */
+/** The K4 §8.6 close code of a host key change. */
 const HOST_KEY_CLOSE = 4001;
 
 /** Where one attempt stands: asking for a ticket, with an open tunnel, or ended. */
 export type Stage =
   | { readonly kind: 'starting' }
-  | { readonly kind: 'open'; readonly tunnel: SessionTunnel; readonly state: TunnelState; readonly connected: boolean }
+  | { readonly kind: 'open'; readonly tunnel: TerminalLink; readonly state: TunnelState; readonly connected: boolean }
   | { readonly kind: 'ending'; readonly ending: SessionEnding; readonly progress: Progress }
   | {
       readonly kind: 'ended';
@@ -21,6 +22,12 @@ export type Stage =
       /** A 4001 close or a recorded `HOST_KEY_MISMATCH` (D-6, SEC-007 and T1 note F-2). */
       readonly hostKeyChanged: boolean;
     };
+
+/** What a connection hears from its tunnel; the view adds the terminal's own hooks (size, output) to them. */
+export type ConnectionEvents = Pick<TunnelEvents, 'onchange' | 'onend'>;
+
+/** Starts one attempt: asks for a ticket and opens the tunnel, reporting to `events` (see `SessionStart`). */
+export type ConnectionStart = (display: SessionDisplay, events: ConnectionEvents) => Promise<TunnelStart>;
 
 /** Fixed text for a start the hub or the tunnel refused; never the hub's own message (LOG-007, R-035). */
 const REFUSED: Readonly<Record<string, string>> = {
@@ -53,22 +60,22 @@ export class SessionConnection {
   stage: Stage = $state({ kind: 'starting' });
   #attempt = 0;
   #closed = false;
-  readonly #start: SessionStart;
+  readonly #start: ConnectionStart;
   readonly #api: Pick<SessionsApi, 'endSession'>;
   readonly #onended: (ending: SessionEnding) => void;
 
-  constructor(start: SessionStart, api: Pick<SessionsApi, 'endSession'>, onended: (ending: SessionEnding) => void) {
+  constructor(start: ConnectionStart, api: Pick<SessionsApi, 'endSession'>, onended: (ending: SessionEnding) => void) {
     this.#start = start;
     this.#api = api;
     this.#onended = onended;
   }
 
   /** The open tunnel, while there is one. */
-  get tunnel(): SessionTunnel | undefined {
+  get tunnel(): TerminalLink | undefined {
     return this.stage.kind === 'open' ? this.stage.tunnel : undefined;
   }
 
-  /** Whether the gateway's first frame arrived on the open tunnel, so the display can be shown (D-7). */
+  /** Whether the socket is open, so the terminal can be shown and typed into (D-7). */
   get ready(): boolean {
     return this.stage.kind === 'open' && this.stage.connected;
   }
@@ -126,7 +133,7 @@ export class SessionConnection {
     if (early.ended !== undefined) void this.#end(attempt, sessionId, early.ended);
   }
 
-  #follow(tunnel: SessionTunnel, state: TunnelState): void {
+  #follow(tunnel: TerminalLink, state: TunnelState): void {
     const connected = (this.stage.kind === 'open' && this.stage.connected) || state.phase === 'connected';
     this.stage = { kind: 'open', tunnel, state, connected };
   }

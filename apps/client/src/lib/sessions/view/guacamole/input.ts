@@ -1,6 +1,6 @@
 import type { Attachment } from 'svelte/attachments';
-import { forwardPointer, sendClipboard, type KeyRoute } from '../tunnel/input';
-import type { SessionTunnel } from '../tunnel/tunnel';
+import { forwardPointer, sendClipboard, type KeyRoute } from '../../tunnel/guacamole/input';
+import type { SessionTunnel } from '../../tunnel/guacamole/tunnel';
 import { pasteStrokes, keyStrokes, type KeyCombination, type KeyFilter, type KeyStroke } from './keys';
 
 type Client = SessionTunnel['client'];

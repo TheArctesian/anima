@@ -1,31 +1,9 @@
-import Guacamole from './vendor/guacamole.js';
-import { withObservedSocket, type SocketConstructor } from './socket';
-import { tunnelUrl } from './url';
+import Guacamole from '../vendor/guacamole.js';
+import { withObservedSocket } from './socket';
+import { refusal, type SocketConstructor, type TunnelPhase, type TunnelRefusal, type TunnelState, type TunnelTicket } from '../state';
+import { tunnelUrl } from '../url';
 
-export type { SocketConstructor } from './socket';
-
-/**
- * Where the session stands, from the 1.5.5 client states: `connecting` while the socket is made, `waiting` until
- * the gateway's first frame (`sync`), `connected` after it, `disconnected` once the client or the tunnel stopped.
- */
-export type TunnelPhase = 'connecting' | 'waiting' | 'connected' | 'disconnected';
-
-/** What the tunnel knows; it holds no token, no URL and no gateway text (SEC-002, LOG-007). */
-export interface TunnelState {
-  readonly phase: TunnelPhase;
-  /** Whether the hub's first instruction arrived, so the WebSocket upgrade succeeded (K4 §4). */
-  readonly opened: boolean;
-  /** The status code of the last gateway `error` instruction; its text is never kept (R-035). */
-  readonly gatewayError: number | undefined;
-  /** The WebSocket close code, once the socket has closed (K4 §5). */
-  readonly closeCode: number | undefined;
-}
-
-/** The ticket parts the tunnel needs (K4 §1). The token is used once, for `connect`, and never kept. */
-export interface TunnelTicket {
-  readonly tunnelPath: string;
-  readonly token: string;
-}
+export type { SocketConstructor, TunnelPhase, TunnelRefusal, TunnelState, TunnelTicket } from '../state';
 
 export interface TunnelOptions {
   /** The hub origin, `https://host[:port]` (`hub.address.origin`). */
@@ -50,20 +28,9 @@ export interface SessionTunnel {
   close(): void;
 }
 
-/** Why no tunnel was opened. The message is fixed text: it never holds the token, the URL or a library error. */
-export interface TunnelRefusal {
-  readonly problem: 'bad-address' | 'not-opened';
-  readonly message: string;
-}
-
 export type TunnelOpening =
   | { readonly ok: true; readonly value: SessionTunnel }
   | { readonly ok: false; readonly error: TunnelRefusal };
-
-const REFUSALS: Readonly<Record<TunnelRefusal['problem'], string>> = {
-  'bad-address': 'The hub gave a tunnel address that Anima does not accept.',
-  'not-opened': 'The session tunnel could not be opened.',
-};
 
 /** The 1.5.5 client states (private in the library), as phases; 0 IDLE follows a failed `connect`. */
 const PHASES: readonly TunnelPhase[] = ['disconnected', 'connecting', 'waiting', 'connected', 'disconnected', 'disconnected'];
@@ -134,7 +101,7 @@ function trackedTunnel(url: string, events: Events) {
  */
 export function openTunnel(options: TunnelOptions): TunnelOpening {
   const url = tunnelUrl(options.origin, options.ticket.tunnelPath);
-  if (url === undefined) return refused('bad-address');
+  if (url === undefined) return refusal('bad-address');
   const { handle, socketClosed, abandon, release } = trackedTunnel(url, { onchange: options.onchange, onend: options.onend });
   try {
     withObservedSocket(options.WebSocket ?? globalThis.WebSocket, socketClosed, () => {
@@ -143,12 +110,8 @@ export function openTunnel(options: TunnelOptions): TunnelOpening {
   } catch {
     // The WebSocket constructor's error names the URL, which holds the token; only the fact is kept (LOG-007).
     abandon();
-    return refused('not-opened');
+    return refusal('not-opened');
   }
   release();
   return { ok: true, value: handle };
-}
-
-function refused(problem: TunnelRefusal['problem']): TunnelOpening {
-  return { ok: false, error: { problem, message: REFUSALS[problem] } };
 }

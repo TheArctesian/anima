@@ -1,14 +1,18 @@
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import Icon from '$lib/icons/Icon.svelte';
+  import { press } from '$lib/motion/roles/press';
   import type { SessionsApi } from '../api';
   import type { SessionEnding } from '../ending';
-  import { paneKeyboard, receiveClipboard, type PaneKeyboard } from '../tunnel/input';
-  import { displayInput, isMeasured, remoteSize, sizeSender, type Size, type SizeSender } from './display';
+  import { linkTarget, openLink } from '../terminal/links';
+  import type { ScreenHooks, ScreenOpener, TerminalScreen } from '../terminal/screen';
+  import type { CellSize } from '../tunnel/terminal/codec';
+  import { displayInput, type Size } from './display';
   import EndedPanel from './EndedPanel.svelte';
   import HostKeyModal from './hostkey/HostKeyModal.svelte';
-  import { followPaneFocus, keyRoute, pasteText, sendCombination, showDisplay } from './input';
-  import { keyFilter, type KeyCombination, type KeyFilter } from './keys';
   import KeysMenu from './menu/KeysMenu.svelte';
+  import type { KeySequence } from './menu/sequences';
+  import FindBar from './pane/FindBar.svelte';
+  import LinkConfirm from './pane/LinkConfirm.svelte';
   import { SessionConnection, progressOf, type Stage } from './session.svelte';
   import type { SessionStart } from './start';
   import ConnectionSteps from './steps/ConnectionSteps.svelte';
@@ -18,54 +22,70 @@
     /** Starts a session on `device` with a new ticket; see `sessionStart` in `./start`. */
     start: SessionStart;
     api: Pick<SessionsApi, 'endSession' | 'testConnection' | 'acceptHostKey'>;
+    /** Opens the terminal in the pane; the parent passes `openScreen` from `../terminal/screen`. */
+    openScreen: ScreenOpener;
     /** The pane is on screen (its tab is selected). */
     visible: boolean;
     /** The pane should take the keyboard (its tab is selected and the app has focus). */
     focused: boolean;
     /** Hears the final ending of each attempt (after `endSession` answered, D-4). */
     onended?: (ending: SessionEnding) => void;
+    /** Hears the remote shell's window title, cleaned (K4 §8.7); `''` when a session starts or ends. */
+    onretitle?: (title: string) => void;
   }
 
-  const { device, start, api, visible, focused, onended }: Props = $props();
+  const { device, start, api, openScreen, visible, focused, onended, onretitle }: Props = $props();
   const COPY_FAILED = 'Could not copy the text to your clipboard.';
   const PASTE_FAILED = 'Could not read your clipboard. Allow clipboard access, or paste with the keyboard.';
+  const LINK_REFUSED = 'The device asked to open a link that is not http or https. Anima did not open it.';
+  /** The size of the first `resize` when the pane could not be fitted yet (a hidden pane); a fit corrects it. */
+  const UNFITTED: CellSize = { cols: 80, rows: 24 };
 
+  // The screen and the pane size are read in event handlers only, so they are plain variables, not state.
+  let screen: TerminalScreen | undefined;
+  let paneSize: Size | undefined;
   const connection = new SessionConnection(
-    (display, events) => start(display, events),
+    (display, events) => start(display, { ...events, size: () => screen?.size() ?? UNFITTED, onbytes: (bytes) => screen?.write(bytes) }),
     { endSession: (id) => api.endSession(id) },
-    (ending) => onended?.(ending),
+    (ending) => {
+      onretitle?.('');
+      onended?.(ending);
+    },
   );
-  let pane: HTMLElement | undefined = $state();
-  let keyboard: PaneKeyboard | undefined = $state();
-  let paneSize: Size | undefined = $state();
-  let startedAt: Size = { width: 0, height: 0 };
-  let sizes: SizeSender | undefined;
-  /** What the device holds and which keys reach it, for the open tunnel; the paste reads it too (D-9). */
-  let filter: KeyFilter = keyFilter();
   let notice: string | undefined = $state();
   let dismissed: Stage | undefined = $state();
-  /** Whether the keyboard focus is inside the pane, and the window has it (D-8). */
-  let paneHasFocus = $state(false);
+  let finding = $state(false);
+  /** An address the device asked to open, waiting for the operator's confirmation (K4 §8.7). */
+  let confirming: string | undefined = $state();
 
   const stage = $derived(connection.stage);
-  const client = $derived(connection.tunnel?.client);
   const ready = $derived(connection.ready);
-  /** The parent gives this pane the keyboard; the pane then takes the focus. */
+  /** The parent gives this pane the keyboard; the terminal then takes the focus (D-8). */
   const wanted = $derived(visible && focused && ready);
-  /** Keys are sent only while the focus is really in the pane, so no key is held when it leaves (D-8). */
-  const bound = $derived(wanted && paneHasFocus);
   // A hidden tab's warning waits until its tab is shown, so it never covers or traps another tab (SEC-007).
   const hostKeyOpen = $derived(visible && stage.kind === 'ended' && stage.hostKeyChanged && dismissed !== stage);
 
+  const hooks: ScreenHooks = {
+    oninput: (bytes) => connection.tunnel?.send(bytes),
+    onresize: (size) => connection.tunnel?.resize(size),
+    ontitle: (title) => onretitle?.(title),
+    oncopy: (text) => copyToSystem(text),
+    onfind: () => (finding = true),
+    onlink: (address) => {
+      confirming = linkTarget(address);
+      if (confirming === undefined) notice = LINK_REFUSED;
+    },
+  };
+
   function connect(css: Size) {
     const display = displayInput(css, window.devicePixelRatio, Intl.DateTimeFormat().resolvedOptions().timeZone);
-    startedAt = { width: display.widthPx, height: display.heightPx };
     void connection.connect(display);
   }
 
   function reconnect() {
     dismissed = stage;
     notice = undefined;
+    screen?.reset();
     connect(paneSize ?? { width: 0, height: 0 });
   }
 
@@ -75,21 +95,16 @@
     });
   }
 
-  function paste(event: ClipboardEvent) {
-    if (client === undefined || !ready) return;
-    event.preventDefault();
-    pasteText(client, event.clipboardData?.getData('text/plain') ?? '', filter.held);
-  }
-
-  function sendKeys(combination: KeyCombination) {
-    if (client !== undefined) sendCombination(client, combination);
+  function sendKeys(sequence: KeySequence) {
+    connection.tunnel?.send(sequence.bytes);
+    screen?.focus();
   }
 
   function pasteFromClipboard() {
-    const target = client;
     navigator.clipboard.readText().then(
       (text) => {
-        if (target !== undefined && target === client) pasteText(target, text, filter.held);
+        screen?.paste(text);
+        screen?.focus();
       },
       () => {
         notice = PASTE_FAILED;
@@ -97,77 +112,54 @@
     );
   }
 
-  function resized(css: Size) {
-    if (isMeasured(css)) sizes?.resized(remoteSize(css, window.devicePixelRatio));
+  function closeFind() {
+    finding = false;
+    screen?.clearFind();
+    screen?.focus();
   }
 
-  /** The pane's keyboard, and its size: the first measure starts the session, later ones resize it (D-7). */
+  function openConfirmed(address: string) {
+    confirming = undefined;
+    openLink(address);
+  }
+
+  /**
+   * The terminal in the pane, and its size: the first measure opens the terminal, then starts the session at that
+   * fit (D-7); later measures refit it, and the terminal reports a changed size in cells.
+   */
   function attachPane(element: HTMLElement) {
-    const paneKeys = paneKeyboard(element);
-    keyboard = paneKeys;
-    const stopFollowing = followPaneFocus(element, (inside) => {
-      // Release held keys now: the binding effect runs later, and a held key would repeat until then.
-      if (!inside) paneKeys.unbind();
-      // Chromium fires `focusout` while Svelte removes the pane, inside its block effect, where a tracked state write
-      // is forbidden (`state_unsafe_mutation`); this event handler reads nothing, so the write is untracked.
-      untrack(() => {
-        paneHasFocus = inside;
-      });
-    });
+    let live = true;
+    const begin = async (css: Size) => {
+      const opened = await openScreen(element, hooks);
+      if (!live) {
+        opened.dispose();
+        return;
+      }
+      screen = opened;
+      connect(css);
+    };
     const observer = new ResizeObserver((entries) => {
       const box = entries.at(-1)?.contentRect;
       if (box === undefined) return;
-      const css = { width: box.width, height: box.height };
       const first = paneSize === undefined;
-      paneSize = css;
-      if (first) connect(css);
-      else resized(css);
+      paneSize = { width: box.width, height: box.height };
+      if (first) void begin(paneSize);
+      else screen?.fit();
     });
     observer.observe(element);
     return () => {
-      stopFollowing();
+      live = false;
       observer.disconnect();
+      screen?.dispose();
+      screen = undefined;
     };
   }
 
-  // Each open tunnel gets a size sender that starts from the size it was opened with, and hears the pane's size
-  // now in case it changed while the hub answered.
+  // The terminal owns its keyboard (a hidden text field); it holds the focus only while the pane is shown, the app
+  // has the focus and the socket is open (D-8).
   $effect(() => {
-    if (client === undefined) return;
-    const target = client;
-    const sender = sizeSender(startedAt, (size) => target.sendSize(size.width, size.height), {
-      set: (callback, ms) => setTimeout(callback, ms),
-      clear: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
-    });
-    sizes = sender;
-    filter = keyFilter();
-    const now = untrack(() => paneSize);
-    if (now !== undefined) resized(now);
-    // Text the gateway sends while the pane is not bound is dropped, so a background session never writes the
-    // system clipboard (D-9).
-    receiveClipboard(target, (text) => {
-      if (bound) copyToSystem(text);
-    });
-    return () => {
-      sender.cancel();
-      sizes = undefined;
-      target.onclipboard = null;
-    };
-  });
-
-  $effect(() => {
-    if (wanted) pane?.focus({ preventScroll: true });
-  });
-
-  // The keyboard is bound only while the pane is visible, focused and ready and holds the DOM focus; never to the
-  // document (D-8).
-  $effect(() => {
-    if (!bound || client === undefined || keyboard === undefined) return;
-    const bindTo = keyboard;
-    bindTo.bind(keyRoute(client, filter));
-    return () => {
-      bindTo.unbind();
-    };
+    if (wanted) screen?.focus();
+    else screen?.blur();
   });
 
   $effect(() => () => {
@@ -178,26 +170,25 @@
 <section class="session" hidden={!visible} aria-label="SSH session on {device.name}">
   <div class="toolbar">
     <KeysMenu disabled={!ready} onkeys={sendKeys} onpaste={pasteFromClipboard} />
+    <button
+      type="button"
+      class="find"
+      aria-expanded={finding}
+      disabled={!ready}
+      title="Find in the terminal (Cmd+F, Ctrl+Shift+F)"
+      onclick={() => (finding ? closeFind() : (finding = true))}
+      {@attach press()}
+    >
+      <Icon name="nf-md-magnify" />
+      <span>Find</span>
+    </button>
     <span class="device">{device.name}</span>
+    {#if finding && ready}<FindBar onfind={(text, backwards) => screen?.find(text, backwards) ?? false} onclose={closeFind} />{/if}
     {#if notice !== undefined}<span class="notice" role="status">{notice}</span>{/if}
   </div>
   <div class="stage">
-    <!-- The keyboard listens here only; menus, panels and the modal are outside it (D-8). -->
-    <!-- Focusable because the terminal takes the keyboard as a text field does (D-8). -->
-    <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-    <div
-      class="pane"
-      role="application"
-      aria-label="Terminal of {device.name}"
-      tabindex="0"
-      bind:this={pane}
-      onpaste={paste}
-      {@attach attachPane}
-    >
-      {#if ready && client !== undefined}
-        <div class="display" data-display {@attach showDisplay(client, window.devicePixelRatio)}></div>
-      {/if}
-    </div>
+    <!-- The terminal draws here; its own hidden text field takes the keyboard (D-8). -->
+    <div class="pane" role="group" aria-label="Terminal of {device.name}" {@attach attachPane}></div>
     {#if !ready}
       <!-- Top-aligned, steps first: the ended text appears below the steps, so nothing above it moves (MV-004). -->
       <div class="panel">
@@ -211,6 +202,8 @@
     {/if}
   </div>
 </section>
+
+<LinkConfirm address={confirming} onopen={openConfirmed} oncancel={() => (confirming = undefined)} />
 
 {#if hostKeyOpen}
   <HostKeyModal {device} {api} onclose={() => (dismissed = stage)} onreconnect={reconnect} />
@@ -258,6 +251,29 @@
     white-space: nowrap;
   }
 
+  .find {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: var(--space-2);
+    min-block-size: var(--target-min-desktop);
+    padding: 0 var(--space-3);
+    border: var(--border-thin) solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-raised);
+    color: var(--text);
+    font: inherit;
+  }
+
+  .find:disabled {
+    color: var(--text-muted);
+  }
+
+  .find:focus-visible {
+    outline: var(--border-focus) solid var(--accent);
+    outline-offset: calc(var(--border-focus) * -1);
+  }
+
   .notice {
     min-inline-size: 0;
     font-size: var(--text-sm);
@@ -269,16 +285,18 @@
     min-block-size: 0;
   }
 
-  /* The pane's size comes from the layout only, never from the display inside it, so a resize cannot loop (D-7). */
+  /* The pane's size comes from the layout only, never from the terminal inside it, so a fit cannot loop (D-7). */
   .pane {
     position: absolute;
     inset: 0;
     overflow: hidden;
-    outline: none;
   }
 
-  /* Drawn after the display, so a display that fills the pane cannot cover the ring (UI-009, UI-012). */
-  .pane:focus-visible::after {
+  /*
+   * The terminal is never animated, transformed, filtered or covered by a material (MAT-008). The ring is drawn
+   * after it, over its edge, without taking pointer input (UI-009, UI-012).
+   */
+  .pane:focus-within::after {
     content: '';
     position: absolute;
     inset: 0;
@@ -286,18 +304,7 @@
     box-shadow: inset 0 0 0 var(--border-focus) var(--accent);
   }
 
-  /*
-   * The remote display: never animated, transformed, filtered or covered by a material (MAT-008). The library puts
-   * each layer at z-index -1, so the display makes its own stacking context; without it the layers paint behind
-   * the session's background (D-7).
-   */
-  .display {
-    position: absolute;
-    inset: 0;
-    isolation: isolate;
-  }
-
-  /* Shown only while no display is: before ready and after the end (D-7). A narrow pane scrolls it, never the page (UI-009). */
+  /* Shown only while the terminal is not: before ready and after the end (D-7). A narrow pane scrolls it, never the page (UI-009). */
   .panel {
     position: absolute;
     inset: 0;

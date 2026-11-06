@@ -8,6 +8,11 @@ import Layout from '../../../routes/+layout.svelte';
 import type { PopOutPort, SessionPort } from '../sessions.svelte';
 import { cleanup, fake, keyframes, openStarted, prepare, settle, show as mountLayout, tabs, visiblePanels } from './layout.fixture';
 
+// The strip tests are about tabs, not about the terminal inside them: a screen that draws nothing stands in for xterm.js.
+vi.mock('$lib/sessions/terminal/screen', async () => ({
+  openScreen: (await import('../terminal/silent.fixture')).silentScreen,
+}));
+
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
   animate: (await import('$lib/motion/engine.fixture')).fakeRun,
@@ -225,4 +230,18 @@ it('D-11: a route change (back, goto) shows the pages and keeps the tabs', async
   flushSync();
   expect(sessions.active).toBeNull();
   expect(tabs()).toHaveLength(1);
+});
+
+it('K4 §8.7: a title the shell sets shows in the tab next to the device name, which stays; the full title is its tooltip', async () => {
+  const sessions = show();
+  const id = await openStarted(sessions);
+  sessions.retitle(id, 'user@web-1: ~/src');
+  await settle();
+  const tab = tabs()[0];
+  expect(tab?.querySelector('.name')?.textContent).toBe('web-1');
+  expect(tab?.querySelector('.title')?.textContent).toBe('user@web-1: ~/src');
+  expect(tab?.querySelector('.title')?.getAttribute('title')).toBe('user@web-1: ~/src');
+  sessions.retitle(id, '');
+  await settle();
+  expect(tab?.querySelector('.title')).toBeNull();
 });

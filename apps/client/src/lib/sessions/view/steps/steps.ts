@@ -2,9 +2,9 @@
 export interface Progress {
   /** `startSession` answered with a ticket. */
   readonly ticketed: boolean;
-  /** The hub's first instruction arrived (`TunnelState.opened`). */
+  /** The WebSocket upgrade succeeded (`TunnelState.opened`). */
   readonly opened: boolean;
-  /** The gateway's first frame (`sync`) arrived: the client turned CONNECTED. */
+  /** The socket is open: the terminal can be used. */
   readonly connected: boolean;
   /** The start stopped: refused, or the tunnel closed before it was connected. */
   readonly stopped: boolean;
@@ -24,10 +24,10 @@ export interface Step {
 /**
  * The connection steps (Section 5.7.3) and the observed fact that ends each one:
  * - request: the hub issues a ticket (`startSession` answers);
- * - gateway: the hub sends its first tunnel instruction, which it does only after its handshake with guacd ended
- *   with `ready` (K4 §3, §4), so the gateway has taken the connection;
- * - device: the gateway's first frame (`sync`) arrives, which it sends only once it is connected to the device;
- * - ready: the session can be used. No later signal exists, so it ends on the same frame as `device`.
+ * - gateway: the hub upgrades the WebSocket, which it does only after it signed in to the device (K4 §8.2), so the
+ *   hub holds the connection;
+ * - device: the socket is open; the hub's SSH connection to the device is the one the hub just opened;
+ * - ready: the session can be used. No later signal exists, so it ends with `device`.
  */
 const STEPS: readonly { readonly name: StepName; readonly label: string; readonly ended: (p: Progress) => boolean }[] = [
   { name: 'request', label: 'Request', ended: (p) => p.ticketed },

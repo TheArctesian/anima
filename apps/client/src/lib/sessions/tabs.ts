@@ -20,6 +20,8 @@ export interface Tab {
   readonly protocol: SessionProtocol;
   readonly origin: Origin | null;
   readonly sessionId: string | null;
+  /** The window title the remote shell set, already cleaned (K4 §8.7); absent until it sets one. */
+  readonly title?: string;
 }
 
 /** The open tabs in strip order and the selected one; `null` shows the pages (D-11). */
@@ -78,4 +80,9 @@ export function moved(state: Tabs, from: number, to: number): Tabs {
 /** `id` now shows the hub session `sessionId` (`null`: none); an unknown id changes nothing. */
 export function withSession(state: Tabs, id: TabId, sessionId: string | null): Tabs {
   return { ...state, tabs: state.tabs.map((tab) => (tab.id === id ? { ...tab, sessionId } : tab)) };
+}
+
+/** `id` shows `title` next to its device name (`''`: none); an unknown id changes nothing. */
+export function titled(state: Tabs, id: TabId, title: string): Tabs {
+  return { ...state, tabs: state.tabs.map((tab) => (tab.id === id ? { ...tab, title } : tab)) };
 }

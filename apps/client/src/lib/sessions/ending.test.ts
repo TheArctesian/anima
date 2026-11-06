@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ending, recordedEnding, type SessionEndReason, type TunnelClose } from './ending';
+import { ending, isEndReason, recordedEnding, type SessionEndReason, type TunnelClose } from './ending';
 
 const opened = (closeCode: number | undefined, gatewayError?: number): TunnelClose => ({ closeCode, gatewayError, opened: true });
 
@@ -63,5 +63,32 @@ describe('ending (K4 §5, D-4, RA-007)', () => {
     const texts = reasons.map((reason) => recordedEnding(ending(opened(1000)), reason).text);
     expect(new Set(texts).size).toBe(reasons.length);
     for (const text of texts) expect(text).not.toContain('Aborted');
+  });
+});
+
+describe('the terminal tunnel\'s end message (K4 §8.4, §8.6)', () => {
+  it('K4 §8.6: the reason of the end message wins over the close code', () => {
+    expect(ending({ closeCode: 1011, gatewayError: undefined, opened: true, endReason: 'AUTH_FAILED' }).reason).toBe('AUTH_FAILED');
+    expect(ending({ closeCode: 1000, gatewayError: undefined, opened: true, endReason: 'HOST_KEY_MISMATCH' }).text).toBe(
+      "The device's host key has changed, so Anima did not connect.",
+    );
+  });
+
+  it('K4 §8.6: with no end message the close code decides, as before', () => {
+    expect(ending({ closeCode: 4002, gatewayError: undefined, opened: true }).reason).toBe('TIMEOUT');
+  });
+
+  it('K4 §8.6: a tunnel that never opened says so, with the end message\'s reason', () => {
+    expect(ending({ closeCode: 1006, gatewayError: undefined, opened: false, endReason: 'GATEWAY_ERROR' }).text).toBe(
+      'Could not open the session. The gateway lost the connection to the device.',
+    );
+  });
+
+  it.each(['OPERATOR', 'HUB_SHUTDOWN', 'PROTOCOL_ERROR'])('%s is a reason this client knows', (reason) => {
+    expect(isEndReason(reason)).toBe(true);
+  });
+
+  it.each(['NOPE', '', 7, null, undefined, 'toString', '__proto__'])('%j is not a reason', (value) => {
+    expect(isEndReason(value)).toBe(false);
   });
 });

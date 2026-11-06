@@ -1,3 +1,5 @@
+import type { SocketConstructor } from '../state';
+
 /**
  * Guacamole 1.5.5's `WebSocketTunnel` keeps its socket private and turns the close code into a Guacamole status,
  * which loses it (1002, 1011, 4001 and 4002 all become 0x0200). K4 §5 needs the code, so the tunnel observes it
@@ -13,8 +15,6 @@
  * socket (whose URL holds the ticket token) outlives the call.
  */
 
-/** The WebSocket constructor the library reads; tests pass a fake one (CQ-021). */
-export type SocketConstructor = typeof WebSocket;
 
 /**
  * Run `open` (a synchronous call that creates one WebSocket) with the global `WebSocket` replaced by an observing

@@ -7,6 +7,8 @@ export interface TunnelClose {
   readonly closeCode: number | undefined;
   readonly gatewayError: number | undefined;
   readonly opened: boolean;
+  /** The reason in the terminal tunnel's `end` message (K4 §8.4), which is the hub's own word for the close. */
+  readonly endReason?: SessionEndReason;
 }
 
 /** Why a session ended, as the operator reads it. `reason` is undefined when the close alone does not tell. */
@@ -67,6 +69,11 @@ function openedReason({ closeCode, gatewayError }: TunnelClose): SessionEndReaso
   return undefined;
 }
 
+/** Whether `value` is a `SessionEndReason` this client knows. */
+export function isEndReason(value: unknown): value is SessionEndReason {
+  return typeof value === 'string' && Object.hasOwn(REASON_TEXT, value);
+}
+
 /** The text for a known reason; the lookup is checked because the hub may send a value newer than the schema. */
 function reasonText(reason: SessionEndReason): string {
   return Object.hasOwn(REASON_TEXT, reason) ? REASON_TEXT[reason] : UNKNOWN_REASON;
@@ -79,10 +86,11 @@ function textFor(reason: SessionEndReason | undefined, opened: boolean): string 
 
 /**
  * The provisional ending from the tunnel alone (D-4). A tunnel that never opened (a refusal before the upgrade
- * arrives as 1006 with no status) has no reason yet: "Could not open the session".
+ * arrives as 1006 with no status) has no reason yet: "Could not open the session". The terminal tunnel's `end`
+ * message names the reason itself, so it wins over the close code (K4 §8.6).
  */
 export function ending(close: TunnelClose): SessionEnding {
-  const reason = close.opened ? openedReason(close) : undefined;
+  const reason = close.endReason ?? (close.opened ? openedReason(close) : undefined);
   return { reason, opened: close.opened, text: textFor(reason, close.opened) };
 }
 

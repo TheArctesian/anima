@@ -71,12 +71,15 @@ const motionHint =
   'Use $lib/motion (MV-008, MOT-020): the motion library is imported only in apps/client/src/lib/motion/.';
 const guacamoleHint =
   'Use $lib/sessions/tunnel (D-2, R-045): the vendored Guacamole client is imported only in apps/client/src/lib/sessions/tunnel/.';
+const xtermHint =
+  'Use $lib/sessions/terminal: xterm.js and its add-ons are imported only in apps/client/src/lib/sessions/terminal/.';
 const wsHint =
   'Use a domain client in $lib/<domain>/api.ts built on $lib/hub (CQ-045): graphql-ws is imported only in apps/client/src/lib/hub/.';
 const transportHint =
   'Use a domain client in $lib/<domain>/api.ts built on $lib/hub (CQ-045): fetch, WebSocket, EventSource and XMLHttpRequest are used only in apps/client/src/lib/hub/.';
 // A regex, not a gitignore group: 'motion/*' would also match '$lib/motion/tokens'.
 const motionImports = [{ regex: String.raw`^(?:motion|motion-dom|framer-motion)(?:/|$)`, message: motionHint }];
+const xtermImports = [{ regex: String.raw`^@xterm(?:/|$)`, message: xtermHint }];
 const tauriHint = 'Use $lib/desktop (CLI-003): the Tauri API is imported only in apps/client/src/lib/desktop/.';
 const tauriImports = [{ regex: String.raw`^@tauri-apps(?:/|$)`, message: tauriHint }];
 const wsImports = [{ regex: String.raw`^graphql-ws(?:/|$)`, message: wsHint }];
@@ -116,12 +119,23 @@ const hubFolder = ['apps/client/src/lib/hub/**'];
 const motionFolder = ['apps/client/src/lib/motion/**'];
 const tunnelFolder = ['apps/client/src/lib/sessions/tunnel/**'];
 const desktopFolder = ['apps/client/src/lib/desktop/**'];
+const terminalFolder = ['apps/client/src/lib/sessions/terminal/**'];
 const importsRule = (patterns) => ({
   'no-restricted-imports': ['error', { patterns }],
 });
 const boundaryRules = [
   {
     files: clientFiles,
+    ignores: [...clientTests, ...terminalFolder],
+    rules: {
+      ...importsRule([...motionImports, ...wsImports, ...guacamoleImports, ...tauriImports, ...xtermImports]),
+      'no-restricted-globals': ['error', ...transportGlobals],
+      'no-restricted-properties': ['error', ...fetchProperties],
+    },
+  },
+  {
+    // The one folder that owns xterm.js (RA-011); every other ban of the client still applies.
+    files: terminalFolder,
     ignores: clientTests,
     rules: {
       ...importsRule([...motionImports, ...wsImports, ...guacamoleImports, ...tauriImports]),
@@ -132,18 +146,18 @@ const boundaryRules = [
   {
     files: motionFolder,
     ignores: clientTests,
-    rules: importsRule([...wsImports, ...guacamoleImports, ...tauriImports]),
+    rules: importsRule([...wsImports, ...guacamoleImports, ...tauriImports, ...xtermImports]),
   },
   {
     files: desktopFolder,
     ignores: clientTests,
-    rules: importsRule([...motionImports, ...wsImports, ...guacamoleImports]),
+    rules: importsRule([...motionImports, ...wsImports, ...guacamoleImports, ...xtermImports]),
   },
   {
     files: hubFolder,
     ignores: clientTests,
     rules: {
-      ...importsRule([...motionImports, ...guacamoleImports, ...tauriImports]),
+      ...importsRule([...motionImports, ...guacamoleImports, ...tauriImports, ...xtermImports]),
       'no-restricted-globals': 'off',
       'no-restricted-properties': 'off',
     },
@@ -153,7 +167,7 @@ const boundaryRules = [
     files: tunnelFolder,
     ignores: clientTests,
     rules: {
-      ...importsRule([...motionImports, ...wsImports, ...npmGuacamoleImports, ...tauriImports]),
+      ...importsRule([...motionImports, ...wsImports, ...npmGuacamoleImports, ...tauriImports, ...xtermImports]),
       'no-restricted-globals': ['error', ...['fetch', 'EventSource', 'XMLHttpRequest'].map(transportGlobal)],
     },
   },

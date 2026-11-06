@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 import { inspect } from 'node:util';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ending, recordedEnding } from '../ending';
-import { installBlankCanvas } from './fake/canvas.fixture';
-import { FAKE_TUNNEL_SOCKET, FakeTunnelSocket } from './fake/socket.fixture';
-import { startTunnel } from './start';
+import { ending, recordedEnding } from '../../ending';
+import { installBlankCanvas } from '../fake/canvas.fixture';
+import { FAKE_TUNNEL_SOCKET, FakeTunnelSocket } from '../fake/socket.fixture';
+import { startTunnel } from '../start';
 import { openTunnel, type TunnelState } from './tunnel';
-import Guacamole from './vendor/guacamole.js';
+import Guacamole from '../vendor/guacamole.js';
 
 const TOKEN_MARKER = 'TOKENMARKER_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
 const CLIPBOARD_MARKER = 'CLIPBOARDMARKER-secret-paste';
