@@ -3,6 +3,7 @@
 
 mod keystore;
 mod process_log;
+mod system_settings;
 
 fn main() {
     let builder = tauri::Builder::default().plugin(process_log::plugin());
@@ -17,6 +18,7 @@ fn main() {
             keystore::access_token_write,
             keystore::access_token_clear,
             process_log::process_log_folder_open,
+            system_settings::remote_login_settings_open,
         ])
         .run(tauri::generate_context!())
         .expect("the Tauri application failed to start");

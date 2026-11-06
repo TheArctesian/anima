@@ -1,4 +1,5 @@
 <script lang="ts">
+  import RemoteLoginButton from '$lib/desktop/RemoteLoginButton.svelte';
   import { tick, untrack } from 'svelte';
   import type { FieldError, HubResult } from '$lib/hub/error';
   import Disclosure from '../../disclosure/Disclosure.svelte';
@@ -162,6 +163,7 @@
     <div data-section="ssh">
       <Disclosure label="SSH" level={3} bind:open={ssh}>
         <SshSection bind:values {errors} {credentialStored} {clearing} onClearCredential={clearCredential} />
+        <RemoteLoginButton />
         {#if values.ssh.enabled}
           {#key saves}
           <TestConnection {initial} {values} {deviceId} {canTest} {onTest} {onAcceptHostKey} />
