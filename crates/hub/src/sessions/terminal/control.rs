@@ -14,6 +14,9 @@ pub(super) const MAX_TEXT_BYTES: usize = 256;
 /// Largest terminal size, in cells, either way (K4 Section 8.4).
 const MAX_CELLS: u16 = 1000;
 
+/// The whitespace JSON allows between tokens (RFC 8259 Section 2).
+const JSON_SPACE: [char; 4] = [' ', '\t', '\n', '\r'];
+
 /// What the hub sends when it has sent nothing for a while (K4 Section 8.4).
 pub(super) const PING: &str = r#"{"type":"ping"}"#;
 
@@ -46,7 +49,8 @@ pub(super) enum BadControl {
 
 /// The wire shape. `deny_unknown_fields` with struct variants refuses extra fields on both
 /// messages (a unit variant would ignore them); serde refuses a repeated field, a missing
-/// one, a float, a negative number and anything past `u16`.
+/// one, a float, a negative number and anything past `u16`. `parse` refuses the array form
+/// serde would also read.
 #[derive(Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase", deny_unknown_fields)]
 enum Wire {
@@ -63,6 +67,11 @@ enum Wire {
 pub(super) fn parse(text: &str) -> Result<Control, BadControl> {
     if text.len() > MAX_TEXT_BYTES {
         return Err(BadControl::TooLong);
+    }
+    // serde also reads an internally tagged enum from an array (`["ping"]`); K4 Section 8.4
+    // messages are objects only.
+    if !text.trim_start_matches(JSON_SPACE).starts_with('{') {
+        return Err(BadControl::Unknown);
     }
     match serde_json::from_str::<Wire>(text).map_err(|_| BadControl::Unknown)? {
         Wire::Resize { cols, rows } => {

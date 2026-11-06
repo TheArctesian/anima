@@ -69,6 +69,9 @@ fn k4_8_4_every_other_shape_is_refused() {
         r#"{"type":"ping"} {"type":"ping"}"#,
         r#"{"type":"ping"}x"#,
         "\u{feff}{\"type\":\"ping\"}",
+        r#"["ping"]"#,
+        r#"["resize",80,24]"#,
+        r#" [ "resize", 80, 24 ] "#,
     ];
     for text in unknown {
         assert_eq!(parse(text), Err(BadControl::Unknown), "{text}");

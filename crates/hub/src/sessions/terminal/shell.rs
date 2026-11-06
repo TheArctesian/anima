@@ -129,8 +129,9 @@ impl Link<'_> {
     }
 
     /// The device's answer to the PTY or shell request just sent, within the idle wait:
-    /// `Failure` ends the session `GATEWAY_ERROR` with `refused`. Output that comes first goes
-    /// to the client; the end of the channel or connection is the remote closing.
+    /// `Failure` or no answer ends the session `GATEWAY_ERROR` with `refused`. Output that
+    /// comes first goes to the client; the device closing the channel is the remote closing,
+    /// the connection ending under it a failed connection.
     async fn replied(&mut self, refused: &'static str) -> Result<(), End> {
         let due = Instant::now() + self.timing.client_idle;
         loop {
@@ -143,7 +144,8 @@ impl Link<'_> {
                 Some(Some(ChannelMsg::Failure)) | None => {
                     return Err(End::explained(Cause::GatewayError, refused));
                 }
-                Some(Some(ChannelMsg::Close) | None) => return Err(ended(Cause::RemoteClosed)),
+                Some(Some(ChannelMsg::Close)) => return Err(ended(Cause::RemoteClosed)),
+                Some(None) => return Err(ended(Cause::GatewayError)),
                 Some(Some(message)) => self.output(message).await?,
             }
         }

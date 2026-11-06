@@ -18,6 +18,9 @@ use tokio::{net::TcpListener, sync::mpsc};
 
 use crate::sessions::{PublicKey, tests::fixture::PASSWORD};
 
+/// The user `docker-host`'s SSH settings name in the devices fixture.
+const USER: &str = "operator";
+
 /// What the hub asked of the server, in order.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) enum Heard {
@@ -98,7 +101,7 @@ impl server::Handler for Device {
         password: &str,
     ) -> impl Future<Output = Result<Auth, Self::Error>> + Send {
         self.hear(Heard::Auth("password"));
-        let right = !self.script.prompts_only && user == "ops" && password == self.script.password;
+        let right = !self.script.prompts_only && user == USER && password == self.script.password;
         ready(Ok(verdict(right)))
     }
 
@@ -126,7 +129,7 @@ impl server::Handler for Device {
             }));
         };
         let answer = response.next();
-        let right = user == "ops" && answer.as_deref() == Some(self.script.password.as_bytes());
+        let right = user == USER && answer.as_deref() == Some(self.script.password.as_bytes());
         ready(Ok(verdict(right)))
     }
 
