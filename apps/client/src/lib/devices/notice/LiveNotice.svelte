@@ -28,6 +28,7 @@
   const fade = () => tweenMotion('base', 'enter', preference.reduced);
 
   /**
+   * The leaving branch waits on a screen that clears its `liveError`; none does today, so only the tests reach it.
    * Disclosure (5.7.3, NET-004): the notice fades and what lies below moves by FLIP on `spring-default`, so the list never
    * steps by the notice's height in one frame. On leaving, the notice drops out of the layout at once and fades where it was,
    * so the FLIP has no end snap. Under reduced motion the layout change is instant and the fade takes `duration-base`.

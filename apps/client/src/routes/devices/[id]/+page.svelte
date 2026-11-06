@@ -1,11 +1,11 @@
 <script lang="ts">
-  import LiveNotice from '$lib/devices/notice/LiveNotice.svelte';
   import { untrack } from 'svelte';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
   import { checksApi, type DeviceCheck } from '$lib/checks/api';
   import { devicesApi } from '$lib/devices/api';
+  import LiveNotice from '$lib/devices/notice/LiveNotice.svelte';
   import { DEFAULT_LOG_FILTER } from '$lib/events/log';
   import { LogFeed } from '$lib/events/panel/feed.svelte';
   import LogList from '$lib/events/panel/LogList.svelte';

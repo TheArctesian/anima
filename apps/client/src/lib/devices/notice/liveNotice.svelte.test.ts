@@ -2,6 +2,7 @@
 import { flushSync, mount, tick, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { runs } from '$lib/motion/engine.fixture';
+import { ease } from '$lib/motion/tokens';
 import LiveNotice from './LiveNotice.svelte';
 
 vi.mock('motion', async (importOriginal) => ({
@@ -84,11 +85,45 @@ it('MOT-002: a double toggle leaves one notice, shown again from where its fade 
   expect(notice()?.textContent).toBe('Live updates stopped: Still closed');
 });
 
-it('MOT-040: under reduced motion the list is in its new place at once and the notice still fades', async () => {
-  const { props, list } = screen(null, true);
+/** The runs that fade the notice: a tween over opacity, not a spring over a place. */
+const fades = () => runs.filter((run) => run.options['duration'] !== undefined);
+
+it('5.7.3 Disclosure: the notice starts invisible and fades in over duration-base with ease-enter', async () => {
+  const { props, notice } = screen(null);
+  props.message = 'The connection closed';
+  await tick();
+  await tick();
+  expect(fades().map((run) => [run.keyframes, run.options])).toEqual([[[0, 1], { duration: 0.2, ease: ease.enter }]]);
+  expect(notice()?.style.opacity).toBe('0');
+  fades()[0]?.finish();
+  expect(notice()?.style.opacity).toBe('1');
+});
+
+it('MOT-040: under reduced motion the list is in its new place at once, with no spring, and the notice still fades in', async () => {
+  const { props, list, notice } = screen(null, true);
   props.message = 'The connection closed';
   await tick();
   await tick();
   expect(list.getBoundingClientRect().top).toBe(HEIGHT);
-  expect(runs.every((run) => run.keyframes[0] === run.keyframes.at(-1) || run.options['duration'] !== undefined)).toBe(true);
+  expect(runs.filter((run) => run.options['stiffness'] !== undefined)).toEqual([]);
+  expect(fades().map((run) => [run.keyframes, run.options])).toEqual([[[0, 1], { duration: 0.2, ease: ease.enter }]]);
+  expect(notice()).not.toBeNull();
+});
+
+it('NET-004: a new message while the notice shows replaces the text and moves nothing', async () => {
+  const { props, list, notice } = screen('The connection closed');
+  props.message = 'The hub answered with an error';
+  await tick();
+  await tick();
+  expect(document.querySelectorAll('.notice')).toHaveLength(1);
+  expect(notice()?.textContent).toBe('Live updates stopped: The hub answered with an error');
+  expect(runs).toEqual([]);
+  expect(list.style.translate).toBe('');
+});
+
+it('NET-004: a message that is there at mount shows at once, with no motion', () => {
+  const { list, notice } = screen('The connection closed');
+  expect(notice()?.textContent).toBe('Live updates stopped: The connection closed');
+  expect(runs).toEqual([]);
+  expect(list.style.translate).toBe('');
 });
