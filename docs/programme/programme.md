@@ -151,6 +151,8 @@ Integration branch: `phase-1`. Merge to `main` only after operator checkpoint 4.
   - A test proves that a mismatched certificate is cancelled.
   - Any other `unsafe` code needs a new ruling.
 
+- **R-070 (orchestrator, 2026-11-06; WP-27 T1; CON-001, changes K3).** The SSH link's error is re-exported from `sessions` as `LinkError`, not `Error`. A bare `Error` would clash with the sessions domain's own error type. K3 is updated to match.
+
 ## Escalations
 
 None open.
