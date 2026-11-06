@@ -75,9 +75,14 @@
       await tick();
       flip(first, { spring: 'default', preference });
       if (region) await animate(region, { opacity: 0 }, fade()).finished;
-      // If it was reopened meanwhile, the effect above puts `present` back at once.
+      // If it was reopened meanwhile, the effect above puts `present` back at once. A reopen from
+      // outside (a form showing an error) did not run the open path, so undo the fade here.
       leaving = false;
       present = false;
+      if (open && region) {
+        region.style.top = '';
+        animate(region, { opacity: 1 }, { type: 'instant' });
+      }
       return;
     }
     open = true;

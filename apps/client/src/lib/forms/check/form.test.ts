@@ -162,3 +162,17 @@ it('Section 6.4: ticking a check puts its id in the group', async () => {
 
   expect(onSave.mock.calls[0]?.[0].group.childIds).toEqual(['b']);
 });
+
+it('D-2: an invalid Advanced setting found before saving opens Advanced and shows beside its input', async () => {
+  const onSave = saver();
+  const form = show({ onSave });
+  type('Name', 'ping');
+  type('Interval (seconds)', '5');
+  expect(button('Advanced settings').getAttribute('aria-expanded')).toBe('false');
+
+  await submit(form);
+
+  expect(onSave).not.toHaveBeenCalled();
+  expect(button('Advanced settings').getAttribute('aria-expanded')).toBe('true');
+  expect(input('Interval (seconds)').getAttribute('aria-invalid')).toBe('true');
+});

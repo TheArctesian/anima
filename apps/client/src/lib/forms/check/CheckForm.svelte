@@ -75,7 +75,7 @@
 <form onsubmit={submit} novalidate>
   {#if alerts.length > 0}
     <div class="alert" role="alert">
-      {#each alerts as found (found.field + found.message)}
+      {#each alerts as found, index (index)}
         <p>{found.message}</p>
       {/each}
     </div>

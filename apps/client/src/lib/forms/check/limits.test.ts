@@ -55,6 +55,11 @@ describe('HTTP text limits', () => {
       h.jsonExpected = repeat(1025);
     };
     expect(fieldsOf(http(long))).toEqual(['jsonExpected']);
+    const longest = (h: CheckFormValues['http']) => {
+      h.jsonQuery = '/a';
+      h.jsonExpected = repeat(1024);
+    };
+    expect(fieldsOf(http(longest))).toEqual([]);
   });
 
   it('CHK-009: an expected JSON value needs the pointer to compare, and a pointer starts with a slash', () => {
