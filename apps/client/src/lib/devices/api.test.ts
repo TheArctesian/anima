@@ -115,11 +115,19 @@ describe('devicesApi hosts', () => {
     expect(asked).toEqual([null, 'c1']);
   });
 
-  it('R-060 stops after a bounded number of pages when the hub always says there is more', async () => {
+  it('R-060 fails after a bounded number of pages when the hub always says there is more', async () => {
     const { hub, asked } = pagedHub(() => ({ ok: true, value: hostPage(['loop.lan'], 'same') }));
     const result = await devicesApi(hub).hosts();
     expect(asked).toHaveLength(50);
-    expect(result.ok && result.value.length).toBe(50);
+    expect(result).toMatchObject({ ok: false, error: { code: 'malformed' } });
+  });
+
+  it('R-060 fails at once when a page says there is more but gives no cursor', async () => {
+    const page = { devices: { pageInfo: { hasNextPage: true, endCursor: null }, edges: [{ node: { host: 'nas.lan' } }] } };
+    const { hub, asked } = pagedHub(() => ({ ok: true, value: page }));
+    const result = await devicesApi(hub).hosts();
+    expect(asked).toEqual([null]);
+    expect(result).toMatchObject({ ok: false, error: { code: 'malformed' } });
   });
 
   it('R-060 passes a hub error through as a result', async () => {

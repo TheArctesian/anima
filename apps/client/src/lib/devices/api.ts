@@ -10,7 +10,7 @@ import type {
   SshCredentialInput,
   UpdateDeviceInput,
 } from '$lib/hub/generated/graphql';
-import type { Hub, HubResult, Sink } from '$lib/hub/hub';
+import type { Hub, HubError, HubResult, Sink } from '$lib/hub/hub';
 
 const Devices = graphql(`
   query Devices($filter: DeviceFilter, $sort: DeviceSort, $first: Int, $after: String) {
@@ -200,7 +200,16 @@ export interface StatusChange {
   readonly at: string;
 }
 
-/** Every device's host, page by page. Stops at the last page, at a page without a cursor, or after `MAX_HOST_PAGES`. */
+/** The answer when the hosts cannot all be read: a partial list could miss this computer's device (R-060). */
+const HOSTS_INCOMPLETE: HubError = {
+  code: 'malformed',
+  message: 'The hub did not list every device.',
+};
+
+/**
+ * Every device's host, page by page, or an error unless the last page was reached: a page that says there is
+ * more but gives no cursor, or more than `MAX_HOST_PAGES` pages, fails rather than returning part of the list.
+ */
 async function readHosts(hub: Hub): Promise<HubResult<readonly string[]>> {
   const hosts: string[] = [];
   let after: string | null = null;
@@ -209,10 +218,11 @@ async function readHosts(hub: Hub): Promise<HubResult<readonly string[]>> {
     if (!result.ok) return result;
     const { edges, pageInfo }: DeviceHostsQuery['devices'] = result.value.devices;
     hosts.push(...edges.map((edge) => edge.node.host));
+    if (!pageInfo.hasNextPage) return { ok: true, value: hosts };
     after = pageInfo.endCursor ?? null;
-    if (!pageInfo.hasNextPage || after === null) break;
+    if (after === null) return { ok: false, error: HOSTS_INCOMPLETE };
   }
-  return { ok: true, value: hosts };
+  return { ok: false, error: HOSTS_INCOMPLETE };
 }
 
 /** The device list, tags and live status changes through a `Hub` (CQ-045). */
