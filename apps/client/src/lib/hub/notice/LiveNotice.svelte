@@ -9,12 +9,14 @@
   interface Props {
     /** Why live updates stopped, or null while they run. */
     message: string | null;
-    /** Which side keeps the gap to its neighbour: the list below it, or the tabs below it. */
-    gap?: 'start' | 'end';
+    /** What stopped: "updates" for a device screen, "logs" for the log panel. */
+    subject?: string;
+    /** Where the space to its neighbours is: above it, below it, or padding inside it (the log panel's rows). */
+    gap?: 'start' | 'end' | 'padded';
     preference?: MotionPreference;
   }
 
-  const { message, gap = 'start', preference = motionPreference() }: Props = $props();
+  const { message, subject = 'updates', gap = 'start', preference = motionPreference() }: Props = $props();
 
   let root: HTMLElement | undefined = $state();
   let region: HTMLElement | undefined = $state();
@@ -78,7 +80,7 @@
 
 <div class="slot" bind:this={root}>
   {#if present}
-    <p class="notice" class:leaving class:end={gap === 'end'} role="status" bind:this={region}>Live updates stopped: {text}</p>
+    <p class="notice" class:leaving class:end={gap === 'end'} class:padded={gap === 'padded'} role="status" bind:this={region}>Live {subject} stopped: {text}</p>
   {/if}
 </div>
 
@@ -97,6 +99,11 @@
 
   .end {
     margin: 0 0 var(--space-4);
+  }
+
+  .padded {
+    margin: 0;
+    padding: var(--space-2) var(--space-3);
   }
 
   /* Out of the layout while it fades, so what is below moves at once and the FLIP has no end snap. */

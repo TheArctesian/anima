@@ -5,6 +5,7 @@ import { fakeHub } from '$lib/devices/hub.fixture';
 import { endTransitionsAtOnce } from '$lib/devices/transitions.fixture';
 import type { LogEvent } from '../api';
 import LogsPanel from './LogsPanel.svelte';
+import { runs } from '../../motion/engine.fixture';
 import { NOW, event, eventsAnswer, settle } from './panel.fixture';
 
 vi.mock('motion', async (importOriginal) => ({
@@ -259,5 +260,21 @@ describe('Text safety and errors', () => {
     button('Retry')?.click();
     await settle();
     expect(eventRequests()).toHaveLength(2);
+  });
+
+  describe('when live logs stop (NET-004, MOT-007)', () => {
+    const stopped = { code: 'unreachable', message: 'The connection closed' } as const;
+
+    it('shows the notice as a status that fades in, so the rows below never step by its height', async () => {
+      await show();
+      runs.length = 0;
+      fake.fail('EventAdded', stopped);
+      await settle();
+      const notice = document.querySelector('.notice[role="status"]') as HTMLElement | null;
+      expect(notice?.textContent).toBe('Live logs stopped: The connection closed');
+      // Starts invisible and fades to 1 over duration-base: an instant mount has no such run.
+      expect(notice?.style.opacity).toBe('0');
+      expect(runs.filter((run) => run.keyframes[0] === 0 && run.keyframes.at(-1) === 1)).toHaveLength(1);
+    });
   });
 });

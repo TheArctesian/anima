@@ -1,4 +1,5 @@
 <script lang="ts">
+  import LiveNotice from '$lib/hub/notice/LiveNotice.svelte';
   import { skeletonDelay } from '$lib/motion/loading/delay.svelte';
   import type { LoadingClock } from '$lib/motion/loading/loading';
   import { press } from '$lib/motion/roles/press';
@@ -39,9 +40,7 @@
     >
   </div>
 {/if}
-{#if feed.liveError !== null}
-  <p class="notice" role="status">Live logs stopped: {feed.liveError.message}</p>
-{/if}
+<LiveNotice message={feed.liveError?.message ?? null} subject="logs" gap="padded" />
 
 <!-- The skeleton lies over the rows in one cell and fades off them, so the swap moves nothing (MOT-007). -->
 <div class="stack">

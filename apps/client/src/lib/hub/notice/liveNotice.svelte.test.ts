@@ -127,3 +127,10 @@ it('NET-004: a message that is there at mount shows at once, with no motion', ()
   expect(runs).toEqual([]);
   expect(list.style.translate).toBe('');
 });
+
+it('NET-004: the subject names what stopped, so the log panel says logs and a device screen says updates', async () => {
+  const target = document.body.appendChild(document.createElement('div'));
+  app = mount(LiveNotice, { target, props: { message: 'The connection closed', subject: 'logs', gap: 'padded' } });
+  flushSync();
+  expect(target.querySelector('.notice')?.textContent).toBe('Live logs stopped: The connection closed');
+});
