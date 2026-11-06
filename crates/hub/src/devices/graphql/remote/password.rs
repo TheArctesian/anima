@@ -2,9 +2,9 @@
 //! password goes to `credentials`, sealed for its device and kind, and the audit entry and the
 //! event name only the protocol and "password" (DEV-011, SEC-003, SEC-005, LOG-005, LOG-007).
 //!
-//! Each runs in one transaction. `credentials` takes its per-device lock first, before this
-//! domain reads the device row: the lock order `credentials` asks of its callers, the same as
-//! for the SSH credential.
+//! Each runs in one transaction. `credentials` takes its per-device advisory lock first, the
+//! one lock whose order `credentials` asks of its callers; the device read after it takes no
+//! row lock. The SSH credential works the same way.
 
 use async_graphql::{Context, ID, Result};
 

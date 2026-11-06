@@ -172,13 +172,14 @@ pub(in crate::devices) async fn devices_by_ids(
     to_devices(rows)
 }
 
-/// The device, with its row share-locked until the transaction ends, so it cannot move to
-/// another site or turn SSH off before the relay is written; `None` when there is none.
+/// The device, with its row and its SSH settings row share-locked until the transaction ends,
+/// so it cannot move to another site or turn SSH off before the relay is written, and a
+/// concurrent change is read as committed; `None` when there is none.
 pub(in crate::devices) async fn share_device(
     conn: &mut PgConnection,
     id: DeviceId,
 ) -> Result<Option<Device>, Error> {
-    let row = sqlx::query_as::<_, DeviceRow>(select_device!("WHERE d.id = $1 FOR SHARE OF d"))
+    let row = sqlx::query_as::<_, DeviceRow>(select_device!("WHERE d.id = $1 FOR SHARE OF d, s"))
         .bind(id)
         .fetch_optional(conn)
         .await?;
