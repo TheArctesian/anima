@@ -47,34 +47,34 @@ describe('Guacamole key routing (RA-006, D-8; kept for RDP and VNC)', () => {
   });
 });
 
-describe('the retained Guacamole input over a real client (D-8, D-9, RA-003)', () => {
-  let restoreCanvas: () => void = () => undefined;
-  beforeEach(() => {
-    FakeTunnelSocket.reset();
-    restoreCanvas = installBlankCanvas();
-  });
-  afterEach(() => {
-    restoreCanvas();
-    document.body.innerHTML = '';
-  });
+let restoreCanvas: () => void = () => undefined;
+beforeEach(() => {
+  FakeTunnelSocket.reset();
+  restoreCanvas = installBlankCanvas();
+});
+afterEach(() => {
+  restoreCanvas();
+  document.body.innerHTML = '';
+});
 
-  function connected() {
-    const opening = openTunnel({ origin: 'https://hub.anima.ing', ticket: { tunnelPath: '/tunnel', token: 'x'.repeat(40) }, WebSocket: FAKE_TUNNEL_SOCKET });
-    if (!opening.ok) throw new Error('not opened');
-    const socket = FakeTunnelSocket.latest();
-    socket.open();
-    socket.sync();
-    const sent = (opcode: string) => socket.sentInstructions().filter(([name]) => name === opcode).map(([, ...args]) => args);
-    return { tunnel: opening.value, socket, sent };
-  }
+function connected() {
+  const opening = openTunnel({ origin: 'https://hub.anima.ing', ticket: { tunnelPath: '/tunnel', token: 'x'.repeat(40) }, WebSocket: FAKE_TUNNEL_SOCKET });
+  if (!opening.ok) throw new Error('not opened');
+  const socket = FakeTunnelSocket.latest();
+  socket.open();
+  socket.sync();
+  const sent = (opcode: string) => socket.sentInstructions().filter(([name]) => name === opcode).map(([, ...args]) => args);
+  return { tunnel: opening.value, socket, sent };
+}
 
-  function press(target: EventTarget, type: 'keydown' | 'keyup', init: KeyboardEventInit & { keyCode: number }) {
-    const event = new KeyboardEvent(type, { bubbles: true, cancelable: true, ...init });
-    Object.defineProperty(event, 'keyCode', { value: init.keyCode });
-    target.dispatchEvent(event);
-  }
-  const enter = { key: 'Enter', code: 'Enter', keyCode: 13 };
+function press(target: EventTarget, type: 'keydown' | 'keyup', init: KeyboardEventInit & { keyCode: number }) {
+  const event = new KeyboardEvent(type, { bubbles: true, cancelable: true, ...init });
+  Object.defineProperty(event, 'keyCode', { value: init.keyCode });
+  target.dispatchEvent(event);
+}
+const enter = { key: 'Enter', code: 'Enter', keyCode: 13 };
 
+describe('the retained Guacamole pointer and keyboard (D-8, RA-003)', () => {
   it('D-8: the pane keyboard hears its own element only, and stops after unbind, releasing a held key once', () => {
     const { tunnel, sent } = connected();
     const pane = document.createElement('div');
@@ -105,7 +105,9 @@ describe('the retained Guacamole input over a real client (D-8, D-9, RA-003)', (
     if (typeof stop === 'function') stop();
     expect(host.firstElementChild).toBeNull();
   });
+});
 
+describe('the retained Guacamole paste and focus (D-8, D-9, RA-003)', () => {
   it('RA-003: pasted text goes as one text/plain clipboard stream, then guacd\'s paste keys; empty text sends nothing', () => {
     const { tunnel, sent } = connected();
     pasteText(tunnel.client, '', new Set());
