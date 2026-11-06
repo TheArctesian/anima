@@ -93,7 +93,41 @@ describe('GW-015: the gateway asks for a credential', () => {
     await settle();
     expect(fieldNames()).toEqual(['username', 'password']);
   });
+});
 
+describe('GW-015: each `required` is answered on its own', () => {
+  it('GW-015: a second `required` that arrives while the password is being saved gets its own prompt', async () => {
+    const view = await opened('RDP');
+    let release: () => void = () => undefined;
+    view.answers.credentialGate = new Promise((resolve) => (release = resolve));
+    view.socket.instruction('required', 'password');
+    flushSync();
+    type('password', 'first');
+    prompt()?.querySelector<HTMLInputElement>('input[type="checkbox"]')?.click();
+    prompt()?.querySelector('form')?.requestSubmit();
+    await settle();
+    expect(view.calls.setCredential).toEqual([['RDP', 'device-1', 'first']]);
+    view.socket.instruction('required', 'username', 'password');
+    flushSync();
+    release();
+    await settle();
+    expect(fieldNames()).toEqual(['username', 'password']);
+    expect(argvOf(view.socket)).toEqual([['password', 'first']]);
+  });
+
+  it('GW-015: a `required` on the old socket after Reconnect shows no prompt', async () => {
+    const { target } = show('RDP');
+    const old = await connectRemote();
+    old.closeWith(1000);
+    await settle();
+    const reconnect = [...target.querySelectorAll('button')].find((button) => button.textContent.includes('Reconnect'));
+    reconnect?.click();
+    await settle();
+    expect(FakeTunnelSocket.made).toHaveLength(2);
+    old.instruction('required', 'password');
+    flushSync();
+    expect(prompt()).toBeNull();
+  });
 });
 
 describe('GW-015: a sign-in that ends the session', () => {
@@ -136,7 +170,6 @@ describe('GW-015: a sign-in that ends the session', () => {
     expect(reasonOf(target)).toBe('The device asked for a sign-in Anima cannot give, so the session ended.');
     expect(target.textContent).not.toContain('hostname');
   });
-
 });
 
 describe('GW-015: when the prompt shows and what it holds', () => {

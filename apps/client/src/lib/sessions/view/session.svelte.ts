@@ -92,7 +92,8 @@ export function progressOf(stage: Stage<unknown, FollowedState>): Progress {
  * for a `CONFLICT` refusal of the start; without it the host key text is shown.
  */
 export class SessionConnection<Tunnel extends FollowedTunnel<State>, State extends FollowedState> {
-  stage: Stage<Tunnel, State> = $state({ kind: 'starting' });
+  /** Raw, so the tunnel's state keeps its identity: a view compares `required` arrays by reference. */
+  stage: Stage<Tunnel, State> = $state.raw({ kind: 'starting' });
   #attempt = 0;
   #closed = false;
   readonly #start: ConnectionStart<Tunnel, State>;

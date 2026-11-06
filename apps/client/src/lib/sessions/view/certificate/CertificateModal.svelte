@@ -17,6 +17,9 @@
   }
 
   const { device, api, onclose, onaccepted }: Props = $props();
+  /** Stand-ins of the shape of a SHA-256 fingerprint and of one line, which hold the rows' height while reading. */
+  const PLACEHOLDER_FINGERPRINT = `sha256:${Array.from({ length: 32 }, () => '00').join(':')}`;
+  const PLACEHOLDER_LINE = '0';
   let current: CertificateStep = $state.raw(READING);
   let surface: HTMLElement | undefined = $state();
   let closeButton: HTMLButtonElement | undefined = $state();
@@ -93,20 +96,31 @@
       </p>
     </div>
 
-    {#if certificate !== undefined}
-      <dl class="certificate">
-        <dt>New certificate, SHA-256 fingerprint</dt>
+    <!-- Every row is there from the start, so the buttons below do not move when the certificate arrives (MOT-007, MV-004). -->
+    <dl class="certificate" aria-busy={certificate === undefined}>
+      <dt>New certificate, SHA-256 fingerprint</dt>
+      {#if certificate === undefined}
+        <dd class="fingerprint placeholder" aria-hidden="true" data-placeholder>{PLACEHOLDER_FINGERPRINT}</dd>
+      {:else}
         <dd class="fingerprint" data-fingerprint>{certificate.fingerprintSha256}</dd>
-        {#if certificate.subject !== null}
-          <dt>Subject</dt>
-          <dd data-subject>{certificate.subject}</dd>
-        {/if}
-        {#if certificate.notAfter !== null}
-          <dt>Valid until</dt>
-          <dd><time datetime={certificate.notAfter} data-not-after>{certificate.notAfter}</time></dd>
-        {/if}
-      </dl>
-    {/if}
+      {/if}
+      <dt>Subject</dt>
+      {#if certificate === undefined}
+        <dd class="placeholder" aria-hidden="true" data-placeholder>{PLACEHOLDER_LINE}</dd>
+      {:else if certificate.subject === null}
+        <dd>Not given</dd>
+      {:else}
+        <dd data-subject>{certificate.subject}</dd>
+      {/if}
+      <dt>Valid until</dt>
+      {#if certificate === undefined}
+        <dd class="placeholder" aria-hidden="true" data-placeholder>{PLACEHOLDER_LINE}</dd>
+      {:else if certificate.notAfter === null}
+        <dd>Not given</dd>
+      {:else}
+        <dd><time datetime={certificate.notAfter} data-not-after>{certificate.notAfter}</time></dd>
+      {/if}
+    </dl>
     {#if current.step === 'accepted'}
       <p role="status">The new certificate is accepted. Reconnecting…</p>
     {/if}
@@ -208,6 +222,11 @@
   dd {
     margin: var(--space-1) 0 var(--space-2);
     overflow-wrap: anywhere;
+  }
+
+  /* Takes its room, unseen and unread, until the certificate is read. */
+  .placeholder {
+    visibility: hidden;
   }
 
   .fingerprint {

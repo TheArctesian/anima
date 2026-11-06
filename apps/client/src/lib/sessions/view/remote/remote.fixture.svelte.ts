@@ -23,6 +23,8 @@ export interface RemoteAnswers {
   refuse: 'CONFLICT' | undefined;
   /** While set, the policy read waits for it, so the start has not answered yet. */
   policyGate: Promise<void> | undefined;
+  /** While set, `setCredential` waits for it. */
+  credentialGate: Promise<void> | undefined;
 }
 
 /** Every call the fake API heard, in order per method. */
@@ -43,7 +45,7 @@ const PHASE_ONE_TEST = { reachable: true, authenticated: true, hostKey: null, ho
 
 function remoteApi() {
   const calls: RemoteCalls = { startSession: [], endSession: [], testConnection: [], acceptServerCertificate: [], setCredential: [] };
-  const answers: RemoteAnswers = { endReason: null, transfer: { copy: true, paste: true }, refuse: undefined, policyGate: undefined };
+  const answers: RemoteAnswers = { endReason: null, transfer: { copy: true, paste: true }, refuse: undefined, policyGate: undefined, credentialGate: undefined };
   let issued = 0;
   const api: RemoteApi = {
     startSession: (deviceId, protocol, display) => {
@@ -75,9 +77,10 @@ function remoteApi() {
       calls.acceptServerCertificate.push([deviceId, fingerprint]);
       return Promise.resolve({ ok: true, value: CERTIFICATE });
     },
-    setCredential: (protocol, deviceId, password) => {
+    setCredential: async (protocol, deviceId, password) => {
       calls.setCredential.push([protocol, deviceId, password]);
-      return Promise.resolve({ ok: true, value: { credentialStored: true } });
+      await answers.credentialGate;
+      return { ok: true, value: { credentialStored: true } };
     },
     transferPolicy: async () => {
       await answers.policyGate;

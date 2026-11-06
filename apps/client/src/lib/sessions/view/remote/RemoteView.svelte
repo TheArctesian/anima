@@ -82,6 +82,8 @@
   const ask = $derived(gatewayAsk(protocol, stage.kind === 'open' ? stage.state.required : undefined, answered));
   /** The parent gives this pane the keyboard, unless the sign-in prompt has it; the pane then takes the focus. */
   const wanted = $derived(visible && focused && ready && ask.kind !== 'ask');
+  /** The sign-in prompt to show, at most one; a hidden tab shows none. */
+  const prompts = $derived(visible && ask.kind === 'ask' && client !== undefined ? [{ ...ask, client }] : []);
   // A hidden tab's prompt or warning waits until its tab is shown, so it never covers or traps another tab (SEC-007).
   const certificateOpen = $derived(visible && stage.kind === 'ended' && stage.certificateChanged && dismissed !== stage);
   /** Keys are sent only while the focus is really in the pane, so no key is held when it leaves (D-8). */
@@ -266,17 +268,18 @@
   </div>
 </section>
 
-{#if visible && ask.kind === 'ask' && client !== undefined}
+<!-- One prompt per `required`: a newer one while a save is awaited gets its own prompt, and answers only itself. -->
+{#each prompts as prompted (prompted.required)}
   <CredentialPrompt
     {device}
     {protocol}
-    fields={ask.fields}
-    {client}
+    fields={prompted.fields}
+    client={prompted.client}
     {api}
-    onsent={() => (answered = stage.kind === 'open' ? stage.state.required : undefined)}
+    onsent={() => (answered = prompted.required)}
     oncancel={() => connection.stop(PROMPT_CANCELLED)}
   />
-{/if}
+{/each}
 
 {#if certificateOpen}
   <CertificateModal {device} {api} onclose={() => (dismissed = stage)} onaccepted={reconnect} />

@@ -4,8 +4,8 @@ import { askedFields, type CredentialField } from '../credentials/fields';
 /** What the gateway's last `required` instruction asks of the view now (GW-015). */
 export type GatewayAsk =
   | { readonly kind: 'none' }
-  /** Show the credential prompt for these fields. */
-  | { readonly kind: 'ask'; readonly fields: readonly CredentialField[] }
+  /** Show the credential prompt for these fields; `required` is the instruction it answers. */
+  | { readonly kind: 'ask'; readonly fields: readonly CredentialField[]; readonly required: readonly string[] }
   /** The prompt cannot answer it, so the session ends (it fails closed). */
   | { readonly kind: 'refuse' };
 
@@ -18,7 +18,7 @@ const NONE: GatewayAsk = { kind: 'none' };
 export function gatewayAsk(protocol: RemoteProtocol, required: readonly string[] | undefined, answered: readonly string[] | undefined): GatewayAsk {
   if (required === undefined || required === answered) return NONE;
   const fields = askedFields(protocol, required);
-  return fields === undefined ? { kind: 'refuse' } : { kind: 'ask', fields };
+  return fields === undefined ? { kind: 'refuse' } : { kind: 'ask', fields, required };
 }
 
 /** Fixed texts of a session the prompt ended; never the gateway's names (LOG-007, R-035). */

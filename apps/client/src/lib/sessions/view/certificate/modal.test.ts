@@ -141,3 +141,40 @@ describe('certificate modal closing (SEC-007)', () => {
     expect(named('AcceptServerCertificate')).toEqual([]);
   });
 });
+
+describe('MOT-007, MV-004: the modal keeps its layout while it reads', () => {
+  /** What lies above the actions, as tag and label: rows that appear later would push the buttons down. */
+  const layout = () => {
+    const surface = dialog();
+    const above = [...(surface?.children ?? [])].filter((element) => !element.classList.contains('actions'));
+    const rows = [...(surface?.querySelectorAll('dl > *') ?? [])].map((row) => `${row.tagName}:${row.tagName === 'DT' ? row.textContent : ''}`);
+    return { above: above.map((element) => element.tagName), rows };
+  };
+
+  it('MV-004: every detail row is there while the certificate is read, so the actions do not move when it arrives', async () => {
+    let answer: (value: Awaited<ReturnType<SessionsApi['testConnection']>>) => void = () => undefined;
+    const fake = fakeHub({ acceptedFingerprint: 'sha256:old' });
+    await showModal({ testConnection: () => new Promise((resolve) => (answer = resolve)) });
+    expect(button('Reading the certificate…')).toBeDefined();
+    const reading = layout();
+    const placeholder = dialog()?.querySelector('[data-placeholder]');
+    expect(placeholder?.getAttribute('aria-hidden')).toBe('true');
+    expect(placeholder?.textContent).toHaveLength('sha256:'.length + 32 * 3 - 1);
+    const read = await fake.api.testConnection({ deviceId: 'device-1', protocol: 'RDP' });
+    fake.hub.close();
+    answer(read);
+    await settle();
+    expect(button('Accept new certificate')).toBeDefined();
+    expect(layout()).toEqual(reading);
+    expect(dialog()?.querySelector('[data-placeholder]')).toBeNull();
+  });
+
+  it('MV-004: a certificate without subject or end keeps both rows, saying so', async () => {
+    const fake = fakeHub({ acceptedFingerprint: 'sha256:old' });
+    fake.device.certificate = { ...CERTIFICATE, subject: null, notAfter: null };
+    const read = await fake.api.testConnection({ deviceId: 'device-1', protocol: 'RDP' });
+    fake.hub.close();
+    await showModal({ testConnection: () => Promise.resolve(read) });
+    expect([...(dialog()?.querySelectorAll('dd') ?? [])].map((row) => row.textContent)).toEqual([CERTIFICATE.fingerprintSha256, 'Not given', 'Not given']);
+  });
+});
