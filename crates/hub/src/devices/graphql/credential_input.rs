@@ -5,7 +5,10 @@
 //! process log keeps the message of an error without a code. A bare string sent as the
 //! credential would reach the log. So [`SshCredential`] parses the argument and replaces any
 //! parse error with a fixed one that holds no input; each string moves into a [`Secret`]
-//! without a copy.
+//! without a copy. The RDP and VNC password argument follows the same rules
+//! ([`PasswordCredential`]).
+
+mod password;
 
 use std::borrow::Cow;
 
@@ -18,6 +21,8 @@ use crate::{
     credentials::{Secret, SshSecret},
     devices::FieldError,
 };
+
+pub use self::password::PasswordCredential;
 
 /// The schema shape of the argument. Only [`SshCredential`] parses into it.
 #[derive(OneofObject)]

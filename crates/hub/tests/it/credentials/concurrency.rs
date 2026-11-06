@@ -1,12 +1,18 @@
-//! Concurrent writers for one device are serialised, so no mixed row set survives; writers
-//! for different devices do not wait for each other.
+//! Concurrent writers for one device, of any kind, are serialised, so no mixed row set
+//! survives; writers for different devices do not wait for each other.
 
 use std::time::Duration;
 
-use anima_hub::credentials::{SshSecret, clear_ssh, load_ssh, store_ssh};
+use anima_hub::credentials::{
+    PasswordKind, SshSecret, clear_password, clear_ssh, load_password, load_ssh, store_password,
+    store_ssh,
+};
 use sqlx::PgPool;
 
-use super::{DOCKER_HOST, KEY, PVE_01, device, kinds, password, private_key, store, vault};
+use super::{
+    DOCKER_HOST, KEY, PVE_01, RDP_PASSWORD, VNC_PASSWORD, device, kinds, password, private_key,
+    secret, store, vault,
+};
 
 /// Upper bound for any wait in these tests, so a broken lock fails instead of hanging.
 const BLOCK_WAIT: Duration = Duration::from_secs(10);
@@ -171,4 +177,134 @@ async fn stores_for_different_devices_do_not_wait(pool: PgPool) {
     .unwrap();
     first.commit().await.unwrap();
     assert_eq!(kinds(&pool, device(DOCKER_HOST)).await, ["ssh_private_key"]);
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn password_store_waits_for_a_concurrent_ssh_store(pool: PgPool) {
+    let (vault, id) = (vault(1), device(PVE_01));
+    let mut first = pool.begin().await.unwrap();
+    store_ssh(&mut first, &vault, id, password()).await.unwrap();
+
+    let second = tokio::spawn({
+        let (pool, vault) = (pool.clone(), vault.clone());
+        async move {
+            let mut tx = pool.begin().await.unwrap();
+            store_password(&mut tx, &vault, id, PasswordKind::Rdp, secret(RDP_PASSWORD))
+                .await
+                .unwrap();
+            tx.commit().await.unwrap();
+        }
+    });
+    tokio::time::timeout(BLOCK_WAIT, async {
+        while !advisory_lock_waiter(&pool).await {
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .expect("the password store must wait on the device lock the SSH store holds");
+    assert!(!second.is_finished());
+
+    first.commit().await.unwrap();
+    tokio::time::timeout(BLOCK_WAIT, second)
+        .await
+        .expect("the password store must finish once the SSH store commits")
+        .unwrap();
+    assert_eq!(kinds(&pool, id).await, ["rdp_password", "ssh_password"]);
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn ssh_clear_waits_for_a_concurrent_password_store(pool: PgPool) {
+    let (vault, id) = (vault(1), device(PVE_01));
+    store(&pool, &vault, id, private_key(None)).await.unwrap();
+    let mut first = pool.begin().await.unwrap();
+    store_password(
+        &mut first,
+        &vault,
+        id,
+        PasswordKind::Vnc,
+        secret(VNC_PASSWORD),
+    )
+    .await
+    .unwrap();
+
+    let clear = tokio::spawn({
+        let pool = pool.clone();
+        async move {
+            let mut tx = pool.begin().await.unwrap();
+            let removed = clear_ssh(&mut tx, id).await.unwrap();
+            let rdp = clear_password(&mut tx, id, PasswordKind::Rdp)
+                .await
+                .unwrap();
+            tx.commit().await.unwrap();
+            (removed, rdp)
+        }
+    });
+    tokio::time::timeout(BLOCK_WAIT, async {
+        while !lock_waiter(&pool).await {
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .expect("the SSH clear must wait for the uncommitted password store");
+    assert!(!clear.is_finished());
+
+    first.commit().await.unwrap();
+    let (removed, rdp) = tokio::time::timeout(BLOCK_WAIT, clear)
+        .await
+        .expect("the clear must finish once the password store commits")
+        .unwrap();
+    assert!(removed && !rdp);
+    assert_eq!(kinds(&pool, id).await, ["vnc_password"]);
+    let vnc = load_password(&pool, &vault, id, PasswordKind::Vnc)
+        .await
+        .unwrap();
+    assert!(vnc.is_some_and(|p| p.expose() == VNC_PASSWORD.as_bytes()));
+    assert_eq!(advisory_locks(&pool).await, 0);
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn password_clear_waits_for_a_concurrent_password_store(pool: PgPool) {
+    let (vault, id) = (vault(1), device(PVE_01));
+    let mut first = pool.begin().await.unwrap();
+    store_password(
+        &mut first,
+        &vault,
+        id,
+        PasswordKind::Rdp,
+        secret(RDP_PASSWORD),
+    )
+    .await
+    .unwrap();
+
+    let clear = tokio::spawn({
+        let pool = pool.clone();
+        async move {
+            clear_password(&mut pool.acquire().await.unwrap(), id, PasswordKind::Rdp)
+                .await
+                .unwrap()
+        }
+    });
+    tokio::time::timeout(BLOCK_WAIT, async {
+        while !advisory_lock_waiter(&pool).await {
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .expect("the password clear must wait on the device lock");
+    first.commit().await.unwrap();
+    let removed = tokio::time::timeout(BLOCK_WAIT, clear)
+        .await
+        .expect("the clear must finish once the store commits")
+        .unwrap();
+    assert!(removed);
+    assert_eq!(kinds(&pool, id).await, Vec::<String>::new());
 }

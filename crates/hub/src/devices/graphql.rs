@@ -24,7 +24,7 @@ use sqlx::{PgPool, Postgres, Transaction};
 use uuid::Uuid;
 
 pub use self::{
-    credential_input::SshCredential,
+    credential_input::{PasswordCredential, SshCredential},
     input::SshSettingsInput,
     ssh::CredentialStored,
     standing::{ChecksOf, ResolvedIpOf, StatusOf, UptimeOf},
