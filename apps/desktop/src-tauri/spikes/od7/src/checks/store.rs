@@ -31,22 +31,40 @@ impl Seen {
 
 impl std::fmt::Display for Seen {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: cookie={:?} localStorage={:?} header={:?}", self.who, self.cookie, self.local, self.header)
+        write!(
+            f,
+            "{}: cookie={:?} localStorage={:?} header={:?}",
+            self.who, self.cookie, self.local, self.header
+        )
     }
 }
 
-pub async fn check(harness: &Harness, journal: &mut Journal, results: &mut Results, nonces: &Nonces) {
+pub async fn check(
+    harness: &Harness,
+    journal: &mut Journal,
+    results: &mut Results,
+    nonces: &Nonces,
+) {
     match observe(harness, journal, nonces).await {
-        Ok([a, b, main]) => judge(results, nonces, &a, &b, &main),
+        Ok(seen) => judge(results, nonces, &seen),
         Err(reason) => results.record(false, "store-isolated", reason),
     }
 }
 
-async fn observe(harness: &Harness, journal: &mut Journal, nonces: &Nonces) -> Result<[Seen; 3], String> {
+async fn observe(
+    harness: &Harness,
+    journal: &mut Journal,
+    nonces: &Nonces,
+) -> Result<[Seen; 3], String> {
     let from = journal.mark();
     let set = |who: &str, n: &str| harness.http_url(&format!("/store/set?who={who}&n={n}"));
     let a = device::open(harness, "web-a", Some(STORE_A), set("a", &nonces.device))?;
-    let main = device::open(harness, "web-default", None, set("default", &nonces.default))?;
+    let main = device::open(
+        harness,
+        "web-default",
+        None,
+        set("default", &nonces.default),
+    )?;
     for who in ["a", "default"] {
         journal
             .until(from, WAIT, |e| is_report(e, "http", "store-set", Some(who)))
@@ -68,11 +86,20 @@ async fn observe(harness: &Harness, journal: &mut Journal, nonces: &Nonces) -> R
 
 async fn read_back(journal: &mut Journal, from: usize, who: &'static str) -> Result<Seen, String> {
     let report = journal
-        .until(from, WAIT, |e| is_report(e, "http", "store-read", Some(who)))
+        .until(from, WAIT, |e| {
+            is_report(e, "http", "store-read", Some(who))
+        })
         .await
         .ok_or(format!("no store-read report from {who}"))?;
-    let Event::Report { body, .. } = report else { unreachable!("is_report matched") };
-    let field = |name: &str| body.get(name).and_then(|v| v.as_str()).unwrap_or("").to_owned();
+    let Event::Report { body, .. } = report else {
+        unreachable!("is_report matched")
+    };
+    let field = |name: &str| {
+        body.get(name)
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_owned()
+    };
     // The GET for this read carried the cookie header the store holds for the origin.
     let query = format!("who={who}");
     let header = journal
@@ -83,10 +110,15 @@ async fn read_back(journal: &mut Journal, from: usize, who: &'static str) -> Res
             _ => None,
         })
         .unwrap_or_default();
-    Ok(Seen { who, cookie: field("cookie"), local: field("ls"), header })
+    Ok(Seen {
+        who,
+        cookie: field("cookie"),
+        local: field("ls"),
+        header,
+    })
 }
 
-fn judge(results: &mut Results, nonces: &Nonces, a: &Seen, b: &Seen, main: &Seen) {
+fn judge(results: &mut Results, nonces: &Nonces, [a, b, main]: &[Seen; 3]) {
     let (device, default) = (nonces.device.as_str(), nonces.default.as_str());
     results.record(
         a.has_both_parts(device) && main.has_both_parts(default),

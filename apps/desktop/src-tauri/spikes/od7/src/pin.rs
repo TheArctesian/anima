@@ -44,27 +44,39 @@ pub enum Verdict {
     /// No pin and the system does not trust it: show the fingerprint, stop.
     Untrusted(Fingerprint),
     /// A pin exists and a different leaf was presented: stop and warn.
-    Mismatch { expected: Fingerprint, presented: Fingerprint },
+    Mismatch {
+        expected: Fingerprint,
+        presented: Fingerprint,
+    },
+}
+
+/// What a server-trust challenge presented: the origin, the leaf and the system's opinion.
+#[derive(Clone, Debug)]
+pub struct Presented {
+    pub host: String,
+    pub port: u16,
+    pub sha256: Fingerprint,
+    pub system_trusted: bool,
 }
 
 /// A pin wins over system trust; any other host or port gets the system's handling.
-pub fn decide(
-    pin: Option<&Pin>,
-    host: &str,
-    port: u16,
-    presented: Fingerprint,
-    system_trusted: bool,
-) -> Verdict {
+pub fn decide(pin: Option<&Pin>, challenge: &Presented) -> Verdict {
+    let presented = challenge.sha256;
     match pin {
-        Some(pin) if pin.host.eq_ignore_ascii_case(host) && pin.port == port => {
+        Some(pin)
+            if pin.host.eq_ignore_ascii_case(&challenge.host) && pin.port == challenge.port =>
+        {
             if pin.sha256 == presented {
                 Verdict::Accept
             } else {
-                Verdict::Mismatch { expected: pin.sha256, presented }
+                Verdict::Mismatch {
+                    expected: pin.sha256,
+                    presented,
+                }
             }
         }
         Some(_) => Verdict::Default,
-        None if system_trusted => Verdict::Default,
+        None if challenge.system_trusted => Verdict::Default,
         None => Verdict::Untrusted(presented),
     }
 }
@@ -74,27 +86,61 @@ mod tests {
     use super::*;
 
     fn pin(fp: Fingerprint) -> Pin {
-        Pin { host: "127.0.0.1".into(), port: 8443, sha256: fp }
+        Pin {
+            host: "127.0.0.1".into(),
+            port: 8443,
+            sha256: fp,
+        }
+    }
+
+    fn at(host: &str, port: u16, sha256: Fingerprint, system_trusted: bool) -> Presented {
+        Presented {
+            host: host.into(),
+            port,
+            sha256,
+            system_trusted,
+        }
     }
 
     #[test]
     fn every_verdict() {
         let a = Fingerprint::of(b"a");
         let b = Fingerprint::of(b"b");
-        assert_eq!(decide(None, "127.0.0.1", 8443, a, false), Verdict::Untrusted(a));
-        assert_eq!(decide(None, "127.0.0.1", 8443, a, true), Verdict::Default);
-        assert_eq!(decide(Some(&pin(a)), "127.0.0.1", 8443, a, false), Verdict::Accept);
         assert_eq!(
-            decide(Some(&pin(a)), "127.0.0.1", 8443, b, true),
-            Verdict::Mismatch { expected: a, presented: b }
+            decide(None, &at("127.0.0.1", 8443, a, false)),
+            Verdict::Untrusted(a)
         );
-        assert_eq!(decide(Some(&pin(a)), "127.0.0.1", 9443, b, false), Verdict::Default);
-        assert_eq!(decide(Some(&pin(a)), "localhost", 8443, b, false), Verdict::Default);
+        assert_eq!(
+            decide(None, &at("127.0.0.1", 8443, a, true)),
+            Verdict::Default
+        );
+        assert_eq!(
+            decide(Some(&pin(a)), &at("127.0.0.1", 8443, a, false)),
+            Verdict::Accept
+        );
+        assert_eq!(
+            decide(Some(&pin(a)), &at("127.0.0.1", 8443, b, true)),
+            Verdict::Mismatch {
+                expected: a,
+                presented: b
+            }
+        );
+        assert_eq!(
+            decide(Some(&pin(a)), &at("127.0.0.1", 9443, b, false)),
+            Verdict::Default
+        );
+        assert_eq!(
+            decide(Some(&pin(a)), &at("localhost", 8443, b, false)),
+            Verdict::Default
+        );
     }
 
     #[test]
     fn hex_form() {
         let text = Fingerprint::of(b"").to_string();
-        assert_eq!(text, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+        assert_eq!(
+            text,
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        );
     }
 }

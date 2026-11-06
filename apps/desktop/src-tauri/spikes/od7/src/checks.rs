@@ -23,9 +23,8 @@ pub struct Nonces {
     pub default: String,
 }
 
-/// What every check needs: the app, the hidden window, the plain site and the event sink.
+/// What every check needs: the hidden window, the plain site, the pins and the event sink.
 pub struct Harness {
-    pub app: AppHandle,
     pub window: Window,
     pub events: Events,
     pub http: Site,
@@ -34,8 +33,11 @@ pub struct Harness {
 
 impl Harness {
     pub fn http_url(&self, path_and_query: &str) -> Url {
-        Url::parse(&format!("http://127.0.0.1:{}{path_and_query}", self.http.port))
-            .expect("a loopback URL parses")
+        Url::parse(&format!(
+            "http://127.0.0.1:{}{path_and_query}",
+            self.http.port
+        ))
+        .expect("a loopback URL parses")
     }
 }
 
@@ -70,13 +72,16 @@ pub async fn run(app: AppHandle, events: Events, mut journal: Journal, nonces: N
     tls::check(&harness, &mut journal, &mut results).await;
     navigation::check(&harness, &mut journal, &mut results).await;
     harness.http.stop().await;
-    println!("od7: {} of {} checks passed", results.total - results.failed, results.total);
+    println!(
+        "od7: {} of {} checks passed",
+        results.total - results.failed,
+        results.total
+    );
     i32::from(results.failed > 0)
 }
 
 async fn prepare(app: AppHandle, events: Events, journal: &mut Journal) -> Result<Harness, String> {
-    device::clear_stores(&app).await;
-    let http = server::serve_http(events.clone()).await.map_err(|e| e.to_string())?;
+    let http = server::serve_http(events.clone()).map_err(|e| e.to_string())?;
     let window = WindowBuilder::new(&app, "harness")
         .title("OD-7 spike")
         .inner_size(800.0, 600.0)
@@ -87,23 +92,48 @@ async fn prepare(app: AppHandle, events: Events, journal: &mut Journal) -> Resul
     let from = journal.mark();
     let main = WebviewBuilder::new("main", WebviewUrl::App("index.html".into())).focused(false);
     window
-        .add_child(main, LogicalPosition::new(0.0, 0.0), LogicalSize::new(800.0, 600.0))
+        .add_child(
+            main,
+            LogicalPosition::new(0.0, 0.0),
+            LogicalSize::new(800.0, 600.0),
+        )
         .map_err(|e| format!("main web view: {e}"))?;
     let started = journal
-        .until(from, Duration::from_secs(10), |e| matches!(e, Event::Invoked { label, .. } if label == "main"))
+        .until(
+            from,
+            Duration::from_secs(10),
+            |e| matches!(e, Event::Invoked { label, .. } if label == "main"),
+        )
         .await;
     if started.is_none() {
         eprintln!("od7: the main page did not call the spike command within 10 s");
     }
-    Ok(Harness { app, window, events, http, pins: Pins::default() })
+    // After the first web view: WebKit crashes removing a store before it has started.
+    device::clear_stores(&app).await;
+    Ok(Harness {
+        window,
+        events,
+        http,
+        pins: Pins::default(),
+    })
 }
 
 /// Positive control for check 2: the app's own page reaches the command.
 fn main_view(journal: &mut Journal, results: &mut Results) {
-    let calls = journal.since(0, |e| matches!(e, Event::Invoked { label, .. } if label == "main"));
+    let calls: Vec<String> = journal
+        .since(
+            0,
+            |e| matches!(e, Event::Invoked { label, .. } if label == "main"),
+        )
+        .into_iter()
+        .filter_map(|e| match e {
+            Event::Invoked { from, .. } => Some(from),
+            _ => None,
+        })
+        .collect();
     results.record(
         !calls.is_empty(),
         "ipc-main-allowed",
-        format!("invoke from label main ran the command {} time(s)", calls.len()),
+        format!("the command ran for label main, from {calls:?}"),
     );
 }

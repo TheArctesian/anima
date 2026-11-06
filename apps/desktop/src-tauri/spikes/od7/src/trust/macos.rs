@@ -21,7 +21,7 @@ use security_framework::trust::SecTrust;
 use tauri::webview::PlatformWebview;
 
 use super::TrustHook;
-use crate::pin::{Fingerprint, Verdict};
+use crate::pin::{Fingerprint, Presented, Verdict};
 
 type Completion = DynBlock<dyn Fn(Disposition, *mut NSURLCredential)>;
 
@@ -83,7 +83,9 @@ pub fn install(platform: &PlatformWebview, hook: TrustHook) -> Result<String, St
     // SAFETY: plain property read on the main thread.
     let inner = unsafe { view.navigationDelegate() }.ok_or("no navigation delegate")?;
     let label = hook.label().to_owned();
-    let proxy = mtm.alloc::<PinningDelegate>().set_ivars(ProxyIvars { inner, hook });
+    let proxy = mtm
+        .alloc::<PinningDelegate>()
+        .set_ivars(ProxyIvars { inner, hook });
     // SAFETY: NSObject's designated initialiser.
     let proxy: Retained<PinningDelegate> = unsafe { msg_send![super(proxy), init] };
     // SAFETY: the proxy is retained in PROXIES for the life of the process.
@@ -101,10 +103,12 @@ pub fn install(platform: &PlatformWebview, hook: TrustHook) -> Result<String, St
 
 /// Server trust only; any other challenge (HTTP auth, client certificates) gets the default.
 fn answer(hook: &TrustHook, challenge: &NSURLAuthenticationChallenge, done: &Completion) {
-    // SAFETY: read-only properties of the challenge WebKit passed in.
-    let space = unsafe { challenge.protectionSpace() };
-    let method = unsafe { space.authenticationMethod() };
-    if !method.isEqualToString(unsafe { NSURLAuthenticationMethodServerTrust }) {
+    let space = challenge.protectionSpace();
+    // SAFETY: an immutable Foundation constant.
+    if !space
+        .authenticationMethod()
+        .isEqualToString(unsafe { NSURLAuthenticationMethodServerTrust })
+    {
         done.call((Disposition::PerformDefaultHandling, null_mut()));
         return;
     }
@@ -114,21 +118,32 @@ fn answer(hook: &TrustHook, challenge: &NSURLAuthenticationChallenge, done: &Com
         done.call((Disposition::CancelAuthenticationChallenge, null_mut()));
         return;
     }
+    // SAFETY: a live, non-null SecTrustRef; the get rule retains it for the wrapper's life.
     let trust = unsafe { SecTrust::wrap_under_get_rule(trust_ref.cast()) };
     let system_trusted = trust.evaluate_with_error().is_ok();
     let Some(leaf) = trust.chain().into_iter().next() else {
         done.call((Disposition::CancelAuthenticationChallenge, null_mut()));
         return;
     };
-    let presented = Fingerprint::of(&leaf.to_der());
-    let host = unsafe { space.host() }.to_string();
-    let port = u16::try_from(unsafe { space.port() }).unwrap_or(0);
-    match hook.judge(&host, port, presented, system_trusted) {
+    let sha256 = Fingerprint::of(&leaf.to_der());
+    let host = space.host().to_string();
+    // An out-of-range port matches no pin, so it gets the system's handling.
+    let port = u16::try_from(space.port()).unwrap_or(0);
+    let presented = Presented {
+        host,
+        port,
+        sha256,
+        system_trusted,
+    };
+    match hook.judge(&presented) {
         Verdict::Accept => {
             // SAFETY: `credentialForTrust:` takes the same SecTrustRef; the result is autoreleased.
             let credential: Retained<NSURLCredential> =
                 unsafe { msg_send![NSURLCredential::class(), credentialForTrust: trust_ref] };
-            done.call((Disposition::UseCredential, Retained::as_ptr(&credential).cast_mut()));
+            done.call((
+                Disposition::UseCredential,
+                Retained::as_ptr(&credential).cast_mut(),
+            ));
         }
         Verdict::Default => done.call((Disposition::PerformDefaultHandling, null_mut())),
         Verdict::Untrusted(_) | Verdict::Mismatch { .. } => {

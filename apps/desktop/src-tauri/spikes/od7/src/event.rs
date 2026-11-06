@@ -14,17 +14,36 @@ const QUEUE: usize = 512;
 #[derive(Clone, Debug)]
 pub enum Event {
     /// A test server answered a GET. `cookie` is the request's `Cookie` header.
-    Served { server: String, path: String, query: String, cookie: String },
+    Served {
+        server: String,
+        path: String,
+        query: String,
+        cookie: String,
+    },
     /// A page posted a result to `/report?name=...`.
-    Report { server: String, name: String, body: serde_json::Value },
+    Report {
+        server: String,
+        name: String,
+        body: serde_json::Value,
+    },
     /// The spike command ran; `label` is the calling web view.
     Invoked { label: String, from: String },
     /// The navigation filter of a device web view decided on a URL.
-    Navigation { label: String, url: String, allowed: bool },
+    Navigation {
+        label: String,
+        url: String,
+        allowed: bool,
+    },
     /// The trust hook answered a server-trust challenge.
-    Challenge { label: String, host: String, port: u16, verdict: Verdict, system_trusted: bool },
-    /// The trust hook was (or was not) installed on a web view.
-    Hook { label: String, result: Result<String, String> },
+    Challenge {
+        label: String,
+        host: String,
+        port: u16,
+        verdict: Verdict,
+        system_trusted: bool,
+    },
+    /// The trust hook was (or was not) installed on the TLS web view.
+    Hook { result: Result<String, String> },
 }
 
 #[derive(Clone)]
@@ -46,7 +65,13 @@ pub struct Journal {
 
 pub fn channel() -> (Events, Journal) {
     let (sender, queue) = mpsc::channel(QUEUE);
-    (Events(sender), Journal { queue, seen: Vec::new() })
+    (
+        Events(sender),
+        Journal {
+            queue,
+            seen: Vec::new(),
+        },
+    )
 }
 
 impl Journal {
@@ -87,7 +112,11 @@ impl Journal {
     /// Every event after `from` that matches.
     pub fn since(&mut self, from: usize, matches: impl Fn(&Event) -> bool) -> Vec<Event> {
         self.drain();
-        self.seen[from..].iter().filter(|event| matches(event)).cloned().collect()
+        self.seen[from..]
+            .iter()
+            .filter(|event| matches(event))
+            .cloned()
+            .collect()
     }
 
     fn drain(&mut self) {
@@ -100,7 +129,11 @@ impl Journal {
 /// The report `name` from `server` whose body field `who` equals `who` (or any, if `None`).
 pub fn is_report(event: &Event, server: &str, name: &str, who: Option<&str>) -> bool {
     match event {
-        Event::Report { server: s, name: n, body } => {
+        Event::Report {
+            server: s,
+            name: n,
+            body,
+        } => {
             s == server
                 && n == name
                 && who.is_none_or(|w| body.get("who").and_then(|v| v.as_str()) == Some(w))

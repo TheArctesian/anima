@@ -10,14 +10,33 @@ use crate::event::{Event, Journal, is_report};
 
 pub async fn check(harness: &Harness, journal: &mut Journal, results: &mut Results) {
     let from = journal.mark();
-    if let Err(reason) = device::open(harness, "web-ipc", Some(STORE_IPC), harness.http_url("/ipc")) {
+    if let Err(reason) = device::open(
+        harness,
+        "web-ipc",
+        Some(STORE_IPC),
+        harness.http_url("/ipc"),
+    ) {
         results.record(false, "ipc-device-denied", reason);
         return;
     }
-    let report = journal.until(from, Duration::from_secs(12), |e| is_report(e, "http", "ipc", None)).await;
+    let report = journal
+        .until(from, Duration::from_secs(12), |e| {
+            is_report(e, "http", "ipc", None)
+        })
+        .await;
     // A raw message may be handled after the page has reported; give it time to land.
     journal.settle(Duration::from_secs(1)).await;
-    let reached = journal.since(from, |e| matches!(e, Event::Invoked { label, .. } if label != "main"));
+    let reached: Vec<String> = journal
+        .since(
+            from,
+            |e| matches!(e, Event::Invoked { label, .. } if label != "main"),
+        )
+        .into_iter()
+        .filter_map(|e| match e {
+            Event::Invoked { label, from } => Some(format!("{label} ({from})")),
+            _ => None,
+        })
+        .collect();
     let page = match &report {
         Some(Event::Report { body, .. }) => body.to_string(),
         _ => "no report from the device page".to_owned(),

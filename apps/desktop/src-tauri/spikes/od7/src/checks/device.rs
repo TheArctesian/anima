@@ -19,7 +19,12 @@ pub fn is_web_scheme(url: &Url) -> bool {
 }
 
 /// Opens a device web view. `store: None` means the default store (the main view's).
-pub fn open(harness: &Harness, label: &str, store: Option<[u8; 16]>, url: Url) -> Result<Webview, String> {
+pub fn open(
+    harness: &Harness,
+    label: &str,
+    store: Option<[u8; 16]>,
+    url: Url,
+) -> Result<Webview, String> {
     let events = harness.events.clone();
     let owner = label.to_owned();
     let mut builder = WebviewBuilder::new(label, WebviewUrl::External(url))
@@ -28,7 +33,11 @@ pub fn open(harness: &Harness, label: &str, store: Option<[u8; 16]>, url: Url) -
             let allowed = is_web_scheme(url);
             let mut shown = url.to_string();
             shown.truncate(60);
-            events.send(Event::Navigation { label: owner.clone(), url: shown, allowed });
+            events.send(Event::Navigation {
+                label: owner.clone(),
+                url: shown,
+                allowed,
+            });
             allowed
         });
     if let Some(store) = store {
@@ -36,7 +45,11 @@ pub fn open(harness: &Harness, label: &str, store: Option<[u8; 16]>, url: Url) -
     }
     harness
         .window
-        .add_child(builder, LogicalPosition::new(0.0, 0.0), LogicalSize::new(400.0, 300.0))
+        .add_child(
+            builder,
+            LogicalPosition::new(0.0, 0.0),
+            LogicalSize::new(400.0, 300.0),
+        )
         .map_err(|e| format!("{label}: {e}"))
 }
 

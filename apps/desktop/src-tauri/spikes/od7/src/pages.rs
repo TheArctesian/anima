@@ -115,7 +115,12 @@ mod tests {
     #[test]
     fn set_cookie_only_for_store_set() {
         assert!(page("/store/read", "n=ab").is_some_and(|p| p.set_cookie.is_none()));
-        assert_eq!(page("/store/set", "n=ab").and_then(|p| p.set_cookie).as_deref(), Some("spike_http=ab; Path=/"));
+        assert_eq!(
+            page("/store/set", "n=ab")
+                .and_then(|p| p.set_cookie)
+                .as_deref(),
+            Some("spike_http=ab; Path=/")
+        );
         assert!(page("/elsewhere", "").is_none());
     }
 }

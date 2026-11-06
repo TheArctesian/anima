@@ -8,7 +8,7 @@ use tauri::{Url, Webview};
 use super::device::{self, STORE_TLS};
 use super::{Harness, Results};
 use crate::event::{Event, Journal, is_report};
-use crate::pin::{Pin, Verdict};
+use crate::pin::{Fingerprint, Pin, Verdict};
 use crate::server::{self, Site};
 use crate::trust::{self, TrustHook};
 
@@ -21,61 +21,129 @@ pub async fn check(harness: &Harness, journal: &mut Journal, results: &mut Resul
     }
 }
 
-async fn run(harness: &Harness, journal: &mut Journal, results: &mut Results) -> Result<(), String> {
-    let first = server::serve_tls(0, 1, harness.events.clone()).await.map_err(|e| e.to_string())?;
-    let port = first.port;
-    let first_fp = first.fingerprint.ok_or("no fingerprint")?;
-    let view = hooked_view(harness, journal).await?;
-    let url = |step: u8| Url::parse(&format!("https://127.0.0.1:{port}/tls?step={step}")).expect("loopback URL");
+/// The TLS web view and the HTTPS port every step visits.
+struct Visit {
+    view: Webview,
+    port: u16,
+}
 
-    // First visit, no pin: the leaf must reach Rust and the page must not load.
-    let from = journal.mark();
-    view.navigate(url(1)).map_err(|e| e.to_string())?;
+impl Visit {
+    fn go(&self, journal: &mut Journal, step: u8) -> Result<usize, String> {
+        let from = journal.mark();
+        let url = format!("https://127.0.0.1:{}/tls?step={step}", self.port);
+        let url = Url::parse(&url).map_err(|e| e.to_string())?;
+        self.view.navigate(url).map_err(|e| e.to_string())?;
+        Ok(from)
+    }
+}
+
+async fn run(
+    harness: &Harness,
+    journal: &mut Journal,
+    results: &mut Results,
+) -> Result<(), String> {
+    let first = server::serve_tls(0, 1, harness.events.clone()).map_err(|e| e.to_string())?;
+    let first_fp = first.fingerprint.ok_or("no fingerprint")?;
+    let visit = Visit {
+        view: hooked_view(harness, journal).await?,
+        port: first.port,
+    };
+    first_visit(&visit, journal, results, first_fp).await?;
+    let pin = Pin {
+        host: "127.0.0.1".into(),
+        port: visit.port,
+        sha256: first_fp,
+    };
+    harness
+        .pins
+        .lock()
+        .map_err(|_| "pins poisoned")?
+        .insert(LABEL.into(), pin);
+    pinned_visit(&visit, journal, results).await?;
+    first.stop().await;
+    let second = restart(visit.port, harness).await?;
+    let second_fp = second.fingerprint.ok_or("no fingerprint")?;
+    switched_visit(&visit, journal, results, (first_fp, second_fp)).await?;
+    second.stop().await;
+    Ok(())
+}
+
+/// No pin: the leaf must reach Rust, equal the server's, and the page must not load.
+async fn first_visit(
+    visit: &Visit,
+    journal: &mut Journal,
+    results: &mut Results,
+    leaf: Fingerprint,
+) -> Result<(), String> {
+    let from = visit.go(journal, 1)?;
     let challenge = journal.until(from, WAIT, is_challenge).await;
     journal.settle(Duration::from_millis(500)).await;
     let served = served_on(journal, from, "tls-1");
-    let seen = presented(challenge.as_ref());
+    let seen = verdict_from(challenge.as_ref(), visit.port);
     results.record(
-        matches!(seen, Some(Verdict::Untrusted(fp)) if fp == first_fp) && served == 0,
+        matches!(seen, Some(Verdict::Untrusted(fp)) if fp == leaf) && served == 0,
         "tls-fingerprint",
-        format!("server leaf {first_fp}; challenge {challenge:?}; pages served {served}"),
+        format!("server leaf {leaf}; challenge {challenge:?}; pages served {served}"),
     );
+    Ok(())
+}
 
-    // Pin it: the same certificate now loads and the page runs.
-    let pin = Pin { host: "127.0.0.1".into(), port, sha256: first_fp };
-    harness.pins.lock().map_err(|_| "pins poisoned")?.insert(LABEL.into(), pin);
-    let from = journal.mark();
-    view.navigate(url(2)).map_err(|e| e.to_string())?;
-    let loaded = journal.until(from, WAIT, |e| is_report(e, "tls-1", "tls-loaded", None)).await;
-    let accepted = journal.since(from, |e| matches!(e, Event::Challenge { verdict: Verdict::Accept, .. })).len();
+/// With the pin: the same certificate now loads and the page's script runs.
+async fn pinned_visit(
+    visit: &Visit,
+    journal: &mut Journal,
+    results: &mut Results,
+) -> Result<(), String> {
+    let from = visit.go(journal, 2)?;
+    let loaded = journal
+        .until(from, WAIT, |e| is_report(e, "tls-1", "tls-loaded", None))
+        .await;
+    let accepted = journal
+        .since(from, |e| {
+            matches!(
+                e,
+                Event::Challenge {
+                    verdict: Verdict::Accept,
+                    ..
+                }
+            )
+        })
+        .len();
     results.record(
         loaded.is_some() && accepted > 0,
         "tls-pinned-load",
-        format!("page ran under the pinned leaf: {}; accepted challenges {accepted}", loaded.is_some()),
+        format!(
+            "page ran under the pinned leaf: {}; accepted challenges {accepted}",
+            loaded.is_some()
+        ),
     );
+    Ok(())
+}
 
-    // Same host and port, new certificate: WebKit must ask again and the pin must stop it.
-    first.stop().await;
-    let second = restart(port, harness).await?;
-    let second_fp = second.fingerprint.ok_or("no fingerprint")?;
-    let from = journal.mark();
-    view.navigate(url(3)).map_err(|e| e.to_string())?;
+/// Same host and port, new certificate: WebKit must ask again and the pin must stop it.
+async fn switched_visit(
+    visit: &Visit,
+    journal: &mut Journal,
+    results: &mut Results,
+    (pinned, new): (Fingerprint, Fingerprint),
+) -> Result<(), String> {
+    let from = visit.go(journal, 3)?;
     let challenge = journal.until(from, WAIT, is_challenge).await;
     journal.settle(Duration::from_secs(1)).await;
     let served = served_on(journal, from, "tls-2");
+    let port = visit.port;
     results.record(
         challenge.is_some(),
         "tls-rechallenge",
         format!("a challenge after the certificate changed on 127.0.0.1:{port}: {challenge:?}"),
     );
-    let stopped = matches!(presented(challenge.as_ref()),
-        Some(Verdict::Mismatch { expected, presented }) if expected == first_fp && presented == second_fp);
+    let stopped = matches!(verdict_from(challenge.as_ref(), port),
+        Some(Verdict::Mismatch { expected, presented }) if expected == pinned && presented == new);
     results.record(
-        stopped && served == 0 && first_fp != second_fp,
+        stopped && served == 0 && pinned != new,
         "tls-mismatch-stopped",
-        format!("expected {first_fp} presented {second_fp}; pages served on the new certificate {served}"),
+        format!("expected {pinned} presented {new}; pages served on the new certificate {served}"),
     );
-    second.stop().await;
     Ok(())
 }
 
@@ -87,16 +155,23 @@ async fn hooked_view(harness: &Harness, journal: &mut Journal) -> Result<Webview
     let events = harness.events.clone();
     view.with_webview(move |platform| {
         let result = trust::install(&platform, hook);
-        events.send(Event::Hook { label: LABEL.into(), result });
+        events.send(Event::Hook { result });
     })
     .map_err(|e| e.to_string())?;
-    let installed = journal.until(from, WAIT, |e| matches!(e, Event::Hook { .. })).await;
+    let installed = journal
+        .until(from, WAIT, |e| matches!(e, Event::Hook { .. }))
+        .await;
     match installed {
-        Some(Event::Hook { result: Ok(detail), .. }) => {
+        Some(Event::Hook {
+            result: Ok(detail), ..
+        }) => {
             println!("od7: trust hook: {detail}");
             Ok(view)
         }
-        Some(Event::Hook { result: Err(reason), .. }) => Err(format!("trust hook: {reason}")),
+        Some(Event::Hook {
+            result: Err(reason),
+            ..
+        }) => Err(format!("trust hook: {reason}")),
         _ => Err("trust hook: no answer".into()),
     }
 }
@@ -105,7 +180,7 @@ async fn hooked_view(harness: &Harness, journal: &mut Journal) -> Result<Webview
 async fn restart(port: u16, harness: &Harness) -> Result<Site, String> {
     let mut last = String::new();
     for _ in 0..20 {
-        match server::serve_tls(port, 2, harness.events.clone()).await {
+        match server::serve_tls(port, 2, harness.events.clone()) {
             Ok(site) => return Ok(site),
             Err(e) => last = e.to_string(),
         }
@@ -118,14 +193,25 @@ fn is_challenge(event: &Event) -> bool {
     matches!(event, Event::Challenge { label, .. } if label == LABEL)
 }
 
-fn presented(event: Option<&Event>) -> Option<Verdict> {
+/// The verdict of a challenge for 127.0.0.1:`port` that the system did not trust.
+fn verdict_from(event: Option<&Event>, port: u16) -> Option<Verdict> {
     match event {
-        Some(Event::Challenge { verdict, .. }) => Some(verdict.clone()),
+        Some(Event::Challenge {
+            host,
+            port: p,
+            verdict,
+            system_trusted: false,
+            ..
+        }) if host == "127.0.0.1" && *p == port => Some(verdict.clone()),
         _ => None,
     }
 }
 
 fn served_on(journal: &mut Journal, from: usize, site: &str) -> usize {
-    journal.since(from, |e| matches!(e, Event::Served { server, path, .. } if server == site && path == "/tls")).len()
+    journal
+        .since(
+            from,
+            |e| matches!(e, Event::Served { server, path, .. } if server == site && path == "/tls"),
+        )
+        .len()
 }
-

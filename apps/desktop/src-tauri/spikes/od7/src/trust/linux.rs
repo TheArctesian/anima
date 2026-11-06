@@ -11,7 +11,7 @@ use webkit2gtk::glib::{ByteArray, prelude::ObjectExt};
 use webkit2gtk::{WebContextExt, WebViewExt};
 
 use super::TrustHook;
-use crate::pin::{Fingerprint, Verdict};
+use crate::pin::{Fingerprint, Presented, Verdict};
 
 /// Connects the TLS-error signal. Runs on the GTK main thread (`with_webview`).
 pub fn install(platform: &PlatformWebview, hook: TrustHook) -> Result<String, String> {
@@ -22,8 +22,14 @@ pub fn install(platform: &PlatformWebview, hook: TrustHook) -> Result<String, St
             return true;
         };
         let der: ByteArray = certificate.property("certificate");
-        let presented = Fingerprint::of(&der);
-        if hook.judge(&host, port, presented, false) == Verdict::Accept {
+        // The signal fires only for certificates the system did not trust.
+        let presented = Presented {
+            host: host.clone(),
+            port,
+            sha256: Fingerprint::of(&der),
+            system_trusted: false,
+        };
+        if hook.judge(&presented) == Verdict::Accept {
             if let Some(context) = view.context() {
                 context.allow_tls_certificate_for_host(certificate, &host);
                 view.load_uri(uri);

@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex, PoisonError};
 
 use crate::event::{Event, Events};
-use crate::pin::{self, Fingerprint, Pin, Verdict};
+use crate::pin::{self, Pin, Presented, Verdict};
 
 #[cfg(target_os = "linux")]
 mod linux;
@@ -29,7 +29,11 @@ pub struct TrustHook {
 
 impl TrustHook {
     pub fn new(label: &str, pins: Pins, events: Events) -> Self {
-        Self { label: label.to_owned(), pins, events }
+        Self {
+            label: label.to_owned(),
+            pins,
+            events,
+        }
     }
 
     pub fn label(&self) -> &str {
@@ -37,20 +41,20 @@ impl TrustHook {
     }
 
     /// Decides one challenge and records it. The lock is held only to copy the pin.
-    pub fn judge(&self, host: &str, port: u16, presented: Fingerprint, system_trusted: bool) -> Verdict {
+    pub fn judge(&self, presented: &Presented) -> Verdict {
         let pin = self
             .pins
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
             .get(&self.label)
             .cloned();
-        let verdict = pin::decide(pin.as_ref(), host, port, presented, system_trusted);
+        let verdict = pin::decide(pin.as_ref(), presented);
         self.events.send(Event::Challenge {
             label: self.label.clone(),
-            host: host.to_owned(),
-            port,
+            host: presented.host.clone(),
+            port: presented.port,
             verdict: verdict.clone(),
-            system_trusted,
+            system_trusted: presented.system_trusted,
         });
         verdict
     }

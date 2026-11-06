@@ -62,15 +62,19 @@ impl std::fmt::Display for SiteError {
 
 impl std::error::Error for SiteError {}
 
-pub async fn serve_http(events: Events) -> Result<Site, SiteError> {
+pub fn serve_http(events: Events) -> Result<Site, SiteError> {
     let listener = bind(0).map_err(SiteError::Io)?;
     let port = listener.local_addr().map_err(SiteError::Io)?.port();
     let accept = tokio::spawn(accept_loop(listener, None, "http".into(), events));
-    Ok(Site { port, fingerprint: None, accept })
+    Ok(Site {
+        port,
+        fingerprint: None,
+        accept,
+    })
 }
 
 /// Serves HTTPS on `port` (0 for any) as `tls-<generation>` with a new certificate.
-pub async fn serve_tls(port: u16, generation: u32, events: Events) -> Result<Site, SiteError> {
+pub fn serve_tls(port: u16, generation: u32, events: Events) -> Result<Site, SiteError> {
     let names = vec!["127.0.0.1".to_owned(), "localhost".to_owned()];
     let issued = rcgen::generate_simple_self_signed(names)
         .map_err(|e| SiteError::Certificate(e.to_string()))?;
@@ -87,7 +91,11 @@ pub async fn serve_tls(port: u16, generation: u32, events: Events) -> Result<Sit
     let port = listener.local_addr().map_err(SiteError::Io)?.port();
     let name: Arc<str> = format!("tls-{generation}").into();
     let accept = tokio::spawn(accept_loop(listener, Some(acceptor), name, events));
-    Ok(Site { port, fingerprint: Some(fingerprint), accept })
+    Ok(Site {
+        port,
+        fingerprint: Some(fingerprint),
+        accept,
+    })
 }
 
 /// Loopback only, with address reuse so a restarted site gets the same port.
@@ -120,7 +128,12 @@ async fn accept_loop(
     }
 }
 
-async fn connection(stream: TcpStream, acceptor: Option<TlsAcceptor>, name: Arc<str>, events: Events) {
+async fn connection(
+    stream: TcpStream,
+    acceptor: Option<TlsAcceptor>,
+    name: Arc<str>,
+    events: Events,
+) {
     let service = service_fn(move |request| answer(request, name.clone(), events.clone()));
     let http = http1::Builder::new().keep_alive(false).clone();
     let served = match acceptor {
@@ -145,11 +158,18 @@ async fn answer(
     let query = request.uri().query().unwrap_or("").to_owned();
     if request.method() == Method::POST && path == "/report" {
         let name = pages::query_value(&query, "name").unwrap_or("").to_owned();
-        let body = match Limited::new(request.into_body(), REPORT_LIMIT).collect().await {
+        let body = match Limited::new(request.into_body(), REPORT_LIMIT)
+            .collect()
+            .await
+        {
             Ok(collected) => serde_json::from_slice(&collected.to_bytes()).unwrap_or_default(),
             Err(_) => return Ok(status(StatusCode::PAYLOAD_TOO_LARGE)),
         };
-        events.send(Event::Report { server: server.to_string(), name, body });
+        events.send(Event::Report {
+            server: server.to_string(),
+            name,
+            body,
+        });
         return Ok(status(StatusCode::NO_CONTENT));
     }
     let cookie = request
@@ -161,10 +181,18 @@ async fn answer(
     let Some(page) = pages::page(&path, &query) else {
         return Ok(status(StatusCode::NOT_FOUND));
     };
-    events.send(Event::Served { server: server.to_string(), path, query, cookie });
+    events.send(Event::Served {
+        server: server.to_string(),
+        path,
+        query,
+        cookie,
+    });
     let mut response = Response::new(Full::new(Bytes::from(page.html)));
     let headers = response.headers_mut();
-    headers.insert(CONTENT_TYPE, "text/html; charset=utf-8".parse().expect("static header"));
+    headers.insert(
+        CONTENT_TYPE,
+        "text/html; charset=utf-8".parse().expect("static header"),
+    );
     headers.insert(CONNECTION, "close".parse().expect("static header"));
     if let Some(cookie) = page.set_cookie.and_then(|c| c.parse().ok()) {
         headers.insert(SET_COOKIE, cookie);
