@@ -4,7 +4,10 @@ use std::collections::BTreeMap;
 
 use async_graphql::parser::{
     Positioned, parse_schema,
-    types::{ConstDirective, InputValueDefinition, TypeKind, TypeSystemDefinition},
+    types::{
+        ConstDirective, DirectiveDefinition, InputValueDefinition, TypeDefinition, TypeKind,
+        TypeSystemDefinition,
+    },
 };
 
 use crate::hub::hub_sdl;
@@ -65,6 +68,75 @@ fn field_signatures(
         .collect()
 }
 
+fn type_declaration(definition: &TypeDefinition) -> Declaration {
+    let (kind, members) = match &definition.kind {
+        TypeKind::Scalar => ("scalar".to_owned(), BTreeMap::new()),
+        TypeKind::Object(object) => {
+            let mut implements: Vec<_> = object
+                .implements
+                .iter()
+                .map(|n| n.node.to_string())
+                .collect();
+            implements.sort();
+            (
+                format!("type implements [{}]", implements.join(", ")),
+                field_signatures(&object.fields),
+            )
+        }
+        TypeKind::Interface(interface) => {
+            ("interface".to_owned(), field_signatures(&interface.fields))
+        }
+        TypeKind::Union(union) => {
+            let mut names: Vec<_> = union.members.iter().map(|n| n.node.to_string()).collect();
+            names.sort();
+            (format!("union = {}", names.join(" | ")), BTreeMap::new())
+        }
+        TypeKind::Enum(enumeration) => (
+            "enum".to_owned(),
+            enumeration
+                .values
+                .iter()
+                .map(|v| (v.node.value.node.to_string(), String::new()))
+                .collect(),
+        ),
+        TypeKind::InputObject(input) => (
+            "input".to_owned(),
+            input
+                .fields
+                .iter()
+                .map(|f| (f.node.name.node.to_string(), argument(&f.node)))
+                .collect(),
+        ),
+    };
+    Declaration {
+        header: format!("{kind}{}", directives(&definition.directives)),
+        members,
+    }
+}
+
+fn directive_declaration(directive: &DirectiveDefinition) -> Declaration {
+    let mut locations: Vec<_> = directive
+        .locations
+        .iter()
+        .map(|l| format!("{:?}", l.node))
+        .collect();
+    locations.sort();
+    let mut args: Vec<_> = directive
+        .arguments
+        .iter()
+        .map(|a| argument(&a.node))
+        .collect();
+    args.sort();
+    Declaration {
+        header: format!(
+            "directive ({}) on {}",
+            args.join(", "),
+            locations.join(" | ")
+        ),
+        members: BTreeMap::new(),
+    }
+}
+
 /// Parses an SDL into its declarations: objects, interfaces, inputs, enums, unions, scalars and
 /// directive definitions; arguments are sorted, so declaration order never matters.
 pub fn schema(sdl: &str) -> Schema {
@@ -73,77 +145,15 @@ pub fn schema(sdl: &str) -> Schema {
     for definition in &document.definitions {
         match definition {
             TypeSystemDefinition::Type(definition) => {
-                let definition = &definition.node;
-                let (kind, members) = match &definition.kind {
-                    TypeKind::Scalar => ("scalar".to_owned(), BTreeMap::new()),
-                    TypeKind::Object(object) => {
-                        let mut implements: Vec<_> = object
-                            .implements
-                            .iter()
-                            .map(|n| n.node.to_string())
-                            .collect();
-                        implements.sort();
-                        (
-                            format!("type implements [{}]", implements.join(", ")),
-                            field_signatures(&object.fields),
-                        )
-                    }
-                    TypeKind::Interface(interface) => {
-                        ("interface".to_owned(), field_signatures(&interface.fields))
-                    }
-                    TypeKind::Union(union) => {
-                        let mut names: Vec<_> =
-                            union.members.iter().map(|n| n.node.to_string()).collect();
-                        names.sort();
-                        (format!("union = {}", names.join(" | ")), BTreeMap::new())
-                    }
-                    TypeKind::Enum(enumeration) => (
-                        "enum".to_owned(),
-                        enumeration
-                            .values
-                            .iter()
-                            .map(|v| (v.node.value.node.to_string(), String::new()))
-                            .collect(),
-                    ),
-                    TypeKind::InputObject(input) => (
-                        "input".to_owned(),
-                        input
-                            .fields
-                            .iter()
-                            .map(|f| (f.node.name.node.to_string(), argument(&f.node)))
-                            .collect(),
-                    ),
-                };
-                let header = format!("{kind}{}", directives(&definition.directives));
                 declarations.insert(
-                    definition.name.node.to_string(),
-                    Declaration { header, members },
+                    definition.node.name.node.to_string(),
+                    type_declaration(&definition.node),
                 );
             }
             TypeSystemDefinition::Directive(directive) => {
-                let directive = &directive.node;
-                let mut locations: Vec<_> = directive
-                    .locations
-                    .iter()
-                    .map(|l| format!("{:?}", l.node))
-                    .collect();
-                locations.sort();
-                let mut args: Vec<_> = directive
-                    .arguments
-                    .iter()
-                    .map(|a| argument(&a.node))
-                    .collect();
-                args.sort();
                 declarations.insert(
-                    format!("@{}", directive.name.node),
-                    Declaration {
-                        header: format!(
-                            "directive ({}) on {}",
-                            args.join(", "),
-                            locations.join(" | ")
-                        ),
-                        members: BTreeMap::new(),
-                    },
+                    format!("@{}", directive.node.name.node),
+                    directive_declaration(&directive.node),
                 );
             }
             TypeSystemDefinition::Schema(_) => {}
