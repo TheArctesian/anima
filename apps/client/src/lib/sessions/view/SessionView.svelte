@@ -6,6 +6,7 @@
   import { checkLink, linkRefusalText, openLink } from '../screen/remote/links';
   import type { ScreenHooks, ScreenOpener, TerminalScreen } from '../screen/screen';
   import type { CellSize } from '../tunnel/terminal/codec';
+  import { NO_CLIPBOARD, clipboardRules } from './clipboard/clipboard';
   import { displayInput, type Size } from './display';
   import EndedPanel from './EndedPanel.svelte';
   import HostKeyModal from './hostkey/HostKeyModal.svelte';
@@ -61,6 +62,8 @@
 
   const stage = $derived(connection.stage);
   const ready = $derived(connection.ready);
+  /** What this attempt may do with the clipboard, from the policy read at its start (RA-033). */
+  const rules = $derived(stage.kind === 'open' ? clipboardRules(stage.policy) : NO_CLIPBOARD);
   /** The parent gives this pane the keyboard; the terminal then takes the focus (D-8). */
   const wanted = $derived(visible && focused && ready);
   // A hidden tab's warning waits until its tab is shown, so it never covers or traps another tab (SEC-007).
@@ -71,6 +74,7 @@
     onresize: (size) => connection.tunnel?.resize(size),
     ontitle: (title) => onretitle?.(title),
     oncopy: (text) => copyToSystem(text),
+    allows: () => rules,
     onfind: () => (finding = true),
     onoverflow: () => (notice = OVERFLOW),
     onlink: (address) => {
@@ -172,7 +176,7 @@
 
 <section class="session" hidden={!visible} aria-label="SSH session on {device.name}">
   <div class="toolbar">
-    <KeysMenu disabled={!ready} onkeys={sendKeys} onpaste={pasteFromClipboard} />
+    <KeysMenu disabled={!ready} onkeys={sendKeys} onpaste={pasteFromClipboard} pasteOff={rules.pasteOff} />
     <button
       type="button"
       class="find"
@@ -186,6 +190,7 @@
       <span>Find</span>
     </button>
     <span class="device">{device.name}</span>
+    {#if ready && rules.notice !== undefined}<span class="policy" data-policy title={rules.notice}>{rules.notice}</span>{/if}
     <!-- Find and notices lie over the toolbar row, which has a fixed height, so the terminal never moves or resizes for them (MOT-007, UI-009). -->
     {#if finding && ready}
       <div class="cover">
@@ -267,14 +272,23 @@
     background: var(--surface);
   }
 
-  /* The bar never sets the pane's width: the name gives way first, and the Keys control keeps its size (UI-009). */
-  .device {
+  /* The bar never sets the pane's width: the name and the policy give way first, and the controls keep their size (UI-009). */
+  .device,
+  .policy {
     min-inline-size: 0;
     overflow: hidden;
-    font-family: var(--font-mono);
     font-size: var(--text-sm);
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .device {
+    font-family: var(--font-mono);
+  }
+
+  .policy {
+    flex: 1;
+    color: var(--text-muted);
   }
 
   .find {

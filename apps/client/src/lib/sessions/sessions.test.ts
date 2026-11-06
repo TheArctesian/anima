@@ -1,9 +1,9 @@
 import { expect, it, vi } from 'vitest';
 import { SessionEndError, createSessions, type SessionPort, type Sessions } from './sessions.svelte';
-import type { TunnelStart } from './tunnel/start';
 import type { TunnelState } from './tunnel/state';
 import type { TerminalLink } from './tunnel/terminal/link';
-import type { SessionStart, TunnelEvents } from './view/start';
+import { UNREAD_POLICY } from './transfer';
+import type { SessionStart, TerminalStartResult, TunnelEvents } from './view/start';
 
 const display = { widthPx: 800, heightPx: 600 };
 const request = { deviceId: 'web-1', deviceName: 'web-1', protocol: 'SSH', origin: null } as const;
@@ -27,12 +27,13 @@ function fakeHub() {
     events.push(heard);
     count += 1;
     const sessionId = `session-${String(count)}`;
-    const answer: TunnelStart = { ok: true, value: { sessionId, tunnel: { close: vi.fn() } as unknown as TerminalLink } };
+    const tunnel = { close: vi.fn() } as unknown as TerminalLink;
+    const answer: TerminalStartResult = { ok: true, value: { sessionId, tunnel, policy: UNREAD_POLICY } };
     const wait = held.shift();
     return wait === undefined ? Promise.resolve(answer) : new Promise((resolve) => wait(() => resolve(answer)));
   });
   const port = {
-    start: vi.fn<SessionPort['start']>(() => open),
+    start: vi.fn<SessionPort['start']>(() => ({ terminal: open, remote: vi.fn() })),
     end: vi.fn<SessionPort['end']>(() => Promise.resolve(ENDED)),
   };
   const hold = () => {
@@ -311,3 +312,4 @@ it('K4 §8.7: a title reaches its tab only, next to the device name that stays',
     [second, 'db-1', 'psql'],
   ]);
 });
+

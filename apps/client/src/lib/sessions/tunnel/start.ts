@@ -1,5 +1,5 @@
 import type { HubError } from '$lib/hub/hub';
-import type { SessionDisplay, SessionTicket, SessionsApi } from '../api';
+import type { Protocol, RemoteProtocol, SessionDisplay, SessionTicket, SessionsApi } from '../api';
 import type { TunnelRefusal } from './state';
 import { openTerminalLink, type LinkOptions, type TerminalLink } from './terminal/link';
 
@@ -7,6 +7,16 @@ import { openTerminalLink, type LinkOptions, type TerminalLink } from './termina
 export interface SessionTarget {
   readonly deviceId: string;
   readonly display: SessionDisplay;
+}
+
+/** A target with the protocol `startSession` is asked for. */
+export interface ProtocolTarget extends SessionTarget {
+  readonly protocol: Protocol;
+}
+
+/** A target for a Guacamole session (RDP or VNC, K4 §1). */
+export interface RemoteTarget extends SessionTarget {
+  readonly protocol: RemoteProtocol;
 }
 
 /** A started session: its ID and its open tunnel. The ticket is not part of it (SEC-002). */
@@ -36,10 +46,10 @@ export type Opening<Tunnel> =
  */
 export async function startWith<Tunnel>(
   api: Pick<SessionsApi, 'startSession' | 'endSession'>,
-  target: SessionTarget,
+  target: ProtocolTarget,
   open: (ticket: SessionTicket) => Opening<Tunnel>,
 ): Promise<StartResult<Tunnel>> {
-  const started = await api.startSession(target.deviceId, target.display);
+  const started = await api.startSession(target.deviceId, target.protocol, target.display);
   if (!started.ok) return started;
   const { sessionId } = started.value;
   const opening = open(started.value);
@@ -56,5 +66,5 @@ export function startTerminal(
   target: SessionTarget,
   setup: TerminalSetup,
 ): Promise<TunnelStart> {
-  return startWith(api, target, (ticket) => openTerminalLink({ ...setup, ticket }));
+  return startWith(api, { ...target, protocol: 'SSH' }, (ticket) => openTerminalLink({ ...setup, ticket }));
 }

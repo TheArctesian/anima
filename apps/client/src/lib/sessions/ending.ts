@@ -21,7 +21,7 @@ export interface SessionEnding {
 }
 
 /** K4 §5 close codes. */
-const CLOSE = { normal: 1000, goingAway: 1001, protocolError: 1002, noStatus: 1005, internalError: 1011, hostKey: 4001, idle: 4002 };
+const CLOSE = { normal: 1000, goingAway: 1001, protocolError: 1002, noStatus: 1005, internalError: 1011, hostKey: 4001, idle: 4002, serverCertificate: 4003 };
 
 /** Gateway statuses: 0x0301 unauthorized and 0x0303 forbidden are a refused sign-in (K4 §5). */
 const UNAUTHORIZED = 0x0301;
@@ -33,10 +33,10 @@ const REASON_TEXT: Readonly<Record<SessionEndReason, string>> = {
   GATEWAY_ERROR: 'The hub lost the connection to the device.',
   AUTH_FAILED: 'The device refused the sign-in, or no credential is stored for it.',
   HOST_KEY_MISMATCH: "The device's host key has changed, so Anima did not connect.",
+  SERVER_CERTIFICATE_MISMATCH: "The device's RDP certificate has changed, so Anima did not connect.",
   PROTOCOL_ERROR: 'The app sent something the hub does not accept, so the hub closed the session.',
   TIMEOUT: 'The session timed out because the hub heard nothing from Anima.',
   HUB_SHUTDOWN: 'The hub shut down.',
-  SERVER_CERTIFICATE_MISMATCH: "The device's RDP certificate has changed, so Anima did not connect.",
 };
 
 const NOT_OPENED = 'Could not open the session.';
@@ -47,6 +47,7 @@ const UNKNOWN_REASON = 'The session ended for a reason this version of Anima doe
 /** The reason a close code gives by itself, before any gateway error is considered. */
 const BY_CODE: ReadonlyMap<number, SessionEndReason> = new Map([
   [CLOSE.hostKey, 'HOST_KEY_MISMATCH'],
+  [CLOSE.serverCertificate, 'SERVER_CERTIFICATE_MISMATCH'],
   [CLOSE.idle, 'TIMEOUT'],
   [CLOSE.goingAway, 'HUB_SHUTDOWN'],
   [CLOSE.protocolError, 'PROTOCOL_ERROR'],
@@ -59,7 +60,7 @@ function gatewayReason(status: number): SessionEndReason {
 /**
  * The provisional reason for a tunnel that opened (K4 §5). The client closes the socket itself when a gateway
  * `error` arrives, so the code may then be 1000 or 1005 instead of 1011: the error status decides, except that
- * 4001 is a host key change even though the hub sends it after `error` 0x0303.
+ * 4001 is a host key change and 4003 a certificate change even though the hub sends each after `error` 0x0303.
  */
 function openedReason({ closeCode, gatewayError }: TunnelClose): SessionEndReason | undefined {
   const byCode = closeCode === undefined ? undefined : BY_CODE.get(closeCode);

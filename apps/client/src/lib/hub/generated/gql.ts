@@ -48,6 +48,11 @@ type Documents = {
     "\n  mutation EndSession($id: ID!) {\n    endSession(id: $id) {\n      id\n      deviceId\n      deviceName\n      protocol\n      startedAt\n      endedAt\n      endReason\n    }\n  }\n": typeof types.EndSessionDocument,
     "\n  mutation TestConnection($input: ConnectionTestInput!) {\n    testConnection(input: $input) {\n      reachable\n      authenticated\n      hostKey {\n        algorithm\n        fingerprintSha256\n        firstSeenAt\n      }\n      hostKeyChanged\n      message\n    }\n  }\n": typeof types.TestConnectionDocument,
     "\n  mutation AcceptHostKey($deviceId: ID!, $fingerprintSha256: String!) {\n    acceptHostKey(deviceId: $deviceId, fingerprintSha256: $fingerprintSha256) {\n      algorithm\n      fingerprintSha256\n      firstSeenAt\n    }\n  }\n": typeof types.AcceptHostKeyDocument,
+    "\n  mutation TestRemoteConnection($input: ConnectionTestInput!) {\n    testConnection(input: $input) {\n      reachable\n      authenticated\n      hostKey {\n        algorithm\n        fingerprintSha256\n        firstSeenAt\n      }\n      hostKeyChanged\n      message\n      serverCertificate {\n        fingerprintSha256\n        subject\n        notAfter\n        firstSeenAt\n      }\n      certificateChanged\n    }\n  }\n": typeof types.TestRemoteConnectionDocument,
+    "\n  mutation AcceptServerCertificate($deviceId: ID!, $fingerprintSha256: String!) {\n    acceptServerCertificate(deviceId: $deviceId, fingerprintSha256: $fingerprintSha256) {\n      fingerprintSha256\n      subject\n      notAfter\n      firstSeenAt\n    }\n  }\n": typeof types.AcceptServerCertificateDocument,
+    "\n  query DeviceTransfer($id: ID!) {\n    device(id: $id) {\n      transfer {\n        copy\n        paste\n      }\n    }\n  }\n": typeof types.DeviceTransferDocument,
+    "\n  mutation SetRdpCredential($deviceId: ID!, $credential: PasswordCredentialInput!) {\n    setRdpCredential(deviceId: $deviceId, credential: $credential) {\n      credentialStored\n    }\n  }\n": typeof types.SetRdpCredentialDocument,
+    "\n  mutation SetVncCredential($deviceId: ID!, $credential: PasswordCredentialInput!) {\n    setVncCredential(deviceId: $deviceId, credential: $credential) {\n      credentialStored\n    }\n  }\n": typeof types.SetVncCredentialDocument,
     "\n  query DeviceSessions($deviceId: ID!, $first: Int, $after: String) {\n    sessions(deviceId: $deviceId, first: $first, after: $after) {\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n      edges {\n        node {\n          id\n          protocol\n          operatorName\n          startedAt\n          endedAt\n          endReason\n        }\n      }\n    }\n  }\n": typeof types.DeviceSessionsDocument,
 };
 const documents: Documents = {
@@ -85,6 +90,11 @@ const documents: Documents = {
     "\n  mutation EndSession($id: ID!) {\n    endSession(id: $id) {\n      id\n      deviceId\n      deviceName\n      protocol\n      startedAt\n      endedAt\n      endReason\n    }\n  }\n": types.EndSessionDocument,
     "\n  mutation TestConnection($input: ConnectionTestInput!) {\n    testConnection(input: $input) {\n      reachable\n      authenticated\n      hostKey {\n        algorithm\n        fingerprintSha256\n        firstSeenAt\n      }\n      hostKeyChanged\n      message\n    }\n  }\n": types.TestConnectionDocument,
     "\n  mutation AcceptHostKey($deviceId: ID!, $fingerprintSha256: String!) {\n    acceptHostKey(deviceId: $deviceId, fingerprintSha256: $fingerprintSha256) {\n      algorithm\n      fingerprintSha256\n      firstSeenAt\n    }\n  }\n": types.AcceptHostKeyDocument,
+    "\n  mutation TestRemoteConnection($input: ConnectionTestInput!) {\n    testConnection(input: $input) {\n      reachable\n      authenticated\n      hostKey {\n        algorithm\n        fingerprintSha256\n        firstSeenAt\n      }\n      hostKeyChanged\n      message\n      serverCertificate {\n        fingerprintSha256\n        subject\n        notAfter\n        firstSeenAt\n      }\n      certificateChanged\n    }\n  }\n": types.TestRemoteConnectionDocument,
+    "\n  mutation AcceptServerCertificate($deviceId: ID!, $fingerprintSha256: String!) {\n    acceptServerCertificate(deviceId: $deviceId, fingerprintSha256: $fingerprintSha256) {\n      fingerprintSha256\n      subject\n      notAfter\n      firstSeenAt\n    }\n  }\n": types.AcceptServerCertificateDocument,
+    "\n  query DeviceTransfer($id: ID!) {\n    device(id: $id) {\n      transfer {\n        copy\n        paste\n      }\n    }\n  }\n": types.DeviceTransferDocument,
+    "\n  mutation SetRdpCredential($deviceId: ID!, $credential: PasswordCredentialInput!) {\n    setRdpCredential(deviceId: $deviceId, credential: $credential) {\n      credentialStored\n    }\n  }\n": types.SetRdpCredentialDocument,
+    "\n  mutation SetVncCredential($deviceId: ID!, $credential: PasswordCredentialInput!) {\n    setVncCredential(deviceId: $deviceId, credential: $credential) {\n      credentialStored\n    }\n  }\n": types.SetVncCredentialDocument,
     "\n  query DeviceSessions($deviceId: ID!, $first: Int, $after: String) {\n    sessions(deviceId: $deviceId, first: $first, after: $after) {\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n      edges {\n        node {\n          id\n          protocol\n          operatorName\n          startedAt\n          endedAt\n          endReason\n        }\n      }\n    }\n  }\n": types.DeviceSessionsDocument,
 };
 
@@ -238,6 +248,26 @@ export function graphql(source: "\n  mutation TestConnection($input: ConnectionT
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  mutation AcceptHostKey($deviceId: ID!, $fingerprintSha256: String!) {\n    acceptHostKey(deviceId: $deviceId, fingerprintSha256: $fingerprintSha256) {\n      algorithm\n      fingerprintSha256\n      firstSeenAt\n    }\n  }\n"): (typeof documents)["\n  mutation AcceptHostKey($deviceId: ID!, $fingerprintSha256: String!) {\n    acceptHostKey(deviceId: $deviceId, fingerprintSha256: $fingerprintSha256) {\n      algorithm\n      fingerprintSha256\n      firstSeenAt\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation TestRemoteConnection($input: ConnectionTestInput!) {\n    testConnection(input: $input) {\n      reachable\n      authenticated\n      hostKey {\n        algorithm\n        fingerprintSha256\n        firstSeenAt\n      }\n      hostKeyChanged\n      message\n      serverCertificate {\n        fingerprintSha256\n        subject\n        notAfter\n        firstSeenAt\n      }\n      certificateChanged\n    }\n  }\n"): (typeof documents)["\n  mutation TestRemoteConnection($input: ConnectionTestInput!) {\n    testConnection(input: $input) {\n      reachable\n      authenticated\n      hostKey {\n        algorithm\n        fingerprintSha256\n        firstSeenAt\n      }\n      hostKeyChanged\n      message\n      serverCertificate {\n        fingerprintSha256\n        subject\n        notAfter\n        firstSeenAt\n      }\n      certificateChanged\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation AcceptServerCertificate($deviceId: ID!, $fingerprintSha256: String!) {\n    acceptServerCertificate(deviceId: $deviceId, fingerprintSha256: $fingerprintSha256) {\n      fingerprintSha256\n      subject\n      notAfter\n      firstSeenAt\n    }\n  }\n"): (typeof documents)["\n  mutation AcceptServerCertificate($deviceId: ID!, $fingerprintSha256: String!) {\n    acceptServerCertificate(deviceId: $deviceId, fingerprintSha256: $fingerprintSha256) {\n      fingerprintSha256\n      subject\n      notAfter\n      firstSeenAt\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query DeviceTransfer($id: ID!) {\n    device(id: $id) {\n      transfer {\n        copy\n        paste\n      }\n    }\n  }\n"): (typeof documents)["\n  query DeviceTransfer($id: ID!) {\n    device(id: $id) {\n      transfer {\n        copy\n        paste\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation SetRdpCredential($deviceId: ID!, $credential: PasswordCredentialInput!) {\n    setRdpCredential(deviceId: $deviceId, credential: $credential) {\n      credentialStored\n    }\n  }\n"): (typeof documents)["\n  mutation SetRdpCredential($deviceId: ID!, $credential: PasswordCredentialInput!) {\n    setRdpCredential(deviceId: $deviceId, credential: $credential) {\n      credentialStored\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation SetVncCredential($deviceId: ID!, $credential: PasswordCredentialInput!) {\n    setVncCredential(deviceId: $deviceId, credential: $credential) {\n      credentialStored\n    }\n  }\n"): (typeof documents)["\n  mutation SetVncCredential($deviceId: ID!, $credential: PasswordCredentialInput!) {\n    setVncCredential(deviceId: $deviceId, credential: $credential) {\n      credentialStored\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

@@ -26,7 +26,7 @@ vi.mock('@xterm/addon-web-links', () => ({
   },
 }));
 
-const hooks = { oninput: vi.fn(), onresize: vi.fn(), oncopy: vi.fn(), onfind: vi.fn(), onoverflow: vi.fn(), ontitle: vi.fn(), onlink: vi.fn() };
+const hooks = { oninput: vi.fn(), onresize: vi.fn(), oncopy: vi.fn(), allows: () => ({ copy: true, paste: true }), onfind: vi.fn(), onoverflow: vi.fn(), ontitle: vi.fn(), onlink: vi.fn() };
 let saved: typeof window.matchMedia;
 
 beforeEach(() => {

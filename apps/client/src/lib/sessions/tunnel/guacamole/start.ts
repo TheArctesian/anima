@@ -1,5 +1,5 @@
 import type { SessionsApi } from '../../api';
-import { startWith, type SessionTarget, type Started, type StartResult } from '../start';
+import { startWith, type RemoteTarget, type Started, type StartResult } from '../start';
 import { openTunnel, type SessionTunnel, type TunnelOptions } from './tunnel';
 
 /** A started Guacamole session. */
@@ -11,7 +11,7 @@ export type TunnelSetup = Omit<TunnelOptions, 'ticket'>;
 /** Start a session and open its Guacamole tunnel (RDP and VNC; no SSH session uses it, R-062). */
 export function startTunnel(
   api: Pick<SessionsApi, 'startSession' | 'endSession'>,
-  target: SessionTarget,
+  target: RemoteTarget,
   setup: TunnelSetup,
 ): Promise<StartResult<SessionTunnel>> {
   return startWith(api, target, (ticket) => openTunnel({ ...setup, ticket }));

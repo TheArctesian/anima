@@ -1,8 +1,10 @@
+import type { Protocol } from '$lib/hub/generated/graphql';
+
 /** The client's own name for one open tab; a tab outlives the sessions started in it (D-5). */
 export type TabId = string;
 
-/** The remote protocols the hub serves; K1 `Protocol` (RDP, VNC and Web come in Phase 2). */
-export type SessionProtocol = 'SSH';
+/** The remote protocols the hub serves: K1 `Protocol`. */
+export type SessionProtocol = Protocol;
 
 /** Where on screen the control that opened a tab was, for the open motion (MOT-005). */
 export interface Origin {
