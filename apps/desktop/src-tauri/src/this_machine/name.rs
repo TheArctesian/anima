@@ -25,7 +25,7 @@ pub(super) fn computer_name(os: OperatingSystem) -> String {
     };
     named
         .or_else(|| {
-            whoami::fallible::hostname()
+            whoami::hostname()
                 .ok()
                 .and_then(|host| short_host_name(&host))
         })

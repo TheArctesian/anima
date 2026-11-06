@@ -25,3 +25,9 @@ pub(super) fn vpn_address_among(ips: impl IntoIterator<Item = IpAddr>) -> Option
 pub(super) fn accepts_connection(address: SocketAddr, patience: Duration) -> bool {
     TcpStream::connect_timeout(&address, patience).is_ok()
 }
+
+/// Whether SSH answers on this computer's VPN address: a TCP connection to `port` there is accepted within
+/// `patience`. False without a VPN address.
+pub(super) fn ssh_answers(vpn_address: Option<Ipv4Addr>, port: u16, patience: Duration) -> bool {
+    vpn_address.is_some_and(|ip| accepts_connection((ip, port).into(), patience))
+}

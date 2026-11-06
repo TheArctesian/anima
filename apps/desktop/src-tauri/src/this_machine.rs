@@ -95,11 +95,10 @@ fn read(os: OperatingSystem) -> ThisMachine {
             .iter()
             .map(if_addrs::Interface::ip),
     );
-    let ssh_listening = vpn_address
-        .is_some_and(|ip| address::accepts_connection((ip, SSH_PORT).into(), SSH_PATIENCE));
+    let ssh_listening = address::ssh_answers(vpn_address, SSH_PORT, SSH_PATIENCE);
     ThisMachine {
         name: name::computer_name(os),
-        user: whoami::fallible::username().unwrap_or_default(),
+        user: whoami::username().unwrap_or_default(),
         os,
         vpn_address,
         ssh_listening,

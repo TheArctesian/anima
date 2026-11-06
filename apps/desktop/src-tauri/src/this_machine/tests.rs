@@ -7,8 +7,8 @@ use std::{
 };
 
 use super::{
-    OperatingSystem, ThisMachine, ThisMachineError,
-    address::{accepts_connection, is_vpn_address, vpn_address_among},
+    OperatingSystem, SSH_PATIENCE, SSH_PORT, ThisMachine, ThisMachineError,
+    address::{accepts_connection, is_vpn_address, ssh_answers, vpn_address_among},
     name::{first_line, output_of, short_host_name},
 };
 
@@ -75,6 +75,20 @@ fn a_listening_port_accepts_a_connection() {
 }
 
 #[test]
+fn ssh_is_probed_on_port_22_with_300_ms_of_patience() {
+    assert_eq!(SSH_PORT, 22);
+    assert_eq!(SSH_PATIENCE, Duration::from_millis(300));
+}
+
+#[test]
+fn ssh_answers_on_the_given_port_of_the_vpn_address_and_never_without_one() {
+    let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
+    let port = listener.local_addr().unwrap().port();
+    assert!(ssh_answers(Some(Ipv4Addr::LOCALHOST), port, SSH_PATIENCE));
+    assert!(!ssh_answers(None, port, SSH_PATIENCE));
+}
+
+#[test]
 fn an_address_that_does_not_answer_is_given_up_on_after_its_patience() {
     // TEST-NET-1 (RFC 5737) is never routed: the connection fails at once or times out. A
     // closed loopback port is not used because a program another test spawns can inherit
@@ -116,6 +130,12 @@ fn a_name_program_that_succeeds_gives_its_output() {
         output_of("echo", &["studio"], PATIENCE).as_deref(),
         Some(b"studio\n".as_slice())
     );
+}
+
+#[test]
+fn a_name_program_that_prints_too_much_is_cut_to_1_kib() {
+    let output = output_of("head", &["-c", "4096", "/dev/zero"], PATIENCE).unwrap();
+    assert_eq!(output.len(), 1024);
 }
 
 #[test]
