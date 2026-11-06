@@ -8,6 +8,7 @@ mod observations;
 mod page;
 mod probe;
 mod public_key;
+mod ssh;
 mod start;
 mod store;
 mod tickets;

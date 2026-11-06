@@ -1,18 +1,25 @@
 //! The opening's outcomes after the upgrade (K4 Sections 8.2, 8.3 and 8.6): a changed host
-//! key ends `HOST_KEY_MISMATCH` before any authentication request, a refused or missing
-//! credential ends `AUTH_FAILED`, and a device that only prompts gets the password (D-5).
+//! key ends `HOST_KEY_MISMATCH` before any authentication request, a refused, missing or
+//! unreadable credential ends `AUTH_FAILED`, and a device that only prompts gets the
+//! password, for at most 4 rounds of at most 4 prompts (D-5).
 
-use russh::keys::{PrivateKey, ssh_key::private::Ed25519Keypair};
+use russh::keys::{
+    PrivateKey,
+    ssh_key::{Cipher, Kdf, LineEnding, private::Ed25519Keypair},
+};
 use sqlx::PgPool;
 
 use super::{
     bench::{Setup, bench},
-    fake_ssh::{Heard, Script},
+    fake_ssh::{Heard, Prompts, Script},
     socket,
 };
-use crate::sessions::{
-    PublicKey,
-    tests::fixture::{LOOPBACK, PASSWORD, docker_host, ended, ended_once},
+use crate::{
+    credentials::{self, Secret, SshSecret},
+    sessions::{
+        PublicKey,
+        tests::fixture::{LOOPBACK, PASSWORD, docker_host, ended, ended_once},
+    },
 };
 
 /// A host key the fake server does not present.
@@ -56,6 +63,32 @@ async fn refused(pool: &PgPool, bench: &super::Bench, message: &str) {
     let ended = ended(pool, bench.session).await;
     ended_once(&ended, "auth_failed", "warning", LOOPBACK);
     assert_eq!(ended.events[0].3, message);
+    let received = String::from_utf8_lossy(&client.received).into_owned();
+    assert!(!received.contains(PASSWORD), "no secret reaches the client");
+}
+
+/// Stores `secret` as `docker-host`'s SSH credential, replacing the password.
+async fn store(pool: &PgPool, bench: &super::Bench, secret: SshSecret) {
+    let mut conn = pool.acquire().await.unwrap();
+    credentials::store_ssh(&mut conn, &bench.terminal.vault, docker_host(), secret)
+        .await
+        .unwrap();
+}
+
+/// The keyboard-interactive requests the server heard, after the client heard `AUTH_FAILED`
+/// with the refused sign-in's message.
+async fn prompted(pool: &PgPool, script: Script) -> usize {
+    let mut bench = bench(pool, Setup::script(script)).await;
+    refused(pool, &bench, "The device refused the SSH sign-in.").await;
+    let heard = bench.ssh.heard_so_far();
+    assert!(
+        !heard.iter().any(|heard| matches!(heard, Heard::Pty { .. })),
+        "{heard:?}"
+    );
+    heard
+        .iter()
+        .filter(|heard| **heard == Heard::Auth("keyboard-interactive"))
+        .count()
 }
 
 #[sqlx::test(
@@ -120,4 +153,114 @@ async fn d_5_a_device_that_only_prompts_gets_the_password_as_the_answer(pool: Pg
     bench.ssh.say(b"$ ").await;
     assert_eq!(client.bytes_until(b"$ ").await, b"$ ");
     assert_eq!(client.close().await, Some(1000));
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
+)]
+async fn d_5_four_prompts_in_a_round_are_answered(pool: PgPool) {
+    let script = Script {
+        prompts_only: true,
+        prompts: Prompts::Round(4),
+        ..Script::default()
+    };
+    let mut bench = bench(&pool, Setup::script(script)).await;
+    let mut client = socket::open(&bench.url).await;
+    client.resize(80, 24).await;
+    assert!(matches!(
+        bench.ssh.next_after_sign_in().await,
+        Heard::Pty { .. }
+    ));
+    assert_eq!(client.close().await, Some(1000));
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
+)]
+async fn d_5_a_round_of_five_prompts_is_auth_failed_unanswered(pool: PgPool) {
+    let script = Script {
+        prompts_only: true,
+        prompts: Prompts::Round(5),
+        ..Script::default()
+    };
+    assert_eq!(
+        prompted(&pool, script).await,
+        1,
+        "the round is not answered"
+    );
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
+)]
+async fn d_5_endless_rounds_are_auth_failed_after_four_answers(pool: PgPool) {
+    let script = Script {
+        prompts_only: true,
+        prompts: Prompts::Endless,
+        ..Script::default()
+    };
+    assert_eq!(
+        prompted(&pool, script).await,
+        5,
+        "the start and four answers"
+    );
+}
+
+/// The device's key, as text, and the same key locked with "the right passphrase".
+fn keys() -> (Vec<u8>, Vec<u8>) {
+    let key = PrivateKey::from(Ed25519Keypair::from_seed(&[9; 32]));
+    let bcrypt = Kdf::Bcrypt {
+        salt: vec![3; 16],
+        rounds: 1,
+    };
+    let locked = key
+        .encrypt_with(Cipher::Aes256Ctr, bcrypt, 7, "the right passphrase")
+        .unwrap();
+    let text = |key: &PrivateKey| key.to_openssh(LineEnding::LF).unwrap().as_bytes().to_vec();
+    (text(&key), text(&locked))
+}
+
+/// With `key` and `passphrase` stored, the session ends `AUTH_FAILED` saying the key cannot
+/// be read, and the device sees no key.
+async fn unreadable(pool: &PgPool, key: Vec<u8>, passphrase: Option<Vec<u8>>) {
+    let mut bench = bench(pool, Setup::default()).await;
+    let secret = SshSecret::PrivateKey {
+        key: Secret::new(key),
+        passphrase: passphrase.map(Secret::new),
+    };
+    store(pool, &bench, secret).await;
+    let message = "The stored SSH private key or its passphrase cannot be read, so the hub \
+                   could not sign in.";
+    refused(pool, &bench, message).await;
+    let heard = bench.ssh.heard_so_far();
+    assert!(!heard.contains(&Heard::Auth("publickey")), "{heard:?}");
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
+)]
+async fn k4_8_2_a_key_that_does_not_decode_is_auth_failed(pool: PgPool) {
+    unreadable(&pool, b"not a private key".to_vec(), None).await;
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
+)]
+async fn k4_8_2_a_wrong_passphrase_is_auth_failed(pool: PgPool) {
+    let (_, locked) = keys();
+    unreadable(&pool, locked, Some(b"a wrong passphrase".to_vec())).await;
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
+)]
+async fn k4_8_2_a_passphrase_that_is_not_utf_8_is_auth_failed(pool: PgPool) {
+    let (key, _) = keys();
+    unreadable(&pool, key, Some(vec![0xff, 0xfe])).await;
 }

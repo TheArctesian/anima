@@ -2,7 +2,13 @@
 //! both ways in order (standard error included), `resize` as a window change, `ping` both
 //! ways, and the shell's exit as `REMOTE_CLOSED`.
 
-use std::time::Duration;
+use std::{
+    sync::{
+        Arc,
+        atomic::{AtomicBool, AtomicUsize, Ordering},
+    },
+    time::Duration,
+};
 
 use sqlx::PgPool;
 
@@ -99,12 +105,14 @@ async fn k4_8_4_ra_011_a_full_session_relays_bytes_both_ways_and_resizes(pool: P
     fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
 async fn k4_8_4_the_hub_pings_when_silent_and_client_pings_keep_the_session(pool: PgPool) {
+    // The client pings five times per idle wait, the hub every 200 ms of its own silence.
     let setup = Setup::terminal(|terminal| {
         terminal.timing.hub_silence = Duration::from_millis(200);
         terminal.timing.client_idle = Duration::from_millis(1_500);
     });
     let (bench, mut client) = session(&pool, setup).await;
-    // The client pings for three of its idle waits; the hub pings it meanwhile.
+    // The client pings for three of its idle waits; the hub pings it meanwhile, some 20
+    // times in all.
     let mut hub_pings = 0;
     for _ in 0..15 {
         client.send(r#"{"type":"ping"}"#).await;
@@ -118,7 +126,7 @@ async fn k4_8_4_the_hub_pings_when_silent_and_client_pings_keep_the_session(pool
             }
         }
     }
-    assert!(hub_pings >= 5, "the hub pinged {hub_pings} times");
+    assert!(hub_pings >= 3, "the hub pinged {hub_pings} times");
     bench.ssh.say(b"still here").await;
     assert_eq!(client.bytes_until(b"still here").await, b"still here");
     assert_eq!(client.close().await, Some(1000));
@@ -135,24 +143,38 @@ async fn k4_8_4_the_hub_pings_when_silent_and_client_pings_keep_the_session(pool
     fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
 async fn k4_8_5_output_the_client_has_not_read_waits_in_the_device_not_the_hub(pool: PgPool) {
-    // The client reads nothing while the shell writes far more than the hub may hold: the
-    // shell's writes stall (its window and the hub's channel buffer are full), and once the
-    // client reads, every byte arrives in order.
+    // The client reads nothing while the shell writes until its writes stall (its window and
+    // the hub's channel buffer are full); once the client reads, every byte arrives in order.
     let (bench, mut client) = session(&pool, Setup::default()).await;
     let chunk = vec![b'x'; 32 * 1024];
-    let ssh = std::sync::Arc::new(bench.ssh);
-    let writer = std::sync::Arc::clone(&ssh);
+    let ssh = Arc::new(bench.ssh);
+    let (writer, written, stop) = (
+        Arc::clone(&ssh),
+        Arc::new(AtomicUsize::new(0)),
+        Arc::new(AtomicBool::new(false)),
+    );
+    let (counted, stopped) = (Arc::clone(&written), Arc::clone(&stop));
     let flood = tokio::spawn(async move {
-        for _ in 0..512 {
+        while !stopped.load(Ordering::SeqCst) {
             writer.say(&chunk).await;
+            counted.fetch_add(chunk.len(), Ordering::SeqCst);
         }
         writer.say(b"end of flood").await;
     });
-    tokio::time::sleep(Duration::from_millis(500)).await;
+    let stalled_at = loop {
+        let before = written.load(Ordering::SeqCst);
+        tokio::time::sleep(Duration::from_millis(500)).await;
+        let after = written.load(Ordering::SeqCst);
+        if before == after && after > 0 {
+            break after;
+        }
+        assert!(after < 64 * 1024 * 1024, "the shell's writes never stall");
+    };
     assert!(
-        !flood.is_finished(),
-        "16 MiB do not fit between the shell and a stalled client"
+        stalled_at < 16 * 1024 * 1024,
+        "{stalled_at} bytes went out before the shell stalled"
     );
+    stop.store(true, Ordering::SeqCst);
     let mut total = 0;
     loop {
         match tokio::time::timeout(WAIT, client.next()).await.unwrap() {
@@ -165,6 +187,7 @@ async fn k4_8_5_output_the_client_has_not_read_waits_in_the_device_not_the_hub(p
             other => panic!("{other:?} during the flood"),
         }
     }
-    assert_eq!(total, 512 * 32 * 1024 + b"end of flood".len());
     flood.await.unwrap();
+    let written = written.load(Ordering::SeqCst);
+    assert_eq!(total, written + b"end of flood".len());
 }

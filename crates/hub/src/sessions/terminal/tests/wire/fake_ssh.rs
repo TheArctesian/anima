@@ -1,10 +1,13 @@
 //! The device's SSH server on loopback, a `russh` server in the test (K4 Section 7): it
 //! presents its host key, accepts one password (by `password` or, when told, by
-//! `keyboard-interactive` only), grants or refuses the PTY and the shell, and tells the test
-//! everything the hub asked of it. The test drives the shell's side through `FakeSsh`.
+//! `keyboard-interactive` only), grants or refuses the PTY and the shell, can hold the
+//! sign-in, the PTY answer or the client's input until released, and tells the test
+//! everything the hub asked of it (`device`). The test drives the shell's side through
+//! `FakeSsh`.
+
+mod device;
 
 use std::{
-    future::ready,
     net::Shutdown,
     sync::{Arc, Mutex},
 };
@@ -12,14 +15,22 @@ use std::{
 use russh::{
     Channel, ChannelId, MethodKind, MethodSet,
     keys::{PrivateKey, ssh_key::private::Ed25519Keypair},
-    server::{self, Auth, Msg, Response, Session},
+    server::{self, Msg},
 };
-use tokio::{net::TcpListener, sync::mpsc};
+use tokio::{
+    net::TcpListener,
+    sync::{mpsc, watch},
+};
+
+use device::Device;
 
 use crate::sessions::{PublicKey, tests::fixture::PASSWORD};
 
 /// The user `docker-host`'s SSH settings name in the devices fixture.
 const USER: &str = "operator";
+/// The channel window the server grants when it holds the client's input: the hub can send
+/// this much before its write waits.
+const INPUT_WINDOW: u32 = 4096;
 
 /// What the hub asked of the server, in order.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -40,6 +51,38 @@ pub(super) enum Heard {
         pixels: (u32, u32),
     },
     Input(Vec<u8>),
+    /// A request or channel the hub must never send (K4 Section 8.4), by its SSH name.
+    Forbidden(&'static str),
+}
+
+/// The server's keyboard-interactive rounds.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Prompts {
+    /// One round of this many prompts.
+    Round(usize),
+    /// Rounds of one prompt, each answer earning another.
+    Endless,
+}
+
+/// What the server holds until the test calls [`FakeSsh::release`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Hold {
+    Nothing,
+    /// The answer to the password.
+    SignIn,
+    /// The answer to the PTY request.
+    Pty,
+    /// Its reading of the client's input, after the first packet; its window is small, so
+    /// the hub's write waits on it.
+    Input,
+}
+
+/// The channels the hub opened, the channel of each request, and the channels it closed.
+#[derive(Debug, Default)]
+pub(super) struct Ledger {
+    pub(super) opened: Vec<(&'static str, ChannelId)>,
+    pub(super) requested_on: Vec<ChannelId>,
+    pub(super) closed: Vec<ChannelId>,
 }
 
 /// How the server behaves.
@@ -51,6 +94,9 @@ pub(super) struct Script {
     pub(super) prompts_only: bool,
     pub(super) refuse_pty: bool,
     pub(super) refuse_shell: bool,
+    /// Its keyboard-interactive rounds.
+    pub(super) prompts: Prompts,
+    pub(super) hold: Hold,
 }
 
 impl Default for Script {
@@ -60,6 +106,8 @@ impl Default for Script {
             prompts_only: false,
             refuse_pty: false,
             refuse_shell: false,
+            prompts: Prompts::Round(1),
+            hold: Hold::Nothing,
         }
     }
 }
@@ -69,152 +117,10 @@ pub(super) struct FakeSsh {
     pub(super) port: u16,
     pub(super) key: PublicKey,
     pub(super) heard: mpsc::UnboundedReceiver<Heard>,
+    pub(super) ledger: Arc<Mutex<Ledger>>,
     shell: Arc<Mutex<Option<(server::Handle, ChannelId)>>>,
     socket: Arc<Mutex<Option<std::net::TcpStream>>>,
-}
-
-struct Device {
-    script: Script,
-    heard: mpsc::UnboundedSender<Heard>,
-    shell: Arc<Mutex<Option<(server::Handle, ChannelId)>>>,
-}
-
-impl Device {
-    fn hear(&self, heard: Heard) {
-        // The test may have stopped listening; the server carries on.
-        let _ = self.heard.send(heard);
-    }
-}
-
-/// Every hook but the channel open answers at once, so each returns a ready future.
-impl server::Handler for Device {
-    type Error = russh::Error;
-
-    fn auth_none(&mut self, _user: &str) -> impl Future<Output = Result<Auth, Self::Error>> + Send {
-        self.hear(Heard::Auth("none"));
-        ready(Ok(Auth::reject()))
-    }
-
-    fn auth_password(
-        &mut self,
-        user: &str,
-        password: &str,
-    ) -> impl Future<Output = Result<Auth, Self::Error>> + Send {
-        self.hear(Heard::Auth("password"));
-        let right = !self.script.prompts_only && user == USER && password == self.script.password;
-        ready(Ok(verdict(right)))
-    }
-
-    fn auth_publickey(
-        &mut self,
-        _user: &str,
-        _key: server::VerifiedPublicKey<'_>,
-    ) -> impl Future<Output = Result<Auth, Self::Error>> + Send {
-        self.hear(Heard::Auth("publickey"));
-        ready(Ok(Auth::reject()))
-    }
-
-    fn auth_keyboard_interactive<'a>(
-        &'a mut self,
-        user: &str,
-        _submethods: &str,
-        response: Option<Response<'a>>,
-    ) -> impl Future<Output = Result<Auth, Self::Error>> + Send {
-        self.hear(Heard::Auth("keyboard-interactive"));
-        let Some(mut response) = response else {
-            return ready(Ok(Auth::Partial {
-                name: "".into(),
-                instructions: "".into(),
-                prompts: vec![("Password: ".into(), false)].into(),
-            }));
-        };
-        let answer = response.next();
-        let right = user == USER && answer.as_deref() == Some(self.script.password.as_bytes());
-        ready(Ok(verdict(right)))
-    }
-
-    async fn channel_open_session(
-        &mut self,
-        _channel: Channel<Msg>,
-        reply: server::ChannelOpenHandle,
-        _session: &mut Session,
-    ) -> Result<(), Self::Error> {
-        reply.accept().await;
-        Ok(())
-    }
-
-    fn pty_request(
-        &mut self,
-        channel: ChannelId,
-        term: &str,
-        cols: u32,
-        rows: u32,
-        pix_width: u32,
-        pix_height: u32,
-        modes: &[(russh::Pty, u32)],
-        session: &mut Session,
-    ) -> impl Future<Output = Result<(), Self::Error>> + Send {
-        self.hear(Heard::Pty {
-            term: term.to_owned(),
-            cols,
-            rows,
-            pixels: (pix_width, pix_height),
-            modes: modes.len(),
-        });
-        ready(answer(session, channel, !self.script.refuse_pty))
-    }
-
-    fn shell_request(
-        &mut self,
-        channel: ChannelId,
-        session: &mut Session,
-    ) -> impl Future<Output = Result<(), Self::Error>> + Send {
-        self.hear(Heard::Shell);
-        if !self.script.refuse_shell {
-            *self.shell.lock().unwrap() = Some((session.handle(), channel));
-        }
-        ready(answer(session, channel, !self.script.refuse_shell))
-    }
-
-    fn window_change_request(
-        &mut self,
-        _channel: ChannelId,
-        cols: u32,
-        rows: u32,
-        pix_width: u32,
-        pix_height: u32,
-        _session: &mut Session,
-    ) -> impl Future<Output = Result<(), Self::Error>> + Send {
-        self.hear(Heard::WindowChange {
-            cols,
-            rows,
-            pixels: (pix_width, pix_height),
-        });
-        ready(Ok(()))
-    }
-
-    fn data(
-        &mut self,
-        _channel: ChannelId,
-        data: &[u8],
-        _session: &mut Session,
-    ) -> impl Future<Output = Result<(), Self::Error>> + Send {
-        self.hear(Heard::Input(data.to_vec()));
-        ready(Ok(()))
-    }
-}
-
-fn verdict(right: bool) -> Auth {
-    if right { Auth::Accept } else { Auth::reject() }
-}
-
-/// Grants or refuses a channel request.
-fn answer(session: &mut Session, channel: ChannelId, granted: bool) -> Result<(), russh::Error> {
-    if granted {
-        session.channel_success(channel)
-    } else {
-        session.channel_failure(channel)
-    }
+    gate: watch::Sender<bool>,
 }
 
 /// Starts a server presenting the ed25519 key made from `seed`, behaving as `script`.
@@ -226,10 +132,16 @@ pub(super) async fn fake_ssh(seed: u8, script: Script) -> FakeSsh {
     } else {
         &[MethodKind::Password, MethodKind::PublicKey]
     };
+    let window_size = if script.hold == Hold::Input {
+        INPUT_WINDOW
+    } else {
+        server::Config::default().window_size
+    };
     let config = Arc::new(server::Config {
         keys: vec![host_key],
         methods: MethodSet::from(methods),
         auth_rejection_time: std::time::Duration::ZERO,
+        window_size,
         ..server::Config::default()
     });
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -237,7 +149,10 @@ pub(super) async fn fake_ssh(seed: u8, script: Script) -> FakeSsh {
     let (heard_tx, heard) = mpsc::unbounded_channel();
     let shell = Arc::new(Mutex::new(None));
     let socket = Arc::new(Mutex::new(None));
+    let ledger = Arc::new(Mutex::new(Ledger::default()));
+    let (gate, opened) = watch::channel(false);
     let (served_shell, served_socket) = (Arc::clone(&shell), Arc::clone(&socket));
+    let served_ledger = Arc::clone(&ledger);
     tokio::spawn(async move {
         while let Ok((stream, _)) = listener.accept().await {
             let twin = stream.into_std().unwrap();
@@ -247,6 +162,8 @@ pub(super) async fn fake_ssh(seed: u8, script: Script) -> FakeSsh {
                 script,
                 heard: heard_tx.clone(),
                 shell: Arc::clone(&served_shell),
+                ledger: Arc::clone(&served_ledger),
+                gate: opened.clone(),
             };
             let config = Arc::clone(&config);
             tokio::spawn(async move {
@@ -260,8 +177,10 @@ pub(super) async fn fake_ssh(seed: u8, script: Script) -> FakeSsh {
         port,
         key,
         heard,
+        ledger,
         shell,
         socket,
+        gate,
     }
 }
 
@@ -308,6 +227,39 @@ impl FakeSsh {
     pub(super) fn cut(&self) {
         let socket = self.socket.lock().unwrap().take().expect("a connection");
         socket.shutdown(Shutdown::Both).unwrap();
+    }
+
+    /// Lets go of what the script holds.
+    pub(super) fn release(&self) {
+        self.gate.send_replace(true);
+    }
+
+    /// The shell opens a channel of each kind towards the hub; each answer, in order:
+    /// session, X11, agent, direct TCP/IP, forwarded TCP/IP, direct and forwarded
+    /// stream-local.
+    pub(super) async fn open_channels(&self) -> Vec<Result<Channel<Msg>, russh::Error>> {
+        let (handle, _) = self.shell();
+        vec![
+            handle.channel_open_session().await,
+            handle.channel_open_x11("127.0.0.1", 6010).await,
+            handle.channel_open_agent().await,
+            handle
+                .channel_open_direct_tcpip("127.0.0.1", 22, "127.0.0.1", 50_000)
+                .await,
+            handle
+                .channel_open_forwarded_tcpip("127.0.0.1", 8080, "127.0.0.1", 50_001)
+                .await,
+            handle.channel_open_direct_streamlocal("/run/agent").await,
+            handle
+                .channel_open_forwarded_streamlocal("/run/agent")
+                .await,
+        ]
+    }
+
+    /// The shell opens an X11 channel towards the hub; `true` when the hub accepted it.
+    pub(super) async fn open_x11(&self) -> bool {
+        let (handle, _) = self.shell();
+        handle.channel_open_x11("127.0.0.1", 6010).await.is_ok()
     }
 
     /// The next thing the hub asked of the server.

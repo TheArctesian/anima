@@ -203,7 +203,7 @@ async fn sign_in(
 /// The terminal's SSH client configuration: the hub's host key order, keep-alive every 30
 /// seconds, a small channel buffer for backpressure, and no Nagle delay for keystrokes. No
 /// inactivity limit: an idle shell stays open while the keep-alive is answered.
-fn config() -> Arc<client::Config> {
+pub(super) fn config() -> Arc<client::Config> {
     Arc::new(client::Config {
         preferred: ssh::preferred(),
         keepalive_interval: Some(KEEPALIVE),

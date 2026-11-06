@@ -3,7 +3,11 @@
 //! Section 8).
 
 use futures_util::{SinkExt as _, StreamExt as _};
-use tokio::{net::TcpStream, time::timeout};
+use tokio::{
+    io::{AsyncReadExt as _, AsyncWriteExt as _},
+    net::TcpStream,
+    time::timeout,
+};
 use tokio_tungstenite::{
     MaybeTlsStream, WebSocketStream, connect_async,
     tungstenite::{
@@ -30,9 +34,11 @@ pub(super) enum Received {
     Closed(Option<u16>),
 }
 
-/// An open terminal from the client's side.
+/// An open terminal from the client's side, and every payload byte it has received so
+/// far, pings and close reasons included.
 pub(super) struct Socket {
     stream: WebSocketStream<MaybeTlsStream<TcpStream>>,
+    pub(super) received: Vec<u8>,
 }
 
 /// Opens the terminal at `url`, offering `anima-terminal` when `subprotocol` is set. A
@@ -51,7 +57,10 @@ pub(super) async fn open_with(url: &str, subprotocol: bool) -> Result<Socket, St
                 "anima-terminal",
                 "the hub echoes the subprotocol"
             );
-            Ok(Socket { stream })
+            Ok(Socket {
+                stream,
+                received: Vec::new(),
+            })
         }
         Err(Error::Http(response)) => {
             assert!(
@@ -74,6 +83,13 @@ impl Socket {
     pub(super) async fn next(&mut self) -> Received {
         loop {
             let message = timeout(WAIT, self.stream.next()).await.expect("a message");
+            if let Some(Ok(message)) = &message {
+                self.received
+                    .extend_from_slice(&message.clone().into_data());
+                if let Message::Close(Some(frame)) = message {
+                    self.received.extend_from_slice(frame.reason.as_bytes());
+                }
+            }
             match message {
                 Some(Ok(Message::Text(text))) => return Received::Text(text.to_string()),
                 Some(Ok(Message::Binary(bytes))) => return Received::Binary(bytes.to_vec()),
@@ -153,6 +169,21 @@ impl Socket {
         self.stream.send(Message::Frame(frame)).await.unwrap();
     }
 
+    /// Sends `bytes` as one binary message in `parts` frames of equal size.
+    pub(super) async fn send_fragmented(&mut self, bytes: &[u8], parts: usize) {
+        let size = bytes.len().div_ceil(parts);
+        let chunks: Vec<&[u8]> = bytes.chunks(size).collect();
+        for (index, chunk) in chunks.iter().enumerate() {
+            let opcode = if index == 0 {
+                OpCode::Data(Data::Binary)
+            } else {
+                OpCode::Data(Data::Continue)
+            };
+            let frame = Frame::message(chunk.to_vec(), opcode, index + 1 == chunks.len());
+            self.stream.send(Message::Frame(frame)).await.unwrap();
+        }
+    }
+
     /// Closes the WebSocket with 1000, as a closing tab does, and waits for the hub's close,
     /// which echoes the code (RFC 6455 Section 5.5.1).
     pub(super) async fn close(&mut self) -> Option<u16> {
@@ -163,4 +194,28 @@ impl Socket {
         self.stream.close(Some(normal)).await.unwrap();
         self.close_code().await
     }
+}
+
+/// Sends the terminal request as the app would on a raw connection and keeps it open, so
+/// the test can leave while the hub is still opening.
+pub(super) async fn request(served: std::net::SocketAddr, token: &str) -> TcpStream {
+    let mut raw = TcpStream::connect(served).await.unwrap();
+    let request = format!(
+        "GET /terminal?token={token} HTTP/1.1\r\nHost: {served}\r\nConnection: Upgrade\r\n\
+         Upgrade: websocket\r\nSec-WebSocket-Version: 13\r\n\
+         Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Protocol: anima-terminal\r\n\r\n"
+    );
+    raw.write_all(request.as_bytes()).await.unwrap();
+    raw
+}
+
+/// The status line of the response on `raw`.
+pub(super) async fn status_line(raw: &mut TcpStream) -> String {
+    let mut response = [0; 64];
+    let read = timeout(WAIT, raw.read(&mut response))
+        .await
+        .unwrap()
+        .unwrap();
+    let text = String::from_utf8_lossy(&response[..read]).into_owned();
+    text.lines().next().unwrap_or_default().to_owned()
 }

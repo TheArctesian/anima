@@ -4,12 +4,16 @@
 
 mod bench;
 mod causes;
+mod channels;
 mod fake_ssh;
+mod interruptions;
 mod opening;
 mod protocol;
 mod refusals;
 mod session;
 mod socket;
+mod stalls;
+mod upgrade;
 
 use std::time::Duration;
 

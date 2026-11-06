@@ -299,3 +299,28 @@ async fn log_007_gw_014_the_token_password_and_connection_id_never_reach_the_log
         assert!(!log.contains(secret), "{secret} in the log");
     }
 }
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
+)]
+async fn k4_1_k4_2_the_hub_s_tunnel_route_refuses_an_ssh_ticket_and_spends_it(pool: PgPool) {
+    // As `tunnel_router` builds it: SSH tickets are for `/terminal` (R-062).
+    let setup = Setup::route(|route| route.tunnel_path = Protocol::tunnel_path);
+    let bench = bench(&pool, "127.0.0.1:9", setup).await;
+    assert_eq!(
+        open_with(&bench.url, true).await.err(),
+        Some(StatusCode::FORBIDDEN)
+    );
+    assert!(
+        bench
+            .live
+            .redeem(&bench.token, address(LOOPBACK), now())
+            .is_err(),
+        "the ticket is spent"
+    );
+    assert!(
+        row(&pool, &bench).await.is_live(),
+        "the sweep ends it later"
+    );
+}

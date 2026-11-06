@@ -100,6 +100,36 @@ async fn k4_8_5_a_binary_message_over_64_kib_is_protocol_error(pool: PgPool) {
     migrations = "./migrations",
     fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
+async fn k4_8_5_a_message_over_64_kib_across_fragments_is_protocol_error(pool: PgPool) {
+    // Every frame is well under the frame cap; only the whole message is over.
+    let (bench, mut client) = session(&pool, Setup::default()).await;
+    client.send_fragmented(&vec![b'a'; 64 * 1024 + 1], 5).await;
+    broke_the_protocol(&pool, bench, client).await;
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
+)]
+async fn k4_8_5_a_message_of_64_kib_across_fragments_reaches_the_device_whole(pool: PgPool) {
+    let (mut bench, mut client) = session(&pool, Setup::default()).await;
+    let typed = vec![b'a'; 64 * 1024];
+    client.send_fragmented(&typed, 4).await;
+    let mut input = Vec::new();
+    while input.len() < typed.len() {
+        match bench.ssh.next().await {
+            Heard::Input(bytes) => input.extend(bytes),
+            other => panic!("{other:?} while input was due"),
+        }
+    }
+    assert_eq!(input, typed);
+    assert_eq!(client.close().await, Some(1000));
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
+)]
 async fn k4_8_5_text_that_is_not_utf_8_is_protocol_error(pool: PgPool) {
     let (bench, mut client) = session(&pool, Setup::default()).await;
     client.send_unchecked_text(b"{\"type\":\"ping\xff\"}").await;

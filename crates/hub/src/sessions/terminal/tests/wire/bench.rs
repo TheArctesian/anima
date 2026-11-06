@@ -85,11 +85,15 @@ impl Setup {
 }
 
 /// A served terminal route, the device's fake SSH server and one started session's ticket.
+/// `served` is the route's address.
 pub(super) struct Bench {
+    /// The route's dependencies and waits, as served.
+    pub(super) terminal: Terminal,
     pub(super) live: Live,
     pub(super) session: SessionId,
     pub(super) token: String,
     pub(super) url: String,
+    pub(super) served: SocketAddr,
     pub(super) ssh: FakeSsh,
 }
 
@@ -123,13 +127,15 @@ pub(super) async fn bench(pool: &PgPool, setup: Setup) -> Bench {
     (setup.terminal)(&mut terminal);
     let listener = TcpListener::bind((LOOPBACK, 0)).await.unwrap();
     let served = listener.local_addr().unwrap();
-    let app = router(terminal).into_make_service_with_connect_info::<SocketAddr>();
+    let app = router(terminal.clone()).into_make_service_with_connect_info::<SocketAddr>();
     tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
     Bench {
+        terminal,
         live,
         session: ticket.session,
         token: ticket.token().to_owned(),
         url: format!("ws://{served}/terminal?token={}", ticket.token()),
+        served,
         ssh,
     }
 }

@@ -10,10 +10,12 @@ use std::{
 use chrono::TimeDelta;
 
 use super::tickets::{CLIENT, client, issue, issued_at, pending, session, token};
+use axum::http::StatusCode;
+
 use crate::{
     ids::SessionId,
     sessions::{
-        Actor, EndCause, EndReason,
+        Actor, EndCause, EndReason, Protocol, admission,
         live::{Ending, Live, Refused, Unavailable},
     },
 };
@@ -155,4 +157,46 @@ async fn ra_008_shut_down_signals_every_tunnel_withdraws_every_ticket_and_refuse
     tokio::time::timeout(Duration::from_secs(5), closing.finished())
         .await
         .unwrap();
+}
+
+#[test]
+fn k4_1_a_ticket_opens_only_on_its_tunnel_path() {
+    assert_eq!(Protocol::Ssh.tunnel_path(), "/terminal");
+    let live = Live::default();
+    let text = issue(&live, 1, 4);
+    let redeemed = live.redeem(&text, client(CLIENT), issued_at()).unwrap();
+    let ticket_path = redeemed.ticket.protocol.tunnel_path();
+    let kept = admission::on_path(&live, redeemed, ticket_path, "/terminal");
+    assert!(kept.is_ok(), "an SSH ticket opens on /terminal");
+    assert!(
+        matches!(
+            live.end_by(session(1), &operator_actor()),
+            Ending::Signalled(_)
+        ),
+        "its tunnel is registered"
+    );
+}
+
+#[test]
+fn k4_1_a_ticket_on_another_tunnel_path_is_spent_and_refused() {
+    let live = Live::default();
+    let text = issue(&live, 1, 4);
+    let redeemed = live.redeem(&text, client(CLIENT), issued_at()).unwrap();
+    let ticket_path = redeemed.ticket.protocol.tunnel_path();
+    assert_eq!(
+        admission::on_path(&live, redeemed, ticket_path, "/tunnel").err(),
+        Some(StatusCode::FORBIDDEN)
+    );
+    assert_eq!(
+        live.redeem(&text, client(CLIENT), issued_at()).err(),
+        Some(Refused),
+        "spent"
+    );
+    assert!(
+        matches!(
+            live.end_by(session(1), &operator_actor()),
+            Ending::Withdrawn(_)
+        ),
+        "no tunnel, and the ticket waits for the sweep or endSession"
+    );
 }
