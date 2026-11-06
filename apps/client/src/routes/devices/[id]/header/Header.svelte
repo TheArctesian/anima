@@ -78,7 +78,7 @@
 
 <style>
   /*
-   * One row at a block size from tokens, so no font change or late data moves the tabs (D-13, WP-11 H-7). The host and tag
+   * One row at a block size from tokens, so no font change or late data moves the tabs (R-042). The host and tag
    * details take what the name, the pill and the buttons leave and shrink to nothing first; a name that is too long ends in
    * an ellipsis with its full text as the tooltip (DEV-021).
    */

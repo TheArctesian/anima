@@ -272,6 +272,11 @@ async fn con_002_a_missing_member_a_changed_signature_and_a_stray_type_are_each_
         },
     );
     hub.remove("Mutation");
+    let header = |hub: &mut Schema, name: &str, header: &str| {
+        hub.get_mut(name).unwrap().header = header.into();
+    };
+    header(&mut hub, "SshCredentialInput", "input");
+    header(&mut hub, "CheckConfig", "union = IcmpConfig | TcpConfig");
 
     let found = differences(&hub, &k1);
     for expected in [
@@ -283,6 +288,22 @@ async fn con_002_a_missing_member_a_changed_signature_and_a_stray_type_are_each_
         assert!(
             found.iter().any(|d| d == expected),
             "{expected} in {found:?}"
+        );
+    }
+    for (name, theirs) in [
+        ("SshCredentialInput", "input @oneOf"),
+        (
+            "CheckConfig",
+            "union = DnsConfig | GroupConfig | HttpConfig | IcmpConfig | PushConfig | TcpConfig | TlsConfig",
+        ),
+    ] {
+        let prefix = format!("{name}: hub `");
+        let suffix = format!("K1 `{theirs}`");
+        assert!(
+            found
+                .iter()
+                .any(|d| d.starts_with(&prefix) && d.ends_with(&suffix)),
+            "{name} header in {found:?}"
         );
     }
     assert!(

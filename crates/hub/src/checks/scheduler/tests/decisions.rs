@@ -180,7 +180,7 @@ fn default_timeout(json: serde_json::Value) -> TimeDelta {
     TimeDelta::from_std(config.timeout()).unwrap()
 }
 
-/// Acceptance criterion 7 of WP-17 with the default settings (spec 6.4): a refused
+/// CHK-002 with the default settings (spec 6.4): a refused
 /// connect fails at once, so the device is Down exactly 2 intervals after its last Up
 /// beat; a device that drops packets adds one probe timeout to the last attempt.
 #[test]

@@ -171,7 +171,7 @@ async fn follow_until_down(
 }
 
 tick_test! {
-    // Acceptance criterion 7 of WP-17 with the default settings (spec 6.4): the card stays
+    // CHK-002 with the default settings (spec 6.4): the card stays
     // Up through the retries and changes to Down on the tick 2 intervals after the last Up
     // beat, through the signal the `deviceStatusChanged` subscription reads (CHK-001,
     // CHK-002, CHK-004, LOG-004, LOG-010, DEV-002).
