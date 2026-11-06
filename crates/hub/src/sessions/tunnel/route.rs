@@ -10,7 +10,8 @@
 //! 2. The token from the query and the client address, then `Live::redeem` (403). A presented
 //!    token is spent whatever happens next, valid or not (K4 Section 1), so the ticket is
 //!    redeemed before the subprotocol is checked: a request without `guacamole` still spends
-//!    it, and cannot be used to test a token without spending it.
+//!    it, and cannot be used to test a token without spending it. A ticket whose `tunnelPath`
+//!    is not `/tunnel` is spent and refused too (403).
 //! 3. From here the session task owns the redeemed ticket (`relaying`), so the session ends
 //!    exactly once even when the client leaves and this handler is dropped (MV-003). The task
 //!    answers this handler: 400 without the subprotocol `guacamole` (the session ends
@@ -39,7 +40,7 @@ use crate::{
     clock::Clock,
     credentials::Vault,
     events::Bus,
-    sessions::{Live, Redeemed, admission, end::Records, probe::PROBE_TIMEOUT},
+    sessions::{Live, Protocol, Redeemed, admission, end::Records, probe::PROBE_TIMEOUT},
 };
 
 /// The only path of the tunnel in Phase 1 (K4 Section 1 `tunnelPath`).
@@ -91,6 +92,10 @@ pub(super) struct Route {
     /// The tickets and tunnels, and the target rule for the device's host (R-032).
     pub(super) live: Live,
     pub(super) timing: Timing,
+    /// Where a ticket for each protocol must be opened (K4 Section 1 `tunnelPath`): the hub
+    /// uses `Protocol::tunnel_path`, so this route admits no ticket while only SSH exists;
+    /// its tests send SSH tickets here.
+    pub(super) tunnel_path: fn(Protocol) -> &'static str,
 }
 
 impl Route {
@@ -127,6 +132,7 @@ pub fn tunnel_router(
         guacd,
         live,
         timing: Timing::default(),
+        tunnel_path: Protocol::tunnel_path,
     })
 }
 
@@ -169,5 +175,7 @@ async fn redeem(
 ) -> Result<Redeemed, StatusCode> {
     let now = route.clock.now();
     admission::swept(&route.db, &route.live, now).await?;
-    admission::redeem(&route.live, query, extensions, now)
+    let redeemed = admission::redeem(&route.live, query, extensions, now)?;
+    let ticket_path = (route.tunnel_path)(redeemed.ticket.protocol);
+    admission::on_path(&route.live, redeemed, ticket_path, PATH)
 }

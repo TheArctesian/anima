@@ -4,8 +4,9 @@
 //! The order of the checks (`admission`), as on the Guacamole tunnel:
 //!
 //! 1. The lazy sweep of expired tickets (D-2); if it cannot run, 503 before any token is read.
-//! 2. The token from the query and the client address, then `Live::redeem` (403). The token
-//!    is spent before the subprotocol is checked (K4 Section 1).
+//! 2. The token from the query and the client address, then `Live::redeem` (403), then the
+//!    ticket's `tunnelPath`, which must be `/terminal` (403, the ticket spent). The token is
+//!    spent before the subprotocol is checked (K4 Section 1).
 //! 3. From here the session task owns the redeemed ticket (`session`), so the session ends
 //!    exactly once even when the client leaves and this handler is dropped (MV-003). The task
 //!    answers this handler: 400 without the subprotocol `anima-terminal` (the session ends
@@ -38,6 +39,8 @@ use crate::{
     },
 };
 
+/// The terminal tunnel's path (K4 Section 1 `tunnelPath`): SSH's.
+const PATH: &str = Protocol::Ssh.tunnel_path();
 /// The WebSocket subprotocol the client asks for (K4 Section 8.1).
 const SUBPROTOCOL: &str = "anima-terminal";
 /// How long the hub waits for the upgrade after it answered, and for the client's first
@@ -45,8 +48,11 @@ const SUBPROTOCOL: &str = "anima-terminal";
 const CLIENT_WAIT: Duration = Duration::from_secs(10);
 /// The hub sends `ping` when it has sent the client nothing for this long (K4 Section 8.4).
 const HUB_SILENCE: Duration = Duration::from_secs(5);
+/// The longest one write or request to the device may wait (K4 Section 8.5).
+const DEVICE_WAIT: Duration = Duration::from_secs(15);
 
-/// The waits of one terminal session. Tests shorten them; the hub uses `Timing::default()`.
+/// The waits of one terminal session (K4 Section 8.5). Tests shorten them; the hub uses
+/// `Timing::default()`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct Timing {
     /// The whole opening: lookup, connect, key exchange, sign-in and the session channel.
@@ -57,9 +63,13 @@ pub(super) struct Timing {
     pub(super) first_size: Duration,
     /// Hub silence after which the client gets a `ping`.
     pub(super) hub_silence: Duration,
-    /// Client silence after which the session ends `TIMEOUT`; also the longest one send to the
-    /// client, one write to the device or one PTY or shell request may take.
+    /// Client silence after which the session ends `TIMEOUT`, not counting time the client's
+    /// input waits on the device; also the longest one send to the client may take.
     pub(super) client_idle: Duration,
+    /// The longest one write of client input to the device, or one PTY, shell or
+    /// window-change request with its answer, may take before the session ends
+    /// `GATEWAY_ERROR`.
+    pub(super) request: Duration,
 }
 
 impl Default for Timing {
@@ -70,6 +80,7 @@ impl Default for Timing {
             first_size: CLIENT_WAIT,
             hub_silence: HUB_SILENCE,
             client_idle: CLIENT_IDLE,
+            request: DEVICE_WAIT,
         }
     }
 }
@@ -124,7 +135,7 @@ pub fn terminal_router(
 /// The route over `terminal`'s dependencies and waits, at the path K4 Section 1 gives SSH.
 pub(super) fn router(terminal: Terminal) -> Router {
     Router::new()
-        .route(Protocol::Ssh.tunnel_path(), get(open))
+        .route(PATH, get(open))
         .with_state(Arc::new(terminal))
 }
 
@@ -139,7 +150,12 @@ async fn open(
     if let Err(status) = admission::swept(&terminal.db, &terminal.live, now).await {
         return status.into_response();
     }
-    let redeemed = match admission::redeem(&terminal.live, &query, &extensions, now) {
+    let redeemed =
+        admission::redeem(&terminal.live, &query, &extensions, now).and_then(|redeemed| {
+            let ticket_path = redeemed.ticket.protocol.tunnel_path();
+            admission::on_path(&terminal.live, redeemed, ticket_path, PATH)
+        });
+    let redeemed = match redeemed {
         Ok(redeemed) => redeemed,
         Err(status) => return status.into_response(),
     };

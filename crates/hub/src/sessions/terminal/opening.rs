@@ -38,7 +38,7 @@ const KEEPALIVE: Duration = Duration::from_secs(30);
 const CHANNEL_BUFFER: usize = 4;
 
 /// A signed-in SSH connection and its session channel, before the PTY and shell.
-pub(super) struct Shell {
+pub(super) struct SignedIn {
     pub(super) handle: Handle<Observer>,
     pub(super) channel: Channel<Msg>,
 }
@@ -46,7 +46,7 @@ pub(super) struct Shell {
 /// What the terminal does after the upgrade.
 pub(super) enum Opening {
     /// Signed in with a session channel open: wait for the client's first `resize`.
-    Shell(Shell),
+    SignedIn(SignedIn),
     /// The device presented another host key than the accepted one, or a certificate, or a
     /// key the hub cannot read: no credential was sent (SEC-007). Tell the client, close 4001.
     HostKeyChanged,
@@ -173,7 +173,7 @@ async fn opened(terminal: &Terminal, ticket: &PendingTicket) -> Result<Opening, 
         .channel_open_session()
         .await
         .map_err(|_| NotOpened::Lost)?;
-    Ok(Opening::Shell(Shell { handle, channel }))
+    Ok(Opening::SignedIn(SignedIn { handle, channel }))
 }
 
 /// Signs in as the device's user with its stored credential; `Some` with the event message

@@ -9,8 +9,8 @@
 //! frame was sent, and the channel's buffer is bounded (`opening`), so a client that reads
 //! slowly stalls the device's channel. The next client message is read only after the
 //! previous one was written to the channel, under its window; the time a write waits on the
-//! device is not the client's silence, but a write that waits past the idle wait ends the
-//! session.
+//! device is not the client's silence, but a write that waits past the request wait ends
+//! the session `GATEWAY_ERROR`; the hub's pings go on meanwhile.
 
 use std::{pin::Pin, sync::Arc};
 
@@ -22,7 +22,7 @@ use tokio::time::{Instant, sleep_until, timeout};
 use super::{
     control::{self, Control, Size},
     ending::{DEVICE_STOPPED_READING, ended},
-    shell::Link,
+    link::Link,
 };
 use crate::sessions::{
     EndCause,
@@ -126,7 +126,7 @@ impl Link<'_> {
     /// Starts `write` as the one write in flight; the client is not read until it is done.
     fn write(&mut self, write: Writing) -> Option<End> {
         self.writing = Some(write);
-        self.write_due = Instant::now() + self.timing.client_idle;
+        self.write_due = Instant::now() + self.timing.request;
         None
     }
 

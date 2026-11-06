@@ -35,6 +35,7 @@ pub(super) fn patient() -> Timing {
         first_size: Duration::from_secs(60),
         hub_silence: Duration::from_secs(60),
         client_idle: Duration::from_secs(60),
+        request: Duration::from_secs(60),
     }
 }
 

@@ -22,6 +22,7 @@ mod tests;
 mod tickets;
 mod trust;
 mod tunnel;
+mod upgrade;
 
 use std::collections::HashMap;
 

@@ -119,6 +119,8 @@ pub(super) async fn bench(pool: &PgPool, guacd: &str, setup: Setup) -> Bench {
         guacd: guacd.to_owned(),
         live: live.clone(),
         timing: patient(),
+        // SSH tickets stand in for the RDP and VNC tickets this route is for (K4 Section 7).
+        tunnel_path: |_| "/tunnel",
     };
     (setup.route)(&mut route);
     let listener = TcpListener::bind((LOOPBACK, 0)).await.unwrap();

@@ -292,6 +292,19 @@ impl Live {
         Ok(Redeemed { ticket, tunnel })
     }
 
+    /// Spends a redeemed ticket the request does not admit after all (a ticket on another
+    /// tunnel's path, K4 Section 1): its tunnel is deregistered and the ticket kept, without
+    /// its token, until the sweep ends its row, under one lock, as a refused redemption is.
+    pub(super) fn spend(&self, redeemed: Redeemed) {
+        let Redeemed { ticket, tunnel } = redeemed;
+        let mut state = self.state();
+        state.tunnels.remove(&ticket.session);
+        state.spent.insert(ticket.session, ticket);
+        drop(state);
+        // Its registration is gone, so dropping it changes nothing.
+        drop(tunnel);
+    }
+
     /// Ends the session for `by` (`endSession`, D-10), deciding under one lock so a
     /// redemption cannot slip between the two cases: an open tunnel is told to end with
     /// `OPERATOR` and who asked; otherwise a pending or spent ticket is withdrawn.

@@ -1,6 +1,6 @@
 //! The session task (K4 Section 8): one task per redeemed ticket that opens the device side,
-//! answers the `/terminal` request, waits for the upgraded socket, runs the shell (`shell`)
-//! and ends the session once.
+//! answers the `/terminal` request and waits for the upgraded socket (`upgrade`), runs the
+//! shell (`shell`) and ends the session once.
 //!
 //! The task, not the request handler, owns the ticket: hyper drops the handler when the
 //! client goes, and the session must still end (MV-003). It holds the ticket in an
@@ -17,10 +17,10 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use tokio::{sync::oneshot, time::timeout};
+use tokio::sync::oneshot;
 
 use super::{
-    ending::{CLIENT_LEFT, NOT_TERMINAL, ended},
+    ending::NOT_TERMINAL,
     opening::{self, Opening},
     route::{Terminal, Timing},
     shell,
@@ -29,6 +29,7 @@ use super::{
 use crate::sessions::{
     Redeemed, Tunnel,
     end::{Cause, End, Unfinished},
+    upgrade::{handed_over, upgraded},
 };
 
 /// Runs the session of `redeemed` to its end and writes the end. `upgrade` is the request's
@@ -44,52 +45,29 @@ pub(super) async fn run(
     unfinished.finish(&end).await;
 }
 
-/// The session up to its first cause: refusals before the upgrade answer 400 or 503.
+/// The session up to its first cause: refusals before the upgrade answer 400 or 503
+/// (`upgrade`).
 async fn session(
     terminal: &Terminal,
     redeemed: &mut Redeemed,
     upgrade: Option<WebSocketUpgrade>,
-    mut answer: oneshot::Sender<Response>,
+    answer: oneshot::Sender<Response>,
 ) -> End {
     let Some(upgrade) = upgrade else {
         let _ = answer.send(StatusCode::BAD_REQUEST.into_response());
         return End::explained(Cause::InvalidInstruction, NOT_TERMINAL);
     };
-    let opening = match opened(terminal, redeemed, &mut answer).await {
-        Ok(opening) => opening,
-        Err(end) => {
-            let _ = answer.send(StatusCode::SERVICE_UNAVAILABLE.into_response());
-            return end;
-        }
-    };
-    let (socket_tx, socket_rx) = oneshot::channel::<WebSocket>();
-    let response = upgrade.on_upgrade(move |socket| async move {
-        // Unsent only when the session has already ended; the socket closes as it drops.
-        let _ = socket_tx.send(socket);
-    });
-    // Unanswered when the client has left: the upgrade then never comes, and `connected`
-    // ends the session.
-    let _ = answer.send(response);
-    connected(terminal.timing, &mut redeemed.tunnel, opening, socket_rx).await
-}
-
-/// The opening, unless the session ends first: `endSession` or shutdown (SEC-002, D-10;
-/// the opening is dropped, and with it the connection, before the credential leaves the hub
-/// when it can be), or the client leaving, seen as the request handler dropped.
-async fn opened(
-    terminal: &Terminal,
-    redeemed: &mut Redeemed,
-    answer: &mut oneshot::Sender<Response>,
-) -> Result<Opening, End> {
     let Redeemed { ticket, tunnel } = redeemed;
     let session = ticket.session;
-    tokio::select! {
-        opened = opening::open(terminal, ticket) => opened.map_err(|not_opened| {
+    let opening = async {
+        opening::open(terminal, ticket).await.map_err(|not_opened| {
             tracing::warn!(%session, error = %not_opened, "the terminal did not open");
             End::explained(Cause::GatewayError, not_opened.message())
-        }),
-        signal = tunnel.ended() => Err(End::from(signal)),
-        () = answer.closed() => Err(End::explained(Cause::OperatorClosed, CLIENT_LEFT)),
+        })
+    };
+    match handed_over(opening, upgrade, tunnel, answer).await {
+        Ok((opening, socket)) => connected(terminal.timing, tunnel, opening, socket).await,
+        Err(end) => end,
     }
 }
 
@@ -102,10 +80,10 @@ pub(super) async fn connected(
     socket: oneshot::Receiver<WebSocket>,
 ) -> End {
     match opening {
-        Opening::Shell(shell) => match upgraded(tunnel, socket, timing).await {
-            Ok(client) => shell::run(client, shell, tunnel, timing).await,
+        Opening::SignedIn(signed_in) => match upgraded(tunnel, socket, timing.upgrade).await {
+            Ok(client) => shell::run(client, signed_in, tunnel, timing).await,
             Err(end) => {
-                leave_unstarted(shell).await;
+                leave_unstarted(signed_in).await;
                 end
             }
         },
@@ -128,25 +106,8 @@ async fn refused(
     socket: oneshot::Receiver<WebSocket>,
     timing: Timing,
 ) -> End {
-    if let Ok(client) = upgraded(tunnel, socket, timing).await {
+    if let Ok(client) = upgraded(tunnel, socket, timing.upgrade).await {
         close_client(client, end.cause).await;
     }
     end
-}
-
-/// The upgraded socket, unless the session ends first: the end signal, a failed upgrade (the
-/// client left) or no upgrade within the upgrade wait.
-async fn upgraded(
-    tunnel: &mut Tunnel,
-    socket: oneshot::Receiver<WebSocket>,
-    timing: Timing,
-) -> Result<WebSocket, End> {
-    tokio::select! {
-        signal = tunnel.ended() => Err(End::from(signal)),
-        socket = timeout(timing.upgrade, socket) => match socket {
-            Ok(Ok(socket)) => Ok(socket),
-            Ok(Err(_)) => Err(ended(Cause::OperatorClosed)),
-            Err(_) => Err(ended(Cause::Timeout)),
-        },
-    }
 }

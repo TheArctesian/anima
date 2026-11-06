@@ -1,7 +1,7 @@
 //! What a tunnel request must pass before its session task starts, shared by `/tunnel` and
 //! `/terminal` (K4 Sections 1, 2 and 8.1, API-009): the lazy sweep of expired tickets
-//! (D-2), the token from the query, the client address and the single-use redemption, and
-//! the subprotocol the WebSocket upgrade must offer.
+//! (D-2), the token from the query, the client address and the single-use redemption, the
+//! ticket's tunnel path, and the subprotocol the WebSocket upgrade must offer.
 //!
 //! Neither the URI, the query nor the token reaches a log, a span or an error (LOG-007).
 
@@ -49,6 +49,26 @@ pub(super) fn redeem(
     };
     live.redeem(token, client, now)
         .map_err(|_| StatusCode::FORBIDDEN)
+}
+
+/// Keeps a redeemed ticket only on the path it was issued for: `ticket_path`, its
+/// `tunnelPath` (K4 Section 1), must be `path`, the route's own. A ticket on another route is
+/// spent and refused like any other (`Live::spend`).
+///
+/// # Errors
+/// 403, with no detail, when the paths differ.
+pub(super) fn on_path(
+    live: &Live,
+    redeemed: Redeemed,
+    ticket_path: &str,
+    path: &str,
+) -> Result<Redeemed, StatusCode> {
+    if ticket_path == path {
+        Ok(redeemed)
+    } else {
+        live.spend(redeemed);
+        Err(StatusCode::FORBIDDEN)
+    }
 }
 
 /// The value of the first `token=` pair. No decoding: a token is base64url, so a

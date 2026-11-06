@@ -13,7 +13,7 @@ use russh::{
 };
 use tokio::time::timeout;
 
-use super::{control, opening::Shell};
+use super::{control, opening::SignedIn};
 use crate::sessions::{
     Tunnel,
     end::{CLIENT_STOPPED_READING, CLOSE_WAIT, Cause, End},
@@ -69,8 +69,8 @@ pub(super) async fn leave_device(handle: Handle<Observer>, channel: &ChannelWrit
 }
 
 /// Leaves a device whose shell never started.
-pub(super) async fn leave_unstarted(shell: Shell) {
-    let Shell { handle, channel } = shell;
+pub(super) async fn leave_unstarted(signed_in: SignedIn) {
+    let SignedIn { handle, channel } = signed_in;
     let (_, writer) = channel.split();
     leave_device(handle, &writer).await;
 }

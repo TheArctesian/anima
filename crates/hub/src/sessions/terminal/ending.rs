@@ -8,8 +8,6 @@ use crate::sessions::end::{Cause, End};
 /// The request did not offer the `anima-terminal` subprotocol.
 pub(super) const NOT_TERMINAL: &str = "The client did not open the tunnel as a terminal \
                                        WebSocket, so the hub closed the SSH session.";
-/// The client left while the hub opened the SSH connection.
-pub(super) const CLIENT_LEFT: &str = "The client left before the SSH session opened.";
 /// No credential is stored for the device (D-3).
 pub(super) const NO_CREDENTIAL: &str = "No SSH credential is stored for the device, so the hub \
                                         could not sign in. Store one in the device's SSH \
@@ -26,7 +24,10 @@ pub(super) const PTY_REFUSED: &str =
 /// The device refused the shell request.
 pub(super) const SHELL_REFUSED: &str =
     "The device refused to start a shell, so the hub closed the SSH session.";
-/// Client input waited on the device past the idle wait.
+/// The device did not take a PTY or shell request, or did not answer it, in time.
+pub(super) const NO_ANSWER: &str = "The device did not answer the hub's request for a terminal \
+                                    or shell in time, so the hub closed the SSH session.";
+/// Client input waited on the device past the request wait.
 pub(super) const DEVICE_STOPPED_READING: &str = "The device stopped reading what the operator \
                                                  typed, so the hub closed the SSH session.";
 
