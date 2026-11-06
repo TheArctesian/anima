@@ -2,7 +2,7 @@
 //! mutation's own transaction (LOG-004, LOG-005, LOG-007).
 //!
 //! The messages and the `change` objects are built by pure functions from the stored rows and the
-//! validated input. They hold names, hosts and SSH settings, never a secret.
+//! validated input. They hold names, hosts and settings, never a secret.
 
 use std::sync::Arc;
 
@@ -16,6 +16,7 @@ use super::{
 };
 use crate::{
     clock::Clock,
+    credentials::PasswordKind,
     devices::{
         RdpSettings, TransferPolicy, VncSettings,
         model::{Device, DeviceChange, NewDevice, Site, SshSettings},
@@ -244,5 +245,59 @@ pub(super) fn credential_cleared(device: &Device) -> Entry {
         action: AuditAction::Delete,
         target: AuditTarget::Credential(device.id),
         change: json!({ "cleared": true }),
+    }
+}
+
+/// The protocol a password is for: as audit text and as message text.
+const fn protocol(kind: PasswordKind) -> (&'static str, &'static str) {
+    match kind {
+        PasswordKind::Rdp => ("rdp", "RDP"),
+        PasswordKind::Vnc => ("vnc", "VNC"),
+    }
+}
+
+/// Names the protocol and that a password was stored, never the password.
+pub(super) fn password_set(device: &Device, kind: PasswordKind) -> Entry {
+    let (audit, message) = protocol(kind);
+    Entry {
+        device: Some((device.id, device.name.clone())),
+        message: format!("Device {} {message} password set.", device.name),
+        action: AuditAction::Update,
+        target: AuditTarget::Credential(device.id),
+        change: json!({ "protocol": audit, "kind": "password" }),
+    }
+}
+
+pub(super) fn password_cleared(device: &Device, kind: PasswordKind) -> Entry {
+    let (audit, message) = protocol(kind);
+    Entry {
+        device: Some((device.id, device.name.clone())),
+        message: format!("Device {} {message} password cleared.", device.name),
+        action: AuditAction::Delete,
+        target: AuditTarget::Credential(device.id),
+        change: json!({ "protocol": audit, "kind": "password", "cleared": true }),
+    }
+}
+
+/// The site's new wake relay, by id and name, or null when it was cleared (D-7).
+pub(super) fn wake_relay_changed(site: &Site, relay: Option<&Device>) -> Entry {
+    let (device, message, change) = match relay {
+        Some(relay) => (
+            Some((relay.id, relay.name.clone())),
+            format!("Site {} wake relay set to {}.", site.name, relay.name),
+            json!({ "id": relay.id.to_string(), "name": relay.name }),
+        ),
+        None => (
+            None,
+            format!("Site {} wake relay cleared.", site.name),
+            Value::Null,
+        ),
+    };
+    Entry {
+        device,
+        message,
+        action: AuditAction::Update,
+        target: AuditTarget::Site(site.id),
+        change: json!({ "wakeRelay": change }),
     }
 }
