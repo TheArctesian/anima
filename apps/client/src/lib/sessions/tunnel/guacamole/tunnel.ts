@@ -1,18 +1,31 @@
+// The Guacamole tunnel is kept for RDP and VNC (Phase 2) and no SSH session uses it (WP-18 D-1, R-062). The set kept:
+// this folder (`tunnel.ts`, `socket.ts`, `input.ts`, `start.ts`), `../vendor/`, `../fake/` and, in the view,
+// `view/guacamole/` and the size helpers of `view/display.ts`. The SSH path imports none of it.
 import Guacamole from '../vendor/guacamole.js';
 import { withObservedSocket } from './socket';
 import { refusal, type SocketConstructor, type TunnelPhase, type TunnelRefusal, type TunnelState, type TunnelTicket } from '../state';
 import { tunnelUrl } from '../url';
 
-export type { SocketConstructor, TunnelPhase, TunnelRefusal, TunnelState, TunnelTicket } from '../state';
+export type { SocketConstructor, TunnelRefusal, TunnelTicket } from '../state';
+
+/** The 1.5.5 client states as phases: `waiting` lasts until the gateway's first frame (`sync`). */
+export type GuacamolePhase = TunnelPhase | 'waiting';
+
+/** What the Guacamole tunnel knows; it holds no token, no URL and no gateway text (SEC-002, LOG-007). */
+export interface GuacamoleState extends Omit<TunnelState, 'phase'> {
+  readonly phase: GuacamolePhase;
+  /** The status code of the last gateway `error` instruction; its text is never kept (R-035). */
+  readonly gatewayError: number | undefined;
+}
 
 export interface TunnelOptions {
   /** The hub origin, `https://host[:port]` (`hub.address.origin`). */
   readonly origin: string;
   readonly ticket: TunnelTicket;
   /** Hears every change of the state after `openTunnel` has connected; the first call gives the state then. */
-  readonly onchange?: (state: TunnelState) => void;
+  readonly onchange?: (state: GuacamoleState) => void;
   /** Hears the final state once, after the WebSocket closed and the client stopped. */
-  readonly onend?: (state: TunnelState) => void;
+  readonly onend?: (state: GuacamoleState) => void;
   /** The WebSocket constructor; defaults to the global one (CQ-021). */
   readonly WebSocket?: SocketConstructor;
 }
@@ -23,7 +36,7 @@ export interface TunnelOptions {
  */
 export interface SessionTunnel {
   readonly client: Guacamole.Client;
-  state(): TunnelState;
+  state(): GuacamoleState;
   /** Disconnect from the gateway and close the socket; safe to call more than once. */
   close(): void;
 }
@@ -33,23 +46,23 @@ export type TunnelOpening =
   | { readonly ok: false; readonly error: TunnelRefusal };
 
 /** The 1.5.5 client states (private in the library), as phases; 0 IDLE follows a failed `connect`. */
-const PHASES: readonly TunnelPhase[] = ['disconnected', 'connecting', 'waiting', 'connected', 'disconnected', 'disconnected'];
+const PHASES: readonly GuacamolePhase[] = ['disconnected', 'connecting', 'waiting', 'connected', 'disconnected', 'disconnected'];
 
 interface Events {
-  readonly onchange?: (state: TunnelState) => void;
-  readonly onend?: (state: TunnelState) => void;
+  readonly onchange?: (state: GuacamoleState) => void;
+  readonly onend?: (state: GuacamoleState) => void;
 }
 
 /** A client on a WebSocket tunnel to `url`, with its state tracked; nothing in this scope sees the token. */
 function trackedTunnel(url: string, events: Events) {
   const tunnel = new Guacamole.WebSocketTunnel(url);
   const client = new Guacamole.Client(tunnel);
-  const initial: TunnelState = { phase: 'connecting', opened: false, gatewayError: undefined, closeCode: undefined };
+  const initial: GuacamoleState = { phase: 'connecting', opened: false, gatewayError: undefined, closeCode: undefined };
   let state = initial;
   // `onchange` is held back while `connect` runs (the global WebSocket is swapped then, see `socket.ts`).
   let connected = false;
-  const update = (change: Partial<TunnelState>) => {
-    if (Object.entries(change).every(([key, value]) => state[key as keyof TunnelState] === value)) return;
+  const update = (change: Partial<GuacamoleState>) => {
+    if (Object.entries(change).every(([key, value]) => state[key as keyof GuacamoleState] === value)) return;
     state = { ...state, ...change };
     if (connected) events.onchange?.(state);
   };

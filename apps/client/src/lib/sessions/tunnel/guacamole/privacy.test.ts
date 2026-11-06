@@ -4,8 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ending, recordedEnding } from '../../ending';
 import { installBlankCanvas } from '../fake/canvas.fixture';
 import { FAKE_TUNNEL_SOCKET, FakeTunnelSocket } from '../fake/socket.fixture';
-import { startTunnel } from '../start';
-import { openTunnel, type TunnelState } from './tunnel';
+import { startTunnel } from './start';
+import { openTunnel, type GuacamoleState } from './tunnel';
 import Guacamole from '../vendor/guacamole.js';
 
 const TOKEN_MARKER = 'TOKENMARKER_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
@@ -55,7 +55,7 @@ function logged(spies: ReturnType<typeof spyOnConsole>): string[] {
 describe('session paths keep secrets out of logs (LOG-007, SEC-002)', () => {
   it('LOG-007: a whole session logs no token, clipboard text, keystroke or gateway text', async () => {
     const spies = spyOnConsole();
-    const states: TunnelState[] = [];
+    const states: GuacamoleState[] = [];
     const api = {
       startSession: () =>
         Promise.resolve({ ok: true as const, value: { sessionId: 's-1', token: TOKEN_MARKER, tunnelPath: '/tunnel', expiresAt: '2026-11-04T10:00:30Z' } }),

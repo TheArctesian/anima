@@ -5,7 +5,8 @@ export type { SessionEndReason } from '$lib/hub/generated/graphql';
 /** What the tunnel saw when it ended (the `TunnelState` fields `ending` reads). */
 export interface TunnelClose {
   readonly closeCode: number | undefined;
-  readonly gatewayError: number | undefined;
+  /** The last Guacamole gateway `error` status; the terminal tunnel has none. */
+  readonly gatewayError?: number | undefined;
   readonly opened: boolean;
   /** The reason in the terminal tunnel's `end` message (K4 §8.4), which is the hub's own word for the close. */
   readonly endReason?: SessionEndReason;

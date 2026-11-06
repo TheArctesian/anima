@@ -130,7 +130,7 @@ function fromHub(data: unknown, onbytes: LinkEvents['onbytes']): Partial<TunnelS
 
 /** The link on `socket`: state, liveness, size and the message handling. */
 function linkOver(socket: WebSocket, events: LinkEvents): TerminalLink {
-  let state: TunnelState = { phase: 'connecting', opened: false, gatewayError: undefined, closeCode: undefined };
+  let state: TunnelState = { phase: 'connecting', opened: false, closeCode: undefined };
   let finished = false;
   let closing = false;
 

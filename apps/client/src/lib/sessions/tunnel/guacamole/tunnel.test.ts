@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ending } from '../../ending';
 import { installBlankCanvas } from '../fake/canvas.fixture';
 import { decodeInstructions, encodeInstruction, FAKE_TUNNEL_SOCKET, FakeTunnelSocket } from '../fake/socket.fixture';
-import { openTunnel, type SessionTunnel, type TunnelState } from './tunnel';
+import { openTunnel, type SessionTunnel, type GuacamoleState } from './tunnel';
 import Guacamole from '../vendor/guacamole.js';
 
 /** A ticket token that is easy to find anywhere it should not be (43 base64url characters, K4 §1). */
@@ -13,13 +13,13 @@ const ORIGIN = 'https://hub.anima.ing';
 interface Opened {
   readonly tunnel: SessionTunnel;
   readonly socket: FakeTunnelSocket;
-  readonly states: TunnelState[];
-  readonly ends: TunnelState[];
+  readonly states: GuacamoleState[];
+  readonly ends: GuacamoleState[];
 }
 
 function open(origin = ORIGIN): Opened {
-  const states: TunnelState[] = [];
-  const ends: TunnelState[] = [];
+  const states: GuacamoleState[] = [];
+  const ends: GuacamoleState[] = [];
   const opening = openTunnel({
     origin,
     ticket: { tunnelPath: '/tunnel', token: TOKEN },
@@ -145,8 +145,8 @@ describe('tunnel connect (D-3, K4 §4)', () => {
   });
 
   it('SEC-002: a refused connect reports no change and no end', async () => {
-    const changes: TunnelState[] = [];
-    const ends: TunnelState[] = [];
+    const changes: GuacamoleState[] = [];
+    const ends: GuacamoleState[] = [];
     const throwing = function (url: string): never {
       throw new SyntaxError(`The URL '${url}' is invalid.`);
     } as unknown as typeof WebSocket;

@@ -9,7 +9,7 @@ const display = { widthPx: 800, heightPx: 600 };
 const request = { deviceId: 'web-1', deviceName: 'web-1', protocol: 'SSH', origin: null } as const;
 const ENDED = { ok: true, value: undefined } as const;
 const UNAVAILABLE = { ok: false, error: { code: 'UNAVAILABLE', message: 'The hub is not ready.' } } as const;
-const ENDED_STATE: TunnelState = { phase: 'disconnected', opened: true, gatewayError: undefined, closeCode: 1000 };
+const ENDED_STATE: TunnelState = { phase: 'disconnected', opened: true, closeCode: 1000 };
 
 function quiet(): TunnelEvents {
   return { size: () => ({ cols: 80, rows: 24 }), onbytes: vi.fn(), onchange: vi.fn(), onend: vi.fn() };

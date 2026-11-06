@@ -9,22 +9,17 @@ export interface TunnelTicket {
   readonly token: string;
 }
 
-/**
- * Where the session stands, from the 1.5.5 client states: `connecting` while the socket is made, `waiting` until
- * the gateway's first frame (`sync`), `connected` after it, `disconnected` once the client or the tunnel stopped.
- */
-export type TunnelPhase = 'connecting' | 'waiting' | 'connected' | 'disconnected';
+/** Where the session stands: `connecting` while the socket is made, `connected` once it is open, `disconnected` after it ended. */
+export type TunnelPhase = 'connecting' | 'connected' | 'disconnected';
 
 /** What a tunnel knows; it holds no token, no URL and no gateway text (SEC-002, LOG-007). */
 export interface TunnelState {
   readonly phase: TunnelPhase;
-  /** Whether the hub's first instruction arrived, so the WebSocket upgrade succeeded (K4 §4). */
+  /** Whether the WebSocket upgrade succeeded. */
   readonly opened: boolean;
-  /** The status code of the last gateway `error` instruction; its text is never kept (R-035). */
-  readonly gatewayError: number | undefined;
-  /** The WebSocket close code, once the socket has closed (K4 §5). */
+  /** The WebSocket close code, once the socket has closed (K4 §5, §8.6). */
   readonly closeCode: number | undefined;
-  /** The reason of the terminal tunnel's `end` message (K4 §8.4); the Guacamole tunnel never sets it. */
+  /** The reason of the hub's `end` message (K4 §8.4). */
   readonly endReason?: SessionEndReason;
 }
 
