@@ -73,6 +73,9 @@ describe('desktopWebView commands (WP-31 shell interface)', () => {
     }
   });
 
+});
+
+describe('desktopWebView URL guard', () => {
   it('never sends a URL the shell must not take: only http and https open, only https is read', async () => {
     await expect(desktopWebView.openSystemBrowser('file:///etc/passwd')).rejects.toMatchObject({ code: 'invalid_url' });
     await expect(desktopWebView.openSystemBrowser('javascript:alert(1)')).rejects.toMatchObject({ code: 'invalid_url' });

@@ -98,11 +98,14 @@
         else unlisten = stop;
       })
       .catch(() => apply({ event: 'failed', reason: 'listen' }));
-    void shell.pinning().then((pinning) => {
-      if (stopped) return;
-      const down = device.status === 'DOWN';
-      tab = startTab({ url: webInterface.url, pinned: webInterface.pinnedFingerprintSha256, pinning, down });
-    });
+    void shell
+      .pinning()
+      .catch(() => false)
+      .then((pinning) => {
+        if (stopped) return;
+        const down = device.status === 'DOWN';
+        tab = startTab({ url: webInterface.url, pinned: webInterface.pinnedFingerprintSha256, pinning, down });
+      });
     const observer = new ResizeObserver(measure);
     if (area !== undefined) observer.observe(area);
     window.addEventListener('resize', measure);

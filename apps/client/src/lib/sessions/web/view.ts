@@ -100,8 +100,10 @@ export function nativeView({ shell, tabId, onfail, onstate }: NativeViewOptions)
         try {
           await shell.open({ tabId, ...target, bounds });
         } catch (reason) {
+          // The failure is told first, so the tab leaves its loading step before a new open could start.
+          onfail(codeOf(reason));
           if (state === 'opening') become('none');
-          throw reason;
+          return;
         }
         placing.sent(bounds);
         showing.sent(undefined);
