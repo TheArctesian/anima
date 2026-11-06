@@ -5,7 +5,7 @@
 use std::net::{IpAddr, SocketAddr};
 
 use guac_protocol::{ConnectParams, DecodeError};
-use tokio::{net::lookup_host, time::timeout};
+use tokio::time::timeout;
 
 use super::{
     arguments::{BadConnectValue, connect_values, time_zone},
@@ -16,7 +16,8 @@ use crate::{
     credentials, devices,
     sessions::{
         self, PendingTicket,
-        probe::{self, PROBE_TIMEOUT, ProbeError, Target},
+        probe::{self, PROBE_TIMEOUT},
+        ssh::{self, SshError, Target},
         target::TargetRule,
     },
 };
@@ -45,7 +46,7 @@ pub(super) enum NotOpened {
     #[error("the device host resolves to a refused address")]
     RefusedTarget,
     #[error("the device's host key could not be read")]
-    HostKeyUnread(#[source] ProbeError),
+    HostKeyUnread(#[source] SshError),
     #[error(transparent)]
     Values(#[from] BadConnectValue),
     #[error("guacd cannot be reached")]
@@ -135,7 +136,7 @@ pub(super) async fn open(route: &Route, ticket: &PendingTicket) -> Result<Openin
         probe::read_host_key(probed, PROBE_TIMEOUT)
             .await
             .map_err(|error| match error {
-                ProbeError::RefusedTarget => NotOpened::RefusedTarget,
+                SshError::RefusedTarget => NotOpened::RefusedTarget,
                 other => NotOpened::HostKeyUnread(other),
             })?;
     if presented != accepted.public_key {
@@ -158,15 +159,16 @@ pub(super) async fn open(route: &Route, ticket: &PendingTicket) -> Result<Openin
 }
 
 /// The address the session goes to: the first one the device's host resolves to, when `rule`
-/// lets the gateway reach every one of them (R-032). Each address is checked in its canonical
-/// form, so an IPv4-mapped address is checked and sent as the IPv4 address it is.
+/// lets the gateway reach every one of them (R-032), in its canonical form, so an
+/// IPv4-mapped address is checked and sent as the IPv4 address it is (`ssh::addresses`).
 async fn target(host: &str, port: u16, rule: TargetRule) -> Result<IpAddr, NotOpened> {
-    let addresses: Vec<SocketAddr> = lookup_host((host, port))
-        .await
-        .map_err(|_| NotOpened::Unresolved)?
-        .map(|address| SocketAddr::new(address.ip().to_canonical(), port))
-        .collect();
-    let checked = rule.checked(addresses).ok_or(NotOpened::RefusedTarget)?;
+    let checked =
+        ssh::addresses(Target { host, port, rule })
+            .await
+            .map_err(|error| match error {
+                SshError::RefusedTarget => NotOpened::RefusedTarget,
+                _ => NotOpened::Unresolved,
+            })?;
     checked
         .first()
         .map(SocketAddr::ip)

@@ -12,7 +12,8 @@ use crate::{
     sessions::{
         Error, FieldError, HostKey, find_device, host_key,
         live::Live,
-        probe::{Login, PROBE_TIMEOUT, ProbeError, SignIn, Target, read_host_key, sign_in},
+        probe::{Login, PROBE_TIMEOUT, SignIn, read_host_key, sign_in},
+        ssh::{SshError, Target},
     },
 };
 
@@ -168,7 +169,7 @@ fn refused_host() -> FieldError {
 /// target is the operator's `Validation` error on `host` (R-032).
 fn outcome(
     accepted: Option<&HostKey>,
-    seen: Result<Seen, ProbeError>,
+    seen: Result<Seen, SshError>,
 ) -> Result<ConnectionTest, Error> {
     let reached = |message| ConnectionTest {
         reachable: true,
@@ -201,12 +202,12 @@ fn outcome(
                 })
             },
         },
-        Err(ProbeError::AuthFailed) => reached(AUTH_FAILED),
-        Err(ProbeError::UnreadableKey) => reached(UNREADABLE_KEY),
-        Err(ProbeError::RefusedTarget) => return Err(Error::Validation(vec![refused_host()])),
-        Err(ProbeError::Unresolved) => unreached(UNRESOLVED),
-        Err(ProbeError::Unreachable) => unreached(UNREACHABLE),
-        Err(ProbeError::Timeout) => unreached(TIMED_OUT),
-        Err(ProbeError::Protocol) => unreached(NOT_SSH),
+        Err(SshError::AuthFailed) => reached(AUTH_FAILED),
+        Err(SshError::UnreadableKey) => reached(UNREADABLE_KEY),
+        Err(SshError::RefusedTarget) => return Err(Error::Validation(vec![refused_host()])),
+        Err(SshError::Unresolved) => unreached(UNRESOLVED),
+        Err(SshError::Unreachable) => unreached(UNREACHABLE),
+        Err(SshError::Timeout) => unreached(TIMED_OUT),
+        Err(SshError::Protocol) => unreached(NOT_SSH),
     })
 }

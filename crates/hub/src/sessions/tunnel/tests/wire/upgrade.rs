@@ -13,7 +13,6 @@ use super::{
     super::super::{
         ending::{Cause, End},
         opening::{self, Opening},
-        record::finish,
         relaying::connected,
     },
     Bench,
@@ -23,7 +22,7 @@ use super::{
     heard,
     records::ended,
 };
-use crate::sessions::{Actor, Redeemed};
+use crate::sessions::{Actor, Redeemed, end::finish};
 
 /// A session redeemed and opened to a guacd past `ready`, with no client socket yet.
 async fn opened(pool: &PgPool, setup: Setup) -> (FakeGuacd, Bench, Redeemed, Opening) {
@@ -125,7 +124,7 @@ async fn sec_007_a_changed_host_key_stays_the_cause_when_the_upgrade_fails(pool:
     let opening = Opening::HostKeyChanged;
     let end = after_response(&bench, &mut redeemed, opening, socket).await;
     assert_eq!(end.cause, Cause::HostKeyMismatch);
-    finish(&bench.route, redeemed, &end).await;
+    finish(&bench.route.records(), redeemed, &end).await;
     let ended = ended(&pool, bench.session).await;
     ended_once(&ended, "host_key_mismatch", "error", LOOPBACK);
 }

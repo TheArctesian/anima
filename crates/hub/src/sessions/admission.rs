@@ -1,0 +1,74 @@
+//! What a tunnel request must pass before its session task starts, shared by `/tunnel` and
+//! `/terminal` (K4 Sections 1, 2 and 8.1, API-009): the lazy sweep of expired tickets
+//! (D-2), the token from the query, the client address and the single-use redemption, and
+//! the subprotocol the WebSocket upgrade must offer.
+//!
+//! Neither the URI, the query nor the token reaches a log, a span or an error (LOG-007).
+
+use axum::{
+    extract::{WebSocketUpgrade, ws::rejection::WebSocketUpgradeRejection},
+    http::{Extensions, StatusCode},
+};
+use chrono::{DateTime, Utc};
+use sqlx::PgPool;
+
+use super::{Live, Redeemed, end::sweep};
+use crate::access;
+
+/// Largest WebSocket message and frame from the client, on either tunnel (WP-08 H-3, K4
+/// Section 8.5).
+const MAX_MESSAGE_BYTES: usize = 64 * 1024;
+
+/// Sweeps expired tickets, so the 403 below never leaves an expired row live (D-2).
+///
+/// # Errors
+/// 503, before any token is read, when the sweep cannot run.
+pub(super) async fn swept(db: &PgPool, live: &Live, now: DateTime<Utc>) -> Result<(), StatusCode> {
+    sweep(db, live, now).await.map_err(|error| {
+        tracing::error!(%error, "the tunnel could not sweep expired tickets");
+        StatusCode::SERVICE_UNAVAILABLE
+    })
+}
+
+/// Redeems the query's token for the client address at `now`. A presented token is spent
+/// whatever happens next, valid or not (K4 Section 1), so callers redeem before they check
+/// the subprotocol: a request without it still spends the token, and cannot be used to test
+/// a token without spending it.
+///
+/// # Errors
+/// 403, with no detail, for every refusal: no token, no client address, or `Live::redeem`
+/// refused it.
+pub(super) fn redeem(
+    live: &Live,
+    query: &str,
+    extensions: &Extensions,
+    now: DateTime<Utc>,
+) -> Result<Redeemed, StatusCode> {
+    let (Some(token), Some(client)) = (token_in(query), access::client_addr(extensions)) else {
+        return Err(StatusCode::FORBIDDEN);
+    };
+    live.redeem(token, client, now)
+        .map_err(|_| StatusCode::FORBIDDEN)
+}
+
+/// The value of the first `token=` pair. No decoding: a token is base64url, so a
+/// percent-encoded one is not canonical and is refused like any unknown token.
+fn token_in(query: &str) -> Option<&str> {
+    query
+        .split('&')
+        .find_map(|pair| pair.strip_prefix("token="))
+}
+
+/// The upgrade, when it is one and offers `subprotocol`, with the size caps of K4 Section 8.5.
+pub(super) fn offering(
+    upgrade: Result<WebSocketUpgrade, WebSocketUpgradeRejection>,
+    subprotocol: &'static str,
+) -> Option<WebSocketUpgrade> {
+    let upgrade = upgrade.ok()?.protocols([subprotocol]);
+    upgrade.selected_protocol()?;
+    Some(
+        upgrade
+            .max_message_size(MAX_MESSAGE_BYTES)
+            .max_frame_size(MAX_MESSAGE_BYTES),
+    )
+}

@@ -30,10 +30,9 @@ use super::{
     ending::{Cause, End},
     gateway::host_key_changed,
     opening::{self, Opening},
-    record::Unfinished,
     route::{Route, Timing},
 };
-use crate::sessions::{Redeemed, Tunnel};
+use crate::sessions::{Redeemed, Tunnel, end::Unfinished};
 use writes::{close_client, leave_gateway, send_text};
 
 /// The event message when the request did not offer the `guacamole` subprotocol.
@@ -50,7 +49,7 @@ pub(super) async fn run(
     upgrade: Option<WebSocketUpgrade>,
     answer: oneshot::Sender<Response>,
 ) {
-    let mut unfinished = Unfinished::new(Arc::clone(&route), redeemed);
+    let mut unfinished = Unfinished::new(route.records(), redeemed);
     let end = session(&route, unfinished.redeemed(), upgrade, answer).await;
     unfinished.finish(&end).await;
 }

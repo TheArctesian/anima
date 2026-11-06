@@ -1,7 +1,10 @@
 //! `GET /tunnel` (K4 Section 2, API-009): every refusal happens before the WebSocket upgrade,
 //! with an HTTP status and an empty body.
 //!
-//! The order of the checks:
+//! Not mounted: only SSH exists, and SSH uses `/terminal` (K4 Section 8, R-062). This route,
+//! its relay and their tests stay for RDP and VNC (Phase 2).
+//!
+//! The order of the checks (`admission`):
 //!
 //! 1. The lazy sweep of expired tickets (D-2); if it cannot run, 503 before any token is read.
 //! 2. The token from the query and the client address, then `Live::redeem` (403). A presented
@@ -33,20 +36,18 @@ use super::{
     relaying,
 };
 use crate::{
-    access,
     clock::Clock,
     credentials::Vault,
     events::Bus,
-    sessions::{Live, Redeemed, end::sweep, probe::PROBE_TIMEOUT},
+    sessions::{Live, Redeemed, admission, end::Records, probe::PROBE_TIMEOUT},
 };
 
 /// The only path of the tunnel in Phase 1 (K4 Section 1 `tunnelPath`).
 const PATH: &str = "/tunnel";
-/// The WebSocket subprotocol guacamole-common-js asks for (K4 Section 2).
+/// The WebSocket subprotocol guacamole-common-js asks for (K4 Section 2). Its 64 KiB message
+/// cap (`admission`) is eight of guacd's largest instructions, so one message never decodes
+/// into an unbounded number of instructions (WP-08 H-3).
 const SUBPROTOCOL: &str = "guacamole";
-/// Largest WebSocket message and frame from the client (WP-08 H-3): eight of guacd's largest
-/// instructions, so one message never decodes into an unbounded number of instructions.
-const MAX_MESSAGE_BYTES: usize = 64 * 1024;
 /// How long the hub waits for the guacd handshake and for the upgrade after it (K4 Section 3,
 /// D-7).
 const HANDSHAKE_WAIT: Duration = Duration::from_secs(10);
@@ -92,6 +93,17 @@ pub(super) struct Route {
     pub(super) timing: Timing,
 }
 
+impl Route {
+    /// Where this route's sessions write their end.
+    pub(super) fn records(&self) -> Records {
+        Records {
+            db: self.db.clone(),
+            bus: self.bus.clone(),
+            clock: Arc::clone(&self.clock),
+        }
+    }
+}
+
 /// The `/tunnel` route (K3, K4 Section 2). `main.rs` mounts it behind
 /// `access::permitted_networks_layer` (NET-002) and serves it with `ConnectInfo<SocketAddr>`,
 /// so the client address is known.
@@ -125,27 +137,6 @@ pub(super) fn router(route: Route) -> Router {
         .with_state(Arc::new(route))
 }
 
-/// The value of the first `token=` pair. No decoding: a token is base64url, so a
-/// percent-encoded one is not canonical and is refused like any unknown token.
-fn token_in(query: &str) -> Option<&str> {
-    query
-        .split('&')
-        .find_map(|pair| pair.strip_prefix("token="))
-}
-
-/// The upgrade, when it is one and offers the `guacamole` subprotocol, with the size caps.
-fn guacamole(
-    upgrade: Result<WebSocketUpgrade, WebSocketUpgradeRejection>,
-) -> Option<WebSocketUpgrade> {
-    let upgrade = upgrade.ok()?.protocols([SUBPROTOCOL]);
-    upgrade.selected_protocol()?;
-    Some(
-        upgrade
-            .max_message_size(MAX_MESSAGE_BYTES)
-            .max_frame_size(MAX_MESSAGE_BYTES),
-    )
-}
-
 async fn open(
     State(route): State<Arc<Route>>,
     RawQuery(query): RawQuery,
@@ -160,7 +151,8 @@ async fn open(
     drop(query);
     let (answer, answered) = oneshot::channel();
     // Not awaited here: dropping this handler must not drop the session (MV-003).
-    tokio::spawn(relaying::run(route, redeemed, guacamole(upgrade), answer));
+    let upgrade = admission::offering(upgrade, SUBPROTOCOL);
+    tokio::spawn(relaying::run(route, redeemed, upgrade, answer));
     // No answer only when the task stopped before giving one; it still ended the session.
     answered
         .await
@@ -176,15 +168,6 @@ async fn redeem(
     extensions: &Extensions,
 ) -> Result<Redeemed, StatusCode> {
     let now = route.clock.now();
-    if let Err(error) = sweep(&route.db, &route.live, now).await {
-        tracing::error!(%error, "the tunnel could not sweep expired tickets");
-        return Err(StatusCode::SERVICE_UNAVAILABLE);
-    }
-    let (Some(token), Some(client)) = (token_in(query), access::client_addr(extensions)) else {
-        return Err(StatusCode::FORBIDDEN);
-    };
-    route
-        .live
-        .redeem(token, client, now)
-        .map_err(|_| StatusCode::FORBIDDEN)
+    admission::swept(&route.db, &route.live, now).await?;
+    admission::redeem(&route.live, query, extensions, now)
 }

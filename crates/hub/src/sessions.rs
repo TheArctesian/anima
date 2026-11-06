@@ -3,6 +3,7 @@
 //! tickets that open the tunnel (K4 §1, API-009). The connection test reads a host's key
 //! and `acceptHostKey` records it (DEV-013, D-5, D-6).
 
+mod admission;
 mod end;
 pub mod graphql;
 mod live;
@@ -10,6 +11,7 @@ mod model;
 mod page;
 mod probe;
 mod public_key;
+mod ssh;
 mod start;
 mod store;
 mod target;
