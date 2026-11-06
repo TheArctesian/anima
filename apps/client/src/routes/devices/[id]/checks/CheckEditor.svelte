@@ -21,6 +21,6 @@
   const siblings = $derived(checks.map(siblingOf));
 </script>
 
-<Modal {open} title={check === null ? 'Add check' : `Edit ${check.name}`} {onClose}>
+<Modal {open} title={check === null ? 'Add check' : `Edit ${check.name}`} {onClose} size="form">
   <CheckForm {check} {siblings} {onSave} onCancel={onClose} />
 </Modal>

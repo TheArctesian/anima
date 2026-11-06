@@ -60,7 +60,7 @@
   }
 </script>
 
-<Modal {open} {title} {onClose}>
+<Modal {open} {title} {onClose} size="form">
   {#if machine !== null}
     <MachineChoice
       os={machine.os}

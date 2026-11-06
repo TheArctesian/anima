@@ -86,3 +86,25 @@ it('SEC-006: the host key dialog opened from inside Add device is a child of bod
     expect(dialog.parentElement?.closest('[role="dialog"]')).toBeNull();
   }
 });
+
+it('MOT-007: Add device has a fixed-size surface whose body scrolls the form below the title, so a section never moves its edge', () => {
+  app = mount(AddDeviceModal, {
+    target: document.body,
+    props: {
+      open: true,
+      sites: [{ id: 's1', name: 'Home', subnet: '10.10.0.0/24' }],
+      onCreate: () => Promise.reject(new Error('not used')),
+      onTest: () => Promise.reject(new Error('not used')),
+      onClose: () => undefined,
+      onCreated: () => undefined,
+    },
+  });
+  flushSync();
+
+  const dialog = document.querySelector('[role="dialog"]');
+  const body = dialog?.querySelector(':scope > .body');
+  expect(dialog?.classList.contains('form')).toBe(true);
+  expect(dialog?.querySelector(':scope > h2')?.textContent).toBe('Add device');
+  expect(body?.querySelector('form')).not.toBeNull();
+  expect(body?.querySelector('h2')).toBeNull();
+});

@@ -2,6 +2,7 @@ import type { TransitionConfig } from 'svelte/transition';
 import { easeCurve, springCurve } from '../animate';
 import { modeTokens, springMotion, staggerDelayMs, type SpringName } from '../options';
 import { motionPreference, type MotionPreference } from '../preference';
+import { firstDirection, opacity, scaledFade } from './path';
 import { roleScale } from './scales';
 
 /*
@@ -27,25 +28,6 @@ export interface ListRowParams extends RoleParams {
 }
 
 export type RoleTransition = (options?: { direction?: 'in' | 'out' }) => TransitionConfig;
-
-const opacity = (t: number) => `opacity: ${String(t)};`;
-
-/** A fade with a scale from `atZero` when gone to 1 in place; with no scale, a fade only. */
-function scaledFade(atZero: number | undefined, origin: string | undefined) {
-  if (atZero === undefined) return opacity;
-  const at = origin === undefined ? '' : ` transform-origin: ${origin};`;
-  return (t: number) => `${opacity(t)} scale: ${String(atZero + (1 - atZero) * t)};${at}`;
-}
-
-/**
- * The scale an element has when gone, fixed by the first direction of one transition. A
- * reversal mid-flight keeps it, so it goes back on the path it came on with no step in scale
- * (MOT-002, MOT-005); Svelte keeps one transition's options until it ends.
- */
-function firstScale(): (own: number | undefined) => number | undefined {
-  let first: { readonly atZero: number | undefined } | undefined;
-  return (own) => (first ??= { atZero: own }).atZero;
-}
 
 /** `transform-origin` for `surface` at the centre of `control` (MOT-005). */
 function originAt(control: Element, surface: Element): string {
@@ -103,12 +85,12 @@ export function fade(_node: Element, { preference = motionPreference() }: RolePa
  * `spring-snappy`; exit fades and scales to 0.98 over `duration-fast`. Reduced: fade only.
  */
 export function popover(node: Element, { preference = motionPreference(), from }: PopoverParams = {}): RoleTransition {
-  const atZero = firstScale();
+  const atZero = firstDirection<number | undefined>();
   return ({ direction } = {}) => {
     const origin = from === undefined ? undefined : originAt(from, node);
     return direction === 'out'
-      ? exit(atZero(roleScale.popoverExit), preference.reduced, origin)
-      : enter('snappy', atZero(roleScale.popoverEnter), preference.reduced, origin);
+      ? exit(atZero(() => roleScale.popoverExit), preference.reduced, origin)
+      : enter('snappy', atZero(() => roleScale.popoverEnter), preference.reduced, origin);
   };
 }
 
@@ -118,11 +100,11 @@ export function popover(node: Element, { preference = motionPreference(), from }
  * because MOT-006 allows only transform and opacity to animate.
  */
 export function modal(_node: Element, { preference = motionPreference() }: RoleParams = {}): RoleTransition {
-  const atZero = firstScale();
+  const atZero = firstDirection<number | undefined>();
   return ({ direction } = {}) =>
     direction === 'out'
-      ? exit(atZero(roleScale.modal), preference.reduced)
-      : enter('default', atZero(roleScale.modal), preference.reduced);
+      ? exit(atZero(() => roleScale.modal), preference.reduced)
+      : enter('default', atZero(() => roleScale.modal), preference.reduced);
 }
 
 /**
@@ -133,10 +115,10 @@ export function listRow(
   _node: Element,
   { preference = motionPreference(), index = 0 }: ListRowParams = {},
 ): RoleTransition {
-  const atZero = firstScale();
+  const atZero = firstDirection<number | undefined>();
   return ({ direction } = {}) => {
-    if (direction === 'out') return exit(atZero(undefined), preference.reduced);
+    if (direction === 'out') return exit(atZero(() => undefined), preference.reduced);
     const delay = staggerDelayMs(index, preference.reduced);
-    return { ...enter('move', atZero(roleScale.listEnter), preference.reduced), delay };
+    return { ...enter('move', atZero(() => roleScale.listEnter), preference.reduced), delay };
   };
 }

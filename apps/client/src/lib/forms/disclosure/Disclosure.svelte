@@ -53,7 +53,7 @@
 
   /**
    * What the section's change of height can move: the elements after it and after each of its
-   * ancestors, up to the nearest scroll container (a modal's surface) or the body. A form section
+   * ancestors, up to the nearest scroll container (a modal's body) or the page's body. A form section
    * moves the form's actions and whatever follows the form, such as the Settings tab's delete block.
    */
   function below(): Animatable[] {
