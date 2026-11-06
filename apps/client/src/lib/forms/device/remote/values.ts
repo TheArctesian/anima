@@ -1,4 +1,5 @@
-import type { MetricsSource, PendingDeviceFields, RdpResizeMethod, RdpSecurity } from '../../hub-pending';
+import type { MetricsSource, RdpResizeMethod, RdpSecurity } from '$lib/hub/generated/graphql';
+import type { PendingDeviceFields } from '../../hub-pending';
 
 /** The K1 device fields as the form reads them; each may be missing until the devices client queries it (D-3). */
 export type RemoteFields = Partial<PendingDeviceFields>;

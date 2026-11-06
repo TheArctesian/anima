@@ -1,10 +1,9 @@
 <script lang="ts">
   import type { FieldError } from '$lib/hub/error';
-  import type { OperatingSystem } from '$lib/hub/generated/graphql';
+  import type { MetricsSource, OperatingSystem } from '$lib/hub/generated/graphql';
   import type { NewSite } from '../site';
   import type { SiteOption } from '../values';
   import type { EditedValues } from './editing';
-  import type { MetricsSource } from '../../hub-pending';
   import Field from './Field.svelte';
   import TagsField from './TagsField.svelte';
 

@@ -8,7 +8,6 @@ import type {
   IpVersion,
 } from './hub-types';
 import { blankProbes, withProbeConfig, type ProbeValues } from '../probes/values';
-import type { PendingCheckConfig } from '$lib/forms/hub-pending';
 
 export interface HeaderRow {
   name: string;
@@ -98,6 +97,34 @@ function blank(type: CheckType): CheckFormValues {
   };
 }
 
+type HttpConfigFields = Extract<CheckConfigFields, { __typename: 'HttpConfig' }>;
+
+function withHttp(values: CheckFormValues, config: HttpConfigFields): CheckFormValues {
+  return {
+    ...values,
+    http: {
+      ...values.http,
+      url: config.url,
+      method: config.method,
+      headers: config.headers.map((header) => ({
+        name: header.name,
+        value: header.value ?? '',
+        stored: header.value === null,
+      })),
+      body: config.body ?? '',
+      maxRedirects: String(config.maxRedirects),
+      acceptedStatus: config.acceptedStatus.map((range) => ({ from: String(range.from), to: String(range.to) })),
+      keyword: config.keyword ?? '',
+      jsonQuery: config.jsonQuery ?? '',
+      jsonExpected: config.jsonExpected ?? '',
+      authKind: config.authKind,
+      storedAuth: config.authKind,
+      verifyTls: config.verifyTls,
+      timeoutMs: String(config.timeoutMs),
+    },
+  };
+}
+
 function withConfig(values: CheckFormValues, config: CheckConfigFields): CheckFormValues {
   switch (config.__typename) {
     case 'IcmpConfig':
@@ -110,29 +137,7 @@ function withConfig(values: CheckFormValues, config: CheckConfigFields): CheckFo
         tls: { port: String(config.port), serverName: config.serverName ?? '', timeoutMs: String(config.timeoutMs) },
       };
     case 'HttpConfig':
-      return {
-        ...values,
-        http: {
-          ...values.http,
-          url: config.url,
-          method: config.method,
-          headers: config.headers.map((header) => ({
-            name: header.name,
-            value: header.value ?? '',
-            stored: header.value === null,
-          })),
-          body: config.body ?? '',
-          maxRedirects: String(config.maxRedirects),
-          acceptedStatus: config.acceptedStatus.map((range) => ({ from: String(range.from), to: String(range.to) })),
-          keyword: config.keyword ?? '',
-          jsonQuery: config.jsonQuery ?? '',
-          jsonExpected: config.jsonExpected ?? '',
-          authKind: config.authKind,
-          storedAuth: config.authKind,
-          verifyTls: config.verifyTls,
-          timeoutMs: String(config.timeoutMs),
-        },
-      };
+      return withHttp(values, config);
     case 'DnsConfig':
       return {
         ...values,
@@ -147,10 +152,12 @@ function withConfig(values: CheckFormValues, config: CheckConfigFields): CheckFo
       return { ...values, push: { path: config.pushPath } };
     case 'GroupConfig':
       return { ...values, group: { childIds: config.children.map((child) => child.id) } };
-    default:
-      // The generated K1 union names the Phase 2 configs without their fields until the check query
-      // selects them; WP-25 replaces this cast when it moves the form onto the generated types.
-      return withProbeConfig(values, config as PendingCheckConfig);
+    case 'DockerConfig':
+    case 'SystemdConfig':
+    case 'SnmpConfig':
+    case 'TailscalePingConfig':
+      // The hub's check query does not select these fields yet (WP-29); without them the form keeps its defaults.
+      return withProbeConfig(values, config);
   }
 }
 

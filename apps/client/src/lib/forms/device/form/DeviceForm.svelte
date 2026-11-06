@@ -8,7 +8,7 @@
   import { fieldErrorsFrom } from '../field-errors';
   import type { ConnectionTestInput } from '$lib/hub/generated/graphql';
   import type { ConnectionTestResult } from '../connection-test';
-  import type { PendingConnectionTestInput, PendingConnectionTestResult } from '../../hub-pending';
+  import type { PendingConnectionTestResult } from '../../hub-pending';
   import RemoteTest from '../remote/test/RemoteTest.svelte';
   import { suggestedSite, validateNewSite, type NewSite, type SitePlacement } from '../site';
   import { validateDevice } from '../validate';
@@ -47,7 +47,7 @@
     /** `site` is null when editing. The values are a snapshot with secrets in it: the owner must not keep it. */
     onSave: (values: DeviceFormValues, site: SitePlacement | null) => Promise<HubResult<unknown>>;
     onTest: (
-      input: ConnectionTestInput & PendingConnectionTestInput,
+      input: ConnectionTestInput,
     ) => Promise<HubResult<ConnectionTestResult & Partial<PendingConnectionTestResult>>>;
     /** Only for a saved device. */
     onAcceptHostKey: (fingerprint: string) => Promise<HubResult<unknown>>;

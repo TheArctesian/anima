@@ -1,4 +1,29 @@
-import type { PendingCheckConfig, SnmpVersion } from '$lib/forms/hub-pending';
+import type {
+  CheckType,
+  DockerCheckConfigFragment,
+  SnmpCheckConfigFragment,
+  SnmpVersion,
+  SystemdCheckConfigFragment,
+  TailscalePingCheckConfigFragment,
+} from '$lib/hub/generated/graphql';
+
+/** The check types of the Docker, systemd, SNMP and Tailscale ping probes (CHK-009). */
+export type ProbeCheckType = Extract<CheckType, 'DOCKER' | 'SNMP' | 'SYSTEMD' | 'TAILSCALE_PING'>;
+
+/**
+ * The Phase 2 configs with their fields. Until the check query selects them (WP-29) the generated
+ * `Check.config` union names these types without fields, so the form reads this type as well.
+ */
+export type ProbeConfig =
+  | DockerCheckConfigFragment
+  | SystemdCheckConfigFragment
+  | SnmpCheckConfigFragment
+  | TailscalePingCheckConfigFragment;
+
+/** Whether a Phase 2 config carries its fields; every one has `timeoutMs`, the bare union members do not. */
+function hasProbeFields(config: { readonly __typename: ProbeConfig['__typename'] }): config is ProbeConfig {
+  return 'timeoutMs' in config;
+}
 
 /** What the operator typed for the Docker, systemd, SNMP and Tailscale ping checks (CHK-009). */
 export interface ProbeValues {
@@ -44,8 +69,9 @@ export function blankProbes(): ProbeValues {
   };
 }
 
-/** `values` with the settings read from a saved config; no secret is filled in. */
-export function withProbeConfig<V extends ProbeValues>(values: V, config: PendingCheckConfig): V {
+/** `values` with the settings read from a saved config, or as they were when the config has no fields yet; no secret is filled in. */
+export function withProbeConfig<V extends ProbeValues>(values: V, config: { readonly __typename: ProbeConfig['__typename'] }): V {
+  if (!hasProbeFields(config)) return values;
   switch (config.__typename) {
     case 'DockerConfig':
       return { ...values, docker: { container: config.container, timeoutMs: String(config.timeoutMs) } };
