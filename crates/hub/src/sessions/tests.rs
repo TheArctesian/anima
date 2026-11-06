@@ -3,6 +3,7 @@
 
 mod connection_input;
 mod failures;
+pub(super) mod fixture;
 mod observations;
 mod page;
 mod probe;

@@ -2,11 +2,7 @@
 //! subprotocol, 503 when the sweep cannot run, the gateway cannot be reached, SSH is off or
 //! the device's host is refused; and the token never reaches the process log (LOG-007).
 
-use std::{
-    io,
-    sync::{Arc, Mutex},
-    time::Duration,
-};
+use std::time::Duration;
 
 use chrono::TimeDelta;
 use guac_protocol::Display;
@@ -23,7 +19,7 @@ use super::{
     ended_once,
     fake_guacd::{ARGS_1_6_0, CONNECTION_ID, Script, fake_guacd},
     opened,
-    records::ended,
+    records::{Capture, ended},
     socket::{open, open_with},
 };
 use crate::{
@@ -256,21 +252,6 @@ async fn k4_3_ssh_turned_off_after_start_is_503_gateway_error(pool: PgPool) {
         "SSH was turned off for the device before the session opened."
     );
     assert!(guacd.selected.try_recv().is_err(), "guacd is never reached");
-}
-
-/// Collects everything the process log writes.
-#[derive(Clone, Default)]
-struct Capture(Arc<Mutex<Vec<u8>>>);
-
-impl io::Write for Capture {
-    fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
-        self.0.lock().unwrap().extend_from_slice(bytes);
-        Ok(bytes.len())
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
 }
 
 #[sqlx::test(

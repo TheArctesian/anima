@@ -2,11 +2,10 @@
 //! The session starts while the device's host is `10.10.0.21` (a K6 device), then the device
 //! moves to an SSH server on loopback, which the tests' target rule lets the probe reach.
 
-use std::{io::Write as _, net::SocketAddr, sync::Arc, time::Duration};
+use std::{net::SocketAddr, sync::Arc, time::Duration};
 
-use base64::{Engine as _, engine::general_purpose::STANDARD};
-use chrono::{DateTime, TimeDelta, Utc};
-use sqlx::{PgPool, postgres::PgPoolOptions};
+use chrono::TimeDelta;
+use sqlx::PgPool;
 use tokio::net::TcpListener;
 
 use super::{
@@ -15,34 +14,19 @@ use super::{
 };
 use crate::{
     clock::{Clock, FixedClock},
-    credentials::{self, Secret, SshSecret, Vault},
-    events::{Bus, ClientAddr, Operator},
-    ids::{DeviceId, OperatorId, SessionId},
-    sessions::{DisplayRequest, Live, Protocol, PublicKey, StartRequest, start},
+    events::{Bus, ClientAddr},
+    ids::SessionId,
+    sessions::{
+        Live, PublicKey, start,
+        tests::fixture::{own_pool, prepare, request, vault},
+    },
 };
 
-pub(super) const DOCKER_HOST: &str = "0190a000-0000-7000-8002-000000000002";
-const OPERATOR: &str = "0190a000-0000-7000-8000-000000000001";
-pub(super) const PASSWORD: &str = "correct horse battery staple";
-/// The address the test client connects from, and the device's SSH server.
-pub(super) const LOOPBACK: &str = "127.0.0.1";
+pub(super) use crate::sessions::tests::fixture::{
+    LOOPBACK, PASSWORD, address, docker_host, move_device, now, operator,
+};
 /// The seed of the host key the device's SSH server presents.
 const HOST_KEY_SEED: u8 = 3;
-
-pub(super) fn now() -> DateTime<Utc> {
-    "2026-11-04T09:00:00Z".parse().unwrap()
-}
-
-pub(super) fn operator() -> Operator {
-    Operator {
-        id: OPERATOR.parse::<OperatorId>().unwrap(),
-        name: "operator".to_owned(),
-    }
-}
-
-pub(super) fn address(text: &str) -> ClientAddr {
-    ClientAddr(text.parse().unwrap())
-}
 
 /// Waits long enough that only the test's own action ends a session.
 pub(super) fn patient() -> Timing {
@@ -112,89 +96,6 @@ pub(super) struct Bench {
     /// The device's SSH port and the host key it presents.
     pub(super) ssh_port: u16,
     pub(super) host_key: PublicKey,
-}
-
-/// A vault over a throwaway key in a temporary file (SEC-004).
-fn vault() -> Vault {
-    let mut key_file = tempfile::NamedTempFile::new().unwrap();
-    writeln!(key_file, "{}", STANDARD.encode([7; 32])).unwrap();
-    Vault::from_key_file(key_file.path()).unwrap()
-}
-
-/// The operator, `accepted` as `docker-host`'s host key, and a password for it.
-async fn prepare(pool: &PgPool, vault: &Vault, accepted: &PublicKey) {
-    sqlx::query(
-        "insert into access.operators (id, username, password_hash, created_at) \
-         values ($1::text::uuid, 'operator', '$argon2id$x', now())",
-    )
-    .bind(OPERATOR)
-    .execute(pool)
-    .await
-    .unwrap();
-    sqlx::query(
-        "insert into sessions.host_keys (device_id, algorithm, fingerprint_sha256, public_key, \
-                first_seen_at, accepted_at, accepted_by) \
-         values ($1::text::uuid, $2, $3, $4, $5, $5, $6::text::uuid)",
-    )
-    .bind(DOCKER_HOST)
-    .bind(accepted.algorithm())
-    .bind(accepted.fingerprint().as_str().to_owned())
-    .bind(accepted.to_base64())
-    .bind(now())
-    .bind(OPERATOR)
-    .execute(pool)
-    .await
-    .unwrap();
-    let mut conn = pool.acquire().await.unwrap();
-    let password = SshSecret::Password(Secret::from(PASSWORD.to_owned()));
-    credentials::store_ssh(&mut conn, vault, docker_host(), password)
-        .await
-        .unwrap();
-}
-
-pub(super) fn docker_host() -> DeviceId {
-    DOCKER_HOST.parse().unwrap()
-}
-
-/// Points `docker-host` at `host` and `port`, as an operator's edit would.
-pub(super) async fn move_device(pool: &PgPool, host: &str, port: u16) {
-    sqlx::query("update devices.devices set host = $2 where id = $1::text::uuid")
-        .bind(DOCKER_HOST)
-        .bind(host)
-        .execute(pool)
-        .await
-        .unwrap();
-    sqlx::query("update devices.ssh_settings set port = $2 where device_id = $1::text::uuid")
-        .bind(DOCKER_HOST)
-        .bind(i32::from(port))
-        .execute(pool)
-        .await
-        .unwrap();
-}
-
-/// A pool of its own on the test database for the route. sqlx test pools share 20 connections
-/// across all running tests; the tunnel task writes while the test reads, and two
-/// connections per test starve that share when many tests run at once.
-async fn own_pool(pool: &PgPool) -> PgPool {
-    PgPoolOptions::new()
-        .max_connections(2)
-        .connect_with((*pool.connect_options()).clone())
-        .await
-        .unwrap()
-}
-
-/// The display a client asks for.
-fn request() -> StartRequest {
-    StartRequest {
-        device: docker_host(),
-        protocol: Protocol::Ssh,
-        display: DisplayRequest {
-            width_px: 1280,
-            height_px: 800,
-            dpi: 96,
-            timezone: Some("Europe/Berlin".to_owned()),
-        },
-    }
 }
 
 /// Starts a session on `docker-host` at `now()`, moves the device to an SSH server on
