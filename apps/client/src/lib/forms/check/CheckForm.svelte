@@ -11,6 +11,8 @@
   import SelectField from './fields/SelectField.svelte';
   import TextField from './fields/TextField.svelte';
   import TypeFields from './fields/TypeFields.svelte';
+  import ProbeFields from './probes/ProbeFields.svelte';
+  import SnmpFields from './probes/SnmpFields.svelte';
   import { messageFor, placeHubErrors, shownFields, touchesAdvanced, unplaced } from './model/errors';
   import { groupCandidates, type SiblingCheck } from './model/group';
   import type { CheckFields, CheckType } from './model/hub-types';
@@ -38,6 +40,10 @@
     { value: 'DNS', label: 'DNS lookup' },
     { value: 'PUSH', label: 'Push (the device calls the hub)' },
     { value: 'GROUP', label: 'Group of checks' },
+    { value: 'DOCKER', label: 'Docker container' },
+    { value: 'SYSTEMD', label: 'systemd service' },
+    { value: 'SNMP', label: 'SNMP' },
+    { value: 'TAILSCALE_PING', label: 'Tailscale ping' },
   ];
 
   // Inside a modal the actions go to its footer; the submit button is tied to the form by its ID.
@@ -100,6 +106,10 @@
     <HttpFields bind:http={values.http} {errors} />
   {:else if values.type === 'GROUP'}
     <GroupFields {candidates} bind:childIds={values.group.childIds} error={error('childIds')} />
+  {:else if values.type === 'SNMP'}
+    <SnmpFields bind:snmp={values.snmp} {errors} />
+  {:else if values.type === 'DOCKER' || values.type === 'SYSTEMD' || values.type === 'TAILSCALE_PING'}
+    <ProbeFields bind:values {errors} />
   {:else}
     <TypeFields bind:values {errors} />
   {/if}
