@@ -131,6 +131,42 @@
       "$value": "{color.nord.3}",
       "$description": "No data, or the check is paused"
     },
+    "chart-grid": {
+      "$value": "{color.nord.3}",
+      "$description": "Chart grid lines (K5, MET-004). Same colour as border"
+    },
+    "chart-axis": {
+      "$value": "{color.nord.4}",
+      "$description": "Chart axis labels (K5, MET-004). Same colour as text-muted"
+    },
+    "chart-threshold": {
+      "$value": "{color.nord.13}",
+      "$description": "Chart 85 % threshold line (K5, MET-004). Same colour as status-degraded"
+    },
+    "chart-series-1": {
+      "$value": "{color.nord.8}",
+      "$description": "Chart series 1 (K5, MET-004). Frost then aurora, skipping the status colours"
+    },
+    "chart-series-2": {
+      "$value": "{color.nord.9}",
+      "$description": "Chart series 2 (K5, MET-004). Frost then aurora, skipping the status colours"
+    },
+    "chart-series-3": {
+      "$value": "{color.nord.10}",
+      "$description": "Chart series 3 (K5, MET-004). Frost then aurora, skipping the status colours"
+    },
+    "chart-series-4": {
+      "$value": "{color.nord.7}",
+      "$description": "Chart series 4 (K5, MET-004). Frost then aurora, skipping the status colours"
+    },
+    "chart-series-5": {
+      "$value": "{color.nord.15}",
+      "$description": "Chart series 5 (K5, MET-004). Frost then aurora, skipping the status colours"
+    },
+    "chart-series-6": {
+      "$value": "{color.nord.12}",
+      "$description": "Chart series 6 (K5, MET-004). Frost then aurora, skipping the status colours"
+    },
     "accent-tint": {
       "$type": "tint",
       "$value": {

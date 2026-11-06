@@ -36,6 +36,7 @@ const REASON_TEXT: Readonly<Record<SessionEndReason, string>> = {
   PROTOCOL_ERROR: 'The app sent something the hub does not accept, so the hub closed the session.',
   TIMEOUT: 'The session timed out because the hub heard nothing from Anima.',
   HUB_SHUTDOWN: 'The hub shut down.',
+  SERVER_CERTIFICATE_MISMATCH: "The device's RDP certificate has changed, so Anima did not connect.",
 };
 
 const NOT_OPENED = 'Could not open the session.';
