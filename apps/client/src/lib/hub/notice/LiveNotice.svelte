@@ -10,7 +10,7 @@
     /** Why live updates stopped, or null while they run. */
     message: string | null;
     /** What stopped: "updates" for a device screen, "logs" for the log panel. */
-    subject?: string;
+    subject?: 'updates' | 'logs';
     /** Where the space to its neighbours is: above it, below it, or padding inside it (the log panel's rows). */
     gap?: 'start' | 'end' | 'padded';
     preference?: MotionPreference;

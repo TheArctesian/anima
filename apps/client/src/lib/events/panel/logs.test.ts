@@ -261,20 +261,45 @@ describe('Text safety and errors', () => {
     await settle();
     expect(eventRequests()).toHaveLength(2);
   });
+});
 
-  describe('when live logs stop (NET-004, MOT-007)', () => {
-    const stopped = { code: 'unreachable', message: 'The connection closed' } as const;
+describe('when live logs stop (NET-004, MOT-007)', () => {
+  const stopped = { code: 'unreachable', message: 'The connection closed' } as const;
 
-    it('shows the notice as a status that fades in, so the rows below never step by its height', async () => {
-      await show();
-      runs.length = 0;
-      fake.fail('EventAdded', stopped);
-      await settle();
-      const notice = document.querySelector('.notice[role="status"]') as HTMLElement | null;
-      expect(notice?.textContent).toBe('Live logs stopped: The connection closed');
-      // Starts invisible and fades to 1 over duration-base: an instant mount has no such run.
-      expect(notice?.style.opacity).toBe('0');
-      expect(runs.filter((run) => run.keyframes[0] === 0 && run.keyframes.at(-1) === 1)).toHaveLength(1);
-    });
+  it('shows the notice as a status that fades in, so the rows below never step by its height', async () => {
+    await show();
+    runs.length = 0;
+    fake.fail('EventAdded', stopped);
+    await settle();
+    const notice = document.querySelector('.notice[role="status"]') as HTMLElement | null;
+    expect(notice?.textContent).toBe('Live logs stopped: The connection closed');
+    // Fades to 1 over duration-base: an instant mount has no such run.
+    expect(runs.filter((run) => run.keyframes[0] === 0 && run.keyframes.at(-1) === 1)).toHaveLength(1);
+  });
+
+  it('moves the rows by spring from where they were, and never translates the fixed panel or its scroll region', async () => {
+    await show();
+    const stack = document.querySelector('.stack') as HTMLElement;
+    const panel = document.querySelector('section.panel') as HTMLElement;
+    const scroll = document.querySelector('.scroll') as HTMLElement;
+    const panelTranslate = panel.style.translate;
+    const HEIGHT = 56;
+    // Every box is stubbed to move with the notice, so one that is wrongly measured would be translated.
+    for (const box of [stack, panel, scroll]) {
+      box.getBoundingClientRect = () => {
+        const notice = document.querySelector('.notice[role="status"]');
+        const inFlow = notice !== null && !notice.classList.contains('leaving');
+        const [, y = 0] = box.style.translate.split(/\s+/).filter((part) => part !== '').map((part) => Number.parseFloat(part));
+        return new DOMRect(0, 100 + (inFlow ? HEIGHT : 0) + (Number.isNaN(y) ? 0 : y), 100, 200);
+      };
+    }
+    runs.length = 0;
+    fake.fail('EventAdded', stopped);
+    await settle();
+    await settle();
+    expect(stack.style.translate).toBe(`0px ${String(-HEIGHT)}px`);
+    expect(runs.some((run) => run.options['stiffness'] !== undefined)).toBe(true);
+    expect(panel.style.translate).toBe(panelTranslate);
+    expect(scroll.style.translate).toBe('');
   });
 });
