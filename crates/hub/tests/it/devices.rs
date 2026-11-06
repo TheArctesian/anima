@@ -8,7 +8,6 @@ mod fields;
 pub(crate) mod graphql_read;
 mod guard;
 mod harness;
-mod k1;
 mod leak;
 mod trail;
 mod writes;
