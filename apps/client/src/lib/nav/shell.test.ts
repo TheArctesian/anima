@@ -300,3 +300,20 @@ it('UI-020: the layout applies the stored fonts before the page shows, and Fira 
   expect(document.documentElement.dataset['fontUi']).toBe('opendyslexic');
   expect(document.documentElement.dataset['fontMono']).toBe('fira-code');
 });
+
+it('NET-004: the bar sets data-hub-banner on the root while the strip shows, for the bar and the page to make room', async () => {
+  show('/devices', { connection: 'unreachable', lastContactAt: null });
+  await Promise.resolve();
+  flushSync();
+  expect(document.documentElement.hasAttribute('data-hub-banner')).toBe(true);
+  expect(document.querySelector('main')?.hasAttribute('data-shifts-with-banner')).toBe(true);
+  await unmount(app as ReturnType<typeof mount>);
+  app = undefined;
+  expect(document.documentElement.hasAttribute('data-hub-banner')).toBe(false);
+});
+
+it('NET-004: connected, the root has no data-hub-banner', () => {
+  show();
+  flushSync();
+  expect(document.documentElement.hasAttribute('data-hub-banner')).toBe(false);
+});

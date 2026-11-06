@@ -31,6 +31,11 @@
     background: var(--border);
   }
 
+  button:active:not(:disabled, [aria-disabled='true']) {
+    transition-duration: var(--duration-press);
+    background: var(--accent-tint);
+  }
+
   button:focus-visible {
     outline: var(--border-focus) solid var(--accent);
     outline-offset: var(--border-focus);

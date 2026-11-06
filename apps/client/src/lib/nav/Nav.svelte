@@ -3,6 +3,8 @@
   import { useHub } from '$lib/hub/context';
   import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
+  import { fade } from '$lib/motion/roles/transitions';
+  import { watchHubBanner } from './bannerShift';
   import { DEVICES, SETTINGS, isActive, statusLabel, unreachableBanner, type NavDestination } from './nav';
 
   interface Props {
@@ -20,6 +22,13 @@
   const hub = useHub();
   const connected = $derived(hub.status.current.connection === 'connected');
   const banner = $derived(unreachableBanner(hub.status.current, hub.address.origin, now));
+
+  // Below the compact breakpoint the bar and the page make room for the strip; the root attribute tells their styles (NET-004).
+  const strip = watchHubBanner(document.documentElement);
+  $effect(() => {
+    strip.show(banner !== null);
+  });
+  $effect(() => strip.stop);
 </script>
 
 <!-- tabindex="0": WebKit (Safari, WKWebView) skips plain links when Tab is pressed unless they are focusable (NAV-005). -->
@@ -38,16 +47,16 @@
   </a>
 {/snippet}
 
-<nav aria-label="Main">
+<nav aria-label="Main" data-shifts-with-banner>
   <div class="brand">
     <img src={asset('/logo.png')} alt="" width="48" height="48" />
     <span class="words">Anima</span>
   </div>
   {@render destination(DEVICES)}
   <!-- Always rendered, so a screen reader announces the text when it appears (NET-004). -->
-  <div class="notice" role="status">
+  <div class="notice" role="status" data-holds-banner>
     {#if banner !== null}
-      <div class="banner" title="{banner.title}. {banner.origin}. {banner.advice}. {banner.age}">
+      <div class="banner" transition:fade title="{banner.title}. {banner.origin}. {banner.advice}. {banner.age}">
         <span class="alert"><Icon name="nf-md-alert" /></span>
         <strong>{banner.title}</strong>
         <span class="origin">{banner.origin}</span>
@@ -217,7 +226,7 @@
   /*
    * When the hub cannot be reached the bar's banner is a strip across the top of the window, one line each for the title,
    * the hub address (cut with an ellipsis; the whole text is the tooltip), the advice and the data age. Its size is the
-   * same whatever the text, and the bar and the page make room for it, so it covers no control (NET-004, UI-013).
+   * same whatever the text, and the bar and the page make room for it, so it covers no control (NET-004, UI-013). They move into that room by FLIP and the strip fades.
    */
   :global(:root[data-nav='icons']) .banner {
     position: fixed;
@@ -255,7 +264,7 @@
     grid-area: 1 / 2;
   }
 
-  :global(:root[data-nav='icons']) nav:has(.banner) {
+  :global(:root[data-nav='icons'][data-hub-banner]) nav {
     padding-block-start: calc(var(--space-3) + var(--nav-banner-block-size));
   }
 
