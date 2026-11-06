@@ -15,17 +15,23 @@ const ROOM = 80;
 function page() {
   document.body.innerHTML = `
     <nav data-shifts-with-banner><a id="item">Devices</a><div id="host" data-holds-banner></div></nav>
-    <main data-shifts-with-banner><div id="stage"></div></main>`;
-  const place = (id: string) => {
+    <main data-shifts-with-banner>
+      <div id="stage"><div id="flow"></div><div id="still"></div><div id="shell"><div id="panel" style="position: fixed"></div><div id="beside"></div></div></div>
+      <div id="tabs"></div>
+    </main>`;
+  const place = (id: string, moves = true) => {
     const node = document.getElementById(id) as HTMLElement;
     node.getBoundingClientRect = () => {
       const [x = 0, y = 0] = node.style.translate.split(/\s+/).filter((part) => part !== '').map((part) => Number.parseFloat(part));
-      const base = document.documentElement.hasAttribute('data-hub-banner') ? ROOM : 0;
+      const base = moves && document.documentElement.hasAttribute('data-hub-banner') ? ROOM : 0;
       return new DOMRect(x, base + y, 100, 40);
     };
     return node;
   };
-  return { item: place('item'), host: place('host'), stage: place('stage') };
+  for (const id of ['flow', 'shell', 'panel', 'beside', 'tabs']) place(id);
+  place('still', false);
+  // The stage holds a fixed element, so it is not moved itself: its in-flow children are.
+  return { item: place('item'), host: place('host'), stage: place('stage'), el: (id: string) => document.getElementById(id) as HTMLElement };
 }
 
 beforeEach(() => {
@@ -48,7 +54,8 @@ const lifted = (node: HTMLElement) => node.style.translate;
 const later = () => new Promise((done) => setTimeout(done));
 
 it('MOT-002: when the strip appears the bar items and the page move from where they were on spring-default', () => {
-  const { item, stage } = page();
+  const { item, el } = page();
+  const stage = el('flow');
   const strip = watchHubBanner(document.documentElement, { reduced: false });
   strip.show(false);
   strip.show(true);
@@ -68,7 +75,8 @@ it('NET-004: the element that holds the fixed strip never gets a translate, whic
 });
 
 it('MOT-002: a change mid-flight starts from the place on screen, not from the layout', () => {
-  const { item, stage } = page();
+  const { item, el } = page();
+  const stage = el('flow');
   const strip = watchHubBanner(document.documentElement, { reduced: false });
   strip.show(false);
   strip.show(true);
@@ -79,7 +87,8 @@ it('MOT-002: a change mid-flight starts from the place on screen, not from the l
 });
 
 it('MOT-040: under reduced motion the page is in place at once and nothing is left translated', async () => {
-  const { stage } = page();
+  const { el } = page();
+  const stage = el('flow');
   const strip = watchHubBanner(document.documentElement, { reduced: true });
   strip.show(false);
   strip.show(true);
@@ -90,7 +99,8 @@ it('MOT-040: under reduced motion the page is in place at once and nothing is le
 });
 
 it('a flight that has arrived leaves no translate on the page, so a fixed modal inside it is placed by the window', async () => {
-  const { stage } = page();
+  const { el } = page();
+  const stage = el('flow');
   const strip = watchHubBanner(document.documentElement, { reduced: false });
   strip.show(false);
   strip.show(true);
@@ -105,4 +115,21 @@ it('stop removes the attribute', () => {
   strip.show(true);
   strip.stop();
   expect(document.documentElement.hasAttribute('data-hub-banner')).toBe(false);
+});
+
+it('NET-004: an element with a fixed element inside is not translated, its in-flow children are; the fixed element stays', () => {
+  const { stage, el } = page();
+  const strip = watchHubBanner(document.documentElement, { reduced: false });
+  strip.show(false);
+  strip.show(true);
+  expect([stage, el('shell'), el('panel')].map((node) => node.style.translate)).toEqual(['', '', '']);
+  expect([el('flow'), el('beside'), el('tabs')].map((node) => node.style.translate)).toEqual(['0px -80px', '0px -80px', '0px -80px']);
+});
+
+it('MOT-002: an element that does not change place gets no translate', () => {
+  const { el } = page();
+  const strip = watchHubBanner(document.documentElement, { reduced: false });
+  strip.show(false);
+  strip.show(true);
+  expect(el('still').style.translate).toBe('');
 });

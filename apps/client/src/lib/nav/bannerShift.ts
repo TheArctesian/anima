@@ -14,12 +14,31 @@ const SHIFTS_WITH_BANNER = 'data-shifts-with-banner';
 /** Marks the child that holds the fixed strip: a `translate` on it would become the strip's containing block. */
 const HOLDS_BANNER = 'data-holds-banner';
 
+/** Every element under `root` that is laid out against the window, not against an ancestor. */
+function pinned(root: HTMLElement): HTMLElement[] {
+  return [...root.querySelectorAll<HTMLElement>(`[${SHIFTS_WITH_BANNER}] *`)].filter(
+    (element) => getComputedStyle(element).position === 'fixed',
+  );
+}
+
+/**
+ * The in-flow content of the marked containers. A `translate` makes its element the containing block of the fixed
+ * elements inside it (the logs panel, the host key prompt), which would then be laid out against the moving box and jump
+ * on arrival. So an element with a fixed element inside is not moved; its children are, and the fixed element stays.
+ */
 function shifting(root: HTMLElement): Animatable[] {
+  const fixed = pinned(root);
   const found: Animatable[] = [];
-  for (const container of root.querySelectorAll(`[${SHIFTS_WITH_BANNER}]`)) {
-    for (const child of container.children) {
-      if (child instanceof HTMLElement && !child.hasAttribute(HOLDS_BANNER)) found.push(child);
+  const visit = (element: Element): void => {
+    if (!(element instanceof HTMLElement) || element.hasAttribute(HOLDS_BANNER) || fixed.includes(element)) return;
+    if (fixed.some((each) => element.contains(each))) {
+      for (const child of element.children) visit(child);
+    } else {
+      found.push(element);
     }
+  };
+  for (const container of root.querySelectorAll(`[${SHIFTS_WITH_BANNER}]`)) {
+    for (const child of container.children) visit(child);
   }
   return found;
 }

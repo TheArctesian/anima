@@ -317,3 +317,9 @@ it('NET-004: connected, the root has no data-hub-banner', () => {
   flushSync();
   expect(document.documentElement.hasAttribute('data-hub-banner')).toBe(false);
 });
+
+it('NET-004: the bar and the page are marked for the banner shift, and the strip holder is not shifted', () => {
+  const nav = show('/devices', { connection: 'unreachable', lastContactAt: null });
+  expect(nav.hasAttribute('data-shifts-with-banner')).toBe(true);
+  expect(nav.querySelector('.notice')?.hasAttribute('data-holds-banner')).toBe(true);
+});
