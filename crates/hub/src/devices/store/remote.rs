@@ -122,18 +122,21 @@ async fn write_transfer(
     Ok(())
 }
 
-/// A device that moved to `site` no longer relays for any other site (D-7).
+/// Clears every relay role the device can no longer fill: at a site other than `site` (when
+/// the device moved) and at any site when its SSH was turned off (the relay works over SSH).
 pub(in crate::devices) async fn release_relay(
     conn: &mut PgConnection,
     device: DeviceId,
-    site: SiteId,
+    site: Option<SiteId>,
+    ssh_off: bool,
 ) -> Result<(), Error> {
     sqlx::query(
         "UPDATE devices.sites SET wake_relay_device_id = NULL \
-         WHERE wake_relay_device_id = $1 AND id <> $2",
+         WHERE wake_relay_device_id = $1 AND ($3 OR id <> COALESCE($2, id))",
     )
     .bind(device)
     .bind(site)
+    .bind(ssh_off)
     .execute(conn)
     .await?;
     Ok(())
