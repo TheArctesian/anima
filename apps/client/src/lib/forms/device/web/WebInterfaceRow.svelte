@@ -18,15 +18,11 @@
   }
 
   const { saved, rowKey, onSave, onDelete, onCancel }: Props = $props();
-  // The row starts from the stored interface and then holds the operator's edits.
+  // The row starts from the stored interface and then holds the operator's edits; the owner remounts it when the stored one changes.
   // svelte-ignore state_referenced_locally
   let values = $state(webValuesFrom(saved));
   let errors = $state<FieldError[]>([]);
   let busy = $state(false);
-  // The owner refreshes `saved` after a save; the row then shows what the hub stored (for example the host as an empty label).
-  $effect(() => {
-    values = webValuesFrom(saved);
-  });
   const changed = $derived(webChanged(values, saved));
   const urlError = $derived(errors.find((error) => error.field === 'url'));
   const labelError = $derived(errors.find((error) => error.field === 'label'));

@@ -49,6 +49,8 @@
   <ul>
     {#each interfaces as web (web.id)}
       <li aria-label={web.label}>
+        <!-- Remounted when the hub's stored values change, so the row shows what the hub stored (for example the host as an empty label). -->
+        {#key [web.label, web.url, web.openIn].join('\n')}
         <WebInterfaceRow
           saved={web}
           rowKey="web-{web.id}"
@@ -57,6 +59,7 @@
             deleting = web;
           }}
         />
+        {/key}
       </li>
     {/each}
   </ul>
