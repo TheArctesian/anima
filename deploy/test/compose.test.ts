@@ -109,6 +109,7 @@ describe("secrets (DB-002, SEC-004, DNS-003)", () => {
     certs: ["cloudflare_dns_token"],
     hub: ["anima_key", "hub_database_url"],
     guacd: [],
+    localapi: [],
   };
 
   for (const [name, secrets] of Object.entries(expected)) {
@@ -191,6 +192,8 @@ describe("host integration (AlmaLinux host firewall)", () => {
           continue;
         }
         if (volume.type !== "bind") continue;
+        // The tailscale socket directory is a host path outside the repository; see compose-localapi.test.ts.
+        if (name === "localapi") continue;
         binds += 1;
         expect(volume.bind?.selinux).toBe("z");
       }
@@ -269,7 +272,7 @@ describe("hardening and images (SEC-001)", () => {
   });
 
   test("every long-running service restarts, and migrate does not", () => {
-    for (const name of ["postgres", "hub", "guacd", "certs"]) {
+    for (const name of ["postgres", "hub", "guacd", "certs", "localapi"]) {
       expect(compose.services[name]?.restart).toBe("unless-stopped");
     }
     expect(compose.services["migrate"]?.restart).toBe("no");

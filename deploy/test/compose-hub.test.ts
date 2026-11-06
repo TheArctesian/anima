@@ -24,7 +24,9 @@ describe("hub configuration", () => {
   test("every ANIMA_* variable the hub receives is read by config.rs or listed in the conventions.md environment table", () => {
     const source = readFileSync(CONFIG_PATH, "utf8");
     const conventions = readFileSync(join(ROOT, "contracts", "conventions.md"), "utf8");
-    const known = new Set([...source.matchAll(/"(ANIMA_[A-Z_]+)"/g), ...conventions.matchAll(/`(ANIMA_[A-Z_]+)`/g)].map((match) => match[1]));
+    // Phase 2 variables (K7) are frozen in phase-2-contracts.md until conventions.md absorbs them.
+    const phase2 = readFileSync(join(ROOT, "docs", "programme", "phase-2-contracts.md"), "utf8");
+    const known = new Set([...source.matchAll(/"(ANIMA_[A-Z_]+)"/g), ...conventions.matchAll(/`(ANIMA_[A-Z_]+)`/g), ...phase2.matchAll(/`(ANIMA_[A-Z_]+)`/g)].map((match) => match[1]));
     for (const name of ["hub", "migrate"]) {
       for (const key of Object.keys(compose.services[name]?.environment ?? {})) {
         expect(known.has(key) ? key : `${name}.${key} is in neither config.rs nor conventions.md`).toBe(key);
@@ -39,11 +41,12 @@ describe("hub configuration", () => {
       const config = compose.networks[name]?.ipam?.config;
       return config?.[0]?.subnet ?? `${name} has no fixed subnet`;
     });
-    expect(subnets.length).toBe(2);
+    expect(subnets.length).toBe(3);
     const deny = hub.environment?.["ANIMA_PROBE_DENY"] ?? "";
     expect(deny.split(",").sort()).toEqual([...subnets, "${ANIMA_VPS_PUBLIC_ADDRESS:?set to the VPS public IPv4}/32"].sort());
     expect(subnets).toContain("${ANIMA_DATABASE_SUBNET:-172.30.1.0/24}");
     expect(subnets).toContain("${ANIMA_HUB_SUBNET:-172.30.0.0/24}");
+    expect(subnets).toContain("${ANIMA_LOCALAPI_SUBNET:-172.30.2.0/24}");
   });
 
   test("DNS-002 the hub reads certificate and key from the one tls.pem on the certs volume", () => {
