@@ -103,6 +103,8 @@
     const fromHidden = !reserved;
     reserved = true;
     await tick();
+    // The last tab may have closed while the strip waited for its place: entering now would undo the exit.
+    if (sessions.tabs.length === 0) return;
     enterStrip(element, fromHidden, preference);
   }
 
