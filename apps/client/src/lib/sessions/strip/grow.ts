@@ -1,4 +1,3 @@
-import type { TransitionConfig } from 'svelte/transition';
 import { easeCurve, springCurve } from '$lib/motion/animate';
 import { modeTokens, springMotion } from '$lib/motion/options';
 import { motionPreference, type MotionPreference } from '$lib/motion/preference';
@@ -11,47 +10,71 @@ export interface GrowParams {
   readonly preference?: MotionPreference;
 }
 
-const fade = (t: number) => `opacity: ${String(t)};`;
-
-/** `transform-origin` for `tab` at the centre of the control that opened it (MOT-005). */
-export function originIn(origin: Origin, tab: DOMRectReadOnly): string {
-  const x = origin.left + origin.width / 2 - tab.left;
-  const y = origin.top + origin.height / 2 - tab.top;
-  return `${String(x)}px ${String(y)}px`;
+/** The tab's scale when gone (t = 0) and the point it scales about. */
+interface Path {
+  readonly atZero: number;
+  readonly origin?: string;
 }
+
+const opacity = (t: number) => `opacity: ${String(t)};`;
+
+/** A closing tab shrinks to nothing about its own centre, in its place in the strip (5.7.3). */
+const closing: Path = { atZero: 0 };
 
 /** The tab starts at the control's width, so it reads as the control growing into the tab. */
 function startScale(origin: Origin, tab: DOMRectReadOnly): number {
   return tab.width > 0 ? Math.min(Math.max(origin.width / tab.width, 0), 1) : 0;
 }
 
-function enter(node: Element, origin: Origin | null, reduced: boolean): TransitionConfig {
-  const motion = springMotion('snappy', reduced);
-  if (motion.type !== 'spring' || origin === null) {
-    return { duration: modeTokens(reduced).duration.base, easing: easeCurve('enter'), css: fade };
-  }
-  const box = node.getBoundingClientRect();
-  const from = startScale(origin, box);
-  const at = originIn(origin, box);
-  const { easing, durationMs } = springCurve(motion);
-  return {
-    duration: durationMs,
-    easing,
-    css: (t) => `${fade(t)} scale: ${String(from + (1 - from) * t)}; transform-origin: ${at};`,
-  };
+/**
+ * `transform-origin` in `tab` for which the tab, scaled to `scale`, is centred on the control
+ * that opened it: the fixed point of that scale. The tab then grows from where the control is
+ * along a straight line to its place in the strip (MOT-005). At scale 1 nothing moves, so the
+ * control's centre serves.
+ */
+function originIn(origin: Origin, tab: DOMRectReadOnly, scale: number): string {
+  const controlX = origin.left + origin.width / 2;
+  const controlY = origin.top + origin.height / 2;
+  const fixed = (control: number, centre: number) => (scale < 1 ? (control - scale * centre) / (1 - scale) : control);
+  const x = fixed(controlX, tab.left + tab.width / 2) - tab.left;
+  const y = fixed(controlY, tab.top + tab.height / 2) - tab.top;
+  return `${String(x)}px ${String(y)}px`;
 }
 
-/** The tab closes to its own place in the strip; under reduced motion it only fades. */
-function exit(reduced: boolean): TransitionConfig {
-  const css = reduced ? fade : (t: number) => `${fade(t)} scale: ${String(t)};`;
-  return { duration: modeTokens(reduced).duration.fast, easing: easeCurve('exit'), css };
+function opening(origin: Origin, tab: DOMRectReadOnly): Path {
+  const atZero = startScale(origin, tab);
+  return { atZero, origin: originIn(origin, tab, atZero) };
+}
+
+/** The style at progress `t` along `path`; with no path, a fade only. */
+function draw(path: Path | null) {
+  if (path === null) return opacity;
+  const at = path.origin === undefined ? '' : ` transform-origin: ${path.origin};`;
+  return (t: number) => `${opacity(t)} scale: ${String(path.atZero + (1 - path.atZero) * t)};${at}`;
 }
 
 /**
  * Session tab open (5.7.3): the tab grows from the control that opened it on `spring-snappy`
  * (MOT-005) and closes to its place in the strip over `duration-fast`. Reduced motion: fade.
- * One bidirectional transition, so a close mid-open starts from where the tab is (MOT-002).
+ * One bidirectional transition whose path is fixed by its first direction, so a close mid-open
+ * goes back to the control from where the tab is, with no step (MOT-002).
  */
 export function grow(node: Element, { origin, preference = motionPreference() }: GrowParams): RoleTransition {
-  return ({ direction } = {}) => (direction === 'out' ? exit(preference.reduced) : enter(node, origin, preference.reduced));
+  const { reduced } = preference;
+  // Unset until the first direction; `null` once fixed is a fade only, so it is kept too.
+  let fixed: { readonly path: Path | null } | undefined;
+  const first = (path: () => Path | null) => (fixed ??= { path: path() }).path;
+  return ({ direction } = {}) => {
+    if (direction === 'out') {
+      const css = draw(first(() => (reduced ? null : closing)));
+      return { duration: modeTokens(reduced).duration.fast, easing: easeCurve('exit'), css };
+    }
+    const motion = springMotion('snappy', reduced);
+    if (motion.type !== 'spring' || origin === null) {
+      return { duration: modeTokens(reduced).duration.base, easing: easeCurve('enter'), css: draw(first(() => null)) };
+    }
+    const css = draw(first(() => opening(origin, node.getBoundingClientRect())));
+    const { easing, durationMs } = springCurve(motion);
+    return { duration: durationMs, easing, css };
+  };
 }
