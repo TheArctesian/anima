@@ -9,6 +9,7 @@
   import { createHub } from '$lib/hub/hub';
   import { crossFade } from '$lib/motion/roles/transitions';
   import { DATA_AGE_REFRESH_MS } from '$lib/nav/nav';
+  import { watchIconOnly } from '$lib/nav/iconOnly';
   import { createClock } from '$lib/nav/clock.svelte';
   import Nav from '$lib/nav/Nav.svelte';
   import { sessionsApi } from '$lib/sessions/api';
@@ -25,6 +26,9 @@
 
   // The operator's fonts apply before the first render, so the text does not change family after it shows (UI-020).
   applyTypefaces(document.documentElement, storedTypefaces(localStorage));
+  // The bar shows icons only below the compact breakpoint; set before the first render so the width never changes after load.
+  const stopWatchingWidth = watchIconOnly(document.documentElement, window);
+  $effect(() => stopWatchingWidth);
 
   // The hub address is the stored setting (CLI-002); the token is read from the desktop key store per call (CLI-003).
   const address = storedHubAddress(localStorage);

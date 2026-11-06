@@ -3,7 +3,7 @@
   import type { IconName } from '$lib/icons/icons';
   import { press } from '$lib/motion/roles/press';
   import { popover } from '$lib/motion/roles/transitions';
-  import { menuLabel, type MenuOption } from './toolbar';
+  import { menuLabel, shiftInsideViewport, type MenuOption } from './toolbar';
 
   interface Props {
     label: string;
@@ -23,6 +23,15 @@
   let open = $state(false);
   let root: HTMLElement | undefined;
   let button = $state<HTMLButtonElement>();
+
+  /** Moves the panel left or right until it is inside the window; the control it grows from keeps the origin (MOT-005). */
+  function keepInside(panel: HTMLElement): void {
+    const box = panel.getBoundingClientRect();
+    // One panel padding from the window edge.
+    const margin = Number.parseFloat(getComputedStyle(panel).paddingInlineStart);
+    const shift = shiftInsideViewport(box.left, box.width, document.documentElement.clientWidth, margin);
+    panel.style.marginInlineStart = `${String(shift)}px`;
+  }
 
   function close(): void {
     open = false;
@@ -64,7 +73,7 @@
     <Icon name="nf-md-chevron_down" size="sm" />
   </button>
   {#if open}
-    <div class="panel" id="{id}-panel" role="group" aria-label={label} transition:popover={{ from: button }}>
+    <div class="panel" id="{id}-panel" role="group" aria-label={label} transition:popover={{ from: button }} {@attach keepInside}>
       {#each options as option (option.value)}
         <label class="option">
           <input
@@ -132,6 +141,7 @@
     display: flex;
     flex-direction: column;
     min-inline-size: calc(var(--space-16) * 3);
+    max-inline-size: calc(100vw - var(--space-4) * 2);
     max-block-size: calc(var(--space-16) * 5);
     margin-block-start: var(--space-1);
     padding: var(--space-2);

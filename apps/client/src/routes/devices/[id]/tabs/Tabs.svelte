@@ -81,15 +81,20 @@
 </div>
 
 <style>
+  /* The strip scrolls inside itself when the tabs do not fit, never the page. */
   .tabs {
     position: relative;
     display: flex;
+    min-inline-size: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
     gap: var(--space-1);
     margin-block-end: var(--space-4);
     border-block-end: var(--border-thin) solid var(--border);
   }
 
   button {
+    flex: none;
     box-sizing: border-box;
     min-block-size: var(--target-min-desktop);
     padding: 0 var(--space-3);
@@ -113,7 +118,7 @@
   /* Scaled from its left edge to the selected tab's width. */
   .indicator {
     position: absolute;
-    inset-block-end: calc(var(--border-thin) * -1);
+    inset-block-end: 0;
     inset-inline-start: 0;
     inline-size: var(--space-4);
     block-size: var(--border-focus);

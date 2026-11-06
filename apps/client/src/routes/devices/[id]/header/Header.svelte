@@ -58,20 +58,23 @@
 </header>
 
 <style>
-  /* A fixed block size from tokens, so no font change or late data moves the tabs (D-13, WP-11 H-7). */
+  /*
+   * One row at a size from tokens, so no font change or late data moves the tabs (D-13, WP-11 H-7). When the name, the pill
+   * and the buttons do not fit in one row, the line wraps, so nothing makes the page wider (DEV-021).
+   */
   .line {
     box-sizing: border-box;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-3);
-    block-size: var(--target-min-touch);
+    min-block-size: var(--target-min-touch);
     margin-block-end: var(--space-4);
     min-inline-size: 0;
   }
 
-  /* The name, the pill and the buttons never shrink (DEV-021). */
+  /* The pill and the buttons never shrink; the name wraps inside its own box and is never cut (DEV-021). */
   .back,
-  h1,
   .status,
   .actions {
     flex: none;
@@ -92,10 +95,12 @@
   }
 
   h1 {
+    flex: 0 1 auto;
+    min-inline-size: 0;
     margin: 0;
     font-size: var(--text-xl);
     line-height: var(--leading-tight);
-    white-space: nowrap;
+    overflow-wrap: anywhere;
   }
 
   .details {
@@ -131,6 +136,7 @@
 
   .actions {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--space-2);
   }
 

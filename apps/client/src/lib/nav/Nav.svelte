@@ -16,6 +16,7 @@
 
   const { pathname, now, onnavigate }: Props = $props();
   const hub = useHub();
+  const connected = $derived(hub.status.current.connection === 'connected');
   const banner = $derived(unreachableBanner(hub.status.current, hub.address.origin, now));
 </script>
 
@@ -25,19 +26,20 @@
     class="item"
     href={resolve(item.href)}
     tabindex="0"
+    title={item.label}
     aria-current={isActive(item, pathname) ? 'page' : undefined}
     onclick={onnavigate}
     {@attach press()}
   >
     <Icon name={item.icon} />
-    <span>{item.label}</span>
+    <span class="words">{item.label}</span>
   </a>
 {/snippet}
 
 <nav aria-label="Main">
   <div class="brand">
     <img src={asset('/logo.png')} alt="" width="48" height="48" />
-    <span>Anima</span>
+    <span class="words">Anima</span>
   </div>
   {@render destination(DEVICES)}
   <!-- Always rendered, so a screen reader announces the text when it appears (NET-004). -->
@@ -52,7 +54,9 @@
     {/if}
   </div>
   <hr />
-  <p class="status">{statusLabel(hub.status.current)}</p>
+  <p class="status" title={statusLabel(hub.status.current)}>
+    <span class="dot" class:connected aria-hidden="true"></span><span class="words">{statusLabel(hub.status.current)}</span>
+  </p>
   {@render destination(SETTINGS)}
 </nav>
 
@@ -128,6 +132,57 @@
 
   .notice {
     flex: none;
+  }
+
+  .dot {
+    display: none;
+    flex: none;
+    inline-size: var(--space-2);
+    block-size: var(--space-2);
+    border-radius: var(--radius-pill);
+    background: var(--status-down);
+  }
+
+  .dot.connected {
+    background: var(--status-up);
+  }
+
+  /*
+   * Below the compact breakpoint the bar shows icons only. The words stay in the page as each control's accessible name
+   * (UI-015); the width switches at once, never animated (MOT-006).
+   */
+  :global(:root[data-nav='icons']) .words,
+  :global(:root[data-nav='icons']) .banner {
+    position: absolute;
+    inline-size: var(--border-thin);
+    block-size: var(--border-thin);
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  :global(:root[data-nav='icons']) .item {
+    justify-content: center;
+    padding: 0;
+  }
+
+  :global(:root[data-nav='icons']) .brand {
+    justify-content: center;
+  }
+
+  :global(:root[data-nav='icons']) .brand img {
+    inline-size: var(--target-min-touch);
+    block-size: var(--target-min-touch);
+  }
+
+  :global(:root[data-nav='icons']) .status {
+    display: flex;
+    justify-content: center;
+    padding: 0;
+  }
+
+  :global(:root[data-nav='icons']) .dot {
+    display: block;
   }
 
   hr {
