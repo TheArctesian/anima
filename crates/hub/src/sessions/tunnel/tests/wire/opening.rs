@@ -3,7 +3,8 @@
 //! each end the session once; the known gap of a client that leaves after a stray byte; and
 //! the end's write is retried once (LOG-005).
 
-use std::{sync::Arc, time::Duration};
+use crate::sessions::Presented;
+use std::time::Duration;
 
 use chrono::TimeDelta;
 use sqlx::PgPool;
@@ -14,10 +15,7 @@ use tokio::{
 };
 
 use super::{
-    super::super::{
-        ending::{Cause, End},
-        record::{Unfinished, finish},
-    },
+    super::super::ending::{Cause, End},
     Bench,
     bench::{
         END_WAIT, LOOPBACK, PASSWORD, Setup, address, bench, ending_within_end_wait, now, operator,
@@ -26,7 +24,10 @@ use super::{
     fake_guacd::{ARGS_1_6_0, Act, FakeGuacd, Script, fake_guacd},
     records::ended,
 };
-use crate::sessions::{Actor, end::end_session};
+use crate::sessions::{
+    Actor,
+    end::{Unfinished, end_session, finish},
+};
 
 /// A guacd that takes `select` and then says nothing until told, and a bench in front of it.
 async fn stalled(pool: &PgPool, setup: Setup) -> (FakeGuacd, Bench) {
@@ -143,12 +144,12 @@ async fn mv_003_a_session_task_that_panics_still_ends_the_session(pool: PgPool) 
     let bench = bench(&pool, "127.0.0.1:9", Setup::default()).await;
     let redeemed = bench
         .live
-        .redeem(&bench.token, address(LOOPBACK), now())
+        .redeem(Presented::terminal(&bench.token, address(LOOPBACK)), now())
         .unwrap();
-    let route = Arc::new(bench.route.clone());
+    let records = bench.route.records();
     // As `relaying::run` holds the session from its first line.
     let task = tokio::spawn(async move {
-        let _unfinished = Unfinished::new(route, redeemed);
+        let _unfinished = Unfinished::new(records, redeemed);
         panic!("the session task fails");
     });
     assert!(task.await.unwrap_err().is_panic());
@@ -168,7 +169,7 @@ async fn d_9_a_session_task_that_panics_after_end_session_ends_with_the_enders_c
     let bench = bench(&pool, "127.0.0.1:9", Setup::default()).await;
     let redeemed = bench
         .live
-        .redeem(&bench.token, address(LOOPBACK), now())
+        .redeem(Presented::terminal(&bench.token, address(LOOPBACK)), now())
         .unwrap();
     let by = Actor {
         operator: operator(),
@@ -176,9 +177,9 @@ async fn d_9_a_session_task_that_panics_after_end_session_ends_with_the_enders_c
         at: now() + TimeDelta::seconds(5),
     };
     bench.live.end_by(bench.session, &by);
-    let route = Arc::new(bench.route.clone());
+    let records = bench.route.records();
     let task = tokio::spawn(async move {
-        let _unfinished = Unfinished::new(route, redeemed);
+        let _unfinished = Unfinished::new(records, redeemed);
         panic!("the session task fails after the end signal");
     });
     assert!(task.await.unwrap_err().is_panic());
@@ -231,10 +232,15 @@ async fn log_005_an_end_whose_first_commit_fails_is_written_by_the_retry(pool: P
     let bench = bench(&pool, "127.0.0.1:9", Setup::default()).await;
     let redeemed = bench
         .live
-        .redeem(&bench.token, address(LOOPBACK), now())
+        .redeem(Presented::terminal(&bench.token, address(LOOPBACK)), now())
         .unwrap();
     fail_first_commit_on_update(&pool).await;
-    finish(&bench.route, redeemed, &End::from(Cause::OperatorClosed)).await;
+    finish(
+        &bench.route.records(),
+        redeemed,
+        &End::from(Cause::OperatorClosed),
+    )
+    .await;
     let ended = ended(&pool, bench.session).await;
     ended_once(&ended, "operator", "info", LOOPBACK);
 }

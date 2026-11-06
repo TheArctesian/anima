@@ -1,25 +1,37 @@
 //! What the hub writes when a redeemed session ends (K4 Section 5, D-9, LOG-005): the row's
 //! end, the `session.end` audit entry and the session event, in one transaction, once.
 //!
-//! Nothing here holds session content, the connection ID, a token or guacd's text (RA-008,
-//! LOG-007): the event message is a fixed sentence and the audit change is the reason.
+//! Both tunnels write their end here. Nothing here holds session content, the connection ID,
+//! a token or the far side's text (RA-008, LOG-007): the event message is a fixed sentence and
+//! the audit change is the reason.
 
 use std::sync::Arc;
 
+use sqlx::PgPool;
 use tokio::runtime::Handle;
 
 use super::{
-    ending::{Cause, End},
-    route::Route,
+    cause::{Cause, End},
+    end_row,
 };
 use crate::{
-    events::{self, NewEvent, Source},
+    clock::Clock,
+    events::{self, Bus, NewEvent, Source},
     ids::SessionId,
-    sessions::{Actor, EndReason, Error, PendingTicket, Redeemed, SessionEnd, end::end_row, store},
+    sessions::{Actor, EndReason, Error, PendingTicket, Redeemed, SessionEnd, store},
 };
 
 /// The event message when the tunnel task stopped without an end of its own.
 const TASK_STOPPED: &str = "The hub's tunnel stopped unexpectedly and closed the SSH session.";
+
+/// Where an end is written: the database, the bus its event goes out on, and the clock that
+/// stamps it.
+#[derive(Clone)]
+pub(in crate::sessions) struct Records {
+    pub(in crate::sessions) db: PgPool,
+    pub(in crate::sessions) bus: Bus,
+    pub(in crate::sessions) clock: Arc<dyn Clock>,
+}
 
 /// A redeemed session whose end is not written yet. The session task holds it from the
 /// moment it owns the ticket; [`Unfinished::finish`] writes the end. If the task stops
@@ -30,30 +42,30 @@ const TASK_STOPPED: &str = "The hub's tunnel stopped unexpectedly and closed the
 /// A runtime that is shutting down drops that new task unrun, and so does a drop with no
 /// runtime at all; the row then stays live until the hub's next start ends it
 /// `HUB_SHUTDOWN` (`close_stale`, handoff H-2).
-pub(super) struct Unfinished {
-    route: Arc<Route>,
+pub(in crate::sessions) struct Unfinished {
+    records: Records,
     redeemed: Option<Redeemed>,
 }
 
 impl Unfinished {
-    pub(super) const fn new(route: Arc<Route>, redeemed: Redeemed) -> Self {
+    pub(in crate::sessions) const fn new(records: Records, redeemed: Redeemed) -> Self {
         Self {
-            route,
+            records,
             redeemed: Some(redeemed),
         }
     }
 
     /// The session, until it is finished.
-    pub(super) fn redeemed(&mut self) -> &mut Redeemed {
+    pub(in crate::sessions) fn redeemed(&mut self) -> &mut Redeemed {
         self.redeemed
             .as_mut()
             .expect("only `finish` takes the session, and it consumes the guard")
     }
 
     /// Writes `end` (see [`finish`]).
-    pub(super) async fn finish(mut self, end: &End) {
+    pub(in crate::sessions) async fn finish(mut self, end: &End) {
         if let Some(redeemed) = self.redeemed.take() {
-            finish(&self.route, redeemed, end).await;
+            finish(&self.records, redeemed, end).await;
         }
     }
 }
@@ -65,13 +77,13 @@ impl Drop for Unfinished {
         };
         let session = redeemed.ticket.session;
         tracing::error!(%session, "the tunnel task stopped before the session ended");
-        let route = Arc::clone(&self.route);
+        let records = self.records.clone();
         let end = redeemed.tunnel.signalled().map_or_else(
             || End::explained(Cause::GatewayError, TASK_STOPPED),
             End::from,
         );
         if let Ok(runtime) = Handle::try_current() {
-            runtime.spawn(async move { finish(&route, redeemed, &end).await });
+            runtime.spawn(async move { finish(&records, redeemed, &end).await });
         }
     }
 }
@@ -80,11 +92,11 @@ impl Drop for Unfinished {
 /// `endSession` reads the ended row once it sees the tunnel gone (D-10). A failed write is
 /// tried once more, then logged; the row then stays live until the hub's next start ends it
 /// `HUB_SHUTDOWN` (`close_stale`).
-pub(super) async fn finish(route: &Route, redeemed: Redeemed, end: &End) {
+pub(in crate::sessions) async fn finish(records: &Records, redeemed: Redeemed, end: &End) {
     let Redeemed { ticket, tunnel } = redeemed;
     let reason = end.cause.ending().reason;
-    let written = match write(route, &ticket, end).await {
-        Err(_) => write(route, &ticket, end).await,
+    let written = match write(records, &ticket, end).await {
+        Err(_) => write(records, &ticket, end).await,
         first => first,
     };
     match written {
@@ -120,9 +132,9 @@ fn log_unwritten(session: SessionId, reason: EndReason, error: &Error) {
 /// The end row and its audit entry and, when this call ended the row, its event; `false`
 /// when the row had already ended. The audit entry names who ended it: the `endSession`
 /// operator and address when there is one, else the ticket's operator and client.
-async fn write(route: &Route, ticket: &PendingTicket, end: &End) -> Result<bool, Error> {
+async fn write(records: &Records, ticket: &PendingTicket, end: &End) -> Result<bool, Error> {
     let ending = end.cause.ending();
-    let now = route.clock.now();
+    let now = records.clock.now();
     let by = end.by.clone().unwrap_or_else(|| Actor {
         operator: ticket.operator.clone(),
         client: ticket.client,
@@ -132,7 +144,7 @@ async fn write(route: &Route, ticket: &PendingTicket, end: &End) -> Result<bool,
         at: now,
         reason: ending.reason,
     };
-    let mut tx = route.db.begin().await?;
+    let mut tx = records.db.begin().await?;
     let row = store::get(&mut *tx, ticket.session).await?;
     if !end_row(&mut tx, ticket.session, ended, &by).await? {
         return Ok(false);
@@ -143,7 +155,7 @@ async fn write(route: &Route, ticket: &PendingTicket, end: &End) -> Result<bool,
         device: row.and_then(|row| row.device.map(|device| (device, row.device_name))),
         message: end.message.to_owned(),
     };
-    events::record(&mut tx, &route.bus, now, event).await?;
+    events::record(&mut tx, &records.bus, now, event).await?;
     tx.commit().await?;
     Ok(true)
 }

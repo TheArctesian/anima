@@ -32,7 +32,10 @@ async fn api_009_start_session_writes_a_live_row_and_audit_and_returns_a_ticket(
     let id = ticket["sessionId"].as_str().unwrap();
     let token = ticket["token"].as_str().unwrap();
     assert_eq!(token.len(), 43);
-    assert_eq!(ticket["tunnelPath"], "/tunnel");
+    assert_eq!(
+        ticket["tunnelPath"], "/terminal",
+        "K4 §1: SSH uses the terminal tunnel"
+    );
     let expires_at: DateTime<Utc> = ticket["expiresAt"].as_str().unwrap().parse().unwrap();
     assert_eq!(expires_at, now() + TimeDelta::seconds(30));
 

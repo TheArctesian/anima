@@ -9,7 +9,6 @@ mod fake_guacd;
 mod host_keys;
 mod interruption;
 mod opening;
-mod records;
 mod refusals;
 mod relaying;
 mod socket;
@@ -23,9 +22,10 @@ use sqlx::PgPool;
 use tokio::time::timeout;
 use uuid::Uuid;
 
+use crate::sessions::tests::fixture as records;
 use bench::{Bench, Setup, bench};
 use fake_guacd::{ARGS_1_6_0, CONNECTION_ID, FakeGuacd, Script, fake_guacd};
-use records::Ended;
+use records::ended_once;
 use socket::Socket;
 
 /// The one instruction in `wire`.
@@ -69,22 +69,4 @@ async fn session(pool: &PgPool, setup: Setup) -> (FakeGuacd, Bench, Socket) {
     let mut client = socket::open(&bench.url).await;
     opened(&mut client).await;
     (guacd, bench, client)
-}
-
-/// The end row's reason and its one audit entry (by `client`) and one event (`severity`).
-fn ended_once(ended: &Ended, reason: &str, severity: &str, client: &str) {
-    assert_eq!(ended.reason, reason);
-    let audit = (
-        "operator".to_owned(),
-        client.to_owned(),
-        serde_json::json!({ "reason": reason }),
-    );
-    assert_eq!(ended.audits, [audit], "one session.end entry");
-    assert_eq!(ended.events.len(), 1, "one event: {:?}", ended.events);
-    let (got_severity, source, device, _) = &ended.events[0];
-    assert_eq!(
-        (got_severity.as_str(), source.as_str()),
-        (severity, "session")
-    );
-    assert_eq!(device.as_deref(), Some("docker-host"));
 }

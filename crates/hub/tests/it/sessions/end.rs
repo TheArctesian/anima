@@ -3,6 +3,7 @@
 
 mod shutdown;
 
+use anima_hub::sessions::Presented;
 use std::time::Duration;
 
 use anima_hub::{
@@ -149,7 +150,10 @@ async fn api_009_the_sweep_ends_expired_unredeemed_tickets_timeout_once(pool: Pg
     let spent = started(&first, OLLAMA).await;
     let elsewhere = ClientAddr("10.10.0.99".parse().unwrap());
     let token = spent["token"].as_str().unwrap();
-    assert!(live.redeem(token, elsewhere, now()).is_err());
+    assert!(
+        live.redeem(Presented::terminal(token, elsewhere), now())
+            .is_err()
+    );
     assert!(
         redeem(&live, &spent, now()).is_none(),
         "spent by the refusal"
@@ -221,8 +225,11 @@ async fn ra_008_end_session_on_a_ticket_spent_by_a_refusal_ends_it_once(pool: Pg
     let id = ticket["sessionId"].as_str().unwrap();
     let elsewhere = ClientAddr("10.10.0.99".parse().unwrap());
     assert!(
-        live.redeem(ticket["token"].as_str().unwrap(), elsewhere, now())
-            .is_err()
+        live.redeem(
+            Presented::terminal(ticket["token"].as_str().unwrap(), elsewhere),
+            now()
+        )
+        .is_err()
     );
 
     let ended = end(&schema, id).await;
@@ -273,8 +280,11 @@ async fn log_004_ends_without_a_tunnel_write_audit_and_no_event(pool: PgPool) {
     let spent = started(&first, PVE_01).await;
     let elsewhere = ClientAddr("10.10.0.99".parse().unwrap());
     assert!(
-        live.redeem(spent["token"].as_str().unwrap(), elsewhere, now())
-            .is_err()
+        live.redeem(
+            Presented::terminal(spent["token"].as_str().unwrap(), elsewhere),
+            now()
+        )
+        .is_err()
     );
     end(&first, withdrawn["sessionId"].as_str().unwrap()).await;
     started(

@@ -11,14 +11,10 @@ use guac_protocol::{Instruction, encode};
 use tokio::{io::AsyncWriteExt as _, net::TcpStream, time::timeout};
 
 use super::super::ending::{CLOSE_WAIT, Cause, End, gateway_written};
-use crate::sessions::Tunnel;
+use crate::sessions::{Tunnel, end::CLIENT_STOPPED_READING};
 
 /// What the hub tells guacd when it leaves first.
 const DISCONNECT: &[u8] = b"10.disconnect;";
-
-/// The event message when a write to the client stalls.
-const CLIENT_STOPPED_READING: &str =
-    "The client stopped reading what the hub sent, so the hub closed the SSH session.";
 
 /// Sends one instruction to the client as one text message, unless the session ends first. A
 /// failed send is the client leaving; one that stalls past `wait` is a timeout.

@@ -5,6 +5,11 @@
 //! An end that never opened a tunnel (expired, refused, withdrawn or shut-down ticket, or a
 //! stale row whose tunnel went with the old process) writes the `session.end` audit entry and
 //! no event: the event log records what a tunnel did (K4 §5, D-13).
+//!
+//! An open tunnel ends through the end table (`cause`) and writes its end once (`record`).
+
+mod cause;
+mod record;
 
 use chrono::{DateTime, Utc};
 use serde_json::json;
@@ -12,7 +17,7 @@ use sqlx::{PgConnection, PgPool};
 
 use super::{
     Error, Missing,
-    live::{Ending, Live},
+    live::{self, Live},
     model::{EndReason, Session, SessionEnd},
     store,
     tickets::PendingTicket,
@@ -21,6 +26,13 @@ use crate::{
     events::{self, AuditAction, AuditTarget, ClientAddr, NewAudit, Operator},
     ids::SessionId,
 };
+
+#[cfg(test)]
+pub(super) use cause::Ending;
+pub(super) use cause::{CLIENT_IDLE, CLIENT_STOPPED_READING, CLOSE_WAIT, Cause, End, unreadable};
+#[cfg(test)]
+pub(super) use record::finish;
+pub(super) use record::{Records, Unfinished};
 
 /// Who ends a session, from where and when: what its `session.end` audit entry records.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -197,20 +209,20 @@ pub(super) async fn end_session(
     by: &Actor,
 ) -> Result<Session, Error> {
     match live.end_by(session, by) {
-        Ending::Signalled(closing) => {
+        live::Ending::Signalled(closing) => {
             // Running out of time is not a failure: the row is returned as it stands either
             // way, live if the tunnel is stuck.
             tokio::time::timeout(live.tunnel_end_wait(), closing.finished())
                 .await
                 .unwrap_or_default();
         }
-        Ending::Withdrawn(ticket) => {
+        live::Ending::Withdrawn(ticket) => {
             if let Err(error) = end_by_operator(db, session, by).await {
                 live.restore(vec![ticket]);
                 return Err(error);
             }
         }
-        Ending::Neither => end_by_operator(db, session, by).await?,
+        live::Ending::Neither => end_by_operator(db, session, by).await?,
     }
     current(db, session).await
 }

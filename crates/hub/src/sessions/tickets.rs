@@ -64,9 +64,11 @@ pub(super) fn hash_of(presented: &str) -> Option<TicketHash> {
     Some(TicketHash(Sha256::digest(&*bytes).into()))
 }
 
-/// What `startSession` gives the client once: the session and the token for `/tunnel`.
+/// What `startSession` gives the client once: the session, its protocol (which names the
+/// tunnel's path) and the token for that tunnel.
 pub struct Ticket {
     pub session: SessionId,
+    pub protocol: Protocol,
     token: TicketToken,
     pub expires_at: DateTime<Utc>,
 }
@@ -74,11 +76,13 @@ pub struct Ticket {
 impl Ticket {
     pub(super) const fn new(
         session: SessionId,
+        protocol: Protocol,
         token: TicketToken,
         expires_at: DateTime<Utc>,
     ) -> Self {
         Self {
             session,
+            protocol,
             token,
             expires_at,
         }
@@ -95,6 +99,7 @@ impl fmt::Debug for Ticket {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Ticket")
             .field("session", &self.session)
+            .field("protocol", &self.protocol)
             .field("token", &"[redacted]")
             .field("expires_at", &self.expires_at)
             .finish()
@@ -122,8 +127,37 @@ impl PendingTicket {
         now >= self.expires_at
     }
 
-    /// Whether the ticket opens a tunnel for `client` at `now`.
-    pub(super) fn admits(&self, client: ClientAddr, now: DateTime<Utc>) -> bool {
-        !self.is_expired(now) && self.client == client
+    /// Whether the ticket opens a tunnel for `presented` at `now`: not expired, from the
+    /// client it was issued to, on its own tunnel path (K4 Section 1 `tunnelPath`).
+    pub(super) fn admits(&self, presented: &Presented<'_>, now: DateTime<Utc>) -> bool {
+        !self.is_expired(now)
+            && self.client == presented.client
+            && (presented.tunnel_path)(self.protocol) == presented.path
+    }
+}
+
+/// A token as a tunnel request presents it: from which client, on which path, and where
+/// that route says each protocol's tickets go. Holds the token borrowed, never copied.
+#[derive(Clone, Copy)]
+pub struct Presented<'a> {
+    pub token: &'a str,
+    pub client: ClientAddr,
+    /// The route's own path.
+    pub path: &'a str,
+    /// Where a ticket for each protocol is opened: `Protocol::tunnel_path` in the hub; the
+    /// Guacamole tunnel's tests send SSH tickets to `/tunnel`.
+    pub tunnel_path: fn(Protocol) -> &'static str,
+}
+
+impl<'a> Presented<'a> {
+    /// `token` from `client` on `/terminal`, as the app opens an SSH session (K4 Section 8.1).
+    #[must_use]
+    pub fn terminal(token: &'a str, client: ClientAddr) -> Self {
+        Self {
+            token,
+            client,
+            path: Protocol::Ssh.tunnel_path(),
+            tunnel_path: Protocol::tunnel_path,
+        }
     }
 }

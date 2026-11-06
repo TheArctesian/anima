@@ -1,6 +1,7 @@
 //! The end signal of an open tunnel (D-10, K4 §5, LOG-005): `endSession` and shutdown reach
 //! the tunnel with the cause and who asked, and a redemption never slips past `endSession`.
 
+use crate::sessions::Presented;
 use std::{
     sync::{Arc, Barrier},
     thread,
@@ -13,7 +14,7 @@ use super::tickets::{CLIENT, client, issue, issued_at, pending, session, token};
 use crate::{
     ids::SessionId,
     sessions::{
-        Actor, EndCause, EndReason,
+        Actor, EndCause, EndReason, Protocol,
         live::{Ending, Live, Refused, Unavailable},
     },
 };
@@ -31,7 +32,7 @@ async fn ra_008_end_by_signals_operator_with_who_asked_and_finishes_when_the_tun
     let live = Live::default();
     let text = issue(&live, 1, 4);
     let mut tunnel = live
-        .redeem(&text, client(CLIENT), issued_at())
+        .redeem(Presented::terminal(&text, client(CLIENT)), issued_at())
         .unwrap()
         .tunnel;
 
@@ -63,8 +64,11 @@ fn ra_008_end_by_withdraws_a_pending_or_spent_ticket() {
     issue(&live, 1, 1);
     let spent = issue(&live, 2, 2);
     assert!(
-        live.redeem(&spent, client("10.10.0.99"), issued_at())
-            .is_err()
+        live.redeem(
+            Presented::terminal(&spent, client("10.10.0.99")),
+            issued_at()
+        )
+        .is_err()
     );
     for n in [1, 2] {
         let Ending::Withdrawn(ticket) = live.end_by(session(n), &operator_actor()) else {
@@ -94,7 +98,7 @@ fn ra_008_end_by_and_redeem_never_both_miss_on_real_threads() {
         let (redeemed, ending) = thread::scope(|scope| {
             let redeemer = scope.spawn(|| {
                 barrier.wait();
-                live.redeem(&text, client(CLIENT), issued_at())
+                live.redeem(Presented::terminal(&text, client(CLIENT)), issued_at())
             });
             let ender = scope.spawn(|| {
                 barrier.wait();
@@ -120,11 +124,11 @@ async fn ra_008_shut_down_signals_every_tunnel_withdraws_every_ticket_and_refuse
     let second = issue(&live, 2, 2);
     let pending_third = issue(&live, 3, 3);
     let mut one = live
-        .redeem(&first, client(CLIENT), issued_at())
+        .redeem(Presented::terminal(&first, client(CLIENT)), issued_at())
         .unwrap()
         .tunnel;
     let mut two = live
-        .redeem(&second, client(CLIENT), issued_at())
+        .redeem(Presented::terminal(&second, client(CLIENT)), issued_at())
         .unwrap()
         .tunnel;
 
@@ -146,8 +150,11 @@ async fn ra_008_shut_down_signals_every_tunnel_withdraws_every_ticket_and_refuse
     drop(live.end_by(session(1), &operator_actor()));
     assert_eq!(one.ended().await, shutdown);
     assert_eq!(
-        live.redeem(&pending_third, client(CLIENT), issued_at())
-            .err(),
+        live.redeem(
+            Presented::terminal(&pending_third, client(CLIENT)),
+            issued_at()
+        )
+        .err(),
         Some(Refused)
     );
     assert_eq!(live.issue(token(9).hash(), pending(9)), Err(Unavailable));
@@ -155,4 +162,46 @@ async fn ra_008_shut_down_signals_every_tunnel_withdraws_every_ticket_and_refuse
     tokio::time::timeout(Duration::from_secs(5), closing.finished())
         .await
         .unwrap();
+}
+
+#[test]
+fn k4_1_a_ticket_opens_only_on_its_tunnel_path() {
+    assert_eq!(Protocol::Ssh.tunnel_path(), "/terminal");
+    let live = Live::default();
+    let text = issue(&live, 1, 4);
+    let presented = Presented::terminal(&text, client(CLIENT));
+    let _redeemed = live.redeem(presented, issued_at()).unwrap();
+    assert!(
+        matches!(
+            live.end_by(session(1), &operator_actor()),
+            Ending::Signalled(_)
+        ),
+        "its tunnel is registered"
+    );
+}
+
+#[test]
+fn k4_1_a_ticket_on_another_tunnel_path_is_refused_and_spent_in_the_redemption() {
+    let live = Live::default();
+    let text = issue(&live, 1, 4);
+    let on_tunnel = Presented {
+        path: "/tunnel",
+        ..Presented::terminal(&text, client(CLIENT))
+    };
+    assert_eq!(live.redeem(on_tunnel, issued_at()).err(), Some(Refused));
+    let presented = Presented::terminal(&text, client(CLIENT));
+    assert_eq!(
+        live.redeem(presented, issued_at()).err(),
+        Some(Refused),
+        "spent"
+    );
+    // No tunnel was registered in between, so an `endSession` can never signal one that is
+    // then dropped: it withdraws the spent ticket and ends the row itself.
+    assert!(
+        matches!(
+            live.end_by(session(1), &operator_actor()),
+            Ending::Withdrawn(_)
+        ),
+        "the ticket waits for endSession or the sweep"
+    );
 }
