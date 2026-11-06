@@ -5,7 +5,7 @@
   import { page } from '$app/state';
   import { checksApi, type DeviceCheck } from '$lib/checks/api';
   import { devicesApi } from '$lib/devices/api';
-  import LiveNotice from '$lib/devices/notice/LiveNotice.svelte';
+  import LiveNotice from '$lib/hub/notice/LiveNotice.svelte';
   import { DEFAULT_LOG_FILTER } from '$lib/events/log';
   import { LogFeed } from '$lib/events/panel/feed.svelte';
   import LogList from '$lib/events/panel/LogList.svelte';
