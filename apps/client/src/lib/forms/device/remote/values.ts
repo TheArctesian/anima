@@ -106,7 +106,8 @@ export function normalizedMac(text: string): string {
 /** Remote values as they will be sent: trimmed text, normalized address. Secrets are not part of it. */
 export function normalizedRemote(values: RemoteValues): RemoteValues {
   return {
-    ...values,
+    metricsSource: values.metricsSource,
+    transfer: { ...values.transfer },
     rdp: { ...values.rdp, port: values.rdp.port.trim(), username: values.rdp.username.trim(), domain: values.rdp.domain.trim() },
     vnc: { ...values.vnc, port: values.vnc.port.trim(), username: values.vnc.username.trim() },
     macAddress: normalizedMac(values.macAddress),

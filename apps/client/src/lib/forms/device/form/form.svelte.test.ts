@@ -193,12 +193,10 @@ it('SEC-007: a changed host key opens the modal as a warning', async () => {
   expect(document.querySelector('[role="dialog"] [role="alert"]')?.textContent).toContain('Do not trust this device');
 });
 
-it('DEV-022: the RDP section is text only', () => {
+it('DEV-022: the RDP section opens and takes focus', () => {
   show(SAVED, { section: 'rdp' });
 
-  const section = document.querySelector('[data-section="rdp"]');
-  expect(section?.textContent).toContain('RDP comes in a later version of Anima.');
-  expect(section?.querySelectorAll('input, select, textarea')).toHaveLength(0);
+  expect(document.querySelector('[data-section="rdp"]')?.textContent).toContain('RDP enabled');
   expect(document.activeElement?.closest('[data-section="rdp"]')).not.toBeNull();
 });
 
