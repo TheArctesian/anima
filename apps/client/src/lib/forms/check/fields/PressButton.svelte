@@ -5,16 +5,19 @@
     label: string;
     kind?: 'primary' | 'quiet';
     submit?: boolean;
+    /** The ID of the form a submit button outside that form submits. */
+    form?: string;
     disabled?: boolean;
     onclick?: () => void;
   }
 
-  const { label, kind = 'quiet', submit = false, disabled = false, onclick }: Props = $props();
+  const { label, kind = 'quiet', submit = false, form, disabled = false, onclick }: Props = $props();
 </script>
 
 <button
   class={kind}
   type={submit ? 'submit' : 'button'}
+  {form}
   {disabled}
   {onclick}
   {@attach press()}

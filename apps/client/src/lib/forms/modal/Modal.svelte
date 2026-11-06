@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import { fade, modal } from '$lib/motion/roles/transitions';
+  import { offerFooter } from './footer';
   import { initialFocusIn, trapTab } from './focus';
   import { takeOpener, watchClicks } from './opener';
 
@@ -19,6 +20,17 @@
 
   const { open, title, onClose, size = 'content', children }: Props = $props();
   const titleId = $props.id();
+
+  /** A form's actions, shown below the body by the form inside (see `footer.ts`). */
+  let actions = $state<Snippet>();
+  offerFooter({
+    show: (shown) => {
+      actions = shown;
+      return () => {
+        if (actions === shown) actions = undefined;
+      };
+    },
+  });
 
   // The click that opens the dialog comes before `open`, so clicks are watched while it is closed too.
   $effect(watchClicks);
@@ -90,6 +102,9 @@
         <div class="body">
           {@render children()}
         </div>
+        {#if actions}
+          <div class="footer">{@render actions()}</div>
+        {/if}
       </div>
     </div>
   </div>
@@ -157,6 +172,11 @@
     padding: var(--space-1) var(--space-5);
     overflow-y: auto;
     overflow-anchor: none;
+  }
+
+  /* Below the body and outside it, so the actions never scroll, never move and never cover a field. */
+  .footer {
+    flex: none;
   }
 
   /* A scrollbar that comes and goes as sections open does not change the width of the fields. */

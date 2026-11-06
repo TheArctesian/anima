@@ -108,3 +108,26 @@ it('MOT-007: Add device has a fixed-size surface whose body scrolls the form bel
   expect(body?.querySelector('form')).not.toBeNull();
   expect(body?.querySelector('h2')).toBeNull();
 });
+
+it('MOT-007: Cancel and Save are in a footer after the scrolling body, and Save still belongs to the form, so Enter in a field submits', () => {
+  app = mount(AddDeviceModal, {
+    target: document.body,
+    props: {
+      open: true,
+      sites: [{ id: 's1', name: 'Home', subnet: '10.10.0.0/24' }],
+      onCreate: () => Promise.reject(new Error('not used')),
+      onTest: () => Promise.reject(new Error('not used')),
+      onClose: () => undefined,
+      onCreated: () => undefined,
+    },
+  });
+  flushSync();
+
+  const dialog = document.querySelector('[role="dialog"]');
+  const footer = dialog?.querySelector(':scope > .body + .footer');
+  const save = [...(footer?.querySelectorAll('button') ?? [])].find((candidate) => candidate.textContent.trim() === 'Save');
+  expect(footer?.textContent).toContain('Cancel');
+  expect(dialog?.querySelector(':scope > .body')?.textContent).not.toContain('Save');
+  expect(save?.type).toBe('submit');
+  expect(save?.form).toBe(dialog?.querySelector('form'));
+});

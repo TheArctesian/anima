@@ -4,6 +4,7 @@
   import type { FieldError, HubResult } from '$lib/hub/error';
   import Disclosure from '../../disclosure/Disclosure.svelte';
   import FormButton from '../../FormButton.svelte';
+  import { modalFooter } from '../../modal/footer';
   import { fieldErrorsFrom } from '../field-errors';
   import type { ConnectionTestInput } from '$lib/hub/generated/graphql';
   import type { ConnectionTestResult } from '../connection-test';
@@ -56,6 +57,11 @@
     onClearCredential,
     onCancel,
   }: Props = $props();
+
+  // Inside a modal the actions go to its footer; the Save button is tied to the form by its ID.
+  const footer = modalFooter();
+  const formId = $props.id();
+  $effect.pre(() => footer?.show(actions));
 
   const initial = untrack(() => (device === null && start !== undefined ? start : formValues(device)));
   let values = $state<EditedValues>(structuredClone(initial) as EditedValues);
@@ -173,6 +179,7 @@
 
 <div bind:this={root}>
   <form
+    id={formId}
     novalidate
     onsubmit={(event) => {
       event.preventDefault();
@@ -205,12 +212,18 @@
         <p>RDP comes in a later version of Anima.</p>
       </Disclosure>
     </div>
-    <div class="actions">
-      <FormButton onclick={onCancel}>Cancel</FormButton>
-      <FormButton type="submit" tone="primary" aria-disabled={saving} aria-busy={saving}>Save</FormButton>
-    </div>
+    {#if footer === undefined}
+      {@render actions()}
+    {/if}
   </form>
 </div>
+
+{#snippet actions()}
+  <div class="actions" class:inline={footer === undefined}>
+    <FormButton onclick={onCancel}>Cancel</FormButton>
+    <FormButton type="submit" form={formId} tone="primary" aria-disabled={saving} aria-busy={saving}>Save</FormButton>
+  </div>
+{/snippet}
 
 <style>
   form {
@@ -231,6 +244,10 @@
     display: flex;
     justify-content: flex-end;
     gap: var(--space-2);
+  }
+
+  /* In the form, after the sections; a modal's footer has its own space above. */
+  .inline {
     padding-top: var(--space-3);
   }
 </style>

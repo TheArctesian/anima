@@ -64,6 +64,23 @@
     return found;
   }
 
+  /** The nearest scroll container around the section, such as a modal's body; null for the page. */
+  function scroller(): HTMLElement | null {
+    for (let node = root?.parentElement ?? null; node && node !== document.body; node = node.parentElement) {
+      if (scrolls(node)) return node;
+    }
+    return null;
+  }
+
+  /**
+   * The scroll container's own children. When a closing section makes the container shorter than its
+   * scroll position allows, the browser moves the position back and all of them with it; measured, they
+   * spring from where they were, with the clicked control, instead of stepping in one frame.
+   */
+  function scrolled(): Animatable[] {
+    return [...(scroller()?.children ?? [])].filter((child) => child instanceof HTMLElement);
+  }
+
   /**
    * The measured elements whose place on screen changed. The others keep any motion in flight and get
    * no `translate`, which would make a container the containing block of its fixed children.
@@ -81,10 +98,11 @@
    * Disclosure (5.7.3): the content fades, and what lies below moves by FLIP on `spring-default`
    * instead of animating a height (MOT-006). On close the content leaves the layout at once (it is
    * held in place and fades out), so the FLIP is measured after it left and nothing snaps at the end.
-   * Under reduced motion the layout change is instant and the fade takes `duration-base`.
+   * Under reduced motion the layout change is instant and the fade takes `duration-base`. A scroll
+   * position the browser moves back when the content gets shorter is part of the same motion.
    */
   async function toggle(): Promise<void> {
-    const first = measure(below());
+    const first = measure([...below(), ...scrolled()]);
     if (open) {
       open = false;
       leaving = true;
@@ -95,7 +113,10 @@
       // If it was reopened meanwhile, the effect above puts `present` back at once. A reopen from
       // outside (a form showing an error) did not run the open path, so undo the fade here.
       leaving = false;
+      const held = measure(scrolled());
       present = false;
+      await tick();
+      flip(moved(held), { spring: 'default', preference });
       if (open && region) {
         region.style.top = '';
         animate(region, { opacity: 1 }, { type: 'instant' });

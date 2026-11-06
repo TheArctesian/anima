@@ -176,3 +176,10 @@ it('D-2: an invalid Advanced setting found before saving opens Advanced and show
   expect(button('Advanced settings').getAttribute('aria-expanded')).toBe('true');
   expect(input('Interval (seconds)').getAttribute('aria-invalid')).toBe('true');
 });
+
+it('outside a modal, Cancel and the submit button stay at the end of the form', () => {
+  const form = show();
+
+  expect(form.lastElementChild?.contains(button('Add check'))).toBe(true);
+  expect(form.contains(button('Cancel'))).toBe(true);
+});
