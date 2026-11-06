@@ -170,3 +170,52 @@ fixture_test! {
         );
     }
 }
+
+/// Waits until a lock request in this database is blocked.
+async fn lock_waiter(pool: &PgPool) {
+    for _ in 0..250 {
+        let waiting: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM pg_locks l JOIN pg_stat_activity a ON a.pid = l.pid \
+             WHERE NOT l.granted AND a.datname = current_database()",
+        )
+        .fetch_one(pool)
+        .await
+        .unwrap();
+        if waiting > 0 {
+            return;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+    }
+    panic!("the relay request never waited for a lock");
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../fixtures", scripts("devices"))
+)]
+async fn ra_031_a_relay_set_racing_an_uncommitted_ssh_off_sees_it_committed_and_refuses(
+    pool: PgPool,
+) {
+    let mut change = pool.begin().await.unwrap();
+    sqlx::query("UPDATE devices.devices SET updated_at = now() WHERE id = $1::text::uuid")
+        .bind(PVE_01)
+        .execute(&mut *change)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE devices.ssh_settings SET enabled = false WHERE device_id = $1::text::uuid")
+        .bind(PVE_01)
+        .execute(&mut *change)
+        .await
+        .unwrap();
+    let request = tokio::spawn({
+        let pool = pool.clone();
+        async move { set(&pool, HOME, Some(PVE_01)).await }
+    });
+    lock_waiter(&pool).await;
+    change.commit().await.unwrap();
+    let response = request.await.unwrap();
+
+    let error = error_json(&response);
+    assert_eq!(validation_fields(&error), ["deviceId"]);
+    assert_eq!(stored_relay(&pool, HOME).await, None);
+}
