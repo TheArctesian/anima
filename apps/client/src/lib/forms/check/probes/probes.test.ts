@@ -153,10 +153,23 @@ describe('SEC-005: SNMP secrets on edit', () => {
     expect(updateCheckInput(edit(), values)).toEqual({ name: 'renamed' });
   });
 
-  it('a changed OID sends the whole config with the secrets empty (keep)', () => {
+  it('a changed OID sends the whole config without the empty secrets (keep)', () => {
     const values = edit();
     values.snmp.oid = '1.3.6.1.2.1.1.5.0';
-    expect(sentSnmp(updateCheckInput(edit(), values))).toMatchObject({ authPassword: '', privacyPassword: '', username: 'monitor' });
+    const sent = sentSnmp(updateCheckInput(edit(), values));
+    expect(sent).toMatchObject({ username: 'monitor' });
+    expect(sent).not.toHaveProperty('authPassword');
+    expect(sent).not.toHaveProperty('privacyPassword');
+  });
+
+  it('a port or timeout change on a saved v2c check sends no community key', () => {
+    const v2c = () => checkValues(saved('SNMP', { __typename: 'SnmpConfig', port: 161, version: 'V2C', oid: '1.3.6', expected: null, username: null, timeoutMs: 5000 }), 'ICMP');
+    const values = v2c();
+    values.snmp.port = '1161';
+    values.snmp.timeoutMs = '8000';
+    const sent = sentSnmp(updateCheckInput(v2c(), values));
+    expect(sent).toMatchObject({ port: 1161, timeoutMs: 8000 });
+    expect(sent).not.toHaveProperty('community');
   });
 
   it('switching the version asks for the new version\'s secrets', () => {

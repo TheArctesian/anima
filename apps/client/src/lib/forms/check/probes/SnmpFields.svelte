@@ -19,7 +19,13 @@
   ];
   const error = (field: string) => messageFor(errors, field);
   /** SEC-005: the hub never returns a secret; an empty box keeps the stored one while the version is unchanged. */
-  const keepHint = $derived(snmp.storedVersion === snmp.version ? 'Leave empty to keep the stored value.' : undefined);
+  const keepHint = $derived(
+    snmp.storedVersion === null
+      ? undefined
+      : snmp.storedVersion === snmp.version
+        ? 'Leave empty to keep the stored value.'
+        : 'Enter the secrets for the new version.',
+  );
 </script>
 
 <TextField label="Port" kind="numeric" bind:value={snmp.port} error={error('port')} />

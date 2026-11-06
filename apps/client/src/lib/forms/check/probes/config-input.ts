@@ -4,11 +4,12 @@ import type { ProbeValues } from './values';
 
 function snmpInput({ snmp }: ProbeValues): SnmpConfigInput {
   const expected = snmp.expected.trim();
-  // An empty secret is sent as is: the hub then keeps the stored one (SEC-005). Only the secrets of the chosen version go.
+  // An empty secret is left out, and the hub keeps the stored one (SEC-005). Only the secrets of the chosen version go.
+  const kept = (key: 'community' | 'authPassword' | 'privacyPassword') => (snmp[key] === '' ? {} : { [key]: snmp[key] });
   const secrets =
     snmp.version === 'V2C'
-      ? { community: snmp.community }
-      : { username: snmp.username.trim(), authPassword: snmp.authPassword, privacyPassword: snmp.privacyPassword };
+      ? kept('community')
+      : { username: snmp.username.trim(), ...kept('authPassword'), ...kept('privacyPassword') };
   return {
     port: toNumber(snmp.port),
     version: snmp.version,
