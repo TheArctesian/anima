@@ -9,6 +9,7 @@ pub(crate) mod graphql_read;
 mod guard;
 mod harness;
 mod leak;
+mod password_credential;
 mod remote;
 mod trail;
 mod writes;

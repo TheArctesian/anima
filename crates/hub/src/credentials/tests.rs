@@ -3,6 +3,7 @@
 mod disclosure;
 mod key;
 mod layout;
+mod password;
 mod sealing;
 mod ssh;
 
