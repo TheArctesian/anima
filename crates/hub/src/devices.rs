@@ -12,12 +12,13 @@ mod store;
 #[cfg(test)]
 mod tests;
 mod text;
+mod warnings;
 
 use sqlx::PgPool;
 
 use crate::ids::{DeviceId, SiteId};
 
-pub use loaders::{DevicesBySite, SitesById};
+pub use loaders::{DevicesById, DevicesBySite, SitesById};
 pub use mac::{MacAddress, MacAddressError};
 pub use model::{Device, OperatingSystem, Site, SshAuth, SshSettings};
 pub use remote::{

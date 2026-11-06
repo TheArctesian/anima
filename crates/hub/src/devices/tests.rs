@@ -20,6 +20,7 @@ mod remote;
 mod rules;
 mod store_read;
 mod store_write;
+mod warnings;
 
 use super::model::*;
 use super::page::*;

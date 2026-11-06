@@ -15,7 +15,7 @@ use crate::{
 
 use super::{
     error::invalid,
-    remote_input::{RdpSettingsInput, TransferPolicyInput, VncSettingsInput},
+    remote::{RdpSettingsInput, TransferPolicyInput, VncSettingsInput},
 };
 
 #[derive(InputObject)]

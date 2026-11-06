@@ -1,6 +1,10 @@
 //! Remote access settings, the MAC address and the wake relay of `devices` (RA-030..033, D-2,
 //! D-7, DB-011), read back through the K3 face.
 
+mod passwords;
+mod read_back;
+mod relay;
+
 use anima_hub::{
     devices::{
         self, Error, MacAddress, MetricsSource, Missing, RdpSecurity, RdpSettings, ResizeMethod,

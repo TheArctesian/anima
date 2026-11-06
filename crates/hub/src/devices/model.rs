@@ -138,6 +138,8 @@ pub struct Site {
     pub id: SiteId,
     pub name: String,
     pub subnet: IpNet,
+    /// The device that sends Wake-on-LAN packets at this site (D-7).
+    pub(super) wake_relay: Option<DeviceId>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

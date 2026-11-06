@@ -1,6 +1,9 @@
 //! SQL for the remote access settings and the wake relay: `rdp_settings`, `vnc_settings`, the
 //! remote columns of `devices` and `sites.wake_relay_device_id`. A device row always has its
 //! `rdp_settings` and `vnc_settings` rows (a trigger adds them), so a write only updates.
+//!
+//! A relay change locks the device row before the site row, the order `update_device` and
+//! `delete_device` take them in, so the two cannot deadlock.
 
 use sqlx::{PgConnection, PgPool};
 
@@ -8,6 +11,8 @@ use super::fetch;
 use crate::{
     devices::{
         Device, Error, Missing,
+        model::Site,
+        records::{DeviceRow, to_devices, to_site},
         remote::{
             MetricsSource, RdpSettings, RemoteAccess, RemoteChange, TransferPolicy, VncSettings,
         },
@@ -153,4 +158,62 @@ pub(in crate::devices) async fn wake_relay(
             Err(error) => Err(error),
         },
     }
+}
+
+/// The devices with these ids, for `Site.wakeRelay`; unknown ids are left out.
+pub(in crate::devices) async fn devices_by_ids(
+    db: &PgPool,
+    ids: &[DeviceId],
+) -> Result<Vec<Device>, Error> {
+    let rows = sqlx::query_as(select_device!("WHERE d.id = ANY($1)"))
+        .bind(ids)
+        .fetch_all(db)
+        .await?;
+    to_devices(rows)
+}
+
+/// The device, with its row share-locked until the transaction ends, so it cannot move to
+/// another site or turn SSH off before the relay is written; `None` when there is none.
+pub(in crate::devices) async fn share_device(
+    conn: &mut PgConnection,
+    id: DeviceId,
+) -> Result<Option<Device>, Error> {
+    let row = sqlx::query_as::<_, DeviceRow>(select_device!("WHERE d.id = $1 FOR SHARE OF d"))
+        .bind(id)
+        .fetch_optional(conn)
+        .await?;
+    Ok(row.map(Device::try_from).transpose()?)
+}
+
+/// The site, with its row locked until the transaction ends.
+pub(in crate::devices) async fn lock_site(
+    conn: &mut PgConnection,
+    site: SiteId,
+) -> Result<Site, Error> {
+    sqlx::query_as(
+        "SELECT id, name, subnet, wake_relay_device_id FROM devices.sites WHERE id = $1 FOR UPDATE",
+    )
+    .bind(site)
+    .fetch_optional(conn)
+    .await?
+    .map(to_site)
+    .ok_or(Error::NotFound(Missing::Site(site)))
+}
+
+/// Sets or, with `None`, clears the site's wake relay.
+pub(in crate::devices) async fn set_wake_relay(
+    conn: &mut PgConnection,
+    site: SiteId,
+    device: Option<DeviceId>,
+) -> Result<Site, Error> {
+    sqlx::query_as(
+        "UPDATE devices.sites SET wake_relay_device_id = $2 WHERE id = $1 \
+         RETURNING id, name, subnet, wake_relay_device_id",
+    )
+    .bind(site)
+    .bind(device)
+    .fetch_optional(conn)
+    .await?
+    .map(to_site)
+    .ok_or(Error::NotFound(Missing::Site(site)))
 }
