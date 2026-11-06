@@ -184,8 +184,8 @@ fn con_002_a_pending_union_member_the_hub_declares_must_be_in_the_hub_union() {
     let k1 = k1_with("union C = I | D  type I { a: Int }  type D @pending { b: Int }");
     let found = found("union C = I  type I { a: Int }  type D { b: Int }", &k1);
     assert_eq!(found.len(), 2, "{found:?}");
-    assert_eq!(found[0], "D: declared by the hub, still @pending in K1");
-    assert!(found[1].starts_with("C: hub `union = I`, K1 `union = D | I`"));
+    assert!(found[0].starts_with("C: hub `union = I`, K1 `union = D | I`"));
+    assert_eq!(found[1], "D: declared by the hub, still @pending in K1");
 }
 
 #[test]
