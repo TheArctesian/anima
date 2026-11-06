@@ -74,21 +74,25 @@ function coalesced<T>(run: Run, live: () => boolean, same: (sent: T | undefined,
   };
 }
 
+/** Runs each command after the ones before it; a failure is reported with its code and the chain goes on. */
+function chained(onfail: (code: string) => void): Run {
+  let chain: Promise<void> = Promise.resolve();
+  return (command) => {
+    chain = chain.then(command).catch((reason: unknown) => {
+      onfail(codeOf(reason));
+    });
+  };
+}
+
 export function nativeView({ shell, tabId, onfail, onstate }: NativeViewOptions): NativeView {
   let state: ViewState = 'none';
-  let chain: Promise<void> = Promise.resolve();
+  const run = chained(onfail);
   const become = (next: ViewState) => {
     state = next;
     onstate(next);
   };
   const live = () => state === 'open';
   const started = () => state === 'open' || state === 'opening';
-  /** Run `command` after the ones before it; a failure is reported and the chain goes on. */
-  const run: Run = (command) => {
-    chain = chain.then(command).catch((reason: unknown) => {
-      onfail(codeOf(reason));
-    });
-  };
   const placing = coalesced<Bounds>(run, live, (sent, wanted) => sent !== undefined && sameBounds(sent, wanted), (to) => shell.place(tabId, to));
   const showing = coalesced<boolean>(run, live, (sent, wanted) => sent === wanted, (to) => shell.show(tabId, to));
 
