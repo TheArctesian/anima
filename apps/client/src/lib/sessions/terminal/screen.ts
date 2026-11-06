@@ -61,14 +61,24 @@ async function fontReady(family: string, sizePx: number): Promise<void> {
   }
 }
 
-/** WebGL when the engine offers it; otherwise, or after the context is lost, xterm.js's DOM renderer draws. */
+/**
+ * WebGL when the engine offers it; otherwise, or when its context is lost, xterm.js's DOM renderer draws. The addon
+ * only reports a lost context after a 3 s wait for a restore, which leaves the screen blank; the canvas's own
+ * `webglcontextlost` event (which does not bubble, so it is heard in the capture phase) disposes the addon at once,
+ * and `onContextLoss` stays as the backstop.
+ */
 function enableWebgl(terminal: Terminal): void {
   try {
     const webgl = new WebglAddon();
-    webgl.onContextLoss(() => {
+    let disposed = false;
+    const fallBack = () => {
+      if (disposed) return;
+      disposed = true;
       webgl.dispose();
-    });
+    };
+    webgl.onContextLoss(fallBack);
     terminal.loadAddon(webgl);
+    terminal.element?.addEventListener('webglcontextlost', fallBack, { capture: true, once: true });
   } catch {
     // No WebGL 2: the DOM renderer stays (xterm.js 6 has no canvas renderer).
   }
