@@ -5,8 +5,8 @@ use sqlx::PgPool;
 
 use super::harness::{
     DELETE, DISMISS, FINGERPRINT, HTTP_CHECK, PVE_01, accept_certificate_query,
-    accept_suggestion_query, create, create_query, data, fixture_test, input, schema_for,
-    update_query,
+    accept_suggestion_query, add_operator, create, create_query, data, fixture_test, input,
+    schema_for, update_query,
 };
 
 fixture_test! {
@@ -47,6 +47,7 @@ fixture_test! {
     }
 
     async fn web_008_accepting_a_certificate_pins_lower_hex_and_an_origin_change_drops_it(pool: PgPool) {
+        add_operator(&pool).await;
         let schema = schema_for(&pool);
         let id = create(&schema, "https://pve-01.home.lan:8006/").await;
         let typed = FINGERPRINT.to_uppercase();

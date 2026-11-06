@@ -131,3 +131,15 @@ pub async fn create(schema: &TestSchema, url: &str) -> String {
         .unwrap()
         .to_owned()
 }
+
+/// The signed-in operator's row, which a certificate pin refers to.
+pub async fn add_operator(pool: &PgPool) {
+    sqlx::query(
+        "INSERT INTO access.operators (id, username, password_hash, created_at) \
+         VALUES ($1::text::uuid, 'operator', '$argon2id$x', now())",
+    )
+    .bind(OPERATOR_ID)
+    .execute(pool)
+    .await
+    .unwrap();
+}

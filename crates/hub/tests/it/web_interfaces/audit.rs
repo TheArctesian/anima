@@ -6,8 +6,8 @@ use sqlx::PgPool;
 
 use super::harness::{
     CLIENT_ADDR, DELETE, DISMISS, FINGERPRINT, HTTP_CHECK, OPERATOR_ID, PVE_01,
-    accept_certificate_query, accept_suggestion_query, create, create_query, data, fixture_test,
-    input, now, run, schema_for, update_query,
+    accept_certificate_query, accept_suggestion_query, add_operator, create, create_query, data,
+    fixture_test, input, now, run, schema_for, update_query,
 };
 
 async fn audit_rows(pool: &PgPool) -> Vec<Value> {
@@ -73,6 +73,7 @@ fixture_test! {
     }
 
     async fn web_009_accepting_a_certificate_audits_the_interface_origin_and_fingerprint(pool: PgPool) {
+        add_operator(&pool).await;
         let schema = schema_for(&pool);
         let id = create(&schema, "https://pve-01.home.lan:8006/?token=abc").await;
         data(
@@ -90,6 +91,7 @@ fixture_test! {
     }
 
     async fn web_009_a_pin_dropped_by_an_origin_change_is_in_the_update_entry(pool: PgPool) {
+        add_operator(&pool).await;
         let schema = schema_for(&pool);
         let id = create(&schema, "https://pve-01.home.lan/").await;
         data(&schema, &accept_certificate_query(), json!({ "id": id, "fingerprint": FINGERPRINT })).await;
