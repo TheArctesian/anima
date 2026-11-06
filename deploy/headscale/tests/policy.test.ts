@@ -47,6 +47,15 @@ describe('policy tests block', () => {
     expect(runPolicyTests(policy, nodes)).toEqual([]);
   });
 
+  test('vpn_004 the tag:hub rows name the Mac on SSH and VNC and deny RDP (R-061)', () => {
+    const hubRows = policy.tests.filter((row) => row.src === 'tag:hub');
+    const tcpRow = hubRows.find((row) => row.protos.length === 1 && row.protos[0] === 'tcp');
+    const anyProtoRow = hubRows.find((row) => row.protos.length > 1);
+    expect(tcpRow?.accept).toEqual(expect.arrayContaining(['100.64.0.2:22', '100.64.0.2:5900']));
+    expect(tcpRow?.deny).toContain('100.64.0.2:3389');
+    expect(anyProtoRow?.deny).toContain('100.64.0.2:3389');
+  });
+
   test('vpn_004 every router row waiting for its router passes in the evaluator', () => {
     expect(runPolicyTests(withTests(ROUTER_ROWS), nodes)).toEqual([]);
   });

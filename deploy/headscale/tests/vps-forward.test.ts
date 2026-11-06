@@ -22,13 +22,14 @@ function forwarded(packet: Packet): { prerouting: Verdict; forward: Verdict } {
 const toMac = (iifname: string): Packet => ({ iifname, oifname: "tailscale0", daddr: "100.64.0.2", daddrIsLocal: false });
 const toSiteDevice = (iifname: string): Packet => ({ iifname, oifname: "tailscale0", daddr: "10.10.0.5", daddrIsLocal: false });
 
+// The forward chain has no port rule, so a packet carries no port: VNC 5900 and RDP 3389 pass as any port does.
 describe("VPS forwarding for the gateway (R-050, VPS-002)", () => {
   for (const bridge of ["br-1a2b3c4d5e6f", "docker0"]) {
-    test(`R-050 a packet from ${bridge} out of tailscale0 to the Mac (VNC 5900) is dropped by neither chain`, () => {
+    test(`R-050 a packet from ${bridge} out of tailscale0 to the Mac is dropped by neither chain`, () => {
       expect(forwarded(toMac(bridge))).toEqual({ prerouting: "accept", forward: "accept" });
     });
 
-    test(`R-050 a packet from ${bridge} out of tailscale0 to a site device (RDP 3389) is dropped by neither chain`, () => {
+    test(`R-050 a packet from ${bridge} out of tailscale0 to a site device is dropped by neither chain`, () => {
       expect(forwarded(toSiteDevice(bridge))).toEqual({ prerouting: "accept", forward: "accept" });
     });
   }
@@ -49,5 +50,19 @@ describe("VPS forwarding for the gateway (R-050, VPS-002)", () => {
   test("R-050 the evaluator refuses a rule form it does not understand", () => {
     const unknown: Chain = { table: "inet x", name: "c", rules: ["meta mark 1 drop"], policy: "accept" };
     expect(() => evaluateChain(unknown, toMac("docker0"))).toThrow("unsupported match");
+  });
+
+  test("R-050 the evaluator takes the first matching rule, the chain policy, and refuses what it does not know", () => {
+    const packet = toMac("docker0");
+    const chain = (rules: string[], policy: string): Chain => ({ table: "inet x", name: "c", rules, policy });
+    expect(evaluateChain(chain(['iifname "docker0" accept', 'iifname "docker0" drop'], "drop"), packet)).toBe("accept");
+    expect(evaluateChain(chain(['iifname "docker0" drop', 'iifname "docker0" accept'], "accept"), packet)).toBe("drop");
+    expect(evaluateChain(chain(['iifname "eth0" accept'], "drop"), packet)).toBe("drop");
+    expect(() => evaluateChain(chain([], "queue"), packet)).toThrow("unsupported chain policy");
+    expect(() => evaluateChain(chain(["iifname docker0 jump x"], "accept"), packet)).toThrow("unsupported verdict");
+    // nft gives a packet with no output interface (prerouting) an empty oifname.
+    const noOif: Packet = { iifname: "docker0", daddr: "100.64.0.2", daddrIsLocal: false };
+    expect(evaluateChain(chain(['oifname != "tailscale0" drop'], "accept"), noOif)).toBe("drop");
+    expect(evaluateChain(chain(['oifname "tailscale0" drop'], "accept"), noOif)).toBe("accept");
   });
 });

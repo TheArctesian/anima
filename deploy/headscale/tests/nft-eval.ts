@@ -64,9 +64,10 @@ function interfaceCondition(tokens: string[], at: number, packet: Packet): Condi
   const negated = tokens[at + 1] === "!=";
   const [names, next] = readNames(tokens, at + (negated ? 2 : 1));
   const actual = tokens[at] === "iifname" ? packet.iifname : packet.oifname;
-  // A rule on oifname cannot match a packet that has no output interface yet.
-  const hit = actual !== undefined && names.some((name) => matchesName(name, actual));
-  return { matches: actual !== undefined && hit !== negated, next };
+  // As in nft, a packet with no output interface yet (prerouting) has an empty oifname:
+  // `oifname "x"` does not match it and `oifname != "x"` does.
+  const hit = names.some((name) => matchesName(name, actual ?? ""));
+  return { matches: hit !== negated, next };
 }
 
 function addressCondition(tokens: string[], at: number, packet: Packet): Condition {
