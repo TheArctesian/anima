@@ -277,6 +277,14 @@ fixture_test! {
             assert_eq!(error["extensions"]["fields"][0]["field"], "credential", "{error}");
             let body = serde_json::to_string(&response).unwrap();
             assert_absent("variable-bare-secret", &[&body, &log]);
+            // Without the API boundary, which rewrites argument errors, the parser's own error
+            // quotes nothing either.
+            let raw = with_variables(&schema_for(&pool), &protocol.set_query(),
+                json!({ "id": PVE_01, "credential": "raw-bare-secret" })).await;
+            let error = error_json(&raw);
+            assert_eq!(error["extensions"]["fields"],
+                json!([{ "field": "credential", "message": "Send a password." }]));
+            assert_absent("raw-bare-secret", &[&serde_json::to_string(&raw).unwrap(), &format!("{:?}", raw.errors)]);
         }
         assert_eq!(secret_rows(&pool).await, 0);
     }
