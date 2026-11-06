@@ -75,7 +75,7 @@ pub(super) async fn for_devices(
     rows.into_iter().map(WebInterface::try_from).collect()
 }
 
-/// Like [`get`], and the row stays locked until the connection's transaction ends, so no
+/// The interface; the row stays locked until the connection's transaction ends, so no
 /// update or delete can commit between the caller's check and its write.
 pub(super) async fn get_locked(
     conn: &mut PgConnection,
@@ -95,16 +95,6 @@ pub(super) async fn lock_device(conn: &mut PgConnection, device: DeviceId) -> Re
         .execute(conn)
         .await?;
     Ok(())
-}
-
-pub(super) async fn get(
-    db: impl PgExecutor<'_>,
-    id: WebInterfaceId,
-) -> Result<WebInterface, Error> {
-    let sql = format!("{SELECT}WHERE i.id = $1");
-    let row: Option<Row> = sqlx::query_as(&sql).bind(id).fetch_optional(db).await?;
-    row.ok_or(Error::NotFound(Missing::Interface(id)))?
-        .try_into()
 }
 
 /// What a new interface is given besides the operator's input.
