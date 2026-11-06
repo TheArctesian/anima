@@ -13,6 +13,7 @@
   import { isFiltered, withoutFilters } from '../toolbar/toolbar';
   import { Listing } from './listing.svelte';
   import { browserClock, type LoadingClock } from '$lib/motion/loading/loading';
+  import LiveNotice from './LiveNotice.svelte';
   import Skeleton from './Skeleton.svelte';
 
   interface Props {
@@ -47,9 +48,7 @@
 
 <Toolbar {query} tags={tags.names} tagsNote={tags.note} {onQueryChange} {onAddDevice} />
 
-{#if listing.liveError !== null}
-  <p class="notice" role="status">Live updates stopped: {listing.liveError.message}</p>
-{/if}
+<LiveNotice message={listing.liveError?.message ?? null} />
 
 {#if listing.error !== null}
   <div class="notice" role="alert">

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import LiveNotice from '$lib/devices/screen/LiveNotice.svelte';
   import { untrack } from 'svelte';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
@@ -152,7 +153,7 @@
       <button type="button" onclick={() => void detail.load()} {@attach press()}>Retry</button>
     </div>
   {:else if device !== null}
-    {#if detail.liveError !== null}<p class="notice" role="status">Live updates stopped: {detail.liveError.message}</p>{/if}
+    <LiveNotice message={detail.liveError?.message ?? null} gap="end" />
     <Tabs selected={place.tab} onSelect={(tab) => { go({ tab, section: null }); }} />
     {#if place.tab === 'overview'}
       <TabPanel name="overview" loading={checksLoading}>
