@@ -54,7 +54,7 @@
     background: var(--accent);
     color: var(--bg);
     font: inherit;
-    transition: background-color var(--duration-fast) var(--ease-enter);
+    transition: background-color var(--duration-press) var(--ease-enter);
   }
 
   button:active {
