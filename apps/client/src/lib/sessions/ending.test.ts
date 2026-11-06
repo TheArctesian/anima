@@ -14,6 +14,7 @@ const table: readonly [string, TunnelClose, SessionEndReason | undefined, string
   ['1011 with 0x0308', opened(1011, 0x0308), 'GATEWAY_ERROR', 'The hub lost the connection to the device.'],
   ['1011 with no error', opened(1011), 'GATEWAY_ERROR', 'The hub lost the connection to the device.'],
   ['4001 with 0x0303', opened(4001, 0x0303), 'HOST_KEY_MISMATCH', "The device's host key has changed, so Anima did not connect."],
+  ['4003', opened(4003), 'SERVER_CERTIFICATE_MISMATCH', "The device's RDP certificate has changed, so Anima did not connect."],
   ['4003 with 0x0303', opened(4003, 0x0303), 'SERVER_CERTIFICATE_MISMATCH', "The device's RDP certificate has changed, so Anima did not connect."],
   ['4002', opened(4002), 'TIMEOUT', 'The session timed out because the hub heard nothing from Anima.'],
   ['1000 after the client closed on 0x0301', opened(1000, 0x0301), 'AUTH_FAILED', 'The device refused the sign-in, or no credential is stored for it.'],

@@ -1,4 +1,4 @@
-import type { Protocol } from './pending';
+import type { Protocol } from '$lib/hub/generated/graphql';
 
 /** The client's own name for one open tab; a tab outlives the sessions started in it (D-5). */
 export type TabId = string;

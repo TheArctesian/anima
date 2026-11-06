@@ -1,5 +1,5 @@
 // Test support: a real `Hub` whose HTTP endpoint is a fake hub answering the session operations as K1 and K4
-// describe, the pending K1 parts included (CON-003). It records every request. Close `hub` after each test.
+// describe, the Phase 2 additions included. It records every request. Close `hub` after each test.
 // No vitest import here.
 import { parse, type OperationDefinitionNode } from 'graphql';
 import { createHub, DEFAULT_HUB_ADDRESS, type Hub } from '$lib/hub/hub';
@@ -27,8 +27,10 @@ export interface FakeDevice {
   certificateExempt: boolean;
   /** What `endSession` answers as the recorded reason (K4 §5). */
   endReason: SessionEndReason | null;
-  /** A `VALIDATION` refusal for a credential that quotes the password back, to test that it is never shown. */
+  /** A refusal for a credential or a test that quotes the sent secret back, to test that it is never shown. */
   refuseCredential: boolean;
+  /** The K7 code of that refusal. */
+  refusalCode: 'VALIDATION' | 'CONFLICT';
 }
 
 export const CERTIFICATE: ServerCertificate = {
@@ -66,6 +68,7 @@ function ticket(device: FakeDevice, input: Record<string, unknown>, issued: numb
 
 /** `testConnection`; the K1 document also gets the server certificate for an RDP test (K4 §3). */
 function tested(device: FakeDevice, operation: string, input: Record<string, unknown>): Body {
+  if (device.refuseCredential) return quoting(device, input.password ?? input.credential);
   const phaseOne = { reachable: true, authenticated: true, hostKey: null, hostKeyChanged: false, message: null };
   if (operation === 'TestConnection') return { data: { testConnection: phaseOne } };
   const rdp = input.protocol === 'RDP';
@@ -81,11 +84,17 @@ function tested(device: FakeDevice, operation: string, input: Record<string, unk
   };
 }
 
+/** A refusal whose text quotes `secret`, as a careless hub might. */
+function quoting(device: FakeDevice, secret: unknown): Body {
+  const sent = JSON.stringify(secret);
+  const fields = device.refusalCode === 'VALIDATION' ? [{ field: 'password', message: sent }] : undefined;
+  return { errors: [{ message: `Refused ${sent}`, extensions: { code: device.refusalCode, fields } }] };
+}
+
 function credential(device: FakeDevice, operation: string, variables: Record<string, unknown>): Body {
   const field = operation === 'SetRdpCredential' ? 'setRdpCredential' : 'setVncCredential';
-  if (!device.refuseCredential) return { data: { [field]: { credentialStored: true } } };
-  const sent = JSON.stringify(variables.credential);
-  return { errors: [{ message: `Refused ${sent}`, extensions: { code: 'VALIDATION', fields: [{ field: 'password', message: sent }] } }] };
+  if (device.refuseCredential) return quoting(device, variables.credential);
+  return { data: { [field]: { credentialStored: true } } };
 }
 
 function accepted(device: FakeDevice, fingerprint: unknown): Body {
@@ -118,7 +127,6 @@ function answer(device: FakeDevice, request: Sent, issued: number): Body {
   const input = (variables.input ?? {}) as Record<string, unknown>;
   switch (operation) {
     case 'StartSession':
-    case 'StartRemoteSession':
       return ticket(device, input, issued);
     case 'DeviceTransfer':
       return transferOf(device, variables.id);
@@ -147,6 +155,7 @@ export function fakeHub(changes: Partial<FakeDevice> = {}) {
     certificateExempt: false,
     endReason: null,
     refuseCredential: false,
+    refusalCode: 'VALIDATION',
     ...changes,
   };
   const sent: Sent[] = [];

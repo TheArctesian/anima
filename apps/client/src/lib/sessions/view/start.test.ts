@@ -56,7 +56,7 @@ describe('sessionStart: one start per tunnel (K4 §1, §8)', () => {
     const { api, named } = hub({ certificateExempt: true });
     const result = kept(await sessionStart(api, 'device-1', ORIGIN, FAKE_TUNNEL_SOCKET).remote(protocol)(DISPLAY, remoteEvents));
     expect(result).toMatchObject({ ok: true, value: { sessionId: 'session-1' } });
-    expect(named('StartRemoteSession')[0]?.variables).toEqual({ input: { deviceId: 'device-1', protocol, display: DISPLAY } });
+    expect(named('StartSession')[0]?.variables).toEqual({ input: { deviceId: 'device-1', protocol, display: DISPLAY } });
     expect(FakeTunnelSocket.latest().url).toBe(`wss://hub.anima.ing/tunnel?token=token-1-${'x'.repeat(36)}`);
     expect(FakeTerminalSocket.made).toEqual([]);
   });
@@ -148,8 +148,10 @@ describe('the store passes the tab\'s protocol (RA-001)', () => {
     const ssh = sessions.openSession({ ...tab, protocol: 'SSH' });
     kept(await sessions.remoteStartIn(vnc)(DISPLAY, remoteEvents));
     kept(await sessions.startIn(ssh)(DISPLAY, terminalEvents));
-    expect(named('StartRemoteSession').map((sent) => sent.variables)).toEqual([{ input: { deviceId: 'device-1', protocol: 'VNC', display: DISPLAY } }]);
-    expect(named('StartSession').map((sent) => sent.variables)).toEqual([{ input: { deviceId: 'device-1', protocol: 'SSH', display: DISPLAY } }]);
+    expect(named('StartSession').map((sent) => sent.variables)).toEqual([
+      { input: { deviceId: 'device-1', protocol: 'VNC', display: DISPLAY } },
+      { input: { deviceId: 'device-1', protocol: 'SSH', display: DISPLAY } },
+    ]);
     expect([FakeTunnelSocket.made.length, FakeTerminalSocket.made.length]).toEqual([1, 1]);
     expect(sessions.tabs.map((open) => open.sessionId)).toEqual(['session-1', 'session-2']);
   });

@@ -92,30 +92,24 @@ describe('sessionsApi (K1, CQ-045)', () => {
   });
 });
 
-/** A fake hub with the K1 additions (CON-003), closed after the test. */
+/** A fake hub with the Phase 2 additions, closed after the test. */
 function k1Hub(...changes: Parameters<typeof fakeHub>) {
   const fake = fakeHub(...changes);
   hubs.push(fake.hub);
   return fake;
 }
 
-describe('sessionsApi, K1 starts and policy (CON-003)', () => {
+describe('sessionsApi, K1 starts and policy', () => {
   it.each(['RDP', 'VNC'] as const)('K1: startSession asks for %s and the ticket names the Guacamole tunnel', async (protocol) => {
     const { api, named } = k1Hub({ certificateExempt: true });
     const ticket = await api.startSession('device-1', protocol, DISPLAY);
     expect(ticket).toMatchObject({ ok: true, value: { sessionId: 'session-1', tunnelPath: '/tunnel' } });
-    expect(named('StartRemoteSession')[0]?.variables).toEqual({ input: { deviceId: 'device-1', protocol, display: DISPLAY } });
+    expect(named('StartSession')[0]?.variables).toEqual({ input: { deviceId: 'device-1', protocol, display: DISPLAY } });
   });
 
   it('K4 §1: an RDP start without an accepted certificate is CONFLICT', async () => {
     const { api } = k1Hub();
     expect(await api.startSession('device-1', 'RDP', DISPLAY)).toMatchObject({ ok: false, error: { code: 'CONFLICT' } });
-  });
-
-  it('K1: an SSH start still sends the Phase 1 document', async () => {
-    const { api, named } = k1Hub();
-    expect(await api.startSession('device-1', 'SSH', DISPLAY)).toMatchObject({ ok: true, value: { tunnelPath: '/terminal' } });
-    expect(named('StartSession')).toHaveLength(1);
   });
 
   it('RA-033: transferPolicy reads the device\'s copy and paste flags', async () => {
@@ -131,7 +125,7 @@ describe('sessionsApi, K1 starts and policy (CON-003)', () => {
 
 });
 
-describe('sessionsApi, K1 credentials and certificates (CON-003)', () => {
+describe('sessionsApi, K1 credentials and certificates', () => {
   it.each([
     ['RDP', 'SetRdpCredential', 'setRdpCredential'],
     ['VNC', 'SetVncCredential', 'setVncCredential'],
@@ -147,6 +141,22 @@ describe('sessionsApi, K1 credentials and certificates (CON-003)', () => {
     const { api } = k1Hub({ refuseCredential: true });
     const result = await api.setCredential('RDP', 'device-1', 'pw-marker-91');
     expect(result).toMatchObject({ ok: false, error: { code: 'VALIDATION', fields: [{ field: 'password' }] } });
+    expect(JSON.stringify(result)).not.toContain('pw-marker-91');
+  });
+
+  it('LOG-007: any other refused credential also has fixed text, with its code', async () => {
+    const { api } = k1Hub({ refuseCredential: true, refusalCode: 'CONFLICT' });
+    const result = await api.setCredential('VNC', 'device-1', 'pw-marker-91');
+    expect(result).toEqual({ ok: false, error: { code: 'CONFLICT', message: 'The hub did not store the password.' } });
+  });
+
+  it.each([
+    ['a K1 password', { deviceId: 'device-1', protocol: 'RDP' as const, password: { password: 'pw-marker-91' } }],
+    ['an SSH credential', { host: 'nas.lan', credential: { password: 'pw-marker-91' } }],
+  ])('LOG-007: a refused connection test with %s keeps the code but never the hub\'s text', async (_case, input) => {
+    const { api } = k1Hub({ refuseCredential: true });
+    const result = await api.testConnection(input);
+    expect(result).toMatchObject({ ok: false, error: { code: 'VALIDATION', message: 'The hub could not run the connection test.' } });
     expect(JSON.stringify(result)).not.toContain('pw-marker-91');
   });
 
