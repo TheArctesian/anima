@@ -98,6 +98,13 @@ describe('saveDevice remote passwords (DEV-011, H-2)', () => {
     expect(calls.setVncCredential).toHaveBeenCalledOnce();
   });
 
+  it('DEV-011: a failed VNC password is reported after a stored RDP password', async () => {
+    const calls = remoteCalls({ setVncCredential: () => Promise.resolve({ ok: false, error: LOCKED }) });
+    const saved = await saveDevice(device(), typed('rdp-secret', 'vnc-secret'), calls);
+    expect(calls.setRdpCredential).toHaveBeenCalledOnce();
+    expect(saved.result).toEqual({ ok: false, error: LOCKED });
+  });
+
   it('D-2: an untouched form sends no remote password call', async () => {
     const calls = remoteCalls();
     await saveDevice(device(), formValues(device()), calls);

@@ -10,7 +10,8 @@ import type { HubResult } from '$lib/hub/hub';
 import type {
   CreateCheckInput,
   PasswordCredentialInput,
-  SshCredentialInput, UpdateCheckInput,
+  SshCredentialInput,
+  UpdateCheckInput,
   UpdateDeviceInput,
 } from '$lib/hub/generated/graphql';
 
