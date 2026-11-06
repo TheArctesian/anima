@@ -421,7 +421,7 @@ Anima uses Fira Code for text by default and Nerd Fonts for icons. The operator 
 | Icon fallback | Symbols Nerd Font | `patched-fonts/NerdFontsSymbolsOnly/SymbolsNerdFont-Regular.ttf` | MIT |
 
 - **UI-010.** Use Fira Code for all interface text by default. OpenDyslexic Nerd Font Propo is the alternative (UI-020).
-- **UI-011.** Use Fira Code for IP addresses, host names and code by default; OpenDyslexicM Nerd Font Mono is the alternative (UI-020). The server-drawn terminal uses OpenDyslexicM Nerd Font Mono (RA-011). Use the "Mono" variant in the terminal, because its icons are one cell wide.
+- **UI-011.** Use Fira Code for IP addresses, host names and code by default; OpenDyslexicM Nerd Font Mono is the alternative (UI-020). The SSH terminal uses OpenDyslexicM Nerd Font Mono (RA-011). Use the "Mono" variant in the terminal, because its icons are one cell wide.
 - **UI-014.** Use Nerd Font glyphs for all icons. Do not use image files or a second icon library. Use the Propo variant for icons in the interface, because its icons have their natural width.
 - **UI-015.** Each icon must have `aria-hidden="true"`. A button that has only an icon must have a text label for screen readers and a tooltip.
 - **UI-016.** Refer to each icon by its Nerd Font class name in the code, for example `nf-md-server`. Keep a table of the class names and code points in one source file. Do not write raw code points in components.
@@ -730,6 +730,8 @@ Session procedure:
 
 #### 6.3.1 SSH settings (Phase 1)
 
+Since R-062 the hub opens the SSH connection and the client draws the terminal (K4 Section 8). The middle column names the setting as guacd called it; the hub and the client apply the same values.
+
 | Setting | Gateway parameter | Default |
 | --- | --- | --- |
 | Private key and passphrase | `private-key`, `passphrase` | — |
@@ -742,8 +744,8 @@ Session procedure:
 | Scroll-back lines | `scrollback` | 5000 |
 | Terminal type | `terminal-type` | `xterm-256color` |
 
-- **RA-010.** The hub must give the gateway a custom colour scheme from the Nord tokens in Section 5.1.
-- **RA-011.** The gateway renders the terminal on the server. Thus the gateway Docker image must include OpenDyslexicM Nerd Font Mono. Build a small image from `guacamole/guacd` that adds the font file.
+- **RA-010.** The SSH terminal uses a colour scheme from the Nord tokens in Section 5.1 (R-062: the client's xterm.js theme; before, the gateway's custom colour scheme).
+- **RA-011.** The client renders SSH sessions with xterm.js, from the terminal bytes the hub relays (R-062, K4 Section 8). The terminal uses OpenDyslexicM Nerd Font Mono, which the client ships, and the Nord colours from the tokens (RA-010). The gateway image no longer needs the terminal font for SSH.
 
 #### 6.3.2 RDP settings (Phase 2)
 

@@ -1,8 +1,15 @@
 # K4 — Remote access tunnel
 
-Status: **frozen for Phase 1** (change only through a programme ruling, CON-001).
+Status: **frozen for Phase 1** (change only through a programme ruling, CON-001). R-062 split SSH onto the terminal tunnel and added Section 8.
 
-The remote access stream does not use GraphQL (API-009). The client gets a ticket from the `startSession` mutation (K1), then opens one WebSocket to the hub. The hub relays Guacamole protocol instructions between that socket and `guacd` (GW-011). Owners: hub side WP-10 (`sessions`), protocol codec WP-08 (`guac-protocol`), client side WP-14.
+The remote access stream does not use GraphQL (API-009). The client gets a ticket from the `startSession` mutation (K1), then opens one WebSocket to the hub. Owners: hub side WP-10 (`sessions`), protocol codec WP-08 (`guac-protocol`), client side WP-14; the terminal tunnel WP-18.
+
+There are two tunnels (R-062):
+
+- **SSH** uses the terminal tunnel (Section 8): the hub runs the SSH connection itself and relays terminal bytes; the client draws the terminal with xterm.js (RA-011). No SSH session goes to `guacd`.
+- **RDP and VNC** (Phase 2) use the Guacamole tunnel: the hub relays Guacamole protocol instructions between the socket and `guacd` (GW-011). Sections 2 to 4 describe it. The hub does not serve `/tunnel` until a protocol uses it.
+
+Sections 1, 5 and 6 apply to both tunnels.
 
 ## 1. Ticket
 
@@ -13,11 +20,11 @@ The remote access stream does not use GraphQL (API-009). The client gets a ticke
 | Lifetime | 30 seconds from issue (`expiresAt` in the ticket) |
 | Use | Single use. The hub removes the token when a tunnel request presents it, valid or not |
 | Binding | Operator ID, session ID, client address. A request from another client address is refused |
-| `tunnelPath` | Always `/tunnel` in Phase 1 |
+| `tunnelPath` | `/terminal` for SSH (Section 8). `/tunnel` for RDP and VNC (Phase 2) |
 
-`startSession` does these steps before it returns the ticket: checks that the device exists and SSH is enabled; checks that a credential is stored (or the gateway will ask, GW-015); inserts a `sessions.sessions` row with `started_at`; writes an audit entry `session.start`.
+`startSession` does these steps before it returns the ticket: checks that the device exists and SSH is enabled; checks that a host key is accepted (Section 6); inserts a `sessions.sessions` row with `started_at`; writes an audit entry `session.start`.
 
-## 2. Tunnel request
+## 2. Tunnel request (Guacamole, RDP and VNC)
 
 ```text
 GET /tunnel?token=<token>  HTTP/1.1
@@ -36,7 +43,9 @@ Sec-WebSocket-Protocol: guacamole
   | Subprotocol `guacamole` missing | 400 |
   | Gateway unreachable | 503 (and the session ends with `GATEWAY_ERROR`) |
 
-## 3. Handshake (hub ↔ guacd, GW-010)
+## 3. Handshake (hub ↔ guacd, GW-010; RDP and VNC)
+
+The SSH rows below are the Phase 1 values from before R-062; Phase 2 replaces them with the RDP and VNC values (spec Section 6.3.2).
 
 The hub, not the client, does the handshake with the `guac-protocol` `Handshake` state machine:
 
@@ -60,7 +69,7 @@ Phase 1 SSH argument values:
 | `server-alive-interval` | `30` |
 | `enable-sftp`, `recording-path`, `typescript-path` | Empty (Phase 1) |
 
-## 4. Relay
+## 4. Relay (Guacamole, RDP and VNC)
 
 After `ready`, the hub sends to the client, in this order:
 
@@ -80,6 +89,8 @@ The hub sends a `nop` to the client when the gateway has sent nothing for 5 seco
 
 ## 5. End of session
 
+The Guacamole tunnel's causes; Section 8.6 gives the terminal tunnel's causes for the same reasons and codes.
+
 | Cause | WebSocket close code sent to client | `endReason` |
 | --- | --- | --- |
 | Client closes, or `endSession` mutation | 1000 | `OPERATOR` |
@@ -97,10 +108,107 @@ On every end the hub: closes both sockets; sets `ended_at` and `end_reason` on t
 
 - The connection test (`testConnection`) reads the host key before any session. If none is recorded, the result has `hostKey` set and `hostKeyChanged: false`; the client shows the fingerprint and calls `acceptHostKey`.
 - `startSession` refuses with `CONFLICT` when no host key is accepted yet.
-- Before the gateway handshake, the hub reads the device's SSH host key itself (the same no-auth key exchange `testConnection` uses), because guacd reports a mismatch only as a generic `error` 0x0200 (R-034). When the hub reads a key that differs from the recorded key, it sends `error` `"Host key changed"` `0x0303` and the session ends with `HOST_KEY_MISMATCH`, an Error event is written and the client shows the warning modal. guacd still pins `host-key`, so a key that changes between the hub's read and guacd's connect fails closed as `GATEWAY_ERROR`. Only a new `testConnection` + `acceptHostKey` replaces the key, and that writes an audit entry.
+- The terminal tunnel (Section 8) pins the key in its own SSH connection: the hub compares the key the device presents in the key exchange with the accepted key and sends no credential unless they are equal (Section 8.3).
+- Before the gateway handshake (Guacamole tunnel), the hub reads the device's SSH host key itself (the same no-auth key exchange `testConnection` uses), because guacd reports a mismatch only as a generic `error` 0x0200 (R-034). When the hub reads a key that differs from the recorded key, it sends `error` `"Host key changed"` `0x0303` and the session ends with `HOST_KEY_MISMATCH`, an Error event is written and the client shows the warning modal. guacd still pins `host-key`, so a key that changes between the hub's read and guacd's connect fails closed as `GATEWAY_ERROR`. Only a new `testConnection` + `acceptHostKey` replaces the key, and that writes an audit entry.
 
 ## 7. Tests the owners must have
 
 - Ticket: expired, reused, wrong client address → 403 (property-based on the clock with `FixedClock`).
 - Handshake: a recorded `args` list from guacd 1.5 and 1.6 gives the expected `connect` values; a forbidden name sent by a fake client never reaches `connect`.
 - Relay: a fake guacd (in-process TCP listener) and a fake client run one full session, including `ping`, an invalid instruction (close 1002) and each end cause in Section 5.
+- Terminal (Section 8): a fake SSH server (a `russh` server in the test) and a fake client run one full session: bytes both ways, `resize` reaching the server as a window change, `ping` both ways, and each end cause in Section 8.6. A changed host key ends `HOST_KEY_MISMATCH` and the fake server sees no authentication request; a refused credential ends `AUTH_FAILED`; a ticket that is expired, reused or from another address gets 403 and one without the subprotocol gets 400. The control-message parser is property-tested: no input panics, and only the messages in Section 8.4 are accepted.
+
+## 8. Terminal tunnel (SSH, R-062)
+
+The hub opens the SSH connection with `russh`, as the connection test does (Section 6, R-034). The client gets bytes, not pictures, and draws them with xterm.js (RA-011).
+
+### 8.1 Request
+
+```text
+GET /terminal?token=<token>  HTTP/1.1
+Upgrade: websocket
+Sec-WebSocket-Protocol: anima-terminal
+```
+
+- The client opens `new WebSocket(<hub address, https→wss, http→ws> + tunnelPath + "?token=" + token, "anima-terminal")`. The token appears only in that query.
+- The route sits behind `access::permitted_networks_layer` (NET-002); the ticket is the authentication (SEC-002). Neither the URI nor the token reaches a log, a span or an error (LOG-007).
+- Refusals before the upgrade, with HTTP status and no body detail. The token is spent before the subprotocol is checked (Section 1):
+
+  | Case | Status |
+  | --- | --- |
+  | No token, unknown, used or expired token | 403 |
+  | Client address differs from the ticket | 403 |
+  | Subprotocol `anima-terminal` missing | 400 (the session ends `PROTOCOL_ERROR`) |
+  | Device gone, SSH off, no accepted key, host does not resolve or fails the target rule (R-032), device unreachable, or no SSH key exchange | 503 (the session ends `GATEWAY_ERROR`) |
+
+### 8.2 Opening (before the upgrade)
+
+1. Load the device; SSH must be on and a host key accepted.
+2. Resolve the host; every address must pass the target rule (R-032). Connect to a checked address, never to the name again.
+3. Key exchange with the host key order the connection test uses. Pin the key (Section 8.3).
+4. Authenticate as `devices.ssh_settings.username` with the stored credential from `credentials::load_ssh`: `password` (and, when the device offers only `keyboard-interactive`, the password as the answer to its prompts), or `publickey` with the private key and passphrase. The secret is decrypted in the hub, used only for this, and dropped (zeroed) after it; it never reaches the client (OD-9, SEC-005). With no stored credential, or when the device refuses it, the opening goes on to the upgrade and the session ends `AUTH_FAILED` (Section 8.6).
+5. SSH keep-alive every 30 seconds (spec Section 6.3.1).
+
+The whole opening has the connection test's limit (8 seconds). The PTY and the shell wait for the client's first `resize` (Section 8.4).
+
+### 8.3 Host key
+
+The hub compares the key the device presents in the key exchange with the accepted key in `sessions.host_keys`, after `russh` has checked the exchange signature with it. When they differ, the hub sends no authentication request: it upgrades, sends `end` `HOST_KEY_MISMATCH` and closes 4001 (Section 8.6). A certificate, or a key the hub cannot read, counts as a different key. Only a new `testConnection` + `acceptHostKey` replaces the key (Section 6).
+
+### 8.4 Messages
+
+One WebSocket per session. Frames are of two kinds:
+
+- **Binary:** terminal bytes, both ways, unchanged. Client → hub: what the operator types or pastes, written to the shell's standard input. Hub → client: the shell's output (its standard output and standard error, in the order they come), as the channel delivers it. The hub does not read or change these bytes and keeps none of them (RA-008).
+- **Text:** one JSON object per message, from a closed set. A message with another `type`, a missing or extra field, a value out of range or a number that is not an integer is a protocol error.
+
+| Direction | Message | Meaning |
+| --- | --- | --- |
+| Client → hub | `{"type":"resize","cols":C,"rows":R}` | The terminal size in cells, `1 ≤ C ≤ 1000`, `1 ≤ R ≤ 1000`. The first one opens the PTY (`TERM=xterm-256color`) at that size and starts the login shell; later ones change the PTY size (SSH `window-change`, pixel sizes 0) |
+| Client → hub | `{"type":"ping"}` | The client is alive. The hub does not answer it |
+| Hub → client | `{"type":"ping"}` | The hub is alive. The client does not answer it |
+| Hub → client | `{"type":"end","reason":"<SessionEndReason>"}` | The session ends with this K1 `SessionEndReason`; the close follows |
+
+- The client's **first message must be `resize`**. Any other first message is a protocol error.
+- The client sets no other PTY value: the terminal type, the command (the login shell) and the environment are the hub's (GW-013).
+- The client sends `ping` when it has sent nothing for 5 seconds. The hub sends `ping` when it has sent nothing for 5 seconds.
+
+### 8.5 Limits
+
+| Limit | Value |
+| --- | --- |
+| Largest client message (binary or text) | 64 KiB; larger is a protocol error |
+| Largest text message | 256 bytes; larger is a protocol error |
+| Wait for the first `resize` after the upgrade | 10 seconds; then `TIMEOUT` |
+| Client silence (no message of any kind) | 15 seconds; then `TIMEOUT` |
+| One send to the client | 15 seconds; then `TIMEOUT` |
+| Text that is not UTF-8 | Protocol error |
+
+Backpressure: the hub reads the next output from the SSH channel only after the previous binary frame was sent, and the SSH channel's buffer is bounded. A slow client therefore stalls the SSH channel (its window stops opening) instead of growing a buffer in the hub. Client input is written to the channel one message at a time, under the channel's window.
+
+### 8.6 End of session
+
+The reasons, events and audit are those of Section 5. Before each close the hub decides, it sends `end` with the reason (best effort; the close follows even if the send fails).
+
+| Cause | Close code | `endReason` |
+| --- | --- | --- |
+| Client closes, or `endSession` mutation | 1000 | `OPERATOR` |
+| The shell exits, or the device closes the channel or the connection | 1000 | `REMOTE_CLOSED` |
+| The hub's SSH connection fails after the opening (transport or protocol error), or the PTY or shell request is refused | 1011 | `GATEWAY_ERROR` |
+| The device refuses the credential, or none is stored | 1011 | `AUTH_FAILED` |
+| Host key differs from the accepted key | 4001 | `HOST_KEY_MISMATCH` |
+| Client message that is not in Section 8.4, over a limit in Section 8.5, or not UTF-8 | 1002 | `PROTOCOL_ERROR` |
+| Client silence, no first `resize`, or a send that stalls (Section 8.5) | 4002 | `TIMEOUT` |
+| Hub shutdown | 1001 | `HUB_SHUTDOWN` |
+
+On every end the hub closes the SSH channel and connection and the WebSocket, and writes the row, event and audit entry as in Section 5. Event messages are fixed sentences; none holds device text, an address, a value or session content (LOG-007, RA-008).
+
+### 8.7 What the client terminal may do
+
+The remote host controls the bytes the client draws, so the client sets each of these on purpose:
+
+- OSC 52 (write to the clipboard): off. A remote host must not fill the operator's clipboard.
+- OSC 8 hyperlinks and detected links: open only after a confirmation that shows the full URL; only `http` and `https`.
+- Window title (OSC 0 and 2): shown in the tab after removing control characters, at most 80 characters.
+- No sixel or other image protocols.
+- Copy and paste go through the operator's own actions only (RA-003): selection and the copy shortcut, the paste event or the Keys menu. Paste uses bracketed paste when the shell asks for it.
