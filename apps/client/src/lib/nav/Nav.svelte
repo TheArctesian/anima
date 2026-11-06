@@ -93,7 +93,7 @@
     color: var(--text);
     line-height: var(--leading-tight);
     text-decoration: none;
-    transition: background-color var(--duration-press) var(--ease-enter);
+    transition: background-color var(--duration-fast) var(--ease-enter);
   }
 
   .brand {
