@@ -72,8 +72,8 @@ async fn set_relay(pool: &PgPool, site_id: &str, device_id: &str) {
     .unwrap();
 }
 
-fn mac(text: &str) -> Option<MacAddress> {
-    Some(text.parse().unwrap())
+fn mac(text: &str) -> MacAddress {
+    text.parse().unwrap()
 }
 
 fn full_rdp() -> Value {
@@ -118,7 +118,7 @@ fixture_test! {
         assert_eq!(created.vnc, VncSettings {
             enabled: true, port: 5900, username: Some("viewer".into()),
         });
-        assert_eq!(created.mac_address, mac("aa:bb:0c:dd:ee:f2"));
+        assert_eq!(created.mac_address, Some(mac("aa:bb:0c:dd:ee:f2")));
         assert_eq!(created.metrics_source, MetricsSource::Ssh);
         assert_eq!(created.transfer, TransferPolicy {
             upload: false, download: true, copy: true, paste: false,
@@ -185,11 +185,11 @@ fixture_test! {
         let created = create(&pool, json!({ "macAddress": "02:00:5e:00:00:fb" })).await;
         let id = created.id.to_string();
         let kept = update(&pool, &id, json!({ "name": "win-02" })).await;
-        assert_eq!(kept.mac_address, mac("02:00:5e:00:00:fb"));
+        assert_eq!(kept.mac_address, Some(mac("02:00:5e:00:00:fb")));
         let kept = update(&pool, &id, json!({ "macAddress": null })).await;
-        assert_eq!(kept.mac_address, mac("02:00:5e:00:00:fb"));
+        assert_eq!(kept.mac_address, Some(mac("02:00:5e:00:00:fb")));
         let set = update(&pool, &id, json!({ "macAddress": "02-00-5E-00-00-FC" })).await;
-        assert_eq!(set.mac_address, mac("02:00:5e:00:00:fc"));
+        assert_eq!(set.mac_address, Some(mac("02:00:5e:00:00:fc")));
         let cleared = update(&pool, &id, json!({ "macAddress": "" })).await;
         assert_eq!(cleared.mac_address, None);
     }
