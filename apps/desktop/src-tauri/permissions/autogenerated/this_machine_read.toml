@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-this-machine-read"
+description = "Enables the this_machine_read command without any pre-configured scope."
+commands.allow = ["this_machine_read"]
+
+[[permission]]
+identifier = "deny-this-machine-read"
+description = "Denies the this_machine_read command without any pre-configured scope."
+commands.deny = ["this_machine_read"]
