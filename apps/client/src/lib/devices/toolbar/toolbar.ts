@@ -64,3 +64,12 @@ export function debounced(run: () => void, ms: number): Debounced {
   };
   return call;
 }
+
+/**
+ * How far to move a menu panel that starts at `left` and is `width` wide so it ends inside a viewport `viewport` wide,
+ * `margin` from the edge. The left edge wins when the panel is wider than the viewport.
+ */
+export function shiftInsideViewport(left: number, width: number, viewport: number, margin: number): number {
+  const toRight = Math.min(0, viewport - margin - (left + width));
+  return Math.max(toRight, margin - left);
+}

@@ -9,6 +9,7 @@
   import { createHub } from '$lib/hub/hub';
   import { crossFade } from '$lib/motion/roles/transitions';
   import { DATA_AGE_REFRESH_MS } from '$lib/nav/nav';
+  import { watchIconOnly } from '$lib/nav/iconOnly';
   import { createClock } from '$lib/nav/clock.svelte';
   import Nav from '$lib/nav/Nav.svelte';
   import { sessionsApi } from '$lib/sessions/api';
@@ -25,6 +26,12 @@
 
   // The operator's fonts apply before the first render, so the text does not change family after it shows (UI-020).
   applyTypefaces(document.documentElement, storedTypefaces(localStorage));
+  // The bar shows icons only below the compact breakpoint; set before the first render so the width never changes after load.
+  let iconOnly = $state(false);
+  const stopWatchingWidth = watchIconOnly(document.documentElement, window, (now) => {
+    iconOnly = now;
+  });
+  $effect(() => stopWatchingWidth);
 
   // The hub address is the stored setting (CLI-002); the token is read from the desktop key store per call (CLI-003).
   const address = storedHubAddress(localStorage);
@@ -86,7 +93,7 @@
 </script>
 
 <div class="shell">
-  <Nav pathname={page.url.pathname} now={clock.current} onnavigate={navigate} />
+  <Nav pathname={page.url.pathname} now={clock.current} onnavigate={navigate} {iconOnly} />
   <main>
     <SessionTabs />
     <div class="stage">
@@ -128,6 +135,11 @@
     grid-template-columns: minmax(0, 1fr);
     min-inline-size: 0;
     padding: var(--space-6);
+  }
+
+  /* Below the compact breakpoint the unreachable strip takes the top of the window; the page starts below it. */
+  :global(:root[data-nav='icons']) .shell:has(:global(.notice .banner)) main {
+    padding-block-start: calc(var(--space-6) + var(--nav-banner-block-size));
   }
 
   /* One column that may shrink below its content, so neither the pages nor a session widen the document (UI-009). */

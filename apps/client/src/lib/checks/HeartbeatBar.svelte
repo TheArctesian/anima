@@ -44,15 +44,22 @@
 </div>
 
 <style>
-  /* A fixed size from tokens: the number of beats moves nothing (MOT-007). */
+  /*
+   * A fixed size from tokens: the number of beats moves nothing (MOT-007). Where the card is narrower than the bar, the
+   * bar shrinks to the card and the row stays against the end, so the oldest cells are the ones that are cut.
+   */
   .bar {
     box-sizing: border-box;
+    display: flex;
+    justify-content: flex-end;
+    min-inline-size: 0;
     overflow: hidden;
     inline-size: calc(var(--bar-length) * var(--space-1) + (var(--bar-length) - 1) * var(--border-thin));
     block-size: var(--space-4);
   }
 
   .row {
+    flex: none;
     display: flex;
     gap: var(--border-thin);
     block-size: 100%;
