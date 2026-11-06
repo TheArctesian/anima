@@ -1,12 +1,18 @@
+/** The longest link the confirmation shows, in characters; a longer one hides its end from the operator. */
+export const LINK_MAX = 2048;
+
 /**
- * The address a link would open, or `undefined` when it must not open (K4 §8.7): only `http` and `https`. The
- * address is the parsed form, so the confirmation shows what the browser would really open (an international
- * host name appears in its ASCII form), and `javascript:`, `data:`, `file:` and every other scheme are refused.
+ * The address a link would open, or `undefined` when it must not open (K4 §8.7): only `http` and `https`, no user
+ * name or password (`https://accounts.google.com:443@evil.example/` shows a host that is not the real one), and at
+ * most `LINK_MAX` characters. The address is the parsed form, so the confirmation shows what the browser would
+ * really open (an international host name appears in its ASCII form), and `javascript:`, `data:`, `file:` and
+ * every other scheme are refused.
  */
 export function linkTarget(raw: string): string | undefined {
-  if (!URL.canParse(raw)) return undefined;
+  if (raw.length > LINK_MAX || !URL.canParse(raw)) return undefined;
   const url = new URL(raw);
-  return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : undefined;
+  const web = url.protocol === 'http:' || url.protocol === 'https:';
+  return web && url.username === '' && url.password === '' ? url.href : undefined;
 }
 
 /**

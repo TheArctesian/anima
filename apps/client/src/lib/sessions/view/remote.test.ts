@@ -55,7 +55,7 @@ describe('the remote host controls the bytes (K4 §8.7)', () => {
     expect(title).not.toContain(override);
   });
 
-  it.each(['javascript:alert(1)', 'data:text/html,hi', 'file:///etc/passwd', 'ftp://example.com/x', 'not a link'])(
+  it.each(['javascript:alert(1)', 'data:text/html,hi', 'file:///etc/passwd', 'ftp://example.com/x', 'not a link', 'https://accounts.google.com:443@evil.example/login'])(
     'K4 §8.7: the link %s is refused, with no dialog and nothing opened',
     async (address) => {
       const open = vi.spyOn(window, 'open').mockReturnValue(null);
@@ -74,6 +74,7 @@ describe('the remote host controls the bytes (K4 §8.7)', () => {
     heard.hooks?.onlink('https://example.com/a/very/long/path?with=query&and=more#frag');
     await settle();
     expect(document.querySelector('[data-address]')?.textContent).toBe('https://example.com/a/very/long/path?with=query&and=more#frag');
+    expect(document.querySelector('[data-host]')?.textContent).toBe('example.com');
     expect(open).not.toHaveBeenCalled();
     [...document.querySelectorAll('button')].find((button) => button.textContent === 'Open link')?.click();
     await settle();

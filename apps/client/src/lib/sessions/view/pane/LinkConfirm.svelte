@@ -12,6 +12,8 @@
   const { address, onopen, oncancel }: Props = $props();
   // The address is kept while the dialog fades out, so it never shows a blank or a changed address.
   let shown = $state('');
+  /** The host on its own line, above the whole address: the part an address can disguise (K4 §8.7). */
+  const host = $derived(URL.canParse(shown) ? new URL(shown).host : '');
   $effect(() => {
     if (address !== undefined) shown = address;
   });
@@ -19,6 +21,7 @@
 
 <Modal open={address !== undefined} title="Open this link?" onClose={oncancel}>
   <p>The device asked to open this address in your browser. Open it only if you expect it.</p>
+  <p class="host" data-host>{host}</p>
   <p class="address" data-address>{shown}</p>
   <div class="actions">
     <button type="button" data-autofocus onclick={oncancel} {@attach press()}>Cancel</button>
@@ -29,6 +32,12 @@
 <style>
   p {
     margin: 0;
+  }
+
+  .host {
+    font-family: var(--font-mono);
+    font-weight: var(--weight-bold);
+    overflow-wrap: anywhere;
   }
 
   .address {

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { linkTarget, openLink } from './links';
+import { LINK_MAX, linkTarget, openLink } from './links';
 
 describe('which links may open (K4 §8.7)', () => {
   it.each([
@@ -9,6 +9,7 @@ describe('which links may open (K4 §8.7)', () => {
     ['HTTPS://Example.COM/Path', 'https://example.com/Path'],
     ['https://bücher.example/', 'https://xn--bcher-kva.example/'],
     ['http://localhost:8080/x', 'http://localhost:8080/x'],
+    [`https://example.com/${'a'.repeat(LINK_MAX - 'https://example.com/'.length)}`, `https://example.com/${'a'.repeat(LINK_MAX - 'https://example.com/'.length)}`],
   ])('K4 §8.7: %s opens as %s', (raw, expected) => {
     expect(linkTarget(raw)).toBe(expected);
   });
@@ -24,6 +25,9 @@ describe('which links may open (K4 §8.7)', () => {
     'vbscript:x',
     'blob:https://example.com/id',
     'about:blank',
+    'https://accounts.google.com:443@evil.example/login',
+    'https://user:secret@example.com/',
+    `https://example.com/${'a'.repeat(LINK_MAX)}`,
     '//example.com/',
     '/relative',
     'example.com',

@@ -10,6 +10,9 @@ export const CELLS_MAX = 1000;
 /** The largest binary message the client sends is 64 KiB (K4 §8.5); input is cut well under it. */
 export const FRAME_MAX_BYTES = 32_768;
 
+/** No message of the closed set is longer than this; a longer text is not parsed at all. */
+export const TEXT_MAX_CHARS = 256;
+
 /** A terminal size in character cells. */
 export interface CellSize {
   readonly cols: number;
@@ -47,6 +50,7 @@ export function encodePing(): string {
  * for one. The close code that follows an `end` still tells how the session ended.
  */
 export function decodeHubMessage(text: string): HubMessage | undefined {
+  if (text.length > TEXT_MAX_CHARS) return undefined;
   let value: unknown;
   try {
     value = JSON.parse(text);

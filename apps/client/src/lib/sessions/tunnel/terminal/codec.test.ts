@@ -48,6 +48,14 @@ describe('control messages (K4 §8.4)', () => {
   });
 });
 
+describe('hub text over the size limit (K4 §8.5)', () => {
+  it('K4 §8.5: a text over 256 characters is dropped without parsing, even if it starts like a ping', () => {
+    const padded = `{"type":"ping"${' '.repeat(300)}}`;
+    expect(decodeHubMessage(padded)).toBeUndefined();
+    expect(decodeHubMessage('{"type":"ping"}')).toEqual({ kind: 'ping' });
+  });
+});
+
 describe('input frames (K4 §8.5)', () => {
   it('K4 §8.5: a small input is one frame', () => {
     expect(inputFrames(Uint8Array.from([1, 2, 3]))).toEqual([Uint8Array.from([1, 2, 3])]);
