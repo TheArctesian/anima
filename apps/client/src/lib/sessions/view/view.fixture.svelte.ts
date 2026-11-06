@@ -2,7 +2,7 @@
 // stand-in for mounting `SessionView` in jsdom with the real tunnel on `FakeTunnelSocket`. No vitest import here.
 import { flushSync, mount, unmount } from 'svelte';
 import type { HubResult } from '$lib/hub/hub';
-import type { AcceptedHostKey, ConnectionTest, EndedSession, SessionDisplay, SessionsApi, SessionTicket } from '../api';
+import type { AcceptedHostKey, ConnectionTest, ConnectionTestInput, EndedSession, SessionDisplay, SessionsApi, SessionTicket } from '../api';
 import type { SessionEndReason, SessionEnding } from '../ending';
 import { FAKE_TUNNEL_SOCKET, FakeTunnelSocket } from '../tunnel/fake/socket.fixture';
 import SessionView from './SessionView.svelte';
@@ -12,7 +12,7 @@ import { sessionStart } from './start';
 export interface ApiCalls {
   startSession: [string, SessionDisplay][];
   endSession: string[];
-  testConnection: string[];
+  testConnection: ConnectionTestInput[];
   acceptHostKey: [string, string][];
 }
 
@@ -57,14 +57,15 @@ export function fakeApi() {
       };
       return Promise.resolve({ ok: true, value: ended });
     },
-    testConnection: (deviceId) => {
-      calls.testConnection.push(deviceId);
+    testConnection: (input) => {
+      calls.testConnection.push(input);
       return Promise.resolve(answers.test);
     },
     acceptHostKey: (deviceId, fingerprint) => {
       calls.acceptHostKey.push([deviceId, fingerprint]);
       return Promise.resolve(answers.accept(fingerprint));
     },
+    history: () => Promise.resolve({ ok: true, value: { pageInfo: { hasNextPage: false, endCursor: null }, edges: [] } }),
   };
   return { api, calls, answers };
 }

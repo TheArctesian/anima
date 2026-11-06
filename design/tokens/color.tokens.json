@@ -193,6 +193,15 @@
         "over": "{color.surface}"
       },
       "$description": "status-unknown at 12 % on surface (5.5.3)"
+    },
+    "scrim": {
+      "$type": "tint",
+      "$value": {
+        "color": "{color.nord.0}",
+        "percent": 55,
+        "over": "transparent"
+      },
+      "$description": "nord-0 at 55 % behind a modal task (MAT-003, R-049); unchanged under prefers-contrast: more, because a scrim is not a material"
     }
   }
 }

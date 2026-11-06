@@ -58,6 +58,7 @@ Generated from `design/tokens/*.tokens.json` (TOK-001). Names follow contract K5
 | `status-warning-tint` | `--status-warning-tint: color-mix(in srgb, var(--status-warning) 12%, var(--surface))` | status-warning at 12 % on surface (5.5.3) |
 | `status-maintenance-tint` | `--status-maintenance-tint: color-mix(in srgb, var(--status-maintenance) 12%, var(--surface))` | status-maintenance at 12 % on surface (5.5.3) |
 | `status-unknown-tint` | `--status-unknown-tint: color-mix(in srgb, var(--status-unknown) 12%, var(--surface))` | status-unknown at 12 % on surface (5.5.3) |
+| `scrim` | `--scrim: color-mix(in srgb, var(--nord-0) 55%, transparent)` | nord-0 at 55 % behind a modal task (MAT-003, R-049); unchanged under prefers-contrast: more, because a scrim is not a material |
 
 ## depth.layer
 

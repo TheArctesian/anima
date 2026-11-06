@@ -4,6 +4,7 @@
   import { uptimeText, type Beat } from '$lib/checks/heartbeats';
   import type { CardDevice } from '$lib/devices/api';
   import { press } from '$lib/motion/roles/press';
+  import { sharedItem } from '$lib/motion/shared/shared';
   import { hostLine, offersSsh } from './card';
   import './geometry.css';
   import StatusEdge from './StatusEdge.svelte';
@@ -31,6 +32,7 @@
         tabindex="0"
         data-device-id={device.id}
         {@attach press()}
+        {@attach sharedItem(`device-name:${device.id}`)}
       >
         {device.name}
       </a>

@@ -50,9 +50,21 @@ describe('sessionsApi (K1, CQ-045)', () => {
   it('K1: testConnection tests the saved device by ID only', async () => {
     const test = { reachable: true, authenticated: true, hostKey: null, hostKeyChanged: false, message: null };
     const { api, sent } = hubAnswering({ data: { testConnection: test } });
-    expect(await api.testConnection('d-1')).toEqual({ ok: true, value: test });
-    expect(sent[0]?.query).toContain('testConnection(input: { deviceId: $deviceId })');
-    expect(sent[0]?.variables).toEqual({ deviceId: 'd-1' });
+    expect(await api.testConnection({ deviceId: 'd-1' })).toEqual({ ok: true, value: test });
+    expect(sent[0]?.query).toContain('testConnection(input: $input)');
+    expect(sent[0]?.variables).toEqual({ input: { deviceId: 'd-1' } });
+  });
+
+  it('DEV-013: testConnection sends unsaved host, SSH settings and credential without a device ID', async () => {
+    const test = { reachable: true, authenticated: false, hostKey: null, hostKeyChanged: false, message: 'Bad password' };
+    const { api, sent } = hubAnswering({ data: { testConnection: test } });
+    const input = {
+      host: 'nas.lan',
+      ssh: { enabled: true, port: 2222, username: 'root', auth: 'PASSWORD' as const },
+      credential: { password: 'hunter2' },
+    };
+    expect(await api.testConnection(input)).toEqual({ ok: true, value: test });
+    expect(sent[0]?.variables).toEqual({ input });
   });
 
   it('K1: acceptHostKey sends exactly the fingerprint given', async () => {
@@ -60,6 +72,17 @@ describe('sessionsApi (K1, CQ-045)', () => {
     const { api, sent } = hubAnswering({ data: { acceptHostKey: key } });
     expect(await api.acceptHostKey('d-1', 'SHA256:abc')).toEqual({ ok: true, value: key });
     expect(sent[0]?.variables).toEqual({ deviceId: 'd-1', fingerprintSha256: 'SHA256:abc' });
+  });
+
+  it('Section 6.7: history asks for one page of the device\'s sessions and returns it', async () => {
+    const page = {
+      pageInfo: { hasNextPage: true, endCursor: 'c-50' },
+      edges: [{ node: { id: 's-1', protocol: 'SSH', operatorName: 'ada', startedAt: '2026-11-04T10:00:00Z', endedAt: null, endReason: null } }],
+    };
+    const { api, sent } = hubAnswering({ data: { sessions: page } });
+    expect(await api.history('d-1', 50, 'c-0')).toEqual({ ok: true, value: page });
+    expect(sent[0]?.query).toContain('sessions(deviceId: $deviceId, first: $first, after: $after)');
+    expect(sent[0]?.variables).toEqual({ deviceId: 'd-1', first: 50, after: 'c-0' });
   });
 
   it('K7: a hub error stays typed', async () => {

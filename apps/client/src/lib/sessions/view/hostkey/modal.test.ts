@@ -74,7 +74,7 @@ describe('host key review and accept (SEC-007, D-6)', () => {
     const { calls } = await hostKeyChanged();
     expect(button('Accept new key')).toBeUndefined();
     await click('Review new key');
-    expect(calls.testConnection).toEqual(['device-1']);
+    expect(calls.testConnection).toEqual([{ deviceId: 'device-1' }]);
     expect(dialog()?.querySelector('[data-fingerprint]')?.textContent).toBe(NEW_KEY.fingerprintSha256);
   });
 
