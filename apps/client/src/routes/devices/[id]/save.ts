@@ -3,14 +3,24 @@ import type { DeviceDetail, StoredCredential } from '$lib/devices/api';
 import { createCheckInput, updateCheckInput } from '$lib/forms/check/model/input';
 import { checkValues, type CheckFormValues } from '$lib/forms/check/model/values';
 import { credentialInput, updateInput } from '$lib/forms/device/input';
+import { rdpCredentialInput, vncCredentialInput } from '$lib/forms/device/remote/input';
+import { storePassword } from '$lib/forms/device/remote/store-password';
 import { formValues, type DeviceFormValues } from '$lib/forms/device/values';
 import type { HubResult } from '$lib/hub/hub';
-import type { CreateCheckInput, SshCredentialInput, UpdateCheckInput, UpdateDeviceInput } from '$lib/hub/generated/graphql';
+import type {
+  CreateCheckInput,
+  PasswordCredentialInput,
+  SshCredentialInput, UpdateCheckInput,
+  UpdateDeviceInput,
+} from '$lib/hub/generated/graphql';
 
 /** The device calls a save needs; the route passes `devicesApi(hub)`. */
 export interface DeviceSaveCalls {
   update: (id: string, input: UpdateDeviceInput) => Promise<HubResult<DeviceDetail>>;
   setSshCredential: (id: string, credential: SshCredentialInput) => Promise<HubResult<StoredCredential>>;
+  /** K1; the route passes `devicesApi(hub)`, which has no such call until H-1. A typed password with no call is a failure. */
+  setRdpCredential?: (id: string, credential: PasswordCredentialInput) => Promise<HubResult<unknown>>;
+  setVncCredential?: (id: string, credential: PasswordCredentialInput) => Promise<HubResult<unknown>>;
 }
 
 /** The device after a save, even a half-failed one, and what the form shows. */
@@ -20,8 +30,9 @@ export interface DeviceSave {
 }
 
 /**
- * D-2, D-4: sends only the changed fields, then a newly typed credential. A failed credential keeps the updated
- * device, so the page shows what the hub holds, and the form shows the error. An unchanged form sends nothing.
+ * D-2, D-4: sends only the changed fields, then each newly typed credential (SSH, RDP, VNC). A failed credential keeps
+ * the updated device, so the page shows what the hub holds, and the form shows the first error and keeps the typed
+ * password. A typed RDP or VNC password the hub cannot store yet is such a failure. An unchanged form sends nothing.
  */
 export async function saveDevice(saved: DeviceDetail, values: DeviceFormValues, calls: DeviceSaveCalls): Promise<DeviceSave> {
   const input = updateInput(formValues(saved), values);
@@ -31,12 +42,25 @@ export async function saveDevice(saved: DeviceDetail, values: DeviceFormValues, 
     if (!updated.ok) return { device, result: updated };
     device = updated.value;
   }
-  const credential = credentialInput(values);
-  if (credential === null) return { device, result: { ok: true, value: device } };
-  const stored = await calls.setSshCredential(saved.id, credential);
-  if (!stored.ok) return { device, result: stored };
-  device = { ...device, ssh: { ...device.ssh, credentialStored: stored.value.credentialStored } };
-  return { device, result: { ok: true, value: device } };
+  let failure: HubResult<unknown> | null = null;
+  const ssh = credentialInput(values);
+  if (ssh !== null) {
+    const stored = await calls.setSshCredential(saved.id, ssh);
+    if (stored.ok) device = { ...device, ssh: { ...device.ssh, credentialStored: stored.value.credentialStored } };
+    else failure = stored;
+  }
+  // The detail has no RDP or VNC settings yet (H-1), so there is no `credentialStored` to update for them.
+  const rdp = rdpCredentialInput(values);
+  if (rdp !== null) {
+    const stored = await storePassword(calls.setRdpCredential, saved.id, rdp);
+    if (!stored.ok) failure ??= stored;
+  }
+  const vnc = vncCredentialInput(values);
+  if (vnc !== null) {
+    const stored = await storePassword(calls.setVncCredential, saved.id, vnc);
+    if (!stored.ok) failure ??= stored;
+  }
+  return { device, result: failure ?? { ok: true, value: device } };
 }
 
 /** The check calls a save needs; the route passes `checksApi(hub)`. */

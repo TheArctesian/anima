@@ -1,14 +1,12 @@
-// The K1 additions marked `@pending` that the forms read and write, written by hand from
-// docs/programme/phase-2-contracts.md until they are in contracts/schema.graphql (CON-003).
-// Each name is the one codegen gives it, so that a swap to `$lib/hub/generated/graphql` changes only imports.
+// Device and web interface read shapes that wait for the devices client documents (H-1). Codegen emits a type
+// only for a field a running document selects, and lib/devices/api.ts does not select these yet; the hub does
+// not serve them until WP-21 and WP-30. Each name is the one codegen will give it, so the move changes imports only.
+// The K1 enums and inputs, and the check config shapes, come from `$lib/hub/generated/graphql` (WP-25 T5).
+import type { MetricsSource, RdpResizeMethod, RdpSecurity } from '$lib/hub/generated/graphql';
 
 // ---- devices
-export type RdpSecurity = 'ANY' | 'NLA' | 'NLA_EXT' | 'TLS' | 'VMCONNECT' | 'RDP';
-export type RdpResizeMethod = 'DISPLAY_UPDATE' | 'RECONNECT';
-export type MetricsSource = 'NONE' | 'SSH';
 /** RA-020. */
 export type AccessWarning = 'IGNORED_CERTIFICATE' | 'RDP_SECURITY' | 'UNENCRYPTED_VNC';
-export type Protocol = 'SSH' | 'RDP' | 'VNC';
 
 export interface ServerCertificate {
   readonly fingerprintSha256: string;
@@ -59,53 +57,6 @@ export interface PendingDeviceFields {
   readonly accessWarnings: readonly AccessWarning[];
 }
 
-export interface RdpSettingsInput {
-  enabled: boolean;
-  port?: number | null;
-  username: string;
-  domain?: string | null;
-  security?: RdpSecurity | null;
-  ignoreCertificate?: boolean | null;
-  resizeMethod?: RdpResizeMethod | null;
-  audioOut?: boolean | null;
-  microphone?: boolean | null;
-  sharedDrive?: boolean | null;
-}
-
-export interface VncSettingsInput {
-  enabled: boolean;
-  port?: number | null;
-  username?: string | null;
-}
-
-export interface TransferPolicyInput {
-  upload?: boolean | null;
-  download?: boolean | null;
-  copy?: boolean | null;
-  paste?: boolean | null;
-}
-
-export interface PasswordCredentialInput {
-  password: string;
-}
-
-/** The K1 additions to `CreateDeviceInput` and `UpdateDeviceInput`. On update an empty `macAddress` clears it. */
-export interface PendingDeviceInput {
-  rdp?: RdpSettingsInput | null;
-  vnc?: VncSettingsInput | null;
-  macAddress?: string | null;
-  metricsSource?: MetricsSource | null;
-  transfer?: TransferPolicyInput | null;
-}
-
-/** The K1 additions to `ConnectionTestInput`. */
-export interface PendingConnectionTestInput {
-  protocol?: Protocol | null;
-  rdp?: RdpSettingsInput | null;
-  vnc?: VncSettingsInput | null;
-  password?: PasswordCredentialInput | null;
-}
-
 /** The K1 additions to `ConnectionTestResult`. */
 export interface PendingConnectionTestResult {
   readonly serverCertificate?: ServerCertificate | null;
@@ -138,76 +89,4 @@ export interface WebInterfaceInput {
   label?: string | null;
   url: string;
   openIn?: OpenIn | null;
-}
-
-// ---- checks (identifiers fixed forever, CHK-009)
-export type PendingCheckType = 'DOCKER' | 'SNMP' | 'TAILSCALE_PING' | 'SYSTEMD';
-export type SnmpVersion = 'V2C' | 'V3';
-
-export interface DockerConfig {
-  readonly __typename: 'DockerConfig';
-  readonly container: string;
-  readonly timeoutMs: number;
-}
-
-export interface SystemdConfig {
-  readonly __typename: 'SystemdConfig';
-  readonly unit: string;
-  readonly timeoutMs: number;
-}
-
-/** Community and v3 passwords are never returned (SEC-005). */
-export interface SnmpConfig {
-  readonly __typename: 'SnmpConfig';
-  readonly port: number;
-  readonly version: SnmpVersion;
-  readonly oid: string;
-  /** Up when equal; null: Up when the OID answers. */
-  readonly expected?: string | null;
-  readonly username?: string | null;
-  readonly timeoutMs: number;
-}
-
-/** The target defaults to the device host. */
-export interface TailscalePingConfig {
-  readonly __typename: 'TailscalePingConfig';
-  readonly target?: string | null;
-  readonly timeoutMs: number;
-}
-
-export type PendingCheckConfig = DockerConfig | SystemdConfig | SnmpConfig | TailscalePingConfig;
-
-export interface DockerConfigInput {
-  container: string;
-  timeoutMs?: number | null;
-}
-
-export interface SystemdConfigInput {
-  unit: string;
-  timeoutMs?: number | null;
-}
-
-export interface SnmpConfigInput {
-  port?: number | null;
-  version?: SnmpVersion | null;
-  oid: string;
-  expected?: string | null;
-  community?: string | null;
-  username?: string | null;
-  authPassword?: string | null;
-  privacyPassword?: string | null;
-  timeoutMs?: number | null;
-}
-
-export interface TailscalePingConfigInput {
-  target?: string | null;
-  timeoutMs?: number | null;
-}
-
-/** The K1 additions to `CheckConfigInput`. */
-export interface PendingCheckConfigInput {
-  docker?: DockerConfigInput | null;
-  snmp?: SnmpConfigInput | null;
-  tailscalePing?: TailscalePingConfigInput | null;
-  systemd?: SystemdConfigInput | null;
 }

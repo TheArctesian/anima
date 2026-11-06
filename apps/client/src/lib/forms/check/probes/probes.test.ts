@@ -1,4 +1,3 @@
-import type { PendingCheckConfigInput } from '$lib/forms/hub-pending';
 import type { UpdateCheckInput } from '../model/hub-types';
 import { describe, expect, it } from 'vitest';
 import { fresh, saved } from '../check.fixture';
@@ -8,7 +7,7 @@ import { validateCheck } from '../model/validate';
 import { checkValues } from '../model/values';
 
 /** The update input is typed by the generated schema, which has no SNMP config yet (D-1). */
-const sentSnmp = (input: UpdateCheckInput) => (input.config as PendingCheckConfigInput | undefined)?.snmp;
+const sentSnmp = (input: UpdateCheckInput) => input.config?.snmp;
 const fields = (errors: readonly { field: string }[]) => errors.map((error) => error.field);
 
 const SNMP_SAVED = saved('SNMP', {

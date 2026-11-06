@@ -99,6 +99,44 @@ void graphql(`
   }
 `);
 
+// The Phase 2 config shapes (CHK-009). Not spread into any document yet: the hub declares these types with
+// WP-29, and a query that selected them earlier would fail validation. Codegen reads them for the form's types.
+void graphql(`
+  fragment DockerCheckConfig on DockerConfig {
+    __typename
+    container
+    timeoutMs
+  }
+`);
+
+void graphql(`
+  fragment SystemdCheckConfig on SystemdConfig {
+    __typename
+    unit
+    timeoutMs
+  }
+`);
+
+void graphql(`
+  fragment SnmpCheckConfig on SnmpConfig {
+    __typename
+    port
+    version
+    oid
+    expected
+    username
+    timeoutMs
+  }
+`);
+
+void graphql(`
+  fragment TailscalePingCheckConfig on TailscalePingConfig {
+    __typename
+    target
+    timeoutMs
+  }
+`);
+
 const DeviceChecks = graphql(`
   query DeviceChecks($deviceId: ID!) {
     device(id: $deviceId) {

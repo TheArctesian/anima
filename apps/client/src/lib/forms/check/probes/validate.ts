@@ -1,8 +1,7 @@
 import type { FieldError } from '$lib/hub/error';
 import { isValidHost } from '$lib/forms/device/host';
-import type { PendingCheckType } from '$lib/forms/hub-pending';
 import { lengthError, portError, timeoutError } from '../model/range';
-import type { ProbeValues } from './values';
+import type { ProbeCheckType, ProbeValues } from './values';
 
 /** CHK-012, defence in depth: the characters Docker allows in a container name. The hub is the real guard. */
 const CONTAINER_NAME = /^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/;
@@ -74,7 +73,7 @@ function snmpErrors(snmp: ProbeValues['snmp'], configSent: boolean): FieldError[
 }
 
 /** Section 6.4 (Phase 2 types): every reason the settings cannot be saved. Secrets are checked only when the config is sent. */
-export function probeErrors(values: ProbeValues, type: PendingCheckType, configSent: boolean): FieldError[] {
+export function probeErrors(values: ProbeValues, type: ProbeCheckType, configSent: boolean): FieldError[] {
   switch (type) {
     case 'DOCKER':
       return dockerErrors(values.docker);
