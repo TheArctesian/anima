@@ -63,7 +63,7 @@ describe('the remote host controls the bytes (K4 §8.7)', () => {
       heard.hooks?.onlink(address);
       await settle();
       expect(document.querySelector('[role="dialog"]')).toBeNull();
-      expect(target.textContent).toContain('not http or https');
+      expect(target.textContent).toContain(address.startsWith('https://accounts') ? 'user name or password' : 'not http or https');
       expect(open).not.toHaveBeenCalled();
     },
   );
@@ -92,6 +92,23 @@ describe('the remote host controls the bytes (K4 §8.7)', () => {
   });
 });
 
+describe('notices (MOT-007, UI-009)', () => {
+  it('MOT-007: a notice lies over the toolbar row on one line with its full text as the tooltip, and can be dismissed', async () => {
+    const { target, heard } = await connected();
+    const row = target.querySelector('.toolbar');
+    heard.hooks?.onoverflow();
+    await settle();
+    const notice = target.querySelector('.notice');
+    expect(notice?.closest('.toolbar > .cover')).not.toBeNull();
+    expect(target.querySelector('.stage')?.contains(notice ?? null)).toBe(false);
+    expect(notice?.getAttribute('title')).toBe(notice?.textContent);
+    expect(target.querySelector('.toolbar')).toBe(row);
+    target.querySelector<HTMLButtonElement>('button[aria-label="Dismiss the message"]')?.click();
+    await settle();
+    expect(target.querySelector('.notice')).toBeNull();
+  });
+});
+
 describe('find (RA-003)', () => {
   it('RA-003: Cmd+F opens a labelled find bar; Enter finds the next match, "No match" says when there is none, Escape closes', async () => {
     const { socket, target, field } = await connected();
@@ -102,10 +119,14 @@ describe('find (RA-003)', () => {
     const input = target.querySelector<HTMLInputElement>('input[aria-label="Find in terminal"]');
     if (input === null) throw new Error('no find bar');
     expect(document.activeElement).toBe(input);
-    // UI-009: the find bar has its own row, so the toolbar cannot overflow a narrow pane.
-    expect(target.querySelector('.toolbar')?.contains(input)).toBe(false);
+    // MOT-007: the find bar lies over the toolbar row, which keeps its height, so the terminal does not move.
+    expect(input.closest('.toolbar > .cover')).not.toBeNull();
+    expect(target.querySelector('.stage')?.contains(input)).toBe(false);
     input.value = 'needle';
     input.dispatchEvent(new Event('input', { bubbles: true }));
+    flushSync();
+    // Searching starts as the operator types, so the first Enter has a match to move from.
+    expect(target.querySelector('.find [role="status"]')?.textContent).toBe('');
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
     flushSync();
     expect(target.querySelector('.find [role="status"]')?.textContent).toBe('');

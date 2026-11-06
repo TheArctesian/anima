@@ -4,7 +4,7 @@
 
   interface Props {
     /** Select the next (or previous) match of `text` in the terminal; false when there is none. */
-    onfind: (text: string, backwards: boolean) => boolean;
+    onfind: (text: string, backwards: boolean, incremental: boolean) => boolean;
     /** Close the bar; the owner clears the match and returns the focus to the terminal. */
     onclose: () => void;
   }
@@ -13,8 +13,8 @@
   let text = $state('');
   let missing = $state(false);
 
-  function find(backwards: boolean) {
-    missing = text !== '' && !onfind(text, backwards);
+  function find(backwards: boolean, incremental = false) {
+    missing = text !== '' && !onfind(text, backwards, incremental);
   }
 
   function key(event: KeyboardEvent) {
@@ -43,7 +43,7 @@
     spellcheck="false"
     enterkeyhint="search"
     bind:value={text}
-    oninput={() => (missing = false)}
+    oninput={() => find(false, true)}
     onkeydown={key}
     {@attach focusInput}
   />
@@ -63,7 +63,6 @@
   .find {
     display: flex;
     flex: 1;
-    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-1);
     min-inline-size: 0;

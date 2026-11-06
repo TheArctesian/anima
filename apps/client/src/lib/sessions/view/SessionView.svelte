@@ -3,7 +3,7 @@
   import { press } from '$lib/motion/roles/press';
   import type { SessionsApi } from '../api';
   import type { SessionEnding } from '../ending';
-  import { linkTarget, openLink } from '../screen/remote/links';
+  import { checkLink, linkRefusalText, openLink } from '../screen/remote/links';
   import type { ScreenHooks, ScreenOpener, TerminalScreen } from '../screen/screen';
   import type { CellSize } from '../tunnel/terminal/codec';
   import { displayInput, type Size } from './display';
@@ -38,7 +38,6 @@
   const COPY_FAILED = 'Could not copy the text to your clipboard.';
   const PASTE_FAILED = 'Could not read your clipboard. Allow clipboard access, or paste with the keyboard.';
   const OVERFLOW = 'Output arrived faster than it could be drawn, so some was skipped. Press Ctrl+L to redraw.';
-  const LINK_REFUSED = 'The device asked to open a link that is not http or https. Anima did not open it.';
   /** The size of the first `resize` when the pane could not be fitted yet (a hidden pane); a fit corrects it. */
   const UNFITTED: CellSize = { cols: 80, rows: 24 };
 
@@ -74,8 +73,9 @@
     onfind: () => (finding = true),
     onoverflow: () => (notice = OVERFLOW),
     onlink: (address) => {
-      confirming = linkTarget(address);
-      if (confirming === undefined) notice = LINK_REFUSED;
+      const check = checkLink(address);
+      confirming = check.ok ? check.address : undefined;
+      if (!check.ok) notice = linkRefusalText(check.reason);
     },
   };
 
@@ -185,12 +185,20 @@
       <span>Find</span>
     </button>
     <span class="device">{device.name}</span>
-    {#if notice !== undefined}<span class="notice" role="status">{notice}</span>{/if}
+    <!-- Find and notices lie over the toolbar row, which has a fixed height, so the terminal never moves or resizes for them (MOT-007, UI-009). -->
+    {#if finding && ready}
+      <div class="cover">
+        <FindBar onfind={(text, backwards, incremental) => screen?.find(text, backwards, incremental) ?? false} onclose={closeFind} />
+      </div>
+    {:else if notice !== undefined}
+      <div class="cover">
+        <span class="notice" role="status" title={notice}>{notice}</span>
+        <button type="button" class="dismiss" aria-label="Dismiss the message" onclick={() => (notice = undefined)} {@attach press()}>
+          <Icon name="nf-md-close" size="sm" />
+        </button>
+      </div>
+    {/if}
   </div>
-  {#if finding && ready}
-    <!-- Its own row, so the toolbar never overflows a narrow pane (UI-009); the terminal refits below it. -->
-    <div class="findrow"><FindBar onfind={(text, backwards) => screen?.find(text, backwards) ?? false} onclose={closeFind} /></div>
-  {/if}
   <div class="stage">
     <!-- The terminal draws here; its own hidden text field takes the keyboard (D-8). -->
     <div class="pane" role="group" aria-label="Terminal of {device.name}" {@attach attachPane}></div>
@@ -235,7 +243,11 @@
    * before the bundled fonts load as after; with `normal` it grew 6 px when they did (MOT-007, R2).
    */
   .toolbar {
+    position: relative;
+    box-sizing: border-box;
     display: flex;
+    block-size: calc(var(--target-min-desktop) + 2 * var(--space-2) + var(--border-thin));
+    overflow: hidden;
     line-height: var(--leading-normal);
     flex: none;
     align-items: center;
@@ -246,13 +258,34 @@
     background: var(--surface);
   }
 
-  .findrow {
+  /* Lies over the whole toolbar row: the find bar, or a one-line message with a way to dismiss it. */
+  .cover {
+    position: absolute;
+    inset: 0;
     display: flex;
-    flex: none;
+    align-items: center;
+    gap: var(--space-2);
     min-inline-size: 0;
     padding: var(--space-2) var(--space-3);
-    border-bottom: var(--border-thin) solid var(--border);
     background: var(--surface);
+  }
+
+  .dismiss {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    min-inline-size: var(--target-min-desktop);
+    min-block-size: var(--target-min-desktop);
+    border: var(--border-thin) solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-raised);
+    color: var(--text);
+  }
+
+  .dismiss:focus-visible {
+    outline: var(--border-focus) solid var(--accent);
+    outline-offset: calc(var(--border-focus) * -1);
   }
 
   /* The bar never sets the pane's width: the name gives way first, and the Keys control keeps its size (UI-009). */
@@ -289,8 +322,12 @@
   }
 
   .notice {
+    flex: 1;
     min-inline-size: 0;
+    overflow: hidden;
     font-size: var(--text-sm);
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .stage {

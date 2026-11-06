@@ -45,8 +45,8 @@ export interface TerminalScreen {
   blur(): void;
   /** Paste `text` as the operator's own action; bracketed when the shell asked for it. */
   paste(text: string): void;
-  /** Select the next (or previous) match of `text`; false when there is none. */
-  find(text: string, backwards: boolean): boolean;
+  /** Select the next (or previous) match of `text`; false when there is none. `incremental` keeps the current match while it still fits. */
+  find(text: string, backwards: boolean, incremental: boolean): boolean;
   clearFind(): void;
   dispose(): void;
 }
@@ -203,7 +203,10 @@ function screenOf(terminal: Terminal, fit: FitAddon, search: SearchAddon, hooks:
     paste: (text) => {
       terminal.paste(safePaste(text));
     },
-    find: (text, backwards) => (backwards ? search.findPrevious(text) : search.findNext(text)),
+    find: (text, backwards, incremental) => {
+      const options = { incremental };
+      return backwards ? search.findPrevious(text, options) : search.findNext(text, options);
+    },
     clearFind: () => {
       search.clearDecorations();
       terminal.clearSelection();
