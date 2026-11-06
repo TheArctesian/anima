@@ -8,6 +8,8 @@
   import { fieldErrorsFrom } from '../field-errors';
   import type { ConnectionTestInput } from '$lib/hub/generated/graphql';
   import type { ConnectionTestResult } from '../connection-test';
+  import type { PendingConnectionTestInput, PendingConnectionTestResult } from '../../hub-pending';
+  import RemoteTest from '../remote/test/RemoteTest.svelte';
   import { suggestedSite, validateNewSite, type NewSite, type SitePlacement } from '../site';
   import { validateDevice } from '../validate';
   import { formValues, type DeviceFields, type DeviceFormValues, type SiteOption } from '../values';
@@ -44,9 +46,13 @@
     section?: 'general' | 'ssh' | 'rdp' | 'vnc' | 'test';
     /** `site` is null when editing. The values are a snapshot with secrets in it: the owner must not keep it. */
     onSave: (values: DeviceFormValues, site: SitePlacement | null) => Promise<HubResult<unknown>>;
-    onTest: (input: ConnectionTestInput) => Promise<HubResult<ConnectionTestResult>>;
+    onTest: (
+      input: ConnectionTestInput & PendingConnectionTestInput,
+    ) => Promise<HubResult<ConnectionTestResult & Partial<PendingConnectionTestResult>>>;
     /** Only for a saved device. */
     onAcceptHostKey: (fingerprint: string) => Promise<HubResult<unknown>>;
+    /** K1 `acceptServerCertificate`, only for a saved device. Without it the Accept certificate button is hidden (D-4). */
+    onAcceptServerCertificate?: (fingerprint: string) => Promise<HubResult<unknown>>;
     onClearCredential: () => Promise<HubResult<unknown>>;
     /** Without these the RDP and VNC Remove buttons are hidden (D-4). */
     onClearRdpCredential?: () => Promise<HubResult<unknown>>;
@@ -67,6 +73,7 @@
     onSave,
     onTest,
     onAcceptHostKey,
+    onAcceptServerCertificate,
     onClearCredential,
     onClearRdpCredential,
     onClearVncCredential,
@@ -244,6 +251,11 @@
           {clearing}
           onClearCredential={onClearRdpCredential && (() => void clearWith(onClearRdpCredential))}
         />
+        {#if values.rdp.enabled}
+          {#key saves}
+            <RemoteTest protocol="RDP" {initial} {values} {deviceId} {canTest} {onTest} {onAcceptServerCertificate} />
+          {/key}
+        {/if}
       </Disclosure>
     </div>
     <div data-section="vnc">
@@ -256,6 +268,11 @@
           {clearing}
           onClearCredential={onClearVncCredential && (() => void clearWith(onClearVncCredential))}
         />
+        {#if values.vnc.enabled}
+          {#key saves}
+            <RemoteTest protocol="VNC" {initial} {values} {deviceId} {canTest} {onTest} />
+          {/key}
+        {/if}
       </Disclosure>
     </div>
     <div data-section="files">
