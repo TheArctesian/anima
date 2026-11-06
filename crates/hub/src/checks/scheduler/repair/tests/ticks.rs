@@ -15,6 +15,15 @@ fn event(severity: &str, message: &str) -> (String, String, String) {
     (severity.to_owned(), "check".to_owned(), message.to_owned())
 }
 
+/// Whether the check counts as edited by the operator; a repair by the hub must not count.
+async fn edited(pool: &sqlx::PgPool, id: crate::ids::CheckId) -> bool {
+    sqlx::query_scalar("SELECT operator_edited FROM checks.checks WHERE id = $1")
+        .bind(id)
+        .fetch_one(pool)
+        .await
+        .unwrap()
+}
+
 const SILENT: &str = "Ping never answered on docker-host, and no connection port answers either.";
 
 repair_test! {
@@ -36,7 +45,7 @@ repair_test! {
         let state = check.state;
         assert_eq!((state.status, state.failures, state.next_due_at), (Status::Unknown, 0, Some(now)));
         assert_eq!(check.settings, before.settings);
-        assert_eq!(tried_at(&pool, id).await, Some(now));
+        assert_eq!((tried_at(&pool, id).await, edited(&pool, id).await), (Some(now), false));
         let text = format!(
             "Ping never answered on docker-host; SSH port {port} does, so its check now uses TCP {port}."
         );
