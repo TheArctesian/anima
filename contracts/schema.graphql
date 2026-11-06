@@ -945,12 +945,12 @@ type SessionChange @pending {
 
 # ---------------------------------------------------------------- web interfaces (WP-30)
 
-enum OpenIn @pending {
+enum OpenIn {
   ANIMA_TAB
   SYSTEM_BROWSER
 }
 
-type WebInterface @pending {
+type WebInterface {
   id: ID!
   deviceId: ID!
   label: String!
@@ -961,13 +961,13 @@ type WebInterface @pending {
   pinnedAt: DateTime
 }
 
-type WebInterfaceSuggestion @pending {
+type WebInterfaceSuggestion {
   checkId: ID!
   url: String!
   label: String!
 }
 
-input WebInterfaceInput @pending {
+input WebInterfaceInput {
   "Defaults to the URL's host."
   label: String
   url: String!
@@ -1046,13 +1046,13 @@ type Mutation {
   "A ticket for the files tunnel of a live SSH session (K4 §9)."
   openFiles(sessionId: ID!): SessionTicket! @pending
   wakeDevice(deviceId: ID!): WakeResult! @pending
-  createWebInterface(deviceId: ID!, input: WebInterfaceInput!): WebInterface! @pending
-  updateWebInterface(id: ID!, input: WebInterfaceInput!): WebInterface! @pending
-  deleteWebInterface(id: ID!): ID! @pending
-  acceptWebInterfaceSuggestion(checkId: ID!): WebInterface! @pending
-  dismissWebInterfaceSuggestion(checkId: ID!): ID! @pending
+  createWebInterface(deviceId: ID!, input: WebInterfaceInput!): WebInterface!
+  updateWebInterface(id: ID!, input: WebInterfaceInput!): WebInterface!
+  deleteWebInterface(id: ID!): ID!
+  acceptWebInterfaceSuggestion(checkId: ID!): WebInterface!
+  dismissWebInterfaceSuggestion(checkId: ID!): ID!
   "Pins the certificate and writes an audit entry (WEB-008, WEB-009)."
-  acceptWebCertificate(id: ID!, fingerprintSha256: String!): WebInterface! @pending
+  acceptWebCertificate(id: ID!, fingerprintSha256: String!): WebInterface!
 }
 
 type Subscription {

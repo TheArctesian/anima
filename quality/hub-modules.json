@@ -38,6 +38,10 @@
       "devices",
       "credentials",
       "events"
+    ],
+    "web_interfaces": [
+      "checks",
+      "events"
     ]
   },
   "graphql": {
@@ -53,6 +57,9 @@
       "access"
     ],
     "events": [
+      "access"
+    ],
+    "web_interfaces": [
       "access"
     ]
   }

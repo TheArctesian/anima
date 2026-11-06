@@ -18,4 +18,5 @@ mod start;
 mod tokens;
 mod totp;
 mod transport;
+mod web_interfaces;
 mod wiring;
