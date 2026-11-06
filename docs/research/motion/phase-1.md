@@ -432,3 +432,29 @@ Closed since `c6aa80e`: **N-6** (L2) and **N-7** (L3). Still open and unchanged 
 ### L7. Not measured headless (operator to confirm)
 
 As in F5 of the final re-audit: real frame time in WKWebView and WebKitGTK, `prefers-reduced-transparency` in WebKit, session pop-out, `UpdateBanner`, a real hub. Also N-6 at a real window height of 600 in the Tauri shell (the web run at 1280x600 stands in), and the notice on a real socket reconnect.
+
+## N-9 re-measure (WP-17, f5146aa)
+
+Reviewer: interface reviewer, N-9 only. Did not build the fix. No application code changed, nothing committed. Detached worktree at `f5146aa` (removed after the run), production build served by `vite preview` on 127.0.0.1:5599, synthetic hub only. Harness copy: /private/tmp/claude-501/-Users-stephenokita-Scripts-Personal-anima/44a9516e-29ae-4035-8f15-a42b950ef866/scratchpad/n9harness/ (the original lastharness/ is unchanged; new files `n9_logs.mjs`, `n9_dbgred.mjs`; `hub.mjs` and `lib.mjs` re-pointed). Logs: /private/tmp/claude-501/-Users-stephenokita-Scripts-Personal-anima/44a9516e-29ae-4035-8f15-a42b950ef866/scratchpad/n9harness/logs/n9-*.log and n9n-*.log. Screenshots: /private/tmp/claude-501/-Users-stephenokita-Scripts-Personal-anima/44a9516e-29ae-4035-8f15-a42b950ef866/scratchpad/n9harness/n9shots/.
+
+**Verdict: N-9 CLOSED.** Same condition as the last run: hub drops (socket closed 1006, then refused), message "The hub did not answer. Check the VPN client.", 800 px high, 7 widths, both engines, normal and reduced motion. In normal motion the first log row no longer steps in one frame at any width: the largest per-frame step is 9.2 px (it was 108, 88 and 68 px). The notice fades 0 to 1 and the row moves over 17 to 21 frames.
+
+| Width | Before: 1-frame step | Chromium normal: max step / frames moving / row travel | WebKit normal: max step / frames / travel | Reduced (both engines): step |
+|---|---|---|---|---|
+| 360 | 108 | 8.5 / 21 / 76 | 8.4 / 21 / 76 | 76 in 1 frame (instant) |
+| 390 | 108 | 8.2 / 21 / 76 | 8.5 / 21 / 76 | 76 in 1 frame |
+| 420 | 108 | 9.0 / 21 / 76 | 8.5 / 21 / 76 | 76 in 1 frame |
+| 480 | 88 | 6.1 / 20 / 56 | 6.2 / 20 / 56 | 56 in 1 frame |
+| 768 | 88 | 6.1 / 20 / 56 | 6.3 / 21 / 56 | 56 in 1 frame |
+| 900 | 68 | 4.2 / 18 / 36 | 4.0 / 17 / 36 | 36 in 1 frame |
+| 1280 | 68 | 4.1 / 18 / 36 | 4.3 / 17 / 36 | 36 in 1 frame |
+
+- Panel rect: panel top, header top, panel height, left and width step 0 in every run (both engines, both modes). Notice opacity runs 0 to 1 in every run.
+- Double toggle: the app has no path that clears `liveError` (as in the last run), so in the browser the second drop leaves one notice and one spring (390 and 1280 px, both engines: max step 8.2 to 9.2 px at 390, 4.0 to 4.1 px at 1280, one notice in the DOM). The show, hide, show sequence is covered only by the component's unit tests, which pass (`src/lib/hub/notice` and `events/panel/logs.test.ts`, 31 tests). Not measurable in a browser without changing application code.
+- Chromium CLS, normal: 0 at 768, 900, 1280; 0.0652 (360), 0.0676 (390), 0.0697 (420), 0.073 (480). The only layout-shift source at 360 and 480 is `div.stage` (prev y 24, h 776; cur y 103.4, h 696.6), the device screen's own stage, which is N-8 (deferred), not the logs panel. The log rows are not in the sources. WebKit has no observer; its rects match. Reduced motion CLS 0.0196 (1280) to 0.142 (420) is the specified instant form (MOT-040, D-14) and not a finding.
+- N-7 spot check (device list LiveNotice after the move to `lib/hub/notice/`), 390 and 1280, both engines, normal motion: still fades 0 to 1 and the list springs. 1280: results step 4.1 px max over 17 to 18 frames, CLS 0. 390: results 16.8 to 17.4 px over 24 frames; `div.stage` 79.4 px in 1 frame, CLS 0.0676 in Chromium, as in the last run (N-8, deferred, below 100 px). Device page notice 1280 and 390: 4.0 and 17.8 px max step. Animated property: opacity only; the rest is translate (MOT-006).
+- Observation, not a finding: the row travel is 32 px shorter than before (76 against 108; 36 against 68). The old `<p class="notice">` carried the browser's default paragraph margins; the component sets margin 0 and padding. The text and the notice's own lines are unchanged.
+
+Evidence: /private/tmp/claude-501/-Users-stephenokita-Scripts-Personal-anima/44a9516e-29ae-4035-8f15-a42b950ef866/scratchpad/n9harness/n9shots/n9-webkit-normal-360-mid.png (60 ms after the drop), n9-webkit-normal-360-after.png, n9-chromium-normal-1280-mid.png, n9-chromium-normal-1280-after.png, n9-chromium-normal-390-dbl-after.png, n9n-chromium-normal-w390-list-single.png, n9n-webkit-normal-list-single.png (all in the same folder); logs /private/tmp/claude-501/-Users-stephenokita-Scripts-Personal-anima/44a9516e-29ae-4035-8f15-a42b950ef866/scratchpad/n9harness/logs/n9-chromium-normal.log, n9-webkit-normal.log, n9-chromium-reduced.log, n9-webkit-reduced.log.
+
+New findings: none.
