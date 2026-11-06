@@ -25,12 +25,16 @@ use axum::{
     extract::{
         DefaultBodyLimit, State, WebSocketUpgrade, ws::rejection::WebSocketUpgradeRejection,
     },
-    http::{Extensions, HeaderMap, StatusCode, header::CONTENT_TYPE},
+    http::{
+        Extensions, HeaderMap, HeaderValue, Method, StatusCode,
+        header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE},
+    },
     middleware,
     response::{IntoResponse, Response},
     routing::{get, post},
 };
 use sqlx::PgPool;
+use tower_http::cors::{AllowOrigin, CorsLayer};
 
 /// Largest `/graphql` request body. A bigger one gets 413 before it is parsed or any token
 /// or password is checked (SEC-002).
@@ -44,14 +48,35 @@ struct GraphqlRoute {
     clock: Arc<dyn clock::Clock>,
 }
 
+/// The origins of the desktop app's web view: `tauri://localhost` on macOS and Linux,
+/// `http://tauri.localhost` on Windows. The web view sends a CORS preflight before each
+/// `POST /graphql`; only these origins are allowed, and every request still needs a token
+/// (SEC-002).
+pub const CLIENT_ORIGINS: [&str; 2] = ["tauri://localhost", "http://tauri.localhost"];
+
+/// How long a web view may reuse a preflight answer.
+const PREFLIGHT_MAX_AGE: Duration = Duration::from_secs(600);
+
+/// The CORS rule for `/graphql`: the client origins may `POST` with the headers the client sends.
+fn client_origins() -> CorsLayer {
+    CorsLayer::new()
+        .allow_origin(AllowOrigin::list(
+            CLIENT_ORIGINS.map(HeaderValue::from_static),
+        ))
+        .allow_methods([Method::POST])
+        .allow_headers([CONTENT_TYPE, ACCEPT, AUTHORIZATION])
+        .max_age(PREFLIGHT_MAX_AGE)
+}
+
 /// The hub's HTTP routes: `POST /graphql`, `GET /graphql` (subscriptions) and `GET /health`,
-/// each request in a logged span.
+/// each request in a logged span. `/graphql` answers CORS preflights from the client origins.
 pub fn router(schema: schema::HubSchema, db: PgPool, clock: Arc<dyn clock::Clock>) -> Router {
     logged(
         Router::new()
             .route("/graphql", post(graphql).get(subscriptions))
             .route("/health", get(health))
             .layer(DefaultBodyLimit::max(BODY_LIMIT))
+            .layer(client_origins())
             .with_state(GraphqlRoute { schema, db, clock }),
     )
 }

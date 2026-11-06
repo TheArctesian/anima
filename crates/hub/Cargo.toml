@@ -53,6 +53,7 @@ sha1.workspace = true
 subtle.workspace = true
 hyper.workspace = true
 tower.workspace = true
+tower-http.workspace = true
 hyper-util.workspace = true
 http-body-util.workspace = true
 
