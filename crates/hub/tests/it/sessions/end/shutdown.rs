@@ -2,6 +2,7 @@
 //! holds, and `close_stale` at the next start ends what a previous process left open, each
 //! with one `session.end` audit entry.
 
+use anima_hub::sessions::Presented;
 use std::time::Duration;
 
 use anima_hub::{
@@ -137,8 +138,11 @@ async fn d_10_shut_down_ends_every_session_the_hub_holds_hub_shutdown_once(pool:
     let spent = started(&schema, DOCKER_HOST).await;
     let elsewhere = ClientAddr("10.10.0.99".parse().unwrap());
     assert!(
-        live.redeem(spent["token"].as_str().unwrap(), elsewhere, now())
-            .is_err()
+        live.redeem(
+            Presented::terminal(spent["token"].as_str().unwrap(), elsewhere),
+            now()
+        )
+        .is_err()
     );
     let opened = started(&schema, OLLAMA).await;
     let tunnel = redeem(&live, &opened, now()).unwrap().tunnel;

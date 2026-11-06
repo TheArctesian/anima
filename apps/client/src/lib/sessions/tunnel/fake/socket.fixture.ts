@@ -1,6 +1,6 @@
 // Test support: the hub's side of one session WebSocket, driven by hand under the real Guacamole client
 // (K4 §4, §5). Pass `FAKE_TUNNEL_SOCKET` as `WebSocket` to `openTunnel` or `startTunnel`. No vitest import here.
-import type { SocketConstructor } from '../socket';
+import type { SocketConstructor } from '../state';
 
 type Listener = (event: { code: number; reason: string; wasClean: boolean }) => void;
 

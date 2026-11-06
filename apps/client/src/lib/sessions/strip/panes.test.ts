@@ -6,8 +6,8 @@ import type { Hub } from '$lib/hub/hub';
 import { route } from '$lib/nav/route.fixture.svelte';
 import Layout from '../../../routes/+layout.svelte';
 import type { SessionPort } from '../sessions.svelte';
-import { FakeTunnelSocket } from '../tunnel/fake/socket.fixture';
-import { FakeResizeObserver, TOKEN_MARKER, sent } from '../view/view.fixture.svelte';
+import { FakeTerminalSocket } from '../tunnel/terminal/fake/socket.fixture';
+import { FakeResizeObserver, TOKEN_MARKER } from '../view/view.fixture.svelte';
 import { cleanup, fake, openStarted, prepare, request, settle, show as mountLayout, tabs } from './layout.fixture';
 
 vi.mock('motion', async (importOriginal) => ({
@@ -55,7 +55,6 @@ function show() {
   flushSync();
   return sessions;
 }
-const ENTER = 0xff0d;
 
 beforeEach(() => {
   prepare();
@@ -64,25 +63,29 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
-/** The session pane (the keyboard's element) of the `index`th tab. */
+/** The session pane of the `index`th tab. */
 function paneAt(index: number): HTMLElement {
-  const pane = document.querySelectorAll<HTMLElement>('[role="tabpanel"] [role="application"]')[index];
+  const pane = document.querySelectorAll<HTMLElement>('[role="tabpanel"] [role="group"]')[index];
   if (pane === undefined) throw new Error(`no session pane ${String(index)}`);
   return pane;
 }
 
-function typeEnter(target: EventTarget) {
-  for (const type of ['keydown', 'keyup']) {
-    const event = new KeyboardEvent(type, { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true });
-    Object.defineProperty(event, 'keyCode', { value: 13 });
-    target.dispatchEvent(event);
-  }
+/** The terminal's text field in the `index`th pane. */
+function fieldAt(index: number): HTMLTextAreaElement {
+  const field = paneAt(index).querySelector<HTMLTextAreaElement>('textarea');
+  if (field === null) throw new Error(`no terminal in pane ${String(index)}`);
+  return field;
 }
 
-/** The gateway's first frame on `socket`, so its pane is ready and may take the keyboard. */
-async function ready(socket: FakeTunnelSocket): Promise<FakeTunnelSocket> {
+function typeEnter(target: EventTarget) {
+  const event = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true });
+  Object.defineProperty(event, 'keyCode', { value: 13 });
+  target.dispatchEvent(event);
+}
+
+/** The socket opens, so its pane is ready and may take the keyboard. */
+async function ready(socket: FakeTerminalSocket): Promise<FakeTerminalSocket> {
   socket.open();
-  socket.sync();
   await settle();
   return socket;
 }
@@ -112,14 +115,14 @@ it('RA-001 / D-7: openSession gives a tab whose view starts the session once wit
   expect(fake.calls.startSession).toEqual([[request.deviceId, { widthPx: 800, heightPx: 600, dpi: 96, timezone: zone }]]);
   expect(fake.port.start).toHaveBeenCalledExactlyOnceWith(request.deviceId);
   expect(sessions.tabs.find((tab) => tab.id === id)?.sessionId).toBe('session-1');
-  expect(FakeTunnelSocket.made).toHaveLength(1);
+  expect(FakeTerminalSocket.made).toHaveLength(1);
 });
 
 it('SEC-002 / LOG-007: the token reaches the tunnel only, never the store or the page', async () => {
   const sessions = show();
   await openStarted(sessions);
-  await ready(FakeTunnelSocket.latest());
-  expect(FakeTunnelSocket.latest().url).toContain(TOKEN_MARKER);
+  await ready(FakeTerminalSocket.latest());
+  expect(FakeTerminalSocket.latest().url).toContain(TOKEN_MARKER);
   expect(JSON.stringify(sessions.tabs)).not.toContain(TOKEN_MARKER);
   expect(document.body.innerHTML).not.toContain(TOKEN_MARKER);
 });
@@ -127,7 +130,7 @@ it('SEC-002 / LOG-007: the token reaches the tunnel only, never the store or the
 it('RA-001: closing a tab ends its session once and closes its tunnel', async () => {
   const sessions = show();
   const id = await openStarted(sessions);
-  const socket = await ready(FakeTunnelSocket.latest());
+  const socket = await ready(FakeTerminalSocket.latest());
   await sessions.close(id);
   await settle();
   expect(fake.calls.endSession).toEqual(['session-1']);
@@ -138,8 +141,7 @@ it('RA-001: closing a tab ends its session once and closes its tunnel', async ()
 it('D-4 / D-5: Reconnect after an ended tunnel starts a new session; the old one is never ended twice', async () => {
   const sessions = show();
   const id = await openStarted(sessions);
-  const first = await ready(FakeTunnelSocket.latest());
-  first.disconnect();
+  const first = await ready(FakeTerminalSocket.latest());
   first.closeWith(1000);
   await settle();
   expect(fake.calls.endSession).toEqual(['session-1']);
@@ -169,62 +171,60 @@ it('a tab closed while its start is in flight has the late session ended and its
   release();
   await settle();
   expect(fake.calls.endSession).toEqual(['session-1']);
-  expect(FakeTunnelSocket.latest().closedByClient).toBeDefined();
+  expect(FakeTerminalSocket.latest().closedByClient).toBeDefined();
 });
 
-it('D-8 / D-11: a hidden tab keeps its session running, and only the selected pane takes keys', async () => {
+it('D-8 / D-11: a hidden tab keeps its session running and its output, and only the selected pane takes the focus', async () => {
   const sessions = show();
   const first = await openStarted(sessions);
-  const hiddenSocket = await ready(FakeTunnelSocket.latest());
+  const hiddenSocket = await ready(FakeTerminalSocket.latest());
   await openStarted(sessions);
-  const shownSocket = await ready(FakeTunnelSocket.latest());
+  const shownSocket = await ready(FakeTerminalSocket.latest());
   expect(sessions.active?.id).not.toBe(first);
   const hiddenPanel = paneAt(0).closest<HTMLElement>('[role="tabpanel"]');
   expect(hiddenPanel?.hasAttribute('hidden')).toBe(true);
   expect(hiddenPanel?.inert).toBe(true);
-  typeEnter(paneAt(0));
-  expect(sent(hiddenSocket, 'key')).toEqual([]);
   expect(hiddenSocket.closedByClient).toBeUndefined();
   expect(fake.calls.endSession).toEqual([]);
-  typeEnter(paneAt(1));
-  expect(sent(shownSocket, 'key')).toEqual([
-    [String(ENTER), '1'],
-    [String(ENTER), '0'],
-  ]);
+  hiddenSocket.output('output while hidden');
+  expect(document.activeElement).toBe(fieldAt(1));
+  typeEnter(fieldAt(1));
+  expect(shownSocket.typed()).toEqual([13]);
+  await vi.waitFor(() => {
+    expect(paneAt(0).textContent).toContain('output while hidden');
+  });
 });
 
-it('D-8: the keyboard is unbound while the app window has no focus, and bound again when it returns', async () => {
+it('D-8: the terminal gives up the focus while the app window has none, and takes it again when it returns', async () => {
   const sessions = show();
   await openStarted(sessions);
-  const socket = await ready(FakeTunnelSocket.latest());
+  await ready(FakeTerminalSocket.latest());
+  expect(document.activeElement).toBe(fieldAt(0));
   window.dispatchEvent(new Event('blur'));
   flushSync();
-  typeEnter(paneAt(0));
-  expect(sent(socket, 'key')).toEqual([]);
+  expect(document.activeElement).not.toBe(fieldAt(0));
   window.dispatchEvent(new Event('focus'));
   await settle();
-  typeEnter(paneAt(0));
-  expect(sent(socket, 'key')).toHaveLength(2);
+  expect(document.activeElement).toBe(fieldAt(0));
 });
 
-it('D-8: the keyboard is unbound while the page is hidden', async () => {
+it('D-8: the terminal gives up the focus while the page is hidden', async () => {
   const sessions = show();
   await openStarted(sessions);
-  const socket = await ready(FakeTunnelSocket.latest());
+  await ready(FakeTerminalSocket.latest());
   Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
   document.dispatchEvent(new Event('visibilitychange'));
   flushSync();
   Reflect.deleteProperty(document, 'visibilityState');
-  typeEnter(paneAt(0));
-  expect(sent(socket, 'key')).toEqual([]);
+  expect(document.activeElement).not.toBe(fieldAt(0));
 });
 
 it('closing the last tab while its pane has the focus tears the view down without a state error', async () => {
   const sessions = show();
   const id = await openStarted(sessions);
-  await ready(FakeTunnelSocket.latest());
-  expect(document.activeElement).toBe(paneAt(0));
-  // Chromium fires `focusout` on the focused pane while Svelte clears the panes (jsdom does not): do the same.
+  await ready(FakeTerminalSocket.latest());
+  expect(document.activeElement).toBe(fieldAt(0));
+  // Chromium fires `focusout` on the focused text field while Svelte clears the panes (jsdom does not): do the same.
   const panes = document.querySelector<HTMLElement>('.panes');
   const clear = Object.getOwnPropertyDescriptor(Node.prototype, 'textContent');
   Object.defineProperty(panes, 'textContent', {
@@ -241,7 +241,7 @@ it('closing the last tab while its pane has the focus tears the view down withou
   await settle();
   window.removeEventListener('error', caught);
   expect(errors).toEqual([]);
-  expect(document.querySelector('[role="application"]')).toBeNull();
+  expect(document.querySelector('[role="group"][aria-label^="Terminal"]')).toBeNull();
 });
 
 it('no temporary adapter or placeholder pane remains', async () => {

@@ -2,13 +2,13 @@
   import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
   import { popover } from '$lib/motion/roles/transitions';
-  import { KEY_COMBINATIONS, type KeyCombination } from '../keys';
+  import { KEY_SEQUENCES, type KeySequence } from './sequences';
   import { menuAlignment, menuFocus, menuPlacement, type MenuAlignment, type MenuPlacement } from './menu';
 
   interface Props {
     /** No session to send to (not ready, or ended). */
     disabled: boolean;
-    onkeys: (combination: KeyCombination) => void;
+    onkeys: (sequence: KeySequence) => void;
     onpaste: () => void;
   }
 
@@ -122,7 +122,7 @@
       onkeydown={menuKey}
       transition:popover={{ from: trigger }}
     >
-      {#each KEY_COMBINATIONS as combination (combination.id)}
+      {#each KEY_SEQUENCES as combination (combination.id)}
         <button type="button" role="menuitem" tabindex="-1" onclick={() => choose(() => onkeys(combination))}>
           <span class="label">{combination.label}</span>
           <span class="hint">{combination.hint}</span>

@@ -2,11 +2,8 @@
 //! subprotocol, 503 when the sweep cannot run, the gateway cannot be reached, SSH is off or
 //! the device's host is refused; and the token never reaches the process log (LOG-007).
 
-use std::{
-    io,
-    sync::{Arc, Mutex},
-    time::Duration,
-};
+use crate::sessions::Presented;
+use std::time::Duration;
 
 use chrono::TimeDelta;
 use guac_protocol::Display;
@@ -23,7 +20,7 @@ use super::{
     ended_once,
     fake_guacd::{ARGS_1_6_0, CONNECTION_ID, Script, fake_guacd},
     opened,
-    records::ended,
+    records::{Capture, ended},
     socket::{open, open_with},
 };
 use crate::{
@@ -226,7 +223,7 @@ async fn k4_2_a_sweep_that_cannot_run_is_503_and_spends_nothing(pool: PgPool) {
     assert!(
         bench
             .live
-            .redeem(&bench.token, address(LOOPBACK), now())
+            .redeem(Presented::terminal(&bench.token, address(LOOPBACK)), now())
             .is_ok()
     );
 }
@@ -256,21 +253,6 @@ async fn k4_3_ssh_turned_off_after_start_is_503_gateway_error(pool: PgPool) {
         "SSH was turned off for the device before the session opened."
     );
     assert!(guacd.selected.try_recv().is_err(), "guacd is never reached");
-}
-
-/// Collects everything the process log writes.
-#[derive(Clone, Default)]
-struct Capture(Arc<Mutex<Vec<u8>>>);
-
-impl io::Write for Capture {
-    fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
-        self.0.lock().unwrap().extend_from_slice(bytes);
-        Ok(bytes.len())
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
-    }
 }
 
 #[sqlx::test(
@@ -317,4 +299,29 @@ async fn log_007_gw_014_the_token_password_and_connection_id_never_reach_the_log
     for secret in [bench.token.as_str(), PASSWORD, CONNECTION_ID, "token="] {
         assert!(!log.contains(secret), "{secret} in the log");
     }
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
+)]
+async fn k4_1_k4_2_the_hub_s_tunnel_route_refuses_an_ssh_ticket_and_spends_it(pool: PgPool) {
+    // As `tunnel_router` builds it: SSH tickets are for `/terminal` (R-062).
+    let setup = Setup::route(|route| route.tunnel_path = Protocol::tunnel_path);
+    let bench = bench(&pool, "127.0.0.1:9", setup).await;
+    assert_eq!(
+        open_with(&bench.url, true).await.err(),
+        Some(StatusCode::FORBIDDEN)
+    );
+    assert!(
+        bench
+            .live
+            .redeem(Presented::terminal(&bench.token, address(LOOPBACK)), now())
+            .is_err(),
+        "the ticket is spent"
+    );
+    assert!(
+        row(&pool, &bench).await.is_live(),
+        "the sweep ends it later"
+    );
 }

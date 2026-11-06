@@ -10,7 +10,7 @@ WP-02 owns the token source (`design/tokens/`, W3C DTCG) and the build. Every ot
 | --- | --- | --- |
 | CSS | `apps/client/src/styles/tokens.css` | `--<name>` custom properties on `:root`, plus `@media (prefers-reduced-motion: reduce)` and `(prefers-reduced-transparency: reduce)` overrides |
 | TypeScript | `apps/client/src/lib/motion/tokens.ts` | `export const spring = { default: { dampingRatio, responseS, stiffness, damping }, … }`, `duration`, `ease`, `stagger`, `threshold` objects |
-| Rust | `crates/theme` | `pub const NORD: [Rgb; 16]`, `pub fn guac_color_scheme() -> String` (RA-010) |
+| Rust | `crates/theme` | `pub const NORD: [Rgb; 16]`, `pub fn guac_color_scheme() -> String` (RA-010; used by the Guacamole tunnel, which SSH no longer uses since R-062; the SSH terminal takes its Nord theme from the CSS tokens) |
 
 The TypeScript output may also hold `reducedMotion` and `breakpoint` objects: they carry values of the names below and add no new names (R-013).
 

@@ -52,6 +52,7 @@
 >
   <Icon name="nf-md-console" size="sm" />
   <span class="name">{tab.deviceName}</span>
+  <span class="title" title={tab.title}>{tab.title ?? ''}</span>
   <span class="protocol">{tab.protocol}</span>
 </button>
 {#if onpopout !== undefined}
@@ -104,11 +105,27 @@
   .tab {
     padding: 0 var(--space-2) 0 var(--space-3);
     border-radius: var(--radius-md) 0 0 var(--radius-md);
+    flex: 1 1 auto;
     min-inline-size: 0;
   }
 
   .tab[aria-selected='true'] {
     box-shadow: inset 0 calc(var(--border-focus) * -1) 0 var(--accent);
+  }
+
+  /*
+   * The tab has one width (set on its slot), whatever the shell puts in the title. The title takes the room the
+   * name, the protocol and the buttons leave, and is the first to give it up; the device name keeps priority
+   * (MOT-007, MV-004).
+   */
+  .title {
+    flex: 1 1 0;
+    min-inline-size: 0;
+    overflow: hidden;
+    color: var(--text-muted);
+    font-size: var(--text-xs);
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .name {

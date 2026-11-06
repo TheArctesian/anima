@@ -1,6 +1,7 @@
 //! What `startSession` and `endSession` tests share: requests, ready devices, and the rows and
 //! audit entries a session leaves behind.
 
+use anima_hub::sessions::Presented;
 use std::net::IpAddr;
 
 use anima_hub::{
@@ -67,8 +68,11 @@ pub fn client() -> ClientAddr {
 
 /// Redeems the ticket's token from the operator's address at `now`.
 pub fn redeem(live: &Live, ticket: &Value, now: DateTime<Utc>) -> Option<Redeemed> {
-    live.redeem(ticket["token"].as_str().unwrap(), client(), now)
-        .ok()
+    live.redeem(
+        Presented::terminal(ticket["token"].as_str().unwrap(), client()),
+        now,
+    )
+    .ok()
 }
 
 /// One stored session row as the tests read it.

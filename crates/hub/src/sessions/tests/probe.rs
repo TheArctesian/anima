@@ -15,8 +15,9 @@ use russh::{
 use tokio::{io::AsyncWriteExt, net::TcpListener};
 
 use crate::sessions::{
-    probe::{ProbeError, Target, read_host_key},
+    probe::read_host_key,
     public_key::PublicKey,
+    ssh::{SshError, Target},
     target::TargetRule,
 };
 
@@ -82,14 +83,14 @@ async fn r_032_the_probe_refuses_a_host_that_resolves_to_the_gateway_itself() {
     ] {
         assert_eq!(
             read_host_key(strict(host, port), SHORT).await,
-            Err(ProbeError::RefusedTarget),
+            Err(SshError::RefusedTarget),
             "{host}"
         );
     }
     for host in ["169.254.169.254", "fe80::1", "224.0.0.1", "64:ff9b::7f00:1"] {
         assert_eq!(
             read_host_key(strict(host, 22), SHORT).await,
-            Err(ProbeError::RefusedTarget),
+            Err(SshError::RefusedTarget),
             "{host}"
         );
     }
@@ -150,7 +151,7 @@ async fn dev_013_a_closed_port_is_unreachable() {
     };
     assert_eq!(
         read_host_key(loopback(port), SHORT).await,
-        Err(ProbeError::Unreachable)
+        Err(SshError::Unreachable)
     );
 }
 
@@ -166,7 +167,7 @@ async fn dev_013_a_host_that_never_answers_times_out_within_the_limit() {
     let started = std::time::Instant::now();
     assert_eq!(
         read_host_key(loopback(port), SHORT).await,
-        Err(ProbeError::Timeout)
+        Err(SshError::Timeout)
     );
     assert!(started.elapsed() < SHORT * 3, "{:?}", started.elapsed());
     silent.abort();
@@ -185,7 +186,7 @@ async fn dev_013_a_host_that_does_not_speak_ssh_is_a_protocol_failure() {
     });
     assert_eq!(
         read_host_key(loopback(port), Duration::from_secs(5)).await,
-        Err(ProbeError::Protocol)
+        Err(SshError::Protocol)
     );
     http.await.unwrap();
 }

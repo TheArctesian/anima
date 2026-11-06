@@ -1,6 +1,6 @@
-//! `/tunnel` as `main.rs` mounts it: logged and behind the permitted-networks layer, so a
+//! `/terminal` as `main.rs` mounts it: logged and behind the permitted-networks layer, so a
 //! peer outside every permitted network never reaches the ticket, even with a valid one from
-//! the address it was issued to (K3, NET-002, R-051).
+//! the address it was issued to (K3, K4 Section 8.1, NET-002, R-051).
 
 use std::{net::SocketAddr, sync::Arc};
 
@@ -9,7 +9,7 @@ use anima_hub::{
     clock::{Clock, FixedClock},
     events::Bus,
     logged,
-    sessions::{Live, tunnel_router},
+    sessions::{Live, terminal_router},
 };
 use axum::{
     Router,
@@ -30,31 +30,30 @@ use super::{
     starting::{ready, redeem, started},
 };
 
-/// The tunnel route wrapped as `main.rs` wraps it, permitting only `permitted`.
+/// The terminal route wrapped as `main.rs` wraps it, permitting only `permitted`.
 async fn mounted(pool: &PgPool, live: &Live, permitted: &str) -> Router {
     let networks: Vec<IpNet> = vec![permitted.parse().unwrap()];
     access::permit_networks(pool, &networks).await.unwrap();
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(now()));
     let bus = Bus::new(16);
-    // No guacd listens on port 1; no request in these tests gets past the ticket.
-    let tunnel = tunnel_router(
+    // No request in these tests gets past the ticket, so no device is reached.
+    let terminal = terminal_router(
         pool.clone(),
         vault(),
         bus.clone(),
         clock.clone(),
-        "127.0.0.1:1".to_owned(),
         live.clone(),
     );
-    logged(tunnel).layer(access::permitted_networks_layer(access::Edge::new(
+    logged(terminal).layer(access::permitted_networks_layer(access::Edge::new(
         pool.clone(),
         bus,
         clock,
     )))
 }
 
-/// Opens `/tunnel?token=<token>` from `peer`; returns the status and the body text.
+/// Opens `/terminal?token=<token>` from `peer`; returns the status and the body text.
 async fn open_from(app: &Router, peer: &str, token: &str) -> (StatusCode, String) {
-    let mut request = Request::get(format!("/tunnel?token={token}"))
+    let mut request = Request::get(format!("/terminal?token={token}"))
         .body(Body::empty())
         .unwrap();
     let peer: SocketAddr = format!("{peer}:50000").parse().unwrap();
@@ -69,7 +68,7 @@ async fn open_from(app: &Router, peer: &str, token: &str) -> (StatusCode, String
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
 )]
-async fn net_002_a_refused_peer_cannot_open_the_tunnel_with_a_valid_ticket(pool: PgPool) {
+async fn net_002_a_refused_peer_cannot_open_the_terminal_with_a_valid_ticket(pool: PgPool) {
     let live = Live::default();
     ready(&pool, &[PVE_01]).await;
     let ticket = started(&schema_at(&pool, now(), &live), PVE_01).await;
@@ -96,11 +95,11 @@ async fn net_002_a_refused_peer_cannot_open_the_tunnel_with_a_valid_ticket(pool:
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn net_002_a_permitted_peer_reaches_the_tunnel_route(pool: PgPool) {
+async fn net_002_a_permitted_peer_reaches_the_terminal_route(pool: PgPool) {
     let app = mounted(&pool, &Live::default(), "10.10.0.0/16").await;
 
     let (status, body) = open_from(&app, CLIENT_ADDR, "unknown").await;
 
-    // The route's own refusal of an unknown ticket: 403 with no body (K4 Section 2).
+    // The route's own refusal of an unknown ticket: 403 with no body (K4 Section 8.1).
     assert_eq!((status, body.as_str()), (StatusCode::FORBIDDEN, ""));
 }

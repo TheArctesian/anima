@@ -28,7 +28,7 @@ use super::{
     },
     writes::{close_client, leave_gateway, send_text, write_gateway},
 };
-use crate::sessions::{EndCause, Tunnel};
+use crate::sessions::{EndCause, Tunnel, end::unreadable};
 
 /// Relays between the client and guacd until the first cause, then closes both.
 pub(super) async fn relay(
@@ -241,20 +241,5 @@ impl Link<'_> {
             }
         };
         tokio::join!(gateway, close_client(client, cause));
-    }
-}
-
-/// A WebSocket error while reading the client: a message over the size cap or text that is
-/// not UTF-8 breaks the protocol (R-039); anything else is the client leaving.
-fn unreadable(error: axum::Error) -> Cause {
-    match error
-        .into_inner()
-        .downcast::<tungstenite::Error>()
-        .as_deref()
-    {
-        Ok(tungstenite::Error::Capacity(_) | tungstenite::Error::Utf8(_)) => {
-            Cause::InvalidInstruction
-        }
-        _ => Cause::OperatorClosed,
     }
 }

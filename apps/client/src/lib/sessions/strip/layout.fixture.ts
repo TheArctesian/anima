@@ -1,13 +1,13 @@
 // Test support: the root layout with a fake hub behind the session store and the session views, in jsdom.
 // The test files mock `$lib/sessions/api` so the layout's `sessionsApi` is `fake.api`, and
 // `$lib/sessions/sessions.svelte` so `createSessions` records the layout's port in `fake.port` and the store in
-// `fake.sessions`. Tunnels run on `FakeTunnelSocket`, and panes measure through `FakeResizeObserver`.
+// `fake.sessions`. Tunnels run on `FakeTerminalSocket` with the real xterm.js, and panes measure through
+// `FakeResizeObserver`.
 import { createRawSnippet, flushSync, mount, unmount, type Component } from 'svelte';
 import { vi } from 'vitest';
 import type { SessionsApi } from '../api';
 import type { PopOutPort, SessionPort, Sessions } from '../sessions.svelte';
-import { installBlankCanvas } from '../tunnel/fake/canvas.fixture';
-import { FakeTunnelSocket } from '../tunnel/fake/socket.fixture';
+import { FakeTerminalSocket } from '../tunnel/terminal/fake/socket.fixture';
 import { FakeResizeObserver, fakeApi, type ApiCalls, type HubAnswers } from '../view/view.fixture.svelte';
 
 /** A spy on each of the port's calls. */
@@ -68,13 +68,12 @@ export function prepare(): void {
   for (const [name, value] of Object.entries(stubs)) {
     Object.defineProperty(Element.prototype, name, { value, configurable: true });
   }
-  FakeTunnelSocket.reset();
+  FakeTerminalSocket.reset();
   FakeResizeObserver.observers = [];
   const saved = { WebSocket: globalThis.WebSocket, ResizeObserver: globalThis.ResizeObserver };
-  globalThis.WebSocket = FakeTunnelSocket as unknown as typeof WebSocket;
+  globalThis.WebSocket = FakeTerminalSocket as unknown as typeof WebSocket;
   globalThis.ResizeObserver = FakeResizeObserver as unknown as typeof ResizeObserver;
   restore = [
-    installBlankCanvas(),
     () => {
       Object.assign(globalThis, saved);
     },
@@ -97,12 +96,33 @@ export async function settle(): Promise<void> {
   }
 }
 
+/**
+ * xterm.js asks for the colour scheme and the pixel ratio, and jsdom has no `matchMedia`. The stand-in comes after the
+ * layout is mounted, because the layout's motion preference reads `matchMedia` once, when it mounts, and the tests
+ * of the strip rely on the answer for a window without one.
+ */
+function giveMatchMedia(): void {
+  const saved = window.matchMedia;
+  window.matchMedia = ((query: string) => ({
+    matches: false,
+    media: query,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    addListener: () => undefined,
+    removeListener: () => undefined,
+  })) as unknown as typeof window.matchMedia;
+  restore.push(() => {
+    window.matchMedia = saved;
+  });
+}
+
 /** Mounts `layout` with a stand-in page; `popOut` is the window port, if any. */
 export function show(layout: Component<{ children: ReturnType<typeof createRawSnippet> }>, popOut?: PopOutPort): Sessions {
   fake.popOut = popOut;
   const children = createRawSnippet(() => ({ render: () => '<p id="page">page</p>' }));
   app = mount(layout, { target: document.body, props: { children } });
   flushSync();
+  giveMatchMedia();
   return fake.sessions;
 }
 

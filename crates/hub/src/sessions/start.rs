@@ -130,7 +130,7 @@ fn random_token() -> Result<TicketToken, Error> {
 /// literal (`Validation`), and SSH turned off or no accepted host key (`Conflict`). A time
 /// zone that is not a zone name is dropped, so the tunnel uses UTC. Then, in one
 /// transaction, it writes the live session row and the audit entry `session.start`, and
-/// holds a ticket that `/tunnel` redeems once within 30 s from `client`. Tickets that expired
+/// holds a ticket that the protocol's tunnel redeems once within 30 s from `client`. Tickets that expired
 /// unredeemed are swept first.
 ///
 /// If the hub shut down while the commit was in flight, `shut_down` took the ticket but could
@@ -184,7 +184,12 @@ pub async fn start(
         end_shut_down(db, &pending, now).await?;
         return Err(Error::Unavailable);
     }
-    Ok(Ticket::new(pending.session, token, pending.expires_at))
+    Ok(Ticket::new(
+        pending.session,
+        pending.protocol,
+        token,
+        pending.expires_at,
+    ))
 }
 
 /// Ends the committed row of a ticket `shut_down` withdrew before the row was visible to it,

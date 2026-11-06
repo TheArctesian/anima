@@ -5,8 +5,11 @@ export type { SessionEndReason } from '$lib/hub/generated/graphql';
 /** What the tunnel saw when it ended (the `TunnelState` fields `ending` reads). */
 export interface TunnelClose {
   readonly closeCode: number | undefined;
-  readonly gatewayError: number | undefined;
+  /** The last Guacamole gateway `error` status; the terminal tunnel has none. */
+  readonly gatewayError?: number | undefined;
   readonly opened: boolean;
+  /** The reason in the terminal tunnel's `end` message (K4 §8.4), which is the hub's own word for the close. */
+  readonly endReason?: SessionEndReason;
 }
 
 /** Why a session ended, as the operator reads it. `reason` is undefined when the close alone does not tell. */
@@ -27,10 +30,10 @@ const FORBIDDEN = 0x0303;
 const REASON_TEXT: Readonly<Record<SessionEndReason, string>> = {
   OPERATOR: 'You ended the session.',
   REMOTE_CLOSED: 'The device closed the session.',
-  GATEWAY_ERROR: 'The gateway lost the connection to the device.',
-  AUTH_FAILED: 'The device refused the sign-in.',
+  GATEWAY_ERROR: 'The hub lost the connection to the device.',
+  AUTH_FAILED: 'The device refused the sign-in, or no credential is stored for it.',
   HOST_KEY_MISMATCH: "The device's host key has changed, so Anima did not connect.",
-  PROTOCOL_ERROR: 'The hub ended the session because Anima sent an instruction it could not read.',
+  PROTOCOL_ERROR: 'The app sent something the hub does not accept, so the hub closed the session.',
   TIMEOUT: 'The session timed out because the hub heard nothing from Anima.',
   HUB_SHUTDOWN: 'The hub shut down.',
 };
@@ -67,6 +70,11 @@ function openedReason({ closeCode, gatewayError }: TunnelClose): SessionEndReaso
   return undefined;
 }
 
+/** Whether `value` is a `SessionEndReason` this client knows. */
+export function isEndReason(value: unknown): value is SessionEndReason {
+  return typeof value === 'string' && Object.hasOwn(REASON_TEXT, value);
+}
+
 /** The text for a known reason; the lookup is checked because the hub may send a value newer than the schema. */
 function reasonText(reason: SessionEndReason): string {
   return Object.hasOwn(REASON_TEXT, reason) ? REASON_TEXT[reason] : UNKNOWN_REASON;
@@ -79,10 +87,11 @@ function textFor(reason: SessionEndReason | undefined, opened: boolean): string 
 
 /**
  * The provisional ending from the tunnel alone (D-4). A tunnel that never opened (a refusal before the upgrade
- * arrives as 1006 with no status) has no reason yet: "Could not open the session".
+ * arrives as 1006 with no status) has no reason yet: "Could not open the session". The terminal tunnel's `end`
+ * message names the reason itself, so it wins over the close code (K4 §8.6).
  */
 export function ending(close: TunnelClose): SessionEnding {
-  const reason = close.opened ? openedReason(close) : undefined;
+  const reason = close.endReason ?? (close.opened ? openedReason(close) : undefined);
   return { reason, opened: close.opened, text: textFor(reason, close.opened) };
 }
 

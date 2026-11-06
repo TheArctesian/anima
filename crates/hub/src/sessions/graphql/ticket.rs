@@ -9,9 +9,6 @@ use crate::{
     sessions::{DEFAULT_DPI, DisplayRequest, FieldError, Protocol, StartRequest, Ticket},
 };
 
-/// The only path the tunnel is served on in Phase 1 (K4 §1).
-const TUNNEL_PATH: &str = "/tunnel";
-
 /// Only these values come from the client (GW-012).
 #[derive(InputObject)]
 pub(super) struct DisplayInput {
@@ -62,8 +59,9 @@ impl Ticket {
         self.token()
     }
 
+    /// The protocol's tunnel: `/terminal` for SSH (K4 §1, R-062).
     async fn tunnel_path(&self) -> &str {
-        TUNNEL_PATH
+        self.protocol.tunnel_path()
     }
 
     async fn expires_at(&self) -> DateTime<Utc> {
