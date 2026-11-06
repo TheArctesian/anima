@@ -2,9 +2,10 @@ import { getContext, setContext, type Snippet } from 'svelte';
 
 /**
  * A modal's footer, below its scrolling body: a form inside the modal shows its actions there, so they
- * stay in view and never move while the body scrolls or a section opens.
+ * stay in view and never move while the body scrolls or a section opens. A modal holds one form: the
+ * footer shows the actions of the form that showed them last.
  */
-export interface ModalFooter {
+interface ModalFooter {
   /** Shows `actions` in the footer; the returned function takes them out again. */
   readonly show: (actions: Snippet) => () => void;
 }

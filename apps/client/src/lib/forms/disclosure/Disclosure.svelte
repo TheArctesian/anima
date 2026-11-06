@@ -77,21 +77,28 @@
    * scroll position allows, the browser moves the position back and all of them with it; measured, they
    * spring from where they were, with the clicked control, instead of stepping in one frame.
    */
-  function scrolled(): Animatable[] {
+  function scrollerChildren(): Animatable[] {
     return [...(scroller()?.children ?? [])].filter((child) => child instanceof HTMLElement);
   }
 
   /**
-   * The measured elements whose place on screen changed. The others keep any motion in flight and get
-   * no `translate`, which would make a container the containing block of its fixed children.
+   * The measured elements whose place on screen changed, and those inside one of them: an element that
+   * stayed put while its container moved needs a `translate` of its own, or the container's would carry
+   * it away (a row below a closed section, when the scroll position moved back by the section's height).
+   * The others keep any motion in flight and get no `translate`, which would make a container the
+   * containing block of its fixed children.
    */
   function moved(first: Places): Places {
-    return new Map(
-      [...first].filter(([element, before]) => {
-        const after = element.getBoundingClientRect();
-        return after.top !== before.top || after.left !== before.left;
-      }),
+    const changed = new Set(
+      [...first]
+        .filter(([element, before]) => {
+          const after = element.getBoundingClientRect();
+          return after.top !== before.top || after.left !== before.left;
+        })
+        .map(([element]) => element),
     );
+    const carried = (element: Animatable) => [...changed].some((outer) => outer !== element && outer.contains(element));
+    return new Map([...first].filter(([element]) => changed.has(element) || carried(element)));
   }
 
   /**
@@ -102,7 +109,7 @@
    * position the browser moves back when the content gets shorter is part of the same motion.
    */
   async function toggle(): Promise<void> {
-    const first = measure([...below(), ...scrolled()]);
+    const first = measure([...below(), ...scrollerChildren()]);
     if (open) {
       open = false;
       leaving = true;
@@ -113,7 +120,7 @@
       // If it was reopened meanwhile, the effect above puts `present` back at once. A reopen from
       // outside (a form showing an error) did not run the open path, so undo the fade here.
       leaving = false;
-      const held = measure(scrolled());
+      const held = measure(scrollerChildren());
       present = false;
       await tick();
       flip(moved(held), { spring: 'default', preference });
@@ -160,8 +167,15 @@
 </div>
 
 <style>
+  /*
+   * Layout containment: the content that fades out after a close, held in place below the section, does
+   * not keep a scroll container's extent. The container gets shorter at the close itself, so a scroll
+   * position moved back is undone by the same FLIP; if the fading content set the extent, the FLIP's
+   * own translate would shorten it again and the content would step.
+   */
   .disclosure {
     position: relative;
+    contain: layout;
   }
 
   .heading {
