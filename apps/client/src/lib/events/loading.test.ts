@@ -4,13 +4,13 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { manualClock } from '$lib/devices/screen/loading/clock.fixture';
 import { endTransitionsAtOnce } from '$lib/devices/transitions.fixture';
 import { threshold } from '$lib/motion/tokens';
-import { LogFeed } from './feed.svelte';
-import LogList from './LogList.svelte';
-import { NOW, deferredHub, event, page, settle } from './panel.fixture';
+import { LogFeed } from './panel/feed.svelte';
+import LogList from './panel/LogList.svelte';
+import { NOW, deferredHub, event, page, settle } from './panel/panel.fixture';
 
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
-  animate: (await import('../../motion/engine.fixture')).fakeRun,
+  animate: (await import('../motion/engine.fixture')).fakeRun,
 }));
 
 endTransitionsAtOnce();
