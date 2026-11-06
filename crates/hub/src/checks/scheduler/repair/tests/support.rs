@@ -14,7 +14,7 @@ use crate::{
     checks::{
         self, Beat, Check, CheckChange, CheckSettings, CheckState, Definition, NewCheck, Recorded,
         config::{CheckConfig, IpVersion},
-        probe::{AddressPolicy, Failure, ProbeResult},
+        probe::{Failure, ProbeResult},
         scheduler::{
             Probing,
             attempt::Context,
@@ -25,6 +25,7 @@ use crate::{
     events::Bus,
     ids::{CheckId, DeviceId},
     status::Status,
+    targets::AddressPolicy,
 };
 
 /// `docker-host` in the K6 fixtures: SSH on, no maintenance.

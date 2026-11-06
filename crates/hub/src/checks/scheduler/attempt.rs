@@ -15,7 +15,7 @@ use crate::{
     checks::{
         self, Attempt, Beat, Due, Error,
         config::CheckConfig,
-        probe::{AddressPolicy, Failure, ProbeEnv, ProbeResult, ProbeTarget, probe},
+        probe::{Failure, ProbeEnv, ProbeResult, ProbeTarget, probe},
         store,
     },
     credentials::Vault,
@@ -24,6 +24,7 @@ use crate::{
     ids::{CheckId, DeviceId},
     maintenance,
     status::Status,
+    targets::AddressPolicy,
 };
 
 /// What probes need: the vault that opens HTTP secrets and the addresses they may reach.

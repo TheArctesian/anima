@@ -29,11 +29,13 @@ use serde_json::Value;
 use super::{
     ProbeEnv,
     outcome::{Failure, ProbeResult},
-    reach::AddressPolicy,
     resolve::allowed_addresses,
     tls,
 };
-use crate::checks::config::{HttpAuth, HttpConfig, HttpMethod, HttpSecrets};
+use crate::{
+    checks::config::{HttpAuth, HttpConfig, HttpMethod, HttpSecrets},
+    targets::AddressPolicy,
+};
 
 /// The most body bytes read (1 MiB).
 pub const BODY_CAP: usize = 1024 * 1024;

@@ -12,9 +12,10 @@ use super::support::{
     DOCKER_HOST, Listener, add, beats, database_now, due_at, on_loopback, tcp, vault,
 };
 use crate::{
-    checks::{Probing, probe::AddressPolicy, spawn_scheduler},
+    checks::{Probing, spawn_scheduler},
     clock::Clock,
     events::Bus,
+    targets::AddressPolicy,
 };
 
 /// A clock the test moves forward.
