@@ -1,5 +1,6 @@
 {
   "commit": "f034eeafc0ccf79afa8dd952feb86b18e5d0469e",
+  "firaCodeRelease": "6.2",
   "files": [
     {
       "file": "OpenDyslexicNerdFontPropo-Regular.otf",
@@ -44,6 +45,20 @@
       "licence": "LICENSE-SymbolsNerdFont.txt"
     },
     {
+      "file": "FiraCode-Regular.woff2",
+      "url": "https://github.com/tonsky/FiraCode/releases/download/6.2/Fira_Code_v6.2.zip#woff2/FiraCode-Regular.woff2",
+      "sha256": "a6ce59520b90e15d7062ffef214f94c8add5a4085c0bbb1683602ef227a4d1fe",
+      "bytes": 103240,
+      "licence": "LICENSE-FiraCode.txt"
+    },
+    {
+      "file": "FiraCode-Bold.woff2",
+      "url": "https://github.com/tonsky/FiraCode/releases/download/6.2/Fira_Code_v6.2.zip#woff2/FiraCode-Bold.woff2",
+      "sha256": "d778c19803c672d294663e9283c7b752cc125ab266f0ddb8e53b039da92caf67",
+      "bytes": 107788,
+      "licence": "LICENSE-FiraCode.txt"
+    },
+    {
       "file": "LICENSE-OpenDyslexic.txt",
       "url": "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/f034eeafc0ccf79afa8dd952feb86b18e5d0469e/patched-fonts/OpenDyslexic/Regular/LICENSE.txt",
       "sha256": "c9838b435817b7319ec53239c9785f47ddce643e6c6b2f2dc160cb4aa00df043",
@@ -60,6 +75,12 @@
       "url": "https://raw.githubusercontent.com/ryanoasis/nerd-fonts/f034eeafc0ccf79afa8dd952feb86b18e5d0469e/LICENSE",
       "sha256": "1f6ad4edae6479aaace3112ede5279a23284ae54b2a34db66357aef5f64df160",
       "bytes": 6200
+    },
+    {
+      "file": "LICENSE-FiraCode.txt",
+      "url": "https://raw.githubusercontent.com/tonsky/FiraCode/6.2/LICENSE",
+      "sha256": "1d41e10031ab125302780a05ec4c91d218e47db0c7e37cf315cce5e608cdc25c",
+      "bytes": 4389
     }
   ]
 }

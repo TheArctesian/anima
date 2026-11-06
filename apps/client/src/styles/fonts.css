@@ -1,7 +1,7 @@
 /*
- * Bundled font faces (UI-010, UI-011, UI-017, UI-022).
+ * Bundled font faces (UI-010, UI-011, UI-017, UI-020, UI-022).
  * Files live in ./fonts/ and are listed with SHA-256 hashes in ./fonts/fonts.lock.json.
- * Family names must match the font-ui, font-mono and font-icon tokens.
+ * Family names must match the font-ui, font-mono, font-ui-opendyslexic, font-mono-opendyslexic and font-icon tokens.
  */
 
 @font-face {
@@ -48,6 +48,23 @@
   font-family: "Symbols Nerd Font";
   src: url("./fonts/SymbolsNerdFont-Regular.ttf") format("truetype");
   font-weight: 400;
+  font-style: normal;
+  font-display: block;   /* bundled local fonts: no first-paint swap shift (MOT-007, R-042) */
+}
+
+/* Fira Code ships Regular and Bold only, the two weights the tokens use (weight-regular, weight-bold). */
+@font-face {
+  font-family: "Fira Code";
+  src: url("./fonts/FiraCode-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;   /* bundled local fonts: no first-paint swap shift (MOT-007, R-042) */
+}
+
+@font-face {
+  font-family: "Fira Code";
+  src: url("./fonts/FiraCode-Bold.woff2") format("woff2");
+  font-weight: 700;
   font-style: normal;
   font-display: block;   /* bundled local fonts: no first-paint swap shift (MOT-007, R-042) */
 }

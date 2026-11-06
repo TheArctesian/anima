@@ -1,11 +1,14 @@
 <script lang="ts">
   import SignOutRow from '$lib/access/SignOutRow.svelte';
+  import TypefaceRows from '$lib/typeface/TypefaceRows.svelte';
   import DesktopRows from '$lib/updates/DesktopRows.svelte';
 </script>
 
 <h1>Settings</h1>
 
 <SignOutRow />
+
+<TypefaceRows />
 
 <DesktopRows />
 

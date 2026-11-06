@@ -6,3 +6,12 @@
 :root {
   --nav-inline-size: calc(var(--space-16) * 3);
 }
+
+/* The operator's typeface choice (UI-020): `lib/typeface` sets the data attributes; Fira Code is the token default. */
+:root[data-font-ui="opendyslexic"] {
+  --font-ui: var(--font-ui-opendyslexic);
+}
+
+:root[data-font-mono="opendyslexic"] {
+  --font-mono: var(--font-mono-opendyslexic);
+}
