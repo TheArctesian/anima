@@ -54,6 +54,7 @@ type Documents = {
     "\n  mutation SetRdpCredential($deviceId: ID!, $credential: PasswordCredentialInput!) {\n    setRdpCredential(deviceId: $deviceId, credential: $credential) {\n      credentialStored\n    }\n  }\n": typeof types.SetRdpCredentialDocument,
     "\n  mutation SetVncCredential($deviceId: ID!, $credential: PasswordCredentialInput!) {\n    setVncCredential(deviceId: $deviceId, credential: $credential) {\n      credentialStored\n    }\n  }\n": typeof types.SetVncCredentialDocument,
     "\n  query DeviceSessions($deviceId: ID!, $first: Int, $after: String) {\n    sessions(deviceId: $deviceId, first: $first, after: $after) {\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n      edges {\n        node {\n          id\n          protocol\n          operatorName\n          startedAt\n          endedAt\n          endReason\n        }\n      }\n    }\n  }\n": typeof types.DeviceSessionsDocument,
+    "\n  mutation AcceptWebCertificate($id: ID!, $fingerprintSha256: String!) {\n    acceptWebCertificate(id: $id, fingerprintSha256: $fingerprintSha256) {\n      id\n      pinnedFingerprintSha256\n      pinnedAt\n    }\n  }\n": typeof types.AcceptWebCertificateDocument,
 };
 const documents: Documents = {
     "\n  mutation Login($input: LoginInput!) {\n    login(input: $input) {\n      token\n    }\n  }\n": types.LoginDocument,
@@ -96,6 +97,7 @@ const documents: Documents = {
     "\n  mutation SetRdpCredential($deviceId: ID!, $credential: PasswordCredentialInput!) {\n    setRdpCredential(deviceId: $deviceId, credential: $credential) {\n      credentialStored\n    }\n  }\n": types.SetRdpCredentialDocument,
     "\n  mutation SetVncCredential($deviceId: ID!, $credential: PasswordCredentialInput!) {\n    setVncCredential(deviceId: $deviceId, credential: $credential) {\n      credentialStored\n    }\n  }\n": types.SetVncCredentialDocument,
     "\n  query DeviceSessions($deviceId: ID!, $first: Int, $after: String) {\n    sessions(deviceId: $deviceId, first: $first, after: $after) {\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n      edges {\n        node {\n          id\n          protocol\n          operatorName\n          startedAt\n          endedAt\n          endReason\n        }\n      }\n    }\n  }\n": types.DeviceSessionsDocument,
+    "\n  mutation AcceptWebCertificate($id: ID!, $fingerprintSha256: String!) {\n    acceptWebCertificate(id: $id, fingerprintSha256: $fingerprintSha256) {\n      id\n      pinnedFingerprintSha256\n      pinnedAt\n    }\n  }\n": types.AcceptWebCertificateDocument,
 };
 
 /**
@@ -272,6 +274,10 @@ export function graphql(source: "\n  mutation SetVncCredential($deviceId: ID!, $
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  query DeviceSessions($deviceId: ID!, $first: Int, $after: String) {\n    sessions(deviceId: $deviceId, first: $first, after: $after) {\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n      edges {\n        node {\n          id\n          protocol\n          operatorName\n          startedAt\n          endedAt\n          endReason\n        }\n      }\n    }\n  }\n"): (typeof documents)["\n  query DeviceSessions($deviceId: ID!, $first: Int, $after: String) {\n    sessions(deviceId: $deviceId, first: $first, after: $after) {\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n      edges {\n        node {\n          id\n          protocol\n          operatorName\n          startedAt\n          endedAt\n          endReason\n        }\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation AcceptWebCertificate($id: ID!, $fingerprintSha256: String!) {\n    acceptWebCertificate(id: $id, fingerprintSha256: $fingerprintSha256) {\n      id\n      pinnedFingerprintSha256\n      pinnedAt\n    }\n  }\n"): (typeof documents)["\n  mutation AcceptWebCertificate($id: ID!, $fingerprintSha256: String!) {\n    acceptWebCertificate(id: $id, fingerprintSha256: $fingerprintSha256) {\n      id\n      pinnedFingerprintSha256\n      pinnedAt\n    }\n  }\n"];
 
 export function graphql(source: string) {
   return (documents as any)[source] ?? {};

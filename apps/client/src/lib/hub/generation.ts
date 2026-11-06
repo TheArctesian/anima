@@ -15,12 +15,12 @@ interface TypesLayout {
   readonly documents: readonly string[];
 }
 
-/** The client's own layout: the K1 schema and documents only from the domain clients (CQ-045). */
+/** The client's own layout: the K1 schema and documents only from the domain clients, `$lib/<domain>/api.ts` or `$lib/<domain>/<part>/api.ts` (CQ-045). */
 export function clientLayout(clientRoot: string): TypesLayout {
   return {
     clientRoot,
     schema: join(clientRoot, '..', '..', 'contracts', 'schema.graphql'),
-    documents: ['src/lib/*/api.ts'],
+    documents: ['src/lib/*/api.ts', 'src/lib/*/*/api.ts'],
   };
 }
 
