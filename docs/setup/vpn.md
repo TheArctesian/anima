@@ -483,7 +483,7 @@ and the tag `tag:hub`. A tagged node never expires (VPN-003), so no renewal is n
    ```bash
    # Runs on: VPS (SSH)
    sudo systemctl enable --now tailscaled
-   sudo tailscale up --login-server https://hs.anima.ing --auth-key=file:/run/anima-preauth --hostname hub --accept-routes --accept-dns=false
+   sudo tailscale up --login-server https://hs.anima.ing --auth-key=file:/run/anima-preauth --hostname hub --accept-routes --accept-dns=false --snat-subnet-routes=false
    sudo rm -f /run/anima-preauth
    hsctl preauthkeys list               # the key shows as used
    ```
@@ -492,6 +492,10 @@ and the tag `tag:hub`. A tagged node never expires (VPN-003), so no renewal is n
    `--accept-dns=false` leaves the VPS's resolver alone (R-050): without systemd-resolved,
    tailscaled would rewrite `/etc/resolv.conf` to `100.100.100.100`, and every container started
    later would depend on it for all DNS. Nothing on the VPS needs MagicDNS names.
+   `--snat-subnet-routes=false` keeps a client's VPN address on its way to the hub: otherwise
+   tailscaled, in iptables mode, masquerades everything forwarded from `tailscale0`, so Docker
+   hands the hub `172.30.0.1` and the hub refuses every client (NET-002). The VPS advertises no
+   routes, so nothing needs that masquerade.
    If the key is not marked used (the join failed), expire it:
    `hsctl preauthkeys expire --id <KEY_ID>`.
 
@@ -1186,9 +1190,13 @@ tagged pre-auth key.
    # Runs on: VPS (SSH over the VPN)
    sudo cp -p /opt/anima/headscale/config/policy.hujson /opt/anima/headscale/config/policy.hujson.old
    sudo mv /opt/anima/headscale/config/policy.hujson.new /opt/anima/headscale/config/policy.hujson
-   sudo docker compose -f /opt/anima/headscale/compose.yaml kill -s HUP headscale
+   sudo kill -HUP "$(sudo docker inspect -f '{{.State.Pid}}' headscale-headscale-1)"
    sudo docker compose -f /opt/anima/headscale/compose.yaml logs --tail 20 headscale
    ```
+
+   Send the signal to the process, not with `docker kill -s HUP`: Docker counts any
+   `docker kill` as a manual stop, and before the restart policy became `always` that left
+   Headscale, and with it the VPN and the hub, down after the next reboot.
 
    If the log shows the reload was rejected, put the old file back at once, because the VPS
    loads the file on its 04:30 reboot or at the next restart:

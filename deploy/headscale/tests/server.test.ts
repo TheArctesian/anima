@@ -273,7 +273,7 @@ describe('compose (VPS-002, VPS-003, D-9)', () => {
   test('image is Headscale 0.29.7 pinned by tag and digest', () => {
     expect(at(service, 'image')).toMatch(/^docker\.io\/headscale\/headscale:0\.29\.7@sha256:[0-9a-f]{64}$/);
     expect(at(service, 'command')).toBe('serve');
-    expect(at(service, 'restart')).toBe('unless-stopped');
+    expect(at(service, 'restart')).toBe('always');
   });
 
   test('VPS-002: host network and no Docker-published ports', () => {
