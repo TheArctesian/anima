@@ -10,9 +10,11 @@
     disabled: boolean;
     onkeys: (sequence: KeySequence) => void;
     onpaste: () => void;
+    /** Why "Paste" is off (RA-033); the item then shows it and sends nothing. */
+    pasteOff?: string | undefined;
   }
 
-  const { disabled, onkeys, onpaste }: Props = $props();
+  const { disabled, onkeys, onpaste, pasteOff }: Props = $props();
   const menuId = $props.id();
   let open = $state(false);
   let trigger: HTMLButtonElement | undefined = $state();
@@ -129,10 +131,18 @@
         </button>
       {/each}
       <hr />
-      <button type="button" role="menuitem" tabindex="-1" onclick={() => choose(onpaste)}>
-        <span class="label">Paste</span>
-        <span class="hint">Send the clipboard</span>
-      </button>
+      {#if pasteOff === undefined}
+        <button type="button" role="menuitem" tabindex="-1" onclick={() => choose(onpaste)}>
+          <span class="label">Paste</span>
+          <span class="hint">Send the clipboard</span>
+        </button>
+      {:else}
+        <!-- Focusable but inert, so the reason is read with the item (WAI-ARIA menu pattern). -->
+        <button type="button" role="menuitem" tabindex="-1" aria-disabled="true" data-off>
+          <span class="label">Paste</span>
+          <span class="hint">{pasteOff}</span>
+        </button>
+      {/if}
     </div>
   {/if}
 </div>
@@ -224,6 +234,15 @@
   .hint {
     color: var(--text);
     font-size: var(--text-sm);
+  }
+
+  .menu button[data-off] {
+    color: var(--text-muted);
+  }
+
+  .menu button[data-off] .hint {
+    color: var(--text-muted);
+    white-space: normal;
   }
 
   hr {

@@ -3,6 +3,7 @@
 // xterm.js (its DOM renderer runs in jsdom).
 import { flushSync, mount, unmount } from 'svelte';
 import { vi } from 'vitest';
+import { UNREACHABLE } from '$lib/hub/error';
 import type { HubResult } from '$lib/hub/hub';
 import type { AcceptedHostKey, ConnectionTest, ConnectionTestInput, EndedSession, SessionDisplay, SessionsApi, SessionTicket, SessionTransfer } from '../api';
 import type { SessionEndReason, SessionEnding } from '../ending';
@@ -24,7 +25,8 @@ export interface HubAnswers {
   endReason: SessionEndReason | null;
   test: HubResult<ConnectionTest>;
   accept: (fingerprint: string) => HubResult<AcceptedHostKey>;
-  transfer: SessionTransfer;
+  /** The device's copy and paste flags, or `'unanswered'` when the hub does not answer them. */
+  transfer: SessionTransfer | 'unanswered';
 }
 
 export const NEW_KEY = { algorithm: 'ssh-ed25519', fingerprintSha256: 'SHA256:n3wK3yF1ngerpr1ntAAAAAAAAAAAAAAAAAAAAAAAAAA', firstSeenAt: '2026-11-04T10:00:00Z' };
@@ -71,7 +73,8 @@ export function fakeApi() {
       return Promise.resolve(answers.accept(fingerprint));
     },
     acceptServerCertificate: () => Promise.resolve({ ok: false, error: { code: 'NOT_FOUND', message: 'No RDP certificate.' } }),
-    transferPolicy: () => Promise.resolve({ ok: true, value: answers.transfer }),
+    transferPolicy: () =>
+      Promise.resolve(answers.transfer === 'unanswered' ? { ok: false, error: UNREACHABLE } : { ok: true, value: answers.transfer }),
     setCredential: () => Promise.resolve({ ok: true, value: { credentialStored: true } }),
     history: () => Promise.resolve({ ok: true, value: { pageInfo: { hasNextPage: false, endCursor: null }, edges: [] } }),
   };
@@ -106,6 +109,8 @@ export class FakeResizeObserver {
 /** The system clipboard as `navigator.clipboard` sees it. */
 export const systemClipboard = {
   written: [] as string[],
+  /** How many times the clipboard was read. */
+  reads: 0,
   text: '',
   refuse: false,
   writeText(text: string): Promise<void> {
@@ -114,6 +119,7 @@ export const systemClipboard = {
     return Promise.resolve();
   },
   readText(): Promise<string> {
+    this.reads += 1;
     return this.refuse ? Promise.reject(new Error('denied')) : Promise.resolve(this.text);
   },
 };
@@ -123,6 +129,7 @@ export function installBrowserFakes(): () => void {
   const saved = globalThis.ResizeObserver;
   FakeResizeObserver.observers = [];
   systemClipboard.written = [];
+  systemClipboard.reads = 0;
   systemClipboard.text = '';
   systemClipboard.refuse = false;
   globalThis.ResizeObserver = FakeResizeObserver as unknown as typeof ResizeObserver;

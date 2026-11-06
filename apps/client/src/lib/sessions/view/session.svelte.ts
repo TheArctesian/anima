@@ -1,10 +1,10 @@
 import type { HubError } from '$lib/hub/hub';
 import type { SessionDisplay, SessionsApi } from '../api';
 import { ending, recordedEnding, type SessionEnding } from '../ending';
-import type { TunnelStart } from '../tunnel/start';
 import type { TunnelRefusal, TunnelState } from '../tunnel/state';
 import type { TerminalLink } from '../tunnel/terminal/link';
-import type { TunnelEvents } from './start';
+import type { SessionPolicy } from '../transfer';
+import type { TunnelEvents, ViewStartResult } from './start';
 import type { Progress } from './steps/steps';
 
 /** The K4 §8.6 close code of a host key change. */
@@ -13,7 +13,14 @@ const HOST_KEY_CLOSE = 4001;
 /** Where one attempt stands: asking for a ticket, with an open tunnel, or ended. */
 export type Stage =
   | { readonly kind: 'starting' }
-  | { readonly kind: 'open'; readonly tunnel: TerminalLink; readonly state: TunnelState; readonly connected: boolean }
+  | {
+      readonly kind: 'open';
+      readonly tunnel: TerminalLink;
+      readonly state: TunnelState;
+      readonly connected: boolean;
+      /** The copy and paste flags read with this attempt's ticket (RA-033). */
+      readonly policy: SessionPolicy;
+    }
   | { readonly kind: 'ending'; readonly ending: SessionEnding; readonly progress: Progress }
   | {
       readonly kind: 'ended';
@@ -27,7 +34,7 @@ export type Stage =
 export type ConnectionEvents = Pick<TunnelEvents, 'onchange' | 'onend'>;
 
 /** Starts one attempt: asks for a ticket and opens the tunnel, reporting to `events` (see `SessionStart`). */
-export type ConnectionStart = (display: SessionDisplay, events: ConnectionEvents) => Promise<TunnelStart>;
+export type ConnectionStart = (display: SessionDisplay, events: ConnectionEvents) => Promise<ViewStartResult<TerminalLink>>;
 
 /** Fixed text for a start the hub or the tunnel refused; never the hub's own message (LOG-007, R-035). */
 const REFUSED: Readonly<Record<string, string>> = {
@@ -111,7 +118,7 @@ export class SessionConnection {
     this.tunnel?.close();
   }
 
-  #started(attempt: number, result: TunnelStart, early: { state?: TunnelState; ended?: TunnelState }): void {
+  #started(attempt: number, result: ViewStartResult<TerminalLink>, early: { state?: TunnelState; ended?: TunnelState }): void {
     if (!result.ok) {
       if (attempt !== this.#attempt || this.#closed) return;
       const refused = refusedEnding(result.error);
@@ -122,20 +129,21 @@ export class SessionConnection {
       this.#onended(refused);
       return;
     }
-    const { tunnel, sessionId } = result.value;
+    const { tunnel, sessionId, policy } = result.value;
     // The view went away (or a newer attempt began) while the hub answered: this tunnel has no one to show it.
     if (attempt !== this.#attempt || this.#closed) {
       tunnel.close();
       return;
     }
-    this.stage = { kind: 'open', tunnel, state: tunnel.state(), connected: false };
+    this.stage = { kind: 'open', tunnel, state: tunnel.state(), connected: false, policy };
     this.#follow(tunnel, early.state ?? tunnel.state());
     if (early.ended !== undefined) void this.#end(attempt, sessionId, early.ended);
   }
 
   #follow(tunnel: TerminalLink, state: TunnelState): void {
-    const connected = (this.stage.kind === 'open' && this.stage.connected) || state.phase === 'connected';
-    this.stage = { kind: 'open', tunnel, state, connected };
+    if (this.stage.kind !== 'open') return;
+    const connected = this.stage.connected || state.phase === 'connected';
+    this.stage = { kind: 'open', tunnel, state, connected, policy: this.stage.policy };
   }
 
   async #end(attempt: number, sessionId: string, state: TunnelState): Promise<void> {
