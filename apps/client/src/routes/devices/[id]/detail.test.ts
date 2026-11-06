@@ -49,6 +49,24 @@ describe('Detail live updates (D-11)', () => {
     expect(fake.listeners('DeviceStatusChanged')).toBe(0);
   });
 
+  it('D-11: checks that answer after stop are dropped', async () => {
+    const fake = fakeHub(answers());
+    const detail = new Detail(fake.hub, parseDeviceId(ID));
+    detail.start();
+    const loading = detail.loadChecks();
+    detail.stop();
+    await loading;
+    expect(detail.checks).toBeNull();
+  });
+
+  it('D-11: a live beat older than the top of the history is left out', async () => {
+    const { fake, detail } = await started({ CheckHeartbeats: { check: { id: 'c1', heartbeats: beatsPage(['2026-11-04T10:00:00Z']) } } });
+    detail.openHistory('c1');
+    await settle();
+    fake.push('HeartbeatAdded', { heartbeatAdded: heartbeat('2026-11-04T09:59:00Z', 30) });
+    expect(detail.history?.pages.items?.map((beat) => beat.at)).toEqual(['2026-11-04T10:00:00Z']);
+  });
+
   it('D-10: deleting the check whose history is open closes the history', async () => {
     const { detail } = await started({ CheckHeartbeats: { check: { id: 'c1', heartbeats: beatsPage([]) } } });
     detail.openHistory('c1');
@@ -99,6 +117,22 @@ describe('Pages (D-10)', () => {
     answer(page(['a'], false));
     await loading;
     expect(pages.items).toBeNull();
+  });
+
+  it('D-10: a second Load older while one is on its way asks nothing; a reload clears the flag', async () => {
+    const asked: (string | null)[] = [];
+    let answer: (result: HubResult<Connection<Row>>) => void = () => undefined;
+    const pages = new Pages<Row>((after) => {
+      asked.push(after);
+      return after === null ? Promise.resolve(page(['a'], true)) : new Promise((resolve) => (answer = resolve));
+    });
+    await pages.load();
+    void pages.loadOlder();
+    void pages.loadOlder();
+    expect(asked).toEqual([null, 'a']);
+    await pages.load();
+    expect(pages.loadingOlder).toBe(false);
+    answer(page(['b'], false));
   });
 
   it('D-10: a gone owner is an empty list', async () => {

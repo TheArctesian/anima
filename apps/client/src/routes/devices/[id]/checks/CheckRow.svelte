@@ -46,11 +46,10 @@
   </span>
   <span class="certificate">{text.certificate ?? ''}</span>
   <span class="actions">
+    <!-- The name starts with the visible text, Pause or Resume (label in name). -->
     <button
       type="button"
-      role="switch"
-      aria-checked={check.paused}
-      aria-label="Pause {check.name}"
+      aria-label="{check.paused ? 'Resume' : 'Pause'} {check.name}"
       aria-busy={pausing}
       onclick={() => void togglePause()}
       {@attach press()}

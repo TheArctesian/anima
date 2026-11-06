@@ -128,6 +128,13 @@
   }
 </script>
 
+{#snippet checksFailure(message: string)}
+  <div class="notice" role="alert">
+    <p>{message}</p>
+    <button type="button" onclick={() => void detail.loadChecks()} {@attach press()}>Retry</button>
+  </div>
+{/snippet}
+
 <section class="detail">
   <Header {device} onConnect={connect} onSettings={settings} />
   {#if page.state.credentialError !== undefined}
@@ -148,15 +155,16 @@
     <Tabs selected={place.tab} onSelect={(tab) => { go({ tab, section: null }); }} />
     {#if place.tab === 'overview'}
       <TabPanel name="overview" loading={checksLoading}>
-        <OverviewPanel {device} checks={detail.checks ?? []} />
+        {#if detail.checksError !== null}
+          {@render checksFailure(detail.checksError.message)}
+        {:else}
+          <OverviewPanel {device} checks={detail.checks ?? []} />
+        {/if}
       </TabPanel>
     {:else if place.tab === 'checks'}
       <TabPanel name="checks" loading={checksLoading}>
         {#if detail.checksError !== null}
-          <div class="notice" role="alert">
-            <p>{detail.checksError.message}</p>
-            <button type="button" onclick={() => void detail.loadChecks()} {@attach press()}>Retry</button>
-          </div>
+          {@render checksFailure(detail.checksError.message)}
         {:else}
           <ChecksPanel
             checks={detail.checks ?? []}

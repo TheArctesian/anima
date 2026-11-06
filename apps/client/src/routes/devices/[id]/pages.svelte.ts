@@ -31,6 +31,8 @@ export class Pages<T> {
   /** Loads the first page; again after a failure. */
   async load(): Promise<void> {
     this.#generation += 1;
+    // A Load older still on its way is dropped, so its flag must not stay on.
+    this.loadingOlder = false;
     const mine = this.#generation;
     const result = await this.#load(null);
     if (mine !== this.#generation) return;

@@ -148,6 +148,8 @@ export class Detail {
         check.id === added.checkId && newer(beat, check.lastHeartbeat) ? { ...check, status: beat.status, lastHeartbeat: beat } : check,
       );
     }
-    if (this.history?.checkId === added.checkId) this.history.pages.prepend(beat, sameBeat);
+    // A beat older than the top of the history is left out: the list stays newest first.
+    const history = this.history?.checkId === added.checkId ? this.history.pages : null;
+    if (history !== null && newer(beat, history.items?.[0])) history.prepend(beat, sameBeat);
   }
 }
