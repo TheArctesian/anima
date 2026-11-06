@@ -1,4 +1,5 @@
 import type { AcceptHostKeyMutation, DeviceQuery, OperatingSystem, SitesQuery, SshAuth } from '$lib/hub/generated/graphql';
+import type { ThisMachine } from '$lib/desktop/thisMachine';
 import { normalizeHost } from './host';
 
 /** The part of a hub `Device` the form edits. */
@@ -62,6 +63,23 @@ export function formValues(device: DeviceFields | null): DeviceFormValues {
       username: device.ssh.username,
       auth: device.ssh.auth,
     },
+    credential: emptyCredential(),
+  };
+}
+
+/**
+ * The Add device values for the computer the app runs on (R-058, R-060): everything the shell could learn,
+ * so the operator only types the password. The kind is `workstation`: the form's word for a computer a person
+ * works at, which covers a laptop and a desktop alike (the shell cannot tell them apart).
+ */
+export function thisMachineValues(machine: ThisMachine): DeviceFormValues {
+  return {
+    name: machine.name,
+    host: machine.vpnAddress,
+    kind: 'workstation',
+    os: machine.os,
+    tags: [],
+    ssh: { enabled: machine.sshListening, port: '22', username: machine.user, auth: 'PASSWORD' },
     credential: emptyCredential(),
   };
 }

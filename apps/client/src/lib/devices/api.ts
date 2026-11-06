@@ -1,6 +1,7 @@
 import { graphql } from '$lib/hub/generated';
 import type {
   CreateDeviceInput,
+  DeviceHostsQuery,
   DeviceQuery,
   DevicesQuery,
   DevicesQueryVariables,
@@ -52,6 +53,25 @@ const Devices = graphql(`
     }
   }
 `);
+
+const DeviceHosts = graphql(`
+  query DeviceHosts($after: String) {
+    devices(first: 200, after: $after) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      edges {
+        node {
+          host
+        }
+      }
+    }
+  }
+`);
+
+/** At most this many pages of 200 hosts are read: the hub's page limit times a bound no home lab reaches. */
+const MAX_HOST_PAGES = 50;
 
 const Tags = graphql(`
   query Tags {
@@ -180,6 +200,21 @@ export interface StatusChange {
   readonly at: string;
 }
 
+/** Every device's host, page by page. Stops at the last page, at a page without a cursor, or after `MAX_HOST_PAGES`. */
+async function readHosts(hub: Hub): Promise<HubResult<readonly string[]>> {
+  const hosts: string[] = [];
+  let after: string | null = null;
+  for (let page = 0; page < MAX_HOST_PAGES; page += 1) {
+    const result: HubResult<DeviceHostsQuery> = await hub.request(DeviceHosts, { after });
+    if (!result.ok) return result;
+    const { edges, pageInfo }: DeviceHostsQuery['devices'] = result.value.devices;
+    hosts.push(...edges.map((edge) => edge.node.host));
+    after = pageInfo.endCursor ?? null;
+    if (!pageInfo.hasNextPage || after === null) break;
+  }
+  return { ok: true, value: hosts };
+}
+
 /** The device list, tags and live status changes through a `Hub` (CQ-045). */
 export function devicesApi(hub: Hub) {
   return {
@@ -187,6 +222,8 @@ export function devicesApi(hub: Hub) {
       const result = await hub.request(Devices, variables);
       return result.ok ? { ok: true, value: result.value.devices } : result;
     },
+    /** Every device's host (R-060: is this computer already a device?). */
+    hosts: (): Promise<HubResult<readonly string[]>> => readHosts(hub),
     tags: async (): Promise<HubResult<readonly string[]>> => {
       const result = await hub.request(Tags, {});
       return result.ok ? { ok: true, value: result.value.tags } : result;
