@@ -54,32 +54,49 @@ function readNames(tokens: string[], at: number): [string[], number] {
   return [names, i + 1];
 }
 
+interface Condition {
+  matches: boolean;
+  /** Index of the first token after the condition. */
+  next: number;
+}
+
+function interfaceCondition(tokens: string[], at: number, packet: Packet): Condition {
+  const negated = tokens[at + 1] === "!=";
+  const [names, next] = readNames(tokens, at + (negated ? 2 : 1));
+  const actual = tokens[at] === "iifname" ? packet.iifname : packet.oifname;
+  // A rule on oifname cannot match a packet that has no output interface yet.
+  const hit = actual !== undefined && names.some((name) => matchesName(name, actual));
+  return { matches: actual !== undefined && hit !== negated, next };
+}
+
+function addressCondition(tokens: string[], at: number, packet: Packet): Condition {
+  // The packets are IPv4, so an ip6 rule never matches them.
+  const matches = tokens[at] === "ip" && inPrefix4(packet.daddr, tokens[at + 2] ?? "");
+  return { matches, next: at + 3 };
+}
+
+function condition(tokens: string[], at: number, packet: Packet, rule: string): Condition {
+  const word = tokens[at];
+  if (word === "iifname" || word === "oifname") return interfaceCondition(tokens, at, packet);
+  if (word === "fib" && tokens.slice(at, at + 4).join(" ") === "fib daddr type local") {
+    return { matches: packet.daddrIsLocal, next: at + 4 };
+  }
+  if ((word === "ip" || word === "ip6") && tokens[at + 1] === "daddr" && tokens[at + 2] !== undefined) {
+    return addressCondition(tokens, at, packet);
+  }
+  throw new Error(`unsupported match "${word ?? ""}" in rule: ${rule}`);
+}
+
 /** Whether the packet meets every condition of the rule, and the verdict (the last token). */
 function ruleMatches(rule: string, packet: Packet): { matches: boolean; verdict: Verdict } {
   const tokens = rule.match(TOKEN) ?? [];
   const verdict = tokens.pop();
   if (verdict !== "drop" && verdict !== "accept") throw new Error(`unsupported verdict in rule: ${rule}`);
   let matches = true;
-  let i = 0;
-  while (i < tokens.length) {
-    const word = tokens[i];
-    if (word === "iifname" || word === "oifname") {
-      const negated = tokens[i + 1] === "!=";
-      const [names, next] = readNames(tokens, i + (negated ? 2 : 1));
-      const actual = word === "iifname" ? packet.iifname : packet.oifname;
-      // A rule on oifname cannot match a packet that has no output interface yet.
-      if (actual === undefined || names.some((name) => matchesName(name, actual)) === negated) matches = false;
-      i = next;
-    } else if (word === "fib" && tokens.slice(i, i + 4).join(" ") === "fib daddr type local") {
-      if (!packet.daddrIsLocal) matches = false;
-      i += 4;
-    } else if ((word === "ip" || word === "ip6") && tokens[i + 1] === "daddr" && tokens[i + 2] !== undefined) {
-      // The packets are IPv4, so an ip6 rule never matches them.
-      if (word === "ip6" || !inPrefix4(packet.daddr, tokens[i + 2] ?? "")) matches = false;
-      i += 3;
-    } else {
-      throw new Error(`unsupported match "${word ?? ""}" in rule: ${rule}`);
-    }
+  for (let at = 0; at < tokens.length; ) {
+    const result = condition(tokens, at, packet, rule);
+    matches &&= result.matches;
+    at = result.next;
   }
   return { matches, verdict };
 }
