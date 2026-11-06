@@ -10,7 +10,7 @@ it('WEB-001: an http or https URL with a host is valid', () => {
 });
 
 it('WEB-001: an empty URL, another scheme, or no host is refused on the url field', () => {
-  for (const url of ['', '  ', 'ftp://nas.lan', 'pve.lan:8006', 'not a url', 'https://']) {
+  for (const url of ['', '  ', 'ftp://nas.lan', 'pve.lan:8006', 'not a url', 'https://', 'javascript:alert(1)', 'data:text/html,x', 'file:///etc/passwd']) {
     const errors = validateWeb({ label: 'x', url, openIn: 'ANIMA_TAB' });
     expect(errors.map((error) => error.field), url).toEqual(['url']);
   }

@@ -28,7 +28,10 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
+const live = $state<{ interfaces: WebInterface[] }>({ interfaces: [] });
+
 function show(interfaces: WebInterface[], suggestions: WebInterfaceSuggestion[] = []) {
+  live.interfaces = interfaces;
   const calls = {
     onCreate: vi.fn((): Promise<HubResult<unknown>> => Promise.resolve(OK)),
     onUpdate: vi.fn((): Promise<HubResult<unknown>> => Promise.resolve(OK)),
@@ -36,7 +39,13 @@ function show(interfaces: WebInterface[], suggestions: WebInterfaceSuggestion[] 
     onAcceptSuggestion: vi.fn((): Promise<HubResult<unknown>> => Promise.resolve(OK)),
     onDismissSuggestion: vi.fn((): Promise<HubResult<unknown>> => Promise.resolve(OK)),
   };
-  app = mount(WebInterfaces, { target: document.body, props: { interfaces, suggestions, calls } });
+  app = mount(WebInterfaces, { target: document.body, props: {
+      get interfaces() {
+        return live.interfaces;
+      },
+      suggestions,
+      calls,
+    } });
   flushSync();
   return calls;
 }
@@ -183,4 +192,18 @@ it('WEB-002: a failed accept shows the hub message', async () => {
   await settle();
 
   expect(document.querySelector('[role="alert"]')?.textContent).toBe('That check is gone.');
+});
+
+it('WEB-001: after a label is cleared and saved, the row shows the label the hub stored and Save is off again', async () => {
+  const calls = show([PVE]);
+  type(field(row('Proxmox VE'), 'Label'), '');
+  button('Save', row('Proxmox VE')).click();
+  await settle();
+  expect(calls.onUpdate).toHaveBeenCalledOnce();
+
+  live.interfaces = [{ ...PVE, label: 'pve.lan' }];
+  await settle();
+
+  expect(field(row('pve.lan'), 'Label').value).toBe('pve.lan');
+  expect(button('Save', row('pve.lan')).getAttribute('aria-disabled')).toBe('true');
 });

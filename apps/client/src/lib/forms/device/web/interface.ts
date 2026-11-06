@@ -22,7 +22,7 @@ export function webValuesFrom(saved?: WebInterface): WebValues {
 export function validateWeb(values: WebValues): FieldError[] {
   const text = values.url.trim();
   if (text === '') return [{ field: 'url', message: 'Enter the URL of the web interface.' }];
-  const url = URL.parse(text);
+  const url = URL.canParse(text) ? new URL(text) : null;
   if (url === null || (url.protocol !== 'http:' && url.protocol !== 'https:') || url.hostname === '') {
     return [{ field: 'url', message: 'Enter an http or https URL with a host, for example https://pve.lan:8006.' }];
   }

@@ -23,6 +23,10 @@
   let values = $state(webValuesFrom(saved));
   let errors = $state<FieldError[]>([]);
   let busy = $state(false);
+  // The owner refreshes `saved` after a save; the row then shows what the hub stored (for example the host as an empty label).
+  $effect(() => {
+    values = webValuesFrom(saved);
+  });
   const changed = $derived(webChanged(values, saved));
   const urlError = $derived(errors.find((error) => error.field === 'url'));
   const labelError = $derived(errors.find((error) => error.field === 'label'));

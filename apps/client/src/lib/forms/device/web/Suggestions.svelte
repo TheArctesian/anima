@@ -25,7 +25,7 @@
 
 {#if suggestions.length > 0}
   <section aria-labelledby="web-suggestions-heading">
-    <h5 id="web-suggestions-heading">Suggested from your HTTP checks</h5>
+    <h4 id="web-suggestions-heading">Suggested from your HTTP checks</h4>
     {#if failure !== null}
       <p class="error" role="alert">{failure.message}</p>
     {/if}
@@ -52,7 +52,7 @@
     gap: var(--space-2);
   }
 
-  h5 {
+  h4 {
     margin: 0;
     color: var(--text-muted);
     font-size: var(--text-sm);
