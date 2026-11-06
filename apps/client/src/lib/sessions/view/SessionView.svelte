@@ -301,7 +301,10 @@
   .pane {
     position: absolute;
     inset: 0;
+    box-sizing: border-box;
     overflow: hidden;
+    /* Wider than the focus ring, so the ring never covers a glyph in column 0 or row 0 (UI-009, MAT-008). The fit add-on measures inside it. */
+    padding: var(--space-1);
   }
 
   /*

@@ -120,6 +120,8 @@ describe('MAT-008: the terminal', () => {
     expect(ring?.get('pointer-events')).toBe('none');
     expect(ring?.get('box-shadow')).toContain('var(--accent)');
     expect(rules.get('.pane')?.get('position')).toMatch(/^(absolute|relative)$/);
+    // The ring sits in the pane's padding, not over the first column (UI-009).
+    expect(rules.get('.pane')?.get('padding')).toBe('var(--space-1)');
   });
 
   it('MAT-008: the xterm.js element has no transform, transition, filter or animation set on it', async () => {
