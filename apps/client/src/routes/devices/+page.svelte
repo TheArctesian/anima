@@ -53,11 +53,10 @@
     adding = true;
   }
 
-  /** Reads whether this computer can be offered; once it is found to be a device, the prompt stops looking. */
-  async function readOffer(): Promise<MachineOffer> {
-    const offer = await machineToOffer(readThisMachine, devices.hosts);
+  /** Once this computer is found to be a device, the prompt stops looking for the rest of the run. */
+  function remember(offer: MachineOffer): ThisMachine | null {
     if (offer.kind === 'device') thisMachinePrompt.isADevice();
-    return offer;
+    return offeredMachine(offer);
   }
 
   /**
@@ -67,9 +66,9 @@
   async function addDevice(): Promise<void> {
     if (loadingSites || adding) return;
     loadingSites = true;
-    const [found, offer] = await Promise.all([devices.sites(), readOffer()]);
+    const [found, offer] = await Promise.all([devices.sites(), machineToOffer(readThisMachine, devices.hosts)]);
     loadingSites = false;
-    show(found, offeredMachine(offer), false);
+    show(found, remember(offer), false);
   }
 
   /**
@@ -79,7 +78,7 @@
   async function askAboutThisMachine(): Promise<void> {
     if (!thisMachinePrompt.due || loadingSites || adding) return;
     loadingSites = true;
-    const offered = offeredMachine(await readOffer());
+    const offered = remember(await machineToOffer(readThisMachine, devices.hosts));
     const found = offered === null ? null : await devices.sites();
     loadingSites = false;
     // The operator may have turned the prompt off, or opened Add device, while the reads were pending.
