@@ -34,10 +34,8 @@
 </script>
 
 <section aria-label="Account">
-  <!-- Always rendered with its line reserved, so the button does not move when the name arrives (MOT-007). -->
-  <p class="who">
-    {#if username !== null}Signed in as <strong>{username}</strong>{/if}
-  </p>
+  <!-- Always rendered with two lines reserved (the label, then the name on its own line), so the button does not move when the name arrives, however narrow the column is (MOT-007). -->
+  <p class="who" class:pending={username === null}>Signed in as <strong>{username ?? ''}</strong></p>
   <!-- tabindex="0": WebKit skips plain buttons when Tab is pressed unless they are focusable, as for the nav links (NAV-005, WP-11 H-6). -->
   <button type="button" tabindex="0" disabled={busy} onclick={leave} {@attach press()}>Sign out</button>
   {#if problem !== null}
@@ -59,10 +57,23 @@
     font-size: var(--text-md);
   }
 
-  /* One line is reserved for the name; the font swap cannot change the button's height either (MOT-007). */
+  /* Two lines are reserved; the name never wraps, it is cut with an ellipsis, so its arrival cannot change the height (MOT-007). */
   .who {
-    min-block-size: calc(var(--text-md) * var(--leading-tight));
+    min-block-size: calc(var(--text-md) * var(--leading-tight) * 2);
+    max-inline-size: 100%;
+    overflow: hidden;
     line-height: var(--leading-tight);
+    white-space: nowrap;
+  }
+
+  .who.pending {
+    visibility: hidden;
+  }
+
+  .who strong {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   button {
@@ -74,7 +85,7 @@
     background: var(--surface);
     color: var(--text);
     font: inherit;
-    transition: background-color var(--duration-press) var(--ease-enter);
+    transition: background-color var(--duration-fast) var(--ease-enter);
   }
 
   button:hover {

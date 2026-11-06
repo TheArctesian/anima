@@ -12,7 +12,7 @@
   import { Tags } from '../toolbar/tags.svelte';
   import { isFiltered, withoutFilters } from '../toolbar/toolbar';
   import { Listing } from './listing.svelte';
-  import { browserClock, type LoadingClock } from './loading/loading';
+  import { browserClock, type LoadingClock } from '$lib/motion/loading/loading';
   import Skeleton from './Skeleton.svelte';
 
   interface Props {

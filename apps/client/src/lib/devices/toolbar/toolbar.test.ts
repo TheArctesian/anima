@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { DEFAULT_QUERY } from '../query';
-import { NAME_DEBOUNCE_MS, debounced, isFiltered, menuLabel, toggled, withoutFilters } from './toolbar';
+import { NAME_DEBOUNCE_MS, debounced, isFiltered, menuLabel, shiftInsideViewport, toggled, withoutFilters } from './toolbar';
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -51,4 +51,13 @@ it('D-4: a cancelled debounce never runs', () => {
   call.cancel();
   vi.advanceTimersByTime(NAME_DEBOUNCE_MS * 2);
   expect(run).not.toHaveBeenCalled();
+});
+
+it('UI-013: a menu panel that runs past the right edge moves left to end inside the window', () => {
+  expect(shiftInsideViewport(300, 192, 390, 8)).toBe(-110);
+  expect(shiftInsideViewport(100, 192, 390, 8)).toBe(0);
+});
+
+it('UI-013: a menu panel wider than the window keeps its left edge in view', () => {
+  expect(shiftInsideViewport(40, 500, 390, 8)).toBe(-32);
 });

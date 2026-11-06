@@ -45,6 +45,36 @@ describe('DEV-002: latestBeats merges the checks of a device', () => {
   });
 });
 
+describe('DEV-002: latestBeats on a large device list', () => {
+  const time = (beat: Beat) => (Number.isNaN(Date.parse(beat.at)) ? Number.NEGATIVE_INFINITY : Date.parse(beat.at));
+  /** The definition: a beat is its check and its instant; the first of each stays; the newest 50 in time order. */
+  function byDefinition(checks: readonly CardDevice['checks'][number][]): readonly Beat[] {
+    const all = checks.flatMap((c) => c.heartbeats.edges.map(({ node }): Beat => ({ checkId: c.id, ...node })));
+    const unique = all.filter((b, i) => all.findIndex((o) => o.checkId === b.checkId && time(o) === time(b)) === i);
+    return unique.toSorted((a, b) => time(a) - time(b)).slice(-BAR_LENGTH);
+  }
+
+  it('gives the same beats as the definition for 10 checks of 50 beats with repeats, other spellings and shuffled order', () => {
+    let seed = 11;
+    const next = (limit: number) => (seed = (seed * 1_664_525 + 1_013_904_223) % 4_294_967_296) % limit;
+    const checks = Array.from({ length: 10 }, (_, index) => {
+      const minutes = Array.from({ length: 50 }, () => next(80));
+      const edges = minutes.map((minute, i) => ({
+        node: { at: i % 7 === 0 ? at(minute).replace('Z', '+00:00') : at(minute), status: (i % 3 === 0 ? 'DOWN' : 'UP') as Beat['status'], responseTimeMs: minute },
+      }));
+      return { id: `c${String(index % 8)}`, heartbeats: { edges } };
+    });
+    expect(latestBeats(checks)).toEqual(byDefinition(checks));
+  });
+
+  it('merges 20000 beats without the quadratic cost (the pairwise version takes many seconds)', () => {
+    const checks = Array.from({ length: 40 }, (_, index) => check(`c${String(index)}`, Array.from({ length: 500 }, (_, minute) => minute)));
+    const started = performance.now();
+    expect(latestBeats(checks)).toHaveLength(BAR_LENGTH);
+    expect(performance.now() - started).toBeLessThan(2000);
+  });
+});
+
 describe('DEV-002: a time that does not parse counts as the oldest', () => {
   const bad = (checkId = 'c1'): Beat => ({ checkId, at: 'not a time', status: 'DOWN' });
 

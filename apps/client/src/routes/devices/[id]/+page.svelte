@@ -49,6 +49,7 @@
   let revision = $state(0);
   const place = $derived(readPlace(page.url.searchParams));
   const device = $derived(detail.device);
+  const headerLoading = $derived(device === null && detail.error === null && !detail.missing);
   const checksLoading = $derived(detail.checks === null && detail.checksError === null);
 
   $effect(() => {
@@ -136,7 +137,7 @@
 {/snippet}
 
 <section class="detail">
-  <Header {device} onConnect={connect} onSettings={settings} />
+  <Header {device} loading={headerLoading} onConnect={connect} onSettings={settings} />
   {#if page.state.credentialError !== undefined}
     <p class="notice" role="alert">
       The device was added, but its credential was not stored: {page.state.credentialError} Enter it again in Settings.

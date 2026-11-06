@@ -14,14 +14,29 @@
 </script>
 
 <!-- The sizes come from tokens; static, so reduced motion needs no change (5.7.3, Loading). -->
-<ul class="places {view}" aria-hidden="true">
-  {#each places as place (place)}
-    <li class="place"></li>
-  {/each}
-</ul>
+{#if view === 'table'}
+  <!-- A table with the data table's header row and row size, so each row lands where its placeholder was (MOT-007). -->
+  <table class="places table" aria-hidden="true">
+    <caption class="caption"></caption>
+    <thead>
+      <tr><th></th></tr>
+    </thead>
+    <tbody>
+      {#each places as place (place)}
+        <tr class="place"><td></td></tr>
+      {/each}
+    </tbody>
+  </table>
+{:else}
+  <ul class="places grid" aria-hidden="true">
+    {#each places as place (place)}
+      <li class="place"></li>
+    {/each}
+  </ul>
+{/if}
 
 <style>
-  .places {
+  ul.places {
     margin: 0;
     padding: 0;
     list-style: none;
@@ -41,10 +56,25 @@
     background: var(--surface);
   }
 
-  .table .place {
+  /* The data table has a caption out of the flow; rows sit half a border lower in a table that has one. */
+  .caption {
+    position: absolute;
+  }
+
+  table.places {
+    inline-size: 100%;
+    border-collapse: collapse;
+  }
+
+  .table th,
+  .table td {
     box-sizing: border-box;
-    block-size: var(--target-min-touch);
+    block-size: var(--device-row-block-size);
+    padding: 0;
     border-bottom: var(--border-thin) solid var(--border);
+  }
+
+  .table td {
     background: var(--surface);
   }
 </style>
