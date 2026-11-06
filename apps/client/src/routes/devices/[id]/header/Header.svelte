@@ -114,11 +114,6 @@
     flex: none;
   }
 
-  /* The slot is as wide as the pill, not the card's longest label, so the name gets the room (DEV-021). */
-  .status :global(.slot) {
-    inline-size: auto;
-  }
-
   .back {
     display: flex;
     align-items: center;
