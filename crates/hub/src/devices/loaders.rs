@@ -10,7 +10,7 @@ use super::{
     model::{Device, Site},
     store,
 };
-use crate::ids::SiteId;
+use crate::ids::{DeviceId, SiteId};
 
 /// Sites by id, for `Device.site`.
 pub struct SitesById(pub(super) PgPool);
@@ -42,5 +42,23 @@ impl Loader<SiteId> for DevicesBySite {
             by_site.entry(device.site).or_default().push(device);
         }
         Ok(by_site)
+    }
+}
+
+/// Devices by id, for `Site.wakeRelay`.
+pub struct DevicesById(pub(super) PgPool);
+
+impl Loader<DeviceId> for DevicesById {
+    type Value = Device;
+    type Error = Arc<Error>;
+
+    async fn load(&self, keys: &[DeviceId]) -> Result<HashMap<DeviceId, Device>, Self::Error> {
+        let devices = store::devices_by_ids(&self.0, keys)
+            .await
+            .map_err(Arc::new)?;
+        Ok(devices
+            .into_iter()
+            .map(|device| (device.id, device))
+            .collect())
     }
 }

@@ -69,7 +69,7 @@ type Site {
   subnet: Cidr!
   devices(first: Int = 50, after: String): DeviceConnection!
   "The device that sends Wake-on-LAN packets at this site (D-2)."
-  wakeRelay: Device @pending
+  wakeRelay: Device
 }
 
 enum SshAuth {
@@ -114,7 +114,7 @@ enum MetricsSource {
 }
 
 "RA-020. TELNET joins when Telnet exists."
-enum AccessWarning @pending {
+enum AccessWarning {
   IGNORED_CERTIFICATE
   RDP_SECURITY
   UNENCRYPTED_VNC
@@ -127,7 +127,7 @@ type ServerCertificate @pending {
   firstSeenAt: DateTime!
 }
 
-type RdpSettings @pending {
+type RdpSettings {
   enabled: Boolean!
   "Default 3389."
   port: Int!
@@ -146,10 +146,10 @@ type RdpSettings @pending {
   "Default false (RA-021)."
   sharedDrive: Boolean!
   credentialStored: Boolean!
-  serverCertificate: ServerCertificate
+  serverCertificate: ServerCertificate @pending
 }
 
-type VncSettings @pending {
+type VncSettings {
   enabled: Boolean!
   "Default 5900."
   port: Int!
@@ -159,7 +159,7 @@ type VncSettings @pending {
 }
 
 "What may leave or enter the device in a session (RA-032, RA-033). All default true."
-type TransferPolicy @pending {
+type TransferPolicy {
   upload: Boolean!
   download: Boolean!
   copy: Boolean!
@@ -181,13 +181,13 @@ type Device {
   "Worst status of the device's checks (CHK-004)."
   status: Status!
   ssh: SshSettings!
-  rdp: RdpSettings! @pending
-  vnc: VncSettings! @pending
+  rdp: RdpSettings!
+  vnc: VncSettings!
   "Lower-case aa:bb:cc:dd:ee:ff (RA-031)."
-  macAddress: String @pending
-  metricsSource: MetricsSource! @pending
-  transfer: TransferPolicy! @pending
-  accessWarnings: [AccessWarning!]! @pending
+  macAddress: String
+  metricsSource: MetricsSource!
+  transfer: TransferPolicy!
+  accessWarnings: [AccessWarning!]!
   # web_interfaces
   webInterfaces: [WebInterface!]! @pending
   # web_interfaces (WEB-002)
@@ -270,7 +270,7 @@ input TransferPolicyInput {
   paste: Boolean = true
 }
 
-input PasswordCredentialInput @pending {
+input PasswordCredentialInput {
   password: String!
 }
 
@@ -1036,11 +1036,11 @@ type Mutation {
   startSession(input: StartSessionInput!): SessionTicket!
   endSession(id: ID!): Session!
 
-  setSiteWakeRelay(siteId: ID!, deviceId: ID): Site! @pending
-  setRdpCredential(deviceId: ID!, credential: PasswordCredentialInput!): RdpSettings! @pending
-  clearRdpCredential(deviceId: ID!): RdpSettings! @pending
-  setVncCredential(deviceId: ID!, credential: PasswordCredentialInput!): VncSettings! @pending
-  clearVncCredential(deviceId: ID!): VncSettings! @pending
+  setSiteWakeRelay(siteId: ID!, deviceId: ID): Site!
+  setRdpCredential(deviceId: ID!, credential: PasswordCredentialInput!): RdpSettings!
+  clearRdpCredential(deviceId: ID!): RdpSettings!
+  setVncCredential(deviceId: ID!, credential: PasswordCredentialInput!): VncSettings!
+  clearVncCredential(deviceId: ID!): VncSettings!
   "The fingerprint must equal the one the hub saw, or CONFLICT."
   acceptServerCertificate(deviceId: ID!, fingerprintSha256: String!): ServerCertificate! @pending
   "A ticket for the files tunnel of a live SSH session (K4 §9)."

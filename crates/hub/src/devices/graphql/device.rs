@@ -1,19 +1,22 @@
 //! `Device` as the GraphQL type K1 describes, with the fields that join the checks domain
-//! (R-011): `status`, `checks`, `uptime` and the resolved `ip`.
+//! (R-011): `status`, `checks`, `uptime` and the resolved `ip`; and the remote access fields
+//! (RA-020, RA-030..033).
 
 use async_graphql::{Context, ID, Object, Result, dataloader::DataLoader};
 use chrono::{DateTime, Utc};
 
 use super::{
     error::{internal, schema_dependency, to_graphql},
+    remote::{DeviceRdp, DeviceVnc},
     ssh::DeviceSsh,
     standing::{ChecksOf, ResolvedIpOf, StatusOf, UptimeOf},
 };
 use crate::{
     checks::{Check, UptimeWindow},
     devices::{
-        Error, Missing, OperatingSystem, SitesById,
+        Error, MetricsSource, Missing, OperatingSystem, SitesById, TransferPolicy,
         model::{Device, Site},
+        warnings::{AccessWarning, access_warnings},
     },
     scalars::IpAddr,
     status::Status,
@@ -101,6 +104,32 @@ impl Device {
             settings: self.ssh.clone(),
             credential_stored: None,
         }
+    }
+
+    async fn rdp(&self) -> DeviceRdp {
+        DeviceRdp::new(self, None)
+    }
+
+    async fn vnc(&self) -> DeviceVnc {
+        DeviceVnc::new(self, None)
+    }
+
+    /// Lower-case `aa:bb:cc:dd:ee:ff` (RA-031).
+    async fn mac_address(&self) -> Option<String> {
+        self.mac_address.map(|mac| mac.to_string())
+    }
+
+    async fn metrics_source(&self) -> MetricsSource {
+        self.metrics_source
+    }
+
+    async fn transfer(&self) -> TransferPolicy {
+        self.transfer
+    }
+
+    /// The weak settings the client marks with a badge, from the saved settings (RA-020).
+    async fn access_warnings(&self) -> Vec<AccessWarning> {
+        access_warnings(&self.rdp, &self.vnc)
     }
 
     async fn created_at(&self) -> DateTime<Utc> {

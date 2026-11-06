@@ -1,15 +1,19 @@
 //! Validation of the remote access settings of a device (RA-030..033, D-2, D-6).
 //!
 //! Field paths are `rdp.port`, `rdp.username`, `rdp.domain`, `vnc.port`, `vnc.username` and
-//! `macAddress`.
+//! `macAddress`; the wake relay check names `deviceId`.
 
 use super::{FieldError, Problems};
-use crate::devices::{
-    mac::{MacAddress, MacAddressError},
-    remote::{
-        RdpInput, RdpSettings, RemoteAccess, RemoteChange, RemoteForm, VncInput, VncSettings,
+use crate::{
+    devices::{
+        Device,
+        mac::{MacAddress, MacAddressError},
+        remote::{
+            RdpInput, RdpSettings, RemoteAccess, RemoteChange, RemoteForm, VncInput, VncSettings,
+        },
+        text::{is_plain, user_name},
     },
-    text::{is_plain, user_name},
+    ids::SiteId,
 };
 
 const DOMAIN_MAX: usize = 255;
@@ -177,4 +181,25 @@ fn mac_address(text: &str) -> Result<Option<MacAddress>, FieldError> {
     text.parse()
         .map(Some)
         .map_err(|error: MacAddressError| FieldError::new("macAddress", error.to_string()))
+}
+
+/// The device, when it can be the wake relay of `site`: it is at that site and has SSH on,
+/// because the relay sends the Wake-on-LAN packet over its SSH link (D-7).
+///
+/// # Errors
+/// A `deviceId` field error when there is no such device, it is at another site or its SSH is
+/// off.
+pub(in crate::devices) fn wake_relay(
+    device: Option<&Device>,
+    site: SiteId,
+) -> Result<&Device, FieldError> {
+    let reject = |message: &str| Err(FieldError::new("deviceId", message));
+    match device {
+        None => reject("There is no such device."),
+        Some(device) if device.site != site => reject("Choose a device at this site."),
+        Some(device) if !device.ssh.enabled => {
+            reject("Turn on SSH for this device first: the relay wakes devices over SSH.")
+        }
+        Some(device) => Ok(device),
+    }
 }
