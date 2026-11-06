@@ -7,7 +7,10 @@
 use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::PgPool;
 
-use super::schedule::{self, Timing};
+use super::{
+    repair,
+    schedule::{self, Timing},
+};
 use crate::{
     checks::{
         self, Attempt, Beat, Due, Error,
@@ -20,6 +23,7 @@ use crate::{
     events::{Bus, HeartbeatSummary, Signal},
     ids::{CheckId, DeviceId},
     maintenance,
+    status::Status,
 };
 
 /// What probes need: the vault that opens HTTP secrets and the addresses they may reach.
@@ -60,7 +64,8 @@ pub(super) fn warn(due: &Due, what: &str, error: &dyn std::fmt::Display) {
 
 /// What became of an attempt.
 enum Outcome {
-    Written(Beat),
+    /// The beat, and whether maintenance covered the check when it was recorded.
+    Written(Beat, bool),
     /// Nothing to record: the check is paused, has a newer beat or was deleted.
     Skipped,
     /// A read or write failed; it was logged.
@@ -69,7 +74,8 @@ enum Outcome {
 
 /// Runs the attempt. After a failed read or write the check is tried again only after its
 /// retry interval, so a write that keeps failing neither probes on every tick nor starves
-/// the other checks (CHK-001).
+/// the other checks (CHK-001). A Down beat of an ICMP check may repair its method within
+/// this attempt, so the permit covers the repair's connects (CHK-013).
 pub(super) async fn run(ctx: &Context, due: Due, now: DateTime<Utc>) -> Finished {
     let mut finished = Finished {
         check: due.id,
@@ -77,7 +83,7 @@ pub(super) async fn run(ctx: &Context, due: Due, now: DateTime<Utc>) -> Finished
         recorded: None,
     };
     match attempt(ctx, &due, now).await {
-        Outcome::Written(beat) => {
+        Outcome::Written(beat, in_maintenance) => {
             ctx.bus.publish(Signal::Heartbeat {
                 check: due.id,
                 device: due.device,
@@ -92,6 +98,10 @@ pub(super) async fn run(ctx: &Context, due: Due, now: DateTime<Utc>) -> Finished
                 next_due_at: beat.state.next_due_at,
                 interval_seconds: due.settings.interval_seconds,
             });
+            let icmp = matches!(due.config, Some(CheckConfig::Icmp { .. }));
+            if icmp && beat.state.status == Status::Down {
+                repair::run(ctx, &due, in_maintenance, now).await;
+            }
         }
         Outcome::Skipped => {}
         Outcome::Failed => back_off(ctx, &due, now).await,
@@ -125,7 +135,7 @@ async fn attempt(ctx: &Context, due: &Due, now: DateTime<Utc>) -> Outcome {
         at: now,
     };
     match record(&ctx.db, due.id, &attempt).await {
-        Ok(Some(beat)) => Outcome::Written(beat),
+        Ok(Some(beat)) => Outcome::Written(beat, in_maintenance),
         Ok(None) => Outcome::Skipped,
         Err(Error::NotFound(_)) => {
             tracing::debug!(domain = "checks", check_id = %due.id, "the check was deleted");
