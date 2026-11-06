@@ -16,7 +16,7 @@ interface Path {
   readonly origin?: string;
 }
 
-const fade = (t: number) => `opacity: ${String(t)};`;
+const opacity = (t: number) => `opacity: ${String(t)};`;
 
 /** A closing tab shrinks to nothing about its own centre, in its place in the strip (5.7.3). */
 const closing: Path = { atZero: 0 };
@@ -48,9 +48,9 @@ function opening(origin: Origin, tab: DOMRectReadOnly): Path {
 
 /** The style at progress `t` along `path`; with no path, a fade only. */
 function draw(path: Path | null) {
-  if (path === null) return fade;
+  if (path === null) return opacity;
   const at = path.origin === undefined ? '' : ` transform-origin: ${path.origin};`;
-  return (t: number) => `${fade(t)} scale: ${String(path.atZero + (1 - path.atZero) * t)};${at}`;
+  return (t: number) => `${opacity(t)} scale: ${String(path.atZero + (1 - path.atZero) * t)};${at}`;
 }
 
 /**
@@ -61,19 +61,20 @@ function draw(path: Path | null) {
  */
 export function grow(node: Element, { origin, preference = motionPreference() }: GrowParams): RoleTransition {
   const { reduced } = preference;
-  let path: Path | null | undefined;
+  // Unset until the first direction; `null` once fixed is a fade only, so it is kept too.
+  let fixed: { readonly path: Path | null } | undefined;
+  const first = (path: () => Path | null) => (fixed ??= { path: path() }).path;
   return ({ direction } = {}) => {
     if (direction === 'out') {
-      path ??= reduced ? null : closing;
-      return { duration: modeTokens(reduced).duration.fast, easing: easeCurve('exit'), css: draw(path) };
+      const css = draw(first(() => (reduced ? null : closing)));
+      return { duration: modeTokens(reduced).duration.fast, easing: easeCurve('exit'), css };
     }
     const motion = springMotion('snappy', reduced);
     if (motion.type !== 'spring' || origin === null) {
-      path ??= null;
-      return { duration: modeTokens(reduced).duration.base, easing: easeCurve('enter'), css: draw(path) };
+      return { duration: modeTokens(reduced).duration.base, easing: easeCurve('enter'), css: draw(first(() => null)) };
     }
-    path ??= opening(origin, node.getBoundingClientRect());
+    const css = draw(first(() => opening(origin, node.getBoundingClientRect())));
     const { easing, durationMs } = springCurve(motion);
-    return { duration: durationMs, easing, css: draw(path) };
+    return { duration: durationMs, easing, css };
   };
 }
