@@ -12,8 +12,8 @@
   import Notice from '../pane/Notice.svelte';
   import { SessionConnection, progressOf } from '../session.svelte';
   import type { RemoteStart } from '../start';
+  import { clipboardRules, NO_CLIPBOARD } from '../clipboard/clipboard';
   import ConnectionSteps from '../steps/ConnectionSteps.svelte';
-  import { clipboardRules, COPY_FAILED, NO_CLIPBOARD, PASTE_FAILED, PASTE_REFUSED } from './clipboard';
   import { displayScale } from './fit';
   import { followPixelRatio, remotePane, type RemotePane } from './pane';
 
@@ -41,6 +41,10 @@
   }
 
   const { device, protocol, start, api, visible, focused, onended, oncertificatechanged, onclient }: Props = $props();
+  /** Fixed texts of the clipboard notices; never the clipboard's content (LOG-007). */
+  const COPY_FAILED = 'Could not copy the text to your clipboard.';
+  const PASTE_FAILED = 'Could not read your clipboard. Allow clipboard access, or use Paste in the Keys menu.';
+  const PASTE_REFUSED = 'Paste to the device is off, so nothing was sent.';
   /** Fixed text for a `CONFLICT` refusal of the start (K4 §1); never the hub's own message (LOG-007). */
   const CONFLICT_TEXT: Readonly<Record<RemoteProtocol, string | undefined>> = {
     RDP: "Could not open the session. The device's RDP certificate is not accepted yet: run the connection test first.",

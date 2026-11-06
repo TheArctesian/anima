@@ -6,7 +6,7 @@ import { FakeTunnelSocket } from '../../tunnel/fake/socket.fixture';
 import type { SessionTransfer } from '../../api';
 import { UNREAD_POLICY } from '../../transfer';
 import { FakeResizeObserver, installBrowserFakes, settle, systemClipboard } from '../view.fixture.svelte';
-import { clipboardRules } from './clipboard';
+import { clipboardRules } from '../clipboard/clipboard';
 import { chooseKey, connectRemote, keyOn, keysOf, pasteOn, remoteFlags, remotePaneOf, sentOf, showRemote } from './remote.fixture.svelte';
 
 let cleanups: (() => unknown)[] = [];
