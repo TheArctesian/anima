@@ -4,7 +4,7 @@
 import { flushSync, mount, unmount } from 'svelte';
 import { vi } from 'vitest';
 import type { HubResult } from '$lib/hub/hub';
-import type { AcceptedHostKey, ConnectionTest, ConnectionTestInput, EndedSession, SessionDisplay, SessionsApi, SessionTicket } from '../api';
+import type { AcceptedHostKey, ConnectionTest, ConnectionTestInput, EndedSession, SessionDisplay, SessionsApi, SessionTicket, SessionTransfer } from '../api';
 import type { SessionEndReason, SessionEnding } from '../ending';
 import { openScreen, type ScreenHooks, type ScreenOpener } from '../screen/screen';
 import { FAKE_TERMINAL_SOCKET, FakeTerminalSocket } from '../tunnel/terminal/fake/socket.fixture';
@@ -24,6 +24,7 @@ export interface HubAnswers {
   endReason: SessionEndReason | null;
   test: HubResult<ConnectionTest>;
   accept: (fingerprint: string) => HubResult<AcceptedHostKey>;
+  transfer: SessionTransfer;
 }
 
 export const NEW_KEY = { algorithm: 'ssh-ed25519', fingerprintSha256: 'SHA256:n3wK3yF1ngerpr1ntAAAAAAAAAAAAAAAAAAAAAAAAAA', firstSeenAt: '2026-11-04T10:00:00Z' };
@@ -37,10 +38,11 @@ export function fakeApi() {
     endReason: null,
     test: { ok: true, value: { reachable: true, authenticated: true, hostKey: NEW_KEY, hostKeyChanged: true, message: null } },
     accept: (fingerprint) => ({ ok: true, value: { ...NEW_KEY, fingerprintSha256: fingerprint } }),
+    transfer: { copy: true, paste: true },
   };
   let issued = 0;
   const api: SessionsApi = {
-    startSession: (deviceId, display) => {
+    startSession: (deviceId, _protocol, display) => {
       calls.startSession.push([deviceId, display]);
       issued += 1;
       const n = String(issued);
@@ -68,6 +70,9 @@ export function fakeApi() {
       calls.acceptHostKey.push([deviceId, fingerprint]);
       return Promise.resolve(answers.accept(fingerprint));
     },
+    acceptServerCertificate: () => Promise.resolve({ ok: false, error: { code: 'NOT_FOUND', message: 'No RDP certificate.' } }),
+    transferPolicy: () => Promise.resolve({ ok: true, value: answers.transfer }),
+    setCredential: () => Promise.resolve({ ok: true, value: { credentialStored: true } }),
     history: () => Promise.resolve({ ok: true, value: { pageInfo: { hasNextPage: false, endCursor: null }, edges: [] } }),
   };
   return { api, calls, answers };
@@ -178,7 +183,7 @@ export function showView(wrap: (open: ScreenOpener) => ScreenOpener = (open) => 
     target,
     props: {
       device: DEVICE,
-      start: sessionStart(api, DEVICE.id, 'https://hub.anima.ing', FAKE_TERMINAL_SOCKET),
+      start: sessionStart(api, DEVICE.id, 'https://hub.anima.ing', FAKE_TERMINAL_SOCKET).terminal,
       api,
       openScreen: opener,
       get visible() {

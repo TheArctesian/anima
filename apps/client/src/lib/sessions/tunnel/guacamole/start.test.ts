@@ -7,16 +7,16 @@ import { FAKE_TUNNEL_SOCKET, FakeTunnelSocket } from '../fake/socket.fixture';
 import { startTunnel, type StartedTunnel } from './start';
 
 const DISPLAY: SessionDisplay = { widthPx: 1280, heightPx: 800, dpi: 192, timezone: 'Europe/London' };
-const TARGET = { deviceId: 'device-1', display: DISPLAY };
+const TARGET = { deviceId: 'device-1', protocol: 'RDP', display: DISPLAY } as const;
 const SETUP = { origin: 'https://hub.anima.ing', WebSocket: FAKE_TUNNEL_SOCKET };
 
 /** A sessions API that issues a new ticket per call and records every call. */
 function fakeApi(tunnelPath = '/tunnel') {
-  const calls: { startSession: [string, SessionDisplay][]; endSession: string[] } = { startSession: [], endSession: [] };
+  const calls: { startSession: [string, string, SessionDisplay][]; endSession: string[] } = { startSession: [], endSession: [] };
   let issued = 0;
   const api: Pick<SessionsApi, 'startSession' | 'endSession'> = {
-    startSession: (deviceId, display) => {
-      calls.startSession.push([deviceId, display]);
+    startSession: (deviceId, protocol, display) => {
+      calls.startSession.push([deviceId, protocol, display]);
       issued += 1;
       const ticket: SessionTicket = {
         sessionId: `session-${String(issued)}`,
@@ -56,10 +56,10 @@ async function start(api: Pick<SessionsApi, 'startSession' | 'endSession'>) {
 }
 
 describe('start and reconnect (D-3, D-5, RA-007)', () => {
-  it('RA-007: a start calls startSession once for the device and display and opens the ticket', async () => {
+  it('RA-007: a start calls startSession once for the device, protocol and display and opens the ticket', async () => {
     const { api, calls } = fakeApi();
     const result = await start(api);
-    expect(calls.startSession).toEqual([['device-1', DISPLAY]]);
+    expect(calls.startSession).toEqual([['device-1', 'RDP', DISPLAY]]);
     expect(result.ok && result.value.sessionId).toBe('session-1');
     expect(FakeTunnelSocket.latest().url).toBe(`wss://hub.anima.ing/tunnel?token=token-1-${'x'.repeat(34)}`);
   });

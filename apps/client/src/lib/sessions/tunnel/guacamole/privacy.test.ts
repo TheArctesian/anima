@@ -61,7 +61,7 @@ describe('session paths keep secrets out of logs (LOG-007, SEC-002)', () => {
         Promise.resolve({ ok: true as const, value: { sessionId: 's-1', token: TOKEN_MARKER, tunnelPath: '/tunnel', expiresAt: '2026-11-04T10:00:30Z' } }),
       endSession: () => Promise.resolve({ ok: false as const, error: { code: 'NOT_FOUND' as const, message: 'No such session.' } }),
     };
-    const started = await startTunnel(api, { deviceId: 'd-1', display: { widthPx: 800, heightPx: 600 } }, {
+    const started = await startTunnel(api, { deviceId: 'd-1', protocol: 'VNC', display: { widthPx: 800, heightPx: 600 } }, {
       origin: 'https://hub.anima.ing',
       WebSocket: FAKE_TUNNEL_SOCKET,
       onchange: (state) => states.push(state),

@@ -1,9 +1,10 @@
-import { expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { SessionEndError, createSessions, type SessionPort, type Sessions } from './sessions.svelte';
-import type { TunnelStart } from './tunnel/start';
+import type { SessionTunnel } from './tunnel/guacamole/tunnel';
 import type { TunnelState } from './tunnel/state';
 import type { TerminalLink } from './tunnel/terminal/link';
-import type { SessionStart, TunnelEvents } from './view/start';
+import { UNREAD_POLICY } from './transfer';
+import type { DeviceStarts, RemoteEvents, RemoteStart, SessionStart, TunnelEvents, ViewStartResult } from './view/start';
 
 const display = { widthPx: 800, heightPx: 600 };
 const request = { deviceId: 'web-1', deviceName: 'web-1', protocol: 'SSH', origin: null } as const;
@@ -23,16 +24,26 @@ function fakeHub() {
   let count = 0;
   const held: ((answer: () => void) => void)[] = [];
   const events: TunnelEvents[] = [];
-  const open = vi.fn<SessionStart>((_display, heard) => {
-    events.push(heard);
+  const remoteEvents: RemoteEvents[] = [];
+  function answer<Tunnel>(): Promise<ViewStartResult<Tunnel>> {
     count += 1;
     const sessionId = `session-${String(count)}`;
-    const answer: TunnelStart = { ok: true, value: { sessionId, tunnel: { close: vi.fn() } as unknown as TerminalLink } };
+    const tunnel = { close: vi.fn() } as unknown as Tunnel;
+    const started: ViewStartResult<Tunnel> = { ok: true, value: { sessionId, tunnel, policy: UNREAD_POLICY } };
     const wait = held.shift();
-    return wait === undefined ? Promise.resolve(answer) : new Promise((resolve) => wait(() => resolve(answer)));
+    return wait === undefined ? Promise.resolve(started) : new Promise((resolve) => wait(() => resolve(started)));
+  }
+  const open = vi.fn<SessionStart>((_display, heard) => {
+    events.push(heard);
+    return answer<TerminalLink>();
   });
+  const remoteOpen = vi.fn<RemoteStart>((_display, heard) => {
+    remoteEvents.push(heard);
+    return answer<SessionTunnel>();
+  });
+  const remote = vi.fn<DeviceStarts['remote']>(() => remoteOpen);
   const port = {
-    start: vi.fn<SessionPort['start']>(() => open),
+    start: vi.fn<SessionPort['start']>(() => ({ terminal: open, remote })),
     end: vi.fn<SessionPort['end']>(() => Promise.resolve(ENDED)),
   };
   const hold = () => {
@@ -40,7 +51,7 @@ function fakeHub() {
     held.push((answer) => (release = answer));
     return () => release();
   };
-  return { port, open, events, hold };
+  return { port, open, remote, remoteOpen, events, remoteEvents, hold };
 }
 
 const sessionIds = (sessions: Sessions) => sessions.tabs.map((open) => open.sessionId);
@@ -310,4 +321,67 @@ it('K4 §8.7: a title reaches its tab only, next to the device name that stays',
     [first, 'web-1', undefined],
     [second, 'db-1', 'psql'],
   ]);
+});
+
+describe('RDP and VNC tabs (RA-001)', () => {
+  const remoteQuiet = (): RemoteEvents => ({ onchange: vi.fn(), onend: vi.fn() });
+  const GUAC_ENDED = { phase: 'disconnected', opened: true, closeCode: 4003, gatewayError: 0x0303 } as const;
+
+  it.each(['RDP', 'VNC'] as const)('K4 §1: a remote start in a %s tab asks for the tab\'s protocol on its device', async (protocol) => {
+    const hub = fakeHub();
+    const sessions = createSessions(hub.port);
+    const id = sessions.openSession({ ...request, deviceId: 'desk-3', protocol });
+    await expect(sessions.remoteStartIn(id)(display, remoteQuiet())).resolves.toMatchObject({ ok: true, value: { sessionId: 'session-1' } });
+    expect(hub.port.start).toHaveBeenCalledExactlyOnceWith('desk-3');
+    expect(hub.remote).toHaveBeenCalledExactlyOnceWith(protocol);
+    expect(hub.open).not.toHaveBeenCalled();
+    expect(sessionIds(sessions)).toEqual(['session-1']);
+  });
+
+  it('a start through the other tunnel\'s view asks the hub for nothing', async () => {
+    const hub = fakeHub();
+    const sessions = createSessions(hub.port);
+    const rdp = sessions.openSession({ ...request, protocol: 'RDP' });
+    const ssh = sessions.openSession(request);
+    await expect(sessions.startIn(rdp)(display, quiet())).resolves.toMatchObject({ ok: false, error: { problem: 'not-opened' } });
+    await expect(sessions.remoteStartIn(ssh)(display, remoteQuiet())).resolves.toMatchObject({ ok: false, error: { problem: 'not-opened' } });
+    expect(hub.open).not.toHaveBeenCalled();
+    expect(hub.remoteOpen).not.toHaveBeenCalled();
+  });
+
+  it('RA-007: a remote Reconnect ends the live session once before starting another', async () => {
+    const hub = fakeHub();
+    const sessions = createSessions(hub.port);
+    const id = sessions.openSession({ ...request, protocol: 'VNC' });
+    await sessions.remoteStartIn(id)(display, remoteQuiet());
+    await sessions.remoteStartIn(id)(display, remoteQuiet());
+    expect(hub.port.end).toHaveBeenCalledExactlyOnceWith('session-1');
+    expect(sessionIds(sessions)).toEqual(['session-2']);
+  });
+
+  it('K4 §5: once a remote tunnel ends the view owns its end; closing the tab never ends it again', async () => {
+    const hub = fakeHub();
+    const sessions = createSessions(hub.port);
+    const id = sessions.openSession({ ...request, protocol: 'RDP' });
+    const heard = remoteQuiet();
+    await sessions.remoteStartIn(id)(display, heard);
+    hub.remoteEvents[0]?.onend(GUAC_ENDED);
+    expect(heard.onend).toHaveBeenCalledExactlyOnceWith(GUAC_ENDED);
+    expect(sessionIds(sessions)).toEqual([null]);
+    await sessions.close(id);
+    expect(hub.port.end).not.toHaveBeenCalled();
+  });
+
+  it('a remote start that answers after its tab closed closes its tunnel and ends its session', async () => {
+    const hub = fakeHub();
+    const release = hub.hold();
+    const sessions = createSessions(hub.port);
+    const id = sessions.openSession({ ...request, protocol: 'RDP' });
+    const starting = sessions.remoteStartIn(id)(display, remoteQuiet());
+    await sessions.close(id);
+    release();
+    const result = await starting;
+    expect(result.ok && vi.mocked(result.value.tunnel.close)).toHaveBeenCalledOnce();
+    expect(hub.port.end).toHaveBeenCalledExactlyOnceWith('session-1');
+  });
 });

@@ -14,6 +14,7 @@ const table: readonly [string, TunnelClose, SessionEndReason | undefined, string
   ['1011 with 0x0308', opened(1011, 0x0308), 'GATEWAY_ERROR', 'The hub lost the connection to the device.'],
   ['1011 with no error', opened(1011), 'GATEWAY_ERROR', 'The hub lost the connection to the device.'],
   ['4001 with 0x0303', opened(4001, 0x0303), 'HOST_KEY_MISMATCH', "The device's host key has changed, so Anima did not connect."],
+  ['4003 with 0x0303', opened(4003, 0x0303), 'SERVER_CERTIFICATE_MISMATCH', "The device's RDP certificate has changed, so Anima did not connect."],
   ['4002', opened(4002), 'TIMEOUT', 'The session timed out because the hub heard nothing from Anima.'],
   ['1000 after the client closed on 0x0301', opened(1000, 0x0301), 'AUTH_FAILED', 'The device refused the sign-in, or no credential is stored for it.'],
   ['1005 after the client closed on 0x0300', opened(1005, 0x0300), 'GATEWAY_ERROR', 'The hub lost the connection to the device.'],
@@ -41,6 +42,12 @@ describe('ending (K4 §5, D-4, RA-007)', () => {
     expect(recordedEnding(provisional, 'GATEWAY_ERROR').text).toBe('Could not open the session. The hub lost the connection to the device.');
   });
 
+  it('K4 §5: a recorded SERVER_CERTIFICATE_MISMATCH wins over the guess from 0x0303, and is a known reason', () => {
+    const final = recordedEnding(ending(opened(1000, 0x0303)), 'SERVER_CERTIFICATE_MISMATCH');
+    expect(final).toEqual({ reason: 'SERVER_CERTIFICATE_MISMATCH', opened: true, text: "The device's RDP certificate has changed, so Anima did not connect." });
+    expect(isEndReason('SERVER_CERTIFICATE_MISMATCH')).toBe(true);
+  });
+
   it('D-4: no recorded reason keeps the provisional ending', () => {
     const provisional = ending(opened(4002));
     expect(recordedEnding(provisional, null)).toBe(provisional);
@@ -59,7 +66,10 @@ describe('ending (K4 §5, D-4, RA-007)', () => {
   });
 
   it('R-035: every text is fixed English and names a cause', () => {
-    const reasons: SessionEndReason[] = ['OPERATOR', 'REMOTE_CLOSED', 'GATEWAY_ERROR', 'AUTH_FAILED', 'HOST_KEY_MISMATCH', 'PROTOCOL_ERROR', 'TIMEOUT', 'HUB_SHUTDOWN'];
+    const reasons: SessionEndReason[] = [
+      'OPERATOR', 'REMOTE_CLOSED', 'GATEWAY_ERROR', 'AUTH_FAILED', 'HOST_KEY_MISMATCH', 'PROTOCOL_ERROR', 'TIMEOUT', 'HUB_SHUTDOWN',
+      'SERVER_CERTIFICATE_MISMATCH',
+    ];
     const texts = reasons.map((reason) => recordedEnding(ending(opened(1000)), reason).text);
     expect(new Set(texts).size).toBe(reasons.length);
     for (const text of texts) expect(text).not.toContain('Aborted');

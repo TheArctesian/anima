@@ -95,10 +95,10 @@ function holdStart(): () => void {
   const answer = fake.api.startSession.bind(fake.api);
   let release: () => void = () => undefined;
   vi.spyOn(fake.api, 'startSession').mockImplementationOnce(
-    (deviceId, display) =>
+    (deviceId, protocol, display) =>
       new Promise((resolve) => {
         release = () => {
-          resolve(answer(deviceId, display));
+          resolve(answer(deviceId, protocol, display));
         };
       }),
   );

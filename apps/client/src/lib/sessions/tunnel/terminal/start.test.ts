@@ -13,8 +13,8 @@ function fakeApi(tunnelPath = '/terminal') {
   const calls: { startSession: string[]; endSession: string[] } = { startSession: [], endSession: [] };
   let issued = 0;
   const api: Pick<SessionsApi, 'startSession' | 'endSession'> = {
-    startSession: (deviceId) => {
-      calls.startSession.push(deviceId);
+    startSession: (deviceId, protocol) => {
+      calls.startSession.push(`${deviceId} ${protocol}`);
       issued += 1;
       const ticket: SessionTicket = { sessionId: `session-${String(issued)}`, token: `token-${String(issued)}`, tunnelPath, expiresAt: '2026-11-04T10:00:30Z' };
       return Promise.resolve({ ok: true, value: ticket });
@@ -35,7 +35,7 @@ describe('start and reconnect of an SSH session (D-3, D-5, RA-007)', () => {
   it('RA-007: a start asks for a ticket and opens the terminal tunnel on its path', async () => {
     const { api, calls } = fakeApi();
     const result = await startTerminal(api, TARGET, SETUP);
-    expect(calls.startSession).toEqual(['device-1']);
+    expect(calls.startSession).toEqual(['device-1 SSH']);
     expect(result.ok && result.value.sessionId).toBe('session-1');
     expect(FakeTerminalSocket.latest().url).toBe('wss://hub.anima.ing/terminal?token=token-1');
   });
