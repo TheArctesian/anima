@@ -48,7 +48,8 @@
     "devices": [
       "access",
       "checks",
-      "sessions"
+      "sessions",
+      "web_interfaces"
     ],
     "checks": [
       "access"
