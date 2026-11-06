@@ -21,6 +21,8 @@ thiserror.workspace = true
 tauri-plugin-log.workspace = true
 # `generate_context!` parses the `plugins` config in tauri.conf.json with serde_json.
 serde_json.workspace = true
+if-addrs.workspace = true
+whoami.workspace = true
 
 # Self-update and relaunch: desktop only, registered only in release builds (UPD-001).
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]

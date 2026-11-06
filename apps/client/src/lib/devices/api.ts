@@ -1,6 +1,7 @@
 import { graphql } from '$lib/hub/generated';
 import type {
   CreateDeviceInput,
+  DeviceHostsQuery,
   DeviceQuery,
   DevicesQuery,
   DevicesQueryVariables,
@@ -9,7 +10,7 @@ import type {
   SshCredentialInput,
   UpdateDeviceInput,
 } from '$lib/hub/generated/graphql';
-import type { Hub, HubResult, Sink } from '$lib/hub/hub';
+import type { Hub, HubError, HubResult, Sink } from '$lib/hub/hub';
 
 const Devices = graphql(`
   query Devices($filter: DeviceFilter, $sort: DeviceSort, $first: Int, $after: String) {
@@ -52,6 +53,25 @@ const Devices = graphql(`
     }
   }
 `);
+
+const DeviceHosts = graphql(`
+  query DeviceHosts($after: String) {
+    devices(first: 200, after: $after) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      edges {
+        node {
+          host
+        }
+      }
+    }
+  }
+`);
+
+/** At most this many pages of 200 hosts are read: the hub's page limit times a bound no home lab reaches. */
+const MAX_HOST_PAGES = 50;
 
 const Tags = graphql(`
   query Tags {
@@ -180,6 +200,31 @@ export interface StatusChange {
   readonly at: string;
 }
 
+/** The answer when the hosts cannot all be read: a partial list could miss this computer's device (R-060). */
+const HOSTS_INCOMPLETE: HubError = {
+  code: 'malformed',
+  message: 'The hub did not list every device.',
+};
+
+/**
+ * Every device's host, page by page, or an error unless the last page was reached: a page that says there is
+ * more but gives no cursor, or more than `MAX_HOST_PAGES` pages, fails rather than returning part of the list.
+ */
+async function readHosts(hub: Hub): Promise<HubResult<readonly string[]>> {
+  const hosts: string[] = [];
+  let after: string | null = null;
+  for (let page = 0; page < MAX_HOST_PAGES; page += 1) {
+    const result: HubResult<DeviceHostsQuery> = await hub.request(DeviceHosts, { after });
+    if (!result.ok) return result;
+    const { edges, pageInfo }: DeviceHostsQuery['devices'] = result.value.devices;
+    hosts.push(...edges.map((edge) => edge.node.host));
+    if (!pageInfo.hasNextPage) return { ok: true, value: hosts };
+    after = pageInfo.endCursor ?? null;
+    if (after === null) return { ok: false, error: HOSTS_INCOMPLETE };
+  }
+  return { ok: false, error: HOSTS_INCOMPLETE };
+}
+
 /** The device list, tags and live status changes through a `Hub` (CQ-045). */
 export function devicesApi(hub: Hub) {
   return {
@@ -187,6 +232,8 @@ export function devicesApi(hub: Hub) {
       const result = await hub.request(Devices, variables);
       return result.ok ? { ok: true, value: result.value.devices } : result;
     },
+    /** Every device's host (R-060: is this computer already a device?). */
+    hosts: (): Promise<HubResult<readonly string[]>> => readHosts(hub),
     tags: async (): Promise<HubResult<readonly string[]>> => {
       const result = await hub.request(Tags, {});
       return result.ok ? { ok: true, value: result.value.tags } : result;

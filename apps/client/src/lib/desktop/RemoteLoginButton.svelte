@@ -5,9 +5,11 @@
   interface Props {
     /** Shown only in the desktop app on a Mac (R-059). */
     available?: boolean;
+    /** This Mac is being added and SSH did not answer on it (R-060): say so, and stand out. */
+    sshOff?: boolean;
   }
 
-  const { available = remoteLoginSettingsAvailable() }: Props = $props();
+  const { available = remoteLoginSettingsAvailable(), sshOff = false }: Props = $props();
   let problem = $state<string | null>(null);
 
   async function open(): Promise<void> {
@@ -21,8 +23,12 @@
 </script>
 
 {#if available}
-  <div class="remote-login">
-    <p>Adding this Mac? SSH to it needs Remote Login turned on.</p>
+  <div class="remote-login" class:off={sshOff}>
+    {#if sshOff}
+      <p class="why" role="status">SSH is off: it did not answer on this Mac. Turn on Remote Login to use it.</p>
+    {:else}
+      <p>Adding this Mac? SSH to it needs Remote Login turned on.</p>
+    {/if}
     <button type="button" onclick={open} {@attach press()}>Open Remote Login settings</button>
     {#if problem !== null}
       <p class="problem" role="alert">{problem}</p>
@@ -38,10 +44,21 @@
     gap: var(--space-3);
   }
 
+  .off {
+    padding: var(--space-3);
+    background: var(--accent-tint);
+    border: var(--border-thin) solid var(--accent);
+    border-radius: var(--radius-md);
+  }
+
   p {
     margin: 0;
     color: var(--text-muted);
     font-size: var(--text-sm);
+  }
+
+  .why {
+    color: var(--text);
   }
 
   .problem {

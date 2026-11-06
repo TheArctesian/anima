@@ -18,6 +18,10 @@
   interface Props {
     /** The saved device, or null to create one. */
     device: DeviceFields | null;
+    /** Create mode: the values to start from in place of the empty form, such as this computer's (R-060). */
+    initial?: DeviceFormValues;
+    /** This Mac is being added and SSH did not answer on it, so the Remote Login button says why SSH is off. */
+    remoteLoginOff?: boolean;
     /** Null for a device that is not saved yet. */
     deviceId?: string | null;
     /** K1 `credentialStored` of the saved device. */
@@ -39,6 +43,8 @@
 
   const {
     device,
+    initial: start,
+    remoteLoginOff = false,
     deviceId = null,
     credentialStored = false,
     sites = [],
@@ -50,7 +56,7 @@
     onCancel,
   }: Props = $props();
 
-  const initial = untrack(() => formValues(device));
+  const initial = untrack(() => (device === null && start !== undefined ? start : formValues(device)));
   let values = $state<EditedValues>(structuredClone(initial) as EditedValues);
   let siteId = $state(untrack(() => sites[0]?.id ?? ''));
   let errors = $state<FieldError[]>([]);
@@ -163,7 +169,7 @@
     <div data-section="ssh">
       <Disclosure label="SSH" level={3} bind:open={ssh}>
         <SshSection bind:values {errors} {credentialStored} {clearing} onClearCredential={clearCredential} />
-        <RemoteLoginButton />
+        <RemoteLoginButton sshOff={remoteLoginOff} />
         {#if values.ssh.enabled}
           {#key saves}
           <TestConnection {initial} {values} {deviceId} {canTest} {onTest} {onAcceptHostKey} />

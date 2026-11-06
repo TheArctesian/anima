@@ -7,6 +7,7 @@ const APP_COMMANDS: &[&str] = &[
     "access_token_clear",
     "process_log_folder_open",
     "remote_login_settings_open",
+    "this_machine_read",
 ];
 
 fn main() {
