@@ -64,7 +64,9 @@ checks.checks             id uuid pk, device_id uuid fk on delete cascade, paren
                           fk (group), type text, name text, interval_seconds int default 60,
                           retries int default 3, retry_interval_seconds int default 20,
                           degraded_threshold_ms int default 1000, invert bool default false,
-                          paused bool default false, config jsonb (typed per type in Rust)
+                          paused bool default false, config jsonb (typed per type in Rust),
+                          operator_edited bool default false,
+                          repair_tried_at timestamptz null (CHK-013)
 checks.heartbeats         check_id uuid, at timestamptz, status text, response_time_ms int null,
                           message text null; partitioned by range (at); pk (check_id, at)
 checks.uptime_minute|hour|day

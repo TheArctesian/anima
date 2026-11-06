@@ -149,6 +149,9 @@ pub struct CheckChange {
     pub retry_interval_seconds: Option<u32>,
     pub degraded_threshold_ms: Option<u32>,
     pub invert: Option<bool>,
+    /// True when a group's change moves this check in or out of the group. Every other change
+    /// is an operator edit and marks the check (CHK-013).
+    pub regrouping: bool,
 }
 
 /// One input field the operator must fix. `field` is the GraphQL input field name.
