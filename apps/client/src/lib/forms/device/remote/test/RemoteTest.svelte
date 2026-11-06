@@ -23,12 +23,14 @@
     deviceId: string | null;
     /** Checks the form first; false means the test must not run. */
     canTest: () => boolean;
+    /** The saved device's accepted certificate fingerprint (RDP): seeing it again is not news. */
+    acceptedFingerprint?: string | null;
     onTest: (input: RemoteTestInput) => Promise<HubResult<RemoteTestResult>>;
     /** Only for a saved device. Without it the Accept button is hidden (D-4). */
     onAcceptServerCertificate?: (fingerprint: string) => Promise<HubResult<unknown>>;
   }
 
-  const { protocol, initial, values, deviceId, canTest, onTest, onAcceptServerCertificate }: Props = $props();
+  const { protocol, initial, values, deviceId, canTest, acceptedFingerprint = null, onTest, onAcceptServerCertificate }: Props = $props();
   let testing = $state(false);
   let accepting = $state(false);
   let outcome = $state<RemoteOutcome | null>(null);
@@ -55,7 +57,7 @@
     tested = { signature: JSON.stringify(input), saved: testsSavedRemote(protocol, initial, values, deviceId) };
     const result = await onTest(input);
     testing = false;
-    if (result.ok) outcome = remoteOutcome(protocol, result.value);
+    if (result.ok) outcome = remoteOutcome(protocol, result.value, acceptedFingerprint);
     else failure = result.error;
   }
 

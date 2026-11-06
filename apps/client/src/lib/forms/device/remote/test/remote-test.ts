@@ -66,15 +66,15 @@ const AUTH_FAILED_MESSAGE = 'The device refused the credential.';
 
 /**
  * DEV-013, SEC-007: one outcome per result. An unreachable host wins, then a changed RDP certificate (never ok, even
- * without the certificate), then a new one, then authentication. VNC has no certificate.
+ * without the certificate), then a new one (not the saved accepted one, `acceptedFingerprint`), then authentication. VNC has no certificate.
  */
-export function remoteOutcome(protocol: RemoteProtocol, result: RemoteTestResult): RemoteOutcome {
+export function remoteOutcome(protocol: RemoteProtocol, result: RemoteTestResult, acceptedFingerprint: string | null = null): RemoteOutcome {
   const message = result.message ?? '';
   if (!result.reachable) return { kind: 'unreachable', message: message === '' ? UNREACHABLE_MESSAGE : message };
   if (protocol === 'RDP') {
     const certificate = result.serverCertificate ?? null;
     if (result.certificateChanged === true) return { kind: 'certificateChanged', certificate };
-    if (certificate !== null) return { kind: 'certificateNew', certificate };
+    if (certificate !== null && certificate.fingerprintSha256 !== acceptedFingerprint) return { kind: 'certificateNew', certificate };
   }
   if (!result.authenticated) return { kind: 'authFailed', message: message === '' ? AUTH_FAILED_MESSAGE : message };
   return { kind: 'ok' };

@@ -253,7 +253,7 @@
         />
         {#if values.rdp.enabled}
           {#key saves}
-            <RemoteTest protocol="RDP" {initial} {values} {deviceId} {canTest} {onTest} {onAcceptServerCertificate} />
+            <RemoteTest protocol="RDP" {initial} {values} {deviceId} {canTest} acceptedFingerprint={device?.rdp?.serverCertificate?.fingerprintSha256} {onTest} {onAcceptServerCertificate} />
           {/key}
         {/if}
       </Disclosure>

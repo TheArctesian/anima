@@ -97,6 +97,13 @@ describe('DEV-013, SEC-007: remoteOutcome', () => {
     });
   });
 
+  it('DEV-013: the saved accepted certificate seen again is not new; the auth outcome follows', () => {
+    const same = { serverCertificate: CERTIFICATE, certificateChanged: false };
+    expect(remoteOutcome('RDP', answer({ ...same, authenticated: true }), 'AA:BB')).toEqual({ kind: 'ok' });
+    expect(remoteOutcome('RDP', answer({ ...same, authenticated: false }), 'AA:BB')).toEqual({ kind: 'authFailed', message: 'The device refused the credential.' });
+    expect(remoteOutcome('RDP', answer(same), 'CC:DD')).toMatchObject({ kind: 'certificateNew' });
+  });
+
   it('never calls a changed RDP certificate ok, with or without the certificate', () => {
     const withIt = remoteOutcome('RDP', answer({ serverCertificate: CERTIFICATE, certificateChanged: true }));
     const without = remoteOutcome('RDP', answer({ serverCertificate: null, certificateChanged: true }));
