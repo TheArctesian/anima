@@ -14,13 +14,16 @@ macro_rules! store_test {
 mod graphql_error;
 mod host;
 mod input_limits;
+mod mac;
 mod page;
+mod remote;
 mod rules;
 mod store_read;
 mod store_write;
 
 use super::model::*;
 use super::page::*;
+use super::remote::*;
 use super::rules::*;
 use super::*;
 use crate::ids::SiteId;
@@ -40,6 +43,7 @@ fn new_device(name: &str, host: &str) -> NewDeviceInput {
         os: OperatingSystem::Linux,
         tags: vec![],
         ssh: None,
+        remote: RemoteForm::default(),
     }
 }
 
@@ -137,5 +141,6 @@ fn record(name: &str) -> NewDevice {
         os: OperatingSystem::Linux,
         tags: vec![],
         ssh: SshSettings::default(),
+        remote: RemoteAccess::default(),
     }
 }

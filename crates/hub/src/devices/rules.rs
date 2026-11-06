@@ -2,12 +2,16 @@
 //!
 //! Every function is pure. Validators report all field errors at once so the form can show them together.
 
+mod remote;
+
+pub(super) use remote::{rdp_settings, vnc_settings};
+
 use super::{
     model::{
         DeviceChange, DeviceChangeInput, DeviceFilter, NewDevice, NewDeviceInput, NewSite,
         NewSiteInput, SshInput, SshSettings,
     },
-    text::{host, is_plain},
+    text::{host, is_plain, user_name},
 };
 
 const NAME_MAX: usize = 64;
@@ -16,7 +20,6 @@ const TAG_MAX: usize = 32;
 pub(in crate::devices) const DEFAULT_KIND: &str = "server";
 const DEFAULT_SSH_PORT: i32 = 22;
 const TAGS_MAX: usize = 32;
-const USERNAME_MAX: usize = 64;
 
 /// One input field the operator must fix. `field` is the GraphQL input field name.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -79,16 +82,20 @@ pub(super) fn validate_new_device(input: &NewDeviceInput) -> Result<NewDevice, V
             .as_ref()
             .map_or_else(|| Ok(SshSettings::default()), ssh_settings),
     );
-    let checked = match (name, host, kind, tags, ssh) {
-        (Some(name), Some(host), Some(kind), Some(tags), Some(ssh)) => Some(NewDevice {
-            site: input.site,
-            name,
-            host,
-            kind,
-            os: input.os,
-            tags,
-            ssh,
-        }),
+    let remote = problems.fields(remote::new_remote(&input.remote));
+    let checked = match (name, host, kind, tags, ssh, remote) {
+        (Some(name), Some(host), Some(kind), Some(tags), Some(ssh), Some(remote)) => {
+            Some(NewDevice {
+                site: input.site,
+                name,
+                host,
+                kind,
+                os: input.os,
+                tags,
+                ssh,
+                remote,
+            })
+        }
         _ => None,
     };
     problems.finish(checked)
@@ -134,6 +141,9 @@ pub(super) fn validate_change(input: &DeviceChangeInput) -> Result<DeviceChange,
         tags,
         maintenance: input.maintenance,
         ssh,
+        remote: problems
+            .fields(remote::remote_change(&input.remote))
+            .unwrap_or_default(),
     };
     problems.finish(Some(checked))
 }
@@ -257,29 +267,7 @@ fn ssh_port(port: i32) -> Result<u16, FieldError> {
 }
 
 fn ssh_username(text: &str, enabled: bool) -> Result<String, FieldError> {
-    let username = text.trim();
-    if enabled && username.is_empty() {
-        return Err(FieldError::new("ssh.username", "Enter the SSH user name."));
-    }
-    if username.chars().count() > USERNAME_MAX {
-        return Err(FieldError::new(
-            "ssh.username",
-            format!("The SSH user name can be at most {USERNAME_MAX} characters."),
-        ));
-    }
-    if !is_plain(username) {
-        return Err(FieldError::new(
-            "ssh.username",
-            "The SSH user name cannot contain control characters or text-direction marks.",
-        ));
-    }
-    if username.chars().any(char::is_whitespace) {
-        return Err(FieldError::new(
-            "ssh.username",
-            "The SSH user name cannot contain spaces.",
-        ));
-    }
-    Ok(username.to_owned())
+    user_name(text, enabled, "ssh.username", "SSH user name")
 }
 
 /// Checks the size of a device filter; a longer name or tag list cannot match anything useful.

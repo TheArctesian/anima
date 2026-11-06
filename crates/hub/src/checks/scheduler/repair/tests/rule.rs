@@ -13,7 +13,10 @@ use crate::{
         config::{CheckConfig, IpVersion},
         store::repairs::Facts,
     },
-    devices::{Device, OperatingSystem, SshAuth, SshSettings},
+    devices::{
+        Device, MetricsSource, OperatingSystem, RdpSettings, SshAuth, SshSettings, TransferPolicy,
+        VncSettings,
+    },
     status::Status,
 };
 
@@ -59,6 +62,11 @@ fn device(ssh_enabled: bool, port: u16) -> Device {
             username: "operator".to_owned(),
             auth: SshAuth::PrivateKey,
         },
+        rdp: RdpSettings::default(),
+        vnc: VncSettings::default(),
+        mac_address: None,
+        metrics_source: MetricsSource::default(),
+        transfer: TransferPolicy::default(),
         created_at: at,
         updated_at: at,
     }

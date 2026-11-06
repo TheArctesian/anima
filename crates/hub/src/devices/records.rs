@@ -7,7 +7,9 @@ use ipnet::IpNet;
 
 use super::{
     Error, FieldError,
+    mac::MacAddress,
     model::{Device, OperatingSystem, Site, SshAuth, SshSettings},
+    remote::{RdpSettings, RemoteAccess, TransferPolicy, VncSettings},
 };
 use crate::ids::{DeviceId, SiteId};
 
@@ -28,16 +30,83 @@ pub(super) struct DeviceRow {
     username: String,
     auth: String,
     tags: Vec<String>,
+    #[sqlx(flatten)]
+    remote: RemoteRow,
+}
+
+/// The remote access columns of a device, joined from `rdp_settings`, `vnc_settings` and
+/// `devices`. The address is read as text.
+#[derive(sqlx::FromRow)]
+#[expect(clippy::struct_excessive_bools, reason = "one column per switch")]
+pub(super) struct RemoteRow {
+    rdp_enabled: bool,
+    rdp_port: i32,
+    rdp_username: String,
+    rdp_domain: Option<String>,
+    rdp_security: String,
+    rdp_ignore_certificate: bool,
+    rdp_resize_method: String,
+    rdp_audio_out: bool,
+    rdp_microphone: bool,
+    rdp_shared_drive: bool,
+    vnc_enabled: bool,
+    vnc_port: i32,
+    vnc_username: Option<String>,
+    mac_address: Option<String>,
+    metrics_source: String,
+    transfer_upload: bool,
+    transfer_download: bool,
+    transfer_copy: bool,
+    transfer_paste: bool,
 }
 
 fn decode<E: std::error::Error + Send + Sync + 'static>(error: E) -> sqlx::Error {
     sqlx::Error::Decode(Box::new(error))
 }
 
+impl TryFrom<RemoteRow> for RemoteAccess {
+    type Error = sqlx::Error;
+
+    fn try_from(row: RemoteRow) -> Result<Self, sqlx::Error> {
+        Ok(Self {
+            rdp: RdpSettings {
+                enabled: row.rdp_enabled,
+                port: u16::try_from(row.rdp_port).map_err(decode)?,
+                username: row.rdp_username,
+                domain: row.rdp_domain,
+                security: row.rdp_security.parse().map_err(decode)?,
+                ignore_certificate: row.rdp_ignore_certificate,
+                resize: row.rdp_resize_method.parse().map_err(decode)?,
+                audio_out: row.rdp_audio_out,
+                microphone: row.rdp_microphone,
+                shared_drive: row.rdp_shared_drive,
+            },
+            vnc: VncSettings {
+                enabled: row.vnc_enabled,
+                port: u16::try_from(row.vnc_port).map_err(decode)?,
+                username: row.vnc_username,
+            },
+            mac_address: row
+                .mac_address
+                .map(|text| text.parse::<MacAddress>())
+                .transpose()
+                .map_err(decode)?,
+            metrics_source: row.metrics_source.parse().map_err(decode)?,
+            transfer: TransferPolicy {
+                upload: row.transfer_upload,
+                download: row.transfer_download,
+                copy: row.transfer_copy,
+                paste: row.transfer_paste,
+            },
+        })
+    }
+}
+
 impl TryFrom<DeviceRow> for Device {
     type Error = sqlx::Error;
 
     fn try_from(row: DeviceRow) -> Result<Self, sqlx::Error> {
+        let remote = RemoteAccess::try_from(row.remote)?;
         Ok(Self {
             id: row.id,
             site: row.site_id,
@@ -54,6 +123,11 @@ impl TryFrom<DeviceRow> for Device {
                 username: row.username,
                 auth: row.auth.parse::<SshAuth>().map_err(decode)?,
             },
+            rdp: remote.rdp,
+            vnc: remote.vnc,
+            mac_address: remote.mac_address,
+            metrics_source: remote.metrics_source,
+            transfer: remote.transfer,
             created_at: row.created_at,
             updated_at: row.updated_at,
         })

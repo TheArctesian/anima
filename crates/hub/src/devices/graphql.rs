@@ -12,6 +12,7 @@ mod device;
 pub(super) mod error;
 mod filter;
 mod input;
+mod remote_input;
 mod site;
 mod ssh;
 mod standing;
@@ -24,8 +25,9 @@ use sqlx::{PgPool, Postgres, Transaction};
 use uuid::Uuid;
 
 pub use self::{
-    credential_input::SshCredential,
+    credential_input::{PasswordCredential, SshCredential},
     input::SshSettingsInput,
+    remote_input::{RdpSettingsInput, TransferPolicyInput, VncSettingsInput},
     ssh::CredentialStored,
     standing::{ChecksOf, ResolvedIpOf, StatusOf, UptimeOf},
 };
