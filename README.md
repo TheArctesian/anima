@@ -14,6 +14,6 @@ Anima combines a Tauri desktop client, a Rust hub, and a Guacamole gateway.
 
 ## Licence
 
-Anima is free software under the [GNU Affero General Public License, version 3](LICENSE)
-(`AGPL-3.0-only`). If you run a changed version as a network service, you must offer its
+Anima is free software under the [GNU Affero General Public License, version 3 or any later version](LICENSE)
+(`AGPL-3.0-or-later`). If you run a changed version as a network service, you must offer its
 users the source of that version.

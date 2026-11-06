@@ -1,7 +1,7 @@
 {
   "name": "anima",
   "private": true,
-  "license": "AGPL-3.0-only",
+  "license": "AGPL-3.0-or-later",
   "type": "module",
   "workspaces": ["apps/*", "quality", "design", "deploy", "deploy/*"],
   "scripts": {
