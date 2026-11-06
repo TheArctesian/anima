@@ -41,6 +41,18 @@ async fn one_new(pool: &PgPool, seen: usize, action: &str) -> Value {
     row
 }
 
+/// From now on every audit insert raises, as a failing write after the domain write would.
+async fn fail_audit_inserts(pool: &PgPool) {
+    for statement in [
+        "CREATE FUNCTION events.refuse_audit() RETURNS trigger LANGUAGE plpgsql AS \
+         $$ BEGIN RAISE EXCEPTION 'audit refused'; END $$",
+        "CREATE TRIGGER refuse_audit BEFORE INSERT ON events.audit_log \
+         FOR EACH ROW EXECUTE FUNCTION events.refuse_audit()",
+    ] {
+        sqlx::query(statement).execute(pool).await.unwrap();
+    }
+}
+
 fn assert_no_secret(row: &Value) {
     let text = row.to_string();
     for forbidden in ["hunter2", "token=", "user:", "/private"] {
@@ -124,5 +136,41 @@ fixture_test! {
         assert_eq!(response.errors.len(), 1);
         assert_eq!(audit_rows(&pool).await.len(), 0);
         assert_eq!(event_count(&pool).await, 0);
+    }
+
+    async fn log_005_an_update_whose_audit_entry_fails_changes_nothing(pool: PgPool) {
+        add_operator(&pool).await;
+        let schema = schema_for(&pool);
+        let id = create(&schema, "https://pve-01.home.lan/").await;
+        data(&schema, &accept_certificate_query(), json!({ "id": id, "fingerprint": FINGERPRINT })).await;
+        fail_audit_inserts(&pool).await;
+        let moved = run(&schema, &update_query(), json!({ "id": id, "input": input("https://pve-01.home.lan:9443/") })).await;
+        assert_eq!(moved.errors.len(), 1);
+        let renew = run(&schema, &accept_certificate_query(), json!({ "id": id, "fingerprint": "ab".repeat(32) })).await;
+        assert_eq!(renew.errors.len(), 1);
+        let stored: (String, String) = sqlx::query_as(
+            "SELECT i.url, p.fingerprint_sha256 FROM web_interfaces.interfaces i \
+             JOIN web_interfaces.pins p ON p.interface_id = i.id",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(stored, ("https://pve-01.home.lan/".to_owned(), FINGERPRINT.to_owned()));
+    }
+
+    async fn web_009_the_pin_records_the_signed_in_operator_and_the_update_entry_the_previous_origin(pool: PgPool) {
+        add_operator(&pool).await;
+        let schema = schema_for(&pool);
+        let id = create(&schema, "https://pve-01.home.lan/").await;
+        data(&schema, &accept_certificate_query(), json!({ "id": id, "fingerprint": FINGERPRINT })).await;
+        let by: String = sqlx::query_scalar("SELECT accepted_by::text FROM web_interfaces.pins")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(by, OPERATOR_ID);
+        data(&schema, &update_query(), json!({ "id": id, "input": { "label": "Admin", "url": "https://pve-01.home.lan:9443/" } })).await;
+        let row = one_new(&pool, 2, "update").await;
+        assert_eq!(row["change"]["previousOrigin"], "https://pve-01.home.lan");
+        assert_eq!(row["change"]["previousLabel"], "Panel");
     }
 }

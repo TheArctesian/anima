@@ -107,11 +107,17 @@ pub(super) fn added(interface: &WebInterface) -> Entry {
     }
 }
 
-/// `pinDropped` is set when the new origin removed the certificate the operator accepted.
+/// `previousOrigin` and `previousLabel` appear when they changed. `pinDropped` is set when the new origin removed the certificate the operator accepted.
 pub(super) fn updated(before: &WebInterface, after: &WebInterface) -> Entry {
     let mut change = fields(after);
     if before.pin.is_some() && after.pin.is_none() {
         change["pinDropped"] = json!(true);
+    }
+    if origin(&before.url) != origin(&after.url) {
+        change["previousOrigin"] = json!(origin(&before.url));
+    }
+    if before.label != after.label {
+        change["previousLabel"] = json!(before.label);
     }
     Entry {
         message: format!("Web interface {} updated.", after.label),
