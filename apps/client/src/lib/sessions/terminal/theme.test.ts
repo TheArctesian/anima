@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { ANSI_NORD, sizeInPx, terminalTheme } from './theme';
+import { ANSI_NORD, MINIMUM_CONTRAST_RATIO, sizeInPx, terminalTheme } from './theme';
 
 const palette = new Map(Array.from({ length: 16 }, (_, index) => [`--nord-${String(index)}`, `value-of-nord-${String(index)}`]));
 const read = (name: string) => palette.get(name) ?? '';
@@ -24,7 +24,7 @@ describe('the Nord theme (RA-010, TOK-003)', () => {
   it('TOK-003: every colour is read from a --nord-N variable, none is written in code', () => {
     const theme = terminalTheme(read);
     const colours = Object.values(theme);
-    expect(colours).toHaveLength(22);
+    expect(colours).toHaveLength(23);
     for (const colour of colours) expect(colour).toMatch(/^value-of-nord-\d+$/);
   });
 
@@ -34,6 +34,15 @@ describe('the Nord theme (RA-010, TOK-003)', () => {
     expect(theme.cursorAccent).toBe('value-of-nord-0');
     expect(theme.selectionBackground).toBe('value-of-nord-3');
     expect(theme.selectionBackground).not.toBe(theme.background);
+  });
+});
+
+describe('contrast (UI-002)', () => {
+  it('UI-002: xterm.js keeps text at 4.5 to 1 against its background, and a selection has its own readable text colour', () => {
+    expect(MINIMUM_CONTRAST_RATIO).toBe(4.5);
+    const theme = terminalTheme(read);
+    expect(theme.selectionForeground).toBe('value-of-nord-6');
+    expect(theme.selectionForeground).not.toBe(theme.selectionBackground);
   });
 });
 

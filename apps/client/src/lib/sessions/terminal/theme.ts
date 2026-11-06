@@ -8,6 +8,14 @@ const FOREGROUND_NORD = 4;
 const CURSOR_NORD = 4;
 const SELECTION_NORD = 3;
 const SELECTION_INACTIVE_NORD = 2;
+/** Selected text, and the active find match, is nord6 on nord3: 6.4 to 1, whatever colour the text had. */
+const SELECTION_TEXT_NORD = 6;
+
+/**
+ * The least contrast xterm.js keeps between a cell's text and its background (UI-002, WCAG AA for text). It lifts
+ * the ANSI colours that fail on nord0 (black, bright black, red, magenta) just enough, and leaves the others alone.
+ */
+export const MINIMUM_CONTRAST_RATIO = 4.5;
 
 /** Reads a CSS custom property (`--nord-0`) as the page resolves it; an unset one gives an empty string. */
 export type TokenReader = (name: string) => string;
@@ -24,6 +32,7 @@ export function terminalTheme(read: TokenReader): ITheme {
     cursor: nord(CURSOR_NORD),
     cursorAccent: nord(BACKGROUND_NORD),
     selectionBackground: nord(SELECTION_NORD),
+    selectionForeground: nord(SELECTION_TEXT_NORD),
     selectionInactiveBackground: nord(SELECTION_INACTIVE_NORD),
     black: nord(ANSI_NORD[0]),
     red: nord(ANSI_NORD[1]),

@@ -5,7 +5,7 @@ import { openScreen } from './screen';
 const webgl = vi.hoisted(() => ({ disposed: 0, loseContext: undefined as (() => void) | undefined }));
 vi.mock('@xterm/addon-webgl', () => ({
   WebglAddon: class {
-    activate() {}
+    activate = () => undefined;
     dispose() {
       webgl.disposed += 1;
     }

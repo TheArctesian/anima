@@ -9,7 +9,7 @@ import type { CellSize } from '../tunnel/terminal/codec';
 import { guardEscapes, type EscapeHooks } from './escapes';
 import { safePaste } from './paste';
 import { shortcutOf, type ShortcutAction } from './shortcuts';
-import { sizeInPx, terminalTheme, tokensOf } from './theme';
+import { MINIMUM_CONTRAST_RATIO, sizeInPx, terminalTheme, tokensOf } from './theme';
 
 /** Lines kept above the visible screen (RA-003). */
 const SCROLLBACK_LINES = 5000;
@@ -132,6 +132,7 @@ export const openScreen: ScreenOpener = async (host, hooks) => {
     fontSize,
     theme: terminalTheme(tokens),
     cursorBlink: false,
+    minimumContrastRatio: MINIMUM_CONTRAST_RATIO,
     // Unicode 11 widths are set through the proposed `unicode` API.
     allowProposedApi: true,
   });
