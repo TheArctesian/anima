@@ -4,6 +4,7 @@
   import { untrack } from 'svelte';
   import { page } from '$app/state';
   import { readThisMachine, type ThisMachine } from '$lib/desktop/thisMachine';
+  import { checksApi } from '$lib/checks/api';
   import { devicesApi, type CardDevice } from '$lib/devices/api';
   import { parseListQuery, writeListQuery, type ListQuery } from '$lib/devices/query';
   import DeviceScreen from '$lib/devices/screen/DeviceScreen.svelte';
@@ -20,6 +21,7 @@
   const sessions = useSessions();
   const hub = useHub();
   const devices = devicesApi(hub);
+  const checks = checksApi(hub);
   const connections = sessionsApi(hub);
 
   let sites = $state<readonly SiteOption[]>([]);
@@ -99,6 +101,7 @@
       createSite: (name, subnet) => devices.createSite(name, subnet),
       createDevice: (input) => devices.create(input),
       setSshCredential: (deviceId, credential) => devices.setSshCredential(deviceId, credential),
+      createCheck: (input) => checks.create(input),
     });
   }
 

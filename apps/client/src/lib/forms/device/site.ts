@@ -41,10 +41,14 @@ function network(address: number, length: number): number {
 export function suggestedSite(host: string): NewSite {
   const parts = octets(normalizeHost(host));
   if (parts === undefined) return { ...EMPTY };
-  const address = toNumber(parts);
-  const vpn = toNumber([100, 64, 0, 0]);
-  if (network(address, 10) === vpn) return { ...VPN_SITE };
+  if (isVpnAddress(host)) return { ...VPN_SITE };
   return { name: 'Local network', subnet: `${parts.slice(0, 3).join('.')}.0/24` };
+}
+
+/** Whether `host` is an IPv4 address in the VPN range (100.64.0.0/10). */
+export function isVpnAddress(host: string): boolean {
+  const parts = octets(normalizeHost(host));
+  return parts !== undefined && network(toNumber(parts), 10) === toNumber([100, 64, 0, 0]);
 }
 
 /** Why `subnet` is not a CIDR block the hub accepts, or undefined. IPv6 blocks are left to the hub. */

@@ -31,6 +31,7 @@ function api(
     createSite: vi.fn(() => Promise.resolve(site)),
     createDevice: vi.fn(() => Promise.resolve(created)),
     setSshCredential: vi.fn(() => Promise.resolve(stored)),
+    createCheck: vi.fn(() => Promise.resolve({ ok: true as const, value: undefined })),
   };
   return { calls, api: calls satisfies AddDeviceApi };
 }
@@ -96,4 +97,24 @@ it('VPN-001: a site the hub refuses reports its fields under site. and creates n
 
   expect(result).toEqual({ ok: false, error: { ...refused, fields: [{ field: 'site.subnet', message: 'This subnet overlaps an existing site subnet.' }] } });
   expect(calls.createDevice).not.toHaveBeenCalled();
+});
+
+it('R-063: a computer at a VPN address with SSH gets a TCP check on its SSH port instead of the ICMP default', async () => {
+  const { calls, api: hub } = api({ ok: true, value: { id: 'd1' } });
+
+  await addDevice({ ...values({ port: '2222' }), host: '100.64.0.2' }, HOME, hub);
+
+  expect(calls.createDevice).toHaveBeenCalledWith(expect.objectContaining({ addDefaultCheck: false }));
+  expect(calls.createCheck).toHaveBeenCalledExactlyOnceWith({ deviceId: 'd1', name: 'SSH port', config: { tcp: { port: 2222, timeoutMs: 5000 } } });
+});
+
+it('R-063: any other device keeps the hub default and gets no extra check', async () => {
+  const { calls, api: hub } = api({ ok: true, value: { id: 'd1' } });
+
+  await addDevice({ ...values({}), host: '10.10.0.5' }, HOME, hub);
+  await addDevice({ ...values({ enabled: false }), host: '100.64.0.2' }, HOME, hub);
+
+  expect(calls.createDevice).toHaveBeenNthCalledWith(1, expect.objectContaining({ addDefaultCheck: true }));
+  expect(calls.createDevice).toHaveBeenNthCalledWith(2, expect.objectContaining({ addDefaultCheck: true }));
+  expect(calls.createCheck).not.toHaveBeenCalled();
 });

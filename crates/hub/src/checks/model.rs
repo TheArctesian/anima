@@ -134,10 +134,11 @@ pub struct NewCheck {
 
 /// The fields to change on a check (the API's `UpdateCheckInput`); `None` keeps a field.
 ///
-/// The type of a check never changes. An HTTP definition replaces the whole HTTP setup, but
-/// an empty secret keeps the stored one: an empty value of a secret header keeps the stored
-/// value of the header with that name in the same position, an empty basic password keeps
-/// the stored password and an empty bearer token keeps the stored token.
+/// An operator update never changes the type of a check; only the hub's method repair does
+/// (CHK-013). An HTTP definition replaces the whole HTTP setup, but an empty secret keeps the
+/// stored one: an empty value of a secret header keeps the stored value of the header with
+/// that name in the same position, an empty basic password keeps the stored password and an
+/// empty bearer token keeps the stored token.
 #[derive(Default)]
 pub struct CheckChange {
     /// `Some(None)` removes the check from its group.
@@ -149,6 +150,9 @@ pub struct CheckChange {
     pub retry_interval_seconds: Option<u32>,
     pub degraded_threshold_ms: Option<u32>,
     pub invert: Option<bool>,
+    /// True when a group's change moves this check in or out of the group. Every other change
+    /// is an operator edit and marks the check (CHK-013).
+    pub regrouping: bool,
 }
 
 /// One input field the operator must fix. `field` is the GraphQL input field name.

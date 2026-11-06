@@ -836,6 +836,7 @@ Each check has these common settings:
 - **CHK-010.** The hub must have a watchdog for the check scheduler. If checks are late by more than 2 intervals, the hub must write an event log entry with the severity Error.
 - **CHK-011.** The hub must calculate uptime from aggregate tables (DB-008). Do not read all raw heartbeats to calculate uptime.
 - **CHK-012.** The hub must not start a shell command with text that the operator supplied.
+- **CHK-013.** An ICMP check that has never been Up must repair its method (R-064): when it is Down, has used its retries and the operator has not edited it, the hub must try a TCP connect to the device's connection ports (SSH first). If one answers, the hub must change the check to TCP on that port and write an event and an audit entry. The hub must never change a check that was ever Up or that the operator edited.
 
 ### 6.5 Maintenance windows
 
