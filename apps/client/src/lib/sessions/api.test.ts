@@ -74,6 +74,17 @@ describe('sessionsApi (K1, CQ-045)', () => {
     expect(sent[0]?.variables).toEqual({ deviceId: 'd-1', fingerprintSha256: 'SHA256:abc' });
   });
 
+  it('Section 6.7: history asks for one page of the device\'s sessions and returns it', async () => {
+    const page = {
+      pageInfo: { hasNextPage: true, endCursor: 'c-50' },
+      edges: [{ node: { id: 's-1', protocol: 'SSH', operatorName: 'ada', startedAt: '2026-11-04T10:00:00Z', endedAt: null, endReason: null } }],
+    };
+    const { api, sent } = hubAnswering({ data: { sessions: page } });
+    expect(await api.history('d-1', 50, 'c-0')).toEqual({ ok: true, value: page });
+    expect(sent[0]?.query).toContain('sessions(deviceId: $deviceId, first: $first, after: $after)');
+    expect(sent[0]?.variables).toEqual({ deviceId: 'd-1', first: 50, after: 'c-0' });
+  });
+
   it('K7: a hub error stays typed', async () => {
     const { api } = hubAnswering({ errors: [{ message: 'No host key is accepted yet.', extensions: { code: 'CONFLICT' } }] });
     expect(await api.startSession('d-1', DISPLAY)).toEqual({ ok: false, error: { code: 'CONFLICT', message: 'No host key is accepted yet.' } });

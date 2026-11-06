@@ -65,6 +65,7 @@ export function fakeApi() {
       calls.acceptHostKey.push([deviceId, fingerprint]);
       return Promise.resolve(answers.accept(fingerprint));
     },
+    history: () => Promise.resolve({ ok: true, value: { pageInfo: { hasNextPage: false, endCursor: null }, edges: [] } }),
   };
   return { api, calls, answers };
 }

@@ -97,10 +97,6 @@ void graphql(`
         firstSeenAt
       }
     }
-    checks {
-      id
-      status
-    }
     day: uptime(window: DAY)
     week: uptime(window: WEEK)
     month: uptime(window: MONTH)

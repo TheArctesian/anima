@@ -22,7 +22,6 @@ const DETAIL: DeviceDetail = {
     credentialStored: true,
     hostKey: { algorithm: 'ssh-ed25519', fingerprintSha256: 'SHA256:abc', firstSeenAt: '2026-11-04T10:00:00Z' },
   },
-  checks: [{ id: 'c1', status: 'UP' }],
   day: 0.999,
   week: 0.99,
   month: null,

@@ -2,6 +2,7 @@ import { graphql } from '$lib/hub/generated';
 import type {
   AcceptHostKeyMutation,
   ConnectionTestInput,
+  DeviceSessionsQuery,
   EndSessionMutation,
   StartSessionInput,
   StartSessionMutation,
@@ -60,6 +61,27 @@ const AcceptHostKey = graphql(`
   }
 `);
 
+const DeviceSessions = graphql(`
+  query DeviceSessions($deviceId: ID!, $first: Int, $after: String) {
+    sessions(deviceId: $deviceId, first: $first, after: $after) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      edges {
+        node {
+          id
+          protocol
+          operatorName
+          startedAt
+          endedAt
+          endReason
+        }
+      }
+    }
+  }
+`);
+
 /** A single-use ticket for one tunnel (API-009, K4 §1). Pass it to `openTunnel` at once and drop it. */
 export type SessionTicket = StartSessionMutation['startSession'];
 
@@ -78,6 +100,9 @@ export type ConnectionTest = TestConnectionMutation['testConnection'];
 /** A host key the hub has accepted. */
 export type AcceptedHostKey = AcceptHostKeyMutation['acceptHostKey'];
 
+/** One page of a device's session history, as the hub answers it (Section 6.7). */
+export type SessionPage = DeviceSessionsQuery['sessions'];
+
 /** The session calls through a `Hub` (CQ-045). Failures stay the hub's typed K7 errors. */
 export interface SessionsApi {
   /** Start an SSH session on `deviceId`; `CONFLICT` while no host key is accepted (K4 §6). */
@@ -88,6 +113,8 @@ export interface SessionsApi {
   testConnection(input: ConnectionTestInput): Promise<HubResult<ConnectionTest>>;
   /** Accept exactly `fingerprintSha256`; `CONFLICT` when it is not the key the hub saw. */
   acceptHostKey(deviceId: string, fingerprintSha256: string): Promise<HubResult<AcceptedHostKey>>;
+  /** One page of the device's sessions; pass the previous `endCursor` as `after` for older ones (Section 6.7). */
+  history(deviceId: string, first: number, after: string | null): Promise<HubResult<SessionPage>>;
 }
 
 export function sessionsApi(hub: Hub): SessionsApi {
@@ -107,6 +134,10 @@ export function sessionsApi(hub: Hub): SessionsApi {
     acceptHostKey: async (deviceId, fingerprintSha256) => {
       const result = await hub.request(AcceptHostKey, { deviceId, fingerprintSha256 });
       return result.ok ? { ok: true, value: result.value.acceptHostKey } : result;
+    },
+    history: async (deviceId, first, after) => {
+      const result = await hub.request(DeviceSessions, { deviceId, first, after });
+      return result.ok ? { ok: true, value: result.value.sessions } : result;
     },
   };
 }
