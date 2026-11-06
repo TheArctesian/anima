@@ -127,6 +127,14 @@ Integration branch: `phase-1`. Merge to `main` only after operator checkpoint 4.
     - D-11: E-1 to "2 intervals plus one probe timeout"; E-3 to `ease-exit`; E-4 to SET-002 listing LOG-008; E-5 to the Modal dropping blur.
   - **Start:** WP-20 starts now, and Wave 1 (RDP and VNC) follows when WP-20 is merged.
 
+- **R-066 (operator, 2026-11-06: "do all the things that you can change").** Phase 2 runs faster under these rules. Each overrides the Phase 1 plan where the two differ.
+  - **Early start.** WP-23, WP-24 and WP-25 start before WP-20 merges. The client packages build against a mock made from the deltas in phase-2-contracts.md (CON-003). None of them edits `contracts/`, and each rebases onto `phase-2` after WP-20 merges. WP-21, WP-22 and WP-30 start when WP-20 merges. Every later package starts the moment its dependencies are merged (WAVE-001).
+  - **Review cap.** A task gets at most two review rounds. Only must findings block. Should and could findings are fixed in round 2 if they are cheap; otherwise they go to issue #1. A third round needs the programme orchestrator's leave.
+  - **Mutation testing.** Reviewers run mutations only on code tagged security, on the tunnel and relays, on the check scheduler and watchdog, and on credential sealing. Elsewhere they read the tests and do not mutate. A mutation run has a 20-minute limit.
+  - **Motion.** There is one motion audit, in WP-34, under D-13 and D-14 from the start. A package's interface reviewer measures only its own screens, once.
+  - **Reports.** A package orchestrator waits on its own builders and reviewers and reads their results itself. Builders and reviewers say in their first line which package and task they belong to. The programme orchestrator checks any package that is silent for more than an hour.
+  - **Concurrency.** WAVE-002 is raised to 7 package orchestrators. The per-package limit stays at 3 builders and 3 reviewers.
+
 ## Escalations
 
 None open.
