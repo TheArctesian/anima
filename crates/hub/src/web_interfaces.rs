@@ -120,6 +120,14 @@ async fn http_urls(
         .collect())
 }
 
+fn born(device: DeviceId, at: DateTime<Utc>) -> store::Born {
+    store::Born {
+        id: WebInterfaceId::from(Uuid::now_v7()),
+        device,
+        at,
+    }
+}
+
 /// Adds an interface to a device.
 ///
 /// # Errors
@@ -132,8 +140,7 @@ pub async fn create(
     now: DateTime<Utc>,
 ) -> Result<WebInterface, Error> {
     let new = rules::validate(input).map_err(Error::Validation)?;
-    let id = WebInterfaceId::from(Uuid::now_v7());
-    store::insert(conn, id, device, &new, now).await
+    store::insert(conn, born(device, now), &new).await
 }
 
 /// Replaces an interface's fields. A new scheme, host or port drops its pin (D-6).
@@ -199,8 +206,7 @@ pub async fn accept_suggestion(
             created: false,
         });
     }
-    let id = WebInterfaceId::from(Uuid::now_v7());
-    let interface = store::insert(conn, id, device, &new, now).await?;
+    let interface = store::insert(conn, born(device, now), &new).await?;
     Ok(Accepted {
         interface,
         created: true,
@@ -243,12 +249,13 @@ pub async fn accept_certificate(
             "Only an https interface has a certificate to accept.",
         )]));
     }
-    store::set_pin(conn, id, &fingerprint, acceptance.operator, acceptance.at).await?;
+    let pin = Pin {
+        fingerprint,
+        at: acceptance.at,
+    };
+    store::set_pin(conn, id, &pin, acceptance.operator).await?;
     Ok(WebInterface {
-        pin: Some(Pin {
-            fingerprint,
-            at: acceptance.at,
-        }),
+        pin: Some(pin),
         ..interface
     })
 }

@@ -8,7 +8,7 @@ use sqlx::{Connection, PgConnection, PgExecutor};
 
 use super::{
     Error,
-    model::{Fingerprint, Missing, OpenIn, Pin, WebInterface},
+    model::{Missing, OpenIn, Pin, WebInterface},
     rules::{self, NewInterface},
 };
 use crate::ids::{CheckId, DeviceId, OperatorId, WebInterfaceId};
@@ -85,13 +85,19 @@ pub(super) async fn get(
         .try_into()
 }
 
+/// What a new interface is given besides the operator's input.
+pub(super) struct Born {
+    pub id: WebInterfaceId,
+    pub device: DeviceId,
+    pub at: DateTime<Utc>,
+}
+
 pub(super) async fn insert(
     conn: &mut PgConnection,
-    id: WebInterfaceId,
-    device: DeviceId,
+    born: Born,
     new: &NewInterface,
-    now: DateTime<Utc>,
 ) -> Result<WebInterface, Error> {
+    let Born { id, device, at } = born;
     sqlx::query(
         "INSERT INTO web_interfaces.interfaces (id, device_id, label, url, open_in, created_at) \
          VALUES ($1, $2, $3, $4, $5, $6)",
@@ -101,7 +107,7 @@ pub(super) async fn insert(
     .bind(&new.label)
     .bind(&new.url)
     .bind(new.open_in.as_str())
-    .bind(now)
+    .bind(at)
     .execute(conn)
     .await
     .map_err(|error| {
@@ -177,9 +183,8 @@ pub(super) async fn delete(conn: &mut PgConnection, id: WebInterfaceId) -> Resul
 pub(super) async fn set_pin(
     conn: &mut PgConnection,
     id: WebInterfaceId,
-    fingerprint: &Fingerprint,
+    pin: &Pin,
     operator: OperatorId,
-    now: DateTime<Utc>,
 ) -> Result<(), Error> {
     sqlx::query(
         "INSERT INTO web_interfaces.pins (interface_id, fingerprint_sha256, accepted_by, accepted_at) \
@@ -189,9 +194,9 @@ pub(super) async fn set_pin(
              accepted_by = excluded.accepted_by, accepted_at = excluded.accepted_at",
     )
     .bind(id)
-    .bind(fingerprint.as_str())
+    .bind(pin.fingerprint.as_str())
     .bind(operator)
-    .bind(now)
+    .bind(pin.at)
     .execute(conn)
     .await
     .map_err(|error| {
