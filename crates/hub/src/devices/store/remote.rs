@@ -1,0 +1,156 @@
+//! SQL for the remote access settings and the wake relay: `rdp_settings`, `vnc_settings`, the
+//! remote columns of `devices` and `sites.wake_relay_device_id`. A device row always has its
+//! `rdp_settings` and `vnc_settings` rows (a trigger adds them), so a write only updates.
+
+use sqlx::{PgConnection, PgPool};
+
+use super::fetch;
+use crate::{
+    devices::{
+        Device, Error, Missing,
+        remote::{
+            MetricsSource, RdpSettings, RemoteAccess, RemoteChange, TransferPolicy, VncSettings,
+        },
+    },
+    ids::{DeviceId, SiteId},
+};
+
+/// Writes the remote access part of a device just inserted.
+pub(in crate::devices) async fn write_new(
+    conn: &mut PgConnection,
+    id: DeviceId,
+    remote: &RemoteAccess,
+) -> Result<(), Error> {
+    write_rdp(conn, id, &remote.rdp).await?;
+    write_vnc(conn, id, &remote.vnc).await?;
+    sqlx::query(
+        "UPDATE devices.devices SET mac_address = $2::text::macaddr, metrics_source = $3 WHERE id = $1",
+    )
+    .bind(id)
+    .bind(remote.mac_address.map(|mac| mac.to_string()))
+    .bind(remote.metrics_source.as_str())
+    .execute(&mut *conn)
+    .await?;
+    write_transfer(conn, id, remote.transfer).await
+}
+
+/// Writes the parts of the update that are present; each settings object is replaced wholly.
+pub(in crate::devices) async fn write_change(
+    conn: &mut PgConnection,
+    id: DeviceId,
+    change: &RemoteChange,
+) -> Result<(), Error> {
+    if let Some(rdp) = &change.rdp {
+        write_rdp(conn, id, rdp).await?;
+    }
+    if let Some(vnc) = &change.vnc {
+        write_vnc(conn, id, vnc).await?;
+    }
+    if let Some(transfer) = change.transfer {
+        write_transfer(conn, id, transfer).await?;
+    }
+    sqlx::query(
+        "UPDATE devices.devices SET \
+            mac_address = CASE WHEN $2 THEN $3::text::macaddr ELSE mac_address END, \
+            metrics_source = COALESCE($4, metrics_source) WHERE id = $1",
+    )
+    .bind(id)
+    .bind(change.mac_address.is_some())
+    .bind(change.mac_address.flatten().map(|mac| mac.to_string()))
+    .bind(change.metrics_source.map(MetricsSource::as_str))
+    .execute(conn)
+    .await?;
+    Ok(())
+}
+
+async fn write_rdp(conn: &mut PgConnection, id: DeviceId, rdp: &RdpSettings) -> Result<(), Error> {
+    sqlx::query(
+        "UPDATE devices.rdp_settings SET enabled = $2, port = $3, username = $4, domain = $5, \
+                security = $6, ignore_certificate = $7, resize_method = $8, audio_out = $9, \
+                microphone = $10, shared_drive = $11 WHERE device_id = $1",
+    )
+    .bind(id)
+    .bind(rdp.enabled)
+    .bind(i32::from(rdp.port))
+    .bind(&rdp.username)
+    .bind(rdp.domain.as_deref())
+    .bind(rdp.security.as_str())
+    .bind(rdp.ignore_certificate)
+    .bind(rdp.resize.as_str())
+    .bind(rdp.audio_out)
+    .bind(rdp.microphone)
+    .bind(rdp.shared_drive)
+    .execute(conn)
+    .await?;
+    Ok(())
+}
+
+async fn write_vnc(conn: &mut PgConnection, id: DeviceId, vnc: &VncSettings) -> Result<(), Error> {
+    sqlx::query(
+        "UPDATE devices.vnc_settings SET enabled = $2, port = $3, username = $4 WHERE device_id = $1",
+    )
+    .bind(id)
+    .bind(vnc.enabled)
+    .bind(i32::from(vnc.port))
+    .bind(vnc.username.as_deref())
+    .execute(conn)
+    .await?;
+    Ok(())
+}
+
+async fn write_transfer(
+    conn: &mut PgConnection,
+    id: DeviceId,
+    transfer: TransferPolicy,
+) -> Result<(), Error> {
+    sqlx::query(
+        "UPDATE devices.devices SET transfer_upload = $2, transfer_download = $3, \
+                transfer_copy = $4, transfer_paste = $5 WHERE id = $1",
+    )
+    .bind(id)
+    .bind(transfer.upload)
+    .bind(transfer.download)
+    .bind(transfer.copy)
+    .bind(transfer.paste)
+    .execute(conn)
+    .await?;
+    Ok(())
+}
+
+/// A device that moved to `site` no longer relays for any other site (D-7).
+pub(in crate::devices) async fn release_relay(
+    conn: &mut PgConnection,
+    device: DeviceId,
+    site: SiteId,
+) -> Result<(), Error> {
+    sqlx::query(
+        "UPDATE devices.sites SET wake_relay_device_id = NULL \
+         WHERE wake_relay_device_id = $1 AND id <> $2",
+    )
+    .bind(device)
+    .bind(site)
+    .execute(conn)
+    .await?;
+    Ok(())
+}
+
+/// The site's wake relay device, if one is set.
+pub(in crate::devices) async fn wake_relay(
+    db: &PgPool,
+    site: SiteId,
+) -> Result<Option<Device>, Error> {
+    let relay: Option<Option<DeviceId>> =
+        sqlx::query_scalar("SELECT wake_relay_device_id FROM devices.sites WHERE id = $1")
+            .bind(site)
+            .fetch_optional(db)
+            .await?;
+    match relay.ok_or(Error::NotFound(Missing::Site(site)))? {
+        None => Ok(None),
+        Some(device) => match fetch(db, device).await {
+            Ok(device) => Ok(Some(device)),
+            // Deleted between the two reads: the foreign key has cleared the relay.
+            Err(Error::NotFound(_)) => Ok(None),
+            Err(error) => Err(error),
+        },
+    }
+}
