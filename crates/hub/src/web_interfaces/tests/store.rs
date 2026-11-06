@@ -12,8 +12,8 @@ use crate::{
 const OPERATOR: &str = "0190a000-0000-7000-8000-000000000001";
 const PVE_01: &str = "0190a000-0000-7000-8002-000000000001";
 const DOCKER_HOST: &str = "0190a000-0000-7000-8002-000000000002";
-/// An HTTP check on `pve-01` in the checks fixture: `http://ha.home.lan:8123/`.
-const HTTP_CHECK: &str = "0190a000-0000-7000-8003-000000000019";
+/// An HTTP check on `pve-01` in the checks fixture: `https://pve-01.home.lan:8006/`.
+const HTTP_CHECK: &str = "0190a000-0000-7000-8003-00000000001a";
 const PING_CHECK: &str = "0190a000-0000-7000-8003-000000000001";
 const HEX: &str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
@@ -223,8 +223,8 @@ db_test! {
             .await
             .unwrap();
         assert!(first.created);
-        assert_eq!(first.interface.url, "http://ha.home.lan:8123/");
-        assert_eq!(first.interface.label, "ha.home.lan");
+        assert_eq!(first.interface.url, "https://pve-01.home.lan:8006/");
+        assert_eq!(first.interface.label, "pve-01.home.lan");
         assert_eq!(first.interface.open_in, OpenIn::AnimaTab);
         let second = web_interfaces::accept_suggestion(&pool, &mut conn, check(HTTP_CHECK), now())
             .await
@@ -241,7 +241,7 @@ db_test! {
 db_test! {
     async fn web_002_accept_reuses_an_interface_at_the_same_parsed_url(pool: PgPool) {
         let mut conn = pool.acquire().await.unwrap();
-        let typed = make(&mut conn, "HTTP://HA.home.lan:8123").await;
+        let typed = make(&mut conn, "HTTPS://PVE-01.home.lan:8006").await;
         let accepted = web_interfaces::accept_suggestion(&pool, &mut conn, check(HTTP_CHECK), now())
             .await
             .unwrap();
