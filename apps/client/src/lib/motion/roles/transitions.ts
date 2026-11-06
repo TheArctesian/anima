@@ -28,13 +28,13 @@ export interface ListRowParams extends RoleParams {
 
 export type RoleTransition = (options?: { direction?: 'in' | 'out' }) => TransitionConfig;
 
-const fade = (t: number) => `opacity: ${String(t)};`;
+const opacity = (t: number) => `opacity: ${String(t)};`;
 
 /** A fade with a scale from `atZero` when gone to 1 in place; with no scale, a fade only. */
 function scaledFade(atZero: number | undefined, origin: string | undefined) {
-  if (atZero === undefined) return fade;
+  if (atZero === undefined) return opacity;
   const at = origin === undefined ? '' : ` transform-origin: ${origin};`;
-  return (t: number) => `${fade(t)} scale: ${String(atZero + (1 - atZero) * t)};${at}`;
+  return (t: number) => `${opacity(t)} scale: ${String(atZero + (1 - atZero) * t)};${at}`;
 }
 
 /**
@@ -59,14 +59,14 @@ function originAt(control: Element, surface: Element): string {
 function enter(spring: SpringName, atZero: number | undefined, reduced: boolean, origin?: string): TransitionConfig {
   const motion = springMotion(spring, reduced);
   if (motion.type !== 'spring') {
-    return { duration: modeTokens(reduced).duration.base, easing: easeCurve('enter'), css: fade };
+    return { duration: modeTokens(reduced).duration.base, easing: easeCurve('enter'), css: opacity };
   }
   const { easing, durationMs } = springCurve(motion);
   return { duration: durationMs, easing, css: scaledFade(atZero, origin) };
 }
 
 function exit(atZero: number | undefined, reduced: boolean, origin?: string): TransitionConfig {
-  const css = reduced ? fade : scaledFade(atZero, origin);
+  const css = reduced ? opacity : scaledFade(atZero, origin);
   return { duration: modeTokens(reduced).duration.fast, easing: easeCurve('exit'), css };
 }
 
@@ -80,8 +80,22 @@ export function crossFade(_node: Element, { preference = motionPreference() }: R
   return () => ({
     duration: modeTokens(preference.reduced).duration.base,
     easing: easeCurve('enter'),
-    css: fade,
+    css: opacity,
   });
+}
+
+/**
+ * A fade for a layer that nothing replaces, such as a modal's scrim or a banner (5.7.3 Modal
+ * and Toast): in over `duration-base` with `ease-enter`, out over `duration-fast` with
+ * `ease-exit`. The same under reduced motion.
+ */
+export function fade(_node: Element, { preference = motionPreference() }: RoleParams = {}): RoleTransition {
+  return ({ direction } = {}) => {
+    const { duration } = modeTokens(preference.reduced);
+    return direction === 'out'
+      ? { duration: duration.fast, easing: easeCurve('exit'), css: opacity }
+      : { duration: duration.base, easing: easeCurve('enter'), css: opacity };
+  };
 }
 
 /**

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { crossFade } from '$lib/motion/roles/transitions';
+  import { fade } from '$lib/motion/roles/transitions';
   import { press } from '$lib/motion/roles/press';
   import { useUpdates } from './updates.svelte';
 
@@ -19,12 +19,12 @@
 <!--
   The status region is always in the page and empty until an update is installed, so screen readers announce what is put
   into it (UPD-004). It is fixed over the page, so it never moves the content (UI-009), and it restarts only when the
-  operator presses the button (UPD-003). The banner fades with `crossFade`: it is a status that stays until restart, not a
+  operator presses the button (UPD-003). The banner uses the `fade` role: it is a status that stays until restart, not a
   transient toast, so the toast role does not apply.
 -->
 <div class="live" role="status">
   {#if shown.kind === 'installed'}
-    <div class="banner" transition:crossFade>
+    <div class="banner" transition:fade>
       <p>Anima {shown.version} is installed</p>
       <button type="button" tabindex="0" onclick={restart} {@attach press()}>Restart to update</button>
       {#if problem !== null}

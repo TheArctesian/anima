@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import { crossFade, modal } from '$lib/motion/roles/transitions';
+  import { fade, modal } from '$lib/motion/roles/transitions';
   import { initialFocusIn, trapTab } from './focus';
 
   interface Props {
@@ -54,7 +54,7 @@
 
 {#if open}
   <div class="portal" {@attach toBody}>
-    <div class="scrim" transition:crossFade>
+    <div class="scrim" transition:fade>
       <div class="shade"></div>
     </div>
     <div

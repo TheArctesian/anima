@@ -4,7 +4,7 @@ import type { TransitionConfig } from 'svelte/transition';
 import { easeCurve, springCurve } from '../animate';
 import { springMotion, staggerDelayMs, type SpringName } from '../options';
 import { duration, reducedMotion } from '../tokens';
-import { crossFade, listRow, modal, popover, type RoleTransition } from './transitions';
+import { crossFade, fade, listRow, modal, popover, type RoleTransition } from './transitions';
 
 const normal = { preference: { reduced: false } };
 const reduced = { preference: { reduced: true } };
@@ -143,6 +143,28 @@ describe('crossFade', () => {
       expect(opacityAt(incoming, 'in', elapsed) + opacityAt(outgoing, 'out', elapsed)).toBeCloseTo(1, 9);
     }
     expect(opacityAt(outgoing, 'out', 0.5)).toBeLessThan(0.5);
+  });
+});
+
+describe('fade (a layer nothing replaces: scrim, banner)', () => {
+  it.each([
+    ['normal', normal, duration],
+    ['reduced', reduced, reducedMotion.duration],
+  ] as const)('5.7.3: in over duration-base with ease-enter, out over duration-fast with ease-exit (%s)', (_mode, params, tokens) => {
+    const opening = entering(fade(box(), params));
+    const closing = leaving(fade(box(), params));
+    expect(opening.duration).toBe(tokens.base);
+    expect(opening.easing?.(0.5)).toBeCloseTo(easeCurve('enter')(0.5), 6);
+    expect(closing.duration).toBe(tokens.fast);
+    expect(closing.easing?.(0.5)).toBeCloseTo(easeCurve('exit')(0.5), 6);
+  });
+
+  it('MOT-002: a close mid-open draws the same opacity at the same progress, so it has no step', () => {
+    const transition = fade(box(), normal);
+    const opening = entering(transition);
+    const closing = leaving(transition);
+    for (const t of [0.1, 0.5, 0.9]) expect(css(closing, t)).toBe(css(opening, t));
+    expect(css(closing, 0.4)).toBe('opacity: 0.4;');
   });
 });
 
