@@ -7,6 +7,7 @@ import { Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
 import type { CellSize } from '../tunnel/terminal/codec';
 import { guardEscapes, type EscapeHooks } from './escapes';
+import { safePaste } from './paste';
 import { shortcutOf, type ShortcutAction } from './shortcuts';
 import { sizeInPx, terminalTheme, tokensOf } from './theme';
 
@@ -138,8 +139,23 @@ export const openScreen: ScreenOpener = async (host, hooks) => {
   guardEscapes(terminal, hooks);
   wireEvents(terminal, hooks);
   terminal.open(host);
+  // The paste event is taken before xterm.js sees it, so the text is cleaned first (RA-003).
+  host.addEventListener(
+    'paste',
+    (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      terminal.paste(safePaste(event.clipboardData?.getData('text/plain') ?? ''));
+    },
+    true,
+  );
   enableWebgl(terminal);
   fit.fit();
+  return screenOf(terminal, fit, search);
+};
+
+/** The screen over an open `terminal`. */
+function screenOf(terminal: Terminal, fit: FitAddon, search: SearchAddon): TerminalScreen {
   return {
     size: () => ({ cols: terminal.cols, rows: terminal.rows }),
     write: (bytes) => {
@@ -158,7 +174,7 @@ export const openScreen: ScreenOpener = async (host, hooks) => {
       terminal.blur();
     },
     paste: (text) => {
-      terminal.paste(text);
+      terminal.paste(safePaste(text));
     },
     find: (text, backwards) => (backwards ? search.findPrevious(text) : search.findNext(text)),
     clearFind: () => {
@@ -169,4 +185,4 @@ export const openScreen: ScreenOpener = async (host, hooks) => {
       terminal.dispose();
     },
   };
-};
+}

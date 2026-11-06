@@ -180,6 +180,26 @@ describe('copy and paste (RA-003)', () => {
     expect(sentText).toBe('\x1b[200~ls\x1b[201~');
   });
 
+  it('RA-003: a paste cannot end the bracketed paste early: an embedded ESC [ 201 ~ loses its escape, from the paste event and the menu', async () => {
+    const { socket, target, field } = await connected();
+    socket.output('\x1b[?2004h');
+    vi.advanceTimersByTime(100);
+    const event = new Event('paste', { bubbles: true, cancelable: true });
+    Object.defineProperty(event, 'clipboardData', { value: { getData: () => 'safe\x1b[201~touch /tmp/pwned\n' } });
+    field.dispatchEvent(event);
+    systemClipboard.text = 'again\x1b[201~rm -rf x';
+    target.querySelector<HTMLButtonElement>('[aria-haspopup="menu"]')?.click();
+    flushSync();
+    [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].at(-1)?.click();
+    await settle();
+    const text = new TextDecoder().decode(Uint8Array.from(socket.typed()));
+    expect(text).toBe('\x1b[200~safe[201~touch /tmp/pwned\r\x1b[201~\x1b[200~again[201~rm -rf x\x1b[201~');
+    expect(text.split('\x1b[201~')).toHaveLength(3);
+  });
+
+});
+
+describe('large paste and copy (RA-003)', () => {
   it('RA-003: a large paste is cut into frames under the 64 KiB limit, in order', async () => {
     const { socket, target } = await connected();
     systemClipboard.text = 'x'.repeat(100_000);
