@@ -23,6 +23,11 @@ fn empty_env_gives_the_documented_defaults() {
         config.permitted_networks,
         vec!["100.64.0.0/10".parse().unwrap()]
     );
+    assert_eq!(
+        config.guacd_drive_root,
+        PathBuf::from("/var/lib/guacd/drives")
+    );
+    assert_eq!(config.tailscale_localapi, None);
     assert_eq!(config.log, "info");
     assert_eq!(config.tls_cert_file, None);
     assert_eq!(config.tls_key_file, None);
@@ -111,7 +116,13 @@ fn guacd_accepts_bracketed_ipv6_and_rejects_unbracketed() {
     let config = from_env(&env(&[(GUACD, "[::1]:4822")])).unwrap();
     assert_eq!(config.guacd, "[::1]:4822");
     let error = from_env(&env(&[(GUACD, "::1:4822")])).unwrap_err();
-    assert!(matches!(error, Error::Guacd { .. }));
+    assert!(matches!(
+        error,
+        Error::HostPort {
+            variable: GUACD,
+            ..
+        }
+    ));
 }
 
 #[test]
@@ -148,7 +159,16 @@ fn collect_env_rejects_non_unicode_anima_and_skips_other_non_unicode() {
 fn guacd_without_host_or_valid_port_is_rejected() {
     for bad in ["guacd", ":4822", "guacd:", "guacd:70000", "guacd:http"] {
         let error = from_env(&env(&[(GUACD, bad)])).unwrap_err();
-        assert!(matches!(error, Error::Guacd { .. }), "{bad}");
+        assert!(
+            matches!(
+                error,
+                Error::HostPort {
+                    variable: GUACD,
+                    ..
+                }
+            ),
+            "{bad}"
+        );
     }
 }
 
@@ -186,4 +206,54 @@ fn tls_cert_without_key_is_rejected_and_so_is_key_without_cert() {
             ..
         }
     ));
+}
+
+#[test]
+fn ra_021_guacd_drive_root_overrides_default_and_must_be_absolute() {
+    let config = from_env(&env(&[(GUACD_DRIVE_ROOT, "/srv/drives")])).unwrap();
+    assert_eq!(config.guacd_drive_root, PathBuf::from("/srv/drives"));
+    let error = from_env(&env(&[(GUACD_DRIVE_ROOT, "")])).unwrap_err();
+    assert!(matches!(
+        error,
+        Error::Empty {
+            variable: GUACD_DRIVE_ROOT
+        }
+    ));
+    let error = from_env(&env(&[(GUACD_DRIVE_ROOT, "drives/here")])).unwrap_err();
+    assert!(matches!(
+        error,
+        Error::NotAbsolute {
+            variable: GUACD_DRIVE_ROOT,
+            ..
+        }
+    ));
+    assert!(error.to_string().contains(GUACD_DRIVE_ROOT));
+}
+
+#[test]
+fn d_4_tailscale_localapi_parses_host_port_and_empty_means_none() {
+    for good in ["proxy:41112", "[fd7a::1]:41112"] {
+        let config = from_env(&env(&[(TAILSCALE_LOCALAPI, good)])).unwrap();
+        assert_eq!(config.tailscale_localapi.as_deref(), Some(good));
+    }
+    let config = from_env(&env(&[(TAILSCALE_LOCALAPI, "")])).unwrap();
+    assert_eq!(config.tailscale_localapi, None);
+}
+
+#[test]
+fn d_4_malformed_tailscale_localapi_is_refused_naming_the_variable() {
+    for bad in ["proxy", ":1", "proxy:x", "fd7a::1:41112"] {
+        let error = from_env(&env(&[(TAILSCALE_LOCALAPI, bad)])).unwrap_err();
+        assert!(
+            matches!(
+                error,
+                Error::HostPort {
+                    variable: TAILSCALE_LOCALAPI,
+                    ..
+                }
+            ),
+            "{bad}"
+        );
+        assert!(error.to_string().contains(TAILSCALE_LOCALAPI), "{bad}");
+    }
 }
