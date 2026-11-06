@@ -165,13 +165,13 @@ export interface ViewHeard {
 }
 
 /** Mount a `SessionView` for `DEVICE` on the real link over `FakeTerminalSocket`, with `flags` as its flags. */
-export function showView() {
+export function showView(wrap: (open: ScreenOpener) => ScreenOpener = (open) => open) {
   const { api, calls, answers } = fakeApi();
   const heard: ViewHeard = { ended: [], titles: [], hooks: undefined };
-  const opener: ScreenOpener = (host, hooks) => {
+  const opener = wrap((host, hooks) => {
     heard.hooks = hooks;
     return openScreen(host, hooks);
-  };
+  });
   const target = document.createElement('div');
   document.body.append(target);
   const component = mount(SessionView, {

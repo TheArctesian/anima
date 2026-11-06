@@ -22,7 +22,7 @@
     /** Starts a session on `device` with a new ticket; see `sessionStart` in `./start`. */
     start: SessionStart;
     api: Pick<SessionsApi, 'endSession' | 'testConnection' | 'acceptHostKey'>;
-    /** Opens the terminal in the pane; the parent passes `openScreen` from `../screen/screen`. */
+    /** The screen factory: opens the xterm.js terminal in the pane. Production passes `openScreen` from `../screen/screen`. */
     openScreen: ScreenOpener;
     /** The pane is on screen (its tab is selected). */
     visible: boolean;

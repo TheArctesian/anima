@@ -192,6 +192,9 @@ describe('ended panel and Reconnect (RA-007)', () => {
     expect([...target.querySelectorAll('button')].some((button) => button.textContent.includes('Reconnect'))).toBe(true);
   });
 
+});
+
+describe('closing the view', () => {
   it('closing the view closes its socket and ignores the end that follows', async () => {
     const { close, calls, ended } = show();
     const socket = await connectView();
@@ -200,6 +203,30 @@ describe('ended panel and Reconnect (RA-007)', () => {
     expect(socket.closedByClient).toBe(1000);
     expect(calls.endSession).toEqual([]);
     expect(ended).toEqual([]);
+  });
+
+  it('a view closed while its terminal is still opening disposes that terminal when it arrives, and starts no session', async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const disposed = vi.fn();
+    const view = showView((open) => async (host, hooks) => {
+      await gate;
+      const screen = await open(host, hooks);
+      const dispose = screen.dispose.bind(screen);
+      screen.dispose = () => {
+        disposed();
+        dispose();
+      };
+      return screen;
+    });
+    FakeResizeObserver.resize(800, 600);
+    await view.close();
+    release();
+    await settle();
+    expect(disposed).toHaveBeenCalledOnce();
+    expect(view.calls.startSession).toEqual([]);
   });
 
   it('a view closed before its terminal is open starts no session', async () => {

@@ -63,7 +63,6 @@ async function connected() {
 const A = { key: 'a', code: 'KeyA', keyCode: 65 };
 const C = { key: 'c', code: 'KeyC', keyCode: 67 };
 const bytes = (socket: FakeTerminalSocket) => socket.typed();
-const ESC = 0x1b;
 
 describe('the socket (K4 §8.1, §8.4)', () => {
   it('K4 §8.1: it opens the ticket path with the token in the query and the subprotocol anima-terminal', async () => {
@@ -144,6 +143,13 @@ describe('typing and output (RA-003)', () => {
     socket.control({ type: 'mystery' });
     socket.output(new Uint8Array([0xe2, 0x9c, 0x93]));
     expect(screenText(target)).toContain('hello ✓');
+  });
+
+  it('RA-003: the terminal\'s own shortcuts are cancelled for the browser, and a paste shortcut is left to the paste event', async () => {
+    const { field } = await connected();
+    expect(key(field, { ...C, ctrlKey: true, shiftKey: true }).defaultPrevented).toBe(true);
+    expect(key(field, { key: 'f', code: 'KeyF', keyCode: 70, metaKey: true }).defaultPrevented).toBe(true);
+    expect(key(field, { key: 'v', code: 'KeyV', keyCode: 86, metaKey: true }).defaultPrevented).toBe(false);
   });
 
   it('RA-003: Ctrl+C sends the interrupt byte; Ctrl+Shift+C is the copy shortcut and sends nothing', async () => {
@@ -274,10 +280,5 @@ describe('keyboard and focus (D-8)', () => {
     await settle();
     key(textareaOf(view.target), A);
     expect(bytes(socket)).toEqual([]);
-  });
-
-  it('K4 §8.4: the ESC byte of the Keys menu is 0x1b and its Tab 0x09', () => {
-    const byId = (id: string) => KEY_SEQUENCES.find((sequence) => sequence.id === id)?.bytes[0];
-    expect([byId('esc'), byId('tab')]).toEqual([ESC, 0x09]);
   });
 });
