@@ -5,6 +5,7 @@
   import { page } from '$app/state';
   import { checksApi, type DeviceCheck } from '$lib/checks/api';
   import { devicesApi } from '$lib/devices/api';
+  import LiveNotice from '$lib/devices/notice/LiveNotice.svelte';
   import { DEFAULT_LOG_FILTER } from '$lib/events/log';
   import { LogFeed } from '$lib/events/panel/feed.svelte';
   import LogList from '$lib/events/panel/LogList.svelte';
@@ -152,7 +153,7 @@
       <button type="button" onclick={() => void detail.load()} {@attach press()}>Retry</button>
     </div>
   {:else if device !== null}
-    {#if detail.liveError !== null}<p class="notice" role="status">Live updates stopped: {detail.liveError.message}</p>{/if}
+    <LiveNotice message={detail.liveError?.message ?? null} gap="end" />
     <Tabs selected={place.tab} onSelect={(tab) => { go({ tab, section: null }); }} />
     {#if place.tab === 'overview'}
       <TabPanel name="overview" loading={checksLoading}>
