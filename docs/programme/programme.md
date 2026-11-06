@@ -143,6 +143,14 @@ Integration branch: `phase-1`. Merge to `main` only after operator checkpoint 4.
   - **After merge.** The programme orchestrator runs all 12 gates on `phase-2` after each merge. A failure there goes back to the task that caused it.
   - **One cargo run at a time.** A package runs at most one `cargo test` or `cargo clippy` at a time.
 
+- **R-069 (orchestrator, 2026-11-06; WP-31 D-7).** On macOS, web-view certificate pinning needs a `WKNavigationDelegate` written in Objective-C, because wry and Tauri have no certificate hook. `unsafe` code is allowed in that one place, under these conditions:
+  - The desktop crate sets `unsafe_code = "deny"` in place of the workspace's `forbid`. The root `Cargo.toml` does not change.
+  - `apps/desktop/src-tauri/src/web_view/macos_trust.rs` is the only module that uses `unsafe`. It carries `#[expect(unsafe_code, reason = "...")]`, and each `unsafe` block has a `// SAFETY:` comment.
+  - The module is as small as it can be. It hands the leaf certificate's SHA-256 to safe Rust and returns only accept or cancel.
+  - An Opus security reviewer checks it and runs mutations on it.
+  - A test proves that a mismatched certificate is cancelled.
+  - Any other `unsafe` code needs a new ruling.
+
 ## Escalations
 
 None open.
