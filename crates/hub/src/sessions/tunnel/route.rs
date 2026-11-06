@@ -11,7 +11,7 @@
 //!    token is spent whatever happens next, valid or not (K4 Section 1), so the ticket is
 //!    redeemed before the subprotocol is checked: a request without `guacamole` still spends
 //!    it, and cannot be used to test a token without spending it. A ticket whose `tunnelPath`
-//!    is not `/tunnel` is spent and refused too (403).
+//!    is not `/tunnel` is refused and spent in the same redemption (403).
 //! 3. From here the session task owns the redeemed ticket (`relaying`), so the session ends
 //!    exactly once even when the client leaves and this handler is dropped (MV-003). The task
 //!    answers this handler: 400 without the subprotocol `guacamole` (the session ends
@@ -175,7 +175,10 @@ async fn redeem(
 ) -> Result<Redeemed, StatusCode> {
     let now = route.clock.now();
     admission::swept(&route.db, &route.live, now).await?;
-    let redeemed = admission::redeem(&route.live, query, extensions, now)?;
-    let ticket_path = (route.tunnel_path)(redeemed.ticket.protocol);
-    admission::on_path(&route.live, redeemed, ticket_path, PATH)
+    let request = admission::Request {
+        query,
+        extensions,
+        now,
+    };
+    admission::redeem(&route.live, request, PATH, route.tunnel_path)
 }

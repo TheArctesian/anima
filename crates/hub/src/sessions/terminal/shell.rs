@@ -81,36 +81,13 @@ impl Link<'_> {
         let writer = Arc::clone(&self.writer);
         let pty = async move { writer.request_pty(true, TERM, cols, rows, 0, 0, &[]).await };
         let due = Instant::now() + self.timing.request;
-        self.asked(pty, due).await?;
+        handed(self.tunnel, pty, due).await?;
         self.replied(PTY_REFUSED, due).await?;
         let writer = Arc::clone(&self.writer);
         let shell = async move { writer.request_shell(true).await };
         let due = Instant::now() + self.timing.request;
-        self.asked(shell, due).await?;
+        handed(self.tunnel, shell, due).await?;
         self.replied(SHELL_REFUSED, due).await
-    }
-
-    /// Hands one request to the connection by `due`, unless the session ends first; the hub
-    /// keeps pinging the client meanwhile. A request that waits past `due` ends the session
-    /// `GATEWAY_ERROR`.
-    async fn asked(
-        &mut self,
-        asked: impl Future<Output = Result<(), russh::Error>>,
-        due: Instant,
-    ) -> Result<(), End> {
-        let asked = timeout_at(due, asked);
-        tokio::pin!(asked);
-        loop {
-            tokio::select! {
-                signal = self.tunnel.ended() => return Err(End::from(signal)),
-                asked = &mut asked => return match asked {
-                    Ok(Ok(())) => Ok(()),
-                    Ok(Err(_)) => Err(ended(Cause::GatewayError)),
-                    Err(_) => Err(End::explained(Cause::GatewayError, NO_ANSWER)),
-                },
-                () = sleep_until(self.hub_quiet) => self.ping().await?,
-            }
-        }
     }
 
     /// The client's first message, which must be `resize` (K4 Section 8.4), within the
@@ -158,6 +135,25 @@ impl Link<'_> {
                 Some(Some(message)) => self.output(message).await?,
             }
         }
+    }
+}
+
+/// Hands one request to the connection by `due`, unless the session ends first; a request
+/// still waiting at `due` ends the session `GATEWAY_ERROR`. The hand-off is to russh's queue
+/// of a few commands, of which the hub uses one at a time, so it waits only when the
+/// connection's task has stopped: there is no ping here, unlike the wait for the answer.
+pub(super) async fn handed(
+    tunnel: &mut Tunnel,
+    request: impl Future<Output = Result<(), russh::Error>>,
+    due: Instant,
+) -> Result<(), End> {
+    tokio::select! {
+        signal = tunnel.ended() => Err(End::from(signal)),
+        handed = timeout_at(due, request) => match handed {
+            Ok(Ok(())) => Ok(()),
+            Ok(Err(_)) => Err(ended(Cause::GatewayError)),
+            Err(_) => Err(End::explained(Cause::GatewayError, NO_ANSWER)),
+        },
     }
 }
 

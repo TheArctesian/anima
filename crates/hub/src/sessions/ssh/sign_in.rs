@@ -88,7 +88,8 @@ async fn sign_in_with_password(
 }
 
 /// Answers every keyboard-interactive prompt with the password, for at most
-/// [`PROMPT_ROUNDS`] rounds of at most [`PROMPTS_PER_ROUND`] prompts. The prompts are the device's text: never read, logged or kept.
+/// [`PROMPT_ROUNDS`] rounds of at most [`PROMPTS_PER_ROUND`] prompts. The prompts are the
+/// device's text: never read, logged or kept.
 async fn answer_prompts(
     handle: &mut Handle<Observer>,
     username: &str,

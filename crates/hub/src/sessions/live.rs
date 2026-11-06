@@ -19,10 +19,10 @@ use super::{
     model::EndReason,
     public_key::PublicKey,
     target::TargetRule,
-    tickets::{PendingTicket, TicketHash, hash_of},
+    tickets::{PendingTicket, Presented, TicketHash, hash_of},
     trust::{Endpoint, Observation, Observations},
 };
-use crate::{events::ClientAddr, ids::SessionId};
+use crate::ids::SessionId;
 
 /// Most tickets issued and not yet redeemed or swept, spent ones included. A ticket lives
 /// 30 s, so this bounds what one operator can hold in memory by starting sessions in a loop.
@@ -258,23 +258,22 @@ impl Live {
 
     /// Redeems a presented token (K4 §1). The token is removed first, valid or not, so it
     /// works at most once; then it is refused when expired at `now` (the boundary
-    /// `now == expires_at` included), presented from another address, or the hub is shutting
-    /// down. A refused ticket is kept, without its token, until the sweep ends its row. An
-    /// accepted ticket becomes a registered tunnel in the same critical section, so
-    /// `end_by` always finds a started session pending, spent or live.
+    /// `now == expires_at` included), presented from another address or on another tunnel's
+    /// path, or the hub is shutting down. A refused ticket is kept, without its token, until
+    /// the sweep ends its row. An accepted ticket becomes a registered tunnel in the same
+    /// critical section, so `end_by` always finds a started session pending, spent or live.
     ///
     /// # Errors
     /// `Refused`, with no detail, in every refused case.
     pub fn redeem(
         &self,
-        presented: &str,
-        client: ClientAddr,
+        presented: Presented<'_>,
         now: DateTime<Utc>,
     ) -> Result<Redeemed, Refused> {
-        let hash = hash_of(presented).ok_or(Refused)?;
+        let hash = hash_of(presented.token).ok_or(Refused)?;
         let mut state = self.state();
         let ticket = state.tickets.remove(&hash).ok_or(Refused)?;
-        if !ticket.admits(client, now)
+        if !ticket.admits(&presented, now)
             || state.shutting_down
             || state.tunnels.contains_key(&ticket.session)
         {
@@ -290,19 +289,6 @@ impl Live {
             live: self.clone(),
         };
         Ok(Redeemed { ticket, tunnel })
-    }
-
-    /// Spends a redeemed ticket the request does not admit after all (a ticket on another
-    /// tunnel's path, K4 Section 1): its tunnel is deregistered and the ticket kept, without
-    /// its token, until the sweep ends its row, under one lock, as a refused redemption is.
-    pub(super) fn spend(&self, redeemed: Redeemed) {
-        let Redeemed { ticket, tunnel } = redeemed;
-        let mut state = self.state();
-        state.tunnels.remove(&ticket.session);
-        state.spent.insert(ticket.session, ticket);
-        drop(state);
-        // Its registration is gone, so dropping it changes nothing.
-        drop(tunnel);
     }
 
     /// Ends the session for `by` (`endSession`, D-10), deciding under one lock so a

@@ -11,7 +11,7 @@ mod public_key;
 mod ssh;
 mod start;
 mod store;
-mod tickets;
+pub(super) mod tickets;
 mod tunnels;
 
 /// Two real OpenSSH public keys (throwaway, made with `ssh-keygen`; the private halves were

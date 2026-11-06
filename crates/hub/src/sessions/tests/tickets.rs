@@ -1,6 +1,7 @@
 //! Ticket rules and the in-memory table (K4 §1, API-009, LOG-007), and the end signal of an
 //! open tunnel (D-10). Deterministic: every time comes from a `FixedClock`.
 
+use crate::sessions::Presented;
 use std::net::IpAddr;
 
 use chrono::{DateTime, TimeDelta, Utc};
@@ -17,17 +18,17 @@ use crate::{
     },
 };
 
-pub(super) const CLIENT: &str = "10.10.0.77";
+pub(in crate::sessions) const CLIENT: &str = "10.10.0.77";
 
-pub(super) fn issued_at() -> DateTime<Utc> {
+pub(in crate::sessions) fn issued_at() -> DateTime<Utc> {
     FixedClock("2026-11-04T09:00:00Z".parse().unwrap()).now()
 }
 
-pub(super) fn client(text: &str) -> ClientAddr {
+pub(in crate::sessions) fn client(text: &str) -> ClientAddr {
     ClientAddr(text.parse::<IpAddr>().unwrap())
 }
 
-pub(super) fn session(n: u128) -> SessionId {
+pub(in crate::sessions) fn session(n: u128) -> SessionId {
     SessionId::from(uuid::Uuid::from_u128(
         0x0190_a000_0000_7000_8010_0000_0000_0000 + n,
     ))
@@ -63,7 +64,7 @@ pub(super) fn token(seed: u8) -> TicketToken {
 }
 
 /// Issues ticket `n` with the token from `seed` and returns the token's text.
-pub(super) fn issue(live: &Live, n: u128, seed: u8) -> String {
+pub(in crate::sessions) fn issue(live: &Live, n: u128, seed: u8) -> String {
     let token = token(seed);
     live.issue(token.hash(), pending(n)).unwrap();
     token.expose().to_owned()
@@ -117,7 +118,7 @@ proptest! {
         };
         let admitted = now < expires_at && from == client(CLIENT);
 
-        let first = live.redeem(&text, from, now);
+        let first = live.redeem(Presented::terminal(&text, from), now);
         prop_assert_eq!(first.is_ok(), admitted);
         if let Ok(redeemed) = &first {
             prop_assert_eq!(&redeemed.ticket, &pending(1));
@@ -125,7 +126,8 @@ proptest! {
         // Single use: valid or not, a second presentation is refused, even in time from the
         // right address. A refused ticket waits, without its token, for the sweep to end its
         // row once expired; an admitted one left the table for the tunnel registry.
-        prop_assert_eq!(live.redeem(&text, client(CLIENT), issued_at()).err(), Some(Refused));
+        let again = Presented::terminal(&text, client(CLIENT));
+        prop_assert_eq!(live.redeem(again, issued_at()).err(), Some(Refused));
         let swept = live.take_expired(expires_at);
         prop_assert_eq!(swept.len(), usize::from(!admitted));
         prop_assert!(live.withdraw(session(1)).is_none());
@@ -137,8 +139,10 @@ proptest! {
         let live = Live::default();
         let issued = issue(&live, 1, 9);
         prop_assume!(text != issued);
-        prop_assert_eq!(live.redeem(&text, client(CLIENT), issued_at()).err(), Some(Refused));
-        prop_assert!(live.redeem(&issued, client(CLIENT), issued_at()).is_ok());
+        let unknown = Presented::terminal(&text, client(CLIENT));
+        prop_assert_eq!(live.redeem(unknown, issued_at()).err(), Some(Refused));
+        let known = Presented::terminal(&issued, client(CLIENT));
+        prop_assert!(live.redeem(known, issued_at()).is_ok());
     }
 }
 
@@ -148,7 +152,8 @@ fn api_009_the_expiry_instant_itself_is_refused() {
     let text = issue(&live, 1, 3);
     let at_expiry = FixedClock(pending(1).expires_at).now();
     assert_eq!(
-        live.redeem(&text, client(CLIENT), at_expiry).err(),
+        live.redeem(Presented::terminal(&text, client(CLIENT)), at_expiry)
+            .err(),
         Some(Refused)
     );
 }
@@ -225,7 +230,7 @@ fn api_009_spent_tickets_count_toward_the_bound_until_swept() {
         let token = token_n(n);
         live.issue(token.hash(), pending(session_n(n))).unwrap();
         if n % 2 == 0 {
-            let refused = live.redeem(token.expose(), elsewhere, issued_at());
+            let refused = live.redeem(Presented::terminal(token.expose(), elsewhere), issued_at());
             assert_eq!(refused.err(), Some(Refused));
         }
     }

@@ -10,7 +10,8 @@ use tokio::time::timeout;
 use super::{
     bench::{Setup, bench},
     fake_ssh::{Heard, Script},
-    session, socket,
+    session,
+    socket::{self, Received},
 };
 use crate::sessions::{
     Actor, EndReason,
@@ -216,4 +217,57 @@ async fn k4_8_5_a_send_that_stalls_is_timeout_4002(pool: PgPool) {
         "The client stopped reading what the hub sent, so the hub closed the SSH session."
     );
     flood.abort();
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
+)]
+async fn k4_8_5_a_client_ping_sent_while_the_hub_s_send_waits_keeps_the_session(pool: PgPool) {
+    // Each round: the client pings and is read at once; a second later the shell floods and
+    // the hub's send to the unread client stalls; the client pings again, unread; then it
+    // reads, 1.5 s after its first ping. The hub's send waited under its 2 s limit, but by
+    // then 2 s have passed since the hub last read the client, and the second ping is waiting
+    // to be read: it, not the idle wait, must win.
+    let setup = Setup::terminal(|terminal| {
+        terminal.timing.client_idle = Duration::from_secs(2);
+    });
+    let (bench, mut client) = session(&pool, setup).await;
+    let ssh = std::sync::Arc::new(bench.ssh);
+    let chunk = vec![b'x'; 32 * 1024];
+    for round in 0..5 {
+        client.send(r#"{"type":"ping"}"#).await;
+        tokio::time::sleep(Duration::from_millis(1_000)).await;
+        let writer = std::sync::Arc::clone(&ssh);
+        let flood_chunk = chunk.clone();
+        let marker = format!("end of round {round}");
+        let flood_marker = marker.clone();
+        let flood = tokio::spawn(async move {
+            for _ in 0..1_024 {
+                writer.say(&flood_chunk).await;
+            }
+            writer.say(flood_marker.as_bytes()).await;
+        });
+        tokio::time::sleep(Duration::from_millis(300)).await;
+        client.send(r#"{"type":"ping"}"#).await;
+        tokio::time::sleep(Duration::from_millis(1_200)).await;
+        loop {
+            match client.next().await {
+                Received::Binary(bytes) if bytes.ends_with(marker.as_bytes()) => break,
+                Received::Binary(_) => {}
+                Received::Text(text) if text == r#"{"type":"ping"}"# => {}
+                other => panic!("{other:?} in round {round}"),
+            }
+        }
+        flood.await.unwrap();
+    }
+    ssh.say(b"still here").await;
+    assert_eq!(client.bytes_until(b"still here").await, b"still here");
+    assert_eq!(client.close().await, Some(1000));
+    ended_once(
+        &ended(&pool, bench.session).await,
+        "operator",
+        "info",
+        LOOPBACK,
+    );
 }

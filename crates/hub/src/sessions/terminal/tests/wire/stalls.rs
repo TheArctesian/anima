@@ -99,16 +99,12 @@ async fn k4_8_5_one_write_at_a_time_keeps_client_input_whole_and_in_order(pool: 
     let second = b"second message".to_vec();
     client.send_binary(&first).await;
     client.send_binary(&second).await;
-    tokio::time::sleep(Duration::from_millis(300)).await;
-    let held: usize = bench
-        .ssh
-        .heard_so_far()
-        .iter()
-        .map(|heard| match heard {
-            Heard::Input(bytes) => bytes.len(),
-            other => panic!("{other:?} while the write waited"),
-        })
-        .sum();
+    // The server holds after the first packet it reads: what it heard is all it takes until
+    // released.
+    let Heard::Input(packet) = bench.ssh.next().await else {
+        panic!("the first packet of input");
+    };
+    let held = packet.len();
     assert!(
         held < first.len(),
         "the device holds the first write: {held}"
@@ -117,6 +113,7 @@ async fn k4_8_5_one_write_at_a_time_keeps_client_input_whole_and_in_order(pool: 
     let rest = input_until(&mut bench, first.len() + second.len() - held).await;
     let mut expected = first;
     expected.extend(&second);
+    assert_eq!(packet[..], expected[..held]);
     assert_eq!(rest[..], expected[held..], "both whole, in order");
     assert_eq!(client.close().await, Some(1000));
 }

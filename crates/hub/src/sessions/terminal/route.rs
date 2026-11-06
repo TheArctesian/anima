@@ -4,8 +4,8 @@
 //! The order of the checks (`admission`), as on the Guacamole tunnel:
 //!
 //! 1. The lazy sweep of expired tickets (D-2); if it cannot run, 503 before any token is read.
-//! 2. The token from the query and the client address, then `Live::redeem` (403), then the
-//!    ticket's `tunnelPath`, which must be `/terminal` (403, the ticket spent). The token is
+//! 2. The token from the query, the client address and the path, then `Live::redeem` (403;
+//!    a ticket whose `tunnelPath` is not `/terminal` is refused and spent too). The token is
 //!    spent before the subprotocol is checked (K4 Section 1).
 //! 3. From here the session task owns the redeemed ticket (`session`), so the session ends
 //!    exactly once even when the client leaves and this handler is dropped (MV-003). The task
@@ -150,12 +150,12 @@ async fn open(
     if let Err(status) = admission::swept(&terminal.db, &terminal.live, now).await {
         return status.into_response();
     }
-    let redeemed =
-        admission::redeem(&terminal.live, &query, &extensions, now).and_then(|redeemed| {
-            let ticket_path = redeemed.ticket.protocol.tunnel_path();
-            admission::on_path(&terminal.live, redeemed, ticket_path, PATH)
-        });
-    let redeemed = match redeemed {
+    let request = admission::Request {
+        query: &query,
+        extensions: &extensions,
+        now,
+    };
+    let redeemed = match admission::redeem(&terminal.live, request, PATH, Protocol::tunnel_path) {
         Ok(redeemed) => redeemed,
         Err(status) => return status.into_response(),
     };

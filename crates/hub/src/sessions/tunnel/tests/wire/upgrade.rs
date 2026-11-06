@@ -2,6 +2,7 @@
 //! completes the upgrade, `endSession` or shutdown before it, no upgrade in time, and a
 //! changed host key whose upgrade fails. guacd is told to disconnect whenever it was reached.
 
+use crate::sessions::Presented;
 use std::time::Duration;
 
 use axum::extract::ws::WebSocket;
@@ -34,7 +35,7 @@ async fn opened(pool: &PgPool, setup: Setup) -> (FakeGuacd, Bench, Redeemed, Ope
     let bench = bench(pool, &guacd.address, setup).await;
     let redeemed = bench
         .live
-        .redeem(&bench.token, address(LOOPBACK), now())
+        .redeem(Presented::terminal(&bench.token, address(LOOPBACK)), now())
         .unwrap();
     let Ok(opening) = opening::open(&bench.route, &redeemed.ticket).await else {
         panic!("the gateway side opens");
@@ -117,7 +118,7 @@ async fn sec_007_a_changed_host_key_stays_the_cause_when_the_upgrade_fails(pool:
     let bench = bench(&pool, "127.0.0.1:9", Setup::default()).await;
     let mut redeemed = bench
         .live
-        .redeem(&bench.token, address(LOOPBACK), now())
+        .redeem(Presented::terminal(&bench.token, address(LOOPBACK)), now())
         .unwrap();
     let (socket_tx, socket) = oneshot::channel();
     drop(socket_tx);

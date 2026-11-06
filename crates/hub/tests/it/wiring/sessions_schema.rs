@@ -1,6 +1,7 @@
 //! WP-10 handoffs 1 and 2: the sessions part of the hub schema runs on the `Live` that
 //! `Dependencies` carries, so a ticket the schema issues is one that `Live` redeems.
 
+use anima_hub::sessions::Presented;
 use anima_hub::{events::ClientAddr, sessions::Live};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -46,7 +47,7 @@ async fn r_032_start_session_returns_a_ticket_the_hubs_one_live_redeems(pool: Pg
             .starts_with("/terminal")
     );
     let client = ClientAddr(CLIENT_ADDR.parse().unwrap());
-    let redeemed = live.redeem(token, client, now());
+    let redeemed = live.redeem(Presented::terminal(token, client), now());
     assert!(
         redeemed.is_ok(),
         "the schema's Live is the one Dependencies carries"

@@ -2,6 +2,7 @@
 //! upgrade, `endSession` before it, no upgrade in time, and a changed host key whose upgrade
 //! fails. The device's channel is closed whenever the hub signed in.
 
+use crate::sessions::Presented;
 use std::time::Duration;
 
 use axum::extract::ws::WebSocket;
@@ -28,7 +29,7 @@ async fn signed_in(pool: &PgPool, setup: Setup) -> (Bench, Redeemed, Opening) {
     let bench = bench(pool, setup).await;
     let redeemed = bench
         .live
-        .redeem(&bench.token, address(LOOPBACK), now())
+        .redeem(Presented::terminal(&bench.token, address(LOOPBACK)), now())
         .unwrap();
     let Ok(opening @ Opening::SignedIn(_)) = opening::open(&bench.terminal, &redeemed.ticket).await
     else {
@@ -45,7 +46,10 @@ async fn after_response(
     socket: oneshot::Receiver<WebSocket>,
 ) -> End {
     let timing = bench.terminal.timing;
-    connected(timing, &mut redeemed.tunnel, opening, socket).await
+    let ended = connected(timing, &mut redeemed.tunnel, opening, socket);
+    tokio::time::timeout(WAIT, ended)
+        .await
+        .expect("the session ends without an upgraded socket")
 }
 
 /// The hub closed the one channel it opened.
@@ -118,7 +122,7 @@ async fn sec_007_a_changed_host_key_stays_the_cause_when_the_upgrade_fails(pool:
     let bench = bench(&pool, Setup::default()).await;
     let mut redeemed = bench
         .live
-        .redeem(&bench.token, address(LOOPBACK), now())
+        .redeem(Presented::terminal(&bench.token, address(LOOPBACK)), now())
         .unwrap();
     let (socket_tx, socket) = oneshot::channel();
     drop(socket_tx);

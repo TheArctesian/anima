@@ -3,6 +3,7 @@
 //! each end the session once; the known gap of a client that leaves after a stray byte; and
 //! the end's write is retried once (LOG-005).
 
+use crate::sessions::Presented;
 use std::time::Duration;
 
 use chrono::TimeDelta;
@@ -143,7 +144,7 @@ async fn mv_003_a_session_task_that_panics_still_ends_the_session(pool: PgPool) 
     let bench = bench(&pool, "127.0.0.1:9", Setup::default()).await;
     let redeemed = bench
         .live
-        .redeem(&bench.token, address(LOOPBACK), now())
+        .redeem(Presented::terminal(&bench.token, address(LOOPBACK)), now())
         .unwrap();
     let records = bench.route.records();
     // As `relaying::run` holds the session from its first line.
@@ -168,7 +169,7 @@ async fn d_9_a_session_task_that_panics_after_end_session_ends_with_the_enders_c
     let bench = bench(&pool, "127.0.0.1:9", Setup::default()).await;
     let redeemed = bench
         .live
-        .redeem(&bench.token, address(LOOPBACK), now())
+        .redeem(Presented::terminal(&bench.token, address(LOOPBACK)), now())
         .unwrap();
     let by = Actor {
         operator: operator(),
@@ -231,7 +232,7 @@ async fn log_005_an_end_whose_first_commit_fails_is_written_by_the_retry(pool: P
     let bench = bench(&pool, "127.0.0.1:9", Setup::default()).await;
     let redeemed = bench
         .live
-        .redeem(&bench.token, address(LOOPBACK), now())
+        .redeem(Presented::terminal(&bench.token, address(LOOPBACK)), now())
         .unwrap();
     fail_first_commit_on_update(&pool).await;
     finish(

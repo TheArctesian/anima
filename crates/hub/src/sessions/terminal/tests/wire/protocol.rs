@@ -14,11 +14,28 @@ use crate::sessions::tests::fixture::{LOOPBACK, ended, ended_once};
 
 /// The session ended `PROTOCOL_ERROR`: the client heard `end` and 1002, the row, audit entry
 /// and event are written once, and nothing the client sent reached the device.
-async fn broke_the_protocol(pool: &PgPool, mut bench: Bench, mut client: Socket) {
+async fn broke_the_protocol(pool: &PgPool, bench: Bench, mut client: Socket) {
     assert_eq!(
         client.ended().await,
         ("PROTOCOL_ERROR".to_owned(), Some(1002))
     );
+    recorded(pool, bench).await;
+}
+
+/// As [`broke_the_protocol`] for a message over the cap. The hub stops reading at the cap,
+/// so it closes its socket with the rest of the message unread, and the kernel resets the
+/// connection: the reset can overtake the close frame, never the `end` before it, which is
+/// the reason the client shows (K4 Section 8.4).
+async fn over_the_cap(pool: &PgPool, bench: Bench, mut client: Socket) {
+    let (reason, code) = client.ended().await;
+    assert_eq!(reason, "PROTOCOL_ERROR");
+    assert!(matches!(code, Some(1002) | None), "{code:?}");
+    recorded(pool, bench).await;
+}
+
+/// The row, audit entry and event of a `PROTOCOL_ERROR` end are written once, and nothing
+/// the client sent reached the device.
+async fn recorded(pool: &PgPool, mut bench: Bench) {
     let ended = ended(pool, bench.session).await;
     ended_once(&ended, "protocol_error", "warning", LOOPBACK);
     assert_eq!(
@@ -93,7 +110,7 @@ async fn k4_8_5_text_over_256_bytes_is_protocol_error(pool: PgPool) {
 async fn k4_8_5_a_binary_message_over_64_kib_is_protocol_error(pool: PgPool) {
     let (bench, mut client) = session(&pool, Setup::default()).await;
     client.send_binary(&vec![b'a'; 64 * 1024 + 1]).await;
-    broke_the_protocol(&pool, bench, client).await;
+    over_the_cap(&pool, bench, client).await;
 }
 
 #[sqlx::test(
@@ -104,7 +121,7 @@ async fn k4_8_5_a_message_over_64_kib_across_fragments_is_protocol_error(pool: P
     // Every frame is well under the frame cap; only the whole message is over.
     let (bench, mut client) = session(&pool, Setup::default()).await;
     client.send_fragmented(&vec![b'a'; 64 * 1024 + 1], 5).await;
-    broke_the_protocol(&pool, bench, client).await;
+    over_the_cap(&pool, bench, client).await;
 }
 
 #[sqlx::test(

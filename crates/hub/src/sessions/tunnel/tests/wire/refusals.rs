@@ -2,6 +2,7 @@
 //! subprotocol, 503 when the sweep cannot run, the gateway cannot be reached, SSH is off or
 //! the device's host is refused; and the token never reaches the process log (LOG-007).
 
+use crate::sessions::Presented;
 use std::time::Duration;
 
 use chrono::TimeDelta;
@@ -222,7 +223,7 @@ async fn k4_2_a_sweep_that_cannot_run_is_503_and_spends_nothing(pool: PgPool) {
     assert!(
         bench
             .live
-            .redeem(&bench.token, address(LOOPBACK), now())
+            .redeem(Presented::terminal(&bench.token, address(LOOPBACK)), now())
             .is_ok()
     );
 }
@@ -315,7 +316,7 @@ async fn k4_1_k4_2_the_hub_s_tunnel_route_refuses_an_ssh_ticket_and_spends_it(po
     assert!(
         bench
             .live
-            .redeem(&bench.token, address(LOOPBACK), now())
+            .redeem(Presented::terminal(&bench.token, address(LOOPBACK)), now())
             .is_err(),
         "the ticket is spent"
     );
