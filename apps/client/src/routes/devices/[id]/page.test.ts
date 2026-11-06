@@ -307,7 +307,7 @@ describe('settings tab (D-7, DEV-014)', () => {
     expect(current.goto).toEqual([['/devices', undefined]]);
   });
 
-  it('D-2: a save sends only the changed field, and the form then compares with the saved device', async () => {
+  it('D-2: a save sends only the changed field, the header shows the saved name, and saving again sends nothing', async () => {
     const renamed = device({ name: 'vault' });
     const fake = await show(answers({ UpdateDevice: { updateDevice: renamed } }), '?tab=settings');
     const name = document.getElementById('device-name');
@@ -322,5 +322,20 @@ describe('settings tab (D-7, DEV-014)', () => {
       { operation: 'UpdateDevice', variables: { id: ID, input: { name: 'vault' } } },
     ]);
     expect(document.querySelector('header h1')?.textContent).toBe('vault');
+  });
+
+  it('T3/T5: after a save the form compares with the saved device, so the test of the saved host goes by ID', async () => {
+    const moved = device({ host: 'vault.home.arpa' });
+    const tested = { reachable: true, authenticated: true, hostKey: null, hostKeyChanged: false, message: null };
+    const fake = await show(answers({ UpdateDevice: { updateDevice: moved }, TestConnection: { testConnection: tested } }), '?tab=settings');
+    const host = document.getElementById('device-host');
+    if (!(host instanceof HTMLInputElement)) throw new Error('no host input');
+    host.value = 'vault.home.arpa';
+    host.dispatchEvent(new Event('input', { bubbles: true }));
+    button('Save').click();
+    await settle();
+    button('Test connection').click();
+    await settle();
+    expect(fake.requests.find((request) => request.operation === 'TestConnection')?.variables).toEqual({ input: { deviceId: ID } });
   });
 });
