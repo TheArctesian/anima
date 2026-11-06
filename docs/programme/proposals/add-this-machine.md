@@ -48,6 +48,31 @@ once and then stay quiet.
 5. **Audit.** Adding writes the usual device-created event (LOG-005); the event says it came from
    the prompt.
 
+## Opening the VPN path
+
+The operator asked on 2026-11-06 that adding a machine also open the VPN path to it ("the app
+should automaticly change this policy when adding this mac, it should open up the port"). The
+hub cannot reach a client computer unless a grant names it (R-061), and today each grant is
+written by hand.
+
+1. **Broker, not keys.** The hub gets no Headscale API key and no write access to the policy
+   file (vpn.md Section 11). A root-owned broker on the VPS (a systemd socket, the same one the
+   in-app enrolment proposal needs, R-055) takes one request: `open device <id> <address>
+   <ports>`, and its reverse `close device <id>`.
+2. **What it accepts.** The address is one /32 inside 100.64.0.0/10 that belongs to a node of user
+   `operator`. Ports come from the device's connections and only from tcp 22, 5900 and 3389. The
+   source is always `tag:hub`. Anything else is refused with a typed reason.
+3. **What it writes.** Only a generated `device-<id>` host and its grant, in a marked section of
+   the policy. It never changes another grant. It runs the same rules as the policy tests
+   (`/32`, `tag:hub` only, tcp ports only), then `headscale policy check`, installs the file and
+   sends SIGHUP. If Headscale refuses the reload, it puts the previous file back.
+4. **In the app.** Adding, editing or deleting a device whose address is a tailnet address asks
+   the broker to open, change or close its path, and the device page shows the result. An audit
+   entry records each change (LOG-005).
+5. **Risk.** A hub that is taken over could open SSH, VNC or RDP from itself to the operator's
+   other computers. It still needs their credentials, which it already holds for added devices.
+   It could not open anything to or from routers, sites or other tags.
+
 ## Needs
 
 - A spec change: a desktop requirement for the prompt, the `machineId` field and query, and the
@@ -55,3 +80,4 @@ once and then stay quiet.
 - A K-contract change (devices model and API) after Phase 1.
 - WP-13 merged (Add device form).
 - An issue #1 checklist entry (R-007).
+- For the VPN path: an operator ruling that changes vpn.md Section 11, and the broker of R-055.

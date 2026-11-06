@@ -51,12 +51,12 @@
   // check, where every source address must be denied. A row without `proto` is checked
   // for tcp, udp and icmp. Headscale passes an accept row without `proto` if any one of
   // them is allowed, while `bun test` requires all three, so accept rows always name
-  // `proto`. Headscale needs a node for every tag a row names, so the rows are grouped by
-  // the tagged nodes they need: add a group only once its nodes are enrolled. Rows with an
-  // IP source (10.10.0.5, 10.30.0.5) need no node on the server; they sit with their
-  // site's router because `bun test` reaches a LAN address only through that router.
+  // `proto`. Headscale needs a node for every tag a row names and refuses the whole policy,
+  // on reload too, while one is missing. Each router's group of rows (its tags, and the
+  // rows with its LAN address as source) waits in `ROUTER_ROWS` in tests/policy.test.ts and
+  // moves here once that router is enrolled.
   "tests": [
-    // Needs a client and the hub.
+    // Only operator@, tag:hub and addresses: identities that exist before any router enrols.
     {
       "src": "operator@",
       "proto": "tcp",
@@ -70,30 +70,5 @@
       "deny": ["operator@:443", "100.64.0.2:5900"],
     },
     {"src": "tag:hub", "deny": ["operator@:53", "100.64.0.2:3389"]},
-
-    // Needs the home router (tag:router, tag:site-home).
-    {
-      "src": "tag:site-home",
-      "proto": "tcp",
-      "accept": ["10.10.0.5:22"],
-      "deny": ["10.20.0.5:22", "10.30.0.5:22", "operator@:22", "tag:hub:443"],
-    },
-    {"src": "10.10.0.5", "deny": ["operator@:22", "tag:hub:443", "10.30.0.5:22"]},
-    {
-      "src": "tag:router",
-      "proto": "tcp",
-      "deny": ["operator@:22", "operator@:443", "tag:hub:443", "tag:hub:22"],
-    },
-    {"src": "operator@", "proto": "tcp", "deny": ["tag:router:22"]},
-    {"src": "tag:hub", "proto": "tcp", "deny": ["tag:router:22"]},
-
-    // Needs the office 2 router (tag:router, tag:site-office2).
-    {
-      "src": "tag:site-office2",
-      "proto": "tcp",
-      "accept": ["10.30.0.5:22"],
-      "deny": ["10.10.0.5:22", "10.20.0.5:22", "operator@:22", "tag:hub:443"],
-    },
-    {"src": "10.30.0.5", "deny": ["operator@:22", "tag:hub:443", "10.10.0.5:22"]},
   ],
 }

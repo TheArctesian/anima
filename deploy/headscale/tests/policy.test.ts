@@ -25,10 +25,36 @@ const allowed = (connection: Connection, under: Policy = policy, inventory = nod
 const withGrants = (grants: unknown[]): Policy => parsePolicy({ ...raw, grants });
 const withTests = (tests: unknown[]): Policy => parsePolicy({ ...raw, tests });
 
+/**
+ * Test rows that need a router node. Headscale refuses the policy while a row names a tag no node
+ * has, so each group moves into the policy's tests block once its router is enrolled.
+ */
+const ROUTER_ROWS = [
+  // The home router (tag:router, tag:site-home).
+  { src: 'tag:site-home', proto: 'tcp', accept: ['10.10.0.5:22'], deny: ['10.20.0.5:22', '10.30.0.5:22', 'operator@:22', 'tag:hub:443'] },
+  { src: '10.10.0.5', deny: ['operator@:22', 'tag:hub:443', '10.30.0.5:22'] },
+  { src: 'tag:router', proto: 'tcp', deny: ['operator@:22', 'operator@:443', 'tag:hub:443', 'tag:hub:22'] },
+  { src: 'operator@', proto: 'tcp', deny: ['tag:router:22'] },
+  { src: 'tag:hub', proto: 'tcp', deny: ['tag:router:22'] },
+  // The office 2 router (tag:router, tag:site-office2).
+  { src: 'tag:site-office2', proto: 'tcp', accept: ['10.30.0.5:22'], deny: ['10.10.0.5:22', '10.20.0.5:22', 'operator@:22', 'tag:hub:443'] },
+  { src: '10.30.0.5', deny: ['operator@:22', 'tag:hub:443', '10.10.0.5:22'] },
+];
+
 describe('policy tests block', () => {
   test('vpn_004 every row of the policy tests block passes in the evaluator', () => {
     expect(policy.tests.length).toBeGreaterThan(0);
     expect(runPolicyTests(policy, nodes)).toEqual([]);
+  });
+
+  test('vpn_004 every router row waiting for its router passes in the evaluator', () => {
+    expect(runPolicyTests(withTests(ROUTER_ROWS), nodes)).toEqual([]);
+  });
+
+  test('vpn_004 the policy tests block names only identities that exist before any router enrols', () => {
+    const named = policy.tests.flatMap((row) => [row.src, ...[...(row.accept ?? []), ...(row.deny ?? [])]]);
+    expect(named.filter((selector) => selector.startsWith('tag:') && !selector.startsWith('tag:hub'))).toEqual([]);
+    expect(named.filter((selector) => /^10\./.test(selector) && !selector.includes(':'))).toEqual([]);
   });
 
   test('vpn_004 the tests block runner reports a row the policy contradicts', () => {
@@ -211,7 +237,7 @@ describe('evaluator rules', () => {
 
 describe('policy structure', () => {
   const grants = raw.grants as { src: string[]; dst: string[]; ip: string[] }[];
-  const rows = raw.tests as { src: string; accept?: string[]; deny?: string[] }[];
+  const rows = [...(raw.tests as unknown[]), ...ROUTER_ROWS] as { src: string; accept?: string[]; deny?: string[] }[];
   const tagOwners = raw.tagOwners as Record<string, string[]>;
   const hosts = raw.hosts as Record<string, string>;
   const selectors = [
