@@ -7,6 +7,7 @@ import type {
   HttpMethod,
   IpVersion,
 } from './hub-types';
+import { blankProbes, withProbeConfig, type ProbeValues } from '../probes/values';
 
 export interface HeaderRow {
   name: string;
@@ -21,7 +22,7 @@ export interface StatusRow {
 }
 
 /** What the operator typed. Number fields stay text so that "abc" in the port box is reportable. */
-export interface CheckFormValues {
+export interface CheckFormValues extends ProbeValues {
   type: CheckType;
   name: string;
   intervalSeconds: string;
@@ -92,6 +93,7 @@ function blank(type: CheckType): CheckFormValues {
     dns: { name: '', recordType: 'A', resolver: '', expected: '' },
     push: { path: '' },
     group: { childIds: [] },
+    ...blankProbes(),
   };
 }
 
@@ -144,6 +146,8 @@ function withConfig(values: CheckFormValues, config: CheckConfigFields): CheckFo
       return { ...values, push: { path: config.pushPath } };
     case 'GroupConfig':
       return { ...values, group: { childIds: config.children.map((child) => child.id) } };
+    default:
+      return withProbeConfig(values, config);
   }
 }
 

@@ -8,12 +8,19 @@
   import { fieldErrorsFrom } from '../field-errors';
   import type { ConnectionTestInput } from '$lib/hub/generated/graphql';
   import type { ConnectionTestResult } from '../connection-test';
+  import type { PendingConnectionTestInput, PendingConnectionTestResult } from '../../hub-pending';
+  import RemoteTest from '../remote/test/RemoteTest.svelte';
   import { suggestedSite, validateNewSite, type NewSite, type SitePlacement } from '../site';
   import { validateDevice } from '../validate';
   import { formValues, type DeviceFields, type DeviceFormValues, type SiteOption } from '../values';
   import type { EditedValues } from './editing';
-  import { firstInvalidField, formErrors, inputId, replaceField } from './errors';
+  import { firstInvalidField, formErrors, inputId, replaceField, sectionOf } from './errors';
   import GeneralSection from './GeneralSection.svelte';
+  import { emptyRemoteSecrets } from '../remote/values';
+  import RdpSection from '../remote/RdpSection.svelte';
+  import TransferSection from '../remote/TransferSection.svelte';
+  import VncSection from '../remote/VncSection.svelte';
+  import { vncWarning } from '../remote/warnings';
   import SshSection from './SshSection.svelte';
   import TestConnection from './TestConnection.svelte';
 
@@ -28,18 +35,28 @@
     deviceId?: string | null;
     /** K1 `credentialStored` of the saved device. */
     credentialStored?: boolean;
+    /** K1 `rdp.credentialStored` and `vnc.credentialStored` of the saved device. */
+    rdpCredentialStored?: boolean;
+    vncCredentialStored?: boolean;
     sites?: readonly SiteOption[];
     /**
      * The section to open and bring into view (DEV-022), whenever it changes; `test` is the SSH section's
      * Test connection button (D-8: SSH on without an accepted host key).
      */
-    section?: 'general' | 'ssh' | 'rdp' | 'test';
+    section?: 'general' | 'ssh' | 'rdp' | 'vnc' | 'test';
     /** `site` is null when editing. The values are a snapshot with secrets in it: the owner must not keep it. */
     onSave: (values: DeviceFormValues, site: SitePlacement | null) => Promise<HubResult<unknown>>;
-    onTest: (input: ConnectionTestInput) => Promise<HubResult<ConnectionTestResult>>;
+    onTest: (
+      input: ConnectionTestInput & PendingConnectionTestInput,
+    ) => Promise<HubResult<ConnectionTestResult & Partial<PendingConnectionTestResult>>>;
     /** Only for a saved device. */
     onAcceptHostKey: (fingerprint: string) => Promise<HubResult<unknown>>;
+    /** K1 `acceptServerCertificate`, only for a saved device. Without it the Accept certificate button is hidden (D-4). */
+    onAcceptServerCertificate?: (fingerprint: string) => Promise<HubResult<unknown>>;
     onClearCredential: () => Promise<HubResult<unknown>>;
+    /** Without these the RDP and VNC Remove buttons are hidden (D-4). */
+    onClearRdpCredential?: () => Promise<HubResult<unknown>>;
+    onClearVncCredential?: () => Promise<HubResult<unknown>>;
     onCancel: () => void;
   }
 
@@ -49,12 +66,17 @@
     remoteLoginOff = false,
     deviceId = null,
     credentialStored = false,
+    rdpCredentialStored = false,
+    vncCredentialStored = false,
     sites = [],
     section,
     onSave,
     onTest,
     onAcceptHostKey,
+    onAcceptServerCertificate,
     onClearCredential,
+    onClearRdpCredential,
+    onClearVncCredential,
     onCancel,
   }: Props = $props();
 
@@ -80,6 +102,8 @@
   let general = $state(true);
   let ssh = $state(untrack(() => section !== 'rdp'));
   let rdp = $state(untrack(() => section === 'rdp'));
+  let vnc = $state(untrack(() => section === 'vnc'));
+  let files = $state(false);
   let root = $state<HTMLElement>();
 
   const creating = $derived(device === null);
@@ -89,6 +113,7 @@
     general: '[data-section="general"] button',
     ssh: '[data-section="ssh"] button',
     rdp: '[data-section="rdp"] button',
+    vnc: '[data-section="vnc"] button',
     test: '[data-section="ssh"] [data-connection-test]',
   } as const;
 
@@ -99,6 +124,7 @@
     untrack(() => {
       if (wanted === 'general') general = true;
       else if (wanted === 'rdp') rdp = true;
+      else if (wanted === 'vnc') vnc = true;
       else ssh = true;
     });
     const reach = () => {
@@ -122,9 +148,15 @@
       if (typeof alert?.scrollIntoView === 'function') alert.scrollIntoView({ block: 'nearest' });
       return;
     }
-    if (field.startsWith('ssh.') || field.startsWith('credential.')) ssh = true;
+    openSection(sectionOf(field));
     await tick();
     root?.querySelector<HTMLElement>(`#${inputId(field)}`)?.focus();
+  }
+
+  function openSection(name: 'ssh' | 'rdp' | 'vnc' | undefined): void {
+    if (name === 'ssh') ssh = true;
+    else if (name === 'rdp') rdp = true;
+    else if (name === 'vnc') vnc = true;
   }
 
   function checkHost(): void {
@@ -161,6 +193,7 @@
     saving = false;
     if (result.ok) {
       values.credential = { password: '', privateKey: '', passphrase: '' };
+      values.remoteSecrets = emptyRemoteSecrets();
       errors = [];
       saves += 1;
     } else {
@@ -168,10 +201,11 @@
     }
   }
 
-  async function clearCredential(): Promise<void> {
+  /** Runs a remove-credential call at once (D-6); the error, if any, is shown. */
+  async function clearWith(remove: () => Promise<HubResult<unknown>>): Promise<void> {
     if (clearing) return;
     clearing = true;
-    const result = await onClearCredential();
+    const result = await remove();
     clearing = false;
     if (!result.ok) errors = fieldErrorsFrom(result.error);
   }
@@ -198,7 +232,7 @@
     </div>
     <div data-section="ssh">
       <Disclosure label="SSH" level={3} bind:open={ssh}>
-        <SshSection bind:values {errors} {credentialStored} {clearing} onClearCredential={clearCredential} />
+        <SshSection bind:values {errors} {credentialStored} {clearing} onClearCredential={() => void clearWith(onClearCredential)} />
         <RemoteLoginButton sshOff={remoteLoginOff} />
         {#if values.ssh.enabled}
           {#key saves}
@@ -209,7 +243,41 @@
     </div>
     <div data-section="rdp">
       <Disclosure label="Remote Desktop (RDP)" level={3} bind:open={rdp}>
-        <p>RDP comes in a later version of Anima.</p>
+        <RdpSection
+          bind:values
+          {errors}
+          credentialStored={rdpCredentialStored}
+          serverCertificate={device?.rdp?.serverCertificate ?? null}
+          {clearing}
+          onClearCredential={onClearRdpCredential && (() => void clearWith(onClearRdpCredential))}
+        />
+        {#if values.rdp.enabled}
+          {#key saves}
+            <RemoteTest protocol="RDP" {initial} {values} {deviceId} {canTest} acceptedFingerprint={device?.rdp?.serverCertificate?.fingerprintSha256} {onTest} {onAcceptServerCertificate} />
+          {/key}
+        {/if}
+      </Disclosure>
+    </div>
+    <div data-section="vnc">
+      <Disclosure label="VNC" level={3} bind:open={vnc}>
+        <VncSection
+          bind:values
+          {errors}
+          credentialStored={vncCredentialStored}
+          warning={vncWarning(device?.accessWarnings ?? [])}
+          {clearing}
+          onClearCredential={onClearVncCredential && (() => void clearWith(onClearVncCredential))}
+        />
+        {#if values.vnc.enabled}
+          {#key saves}
+            <RemoteTest protocol="VNC" {initial} {values} {deviceId} {canTest} {onTest} />
+          {/key}
+        {/if}
+      </Disclosure>
+    </div>
+    <div data-section="files">
+      <Disclosure label="Files and clipboard" level={3} bind:open={files}>
+        <TransferSection bind:values />
       </Disclosure>
     </div>
     {#if footer === undefined}

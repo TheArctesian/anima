@@ -2,6 +2,7 @@ import type { FieldError } from '$lib/hub/error';
 import { isValidHost, normalizeHost } from '$lib/forms/device/host';
 import { configChanged } from './config-input';
 import { integerError, LIMITS, lengthError, portError, timeoutError } from './range';
+import { probeErrors } from '../probes/validate';
 import { validateHttp } from './validate-http';
 import type { CheckFormValues } from './values';
 
@@ -51,6 +52,8 @@ function typeErrors(values: CheckFormValues, configSent: boolean): FieldError[] 
       return groupErrors(values.group);
     case 'PUSH':
       return [];
+    default:
+      return probeErrors(values, values.type, configSent);
   }
 }
 

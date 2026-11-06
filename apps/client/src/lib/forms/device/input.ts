@@ -1,4 +1,6 @@
 import type { CreateDeviceInput, SshCredentialInput, SshSettingsInput, UpdateDeviceInput } from '$lib/hub/generated/graphql';
+import { createAdditions, updateAdditions } from './remote/input';
+import type { PendingDeviceInput } from '../hub-pending';
 import { isVpnAddress } from './site';
 import { normalizedValues, portToSend, type DeviceFormValues } from './values';
 
@@ -32,7 +34,7 @@ export function tcpDefaultCheckPort(values: DeviceFormValues): number | null {
 }
 
 /** DEV-010: the create mutation input. The hub adds the default ICMP check (Section 6.2), unless R-063 applies. */
-export function createInput(values: DeviceFormValues, siteId: string): CreateDeviceInput {
+export function createInput(values: DeviceFormValues, siteId: string): CreateDeviceInput & PendingDeviceInput {
   const now = normalizedValues(values);
   return {
     siteId,
@@ -42,12 +44,13 @@ export function createInput(values: DeviceFormValues, siteId: string): CreateDev
     os: now.os,
     tags: [...now.tags],
     ...(now.ssh.enabled ? { ssh: sshInput(now.ssh) } : {}),
+    ...createAdditions(values),
     addDefaultCheck: tcpDefaultCheckPort(values) === null,
   };
 }
 
 /** DEV-010: only the fields that differ from `initial`; an unchanged form gives `{}`. SSH goes whole, as the hub input needs all its parts. */
-export function updateInput(initial: DeviceFormValues, values: DeviceFormValues): UpdateDeviceInput {
+export function updateInput(initial: DeviceFormValues, values: DeviceFormValues): UpdateDeviceInput & PendingDeviceInput {
   const before = normalizedValues(initial);
   const now = normalizedValues(values);
   return {
@@ -57,6 +60,7 @@ export function updateInput(initial: DeviceFormValues, values: DeviceFormValues)
     ...(now.os !== before.os ? { os: now.os } : {}),
     ...(sameTags(now.tags, before.tags) ? {} : { tags: [...now.tags] }),
     ...(sameSsh(before.ssh, now.ssh) ? {} : { ssh: sshInput(now.ssh, before.ssh.port) }),
+    ...updateAdditions(initial, values),
   };
 }
 

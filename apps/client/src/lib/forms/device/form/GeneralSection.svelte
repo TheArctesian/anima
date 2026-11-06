@@ -4,6 +4,7 @@
   import type { NewSite } from '../site';
   import type { SiteOption } from '../values';
   import type { EditedValues } from './editing';
+  import type { MetricsSource } from '../../hub-pending';
   import Field from './Field.svelte';
   import TagsField from './TagsField.svelte';
 
@@ -25,6 +26,10 @@
     { value: 'MACOS', label: 'macOS' },
     { value: 'WINDOWS', label: 'Windows' },
     { value: 'OTHER', label: 'Other' },
+  ];
+  const METRICS: readonly { value: MetricsSource; label: string }[] = [
+    { value: 'NONE', label: 'None' },
+    { value: 'SSH', label: 'SSH' },
   ];
   const KINDS = ['server', 'router', 'switch', 'workstation', 'laptop', 'printer'] as const;
 </script>
@@ -77,6 +82,20 @@
     <select {...attributes} bind:value={values.os}>
       {#each SYSTEMS as system (system.value)}
         <option value={system.value}>{system.label}</option>
+      {/each}
+    </select>
+  {/snippet}
+</Field>
+<Field label="MAC address" field="macAddress" {errors} hint="Optional. Lets Anima wake the device. For example aa:bb:cc:dd:ee:ff.">
+  {#snippet control(attributes)}
+    <input {...attributes} bind:value={values.macAddress} autocomplete="off" spellcheck="false" />
+  {/snippet}
+</Field>
+<Field label="Metrics source" field="metricsSource" {errors}>
+  {#snippet control(attributes)}
+    <select {...attributes} bind:value={values.metricsSource}>
+      {#each METRICS as source (source.value)}
+        <option value={source.value}>{source.label}</option>
       {/each}
     </select>
   {/snippet}

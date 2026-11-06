@@ -3,7 +3,27 @@ import { FORM_FIELD } from '../field-errors';
 import type { TestOutcome } from '../connection-test';
 
 /** The fields that have an input, in the order they appear on screen. */
-const FIELD_ORDER = ['name', 'host', 'site.name', 'site.subnet', 'siteId', 'ssh.port', 'ssh.username', 'credential.privateKey.key'] as const;
+const FIELD_ORDER = [
+  'name',
+  'host',
+  'site.name',
+  'site.subnet',
+  'siteId',
+  'macAddress',
+  'ssh.port',
+  'ssh.username',
+  'credential.privateKey.key',
+  'rdp.port',
+  'rdp.username',
+  'vnc.port',
+] as const;
+
+/** The disclosure that holds an error's input, or undefined for General and for errors that have no input. */
+export function sectionOf(field: string): 'ssh' | 'rdp' | 'vnc' | undefined {
+  if (field.startsWith('ssh.') || field.startsWith('credential.')) return 'ssh';
+  if (field.startsWith('rdp.')) return 'rdp';
+  return field.startsWith('vnc.') ? 'vnc' : undefined;
+}
 
 /** The first error of `field`, or undefined. */
 export function errorFor(errors: readonly FieldError[], field: string): FieldError | undefined {

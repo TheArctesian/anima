@@ -46,6 +46,10 @@ const BY_TYPE: Record<CheckFormValues['type'], readonly string[]> = {
   DNS: ['dnsName', 'resolver', 'expected'],
   PUSH: [],
   GROUP: ['childIds'],
+  DOCKER: ['container', 'timeoutMs'],
+  SYSTEMD: ['unit', 'timeoutMs'],
+  SNMP: ['port', 'version', 'oid', 'expected', 'community', 'username', 'authPassword', 'privacyPassword', 'timeoutMs'],
+  TAILSCALE_PING: ['target', 'timeoutMs'],
 };
 
 /** The field names that have an input on screen for `values` (the Advanced ones are opened when needed). */
