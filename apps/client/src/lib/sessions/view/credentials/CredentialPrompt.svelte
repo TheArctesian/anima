@@ -154,8 +154,7 @@
 
   .shade {
     block-size: 100%;
-    background: var(--bg);
-    opacity: 0.72;
+    background: var(--scrim);
   }
 
   .surface {
