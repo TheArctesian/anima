@@ -352,10 +352,10 @@ enum CheckType {
   DNS
   PUSH
   GROUP
-  DOCKER @pending
+  DOCKER
   SNMP @pending
   TAILSCALE_PING @pending
-  SYSTEMD @pending
+  SYSTEMD
 }
 
 type Check {
@@ -382,13 +382,13 @@ type Check {
 union CheckConfig = IcmpConfig | TcpConfig | TlsConfig | HttpConfig | DnsConfig | PushConfig | GroupConfig | DockerConfig | SnmpConfig | TailscalePingConfig | SystemdConfig
 
 "Up when running (and healthy, when a health check exists); Degraded when starting; else Down. Through the SSH link (D-3)."
-type DockerConfig @pending {
+type DockerConfig {
   container: String!
   timeoutMs: Int!
 }
 
 "Up when ActiveState is active. Through the SSH link (D-3)."
-type SystemdConfig @pending {
+type SystemdConfig {
   unit: String!
   timeoutMs: Int!
 }
@@ -513,18 +513,18 @@ input CheckConfigInput @oneOf {
   dns: DnsConfigInput
   push: Boolean
   group: GroupConfigInput
-  docker: DockerConfigInput @pending
+  docker: DockerConfigInput
   snmp: SnmpConfigInput @pending
   tailscalePing: TailscalePingConfigInput @pending
-  systemd: SystemdConfigInput @pending
+  systemd: SystemdConfigInput
 }
 
-input DockerConfigInput @pending {
+input DockerConfigInput {
   container: String!
   timeoutMs: Int = 10000
 }
 
-input SystemdConfigInput @pending {
+input SystemdConfigInput {
   unit: String!
   timeoutMs: Int = 10000
 }

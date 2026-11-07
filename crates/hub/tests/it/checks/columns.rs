@@ -18,7 +18,20 @@ const RANGES: [(&str, [i32; 2], [i32; 2]); 5] = [
     ("failures", [0, 1_000_000], [-1, i32::MIN]),
 ];
 
-const TYPES: [&str; 7] = ["icmp", "tcp", "tls", "http", "dns", "push", "group"];
+/// The seven Phase 1 ids and the four Phase 2 ids that migration 0310 adds (CHK-009).
+const TYPES: [&str; 11] = [
+    "icmp",
+    "tcp",
+    "tls",
+    "http",
+    "dns",
+    "push",
+    "group",
+    "docker",
+    "systemd",
+    "snmp",
+    "tailscale_ping",
+];
 
 async fn set(pool: &PgPool, column: &str, value: i32) -> Result<(), sqlx::Error> {
     sqlx::query(&format!(
@@ -197,7 +210,7 @@ async fn chk_009_only_the_fixed_lower_case_type_ids_are_accepted(pool: PgPool) {
             .await
             .unwrap();
     }
-    for kind in ["ICMP", "docker", "", "tcp "] {
+    for kind in ["ICMP", "ping", "Docker", "", "tcp "] {
         let error = insert_check(&pool, (Uuid::now_v7(), PVE_01), (kind, "x"), None)
             .await
             .unwrap_err();
