@@ -5,6 +5,7 @@
   import { press } from '$lib/motion/roles/press';
   import { listRow, popover } from '$lib/motion/roles/transitions';
   import { reorderMotion } from '$lib/motion/roles/reorder.svelte';
+  import { coverWhile } from '../overlay.svelte';
   import { liveLabel, nextTabStop, startedTime } from './live';
   import { watchLiveSessions } from './live.svelte';
   import { STOP_REFUSED } from './stopping.svelte';
@@ -21,6 +22,7 @@
   const live = watchLiveSessions(hub);
   const id = $props.id();
   let open = $state(false);
+  coverWhile(() => open);
   let root: HTMLElement | undefined;
   let button = $state<HTMLButtonElement>();
   let panel = $state<HTMLElement>();

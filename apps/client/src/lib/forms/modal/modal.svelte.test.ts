@@ -2,6 +2,7 @@
 import { flushSync, mount, tick, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { HubResult } from '$lib/hub/error';
+import { overlayCovers } from '../../sessions/overlay.svelte';
 import { installAnimations } from '../animations.fixture';
 import ConfirmModal from './ConfirmModal.svelte';
 import HostKeyModal from './HostKeyModal.svelte';
@@ -280,4 +281,37 @@ it('D-5: an unsaved device has no Accept button and says the key can be accepted
 
   expect(() => button('Accept')).toThrow();
   expect(document.querySelector('[role="dialog"]')?.textContent).toContain('Save the device, then test again to accept this key.');
+});
+
+it('MAT-008, WEB-005: with two modals open, closing one keeps the panes covered until the other closes', () => {
+  const first = $state({ open: true });
+  const second = $state({ open: true });
+  const props = (state: { open: boolean }) => ({
+    get open() {
+      return state.open;
+    },
+    title: 'Delete nas?',
+    body: 'Its credentials go too.',
+    confirmLabel: 'Delete nas',
+    onConfirm: () => Promise.resolve(OK),
+    onCancel: () => undefined,
+  });
+  const apps = [mount(ConfirmModal, { target: document.body, props: props(first) }), mount(ConfirmModal, { target: document.body, props: props(second) })];
+  flushSync();
+  expect(overlayCovers()).toBe(true);
+  first.open = false;
+  flushSync();
+  expect(overlayCovers()).toBe(true);
+  second.open = false;
+  flushSync();
+  expect(overlayCovers()).toBe(false);
+  for (const modal of apps) void unmount(modal);
+});
+
+it('MAT-008, WEB-005: destroying an open modal lowers the count', async () => {
+  confirmation(() => Promise.resolve(OK), () => undefined);
+  expect(overlayCovers()).toBe(true);
+  if (app) await unmount(app);
+  app = undefined;
+  expect(overlayCovers()).toBe(false);
 });
