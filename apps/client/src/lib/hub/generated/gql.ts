@@ -58,6 +58,8 @@ type Documents = {
     "\n  mutation SetVncCredential($deviceId: ID!, $credential: PasswordCredentialInput!) {\n    setVncCredential(deviceId: $deviceId, credential: $credential) {\n      credentialStored\n    }\n  }\n": typeof types.SetVncCredentialDocument,
     "\n  query DeviceSessions($deviceId: ID!, $first: Int, $after: String) {\n    sessions(deviceId: $deviceId, first: $first, after: $after) {\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n      edges {\n        node {\n          id\n          protocol\n          operatorName\n          startedAt\n          endedAt\n          endReason\n        }\n      }\n    }\n  }\n": typeof types.DeviceSessionsDocument,
     "\n  mutation OpenFiles($sessionId: ID!) {\n    openFiles(sessionId: $sessionId) {\n      sessionId\n      token\n      tunnelPath\n      expiresAt\n    }\n  }\n": typeof types.OpenFilesDocument,
+    "\n  query LiveSessions($first: Int) {\n    sessions(live: true, first: $first) {\n      edges {\n        node {\n          id\n          deviceId\n          deviceName\n          protocol\n          operatorName\n          startedAt\n          clientAddr\n        }\n      }\n    }\n  }\n": typeof types.LiveSessionsDocument,
+    "\n  subscription LiveSessionChanged {\n    sessionChanged {\n      session {\n        id\n        deviceId\n        deviceName\n        protocol\n        operatorName\n        startedAt\n        clientAddr\n        endedAt\n        endReason\n      }\n    }\n  }\n": typeof types.LiveSessionChangedDocument,
     "\n  mutation WakeDevice($deviceId: ID!) {\n    wakeDevice(deviceId: $deviceId) {\n      sentAt\n      relayName\n    }\n  }\n": typeof types.WakeDeviceDocument,
     "\n  mutation AcceptWebCertificate($id: ID!, $fingerprintSha256: String!) {\n    acceptWebCertificate(id: $id, fingerprintSha256: $fingerprintSha256) {\n      id\n      pinnedFingerprintSha256\n      pinnedAt\n    }\n  }\n": typeof types.AcceptWebCertificateDocument,
     "\n  fragment WebInterfaceSuggestionFields on WebInterfaceSuggestion {\n    checkId\n    url\n    label\n  }\n": typeof types.WebInterfaceSuggestionFieldsFragmentDoc,
@@ -113,6 +115,8 @@ const documents: Documents = {
     "\n  mutation SetVncCredential($deviceId: ID!, $credential: PasswordCredentialInput!) {\n    setVncCredential(deviceId: $deviceId, credential: $credential) {\n      credentialStored\n    }\n  }\n": types.SetVncCredentialDocument,
     "\n  query DeviceSessions($deviceId: ID!, $first: Int, $after: String) {\n    sessions(deviceId: $deviceId, first: $first, after: $after) {\n      pageInfo {\n        hasNextPage\n        endCursor\n      }\n      edges {\n        node {\n          id\n          protocol\n          operatorName\n          startedAt\n          endedAt\n          endReason\n        }\n      }\n    }\n  }\n": types.DeviceSessionsDocument,
     "\n  mutation OpenFiles($sessionId: ID!) {\n    openFiles(sessionId: $sessionId) {\n      sessionId\n      token\n      tunnelPath\n      expiresAt\n    }\n  }\n": types.OpenFilesDocument,
+    "\n  query LiveSessions($first: Int) {\n    sessions(live: true, first: $first) {\n      edges {\n        node {\n          id\n          deviceId\n          deviceName\n          protocol\n          operatorName\n          startedAt\n          clientAddr\n        }\n      }\n    }\n  }\n": types.LiveSessionsDocument,
+    "\n  subscription LiveSessionChanged {\n    sessionChanged {\n      session {\n        id\n        deviceId\n        deviceName\n        protocol\n        operatorName\n        startedAt\n        clientAddr\n        endedAt\n        endReason\n      }\n    }\n  }\n": types.LiveSessionChangedDocument,
     "\n  mutation WakeDevice($deviceId: ID!) {\n    wakeDevice(deviceId: $deviceId) {\n      sentAt\n      relayName\n    }\n  }\n": types.WakeDeviceDocument,
     "\n  mutation AcceptWebCertificate($id: ID!, $fingerprintSha256: String!) {\n    acceptWebCertificate(id: $id, fingerprintSha256: $fingerprintSha256) {\n      id\n      pinnedFingerprintSha256\n      pinnedAt\n    }\n  }\n": types.AcceptWebCertificateDocument,
     "\n  fragment WebInterfaceSuggestionFields on WebInterfaceSuggestion {\n    checkId\n    url\n    label\n  }\n": types.WebInterfaceSuggestionFieldsFragmentDoc,
@@ -314,6 +318,14 @@ export function graphql(source: "\n  query DeviceSessions($deviceId: ID!, $first
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  mutation OpenFiles($sessionId: ID!) {\n    openFiles(sessionId: $sessionId) {\n      sessionId\n      token\n      tunnelPath\n      expiresAt\n    }\n  }\n"): (typeof documents)["\n  mutation OpenFiles($sessionId: ID!) {\n    openFiles(sessionId: $sessionId) {\n      sessionId\n      token\n      tunnelPath\n      expiresAt\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query LiveSessions($first: Int) {\n    sessions(live: true, first: $first) {\n      edges {\n        node {\n          id\n          deviceId\n          deviceName\n          protocol\n          operatorName\n          startedAt\n          clientAddr\n        }\n      }\n    }\n  }\n"): (typeof documents)["\n  query LiveSessions($first: Int) {\n    sessions(live: true, first: $first) {\n      edges {\n        node {\n          id\n          deviceId\n          deviceName\n          protocol\n          operatorName\n          startedAt\n          clientAddr\n        }\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  subscription LiveSessionChanged {\n    sessionChanged {\n      session {\n        id\n        deviceId\n        deviceName\n        protocol\n        operatorName\n        startedAt\n        clientAddr\n        endedAt\n        endReason\n      }\n    }\n  }\n"): (typeof documents)["\n  subscription LiveSessionChanged {\n    sessionChanged {\n      session {\n        id\n        deviceId\n        deviceName\n        protocol\n        operatorName\n        startedAt\n        clientAddr\n        endedAt\n        endReason\n      }\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

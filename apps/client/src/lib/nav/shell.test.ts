@@ -46,6 +46,9 @@ vi.mock('$lib/hub/hub', async (importOriginal) => ({
           return fake.status;
         },
       },
+      // The live-session item asks the hub; nothing answers here.
+      request: () => new Promise(() => undefined),
+      subscribe: () => () => undefined,
       close: () => fake.close(),
     } as unknown as Hub;
   },
