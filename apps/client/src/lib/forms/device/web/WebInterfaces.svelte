@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { HubResult } from '$lib/hub/error';
   import FormButton from '../../FormButton.svelte';
-  import type { WebInterface, WebInterfaceInput, WebInterfaceSuggestion } from '../../hub-pending';
+  import type { WebInterface, WebInterfaceInput, WebInterfaceSuggestion } from '$lib/web-interfaces/api';
   import ConfirmModal from '../../modal/ConfirmModal.svelte';
   import Suggestions from './Suggestions.svelte';
   import WebInterfaceRow from './WebInterfaceRow.svelte';

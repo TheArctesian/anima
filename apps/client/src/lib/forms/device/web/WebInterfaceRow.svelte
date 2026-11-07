@@ -2,7 +2,7 @@
   import { fieldErrorsFrom } from '../field-errors';
   import type { FieldError, HubResult } from '$lib/hub/error';
   import FormButton from '../../FormButton.svelte';
-  import type { WebInterface, WebInterfaceInput } from '../../hub-pending';
+  import type { WebInterface, WebInterfaceInput } from '$lib/web-interfaces/api';
   import { OPEN_IN_CHOICES, validateWeb, webChanged, webInput, webValuesFrom } from './interface';
 
   interface Props {

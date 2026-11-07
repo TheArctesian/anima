@@ -22,6 +22,24 @@ const DETAIL: DeviceDetail = {
     credentialStored: true,
     hostKey: { algorithm: 'ssh-ed25519', fingerprintSha256: 'SHA256:abc', firstSeenAt: '2026-11-04T10:00:00Z' },
   },
+  macAddress: null,
+  metricsSource: 'NONE',
+  accessWarnings: [],
+  rdp: {
+    enabled: false,
+    port: 3389,
+    username: '',
+    domain: null,
+    security: 'ANY',
+    ignoreCertificate: false,
+    resizeMethod: 'DISPLAY_UPDATE',
+    audioOut: true,
+    microphone: false,
+    sharedDrive: false,
+    credentialStored: false,
+  },
+  vnc: { enabled: false, port: 5900, username: null, credentialStored: false },
+  transfer: { upload: true, download: true, copy: true, paste: true },
   day: 0.999,
   week: 0.99,
   month: null,
@@ -77,11 +95,27 @@ describe('devicesApi: device detail and form (API-008, CQ-045, DEV-010)', () => 
     expect(await devicesApi(fake.hub).setSshCredential('d1', credential)).toEqual({ ok: true, value: { credentialStored: true } });
     expect(fake.requests).toEqual([{ operation: 'SetSshCredential', variables: { deviceId: 'd1', credential } }]);
   });
+});
 
+describe('devicesApi: stored credentials (API-008, DEV-011)', () => {
   it('DEV-011: clearSshCredential sends the device ID and returns credentialStored false', async () => {
     const fake = fakeHub({ ClearSshCredential: { clearSshCredential: { credentialStored: false } } });
     expect(await devicesApi(fake.hub).clearSshCredential('d1')).toEqual({ ok: true, value: { credentialStored: false } });
     expect(fake.requests).toEqual([{ operation: 'ClearSshCredential', variables: { deviceId: 'd1' } }]);
+  });
+
+  it('RA-011: clearRdpCredential and clearVncCredential send the device ID and return credentialStored false', async () => {
+    const fake = fakeHub({
+      ClearRdpCredential: { clearRdpCredential: { credentialStored: false } },
+      ClearVncCredential: { clearVncCredential: { credentialStored: false } },
+    });
+    const api = devicesApi(fake.hub);
+    expect(await api.clearRdpCredential('d1')).toEqual({ ok: true, value: { credentialStored: false } });
+    expect(await api.clearVncCredential('d1')).toEqual({ ok: true, value: { credentialStored: false } });
+    expect(fake.requests).toEqual([
+      { operation: 'ClearRdpCredential', variables: { deviceId: 'd1' } },
+      { operation: 'ClearVncCredential', variables: { deviceId: 'd1' } },
+    ]);
   });
 
   it('K7: NOT_FOUND from delete and an unreachable hub pass through', async () => {

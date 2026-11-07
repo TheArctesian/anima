@@ -1,5 +1,9 @@
 import { graphql } from '$lib/hub/generated';
 import type {
+  AccessWarning,
+  CardReadingsFragment,
+  ClearRdpCredentialMutation,
+  ClearVncCredentialMutation,
   CreateDeviceInput,
   DeviceHostsQuery,
   DeviceQuery,
@@ -10,6 +14,8 @@ import type {
   SshCredentialInput,
   UpdateDeviceInput,
 } from '$lib/hub/generated/graphql';
+import type { ServerCertificate } from '$lib/sessions/api';
+import type { WebInterface, WebInterfaceSuggestion } from '$lib/web-interfaces/api';
 import type { Hub, HubError, HubResult, Sink } from '$lib/hub/hub';
 
 const Devices = graphql(`
@@ -30,6 +36,14 @@ const Devices = graphql(`
           maintenance
           status
           uptime(window: DAY)
+          metricsSource
+          accessWarnings
+          rdp {
+            enabled
+          }
+          vnc {
+            enabled
+          }
           ssh {
             enabled
             hostKey {
@@ -117,9 +131,54 @@ void graphql(`
         firstSeenAt
       }
     }
+    macAddress
+    metricsSource
+    accessWarnings
+    rdp {
+      enabled
+      port
+      username
+      domain
+      security
+      ignoreCertificate
+      resizeMethod
+      audioOut
+      microphone
+      sharedDrive
+      credentialStored
+    }
+    vnc {
+      enabled
+      port
+      username
+      credentialStored
+    }
+    transfer {
+      upload
+      download
+      copy
+      paste
+    }
     day: uptime(window: DAY)
     week: uptime(window: WEEK)
     month: uptime(window: MONTH)
+  }
+`);
+
+// K1 `Device.readings` is not served yet (WP-26 D-1): codegen reads this fragment, no running document spreads it.
+void graphql(`
+  fragment CardReadings on Readings {
+    at
+    cpuPercent
+    memoryPercent
+    diskPercent
+    vramPercent
+    vramGpu {
+      index
+      name
+      vendor
+      hasVram
+    }
   }
 `);
 
@@ -189,14 +248,52 @@ const ClearSshCredential = graphql(`
   }
 `);
 
+const ClearRdpCredential = graphql(`
+  mutation ClearRdpCredential($deviceId: ID!) {
+    clearRdpCredential(deviceId: $deviceId) {
+      credentialStored
+    }
+  }
+`);
+
+const ClearVncCredential = graphql(`
+  mutation ClearVncCredential($deviceId: ID!) {
+    clearVncCredential(deviceId: $deviceId) {
+      credentialStored
+    }
+  }
+`);
+
 /** One page of the device list, as the hub answers it. */
 export type DevicePage = DevicesQuery['devices'];
 
+/** The latest metric readings of a device card (MET-004). */
+export type Readings = CardReadingsFragment;
+
+/** RA-020. */
+export type { AccessWarning };
+
 /** A device with every field a card or table row shows. */
-export type CardDevice = DevicePage['edges'][number]['node'];
+export type CardDevice = DevicePage['edges'][number]['node'] & {
+  /** Optional until the hub serves K1 `Device.readings`; then spread `CardReadings` into `Devices`. */
+  readonly readings?: Readings | null;
+  /** Optional until the hub serves K1 `Device.webInterfaces`; then spread `WebInterfaceFields` into `Devices`. */
+  readonly webInterfaces?: readonly WebInterface[];
+};
+
+type DeviceDetailRead = NonNullable<DeviceQuery['device']>;
 
 /** One device with everything the detail page and the device form show (DEV-020, D-10). */
-export type DeviceDetail = NonNullable<DeviceQuery['device']>;
+export type DeviceDetail = Omit<DeviceDetailRead, 'rdp'> & {
+  readonly rdp: DeviceDetailRead['rdp'] & {
+    /** Optional until the hub serves K1 `RdpSettings.serverCertificate`; then spread `RdpServerCertificate`. */
+    readonly serverCertificate?: ServerCertificate | null;
+  };
+  /** Optional until the hub serves K1 `Device.webInterfaces`; then spread `WebInterfaceFields` into `DeviceDetailFields`. */
+  readonly webInterfaces?: readonly WebInterface[];
+  /** Optional until the hub serves K1 `Device.webInterfaceSuggestions`; then spread `WebInterfaceSuggestionFields`. */
+  readonly webInterfaceSuggestions?: readonly WebInterfaceSuggestion[];
+};
 
 /** A site the Add device form can place a device in. */
 export type Site = SitesQuery['sites'][number];
@@ -242,6 +339,30 @@ async function createSite(hub: Hub, name: string, subnet: string): Promise<HubRe
   return result.ok ? { ok: true, value: result.value.createSite } : result;
 }
 
+/** The stored SSH, RDP and VNC secrets: set (SSH only here; RDP and VNC are set through the sessions client) and clear. */
+function credentialCalls(hub: Hub) {
+  return {
+    setSshCredential: async (deviceId: string, credential: SshCredentialInput): Promise<HubResult<StoredCredential>> => {
+      const result = await hub.request(SetSshCredential, { deviceId, credential });
+      return result.ok ? { ok: true, value: result.value.setSshCredential } : result;
+    },
+    clearSshCredential: async (deviceId: string): Promise<HubResult<StoredCredential>> => {
+      const result = await hub.request(ClearSshCredential, { deviceId });
+      return result.ok ? { ok: true, value: result.value.clearSshCredential } : result;
+    },
+    /** Removes the stored RDP password; resolves to the RDP settings' new `credentialStored`. */
+    clearRdpCredential: async (deviceId: string): Promise<HubResult<ClearRdpCredentialMutation['clearRdpCredential']>> => {
+      const result = await hub.request(ClearRdpCredential, { deviceId });
+      return result.ok ? { ok: true, value: result.value.clearRdpCredential } : result;
+    },
+    /** Removes the stored VNC password; resolves to the VNC settings' new `credentialStored`. */
+    clearVncCredential: async (deviceId: string): Promise<HubResult<ClearVncCredentialMutation['clearVncCredential']>> => {
+      const result = await hub.request(ClearVncCredential, { deviceId });
+      return result.ok ? { ok: true, value: result.value.clearVncCredential } : result;
+    },
+  };
+}
+
 /** The device list, tags and live status changes through a `Hub` (CQ-045). */
 export function devicesApi(hub: Hub) {
   return {
@@ -278,14 +399,7 @@ export function devicesApi(hub: Hub) {
       const result = await hub.request(DeleteDevice, { id });
       return result.ok ? { ok: true, value: result.value.deleteDevice } : result;
     },
-    setSshCredential: async (deviceId: string, credential: SshCredentialInput): Promise<HubResult<StoredCredential>> => {
-      const result = await hub.request(SetSshCredential, { deviceId, credential });
-      return result.ok ? { ok: true, value: result.value.setSshCredential } : result;
-    },
-    clearSshCredential: async (deviceId: string): Promise<HubResult<StoredCredential>> => {
-      const result = await hub.request(ClearSshCredential, { deviceId });
-      return result.ok ? { ok: true, value: result.value.clearSshCredential } : result;
-    },
+    ...credentialCalls(hub),
     /** Listen for status changes of every device; returns the function that stops listening. */
     watchStatus: (sink: Sink<StatusChange>): (() => void) =>
       hub.subscribe(

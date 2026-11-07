@@ -1,4 +1,4 @@
-import type { AccessWarning } from '../../hub-pending';
+import type { AccessWarning } from '$lib/devices/api';
 
 const RDP_WARNINGS = {
   ignoreCertificate: 'Ignoring the certificate means Anima cannot tell this device from an impostor.',
