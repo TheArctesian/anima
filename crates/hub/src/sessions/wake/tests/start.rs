@@ -12,9 +12,9 @@ use crate::{
     clock::{Clock, FixedClock},
     events::Bus,
     sessions::{
-        DisplayRequest, Live, Presented, Protocol, StartRequest, Ticket, Waking,
+        DisplayRequest, Error, Live, Presented, Protocol, StartRequest, Ticket, Waking,
         link::tests::{Bench, reaching},
-        start,
+        shut_down, start,
         tests::fixture::{LOOPBACK, address, now, operator},
     },
     status::Status,
@@ -31,6 +31,11 @@ async fn vnc_on(pool: &PgPool) {
 
 /// Starts a VNC session on `pve-01` from loopback as `status` judges it, on `live`.
 async fn started(bench: &Bench, live: &Live, status: Status) -> Ticket {
+    starting(bench, live, status).await.unwrap()
+}
+
+/// The start of [`started`], refused or not.
+async fn starting(bench: &Bench, live: &Live, status: Status) -> Result<Ticket, Error> {
     vnc_on(&bench.db).await;
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(now()));
     let request = StartRequest {
@@ -50,9 +55,7 @@ async fn started(bench: &Bench, live: &Live, status: Status) -> Ticket {
         }),
     };
     let client = address(LOOPBACK);
-    start(&bench.db, &clock, live, &operator(), client, request)
-        .await
-        .unwrap()
+    start(&bench.db, &clock, live, &operator(), client, request).await
 }
 
 #[sqlx::test(
@@ -137,4 +140,18 @@ async fn ra_031_a_wake_that_fails_leaves_the_start_standing_without_the_flag(poo
          installed there.",
     )
     .await;
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn ra_031_a_start_the_hub_refuses_sends_no_packet(pool: PgPool) {
+    let bench = relay(&pool, exiting(0)).await;
+    let live = Live::default();
+    shut_down(&bench.db, &live, now()).await.unwrap();
+    let refused = starting(&bench, &live, Status::Down).await;
+    assert!(matches!(refused, Err(Error::Unavailable)));
+    assert_eq!(bench.server.connections(), 0);
+    assert_eq!(events(&pool).await, []);
 }

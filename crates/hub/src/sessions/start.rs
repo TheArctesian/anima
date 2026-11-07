@@ -37,6 +37,7 @@ pub struct StartRequest {
     pub device: DeviceId,
     pub protocol: Protocol,
     pub display: DisplayRequest,
+    /// What a wake needs; `None` never wakes the device, whatever its status.
     pub wake: Option<Waking>,
 }
 
@@ -190,7 +191,8 @@ fn random_token() -> Result<TicketToken, Error> {
 /// a wake that fails leaves `wake_sent` false and the start goes on. Then, in one
 /// transaction, it writes the live session row and the audit entry `session.start`, and
 /// holds a ticket that the protocol's tunnel redeems once within 30 s from `client`. Tickets
-/// that expired unredeemed are swept first.
+/// that expired unredeemed are swept first, and a start the ticket table would refuse is
+/// `Unavailable` before any packet is sent.
 ///
 /// If the hub shut down while the commit was in flight, `shut_down` took the ticket but could
 /// not yet see the row; the row then ends here with `HUB_SHUTDOWN` and its audit entry, and
@@ -213,13 +215,17 @@ pub async fn start(
 ) -> Result<Ticket, Error> {
     let device = find_device(db, req.device).await?;
     let display = admit(db, live, &device, &req).await?;
+    sweep(db, live, clock.now()).await?;
+    // No packet for a start `issue` would refuse anyway.
+    if live.is_full() {
+        return Err(Error::Unavailable);
+    }
     let wake_sent = match &req.wake {
         Some(wake) => waking::sent(db, &device, wake, clock.now()).await?,
         None => false,
     };
     // Read after the wake, so the ticket still has its whole lifetime.
     let now = clock.now();
-    sweep(db, live, now).await?;
     let token = random_token()?;
     let pending = PendingTicket {
         operator: op.clone(),

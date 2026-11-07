@@ -18,7 +18,10 @@ use crate::{
     credentials::{self, Secret, SshSecret, Vault},
     events::{ClientAddr, Operator},
     ids::{DeviceId, OperatorId, SessionId},
-    sessions::{DisplayRequest, Protocol, PublicKey, StartRequest},
+    sessions::{
+        DisplayRequest, Live, PendingTicket, Protocol, PublicKey, StartRequest,
+        tickets::{TOKEN_BYTES, TicketToken},
+    },
 };
 
 pub(in crate::sessions) const DOCKER_HOST: &str = "0190a000-0000-7000-8002-000000000002";
@@ -142,6 +145,19 @@ pub(in crate::sessions) fn waking_port(after: Duration, forward: Option<u16>) ->
         }
     });
     port
+}
+
+/// Puts `session`'s pending ticket back as one whose start sent a Wake-on-LAN packet, under
+/// a new token, and returns the token's text.
+pub(in crate::sessions) fn reissued_woken(live: &Live, session: SessionId) -> String {
+    let ticket = live.withdraw(session).unwrap();
+    let token = TicketToken::from_random([3; TOKEN_BYTES]);
+    let woken = PendingTicket {
+        wake_sent: true,
+        ..ticket
+    };
+    live.issue(token.hash(), woken).unwrap();
+    token.expose().to_owned()
 }
 
 /// The SSH session a client asks for on `docker-host`.
