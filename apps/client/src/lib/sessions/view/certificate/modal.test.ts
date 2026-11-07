@@ -111,7 +111,7 @@ describe('certificate modal closing (SEC-007)', () => {
     button('Accept new certificate')?.click();
     await settle();
     if (how === 'Cancel') button('Cancel')?.click();
-    else document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    else (document.activeElement ?? document.body).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
     answer();
     await settle();
     expect(heard).toEqual({ closed: 1, accepted: 0 });
@@ -133,19 +133,45 @@ describe('certificate modal closing (SEC-007)', () => {
     expect(button('Close')).toBeDefined();
   });
 
+
   it('Cancel and Escape close without accepting', async () => {
     const { named, heard } = await showModal();
     button('Cancel')?.click();
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    (document.activeElement ?? document.body).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
     expect(heard).toEqual({ closed: 2, accepted: 0 });
     expect(named('AcceptServerCertificate')).toEqual([]);
   });
 });
 
+describe('certificate modal scrim and keys (SEC-007)', () => {
+  it('a click on the scrim does not close the warning', async () => {
+    const { heard } = await showModal();
+    document.querySelector('.frame')?.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    expect(heard.closed).toBe(0);
+    expect(dialog()).not.toBeNull();
+  });
+
+  it('SEC-007: after a press on the scrim, Escape with the focus on the page still closes, and Tab stays in the dialog', async () => {
+    const { heard } = await showModal();
+    const press = (init: KeyboardEventInit) => document.body.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init }));
+    const frame = document.querySelector('.frame');
+    const down = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+    frame?.dispatchEvent(down);
+    expect(down.defaultPrevented).toBe(true);
+    (document.activeElement as HTMLElement | null)?.blur();
+    press({ key: 'Tab' });
+    expect(dialog()?.contains(document.activeElement)).toBe(true);
+    (document.activeElement as HTMLElement | null)?.blur();
+    press({ key: 'Escape' });
+    expect(heard.closed).toBe(1);
+  });
+
+});
+
 describe('MOT-007, MV-004: the modal keeps its layout while it reads', () => {
   /** What lies above the actions, as tag and label: rows that appear later would push the buttons down. */
   const layout = () => {
-    const surface = dialog();
+    const surface = dialog()?.querySelector('.content');
     const above = [...(surface?.children ?? [])].filter((element) => !element.classList.contains('actions'));
     const rows = [...(surface?.querySelectorAll('dl > *') ?? [])].map((row) => `${row.tagName}:${row.tagName === 'DT' ? row.textContent : ''}`);
     return { above: above.map((element) => element.tagName), rows };

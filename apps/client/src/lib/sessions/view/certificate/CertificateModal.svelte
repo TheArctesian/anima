@@ -1,10 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import Icon from '$lib/icons/Icon.svelte';
+  import Modal from '$lib/forms/modal/Modal.svelte';
   import { press } from '$lib/motion/roles/press';
-  import { fade, modal } from '$lib/motion/roles/transitions';
   import type { SessionsApi } from '../../api';
-  import { trapFocus } from '../hostkey/focus';
   import { PROBLEM, READING, transition, type CertificateEvent, type CertificateStep } from './certificate';
 
   interface Props {
@@ -23,7 +21,7 @@
   const RESERVE_FINGERPRINT = `sha256:${Array.from({ length: 32 }, () => '00').join(':')}`;
   const RESERVE_LINE = '0';
   let current: CertificateStep = $state.raw(READING);
-  let surface: HTMLElement | undefined = $state();
+  let content: HTMLElement | undefined = $state();
   let closeButton: HTMLButtonElement | undefined = $state();
   /** Set on Cancel or Escape: an answer that arrives later changes nothing and calls nothing. */
   let closed = false;
@@ -71,24 +69,21 @@
   // "Close" is the default; when the focused button goes away with a step change, focus returns to it.
   $effect(() => {
     void current.step;
-    if (surface !== undefined && !surface.contains(document.activeElement)) closeButton?.focus();
+    if (content !== undefined && !content.contains(document.activeElement)) closeButton?.focus();
   });
 </script>
 
-<div class="layer">
-  <div class="scrim" transition:fade><div class="shade"></div></div>
-  <div
-    class="surface"
-    role="alertdialog"
-    aria-modal="true"
-    aria-labelledby="certificate-title"
-    aria-describedby="certificate-why"
-    bind:this={surface}
-    transition:modal
-    {@attach trapFocus(close, returnTo)}
-  >
-    <h2 id="certificate-title"><Icon name="nf-md-alert" /> The certificate of {device.name} has changed</h2>
-    <div id="certificate-why">
+<Modal
+  open
+  title="The certificate of {device.name} has changed"
+  warning
+  describedBy="certificate-why"
+  closeOnScrim={false} width={9} lowered
+  onClose={close}
+  {returnTo}
+>
+  <div class="content" bind:this={content}>
+    <div id="certificate-why" class="why">
       <p>
         {device.name} presented a different RDP server certificate from the one Anima accepted, so Anima did not
         connect.
@@ -163,69 +158,25 @@
       {/if}
     </div>
   </div>
-</div>
+</Modal>
 
 <style>
-  /* Anchored at the top, so the surface grows downward when the certificate appears (MV-004). */
-  .layer {
-    position: fixed;
-    inset: 0;
+  /* The dialog's body spaces its children; the wrapper adds no box of its own. */
+  .content {
+    display: contents;
+  }
+
+  .why {
     display: grid;
-    place-items: start center;
-    z-index: var(--layer-modal);
-  }
-
-  .scrim,
-  .surface {
-    grid-area: 1 / 1;
-  }
-
-  .scrim {
-    place-self: stretch;
-  }
-
-  .shade {
-    block-size: 100%;
-    background: var(--scrim);
-  }
-
-  .surface {
-    position: relative;
-    box-sizing: border-box;
-    inline-size: min(100% - var(--space-8), calc(var(--space-16) * 9));
-    max-block-size: calc(100vh - var(--space-16) * 2);
-    margin-block-start: var(--space-16);
-    overflow-y: auto;
-    padding: var(--space-6);
-    border: var(--border-thin) solid var(--border);
-    border-top: var(--border-focus) solid var(--status-warning);
-    border-radius: var(--radius-lg);
-    background: var(--surface);
-    box-shadow: var(--elevation-3);
-    color: var(--text);
-    font-size: var(--text-md);
-    line-height: var(--leading-normal);
-  }
-
-  h2 {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    margin: 0 0 var(--space-3);
-    font-size: var(--text-lg);
-    line-height: var(--leading-tight);
-  }
-
-  h2 :global(.icon) {
-    color: var(--status-warning);
+    gap: var(--space-3);
   }
 
   p {
-    margin: 0 0 var(--space-3);
+    margin: 0;
   }
 
   .certificate {
-    margin: 0 0 var(--space-3);
+    margin: 0;
     padding: var(--space-3);
     border-radius: var(--radius-md);
     background: var(--status-warning-tint);

@@ -124,11 +124,11 @@ describe('host key modal keyboard (Section 5.7.3 "Modal")', () => {
     const first = button('Close');
     const last = button('Review new key');
     last?.focus();
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
+    (document.activeElement ?? document.body).dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
     expect(document.activeElement).toBe(first);
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true }));
+    (document.activeElement ?? document.body).dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true }));
     expect(document.activeElement).toBe(last);
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    (document.activeElement ?? document.body).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
     flushSync();
     await settle();
     expect(dialog()).toBeNull();
@@ -160,5 +160,17 @@ describe('host key modal keyboard (Section 5.7.3 "Modal")', () => {
     socket.closeWith(1000);
     await settle();
     expect(dialog()).toBeNull();
+  });
+});
+
+describe('host key modal motion (MV-003, MOT-040)', () => {
+  it('MV-003: a modal mounted already open still fades its scrim and materializes its surface', async () => {
+    const { installAnimations, played } = await import('../../../forms/animations.fixture');
+    installAnimations();
+    played.length = 0;
+    await hostKeyChanged();
+    const keyframes = played.flatMap((call) => call.keyframes.flatMap((frame) => Object.keys(frame)));
+    expect(keyframes).toContain('opacity');
+    expect(keyframes).toContain('scale');
   });
 });

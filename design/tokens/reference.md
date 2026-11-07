@@ -152,6 +152,13 @@ Generated from `design/tokens/*.tokens.json` (TOK-001). Names follow contract K5
 | `bp-medium` | `{"minPx":768,"maxPx":1101}` (TypeScript only) | 768 to 1100 px |
 | `bp-wide` | `{"minPx":1101,"maxPx":null}` (TypeScript only) | Above 1100 px |
 
+## tone.opacity
+
+| Token | CSS value | Use |
+| --- | --- | --- |
+| `opacity-disabled` | `--opacity-disabled: 0.5` | A control that cannot be used now |
+| `opacity-band` | `--opacity-band: 0.2` | A chart's min-max band behind its line |
+
 ## size.space
 
 | Token | CSS value | Use |

@@ -12,6 +12,7 @@
     "declaration-property-value-allowed-list": {
       "font": ["/^(\\s*(var\\((?:[^()]|var\\([^()]*\\))*\\)|inherit|initial|unset|revert|normal|italic|oblique|bold|bolder|lighter|small-caps|\\d*\\.?\\d+(px|rem|em|%|pt)?(\\/\\d*\\.?\\d+(px|rem|em|%)?)?))+\\s*$/i"],
       "/^--(f|(.*-)?(font|family)(-.*)?)$/": ["/^\\s*var\\((?:[^()]|var\\([^()]*\\))*\\)\\s*$/i"],
+      "/^(fill-|stroke-)?opacity$/": ["/^\\s*(var\\(\\s*--[\\w-]+\\s*\\)|0|1|inherit|initial|unset|revert)\\s*$/i"],
       "font-family": ["/^\\s*(var\\((?:[^()]|var\\([^()]*\\))*\\)|inherit|initial|unset|revert)\\s*$/i"]
     },
     "declaration-property-value-disallowed-list": {

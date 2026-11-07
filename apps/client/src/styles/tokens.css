@@ -83,6 +83,8 @@
   --threshold-drag: 10px;
   --threshold-loading: 300ms;
   --threshold-loading-min: 500ms;
+  --opacity-disabled: 0.5;
+  --opacity-band: 0.2;
   --space-0: 0;
   --space-1: 0.25rem;
   --space-2: 0.5rem;

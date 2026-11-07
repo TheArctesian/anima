@@ -139,7 +139,7 @@ describe('credential prompt (GW-015)', () => {
     const { argv, heard, sent } = showPrompt('VNC', ['password']);
     type('password', PASSWORD);
     button('Cancel')?.click();
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    (document.activeElement ?? document.body).dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
     expect(argv.sent()).toEqual([]);
     expect(sent).toEqual([]);
     expect(heard).toEqual({ sent: 0, cancelled: 2 });
