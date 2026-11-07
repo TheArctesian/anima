@@ -18,6 +18,7 @@ mod outcome;
 mod resolve;
 mod ssh;
 pub(in crate::checks) mod systemd;
+mod tailscale;
 mod tcp;
 mod tls;
 
@@ -57,6 +58,8 @@ pub struct ProbeEnv {
     pub policy: Arc<AddressPolicy>,
     /// The instant certificate dates are judged against.
     pub now: DateTime<Utc>,
+    /// `host:port` of the Tailscale `LocalAPI` proxy, when one is configured (D-4).
+    pub localapi: Option<String>,
     pub(crate) overrides: Overrides,
 }
 
@@ -66,8 +69,15 @@ impl ProbeEnv {
         Self {
             policy: Arc::new(policy),
             now,
+            localapi: None,
             overrides: Overrides::default(),
         }
+    }
+
+    /// The same environment with this `LocalAPI` proxy.
+    #[must_use]
+    pub fn with_localapi(self, localapi: Option<String>) -> Self {
+        Self { localapi, ..self }
     }
 }
 
@@ -129,6 +139,9 @@ async fn run(
                 expected: expected.as_deref(),
             };
             dns::probe(&query, config.timeout(), env).await
+        }
+        CheckConfig::TailscalePing { target, .. } => {
+            tailscale::probe(target.as_deref(), host, env.localapi.as_deref(), env).await
         }
         CheckConfig::Push | CheckConfig::Group => ProbeResult::failed(&Failure::NotProbed),
         CheckConfig::Docker { .. } | CheckConfig::Systemd { .. } => {

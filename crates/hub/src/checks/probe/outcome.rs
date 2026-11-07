@@ -214,6 +214,19 @@ pub enum Failure {
     /// The state class is one of the fixed words of the systemd parser, never device text.
     #[error("the unit is {0}")]
     UnitState(&'static str),
+    /// No `LocalAPI` proxy is configured, so the hub cannot test (D-4).
+    #[error("Tailscale ping needs the LocalAPI proxy (ANIMA_TAILSCALE_LOCALAPI)")]
+    NeedsLocalApi,
+    #[error("the target has no Tailscale address the hub may ping")]
+    NoTailnetAddress,
+    #[error("the Tailscale ping got no answer")]
+    PingFailed,
+    #[error("the LocalAPI proxy refused the ping")]
+    ProxyRefused,
+    #[error("the LocalAPI proxy reply cannot be read")]
+    ProxyReplyUnreadable,
+    #[error("the LocalAPI proxy reply was longer than the hub reads")]
+    ProxyReplyTooLong,
 }
 
 impl From<io::Error> for Failure {

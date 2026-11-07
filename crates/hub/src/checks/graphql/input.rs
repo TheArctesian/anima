@@ -211,6 +211,14 @@ pub(super) struct SystemdShape {
     pub(super) timeout_ms: Option<i32>,
 }
 
+#[derive(InputObject)]
+#[graphql(name = "TailscalePingConfigInput")]
+pub(super) struct TailscalePingShape {
+    pub(super) target: Option<String>,
+    #[graphql(default_with = "Some(5000)")]
+    pub(super) timeout_ms: Option<i32>,
+}
+
 #[derive(OneofObject)]
 #[graphql(name = "CheckConfigInput")]
 pub(super) enum ConfigShape {
@@ -223,6 +231,7 @@ pub(super) enum ConfigShape {
     Group(GroupShape),
     Docker(DockerShape),
     Systemd(SystemdShape),
+    TailscalePing(TailscalePingShape),
 }
 
 #[derive(InputObject)]

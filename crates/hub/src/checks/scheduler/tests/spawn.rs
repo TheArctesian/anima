@@ -44,6 +44,7 @@ tick_test! {
         let probing = Probing {
             vault: vault(),
             policy: AddressPolicy::default().allowing_loopback(),
+            localapi: None,
         };
 
         let handle = spawn_scheduler(pool.clone(), Bus::new(16), clock.clone(), probing);
