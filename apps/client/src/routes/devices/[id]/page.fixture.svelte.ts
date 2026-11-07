@@ -38,6 +38,7 @@ export function device(change: Partial<DeviceDetail> = {}, ssh: Partial<DeviceDe
       microphone: false,
       sharedDrive: false,
       credentialStored: false,
+      serverCertificate: null,
     },
     vnc: { enabled: false, port: 5900, username: null, credentialStored: false },
     transfer: { upload: true, download: true, copy: true, paste: true },

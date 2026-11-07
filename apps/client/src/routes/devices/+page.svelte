@@ -107,6 +107,9 @@
       createSite: (name, subnet) => devices.createSite(name, subnet),
       createDevice: (input) => devices.create(input),
       setSshCredential: (deviceId, credential) => devices.setSshCredential(deviceId, credential),
+      // DEV-011: the sessions client stores the RDP and VNC passwords; its errors never quote them (LOG-007).
+      setRdpCredential: (deviceId, credential) => connections.setCredential('RDP', deviceId, credential.password),
+      setVncCredential: (deviceId, credential) => connections.setCredential('VNC', deviceId, credential.password),
       createCheck: (input) => checks.create(input),
     });
   }

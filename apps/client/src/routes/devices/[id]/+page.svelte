@@ -12,13 +12,13 @@
   import { LogFeed } from '$lib/events/panel/feed.svelte';
   import LogList from '$lib/events/panel/LogList.svelte';
   import type { CheckFormValues } from '$lib/forms/check/model/values';
-  import type { DeviceFormValues } from '$lib/forms/device/values';
   import { useHub } from '$lib/hub/context';
   import type { HubResult } from '$lib/hub/hub';
   import { press } from '$lib/motion/roles/press';
   import { sessionsApi } from '$lib/sessions/api';
   import { useSessions } from '$lib/sessions/sessions.svelte';
   import { openWebInterface } from '$lib/sessions/web/open/open';
+  import { webInterfacesApi } from '$lib/web-interfaces/api';
   import type { SessionProtocol } from '$lib/sessions/tabs';
   import ChecksPanel from './checks/ChecksPanel.svelte';
   import { Detail } from './detail.svelte';
@@ -27,9 +27,10 @@
   import OverviewPanel from './overview/OverviewPanel.svelte';
   import OverviewSkeleton from './overview/OverviewSkeleton.svelte';
   import { Pages } from './pages.svelte';
-  import { saveCheck, saveDevice } from './save';
+  import { saveCheck } from './save';
   import type { DeviceSession } from './sessions/sessions';
   import SessionsPanel from './sessions/SessionsPanel.svelte';
+  import { settingsCalls } from './settings/calls';
   import SettingsPanel from './settings/SettingsPanel.svelte';
   import TabPanel from './tabs/TabPanel.svelte';
   import Tabs from './tabs/Tabs.svelte';
@@ -55,6 +56,10 @@
   feed.filter = { ...DEFAULT_LOG_FILTER, since: 'all', deviceId: id };
 
   let revision = $state(0);
+  const settingsHub = { devices, sessions: connections, webInterfaces: webInterfacesApi(hub) };
+  const settingsCall = settingsCalls(id ?? '', settingsHub, detail, () => {
+    revision += 1;
+  });
   const place = $derived(readPlace(page.url.searchParams));
   const device = $derived(detail.device);
   const headerLoading = $derived(device === null && detail.error === null && !detail.missing);
@@ -116,28 +121,6 @@
   function openWeb(webInterface: DeviceDetail['webInterfaces'][number], button: HTMLElement): void {
     if (device === null) return;
     void openWebInterface(sessions, desktopWebView, { device, webInterface, origin: button.getBoundingClientRect() });
-  }
-
-  async function saveSettings(values: DeviceFormValues): Promise<HubResult<unknown>> {
-    if (device === null) return { ok: true, value: undefined };
-    const saved = await saveDevice(device, values, devices);
-    detail.setDevice(saved.device);
-    if (saved.result.ok) revision += 1;
-    return saved.result;
-  }
-
-  async function acceptHostKey(fingerprint: string): Promise<HubResult<unknown>> {
-    const result = await connections.acceptHostKey(id ?? '', fingerprint);
-    if (result.ok && detail.device !== null) detail.setDevice({ ...detail.device, ssh: { ...detail.device.ssh, hostKey: result.value } });
-    return result;
-  }
-
-  async function clearCredential(): Promise<HubResult<unknown>> {
-    const result = await devices.clearSshCredential(id ?? '');
-    if (result.ok && detail.device !== null) {
-      detail.setDevice({ ...detail.device, ssh: { ...detail.device.ssh, credentialStored: result.value.credentialStored } });
-    }
-    return result;
   }
 
   /** DEV-014: confirmed in the Settings tab; the hub deletes the rest (DEV-015). */
@@ -245,10 +228,8 @@
           {device}
           {revision}
           section={place.section}
-          onSave={saveSettings}
+          calls={settingsCall}
           onTest={connections.testConnection}
-          onAcceptHostKey={acceptHostKey}
-          onClearCredential={clearCredential}
           onCancel={() => { revision += 1; }}
           onDelete={deleteDevice}
         />

@@ -31,6 +31,8 @@ function api(
     createSite: vi.fn(() => Promise.resolve(site)),
     createDevice: vi.fn(() => Promise.resolve(created)),
     setSshCredential: vi.fn(() => Promise.resolve(stored)),
+    setRdpCredential: vi.fn(() => Promise.resolve({ ok: true as const, value: { credentialStored: true } })),
+    setVncCredential: vi.fn(() => Promise.resolve({ ok: true as const, value: { credentialStored: true } })),
     createCheck: vi.fn(() => Promise.resolve({ ok: true as const, value: undefined })),
   };
   return { calls, api: calls satisfies AddDeviceApi };

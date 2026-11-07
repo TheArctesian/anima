@@ -11,6 +11,7 @@ const K1: RemoteDeviceFields = {
   rdp: {
     enabled: true, port: 3389, username: 'admin', domain: null, security: 'NLA', ignoreCertificate: false,
     resizeMethod: 'DISPLAY_UPDATE', audioOut: true, microphone: false, sharedDrive: false, credentialStored: true,
+    serverCertificate: null,
   },
   vnc: { enabled: true, port: 5900, username: null, credentialStored: true },
   macAddress: null,

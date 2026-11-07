@@ -172,6 +172,8 @@ function fakeApi(change: Partial<AddDeviceApi> = {}): AddDeviceApi {
     createSite: () => Promise.resolve({ ok: true, value: { id: 's1' } }),
     createDevice: () => Promise.resolve({ ok: true, value: { id: 'd1' } }),
     setSshCredential: () => Promise.resolve(OK),
+    setRdpCredential: () => Promise.resolve({ ok: true, value: { credentialStored: true } }),
+    setVncCredential: () => Promise.resolve({ ok: true, value: { credentialStored: true } }),
     createCheck: () => Promise.resolve(OK),
     ...change,
   };
@@ -189,22 +191,19 @@ function withRdpPassword(): DeviceFormValues {
 }
 
 it('DEV-011: addDevice stores a typed RDP password through setRdpCredential', async () => {
-  const setRdpCredential = vi.fn(() => Promise.resolve(OK));
+  const setRdpCredential = vi.fn(() => Promise.resolve({ ok: true as const, value: { credentialStored: true } }));
   const result = await addDevice(withRdpPassword(), { kind: 'existing', id: 's1' }, fakeApi({ setRdpCredential }));
   expect(setRdpCredential).toHaveBeenCalledWith('d1', { password: 'typed' });
   expect(result).toEqual({ ok: true, value: { id: 'd1', credentialError: null } });
 });
 
-it('DEV-011: addDevice reports an RDP password it could not store, whether the call fails or is absent', async () => {
+it('DEV-011: addDevice reports an RDP password it could not store', async () => {
   const failed = await addDevice(
     withRdpPassword(),
     { kind: 'existing', id: 's1' },
     fakeApi({ setRdpCredential: () => Promise.resolve({ ok: false, error: { code: 'INTERNAL', message: 'vault locked' } }) }),
   );
   expect(failed.ok && failed.value.credentialError?.message).toBe('vault locked');
-
-  const absent = await addDevice(withRdpPassword(), { kind: 'existing', id: 's1' }, fakeApi());
-  expect(absent.ok && absent.value.credentialError).not.toBeNull();
 });
 
 it('RA-032, RA-033: the Files and clipboard flags default on and a cleared one reaches the saved values', async () => {

@@ -25,6 +25,7 @@ const WITH_RDP: DeviceFields = {
   rdp: {
     enabled: true, port: 3389, username: 'admin', domain: null, security: 'NLA', ignoreCertificate: false,
     resizeMethod: 'DISPLAY_UPDATE', audioOut: true, microphone: false, sharedDrive: false, credentialStored: false,
+    serverCertificate: null,
   },
   vnc: { enabled: true, port: 5900, username: null, credentialStored: false },
 };
@@ -107,6 +108,21 @@ it('SEC-007: a changed certificate on a saved device warns and Accept (danger) c
   accepting.click();
   await settle();
   expect(accept).toHaveBeenCalledWith('AA:BB:CC');
+});
+
+it.each([
+  ['host', 'host', 'other.lan'],
+  ['port', 'rdp-port', '3390'],
+] as const)('SEC-007: editing the %s after a test hides Accept certificate, so a stale certificate is never accepted', async (_name, field, text) => {
+  const accept = vi.fn(() => Promise.resolve(OK));
+  show(WITH_RDP, { section: 'rdp', onAcceptServerCertificate: accept }, answer({ serverCertificate: CERTIFICATE, certificateChanged: false }));
+  rdpTest().click();
+  await settle();
+  expect(button('Accept certificate')).not.toBeNull();
+  type(field, text);
+  await settle();
+  expect([...document.querySelectorAll('button')].some((found) => found.textContent.includes('Accept certificate'))).toBe(false);
+  expect(accept).not.toHaveBeenCalled();
 });
 
 it('DEV-013: the saved accepted certificate seen again gives ok and no second fingerprint block', async () => {
