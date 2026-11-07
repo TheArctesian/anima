@@ -3,6 +3,7 @@
   import HeartbeatBar from '$lib/checks/HeartbeatBar.svelte';
   import { uptimeText, type Beat } from '$lib/checks/heartbeats';
   import type { CardDevice } from '$lib/devices/api';
+  import ReadingBars from '$lib/devices/readings/ReadingBars.svelte';
   import { press } from '$lib/motion/roles/press';
   import { sharedItem } from '$lib/motion/shared/shared';
   import { hostLine, offersSsh } from './card';
@@ -44,6 +45,8 @@
     {#if line.ip !== null}<span class="ip">{line.ip}</span>{/if}
   </p>
   <p class="uptime"><span>Uptime, 24 h</span> <strong>{uptimeText(device.uptime)}</strong></p>
+  <!-- WP-33's shared bar replaces this one. When WP-28 serves readings, Devices spreads `...CardReadings` under `readings` and the list listens to `metricsAdded` (R-027). -->
+  <ReadingBars readings={device.readings ?? null} source={device.metricsSource} />
   <footer>
     {#if beats !== undefined}<HeartbeatBar {beats} />{/if}
     {#if offersSsh(device)}
@@ -67,7 +70,7 @@
     box-sizing: border-box;
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: repeat(3, auto) 1fr;
+    grid-template-rows: repeat(4, auto) 1fr;
     gap: var(--space-2);
     block-size: var(--device-card-block-size);
     padding: var(--space-4);
