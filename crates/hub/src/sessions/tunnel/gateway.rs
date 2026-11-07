@@ -1,14 +1,4 @@
-//! What guacd's instructions after `ready` mean for the session (K4 Sections 4 and 5, D-9).
-//!
-//! # No host-key text on the wire
-//!
-//! guacd logs the host-key mismatch as "Host key did not match any provided known host
-//! keys. %s" (guacamole-server 1.5.5 `src/common-ssh/ssh.c:552-553`, 1.6.0
-//! `src/common-ssh/ssh.c:490-491`), but `guac_client_abort` sends every abort to the client
-//! as `error` with the fixed text "Aborted. See logs." (1.5.5 `src/libguac/client.c:413`,
-//! 1.6.0 `src/libguac/client.c:402`). The mismatch arrives as status 0x0200 (server error),
-//! the same status as other guacd failures, so nothing here can tell it apart: the tunnel
-//! task learns of a mismatch from the hub's own host-key check, not from guacd.
+//! What guacd's instructions after `ready` mean for the session (K4 Sections 4 and 5).
 
 use guac_protocol::Instruction;
 
@@ -34,15 +24,6 @@ const ERROR_TEXT: &str = "Aborted. See logs.";
 /// `tunnel_id` is a new UUID, never guacd's connection ID (GW-014).
 pub(super) fn tunnel_opened(tunnel_id: &str) -> Instruction {
     Instruction::new("", [tunnel_id])
-}
-
-/// The `error` the hub sends to the client on a host-key mismatch, in place of anything from
-/// guacd (K4 Section 5). The status is decimal text, as on the wire.
-pub(super) fn host_key_changed() -> Instruction {
-    Instruction::new(
-        "error",
-        ["Host key changed".to_owned(), CLIENT_FORBIDDEN.to_string()],
-    )
 }
 
 impl Relay {

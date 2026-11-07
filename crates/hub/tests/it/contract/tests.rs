@@ -60,7 +60,7 @@ async fn con_002_a_missing_member_a_changed_signature_and_a_stray_type_are_each_
         ("SshCredentialInput", "input @oneOf"),
         (
             "CheckConfig",
-            "union = DnsConfig | GroupConfig | HttpConfig | IcmpConfig | PushConfig | TcpConfig | TlsConfig",
+            "union = DnsConfig | DockerConfig | GroupConfig | HttpConfig | IcmpConfig | PushConfig | SystemdConfig | TcpConfig | TlsConfig",
         ),
     ] {
         let prefix = format!("{name}: hub `");

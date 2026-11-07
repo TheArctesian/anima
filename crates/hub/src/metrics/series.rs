@@ -7,7 +7,9 @@ use super::reading::{Disk, Interface};
 pub const MAX_LABELS: usize = 32;
 
 const PSEUDO_FILESYSTEMS: [&str; 6] = ["tmpfs", "devtmpfs", "overlay", "squashfs", "devfs", "map"];
-const PSEUDO_MOUNTS: [&str; 4] = ["/dev", "/run", "/sys", "/proc"];
+const PSEUDO_MOUNTS: [&str; 5] = ["/dev", "/run", "/sys", "/proc", "/snap"];
+/// Loop devices: Linux snap packages and other mounted images, not disks of their own.
+const LOOP_DEVICE: &str = "/dev/loop";
 const DATA_VOLUME: &str = "/System/Volumes/Data";
 
 fn under(mount: &str, root: &str) -> bool {
@@ -19,6 +21,7 @@ fn under(mount: &str, root: &str) -> bool {
 /// Whether a disk is a real file system worth a series.
 fn wanted_disk(disk: &Disk) -> bool {
     !PSEUDO_FILESYSTEMS.contains(&disk.filesystem.as_str())
+        && !disk.filesystem.starts_with(LOOP_DEVICE)
         && !PSEUDO_MOUNTS.iter().any(|root| under(&disk.mount, root))
         && (disk.mount == DATA_VOLUME || !under(&disk.mount, "/System/Volumes"))
 }

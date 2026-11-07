@@ -120,7 +120,7 @@ enum AccessWarning {
   UNENCRYPTED_VNC
 }
 
-type ServerCertificate @pending {
+type ServerCertificate {
   fingerprintSha256: String!
   subject: String
   notAfter: DateTime
@@ -146,7 +146,7 @@ type RdpSettings {
   "Default false (RA-021)."
   sharedDrive: Boolean!
   credentialStored: Boolean!
-  serverCertificate: ServerCertificate @pending
+  serverCertificate: ServerCertificate
 }
 
 type VncSettings {
@@ -325,8 +325,8 @@ type ConnectionTestResult {
   hostKey: HostKey
   hostKeyChanged: Boolean!
   message: String
-  serverCertificate: ServerCertificate @pending
-  certificateChanged: Boolean! @pending
+  serverCertificate: ServerCertificate
+  certificateChanged: Boolean!
 }
 
 input ConnectionTestInput {
@@ -335,10 +335,10 @@ input ConnectionTestInput {
   host: String
   ssh: SshSettingsInput
   credential: SshCredentialInput
-  protocol: Protocol = SSH @pending
-  rdp: RdpSettingsInput @pending
-  vnc: VncSettingsInput @pending
-  password: PasswordCredentialInput @pending
+  protocol: Protocol = SSH
+  rdp: RdpSettingsInput
+  vnc: VncSettingsInput
+  password: PasswordCredentialInput
 }
 
 # ---------------------------------------------------------------- checks (WP-09)
@@ -352,10 +352,10 @@ enum CheckType {
   DNS
   PUSH
   GROUP
-  DOCKER @pending
+  DOCKER
   SNMP @pending
   TAILSCALE_PING @pending
-  SYSTEMD @pending
+  SYSTEMD
 }
 
 type Check {
@@ -382,13 +382,13 @@ type Check {
 union CheckConfig = IcmpConfig | TcpConfig | TlsConfig | HttpConfig | DnsConfig | PushConfig | GroupConfig | DockerConfig | SnmpConfig | TailscalePingConfig | SystemdConfig
 
 "Up when running (and healthy, when a health check exists); Degraded when starting; else Down. Through the SSH link (D-3)."
-type DockerConfig @pending {
+type DockerConfig {
   container: String!
   timeoutMs: Int!
 }
 
 "Up when ActiveState is active. Through the SSH link (D-3)."
-type SystemdConfig @pending {
+type SystemdConfig {
   unit: String!
   timeoutMs: Int!
 }
@@ -513,18 +513,18 @@ input CheckConfigInput @oneOf {
   dns: DnsConfigInput
   push: Boolean
   group: GroupConfigInput
-  docker: DockerConfigInput @pending
+  docker: DockerConfigInput
   snmp: SnmpConfigInput @pending
   tailscalePing: TailscalePingConfigInput @pending
-  systemd: SystemdConfigInput @pending
+  systemd: SystemdConfigInput
 }
 
-input DockerConfigInput @pending {
+input DockerConfigInput {
   container: String!
   timeoutMs: Int = 10000
 }
 
-input SystemdConfigInput @pending {
+input SystemdConfigInput {
   unit: String!
   timeoutMs: Int = 10000
 }
@@ -931,10 +931,10 @@ type SessionTicket {
   tunnelPath: String!
   expiresAt: DateTime!
   "A Wake-on-LAN packet was sent; the opening waits longer (K4 §1)."
-  wakeSent: Boolean! @pending
+  wakeSent: Boolean!
 }
 
-type WakeResult @pending {
+type WakeResult {
   sentAt: DateTime!
   relayName: String!
 }
@@ -1042,10 +1042,10 @@ type Mutation {
   setVncCredential(deviceId: ID!, credential: PasswordCredentialInput!): VncSettings!
   clearVncCredential(deviceId: ID!): VncSettings!
   "The fingerprint must equal the one the hub saw, or CONFLICT."
-  acceptServerCertificate(deviceId: ID!, fingerprintSha256: String!): ServerCertificate! @pending
+  acceptServerCertificate(deviceId: ID!, fingerprintSha256: String!): ServerCertificate!
   "A ticket for the files tunnel of a live SSH session (K4 §9)."
-  openFiles(sessionId: ID!): SessionTicket! @pending
-  wakeDevice(deviceId: ID!): WakeResult! @pending
+  openFiles(sessionId: ID!): SessionTicket!
+  wakeDevice(deviceId: ID!): WakeResult!
   createWebInterface(deviceId: ID!, input: WebInterfaceInput!): WebInterface!
   updateWebInterface(id: ID!, input: WebInterfaceInput!): WebInterface!
   deleteWebInterface(id: ID!): ID!

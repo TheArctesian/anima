@@ -4,7 +4,8 @@
     reason = "the async-graphql Enum derive generates async trait impls"
 )]
 
-use async_graphql::Enum;
+use async_graphql::{Enum, ID, SimpleObject};
+use chrono::{DateTime, Utc};
 
 /// What a series measures (the API's `MetricKind`). Stored as [`MetricKind::as_str`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Enum)]
@@ -111,6 +112,27 @@ pub enum GpuVendor {
     Apple,
 }
 
+impl GpuVendor {
+    /// The text kept in the `gpus.vendor` column.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Nvidia => "nvidia",
+            Self::Amd => "amd",
+            Self::Intel => "intel",
+            Self::Apple => "apple",
+        }
+    }
+
+    /// The vendor stored as `text`; `None` for text no vendor has.
+    #[must_use]
+    pub fn parse(text: &str) -> Option<Self> {
+        [Self::Nvidia, Self::Amd, Self::Intel, Self::Apple]
+            .into_iter()
+            .find(|vendor| vendor.as_str() == text)
+    }
+}
+
 /// One value of one series at one collection: the label is a mount point or an interface name,
 /// and empty for the kinds that have none (D-5).
 #[derive(Clone, Debug, PartialEq)]
@@ -139,4 +161,71 @@ impl Sample {
             value,
         })
     }
+}
+
+/// A GPU found on a device (MET-006).
+#[derive(Clone, Debug, PartialEq, Eq, SimpleObject)]
+pub struct Gpu {
+    pub index: i32,
+    pub name: String,
+    pub vendor: GpuVendor,
+    /// False for integrated and Apple GPUs (MET-007).
+    pub has_vram: bool,
+}
+
+/// One point of a chart: the mean of its bucket, with the lowest and highest value in it.
+#[derive(Clone, Debug, PartialEq, SimpleObject)]
+pub struct MetricPoint {
+    pub at: DateTime<Utc>,
+    pub value: f64,
+    pub min: Option<f64>,
+    pub max: Option<f64>,
+}
+
+/// The points of one series over a range, oldest first (MET-003). Bytes are `f64`, as the API's
+/// `Float` (they pass 2^31).
+#[derive(Clone, Debug, PartialEq, SimpleObject)]
+pub struct MetricSeries {
+    pub kind: MetricKind,
+    pub label: String,
+    pub gpu_index: Option<i32>,
+    pub points: Vec<MetricPoint>,
+}
+
+/// The latest values for a device card (MET-004, MET-008). Disk: the fullest mount.
+#[derive(Clone, Debug, PartialEq, SimpleObject)]
+pub struct Readings {
+    pub at: DateTime<Utc>,
+    pub cpu_percent: Option<f64>,
+    pub memory_percent: Option<f64>,
+    pub disk_percent: Option<f64>,
+    pub vram_percent: Option<f64>,
+    pub vram_gpu: Option<Gpu>,
+}
+
+/// One value of a collection, as the API shows it.
+#[derive(Clone, Debug, PartialEq, SimpleObject)]
+pub struct MetricSample {
+    pub kind: MetricKind,
+    pub label: String,
+    pub value: f64,
+}
+
+impl From<&Sample> for MetricSample {
+    fn from(sample: &Sample) -> Self {
+        Self {
+            kind: sample.kind,
+            label: sample.label.clone(),
+            value: sample.value,
+        }
+    }
+}
+
+/// What a collection added for a device: the live feed's item (MET-005).
+#[derive(Clone, Debug, PartialEq, SimpleObject)]
+pub struct MetricsAdded {
+    pub device_id: ID,
+    pub at: DateTime<Utc>,
+    pub samples: Vec<MetricSample>,
+    pub readings: Readings,
 }

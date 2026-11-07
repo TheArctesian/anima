@@ -7,14 +7,14 @@ use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use proptest::prelude::*;
 
 use crate::{
-    sessions::{link::connect::permitted, target::TargetRule},
+    sessions::{link::connect::permitted, target::is_refused_target},
     targets::AddressPolicy,
 };
 
 /// The strict rule refuses `ip`, and so does the default policy (and one with an extra deny,
 /// which only refuses more).
 fn refused_by_both(ip: IpAddr) -> Result<(), TestCaseError> {
-    if TargetRule::STRICT.refuses(ip) {
+    if is_refused_target(ip) {
         prop_assert!(
             !AddressPolicy::default().permits(ip),
             "{ip} passes the policy"
@@ -114,7 +114,7 @@ fn d_1_the_edges_of_each_refused_range_are_refused_by_the_policy() {
     ];
     for edge in edges {
         let ip: IpAddr = edge.parse().unwrap();
-        assert!(TargetRule::STRICT.refuses(ip), "{edge} is a refused edge");
+        assert!(is_refused_target(ip), "{edge} is a refused edge");
         assert!(!AddressPolicy::default().permits(ip), "{edge}");
         assert!(
             !AddressPolicy::default().permits(ip.to_canonical()),

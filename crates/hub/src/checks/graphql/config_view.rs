@@ -80,6 +80,20 @@ pub(super) struct DnsView {
     expected: Option<String>,
 }
 
+#[derive(SimpleObject)]
+#[graphql(name = "DockerConfig")]
+pub(super) struct DockerView {
+    container: String,
+    timeout_ms: i32,
+}
+
+#[derive(SimpleObject)]
+#[graphql(name = "SystemdConfig")]
+pub(super) struct SystemdView {
+    unit: String,
+    timeout_ms: i32,
+}
+
 /// A PUSH check without a token: the database forbids it, so it is a fault, never an empty path.
 #[derive(Debug, thiserror::Error)]
 #[error("push check {0} has no token")]
@@ -134,6 +148,8 @@ pub(super) enum ConfigView {
     Dns(DnsView),
     Push(PushView),
     Group(GroupView),
+    Docker(DockerView),
+    Systemd(SystemdView),
 }
 
 fn wide(value: impl Into<u32>) -> i32 {
@@ -222,6 +238,17 @@ impl ConfigView {
             CheckConfig::Group => Self::Group(GroupView {
                 group: check.id,
                 device: check.device,
+            }),
+            CheckConfig::Docker {
+                container,
+                timeout_ms,
+            } => Self::Docker(DockerView {
+                container: container.clone(),
+                timeout_ms: wide(*timeout_ms),
+            }),
+            CheckConfig::Systemd { unit, timeout_ms } => Self::Systemd(SystemdView {
+                unit: unit.clone(),
+                timeout_ms: wide(*timeout_ms),
             }),
         }
     }

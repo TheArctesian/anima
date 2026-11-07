@@ -13,6 +13,7 @@ use anima_hub::{
     router,
     schema::{Dependencies, build_schema},
     sessions::Live,
+    targets::AddressPolicy,
 };
 use axum::{
     Router,
@@ -120,6 +121,7 @@ pub fn dependencies(pool: &PgPool, clock: Arc<dyn Clock>, bus: Bus) -> Dependenc
         bus,
         vault: test_vault(),
         live: Live::default(),
+        policy: AddressPolicy::default(),
     }
 }
 

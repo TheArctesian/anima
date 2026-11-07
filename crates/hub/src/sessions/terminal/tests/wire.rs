@@ -5,6 +5,7 @@
 mod bench;
 mod causes;
 mod channels;
+mod deny_list;
 mod fake_ssh;
 mod interruptions;
 mod opening;

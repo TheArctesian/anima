@@ -127,6 +127,27 @@ pub(super) async fn by_devices(db: &PgPool, devices: &[DeviceId]) -> Result<Vec<
     to_checks(rows)
 }
 
+/// The id and URL of every HTTP check of the devices, by device, name (byte order) and id.
+/// Reads only the `url` field of the stored JSON, so no other check's config is parsed.
+pub(super) async fn http_urls(
+    db: &PgPool,
+    devices: &[DeviceId],
+) -> Result<HashMap<DeviceId, Vec<(CheckId, String)>>, sqlx::Error> {
+    let rows: Vec<(DeviceId, CheckId, String)> = sqlx::query_as(
+        "SELECT device_id, id, config ->> 'url' FROM checks.checks \
+         WHERE device_id = ANY($1) AND type = 'http' AND config ->> 'url' IS NOT NULL \
+         ORDER BY device_id, name COLLATE \"C\", id",
+    )
+    .bind(devices)
+    .fetch_all(db)
+    .await?;
+    let mut grouped: HashMap<DeviceId, Vec<(CheckId, String)>> = HashMap::new();
+    for (device, check, url) in rows {
+        grouped.entry(device).or_default().push((check, url));
+    }
+    Ok(grouped)
+}
+
 /// What the status rules need about every check of the devices, in one query.
 pub(super) async fn standings(db: &PgPool, devices: &[DeviceId]) -> Result<Vec<Standing>, Error> {
     let rows: Vec<StandingRow> = sqlx::query_as(

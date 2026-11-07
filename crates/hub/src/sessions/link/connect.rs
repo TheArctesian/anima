@@ -22,6 +22,9 @@ use crate::{
 
 /// The longest a link takes to open, from the host-key read to the end of the sign-in.
 const OPENING: Duration = Duration::from_secs(10);
+/// The longest one address may take to accept the TCP connection, so an address that drops
+/// packets does not use up [`OPENING`] before the next address is tried.
+const ADDRESS_WAIT: Duration = Duration::from_secs(3);
 /// Keep-alive interval; [`KEEPALIVE_MAX`] unanswered end the connection.
 const KEEPALIVE: Duration = Duration::from_secs(10);
 const KEEPALIVE_MAX: usize = 3;
@@ -33,15 +36,20 @@ const IDLE: Duration = Duration::from_secs(60);
 /// packet (32 KiB by default).
 const CHANNEL_BUFFER: usize = 8;
 
-/// The target rule the resolved addresses must also pass. Release builds use
-/// [`TargetRule::STRICT`]. This crate's tests use the loopback rule, so that a test policy
-/// from `AddressPolicy::allowing_loopback` can reach the test server; the policy refuses every
-/// address the strict rule refuses (tested in `link::tests::addresses`), so the policy alone
-/// still refuses loopback in a test that does not allow it.
+/// The target rule the resolved addresses must also pass. Release builds use the default
+/// rule, which holds no deny list: `policy` is applied on its own in [`reach`]. This crate's
+/// tests use the loopback rule, so that a test policy from `AddressPolicy::allowing_loopback`
+/// can reach the test server; the policy refuses every address the default rule refuses
+/// (tested in `link::tests::addresses`), so the policy alone still refuses loopback in a test
+/// that does not allow it.
 #[cfg(not(test))]
-const RULE: TargetRule = TargetRule::STRICT;
+fn rule() -> TargetRule {
+    TargetRule::default()
+}
 #[cfg(test)]
-const RULE: TargetRule = TargetRule::LOOPBACK_FOR_TESTS;
+fn rule() -> TargetRule {
+    TargetRule::default().reaching_loopback_for_tests()
+}
 
 /// Opens a signed-in connection to `device` within [`OPENING`].
 ///
@@ -85,21 +93,23 @@ async fn opened(
     Ok(handle)
 }
 
-/// Resolves the device's host once and connects to the first checked address that answers.
+/// Resolves the device's host once and connects to the first checked address that answers
+/// within [`ADDRESS_WAIT`].
 ///
 /// # Errors
 /// [`Error::Unresolved`], [`Error::RefusedTarget`] when any address fails [`permitted`], and
 /// [`Error::Unreachable`] when no address answers.
 async fn reach(policy: &AddressPolicy, device: &Device) -> Result<TcpStream, Error> {
+    let rule = rule();
     let target = Target {
         host: &device.host,
         port: device.ssh.port,
-        rule: RULE,
+        rule: &rule,
     };
     let addresses = ssh::addresses(target).await?;
     let addresses = permitted(policy, addresses).ok_or(Error::RefusedTarget)?;
     for address in addresses {
-        if let Ok(stream) = TcpStream::connect(address).await {
+        if let Ok(Ok(stream)) = timeout(ADDRESS_WAIT, TcpStream::connect(address)).await {
             return Ok(stream);
         }
     }

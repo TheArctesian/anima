@@ -3,7 +3,6 @@
 //! each end the session once; the known gap of a client that leaves after a stray byte; and
 //! the end's write is retried once (LOG-005).
 
-use crate::sessions::Presented;
 use std::time::Duration;
 
 use chrono::TimeDelta;
@@ -18,10 +17,11 @@ use super::{
     super::super::ending::{Cause, End},
     Bench,
     bench::{
-        END_WAIT, LOOPBACK, PASSWORD, Setup, address, bench, ending_within_end_wait, now, operator,
+        END_WAIT, LOOPBACK, PASSWORD, Setup, address, bench, ending_within_end_wait, now,
+        on_tunnel, operator,
     },
     ended_once,
-    fake_guacd::{ARGS_1_6_0, Act, FakeGuacd, Script, fake_guacd},
+    fake_guacd::{Act, FakeGuacd, RDP_ARGS, Script, fake_guacd},
     records::ended,
 };
 use crate::sessions::{
@@ -31,7 +31,7 @@ use crate::sessions::{
 
 /// A guacd that takes `select` and then says nothing until told, and a bench in front of it.
 async fn stalled(pool: &PgPool, setup: Setup) -> (FakeGuacd, Bench) {
-    let guacd = fake_guacd(Script::StallBeforeArgs { args: ARGS_1_6_0 }).await;
+    let guacd = fake_guacd(Script::StallBeforeArgs { args: RDP_ARGS }).await;
     let bench = bench(pool, &guacd.address, setup).await;
     (guacd, bench)
 }
@@ -81,7 +81,7 @@ async fn mv_003_a_client_that_leaves_during_the_opening_ends_the_session_operato
     ended_once(&ended, "operator", "info", LOOPBACK);
     assert_eq!(
         ended.events[0].3,
-        "The client left before the SSH session opened."
+        "The client left before the RDP session opened."
     );
 }
 
@@ -142,10 +142,7 @@ async fn sec_002_d_10_end_session_during_the_opening_sends_guacd_no_credential(p
 )]
 async fn mv_003_a_session_task_that_panics_still_ends_the_session(pool: PgPool) {
     let bench = bench(&pool, "127.0.0.1:9", Setup::default()).await;
-    let redeemed = bench
-        .live
-        .redeem(Presented::terminal(&bench.token, address(LOOPBACK)), now())
-        .unwrap();
+    let redeemed = bench.live.redeem(on_tunnel(&bench.token), now()).unwrap();
     let records = bench.route.records();
     // As `relaying::run` holds the session from its first line.
     let task = tokio::spawn(async move {
@@ -157,7 +154,7 @@ async fn mv_003_a_session_task_that_panics_still_ends_the_session(pool: PgPool) 
     ended_once(&ended, "gateway_error", "warning", LOOPBACK);
     assert_eq!(
         ended.events[0].3,
-        "The hub's tunnel stopped unexpectedly and closed the SSH session."
+        "The hub's tunnel stopped unexpectedly and closed the RDP session."
     );
 }
 
@@ -167,10 +164,7 @@ async fn mv_003_a_session_task_that_panics_still_ends_the_session(pool: PgPool) 
 )]
 async fn d_9_a_session_task_that_panics_after_end_session_ends_with_the_enders_cause(pool: PgPool) {
     let bench = bench(&pool, "127.0.0.1:9", Setup::default()).await;
-    let redeemed = bench
-        .live
-        .redeem(Presented::terminal(&bench.token, address(LOOPBACK)), now())
-        .unwrap();
+    let redeemed = bench.live.redeem(on_tunnel(&bench.token), now()).unwrap();
     let by = Actor {
         operator: operator(),
         client: address("10.10.0.80"),
@@ -205,7 +199,7 @@ async fn sec_002_known_gap_a_client_that_leaves_after_a_stray_byte_is_seen_only_
     ended_once(&ended, "gateway_error", "warning", LOOPBACK);
     assert_eq!(
         ended.events[0].3,
-        "The gateway did not open the SSH session."
+        "The gateway did not open the RDP session."
     );
 }
 
@@ -230,10 +224,7 @@ async fn fail_first_commit_on_update(pool: &PgPool) {
 )]
 async fn log_005_an_end_whose_first_commit_fails_is_written_by_the_retry(pool: PgPool) {
     let bench = bench(&pool, "127.0.0.1:9", Setup::default()).await;
-    let redeemed = bench
-        .live
-        .redeem(Presented::terminal(&bench.token, address(LOOPBACK)), now())
-        .unwrap();
+    let redeemed = bench.live.redeem(on_tunnel(&bench.token), now()).unwrap();
     fail_first_commit_on_update(&pool).await;
     finish(
         &bench.route.records(),

@@ -76,3 +76,17 @@ These items are not blocking. The programme orchestrator collects them here and 
 - Run the shell commands in tests.
 - Skipped: the separate whole-package final review (Section 3.2 step 4). Each task had an Opus security review, and T5 also had a Sonnet interface review.
 - Operator: run the OD-7 spike on Linux (`apps/desktop/src-tauri/spikes/od7`, `xvfb-run -a cargo run`). Try a real device with an untrusted certificate (first visit, accept, changed certificate).
+
+## WP-27 (SSH link, SFTP, wake on LAN)
+
+- Add a DNS-rebinding test and a test for the per-address bound. There is no cheap loopback blackhole for the second.
+- If a create is still pending past `CLOSE_WAIT`, the file can stay on the device.
+- `russh-sftp` decodes non-UTF-8 file names lossily.
+- A single directory listing can reach about 60 MB.
+- `MAX_PENDING` for files tickets is 32 across the whole hub, not per operator.
+- `cancel` is ignored while the file is still opening.
+- The `TimeLimit` sentence says "10 seconds" twice.
+- The host-key-changed wording differs between wake, files and the terminal.
+- The terminal could open through the link.
+- The link-error to GraphQL-code mapping is written in two places.
+- Programme: add a `clippy.toml` `disallowed-methods` rule banning `Box::leak`, `String::leak` and `Vec::leak` (CHK-012).

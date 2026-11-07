@@ -51,6 +51,26 @@ impl Protocol {
     }
 }
 
+/// A desktop protocol: what the Guacamole tunnel serves and the RDP and VNC connection test
+/// reads (K4 Section 2).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Desktop {
+    Rdp,
+    Vnc,
+}
+
+impl Desktop {
+    /// The desktop protocol of a session's `protocol`; `None` for SSH, which uses the terminal
+    /// tunnel (K4 Section 8).
+    pub(super) const fn of(protocol: Protocol) -> Option<Self> {
+        match protocol {
+            Protocol::Rdp => Some(Self::Rdp),
+            Protocol::Vnc => Some(Self::Vnc),
+            Protocol::Ssh => None,
+        }
+    }
+}
+
 impl FromStr for Protocol {
     type Err = UnknownValue;
 

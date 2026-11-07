@@ -6,6 +6,7 @@ mod dns;
 mod downgrade;
 mod http;
 mod icmp;
+mod listing;
 mod proxy;
 mod reach;
 mod secrets;

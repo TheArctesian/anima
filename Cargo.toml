@@ -51,6 +51,9 @@ hyper-util = { version = "0.1", features = ["tokio"] }
 # SSH host-key probe and connection test (WP-10 T3, R-032 E-3). `ring` is the crypto backend
 # (no OpenSSL, no CMake); `rsa` so RSA host keys and RSA private keys work.
 russh = { version = "0.65", default-features = false, features = ["ring", "rsa"] }
+# The files tunnel's SFTP client over a link channel (WP-27 D-7, RA-032). Protocol only, on
+# tokio, Apache-2.0; its server half serves the test SSH server's `sftp` subsystem.
+russh-sftp = { version = "3.0.1", default-features = false }
 # RFC 6238 TOTP (WP-05 T6): HMAC-SHA-1 from RustCrypto, constant-time comparison.
 hmac = "0.13"
 sha1 = "0.11"

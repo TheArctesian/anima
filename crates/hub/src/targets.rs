@@ -1,5 +1,5 @@
 //! Which addresses the hub may connect to for probes and, from Phase 2, sessions and metrics
-//! (SSRF protection, P2-004).
+//! (SSRF protection, R-030).
 
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
@@ -30,8 +30,8 @@ impl AddressPolicy {
         }
     }
 
-    /// Also allows loopback, for the in-crate tests that probe local listeners only.
-    #[cfg(test)]
+    /// Also allows loopback, for the tests that probe local listeners only.
+    #[cfg(any(test, feature = "test-support"))]
     #[must_use]
     pub(crate) fn allowing_loopback(mut self) -> Self {
         self.allow_loopback = true;

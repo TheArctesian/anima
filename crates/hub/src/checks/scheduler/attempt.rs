@@ -15,7 +15,7 @@ use crate::{
     checks::{
         self, Attempt, Beat, Due, Error,
         config::CheckConfig,
-        probe::{Failure, ProbeEnv, ProbeResult, ProbeTarget, probe},
+        probe::{Failure, ProbeEnv, ProbeResult, ProbeTarget, Reach, observe_listing, probe},
         store,
     },
     credentials::Vault,
@@ -174,6 +174,14 @@ async fn observe(
         None => Some(ProbeResult::failed(&Failure::BadConfig)),
         Some(CheckConfig::Push) => Some(schedule::missed_push()),
         Some(CheckConfig::Http(_)) => observe_http(ctx, due, &target, &env).await,
+        Some(config @ (CheckConfig::Docker { .. } | CheckConfig::Systemd { .. })) => {
+            let reach = Reach {
+                db: &ctx.db,
+                vault: &ctx.probing.vault,
+                policy: &ctx.probing.policy,
+            };
+            Some(observe_listing(&reach, device, config, now).await)
+        }
         Some(config) => Some(probe(&target, config, None, &env).await),
     }
 }

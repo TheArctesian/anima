@@ -56,7 +56,7 @@ async fn mv_003_guacd_dropping_mid_handshake_is_503_and_ends_once(pool: PgPool) 
     ended_once(&ended, "gateway_error", "warning", LOOPBACK);
     assert_eq!(
         ended.events[0].3,
-        "The gateway did not open the SSH session."
+        "The gateway did not open the RDP session."
     );
 }
 
@@ -205,6 +205,6 @@ async fn k4_5_a_client_write_stalled_past_the_idle_wait_is_4002_timeout(pool: Pg
     ended_once(&ended, "timeout", "info", LOOPBACK);
     assert_eq!(
         ended.events[0].3,
-        "The client stopped reading what the hub sent, so the hub closed the SSH session."
+        "The client stopped reading what the hub sent, so the hub closed the RDP session."
     );
 }
