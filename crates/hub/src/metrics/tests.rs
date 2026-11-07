@@ -5,15 +5,14 @@ use crate::metrics::MetricKind;
 
 mod aggregates;
 mod captures;
-mod charts;
 mod database;
 mod df;
+mod faces;
 mod kinds;
 mod linux;
 mod macos;
 mod privileges;
 mod rates;
-mod readings;
 mod retention;
 mod series;
 
