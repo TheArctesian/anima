@@ -2,9 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { fakeHub } from '$lib/devices/hub.fixture';
 import type { HubResult } from '$lib/hub/hub';
 import { Detail } from './detail.svelte';
-import { parseDeviceId } from './device-id';
+import { parseDeviceId, type DeviceId } from './device-id';
 import { ID, OTHER_ID, answers, beatsPage, check, heartbeat } from './page.fixture.svelte';
 import { Pages, type Connection } from './pages.svelte';
+
+const DEVICE = parseDeviceId(ID) as DeviceId;
+const NOW = () => new Date('2026-11-05T09:05:00Z');
 
 async function settle(): Promise<void> {
   for (let turn = 0; turn < 4; turn += 1) await Promise.resolve();
@@ -12,7 +15,7 @@ async function settle(): Promise<void> {
 
 async function started(extra: Record<string, unknown> = {}) {
   const fake = fakeHub(answers(extra));
-  const detail = new Detail(fake.hub, parseDeviceId(ID));
+  const detail = new Detail(fake.hub, DEVICE, NOW);
   detail.start();
   await detail.loadChecks();
   await settle();
@@ -41,7 +44,7 @@ describe('Detail live updates (D-11)', () => {
 
   it('D-11: after stop no update and no late answer changes the page', async () => {
     const fake = fakeHub(answers());
-    const detail = new Detail(fake.hub, parseDeviceId(ID));
+    const detail = new Detail(fake.hub, DEVICE, NOW);
     detail.start();
     detail.stop();
     await settle();
@@ -51,7 +54,7 @@ describe('Detail live updates (D-11)', () => {
 
   it('D-11: checks that answer after stop are dropped', async () => {
     const fake = fakeHub(answers());
-    const detail = new Detail(fake.hub, parseDeviceId(ID));
+    const detail = new Detail(fake.hub, DEVICE, NOW);
     detail.start();
     const loading = detail.loadChecks();
     detail.stop();
