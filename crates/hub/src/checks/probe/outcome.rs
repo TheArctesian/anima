@@ -38,7 +38,7 @@ pub enum Judgement {
     /// An ok result that is not settled yet: Docker `health: starting`. The evaluation
     /// records it as Degraded.
     Starting,
-    /// The hub could not test the target (no LocalAPI proxy). The evaluation records Unknown.
+    /// The hub could not test the target (for example, no `LocalAPI` proxy). The evaluation records Unknown.
     Unjudged,
 }
 

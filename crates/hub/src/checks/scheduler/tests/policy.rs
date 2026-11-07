@@ -5,6 +5,7 @@
 use std::net::IpAddr;
 
 use ipnet::IpNet;
+use sqlx::PgPool;
 
 use super::support::{
     DOCKER_HOST, Listener, add, add_check, database_now, device, due_at, new_check, on_loopback,
