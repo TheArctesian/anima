@@ -5,6 +5,7 @@
 
 use std::sync::Arc;
 
+use chrono::{DateTime, Utc};
 use serde_json::json;
 use sqlx::PgPool;
 
@@ -15,6 +16,7 @@ use super::{
 };
 use crate::{
     clock::Clock,
+    devices::Device,
     events::{self, AuditAction, AuditTarget, Bus, NewAudit, NewEvent, Severity, Source},
     sessions::Error,
 };
@@ -104,4 +106,34 @@ impl Trail {
         tx.commit().await?;
         Ok(())
     }
+}
+
+/// The sentence of a files tunnel refused because the device's host key changed (SEC-007),
+/// in the words of the terminal's `HOST_KEY_MISMATCH` end.
+pub(super) const HOST_KEY_CHANGED: &str = "The device presented an SSH host key that is not the \
+                                           accepted one, so the hub opened no files tunnel \
+                                           and sent no credential. Test the connection and \
+                                           check the new key before accepting it.";
+
+/// Writes the Error event of a files tunnel to `device` refused at `now` because the device
+/// presented another host key than the accepted one.
+///
+/// # Errors
+/// `Database` or `Events` when the event cannot be written.
+pub(super) async fn host_key_changed(
+    db: &PgPool,
+    bus: &Bus,
+    now: DateTime<Utc>,
+    device: &Device,
+) -> Result<(), Error> {
+    let event = NewEvent {
+        severity: Severity::Error,
+        source: Source::Session,
+        device: Some((device.id, device.name.clone())),
+        message: HOST_KEY_CHANGED.to_owned(),
+    };
+    let mut tx = db.begin().await?;
+    events::record(&mut tx, bus, now, event).await?;
+    tx.commit().await?;
+    Ok(())
 }

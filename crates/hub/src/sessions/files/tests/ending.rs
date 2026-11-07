@@ -166,3 +166,55 @@ async fn ra_032_an_idle_tunnel_keeps_its_link_alive(pool: PgPool) {
     assert_eq!(client.text().await["type"], "entries");
     assert_eq!(bench.server.requests().len(), 2, "still the one channel");
 }
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn ra_032_an_upload_still_opening_when_the_tunnel_ends_is_removed(pool: PgPool) {
+    let mut bench = bench(&pool).await;
+    bench.server.quirks.slow_opens.store(true, Ordering::SeqCst);
+    let mut client = bench.open().await;
+    client
+        .send(r#"{"type":"upload","path":"/opening","size":10}"#)
+        .await;
+    // The device made the file; its answer to the open is still on the way.
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    assert!(bench.server.read("opening").is_some());
+    drop(bench.terminal.take());
+    assert_eq!(client.close_code().await, Some(1000));
+    assert_eq!(
+        bench.server.read("opening"),
+        None,
+        "the file the hub created is removed"
+    );
+    assert_eq!(bench.audits().await[0].3["outcome"], "cancelled");
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn log_005_a_transfer_whose_audit_cannot_be_written_closes_1011(pool: PgPool) {
+    let bench = bench(&pool).await;
+    sqlx::raw_sql(
+        "create function events.refuse() returns trigger language plpgsql as \
+         $$ begin raise exception 'refused'; end $$; \
+         create trigger refuse before insert on events.audit_log \
+         for each row execute function events.refuse();",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    bench.server.put("a.txt", b"abc");
+    let mut client = bench.open().await;
+    client.send(r#"{"type":"download","path":"/a.txt"}"#).await;
+    assert_eq!(client.text().await["size"], 3);
+    assert_eq!(client.next().await, Received::Binary(b"abc".to_vec()));
+    assert_eq!(
+        client.next().await,
+        Received::Closed(Some(1011)),
+        "no done without its audit entry"
+    );
+    assert_eq!(bench.audits().await, []);
+}

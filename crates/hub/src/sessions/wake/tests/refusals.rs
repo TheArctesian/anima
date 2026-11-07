@@ -5,10 +5,11 @@
 use sqlx::PgPool;
 
 use super::{
-    MAC, PVE, assert_stored_quiet, events, exiting, one_error_event, refused, relay, set_mac,
-    set_relay, woken,
+    MAC, PVE, assert_quiet, assert_stored_quiet, events, exiting, one_error_event, pve, refused,
+    relay, set_mac, set_relay, wake, woken,
 };
 use crate::{
+    events::Bus,
     ids::DeviceId,
     sessions::{
         LinkError, WakeError,
@@ -16,8 +17,9 @@ use crate::{
             SEED, bench_accepting,
             server::{host_key, serve},
         },
-        tests::fixture::{DOCKER_HOST, docker_host},
+        tests::fixture::{DOCKER_HOST, docker_host, now},
     },
+    targets::AddressPolicy,
 };
 
 #[sqlx::test(
@@ -122,6 +124,41 @@ async fn sec_006_a_relay_without_an_accepted_key_is_refused_before_connecting(po
         WakeError::Link(LinkError::NoHostKey)
     ));
     assert_eq!(bench.server.connections(), 0);
+    one_error_event(
+        &pool,
+        "No Wake-on-LAN packet was sent: no host key is accepted for the wake relay. Test its \
+         connection and accept its key.",
+    )
+    .await;
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn p2_004_a_relay_on_a_denied_address_is_refused_before_connecting(pool: PgPool) {
+    let bench = relay(&pool, exiting(0)).await;
+    let denied = AddressPolicy::new(vec!["127.0.0.0/8".parse().unwrap()]).allowing_loopback();
+    let error = wake(
+        &bench.db,
+        &bench.vault,
+        &denied,
+        &Bus::new(16),
+        pve(),
+        now(),
+    )
+    .await
+    .unwrap_err();
+    assert!(matches!(error, WakeError::Link(LinkError::RefusedTarget)));
+    assert_quiet(&format!("{error:?}"), &bench.server);
+    assert_eq!(bench.server.connections(), 0);
+    one_error_event(
+        &pool,
+        "No Wake-on-LAN packet was sent: the wake relay's host does not resolve to an address \
+         the hub may connect to.",
+    )
+    .await;
+    assert_stored_quiet(&bench).await;
 }
 
 #[sqlx::test(

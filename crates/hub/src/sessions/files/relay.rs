@@ -154,14 +154,14 @@ impl Relay {
                 break cause;
             }
         };
-        self.work = None;
+        let work = self.work.take();
         if let Some(active) = self.active.take() {
             let outcome = if cause == Cause::GatewayError {
                 Outcome::Failed
             } else {
                 Outcome::Cancelled
             };
-            self.abandon(active, outcome).await;
+            self.abandon(active, work, outcome).await;
         }
         close_client(self.client, cause).await;
     }
@@ -256,22 +256,17 @@ impl Relay {
         }
     }
 
-    /// Ends a transfer the tunnel's end cut short: an upload the hub created is closed and
-    /// removed, best effort within [`CLOSE_WAIT`], then the audit entry is written.
-    async fn abandon(&mut self, active: Active, outcome: Outcome) {
+    /// Ends a transfer the tunnel's end cut short: an upload the hub created, or whose
+    /// exclusive create is still in flight in `work` and succeeds, is closed and removed, best
+    /// effort within [`CLOSE_WAIT`]; then the audit entry is written.
+    async fn abandon(&mut self, active: Active, work: Option<Work>, outcome: Outcome) {
         let Active { transfer, stage } = active;
-        let created = matches!(stage, Stage::Open(_) | Stage::Closing(_));
-        if transfer.direction == Direction::Upload && created {
+        let audited = !matches!(stage, Stage::Discarding);
+        if transfer.direction == Direction::Upload {
             let remote = Arc::clone(&self.remote);
-            let _left = timeout(CLOSE_WAIT, async {
-                if let Stage::Open(handle) = &stage {
-                    let _closed = remote.close(handle).await;
-                }
-                remote.remove(&transfer.path).await
-            })
-            .await;
+            let _left = timeout(CLOSE_WAIT, leave_upload(&remote, stage, work, &transfer)).await;
         }
-        if !matches!(stage, Stage::Discarding) {
+        if audited {
             self.audit(&transfer, outcome, None).await;
         }
     }
@@ -291,6 +286,28 @@ impl Relay {
             }
         }
     }
+}
+
+/// Closes and removes an unfinished upload at `stage`. While it is opening, its create in
+/// `work` is awaited: only a create that succeeded made a file, and being exclusive, that
+/// file is the hub's; a refused or failed create leaves what is there alone.
+async fn leave_upload(remote: &Remote, stage: Stage, work: Option<Work>, transfer: &Transfer) {
+    let handle = match stage {
+        Stage::Open(handle) => Some(handle),
+        Stage::Opening => match work {
+            Some(work) => match work.await {
+                Done::Created(Ok(Ok(handle))) => Some(handle),
+                _ => return,
+            },
+            None => return,
+        },
+        Stage::Closing(_) => None,
+        Stage::Discarding => return,
+    };
+    if let Some(handle) = &handle {
+        let _closed = remote.close(handle).await;
+    }
+    let _removed = remote.remove(&transfer.path).await;
 }
 
 /// The request in flight, or never when there is none.

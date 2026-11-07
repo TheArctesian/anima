@@ -6,11 +6,11 @@ use sqlx::PgPool;
 
 use super::{
     bench::bench,
-    server::Heard,
+    server::{Heard, serve},
     socket::{open, open_with},
 };
 use crate::sessions::{
-    files::tickets::FilesTicket,
+    files::{tickets::FilesTicket, trail::HOST_KEY_CHANGED},
     start,
     tests::fixture::{LOOPBACK, address, docker_host, move_device, now, operator, request},
     tickets::{LIFETIME, TicketToken},
@@ -142,4 +142,45 @@ async fn p2_004_the_deny_list_refuses_the_device(pool: PgPool) {
     let refused = open_with(&bench.url(&token), true).await;
     assert_eq!(refused.err(), Some(StatusCode::SERVICE_UNAVAILABLE));
     assert_eq!(bench.server.heard(), [], "no connection reached the device");
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn ra_032_a_files_ticket_presented_after_shutdown_is_refused(pool: PgPool) {
+    let bench = bench(&pool).await;
+    let token = bench.token().await;
+    let _closing = bench.live.shut_down();
+    let refused = open_with(&bench.url(&token), true).await;
+    assert_eq!(refused.err(), Some(StatusCode::FORBIDDEN));
+    assert_eq!(bench.server.requests(), [], "no link opened");
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn sec_007_another_host_key_is_503_with_an_error_event(pool: PgPool) {
+    let bench = bench(&pool).await;
+    let other = serve(12).await.key;
+    sqlx::query(
+        "update sessions.host_keys set algorithm = $1, fingerprint_sha256 = $2, public_key = $3",
+    )
+    .bind(other.algorithm())
+    .bind(other.fingerprint().as_str().to_owned())
+    .bind(other.to_base64())
+    .execute(&pool)
+    .await
+    .unwrap();
+    let token = bench.token().await;
+    let refused = open_with(&bench.url(&token), true).await;
+    assert_eq!(refused.err(), Some(StatusCode::SERVICE_UNAVAILABLE));
+    assert_eq!(bench.server.heard(), [], "no sign-in, no channel");
+    let events = bench.events().await;
+    let (severity, _, device, message) = events.last().unwrap();
+    assert_eq!(
+        (severity.as_str(), device.as_deref(), message.as_str()),
+        ("error", Some("docker-host"), HOST_KEY_CHANGED)
+    );
 }

@@ -225,17 +225,18 @@ impl russh_sftp::server::Handler for Disk {
         ready(self.next_entries(&handle).map(|files| Name { id, files }))
     }
 
-    fn open(
+    async fn open(
         &mut self,
         id: u32,
         filename: String,
         pflags: OpenFlags,
         _attrs: FileAttributes,
-    ) -> impl Future<Output = Answer<Handle>> + Send {
-        ready(
-            self.open_file(&filename, pflags)
-                .map(|handle| Handle { id, handle }),
-        )
+    ) -> Answer<Handle> {
+        let opened = self.open_file(&filename, pflags);
+        if on(&self.quirks.slow_opens) {
+            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+        }
+        opened.map(|handle| Handle { id, handle })
     }
 
     async fn read(&mut self, id: u32, handle: String, offset: u64, len: u32) -> Answer<Data> {

@@ -73,6 +73,12 @@ async fn d_4_a_command_with_no_exit_status_is_not_sent(pool: PgPool) {
     let bench = relay(&pool, Answer::NoStatus).await;
     assert!(matches!(refused(&bench).await, WakeError::NotSent));
     assert_eq!(execs(&bench.server).len(), 1);
+    one_error_event(
+        &pool,
+        "No Wake-on-LAN packet was sent: wakeonlan failed on the wake relay. Check that it is \
+         installed there.",
+    )
+    .await;
 }
 
 #[sqlx::test(
