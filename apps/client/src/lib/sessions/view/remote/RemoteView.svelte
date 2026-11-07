@@ -97,6 +97,9 @@
   }
 
   /** Show the certificate warning again, which runs a new connection test (K4 §3). */
+  /** The ended panel, so that the certificate warning gives focus back to its button. */
+  let ended: EndedPanel | undefined = $state();
+
   function checkCertificate() {
     dismissed = undefined;
   }
@@ -268,6 +271,7 @@
         {#if stage.kind === 'ending' || stage.kind === 'ended'}
           {@const changed = stage.kind === 'ended' && stage.certificateChanged}
           <EndedPanel
+            bind:this={ended}
             ending={stage.ending}
             settled={stage.kind === 'ended'}
             certificateChanged={changed}
@@ -293,7 +297,7 @@
 {/each}
 
 {#if certificateOpen}
-  <CertificateModal {device} {api} onclose={() => (dismissed = stage)} onaccepted={reconnect} />
+  <CertificateModal {device} {api} onclose={() => (dismissed = stage)} onaccepted={reconnect} returnTo={() => ended?.actionButton()} />
 {/if}
 
 <style>

@@ -156,6 +156,7 @@ describe('MAT-008: the terminal', () => {
     const rules = componentRules('./steps/ConnectionSteps.svelte');
     expect(rules.get('.steps')?.get('grid-template-columns')).toMatch(/^repeat\(4,/);
     expect(rules.get('.wake')?.get('block-size')).toBe('1lh');
+    expect(rules.get('.wake')?.get('max-inline-size')).toBe('100%');
     expect(rules.get('.label')?.get('text-overflow')).toBe('ellipsis');
     expect(rules.get('.wake')?.has('transition')).toBe(false);
   });

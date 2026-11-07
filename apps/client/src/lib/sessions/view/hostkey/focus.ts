@@ -18,9 +18,10 @@ function wrapped(surface: HTMLElement, active: Element | null, backwards: boolea
 /**
  * Keep focus inside a modal surface while it is attached (Section 5.7.3 "Modal"): focus starts on its first
  * control (the default action), Tab and Shift+Tab wrap, a focus that lands outside comes back, and Escape calls
- * `onescape`. On detach, focus returns to where it was.
+ * `onescape`. On detach, focus returns to where it was, or to
+ * `returnTo()` when that gives an element (a caller whose opener may not have held focus, as in WebKit).
  */
-export function trapFocus(onescape: () => void): Attachment<HTMLElement> {
+export function trapFocus(onescape: () => void, returnTo?: () => HTMLElement | undefined): Attachment<HTMLElement> {
   return (surface) => {
     const before = document.activeElement;
     const keydown = (event: KeyboardEvent) => {
@@ -41,7 +42,8 @@ export function trapFocus(onescape: () => void): Attachment<HTMLElement> {
     return () => {
       document.removeEventListener('keydown', keydown, true);
       document.removeEventListener('focusin', focusin);
-      if (before instanceof HTMLElement && before.isConnected) before.focus();
+      const target = returnTo?.() ?? before;
+      if (target instanceof HTMLElement && target.isConnected) target.focus();
     };
   };
 }

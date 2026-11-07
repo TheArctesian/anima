@@ -92,6 +92,7 @@
     align-items: center;
     gap: var(--space-1);
     min-inline-size: 0;
+    max-inline-size: 100%;
     block-size: 1lh;
     margin: var(--space-2) 0 0;
     font-size: var(--text-sm);
