@@ -92,9 +92,10 @@ enum Seen {
 /// device has an accepted key and the host presents exactly that key.
 ///
 /// # Errors
-/// `NotFound` for an unknown device; `Validation` on `host` when it resolves to a refused
-/// address (R-032); `Database`, `Devices` or `Credentials` when a dependency fails. A host
-/// that cannot be reached or signed in to is a result, not an error.
+/// `NotFound` for an unknown device; `Validation` on `host` when it resolves to an address
+/// the target rule or the hub's deny list refuses (R-030, R-032); `Database`, `Devices` or
+/// `Credentials` when a dependency fails. A host that cannot be reached or signed in to is a
+/// result, not an error.
 pub(in crate::sessions) async fn test_connection(
     db: &PgPool,
     vault: &Vault,
@@ -160,8 +161,9 @@ async fn plan(db: &PgPool, vault: &Vault, subject: TestSubject) -> Result<Plan, 
 fn refused_host() -> FieldError {
     FieldError::new(
         "host",
-        "The host resolves to a loopback, link-local, multicast or unspecified address. \
-         Enter the address the device has on its network.",
+        "The host resolves to a loopback, link-local, multicast or unspecified address, or to \
+         one in a network the hub refuses (ANIMA_PROBE_DENY). Enter the address the device \
+         has on its network.",
     )
 }
 

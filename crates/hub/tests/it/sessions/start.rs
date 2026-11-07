@@ -231,7 +231,9 @@ async fn set_host(pool: &PgPool, device: &str, host: &str) {
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
 )]
-async fn gw_011_start_session_refuses_a_host_literal_that_is_not_one_remote_host(pool: PgPool) {
+async fn gw_011_r_030_start_session_refuses_a_host_literal_that_is_not_one_remote_host(
+    pool: PgPool,
+) {
     ready(&pool, &[DOCKER_HOST]).await;
     for host in [
         "127.0.0.1",
@@ -248,6 +250,19 @@ async fn gw_011_start_session_refuses_a_host_literal_that_is_not_one_remote_host
     ] {
         set_host(&pool, DOCKER_HOST, host).await;
         let error = refusal(&pool, DOCKER_HOST, display()).await;
+        assert_eq!(error["extensions"]["code"], "VALIDATION", "{host}: {error}");
+        assert_eq!(fields(&error), ["host"], "{host}");
+    }
+    // A literal the target rule allows is refused when the hub's deny list holds it (R-030).
+    let deny = anima_hub::targets::AddressPolicy::new(vec!["10.10.0.0/24".parse().unwrap()]);
+    let denying = schema_at(&pool, now(), &Live::default().denying(deny));
+    for host in ["10.10.0.21", "::ffff:10.10.0.21"] {
+        set_host(&pool, DOCKER_HOST, host).await;
+        let error = error_json(
+            &denying
+                .execute(start_request(DOCKER_HOST, &display()))
+                .await,
+        );
         assert_eq!(error["extensions"]["code"], "VALIDATION", "{host}: {error}");
         assert_eq!(fields(&error), ["host"], "{host}");
     }

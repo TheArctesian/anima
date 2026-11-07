@@ -1,6 +1,7 @@
 //! What the hub holds in memory about sessions (D-1, R-032): unredeemed tickets, tickets
-//! spent by a refused redemption, the end signal of each open tunnel, and the host keys
-//! connection tests saw (D-5).
+//! spent by a refused redemption, the end signal of each open tunnel, the host keys
+//! connection tests saw (D-5), and the rule for the addresses sessions may reach (R-030,
+//! R-032).
 //!
 //! Every method takes the lock for a short, synchronous critical section and never across an
 //! `.await`; time comes in as a parameter (CQ-021).
@@ -22,7 +23,7 @@ use super::{
     tickets::{PendingTicket, Presented, TicketHash, hash_of},
     trust::{Endpoint, Observation, Observations},
 };
-use crate::ids::SessionId;
+use crate::{ids::SessionId, targets::AddressPolicy};
 
 /// Most tickets issued and not yet redeemed or swept, spent ones included. A ticket lives
 /// 30 s, so this bounds what one operator can hold in memory by starting sessions in a loop.
@@ -68,8 +69,9 @@ impl State {
 }
 
 /// Tickets, open tunnels and host-key observations, shared by GraphQL and the tunnel route.
-/// Cheap to clone; every clone sees the same state. `main.rs` builds one with
-/// `Live::default()` (R-032), which probes with [`TargetRule::STRICT`].
+/// Cheap to clone; every clone sees the same state. `sessions::open` builds one with
+/// `Live::default()`, whose target rule has no deny list; `main.rs` gives it the hub's
+/// `ANIMA_PROBE_DENY` policy with [`Live::denying`] (R-030, R-032).
 #[derive(Clone)]
 pub struct Live {
     state: Arc<Mutex<State>>,
@@ -190,17 +192,30 @@ impl Live {
             state: Arc::default(),
             observations: Arc::default(),
             tunnel_end_wait: wait,
-            target_rule: TargetRule::STRICT,
+            target_rule: TargetRule::default(),
+        }
+    }
+
+    /// This `Live` with every session connection (the terminal, the Guacamole tunnel, the SSH
+    /// probe and `testConnection`) also refusing what `policy` refuses: the
+    /// `ANIMA_PROBE_DENY` networks and the policy's always-refused ranges (R-030). It
+    /// replaces any policy given before.
+    #[must_use]
+    pub fn denying(self, policy: AddressPolicy) -> Self {
+        Self {
+            target_rule: self.target_rule.denying(policy),
+            ..self
         }
     }
 
     /// This `Live` with probes that may reach an SSH server on the loopback interface, for
-    /// tests only: every other refused address stays refused (R-032).
+    /// tests only: every other refused address stays refused, and so does loopback in the
+    /// deny list (R-030, R-032).
     #[cfg(any(test, feature = "test-support"))]
     #[must_use]
     pub fn reaching_loopback_for_tests(self) -> Self {
         Self {
-            target_rule: TargetRule::LOOPBACK_FOR_TESTS,
+            target_rule: self.target_rule.reaching_loopback_for_tests(),
             ..self
         }
     }
@@ -209,9 +224,9 @@ impl Live {
         self.tunnel_end_wait
     }
 
-    /// The rule every SSH probe applies to the addresses a host resolves to.
-    pub(super) const fn target_rule(&self) -> TargetRule {
-        self.target_rule
+    /// The rule every session connection applies to the addresses a host resolves to.
+    pub(super) const fn target_rule(&self) -> &TargetRule {
+        &self.target_rule
     }
 
     fn observations(&self) -> MutexGuard<'_, Observations> {

@@ -81,7 +81,8 @@ impl NotOpened {
             Self::Unresolved => "The device's host name does not resolve.",
             Self::RefusedTarget => {
                 "The device's host resolves to a loopback, link-local, multicast or unspecified \
-                 address, which the gateway must not reach."
+                 address, or to one in a network the hub refuses (ANIMA_PROBE_DENY), which the \
+                 gateway must not reach."
             }
             Self::HostKeyUnread(_) => "The hub could not read the device's SSH host key.",
             Self::Values(_) => {
@@ -159,9 +160,9 @@ pub(super) async fn open(route: &Route, ticket: &PendingTicket) -> Result<Openin
 }
 
 /// The address the session goes to: the first one the device's host resolves to, when `rule`
-/// lets the gateway reach every one of them (R-032), in its canonical form, so an
+/// lets the gateway reach every one of them (R-030, R-032), in its canonical form, so an
 /// IPv4-mapped address is checked and sent as the IPv4 address it is (`ssh::addresses`).
-async fn target(host: &str, port: u16, rule: TargetRule) -> Result<IpAddr, NotOpened> {
+async fn target(host: &str, port: u16, rule: &TargetRule) -> Result<IpAddr, NotOpened> {
     let checked =
         ssh::addresses(Target { host, port, rule })
             .await
