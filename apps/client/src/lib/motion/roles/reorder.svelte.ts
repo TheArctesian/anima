@@ -1,6 +1,6 @@
 import type { Attachment } from 'svelte/attachments';
-import { motionPreference, type MotionPreference } from '$lib/motion/preference';
-import { flip, measure, type Places } from '$lib/motion/roles/flip';
+import { motionPreference, type MotionPreference } from '../preference';
+import { flip, measure, type Places } from './flip';
 
 /** Whether two places are the same spot on screen. */
 function samePlace(a: DOMRectReadOnly, b: DOMRectReadOnly): boolean {

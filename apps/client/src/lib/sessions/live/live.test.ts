@@ -134,7 +134,7 @@ it('RA-034: a failed Stop keeps the row and shows fixed text, not the hub text',
   stopButton('desk').click();
   flushSync();
   await vi.waitFor(() => {
-    expect(panel()?.textContent).toContain('The session could not be stopped.');
+    expect(panel()?.querySelector('[role="alert"]')?.textContent).toContain('The session could not be stopped.');
   });
   expect(rows()).toHaveLength(1);
   expect(panel()?.textContent).not.toContain('secret hub text');
@@ -249,7 +249,7 @@ it('RA-034: a failed Stop leaves focus on that row\'s button', async () => {
   stopButton('desk').focus();
   stopButton('desk').click();
   await vi.waitFor(() => {
-    expect(panel()?.textContent).toContain('The session could not be stopped.');
+    expect(panel()?.querySelector('[role="alert"]')).not.toBeNull();
   });
   expect(document.activeElement).toBe(stopButton('desk'));
 });

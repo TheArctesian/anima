@@ -11,7 +11,7 @@
   import type { SessionProtocol } from '$lib/sessions/tabs';
   import type { WebInterface } from '$lib/web-interfaces/api';
   import { hostLine } from './card';
-  import { reorderMotion } from './reorder.svelte';
+  import { reorderMotion } from '$lib/motion/roles/reorder.svelte';
   import StatusEdge from './StatusEdge.svelte';
   import StatusPill from './StatusPill.svelte';
 
