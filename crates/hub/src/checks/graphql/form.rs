@@ -7,8 +7,8 @@ use std::collections::HashSet;
 use async_graphql::ID;
 
 use super::input::{
-    AuthShape, ConfigShape, CreateShape, DnsShape, HttpShape, IcmpShape, TcpShape, TlsShape,
-    UpdateShape,
+    AuthShape, ConfigShape, CreateShape, DnsShape, DockerShape, HttpShape, IcmpShape, SystemdShape,
+    TcpShape, TlsShape, UpdateShape,
 };
 use super::settings::RawSettings;
 use crate::{
@@ -136,6 +136,20 @@ fn tls(shape: TlsShape) -> Result<ConfigForm, FieldError> {
     }))
 }
 
+fn docker(shape: DockerShape) -> Result<ConfigForm, FieldError> {
+    Ok(ConfigForm::plain(CheckConfig::Docker {
+        container: shape.container,
+        timeout_ms: or_default("timeoutMs", shape.timeout_ms, 10_000)?,
+    }))
+}
+
+fn systemd(shape: SystemdShape) -> Result<ConfigForm, FieldError> {
+    Ok(ConfigForm::plain(CheckConfig::Systemd {
+        unit: shape.unit,
+        timeout_ms: or_default("timeoutMs", shape.timeout_ms, 10_000)?,
+    }))
+}
+
 fn dns(shape: DnsShape) -> ConfigForm {
     ConfigForm::plain(CheckConfig::Dns {
         name: shape.name,
@@ -175,6 +189,8 @@ pub(super) fn config(shape: ConfigShape, token: PushToken) -> Result<ConfigForm,
         ConfigShape::Tls(shape) => tls(shape),
         ConfigShape::Http(shape) => http(shape.0),
         ConfigShape::Dns(shape) => Ok(dns(shape)),
+        ConfigShape::Docker(shape) => docker(shape),
+        ConfigShape::Systemd(shape) => systemd(shape),
         ConfigShape::Push(true) => Ok(ConfigForm {
             definition: Definition::Push(token),
             children: None,

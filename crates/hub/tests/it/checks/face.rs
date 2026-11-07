@@ -8,6 +8,7 @@ mod batching;
 mod beats;
 mod configs;
 mod due;
+mod http_urls;
 mod retention;
 mod secrets;
 mod statuses;

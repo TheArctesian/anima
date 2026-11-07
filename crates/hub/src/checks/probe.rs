@@ -4,16 +4,20 @@
 //! [`ProbeResult`] with `ok: false`, never an `Err` or a panic. Invert, retries and status
 //! belong to the evaluation (CHK-008). Every probe resolves its host once, keeps only the
 //! addresses the [`AddressPolicy`] allows and connects to one of those addresses, so DNS
-//! rebinding cannot reach a refused address. No probe starts a process or a shell.
+//! rebinding cannot reach a refused address. No probe starts a process or a shell on the hub;
+//! Docker and systemd checks send only fixed commands over the SSH link (CHK-012).
 //!
 //! PUSH and GROUP checks are not probed: the device calls the hub, or the children decide.
 //! For them [`probe`] returns a failed result saying so; the scheduler must not call it.
 
 mod dns;
+pub(in crate::checks) mod docker;
 mod http;
 mod icmp;
 mod outcome;
 mod resolve;
+mod ssh;
+pub(in crate::checks) mod systemd;
 mod tcp;
 mod tls;
 
@@ -22,7 +26,8 @@ use std::{collections::HashMap, net::IpAddr, sync::Arc};
 use chrono::{DateTime, Utc};
 
 pub use http::BODY_CAP;
-pub use outcome::{Failure, MESSAGE_MAX, ProbeResult, clean_message};
+pub use outcome::{Failure, Judgement, MESSAGE_MAX, ProbeResult, clean_message};
+pub(super) use ssh::{Reach, observe_listing};
 
 use crate::{
     checks::config::{CheckConfig, HttpSecrets},
@@ -126,5 +131,8 @@ async fn run(
             dns::probe(&query, config.timeout(), env).await
         }
         CheckConfig::Push | CheckConfig::Group => ProbeResult::failed(&Failure::NotProbed),
+        CheckConfig::Docker { .. } | CheckConfig::Systemd { .. } => {
+            ProbeResult::failed(&Failure::NeedsLink)
+        }
     }
 }

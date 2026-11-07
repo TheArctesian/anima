@@ -35,8 +35,10 @@ pub(super) enum CheckKind {
     Dns,
     Push,
     Group,
+    Docker,
+    Systemd,
 }
-mirror!(CheckType => CheckKind { Icmp, Tcp, Tls, Http, Dns, Push, Group });
+mirror!(CheckType => CheckKind { Icmp, Tcp, Tls, Http, Dns, Push, Group, Docker, Systemd });
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Enum)]
 #[graphql(name = "IpVersion")]
