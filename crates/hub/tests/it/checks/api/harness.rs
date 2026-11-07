@@ -57,9 +57,9 @@ pub fn schema_at(pool: &PgPool, at: DateTime<Utc>) -> (TestSchema, Bus) {
 /// How long the batching tests let a loader collect keys before it runs its batch.
 ///
 /// Under machine load a short window can close before every field of one query has asked, so
-/// one query becomes several batches and the statement count grows. Half a second is longer
-/// than any scheduling stall seen on a loaded machine, and a batch still runs as soon as the
-/// window ends, so a test pays at most this once per loader round.
+/// one query becomes several batches and the statement count grows. Half a second is far longer
+/// than async-graphql's default window, and a batch still runs as soon as the window ends, so a
+/// test pays at most this once per loader round.
 const BATCH_WINDOW: Duration = Duration::from_millis(500);
 
 /// The schema of `schema_at` whose loaders wait `BATCH_WINDOW`, for tests that count statements.
