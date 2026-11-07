@@ -9,7 +9,7 @@ use super::{
     error::{internal, schema_dependency, to_graphql},
     remote::{DeviceRdp, DeviceVnc},
     ssh::DeviceSsh,
-    standing::{ChecksOf, ResolvedIpOf, StatusOf, UptimeOf},
+    standing::{ChecksOf, ResolvedIpOf, StatusOf, SuggestionsOf, UptimeOf, WebInterfacesOf},
 };
 use crate::{
     checks::{Check, UptimeWindow},
@@ -20,6 +20,7 @@ use crate::{
     },
     scalars::IpAddr,
     status::Status,
+    web_interfaces::{Suggestion, WebInterface},
 };
 
 #[Object]
@@ -88,6 +89,24 @@ impl Device {
             .await
             .map_err(internal)?;
         Ok(checks.unwrap_or_default())
+    }
+
+    /// The device's web interfaces in creation order (WEB-001).
+    async fn web_interfaces(&self, ctx: &Context<'_>) -> Result<Vec<WebInterface>> {
+        let interfaces = schema_dependency::<DataLoader<WebInterfacesOf>>(ctx)?
+            .load_one(self.id)
+            .await
+            .map_err(internal)?;
+        Ok(interfaces.unwrap_or_default())
+    }
+
+    /// The device's HTTP checks offered as interfaces (WEB-002).
+    async fn web_interface_suggestions(&self, ctx: &Context<'_>) -> Result<Vec<Suggestion>> {
+        let suggestions = schema_dependency::<DataLoader<SuggestionsOf>>(ctx)?
+            .load_one(self.id)
+            .await
+            .map_err(internal)?;
+        Ok(suggestions.unwrap_or_default())
     }
 
     /// Uptime ratio 0..1 from the aggregate tables; null with no counted beats (CHK-011).

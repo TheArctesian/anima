@@ -32,7 +32,10 @@ pub use self::{
         VncSettingsInput,
     },
     ssh::CredentialStored,
-    standing::{ChecksOf, ResolvedIpOf, StatusOf, UptimeOf},
+    standing::{
+        ChecksOf, ResolvedIpOf, StatusOf, SuggestionsOf, UptimeOf, WebInterfacesOf,
+        web_interface_suggestions_loader, web_interfaces_loader,
+    },
 };
 
 use self::{
