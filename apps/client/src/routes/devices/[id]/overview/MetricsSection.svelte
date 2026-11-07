@@ -2,21 +2,20 @@
   import LineChart from '$lib/charts/LineChart.svelte';
   import type { MetricsSource } from '$lib/hub/generated/graphql';
   import { chartsOf } from '$lib/metrics/charts';
-  import { rangeGap } from '$lib/metrics/live';
-  import type { MetricRange } from '$lib/metrics/api';
+    import type { MetricRange } from '$lib/metrics/api';
   import MetricBars from '$lib/metrics/bars/MetricBars.svelte';
   import { skeletonDelay } from '$lib/motion/loading/delay.svelte';
   import type { LoadingClock } from '$lib/motion/loading/loading';
   import { press } from '$lib/motion/roles/press';
   import { crossFade } from '$lib/motion/roles/transitions';
-  import { RANGES } from '$lib/metrics/ranges';
+  import { RANGES, rangeGap } from '$lib/metrics/ranges';
   import './geometry.css';
   import type { DeviceMetrics } from './metrics.svelte';
   import MetricsSkeleton from './MetricsSkeleton.svelte';
 
   interface Props {
     source: MetricsSource;
-    metrics: Pick<DeviceMetrics, 'view' | 'span' | 'readings' | 'error' | 'liveError'>;
+    metrics: Pick<DeviceMetrics, 'view' | 'span' | 'shownRange' | 'readings' | 'error' | 'liveError'>;
     range: MetricRange;
     now: () => Date;
     clock?: LoadingClock;
@@ -27,7 +26,9 @@
 
   const { source, metrics, range, now, clock, onRange, onRetry, onSettings }: Props = $props();
   const charts = $derived(metrics.view === null ? [] : chartsOf(metrics.view.series, metrics.view.gpus));
-  const phrase = $derived(RANGES.find((each) => each.range === range)?.phrase ?? '');
+  // The old chart stays while a switch is on its way, so its label and gap follow the data on screen, not the button.
+  const drawn = $derived(metrics.shownRange ?? range);
+  const phrase = $derived(RANGES.find((each) => each.range === drawn)?.phrase ?? '');
   const waiting = $derived(metrics.view === null && metrics.error === null);
   // The clock is fixed for the life of the section.
   // svelte-ignore state_referenced_locally
@@ -77,7 +78,7 @@
                   <h3 class="chart-title">{chart.title}</h3>
                   <LineChart
                     title={`${chart.title}, ${phrase}`}
-                    gap={rangeGap(range)}
+                    gap={rangeGap(drawn)}
                     series={chart.series}
                     span={metrics.span}
                     axis={chart.axis}

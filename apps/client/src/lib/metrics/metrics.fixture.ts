@@ -1,4 +1,6 @@
-import type { DeviceGpu, MetricPoint, MetricSeries, NewMetrics } from './api';
+import type { DeviceGpu, MetricSeries, NewMetrics } from './api';
+
+type MetricPoint = MetricSeries['points'][number];
 
 /** Synthetic values after the K6 `phase2.json` metrics (CPU HOUR minutes, WEEK GPU values); no real device. */
 export const NVIDIA: DeviceGpu = { index: 0, name: 'NVIDIA GeForce RTX 3060', vendor: 'NVIDIA', hasVram: true };
