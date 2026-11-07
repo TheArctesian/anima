@@ -1,5 +1,6 @@
 <script lang="ts">
-  import type { MetricsSource, Readings } from '$lib/devices/api';
+  import type { Readings } from '$lib/devices/api';
+  import type { MetricsSource } from '$lib/hub/generated/graphql';
   import { motionPreference } from '$lib/motion/preference';
   import { crossFade } from '$lib/motion/roles/transitions';
   import './geometry.css';

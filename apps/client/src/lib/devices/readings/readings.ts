@@ -1,4 +1,5 @@
-import type { MetricsSource, Readings } from '$lib/devices/api';
+import type { Readings } from '$lib/devices/api';
+import type { MetricsSource } from '$lib/hub/generated/graphql';
 
 /** MET-004: a metric strictly above this is degraded. */
 export const DEGRADED_ABOVE = 85;
