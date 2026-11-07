@@ -107,3 +107,8 @@ These items are not blocking. The programme orchestrator collects them here and 
 ## WP-32 (client files, wake and live sessions)
 
 - A download cancelled after the hub has read every byte, but before the client has received them all, shows as cancelled on the client and is audited as done on the hub.
+- The files panel's busy guards are pinned only through the link's busy refusal.
+- Downloads are held in memory as a Blob.
+- The files panel has no compact-width layout.
+- In the Tauri shell, wry saves a download under its suggested name in ~/Downloads. Check the save path in the app.
+- Revoking the blob URL at once may fail a WebKit download. Check it in the app.
