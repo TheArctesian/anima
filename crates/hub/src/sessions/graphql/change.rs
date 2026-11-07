@@ -9,6 +9,9 @@ use tokio::sync::broadcast::{Receiver, error::RecvError};
 
 use crate::sessions::{Session, SessionChange};
 
+/// A session's start or end, published once committed. A session ended before its start was
+/// published (by `endSession` right after the commit, or by a shutdown racing it) shows as an
+/// end with no start.
 #[Object]
 impl SessionChange {
     /// The session as the change left it: live after a start, ended after an end.

@@ -50,6 +50,10 @@ impl Live {
     /// end of the session (each withdraws the ticket under the same lock first) is published
     /// after it. Returns `false`, publishing nothing, when the hub is shutting down: then
     /// `shut_down` may have withdrawn the ticket before the row was visible to it.
+    ///
+    /// When `endSession` withdrew the ticket between the commit and this call, or shutdown
+    /// raced the commit, no start is published: the feed then carries an end with no start
+    /// for that session.
     pub(in crate::sessions) fn publish_start(&self, started: Session) -> bool {
         let state = self.state();
         if state.shutting_down {

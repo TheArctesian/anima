@@ -14,7 +14,7 @@ use super::tickets::{CLIENT, client, issue, issued_at, pending, session, token};
 use crate::{
     ids::SessionId,
     sessions::{
-        Actor, EndCause, EndReason, Protocol,
+        Actor, EndCause, EndReason, Protocol, Session,
         live::{Ending, Live, Refused, Unavailable},
     },
 };
@@ -203,5 +203,44 @@ fn k4_1_a_ticket_on_another_tunnel_path_is_refused_and_spent_in_the_redemption()
             Ending::Withdrawn(_)
         ),
         "the ticket waits for endSession or the sweep"
+    );
+}
+
+/// The committed row of ticket `n`'s session, as `start` writes it.
+fn started_row(n: u128) -> Session {
+    let ticket = pending(n);
+    Session {
+        id: ticket.session,
+        device: Some(ticket.device),
+        device_name: "docker-host".to_owned(),
+        protocol: ticket.protocol,
+        operator: ticket.operator.id,
+        operator_name: ticket.operator.name,
+        client: ticket.client.0,
+        started_at: issued_at(),
+        end: None,
+    }
+}
+
+#[test]
+fn ra_034_a_start_whose_ticket_end_session_withdrew_is_not_published() {
+    let live = Live::default();
+    let mut changes = live.changes();
+    issue(&live, 1, 1);
+    issue(&live, 2, 2);
+    // `endSession` withdraws ticket 1 after its row commits and before the start publishes.
+    assert!(matches!(
+        live.end_by(session(1), &operator_actor()),
+        Ending::Withdrawn(_)
+    ));
+
+    assert!(live.publish_start(started_row(1)), "not shutting down");
+    assert!(live.publish_start(started_row(2)));
+
+    let change = changes.try_recv().expect("the held ticket's start");
+    assert_eq!(change.session.id, session(2));
+    assert!(
+        changes.try_recv().is_err(),
+        "no start for the withdrawn ticket"
     );
 }
