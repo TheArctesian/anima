@@ -4,7 +4,8 @@
 //! [`ProbeResult`] with `ok: false`, never an `Err` or a panic. Invert, retries and status
 //! belong to the evaluation (CHK-008). Every probe resolves its host once, keeps only the
 //! addresses the [`AddressPolicy`] allows and connects to one of those addresses, so DNS
-//! rebinding cannot reach a refused address. No probe starts a process or a shell on the hub;
+//! rebinding cannot reach a refused address. SNMP checks run through [`snmp::observe`] with
+//! their opened secrets. No probe starts a process or a shell on the hub;
 //! Docker and systemd checks send only fixed commands over the SSH link (CHK-012).
 //!
 //! PUSH and GROUP checks are not probed: the device calls the hub, or the children decide.
@@ -16,6 +17,7 @@ mod http;
 mod icmp;
 mod outcome;
 mod resolve;
+pub(in crate::checks) mod snmp;
 mod ssh;
 pub(in crate::checks) mod systemd;
 mod tailscale;
@@ -147,5 +149,7 @@ async fn run(
         CheckConfig::Docker { .. } | CheckConfig::Systemd { .. } => {
             ProbeResult::failed(&Failure::NeedsLink)
         }
+        // The SNMP probe takes its secrets in `snmp::observe`; this one has none to send.
+        CheckConfig::Snmp(_) => ProbeResult::failed(&Failure::SecretMissing),
     }
 }

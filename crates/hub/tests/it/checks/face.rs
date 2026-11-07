@@ -11,6 +11,7 @@ mod due;
 mod http_urls;
 mod retention;
 mod secrets;
+mod snmp;
 mod statuses;
 mod uptime;
 mod writes;

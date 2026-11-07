@@ -15,7 +15,7 @@ use crate::{
     checks::{
         self, Attempt, Beat, Due, Error,
         config::CheckConfig,
-        probe::{Failure, ProbeEnv, ProbeResult, ProbeTarget, Reach, observe_listing, probe},
+        probe::{Failure, ProbeEnv, ProbeResult, ProbeTarget, Reach, observe_listing, probe, snmp},
         store,
     },
     credentials::Vault,
@@ -27,7 +27,8 @@ use crate::{
     targets::AddressPolicy,
 };
 
-/// What probes need: the vault that opens HTTP secrets and the addresses they may reach.
+/// What probes need: the vault that opens HTTP and SNMP secrets and the addresses they may
+/// reach.
 /// The policy always refuses loopback, link-local and multicast addresses; the
 /// deny list only refuses more.
 pub struct Probing {
@@ -177,6 +178,7 @@ async fn observe(
         None => Some(ProbeResult::failed(&Failure::BadConfig)),
         Some(CheckConfig::Push) => Some(schedule::missed_push()),
         Some(CheckConfig::Http(_)) => observe_http(ctx, due, &target, &env).await,
+        Some(CheckConfig::Snmp(_)) => observe_snmp(ctx, due, &target, &env).await,
         Some(config @ (CheckConfig::Docker { .. } | CheckConfig::Systemd { .. })) => {
             let reach = Reach {
                 db: &ctx.db,
@@ -201,20 +203,44 @@ async fn observe_http(
 ) -> Option<ProbeResult> {
     let setup = match checks::load_http_secrets(&ctx.db, &ctx.probing.vault, due.id).await {
         Ok(Some(setup)) => setup,
-        Ok(None) | Err(Error::Unreadable(_)) => {
-            return Some(ProbeResult::failed(&Failure::BadConfig));
-        }
-        Err(Error::Credentials(_)) => return Some(ProbeResult::failed(&Failure::Secrets)),
-        Err(Error::SecretsUnbound) => {
-            return Some(ProbeResult::failed(&Failure::SecretsUnbound));
-        }
-        Err(error) => {
-            warn(due, "the check secrets cannot be read", &error);
-            return None;
-        }
+        Ok(None) => return Some(ProbeResult::failed(&Failure::BadConfig)),
+        Err(error) => return unopened(due, &error),
     };
     let config = CheckConfig::Http(setup.config);
     Some(probe(target, &config, setup.secrets.as_ref(), env).await)
+}
+
+/// The result of an attempt whose secrets did not load: a fixed message for secrets that do
+/// not open or are unbound, or `None` when the read failed (it is logged).
+fn unopened(due: &Due, error: &Error) -> Option<ProbeResult> {
+    match error {
+        Error::Unreadable(_) => Some(ProbeResult::failed(&Failure::BadConfig)),
+        Error::Credentials(_) => Some(ProbeResult::failed(&Failure::Secrets)),
+        Error::SecretsUnbound => Some(ProbeResult::failed(&Failure::SecretsUnbound)),
+        error => {
+            warn(due, "the check secrets cannot be read", error);
+            None
+        }
+    }
+}
+
+/// Probes the SNMP configuration stored now, read with its secrets, like [`observe_http`]:
+/// the secrets go only to the version and user name they were given for (SEC-005).
+async fn observe_snmp(
+    ctx: &Context,
+    due: &Due,
+    target: &ProbeTarget,
+    env: &ProbeEnv,
+) -> Option<ProbeResult> {
+    match checks::load_snmp_secrets(&ctx.db, &ctx.probing.vault, due.id).await {
+        Ok(Some(checks::SnmpSetup {
+            config,
+            secrets: Some(secrets),
+        })) => Some(snmp::observe(target, &config, &secrets, env).await),
+        Ok(Some(_)) => Some(ProbeResult::failed(&Failure::SecretMissing)),
+        Ok(None) => Some(ProbeResult::failed(&Failure::BadConfig)),
+        Err(error) => unopened(due, &error),
+    }
 }
 
 /// Whether maintenance covers the check: the device's manual flag, or an active window on

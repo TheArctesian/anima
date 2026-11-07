@@ -5,6 +5,7 @@ mod beat;
 mod evaluation;
 mod heartbeat_cost;
 mod probe;
+mod snmp;
 mod standing;
 mod stored_config;
 mod tailscale;

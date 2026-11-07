@@ -179,11 +179,11 @@ pub enum Failure {
     DnsMismatch,
     #[error("this check type is not probed by the hub")]
     NotProbed,
-    /// The sealed HTTP secrets do not open for the check (SEC-003).
+    /// The sealed secrets do not open for the check (SEC-003).
     #[error("the check secrets cannot be opened")]
     Secrets,
-    /// The sealed HTTP secrets were given for another destination than the stored
-    /// configuration names, so they are not sent (SEC-005).
+    /// The sealed secrets were given for another destination (HTTP), or another version or
+    /// user name (SNMP), than the stored configuration names, so they are not sent (SEC-005).
     #[error("the check secrets do not match its configuration")]
     SecretsUnbound,
     /// A PUSH check got no push within its interval (CHK-002).
@@ -227,6 +227,24 @@ pub enum Failure {
     ProxyReplyUnreadable,
     #[error("the LocalAPI proxy reply was longer than the hub reads")]
     ProxyReplyTooLong,
+    /// The datagram is not the SNMP answer the request expects.
+    #[error("the SNMP reply cannot be read")]
+    SnmpMalformed,
+    /// The RFC 3416 name of the error status, from a fixed table.
+    #[error("the agent answered with error {0}")]
+    SnmpError(&'static str),
+    /// The fixed word for the exception or null the binding holds.
+    #[error("the OID has no value ({0})")]
+    SnmpNoValue(&'static str),
+    #[error("the SNMP value is not the expected one")]
+    SnmpMismatch,
+    /// The USM statistic of a Report, from a fixed table (RFC 3414 Section 5).
+    #[error("the agent refused the request: {0}")]
+    SnmpReport(&'static str),
+    #[error("the SNMP reply failed authentication")]
+    SnmpAuthentication,
+    #[error("the SNMP reply was not authenticated")]
+    SnmpUnauthenticated,
 }
 
 impl From<io::Error> for Failure {

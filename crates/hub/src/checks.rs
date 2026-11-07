@@ -6,8 +6,9 @@
 //! [`record_beat`], [`due_checks`] and the retention functions serve this domain's GraphQL,
 //! push route and scheduler; they are public so the integration tests can drive them.
 //!
-//! HTTP secrets are sealed with the vault, bound to their check, and never returned by a
-//! read; only [`load_http_secrets`] opens them, for the probe (SEC-003, LOG-007).
+//! HTTP and SNMP secrets are sealed with the vault, bound to their check, and never returned
+//! by a read; only [`load_http_secrets`] and [`load_snmp_secrets`] open them, for the probe
+//! (SEC-003, LOG-007).
 
 pub mod config;
 mod evaluation;
@@ -17,6 +18,7 @@ pub mod probe;
 mod push;
 mod rules;
 mod scheduler;
+mod sealing;
 mod status;
 mod store;
 #[cfg(test)]
@@ -38,13 +40,13 @@ use crate::{
 };
 
 use config::{CheckConfig, IpVersion};
-use rules::Prepared;
+use sealing::{prepare_change, sealed};
 
 pub use evaluation::{CheckSettings, CheckState, evaluate};
 pub(in crate::checks) use model::Attempt;
 pub use model::{
     Beat, Check, CheckChange, Definition, Due, FieldError, Heartbeat, HttpSetup, Missing, NewCheck,
-    PushToken, Recorded,
+    PushToken, Recorded, SnmpSetup,
 };
 pub use push::push_router;
 pub use scheduler::{Probing, spawn_scheduler};
@@ -60,14 +62,15 @@ pub enum Error {
     Validation(Vec<FieldError>),
     #[error("database error")]
     Database(#[from] sqlx::Error),
-    /// The sealed HTTP secrets cannot be opened; the source names no key or plaintext.
+    /// The sealed secrets cannot be opened; the source names no key or plaintext.
     #[error("the check secrets cannot be used")]
     Credentials(#[from] credentials::Error),
     /// The stored configuration is not in the form this version reads.
     #[error("the stored configuration of check {0} cannot be read")]
     Unreadable(CheckId),
-    /// The sealed secrets were given for another origin or other secret headers than the
-    /// stored configuration names, so they are not used (SEC-005).
+    /// The sealed secrets were given for another origin or other secret headers (HTTP), or
+    /// another version or user name (SNMP), than the stored configuration names, so they are
+    /// not used (SEC-005).
     #[error("the stored secrets do not match the check's address")]
     SecretsUnbound,
     /// Another check already has this push token. The database detail, which holds the
@@ -239,17 +242,6 @@ pub async fn add_default_check(
     Ok(store::insert(conn, id, row).await?.id)
 }
 
-fn sealed(vault: &Vault, id: CheckId, prepared: &Prepared) -> Option<Vec<u8>> {
-    prepared
-        .secrets
-        .as_ref()
-        .zip(match &prepared.config {
-            CheckConfig::Http(config) => Some(config),
-            _ => None,
-        })
-        .map(|(secrets, config)| store::seal(vault, id, config, secrets))
-}
-
 /// Adds a check in the caller's transaction. A parent must be a group on the same device.
 ///
 /// # Errors
@@ -260,7 +252,8 @@ pub async fn create_check(
     new: NewCheck,
 ) -> Result<Check, Error> {
     let id = CheckId::from(Uuid::now_v7());
-    let (name, prepared) = match (rules::name(&new.name), rules::prepare(new.definition, None)) {
+    let prepared = rules::prepare(new.definition, rules::Stored::Nothing);
+    let (name, prepared) = match (rules::name(&new.name), prepared) {
         (Ok(name), Ok(prepared)) => (name, prepared),
         (name, prepared) => {
             let errors = [name.err(), prepared.err()].into_iter().flatten().collect();
@@ -319,35 +312,6 @@ pub async fn update_check(
     Ok(check)
 }
 
-/// Prepares a new definition of the same type, filling empty secrets from the stored ones.
-/// Stored secrets that do not open for this check give a field error that asks for every
-/// secret again.
-fn prepare_change(
-    vault: &Vault,
-    id: CheckId,
-    current: store::Current,
-    definition: Definition,
-) -> Result<Prepared, FieldError> {
-    if definition.kind().as_sql() != current.kind {
-        return Err(FieldError::new(
-            "config",
-            "A check keeps its type. Delete it and add a new check instead.",
-        ));
-    }
-    let stored = match &definition {
-        Definition::Http(input) if rules::needs_stored(input) => {
-            current.http(vault, id).map_err(|_| {
-                FieldError::new(
-                    "config",
-                    "The stored secrets cannot be opened. Enter every secret again.",
-                )
-            })?
-        }
-        _ => None,
-    };
-    rules::prepare(definition, stored)
-}
-
 /// Deletes the check in the caller's transaction; its children leave the group.
 ///
 /// # Errors
@@ -382,6 +346,22 @@ pub async fn load_http_secrets(
     check: CheckId,
 ) -> Result<Option<HttpSetup>, Error> {
     store::load_http_secrets(db, vault, check).await
+}
+
+/// The stored SNMP configuration of the check with its opened secrets, for its probe only:
+/// the secrets go only to the version and user name they were given for (SEC-005). `None`
+/// when the check is not an SNMP check and holds no secrets.
+///
+/// # Errors
+/// `Credentials` when the sealed value does not open for this check; `SecretsUnbound` when
+/// the configuration names another version or user name; `Unreadable` when the check holds
+/// secrets but no readable SNMP configuration.
+pub async fn load_snmp_secrets(
+    db: &PgPool,
+    vault: &Vault,
+    check: CheckId,
+) -> Result<Option<SnmpSetup>, Error> {
+    store::load_snmp_secrets(db, vault, check).await
 }
 
 /// Records one result in the caller's transaction: the heartbeat, its minute, hour and day

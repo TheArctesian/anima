@@ -3,13 +3,14 @@
 //! The serde form of [`CheckConfig`] is JSON with camelCase keys and an internal tag:
 //! `{"type":"tcp","port":22,"timeoutMs":5000}`. The `config` column stores it without the tag,
 //! which the `type` column holds, so it matches the fixtures. The tag values are the fixed
-//! type ids (`icmp tcp tls http dns push group docker systemd tailscale_ping`, and the ids of later types) and never change meaning. Unknown keys are
+//! type ids (`icmp tcp tls http dns push group docker systemd snmp tailscale_ping`, and the ids of later types) and never change meaning. Unknown keys are
 //! refused, so a stored form that does not match fails loudly instead of falling back to
-//! defaults. Secrets are never part of this JSON: see [`HttpSecrets`].
+//! defaults. Secrets are never part of this JSON: see [`HttpSecrets`] and [`SnmpSecrets`].
 
 mod http;
 mod rules;
 mod secrets;
+mod snmp;
 
 use std::{net::IpAddr, time::Duration};
 
@@ -18,6 +19,9 @@ use serde::{Deserialize, Serialize};
 pub use http::{HttpAuth, HttpConfig, HttpHeader, HttpMethod, StatusRange};
 pub use rules::{ConfigError, Reason, is_secret_header};
 pub use secrets::{HttpCredentials, HttpInput, HttpSecrets};
+pub use snmp::{
+    OID_ARCS_MAX, SnmpConfig, SnmpCredentials, SnmpInput, SnmpSecrets, SnmpVersion, oid_arcs,
+};
 
 /// The fixed database identifier of a check type (CHK-009).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -31,6 +35,7 @@ pub enum CheckType {
     Group,
     Docker,
     Systemd,
+    Snmp,
     TailscalePing,
 }
 
@@ -48,6 +53,7 @@ impl CheckType {
             Self::Group => "group",
             Self::Docker => "docker",
             Self::Systemd => "systemd",
+            Self::Snmp => "snmp",
             Self::TailscalePing => "tailscale_ping",
         }
     }
@@ -64,6 +70,7 @@ impl CheckType {
             "group" => Self::Group,
             "docker" => Self::Docker,
             "systemd" => Self::Systemd,
+            "snmp" => Self::Snmp,
             "tailscale_ping" => Self::TailscalePing,
             _ => return None,
         })
@@ -161,6 +168,8 @@ pub enum CheckConfig {
         #[serde(default = "listing_timeout_ms")]
         timeout_ms: u32,
     },
+    /// One OID of the device, read over UDP (D-5).
+    Snmp(SnmpConfig),
     /// A disco ping through the `LocalAPI` proxy; the target defaults to the device host (D-4).
     TailscalePing {
         #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -183,6 +192,7 @@ impl CheckConfig {
             Self::Group => CheckType::Group,
             Self::Docker { .. } => CheckType::Docker,
             Self::Systemd { .. } => CheckType::Systemd,
+            Self::Snmp(_) => CheckType::Snmp,
             Self::TailscalePing { .. } => CheckType::TailscalePing,
         }
     }
@@ -198,6 +208,7 @@ impl CheckConfig {
             | Self::Systemd { timeout_ms, .. }
             | Self::TailscalePing { timeout_ms, .. } => *timeout_ms,
             Self::Http(http) => http.timeout_ms,
+            Self::Snmp(snmp) => snmp.timeout_ms,
             Self::Dns { .. } | Self::Push | Self::Group => network_timeout_ms(),
         };
         Duration::from_millis(u64::from(ms))
@@ -226,6 +237,7 @@ impl CheckConfig {
                     .map_or(Ok(()), |name| rules::dns_name("serverName", name, false))
             }
             Self::Http(http) => http.validate(),
+            Self::Snmp(snmp) => snmp.validate(),
             Self::Dns { name, expected, .. } => {
                 rules::dns_name("name", name, true)?;
                 expected

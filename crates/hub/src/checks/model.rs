@@ -6,7 +6,10 @@ use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use chrono::{DateTime, Utc};
 
 use super::{
-    config::{CheckConfig, CheckType, HttpConfig, HttpInput, HttpSecrets},
+    config::{
+        CheckConfig, CheckType, HttpConfig, HttpInput, HttpSecrets, SnmpConfig, SnmpInput,
+        SnmpSecrets,
+    },
     evaluation::{CheckSettings, CheckState},
     probe::ProbeResult,
 };
@@ -15,7 +18,7 @@ use crate::{
     status::Status,
 };
 
-/// A check as stored. HTTP secrets are never part of it (LOG-007).
+/// A check as stored. HTTP and SNMP secrets are never part of it (LOG-007).
 #[derive(Clone, Debug, PartialEq)]
 pub struct Check {
     pub id: CheckId,
@@ -103,10 +106,12 @@ impl fmt::Debug for PushToken {
 
 /// What a check does, with the parts that are not stored in `config`.
 pub enum Definition {
-    /// Every type except HTTP and PUSH.
+    /// Every type except HTTP, SNMP and PUSH.
     Config(CheckConfig),
     /// The HTTP check with its secrets in hand; they are sealed apart from `config`.
     Http(HttpInput),
+    /// The SNMP check with its secrets in hand; they are sealed apart from `config`.
+    Snmp(SnmpInput),
     /// A PUSH check with a new token.
     Push(PushToken),
 }
@@ -117,6 +122,7 @@ impl Definition {
         match self {
             Self::Config(config) => config.kind(),
             Self::Http(_) => CheckType::Http,
+            Self::Snmp(_) => CheckType::Snmp,
             Self::Push(_) => CheckType::Push,
         }
     }
@@ -138,7 +144,9 @@ pub struct NewCheck {
 /// (CHK-013). An HTTP definition replaces the whole HTTP setup, but an empty secret keeps the
 /// stored one: an empty value of a secret header keeps the stored value of the header with
 /// that name in the same position, an empty basic password keeps the stored password and an
-/// empty bearer token keeps the stored token.
+/// empty bearer token keeps the stored token. An SNMP definition keeps an absent or empty
+/// community or password only when the version and user name are the stored ones; otherwise
+/// it is a field error that asks for it (SEC-005).
 #[derive(Default)]
 pub struct CheckChange {
     /// `Some(None)` removes the check from its group.
@@ -262,6 +270,15 @@ pub struct HttpSetup {
     pub config: HttpConfig,
     /// `None` when the check holds no secrets.
     pub secrets: Option<HttpSecrets>,
+}
+
+/// The stored SNMP configuration of a check and the secrets that open for it, read together
+/// so the secrets go only to the version and user they were given for (SEC-005). Like
+/// [`SnmpSecrets`] it has no `Debug` or `Clone`.
+pub struct SnmpSetup {
+    pub config: SnmpConfig,
+    /// `None` when the check holds no secrets.
+    pub secrets: Option<SnmpSecrets>,
 }
 
 /// A check whose next probe is due, as the scheduler needs it.
