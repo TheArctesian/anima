@@ -6,12 +6,14 @@ use anima_hub::{
     access::Identity,
     clock::{Clock, FixedClock},
     credentials::Vault,
-    events::{ClientAddr, Operator},
+    devices::graphql::status_loader,
+    events::{Bus, ClientAddr, Operator},
     ids::OperatorId,
     sessions::{
         Live,
         graphql::{Mutation, Query},
     },
+    targets::AddressPolicy,
 };
 use async_graphql::{EmptySubscription, Request, Response, Schema};
 use base64::{Engine as _, engine::general_purpose::STANDARD};
@@ -31,14 +33,18 @@ pub fn schema_for(pool: &PgPool) -> TestSchema {
     schema_at(pool, now() + TimeDelta::hours(1), &Live::default())
 }
 
-/// The schema with a clock fixed at `at`, sharing `live`.
+/// The schema with a clock fixed at `at`, sharing `live`, and what `startSession` needs to
+/// wake a device as `schema.rs` gives it: the status loader, an address policy and a bus.
 pub fn schema_at(pool: &PgPool, at: DateTime<Utc>, live: &Live) -> TestSchema {
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(at));
     Schema::build(Query, Mutation, EmptySubscription)
         .data(pool.clone())
+        .data(status_loader(pool.clone(), clock.clone()))
         .data(clock)
         .data(live.clone())
         .data(vault())
+        .data(AddressPolicy::default())
+        .data(Bus::new(16))
         .finish()
 }
 

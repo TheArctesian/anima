@@ -1,12 +1,18 @@
 //! `startSession`'s input and output as K1 describes them (`StartSessionInput`,
-//! `DisplayInput`, `SessionTicket`; API-009).
+//! `DisplayInput`, `SessionTicket`; API-009), and what the start needs to wake the device.
 
-use async_graphql::{ID, InputObject, Object};
+use async_graphql::{Context, ID, InputObject, Object, Result, dataloader::DataLoader};
 use chrono::{DateTime, Utc};
 
+use super::error::schema_dependency;
 use crate::{
+    credentials::Vault,
+    devices::graphql::StatusOf,
+    events::Bus,
     ids::DeviceId,
-    sessions::{DEFAULT_DPI, DisplayRequest, FieldError, Protocol, StartRequest, Ticket},
+    sessions::{DEFAULT_DPI, DisplayRequest, FieldError, Protocol, StartRequest, Ticket, Waking},
+    status::Status,
+    targets::AddressPolicy,
 };
 
 /// Only these values come from the client (GW-012).
@@ -43,6 +49,7 @@ impl StartSessionInput {
                 dpi: i64::from(display.dpi.unwrap_or(DEFAULT_DPI)),
                 timezone: display.timezone,
             },
+            wake: None,
         })
     }
 }
@@ -69,9 +76,32 @@ impl Ticket {
         self.expires_at
     }
 
-    /// Whether `startSession` sent a Wake-on-LAN packet first (K4 §1). The hub sends none
-    /// yet, so this is always false and the opening keeps its usual limit.
+    /// Whether `startSession` sent a Wake-on-LAN packet first (K4 §1); the opening then
+    /// waits up to 120 seconds instead of 8.
     async fn wake_sent(&self) -> bool {
-        false
+        self.wake_sent
     }
+}
+
+/// What `start` needs to wake `device` first: its status as `Device.status` reads it, through
+/// the schema's status loader (sessions cannot ask checks itself), and the schema's vault,
+/// address policy and bus, the ones `wakeDevice` uses. A status that cannot be read counts as
+/// `Unknown`, so no packet is sent and the start goes on.
+///
+/// # Errors
+/// `INTERNAL` when the schema lacks one of them.
+pub(super) async fn waking(ctx: &Context<'_>, device: DeviceId) -> Result<Waking> {
+    let loaded = schema_dependency::<DataLoader<StatusOf>>(ctx)?
+        .load_one(device)
+        .await;
+    let status = loaded.unwrap_or_else(|error| {
+        tracing::warn!(%device, %error, "the device's status could not be read before a session start");
+        None
+    });
+    Ok(Waking {
+        status: status.unwrap_or(Status::Unknown),
+        vault: schema_dependency::<Vault>(ctx)?.clone(),
+        policy: schema_dependency::<AddressPolicy>(ctx)?.clone(),
+        bus: schema_dependency::<Bus>(ctx)?.clone(),
+    })
 }

@@ -1,11 +1,13 @@
 //! Tests of Wake-on-LAN against the link's test SSH server on loopback: `docker-host` is the
 //! home site's wake relay, `pve-01` the device it wakes. What the relay hears and sends
-//! (`sending`), each refusal (`refusals`), and the mutation with its audit entry
-//! (`mutation`). In-crate, for the loopback policy.
+//! (`sending`), each refusal (`refusals`), the mutation with its audit entry (`mutation`),
+//! and a session start that wakes the device first (`start`). In-crate, for the loopback
+//! policy.
 
 mod mutation;
 mod refusals;
 mod sending;
+mod start;
 
 use sqlx::PgPool;
 

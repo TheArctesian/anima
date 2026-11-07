@@ -33,9 +33,10 @@ use crate::{
     credentials::Vault,
     events::Bus,
     sessions::{
-        Live, Protocol, admission,
+        Live, PendingTicket, Protocol, admission,
         end::{CLIENT_IDLE, Records},
         probe::PROBE_TIMEOUT,
+        tickets::{RECONNECT, WOKEN_OPENING},
     },
 };
 
@@ -57,6 +58,10 @@ const DEVICE_WAIT: Duration = Duration::from_secs(15);
 pub(super) struct Timing {
     /// The whole opening: lookup, connect, key exchange, sign-in and the session channel.
     pub(super) opening: Duration,
+    /// The whole opening of a ticket whose start sent a Wake-on-LAN packet (K4 Section 1).
+    pub(super) woken_opening: Duration,
+    /// How often that opening tries to connect again while the device does not answer.
+    pub(super) reconnect: Duration,
     /// The WebSocket upgrade after the hub answered.
     pub(super) upgrade: Duration,
     /// The client's first `resize` after the upgrade.
@@ -76,11 +81,24 @@ impl Default for Timing {
     fn default() -> Self {
         Self {
             opening: PROBE_TIMEOUT,
+            woken_opening: WOKEN_OPENING,
+            reconnect: RECONNECT,
             upgrade: CLIENT_WAIT,
             first_size: CLIENT_WAIT,
             hub_silence: HUB_SILENCE,
             client_idle: CLIENT_IDLE,
             request: DEVICE_WAIT,
+        }
+    }
+}
+
+impl Timing {
+    /// The limit of `ticket`'s whole opening: longer when its start woke the device.
+    pub(super) const fn opening_of(&self, ticket: &PendingTicket) -> Duration {
+        if ticket.wake_sent {
+            self.woken_opening
+        } else {
+            self.opening
         }
     }
 }

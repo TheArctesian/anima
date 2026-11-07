@@ -158,7 +158,8 @@ impl Mutation {
     /// Starts a session and returns its single-use tunnel ticket (K4 §1, API-009).
     #[graphql(guard = "Authenticated")]
     async fn start_session(&self, ctx: &Context<'_>, input: StartSessionInput) -> Result<Ticket> {
-        let request = input.into_request().map_err(|fields| invalid(&fields))?;
+        let mut request = input.into_request().map_err(|fields| invalid(&fields))?;
+        request.wake = Some(ticket::waking(ctx, request.device).await?);
         start(
             schema_dependency::<PgPool>(ctx)?,
             schema_dependency::<Arc<dyn Clock>>(ctx)?,

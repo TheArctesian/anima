@@ -11,7 +11,7 @@
 mod observer;
 mod sign_in;
 
-use std::{borrow::Cow, net::SocketAddr};
+use std::{borrow::Cow, net::SocketAddr, time::Duration};
 
 use russh::{
     Preferred,
@@ -121,4 +121,21 @@ pub(super) async fn connect(target: Target<'_>) -> Result<TcpStream, SshError> {
         }
     }
     Err(SshError::Unreachable)
+}
+
+/// [`connect`] to a device that is waking up: tried again every `retry` while its host does
+/// not resolve or no address answers. Never ends on its own; the caller's limit ends it.
+///
+/// # Errors
+/// [`SshError::RefusedTarget`] when any address fails the rule.
+pub(super) async fn connect_waking(
+    target: Target<'_>,
+    retry: Duration,
+) -> Result<TcpStream, SshError> {
+    loop {
+        match connect(target).await {
+            Err(SshError::Unresolved | SshError::Unreachable) => tokio::time::sleep(retry).await,
+            connected => return connected,
+        }
+    }
 }

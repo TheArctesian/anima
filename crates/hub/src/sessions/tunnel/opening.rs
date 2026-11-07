@@ -2,8 +2,15 @@
 //! load the device and check its protocol is still on, resolve and check its host (R-032),
 //! load the accepted RDP server certificate and the stored password, build the `connect`
 //! values and run the guacd handshake (K4 Sections 2 and 3).
+//!
+//! When the ticket's start sent a Wake-on-LAN packet, the opening first waits, up to the
+//! woken limit, until the device's port answers, so guacd connects to a device that is up
+//! (K4 Section 1). guacd's own connection to the device is not the hub's to retry.
 
-use std::net::{IpAddr, SocketAddr};
+use std::{
+    net::{IpAddr, SocketAddr},
+    time::Duration,
+};
 
 use guac_protocol::{ConnectParams, DecodeError};
 use tokio::time::timeout;
@@ -47,6 +54,8 @@ pub(super) enum NotOpened {
     Unresolved,
     #[error("the device host resolves to a refused address")]
     RefusedTarget,
+    #[error("the device did not answer in time after the Wake-on-LAN packet")]
+    NotAwake,
     #[error(transparent)]
     Values(#[from] BadConnectValue),
     #[error("guacd cannot be reached")]
@@ -91,6 +100,9 @@ impl NotOpened {
                 "The device's host resolves to a loopback, link-local, multicast or unspecified \
                  address, or to one in a network the hub refuses (ANIMA_PROBE_DENY), which the \
                  gateway must not reach."
+            }
+            Self::NotAwake => {
+                "The device did not answer within 120 seconds of the Wake-on-LAN packet."
             }
             Self::Values(_) => {
                 "The device's settings or stored credential cannot be sent to the gateway."
@@ -137,9 +149,16 @@ pub(super) async fn open(route: &Route, ticket: &PendingTicket) -> Result<Openin
     let certificate = certificate(route, &device, desktop).await?;
     let rule = route.live.target_rule();
     let port = desktop.port(&device);
-    let address = timeout(route.timing.connect, target(&device.host, port, rule))
-        .await
-        .map_err(|_| NotOpened::Unresolved)??;
+    let address = if ticket.wake_sent {
+        let awake = awake(&device.host, port, rule, route.timing.reconnect);
+        timeout(route.timing.woken_opening, awake)
+            .await
+            .map_err(|_| NotOpened::NotAwake)??
+    } else {
+        timeout(route.timing.connect, target(&device.host, port, rule))
+            .await
+            .map_err(|_| NotOpened::Unresolved)??
+    };
     let password =
         credentials::load_password(&route.db, &route.vault, device.id, desktop.password())
             .await
@@ -200,4 +219,18 @@ async fn target(host: &str, port: u16, rule: &TargetRule) -> Result<IpAddr, NotO
         .first()
         .map(SocketAddr::ip)
         .ok_or(NotOpened::Unresolved)
+}
+
+/// The address of the device that is waking up, once its port answers: the first of its
+/// checked addresses that accepts a connection, tried again every `retry` (R-032). The
+/// connection is closed at once; guacd makes its own.
+async fn awake(host: &str, port: u16, rule: &TargetRule, retry: Duration) -> Result<IpAddr, NotOpened> {
+    let stream = ssh::connect_waking(Target { host, port, rule }, retry)
+        .await
+        .map_err(|error| match error {
+            SshError::RefusedTarget => NotOpened::RefusedTarget,
+            _ => NotOpened::Unresolved,
+        })?;
+    let answered = stream.peer_addr().map_err(|_| NotOpened::NotAwake)?;
+    Ok(answered.ip().to_canonical())
 }

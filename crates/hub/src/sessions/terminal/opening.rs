@@ -124,7 +124,8 @@ impl From<SshError> for NotOpened {
     }
 }
 
-/// Opens the device side of the ticket's session within `terminal.timing.opening`. Safe to
+/// Opens the device side of the ticket's session within its opening limit
+/// ([`Timing::opening_of`](super::route::Timing::opening_of)). Safe to
 /// drop at any await: dropping the connection's handle ends it, and the credential leaves the
 /// hub only in the sign-in, after the key matched (SEC-002).
 ///
@@ -134,7 +135,7 @@ pub(super) async fn open(
     terminal: &Terminal,
     ticket: &PendingTicket,
 ) -> Result<Opening, NotOpened> {
-    timeout(terminal.timing.opening, opened(terminal, ticket))
+    timeout(terminal.timing.opening_of(ticket), opened(terminal, ticket))
         .await
         .map_err(|_| NotOpened::Timeout)?
 }
@@ -159,7 +160,11 @@ async fn opened(terminal: &Terminal, ticket: &PendingTicket) -> Result<Opening, 
         port: device.ssh.port,
         rule: terminal.live.target_rule(),
     };
-    let stream = ssh::connect(target).await?;
+    let stream = if ticket.wake_sent {
+        ssh::connect_waking(target, terminal.timing.reconnect).await?
+    } else {
+        ssh::connect(target).await?
+    };
     let (observer, seen) = Observer::expecting(Some(accepted.clone()));
     let connected = client::connect_stream(config(), stream, observer).await;
     let presented = seen.await.map_err(|_| NotOpened::NoKeyExchange)?;

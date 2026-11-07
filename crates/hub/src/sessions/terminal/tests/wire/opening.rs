@@ -3,6 +3,8 @@
 //! unreadable credential ends `AUTH_FAILED`, and a device that only prompts gets the
 //! password, for at most 4 rounds of at most 4 prompts (D-5).
 
+mod waking;
+
 use russh::keys::{
     PrivateKey,
     ssh_key::{Cipher, Kdf, LineEnding, private::Ed25519Keypair},

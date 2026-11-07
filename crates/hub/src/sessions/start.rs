@@ -1,5 +1,8 @@
-//! Starting a session (K4 §1, K3 `start`): checks the device and the display, writes the row
-//! and its audit entry, and issues the single-use ticket.
+//! Starting a session (K4 §1, K3 `start`): checks the device and the display, wakes it when
+//! it is Down (`waking`), writes the row and its audit entry, and issues the single-use
+//! ticket.
+
+mod waking;
 
 use std::{net::IpAddr, sync::Arc};
 
@@ -25,12 +28,16 @@ use crate::{
     ids::{DeviceId, SessionId},
 };
 
-/// What the operator asks for: a device, a protocol and the view the client will show.
-#[derive(Clone, Debug, PartialEq, Eq)]
+pub use waking::Waking;
+
+/// What the operator asks for: a device, a protocol and the view the client will show, and
+/// what waking the device needs (`startSession` gives it; `None` sends no packet).
+#[derive(Clone, Debug)]
 pub struct StartRequest {
     pub device: DeviceId,
     pub protocol: Protocol,
     pub display: DisplayRequest,
+    pub wake: Option<Waking>,
 }
 
 /// The client's view as it reports it (K1 `DisplayInput`); `start` checks the bounds.
@@ -178,7 +185,9 @@ fn random_token() -> Result<TicketToken, Error> {
 /// refuses (`Validation`), and the protocol turned off, an SSH session without an accepted
 /// host key or an RDP session without an accepted server certificate when it needs one
 /// (`Conflict`). A time zone that is not a zone name is dropped, so the tunnel uses UTC.
-/// Then, in one transaction, it writes the live session row and the audit entry
+/// When `req.wake` says the device is Down, it has a MAC address and its site has a wake
+/// relay, a Wake-on-LAN packet goes first and the ticket holds `wake_sent` when it was sent;
+/// a wake that fails leaves `wake_sent` false and the start goes on. Then, in one transaction, it writes the live session row and the audit entry
 /// `session.start`, and holds a ticket that the protocol's tunnel redeems once within 30 s
 /// from `client`. Tickets that expired unredeemed are swept first.
 ///
@@ -203,6 +212,11 @@ pub async fn start(
 ) -> Result<Ticket, Error> {
     let device = find_device(db, req.device).await?;
     let display = admit(db, live, &device, &req).await?;
+    let wake_sent = match &req.wake {
+        Some(wake) => waking::sent(db, &device, wake, clock.now()).await?,
+        None => false,
+    };
+    // Read after the wake, so the ticket still has its whole lifetime.
     let now = clock.now();
     sweep(db, live, now).await?;
     let token = random_token()?;
@@ -215,6 +229,7 @@ pub async fn start(
         display,
         timezone: held_timezone(req.display.timezone),
         expires_at: now + LIFETIME,
+        wake_sent,
     };
     let mut tx = db.begin().await?;
     write_start(&mut tx, &device, &pending, now).await?;
@@ -233,12 +248,14 @@ pub async fn start(
         end_shut_down(db, &pending, now).await?;
         return Err(Error::Unavailable);
     }
-    Ok(Ticket::new(
+    let mut ticket = Ticket::new(
         pending.session,
         pending.protocol,
         token,
         pending.expires_at,
-    ))
+    );
+    ticket.wake_sent = pending.wake_sent;
+    Ok(ticket)
 }
 
 /// Ends the committed row of a ticket `shut_down` withdrew before the row was visible to it,
