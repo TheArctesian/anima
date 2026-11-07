@@ -173,3 +173,6 @@ These items are not blocking. The programme orchestrator collects them here and 
 - The lagged branch of the `sessionChanged` stream is untested.
 - Old plan IDs remain in comments written before WP-22.
 - Live: Windows RDP with NLA (resolution, clipboard, Ctrl+Alt+Delete, a changed certificate ending 4003); the `sha256:` format of `cert-fingerprints`, worked out from the FreeRDP source and not yet checked on a real server; VNC to macOS Screen Sharing and to a Linux desktop; wake through a real site relay; Hyper-V may fail closed with 503.
+- The wake line's icon nudges 2 px sideways when it changes.
+- The ended-panel button widens when its text changes between Reconnect and "Check certificate".
+- WP-34: the ended text on a 4003 close may read "You ended the session." Check it against the real hub.
