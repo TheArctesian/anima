@@ -22,9 +22,11 @@ use super::{
     public_key::PublicKey,
     target::TargetRule,
     tickets::{PendingTicket, Presented, TicketHash, hash_of},
-    trust::{Endpoint, Observation, Observations, PresentedCertificate},
+    trust::{Observations, PresentedCertificate},
 };
 use crate::{ids::SessionId, targets::AddressPolicy};
+
+mod observed;
 
 /// Most tickets issued and not yet redeemed or swept, spent ones included. A ticket lives
 /// 30 s, so this bounds what one operator can hold in memory by starting sessions in a loop.
@@ -252,57 +254,6 @@ impl Live {
     /// The rule every session connection applies to the addresses a host resolves to.
     pub(super) const fn target_rule(&self) -> &TargetRule {
         &self.target_rule
-    }
-
-    fn observations(&self) -> MutexGuard<'_, Observations<PublicKey>> {
-        self.observations
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-    }
-
-    fn certificates(&self) -> MutexGuard<'_, Observations<PresentedCertificate>> {
-        self.certificates
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-    }
-
-    /// Records that `endpoint` presented `key` at `now` (D-5).
-    pub(super) fn observe(
-        &self,
-        endpoint: Endpoint,
-        key: PublicKey,
-        now: DateTime<Utc>,
-    ) -> Observation<PublicKey> {
-        self.observations().record(endpoint, key, now)
-    }
-
-    /// The key a connection test saw at `endpoint` within the last 15 minutes before `now`.
-    pub(super) fn observed(
-        &self,
-        endpoint: &Endpoint,
-        now: DateTime<Utc>,
-    ) -> Option<Observation<PublicKey>> {
-        self.observations().find(endpoint, now)
-    }
-
-    /// Records that the RDP server at `endpoint` presented `certificate` at `now` (SEC-007).
-    pub(super) fn observe_certificate(
-        &self,
-        endpoint: Endpoint,
-        certificate: PresentedCertificate,
-        now: DateTime<Utc>,
-    ) -> Observation<PresentedCertificate> {
-        self.certificates().record(endpoint, certificate, now)
-    }
-
-    /// The certificate a connection test saw at `endpoint` within the last 15 minutes before
-    /// `now`.
-    pub(super) fn observed_certificate(
-        &self,
-        endpoint: &Endpoint,
-        now: DateTime<Utc>,
-    ) -> Option<Observation<PresentedCertificate>> {
-        self.certificates().find(endpoint, now)
     }
 
     /// The poisoned case is taken over: no critical section here can leave the maps half
