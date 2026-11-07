@@ -65,7 +65,7 @@
   });
 </script>
 
-<Modal open title="Sign in to {device.name}" describedBy="credential-why" closeOnScrim={false} onClose={escape}>
+<Modal open title="Sign in to {device.name}" describedBy="credential-why" closeOnScrim={false} width={7} lowered onClose={escape}>
   <div class="content">
     <p id="credential-why">
       {device.name} asks for its {protocol} sign-in. Anima sends what you type to this session only; the hub keeps the

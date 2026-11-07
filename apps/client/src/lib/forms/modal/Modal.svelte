@@ -5,7 +5,8 @@
   import { fade, modal } from '$lib/motion/roles/transitions';
   import { offerFooter } from './footer';
   import { initialFocusIn, trapTab } from './focus';
-  import { enlist, isTopmost, takeOpener, watchClicks } from './opener';
+  import { takeOpener, watchClicks } from './opener';
+  import { openDialog, type OpenDialog } from './stack';
 
   interface Props {
     open: boolean;
@@ -25,10 +26,14 @@
     closeOnScrim?: boolean;
     /** Where focus goes when the dialog closes; the opener when absent or when it gives no element. */
     returnTo?: () => HTMLElement | undefined;
+    /** The surface's width in steps of `--space-16` (a `content` surface is 8 wide). */
+    width?: number;
+    /** Lowers the surface by `--space-16` from the top edge, for a warning that sits over the page's own controls. */
+    lowered?: boolean;
     children: Snippet;
   }
 
-  const { open, title, onClose, size = 'content', warning = false, describedBy, closeOnScrim = true, returnTo, children }: Props = $props();
+  const { open, title, onClose, size = 'content', warning = false, describedBy, closeOnScrim = true, returnTo, width = 8, lowered = false, children }: Props = $props();
   const titleId = $props.id();
   coverWhile(() => open);
 
@@ -50,11 +55,20 @@
   // The click that opens the dialog comes before `open`, so clicks are watched while it is closed too.
   $effect(watchClicks);
 
-  // The opener is read before the dialog is in the DOM; focus goes back to it as soon as `open` is false.
+  let surface: HTMLElement | undefined = $state();
+  let stacked: OpenDialog | undefined;
+
+  /**
+   * The opener is read before the dialog is in the DOM. The dialog leaves the stack as soon as `open` is
+   * false, even while it fades out, and only then does focus go back to the opener.
+   */
   $effect.pre(() => {
     if (!open) return;
+    const entry = openDialog();
+    stacked = entry;
     const opener = takeOpener(document.activeElement);
     return () => {
+      entry.close();
       (returnTo?.() ?? opener)?.focus();
     };
   });
@@ -70,22 +84,27 @@
   }
 
   /**
-   * Focus starts inside the dialog. Keys pressed while the focus is outside it (on the body, after a
-   * click that took it away) are handled here too, by the topmost dialog only.
+   * Focus starts inside the dialog. While it is the topmost dialog, keys pressed outside it (on the body,
+   * after a click that took the focus away) are handled here too, and focus that lands outside goes back in.
    */
-  function enter(dialog: HTMLElement): () => void {
+  $effect(() => {
+    const dialog = surface;
+    const entry = stacked;
+    if (!open || dialog === undefined || entry === undefined) return;
     initialFocusIn(dialog).focus();
-    const delist = enlist(dialog);
     const outside = (event: KeyboardEvent) => {
-      if (dialog.contains(event.target as Node | null) || !isTopmost(dialog)) return;
-      keydown(event, dialog);
+      if (!dialog.contains(event.target as Node | null) && entry.isTopmost()) keydown(event, dialog);
+    };
+    const pullBack = (event: FocusEvent) => {
+      if (!dialog.contains(event.target as Node | null) && entry.isTopmost()) initialFocusIn(dialog).focus();
     };
     document.addEventListener('keydown', outside);
+    document.addEventListener('focusin', pullBack);
     return () => {
-      delist();
       document.removeEventListener('keydown', outside);
+      document.removeEventListener('focusin', pullBack);
     };
-  }
+  });
 
   /**
    * Moves the dialog's root to `body`, so that a dialog opened from inside another one is not clipped by the
@@ -110,6 +129,7 @@
     <div
       class="frame"
       role="presentation"
+      class:lowered
       onmousedown={(event) => {
         // A press on the scrim keeps the focus where it is, so Tab and Escape still reach the dialog.
         if (event.target === event.currentTarget) event.preventDefault();
@@ -128,7 +148,8 @@
         aria-describedby={describedBy}
         tabindex="-1"
         transition:modal|global
-        {@attach enter}
+        bind:this={surface}
+        style:--modal-width={width}
         onkeydown={(event) => {
           keydown(event, event.currentTarget);
         }}
@@ -172,12 +193,16 @@
     padding: var(--space-4);
   }
 
+  .lowered {
+    padding-block-start: var(--space-16);
+  }
+
   .surface {
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
-    inline-size: min(100%, calc(var(--space-16) * 8));
+    inline-size: min(100%, calc(var(--space-16) * var(--modal-width)));
     max-block-size: 100%;
     padding: var(--space-5);
     background: var(--surface-raised);

@@ -78,7 +78,7 @@
   title="The certificate of {device.name} has changed"
   warning
   describedBy="certificate-why"
-  closeOnScrim={false}
+  closeOnScrim={false} width={9} lowered
   onClose={close}
   {returnTo}
 >
