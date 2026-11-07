@@ -10,7 +10,7 @@ import type { SessionEndReason, SessionEnding } from '../ending';
 import { openScreen, type ScreenHooks, type ScreenOpener } from '../screen/screen';
 import { FAKE_TERMINAL_SOCKET, FakeTerminalSocket } from '../tunnel/terminal/fake/socket.fixture';
 import type { Hub } from '$lib/hub/hub';
-import Hubbed from './hubbed.fixture.svelte';
+import Hubbed from './filing/hubbed.fixture.svelte';
 import SessionView from './SessionView.svelte';
 import { sessionStart } from './start';
 
@@ -206,7 +206,7 @@ export function showView(wrap: (open: ScreenOpener) => ScreenOpener = (open) => 
       heard.titles.push(title);
     },
   };
-  const component = hub === undefined ? mount(SessionView, { target, props }) : mount(Hubbed, { target, props: Object.defineProperty(props, 'hub', { value: hub, enumerable: true }) });
+  const component = hub === undefined ? mount(SessionView, { target, props }) : mount(Hubbed, { target, props: Object.defineProperties(props, { hub: { value: hub, enumerable: true } }) as typeof props & { hub: Hub } });
   flushSync();
   return { calls, answers, heard, ended: heard.ended, target, close: () => unmount(component) };
 }
