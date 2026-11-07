@@ -32,6 +32,7 @@ function show(...args: Parameters<typeof showRemote>) {
 const stepMarks = (target: HTMLElement) =>
   [...target.querySelectorAll<HTMLElement>('[data-step]')].map((step) => `${step.dataset.step ?? ''}:${step.dataset.mark ?? ''}`);
 const reasonOf = (target: HTMLElement) => target.querySelector('[data-reason]')?.textContent;
+const certificateModals = () => document.querySelectorAll('[role="alertdialog"]').length;
 const reconnectOf = (target: HTMLElement) => [...target.querySelectorAll('button')].find((button) => button.textContent.includes('Reconnect'));
 
 describe('start and connection steps (Section 5.7.3)', () => {
@@ -85,7 +86,7 @@ describe('ended panel and Reconnect (RA-007)', () => {
     expect(calls.endSession).toEqual(['session-1']);
     expect(reasonOf(target)).toBe('The device closed the session.');
     expect(heard.ended.map((ending) => ending.reason)).toEqual(['REMOTE_CLOSED']);
-    expect(heard.certificateChanged).toBe(0);
+    expect(certificateModals()).toBe(0);
     expect(heard.gone).toBe(1);
     expect(target.querySelector('[data-display]')).toBeNull();
   });
@@ -125,34 +126,34 @@ describe('certificate changes and refusals (K4 §1, §3, §5)', () => {
   it.each([
     ['close 4003', null],
     ['the recorded reason', 'SERVER_CERTIFICATE_MISMATCH'],
-  ] as const)('K4 §3, §5: %s says the RDP certificate changed and raises the certificate signal once', async (_name, recorded) => {
-    const { target, answers, heard } = show();
+  ] as const)('K4 §3, §5: %s says the RDP certificate changed and opens the certificate warning once', async (_name, recorded) => {
+    const { target, answers } = show();
     const socket = await connectRemote();
     answers.endReason = recorded;
     socket.gatewayError(0x0303);
     socket.closeWith(recorded === null ? 4003 : 1011);
     await settle();
     expect(reasonOf(target)).toBe("The device's RDP certificate has changed, so Anima did not connect.");
-    expect(heard.certificateChanged).toBe(1);
+    expect(certificateModals()).toBe(1);
   });
 
-  it('K4 §5: close 4003 raises the certificate signal even when the hub recorded another reason', async () => {
-    const { answers, heard } = show();
+  it('K4 §5: close 4003 opens the certificate warning even when the hub recorded another reason', async () => {
+    const { answers } = show();
     const socket = await connectRemote();
     answers.endReason = 'GATEWAY_ERROR';
     socket.closeWith(4003);
     await settle();
-    expect(heard.certificateChanged).toBe(1);
+    expect(certificateModals()).toBe(1);
   });
 
   it('K4 §1: a CONFLICT for RDP points to the connection test, in fixed text, not the hub message', async () => {
-    const { target, answers, heard } = show();
+    const { target, answers } = show();
     answers.refuse = 'CONFLICT';
     FakeResizeObserver.resize(800, 600);
     await settle();
     expect(reasonOf(target)).toBe("Could not open the session. The device's RDP certificate is not accepted yet: run the connection test first.");
     expect(target.textContent).not.toContain('HUB-TEXT-MARKER');
-    expect(heard.certificateChanged).toBe(0);
+    expect(certificateModals()).toBe(0);
     expect(FakeTunnelSocket.made).toEqual([]);
   });
 

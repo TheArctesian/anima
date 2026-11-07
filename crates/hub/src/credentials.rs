@@ -12,8 +12,8 @@
 //! back ([`load_ssh`], [`load_password`]); the API sees only whether one exists ([`has_ssh`],
 //! [`with_ssh`], [`with_password`]) (SEC-005).
 //!
-//! Writers of every kind take one advisory lock per device, so the lock order below holds for
-//! all of them.
+//! Writers of every kind take one advisory lock per device, so the lock order documented on
+//! each writer holds for all of them.
 
 mod password;
 mod secret;

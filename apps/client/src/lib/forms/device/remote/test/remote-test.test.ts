@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import type { PendingDeviceFields, ServerCertificate } from '../../../hub-pending';
+import type { ServerCertificate } from '$lib/sessions/api';
+import type { RemoteDeviceFields } from '../values';
 import { testResult } from '../../result.fixture';
 import { formValues, type DeviceFields, type DeviceFormValues } from '../../values';
 import { remoteOutcome, remoteOutcomeText, remoteTestInput } from './remote-test';
 
 const CERTIFICATE: ServerCertificate = { fingerprintSha256: 'AA:BB', subject: 'CN=desk', notAfter: '2027-01-02T00:00:00Z', firstSeenAt: '2026-11-04T09:00:00Z' };
 
-const K1: PendingDeviceFields = {
+const K1: RemoteDeviceFields = {
   rdp: {
     enabled: true, port: 3389, username: 'admin', domain: null, security: 'NLA', ignoreCertificate: false,
     resizeMethod: 'DISPLAY_UPDATE', audioOut: true, microphone: false, sharedDrive: false, credentialStored: true,

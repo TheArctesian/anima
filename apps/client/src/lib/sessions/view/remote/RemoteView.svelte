@@ -7,15 +7,17 @@
   import { displayInput, type Size } from '../display';
   import EndedPanel from '../EndedPanel.svelte';
   import { keyRoute, pasteText, sendCombination, showDisplay } from '../guacamole/input';
-  import { KEY_COMBINATIONS, keyFilter, type KeyCombination, type KeyFilter } from '../guacamole/keys';
-  import KeysMenu from '../menu/KeysMenu.svelte';
-  import Notice from '../pane/Notice.svelte';
-  import { SessionConnection, progressOf } from '../session.svelte';
+  import CertificateModal from '../certificate/CertificateModal.svelte';
+  import CredentialPrompt from '../credentials/CredentialPrompt.svelte';
+  import { keyFilter, type KeyCombination, type KeyFilter } from '../guacamole/keys';
+  import { SessionConnection, progressOf, type Stage } from '../session.svelte';
   import type { RemoteStart } from '../start';
   import { clipboardRules, NO_CLIPBOARD } from '../clipboard/clipboard';
   import ConnectionSteps from '../steps/ConnectionSteps.svelte';
   import { displayScale } from './fit';
   import { followPixelRatio, remotePane, type RemotePane } from './pane';
+  import { gatewayAsk, PROMPT_CANCELLED, PROMPT_REFUSED } from './prompt';
+  import RemoteToolbar from './RemoteToolbar.svelte';
 
   type Client = SessionTunnel['client'];
 
@@ -24,23 +26,18 @@
     protocol: RemoteProtocol;
     /** Starts a session on `device` with a new ticket; see `sessionStart(...).remote(protocol)` in `../start`. */
     start: RemoteStart;
-    api: Pick<SessionsApi, 'endSession'>;
+    api: Pick<SessionsApi, 'endSession' | 'setCredential' | 'testConnection' | 'acceptServerCertificate'>;
     /** The pane is on screen (its tab is selected). */
     visible: boolean;
     /** The pane should take the keyboard (its tab is selected and the app has focus). */
     focused: boolean;
     /** Hears the final ending of each attempt (after `endSession` answered, D-4). */
     onended?: (ending: SessionEnding) => void;
-    /** Hears an attempt that ended because the device's RDP certificate changed (close 4003, K4 §3, §5). */
-    oncertificatechanged?: () => void;
-    /**
-     * Hears the client of each opened tunnel before the gateway's first frame, so the gateway's `required` prompt
-     * can be set on `client.onrequired` (GW-015); the function it returns runs when that tunnel goes.
-     */
+    /** Hears the client of each opened tunnel before the gateway's first frame; the function it returns runs when that tunnel goes. */
     onclient?: (client: Client) => (() => void) | undefined;
   }
 
-  const { device, protocol, start, api, visible, focused, onended, oncertificatechanged, onclient }: Props = $props();
+  const { device, protocol, start, api, visible, focused, onended, onclient }: Props = $props();
   /** Fixed texts of the clipboard notices; never the clipboard's content (LOG-007). */
   const COPY_FAILED = 'Could not copy the text to your clipboard.';
   const PASTE_FAILED = 'Could not read your clipboard. Allow clipboard access, or use Paste in the Keys menu.';
@@ -54,10 +51,7 @@
   const connection = new SessionConnection<SessionTunnel, GuacamoleState>(
     (display, events) => start(display, events),
     { endSession: (id) => api.endSession(id) },
-    (ending) => {
-      onended?.(ending);
-      if (connection.stage.kind === 'ended' && connection.stage.certificateChanged) oncertificatechanged?.();
-    },
+    (ending) => onended?.(ending),
     untrack(() => CONFLICT_TEXT[protocol]),
   );
   let pane: RemotePane | undefined;
@@ -76,12 +70,22 @@
   /** `devicePixelRatio`, followed as state so the display scale and the RDP size follow a monitor change. */
   let pixelRatio = $state(window.devicePixelRatio);
 
+  /** The `required` instruction the operator answered; it asks nothing more (GW-015). */
+  let answered: readonly string[] | undefined = $state.raw();
+  /** The ended attempt whose certificate warning was closed or answered. */
+  let dismissed: Stage<SessionTunnel, GuacamoleState> | undefined = $state.raw();
+
   const stage = $derived(connection.stage);
   const client = $derived(connection.tunnel?.client);
   const ready = $derived(connection.ready);
   const rules = $derived(stage.kind === 'open' ? clipboardRules(stage.policy) : NO_CLIPBOARD);
-  /** The parent gives this pane the keyboard; the pane then takes the focus. */
-  const wanted = $derived(visible && focused && ready);
+  const ask = $derived(gatewayAsk(protocol, stage.kind === 'open' ? stage.state.required : undefined, answered));
+  /** The parent gives this pane the keyboard, unless the sign-in prompt has it; the pane then takes the focus. */
+  const wanted = $derived(visible && focused && ready && ask.kind !== 'ask');
+  /** The sign-in prompt to show, at most one; a hidden tab shows none. */
+  const prompts = $derived(visible && ask.kind === 'ask' && client !== undefined ? [{ ...ask, client }] : []);
+  // A hidden tab's prompt or warning waits until its tab is shown, so it never covers or traps another tab (SEC-007).
+  const certificateOpen = $derived(visible && stage.kind === 'ended' && stage.certificateChanged && dismissed !== stage);
   /** Keys are sent only while the focus is really in the pane, so no key is held when it leaves (D-8). */
   const bound = $derived(wanted && paneHasFocus);
   const scale = $derived(displayScale(protocol, remote, paneSize ?? remote, pixelRatio));
@@ -93,6 +97,7 @@
   }
 
   function reconnect() {
+    dismissed = stage;
     notice = undefined;
     connect(paneSize ?? { width: 0, height: 0 });
   }
@@ -212,23 +217,27 @@
     };
   });
 
+  // A `required` the prompt cannot answer would leave the gateway waiting: end the session (it fails closed).
+  $effect(() => {
+    if (ask.kind === 'refuse') connection.stop(PROMPT_REFUSED);
+  });
+
   $effect(() => () => {
     connection.close();
   });
 </script>
 
 <section class="session" hidden={!visible} aria-label="{protocol} session on {device.name}">
-  <div class="toolbar">
-    <KeysMenu disabled={!ready} entries={KEY_COMBINATIONS} onkeys={sendKeys} onpaste={pasteFromClipboard} pasteOff={rules.pasteOff} />
-    <span class="device">{device.name}</span>
-    {#if ready && rules.notice !== undefined}<span class="policy" data-policy title={rules.notice}>{rules.notice}</span>{/if}
-    <!-- Notices lie over the toolbar row, which has a fixed height, so the display never moves for them (MOT-007). -->
-    {#if notice !== undefined}
-      <div class="cover">
-        <Notice text={notice} ondismiss={() => (notice = undefined)} />
-      </div>
-    {/if}
-  </div>
+  <RemoteToolbar
+    deviceName={device.name}
+    {ready}
+    policy={rules.notice}
+    pasteOff={rules.pasteOff}
+    {notice}
+    onkeys={sendKeys}
+    onpaste={pasteFromClipboard}
+    ondismiss={() => (notice = undefined)}
+  />
   <div class="stage">
     <!-- The keyboard listens here only; menus, panels and modals are outside it (D-8). -->
     <!-- Focusable because the remote desktop takes the keyboard as a text field does (D-8). -->
@@ -259,6 +268,23 @@
   </div>
 </section>
 
+<!-- One prompt per `required`: a newer one while a save is awaited gets its own prompt, and answers only itself. -->
+{#each prompts as prompted (prompted.required)}
+  <CredentialPrompt
+    {device}
+    {protocol}
+    fields={prompted.fields}
+    client={prompted.client}
+    {api}
+    onsent={() => (answered = prompted.required)}
+    oncancel={() => connection.stop(PROMPT_CANCELLED)}
+  />
+{/each}
+
+{#if certificateOpen}
+  <CertificateModal {device} {api} onclose={() => (dismissed = stage)} onaccepted={reconnect} />
+{/if}
+
 <style>
   .session {
     display: flex;
@@ -273,52 +299,6 @@
 
   .session[hidden] {
     display: none;
-  }
-
-  /* Solid and above the display, never over it (MAT-008); a fixed height, so nothing in it moves the display (MOT-007). */
-  .toolbar {
-    position: relative;
-    box-sizing: border-box;
-    display: flex;
-    block-size: calc(var(--target-min-desktop) + 2 * var(--space-2) + var(--border-thin));
-    line-height: var(--leading-normal);
-    flex: none;
-    align-items: center;
-    gap: var(--space-3);
-    min-inline-size: 0;
-    padding: var(--space-2) var(--space-3);
-    border-bottom: var(--border-thin) solid var(--border);
-    background: var(--surface);
-  }
-
-  .cover {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    min-inline-size: 0;
-    padding: var(--space-2) var(--space-3);
-    background: var(--surface);
-  }
-
-  /* The bar never sets the pane's width: the name and the policy give way first (UI-009). */
-  .device,
-  .policy {
-    min-inline-size: 0;
-    overflow: hidden;
-    font-size: var(--text-sm);
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .device {
-    font-family: var(--font-mono);
-  }
-
-  .policy {
-    flex: 1;
-    color: var(--text-muted);
   }
 
   .stage {

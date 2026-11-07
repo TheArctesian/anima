@@ -80,3 +80,28 @@ describe('relay length counting (K4 §4, GW-014, R-035, R-046)', () => {
     expect(sent).toEqual([encodeInstruction('clipboard', 0, 'text/😀')]);
   });
 });
+
+describe('GW-015: the gateway `required` instruction', () => {
+  it('GW-015: its names reach the state and `onchange`, a new array for each instruction, the phase unchanged', () => {
+    const states: (readonly string[] | undefined)[] = [];
+    const opening = openTunnel({
+      origin: 'https://hub.anima.ing',
+      ticket: { tunnelPath: '/tunnel', token: 't'.repeat(43) },
+      WebSocket: FAKE_TUNNEL_SOCKET,
+      onchange: (state) => states.push(state.required),
+    });
+    if (!opening.ok) throw new Error(opening.error.message);
+    tunnels.push(opening.value);
+    const socket = FakeTunnelSocket.latest();
+    socket.open();
+    expect(opening.value.state().required).toBeUndefined();
+    socket.instruction('required', 'username', 'password');
+    socket.instruction('required', 'username', 'password');
+    const [first, second] = states.filter((names) => names !== undefined);
+    expect(first).toEqual(['username', 'password']);
+    expect(second).toEqual(['username', 'password']);
+    expect(second).not.toBe(first);
+    expect(opening.value.state().required).toBe(second);
+    expect(opening.value.state().phase).toBe('waiting');
+  });
+});

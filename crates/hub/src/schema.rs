@@ -90,8 +90,6 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
         production_build(),
     )
     .disable_suggestions()
-    // No field returns it until `Device.webInterfaceSuggestions` exists (WP-30 D-2).
-    .register_output_type::<web_interfaces::Suggestion>()
     .extension(access::SignInRequired)
     // Shared dependencies (K3 wiring).
     .data(config)
@@ -104,6 +102,11 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .data(devices::graphql::site_loader(pool.clone()).delay(BATCH_WINDOW))
     .data(devices::graphql::devices_by_site_loader(pool.clone()).delay(BATCH_WINDOW))
     .data(devices::graphql::credential_loader(pool.clone()).delay(BATCH_WINDOW))
+    .data(devices::graphql::rdp_credential_loader(pool.clone()).delay(BATCH_WINDOW))
+    .data(devices::graphql::vnc_credential_loader(pool.clone()).delay(BATCH_WINDOW))
+    .data(devices::graphql::device_loader(pool.clone()).delay(BATCH_WINDOW))
+    .data(devices::graphql::web_interfaces_loader(pool.clone()).delay(BATCH_WINDOW))
+    .data(devices::graphql::web_interface_suggestions_loader(pool.clone()).delay(BATCH_WINDOW))
     // devices fields that join checks (API-005)
     .data(devices::graphql::status_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
     .data(devices::graphql::uptime_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))

@@ -1,0 +1,7 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>OD-7 main</title>
+<script>
+  // The app's own page: this invoke must reach Rust (positive control for check 2).
+  window.__TAURI_INTERNALS__.invoke('spike_probe', { from: 'main' });
+</script>

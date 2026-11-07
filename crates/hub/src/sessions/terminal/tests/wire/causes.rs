@@ -4,14 +4,17 @@
 use std::{
     sync::{
         Arc,
-        atomic::{AtomicUsize, Ordering},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
     },
     time::Duration,
 };
 
 use chrono::TimeDelta;
 use sqlx::PgPool;
-use tokio::{task::JoinHandle, time::timeout};
+use tokio::{
+    task::JoinHandle,
+    time::{Instant, sleep, sleep_until, timeout},
+};
 
 use super::{
     bench::{Setup, bench},
@@ -230,27 +233,30 @@ async fn k4_8_5_a_send_that_stalls_is_timeout_4002(pool: PgPool) {
     fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
 async fn k4_8_5_a_client_ping_sent_while_the_hub_s_send_waits_keeps_the_session(pool: PgPool) {
-    // Each round: the client pings and is read at once; a second later the shell floods
-    // until the hub's send to the unread client stalls; only then does the client ping
-    // again, unread; it reads 2.5 s after its first ping. The hub's send waited under its
-    // 2 s limit, but by then 2 s have passed since the hub last read the client, and the
-    // second ping is waiting to be read: it, not the idle wait, must win. When both are
-    // ready the hub picks one at random, so without the peek a round ends the session half
-    // the time.
-    let setup = Setup::terminal(|terminal| {
-        terminal.timing.client_idle = Duration::from_secs(2);
-    });
+    // Each round: the client pings and waits until the hub has read it (`read`); a second
+    // later the shell floods until the hub's send to the unread client waits; only then does
+    // the client ping again, unread. It reads just after `read` plus the idle wait, so the
+    // idle wait has run out, and a second before the waiting send, which began after the
+    // flood, reaches its own limit of the same length. The second ping is waiting to be
+    // read: it, not the idle wait, must win. When both are ready the hub picks one at
+    // random, so without the peek such a round ends the session half the time. A round in
+    // which the connection lets the hub's send through before the idle wait runs out has the
+    // hub read the second ping at once; it passes without testing the peek, so there are
+    // twelve rounds.
+    let idle = Duration::from_secs(2);
+    let setup = Setup::terminal(move |terminal| terminal.timing.client_idle = idle);
     let (bench, mut client) = session(&pool, setup).await;
     let ssh = Arc::new(bench.ssh);
-    for round in 0..8 {
+    for round in 0..12 {
         client.send(r#"{"type":"ping"}"#).await;
-        let pinged = tokio::time::Instant::now();
-        tokio::time::sleep(Duration::from_millis(1_000)).await;
+        client.caught_up().await;
+        let read = Instant::now();
+        sleep(Duration::from_secs(1)).await;
         let marker = format!("end of round {round}");
-        let (flood, written) = flood(&ssh, marker.clone());
-        stalled(&written).await;
+        let flood = Flood::start(&ssh, marker.clone());
+        flood.held().await;
         client.send(r#"{"type":"ping"}"#).await;
-        tokio::time::sleep_until(pinged + Duration::from_millis(2_500)).await;
+        sleep_until(read + idle + Duration::from_millis(100)).await;
         loop {
             match client.next().await {
                 Received::Binary(bytes) if bytes.ends_with(marker.as_bytes()) => break,
@@ -259,7 +265,7 @@ async fn k4_8_5_a_client_ping_sent_while_the_hub_s_send_waits_keeps_the_session(
                 other => panic!("{other:?} in round {round}"),
             }
         }
-        flood.await.unwrap();
+        flood.task.await.unwrap();
     }
     ssh.say(b"still here").await;
     assert_eq!(client.bytes_until(b"still here").await, b"still here");
@@ -272,29 +278,53 @@ async fn k4_8_5_a_client_ping_sent_while_the_hub_s_send_waits_keeps_the_session(
     );
 }
 
-/// The shell writes 32 MiB and then `marker`, counting what it has written.
-fn flood(ssh: &Arc<FakeSsh>, marker: String) -> (JoinHandle<()>, Arc<AtomicUsize>) {
-    let (writer, written) = (Arc::clone(ssh), Arc::new(AtomicUsize::new(0)));
-    let counted = Arc::clone(&written);
-    let flood = tokio::spawn(async move {
-        let chunk = vec![b'x'; 32 * 1024];
-        for _ in 0..1_024 {
-            writer.say(&chunk).await;
-            counted.fetch_add(chunk.len(), Ordering::SeqCst);
-        }
-        writer.say(marker.as_bytes()).await;
-    });
-    (flood, written)
+/// The shell writing to a client that does not read: chunks until told to stop, then a
+/// marker.
+struct Flood {
+    task: JoinHandle<()>,
+    written: Arc<AtomicUsize>,
+    stop: Arc<AtomicBool>,
 }
 
-/// Returns once the shell has written something and then nothing for 300 ms: the hub's send
-/// to the client waits.
-async fn stalled(written: &AtomicUsize) {
-    loop {
-        let before = written.load(Ordering::SeqCst);
-        tokio::time::sleep(Duration::from_millis(300)).await;
-        if before > 0 && written.load(Ordering::SeqCst) == before {
-            return;
+impl Flood {
+    fn start(ssh: &Arc<FakeSsh>, marker: String) -> Self {
+        let (writer, written, stop) = (
+            Arc::clone(ssh),
+            Arc::new(AtomicUsize::new(0)),
+            Arc::new(AtomicBool::new(false)),
+        );
+        let (counted, stopped) = (Arc::clone(&written), Arc::clone(&stop));
+        let task = tokio::spawn(async move {
+            let chunk = vec![b'x'; 32 * 1024];
+            while !stopped.load(Ordering::SeqCst) {
+                writer.say(&chunk).await;
+                counted.fetch_add(chunk.len(), Ordering::SeqCst);
+            }
+            writer.say(marker.as_bytes()).await;
+        });
+        Self {
+            task,
+            written,
+            stop,
+        }
+    }
+
+    /// Returns once the shell has written something and then nothing for 800 ms, as when the
+    /// hub's send to the client waits, and tells the shell to write only the marker after
+    /// the chunk it is on, so what is left to read is what the hub holds. A loopback
+    /// connection that has just filled often lets one more send through within about 600 ms;
+    /// the wait outlasts that.
+    async fn held(&self) {
+        let (mut seen, mut since) = (0, Instant::now());
+        loop {
+            sleep(Duration::from_millis(50)).await;
+            let written = self.written.load(Ordering::SeqCst);
+            if written != seen {
+                (seen, since) = (written, Instant::now());
+            } else if written > 0 && since.elapsed() >= Duration::from_millis(800) {
+                self.stop.store(true, Ordering::SeqCst);
+                return;
+            }
         }
     }
 }

@@ -141,8 +141,15 @@ pub(super) fn to_devices(rows: Vec<DeviceRow>) -> Result<Vec<Device>, Error> {
         .collect::<Result<_, _>>()?)
 }
 
-pub(super) fn to_site((id, name, subnet): (SiteId, String, IpNet)) -> Site {
-    Site { id, name, subnet }
+pub(super) fn to_site(
+    (id, name, subnet, wake_relay): (SiteId, String, IpNet, Option<DeviceId>),
+) -> Site {
+    Site {
+        id,
+        name,
+        subnet,
+        wake_relay,
+    }
 }
 
 /// Turns a violated constraint into the field the operator must fix.

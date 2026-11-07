@@ -1,5 +1,5 @@
 import type { Hub, HubError } from '$lib/hub/hub';
-import { devicesApi } from '../api';
+import { devicesApi } from '../client';
 
 /** The hub's tags for the Tags menu, and why there are none when they cannot be had. */
 export class Tags {

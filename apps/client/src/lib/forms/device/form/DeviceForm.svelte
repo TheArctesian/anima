@@ -7,8 +7,7 @@
   import { modalFooter } from '../../modal/footer';
   import { fieldErrorsFrom } from '../field-errors';
   import type { ConnectionTestInput } from '$lib/hub/generated/graphql';
-  import type { ConnectionTestResult } from '../connection-test';
-  import type { PendingConnectionTestResult } from '../../hub-pending';
+  import type { RemoteTestResult } from '../remote/test/remote-test';
   import RemoteTest from '../remote/test/RemoteTest.svelte';
   import { suggestedSite, validateNewSite, type NewSite, type SitePlacement } from '../site';
   import { validateDevice } from '../validate';
@@ -48,7 +47,7 @@
     onSave: (values: DeviceFormValues, site: SitePlacement | null) => Promise<HubResult<unknown>>;
     onTest: (
       input: ConnectionTestInput,
-    ) => Promise<HubResult<ConnectionTestResult & Partial<PendingConnectionTestResult>>>;
+    ) => Promise<HubResult<RemoteTestResult>>;
     /** Only for a saved device. */
     onAcceptHostKey: (fingerprint: string) => Promise<HubResult<unknown>>;
     /** K1 `acceptServerCertificate`, only for a saved device. Without it the Accept certificate button is hidden (D-4). */

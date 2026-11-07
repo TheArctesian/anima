@@ -1,8 +1,11 @@
 import type { MetricsSource, RdpResizeMethod, RdpSecurity } from '$lib/hub/generated/graphql';
-import type { PendingDeviceFields } from '../../hub-pending';
+import type { DeviceDetail } from '$lib/devices/api';
 
-/** The K1 device fields as the form reads them; each may be missing until the devices client queries it (D-3). */
-export type RemoteFields = Partial<PendingDeviceFields>;
+/** The device fields the remote sections read: the served K1 part of a `DeviceDetail`. */
+export type RemoteDeviceFields = Pick<DeviceDetail, 'rdp' | 'vnc' | 'macAddress' | 'metricsSource' | 'transfer' | 'accessWarnings'>;
+
+/** The K1 device fields as the form reads them; each may be missing (D-3). */
+export type RemoteFields = Partial<RemoteDeviceFields>;
 
 export const DEFAULT_RDP_PORT = '3389';
 export const DEFAULT_VNC_PORT = '5900';

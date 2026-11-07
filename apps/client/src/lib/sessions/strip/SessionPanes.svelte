@@ -6,7 +6,7 @@
   import SessionView from '../view/SessionView.svelte';
   import { panelId, tabElementId } from './tablist';
 
-  const { api }: { api: Pick<SessionsApi, 'endSession' | 'testConnection' | 'acceptHostKey'> } = $props();
+  const { api }: { api: Pick<SessionsApi, 'endSession' | 'testConnection' | 'acceptHostKey' | 'acceptServerCertificate' | 'setCredential'> } = $props();
 
   const sessions = useSessions();
   /** The app window has the focus and the page is shown, so the selected pane may take the keyboard (D-8). */
