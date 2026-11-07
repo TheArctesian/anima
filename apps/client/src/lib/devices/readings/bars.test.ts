@@ -45,3 +45,17 @@ it('MET-004 MET-008: a GPU device shows four meters with their values, VRAM last
   expect(meters[3]?.textContent).toContain('40 %');
   expect(meters[0]?.classList.contains('degraded')).toBe(true);
 });
+
+it('MET-004: a degraded bar has a marker as well as a colour, and a null reading is no meter', () => {
+  card({ metricsSource: 'SSH', readings: readings({ cpuPercent: 90, diskPercent: null }) });
+  expect(document.querySelector('.degraded .warn')).not.toBeNull();
+  expect(document.querySelectorAll('[role="meter"]')).toHaveLength(2);
+  expect(document.body.textContent).toContain('—');
+});
+
+it('MOT-040: the row takes the reduced-motion form when the operator asks for it', () => {
+  preference.reduced = true;
+  card({ metricsSource: 'SSH', readings: readings() });
+  expect(document.querySelector('.row')?.classList.contains('reduced')).toBe(true);
+  preference.reduced = false;
+});

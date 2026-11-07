@@ -25,15 +25,15 @@
       <div
         class="bar"
         class:degraded={bar.degraded}
-        role="meter"
-        aria-label={bar.label}
-        aria-valuemin={0}
-        aria-valuemax={100}
+        role={bar.percent === null ? undefined : 'meter'}
+        aria-label={bar.percent === null ? undefined : bar.label}
+        aria-valuemin={bar.percent === null ? undefined : 0}
+        aria-valuemax={bar.percent === null ? undefined : 100}
         aria-valuenow={bar.percent}
-        aria-valuetext={bar.degraded ? `${bar.text}, degraded` : bar.text}
+        aria-valuetext={bar.percent === null ? undefined : bar.degraded ? `${bar.text}, degraded` : bar.text}
         title={bar.tooltip}
       >
-        <span class="label">{bar.label}</span>
+        <span class="label">{bar.label}{#if bar.degraded}<span class="warn" aria-hidden="true"> ▲</span>{/if}</span>
         <!-- A new value cross-fades over the old one; it never counts (MET-008, MOT-008). -->
         <span class="slot">
           {#key bar.text}
@@ -122,6 +122,15 @@
 
   .reduced .fill {
     transition: none;
+  }
+
+  /* Degraded is also a marker and a bold value, not colour alone (MET-004); the value slot keeps its width. */
+  .degraded .value {
+    font-weight: var(--weight-bold);
+  }
+
+  .warn {
+    color: var(--status-degraded);
   }
 
   .degraded .fill {
