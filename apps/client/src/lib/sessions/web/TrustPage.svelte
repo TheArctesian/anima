@@ -71,7 +71,7 @@
     {:else if current.step === 'untrusted'}
       <button type="button" class="warning" onclick={onaccept} {@attach press()}>Accept certificate</button>
     {:else if current.confirming}
-      <button type="button" onclick={onback} {@attach press()}>Back</button>
+      <button type="button" onclick={onback} {@attach press()}>Back to the warning</button>
       <button type="button" class="warning" onclick={onaccept} {@attach press()}>Yes, accept this certificate</button>
     {:else}
       <button type="button" class="warning" onclick={onconfirm} {@attach press()}>Accept new certificate</button>

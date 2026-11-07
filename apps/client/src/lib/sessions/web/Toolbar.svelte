@@ -18,47 +18,89 @@
     onreload: () => void;
     onbrowser: () => void;
     onpopout: () => void;
+    /** The Reload button, so focus can go to it after an accept. */
+    reloadButton?: HTMLButtonElement;
   }
 
-  const { url, tls, navigable, reloadable, browsable, poppable, onback, onforward, onreload, onbrowser, onpopout }: Props = $props();
+  let {
+    url,
+    tls,
+    navigable,
+    reloadable,
+    browsable,
+    poppable,
+    onback,
+    onforward,
+    onreload,
+    onbrowser,
+    onpopout,
+    reloadButton = $bindable(),
+  }: Props = $props();
+
+  const TLS_TEXT = {
+    plain: 'Not encrypted',
+    trusted: 'Encrypted',
+    pinned: 'Pinned',
+    untrusted: 'Not trusted',
+    changed: 'Certificate changed',
+    unknown: 'Not verified',
+  } as const;
+
   const pinned = $derived(tls.tls === 'pinned' ? displayFingerprint(tls.pin) : undefined);
+  const warned = $derived(tls.tls === 'plain' || tls.tls === 'untrusted' || tls.tls === 'changed');
+  const title = $derived(pinned === undefined ? TLS_TEXT[tls.tls] : `Pinned certificate, SHA-256 ${pinned}`);
 </script>
 
-<!-- WEB-005: back, forward, reload, the URL, the TLS status, "Open in system browser" and "Pop out". -->
+<!--
+  WEB-005: back, forward, reload, the URL, the TLS status, "Open in system browser" and "Pop out". One line of a
+  fixed height in every state and width, so the view area below never moves (MV-004); the URL takes the slack.
+-->
 <div class="toolbar" role="toolbar" aria-label="Web page">
   <button type="button" disabled={!navigable} onclick={onback} {@attach press()}>Back</button>
   <button type="button" disabled={!navigable} onclick={onforward} {@attach press()}>Forward</button>
-  <button type="button" class="icon-only" aria-label="Reload" title="Reload" disabled={!reloadable} onclick={onreload} {@attach press()}>
+  <button
+    type="button"
+    class="icon-only"
+    aria-label="Reload"
+    title="Reload"
+    disabled={!reloadable}
+    bind:this={reloadButton}
+    onclick={onreload}
+    {@attach press()}
+  >
     <Icon name="nf-md-refresh" />
   </button>
   <p class="url" data-url title={url}>{url}</p>
-  <p class="tls" data-tls={tls.tls}>
-    {#if tls.tls === 'plain'}
-      <Icon name="nf-md-alert" size="sm" /><span>Not encrypted</span>
-    {:else if tls.tls === 'trusted'}
-      <Icon name="nf-md-lock" size="sm" /><span>Encrypted</span>
-    {:else}
-      <Icon name="nf-md-lock" size="sm" /><span>Pinned certificate</span>
-      <span class="fingerprint" data-fingerprint title={pinned}>{pinned}</span>
+  <p class="tls" data-tls={tls.tls} class:warned {title}>
+    <Icon name={warned ? 'nf-md-alert' : 'nf-md-lock'} size="sm" />
+    <span class="label">{TLS_TEXT[tls.tls]}</span>
+    {#if pinned !== undefined}
+      <span class="hidden" data-fingerprint>{pinned}</span>
     {/if}
   </p>
-  <button type="button" disabled={!browsable} onclick={onbrowser} {@attach press()}>
-    <Icon name="nf-md-web" size="sm" /><span>Open in system browser</span>
+  <button type="button" aria-label="Open in system browser" disabled={!browsable} onclick={onbrowser} {@attach press()}>
+    <Icon name="nf-md-web" size="sm" /><span class="label">Open in system browser</span>
   </button>
   <button type="button" disabled={!poppable} onclick={onpopout} {@attach press()}>Pop out</button>
 </div>
 
 <style>
   .toolbar {
+    container-type: inline-size;
     display: flex;
+    flex-wrap: nowrap;
     align-items: center;
     gap: var(--space-2);
+    box-sizing: content-box;
+    block-size: var(--target-min-desktop);
     padding: var(--space-2) var(--space-3);
+    overflow: hidden;
     border-bottom: var(--border-thin) solid var(--border);
     background: var(--surface);
     color: var(--text);
     font-size: var(--text-sm);
     line-height: var(--leading-tight);
+    white-space: nowrap;
   }
 
   p {
@@ -70,28 +112,28 @@
     min-inline-size: 0;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
     font-family: var(--font-mono);
   }
 
   .tls {
     display: flex;
+    flex: none;
     align-items: center;
     gap: var(--space-1);
-    min-inline-size: 0;
     color: var(--text-muted);
   }
 
-  .tls[data-tls='plain'] :global(.icon) {
+  .warned :global(.icon) {
     color: var(--status-warning);
   }
 
-  .fingerprint {
-    max-inline-size: calc(var(--space-16) * 2);
+  /* Read by assistive technology, not drawn: the full fingerprint is in the title as well. */
+  .hidden {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
     overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-family: var(--font-mono);
+    clip-path: inset(50%);
   }
 
   button {
@@ -121,6 +163,17 @@
 
   button:focus-visible {
     outline: var(--border-focus) solid var(--accent);
-    outline-offset: var(--border-focus);
+    outline-offset: calc(var(--border-focus) * -1);
+  }
+
+  /* Narrow tabs keep the icons; the words stay for assistive technology and in the titles. */
+  @container (max-inline-size: 720px) {
+    .label {
+      position: absolute;
+      inline-size: 1px;
+      block-size: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
   }
 </style>

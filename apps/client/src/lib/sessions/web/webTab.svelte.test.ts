@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import { flushSync, mount, unmount } from 'svelte';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { displayFingerprint, fingerprintFrom, type Fingerprint } from '$lib/desktop/webView/webView';
 import type { Status } from '$lib/hub/generated/graphql';
 import { fakeApi, fakeShell, FakeResizeObserver, installLayout, settle } from './fake.fixture';
-import { PROBLEM } from './tab';
+import { LOAD_TIMEOUT_MS, PROBLEM } from './tab';
 import WebTab from './WebTab.svelte';
 
 const PIN = fingerprintFrom('ab'.repeat(32)) as Fingerprint;
@@ -59,6 +59,8 @@ const button = (name: string) =>
     (candidate) => (candidate.getAttribute('aria-label') ?? candidate.textContent.replace(/[\u{F0000}-\u{FFFFD}]/gu, '').trim()) === name,
   );
 const field = (name: string) => document.querySelector(`[data-${name}]`)?.textContent.trim();
+/** A field of the page over the view area, not the toolbar's. */
+const pageField = (name: string) => document.querySelector(`[data-view-area] [data-${name}]`)?.textContent.trim();
 const lastShow = (calls: { command: string; shown?: boolean }[]) => calls.filter(({ command }) => command === 'show').at(-1)?.shown;
 
 describe('web tab view (WEB-004, MAT-008)', () => {
@@ -148,6 +150,7 @@ describe('web tab certificates (WEB-008, SEC-007)', () => {
     await settle();
     expect(lastShow(calls)).toBe(false);
     expect(field('presented')).toBe(displayFingerprint(NEW));
+    expect(field('tls')).toContain('Not trusted');
     expect(document.activeElement?.matches('section[aria-labelledby]')).toBe(true);
     const accept = button('Accept certificate');
     accept?.click();
@@ -156,7 +159,8 @@ describe('web tab certificates (WEB-008, SEC-007)', () => {
     expect(accepts).toEqual([['web-1', NEW]]);
     expect(calls.filter(({ command }) => command === 'pin')).toEqual([{ command: 'pin', pin: NEW }]);
     expect(lastShow(calls)).toBe(true);
-    expect(field('tls')).toContain('Pinned certificate');
+    expect(field('tls')).toContain('Pinned');
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('Reload');
   });
 
   it('R-035: a hub error keeps the prompt with fixed text, and nothing is pinned', async () => {
@@ -220,7 +224,7 @@ describe('web tab Down page (WEB-010)', () => {
 
   it('a web view that does not open shows the error page once, and Reload tries again', async () => {
     const fake = fakeShell();
-    fake.answers.refuse.add('open');
+    fake.answers.refuse.set('open', 'refused');
     const component = mount(WebTab, {
       target: document.body,
       props: {
@@ -241,6 +245,23 @@ describe('web tab Down page (WEB-010)', () => {
     expect(fake.names()).toEqual(['open', 'open', 'show']);
   });
 
+});
+
+describe('web tab ended view (WEB-010)', () => {
+  it('WEB-010: a pop-out window the operator closed ends the view; Reload opens it in the tab again', async () => {
+    const { names, answers } = await showTab({ url: 'http://printer.lan/' });
+    answers.refuse.set('go', 'unknown_tab');
+    button('Back')?.click();
+    await settle();
+    expect(field('code')).toBe('unknown_tab');
+    expect(field('reason')).toContain('was closed');
+    answers.refuse.clear();
+    button('Reload')?.click();
+    await settle();
+    expect(names().filter((name) => name === 'open')).toHaveLength(2);
+    expect(names()).not.toContain('close');
+  });
+
   it('a failed load shows the shell code and Reload', async () => {
     const { emit } = await showTab();
     emit({ tabId: 'tab-1', kind: 'FAILED', reason: 'unreachable' });
@@ -252,7 +273,7 @@ describe('web tab Down page (WEB-010)', () => {
 describe('web tab system-browser mode (D-6, D-9)', () => {
   it('D-9: shows the pinned fingerprint beside the button and opens the browser after the certificate matches', async () => {
     const { names, calls } = await showTab({ pinning: false, pinned: PIN, certificate: PIN });
-    expect(field('fingerprint')).toBe(displayFingerprint(PIN));
+    expect(pageField('fingerprint')).toBe(displayFingerprint(PIN));
     expect(names()).not.toContain('open');
     const open = [...document.querySelectorAll('section button')].find((candidate) => candidate.textContent.includes('Open in system browser'));
     (open as HTMLButtonElement | undefined)?.click();
@@ -279,14 +300,57 @@ describe('web tab system-browser mode (D-6, D-9)', () => {
     const { names, accepts } = await showTab({ pinning: false, certificate: NEW });
     expect(field('presented')).toBe(displayFingerprint(NEW));
     expect(button('Open in system browser')?.disabled).toBe(true);
+    expect(field('tls')).toContain('Not trusted');
     button('Accept certificate')?.click();
     await settle();
     expect(accepts).toEqual([['web-1', NEW]]);
-    expect(field('fingerprint')).toBe(displayFingerprint(NEW));
+    expect(pageField('fingerprint')).toBe(displayFingerprint(NEW));
     expect(names()).not.toContain('pin');
     expect(names()).not.toContain('open');
     button('Open in system browser')?.click();
     await settle();
     expect(names().slice(-2)).toEqual(['read', 'browser']);
+  });
+});
+
+describe('web tab load timeout (WEB-010, CQ-021)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('WEB-010: a page that never finishes loading shows the error page with Reload after the timeout', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const clock = { now: 5_000 };
+    const fake = fakeShell();
+    const component = mount(WebTab, {
+      target: document.body,
+      props: {
+        webInterface: { id: 'web-1', deviceId: 'device-1', url: 'http://10.0.0.9/', label: 'Router', pinnedFingerprintSha256: null },
+        device: { id: 'device-1', name: 'router', status: 'UP' },
+        tabId: 'tab-1', visible: true, overlayOpen: false, shell: fake.shell, api: fakeApi().api, now: () => clock.now,
+      },
+    });
+    cleanups.push(() => unmount(component));
+    const turn = async () => {
+      await vi.advanceTimersByTimeAsync(0);
+      flushSync();
+    };
+    await turn();
+    FakeResizeObserver.resize(BOUNDS);
+    await turn();
+    fake.emit({ tabId: 'tab-1', kind: 'LOADING', url: 'http://10.0.0.9/' });
+    clock.now += LOAD_TIMEOUT_MS - 1;
+    await vi.advanceTimersByTimeAsync(LOAD_TIMEOUT_MS - 1);
+    flushSync();
+    expect(field('code')).toBeUndefined();
+    clock.now += 1;
+    await vi.advanceTimersByTimeAsync(1);
+    flushSync();
+    expect(field('code')).toBe('timeout');
+    expect(field('reason')).toContain('did not load in time');
+    expect(lastShow(fake.calls)).toBe(false);
+    button('Reload')?.click();
+    await turn();
+    expect(fake.calls.filter(({ command }) => command === 'go')).toEqual([{ command: 'go', to: 'RELOAD' }]);
   });
 });

@@ -74,6 +74,9 @@ function coalesced<T>(run: Run, live: () => boolean, same: (sent: T | undefined,
   };
 }
 
+/** The shell's code for a tab it holds no web view for (T3). */
+export const UNKNOWN_TAB = 'unknown_tab';
+
 /** Runs each command after the ones before it; a failure is reported with its code and the chain goes on. */
 function chained(onfail: (code: string) => void): Run {
   let chain: Promise<void> = Promise.resolve();
@@ -86,11 +89,15 @@ function chained(onfail: (code: string) => void): Run {
 
 export function nativeView({ shell, tabId, onfail, onstate }: NativeViewOptions): NativeView {
   let state: ViewState = 'none';
-  const run = chained(onfail);
   const become = (next: ViewState) => {
     state = next;
     onstate(next);
   };
+  const run = chained((code) => {
+    // The operator closed a popped-out window, or the shell lost the view: the tab has none now, so a reload opens one.
+    if (code === UNKNOWN_TAB && state !== 'closed') become('none');
+    onfail(code);
+  });
   const live = () => state === 'open';
   const started = () => state === 'open' || state === 'opening';
   const placing = coalesced<Bounds>(run, live, (sent, wanted) => sent !== undefined && sameBounds(sent, wanted), (to) => shell.place(tabId, to));

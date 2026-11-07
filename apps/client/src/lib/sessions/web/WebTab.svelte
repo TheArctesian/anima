@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, untrack } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import { codeOf, desktopWebView, type Bounds, type WebViewShell } from '$lib/desktop/webView/webView';
   import type { Status } from '$lib/hub/generated/graphql';
   import { useHub } from '$lib/hub/context';
@@ -9,6 +9,7 @@
   import {
     browserAllowed,
     checksBeforeBrowser,
+    LOAD_TIMEOUT_MS,
     startTab,
     tlsStatus,
     transition,
@@ -36,12 +37,16 @@
     overlayOpen: boolean;
     shell?: WebViewShell;
     api?: WebTabApi;
+    /** The clock, in milliseconds; tests pass their own (CQ-021). */
+    now?: () => number;
   }
 
-  const { webInterface, device, tabId, visible, overlayOpen, shell = desktopWebView, api = webTabApi(useHub()) }: Props = $props();
+  const { webInterface, device, tabId, visible, overlayOpen, shell = desktopWebView, api = webTabApi(useHub()), now = Date.now }: Props = $props();
 
   const TEXT = {
     failed: 'The page could not be loaded. Check that the web interface is running, then reload.',
+    timeout: 'The page did not load in time. Check that the web interface is running, then reload.',
+    unknown_tab: 'The window of this page was closed. Reload to open it here again.',
     scheme: 'Anima opens only http and https web interfaces.',
     pin: 'The pinned fingerprint of this web interface cannot be read, so Anima does not open it.',
     browser: 'The system browser could not be opened.',
@@ -53,12 +58,13 @@
   let opening = $state(false);
   let notice: string | undefined = $state();
   let area: HTMLElement | undefined = $state();
+  let reloadButton: HTMLButtonElement | undefined = $state();
   let reading = false;
 
   /** Move to the tab `event` leads to; undefined (and no change) when it does not apply now. */
   function apply(event: WebTabEvent): WebTab | undefined {
     if (tab === undefined) return undefined;
-    const next = transition(tab, event);
+    const next = transition(tab, event, now());
     if (next !== undefined) tab = next;
     return next;
   }
@@ -73,7 +79,8 @@
 
   const current = $derived(tab?.current);
   const shownUrl = $derived(current?.step === 'loaded' ? current.url : webInterface.url);
-  const tls = $derived(tlsStatus(webInterface.url, shownUrl, tab?.pin ?? null));
+  const tls = $derived(tlsStatus(webInterface.url, shownUrl, tab?.pin ?? null, current ?? { step: 'reading' }));
+  const failure = $derived(current?.step === 'failed' && (current.reason === 'timeout' || current.reason === 'unknown_tab') ? TEXT[current.reason] : TEXT.failed);
   const live = $derived(viewState === 'open' && current !== undefined && viewShows(current));
   const page = $derived(current !== undefined && !viewShows(current));
   /** A new page, or the second step of an accept, takes focus afresh. */
@@ -104,7 +111,7 @@
       .then((pinning) => {
         if (stopped) return;
         const down = device.status === 'DOWN';
-        tab = startTab({ url: webInterface.url, pinned: webInterface.pinnedFingerprintSha256, pinning, down });
+        tab = startTab({ url: webInterface.url, pinned: webInterface.pinnedFingerprintSha256, pinning, down, now: now() });
       });
     const observer = new ResizeObserver(measure);
     if (area !== undefined) observer.observe(area);
@@ -141,6 +148,15 @@
     if (viewState === 'open') view.show(shown);
   });
 
+  // WEB-010: a page still loading after the timeout shows the error page; the web view reports no such failure.
+  $effect(() => {
+    if (current?.step !== 'loading') return;
+    const timer = setTimeout(() => apply({ event: 'tick' }), Math.max(0, current.since + LOAD_TIMEOUT_MS - now()));
+    return () => {
+      clearTimeout(timer);
+    };
+  });
+
   // System-browser mode reads the certificate first when there is no pin (D-9).
   $effect(() => {
     if (current?.step !== 'reading' || reading) return;
@@ -159,7 +175,12 @@
     // Exactly the fingerprint shown; the state sends it once (WEB-008).
     const result = await api.acceptWebCertificate(webInterface.id, presented);
     const next = apply({ event: 'accepted', result });
-    if (next?.mode === 'EMBEDDED' && next.pin === presented) view.pin(presented);
+    if (next?.pin !== presented) return;
+    if (next.mode !== 'EMBEDDED') return;
+    view.pin(presented);
+    // The prompt is gone; focus goes to Reload, once it is enabled, rather than falling to the page.
+    await tick();
+    if (visible) reloadButton?.focus();
   }
 
   function reload() {
@@ -207,6 +228,7 @@
     onreload={reload}
     onbrowser={openBrowser}
     onpopout={() => view.popOut()}
+    bind:reloadButton
   />
   {#if notice !== undefined}
     <p class="notice" role="status">{notice}</p>
@@ -234,7 +256,7 @@
           {:else if current.step === 'down'}
             <DownPage reason="{device.name} is Down, so its web interface cannot be reached. Reload when the device is back up." onreload={reload} />
           {:else if current.step === 'failed'}
-            <DownPage reason={TEXT.failed} code={current.reason} onreload={reload} />
+            <DownPage reason={failure} code={current.reason} onreload={reload} />
           {:else if current.step === 'refused'}
             <DownPage reason={TEXT[current.reason]} />
           {:else if current.step === 'reading' || current.step === 'browser'}

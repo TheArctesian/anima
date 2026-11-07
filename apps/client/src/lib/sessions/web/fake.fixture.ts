@@ -15,14 +15,15 @@ export type ShellCall =
   | { readonly command: 'popOut' | 'close' }
   | { readonly command: 'browser' | 'read'; readonly url: string };
 
-/** A shell that records every command; `answers` sets what it says, `emit` plays a `web-view` event. */
+/** A shell that records every command; `answers` sets what it says (`refuse`: command to code), `emit` plays an event. */
 export function fakeShell() {
   const calls: ShellCall[] = [];
-  const answers = { pinning: true, certificate: null as Fingerprint | null, refuse: new Set<ShellCall['command']>() };
+  const answers = { pinning: true, certificate: null as Fingerprint | null, refuse: new Map<ShellCall['command'], string>() };
   let listener: ((event: WebViewEvent) => void) | undefined;
   const heard = (call: ShellCall): Promise<void> => {
     calls.push(call);
-    return answers.refuse.has(call.command) ? Promise.reject(new WebViewError('refused')) : Promise.resolve();
+    const code = answers.refuse.get(call.command);
+    return code === undefined ? Promise.resolve() : Promise.reject(new WebViewError(code));
   };
   const shell: WebViewShell = {
     pinning: () => Promise.resolve(answers.pinning),

@@ -33,6 +33,8 @@
 
 <style>
   .down {
+    /* Room for the focus ring when the page takes focus. */
+    padding: var(--space-2);
     display: flex;
     flex-direction: column;
     align-items: flex-start;
