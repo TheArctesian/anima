@@ -184,3 +184,8 @@ These items are not blocking. The programme orchestrator collects them here and 
 - F3 (could): in Chromium only, the settled close of the last session tab logs one layout-shift entry (0.0198) from the hidden `.stage`; nothing visible moves.
 - F7 (should): at 390 px the Overview chart skeleton is 1382.5 px against 1432 px for the data, because the legend row wraps in one column; the area grows 49.5 px at the bottom (CLS 0, nothing below it).
 - F7 (could): `rememberChartShape` then `chartShapeOf` round-trip through the shapes map (`routes/devices/[id]/overview/metrics.svelte.ts:79-82`); pass the shape directly.
+
+## CQ-050-P2 (Phase 2 code-quality SPEC items)
+
+- Non-SPEC audit items Q2-05 to Q2-16 in `docs/research/code-quality/phase-2.md` (R-076).
+- T3 (could): `Detail.applyCheck` could be private; `pauseCheck` and `saveCheckValues` are tested only through `page.test.ts`; `DeviceMissing.svelte` carries an empty script block for svelte-check.
