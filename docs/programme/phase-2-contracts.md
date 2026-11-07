@@ -100,7 +100,8 @@ input UpdateDeviceInput { ...  rdp: RdpSettingsInput @pending  vnc: VncSettingsI
 
 input ConnectionTestInput { ...  protocol: Protocol = SSH @pending  rdp: RdpSettingsInput @pending
   vnc: VncSettingsInput @pending  password: PasswordCredentialInput @pending }
-type ConnectionTestResult { ...  serverCertificate: ServerCertificate @pending  certificateChanged: Boolean! @pending }
+type ConnectionTestResult { ...  serverCertificate: ServerCertificate @pending  certificateChanged: Boolean! @pending
+  certificateMatched: Boolean! }  # CR-3, added after freeze
 
 # ---- checks (WP-29). Identifiers fixed forever (CHK-009): docker, snmp, tailscale_ping, systemd.
 enum CheckType { ...  DOCKER @pending  SNMP @pending  TAILSCALE_PING @pending  SYSTEMD @pending }
