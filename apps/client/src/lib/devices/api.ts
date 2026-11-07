@@ -8,7 +8,6 @@ import type {
   SitesQuery,
 } from '$lib/hub/generated/graphql';
 import type { ServerCertificate } from '$lib/sessions/api';
-import type { WebInterface, WebInterfaceSuggestion } from '$lib/web-interfaces/api';
 
 export const Devices = graphql(`
   query Devices($filter: DeviceFilter, $sort: DeviceSort, $first: Int, $after: String) {
@@ -28,8 +27,15 @@ export const Devices = graphql(`
           maintenance
           status
           uptime(window: DAY)
+          macAddress
           metricsSource
+          readings {
+            ...CardReadings
+          }
           accessWarnings
+          webInterfaces {
+            ...WebInterfaceFields
+          }
           rdp {
             enabled
           }
@@ -92,6 +98,17 @@ export const DeviceStatusChanged = graphql(`
   }
 `);
 
+export const CardReadingsAdded = graphql(`
+  subscription CardReadingsAdded {
+    metricsAdded(deviceId: null) {
+      deviceId
+      readings {
+        ...CardReadings
+      }
+    }
+  }
+`);
+
 // The fragment is only read by codegen, which inlines it into the documents that spread it.
 void graphql(`
   fragment DeviceDetailFields on Device {
@@ -148,13 +165,19 @@ void graphql(`
       copy
       paste
     }
+    webInterfaces {
+      ...WebInterfaceFields
+    }
+    webInterfaceSuggestions {
+      ...WebInterfaceSuggestionFields
+    }
     day: uptime(window: DAY)
     week: uptime(window: WEEK)
     month: uptime(window: MONTH)
   }
 `);
 
-// K1 `Device.readings` is not served yet (WP-26 D-1): codegen reads this fragment, no running document spreads it.
+// The latest readings a card shows; `Devices` and `CardReadingsAdded` spread it (MET-004). Codegen inlines it.
 void graphql(`
   fragment CardReadings on Readings {
     at
@@ -263,12 +286,7 @@ export type Readings = CardReadingsFragment;
 export type { AccessWarning };
 
 /** A device with every field a card or table row shows. */
-export type CardDevice = DevicePage['edges'][number]['node'] & {
-  /** Optional until the hub serves K1 `Device.readings`; then spread `CardReadings` into `Devices`. */
-  readonly readings?: Readings | null;
-  /** Optional until the hub serves K1 `Device.webInterfaces`; then spread `WebInterfaceFields` into `Devices`. */
-  readonly webInterfaces?: readonly WebInterface[];
-};
+export type CardDevice = DevicePage['edges'][number]['node'];
 
 type DeviceDetailRead = NonNullable<DeviceQuery['device']>;
 
@@ -278,10 +296,6 @@ export type DeviceDetail = Omit<DeviceDetailRead, 'rdp'> & {
     /** Optional until the hub serves K1 `RdpSettings.serverCertificate`; then spread `RdpServerCertificate`. */
     readonly serverCertificate?: ServerCertificate | null;
   };
-  /** Optional until the hub serves K1 `Device.webInterfaces`; then spread `WebInterfaceFields` into `DeviceDetailFields`. */
-  readonly webInterfaces?: readonly WebInterface[];
-  /** Optional until the hub serves K1 `Device.webInterfaceSuggestions`; then spread `WebInterfaceSuggestionFields`. */
-  readonly webInterfaceSuggestions?: readonly WebInterfaceSuggestion[];
 };
 
 /** A site the Add device form can place a device in. */
@@ -295,4 +309,10 @@ export interface StatusChange {
   readonly deviceId: string;
   readonly status: CardDevice['status'];
   readonly at: string;
+}
+
+/** A device's new readings, as the hub pushes them (MET-004). */
+export interface ReadingsChange {
+  readonly deviceId: string;
+  readonly readings: Readings;
 }

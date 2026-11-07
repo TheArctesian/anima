@@ -157,7 +157,7 @@
           const slot = event.currentTarget instanceof Element ? event.currentTarget.closest<HTMLElement>('[data-slot]') : null;
           if (slot !== null) close(tab, slot);
         }}
-        onpopout={sessions.canPopOut
+        onpopout={sessions.canPopOut && tab.protocol !== 'WEB'
           ? () => {
               void popOut(tab);
             }

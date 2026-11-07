@@ -24,6 +24,8 @@ const DETAIL: DeviceDetail = {
     hostKey: { algorithm: 'ssh-ed25519', fingerprintSha256: 'SHA256:abc', firstSeenAt: '2026-11-04T10:00:00Z' },
   },
   macAddress: null,
+  webInterfaces: [],
+  webInterfaceSuggestions: [],
   metricsSource: 'NONE',
   accessWarnings: [],
   rdp: {

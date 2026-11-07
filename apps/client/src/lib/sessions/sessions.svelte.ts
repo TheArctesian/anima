@@ -1,4 +1,5 @@
 import { createContext } from 'svelte';
+import type { Status } from '$lib/hub/generated/graphql';
 import type { HubError, HubResult } from '$lib/hub/hub';
 import type { TunnelRefusal } from './tunnel/state';
 import type { DeviceStarts, RemoteStart, SessionStart, ViewStartResult } from './view/start';
@@ -14,6 +15,7 @@ import {
   type Origin,
   type SessionProtocol,
   type Tab,
+  type WebTarget,
   type TabId,
   type Tabs,
 } from './tabs';
@@ -49,6 +51,15 @@ export interface SessionRequest {
   readonly deviceId: string;
   readonly deviceName: string;
   readonly protocol: SessionProtocol;
+  readonly origin: Origin | null;
+}
+
+/** What `openWeb` needs: the interface, its device and the control that opened it (WEB-003, MOT-005). */
+export interface WebRequest {
+  readonly deviceId: string;
+  readonly deviceName: string;
+  readonly status: Status;
+  readonly web: WebTarget;
   readonly origin: Origin | null;
 }
 
@@ -104,6 +115,8 @@ export interface Sessions {
    * button.getBoundingClientRect() })` (WP-14 H-1, WP-12).
    */
   openSession(request: SessionRequest): TabId;
+  /** Opens and selects a web tab for `request` (WEB-003); its pane starts the page and reads the pin (WEB-008). */
+  openWeb(request: WebRequest): TabId;
   /**
    * The `SessionStart` for the SSH view in tab `id`. Each call starts a hub session and records its ID on the tab;
    * one that replaces a live session ends that first (D-5); one that finishes after the tab closed, or after a
@@ -158,6 +171,13 @@ class OpenSessions implements Sessions {
     return id;
   }
 
+  openWeb({ deviceId, deviceName, status, web, origin }: WebRequest): TabId {
+    this.#opens += 1;
+    const id = `tab-${String(this.#opens)}`;
+    this.#state = opened(this.#state, { id, deviceId, deviceName, protocol: 'WEB', origin, sessionId: null, web, status });
+    return id;
+  }
+
   startIn(id: TabId): SessionStart {
     return (display, events) =>
       this.#begin(id, (tab) => {
@@ -170,7 +190,7 @@ class OpenSessions implements Sessions {
   remoteStartIn(id: TabId): RemoteStart {
     return (display, events) =>
       this.#begin(id, (tab) => {
-        if (tab.protocol === 'SSH') return undefined;
+        if (tab.protocol === 'SSH' || tab.protocol === 'WEB') return undefined;
         const start = this.#port.start(tab.deviceId).remote(tab.protocol);
         return (ended) => start(display, { ...events, onend: afterEnded(ended, events.onend) });
       });
@@ -202,7 +222,7 @@ class OpenSessions implements Sessions {
 
   async popOut(id: TabId): Promise<void> {
     const tab = this.#find(id);
-    if (this.#popOut === undefined || tab === undefined) return;
+    if (this.#popOut === undefined || tab === undefined || tab.protocol === 'WEB') return;
     await this.#popOut({ deviceId: tab.deviceId, deviceName: tab.deviceName, protocol: tab.protocol });
     // A tab closed while the window opened has already ended its session (see `close`).
     const sessionId = this.#find(id)?.sessionId;

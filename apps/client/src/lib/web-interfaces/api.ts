@@ -9,8 +9,7 @@ import type {
 } from '$lib/hub/generated/graphql';
 import type { Hub, HubResult } from '$lib/hub/hub';
 
-// The fragments are only read by codegen: the hub does not serve `Device.webInterfaces` or
-// `Device.webInterfaceSuggestions` yet (K1 `@pending`, WP-26 D-1). Only the mutations below spread `WebInterfaceFields`.
+// The device queries and the mutations below spread these fragments (K1 `Device.webInterfaces`, `Device.webInterfaceSuggestions`).
 void graphql(`
   fragment WebInterfaceSuggestionFields on WebInterfaceSuggestion {
     checkId

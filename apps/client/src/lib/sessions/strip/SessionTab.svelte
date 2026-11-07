@@ -20,7 +20,7 @@
   }
 
   const { tab, selected, focusable, panel, onselect, onclose, onpopout }: Props = $props();
-  const closeLabel = $derived(`Close ${tab.deviceName} ${tab.protocol} session`);
+  const closeLabel = $derived(tab.protocol === 'WEB' ? `Close ${tab.deviceName} ${tab.web.label}` : `Close ${tab.deviceName} ${tab.protocol} session`);
   const shortcuts = $derived(onpopout === undefined ? 'Delete' : 'Delete Shift+F10');
   let menuOpen = $state(false);
   let button: HTMLButtonElement | undefined = $state();

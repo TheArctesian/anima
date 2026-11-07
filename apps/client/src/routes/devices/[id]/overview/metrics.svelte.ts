@@ -3,7 +3,8 @@ import type { Hub, HubError } from '$lib/hub/hub';
 import type { MetricsSource } from '$lib/hub/generated/graphql';
 import type { BarReadings } from '$lib/metrics/bars/bars';
 import { metricsApi, type DeviceMetricsView, type MetricRange, type NewMetrics } from '$lib/metrics/api';
-import { mergeLive, rangeWindow } from '$lib/metrics/live';
+import { mergeLive } from '$lib/metrics/live';
+import { rangeWindow } from '$lib/metrics/ranges';
 
 /**
  * The metrics the Overview shows for one device and the hub calls behind them (D-5, D-6): the series of the chosen
@@ -14,6 +15,11 @@ export class DeviceMetrics {
   view = $state.raw<DeviceMetricsView | null>(null);
   /** The window the chart draws, `null` before the first answer. */
   span = $state.raw<TimeWindow | null>(null);
+  /** The range of the data on screen: it stays the old range while a switch is on its way. */
+  get shownRange(): MetricRange | null {
+    return this.#shown;
+  }
+
   /** The hub's latest readings at load, then the newest a live batch carried; the bars show them. */
   readings = $state.raw<BarReadings | null>(null);
   error = $state.raw<HubError | null>(null);
@@ -23,7 +29,7 @@ export class DeviceMetrics {
   readonly #api;
   readonly #now: () => Date;
   #unwatch: (() => void) | undefined;
-  #shown: MetricRange | null = null;
+  #shown = $state.raw<MetricRange | null>(null);
   #generation = 0;
   #stopped = false;
 

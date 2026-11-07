@@ -6,7 +6,8 @@
 //!
 //! async-graphql's derived parse errors quote the whole value they could not parse, and the
 //! process log keeps the message of an error without a code. A check input can carry an HTTP
-//! password, a bearer token or a header value, so every input that can hold one parses through
+//! password, a bearer token, a header value, an SNMP community or a v3 password, so every
+//! input that can hold one parses through
 //! [`Opaque`], which replaces any parse error with a fixed `VALIDATION` error. A secret string
 //! moves into a [`Secret`] at parse time ([`SecretText`]), without a copy.
 
@@ -17,7 +18,7 @@ use async_graphql::{
     Value, registry::Registry, value,
 };
 
-use super::enums::{IpFamily, RecordType, RequestMethod};
+use super::enums::{IpFamily, RecordType, RequestMethod, SnmpVersion};
 use crate::{credentials::Secret, scalars::IpAddr};
 
 /// The field a parse error names: the input that could not be read is the whole argument.
@@ -219,6 +220,24 @@ pub(super) struct TailscalePingShape {
     pub(super) timeout_ms: Option<i32>,
 }
 
+/// The secrets are held as [`Secret`] from parse time; an absent one keeps the stored one.
+#[derive(InputObject)]
+#[graphql(name = "SnmpConfigInput")]
+pub(super) struct SnmpShape {
+    #[graphql(default_with = "Some(161)")]
+    pub(super) port: Option<i32>,
+    #[graphql(default_with = "Some(SnmpVersion::V2c)")]
+    pub(super) version: Option<SnmpVersion>,
+    pub(super) oid: String,
+    pub(super) expected: Option<String>,
+    pub(super) community: Option<SecretText>,
+    pub(super) username: Option<String>,
+    pub(super) auth_password: Option<SecretText>,
+    pub(super) privacy_password: Option<SecretText>,
+    #[graphql(default_with = "Some(5000)")]
+    pub(super) timeout_ms: Option<i32>,
+}
+
 #[derive(OneofObject)]
 #[graphql(name = "CheckConfigInput")]
 pub(super) enum ConfigShape {
@@ -230,6 +249,7 @@ pub(super) enum ConfigShape {
     Push(bool),
     Group(GroupShape),
     Docker(DockerShape),
+    Snmp(Opaque<SnmpShape>),
     Systemd(SystemdShape),
     TailscalePing(TailscalePingShape),
 }

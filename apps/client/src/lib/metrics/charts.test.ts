@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chartsOf, seriesColour } from './charts';
+import { chartsOf } from './charts';
 import { CPU_ONLY, INTEGRATED, NVIDIA, point, TWO_GPUS, series } from './metrics.fixture';
 
 const keys = (charts: ReturnType<typeof chartsOf>) => charts.map((chart) => chart.key);
@@ -98,7 +98,10 @@ describe('chartsOf series', () => {
     expect(chart?.series[0]?.label).toBe('CPU');
   });
 
-  it('cycles colours within the six series colours', () => {
-    expect([0, 1, 5, 6, 7, 12].map(seriesColour)).toEqual([1, 2, 6, 1, 2, 1]);
+  it('gives the lines of a chart colours 1, 2, 3 in order', () => {
+    const charts = chartsOf(TWO_GPUS, []);
+    const colours = (key: string) => charts.find((chart) => chart.key === key)?.series.map((line) => line.colour);
+    expect(colours('network:eth0')).toEqual([1, 2]);
+    expect(colours('load')).toEqual([1, 2, 3]);
   });
 });
