@@ -1044,7 +1044,7 @@ type Mutation {
   "The fingerprint must equal the one the hub saw, or CONFLICT."
   acceptServerCertificate(deviceId: ID!, fingerprintSha256: String!): ServerCertificate! @pending
   "A ticket for the files tunnel of a live SSH session (K4 §9)."
-  openFiles(sessionId: ID!): SessionTicket! @pending
+  openFiles(sessionId: ID!): SessionTicket!
   wakeDevice(deviceId: ID!): WakeResult! @pending
   createWebInterface(deviceId: ID!, input: WebInterfaceInput!): WebInterface!
   updateWebInterface(id: ID!, input: WebInterfaceInput!): WebInterface!

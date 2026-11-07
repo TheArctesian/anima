@@ -6,6 +6,7 @@
 
 mod admission;
 mod end;
+mod files;
 pub mod graphql;
 mod link;
 mod live;
@@ -38,6 +39,7 @@ use crate::{
 };
 
 pub use end::Actor;
+pub use files::{FilesMutation, files_router};
 pub use link::{CommandOutput, Error as LinkError, FixedCommand, SshLink, link};
 pub use live::{EndCause, Live, Redeemed, Refused, Tunnel};
 pub use model::{
