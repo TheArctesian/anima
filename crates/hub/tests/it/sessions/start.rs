@@ -1,10 +1,7 @@
 //! `startSession`: the row, the audit entry and the ticket, and each refusal (K4 §1, §6,
 //! RA-008, LOG-005, API-009).
 
-use anima_hub::{
-    sessions::{self, Live, Protocol},
-    targets::AddressPolicy,
-};
+use anima_hub::sessions::{self, Live, Protocol};
 use chrono::{DateTime, TimeDelta, Utc};
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -232,7 +229,9 @@ async fn set_host(pool: &PgPool, device: &str, host: &str) {
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
 )]
-async fn gw_011_start_session_refuses_a_host_literal_that_is_not_one_remote_host(pool: PgPool) {
+async fn gw_011_r_030_start_session_refuses_a_host_literal_that_is_not_one_remote_host(
+    pool: PgPool,
+) {
     ready(&pool, &[DOCKER_HOST]).await;
     for host in [
         "127.0.0.1",
@@ -252,6 +251,19 @@ async fn gw_011_start_session_refuses_a_host_literal_that_is_not_one_remote_host
         assert_eq!(error["extensions"]["code"], "VALIDATION", "{host}: {error}");
         assert_eq!(fields(&error), ["host"], "{host}");
     }
+    // A literal the target rule allows is refused when the hub's deny list holds it (R-030).
+    let deny = anima_hub::targets::AddressPolicy::new(vec!["10.10.0.0/24".parse().unwrap()]);
+    let denying = schema_at(&pool, now(), &Live::default().denying(deny));
+    for host in ["10.10.0.21", "::ffff:10.10.0.21"] {
+        set_host(&pool, DOCKER_HOST, host).await;
+        let error = error_json(
+            &denying
+                .execute(start_request(DOCKER_HOST, &display()))
+                .await,
+        );
+        assert_eq!(error["extensions"]["code"], "VALIDATION", "{host}: {error}");
+        assert_eq!(fields(&error), ["host"], "{host}");
+    }
     nothing_written(&pool).await;
 
     // A routable literal and a name (checked when the tunnel connects) are accepted.
@@ -261,23 +273,6 @@ async fn gw_011_start_session_refuses_a_host_literal_that_is_not_one_remote_host
         let response = schema.execute(start_request(DOCKER_HOST, &display())).await;
         assert!(response.errors.is_empty(), "{host}: {:?}", response.errors);
     }
-}
-
-#[sqlx::test(
-    migrations = "./migrations",
-    fixtures(path = "../../fixtures", scripts("devices"))
-)]
-async fn r_030_start_session_refuses_a_host_literal_in_the_deny_list(pool: PgPool) {
-    ready(&pool, &[DOCKER_HOST]).await;
-    let live = Live::default().denying(AddressPolicy::new(vec!["10.10.0.0/24".parse().unwrap()]));
-    let schema = schema_at(&pool, now(), &live);
-    for host in ["10.10.0.21", "::ffff:10.10.0.21"] {
-        set_host(&pool, DOCKER_HOST, host).await;
-        let error = error_json(&schema.execute(start_request(DOCKER_HOST, &display())).await);
-        assert_eq!(error["extensions"]["code"], "VALIDATION", "{host}: {error}");
-        assert_eq!(fields(&error), ["host"], "{host}");
-    }
-    nothing_written(&pool).await;
 }
 
 #[sqlx::test(
