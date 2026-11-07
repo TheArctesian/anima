@@ -17,6 +17,8 @@
   let reserved = $state(false);
   /** The last tab has closed and the strip is leaving: it gives up its space on that frame, so the page never steps (MOT-007). */
   let leaving = $state(false);
+  /** Counts exits, so an earlier exit's end cannot clear the state of a later one. */
+  let exits = 0;
 
   /** The tabs in the strip now, without one that is closing. */
   function slots(): HTMLElement[] {
@@ -105,6 +107,7 @@
     const fromHidden = !reserved;
     reserved = true;
     leaving = false;
+    exits += 1;
     await tick();
     // The last tab may have closed while the strip waited for its place: entering now would undo the exit.
     if (sessions.tabs.length === 0) return;
@@ -118,8 +121,10 @@
    */
   function disappear(element: HTMLElement): void {
     leaving = true;
+    exits += 1;
+    const exit = exits;
     void exitStrip(element, preference).finished.then(() => {
-      if (sessions.tabs.length > 0) return;
+      if (exit !== exits || sessions.tabs.length > 0) return;
       reserved = false;
       leaving = false;
     });
@@ -182,7 +187,8 @@
   .strip {
     position: relative;
     box-sizing: border-box;
-    min-block-size: calc(var(--target-min-desktop) + var(--space-2));
+    --strip-block-size: calc(var(--target-min-desktop) + var(--space-2));
+    min-block-size: var(--strip-block-size);
     display: flex;
     gap: var(--space-1);
     padding-block-end: var(--space-2);
@@ -191,7 +197,7 @@
 
   /* Out of the flow while it fades: a negative end margin cancels its height, and it takes no pointer (MOT-007). */
   .strip[data-leaving] {
-    margin-block-end: calc(-1 * (var(--target-min-desktop) + var(--space-2)));
+    margin-block-end: calc(-1 * var(--strip-block-size));
     pointer-events: none;
   }
 
