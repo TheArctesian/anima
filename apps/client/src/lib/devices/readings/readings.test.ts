@@ -1,12 +1,7 @@
 import { expect, it } from 'vitest';
 import type { CardReadingsFragment } from '$lib/hub/generated/graphql';
+import { GPU, readings } from './readings.fixture';
 import { percentText, readingsRow, type Bar } from './readings';
-
-export const GPU = { index: 1, name: 'RTX 4090', vendor: 'NVIDIA', hasVram: true } as const;
-
-export function readings(over: Partial<CardReadingsFragment> = {}): CardReadingsFragment {
-  return { at: '2026-01-01T00:00:00Z', cpuPercent: 10, memoryPercent: 20, diskPercent: 30, vramPercent: null, vramGpu: null, ...over };
-}
 
 function bars(over: Partial<CardReadingsFragment> = {}): readonly Bar[] {
   const row = readingsRow(readings(over), 'SSH');

@@ -4,7 +4,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import DeviceCard from '../card/DeviceCard.svelte';
 import { device } from '../screen/screen.fixture.svelte';
 import { endTransitionsAtOnce } from '../transitions.fixture';
-import { GPU, readings } from './readings.test';
+import { GPU, readings } from './readings.fixture';
 
 const preference = vi.hoisted(() => ({ reduced: false }));
 vi.mock('$lib/motion/preference', () => ({ motionPreference: () => preference }));
