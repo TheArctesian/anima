@@ -102,7 +102,7 @@ impl Closing {
     }
 }
 
-/// Sets the cause unless one is already set: the first cause wins (D-9).
+/// Sets the cause unless one is already set: the first cause wins.
 pub(super) fn signal(end: &EndSignal, cause: EndCause) {
     end.send_if_modified(|current| {
         let first = current.is_none();

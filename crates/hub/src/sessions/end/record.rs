@@ -86,7 +86,7 @@ impl Drop for Unfinished {
 }
 
 /// Writes the end of `redeemed`'s session and publishes the ended row, then drops its tunnel
-/// registration, so `endSession` reads the ended row once it sees the tunnel gone (D-10). A
+/// registration, so `endSession` reads the ended row once it sees the tunnel gone. A
 /// failed write is tried once more, then logged; the row then stays live until the hub's next
 /// start ends it `HUB_SHUTDOWN` (`close_stale`).
 pub(in crate::sessions) async fn finish(records: &Records, redeemed: Redeemed, end: &End) {

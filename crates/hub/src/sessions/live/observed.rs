@@ -24,7 +24,7 @@ impl Live {
             .unwrap_or_else(PoisonError::into_inner)
     }
 
-    /// Records that `endpoint` presented `key` at `now` (D-5).
+    /// Records that `endpoint` presented `key` at `now`.
     pub(in crate::sessions) fn observe(
         &self,
         endpoint: Endpoint,

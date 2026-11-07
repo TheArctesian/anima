@@ -187,7 +187,7 @@ fn random_token() -> Result<TicketToken, Error> {
 /// If the hub shut down while the commit was in flight, `shut_down` took the ticket but could
 /// not yet see the row; the start is then not published, the row ends here with
 /// `HUB_SHUTDOWN` and its audit entry (that end is published), and the start is
-/// `Unavailable` (D-10).
+/// `Unavailable`.
 ///
 /// # Errors
 /// As above; `Unavailable` when too many tickets are pending or the hub is shutting down;
@@ -246,7 +246,7 @@ pub async fn start(
 
 /// Ends the committed row of a ticket `shut_down` withdrew before the row was visible to it,
 /// with `HUB_SHUTDOWN` and its audit entry naming the ticket's operator and client, then
-/// publishes that end. A row `shut_down` did end is left as it is (D-9).
+/// publishes that end. A row `shut_down` did end is left as it is.
 async fn end_shut_down(
     db: &PgPool,
     live: &Live,

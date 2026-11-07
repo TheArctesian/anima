@@ -143,7 +143,7 @@ pub(super) async fn insert<'e>(
 
 /// Ends a live session at `end.at`, or at its start if that is later (a clock that stepped
 /// back must not leave the row live, MV-003). Returns the row as this call ended it, or
-/// `None` when it did not: a session ends once, and the first end wins (D-9).
+/// `None` when it did not: a session ends once, and the first end wins.
 pub(super) async fn end<'e>(
     db: impl PgExecutor<'e>,
     id: SessionId,
