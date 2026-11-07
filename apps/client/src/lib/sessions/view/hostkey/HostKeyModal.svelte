@@ -136,11 +136,10 @@
     overflow-y: auto;
   }
 
-  /* The opacity sits on the child, so the scrim's own fade runs 0 to 1. */
+  /* The scrim colour sits on the child, so the scrim's own fade runs 0 to 1. */
   .shade {
     block-size: 100%;
-    background: var(--bg);
-    opacity: 0.72;
+    background: var(--scrim);
   }
 
   .surface {
