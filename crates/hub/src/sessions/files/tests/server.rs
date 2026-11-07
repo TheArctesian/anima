@@ -49,6 +49,8 @@ pub(super) struct Quirks {
     pub(super) stall_reads: AtomicBool,
     /// Each read waits 100 ms before it is answered.
     pub(super) slow_reads: AtomicBool,
+    /// Each open makes its file at once and answers 500 ms later.
+    pub(super) slow_opens: AtomicBool,
 }
 
 /// The server's port and host key, its directory and what it heard.

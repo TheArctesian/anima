@@ -8,7 +8,7 @@
 //! 3. The subprotocol `anima-files` (400).
 //! 4. The device side: the device, a link to it (pinned key, stored credential, deny list,
 //!    P2-003, P2-004), the `sftp` subsystem and the SFTP version exchange, unless the session
-//!    ends first (503).
+//!    ends first (503). A changed host key also writes an Error event (SEC-007).
 //!
 //! No session row belongs to the files tunnel, so this handler, not a task, does the opening:
 //! the client leaving drops it and with it the link. Neither the URI, the query nor the token
@@ -31,7 +31,7 @@ use super::{
     device::{self, Broken},
     relay::{Relay, SessionEnd, after},
     tickets::FilesTicket,
-    trail::Trail,
+    trail::{self, Trail},
 };
 use crate::{
     access,
@@ -201,9 +201,16 @@ async fn opened(files: &Files, ticket: &FilesTicket) -> Result<Opened, NotOpened
             _ => NotOpened::Devices,
         })?;
     let now = files.clock.now();
-    let link = link(&files.db, &files.vault, &files.policy, &device, now)
-        .await
-        .map_err(NotOpened::Link)?;
+    let link = match link(&files.db, &files.vault, &files.policy, &device, now).await {
+        Ok(link) => link,
+        Err(LinkError::HostKeyChanged) => {
+            if let Err(error) = trail::host_key_changed(&files.db, &files.bus, now, &device).await {
+                tracing::error!(%error, "the event of a refused host key could not be written");
+            }
+            return Err(NotOpened::Link(LinkError::HostKeyChanged));
+        }
+        Err(error) => return Err(NotOpened::Link(error)),
+    };
     let stream = link
         .sftp(files.timing.device)
         .await

@@ -50,7 +50,12 @@ impl Mutation {
         )
         .await
         .map_err(to_graphql)?;
-        audit(db, &by, device, &sent).await.map_err(to_graphql)?;
+        // A sent packet whose audit entry failed is logged here and stays `INTERNAL`: the
+        // mutation never reports success for an action it could not audit (LOG-005).
+        if let Err(error) = audit(db, &by, device, &sent).await {
+            tracing::error!(%device, %error, "the audit entry of a sent Wake-on-LAN could not be written");
+            return Err(to_graphql(error));
+        }
         Ok(sent)
     }
 }
