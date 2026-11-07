@@ -5,7 +5,8 @@
   import { page } from '$app/state';
   import { readThisMachine, type ThisMachine } from '$lib/desktop/thisMachine';
   import { checksApi } from '$lib/checks/api';
-  import { devicesApi, type CardDevice } from '$lib/devices/api';
+  import type { CardDevice } from '$lib/devices/api';
+  import { devicesApi } from '$lib/devices/client';
   import { parseListQuery, writeListQuery, type ListQuery } from '$lib/devices/query';
   import DeviceScreen from '$lib/devices/screen/DeviceScreen.svelte';
   import { addDevice as createWithCredential, type AddedDevice } from '$lib/forms/add-device';
