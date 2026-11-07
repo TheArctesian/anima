@@ -3,6 +3,7 @@
 //! single-use tickets that open a tunnel (K4 §1, API-009). SSH sessions run on the terminal
 //! tunnel (`terminal`, K4 §8); the Guacamole tunnel (`tunnel`) waits for RDP and VNC. The
 //! connection test reads a host's key and `acceptHostKey` records it (DEV-013, D-5, D-6).
+//! Wake-on-LAN (`wake`) runs on a site's wake relay over the hub's SSH link (`link`, RA-031).
 
 mod admission;
 mod end;
@@ -25,6 +26,7 @@ mod tickets;
 mod trust;
 mod tunnel;
 mod upgrade;
+mod wake;
 
 use std::collections::HashMap;
 
@@ -50,6 +52,7 @@ pub use start::{DEFAULT_DPI, DisplayRequest, StartRequest, start};
 pub use terminal::terminal_router;
 pub use tickets::{PendingTicket, Presented, Ticket};
 pub use tunnel::tunnel_router;
+pub use wake::{Error as WakeError, WakeSent, graphql::Mutation as WakeMutation, wake};
 
 /// What a sessions operation looked for and did not find.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

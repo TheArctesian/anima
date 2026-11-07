@@ -12,7 +12,7 @@ mod connect;
 mod run;
 mod subsystem;
 #[cfg(test)]
-mod tests;
+pub(super) mod tests;
 
 use std::time::Duration;
 

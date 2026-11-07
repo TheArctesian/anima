@@ -98,12 +98,13 @@ pub fn logged(routes: Router) -> Router {
 /// probes' deny list (P2-004, WP-27 CR-1).
 pub fn tunnels(dependencies: &schema::Dependencies) -> Router {
     let schema::Dependencies {
-        config,
         clock,
         pool,
         bus,
         vault,
         live,
+        policy,
+        ..
     } = dependencies;
     let terminal = sessions::terminal_router(
         pool.clone(),
@@ -118,7 +119,7 @@ pub fn tunnels(dependencies: &schema::Dependencies) -> Router {
         bus.clone(),
         clock.clone(),
         live.clone(),
-        targets::AddressPolicy::new(config.probe_deny.clone()),
+        policy.clone(),
     );
     logged(terminal).merge(logged(files))
 }

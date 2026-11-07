@@ -138,9 +138,10 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     let live = open_sessions(&pool, clock.now()).await?;
     tracing::info!(listen = %listening.local_addr()?, "hub started");
     let bus = Bus::new(BUS_CAPACITY);
+    let policy = AddressPolicy::new(config.probe_deny.clone());
     let probing = checks::Probing {
         vault: vault.clone(),
-        policy: AddressPolicy::new(config.probe_deny.clone()),
+        policy: policy.clone(),
     };
     let dependencies = Dependencies {
         config,
@@ -149,6 +150,7 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         bus: bus.clone(),
         vault,
         live: live.clone(),
+        policy,
     };
     let tunnels = tunnels(&dependencies);
     let schema = build_schema(dependencies);
