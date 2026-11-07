@@ -11,8 +11,7 @@
   "wiring": [
     "main",
     "lib",
-    "schema",
-    "upkeep"
+    "schema"
   ],
   "domains": {
     "events": [],

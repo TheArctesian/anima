@@ -3,6 +3,7 @@
 
 use std::{sync::Arc, time::Duration};
 
+use crate::hub::dependencies;
 use anima_hub::{
     access::Identity,
     clock::FixedClock,
@@ -187,4 +188,23 @@ async fn api_003_a_bad_device_id_is_a_validation_error_naming_the_field() {
     let error = serde_json::to_value(&response.errors[0]).unwrap();
     assert_eq!(error["extensions"]["code"], "VALIDATION");
     assert_eq!(error["extensions"]["fields"][0]["field"], "deviceId");
+}
+
+#[tokio::test]
+async fn p2_002_the_hub_schema_serves_a_collection_published_on_its_feed() {
+    // The subscription reads only the feed, so the pool never connects.
+    let pool = sqlx::PgPool::connect_lazy("postgres://unused@127.0.0.1:1/none").unwrap();
+    let wired = dependencies(
+        &pool,
+        Arc::new(FixedClock(now())),
+        anima_hub::events::Bus::new(1),
+    );
+    let feed = wired.metrics_feed.clone();
+    let schema = anima_hub::schema::build_schema(wired);
+    let query = "subscription { metricsAdded { deviceId readings { cpuPercent } } }";
+    let stream = Box::pin(schema.execute_stream(signed_in(query)));
+    let response = first_response(stream, &feed, &[collection(PVE_01, 7.0)]).await;
+    let added = &data(&response)["metricsAdded"];
+    assert_eq!(added["deviceId"], PVE_01);
+    assert_eq!(added["readings"]["cpuPercent"], 7.0);
 }

@@ -37,7 +37,8 @@ impl Subscription {
     }
 }
 
-/// The device an id argument names; the error has the shape of every domain's `VALIDATION`.
+/// The device an id argument names. The error has the shape of the checks helpers (`invalid`,
+/// `internal`), which this domain may not import.
 fn wanted(id: &ID) -> Result<DeviceId> {
     id.parse().map_err(|_| {
         GraphQlError::new("Some input is not valid.").extend_with(|_, extensions| {
