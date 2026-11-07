@@ -14,6 +14,7 @@
   import { Listing } from './listing.svelte';
   import { browserClock, type LoadingClock } from '$lib/motion/loading/loading';
   import LiveNotice from '$lib/hub/notice/LiveNotice.svelte';
+  import { type CardScreenSharing, type ScreenSharingCalls } from '$lib/devices/screen-sharing/setup';
   import type { SessionProtocol } from '$lib/sessions/tabs';
   import type { WakeApi } from '$lib/sessions/wake/api';
   import type { WebInterface } from '$lib/web-interfaces/api';
@@ -29,17 +30,32 @@
     onOpenWeb?: (device: CardDevice, webInterface: WebInterface, button: HTMLElement) => void;
     /** The Wake button's call on a card (RA-031); hidden while no route gives it. */
     wake?: WakeApi;
+    /** The calls of the Screen sharing button on a card or row (R-079); hidden while no route gives them. */
+    screenSharing?: ScreenSharingCalls;
     /** The clock of the loading thresholds; tests pass their own. */
     clock?: LoadingClock;
   }
 
-  const { query, onQueryChange, onAddDevice, onConnect, onOpenWeb, wake, clock = browserClock }: Props = $props();
+  const { query, onQueryChange, onAddDevice, onConnect, onOpenWeb, wake, screenSharing, clock = browserClock }: Props = $props();
   const hub = useHub();
   // The clock is fixed for the life of the screen.
   // svelte-ignore state_referenced_locally
   const listing = new Listing(hub, clock);
   const tags = new Tags(hub);
   const list = $derived(listing.list);
+  /** The session opens from the button, which is still shown; then the list shows VNC on (R-079). */
+  const sharing = $derived<CardScreenSharing | undefined>(
+    screenSharing === undefined
+      ? undefined
+      : {
+          calls: screenSharing,
+          onReady: (ready, button) => {
+            const shown = list?.devices.find((device) => device.id === ready.id);
+            if (shown !== undefined) onConnect(shown, 'VNC', button);
+            listing.enableVnc(ready.id);
+          },
+        },
+  );
 
   $effect(() => {
     void listing.load(query);
@@ -94,9 +110,9 @@
           {/if}
         </div>
       {:else if query.view === 'table'}
-        <DeviceTable devices={list.devices} beats={listing.beats} {onConnect} {onOpenWeb} />
+        <DeviceTable devices={list.devices} beats={listing.beats} {onConnect} {onOpenWeb} screenSharing={sharing} />
       {:else}
-        <DeviceGrid devices={list.devices} beats={listing.beats} {onConnect} {onOpenWeb} {wake} />
+        <DeviceGrid devices={list.devices} beats={listing.beats} {onConnect} {onOpenWeb} {wake} screenSharing={sharing} />
       {/if}
       {#if list.hasNextPage}
         <div class="more">

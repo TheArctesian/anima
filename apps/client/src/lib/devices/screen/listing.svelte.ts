@@ -3,7 +3,7 @@ import { addBeat, beatOf, latestBeats, type Beat } from '$lib/checks/heartbeats'
 import type { Hub, HubError } from '$lib/hub/hub';
 import type { StatusChange } from '../api';
 import { devicesApi } from '../client';
-import { appendPage, applyReadings, applyStatus, fromPage, type DeviceList } from '../list';
+import { appendPage, applyReadings, applyStatus, applyVncEnabled, fromPage, type DeviceList } from '../list';
 import { DEFAULT_QUERY, listVariables, type ListQuery } from '../query';
 import { coalesced } from '../live/coalesce';
 import { watchLive } from '../live/live';
@@ -75,6 +75,11 @@ export class Listing {
     } else {
       this.moreError = result.error;
     }
+  }
+
+  /** Shows device `id` with VNC on, without loading the list again (R-079). */
+  enableVnc(id: string): void {
+    if (this.list !== null) this.list = applyVncEnabled(this.list, id);
   }
 
   /** Starts the live status, readings and heartbeat updates; `stop` ends them. */

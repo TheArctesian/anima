@@ -10,6 +10,7 @@
   import { sharedItem } from '$lib/motion/shared/shared';
   import type { SessionProtocol } from '$lib/sessions/tabs';
   import type { WakeApi } from '$lib/sessions/wake/api';
+  import type { CardScreenSharing } from '$lib/devices/screen-sharing/setup';
   import type { WebInterface } from '$lib/web-interfaces/api';
   import { hostLine } from './card';
   import './geometry.css';
@@ -24,11 +25,12 @@
     onConnect: (device: CardDevice, protocol: SessionProtocol, button: HTMLElement) => void;
     /** The card's Web button (WEB-003); the button is hidden while no route gives this. */
     onOpenWeb?: (device: CardDevice, webInterface: WebInterface, button: HTMLElement) => void;
+    screenSharing?: CardScreenSharing;
     /** The Wake button's call (RA-031); the button is hidden while no route gives this. */
     wake?: WakeApi;
   }
 
-  const { device, beats, onConnect, onOpenWeb, wake }: Props = $props();
+  const { device, beats, onConnect, onOpenWeb, wake, screenSharing }: Props = $props();
   const line = $derived(hostLine(device));
 </script>
 
@@ -60,7 +62,7 @@
   <MetricBars readings={device.readings ?? null} source={device.metricsSource} />
   <footer>
     {#if beats !== undefined}<HeartbeatBar {beats} />{/if}
-    <DeviceActions {device} {onConnect} {onOpenWeb} {wake} />
+    <DeviceActions {device} {onConnect} {onOpenWeb} {wake} {screenSharing} />
   </footer>
 </article>
 

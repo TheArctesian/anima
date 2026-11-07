@@ -4,6 +4,9 @@
   import WebMenu from '$lib/devices/actions/WebMenu.svelte';
   import { webInterfacesOf } from '$lib/devices/actions/actions';
   import '$lib/devices/actions/actions.css';
+  import ScreenSharingButton from '$lib/devices/screen-sharing/ScreenSharingButton.svelte';
+  import type { ScreenSharingCalls } from '$lib/devices/screen-sharing/setup';
+  import type { DeviceDetail } from '$lib/devices/api';
   import StatusPill from '$lib/devices/card/StatusPill.svelte';
   import { skeletonDelay } from '$lib/motion/loading/delay.svelte';
   import type { LoadingClock } from '$lib/motion/loading/loading';
@@ -24,6 +27,8 @@
     onConnect: (protocol: SessionProtocol, button: HTMLElement) => void;
     /** The Web button (WEB-003); the button is hidden while no route gives this. */
     onOpenWeb?: (webInterface: WebInterface, button: HTMLElement) => void;
+    /** The "Set up screen sharing" button (R-079); it is hidden while no route gives this. `onEnabled` shows the updated device. */
+    screenSharing?: { readonly calls: ScreenSharingCalls; readonly onEnabled: (device: DeviceDetail) => void };
     /** Opens the Settings tab, at `section` when given (DEV-022). */
     onSettings: (section: SettingsSection | null) => void;
     /** The device is on its way: after `threshold-loading` a skeleton of the line shows until it arrives (5.7.3, Loading). */
@@ -31,7 +36,7 @@
     clock?: LoadingClock;
   }
 
-  const { device, onConnect, onOpenWeb, onSettings, loading = false, clock }: Props = $props();
+  const { device, onConnect, onOpenWeb, screenSharing, onSettings, loading = false, clock }: Props = $props();
   const line = $derived(device === null ? null : headerLine(device));
   // The clock is fixed for the life of the header.
   // svelte-ignore state_referenced_locally
@@ -75,7 +80,18 @@
     <div class="actions">
       {@render protocolAction('SSH', line.ssh, device)}
       {@render protocolAction('RDP', line.rdp, device)}
-      {#if line.vnc}{@render protocolAction('VNC', 'connect', device)}{/if}
+      {#if line.vnc}
+        {@render protocolAction('VNC', 'connect', device)}
+      {:else if screenSharing !== undefined && line.screenSharing}
+        <ScreenSharingButton
+          {device}
+          calls={screenSharing.calls}
+          onReady={(updated, button) => {
+            onConnect('VNC', button);
+            screenSharing.onEnabled(updated);
+          }}
+        />
+      {/if}
       {#if onOpenWeb !== undefined && webInterfacesOf(device).length > 0}
         <WebMenu deviceName={device.name} interfaces={webInterfacesOf(device)} onOpen={onOpenWeb} />
       {/if}

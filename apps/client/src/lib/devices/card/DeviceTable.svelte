@@ -9,6 +9,7 @@
   import { press } from '$lib/motion/roles/press';
   import { listRow } from '$lib/motion/roles/transitions';
   import type { SessionProtocol } from '$lib/sessions/tabs';
+  import type { CardScreenSharing } from '$lib/devices/screen-sharing/setup';
   import type { WebInterface } from '$lib/web-interfaces/api';
   import { hostLine } from './card';
   import { reorderMotion } from '$lib/motion/roles/reorder.svelte';
@@ -20,9 +21,10 @@
     beats: ReadonlyMap<string, readonly Beat[]>;
     onConnect: (device: CardDevice, protocol: SessionProtocol, button: HTMLElement) => void;
     onOpenWeb?: (device: CardDevice, webInterface: WebInterface, button: HTMLElement) => void;
+    screenSharing?: CardScreenSharing;
   }
 
-  const { devices, beats, onConnect, onOpenWeb }: Props = $props();
+  const { devices, beats, onConnect, onOpenWeb, screenSharing }: Props = $props();
   const track = reorderMotion(() => devices.map((device) => device.id).join('\n'));
 </script>
 
@@ -70,7 +72,7 @@
         <td>{uptimeText(device.uptime)}</td>
         <td>{#if deviceBeats !== undefined}<HeartbeatBar beats={deviceBeats} />{/if}</td>
         <td>
-          <DeviceActions {device} {onConnect} {onOpenWeb} />
+          <DeviceActions {device} {onConnect} {onOpenWeb} {screenSharing} />
         </td>
       </tr>
     {/each}

@@ -1,4 +1,5 @@
 import type { DeviceDetail } from '$lib/devices/api';
+import { offersScreenSharing } from '$lib/devices/screen-sharing/setup';
 import type { OperatingSystem } from '$lib/hub/generated/graphql';
 import type { SessionProtocol } from '$lib/sessions/tabs';
 import type { SettingsSection } from '../tabs/tabs';
@@ -48,6 +49,8 @@ export interface HeaderLine {
   readonly rdp: 'connect' | 'set-up';
   /** VNC shows only when on (D-4). */
   readonly vnc: boolean;
+  /** "Set up screen sharing" takes the VNC slot for a macOS or Linux device with VNC off (R-079). */
+  readonly screenSharing: boolean;
 }
 
 const OS_LABELS: Record<OperatingSystem, string> = {
@@ -78,5 +81,6 @@ export function headerLine(device: HeaderDevice): HeaderLine {
     ssh: sshAction(device.ssh),
     rdp: device.rdp.enabled ? 'connect' : 'set-up',
     vnc: device.vnc.enabled,
+    screenSharing: offersScreenSharing(device),
   };
 }
