@@ -169,3 +169,38 @@ pub(super) fn json_pointer(field: &'static str, pointer: &str) -> Result<(), Con
     }
     Ok(())
 }
+
+/// The most bytes a container or unit name takes (the client editor's limit).
+pub const LISTING_NAME_MAX: usize = 255;
+
+/// A Docker container name: `[a-zA-Z0-9][a-zA-Z0-9_.-]*`, at most 255 bytes (CHK-012).
+pub(super) fn container_name(field: &'static str, name: &str) -> Result<(), ConfigError> {
+    let mut bytes = name.bytes();
+    let Some(first) = bytes.next() else {
+        return Err(err(field, Reason::Empty));
+    };
+    max_len(field, name, LISTING_NAME_MAX)?;
+    if first.is_ascii_alphanumeric()
+        && bytes.all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'.' | b'-'))
+    {
+        Ok(())
+    } else {
+        Err(err(field, Reason::Invalid))
+    }
+}
+
+/// A systemd unit name: `[A-Za-z0-9:_.@\\][A-Za-z0-9:_.@\\-]*`, at most 255 bytes, so it
+/// never starts with `-` and cannot be read as an option (CHK-012).
+pub(super) fn unit_name(field: &'static str, name: &str) -> Result<(), ConfigError> {
+    let plain = |b: u8| b.is_ascii_alphanumeric() || matches!(b, b':' | b'_' | b'.' | b'@' | b'\\');
+    let mut bytes = name.bytes();
+    let Some(first) = bytes.next() else {
+        return Err(err(field, Reason::Empty));
+    };
+    max_len(field, name, LISTING_NAME_MAX)?;
+    if plain(first) && bytes.all(|b| plain(b) || b == b'-') {
+        Ok(())
+    } else {
+        Err(err(field, Reason::Invalid))
+    }
+}

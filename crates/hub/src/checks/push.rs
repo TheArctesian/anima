@@ -21,7 +21,7 @@ use subtle::ConstantTimeEq as _;
 
 use super::{
     Attempt, Beat, Check, Error,
-    probe::{ProbeResult, clean_message},
+    probe::{Judgement, ProbeResult, clean_message},
     scheduler::in_maintenance,
     store,
 };
@@ -137,6 +137,7 @@ impl Report {
             message: self.message,
             resolved_ip: None,
             cert_not_after: None,
+            judgement: Judgement::Answered,
         }
     }
 }
