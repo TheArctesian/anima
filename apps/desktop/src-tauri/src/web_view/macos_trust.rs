@@ -21,7 +21,7 @@ use objc2::{
     ClassType, DefinedClass, MainThreadMarker, MainThreadOnly, define_class,
     ffi::{OBJC_ASSOCIATION_RETAIN_NONATOMIC, objc_setAssociatedObject},
     msg_send,
-    rc::Retained,
+    rc::{Retained, Weak},
     runtime::{AnyObject, NSObject, ProtocolObject, Sel},
 };
 use objc2_foundation::{
@@ -46,14 +46,19 @@ type Completion = DynBlock<dyn Fn(Disposition, *mut NSURLCredential)>;
 static PROXY_KEY: u8 = 0;
 
 pub struct ProxyIvars {
-    /// wry's delegate, which gets every selector but the challenge.
-    inner: Retained<ProtocolObject<dyn WKNavigationDelegate>>,
+    /// wry's delegate, which gets every selector but the challenge. Weak: wry's own web view
+    /// owns it, and it holds the `WKWebView` (its page-load handler), which holds this proxy;
+    /// a strong reference here would make a cycle, and a closed view would never be freed.
+    inner: Weak<ProtocolObject<dyn WKNavigationDelegate>>,
     decide: Decide,
 }
 
 define_class!(
-    // SAFETY: NSObject has no subclassing rules this class breaks; it overrides no NSObject
-    // method, `Drop` is not implemented and the ivars are plain Rust values.
+    // SAFETY: NSObject has no subclassing rules this class breaks. It overrides two NSObject
+    // methods with their own signatures: `respondsToSelector:` answers a `bool` (objc2's
+    // `BOOL`), and `forwardingTargetForSelector:` answers an object at +0 (not retained for
+    // the caller, kept alive by wry's web view) or nil, as NSObject's does. `Drop` is not
+    // implemented and the ivars are plain Rust values.
     #[unsafe(super(NSObject))]
     #[thread_kind = MainThreadOnly]
     #[name = "AnimaPinningDelegate"]
@@ -64,15 +69,22 @@ define_class!(
         /// `WebKit` asks this, when the delegate is set, for each optional method it may call.
         #[unsafe(method(respondsToSelector:))]
         fn responds_to(&self, selector: Sel) -> bool {
-            Self::class().responds_to(selector) || self.ivars().inner.respondsToSelector(selector)
+            Self::class().responds_to(selector)
+                || self
+                    .ivars()
+                    .inner
+                    .load()
+                    .is_some_and(|inner| inner.respondsToSelector(selector))
         }
 
         #[unsafe(method(forwardingTargetForSelector:))]
         fn forward_to(&self, selector: Sel) -> *mut AnyObject {
-            if self.ivars().inner.respondsToSelector(selector) {
-                Retained::as_ptr(&self.ivars().inner).cast::<AnyObject>().cast_mut()
-            } else {
-                null_mut()
+            match self.ivars().inner.load() {
+                // +0: wry's web view still owns the delegate after this `Retained` drops.
+                Some(inner) if inner.respondsToSelector(selector) => {
+                    Retained::as_ptr(&inner).cast::<AnyObject>().cast_mut()
+                }
+                _ => null_mut(),
             }
         }
     }
@@ -107,12 +119,10 @@ define_class!(
 /// this same `WKWebView` to another window's content view, so the proxy and the pin go with it.
 pub fn install(platform: &PlatformWebview, decide: Decide) -> Result<(), WebViewError> {
     let main_thread = MainThreadMarker::new().ok_or(WebViewError::Native)?;
-    // SAFETY: on macOS `inner()` is the live `WKWebView` (a wry subclass) of this web view;
-    // `platform` is borrowed for the whole function, so the view outlives the reference.
-    let view =
-        unsafe { platform.inner().cast::<WKWebView>().as_ref() }.ok_or(WebViewError::Native)?;
+    let view = web_view(platform)?;
     // SAFETY: a property read on the main thread.
     let inner = unsafe { view.navigationDelegate() }.ok_or(WebViewError::Native)?;
+    let inner = Weak::from_retained(&inner);
     let proxy = main_thread
         .alloc::<PinningDelegate>()
         .set_ivars(ProxyIvars { inner, decide });
@@ -138,6 +148,15 @@ pub fn install(platform: &PlatformWebview, decide: Decide) -> Result<(), WebView
         std::ptr::addr_eq(Retained::as_ptr(&delegate), Retained::as_ptr(&proxy))
     });
     installed.then_some(()).ok_or(WebViewError::Native)
+}
+
+/// The `WKWebView` (a wry subclass) of a device web view, for as long as `platform` is
+/// borrowed. Public for the pinning proof (`tests/pinning`), which checks with a weak
+/// reference that a closed view is freed.
+pub fn web_view(platform: &PlatformWebview) -> Result<&WKWebView, WebViewError> {
+    // SAFETY: on macOS `inner()` is the live `WKWebView` of this web view, and wry keeps it
+    // while `platform` exists; the reference cannot outlive the borrow of `platform`.
+    unsafe { platform.inner().cast::<WKWebView>().as_ref() }.ok_or(WebViewError::Native)
 }
 
 /// Reads one challenge and turns the safe answer into `WebKit`'s. Server trust only: any
@@ -177,13 +196,23 @@ fn reply(
             .as_ref()
             .is_some_and(|trust| trust.evaluate_with_error().is_ok())
     };
-    match (decide(&presented, &system_trust), &trust) {
-        (Answer::Accept, Some(trust)) => match credential(trust) {
-            Some(credential) => (Disposition::UseCredential, Some(credential)),
-            None => (Disposition::CancelAuthenticationChallenge, None),
-        },
-        (Answer::Default, _) => (Disposition::PerformDefaultHandling, None),
-        (Answer::Accept | Answer::Cancel, _) => (Disposition::CancelAuthenticationChallenge, None),
+    let disposition = disposition(decide(&presented, &system_trust), trust.is_some());
+    if disposition != Disposition::UseCredential {
+        return (disposition, None);
+    }
+    match trust.as_ref().and_then(credential) {
+        Some(credential) => (Disposition::UseCredential, Some(credential)),
+        None => (Disposition::CancelAuthenticationChallenge, None),
+    }
+}
+
+/// `WebKit`'s disposition for an answer: accept only with a chain to accept, cancel, or the
+/// system's own handling. Pure.
+pub(super) fn disposition(answer: Answer, has_trust: bool) -> Disposition {
+    match answer {
+        Answer::Accept if has_trust => Disposition::UseCredential,
+        Answer::Accept | Answer::Cancel => Disposition::CancelAuthenticationChallenge,
+        Answer::Default => Disposition::PerformDefaultHandling,
     }
 }
 

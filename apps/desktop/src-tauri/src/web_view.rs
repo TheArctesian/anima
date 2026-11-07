@@ -11,8 +11,9 @@ mod bounds;
 pub mod commands;
 mod event;
 mod history;
+/// Public only so the pinning proof (`tests/pinning`) can reach `macos_trust::web_view`.
 #[cfg(target_os = "macos")]
-mod macos_trust;
+pub mod macos_trust;
 mod opening;
 mod storage;
 mod tabs;

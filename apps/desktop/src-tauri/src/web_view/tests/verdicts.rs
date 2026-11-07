@@ -301,3 +301,40 @@ fn d_4_a_pin_holds_whatever_the_challenge_spells_its_host() {
         }
     }
 }
+
+/// R-069: the hook hands `WebKit` exactly the safe answer; a cancel is never the system's
+/// handling, which would let a system-trusted certificate past a pin.
+#[cfg(target_os = "macos")]
+#[test]
+fn r_069_each_answer_maps_to_its_one_disposition() {
+    use objc2_foundation::NSURLSessionAuthChallengeDisposition as Disposition;
+
+    use crate::web_view::macos_trust::disposition;
+    let cases = [
+        (Answer::Accept, true, Disposition::UseCredential),
+        (
+            Answer::Accept,
+            false,
+            Disposition::CancelAuthenticationChallenge,
+        ),
+        (
+            Answer::Cancel,
+            true,
+            Disposition::CancelAuthenticationChallenge,
+        ),
+        (
+            Answer::Cancel,
+            false,
+            Disposition::CancelAuthenticationChallenge,
+        ),
+        (Answer::Default, true, Disposition::PerformDefaultHandling),
+        (Answer::Default, false, Disposition::PerformDefaultHandling),
+    ];
+    for (answer, has_trust, expected) in cases {
+        assert_eq!(
+            disposition(answer, has_trust),
+            expected,
+            "{answer:?} {has_trust}"
+        );
+    }
+}

@@ -14,7 +14,7 @@ use std::{
 use rustls::{
     ServerConfig,
     crypto::ring,
-    pki_types::{PrivateKeyDer, PrivatePkcs8KeyDer},
+    pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer},
 };
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -41,19 +41,20 @@ pub struct Site {
 }
 
 impl Site {
-    /// Serves on `address` and `port` (0 for any) with a new certificate.
-    pub fn serve(address: IpAddr, port: u16) -> Result<Self, String> {
-        let issued = rcgen::generate_simple_self_signed(vec!["localhost".to_owned()])
-            .map_err(|error| error.to_string())?;
-        let der = issued.cert.der().clone();
-        let leaf = Fingerprint::of_certificate(&der);
-        let key =
-            PrivateKeyDer::Pkcs8(PrivatePkcs8KeyDer::from(issued.signing_key.serialize_der()));
+    /// Serves on `address` and `port` (0 for any) with a new self-signed certificate, or with
+    /// a new leaf signed by a new issuer, presented as the chain leaf then issuer.
+    pub fn serve(address: IpAddr, port: u16, chained: bool) -> Result<Self, String> {
+        let (chain, key) = if chained {
+            issued_chain()
+        } else {
+            self_signed()
+        }?;
+        let leaf = Fingerprint::of_certificate(&chain[0]);
         let config = ServerConfig::builder_with_provider(Arc::new(ring::default_provider()))
             .with_safe_default_protocol_versions()
             .map_err(|error| error.to_string())?
             .with_no_client_auth()
-            .with_single_cert(vec![der], key)
+            .with_single_cert(chain, key)
             .map_err(|error| error.to_string())?;
         let listener = bind(SocketAddr::new(address, port)).map_err(|error| error.to_string())?;
         let port = listener
@@ -82,6 +83,33 @@ impl Site {
         // An aborted task answers `JoinError::Cancelled`: the expected result.
         let _cancelled = self.accept.await;
     }
+}
+
+type Credentials = (Vec<CertificateDer<'static>>, PrivateKeyDer<'static>);
+
+fn self_signed() -> Result<Credentials, String> {
+    let issued = rcgen::generate_simple_self_signed(vec!["localhost".to_owned()])
+        .map_err(|error| error.to_string())?;
+    let key = PrivatePkcs8KeyDer::from(issued.signing_key.serialize_der());
+    Ok((vec![issued.cert.der().clone()], key.into()))
+}
+
+fn issued_chain() -> Result<Credentials, String> {
+    let text = |error: rcgen::Error| error.to_string();
+    let issuer_key = rcgen::KeyPair::generate().map_err(text)?;
+    let mut issuer_params = rcgen::CertificateParams::new(Vec::<String>::new()).map_err(text)?;
+    issuer_params.is_ca = rcgen::IsCa::Ca(rcgen::BasicConstraints::Unconstrained);
+    let issuer = issuer_params.self_signed(&issuer_key).map_err(text)?;
+    let leaf_key = rcgen::KeyPair::generate().map_err(text)?;
+    let leaf = rcgen::CertificateParams::new(vec!["localhost".to_owned()])
+        .map_err(text)?
+        .signed_by(
+            &leaf_key,
+            &rcgen::Issuer::from_params(&issuer_params, &issuer_key),
+        )
+        .map_err(text)?;
+    let key = PrivatePkcs8KeyDer::from(leaf_key.serialize_der());
+    Ok((vec![leaf.der().clone(), issuer.der().clone()], key.into()))
 }
 
 /// With address reuse, so a restarted site gets the same port.

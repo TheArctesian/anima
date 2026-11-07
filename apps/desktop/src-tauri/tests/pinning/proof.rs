@@ -3,20 +3,27 @@
 //! from what the site served.
 
 use std::{
+    cell::RefCell,
     net::{IpAddr, Ipv4Addr, Ipv6Addr},
     process,
     time::Duration,
 };
 
+use objc2::rc::Weak;
+use objc2_web_kit::WKWebView;
 use serde_json::{Value, json};
 use tauri::{AppHandle, Listener, Manager, Url, Webview, window::WindowBuilder};
-use tokio::{sync::mpsc, time::sleep};
+use tokio::{
+    sync::{mpsc, oneshot},
+    time::sleep,
+};
 
 use crate::{
     site::Site,
     web_view::{
-        Fingerprint,
-        commands::{open_tab, pin_tab},
+        Fingerprint, WebViewError,
+        commands::{close_tab, open_tab, pin_tab},
+        macos_trust,
     },
 };
 
@@ -173,7 +180,7 @@ async fn loopback_v4(
     proof: &mut Proof,
 ) -> Result<(), String> {
     let address = IpAddr::V4(Ipv4Addr::LOCALHOST);
-    let first = Site::serve(address, 0)?;
+    let first = Site::serve(address, 0, false)?;
     let tab = Tab::open(app, "v4", &format!("https://127.0.0.1:{}/", first.port)).await?;
     first_visit(&tab, journal, proof, &first).await;
     pinned_visit(&tab, journal, proof, &first).await?;
@@ -206,13 +213,15 @@ async fn loopback_v4(
     Ok(())
 }
 
-/// An IPv6 tab spelled long-hand: the hook must meet `WebKit`'s spelling of the host.
+/// An IPv6 tab spelled long-hand, on a site whose leaf is signed by an issuer: the hook must
+/// meet `WebKit`'s spelling of the host and show the leaf, not the issuer. Then the pinned
+/// view must keep its scheme filter, and must be freed when its tab closes.
 async fn loopback_v6(
     app: &AppHandle,
     journal: &mut Journal,
     proof: &mut Proof,
 ) -> Result<(), String> {
-    let site = Site::serve(IpAddr::V6(Ipv6Addr::LOCALHOST), 0)?;
+    let site = Site::serve(IpAddr::V6(Ipv6Addr::LOCALHOST), 0, true)?;
     let url = format!("https://[0:0:0:0:0:0:0:1]:{}/", site.port);
     let tab = Tab::open(app, "v6", &url).await?;
     let untrusted = journal.next(tab.id, "UNTRUSTED").await;
@@ -221,14 +230,83 @@ async fn loopback_v6(
     tab.pin(site.leaf)?;
     let loaded = journal.next(tab.id, "LOADED").await;
     proof.check(
-        "ipv6-pinned-load",
+        "ipv6-chain-pinned-load",
         shown == Some(site.leaf) && loaded.is_some() && site.served() > 0,
         &format!(
-            "shown {shown:?}; loaded {loaded:?}; pages served {}",
+            "leaf {}; shown {shown:?}; loaded {loaded:?}; pages served {}",
+            site.leaf,
             site.served()
         ),
     );
+    forbidden_schemes(&tab, proof).await?;
+    closed_tab_freed(&tab, proof).await?;
     site.stop().await;
+    Ok(())
+}
+
+/// The proxy still hands navigation to wry's filter: a page cannot leave for another scheme.
+async fn forbidden_schemes(tab: &Tab, proof: &mut Proof) -> Result<(), String> {
+    let view = tab.view()?;
+    for target in ["data:text/html,proof", "ipc://localhost/web_view_open"] {
+        let url = Url::parse(target).map_err(|error| error.to_string())?;
+        view.navigate(url).map_err(|error| error.to_string())?;
+        sleep(SETTLE).await;
+        let now = view.url().map_err(|error| error.to_string())?;
+        proof.check(
+            "forbidden-scheme-refused",
+            now.scheme() == "https",
+            &format!("asked for {target}; the view is on scheme {}", now.scheme()),
+        );
+    }
+    Ok(())
+}
+
+thread_local! {
+    /// The `WKWebView` the proof watches, held weakly, on the main thread.
+    static WATCHED: RefCell<Option<Weak<WKWebView>>> = const { RefCell::new(None) };
+}
+
+/// Starts watching `view`'s `WKWebView` through a weak reference.
+async fn watch(view: &Webview) -> Result<(), String> {
+    let (sent, done) = oneshot::channel();
+    view.with_webview(move |platform| {
+        let watched = macos_trust::web_view(&platform).map(|view| {
+            WATCHED.with_borrow_mut(|watched| *watched = Some(Weak::new(view)));
+        });
+        // The proof waits for this answer; it is gone only if the proof has already failed.
+        let _proof_gone = sent.send(watched.map_err(WebViewError::code));
+    })
+    .map_err(|error| error.to_string())?;
+    done.await
+        .map_err(|_| "no watch".to_owned())?
+        .map_err(str::to_owned)
+}
+
+/// Whether the watched `WKWebView` is still alive.
+async fn watched_alive(app: &AppHandle) -> Result<bool, String> {
+    let (sent, done) = oneshot::channel();
+    app.run_on_main_thread(move || {
+        let alive = WATCHED
+            .with_borrow(|watched| watched.as_ref().is_some_and(|view| view.load().is_some()));
+        let _proof_gone = sent.send(alive);
+    })
+    .map_err(|error| error.to_string())?;
+    done.await.map_err(|_| "no answer".to_owned())
+}
+
+/// M-1: closing the tab frees its `WKWebView`, so its page stops: no retain cycle runs
+/// through the proxy, its decision closure or wry's delegate.
+async fn closed_tab_freed(tab: &Tab, proof: &mut Proof) -> Result<(), String> {
+    watch(&tab.view()?).await?;
+    let before = watched_alive(&tab.app).await?;
+    close_tab(&tab.app, tab.id).map_err(|error| error.code().to_owned())?;
+    sleep(SETTLE * 2).await;
+    let after = watched_alive(&tab.app).await?;
+    proof.check(
+        "closed-tab-freed",
+        before && !after,
+        &format!("WKWebView alive before close {before}; 2 s after close {after}"),
+    );
     Ok(())
 }
 
@@ -295,7 +373,7 @@ async fn mismatch_visit(
 async fn restart(address: IpAddr, port: u16) -> Result<Site, String> {
     let mut last = String::new();
     for _ in 0..20 {
-        match Site::serve(address, port) {
+        match Site::serve(address, port, false) {
             Ok(site) => return Ok(site),
             Err(error) => last = error,
         }

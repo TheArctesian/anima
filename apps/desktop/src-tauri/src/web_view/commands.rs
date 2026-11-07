@@ -189,14 +189,18 @@ pub async fn web_view_pop_out(webview: Webview, tab_id: String) -> Result<(), We
 /// Closes a tab's web view. Closing a tab that is not open is not an error.
 #[tauri::command]
 pub async fn web_view_close(webview: Webview, tab_id: &str) -> Result<(), WebViewError> {
-    reported(caller(webview.label()).and_then(|()| {
-        let id = TabId::parse(tab_id)?;
-        let popped_out = webview
-            .state::<Tabs>()
-            .remove(&id)
-            .is_some_and(|tab| tab.popped_out);
-        view::close(webview.app_handle(), &id, popped_out)
-    }))
+    reported(caller(webview.label()).and_then(|()| close_tab(webview.app_handle(), tab_id)))
+}
+
+/// Ends a tab and closes its web view, and its own window if it has one, once the caller is
+/// checked.
+pub fn close_tab(app: &AppHandle, tab_id: &str) -> Result<(), WebViewError> {
+    let id = TabId::parse(tab_id)?;
+    let popped_out = app
+        .state::<Tabs>()
+        .remove(&id)
+        .is_some_and(|tab| tab.popped_out);
+    view::close(app, &id, popped_out)
 }
 
 /// The answer of `web_certificate_read`.
