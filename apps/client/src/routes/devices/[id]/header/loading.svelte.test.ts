@@ -99,3 +99,8 @@ it('MOT-007, DEV-021: in the narrow header the skeleton has the rows of the load
   expect(headerSource).toMatch(/\.fit \{\s*container-type: inline-size;/);
   expect(headerSource).not.toContain('data-nav');
 });
+
+it('DEV-021, MOT-007: in the compact layout the buttons wrap and the real row and its placeholder share one block size', () => {
+  expect(headerSource).toMatch(/\.actions \{\s*align-content: start;\s*flex-wrap: wrap;/);
+  expect(headerSource).toMatch(/\.actions,\s*\.skeleton > \.actions-place \{\s*align-self: start;\s*block-size: var\(--actions-block-size\);/);
+});

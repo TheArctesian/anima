@@ -109,6 +109,10 @@
   }
 
   .line {
+    --actions-rows: 1;
+    --actions-block-size: calc(
+      var(--target-min-desktop) * var(--actions-rows) + var(--space-2) * (var(--actions-rows) - 1)
+    );
     box-sizing: border-box;
     display: flex;
     align-items: center;
@@ -177,14 +181,14 @@
       grid-template-columns: auto minmax(0, 1fr) auto;
       grid-template-rows:
         var(--target-min-touch) calc(var(--text-xl) * var(--leading-tight)) calc(var(--text-sm) * var(--leading-tight))
-        var(--target-min-desktop);
+        var(--actions-block-size);
       gap: var(--space-2) var(--space-3);
     }
 
     .line {
       block-size: calc(
         var(--target-min-touch) + var(--text-xl) * var(--leading-tight) + var(--text-sm) * var(--leading-tight) +
-          var(--target-min-desktop) + var(--space-2) * 3
+          var(--actions-block-size) + var(--space-2) * 3
       );
     }
 
@@ -228,6 +232,25 @@
     .skeleton > .actions-place {
       grid-area: 4 / 1 / 5 / -1;
       justify-self: start;
+      max-inline-size: 100%;
+    }
+
+    .actions,
+    .skeleton > .actions-place {
+      align-self: start;
+      block-size: var(--actions-block-size);
+    }
+
+    .actions {
+      align-content: start;
+      flex-wrap: wrap;
+    }
+  }
+
+  /* Five buttons no longer fit one row: the buttons wrap onto two, and the row reserves both, loading or loaded (DEV-021, MOT-007). */
+  @container (max-inline-size: 30rem) {
+    .line {
+      --actions-rows: 2;
     }
   }
 

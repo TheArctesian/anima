@@ -10,10 +10,10 @@
   const { warnings }: Props = $props();
 </script>
 
-<!-- The word and the icon say it, not the colour alone; the tooltip lists each warning in words (RA-020). -->
+<!-- Below bp-compact only the icon shows; the word stays for assistive technology (UI-003). The word and the icon say it, not the colour alone; the tooltip lists each warning in words (RA-020). -->
 {#if warnings.length > 0}
   <span class="badge" title={warningLines(warnings).join('\n')}>
-    <Icon name="nf-md-alert" size="sm" />Warning
+    <Icon name="nf-md-alert" size="sm" /><span class="label">Warning</span>
   </span>
 {/if}
 
@@ -31,5 +31,20 @@
     font-size: var(--text-sm);
     line-height: var(--leading-tight);
     white-space: nowrap;
+  }
+
+  /* bp-compact: below 768 px (the token's maxPx is exclusive). */
+  @media (max-width: 767.98px) {
+    .label {
+      position: absolute;
+      inline-size: 1px;
+      block-size: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+
+    .badge {
+      position: relative;
+    }
   }
 </style>
