@@ -5,7 +5,7 @@ import { endTransitionsAtOnce } from '$lib/devices/transitions.fixture';
 import { warningLines } from '$lib/devices/actions/actions';
 import { device } from '../page.fixture.svelte';
 import Header from './Header.svelte';
-import { headerLine, type HeaderDevice } from './header';
+import { headerLine, protocolButton, type HeaderDevice } from './header';
 
 endTransitionsAtOnce();
 
