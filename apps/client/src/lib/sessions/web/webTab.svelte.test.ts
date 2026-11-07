@@ -2,16 +2,15 @@
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { displayFingerprint, fingerprintFrom, type Fingerprint } from '$lib/desktop/webView/webView';
-import type { Status } from '$lib/hub/generated/graphql';
-import { fakeApi, fakeShell, FakeResizeObserver, installLayout, settle } from './fake.fixture';
+import { BOUNDS, button, fakeApi, fakeShell, FakeResizeObserver, field, installLayout, lastShow, pageField, settle, showTab as show, type Shown } from './fake.fixture.svelte';
 import { LOAD_TIMEOUT_MS, PROBLEM } from './tab';
 import WebTab from './WebTab.svelte';
 
 const PIN = fingerprintFrom('ab'.repeat(32)) as Fingerprint;
 const NEW = fingerprintFrom('cd'.repeat(32)) as Fingerprint;
-const BOUNDS = { x: 0, y: 48, width: 800, height: 552 };
 
 let cleanups: (() => unknown)[] = [];
+const showTab = (shown: Shown = {}) => show(shown, cleanups);
 
 beforeEach(() => {
   cleanups = [installLayout()];
@@ -21,47 +20,6 @@ afterEach(async () => {
   for (const cleanup of cleanups.reverse()) await cleanup();
   document.body.innerHTML = '';
 });
-
-interface Shown {
-  url?: string;
-  pinned?: string | null;
-  status?: Status;
-  pinning?: boolean;
-  certificate?: Fingerprint;
-}
-
-/** A web tab over a fake shell and hub; `props` changes visibility, overlays and the device status. */
-async function showTab({ url = 'https://nas.lan:5001/', pinned = null, status = 'UP', pinning = true, certificate }: Shown = {}) {
-  const fake = fakeShell();
-  fake.answers.pinning = pinning;
-  fake.answers.certificate = certificate ?? null;
-  const hub = fakeApi();
-  const props = $state({
-    webInterface: { id: 'web-1', deviceId: 'device-1', url, label: 'DSM', pinnedFingerprintSha256: pinned },
-    device: { id: 'device-1', name: 'nas', status },
-    tabId: 'tab-1',
-    visible: true,
-    overlayOpen: false,
-    shell: fake.shell,
-    api: hub.api,
-  });
-  const component = mount(WebTab, { target: document.body, props });
-  cleanups.push(() => unmount(component));
-  await settle();
-  FakeResizeObserver.resize(BOUNDS);
-  await settle();
-  return { ...fake, ...hub, props, component };
-}
-
-/** The first button named `name`, by its accessible name or its text without icon glyphs (UI-016). */
-const button = (name: string) =>
-  [...document.querySelectorAll('button')].find(
-    (candidate) => (candidate.getAttribute('aria-label') ?? candidate.textContent.replace(/[\u{F0000}-\u{FFFFD}]/gu, '').trim()) === name,
-  );
-const field = (name: string) => document.querySelector(`[data-${name}]`)?.textContent.trim();
-/** A field of the page over the view area, not the toolbar's. */
-const pageField = (name: string) => document.querySelector(`[data-view-area] [data-${name}]`)?.textContent.trim();
-const lastShow = (calls: { command: string; shown?: boolean }[]) => calls.filter(({ command }) => command === 'show').at(-1)?.shown;
 
 describe('web tab view (WEB-004, MAT-008)', () => {
   it('WEB-004: opens the web view once at the measured area, places it on change, and closes it on destroy', async () => {
