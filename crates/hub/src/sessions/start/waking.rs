@@ -14,22 +14,23 @@ use crate::{
     devices::{self, Device},
     events::Bus,
     sessions::{Error, wake},
-    status::Status,
     targets::AddressPolicy,
 };
 
-/// What `start` needs to wake the device first, which its own parameters do not give it: the
-/// device's status as checks judge it (`Device.status`), and the vault, the hub's one address
-/// policy and the bus that [`wake`] uses. Without it `start` sends no packet.
+/// What `start` needs to wake the device first, which its own parameters do not give it:
+/// whether the device is asleep, and the vault, the hub's one address policy and the bus that
+/// [`wake`] uses. Without it `start` sends no packet. Sessions never read a device's status
+/// itself; the caller says.
 #[derive(Clone, Debug)]
 pub struct Waking {
-    pub status: Status,
+    /// The device is Down as checks judge it (`Device.status`).
+    pub asleep: bool,
     pub vault: Vault,
     pub policy: AddressPolicy,
     pub bus: Bus,
 }
 
-/// Whether a packet for `device` was sent at `now`. None is tried unless the device is Down,
+/// Whether a packet for `device` was sent at `now`. None is tried unless the device is asleep,
 /// has a MAC address and its site has a wake relay.
 ///
 /// # Errors
@@ -40,7 +41,7 @@ pub(super) async fn sent(
     waking: &Waking,
     now: DateTime<Utc>,
 ) -> Result<bool, Error> {
-    if waking.status != Status::Down || device.mac_address.is_none() {
+    if !waking.asleep || device.mac_address.is_none() {
         return Ok(false);
     }
     let relay = devices::wake_relay(db, device.site)

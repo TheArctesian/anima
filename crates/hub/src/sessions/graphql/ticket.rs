@@ -83,10 +83,11 @@ impl Ticket {
     }
 }
 
-/// What `start` needs to wake `device` first: its status as `Device.status` reads it, through
-/// the schema's status loader (sessions cannot ask checks itself), and the schema's vault,
-/// address policy and bus, the ones `wakeDevice` uses. A status that cannot be read counts as
-/// `Unknown`, so no packet is sent and the start goes on.
+/// What `start` needs to wake `device` first: whether it is asleep, which this resolver reads
+/// as the device's status through devices' `StatusOf` loader, which checks fills, because
+/// sessions may not import checks; the one place in sessions that reads a status. Also the
+/// schema's vault, address policy and bus, the ones `wakeDevice` uses. A status that cannot
+/// be read counts as not asleep, so no packet is sent and the start goes on.
 ///
 /// # Errors
 /// `INTERNAL` when the schema lacks one of them.
@@ -99,7 +100,7 @@ pub(super) async fn waking(ctx: &Context<'_>, device: DeviceId) -> Result<Waking
         None
     });
     Ok(Waking {
-        status: status.unwrap_or(Status::Unknown),
+        asleep: status == Some(Status::Down),
         vault: schema_dependency::<Vault>(ctx)?.clone(),
         policy: schema_dependency::<AddressPolicy>(ctx)?.clone(),
         bus: schema_dependency::<Bus>(ctx)?.clone(),
