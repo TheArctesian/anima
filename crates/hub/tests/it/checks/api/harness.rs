@@ -7,6 +7,7 @@ use std::{
         Arc, Mutex,
         atomic::{AtomicI64, Ordering},
     },
+    time::Duration,
 };
 
 use anima_hub::{
@@ -25,7 +26,7 @@ use anima_hub::{
     schema::harden,
     status::Status,
 };
-use async_graphql::{Request, Response, Schema, Variables};
+use async_graphql::{Request, Response, Schema, Variables, dataloader::DataLoader};
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use chrono::{DateTime, TimeDelta, Utc};
 use serde_json::{Value, json};
@@ -50,16 +51,50 @@ pub fn vault() -> Vault {
 }
 
 pub fn schema_at(pool: &PgPool, at: DateTime<Utc>) -> (TestSchema, Bus) {
+    schema_with_window(pool, at, None)
+}
+
+/// How long the batching tests let a loader collect keys before it runs its batch.
+///
+/// Under machine load a short window can close before every field of one query has asked, so
+/// one query becomes several batches and the statement count grows. Half a second is far longer
+/// than async-graphql's default window, and a batch still runs as soon as the window ends, so a
+/// test pays at most this once per loader round.
+const BATCH_WINDOW: Duration = Duration::from_millis(500);
+
+/// The schema of `schema_at` whose loaders wait `BATCH_WINDOW`, for tests that count statements.
+pub fn schema_batched_at(pool: &PgPool, at: DateTime<Utc>) -> TestSchema {
+    schema_with_window(pool, at, Some(BATCH_WINDOW)).0
+}
+
+fn wait<T>(loader: DataLoader<T>, window: Option<Duration>) -> DataLoader<T> {
+    match window {
+        Some(window) => loader.delay(window),
+        None => loader,
+    }
+}
+
+fn schema_with_window(
+    pool: &PgPool,
+    at: DateTime<Utc>,
+    window: Option<Duration>,
+) -> (TestSchema, Bus) {
     let bus = Bus::new(16);
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(at));
     let schema = Schema::build(Query, Mutation, Subscription)
         .data(pool.clone())
         .data(vault())
         .data(bus.clone())
-        .data(check_status_loader(pool.clone(), clock.clone()))
-        .data(last_heartbeat_loader(pool.clone()))
-        .data(heartbeats_loader(pool.clone()))
-        .data(check_uptime_loader(pool.clone(), clock.clone()))
+        .data(wait(
+            check_status_loader(pool.clone(), clock.clone()),
+            window,
+        ))
+        .data(wait(last_heartbeat_loader(pool.clone()), window))
+        .data(wait(heartbeats_loader(pool.clone()), window))
+        .data(wait(
+            check_uptime_loader(pool.clone(), clock.clone()),
+            window,
+        ))
         .data(clock)
         .finish();
     (schema, bus)

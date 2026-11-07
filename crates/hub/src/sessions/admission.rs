@@ -74,7 +74,7 @@ pub(super) struct Request<'a> {
 
 /// The value of the first `token=` pair. No decoding: a token is base64url, so a
 /// percent-encoded one is not canonical and is refused like any unknown token.
-fn token_in(query: &str) -> Option<&str> {
+pub(super) fn token_in(query: &str) -> Option<&str> {
     query
         .split('&')
         .find_map(|pair| pair.strip_prefix("token="))

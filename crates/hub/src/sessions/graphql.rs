@@ -6,7 +6,7 @@
 
 mod connection;
 pub(super) mod connection_test;
-mod error;
+pub(super) mod error;
 mod host_key;
 mod server_certificate;
 mod session;
@@ -17,12 +17,13 @@ use std::sync::Arc;
 use async_graphql::{Context, ID, Object, Result, dataloader::DataLoader};
 use sqlx::PgPool;
 
+/// For the files part's resolver (WP-27 D-8): the same errors and schema data.
+pub(super) use self::error::{invalid, schema_dependency, to_graphql};
 pub use self::{host_key::HostKeysByDevice, server_certificate::ServerCertificatesByDevice};
 
 use self::{
     connection::{DEFAULT_FIRST, SessionConnection, sessions_args},
     connection_test::ConnectionTestInput,
-    error::{invalid, schema_dependency, to_graphql},
     ticket::StartSessionInput,
 };
 use super::{

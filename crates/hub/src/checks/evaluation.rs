@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use chrono::{DateTime, TimeDelta, Utc};
 
-use super::probe::ProbeResult;
+use super::probe::{Judgement, ProbeResult};
 use crate::status::Status;
 
 /// The common settings of a check (spec 6.4), with the contract defaults.
@@ -64,6 +64,10 @@ fn after(now: DateTime<Utc>, seconds: u32) -> DateTime<Utc> {
 /// never Degraded. A success is Degraded when slower than the threshold, else Up, and resets
 /// the failures; the next probe is due after the interval.
 ///
+/// A result the probe could not judge ([`Judgement::Unjudged`]) is recorded as Unknown with
+/// its message: failures reset, the next probe due after the interval, invert not applied.
+/// A [`Judgement::Starting`] success is Degraded; inverted, it is a failure (D-2).
+///
 /// A failure is Down only when `failures > retries`: the first attempt plus `retries` failed
 /// retries (CHK-002). Until then the check keeps its previous status, the next probe is due
 /// after the retry interval, and the heartbeat records Unknown (pending), because the
@@ -75,6 +79,14 @@ pub fn evaluate(
     cfg: &CheckSettings,
     now: DateTime<Utc>,
 ) -> (CheckState, Status) {
+    if probe.judgement == Judgement::Unjudged {
+        let state = CheckState {
+            status: Status::Unknown,
+            failures: 0,
+            next_due_at: Some(after(now, cfg.interval_seconds)),
+        };
+        return (state, Status::Unknown);
+    }
     let succeeded = probe.ok != cfg.invert;
     if succeeded {
         let response_time = if cfg.invert {
@@ -83,7 +95,8 @@ pub fn evaluate(
             probe.response_time
         };
         let limit = Duration::from_millis(u64::from(cfg.degraded_threshold_ms));
-        let status = if response_time.is_some_and(|time| time > limit) {
+        let starting = probe.judgement == Judgement::Starting;
+        let status = if starting || response_time.is_some_and(|time| time > limit) {
             Status::Degraded
         } else {
             Status::Up

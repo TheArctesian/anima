@@ -59,9 +59,10 @@ impl Ticket {
         self.token()
     }
 
-    /// The protocol's tunnel: `/terminal` for SSH, `/tunnel` for RDP and VNC (K4 §1).
+    /// The protocol's tunnel: `/terminal` for SSH, `/tunnel` for RDP and VNC (K4 §1), or
+    /// `/files` (K4 §9).
     async fn tunnel_path(&self) -> &str {
-        self.protocol.tunnel_path()
+        self.tunnel_path
     }
 
     async fn expires_at(&self) -> DateTime<Utc> {

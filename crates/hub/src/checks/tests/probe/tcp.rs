@@ -118,7 +118,10 @@ fn chk_012_no_check_source_starts_a_process() {
     files.retain(|f| !f.components().any(|c| c.as_os_str() == "tests"));
     assert!(files.len() >= 15, "found only {} sources", files.len());
     for file in files {
-        let source = std::fs::read_to_string(&file).unwrap();
+        // A `FixedCommand` is text the SSH link sends; it starts nothing on the hub (CHK-012).
+        let source = std::fs::read_to_string(&file)
+            .unwrap()
+            .replace("FixedCommand::new", "");
         for forbidden in ["std::process", "tokio::process", "Command::new"] {
             assert!(
                 !source.contains(forbidden),

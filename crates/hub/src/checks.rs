@@ -173,6 +173,19 @@ pub async fn for_devices(
     store::grouped_by_devices(db, devices).await
 }
 
+/// The id and URL of each device's HTTP checks, each device's in byte order of the name then
+/// id, in one query (API-005, WEB-002). A device with no HTTP check is absent. Other check
+/// types' configurations are not read.
+///
+/// # Errors
+/// `Database` when the query fails.
+pub async fn http_urls(
+    db: &PgPool,
+    devices: &[DeviceId],
+) -> Result<HashMap<DeviceId, Vec<(CheckId, String)>>, Error> {
+    Ok(store::http_urls(db, devices).await?)
+}
+
 /// The check with this id.
 ///
 /// # Errors

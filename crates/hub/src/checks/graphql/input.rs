@@ -195,6 +195,22 @@ pub(super) struct GroupShape {
     pub(super) child_ids: Vec<ID>,
 }
 
+#[derive(InputObject)]
+#[graphql(name = "DockerConfigInput")]
+pub(super) struct DockerShape {
+    pub(super) container: String,
+    #[graphql(default_with = "Some(10000)")]
+    pub(super) timeout_ms: Option<i32>,
+}
+
+#[derive(InputObject)]
+#[graphql(name = "SystemdConfigInput")]
+pub(super) struct SystemdShape {
+    pub(super) unit: String,
+    #[graphql(default_with = "Some(10000)")]
+    pub(super) timeout_ms: Option<i32>,
+}
+
 #[derive(OneofObject)]
 #[graphql(name = "CheckConfigInput")]
 pub(super) enum ConfigShape {
@@ -205,6 +221,8 @@ pub(super) enum ConfigShape {
     Dns(DnsShape),
     Push(bool),
     Group(GroupShape),
+    Docker(DockerShape),
+    Systemd(SystemdShape),
 }
 
 #[derive(InputObject)]

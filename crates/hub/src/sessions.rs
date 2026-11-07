@@ -4,9 +4,11 @@
 //! tunnel (`terminal`, K4 §8); RDP and VNC sessions on the Guacamole tunnel (`tunnel`). The
 //! connection test reads a host's key or an RDP server's certificate, and `acceptHostKey` or
 //! `acceptServerCertificate` records it (DEV-013, SEC-006, SEC-007).
+//! Wake-on-LAN (`wake`) runs on a site's wake relay over the hub's SSH link (`link`, RA-031).
 
 mod admission;
 mod end;
+mod files;
 pub mod graphql;
 mod link;
 mod live;
@@ -25,6 +27,7 @@ mod tickets;
 mod trust;
 mod tunnel;
 mod upgrade;
+mod wake;
 
 use std::collections::HashMap;
 
@@ -39,6 +42,7 @@ use crate::{
 };
 
 pub use end::Actor;
+pub use files::{FilesMutation, files_router};
 pub use link::{CommandOutput, Error as LinkError, FixedCommand, SshLink, link};
 pub use live::{EndCause, Live, Redeemed, Refused, Tunnel};
 pub use model::{
@@ -49,6 +53,7 @@ pub use start::{DEFAULT_DPI, DisplayRequest, StartRequest, start};
 pub use terminal::terminal_router;
 pub use tickets::{PendingTicket, Presented, Ticket};
 pub use tunnel::tunnel_router;
+pub use wake::{Error as WakeError, WakeSent, graphql::Mutation as WakeMutation, wake};
 
 /// What a sessions operation looked for and did not find.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

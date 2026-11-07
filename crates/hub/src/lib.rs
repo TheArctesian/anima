@@ -92,10 +92,10 @@ pub fn logged(routes: Router) -> Router {
     routes.layer(middleware::from_fn(events::process_log::http_request))
 }
 
-/// The session tunnels over `dependencies`, each logged by its route template only:
-/// `/terminal` for SSH and `/tunnel` to guacd for RDP and VNC, which refuses SSH tickets (K3,
-/// LOG-007, R-062). `main.rs` serves them behind `access::permitted_networks_layer` (NET-002).
-pub fn session_tunnels(dependencies: &schema::Dependencies) -> Router {
+/// The session tunnels, each logged by its template only (K4 Sections 8, 9): `/terminal` for
+/// SSH, `/tunnel` to guacd for RDP and VNC, which refuses SSH tickets so none reaches guacd
+/// (R-062), and `/files`, which connects through the link and so gets the probes' deny list.
+pub fn tunnels(dependencies: &schema::Dependencies) -> Router {
     let schema::Dependencies {
         config,
         clock,
@@ -103,6 +103,7 @@ pub fn session_tunnels(dependencies: &schema::Dependencies) -> Router {
         bus,
         vault,
         live,
+        policy,
     } = dependencies;
     let terminal = sessions::terminal_router(
         pool.clone(),
@@ -120,7 +121,15 @@ pub fn session_tunnels(dependencies: &schema::Dependencies) -> Router {
         config.guacd_drive_root.to_string_lossy().into_owned(),
         live.clone(),
     );
-    logged(terminal).merge(logged(tunnel))
+    let files = sessions::files_router(
+        pool.clone(),
+        vault.clone(),
+        bus.clone(),
+        clock.clone(),
+        live.clone(),
+        policy.clone(),
+    );
+    logged(terminal).merge(logged(tunnel)).merge(logged(files))
 }
 
 /// Liveness probe (R-026(4)): no sign-in, no database, body `ok`.

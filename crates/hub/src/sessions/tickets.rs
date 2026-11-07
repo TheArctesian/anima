@@ -25,6 +25,9 @@ const TOKEN_CHARS: usize = 43;
 /// A ticket is redeemable this long after it is issued (K4 §1).
 pub(super) const LIFETIME: TimeDelta = TimeDelta::seconds(30);
 
+/// The files tunnel's path (K4 Section 1 `tunnelPath`, Section 9).
+pub(super) const FILES_PATH: &str = "/files";
+
 /// A token as the client holds it. Wiped on drop. Implements no `Debug`, `Display`, `Clone`
 /// or `Serialize`, so it cannot reach a log or an error (LOG-007).
 pub(super) struct TicketToken(Zeroizing<String>);
@@ -64,13 +67,16 @@ pub(super) fn hash_of(presented: &str) -> Option<TicketHash> {
     Some(TicketHash(Sha256::digest(&*bytes).into()))
 }
 
-/// What `startSession` gives the client once: the session, its protocol (which names the
-/// tunnel's path) and the token for that tunnel.
+/// What `startSession` or `openFiles` gives the client once: the session, its protocol, the
+/// token and the tunnel's path the token opens.
 pub struct Ticket {
     pub session: SessionId,
     pub protocol: Protocol,
     token: TicketToken,
     pub expires_at: DateTime<Utc>,
+    /// Where the client opens the tunnel: the protocol's, or [`FILES_PATH`] for a files
+    /// ticket (K4 Section 1 `tunnelPath`).
+    pub tunnel_path: &'static str,
 }
 
 impl Ticket {
@@ -85,6 +91,22 @@ impl Ticket {
             protocol,
             token,
             expires_at,
+            tunnel_path: protocol.tunnel_path(),
+        }
+    }
+
+    /// A ticket for the files tunnel of the live SSH session `session` (K4 Section 9).
+    pub(super) const fn files(
+        session: SessionId,
+        token: TicketToken,
+        expires_at: DateTime<Utc>,
+    ) -> Self {
+        Self {
+            session,
+            protocol: Protocol::Ssh,
+            token,
+            expires_at,
+            tunnel_path: FILES_PATH,
         }
     }
 
@@ -102,6 +124,7 @@ impl fmt::Debug for Ticket {
             .field("protocol", &self.protocol)
             .field("token", &"[redacted]")
             .field("expires_at", &self.expires_at)
+            .field("tunnel_path", &self.tunnel_path)
             .finish()
     }
 }

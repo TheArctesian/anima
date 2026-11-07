@@ -19,8 +19,9 @@ use anima_hub::{
     events::{self, Bus, process_log},
     logged, router,
     schema::{Dependencies, build_schema},
-    serve_until, session_tunnels, sessions,
+    serve_until, sessions,
     targets::AddressPolicy,
+    tunnels,
 };
 use sqlx::PgPool;
 
@@ -134,15 +135,18 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     let pool = connect(&config).await?;
     events::check_runtime_role(&pool).await?;
     permit_networks(&pool, &config).await?;
-    // Sessions obey the deny list as well as the target rule (R-030, R-032).
+    // One deny list for every outbound connection: the probes and the link take `policy`; the
+    // terminal, the Guacamole tunnel and the connection tests take it through `live`'s target
+    // rule (R-030, R-032).
+    let policy = AddressPolicy::new(config.probe_deny.clone());
     let live = open_sessions(&pool, clock.now())
         .await?
-        .denying(AddressPolicy::new(config.probe_deny.clone()));
+        .denying(policy.clone());
     tracing::info!(listen = %listening.local_addr()?, "hub started");
     let bus = Bus::new(BUS_CAPACITY);
     let probing = checks::Probing {
         vault: vault.clone(),
-        policy: AddressPolicy::new(config.probe_deny.clone()),
+        policy: policy.clone(),
     };
     let dependencies = Dependencies {
         config,
@@ -151,15 +155,15 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         bus: bus.clone(),
         vault,
         live: live.clone(),
+        policy,
     };
-    let tunnels = session_tunnels(&dependencies);
+    let tunnels = tunnels(&dependencies);
     let schema = build_schema(dependencies);
     let upkeep = spawn_upkeep(&pool, &clock);
     let scheduler = checks::spawn_scheduler(pool.clone(), bus.clone(), clock.clone(), probing);
     let push = checks::push_router(pool.clone(), bus.clone(), clock.clone());
-    // `/terminal`, `/tunnel` and `/push` are behind the same permitted-networks check as every
-    // route, and logged by their templates only, never their tokens (K3, NET-002, LOG-007,
-    // R-028, R-051).
+    // The tunnels and `/push` are behind the same permitted-networks check as every route, and
+    // logged by their templates only, never their tokens (K3, NET-002, LOG-007, R-028, R-051).
     let edge = access::Edge::new(pool.clone(), bus, clock.clone());
     let app = router(schema, pool.clone(), clock.clone())
         .merge(tunnels)
