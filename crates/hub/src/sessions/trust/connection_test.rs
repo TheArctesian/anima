@@ -93,8 +93,9 @@ enum Seen {
 ///
 /// # Errors
 /// `NotFound` for an unknown device; `Validation` on `host` when it resolves to an address
-/// the target rule or the hub's deny list refuses (R-032, P2-004); `Database`, `Devices` or `Credentials` when a dependency fails. A host
-/// that cannot be reached or signed in to is a result, not an error.
+/// the target rule or the hub's deny list refuses (R-030, R-032); `Database`, `Devices` or
+/// `Credentials` when a dependency fails. A host that cannot be reached or signed in to is a
+/// result, not an error.
 pub(in crate::sessions) async fn test_connection(
     db: &PgPool,
     vault: &Vault,

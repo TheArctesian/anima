@@ -133,11 +133,11 @@ fn random_token() -> Result<TicketToken, Error> {
 
 /// Starts a session (K3, K4 §1): refuses a missing device (`NotFound`), a display outside
 /// K4 §4's bounds or a host that is an IP literal the target rule or the hub's deny list
-/// refuses (`Validation`, R-032, P2-004), and SSH turned off or no accepted host key (`Conflict`). A time
-/// zone that is not a zone name is dropped, so the tunnel uses UTC. Then, in one
-/// transaction, it writes the live session row and the audit entry `session.start`, and
-/// holds a ticket that the protocol's tunnel redeems once within 30 s from `client`. Tickets that expired
-/// unredeemed are swept first.
+/// refuses (`Validation`, R-030, R-032), and SSH turned off or no accepted host key
+/// (`Conflict`). A time zone that is not a zone name is dropped, so the tunnel uses UTC.
+/// Then, in one transaction, it writes the live session row and the audit entry
+/// `session.start`, and holds a ticket that the protocol's tunnel redeems once within 30 s
+/// from `client`. Tickets that expired unredeemed are swept first.
 ///
 /// If the hub shut down while the commit was in flight, `shut_down` took the ticket but could
 /// not yet see the row; the row then ends here with `HUB_SHUTDOWN` and its audit entry, and

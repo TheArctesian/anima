@@ -134,7 +134,7 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     let pool = connect(&config).await?;
     events::check_runtime_role(&pool).await?;
     permit_networks(&pool, &config).await?;
-    // Sessions obey the deny list as well as the target rule (P2-004).
+    // Sessions obey the deny list as well as the target rule (R-030, R-032).
     let live = open_sessions(&pool, clock.now())
         .await?
         .denying(AddressPolicy::new(config.probe_deny.clone()));

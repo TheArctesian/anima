@@ -1,4 +1,4 @@
-//! Which addresses a session or an SSH probe may reach (R-032, P2-004): never the gateway's
+//! Which addresses a session or an SSH probe may reach (R-030, R-032): never the gateway's
 //! own machine, a link-local neighbour, a group address or a network the hub's address policy
 //! refuses. Pure.
 
@@ -65,12 +65,15 @@ pub(super) fn is_refused_target(ip: IpAddr) -> bool {
 }
 
 /// The rule every session connection applies to every address a host resolves to: the
-/// terminal, the Guacamole tunnel, the SSH probe and `testConnection` (R-032, P2-004). An
+/// terminal, the Guacamole tunnel, the SSH probe and `testConnection` (R-030, R-032). An
 /// address is refused when [`is_refused_target`] refuses it or the hub's [`AddressPolicy`]
 /// does not permit it: the `ANIMA_PROBE_DENY` networks (R-030) and the policy's own
-/// always-refused ranges, such as Tailscale's `100.100.100.0/24` and cloud metadata
-/// addresses. The default holds the policy with no deny list; the hub replaces it with its
-/// own through [`TargetRule::denying`]. Tests that run an SSH server on the loopback
+/// always-refused ranges, which sessions refuse too although R-032 alone allows them:
+/// Tailscale's `100.100.100.0/24` (the hub's own `tailscaled`), Azure's `168.63.129.16`, the
+/// AWS IPv6 metadata address `fd00:ec2::254`, `192.0.0.0/24`, `240.0.0.0/4` and `fec0::/10`
+/// (the full list is on [`AddressPolicy`]). None of them is a device. The default holds the
+/// policy with no deny list; the hub replaces it with its own through
+/// [`TargetRule::denying`]. Tests that run an SSH server on the loopback
 /// interface add [`TargetRule::reaching_loopback_for_tests`], which no release build contains.
 /// Cheap to clone: the policy is shared.
 #[derive(Clone, Debug, Default)]

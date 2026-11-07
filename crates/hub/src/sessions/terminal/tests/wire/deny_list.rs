@@ -1,4 +1,4 @@
-//! The deny list on the SSH terminal (P2-004, security): a device whose host is, or resolves
+//! The deny list on the SSH terminal (R-030, R-032, security): a device whose host is, or resolves
 //! into, an `ANIMA_PROBE_DENY` network is 503 `GATEWAY_ERROR` before any connection to it,
 //! whatever form the address takes; a host outside the list still opens.
 
@@ -61,7 +61,7 @@ async fn refused_at(pool: &PgPool, host: &str) {
     migrations = "./migrations",
     fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
-async fn p2_004_a_host_literal_in_the_deny_list_is_503_and_never_reached(pool: PgPool) {
+async fn r_030_a_host_literal_in_the_deny_list_is_503_and_never_reached(pool: PgPool) {
     refused_at(&pool, LOOPBACK).await;
 }
 
@@ -69,7 +69,7 @@ async fn p2_004_a_host_literal_in_the_deny_list_is_503_and_never_reached(pool: P
     migrations = "./migrations",
     fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
-async fn p2_004_a_name_resolving_into_the_deny_list_is_503_and_never_reached(pool: PgPool) {
+async fn r_030_a_name_resolving_into_the_deny_list_is_503_and_never_reached(pool: PgPool) {
     refused_at(&pool, "localhost").await;
 }
 
@@ -77,7 +77,7 @@ async fn p2_004_a_name_resolving_into_the_deny_list_is_503_and_never_reached(poo
     migrations = "./migrations",
     fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
-async fn p2_004_the_ipv4_mapped_form_of_a_denied_address_is_503_and_never_reached(pool: PgPool) {
+async fn r_030_the_ipv4_mapped_form_of_a_denied_address_is_503_and_never_reached(pool: PgPool) {
     refused_at(&pool, "::ffff:127.0.0.1").await;
 }
 
@@ -85,7 +85,7 @@ async fn p2_004_the_ipv4_mapped_form_of_a_denied_address_is_503_and_never_reache
     migrations = "./migrations",
     fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
-async fn p2_004_a_host_outside_the_deny_list_still_opens(pool: PgPool) {
+async fn r_030_a_host_outside_the_deny_list_still_opens(pool: PgPool) {
     let (_bench, mut client) = session(&pool, denying("192.0.2.0/24")).await;
     assert_eq!(client.close().await, Some(1000));
 }

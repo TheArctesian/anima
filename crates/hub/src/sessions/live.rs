@@ -1,6 +1,7 @@
 //! What the hub holds in memory about sessions (D-1, R-032): unredeemed tickets, tickets
 //! spent by a refused redemption, the end signal of each open tunnel, the host keys
-//! connection tests saw (D-5), and the rule for the addresses sessions may reach (P2-004).
+//! connection tests saw (D-5), and the rule for the addresses sessions may reach (R-030,
+//! R-032).
 //!
 //! Every method takes the lock for a short, synchronous critical section and never across an
 //! `.await`; time comes in as a parameter (CQ-021).
@@ -70,7 +71,7 @@ impl State {
 /// Tickets, open tunnels and host-key observations, shared by GraphQL and the tunnel route.
 /// Cheap to clone; every clone sees the same state. `sessions::open` builds one with
 /// `Live::default()`, whose target rule has no deny list; `main.rs` gives it the hub's
-/// `ANIMA_PROBE_DENY` policy with [`Live::denying`] (R-032, P2-004).
+/// `ANIMA_PROBE_DENY` policy with [`Live::denying`] (R-030, R-032).
 #[derive(Clone)]
 pub struct Live {
     state: Arc<Mutex<State>>,
@@ -197,7 +198,7 @@ impl Live {
 
     /// This `Live` with every session connection (the terminal, the Guacamole tunnel, the SSH
     /// probe and `testConnection`) also refusing what `policy` refuses: the
-    /// `ANIMA_PROBE_DENY` networks and the policy's always-refused ranges (P2-004). It
+    /// `ANIMA_PROBE_DENY` networks and the policy's always-refused ranges (R-030). It
     /// replaces any policy given before.
     #[must_use]
     pub fn denying(self, policy: AddressPolicy) -> Self {
@@ -209,7 +210,7 @@ impl Live {
 
     /// This `Live` with probes that may reach an SSH server on the loopback interface, for
     /// tests only: every other refused address stays refused, and so does loopback in the
-    /// deny list (R-032, P2-004).
+    /// deny list (R-030, R-032).
     #[cfg(any(test, feature = "test-support"))]
     #[must_use]
     pub fn reaching_loopback_for_tests(self) -> Self {

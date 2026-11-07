@@ -160,7 +160,7 @@ pub(super) async fn open(route: &Route, ticket: &PendingTicket) -> Result<Openin
 }
 
 /// The address the session goes to: the first one the device's host resolves to, when `rule`
-/// lets the gateway reach every one of them (R-032, P2-004), in its canonical form, so an
+/// lets the gateway reach every one of them (R-030, R-032), in its canonical form, so an
 /// IPv4-mapped address is checked and sent as the IPv4 address it is (`ssh::addresses`).
 async fn target(host: &str, port: u16, rule: &TargetRule) -> Result<IpAddr, NotOpened> {
     let checked =

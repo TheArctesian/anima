@@ -1,4 +1,4 @@
-//! The deny list on `testConnection` (P2-004, security; closes R-032 E-7): a host the operator
+//! The deny list on `testConnection` (R-030, R-032 E-7, security): a host the operator
 //! types or a saved device's host that is, or resolves into, an `ANIMA_PROBE_DENY` network is
 //! the `Validation` error on `host`, and no connection reaches it; a host outside the list is
 //! still tested.
@@ -47,7 +47,7 @@ fn refused_on_host(error: &Value, subject: &str) {
     migrations = "./migrations",
     fixtures(path = "../../../fixtures", scripts("devices"))
 )]
-async fn p2_004_a_host_in_the_deny_list_is_refused_and_never_reached(pool: PgPool) {
+async fn r_030_a_host_in_the_deny_list_is_refused_and_never_reached(pool: PgPool) {
     let device = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = device.local_addr().unwrap().port();
     let schema = schema(&pool, &denying("127.0.0.0/8"));
@@ -79,7 +79,7 @@ async fn p2_004_a_host_in_the_deny_list_is_refused_and_never_reached(pool: PgPoo
     migrations = "./migrations",
     fixtures(path = "../../../fixtures", scripts("devices"))
 )]
-async fn p2_004_a_host_outside_the_deny_list_is_still_tested(pool: PgPool) {
+async fn r_030_a_host_outside_the_deny_list_is_still_tested(pool: PgPool) {
     let host_key = ed25519(1);
     let server = SshServer::start(vec![host_key.clone()], None).await;
     let schema = schema(&pool, &denying("192.0.2.0/24"));

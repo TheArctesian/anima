@@ -1,5 +1,5 @@
 //! Which addresses the hub may connect to for probes and, from Phase 2, sessions and metrics
-//! (SSRF protection, P2-004).
+//! (SSRF protection, R-030).
 
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 

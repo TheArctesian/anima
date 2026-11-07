@@ -249,7 +249,7 @@ fn denying(cidr: &str) -> TargetRule {
 }
 
 #[test]
-fn p2_004_the_deny_list_refuses_its_networks_in_every_ipv6_form() {
+fn r_030_the_deny_list_refuses_its_networks_in_every_ipv6_form() {
     let rule = denying("10.20.0.0/16");
     for denied in [
         "10.20.1.5",
@@ -276,7 +276,7 @@ fn p2_004_the_deny_list_refuses_its_networks_in_every_ipv6_form() {
 }
 
 #[test]
-fn p2_004_the_default_rule_keeps_device_ranges_and_refuses_the_policys_own() {
+fn r_030_the_default_rule_keeps_device_ranges_and_refuses_the_policys_own() {
     for device in [
         "10.20.1.5",
         "172.16.0.1",
@@ -300,7 +300,7 @@ fn p2_004_the_default_rule_keeps_device_ranges_and_refuses_the_policys_own() {
 }
 
 #[test]
-fn p2_004_the_loopback_test_rule_still_obeys_the_deny_list_in_either_order() {
+fn r_030_the_loopback_test_rule_still_obeys_the_deny_list_in_either_order() {
     let deny = || AddressPolicy::new(vec!["127.0.0.2/32".parse().unwrap()]);
     let before = TargetRule::default()
         .denying(deny())
@@ -315,7 +315,7 @@ fn p2_004_the_loopback_test_rule_still_obeys_the_deny_list_in_either_order() {
 }
 
 #[tokio::test]
-async fn p2_004_the_probe_never_connects_to_a_denied_address() {
+async fn r_030_the_probe_never_connects_to_a_denied_address() {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
     let rule = TargetRule::default()
