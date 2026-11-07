@@ -49,7 +49,11 @@ pub struct Mutation(
 );
 
 #[derive(MergedSubscription, Default)]
-pub struct Subscription(checks::graphql::Subscription, events::graphql::Subscription);
+pub struct Subscription(
+    checks::graphql::Subscription,
+    events::graphql::Subscription,
+    sessions::graphql::Subscription,
+);
 
 pub type HubSchema = Schema<Query, Mutation, Subscription>;
 

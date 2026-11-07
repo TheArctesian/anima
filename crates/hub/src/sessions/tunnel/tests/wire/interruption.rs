@@ -100,7 +100,7 @@ async fn d_9_a_row_already_ended_elsewhere_gets_no_second_end_or_event(pool: PgP
         at: now(),
         reason: EndReason::HubShutdown,
     };
-    assert!(store::end(&pool, bench.session, first).await.unwrap());
+    assert!(store::end(&pool, bench.session, first).await.unwrap().is_some());
     assert_eq!(client.close().await, Some(1000));
     assert_eq!(heard(&mut guacd).await.opcode, "disconnect");
     // The tunnel's end write comes after it leaves guacd; give it a moment.

@@ -13,7 +13,7 @@ use super::{
     end::{Actor, end_row, sweep},
     find_device, host_key,
     live::Live,
-    model::{EndReason, FieldError, Protocol, SessionEnd},
+    model::{EndReason, FieldError, Protocol, Session, SessionEnd},
     store::{self, NewSession},
     target::TargetRule,
     tickets::{LIFETIME, PendingTicket, TOKEN_BYTES, Ticket, TicketToken},
@@ -180,11 +180,14 @@ fn random_token() -> Result<TicketToken, Error> {
 /// (`Conflict`). A time zone that is not a zone name is dropped, so the tunnel uses UTC.
 /// Then, in one transaction, it writes the live session row and the audit entry
 /// `session.start`, and holds a ticket that the protocol's tunnel redeems once within 30 s
-/// from `client`. Tickets that expired unredeemed are swept first.
+/// from `client`. Tickets that expired unredeemed are swept first. Once the row commits, its
+/// start is published on `live`'s feed of changes (RA-034); a refused or rolled-back start
+/// publishes nothing.
 ///
 /// If the hub shut down while the commit was in flight, `shut_down` took the ticket but could
-/// not yet see the row; the row then ends here with `HUB_SHUTDOWN` and its audit entry, and
-/// the start is `Unavailable` (D-10).
+/// not yet see the row; the start is then not published, the row ends here with
+/// `HUB_SHUTDOWN` and its audit entry (that end is published), and the start is
+/// `Unavailable` (D-10).
 ///
 /// # Errors
 /// As above; `Unavailable` when too many tickets are pending or the hub is shutting down;
@@ -217,7 +220,7 @@ pub async fn start(
         expires_at: now + LIFETIME,
     };
     let mut tx = db.begin().await?;
-    write_start(&mut tx, &device, &pending, now).await?;
+    let started = write_start(&mut tx, &device, &pending, now).await?;
     live.issue(token.hash(), pending.clone())
         .map_err(|_| Error::Unavailable)?;
     if let Err(error) = tx.commit().await {
@@ -229,8 +232,8 @@ pub async fn start(
         }
         return Err(error.into());
     }
-    if live.is_shutting_down() {
-        end_shut_down(db, &pending, now).await?;
+    if !live.publish_start(started) {
+        end_shut_down(db, live, &pending, now).await?;
         return Err(Error::Unavailable);
     }
     Ok(Ticket::new(
@@ -242,10 +245,11 @@ pub async fn start(
 }
 
 /// Ends the committed row of a ticket `shut_down` withdrew before the row was visible to it,
-/// with `HUB_SHUTDOWN` and its audit entry naming the ticket's operator and client. A row
-/// `shut_down` did end is left as it is (D-9).
+/// with `HUB_SHUTDOWN` and its audit entry naming the ticket's operator and client, then
+/// publishes that end. A row `shut_down` did end is left as it is (D-9).
 async fn end_shut_down(
     db: &PgPool,
+    live: &Live,
     pending: &PendingTicket,
     now: DateTime<Utc>,
 ) -> Result<(), Error> {
@@ -259,18 +263,22 @@ async fn end_shut_down(
         at: now,
     };
     let mut tx = db.begin().await?;
-    end_row(&mut tx, pending.session, end, &by).await?;
+    let ended = end_row(&mut tx, pending.session, end, &by).await?;
     tx.commit().await?;
+    if let Some(row) = ended {
+        live.publish_end(row);
+    }
     Ok(())
 }
 
-/// The live row and the audit entry `session.start`; the change never holds the token.
+/// The live row, returned as written, and the audit entry `session.start`; the change never
+/// holds the token.
 async fn write_start(
     conn: &mut PgConnection,
     device: &Device,
     pending: &PendingTicket,
     now: DateTime<Utc>,
-) -> Result<(), Error> {
+) -> Result<Session, Error> {
     let protocol = pending.protocol;
     let new = NewSession {
         id: pending.session,
@@ -281,7 +289,7 @@ async fn write_start(
         client: pending.client.0,
         started_at: now,
     };
-    store::insert(&mut *conn, &new).await?;
+    let started = store::insert(&mut *conn, &new).await?;
     let change = json!({
         "deviceId": device.id.to_string(),
         "deviceName": device.name,
@@ -295,5 +303,5 @@ async fn write_start(
         change,
     };
     events::audit(conn, now, audit).await?;
-    Ok(())
+    Ok(started)
 }

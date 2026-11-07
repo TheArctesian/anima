@@ -158,6 +158,13 @@ impl Session {
     }
 }
 
+/// A session's start or end, as every client sees it live (RA-034): the row as it was
+/// committed, which holds no session content, token or gateway ID (RA-008).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SessionChange {
+    pub session: Session,
+}
+
 /// Which sessions `Query.sessions` lists.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct SessionFilter {

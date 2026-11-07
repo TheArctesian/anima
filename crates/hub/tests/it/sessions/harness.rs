@@ -10,10 +10,10 @@ use anima_hub::{
     ids::OperatorId,
     sessions::{
         Live,
-        graphql::{Mutation, Query},
+        graphql::{Mutation, Query, Subscription},
     },
 };
-use async_graphql::{EmptySubscription, Request, Response, Schema};
+use async_graphql::{Request, Response, Schema};
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use chrono::{DateTime, TimeDelta, Utc};
 use serde_json::Value;
@@ -21,7 +21,7 @@ use sqlx::PgPool;
 
 use super::{OPERATOR_ID, now};
 
-pub type TestSchema = Schema<Query, Mutation, EmptySubscription>;
+pub type TestSchema = Schema<Query, Mutation, Subscription>;
 
 /// The address every signed-in test request comes from.
 pub const CLIENT_ADDR: &str = "10.10.0.77";
@@ -34,7 +34,7 @@ pub fn schema_for(pool: &PgPool) -> TestSchema {
 /// The schema with a clock fixed at `at`, sharing `live`.
 pub fn schema_at(pool: &PgPool, at: DateTime<Utc>, live: &Live) -> TestSchema {
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(at));
-    Schema::build(Query, Mutation, EmptySubscription)
+    Schema::build(Query, Mutation, Subscription)
         .data(pool.clone())
         .data(clock)
         .data(live.clone())
@@ -60,9 +60,14 @@ pub fn operator() -> Operator {
 
 /// A request from the K6 operator whose identity expires at `expires_at` hours after `now()`.
 pub fn signed_in_until(query: &str, hours: i64) -> Request {
+    signed_in_from(query, CLIENT_ADDR, hours)
+}
+
+/// A request from the K6 operator at `client`, signed in for `hours` after `now()`.
+pub fn signed_in_from(query: &str, client: &str, hours: i64) -> Request {
     Identity::for_tests(operator(), now() + TimeDelta::hours(hours))
         .attach(Request::new(query))
-        .data(ClientAddr(CLIENT_ADDR.parse().unwrap()))
+        .data(ClientAddr(client.parse().unwrap()))
 }
 
 /// The data of a signed-in request that must have no errors.

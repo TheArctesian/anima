@@ -18,7 +18,7 @@ use crate::{
     clock::Clock,
     events::{self, Bus, NewEvent, Source},
     ids::SessionId,
-    sessions::{Actor, EndReason, Error, PendingTicket, Redeemed, SessionEnd, store},
+    sessions::{Actor, EndReason, Error, PendingTicket, Redeemed, Session, SessionEnd},
 };
 
 /// Where an end is written: the database, the bus its event goes out on, and the clock that
@@ -85,10 +85,10 @@ impl Drop for Unfinished {
     }
 }
 
-/// Writes the end of `redeemed`'s session, then drops its tunnel registration, so
-/// `endSession` reads the ended row once it sees the tunnel gone (D-10). A failed write is
-/// tried once more, then logged; the row then stays live until the hub's next start ends it
-/// `HUB_SHUTDOWN` (`close_stale`).
+/// Writes the end of `redeemed`'s session and publishes the ended row, then drops its tunnel
+/// registration, so `endSession` reads the ended row once it sees the tunnel gone (D-10). A
+/// failed write is tried once more, then logged; the row then stays live until the hub's next
+/// start ends it `HUB_SHUTDOWN` (`close_stale`).
 pub(in crate::sessions) async fn finish(records: &Records, redeemed: Redeemed, end: &End) {
     let Redeemed { ticket, tunnel } = redeemed;
     let reason = end.cause.ending().reason;
@@ -97,8 +97,11 @@ pub(in crate::sessions) async fn finish(records: &Records, redeemed: Redeemed, e
         first => first,
     };
     match written {
-        Ok(true) => log_ended(ticket.session, reason),
-        Ok(false) => log_ended_before(ticket.session, reason),
+        Ok(Some(ended)) => {
+            log_ended(ticket.session, reason);
+            tunnel.live().publish_end(ended);
+        }
+        Ok(None) => log_ended_before(ticket.session, reason),
         Err(error) => log_unwritten(ticket.session, reason, &error),
     }
     drop(tunnel);
@@ -126,10 +129,15 @@ fn log_unwritten(session: SessionId, reason: EndReason, error: &Error) {
     );
 }
 
-/// The end row and its audit entry and, when this call ended the row, its event; `false`
-/// when the row had already ended. The audit entry names who ended it: the `endSession`
-/// operator and address when there is one, else the ticket's operator and client.
-async fn write(records: &Records, ticket: &PendingTicket, end: &End) -> Result<bool, Error> {
+/// The end row and its audit entry and, when this call ended the row, its event; returns the
+/// committed row, or `None` when it had already ended. The audit entry names who ended it:
+/// the `endSession` operator and address when there is one, else the ticket's operator and
+/// client.
+async fn write(
+    records: &Records,
+    ticket: &PendingTicket,
+    end: &End,
+) -> Result<Option<Session>, Error> {
     let ending = end.cause.ending();
     let now = records.clock.now();
     let by = end.by.clone().unwrap_or_else(|| Actor {
@@ -142,17 +150,16 @@ async fn write(records: &Records, ticket: &PendingTicket, end: &End) -> Result<b
         reason: ending.reason,
     };
     let mut tx = records.db.begin().await?;
-    let row = store::get(&mut *tx, ticket.session).await?;
-    if !end_row(&mut tx, ticket.session, ended, &by).await? {
-        return Ok(false);
-    }
+    let Some(row) = end_row(&mut tx, ticket.session, ended, &by).await? else {
+        return Ok(None);
+    };
     let event = NewEvent {
         severity: ending.severity,
         source: Source::Session,
-        device: row.and_then(|row| row.device.map(|device| (device, row.device_name))),
+        device: row.device.map(|device| (device, row.device_name.clone())),
         message: end.message.of(ticket.protocol).to_owned(),
     };
     events::record(&mut tx, &records.bus, now, event).await?;
     tx.commit().await?;
-    Ok(true)
+    Ok(Some(row))
 }

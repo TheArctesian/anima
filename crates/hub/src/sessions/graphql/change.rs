@@ -1,0 +1,32 @@
+//! `SessionChange` as the GraphQL type K1 describes, and the stream of them from `Live`'s
+//! feed (RA-034).
+
+use async_graphql::{
+    Object,
+    futures_util::stream::{self, Stream},
+};
+use tokio::sync::broadcast::{Receiver, error::RecvError};
+
+use crate::sessions::{Session, SessionChange};
+
+#[Object]
+impl SessionChange {
+    /// The session as the change left it: live after a start, ended after an end.
+    async fn session(&self) -> &Session {
+        &self.session
+    }
+}
+
+/// The changes on `feed`. A subscriber that fell behind skips the changes it missed; the
+/// stream ends when the feed is closed.
+pub(super) fn session_changes(feed: Receiver<SessionChange>) -> impl Stream<Item = SessionChange> {
+    stream::unfold(feed, |mut feed| async move {
+        loop {
+            match feed.recv().await {
+                Ok(change) => return Some((change, feed)),
+                Err(RecvError::Lagged(_)) => {}
+                Err(RecvError::Closed) => return None,
+            }
+        }
+    })
+}

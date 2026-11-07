@@ -142,23 +142,23 @@ pub(super) async fn insert<'e>(
 }
 
 /// Ends a live session at `end.at`, or at its start if that is later (a clock that stepped
-/// back must not leave the row live, MV-003). Returns whether this call ended it: a session
-/// ends once, and the first end wins (D-9).
+/// back must not leave the row live, MV-003). Returns the row as this call ended it, or
+/// `None` when it did not: a session ends once, and the first end wins (D-9).
 pub(super) async fn end<'e>(
     db: impl PgExecutor<'e>,
     id: SessionId,
     end: SessionEnd,
-) -> Result<bool, Error> {
-    let ended = sqlx::query(
+) -> Result<Option<Session>, Error> {
+    let row: Option<SessionRow> = sqlx::query_as(&format!(
         "update sessions.sessions set ended_at = greatest($2, started_at), end_reason = $3 \
-         where id = $1 and ended_at is null",
-    )
+         where id = $1 and ended_at is null returning {SESSION_COLUMNS}"
+    ))
     .bind(id)
     .bind(end.at)
     .bind(end.reason.as_str())
-    .execute(db)
+    .fetch_optional(db)
     .await?;
-    Ok(ended.rows_affected() == 1)
+    Ok(row.map(Session::try_from).transpose()?)
 }
 
 /// The session with this id, live or ended.

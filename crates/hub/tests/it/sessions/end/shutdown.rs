@@ -284,6 +284,7 @@ async fn d_10_a_start_that_commits_after_shut_down_ends_its_row_and_is_unavailab
         .await
         .unwrap();
     let live = Live::default();
+    let mut changes = live.changes();
     let schema = schema_at(&pool, now(), &live);
     let starting =
         tokio::spawn(async move { schema.execute(start_request(PVE_01, &display())).await });
@@ -310,4 +311,8 @@ async fn d_10_a_start_that_commits_after_shut_down_ends_its_row_and_is_unavailab
     let audits = end_audits(&pool, &id.to_string()).await;
     assert_eq!(audits.len(), 1);
     assert_eq!(audits[0].change, json!({ "reason": "hub_shutdown" }));
+    // The refused start is never published; the end of its row is.
+    let change = changes.try_recv().unwrap().session;
+    assert_eq!((change.id.to_string(), change.is_live()), (id.to_string(), false));
+    assert!(changes.try_recv().is_err(), "one change only");
 }

@@ -1,9 +1,10 @@
-//! The sessions GraphQL part: root `Query` and `Mutation` (K1; RA-008, API-003, API-006,
-//! API-009).
+//! The sessions GraphQL part: root `Query`, `Mutation` and `Subscription` (K1; RA-008,
+//! RA-034, API-003, API-006, API-009).
 //!
 //! The types live in the sub-modules; each `#[Object]` block there is the single resolver block
 //! for its type.
 
+mod change;
 mod connection;
 pub(super) mod connection_test;
 pub(super) mod error;
@@ -14,7 +15,10 @@ mod ticket;
 
 use std::sync::Arc;
 
-use async_graphql::{Context, ID, Object, Result, dataloader::DataLoader};
+use async_graphql::{
+    Context, ID, Object, Result, Subscription as GraphQLSubscription, dataloader::DataLoader,
+    futures_util::stream::Stream,
+};
 use sqlx::PgPool;
 
 /// For the files part's resolver (WP-27 D-8): the same errors and schema data.
@@ -22,12 +26,14 @@ pub(super) use self::error::{invalid, schema_dependency, to_graphql};
 pub use self::{host_key::HostKeysByDevice, server_certificate::ServerCertificatesByDevice};
 
 use self::{
+    change::session_changes,
     connection::{DEFAULT_FIRST, SessionConnection, sessions_args},
     connection_test::ConnectionTestInput,
     ticket::StartSessionInput,
 };
 use super::{
-    Actor, FieldError, Fingerprint, HostKey, Live, ServerCertificate, Session, Ticket,
+    Actor, FieldError, Fingerprint, HostKey, Live, ServerCertificate, Session, SessionChange,
+    Ticket,
     end::end_session,
     start, store,
     trust::{
@@ -253,5 +259,23 @@ impl Mutation {
         )
         .await
         .map_err(to_graphql)
+    }
+}
+
+#[derive(Default)]
+pub struct Subscription;
+
+/// Merged into the root `Subscription`.
+#[GraphQLSubscription(name = "SessionsSubscription")]
+impl Subscription {
+    /// Every start and end of a session, from every client, once it is committed (RA-034).
+    #[expect(
+        clippy::unused_async,
+        clippy::unused_async_trait_impl,
+        reason = "the Subscription macro requires async resolvers"
+    )]
+    #[graphql(guard = "Authenticated")]
+    async fn session_changed(&self, ctx: &Context<'_>) -> Result<impl Stream<Item = SessionChange>> {
+        Ok(session_changes(schema_dependency::<Live>(ctx)?.changes()))
     }
 }

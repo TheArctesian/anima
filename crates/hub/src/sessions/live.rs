@@ -1,10 +1,15 @@
 //! What the hub holds in memory about sessions (D-1, R-032): unredeemed tickets, tickets
-//! spent by a refused redemption, the end signal of each open tunnel, the host keys and RDP
-//! server certificates connection tests saw (SEC-006, SEC-007), and the rule for the
+//! spent by a refused redemption, the end signal of each open tunnel and files relay
+//! (`tunnel`), the host keys and RDP server certificates connection tests saw (`observed`,
+//! SEC-006, SEC-007), the feed of session changes (`changes`, RA-034), and the rule for the
 //! addresses sessions may reach.
 //!
 //! Every method takes the lock for a short, synchronous critical section and never across an
 //! `.await`; time comes in as a parameter (CQ-021).
+
+mod changes;
+mod observed;
+mod tunnel;
 
 use std::{
     collections::HashMap,
@@ -15,6 +20,9 @@ use std::{
 use chrono::{DateTime, Utc};
 use tokio::sync::watch;
 
+use self::{changes::Changes, tunnel::signal};
+pub(super) use self::tunnel::{Closing, FilesRelay};
+pub use self::tunnel::{EndCause, Tunnel};
 use super::{
     end::Actor,
     files,
@@ -22,7 +30,7 @@ use super::{
     public_key::PublicKey,
     target::TargetRule,
     tickets::{PendingTicket, Presented, TicketHash, hash_of},
-    trust::{Endpoint, Observation, Observations, PresentedCertificate},
+    trust::{Observations, PresentedCertificate},
 };
 use crate::{ids::SessionId, targets::AddressPolicy};
 
@@ -33,17 +41,7 @@ pub(super) const MAX_PENDING: usize = 128;
 /// How long `endSession` waits by default for an open tunnel to end its row (D-10).
 pub(super) const TUNNEL_END_WAIT: Duration = Duration::from_secs(5);
 
-/// Why a tunnel is told to end from outside, and who asked: the operator who called
-/// `endSession` (for the tunnel's `session.end` audit entry, LOG-005), or nobody when the hub
-/// shuts down.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct EndCause {
-    pub reason: EndReason,
-    pub by: Option<Actor>,
-}
-
-/// The end signal of one tunnel: `None` until the first cause, which wins.
-type EndSignal = watch::Sender<Option<EndCause>>;
+use self::tunnel::EndSignal;
 
 #[derive(Default)]
 struct State {
@@ -52,6 +50,9 @@ struct State {
     /// a tunnel; they wait here until they expire so the sweep ends their rows.
     spent: HashMap<SessionId, PendingTicket>,
     tunnels: HashMap<SessionId, EndSignal>,
+    /// Open files relays by registration number, and the next number.
+    files_relays: HashMap<u64, EndSignal>,
+    next_files_relay: u64,
     shutting_down: bool,
 }
 
@@ -66,6 +67,11 @@ impl State {
             .iter()
             .find_map(|(hash, ticket)| (ticket.session == session).then_some(*hash))?;
         self.tickets.remove(&hash)
+    }
+
+    /// Whether the session's ticket is still unredeemed.
+    fn holds_ticket(&self, session: SessionId) -> bool {
+        self.tickets.values().any(|ticket| ticket.session == session)
     }
 }
 
@@ -82,8 +88,9 @@ pub struct Live {
     certificates: Arc<Mutex<Observations<PresentedCertificate>>>,
     tunnel_end_wait: Duration,
     target_rule: TargetRule,
-    /// The files tunnel's own tickets (WP-27 D-5), so a session ticket never opens `/files`.
+    /// The files tunnel's own tickets, so a session ticket never opens `/files`.
     files: files::Tickets,
+    changes: Changes,
 }
 
 impl Default for Live {
@@ -109,65 +116,6 @@ pub struct Redeemed {
     pub tunnel: Tunnel,
 }
 
-/// One open tunnel's registration. It receives the cause that ends the tunnel from outside
-/// (`endSession`, shutdown). Dropping it deregisters the tunnel, so the tunnel task must end
-/// the session row before it drops this: `endSession` waits for the drop, then reads the row.
-pub struct Tunnel {
-    session: SessionId,
-    cause: watch::Receiver<Option<EndCause>>,
-    live: Live,
-}
-
-impl Tunnel {
-    /// The cause signalled so far, if any, without waiting: for a tunnel task that can no
-    /// longer await, such as one being dropped.
-    pub(super) fn signalled(&self) -> Option<EndCause> {
-        self.cause.borrow().clone()
-    }
-
-    /// Resolves with the first cause signalled for this tunnel. Cancel safe, so it can sit in
-    /// a `select!`. The sender lives until this registration drops, so a closed channel means
-    /// the hub's state is being torn down: that is a shutdown.
-    pub async fn ended(&mut self) -> EndCause {
-        loop {
-            if let Some(cause) = self.cause.borrow_and_update().clone() {
-                return cause;
-            }
-            if self.cause.changed().await.is_err() {
-                return EndCause {
-                    reason: EndReason::HubShutdown,
-                    by: None,
-                };
-            }
-        }
-    }
-}
-
-impl Drop for Tunnel {
-    fn drop(&mut self) {
-        let mut state = self.live.state();
-        if state
-            .tunnels
-            .get(&self.session)
-            .is_some_and(|signal| self.cause.same_channel(&signal.subscribe()))
-        {
-            state.tunnels.remove(&self.session);
-        }
-    }
-}
-
-/// The tunnels that were told to end; `finished` waits until each has deregistered.
-pub(super) struct Closing(Vec<EndSignal>);
-
-impl Closing {
-    /// Waits until every signalled tunnel has dropped its `Tunnel`. Callers bound the wait.
-    pub(super) async fn finished(self) {
-        for signal in &self.0 {
-            signal.closed().await;
-        }
-    }
-}
-
 /// What `Live::end_by` found for a session, decided under one lock.
 pub(super) enum Ending {
     /// An open tunnel was told to end; it writes the row's end.
@@ -176,17 +124,6 @@ pub(super) enum Ending {
     Withdrawn(PendingTicket),
     /// Neither: the session is ended, unknown, or its row was left live.
     Neither,
-}
-
-/// Sets the cause unless one is already set: the first cause wins (D-9).
-fn signal(end: &EndSignal, cause: EndCause) {
-    end.send_if_modified(|current| {
-        let first = current.is_none();
-        if first {
-            *current = Some(cause);
-        }
-        first
-    });
 }
 
 impl Live {
@@ -200,6 +137,7 @@ impl Live {
             tunnel_end_wait: wait,
             target_rule: TargetRule::default(),
             files: files::Tickets::default(),
+            changes: Changes::default(),
         }
     }
 
@@ -231,7 +169,7 @@ impl Live {
         self.tunnel_end_wait
     }
 
-    /// The files tunnel's tickets (WP-27 D-5).
+    /// The files tunnel's tickets.
     pub(super) const fn files(&self) -> &files::Tickets {
         &self.files
     }
@@ -249,60 +187,35 @@ impl Live {
             .map(watch::Sender::subscribe)
     }
 
+    /// Registers a files relay beside the session's open tunnel, deciding under one lock so
+    /// shutdown cannot slip in between: the tunnel's end signal and the relay's registration,
+    /// which `shut_down` waits for until it drops. `None` when the session has no open tunnel
+    /// or the hub is shutting down.
+    pub(super) fn files_relay(
+        &self,
+        session: SessionId,
+    ) -> Option<(watch::Receiver<Option<EndCause>>, FilesRelay)> {
+        let mut state = self.state();
+        if state.shutting_down {
+            return None;
+        }
+        let tunnel_end = state.tunnels.get(&session)?.subscribe();
+        let id = state.next_files_relay;
+        state.next_files_relay = id.wrapping_add(1);
+        let (registration, held) = watch::channel(None);
+        state.files_relays.insert(id, registration);
+        drop(state);
+        let relay = FilesRelay {
+            id,
+            _held: held,
+            live: self.clone(),
+        };
+        Some((tunnel_end, relay))
+    }
+
     /// The rule every session connection applies to the addresses a host resolves to.
     pub(super) const fn target_rule(&self) -> &TargetRule {
         &self.target_rule
-    }
-
-    fn observations(&self) -> MutexGuard<'_, Observations<PublicKey>> {
-        self.observations
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-    }
-
-    fn certificates(&self) -> MutexGuard<'_, Observations<PresentedCertificate>> {
-        self.certificates
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-    }
-
-    /// Records that `endpoint` presented `key` at `now` (D-5).
-    pub(super) fn observe(
-        &self,
-        endpoint: Endpoint,
-        key: PublicKey,
-        now: DateTime<Utc>,
-    ) -> Observation<PublicKey> {
-        self.observations().record(endpoint, key, now)
-    }
-
-    /// The key a connection test saw at `endpoint` within the last 15 minutes before `now`.
-    pub(super) fn observed(
-        &self,
-        endpoint: &Endpoint,
-        now: DateTime<Utc>,
-    ) -> Option<Observation<PublicKey>> {
-        self.observations().find(endpoint, now)
-    }
-
-    /// Records that the RDP server at `endpoint` presented `certificate` at `now` (SEC-007).
-    pub(super) fn observe_certificate(
-        &self,
-        endpoint: Endpoint,
-        certificate: PresentedCertificate,
-        now: DateTime<Utc>,
-    ) -> Observation<PresentedCertificate> {
-        self.certificates().record(endpoint, certificate, now)
-    }
-
-    /// The certificate a connection test saw at `endpoint` within the last 15 minutes before
-    /// `now`.
-    pub(super) fn observed_certificate(
-        &self,
-        endpoint: &Endpoint,
-        now: DateTime<Utc>,
-    ) -> Option<Observation<PresentedCertificate>> {
-        self.certificates().find(endpoint, now)
     }
 
     /// The poisoned case is taken over: no critical section here can leave the maps half
@@ -419,8 +332,9 @@ impl Live {
 
     /// Tells every open tunnel to end with `HUB_SHUTDOWN`, withdraws every unredeemed and
     /// spent ticket, and refuses new tickets and redemptions from now on (D-10), all under one
-    /// lock, so no ticket becomes a tunnel in between. The caller ends the withdrawn tickets'
-    /// rows and bounds the wait on the returned `Closing` (`end::shut_down`).
+    /// lock, so no ticket becomes a tunnel in between. The returned `Closing` holds the open
+    /// tunnels and files relays; a files relay ends with its session's tunnel. The caller
+    /// ends the withdrawn tickets' rows and bounds the wait on `Closing` (`end::shut_down`).
     pub(super) fn shut_down(&self) -> (Closing, Vec<PendingTicket>) {
         let mut state = self.state();
         state.shutting_down = true;
@@ -428,6 +342,7 @@ impl Live {
         let mut tickets: Vec<PendingTicket> =
             state.tickets.drain().map(|(_, ticket)| ticket).collect();
         tickets.extend(state.spent.drain().map(|(_, ticket)| ticket));
+        let relays: Vec<EndSignal> = state.files_relays.values().cloned().collect();
         drop(state);
         for end in &ends {
             let cause = EndCause {
@@ -436,6 +351,6 @@ impl Live {
             };
             signal(end, cause);
         }
-        (Closing(ends), tickets)
+        (Closing([ends, relays].concat()), tickets)
     }
 }
