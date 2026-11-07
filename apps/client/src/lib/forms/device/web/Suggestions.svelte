@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { HubError, HubResult } from '$lib/hub/error';
   import FormButton from '../../FormButton.svelte';
-  import type { WebInterfaceSuggestion } from '../../hub-pending';
+  import type { WebInterfaceSuggestion } from '$lib/web-interfaces/api';
 
   interface Props {
     suggestions: readonly WebInterfaceSuggestion[];

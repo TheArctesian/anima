@@ -13,6 +13,10 @@ function device(name: string, status: CardDevice['status'] = 'UP', uptime: numbe
     maintenance: false,
     status,
     uptime,
+    metricsSource: 'NONE',
+    accessWarnings: [],
+    rdp: { enabled: false },
+    vnc: { enabled: false },
     ssh: { enabled: false, hostKey: null },
     checks: [],
   };

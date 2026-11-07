@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { PendingDeviceFields } from '../../hub-pending';
+import type { RemoteDeviceFields } from './values';
 import { createInput, updateInput } from '../input';
 import { validateDevice } from '../validate';
 import { formValues, type DeviceFields, type DeviceFormValues } from '../values';
@@ -15,7 +15,7 @@ const PHASE_1: DeviceFields = {
   ssh: { enabled: true, port: 22, username: 'root', auth: 'PASSWORD' },
 };
 
-const K1: PendingDeviceFields = {
+const K1: RemoteDeviceFields = {
   rdp: {
     enabled: true,
     port: 3390,

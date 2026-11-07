@@ -1,5 +1,6 @@
 import { checksApi, type DeviceCheck, type HeartbeatPage, type NewHeartbeat } from '$lib/checks/api';
-import { devicesApi, type DeviceDetail, type StatusChange } from '$lib/devices/api';
+import type { DeviceDetail, StatusChange } from '$lib/devices/api';
+import { devicesApi } from '$lib/devices/client';
 import { watchLive } from '$lib/devices/live/live';
 import type { Hub, HubError } from '$lib/hub/hub';
 import type { DeviceId } from './device-id';

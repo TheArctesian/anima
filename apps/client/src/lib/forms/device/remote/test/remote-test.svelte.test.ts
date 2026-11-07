@@ -2,7 +2,7 @@
 import { flushSync } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installAnimations } from '../../../animations.fixture';
-import type { ServerCertificate } from '../../../hub-pending';
+import type { ServerCertificate } from '$lib/sessions/api';
 import { OK, SAVED, button, leave, save, settle, show, type } from '../../form/form.fixture';
 import { testResult } from '../../result.fixture';
 import type { DeviceFields } from '../../values';

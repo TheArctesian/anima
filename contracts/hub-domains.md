@@ -91,7 +91,7 @@ Wiring only (called from `main.rs`, never from another domain): `create_partitio
 | `events` | — |
 | `credentials` | — |
 | `access` | `events`, `credentials` (Vault only, for TOTP secrets) |
-| `devices` | `events`, `credentials` (`Vault`, `Secret`, `SshSecret`, `Error`, `has_ssh`, `with_ssh`, `store_ssh`, `clear_ssh`; R-010, R-017, R-026) |
+| `devices` | `events`, `credentials` (`Vault`, `Secret`, `SshSecret`, `Error`, `has_ssh`, `with_ssh`, `store_ssh`, `clear_ssh`, and in Phase 2 `PasswordKind`, `store_password`, `clear_password`, `with_password`; R-010, R-017, R-026, WP-21) |
 | `maintenance` | `events` (R-029; audit and events for window changes, LOG-005) |
 | `checks` | `devices`, `maintenance`, `events`, `credentials` (`Vault`, `Secret`, `Sealed` only; R-028) |
 | `sessions` | `access`, `devices`, `credentials`, `events` |
@@ -268,8 +268,8 @@ pub struct FixedCommand { /* program: &'static str, args: Vec<Rendered> */ }
 impl FixedCommand { pub const fn new(program: &'static str) -> Self; pub fn mac(self, mac: devices::MacAddress) -> Self; }
 /// A signed-in SSH connection pinned to the accepted host key, to a target that passed the target rule and deny list (P2-004).
 pub struct SshLink { /* russh handle */ }
-pub async fn link(db: &Db, vault: &credentials::Vault, policy: &AddressPolicy, device: &Device, now: DateTime<Utc>) -> Result<SshLink, Error>;
-impl SshLink { pub async fn run(&mut self, c: &FixedCommand, limit: Duration) -> Result<CommandOutput, Error>; }
+pub async fn link(db: &Db, vault: &credentials::Vault, policy: &AddressPolicy, device: &Device, now: DateTime<Utc>) -> Result<SshLink, LinkError>;
+impl SshLink { pub async fn run(&mut self, c: &FixedCommand, limit: Duration) -> Result<CommandOutput, LinkError>; }
 pub async fn wake(db: &Db, vault: &credentials::Vault, policy: &AddressPolicy, bus: &events::Bus, device: DeviceId, now: DateTime<Utc>) -> Result<WakeSent, Error>;
 pub fn files_router(db: Db, vault: credentials::Vault, bus: events::Bus, clock: Clock, live: Live) -> axum::Router;   // GET /files, tunnel.md Section 9
 ```

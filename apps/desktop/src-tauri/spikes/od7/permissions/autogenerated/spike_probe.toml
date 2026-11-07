@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-spike-probe"
+description = "Enables the spike_probe command without any pre-configured scope."
+commands.allow = ["spike_probe"]
+
+[[permission]]
+identifier = "deny-spike-probe"
+description = "Denies the spike_probe command without any pre-configured scope."
+commands.deny = ["spike_probe"]

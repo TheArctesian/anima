@@ -1,6 +1,7 @@
 import { checksApi, type NewHeartbeat } from '$lib/checks/api';
 import type { Hub, HubError } from '$lib/hub/hub';
-import { devicesApi, type StatusChange } from '../api';
+import type { StatusChange } from '../api';
+import { devicesApi } from '../client';
 
 export interface LiveListeners {
   onStatus: (change: StatusChange) => void;

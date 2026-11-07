@@ -1,0 +1,6 @@
+{
+  "identifier": "main",
+  "description": "Only the harness's own page may call the spike command. Device web views (labels web-*) are named by no capability and no capability has `remote` (D-3, WEB-007).",
+  "webviews": ["main"],
+  "permissions": ["allow-spike-probe"]
+}

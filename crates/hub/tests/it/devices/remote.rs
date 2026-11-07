@@ -1,6 +1,10 @@
 //! Remote access settings, the MAC address and the wake relay of `devices` (RA-030..033, D-2,
 //! D-7, DB-011), read back through the K3 face.
 
+mod passwords;
+mod read_back;
+mod relay;
+
 use anima_hub::{
     devices::{
         self, Error, MacAddress, MetricsSource, Missing, RdpSecurity, RdpSettings, ResizeMethod,
@@ -270,6 +274,16 @@ fixture_test! {
         update(&pool, MAC_OFFICE_1, json!({ "siteId": OFFICE_2 })).await;
         assert!(devices::wake_relay(&pool, site(OFFICE_1)).await.unwrap().is_none());
         assert!(devices::wake_relay(&pool, site(OFFICE_2)).await.unwrap().is_none());
+    }
+
+    async fn d7_turning_the_relay_devices_ssh_off_clears_its_relay(pool: PgPool) {
+        set_relay(&pool, HOME, PVE_01).await;
+        let on = json!({ "ssh": { "enabled": true, "port": 22, "username": "root", "auth": "PASSWORD" } });
+        update(&pool, PVE_01, on).await;
+        assert!(devices::wake_relay(&pool, site(HOME)).await.unwrap().is_some());
+        let off = json!({ "ssh": { "enabled": false, "port": 22, "username": "root", "auth": "PASSWORD" } });
+        update(&pool, PVE_01, off).await;
+        assert!(devices::wake_relay(&pool, site(HOME)).await.unwrap().is_none());
     }
 
     async fn d7_an_update_that_keeps_the_site_or_moves_another_device_keeps_the_relay(pool: PgPool) {

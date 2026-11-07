@@ -1,0 +1,39 @@
+# OD-7 spike (WP-31 T1, D-1): can a Tauri 2 child web view keep its own store, be denied IPC,
+# pin an untrusted certificate and refuse non-http schemes? Standalone on purpose: the empty
+# [workspace] keeps it out of the Anima workspace, whose `unsafe_code = "forbid"` it cannot meet
+# (the macOS trust hook is Objective-C). Cargo.lock is a copy of the workspace lock.
+[package]
+name = "anima-od7-spike"
+version = "0.0.0"
+edition = "2024"
+license = "AGPL-3.0-or-later"
+publish = false
+
+[workspace]
+
+[build-dependencies]
+tauri-build = "2"
+
+[dependencies]
+tauri = { version = "2", default-features = false, features = ["wry", "unstable"] }
+tokio = { version = "1.54", features = ["macros", "rt-multi-thread", "net", "sync", "time", "io-util"] }
+hyper = { version = "1", features = ["http1", "server"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+http-body-util = "0.1"
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
+rcgen = { version = "0.14", default-features = false, features = ["ring", "pem"] }
+sha2 = "0.11"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+block2 = "0.6"
+objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSObject", "NSString", "NSURLAuthenticationChallenge", "NSURLProtectionSpace", "NSURLCredential", "NSURLSession"] }
+objc2-web-kit = { version = "0.3.2", default-features = false, features = ["std", "objc2-app-kit", "block2", "WKWebView", "WKNavigationDelegate"] }
+security-framework = { version = "3", features = ["macos-12"] }
+core-foundation = "0.10"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+webkit2gtk = "2.0"

@@ -4,7 +4,7 @@
 
 mod remote;
 
-pub(super) use remote::{rdp_settings, vnc_settings};
+pub(super) use remote::{rdp_settings, vnc_settings, wake_relay};
 
 use super::{
     model::{

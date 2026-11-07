@@ -17,6 +17,9 @@
   }
 
   const { device, api, onclose, onaccepted }: Props = $props();
+  /** The longest fingerprint (32 bytes as hex pairs) and one line: each row keeps this room whatever it shows. */
+  const RESERVE_FINGERPRINT = `sha256:${Array.from({ length: 32 }, () => '00').join(':')}`;
+  const RESERVE_LINE = '0';
   let current: CertificateStep = $state.raw(READING);
   let surface: HTMLElement | undefined = $state();
   let closeButton: HTMLButtonElement | undefined = $state();
@@ -25,6 +28,8 @@
   const certificate = $derived('certificate' in current ? current.certificate : undefined);
   const notice = $derived(current.step === 'shown' || current.step === 'reading' ? current.notice : undefined);
   const problem = $derived(current.step === 'failed' ? current.problem : undefined);
+  /** Accept keeps one label, so its width does not change; reading and sending show as busy. */
+  const acceptBusy = $derived(current.step === 'reading' || current.step === 'accepting');
 
   /** Move to the step `event` leads to; undefined (and no change) when it does not apply now. */
   function apply(event: CertificateEvent): CertificateStep | undefined {
@@ -93,20 +98,36 @@
       </p>
     </div>
 
-    {#if certificate !== undefined}
-      <dl class="certificate">
-        <dt>New certificate, SHA-256 fingerprint</dt>
-        <dd class="fingerprint" data-fingerprint>{certificate.fingerprintSha256}</dd>
-        {#if certificate.subject !== null}
-          <dt>Subject</dt>
-          <dd data-subject>{certificate.subject}</dd>
+    <!-- Each row holds a hidden copy of the longest value it can show, so the buttons below do not move when the certificate arrives (MOT-007, MV-004). -->
+    <dl class="certificate" aria-busy={certificate === undefined}>
+      <dt>New certificate, SHA-256 fingerprint</dt>
+      <dd class="fingerprint">
+        <span class="reserve" aria-hidden="true" data-reserve>{RESERVE_FINGERPRINT}</span>
+        {#if certificate !== undefined}
+          <span data-fingerprint>{certificate.fingerprintSha256}</span>
+        {:else if current.step === 'reading'}
+          <span class="pending">Reading the certificate…</span>
         {/if}
-        {#if certificate.notAfter !== null}
-          <dt>Valid until</dt>
-          <dd><time datetime={certificate.notAfter} data-not-after>{certificate.notAfter}</time></dd>
+      </dd>
+      <dt>Subject</dt>
+      <dd>
+        <span class="reserve" aria-hidden="true" data-reserve>{RESERVE_LINE}</span>
+        {#if certificate?.subject === null}
+          <span>Not given</span>
+        {:else if certificate !== undefined}
+          <span data-subject>{certificate.subject}</span>
         {/if}
-      </dl>
-    {/if}
+      </dd>
+      <dt>Valid until</dt>
+      <dd>
+        <span class="reserve" aria-hidden="true" data-reserve>{RESERVE_LINE}</span>
+        {#if certificate?.notAfter === null}
+          <span>Not given</span>
+        {:else if certificate !== undefined}
+          <span><time datetime={certificate.notAfter} data-not-after>{certificate.notAfter}</time></span>
+        {/if}
+      </dd>
+    </dl>
     {#if current.step === 'accepted'}
       <p role="status">The new certificate is accepted. Reconnecting…</p>
     {/if}
@@ -121,14 +142,17 @@
       <button type="button" bind:this={closeButton} onclick={close} {@attach press()}>
         {current.step === 'accepted' ? 'Close' : 'Cancel'}
       </button>
-      {#if current.step === 'reading'}
-        <button type="button" disabled>Reading the certificate…</button>
-      {:else if current.step === 'failed'}
+      {#if current.step === 'failed'}
         <button type="button" onclick={retry} {@attach press()}>Read again</button>
-      {:else if current.step === 'shown'}
-        <button type="button" class="warning" onclick={accept} {@attach press()}>Accept new certificate</button>
-      {:else if current.step === 'accepting'}
-        <button type="button" disabled>Accepting…</button>
+      {:else if current.step !== 'accepted'}
+        <button
+          type="button"
+          class="warning"
+          disabled={current.step !== 'shown'}
+          aria-busy={acceptBusy}
+          onclick={accept}
+          {@attach press()}>Accept new certificate</button
+        >
       {/if}
     </div>
   </div>
@@ -205,9 +229,25 @@
     font-size: var(--text-sm);
   }
 
+  /* The reserve and the value share one cell: the row is as tall as the taller of the two. */
   dd {
+    display: grid;
     margin: var(--space-1) 0 var(--space-2);
     overflow-wrap: anywhere;
+  }
+
+  dd > * {
+    grid-area: 1 / 1;
+  }
+
+  /* Takes its room, unseen and unread. */
+  .reserve {
+    visibility: hidden;
+  }
+
+  .pending {
+    font-family: var(--font-ui);
+    color: var(--text-muted);
   }
 
   .fingerprint {
