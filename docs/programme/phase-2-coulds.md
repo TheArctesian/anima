@@ -137,3 +137,28 @@ These items are not blocking. The programme orchestrator collects them here and 
 - H-2: show `Session.clientAddr` in the Sessions tab (`DeviceSessions`; D-10, RA-034).
 - One shared `endTransitionsAtOnce` fixture under `lib/motion/`.
 - `routes/devices/[id]/` is at the 12-file limit. The next file there goes into a subfolder.
+
+## WP-29 (hub check types)
+
+- Operator decision (should): the sealed SNMP secrets are bound to the check, the version and the user name, but not to the device host. Anyone who can write to the database and changes `devices.host` gets the secrets sent to the new host. D-5 accepted this risk. Binding the host fixes it, but then every operator host edit needs the secrets entered again.
+- The client SNMP editor (WP-25) does not check three hub limits: a v3 password of at least 8 characters, a user name of at most 32 bytes, and an OID of at most 128 arcs (WP-29 H-1).
+- "SSH off" and "no credential" record Down. Unknown would be truer.
+- The link error is a free-form string, not a typed reason.
+- The scheduler's catch-all match arm could list each check type.
+- The two seal-and-open files repeat each other.
+- Some hash temporaries are not wiped, and a malformed SNMP datagram ends the attempt instead of being dropped.
+- There is no audit test for setting only a v2c community.
+- Several checks files are near the 300-line limit.
+- Live: Docker and systemd need a real SSH device; SNMP v3 needs a real SHA-256 and AES agent.
+
+## WP-26 (client device list and header)
+
+- Should (WEB-010): an open web tab keeps the device status from when it opened, so a device that goes Down mid-tab does not show the Down page.
+- WP-34: button borders are 1.36:1 against the card. Check them against the spec's contrast rule for UI components.
+- At a 1280 px window the device table is 1506 px wide, so the Connect column is off-screen until you scroll.
+- There is no Wake button in the table row or the header.
+- `DeviceActions` restyles `WakeButton` internals through `:global(.status)`.
+- The warning wording exists twice.
+- The DEV-001 200-card test bound is 60 s under load.
+- A 1024 px window gets compact header rows.
+- `lib/sessions/web/open/` sits inside WP-31's folder.
