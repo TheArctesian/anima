@@ -13,7 +13,8 @@ use tracing::{Event, Subscriber, subscriber::set_default};
 use tracing_subscriber::{Layer, layer::Context, layer::SubscriberExt as _, registry::Registry};
 
 use super::harness::{
-    TestSchema, beat, create, data_with, database_now, input, record, schema_at, signed_in,
+    TestSchema, beat, create, data_with, database_now, input, record, schema_at, schema_batched_at,
+    signed_in,
 };
 
 /// Counts the statements sqlx runs on this thread.
@@ -72,7 +73,7 @@ async fn api_005_status_last_heartbeat_and_uptime_cost_a_bounded_number_of_state
     pool: PgPool,
 ) {
     let at = database_now(&pool).await;
-    let schema = schema_at(&pool, at).0;
+    let schema = schema_batched_at(&pool, at);
     let mut groups = Vec::new();
     for (device_index, device) in DEVICES.iter().enumerate() {
         let mut children = Vec::new();
@@ -134,7 +135,7 @@ async fn api_005_heartbeat_pages_of_many_checks_on_many_devices_take_a_bounded_n
     pool: PgPool,
 ) {
     let at = database_now(&pool).await;
-    let schema = schema_at(&pool, at).0;
+    let schema = schema_batched_at(&pool, at);
     let devices: Vec<String> =
         sqlx::query_scalar("SELECT id::text FROM devices.devices ORDER BY id")
             .fetch_all(&pool)
