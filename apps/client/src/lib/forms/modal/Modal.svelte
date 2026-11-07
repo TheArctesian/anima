@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import Icon from '$lib/icons/Icon.svelte';
   import { coverWhile } from '$lib/overlay/overlay.svelte';
   import { fade, modal } from '$lib/motion/roles/transitions';
   import { offerFooter } from './footer';
@@ -16,10 +17,18 @@
      * sections open and close: the surface's edge never moves and the body scrolls inside it.
      */
     size?: 'content' | 'form';
+    /** A warning the operator must read: the surface is an `alertdialog` with a warning edge and icon. */
+    warning?: boolean;
+    /** The id of the element that describes the dialog, for assistive technology. */
+    describedBy?: string;
+    /** False when a click on the scrim must not close the dialog; Escape still calls `onClose`. */
+    closeOnScrim?: boolean;
+    /** Where focus goes when the dialog closes; the opener when absent or when it gives no element. */
+    returnTo?: () => HTMLElement | undefined;
     children: Snippet;
   }
 
-  const { open, title, onClose, size = 'content', children }: Props = $props();
+  const { open, title, onClose, size = 'content', warning = false, describedBy, closeOnScrim = true, returnTo, children }: Props = $props();
   const titleId = $props.id();
   coverWhile(() => open);
 
@@ -46,7 +55,7 @@
     if (!open) return;
     const opener = takeOpener(document.activeElement);
     return () => {
-      opener?.focus();
+      (returnTo?.() ?? opener)?.focus();
     };
   });
 
@@ -88,15 +97,17 @@
       class="frame"
       role="presentation"
       onpointerdown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (closeOnScrim && event.target === event.currentTarget) onClose();
       }}
     >
       <div
         class="surface"
         class:form={size === 'form'}
-        role="dialog"
+        class:warning
+        role={warning ? 'alertdialog' : 'dialog'}
         aria-modal="true"
         aria-labelledby={titleId}
+        aria-describedby={describedBy}
         tabindex="-1"
         transition:modal
         {@attach enter}
@@ -104,7 +115,7 @@
           keydown(event, event.currentTarget);
         }}
       >
-        <h2 id={titleId}>{title}</h2>
+        <h2 id={titleId}>{#if warning}<Icon name="nf-md-alert" />{/if}{title}</h2>
         <div class="body">
           {@render children()}
         </div>
@@ -158,6 +169,10 @@
     color: var(--text);
   }
 
+  .warning {
+    border-block-start: var(--border-focus) solid var(--status-warning);
+  }
+
   .form {
     block-size: min(100%, calc(var(--space-16) * 12));
   }
@@ -195,9 +210,16 @@
   }
 
   h2 {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
     margin: 0;
     font-size: var(--text-lg);
     font-weight: var(--weight-bold);
     line-height: var(--leading-tight);
+  }
+
+  h2 :global(.icon) {
+    color: var(--status-warning);
   }
 </style>

@@ -130,7 +130,7 @@
   /* The min–max band sits faintly behind its line. */
   polygon {
     fill: var(--series);
-    fill-opacity: 0.2;
+    fill-opacity: var(--opacity-band);
     stroke: none;
   }
 </style>

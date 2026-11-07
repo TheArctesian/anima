@@ -1,9 +1,7 @@
 <script lang="ts">
-  import Icon from '$lib/icons/Icon.svelte';
+  import Modal from '$lib/forms/modal/Modal.svelte';
   import { press } from '$lib/motion/roles/press';
-  import { fade, modal } from '$lib/motion/roles/transitions';
   import type { SessionsApi } from '../../api';
-  import { trapFocus } from './focus';
   import { WARNED, transition, type HostKeyEvent, type HostKeyStep } from './hostkey';
 
   interface Props {
@@ -17,7 +15,7 @@
 
   const { device, api, onclose, onreconnect }: Props = $props();
   let current: HostKeyStep = $state.raw(WARNED);
-  let surface: HTMLElement | undefined = $state();
+  let content: HTMLElement | undefined = $state();
   let closeButton: HTMLButtonElement | undefined = $state();
   const key = $derived('key' in current ? current.key : undefined);
   const problem = $derived(current.step === 'warned' ? current.problem : undefined);
@@ -46,24 +44,13 @@
   // "Close" is the default; when the focused button goes away with a step change, focus returns to it.
   $effect(() => {
     void current.step;
-    if (surface !== undefined && !surface.contains(document.activeElement)) closeButton?.focus();
+    if (content !== undefined && !content.contains(document.activeElement)) closeButton?.focus();
   });
 </script>
 
-<div class="layer">
-  <div class="scrim" transition:fade><div class="shade"></div></div>
-  <div
-    class="surface"
-    role="alertdialog"
-    aria-modal="true"
-    aria-labelledby="host-key-title"
-    aria-describedby="host-key-why"
-    bind:this={surface}
-    transition:modal
-    {@attach trapFocus(onclose)}
-  >
-    <h2 id="host-key-title"><Icon name="nf-md-alert" /> The host key of {device.name} has changed</h2>
-    <div id="host-key-why">
+<Modal open title="The host key of {device.name} has changed" warning describedBy="host-key-why" closeOnScrim={false} onClose={onclose}>
+  <div class="content" bind:this={content}>
+    <div id="host-key-why" class="why">
       <p>
         {device.name} answered with a different SSH host key from the one Anima accepted, so Anima did not connect.
       </p>
@@ -109,73 +96,25 @@
       {/if}
     </div>
   </div>
-</div>
+</Modal>
 
 <style>
-  /* Anchored at the top, so the surface grows downward when the key appears instead of re-centring (MV-004). */
-  .layer {
-    position: fixed;
-    inset: 0;
+  /* The dialog's body spaces its children; the wrapper adds no box of its own. */
+  .content {
+    display: contents;
+  }
+
+  .why {
     display: grid;
-    place-items: start center;
-    z-index: var(--layer-modal);
-  }
-
-  .scrim,
-  .surface {
-    grid-area: 1 / 1;
-  }
-
-  .scrim {
-    place-self: stretch;
-  }
-
-  .surface {
-    margin-block-start: var(--space-16);
-    max-block-size: calc(100vh - var(--space-16) * 2);
-    overflow-y: auto;
-  }
-
-  /* The scrim colour sits on the child, so the scrim's own fade runs 0 to 1. */
-  .shade {
-    block-size: 100%;
-    background: var(--scrim);
-  }
-
-  .surface {
-    position: relative;
-    box-sizing: border-box;
-    inline-size: min(100% - var(--space-8), calc(var(--space-16) * 9));
-    padding: var(--space-6);
-    border: var(--border-thin) solid var(--border);
-    border-top: var(--border-focus) solid var(--status-warning);
-    border-radius: var(--radius-lg);
-    background: var(--surface);
-    box-shadow: var(--elevation-3);
-    color: var(--text);
-    font-size: var(--text-md);
-    line-height: var(--leading-normal);
-  }
-
-  h2 {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    margin: 0 0 var(--space-3);
-    font-size: var(--text-lg);
-    line-height: var(--leading-tight);
-  }
-
-  h2 :global(.icon) {
-    color: var(--status-warning);
+    gap: var(--space-3);
   }
 
   p {
-    margin: 0 0 var(--space-3);
+    margin: 0;
   }
 
   .key {
-    margin: 0 0 var(--space-3);
+    margin: 0;
     padding: var(--space-3);
     border-radius: var(--radius-md);
     background: var(--status-warning-tint);

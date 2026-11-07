@@ -1,0 +1,15 @@
+{
+  "tone": {
+    "opacity": {
+      "$type": "number",
+      "disabled": {
+        "$value": 0.5,
+        "$description": "A control that cannot be used now"
+      },
+      "band": {
+        "$value": 0.2,
+        "$description": "A chart's min-max band behind its line"
+      }
+    }
+  }
+}

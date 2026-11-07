@@ -1,8 +1,7 @@
 <script lang="ts">
+  import Modal from '$lib/forms/modal/Modal.svelte';
   import { press } from '$lib/motion/roles/press';
-  import { fade, modal } from '$lib/motion/roles/transitions';
   import type { RemoteProtocol, SessionsApi } from '../../api';
-  import { trapFocus } from '../hostkey/focus';
   import type { ArgumentClient } from '../../tunnel/argv';
   import { sendArguments, type Answers } from './arguments';
   import type { CredentialField, CredentialName } from './fields';
@@ -29,7 +28,6 @@
   let values: Record<CredentialName, string> = $state({ ...EMPTY });
   let save = $state(false);
   let step: 'asking' | 'saving' | 'sent' | 'unsaved' = $state('asking');
-  let surface: HTMLElement | undefined = $state();
   let closeButton: HTMLButtonElement | undefined = $state();
   let statusLine: HTMLElement | undefined = $state();
   const offersSave = $derived(fields.some((field) => field.secret));
@@ -62,24 +60,13 @@
 
   // After Submit the form is disabled, so focus moves to what the prompt says now, never to the page behind it.
   $effect(() => {
-    if (step === 'asking' || surface === undefined) return;
+    if (step === 'asking') return;
     (step === 'unsaved' ? closeButton : statusLine)?.focus();
   });
 </script>
 
-<div class="layer">
-  <div class="scrim" transition:fade><div class="shade"></div></div>
-  <div
-    class="surface"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="credential-title"
-    aria-describedby="credential-why"
-    bind:this={surface}
-    transition:modal
-    {@attach trapFocus(escape)}
-  >
-    <h2 id="credential-title">Sign in to {device.name}</h2>
+<Modal open title="Sign in to {device.name}" describedBy="credential-why" closeOnScrim={false} onClose={escape}>
+  <div class="content">
     <p id="credential-why">
       {device.name} asks for its {protocol} sign-in. Anima sends what you type to this session only; the hub keeps the
       password only when you choose "Save password".
@@ -132,56 +119,16 @@
       </div>
     {/if}
   </div>
-</div>
+</Modal>
 
 <style>
-  .layer {
-    position: fixed;
-    inset: 0;
-    display: grid;
-    place-items: start center;
-    z-index: var(--layer-modal);
-  }
-
-  .scrim,
-  .surface {
-    grid-area: 1 / 1;
-  }
-
-  .scrim {
-    place-self: stretch;
-  }
-
-  .shade {
-    block-size: 100%;
-    background: var(--scrim);
-  }
-
-  .surface {
-    position: relative;
-    box-sizing: border-box;
-    inline-size: min(100% - var(--space-8), calc(var(--space-16) * 7));
-    max-block-size: calc(100vh - var(--space-16) * 2);
-    margin-block-start: var(--space-16);
-    overflow-y: auto;
-    padding: var(--space-6);
-    border: var(--border-thin) solid var(--border);
-    border-radius: var(--radius-lg);
-    background: var(--surface);
-    box-shadow: var(--elevation-3);
-    color: var(--text);
-    font-size: var(--text-md);
-    line-height: var(--leading-normal);
-  }
-
-  h2 {
-    margin: 0 0 var(--space-3);
-    font-size: var(--text-lg);
-    line-height: var(--leading-tight);
+  /* The dialog's body spaces its children; the wrapper adds no box of its own. */
+  .content {
+    display: contents;
   }
 
   p {
-    margin: 0 0 var(--space-3);
+    margin: 0;
   }
 
   fieldset {
@@ -193,7 +140,7 @@
   }
 
   .status {
-    margin: var(--space-3) 0 0;
+    margin: 0;
   }
 
   .status:focus-visible {
