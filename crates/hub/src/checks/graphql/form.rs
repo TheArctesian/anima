@@ -2,19 +2,21 @@
 //! Pure: the new push token comes in as a parameter. Errors name the field, never its value
 //! (LOG-007).
 
+mod http;
+
 use std::collections::HashSet;
 
 use async_graphql::ID;
 
 use super::input::{
-    AuthShape, ConfigShape, CreateShape, DnsShape, DockerShape, HttpShape, IcmpShape, SystemdShape,
-    TailscalePingShape, TcpShape, TlsShape, UpdateShape,
+    ConfigShape, CreateShape, DnsShape, DockerShape, IcmpShape, SystemdShape, TailscalePingShape,
+    TcpShape, TlsShape, UpdateShape,
 };
 use super::settings::RawSettings;
 use crate::{
     checks::{
         CheckChange, CheckSettings, Definition, FieldError, NewCheck, PushToken,
-        config::{CheckConfig, HttpCredentials, HttpInput, StatusRange, is_secret_header},
+        config::CheckConfig,
     },
     ids::{CheckId, DeviceId},
 };
@@ -58,60 +60,6 @@ fn id<T: std::str::FromStr>(field: &'static str, id: &ID) -> Result<T, FieldErro
 /// Records the error and gives `None`, so one pass reports every field in error.
 pub(super) fn keep<T>(result: Result<T, FieldError>, errors: &mut Vec<FieldError>) -> Option<T> {
     result.map_err(|error| errors.push(error)).ok()
-}
-
-fn http(shape: HttpShape) -> Result<ConfigForm, FieldError> {
-    let mut sealed = false;
-    let mut headers = Vec::new();
-    for header in shape.headers.unwrap_or_default() {
-        let header = header.0;
-        sealed |= is_secret_header(&header.name) && !header.value.0.expose().is_empty();
-        headers.push((header.name, header.value.0));
-    }
-    let credentials = match shape.auth.map(|auth| auth.0) {
-        None => HttpCredentials::None,
-        Some(AuthShape::Basic(basic)) => {
-            let basic = basic.0;
-            sealed |= !basic.password.0.expose().is_empty();
-            HttpCredentials::Basic {
-                username: basic.username,
-                password: basic.password.0,
-            }
-        }
-        Some(AuthShape::BearerToken(token)) => {
-            sealed |= !token.0.expose().is_empty();
-            HttpCredentials::Bearer(token.0)
-        }
-    };
-    let ranges = shape.accepted_status.unwrap_or_default();
-    let accepted_status = ranges
-        .into_iter()
-        .map(|range| {
-            Ok(StatusRange {
-                from: number("acceptedStatus", range.from)?,
-                to: number("acceptedStatus", range.to)?,
-            })
-        })
-        .collect::<Result<_, FieldError>>()?;
-    let input = HttpInput {
-        url: shape.url,
-        method: shape.method.unwrap_or_default().into(),
-        headers,
-        body: shape.body,
-        max_redirects: or_default("maxRedirects", shape.max_redirects, 10)?,
-        accepted_status,
-        keyword: shape.keyword,
-        json_query: shape.json_query,
-        json_expected: shape.json_expected,
-        credentials,
-        verify_tls: shape.verify_tls.unwrap_or(true),
-        timeout_ms: or_default("timeoutMs", shape.timeout_ms, 10_000)?,
-    };
-    Ok(ConfigForm {
-        definition: Definition::Http(input),
-        children: None,
-        sealed,
-    })
 }
 
 fn icmp(shape: &IcmpShape) -> Result<ConfigForm, FieldError> {
@@ -194,7 +142,7 @@ pub(super) fn config(shape: ConfigShape, token: PushToken) -> Result<ConfigForm,
         ConfigShape::Icmp(shape) => icmp(&shape),
         ConfigShape::Tcp(shape) => tcp(&shape),
         ConfigShape::Tls(shape) => tls(shape),
-        ConfigShape::Http(shape) => http(shape.0),
+        ConfigShape::Http(shape) => http::http(shape.0),
         ConfigShape::Dns(shape) => Ok(dns(shape)),
         ConfigShape::Docker(shape) => docker(shape),
         ConfigShape::Systemd(shape) => systemd(shape),
