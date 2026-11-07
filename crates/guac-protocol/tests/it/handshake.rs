@@ -66,6 +66,14 @@ fn gw_010_reply_sends_display_media_timezone_and_name_before_connect() {
 }
 
 #[test]
+fn gw_010_audio_lists_the_mimetypes_the_hub_gives() {
+    let mut with_sound = params(DISPLAY, "UTC", ArgValues::new());
+    with_sound.audio = &["audio/L8", "audio/L16"];
+    let send = reply(decode_args(ARGS_1_6_0), with_sound);
+    assert_eq!(encode(&send[1]), "5.audio,8.audio/L8,9.audio/L16;");
+}
+
+#[test]
 fn gw_010_connect_has_version_then_one_value_per_name_in_order() {
     for (args, _) in all_fixtures() {
         let send = k4_reply(&args);

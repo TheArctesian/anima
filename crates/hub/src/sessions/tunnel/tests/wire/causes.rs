@@ -88,7 +88,7 @@ async fn k4_5_a_reset_guacd_connection_is_1011_gateway_error(pool: PgPool) {
     ended_once(&ended, "gateway_error", "warning", LOOPBACK);
     assert_eq!(
         ended.events[0].3,
-        "The connection to the gateway failed, so the hub closed the SSH session."
+        "The connection to the gateway failed, so the hub closed the session."
     );
 }
 
@@ -110,7 +110,7 @@ async fn k4_5_a_guacd_that_stops_reading_is_gateway_error(pool: PgPool) {
     ended_once(&ended, "gateway_error", "warning", LOOPBACK);
     assert_eq!(
         ended.events[0].3,
-        "The gateway stopped reading what the hub sent, so the hub closed the SSH session."
+        "The gateway stopped reading what the hub sent, so the hub closed the session."
     );
 }
 

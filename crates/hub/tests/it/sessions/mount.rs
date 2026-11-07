@@ -1,6 +1,7 @@
 //! `/terminal` as `main.rs` mounts it: logged and behind the permitted-networks layer, so a
 //! peer outside every permitted network never reaches the ticket, even with a valid one from
-//! the address it was issued to (K3, K4 Section 8.1, NET-002, R-051).
+//! the address it was issued to (K3, K4 Section 8.1, NET-002, R-051); and the session tunnels
+//! `main.rs` merges serve both `/terminal` and `/tunnel` (K4 Section 2).
 
 use std::{net::SocketAddr, sync::Arc};
 
@@ -8,7 +9,7 @@ use anima_hub::{
     access,
     clock::{Clock, FixedClock},
     events::Bus,
-    logged,
+    logged, session_tunnels,
     sessions::{Live, terminal_router},
 };
 use axum::{
@@ -53,7 +54,12 @@ async fn mounted(pool: &PgPool, live: &Live, permitted: &str) -> Router {
 
 /// Opens `/terminal?token=<token>` from `peer`; returns the status and the body text.
 async fn open_from(app: &Router, peer: &str, token: &str) -> (StatusCode, String) {
-    let mut request = Request::get(format!("/terminal?token={token}"))
+    open_at(app, "/terminal", peer, token).await
+}
+
+/// Opens `<path>?token=<token>` from `peer`; returns the status and the body text.
+async fn open_at(app: &Router, path: &str, peer: &str, token: &str) -> (StatusCode, String) {
+    let mut request = Request::get(format!("{path}?token={token}"))
         .body(Body::empty())
         .unwrap();
     let peer: SocketAddr = format!("{peer}:50000").parse().unwrap();
@@ -102,4 +108,19 @@ async fn net_002_a_permitted_peer_reaches_the_terminal_route(pool: PgPool) {
 
     // The route's own refusal of an unknown ticket: 403 with no body (K4 Section 8.1).
     assert_eq!((status, body.as_str()), (StatusCode::FORBIDDEN, ""));
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn k4_2_the_session_tunnels_serve_the_terminal_and_the_guacamole_tunnel(pool: PgPool) {
+    let clock: Arc<dyn Clock> = Arc::new(FixedClock(now()));
+    let app = session_tunnels(&crate::hub::dependencies(&pool, clock, Bus::new(16)));
+    for path in ["/terminal", "/tunnel"] {
+        let (status, body) = open_at(&app, path, CLIENT_ADDR, "unknown").await;
+        // Each route's own refusal of an unknown ticket, not a missing route's 404.
+        assert_eq!(
+            (status, body.as_str()),
+            (StatusCode::FORBIDDEN, ""),
+            "{path}"
+        );
+    }
 }

@@ -56,7 +56,7 @@ async fn mv_003_guacd_dropping_mid_handshake_is_503_and_ends_once(pool: PgPool) 
     ended_once(&ended, "gateway_error", "warning", LOOPBACK);
     assert_eq!(
         ended.events[0].3,
-        "The gateway did not open the SSH session."
+        "The gateway did not open the RDP session."
     );
 }
 

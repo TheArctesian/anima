@@ -1,5 +1,5 @@
-//! An in-process guacd: a TCP listener that speaks the guacd 1.5.5 / 1.6.0 handshake from the
-//! WP-08 `args` fixtures, reports what the hub sent, then relays on the test's command.
+//! An in-process guacd: a TCP listener that speaks the guacd 1.6.0 RDP or VNC handshake from
+//! the recorded `args` fixtures, reports what the hub sent, then relays on the test's command.
 
 use std::{collections::HashMap, future};
 
@@ -10,11 +10,9 @@ use tokio::{
     sync::{mpsc, oneshot},
 };
 
-/// guacd's SSH `args` as built from guacamole-server 1.5.5 and 1.6.0 (WP-08 fixtures).
-pub(super) const ARGS_1_5_5: &[u8] =
-    include_bytes!("../../../../../../guac-protocol/tests/it/fixtures/guacd-1.5.5-ssh-args.guac");
-pub(super) const ARGS_1_6_0: &[u8] =
-    include_bytes!("../../../../../../guac-protocol/tests/it/fixtures/guacd-1.6.0-ssh-args.guac");
+/// guacd 1.6.0's `args` for `rdp` and `vnc`, recorded from `guacamole/guacd:1.6.0`.
+pub(super) const RDP_ARGS: &[u8] = include_bytes!("../fixtures/guacd-1.6.0-rdp-args.guac");
+pub(super) const VNC_ARGS: &[u8] = include_bytes!("../fixtures/guacd-1.6.0-vnc-args.guac");
 
 /// The connection ID the fake guacd gives in `ready`: it must never leave the hub (GW-014).
 pub(super) const CONNECTION_ID: &str = "$5e0c7a1d-connection-id-never-sent";
@@ -46,11 +44,11 @@ pub(super) enum Act {
     Stall,
 }
 
-/// A running fake guacd: its address, whether `select` came, the handshake the hub sent,
+/// A running fake guacd: its address, the protocol `select` named, the handshake the hub sent,
 /// the instructions the hub relayed after `ready`, and the way to make it act.
 pub(super) struct FakeGuacd {
     pub(super) address: String,
-    pub(super) selected: oneshot::Receiver<()>,
+    pub(super) selected: oneshot::Receiver<String>,
     pub(super) handshake: oneshot::Receiver<Vec<Instruction>>,
     pub(super) from_hub: mpsc::UnboundedReceiver<Instruction>,
     pub(super) act: mpsc::UnboundedSender<Act>,
@@ -71,9 +69,10 @@ pub(super) async fn fake_guacd(script: Script) -> FakeGuacd {
             decoder: Decoder::new(),
             queue: Vec::new(),
         };
-        let select = peer.next().await.expect("select");
-        assert_eq!(select, Instruction::new("select", ["ssh"]));
-        let _ = selected_tx.send(());
+        let mut select = peer.next().await.expect("select");
+        assert_eq!(select.opcode, "select");
+        assert_eq!(select.args.len(), 1, "one protocol");
+        let _ = selected_tx.send(select.args.remove(0));
         match script {
             Script::Serve { args, with_ready } => {
                 peer.stream.write_all(args).await.unwrap();

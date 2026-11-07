@@ -12,10 +12,10 @@ pub(super) const GATEWAY_SILENCE: Duration = Duration::from_secs(5);
 
 /// The event message when the connection to guacd fails.
 pub(super) const GATEWAY_LOST: &str =
-    "The connection to the gateway failed, so the hub closed the SSH session.";
+    "The connection to the gateway failed, so the hub closed the session.";
 /// The event message when a write to guacd stalls.
 const GATEWAY_STOPPED_READING: &str =
-    "The gateway stopped reading what the hub sent, so the hub closed the SSH session.";
+    "The gateway stopped reading what the hub sent, so the hub closed the session.";
 
 /// What one write to guacd means for the session: nothing when it went through, else a
 /// gateway error. `None` is a write that stalled past its wait.

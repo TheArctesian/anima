@@ -186,7 +186,7 @@ fn reply_to_args(
     }
     Ok(vec![
         size(params.display)?,
-        sendable("audio", Vec::<String>::new())?,
+        sendable("audio", params.audio.iter().copied())?,
         sendable("video", Vec::<String>::new())?,
         sendable("image", IMAGE_TYPES)?,
         sendable("timezone", [params.timezone.as_str()])?,
