@@ -21,14 +21,15 @@ const SETTINGS_NOT_OPENED = 'System Settings did not open.';
  */
 export class SetupFlow {
   readonly #calls: ScreenSharingCalls;
-  readonly #show: (state: SetupState) => void;
+  readonly #notify: (state: SetupState) => void;
   readonly #ready: (device: DeviceDetail) => void;
   #run = 0;
+  #kind: SetupState['kind'] = 'idle';
   #stopTimer: (() => void) | undefined;
 
   constructor(calls: ScreenSharingCalls, show: (state: SetupState) => void, ready: (device: DeviceDetail) => void) {
     this.#calls = calls;
-    this.#show = show;
+    this.#notify = show;
     this.#ready = ready;
   }
 
@@ -62,7 +63,8 @@ export class SetupFlow {
     } catch (reason) {
       problem = reason instanceof SystemSettingsError ? reason.message : SETTINGS_NOT_OPENED;
     }
-    if (run === this.#run) this.#show({ kind: 'waiting', problem });
+    // A retest may have moved the flow on while System Settings was opening; the late answer must not undo that.
+    if (run === this.#run && this.#kind === 'waiting') this.#show({ kind: 'waiting', problem });
   }
 
   /** Stops the repeats and drops any answer still on its way. */
@@ -74,6 +76,11 @@ export class SetupFlow {
   /** Stops without showing anything: the owner is going away. */
   dispose(): void {
     this.#begin();
+  }
+
+  #show(state: SetupState): void {
+    this.#kind = state.kind;
+    this.#notify(state);
   }
 
   #begin(): number {

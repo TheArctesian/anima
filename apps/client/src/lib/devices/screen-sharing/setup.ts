@@ -59,6 +59,20 @@ export type SetupState =
   | { readonly kind: 'starting' }
   | { readonly kind: 'failed'; readonly message: string };
 
+/** The sentence a screen reader hears for each stage; failures have their own alert, so they add nothing here. */
+export function liveText(state: SetupState): string {
+  switch (state.kind) {
+    case 'testing':
+      return 'Checking port 5900.';
+    case 'waiting':
+      return `${SHARING_PROMPT} in System Settings. Checking again every few seconds.`;
+    case 'starting':
+      return 'Turning on screen sharing.';
+    default:
+      return '';
+  }
+}
+
 /** Whether the flow is working, so the button must not start it again. */
 export function isBusy(state: SetupState): boolean {
   return state.kind !== 'idle' && state.kind !== 'failed';

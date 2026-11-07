@@ -5,6 +5,8 @@ export function placeNear(anchor: () => HTMLElement | undefined) {
   return (panel: HTMLElement): void => {
     const button = anchor();
     if (button === undefined) return;
+    // Measured from the start edge, so an earlier position cannot squeeze the panel narrower than its text needs.
+    panel.style.insetInlineStart = '0px';
     const style = getComputedStyle(panel);
     const margin = Number.parseFloat(style.paddingInlineStart) || 0;
     // The panel is fixed, so its end margin moves nothing: it only carries the gap to the button.

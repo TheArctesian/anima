@@ -113,6 +113,21 @@ describe('SetupFlow cancelling (R-079)', () => {
     expect(t.calls.update).not.toHaveBeenCalled();
   });
 
+  it('R-079: a System Settings answer that comes after a retest does not turn the state back to waiting', async () => {
+    const t = run();
+    let opened: () => void = () => undefined;
+    t.calls.openSharing.mockReturnValue(new Promise<void>((resolve) => { opened = resolve; }));
+    const started = t.flow.start(STUDIO);
+    await settle();
+    t.calls.test.mockResolvedValue(answer(true));
+    t.clock.tick();
+    await settle();
+    expect(t.ready).toHaveBeenCalledTimes(1);
+    opened();
+    await started;
+    expect(t.last()).toEqual({ kind: 'idle' });
+  });
+
   it('R-079: disposing the flow, as unmount does, stops the repeats', async () => {
     const t = run();
     await t.flow.start(STUDIO);

@@ -1,31 +1,21 @@
 // @vitest-environment jsdom
 import { flushSync, mount, unmount } from 'svelte';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { runs } from '$lib/motion/engine.fixture';
+import { afterEach, expect, it, vi } from 'vitest';
 import { SystemSettingsError } from '$lib/desktop/systemSettings';
 import type { CardDevice } from '$lib/devices/api';
 import DeviceCard from '../card/DeviceCard.svelte';
+import DeviceTable from '../card/DeviceTable.svelte';
 import { device as cardDevice } from '../screen/screen.fixture.svelte';
 import { endTransitionsAtOnce } from '../transitions.fixture';
 import { answer, fakeCalls, settle, UPDATED } from './calls.fixture';
 import ScreenSharingButton from './ScreenSharingButton.svelte';
 import { NO_ANSWER_TEXT, type CardScreenSharing } from './setup';
 
-vi.mock('motion', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('motion')>()),
-  animate: (await import('$lib/motion/engine.fixture')).fakeRun,
-}));
-const preference = vi.hoisted(() => ({ reduced: false }));
-vi.mock('$lib/motion/preference', () => ({ motionPreference: () => preference }));
+vi.mock('$lib/motion/preference', () => ({ motionPreference: () => ({ reduced: false }) }));
 
 endTransitionsAtOnce();
 
 let app: ReturnType<typeof mount> | undefined;
-
-beforeEach(() => {
-  runs.length = 0;
-  preference.reduced = false;
-});
 
 afterEach(async () => {
   if (app) await unmount(app);
@@ -71,9 +61,11 @@ function mountButton(compact = false) {
   return { ...calls, onReady };
 }
 
-it('R-079: a card shows "Screen sharing" with the accessible name "Set up screen sharing for <name>"', () => {
+it('R-079: a card shows "VNC", the width of the VNC button, with the name "Set up screen sharing for <name>" and a title', () => {
   showCard({}, { calls: fakeCalls().calls, onReady: vi.fn() });
-  const found = button('Screen sharing');
+  const found = button('VNC');
+  expect(found?.title).toBe('Set up screen sharing');
+  expect(found?.classList.contains('dashed')).toBe(true);
   expect(found?.getAttribute('aria-label')).toBe('Set up screen sharing for Studio');
   expect(found?.tabIndex).toBe(0);
 });
@@ -92,10 +84,18 @@ it('R-079: a card shows no button while no route gives the calls', () => {
   expect(button(/screen sharing/i)).toBeUndefined();
 });
 
-it('R-079: the full text shows where there is room', () => {
+it('R-079: the header form holds the full text and "VNC", and the container query shows one of them', () => {
   mountButton();
-  expect(button('Set up screen sharing')).toBeDefined();
+  expect(document.querySelector('.full')?.textContent).toBe('Set up screen sharing');
+  expect(document.querySelector('.short')?.textContent).toBe('VNC');
 });
+
+it('R-079: the compact form holds only "VNC"', () => {
+  mountButton(true);
+  expect(document.querySelector('.full')).toBeNull();
+});
+
+const status = () => document.querySelector('[role="status"]')?.textContent;
 
 it('R-079: a device that answers hands the updated device over and the status line clears', async () => {
   const t = mountButton();
@@ -103,19 +103,20 @@ it('R-079: a device that answers hands the updated device over and the status li
   press(button(/screen sharing/i));
   await flow();
   expect(t.onReady).toHaveBeenCalledWith(UPDATED, expect.any(HTMLButtonElement));
-  expect(document.querySelector('[role="status"]')).toBeNull();
+  expect(status()).toBe('');
 });
 
 it('R-079: this Mac not answering shows "Turn on Screen Sharing" in a status region with Cancel; Cancel stops the repeats', async () => {
   const t = mountButton();
   press(button(/screen sharing/i));
   await flow();
-  expect(document.querySelector('[role="status"]')?.textContent).toContain('Turn on Screen Sharing');
+  expect(status()).toContain('Turn on Screen Sharing');
   expect(t.calls.openSharing).toHaveBeenCalledTimes(1);
   press(button('Cancel'));
   await flow();
   expect(t.clock.waiting()).toBe(0);
-  expect(document.querySelector('[role="status"]')).toBeNull();
+  expect(status()).toBe('');
+  expect(document.activeElement).toBe(button(/screen sharing/i));
 });
 
 it('R-079: unmounting while waiting stops the repeats', async () => {
@@ -160,19 +161,83 @@ it('R-079: a failed update shows its message and hands nothing over', async () =
   expect(t.onReady).not.toHaveBeenCalled();
 });
 
-it('MOT-040: while waiting, the indicator fades without reduced motion and stays still with it', async () => {
+it('NAV-005: the button stays focusable while the flow runs, so focus is not lost', async () => {
+  mountButton();
+  const target = button(/screen sharing/i);
+  target?.focus();
+  press(target);
+  await flow();
+  expect(target?.disabled).toBe(false);
+  expect(target?.getAttribute('aria-disabled')).toBe('true');
+  expect(document.activeElement).toBe(target);
+});
+
+it('R-079: Escape inside the button cancels the waiting; Escape elsewhere, or already used, does not', async () => {
+  const t = mountButton();
+  press(button(/screen sharing/i));
+  await flow();
+  const outside = document.createElement('input');
+  document.body.append(outside);
+  outside.focus();
+  outside.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  expect(t.clock.waiting()).toBe(1);
+  button('Cancel')?.focus();
+  const used = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+  document.addEventListener('keydown', (event) => { event.preventDefault(); }, { once: true, capture: true });
+  document.activeElement?.dispatchEvent(used);
+  expect(t.clock.waiting()).toBe(1);
+  document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+  await flow();
+  expect(t.clock.waiting()).toBe(0);
+  expect(document.activeElement).toBe(button(/screen sharing/i));
+});
+
+it('R-079: waiting has no repeating motion', async () => {
   mountButton();
   press(button(/screen sharing/i));
   await flow();
-  expect(runs.some((run) => run.keyframes.at(-1) === 0.4)).toBe(true);
+  expect(document.querySelector('.dot')).toBeNull();
+});
+
+function showTable(over: Partial<CardDevice>, withCalls: boolean) {
+  app = mount(DeviceTable, {
+    target: document.body,
+    props: {
+      devices: [{ ...mac, ...over }],
+      beats: new Map(),
+      onConnect: vi.fn(),
+      screenSharing: withCalls ? { calls: fakeCalls().calls, onReady: vi.fn() } : undefined,
+    },
+  });
+  flushSync();
+}
+
+it('R-079: a table row of a macOS device with VNC off shows "VNC" set-up; Windows, VNC on, or no calls hide it', async () => {
+  showTable({}, true);
+  expect(button('VNC')?.getAttribute('aria-label')).toBe('Set up screen sharing for Studio');
   await unmount(app ?? {});
   document.body.replaceChildren();
-  runs.length = 0;
-  preference.reduced = true;
+  for (const [over, withCalls] of [[{ os: 'WINDOWS' as const }, true], [{ vnc: { enabled: true } }, true], [{}, false]] as const) {
+    showTable(over, withCalls);
+    expect(button(/set up screen sharing/i)).toBeUndefined();
+    await unmount(app ?? {});
+    document.body.replaceChildren();
+  }
   app = undefined;
-  mountButton();
+});
+
+it('R-079: Cancel while the update is in flight lets it finish but opens no session', async () => {
+  const t = mountButton();
+  t.calls.test.mockResolvedValue(answer(true));
+  let finish: (value: Awaited<ReturnType<typeof t.calls.update>>) => void = () => undefined;
+  t.calls.update.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+  button(/screen sharing/i)?.focus();
   press(button(/screen sharing/i));
   await flow();
-  expect(document.querySelector('.dot')).not.toBeNull();
-  expect(runs).toEqual([]);
+  // Starting has no Cancel button; Escape is the way out, and it stops the hand-over only.
+  document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+  finish({ ok: true, value: UPDATED });
+  await flow();
+  expect(t.calls.update).toHaveBeenCalledTimes(1);
+  expect(t.onReady).not.toHaveBeenCalled();
 });

@@ -324,10 +324,11 @@ it('R-079: a card of a Linux device with VNC off sets screen sharing up: the VNC
     },
   });
   await settle();
-  button('Screen sharing').click();
+  document.querySelector<HTMLButtonElement>('[aria-label="Set up screen sharing for Device a"]')?.click();
   for (let round = 0; round < 5; round += 1) await settle();
   expect(protocols).toEqual(['a:VNC']);
   expect(calls.update).toHaveBeenCalledWith('a', { vnc: { enabled: true, port: 5900, username: null } });
-  expect([...document.querySelectorAll('button')].some((node) => node.textContent.includes('Screen sharing'))).toBe(false);
-  expect(button('VNC')).toBeDefined();
+  const names = [...document.querySelectorAll('button')].map((node) => node.getAttribute('aria-label'));
+  expect(names).not.toContain('Set up screen sharing for Device a');
+  expect(names).toContain('VNC to Device a');
 });

@@ -40,7 +40,8 @@ const setUp = () =>
 it.each(['MACOS', 'LINUX'] as const)('R-079: a %s device with VNC off has the dashed "Set up screen sharing" button in the VNC slot', (os) => {
   show(device({ os }));
   const found = setUp();
-  expect(found?.textContent.replace(/\p{Co}/gu, '').trim()).toBe('Set up screen sharing');
+  expect(found?.querySelector('.full')?.textContent).toBe('Set up screen sharing');
+  expect(found?.querySelector('.short')?.textContent).toBe('VNC');
   expect(found?.classList.contains('dashed')).toBe(true);
   expect(found?.getAttribute('aria-label')).toBe('Set up screen sharing for nas');
 });
