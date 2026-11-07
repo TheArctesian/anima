@@ -153,6 +153,7 @@ Integration branch: `phase-1`. Merge to `main` only after operator checkpoint 4.
 
 - **R-070 (orchestrator, 2026-11-06; WP-27 T1; CON-001, changes K3).** The SSH link's error is re-exported from `sessions` as `LinkError`, not `Error`. A bare `Error` would clash with the sessions domain's own error type. K3 is updated to match.
 - **R-071 (orchestrator, 2026-11-06; WP-22 T4; PKG-001).** WP-22 may add one line to `schema.rs` in its own branch: the `server_certificate_loader` registration for `RdpSettings.serverCertificate`. The orchestrator checks that line at merge. This is a single exception, not a precedent. The `acceptServerCertificate` audit uses `AuditTarget::Device`, because a server certificate belongs to a device.
+- **R-072 (orchestrator, 2026-11-06; WP-28 T4; PKG-001, Section 12 limits).** `main.rs` is at its 300-line limit. Scheduled upkeep moves to a new wiring module, `crates/hub/src/upkeep.rs`, listed under `wiring` in `quality/hub-modules.json`. `spawn_upkeep` moves there unchanged, together with the metrics partition job. That module only spawns; domain logic stays in its domain. Later daily or periodic jobs go in `upkeep.rs`, not `main.rs`.
 
 ## Escalations
 
