@@ -135,6 +135,7 @@ impl Device {
     }
 
     /// The device's metric series over `range` ending now, points oldest first (MET-003).
+    /// It reads one device by design: the detail view, so it needs no loader.
     async fn metrics(&self, ctx: &Context<'_>, range: MetricRange) -> Result<Vec<MetricSeries>> {
         let now = schema_dependency::<Arc<dyn Clock>>(ctx)?.now();
         metrics::series(schema_dependency::<PgPool>(ctx)?, self.id, range, now)
