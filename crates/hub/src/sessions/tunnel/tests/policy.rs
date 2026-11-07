@@ -25,7 +25,11 @@ fn client(relay: &mut Relay, wire: &str) -> ClientStep {
 }
 
 fn forwards(relay: &mut Relay, wire: &str) {
-    assert_eq!(client(relay, wire), ClientStep::Forward(decoded(wire)), "{wire}");
+    assert_eq!(
+        client(relay, wire),
+        ClientStep::Forward(decoded(wire)),
+        "{wire}"
+    );
 }
 
 fn gateway(relay: &mut Relay, wire: &str) -> GatewayStep {
@@ -49,8 +53,16 @@ fn ra_033_paste_off_drops_the_clipboard_and_its_stream_and_the_session_stays_up(
         assert_eq!(client(&mut relay, wire), ClientStep::Drop, "{wire}");
     }
     forwards(&mut relay, "3.key,5.65307,1.1;");
-    assert_eq!(client(&mut relay, "4.blob,1.2,4.aGk=;"), CLOSE, "stream 2 ended");
-    assert_eq!(client(&mut relay, "4.blob,1.7,4.aGk=;"), CLOSE, "never opened");
+    assert_eq!(
+        client(&mut relay, "4.blob,1.2,4.aGk=;"),
+        CLOSE,
+        "stream 2 ended"
+    );
+    assert_eq!(
+        client(&mut relay, "4.blob,1.7,4.aGk=;"),
+        CLOSE,
+        "never opened"
+    );
     assert_eq!(client(&mut relay, "9.clipboard,1.2;"), CLOSE, "too short");
 }
 
@@ -58,7 +70,10 @@ fn ra_033_paste_off_drops_the_clipboard_and_its_stream_and_the_session_stays_up(
 fn ra_033_paste_off_still_lets_a_credential_stream_through() {
     let mut relay = rdp(|device| device.transfer.paste = false);
     relay.on_gateway(decoded("8.required,8.password;"));
-    assert_eq!(client(&mut relay, "9.clipboard,1.0,10.text/plain;"), ClientStep::Drop);
+    assert_eq!(
+        client(&mut relay, "9.clipboard,1.0,10.text/plain;"),
+        ClientStep::Drop
+    );
     forwards(&mut relay, "4.argv,1.0,10.text/plain,8.password;");
     forwards(&mut relay, "4.blob,1.0,4.aGk=;");
     forwards(&mut relay, "3.end,1.0;");
@@ -75,7 +90,11 @@ fn ra_033_copy_off_withholds_guacds_clipboard_stream_without_an_ack() {
         assert_eq!(gateway(&mut relay, wire), GatewayStep::Drop, "{wire}");
     }
     for wire in ["4.blob,1.5,4.aGk=;", "4.blob,1.6,4.aGk=;", "3.end,1.6;"] {
-        assert_eq!(gateway(&mut relay, wire), GatewayStep::Forward(decoded(wire)), "{wire}");
+        assert_eq!(
+            gateway(&mut relay, wire),
+            GatewayStep::Forward(decoded(wire)),
+            "{wire}"
+        );
     }
 }
 
@@ -83,10 +102,16 @@ fn ra_033_copy_off_withholds_guacds_clipboard_stream_without_an_ack() {
 fn ra_033_while_a_stream_is_withheld_a_blob_with_a_garbled_index_is_dropped() {
     let mut relay = rdp(|device| device.transfer.copy = false);
     gateway(&mut relay, "9.clipboard,1.5,10.text/plain;");
-    assert_eq!(gateway(&mut relay, "4.blob,2.5x,4.aGk=;"), GatewayStep::Drop);
+    assert_eq!(
+        gateway(&mut relay, "4.blob,2.5x,4.aGk=;"),
+        GatewayStep::Drop
+    );
     gateway(&mut relay, "3.end,1.5;");
     let wire = "4.blob,2.5x,4.aGk=;";
-    assert_eq!(gateway(&mut relay, wire), GatewayStep::Forward(decoded(wire)));
+    assert_eq!(
+        gateway(&mut relay, wire),
+        GatewayStep::Forward(decoded(wire))
+    );
 }
 
 #[test]
@@ -95,7 +120,10 @@ fn ra_033_copy_and_paste_on_relay_the_clipboard_both_ways() {
     forwards(&mut relay, "9.clipboard,1.2,10.text/plain;");
     forwards(&mut relay, "4.blob,1.2,4.aGk=;");
     let wire = "9.clipboard,1.5,10.text/plain;";
-    assert_eq!(gateway(&mut relay, wire), GatewayStep::Forward(decoded(wire)));
+    assert_eq!(
+        gateway(&mut relay, wire),
+        GatewayStep::Forward(decoded(wire))
+    );
 }
 
 #[test]
@@ -124,7 +152,10 @@ fn ra_021_without_the_shared_drive_file_get_and_put_close() {
 #[test]
 fn ra_021_with_the_drive_upload_off_refuses_file_and_put_and_allows_get() {
     let mut relay = rdp(|device| device.transfer.upload = false);
-    for wire in ["4.file,1.0,10.text/plain,4.a.sh;", "3.put,1.0,1.1,10.text/plain,4./a.sh;"] {
+    for wire in [
+        "4.file,1.0,10.text/plain,4.a.sh;",
+        "3.put,1.0,1.1,10.text/plain,4./a.sh;",
+    ] {
         assert_eq!(client(&mut relay, wire), CLOSE, "{wire}");
     }
     forwards(&mut relay, "3.get,1.0,1./;");
@@ -153,26 +184,41 @@ fn ra_021_an_upload_opens_a_stream_for_blob_and_end() {
 #[test]
 fn ra_021_download_off_refuses_guacds_file_and_file_body_and_keeps_listings() {
     let mut relay = rdp(|device| device.transfer.download = false);
-    assert_eq!(gateway(&mut relay, "4.file,1.7,10.text/plain,4.a.sh;"), refused("7"));
-    assert_eq!(gateway(&mut relay, "4.blob,1.7,8.c2VjcmV0;"), GatewayStep::Drop);
+    assert_eq!(
+        gateway(&mut relay, "4.file,1.7,10.text/plain,4.a.sh;"),
+        refused("7")
+    );
+    assert_eq!(
+        gateway(&mut relay, "4.blob,1.7,8.c2VjcmV0;"),
+        GatewayStep::Drop
+    );
     assert_eq!(gateway(&mut relay, "3.end,1.7;"), GatewayStep::Drop);
     let body = "4.body,1.0,1.8,10.text/plain,5./a.sh;";
     assert_eq!(gateway(&mut relay, body), refused("8"));
     let listing = encode_body("9", LISTING);
-    assert_eq!(gateway(&mut relay, &listing), GatewayStep::Forward(decoded(&listing)));
+    assert_eq!(
+        gateway(&mut relay, &listing),
+        GatewayStep::Forward(decoded(&listing))
+    );
 }
 
 #[test]
 fn ra_021_without_the_drive_even_a_listing_is_refused() {
     let mut relay = rdp(|device| device.rdp.shared_drive = false);
-    assert_eq!(gateway(&mut relay, &encode_body("9", LISTING)), refused("9"));
+    assert_eq!(
+        gateway(&mut relay, &encode_body("9", LISTING)),
+        refused("9")
+    );
 }
 
 #[test]
 fn ra_021_download_on_relays_guacds_file() {
     let mut relay = rdp(|_| {});
     let wire = "4.file,1.7,10.text/plain,4.a.sh;";
-    assert_eq!(gateway(&mut relay, wire), GatewayStep::Forward(decoded(wire)));
+    assert_eq!(
+        gateway(&mut relay, wire),
+        GatewayStep::Forward(decoded(wire))
+    );
 }
 
 #[test]
@@ -186,13 +232,18 @@ fn ra_021_vnc_never_takes_audio_input_or_the_drive() {
     ] {
         assert_eq!(client(&mut relay, wire), CLOSE, "{wire}");
     }
-    assert_eq!(gateway(&mut relay, "4.file,1.7,10.text/plain,4.a.sh;"), refused("7"));
+    assert_eq!(
+        gateway(&mut relay, "4.file,1.7,10.text/plain,4.a.sh;"),
+        refused("7")
+    );
 }
 
 #[test]
 fn gw_015_rdp_answers_username_password_and_domain_only() {
     let mut relay = rdp(|_| {});
-    relay.on_gateway(decoded("8.required,8.username,8.password,6.domain,10.passphrase;"));
+    relay.on_gateway(decoded(
+        "8.required,8.username,8.password,6.domain,10.passphrase;",
+    ));
     for (stream, name) in [("0", "username"), ("1", "password"), ("2", "domain")] {
         let argv = Instruction::new("argv", [stream, "text/plain", name]);
         assert_eq!(relay.on_client(argv.clone()), ClientStep::Forward(argv));
@@ -223,7 +274,16 @@ const REFUSED: [&str; 5] = ["clipboard", "audio", "file", "get", "put"];
 
 fn opcode() -> impl Strategy<Value = &'static str> {
     prop::sample::select(vec![
-        "clipboard", "audio", "file", "get", "put", "blob", "end", "argv", "key", "ack",
+        "clipboard",
+        "audio",
+        "file",
+        "get",
+        "put",
+        "blob",
+        "end",
+        "argv",
+        "key",
+        "ack",
     ])
 }
 
@@ -243,7 +303,9 @@ fn instruction() -> impl Strategy<Value = Instruction> {
 
 /// The stream index a forwarded instruction names in `args[0]`.
 fn index(sent: &Instruction) -> u32 {
-    sent.args[0].parse().expect("forwarded stream indices are numbers")
+    sent.args[0]
+        .parse()
+        .expect("forwarded stream indices are numbers")
 }
 
 /// Every client stream a forwarded instruction opened and has not ended.

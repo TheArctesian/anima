@@ -10,6 +10,7 @@ mod devices;
 mod fake_guacd;
 mod interruption;
 mod opening;
+mod policy;
 mod refusals;
 mod relaying;
 mod socket;

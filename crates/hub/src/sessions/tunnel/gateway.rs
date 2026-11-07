@@ -65,8 +65,8 @@ impl Relay {
             "clipboard" if !self.policy.transfer.copy => self.withhold(&i, 0, false),
             "file" if !self.policy.downloads() => self.withhold(&i, 0, true),
             "body" if !self.may_send_body(&i) => self.withhold(&i, 1, true),
-            "blob" => self.on_stream(i, false),
-            "end" => self.on_stream(i, true),
+            "blob" => self.on_gateway_stream(i, false),
+            "end" => self.on_gateway_stream(i, true),
             _ => GatewayStep::Forward(i),
         }
     }
@@ -95,7 +95,7 @@ impl Relay {
 
     /// Keeps guacd stream `args[at]` from the client; `refuse` answers guacd with an `ack`.
     /// An index that is not a stream index is not tracked: the client never saw the stream
-    /// open, and a stray `blob` is caught by [`Relay::on_stream`].
+    /// open, and a stray `blob` is caught by [`Relay::on_gateway_stream`].
     fn withhold(&mut self, i: &Instruction, at: usize, refuse: bool) -> GatewayStep {
         let Some(stream) = i.args.get(at).and_then(|index| stream_index(index)) else {
             return GatewayStep::Drop;
@@ -113,7 +113,7 @@ impl Relay {
     /// guacd's `blob` or `end` on stream `args[0]`: dropped when the stream is withheld (and
     /// `end` forgets it), else forwarded. While any stream is withheld, one whose index is
     /// not a plain number is dropped too, as guacamole-common-js would read it as a number.
-    fn on_stream(&mut self, i: Instruction, closes: bool) -> GatewayStep {
+    fn on_gateway_stream(&mut self, i: Instruction, closes: bool) -> GatewayStep {
         let withheld = match i.args.first().and_then(|index| stream_index(index)) {
             Some(stream) if closes => self.withheld_streams.remove(&stream),
             Some(stream) => self.withheld_streams.contains(&stream),
@@ -130,7 +130,9 @@ impl Relay {
 /// A guacd stream index: a plain number below guacd's stream limit.
 fn stream_index(text: &str) -> Option<u16> {
     let index = decimal(text, STREAM_DIGITS)?;
-    u16::try_from(index).ok().filter(|index| *index < MAX_STREAMS)
+    u16::try_from(index)
+        .ok()
+        .filter(|index| *index < MAX_STREAMS)
 }
 
 /// The status of `error,<message>,<status>` when it is plain decimal, else server error.

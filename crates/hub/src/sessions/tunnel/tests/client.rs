@@ -27,10 +27,7 @@ fn forwards(relay: &mut Relay, wire: &str) {
 #[test]
 fn gw_011_ping_is_answered_with_itself_and_not_forwarded() {
     let ping = decoded("0.,4.ping,13.1730700000000;");
-    assert_eq!(
-        relay().on_client(ping.clone()),
-        ClientStep::Reply(ping)
-    );
+    assert_eq!(relay().on_client(ping.clone()), ClientStep::Reply(ping));
 }
 
 #[test]
@@ -40,11 +37,7 @@ fn gw_011_other_internal_instructions_are_dropped() {
         "0.,4.PING;",
         "0.,36.00000000-0000-0000-0000-000000000000;",
     ] {
-        assert_eq!(
-            step(&mut relay(), wire),
-            ClientStep::Drop,
-            "{wire}"
-        );
+        assert_eq!(step(&mut relay(), wire), ClientStep::Drop, "{wire}");
     }
 }
 
@@ -138,10 +131,7 @@ fn gw_013_argv_for_a_hub_value_closes() {
 #[test]
 fn gw_015_argv_for_a_credential_guacd_did_not_ask_for_closes() {
     assert_eq!(
-        step(
-            &mut relay(),
-            "4.argv,1.0,10.text/plain,8.password;"
-        ),
+        step(&mut relay(), "4.argv,1.0,10.text/plain,8.password;"),
         CLOSE
     );
     let mut relay = prompted(&["username"]);
@@ -219,10 +209,7 @@ fn gw_011_a_stream_index_past_guacds_limit_closes() {
         step(&mut relay(), "9.clipboard,3.512,10.text/plain;"),
         CLOSE
     );
-    assert_eq!(
-        step(&mut relay(), "9.clipboard,2.-1,10.text/plain;"),
-        CLOSE
-    );
+    assert_eq!(step(&mut relay(), "9.clipboard,2.-1,10.text/plain;"), CLOSE);
     assert_eq!(
         step(&mut relay(), "9.clipboard,6.000002,10.text/plain;"),
         CLOSE,
