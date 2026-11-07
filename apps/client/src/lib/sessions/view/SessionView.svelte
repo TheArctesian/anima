@@ -8,6 +8,7 @@
   import type { CellSize } from '../tunnel/terminal/codec';
   import { NO_CLIPBOARD, clipboardRules } from './clipboard/clipboard';
   import { displayInput, type Size } from './display';
+  import FilesPanel from '../files/FilesPanel.svelte';
   import EndedPanel from './EndedPanel.svelte';
   import HostKeyModal from './hostkey/HostKeyModal.svelte';
   import KeysMenu from './menu/KeysMenu.svelte';
@@ -57,6 +58,7 @@
   let notice: string | undefined = $state();
   let dismissed: Stage | undefined = $state.raw();
   let finding = $state(false);
+  let filing = $state(false);
   /** An address the device asked to open, waiting for the operator's confirmation (K4 §8.7). */
   let confirming: string | undefined = $state();
 
@@ -164,7 +166,9 @@
 
   // The terminal owns its keyboard (a hidden text field); it holds the focus only while the pane is shown, the app
   // has the focus and the socket is open (D-8).
+  // The file panel belongs to one session: when the view is not ready its toggle is cleared too (C-3).
   $effect(() => {
+    if (!ready) filing = false;
     if (wanted) screen?.focus();
     else screen?.blur();
   });
@@ -189,6 +193,7 @@
       <Icon name="nf-md-magnify" />
       <span>Find</span>
     </button>
+    <button type="button" class="find" aria-expanded={filing} disabled={!ready} title="Files on the device" onclick={() => (filing = !filing)} {@attach press()}><Icon name="nf-md-folder" /><span>Files</span></button>
     <span class="device">{device.name}</span>
     {#if ready && rules.notice !== undefined}<span class="policy" data-policy title={rules.notice}>{rules.notice}</span>{/if}
     <!-- Find and notices lie over the toolbar row, which has a fixed height, so the terminal never moves or resizes for them (MOT-007, UI-009). -->
@@ -203,6 +208,8 @@
     {/if}
   </div>
   <div class="stage">
+    <!-- Before the pane in the DOM so Tab reaches it (the terminal keeps Tab); `order` keeps it on the right. -->
+    {#if filing && stage.kind === 'open' && ready}<FilesPanel sessionId={stage.sessionId} />{/if}
     <!-- The terminal draws here; its own hidden text field takes the keyboard (D-8). -->
     <div class="pane" role="group" aria-label="Terminal of {device.name}" {@attach attachPane}></div>
     {#if !ready}
@@ -316,14 +323,16 @@
 
   .stage {
     position: relative;
+    display: flex;
     flex: 1;
     min-block-size: 0;
   }
 
   /* The pane's size comes from the layout only, never from the terminal inside it, so a fit cannot loop (D-7). */
   .pane {
-    position: absolute;
-    inset: 0;
+    position: relative;
+    flex: 1;
+    min-inline-size: 0;
     box-sizing: border-box;
     overflow: hidden;
     /* Wider than the focus ring, so the ring never covers a glyph in column 0 or row 0 (UI-009, MAT-008). The fit add-on measures inside it. */

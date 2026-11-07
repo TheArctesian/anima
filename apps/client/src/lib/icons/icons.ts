@@ -30,6 +30,12 @@ export const iconCodePoints = {
   'nf-md-tag': 0xf04f9,
   'nf-md-web': 0xf059f,
   'nf-md-dots_vertical': 0xf01d9,
+  'nf-md-folder': 0xf024b,
+  'nf-md-file': 0xf0214,
+  'nf-md-link': 0xf0337,
+  'nf-md-upload': 0xf0552,
+  'nf-md-download': 0xf01da,
+  'nf-md-arrow_up': 0xf005d,
 } as const;
 
 export type IconName = keyof typeof iconCodePoints;
