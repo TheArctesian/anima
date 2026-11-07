@@ -22,6 +22,8 @@ export function device(change: Partial<DeviceDetail> = {}, ssh: Partial<DeviceDe
     site: { id: 's1', name: 'Home' },
     ssh: { enabled: true, port: 22, username: 'root', auth: 'PASSWORD', credentialStored: true, hostKey: KEY, ...ssh },
     macAddress: null,
+    webInterfaces: [],
+    webInterfaceSuggestions: [],
     metricsSource: 'NONE',
     accessWarnings: [],
     rdp: {

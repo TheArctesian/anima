@@ -1,4 +1,4 @@
-import type { Protocol } from '$lib/hub/generated/graphql';
+import type { Protocol, Status } from '$lib/hub/generated/graphql';
 
 /** The client's own name for one open tab; a tab outlives the sessions started in it (D-5). */
 export type TabId = string;
@@ -14,8 +14,8 @@ export interface Origin {
   readonly height: number;
 }
 
-/** One session tab in the strip (RA-001). `sessionId` is the hub's session once one has started. */
-export interface Tab {
+/** One session tab in the strip (RA-001). `sessionId` is the hub session once one has started. */
+export interface ProtocolTab {
   readonly id: TabId;
   readonly deviceId: string;
   readonly deviceName: string;
@@ -25,6 +25,32 @@ export interface Tab {
   /** The window title the remote shell set, already cleaned (K4 §8.7); absent until it sets one. */
   readonly title?: string;
 }
+
+/** The web interface a web tab shows (K1 `WebInterface`); the tab reads and compares its pin (WEB-008). */
+export interface WebTarget {
+  readonly id: string;
+  readonly deviceId: string;
+  readonly url: string;
+  readonly label: string;
+  readonly pinnedFingerprintSha256: string | null;
+}
+
+/** A tab showing one of the device's web interfaces (WEB-003); it starts no hub session. */
+export interface WebPageTab {
+  readonly id: TabId;
+  readonly deviceId: string;
+  readonly deviceName: string;
+  readonly protocol: 'WEB';
+  readonly origin: Origin | null;
+  readonly sessionId: null;
+  readonly title?: string;
+  readonly web: WebTarget;
+  /** The device's status when the tab opened; the page shows Down for a device that is down (WEB-010). */
+  readonly status: Status;
+}
+
+/** A session tab or a web tab. */
+export type Tab = ProtocolTab | WebPageTab;
 
 /** The open tabs in strip order and the selected one; `null` shows the pages (D-11). */
 export interface Tabs {
@@ -81,7 +107,7 @@ export function moved(state: Tabs, from: number, to: number): Tabs {
 
 /** `id` now shows the hub session `sessionId` (`null`: none); an unknown id changes nothing. */
 export function withSession(state: Tabs, id: TabId, sessionId: string | null): Tabs {
-  return { ...state, tabs: state.tabs.map((tab) => (tab.id === id ? { ...tab, sessionId } : tab)) };
+  return { ...state, tabs: state.tabs.map((tab) => (tab.id === id && tab.protocol !== 'WEB' ? { ...tab, sessionId } : tab)) };
 }
 
 /** `id` shows `title` next to its device name (`''`: none); an unknown id changes nothing. */

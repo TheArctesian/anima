@@ -21,6 +21,7 @@ function device(name: string, status: CardDevice['status'] = 'UP', uptime: numbe
     vnc: { enabled: false },
     ssh: { enabled: false, hostKey: null },
     checks: [],
+    webInterfaces: [],
   };
 }
 

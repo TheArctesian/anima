@@ -3,6 +3,7 @@
   import { resolve } from '$app/paths';
   import { untrack } from 'svelte';
   import { page } from '$app/state';
+  import { desktopWebView } from '$lib/desktop/webView/webView';
   import { readThisMachine, type ThisMachine } from '$lib/desktop/thisMachine';
   import { checksApi } from '$lib/checks/api';
   import type { CardDevice } from '$lib/devices/api';
@@ -19,6 +20,7 @@
   import { sessionsApi } from '$lib/sessions/api';
   import { wakeApi } from '$lib/sessions/wake/api';
   import { useSessions } from '$lib/sessions/sessions.svelte';
+  import { openWebInterface } from '$lib/sessions/web/open';
   import type { SessionProtocol } from '$lib/sessions/tabs';
 
   const sessions = useSessions();
@@ -126,6 +128,11 @@
       origin: button.getBoundingClientRect(),
     });
   }
+
+  /** Opens the interface as its setting says: a web tab that grows from the button, or the system browser (WEB-003, WEB-011). */
+  function openWeb(device: CardDevice, webInterface: CardDevice['webInterfaces'][number], button: HTMLElement): void {
+    void openWebInterface(sessions, desktopWebView, { device, webInterface, origin: button.getBoundingClientRect() });
+  }
 </script>
 
 <section>
@@ -133,7 +140,7 @@
   {#if addError !== null}
     <p class="notice" role="alert">Could not open Add device: {addError.message}</p>
   {/if}
-  <DeviceScreen {query} onQueryChange={changeQuery} onAddDevice={() => void addDevice()} onConnect={connect} {wake} />
+  <DeviceScreen {query} onQueryChange={changeQuery} onAddDevice={() => void addDevice()} onConnect={connect} onOpenWeb={openWeb} {wake} />
 </section>
 
 <AddDeviceModal
