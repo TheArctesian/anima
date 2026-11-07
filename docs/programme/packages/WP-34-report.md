@@ -18,8 +18,8 @@ decisions and review log: [WP-34.md](WP-34.md). Matrix with evidence and operato
 | F4 overlay | `overlayOpen` hides the native web view under menus, popovers and modals | Merged (e5e3f181) |
 | F5 narrow | Header buttons wrap at 390 px; card badge icon-only below bp-compact | Merged as af0952a5 |
 | F6 log-tests | Process-log tests for files, wake, tab warnings, guacd level; `MacAddress` Debug hides the octets | Merged (393393ec), 12/12 |
-| F7 loaders | Files listing skeleton; chart skeleton keeps each device's chart count | See below |
-| F8 scrim | Session modal scrims use `--scrim` | Sent as 62d4334d |
+| F7 loaders | Files listing skeleton; chart skeleton keeps each device's chart shape | Sent as 8b899792 (two rounds) |
+| F8 scrim | Session modal scrims use `--scrim` | Merged as ade3e8a1 |
 
 Every task ran gates 4–12 (client-only, R-068) or all 12 (F6), and had a review by an agent that did not build it.
 Rounds: at most two, except F3 (three, R-075).
@@ -74,7 +74,7 @@ on tcp:3389 (VPS-005: the operator confirms each VPN or VPS change).
   one spring slide per point meets 5.7.3 and MOT-011. Reword the row. The Modal row still names blur (D-11 E-5).
 - **Coulds from the audit and re-measures (D-5):** S-2 Files panel arrives in one frame; S-4 missing hover colours
   (programme-wide MOT-006 pattern); C-5 table Connect column off screen; C-6 transfer fill by `inline-size`;
-  C-7 Files toggle at 390 px; C-8 badge text 3.04:1; C-9 SSH tab frame stall; F2 N-1 panel bottom edge steps 88 px
+  C-7 Files toggle at 390 px; C-8 badge text 3.04:1; C-9 SSH tab frame stall; F7 skeleton 49.5 px short at 390 px (legend wraps); F2 N-1 panel bottom edge steps 88 px
   while rows glide; F3 Chromium-only layout-shift entry 0.0198 (logged at f590e0cd); chart grid stays `chart-grid`
   under `prefers-contrast: more` (1.69:1, not a MAT-006 failure).
 - **Settled WP-34 coulds:** D-2 chart slide (meets spec); popover reduced form (correct, now tested); Stop row shift
