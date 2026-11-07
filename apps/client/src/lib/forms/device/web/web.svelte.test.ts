@@ -3,7 +3,7 @@ import { flushSync, mount, tick, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { HubResult } from '$lib/hub/error';
 import { installAnimations } from '../../animations.fixture';
-import type { WebInterface, WebInterfaceSuggestion } from '../../hub-pending';
+import type { WebInterface, WebInterfaceSuggestion } from '$lib/web-interfaces/api';
 import WebInterfaces from './WebInterfaces.svelte';
 
 vi.mock('motion', async (importOriginal) => ({
@@ -12,8 +12,8 @@ vi.mock('motion', async (importOriginal) => ({
 }));
 
 const OK: HubResult<unknown> = { ok: true, value: undefined };
-const PVE: WebInterface = { id: 'w1', deviceId: 'd1', label: 'Proxmox VE', url: 'https://pve.lan:8006', openIn: 'ANIMA_TAB' };
-const HA: WebInterface = { id: 'w2', deviceId: 'd1', label: 'Home Assistant', url: 'http://ha.lan:8123', openIn: 'SYSTEM_BROWSER' };
+const PVE: WebInterface = { id: 'w1', deviceId: 'd1', label: 'Proxmox VE', url: 'https://pve.lan:8006', openIn: 'ANIMA_TAB', pinnedFingerprintSha256: null, pinnedAt: null };
+const HA: WebInterface = { id: 'w2', deviceId: 'd1', label: 'Home Assistant', url: 'http://ha.lan:8123', openIn: 'SYSTEM_BROWSER', pinnedFingerprintSha256: null, pinnedAt: null };
 const SUGGESTION: WebInterfaceSuggestion = { checkId: 'c1', url: 'https://grafana.lan:3000', label: 'grafana.lan' };
 
 let app: ReturnType<typeof mount> | undefined;

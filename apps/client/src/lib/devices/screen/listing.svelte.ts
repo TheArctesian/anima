@@ -1,7 +1,8 @@
 import { SvelteMap } from 'svelte/reactivity';
 import { addBeat, beatOf, latestBeats, type Beat } from '$lib/checks/heartbeats';
 import type { Hub, HubError } from '$lib/hub/hub';
-import { devicesApi, type StatusChange } from '../api';
+import type { StatusChange } from '../api';
+import { devicesApi } from '../client';
 import { appendPage, applyStatus, fromPage, type DeviceList } from '../list';
 import { DEFAULT_QUERY, listVariables, type ListQuery } from '../query';
 import { coalesced } from '../live/coalesce';

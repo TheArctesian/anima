@@ -1,8 +1,8 @@
 import { expect, it } from 'vitest';
-import type { WebInterface } from '../../hub-pending';
+import type { WebInterface } from '$lib/web-interfaces/api';
 import { validateWeb, webChanged, webInput, webValuesFrom } from './interface';
 
-const SAVED: WebInterface = { id: 'w1', deviceId: 'd1', label: 'Proxmox VE', url: 'https://pve.lan:8006', openIn: 'ANIMA_TAB' };
+const SAVED: WebInterface = { id: 'w1', deviceId: 'd1', label: 'Proxmox VE', url: 'https://pve.lan:8006', openIn: 'ANIMA_TAB', pinnedFingerprintSha256: null, pinnedAt: null };
 
 it('WEB-001: an http or https URL with a host is valid', () => {
   expect(validateWeb({ label: '', url: 'http://ha.lan:8123', openIn: 'ANIMA_TAB' })).toEqual([]);

@@ -5,7 +5,7 @@
   import type { DeviceFields, DeviceFormValues } from '$lib/forms/device/values';
   import FormButton from '$lib/forms/FormButton.svelte';
   import WebInterfaces, { type WebInterfaceCalls } from '$lib/forms/device/web/WebInterfaces.svelte';
-  import type { WebInterface, WebInterfaceSuggestion } from '$lib/forms/hub-pending';
+  import type { WebInterface, WebInterfaceSuggestion } from '$lib/web-interfaces/api';
   import ConfirmModal from '$lib/forms/modal/ConfirmModal.svelte';
   import type { ConnectionTestInput } from '$lib/hub/generated/graphql';
   import type { HubResult } from '$lib/hub/hub';

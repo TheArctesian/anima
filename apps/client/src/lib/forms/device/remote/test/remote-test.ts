@@ -1,5 +1,5 @@
 import type { ConnectionTestInput, Protocol } from '$lib/hub/generated/graphql';
-import type { PendingConnectionTestResult, ServerCertificate } from '../../../hub-pending';
+import type { ConnectionTest, ServerCertificate } from '$lib/sessions/api';
 import type { ConnectionTestResult } from '../../connection-test';
 import { normalizedValues, type DeviceFormValues } from '../../values';
 import { rdpCredentialInput, rdpInput, vncCredentialInput, vncInput } from '../input';
@@ -11,7 +11,7 @@ export type RemoteProtocol = Exclude<Protocol, 'SSH'>;
 export type RemoteTestInput = ConnectionTestInput;
 
 /** The connection test answer; the certificate fields are missing until the hub declares K1. */
-export type RemoteTestResult = ConnectionTestResult & Partial<PendingConnectionTestResult>;
+export type RemoteTestResult = ConnectionTestResult & Partial<Pick<ConnectionTest, 'serverCertificate' | 'certificateChanged'>>;
 
 function sameJson(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);

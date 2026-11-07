@@ -3,7 +3,7 @@ import { flushSync } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installAnimations } from '../../animations.fixture';
 import { addDevice, type AddDeviceApi } from '../../add-device';
-import type { PendingDeviceFields } from '../../hub-pending';
+import type { RemoteDeviceFields } from './values';
 import { OK, SAVED, input, leave, save, show, type } from '../form/form.fixture';
 import type { DeviceFields, DeviceFormValues } from '../values';
 import { formValues } from '../values';
@@ -19,7 +19,7 @@ beforeEach(() => {
 
 afterEach(leave);
 
-const K1: PendingDeviceFields = {
+const K1: RemoteDeviceFields = {
   rdp: {
     enabled: true,
     port: 3389,
