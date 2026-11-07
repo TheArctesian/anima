@@ -1,6 +1,7 @@
 //! The probe policy the scheduler is given always refuses loopback, link-local and
 //! multicast addresses, whatever the deny list holds. A Docker or systemd check whose SSH link
-//! cannot open records a Down beat with a fixed message that holds no host (D-3, LOG-007).
+//! cannot open records a Down beat with a fixed message that holds no host (D-3, LOG-007). A
+//! Tailscale ping check with no `LocalAPI` proxy records an Unknown beat (D-4).
 
 use std::net::IpAddr;
 
@@ -92,6 +93,13 @@ fn systemd() -> Definition {
     })
 }
 
+fn tailscale_ping() -> Definition {
+    Definition::Config(CheckConfig::TailscalePing {
+        target: Some("100.64.0.7".to_owned()),
+        timeout_ms: 5000,
+    })
+}
+
 async fn attempt(pool: &PgPool, device: DeviceId, definition: Definition) -> (String, String) {
     let name = definition.kind().as_sql().to_owned();
     let id: CheckId = add_check(pool, new_check(device, &name, definition, 0)).await;
@@ -125,5 +133,17 @@ tick_test! {
             assert_eq!(message, "the SSH link failed: no host key is accepted for the device");
             assert!(!message.contains("10.10.0.21") && !message.contains("docker-host"));
         }
+    }
+
+    async fn d_4_a_tailscale_ping_without_a_localapi_proxy_gives_an_unknown_beat_with_the_message(pool: PgPool) {
+        let (status, message) = attempt(&pool, device(DOCKER_HOST), tailscale_ping()).await;
+        assert_eq!(status, "unknown");
+        assert_eq!(message, "Tailscale ping needs the LocalAPI proxy (ANIMA_TAILSCALE_LOCALAPI)");
+        let state: (String, i32) =
+            sqlx::query_as("SELECT status, failures FROM checks.checks WHERE type = 'tailscale_ping'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(state, ("unknown".to_owned(), 0));
     }
 }
