@@ -1,4 +1,4 @@
-//! The deny list on `testConnection` (R-030, R-032 E-7, security): a host the operator
+//! The deny list on `testConnection` (R-030, R-032, security): a host the operator
 //! types or a saved device's host that is, or resolves into, an `ANIMA_PROBE_DENY` network is
 //! the `Validation` error on `host`, and no connection reaches it; a host outside the list is
 //! still tested.
