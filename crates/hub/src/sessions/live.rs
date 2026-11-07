@@ -20,9 +20,12 @@ use std::{
 use chrono::{DateTime, Utc};
 use tokio::sync::watch;
 
-use self::{changes::Changes, tunnel::signal};
 pub(super) use self::tunnel::{Closing, FilesRelay};
 pub use self::tunnel::{EndCause, Tunnel};
+use self::{
+    changes::Changes,
+    tunnel::{EndSignal, signal},
+};
 use super::{
     end::Actor,
     files,
@@ -40,8 +43,6 @@ pub(super) const MAX_PENDING: usize = 128;
 
 /// How long `endSession` waits by default for an open tunnel to end its row (D-10).
 pub(super) const TUNNEL_END_WAIT: Duration = Duration::from_secs(5);
-
-use self::tunnel::EndSignal;
 
 #[derive(Default)]
 struct State {
@@ -71,7 +72,9 @@ impl State {
 
     /// Whether the session's ticket is still unredeemed.
     fn holds_ticket(&self, session: SessionId) -> bool {
-        self.tickets.values().any(|ticket| ticket.session == session)
+        self.tickets
+            .values()
+            .any(|ticket| ticket.session == session)
     }
 }
 

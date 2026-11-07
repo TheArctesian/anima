@@ -275,7 +275,10 @@ impl Subscription {
         reason = "the Subscription macro requires async resolvers"
     )]
     #[graphql(guard = "Authenticated")]
-    async fn session_changed(&self, ctx: &Context<'_>) -> Result<impl Stream<Item = SessionChange>> {
+    async fn session_changed(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Result<impl Stream<Item = SessionChange>> {
         Ok(session_changes(schema_dependency::<Live>(ctx)?.changes()))
     }
 }

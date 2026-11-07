@@ -313,6 +313,9 @@ async fn d_10_a_start_that_commits_after_shut_down_ends_its_row_and_is_unavailab
     assert_eq!(audits[0].change, json!({ "reason": "hub_shutdown" }));
     // The refused start is never published; the end of its row is.
     let change = changes.try_recv().unwrap().session;
-    assert_eq!((change.id.to_string(), change.is_live()), (id.to_string(), false));
+    assert_eq!(
+        (change.id.to_string(), change.is_live()),
+        (id.to_string(), false)
+    );
     assert!(changes.try_recv().is_err(), "one change only");
 }

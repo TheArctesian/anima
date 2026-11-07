@@ -49,7 +49,11 @@ async fn ra_034_a_start_is_published_once_committed_then_its_end_with_the_reason
     assert_eq!(start.id.to_string(), id);
     assert_eq!(start.client.to_string(), CLIENT_ADDR);
     assert_eq!(start.end, None, "live after a start");
-    assert_eq!(stored(&pool, id).await.end_reason, None, "the row is committed");
+    assert_eq!(
+        stored(&pool, id).await.end_reason,
+        None,
+        "the row is committed"
+    );
     nothing_more(&mut changes);
 
     let later = schema_at(&pool, now() + TimeDelta::seconds(5), &live);
@@ -90,7 +94,10 @@ async fn ra_034_a_refused_start_publishes_nothing(pool: PgPool) {
         .await
         .unwrap();
     let unavailable = schema.execute(start_request(PVE_01, &display())).await;
-    assert_eq!(error_json(&unavailable)["extensions"]["code"], "UNAVAILABLE");
+    assert_eq!(
+        error_json(&unavailable)["extensions"]["code"],
+        "UNAVAILABLE"
+    );
 
     nothing_more(&mut changes);
 }
@@ -117,7 +124,7 @@ async fn ra_034_shutdown_publishes_each_pending_session_s_hub_shutdown_end(pool:
             (session.id.to_string(), session.end.map(|end| end.reason))
         })
         .collect();
-    ended.sort();
+    ended.sort_by(|a, b| a.0.cmp(&b.0));
     let mut expected: Vec<(String, Option<EndReason>)> = [first, second]
         .iter()
         .map(|ticket| {
@@ -125,7 +132,7 @@ async fn ra_034_shutdown_publishes_each_pending_session_s_hub_shutdown_end(pool:
             (id, Some(EndReason::HubShutdown))
         })
         .collect();
-    expected.sort();
+    expected.sort_by(|a, b| a.0.cmp(&b.0));
     assert_eq!(ended, expected);
     nothing_more(&mut changes);
 }
@@ -168,14 +175,17 @@ async fn ra_034_every_client_sees_a_start_and_an_end_session_from_another_addres
     );
 
     let end = "mutation($id: ID!) { endSession(id: $id) { endReason } }";
-    let elsewhere = signed_in_from(end, "10.10.0.99", 24)
-        .variables(Variables::from_json(json!({ "id": id })));
+    let elsewhere =
+        signed_in_from(end, "10.10.0.99", 24).variables(Variables::from_json(json!({ "id": id })));
     let response = schema.execute(elsewhere).await;
     assert!(response.errors.is_empty(), "{:?}", response.errors);
 
     let ended = next_change(&mut stream).await;
     assert_eq!(ended["id"], id);
-    assert_eq!(ended["clientAddr"], CLIENT_ADDR, "the address that started it");
+    assert_eq!(
+        ended["clientAddr"], CLIENT_ADDR,
+        "the address that started it"
+    );
     assert_eq!(ended["endReason"], "OPERATOR");
 }
 
@@ -188,7 +198,10 @@ async fn api_003_session_changed_refuses_a_request_without_an_operator(pool: PgP
     let live = Live::default();
     let schema = schema_at(&pool, now(), &live);
     // No identity, and an identity that expired before the schema's clock.
-    for request in [Request::new(SUBSCRIPTION), signed_in_until(SUBSCRIPTION, -1)] {
+    for request in [
+        Request::new(SUBSCRIPTION),
+        signed_in_until(SUBSCRIPTION, -1),
+    ] {
         let mut stream = Box::pin(schema.execute_stream(request));
         let first = tokio::time::timeout(Duration::from_secs(5), stream.next())
             .await
@@ -196,6 +209,9 @@ async fn api_003_session_changed_refuses_a_request_without_an_operator(pool: PgP
             .expect("one response");
         assert_eq!(error_json(&first)["extensions"]["code"], "UNAUTHENTICATED");
         started(&schema, PVE_01).await;
-        assert!(stream.next().await.is_none(), "the stream ended unsubscribed");
+        assert!(
+            stream.next().await.is_none(),
+            "the stream ended unsubscribed"
+        );
     }
 }
