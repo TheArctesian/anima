@@ -2,22 +2,30 @@
 //! (R-011): `status`, `checks`, `uptime` and the resolved `ip`; and the remote access fields
 //! (RA-020, RA-030..033).
 
+use std::sync::Arc;
+
 use async_graphql::{Context, ID, Object, Result, dataloader::DataLoader};
 use chrono::{DateTime, Utc};
+use sqlx::PgPool;
 
 use super::{
     error::{internal, schema_dependency, to_graphql},
     remote::{DeviceRdp, DeviceVnc},
     ssh::DeviceSsh,
-    standing::{ChecksOf, ResolvedIpOf, StatusOf, SuggestionsOf, UptimeOf, WebInterfacesOf},
+    standing::{
+        ChecksOf, GpusOf, ReadingsOf, ResolvedIpOf, StatusOf, SuggestionsOf, UptimeOf,
+        WebInterfacesOf,
+    },
 };
 use crate::{
     checks::{Check, UptimeWindow},
+    clock::Clock,
     devices::{
         Error, MetricsSource, Missing, OperatingSystem, SitesById, TransferPolicy,
         model::{Device, Site},
         warnings::{AccessWarning, access_warnings},
     },
+    metrics::{self, Gpu, MetricRange, MetricSeries, Readings},
     scalars::IpAddr,
     status::Status,
     web_interfaces::{Suggestion, WebInterface},
@@ -115,6 +123,33 @@ impl Device {
             .load_one((self.id, window))
             .await
             .map_err(internal)
+    }
+
+    /// The current CPU, memory, disk, interface and load readings; null without a sample in
+    /// the last 2 minutes (MET-004).
+    async fn readings(&self, ctx: &Context<'_>) -> Result<Option<Readings>> {
+        schema_dependency::<DataLoader<ReadingsOf>>(ctx)?
+            .load_one(self.id)
+            .await
+            .map_err(internal)
+    }
+
+    /// The device's metric series over `range` ending now, points oldest first (MET-003).
+    /// It reads one device by design: the detail view, so it needs no loader.
+    async fn metrics(&self, ctx: &Context<'_>, range: MetricRange) -> Result<Vec<MetricSeries>> {
+        let now = schema_dependency::<Arc<dyn Clock>>(ctx)?.now();
+        metrics::series(schema_dependency::<PgPool>(ctx)?, self.id, range, now)
+            .await
+            .map_err(internal)
+    }
+
+    /// The device's GPUs by index (MET-006).
+    async fn gpus(&self, ctx: &Context<'_>) -> Result<Vec<Gpu>> {
+        let gpus = schema_dependency::<DataLoader<GpusOf>>(ctx)?
+            .load_one(self.id)
+            .await
+            .map_err(internal)?;
+        Ok(gpus.unwrap_or_default())
     }
 
     async fn ssh(&self) -> DeviceSsh {

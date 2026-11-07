@@ -90,3 +90,32 @@ These items are not blocking. The programme orchestrator collects them here and 
 - The terminal could open through the link.
 - The link-error to GraphQL-code mapping is written in two places.
 - Programme: add a `clippy.toml` `disallowed-methods` rule banning `Box::leak`, `String::leak` and `Vec::leak` (CHK-012).
+
+## WP-28 (hub metrics)
+
+- GPU discovery and GPU metrics (MET-006 to MET-010) are not built. The tables and the `gpus` face exist (R-073).
+- Narrow the metrics public surface to `pub(crate)` where nothing outside the crate uses it.
+- Add a metrics test that a deny-listed device gets no samples.
+- Rename the `met_005_*` subscription tests and fix one stale doc comment.
+- Finish the guard and filter mutation run on `metricsAdded`.
+- Process: one shared Cargo target directory across worktrees can leave stale test binaries.
+
+## WP-33 (client detail view and charts)
+
+- Add a K5 opacity token for the chart min-max band, which uses `fill-opacity: 0.2` today.
+
+## WP-32 (client files, wake and live sessions)
+
+- A download cancelled after the hub has read every byte, but before the client has received them all, shows as cancelled on the client and is audited as done on the hub.
+- The files panel's busy guards are pinned only through the link's busy refusal.
+- Downloads are held in memory as a Blob.
+- The files panel has no compact-width layout.
+- In the Tauri shell, wry saves a download under its suggested name in ~/Downloads. Check the save path in the app.
+- Revoking the blob URL at once may fail a WebKit download. Check it in the app.
+- WP-34: a failed Stop in the live-sessions list shifts the rows once (MOT-007).
+- WP-34: check a real download inside the Tauri app.
+- WP-34: add a test for the live-sessions popover's reduced-motion form.
+- The ping and silence timer code is duplicated between the files link and the terminal link. Lift it into one shared file.
+- File names that are not valid UTF-8 come through with their bad bytes replaced, so the client cannot send them back.
+- The file panel shows that upload or download is turned off only after the hub refuses an attempt.
+- Downloads have no size warning.

@@ -19,12 +19,12 @@ fn d10_failing_is_a_warning_and_working_again_is_info_from_the_device() {
     let device: DeviceId = "0190a000-0000-7000-8002-000000000002".parse().unwrap();
     let failing = event(Change::StartedFailing, device, "docker-host".to_owned());
     assert_eq!(failing.severity, Severity::Warning);
-    assert_eq!(failing.source, Source::Device);
+    assert_eq!(failing.source, Source::Metrics);
     assert_eq!(failing.device, Some((device, "docker-host".to_owned())));
     assert_eq!(failing.message, FAILING_MESSAGE);
     let working = event(Change::WorksAgain, device, "docker-host".to_owned());
     assert_eq!(working.severity, Severity::Info);
-    assert_eq!(working.source, Source::Device);
+    assert_eq!(working.source, Source::Metrics);
     assert_eq!(working.message, WORKING_MESSAGE);
 }
 

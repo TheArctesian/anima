@@ -33,8 +33,9 @@ pub use self::{
     },
     ssh::CredentialStored,
     standing::{
-        ChecksOf, ResolvedIpOf, StatusOf, SuggestionsOf, UptimeOf, WebInterfacesOf,
-        web_interface_suggestions_loader, web_interfaces_loader,
+        ChecksOf, GpusOf, ReadingsOf, ResolvedIpOf, StatusOf, SuggestionsOf, UptimeOf,
+        WebInterfacesOf, gpus_loader, readings_loader, web_interface_suggestions_loader,
+        web_interfaces_loader,
     },
 };
 

@@ -19,7 +19,7 @@ use crate::{
         self, Bus,
         process_log::{InternalErrors, RequestSpan},
     },
-    maintenance,
+    maintenance, metrics,
     sessions::{self, Live},
     targets::AddressPolicy,
     web_interfaces,
@@ -49,7 +49,11 @@ pub struct Mutation(
 );
 
 #[derive(MergedSubscription, Default)]
-pub struct Subscription(checks::graphql::Subscription, events::graphql::Subscription);
+pub struct Subscription(
+    checks::graphql::Subscription,
+    events::graphql::Subscription,
+    metrics::graphql::Subscription,
+);
 
 pub type HubSchema = Schema<Query, Mutation, Subscription>;
 
@@ -67,6 +71,9 @@ pub struct Dependencies {
     pub live: Live,
     /// The deny list every SSH link the schema opens checks (`wakeDevice`; P2-004).
     pub policy: AddressPolicy,
+    /// The hub's one `Feed`: the collector publishes on it and `metricsAdded` reads it, so
+    /// `main.rs` gives the collector a clone of this same value.
+    pub metrics_feed: metrics::Feed,
 }
 
 /// Put each dependency into the schema data, with the devices loaders (WP-06 H-2);
@@ -86,6 +93,7 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
         vault,
         live,
         policy,
+        metrics_feed,
     } = dependencies;
     harden(
         Schema::build(
@@ -118,6 +126,9 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .data(devices::graphql::uptime_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
     .data(devices::graphql::checks_loader(pool.clone()).delay(BATCH_WINDOW))
     .data(devices::graphql::resolved_ip_loader(pool.clone()).delay(BATCH_WINDOW))
+    // devices fields that join metrics (API-005)
+    .data(devices::graphql::readings_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
+    .data(devices::graphql::gpus_loader(pool.clone()).delay(BATCH_WINDOW))
     // checks
     .data(checks::graphql::check_status_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
     .data(checks::graphql::last_heartbeat_loader(pool.clone()).delay(BATCH_WINDOW))
@@ -128,6 +139,8 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .data(sessions::graphql::server_certificate_loader(pool.clone()).delay(BATCH_WINDOW))
     .data(live)
     .data(policy)
+    // metrics
+    .data(metrics_feed)
     .finish()
 }
 

@@ -95,6 +95,10 @@ pub fn logged(routes: Router) -> Router {
 /// The session tunnels, each logged by its template only (K4 Sections 8, 9): `/terminal` for
 /// SSH, `/tunnel` to guacd for RDP and VNC, which refuses SSH tickets so none reaches guacd
 /// (R-062), and `/files`, which connects through the link and so gets the probes' deny list.
+///
+/// `main.rs` builds one address policy for every outbound connection (R-030, R-032): `/files`,
+/// the probes and the collector take it as `policy`; the terminal, the Guacamole tunnel and the
+/// connection tests take it through `live`'s target rule ([`sessions::Live::denying`]).
 pub fn tunnels(dependencies: &schema::Dependencies) -> Router {
     let schema::Dependencies {
         config,
@@ -104,6 +108,7 @@ pub fn tunnels(dependencies: &schema::Dependencies) -> Router {
         vault,
         live,
         policy,
+        ..
     } = dependencies;
     let terminal = sessions::terminal_router(
         pool.clone(),

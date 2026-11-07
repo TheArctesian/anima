@@ -30,3 +30,11 @@ it.each([
 it('D-10: a session with a time that does not parse has no duration', () => {
   expect(sessionRows([session('x', 'not a time')], NOW)[0]?.duration).toBe('—');
 });
+
+it.each([
+  ['SSH', 'SSH'],
+  ['RDP', 'RDP'],
+  ['VNC', 'VNC'],
+] as const)('RA-030: a %s session shows the protocol %s', (protocol, label) => {
+  expect(sessionRows([session('p', '2026-11-04T10:00:00Z', { protocol })], NOW)[0]?.protocol).toBe(label);
+});
