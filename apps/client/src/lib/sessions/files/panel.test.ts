@@ -4,7 +4,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { UNREACHABLE } from '$lib/hub/error';
 import { FakeFilesSocket } from './link/fake/socket.fixture';
 import { settle } from './link/fake/link.fixture';
-import { HOME, button, click, entry, listed, names, removePanels, resetPanels, show, status } from './panel.fixture';
+import type { HubResult } from '$lib/hub/hub';
+import type { FilesTicket } from './api';
+import { HOME, button, click, entry, listed, off, names, removePanels, resetPanels, show, status } from './panel.fixture';
 
 beforeEach(resetPanels);
 afterEach(removePanels);
@@ -63,9 +65,9 @@ describe('RA-032: when the link or ticket fails', () => {
     await settle();
     flushSync();
     expect(status(target)).toBe('The connection to the device failed.');
-    expect(button(target, 'Refresh the list').disabled).toBe(true);
-    expect(button(target, 'Download f').disabled).toBe(true);
-    expect(button(target, 'Upload a file').disabled).toBe(true);
+    expect(off(button(target, 'Refresh the list'))).toBe(true);
+    expect(off(button(target, 'Download f'))).toBe(true);
+    expect(off(button(target, 'Upload a file'))).toBe(true);
   });
 
   it('RA-032: a refused upgrade says the connection could not be opened', async () => {
@@ -83,10 +85,32 @@ describe('RA-032: when the link or ticket fails', () => {
     expect(socket.closedByClient).toBe(1000);
   });
 
-  it('RA-032: unmounting before the ticket arrives opens no link', async () => {
-    const { close } = await show({ ok: true, value: { sessionId: 's', token: 't', tunnelPath: '/files', expiresAt: 'x' } });
+  it('RA-032: unmounting while the ticket is still pending opens no link when it arrives', async () => {
+    let answer: (result: HubResult<FilesTicket>) => void = () => undefined;
+    const held = new Promise<HubResult<FilesTicket>>((resolve) => {
+      answer = resolve;
+    });
+    const { close } = await show(held);
     await close();
-    expect(FakeFilesSocket.made.every((each) => each.closedByClient === 1000 || each.readyState === 0)).toBe(true);
+    answer({ ok: true, value: { sessionId: 's', token: 't', tunnelPath: '/files', expiresAt: 'x' } });
+    await settle();
+    expect(FakeFilesSocket.made).toHaveLength(0);
+  });
+
+  it('RA-032: two entries with one name are both listed and the panel keeps working', async () => {
+    const { target } = await listed([entry('dup', 'file'), entry('dup', 'dir'), entry('dup', 'file')]);
+    expect(names(target)).toEqual(['dup', 'dup', 'dup']);
+  });
+
+  it('RA-032: a button keeps the keyboard focus through its own action', async () => {
+    const { target, socket } = await listed([entry('docs', 'dir')]);
+    const refresh = button(target, 'Refresh the list');
+    refresh.focus();
+    await click(refresh);
+    socket.text({ type: 'entries', path: HOME, entries: [entry('docs', 'dir')] });
+    await settle();
+    flushSync();
+    expect(document.activeElement).toBe(refresh);
   });
 });
 

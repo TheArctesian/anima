@@ -38,7 +38,7 @@ export interface Shown {
 }
 
 /** Mount the panel on a fake ticket and socket; `ticket` can be a failure. */
-export async function show(ticket: HubResult<FilesTicket> | undefined = undefined): Promise<Shown> {
+export async function show(ticket: HubResult<FilesTicket> | Promise<HubResult<FilesTicket>> | undefined = undefined): Promise<Shown> {
   const tickets: string[] = [];
   const api: FilesApi = {
     openFiles: (sessionId) => {
@@ -82,6 +82,8 @@ export const button = (target: HTMLElement, label: string): HTMLButtonElement =>
   return found;
 };
 export const names = (target: HTMLElement) => [...target.querySelectorAll('.entry .name')].map((each) => each.textContent);
+/** Whether the button is off: it stays focusable, so it says so with `aria-disabled`. */
+export const off = (element: HTMLElement): boolean => element.getAttribute('aria-disabled') === 'true';
 export const status = (target: HTMLElement) => target.querySelector('.status')?.textContent;
 export const bar = (target: HTMLElement) => target.querySelector('[role="progressbar"]');
 

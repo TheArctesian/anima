@@ -40,7 +40,7 @@
 
   let picker: HTMLInputElement | undefined = $state();
   let dragging = $state(false);
-  const idle = $derived(files.phase === 'ready' && !files.busy);
+  const idle = $derived(files.idle);
 
   $effect(() => {
     void files.open();
@@ -78,14 +78,14 @@
   ondrop={dropped}
 >
   <div class="bar">
-    <button type="button" class="control" aria-label="Up one folder" disabled={!idle || files.listing === undefined} onclick={() => files.up()} {@attach press()}>
+    <button type="button" class="control" aria-label="Up one folder" aria-disabled={!idle || files.listing === undefined} onclick={() => files.up()} {@attach press()}>
       <Icon name="nf-md-arrow_up" size="sm" />
     </button>
     <span class="where" title={files.listing?.path ?? ''}>{files.listing?.path ?? ''}</span>
-    <button type="button" class="control" aria-label="Refresh the list" disabled={!idle || files.listing === undefined} onclick={() => files.refresh()} {@attach press()}>
+    <button type="button" class="control" aria-label="Refresh the list" aria-disabled={!idle || files.listing === undefined} onclick={() => files.refresh()} {@attach press()}>
       <Icon name="nf-md-refresh" size="sm" />
     </button>
-    <button type="button" class="control labelled" aria-label="Upload a file" disabled={!idle || files.listing === undefined} onclick={() => picker?.click()} {@attach press()}>
+    <button type="button" class="control labelled" aria-label="Upload a file" aria-disabled={!idle || files.listing === undefined} onclick={() => idle && picker?.click()} {@attach press()}>
       <Icon name="nf-md-upload" size="sm" />
       <span>Upload</span>
     </button>
@@ -93,11 +93,12 @@
   </div>
 
   <ul class="entries" aria-label="Entries">
-    {#each files.entries as entry (entry.name)}
+    <!-- Unkeyed: a device may list two entries with one name, and a repeated key would end the list. -->
+    {#each files.entries as entry, at (at)}
       <li class="entry">
         <Icon name={ICONS[entry.kind]} size="sm" />
         {#if entry.kind === 'dir'}
-          <button type="button" class="name open" title={entry.name} disabled={!idle} onclick={() => files.into(entry)}>{entry.name}</button>
+          <button type="button" class="name open" title={entry.name} aria-disabled={!idle} onclick={() => files.into(entry)}>{entry.name}</button>
         {:else}
           <span class="name" title={entry.name}>{entry.name}</span>
         {/if}
@@ -106,7 +107,7 @@
         {#if entry.kind === 'dir'}
           <span class="slot"></span>
         {:else}
-          <button type="button" class="control slot" aria-label="Download {entry.name}" disabled={!idle} onclick={() => void files.download(entry)} {@attach press()}>
+          <button type="button" class="control slot" aria-label="Download {entry.name}" aria-disabled={!idle} onclick={() => void files.download(entry)} {@attach press()}>
             <Icon name="nf-md-download" size="sm" />
           </button>
         {/if}
@@ -127,13 +128,14 @@
         style:inline-size="{fraction(files.transfer?.done ?? 0, files.transfer?.size) * 100}%"
       ></div>
     </div>
-    <button type="button" class="control labelled" disabled={files.transfer === undefined} onclick={() => files.cancel()} {@attach press()}>Cancel</button>
+    <button type="button" class="control labelled" aria-disabled={files.transfer === undefined} onclick={() => files.cancel()} {@attach press()}>Cancel</button>
   </div>
   <p class="status" role="status" title={files.status}>{files.status}</p>
 </section>
 
 <style>
   .files {
+    order: 1;
     box-sizing: border-box;
     display: flex;
     flex: none;
@@ -181,23 +183,27 @@
     display: none;
   }
 
+  /* One set of columns for every row, so the size and date columns line up and the name gets what is left. */
   .entries {
+    display: grid;
     flex: 1;
+    grid-template-columns: auto minmax(0, 1fr) auto auto var(--target-min-desktop);
+    grid-auto-rows: calc(var(--target-min-desktop) + var(--space-2));
+    align-content: start;
+    column-gap: var(--space-2);
     min-block-size: 0;
     margin: 0;
-    padding: 0;
+    padding: 0 var(--space-3);
     overflow: auto;
     list-style: none;
   }
 
   .entry {
-    box-sizing: border-box;
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto auto var(--target-min-desktop);
+    grid-template-columns: subgrid;
+    grid-column: 1 / -1;
     align-items: center;
-    gap: var(--space-2);
-    block-size: calc(var(--target-min-desktop) + var(--space-2));
-    padding: 0 var(--space-3);
+    min-inline-size: 0;
   }
 
   .name {
@@ -209,6 +215,7 @@
   }
 
   .open {
+    min-block-size: var(--target-min-desktop);
     padding: 0;
     border: 0;
     background: none;
@@ -216,7 +223,7 @@
     font-size: inherit;
   }
 
-  .open:disabled {
+  .open[aria-disabled="true"] {
     color: var(--text-muted);
   }
 
@@ -240,7 +247,7 @@
     font: inherit;
   }
 
-  .control:disabled {
+  .control[aria-disabled="true"] {
     color: var(--text-muted);
   }
 
@@ -272,15 +279,17 @@
     background: var(--accent);
   }
 
+  /* Two lines are reserved, so the longest fixed sentence fits and the list above never moves (MOT-007). */
   .status {
-    box-sizing: border-box;
+    box-sizing: content-box;
+    display: -webkit-box;
     flex: none;
-    block-size: calc(var(--target-min-desktop) + var(--space-2));
+    block-size: calc(2 * var(--text-sm) * var(--leading-normal));
     margin: 0;
     padding: var(--space-1) var(--space-3);
     overflow: hidden;
     color: var(--text-muted);
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
   }
 </style>

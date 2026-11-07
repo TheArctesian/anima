@@ -166,7 +166,9 @@
 
   // The terminal owns its keyboard (a hidden text field); it holds the focus only while the pane is shown, the app
   // has the focus and the socket is open (D-8).
+  // The file panel belongs to one session: when the view is not ready its toggle is cleared too (C-3).
   $effect(() => {
+    if (!ready) filing = false;
     if (wanted) screen?.focus();
     else screen?.blur();
   });
@@ -191,9 +193,7 @@
       <Icon name="nf-md-magnify" />
       <span>Find</span>
     </button>
-    <button type="button" class="find" aria-expanded={filing} disabled={!ready} title="Files on the device" onclick={() => (filing = !filing)} {@attach press()}>
-      <Icon name="nf-md-folder" /><span>Files</span>
-    </button>
+    <button type="button" class="find" aria-expanded={filing} disabled={!ready} title="Files on the device" onclick={() => (filing = !filing)} {@attach press()}><Icon name="nf-md-folder" /><span>Files</span></button>
     <span class="device">{device.name}</span>
     {#if ready && rules.notice !== undefined}<span class="policy" data-policy title={rules.notice}>{rules.notice}</span>{/if}
     <!-- Find and notices lie over the toolbar row, which has a fixed height, so the terminal never moves or resizes for them (MOT-007, UI-009). -->
@@ -208,9 +208,10 @@
     {/if}
   </div>
   <div class="stage">
+    <!-- Before the pane in the DOM so Tab reaches it (the terminal keeps Tab); `order` keeps it on the right. -->
+    {#if filing && stage.kind === 'open' && ready}<FilesPanel sessionId={stage.sessionId} />{/if}
     <!-- The terminal draws here; its own hidden text field takes the keyboard (D-8). -->
     <div class="pane" role="group" aria-label="Terminal of {device.name}" {@attach attachPane}></div>
-    {#if filing && stage.kind === 'open' && ready}<FilesPanel sessionId={stage.sessionId} />{/if}
     {#if !ready}
       <!-- Top-aligned, steps first: the ended text appears below the steps, so nothing above it moves (MV-004). -->
       <div class="panel">

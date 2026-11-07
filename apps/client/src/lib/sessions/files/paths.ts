@@ -1,7 +1,5 @@
 import type { FileEntry } from './link/codec';
 
-const CONTROL = /\p{Cc}/gu;
-
 /**
  * `directory` and `name` as one path, or `undefined` when `name` is not one plain name: empty, `.`, `..`, or holding
  * `/` or NUL. Names come from a device and are never trusted as paths of their own.
@@ -20,14 +18,36 @@ export function parentPath(path: string): string {
   return cut === 0 ? '/' : trimmed.slice(0, cut);
 }
 
+const FILE_NAME_MAX_BYTES = 255;
+const utf8 = new TextEncoder();
+/** Characters that are not shown or that reorder what is shown: controls (Cc) and format characters (Cf: bidi, zero-width, BOM). */
+const UNSEEN = /[\p{Cc}\p{Cf}]/gu;
+
+/** `text` cut at a code point so that it holds at most `bytes` bytes of UTF-8. */
+function cutBytes(text: string, bytes: number): string {
+  let kept = '';
+  let used = 0;
+  for (const point of text) {
+    used += utf8.encode(point).byteLength;
+    if (used > bytes) break;
+    kept += point;
+  }
+  return kept;
+}
+
 /**
- * The file name to save a download under: the last segment of `name`, with no path separator or control character,
- * trimmed; `download` when nothing is left.
+ * The file name to save a download under: the last segment of `name`, with no path separator, control or format
+ * character, no leading dot and no trailing dot or space, at most 255 bytes of UTF-8 with its extension kept;
+ * `download` when nothing is left.
  */
 export function saveName(name: string): string {
   const last = name.split(/[/\\]/).at(-1) ?? '';
-  const clean = last.replaceAll(CONTROL, '').trim();
-  return clean === '' || clean === '.' || clean === '..' ? 'download' : clean;
+  const clean = last.replaceAll(UNSEEN, '').replace(/^[.\s]+/, '').replace(/[.\s]+$/, '');
+  if (clean === '') return 'download';
+  if (utf8.encode(clean).byteLength <= FILE_NAME_MAX_BYTES) return clean;
+  const extension = /\.[^.]{1,16}$/.exec(clean)?.[0] ?? '';
+  const stem = cutBytes(clean.slice(0, clean.length - extension.length), FILE_NAME_MAX_BYTES - utf8.encode(extension).byteLength);
+  return `${stem.replace(/[.\s]+$/, '')}${extension}`;
 }
 
 /** Directories first, then the rest, each group by name in the operator's locale; the input is not changed. */
@@ -55,7 +75,7 @@ export function sizeText(size: number | null): string {
 export function timeText(modifiedAt: string | null, locale?: string): string {
   if (modifiedAt === null) return '—';
   const at = new Date(modifiedAt);
-  return Number.isNaN(at.getTime()) ? '—' : at.toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' });
+  return Number.isNaN(at.getTime()) ? '—' : at.toLocaleString(locale, { dateStyle: 'short', timeStyle: 'short' });
 }
 
 /** How far a transfer is, from 0 to 1, linear in the bytes moved (MOT-009); an unknown or empty size is 0. */

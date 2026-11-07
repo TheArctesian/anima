@@ -48,6 +48,11 @@ export class FilesPanelState {
     this.#deps = deps;
   }
 
+  /** The link is open and nothing is in flight: the only time an action may start. */
+  get idle(): boolean {
+    return this.phase === 'ready' && !this.busy;
+  }
+
   /** The entries to show: directories first, each group by name. */
   get entries(): FileEntry[] {
     return this.listing === undefined ? [] : sortedEntries(this.listing.entries);
@@ -89,6 +94,7 @@ export class FilesPanelState {
   }
 
   into(entry: FileEntry): void {
+    if (!this.idle) return;
     const path = this.listing === undefined ? undefined : joinPath(this.listing.path, entry.name);
     if (path === undefined) this.status = NAME_REFUSED;
     else void this.#list(path);
@@ -103,6 +109,7 @@ export class FilesPanelState {
   }
 
   async download(entry: FileEntry): Promise<void> {
+    if (!this.idle) return;
     const path = this.listing === undefined ? undefined : joinPath(this.listing.path, entry.name);
     if (path === undefined || this.#link === undefined) {
       this.status = NAME_REFUSED;
@@ -117,6 +124,7 @@ export class FilesPanelState {
   }
 
   async upload(file: UploadSource & { readonly name: string }): Promise<void> {
+    if (!this.idle) return;
     const directory = this.listing?.path;
     const path = directory === undefined ? undefined : joinPath(directory, file.name);
     if (directory === undefined || path === undefined || this.#link === undefined) {
@@ -131,7 +139,7 @@ export class FilesPanelState {
 
   /** Stop the transfer in flight; its result settles once the hub confirms. */
   cancel(): void {
-    this.#link?.cancel();
+    if (this.transfer !== undefined) this.#link?.cancel();
   }
 
   async #transfer<T>(
@@ -155,7 +163,7 @@ export class FilesPanelState {
 
   /** List `path`; `keepStatus` leaves the last transfer's outcome on the status line. */
   async #list(path: string, keepStatus = false): Promise<void> {
-    if (this.#link === undefined || this.busy) return;
+    if (this.#link === undefined || this.busy || this.phase !== 'ready') return;
     this.busy = true;
     const result = await this.#link.list(path);
     this.busy = false;

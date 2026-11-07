@@ -39,8 +39,27 @@ describe('RA-032: saveName', () => {
     ['/', 'download'],
     ['dir/', 'download'],
     ['\u0007\u0008', 'download'],
+    ['invoice\u202Efdp.exe', 'invoicefdp.exe'],
+    ['\u200B', 'download'],
+    ['\uFEFFreport.txt', 'report.txt'],
+    ['.bashrc', 'bashrc'],
+    ['.', 'download'],
+    ['name. . ', 'name'],
   ])('%j is saved as %j', (name, saved) => {
     expect(saveName(name)).toBe(saved);
+  });
+});
+
+describe('RA-032: saveName length', () => {
+  it('caps the name at 255 bytes of UTF-8 and keeps the extension', () => {
+    const long = `${'a'.repeat(1000)}.pdf`;
+    const saved = saveName(long);
+    expect(new TextEncoder().encode(saved).byteLength).toBe(255);
+    expect(saved.endsWith('.pdf')).toBe(true);
+    const wide = saveName(`${'é'.repeat(300)}.txt`);
+    expect(new TextEncoder().encode(wide).byteLength).toBeLessThanOrEqual(255);
+    expect(wide.endsWith('é.txt')).toBe(true);
+    expect(saveName('x'.repeat(1000)).length).toBe(255);
   });
 });
 
@@ -62,7 +81,7 @@ describe('RA-032: listing text', () => {
     expect(sizeText(20 * 1024 * 1024)).toBe('20 MiB');
     expect(timeText(null)).toBe('—');
     expect(timeText('not a time')).toBe('—');
-    expect(timeText('2026-11-05T10:00:00Z', 'en')).toMatch(/2026/);
+    expect(timeText('2026-11-05T10:00:00Z', 'en')).toMatch(/26/);
   });
 
   it('MOT-009: progress is bytes over size, linear, and never above 1', () => {

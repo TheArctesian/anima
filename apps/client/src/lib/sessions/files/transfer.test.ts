@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { flushSync } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { settle } from './link/fake/link.fixture';
-import { HOME, bar, button, click, entry, file, listed, pick, removePanels, resetPanels, status } from './panel.fixture';
+import { HOME, bar, button, click, entry, file, listed, off, pick, removePanels, resetPanels, status } from './panel.fixture';
 
 beforeEach(resetPanels);
 afterEach(removePanels);
@@ -146,19 +146,20 @@ describe('D-5: one transfer at a time', () => {
     const { target, socket } = await listed([entry('docs', 'dir'), entry('a', 'file'), entry('b', 'file')]);
     await click(button(target, 'Download a'));
     const sent = socket.frames.length;
-    expect(button(target, 'Download b').disabled).toBe(true);
-    expect(button(target, 'docs').disabled).toBe(true);
-    expect(button(target, 'Up one folder').disabled).toBe(true);
-    expect(button(target, 'Refresh the list').disabled).toBe(true);
-    expect(button(target, 'Upload a file').disabled).toBe(true);
-    expect(button(target, 'Cancel').disabled).toBe(false);
+    expect(off(button(target, 'Download b'))).toBe(true);
+    expect(off(button(target, 'docs'))).toBe(true);
+    expect(off(button(target, 'Up one folder'))).toBe(true);
+    expect(off(button(target, 'Refresh the list'))).toBe(true);
+    expect(off(button(target, 'Upload a file'))).toBe(true);
+    expect(off(button(target, 'Cancel'))).toBe(false);
+    expect(target.querySelectorAll('button:disabled')).toHaveLength(0);
     await click(button(target, 'Download b'));
     expect(socket.frames).toHaveLength(sent);
     socket.text({ type: 'refused', reason: 'DENIED' });
     await settle();
     flushSync();
-    expect(button(target, 'Download b').disabled).toBe(false);
-    expect(button(target, 'Cancel').disabled).toBe(true);
+    expect(off(button(target, 'Download b'))).toBe(false);
+    expect(off(button(target, 'Cancel'))).toBe(true);
   });
 });
 
@@ -175,5 +176,12 @@ describe('MAT-008, MOT-009: the panel is solid and its bar is not eased', () => 
 
   it('MOT-009: nothing in the panel stylesheet transitions or animates', () => {
     expect(style).not.toMatch(/transition|animation|@keyframes/);
+  });
+
+  it('UI-013: the folder-name button is at least the minimum target tall and the status reserves two lines', () => {
+    const rule = (selector: string) => new RegExp(`${selector.replace('.', '\\.')} \\{[^}]*\\}`).exec(style)?.[0] ?? '';
+    expect(rule('.open')).toContain('min-block-size: var(--target-min-desktop)');
+    expect(rule('.status')).toContain('-webkit-line-clamp: 2');
+    expect(rule('.entry')).toContain('grid-template-columns: subgrid');
   });
 });
