@@ -101,5 +101,6 @@ pub(super) const fn k1_name(reason: EndReason) -> &'static str {
         EndReason::ProtocolError => "PROTOCOL_ERROR",
         EndReason::Timeout => "TIMEOUT",
         EndReason::HubShutdown => "HUB_SHUTDOWN",
+        EndReason::ServerCertificateMismatch => "SERVER_CERTIFICATE_MISMATCH",
     }
 }

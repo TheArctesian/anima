@@ -1,4 +1,7 @@
-//! Migration 0600: columns, session checks and what a device delete does (K2, RA-008, SEC-006).
+//! Migrations 0600 and 0610: columns, session checks and what a device delete does (K2,
+//! RA-008, SEC-006); the server certificate table is `server_certificates`.
+
+mod server_certificates;
 
 use sqlx::PgPool;
 
@@ -8,7 +11,7 @@ use super::{
 };
 use anima_hub::sessions::EndReason;
 
-async fn columns(pool: &PgPool, table: &str) -> Vec<(String, String, String)> {
+pub(super) async fn columns(pool: &PgPool, table: &str) -> Vec<(String, String, String)> {
     sqlx::query_as(
         "select column_name::text, data_type::text, is_nullable::text \
          from information_schema.columns where table_schema = 'sessions' and table_name = $1 \
@@ -20,7 +23,7 @@ async fn columns(pool: &PgPool, table: &str) -> Vec<(String, String, String)> {
     .unwrap()
 }
 
-fn expected(columns: &[(&str, &str, &str)]) -> Vec<(String, String, String)> {
+pub(super) fn expected(columns: &[(&str, &str, &str)]) -> Vec<(String, String, String)> {
     columns
         .iter()
         .map(|(a, b, c)| ((*a).to_owned(), (*b).to_owned(), (*c).to_owned()))
@@ -69,7 +72,13 @@ async fn ra_008_end_reason_takes_every_k1_value_and_refuses_other_text(pool: PgP
             .await
             .unwrap();
     }
-    for reason in ["crashed", "OPERATOR", "", "operator "] {
+    for reason in [
+        "crashed",
+        "OPERATOR",
+        "",
+        "operator ",
+        "SERVER_CERTIFICATE_MISMATCH",
+    ] {
         let error = insert(&pool, &Row::ended(99, PVE_01, 0, reason))
             .await
             .unwrap_err();
@@ -101,9 +110,14 @@ async fn ra_008_ended_at_and_end_reason_are_set_together(pool: PgPool) {
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
 )]
-async fn ra_008_protocol_is_ssh_only(pool: PgPool) {
+async fn ra_030_protocol_is_ssh_rdp_or_vnc(pool: PgPool) {
     insert(&pool, &Row::live(1, PVE_01, 0)).await.unwrap();
-    for protocol in ["rdp", "SSH", ""] {
+    for protocol in ["rdp", "vnc", "ssh"] {
+        update(&pool, &format!("protocol = '{protocol}'"))
+            .await
+            .unwrap();
+    }
+    for protocol in ["telnet", "RDP", "SSH", "vnc ", ""] {
         let error = update(&pool, &format!("protocol = '{protocol}'"))
             .await
             .unwrap_err();

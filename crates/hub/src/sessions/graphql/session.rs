@@ -1,10 +1,12 @@
-//! `Session` as the GraphQL type K1 describes. It does not expose the client address or the
-//! operator id.
+//! `Session` as the GraphQL type K1 describes. It does not expose the operator id.
 
 use async_graphql::{ID, Object};
 use chrono::{DateTime, Utc};
 
-use crate::sessions::{EndReason, Protocol, Session};
+use crate::{
+    scalars::IpAddr,
+    sessions::{EndReason, Protocol, Session},
+};
 
 #[Object]
 impl Session {
@@ -39,5 +41,10 @@ impl Session {
 
     async fn end_reason(&self) -> Option<EndReason> {
         self.end.map(|end| end.reason)
+    }
+
+    /// The address of the computer that started the session (RA-034).
+    async fn client_addr(&self) -> IpAddr {
+        IpAddr(self.client)
     }
 }

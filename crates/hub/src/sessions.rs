@@ -40,7 +40,9 @@ use crate::{
 pub use end::Actor;
 pub use link::{CommandOutput, Error as LinkError, FixedCommand, SshLink, link};
 pub use live::{EndCause, Live, Redeemed, Refused, Tunnel};
-pub use model::{EndReason, FieldError, HostKey, Protocol, Session, SessionEnd, UnknownValue};
+pub use model::{
+    EndReason, FieldError, HostKey, Protocol, ServerCertificate, Session, SessionEnd, UnknownValue,
+};
 pub use public_key::{BadFingerprint, BadKey, Fingerprint, PublicKey};
 pub use start::{DEFAULT_DPI, DisplayRequest, StartRequest, start};
 pub use terminal::terminal_router;
@@ -80,6 +82,12 @@ pub enum Conflict {
          again and compare the fingerprint."
     )]
     KeyDiffers,
+    /// No device has RDP settings yet, so RDP is off for every one.
+    #[error("RDP is turned off for this device.")]
+    RdpDisabled,
+    /// No device has VNC settings yet, so VNC is off for every one.
+    #[error("VNC is turned off for this device.")]
+    VncDisabled,
 }
 
 /// Why a sessions operation failed. No variant holds a ticket token (LOG-007).
@@ -142,6 +150,18 @@ pub async fn host_keys(
     devices: &[DeviceId],
 ) -> Result<HashMap<DeviceId, HostKey>, Error> {
     store::host_keys(db, devices).await
+}
+
+/// The accepted RDP server certificate of each listed device that has one, in one query
+/// (API-005, SEC-007). An empty list returns an empty map without a query.
+///
+/// # Errors
+/// `Database` when the query fails.
+pub async fn server_certificates(
+    db: &PgPool,
+    devices: &[DeviceId],
+) -> Result<HashMap<DeviceId, ServerCertificate>, Error> {
+    store::server_certificates(db, devices).await
 }
 
 /// Ends, with `HUB_SHUTDOWN` at `now`, every session a previous hub process left open, each
