@@ -21,6 +21,7 @@ use crate::{
     },
     maintenance,
     sessions::{self, Live},
+    targets::AddressPolicy,
     web_interfaces,
 };
 
@@ -43,6 +44,7 @@ pub struct Mutation(
     maintenance::graphql::Mutation,
     sessions::graphql::Mutation,
     sessions::FilesMutation,
+    sessions::WakeMutation,
     web_interfaces::graphql::Mutation,
 );
 
@@ -63,6 +65,8 @@ pub struct Dependencies {
     /// The hub's one `Live`: the tunnel router gets a clone of this same value, or no ticket
     /// the schema issues can be redeemed (R-032).
     pub live: Live,
+    /// The deny list every SSH link the schema opens checks (`wakeDevice`; P2-004).
+    pub policy: AddressPolicy,
 }
 
 /// Put each dependency into the schema data, with the devices loaders (WP-06 H-2);
@@ -81,6 +85,7 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
         bus,
         vault,
         live,
+        policy,
     } = dependencies;
     harden(
         Schema::build(
@@ -121,6 +126,7 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     // sessions (R-032)
     .data(sessions::graphql::host_key_loader(pool.clone()).delay(BATCH_WINDOW))
     .data(live)
+    .data(policy)
     .finish()
 }
 

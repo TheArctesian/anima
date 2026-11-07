@@ -9,6 +9,7 @@ use super::{
     server::{Answer, Heard, host_key, serve},
 };
 use crate::{
+    credentials,
     sessions::{
         link::{Error, FixedCommand},
         tests::fixture::store_password,
@@ -176,10 +177,12 @@ async fn od_9_a_wrong_password_is_refused_after_one_try(pool: PgPool) {
 )]
 async fn od_9_no_stored_credential_is_refused_after_the_pin(pool: PgPool) {
     let bench = bench(&pool, Answer::Echo).await;
-    sqlx::query("delete from credentials.secrets")
-        .execute(&pool)
-        .await
-        .unwrap();
+    let mut conn = pool.acquire().await.unwrap();
+    assert!(
+        credentials::clear_ssh(&mut conn, bench.device.id)
+            .await
+            .unwrap()
+    );
     assert!(matches!(
         refused(&bench, &reaching()).await,
         Error::NoCredential

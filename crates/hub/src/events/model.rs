@@ -154,6 +154,8 @@ pub enum AuditAction {
     Upload,
     /// A file read from a device over the files tunnel (K4 Section 9).
     Download,
+    /// A Wake-on-LAN packet sent to a device (RA-031).
+    Wake,
 }
 
 impl AuditAction {
@@ -175,6 +177,7 @@ impl AuditAction {
             Self::Deactivate => "deactivate",
             Self::Upload => "upload",
             Self::Download => "download",
+            Self::Wake => "wake",
         }
     }
 }

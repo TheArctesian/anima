@@ -23,13 +23,15 @@ pub(in crate::sessions) fn to_graphql(error: Error) -> GraphQlError {
     }
 }
 
-fn coded(message: String, code: &'static str) -> GraphQlError {
+pub(in crate::sessions) fn coded(message: String, code: &'static str) -> GraphQlError {
     GraphQlError::new(message).extend_with(|_, extensions| extensions.set("code", code))
 }
 
 /// The generic `INTERNAL` error: the operator sees no detail. The cause stays as the error's
 /// source, which is never serialised, so a log layer can report it.
-fn internal(cause: impl std::error::Error + Send + Sync + 'static) -> GraphQlError {
+pub(in crate::sessions) fn internal(
+    cause: impl std::error::Error + Send + Sync + 'static,
+) -> GraphQlError {
     let mut error = GraphQlError::new_with_source(cause);
     INTERNAL_MESSAGE.clone_into(&mut error.message);
     error.extend_with(|_, extensions| extensions.set("code", "INTERNAL"))
