@@ -141,10 +141,7 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     tracing::info!(listen = %listening.local_addr()?, "hub started");
     let bus = Bus::new(BUS_CAPACITY);
     let policy = AddressPolicy::new(config.probe_deny.clone());
-    let probing = checks::Probing {
-        vault: vault.clone(),
-        policy: policy.clone(),
-    };
+    let (probing, collecting) = reaching(&vault, &policy);
     let feed = metrics::Feed::new();
     let dependencies = Dependencies {
         config,
@@ -160,13 +157,8 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     let schema = build_schema(dependencies);
     let upkeep = upkeep::spawn(&pool, &clock);
     let scheduler = checks::spawn_scheduler(pool.clone(), bus.clone(), clock.clone(), probing);
-    let collector = metrics::spawn_collector(
-        pool.clone(),
-        feed,
-        bus.clone(),
-        clock.clone(),
-        metrics::Collecting { vault, policy },
-    );
+    let collector =
+        metrics::spawn_collector(pool.clone(), feed, bus.clone(), clock.clone(), collecting);
     let push = checks::push_router(pool.clone(), bus.clone(), clock.clone());
     // The tunnels and `/push` are behind the same permitted-networks check as every route, and
     // logged by their templates only, never their tokens (K3, NET-002, LOG-007, R-028, R-051).
@@ -192,6 +184,21 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     scheduler.abort();
     collector.abort();
     Ok(())
+}
+
+/// What checks and metrics need to reach devices: the vault and the one address policy both
+/// obey (P2-004).
+fn reaching(vault: &Vault, policy: &AddressPolicy) -> (checks::Probing, metrics::Collecting) {
+    (
+        checks::Probing {
+            vault: vault.clone(),
+            policy: policy.clone(),
+        },
+        metrics::Collecting {
+            vault: vault.clone(),
+            policy: policy.clone(),
+        },
+    )
 }
 
 /// Stores `ANIMA_PERMITTED_NETWORKS` (D-10). A hub fault is logged by its fault word and
