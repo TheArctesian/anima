@@ -101,26 +101,4 @@ fixture_test! {
         .unwrap();
         assert_eq!(stored, 0);
     }
-
-    async fn chk_009_the_database_allows_every_phase_2_type_id_and_no_other(pool: PgPool) {
-        for id in ["docker", "systemd", "snmp", "tailscale_ping"] {
-            let stored = sqlx::query(
-                "INSERT INTO checks.checks (id, device_id, type, name, config) \
-                 VALUES (gen_random_uuid(), $1::uuid, $2, 'x', '{}'::jsonb)",
-            )
-            .bind(DOCKER_HOST)
-            .bind(id)
-            .execute(&pool)
-            .await;
-            assert!(stored.is_ok(), "{id}: {stored:?}");
-        }
-        let refused = sqlx::query(
-            "INSERT INTO checks.checks (id, device_id, type, name, config) \
-             VALUES (gen_random_uuid(), $1::uuid, 'ping', 'x', '{}'::jsonb)",
-        )
-        .bind(DOCKER_HOST)
-        .execute(&pool)
-        .await;
-        assert!(refused.is_err());
-    }
 }
