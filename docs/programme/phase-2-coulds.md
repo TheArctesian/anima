@@ -182,3 +182,5 @@ These items are not blocking. The programme orchestrator collects them here and 
 - F5 (should): the compact-header `767.98px` media query literal is not tied to the `bp-compact` token by a test; a token change would not fail any test.
 - F5 (should): the narrow-header test runs in jsdom, which cannot evaluate the media query; a browser test should prove the wrap and icon-only badge at 390 px.
 - F3 (could): in Chromium only, the settled close of the last session tab logs one layout-shift entry (0.0198) from the hidden `.stage`; nothing visible moves.
+- F7 (should): at 390 px the Overview chart skeleton is 1382.5 px against 1432 px for the data, because the legend row wraps in one column; the area grows 49.5 px at the bottom (CLS 0, nothing below it).
+- F7 (could): `rememberChartShape` then `chartShapeOf` round-trip through the shapes map (`routes/devices/[id]/overview/metrics.svelte.ts:79-82`); pass the shape directly.
