@@ -58,17 +58,6 @@ describe('certificate modal (SEC-007, K4 §3)', () => {
     expect(document.activeElement).toBe(button('Cancel'));
   });
 
-  it('K4 §3: a null certificate (it matches the accepted one) says nothing needs accepting and offers Reconnect', async () => {
-    const { heard } = await showModal({
-      testConnection: () =>
-        Promise.resolve({ ok: true, value: { reachable: true, authenticated: false, hostKey: null, hostKeyChanged: false, message: null, serverCertificate: null, certificateChanged: false } }),
-    });
-    expect(dialog()?.textContent).toContain(PROBLEM.unchanged);
-    expect(button('Accept new certificate')).toBeUndefined();
-    button('Reconnect')?.click();
-    expect(heard.accepted).toBe(1);
-  });
-
   it('SEC-007: Accept sends exactly the fingerprint read, once, then asks the caller to reconnect', async () => {
     const { named, heard } = await showModal();
     const accept = button('Accept new certificate');
@@ -199,5 +188,61 @@ describe('MOT-007, MV-004: the modal keeps its layout while it reads', () => {
     const values = [...(dialog()?.querySelectorAll('dd > :not([data-reserve])') ?? [])].map((value) => value.textContent);
     expect(values).toEqual([CERTIFICATE.fingerprintSha256, 'Not given', 'Not given']);
     expect(reservesOf()).toHaveLength(3);
+  });
+});
+
+describe('certificate modal outcomes (CR-3, SEC-007)', () => {
+  /** A connection test answer as the hub gives it for one outcome of the RDP read. */
+  const answered = (over: Partial<{ message: string | null; reachable: boolean; certificateChanged: boolean; certificateMatched: boolean; serverCertificate: typeof CERTIFICATE | null }>) => ({
+    testConnection: () =>
+      Promise.resolve({
+        ok: true as const,
+        value: { reachable: true, authenticated: false, hostKey: null, hostKeyChanged: false, message: null, serverCertificate: null, certificateChanged: false, certificateMatched: false, ...over },
+      }),
+  });
+
+  it('CR-3, SEC-007: a matched certificate says nothing needs accepting and offers Reconnect, not Accept', async () => {
+    const { heard } = await showModal(answered({ certificateMatched: true }));
+    expect(dialog()?.textContent).toContain(PROBLEM.unchanged);
+    expect(button('Accept new certificate')).toBeUndefined();
+    button('Reconnect')?.click();
+    expect(heard.accepted).toBe(1);
+  });
+
+  it.each([
+    ['STANDARD_ONLY', 'The device only offers standard RDP security.'],
+    ['NEGOTIATION_REFUSED', 'The device refused the security negotiation.'],
+    ['NO_TLS', 'The device did not offer TLS.'],
+  ])('CR-3, SEC-007: %s (null certificate, reachable, not matched) fails with the hub message, with no Reconnect and no Accept', async (_outcome, message) => {
+    await showModal(answered({ message }));
+    expect(dialog()?.textContent).toContain(message);
+    expect(dialog()?.textContent).not.toContain(PROBLEM.unchanged);
+    expect(button('Reconnect')).toBeUndefined();
+    expect(button('Accept new certificate')).toBeUndefined();
+    expect(button('Read again')).toBeDefined();
+  });
+
+  it('CR-3: an unreachable device fails with the hub message', async () => {
+    await showModal(answered({ reachable: false, message: 'The device did not answer.' }));
+    expect(dialog()?.textContent).toContain('The device did not answer.');
+    expect(button('Reconnect')).toBeUndefined();
+  });
+
+  it('CR-3: a null certificate with no message falls back to the fixed text', async () => {
+    await showModal(answered({}));
+    expect(dialog()?.textContent).toContain(PROBLEM.none);
+  });
+
+  it('SEC-007: a changed certificate is shown with Accept, and no Reconnect', async () => {
+    await showModal(answered({ serverCertificate: CERTIFICATE, certificateChanged: true }));
+    expect(shown('fingerprint')).toBe(CERTIFICATE.fingerprintSha256);
+    expect(button('Accept new certificate')).toBeDefined();
+    expect(button('Reconnect')).toBeUndefined();
+  });
+
+  it('SEC-007: a first certificate (present, not changed, not matched) is shown with Accept', async () => {
+    await showModal(answered({ serverCertificate: CERTIFICATE }));
+    expect(shown('fingerprint')).toBe(CERTIFICATE.fingerprintSha256);
+    expect(button('Accept new certificate')).toBeDefined();
   });
 });

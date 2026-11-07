@@ -106,7 +106,7 @@ describe('DEV-013, SEC-007: remoteOutcome', () => {
     });
   });
 
-  it('DEV-013: the saved accepted certificate seen again is not new; a null certificate is no change', () => {
+  it('DEV-013: the saved accepted certificate seen again is not new; a null certificate is only reachable', () => {
     const same = { serverCertificate: CERTIFICATE, certificateChanged: false };
     expect(remoteOutcome('RDP', answer({ ...same, authenticated: true }), 'AA:BB')).toEqual({ kind: 'reachable', message: '' });
     expect(remoteOutcome('RDP', answer({ ...same, authenticated: false }), 'AA:BB')).toEqual({ kind: 'reachable', message: '' });

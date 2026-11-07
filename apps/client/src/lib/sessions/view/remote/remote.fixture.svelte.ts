@@ -75,7 +75,7 @@ function remoteApi() {
     },
     testConnection: (input) => {
       calls.testConnection.push(input);
-      return Promise.resolve({ ok: true, value: { ...PHASE_ONE_TEST, serverCertificate: CERTIFICATE, certificateChanged: true } });
+      return Promise.resolve({ ok: true, value: { ...PHASE_ONE_TEST, serverCertificate: CERTIFICATE, certificateChanged: true, certificateMatched: false } });
     },
     acceptServerCertificate: (deviceId, fingerprint) => {
       calls.acceptServerCertificate.push([deviceId, fingerprint]);

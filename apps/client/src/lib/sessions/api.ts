@@ -86,6 +86,7 @@ const TestRemoteConnection = graphql(`
         firstSeenAt
       }
       certificateChanged
+      certificateMatched
     }
   }
 `);
@@ -178,7 +179,7 @@ export type { ConnectionTestInput };
  * Phase 1, so a hub without K1 still answers it.
  */
 export type ConnectionTest = TestConnectionMutation['testConnection'] &
-  Partial<Pick<TestRemoteConnectionMutation['testConnection'], 'serverCertificate' | 'certificateChanged'>>;
+  Partial<Pick<TestRemoteConnectionMutation['testConnection'], 'serverCertificate' | 'certificateChanged' | 'certificateMatched'>>;
 
 /** The device's copy and paste flags a session obeys (RA-033, K4 §8.7). */
 export type SessionTransfer = NonNullable<DeviceTransferQuery['device']>['transfer'];

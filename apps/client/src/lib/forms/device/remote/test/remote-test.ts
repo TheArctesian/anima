@@ -66,7 +66,8 @@ const UNREACHABLE_MESSAGE = 'The device did not answer.';
  * DEV-013, SEC-007: one outcome per result. An unreachable host wins, then a changed RDP certificate (never
  * reachable-only, even without the certificate), then a new one (not the saved accepted one, `acceptedFingerprint`).
  * VNC has no certificate. `authenticated` is not read: the hub answers false for RDP and VNC, which sign in only
- * when a session starts. A `null` certificate means no change: it matches the accepted one.
+ * when a session starts. A `null` certificate says nothing about the pin: the outcome is `reachable`, with the
+ * hub's message (STANDARD_ONLY, NEGOTIATION_REFUSED, NO_TLS).
  */
 export function remoteOutcome(protocol: RemoteProtocol, result: RemoteTestResult, acceptedFingerprint: string | null = null): RemoteOutcome {
   const message = result.message ?? '';

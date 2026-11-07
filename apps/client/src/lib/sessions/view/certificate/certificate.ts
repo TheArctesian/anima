@@ -15,7 +15,7 @@ export interface ShownCertificate {
 export type CertificateStep =
   | { readonly step: 'reading'; readonly notice?: string }
   | { readonly step: 'failed'; readonly problem: string }
-  /** The device presents the certificate Anima already accepted (`serverCertificate: null`): nothing to accept. */
+  /** The hub says the device presents the certificate Anima accepted (`certificateMatched`): nothing to accept. */
   | { readonly step: 'unchanged' }
   | { readonly step: 'shown'; readonly certificate: ShownCertificate; readonly notice?: string }
   | { readonly step: 'accepting'; readonly certificate: ShownCertificate }
@@ -41,11 +41,14 @@ export const PROBLEM = {
 
 function readDone(notice: string | undefined, result: HubResult<ConnectionTest>): CertificateStep {
   if (!result.ok) return { step: 'failed', problem: PROBLEM.read };
-  const { serverCertificate, reachable, certificateChanged } = result.value;
-  // K4 §3: null is "no change", the hub's answer when the certificate matches the accepted one.
-  if (serverCertificate === null && reachable && !certificateChanged) return { step: 'unchanged' };
+  const { serverCertificate, reachable, certificateMatched, message } = result.value;
+  // A null certificate proves nothing by itself (STANDARD_ONLY, NEGOTIATION_REFUSED and NO_TLS answer it too):
+  // only `certificateMatched` says the device presents the accepted certificate (CR-3, SEC-007).
+  if (certificateMatched === true) return { step: 'unchanged' };
   if (serverCertificate === undefined || serverCertificate === null) {
-    return { step: 'failed', problem: reachable ? PROBLEM.none : PROBLEM.unreachable };
+    // The hub's message is fixed text (R-035); the fixed fallback stands in when it has none.
+    const fallback = reachable ? PROBLEM.none : PROBLEM.unreachable;
+    return { step: 'failed', problem: message === null || message === '' ? fallback : message };
   }
   const { fingerprintSha256, subject, notAfter } = serverCertificate;
   const certificate = { fingerprintSha256, subject, notAfter };

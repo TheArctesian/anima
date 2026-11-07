@@ -80,6 +80,7 @@ function tested(device: FakeDevice, operation: string, input: Record<string, unk
         ...phaseOne,
         serverCertificate: rdp ? device.certificate : null,
         certificateChanged: rdp && accepted !== null && accepted !== device.certificate.fingerprintSha256,
+        certificateMatched: rdp && accepted !== null && accepted === device.certificate.fingerprintSha256,
       },
     },
   };
