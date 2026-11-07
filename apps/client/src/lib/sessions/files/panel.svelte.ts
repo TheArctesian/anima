@@ -39,6 +39,8 @@ export class FilesPanelState {
   status = $state('');
   /** A list or transfer is in flight, or the link is not ready: no other action may start. */
   busy = $state(false);
+  /** A directory listing is on its way; the panel shows placeholder rows once it takes long (5.7.3, Loading). */
+  listLoading = $state(false);
 
   readonly #deps: FilesPanelDeps;
   #link: FilesLink | undefined;
@@ -165,8 +167,10 @@ export class FilesPanelState {
   async #list(path: string, keepStatus = false): Promise<void> {
     if (this.#link === undefined || this.busy || this.phase !== 'ready') return;
     this.busy = true;
+    this.listLoading = true;
     const result = await this.#link.list(path);
     this.busy = false;
+    this.listLoading = false;
     if (result.ok) {
       this.listing = result.value;
       if (!keepStatus) this.status = '';
@@ -179,6 +183,7 @@ export class FilesPanelState {
     this.phase = 'ended';
     this.status = text;
     this.busy = false;
+    this.listLoading = false;
     this.transfer = undefined;
   }
 }

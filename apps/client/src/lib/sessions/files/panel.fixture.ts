@@ -1,6 +1,7 @@
 // Test support: the file panel mounted on a fake ticket and a fake socket, and the queries tests make of it.
 import { flushSync, mount, unmount } from 'svelte';
 import type { HubResult } from '$lib/hub/hub';
+import type { LoadingClock } from '$lib/motion/loading/loading';
 import type { FilesApi, FilesTicket } from './api';
 import FilesPanel from './FilesPanel.svelte';
 import type { FileEntry } from './link/codec';
@@ -38,7 +39,7 @@ export interface Shown {
 }
 
 /** Mount the panel on a fake ticket and socket; `ticket` can be a failure. */
-export async function show(ticket: HubResult<FilesTicket> | Promise<HubResult<FilesTicket>> | undefined = undefined): Promise<Shown> {
+export async function show(ticket: HubResult<FilesTicket> | Promise<HubResult<FilesTicket>> | undefined = undefined, clock?: LoadingClock): Promise<Shown> {
   const tickets: string[] = [];
   const api: FilesApi = {
     openFiles: (sessionId) => {
@@ -51,7 +52,7 @@ export async function show(ticket: HubResult<FilesTicket> | Promise<HubResult<Fi
   document.body.append(target);
   const component = mount(FilesPanel, {
     target,
-    props: { sessionId: 'session-1', api, origin: 'https://hub.anima.ing', WebSocket: FAKE_FILES_SOCKET, save: (name, blob) => saved.push({ name, blob }) },
+    props: { sessionId: 'session-1', api, origin: 'https://hub.anima.ing', WebSocket: FAKE_FILES_SOCKET, clock, save: (name, blob) => saved.push({ name, blob }) },
   });
   let closed = false;
   const close = async () => {

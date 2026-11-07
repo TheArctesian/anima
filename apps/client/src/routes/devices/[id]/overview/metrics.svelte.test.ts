@@ -22,6 +22,14 @@ describe('DeviceMetrics (D-5, D-6, D-7)', () => {
     expect(metrics.view).toBeNull();
   });
 
+  it('MOT-007, 5.7.3 Loading: the chart count of the last answer is kept for the skeleton, and is null before one', async () => {
+    const fake = fakeHub({ DeviceMetrics: answer() });
+    const metrics = metricsOf(fake);
+    expect(metrics.chartCount).toBeNull();
+    await metrics.load('HOUR', 'SSH');
+    expect(metrics.chartCount).toBe(2);
+  });
+
   it('MET-003: the request carries the range, and the window ends when the load began', async () => {
     const fake = fakeHub({ DeviceMetrics: answer() });
     const metrics = metricsOf(fake);

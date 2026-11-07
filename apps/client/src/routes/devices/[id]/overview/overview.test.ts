@@ -52,7 +52,7 @@ it.each([
   expect(hostKeyText(ssh)).toBe(text);
 });
 
-type Shown = Pick<DeviceMetrics, 'view' | 'span' | 'shownRange' | 'readings' | 'error' | 'liveError'>;
+type Shown = Pick<DeviceMetrics, 'view' | 'span' | 'shownRange' | 'chartCount' | 'readings' | 'error' | 'liveError'>;
 
 const NOW = new Date('2026-11-05T09:05:00Z');
 const SPAN = { start: NOW.getTime() - 3_600_000, end: NOW.getTime() };
@@ -60,11 +60,12 @@ const LOADED: Shown = {
   view: { metricsSource: 'SSH', gpus: [NVIDIA, INTEGRATED], series: TWO_GPUS, readings: null },
   span: SPAN,
   shownRange: 'HOUR',
+  chartCount: 9,
   readings: { ...added('2026-11-05T09:04:00Z', []).readings, cpuPercent: 20, memoryPercent: 45, diskPercent: 61 },
   error: null,
   liveError: null,
 };
-const WAITING: Shown = { view: null, span: null, shownRange: null, readings: null, error: null, liveError: null };
+const WAITING: Shown = { view: null, span: null, shownRange: null, chartCount: null, readings: null, error: null, liveError: null };
 
 function show(metrics: Shown, source: 'SSH' | 'NONE' = 'SSH', range: MetricRange = 'HOUR') {
   const time = manualClock();
@@ -141,6 +142,13 @@ it('D-3: a slow load shows the chart grid skeleton after threshold-loading, with
   flushSync();
   expect(document.querySelectorAll('.chart-grid > .cell')).toHaveLength(4);
   expect(document.querySelector('polyline')).toBeNull();
+});
+
+it('MOT-007, 5.7.3 Loading: the skeleton draws as many cells as the last answer had, and four before any', () => {
+  const { time } = show({ ...WAITING, chartCount: 7 });
+  time.advance(threshold.loading);
+  flushSync();
+  expect(document.querySelectorAll('.chart-grid > .cell').length).toBe(7);
 });
 
 it('D-7: an error shows the hub message and Retry in the chart area', () => {
