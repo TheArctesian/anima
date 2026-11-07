@@ -189,3 +189,8 @@ These items are not blocking. The programme orchestrator collects them here and 
 
 - Non-SPEC audit items Q2-05 to Q2-16 in `docs/research/code-quality/phase-2.md` (R-076).
 - T3 (could): `Detail.applyCheck` could be private; `pauseCheck` and `saveCheckValues` are tested only through `page.test.ts`; `DeviceMissing.svelte` carries an empty script block for svelte-check.
+- T1 (could): the `token_half` mutant survives (`checks.rs:253-257`); `Vault::seal` draws its own nonce, so it cannot be passed in for tests (`credentials/vault.rs:68-72`); `rand::rng()` at `checks/scheduler.rs:48` still panics on a random-source failure (startup jitter only).
+- T2 (should): in WebKit the opener focus return misses conditionally mounted callers (S1, as before).
+- T2 (should): after opening, the host key surface grows 96 px and the credential surface 32 px in one frame (MV-004, MOT-007; as before).
+- T2 (should): on `--surface-raised`, modal fields and the Cancel button share the dialog fill and are separated only by a 1.2:1 border (shell-wide, also AddDeviceModal; UI-001, MAT-001).
+- T2 (could): the literal-opacity rule skips `stop-opacity`, `flood-opacity` and `style:` bindings; the "Save password" checkbox is 12 px (UI-013); prompt heights differ from before by -22 to +10 px from the shell gap; one stack-test mutant hangs instead of failing; the CredentialPrompt `.content` wrapper is unused.
