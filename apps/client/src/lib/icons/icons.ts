@@ -2,6 +2,7 @@
 // Source: glyphnames.json at Nerd Fonts commit f034eeafc0ccf79afa8dd952feb86b18e5d0469e.
 export const iconCodePoints = {
   'nf-md-server': 0xf048b,
+  'nf-md-access_point': 0xf0003,
   'nf-md-cog': 0xf0493,
   'nf-md-lan_connect': 0xf0318,
   'nf-md-lan_disconnect': 0xf0319,

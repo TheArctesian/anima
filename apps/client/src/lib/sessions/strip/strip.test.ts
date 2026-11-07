@@ -31,6 +31,9 @@ vi.mock('$lib/hub/hub', async (importOriginal) => ({
     ({
       address: { origin: 'https://hub.anima.ing', http: '', socket: '' },
       status: { current: { connection: 'connected', lastContactAt: null } },
+      // The nav's live-session item asks the hub; nothing answers here.
+      request: () => new Promise(() => undefined),
+      subscribe: () => () => undefined,
       close: () => Promise.resolve(),
     }) as unknown as Hub,
 }));
