@@ -194,3 +194,12 @@ These items are not blocking. The programme orchestrator collects them here and 
 - T2 (should): after opening, the host key surface grows 96 px and the credential surface 32 px in one frame (MV-004, MOT-007; as before).
 - T2 (should): on `--surface-raised`, modal fields and the Cancel button share the dialog fill and are separated only by a 1.2:1 border (shell-wide, also AddDeviceModal; UI-001, MAT-001).
 - T2 (could): the literal-opacity rule skips `stop-opacity`, `flood-opacity` and `style:` bindings; the "Save password" checkbox is 12 px (UI-013); prompt heights differ from before by -22 to +10 px from the shell gap; one stack-test mutant hangs instead of failing; the CredentialPrompt `.content` wrapper is unused.
+
+## WP-35 (one-button screen sharing, R-079)
+
+- Could: a 0.0197 layout shift in Chromium when the session strip appears late after setup; it belongs to the session shell.
+- Could: the status panel is placed twice on mount.
+- Could: no visible Cancel while testing (Escape works).
+- Could: the "+ VNC" button is 57 px against 56 px for VNC.
+- Could: `normalizeHost` would sit better in a shared hosts module.
+- Operator: try the flow on this Mac with Screen Sharing off, then on, and on one Linux VNC device.
