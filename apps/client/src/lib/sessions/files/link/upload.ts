@@ -20,8 +20,8 @@ export interface UploadPort {
   readonly send: (frame: ArrayBuffer) => boolean;
   /** The socket's unsent bytes (`WebSocket.bufferedAmount`). */
   readonly buffered: () => number;
-  /** Resolves after `ms`; tests pass a fake clock (CQ-021). */
-  readonly wait: (ms: number) => Promise<void>;
+  /** Resolves after `ms`, or at once when `signal` aborts, leaving no timer; tests pass a fake clock (CQ-021). */
+  readonly wait: (ms: number, signal: AbortSignal) => Promise<void>;
 }
 
 /** One upload's frames on their way out. */
@@ -40,6 +40,7 @@ export interface UploadPump {
 export function pumpUpload(source: UploadSource, port: UploadPort, progress: Progress, unreadable: () => void): UploadPump {
   const size = source.size;
   let stopped = false;
+  const stopping = new AbortController();
   let offset = 0;
   let taken = 0;
 
@@ -53,7 +54,7 @@ export function pumpUpload(source: UploadSource, port: UploadPort, progress: Pro
   const run = async () => {
     while (!stopped && offset < size) {
       if (port.buffered() > HOLD_BACK_BYTES) {
-        await port.wait(DRAIN_POLL_MS);
+        await port.wait(DRAIN_POLL_MS, stopping.signal);
         report();
         continue;
       }
@@ -75,7 +76,7 @@ export function pumpUpload(source: UploadSource, port: UploadPort, progress: Pro
       report();
     }
     while (!stopped && taken < size) {
-      await port.wait(DRAIN_POLL_MS);
+      await port.wait(DRAIN_POLL_MS, stopping.signal);
       report();
     }
   };
@@ -85,6 +86,7 @@ export function pumpUpload(source: UploadSource, port: UploadPort, progress: Pro
   return {
     stop: () => {
       stopped = true;
+      stopping.abort();
     },
     sent: () => offset === size,
   };

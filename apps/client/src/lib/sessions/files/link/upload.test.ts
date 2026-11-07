@@ -159,6 +159,17 @@ describe('upload ending (K4 §9)', () => {
     expect(socket.binarySizes()).toEqual([]);
   });
 
+  it('S1: once every frame is in the socket, cancel sends nothing and done settles the upload as stored', async () => {
+    const { link, socket } = connected();
+    const result = link.upload('/up', source(FRAME_MAX_BYTES + 1));
+    await settle();
+    expect(socket.binarySizes()).toEqual([FRAME_MAX_BYTES, 1]);
+    expect(link.cancel()).toBe(false);
+    socket.text({ type: 'done' });
+    expect(await result).toEqual({ ok: true, value: undefined });
+    expect(socket.types()).toEqual(['upload']);
+  });
+
   it('the link ending mid-upload stops the frames and ends the upload', async () => {
     const { link, socket, poll } = connected();
     const result = link.upload('/up', source(4 * FRAME_MAX_BYTES));
@@ -169,5 +180,34 @@ describe('upload ending (K4 §9)', () => {
     await poll();
     expect(await result).toEqual({ ok: false, error: { kind: 'ended' } });
     expect(socket.binarySizes()).toEqual([]);
+  });
+});
+
+describe('no timer outlives the link (C1)', () => {
+  it('C1: no timer is left once the link has ended', async () => {
+    const { link } = connected(true);
+    await vi.advanceTimersByTimeAsync(1);
+    link.close();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('C1: no timer is left once the link ends mid-upload with bytes still buffered', async () => {
+    const { link, socket } = connected(true);
+    void link.upload('/up', source(4 * FRAME_MAX_BYTES));
+    socket.bufferedAmount = HOLD_BACK_BYTES + 1;
+    await vi.advanceTimersByTimeAsync(200);
+    socket.closeWith(1006);
+    await settle();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('C1: no timer is left once the link ends while the last frames drain', async () => {
+    const { link, socket } = connected(true);
+    void link.upload('/up', source(10));
+    socket.bufferedAmount = 5;
+    await vi.advanceTimersByTimeAsync(200);
+    link.close();
+    await settle();
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

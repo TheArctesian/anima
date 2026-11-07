@@ -91,6 +91,30 @@ describe('download liveness and cancel (K4 §9, WP-27 handoff)', () => {
     expect(link.state().phase).toBe('connected');
   });
 
+  it('MOT-009: after cancel, frames still arriving move no progress', () => {
+    const { link, socket } = connected();
+    const progress: number[] = [];
+    void link.download('/f', (done) => progress.push(done));
+    socket.text({ type: 'download', size: 10 });
+    socket.bytes(3);
+    link.cancel();
+    socket.bytes(3);
+    expect(progress).toEqual([0, 3]);
+  });
+
+  it('S1: once every byte has arrived, cancel sends nothing and done gives the file, as the hub records it', async () => {
+    const { link, socket } = connected();
+    const result = link.download('/f');
+    socket.text({ type: 'download', size: 4 });
+    socket.bytes(4, 9);
+    expect(link.cancel()).toBe(false);
+    socket.text({ type: 'done' });
+    const got = await result;
+    if (!got.ok) throw new Error('download failed');
+    expect(got.value.size).toBe(4);
+    expect(socket.types()).toEqual(['download']);
+  });
+
   it('cancel with nothing in flight, or during a list, sends nothing', () => {
     const { link, socket } = connected();
     expect(link.cancel()).toBe(false);

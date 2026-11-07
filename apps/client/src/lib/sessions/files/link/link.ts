@@ -3,7 +3,7 @@ import { tunnelUrl } from '../../tunnel/url';
 import { endOfClose, type FilesEnd } from './closing';
 import { CANCEL_MESSAGE, FILES_SUBPROTOCOL, PING_MESSAGE, encodeRequest, isByteCount, type FilesRequest, type Listing } from './codec';
 import { abandon, hearFrame, stopTransfer, type FilesResult, type InFlight, type Step } from './inflight';
-import { pumpUpload, type Progress, type UploadSource } from './upload';
+import { pumpUpload, type Progress, type UploadPort, type UploadSource } from './upload';
 
 /** The client sends `ping` after this long without sending anything, also during a download (K4 §9, §8.4). */
 export const PING_AFTER_MS = 5000;
@@ -31,7 +31,7 @@ export interface FilesLinkOptions {
   /** The WebSocket constructor; defaults to the global one (CQ-021). */
   readonly WebSocket?: SocketConstructor;
   /** The upload's wait while the socket drains; defaults to a timer (CQ-021). */
-  readonly wait?: (ms: number) => Promise<void>;
+  readonly wait?: UploadPort['wait'];
   /** Hears every change of the state after `openFilesLink` returned. */
   readonly onchange?: (state: FilesLinkState) => void;
   /** Hears the final state once. */
@@ -55,11 +55,22 @@ export interface FilesLink {
 
 export type FilesLinkOpening = { readonly ok: true; readonly value: FilesLink } | { readonly ok: false; readonly error: TunnelRefusal };
 
-type Events = Pick<FilesLinkOptions, 'onchange' | 'onend'> & { readonly wait: (ms: number) => Promise<void> };
+type Events = Pick<FilesLinkOptions, 'onchange' | 'onend'> & { readonly wait: UploadPort['wait'] };
 
-const timer = (ms: number) =>
+/** A timer of `ms` that an abort ends at once, clearing the timer and its listener, so a stopped upload leaves none. */
+const timer: UploadPort['wait'] = (ms, signal) =>
   new Promise<void>((resolve) => {
-    setTimeout(resolve, ms);
+    if (signal.aborted) {
+      resolve();
+      return;
+    }
+    const over = () => {
+      clearTimeout(handle);
+      signal.removeEventListener('abort', over);
+      resolve();
+    };
+    const handle = setTimeout(over, ms);
+    signal.addEventListener('abort', over);
   });
 
 /**
@@ -102,11 +113,10 @@ function liveness(ping: () => void, lost: () => void) {
   };
 }
 
-const failed = <T>(kind: 'busy' | 'offline' | 'bad-request'): Promise<FilesResult<T>> => Promise.resolve({ ok: false, error: { kind } });
+const refusedLocally = <T>(kind: 'busy' | 'offline' | 'bad-request'): Promise<FilesResult<T>> => Promise.resolve({ ok: false, error: { kind } });
 
 /** The socket and the one request slot, as the requests see them. */
 interface Channel {
-  readonly connected: () => boolean;
   /** Send one frame if the socket is open; false when it was dropped. */
   readonly transmit: (frame: string | ArrayBuffer) => boolean;
   readonly buffered: () => number;
@@ -118,12 +128,11 @@ interface Channel {
 /** The link's requests over `channel`: each is refused locally, without a send, when the link or the slot is not free. */
 function requests(channel: Channel): Pick<FilesLink, 'list' | 'download' | 'upload' | 'cancel'> {
   const ask = <T>(request: FilesRequest, begin: (settle: (result: FilesResult<T>) => void) => InFlight): Promise<FilesResult<T>> => {
-    if (!channel.connected()) return failed('offline');
-    if (channel.current !== undefined) return failed('busy');
+    if (channel.current !== undefined) return refusedLocally('busy');
     const text = encodeRequest(request);
-    if (text === undefined) return failed('bad-request');
+    if (text === undefined) return refusedLocally('bad-request');
+    if (!channel.transmit(text)) return refusedLocally('offline');
     return new Promise((settle) => {
-      if (!channel.transmit(text)) return settle({ ok: false, error: { kind: 'offline' } });
       channel.current = begin(settle);
     });
   };
@@ -132,7 +141,7 @@ function requests(channel: Channel): Pick<FilesLink, 'list' | 'download' | 'uplo
     download: (path, progress = () => undefined) =>
       ask({ type: 'download', path }, (settle) => ({ kind: 'download', settle, progress, size: undefined, received: 0, chunks: [], stopped: undefined })),
     upload: (path, source, progress = () => undefined) => {
-      if (!isByteCount(source.size)) return failed('bad-request');
+      if (!isByteCount(source.size)) return refusedLocally('bad-request');
       return ask({ type: 'upload', path, size: source.size }, (settle) => {
         const unreadable = () => {
           if (stopTransfer(channel.current, 'unreadable')) channel.transmit(CANCEL_MESSAGE);
@@ -145,13 +154,14 @@ function requests(channel: Channel): Pick<FilesLink, 'list' | 'download' | 'uplo
   };
 }
 
-/** The channel over `socket` while `live` says the link is connected; `sent` hears each frame that went out. */
-function channelOn(socket: WebSocket, live: () => boolean, sent: () => void, wait: Channel['wait']): Channel {
-  const connected = () => live() && socket.readyState === OPEN;
+/**
+ * The channel over `socket`; `sent` hears each frame that went out. An open socket is the one check: the link closes
+ * the socket whenever it ends, so an ended link never has one.
+ */
+function channelOn(socket: WebSocket, sent: () => void, wait: Channel['wait']): Channel {
   return {
-    connected,
     transmit: (frame) => {
-      if (!connected()) return false;
+      if (socket.readyState !== OPEN) return false;
       socket.send(frame);
       sent();
       return true;
@@ -165,7 +175,7 @@ function channelOn(socket: WebSocket, live: () => boolean, sent: () => void, wai
 /** The link on `socket`: state, liveness and the hub's frames against the request in flight. */
 function linkOver(socket: WebSocket, events: Events): FilesLink {
   let state: FilesLinkState = { phase: 'connecting', opened: false, closeCode: undefined, end: undefined };
-  const channel = channelOn(socket, () => state.phase === 'connected', () => beats.sent(), events.wait);
+  const channel = channelOn(socket, () => beats.sent(), events.wait);
 
   const publish = (change: Partial<FilesLinkState>) => {
     state = { ...state, ...change };

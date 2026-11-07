@@ -134,9 +134,17 @@ export function hearFrame(request: InFlight | undefined, data: unknown): Step {
   return message.kind === 'ping' ? 'running' : hearMessage(request, message);
 }
 
-/** The client stops the transfer in flight; `false` when there is none to stop or it is already stopping. */
+/** Whether every byte of `request` has already moved, so the hub completes it whatever the client sends (S1). */
+function moved(request: DownloadInFlight | UploadInFlight): boolean {
+  return request.kind === 'upload' ? request.pump.sent() : request.received === request.size;
+}
+
+/**
+ * The client stops the transfer in flight; `false` when there is none to stop, it is already stopping, or every byte
+ * has moved: the hub then ignores `cancel`, keeps and records the file, and its `done` settles the transfer as done.
+ */
 export function stopTransfer(request: InFlight | undefined, why: Stopped): boolean {
-  if (request === undefined || request.kind === 'list' || request.stopped !== undefined) return false;
+  if (request === undefined || request.kind === 'list' || request.stopped !== undefined || moved(request)) return false;
   request.stopped = why;
   if (request.kind === 'upload') request.pump.stop();
   else request.chunks.length = 0;

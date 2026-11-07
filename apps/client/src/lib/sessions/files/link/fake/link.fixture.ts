@@ -23,16 +23,18 @@ export function source(size: number, broken?: number): UploadSource {
   };
 }
 
-export function connected() {
+/** An open link; with `ownTimer` the upload waits on the link's own timer instead of the hand-driven `poll`. */
+export function connected(ownTimer = false) {
   const waits: (() => void)[] = [];
+  const wait = () =>
+    new Promise<void>((resolve) => {
+      waits.push(resolve);
+    });
   const opening = openFilesLink({
     origin: 'https://hub.anima.ing',
     ticket: { tunnelPath: '/files', token: 't' },
     WebSocket: FAKE_FILES_SOCKET,
-    wait: () =>
-      new Promise((resolve) => {
-        waits.push(resolve);
-      }),
+    ...(ownTimer ? {} : { wait }),
   });
   if (!opening.ok) throw new Error('not opened');
   const socket = FakeFilesSocket.latest();
