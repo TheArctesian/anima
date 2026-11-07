@@ -20,7 +20,7 @@ export interface Chart {
 }
 
 /** The colour of the series at `position` (0-based): 1 to 6, then round again. */
-export function seriesColour(position: number): SeriesColour {
+function seriesColour(position: number): SeriesColour {
   return ((position % SERIES_COLOURS) + 1) as SeriesColour;
 }
 

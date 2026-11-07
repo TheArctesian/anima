@@ -4,7 +4,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { endTransitionsAtOnce } from '$lib/devices/transitions.fixture';
 import type { HubError } from '$lib/hub/hub';
 import type { MetricRange } from '$lib/metrics/api';
-import { INTEGRATED, NVIDIA, TWO_GPUS, added } from '$lib/metrics/metrics.fixture';
+import { INTEGRATED, NVIDIA, TWO_GPUS, added, point, series } from '$lib/metrics/metrics.fixture';
 import { manualClock } from '$lib/motion/loading/clock.fixture';
 import { threshold } from '$lib/motion/tokens';
 import { device } from '../page.fixture.svelte';
@@ -52,18 +52,19 @@ it.each([
   expect(hostKeyText(ssh)).toBe(text);
 });
 
-type Shown = Pick<DeviceMetrics, 'view' | 'span' | 'readings' | 'error' | 'liveError'>;
+type Shown = Pick<DeviceMetrics, 'view' | 'span' | 'shownRange' | 'readings' | 'error' | 'liveError'>;
 
 const NOW = new Date('2026-11-05T09:05:00Z');
 const SPAN = { start: NOW.getTime() - 3_600_000, end: NOW.getTime() };
 const LOADED: Shown = {
   view: { metricsSource: 'SSH', gpus: [NVIDIA, INTEGRATED], series: TWO_GPUS, readings: null },
   span: SPAN,
+  shownRange: 'HOUR',
   readings: { ...added('2026-11-05T09:04:00Z', []).readings, cpuPercent: 20, memoryPercent: 45, diskPercent: 61 },
   error: null,
   liveError: null,
 };
-const WAITING: Shown = { view: null, span: null, readings: null, error: null, liveError: null };
+const WAITING: Shown = { view: null, span: null, shownRange: null, readings: null, error: null, liveError: null };
 
 function show(metrics: Shown, source: 'SSH' | 'NONE' = 'SSH', range: MetricRange = 'HOUR') {
   const time = manualClock();
@@ -183,4 +184,14 @@ it('MOT-007: with no device known the skeleton key row holds a full-length key',
   app = mount(OverviewSkeleton, { target: document.body, props: { range: 'HOUR', source: 'SSH', ssh: null, now: () => NOW } });
   flushSync();
   expect(document.querySelector('.overview-facts .key')?.textContent).toMatch(/^ssh-ed25519 SHA256:x{43}$/);
+});
+
+it('MET-003: while a switch is pending the old chart keeps its own range in the label and its own gap', () => {
+  const at = (minute: number) => point(`2026-11-05T09:0${String(minute)}:00Z`, 20);
+  // Minutes 0, 1, 4, 5: a three-minute hole that breaks an HOUR line but not a DAY one.
+  const cpu = series('CPU_PERCENT', 'cpu', [at(0), at(1), at(4), at(5)]);
+  show({ ...LOADED, view: { metricsSource: 'SSH', gpus: [], series: [cpu], readings: null }, shownRange: 'HOUR' }, 'SSH', 'DAY');
+  expect(document.querySelector('svg[role="img"]')?.getAttribute('aria-label')).toContain('CPU, last hour');
+  expect(document.querySelectorAll('.lines polyline')).toHaveLength(2);
+  expect(document.querySelector('[aria-pressed="true"]')?.textContent.trim()).toBe('24 hours');
 });

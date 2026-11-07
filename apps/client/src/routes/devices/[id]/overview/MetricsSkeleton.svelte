@@ -2,7 +2,8 @@
   import { untrack } from 'svelte';
   import ChartSkeleton from '$lib/charts/ChartSkeleton.svelte';
   import type { MetricRange } from '$lib/metrics/api';
-  import { rangeWindow } from '$lib/metrics/live';
+  import { DEGRADED_ABOVE } from '$lib/metrics/bars/bars';
+  import { rangeWindow } from '$lib/metrics/ranges';
   import { formatPercent } from '$lib/metrics/units';
   import './geometry.css';
 
@@ -23,7 +24,7 @@
   {#each CELLS as cell (cell)}
     <div class="cell">
       <p class="chart-title"></p>
-      <ChartSkeleton {span} axis="percent" format={formatPercent} threshold={85} />
+      <ChartSkeleton {span} axis="percent" format={formatPercent} threshold={DEGRADED_ABOVE} />
     </div>
   {/each}
 </div>

@@ -80,6 +80,25 @@ describe('DeviceMetrics answers (D-6)', () => {
 });
 
 describe('DeviceMetrics live points (D-5)', () => {
+  it('MET-003: the shown range stays the old one until the new answer lands', async () => {
+    const waiting: ((result: HubResult<unknown>) => void)[] = [];
+    const base = fakeHub({ DeviceMetrics: answer() });
+    let held = false;
+    const hub: Hub = {
+      ...base.hub,
+      request: (document, variables) => (held ? new Promise((resolve) => waiting.push(resolve as never)) : base.hub.request(document, variables)),
+    };
+    const metrics = new DeviceMetrics(hub, ID, () => LOADED);
+    await metrics.load('HOUR', 'SSH');
+    held = true;
+    const pending = metrics.load('DAY', 'SSH');
+    expect(metrics.shownRange).toBe('HOUR');
+    expect(metrics.view).not.toBeNull();
+    waiting[0]?.({ ok: true, value: answer() });
+    await pending;
+    expect(metrics.shownRange).toBe('DAY');
+  });
+
   it('D-5: the 1-hour range merges a live point and ends the window at its time', async () => {
     const fake = fakeHub({ DeviceMetrics: answer() });
     const metrics = metricsOf(fake);
