@@ -5,6 +5,13 @@ import { fakeHub } from '../../devices/hub.fixture';
 import { endTransitionsAtOnce } from '../../devices/transitions.fixture';
 import LiveSessions from './LiveSessions.svelte';
 
+const flipped = vi.hoisted(() => ({ calls: [] as ReadonlyMap<unknown, unknown>[] }));
+
+vi.mock('../../motion/roles/flip', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../../motion/roles/flip')>();
+  return { ...real, flip: (...args: Parameters<typeof real.flip>) => (flipped.calls.push(args[0]), real.flip(...args)) };
+});
+
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
   animate: (await import('../../motion/engine.fixture')).fakeRun,
@@ -118,9 +125,11 @@ it('MOT-007, RA-034: a refused Stop reserves its line in every row first, so the
   expect([...facts().children].map((child) => child.className)).toEqual(before);
 });
 
-it('MOT-007: a leaving row keeps its place while it fades, then is removed', async () => {
+/** Holds every transition until `finish`, and lays the rows out 64 px apart, as the list does in a browser. */
+function holdTransitions() {
   const held: { onfinish: (() => void) | null }[] = [];
   const animate = Element.prototype.animate;
+  const rect = Element.prototype.getBoundingClientRect;
   Object.defineProperty(Element.prototype, 'animate', {
     configurable: true,
     value: function hold() {
@@ -129,19 +138,98 @@ it('MOT-007: a leaving row keeps its place while it fades, then is removed', asy
       return playback;
     },
   });
+  Element.prototype.getBoundingClientRect = function place(this: Element) {
+    const top = this.classList.contains('row') ? 64 * rows().indexOf(this) : 0;
+    return { top, left: 0, right: 0, bottom: top, width: 0, height: 0, x: 0, y: top, toJSON: () => ({}) };
+  };
+  return {
+    finish: () => {
+      // A transition plays a delay animation, then its main one: finish until none is left.
+      for (let playback = held.shift(); playback; playback = held.shift()) playback.onfinish?.();
+    },
+    restore: () => {
+      Object.defineProperty(Element.prototype, 'animate', { configurable: true, value: animate });
+      Element.prototype.getBoundingClientRect = rect;
+    },
+  };
+}
+
+const ended = (one: ReturnType<typeof node>) => ({
+  sessionChanged: { session: { ...one, endedAt: '2026-11-04T12:00:00Z', endReason: 'OPERATOR' } },
+});
+const started = (one: ReturnType<typeof node>) => ({ sessionChanged: { session: { ...one, endedAt: null, endReason: null } } });
+const names = () => rows().map((row) => row.querySelector('strong')?.textContent);
+
+it('MOT-007: a leaving row keeps its place while it fades, then is removed', async () => {
+  const motion = holdTransitions();
   try {
     const fake = await show({ LiveSessions: ANSWER(DESK, LAPTOP) });
     await open();
-    held.length = 0;
-    fake.push('LiveSessionChanged', { sessionChanged: { session: { ...LAPTOP, endedAt: '2026-11-04T12:00:00Z', endReason: 'OPERATOR' } } });
+    fake.push('LiveSessionChanged', ended(LAPTOP));
     flushSync();
-    expect(rows()).toHaveLength(2);
-    expect(rows().map((row) => row.querySelector('strong')?.textContent)).toEqual(['laptop', 'desk']);
-    for (const playback of held) playback.onfinish?.();
+    expect(names()).toEqual(['laptop', 'desk']);
+    motion.finish();
     await vi.waitFor(() => {
-      expect(rows()).toHaveLength(1);
+      expect(names()).toEqual(['desk']);
     });
   } finally {
-    Object.defineProperty(Element.prototype, 'animate', { configurable: true, value: animate });
+    motion.restore();
   }
+});
+
+it('MOT-007, MOT-002: when a leaving row has faded the rows after it glide into the gap by FLIP', async () => {
+  const motion = holdTransitions();
+  try {
+    const fake = await show({ LiveSessions: ANSWER(DESK, LAPTOP) });
+    await open();
+    const desk = rows()[1];
+    flipped.calls.length = 0;
+    fake.push('LiveSessionChanged', ended(LAPTOP));
+    flushSync();
+    expect(flipped.calls).toHaveLength(0);
+    motion.finish();
+    await vi.waitFor(() => {
+      expect(flipped.calls.some((places) => places.has(desk as Element))).toBe(true);
+    });
+  } finally {
+    motion.restore();
+  }
+});
+
+it('MOT-007, MOT-002: a second change while the first row is still fading leaves the right list', async () => {
+  const motion = holdTransitions();
+  try {
+    const third = node('3', 'tablet', '2026-11-04T12:30:00Z');
+    const fake = await show({ LiveSessions: ANSWER(DESK, LAPTOP) });
+    await open();
+    fake.push('LiveSessionChanged', ended(LAPTOP));
+    flushSync();
+    fake.push('LiveSessionChanged', started(third));
+    flushSync();
+    fake.push('LiveSessionChanged', ended(DESK));
+    flushSync();
+    motion.finish();
+    await vi.waitFor(() => {
+      expect(names()).toEqual(['tablet']);
+    });
+    expect(control().querySelector('.count')?.textContent).toBe('1');
+  } finally {
+    motion.restore();
+  }
+});
+
+it('RA-034, C-3: when another client ends the session whose Stop has focus, focus moves to the next Stop, else the panel', async () => {
+  const fake = await show({ LiveSessions: ANSWER(DESK, LAPTOP) });
+  await open();
+  stopButton('laptop').focus();
+  fake.push('LiveSessionChanged', ended(LAPTOP));
+  flushSync();
+  await vi.waitFor(() => {
+    expect(document.activeElement).toBe(stopButton('desk'));
+  });
+  fake.push('LiveSessionChanged', ended(DESK));
+  flushSync();
+  await vi.waitFor(() => {
+    expect(document.activeElement).toBe(panel());
+  });
 });

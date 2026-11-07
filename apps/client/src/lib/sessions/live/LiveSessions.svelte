@@ -4,7 +4,7 @@
   import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
   import { listRow, popover } from '$lib/motion/roles/transitions';
-  import { reorderMotion } from '$lib/devices/card/reorder.svelte';
+  import { reorderMotion } from '$lib/motion/roles/reorder.svelte';
   import { liveLabel, nextTabStop, startedTime } from './live';
   import { watchLiveSessions } from './live.svelte';
   import { STOP_REFUSED } from './stopping.svelte';
@@ -68,6 +68,21 @@
   /** On open focus goes in: the first Stop, or the panel itself when the list is empty (C-3). */
   $effect(() => {
     if (panel) (stops()[0] ?? panel).focus();
+  });
+
+  let known: readonly string[] = [];
+
+  /** When another client ends the session whose Stop has focus, focus moves to the next Stop, else the previous, else the panel. */
+  $effect.pre(() => {
+    const ids = live.sessions.map((session) => session.id);
+    const active = document.activeElement;
+    const held = panel?.contains(active) === true ? active?.getAttribute('data-stop') : null;
+    if (held && !ids.includes(held)) {
+      const at = known.indexOf(held);
+      const next = [known[at + 1], known[at - 1]].find((candidate) => candidate !== undefined && ids.includes(candidate));
+      (panel?.querySelector<HTMLElement>(`[data-stop="${next ?? ''}"]`) ?? panel)?.focus();
+    }
+    known = ids;
   });
 
   /** Tab goes from the control into the panel, which sits in the body; inside it Tab cycles through the Stop buttons. */

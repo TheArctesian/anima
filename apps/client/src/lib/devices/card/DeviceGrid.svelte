@@ -7,7 +7,7 @@
   import type { WebInterface } from '$lib/web-interfaces/api';
   import DeviceCard from './DeviceCard.svelte';
   import './geometry.css';
-  import { reorderMotion } from './reorder.svelte';
+  import { reorderMotion } from '$lib/motion/roles/reorder.svelte';
 
   interface Props {
     devices: readonly CardDevice[];

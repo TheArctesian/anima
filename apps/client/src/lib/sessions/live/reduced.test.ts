@@ -29,6 +29,7 @@ function reducedMotion(): void {
   });
 }
 
+const animate = Element.prototype.animate;
 let app: ReturnType<typeof mount> | undefined;
 
 afterEach(async () => {
@@ -36,6 +37,8 @@ afterEach(async () => {
   app = undefined;
   document.body.innerHTML = '';
   vi.unstubAllGlobals();
+  Object.defineProperty(Element.prototype, 'animate', { configurable: true, value: animate });
+  played.length = 0;
 });
 
 it('MOT-040, MOT-041: under reduced motion the popover opens and closes with opacity only, no scale', async () => {
