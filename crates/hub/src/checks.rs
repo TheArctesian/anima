@@ -183,11 +183,7 @@ pub async fn http_urls(
     db: &PgPool,
     devices: &[DeviceId],
 ) -> Result<HashMap<DeviceId, Vec<(CheckId, String)>>, Error> {
-    let mut grouped: HashMap<DeviceId, Vec<(CheckId, String)>> = HashMap::new();
-    for (device, check, url) in store::http_urls(db, devices).await? {
-        grouped.entry(device).or_default().push((check, url));
-    }
-    Ok(grouped)
+    Ok(store::http_urls(db, devices).await?)
 }
 
 /// The check with this id.

@@ -132,15 +132,20 @@ pub(super) async fn by_devices(db: &PgPool, devices: &[DeviceId]) -> Result<Vec<
 pub(super) async fn http_urls(
     db: &PgPool,
     devices: &[DeviceId],
-) -> Result<Vec<(DeviceId, CheckId, String)>, sqlx::Error> {
-    sqlx::query_as(
+) -> Result<HashMap<DeviceId, Vec<(CheckId, String)>>, sqlx::Error> {
+    let rows: Vec<(DeviceId, CheckId, String)> = sqlx::query_as(
         "SELECT device_id, id, config ->> 'url' FROM checks.checks \
          WHERE device_id = ANY($1) AND type = 'http' AND config ->> 'url' IS NOT NULL \
          ORDER BY device_id, name COLLATE \"C\", id",
     )
     .bind(devices)
     .fetch_all(db)
-    .await
+    .await?;
+    let mut grouped: HashMap<DeviceId, Vec<(CheckId, String)>> = HashMap::new();
+    for (device, check, url) in rows {
+        grouped.entry(device).or_default().push((check, url));
+    }
+    Ok(grouped)
 }
 
 /// What the status rules need about every check of the devices, in one query.
