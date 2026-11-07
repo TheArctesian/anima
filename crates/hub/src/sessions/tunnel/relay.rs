@@ -12,7 +12,8 @@
 //! - the client streams opened by a `clipboard` the policy drops, whose `blob` and `end` are
 //!   dropped too;
 //! - the guacd streams the policy keeps from the client (`clipboard` with copy off, `file`
-//!   and `body` with download off), whose `blob` and `end` are dropped. Other streams guacd
+//!   and `body` with download off), whose `blob` and `end` are dropped until guacd ends the
+//!   stream or opens a new one on its index. Other streams guacd
 //!   opens (`img`, `audio`, …) are not tracked: the client only `ack`s them, and guacd ignores
 //!   an `ack` for a stream it has not open (guacamole-server 1.5.5 and 1.6.0
 //!   `src/libguac/user-handlers.c`, `__guac_handle_ack`), while tracking them would race

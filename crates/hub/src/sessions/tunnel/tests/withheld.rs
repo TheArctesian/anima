@@ -124,3 +124,59 @@ fn ra_021_vnc_never_sends_a_download_to_the_client() {
 fn encode_body(stream: &str, mimetype: &str) -> String {
     encode(&Instruction::new("body", ["0", stream, mimetype, "/"]))
 }
+
+#[test]
+fn ra_021_a_refused_downloads_late_blobs_are_dropped_until_guacd_reuses_the_index() {
+    let mut relay = rdp(|device| device.transfer.download = false);
+    assert_eq!(
+        gateway(&mut relay, "4.file,1.7,10.text/plain,4.a.sh;"),
+        refused("7")
+    );
+    for wire in ["4.blob,1.7,8.c2VjcmV0;", "4.blob,1.7,4.aGk=;"] {
+        assert_eq!(gateway(&mut relay, wire), GatewayStep::Drop, "{wire}");
+    }
+    // guacd freed stream 7 on the refusing ack without an `end`, and opens an image there.
+    for wire in [
+        "3.img,1.7,2.14,1.0,9.image/png,1.0,1.0;",
+        "4.blob,1.7,4.aGk=;",
+        "3.end,1.7;",
+    ] {
+        assert_eq!(
+            gateway(&mut relay, wire),
+            GatewayStep::Forward(decoded(wire)),
+            "{wire}"
+        );
+    }
+}
+
+#[test]
+fn ra_021_a_new_opening_on_a_withheld_index_is_judged_by_the_policy_again() {
+    let mut relay = rdp(|device| device.transfer.download = false);
+    gateway(&mut relay, "4.file,1.7,10.text/plain,4.a.sh;");
+    assert_eq!(
+        gateway(&mut relay, "4.file,1.7,10.text/plain,4.b.sh;"),
+        refused("7")
+    );
+    assert_eq!(gateway(&mut relay, "4.blob,1.7,4.aGk=;"), GatewayStep::Drop);
+    let mut copy_off = rdp(|device| {
+        device.transfer.download = false;
+        device.transfer.copy = false;
+    });
+    gateway(&mut copy_off, "4.file,1.7,10.text/plain,4.a.sh;");
+    let clipboard = "9.clipboard,1.7,10.text/plain;";
+    assert_eq!(gateway(&mut copy_off, clipboard), GatewayStep::Drop);
+    assert_eq!(
+        gateway(&mut copy_off, "4.blob,1.7,4.aGk=;"),
+        GatewayStep::Drop
+    );
+    let audio = "5.audio,1.7,9.audio/L16;";
+    assert_eq!(
+        gateway(&mut copy_off, audio),
+        GatewayStep::Forward(decoded(audio))
+    );
+    let blob = "4.blob,1.7,4.AAAA;";
+    assert_eq!(
+        gateway(&mut copy_off, blob),
+        GatewayStep::Forward(decoded(blob))
+    );
+}

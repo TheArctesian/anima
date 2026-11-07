@@ -27,6 +27,18 @@ const STREAM_DIGITS: usize = 5;
 /// The mimetype of a shared-drive folder listing (libguac `GUAC_USER_STREAM_INDEX_MIMETYPE`):
 /// browsing needs only the drive, not download.
 const LISTING: &str = "application/vnd.glyptodon.guacamole.stream-index+json";
+/// guacd's instructions that open a stream to the client, with the argument that holds the
+/// stream index (guacamole-server 1.5.5 and 1.6.0 `src/libguac/protocol.c`).
+const STREAM_OPENINGS: [(&str, usize); 8] = [
+    ("img", 0),
+    ("audio", 0),
+    ("video", 0),
+    ("clipboard", 0),
+    ("file", 0),
+    ("pipe", 0),
+    ("argv", 0),
+    ("body", 1),
+];
 /// What the hub tells guacd when it withholds a download.
 const DOWNLOAD_REFUSED: &str = "Download is turned off for this device.";
 /// The only `error` text the client gets: what guacd 1.5.5 and 1.6.0 send for every abort
@@ -43,6 +55,7 @@ pub(super) fn tunnel_opened(tunnel_id: &str) -> Instruction {
 impl Relay {
     /// What to do with one decoded guacd instruction after `ready`.
     pub(super) fn on_gateway(&mut self, i: Instruction) -> GatewayStep {
+        self.forget_reopened(&i);
         match i.opcode.as_str() {
             "required" => {
                 self.note_prompts(&i.args);
@@ -93,7 +106,22 @@ impl Relay {
         }
     }
 
-    /// Keeps guacd stream `args[at]` from the client; `refuse` answers guacd with an `ack`.
+    /// A new stream on a withheld index is guacd's next stream there, not the withheld one:
+    /// guacd frees a refused download without an `end` and reuses its index. The policy then
+    /// judges the new opening on its own.
+    fn forget_reopened(&mut self, i: &Instruction) {
+        let opened = STREAM_OPENINGS
+            .iter()
+            .find(|(opcode, _)| *opcode == i.opcode)
+            .and_then(|(_, at)| i.args.get(*at))
+            .and_then(|index| stream_index(index));
+        if let Some(stream) = opened {
+            self.withheld_streams.remove(&stream);
+        }
+    }
+
+    /// Keeps guacd stream `args[at]` from the client, until guacd ends it or opens another
+    /// stream on its index; `refuse` answers guacd with an `ack`.
     /// An index that is not a stream index is not tracked: the client never saw the stream
     /// open, and a stray `blob` is caught by [`Relay::on_gateway_stream`].
     fn withhold(&mut self, i: &Instruction, at: usize, refuse: bool) -> GatewayStep {
@@ -111,7 +139,7 @@ impl Relay {
     }
 
     /// guacd's `blob` or `end` on stream `args[0]`: dropped when the stream is withheld (and
-    /// `end` forgets it), else forwarded. While any stream is withheld, one whose index is
+    /// `end` forgets it), else forwarded. A refused download's late `blob`s are dropped too. While any stream is withheld, one whose index is
     /// not a plain number is dropped too, as guacamole-common-js would read it as a number.
     fn on_gateway_stream(&mut self, i: Instruction, closes: bool) -> GatewayStep {
         let withheld = match i.args.first().and_then(|index| stream_index(index)) {
