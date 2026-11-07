@@ -120,7 +120,7 @@ interface Channel {
   /** Send one frame if the socket is open; false when it was dropped. */
   readonly transmit: (frame: string | ArrayBuffer) => boolean;
   readonly buffered: () => number;
-  readonly wait: (ms: number) => Promise<void>;
+  readonly wait: UploadPort['wait'];
   /** The request in flight, at most one (K4 §9, D-5). */
   current: InFlight | undefined;
 }
