@@ -56,15 +56,9 @@ function percentChart(key: string, title: string, found: readonly MetricSeries[]
   return found.length === 0 ? [] : [{ key, title, series: lines(found, names), axis: PERCENT_AXIS, format: formatPercent }];
 }
 
-function openChart(
-  key: string,
-  title: string,
-  unit: 'bytesPerSecond' | 'load',
-  found: readonly MetricSeries[],
-  names: readonly string[],
-): Chart[] {
+function openChart(key: string, title: string, unit: 'bytesPerSecond' | 'load', drawn: readonly ChartSeries[]): Chart[] {
   const format = unit === 'load' ? formatLoad : formatBytesPerSecond;
-  return found.length === 0 ? [] : [{ key, title, series: lines(found, names), axis: { kind: 'open', unit }, format }];
+  return drawn.length === 0 ? [] : [{ key, title, series: drawn, axis: { kind: 'open', unit }, format }];
 }
 
 function diskCharts(all: readonly MetricSeries[]): Chart[] {
@@ -80,7 +74,7 @@ function first(all: readonly MetricSeries[], kind: MetricKind): MetricSeries[] {
 function networkChart(all: readonly MetricSeries[]): Chart[] {
   const found = [...first(all, 'NETWORK_IN_BPS'), ...first(all, 'NETWORK_OUT_BPS')];
   const names = found.map((series) => (series.kind === 'NETWORK_IN_BPS' ? 'In' : 'Out'));
-  return openChart('network', 'Network', 'bytesPerSecond', found, names);
+  return openChart('network', 'Network', 'bytesPerSecond', lines(found, names));
 }
 
 function loadChart(all: readonly MetricSeries[]): Chart[] {
@@ -88,7 +82,7 @@ function loadChart(all: readonly MetricSeries[]): Chart[] {
   const names = ['1 min', '5 min', '15 min'];
   const present = kinds.map((kind, at) => ({ series: first(all, kind)[0], name: names[at] ?? '' }));
   const found = present.flatMap(({ series }) => (series ? [series] : []));
-  return openChart('load', 'Load', 'load', found, present.flatMap(({ series, name }) => (series ? [name] : [])));
+  return openChart('load', 'Load', 'load', lines(found, present.flatMap(({ series, name }) => (series ? [name] : []))));
 }
 
 function gpuCharts(all: readonly MetricSeries[], gpus: readonly DeviceGpu[]): Chart[] {
