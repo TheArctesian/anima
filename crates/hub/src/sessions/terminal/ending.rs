@@ -51,6 +51,6 @@ pub(super) const fn ended(cause: Cause) -> End {
         | Cause::HostKeyMismatch
         | Cause::ServerCertificateMismatch
         | Cause::Timeout
-        | Cause::HubShutdown => End::explained(cause, cause.message()),
+        | Cause::HubShutdown => End::worded(cause, cause.message()),
     }
 }

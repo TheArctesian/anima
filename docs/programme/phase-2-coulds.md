@@ -119,3 +119,21 @@ These items are not blocking. The programme orchestrator collects them here and 
 - File names that are not valid UTF-8 come through with their bad bytes replaced, so the client cannot send them back.
 - The file panel shows that upload or download is turned off only after the hub refuses an attempt.
 - Downloads have no size warning.
+
+## WP-33 (final)
+
+- Host uptime (`UPTIME_SECONDS`) is fetched but not shown. Add a fact row if wanted.
+- The chart skeleton draws four cells, but a device can have 5 to 9 or more charts. The skeleton could reserve the last-known chart count.
+- Time labels jump one step on a chart update while the line slides. A label cross-fade could be added.
+- Weekday tick labels are fixed English. Use `Intl.DateTimeFormat`.
+- When the clocks go back, an hourly tick in the repeated hour gets one label, not two.
+- WP-34: confirm the D-2 reading of 5.7.3 "moves left continuously", which is one spring slide per point (MOT-011).
+- Live points update only the 1-hour range.
+- A stale hub `readings` answer can briefly replace a newer live reading during a load.
+- Add a test for colour wrap-around past six series.
+- Under `prefers-contrast: more`, the chart grid stays `chart-grid` instead of `text-muted` (MAT-006). WP-34 should check this.
+- The Sessions Start and End timestamps wrap at 600 px.
+- `MetricsSection.svelte:5` has a four-space indent on one import.
+- H-2: show `Session.clientAddr` in the Sessions tab (`DeviceSessions`; D-10, RA-034).
+- One shared `endTransitionsAtOnce` fixture under `lib/motion/`.
+- `routes/devices/[id]/` is at the 12-file limit. The next file there goes into a subfolder.

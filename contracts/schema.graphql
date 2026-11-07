@@ -120,7 +120,7 @@ enum AccessWarning {
   UNENCRYPTED_VNC
 }
 
-type ServerCertificate @pending {
+type ServerCertificate {
   fingerprintSha256: String!
   subject: String
   notAfter: DateTime
@@ -146,7 +146,7 @@ type RdpSettings {
   "Default false (RA-021)."
   sharedDrive: Boolean!
   credentialStored: Boolean!
-  serverCertificate: ServerCertificate @pending
+  serverCertificate: ServerCertificate
 }
 
 type VncSettings {
@@ -325,8 +325,8 @@ type ConnectionTestResult {
   hostKey: HostKey
   hostKeyChanged: Boolean!
   message: String
-  serverCertificate: ServerCertificate @pending
-  certificateChanged: Boolean! @pending
+  serverCertificate: ServerCertificate
+  certificateChanged: Boolean!
 }
 
 input ConnectionTestInput {
@@ -335,10 +335,10 @@ input ConnectionTestInput {
   host: String
   ssh: SshSettingsInput
   credential: SshCredentialInput
-  protocol: Protocol = SSH @pending
-  rdp: RdpSettingsInput @pending
-  vnc: VncSettingsInput @pending
-  password: PasswordCredentialInput @pending
+  protocol: Protocol = SSH
+  rdp: RdpSettingsInput
+  vnc: VncSettingsInput
+  password: PasswordCredentialInput
 }
 
 # ---------------------------------------------------------------- checks (WP-09)
@@ -931,7 +931,7 @@ type SessionTicket {
   tunnelPath: String!
   expiresAt: DateTime!
   "A Wake-on-LAN packet was sent; the opening waits longer (K4 §1)."
-  wakeSent: Boolean! @pending
+  wakeSent: Boolean!
 }
 
 type WakeResult {
@@ -1042,7 +1042,7 @@ type Mutation {
   setVncCredential(deviceId: ID!, credential: PasswordCredentialInput!): VncSettings!
   clearVncCredential(deviceId: ID!): VncSettings!
   "The fingerprint must equal the one the hub saw, or CONFLICT."
-  acceptServerCertificate(deviceId: ID!, fingerprintSha256: String!): ServerCertificate! @pending
+  acceptServerCertificate(deviceId: ID!, fingerprintSha256: String!): ServerCertificate!
   "A ticket for the files tunnel of a live SSH session (K4 §9)."
   openFiles(sessionId: ID!): SessionTicket!
   wakeDevice(deviceId: ID!): WakeResult!

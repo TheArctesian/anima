@@ -1,6 +1,7 @@
 //! What the hub holds in memory about sessions (D-1, R-032): unredeemed tickets, tickets
-//! spent by a refused redemption, the end signal of each open tunnel, and the host keys
-//! connection tests saw (D-5).
+//! spent by a refused redemption, the end signal of each open tunnel, the host keys and RDP
+//! server certificates connection tests saw (SEC-006, SEC-007), and the rule for the
+//! addresses sessions may reach.
 //!
 //! Every method takes the lock for a short, synchronous critical section and never across an
 //! `.await`; time comes in as a parameter (CQ-021).
@@ -21,9 +22,11 @@ use super::{
     public_key::PublicKey,
     target::TargetRule,
     tickets::{PendingTicket, Presented, TicketHash, hash_of},
-    trust::{Endpoint, Observation, Observations},
+    trust::{Observations, PresentedCertificate},
 };
-use crate::ids::SessionId;
+use crate::{ids::SessionId, targets::AddressPolicy};
+
+mod observed;
 
 /// Most tickets issued and not yet redeemed or swept, spent ones included. A ticket lives
 /// 30 s, so this bounds what one operator can hold in memory by starting sessions in a loop.
@@ -68,14 +71,17 @@ impl State {
     }
 }
 
-/// Tickets, open tunnels and host-key observations, shared by GraphQL and the tunnel route.
-/// Cheap to clone; every clone sees the same state. `main.rs` builds one with
-/// `Live::default()` (R-032), which probes with [`TargetRule::STRICT`].
+/// Tickets, open tunnels, and host-key and certificate observations, shared by GraphQL and the
+/// tunnel route. Cheap to clone; every clone sees the same state. `sessions::open` builds one
+/// with `Live::default()`, whose target rule has no deny list; `main.rs` gives it the hub's
+/// `ANIMA_PROBE_DENY` policy with [`Live::denying`].
 #[derive(Clone)]
 pub struct Live {
     state: Arc<Mutex<State>>,
     /// Its own lock: a connection test never waits on a ticket redemption.
-    observations: Arc<Mutex<Observations>>,
+    observations: Arc<Mutex<Observations<PublicKey>>>,
+    /// RDP server certificates, apart from host keys: an endpoint may present both.
+    certificates: Arc<Mutex<Observations<PresentedCertificate>>>,
     tunnel_end_wait: Duration,
     target_rule: TargetRule,
     /// The files tunnel's own tickets (WP-27 D-5), so a session ticket never opens `/files`.
@@ -192,19 +198,33 @@ impl Live {
         Self {
             state: Arc::default(),
             observations: Arc::default(),
+            certificates: Arc::default(),
             tunnel_end_wait: wait,
-            target_rule: TargetRule::STRICT,
+            target_rule: TargetRule::default(),
             files: files::Tickets::default(),
         }
     }
 
+    /// This `Live` with every session connection (the terminal, the Guacamole tunnel, the SSH
+    /// probe and `testConnection`) also refusing what `policy` refuses: the
+    /// `ANIMA_PROBE_DENY` networks and the policy's always-refused ranges. It
+    /// replaces any policy given before.
+    #[must_use]
+    pub fn denying(self, policy: AddressPolicy) -> Self {
+        Self {
+            target_rule: self.target_rule.denying(policy),
+            ..self
+        }
+    }
+
     /// This `Live` with probes that may reach an SSH server on the loopback interface, for
-    /// tests only: every other refused address stays refused (R-032).
+    /// tests only: every other refused address stays refused, and so does loopback in the
+    /// deny list (R-030, R-032).
     #[cfg(any(test, feature = "test-support"))]
     #[must_use]
     pub fn reaching_loopback_for_tests(self) -> Self {
         Self {
-            target_rule: TargetRule::LOOPBACK_FOR_TESTS,
+            target_rule: self.target_rule.reaching_loopback_for_tests(),
             ..self
         }
     }
@@ -231,30 +251,9 @@ impl Live {
             .map(watch::Sender::subscribe)
     }
 
-    /// The rule every SSH probe applies to the addresses a host resolves to.
-    pub(super) const fn target_rule(&self) -> TargetRule {
-        self.target_rule
-    }
-
-    fn observations(&self) -> MutexGuard<'_, Observations> {
-        self.observations
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-    }
-
-    /// Records that `endpoint` presented `key` at `now` (D-5).
-    pub(super) fn observe(
-        &self,
-        endpoint: Endpoint,
-        key: PublicKey,
-        now: DateTime<Utc>,
-    ) -> Observation {
-        self.observations().record(endpoint, key, now)
-    }
-
-    /// The key a connection test saw at `endpoint` within the last 15 minutes before `now`.
-    pub(super) fn observed(&self, endpoint: &Endpoint, now: DateTime<Utc>) -> Option<Observation> {
-        self.observations().find(endpoint, now)
+    /// The rule every session connection applies to the addresses a host resolves to.
+    pub(super) const fn target_rule(&self) -> &TargetRule {
+        &self.target_rule
     }
 
     /// The poisoned case is taken over: no critical section here can leave the maps half

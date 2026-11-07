@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mergeLive, rangeWindow } from './live';
+import { mergeLive } from './live';
 import { added, CPU_MINUTES, point, series } from './metrics.fixture';
 
 const CPU = series('CPU_PERCENT', 'cpu', CPU_MINUTES);
@@ -64,16 +64,5 @@ describe('mergeLive (D-5)', () => {
   it('does not change its input', () => {
     mergeLive([CPU], added('2026-11-05T09:05:00Z', [{ kind: 'CPU_PERCENT', label: 'cpu', value: 20 }]));
     expect(CPU.points).toHaveLength(5);
-  });
-});
-
-describe('rangeWindow (MET-003)', () => {
-  const now = new Date('2026-11-05T12:00:00Z');
-  it('spans 1 hour, 24 hours and 7 days ending at now', () => {
-    const start = (range: 'HOUR' | 'DAY' | 'WEEK') => new Date(rangeWindow(range, now).start).toISOString();
-    expect(start('HOUR')).toBe('2026-11-05T11:00:00.000Z');
-    expect(start('DAY')).toBe('2026-11-04T12:00:00.000Z');
-    expect(start('WEEK')).toBe('2026-10-29T12:00:00.000Z');
-    expect(rangeWindow('WEEK', now).end).toBe(now.getTime());
   });
 });

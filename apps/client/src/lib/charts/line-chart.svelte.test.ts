@@ -121,7 +121,9 @@ describe('LineChart: text and legend (D-1)', () => {
       { label: 'Out', colour: 2, points: [] },
     ];
     flushSync();
-    expect([...document.querySelectorAll('.legend li')].map((item) => item.textContent)).toEqual(['In', 'Out']);
+    expect([...document.querySelectorAll('.legend li')].map((item) => item.textContent.trim())).toEqual(['In', 'Out']);
+    expect([...document.querySelectorAll('.legend li')].map((item) => item.classList.contains('dash'))).toEqual([false, true]);
+    expect(document.querySelectorAll('.lines .dash')).toHaveLength(1);
     expect(document.querySelectorAll('.lines polyline')).toHaveLength(0);
   });
 

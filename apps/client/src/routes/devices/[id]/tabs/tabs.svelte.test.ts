@@ -31,25 +31,39 @@ afterEach(async () => {
 
 describe('readPlace and placeSearch (D-9)', () => {
   it.each([
-    ['', { tab: 'overview', section: null }],
-    ['?tab=checks', { tab: 'checks', section: null }],
-    ['?tab=settings&section=ssh', { tab: 'settings', section: 'ssh' }],
-    ['?tab=settings&section=web', { tab: 'settings', section: null }],
-    ['?tab=checks&section=ssh', { tab: 'checks', section: null }],
-    ['?tab=metrics', { tab: 'overview', section: null }],
+    ['', { tab: 'overview', section: null, range: 'HOUR' }],
+    ['?tab=checks', { tab: 'checks', section: null, range: 'HOUR' }],
+    ['?tab=settings&section=ssh', { tab: 'settings', section: 'ssh', range: 'HOUR' }],
+    ['?tab=settings&section=web', { tab: 'settings', section: null, range: 'HOUR' }],
+    ['?tab=checks&section=ssh', { tab: 'checks', section: null, range: 'HOUR' }],
+    ['?tab=metrics', { tab: 'overview', section: null, range: 'HOUR' }],
+    ['?range=day', { tab: 'overview', section: null, range: 'DAY' }],
+    ['?range=week', { tab: 'overview', section: null, range: 'WEEK' }],
+    ['?range=hour', { tab: 'overview', section: null, range: 'HOUR' }],
+    ['?range=year', { tab: 'overview', section: null, range: 'HOUR' }],
+    ['?tab=overview&range=day', { tab: 'overview', section: null, range: 'DAY' }],
+    ['?tab=checks&range=day', { tab: 'checks', section: null, range: 'HOUR' }],
   ])('D-9: %j is %j', (search, place) => {
     expect(readPlace(new URLSearchParams(search))).toEqual(place);
   });
 
   it('D-9: each place written to the URL reads back the same', () => {
     for (const place of [
-      { tab: 'overview', section: null },
-      { tab: 'logs', section: null },
-      { tab: 'settings', section: 'rdp' },
+      { tab: 'overview', section: null, range: 'HOUR' },
+      { tab: 'overview', section: null, range: 'DAY' },
+      { tab: 'overview', section: null, range: 'WEEK' },
+      { tab: 'logs', section: null, range: 'HOUR' },
+      { tab: 'settings', section: 'rdp', range: 'HOUR' },
     ] as const) {
       expect(readPlace(new URLSearchParams(placeSearch(place)))).toEqual(place);
     }
-    expect(placeSearch({ tab: 'overview', section: null })).toBe('');
+    expect(placeSearch({ tab: 'overview', section: null, range: 'HOUR' })).toBe('');
+  });
+
+  it('D-5: the range is in the URL for Overview only, and the 1-hour default leaves no query', () => {
+    expect(placeSearch({ tab: 'overview', section: null, range: 'DAY' })).toBe('?range=day');
+    expect(placeSearch({ tab: 'overview', section: null, range: 'WEEK' })).toBe('?range=week');
+    expect(placeSearch({ tab: 'checks', section: null, range: 'WEEK' })).toBe('?tab=checks');
   });
 });
 
@@ -139,6 +153,68 @@ function loadingPanel() {
 }
 
 const skeleton = () => document.querySelector('.skeleton');
+
+it.each([
+  ['the list rows', undefined],
+  ['a given skeleton', createRawSnippet(() => ({ render: () => '<p class="mine">Mine</p>' }))],
+])('MOT-007: %s cross-fades out when the data arrives', async (_name, custom) => {
+  const time = manualClock();
+  const state = $state({ loading: true });
+  app = mount(TabPanel, {
+    target: document.body,
+    props: {
+      name: 'overview',
+      get loading() {
+        return state.loading;
+      },
+      clock: time.clock,
+      skeleton: custom,
+      children: createRawSnippet(() => ({ render: () => '<p class="loaded">Loaded</p>' })),
+    },
+  });
+  flushSync();
+  time.advance(threshold.loading);
+  flushSync();
+  const shown = document.querySelector('.skeleton');
+  expect(shown).not.toBeNull();
+  const animated: unknown[] = [];
+  const animate = Element.prototype.animate;
+  Object.defineProperty(Element.prototype, 'animate', {
+    configurable: true,
+    value: function spy(this: Element, ...args: Parameters<Element['animate']>) {
+      animated.push(this);
+      return animate.apply(this, args);
+    },
+  });
+  try {
+    state.loading = false;
+    flushSync();
+    time.advance(threshold.loadingMin);
+    flushSync();
+    expect(animated).toContain(shown);
+  } finally {
+    Object.defineProperty(Element.prototype, 'animate', { configurable: true, value: animate });
+  }
+});
+
+it('D-9: a given skeleton replaces the list rows while loading', () => {
+  const time = manualClock();
+  app = mount(TabPanel, {
+    target: document.body,
+    props: {
+      name: 'overview',
+      loading: true,
+      clock: time.clock,
+      skeleton: createRawSnippet(() => ({ render: () => '<p class="mine">Mine</p>' })),
+      children: createRawSnippet(() => ({ render: () => '<p class="loaded">Loaded</p>' })),
+    },
+  });
+  flushSync();
+  time.advance(threshold.loading);
+  flushSync();
+  expect(document.querySelector('.skeleton .mine')).not.toBeNull();
+  expect(document.querySelector('.skeleton li')).toBeNull();
+});
 const loaded = () => document.querySelector('.loaded');
 
 describe('TabPanel (D-9, Loading role)', () => {

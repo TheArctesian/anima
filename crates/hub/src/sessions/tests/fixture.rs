@@ -53,8 +53,8 @@ pub(in crate::sessions) fn vault() -> Vault {
     Vault::from_key_file(key_file.path()).unwrap()
 }
 
-/// The operator, `accepted` as `docker-host`'s host key, and [`PASSWORD`] for it.
-pub(in crate::sessions) async fn prepare(pool: &PgPool, vault: &Vault, accepted: &PublicKey) {
+/// The operator every session belongs to.
+pub(in crate::sessions) async fn add_operator(pool: &PgPool) {
     sqlx::query(
         "insert into access.operators (id, username, password_hash, created_at) \
          values ($1::text::uuid, 'operator', '$argon2id$x', now())",
@@ -63,6 +63,11 @@ pub(in crate::sessions) async fn prepare(pool: &PgPool, vault: &Vault, accepted:
     .execute(pool)
     .await
     .unwrap();
+}
+
+/// The operator, `accepted` as `docker-host`'s host key, and [`PASSWORD`] for it.
+pub(in crate::sessions) async fn prepare(pool: &PgPool, vault: &Vault, accepted: &PublicKey) {
+    add_operator(pool).await;
     sqlx::query(
         "insert into sessions.host_keys (device_id, algorithm, fingerprint_sha256, public_key, \
                 first_seen_at, accepted_at, accepted_by) \

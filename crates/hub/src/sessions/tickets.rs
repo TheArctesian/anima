@@ -167,8 +167,7 @@ pub struct Presented<'a> {
     pub client: ClientAddr,
     /// The route's own path.
     pub path: &'a str,
-    /// Where a ticket for each protocol is opened: `Protocol::tunnel_path` in the hub; the
-    /// Guacamole tunnel's tests send SSH tickets to `/tunnel`.
+    /// Where a ticket for each protocol is opened: `Protocol::tunnel_path` in the hub.
     pub tunnel_path: fn(Protocol) -> &'static str,
 }
 

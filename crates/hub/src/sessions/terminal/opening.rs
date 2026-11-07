@@ -23,7 +23,7 @@ use crate::{
     credentials,
     devices::{self, Device},
     sessions::{
-        self, PendingTicket,
+        self, PendingTicket, Protocol,
         end::Cause,
         ssh::{self, Observer, SshError, Target},
     },
@@ -97,7 +97,8 @@ impl NotOpened {
             Self::Unresolved => "The device's host name does not resolve.",
             Self::RefusedTarget => {
                 "The device's host resolves to a loopback, link-local, multicast or unspecified \
-                 address, which the hub must not reach."
+                 address, or to one in a network the hub refuses (ANIMA_PROBE_DENY), which the \
+                 hub must not reach."
             }
             Self::Unreachable => "The hub could not reach the device's SSH port.",
             Self::Timeout => "The device did not open the SSH session in time.",
@@ -194,7 +195,7 @@ async fn sign_in(
     drop(secret);
     match signed_in {
         Ok(()) => Ok(None),
-        Err(SshError::AuthFailed) => Ok(Some(Cause::AuthFailed.message())),
+        Err(SshError::AuthFailed) => Ok(Some(Cause::AuthFailed.message().of(Protocol::Ssh))),
         Err(SshError::UnreadableKey) => Ok(Some(UNREADABLE_KEY)),
         Err(_) => Err(NotOpened::Lost),
     }

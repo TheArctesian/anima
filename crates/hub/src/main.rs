@@ -137,10 +137,13 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     let pool = connect(&config).await?;
     events::check_runtime_role(&pool).await?;
     permit_networks(&pool, &config).await?;
-    let live = open_sessions(&pool, clock.now()).await?;
+    // One deny list for every outbound connection; `tunnels` says which path takes it how.
+    let policy = AddressPolicy::new(config.probe_deny.clone());
+    let live = open_sessions(&pool, clock.now())
+        .await?
+        .denying(policy.clone());
     tracing::info!(listen = %listening.local_addr()?, "hub started");
     let bus = Bus::new(BUS_CAPACITY);
-    let policy = AddressPolicy::new(config.probe_deny.clone());
     let (probing, collecting) = reaching(&vault, &policy, config.tailscale_localapi.clone());
     let feed = metrics::Feed::new();
     let dependencies = Dependencies {

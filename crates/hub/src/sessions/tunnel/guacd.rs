@@ -17,8 +17,6 @@ use zeroize::{Zeroize, Zeroizing};
 
 use super::{opening::NotOpened, route::Timing};
 
-/// The only protocol in Phase 1 (K4 Section 3 step 1).
-const PROTOCOL: &str = "ssh";
 /// Bytes read from guacd at a time: one of its largest instructions.
 pub(super) const READ_BYTES: usize = MAX_INSTRUCTION_BYTES;
 
@@ -40,13 +38,15 @@ pub(super) struct Connected {
     pub(super) connection_id: ConnectionId,
 }
 
-/// Connects to guacd at `address` within `timing.connect`, then completes the handshake for
-/// `params` within `timing.handshake`.
+/// Connects to guacd at `address` within `timing.connect`, then completes the handshake that
+/// selects `protocol` (a hub constant: `rdp` or `vnc`) for `params` within
+/// `timing.handshake`.
 ///
 /// # Errors
 /// [`NotOpened::Unreachable`], [`NotOpened::HandshakeTimeout`], or how the handshake failed.
 pub(super) async fn connect(
     address: &str,
+    protocol: &'static str,
     params: ConnectParams,
     timing: Timing,
 ) -> Result<Connected, NotOpened> {
@@ -58,13 +58,17 @@ pub(super) async fn connect(
     stream
         .set_nodelay(true)
         .map_err(|_| NotOpened::Unreachable)?;
-    timeout(timing.handshake, handshake(stream, params))
+    timeout(timing.handshake, handshake(stream, protocol, params))
         .await
         .map_err(|_| NotOpened::HandshakeTimeout)?
 }
 
-async fn handshake(mut stream: TcpStream, params: ConnectParams) -> Result<Connected, NotOpened> {
-    let (mut handshake, select) = Handshake::new(PROTOCOL, params);
+async fn handshake(
+    mut stream: TcpStream,
+    protocol: &'static str,
+    params: ConnectParams,
+) -> Result<Connected, NotOpened> {
+    let (mut handshake, select) = Handshake::new(protocol, params);
     send(&mut stream, vec![select]).await?;
     let mut decoder = Decoder::new();
     let mut buffer = vec![0; READ_BYTES];

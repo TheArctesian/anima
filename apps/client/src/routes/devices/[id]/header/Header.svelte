@@ -57,6 +57,7 @@
 {/snippet}
 
 <!-- One line, in the order of DEV-020; the buttons are last. -->
+<div class="fit">
 <header class="line">
   <a class="back" href={resolve('/devices')} {@attach press()}>Devices</a>
   {#if device !== null && line !== null}
@@ -94,6 +95,7 @@
     </div>
   {/if}
 </header>
+</div>
 
 <style>
   /*
@@ -101,6 +103,11 @@
    * details take what the name, the pill and the buttons leave and shrink to nothing first; a name that is too long ends in
    * an ellipsis with its full text as the tooltip (DEV-021).
    */
+  .fit {
+    container-type: inline-size;
+    min-inline-size: 0;
+  }
+
   .line {
     box-sizing: border-box;
     display: flex;
@@ -158,66 +165,70 @@
   }
 
   /*
-   * Below the compact breakpoint four rows of fixed size: the back link and the pill; the name; the details; the buttons. The
-   * block size is the same while the device loads and when it arrives (MOT-007).
+   * When the window leaves too little for the name, the pill, the Warning badge and every button on one line, four rows
+   * of fixed size: the back link and the pill; the name; the details; the buttons. The container is the header's own
+   * width, so the switch follows what fits and not the window (DEV-021). The block size is the same while the device
+   * loads and when it arrives (MOT-007).
    */
-  :global(:root[data-nav='icons']) .line,
-  :global(:root[data-nav='icons']) .skeleton {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-rows:
-      var(--target-min-touch) calc(var(--text-xl) * var(--leading-tight)) calc(var(--text-sm) * var(--leading-tight))
-      var(--target-min-desktop);
-    gap: var(--space-2) var(--space-3);
-  }
+  @container (max-inline-size: 56rem) {
+    .line,
+    .skeleton {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      grid-template-rows:
+        var(--target-min-touch) calc(var(--text-xl) * var(--leading-tight)) calc(var(--text-sm) * var(--leading-tight))
+        var(--target-min-desktop);
+      gap: var(--space-2) var(--space-3);
+    }
 
-  :global(:root[data-nav='icons']) .line {
-    block-size: calc(
-      var(--target-min-touch) + var(--text-xl) * var(--leading-tight) + var(--text-sm) * var(--leading-tight) +
-        var(--target-min-desktop) + var(--space-2) * 3
-    );
-  }
+    .line {
+      block-size: calc(
+        var(--target-min-touch) + var(--text-xl) * var(--leading-tight) + var(--text-sm) * var(--leading-tight) +
+          var(--target-min-desktop) + var(--space-2) * 3
+      );
+    }
 
-  :global(:root[data-nav='icons']) .back {
-    grid-area: 1 / 1;
-  }
+    .back {
+      grid-area: 1 / 1;
+    }
 
-  :global(:root[data-nav='icons']) .status {
-    grid-area: 1 / 3;
-  }
+    .status {
+      grid-area: 1 / 3;
+    }
 
-  :global(:root[data-nav='icons']) h1 {
-    grid-area: 2 / 1 / 3 / -1;
-  }
+    h1 {
+      grid-area: 2 / 1 / 3 / -1;
+    }
 
-  :global(:root[data-nav='icons']) .details,
-  :global(:root[data-nav='icons']) .actions {
-    grid-column: 1 / -1;
-  }
+    .details,
+    .actions {
+      grid-column: 1 / -1;
+    }
 
-  /* The skeleton has the same rows, so each placeholder lies over the row it stands for (MOT-007, 5.7.3 Loading). */
-  :global(:root[data-nav='icons']) .skeleton > .ghost {
-    grid-area: 1 / 1;
-  }
+    /* The skeleton has the same rows, so each placeholder lies over the row it stands for (MOT-007, 5.7.3 Loading). */
+    .skeleton > .ghost {
+      grid-area: 1 / 1;
+    }
 
-  :global(:root[data-nav='icons']) .skeleton > .pill {
-    grid-area: 1 / 3;
-    align-self: center;
-  }
+    .skeleton > .pill {
+      grid-area: 1 / 3;
+      align-self: center;
+    }
 
-  :global(:root[data-nav='icons']) .skeleton > .name {
-    grid-area: 2 / 1 / 3 / -1;
-    align-self: center;
-  }
+    .skeleton > .name {
+      grid-area: 2 / 1 / 3 / -1;
+      align-self: center;
+    }
 
-  :global(:root[data-nav='icons']) .skeleton > .details-place {
-    grid-area: 3 / 1 / 4 / -1;
-    align-self: center;
-  }
+    .skeleton > .details-place {
+      grid-area: 3 / 1 / 4 / -1;
+      align-self: center;
+    }
 
-  :global(:root[data-nav='icons']) .skeleton > .actions-place {
-    grid-area: 4 / 1 / 5 / -1;
-    justify-self: start;
+    .skeleton > .actions-place {
+      grid-area: 4 / 1 / 5 / -1;
+      justify-self: start;
+    }
   }
 
   /* The pill and the buttons never shrink (DEV-021). */

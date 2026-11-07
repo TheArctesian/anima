@@ -17,11 +17,8 @@ use tokio::{sync::oneshot, time::timeout};
 
 use super::{
     Tunnel,
-    end::{Cause, End},
+    end::{CLIENT_LEFT, Cause, End},
 };
-
-/// The event message when the client left while the hub opened the far side.
-pub(super) const CLIENT_LEFT: &str = "The client left before the SSH session opened.";
 
 /// Runs `opening` unless the session ends first, then answers the request with `upgrade`.
 /// The session ends first on `endSession` or shutdown (SEC-002, D-10), or when the client
@@ -40,7 +37,7 @@ pub(super) async fn handed_over<T>(
     let opened = tokio::select! {
         opened = opening => opened,
         signal = tunnel.ended() => Err(End::from(signal)),
-        () = answer.closed() => Err(End::explained(Cause::OperatorClosed, CLIENT_LEFT)),
+        () = answer.closed() => Err(End::worded(Cause::OperatorClosed, CLIENT_LEFT)),
     };
     let opened = match opened {
         Ok(opened) => opened,

@@ -1,3 +1,6 @@
+import type { MetricRange } from '$lib/metrics/api';
+import { RANGES } from '$lib/metrics/ranges';
+
 /** The device detail tabs, in order (Section 6.7). */
 export const TABS = [
   { name: 'overview', label: 'Overview' },
@@ -16,6 +19,8 @@ export interface TabPlace {
   readonly tab: TabName;
   /** Only on the Settings tab. */
   readonly section: SettingsSection | null;
+  /** Only on the Overview tab; every other place reads as the 1-hour default. */
+  readonly range: MetricRange;
 }
 
 const SECTIONS: readonly SettingsSection[] = ['general', 'ssh', 'rdp', 'test'];
@@ -28,17 +33,29 @@ function isSection(text: string | null): text is SettingsSection {
   return SECTIONS.some((section) => section === text);
 }
 
-/** D-9: the tab and section from the URL; an unknown tab is Overview and an unknown section is none. */
+/** D-5: the range word of the URL; an unknown word is the 1-hour default. */
+function readRange(param: string | null): MetricRange {
+  return RANGES.find((each) => each.param === param)?.range ?? 'HOUR';
+}
+
+/** D-9, D-5: the tab, section and range from the URL; an unknown tab is Overview, an unknown section is none, an unknown range is 1 hour. */
 export function readPlace(params: URLSearchParams): TabPlace {
   const tab = params.get('tab');
   const section = params.get('section');
-  if (!isTab(tab)) return { tab: 'overview', section: null };
-  return { tab, section: tab === 'settings' && isSection(section) ? section : null };
+  if (!isTab(tab)) return { tab: 'overview', section: null, range: readRange(params.get('range')) };
+  return {
+    tab,
+    section: tab === 'settings' && isSection(section) ? section : null,
+    range: tab === 'overview' ? readRange(params.get('range')) : 'HOUR',
+  };
 }
 
-/** D-9: the query string for a place, empty for Overview, so Back returns to it and a reload keeps it. */
+/** D-9, D-5: the query string for a place, empty for Overview at 1 hour, so Back returns to it and a reload keeps it. */
 export function placeSearch(place: TabPlace): string {
-  if (place.tab === 'overview') return '';
+  if (place.tab === 'overview') {
+    const word = RANGES.find((each) => each.range === place.range)?.param;
+    return place.range === 'HOUR' || word === undefined ? '' : `?range=${word}`;
+  }
   const params = new URLSearchParams({ tab: place.tab });
   if (place.tab === 'settings' && place.section !== null) params.set('section', place.section);
   return `?${params.toString()}`;
