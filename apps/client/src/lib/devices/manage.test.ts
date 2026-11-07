@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { HubError } from '$lib/hub/hub';
-import { devicesApi, type DeviceDetail } from './api';
+import type { DeviceDetail } from './api';
+import { devicesApi } from './client';
 import { fakeHub } from './hub.fixture';
 
 const DETAIL: DeviceDetail = {
