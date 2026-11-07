@@ -5,6 +5,7 @@ mod arguments;
 mod client;
 mod ending;
 mod gateway;
+mod rdp_vnc_args;
 mod size;
 mod wire;
 
