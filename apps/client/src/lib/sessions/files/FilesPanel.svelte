@@ -104,41 +104,41 @@
 
   <!-- The placeholders lie over the rows in one cell and fade off them, so the swap moves nothing (MOT-007). -->
   <div class="stack">
-  <ul class="entries" aria-label="Entries" aria-busy={files.listLoading}>
-    <!-- Unkeyed: a device may list two entries with one name, and a repeated key would end the list. -->
-    {#each files.entries as entry, at (at)}
-      <li class="entry">
-        <Icon name={ICONS[entry.kind]} size="sm" />
-        {#if entry.kind === 'dir'}
-          <button type="button" class="name open" title={entry.name} aria-disabled={!idle} onclick={() => files.into(entry)}>{entry.name}</button>
-        {:else}
-          <span class="name" title={entry.name}>{entry.name}</span>
-        {/if}
-        <span class="meta">{sizeText(entry.size)}</span>
-        <span class="meta">{timeText(entry.modifiedAt)}</span>
-        {#if entry.kind === 'dir'}
-          <span class="slot"></span>
-        {:else}
-          <button type="button" class="control slot" aria-label="Download {entry.name}" aria-disabled={!idle} onclick={() => void files.download(entry)} {@attach press()}>
-            <Icon name="nf-md-download" size="sm" />
-          </button>
-        {/if}
-      </li>
-    {/each}
-  </ul>
-  {#if skeleton.visible}
-    <ul class="entries places" aria-hidden="true" transition:crossFade>
-      {#each PLACES as place (place)}
+    <ul class="entries" aria-label="Entries" aria-busy={files.listLoading}>
+      <!-- Unkeyed: a device may list two entries with one name, and a repeated key would end the list. -->
+      {#each files.entries as entry, at (at)}
         <li class="entry">
-          <Icon name="nf-md-file" size="sm" />
-          <span class="hole name-hole"></span>
-          <span class="hole"></span>
-          <span class="hole"></span>
-          <span class="slot"></span>
+          <Icon name={ICONS[entry.kind]} size="sm" />
+          {#if entry.kind === 'dir'}
+            <button type="button" class="name open" title={entry.name} aria-disabled={!idle} onclick={() => files.into(entry)}>{entry.name}</button>
+          {:else}
+            <span class="name" title={entry.name}>{entry.name}</span>
+          {/if}
+          <span class="meta">{sizeText(entry.size)}</span>
+          <span class="meta">{timeText(entry.modifiedAt)}</span>
+          {#if entry.kind === 'dir'}
+            <span class="slot"></span>
+          {:else}
+            <button type="button" class="control slot" aria-label="Download {entry.name}" aria-disabled={!idle} onclick={() => void files.download(entry)} {@attach press()}>
+              <Icon name="nf-md-download" size="sm" />
+            </button>
+          {/if}
         </li>
       {/each}
     </ul>
-  {/if}
+    {#if skeleton.visible}
+      <ul class="entries places" aria-hidden="true" transition:crossFade>
+        {#each PLACES as place (place)}
+          <li class="entry">
+            <Icon name="nf-md-file" size="sm" />
+            <span class="hole name-hole"></span>
+            <span class="hole"></span>
+            <span class="hole"></span>
+            <span class="slot"></span>
+          </li>
+        {/each}
+      </ul>
+    {/if}
   </div>
 
   <!-- Both lines keep their height whether or not they have anything to say (MOT-007). -->

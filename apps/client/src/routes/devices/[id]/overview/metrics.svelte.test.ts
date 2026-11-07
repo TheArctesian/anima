@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { fakeHub } from '$lib/devices/hub.fixture';
 import type { Hub, HubResult } from '$lib/hub/hub';
 import { CPU_ONLY, added, point, series } from '$lib/metrics/metrics.fixture';
+import { forgetChartShapes } from '$lib/metrics/shapes';
 import { DeviceMetrics } from './metrics.svelte';
 
 const ID = '0190a000-0000-7000-8012-000000000004';
@@ -13,6 +14,8 @@ function metricsOf(fake: ReturnType<typeof fakeHub>, now = LOADED) {
 }
 
 describe('DeviceMetrics (D-5, D-6, D-7)', () => {
+  beforeEach(forgetChartShapes);
+
   it('D-7: a device without SSH metrics sends no request and no subscription', async () => {
     const fake = fakeHub({ DeviceMetrics: answer() });
     const metrics = metricsOf(fake);
@@ -22,12 +25,14 @@ describe('DeviceMetrics (D-5, D-6, D-7)', () => {
     expect(metrics.view).toBeNull();
   });
 
-  it('MOT-007, 5.7.3 Loading: the chart count of the last answer is kept for the skeleton, and is null before one', async () => {
+  it('MOT-007, 5.7.3 Loading: the chart shape of the last answer is kept, and a later visit starts with it', async () => {
     const fake = fakeHub({ DeviceMetrics: answer() });
-    const metrics = metricsOf(fake);
-    expect(metrics.chartCount).toBeNull();
-    await metrics.load('HOUR', 'SSH');
-    expect(metrics.chartCount).toBe(2);
+    const first = metricsOf(fake);
+    expect(first.chartShape).toBeNull();
+    await first.load('HOUR', 'SSH');
+    expect(first.chartShape).toEqual([1, 1]);
+    first.stop();
+    expect(metricsOf(fake).chartShape).toEqual([1, 1]);
   });
 
   it('MET-003: the request carries the range, and the window ends when the load began', async () => {

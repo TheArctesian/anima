@@ -190,3 +190,19 @@ describe('MOT-007, 5.7.3 Loading: the listing', () => {
     expect(names(target)).toEqual(['a.txt']);
   });
 });
+
+describe('MOT-007, 5.7.3 Loading: a failed listing', () => {
+  it('MOT-007: the placeholders end when the listing fails', async () => {
+    const time = manualClock();
+    const shown = await show(undefined, time.clock);
+    shown.socket.open();
+    await settle();
+    time.advance(threshold.loading);
+    flushSync();
+    expect(shown.target.querySelector('.entries[aria-busy="true"]')).not.toBeNull();
+    shown.socket.text({ type: 'refused', reason: 'DENIED' });
+    await settle();
+    flushSync();
+    expect(shown.target.querySelector('.entries[aria-busy="true"]')).toBeNull();
+  });
+});

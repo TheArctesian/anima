@@ -15,7 +15,7 @@
 
   interface Props {
     source: MetricsSource;
-    metrics: Pick<DeviceMetrics, 'view' | 'span' | 'shownRange' | 'chartCount' | 'readings' | 'error' | 'liveError'>;
+    metrics: Pick<DeviceMetrics, 'view' | 'span' | 'shownRange' | 'chartShape' | 'readings' | 'error' | 'liveError'>;
     range: MetricRange;
     now: () => Date;
     clock?: LoadingClock;
@@ -66,7 +66,7 @@
           <button type="button" onclick={onRetry} {@attach press()}>Retry</button>
         </div>
       {:else if skeleton.visible}
-        <div class="layer" transition:crossFade><MetricsSkeleton {range} {now} cells={metrics.chartCount} /></div>
+        <div class="layer" transition:crossFade><MetricsSkeleton {range} {now} cells={metrics.chartShape} /></div>
       {:else if !waiting}
         <div class="layer" transition:crossFade>
           {#if charts.length === 0 || metrics.span === null}
