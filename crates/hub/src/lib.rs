@@ -10,6 +10,7 @@ pub mod devices;
 pub mod events;
 pub mod ids;
 pub mod maintenance;
+pub mod metrics;
 pub mod paging;
 pub mod scalars;
 pub mod schema;
