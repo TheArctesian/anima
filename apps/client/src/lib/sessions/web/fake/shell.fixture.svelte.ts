@@ -4,8 +4,8 @@ import type { Bounds, Fingerprint, WebViewEvent, WebViewOpening, WebViewShell } 
 import { WebViewError } from '$lib/desktop/webView/webView';
 import type { Status } from '$lib/hub/generated/graphql';
 import type { HubResult } from '$lib/hub/hub';
-import type { WebCertificatePin, WebTabApi } from './api';
-import WebTab from './WebTab.svelte';
+import type { WebCertificatePin, WebTabApi } from '../api';
+import WebTab from '../WebTab.svelte';
 
 export const BOUNDS = { x: 0, y: 48, width: 800, height: 552 };
 
@@ -22,8 +22,14 @@ export type ShellCall =
 /** A shell that records every command; `answers` sets what it says (`refuse`: command to code), `emit` plays an event. */
 export function fakeShell() {
   const calls: ShellCall[] = [];
-  // eslint-disable-next-line svelte/prefer-svelte-reactivity -- the fake's answers are read by the shell calls, never rendered
-  const answers = { pinning: true, certificate: null as Fingerprint | null, refuse: new Map<ShellCall['command'], string>() };
+  const answers = {
+    pinning: true,
+    certificate: null as Fingerprint | null,
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- the fake's answers are read by the shell calls, never rendered
+    refuse: new Map<ShellCall['command'], string>(),
+    /** When set, a certificate read waits for it before answering. */
+    gate: null as Promise<void> | null,
+  };
   let listener: ((event: WebViewEvent) => void) | undefined;
   const heard = (call: ShellCall): Promise<void> => {
     calls.push(call);
@@ -42,6 +48,7 @@ export function fakeShell() {
     openSystemBrowser: (url) => heard({ command: 'browser', url }),
     readCertificate: async (url) => {
       await heard({ command: 'read', url });
+      await answers.gate;
       if (answers.certificate === null) throw new WebViewError('unreachable');
       return answers.certificate;
     },

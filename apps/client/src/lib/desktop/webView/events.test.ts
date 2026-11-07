@@ -8,7 +8,7 @@ const OTHER = 'cd'.repeat(32);
 describe('fingerprint (D-5, H-4)', () => {
   it('D-5: takes exactly 64 lower-case hex digits and nothing else', () => {
     expect(fingerprintFrom(PIN)).toBe(PIN);
-    for (const wrong of [PIN.toUpperCase(), PIN.slice(1), `${PIN}a`, PIN.replace(/(..)(?!$)/g, '$1:'), ` ${PIN}`, `g${PIN.slice(1)}`, 64, null]) {
+    for (const wrong of [[PIN], { toString: () => PIN }, PIN.toUpperCase(), PIN.slice(1), `${PIN}a`, PIN.replace(/(..)(?!$)/g, '$1:'), ` ${PIN}`, `g${PIN.slice(1)}`, 64, null]) {
       expect(fingerprintFrom(wrong)).toBeNull();
     }
   });
@@ -51,6 +51,8 @@ describe('webViewEventFrom (WP-31 shell interface)', () => {
     ['a URL that is too long', { tabId: 't', kind: 'LOADED', url: `http://a/${'x'.repeat(8192)}` }],
     ['an upper-case fingerprint', { tabId: 't', kind: 'UNTRUSTED', fingerprintSha256: PIN.toUpperCase() }],
     ['a colon fingerprint', { tabId: 't', kind: 'UNTRUSTED', fingerprintSha256: PIN.replace(/(..)(?!$)/g, '$1:') }],
+    ['an upper-case presented fingerprint', { tabId: 't', kind: 'MISMATCH', expected: PIN, presented: OTHER.toUpperCase() }],
+    ['a presented fingerprint in a list', { tabId: 't', kind: 'MISMATCH', expected: PIN, presented: [OTHER] }],
     ['a short presented fingerprint', { tabId: 't', kind: 'MISMATCH', expected: PIN, presented: OTHER.slice(2) }],
     ['a reason with a URL', { tabId: 't', kind: 'FAILED', reason: 'could not load https://a/' }],
     ['a reason that is not text', { tabId: 't', kind: 'FAILED', reason: { code: 'x' } }],

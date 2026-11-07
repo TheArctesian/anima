@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { fingerprintFrom, type Fingerprint } from '$lib/desktop/webView/webView';
 import type { HubResult } from '$lib/hub/hub';
 import type { WebCertificatePin } from './api';
-import { browserAllowed, checksBeforeBrowser, LOAD_TIMEOUT_MS, modeFor, PROBLEM, startTab, tlsStatus, transition, viewShows, type WebTab, type WebTabEvent } from './tab';
+import { browserAllowed, changeOf, checksBeforeBrowser, failureText, LOAD_TIMEOUT_MS, modeFor, PROBLEM, startTab, tlsStatus, transition, viewShows, type WebTab, type WebTabEvent } from './tab';
 
 const PIN = fingerprintFrom('ab'.repeat(32)) as Fingerprint;
 const NEW = fingerprintFrom('cd'.repeat(32)) as Fingerprint;
@@ -185,5 +185,50 @@ describe('view and toolbar rules (MAT-008, WEB-005)', () => {
     for (const step of ['reading', 'untrusted', 'accepting', 'mismatch', 'refused'] as const) {
       expect(browserAllowed({ step } as never)).toBe(false);
     }
+  });
+});
+
+describe('answers out of place (WEB-008, SEC-007)', () => {
+  it('WEB-008: a hub answer applies only while accepting; in any other step it pins nothing', () => {
+    const steps = [
+      after(start(), shell({ kind: 'UNTRUSTED', fingerprintSha256: NEW })),
+      after(start({ pinned: PIN }), shell({ kind: 'MISMATCH', expected: PIN, presented: NEW })),
+      after(start({ pinned: PIN }), shell({ kind: 'MISMATCH', expected: PIN, presented: NEW }), { event: 'confirm' }),
+      after(start(), shell({ kind: 'FAILED', reason: 'x' })),
+      start(),
+      after(start(), shell({ kind: 'LOADED', url: HTTPS })),
+      start({ down: true }),
+      start({ pinning: false }),
+    ];
+    for (const tab of steps) expect(transition(tab, { event: 'accepted', result: pinned(NEW) }, 0)).toBeUndefined();
+  });
+
+  it('SEC-007: a MISMATCH counts only from a web view showing a page or a first-visit prompt', () => {
+    const event = shell({ kind: 'MISMATCH', expected: PIN, presented: NEW });
+    expect(transition(after(start(), shell({ kind: 'UNTRUSTED', fingerprintSha256: NEW })), event, 0)?.current).toMatchObject({ step: 'mismatch' });
+    const others = [
+      start({ pinning: false, pinned: PIN }),
+      start({ down: true }),
+      after(start(), shell({ kind: 'FAILED', reason: 'x' })),
+      after(start(), shell({ kind: 'UNTRUSTED', fingerprintSha256: NEW }), { event: 'accept' }),
+      after(start({ pinned: PIN }), event),
+    ];
+    for (const tab of others) expect(transition(tab, event, 0)).toBeUndefined();
+  });
+
+  it('H-4: a new URL or another pin starts the tab again; its own accepted pin is adopted', () => {
+    const target = { id: 'web-1', deviceId: 'device-1', url: HTTPS, pinned: null };
+    expect(changeOf(target, HTTPS, null, null)).toBe('same');
+    expect(changeOf(target, 'https://other.lan/', null, null)).toBe('restart');
+    expect(changeOf(target, HTTPS, NEW, NEW)).toBe('adopt');
+    expect(changeOf(target, HTTPS, NEW, PIN)).toBe('restart');
+    expect(changeOf({ ...target, pinned: PIN }, HTTPS, null, PIN)).toBe('restart');
+    expect(changeOf({ ...target, pinned: PIN }, 'https://other.lan/', PIN, PIN)).toBe('restart');
+  });
+
+  it('LOG-007: the error page text is fixed for every reason', () => {
+    expect(failureText('timeout')).toContain('did not load in time');
+    expect(failureText('unknown_tab')).toContain('was closed');
+    expect(failureText('https://nas.lan/')).not.toContain('nas.lan');
   });
 });

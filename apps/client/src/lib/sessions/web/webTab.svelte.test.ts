@@ -2,7 +2,7 @@
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { displayFingerprint, fingerprintFrom, type Fingerprint } from '$lib/desktop/webView/webView';
-import { BOUNDS, button, fakeApi, fakeShell, FakeResizeObserver, field, installLayout, lastShow, pageField, settle, showTab as show, type Shown } from './fake.fixture.svelte';
+import { BOUNDS, button, fakeApi, fakeShell, FakeResizeObserver, field, installLayout, lastShow, pageField, settle, showTab as show, type Shown } from './fake/shell.fixture.svelte';
 import { LOAD_TIMEOUT_MS, PROBLEM } from './tab';
 import WebTab from './WebTab.svelte';
 

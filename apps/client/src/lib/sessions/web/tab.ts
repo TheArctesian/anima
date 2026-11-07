@@ -102,9 +102,10 @@ function compared(pin: Fingerprint | null, presented: Fingerprint, unpinned: Web
 
 function heard(tab: WebTab, event: WebViewEvent, now: number): WebStep | undefined {
   const { current, pin } = tab;
-  // A stop for a changed certificate wins over every other step (SEC-007).
+  // A stop for a changed certificate wins over a page and a first-visit prompt (SEC-007); only a web view sends it.
   if (event.kind === 'MISMATCH') {
-    return current.step === 'mismatch' ? undefined : { step: 'mismatch', expected: event.expected, presented: event.presented, confirming: false };
+    if (tab.mode !== 'EMBEDDED' || !['loading', 'loaded', 'untrusted'].includes(current.step)) return undefined;
+    return { step: 'mismatch', expected: event.expected, presented: event.presented, confirming: false };
   }
   if (tab.mode !== 'EMBEDDED' || (current.step !== 'loading' && current.step !== 'loaded')) return undefined;
   switch (event.kind) {
@@ -234,4 +235,34 @@ export function checksBeforeBrowser(interfaceUrl: string, url: string, pin: Fing
 /** Whether "Open in system browser" may be used now: not while a certificate is unread, unaccepted or changed. */
 export function browserAllowed(current: WebStep): boolean {
   return !['reading', 'untrusted', 'accepting', 'mismatch', 'refused'].includes(current.step);
+}
+
+/** The interface one run of a tab was started for (H-4). */
+export interface WebTabTarget {
+  readonly id: string;
+  readonly deviceId: string;
+  readonly url: string;
+  readonly pinned: string | null;
+}
+
+/**
+ * What a change of the interface means for a running tab (H-4, WEB-008): nothing; `adopt`, when the hub now holds the
+ * pin this tab accepted itself; or `restart`, when the URL changed (the hub dropped the pin) or another pin came.
+ */
+export function changeOf(target: WebTabTarget, url: string, pinned: string | null, held: Fingerprint | null): 'same' | 'adopt' | 'restart' {
+  if (url !== target.url) return 'restart';
+  if (pinned === target.pinned) return 'same';
+  return pinned !== null && pinned === held ? 'adopt' : 'restart';
+}
+
+/** What the error page says for a failure `reason`; fixed text, never the shell's (LOG-007). */
+export function failureText(reason: string): string {
+  switch (reason) {
+    case 'timeout':
+      return 'The page did not load in time. Check that the web interface is running, then reload.';
+    case 'unknown_tab':
+      return 'The window of this page was closed. Reload to open it here again.';
+    default:
+      return 'The page could not be loaded. Check that the web interface is running, then reload.';
+  }
 }

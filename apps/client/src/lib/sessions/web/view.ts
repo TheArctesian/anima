@@ -31,6 +31,8 @@ export interface NativeView {
   popOut(): void;
   /** Close the view, after any command still running; a popped-out view stays in its window. */
   close(): void;
+  /** Close the view, popped out or not, so that the next `open` makes a new one after it (H-4). */
+  restart(): void;
 }
 
 function sameBounds(a: Bounds, b: Bounds): boolean {
@@ -98,6 +100,15 @@ export function nativeView({ shell, tabId, onfail, onstate }: NativeViewOptions)
     if (code === UNKNOWN_TAB && state !== 'closed') become('none');
     onfail(code);
   });
+  /**
+   * Leave the view for `next` and close it in the shell, on the chain: an open still running finishes first, so the
+   * view it makes is the one closed, and a new open runs after. A popped-out view stays only when the tab closes.
+   */
+  const end = (next: 'none' | 'closed') => {
+    const was = state;
+    become(next);
+    if (was !== 'none' && (was !== 'popped' || next === 'none')) run(() => shell.close(tabId));
+  };
   const live = () => state === 'open';
   const started = () => state === 'open' || state === 'opening';
   const placing = coalesced<Bounds>(run, live, (sent, wanted) => sent !== undefined && sameBounds(sent, wanted), (to) => shell.place(tabId, to));
@@ -108,17 +119,12 @@ export function nativeView({ shell, tabId, onfail, onstate }: NativeViewOptions)
       if (state !== 'none') return;
       become('opening');
       run(async () => {
-        try {
-          await shell.open({ tabId, ...target, bounds });
-        } catch (reason) {
-          // The failure is told first, so the tab leaves its loading step before a new open could start.
-          onfail(codeOf(reason));
-          if (state === 'opening') become('none');
-          return;
-        }
+        // A failure is told first, so the tab leaves its loading step before a new open could start.
+        const opened = await shell.open({ tabId, ...target, bounds }).then(() => true, (reason: unknown) => (onfail(codeOf(reason)), false));
+        if (state !== 'opening') return;
         placing.sent(bounds);
         showing.sent(undefined);
-        if (state === 'opening') become('open');
+        become(opened ? 'open' : 'none');
       });
     },
     place(bounds) {
@@ -141,13 +147,11 @@ export function nativeView({ shell, tabId, onfail, onstate }: NativeViewOptions)
         if (live()) become('popped');
       });
     },
+    restart() {
+      if (state !== 'none' && state !== 'closed') end('none');
+    },
     close() {
-      const was = state;
-      if (was === 'closed') return;
-      become('closed');
-      if (was === 'none' || was === 'popped') return;
-      // An open still running finishes first, so the view it makes is the one closed.
-      run(() => shell.close(tabId));
+      if (state !== 'closed') end('closed');
     },
   };
 }

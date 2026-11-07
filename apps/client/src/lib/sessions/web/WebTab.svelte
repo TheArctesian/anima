@@ -8,14 +8,18 @@
   import DownPage from './DownPage.svelte';
   import {
     browserAllowed,
+    changeOf,
     checksBeforeBrowser,
+    failureText,
     LOAD_TIMEOUT_MS,
     startTab,
     tlsStatus,
     transition,
     viewShows,
+    type WebStep,
     type WebTab,
     type WebTabEvent,
+    type WebTabTarget,
   } from './tab';
   import Toolbar from './Toolbar.svelte';
   import TrustPage from './TrustPage.svelte';
@@ -44,14 +48,21 @@
   const { webInterface, device, tabId, visible, overlayOpen, shell = desktopWebView, api = webTabApi(useHub()), now = Date.now }: Props = $props();
 
   const TEXT = {
-    failed: 'The page could not be loaded. Check that the web interface is running, then reload.',
-    timeout: 'The page did not load in time. Check that the web interface is running, then reload.',
-    unknown_tab: 'The window of this page was closed. Reload to open it here again.',
     scheme: 'Anima opens only http and https web interfaces.',
     pin: 'The pinned fingerprint of this web interface cannot be read, so Anima does not open it.',
     browser: 'The system browser could not be opened.',
   } as const;
 
+  /** The interface as it is now, for a new run: a new URL or pin starts one (H-4, WEB-008). */
+  const snapshot = (): WebTabTarget =>
+    untrack(() => ({ id: webInterface.id, deviceId: webInterface.deviceId, url: webInterface.url, pinned: webInterface.pinnedFingerprintSha256 }));
+
+  let fixed: WebTabTarget = $state.raw(snapshot());
+  /** Counts runs; an answer for an earlier run is dropped. */
+  let runs = 0;
+  let pinning = false;
+  /** After a restart, events wait for the new view: a late one from the closed view must not reach this run. */
+  let restarted = false;
   let tab: WebTab | undefined = $state.raw();
   let viewState = $state<ViewState>('none');
   let bounds: Bounds | undefined = $state.raw();
@@ -59,7 +70,7 @@
   let notice: string | undefined = $state();
   let area: HTMLElement | undefined = $state();
   let reloadButton: HTMLButtonElement | undefined = $state();
-  let reading = false;
+  let reading: WebStep | undefined;
 
   /** Move to the tab `event` leads to; undefined (and no change) when it does not apply now. */
   function apply(event: WebTabEvent): WebTab | undefined {
@@ -74,13 +85,23 @@
     shell: untrack(() => shell),
     tabId: untrack(() => tabId),
     onfail: (reason) => apply({ event: 'failed', reason }),
-    onstate: (state) => (viewState = state),
+    onstate: (state) => {
+      viewState = state;
+      if (state === 'open') restarted = false;
+    },
   });
 
+  /** Start a run of the tab for the interface as it is now. */
+  function start() {
+    runs += 1;
+    fixed = snapshot();
+    const down = untrack(() => device.status) === 'DOWN';
+    tab = startTab({ url: fixed.url, pinned: fixed.pinned, pinning, down, now: now() });
+  }
+
   const current = $derived(tab?.current);
-  const shownUrl = $derived(current?.step === 'loaded' ? current.url : webInterface.url);
-  const tls = $derived(tlsStatus(webInterface.url, shownUrl, tab?.pin ?? null, current ?? { step: 'reading' }));
-  const failure = $derived(current?.step === 'failed' && (current.reason === 'timeout' || current.reason === 'unknown_tab') ? TEXT[current.reason] : TEXT.failed);
+  const shownUrl = $derived(current?.step === 'loaded' ? current.url : fixed.url);
+  const tls = $derived(tlsStatus(fixed.url, shownUrl, tab?.pin ?? null, current ?? { step: 'reading' }));
   const live = $derived(viewState === 'open' && current !== undefined && viewShows(current));
   const page = $derived(current !== undefined && !viewShows(current));
   /** A new page, or the second step of an accept, takes focus afresh. */
@@ -98,7 +119,7 @@
     let unlisten: (() => void) | undefined;
     void shell
       .listen((event) => {
-        if (event.tabId === tabId) apply({ event: 'shell', shell: event });
+        if (event.tabId === tabId && !restarted) apply({ event: 'shell', shell: event });
       })
       .then((stop) => {
         if (stopped) stop();
@@ -108,10 +129,10 @@
     void shell
       .pinning()
       .catch(() => false)
-      .then((pinning) => {
+      .then((answer) => {
         if (stopped) return;
-        const down = device.status === 'DOWN';
-        tab = startTab({ url: webInterface.url, pinned: webInterface.pinnedFingerprintSha256, pinning, down, now: now() });
+        pinning = answer;
+        start();
       });
     const observer = new ResizeObserver(measure);
     if (area !== undefined) observer.observe(area);
@@ -135,11 +156,25 @@
     });
   });
 
+  // H-4: a new URL drops the pin and a new pin replaces it, so the view of the old one closes and the tab starts
+  // again; the pin this tab accepted itself coming back from the hub changes nothing.
+  $effect(() => {
+    const { url, pinnedFingerprintSha256: pinned } = webInterface;
+    untrack(() => {
+      const change = tab === undefined ? 'same' : changeOf(fixed, url, pinned, tab.pin);
+      if (change === 'adopt') fixed = { ...fixed, pinned };
+      if (change !== 'restart') return;
+      restarted = true;
+      view.restart();
+      start();
+    });
+  });
+
   // The view opens once, when the tab first has an area and a page to load.
   $effect(() => {
     if (tab?.mode !== 'EMBEDDED' || current === undefined || !viewShows(current) || viewState !== 'none') return;
     if (bounds === undefined || !hasArea(bounds)) return;
-    view.open({ deviceId: webInterface.deviceId, url: webInterface.url, pin: tab.pin }, bounds);
+    view.open({ deviceId: fixed.deviceId, url: fixed.url, pin: tab.pin }, bounds);
   });
 
   // MAT-008: the native view sits above the page, so it is hidden whenever anything else must be seen.
@@ -159,25 +194,28 @@
 
   // System-browser mode reads the certificate first when there is no pin (D-9).
   $effect(() => {
-    if (current?.step !== 'reading' || reading) return;
-    reading = true;
+    if (current?.step !== 'reading' || reading === current) return;
+    const step = current;
+    reading = step;
+    // The answer applies only to the step that asked, never to a later run's (H-4).
+    const ours = () => tab?.current === step;
     void shell
-      .readCertificate(webInterface.url)
-      .then((presented) => apply({ event: 'read', presented }))
-      .catch((reason: unknown) => apply({ event: 'failed', reason: codeOf(reason) }))
-      .finally(() => (reading = false));
+      .readCertificate(fixed.url)
+      .then((presented) => ours() && apply({ event: 'read', presented }))
+      .catch((reason: unknown) => ours() && apply({ event: 'failed', reason: codeOf(reason) }));
   });
 
   async function accept() {
     const sending = apply({ event: 'accept' });
     if (sending?.current.step !== 'accepting') return;
-    const { presented } = sending.current;
+    const step = sending.current;
     // Exactly the fingerprint shown; the state sends it once (WEB-008).
-    const result = await api.acceptWebCertificate(webInterface.id, presented);
+    const result = await api.acceptWebCertificate(fixed.id, step.presented);
+    // A restart while the hub answered is another run: its view is never pinned with this fingerprint (H-4).
+    if (tab?.current !== step) return;
     const next = apply({ event: 'accepted', result });
-    if (next?.pin !== presented) return;
-    if (next.mode !== 'EMBEDDED') return;
-    view.pin(presented);
+    if (next?.pin !== step.presented || next.mode !== 'EMBEDDED') return;
+    view.pin(step.presented);
     // The prompt is gone; focus goes to Reload, once it is enabled, rather than falling to the page.
     await tick();
     if (visible) reloadButton?.focus();
@@ -195,12 +233,15 @@
     if (tab === undefined || !browserAllowed(tab.current) || opening) return;
     const { pin } = tab;
     const url = shownUrl;
+    const run = runs;
     opening = true;
     notice = undefined;
     try {
-      if (pin !== null && checksBeforeBrowser(webInterface.url, url, pin)) {
+      if (pin !== null && checksBeforeBrowser(fixed.url, url, pin)) {
         const presented = await shell.readCertificate(url);
-        // A different certificate stops the open, as in the web view (WEB-008).
+        // Whatever came while reading counts: another run, a stop or a prompt now, or a new pin (WEB-008).
+        if (run !== runs || tab === undefined || !browserAllowed(tab.current) || tab.pin !== pin) return;
+        // A different certificate stops the open, as in the web view.
         if (presented !== pin) {
           apply({ event: 'mismatch', expected: pin, presented });
           return;
@@ -248,7 +289,7 @@
               changed={tab?.pin !== null}
               deviceName={device.name}
               label={webInterface.label}
-              url={webInterface.url}
+              url={fixed.url}
               onaccept={accept}
               onconfirm={() => apply({ event: 'confirm' })}
               onback={() => apply({ event: 'back' })}
@@ -256,11 +297,11 @@
           {:else if current.step === 'down'}
             <DownPage reason="{device.name} is Down, so its web interface cannot be reached. Reload when the device is back up." onreload={reload} />
           {:else if current.step === 'failed'}
-            <DownPage reason={failure} code={current.reason} onreload={reload} />
+            <DownPage reason={failureText(current.reason)} code={current.reason} onreload={reload} />
           {:else if current.step === 'refused'}
             <DownPage reason={TEXT[current.reason]} />
           {:else if current.step === 'reading' || current.step === 'browser'}
-            <BrowserPage label={webInterface.label} url={webInterface.url} pin={tab?.pin ?? null} {opening} onopen={openBrowser} />
+            <BrowserPage label={webInterface.label} url={fixed.url} pin={tab?.pin ?? null} {opening} onopen={openBrowser} />
           {/if}
         </div>
       {/key}
