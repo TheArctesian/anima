@@ -225,6 +225,18 @@ fn api_010_an_unreachable_database_is_unavailable_and_logged_by_kind_only() {
 }
 
 #[test]
+fn cq_023_a_totp_seal_fault_is_internal_not_a_wrong_password() {
+    let random = Error::Random(getrandom::Error::UNSUPPORTED);
+    assert_eq!(
+        (random.code(), random.fault()),
+        ("INTERNAL", Some("random_source"))
+    );
+    let seal = Error::TotpSeal(crate::credentials::Error::Malformed);
+    assert_eq!((seal.code(), seal.fault()), ("INTERNAL", Some("totp_seal")));
+    assert_eq!(seal.to_string(), "Something went wrong on the hub.");
+}
+
+#[test]
 fn api_003_r_020_bearer_token_reads_one_case_insensitive_scheme() {
     assert_eq!(identity::bearer_token("Bearer abc"), Some("abc"));
     assert_eq!(identity::bearer_token("bEaReR  abc "), Some("abc"));

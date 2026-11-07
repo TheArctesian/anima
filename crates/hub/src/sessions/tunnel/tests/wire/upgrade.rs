@@ -1,8 +1,7 @@
 //! Between the response and the upgraded socket (K4 Section 5, D-9): a client that never
-//! completes the upgrade, `endSession` or shutdown before it, no upgrade in time, and a
-//! changed host key whose upgrade fails. guacd is told to disconnect whenever it was reached.
+//! completes the upgrade, `endSession` or shutdown before it, and no upgrade in time. guacd
+//! is told to disconnect whenever it was reached; a changed certificate stays the cause.
 
-use crate::sessions::Presented;
 use std::time::Duration;
 
 use axum::extract::ws::WebSocket;
@@ -17,9 +16,9 @@ use super::{
         relaying::connected,
     },
     Bench,
-    bench::{LOOPBACK, Setup, address, bench, now, operator},
+    bench::{LOOPBACK, Presents, Setup, address, bench, now, on_tunnel, operator},
     ended_once,
-    fake_guacd::{ARGS_1_6_0, FakeGuacd, Script, fake_guacd},
+    fake_guacd::{FakeGuacd, RDP_ARGS, Script, fake_guacd},
     heard,
     records::ended,
 };
@@ -28,15 +27,12 @@ use crate::sessions::{Actor, Redeemed, end::finish};
 /// A session redeemed and opened to a guacd past `ready`, with no client socket yet.
 async fn opened(pool: &PgPool, setup: Setup) -> (FakeGuacd, Bench, Redeemed, Opening) {
     let guacd = fake_guacd(Script::Serve {
-        args: ARGS_1_6_0,
+        args: RDP_ARGS,
         with_ready: "",
     })
     .await;
     let bench = bench(pool, &guacd.address, setup).await;
-    let redeemed = bench
-        .live
-        .redeem(Presented::terminal(&bench.token, address(LOOPBACK)), now())
-        .unwrap();
+    let redeemed = bench.live.redeem(on_tunnel(&bench.token), now()).unwrap();
     let Ok(opening) = opening::open(&bench.route, &redeemed.ticket).await else {
         panic!("the gateway side opens");
     };
@@ -113,22 +109,39 @@ async fn k4_3_no_upgrade_within_the_handshake_wait_is_timeout(pool: PgPool) {
     assert_eq!(heard(&mut guacd).await.opcode, "disconnect");
 }
 
+/// A changed certificate, then a client that leaves (`leaves`) or never upgrades: the session
+/// ends `SERVER_CERTIFICATE_MISMATCH` with its Error event, not as the upgrade ended.
+async fn mismatch_without_upgrade(pool: &PgPool, leaves: bool) {
+    let setup = Setup {
+        route: Box::new(|route| route.timing.handshake = Duration::from_millis(300)),
+        ..Setup::presents(Presents::Changed)
+    };
+    let (mut guacd, bench, mut redeemed, opening) = opened(pool, setup).await;
+    assert!(matches!(opening, Opening::CertificateChanged));
+    let (socket_tx, socket) = oneshot::channel();
+    if leaves {
+        drop(socket_tx);
+    }
+    let end = after_response(&bench, &mut redeemed, opening, socket).await;
+    assert_eq!(end.cause, Cause::ServerCertificateMismatch);
+    finish(&bench.route.records(), redeemed, &end).await;
+    let ended = ended(pool, bench.session).await;
+    ended_once(&ended, "server_certificate_mismatch", "error", LOOPBACK);
+    assert!(guacd.selected.try_recv().is_err(), "guacd is never reached");
+}
+
 #[sqlx::test(
     migrations = "./migrations",
     fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
-async fn sec_007_a_changed_host_key_stays_the_cause_when_the_upgrade_fails(pool: PgPool) {
-    let bench = bench(&pool, "127.0.0.1:9", Setup::default()).await;
-    let mut redeemed = bench
-        .live
-        .redeem(Presented::terminal(&bench.token, address(LOOPBACK)), now())
-        .unwrap();
-    let (socket_tx, socket) = oneshot::channel();
-    drop(socket_tx);
-    let opening = Opening::HostKeyChanged;
-    let end = after_response(&bench, &mut redeemed, opening, socket).await;
-    assert_eq!(end.cause, Cause::HostKeyMismatch);
-    finish(&bench.route.records(), redeemed, &end).await;
-    let ended = ended(&pool, bench.session).await;
-    ended_once(&ended, "host_key_mismatch", "error", LOOPBACK);
+async fn sec_007_a_changed_certificate_stays_the_cause_when_the_client_leaves(pool: PgPool) {
+    mismatch_without_upgrade(&pool, true).await;
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
+)]
+async fn sec_007_a_changed_certificate_stays_the_cause_without_an_upgrade_in_time(pool: PgPool) {
+    mismatch_without_upgrade(&pool, false).await;
 }

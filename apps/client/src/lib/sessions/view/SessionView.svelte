@@ -6,11 +6,13 @@
   import { checkLink, linkRefusalText, openLink } from '../screen/remote/links';
   import type { ScreenHooks, ScreenOpener, TerminalScreen } from '../screen/screen';
   import type { CellSize } from '../tunnel/terminal/codec';
+  import { NO_CLIPBOARD, clipboardRules } from './clipboard/clipboard';
   import { displayInput, type Size } from './display';
+  import FilesPanel from '../files/FilesPanel.svelte';
   import EndedPanel from './EndedPanel.svelte';
   import HostKeyModal from './hostkey/HostKeyModal.svelte';
   import KeysMenu from './menu/KeysMenu.svelte';
-  import type { KeySequence } from './menu/sequences';
+  import { KEY_SEQUENCES, type KeySequence } from './menu/sequences';
   import FindBar from './pane/FindBar.svelte';
   import LinkConfirm from './pane/LinkConfirm.svelte';
   import Notice from './pane/Notice.svelte';
@@ -54,13 +56,16 @@
     },
   );
   let notice: string | undefined = $state();
-  let dismissed: Stage | undefined = $state();
+  let dismissed: Stage | undefined = $state.raw();
   let finding = $state(false);
+  let filing = $state(false);
   /** An address the device asked to open, waiting for the operator's confirmation (K4 §8.7). */
   let confirming: string | undefined = $state();
 
   const stage = $derived(connection.stage);
   const ready = $derived(connection.ready);
+  /** What this attempt may do with the clipboard, from the policy read at its start (RA-033). */
+  const rules = $derived(stage.kind === 'open' ? clipboardRules(stage.policy) : NO_CLIPBOARD);
   /** The parent gives this pane the keyboard; the terminal then takes the focus (D-8). */
   const wanted = $derived(visible && focused && ready);
   // A hidden tab's warning waits until its tab is shown, so it never covers or traps another tab (SEC-007).
@@ -71,6 +76,7 @@
     onresize: (size) => connection.tunnel?.resize(size),
     ontitle: (title) => onretitle?.(title),
     oncopy: (text) => copyToSystem(text),
+    allows: () => rules,
     onfind: () => (finding = true),
     onoverflow: () => (notice = OVERFLOW),
     onlink: (address) => {
@@ -160,7 +166,9 @@
 
   // The terminal owns its keyboard (a hidden text field); it holds the focus only while the pane is shown, the app
   // has the focus and the socket is open (D-8).
+  // The file panel belongs to one session: when the view is not ready its toggle is cleared too (C-3).
   $effect(() => {
+    if (!ready) filing = false;
     if (wanted) screen?.focus();
     else screen?.blur();
   });
@@ -172,7 +180,7 @@
 
 <section class="session" hidden={!visible} aria-label="SSH session on {device.name}">
   <div class="toolbar">
-    <KeysMenu disabled={!ready} onkeys={sendKeys} onpaste={pasteFromClipboard} />
+    <KeysMenu disabled={!ready} entries={KEY_SEQUENCES} onkeys={sendKeys} onpaste={pasteFromClipboard} pasteOff={rules.pasteOff} />
     <button
       type="button"
       class="find"
@@ -185,7 +193,9 @@
       <Icon name="nf-md-magnify" />
       <span>Find</span>
     </button>
+    <button type="button" class="find" aria-expanded={filing} disabled={!ready} title="Files on the device" onclick={() => (filing = !filing)} {@attach press()}><Icon name="nf-md-folder" /><span>Files</span></button>
     <span class="device">{device.name}</span>
+    {#if ready && rules.notice !== undefined}<span class="policy" data-policy title={rules.notice}>{rules.notice}</span>{/if}
     <!-- Find and notices lie over the toolbar row, which has a fixed height, so the terminal never moves or resizes for them (MOT-007, UI-009). -->
     {#if finding && ready}
       <div class="cover">
@@ -198,13 +208,15 @@
     {/if}
   </div>
   <div class="stage">
+    <!-- Before the pane in the DOM so Tab reaches it (the terminal keeps Tab); `order` keeps it on the right. -->
+    {#if filing && stage.kind === 'open' && ready}<FilesPanel sessionId={stage.sessionId} />{/if}
     <!-- The terminal draws here; its own hidden text field takes the keyboard (D-8). -->
     <div class="pane" role="group" aria-label="Terminal of {device.name}" {@attach attachPane}></div>
     {#if !ready}
       <!-- Top-aligned, steps first: the ended text appears below the steps, so nothing above it moves (MV-004). -->
       <div class="panel">
         {#if !progressOf(stage).connected}
-          <ConnectionSteps progress={progressOf(stage)} />
+          <ConnectionSteps progress={progressOf(stage)} deviceName={device.name} />
         {/if}
         {#if stage.kind === 'ending' || stage.kind === 'ended'}
           <EndedPanel ending={stage.ending} settled={stage.kind === 'ended'} onreconnect={reconnect} />
@@ -267,14 +279,23 @@
     background: var(--surface);
   }
 
-  /* The bar never sets the pane's width: the name gives way first, and the Keys control keeps its size (UI-009). */
-  .device {
+  /* The bar never sets the pane's width: the name and the policy give way first, and the controls keep their size (UI-009). */
+  .device,
+  .policy {
     min-inline-size: 0;
     overflow: hidden;
-    font-family: var(--font-mono);
     font-size: var(--text-sm);
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .device {
+    font-family: var(--font-mono);
+  }
+
+  .policy {
+    flex: 1;
+    color: var(--text-muted);
   }
 
   .find {
@@ -302,14 +323,16 @@
 
   .stage {
     position: relative;
+    display: flex;
     flex: 1;
     min-block-size: 0;
   }
 
   /* The pane's size comes from the layout only, never from the terminal inside it, so a fit cannot loop (D-7). */
   .pane {
-    position: absolute;
-    inset: 0;
+    position: relative;
+    flex: 1;
+    min-inline-size: 0;
     box-sizing: border-box;
     overflow: hidden;
     /* Wider than the focus ring, so the ring never covers a glyph in column 0 or row 0 (UI-009, MAT-008). The fit add-on measures inside it. */

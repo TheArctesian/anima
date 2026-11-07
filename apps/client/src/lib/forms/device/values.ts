@@ -1,11 +1,20 @@
 import type { AcceptHostKeyMutation, DeviceQuery, OperatingSystem, SitesQuery, SshAuth } from '$lib/hub/generated/graphql';
 import type { ThisMachine } from '$lib/desktop/thisMachine';
 import { normalizeHost } from './host';
+import {
+  defaultRemoteValues,
+  emptyRemoteSecrets,
+  normalizedRemote,
+  remoteValues,
+  type RemoteFields,
+  type RemoteSecrets,
+  type RemoteValues,
+} from './remote/values';
 
-/** The part of a hub `Device` the form edits. */
+/** The part of a hub `Device` the form edits. The K1 fields are optional until the devices client has them (D-3). */
 export type DeviceFields = Pick<NonNullable<DeviceQuery['device']>, 'name' | 'host' | 'kind' | 'os' | 'tags'> & {
   readonly ssh: Pick<NonNullable<DeviceQuery['device']>['ssh'], 'enabled' | 'port' | 'username' | 'auth'>;
-};
+} & RemoteFields;
 
 /** A site the Add device form can place the device in. */
 export type SiteOption = SitesQuery['sites'][number];
@@ -14,7 +23,7 @@ export type SiteOption = SitesQuery['sites'][number];
 export type HostKey = AcceptHostKeyMutation['acceptHostKey'];
 
 /** What the operator typed. Text fields stay text so that "abc" in the port box is reportable. */
-export interface DeviceFormValues {
+export interface DeviceFormValues extends RemoteValues {
   readonly name: string;
   readonly host: string;
   readonly kind: string;
@@ -32,6 +41,8 @@ export interface DeviceFormValues {
     readonly privateKey: string;
     readonly passphrase: string;
   };
+  /** Never filled from the hub (DEV-011). */
+  readonly remoteSecrets: RemoteSecrets;
 }
 
 function emptyCredential(): DeviceFormValues['credential'] {
@@ -49,6 +60,8 @@ export function formValues(device: DeviceFields | null): DeviceFormValues {
       tags: [],
       ssh: { enabled: false, port: '22', username: '', auth: 'PASSWORD' },
       credential: emptyCredential(),
+      remoteSecrets: emptyRemoteSecrets(),
+      ...defaultRemoteValues(),
     };
   }
   return {
@@ -64,6 +77,8 @@ export function formValues(device: DeviceFields | null): DeviceFormValues {
       auth: device.ssh.auth,
     },
     credential: emptyCredential(),
+    remoteSecrets: emptyRemoteSecrets(),
+    ...remoteValues(device),
   };
 }
 
@@ -81,6 +96,8 @@ export function thisMachineValues(machine: ThisMachine): DeviceFormValues {
     tags: [],
     ssh: { enabled: machine.sshListening, port: '22', username: machine.user, auth: 'PASSWORD' },
     credential: emptyCredential(),
+    remoteSecrets: emptyRemoteSecrets(),
+    ...defaultRemoteValues(),
   };
 }
 
@@ -109,7 +126,7 @@ export function normalizeTags(tags: readonly string[]): string[] {
 }
 
 /** The values as they will be sent: trimmed text, bare host, clean tags. Secrets are not part of it. */
-export function normalizedValues(values: DeviceFormValues): Omit<DeviceFormValues, 'credential'> {
+export function normalizedValues(values: DeviceFormValues): Omit<DeviceFormValues, 'credential' | 'remoteSecrets'> {
   return {
     name: values.name.trim(),
     host: normalizeHost(values.host),
@@ -117,5 +134,6 @@ export function normalizedValues(values: DeviceFormValues): Omit<DeviceFormValue
     os: values.os,
     tags: normalizeTags(values.tags),
     ssh: { ...values.ssh, port: values.ssh.port.trim(), username: values.ssh.username.trim() },
+    ...normalizedRemote(values),
   };
 }

@@ -56,7 +56,7 @@ async fn mv_003_guacd_dropping_mid_handshake_is_503_and_ends_once(pool: PgPool) 
     ended_once(&ended, "gateway_error", "warning", LOOPBACK);
     assert_eq!(
         ended.events[0].3,
-        "The gateway did not open the SSH session."
+        "The gateway did not open the RDP session."
     );
 }
 
@@ -100,7 +100,12 @@ async fn d_9_a_row_already_ended_elsewhere_gets_no_second_end_or_event(pool: PgP
         at: now(),
         reason: EndReason::HubShutdown,
     };
-    assert!(store::end(&pool, bench.session, first).await.unwrap());
+    assert!(
+        store::end(&pool, bench.session, first)
+            .await
+            .unwrap()
+            .is_some()
+    );
     assert_eq!(client.close().await, Some(1000));
     assert_eq!(heard(&mut guacd).await.opcode, "disconnect");
     // The tunnel's end write comes after it leaves guacd; give it a moment.
@@ -205,6 +210,6 @@ async fn k4_5_a_client_write_stalled_past_the_idle_wait_is_4002_timeout(pool: Pg
     ended_once(&ended, "timeout", "info", LOOPBACK);
     assert_eq!(
         ended.events[0].3,
-        "The client stopped reading what the hub sent, so the hub closed the SSH session."
+        "The client stopped reading what the hub sent, so the hub closed the RDP session."
     );
 }

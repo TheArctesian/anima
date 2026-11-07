@@ -24,8 +24,16 @@ pub(super) enum SshKind {
 }
 
 impl SshKind {
+    /// Every SSH `kind` column value. SSH reads, checks and deletes match only these, so a row
+    /// of another kind is never taken for part of an SSH secret.
+    pub(super) const SQL_KINDS: [&'static str; 3] = [
+        Self::Password.as_sql(),
+        Self::PrivateKey.as_sql(),
+        Self::Passphrase.as_sql(),
+    ];
+
     /// The `kind` column value.
-    pub(super) fn as_sql(self) -> &'static str {
+    pub(super) const fn as_sql(self) -> &'static str {
         match self {
             Self::Password => "ssh_password",
             Self::PrivateKey => "ssh_private_key",

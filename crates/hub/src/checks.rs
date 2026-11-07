@@ -2,12 +2,13 @@
 //! uptime they add up to (spec 6.4). [`spawn_scheduler`] runs the checks (HUB-003).
 //!
 //! Other domains use only the contract functions: [`statuses`], [`uptimes`], [`for_device`],
-//! [`add_default_check`], [`device_status`], [`resolved_ips`] and [`evaluate`]. The writes,
-//! [`record_beat`], [`due_checks`] and the retention functions serve this domain's GraphQL,
-//! push route and scheduler; they are public so the integration tests can drive them.
+//! [`add_default_check`], [`device_status`], [`resolved_ips`], [`http_urls`] and [`evaluate`].
+//! The writes, [`record_beat`], [`due_checks`] and the retention functions serve this domain's
+//! GraphQL, push route and scheduler; they are public so the integration tests can drive them.
 //!
-//! HTTP secrets are sealed with the vault, bound to their check, and never returned by a
-//! read; only [`load_http_secrets`] opens them, for the probe (SEC-003, LOG-007).
+//! HTTP and SNMP secrets are sealed with the vault, bound to their check, and never returned
+//! by a read; only [`load_http_secrets`] and [`load_snmp_secrets`] open them, for the probe
+//! (SEC-003, LOG-007).
 
 pub mod config;
 mod evaluation;
@@ -17,6 +18,7 @@ pub mod probe;
 mod push;
 mod rules;
 mod scheduler;
+mod sealing;
 mod status;
 mod store;
 #[cfg(test)]
@@ -38,13 +40,13 @@ use crate::{
 };
 
 use config::{CheckConfig, IpVersion};
-use rules::Prepared;
+use sealing::{prepare_change, sealed};
 
 pub use evaluation::{CheckSettings, CheckState, evaluate};
 pub(in crate::checks) use model::Attempt;
 pub use model::{
     Beat, Check, CheckChange, Definition, Due, FieldError, Heartbeat, HttpSetup, Missing, NewCheck,
-    PushToken, Recorded,
+    PushToken, Recorded, SnmpSetup,
 };
 pub use push::push_router;
 pub use scheduler::{Probing, spawn_scheduler};
@@ -60,14 +62,15 @@ pub enum Error {
     Validation(Vec<FieldError>),
     #[error("database error")]
     Database(#[from] sqlx::Error),
-    /// The sealed HTTP secrets cannot be opened; the source names no key or plaintext.
+    /// The sealed secrets cannot be opened; the source names no key or plaintext.
     #[error("the check secrets cannot be used")]
     Credentials(#[from] credentials::Error),
     /// The stored configuration is not in the form this version reads.
     #[error("the stored configuration of check {0} cannot be read")]
     Unreadable(CheckId),
-    /// The sealed secrets were given for another origin or other secret headers than the
-    /// stored configuration names, so they are not used (SEC-005).
+    /// The sealed secrets were given for another origin or other secret headers (HTTP), or
+    /// another version or user name (SNMP), than the stored configuration names, so they are
+    /// not used (SEC-005).
     #[error("the stored secrets do not match the check's address")]
     SecretsUnbound,
     /// Another check already has this push token. The database detail, which holds the
@@ -78,6 +81,9 @@ pub enum Error {
     Devices(#[source] devices::Error),
     #[error("the maintenance windows cannot be read")]
     Maintenance(#[source] maintenance::Error),
+    /// The OS random source failed, so no push token was made.
+    #[error("the OS random source failed")]
+    Random(#[source] getrandom::Error),
 }
 
 /// The names of the fields in error, never their values.
@@ -173,6 +179,19 @@ pub async fn for_devices(
     store::grouped_by_devices(db, devices).await
 }
 
+/// The id and URL of each device's HTTP checks, each device's in byte order of the name then
+/// id, in one query (API-005, WEB-002). A device with no HTTP check is absent. Other check
+/// types' configurations are not read.
+///
+/// # Errors
+/// `Database` when the query fails.
+pub async fn http_urls(
+    db: &PgPool,
+    devices: &[DeviceId],
+) -> Result<HashMap<DeviceId, Vec<(CheckId, String)>>, Error> {
+    Ok(store::http_urls(db, devices).await?)
+}
+
 /// The check with this id.
 ///
 /// # Errors
@@ -226,28 +245,30 @@ pub async fn add_default_check(
     Ok(store::insert(conn, id, row).await?.id)
 }
 
-fn sealed(vault: &Vault, id: CheckId, prepared: &Prepared) -> Option<Vec<u8>> {
-    prepared
-        .secrets
-        .as_ref()
-        .zip(match &prepared.config {
-            CheckConfig::Http(config) => Some(config),
-            _ => None,
-        })
-        .map(|(secrets, config)| store::seal(vault, id, config, secrets))
+/// A new push token from 32 bytes of the operating system's random source: the I/O edge of
+/// token making.
+///
+/// # Errors
+/// `Random` when the OS random source fails.
+pub(in crate::checks) fn fresh_push_token() -> Result<PushToken, Error> {
+    let mut bytes = [0_u8; 32];
+    getrandom::fill(&mut bytes).map_err(Error::Random)?;
+    Ok(PushToken::from_random(&bytes))
 }
 
 /// Adds a check in the caller's transaction. A parent must be a group on the same device.
 ///
 /// # Errors
-/// `Validation` with every field in error, including the constraint the database refused.
+/// `Validation` with every field in error, including the constraint the database refused;
+/// `Credentials` (`Random`) when the OS random source fails while sealing secrets.
 pub async fn create_check(
     conn: &mut PgConnection,
     vault: &Vault,
     new: NewCheck,
 ) -> Result<Check, Error> {
     let id = CheckId::from(Uuid::now_v7());
-    let (name, prepared) = match (rules::name(&new.name), rules::prepare(new.definition, None)) {
+    let prepared = rules::prepare(new.definition, rules::Stored::Nothing);
+    let (name, prepared) = match (rules::name(&new.name), prepared) {
         (Ok(name), Ok(prepared)) => (name, prepared),
         (name, prepared) => {
             let errors = [name.err(), prepared.err()].into_iter().flatten().collect();
@@ -261,7 +282,7 @@ pub async fn create_check(
         config: &prepared.config,
         settings: new.settings,
         push_token: prepared.push_token.as_ref(),
-        sealed: sealed(vault, id, &prepared),
+        sealed: sealed(vault, id, &prepared)?,
     };
     store::insert(conn, id, row).await
 }
@@ -270,7 +291,8 @@ pub async fn create_check(
 /// secret rule). The type of a check never changes.
 ///
 /// # Errors
-/// `NotFound` when there is no such check; `Validation` with the fields in error.
+/// `NotFound` when there is no such check; `Validation` with the fields in error;
+/// `Credentials` (`Random`) when the OS random source fails while sealing secrets.
 pub async fn update_check(
     conn: &mut PgConnection,
     vault: &Vault,
@@ -294,7 +316,8 @@ pub async fn update_check(
     };
     let config = prepared
         .as_ref()
-        .map(|prepared| (&prepared.config, sealed(vault, id, prepared)));
+        .map(|prepared| Ok::<_, Error>((&prepared.config, sealed(vault, id, prepared)?)))
+        .transpose()?;
     let changed = store::Change {
         fields: &change,
         name: name.as_deref(),
@@ -304,35 +327,6 @@ pub async fn update_check(
     let check = store::update(&mut tx, id, changed).await?;
     tx.commit().await?;
     Ok(check)
-}
-
-/// Prepares a new definition of the same type, filling empty secrets from the stored ones.
-/// Stored secrets that do not open for this check give a field error that asks for every
-/// secret again.
-fn prepare_change(
-    vault: &Vault,
-    id: CheckId,
-    current: store::Current,
-    definition: Definition,
-) -> Result<Prepared, FieldError> {
-    if definition.kind().as_sql() != current.kind {
-        return Err(FieldError::new(
-            "config",
-            "A check keeps its type. Delete it and add a new check instead.",
-        ));
-    }
-    let stored = match &definition {
-        Definition::Http(input) if rules::needs_stored(input) => {
-            current.http(vault, id).map_err(|_| {
-                FieldError::new(
-                    "config",
-                    "The stored secrets cannot be opened. Enter every secret again.",
-                )
-            })?
-        }
-        _ => None,
-    };
-    rules::prepare(definition, stored)
 }
 
 /// Deletes the check in the caller's transaction; its children leave the group.
@@ -369,6 +363,22 @@ pub async fn load_http_secrets(
     check: CheckId,
 ) -> Result<Option<HttpSetup>, Error> {
     store::load_http_secrets(db, vault, check).await
+}
+
+/// The stored SNMP configuration of the check with its opened secrets, for its probe only:
+/// the secrets go only to the version and user name they were given for (SEC-005). `None`
+/// when the check is not an SNMP check and holds no secrets.
+///
+/// # Errors
+/// `Credentials` when the sealed value does not open for this check; `SecretsUnbound` when
+/// the configuration names another version or user name; `Unreadable` when the check holds
+/// secrets but no readable SNMP configuration.
+pub async fn load_snmp_secrets(
+    db: &PgPool,
+    vault: &Vault,
+    check: CheckId,
+) -> Result<Option<SnmpSetup>, Error> {
+    store::load_snmp_secrets(db, vault, check).await
 }
 
 /// Records one result in the caller's transaction: the heartbeat, its minute, hour and day

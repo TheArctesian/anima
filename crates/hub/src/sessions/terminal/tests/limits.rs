@@ -20,6 +20,8 @@ fn k4_8_5_the_router_waits_are_the_contract_values() {
     let seconds = Duration::from_secs;
     let expected = Timing {
         opening: seconds(8),
+        woken_opening: seconds(120),
+        reconnect: seconds(2),
         upgrade: seconds(10),
         first_size: seconds(10),
         hub_silence: seconds(5),

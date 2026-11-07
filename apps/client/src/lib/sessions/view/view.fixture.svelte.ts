@@ -3,11 +3,14 @@
 // xterm.js (its DOM renderer runs in jsdom).
 import { flushSync, mount, unmount } from 'svelte';
 import { vi } from 'vitest';
+import { UNREACHABLE } from '$lib/hub/error';
 import type { HubResult } from '$lib/hub/hub';
-import type { AcceptedHostKey, ConnectionTest, ConnectionTestInput, EndedSession, SessionDisplay, SessionsApi, SessionTicket } from '../api';
+import type { AcceptedHostKey, ConnectionTest, ConnectionTestInput, EndedSession, SessionDisplay, SessionsApi, SessionTicket, SessionTransfer } from '../api';
 import type { SessionEndReason, SessionEnding } from '../ending';
 import { openScreen, type ScreenHooks, type ScreenOpener } from '../screen/screen';
 import { FAKE_TERMINAL_SOCKET, FakeTerminalSocket } from '../tunnel/terminal/fake/socket.fixture';
+import type { Hub } from '$lib/hub/hub';
+import Hubbed from './filing/hubbed.fixture.svelte';
 import SessionView from './SessionView.svelte';
 import { sessionStart } from './start';
 
@@ -24,6 +27,10 @@ export interface HubAnswers {
   endReason: SessionEndReason | null;
   test: HubResult<ConnectionTest>;
   accept: (fingerprint: string) => HubResult<AcceptedHostKey>;
+  /** The device's copy and paste flags, or `'unanswered'` when the hub does not answer them. */
+  transfer: SessionTransfer | 'unanswered';
+  /** `startSession` says it sent a Wake-on-LAN packet. */
+  wakeSent: boolean;
 }
 
 export const NEW_KEY = { algorithm: 'ssh-ed25519', fingerprintSha256: 'SHA256:n3wK3yF1ngerpr1ntAAAAAAAAAAAAAAAAAAAAAAAAAA', firstSeenAt: '2026-11-04T10:00:00Z' };
@@ -37,14 +44,16 @@ export function fakeApi() {
     endReason: null,
     test: { ok: true, value: { reachable: true, authenticated: true, hostKey: NEW_KEY, hostKeyChanged: true, message: null } },
     accept: (fingerprint) => ({ ok: true, value: { ...NEW_KEY, fingerprintSha256: fingerprint } }),
+    transfer: { copy: true, paste: true },
+    wakeSent: false,
   };
   let issued = 0;
   const api: SessionsApi = {
-    startSession: (deviceId, display) => {
+    startSession: (deviceId, _protocol, display) => {
       calls.startSession.push([deviceId, display]);
       issued += 1;
       const n = String(issued);
-      const ticket: SessionTicket = { sessionId: `session-${n}`, token: `${TOKEN_MARKER}-${n}`, tunnelPath: '/terminal', expiresAt: '2026-11-04T10:00:30Z' };
+      const ticket: SessionTicket = { sessionId: `session-${n}`, token: `${TOKEN_MARKER}-${n}`, tunnelPath: '/terminal', expiresAt: '2026-11-04T10:00:30Z', wakeSent: answers.wakeSent };
       return Promise.resolve({ ok: true, value: ticket });
     },
     endSession: (id) => {
@@ -68,6 +77,10 @@ export function fakeApi() {
       calls.acceptHostKey.push([deviceId, fingerprint]);
       return Promise.resolve(answers.accept(fingerprint));
     },
+    acceptServerCertificate: () => Promise.resolve({ ok: false, error: { code: 'NOT_FOUND', message: 'No RDP certificate.' } }),
+    transferPolicy: () =>
+      Promise.resolve(answers.transfer === 'unanswered' ? { ok: false, error: UNREACHABLE } : { ok: true, value: answers.transfer }),
+    setCredential: () => Promise.resolve({ ok: true, value: { credentialStored: true } }),
     history: () => Promise.resolve({ ok: true, value: { pageInfo: { hasNextPage: false, endCursor: null }, edges: [] } }),
   };
   return { api, calls, answers };
@@ -101,6 +114,8 @@ export class FakeResizeObserver {
 /** The system clipboard as `navigator.clipboard` sees it. */
 export const systemClipboard = {
   written: [] as string[],
+  /** How many times the clipboard was read. */
+  reads: 0,
   text: '',
   refuse: false,
   writeText(text: string): Promise<void> {
@@ -109,6 +124,7 @@ export const systemClipboard = {
     return Promise.resolve();
   },
   readText(): Promise<string> {
+    this.reads += 1;
     return this.refuse ? Promise.reject(new Error('denied')) : Promise.resolve(this.text);
   },
 };
@@ -118,6 +134,7 @@ export function installBrowserFakes(): () => void {
   const saved = globalThis.ResizeObserver;
   FakeResizeObserver.observers = [];
   systemClipboard.written = [];
+  systemClipboard.reads = 0;
   systemClipboard.text = '';
   systemClipboard.refuse = false;
   globalThis.ResizeObserver = FakeResizeObserver as unknown as typeof ResizeObserver;
@@ -165,7 +182,7 @@ export interface ViewHeard {
 }
 
 /** Mount a `SessionView` for `DEVICE` on the real link over `FakeTerminalSocket`, with `flags` as its flags. */
-export function showView(wrap: (open: ScreenOpener) => ScreenOpener = (open) => open) {
+export function showView(wrap: (open: ScreenOpener) => ScreenOpener = (open) => open, hub?: Hub) {
   const { api, calls, answers } = fakeApi();
   const heard: ViewHeard = { ended: [], titles: [], hooks: undefined };
   const opener = wrap((host, hooks) => {
@@ -174,27 +191,25 @@ export function showView(wrap: (open: ScreenOpener) => ScreenOpener = (open) => 
   });
   const target = document.createElement('div');
   document.body.append(target);
-  const component = mount(SessionView, {
-    target,
-    props: {
-      device: DEVICE,
-      start: sessionStart(api, DEVICE.id, 'https://hub.anima.ing', FAKE_TERMINAL_SOCKET),
-      api,
-      openScreen: opener,
-      get visible() {
-        return flags.visible;
-      },
-      get focused() {
-        return flags.focused;
-      },
-      onended: (ending: SessionEnding) => {
-        heard.ended.push(ending);
-      },
-      onretitle: (title: string) => {
-        heard.titles.push(title);
-      },
+  const props = {
+    device: DEVICE,
+    start: sessionStart(api, DEVICE.id, 'https://hub.anima.ing', FAKE_TERMINAL_SOCKET).terminal,
+    api,
+    openScreen: opener,
+    get visible() {
+      return flags.visible;
     },
-  });
+    get focused() {
+      return flags.focused;
+    },
+    onended: (ending: SessionEnding) => {
+      heard.ended.push(ending);
+    },
+    onretitle: (title: string) => {
+      heard.titles.push(title);
+    },
+  };
+  const component = hub === undefined ? mount(SessionView, { target, props }) : mount(Hubbed, { target, props: Object.defineProperties(props, { hub: { value: hub, enumerable: true } }) as typeof props & { hub: Hub } });
   flushSync();
   return { calls, answers, heard, ended: heard.ended, target, close: () => unmount(component) };
 }

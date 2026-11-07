@@ -21,7 +21,7 @@ use crate::{
     ids::DeviceId,
 };
 
-fn device_arg(id: &ID) -> Result<DeviceId, FieldError> {
+pub(super) fn device_arg(id: &ID) -> Result<DeviceId, FieldError> {
     id.parse()
         .map_err(|_| FieldError::new("deviceId", "That device id is not valid."))
 }

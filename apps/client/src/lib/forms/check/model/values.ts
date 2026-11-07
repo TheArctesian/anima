@@ -7,6 +7,7 @@ import type {
   HttpMethod,
   IpVersion,
 } from './hub-types';
+import { blankProbes, withProbeConfig, type ProbeValues } from '../probes/values';
 
 export interface HeaderRow {
   name: string;
@@ -21,7 +22,7 @@ export interface StatusRow {
 }
 
 /** What the operator typed. Number fields stay text so that "abc" in the port box is reportable. */
-export interface CheckFormValues {
+export interface CheckFormValues extends ProbeValues {
   type: CheckType;
   name: string;
   intervalSeconds: string;
@@ -92,6 +93,35 @@ function blank(type: CheckType): CheckFormValues {
     dns: { name: '', recordType: 'A', resolver: '', expected: '' },
     push: { path: '' },
     group: { childIds: [] },
+    ...blankProbes(),
+  };
+}
+
+type HttpConfigFields = Extract<CheckConfigFields, { __typename: 'HttpConfig' }>;
+
+function withHttp(values: CheckFormValues, config: HttpConfigFields): CheckFormValues {
+  return {
+    ...values,
+    http: {
+      ...values.http,
+      url: config.url,
+      method: config.method,
+      headers: config.headers.map((header) => ({
+        name: header.name,
+        value: header.value ?? '',
+        stored: header.value === null,
+      })),
+      body: config.body ?? '',
+      maxRedirects: String(config.maxRedirects),
+      acceptedStatus: config.acceptedStatus.map((range) => ({ from: String(range.from), to: String(range.to) })),
+      keyword: config.keyword ?? '',
+      jsonQuery: config.jsonQuery ?? '',
+      jsonExpected: config.jsonExpected ?? '',
+      authKind: config.authKind,
+      storedAuth: config.authKind,
+      verifyTls: config.verifyTls,
+      timeoutMs: String(config.timeoutMs),
+    },
   };
 }
 
@@ -107,29 +137,7 @@ function withConfig(values: CheckFormValues, config: CheckConfigFields): CheckFo
         tls: { port: String(config.port), serverName: config.serverName ?? '', timeoutMs: String(config.timeoutMs) },
       };
     case 'HttpConfig':
-      return {
-        ...values,
-        http: {
-          ...values.http,
-          url: config.url,
-          method: config.method,
-          headers: config.headers.map((header) => ({
-            name: header.name,
-            value: header.value ?? '',
-            stored: header.value === null,
-          })),
-          body: config.body ?? '',
-          maxRedirects: String(config.maxRedirects),
-          acceptedStatus: config.acceptedStatus.map((range) => ({ from: String(range.from), to: String(range.to) })),
-          keyword: config.keyword ?? '',
-          jsonQuery: config.jsonQuery ?? '',
-          jsonExpected: config.jsonExpected ?? '',
-          authKind: config.authKind,
-          storedAuth: config.authKind,
-          verifyTls: config.verifyTls,
-          timeoutMs: String(config.timeoutMs),
-        },
-      };
+      return withHttp(values, config);
     case 'DnsConfig':
       return {
         ...values,
@@ -144,6 +152,12 @@ function withConfig(values: CheckFormValues, config: CheckConfigFields): CheckFo
       return { ...values, push: { path: config.pushPath } };
     case 'GroupConfig':
       return { ...values, group: { childIds: config.children.map((child) => child.id) } };
+    case 'DockerConfig':
+    case 'SystemdConfig':
+    case 'SnmpConfig':
+    case 'TailscalePingConfig':
+      // The hub's check query does not select these fields yet (WP-29); without them the form keeps its defaults.
+      return withProbeConfig(values, config);
   }
 }
 

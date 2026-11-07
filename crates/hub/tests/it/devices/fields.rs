@@ -7,8 +7,10 @@ mod byte_order;
 mod clock;
 mod create;
 mod ip;
+mod metrics;
 mod order;
 mod status;
+mod web_interfaces;
 
 use chrono::{DateTime, TimeDelta, Utc};
 use serde_json::Value;

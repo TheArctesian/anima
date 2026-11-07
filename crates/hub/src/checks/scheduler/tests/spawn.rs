@@ -12,9 +12,10 @@ use super::support::{
     DOCKER_HOST, Listener, add, beats, database_now, due_at, on_loopback, tcp, vault,
 };
 use crate::{
-    checks::{Probing, probe::AddressPolicy, spawn_scheduler},
+    checks::{Probing, spawn_scheduler},
     clock::Clock,
     events::Bus,
+    targets::AddressPolicy,
 };
 
 /// A clock the test moves forward.
@@ -43,6 +44,7 @@ tick_test! {
         let probing = Probing {
             vault: vault(),
             policy: AddressPolicy::default().allowing_loopback(),
+            localapi: None,
         };
 
         let handle = spawn_scheduler(pool.clone(), Bus::new(16), clock.clone(), probing);

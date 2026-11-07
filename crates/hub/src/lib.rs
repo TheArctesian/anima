@@ -10,11 +10,14 @@ pub mod devices;
 pub mod events;
 pub mod ids;
 pub mod maintenance;
+pub mod metrics;
 pub mod paging;
 pub mod scalars;
 pub mod schema;
 pub mod sessions;
 pub mod status;
+pub mod targets;
+pub mod web_interfaces;
 
 use std::{future::Future, sync::Arc, time::Duration};
 
@@ -87,6 +90,51 @@ pub fn router(schema: schema::HubSchema, db: PgPool, clock: Arc<dyn clock::Clock
 /// in, such as `/tunnel` and `/push`.
 pub fn logged(routes: Router) -> Router {
     routes.layer(middleware::from_fn(events::process_log::http_request))
+}
+
+/// The session tunnels, each logged by its template only (K4 Sections 8, 9): `/terminal` for
+/// SSH, `/tunnel` to guacd for RDP and VNC, which refuses SSH tickets so none reaches guacd
+/// (R-062), and `/files`, which connects through the link and so gets the probes' deny list.
+///
+/// `main.rs` builds one address policy for every outbound connection (R-030, R-032): `/files`,
+/// the probes and the collector take it as `policy`; the terminal, the Guacamole tunnel and the
+/// connection tests take it through `live`'s target rule ([`sessions::Live::denying`]).
+pub fn tunnels(dependencies: &schema::Dependencies) -> Router {
+    let schema::Dependencies {
+        config,
+        clock,
+        pool,
+        bus,
+        vault,
+        live,
+        policy,
+        ..
+    } = dependencies;
+    let terminal = sessions::terminal_router(
+        pool.clone(),
+        vault.clone(),
+        bus.clone(),
+        clock.clone(),
+        live.clone(),
+    );
+    let tunnel = sessions::tunnel_router(
+        pool.clone(),
+        vault.clone(),
+        bus.clone(),
+        clock.clone(),
+        config.guacd.clone(),
+        config.guacd_drive_root.to_string_lossy().into_owned(),
+        live.clone(),
+    );
+    let files = sessions::files_router(
+        pool.clone(),
+        vault.clone(),
+        bus.clone(),
+        clock.clone(),
+        live.clone(),
+        policy.clone(),
+    );
+    logged(terminal).merge(logged(tunnel)).merge(logged(files))
 }
 
 /// Liveness probe (R-026(4)): no sign-in, no database, body `ok`.

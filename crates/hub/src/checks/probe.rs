@@ -4,17 +4,23 @@
 //! [`ProbeResult`] with `ok: false`, never an `Err` or a panic. Invert, retries and status
 //! belong to the evaluation (CHK-008). Every probe resolves its host once, keeps only the
 //! addresses the [`AddressPolicy`] allows and connects to one of those addresses, so DNS
-//! rebinding cannot reach a refused address. No probe starts a process or a shell.
+//! rebinding cannot reach a refused address. SNMP checks run through [`snmp::observe`] with
+//! their opened secrets. No probe starts a process or a shell on the hub;
+//! Docker and systemd checks send only fixed commands over the SSH link (CHK-012).
 //!
 //! PUSH and GROUP checks are not probed: the device calls the hub, or the children decide.
 //! For them [`probe`] returns a failed result saying so; the scheduler must not call it.
 
 mod dns;
+pub(in crate::checks) mod docker;
 mod http;
 mod icmp;
 mod outcome;
-mod reach;
 mod resolve;
+pub(in crate::checks) mod snmp;
+mod ssh;
+pub(in crate::checks) mod systemd;
+mod tailscale;
 mod tcp;
 mod tls;
 
@@ -23,10 +29,13 @@ use std::{collections::HashMap, net::IpAddr, sync::Arc};
 use chrono::{DateTime, Utc};
 
 pub use http::BODY_CAP;
-pub use outcome::{Failure, MESSAGE_MAX, ProbeResult, clean_message};
-pub use reach::AddressPolicy;
+pub use outcome::{Failure, Judgement, MESSAGE_MAX, ProbeResult, clean_message};
+pub(super) use ssh::{Reach, observe_listing};
 
-use crate::checks::config::{CheckConfig, HttpSecrets};
+use crate::{
+    checks::config::{CheckConfig, HttpSecrets},
+    targets::AddressPolicy,
+};
 
 /// The device a probe is aimed at. HTTP and DNS checks name their own target in the
 /// configuration and ignore the host.
@@ -51,6 +60,8 @@ pub struct ProbeEnv {
     pub policy: Arc<AddressPolicy>,
     /// The instant certificate dates are judged against.
     pub now: DateTime<Utc>,
+    /// `host:port` of the Tailscale `LocalAPI` proxy, when one is configured (D-4).
+    pub localapi: Option<String>,
     pub(crate) overrides: Overrides,
 }
 
@@ -60,8 +71,15 @@ impl ProbeEnv {
         Self {
             policy: Arc::new(policy),
             now,
+            localapi: None,
             overrides: Overrides::default(),
         }
+    }
+
+    /// The same environment with this `LocalAPI` proxy.
+    #[must_use]
+    pub fn with_localapi(self, localapi: Option<String>) -> Self {
+        Self { localapi, ..self }
     }
 }
 
@@ -124,6 +142,14 @@ async fn run(
             };
             dns::probe(&query, config.timeout(), env).await
         }
+        CheckConfig::TailscalePing { target, .. } => {
+            tailscale::probe(target.as_deref(), host, env.localapi.as_deref(), env).await
+        }
         CheckConfig::Push | CheckConfig::Group => ProbeResult::failed(&Failure::NotProbed),
+        CheckConfig::Docker { .. } | CheckConfig::Systemd { .. } => {
+            ProbeResult::failed(&Failure::NeedsLink)
+        }
+        // The SNMP probe takes its secrets in `snmp::observe`; this one has none to send.
+        CheckConfig::Snmp(_) => ProbeResult::failed(&Failure::SecretMissing),
     }
 }

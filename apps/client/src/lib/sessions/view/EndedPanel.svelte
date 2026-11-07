@@ -8,9 +8,17 @@
     /** Whether the end is final: the hub's recorded reason has been asked for (D-4). */
     settled: boolean;
     onreconnect: () => void;
+    /** The device's certificate changed: the button runs a new connection test, since Reconnect would be refused (K4 §3). */
+    certificateChanged?: boolean;
   }
 
-  const { ending, settled, onreconnect }: Props = $props();
+  const { ending, settled, onreconnect, certificateChanged = false }: Props = $props();
+  let action: HTMLButtonElement | undefined = $state();
+
+  /** The button, for a caller whose dialog gives focus back to it. */
+  export function actionButton(): HTMLButtonElement | undefined {
+    return action;
+  }
 </script>
 
 <!-- The reason is the plain text `ending` gives, never text from the hub or the gateway (RA-007, R-035). -->
@@ -19,9 +27,9 @@
     <Icon name="nf-md-lan_disconnect" />
     <span data-reason={ending.reason ?? 'unknown'}>{ending.text}</span>
   </p>
-  <button type="button" disabled={!settled} onclick={onreconnect} {@attach press()}>
+  <button type="button" bind:this={action} disabled={!settled} onclick={onreconnect} {@attach press()}>
     <Icon name="nf-md-refresh" />
-    <span>Reconnect</span>
+    <span>{certificateChanged ? 'Check certificate' : 'Reconnect'}</span>
   </button>
 </div>
 

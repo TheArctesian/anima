@@ -24,6 +24,8 @@ declare namespace Guacamole {
   /** The base of every tunnel; `state` is one of `Tunnel.State`. */
   class Tunnel {
     state: number;
+    /** Milliseconds of silence, from `connect` on, after which the tunnel closes itself (default 15000). */
+    receiveTimeout: number;
     /** Sets `state` and calls `onstatechange` when it changed. */
     setState(state: number): void;
     onstatechange: ((state: number) => void) | null;
@@ -55,6 +57,18 @@ declare namespace Guacamole {
   class StringWriter {
     constructor(stream: OutputStream);
     sendText(text: string): void;
+    sendEnd(): void;
+  }
+
+  /**
+   * Writes bytes to an output stream as base64 `blob`s of at most 6048 bytes; `sendEnd` closes the stream. 1.5.5
+   * copies `data` with `new Uint8Array(data)`, so pass bytes, not another typed array. Unlike `StringWriter`, whose
+   * 1.5.5 encoder writes each UTF-16 unit on its own (a character outside the BMP becomes two invalid 3-byte
+   * sequences), what it sends is exactly the bytes given.
+   */
+  class ArrayBufferWriter {
+    constructor(stream: OutputStream);
+    sendData(data: ArrayBuffer | Uint8Array): void;
     sendEnd(): void;
   }
 
@@ -91,11 +105,18 @@ declare namespace Guacamole {
     sendMouseState(state: Mouse.State, applyDisplayScale?: boolean): void;
     /** Opens a `clipboard` stream with `mimetype`; write it with a `StringWriter`. */
     createClipboardStream(mimetype: string): OutputStream;
+    /**
+     * Opens an `argv` stream that asks the gateway to set connection parameter `name` to the stream's contents,
+     * sending `argv` with the stream index, `mimetype` and `name`; write it with an `ArrayBufferWriter`.
+     */
+    createArgumentValueStream(mimetype: string, name: string): OutputStream;
     onstatechange: ((state: number) => void) | null;
     onerror: ((status: Status) => void) | null;
     onclipboard: ((stream: InputStream, mimetype: string) => void) | null;
     /** The gateway's `name` instruction (the connection name). */
     onname: ((name: string) => void) | null;
+    /** The gateway's `required` instruction: the names of the connection parameters it needs to go on. */
+    onrequired: ((parameters: string[]) => void) | null;
   }
 
   /**

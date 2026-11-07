@@ -1,8 +1,8 @@
 //! `GET /tunnel` (K4 Section 2, API-009): every refusal happens before the WebSocket upgrade,
 //! with an HTTP status and an empty body.
 //!
-//! Not mounted: only SSH exists, and SSH uses `/terminal` (K4 Section 8, R-062). This route,
-//! its relay and their tests stay for RDP and VNC (Phase 2).
+//! It serves RDP and VNC tickets only: an SSH ticket belongs to `/terminal` (K4 Section 8,
+//! R-062), so it is refused and spent like a ticket for any other path (403).
 //!
 //! The order of the checks (`admission`):
 //!
@@ -40,10 +40,15 @@ use crate::{
     clock::Clock,
     credentials::Vault,
     events::Bus,
-    sessions::{Live, Protocol, Redeemed, admission, end::Records, probe::PROBE_TIMEOUT},
+    sessions::{
+        Live, Protocol, Redeemed, admission,
+        end::Records,
+        probe::PROBE_TIMEOUT,
+        tickets::{RECONNECT, WOKEN_OPENING},
+    },
 };
 
-/// The only path of the tunnel in Phase 1 (K4 Section 1 `tunnelPath`).
+/// The tunnel's path (K4 Section 1 `tunnelPath` of RDP and VNC).
 const PATH: &str = "/tunnel";
 /// The WebSocket subprotocol guacamole-common-js asks for (K4 Section 2). Its 64 KiB message
 /// cap (`admission`) is eight of guacd's largest instructions, so one message never decodes
@@ -56,9 +61,14 @@ const HANDSHAKE_WAIT: Duration = Duration::from_secs(10);
 /// The waits of one tunnel. Tests shorten them; the hub uses `Timing::default()`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct Timing {
-    /// Each of: resolving the device host, connecting to guacd. The host-key read has the
-    /// probe's own limit (`PROBE_TIMEOUT`).
+    /// Each of: resolving the device host, reading its RDP server certificate, connecting to
+    /// guacd.
     pub(super) connect: Duration,
+    /// For a ticket whose start sent a Wake-on-LAN packet (K4 Section 1): resolving the
+    /// device host and waiting until its port answers, in place of `connect`'s lookup.
+    pub(super) woken_opening: Duration,
+    /// How often that wait tries the device again while it does not answer.
+    pub(super) reconnect: Duration,
     /// The guacd handshake, and the WebSocket upgrade after it.
     pub(super) handshake: Duration,
     /// guacd silence after which the client gets a `nop`.
@@ -72,6 +82,8 @@ impl Default for Timing {
     fn default() -> Self {
         Self {
             connect: PROBE_TIMEOUT,
+            woken_opening: WOKEN_OPENING,
+            reconnect: RECONNECT,
             handshake: HANDSHAKE_WAIT,
             gateway_silence: GATEWAY_SILENCE,
             client_idle: CLIENT_IDLE,
@@ -79,8 +91,8 @@ impl Default for Timing {
     }
 }
 
-/// What the tunnel route needs: the hub's stores, the gateway address, the live state and
-/// the waits.
+/// What the tunnel route needs: the hub's stores, the gateway and its drive root, the live
+/// state and the waits.
 #[derive(Clone)]
 pub(super) struct Route {
     pub(super) db: PgPool,
@@ -89,13 +101,11 @@ pub(super) struct Route {
     pub(super) clock: Arc<dyn Clock>,
     /// guacd's `host:port` (K7, R-032 E-8).
     pub(super) guacd: String,
+    /// `ANIMA_GUACD_DRIVE_ROOT`: where guacd keeps each device's shared drive (K7, RA-021).
+    pub(super) drive_root: String,
     /// The tickets and tunnels, and the target rule for the device's host (R-032).
     pub(super) live: Live,
     pub(super) timing: Timing,
-    /// Where a ticket for each protocol must be opened (K4 Section 1 `tunnelPath`): the hub
-    /// uses `Protocol::tunnel_path`, so this route admits no ticket while only SSH exists;
-    /// its tests send SSH tickets here.
-    pub(super) tunnel_path: fn(Protocol) -> &'static str,
 }
 
 impl Route {
@@ -109,7 +119,8 @@ impl Route {
     }
 }
 
-/// The `/tunnel` route (K3, K4 Section 2). `main.rs` mounts it behind
+/// The `/tunnel` route for RDP and VNC sessions (K3, K4 Section 2), with guacd at `guacd`
+/// keeping shared drives under `drive_root`. `main.rs` mounts it behind
 /// `access::permitted_networks_layer` (NET-002) and serves it with `ConnectInfo<SocketAddr>`,
 /// so the client address is known.
 #[expect(
@@ -122,6 +133,7 @@ pub fn tunnel_router(
     bus: Bus,
     clock: Arc<dyn Clock>,
     guacd: String,
+    drive_root: String,
     live: Live,
 ) -> Router {
     router(Route {
@@ -130,9 +142,9 @@ pub fn tunnel_router(
         bus,
         clock,
         guacd,
+        drive_root,
         live,
         timing: Timing::default(),
-        tunnel_path: Protocol::tunnel_path,
     })
 }
 
@@ -180,5 +192,5 @@ async fn redeem(
         extensions,
         now,
     };
-    admission::redeem(&route.live, request, PATH, route.tunnel_path)
+    admission::redeem(&route.live, request, PATH, Protocol::tunnel_path)
 }

@@ -28,7 +28,7 @@ use tokio::sync::oneshot;
 
 use super::{
     ending::{Cause, End},
-    gateway::host_key_changed,
+    gateway::certificate_changed,
     opening::{self, Opening},
     route::{Route, Timing},
 };
@@ -41,7 +41,7 @@ use writes::{close_client, leave_gateway, send_text};
 
 /// The event message when the request did not offer the `guacamole` subprotocol.
 const NOT_GUACAMOLE: &str = "The client did not open the tunnel as a Guacamole WebSocket, so \
-                             the hub closed the SSH session.";
+                             the hub closed the session.";
 /// Runs the session of `redeemed` to its end and writes the end. `upgrade` is the request's
 /// upgrade when it offered `guacamole`; `answer` takes the handler's response.
 pub(super) async fn run(
@@ -68,11 +68,11 @@ async fn session(
         return End::explained(Cause::InvalidInstruction, NOT_GUACAMOLE);
     };
     let Redeemed { ticket, tunnel } = redeemed;
-    let session = ticket.session;
+    let (session, protocol) = (ticket.session, ticket.protocol);
     let opening = async {
         opening::open(route, ticket).await.map_err(|not_opened| {
             tracing::warn!(%session, error = %not_opened, "the tunnel did not open");
-            End::explained(Cause::GatewayError, not_opened.message())
+            End::explained(Cause::GatewayError, not_opened.message(protocol))
         })
     };
     match handed_over(opening, upgrade, tunnel, answer).await {
@@ -81,37 +81,42 @@ async fn session(
     }
 }
 
-/// The tunnel after the response: waits for the upgraded socket, then relays or reports the
-/// changed host key. A host-key mismatch is the cause even if the upgrade fails: it came
-/// first (K4 Section 6).
+/// The tunnel after the response: waits for the upgraded socket, then relays, or tells the
+/// client the certificate changed. When the upgrade fails, guacd is told the hub is leaving;
+/// after a changed certificate the session still ends `SERVER_CERTIFICATE_MISMATCH` (SEC-007).
 pub(super) async fn connected(
     timing: Timing,
     tunnel: &mut Tunnel,
     opening: Opening,
     socket: oneshot::Receiver<WebSocket>,
 ) -> End {
-    let client = match upgraded(tunnel, socket, timing.handshake).await {
-        Ok(client) => client,
-        Err(end) => {
-            return match opening {
-                Opening::HostKeyChanged => Cause::HostKeyMismatch.into(),
-                Opening::Gateway(connected) => {
-                    leave_gateway(connected.stream).await;
-                    end
-                }
-            };
+    let client = upgraded(tunnel, socket, timing.handshake).await;
+    match (opening, client) {
+        (Opening::Gateway(opened), Ok(client)) => {
+            link::relay(client, *opened, tunnel, timing).await
         }
-    };
-    match opening {
-        Opening::HostKeyChanged => host_key_mismatch(client, tunnel, timing).await,
-        Opening::Gateway(connected) => link::relay(client, connected, tunnel, timing).await,
+        (Opening::Gateway(opened), Err(end)) => {
+            leave_gateway(opened.connected.stream).await;
+            end
+        }
+        (Opening::CertificateChanged, Ok(client)) => {
+            certificate_mismatch(client, tunnel, timing).await
+        }
+        (Opening::CertificateChanged, Err(_)) => Cause::ServerCertificateMismatch.into(),
     }
 }
 
-/// Tells the client the host key changed and closes 4001. guacd was never reached (K4
-/// Section 6); the mismatch is the cause even if the client is gone before it hears of it.
-async fn host_key_mismatch(mut client: WebSocket, tunnel: &mut Tunnel, timing: Timing) -> End {
-    let _ = send_text(&mut client, &host_key_changed(), tunnel, timing.client_idle).await;
-    close_client(client, Cause::HostKeyMismatch).await;
-    Cause::HostKeyMismatch.into()
+/// Tells the client the certificate changed and closes 4003; guacd was never reached (K4
+/// Section 5). The mismatch is the cause even if the client is gone before it hears of it.
+async fn certificate_mismatch(mut client: WebSocket, tunnel: &mut Tunnel, timing: Timing) -> End {
+    let cause = Cause::ServerCertificateMismatch;
+    let _ = send_text(
+        &mut client,
+        &certificate_changed(),
+        tunnel,
+        timing.client_idle,
+    )
+    .await;
+    close_client(client, cause).await;
+    cause.into()
 }

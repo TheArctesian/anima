@@ -5,7 +5,7 @@ Repository checks that Clippy and ESLint do not cover. Run with bun from `qualit
 | Command | Spec | Checks |
 |---|---|---|
 | `bun run limits` | CQ-010, REPO-005 | Code lines per file (300) and measured files per folder (12) |
-| `bun run baseline -- --base <ref>` | CQ-011 | `baseline.json` has no new path, new signal or larger value than at `<ref>` (default `phase-1`) |
+| `bun run baseline -- --base <ref>` | CQ-011 | `baseline.json` has no new path, new signal or larger value than at `<ref>` (default `phase-2`) |
 | `bun run names` | CQ-030 | Banned words in file, folder and type names |
 | `bun run imports` | REPO-004 | No hub domain uses another domain's `store`; no domain cycle |
 
@@ -27,7 +27,7 @@ It runs twelve gates as separate processes, in this order, and stops at the firs
 11. `bun run quality:imports`
 12. `bun run quality:baseline -- --base <BASE_REF>`
 
-`BASE_REF` is read from the environment and defaults to `phase-1` (a local branch; no remote needed).
+`BASE_REF` is read from the environment and defaults to `phase-2` (a local branch; no remote needed).
 A missing executable is a failure, never a skip (CQ-024). The gate list and runner live in `src/gates/gates.ts`.
 
 `cargo test` runs through `bin/with-postgres.ts` (R-009). It starts a throwaway PostgreSQL 17 on a Unix socket in a temporary folder, sets `DATABASE_URL`, runs the tests and deletes the folder. Set `DATABASE_URL` yourself only for a server that no other worktree uses at the same time (R-019). If PostgreSQL 17 is not installed, the gate fails; database tests never skip.

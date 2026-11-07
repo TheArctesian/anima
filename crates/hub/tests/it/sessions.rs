@@ -2,6 +2,7 @@
 //! ending sessions with tunnel tickets (WP-10 T2), and the connection test and host keys
 //! (WP-10 T3).
 
+mod changes;
 mod end;
 mod face;
 mod graphql_read;
@@ -13,6 +14,7 @@ mod k1;
 mod leak;
 mod mount;
 mod privileges;
+mod server_certificates;
 mod start;
 mod starting;
 mod tables;

@@ -1,5 +1,6 @@
 import type { FieldError } from '$lib/hub/error';
 import { isValidHost } from './host';
+import { validateRemote } from './remote/validate';
 import { isValidPort, type DeviceFormValues } from './values';
 
 const PRIVATE_KEY_ARMOUR = /^\s*-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----\s*$/m;
@@ -25,5 +26,5 @@ export function validateDevice(values: DeviceFormValues): FieldError[] {
   if (values.name.trim() === '') errors.push({ field: 'name', message: 'Enter a name.' });
   if (values.host.trim() === '') errors.push({ field: 'host', message: 'Enter a host name or IP address.' });
   else if (!isValidHost(values.host)) errors.push({ field: 'host', message: 'Enter a valid host name or IP address.' });
-  return [...errors, ...sshErrors(values)];
+  return [...errors, ...sshErrors(values), ...validateRemote(values)];
 }

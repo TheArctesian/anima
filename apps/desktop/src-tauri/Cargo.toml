@@ -14,7 +14,9 @@ path = "src/main.rs"
 tauri-build.workspace = true
 
 [dependencies]
-tauri.workspace = true
+# `unstable`: child web views in the main window and moving them to a window of their own
+# (`Window::add_child`, `Webview::reparent`) for device web views (WEB-004, D-3).
+tauri = { workspace = true, features = ["unstable"] }
 keyring.workspace = true
 serde.workspace = true
 thiserror.workspace = true
@@ -23,15 +25,56 @@ tauri-plugin-log.workspace = true
 serde_json.workspace = true
 if-addrs.workspace = true
 whoami.workspace = true
+# Certificate pins and the leaf-certificate probe for device web views (WEB-008, D-9).
+sha2.workspace = true
+rustls.workspace = true
+tokio-rustls.workspace = true
+tokio.workspace = true
+# Device IDs name each device's web store (WEB-006, D-2).
+uuid.workspace = true
+# Challenge hosts go through the URL standard's host parser, as pinned origins do (D-4).
+url = "2"
 
 # Self-update and relaunch: desktop only, registered only in release builds (UPD-001).
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater.workspace = true
 tauri-plugin-process.workspace = true
 
-# Downcasts keyring's macOS PlatformFailure to tell a refused Keychain prompt from a failure.
 [target.'cfg(target_os = "macos")'.dependencies]
-security-framework = "3"
+# Downcasts keyring's macOS PlatformFailure to tell a refused Keychain prompt from a failure;
+# `macos-12` reads a server's certificate chain for the web-view trust hook (WEB-008, R-069).
+security-framework = { version = "3", features = ["macos-12"] }
+core-foundation = "0.10"
+# The web-view trust hook: a navigation-delegate proxy in front of wry's (OD-7, R-069).
+objc2 = "0.6"
+block2 = "0.6"
+objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSObject", "NSString", "NSURLAuthenticationChallenge", "NSURLProtectionSpace", "NSURLCredential", "NSURLSession"] }
+objc2-web-kit = { version = "0.3.2", default-features = false, features = ["std", "objc2-app-kit", "block2", "WKWebView", "WKNavigationDelegate"] }
 
-[lints]
-workspace = true
+[dev-dependencies]
+rcgen.workspace = true
+
+# R-069's proof that the macOS trust hook cancels a mismatched certificate, in a real
+# WKWebView. Not libtest: Tauri's event loop must own the main thread (tests/pinning/main.rs).
+[[test]]
+name = "pinning"
+path = "tests/pinning/main.rs"
+harness = false
+
+# The workspace lints, copied, with `unsafe_code = "deny"` in place of `forbid`: the macOS
+# web-view trust hook (`src/web_view/macos_trust.rs`) is the one module allowed `unsafe`
+# (R-069). Keep the rest in step with the root `[workspace.lints]`.
+[lints.rust]
+warnings = "deny"
+unsafe_code = "deny"
+
+[lints.clippy]
+pedantic = { level = "deny", priority = -1 }
+mod_module_files = "deny"
+too_many_lines = "deny"
+too_many_arguments = "deny"
+cognitive_complexity = "deny"
+excessive_nesting = "deny"
+allow_attributes = "deny"
+allow_attributes_without_reason = "deny"
+

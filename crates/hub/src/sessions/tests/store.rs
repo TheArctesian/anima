@@ -1,5 +1,6 @@
 //! The store's writes: a session row starts live and ends once; the runtime role can do all
-//! of it through migration 0001's default privileges alone (RA-008, R-016, K2 "Roles").
+//! of it through migration 0001's default privileges alone (RA-008, R-016, K2 "Roles"). An
+//! accepted RDP server certificate replaces the previous one (SEC-007).
 
 use std::net::IpAddr;
 
@@ -11,9 +12,9 @@ use crate::{
     events::Operator,
     ids::{DeviceId, OperatorId, SessionId},
     sessions::{
-        EndReason, Protocol, SessionEnd,
+        EndReason, Error, Missing, Protocol, ServerCertificate, SessionEnd,
         model::SessionFilter,
-        store::{self, NewSession},
+        store::{self, AcceptedCertificate, NewSession},
     },
 };
 
@@ -97,8 +98,8 @@ async fn ra_008_a_session_ends_once_and_the_first_end_wins(pool: PgPool) {
         at: now() + TimeDelta::minutes(6),
         reason: EndReason::Timeout,
     };
-    assert!(store::end(&mut *conn, id, first).await.unwrap());
-    assert!(!store::end(&mut *conn, id, later).await.unwrap());
+    assert!(store::end(&mut *conn, id, first).await.unwrap().is_some());
+    assert!(store::end(&mut *conn, id, later).await.unwrap().is_none());
 
     let page = store::page(&mut *conn, SessionFilter::default(), 10, None)
         .await
@@ -119,7 +120,7 @@ async fn mv_003_an_end_before_the_start_is_written_at_the_start(pool: PgPool) {
         at: now(),
         reason: EndReason::RemoteClosed,
     };
-    assert!(store::end(&mut *conn, id, end).await.unwrap());
+    assert!(store::end(&mut *conn, id, end).await.unwrap().is_some());
     let session = store::get(&mut *conn, id).await.unwrap().unwrap();
     let at_start = SessionEnd {
         at: now() + TimeDelta::minutes(5),
@@ -147,7 +148,7 @@ async fn log_006_r_016_runtime_role_reads_and_writes_session_tables(pool: PgPool
         at: now() + TimeDelta::minutes(2),
         reason: EndReason::RemoteClosed,
     };
-    assert!(store::end(&mut conn, id, end).await.unwrap());
+    assert!(store::end(&mut conn, id, end).await.unwrap().is_some());
     let stale = store::close_stale(&mut conn, now() + TimeDelta::minutes(3))
         .await
         .unwrap();
@@ -210,4 +211,113 @@ async fn api_005_host_keys_of_no_devices_runs_no_query(pool: PgPool) {
     let keys = store::host_keys(&mut *tx, &[]).await.unwrap();
     assert!(keys.is_empty());
     assert!(store::host_keys(&mut *tx, &[device(PVE_01)]).await.is_err());
+}
+
+/// A certificate as the hub would read it from a device, `n` choosing the fingerprint.
+fn certificate(n: u8, subject: Option<&str>) -> ServerCertificate {
+    ServerCertificate {
+        fingerprint_sha256: vec![format!("{n:02x}"); 32].join(":"),
+        subject: subject.map(str::to_owned),
+        not_after: Some(now() + TimeDelta::days(365)),
+        first_seen_at: now(),
+    }
+}
+
+async fn accept(
+    conn: &mut PgConnection,
+    device_id: &str,
+    certificate: &ServerCertificate,
+) -> Result<(), Error> {
+    let accepted = AcceptedCertificate {
+        device: device(device_id),
+        certificate,
+        by: OPERATOR.parse().unwrap(),
+    };
+    store::put_server_certificate(conn, &accepted).await
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../tests/fixtures", scripts("devices"))
+)]
+async fn sec_007_accepting_a_certificate_replaces_the_device_s_previous_one(pool: PgPool) {
+    add_operator(&pool).await;
+    // The runtime role, as the hub runs; detached so its role never returns to the pool (R-019).
+    let mut conn = pool.acquire().await.unwrap().detach();
+    sqlx::query("set role anima_runtime")
+        .execute(&mut conn)
+        .await
+        .unwrap();
+    let first = certificate(0xab, Some("CN=desk-01"));
+    let second = ServerCertificate {
+        first_seen_at: now() + TimeDelta::days(1),
+        not_after: None,
+        ..certificate(0xcd, None)
+    };
+    accept(&mut conn, PVE_01, &first).await.unwrap();
+    accept(&mut conn, PVE_01, &second).await.unwrap();
+
+    let stored = store::server_certificates(&mut conn, &[device(PVE_01)])
+        .await
+        .unwrap();
+    assert_eq!(stored.len(), 1);
+    assert_eq!(stored[&device(PVE_01)], second);
+
+    let gone = "0190a000-0000-7000-8002-0000000000ff";
+    let error = accept(&mut conn, gone, &first).await.unwrap_err();
+    assert!(
+        matches!(error, Error::NotFound(Missing::Device(id)) if id == device(gone)),
+        "{error:?}"
+    );
+}
+
+/// Index and sequential scans of `sessions.server_certificates` so far in this transaction.
+async fn certificate_scans(conn: &mut PgConnection) -> i64 {
+    sqlx::query_scalar(
+        "select coalesce(seq_scan, 0) + coalesce(idx_scan, 0) from pg_stat_xact_user_tables \
+         where schemaname = 'sessions' and relname = 'server_certificates'",
+    )
+    .fetch_one(conn)
+    .await
+    .unwrap()
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../tests/fixtures", scripts("devices"))
+)]
+async fn api_005_server_certificates_reads_only_devices_with_one_in_one_query(pool: PgPool) {
+    add_operator(&pool).await;
+    let mut conn = pool.acquire().await.unwrap();
+    let pve = certificate(0x01, Some("CN=pve-01"));
+    let docker = certificate(0x02, None);
+    accept(&mut conn, PVE_01, &pve).await.unwrap();
+    accept(&mut conn, DOCKER_HOST, &docker).await.unwrap();
+
+    let mut tx = pool.begin().await.unwrap();
+    let devices = [device(PVE_01), device(DOCKER_HOST), device(OLLAMA)];
+    let stored = store::server_certificates(&mut *tx, &devices)
+        .await
+        .unwrap();
+    assert_eq!(certificate_scans(&mut tx).await, 1);
+    assert_eq!(stored.len(), 2, "OLLAMA has no certificate");
+    assert_eq!(stored[&device(PVE_01)], pve);
+    assert_eq!(stored[&device(DOCKER_HOST)], docker);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn api_005_server_certificates_of_no_devices_runs_no_query(pool: PgPool) {
+    let mut tx = pool.begin().await.unwrap();
+    // After an error PostgreSQL refuses every statement until the transaction ends.
+    sqlx::query("select 1 / 0")
+        .execute(&mut *tx)
+        .await
+        .unwrap_err();
+    let stored = store::server_certificates(&mut *tx, &[]).await.unwrap();
+    assert!(stored.is_empty());
+    assert!(
+        store::server_certificates(&mut *tx, &[device(PVE_01)])
+            .await
+            .is_err()
+    );
 }

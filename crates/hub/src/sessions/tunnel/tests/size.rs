@@ -2,10 +2,11 @@
 
 use guac_protocol::Instruction;
 
-use super::super::relay::{ClientStep, Relay};
+use super::super::relay::ClientStep;
+use super::relay;
 
 fn size(args: &[&str]) -> ClientStep {
-    Relay::default().on_client(Instruction::new("size", args.iter().copied()))
+    relay().on_client(Instruction::new("size", args.iter().copied()))
 }
 
 fn sized(args: &[&str]) -> ClientStep {

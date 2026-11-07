@@ -5,7 +5,7 @@
 use std::time::Duration;
 
 use crate::events::Severity;
-use crate::sessions::{Actor, EndCause, EndReason};
+use crate::sessions::{Actor, EndCause, EndReason, Protocol};
 
 /// The hub ends the session with `TIMEOUT` when the client has sent nothing for this long,
 /// not even a ping; it is also the longest one send to the client may take (K4 Sections 4
@@ -16,9 +16,75 @@ pub(in crate::sessions) const CLIENT_IDLE: Duration = Duration::from_secs(15);
 /// at most this, well inside `endSession`'s wait for the tunnel (D-10).
 pub(in crate::sessions) const CLOSE_WAIT: Duration = Duration::from_secs(2);
 
+/// One event sentence in the words of each protocol's session.
+#[derive(Debug, PartialEq, Eq)]
+pub(in crate::sessions) struct Sentences {
+    ssh: &'static str,
+    rdp: &'static str,
+    vnc: &'static str,
+}
+
+impl Sentences {
+    /// The sentence for a session over `protocol`.
+    pub(in crate::sessions) const fn of(&self, protocol: Protocol) -> &'static str {
+        match protocol {
+            Protocol::Ssh => self.ssh,
+            Protocol::Rdp => self.rdp,
+            Protocol::Vnc => self.vnc,
+        }
+    }
+}
+
+/// `before`, the protocol's name, then `after`, for each protocol; or `same` for all.
+macro_rules! naming_the_protocol {
+    ($before:literal, $after:literal) => {
+        &Sentences {
+            ssh: concat!($before, "SSH", $after),
+            rdp: concat!($before, "RDP", $after),
+            vnc: concat!($before, "VNC", $after),
+        }
+    };
+    (same $text:literal) => {
+        &Sentences {
+            ssh: $text,
+            rdp: $text,
+            vnc: $text,
+        }
+    };
+}
+
+/// An end's event message: one sentence for every protocol, or one naming the session's.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(in crate::sessions) enum Words {
+    Same(&'static str),
+    Named(&'static Sentences),
+}
+
+impl Words {
+    /// The message for a session over `protocol`.
+    pub(in crate::sessions) const fn of(self, protocol: Protocol) -> &'static str {
+        match self {
+            Self::Same(text) => text,
+            Self::Named(named) => named.of(protocol),
+        }
+    }
+}
+
 /// The event message when a send to the client stalls past [`CLIENT_IDLE`].
-pub(in crate::sessions) const CLIENT_STOPPED_READING: &str =
-    "The client stopped reading what the hub sent, so the hub closed the SSH session.";
+pub(in crate::sessions) const CLIENT_STOPPED_READING: &Sentences = naming_the_protocol!(
+    "The client stopped reading what the hub sent, so the hub closed the ",
+    " session."
+);
+
+/// The event message when the client left while the hub opened the far side.
+pub(in crate::sessions) const CLIENT_LEFT: &Sentences =
+    naming_the_protocol!("The client left before the ", " session opened.");
+
+/// The event message when the tunnel task stopped without an end of its own.
+pub(in crate::sessions) const TASK_STOPPED: &Sentences = naming_the_protocol!(
+    "The hub's tunnel stopped unexpectedly and closed the ",
+    " session."
+);
 
 /// Why a live tunnel ends. The first cause wins; the tunnel task records it once (D-9).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -37,6 +103,9 @@ pub(in crate::sessions) enum Cause {
     AuthFailed,
     /// The device's host key is not the accepted one (SEC-007).
     HostKeyMismatch,
+    /// The device's RDP server certificate is not the accepted one (SEC-007). Only the Guacamole
+    /// tunnel ends with it.
+    ServerCertificateMismatch,
     /// The client sent nothing for [`CLIENT_IDLE`], or stopped reading what the hub sends; on
     /// the terminal tunnel also no first `resize` in time.
     Timeout,
@@ -67,6 +136,9 @@ impl Cause {
             Self::GatewayError => (1011, EndReason::GatewayError, Severity::Warning),
             Self::AuthFailed => (1011, EndReason::AuthFailed, Severity::Warning),
             Self::HostKeyMismatch => (4001, EndReason::HostKeyMismatch, Severity::Error),
+            Self::ServerCertificateMismatch => {
+                (4003, EndReason::ServerCertificateMismatch, Severity::Error)
+            }
             Self::Timeout => (4002, EndReason::Timeout, Severity::Info),
             Self::HubShutdown => (1001, EndReason::HubShutdown, Severity::Info),
             Self::InvalidInstruction => (1002, EndReason::ProtocolError, Severity::Warning),
@@ -78,28 +150,44 @@ impl Cause {
         }
     }
 
-    /// The event message for an end with this cause, in the Guacamole tunnel's words; the
+    /// The event message for an end with this cause, naming the session's protocol; the
     /// terminal tunnel explains the causes whose words differ. Fixed text: it never holds
     /// guacd's words, an address, a value or session content (LOG-007, RA-008).
-    pub(in crate::sessions) const fn message(self) -> &'static str {
+    pub(in crate::sessions) const fn message(self) -> &'static Sentences {
         match self {
-            Self::OperatorClosed => "The operator closed the SSH session.",
-            Self::RemoteClosed => "The device or the gateway closed the SSH session.",
-            Self::GatewayError => "The gateway reported an error and closed the SSH session.",
-            Self::AuthFailed => "The device refused the SSH sign-in.",
+            Self::OperatorClosed => naming_the_protocol!("The operator closed the ", " session."),
+            Self::RemoteClosed => {
+                naming_the_protocol!("The device or the gateway closed the ", " session.")
+            }
+            Self::GatewayError => {
+                naming_the_protocol!("The gateway reported an error and closed the ", " session.")
+            }
+            Self::AuthFailed => naming_the_protocol!("The device refused the ", " sign-in."),
             Self::HostKeyMismatch => {
-                "The device presented an SSH host key that is not the accepted one, so the hub \
-                 closed the session before signing in. Test the connection and check the new \
-                 key before accepting it."
+                naming_the_protocol!(same
+                    "The device presented an SSH host key that is not the accepted one, so the \
+                     hub closed the session before signing in. Test the connection and check the \
+                     new key before accepting it."
+                )
             }
-            Self::Timeout => {
-                "The client sent nothing for too long, so the hub closed the SSH session."
+            Self::ServerCertificateMismatch => {
+                naming_the_protocol!(same
+                    "The device presented an RDP server certificate that is not the accepted \
+                     one, so the hub closed the session before signing in. Test the connection \
+                     and check the new certificate before accepting it."
+                )
             }
-            Self::HubShutdown => "The hub shut down and closed the SSH session.",
-            Self::InvalidInstruction => {
-                "The client sent an instruction the hub does not accept, so the hub closed the \
-                 SSH session."
+            Self::Timeout => naming_the_protocol!(
+                "The client sent nothing for too long, so the hub closed the ",
+                " session."
+            ),
+            Self::HubShutdown => {
+                naming_the_protocol!("The hub shut down and closed the ", " session.")
             }
+            Self::InvalidInstruction => naming_the_protocol!(
+                "The client sent an instruction the hub does not accept, so the hub closed the ",
+                " session."
+            ),
         }
     }
 }
@@ -128,6 +216,7 @@ impl From<EndReason> for Cause {
             EndReason::GatewayError => Self::GatewayError,
             EndReason::AuthFailed => Self::AuthFailed,
             EndReason::HostKeyMismatch => Self::HostKeyMismatch,
+            EndReason::ServerCertificateMismatch => Self::ServerCertificateMismatch,
             EndReason::ProtocolError => Self::InvalidInstruction,
             EndReason::Timeout => Self::Timeout,
             EndReason::HubShutdown => Self::HubShutdown,
@@ -141,23 +230,33 @@ impl From<EndReason> for Cause {
 pub(in crate::sessions) struct End {
     pub(in crate::sessions) cause: Cause,
     pub(in crate::sessions) by: Option<Actor>,
-    pub(in crate::sessions) message: &'static str,
+    pub(in crate::sessions) message: Words,
 }
 
 impl End {
-    /// An end for `cause` with a more specific event message than the cause's own.
+    /// An end for `cause` with a more specific event message than the cause's own, the same
+    /// whatever the protocol.
     pub(in crate::sessions) const fn explained(cause: Cause, message: &'static str) -> Self {
         Self {
             cause,
             by: None,
-            message,
+            message: Words::Same(message),
+        }
+    }
+
+    /// An end for `cause` with a more specific event message that names the protocol.
+    pub(in crate::sessions) const fn worded(cause: Cause, message: &'static Sentences) -> Self {
+        Self {
+            cause,
+            by: None,
+            message: Words::Named(message),
         }
     }
 }
 
 impl From<Cause> for End {
     fn from(cause: Cause) -> Self {
-        Self::explained(cause, cause.message())
+        Self::worded(cause, cause.message())
     }
 }
 
@@ -168,7 +267,7 @@ impl From<EndCause> for End {
         Self {
             cause,
             by: signal.by,
-            message: cause.message(),
+            message: Words::Named(cause.message()),
         }
     }
 }

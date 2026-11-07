@@ -6,14 +6,16 @@ use anima_hub::{
     access::Identity,
     clock::{Clock, FixedClock},
     credentials::Vault,
-    events::{ClientAddr, Operator},
+    devices::graphql::status_loader,
+    events::{Bus, ClientAddr, Operator},
     ids::OperatorId,
     sessions::{
         Live,
-        graphql::{Mutation, Query},
+        graphql::{Mutation, Query, Subscription},
     },
+    targets::AddressPolicy,
 };
-use async_graphql::{EmptySubscription, Request, Response, Schema};
+use async_graphql::{Request, Response, Schema};
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use chrono::{DateTime, TimeDelta, Utc};
 use serde_json::Value;
@@ -21,7 +23,7 @@ use sqlx::PgPool;
 
 use super::{OPERATOR_ID, now};
 
-pub type TestSchema = Schema<Query, Mutation, EmptySubscription>;
+pub type TestSchema = Schema<Query, Mutation, Subscription>;
 
 /// The address every signed-in test request comes from.
 pub const CLIENT_ADDR: &str = "10.10.0.77";
@@ -31,14 +33,18 @@ pub fn schema_for(pool: &PgPool) -> TestSchema {
     schema_at(pool, now() + TimeDelta::hours(1), &Live::default())
 }
 
-/// The schema with a clock fixed at `at`, sharing `live`.
+/// The schema with a clock fixed at `at`, sharing `live`, and what `startSession` needs to
+/// wake a device as `schema.rs` gives it: the status loader, an address policy and a bus.
 pub fn schema_at(pool: &PgPool, at: DateTime<Utc>, live: &Live) -> TestSchema {
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(at));
-    Schema::build(Query, Mutation, EmptySubscription)
+    Schema::build(Query, Mutation, Subscription)
         .data(pool.clone())
+        .data(status_loader(pool.clone(), clock.clone()))
         .data(clock)
         .data(live.clone())
         .data(vault())
+        .data(AddressPolicy::default())
+        .data(Bus::new(16))
         .finish()
 }
 
@@ -60,9 +66,14 @@ pub fn operator() -> Operator {
 
 /// A request from the K6 operator whose identity expires at `expires_at` hours after `now()`.
 pub fn signed_in_until(query: &str, hours: i64) -> Request {
+    signed_in_from(query, CLIENT_ADDR, hours)
+}
+
+/// A request from the K6 operator at `client`, signed in for `hours` after `now()`.
+pub fn signed_in_from(query: &str, client: &str, hours: i64) -> Request {
     Identity::for_tests(operator(), now() + TimeDelta::hours(hours))
         .attach(Request::new(query))
-        .data(ClientAddr(CLIENT_ADDR.parse().unwrap()))
+        .data(ClientAddr(client.parse().unwrap()))
 }
 
 /// The data of a signed-in request that must have no errors.

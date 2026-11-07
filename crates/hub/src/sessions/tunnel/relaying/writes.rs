@@ -34,7 +34,7 @@ pub(super) async fn send_text(
         sent = timeout(wait, client.send(message)) => match sent {
             Ok(Ok(())) => Ok(()),
             Ok(Err(_)) => Err(Cause::OperatorClosed.into()),
-            Err(_) => Err(End::explained(Cause::Timeout, CLIENT_STOPPED_READING)),
+            Err(_) => Err(End::worded(Cause::Timeout, CLIENT_STOPPED_READING)),
         },
     }
 }

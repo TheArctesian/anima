@@ -1,9 +1,11 @@
-# K1 — GraphQL schema for Phase 1
+# K1 — GraphQL schema
 #
-# Status: frozen for Phase 1 (change only through a programme ruling, CON-001).
-# The hub writes its real schema to `crates/hub/schema.graphql` at build time
-# (API-008). A gate compares that file with this one: the hub may add fields,
-# it must not remove or rename them. Conventions: contracts/conventions.md.
+# Status: frozen for Phase 2 (change only through a programme ruling, CON-001).
+# The client generates its TypeScript types from this file (API-008, R-020).
+# CON-002 (crates/hub/tests/it/contract.rs) keeps the hub's schema equal to it.
+# An addition marked @pending is ignored until the hub declares it; then the
+# programme orchestrator removes @pending (P2-002, K7 / WP-17 E-2).
+# Conventions: contracts/conventions.md.
 # Every operation needs a valid token, except `login` (API-003).
 
 scalar DateTime # RFC 3339, UTC
@@ -12,6 +14,9 @@ scalar Cidr # "10.10.0.0/24"
 scalar JSON # only for audit change records
 
 directive @oneOf on INPUT_OBJECT
+
+"A K1 addition that the hub does not serve yet (P2-002). CON-002 ignores it only while the hub lacks it."
+directive @pending on OBJECT | FIELD_DEFINITION | ARGUMENT_DEFINITION | ENUM | ENUM_VALUE | UNION | INPUT_OBJECT | INPUT_FIELD_DEFINITION
 
 # ---------------------------------------------------------------- shared
 
@@ -63,6 +68,8 @@ type Site {
   name: String!
   subnet: Cidr!
   devices(first: Int = 50, after: String): DeviceConnection!
+  "The device that sends Wake-on-LAN packets at this site (D-2)."
+  wakeRelay: Device
 }
 
 enum SshAuth {
@@ -86,6 +93,79 @@ type HostKey {
   firstSeenAt: DateTime!
 }
 
+enum RdpSecurity {
+  ANY
+  NLA
+  NLA_EXT
+  TLS
+  VMCONNECT
+  RDP
+}
+
+enum RdpResizeMethod {
+  DISPLAY_UPDATE
+  RECONNECT
+}
+
+# PROXMOX joins in Phase 4
+enum MetricsSource {
+  NONE
+  SSH
+}
+
+"RA-020. TELNET joins when Telnet exists."
+enum AccessWarning {
+  IGNORED_CERTIFICATE
+  RDP_SECURITY
+  UNENCRYPTED_VNC
+}
+
+type ServerCertificate {
+  fingerprintSha256: String!
+  subject: String
+  notAfter: DateTime
+  firstSeenAt: DateTime!
+}
+
+type RdpSettings {
+  enabled: Boolean!
+  "Default 3389."
+  port: Int!
+  username: String!
+  domain: String
+  "Default NLA."
+  security: RdpSecurity!
+  "Default false."
+  ignoreCertificate: Boolean!
+  "Default DISPLAY_UPDATE."
+  resizeMethod: RdpResizeMethod!
+  "Default true."
+  audioOut: Boolean!
+  "Default false."
+  microphone: Boolean!
+  "Default false (RA-021)."
+  sharedDrive: Boolean!
+  credentialStored: Boolean!
+  serverCertificate: ServerCertificate
+}
+
+type VncSettings {
+  enabled: Boolean!
+  "Default 5900."
+  port: Int!
+  "macOS Screen Sharing needs one."
+  username: String
+  credentialStored: Boolean!
+}
+
+"What may leave or enter the device in a session (RA-032, RA-033). All default true."
+type TransferPolicy {
+  upload: Boolean!
+  download: Boolean!
+  copy: Boolean!
+  paste: Boolean!
+}
+
 type Device {
   id: ID!
   site: Site!
@@ -101,6 +181,23 @@ type Device {
   "Worst status of the device's checks (CHK-004)."
   status: Status!
   ssh: SshSettings!
+  rdp: RdpSettings!
+  vnc: VncSettings!
+  "Lower-case aa:bb:cc:dd:ee:ff (RA-031)."
+  macAddress: String
+  metricsSource: MetricsSource!
+  transfer: TransferPolicy!
+  accessWarnings: [AccessWarning!]!
+  # web_interfaces
+  webInterfaces: [WebInterface!]!
+  # web_interfaces (WEB-002)
+  webInterfaceSuggestions: [WebInterfaceSuggestion!]!
+  # metrics
+  readings: Readings
+  # metrics (MET-003, MET-009)
+  metrics(range: MetricRange!): [MetricSeries!]!
+  # metrics
+  gpus: [Gpu!]!
   checks: [Check!]!
   "Uptime ratio 0..1 from aggregate tables (CHK-011)."
   uptime(window: UptimeWindow!): Float
@@ -147,6 +244,36 @@ input SshSettingsInput {
   auth: SshAuth!
 }
 
+input RdpSettingsInput {
+  enabled: Boolean!
+  port: Int = 3389
+  username: String!
+  domain: String
+  security: RdpSecurity = NLA
+  ignoreCertificate: Boolean = false
+  resizeMethod: RdpResizeMethod = DISPLAY_UPDATE
+  audioOut: Boolean = true
+  microphone: Boolean = false
+  sharedDrive: Boolean = false
+}
+
+input VncSettingsInput {
+  enabled: Boolean!
+  port: Int = 5900
+  username: String
+}
+
+input TransferPolicyInput {
+  upload: Boolean = true
+  download: Boolean = true
+  copy: Boolean = true
+  paste: Boolean = true
+}
+
+input PasswordCredentialInput {
+  password: String!
+}
+
 input CreateDeviceInput {
   siteId: ID!
   name: String!
@@ -155,6 +282,11 @@ input CreateDeviceInput {
   os: OperatingSystem = OTHER
   tags: [String!] = []
   ssh: SshSettingsInput
+  rdp: RdpSettingsInput
+  vnc: VncSettingsInput
+  macAddress: String
+  metricsSource: MetricsSource = NONE
+  transfer: TransferPolicyInput
   "When true (the default), the hub adds one ICMP check (spec 6.2)."
   addDefaultCheck: Boolean = true
 }
@@ -168,6 +300,12 @@ input UpdateDeviceInput {
   tags: [String!]
   maintenance: Boolean
   ssh: SshSettingsInput
+  rdp: RdpSettingsInput
+  vnc: VncSettingsInput
+  "An empty string clears the address."
+  macAddress: String
+  metricsSource: MetricsSource
+  transfer: TransferPolicyInput
 }
 
 input SshCredentialInput @oneOf {
@@ -187,6 +325,10 @@ type ConnectionTestResult {
   hostKey: HostKey
   hostKeyChanged: Boolean!
   message: String
+  serverCertificate: ServerCertificate
+  certificateChanged: Boolean!
+  "True only when the hub read the RDP server certificate and it equals the accepted pin (CR-3, SEC-007)."
+  certificateMatched: Boolean!
 }
 
 input ConnectionTestInput {
@@ -195,6 +337,10 @@ input ConnectionTestInput {
   host: String
   ssh: SshSettingsInput
   credential: SshCredentialInput
+  protocol: Protocol = SSH
+  rdp: RdpSettingsInput
+  vnc: VncSettingsInput
+  password: PasswordCredentialInput
 }
 
 # ---------------------------------------------------------------- checks (WP-09)
@@ -208,6 +354,10 @@ enum CheckType {
   DNS
   PUSH
   GROUP
+  DOCKER
+  SNMP
+  TAILSCALE_PING
+  SYSTEMD
 }
 
 type Check {
@@ -231,7 +381,41 @@ type Check {
   uptime(window: UptimeWindow!): Float
 }
 
-union CheckConfig = IcmpConfig | TcpConfig | TlsConfig | HttpConfig | DnsConfig | PushConfig | GroupConfig
+union CheckConfig = IcmpConfig | TcpConfig | TlsConfig | HttpConfig | DnsConfig | PushConfig | GroupConfig | DockerConfig | SnmpConfig | TailscalePingConfig | SystemdConfig
+
+"Up when running (and healthy, when a health check exists); Degraded when starting; else Down. Through the SSH link (D-3)."
+type DockerConfig {
+  container: String!
+  timeoutMs: Int!
+}
+
+"Up when ActiveState is active. Through the SSH link (D-3)."
+type SystemdConfig {
+  unit: String!
+  timeoutMs: Int!
+}
+
+enum SnmpVersion {
+  V2C
+  V3
+}
+
+"Community and v3 passwords are never returned (SEC-005)."
+type SnmpConfig {
+  port: Int!
+  version: SnmpVersion!
+  oid: String!
+  "Up when equal; null: Up when the OID answers."
+  expected: String
+  username: String
+  timeoutMs: Int!
+}
+
+"Disco ping through the LocalAPI proxy (D-4). The target defaults to the device host."
+type TailscalePingConfig {
+  target: String
+  timeoutMs: Int!
+}
 
 enum IpVersion {
   V4
@@ -331,7 +515,120 @@ input CheckConfigInput @oneOf {
   dns: DnsConfigInput
   push: Boolean
   group: GroupConfigInput
+  docker: DockerConfigInput
+  snmp: SnmpConfigInput
+  tailscalePing: TailscalePingConfigInput
+  systemd: SystemdConfigInput
 }
+
+input DockerConfigInput {
+  container: String!
+  timeoutMs: Int = 10000
+}
+
+input SystemdConfigInput {
+  unit: String!
+  timeoutMs: Int = 10000
+}
+
+input SnmpConfigInput {
+  port: Int = 161
+  version: SnmpVersion = V2C
+  oid: String!
+  expected: String
+  community: String
+  username: String
+  authPassword: String
+  privacyPassword: String
+  timeoutMs: Int = 5000
+}
+
+input TailscalePingConfigInput {
+  target: String
+  timeoutMs: Int = 5000
+}
+
+# ---------------------------------------------------------------- metrics (WP-28)
+
+enum MetricKind {
+  CPU_PERCENT
+  MEMORY_PERCENT
+  MEMORY_BYTES
+  DISK_PERCENT
+  DISK_BYTES
+  NETWORK_IN_BPS
+  NETWORK_OUT_BPS
+  UPTIME_SECONDS
+  LOAD_1
+  LOAD_5
+  LOAD_15
+  GPU_PERCENT
+  VRAM_PERCENT
+  VRAM_BYTES
+  GPU_TEMPERATURE_C
+  GPU_POWER_W
+}
+
+# MET-003
+enum MetricRange {
+  HOUR
+  DAY
+  WEEK
+}
+
+enum GpuVendor {
+  NVIDIA
+  AMD
+  INTEL
+  APPLE
+}
+
+type Gpu {
+  index: Int!
+  name: String!
+  vendor: GpuVendor!
+  "False for integrated and Apple GPUs (MET-007)."
+  hasVram: Boolean!
+}
+
+type MetricPoint {
+  at: DateTime!
+  value: Float!
+  min: Float
+  max: Float
+}
+
+"Label: mount point, interface name, or 'GPU <index> <name>' (MET-009). Bytes are Float (above 2^31)."
+type MetricSeries {
+  kind: MetricKind!
+  label: String!
+  gpuIndex: Int
+  points: [MetricPoint!]!
+}
+
+"The latest values for the card (MET-004, MET-008). Disk: the fullest mount. VRAM: the GPU with the highest use."
+type Readings {
+  at: DateTime!
+  cpuPercent: Float
+  memoryPercent: Float
+  diskPercent: Float
+  vramPercent: Float
+  vramGpu: Gpu
+}
+
+type MetricSample {
+  kind: MetricKind!
+  label: String!
+  value: Float!
+}
+
+type MetricsAdded {
+  deviceId: ID!
+  at: DateTime!
+  samples: [MetricSample!]!
+  readings: Readings!
+}
+
 
 input IcmpConfigInput {
   timeoutMs: Int = 2000
@@ -532,6 +829,7 @@ enum EventSource {
   DEVICE
   ACCESS
   HUB
+  METRICS
 }
 
 type Event {
@@ -587,6 +885,8 @@ type AuditConnection {
 
 enum Protocol {
   SSH
+  RDP
+  VNC
 }
 
 enum SessionEndReason {
@@ -599,6 +899,8 @@ enum SessionEndReason {
   PROTOCOL_ERROR
   TIMEOUT
   HUB_SHUTDOWN
+  "The RDP certificate differs from the accepted one (D-5)."
+  SERVER_CERTIFICATE_MISMATCH
 }
 
 type Session {
@@ -610,6 +912,8 @@ type Session {
   startedAt: DateTime!
   endedAt: DateTime
   endReason: SessionEndReason
+  # RA-034: which computer holds it
+  clientAddr: IpAddr!
 }
 
 type SessionEdge {
@@ -628,6 +932,48 @@ type SessionTicket {
   token: String!
   tunnelPath: String!
   expiresAt: DateTime!
+  "A Wake-on-LAN packet was sent; the opening waits longer (K4 §1)."
+  wakeSent: Boolean!
+}
+
+type WakeResult {
+  sentAt: DateTime!
+  relayName: String!
+}
+
+type SessionChange {
+  session: Session!
+}
+
+# ---------------------------------------------------------------- web interfaces (WP-30)
+
+enum OpenIn {
+  ANIMA_TAB
+  SYSTEM_BROWSER
+}
+
+type WebInterface {
+  id: ID!
+  deviceId: ID!
+  label: String!
+  url: String!
+  openIn: OpenIn!
+  "Pinned on accept (WEB-008)."
+  pinnedFingerprintSha256: String
+  pinnedAt: DateTime
+}
+
+type WebInterfaceSuggestion {
+  checkId: ID!
+  url: String!
+  label: String!
+}
+
+input WebInterfaceInput {
+  "Defaults to the URL's host."
+  label: String
+  url: String!
+  openIn: OpenIn = ANIMA_TAB
 }
 
 input DisplayInput {
@@ -691,12 +1037,33 @@ type Mutation {
 
   startSession(input: StartSessionInput!): SessionTicket!
   endSession(id: ID!): Session!
+
+  setSiteWakeRelay(siteId: ID!, deviceId: ID): Site!
+  setRdpCredential(deviceId: ID!, credential: PasswordCredentialInput!): RdpSettings!
+  clearRdpCredential(deviceId: ID!): RdpSettings!
+  setVncCredential(deviceId: ID!, credential: PasswordCredentialInput!): VncSettings!
+  clearVncCredential(deviceId: ID!): VncSettings!
+  "The fingerprint must equal the one the hub saw, or CONFLICT."
+  acceptServerCertificate(deviceId: ID!, fingerprintSha256: String!): ServerCertificate!
+  "A ticket for the files tunnel of a live SSH session (K4 §9)."
+  openFiles(sessionId: ID!): SessionTicket!
+  wakeDevice(deviceId: ID!): WakeResult!
+  createWebInterface(deviceId: ID!, input: WebInterfaceInput!): WebInterface!
+  updateWebInterface(id: ID!, input: WebInterfaceInput!): WebInterface!
+  deleteWebInterface(id: ID!): ID!
+  acceptWebInterfaceSuggestion(checkId: ID!): WebInterface!
+  dismissWebInterfaceSuggestion(checkId: ID!): ID!
+  "Pins the certificate and writes an audit entry (WEB-008, WEB-009)."
+  acceptWebCertificate(id: ID!, fingerprintSha256: String!): WebInterface!
 }
 
 type Subscription {
   deviceStatusChanged(deviceId: ID): DeviceStatusChange!
   heartbeatAdded(checkId: ID, deviceId: ID): HeartbeatAdded!
   eventAdded(minSeverity: Severity = INFO): Event!
+  "Every start and end of a session, from every client (RA-034)."
+  sessionChanged: SessionChange!
+  metricsAdded(deviceId: ID): MetricsAdded!
 }
 
 type DeviceStatusChange {

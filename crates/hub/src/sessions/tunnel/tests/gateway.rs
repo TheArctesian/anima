@@ -1,14 +1,13 @@
 //! What guacd's instructions after `ready` mean (K4 Sections 4 and 5, SEC-007, GW-015, D-11).
 
-use guac_protocol::{Instruction, encode};
+use guac_protocol::Instruction;
 
 use super::super::ending::Cause;
-use super::super::gateway::host_key_changed;
-use super::super::relay::{ClientStep, GatewayStep, Relay};
-use super::decoded;
+use super::super::relay::{ClientStep, GatewayStep};
+use super::{decoded, relay};
 
 fn step(wire: &str) -> GatewayStep {
-    Relay::default().on_gateway(decoded(wire))
+    relay().on_gateway(decoded(wire))
 }
 
 /// guacd's `error` in `wire` reaches the client as the fixed text with `status`, then ends.
@@ -34,7 +33,7 @@ fn k4_display_instructions_are_forwarded_unchanged() {
 
 #[test]
 fn gw_015_required_makes_only_its_credentials_answerable() {
-    let mut relay = Relay::default();
+    let mut relay = relay();
     relay.on_gateway(decoded("8.required,8.username,8.hostname;"));
     let argv = |name: &str| Instruction::new("argv", ["0", "text/plain", name]);
     assert_eq!(
@@ -110,32 +109,6 @@ fn log_007_guacds_error_text_never_reaches_the_client() {
         "5.error,34.connection 3f2a to 10.0.0.9 failed,3.519;",
         "519",
         Cause::GatewayError,
-    );
-}
-
-/// guacd 1.5.5 and 1.6.0 send a host-key mismatch as `guac_client_abort`'s fixed text with
-/// status 0x0200 (`src/common-ssh/ssh.c` and `src/libguac/client.c`, cited in `gateway.rs`).
-/// The words "Host key did not match any provided known host keys." only reach guacd's log,
-/// so the wire form is a plain gateway error; the hub checks the key itself (R-034).
-#[test]
-fn sec_007_guacds_host_key_abort_is_a_gateway_error_on_the_wire() {
-    ends_with_error(
-        "5.error,18.Aborted. See logs.,3.512;",
-        "512",
-        Cause::GatewayError,
-    );
-    ends_with_error(
-        "5.error,53.Host key did not match any provided known host keys. ,3.512;",
-        "512",
-        Cause::GatewayError,
-    );
-}
-
-#[test]
-fn sec_007_the_hub_sends_host_key_changed_with_status_0x0303() {
-    assert_eq!(
-        encode(&host_key_changed()),
-        "5.error,16.Host key changed,3.771;"
     );
 }
 

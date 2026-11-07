@@ -6,8 +6,18 @@ const APP_COMMANDS: &[&str] = &[
     "access_token_write",
     "access_token_clear",
     "process_log_folder_open",
-    "remote_login_settings_open",
+    "sharing_settings_open",
     "this_machine_read",
+    "system_browser_open",
+    "web_view_pinning",
+    "web_view_open",
+    "web_view_place",
+    "web_view_show",
+    "web_view_go",
+    "web_view_pin",
+    "web_view_pop_out",
+    "web_view_close",
+    "web_certificate_read",
 ];
 
 fn main() {

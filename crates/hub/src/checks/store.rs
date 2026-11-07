@@ -25,6 +25,7 @@ pub(super) mod repairs;
 mod retention;
 mod rows;
 mod sealed;
+mod snmp_sealed;
 mod uptime;
 mod writes;
 
@@ -51,10 +52,13 @@ pub(super) use retention::{
 };
 use rows::{CheckRow, StandingRow, to_checks};
 pub(super) use sealed::seal;
+#[cfg(test)]
+pub(in crate::checks) use snmp_sealed::open as open_snmp;
+pub(super) use snmp_sealed::seal as seal_snmp;
 pub(super) use uptime::{check_tallies, tallies};
 pub(super) use writes::{
-    Change, Current, Insert, delete, insert, load_http_secrets, lock, set_next_due, set_paused,
-    update,
+    Change, Current, Insert, delete, insert, load_http_secrets, load_snmp_secrets, lock,
+    set_next_due, set_paused, update,
 };
 
 pub(super) async fn fetch<'e>(db: impl PgExecutor<'e>, id: CheckId) -> Result<Check, Error> {
@@ -125,6 +129,27 @@ pub(super) async fn by_devices(db: &PgPool, devices: &[DeviceId]) -> Result<Vec<
     .fetch_all(db)
     .await?;
     to_checks(rows)
+}
+
+/// The id and URL of every HTTP check of the devices, by device, name (byte order) and id.
+/// Reads only the `url` field of the stored JSON, so no other check's config is parsed.
+pub(super) async fn http_urls(
+    db: &PgPool,
+    devices: &[DeviceId],
+) -> Result<HashMap<DeviceId, Vec<(CheckId, String)>>, sqlx::Error> {
+    let rows: Vec<(DeviceId, CheckId, String)> = sqlx::query_as(
+        "SELECT device_id, id, config ->> 'url' FROM checks.checks \
+         WHERE device_id = ANY($1) AND type = 'http' AND config ->> 'url' IS NOT NULL \
+         ORDER BY device_id, name COLLATE \"C\", id",
+    )
+    .bind(devices)
+    .fetch_all(db)
+    .await?;
+    let mut grouped: HashMap<DeviceId, Vec<(CheckId, String)>> = HashMap::new();
+    for (device, check, url) in rows {
+        grouped.entry(device).or_default().push((check, url));
+    }
+    Ok(grouped)
 }
 
 /// What the status rules need about every check of the devices, in one query.

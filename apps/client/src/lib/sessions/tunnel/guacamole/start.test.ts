@@ -7,22 +7,23 @@ import { FAKE_TUNNEL_SOCKET, FakeTunnelSocket } from '../fake/socket.fixture';
 import { startTunnel, type StartedTunnel } from './start';
 
 const DISPLAY: SessionDisplay = { widthPx: 1280, heightPx: 800, dpi: 192, timezone: 'Europe/London' };
-const TARGET = { deviceId: 'device-1', display: DISPLAY };
+const TARGET = { deviceId: 'device-1', protocol: 'RDP', display: DISPLAY } as const;
 const SETUP = { origin: 'https://hub.anima.ing', WebSocket: FAKE_TUNNEL_SOCKET };
 
 /** A sessions API that issues a new ticket per call and records every call. */
-function fakeApi(tunnelPath = '/tunnel') {
-  const calls: { startSession: [string, SessionDisplay][]; endSession: string[] } = { startSession: [], endSession: [] };
+function fakeApi(tunnelPath = '/tunnel', wakeSent = false) {
+  const calls: { startSession: [string, string, SessionDisplay][]; endSession: string[] } = { startSession: [], endSession: [] };
   let issued = 0;
   const api: Pick<SessionsApi, 'startSession' | 'endSession'> = {
-    startSession: (deviceId, display) => {
-      calls.startSession.push([deviceId, display]);
+    startSession: (deviceId, protocol, display) => {
+      calls.startSession.push([deviceId, protocol, display]);
       issued += 1;
       const ticket: SessionTicket = {
         sessionId: `session-${String(issued)}`,
         token: `token-${String(issued)}-${'x'.repeat(34)}`,
         tunnelPath,
         expiresAt: '2026-11-04T10:00:30Z',
+        wakeSent,
       };
       return Promise.resolve({ ok: true, value: ticket });
     },
@@ -56,10 +57,10 @@ async function start(api: Pick<SessionsApi, 'startSession' | 'endSession'>) {
 }
 
 describe('start and reconnect (D-3, D-5, RA-007)', () => {
-  it('RA-007: a start calls startSession once for the device and display and opens the ticket', async () => {
+  it('RA-007: a start calls startSession once for the device, protocol and display and opens the ticket', async () => {
     const { api, calls } = fakeApi();
     const result = await start(api);
-    expect(calls.startSession).toEqual([['device-1', DISPLAY]]);
+    expect(calls.startSession).toEqual([['device-1', 'RDP', DISPLAY]]);
     expect(result.ok && result.value.sessionId).toBe('session-1');
     expect(FakeTunnelSocket.latest().url).toBe(`wss://hub.anima.ing/tunnel?token=token-1-${'x'.repeat(34)}`);
   });
@@ -81,7 +82,7 @@ describe('start and reconnect (D-3, D-5, RA-007)', () => {
   it('API-009: the started session holds the session ID and tunnel, never the ticket', async () => {
     const { api } = fakeApi();
     const result = await start(api);
-    expect(result.ok && Object.keys(result.value).sort()).toEqual(['sessionId', 'tunnel']);
+    expect(result.ok && Object.keys(result.value).sort()).toEqual(['sessionId', 'tunnel', 'wakeSent']);
     expect(JSON.stringify(result.ok && result.value.tunnel.state())).not.toContain('token-1');
   });
 
@@ -93,10 +94,37 @@ describe('start and reconnect (D-3, D-5, RA-007)', () => {
     expect(FakeTunnelSocket.made).toEqual([]);
   });
 
+  it('RA-031, K4 §1: a refused address after a waking ticket still says the hub woke the device, and ends the session', async () => {
+    const { api, calls } = fakeApi('//evil.example/tunnel', true);
+    const result = await startTunnel(api, TARGET, SETUP);
+    expect(result).toMatchObject({ ok: false, error: { problem: 'bad-address' }, wakeSent: true });
+    expect(calls.endSession).toEqual(['session-1']);
+  });
+
   it('SEC-002: a ticket path the client refuses ends the new session and reports the refusal', async () => {
     const { api, calls } = fakeApi('//evil.example/tunnel');
     const result = await start(api);
-    expect(result).toEqual({ ok: false, error: { problem: 'bad-address', message: 'The hub gave a tunnel address that Anima does not accept.' } });
+    expect(result).toEqual({
+      ok: false,
+      error: { problem: 'bad-address', message: 'The hub gave a tunnel address that Anima does not accept.' },
+      wakeSent: false,
+    });
     expect(calls.endSession).toEqual(['session-1']);
+  });
+});
+
+describe('a start that woke the device (RA-031, K4 §1)', () => {
+  it('RA-031: the started session says the hub sent a wake packet, and the opening waits the 120 s limit', async () => {
+    const { api } = fakeApi();
+    const waking: typeof api.startSession = async (...args) => {
+      const answer = await api.startSession(...args);
+      return answer.ok ? { ok: true, value: { ...answer.value, wakeSent: true } } : answer;
+    };
+    const result = await startTunnel({ ...api, startSession: waking }, TARGET, SETUP);
+    if (!result.ok) throw new Error('not started');
+    started.push(result.value);
+    expect(result.value.wakeSent).toBe(true);
+    vi.advanceTimersByTime(119_000);
+    expect(FakeTunnelSocket.latest().closedByClient).toBeUndefined();
   });
 });

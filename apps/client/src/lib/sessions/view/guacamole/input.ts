@@ -23,15 +23,14 @@ export function keyRoute(client: Client, filter: KeyFilter): KeyRoute {
   };
 }
 
-/** Send a Keys menu combination as its press and release sequence (D-10, RA-006). */
+/** Send a Keys menu combination as its press and release sequence (RA-006). */
 export function sendCombination(client: Client, combination: KeyCombination): void {
   send(client, keyStrokes(combination));
 }
 
 /**
- * Paste `text` into the terminal (D-9): one `text/plain` clipboard stream, then guacd's terminal paste shortcut,
- * which types the clipboard it now holds, leaving down any key in `held` (the keys the device holds). Empty text
- * sends nothing.
+ * Paste `text` on the device (RA-005): one `text/plain` clipboard stream, which sets the device's clipboard, then
+ * Ctrl+V, which pastes it, leaving down any Ctrl in `held` (the keys the device holds). Empty text sends nothing.
  */
 export function pasteText(client: Client, text: string, held: ReadonlySet<number>): void {
   if (text === '') return;
@@ -74,15 +73,12 @@ export function followPaneFocus(pane: HTMLElement, change: (inside: boolean) => 
 }
 
 /**
- * Show the client's display in the host element (D-7): at a `devicePixelRatio` above 1 the remote draws in device
- * pixels, so the library's own static scale maps it back to CSS pixels; nothing animates it (MAT-008). Pointer
- * input is forwarded while it is shown.
+ * Show the client's display in the host element; nothing animates it (MAT-008), and its scale is the caller's.
+ * Pointer and touch input are forwarded while it is shown.
  */
-export function showDisplay(client: Client, devicePixelRatio: number): Attachment<HTMLElement> {
+export function showDisplay(client: Client): Attachment<HTMLElement> {
   return (host) => {
-    const display = client.getDisplay();
-    if (devicePixelRatio > 0 && devicePixelRatio !== 1) display.scale(1 / devicePixelRatio);
-    const element = display.getElement();
+    const element = client.getDisplay().getElement();
     host.append(element);
     const stop = forwardPointer(client);
     return () => {

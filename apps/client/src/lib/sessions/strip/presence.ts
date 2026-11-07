@@ -26,12 +26,3 @@ export function enterStrip(strip: Animatable, fromHidden: boolean, preference: M
   });
   return playback;
 }
-
-/** The strip leaves after the last tab closes: a fade on `duration-fast` and a slide up. Reduced: fade. */
-export function exitStrip(strip: Animatable, preference: MotionPreference): Playback {
-  const { reduced } = preference;
-  return together([
-    animate(strip, { opacity: 0 }, tweenMotion('fast', 'exit', reduced)),
-    animate(strip, { translate: { y: offset(strip) } }, springMotion('snappy', reduced)),
-  ]);
-}

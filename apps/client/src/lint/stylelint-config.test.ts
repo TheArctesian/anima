@@ -57,6 +57,11 @@ const bad: Record<string, string> = {
   'a primitive nord token with a fallback': 'a { background-color: var(--nord-10, var(--bg)); }',
   'an upper-case 0.2S duration in transition': 'a { transition: opacity 0.2S var(--ease); }',
   'an upper-case EASE keyword in transition': 'a { transition: opacity var(--d) EASE; }',
+  'a literal opacity': 'a { opacity: 0.5; }',
+  'a literal fill-opacity': 'a { fill-opacity: 0.2; }',
+  'a literal opacity in a percentage': 'a { opacity: 50%; }',
+  'a @keyframes rule': '@keyframes spin { to { opacity: 0; } }',
+  'a vendor @-webkit-keyframes rule': '@-webkit-keyframes spin { to { opacity: 0; } }',
 };
 
 const expectedRule: Record<string, string> = {
@@ -88,6 +93,11 @@ const expectedRule: Record<string, string> = {
   'a calc() of literals in a layer custom property': 'declaration-property-value-disallowed-list',
   'a primitive nord token in a colour': 'declaration-property-value-disallowed-list',
   'a primitive nord token in a custom property': 'declaration-property-value-disallowed-list',
+  'a literal opacity': 'declaration-property-value-allowed-list',
+  'a literal fill-opacity': 'declaration-property-value-allowed-list',
+  'a literal opacity in a percentage': 'declaration-property-value-allowed-list',
+  'a @keyframes rule': 'at-rule-disallowed-list',
+  'a vendor @-webkit-keyframes rule': 'at-rule-disallowed-list',
 };
 
 describe('Stylelint token gate', () => {
@@ -106,6 +116,7 @@ describe('Stylelint token gate', () => {
     ['a raw cubic-bezier() curve', bad['a raw cubic-bezier() curve']],
     ['a raw z-index', bad['a raw z-index']],
     ['a raw font-family', bad['a raw font-family']],
+    ['a @keyframes rule', bad['a @keyframes rule']],
   ] as const) {
     it(`TOK-003 refuses ${name} in a .svelte <style>`, async () => {
       expect((await warnings(inSvelte(css), svelteFile)).length).toBeGreaterThan(0);
@@ -129,6 +140,12 @@ describe('Stylelint token gate', () => {
   --layer-local: var(--layer-modal);
   margin: 0;
 }`;
+    expect(await warnings(css)).toEqual([]);
+    expect(await warnings(inSvelte(css), svelteFile)).toEqual([]);
+  });
+
+  it('TOK-003 accepts an opacity token, and 0 and 1 as the hidden and shown ends of a motion', async () => {
+    const css = 'a { opacity: var(--opacity-disabled); fill-opacity: var(--opacity-band); } b { opacity: 0; } c { opacity: 1; }';
     expect(await warnings(css)).toEqual([]);
     expect(await warnings(inSvelte(css), svelteFile)).toEqual([]);
   });

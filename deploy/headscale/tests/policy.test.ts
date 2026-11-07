@@ -47,6 +47,15 @@ describe('policy tests block', () => {
     expect(runPolicyTests(policy, nodes)).toEqual([]);
   });
 
+  test('vpn_004 the tag:hub rows name the Mac on SSH and VNC and deny RDP (R-061)', () => {
+    const hubRows = policy.tests.filter((row) => row.src === 'tag:hub');
+    const tcpRow = hubRows.find((row) => row.protos.length === 1 && row.protos[0] === 'tcp');
+    const anyProtoRow = hubRows.find((row) => row.protos.length > 1);
+    expect(tcpRow?.accept).toEqual(expect.arrayContaining(['100.64.0.2:22', '100.64.0.2:5900']));
+    expect(tcpRow?.deny).toContain('100.64.0.2:3389');
+    expect(anyProtoRow?.deny).toContain('100.64.0.2:3389');
+  });
+
   test('vpn_004 every router row waiting for its router passes in the evaluator', () => {
     expect(runPolicyTests(withTests(ROUTER_ROWS), nodes)).toEqual([]);
   });
@@ -84,11 +93,17 @@ describe('permitted connections (VPN-004)', () => {
     for (const address of ['10.10.0.5', '10.20.0.5', '10.30.0.5']) expect(allowed(tcp({ node: 'mac' }, { address }, 3389))).toBe(true);
   });
 
-  test('vpn_004 hub reaches the Mac added as a device on SSH only (R-061)', () => {
-    expect(allowed(tcp({ node: 'hub' }, { node: 'mac' }, 22))).toBe(true);
-    for (const port of [443, 3389, 5900]) expect(allowed(tcp({ node: 'hub' }, { node: 'mac' }, port))).toBe(false);
-    expect(allowed(tcp({ node: 'hub' }, { node: 'laptop' }, 22))).toBe(false);
-    expect(allowed(tcp({ node: 'router-home' }, { node: 'mac' }, 22))).toBe(false);
+  test('vpn_004 hub reaches the Mac added as a device on SSH and VNC only (R-061)', () => {
+    for (const port of [22, 5900]) expect(allowed(tcp({ node: 'hub' }, { node: 'mac' }, port))).toBe(true);
+    for (const port of [443, 3389, 5901, 5432]) expect(allowed(tcp({ node: 'hub' }, { node: 'mac' }, port))).toBe(false);
+    for (const port of [22, 5900]) {
+      expect(allowed(tcp({ node: 'hub' }, { node: 'laptop' }, port))).toBe(false);
+      expect(allowed(tcp({ node: 'router-home' }, { node: 'mac' }, port))).toBe(false);
+      expect(allowed(tcp({ lan: '10.10.0.5' }, { node: 'mac' }, port))).toBe(false);
+    }
+    for (const proto of ['udp', 'icmp']) {
+      expect(allows(policy, nodes, { from: { node: 'hub' }, to: { node: 'mac' }, port: 5900, proto })).toBe(false);
+    }
   });
 
   test('vpn_004 hub reaches devices at every site', () => {

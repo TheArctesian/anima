@@ -7,7 +7,7 @@ import { runs } from '$lib/motion/engine.fixture';
 import { route } from '$lib/nav/route.fixture.svelte';
 import Layout from '../../../routes/+layout.svelte';
 import type { PopOutPort, SessionPort } from '../sessions.svelte';
-import { cleanup, fake, keyframes, openStarted, prepare, settle, show as mountLayout, tabs, visiblePanels } from './layout.fixture';
+import { cleanup, fake, keyframes, openStarted, prepare, request, settle, show as mountLayout, tabs, visiblePanels } from './layout.fixture';
 
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
@@ -31,6 +31,9 @@ vi.mock('$lib/hub/hub', async (importOriginal) => ({
     ({
       address: { origin: 'https://hub.anima.ing', http: '', socket: '' },
       status: { current: { connection: 'connected', lastContactAt: null } },
+      // The nav's live-session item asks the hub; nothing answers here.
+      request: () => new Promise(() => undefined),
+      subscribe: () => () => undefined,
       close: () => Promise.resolve(),
     }) as unknown as Hub,
 }));
@@ -99,6 +102,18 @@ it('RA-001 / UI-015: the labelled close button ends that session once and keeps 
   expect(fake.port.end).toHaveBeenCalledExactlyOnceWith('session-1');
   expect(tabs()).toHaveLength(1);
   expect(tabs()[0]?.getAttribute('aria-selected')).toBe('true');
+});
+
+it('LOG-007: a failed end warns with the error name only, never its message', async () => {
+  // `using` restores the spy when the test ends, even when an assertion throws.
+  using warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+  const sessions = show();
+  await openStarted(sessions);
+  fake.port.end.mockRejectedValueOnce(new Error('secret-marker'));
+  document.querySelector<HTMLButtonElement>('button[aria-label="Close web-1 SSH session"]')?.click();
+  await settle();
+  expect(warn).toHaveBeenCalledExactlyOnceWith('Ending the session failed:', 'Error');
+  expect(JSON.stringify(warn.mock.calls)).not.toContain('secret-marker');
 });
 
 it('MOT-005: a new tab grows with transform-origin at the control that opened it', async () => {
@@ -191,17 +206,34 @@ describe('pop out (RA-002, D-13)', () => {
   });
 });
 
-it('MV-004: the strip keeps its space until it has left after the last tab closes', async () => {
+// jsdom has no layout, so this shows the markers the CSS acts on, not pixels: the strip is hidden in the same update
+// in which the pages show, so the page has no 32 px step to take and no tab paints over it (M-1, R-075).
+it('MOT-007, R-075, 5.7.3: after the last tab closes the strip is hidden in the update in which the pages show', async () => {
   const sessions = show();
   const id = await openStarted(sessions);
   const strip = document.querySelector('[role="tablist"]');
-  expect(strip?.hasAttribute('hidden')).toBe(false);
   await sessions.close(id);
   await settle();
-  expect(strip?.hasAttribute('hidden')).toBe(false);
-  for (const run of [...runs]) run.finish();
-  await settle();
+  expect(document.querySelector('.pages')?.hasAttribute('inert')).toBe(false);
   expect(strip?.hasAttribute('hidden')).toBe(true);
+});
+
+it('MOT-007, MOT-040: a tab opened again after the last one closed shows the strip', async () => {
+  const sessions = show();
+  const id = await openStarted(sessions);
+  await sessions.close(id);
+  await settle();
+  await openStarted(sessions);
+  expect(document.querySelector('[role="tablist"]')?.hasAttribute('hidden')).toBe(false);
+});
+
+it('MOT-007: the strip, not the page, carries the exit: no translate is written on an ancestor of the pages', async () => {
+  const sessions = show();
+  const id = await openStarted(sessions);
+  await sessions.close(id);
+  await settle();
+  const pages = document.querySelector<HTMLElement>('.pages');
+  for (let node: HTMLElement | null = pages; node !== null; node = node.parentElement) expect(node.style.translate).toBe('');
 });
 
 it('S4: closing a tab with none selected sends focus to the tab in its place; the last one to the nav', async () => {
@@ -248,4 +280,23 @@ it('MOT-007, MV-004: the tab has one width whatever the title, so a title moves 
   expect(css).not.toMatch(/\.slot \{[^}]*max-inline-size/);
   const tab = readFileSync(`${import.meta.dirname}/SessionTab.svelte`, 'utf8');
   expect(tab).toMatch(/\.title \{[^}]*flex: 1 1 0;/);
+});
+
+describe('RDP and VNC tabs (RA-001, Section 5.7 "Session tab open")', () => {
+  it('MOT-007: an RDP or VNC tab names its protocol in the fixed-width label; an SSH tab keeps its plain text', () => {
+    const sessions = show();
+    for (const protocol of ['SSH', 'RDP', 'VNC'] as const) sessions.openSession({ ...request, protocol, origin: null });
+    flushSync();
+    const labels = tabs().map((tab) => tab.querySelector<HTMLElement>('.protocol'));
+    expect(labels.map((label) => label?.textContent)).toEqual(['SSH', 'RDP', 'VNC']);
+    expect(labels.map((label) => label?.hasAttribute('data-remote'))).toEqual([false, true, true]);
+  });
+
+  it.each(['RDP', 'VNC'] as const)('MOT-005: a new %s tab grows from the control that opened it, as an SSH tab does', (protocol) => {
+    const sessions = show();
+    sessions.openSession({ ...request, protocol, origin: new DOMRect(400, 300, 50, 20) });
+    flushSync();
+    const growing = keyframes.find((frames) => frames.some((frame) => 'transformOrigin' in frame));
+    expect(growing?.[0]?.transformOrigin).toBe('425px 310px');
+  });
 });

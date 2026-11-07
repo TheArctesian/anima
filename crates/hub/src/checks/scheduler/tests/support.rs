@@ -18,7 +18,6 @@ use crate::{
     checks::{
         self, Check, CheckSettings, Definition, NewCheck,
         config::CheckConfig,
-        probe::AddressPolicy,
         scheduler::{
             Probing,
             attempt::Context,
@@ -28,6 +27,7 @@ use crate::{
     credentials::Vault,
     events::Bus,
     ids::{CheckId, DeviceId},
+    targets::AddressPolicy,
 };
 
 /// `docker-host` in the K6 fixtures: no maintenance.
@@ -63,6 +63,7 @@ fn context_with(pool: &PgPool, bus: &Bus, policy: AddressPolicy) -> Context {
         probing: Probing {
             vault: vault(),
             policy,
+            localapi: None,
         },
     }
 }
@@ -101,6 +102,7 @@ pub fn limited(pool: &PgPool, limits: Limits) -> Scheduler {
         probing: Probing {
             vault: vault(),
             policy: AddressPolicy::default().allowing_loopback(),
+            localapi: None,
         },
     };
     Scheduler::new(ctx, limits)

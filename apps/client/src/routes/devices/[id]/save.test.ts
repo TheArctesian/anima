@@ -11,6 +11,8 @@ function deviceCalls(change: Partial<DeviceSaveCalls> = {}) {
   return {
     update: vi.fn<DeviceSaveCalls['update']>((_id, input) => Promise.resolve({ ok: true, value: device({ ...input } as never) })),
     setSshCredential: vi.fn<DeviceSaveCalls['setSshCredential']>(() => Promise.resolve({ ok: true, value: { credentialStored: true } })),
+    setRdpCredential: vi.fn<DeviceSaveCalls['setRdpCredential']>(() => Promise.resolve({ ok: true, value: { credentialStored: true } })),
+    setVncCredential: vi.fn<DeviceSaveCalls['setVncCredential']>(() => Promise.resolve({ ok: true, value: { credentialStored: true } })),
     ...change,
   };
 }
@@ -48,6 +50,56 @@ describe('saveDevice (D-2, D-4)', () => {
     const saved = await saveDevice(device(), values, calls);
     expect(calls.setSshCredential).not.toHaveBeenCalled();
     expect(saved.device.name).toBe('nas');
+  });
+});
+
+describe('saveDevice remote passwords (DEV-011)', () => {
+  const typed = (rdpPassword: string, vncPassword: string) => {
+    const initial = formValues(device());
+    return {
+      ...initial,
+      rdp: { ...initial.rdp, enabled: true, username: 'admin' },
+      vnc: { ...initial.vnc, enabled: true },
+      remoteSecrets: { ...initial.remoteSecrets, rdpPassword, vncPassword },
+    };
+  };
+
+  it('DEV-011: typed RDP and VNC passwords are stored after the update, and the device says both are stored', async () => {
+    const calls = deviceCalls();
+    const saved = await saveDevice(device(), typed('rdp-secret', 'vnc-secret'), calls);
+    expect(calls.setRdpCredential).toHaveBeenCalledWith(device().id, { password: 'rdp-secret' });
+    expect(calls.setVncCredential).toHaveBeenCalledWith(device().id, { password: 'vnc-secret' });
+    expect(saved.result.ok).toBe(true);
+    expect([saved.device.rdp.credentialStored, saved.device.vnc.credentialStored]).toEqual([true, true]);
+  });
+
+  it('DEV-011: a form with no typed remote password stores none', async () => {
+    const calls = deviceCalls();
+    await saveDevice(device(), typed('', ''), calls);
+    expect(calls.setRdpCredential).not.toHaveBeenCalled();
+    expect(calls.setVncCredential).not.toHaveBeenCalled();
+  });
+
+  it('DEV-011: a failed RDP password is reported, and the VNC password is still stored', async () => {
+    const calls = deviceCalls({ setRdpCredential: () => Promise.resolve({ ok: false, error: LOCKED }) });
+    const saved = await saveDevice(device(), typed('rdp-secret', 'vnc-secret'), calls);
+    expect(saved.result).toEqual({ ok: false, error: LOCKED });
+    expect(calls.setVncCredential).toHaveBeenCalledOnce();
+  });
+
+  it('DEV-011: a failed VNC password is reported after a stored RDP password', async () => {
+    const calls = deviceCalls({ setVncCredential: () => Promise.resolve({ ok: false, error: LOCKED }) });
+    const saved = await saveDevice(device(), typed('rdp-secret', 'vnc-secret'), calls);
+    expect(calls.setRdpCredential).toHaveBeenCalledOnce();
+    expect(saved.result).toEqual({ ok: false, error: LOCKED });
+  });
+
+  it('D-2: an untouched form sends no remote password call', async () => {
+    const calls = deviceCalls();
+    await saveDevice(device(), formValues(device()), calls);
+    expect(calls.update).not.toHaveBeenCalled();
+    expect(calls.setRdpCredential).not.toHaveBeenCalled();
+    expect(calls.setVncCredential).not.toHaveBeenCalled();
   });
 });
 

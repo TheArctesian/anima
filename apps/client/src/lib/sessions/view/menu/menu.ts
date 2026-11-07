@@ -1,3 +1,11 @@
+/** One key combination entry of the Keys menu: what it shows. */
+export interface MenuEntry {
+  readonly id: string;
+  /** The name the menu shows, which is also the item's accessible name. */
+  readonly label: string;
+  readonly hint: string;
+}
+
 /**
  * The menu item a key moves focus to (WAI-ARIA menu pattern): ArrowDown and ArrowUp step and wrap, Home and End
  * jump to the ends. Undefined for any other key, or when there are no items.

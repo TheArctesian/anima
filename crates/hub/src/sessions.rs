@@ -1,12 +1,16 @@
 //! Remote sessions: the record of every session (RA-008), the SSH host key accepted for
 //! each device (SEC-006), which every SSH connection is pinned to (SEC-007), and the
 //! single-use tickets that open a tunnel (K4 §1, API-009). SSH sessions run on the terminal
-//! tunnel (`terminal`, K4 §8); the Guacamole tunnel (`tunnel`) waits for RDP and VNC. The
-//! connection test reads a host's key and `acceptHostKey` records it (DEV-013, D-5, D-6).
+//! tunnel (`terminal`, K4 §8); RDP and VNC sessions on the Guacamole tunnel (`tunnel`). The
+//! connection test reads a host's key or an RDP server's certificate, and `acceptHostKey` or
+//! `acceptServerCertificate` records it (DEV-013, SEC-006, SEC-007).
+//! Wake-on-LAN (`wake`) runs on a site's wake relay over the hub's SSH link (`link`, RA-031).
 
 mod admission;
 mod end;
+mod files;
 pub mod graphql;
+mod link;
 mod live;
 mod model;
 mod page;
@@ -23,6 +27,7 @@ mod tickets;
 mod trust;
 mod tunnel;
 mod upgrade;
+mod wake;
 
 use std::collections::HashMap;
 
@@ -36,14 +41,22 @@ use crate::{
     ids::{DeviceId, SessionId},
 };
 
+use model::Desktop;
+
 pub use end::Actor;
+pub use files::{FilesMutation, files_router};
+pub use link::{CommandOutput, Error as LinkError, FixedCommand, SshLink, link};
 pub use live::{EndCause, Live, Redeemed, Refused, Tunnel};
-pub use model::{EndReason, FieldError, HostKey, Protocol, Session, SessionEnd, UnknownValue};
+pub use model::{
+    EndReason, FieldError, HostKey, Protocol, ServerCertificate, Session, SessionChange,
+    SessionEnd, UnknownValue,
+};
 pub use public_key::{BadFingerprint, BadKey, Fingerprint, PublicKey};
-pub use start::{DEFAULT_DPI, DisplayRequest, StartRequest, start};
+pub use start::{DEFAULT_DPI, DisplayRequest, StartRequest, Waking, start};
 pub use terminal::terminal_router;
 pub use tickets::{PendingTicket, Presented, Ticket};
 pub use tunnel::tunnel_router;
+pub use wake::{Error as WakeError, WakeSent, graphql::Mutation as WakeMutation, wake};
 
 /// What a sessions operation looked for and did not find.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -78,6 +91,26 @@ pub enum Conflict {
          again and compare the fingerprint."
     )]
     KeyDiffers,
+    #[error(
+        "The hub has not seen a server certificate for this device in the last 15 minutes. \
+         Test the connection with RDP, then accept the certificate it shows."
+    )]
+    CertificateNotSeen,
+    #[error(
+        "That fingerprint is not the certificate the hub saw for this device. Test the \
+         connection again and compare the fingerprint."
+    )]
+    CertificateDiffers,
+    #[error("RDP is turned off for this device. Turn it on in the device's RDP settings.")]
+    RdpDisabled,
+    #[error("VNC is turned off for this device. Turn it on in the device's VNC settings.")]
+    VncDisabled,
+    /// RDP checks the server certificate, and none is accepted yet (SEC-007).
+    #[error(
+        "No server certificate is accepted for this device. Test the connection and accept \
+         its certificate."
+    )]
+    NoServerCertificate,
 }
 
 /// Why a sessions operation failed. No variant holds a ticket token (LOG-007).
@@ -140,6 +173,18 @@ pub async fn host_keys(
     devices: &[DeviceId],
 ) -> Result<HashMap<DeviceId, HostKey>, Error> {
     store::host_keys(db, devices).await
+}
+
+/// The accepted RDP server certificate of each listed device that has one, in one query
+/// (API-005, SEC-007). An empty list returns an empty map without a query.
+///
+/// # Errors
+/// `Database` when the query fails.
+pub async fn server_certificates(
+    db: &PgPool,
+    devices: &[DeviceId],
+) -> Result<HashMap<DeviceId, ServerCertificate>, Error> {
+    store::server_certificates(db, devices).await
 }
 
 /// Ends, with `HUB_SHUTDOWN` at `now`, every session a previous hub process left open, each

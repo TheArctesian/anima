@@ -1,4 +1,4 @@
-//! `Site` as the GraphQL type K1 describes (VPN-002).
+//! `Site` as the GraphQL type K1 describes (VPN-002), with its wake relay (D-7).
 
 use async_graphql::{Context, ID, Object, Result, dataloader::DataLoader};
 
@@ -7,7 +7,11 @@ use super::{
     error::{internal, invalid, schema_dependency, to_graphql},
 };
 use crate::{
-    devices::{DevicesBySite, model::Site, page::page_after},
+    devices::{
+        DevicesById, DevicesBySite,
+        model::{Device, Site},
+        page::page_after,
+    },
     scalars::Cidr,
 };
 
@@ -47,5 +51,17 @@ impl Site {
         let page = page_after(&all, |d| d.name.as_str(), after.as_deref(), size);
         let shown = page.rows.into_iter().cloned().collect();
         Ok(DeviceConnection::new(shown, page.has_next_page, all.len()))
+    }
+
+    /// The device that sends Wake-on-LAN packets at this site.
+    async fn wake_relay(&self, ctx: &Context<'_>) -> Result<Option<Device>> {
+        let Some(relay) = self.wake_relay else {
+            return Ok(None);
+        };
+        // A relay deleted since the site was read is gone: the foreign key clears it.
+        schema_dependency::<DataLoader<DevicesById>>(ctx)?
+            .load_one(relay)
+            .await
+            .map_err(to_graphql)
     }
 }

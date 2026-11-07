@@ -2,6 +2,7 @@
 // Source: glyphnames.json at Nerd Fonts commit f034eeafc0ccf79afa8dd952feb86b18e5d0469e.
 export const iconCodePoints = {
   'nf-md-server': 0xf048b,
+  'nf-md-access_point': 0xf0003,
   'nf-md-cog': 0xf0493,
   'nf-md-lan_connect': 0xf0318,
   'nf-md-lan_disconnect': 0xf0319,
@@ -29,6 +30,12 @@ export const iconCodePoints = {
   'nf-md-tag': 0xf04f9,
   'nf-md-web': 0xf059f,
   'nf-md-dots_vertical': 0xf01d9,
+  'nf-md-folder': 0xf024b,
+  'nf-md-file': 0xf0214,
+  'nf-md-link': 0xf0337,
+  'nf-md-upload': 0xf0552,
+  'nf-md-download': 0xf01da,
+  'nf-md-arrow_up': 0xf005d,
 } as const;
 
 export type IconName = keyof typeof iconCodePoints;

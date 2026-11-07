@@ -2,6 +2,7 @@
   import { asset, resolve } from '$app/paths';
   import { useHub } from '$lib/hub/context';
   import Icon from '$lib/icons/Icon.svelte';
+  import LiveSessions from '$lib/sessions/live/LiveSessions.svelte';
   import { press } from '$lib/motion/roles/press';
   import { fade } from '$lib/motion/roles/transitions';
   import { watchHubBanner } from './bannerShift';
@@ -53,6 +54,7 @@
     <span class="words">Anima</span>
   </div>
   {@render destination(DEVICES)}
+  <LiveSessions {hub} {iconOnly} />
   <!-- Always rendered, so a screen reader announces the text when it appears (NET-004). -->
   <div class="notice" role="status" data-holds-banner>
     {#if banner !== null}

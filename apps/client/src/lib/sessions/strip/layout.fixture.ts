@@ -90,7 +90,7 @@ export async function cleanup(): Promise<void> {
 }
 
 export async function settle(): Promise<void> {
-  for (let tick = 0; tick < 6; tick += 1) {
+  for (let tick = 0; tick < 10; tick += 1) {
     await Promise.resolve();
     flushSync();
   }

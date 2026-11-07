@@ -171,6 +171,13 @@ describe('liveness (K4 §8.4, §8.5)', () => {
     expect(socket.messages().filter((message) => message.type === 'ping')).toHaveLength(2);
   });
 
+  it('K4 §1, RA-031: the link sets no limit on the opening, so a waking device may take the hub 120 s before the upgrade', () => {
+    const { heard } = open();
+    vi.advanceTimersByTime(120_000);
+    expect(heard.ends).toEqual([]);
+    expect(heard.changes).toEqual([]);
+  });
+
   it('K4 §8.5: SILENCE_LIMIT_MS without a frame from the hub ends the link as lost, once, and closes the socket', () => {
     const { socket, heard } = open();
     socket.open();

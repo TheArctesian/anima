@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-sharing-settings-open"
+description = "Enables the sharing_settings_open command without any pre-configured scope."
+commands.allow = ["sharing_settings_open"]
+
+[[permission]]
+identifier = "deny-sharing-settings-open"
+description = "Denies the sharing_settings_open command without any pre-configured scope."
+commands.deny = ["sharing_settings_open"]

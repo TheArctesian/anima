@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { CardDevice, DevicePage } from './api';
-import { appendPage, applyStatus, compareDevices, fromPage } from './list';
+import { appendPage, applyStatus, applyVncEnabled, compareDevices, fromPage } from './list';
 import { DEFAULT_QUERY, type ListQuery } from './query';
 
 function device(name: string, status: CardDevice['status'] = 'UP', uptime: number | null = 1): CardDevice {
@@ -9,12 +9,20 @@ function device(name: string, status: CardDevice['status'] = 'UP', uptime: numbe
     name,
     host: `${name}.lan`,
     ip: null,
+    os: 'OTHER',
     tags: [],
     maintenance: false,
     status,
     uptime,
+    macAddress: null,
+    metricsSource: 'NONE',
+    readings: null,
+    accessWarnings: [],
+    rdp: { enabled: false },
+    vnc: { enabled: false, username: null },
     ssh: { enabled: false, hostKey: null },
     checks: [],
+    webInterfaces: [],
   };
 }
 
@@ -113,5 +121,18 @@ describe('live status (DEV-003, DEV-004)', () => {
 
   it('DEV-003 ignores a change for a device that is not listed', () => {
     expect(applyStatus(list, change('zzz', 'DOWN'), DEFAULT_QUERY)).toBe(list);
+  });
+});
+
+describe('applyVncEnabled (R-079)', () => {
+  it('R-079: only the named device shows VNC on', () => {
+    const list = fromPage({
+      totalCount: 2,
+      pageInfo: { hasNextPage: false, endCursor: null },
+      edges: [{ node: device('a') }, { node: device('b') }],
+    });
+    const next = applyVncEnabled(list, 'b');
+    expect(next.devices.map((shown) => shown.vnc.enabled)).toEqual([false, true]);
+    expect(next.devices[0]).toBe(list.devices[0]);
   });
 });

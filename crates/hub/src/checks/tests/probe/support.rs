@@ -16,7 +16,10 @@ use tokio::{
 };
 use tokio_rustls::TlsAcceptor;
 
-use crate::checks::probe::{AddressPolicy, ProbeEnv, ProbeTarget};
+use crate::{
+    checks::probe::{ProbeEnv, ProbeTarget},
+    targets::AddressPolicy,
+};
 
 pub const LOOPBACK: IpAddr = IpAddr::V4(Ipv4Addr::LOCALHOST);
 

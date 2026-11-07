@@ -83,6 +83,12 @@ fixture_test! {
             "siteId": HOME_SITE, "name": "pve-02", "host": "pve-02.home.lan", "kind": "server",
             "os": "other", "tags": [], "defaultCheck": true,
             "ssh": { "enabled": true, "port": 22, "username": "operator", "signIn": "password" },
+            "rdp": { "enabled": false, "port": 3389, "username": "", "domain": null,
+                "security": "nla", "ignoreCertificate": false, "resizeMethod": "display_update",
+                "audioOut": true, "microphone": false, "sharedDrive": false },
+            "vnc": { "enabled": false, "port": 5900, "username": null },
+            "macAddress": null, "metricsSource": "none",
+            "transfer": { "upload": true, "download": true, "copy": true, "paste": true },
         }));
     }
 

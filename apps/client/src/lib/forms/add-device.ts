@@ -1,6 +1,13 @@
 import type { HubError, HubResult } from '$lib/hub/error';
-import type { CreateCheckInput, CreateDeviceInput, SshCredentialInput } from '$lib/hub/generated/graphql';
+import type {
+  CreateCheckInput,
+  CreateDeviceInput,
+  PasswordCredentialInput,
+  SshCredentialInput,
+} from '$lib/hub/generated/graphql';
+import type { StoredCredential } from '$lib/sessions/api';
 import { createInput, credentialInput, tcpDefaultCheckPort } from './device/input';
+import { rdpCredentialInput, vncCredentialInput } from './device/remote/input';
 import { siteFieldErrors, type SitePlacement } from './device/site';
 import type { DeviceFormValues } from './device/values';
 
@@ -10,6 +17,9 @@ export interface AddDeviceApi {
   createSite: (name: string, subnet: string) => Promise<HubResult<{ readonly id: string }>>;
   createDevice: (input: CreateDeviceInput) => Promise<HubResult<{ readonly id: string }>>;
   setSshCredential: (deviceId: string, credential: SshCredentialInput) => Promise<HubResult<unknown>>;
+  /** DEV-011; the route passes the sessions client's `setCredential`, whose errors never quote the password (LOG-007). */
+  setRdpCredential: (deviceId: string, credential: PasswordCredentialInput) => Promise<HubResult<StoredCredential>>;
+  setVncCredential: (deviceId: string, credential: PasswordCredentialInput) => Promise<HubResult<StoredCredential>>;
   createCheck: (input: CreateCheckInput) => Promise<HubResult<unknown>>;
 }
 
@@ -54,8 +64,18 @@ export async function addDevice(
   const port = tcpDefaultCheckPort(values);
   // A failed check does not undo the device; the Checks tab shows it has none (R-063).
   if (port !== null) await api.createCheck({ deviceId: id, name: 'SSH port', config: { tcp: { port, timeoutMs: 5000 } } });
-  const credential = credentialInput(values);
-  if (credential === null) return { ok: true, value: { id, credentialError: null } };
-  const stored = await api.setSshCredential(id, credential);
-  return { ok: true, value: { id, credentialError: stored.ok ? null : stored.error } };
+  return { ok: true, value: { id, credentialError: await storeCredentials(id, values, api) } };
+}
+
+/** Stores each typed credential and returns the first error. */
+async function storeCredentials(id: string, values: DeviceFormValues, api: AddDeviceApi): Promise<HubError | null> {
+  const ssh = credentialInput(values);
+  const rdp = rdpCredentialInput(values);
+  const vnc = vncCredentialInput(values);
+  const results: HubResult<unknown>[] = [];
+  if (ssh !== null) results.push(await api.setSshCredential(id, ssh));
+  if (rdp !== null) results.push(await api.setRdpCredential(id, rdp));
+  if (vnc !== null) results.push(await api.setVncCredential(id, vnc));
+  for (const result of results) if (!result.ok) return result.error;
+  return null;
 }

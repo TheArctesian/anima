@@ -23,7 +23,7 @@ use crate::{
     credentials,
     devices::{self, Device},
     sessions::{
-        self, PendingTicket,
+        self, PendingTicket, Protocol,
         end::Cause,
         ssh::{self, Observer, SshError, Target},
     },
@@ -97,7 +97,8 @@ impl NotOpened {
             Self::Unresolved => "The device's host name does not resolve.",
             Self::RefusedTarget => {
                 "The device's host resolves to a loopback, link-local, multicast or unspecified \
-                 address, which the hub must not reach."
+                 address, or to one in a network the hub refuses (ANIMA_PROBE_DENY), which the \
+                 hub must not reach."
             }
             Self::Unreachable => "The hub could not reach the device's SSH port.",
             Self::Timeout => "The device did not open the SSH session in time.",
@@ -123,7 +124,8 @@ impl From<SshError> for NotOpened {
     }
 }
 
-/// Opens the device side of the ticket's session within `terminal.timing.opening`. Safe to
+/// Opens the device side of the ticket's session within its opening limit
+/// ([`Timing::opening_of`](super::route::Timing::opening_of)). Safe to
 /// drop at any await: dropping the connection's handle ends it, and the credential leaves the
 /// hub only in the sign-in, after the key matched (SEC-002).
 ///
@@ -133,7 +135,7 @@ pub(super) async fn open(
     terminal: &Terminal,
     ticket: &PendingTicket,
 ) -> Result<Opening, NotOpened> {
-    timeout(terminal.timing.opening, opened(terminal, ticket))
+    timeout(terminal.timing.opening_of(ticket), opened(terminal, ticket))
         .await
         .map_err(|_| NotOpened::Timeout)?
 }
@@ -158,7 +160,11 @@ async fn opened(terminal: &Terminal, ticket: &PendingTicket) -> Result<Opening, 
         port: device.ssh.port,
         rule: terminal.live.target_rule(),
     };
-    let stream = ssh::connect(target).await?;
+    let stream = if ticket.wake_sent {
+        ssh::connect_waking(target, terminal.timing.reconnect).await?
+    } else {
+        ssh::connect(target).await?
+    };
     let (observer, seen) = Observer::expecting(Some(accepted.clone()));
     let connected = client::connect_stream(config(), stream, observer).await;
     let presented = seen.await.map_err(|_| NotOpened::NoKeyExchange)?;
@@ -194,7 +200,7 @@ async fn sign_in(
     drop(secret);
     match signed_in {
         Ok(()) => Ok(None),
-        Err(SshError::AuthFailed) => Ok(Some(Cause::AuthFailed.message())),
+        Err(SshError::AuthFailed) => Ok(Some(Cause::AuthFailed.message().of(Protocol::Ssh))),
         Err(SshError::UnreadableKey) => Ok(Some(UNREADABLE_KEY)),
         Err(_) => Err(NotOpened::Lost),
     }

@@ -20,7 +20,7 @@ use super::{
 };
 
 const START: &str = "mutation($input: StartSessionInput!) { startSession(input: $input) { \
-                     sessionId token tunnelPath expiresAt } }";
+                     sessionId token tunnelPath expiresAt wakeSent } }";
 
 const END: &str = "mutation($id: ID!) { endSession(id: $id) { id deviceName operatorName \
                    startedAt endedAt endReason } }";
@@ -32,7 +32,12 @@ pub fn display() -> Value {
 
 /// `startSession` for `device` with `display`, from the K6 operator.
 pub fn start_request(device: &str, display: &Value) -> Request {
-    let input = json!({ "deviceId": device, "protocol": "SSH", "display": display });
+    protocol_start_request(device, "SSH", display)
+}
+
+/// `startSession` for `device` over the K1 `protocol` with `display`, from the K6 operator.
+pub fn protocol_start_request(device: &str, protocol: &str, display: &Value) -> Request {
+    let input = json!({ "deviceId": device, "protocol": protocol, "display": display });
     signed_in_until(START, 24).variables(Variables::from_json(json!({ "input": input })))
 }
 

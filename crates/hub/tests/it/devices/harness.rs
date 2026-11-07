@@ -14,8 +14,10 @@ use anima_hub::{
     clock::{Clock, FixedClock},
     credentials::Vault,
     devices::graphql::{
-        Mutation, Query, checks_loader, credential_loader, devices_by_site_loader,
-        resolved_ip_loader, site_loader, status_loader, uptime_loader,
+        Mutation, Query, checks_loader, credential_loader, device_loader, devices_by_site_loader,
+        gpus_loader, rdp_credential_loader, readings_loader, resolved_ip_loader, site_loader,
+        status_loader, uptime_loader, vnc_credential_loader, web_interface_suggestions_loader,
+        web_interfaces_loader,
     },
     events::{Bus, ClientAddr, Operator},
     ids::OperatorId,
@@ -81,10 +83,17 @@ fn builder(
         .data(site_loader(pool.clone()))
         .data(devices_by_site_loader(pool.clone()))
         .data(credential_loader(pool.clone()))
+        .data(rdp_credential_loader(pool.clone()))
+        .data(vnc_credential_loader(pool.clone()))
+        .data(device_loader(pool.clone()))
         .data(status_loader(pool.clone(), Arc::clone(&clock)))
         .data(uptime_loader(pool.clone(), Arc::clone(&clock)))
         .data(checks_loader(pool.clone()))
         .data(resolved_ip_loader(pool.clone()))
+        .data(readings_loader(pool.clone(), Arc::clone(&clock)))
+        .data(gpus_loader(pool.clone()))
+        .data(web_interfaces_loader(pool.clone()))
+        .data(web_interface_suggestions_loader(pool.clone()))
         .data(check_status_loader(pool.clone(), Arc::clone(&clock)))
         .data(last_heartbeat_loader(pool.clone()))
         .data(check_uptime_loader(pool.clone(), Arc::clone(&clock)))

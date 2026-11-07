@@ -13,7 +13,7 @@ fn key_file(contents: &[u8]) -> tempfile::NamedTempFile {
 
 #[test]
 fn sec_004_key_id_is_pinned_for_a_fixed_key() {
-    let sealed = vault_from(test_key()).seal(&secret("s"), CONTEXT);
+    let sealed = vault_from(test_key()).seal(&secret("s"), CONTEXT).unwrap();
     assert_eq!(sealed.key_id(), "2407973bf9f2a329");
 }
 
@@ -27,7 +27,7 @@ fn sec_004_key_from_file() {
     ] {
         let file = key_file(contents.as_bytes());
         let from_file = Vault::from_key_file(file.path()).unwrap();
-        let sealed = from_file.seal(&secret("s"), CONTEXT);
+        let sealed = from_file.seal(&secret("s"), CONTEXT).unwrap();
         assert_eq!(sealed.key_id(), "2407973bf9f2a329");
         assert_eq!(
             vault_from(test_key())

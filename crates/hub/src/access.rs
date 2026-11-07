@@ -83,6 +83,9 @@ pub enum Error {
     /// right; the process log gets the fault.
     #[error("The username or password is wrong.")]
     TotpSecret(credentials::Error),
+    /// A new TOTP secret could not be sealed for a reason other than the random source.
+    #[error("Something went wrong on the hub.")]
+    TotpSeal(credentials::Error),
 }
 
 impl From<sqlx::Error> for Error {
@@ -118,6 +121,7 @@ impl Error {
             | Self::Hash(_)
             | Self::Task(_)
             | Self::Random(_)
+            | Self::TotpSeal(_)
             | Self::Unavailable => "INTERNAL",
         }
     }
@@ -139,6 +143,7 @@ impl Error {
             Self::Random(_) => Some("random_source"),
             Self::Unavailable => Some("missing_context"),
             Self::TotpSecret(_) => Some("totp_secret"),
+            Self::TotpSeal(_) => Some("totp_seal"),
         }
     }
 
@@ -182,7 +187,7 @@ impl Error {
             Self::Hash(error) => Some(Box::new(error)),
             Self::Task(error) => Some(Box::new(error)),
             Self::Random(error) => Some(Box::new(error)),
-            Self::TotpSecret(error) => Some(Box::new(error)),
+            Self::TotpSecret(error) | Self::TotpSeal(error) => Some(Box::new(error)),
             Self::Unauthenticated
             | Self::WrongCredentials
             | Self::ReadOnly
@@ -282,7 +287,12 @@ pub async fn enrol_totp(db: &PgPool, vault: &Vault, username: &str) -> Result<En
     let account = store::account_by_username(&mut *tx, username)
         .await?
         .ok_or(UNKNOWN_OPERATOR)?;
-    let sealed = vault.seal(&secret, totp::context(account.id).as_bytes());
+    let sealed = vault
+        .seal(&secret, totp::context(account.id).as_bytes())
+        .map_err(|error| match error {
+            credentials::Error::Random(source) => Error::Random(source),
+            other => Error::TotpSeal(other),
+        })?;
     store::set_totp(&mut *tx, account.id, Some(&sealed.to_bytes())).await?;
     // Row first, tokens second, as in `replace_operator` above (D-9).
     store::delete_operator_tokens(&mut tx, account.id).await?;

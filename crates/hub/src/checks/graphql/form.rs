@@ -1,20 +1,26 @@
 //! Turns the parsed check inputs into domain values and checks the range of every number.
-//! Pure: the new push token comes in as a parameter. Errors name the field, never its value
-//! (LOG-007).
+//! Pure: the source of a new push token comes in as a parameter, and is called only for a
+//! push configuration once the whole input is valid, so a failed draw never hides a field
+//! error (CQ-021). Errors name the field, never its value (LOG-007).
+
+mod http;
+mod snmp;
+#[cfg(test)]
+mod tests;
 
 use std::collections::HashSet;
 
 use async_graphql::ID;
 
 use super::input::{
-    AuthShape, ConfigShape, CreateShape, DnsShape, HttpShape, IcmpShape, TcpShape, TlsShape,
-    UpdateShape,
+    ConfigShape, CreateShape, DnsShape, DockerShape, IcmpShape, SystemdShape, TailscalePingShape,
+    TcpShape, TlsShape, UpdateShape,
 };
 use super::settings::RawSettings;
 use crate::{
     checks::{
-        CheckChange, CheckSettings, Definition, FieldError, NewCheck, PushToken,
-        config::{CheckConfig, HttpCredentials, HttpInput, StatusRange, is_secret_header},
+        CheckChange, CheckSettings, Definition, Error, FieldError, NewCheck, PushToken,
+        config::CheckConfig,
     },
     ids::{CheckId, DeviceId},
 };
@@ -60,60 +66,6 @@ pub(super) fn keep<T>(result: Result<T, FieldError>, errors: &mut Vec<FieldError
     result.map_err(|error| errors.push(error)).ok()
 }
 
-fn http(shape: HttpShape) -> Result<ConfigForm, FieldError> {
-    let mut sealed = false;
-    let mut headers = Vec::new();
-    for header in shape.headers.unwrap_or_default() {
-        let header = header.0;
-        sealed |= is_secret_header(&header.name) && !header.value.0.expose().is_empty();
-        headers.push((header.name, header.value.0));
-    }
-    let credentials = match shape.auth.map(|auth| auth.0) {
-        None => HttpCredentials::None,
-        Some(AuthShape::Basic(basic)) => {
-            let basic = basic.0;
-            sealed |= !basic.password.0.expose().is_empty();
-            HttpCredentials::Basic {
-                username: basic.username,
-                password: basic.password.0,
-            }
-        }
-        Some(AuthShape::BearerToken(token)) => {
-            sealed |= !token.0.expose().is_empty();
-            HttpCredentials::Bearer(token.0)
-        }
-    };
-    let ranges = shape.accepted_status.unwrap_or_default();
-    let accepted_status = ranges
-        .into_iter()
-        .map(|range| {
-            Ok(StatusRange {
-                from: number("acceptedStatus", range.from)?,
-                to: number("acceptedStatus", range.to)?,
-            })
-        })
-        .collect::<Result<_, FieldError>>()?;
-    let input = HttpInput {
-        url: shape.url,
-        method: shape.method.unwrap_or_default().into(),
-        headers,
-        body: shape.body,
-        max_redirects: or_default("maxRedirects", shape.max_redirects, 10)?,
-        accepted_status,
-        keyword: shape.keyword,
-        json_query: shape.json_query,
-        json_expected: shape.json_expected,
-        credentials,
-        verify_tls: shape.verify_tls.unwrap_or(true),
-        timeout_ms: or_default("timeoutMs", shape.timeout_ms, 10_000)?,
-    };
-    Ok(ConfigForm {
-        definition: Definition::Http(input),
-        children: None,
-        sealed,
-    })
-}
-
 fn icmp(shape: &IcmpShape) -> Result<ConfigForm, FieldError> {
     Ok(ConfigForm::plain(CheckConfig::Icmp {
         timeout_ms: or_default("timeoutMs", shape.timeout_ms, 2000)?,
@@ -132,6 +84,27 @@ fn tls(shape: TlsShape) -> Result<ConfigForm, FieldError> {
     Ok(ConfigForm::plain(CheckConfig::Tls {
         port: or_default("port", shape.port, 443)?,
         server_name: shape.server_name,
+        timeout_ms: or_default("timeoutMs", shape.timeout_ms, 5000)?,
+    }))
+}
+
+fn docker(shape: DockerShape) -> Result<ConfigForm, FieldError> {
+    Ok(ConfigForm::plain(CheckConfig::Docker {
+        container: shape.container,
+        timeout_ms: or_default("timeoutMs", shape.timeout_ms, 10_000)?,
+    }))
+}
+
+fn systemd(shape: SystemdShape) -> Result<ConfigForm, FieldError> {
+    Ok(ConfigForm::plain(CheckConfig::Systemd {
+        unit: shape.unit,
+        timeout_ms: or_default("timeoutMs", shape.timeout_ms, 10_000)?,
+    }))
+}
+
+fn tailscale_ping(shape: TailscalePingShape) -> Result<ConfigForm, FieldError> {
+    Ok(ConfigForm::plain(CheckConfig::TailscalePing {
+        target: shape.target,
         timeout_ms: or_default("timeoutMs", shape.timeout_ms, 5000)?,
     }))
 }
@@ -167,26 +140,51 @@ fn children(ids: &[ID]) -> Result<Vec<CheckId>, FieldError> {
     Ok(parsed)
 }
 
-/// The configuration input as domain values. `token` is used only for a push configuration.
-pub(super) fn config(shape: ConfigShape, token: PushToken) -> Result<ConfigForm, FieldError> {
-    match shape {
+/// A valid configuration input: its form, or a push check whose token is not drawn yet.
+#[expect(
+    clippy::large_enum_variant,
+    reason = "a draft lives on the stack only until `finish` moves the form out"
+)]
+enum Draft {
+    Ready(ConfigForm),
+    Push,
+}
+
+impl Draft {
+    /// The form, drawing the token from `token` only for a push check.
+    fn finish(self, token: impl FnOnce() -> Result<PushToken, Error>) -> Result<ConfigForm, Error> {
+        Ok(match self {
+            Self::Ready(form) => form,
+            Self::Push => ConfigForm {
+                definition: Definition::Push(token()?),
+                children: None,
+                sealed: false,
+            },
+        })
+    }
+}
+
+/// The configuration input as domain values, a push check still without its token.
+fn config(shape: ConfigShape) -> Result<Draft, FieldError> {
+    let form = match shape {
+        ConfigShape::Push(true) => return Ok(Draft::Push),
         ConfigShape::Icmp(shape) => icmp(&shape),
         ConfigShape::Tcp(shape) => tcp(&shape),
         ConfigShape::Tls(shape) => tls(shape),
-        ConfigShape::Http(shape) => http(shape.0),
+        ConfigShape::Http(shape) => http::http(shape.0),
+        ConfigShape::Snmp(shape) => snmp::snmp(shape.0),
         ConfigShape::Dns(shape) => Ok(dns(shape)),
-        ConfigShape::Push(true) => Ok(ConfigForm {
-            definition: Definition::Push(token),
-            children: None,
-            sealed: false,
-        }),
+        ConfigShape::Docker(shape) => docker(shape),
+        ConfigShape::Systemd(shape) => systemd(shape),
+        ConfigShape::TailscalePing(shape) => tailscale_ping(shape),
         ConfigShape::Push(false) => Err(FieldError::new("config", "Send push: true.")),
         ConfigShape::Group(shape) => Ok(ConfigForm {
             definition: Definition::Config(CheckConfig::Group),
             children: Some(children(&shape.child_ids)?),
             sealed: false,
         }),
-    }
+    };
+    form.map(Draft::Ready)
 }
 
 /// A check to add, with what the mutation does besides the insert.
@@ -197,14 +195,21 @@ pub(super) struct CreateForm {
 }
 
 /// The create input as domain values; every field in error is reported.
-pub(super) fn create(input: CreateShape, token: PushToken) -> Result<CreateForm, Vec<FieldError>> {
+///
+/// # Errors
+/// `Validation` with every field in error; the error of `token` when a push check's token
+/// cannot be drawn.
+pub(super) fn create(
+    input: CreateShape,
+    token: impl FnOnce() -> Result<PushToken, Error>,
+) -> Result<CreateForm, Error> {
     let mut errors = Vec::new();
     let device = keep(id::<DeviceId>("deviceId", &input.device_id), &mut errors);
     let parent = input
         .parent_id
         .as_ref()
         .and_then(|parent| keep(id::<CheckId>("parentId", parent), &mut errors));
-    let config = keep(config(input.config.0, token), &mut errors);
+    let config = keep(config(input.config.0), &mut errors);
     let raw = RawSettings {
         interval_seconds: input.interval_seconds,
         retries: input.retries,
@@ -213,8 +218,9 @@ pub(super) fn create(input: CreateShape, token: PushToken) -> Result<CreateForm,
     };
     let given = raw.convert(&mut errors);
     let (Some(device), Some(config), true) = (device, config, errors.is_empty()) else {
-        return Err(errors);
+        return Err(Error::Validation(errors));
     };
+    let config = config.finish(token)?;
     let base = CheckSettings::default();
     let settings = CheckSettings {
         interval_seconds: given.interval_seconds.unwrap_or(base.interval_seconds),
@@ -281,12 +287,19 @@ fn parent(
 }
 
 /// The update input as domain values; every field in error is reported.
-pub(super) fn update(input: UpdateShape, token: PushToken) -> Result<UpdateForm, Vec<FieldError>> {
+///
+/// # Errors
+/// `Validation` with every field in error; the error of `token` when a new push
+/// configuration's token cannot be drawn.
+pub(super) fn update(
+    input: UpdateShape,
+    token: impl FnOnce() -> Result<PushToken, Error>,
+) -> Result<UpdateForm, Error> {
     let mut errors = Vec::new();
     let parent = parent(&input.parent_id, &mut errors);
     let config = input
         .config
-        .and_then(|shape| keep(config(shape.0, token), &mut errors));
+        .and_then(|shape| keep(config(shape.0), &mut errors));
     let raw = RawSettings {
         interval_seconds: input.interval_seconds,
         retries: input.retries,
@@ -295,8 +308,9 @@ pub(super) fn update(input: UpdateShape, token: PushToken) -> Result<UpdateForm,
     };
     let given = raw.convert(&mut errors);
     if !errors.is_empty() {
-        return Err(errors);
+        return Err(Error::Validation(errors));
     }
+    let config = config.map(|draft| draft.finish(token)).transpose()?;
     let (definition, children, sealed) = match config {
         Some(form) => (Some(form.definition), form.children, form.sealed),
         None => (None, None, false),

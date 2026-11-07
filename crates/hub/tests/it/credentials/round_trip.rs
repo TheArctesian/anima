@@ -1,11 +1,13 @@
 //! What a store writes and what a load gives back (SEC-003).
 
-use anima_hub::credentials::{SshSecret, clear_ssh, has_ssh, load_ssh};
+use anima_hub::credentials::{
+    PasswordKind, SshSecret, clear_ssh, has_ssh, load_password, load_ssh,
+};
 use sqlx::PgPool;
 
 use super::{
-    DOCKER_HOST, KEY, PASSPHRASE, PASSWORD, PVE_01, device, kinds, password, private_key, secret,
-    store, vault,
+    DOCKER_HOST, KEY, PASSPHRASE, PASSWORD, PVE_01, RDP_PASSWORD, VNC_PASSWORD, device, kinds,
+    password, private_key, secret, store, store_pw, vault,
 };
 
 #[sqlx::test(
@@ -27,7 +29,7 @@ async fn sec_003_stored_row_holds_no_plaintext(pool: PgPool) {
     assert_eq!(nonce.len(), 24);
     assert_ne!(ciphertext, plaintext);
     assert!(!ciphertext.windows(plaintext.len()).any(|w| w == plaintext));
-    assert_eq!(key_id, vault.seal(&secret(""), b"").key_id());
+    assert_eq!(key_id, vault.seal(&secret(""), b"").unwrap().key_id());
 }
 
 #[sqlx::test(
@@ -112,4 +114,50 @@ async fn clear_ssh_removes_the_secret_once(pool: PgPool) {
     assert!(!clear_ssh(&mut conn, id).await.unwrap());
     assert!(!has_ssh(&pool, id).await.unwrap());
     assert!(load_ssh(&pool, &vault, id).await.unwrap().is_none());
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn sec_003_each_password_kind_round_trips_and_is_replaced(pool: PgPool) {
+    let (vault, id) = (vault(1), device(PVE_01));
+    for (kind, text) in [
+        (PasswordKind::Rdp, RDP_PASSWORD),
+        (PasswordKind::Vnc, VNC_PASSWORD),
+    ] {
+        assert!(
+            load_password(&pool, &vault, id, kind)
+                .await
+                .unwrap()
+                .is_none()
+        );
+        store_pw(&pool, id, kind, "first").await.unwrap();
+        store_pw(&pool, id, kind, text).await.unwrap();
+        let loaded = load_password(&pool, &vault, id, kind).await.unwrap();
+        assert!(
+            loaded.is_some_and(|p| p.expose() == text.as_bytes()),
+            "{kind:?}"
+        );
+    }
+    assert_eq!(kinds(&pool, id).await, ["rdp_password", "vnc_password"]);
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn sec_003_stored_password_row_holds_no_plaintext(pool: PgPool) {
+    let id = device(PVE_01);
+    store_pw(&pool, id, PasswordKind::Rdp, RDP_PASSWORD)
+        .await
+        .unwrap();
+    let ciphertext: Vec<u8> =
+        sqlx::query_scalar("SELECT ciphertext FROM credentials.secrets WHERE device_id = $1")
+            .bind(id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    let plaintext = RDP_PASSWORD.as_bytes();
+    assert!(!ciphertext.windows(plaintext.len()).any(|w| w == plaintext));
 }

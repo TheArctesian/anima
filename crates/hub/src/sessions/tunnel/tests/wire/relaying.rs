@@ -10,9 +10,11 @@ use serde_json::json;
 use sqlx::PgPool;
 use tokio::time::{Instant, timeout};
 
+use crate::sessions::Protocol;
+
 use super::{
-    bench::{PASSWORD, Setup, bench},
-    fake_guacd::{ARGS_1_5_5, ARGS_1_6_0, Act, CONNECTION_ID, Script, connect_values, fake_guacd},
+    bench::{PASSWORD, Setup, VNC_PASSWORD, bench},
+    fake_guacd::{Act, CONNECTION_ID, RDP_ARGS, Script, VNC_ARGS, connect_values, fake_guacd},
     heard, opened,
     records::{ended, stored_text},
     socket::{decoded_as_utf16, open},
@@ -26,9 +28,9 @@ const OPCODES: [&str; 7] = [
     migrations = "./migrations",
     fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
-async fn gw_010_gw_011_gw_014_ra_008_one_full_ssh_session(pool: PgPool) {
+async fn gw_010_gw_011_gw_014_ra_008_one_full_rdp_session(pool: PgPool) {
     let script = Script::Serve {
-        args: ARGS_1_6_0,
+        args: RDP_ARGS,
         with_ready: "4.sync,1.7;",
     };
     let mut guacd = fake_guacd(script).await;
@@ -45,19 +47,16 @@ async fn gw_010_gw_011_gw_014_ra_008_one_full_ssh_session(pool: PgPool) {
     assert_eq!(handshake[0].args, ["1280", "800", "96"]);
     assert_eq!(handshake[4].args, ["Europe/Berlin"]);
     assert_eq!(handshake[5].args, ["operator"]);
-    let values = connect_values(ARGS_1_6_0, &handshake[6]);
-    let port = bench.ssh_port;
+    let values = connect_values(RDP_ARGS, &handshake[6]);
     assert_eq!(values["hostname"], "127.0.0.1");
-    assert_eq!(values["port"], port.to_string());
-    assert_eq!(values["username"], "operator");
+    assert_eq!(values["port"], bench.rdp.port.to_string());
+    assert_eq!(values["username"], "ops");
     assert_eq!(values["password"], PASSWORD);
-    let key = bench.host_key.to_base64();
     assert_eq!(
-        values["host-key"],
-        format!("[127.0.0.1]:{port} ssh-ed25519 {key}"),
-        "pinned to the key the operator accepted (SEC-007)"
+        values["cert-fingerprints"],
+        format!("sha256:{}", bench.accepted),
+        "pinned to the certificate the operator accepted (SEC-007)"
     );
-    assert_eq!(values["private-key"], "");
 
     // Input reaches guacd; the internal ping comes back and does not.
     client.send("3.key,5.65307,1.1;").await;
@@ -111,23 +110,20 @@ async fn gw_010_gw_011_gw_014_ra_008_one_full_ssh_session(pool: PgPool) {
     migrations = "./migrations",
     fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
-async fn gw_010_guacd_1_5_5_args_get_one_value_each(pool: PgPool) {
+async fn gw_010_vnc_args_get_one_value_each(pool: PgPool) {
     let script = Script::Serve {
-        args: ARGS_1_5_5,
+        args: VNC_ARGS,
         with_ready: "",
     };
     let guacd = fake_guacd(script).await;
-    let bench = bench(&pool, &guacd.address, Setup::default()).await;
+    let bench = bench(&pool, &guacd.address, Setup::protocol(Protocol::Vnc)).await;
     let mut client = open(&bench.url).await;
     opened(&mut client).await;
     let handshake = guacd.handshake.await.unwrap();
-    let values = connect_values(ARGS_1_5_5, &handshake[6]);
+    let values = connect_values(VNC_ARGS, &handshake[6]);
     assert_eq!(values["hostname"], "127.0.0.1");
-    assert_eq!(values["password"], PASSWORD);
-    assert_eq!(
-        values["timezone"], "",
-        "the timezone instruction sets it (H-9)"
-    );
+    assert_eq!(values["password"], VNC_PASSWORD);
+    assert_eq!(values["recording-path"], "");
 }
 
 #[sqlx::test(
@@ -168,7 +164,7 @@ async fn k4_4_guacd_traffic_holds_the_nop_back(pool: PgPool) {
 )]
 async fn gw_011_r_018_an_out_of_bounds_size_is_dropped_not_forwarded(pool: PgPool) {
     let script = Script::Serve {
-        args: ARGS_1_6_0,
+        args: RDP_ARGS,
         with_ready: "",
     };
     let mut guacd = fake_guacd(script).await;

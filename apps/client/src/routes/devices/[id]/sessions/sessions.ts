@@ -1,5 +1,5 @@
 import { timeLabel } from '$lib/events/panel/view';
-import type { SessionEndReason } from '$lib/hub/generated/graphql';
+import type { Protocol, SessionEndReason } from '$lib/hub/generated/graphql';
 import type { SessionPage } from '$lib/sessions/api';
 
 /** One past or live session of the device (Section 6.7). */
@@ -11,6 +11,7 @@ export interface SessionRow {
   readonly start: string;
   readonly end: string;
   readonly duration: string;
+  readonly protocol: string;
   readonly operator: string;
   readonly reason: string;
 }
@@ -24,7 +25,11 @@ const REASONS: Record<SessionEndReason, string> = {
   PROTOCOL_ERROR: 'Protocol error',
   TIMEOUT: 'Timed out',
   HUB_SHUTDOWN: 'Hub stopped',
+  SERVER_CERTIFICATE_MISMATCH: 'Certificate changed',
 };
+
+/** RA-030: VNC is named "VNC"; the hub's protocol names are the operator's names. */
+const PROTOCOLS: Record<Protocol, string> = { SSH: 'SSH', RDP: 'RDP', VNC: 'VNC' };
 
 const MINUTE_S = 60;
 const HOUR_S = 3600;
@@ -49,6 +54,7 @@ function row(session: DeviceSession, now: Date): SessionRow {
     start: timeLabel(session.startedAt, now),
     end: live ? 'Live' : timeLabel(session.endedAt ?? '', now),
     duration: Number.isNaN(started) || Number.isNaN(ended) ? '—' : durationText((ended - started) / 1000),
+    protocol: PROTOCOLS[session.protocol],
     operator: session.operatorName,
     reason: session.endReason == null ? '—' : REASONS[session.endReason],
   };

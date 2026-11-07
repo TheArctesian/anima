@@ -5,14 +5,18 @@ use async_graphql::{ID, InputObject, Result};
 
 use crate::{
     devices::{
-        FieldError, OperatingSystem, SshAuth,
+        FieldError, MetricsSource, OperatingSystem, SshAuth,
         model::{DeviceChangeInput, NewDeviceInput, SshInput},
+        remote::RemoteForm,
         rules::DEFAULT_KIND,
     },
     ids::{DeviceId, SiteId},
 };
 
-use super::error::invalid;
+use super::{
+    error::invalid,
+    remote::{RdpSettingsInput, TransferPolicyInput, VncSettingsInput},
+};
 
 #[derive(InputObject)]
 #[graphql(name = "SshSettingsInput")]
@@ -56,6 +60,12 @@ pub(super) struct CreateDeviceInput {
     #[graphql(default_with = "Some(Vec::<String>::new())")]
     tags: Option<Vec<String>>,
     ssh: Option<SshSettingsInput>,
+    rdp: Option<RdpSettingsInput>,
+    vnc: Option<VncSettingsInput>,
+    mac_address: Option<String>,
+    #[graphql(default_with = "Some(MetricsSource::None)")]
+    metrics_source: Option<MetricsSource>,
+    transfer: Option<TransferPolicyInput>,
     /// When true (the default), the hub adds one ICMP check (spec 6.2).
     #[graphql(default_with = "Some(true)")]
     add_default_check: Option<bool>,
@@ -71,6 +81,12 @@ pub(super) struct UpdateDeviceInput {
     tags: Option<Vec<String>>,
     maintenance: Option<bool>,
     ssh: Option<SshSettingsInput>,
+    rdp: Option<RdpSettingsInput>,
+    vnc: Option<VncSettingsInput>,
+    /// An empty string clears the address.
+    mac_address: Option<String>,
+    metrics_source: Option<MetricsSource>,
+    transfer: Option<TransferPolicyInput>,
 }
 
 fn site_id(id: &ID) -> Result<SiteId, FieldError> {
@@ -105,6 +121,13 @@ impl CreateDeviceInput {
             os: self.os.unwrap_or(OperatingSystem::Other),
             tags: self.tags.unwrap_or_default(),
             ssh: self.ssh.map(SshInput::from),
+            remote: RemoteForm {
+                rdp: self.rdp.map(Into::into),
+                vnc: self.vnc.map(Into::into),
+                mac_address: self.mac_address,
+                metrics_source: self.metrics_source,
+                transfer: self.transfer.map(Into::into),
+            },
         };
         (form, bad_site)
     }
@@ -126,6 +149,13 @@ impl UpdateDeviceInput {
             tags: self.tags,
             maintenance: self.maintenance,
             ssh: self.ssh.map(SshInput::from),
+            remote: RemoteForm {
+                rdp: self.rdp.map(Into::into),
+                vnc: self.vnc.map(Into::into),
+                mac_address: self.mac_address,
+                metrics_source: self.metrics_source,
+                transfer: self.transfer.map(Into::into),
+            },
         };
         (form, bad_site)
     }

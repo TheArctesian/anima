@@ -12,10 +12,10 @@ function fakeClient() {
   return { sendKeyEvent, typed: { sendKeyEvent } as unknown as SessionTunnel['client'] };
 }
 
-describe('Guacamole key routing (RA-006, D-8; kept for RDP and VNC)', () => {
+describe('Guacamole key routing (RA-006, D-8)', () => {
   it('D-8: a key the filter passes is sent as a press and then a release', () => {
     const { sendKeyEvent, typed } = fakeClient();
-    const route = keyRoute(typed, keyFilter());
+    const route = keyRoute(typed, keyFilter({ paste: true }));
     expect(route.down(0x61)).toBe(false);
     route.up(0x61);
     expect(sendKeyEvent.mock.calls).toEqual([
@@ -24,24 +24,26 @@ describe('Guacamole key routing (RA-006, D-8; kept for RDP and VNC)', () => {
     ]);
   });
 
-  it('D-9: a key held with Command stays with the browser, and its release is not sent', () => {
+  it('a key held with Command stays with the browser, and its release is not sent', () => {
     const { sendKeyEvent, typed } = fakeClient();
-    const route = keyRoute(typed, keyFilter());
+    const route = keyRoute(typed, keyFilter({ paste: true }));
     expect(route.down(0xffe7)).toBe(true);
     expect(route.down(0x76)).toBe(true);
     route.up(0x76);
     expect(sendKeyEvent).not.toHaveBeenCalled();
   });
 
-  it('RA-006: a combination is sent as its presses in order and its releases in reverse', () => {
+  it('RA-006: Ctrl+Alt+Delete is sent as its presses in order and its releases in reverse', () => {
     const { sendKeyEvent, typed } = fakeClient();
-    const ctrlC = KEY_COMBINATIONS.find((entry) => entry.id === 'ctrl-c');
-    if (ctrlC === undefined) throw new Error('no Ctrl+C');
-    sendCombination(typed, ctrlC);
+    const combination = KEY_COMBINATIONS.find((entry) => entry.id === 'ctrl-alt-delete');
+    if (combination === undefined) throw new Error('no Ctrl+Alt+Delete');
+    sendCombination(typed, combination);
     expect(sendKeyEvent.mock.calls).toEqual([
       [1, 0xffe3],
-      [1, 0x63],
-      [0, 0x63],
+      [1, 0xffe9],
+      [1, 0xffff],
+      [0, 0xffff],
+      [0, 0xffe9],
       [0, 0xffe3],
     ]);
   });
@@ -58,7 +60,7 @@ afterEach(() => {
 });
 
 function connected() {
-  const opening = openTunnel({ origin: 'https://hub.anima.ing', ticket: { tunnelPath: '/tunnel', token: 'x'.repeat(40) }, WebSocket: FAKE_TUNNEL_SOCKET });
+  const opening = openTunnel({ origin: 'https://hub.anima.ing', ticket: { tunnelPath: '/tunnel', token: 'x'.repeat(40) }, waking: false, WebSocket: FAKE_TUNNEL_SOCKET });
   if (!opening.ok) throw new Error('not opened');
   const socket = FakeTunnelSocket.latest();
   socket.open();
@@ -74,13 +76,13 @@ function press(target: EventTarget, type: 'keydown' | 'keyup', init: KeyboardEve
 }
 const enter = { key: 'Enter', code: 'Enter', keyCode: 13 };
 
-describe('the retained Guacamole pointer and keyboard (D-8, RA-003)', () => {
+describe('the Guacamole pointer and keyboard (D-8)', () => {
   it('D-8: the pane keyboard hears its own element only, and stops after unbind, releasing a held key once', () => {
     const { tunnel, sent } = connected();
     const pane = document.createElement('div');
     document.body.append(pane);
     const keyboard = paneKeyboard(pane);
-    keyboard.bind(keyRoute(tunnel.client, keyFilter()));
+    keyboard.bind(keyRoute(tunnel.client, keyFilter({ paste: true })));
     press(document.body, 'keydown', enter);
     expect(sent('key')).toEqual([]);
     press(pane, 'keydown', enter);
@@ -92,11 +94,11 @@ describe('the retained Guacamole pointer and keyboard (D-8, RA-003)', () => {
     ]);
   });
 
-  it('RA-003: the wheel on the display sends scroll button presses (guacd scroll-back)', () => {
+  it('the wheel on the display sends scroll button presses', () => {
     const { tunnel, sent } = connected();
     const host = document.createElement('div');
     document.body.append(host);
-    const stop = showDisplay(tunnel.client, 1)(host);
+    const stop = showDisplay(tunnel.client)(host);
     const element = host.firstElementChild;
     element?.dispatchEvent(new WheelEvent('wheel', { deltaY: 120, deltaMode: 0, bubbles: true, cancelable: true }));
     const masks = sent('mouse').map(([, , mask]) => Number(mask));
@@ -107,8 +109,43 @@ describe('the retained Guacamole pointer and keyboard (D-8, RA-003)', () => {
   });
 });
 
-describe('the retained Guacamole paste and focus (D-8, D-9, RA-003)', () => {
-  it('RA-003: pasted text goes as one text/plain clipboard stream, then guacd\'s paste keys; empty text sends nothing', () => {
+describe('forwardPointer (D-8)', () => {
+  function mouse(target: Element, type: string, x: number, y: number) {
+    target.dispatchEvent(new MouseEvent(type, { clientX: x, clientY: y, bubbles: true, cancelable: true }));
+  }
+
+  it('D-8: a pointer position is sent in remote pixels, undoing the display scale', () => {
+    const { tunnel, sent } = connected();
+    const host = document.createElement('div');
+    document.body.append(host);
+    tunnel.client.getDisplay().scale(0.5);
+    const stop = showDisplay(tunnel.client)(host);
+    const element = host.firstElementChild;
+    if (element === null) throw new Error('no display');
+    mouse(element, 'mousemove', 100, 50);
+    expect(sent('mouse').at(-1)?.slice(0, 2)).toEqual(['200', '100']);
+    if (typeof stop === 'function') stop();
+  });
+
+  it('D-8: once stopped, the pointer on the display sends nothing', () => {
+    const { tunnel, sent } = connected();
+    const host = document.createElement('div');
+    document.body.append(host);
+    const stop = showDisplay(tunnel.client)(host);
+    const element = host.firstElementChild;
+    if (element === null || typeof stop !== 'function') throw new Error('no display');
+    mouse(element, 'mousemove', 10, 10);
+    const before = sent('mouse').length;
+    expect(before).toBeGreaterThan(0);
+    stop();
+    mouse(element, 'mousemove', 20, 20);
+    mouse(element, 'mousedown', 20, 20);
+    expect(sent('mouse')).toHaveLength(before);
+  });
+});
+
+describe('the Guacamole paste and focus (D-8, RA-005)', () => {
+  it('RA-005: pasted text goes as one text/plain clipboard stream, then Ctrl+V; empty text sends nothing', () => {
     const { tunnel, sent } = connected();
     pasteText(tunnel.client, '', new Set());
     expect(sent('clipboard')).toEqual([]);
@@ -117,12 +154,12 @@ describe('the retained Guacamole paste and focus (D-8, D-9, RA-003)', () => {
     expect(sent('key').map(([keysym, pressed]) => [Number(pressed), Number(keysym)])).toEqual(PASTE_STROKES.map(([pressed, keysym]) => [pressed, keysym]));
   });
 
-  it('D-9: after Ctrl+Shift+V with Ctrl and Shift still held, the paste keys press and release only V', () => {
+  it('RA-005: after the operator\'s Ctrl+V with Ctrl still held, the paste keys press and release only V', () => {
     const { tunnel, sent } = connected();
     pasteText(tunnel.client, 'echo hi', new Set([0xffe3, 0xffe1]));
     expect(sent('key').map(([keysym, pressed]) => [Number(keysym), Number(pressed)])).toEqual([
-      [0x56, 1],
-      [0x56, 0],
+      [0x76, 1],
+      [0x76, 0],
     ]);
   });
 

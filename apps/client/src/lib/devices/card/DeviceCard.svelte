@@ -3,9 +3,16 @@
   import HeartbeatBar from '$lib/checks/HeartbeatBar.svelte';
   import { uptimeText, type Beat } from '$lib/checks/heartbeats';
   import type { CardDevice } from '$lib/devices/api';
+  import DeviceActions from '$lib/devices/actions/DeviceActions.svelte';
+  import WarningBadge from '$lib/devices/actions/WarningBadge.svelte';
+  import MetricBars from '$lib/metrics/bars/MetricBars.svelte';
   import { press } from '$lib/motion/roles/press';
   import { sharedItem } from '$lib/motion/shared/shared';
-  import { hostLine, offersSsh } from './card';
+  import type { SessionProtocol } from '$lib/sessions/tabs';
+  import type { WakeApi } from '$lib/sessions/wake/api';
+  import type { CardScreenSharing } from '$lib/devices/screen-sharing/setup';
+  import type { WebInterface } from '$lib/web-interfaces/api';
+  import { hostLine } from './card';
   import './geometry.css';
   import StatusEdge from './StatusEdge.svelte';
   import StatusPill from './StatusPill.svelte';
@@ -14,11 +21,16 @@
     device: CardDevice;
     /** The device's last heartbeats; `undefined` while they are not loaded, so no bar shows. */
     beats: readonly Beat[] | undefined;
-    /** The card's "SSH" button; the button is passed so the session tab can grow from it (WP-12 H-2). */
-    onConnect: (device: CardDevice, button: HTMLElement) => void;
+    /** The card's protocol buttons; the button is passed so the session tab can grow from it (WP-12 H-2, RA-030). */
+    onConnect: (device: CardDevice, protocol: SessionProtocol, button: HTMLElement) => void;
+    /** The card's Web button (WEB-003); the button is hidden while no route gives this. */
+    onOpenWeb?: (device: CardDevice, webInterface: WebInterface, button: HTMLElement) => void;
+    screenSharing?: CardScreenSharing;
+    /** The Wake button's call (RA-031); the button is hidden while no route gives this. */
+    wake?: WakeApi;
   }
 
-  const { device, beats, onConnect }: Props = $props();
+  const { device, beats, onConnect, onOpenWeb, wake, screenSharing }: Props = $props();
   const line = $derived(hostLine(device));
 </script>
 
@@ -37,26 +49,20 @@
         {device.name}
       </a>
     </h2>
-    <StatusPill status={device.status} deviceId={device.id} />
+    <span class="marks">
+      <WarningBadge warnings={device.accessWarnings} />
+      <StatusPill status={device.status} deviceId={device.id} />
+    </span>
   </header>
   <p class="host">
     <span title={line.host}>{line.host}</span>
     {#if line.ip !== null}<span class="ip">{line.ip}</span>{/if}
   </p>
   <p class="uptime"><span>Uptime, 24 h</span> <strong>{uptimeText(device.uptime)}</strong></p>
+  <MetricBars readings={device.readings ?? null} source={device.metricsSource} />
   <footer>
     {#if beats !== undefined}<HeartbeatBar {beats} />{/if}
-    {#if offersSsh(device)}
-      <button
-        type="button"
-        tabindex="0"
-        aria-label="SSH to {device.name}"
-        onclick={(event) => {
-          onConnect(device, event.currentTarget);
-        }}
-        {@attach press()}>SSH</button
-      >
-    {/if}
+    <DeviceActions {device} {onConnect} {onOpenWeb} {wake} {screenSharing} />
   </footer>
 </article>
 
@@ -67,7 +73,7 @@
     box-sizing: border-box;
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: repeat(3, auto) 1fr;
+    grid-template-rows: repeat(4, auto) 1fr;
     gap: var(--space-2);
     block-size: var(--device-card-block-size);
     padding: var(--space-4);
@@ -83,6 +89,13 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: var(--space-2);
+  }
+
+  .marks {
+    flex: none;
+    display: flex;
+    align-items: center;
     gap: var(--space-2);
   }
 
@@ -151,30 +164,7 @@
     gap: var(--space-2);
   }
 
-  button {
-    flex: none;
-    box-sizing: border-box;
-    min-block-size: var(--target-min-desktop);
-    padding: 0 var(--space-3);
-    border: var(--border-thin) solid var(--border);
-    border-radius: var(--radius-md);
-    background: var(--surface-raised);
-    color: var(--text);
-    font: inherit;
-    transition: background-color var(--duration-fast) var(--ease-enter);
-  }
-
-  button:hover {
-    background: var(--border);
-  }
-
-  button:active {
-    transition-duration: var(--duration-press);
-    background: var(--accent-tint);
-  }
-
-  a:focus-visible,
-  button:focus-visible {
+  a:focus-visible {
     outline: var(--border-focus) solid var(--accent);
     outline-offset: var(--border-focus);
   }

@@ -12,6 +12,7 @@ mod device;
 pub(super) mod error;
 mod filter;
 mod input;
+mod remote;
 mod site;
 mod ssh;
 mod standing;
@@ -24,10 +25,18 @@ use sqlx::{PgPool, Postgres, Transaction};
 use uuid::Uuid;
 
 pub use self::{
-    credential_input::SshCredential,
+    credential_input::{PasswordCredential, SshCredential},
     input::SshSettingsInput,
+    remote::{
+        RdpCredentialStored, RdpSettingsInput, TransferPolicyInput, VncCredentialStored,
+        VncSettingsInput,
+    },
     ssh::CredentialStored,
-    standing::{ChecksOf, ResolvedIpOf, StatusOf, UptimeOf},
+    standing::{
+        ChecksOf, GpusOf, ReadingsOf, ResolvedIpOf, StatusOf, SuggestionsOf, UptimeOf,
+        WebInterfacesOf, gpus_loader, readings_loader, web_interface_suggestions_loader,
+        web_interfaces_loader,
+    },
 };
 
 use self::{
@@ -35,11 +44,12 @@ use self::{
     error::{internal, invalid, schema_dependency, to_graphql},
     filter::{DeviceFilterInput, DeviceSort, list_args},
     input::{CreateDeviceInput, UpdateDeviceInput, checked, device_id},
+    remote::{DeviceRdp, DeviceVnc, clear_password, set_password, set_wake_relay},
     ssh::DeviceSsh,
     trail::Trail,
 };
 use super::{
-    DevicesBySite, Error, FieldError, SitesById,
+    DevicesById, DevicesBySite, Error, FieldError, SitesById,
     model::{Device, NewSiteInput, Site},
     rules::{validate_change, validate_new_device, validate_new_site},
     store,
@@ -48,7 +58,7 @@ use crate::{
     access::Authenticated,
     checks,
     clock::Clock,
-    credentials::clear_ssh,
+    credentials::{PasswordKind, clear_ssh},
     ids::{DeviceId, SiteId},
     scalars::Cidr,
 };
@@ -71,6 +81,26 @@ pub fn devices_by_site_loader(pool: PgPool) -> DataLoader<DevicesBySite> {
 #[must_use]
 pub fn credential_loader(pool: PgPool) -> DataLoader<CredentialStored> {
     DataLoader::new(CredentialStored(pool), tokio::spawn)
+}
+
+/// The loader behind `RdpSettings.credentialStored`: one query per batch of device ids, no
+/// cache.
+#[must_use]
+pub fn rdp_credential_loader(pool: PgPool) -> DataLoader<RdpCredentialStored> {
+    DataLoader::new(RdpCredentialStored(pool), tokio::spawn)
+}
+
+/// The loader behind `VncSettings.credentialStored`: one query per batch of device ids, no
+/// cache.
+#[must_use]
+pub fn vnc_credential_loader(pool: PgPool) -> DataLoader<VncCredentialStored> {
+    DataLoader::new(VncCredentialStored(pool), tokio::spawn)
+}
+
+/// The loader behind `Site.wakeRelay`: one query per batch of device ids, no cache.
+#[must_use]
+pub fn device_loader(pool: PgPool) -> DataLoader<DevicesById> {
+    DataLoader::new(DevicesById(pool), tokio::spawn)
 }
 
 /// The loader behind `Device.status`: one `checks::statuses` call per batch, judged at the
@@ -285,5 +315,54 @@ impl Mutation {
     #[graphql(guard = "Authenticated")]
     async fn clear_ssh_credential(&self, ctx: &Context<'_>, device_id: ID) -> Result<DeviceSsh> {
         credential::clear(ctx, &device_id).await
+    }
+
+    /// Sets or, with a null `deviceId`, clears the device that wakes the site's devices (D-7).
+    #[graphql(guard = "Authenticated")]
+    async fn set_site_wake_relay(
+        &self,
+        ctx: &Context<'_>,
+        site_id: ID,
+        device_id: Option<ID>,
+    ) -> Result<Site> {
+        set_wake_relay(ctx, &site_id, device_id.as_ref()).await
+    }
+
+    /// Seals and stores the device's RDP password, replacing any earlier one (DEV-011, SEC-003).
+    #[graphql(guard = "Authenticated")]
+    async fn set_rdp_credential(
+        &self,
+        ctx: &Context<'_>,
+        device_id: ID,
+        credential: PasswordCredential,
+    ) -> Result<DeviceRdp> {
+        let device = set_password(ctx, &device_id, credential, PasswordKind::Rdp).await?;
+        Ok(DeviceRdp::new(&device, Some(true)))
+    }
+
+    /// Deletes the device's RDP password.
+    #[graphql(guard = "Authenticated")]
+    async fn clear_rdp_credential(&self, ctx: &Context<'_>, device_id: ID) -> Result<DeviceRdp> {
+        let device = clear_password(ctx, &device_id, PasswordKind::Rdp).await?;
+        Ok(DeviceRdp::new(&device, Some(false)))
+    }
+
+    /// Seals and stores the device's VNC password, replacing any earlier one (DEV-011, SEC-003).
+    #[graphql(guard = "Authenticated")]
+    async fn set_vnc_credential(
+        &self,
+        ctx: &Context<'_>,
+        device_id: ID,
+        credential: PasswordCredential,
+    ) -> Result<DeviceVnc> {
+        let device = set_password(ctx, &device_id, credential, PasswordKind::Vnc).await?;
+        Ok(DeviceVnc::new(&device, Some(true)))
+    }
+
+    /// Deletes the device's VNC password.
+    #[graphql(guard = "Authenticated")]
+    async fn clear_vnc_credential(&self, ctx: &Context<'_>, device_id: ID) -> Result<DeviceVnc> {
+        let device = clear_password(ctx, &device_id, PasswordKind::Vnc).await?;
+        Ok(DeviceVnc::new(&device, Some(false)))
     }
 }

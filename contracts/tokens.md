@@ -1,6 +1,6 @@
 # K5 — Design token names
 
-Status: **frozen for Phase 1** (change only through a programme ruling, CON-001).
+Status: **frozen for Phase 2** (change only through a programme ruling, CON-001). Phase 2 additions are marked (Phase 2).
 
 WP-02 owns the token source (`design/tokens/`, W3C DTCG) and the build. Every other package uses **only the names below**. Values come from spec Sections 5.1, 5.2, 5.5, 5.6 and 5.7; WP-02 may tune a value, but a name change is a contract change.
 
@@ -24,6 +24,7 @@ Components use semantic or component names. Primitive names (`nord-*`) appear on
 | --- | --- |
 | Colour, primitive | `nord-0` … `nord-15` |
 | Colour, semantic | `bg`, `surface`, `surface-raised`, `border`, `text`, `text-muted`, `accent`, `accent-alt`, `accent-deep`, `info`, `status-up`, `status-down`, `status-degraded`, `status-warning`, `status-maintenance`, `status-unknown`, `scrim` (R-049) |
+| Colour, chart (Phase 2) | `chart-grid`, `chart-axis`, `chart-threshold` (the 85 % line, MET-004), `chart-series-1` … `chart-series-6` (Nord frost then aurora, so up to six GPUs or mounts differ; K5) |
 | Colour, tint | `accent-tint`, `status-up-tint`, `status-down-tint`, `status-degraded-tint`, `status-warning-tint`, `status-maintenance-tint`, `status-unknown-tint` |
 | Font family | `font-ui`, `font-mono`, `font-icon`, `font-ui-opendyslexic`, `font-mono-opendyslexic` (added by operator decision, 2026-11-05: the Settings font choice, UI-020) |
 | Font size | `text-xs`, `text-sm`, `text-md`, `text-lg`, `text-xl`, `text-2xl` |
@@ -44,6 +45,7 @@ Components use semantic or component names. Primitive names (`nord-*`) appear on
 | Spring | `spring-default`, `spring-snappy`, `spring-move`, `spring-momentum` |
 | Stagger | `stagger-list` |
 | Threshold | `threshold-drag`, `threshold-loading`, `threshold-loading-min` |
+| Opacity | `opacity-disabled`, `opacity-band` (Phase 2; a literal opacity other than 0 and 1 in a component is refused, TOK-003) |
 | Gesture | `projection-deceleration`, `rubberband-constant` (TypeScript only, in a `gesture` object; spec 5.7.2, MOT-032, MOT-033; R-013) |
 
 Space numbers follow the 4-pixel grid index (`space-4` = 1 rem = 16 px), as in spec 5.5.3.

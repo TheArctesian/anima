@@ -15,13 +15,13 @@
 <table class="sessions">
   <caption>Sessions on this device, newest first</caption>
   <thead>
-    <tr><th scope="col">Start</th><th scope="col">End</th><th scope="col">Duration</th><th scope="col">Operator</th><th scope="col">End reason</th></tr>
+    <tr><th scope="col">Start</th><th scope="col">End</th><th scope="col">Duration</th><th scope="col">Protocol</th><th scope="col">Operator</th><th scope="col">End reason</th></tr>
   </thead>
   <tbody>
     {#each rows as row (row.id)}
-      <tr><td>{row.start}</td><td>{row.end}</td><td>{row.duration}</td><td>{row.operator}</td><td>{row.reason}</td></tr>
+      <tr><td>{row.start}</td><td>{row.end}</td><td class="duration">{row.duration}</td><td>{row.protocol}</td><td>{row.operator}</td><td>{row.reason}</td></tr>
     {:else}
-      <tr><td colspan="5" class="none">No sessions yet</td></tr>
+      <tr><td colspan="6" class="none">No sessions yet</td></tr>
     {/each}
   </tbody>
 </table>
@@ -53,6 +53,10 @@
   th {
     color: var(--text-muted);
     font-weight: var(--weight-regular);
+  }
+
+  .duration {
+    white-space: nowrap;
   }
 
   .none {

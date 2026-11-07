@@ -5,12 +5,14 @@
   ],
   "plugins": ["stylelint-declaration-strict-value"],
   "rules": {
+    "at-rule-disallowed-list": [["keyframes", "-webkit-keyframes"], { "message": "No @keyframes: motion goes through $lib/motion/ (MV-008)." }],
     "color-no-hex": true,
     "color-named": "never",
     "function-disallowed-list": ["/^(rgb|rgba|hsl|hsla|hwb|lab|lch|oklab|oklch|color|color-mix|cubic-bezier|steps|linear)$/i"],
     "declaration-property-value-allowed-list": {
       "font": ["/^(\\s*(var\\((?:[^()]|var\\([^()]*\\))*\\)|inherit|initial|unset|revert|normal|italic|oblique|bold|bolder|lighter|small-caps|\\d*\\.?\\d+(px|rem|em|%|pt)?(\\/\\d*\\.?\\d+(px|rem|em|%)?)?))+\\s*$/i"],
       "/^--(f|(.*-)?(font|family)(-.*)?)$/": ["/^\\s*var\\((?:[^()]|var\\([^()]*\\))*\\)\\s*$/i"],
+      "/^(fill-|stroke-)?opacity$/": ["/^\\s*(var\\(\\s*--[\\w-]+\\s*\\)|0|1|inherit|initial|unset|revert)\\s*$/i"],
       "font-family": ["/^\\s*(var\\((?:[^()]|var\\([^()]*\\))*\\)|inherit|initial|unset|revert)\\s*$/i"]
     },
     "declaration-property-value-disallowed-list": {

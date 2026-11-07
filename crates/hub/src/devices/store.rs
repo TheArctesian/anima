@@ -11,15 +11,25 @@ use super::{
 };
 use crate::ids::{DeviceId, SiteId};
 
-/// A device with its SSH settings and tags in one row.
+/// A device with its SSH, RDP and VNC settings and tags in one row.
 macro_rules! select_device {
     ($($tail:expr),*) => {
         concat!(
             "SELECT d.id, d.site_id, d.name, d.host, d.ip, d.kind, d.os, d.maintenance, \
                     d.created_at, d.updated_at, s.enabled, s.port, s.username, s.auth, \
                     ARRAY(SELECT t.tag FROM devices.device_tags t WHERE t.device_id = d.id \
-                          ORDER BY t.tag COLLATE \"C\") AS tags \
-             FROM devices.devices d JOIN devices.ssh_settings s ON s.device_id = d.id ",
+                          ORDER BY t.tag COLLATE \"C\") AS tags, \
+                    r.enabled AS rdp_enabled, r.port AS rdp_port, r.username AS rdp_username, \
+                    r.domain AS rdp_domain, r.security AS rdp_security, \
+                    r.ignore_certificate AS rdp_ignore_certificate, \
+                    r.resize_method AS rdp_resize_method, r.audio_out AS rdp_audio_out, \
+                    r.microphone AS rdp_microphone, r.shared_drive AS rdp_shared_drive, \
+                    v.enabled AS vnc_enabled, v.port AS vnc_port, v.username AS vnc_username, \
+                    d.mac_address::text AS mac_address, d.metrics_source, d.transfer_upload, \
+                    d.transfer_download, d.transfer_copy, d.transfer_paste \
+             FROM devices.devices d JOIN devices.ssh_settings s ON s.device_id = d.id \
+                  JOIN devices.rdp_settings r ON r.device_id = d.id \
+                  JOIN devices.vnc_settings v ON v.device_id = d.id ",
             $($tail),*
         )
     };
@@ -34,12 +44,16 @@ macro_rules! device_filter {
     };
 }
 
+mod remote;
+
+pub(super) use remote::{devices_by_ids, lock_site, set_wake_relay, share_device, wake_relay};
+
 pub(super) async fn create_site(
     conn: &mut PgConnection,
     id: SiteId,
     site: &NewSite,
 ) -> Result<Site, Error> {
-    sqlx::query_as("INSERT INTO devices.sites (id, name, subnet) VALUES ($1, $2, $3) RETURNING id, name, subnet")
+    sqlx::query_as("INSERT INTO devices.sites (id, name, subnet) VALUES ($1, $2, $3) RETURNING id, name, subnet, wake_relay_device_id")
         .bind(id)
         .bind(&site.name)
         .bind(site.subnet.net())
@@ -51,7 +65,7 @@ pub(super) async fn create_site(
 
 pub(super) async fn list_sites(db: &PgPool) -> Result<Vec<Site>, Error> {
     let rows =
-        sqlx::query_as("SELECT id, name, subnet FROM devices.sites ORDER BY name COLLATE \"C\"")
+        sqlx::query_as("SELECT id, name, subnet, wake_relay_device_id FROM devices.sites ORDER BY name COLLATE \"C\"")
             .fetch_all(db)
             .await?;
     Ok(rows.into_iter().map(to_site).collect())
@@ -59,7 +73,7 @@ pub(super) async fn list_sites(db: &PgPool) -> Result<Vec<Site>, Error> {
 
 pub(super) async fn sites_by_ids(db: &PgPool, ids: &[SiteId]) -> Result<Vec<Site>, Error> {
     let rows = sqlx::query_as(
-        "SELECT id, name, subnet FROM devices.sites WHERE id = ANY($1) ORDER BY name COLLATE \"C\"",
+        "SELECT id, name, subnet, wake_relay_device_id FROM devices.sites WHERE id = ANY($1) ORDER BY name COLLATE \"C\"",
     )
     .bind(ids)
     .fetch_all(db)
@@ -67,7 +81,8 @@ pub(super) async fn sites_by_ids(db: &PgPool, ids: &[SiteId]) -> Result<Vec<Site
     Ok(rows.into_iter().map(to_site).collect())
 }
 
-/// Inserts the device, its tags and its SSH settings; all or nothing.
+/// Inserts the device, its tags and its settings; all or nothing.
+/// An AFTER INSERT trigger adds the default `rdp_settings` and `vnc_settings` rows.
 pub(super) async fn create_device(
     conn: &mut PgConnection,
     id: DeviceId,
@@ -102,6 +117,7 @@ pub(super) async fn create_device(
     .bind(device.ssh.auth.as_str())
     .execute(&mut *tx)
     .await?;
+    remote::write_new(&mut tx, id, &device.remote).await?;
     let created = fetch(&mut *tx, id).await?;
     tx.commit().await?;
     Ok(created)
@@ -120,7 +136,7 @@ async fn replace_tags(conn: &mut PgConnection, id: DeviceId, tags: &[String]) ->
     Ok(())
 }
 
-/// Changes only the fields present; tags and SSH settings are replaced wholly when present.
+/// Changes only the fields present; tags and each settings object are replaced wholly when present.
 pub(super) async fn update_device(
     conn: &mut PgConnection,
     id: DeviceId,
@@ -165,6 +181,9 @@ pub(super) async fn update_device(
         .execute(&mut *tx)
         .await?;
     }
+    remote::write_change(&mut tx, id, &change.remote).await?;
+    let ssh_off = change.ssh.as_ref().is_some_and(|ssh| !ssh.enabled);
+    remote::release_relay(&mut tx, id, change.site, ssh_off).await?;
     let changed = fetch(&mut *tx, id).await?;
     tx.commit().await?;
     Ok(changed)

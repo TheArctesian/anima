@@ -3,6 +3,8 @@
 //! `anima-hub operator totp <username> [--disable]` (D-9) or `anima-hub health` (the compose
 //! healthcheck).
 
+mod upkeep;
+
 use std::{
     io::{BufRead as _, IsTerminal as _},
     process::ExitCode,
@@ -12,14 +14,16 @@ use std::{
 use anima_hub::{
     DRAIN_LIMIT, Shutdown,
     access::{self, listen},
-    checks::{self, probe::AddressPolicy},
+    checks,
     clock::{Clock as _, SystemClock},
     config::{self, Config},
     credentials::Vault,
     events::{self, Bus, process_log},
-    logged, router,
+    logged, metrics, router,
     schema::{Dependencies, build_schema},
     serve_until, sessions,
+    targets::AddressPolicy,
+    tunnels,
 };
 use sqlx::PgPool;
 
@@ -133,38 +137,37 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     let pool = connect(&config).await?;
     events::check_runtime_role(&pool).await?;
     permit_networks(&pool, &config).await?;
-    let live = open_sessions(&pool, clock.now()).await?;
+    // One deny list for every outbound connection; `tunnels` says which path takes it how.
+    let policy = AddressPolicy::new(config.probe_deny.clone());
+    let live = open_sessions(&pool, clock.now())
+        .await?
+        .denying(policy.clone());
     tracing::info!(listen = %listening.local_addr()?, "hub started");
     let bus = Bus::new(BUS_CAPACITY);
-    let probing = checks::Probing {
-        vault: vault.clone(),
-        policy: AddressPolicy::new(config.probe_deny.clone()),
-    };
-    // SSH uses the terminal tunnel; `/tunnel` waits for RDP and VNC and is not mounted, so no
-    // SSH ticket reaches guacd (R-062).
-    let terminal = sessions::terminal_router(
-        pool.clone(),
-        vault.clone(),
-        bus.clone(),
-        clock.clone(),
-        live.clone(),
-    );
-    let schema = build_schema(Dependencies {
+    let (probing, collecting) = reaching(&vault, &policy, config.tailscale_localapi.clone());
+    let feed = metrics::Feed::new();
+    let dependencies = Dependencies {
         config,
         clock: clock.clone(),
         pool: pool.clone(),
         bus: bus.clone(),
         vault,
         live: live.clone(),
-    });
-    let upkeep = spawn_upkeep(&pool, &clock);
+        policy,
+        metrics_feed: feed.clone(),
+    };
+    let tunnels = tunnels(&dependencies);
+    let schema = build_schema(dependencies);
+    let upkeep = upkeep::spawn(&pool, &clock);
     let scheduler = checks::spawn_scheduler(pool.clone(), bus.clone(), clock.clone(), probing);
+    let collector =
+        metrics::spawn_collector(pool.clone(), feed, bus.clone(), clock.clone(), collecting);
     let push = checks::push_router(pool.clone(), bus.clone(), clock.clone());
-    // `/terminal` and `/push` are behind the same permitted-networks check as every route, and
+    // The tunnels and `/push` are behind the same permitted-networks check as every route, and
     // logged by their templates only, never their tokens (K3, NET-002, LOG-007, R-028, R-051).
     let edge = access::Edge::new(pool.clone(), bus, clock.clone());
     let app = router(schema, pool.clone(), clock.clone())
-        .merge(logged(terminal))
+        .merge(tunnels)
         .merge(logged(push))
         .layer(access::permitted_networks_layer(edge.clone()));
     let shutdown = Shutdown {
@@ -182,7 +185,25 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     .await;
     upkeep.iter().for_each(tokio::task::JoinHandle::abort);
     scheduler.abort();
+    collector.abort();
     Ok(())
+}
+
+/// What checks and metrics need to reach devices: the vault and the one address policy (P2-004).
+fn reaching(
+    vault: &Vault,
+    policy: &AddressPolicy,
+    localapi: Option<String>,
+) -> (checks::Probing, metrics::Collecting) {
+    let (vault, policy) = (vault.clone(), policy.clone());
+    (
+        checks::Probing {
+            vault: vault.clone(),
+            policy: policy.clone(),
+            localapi,
+        },
+        metrics::Collecting { vault, policy },
+    )
 }
 
 /// Stores `ANIMA_PERMITTED_NETWORKS` (D-10). A hub fault is logged by its fault word and
@@ -245,37 +266,6 @@ async fn stop_signal() {
         () = interrupt => {}
         () = terminate => {}
     }
-}
-
-/// Starts the daily jobs, each run now and then daily (D-4, DB-004, DB-005, K2 retention):
-/// day partitions ahead and expired ones dropped, and old login attempts and expired tokens
-/// deleted.
-fn spawn_upkeep(
-    pool: &PgPool,
-    clock: &Arc<dyn anima_hub::clock::Clock>,
-) -> [tokio::task::JoinHandle<()>; 2] {
-    let partitions = {
-        let db = pool.clone();
-        events::run_daily("partitions", clock.clone(), move |now| {
-            let db = db.clone();
-            async move {
-                events::keep_partitions(&db, now)
-                    .await
-                    .map_err(|e| e.fault())
-            }
-        })
-    };
-    let prune = {
-        let db = pool.clone();
-        events::run_daily("access_prune", clock.clone(), move |now| {
-            let db = db.clone();
-            async move {
-                let pruned = access::prune(&db, now).await;
-                pruned.map(drop).map_err(|e| e.fault().unwrap_or("access"))
-            }
-        })
-    };
-    [tokio::spawn(partitions), tokio::spawn(prune)]
 }
 
 /// Applies the migrations as the owner role and exits; serving never migrates (R-016).

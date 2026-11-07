@@ -1,14 +1,17 @@
 <script lang="ts">
   import Icon from '$lib/icons/Icon.svelte';
   import type { IconName } from '$lib/icons/icons';
-  import { connectionSteps, type Progress, type StepMark } from './steps';
+  import { connectionSteps, wakeLine, type Progress, type StepMark } from './steps';
 
   interface Props {
     progress: Progress;
+    /** Shown as text in the wake line. */
+    deviceName: string;
   }
 
-  const { progress }: Props = $props();
+  const { progress, deviceName }: Props = $props();
   const steps = $derived(connectionSteps(progress));
+  const wake = $derived(wakeLine(progress, deviceName));
 
   const MARK_ICON: Readonly<Record<StepMark, IconName>> = {
     waiting: 'nf-md-dots_vertical',
@@ -30,11 +33,22 @@
   {#each steps as step (step.name)}
     <li class="step" data-step={step.name} data-mark={step.mark} aria-current={step.mark === 'active' ? 'step' : undefined}>
       <Icon name={MARK_ICON[step.mark]} size="sm" />
-      <span>{step.label}</span>
+      <span class="label">{step.label}</span>
       <span class="mark">{MARK_TEXT[step.mark]}</span>
     </li>
   {/each}
 </ol>
+<!--
+  The slot is always there, one line high, so the line filling it moves nothing (MOT-007, MV-004); its mark changes
+  with no easing (MOT-009). The mark word is read, not shown.
+-->
+<p class="wake" data-wake={wake?.mark}>
+  {#if wake !== undefined}
+    <Icon name={MARK_ICON[wake.mark]} size="sm" />
+    <span class="label">{wake.label}</span>
+    <span class="sr">{MARK_TEXT[wake.mark]}</span>
+  {/if}
+</p>
 
 <style>
   /*
@@ -63,6 +77,50 @@
 
   .step > :global(.icon) {
     justify-self: center;
+  }
+
+  /* One line: a long device name in the waking step is cut, so the row keeps its height (MOT-007). */
+  .label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .wake {
+    position: relative;
+    display: grid;
+    grid-template-columns: var(--icon-md) minmax(0, 1fr);
+    column-gap: var(--space-1);
+    align-items: center;
+    min-inline-size: 0;
+    max-inline-size: 100%;
+    block-size: 1lh;
+    margin: var(--space-2) 0 0;
+    font-size: var(--text-sm);
+    line-height: var(--leading-tight);
+    color: var(--text);
+  }
+
+  /* The same fixed icon cell as a step: `done` is wider than `active`, and it must not move the label (MOT-007, M-3). */
+  .wake > :global(.icon) {
+    justify-self: center;
+  }
+
+  .wake[data-wake='done'] :global(.icon) {
+    color: var(--status-up);
+  }
+
+  .wake[data-wake='failed'] :global(.icon) {
+    color: var(--status-down);
+  }
+
+  .sr {
+    position: absolute;
+    inline-size: var(--border-thin);
+    block-size: var(--border-thin);
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   .mark {

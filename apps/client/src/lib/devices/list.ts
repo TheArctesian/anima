@@ -1,5 +1,5 @@
 import type { DeviceSort, Status } from '$lib/hub/generated/graphql';
-import type { CardDevice, DevicePage, StatusChange } from './api';
+import type { CardDevice, DevicePage, ReadingsChange, StatusChange } from './api';
 import type { ListQuery } from './query';
 
 /** The devices on screen and where the next page starts. */
@@ -30,6 +30,11 @@ export function appendPage(list: DeviceList, page: DevicePage): DeviceList {
     endCursor: page.pageInfo.endCursor ?? null,
     hasNextPage: page.pageInfo.hasNextPage,
   };
+}
+
+/** The list with VNC on for device `id`, after the flow of R-079 turned it on. */
+export function applyVncEnabled(list: DeviceList, id: string): DeviceList {
+  return { ...list, devices: list.devices.map((device) => (device.id === id ? { ...device, vnc: { ...device.vnc, enabled: true } } : device)) };
 }
 
 /** Worst first (E-1): the hub's severity order. */
@@ -90,5 +95,14 @@ export function applyStatus(list: DeviceList, change: StatusChange, query: ListQ
     ...list,
     devices: reorders ? changed.toSorted(compareDevices(query.sort)) : changed,
     totalCount: leaves ? list.totalCount - 1 : list.totalCount,
+  };
+}
+
+/** The list with a device's latest readings replaced (MET-004). Readings change no order or filter, and an unknown device gives the same list. */
+export function applyReadings(list: DeviceList, change: ReadingsChange): DeviceList {
+  if (!list.devices.some((device) => device.id === change.deviceId)) return list;
+  return {
+    ...list,
+    devices: list.devices.map((device) => (device.id === change.deviceId ? { ...device, readings: change.readings } : device)),
   };
 }

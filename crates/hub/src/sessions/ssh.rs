@@ -3,15 +3,15 @@
 //! presented key (`observer`) and the sign-in with a stored credential (`sign_in`, OD-9).
 //! I/O edge.
 //!
-//! The host is resolved first and every address it resolves to must pass the target rule
-//! (R-032); the connection then goes to a checked address, never to the name again, so a
-//! second lookup cannot point it somewhere else. Nothing here logs, and no error holds a
-//! remote text, a host name or a secret (LOG-007).
+//! The host is resolved first and every address it resolves to must pass the target rule,
+//! deny list included (R-030, R-032); the connection then goes to a checked address, never
+//! to the name again, so a second lookup cannot point it somewhere else. Nothing here logs,
+//! and no error holds a remote text, a host name or a secret (LOG-007).
 
 mod observer;
 mod sign_in;
 
-use std::{borrow::Cow, net::SocketAddr};
+use std::{borrow::Cow, net::SocketAddr, time::Duration};
 
 use russh::{
     Preferred,
@@ -76,7 +76,7 @@ pub(super) enum SshError {
 pub(super) struct Target<'a> {
     pub(super) host: &'a str,
     pub(super) port: u16,
-    pub(super) rule: TargetRule,
+    pub(super) rule: &'a TargetRule,
 }
 
 /// The algorithm preferences every hub SSH connection uses: [`HOST_KEY_ORDER`] for the host
@@ -121,4 +121,21 @@ pub(super) async fn connect(target: Target<'_>) -> Result<TcpStream, SshError> {
         }
     }
     Err(SshError::Unreachable)
+}
+
+/// [`connect`] to a device that is waking up: tried again every `retry` while its host does
+/// not resolve or no address answers. Never ends on its own; the caller's limit ends it.
+///
+/// # Errors
+/// [`SshError::RefusedTarget`] when any address fails the rule.
+pub(super) async fn connect_waking(
+    target: Target<'_>,
+    retry: Duration,
+) -> Result<TcpStream, SshError> {
+    loop {
+        match connect(target).await {
+            Err(SshError::Unresolved | SshError::Unreachable) => tokio::time::sleep(retry).await,
+            connected => return connected,
+        }
+    }
 }

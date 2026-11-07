@@ -1,6 +1,9 @@
+@import '../../metrics/bars/geometry.css';
+
 /* One card size and one table row size for the real views and the loading skeleton, so the skeleton has their geometry (5.7.3, Loading). */
 :root {
-  --device-card-block-size: calc(var(--space-16) * 2 + var(--space-8));
+  /* Header, host, uptime and footer, then the metric row and the grid gap above it (--space-2, the card's gap). */
+  --device-card-block-size: calc(var(--space-16) * 2 + var(--space-8) + var(--metric-bars-block-size) + var(--space-2));
   --device-card-min-inline-size: calc(var(--space-16) * 6);
   --device-row-block-size: var(--target-min-touch);
 }

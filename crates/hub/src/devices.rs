@@ -1,22 +1,29 @@
-//! Device inventory: sites, devices, tags and SSH settings.
+//! Device inventory: sites, devices, tags and the SSH, RDP and VNC settings.
 
 pub mod graphql;
 mod loaders;
+mod mac;
 mod model;
 mod page;
 mod records;
+mod remote;
 mod rules;
 mod store;
 #[cfg(test)]
 mod tests;
 mod text;
+mod warnings;
 
 use sqlx::PgPool;
 
 use crate::ids::{DeviceId, SiteId};
 
-pub use loaders::{DevicesBySite, SitesById};
+pub use loaders::{DevicesById, DevicesBySite, SitesById};
+pub use mac::{MacAddress, MacAddressError};
 pub use model::{Device, OperatingSystem, Site, SshAuth, SshSettings};
+pub use remote::{
+    MetricsSource, RdpSecurity, RdpSettings, ResizeMethod, TransferPolicy, VncSettings,
+};
 pub use rules::FieldError;
 
 /// What a lookup could not find.
@@ -77,4 +84,12 @@ pub async fn list(db: &PgPool) -> Result<Vec<Device>, Error> {
 /// `NotFound` when there is no such device.
 pub async fn in_maintenance(db: &PgPool, id: DeviceId) -> Result<bool, Error> {
     store::in_maintenance(db, id).await
+}
+
+/// The device that sends Wake-on-LAN packets at the site, if one is set.
+///
+/// # Errors
+/// `NotFound` when there is no such site.
+pub async fn wake_relay(db: &PgPool, site: SiteId) -> Result<Option<Device>, Error> {
+    store::wake_relay(db, site).await
 }

@@ -4,10 +4,10 @@ use std::{io, time::Duration};
 
 use guac_protocol::encode;
 
-use super::super::ending::{CLIENT_IDLE, Cause, Ending, GATEWAY_SILENCE, gateway_written};
+use super::super::ending::{CLIENT_IDLE, Cause, End, Ending, GATEWAY_SILENCE, gateway_written};
 use super::super::gateway::tunnel_opened;
 use crate::events::Severity;
-use crate::sessions::EndReason;
+use crate::sessions::{EndReason, Protocol};
 
 fn row(close_code: u16, reason: EndReason, severity: Severity) -> Ending {
     Ending {
@@ -48,6 +48,16 @@ fn sec_007_host_key_mismatch_ends_4001_error() {
 }
 
 #[test]
+fn sec_007_server_certificate_mismatch_ends_4003_error_and_endsession_maps_back() {
+    let expected = row(4003, EndReason::ServerCertificateMismatch, Severity::Error);
+    assert_eq!(Cause::ServerCertificateMismatch.ending(), expected);
+    // A reason signalled from outside the tunnel names the same cause, for every reason.
+    for reason in EndReason::ALL {
+        assert_eq!(Cause::from(reason).ending().reason, reason, "{reason:?}");
+    }
+}
+
+#[test]
 fn k4_idle_timeout_ends_4002_timeout_info() {
     let expected = row(4002, EndReason::Timeout, Severity::Info);
     assert_eq!(Cause::Timeout.ending(), expected);
@@ -78,14 +88,14 @@ fn k4_5_a_guacd_write_that_fails_or_stalls_is_gateway_error() {
     let failed = gateway_written(Some(&broken)).unwrap_err();
     assert_eq!(failed.cause, Cause::GatewayError);
     assert_eq!(
-        failed.message,
-        "The connection to the gateway failed, so the hub closed the SSH session."
+        failed.message.of(Protocol::Rdp),
+        "The connection to the gateway failed, so the hub closed the session."
     );
     let stalled = gateway_written(None).unwrap_err();
     assert_eq!(stalled.cause, Cause::GatewayError);
     assert_eq!(
-        stalled.message,
-        "The gateway stopped reading what the hub sent, so the hub closed the SSH session."
+        stalled.message.of(Protocol::Rdp),
+        "The gateway stopped reading what the hub sent, so the hub closed the session."
     );
 }
 
@@ -93,4 +103,21 @@ fn k4_5_a_guacd_write_that_fails_or_stalls_is_gateway_error() {
 fn gw_014_the_open_instruction_carries_only_the_tunnel_id() {
     let id = "8e8c9a5e-6f0b-4b0e-9d58-3c4bfb0b7e21";
     assert_eq!(encode(&tunnel_opened(id)), format!("0.,36.{id};"));
+}
+
+#[test]
+fn ra_008_an_end_message_names_the_session_protocol() {
+    for (protocol, name) in [
+        (Protocol::Rdp, "RDP"),
+        (Protocol::Vnc, "VNC"),
+        (Protocol::Ssh, "SSH"),
+    ] {
+        let end = End::from(Cause::OperatorClosed);
+        assert_eq!(
+            end.message.of(protocol),
+            format!("The operator closed the {name} session.")
+        );
+        let refused = Cause::AuthFailed.message().of(protocol);
+        assert_eq!(refused, format!("The device refused the {name} sign-in."));
+    }
 }

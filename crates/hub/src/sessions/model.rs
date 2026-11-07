@@ -1,4 +1,5 @@
-//! Domain types of remote sessions (RA-008) and accepted host keys (SEC-006).
+//! Domain types of remote sessions (RA-008), accepted host keys (SEC-006) and accepted RDP
+//! server certificates (SEC-007 for RDP).
 
 #![expect(
     clippy::unused_async_trait_impl,
@@ -21,10 +22,12 @@ pub struct UnknownValue {
     text: String,
 }
 
-/// The remote protocol of a session, stored as lower-case text. Phase 1 has SSH only.
+/// The remote protocol of a session, stored as lower-case text.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Enum)]
 pub enum Protocol {
     Ssh,
+    Rdp,
+    Vnc,
 }
 
 impl Protocol {
@@ -32,15 +35,38 @@ impl Protocol {
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::Ssh => "ssh",
+            Self::Rdp => "rdp",
+            Self::Vnc => "vnc",
         }
     }
 
     /// Where the client opens this protocol's tunnel (K4 Section 1 `tunnelPath`): SSH uses
-    /// the terminal tunnel (K4 Section 8, R-062); RDP and VNC will use `/tunnel`.
+    /// the terminal tunnel (K4 Section 8, R-062); RDP and VNC use the Guacamole tunnel.
     #[must_use]
     pub const fn tunnel_path(self) -> &'static str {
         match self {
             Self::Ssh => "/terminal",
+            Self::Rdp | Self::Vnc => "/tunnel",
+        }
+    }
+}
+
+/// A desktop protocol: what the Guacamole tunnel serves and the RDP and VNC connection test
+/// reads (K4 Section 2).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Desktop {
+    Rdp,
+    Vnc,
+}
+
+impl Desktop {
+    /// The desktop protocol of a session's `protocol`; `None` for SSH, which uses the terminal
+    /// tunnel (K4 Section 8).
+    pub(super) const fn of(protocol: Protocol) -> Option<Self> {
+        match protocol {
+            Protocol::Rdp => Some(Self::Rdp),
+            Protocol::Vnc => Some(Self::Vnc),
+            Protocol::Ssh => None,
         }
     }
 }
@@ -51,6 +77,8 @@ impl FromStr for Protocol {
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         match text {
             "ssh" => Ok(Self::Ssh),
+            "rdp" => Ok(Self::Rdp),
+            "vnc" => Ok(Self::Vnc),
             _ => Err(UnknownValue {
                 kind: "protocol",
                 text: text.to_owned(),
@@ -72,11 +100,13 @@ pub enum EndReason {
     ProtocolError,
     Timeout,
     HubShutdown,
+    /// The RDP certificate differs from the accepted one (SEC-007).
+    ServerCertificateMismatch,
 }
 
 impl EndReason {
     /// Every reason, in K1 order.
-    pub const ALL: [Self; 8] = [
+    pub const ALL: [Self; 9] = [
         Self::Operator,
         Self::RemoteClosed,
         Self::GatewayError,
@@ -85,6 +115,7 @@ impl EndReason {
         Self::ProtocolError,
         Self::Timeout,
         Self::HubShutdown,
+        Self::ServerCertificateMismatch,
     ];
 
     #[must_use]
@@ -98,6 +129,7 @@ impl EndReason {
             Self::ProtocolError => "protocol_error",
             Self::Timeout => "timeout",
             Self::HubShutdown => "hub_shutdown",
+            Self::ServerCertificateMismatch => "server_certificate_mismatch",
         }
     }
 }
@@ -146,6 +178,13 @@ impl Session {
     }
 }
 
+/// A session's start or end, as every client sees it live (RA-034): the row as it was
+/// committed, which holds no session content, token or gateway ID (RA-008).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct SessionChange {
+    pub session: Session,
+}
+
 /// Which sessions `Query.sessions` lists.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct SessionFilter {
@@ -160,6 +199,20 @@ pub struct SessionFilter {
 pub struct HostKey {
     pub public_key: PublicKey,
     /// When the hub first saw this key.
+    pub first_seen_at: DateTime<Utc>,
+}
+
+/// The RDP server certificate the operator accepted for a device (SEC-007). Every field is what
+/// the device's leaf certificate said when the hub read it; only the fingerprint is pinned.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ServerCertificate {
+    /// SHA-256 of the leaf certificate's DER: 32 lower-case hex pairs joined by colons, as
+    /// `FreeRDP` writes it (`server_certificates_fingerprint_check`).
+    pub fingerprint_sha256: String,
+    /// The certificate's subject, as the device chose it; never trusted.
+    pub subject: Option<String>,
+    pub not_after: Option<DateTime<Utc>>,
+    /// When the hub first saw this certificate.
     pub first_seen_at: DateTime<Utc>,
 }
 

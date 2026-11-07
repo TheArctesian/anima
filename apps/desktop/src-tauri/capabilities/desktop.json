@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "desktop",
-  "description": "The main window on desktop: self-update and relaunch (UPD-001-006), the process log and its folder (LOG-008), and the Sharing settings pane for Remote Login (R-059; it fails as unavailable on Linux), and this computer's name, OS user, OS, VPN address and whether SSH answers there, to fill in Add device (R-058, R-060). The updater and process plugins are registered in release builds only, so in a debug build their permissions grant nothing. Known width: a script in the web view may pass headers, timeout, proxy and target to check, and may relaunch the app; it cannot change the key, the endpoints or the downgrade rule (WP-04b final review C-1).",
+  "description": "The main window on desktop: self-update and relaunch (UPD-001-006), the process log and its folder (LOG-008), and the Sharing settings pane for Remote Login and Screen Sharing (R-059, R-079; it fails as unavailable on Linux), and this computer's name, OS user, OS, VPN address and whether SSH answers there, to fill in Add device (R-058, R-060), and the device web views: open, place, show, step, pin, pop out and close them, read a leaf certificate and open an address in the system browser (WEB-004–008, D-9). Device web views (labels `web-<tab id>`) are named by no capability, so they have no IPC (WEB-007, D-3); keep every capability on `\"webviews\": [\"main\"]`, with no `windows` and no `remote`. The updater and process plugins are registered in release builds only, so in a debug build their permissions grant nothing. Known width: a script in the web view may pass headers, timeout, proxy and target to check, and may relaunch the app; it cannot change the key, the endpoints or the downgrade rule (WP-04b final review C-1).",
   "webviews": ["main"],
   "platforms": ["macOS", "linux"],
   "permissions": [
@@ -10,7 +10,17 @@
     "process:allow-restart",
     "log:allow-log",
     "allow-process-log-folder-open",
-    "allow-remote-login-settings-open",
-    "allow-this-machine-read"
+    "allow-sharing-settings-open",
+    "allow-this-machine-read",
+    "allow-system-browser-open",
+    "allow-web-view-pinning",
+    "allow-web-view-open",
+    "allow-web-view-place",
+    "allow-web-view-show",
+    "allow-web-view-go",
+    "allow-web-view-pin",
+    "allow-web-view-pop-out",
+    "allow-web-view-close",
+    "allow-web-certificate-read"
   ]
 }

@@ -5,6 +5,7 @@ import { fakeHub } from '$lib/devices/hub.fixture';
 import { endTransitionsAtOnce } from '$lib/devices/transitions.fixture';
 import Page from '../+page.svelte';
 import { parseDeviceId } from '../device-id';
+import type { WebInterface } from '$lib/web-interfaces/api';
 import { ID, KEY, answers, device, route } from '../page.fixture.svelte';
 
 vi.mock('motion', async (importOriginal) => ({
@@ -190,5 +191,92 @@ describe('settings tab: credentials, cancel and sections (D-4, DEV-022, SEC-006)
     route.search = '?tab=settings&section=test';
     await settle();
     expect(document.activeElement).toBe(button('Test connection'));
+  });
+});
+
+const PVE: WebInterface = { id: 'w1', deviceId: ID, label: 'Proxmox VE', url: 'https://pve.lan:8006', openIn: 'ANIMA_TAB', pinnedFingerprintSha256: null, pinnedAt: null };
+const GRAFANA = { checkId: 'c9', url: 'https://grafana.lan:3000', label: 'grafana.lan' };
+const rows = () => [...document.querySelectorAll('li[aria-label]')].map((row) => row.getAttribute('aria-label'));
+
+describe('settings tab: web interfaces (WEB-001)', () => {
+
+  it('WEB-001: Settings shows the Web interfaces section; Add stores the interface and the list shows it', async () => {
+    const fake = await show(answers({ CreateWebInterface: { createWebInterface: PVE } }), '?tab=settings');
+    expect(document.getElementById('web-interfaces-heading')?.textContent).toBe('Web interfaces');
+    button('Add a web interface').click();
+    await settle();
+    const url = document.getElementById('web-new-url');
+    if (!(url instanceof HTMLInputElement)) throw new Error('no URL input');
+    url.value = PVE.url;
+    url.dispatchEvent(new Event('input', { bubbles: true }));
+    button('Add web interface').click();
+    await settle();
+    expect(fake.requests.filter((request) => request.operation === 'CreateWebInterface')).toEqual([
+      { operation: 'CreateWebInterface', variables: { deviceId: ID, input: { label: null, url: PVE.url, openIn: 'ANIMA_TAB' } } },
+    ]);
+    expect(rows()).toEqual(['Proxmox VE']);
+  });
+
+  it('WEB-001: saving a changed row updates the interface once and the list shows the stored label', async () => {
+    const fake = await show(
+      answers({ Device: { device: device({ webInterfaces: [PVE] }) }, UpdateWebInterface: { updateWebInterface: { ...PVE, label: 'PVE' } } }),
+      '?tab=settings',
+    );
+    const label = document.getElementById('web-w1-label');
+    if (!(label instanceof HTMLInputElement)) throw new Error('no label input');
+    label.value = 'PVE';
+    label.dispatchEvent(new Event('input', { bubbles: true }));
+    button('Save', 'li[aria-label="Proxmox VE"]').click();
+    await settle();
+    expect(fake.requests.filter((request) => request.operation === 'UpdateWebInterface')).toEqual([
+      { operation: 'UpdateWebInterface', variables: { id: 'w1', input: { label: 'PVE', url: PVE.url, openIn: 'ANIMA_TAB' } } },
+    ]);
+    expect(rows()).toEqual(['PVE']);
+  });
+
+  it('WEB-001: a confirmed delete removes the interface from the list', async () => {
+    const fake = await show(
+      answers({ Device: { device: device({ webInterfaces: [PVE] }) }, DeleteWebInterface: { deleteWebInterface: 'w1' } }),
+      '?tab=settings',
+    );
+    button('Delete', 'li[aria-label="Proxmox VE"]').click();
+    await settle();
+    button('Delete Proxmox VE', '[role="dialog"]').click();
+    await settle();
+    expect(fake.requests.filter((request) => request.operation === 'DeleteWebInterface')).toEqual([
+      { operation: 'DeleteWebInterface', variables: { id: 'w1' } },
+    ]);
+    expect(rows()).toEqual([]);
+  });
+
+});
+
+describe('settings tab: web interface suggestions (WEB-002)', () => {
+  it('WEB-002: accepting a suggestion stores it once, the list shows it and the suggestion goes', async () => {
+    const offered = device({ webInterfaceSuggestions: [GRAFANA] });
+    const made = { ...PVE, id: 'w2', label: 'grafana.lan', url: GRAFANA.url };
+    const fake = await show(
+      answers({ Device: { device: offered }, AcceptWebInterfaceSuggestion: { acceptWebInterfaceSuggestion: made } }),
+      '?tab=settings',
+    );
+    button('Add grafana.lan').click();
+    await settle();
+    expect(fake.requests.filter((request) => request.operation === 'AcceptWebInterfaceSuggestion')).toEqual([
+      { operation: 'AcceptWebInterfaceSuggestion', variables: { checkId: 'c9' } },
+    ]);
+    expect(rows()).toEqual(['grafana.lan']);
+    expect(document.getElementById('web-suggestions-heading')).toBeNull();
+  });
+
+  it('WEB-002: dismissing a suggestion removes it without adding an interface', async () => {
+    const fake = await show(
+      answers({ Device: { device: device({ webInterfaceSuggestions: [GRAFANA] }) }, DismissWebInterfaceSuggestion: { dismissWebInterfaceSuggestion: 'c9' } }),
+      '?tab=settings',
+    );
+    button('Dismiss grafana.lan').click();
+    await settle();
+    expect(fake.requests.at(-1)).toEqual({ operation: 'DismissWebInterfaceSuggestion', variables: { checkId: 'c9' } });
+    expect(rows()).toEqual([]);
+    expect(document.getElementById('web-suggestions-heading')).toBeNull();
   });
 });

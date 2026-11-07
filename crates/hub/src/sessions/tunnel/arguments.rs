@@ -1,28 +1,59 @@
-//! What the hub tells guacd about one SSH session: the `connect` values and the time zone
-//! (K4 Section 3, GW-012, GW-013, RA-010, RA-011).
+//! What the hub tells guacd about one RDP or VNC session: the protocol it selects, the
+//! `connect` values, the audio the client plays and the time zone (K4 Section 3, GW-012,
+//! GW-013, RA-021, RA-033).
 //!
-//! Every value comes from the device record, the credential store, the accepted host key or
-//! a constant here. The client supplies only the display and the time zone, and the time zone
-//! is used only when it is zone-shaped.
+//! Every value comes from the device record, the credential store, the accepted server
+//! certificate, the hub's configuration or a constant here. The client supplies only the
+//! display and the time zone, and the time zone is used only when it is zone-shaped. Names
+//! not set here get an empty value from the handshake, so every `wol-*`, `sftp-*` and
+//! `recording-*` name, `cert-tofu`, guacd's own `timezone` argument (the `timezone`
+//! instruction sets it) and every path but the configured drive stay empty.
+//!
+//! guacd reads a boolean argument as true only when it is exactly `true`; empty is its
+//! default, false for every name set here (guacamole-server `guac_user_parse_args_boolean`).
 
 use std::net::IpAddr;
 
 use guac_protocol::{ArgValues, is_zone_name};
 
-use super::known_hosts::known_hosts_line;
-use crate::credentials::{Secret, SshSecret};
-use crate::devices::Device;
-use crate::sessions::HostKey;
+use crate::credentials::{PasswordKind, Secret};
+use crate::devices::{Device, RdpSecurity, ResizeMethod, TransferPolicy};
+use crate::sessions::{Desktop, ServerCertificate};
 
-/// The terminal font the gateway image ships (RA-011, spec Section 6.3.1).
-const FONT_NAME: &str = "OpenDyslexicM Nerd Font Mono";
-const FONT_SIZE: &str = "12";
-const SCROLLBACK_LINES: &str = "5000";
-const TERMINAL_TYPE: &str = "xterm-256color";
-/// Seconds between SSH keep-alive messages (spec Section 6.3.1).
-const SERVER_ALIVE_SECONDS: &str = "30";
-/// The time zone when the client's is not zone-shaped (sites have no zone in Phase 1, R-032).
+/// The time zone when the client's is not zone-shaped (sites have no zone, R-032).
 const FALLBACK_ZONE: &str = "UTC";
+/// guacd's text for a true boolean argument.
+const TRUE: &str = "true";
+/// The audio the client plays when the device sends sound (K4 Section 3).
+const SOUND: &[&str] = &["audio/L8", "audio/L16"];
+/// The hash `FreeRDP` names in front of an accepted fingerprint.
+const FINGERPRINT_HASH: &str = "sha256";
+
+impl Desktop {
+    /// The name the handshake's `select` sends (K4 Section 3 step 1).
+    pub(super) const fn select(self) -> &'static str {
+        match self {
+            Self::Rdp => "rdp",
+            Self::Vnc => "vnc",
+        }
+    }
+
+    /// Which stored password signs in.
+    pub(super) const fn password(self) -> PasswordKind {
+        match self {
+            Self::Rdp => PasswordKind::Rdp,
+            Self::Vnc => PasswordKind::Vnc,
+        }
+    }
+
+    /// The port in the device's settings for this protocol.
+    pub(super) const fn port(self, device: &Device) -> u16 {
+        match self {
+            Self::Rdp => device.rdp.port,
+            Self::Vnc => device.vnc.port,
+        }
+    }
+}
 
 /// Why the hub cannot build the `connect` values. Holds no value (LOG-007).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
@@ -31,50 +62,139 @@ pub(super) enum BadConnectValue {
     NotText { argument: &'static str },
 }
 
-/// The `connect` values by guacd argument name for an SSH session to `device` at `target`,
-/// pinned to `host_key` (SEC-007). `target` is the address the hub resolved the device's host
-/// to and checked (R-032): guacd gets it as `hostname` and the `host-key` line names it, so
-/// guacd never resolves the name again or reaches an address the hub refused. Names not set
-/// here get an empty value from the handshake, so
-/// `enable-sftp`, `recording-path`, `typescript-path`, guacd's own `timezone` argument (the
-/// `timezone` instruction sets it, WP-08 H-9) and every path stay empty.
-///
-/// A host key is required: with an empty `host-key` guacd checks no key and would send the
-/// credential to any host (SEC-006). Without a stored secret guacd prompts in the terminal.
+/// One session's sources for its `connect` values.
+pub(super) struct Sources<'a> {
+    pub(super) device: &'a Device,
+    /// The address the hub resolved the device's host to and checked (R-032): guacd gets it
+    /// as `hostname`, so it never resolves the name again or reaches an address the hub
+    /// refused.
+    pub(super) target: IpAddr,
+    /// The stored password; without one guacd asks the client (GW-015).
+    pub(super) password: Option<&'a Secret>,
+    /// The accepted RDP server certificate, if any (SEC-007).
+    pub(super) certificate: Option<&'a ServerCertificate>,
+    /// `ANIMA_GUACD_DRIVE_ROOT`, a path inside the guacd container (RA-021).
+    pub(super) drive_root: &'a str,
+}
+
+/// The `connect` values by guacd argument name for `desktop` (K4 Section 3).
 ///
 /// # Errors
-/// [`BadConnectValue::NotText`] when a stored secret is not UTF-8.
+/// [`BadConnectValue::NotText`] when the stored password is not UTF-8.
 pub(super) fn connect_values(
-    device: &Device,
-    target: IpAddr,
-    secret: Option<&SshSecret>,
-    host_key: &HostKey,
+    desktop: Desktop,
+    sources: &Sources<'_>,
 ) -> Result<ArgValues, BadConnectValue> {
-    let host_key = known_hosts_line(target, device.ssh.port, &host_key.public_key);
+    let device = sources.device;
     let mut values = ArgValues::new();
-    values.set("hostname", target.to_string());
-    values.set("port", device.ssh.port.to_string());
-    values.set("username", device.ssh.username.as_str());
-    values.set("host-key", host_key);
-    values.set("color-scheme", anima_theme::guac_color_scheme());
-    values.set("font-name", FONT_NAME);
-    values.set("font-size", FONT_SIZE);
-    values.set("scrollback", SCROLLBACK_LINES);
-    values.set("terminal-type", TERMINAL_TYPE);
-    values.set("server-alive-interval", SERVER_ALIVE_SECONDS);
-    match secret {
-        None => {}
-        Some(SshSecret::Password(password)) => {
-            values.set("password", text("password", password)?);
-        }
-        Some(SshSecret::PrivateKey { key, passphrase }) => {
-            values.set("private-key", text("private-key", key)?);
-            if let Some(passphrase) = passphrase {
-                values.set("passphrase", text("passphrase", passphrase)?);
+    values.set("hostname", sources.target.to_string());
+    values.set("port", desktop.port(device).to_string());
+    if let Some(password) = sources.password {
+        values.set("password", text("password", password)?);
+    }
+    clipboard(&mut values, device.transfer);
+    match desktop {
+        Desktop::Rdp => rdp(&mut values, sources),
+        Desktop::Vnc => {
+            if let Some(username) = &device.vnc.username {
+                values.set("username", username.as_str());
             }
         }
     }
     Ok(values)
+}
+
+/// The RDP-only values: sign-in, security, display, sound and the shared drive.
+fn rdp(values: &mut ArgValues, sources: &Sources<'_>) {
+    let device = sources.device;
+    let rdp = &device.rdp;
+    values.set("username", rdp.username.as_str());
+    if let Some(domain) = &rdp.domain {
+        values.set("domain", domain.as_str());
+    }
+    values.set("security", security(rdp.security));
+    flag(values, "ignore-cert", rdp.ignore_certificate);
+    if let Some(certificate) = sources.certificate {
+        values.set("cert-fingerprints", accepted_fingerprint(certificate));
+    }
+    values.set("resize-method", resize_method(rdp.resize));
+    flag(values, "disable-audio", !rdp.audio_out);
+    flag(values, "enable-audio-input", rdp.microphone);
+    flag(values, "disable-download", !device.transfer.download);
+    flag(values, "disable-upload", !device.transfer.upload);
+    if rdp.shared_drive {
+        flag(values, "enable-drive", true);
+        values.set("drive-path", drive_path(sources.drive_root, device));
+        flag(values, "create-drive-path", true);
+    }
+}
+
+/// guacd's clipboard switches from the device's policy (RA-033); the relay is the first
+/// guard, these the second.
+fn clipboard(values: &mut ArgValues, transfer: TransferPolicy) {
+    flag(values, "disable-copy", !transfer.copy);
+    flag(values, "disable-paste", !transfer.paste);
+}
+
+/// The device's own folder under the drive root: `<root>/<device id>` (RA-021). The id is a
+/// hyphenated UUID, so it cannot climb out of the root.
+pub(super) fn drive_path(root: &str, device: &Device) -> String {
+    format!("{}/{}", root.trim_end_matches('/'), device.id)
+}
+
+/// The accepted fingerprint as `FreeRDP` reads `CertificateAcceptedFingerprints`:
+/// `<hash>:<hex pairs joined by colons>`, so `sha256:` before the stored form. `FreeRDP` splits
+/// the hash name at the first colon and compares the rest case-insensitively with its own
+/// colon-joined hex of the certificate.
+pub(super) fn accepted_fingerprint(certificate: &ServerCertificate) -> String {
+    format!("{FINGERPRINT_HASH}:{}", certificate.fingerprint_sha256)
+}
+
+/// The security guacd gets once the hub has read the accepted certificate over `chosen`, the
+/// TLS security the server picked (SEC-007): `ANY` becomes `chosen`, because with `any` guacd
+/// may settle on standard RDP security, which checks no certificate. Every other setting
+/// already rules standard security out and is kept.
+pub(super) const fn pinned_security(set: RdpSecurity, chosen: RdpSecurity) -> RdpSecurity {
+    match set {
+        RdpSecurity::Any => chosen,
+        other => other,
+    }
+}
+
+/// guacd's `security` text (guacamole-server `src/protocols/rdp/settings.c`).
+const fn security(security: RdpSecurity) -> &'static str {
+    match security {
+        RdpSecurity::Any => "any",
+        RdpSecurity::Nla => "nla",
+        RdpSecurity::NlaExt => "nla-ext",
+        RdpSecurity::Tls => "tls",
+        RdpSecurity::Vmconnect => "vmconnect",
+        RdpSecurity::Rdp => "rdp",
+    }
+}
+
+/// guacd's `resize-method` text.
+const fn resize_method(resize: ResizeMethod) -> &'static str {
+    match resize {
+        ResizeMethod::DisplayUpdate => "display-update",
+        ResizeMethod::Reconnect => "reconnect",
+    }
+}
+
+/// Sets `name` to `true` when `on`; left unset, the handshake sends it empty.
+fn flag(values: &mut ArgValues, name: &str, on: bool) {
+    if on {
+        values.set(name, TRUE);
+    }
+}
+
+/// What the `audio` instruction lists: the client plays sound only from an RDP device that
+/// sends it (K4 Section 3).
+pub(super) const fn audio(desktop: Desktop, device: &Device) -> &'static [&'static str] {
+    match desktop {
+        Desktop::Rdp if device.rdp.audio_out => SOUND,
+        Desktop::Rdp | Desktop::Vnc => &[],
+    }
 }
 
 /// The time zone for the handshake: the client's when it is zone-shaped, else UTC (K4

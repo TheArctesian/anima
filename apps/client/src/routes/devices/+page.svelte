@@ -3,9 +3,11 @@
   import { resolve } from '$app/paths';
   import { untrack } from 'svelte';
   import { page } from '$app/state';
+  import { desktopWebView } from '$lib/desktop/webView/webView';
   import { readThisMachine, type ThisMachine } from '$lib/desktop/thisMachine';
   import { checksApi } from '$lib/checks/api';
-  import { devicesApi, type CardDevice } from '$lib/devices/api';
+  import type { CardDevice } from '$lib/devices/api';
+  import { devicesApi } from '$lib/devices/client';
   import { parseListQuery, writeListQuery, type ListQuery } from '$lib/devices/query';
   import DeviceScreen from '$lib/devices/screen/DeviceScreen.svelte';
   import { addDevice as createWithCredential, type AddedDevice } from '$lib/forms/add-device';
@@ -16,13 +18,19 @@
   import { useHub } from '$lib/hub/context';
   import type { HubError, HubResult } from '$lib/hub/error';
   import { sessionsApi } from '$lib/sessions/api';
+  import { screenSharingCalls } from '$lib/devices/screen-sharing/calls';
+  import { wakeApi } from '$lib/sessions/wake/api';
   import { useSessions } from '$lib/sessions/sessions.svelte';
+  import { openWebInterface } from '$lib/sessions/web/open/open';
+  import type { SessionProtocol } from '$lib/sessions/tabs';
 
   const sessions = useSessions();
   const hub = useHub();
   const devices = devicesApi(hub);
   const checks = checksApi(hub);
   const connections = sessionsApi(hub);
+  const wake = wakeApi(hub);
+  const screenSharing = screenSharingCalls(hub);
 
   let sites = $state<readonly SiteOption[]>([]);
   let adding = $state(false);
@@ -101,6 +109,9 @@
       createSite: (name, subnet) => devices.createSite(name, subnet),
       createDevice: (input) => devices.create(input),
       setSshCredential: (deviceId, credential) => devices.setSshCredential(deviceId, credential),
+      // DEV-011: the sessions client stores the RDP and VNC passwords; its errors never quote them (LOG-007).
+      setRdpCredential: (deviceId, credential) => connections.setCredential('RDP', deviceId, credential.password),
+      setVncCredential: (deviceId, credential) => connections.setCredential('VNC', deviceId, credential.password),
       createCheck: (input) => checks.create(input),
     });
   }
@@ -113,14 +124,19 @@
     void goto(`${resolve('/devices')}/${encodeURIComponent(added.id)}`, { state });
   }
 
-  /** Opens an SSH tab that grows from the button (WP-14 H-1, MOT-005). */
-  function connect(device: CardDevice, button: HTMLElement): void {
+  /** Opens a tab for the protocol of the button that grows from it (WP-14 H-1, RA-030, MOT-005). */
+  function connect(device: CardDevice, protocol: SessionProtocol, button: HTMLElement): void {
     sessions.openSession({
       deviceId: device.id,
       deviceName: device.name,
-      protocol: 'SSH',
+      protocol,
       origin: button.getBoundingClientRect(),
     });
+  }
+
+  /** Opens the interface as its setting says: a web tab that grows from the button, or the system browser (WEB-003, WEB-011). */
+  function openWeb(device: CardDevice, webInterface: CardDevice['webInterfaces'][number], button: HTMLElement): void {
+    void openWebInterface(sessions, desktopWebView, { device, webInterface, origin: button.getBoundingClientRect() });
   }
 </script>
 
@@ -129,7 +145,7 @@
   {#if addError !== null}
     <p class="notice" role="alert">Could not open Add device: {addError.message}</p>
   {/if}
-  <DeviceScreen {query} onQueryChange={changeQuery} onAddDevice={() => void addDevice()} onConnect={connect} />
+  <DeviceScreen {query} onQueryChange={changeQuery} onAddDevice={() => void addDevice()} onConnect={connect} onOpenWeb={openWeb} {wake} {screenSharing} />
 </section>
 
 <AddDeviceModal

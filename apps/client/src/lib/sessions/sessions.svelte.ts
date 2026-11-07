@@ -1,7 +1,8 @@
 import { createContext } from 'svelte';
+import type { Status } from '$lib/hub/generated/graphql';
 import type { HubError, HubResult } from '$lib/hub/hub';
-import type { TunnelStart } from './tunnel/start';
-import type { SessionStart, TunnelEvents } from './view/start';
+import type { TunnelRefusal } from './tunnel/state';
+import type { DeviceStarts, RemoteStart, SessionStart, ViewStartResult } from './view/start';
 import {
   closed,
   deselected,
@@ -14,6 +15,7 @@ import {
   type Origin,
   type SessionProtocol,
   type Tab,
+  type WebTarget,
   type TabId,
   type Tabs,
 } from './tabs';
@@ -21,11 +23,11 @@ import {
 /** The hub calls behind the store; the root layout supplies them (K1 `startSession`, `endSession`). */
 export interface SessionPort {
   /**
-   * How a session view starts sessions on `deviceId` (D-5, D-7):
+   * How a session view starts sessions on `deviceId` (D-5, D-7), one start per tunnel:
    * `sessionStart(sessionsApi(hub), deviceId, hub.address.origin)`. Only the view calls it, because only the
    * view knows its display; the store wraps it to learn each session ID (see `startIn`).
    */
-  start(deviceId: string): SessionStart;
+  start(deviceId: string): DeviceStarts;
   /** End the session, or return an ended one unchanged (K1 `endSession`, D-4). */
   end(sessionId: string): Promise<HubResult<unknown>>;
 }
@@ -52,6 +54,15 @@ export interface SessionRequest {
   readonly origin: Origin | null;
 }
 
+/** What `openWeb` needs: the interface, its device and the control that opened it (WEB-003, MOT-005). */
+export interface WebRequest {
+  readonly deviceId: string;
+  readonly deviceName: string;
+  readonly status: Status;
+  readonly web: WebTarget;
+  readonly origin: Origin | null;
+}
+
 /** The hub could not end a session; `code` is its K7 code. The text is fixed (LOG-007, R-035). */
 export class SessionEndError extends Error {
   readonly code: HubError['code'];
@@ -63,8 +74,27 @@ export class SessionEndError extends Error {
   }
 }
 
+interface Refused {
+  readonly ok: false;
+  readonly error: TunnelRefusal;
+}
+
 /** What a start in a tab that has gone answers; the view of that tab has gone too, so no one shows it. */
-const TAB_CLOSED: TunnelStart = { ok: false, error: { problem: 'not-opened', message: 'The session tab was closed.' } };
+const TAB_CLOSED: Refused = { ok: false, error: { problem: 'not-opened', message: 'The session tab was closed.' } };
+
+/** What a start through the other tunnel's view answers: an SSH tab has no remote display, and the reverse. */
+const OTHER_VIEW: Refused = { ok: false, error: { problem: 'not-opened', message: 'This session tab uses another protocol.' } };
+
+/** Starts one attempt; `ended` is called when its tunnel ends, before the view hears it. */
+type Launch<Tunnel> = (ended: () => void) => Promise<ViewStartResult<Tunnel>>;
+
+/** `onend`, after `ended`. */
+function afterEnded<State>(ended: () => void, onend: (state: State) => void): (state: State) => void {
+  return (state) => {
+    ended();
+    onend(state);
+  };
+}
 
 /** What one start in a tab has learnt from its tunnel so far. */
 interface Attempt {
@@ -85,12 +115,17 @@ export interface Sessions {
    * button.getBoundingClientRect() })` (WP-14 H-1, WP-12).
    */
   openSession(request: SessionRequest): TabId;
+  /** Opens and selects a web tab for `request` (WEB-003); its pane starts the page and reads the pin (WEB-008). */
+  openWeb(request: WebRequest): TabId;
   /**
-   * The `SessionStart` for the view in tab `id`. Each call starts a hub session and records its ID on the tab;
+   * The `SessionStart` for the SSH view in tab `id`. Each call starts a hub session and records its ID on the tab;
    * one that replaces a live session ends that first (D-5); one that finishes after the tab closed, or after a
-   * newer start, has its session ended here. A session whose tunnel ended is the view's to end (D-4).
+   * newer start, has its session ended here. A session whose tunnel ended is the view's to end (D-4). In an RDP
+   * or VNC tab it starts nothing.
    */
   startIn(id: TabId): SessionStart;
+  /** The same for the remote view of an RDP or VNC tab, which asks `startSession` for the tab's protocol. */
+  remoteStartIn(id: TabId): RemoteStart;
   select(id: TabId): void;
   deselect(): void;
   /** Show `title` (the remote shell's, cleaned) in the tab; `''` clears it. */
@@ -136,33 +171,29 @@ class OpenSessions implements Sessions {
     return id;
   }
 
+  openWeb({ deviceId, deviceName, status, web, origin }: WebRequest): TabId {
+    this.#opens += 1;
+    const id = `tab-${String(this.#opens)}`;
+    this.#state = opened(this.#state, { id, deviceId, deviceName, protocol: 'WEB', origin, sessionId: null, web, status });
+    return id;
+  }
+
   startIn(id: TabId): SessionStart {
-    return async (display, events) => {
-      const tab = this.#find(id);
-      if (tab === undefined) return TAB_CLOSED;
-      this.#starts += 1;
-      const mine = this.#starts;
-      this.#latestStart.set(id, mine);
-      if (tab.sessionId !== null) {
-        const failure = await this.#endPrevious(id, tab.sessionId);
-        if (failure !== undefined) return { ok: false, error: failure };
-        if (!this.#isLatest(id, mine)) return TAB_CLOSED;
-      }
-      const attempt: Attempt = { sessionId: undefined, ended: false };
-      const result = await this.#port.start(tab.deviceId)(display, this.#following(id, attempt, events));
-      if (!result.ok) return result;
-      attempt.sessionId = result.value.sessionId;
-      if (!this.#isLatest(id, mine)) {
-        // The view that asked has gone or moved on, so nothing owns this session: close its tunnel now (the view
-        // may close it too; that is safe) and end it. A failure has no one to tell: the hub also records the end
-        // when the tunnel closes (K4 §5).
-        result.value.tunnel.close();
-        await this.#port.end(attempt.sessionId);
-      } else if (!attempt.ended) {
-        this.#state = withSession(this.#state, id, attempt.sessionId);
-      }
-      return result;
-    };
+    return (display, events) =>
+      this.#begin(id, (tab) => {
+        if (tab.protocol !== 'SSH') return undefined;
+        const start = this.#port.start(tab.deviceId).terminal;
+        return (ended) => start(display, { ...events, onend: afterEnded(ended, events.onend) });
+      });
+  }
+
+  remoteStartIn(id: TabId): RemoteStart {
+    return (display, events) =>
+      this.#begin(id, (tab) => {
+        if (tab.protocol === 'SSH' || tab.protocol === 'WEB') return undefined;
+        const start = this.#port.start(tab.deviceId).remote(tab.protocol);
+        return (ended) => start(display, { ...events, onend: afterEnded(ended, events.onend) });
+      });
   }
 
   select(id: TabId): void {
@@ -191,7 +222,7 @@ class OpenSessions implements Sessions {
 
   async popOut(id: TabId): Promise<void> {
     const tab = this.#find(id);
-    if (this.#popOut === undefined || tab === undefined) return;
+    if (this.#popOut === undefined || tab === undefined || tab.protocol === 'WEB') return;
     await this.#popOut({ deviceId: tab.deviceId, deviceName: tab.deviceName, protocol: tab.protocol });
     // A tab closed while the window opened has already ended its session (see `close`).
     const sessionId = this.#find(id)?.sessionId;
@@ -204,18 +235,50 @@ class OpenSessions implements Sessions {
     return this.#find(id) !== undefined && this.#latestStart.get(id) === start;
   }
 
-  /** `events`, after the tab gives up the session of `attempt` when its tunnel ends (D-4). */
-  #following(id: TabId, attempt: Attempt, events: TunnelEvents): TunnelEvents {
-    return {
-      ...events,
-      onend: (state) => {
-        attempt.ended = true;
-        if (attempt.sessionId !== undefined && this.#find(id)?.sessionId === attempt.sessionId) {
-          this.#state = withSession(this.#state, id, null);
-        }
-        events.onend(state);
-      },
-    };
+  /**
+   * One start in tab `id` through the launch `pick` gives for the tab (`undefined`: none for this view). The tab
+   * gives up the attempt's session when its tunnel ends (K4 §5).
+   */
+  async #begin<Tunnel extends { close(): void }>(
+    id: TabId,
+    pick: (tab: Tab) => Launch<Tunnel> | undefined,
+  ): Promise<ViewStartResult<Tunnel>> {
+    const tab = this.#find(id);
+    if (tab === undefined) return TAB_CLOSED;
+    const launch = pick(tab);
+    if (launch === undefined) return OTHER_VIEW;
+    this.#starts += 1;
+    const mine = this.#starts;
+    this.#latestStart.set(id, mine);
+    if (tab.sessionId !== null) {
+      const failure = await this.#endPrevious(id, tab.sessionId);
+      if (failure !== undefined) return { ok: false, error: failure };
+      if (!this.#isLatest(id, mine)) return TAB_CLOSED;
+    }
+    const attempt: Attempt = { sessionId: undefined, ended: false };
+    const result = await launch(() => {
+      this.#ended(id, attempt);
+    });
+    if (!result.ok) return result;
+    attempt.sessionId = result.value.sessionId;
+    if (!this.#isLatest(id, mine)) {
+      // The view that asked has gone or moved on, so nothing owns this session: close its tunnel now (the view
+      // may close it too; that is safe) and end it. A failure has no one to tell: the hub also records the end
+      // when the tunnel closes (K4 §5).
+      result.value.tunnel.close();
+      await this.#port.end(attempt.sessionId);
+    } else if (!attempt.ended) {
+      this.#state = withSession(this.#state, id, attempt.sessionId);
+    }
+    return result;
+  }
+
+  /** The tunnel of `attempt` ended: the tab gives up its session, so the view ends it (K4 §5). */
+  #ended(id: TabId, attempt: Attempt): void {
+    attempt.ended = true;
+    if (attempt.sessionId !== undefined && this.#find(id)?.sessionId === attempt.sessionId) {
+      this.#state = withSession(this.#state, id, null);
+    }
   }
 
   /**

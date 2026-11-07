@@ -19,8 +19,10 @@ use crate::{
         self, Bus,
         process_log::{InternalErrors, RequestSpan},
     },
-    maintenance,
+    maintenance, metrics,
     sessions::{self, Live},
+    targets::AddressPolicy,
+    web_interfaces,
 };
 
 // One line per domain in each root (K3).
@@ -41,10 +43,18 @@ pub struct Mutation(
     devices::graphql::Mutation,
     maintenance::graphql::Mutation,
     sessions::graphql::Mutation,
+    sessions::FilesMutation,
+    sessions::WakeMutation,
+    web_interfaces::graphql::Mutation,
 );
 
 #[derive(MergedSubscription, Default)]
-pub struct Subscription(checks::graphql::Subscription, events::graphql::Subscription);
+pub struct Subscription(
+    checks::graphql::Subscription,
+    events::graphql::Subscription,
+    metrics::graphql::Subscription,
+    sessions::graphql::Subscription,
+);
 
 pub type HubSchema = Schema<Query, Mutation, Subscription>;
 
@@ -60,6 +70,11 @@ pub struct Dependencies {
     /// The hub's one `Live`: the tunnel router gets a clone of this same value, or no ticket
     /// the schema issues can be redeemed (R-032).
     pub live: Live,
+    /// The deny list every SSH link the schema opens checks (`wakeDevice`; P2-004).
+    pub policy: AddressPolicy,
+    /// The hub's one `Feed`: the collector publishes on it and `metricsAdded` reads it, so
+    /// `main.rs` gives the collector a clone of this same value.
+    pub metrics_feed: metrics::Feed,
 }
 
 /// Put each dependency into the schema data, with the devices loaders (WP-06 H-2);
@@ -78,6 +93,8 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
         bus,
         vault,
         live,
+        policy,
+        metrics_feed,
     } = dependencies;
     harden(
         Schema::build(
@@ -100,11 +117,19 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .data(devices::graphql::site_loader(pool.clone()).delay(BATCH_WINDOW))
     .data(devices::graphql::devices_by_site_loader(pool.clone()).delay(BATCH_WINDOW))
     .data(devices::graphql::credential_loader(pool.clone()).delay(BATCH_WINDOW))
+    .data(devices::graphql::rdp_credential_loader(pool.clone()).delay(BATCH_WINDOW))
+    .data(devices::graphql::vnc_credential_loader(pool.clone()).delay(BATCH_WINDOW))
+    .data(devices::graphql::device_loader(pool.clone()).delay(BATCH_WINDOW))
+    .data(devices::graphql::web_interfaces_loader(pool.clone()).delay(BATCH_WINDOW))
+    .data(devices::graphql::web_interface_suggestions_loader(pool.clone()).delay(BATCH_WINDOW))
     // devices fields that join checks (API-005)
     .data(devices::graphql::status_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
     .data(devices::graphql::uptime_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
     .data(devices::graphql::checks_loader(pool.clone()).delay(BATCH_WINDOW))
     .data(devices::graphql::resolved_ip_loader(pool.clone()).delay(BATCH_WINDOW))
+    // devices fields that join metrics (API-005)
+    .data(devices::graphql::readings_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
+    .data(devices::graphql::gpus_loader(pool.clone()).delay(BATCH_WINDOW))
     // checks
     .data(checks::graphql::check_status_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
     .data(checks::graphql::last_heartbeat_loader(pool.clone()).delay(BATCH_WINDOW))
@@ -112,7 +137,11 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .data(checks::graphql::check_uptime_loader(pool.clone(), clock).delay(BATCH_WINDOW))
     // sessions (R-032)
     .data(sessions::graphql::host_key_loader(pool.clone()).delay(BATCH_WINDOW))
+    .data(sessions::graphql::server_certificate_loader(pool.clone()).delay(BATCH_WINDOW))
     .data(live)
+    .data(policy)
+    // metrics
+    .data(metrics_feed)
     .finish()
 }
 

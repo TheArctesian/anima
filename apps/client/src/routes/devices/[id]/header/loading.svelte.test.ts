@@ -77,13 +77,13 @@ it('Loading: a header that is not loading, such as a missing device, never shows
   expect(skeleton()).toBeNull();
 });
 
-/** jsdom applies no component styles, so the icon-only rules are read from the source: the area each element takes there. */
+/** jsdom applies no component styles, so the compact rules are read from the source: the area each element takes there. */
 function iconOnlyArea(selector: string): string | undefined {
-  const rule = new RegExp(String.raw`:root\[data-nav='icons'\]\) ${selector.replace('.', String.raw`\.`)} \{[^}]*?grid-area: ([^;]+);`);
+  const rule = new RegExp(String.raw`\n {4}${selector.replace('.', String.raw`\.`)} \{[^}]*?grid-area: ([^;]+);`);
   return rule.exec(headerSource)?.[1];
 }
 
-it('MOT-007: below bp-compact the skeleton has the rows of the loaded header, each placeholder over its row', () => {
+it('MOT-007, DEV-021: in the narrow header the skeleton has the rows of the loaded header, each placeholder over its row', () => {
   const rows = { back: iconOnlyArea('.back'), status: iconOnlyArea('.status'), name: iconOnlyArea('h1') };
   expect(rows).toEqual({ back: '1 / 1', status: '1 / 3', name: '2 / 1 / 3 / -1' });
   // Back link, pill and name share the loaded line's cells; the details and buttons take the full width of rows 3 and 4.
@@ -94,5 +94,13 @@ it('MOT-007: below bp-compact the skeleton has the rows of the loaded header, ea
     iconOnlyArea('.skeleton > .details-place'),
     iconOnlyArea('.skeleton > .actions-place'),
   ]).toEqual(['1 / 1', '1 / 3', '2 / 1 / 3 / -1', '3 / 1 / 4 / -1', '4 / 1 / 5 / -1']);
-  expect(headerSource).toMatch(/\.line,\s*:global\(:root\[data-nav='icons'\]\) \.skeleton \{\s*display: grid;/);
+  // One container query switches the line and its skeleton together, on the header's own width and not the window's.
+  expect(headerSource).toMatch(/@container \(max-inline-size: [\d.]+rem\) \{\s*\.line,\s*\.skeleton \{\s*display: grid;/);
+  expect(headerSource).toMatch(/\.fit \{\s*container-type: inline-size;/);
+  expect(headerSource).not.toContain('data-nav');
+});
+
+it('DEV-021, MOT-007: in the compact layout the buttons wrap and the real row and its placeholder share one block size', () => {
+  expect(headerSource).toMatch(/\.actions \{\s*align-content: start;\s*flex-wrap: wrap;/);
+  expect(headerSource).toMatch(/\.actions,\s*\.skeleton > \.actions-place \{\s*align-self: start;\s*block-size: var\(--actions-block-size\);/);
 });

@@ -9,6 +9,7 @@ use super::rules::FieldError;
 
 const HOST_MAX: usize = 253;
 const LABEL_MAX: usize = 63;
+const USER_NAME_MAX: usize = 64;
 
 /// Whether the text has no control character or line or paragraph separator (each would split
 /// or break a log line) and no character that changes the reading direction (it would disguise
@@ -27,6 +28,39 @@ pub(super) fn is_plain(text: &str) -> bool {
                     | '\u{2066}'..='\u{2069}'
             )
     })
+}
+
+/// A sign-in name for `field`: trimmed, at most 64 characters, plain and without spaces. An
+/// empty name is allowed unless `required`. `noun` names it in the messages, such as "SSH user name".
+pub(super) fn user_name(
+    text: &str,
+    required: bool,
+    field: &'static str,
+    noun: &str,
+) -> Result<String, FieldError> {
+    let name = text.trim();
+    if required && name.is_empty() {
+        return Err(FieldError::new(field, format!("Enter the {noun}.")));
+    }
+    if name.chars().count() > USER_NAME_MAX {
+        return Err(FieldError::new(
+            field,
+            format!("The {noun} can be at most {USER_NAME_MAX} characters."),
+        ));
+    }
+    if !is_plain(name) {
+        return Err(FieldError::new(
+            field,
+            format!("The {noun} cannot contain control characters or text-direction marks."),
+        ));
+    }
+    if name.chars().any(char::is_whitespace) {
+        return Err(FieldError::new(
+            field,
+            format!("The {noun} cannot contain spaces."),
+        ));
+    }
+    Ok(name.to_owned())
 }
 
 /// An IP address or an RFC 1123 host name, without scheme, port or path (DEV-010).

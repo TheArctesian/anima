@@ -1,7 +1,9 @@
 //! The only SQL for `credentials.secrets`, the one table this domain owns (CQ-032).
 //! Rows hold sealed values only (SEC-003).
 //!
-//! The table's kind check admits only SSH kinds, so "the device's rows" are its SSH rows.
+//! The table holds SSH parts and RDP and VNC passwords side by side. Every read, check and
+//! delete here takes the kinds it may match, so a caller sees and removes only its own kinds.
+//! The advisory lock is per device, not per kind, so writers of every kind share one lock order.
 
 use std::collections::HashSet;
 
@@ -10,7 +12,7 @@ use uuid::Uuid;
 
 use crate::ids::DeviceId;
 
-use super::{Error, Sealed, ssh::SshKind};
+use super::{Error, Sealed};
 
 const DEVICE_FKEY: &str = "secrets_device_id_fkey";
 
@@ -24,7 +26,7 @@ pub(super) struct StoredSecret {
 }
 
 /// Waits for, then holds until the transaction ends, this domain's advisory lock on the
-/// device's secrets, so concurrent writers for one device run one after the other.
+/// device's secrets of every kind, so concurrent writers for one device run one after the other.
 pub(super) async fn lock_device(conn: &mut PgConnection, device: DeviceId) -> Result<(), Error> {
     sqlx::query(
         "SELECT pg_advisory_xact_lock(hashtextextended('credentials.secrets:' || $1::text, 0))",
@@ -35,16 +37,22 @@ pub(super) async fn lock_device(conn: &mut PgConnection, device: DeviceId) -> Re
     Ok(())
 }
 
-/// Deletes every row of the device; returns how many rows were removed.
-pub(super) async fn delete_device(conn: &mut PgConnection, device: DeviceId) -> Result<u64, Error> {
-    let done = sqlx::query("DELETE FROM credentials.secrets WHERE device_id = $1")
-        .bind(device)
-        .execute(conn)
-        .await?;
+/// Deletes the device's rows of the given kinds; returns how many rows were removed.
+pub(super) async fn delete_kinds(
+    conn: &mut PgConnection,
+    device: DeviceId,
+    kinds: &[&str],
+) -> Result<u64, Error> {
+    let done =
+        sqlx::query("DELETE FROM credentials.secrets WHERE device_id = $1 AND kind = ANY($2)")
+            .bind(device)
+            .bind(kinds)
+            .execute(conn)
+            .await?;
     Ok(done.rows_affected())
 }
 
-/// Inserts one sealed row with a fresh UUID v7 id.
+/// Inserts one sealed row of `kind` with a fresh UUID v7 id.
 ///
 /// # Errors
 ///
@@ -52,7 +60,7 @@ pub(super) async fn delete_device(conn: &mut PgConnection, device: DeviceId) -> 
 pub(super) async fn insert(
     conn: &mut PgConnection,
     device: DeviceId,
-    kind: SshKind,
+    kind: &str,
     sealed: &Sealed,
 ) -> Result<(), Error> {
     sqlx::query(
@@ -61,7 +69,7 @@ pub(super) async fn insert(
     )
     .bind(Uuid::now_v7())
     .bind(device)
-    .bind(kind.as_sql())
+    .bind(kind)
     .bind(sealed.nonce())
     .bind(sealed.ciphertext())
     .bind(sealed.key_id())
@@ -78,41 +86,51 @@ pub(super) async fn insert(
     Ok(())
 }
 
-/// Reads every row of the device.
-pub(super) async fn fetch_device(
+/// Reads the device's rows of the given kinds.
+pub(super) async fn fetch_kinds(
     db: &PgPool,
     device: DeviceId,
+    kinds: &[&str],
 ) -> Result<Vec<StoredSecret>, Error> {
     Ok(sqlx::query_as(
-        "SELECT kind, nonce, ciphertext, key_id FROM credentials.secrets WHERE device_id = $1",
+        "SELECT kind, nonce, ciphertext, key_id FROM credentials.secrets \
+         WHERE device_id = $1 AND kind = ANY($2)",
     )
     .bind(device)
+    .bind(kinds)
     .fetch_all(db)
     .await?)
 }
 
-/// Whether the device has any row.
-pub(super) async fn exists_for_device(db: &PgPool, device: DeviceId) -> Result<bool, Error> {
-    Ok(
-        sqlx::query_scalar(
-            "SELECT EXISTS (SELECT 1 FROM credentials.secrets WHERE device_id = $1)",
-        )
-        .bind(device)
-        .fetch_one(db)
-        .await?,
+/// Whether the device has a row of any of the given kinds.
+pub(super) async fn exists_of_kinds(
+    db: &PgPool,
+    device: DeviceId,
+    kinds: &[&str],
+) -> Result<bool, Error> {
+    Ok(sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM credentials.secrets \
+         WHERE device_id = $1 AND kind = ANY($2))",
     )
+    .bind(device)
+    .bind(kinds)
+    .fetch_one(db)
+    .await?)
 }
 
-/// Which of the devices have any row. No kind filter: the kind check keeps the table
-/// SSH-only, so any row is an SSH secret. An empty slice matches nothing.
-pub(super) async fn devices_with_rows(
+/// Which of the devices have a row of any of the given kinds, in one query. An empty slice
+/// matches nothing.
+pub(super) async fn devices_with_kinds(
     db: &PgPool,
     devices: &[DeviceId],
+    kinds: &[&str],
 ) -> Result<HashSet<DeviceId>, Error> {
     let found: Vec<DeviceId> = sqlx::query_scalar(
-        "SELECT DISTINCT device_id FROM credentials.secrets WHERE device_id = ANY($1)",
+        "SELECT DISTINCT device_id FROM credentials.secrets \
+         WHERE device_id = ANY($1) AND kind = ANY($2)",
     )
     .bind(devices)
+    .bind(kinds)
     .fetch_all(db)
     .await?;
     Ok(found.into_iter().collect())

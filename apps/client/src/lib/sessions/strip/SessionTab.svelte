@@ -20,7 +20,7 @@
   }
 
   const { tab, selected, focusable, panel, onselect, onclose, onpopout }: Props = $props();
-  const closeLabel = $derived(`Close ${tab.deviceName} ${tab.protocol} session`);
+  const closeLabel = $derived(tab.protocol === 'WEB' ? `Close ${tab.deviceName} ${tab.web.label}` : `Close ${tab.deviceName} ${tab.protocol} session`);
   const shortcuts = $derived(onpopout === undefined ? 'Delete' : 'Delete Shift+F10');
   let menuOpen = $state(false);
   let button: HTMLButtonElement | undefined = $state();
@@ -53,7 +53,7 @@
   <Icon name="nf-md-console" size="sm" />
   <span class="name">{tab.deviceName}</span>
   <span class="title" title={tab.title}>{tab.title ?? ''}</span>
-  <span class="protocol">{tab.protocol}</span>
+  <span class="protocol" data-remote={tab.protocol === 'SSH' ? undefined : ''}>{tab.protocol}</span>
 </button>
 {#if onpopout !== undefined}
   <TabMenu
@@ -137,6 +137,22 @@
   .protocol {
     color: var(--text-muted);
     font-size: var(--text-xs);
+  }
+
+  /*
+   * RDP and VNC are named in a small label of one fixed width, so the label never moves the name or the close
+   * button, whichever protocol it names (MOT-007).
+   */
+  .protocol[data-remote] {
+    box-sizing: border-box;
+    flex: none;
+    inline-size: calc(var(--space-6) + var(--space-3));
+    padding: 0 var(--space-1);
+    border: var(--border-thin) solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    line-height: var(--leading-normal);
+    text-align: center;
   }
 
   .close {

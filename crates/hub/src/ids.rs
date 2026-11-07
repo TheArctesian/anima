@@ -62,6 +62,10 @@ entity_id! {
     SessionId,
     /// An entry in the event log.
     EventId,
+    /// A web interface of a device.
+    WebInterfaceId,
+    /// A metric series of a device.
+    MetricSeriesId,
 }
 
 #[cfg(test)]

@@ -1,18 +1,30 @@
 <script lang="ts">
   import { statusLabel, type DeviceStatus } from '$lib/devices/card/card';
+  import type { MetricsSource } from '$lib/hub/generated/graphql';
+  import type { MetricRange } from '$lib/metrics/api';
+  import type { LoadingClock } from '$lib/motion/loading/loading';
+  import './geometry.css';
+  import MetricsSection from './MetricsSection.svelte';
+  import type { DeviceMetrics } from './metrics.svelte';
   import { checkCounts, hostKeyText, uptimeReadings, type OverviewDevice } from './overview';
 
   interface Props {
-    device: OverviewDevice & { readonly status: DeviceStatus };
+    device: OverviewDevice & { readonly status: DeviceStatus; readonly metricsSource: MetricsSource };
     checks: readonly { readonly status: DeviceStatus }[];
+    metrics: Pick<DeviceMetrics, 'view' | 'span' | 'shownRange' | 'chartShape' | 'readings' | 'error' | 'liveError'>;
+    range: MetricRange;
+    now: () => Date;
+    clock?: LoadingClock;
+    onRange: (range: MetricRange) => void;
+    onRetry: () => void;
+    onSettings: () => void;
   }
 
-  const { device, checks }: Props = $props();
+  const { device, checks, metrics, range, now, clock, onRange, onRetry, onSettings }: Props = $props();
   const counts = $derived(checkCounts(checks));
 </script>
 
-<!-- Phase 1 has no metrics (MET-003), so the panel holds no empty chart slots (D-10). -->
-<dl class="facts">
+<dl class="overview-facts">
   <div>
     <dt>Status</dt>
     <!-- A plain label: the header's pill is the one that moves from the card (D-12). -->
@@ -44,35 +56,14 @@
   </div>
 </dl>
 
+<MetricsSection source={device.metricsSource} {metrics} {range} {now} {clock} {onRange} {onRetry} {onSettings} />
+
 <style>
-  .facts {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, calc(var(--space-16) * 3)), 1fr));
-    gap: var(--space-4);
-    margin: 0;
-  }
-
-  dt {
-    color: var(--text-muted);
-    font-size: var(--text-sm);
-  }
-
-  dd {
-    margin: var(--space-1) 0 0;
-    color: var(--text);
-  }
-
   .reading {
     font-variant-numeric: tabular-nums;
   }
 
   .count + .count::before {
     content: ' · ';
-  }
-
-  .key {
-    overflow-wrap: anywhere;
-    font-family: var(--font-mono);
-    font-size: var(--text-sm);
   }
 </style>

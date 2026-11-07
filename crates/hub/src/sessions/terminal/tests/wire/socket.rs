@@ -146,6 +146,25 @@ impl Socket {
         }
     }
 
+    /// Returns once the hub has read everything the client sent so far: sends a WebSocket
+    /// ping, which the hub reads after them, and waits for its pong, skipping the hub's pings.
+    pub(super) async fn caught_up(&mut self) {
+        let ping = Message::Ping(b"caught up".to_vec().into());
+        self.stream.send(ping).await.unwrap();
+        loop {
+            let message = timeout(WAIT, self.stream.next()).await.expect("a pong");
+            if let Some(Ok(message)) = &message {
+                self.received
+                    .extend_from_slice(&message.clone().into_data());
+            }
+            match message {
+                Some(Ok(Message::Pong(_))) => return,
+                Some(Ok(Message::Text(text))) if text == r#"{"type":"ping"}"# => {}
+                other => panic!("{other:?} before the pong"),
+            }
+        }
+    }
+
     pub(super) async fn send(&mut self, text: &str) {
         self.stream.send(Message::text(text)).await.unwrap();
     }

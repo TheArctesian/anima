@@ -5,12 +5,14 @@
     "clock",
     "config",
     "scalars",
-    "paging"
+    "paging",
+    "targets"
   ],
   "wiring": [
     "main",
     "lib",
-    "schema"
+    "schema",
+    "upkeep"
   ],
   "domains": {
     "events": [],
@@ -30,11 +32,22 @@
       "devices",
       "maintenance",
       "events",
-      "credentials"
+      "credentials",
+      "sessions"
     ],
     "sessions": [
       "access",
       "devices",
+      "credentials",
+      "events"
+    ],
+    "web_interfaces": [
+      "checks",
+      "events"
+    ],
+    "metrics": [
+      "devices",
+      "sessions",
       "credentials",
       "events"
     ]
@@ -43,7 +56,9 @@
     "devices": [
       "access",
       "checks",
-      "sessions"
+      "metrics",
+      "sessions",
+      "web_interfaces"
     ],
     "checks": [
       "access"
@@ -52,6 +67,12 @@
       "access"
     ],
     "events": [
+      "access"
+    ],
+    "web_interfaces": [
+      "access"
+    ],
+    "metrics": [
       "access"
     ]
   }

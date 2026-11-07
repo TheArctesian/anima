@@ -5,9 +5,11 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import { WebglAddon } from '@xterm/addon-webgl';
 import { Terminal } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
+import type { SessionTransfer } from '../api';
 import type { CellSize } from '../tunnel/terminal/codec';
 import { outputFlow } from './flow';
 import { guardEscapes, type EscapeHooks } from './remote/escapes';
+import { guardClipboard } from './operator/clipboard';
 import { safePaste } from './operator/paste';
 import { shortcutOf, type ShortcutAction } from './operator/shortcuts';
 import { MINIMUM_CONTRAST_RATIO, sizeInPx, terminalTheme, tokensOf } from './theme';
@@ -30,6 +32,8 @@ export interface ScreenHooks extends EscapeHooks {
   readonly onfind: () => void;
   /** Output arrived faster than it could be drawn, so some is skipped (once per episode). */
   readonly onoverflow: () => void;
+  /** Whether the session lets text be copied out and pasted in now (RA-033); asked at each copy and paste. */
+  readonly allows: () => SessionTransfer;
 }
 
 /** The xterm.js terminal of one session pane. It is the only thing that touches xterm.js outside this folder's files. */
@@ -43,7 +47,7 @@ export interface TerminalScreen {
   fit(): void;
   focus(): void;
   blur(): void;
-  /** Paste `text` as the operator's own action; bracketed when the shell asked for it. */
+  /** Paste `text` as the operator's own action; bracketed when the shell asked for it, and nothing while paste is off. */
   paste(text: string): void;
   /** Select the next (or previous) match of `text`; false when there is none. `incremental` keeps the current match while it still fits. */
   find(text: string, backwards: boolean, incremental: boolean): boolean;
@@ -88,7 +92,7 @@ function enableWebgl(terminal: Terminal): void {
 }
 
 function acts(terminal: Terminal, action: ShortcutAction, hooks: ScreenHooks): void {
-  if (action === 'copy' && terminal.hasSelection()) hooks.oncopy(terminal.getSelection());
+  if (action === 'copy' && hooks.allows().copy && terminal.hasSelection()) hooks.oncopy(terminal.getSelection());
   if (action === 'find') hooks.onfind();
 }
 
@@ -153,16 +157,7 @@ export const openScreen: ScreenOpener = async (host, hooks) => {
   guardEscapes(terminal, hooks);
   wireEvents(terminal, hooks);
   terminal.open(host);
-  // The paste event is taken before xterm.js sees it, so the text is cleaned first (RA-003).
-  host.addEventListener(
-    'paste',
-    (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      terminal.paste(safePaste(event.clipboardData?.getData('text/plain') ?? ''));
-    },
-    true,
-  );
+  guardClipboard(host, terminal, hooks.allows);
   enableWebgl(terminal);
   fit.fit();
   return screenOf(terminal, fit, search, hooks);
@@ -201,7 +196,7 @@ function screenOf(terminal: Terminal, fit: FitAddon, search: SearchAddon, hooks:
       terminal.blur();
     },
     paste: (text) => {
-      terminal.paste(safePaste(text));
+      if (hooks.allows().paste) terminal.paste(safePaste(text));
     },
     find: (text, backwards, incremental) => {
       const options = { incremental };

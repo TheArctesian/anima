@@ -11,7 +11,14 @@ use async_graphql::Enum;
 use chrono::{DateTime, Utc};
 use ipnet::IpNet;
 
-use super::text::ip_literal;
+use super::{
+    mac::MacAddress,
+    remote::{
+        MetricsSource, RdpSettings, RemoteAccess, RemoteChange, RemoteForm, TransferPolicy,
+        VncSettings,
+    },
+    text::ip_literal,
+};
 use crate::{
     ids::{DeviceId, SiteId},
     scalars::Cidr,
@@ -23,6 +30,15 @@ use crate::{
 pub struct UnknownValue {
     kind: &'static str,
     text: String,
+}
+
+impl UnknownValue {
+    pub(super) fn new(kind: &'static str, text: &str) -> Self {
+        Self {
+            kind,
+            text: text.to_owned(),
+        }
+    }
 }
 
 /// Operating system of a device, stored as lower-case text.
@@ -122,6 +138,8 @@ pub struct Site {
     pub id: SiteId,
     pub name: String,
     pub subnet: IpNet,
+    /// The device that sends Wake-on-LAN packets at this site (D-7).
+    pub(super) wake_relay: Option<DeviceId>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -136,6 +154,11 @@ pub struct Device {
     pub tags: Vec<String>,
     pub maintenance: bool,
     pub ssh: SshSettings,
+    pub rdp: RdpSettings,
+    pub vnc: VncSettings,
+    pub mac_address: Option<MacAddress>,
+    pub metrics_source: MetricsSource,
+    pub transfer: TransferPolicy,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -157,6 +180,7 @@ pub(super) struct NewDevice {
     pub os: OperatingSystem,
     pub tags: Vec<String>,
     pub ssh: SshSettings,
+    pub remote: RemoteAccess,
 }
 
 /// A validated partial update: `None` leaves the field as it is.
@@ -170,6 +194,7 @@ pub(super) struct DeviceChange {
     pub tags: Option<Vec<String>>,
     pub maintenance: Option<bool>,
     pub ssh: Option<SshSettings>,
+    pub remote: RemoteChange,
 }
 
 impl NewDevice {
@@ -221,6 +246,7 @@ pub(super) struct NewDeviceInput {
     pub(super) os: OperatingSystem,
     pub(super) tags: Vec<String>,
     pub(super) ssh: Option<SshInput>,
+    pub(super) remote: RemoteForm,
 }
 
 /// A device update as typed in the form; absent fields stay as they are.
@@ -234,6 +260,7 @@ pub(super) struct DeviceChangeInput {
     pub(super) tags: Option<Vec<String>>,
     pub(super) maintenance: Option<bool>,
     pub(super) ssh: Option<SshInput>,
+    pub(super) remote: RemoteForm,
 }
 
 /// A site to create, as typed in the form.

@@ -1,5 +1,7 @@
 //! All SQL on schema `sessions`: I/O only. Ids and time come in as parameters.
 
+mod server_certificates;
+
 use std::{collections::HashMap, net::IpAddr};
 
 use chrono::{DateTime, Utc};
@@ -14,6 +16,10 @@ use super::{
 use crate::{
     events::{ClientAddr, Operator},
     ids::{DeviceId, OperatorId, SessionId},
+};
+
+pub(super) use server_certificates::{
+    AcceptedCertificate, lock_server_certificate, put_server_certificate, server_certificates,
 };
 
 const SESSION_COLUMNS: &str = "id, device_id, device_name, protocol, operator_id, operator_name, \
@@ -136,23 +142,23 @@ pub(super) async fn insert<'e>(
 }
 
 /// Ends a live session at `end.at`, or at its start if that is later (a clock that stepped
-/// back must not leave the row live, MV-003). Returns whether this call ended it: a session
-/// ends once, and the first end wins (D-9).
+/// back must not leave the row live, MV-003). Returns the row as this call ended it, or
+/// `None` when it did not: a session ends once, and the first end wins.
 pub(super) async fn end<'e>(
     db: impl PgExecutor<'e>,
     id: SessionId,
     end: SessionEnd,
-) -> Result<bool, Error> {
-    let ended = sqlx::query(
+) -> Result<Option<Session>, Error> {
+    let row: Option<SessionRow> = sqlx::query_as(&format!(
         "update sessions.sessions set ended_at = greatest($2, started_at), end_reason = $3 \
-         where id = $1 and ended_at is null",
-    )
+         where id = $1 and ended_at is null returning {SESSION_COLUMNS}"
+    ))
     .bind(id)
     .bind(end.at)
     .bind(end.reason.as_str())
-    .execute(db)
+    .fetch_optional(db)
     .await?;
-    Ok(ended.rows_affected() == 1)
+    Ok(row.map(Session::try_from).transpose()?)
 }
 
 /// The session with this id, live or ended.

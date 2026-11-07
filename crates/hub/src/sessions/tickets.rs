@@ -3,7 +3,7 @@
 //!
 //! Pure: the random bytes and the time are parameters (CQ-021).
 
-use std::fmt;
+use std::{fmt, time::Duration};
 
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use chrono::{DateTime, TimeDelta, Utc};
@@ -24,6 +24,16 @@ const TOKEN_CHARS: usize = 43;
 
 /// A ticket is redeemable this long after it is issued (K4 §1).
 pub(super) const LIFETIME: TimeDelta = TimeDelta::seconds(30);
+
+/// How long the opening of a ticket with `wake_sent` waits for the device, in place of the
+/// usual 8 seconds (K4 Section 1): a device that was asleep needs time to boot.
+pub(super) const WOKEN_OPENING: Duration = Duration::from_secs(120);
+
+/// How often such an opening tries the device again while it does not answer.
+pub(super) const RECONNECT: Duration = Duration::from_secs(2);
+
+/// The files tunnel's path (K4 Section 1 `tunnelPath`, Section 9).
+pub(super) const FILES_PATH: &str = "/files";
 
 /// A token as the client holds it. Wiped on drop. Implements no `Debug`, `Display`, `Clone`
 /// or `Serialize`, so it cannot reach a log or an error (LOG-007).
@@ -64,13 +74,18 @@ pub(super) fn hash_of(presented: &str) -> Option<TicketHash> {
     Some(TicketHash(Sha256::digest(&*bytes).into()))
 }
 
-/// What `startSession` gives the client once: the session, its protocol (which names the
-/// tunnel's path) and the token for that tunnel.
+/// What `startSession` or `openFiles` gives the client once: the session, its protocol, the
+/// token and the tunnel's path the token opens.
 pub struct Ticket {
     pub session: SessionId,
     pub protocol: Protocol,
     token: TicketToken,
     pub expires_at: DateTime<Utc>,
+    /// Where the client opens the tunnel: the protocol's, or [`FILES_PATH`] for a files
+    /// ticket (K4 Section 1 `tunnelPath`).
+    pub tunnel_path: &'static str,
+    /// `startSession` sent a Wake-on-LAN packet first (K4 Section 1 `wakeSent`).
+    pub wake_sent: bool,
 }
 
 impl Ticket {
@@ -85,6 +100,24 @@ impl Ticket {
             protocol,
             token,
             expires_at,
+            tunnel_path: protocol.tunnel_path(),
+            wake_sent: false,
+        }
+    }
+
+    /// A ticket for the files tunnel of the live SSH session `session` (K4 Section 9).
+    pub(super) const fn files(
+        session: SessionId,
+        token: TicketToken,
+        expires_at: DateTime<Utc>,
+    ) -> Self {
+        Self {
+            session,
+            protocol: Protocol::Ssh,
+            token,
+            expires_at,
+            tunnel_path: FILES_PATH,
+            wake_sent: false,
         }
     }
 
@@ -102,6 +135,8 @@ impl fmt::Debug for Ticket {
             .field("protocol", &self.protocol)
             .field("token", &"[redacted]")
             .field("expires_at", &self.expires_at)
+            .field("tunnel_path", &self.tunnel_path)
+            .field("wake_sent", &self.wake_sent)
             .finish()
     }
 }
@@ -119,6 +154,9 @@ pub struct PendingTicket {
     /// As the client sent it; the tunnel checks its shape before guacd sees it.
     pub timezone: Option<String>,
     pub expires_at: DateTime<Utc>,
+    /// A Wake-on-LAN packet was sent first: the opening waits up to 120 seconds for the
+    /// device and tries it again every 2 seconds while it does not answer.
+    pub wake_sent: bool,
 }
 
 impl PendingTicket {
@@ -144,8 +182,7 @@ pub struct Presented<'a> {
     pub client: ClientAddr,
     /// The route's own path.
     pub path: &'a str,
-    /// Where a ticket for each protocol is opened: `Protocol::tunnel_path` in the hub; the
-    /// Guacamole tunnel's tests send SSH tickets to `/tunnel`.
+    /// Where a ticket for each protocol is opened: `Protocol::tunnel_path` in the hub.
     pub tunnel_path: fn(Protocol) -> &'static str,
 }
 

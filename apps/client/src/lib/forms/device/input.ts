@@ -1,4 +1,5 @@
 import type { CreateDeviceInput, SshCredentialInput, SshSettingsInput, UpdateDeviceInput } from '$lib/hub/generated/graphql';
+import { createAdditions, updateAdditions } from './remote/input';
 import { isVpnAddress } from './site';
 import { normalizedValues, portToSend, type DeviceFormValues } from './values';
 
@@ -42,6 +43,7 @@ export function createInput(values: DeviceFormValues, siteId: string): CreateDev
     os: now.os,
     tags: [...now.tags],
     ...(now.ssh.enabled ? { ssh: sshInput(now.ssh) } : {}),
+    ...createAdditions(values),
     addDefaultCheck: tcpDefaultCheckPort(values) === null,
   };
 }
@@ -57,6 +59,7 @@ export function updateInput(initial: DeviceFormValues, values: DeviceFormValues)
     ...(now.os !== before.os ? { os: now.os } : {}),
     ...(sameTags(now.tags, before.tags) ? {} : { tags: [...now.tags] }),
     ...(sameSsh(before.ssh, now.ssh) ? {} : { ssh: sshInput(now.ssh, before.ssh.port) }),
+    ...updateAdditions(initial, values),
   };
 }
 
