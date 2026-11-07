@@ -176,34 +176,63 @@ describe('settings tab: removing RDP and VNC passwords (DEV-011)', () => {
   });
 });
 
+/** The RDP test's answer with this certificate; `changed` says the hub held another one. */
+function certificateTest(serverCertificate: typeof CERTIFICATE, changed: boolean) {
+  return {
+    reachable: true,
+    authenticated: false,
+    hostKey: null,
+    hostKeyChanged: false,
+    message: null,
+    serverCertificate,
+    certificateChanged: changed,
+    certificateMatched: false,
+  };
+}
+
+/** Runs the RDP connection test, then presses Accept certificate. */
+async function testAndAccept(): Promise<void> {
+  document.querySelector<HTMLButtonElement>('[data-connection-test="rdp"]')?.click();
+  await settle();
+  button('Accept certificate').click();
+  await settle();
+}
+
 describe('settings tab: RDP server certificate (SEC-007)', () => {
   it('SEC-007: Accept certificate after the RDP test sends the shown fingerprint and Settings shows it accepted', async () => {
-    const tested = {
-      reachable: true,
-      authenticated: false,
-      hostKey: null,
-      hostKeyChanged: false,
-      message: null,
-      serverCertificate: CERTIFICATE,
-      certificateChanged: false,
-      certificateMatched: false,
-    };
     const fake = await show(
       answers({
         Device: { device: remote(true, false) },
-        TestRemoteConnection: { testConnection: tested },
+        TestRemoteConnection: { testConnection: certificateTest(CERTIFICATE, false) },
         AcceptServerCertificate: { acceptServerCertificate: CERTIFICATE },
       }),
       '?tab=settings&section=rdp',
     );
-    document.querySelector<HTMLButtonElement>('[data-connection-test="rdp"]')?.click();
-    await settle();
-    expect(document.querySelector('[aria-label="Server certificate seen"]')?.textContent).toContain('AA:BB:CC');
-    button('Accept certificate').click();
-    await settle();
+    await testAndAccept();
     expect(sent(fake, 'AcceptServerCertificate')).toEqual([
       { operation: 'AcceptServerCertificate', variables: { deviceId: ID, fingerprintSha256: 'AA:BB:CC' } },
     ]);
     expect(document.querySelector('[aria-label="Server certificate"]')?.textContent).toContain('AA:BB:CC');
+  });
+
+  it('SEC-007: with a certificate already pinned, accepting a changed one sends the new fingerprint, not the pinned one', async () => {
+    const changed = { ...CERTIFICATE, fingerprintSha256: 'DD:EE:FF', subject: 'CN=desk-new' };
+    const pinned = remote(true, false);
+    const fake = await show(
+      answers({
+        Device: { device: { ...pinned, rdp: { ...pinned.rdp, serverCertificate: CERTIFICATE } } },
+        TestRemoteConnection: { testConnection: certificateTest(changed, true) },
+        AcceptServerCertificate: { acceptServerCertificate: changed },
+      }),
+      '?tab=settings&section=rdp',
+    );
+    expect(document.body.textContent).not.toContain('DD:EE:FF');
+    await testAndAccept();
+    expect(sent(fake, 'AcceptServerCertificate')).toEqual([
+      { operation: 'AcceptServerCertificate', variables: { deviceId: ID, fingerprintSha256: 'DD:EE:FF' } },
+    ]);
+    const shown = document.querySelector('[aria-label="Server certificate"]')?.textContent ?? '';
+    expect(shown).toContain('DD:EE:FF');
+    expect(shown).not.toContain('AA:BB:CC');
   });
 });

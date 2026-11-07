@@ -5,9 +5,9 @@ import type {
   PasswordCredentialInput,
   SshCredentialInput,
 } from '$lib/hub/generated/graphql';
+import type { StoredCredential } from '$lib/sessions/api';
 import { createInput, credentialInput, tcpDefaultCheckPort } from './device/input';
 import { rdpCredentialInput, vncCredentialInput } from './device/remote/input';
-import { storePassword } from './device/remote/store-password';
 import { siteFieldErrors, type SitePlacement } from './device/site';
 import type { DeviceFormValues } from './device/values';
 
@@ -17,9 +17,9 @@ export interface AddDeviceApi {
   createSite: (name: string, subnet: string) => Promise<HubResult<{ readonly id: string }>>;
   createDevice: (input: CreateDeviceInput) => Promise<HubResult<{ readonly id: string }>>;
   setSshCredential: (deviceId: string, credential: SshCredentialInput) => Promise<HubResult<unknown>>;
-  /** K1; the route supplies it when the hub has it. A typed RDP password that cannot be stored is reported. */
-  setRdpCredential?: (deviceId: string, credential: PasswordCredentialInput) => Promise<HubResult<unknown>>;
-  setVncCredential?: (deviceId: string, credential: PasswordCredentialInput) => Promise<HubResult<unknown>>;
+  /** DEV-011; the route passes the sessions client's `setCredential`, whose errors never quote the password (LOG-007). */
+  setRdpCredential: (deviceId: string, credential: PasswordCredentialInput) => Promise<HubResult<StoredCredential>>;
+  setVncCredential: (deviceId: string, credential: PasswordCredentialInput) => Promise<HubResult<StoredCredential>>;
   createCheck: (input: CreateCheckInput) => Promise<HubResult<unknown>>;
 }
 
@@ -67,15 +67,15 @@ export async function addDevice(
   return { ok: true, value: { id, credentialError: await storeCredentials(id, values, api) } };
 }
 
-/** Stores each typed credential and returns the first error; a typed password with no call to store it is an error too. */
+/** Stores each typed credential and returns the first error. */
 async function storeCredentials(id: string, values: DeviceFormValues, api: AddDeviceApi): Promise<HubError | null> {
   const ssh = credentialInput(values);
   const rdp = rdpCredentialInput(values);
   const vnc = vncCredentialInput(values);
   const results: HubResult<unknown>[] = [];
   if (ssh !== null) results.push(await api.setSshCredential(id, ssh));
-  if (rdp !== null) results.push(await storePassword(api.setRdpCredential, id, rdp));
-  if (vnc !== null) results.push(await storePassword(api.setVncCredential, id, vnc));
+  if (rdp !== null) results.push(await api.setRdpCredential(id, rdp));
+  if (vnc !== null) results.push(await api.setVncCredential(id, vnc));
   for (const result of results) if (!result.ok) return result.error;
   return null;
 }
