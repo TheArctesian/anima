@@ -84,8 +84,9 @@ it('DEV-001: 200 devices from one request render 200 cards', async () => {
   const listed = fake.requests.filter((request) => request.operation === 'Devices');
   expect(listed).toHaveLength(1);
   expect(listed[0]?.variables).toMatchObject({ first: 200 });
-  // Mounting 200 cards takes about a second in jsdom and seven under a full gate run; the default 5 s limit flaked.
-}, 30_000);
+  // Mounting 200 cards takes about a second in jsdom alone; under a loaded workspace gate run with the Phase 2 card
+  // (buttons, warning badge, metric bars) it passed 30 s, so the bound is 60 s (R-068 flake list).
+}, 60_000);
 
 it('DEV-001: Load more asks for the next page with the end cursor and adds its cards', async () => {
   await show([device('a')], DEFAULT_QUERY, { Devices: devicesAnswer([device('a')], 'cursor-1') });
@@ -255,7 +256,7 @@ it('DEV-001: the cards are a list, and the table has column headers', async () =
     'Host',
     'Uptime, 24 h',
     'Heartbeats',
-    'SSH',
+    'Connect',
   ]);
   expect(fake.requests.filter((request) => request.operation === 'Devices')).toHaveLength(1);
 });

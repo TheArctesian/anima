@@ -4,9 +4,13 @@
   import HeartbeatBar from '$lib/checks/HeartbeatBar.svelte';
   import { uptimeText, type Beat } from '$lib/checks/heartbeats';
   import type { CardDevice } from '$lib/devices/api';
+  import DeviceActions from '$lib/devices/actions/DeviceActions.svelte';
+  import WarningBadge from '$lib/devices/actions/WarningBadge.svelte';
   import { press } from '$lib/motion/roles/press';
   import { listRow } from '$lib/motion/roles/transitions';
-  import { hostLine, offersSsh } from './card';
+  import type { SessionProtocol } from '$lib/sessions/tabs';
+  import type { WebInterface } from '$lib/web-interfaces/api';
+  import { hostLine } from './card';
   import { reorderMotion } from './reorder.svelte';
   import StatusEdge from './StatusEdge.svelte';
   import StatusPill from './StatusPill.svelte';
@@ -14,10 +18,11 @@
   interface Props {
     devices: readonly CardDevice[];
     beats: ReadonlyMap<string, readonly Beat[]>;
-    onConnect: (device: CardDevice, button: HTMLElement) => void;
+    onConnect: (device: CardDevice, protocol: SessionProtocol, button: HTMLElement) => void;
+    onOpenWeb?: (device: CardDevice, webInterface: WebInterface, button: HTMLElement) => void;
   }
 
-  const { devices, beats, onConnect }: Props = $props();
+  const { devices, beats, onConnect, onOpenWeb }: Props = $props();
   const track = reorderMotion(() => devices.map((device) => device.id).join('\n'));
 </script>
 
@@ -32,7 +37,7 @@
       <th scope="col">Host</th>
       <th scope="col">Uptime, 24 h</th>
       <th scope="col">Heartbeats</th>
-      <th scope="col">SSH</th>
+      <th scope="col">Connect</th>
     </tr>
   </thead>
   <tbody>
@@ -53,7 +58,10 @@
         </th>
         <td class="status">
           <StatusEdge status={device.status} />
-          <StatusPill status={device.status} deviceId={device.id} />
+          <span class="marks">
+            <StatusPill status={device.status} deviceId={device.id} />
+            <WarningBadge warnings={device.accessWarnings} />
+          </span>
         </td>
         <td>
           <span class="host" title={line.host}>{line.host}</span>
@@ -62,17 +70,7 @@
         <td>{uptimeText(device.uptime)}</td>
         <td>{#if deviceBeats !== undefined}<HeartbeatBar beats={deviceBeats} />{/if}</td>
         <td>
-          {#if offersSsh(device)}
-            <button
-              type="button"
-              tabindex="0"
-              aria-label="SSH to {device.name}"
-              onclick={(event) => {
-                onConnect(device, event.currentTarget);
-              }}
-              {@attach press()}>SSH</button
-            >
-          {/if}
+          <DeviceActions {device} {onConnect} {onOpenWeb} />
         </td>
       </tr>
     {/each}
@@ -127,6 +125,12 @@
     position: relative;
   }
 
+  .marks {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
   .ip {
     margin-inline-start: var(--space-2);
     color: var(--text-muted);
@@ -149,29 +153,7 @@
     color: var(--accent);
   }
 
-  button {
-    box-sizing: border-box;
-    min-block-size: var(--target-min-desktop);
-    padding: 0 var(--space-3);
-    border: var(--border-thin) solid var(--border);
-    border-radius: var(--radius-md);
-    background: var(--surface-raised);
-    color: var(--text);
-    font: inherit;
-    transition: background-color var(--duration-fast) var(--ease-enter);
-  }
-
-  button:hover {
-    background: var(--border);
-  }
-
-  button:active {
-    transition-duration: var(--duration-press);
-    background: var(--accent-tint);
-  }
-
-  a:focus-visible,
-  button:focus-visible {
+  a:focus-visible {
     outline: var(--border-focus) solid var(--accent);
     outline-offset: var(--border-focus);
   }
