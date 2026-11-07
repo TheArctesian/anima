@@ -46,6 +46,7 @@ mirror!(CheckType => CheckKind { Icmp, Tcp, Tls, Http, Dns, Push, Group, Docker,
 #[graphql(name = "SnmpVersion")]
 pub(super) enum SnmpVersion {
     #[default]
+    #[graphql(name = "V2C")]
     V2c,
     V3,
 }

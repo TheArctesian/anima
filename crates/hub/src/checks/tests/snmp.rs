@@ -3,6 +3,7 @@
 
 mod agent;
 mod ber;
+mod fields;
 mod probes;
 mod rules;
 mod sealing;

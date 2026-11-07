@@ -204,7 +204,10 @@ devices_test! {
     }
 
     async fn d_5_another_type_has_no_snmp_setup(pool: PgPool) {
-        let ping: CheckId = super::PVE_01_PING.parse().unwrap();
+        let ping = create(&pool, new_check(PVE_01, "Ping", super::icmp())).await;
         assert!(checks::load_snmp_secrets(&pool, &vault(), ping).await.unwrap().is_none());
+        let missing = CheckId::from(uuid::Uuid::now_v7());
+        let loaded = checks::load_snmp_secrets(&pool, &vault(), missing).await;
+        assert!(matches!(loaded, Err(Error::NotFound(_))));
     }
 }

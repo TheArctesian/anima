@@ -1,4 +1,4 @@
-//! The SNMP input rules: field limits, the secrets of the chosen version, and when a secret
+//! The SNMP input rules: the secrets of the chosen version, and when a secret
 //! left out keeps the stored one (D-5, SEC-005, LOG-007).
 
 use crate::{
@@ -10,13 +10,13 @@ use crate::{
     credentials::Secret,
 };
 
-const COMMUNITY: &str = "c0mmunity-SECRET-rules";
-const AUTH: &str = "auth-SECRET-rules";
-const PRIVACY: &str = "privacy-SECRET-rules";
+pub(super) const COMMUNITY: &str = "c0mmunity-SECRET-rules";
+pub(super) const AUTH: &str = "auth-SECRET-rules";
+pub(super) const PRIVACY: &str = "privacy-SECRET-rules";
 const KEPT_AUTH: &str = "kept-auth-SECRET";
 const KEPT_PRIVACY: &str = "kept-privacy-SECRET";
 
-fn config(version: SnmpVersion, username: Option<&str>) -> SnmpConfig {
+pub(super) fn config(version: SnmpVersion, username: Option<&str>) -> SnmpConfig {
     SnmpConfig {
         port: 161,
         version,
@@ -31,7 +31,7 @@ fn secret(text: &str) -> Secret {
     Secret::from(text.to_owned())
 }
 
-fn input(
+pub(super) fn input(
     config: SnmpConfig,
     community: Option<&str>,
     auth: Option<&str>,
@@ -47,7 +47,7 @@ fn input(
     })
 }
 
-fn v3(auth: Option<&str>, privacy: Option<&str>) -> Definition {
+pub(super) fn v3(auth: Option<&str>, privacy: Option<&str>) -> Definition {
     input(
         config(SnmpVersion::V3, Some("monitor")),
         None,
@@ -93,7 +93,7 @@ fn community(prepared: Result<Prepared, FieldError>) -> String {
 }
 
 /// The field in error; its message never quotes a planted secret.
-fn field(prepared: Result<Prepared, FieldError>) -> &'static str {
+pub(super) fn field(prepared: Result<Prepared, FieldError>) -> &'static str {
     let Err(error) = prepared else {
         panic!("the input was accepted");
     };
@@ -230,112 +230,4 @@ fn d_5_secrets_of_the_other_version_are_refused() {
     let v3_config = config(SnmpVersion::V3, Some("monitor"));
     let mixed = input(v3_config, Some(COMMUNITY), Some(AUTH), Some(PRIVACY));
     assert_eq!(field(rules::prepare(mixed, Stored::Nothing)), "community");
-}
-
-#[test]
-fn d_5_secret_lengths_follow_rfc_3414() {
-    let long = "x".repeat(257);
-    let v2c = config(SnmpVersion::V2c, None);
-    let created = rules::prepare(
-        input(v2c.clone(), Some(&"x".repeat(256)), None, None),
-        Stored::Nothing,
-    );
-    assert!(created.is_ok());
-    let refused = rules::prepare(input(v2c, Some(&long), None, None), Stored::Nothing);
-    assert_eq!(field(refused), "community");
-    assert_eq!(
-        field(rules::prepare(
-            v3(Some("seven77"), Some(PRIVACY)),
-            Stored::Nothing
-        )),
-        "authPassword"
-    );
-    assert_eq!(
-        field(rules::prepare(
-            v3(Some(AUTH), Some("seven77")),
-            Stored::Nothing
-        )),
-        "privacyPassword"
-    );
-    assert_eq!(
-        field(rules::prepare(
-            v3(Some(&long), Some(PRIVACY)),
-            Stored::Nothing
-        )),
-        "authPassword"
-    );
-    // Eight characters, not eight bytes: seven two-byte letters are too short.
-    assert!(rules::prepare(v3(Some("ääääääää"), Some("eight888")), Stored::Nothing).is_ok());
-    assert_eq!(
-        field(rules::prepare(
-            v3(Some("äääääää"), Some(PRIVACY)),
-            Stored::Nothing
-        )),
-        "authPassword"
-    );
-}
-
-fn refused_field(edit: impl FnOnce(&mut SnmpConfig)) -> &'static str {
-    let mut config = config(SnmpVersion::V3, Some("monitor"));
-    edit(&mut config);
-    field(rules::prepare(
-        input(config, None, Some(AUTH), Some(PRIVACY)),
-        Stored::Nothing,
-    ))
-}
-
-#[test]
-fn d_5_configuration_fields_are_checked_and_named_as_the_client_names_them() {
-    assert_eq!(refused_field(|c| c.port = 0), "port");
-    assert_eq!(refused_field(|c| c.timeout_ms = 99), "timeoutMs");
-    assert_eq!(
-        refused_field(|c| c.expected = Some("x".repeat(1025))),
-        "expected"
-    );
-    assert_eq!(refused_field(|c| c.username = None), "username");
-    assert_eq!(
-        refused_field(|c| c.username = Some(String::new())),
-        "username"
-    );
-    assert_eq!(
-        refused_field(|c| c.username = Some("u".repeat(33))),
-        "username"
-    );
-    assert_eq!(
-        refused_field(|c| c.username = Some("a\nb".to_owned())),
-        "username"
-    );
-    assert_eq!(refused_field(|c| c.version = SnmpVersion::V2c), "username");
-    for oid in [
-        "",
-        "1",
-        "3.1",
-        "1.40",
-        "1..3",
-        ".1.3",
-        "1.3.",
-        "1.3.4294967296",
-        "1.3.x",
-        "1.3.+6",
-    ] {
-        assert_eq!(refused_field(|c| c.oid = oid.to_owned()), "oid", "{oid}");
-    }
-    let mut accepted = config(SnmpVersion::V3, Some(&"u".repeat(32)));
-    accepted.expected = Some("x".repeat(1024));
-    for oid in [
-        "1.3",
-        "0.39",
-        "2.40",
-        "2.4294967295.1",
-        "1.3.6.1.4.1.4294967295",
-    ] {
-        accepted.oid = oid.to_owned();
-        let prepared = rules::prepare(
-            input(accepted.clone(), None, Some(AUTH), Some(PRIVACY)),
-            Stored::Nothing,
-        );
-        assert!(prepared.is_ok(), "{oid}");
-    }
-    let too_many = vec!["1"; 129].join(".");
-    assert_eq!(refused_field(|c| c.oid = too_many), "oid");
 }
