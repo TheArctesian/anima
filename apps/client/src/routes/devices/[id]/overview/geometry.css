@@ -1,0 +1,15 @@
+/* A chart cell's title line and the grid of cells; the chart and its skeleton share both, so neither moves (MOT-007). */
+.chart-title {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: inherit;
+  line-height: var(--leading-normal);
+  min-block-size: calc(var(--text-sm) * var(--leading-normal));
+}
+
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, calc(var(--space-16) * 6)), 1fr));
+  gap: var(--space-4);
+}

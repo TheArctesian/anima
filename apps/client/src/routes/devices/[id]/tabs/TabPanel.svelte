@@ -10,24 +10,30 @@
     /** The panel's first data is on its way. */
     loading: boolean;
     clock?: LoadingClock;
+    /** Placeholder with the geometry of the loaded content's top part; the list rows when absent (D-9). */
+    skeleton?: Snippet;
     children: Snippet;
   }
 
-  const { name, loading, clock, children }: Props = $props();
+  const { name, loading, clock, skeleton: custom, children }: Props = $props();
   const ids = $derived(tabIds(name));
   // The clock is fixed for the life of the panel.
   // svelte-ignore state_referenced_locally
-  const skeleton = skeletonDelay(() => loading, clock);
+  const delayed = skeletonDelay(() => loading, clock);
 
   /** Placeholder rows of the list rows' height; static, so reduced motion needs no change. */
   const ROWS = Array.from({ length: 4 }, (_, index) => index);
 </script>
 
 <div class="panel" role="tabpanel" id={ids.panel} aria-labelledby={ids.tab} tabindex="0" aria-busy={loading}>
-  {#if skeleton.visible}
-    <ul class="skeleton" aria-hidden="true" transition:crossFade>
-      {#each ROWS as row (row)}<li></li>{/each}
-    </ul>
+  {#if delayed.visible}
+    {#if custom}
+      <div class="skeleton" aria-hidden="true" transition:crossFade>{@render custom()}</div>
+    {:else}
+      <ul class="skeleton placeholder" aria-hidden="true" transition:crossFade>
+        {#each ROWS as row (row)}<li></li>{/each}
+      </ul>
+    {/if}
   {:else if !loading}
     <div class="content" transition:crossFade>
       {@render children()}
@@ -54,13 +60,13 @@
     min-inline-size: 0;
   }
 
-  .skeleton {
+  .placeholder {
     margin: 0;
     padding: 0;
     list-style: none;
   }
 
-  .skeleton li {
+  .placeholder li {
     box-sizing: border-box;
     block-size: var(--target-min-touch);
     border-block-end: var(--border-thin) solid var(--border);
