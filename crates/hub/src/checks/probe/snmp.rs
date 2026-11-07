@@ -15,6 +15,8 @@ pub(in crate::checks) mod usm;
 
 use std::{net::SocketAddr, time::Duration};
 
+use zeroize::Zeroizing;
+
 use self::{
     link::Link,
     message::{Engine, Ids},
@@ -128,6 +130,20 @@ async fn get(
     Ok((peer, elapsed))
 }
 
+/// The localised keys, derived on the blocking pool: two SHA-256 passes over 1 MiB would
+/// otherwise hold an async worker for milliseconds. The copies are zeroized on drop, also
+/// when the attempt's time limit drops the wait first.
+async fn localised(auth: &[u8], privacy: &[u8], engine_id: &[u8]) -> Result<Keys, Failure> {
+    let auth = Zeroizing::new(auth.to_vec());
+    let privacy = Zeroizing::new(privacy.to_vec());
+    let engine_id = engine_id.to_vec();
+    tokio::task::spawn_blocking(move || Keys::localised(&auth, &privacy, &engine_id))
+        .await
+        .ok()
+        .flatten()
+        .ok_or(Failure::SecretMissing)
+}
+
 /// Discovers the engine, localises the keys to it, and sends the authPriv `GetRequest`.
 async fn v3(
     link: &mut Link,
@@ -139,7 +155,7 @@ async fn v3(
     let (engine, _): (Engine, _) = link
         .exchange(&discovery, |reply| message::engine(reply, draws.discovery))
         .await?;
-    let keys = Keys::localised(auth, privacy, &engine.id).ok_or(Failure::SecretMissing)?;
+    let keys = localised(auth, privacy, &engine.id).await?;
     let request = message::get((&keys, &engine), user, oid, (draws.get, draws.salt))
         .ok_or(Failure::BadConfig)?;
     link.exchange(&request, |reply| {
