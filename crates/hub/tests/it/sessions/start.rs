@@ -1,8 +1,10 @@
 //! `startSession`: the row, the audit entry and the ticket, and each refusal (K4 §1, §6,
-//! RA-008, LOG-005, API-009); `hosts` covers the device's host and `protocols` RDP and VNC.
+//! RA-008, LOG-005, API-009); `hosts` covers the device's host, `protocols` RDP and VNC, and
+//! `waking` a Down device first.
 
 mod hosts;
 mod protocols;
+mod waking;
 
 use anima_hub::sessions::{self, Live, Protocol};
 use chrono::{DateTime, TimeDelta, Utc};

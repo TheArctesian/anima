@@ -52,7 +52,7 @@ pub use model::{
     SessionEnd, UnknownValue,
 };
 pub use public_key::{BadFingerprint, BadKey, Fingerprint, PublicKey};
-pub use start::{DEFAULT_DPI, DisplayRequest, StartRequest, start};
+pub use start::{DEFAULT_DPI, DisplayRequest, StartRequest, Waking, start};
 pub use terminal::terminal_router;
 pub use tickets::{PendingTicket, Presented, Ticket};
 pub use tunnel::tunnel_router;

@@ -31,6 +31,8 @@ const HOST_KEY_SEED: u8 = 5;
 pub(super) fn patient() -> Timing {
     Timing {
         opening: Duration::from_secs(5),
+        woken_opening: Duration::from_secs(5),
+        reconnect: Duration::from_millis(50),
         upgrade: Duration::from_secs(5),
         first_size: Duration::from_secs(60),
         hub_silence: Duration::from_secs(60),

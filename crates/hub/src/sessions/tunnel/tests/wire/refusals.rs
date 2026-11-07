@@ -306,5 +306,6 @@ fn pending(protocol: Protocol, n: u128) -> PendingTicket {
         },
         timezone: None,
         expires_at: now() + TimeDelta::seconds(30),
+        wake_sent: false,
     }
 }

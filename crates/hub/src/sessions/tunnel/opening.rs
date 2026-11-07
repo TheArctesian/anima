@@ -14,8 +14,15 @@
 //! `cert-fingerprints` on that TLS connection, so a certificate that changes between the hub's
 //! read and guacd's connect fails closed as `GATEWAY_ERROR`. The read is not kept as an
 //! observation: only a connection test lets the operator accept a certificate.
+//!
+//! When the ticket's start sent a Wake-on-LAN packet, the opening first waits, up to the
+//! woken limit, until the device's port answers, so guacd connects to a device that is up
+//! (K4 Section 1). guacd's own connection to the device is not the hub's to retry.
 
-use std::net::{IpAddr, SocketAddr};
+use std::{
+    net::{IpAddr, SocketAddr},
+    time::Duration,
+};
 
 use guac_protocol::{ConnectParams, DecodeError};
 use tokio::time::timeout;
@@ -71,6 +78,8 @@ pub(super) enum NotOpened {
     Unresolved,
     #[error("the device host resolves to a refused address")]
     RefusedTarget,
+    #[error("the device did not answer in time after the Wake-on-LAN packet")]
+    NotAwake,
     #[error("the device's RDP server certificate could not be read")]
     CertificateUnread(#[source] ReadError),
     #[error("the device offers only standard RDP security, so it has no certificate")]
@@ -122,17 +131,10 @@ impl NotOpened {
                  address, or to one in a network the hub refuses (ANIMA_PROBE_DENY), which the \
                  gateway must not reach."
             }
-            Self::CertificateUnread(ReadError::Unexpected) => {
-                "The device did not answer as an RDP server when the hub checked its server \
-                 certificate."
+            Self::NotAwake => {
+                "The device did not answer within 120 seconds of the Wake-on-LAN packet."
             }
-            Self::CertificateUnread(ReadError::Tls) => {
-                "The device did not complete a TLS handshake when the hub checked its server \
-                 certificate."
-            }
-            Self::CertificateUnread(_) => {
-                "The hub could not reach the device's RDP port to check its server certificate."
-            }
+            Self::CertificateUnread(error) => unread_message(*error),
             Self::StandardOnly => {
                 "The device offers only standard RDP security, so the hub could not check its \
                  server certificate. Check the security setting."
@@ -166,6 +168,21 @@ impl NotOpened {
     }
 }
 
+/// The event message for a server certificate the hub could not read from the device.
+const fn unread_message(error: ReadError) -> &'static str {
+    match error {
+        ReadError::Unexpected => {
+            "The device did not answer as an RDP server when the hub checked its server \
+             certificate."
+        }
+        ReadError::Tls => {
+            "The device did not complete a TLS handshake when the hub checked its server \
+             certificate."
+        }
+        _ => "The hub could not reach the device's RDP port to check its server certificate.",
+    }
+}
+
 /// Opens the gateway side of the ticket's session. Safe to drop at any await: the
 /// password leaves the hub only in the handshake's `connect`, after guacd's `args`, so
 /// dropping this earlier sends it nowhere (SEC-002).
@@ -186,9 +203,16 @@ pub(super) async fn open(route: &Route, ticket: &PendingTicket) -> Result<Openin
     let certificate = certificate(route, &device, desktop).await?;
     let rule = route.live.target_rule();
     let port = desktop.port(&device);
-    let address = timeout(route.timing.connect, target(&device.host, port, rule))
-        .await
-        .map_err(|_| NotOpened::Unresolved)??;
+    let address = if ticket.wake_sent {
+        let awake = awake(&device.host, port, rule, route.timing.reconnect);
+        timeout(route.timing.woken_opening, awake)
+            .await
+            .map_err(|_| NotOpened::NotAwake)??
+    } else {
+        timeout(route.timing.connect, target(&device.host, port, rule))
+            .await
+            .map_err(|_| NotOpened::Unresolved)??
+    };
     let pinned = certificate
         .as_ref()
         .filter(|_| certificate_required(&device.rdp));
@@ -290,4 +314,23 @@ async fn target(host: &str, port: u16, rule: &TargetRule) -> Result<IpAddr, NotO
         .first()
         .map(SocketAddr::ip)
         .ok_or(NotOpened::Unresolved)
+}
+
+/// The address of the device that is waking up, once its port answers: the first of its
+/// checked addresses that accepts a connection, tried again every `retry`. The
+/// connection is closed at once; guacd makes its own.
+async fn awake(
+    host: &str,
+    port: u16,
+    rule: &TargetRule,
+    retry: Duration,
+) -> Result<IpAddr, NotOpened> {
+    let stream = ssh::connect_waking(Target { host, port, rule }, retry)
+        .await
+        .map_err(|error| match error {
+            SshError::RefusedTarget => NotOpened::RefusedTarget,
+            _ => NotOpened::Unresolved,
+        })?;
+    let answered = stream.peer_addr().map_err(|_| NotOpened::NotAwake)?;
+    Ok(answered.ip().to_canonical())
 }

@@ -41,6 +41,8 @@ pub(super) const DRIVE_ROOT: &str = "/drives";
 pub(super) fn patient() -> Timing {
     Timing {
         connect: Duration::from_secs(3),
+        woken_opening: Duration::from_secs(3),
+        reconnect: Duration::from_millis(50),
         handshake: Duration::from_secs(3),
         gateway_silence: Duration::from_secs(60),
         client_idle: Duration::from_secs(60),
@@ -195,6 +197,7 @@ pub(super) fn request(protocol: Protocol) -> StartRequest {
             dpi: 96,
             timezone: Some("Europe/Berlin".to_owned()),
         },
+        wake: None,
     }
 }
 

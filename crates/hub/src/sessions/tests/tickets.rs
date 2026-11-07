@@ -55,6 +55,7 @@ pub(super) fn pending(n: u128) -> PendingTicket {
         },
         timezone: Some("Europe/Berlin".to_owned()),
         expires_at: issued_at() + LIFETIME,
+        wake_sent: false,
     }
 }
 

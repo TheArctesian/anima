@@ -58,6 +58,11 @@ struct State {
 }
 
 impl State {
+    /// No ticket may be issued: the hub is shutting down or [`MAX_PENDING`] are held.
+    fn refuses_tickets(&self) -> bool {
+        self.shutting_down || self.tickets.len() + self.spent.len() >= MAX_PENDING
+    }
+
     /// Removes the session's spent or unredeemed ticket.
     fn withdraw(&mut self, session: SessionId) -> Option<PendingTicket> {
         if let Some(spent) = self.spent.remove(&session) {
@@ -232,10 +237,17 @@ impl Live {
         self.state().shutting_down
     }
 
+    /// Whether [`Live::issue`] would refuse a ticket now: the hub is shutting down or
+    /// [`MAX_PENDING`] tickets are held. A start asks before it wakes a device; `issue`
+    /// still decides.
+    pub(super) fn is_full(&self) -> bool {
+        self.state().refuses_tickets()
+    }
+
     /// Holds a new ticket under its hash.
     pub(super) fn issue(&self, hash: TicketHash, ticket: PendingTicket) -> Result<(), Unavailable> {
         let mut state = self.state();
-        if state.shutting_down || state.tickets.len() + state.spent.len() >= MAX_PENDING {
+        if state.refuses_tickets() {
             return Err(Unavailable);
         }
         state.tickets.insert(hash, ticket);

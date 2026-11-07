@@ -40,7 +40,12 @@ use crate::{
     clock::Clock,
     credentials::Vault,
     events::Bus,
-    sessions::{Live, Protocol, Redeemed, admission, end::Records, probe::PROBE_TIMEOUT},
+    sessions::{
+        Live, Protocol, Redeemed, admission,
+        end::Records,
+        probe::PROBE_TIMEOUT,
+        tickets::{RECONNECT, WOKEN_OPENING},
+    },
 };
 
 /// The tunnel's path (K4 Section 1 `tunnelPath` of RDP and VNC).
@@ -59,6 +64,11 @@ pub(super) struct Timing {
     /// Each of: resolving the device host, reading its RDP server certificate, connecting to
     /// guacd.
     pub(super) connect: Duration,
+    /// For a ticket whose start sent a Wake-on-LAN packet (K4 Section 1): resolving the
+    /// device host and waiting until its port answers, in place of `connect`'s lookup.
+    pub(super) woken_opening: Duration,
+    /// How often that wait tries the device again while it does not answer.
+    pub(super) reconnect: Duration,
     /// The guacd handshake, and the WebSocket upgrade after it.
     pub(super) handshake: Duration,
     /// guacd silence after which the client gets a `nop`.
@@ -72,6 +82,8 @@ impl Default for Timing {
     fn default() -> Self {
         Self {
             connect: PROBE_TIMEOUT,
+            woken_opening: WOKEN_OPENING,
+            reconnect: RECONNECT,
             handshake: HANDSHAKE_WAIT,
             gateway_silence: GATEWAY_SILENCE,
             client_idle: CLIENT_IDLE,

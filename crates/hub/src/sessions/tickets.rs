@@ -3,7 +3,7 @@
 //!
 //! Pure: the random bytes and the time are parameters (CQ-021).
 
-use std::fmt;
+use std::{fmt, time::Duration};
 
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use chrono::{DateTime, TimeDelta, Utc};
@@ -24,6 +24,13 @@ const TOKEN_CHARS: usize = 43;
 
 /// A ticket is redeemable this long after it is issued (K4 §1).
 pub(super) const LIFETIME: TimeDelta = TimeDelta::seconds(30);
+
+/// How long the opening of a ticket with `wake_sent` waits for the device, in place of the
+/// usual 8 seconds (K4 Section 1): a device that was asleep needs time to boot.
+pub(super) const WOKEN_OPENING: Duration = Duration::from_secs(120);
+
+/// How often such an opening tries the device again while it does not answer.
+pub(super) const RECONNECT: Duration = Duration::from_secs(2);
 
 /// The files tunnel's path (K4 Section 1 `tunnelPath`, Section 9).
 pub(super) const FILES_PATH: &str = "/files";
@@ -77,6 +84,8 @@ pub struct Ticket {
     /// Where the client opens the tunnel: the protocol's, or [`FILES_PATH`] for a files
     /// ticket (K4 Section 1 `tunnelPath`).
     pub tunnel_path: &'static str,
+    /// `startSession` sent a Wake-on-LAN packet first (K4 Section 1 `wakeSent`).
+    pub wake_sent: bool,
 }
 
 impl Ticket {
@@ -92,6 +101,7 @@ impl Ticket {
             token,
             expires_at,
             tunnel_path: protocol.tunnel_path(),
+            wake_sent: false,
         }
     }
 
@@ -107,6 +117,7 @@ impl Ticket {
             token,
             expires_at,
             tunnel_path: FILES_PATH,
+            wake_sent: false,
         }
     }
 
@@ -125,6 +136,7 @@ impl fmt::Debug for Ticket {
             .field("token", &"[redacted]")
             .field("expires_at", &self.expires_at)
             .field("tunnel_path", &self.tunnel_path)
+            .field("wake_sent", &self.wake_sent)
             .finish()
     }
 }
@@ -142,6 +154,9 @@ pub struct PendingTicket {
     /// As the client sent it; the tunnel checks its shape before guacd sees it.
     pub timezone: Option<String>,
     pub expires_at: DateTime<Utc>,
+    /// A Wake-on-LAN packet was sent first: the opening waits up to 120 seconds for the
+    /// device and tries it again every 2 seconds while it does not answer.
+    pub wake_sent: bool,
 }
 
 impl PendingTicket {

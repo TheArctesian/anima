@@ -3,6 +3,8 @@
 //! each end the session once; the known gap of a client that leaves after a stray byte; and
 //! the end's write is retried once (LOG-005).
 
+mod waking;
+
 use std::time::Duration;
 
 use chrono::TimeDelta;
