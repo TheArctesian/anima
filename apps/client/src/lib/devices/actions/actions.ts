@@ -4,7 +4,7 @@ import type { SessionProtocol } from '$lib/sessions/tabs';
 import type { WebInterface } from '$lib/web-interfaces/api';
 
 /** The protocol buttons a card or table row shows, in order (RA-030, D-4): SSH with an accepted host key, RDP and VNC when on. */
-export function connectProtocols(device: Pick<CardDevice, 'ssh' | 'rdp' | 'vnc'>): SessionProtocol[] {
+export function connectProtocols(device: Pick<CardDevice, 'ssh' | 'rdp'> & { readonly vnc: Pick<CardDevice['vnc'], 'enabled'> }): SessionProtocol[] {
   return [
     ...(offersSsh(device) ? (['SSH'] as const) : []),
     ...(device.rdp.enabled ? (['RDP'] as const) : []),

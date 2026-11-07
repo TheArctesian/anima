@@ -304,3 +304,31 @@ it('Loading: a list on screen stays while the next one loads, and no skeleton re
   expect(document.querySelectorAll('li.place')).toHaveLength(0);
   expect(document.querySelectorAll('article')).toHaveLength(1);
 });
+
+it('R-079: a card of a Linux device with VNC off sets screen sharing up: the VNC session opens, then the card shows VNC on', async () => {
+  const { fakeCalls, answer, UPDATED } = await import('../screen-sharing/calls.fixture');
+  const calls = fakeCalls().calls;
+  calls.test.mockResolvedValue(answer(true));
+  calls.update.mockResolvedValue({ ok: true, value: { ...UPDATED, id: 'a' } });
+  fake = fakeHub({ Devices: devicesAnswer([device('a', { os: 'LINUX', host: 'a.lan' })]), Tags: { tags: [] } });
+  current.hub = fake.hub;
+  const protocols: string[] = [];
+  app = mount(DeviceScreen, {
+    target: document.body,
+    props: {
+      query: DEFAULT_QUERY,
+      onQueryChange: vi.fn(),
+      onAddDevice: vi.fn(),
+      onConnect: (target: CardDevice, protocol: string) => protocols.push(`${target.id}:${protocol}`),
+      screenSharing: calls,
+    },
+  });
+  await settle();
+  document.querySelector<HTMLButtonElement>('[aria-label="Set up screen sharing for Device a"]')?.click();
+  for (let round = 0; round < 5; round += 1) await settle();
+  expect(protocols).toEqual(['a:VNC']);
+  expect(calls.update).toHaveBeenCalledWith('a', { vnc: { enabled: true, port: 5900, username: null } });
+  const names = [...document.querySelectorAll('button')].map((node) => node.getAttribute('aria-label'));
+  expect(names).not.toContain('Set up screen sharing for Device a');
+  expect(names).toContain('VNC to Device a');
+});

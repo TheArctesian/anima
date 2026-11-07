@@ -26,6 +26,7 @@ export const Devices = graphql(`
           maintenance
           status
           uptime(window: DAY)
+          os
           macAddress
           metricsSource
           readings {
@@ -40,6 +41,7 @@ export const Devices = graphql(`
           }
           vnc {
             enabled
+            username
           }
           ssh {
             enabled

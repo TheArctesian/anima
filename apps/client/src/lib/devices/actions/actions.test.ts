@@ -42,6 +42,14 @@ describe('panelPosition (WEB-003)', () => {
     expect(panelPosition({ left: 700, top: 100, bottom: 130 }, panel, viewport, { margin: 8, gap: 4 }).left).toBe(592);
   });
 
+  it('R-079: a wide panel near the right edge ends one margin inside the window; a panel wider than the window starts at the margin', () => {
+    const wide = { width: 320, height: 60 };
+    const anchor = { left: 1000, top: 100, bottom: 130 };
+    const placed = panelPosition(anchor, wide, { width: 1100, height: 600 }, { margin: 8, gap: 4 });
+    expect(placed.left + wide.width).toBe(1092);
+    expect(panelPosition(anchor, { width: 900, height: 60 }, { width: 800, height: 600 }, { margin: 8, gap: 4 }).left).toBe(8);
+  });
+
   it('WEB-003: it goes above the button when the window ends below', () => {
     expect(panelPosition({ left: 50, top: 540, bottom: 570 }, panel, viewport, { margin: 8, gap: 4 }).top).toBe(436);
   });

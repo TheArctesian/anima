@@ -45,7 +45,7 @@ const texts = () => [...document.querySelectorAll('footer button')].map((node) =
 
 describe('card buttons (RA-030, WEB-003, D-4)', () => {
   it('RA-030: SSH, RDP and VNC show when on, and each calls onConnect with its protocol and button', () => {
-    const { onConnect } = showCard({ ssh: KEYED, rdp: { enabled: true }, vnc: { enabled: true } });
+    const { onConnect } = showCard({ ssh: KEYED, rdp: { enabled: true }, vnc: { enabled: true, username: null } });
     expect(texts()).toEqual(['SSH', 'RDP', 'VNC']);
     for (const protocol of ['SSH', 'RDP', 'VNC']) {
       const button = named(`${protocol} to Device a`);

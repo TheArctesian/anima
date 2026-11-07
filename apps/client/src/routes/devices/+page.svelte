@@ -18,6 +18,7 @@
   import { useHub } from '$lib/hub/context';
   import type { HubError, HubResult } from '$lib/hub/error';
   import { sessionsApi } from '$lib/sessions/api';
+  import { screenSharingCalls } from '$lib/devices/screen-sharing/calls';
   import { wakeApi } from '$lib/sessions/wake/api';
   import { useSessions } from '$lib/sessions/sessions.svelte';
   import { openWebInterface } from '$lib/sessions/web/open/open';
@@ -29,6 +30,7 @@
   const checks = checksApi(hub);
   const connections = sessionsApi(hub);
   const wake = wakeApi(hub);
+  const screenSharing = screenSharingCalls(hub);
 
   let sites = $state<readonly SiteOption[]>([]);
   let adding = $state(false);
@@ -143,7 +145,7 @@
   {#if addError !== null}
     <p class="notice" role="alert">Could not open Add device: {addError.message}</p>
   {/if}
-  <DeviceScreen {query} onQueryChange={changeQuery} onAddDevice={() => void addDevice()} onConnect={connect} onOpenWeb={openWeb} {wake} />
+  <DeviceScreen {query} onQueryChange={changeQuery} onAddDevice={() => void addDevice()} onConnect={connect} onOpenWeb={openWeb} {wake} {screenSharing} />
 </section>
 
 <AddDeviceModal

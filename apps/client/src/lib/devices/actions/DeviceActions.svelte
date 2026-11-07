@@ -4,6 +4,8 @@
   import type { SessionProtocol } from '$lib/sessions/tabs';
   import type { WakeApi } from '$lib/sessions/wake/api';
   import WakeButton from '$lib/sessions/wake/WakeButton.svelte';
+  import ScreenSharingButton from '$lib/devices/screen-sharing/ScreenSharingButton.svelte';
+  import { offersScreenSharing, type CardScreenSharing } from '$lib/devices/screen-sharing/setup';
   import type { WebInterface } from '$lib/web-interfaces/api';
   import { canWake, connectLabel, connectProtocols, webInterfacesOf } from './actions';
   import './actions.css';
@@ -17,9 +19,11 @@
     onOpenWeb?: (device: CardDevice, webInterface: WebInterface, button: HTMLElement) => void;
     /** The wake call (RA-031); the Wake button is hidden while no route gives it. */
     wake?: WakeApi;
+    /** The "Screen sharing" button for a macOS or Linux device with VNC off (R-079); hidden while no route gives it. */
+    screenSharing?: CardScreenSharing;
   }
 
-  const { device, onConnect, onOpenWeb, wake }: Props = $props();
+  const { device, onConnect, onOpenWeb, wake, screenSharing }: Props = $props();
   const web = $derived(webInterfacesOf(device));
 </script>
 
@@ -37,6 +41,9 @@
       {@attach press()}>{protocol}</button
     >
   {/each}
+  {#if screenSharing !== undefined && offersScreenSharing(device)}
+    <ScreenSharingButton {device} calls={screenSharing.calls} onReady={screenSharing.onReady} compact />
+  {/if}
   {#if onOpenWeb !== undefined && web.length > 0}
     <WebMenu
       deviceName={device.name}

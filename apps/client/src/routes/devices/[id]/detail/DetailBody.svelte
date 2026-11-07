@@ -7,6 +7,7 @@
   import LiveNotice from '$lib/hub/notice/LiveNotice.svelte';
   import LogList from '$lib/events/panel/LogList.svelte';
   import type { CheckFormValues } from '$lib/forms/check/model/values';
+  import { screenSharingCalls } from '$lib/devices/screen-sharing/calls';
   import { useHub } from '$lib/hub/context';
   import { press } from '$lib/motion/roles/press';
   import { useSessions } from '$lib/sessions/sessions.svelte';
@@ -32,6 +33,7 @@
   // The panels take data and callbacks; `Detail` and `detailCalls` reach the hub (D-1).
   const hub = useHub();
   const sessions = useSessions();
+  const screenSharing = { calls: screenSharingCalls(hub), onEnabled: (next: DeviceDetail) => { detail.setDevice(next); } };
   const now = () => new Date();
   // The layout mounts a new page for each path, so the ID never changes under this one.
   // svelte-ignore state_referenced_locally
@@ -103,7 +105,7 @@
 {/snippet}
 
 <section class="detail">
-  <Header {device} loading={headerLoading} onConnect={connect} onOpenWeb={openWeb} onSettings={settings} />
+  <Header {device} loading={headerLoading} onConnect={connect} onOpenWeb={openWeb} {screenSharing} onSettings={settings} />
   {#if page.state.credentialError !== undefined}
     <p class="notice" role="alert">
       The device was added, but its credential was not stored: {page.state.credentialError} Enter it again in Settings.
