@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import { coverWhile } from '$lib/sessions/overlay.svelte';
+  import { coverWhile } from '$lib/overlay/overlay.svelte';
   import { fade, modal } from '$lib/motion/roles/transitions';
   import { offerFooter } from './footer';
   import { initialFocusIn, trapTab } from './focus';

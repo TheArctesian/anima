@@ -2,7 +2,7 @@
   import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
   import { popover } from '$lib/motion/roles/transitions';
-  import { coverWhile } from '../../overlay.svelte';
+  import { coverWhile } from '$lib/overlay/overlay.svelte';
   import { keepFocus, portal, under } from './anchor';
 
   interface Props {

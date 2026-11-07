@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { SessionsApi } from '../api';
-  import { overlayCovers } from '../overlay.svelte';
+  import { overlayCovers } from '$lib/overlay/overlay.svelte';
   import { useSessions } from '../sessions.svelte';
   import { openScreen } from '../screen/screen';
   import RemoteView from '../view/remote/RemoteView.svelte';

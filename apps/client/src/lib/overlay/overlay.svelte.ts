@@ -1,6 +1,9 @@
 import { untrack } from 'svelte';
 
-/** How many menus, popovers and modals are open over the panes right now. */
+/**
+ * How many menus, popovers and modals are open over the panes right now. The flag is global: any open overlay
+ * hides every native web view, because the view sits above the DOM (MAT-008, WEB-005).
+ */
 let covering = $state(0);
 
 /** Whether anything is open over the panes, so a native web view must hide (MAT-008, WEB-005). */

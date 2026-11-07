@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { Hub } from '$lib/hub/hub';
 import { route } from '$lib/nav/route.fixture.svelte';
 import Layout from '../../../routes/+layout.svelte';
-import { overlayCovers } from '../overlay.svelte';
+import { overlayCovers } from '$lib/overlay/overlay.svelte';
 import type { SessionPort } from '../sessions.svelte';
 import {
   cleanup,
@@ -153,4 +153,16 @@ it('MAT-008, WEB-005: destroying the layout with a popover open lowers the count
   expect(overlayCovers()).toBe(true);
   await cleanup();
   expect(overlayCovers()).toBe(false);
+});
+
+it('MAT-008, WEB-005: opening, closing and opening again in one tick leaves the count at one', async () => {
+  withWebTab();
+  liveControl().click();
+  liveControl().click();
+  liveControl().click();
+  await settle();
+  expect(covered()).toBe(true);
+  liveControl().click();
+  await settle();
+  expect(covered()).toBe(false);
 });
