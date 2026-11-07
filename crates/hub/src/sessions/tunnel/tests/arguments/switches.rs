@@ -1,6 +1,7 @@
 //! Each device switch reaches the one guacd argument K4 Section 3 maps it to, with guacd's
 //! text: security and resize names, and booleans as `true` or empty (RA-021, RA-033).
 
+use super::super::super::arguments::pinned_security;
 use super::{DRIVE_ROOT, Desktop, Sources, TARGET, connect_for, connect_values, device};
 use crate::devices::{RdpSecurity, ResizeMethod, TransferPolicy};
 
@@ -141,5 +142,20 @@ fn gw_015_without_a_stored_password_guacd_gets_none_and_may_ask() {
         let values = connect_values(desktop, &sources).unwrap();
         let sent = super::connect_by_name_of(desktop, &device, values);
         assert_eq!(sent["password"], "", "{desktop:?}");
+    }
+}
+
+#[test]
+fn sec_007_any_becomes_the_tls_security_the_server_chose_and_the_rest_is_kept() {
+    for chosen in [RdpSecurity::Tls, RdpSecurity::Nla, RdpSecurity::NlaExt] {
+        assert_eq!(pinned_security(RdpSecurity::Any, chosen), chosen);
+        for set in [
+            RdpSecurity::Tls,
+            RdpSecurity::Nla,
+            RdpSecurity::NlaExt,
+            RdpSecurity::Vmconnect,
+        ] {
+            assert_eq!(pinned_security(set, chosen), set, "{set:?} is kept");
+        }
     }
 }

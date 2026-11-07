@@ -66,7 +66,7 @@ The hub, not the client, does the handshake with the `guac-protocol` `Handshake`
 | `hostname`, `port` | checked target address, settings port | same |
 | `username`, `domain` | settings | `username` when set |
 | `password` | `load_password(Rdp)` | `load_password(Vnc)` |
-| `security`, `ignore-cert` | settings | — |
+| `security`, `ignore-cert` | `security`: settings; ANY is sent as the TLS mode the hub's certificate read negotiated (`tls`, `nla` or `nla-ext`), so guacd never falls back to standard RDP security when a pin is required (CR-2); `ignore-cert`: settings | — |
 | `cert-fingerprints` | the accepted `sha256` fingerprint (D-5) | — |
 | `resize-method` | `display-update` or `reconnect` | — |
 | `disable-audio`, `enable-audio-input` | not `audioOut`, `microphone` | — |

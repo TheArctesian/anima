@@ -53,6 +53,7 @@ pub struct Subscription(
     checks::graphql::Subscription,
     events::graphql::Subscription,
     metrics::graphql::Subscription,
+    sessions::graphql::Subscription,
 );
 
 pub type HubSchema = Schema<Query, Mutation, Subscription>;

@@ -19,7 +19,11 @@ use super::{
     session,
     socket::{self, Received},
 };
-use crate::sessions::tests::fixture::{LOOPBACK, ended, ended_once, stored_text};
+use crate::sessions::{
+    EndReason,
+    end::shut_down,
+    tests::fixture::{LOOPBACK, ended, ended_once, now, stored_text},
+};
 
 /// Everything the operator typed that reached the server, until it holds `expected`.
 async fn typed_until(bench: &mut super::Bench, expected: &[u8]) -> Vec<u8> {
@@ -190,4 +194,34 @@ async fn k4_8_5_output_the_client_has_not_read_waits_in_the_device_not_the_hub(p
     flood.await.unwrap();
     let written = written.load(Ordering::SeqCst);
     assert_eq!(total, written + b"end of flood".len());
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
+)]
+async fn ra_034_shutdown_publishes_the_terminal_s_hub_shutdown_end_once_written(pool: PgPool) {
+    let (bench, mut client) = session(&pool, Setup::default()).await;
+    let mut changes = bench.live.changes();
+
+    shut_down(&pool, &bench.live, now()).await.unwrap();
+
+    // The tunnel publishes before it deregisters, and shutdown waits for that.
+    let change = changes.try_recv().expect("the end was published");
+    assert_eq!(change.session.id, bench.session);
+    assert_eq!(
+        change.session.end.map(|end| end.reason),
+        Some(EndReason::HubShutdown)
+    );
+    assert!(changes.try_recv().is_err(), "one change for one end");
+    ended_once(
+        &ended(&pool, bench.session).await,
+        "hub_shutdown",
+        "info",
+        LOOPBACK,
+    );
+    assert_eq!(
+        client.ended().await,
+        ("HUB_SHUTDOWN".to_owned(), Some(1001))
+    );
 }

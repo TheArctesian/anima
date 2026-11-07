@@ -56,7 +56,8 @@ const HANDSHAKE_WAIT: Duration = Duration::from_secs(10);
 /// The waits of one tunnel. Tests shorten them; the hub uses `Timing::default()`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) struct Timing {
-    /// Each of: resolving the device host, connecting to guacd.
+    /// Each of: resolving the device host, reading its RDP server certificate, connecting to
+    /// guacd.
     pub(super) connect: Duration,
     /// The guacd handshake, and the WebSocket upgrade after it.
     pub(super) handshake: Duration,
