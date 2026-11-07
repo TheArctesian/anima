@@ -104,6 +104,18 @@ it('RA-001 / UI-015: the labelled close button ends that session once and keeps 
   expect(tabs()[0]?.getAttribute('aria-selected')).toBe('true');
 });
 
+it('LOG-007: a failed end warns with the error name only, never its message', async () => {
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+  const sessions = show();
+  await openStarted(sessions);
+  fake.port.end.mockRejectedValueOnce(new Error('secret-marker'));
+  document.querySelector<HTMLButtonElement>('button[aria-label="Close web-1 SSH session"]')?.click();
+  await settle();
+  expect(warn).toHaveBeenCalledExactlyOnceWith('Ending the session failed:', 'Error');
+  expect(JSON.stringify(warn.mock.calls)).not.toContain('secret-marker');
+  warn.mockRestore();
+});
+
 it('MOT-005: a new tab grows with transform-origin at the control that opened it', async () => {
   const sessions = show();
   await openStarted(sessions, new DOMRect(400, 300, 50, 20));
