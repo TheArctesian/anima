@@ -84,6 +84,11 @@ fn sec_007_a_subject_loses_control_and_bidirectional_characters() {
         Some("CN=pc-01txt.exe".to_owned())
     );
     assert_eq!(cleaned_subject(" \u{0}\t "), None);
+    assert_eq!(
+        cleaned_subject("CN=a\u{061c}b\u{2028}c\u{200b}d\u{feff}").as_deref(),
+        Some("CN=abcd"),
+        "format characters and separators go too"
+    );
 }
 
 #[test]

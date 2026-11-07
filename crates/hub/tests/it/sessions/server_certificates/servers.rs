@@ -1,11 +1,11 @@
 //! In-process RDP and VNC servers on the loopback interface for the connection test. The RDP
 //! server answers the X.224 request as it is told and, for TLS, presents a throwaway
-//! self-signed certificate made by rcgen (never a real key); both record every byte the hub
-//! sends.
+//! certificate made by rcgen (never a real key), self-signed or with its issuer after it; both
+//! record every byte the hub sends.
 
 use std::{sync::Arc, time::Duration};
 
-use rcgen::{CertificateParams, DnType, KeyPair, date_time_ymd};
+use rcgen::{BasicConstraints, CertificateParams, DnType, IsCa, Issuer, KeyPair, date_time_ymd};
 use rustls::{
     ServerConfig,
     crypto::ring,
@@ -75,28 +75,61 @@ impl Drop for Server {
     }
 }
 
-/// A throwaway self-signed certificate with common name `name`, and its DER.
+/// A throwaway certificate with common name `name`, the DER of the leaf the server presents
+/// first.
 pub struct Certificate {
     pub der: Vec<u8>,
     acceptor: TlsAcceptor,
 }
 
+/// The leaf's parameters: `name` and `name.lan`, valid until 2031.
+fn leaf_params(name: &str) -> CertificateParams {
+    let mut params = CertificateParams::new(vec![format!("{name}.lan")]).unwrap();
+    params.distinguished_name.push(DnType::CommonName, name);
+    params.not_after = date_time_ymd(2031, 1, 1);
+    params
+}
+
 impl Certificate {
+    /// A self-signed leaf, presented alone.
     pub fn new(name: &str) -> Self {
         let key = KeyPair::generate().unwrap();
-        let mut params = CertificateParams::new(vec![format!("{name}.lan")]).unwrap();
-        params.distinguished_name.push(DnType::CommonName, name);
-        params.not_after = date_time_ymd(2031, 1, 1);
-        let cert = params.self_signed(&key).unwrap();
+        let leaf = leaf_params(name).self_signed(&key).unwrap();
+        Self::serving(vec![leaf.der().to_vec()], &key)
+    }
+
+    /// A leaf signed by a throwaway issuer, presented as the chain leaf then issuer.
+    pub fn issued(name: &str) -> Self {
+        let issuer_key = KeyPair::generate().unwrap();
+        let mut issuer_params = CertificateParams::new(Vec::new()).unwrap();
+        issuer_params
+            .distinguished_name
+            .push(DnType::CommonName, "Throwaway Issuer");
+        issuer_params.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
+        let issuer_der = issuer_params
+            .self_signed(&issuer_key)
+            .unwrap()
+            .der()
+            .to_vec();
+        let issuer = Issuer::new(issuer_params, issuer_key);
+        let key = KeyPair::generate().unwrap();
+        let leaf = leaf_params(name).signed_by(&key, &issuer).unwrap();
+        Self::serving(vec![leaf.der().to_vec(), issuer_der], &key)
+    }
+
+    /// A TLS server presenting `chain`, whose first entry is signed for `key`.
+    fn serving(chain: Vec<Vec<u8>>, key: &KeyPair) -> Self {
+        let der = chain[0].clone();
+        let chain = chain.into_iter().map(Into::into).collect();
         let key = PrivateKeyDer::from(PrivatePkcs8KeyDer::from(key.serialize_der()));
         let config = ServerConfig::builder_with_provider(Arc::new(ring::default_provider()))
             .with_safe_default_protocol_versions()
             .unwrap()
             .with_no_client_auth()
-            .with_single_cert(vec![cert.der().clone()], key)
+            .with_single_cert(chain, key)
             .unwrap();
         Self {
-            der: cert.der().to_vec(),
+            der,
             acceptor: TlsAcceptor::from(Arc::new(config)),
         }
     }

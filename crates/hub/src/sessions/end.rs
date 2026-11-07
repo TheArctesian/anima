@@ -29,7 +29,9 @@ use crate::{
 
 #[cfg(test)]
 pub(super) use cause::Ending;
-pub(super) use cause::{CLIENT_IDLE, CLIENT_STOPPED_READING, CLOSE_WAIT, Cause, End, unreadable};
+pub(super) use cause::{
+    CLIENT_IDLE, CLIENT_LEFT, CLIENT_STOPPED_READING, CLOSE_WAIT, Cause, End, unreadable,
+};
 #[cfg(test)]
 pub(super) use record::finish;
 pub(super) use record::{Records, Unfinished};

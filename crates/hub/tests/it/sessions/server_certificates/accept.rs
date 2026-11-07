@@ -158,3 +158,31 @@ async fn sec_007_log_005_accepting_the_seen_certificate_stores_it_with_an_audit_
         "accepting it again writes nothing"
     );
 }
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../fixtures", scripts("devices"))
+)]
+async fn sec_007_a_server_that_sends_its_issuer_too_is_reported_and_accepted_by_its_leaf(
+    pool: PgPool,
+) {
+    add_operator(&pool).await;
+    let certificate = Certificate::issued("DESKTOP-01");
+    let server = rdp(Answer::Tls, &certificate).await;
+    point_at(&pool, server.port, "nla", false).await;
+    let live = loopback_live();
+    let schema = schema(&pool, &live);
+
+    let tested = schema.execute(test_request(&saved())).await;
+    let response = schema
+        .execute(accept_request(PVE_01, &certificate.fingerprint()))
+        .await;
+
+    assert!(tested.errors.is_empty(), "{:?}", tested.errors);
+    let presented = tested.data.into_json().unwrap()["testConnection"]["serverCertificate"].clone();
+    assert_eq!(presented["fingerprintSha256"], certificate.fingerprint());
+    assert_eq!(presented["subject"], "CN=DESKTOP-01");
+    assert!(response.errors.is_empty(), "{:?}", response.errors);
+    let stored = row(&pool).await.unwrap();
+    assert_eq!(stored.fingerprint_sha256, certificate.fingerprint());
+}

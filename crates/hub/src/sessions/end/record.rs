@@ -11,7 +11,7 @@ use sqlx::PgPool;
 use tokio::runtime::Handle;
 
 use super::{
-    cause::{Cause, End},
+    cause::{Cause, End, TASK_STOPPED},
     end_row,
 };
 use crate::{
@@ -20,9 +20,6 @@ use crate::{
     ids::SessionId,
     sessions::{Actor, EndReason, Error, PendingTicket, Redeemed, SessionEnd, store},
 };
-
-/// The event message when the tunnel task stopped without an end of its own.
-const TASK_STOPPED: &str = "The hub's tunnel stopped unexpectedly and closed the SSH session.";
 
 /// Where an end is written: the database, the bus its event goes out on, and the clock that
 /// stamps it.
@@ -78,10 +75,10 @@ impl Drop for Unfinished {
         let session = redeemed.ticket.session;
         tracing::error!(%session, "the tunnel task stopped before the session ended");
         let records = self.records.clone();
-        let end = redeemed.tunnel.signalled().map_or_else(
-            || End::explained(Cause::GatewayError, TASK_STOPPED),
-            End::from,
-        );
+        let end = redeemed
+            .tunnel
+            .signalled()
+            .map_or_else(|| End::worded(Cause::GatewayError, TASK_STOPPED), End::from);
         if let Ok(runtime) = Handle::try_current() {
             runtime.spawn(async move { finish(&records, redeemed, &end).await });
         }
@@ -153,7 +150,7 @@ async fn write(records: &Records, ticket: &PendingTicket, end: &End) -> Result<b
         severity: ending.severity,
         source: Source::Session,
         device: row.and_then(|row| row.device.map(|device| (device, row.device_name))),
-        message: end.message.to_owned(),
+        message: end.message.of(ticket.protocol).to_owned(),
     };
     events::record(&mut tx, &records.bus, now, event).await?;
     tx.commit().await?;

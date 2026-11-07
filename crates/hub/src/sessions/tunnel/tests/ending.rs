@@ -4,10 +4,10 @@ use std::{io, time::Duration};
 
 use guac_protocol::encode;
 
-use super::super::ending::{CLIENT_IDLE, Cause, Ending, GATEWAY_SILENCE, gateway_written};
+use super::super::ending::{CLIENT_IDLE, Cause, End, Ending, GATEWAY_SILENCE, gateway_written};
 use super::super::gateway::tunnel_opened;
 use crate::events::Severity;
-use crate::sessions::EndReason;
+use crate::sessions::{EndReason, Protocol};
 
 fn row(close_code: u16, reason: EndReason, severity: Severity) -> Ending {
     Ending {
@@ -88,13 +88,13 @@ fn k4_5_a_guacd_write_that_fails_or_stalls_is_gateway_error() {
     let failed = gateway_written(Some(&broken)).unwrap_err();
     assert_eq!(failed.cause, Cause::GatewayError);
     assert_eq!(
-        failed.message,
+        failed.message.of(Protocol::Rdp),
         "The connection to the gateway failed, so the hub closed the session."
     );
     let stalled = gateway_written(None).unwrap_err();
     assert_eq!(stalled.cause, Cause::GatewayError);
     assert_eq!(
-        stalled.message,
+        stalled.message.of(Protocol::Rdp),
         "The gateway stopped reading what the hub sent, so the hub closed the session."
     );
 }
@@ -103,4 +103,21 @@ fn k4_5_a_guacd_write_that_fails_or_stalls_is_gateway_error() {
 fn gw_014_the_open_instruction_carries_only_the_tunnel_id() {
     let id = "8e8c9a5e-6f0b-4b0e-9d58-3c4bfb0b7e21";
     assert_eq!(encode(&tunnel_opened(id)), format!("0.,36.{id};"));
+}
+
+#[test]
+fn ra_008_an_end_message_names_the_session_protocol() {
+    for (protocol, name) in [
+        (Protocol::Rdp, "RDP"),
+        (Protocol::Vnc, "VNC"),
+        (Protocol::Ssh, "SSH"),
+    ] {
+        let end = End::from(Cause::OperatorClosed);
+        assert_eq!(
+            end.message.of(protocol),
+            format!("The operator closed the {name} session.")
+        );
+        let refused = Cause::AuthFailed.message().of(protocol);
+        assert_eq!(refused, format!("The device refused the {name} sign-in."));
+    }
 }

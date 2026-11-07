@@ -23,7 +23,7 @@ use crate::{
     credentials,
     devices::{self, Device},
     sessions::{
-        self, PendingTicket,
+        self, PendingTicket, Protocol,
         end::Cause,
         ssh::{self, Observer, SshError, Target},
     },
@@ -195,7 +195,7 @@ async fn sign_in(
     drop(secret);
     match signed_in {
         Ok(()) => Ok(None),
-        Err(SshError::AuthFailed) => Ok(Some(Cause::AuthFailed.message())),
+        Err(SshError::AuthFailed) => Ok(Some(Cause::AuthFailed.message().of(Protocol::Ssh))),
         Err(SshError::UnreadableKey) => Ok(Some(UNREADABLE_KEY)),
         Err(_) => Err(NotOpened::Lost),
     }

@@ -81,7 +81,7 @@ async fn mv_003_a_client_that_leaves_during_the_opening_ends_the_session_operato
     ended_once(&ended, "operator", "info", LOOPBACK);
     assert_eq!(
         ended.events[0].3,
-        "The client left before the SSH session opened."
+        "The client left before the RDP session opened."
     );
 }
 
@@ -154,7 +154,7 @@ async fn mv_003_a_session_task_that_panics_still_ends_the_session(pool: PgPool) 
     ended_once(&ended, "gateway_error", "warning", LOOPBACK);
     assert_eq!(
         ended.events[0].3,
-        "The hub's tunnel stopped unexpectedly and closed the SSH session."
+        "The hub's tunnel stopped unexpectedly and closed the RDP session."
     );
 }
 
