@@ -3,12 +3,18 @@
 use super::{Cpu, Disk, Interface, Load, Memory, Reading, Sample};
 use crate::metrics::MetricKind;
 
+mod aggregates;
 mod captures;
+mod charts;
+mod database;
 mod df;
 mod kinds;
 mod linux;
 mod macos;
+mod privileges;
 mod rates;
+mod readings;
+mod retention;
 mod series;
 
 /// Asserts two floats are the same number, apart from rounding of the last digits.
