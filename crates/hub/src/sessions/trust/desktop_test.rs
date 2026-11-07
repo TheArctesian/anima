@@ -110,8 +110,7 @@ pub(in crate::sessions) async fn test_desktop(
             rdp_outcome(accepted.as_ref(), seen)
         }
         DesktopSettings::Vnc { port } => {
-            let read = read_banner(target(live, &host, port), PROBE_TIMEOUT).await;
-            unreached(read.map(|()| reached(VNC_ANSWERED)), NOT_VNC)
+            vnc_outcome(read_banner(target(live, &host, port), PROBE_TIMEOUT).await)
         }
     }
 }
@@ -162,6 +161,7 @@ fn reached(message: &'static str) -> ConnectionTest {
         host_key_changed: false,
         server_certificate: None,
         certificate_changed: false,
+        certificate_matched: false,
         message,
     }
 }
@@ -188,7 +188,8 @@ fn unreached(
 }
 
 /// `serverCertificate` is set when none is accepted (`certificateChanged` false) or the server
-/// presented another (`certificateChanged` true), and null when it presented the accepted one.
+/// presented another (`certificateChanged` true), and null when it presented the accepted one,
+/// the only case `certificateMatched` is true.
 fn rdp_outcome(
     accepted: Option<&ServerCertificate>,
     seen: Result<Seen, ReadError>,
@@ -200,7 +201,10 @@ fn rdp_outcome(
             let seen = ServerCertificate::from(seen);
             match accepted {
                 Some(accepted) if accepted.fingerprint_sha256 == seen.fingerprint_sha256 => {
-                    reached(ACCEPTED_CERTIFICATE)
+                    ConnectionTest {
+                        certificate_matched: true,
+                        ..reached(ACCEPTED_CERTIFICATE)
+                    }
                 }
                 accepted => ConnectionTest {
                     server_certificate: Some(seen),
@@ -215,4 +219,80 @@ fn rdp_outcome(
         }
     });
     unreached(read, NOT_RDP)
+}
+
+/// The VNC result: a banner is an answer, nothing more; VNC has no certificate.
+fn vnc_outcome(read: Result<(), ReadError>) -> Result<ConnectionTest, Error> {
+    unreached(read.map(|()| reached(VNC_ANSWERED)), NOT_VNC)
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::{DateTime, Utc};
+
+    use super::{
+        ACCEPTED_CERTIFICATE, CHANGED_CERTIFICATE, NEGOTIATION_REFUSED, NEW_CERTIFICATE, NO_TLS,
+        STANDARD_ONLY, Seen, UNREACHABLE, VNC_ANSWERED, rdp_outcome, vnc_outcome,
+    };
+    use crate::sessions::{
+        ServerCertificate,
+        trust::{Observation, PresentedCertificate, ReadError},
+    };
+
+    fn observed(der: &[u8]) -> Observation<PresentedCertificate> {
+        Observation {
+            presented: PresentedCertificate::from_der(der),
+            first_seen_at: DateTime::<Utc>::UNIX_EPOCH,
+            last_seen_at: DateTime::<Utc>::UNIX_EPOCH,
+        }
+    }
+
+    /// `certificateMatched` is true only for a certificate equal to the pin: a null
+    /// `serverCertificate` alone (standard security, a refusal, no TLS) proves nothing.
+    #[test]
+    fn sec_007_only_the_accepted_certificate_is_matched() {
+        let accepted = ServerCertificate::from(observed(b"accepted"));
+        let same = || Ok(Seen::Certificate(observed(b"accepted")));
+        let (pinned, other) = (Some(&accepted), Ok(Seen::Certificate(observed(b"other"))));
+        let cases = [
+            ("matched", pinned, same(), ACCEPTED_CERTIFICATE),
+            ("first certificate", None, same(), NEW_CERTIFICATE),
+            ("changed", pinned, other, CHANGED_CERTIFICATE),
+            ("STANDARD_ONLY", pinned, Ok(Seen::Standard), STANDARD_ONLY),
+            (
+                "NEGOTIATION_REFUSED",
+                pinned,
+                Ok(Seen::Refused),
+                NEGOTIATION_REFUSED,
+            ),
+            ("NO_TLS", pinned, Err(ReadError::Tls), NO_TLS),
+            (
+                "unreachable",
+                pinned,
+                Err(ReadError::Unreachable),
+                UNREACHABLE,
+            ),
+        ];
+        for (case, pinned, read, message) in cases {
+            let test = rdp_outcome(pinned, read).unwrap_or_else(|_| panic!("{case}"));
+            assert_eq!(test.message, message, "{case}");
+            assert_eq!(test.certificate_matched, case == "matched", "{case}");
+        }
+    }
+
+    #[test]
+    fn sec_007_a_vnc_test_never_matches_a_certificate() {
+        let cases = [
+            ("answered", Ok(())),
+            ("unreachable", Err(ReadError::Unreachable)),
+        ];
+        for (case, read) in cases {
+            let test = vnc_outcome(read).unwrap_or_else(|_| panic!("{case}"));
+            assert!(!test.certificate_matched, "{case}");
+        }
+        assert_eq!(
+            vnc_outcome(Ok(())).map(|test| test.message).ok(),
+            Some(VNC_ANSWERED)
+        );
+    }
 }

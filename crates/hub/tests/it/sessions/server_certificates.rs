@@ -5,6 +5,7 @@
 
 mod accept;
 mod connection_test;
+mod matched;
 mod servers;
 
 use async_graphql::{Request, Response, Variables};
@@ -17,7 +18,7 @@ use super::{PVE_01, harness::signed_in_until};
 pub const TEST: &str = "mutation($input: ConnectionTestInput!) { testConnection(input: $input) \
                         { reachable authenticated hostKey { fingerprintSha256 } hostKeyChanged \
                         serverCertificate { fingerprintSha256 subject notAfter firstSeenAt } \
-                        certificateChanged message } }";
+                        certificateChanged certificateMatched message } }";
 
 pub const ACCEPT: &str = "mutation($id: ID!, $fingerprint: String!) { \
                           acceptServerCertificate(deviceId: $id, fingerprintSha256: \

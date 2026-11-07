@@ -327,6 +327,8 @@ type ConnectionTestResult {
   message: String
   serverCertificate: ServerCertificate
   certificateChanged: Boolean!
+  "True only when the hub read the RDP server certificate and it equals the accepted pin (CR-3, SEC-007)."
+  certificateMatched: Boolean!
 }
 
 input ConnectionTestInput {
