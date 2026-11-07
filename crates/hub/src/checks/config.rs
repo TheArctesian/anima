@@ -3,7 +3,7 @@
 //! The serde form of [`CheckConfig`] is JSON with camelCase keys and an internal tag:
 //! `{"type":"tcp","port":22,"timeoutMs":5000}`. The `config` column stores it without the tag,
 //! which the `type` column holds, so it matches the fixtures. The tag values are the fixed
-//! type ids (`icmp tcp tls http dns push group docker systemd`, and the ids of later types) and never change meaning. Unknown keys are
+//! type ids (`icmp tcp tls http dns push group docker systemd tailscale_ping`, and the ids of later types) and never change meaning. Unknown keys are
 //! refused, so a stored form that does not match fails loudly instead of falling back to
 //! defaults. Secrets are never part of this JSON: see [`HttpSecrets`].
 
@@ -31,6 +31,7 @@ pub enum CheckType {
     Group,
     Docker,
     Systemd,
+    TailscalePing,
 }
 
 impl CheckType {
@@ -47,6 +48,7 @@ impl CheckType {
             Self::Group => "group",
             Self::Docker => "docker",
             Self::Systemd => "systemd",
+            Self::TailscalePing => "tailscale_ping",
         }
     }
 
@@ -62,6 +64,7 @@ impl CheckType {
             "group" => Self::Group,
             "docker" => Self::Docker,
             "systemd" => Self::Systemd,
+            "tailscale_ping" => Self::TailscalePing,
             _ => return None,
         })
     }
@@ -158,6 +161,13 @@ pub enum CheckConfig {
         #[serde(default = "listing_timeout_ms")]
         timeout_ms: u32,
     },
+    /// A disco ping through the `LocalAPI` proxy; the target defaults to the device host (D-4).
+    TailscalePing {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        target: Option<String>,
+        #[serde(default = "network_timeout_ms")]
+        timeout_ms: u32,
+    },
 }
 
 impl CheckConfig {
@@ -173,6 +183,7 @@ impl CheckConfig {
             Self::Group => CheckType::Group,
             Self::Docker { .. } => CheckType::Docker,
             Self::Systemd { .. } => CheckType::Systemd,
+            Self::TailscalePing { .. } => CheckType::TailscalePing,
         }
     }
 
@@ -184,7 +195,8 @@ impl CheckConfig {
             | Self::Tcp { timeout_ms, .. }
             | Self::Tls { timeout_ms, .. }
             | Self::Docker { timeout_ms, .. }
-            | Self::Systemd { timeout_ms, .. } => *timeout_ms,
+            | Self::Systemd { timeout_ms, .. }
+            | Self::TailscalePing { timeout_ms, .. } => *timeout_ms,
             Self::Http(http) => http.timeout_ms,
             Self::Dns { .. } | Self::Push | Self::Group => network_timeout_ms(),
         };
@@ -229,6 +241,12 @@ impl CheckConfig {
             }
             Self::Systemd { unit, timeout_ms } => {
                 rules::unit_name("unit", unit)?;
+                rules::timeout("timeoutMs", *timeout_ms)
+            }
+            Self::TailscalePing { target, timeout_ms } => {
+                target
+                    .as_deref()
+                    .map_or(Ok(()), |host| rules::host("target", host))?;
                 rules::timeout("timeoutMs", *timeout_ms)
             }
             Self::Push | Self::Group => Ok(()),

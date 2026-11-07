@@ -43,6 +43,7 @@ fn r_030_any_deny_list_still_refuses_loopback_link_local_and_multicast() {
         let probing = Probing {
             vault: super::support::vault(),
             policy: AddressPolicy::new(list.clone()),
+            localapi: None,
         };
         for ip in &refused {
             assert!(!probing.policy.permits(*ip), "{ip} with {list:?}");

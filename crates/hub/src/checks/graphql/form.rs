@@ -8,7 +8,7 @@ use async_graphql::ID;
 
 use super::input::{
     AuthShape, ConfigShape, CreateShape, DnsShape, DockerShape, HttpShape, IcmpShape, SystemdShape,
-    TcpShape, TlsShape, UpdateShape,
+    TailscalePingShape, TcpShape, TlsShape, UpdateShape,
 };
 use super::settings::RawSettings;
 use crate::{
@@ -150,6 +150,13 @@ fn systemd(shape: SystemdShape) -> Result<ConfigForm, FieldError> {
     }))
 }
 
+fn tailscale_ping(shape: TailscalePingShape) -> Result<ConfigForm, FieldError> {
+    Ok(ConfigForm::plain(CheckConfig::TailscalePing {
+        target: shape.target,
+        timeout_ms: or_default("timeoutMs", shape.timeout_ms, 5000)?,
+    }))
+}
+
 fn dns(shape: DnsShape) -> ConfigForm {
     ConfigForm::plain(CheckConfig::Dns {
         name: shape.name,
@@ -191,6 +198,7 @@ pub(super) fn config(shape: ConfigShape, token: PushToken) -> Result<ConfigForm,
         ConfigShape::Dns(shape) => Ok(dns(shape)),
         ConfigShape::Docker(shape) => docker(shape),
         ConfigShape::Systemd(shape) => systemd(shape),
+        ConfigShape::TailscalePing(shape) => tailscale_ping(shape),
         ConfigShape::Push(true) => Ok(ConfigForm {
             definition: Definition::Push(token),
             children: None,
