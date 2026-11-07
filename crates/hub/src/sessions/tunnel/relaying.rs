@@ -28,6 +28,7 @@ use tokio::sync::oneshot;
 
 use super::{
     ending::{Cause, End},
+    gateway::certificate_changed,
     opening::{self, Opening},
     route::{Route, Timing},
 };
@@ -36,7 +37,7 @@ use crate::sessions::{
     end::Unfinished,
     upgrade::{handed_over, upgraded},
 };
-use writes::leave_gateway;
+use writes::{close_client, leave_gateway, send_text};
 
 /// The event message when the request did not offer the `guacamole` subprotocol.
 const NOT_GUACAMOLE: &str = "The client did not open the tunnel as a Guacamole WebSocket, so \
@@ -80,20 +81,41 @@ async fn session(
     }
 }
 
-/// The tunnel after the response: waits for the upgraded socket, then relays. When the
-/// upgrade fails, guacd is told the hub is leaving.
+/// The tunnel after the response: waits for the upgraded socket, then relays, or tells the
+/// client the certificate changed. When the upgrade fails, guacd is told the hub is leaving.
 pub(super) async fn connected(
     timing: Timing,
     tunnel: &mut Tunnel,
     opening: Opening,
     socket: oneshot::Receiver<WebSocket>,
 ) -> End {
-    let Opening::Gateway(connected) = opening;
-    match upgraded(tunnel, socket, timing.handshake).await {
-        Ok(client) => link::relay(client, connected, tunnel, timing).await,
-        Err(end) => {
+    let client = upgraded(tunnel, socket, timing.handshake).await;
+    match (opening, client) {
+        (Opening::Gateway(connected), Ok(client)) => {
+            link::relay(client, connected, tunnel, timing).await
+        }
+        (Opening::Gateway(connected), Err(end)) => {
             leave_gateway(connected.stream).await;
             end
         }
+        (Opening::CertificateChanged, Ok(client)) => {
+            certificate_mismatch(client, tunnel, timing).await
+        }
+        (Opening::CertificateChanged, Err(end)) => end,
     }
+}
+
+/// Tells the client the certificate changed and closes 4003; guacd was never reached (K4
+/// Section 5). The mismatch is the cause even if the client is gone before it hears of it.
+async fn certificate_mismatch(mut client: WebSocket, tunnel: &mut Tunnel, timing: Timing) -> End {
+    let cause = Cause::ServerCertificateMismatch;
+    let _ = send_text(
+        &mut client,
+        &certificate_changed(),
+        tunnel,
+        timing.client_idle,
+    )
+    .await;
+    close_client(client, cause).await;
+    cause.into()
 }

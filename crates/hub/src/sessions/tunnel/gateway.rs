@@ -26,6 +26,18 @@ pub(super) fn tunnel_opened(tunnel_id: &str) -> Instruction {
     Instruction::new("", [tunnel_id])
 }
 
+/// What the client gets before the 4003 close when the device presented another RDP server
+/// certificate than the accepted one (K4 Section 5).
+pub(super) fn certificate_changed() -> Instruction {
+    Instruction::new(
+        "error",
+        [
+            "Certificate changed".to_owned(),
+            CLIENT_FORBIDDEN.to_string(),
+        ],
+    )
+}
+
 impl Relay {
     /// What to do with one decoded guacd instruction after `ready`.
     pub(super) fn on_gateway(&mut self, i: Instruction) -> GatewayStep {

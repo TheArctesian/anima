@@ -1,7 +1,17 @@
 //! Everything the tunnel does before the WebSocket upgrade, after the ticket is redeemed:
 //! load the device and check its protocol is still on, resolve and check its host (R-032),
-//! load the accepted RDP server certificate and the stored password, build the `connect`
-//! values and run the guacd handshake (K4 Sections 2 and 3).
+//! load the accepted RDP server certificate and check the device still presents it, load the
+//! stored password, build the `connect` values and run the guacd handshake (K4 Sections 2
+//! and 3).
+//!
+//! The certificate check (SEC-007, K4 Section 3): for RDP with TLS or NLA and certificates
+//! not ignored, the hub reads the server certificate itself at the checked address, as the
+//! connection test does, before guacd is reached; guacd reports a mismatch only as a generic
+//! error. A different certificate opens nothing at guacd and ends the session
+//! `SERVER_CERTIFICATE_MISMATCH`. guacd still pins `cert-fingerprints`, so a certificate that
+//! changes between the hub's read and guacd's connect fails closed as `GATEWAY_ERROR`. The
+//! read is not kept as an observation: only a connection test lets the operator accept a
+//! certificate.
 
 use std::net::{IpAddr, SocketAddr};
 
@@ -21,6 +31,7 @@ use crate::{
         ssh::{self, SshError, Target},
         start::{certificate_required, protocol_off},
         target::TargetRule,
+        trust::{CertificateFingerprint, ReadError, Reply, TLS_PROTOCOLS, read_server_certificate},
     },
 };
 
@@ -29,6 +40,9 @@ use crate::{
 pub(super) enum Opening {
     /// guacd is past `ready`: relay.
     Gateway(Connected),
+    /// The device presented another RDP server certificate than the accepted one; guacd was
+    /// never reached.
+    CertificateChanged,
 }
 
 /// Why the tunnel did not open. The messages are for the process log; none holds a value,
@@ -47,6 +61,12 @@ pub(super) enum NotOpened {
     Unresolved,
     #[error("the device host resolves to a refused address")]
     RefusedTarget,
+    #[error("the device's RDP server certificate could not be read")]
+    CertificateUnread(#[source] ReadError),
+    #[error("the device offers only standard RDP security, so it has no certificate")]
+    StandardOnly,
+    #[error("the device refused the RDP security the hub asked for to read its certificate")]
+    SecurityRefused,
     #[error(transparent)]
     Values(#[from] BadConnectValue),
     #[error("guacd cannot be reached")]
@@ -91,6 +111,25 @@ impl NotOpened {
                 "The device's host resolves to a loopback, link-local, multicast or unspecified \
                  address, or to one in a network the hub refuses (ANIMA_PROBE_DENY), which the \
                  gateway must not reach."
+            }
+            Self::CertificateUnread(ReadError::Unexpected) => {
+                "The device did not answer as an RDP server when the hub checked its server \
+                 certificate."
+            }
+            Self::CertificateUnread(ReadError::Tls) => {
+                "The device did not complete a TLS handshake when the hub checked its server \
+                 certificate."
+            }
+            Self::CertificateUnread(_) => {
+                "The hub could not reach the device's RDP port to check its server certificate."
+            }
+            Self::StandardOnly => {
+                "The device offers only standard RDP security, so the hub could not check its \
+                 server certificate. Check the security setting."
+            }
+            Self::SecurityRefused => {
+                "The device refused the RDP security the hub asked for to check its server \
+                 certificate. Check the security setting."
             }
             Self::Values(_) => {
                 "The device's settings or stored credential cannot be sent to the gateway."
@@ -140,6 +179,14 @@ pub(super) async fn open(route: &Route, ticket: &PendingTicket) -> Result<Openin
     let address = timeout(route.timing.connect, target(&device.host, port, rule))
         .await
         .map_err(|_| NotOpened::Unresolved)??;
+    let pinned = certificate
+        .as_ref()
+        .filter(|_| certificate_required(&device.rdp));
+    if let Some(accepted) = pinned
+        && !presents(route, SocketAddr::new(address, port), accepted).await?
+    {
+        return Ok(Opening::CertificateChanged);
+    }
     let password =
         credentials::load_password(&route.db, &route.vault, device.id, desktop.password())
             .await
@@ -183,6 +230,35 @@ async fn certificate(
         return Err(NotOpened::NoCertificate);
     }
     Ok(accepted)
+}
+
+/// Whether the RDP server at the checked `address` presents `accepted`: the hub asks for TLS
+/// or NLA, as the connection test does, and reads the certificate within the connect wait.
+/// The address is an IP, so it is not resolved again; the target rule still checks it.
+async fn presents(
+    route: &Route,
+    address: SocketAddr,
+    accepted: &ServerCertificate,
+) -> Result<bool, NotOpened> {
+    let host = address.ip().to_string();
+    let target = Target {
+        host: &host,
+        port: address.port(),
+        rule: route.live.target_rule(),
+    };
+    let read = read_server_certificate(target, TLS_PROTOCOLS, route.timing.connect).await;
+    match read.map_err(|error| match error {
+        ReadError::Unresolved => NotOpened::Unresolved,
+        ReadError::RefusedTarget => NotOpened::RefusedTarget,
+        other => NotOpened::CertificateUnread(other),
+    })? {
+        Reply::Certificate(presented) => Ok(accepted
+            .fingerprint_sha256
+            .parse::<CertificateFingerprint>()
+            .is_ok_and(|accepted| accepted == presented.fingerprint)),
+        Reply::Standard => Err(NotOpened::StandardOnly),
+        Reply::Refused => Err(NotOpened::SecurityRefused),
+    }
 }
 
 /// The address the session goes to: the first one the device's host resolves to, when `rule`
