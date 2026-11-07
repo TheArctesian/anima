@@ -89,11 +89,11 @@
     white-space: nowrap;
   }
 
-  /* A fixed width: the widest value fits, so a new one moves nothing (MOT-007). */
+  /* A fixed width: the widest value fits with slack (bold "100 %" included), so a new one moves nothing (MOT-007). */
   .slot {
     display: inline-grid;
     justify-items: end;
-    min-inline-size: calc(var(--space-8) + var(--space-1));
+    min-inline-size: calc(var(--space-8) + var(--space-2));
   }
 
   .value {
