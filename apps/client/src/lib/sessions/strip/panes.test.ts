@@ -320,10 +320,10 @@ describe('web tab pane (WEB-003, MOT-005)', () => {
   const web = { id: 'wi-1', deviceId: 'web-1', url: 'http://printer.lan/', label: 'Printer', pinnedFingerprintSha256: null };
   const origin = new DOMRect(10, 20, 80, 30);
 
-  it('WEB-003 / WEB-010: a web tab shows the web page of its device with the status the tab opened with', () => {
+  it('WEB-003 / WEB-010: a web tab shows the web page of its device with the status the tab opened with', async () => {
     const sessions = show();
     sessions.openWeb({ deviceId: 'web-1', deviceName: 'nas', status: 'DOWN', web, origin });
-    flushSync();
+    await settle();
     expect(document.querySelector('[role="tabpanel"] [data-reason]')?.textContent).toMatch(/down/i);
     expect(tabs().map((tab) => tab.textContent)).toEqual([expect.stringContaining('nas')]);
   });
