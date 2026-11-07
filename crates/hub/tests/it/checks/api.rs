@@ -13,4 +13,5 @@ mod push;
 mod race;
 mod reads;
 mod secrets;
+mod snmp;
 mod writes;

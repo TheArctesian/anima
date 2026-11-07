@@ -64,8 +64,33 @@ impl Binding {
     }
 }
 
-fn malformed() -> Error {
+pub(super) fn malformed() -> Error {
     Error::Credentials(credentials::Error::Malformed)
+}
+
+/// The plaintext to seal: a 4-byte big-endian length, the binding, then the secrets.
+pub(super) fn frame(binding: &[u8], secrets: &Secret) -> Secret {
+    let length = u32::try_from(binding.len()).unwrap_or(u32::MAX);
+    let mut plain = Zeroizing::new(Vec::with_capacity(
+        4 + binding.len() + secrets.expose().len(),
+    ));
+    plain.extend_from_slice(&length.to_be_bytes());
+    plain.extend_from_slice(binding);
+    plain.extend_from_slice(secrets.expose());
+    Secret::new(std::mem::take(&mut *plain))
+}
+
+/// The binding and the secrets of an opened [`frame`].
+///
+/// # Errors
+/// `Credentials` (`Malformed`) when the length is past the plaintext.
+pub(super) fn unframe(plain: &[u8]) -> Result<(&[u8], &[u8]), Error> {
+    let (length, rest) = plain.split_first_chunk::<4>().ok_or_else(malformed)?;
+    let length = usize::try_from(u32::from_be_bytes(*length)).map_err(|_| malformed())?;
+    if length > rest.len() {
+        return Err(malformed());
+    }
+    Ok(rest.split_at(length))
 }
 
 /// Seals the secrets of `config` for the check.
@@ -76,15 +101,7 @@ pub(in crate::checks) fn seal(
     secrets: &HttpSecrets,
 ) -> Vec<u8> {
     let binding = serde_json::to_vec(&Binding::of(config)).unwrap_or_default();
-    let encoded = secrets.encode();
-    let length = u32::try_from(binding.len()).unwrap_or(u32::MAX);
-    let mut plain = Zeroizing::new(Vec::with_capacity(
-        4 + binding.len() + encoded.expose().len(),
-    ));
-    plain.extend_from_slice(&length.to_be_bytes());
-    plain.extend_from_slice(&binding);
-    plain.extend_from_slice(encoded.expose());
-    let plain = Secret::new(std::mem::take(&mut *plain));
+    let plain = frame(&binding, &secrets.encode());
     vault.seal(&plain, &context(check)).to_bytes()
 }
 
@@ -100,13 +117,7 @@ pub(in crate::checks) fn open(
     bytes: &[u8],
 ) -> Result<HttpSecrets, Error> {
     let plain = vault.open(&Sealed::from_bytes(bytes)?, &context(check))?;
-    let bytes = plain.expose();
-    let (length, rest) = bytes.split_first_chunk::<4>().ok_or_else(malformed)?;
-    let length = usize::try_from(u32::from_be_bytes(*length)).map_err(|_| malformed())?;
-    if length > rest.len() {
-        return Err(malformed());
-    }
-    let (binding, secrets) = rest.split_at(length);
+    let (binding, secrets) = unframe(plain.expose())?;
     let binding: Binding = serde_json::from_slice(binding).map_err(|_| malformed())?;
     if !binding.permits(config) {
         return Err(Error::SecretsUnbound);

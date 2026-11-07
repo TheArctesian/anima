@@ -1,5 +1,5 @@
-//! Check writes, each in the caller's transaction in a savepoint, and the sealed HTTP
-//! secrets (SEC-003).
+//! Check writes, each in the caller's transaction in a savepoint, and the sealed HTTP and
+//! SNMP secrets (SEC-003).
 
 use chrono::{DateTime, Utc};
 use serde_json::Value;
@@ -8,14 +8,15 @@ use sqlx::{Connection as _, PgConnection, PgExecutor};
 use super::{
     rows::{CheckRow, config_of, stored_config, write_error},
     sealed::open,
+    snmp_sealed,
 };
 use crate::{
     checks::{
         Error,
         config::{CheckConfig, HttpSecrets},
         evaluation::CheckSettings,
-        model::{Check, CheckChange, HttpSetup, Missing, PushToken},
-        rules::StoredHttp,
+        model::{Check, CheckChange, HttpSetup, Missing, PushToken, SnmpSetup},
+        rules::{StoredHttp, StoredSnmp},
     },
     credentials::Vault,
     ids::{CheckId, DeviceId},
@@ -92,6 +93,24 @@ impl Current {
             None => HttpSecrets::default(),
         };
         Ok(Some((config, secrets)))
+    }
+
+    /// The stored SNMP configuration with its secrets opened, for the empty-secret rule.
+    /// `None` when the check is not an SNMP check or holds no secrets.
+    pub(in crate::checks) fn snmp(
+        self,
+        vault: &Vault,
+        check: CheckId,
+    ) -> Result<Option<StoredSnmp>, Error> {
+        let Some(CheckConfig::Snmp(config)) = config_of(&self.kind, self.config) else {
+            return Ok(None);
+        };
+        self.sealed
+            .map(|bytes| {
+                let secrets = snmp_sealed::open(vault, check, &config, &bytes)?;
+                Ok((config, secrets))
+            })
+            .transpose()
     }
 }
 
@@ -233,6 +252,31 @@ pub(in crate::checks) async fn load_http_secrets<'e>(
         .map(|bytes| open(vault, id, &config, &bytes))
         .transpose()?;
     Ok(Some(HttpSetup { config, secrets }))
+}
+
+/// The stored SNMP setup of the check, read like [`load_http_secrets`]: the secrets open only
+/// for the version and user name the stored configuration names (SEC-005). `None` when the
+/// check is not an SNMP check and holds no secrets.
+pub(in crate::checks) async fn load_snmp_secrets<'e>(
+    db: impl PgExecutor<'e>,
+    vault: &Vault,
+    id: CheckId,
+) -> Result<Option<SnmpSetup>, Error> {
+    let row: Option<(String, Value, Option<Vec<u8>>)> =
+        sqlx::query_as("SELECT type, config, secrets_sealed FROM checks.checks WHERE id = $1")
+            .bind(id)
+            .fetch_optional(db)
+            .await?;
+    let (kind, config, sealed) = row.ok_or(Error::NotFound(Missing::Check(id)))?;
+    let config = match config_of(&kind, config) {
+        Some(CheckConfig::Snmp(config)) => config,
+        _ if sealed.is_none() => return Ok(None),
+        _ => return Err(Error::Unreadable(id)),
+    };
+    let secrets = sealed
+        .map(|bytes| snmp_sealed::open(vault, id, &config, &bytes))
+        .transpose()?;
+    Ok(Some(SnmpSetup { config, secrets }))
 }
 
 /// Moves the check's due time from `expected` to `at`; returns whether it moved. A check
