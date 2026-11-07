@@ -8,6 +8,7 @@ use sqlx::PgPool;
 
 use super::{
     bench::{Bench, Setup, bench, docker_host},
+    decoded,
     fake_guacd::{Act, FakeGuacd, RDP_ARGS, Script, connect_values, fake_guacd},
     heard, opened,
     records::ended,
@@ -42,6 +43,7 @@ async fn session_after(pool: &PgPool, changes: &[&str]) -> (FakeGuacd, Bench, So
 
 /// The client sends `wire`; the hub closes 1002 and guacd hears only the hub leaving.
 async fn closes_unheard(guacd: &mut FakeGuacd, client: &mut Socket, wire: &str) {
+    decoded(wire); // well formed, so only the policy can refuse it
     client.send(wire).await;
     assert_eq!(client.close_code().await, Some(1002), "{wire}");
     assert_eq!(heard(guacd).await.opcode, "disconnect", "{wire}");
@@ -118,7 +120,7 @@ async fn ra_021_drive_off_put_never_reaches_guacd(pool: PgPool) {
     closes_unheard(
         &mut guacd,
         &mut client,
-        "3.put,1.0,1.1,10.text/plain,4./a.sh;",
+        "3.put,1.0,1.1,10.text/plain,5./a.sh;",
     )
     .await;
 }

@@ -85,7 +85,7 @@ fn ra_021_without_the_shared_drive_file_get_and_put_close() {
     for wire in [
         "4.file,1.0,10.text/plain,4.a.sh;",
         "3.get,1.0,1./;",
-        "3.put,1.0,1.1,10.text/plain,4./a.sh;",
+        "3.put,1.0,1.1,10.text/plain,5./a.sh;",
     ] {
         assert_eq!(client(&mut relay, wire), CLOSE, "{wire}");
     }
@@ -96,7 +96,7 @@ fn ra_021_with_the_drive_upload_off_refuses_file_and_put_and_allows_get() {
     let mut relay = rdp(|device| device.transfer.upload = false);
     for wire in [
         "4.file,1.0,10.text/plain,4.a.sh;",
-        "3.put,1.0,1.1,10.text/plain,4./a.sh;",
+        "3.put,1.0,1.1,10.text/plain,5./a.sh;",
     ] {
         assert_eq!(client(&mut relay, wire), CLOSE, "{wire}");
     }
@@ -109,12 +109,12 @@ fn ra_021_an_upload_opens_a_stream_for_blob_and_end() {
     forwards(&mut relay, "4.file,1.3,10.text/plain,4.a.sh;");
     forwards(&mut relay, "4.blob,1.3,4.aGk=;");
     forwards(&mut relay, "3.end,1.3;");
-    forwards(&mut relay, "3.put,1.0,1.4,10.text/plain,4./a.sh;");
+    forwards(&mut relay, "3.put,1.0,1.4,10.text/plain,5./a.sh;");
     forwards(&mut relay, "4.blob,1.4,4.aGk=;");
     for wire in [
         "3.put,1.0,1.4,10.text/plain;",
-        "3.put,2.+0,1.4,10.text/plain,4./a.sh;",
-        "3.put,1.0,3.512,10.text/plain,4./a.sh;",
+        "3.put,2.+0,1.4,10.text/plain,5./a.sh;",
+        "3.put,1.0,3.512,10.text/plain,5./a.sh;",
         "3.get,1.0;",
         "3.get,1.x,1./;",
         "4.file,1.3,10.text/plain;",
@@ -130,7 +130,7 @@ fn ra_021_vnc_never_takes_audio_input_or_the_drive() {
         "5.audio,1.1,9.audio/L16;",
         "4.file,1.0,10.text/plain,4.a.sh;",
         "3.get,1.0,1./;",
-        "3.put,1.0,1.1,10.text/plain,4./a.sh;",
+        "3.put,1.0,1.1,10.text/plain,5./a.sh;",
     ] {
         assert_eq!(client(&mut relay, wire), CLOSE, "{wire}");
     }
