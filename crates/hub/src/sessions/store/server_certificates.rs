@@ -55,14 +55,24 @@ pub(in crate::sessions) async fn server_certificates<'e>(
         .collect())
 }
 
-/// A server certificate the operator accepts for a device.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "acceptServerCertificate, not yet served, is the first caller outside the tests"
+/// Waits for, then holds until the transaction ends, this domain's advisory lock on the
+/// device's server certificate, so two accepts for one device run one after the other and each
+/// audit entry names the certificate it replaced.
+pub(in crate::sessions) async fn lock_server_certificate(
+    conn: &mut PgConnection,
+    device: DeviceId,
+) -> Result<(), Error> {
+    sqlx::query(
+        "select pg_advisory_xact_lock(\
+         hashtextextended('sessions.server_certificates:' || $1::text, 0))",
     )
-)]
+    .bind(device)
+    .execute(conn)
+    .await?;
+    Ok(())
+}
+
+/// A server certificate the operator accepts for a device.
 pub(in crate::sessions) struct AcceptedCertificate<'a> {
     pub(in crate::sessions) device: DeviceId,
     pub(in crate::sessions) certificate: &'a ServerCertificate,
@@ -71,13 +81,6 @@ pub(in crate::sessions) struct AcceptedCertificate<'a> {
 
 /// Stores the accepted certificate, replacing the device's previous one; `NotFound` when the
 /// device is gone.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "acceptServerCertificate, not yet served, is the first caller outside the tests"
-    )
-)]
 pub(in crate::sessions) async fn put_server_certificate(
     conn: &mut PgConnection,
     accepted: &AcceptedCertificate<'_>,

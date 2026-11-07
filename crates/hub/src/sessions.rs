@@ -2,7 +2,8 @@
 //! each device (SEC-006), which every SSH connection is pinned to (SEC-007), and the
 //! single-use tickets that open a tunnel (K4 §1, API-009). SSH sessions run on the terminal
 //! tunnel (`terminal`, K4 §8); the Guacamole tunnel (`tunnel`) waits for RDP and VNC. The
-//! connection test reads a host's key and `acceptHostKey` records it (DEV-013, D-5, D-6).
+//! connection test reads a host's key or an RDP server's certificate, and `acceptHostKey` or
+//! `acceptServerCertificate` records it (DEV-013, SEC-007, D-5, D-6).
 
 mod admission;
 mod end;
@@ -82,6 +83,16 @@ pub enum Conflict {
          again and compare the fingerprint."
     )]
     KeyDiffers,
+    #[error(
+        "The hub has not seen a server certificate for this device in the last 15 minutes. \
+         Test the connection with RDP, then accept the certificate it shows."
+    )]
+    CertificateNotSeen,
+    #[error(
+        "That fingerprint is not the certificate the hub saw for this device. Test the \
+         connection again and compare the fingerprint."
+    )]
+    CertificateDiffers,
     /// No device has RDP settings yet, so RDP is off for every one.
     #[error("RDP is turned off for this device.")]
     RdpDisabled,

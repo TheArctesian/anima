@@ -1,6 +1,6 @@
 //! What the hub holds in memory about sessions (D-1, R-032): unredeemed tickets, tickets
-//! spent by a refused redemption, the end signal of each open tunnel, and the host keys
-//! connection tests saw (D-5).
+//! spent by a refused redemption, the end signal of each open tunnel, and the host keys and
+//! RDP server certificates connection tests saw (D-5).
 //!
 //! Every method takes the lock for a short, synchronous critical section and never across an
 //! `.await`; time comes in as a parameter (CQ-021).
@@ -20,7 +20,7 @@ use super::{
     public_key::PublicKey,
     target::TargetRule,
     tickets::{PendingTicket, Presented, TicketHash, hash_of},
-    trust::{Endpoint, Observation, Observations},
+    trust::{Endpoint, Observation, Observations, PresentedCertificate},
 };
 use crate::ids::SessionId;
 
@@ -67,14 +67,16 @@ impl State {
     }
 }
 
-/// Tickets, open tunnels and host-key observations, shared by GraphQL and the tunnel route.
-/// Cheap to clone; every clone sees the same state. `main.rs` builds one with
+/// Tickets, open tunnels, and host-key and certificate observations, shared by GraphQL and the
+/// tunnel route. Cheap to clone; every clone sees the same state. `main.rs` builds one with
 /// `Live::default()` (R-032), which probes with [`TargetRule::STRICT`].
 #[derive(Clone)]
 pub struct Live {
     state: Arc<Mutex<State>>,
     /// Its own lock: a connection test never waits on a ticket redemption.
-    observations: Arc<Mutex<Observations>>,
+    observations: Arc<Mutex<Observations<PublicKey>>>,
+    /// RDP server certificates, apart from host keys: an endpoint may present both.
+    certificates: Arc<Mutex<Observations<PresentedCertificate>>>,
     tunnel_end_wait: Duration,
     target_rule: TargetRule,
 }
@@ -189,6 +191,7 @@ impl Live {
         Self {
             state: Arc::default(),
             observations: Arc::default(),
+            certificates: Arc::default(),
             tunnel_end_wait: wait,
             target_rule: TargetRule::STRICT,
         }
@@ -209,13 +212,19 @@ impl Live {
         self.tunnel_end_wait
     }
 
-    /// The rule every SSH probe applies to the addresses a host resolves to.
+    /// The rule every connection test applies to the addresses a host resolves to.
     pub(super) const fn target_rule(&self) -> TargetRule {
         self.target_rule
     }
 
-    fn observations(&self) -> MutexGuard<'_, Observations> {
+    fn observations(&self) -> MutexGuard<'_, Observations<PublicKey>> {
         self.observations
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+    }
+
+    fn certificates(&self) -> MutexGuard<'_, Observations<PresentedCertificate>> {
+        self.certificates
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
     }
@@ -226,13 +235,37 @@ impl Live {
         endpoint: Endpoint,
         key: PublicKey,
         now: DateTime<Utc>,
-    ) -> Observation {
+    ) -> Observation<PublicKey> {
         self.observations().record(endpoint, key, now)
     }
 
     /// The key a connection test saw at `endpoint` within the last 15 minutes before `now`.
-    pub(super) fn observed(&self, endpoint: &Endpoint, now: DateTime<Utc>) -> Option<Observation> {
+    pub(super) fn observed(
+        &self,
+        endpoint: &Endpoint,
+        now: DateTime<Utc>,
+    ) -> Option<Observation<PublicKey>> {
         self.observations().find(endpoint, now)
+    }
+
+    /// Records that the RDP server at `endpoint` presented `certificate` at `now` (SEC-007).
+    pub(super) fn observe_certificate(
+        &self,
+        endpoint: Endpoint,
+        certificate: PresentedCertificate,
+        now: DateTime<Utc>,
+    ) -> Observation<PresentedCertificate> {
+        self.certificates().record(endpoint, certificate, now)
+    }
+
+    /// The certificate a connection test saw at `endpoint` within the last 15 minutes before
+    /// `now`.
+    pub(super) fn observed_certificate(
+        &self,
+        endpoint: &Endpoint,
+        now: DateTime<Utc>,
+    ) -> Option<Observation<PresentedCertificate>> {
+        self.certificates().find(endpoint, now)
     }
 
     /// The poisoned case is taken over: no critical section here can leave the maps half
