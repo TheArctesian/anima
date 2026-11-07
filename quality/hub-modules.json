@@ -31,7 +31,8 @@
       "devices",
       "maintenance",
       "events",
-      "credentials"
+      "credentials",
+      "sessions"
     ],
     "sessions": [
       "access",
