@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { check } from '../page.fixture.svelte';
-import { CHART_BOX, CHART_POINTS, CHART_STEP, chartLines, gainedNewest } from './chart';
+import { RESPONSE_POINTS, responseSteps, stepsAfter } from './response';
 import { checkRowText } from './rows';
 
 describe('checkRowText (D-10, CHK-007)', () => {
@@ -20,29 +20,23 @@ describe('checkRowText (D-10, CHK-007)', () => {
   });
 });
 
-describe('chartLines (D-10, Chart update role)', () => {
+describe('responseSteps (D-10, Chart update role)', () => {
   const beat = (minute: number, ms: number | null) => ({ at: `2026-11-04T10:${String(minute).padStart(2, '0')}:00Z`, responseTimeMs: ms });
 
-  it('D-10: the newest beat is at the right edge and the slowest at the top', () => {
-    const lines = chartLines([beat(2, 50), beat(1, 100)]);
-    expect(lines.maxMs).toBe(100);
-    const right = String(CHART_BOX.width);
-    const left = String(Math.round((CHART_BOX.width - CHART_STEP) * 100) / 100);
-    expect(lines.segments).toEqual([`${left},0 ${right},${String(CHART_BOX.height / 2)}`]);
-  });
-
-  it('D-10: a beat without a response time breaks the line', () => {
-    expect(chartLines([beat(3, 10), beat(2, null), beat(1, 10)]).segments).toHaveLength(2);
+  it('D-10: the newest beat is at the newest step, the right edge of the window, one step per beat to the left', () => {
+    const drawn = responseSteps([beat(2, 50), beat(1, null)], 7);
+    expect(drawn.points).toEqual([{ at: 7, value: 50 }, { at: 6, value: null }]);
+    expect(drawn.window).toEqual({ start: 7 - (RESPONSE_POINTS - 1), end: 7 });
   });
 
   it('D-10: at most one page of beats is drawn', () => {
-    const many = Array.from({ length: CHART_POINTS + 20 }, (_, index) => beat(index % 60, 10));
-    expect(chartLines(many).segments[0]?.split(' ')).toHaveLength(CHART_POINTS);
+    const many = Array.from({ length: RESPONSE_POINTS + 20 }, (_, index) => beat(index % 60, 10));
+    expect(responseSteps(many, 0).points).toHaveLength(RESPONSE_POINTS);
   });
 
-  it('Chart update: only a newer newest beat moves the line', () => {
-    expect(gainedNewest([beat(1, 10)], [beat(2, 10), beat(1, 10)])).toBe(true);
-    expect(gainedNewest([beat(2, 10)], [beat(2, 10), beat(1, 10)])).toBe(false);
-    expect(gainedNewest([], [beat(1, 10)])).toBe(false);
+  it('Chart update: each newer beat is one step more; a first load or older beats are none', () => {
+    expect(stepsAfter([beat(1, 10)], [beat(3, 10), beat(2, 10), beat(1, 10)], 4)).toBe(6);
+    expect(stepsAfter([beat(2, 10)], [beat(2, 10), beat(1, 10)], 4)).toBe(4);
+    expect(stepsAfter([], [beat(1, 10)], 4)).toBe(4);
   });
 });
