@@ -20,7 +20,6 @@ describe('DeviceMetrics (D-5, D-6, D-7)', () => {
     expect(fake.requests).toEqual([]);
     expect(fake.subscriptions).toEqual([]);
     expect(metrics.view).toBeNull();
-    expect(metrics.loading).toBe(false);
   });
 
   it('MET-003: the request carries the range, and the window ends when the load began', async () => {
@@ -40,7 +39,6 @@ describe('DeviceMetrics (D-5, D-6, D-7)', () => {
     expect(metrics.view).toBeNull();
     const pending = metrics.load('HOUR', 'SSH');
     expect(metrics.error).toBeNull();
-    expect(metrics.loading).toBe(true);
     await pending;
   });
 
@@ -77,7 +75,6 @@ describe('DeviceMetrics answers (D-6)', () => {
     waiting[0]?.({ ok: true, value: answer() });
     await pending;
     expect(metrics.view).toBeNull();
-    expect(metrics.loading).toBe(false);
   });
 
 });
@@ -93,7 +90,7 @@ describe('DeviceMetrics live points (D-5)', () => {
     expect(cpu?.points.at(-1)).toMatchObject({ at: '2026-11-05T09:06:00Z', value: 40 });
     const end = Date.parse('2026-11-05T09:06:00Z');
     expect(metrics.span).toEqual({ start: end - 3_600_000, end });
-    expect(metrics.readings?.at).toBe('2026-11-05T09:06:00Z');
+    expect(metrics.readings?.cpuPercent).toBeNull();
   });
 
   it('D-5: the window moves only when a point arrives, and never backwards', async () => {
@@ -108,6 +105,40 @@ describe('DeviceMetrics live points (D-5)', () => {
     expect(metrics.span).toBe(before);
   });
 
+});
+
+describe('DeviceMetrics clock and readings (D-5)', () => {
+  it('D-5: a client clock ahead of the hub still gets the live point, and the window does not move back', async () => {
+    const ahead = new Date('2026-11-05T09:30:00Z');
+    const fake = fakeHub({ DeviceMetrics: answer() });
+    const metrics = new DeviceMetrics(fake.hub, ID, () => ahead);
+    await metrics.load('HOUR', 'SSH');
+    fake.push('MetricsAdded', { metricsAdded: added('2026-11-05T09:05:00Z', [{ kind: 'CPU_PERCENT', label: 'cpu', value: 40 }]) });
+    expect(metrics.view?.series.find((one) => one.kind === 'CPU_PERCENT')?.points.at(-1)?.value).toBe(40);
+    expect(metrics.span?.end).toBe(ahead.getTime());
+  });
+
+  it('MET-004: the readings come from the hub at load and a live batch replaces them', async () => {
+    const readings = { at: '2026-11-05T09:04:00Z', cpuPercent: 12, memoryPercent: 45, diskPercent: 61, vramPercent: null, vramGpu: null };
+    const fake = fakeHub({ DeviceMetrics: { device: { ...answer().device, readings } } });
+    const metrics = metricsOf(fake);
+    await metrics.load('HOUR', 'SSH');
+    expect(metrics.readings?.cpuPercent).toBe(12);
+    fake.push('MetricsAdded', { metricsAdded: added('2026-11-05T09:06:00Z', []) });
+    expect(metrics.readings?.cpuPercent).toBeNull();
+  });
+
+  it('D-7: an error clears the old view', async () => {
+    const fake = fakeHub({ DeviceMetrics: answer() });
+    const metrics = metricsOf(fake);
+    await metrics.load('HOUR', 'SSH');
+    expect(metrics.view).not.toBeNull();
+    const failing = fakeHub({ DeviceMetrics: { code: 'INTERNAL', message: 'down' } });
+    const again = metricsOf(failing);
+    await again.load('DAY', 'SSH');
+    expect(again.view).toBeNull();
+    expect(again.span).toBeNull();
+  });
 });
 
 describe('DeviceMetrics ranges (D-5)', () => {

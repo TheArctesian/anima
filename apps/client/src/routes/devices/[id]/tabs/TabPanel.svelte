@@ -27,13 +27,16 @@
 
 <div class="panel" role="tabpanel" id={ids.panel} aria-labelledby={ids.tab} tabindex="0" aria-busy={loading}>
   {#if delayed.visible}
-    {#if custom}
-      <div class="skeleton" aria-hidden="true" transition:crossFade>{@render custom()}</div>
-    {:else}
-      <ul class="skeleton placeholder" aria-hidden="true" transition:crossFade>
-        {#each ROWS as row (row)}<li></li>{/each}
-      </ul>
-    {/if}
+    <!-- One element in the toggled branch, so its outro runs: a transition inside a nested block is local (MOT-007). -->
+    <div class="skeleton" aria-hidden="true" transition:crossFade>
+      {#if custom}
+        {@render custom()}
+      {:else}
+        <ul class="placeholder">
+          {#each ROWS as row (row)}<li></li>{/each}
+        </ul>
+      {/if}
+    </div>
   {:else if !loading}
     <div class="content" transition:crossFade>
       {@render children()}

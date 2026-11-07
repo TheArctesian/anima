@@ -154,6 +154,49 @@ function loadingPanel() {
 
 const skeleton = () => document.querySelector('.skeleton');
 
+it.each([
+  ['the list rows', undefined],
+  ['a given skeleton', createRawSnippet(() => ({ render: () => '<p class="mine">Mine</p>' }))],
+])('MOT-007: %s cross-fades out when the data arrives', async (_name, custom) => {
+  const time = manualClock();
+  const state = $state({ loading: true });
+  app = mount(TabPanel, {
+    target: document.body,
+    props: {
+      name: 'overview',
+      get loading() {
+        return state.loading;
+      },
+      clock: time.clock,
+      skeleton: custom,
+      children: createRawSnippet(() => ({ render: () => '<p class="loaded">Loaded</p>' })),
+    },
+  });
+  flushSync();
+  time.advance(threshold.loading);
+  flushSync();
+  const shown = document.querySelector('.skeleton');
+  expect(shown).not.toBeNull();
+  const animated: unknown[] = [];
+  const animate = Element.prototype.animate;
+  Object.defineProperty(Element.prototype, 'animate', {
+    configurable: true,
+    value: function spy(this: Element, ...args: Parameters<Element['animate']>) {
+      animated.push(this);
+      return animate.apply(this, args);
+    },
+  });
+  try {
+    state.loading = false;
+    flushSync();
+    time.advance(threshold.loadingMin);
+    flushSync();
+    expect(animated).toContain(shown);
+  } finally {
+    Object.defineProperty(Element.prototype, 'animate', { configurable: true, value: animate });
+  }
+});
+
 it('D-9: a given skeleton replaces the list rows while loading', () => {
   const time = manualClock();
   app = mount(TabPanel, {

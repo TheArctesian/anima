@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import { thresholdY, type SeriesColour } from './plot';
+  import { seriesPattern, thresholdY, type SeriesColour } from './plot';
   import { PLOT, type TimeWindow, type ValueScale } from './scales';
   import { timeTicks, valueTicks } from './ticks';
 
@@ -58,7 +58,13 @@
     <!-- The label names each series with its value, so the legend is for the eye only. -->
     <ul class="legend" aria-hidden="true">
       {#each legend as entry, index (index)}
-        <li style:--series="var(--chart-series-{entry.colour})">{entry.label}</li>
+        <li
+          style:--series="var(--chart-series-{entry.colour})"
+          class:dash={seriesPattern(entry.colour) === 'dash'}
+          class:dot={seriesPattern(entry.colour) === 'dot'}
+        >
+          {entry.label}
+        </li>
       {/each}
     </ul>
   {/if}
@@ -68,7 +74,8 @@
   /* Every size comes from tokens and none from the data: the chart and its skeleton are one box (MOT-007). */
   .frame {
     display: grid;
-    grid-template-columns: var(--space-16) minmax(0, 1fr);
+    /* The value column fits the longest axis label, "1023.9 KiB/s", in the axis font. */
+    grid-template-columns: calc(var(--space-16) + var(--space-6)) minmax(0, 1fr);
     column-gap: var(--space-2);
     row-gap: var(--space-1);
     padding-block-start: var(--space-2);
@@ -149,5 +156,14 @@
     inline-size: var(--space-3);
     block-size: var(--border-focus);
     background: var(--series);
+  }
+
+  /* The swatch repeats its line's pattern (UI-003). */
+  .legend li.dash::before {
+    background: repeating-linear-gradient(90deg, var(--series) 0 var(--space-2), transparent var(--space-2) calc(var(--space-2) + var(--space-1)));
+  }
+
+  .legend li.dot::before {
+    background: repeating-linear-gradient(90deg, var(--series) 0 var(--border-focus), transparent var(--border-focus) calc(var(--border-focus) + var(--space-1)));
   }
 </style>

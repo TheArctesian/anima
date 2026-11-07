@@ -2,13 +2,14 @@
   import LineChart from '$lib/charts/LineChart.svelte';
   import type { MetricsSource } from '$lib/hub/generated/graphql';
   import { chartsOf } from '$lib/metrics/charts';
+  import { rangeGap } from '$lib/metrics/live';
   import type { MetricRange } from '$lib/metrics/api';
   import MetricBars from '$lib/metrics/bars/MetricBars.svelte';
   import { skeletonDelay } from '$lib/motion/loading/delay.svelte';
   import type { LoadingClock } from '$lib/motion/loading/loading';
   import { press } from '$lib/motion/roles/press';
   import { crossFade } from '$lib/motion/roles/transitions';
-  import { RANGES } from '../tabs/tabs';
+  import { RANGES } from '$lib/metrics/ranges';
   import './geometry.css';
   import type { DeviceMetrics } from './metrics.svelte';
   import MetricsSkeleton from './MetricsSkeleton.svelte';
@@ -26,6 +27,7 @@
 
   const { source, metrics, range, now, clock, onRange, onRetry, onSettings }: Props = $props();
   const charts = $derived(metrics.view === null ? [] : chartsOf(metrics.view.series, metrics.view.gpus));
+  const phrase = $derived(RANGES.find((each) => each.range === range)?.phrase ?? '');
   const waiting = $derived(metrics.view === null && metrics.error === null);
   // The clock is fixed for the life of the section.
   // svelte-ignore state_referenced_locally
@@ -34,7 +36,7 @@
 
 <section class="metrics" aria-labelledby="overview-metrics">
   <div class="head">
-    <h2 id="overview-metrics">Metrics</h2>
+    <h2 id="overview-metrics" class="metrics-title">Metrics</h2>
     {#if source === 'SSH'}
       <div class="range" role="group" aria-label="Time range">
         {#each RANGES as choice (choice.range)}
@@ -46,7 +48,7 @@
     {/if}
   </div>
   {#if source !== 'SSH'}
-    <p class="off">
+    <p class="metrics-off">
       Metrics are off for this device.
       <button type="button" class="link" onclick={onSettings} {@attach press()}>Open Settings</button>
     </p>
@@ -74,7 +76,8 @@
                 <div class="cell">
                   <h3 class="chart-title">{chart.title}</h3>
                   <LineChart
-                    title={chart.title}
+                    title={`${chart.title}, ${phrase}`}
+                    gap={rangeGap(range)}
                     series={chart.series}
                     span={metrics.span}
                     axis={chart.axis}
@@ -104,11 +107,6 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--space-2);
-  }
-
-  h2 {
-    margin: 0;
-    font-size: var(--text-lg);
   }
 
   .range {
@@ -157,9 +155,19 @@
     font: inherit;
   }
 
+  /* The chosen range has a colour, an underline and, for more contrast, a ring: never colour alone. */
   button[aria-pressed='true'] {
     border-color: var(--accent);
     background: var(--surface);
+    text-decoration: underline;
+    text-decoration-thickness: var(--border-focus);
+    text-underline-offset: var(--space-1);
+  }
+
+  @media (prefers-contrast: more) {
+    button[aria-pressed='true'] {
+      box-shadow: inset 0 0 0 var(--border-focus) currentcolor;
+    }
   }
 
   button.link {

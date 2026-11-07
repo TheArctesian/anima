@@ -10,6 +10,7 @@ import { threshold } from '$lib/motion/tokens';
 import { device } from '../page.fixture.svelte';
 import type { DeviceMetrics } from './metrics.svelte';
 import OverviewPanel from './OverviewPanel.svelte';
+import OverviewSkeleton from './OverviewSkeleton.svelte';
 import { checkCounts, hostKeyText, uptimeReadings } from './overview';
 
 vi.mock('motion', async (importOriginal) => ({
@@ -56,7 +57,7 @@ type Shown = Pick<DeviceMetrics, 'view' | 'span' | 'readings' | 'error' | 'liveE
 const NOW = new Date('2026-11-05T09:05:00Z');
 const SPAN = { start: NOW.getTime() - 3_600_000, end: NOW.getTime() };
 const LOADED: Shown = {
-  view: { metricsSource: 'SSH', gpus: [NVIDIA, INTEGRATED], series: TWO_GPUS },
+  view: { metricsSource: 'SSH', gpus: [NVIDIA, INTEGRATED], series: TWO_GPUS, readings: null },
   span: SPAN,
   readings: { ...added('2026-11-05T09:04:00Z', []).readings, cpuPercent: 20, memoryPercent: 45, diskPercent: 61 },
   error: null,
@@ -150,7 +151,18 @@ it('D-7: an error shows the hub message and Retry in the chart area', () => {
 });
 
 it('MET-007: data with no series says it is waiting for metrics', () => {
-  show({ ...LOADED, view: { metricsSource: 'SSH', gpus: [], series: [] } });
+  show({ ...LOADED, view: { metricsSource: 'SSH', gpus: [], series: [], readings: null } });
   expect(document.body.textContent).toContain('Waiting for metrics');
   expect(document.querySelector('h3')).toBeNull();
+});
+
+it.each([
+  ['NONE', 0, 1],
+  ['SSH', 4, 0],
+] as const)('D-9: the Overview skeleton for %s draws %i chart cells and %i "off" lines, as the loaded layout does', (source, cells, off) => {
+  app = mount(OverviewSkeleton, { target: document.body, props: { range: 'HOUR', source, now: () => NOW } });
+  flushSync();
+  expect(document.querySelectorAll('.chart-grid > .cell')).toHaveLength(cells);
+  expect(document.querySelectorAll('.metrics-off')).toHaveLength(off);
+  expect(document.querySelectorAll('.overview-facts > div')).toHaveLength(7);
 });

@@ -51,7 +51,7 @@ async function settle(): Promise<void> {
 const ssh = (extra: Record<string, unknown> = {}) =>
   answers({
     Device: { device: device({ metricsSource: 'SSH' }) },
-    DeviceMetrics: { device: { id: ID, metricsSource: 'SSH', gpus: [], metrics: CPU_ONLY } },
+    DeviceMetrics: { device: { id: ID, metricsSource: 'SSH', gpus: [], metrics: CPU_ONLY, readings: null } },
     ...extra,
   });
 
@@ -126,4 +126,35 @@ it('D-7: a metrics error shows the hub message and Retry asks again', async () =
   [...document.querySelectorAll('button')].find((one) => one.textContent.trim() === 'Retry')?.click();
   await settle();
   expect(metricRequests(fake)).toHaveLength(2);
+});
+
+const tabButton = (name: string) => [...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find((one) => one.textContent.trim() === name);
+
+it('D-5: leaving the Overview stops the live points, and returning loads again', async () => {
+  const fake = await show(ssh());
+  expect(fake.listeners('MetricsAdded')).toBe(1);
+  route.search = '?tab=checks';
+  await settle();
+  expect(fake.listeners('MetricsAdded')).toBe(0);
+  route.search = '';
+  await settle();
+  expect(metricRequests(fake)).toHaveLength(2);
+  expect(fake.listeners('MetricsAdded')).toBe(1);
+});
+
+it('D-5: the range belongs to the Overview, so choosing another tab leaves no range in the URL', async () => {
+  await show(ssh(), '?range=week');
+  tabButton('Checks')?.click();
+  expect(current.goto[0]?.[0]).toBe(`/devices/${ID}?tab=checks`);
+  route.search = '?tab=checks';
+  await settle();
+  tabButton('Overview')?.click();
+  expect(current.goto[1]?.[0]).toBe(`/devices/${ID}`);
+});
+
+it('MET-003: a chart names its range in its text alternative, and a percent chart its 85 % line', async () => {
+  await show(ssh(), '?range=day');
+  const label = document.querySelector('svg[role="img"]')?.getAttribute('aria-label') ?? '';
+  expect(label).toContain('CPU, last 24 hours');
+  expect(label).toContain('threshold line at 85 %');
 });

@@ -5,7 +5,7 @@
   import { crossFade } from '$lib/motion/roles/transitions';
   import ChartFrame from './ChartFrame.svelte';
   import { chartLabel } from './label';
-  import { highestOf, seriesPlot, type ChartSeries } from './plot';
+  import { highestOf, seriesPattern, seriesPlot, type ChartSeries } from './plot';
   import { PLOT, slideOffset, lengthOf, valueScale, type TimeWindow, type ValueAxis } from './scales';
 
   interface Props {
@@ -42,7 +42,7 @@
   }: Props = $props();
   const scale = $derived(valueScale(axis, Math.max(0, ...series.map((one) => highestOf(one.points)))));
   const plots = $derived(series.map((one) => ({ ...one, ...seriesPlot(one.points, span, scale, gap) })));
-  const label = $derived(chartLabel({ title, series, top: scale.top, format, empty }));
+  const label = $derived(chartLabel({ title, series, top: scale.top, format, threshold, empty }));
   const length = $derived(lengthOf(span));
   let lines = $state<SVGGElement>();
   let before: TimeWindow | undefined;
@@ -73,7 +73,11 @@
         <svg class="lines" aria-hidden="true" viewBox="0 0 {PLOT.width} {PLOT.height}" preserveAspectRatio="none">
           <g bind:this={lines}>
             {#each plots as plot, index (index)}
-              <g style:--series="var(--chart-series-{plot.colour})">
+              <g
+                style:--series="var(--chart-series-{plot.colour})"
+                class:dash={seriesPattern(plot.colour) === 'dash'}
+                class:dot={seriesPattern(plot.colour) === 'dot'}
+              >
                 {#each plot.bands as points, band (band)}<polygon {points} />{/each}
                 {#each plot.lines as points, run (run)}<polyline {points} />{/each}
               </g>
@@ -112,6 +116,15 @@
     stroke-width: var(--border-focus);
     stroke-linejoin: round;
     vector-effect: non-scaling-stroke;
+  }
+
+  /* A second and a third pattern beside the colour (UI-003); the lengths scale with the text, the stroke does not. */
+  .dash polyline {
+    stroke-dasharray: var(--space-2) var(--space-1);
+  }
+
+  .dot polyline {
+    stroke-dasharray: var(--border-focus) var(--space-1);
   }
 
   /* The min–max band sits faintly behind its line. */

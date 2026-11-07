@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { MetricsSource } from '$lib/hub/generated/graphql';
   import type { MetricRange } from '$lib/metrics/api';
   import '$lib/metrics/bars/geometry.css';
   import './geometry.css';
@@ -6,10 +7,11 @@
 
   interface Props {
     range: MetricRange;
+    source: MetricsSource;
     now: () => Date;
   }
 
-  const { range, now }: Props = $props();
+  const { range, source, now }: Props = $props();
   /** Status, maintenance, three uptimes, checks and the host key: the facts of `OverviewPanel`. */
   const FACTS = Array.from({ length: 7 }, (_, index) => index);
 </script>
@@ -24,9 +26,14 @@
   {/each}
 </dl>
 <div class="metrics">
-  <div class="head"><div class="title">&nbsp;</div></div>
-  <div class="bars"></div>
-  <MetricsSkeleton {range} {now} />
+  <div class="head" class:ssh={source === 'SSH'}><div class="metrics-title">&nbsp;</div></div>
+  {#if source === 'SSH'}
+    <div class="bars"></div>
+    <MetricsSkeleton {range} {now} />
+  {:else}
+    <!-- The one line the loaded section has when metrics are off. -->
+    <p class="metrics-off">&nbsp;</p>
+  {/if}
 </div>
 
 <style>
@@ -39,15 +46,13 @@
   .head {
     display: flex;
     align-items: center;
+  }
+
+  .ssh {
     min-block-size: var(--target-min-desktop);
   }
 
   .bars {
     block-size: var(--metric-bars-block-size);
-  }
-
-  .title {
-    margin: 0;
-    font-size: var(--text-lg);
   }
 </style>

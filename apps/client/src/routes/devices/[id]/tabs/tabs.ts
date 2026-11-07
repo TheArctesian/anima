@@ -1,4 +1,5 @@
 import type { MetricRange } from '$lib/metrics/api';
+import { RANGES } from '$lib/metrics/ranges';
 
 /** The device detail tabs, in order (Section 6.7). */
 export const TABS = [
@@ -13,13 +14,6 @@ export type TabName = (typeof TABS)[number]['name'];
 
 /** The Settings place a header button opens (DEV-022): a disclosure section, or `test`, the SSH connection test (D-8). */
 export type SettingsSection = 'general' | 'ssh' | 'rdp' | 'test';
-
-/** The metric ranges of the Overview: the hub's enum, the URL word and the label of the choice (MET-003, D-5). */
-export const RANGES = [
-  { range: 'HOUR', param: 'hour', label: '1 hour' },
-  { range: 'DAY', param: 'day', label: '24 hours' },
-  { range: 'WEEK', param: 'week', label: '7 days' },
-] as const satisfies readonly { range: MetricRange; param: string; label: string }[];
 
 export interface TabPlace {
   readonly tab: TabName;

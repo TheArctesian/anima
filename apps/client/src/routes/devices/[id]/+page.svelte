@@ -78,12 +78,17 @@
     else if (tab === 'logs') feed.start();
   });
 
-  /** D-5: the Overview's metrics load when it first shows and again when the range or source changes. */
+  /** D-5: the Overview's metrics load when it shows and when the range or source changes; leaving it stops the live points. */
   const metricsSource = $derived(device?.metricsSource ?? null);
   let metricsKey = '';
   $effect(() => {
     const key = `${place.range}:${metricsSource ?? ''}`;
-    if (place.tab !== 'overview' || metricsSource === null || key === metricsKey) return;
+    if (place.tab !== 'overview') {
+      if (metricsKey !== '') metrics.stop();
+      metricsKey = '';
+      return;
+    }
+    if (metricsSource === null || key === metricsKey) return;
     metricsKey = key;
     void metrics.load(place.range, metricsSource);
   });
@@ -154,7 +159,7 @@
 {/snippet}
 
 {#snippet overviewSkeleton()}
-  <OverviewSkeleton range={place.range} {now} />
+  <OverviewSkeleton range={place.range} source={metricsSource ?? 'NONE'} {now} />
 {/snippet}
 
 <section class="detail">

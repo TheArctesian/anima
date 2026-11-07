@@ -1,6 +1,7 @@
 import type { TimeWindow } from '$lib/charts/scales';
 import type { Hub, HubError } from '$lib/hub/hub';
 import type { MetricsSource } from '$lib/hub/generated/graphql';
+import type { BarReadings } from '$lib/metrics/bars/bars';
 import { metricsApi, type DeviceMetricsView, type MetricRange, type NewMetrics } from '$lib/metrics/api';
 import { mergeLive, rangeWindow } from '$lib/metrics/live';
 
@@ -13,12 +14,10 @@ export class DeviceMetrics {
   view = $state.raw<DeviceMetricsView | null>(null);
   /** The window the chart draws, `null` before the first answer. */
   span = $state.raw<TimeWindow | null>(null);
-  /** The newest readings a live batch carried; kept across range changes. */
-  readings = $state.raw<NewMetrics['readings'] | null>(null);
+  /** The hub's latest readings at load, then the newest a live batch carried; the bars show them. */
+  readings = $state.raw<BarReadings | null>(null);
   error = $state.raw<HubError | null>(null);
   liveError = $state.raw<HubError | null>(null);
-  /** A request is on its way. */
-  loading = $state(false);
 
   readonly #deviceId: string;
   readonly #api;
@@ -50,20 +49,21 @@ export class DeviceMetrics {
       this.view = null;
       this.#shown = null;
       this.span = null;
-      this.loading = false;
       return;
     }
-    this.loading = true;
     if (range === 'HOUR') this.#unwatch = this.#watch();
     const at = this.#now();
     const result = await this.#api.series(this.#deviceId, range);
     if (mine !== this.#generation) return;
-    this.loading = false;
     if (!result.ok) {
       this.error = result.error;
+      this.view = null;
+      this.span = null;
+      this.#shown = null;
       return;
     }
     this.view = result.value;
+    this.readings = result.value?.readings ?? this.readings;
     this.#shown = range;
     this.span = rangeWindow(range, at);
   }
@@ -74,7 +74,6 @@ export class DeviceMetrics {
     this.#stopped = true;
     this.#unwatch?.();
     this.#unwatch = undefined;
-    this.loading = false;
   }
 
   #watch(): () => void {
@@ -95,8 +94,10 @@ export class DeviceMetrics {
     if (this.#stopped || Number.isNaN(at)) return;
     this.readings = added.readings;
     // A DAY or WEEK view is an aggregate; a live point joins only the 1-hour one (D-5).
-    if (this.#shown !== 'HOUR' || this.view === null || this.span === null || at <= this.span.end) return;
+    if (this.#shown !== 'HOUR' || this.view === null || this.span === null) return;
+    // mergeLive drops a stale point per series, so the client clock decides nothing here: only the window end moves, and only forward.
     this.view = { ...this.view, series: mergeLive(this.view.series, added) };
+    if (at <= this.span.end) return;
     // eslint-disable-next-line svelte/prefer-svelte-reactivity -- a value for a pure function, never held or changed
     this.span = rangeWindow('HOUR', new Date(at));
   }

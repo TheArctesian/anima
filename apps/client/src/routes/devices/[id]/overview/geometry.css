@@ -13,3 +13,44 @@
   grid-template-columns: repeat(auto-fill, minmax(min(100%, calc(var(--space-16) * 6)), 1fr));
   gap: var(--space-4);
 }
+
+/* The facts grid; the panel and its skeleton are one geometry (D-9, MOT-007). */
+.overview-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, calc(var(--space-16) * 3)), 1fr));
+  gap: var(--space-4);
+  margin: 0 0 var(--space-6);
+}
+
+.overview-facts dt {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+}
+
+.overview-facts dd {
+  margin: var(--space-1) 0 0;
+  color: var(--text);
+  line-height: var(--leading-normal);
+}
+
+.overview-facts .key {
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+
+/* The Metrics section's heading line and the one line of the "metrics are off" state; the section and its skeleton share both (MOT-007). */
+.metrics-title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-normal);
+}
+
+.metrics-off {
+  display: flex;
+  align-items: center;
+  min-block-size: var(--target-min-desktop);
+  margin: 0;
+}
