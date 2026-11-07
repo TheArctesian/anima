@@ -83,7 +83,9 @@ pub async fn suggestions(
     db: &PgPool,
     devices: &[DeviceId],
 ) -> Result<HashMap<DeviceId, Vec<Suggestion>>, Error> {
-    let http = http_urls(db, devices).await?;
+    let http = checks::http_urls(db, devices)
+        .await
+        .map_err(Error::Checks)?;
     let all_checks: Vec<CheckId> = http.values().flatten().map(|(check, _)| *check).collect();
     let dismissed = store::dismissed_among(db, &all_checks).await?;
     let interfaces = for_devices(db, devices).await?;
@@ -93,30 +95,6 @@ pub async fn suggestions(
             let existing = interfaces.get(&device).map_or(&[][..], Vec::as_slice);
             let offered = suggestion::filter(&urls, existing, &dismissed);
             (!offered.is_empty()).then_some((device, offered))
-        })
-        .collect())
-}
-
-/// The id and URL of each device's HTTP checks (D-1). The one place that reads checks: when
-/// `checks::http_urls` exists, this is one call to it.
-async fn http_urls(
-    db: &PgPool,
-    devices: &[DeviceId],
-) -> Result<HashMap<DeviceId, Vec<(CheckId, String)>>, Error> {
-    let found = checks::for_devices(db, devices)
-        .await
-        .map_err(Error::Checks)?;
-    Ok(found
-        .into_iter()
-        .map(|(device, list)| {
-            let urls = list
-                .into_iter()
-                .filter_map(|check| match check.config {
-                    CheckConfig::Http(http) => Some((check.id, http.url)),
-                    _ => None,
-                })
-                .collect();
-            (device, urls)
         })
         .collect())
 }
