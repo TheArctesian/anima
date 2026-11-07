@@ -52,6 +52,7 @@ pub enum Source {
     Device,
     Access,
     Hub,
+    Metrics,
 }
 
 impl Source {
@@ -64,6 +65,7 @@ impl Source {
             Self::Device => "device",
             Self::Access => "access",
             Self::Hub => "hub",
+            Self::Metrics => "metrics",
         }
     }
 
@@ -76,6 +78,7 @@ impl Source {
             Self::Device,
             Self::Access,
             Self::Hub,
+            Self::Metrics,
         ]
         .into_iter()
         .find(|source| source.as_str() == text)

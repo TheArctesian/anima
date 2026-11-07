@@ -33,7 +33,7 @@ pub(super) const fn change(was_failing: bool, collected: bool) -> Option<Change>
 }
 
 /// The event that reports `change` for `device` and its name. `events` stores the device
-/// under `Source::Device` until it has a metrics source (handoff H-1).
+/// under `Source::Metrics` (H-1).
 pub(super) fn event(change: Change, device: DeviceId, name: String) -> NewEvent {
     let (severity, message) = match change {
         Change::StartedFailing => (Severity::Warning, FAILING_MESSAGE),
@@ -41,7 +41,7 @@ pub(super) fn event(change: Change, device: DeviceId, name: String) -> NewEvent 
     };
     NewEvent {
         severity,
-        source: Source::Device,
+        source: Source::Metrics,
         device: Some((device, name)),
         message: message.to_owned(),
     }

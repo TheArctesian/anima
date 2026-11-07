@@ -103,11 +103,6 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
         ),
         production_build(),
     )
-    // Types of devices fields that join metrics (`Device.metrics`, `Device.gpus`) until the
-    // devices domain returns them.
-    .register_output_type::<metrics::MetricSeries>()
-    .register_output_type::<metrics::MetricRange>()
-    .register_output_type::<metrics::Gpu>()
     .disable_suggestions()
     .extension(access::SignInRequired)
     // Shared dependencies (K3 wiring).
@@ -131,6 +126,9 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .data(devices::graphql::uptime_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
     .data(devices::graphql::checks_loader(pool.clone()).delay(BATCH_WINDOW))
     .data(devices::graphql::resolved_ip_loader(pool.clone()).delay(BATCH_WINDOW))
+    // devices fields that join metrics (API-005)
+    .data(devices::graphql::readings_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
+    .data(devices::graphql::gpus_loader(pool.clone()).delay(BATCH_WINDOW))
     // checks
     .data(checks::graphql::check_status_loader(pool.clone(), clock.clone()).delay(BATCH_WINDOW))
     .data(checks::graphql::last_heartbeat_loader(pool.clone()).delay(BATCH_WINDOW))

@@ -188,7 +188,7 @@ pub(super) async fn set_source(pool: &PgPool, id: &str, source: &str) {
 pub(super) async fn events(pool: &PgPool) -> Vec<(String, String, String)> {
     sqlx::query_as(
         "select severity, device_name, message from events.event_log \
-         where source = 'device' order by at, device_name",
+         where source = 'metrics' order by at, device_name",
     )
     .fetch_all(pool)
     .await
