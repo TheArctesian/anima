@@ -28,7 +28,7 @@ export class DeviceMetrics {
   #generation = 0;
   #stopped = false;
 
-  constructor(hub: Hub, deviceId: string, now: () => Date = () => new Date()) {
+  constructor(hub: Hub, deviceId: string, now: () => Date) {
     this.#deviceId = deviceId;
     this.#api = metricsApi(hub);
     this.#now = now;
@@ -97,6 +97,7 @@ export class DeviceMetrics {
     // A DAY or WEEK view is an aggregate; a live point joins only the 1-hour one (D-5).
     if (this.#shown !== 'HOUR' || this.view === null || this.span === null || at <= this.span.end) return;
     this.view = { ...this.view, series: mergeLive(this.view.series, added) };
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- a value for a pure function, never held or changed
     this.span = rangeWindow('HOUR', new Date(at));
   }
 }

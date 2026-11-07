@@ -142,7 +142,7 @@ it('D-3: a slow load shows the chart grid skeleton after threshold-loading, with
 });
 
 it('D-7: an error shows the hub message and Retry in the chart area', () => {
-  const error: HubError = { code: 'internal', message: 'metrics are not served' };
+  const error: HubError = { code: 'INTERNAL', message: 'metrics are not served' };
   const { calls } = show({ ...WAITING, error });
   expect(document.querySelector('[role="alert"]')?.textContent).toContain('metrics are not served');
   button('Retry')?.click();

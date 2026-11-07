@@ -44,6 +44,9 @@ describe('DeviceMetrics (D-5, D-6, D-7)', () => {
     await pending;
   });
 
+});
+
+describe('DeviceMetrics answers (D-6)', () => {
   it('D-6: a newer load drops an older answer', async () => {
     const waiting: ((result: HubResult<unknown>) => void)[] = [];
     const base = fakeHub();
@@ -77,6 +80,9 @@ describe('DeviceMetrics (D-5, D-6, D-7)', () => {
     expect(metrics.loading).toBe(false);
   });
 
+});
+
+describe('DeviceMetrics live points (D-5)', () => {
   it('D-5: the 1-hour range merges a live point and ends the window at its time', async () => {
     const fake = fakeHub({ DeviceMetrics: answer() });
     const metrics = metricsOf(fake);
@@ -102,6 +108,9 @@ describe('DeviceMetrics (D-5, D-6, D-7)', () => {
     expect(metrics.span).toBe(before);
   });
 
+});
+
+describe('DeviceMetrics ranges (D-5)', () => {
   it('D-5: DAY and WEEK do not subscribe and take no live points', async () => {
     const fake = fakeHub({ DeviceMetrics: answer() });
     const metrics = metricsOf(fake);
