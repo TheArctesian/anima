@@ -1,11 +1,28 @@
 // @vitest-environment jsdom
 import { flushSync, mount, unmount } from 'svelte';
-import { afterEach, expect, it } from 'vitest';
+import { afterEach, beforeEach, expect, it } from 'vitest';
 import type { HubResult } from '$lib/hub/hub';
 import type { WakeApi, WakeSent } from './api';
 import WakeButton from './WakeButton.svelte';
 
 const mounted: object[] = [];
+
+/** jsdom has no Web Animations; a transition here finishes at once. */
+function instantAnimation(): Animation {
+  let finish: (() => void) | null = null;
+  return {
+    cancel: () => undefined,
+    finish: () => finish?.(),
+    set onfinish(callback: (() => void) | null) {
+      finish = callback;
+      queueMicrotask(() => callback?.());
+    },
+  } as unknown as Animation;
+}
+
+beforeEach(() => {
+  Element.prototype.animate = instantAnimation;
+});
 
 afterEach(async () => {
   for (const component of mounted.splice(0)) await unmount(component);
