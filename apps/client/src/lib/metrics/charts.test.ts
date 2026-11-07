@@ -64,6 +64,9 @@ describe('chartsOf', () => {
     expect(keys(chartsOf([series('CPU_PERCENT', 'cpu')], []))).toEqual(['cpu']);
   });
 
+});
+
+describe('chartsOf series', () => {
   it('D-4: draws one In and Out chart per interface, ordered by name, each from its own interface', () => {
     const at = '2026-11-05T09:04:00Z';
     const charts = chartsOf(
