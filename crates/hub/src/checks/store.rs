@@ -52,9 +52,9 @@ pub(super) use retention::{
 };
 use rows::{CheckRow, StandingRow, to_checks};
 pub(super) use sealed::seal;
-pub(super) use snmp_sealed::seal as seal_snmp;
 #[cfg(test)]
 pub(in crate::checks) use snmp_sealed::open as open_snmp;
+pub(super) use snmp_sealed::seal as seal_snmp;
 pub(super) use uptime::{check_tallies, tallies};
 pub(super) use writes::{
     Change, Current, Insert, delete, insert, load_http_secrets, load_snmp_secrets, lock,

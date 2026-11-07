@@ -186,8 +186,13 @@ async fn d_5_a_reply_from_another_port_is_ignored() {
 async fn d_5_a_refused_address_sends_nothing() {
     let agent = spawn(Setup::new()).await;
     let config = config(&agent, SnmpVersion::V2c, NAME);
-    let result = snmp::observe(&target("127.0.0.1"), &config, &right_community(), &strict_env())
-        .await;
+    let result = snmp::observe(
+        &target("127.0.0.1"),
+        &config,
+        &right_community(),
+        &strict_env(),
+    )
+    .await;
     failed_with(&result, &Failure::NotPermitted);
     assert_eq!(agent.requests.load(Ordering::SeqCst), 0);
 }
@@ -215,8 +220,14 @@ async fn d_5_given_draws_are_used_for_the_request() {
     // The core takes its randomness as a parameter: a fixed salt and fixed ids still work.
     let agent = spawn(Setup::new()).await;
     let draws = Draws {
-        discovery: Ids { message: 1, request: 2 },
-        get: Ids { message: 3, request: 4 },
+        discovery: Ids {
+            message: 1,
+            request: 2,
+        },
+        get: Ids {
+            message: 3,
+            request: 4,
+        },
         salt: [7; 8],
     };
     let config = config(&agent, SnmpVersion::V3, NAME);

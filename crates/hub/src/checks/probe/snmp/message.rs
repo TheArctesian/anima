@@ -133,14 +133,19 @@ pub(in crate::checks) fn discovery(ids: Ids) -> Bytes {
     };
     let pdu = pdu::get_request(ids.request, None).unwrap_or_default();
     let scoped = scoped(&[], &pdu);
-    message(ids.message, REPORTABLE, &security(&unknown, &[], &[], &[]), &scoped)
+    message(
+        ids.message,
+        REPORTABLE,
+        &security(&unknown, &[], &[], &[]),
+        &scoped,
+    )
 }
 
 fn engine_of(parsed: &Parsed<'_>) -> Result<Engine, Malformed> {
     if parsed.flags & (AUTH | PRIV) != 0 || !ENGINE_ID.contains(&parsed.engine_id.len()) {
         return Err(Malformed);
     }
-    let pdu = Pdu::last(&mut parsed.scoped_plain()?)?;
+    let pdu = read_scoped(&mut parsed.scoped_plain()?)?;
     if pdu.tag != pdu::REPORT {
         return Err(Malformed);
     }
@@ -193,13 +198,19 @@ pub(in crate::checks) fn get(
 ) -> Option<Bytes> {
     let pdu = pdu::get_request(ids.request, Some(oid))?;
     let mut sealed = scoped(&engine.id, &pdu);
-    usm::encrypt(&keys.privacy, usm::iv(engine.boots, engine.time, salt), &mut sealed);
+    usm::encrypt(
+        &keys.privacy,
+        usm::iv(engine.boots, engine.time, salt),
+        &mut sealed,
+    );
     let security = security(engine, user, &[0; DIGEST_LEN], &salt);
     let flags = AUTH | PRIV | REPORTABLE;
     let mut whole = message(ids.message, flags, &security, &ber::octets(&sealed));
     let start = parse(&whole).ok()?.digest.offset;
     let digest = usm::digest(&keys.auth, &whole);
-    whole.get_mut(start..start + DIGEST_LEN)?.copy_from_slice(&digest);
+    whole
+        .get_mut(start..start + DIGEST_LEN)?
+        .copy_from_slice(&digest);
     Some(whole)
 }
 

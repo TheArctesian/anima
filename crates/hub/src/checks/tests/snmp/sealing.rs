@@ -82,7 +82,10 @@ fn sec_003_secrets_sealed_for_one_check_do_not_open_for_another() {
     let v2c = config(SnmpVersion::V2c, None);
     let sealed = seal_snmp(&vault, check(), &v2c, &community());
     let opened = open_snmp(&vault, check(), &v2c, &sealed);
-    assert!(matches!(opened, Err(Error::Credentials(credentials::Error::Decrypt))));
+    assert!(matches!(
+        opened,
+        Err(Error::Credentials(credentials::Error::Decrypt))
+    ));
 }
 
 #[test]
@@ -114,7 +117,10 @@ fn sec_005_secrets_of_the_wrong_kind_for_the_binding_are_malformed() {
     let v2c = config(SnmpVersion::V2c, None);
     let sealed = seal_snmp(&vault, id, &v2c, &user());
     let opened = open_snmp(&vault, id, &v2c, &sealed);
-    assert!(matches!(opened, Err(Error::Credentials(credentials::Error::Malformed))));
+    assert!(matches!(
+        opened,
+        Err(Error::Credentials(credentials::Error::Malformed))
+    ));
 }
 
 #[test]
@@ -126,7 +132,10 @@ fn sec_003_garbage_and_http_layouts_do_not_open() {
         Err(Error::Credentials(_))
     ));
     // A value sealed under the HTTP context of the same check does not open as SNMP.
-    let http = vault.seal(&Secret::from(COMMUNITY.to_owned()), format!("checks.checks.http:{id}").as_bytes());
+    let http = vault.seal(
+        &Secret::from(COMMUNITY.to_owned()),
+        format!("checks.checks.http:{id}").as_bytes(),
+    );
     assert!(matches!(
         open_snmp(&vault, id, &v2c, &http.to_bytes()),
         Err(Error::Credentials(credentials::Error::Decrypt))
@@ -155,13 +164,22 @@ fn sec_003_a_malformed_plaintext_is_refused() {
         framed(&[2, 0, 1, b'x']),
     ];
     for plain in cases {
-        let sealed = vault.seal(&Secret::new(plain.clone()), format!("checks.checks.snmp:{id}").as_bytes());
+        let sealed = vault.seal(
+            &Secret::new(plain.clone()),
+            format!("checks.checks.snmp:{id}").as_bytes(),
+        );
         let opened = open_snmp(&vault, id, &v2c, &sealed.to_bytes());
         assert!(
-            matches!(opened, Err(Error::Credentials(credentials::Error::Malformed))),
+            matches!(
+                opened,
+                Err(Error::Credentials(credentials::Error::Malformed))
+            ),
             "{plain:?}"
         );
     }
-    let sealed = vault.seal(&Secret::new(framed(&[1, 0, 1, b'x'])), format!("checks.checks.snmp:{id}").as_bytes());
+    let sealed = vault.seal(
+        &Secret::new(framed(&[1, 0, 1, b'x'])),
+        format!("checks.checks.snmp:{id}").as_bytes(),
+    );
     assert!(open_snmp(&vault, id, &v2c, &sealed.to_bytes()).is_ok());
 }

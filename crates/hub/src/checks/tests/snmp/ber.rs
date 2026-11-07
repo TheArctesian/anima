@@ -31,7 +31,11 @@ fn d_5_integers_use_the_shortest_twos_complement_form() {
         (i64::from(i32::MAX), &[2, 4, 0x7f, 0xff, 0xff, 0xff]),
     ];
     for (value, encoded) in cases {
-        assert_eq!(ber::integer(ber::INTEGER, value).as_slice(), encoded, "{value}");
+        assert_eq!(
+            ber::integer(ber::INTEGER, value).as_slice(),
+            encoded,
+            "{value}"
+        );
         assert_eq!(read_integer(encoded), Ok(value), "{value}");
     }
 }
@@ -58,11 +62,16 @@ fn d_5_an_oid_encodes_its_first_two_arcs_in_one_byte() {
     let encoded = ber::oid(&[1, 3, 6, 1, 4, 1, 2021, 4_294_967_295]).unwrap();
     assert_eq!(
         encoded.as_slice(),
-        [6, 12, 0x2b, 6, 1, 4, 1, 0x8f, 0x65, 0x8f, 0xff, 0xff, 0xff, 0x7f]
+        [
+            6, 12, 0x2b, 6, 1, 4, 1, 0x8f, 0x65, 0x8f, 0xff, 0xff, 0xff, 0x7f
+        ]
     );
     let read = Reader::new(&encoded).next().unwrap().oid().unwrap();
     assert_eq!(read, [1, 3, 6, 1, 4, 1, 2021, 4_294_967_295]);
-    assert_eq!(ber::oid(&[2, 999, 3]).map(|b| b.to_vec()), Some(vec![6, 3, 0x88, 0x37, 3]));
+    assert_eq!(
+        ber::oid(&[2, 999, 3]).map(|b| b.to_vec()),
+        Some(vec![6, 3, 0x88, 0x37, 3])
+    );
     assert!(ber::oid(&[1, 40]).is_none());
     assert!(ber::oid(&[3, 1]).is_none());
     assert!(ber::oid(&[1]).is_none());
@@ -92,7 +101,10 @@ fn d_5_a_v2c_get_request_is_the_bytes_snmpget_sends() {
 
 #[test]
 fn d_5_engine_discovery_is_the_request_snmpget_sends() {
-    let ids = Ids { message: 0x08a2_3569, request: 0x0256_faf0 };
+    let ids = Ids {
+        message: 0x08a2_3569,
+        request: 0x0256_faf0,
+    };
     assert_eq!(message::discovery(ids).as_slice(), bytes(SNMPGET_DISCOVERY));
 }
 
@@ -112,8 +124,20 @@ fn d_5_reader_refuses_lengths_it_cannot_trust() {
     }
     assert!(read_integer(&[2, 0]).is_err());
     assert!(read_integer(&[2, 9, 1, 0, 0, 0, 0, 0, 0, 0, 0]).is_err());
-    assert!(Reader::new(&[6, 2, 0x2b, 0x86]).next().unwrap().oid().is_err());
-    assert!(Reader::new(&[6, 3, 0x2b, 0x80, 1]).next().unwrap().oid().is_err());
+    assert!(
+        Reader::new(&[6, 2, 0x2b, 0x86])
+            .next()
+            .unwrap()
+            .oid()
+            .is_err()
+    );
+    assert!(
+        Reader::new(&[6, 3, 0x2b, 0x80, 1])
+            .next()
+            .unwrap()
+            .oid()
+            .is_err()
+    );
     assert!(Reader::new(&[6, 0]).next().unwrap().oid().is_err());
 }
 
@@ -124,7 +148,10 @@ fn d_5_value_text_forms() {
         (Value::Unsigned(4_294_967_295), Some("4294967295")),
         (Value::Octets(b"nas-01".to_vec()), Some("nas-01")),
         (Value::Octets(vec![0x00, 0x1a, 0xff]), Some("00 1A FF")),
-        (Value::Oid(vec![1, 3, 6, 1, 4, 1, 8072]), Some("1.3.6.1.4.1.8072")),
+        (
+            Value::Oid(vec![1, 3, 6, 1, 4, 1, 8072]),
+            Some("1.3.6.1.4.1.8072"),
+        ),
         (Value::IpAddress([192, 168, 1, 10]), Some("192.168.1.10")),
         (Value::Opaque(vec![0x9f, 0x78]), Some("9F 78")),
         (Value::NoSuchObject, None),
@@ -138,13 +165,16 @@ fn d_5_value_text_forms() {
 }
 
 fn arcs() -> impl Strategy<Value = Vec<u32>> {
-    (0_u32..3, 0_u32..40, prop::collection::vec(any::<u32>(), 0..20)).prop_map(
-        |(first, second, rest)| {
+    (
+        0_u32..3,
+        0_u32..40,
+        prop::collection::vec(any::<u32>(), 0..20),
+    )
+        .prop_map(|(first, second, rest)| {
             let mut arcs = vec![first, second];
             arcs.extend(rest);
             arcs
-        },
-    )
+        })
 }
 
 fn engine() -> Engine {
@@ -210,7 +240,10 @@ fn response_bytes() -> Vec<u8> {
     let binding = ber::tlv(ber::SEQUENCE, &[&name, &value]);
     let list = ber::tlv(ber::SEQUENCE, &[&binding]);
     let numbers = [7, 0, 0].map(|n| ber::integer(ber::INTEGER, n));
-    let pdu = ber::tlv(pdu::RESPONSE, &[&numbers[0], &numbers[1], &numbers[2], &list]);
+    let pdu = ber::tlv(
+        pdu::RESPONSE,
+        &[&numbers[0], &numbers[1], &numbers[2], &list],
+    );
     let version = ber::integer(ber::INTEGER, 1);
     ber::tlv(ber::SEQUENCE, &[&version, &ber::octets(b"public"), &pdu]).to_vec()
 }
@@ -218,7 +251,13 @@ fn response_bytes() -> Vec<u8> {
 #[test]
 fn d_5_a_response_reads_back_to_its_binding() {
     let pdu = community::response(&response_bytes(), 7).unwrap().unwrap();
-    assert_eq!(pdu.bindings, [(vec![1, 3, 6, 1, 2, 1, 1, 5, 0], Value::Octets(b"nas-01".to_vec()))]);
+    assert_eq!(
+        pdu.bindings,
+        [(
+            vec![1, 3, 6, 1, 2, 1, 1, 5, 0],
+            Value::Octets(b"nas-01".to_vec())
+        )]
+    );
     assert!(community::response(&response_bytes(), 8).is_none());
     let mut trailing = response_bytes();
     trailing.push(0);

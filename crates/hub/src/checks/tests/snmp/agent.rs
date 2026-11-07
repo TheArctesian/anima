@@ -45,8 +45,14 @@ impl Setup {
             auth: "auth-SECRET-password",
             privacy: "privacy-SECRET-password",
             values: vec![
-                (vec![1, 3, 6, 1, 2, 1, 1, 5, 0], ber::octets(b"nas-01").to_vec()),
-                (vec![1, 3, 6, 1, 2, 1, 1, 3, 0], ber::integer(0x43, 12_345).to_vec()),
+                (
+                    vec![1, 3, 6, 1, 2, 1, 1, 5, 0],
+                    ber::octets(b"nas-01").to_vec(),
+                ),
+                (
+                    vec![1, 3, 6, 1, 2, 1, 1, 3, 0],
+                    ber::integer(0x43, 12_345).to_vec(),
+                ),
             ],
             silent: false,
             stray_first: false,
@@ -114,7 +120,13 @@ fn respond(setup: &Setup, request: &Tlv<'_>) -> Option<Vec<u8>> {
     let binding = ber::tlv(ber::SEQUENCE, &[&ber::oid(&name)?, &value]);
     let list = ber::tlv(ber::SEQUENCE, &[&binding]);
     let numbers = [request_id, 0, 0].map(|n| ber::integer(ber::INTEGER, n));
-    Some(ber::tlv(pdu::RESPONSE, &[&numbers[0], &numbers[1], &numbers[2], &list]).to_vec())
+    Some(
+        ber::tlv(
+            pdu::RESPONSE,
+            &[&numbers[0], &numbers[1], &numbers[2], &list],
+        )
+        .to_vec(),
+    )
 }
 
 fn v2c(setup: &Setup, message: &mut Reader<'_>) -> Option<Vec<u8>> {
@@ -223,7 +235,11 @@ fn whole(id: i64, flags: u8, security: &[u8], scoped: &[u8]) -> Vec<u8> {
 }
 
 fn scoped(pdu: &[u8]) -> Vec<u8> {
-    ber::tlv(ber::SEQUENCE, &[&ber::octets(&ENGINE_ID), &ber::octets(&[]), pdu]).to_vec()
+    ber::tlv(
+        ber::SEQUENCE,
+        &[&ber::octets(&ENGINE_ID), &ber::octets(&[]), pdu],
+    )
+    .to_vec()
 }
 
 /// An unauthenticated Report of the USM statistic `counter` (RFC 3414 Section 3.2).

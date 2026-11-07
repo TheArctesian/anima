@@ -71,9 +71,21 @@ fn d_5_hmac_sha_256_192_is_the_first_24_bytes_of_rfc_4231_case_2() {
     // A zero-padded key gives the same HMAC as the short key (RFC 2104 Section 2).
     let digest = usm::digest(&jefe, b"what do ya want for nothing?");
     assert_eq!(digest.as_slice(), &full[..24]);
-    assert!(usm::verify(&jefe, b"what do ya want for nothing?", &full[..24]));
-    assert!(!usm::verify(&jefe, b"what do ya want for nothing!", &full[..24]));
-    assert!(!usm::verify(&jefe, b"what do ya want for nothing?", &full[..23]));
+    assert!(usm::verify(
+        &jefe,
+        b"what do ya want for nothing?",
+        &full[..24]
+    ));
+    assert!(!usm::verify(
+        &jefe,
+        b"what do ya want for nothing!",
+        &full[..24]
+    ));
+    assert!(!usm::verify(
+        &jefe,
+        b"what do ya want for nothing?",
+        &full[..23]
+    ));
     assert!(!usm::verify(&jefe, b"what do ya want for nothing?", &full));
 }
 

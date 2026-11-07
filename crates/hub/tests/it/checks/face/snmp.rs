@@ -69,7 +69,9 @@ fn text(secret: &Secret) -> String {
 }
 
 async fn opened(pool: &PgPool, id: CheckId) -> Result<SnmpSecrets, Error> {
-    let setup = checks::load_snmp_secrets(pool, &vault(), id).await?.unwrap();
+    let setup = checks::load_snmp_secrets(pool, &vault(), id)
+        .await?
+        .unwrap();
     Ok(setup.secrets.unwrap())
 }
 
@@ -106,7 +108,11 @@ fn fields(result: Result<(), Error>) -> Vec<&'static str> {
 }
 
 async fn snmp_check(pool: &PgPool) -> CheckId {
-    create(pool, new_check(PVE_01, "SNMP", v3("monitor", Some(AUTH), Some(PRIVACY)))).await
+    create(
+        pool,
+        new_check(PVE_01, "SNMP", v3("monitor", Some(AUTH), Some(PRIVACY))),
+    )
+    .await
 }
 
 devices_test! {

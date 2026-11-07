@@ -196,7 +196,11 @@ const fn error_name(status: i64) -> &'static str {
 ///
 /// # Errors
 /// The fixed failure the response gives.
-pub(in crate::checks) fn judge(pdu: &Pdu, oid: &[u32], expected: Option<&str>) -> Result<(), Failure> {
+pub(in crate::checks) fn judge(
+    pdu: &Pdu,
+    oid: &[u32],
+    expected: Option<&str>,
+) -> Result<(), Failure> {
     if pdu.error_status != 0 {
         return Err(Failure::SnmpError(error_name(pdu.error_status)));
     }

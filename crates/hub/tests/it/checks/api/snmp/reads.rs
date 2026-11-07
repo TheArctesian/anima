@@ -10,8 +10,8 @@ use sqlx::PgPool;
 use super::{AUTH, PRIVACY, READ, SECRETS, v3};
 use crate::checks::api::{
     harness::{
-        CREATE, PVE_01, UPDATE, assert_absent, captured, create, data_with, input,
-        schema_with_bus, signed_in, vault, with_variables,
+        CREATE, PVE_01, UPDATE, assert_absent, captured, create, data_with, input, schema_with_bus,
+        signed_in, vault, with_variables,
     },
     writes::rows,
 };

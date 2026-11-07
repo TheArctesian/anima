@@ -21,7 +21,11 @@ macro_rules! fixture_test {
 }
 
 /// Sends the mutation with the log captured; returns the error and the response and log text.
-async fn refused(schema: &crate::checks::api::harness::TestSchema, query: &str, vars: Value) -> (Value, [String; 3]) {
+async fn refused(
+    schema: &crate::checks::api::harness::TestSchema,
+    query: &str,
+    vars: Value,
+) -> (Value, [String; 3]) {
     let (log, response) = captured(|| with_variables(schema, query, vars)).await;
     assert!(!response.errors.is_empty(), "the input was accepted");
     let texts = [

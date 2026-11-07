@@ -6,7 +6,10 @@ use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use chrono::{DateTime, Utc};
 
 use super::{
-    config::{CheckConfig, CheckType, HttpConfig, HttpInput, HttpSecrets, SnmpConfig, SnmpInput, SnmpSecrets},
+    config::{
+        CheckConfig, CheckType, HttpConfig, HttpInput, HttpSecrets, SnmpConfig, SnmpInput,
+        SnmpSecrets,
+    },
     evaluation::{CheckSettings, CheckState},
     probe::ProbeResult,
 };

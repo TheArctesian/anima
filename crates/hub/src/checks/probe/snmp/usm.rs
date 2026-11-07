@@ -65,7 +65,11 @@ pub(in crate::checks) struct Keys {
 impl Keys {
     /// Both keys of the passwords, localised to the engine. `None` when a password is empty.
     #[must_use]
-    pub(in crate::checks) fn localised(auth: &[u8], privacy: &[u8], engine_id: &[u8]) -> Option<Self> {
+    pub(in crate::checks) fn localised(
+        auth: &[u8],
+        privacy: &[u8],
+        engine_id: &[u8],
+    ) -> Option<Self> {
         Some(Self {
             auth: localise(&password_key(auth)?, engine_id),
             privacy: localise(&password_key(privacy)?, engine_id),
@@ -131,7 +135,11 @@ fn cfb(key: &Key, iv: [u8; 16], data: &mut [u8], direction: Direction) {
         for (index, byte) in block.iter_mut().enumerate() {
             let input = *byte;
             *byte ^= stream[index];
-            next[index] = if direction == Direction::Encrypt { *byte } else { input };
+            next[index] = if direction == Direction::Encrypt {
+                *byte
+            } else {
+                input
+            };
         }
         register = next;
     }

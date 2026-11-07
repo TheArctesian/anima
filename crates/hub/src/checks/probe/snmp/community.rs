@@ -32,7 +32,10 @@ fn read(datagram: &[u8]) -> Result<Pdu, Malformed> {
 /// The Response to the request with this id. `None` for a reply to another request, which
 /// the caller ignores; a datagram that is not an SNMP v2c Response is malformed.
 #[must_use]
-pub(in crate::checks) fn response(datagram: &[u8], request_id: i32) -> Option<Result<Pdu, Failure>> {
+pub(in crate::checks) fn response(
+    datagram: &[u8],
+    request_id: i32,
+) -> Option<Result<Pdu, Failure>> {
     match read(datagram) {
         Ok(pdu) if pdu.request_id != i64::from(request_id) => None,
         Ok(pdu) if pdu.tag == pdu::RESPONSE => Some(Ok(pdu)),
