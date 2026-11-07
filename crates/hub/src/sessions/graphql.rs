@@ -17,12 +17,13 @@ use std::sync::Arc;
 use async_graphql::{Context, ID, Object, Result, dataloader::DataLoader};
 use sqlx::PgPool;
 
+/// For the files part's resolver (WP-27 D-8): the same errors and schema data.
+pub(super) use self::error::{invalid, schema_dependency, to_graphql};
 pub use self::host_key::HostKeysByDevice;
 
 use self::{
     connection::{DEFAULT_FIRST, SessionConnection, sessions_args},
     connection_test::ConnectionTestInput,
-    error::{invalid, schema_dependency, to_graphql},
     ticket::StartSessionInput,
 };
 use super::{

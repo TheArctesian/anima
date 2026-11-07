@@ -150,6 +150,10 @@ pub enum AuditAction {
     Resume,
     Activate,
     Deactivate,
+    /// A file sent to a device over the files tunnel (K4 Section 9).
+    Upload,
+    /// A file read from a device over the files tunnel (K4 Section 9).
+    Download,
 }
 
 impl AuditAction {
@@ -169,6 +173,8 @@ impl AuditAction {
             Self::Resume => "resume",
             Self::Activate => "activate",
             Self::Deactivate => "deactivate",
+            Self::Upload => "upload",
+            Self::Download => "download",
         }
     }
 }
@@ -186,6 +192,8 @@ pub enum AuditTarget {
     Credential(DeviceId),
     /// The accepted SSH host key of a device.
     HostKey(DeviceId),
+    /// A file on a device, moved over the files tunnel; the change holds its path.
+    File(DeviceId),
 }
 
 impl AuditTarget {
@@ -201,6 +209,7 @@ impl AuditTarget {
             Self::Session(_) => "session",
             Self::Credential(_) => "credential",
             Self::HostKey(_) => "host_key",
+            Self::File(_) => "file",
         }
     }
 
@@ -210,7 +219,9 @@ impl AuditTarget {
         match self {
             Self::Operator(id) => id.to_string(),
             Self::Site(id) => id.to_string(),
-            Self::Device(id) | Self::Credential(id) | Self::HostKey(id) => id.to_string(),
+            Self::Device(id) | Self::Credential(id) | Self::HostKey(id) | Self::File(id) => {
+                id.to_string()
+            }
             Self::Check(id) => id.to_string(),
             Self::Window(id) => id.to_string(),
             Self::Session(id) => id.to_string(),

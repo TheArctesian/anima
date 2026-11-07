@@ -9,7 +9,7 @@ const INTERNAL_MESSAGE: &str = "Something went wrong on the hub. Try again.";
 const UNAVAILABLE_MESSAGE: &str = "The hub cannot start a session now. Try again in a moment.";
 
 /// The GraphQL error with its `extensions.code` (K7); a dependency failure shows no detail.
-pub(super) fn to_graphql(error: Error) -> GraphQlError {
+pub(in crate::sessions) fn to_graphql(error: Error) -> GraphQlError {
     match error {
         Error::NotFound(missing) => coded(format!("No such {missing}."), "NOT_FOUND"),
         Error::Validation(fields) => invalid(&fields),
@@ -41,13 +41,15 @@ fn internal(cause: impl std::error::Error + Send + Sync + 'static) -> GraphQlErr
 struct UnregisteredDependency(String);
 
 /// Reads schema data; if it is missing the operator gets `INTERNAL`, not the Rust type name.
-pub(super) fn schema_dependency<'a, T: Send + Sync + 'static>(ctx: &Context<'a>) -> Result<&'a T> {
+pub(in crate::sessions) fn schema_dependency<'a, T: Send + Sync + 'static>(
+    ctx: &Context<'a>,
+) -> Result<&'a T> {
     ctx.data::<T>()
         .map_err(|missing| internal(UnregisteredDependency(missing.message)))
 }
 
 /// A `VALIDATION` error that lists every argument the operator must fix.
-pub(super) fn invalid(fields: &[FieldError]) -> GraphQlError {
+pub(in crate::sessions) fn invalid(fields: &[FieldError]) -> GraphQlError {
     let listed: Vec<_> = fields
         .iter()
         .map(|e| value!({ "field": e.field, "message": e.message.clone() }))

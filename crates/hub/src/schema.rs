@@ -42,6 +42,7 @@ pub struct Mutation(
     devices::graphql::Mutation,
     maintenance::graphql::Mutation,
     sessions::graphql::Mutation,
+    sessions::FilesMutation,
     web_interfaces::graphql::Mutation,
 );
 

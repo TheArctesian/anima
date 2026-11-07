@@ -10,6 +10,7 @@
 mod command;
 mod connect;
 mod run;
+mod subsystem;
 #[cfg(test)]
 mod tests;
 

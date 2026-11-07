@@ -92,6 +92,37 @@ pub fn logged(routes: Router) -> Router {
     routes.layer(middleware::from_fn(events::process_log::http_request))
 }
 
+/// The SSH terminal and files tunnels, each logged by its template only (K4 Sections 8, 9).
+/// SSH uses the terminal tunnel; `/tunnel` waits for RDP and VNC and is not mounted, so no
+/// SSH ticket reaches guacd (R-062). The files tunnel connects through the link, so it gets the
+/// probes' deny list (P2-004, WP-27 CR-1).
+pub fn tunnels(dependencies: &schema::Dependencies) -> Router {
+    let schema::Dependencies {
+        config,
+        clock,
+        pool,
+        bus,
+        vault,
+        live,
+    } = dependencies;
+    let terminal = sessions::terminal_router(
+        pool.clone(),
+        vault.clone(),
+        bus.clone(),
+        clock.clone(),
+        live.clone(),
+    );
+    let files = sessions::files_router(
+        pool.clone(),
+        vault.clone(),
+        bus.clone(),
+        clock.clone(),
+        live.clone(),
+        targets::AddressPolicy::new(config.probe_deny.clone()),
+    );
+    logged(terminal).merge(logged(files))
+}
+
 /// Liveness probe (R-026(4)): no sign-in, no database, body `ok`.
 async fn health() -> &'static str {
     "ok"

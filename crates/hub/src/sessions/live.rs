@@ -16,6 +16,7 @@ use tokio::sync::watch;
 
 use super::{
     end::Actor,
+    files,
     model::EndReason,
     public_key::PublicKey,
     target::TargetRule,
@@ -77,6 +78,8 @@ pub struct Live {
     observations: Arc<Mutex<Observations>>,
     tunnel_end_wait: Duration,
     target_rule: TargetRule,
+    /// The files tunnel's own tickets (WP-27 D-5), so a session ticket never opens `/files`.
+    files: files::Tickets,
 }
 
 impl Default for Live {
@@ -191,6 +194,7 @@ impl Live {
             observations: Arc::default(),
             tunnel_end_wait: wait,
             target_rule: TargetRule::STRICT,
+            files: files::Tickets::default(),
         }
     }
 
@@ -207,6 +211,24 @@ impl Live {
 
     pub(super) const fn tunnel_end_wait(&self) -> Duration {
         self.tunnel_end_wait
+    }
+
+    /// The files tunnel's tickets (WP-27 D-5).
+    pub(super) const fn files(&self) -> &files::Tickets {
+        &self.files
+    }
+
+    /// The end signal of the session's open tunnel, for a tunnel that lives only as long as
+    /// it (the files tunnel, K4 Section 9): it carries the first cause, and closes when the
+    /// session's tunnel deregisters. `None` when the session has no open tunnel.
+    pub(super) fn tunnel_end(
+        &self,
+        session: SessionId,
+    ) -> Option<watch::Receiver<Option<EndCause>>> {
+        self.state()
+            .tunnels
+            .get(&session)
+            .map(watch::Sender::subscribe)
     }
 
     /// The rule every SSH probe applies to the addresses a host resolves to.
