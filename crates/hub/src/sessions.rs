@@ -3,7 +3,7 @@
 //! single-use tickets that open a tunnel (K4 §1, API-009). SSH sessions run on the terminal
 //! tunnel (`terminal`, K4 §8); the Guacamole tunnel (`tunnel`) waits for RDP and VNC. The
 //! connection test reads a host's key or an RDP server's certificate, and `acceptHostKey` or
-//! `acceptServerCertificate` records it (DEV-013, SEC-007, D-5, D-6).
+//! `acceptServerCertificate` records it (DEV-013, SEC-006, SEC-007).
 
 mod admission;
 mod end;

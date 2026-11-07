@@ -1,6 +1,6 @@
 //! What the hub holds in memory about sessions (D-1, R-032): unredeemed tickets, tickets
 //! spent by a refused redemption, the end signal of each open tunnel, and the host keys and
-//! RDP server certificates connection tests saw (D-5).
+//! RDP server certificates connection tests saw (SEC-006, SEC-007).
 //!
 //! Every method takes the lock for a short, synchronous critical section and never across an
 //! `.await`; time comes in as a parameter (CQ-021).

@@ -1,6 +1,5 @@
 //! Trusting what a device presents (SEC-006, SEC-007, DEV-013): the connection test, the SSH
-//! host keys and RDP server certificates it saw, and the operator accepting one of them
-//! (D-5, D-6).
+//! host keys and RDP server certificates it saw, and the operator accepting one of them.
 
 mod accept;
 mod accept_certificate;

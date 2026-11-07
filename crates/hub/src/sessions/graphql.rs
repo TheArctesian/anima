@@ -189,7 +189,7 @@ impl Mutation {
     }
 
     /// Tests SSH, RDP or VNC to a saved device or to the form's values (DEV-013). For SSH a
-    /// credential is sent only to the device's accepted host key (D-5); an RDP or VNC test
+    /// credential is sent only to the device's accepted host key (SEC-006); an RDP or VNC test
     /// sends none, and RDP reads the server certificate (SEC-007).
     #[graphql(guard = "Authenticated")]
     async fn test_connection(

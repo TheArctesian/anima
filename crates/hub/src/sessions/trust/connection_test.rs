@@ -1,4 +1,4 @@
-//! The connection test (DEV-013, K4 §6, D-5): for SSH, reads the host's key, keeps what it
+//! The connection test (DEV-013, K4 §6): for SSH, reads the host's key, keeps what it
 //! saw for `acceptHostKey`, and signs in only when the key is the accepted one, so a man in
 //! the middle never receives a credential. RDP and VNC are tested in `desktop_test`.
 
