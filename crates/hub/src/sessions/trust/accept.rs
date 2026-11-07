@@ -45,7 +45,7 @@ pub(in crate::sessions) async fn accept_host_key(
     let seen = live
         .observed(&Endpoint::new(&device.host, device.ssh.port), by.at)
         .ok_or(Error::Conflict(Conflict::KeyNotSeen))?;
-    if seen.key.fingerprint() != acceptance.fingerprint {
+    if seen.presented.fingerprint() != acceptance.fingerprint {
         return Err(Error::Conflict(Conflict::KeyDiffers));
     }
     let mut tx = db.begin().await?;
@@ -53,12 +53,12 @@ pub(in crate::sessions) async fn accept_host_key(
     let old = store::host_keys(&mut *tx, &[device.id])
         .await?
         .remove(&device.id);
-    if let Some(old) = old.as_ref().filter(|old| old.public_key == seen.key) {
+    if let Some(old) = old.as_ref().filter(|old| old.public_key == seen.presented) {
         tx.commit().await?;
         return Ok(old.clone());
     }
     let key = HostKey {
-        public_key: seen.key,
+        public_key: seen.presented,
         first_seen_at: seen.first_seen_at,
     };
     let accepted = AcceptedKey {

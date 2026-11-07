@@ -13,6 +13,7 @@ mod k1;
 mod leak;
 mod mount;
 mod privileges;
+mod server_certificates;
 mod start;
 mod starting;
 mod tables;

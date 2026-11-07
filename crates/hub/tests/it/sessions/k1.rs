@@ -26,6 +26,7 @@ async fn k1_the_sessions_part_declares_exactly_its_root_fields_as_k1_does() {
         fields(&part, "SessionsMutation"),
         [
             "acceptHostKey",
+            "acceptServerCertificate",
             "endSession",
             "startSession",
             "testConnection"

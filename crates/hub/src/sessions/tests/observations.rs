@@ -28,7 +28,7 @@ fn dev_013_an_observation_lasts_fifteen_minutes_from_when_the_key_was_last_seen(
     live.observe(pve(), key(ED25519), at());
     let last_moment = at() + LIFETIME - TimeDelta::nanoseconds(1);
     assert_eq!(
-        live.observed(&pve(), last_moment).unwrap().key,
+        live.observed(&pve(), last_moment).unwrap().presented,
         key(ED25519)
     );
     assert_eq!(
@@ -51,7 +51,10 @@ fn sec_006_another_key_at_the_same_endpoint_replaces_the_first_and_its_first_see
     live.observe(pve(), key(ED25519), at());
     let later = at() + TimeDelta::minutes(1);
     let seen = live.observe(pve(), key(ECDSA), later);
-    assert_eq!((seen.key.clone(), seen.first_seen_at), (key(ECDSA), later));
+    assert_eq!(
+        (seen.presented.clone(), seen.first_seen_at),
+        (key(ECDSA), later)
+    );
     assert_eq!(live.observed(&pve(), later), Some(seen));
 }
 

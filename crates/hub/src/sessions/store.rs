@@ -18,15 +18,9 @@ use crate::{
     ids::{DeviceId, OperatorId, SessionId},
 };
 
-pub(super) use server_certificates::server_certificates;
-#[cfg_attr(
-    not(test),
-    expect(
-        unused_imports,
-        reason = "acceptServerCertificate, not yet served, is the first caller outside the tests"
-    )
-)]
-pub(super) use server_certificates::{AcceptedCertificate, put_server_certificate};
+pub(super) use server_certificates::{
+    AcceptedCertificate, lock_server_certificate, put_server_certificate, server_certificates,
+};
 
 const SESSION_COLUMNS: &str = "id, device_id, device_name, protocol, operator_id, operator_name, \
                                client_addr, started_at, ended_at, end_reason";
