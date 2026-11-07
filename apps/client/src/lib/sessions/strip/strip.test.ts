@@ -207,6 +207,43 @@ it('MV-004: the strip keeps its space until it has left after the last tab close
   expect(strip?.hasAttribute('hidden')).toBe(true);
 });
 
+// jsdom has no layout, so these show the markers the CSS acts on, not pixels: `data-leaving` cancels the strip's
+// reserved height in the same flush that shows the pages again, so the page has no 32 px step to take (M-1).
+it('MOT-007, 5.7.3: the strip gives up its space on the frame the last tab leaves, while it still fades', async () => {
+  const sessions = show();
+  const id = await openStarted(sessions);
+  const strip = document.querySelector('[role="tablist"]');
+  expect(strip?.hasAttribute('data-leaving')).toBe(false);
+  await sessions.close(id);
+  await settle();
+  expect(strip?.hasAttribute('data-leaving')).toBe(true);
+  expect(strip?.hasAttribute('hidden')).toBe(false);
+  expect(document.querySelector('.pages')?.hasAttribute('inert')).toBe(false);
+  for (const run of [...runs]) run.finish();
+  await settle();
+  expect(strip?.hasAttribute('data-leaving')).toBe(false);
+});
+
+it('MOT-007, MOT-040: a tab opened again while the strip leaves takes its space back', async () => {
+  const sessions = show();
+  const id = await openStarted(sessions);
+  await sessions.close(id);
+  await settle();
+  await openStarted(sessions);
+  const strip = document.querySelector('[role="tablist"]');
+  expect(strip?.hasAttribute('data-leaving')).toBe(false);
+  expect(strip?.hasAttribute('hidden')).toBe(false);
+});
+
+it('MOT-007: the strip, not the page, carries the exit: no translate is written on an ancestor of the pages', async () => {
+  const sessions = show();
+  const id = await openStarted(sessions);
+  await sessions.close(id);
+  await settle();
+  const pages = document.querySelector<HTMLElement>('.pages');
+  for (let node: HTMLElement | null = pages; node !== null; node = node.parentElement) expect(node.style.translate).toBe('');
+});
+
 it('S4: closing a tab with none selected sends focus to the tab in its place; the last one to the nav', async () => {
   const sessions = show();
   await openStarted(sessions);

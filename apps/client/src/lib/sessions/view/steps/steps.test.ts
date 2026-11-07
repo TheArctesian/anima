@@ -38,3 +38,10 @@ it('RA-031: without a wake packet there is no wake line, and the four steps are 
   expect(wake({ waking: false })).toBeUndefined();
   expect(at({ waking: true, ticketed: true })).toEqual(at({ ticketed: true }));
 });
+
+it('MOT-007, M-3: the wake line has the fixed icon cell of a step, so done and active put the label in one place', async () => {
+  const { readFileSync } = await import('node:fs');
+  const css = readFileSync(`${import.meta.dirname}/ConnectionSteps.svelte`, 'utf8');
+  expect(css).toMatch(/\.wake \{[^}]*grid-template-columns: var\(--icon-md\)/);
+  expect(css).toMatch(/\.wake > :global\(\.icon\) \{[^}]*justify-self: center/);
+});
