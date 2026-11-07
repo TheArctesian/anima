@@ -160,9 +160,27 @@ it.each([
   ['NONE', 0, 1],
   ['SSH', 4, 0],
 ] as const)('D-9: the Overview skeleton for %s draws %i chart cells and %i "off" lines, as the loaded layout does', (source, cells, off) => {
-  app = mount(OverviewSkeleton, { target: document.body, props: { range: 'HOUR', source, now: () => NOW } });
+  app = mount(OverviewSkeleton, { target: document.body, props: { range: 'HOUR', source, ssh: null, now: () => NOW } });
   flushSync();
   expect(document.querySelectorAll('.chart-grid > .cell')).toHaveLength(cells);
   expect(document.querySelectorAll('.metrics-off')).toHaveLength(off);
   expect(document.querySelectorAll('.overview-facts > div')).toHaveLength(7);
+});
+
+it.each([
+  ['a host key', { enabled: true, hostKey: device().ssh.hostKey }],
+  ['no key yet', { enabled: true, hostKey: null }],
+  ['SSH off', { enabled: false, hostKey: null }],
+])('MOT-007: the skeleton host key row for %s has the loaded key row\'s text and class', (_case, ssh) => {
+  app = mount(OverviewSkeleton, { target: document.body, props: { range: 'HOUR', source: 'SSH', ssh, now: () => NOW } });
+  flushSync();
+  const row = document.querySelector('.overview-facts > div:last-child dd');
+  expect(row?.textContent).toBe(hostKeyText(ssh));
+  expect(row?.classList.contains('key')).toBe(true);
+});
+
+it('MOT-007: with no device known the skeleton key row holds a full-length key', () => {
+  app = mount(OverviewSkeleton, { target: document.body, props: { range: 'HOUR', source: 'SSH', ssh: null, now: () => NOW } });
+  flushSync();
+  expect(document.querySelector('.overview-facts .key')?.textContent).toMatch(/^ssh-ed25519 SHA256:x{43}$/);
 });
