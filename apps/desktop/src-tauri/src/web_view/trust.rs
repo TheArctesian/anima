@@ -25,7 +25,7 @@ pub use answer::{Answer, Presented, rule};
 pub use certificate::{CertificateError, leaf_fingerprint};
 pub use fingerprint::{Fingerprint, FingerprintError};
 #[cfg(test)]
-pub(in crate::web_view) use pin::verdict;
+pub(super) use pin::verdict;
 #[cfg(test)]
-pub(in crate::web_view) use pin::{Challenge, Host};
+pub(super) use pin::{Challenge, Host};
 pub use pin::{OriginError, Pin, PinnedOrigin, Verdict};

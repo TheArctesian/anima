@@ -54,6 +54,13 @@ objc2-web-kit = { version = "0.3.2", default-features = false, features = ["std"
 [dev-dependencies]
 rcgen.workspace = true
 
+# R-069's proof that the macOS trust hook cancels a mismatched certificate, in a real
+# WKWebView. Not libtest: Tauri's event loop must own the main thread (tests/pinning/main.rs).
+[[test]]
+name = "pinning"
+path = "tests/pinning/main.rs"
+harness = false
+
 # The workspace lints, copied, with `unsafe_code = "deny"` in place of `forbid`: the macOS
 # web-view trust hook (`src/web_view/macos_trust.rs`) is the one module allowed `unsafe`
 # (R-069). Keep the rest in step with the root `[workspace.lints]`.
@@ -70,3 +77,4 @@ cognitive_complexity = "deny"
 excessive_nesting = "deny"
 allow_attributes = "deny"
 allow_attributes_without_reason = "deny"
+

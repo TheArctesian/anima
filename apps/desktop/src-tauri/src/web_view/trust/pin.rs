@@ -11,7 +11,7 @@ const HTTPS_PORT: u16 = 443;
 
 /// A host as compared for pinning: a lower-case name without its trailing dot, or an address.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(in crate::web_view) enum Host {
+pub(in super::super) enum Host {
     Name(String),
     Address(IpAddr),
 }
@@ -34,7 +34,7 @@ impl Host {
     /// the one [`PinnedOrigin::parse`] meets through `Url`: IPv6 with or without brackets,
     /// IDN in Unicode or punycode, and every IPv4 spelling compare equal to the pinned form.
     /// `None` if the text is no host at all.
-    pub(in crate::web_view) fn of_challenge(text: &str) -> Option<Self> {
+    pub(in super::super) fn of_challenge(text: &str) -> Option<Self> {
         let bracketed;
         let text = if text.contains(':') && !text.starts_with('[') {
             bracketed = format!("[{text}]");
@@ -52,8 +52,8 @@ impl Host {
 /// host or port drops it, a path change keeps it).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PinnedOrigin {
-    pub(in crate::web_view) host: Host,
-    pub(in crate::web_view) port: u16,
+    pub(in super::super) host: Host,
+    pub(in super::super) port: u16,
 }
 
 /// Why a URL has no pinnable origin. Carries no part of the URL (LOG-007).
@@ -99,7 +99,7 @@ impl PinnedOrigin {
     }
 
     /// Whether a challenge for this host and port belongs to this origin.
-    pub(in crate::web_view) fn holds(&self, host: &str, port: u16) -> bool {
+    pub(in super::super) fn holds(&self, host: &str, port: u16) -> bool {
         self.port == port && Host::of_challenge(host).is_some_and(|host| host == self.host)
     }
 }

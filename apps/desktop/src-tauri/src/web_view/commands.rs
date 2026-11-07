@@ -66,9 +66,17 @@ pub async fn web_view_open(webview: Webview, request: Request<'_>) -> Result<(),
 
 async fn open(caller_view: &Webview, body: Option<serde_json::Value>) -> Result<(), WebViewError> {
     caller(caller_view.label())?;
-    let body = body.ok_or(WebViewError::Arguments)?;
-    let new = Opening::read(&body)?.check(pinning_available())?;
-    let app = caller_view.app_handle().clone();
+    open_tab(
+        caller_view.app_handle(),
+        &body.ok_or(WebViewError::Arguments)?,
+    )
+    .await
+}
+
+/// Opens a tab's device web view from `web_view_open`'s arguments, once the caller is
+/// checked: the view on its blank start, then the trust hook, then the first real load.
+pub async fn open_tab(app: &AppHandle, body: &serde_json::Value) -> Result<(), WebViewError> {
+    let new = Opening::read(body)?.check(pinning_available())?;
     let window = app.get_window(MAIN).ok_or(WebViewError::Window)?;
     let url = new.tab.url.as_url().clone();
     app.state::<Tabs>().reserve(new.id.clone(), new.tab)?;
@@ -87,7 +95,7 @@ async fn open(caller_view: &Webview, body: Option<serde_json::Value>) -> Result<
     };
     if let Err(error) = loaded {
         app.state::<Tabs>().remove(&new.id);
-        return view::close(&app, &new.id, false).and(Err(error));
+        return view::close(app, &new.id, false).and(Err(error));
     }
     Ok(())
 }
@@ -144,12 +152,16 @@ pub async fn web_view_go(webview: Webview, tab_id: &str, to: &str) -> Result<(),
 /// tab's address again so the new pin decides.
 #[tauri::command]
 pub async fn web_view_pin(webview: Webview, tab_id: &str, pin: &str) -> Result<(), WebViewError> {
-    reported(caller(webview.label()).and_then(|()| {
-        let (id, view) = open_view(webview.app_handle(), tab_id)?;
-        let fingerprint = pin.parse::<Fingerprint>()?;
-        let tab = webview.state::<Tabs>().set_pin(&id, fingerprint)?;
-        view.navigate(tab.url.as_url().clone()).map_err(native)
-    }))
+    reported(caller(webview.label()).and_then(|()| pin_tab(webview.app_handle(), tab_id, pin)))
+}
+
+/// Pins `pin` to a tab's `https` origin and loads the tab's address again, once the caller is
+/// checked.
+pub fn pin_tab(app: &AppHandle, tab_id: &str, pin: &str) -> Result<(), WebViewError> {
+    let (id, view) = open_view(app, tab_id)?;
+    let fingerprint = pin.parse::<Fingerprint>()?;
+    let tab = app.state::<Tabs>().set_pin(&id, fingerprint)?;
+    view.navigate(tab.url.as_url().clone()).map_err(native)
 }
 
 /// Moves a tab's web view to a window of its own, with the same store. Again: no change.
