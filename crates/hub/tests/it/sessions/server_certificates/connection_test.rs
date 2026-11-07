@@ -3,6 +3,7 @@
 //! handshake or the VNC banner, and the target rule refuses before any connection (R-032).
 
 use anima_hub::sessions::Live;
+use chrono::{DateTime, Utc};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
@@ -63,7 +64,7 @@ async fn sec_007_an_rdp_test_reads_the_certificate_and_sends_nothing_after_the_h
     assert_eq!(presented["subject"], "CN=DESKTOP-01");
     assert_eq!(
         instant(&presented["notAfter"]),
-        "2031-01-01T00:00:00Z".parse().unwrap()
+        "2031-01-01T00:00:00Z".parse::<DateTime<Utc>>().unwrap()
     );
     assert_eq!(instant(&presented["firstSeenAt"]), now());
     assert_eq!(test["certificateChanged"], false);
@@ -263,7 +264,7 @@ async fn r_032_the_target_rule_refuses_rdp_and_vnc_before_any_connection(pool: P
     migrations = "./migrations",
     fixtures(path = "../../../fixtures", scripts("devices"))
 )]
-async fn dev_013_settings_of_another_protocol_are_refused(pool: PgPool) {
+async fn dev_013_settings_of_another_protocol_or_with_a_device_are_refused(pool: PgPool) {
     let schema = schema(&pool, &loopback_live());
     let cases = [
         (
@@ -288,6 +289,9 @@ async fn dev_013_settings_of_another_protocol_are_refused(pool: PgPool) {
             "vnc",
         ),
     ];
+    let with_device = json!({ "protocol": "RDP", "deviceId": PVE_01,
+                              "rdp": { "enabled": true, "username": "u" } });
+    let cases = cases.into_iter().chain([(with_device, "deviceId")]);
     for (input, field) in cases {
         let error = error_json(&schema.execute(test_request(&input)).await);
         assert_eq!(error["extensions"]["code"], "VALIDATION", "{input}");

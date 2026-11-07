@@ -128,6 +128,10 @@ impl ConnectionTestInput {
         if !stray.is_empty() {
             return Err(stray);
         }
+        let settings = ssh.is_some() || rdp.is_some() || vnc.is_some();
+        if device_id.is_some() && (host.is_some() || settings) {
+            return Err(vec![subject_error(true)]);
+        }
         match protocol {
             Protocol::Ssh => ssh_subject(device_id, host, ssh.as_ref(), credential),
             Protocol::Rdp => desktop_subject(device_id, host, Desktop::Rdp, || rdp_settings(rdp)),
