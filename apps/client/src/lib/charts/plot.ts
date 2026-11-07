@@ -11,6 +11,13 @@ export interface ChartPoint {
 /** A K5 series colour, `--chart-series-1` to `--chart-series-6`. */
 export type SeriesColour = 1 | 2 | 3 | 4 | 5 | 6;
 
+/** How a series is drawn besides its colour, so colour is never the only cue (UI-003): series 1, 4 solid; 2, 5 dashed; 3, 6 dotted. */
+export type SeriesPattern = 'solid' | 'dash' | 'dot';
+
+export function seriesPattern(colour: SeriesColour): SeriesPattern {
+  return (['solid', 'dash', 'dot'] as const)[(colour - 1) % 3] ?? 'solid';
+}
+
 /** One line on a chart, named in the legend and the text alternative. */
 export interface ChartSeries {
   readonly label: string;

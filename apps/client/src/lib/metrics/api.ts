@@ -14,6 +14,19 @@ const DeviceMetrics = graphql(`
         vendor
         hasVram
       }
+      readings {
+        at
+        cpuPercent
+        memoryPercent
+        diskPercent
+        vramPercent
+        vramGpu {
+          index
+          name
+          vendor
+          hasVram
+        }
+      }
       metrics(range: $range) {
         kind
         label
@@ -71,6 +84,8 @@ export interface DeviceMetricsView {
   readonly metricsSource: DeviceNode['metricsSource'];
   readonly gpus: readonly DeviceGpu[];
   readonly series: readonly MetricSeries[];
+  /** The latest readings the hub holds, for the bars before the first live batch; `null` when it has none. */
+  readonly readings: DeviceNode['readings'] | null;
 }
 export type { MetricRange };
 
@@ -83,7 +98,7 @@ export function metricsApi(hub: Hub) {
       if (!result.ok) return result;
       const { device } = result.value;
       if (!device) return { ok: true, value: null };
-      return { ok: true, value: { metricsSource: device.metricsSource, gpus: device.gpus, series: device.metrics } };
+      return { ok: true, value: { metricsSource: device.metricsSource, gpus: device.gpus, series: device.metrics, readings: device.readings ?? null } };
     },
     /** Listen for new samples of one device; returns the function that stops listening. */
     watch: (deviceId: string, sink: Sink<NewMetrics>): (() => void) =>

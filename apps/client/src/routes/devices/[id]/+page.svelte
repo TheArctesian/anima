@@ -20,7 +20,9 @@
   import ChecksPanel from './checks/ChecksPanel.svelte';
   import { Detail } from './detail.svelte';
   import Header from './header/Header.svelte';
+  import { DeviceMetrics } from './overview/metrics.svelte';
   import OverviewPanel from './overview/OverviewPanel.svelte';
+  import OverviewSkeleton from './overview/OverviewSkeleton.svelte';
   import { Pages } from './pages.svelte';
   import { saveCheck, saveDevice } from './save';
   import type { DeviceSession } from './sessions/sessions';
@@ -45,6 +47,7 @@
   const id = untrack(() => data.id);
   const detail = new Detail(hub, id);
   const sessionPages = new Pages<DeviceSession>((after) => connections.history(id ?? '', SESSION_PAGE, after));
+  const metrics = new DeviceMetrics(hub, id ?? '', now);
   const feed = new LogFeed(hub, now);
   feed.filter = { ...DEFAULT_LOG_FILTER, since: 'all', deviceId: id };
 
@@ -58,6 +61,7 @@
     detail.start();
     return () => {
       detail.stop();
+      metrics.stop();
       sessionPages.stop();
       feed.stop();
     };
@@ -74,6 +78,21 @@
     else if (tab === 'logs') feed.start();
   });
 
+  /** D-5: the Overview's metrics load when it shows and when the range or source changes; leaving it stops the live points. */
+  const metricsSource = $derived(device?.metricsSource ?? null);
+  let metricsKey = '';
+  $effect(() => {
+    const key = `${place.range}:${metricsSource ?? ''}`;
+    if (place.tab !== 'overview') {
+      if (metricsKey !== '') metrics.stop();
+      metricsKey = '';
+      return;
+    }
+    if (metricsSource === null || key === metricsKey) return;
+    metricsKey = key;
+    void metrics.load(place.range, metricsSource);
+  });
+
   /** D-9: the tab and section go to the URL, so Back and a reload restore them. */
   function go(next: TabPlace): void {
     // eslint-disable-next-line svelte/no-navigation-without-resolve -- the path comes from resolve(); only the query is added
@@ -81,7 +100,7 @@
   }
 
   function settings(section: SettingsSection | null): void {
-    go({ tab: 'settings', section });
+    go({ tab: 'settings', section, range: 'HOUR' });
   }
 
   /** Opens a tab for the protocol of the header button that grows from it (RA-030, MOT-005). */
@@ -139,6 +158,10 @@
   </div>
 {/snippet}
 
+{#snippet overviewSkeleton()}
+  <OverviewSkeleton range={place.range} source={metricsSource ?? 'NONE'} {now} />
+{/snippet}
+
 <section class="detail">
   <Header {device} loading={headerLoading} onConnect={connect} onSettings={settings} />
   {#if page.state.credentialError !== undefined}
@@ -156,13 +179,22 @@
     </div>
   {:else if device !== null}
     <LiveNotice message={detail.liveError?.message ?? null} gap="end" />
-    <Tabs selected={place.tab} onSelect={(tab) => { go({ tab, section: null }); }} />
+    <Tabs selected={place.tab} onSelect={(tab) => { go({ tab, section: null, range: 'HOUR' }); }} />
     {#if place.tab === 'overview'}
-      <TabPanel name="overview" loading={checksLoading}>
+      <TabPanel name="overview" loading={checksLoading} skeleton={overviewSkeleton}>
         {#if detail.checksError !== null}
           {@render checksFailure(detail.checksError.message)}
         {:else}
-          <OverviewPanel {device} checks={detail.checks ?? []} />
+          <OverviewPanel
+            {device}
+            checks={detail.checks ?? []}
+            {metrics}
+            range={place.range}
+            {now}
+            onRange={(range) => { go({ tab: 'overview', section: null, range }); }}
+            onRetry={() => void metrics.load(place.range, device.metricsSource)}
+            onSettings={() => { settings('general'); }}
+          />
         {/if}
       </TabPanel>
     {:else if place.tab === 'checks'}
