@@ -5,8 +5,8 @@ import { fakeCalls, answer, MAC, NAS, settle, STUDIO, UPDATED } from './calls.fi
 import { SetupFlow } from './flow';
 import { isThisComputer, NO_ANSWER_TEXT, offersScreenSharing, type SetupState } from './setup';
 
-function run(over: Parameters<typeof fakeCalls>[0] = {}) {
-  const fake = fakeCalls(over);
+function run() {
+  const fake = fakeCalls();
   const states: SetupState[] = [];
   const ready = vi.fn<(device: DeviceDetail) => void>();
   const flow = new SetupFlow(
@@ -87,6 +87,9 @@ describe('SetupFlow (R-079)', () => {
     expect(t.clock.waiting()).toBe(0);
   });
 
+});
+
+describe('SetupFlow cancelling (R-079)', () => {
   it('R-079: Cancel stops the repeats', async () => {
     const t = run();
     await t.flow.start(STUDIO);
@@ -128,6 +131,9 @@ describe('SetupFlow (R-079)', () => {
     expect(t.last()).toEqual({ kind: 'waiting', problem: null });
   });
 
+});
+
+describe('SetupFlow failures (R-079)', () => {
   it('R-079: another device that does not answer gets the port 5900 text and no update', async () => {
     const t = run();
     await t.flow.start(NAS);
@@ -140,14 +146,16 @@ describe('SetupFlow (R-079)', () => {
   });
 
   it('R-079: this computer outside the desktop app on a Mac gets the plain text and Sharing does not open', async () => {
-    const t = run({ sharingAvailable: () => false });
+    const t = run();
+    t.calls.sharingAvailable.mockReturnValue(false);
     await t.flow.start(STUDIO);
     expect(t.last()).toEqual({ kind: 'failed', message: NO_ANSWER_TEXT });
     expect(t.calls.openSharing).not.toHaveBeenCalled();
   });
 
   it('R-079: a device that looks like this computer but is read as unknown is another device', async () => {
-    const t = run({ thisMachine: () => Promise.resolve(null) });
+    const t = run();
+    t.calls.thisMachine.mockResolvedValue(null);
     await t.flow.start(STUDIO);
     expect(t.last()).toEqual({ kind: 'failed', message: NO_ANSWER_TEXT });
   });

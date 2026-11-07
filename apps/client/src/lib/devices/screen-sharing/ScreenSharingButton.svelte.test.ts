@@ -60,7 +60,8 @@ async function flow(): Promise<void> {
   flushSync();
 }
 
-function mountButton(compact = false, calls = fakeCalls()) {
+function mountButton(compact = false) {
+  const calls = fakeCalls();
   const onReady = vi.fn();
   app = mount(ScreenSharingButton, {
     target: document.body,
@@ -128,7 +129,8 @@ it('R-079: unmounting while waiting stops the repeats', async () => {
 });
 
 it('R-079: a failure to open System Settings shows its fixed message and offers a retry', async () => {
-  const t = mountButton(false, fakeCalls({ openSharing: vi.fn(() => Promise.reject(new SystemSettingsError('failed'))) }));
+  const t = mountButton();
+  t.calls.openSharing.mockRejectedValueOnce(new SystemSettingsError('failed'));
   press(button(/screen sharing/i));
   await flow();
   expect(document.querySelector('[role="alert"]')?.textContent).toBe('System Settings did not open.');
@@ -138,7 +140,8 @@ it('R-079: a failure to open System Settings shows its fixed message and offers 
 });
 
 it('R-079: another device that does not answer shows the failure as an alert, and Close dismisses it', async () => {
-  mountButton(false, fakeCalls({ thisMachine: () => Promise.resolve(null) }));
+  const t = mountButton();
+  t.calls.thisMachine.mockResolvedValue(null);
   press(button(/screen sharing/i));
   await flow();
   expect(document.querySelector('[role="alert"]')?.textContent).toBe(NO_ANSWER_TEXT);

@@ -43,18 +43,17 @@ export async function settle(): Promise<void> {
   for (let turn = 0; turn < 10; turn += 1) await Promise.resolve();
 }
 
-/** Calls whose answers the test sets; the defaults are this Mac, on the desktop, not answering. */
-export function fakeCalls(over: Partial<ScreenSharingCalls> = {}) {
+/** Calls whose answers the test sets with `mockResolvedValue` and the like; the defaults are this Mac, on the desktop, not answering. */
+export function fakeCalls() {
   const clock = fakeClock();
   const calls = {
     test: vi.fn<ScreenSharingCalls['test']>(() => Promise.resolve(answer(false))),
     update: vi.fn<ScreenSharingCalls['update']>(() => Promise.resolve({ ok: true, value: UPDATED })),
     thisMachine: vi.fn<ScreenSharingCalls['thisMachine']>(() => Promise.resolve(MAC)),
-    sharingAvailable: vi.fn(() => true),
+    sharingAvailable: vi.fn<ScreenSharingCalls['sharingAvailable']>(() => true),
     openSharing: vi.fn<ScreenSharingCalls['openSharing']>(() => Promise.resolve()),
     after: clock.after,
     intervalMs: 3000,
-    ...over,
-  } satisfies ScreenSharingCalls;
+  };
   return { calls, clock };
 }
