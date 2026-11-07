@@ -152,6 +152,7 @@ dependencies = [
 name = "anima-hub"
 version = "0.1.0"
 dependencies = [
+ "aes 0.9.4",
  "anima-hub",
  "anima-theme",
  "argon2",

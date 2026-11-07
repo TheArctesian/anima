@@ -50,6 +50,7 @@ anima-theme = { path = "../theme" }
 russh.workspace = true
 russh-sftp.workspace = true
 hmac.workspace = true
+aes = { version = "0.9.4", features = ["zeroize"] }
 sha1.workspace = true
 subtle.workspace = true
 hyper.workspace = true

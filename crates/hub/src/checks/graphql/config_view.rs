@@ -1,17 +1,17 @@
 //! `CheckConfig` and the config types of K1, as the API returns them. No secret is part of
-//! any of them: a secret header's value is null and the sign-in is only its kind (LOG-007,
-//! SEC-003).
+//! any of them: a secret header's value is null, the sign-in is only its kind, and an SNMP
+//! check shows no community or password (LOG-007, SEC-003, SEC-005).
 
 use async_graphql::{Context, Object, Result, SimpleObject, Union};
 
 use super::{
-    enums::{IpFamily, RecordType, RequestMethod, SignInKind},
+    enums::{IpFamily, RecordType, RequestMethod, SignInKind, SnmpVersion},
     error::{internal, schema_dependency, to_graphql},
 };
 use crate::{
     checks::{
         self, Check,
-        config::{CheckConfig, HttpConfig, HttpHeader, StatusRange, is_secret_header},
+        config::{CheckConfig, HttpConfig, HttpHeader, SnmpConfig, StatusRange, is_secret_header},
     },
     ids::{CheckId, DeviceId},
     scalars::IpAddr,
@@ -101,6 +101,17 @@ pub(super) struct TailscalePingView {
     timeout_ms: i32,
 }
 
+#[derive(SimpleObject)]
+#[graphql(name = "SnmpConfig")]
+pub(super) struct SnmpView {
+    port: i32,
+    version: SnmpVersion,
+    oid: String,
+    expected: Option<String>,
+    username: Option<String>,
+    timeout_ms: i32,
+}
+
 /// A PUSH check without a token: the database forbids it, so it is a fault, never an empty path.
 #[derive(Debug, thiserror::Error)]
 #[error("push check {0} has no token")]
@@ -156,6 +167,7 @@ pub(super) enum ConfigView {
     Push(PushView),
     Group(GroupView),
     Docker(DockerView),
+    Snmp(SnmpView),
     Systemd(SystemdView),
     TailscalePing(TailscalePingView),
 }
@@ -207,6 +219,17 @@ fn tailscale_ping(target: Option<&str>, timeout_ms: u32) -> TailscalePingView {
     }
 }
 
+fn snmp(config: &SnmpConfig) -> SnmpView {
+    SnmpView {
+        port: wide(config.port),
+        version: config.version.into(),
+        oid: config.oid.clone(),
+        expected: config.expected.clone(),
+        username: config.username.clone(),
+        timeout_ms: wide(config.timeout_ms),
+    }
+}
+
 impl ConfigView {
     /// The configuration of the check; a PUSH check shows its path.
     pub(super) fn of(check: &Check) -> Self {
@@ -232,6 +255,7 @@ impl ConfigView {
                 timeout_ms: wide(*timeout_ms),
             }),
             CheckConfig::Http(config) => Self::Http(http(config)),
+            CheckConfig::Snmp(config) => Self::Snmp(snmp(config)),
             CheckConfig::Dns {
                 name,
                 record_type,

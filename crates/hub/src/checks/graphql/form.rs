@@ -3,6 +3,7 @@
 //! (LOG-007).
 
 mod http;
+mod snmp;
 
 use std::collections::HashSet;
 
@@ -143,6 +144,7 @@ pub(super) fn config(shape: ConfigShape, token: PushToken) -> Result<ConfigForm,
         ConfigShape::Tcp(shape) => tcp(&shape),
         ConfigShape::Tls(shape) => tls(shape),
         ConfigShape::Http(shape) => http::http(shape.0),
+        ConfigShape::Snmp(shape) => snmp::snmp(shape.0),
         ConfigShape::Dns(shape) => Ok(dns(shape)),
         ConfigShape::Docker(shape) => docker(shape),
         ConfigShape::Systemd(shape) => systemd(shape),

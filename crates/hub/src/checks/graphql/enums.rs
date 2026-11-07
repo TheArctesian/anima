@@ -7,7 +7,7 @@
 
 use async_graphql::Enum;
 
-use crate::checks::config::{CheckType, DnsRecordType, HttpAuth, HttpMethod, IpVersion};
+use crate::checks::config::{self, CheckType, DnsRecordType, HttpAuth, HttpMethod, IpVersion};
 
 macro_rules! mirror {
     ($domain:ty => $graphql:ident { $($variant:ident),+ $(,)? }) => {
@@ -37,9 +37,19 @@ pub(super) enum CheckKind {
     Group,
     Docker,
     Systemd,
+    Snmp,
     TailscalePing,
 }
-mirror!(CheckType => CheckKind { Icmp, Tcp, Tls, Http, Dns, Push, Group, Docker, Systemd, TailscalePing });
+mirror!(CheckType => CheckKind { Icmp, Tcp, Tls, Http, Dns, Push, Group, Docker, Systemd, Snmp, TailscalePing });
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Enum)]
+#[graphql(name = "SnmpVersion")]
+pub(super) enum SnmpVersion {
+    #[default]
+    V2c,
+    V3,
+}
+mirror!(config::SnmpVersion => SnmpVersion { V2c, V3 });
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Enum)]
 #[graphql(name = "IpVersion")]
