@@ -100,7 +100,7 @@ pub(in crate::sessions) async fn test_desktop(
             let target = target(live, &host, port);
             let read = read_server_certificate(target, requested, PROBE_TIMEOUT).await;
             let seen = read.map(|reply| match reply {
-                Reply::Certificate(certificate) => {
+                Reply::Certificate(certificate, _) => {
                     let endpoint = Endpoint::new(&host, port);
                     Seen::Certificate(live.observe_certificate(endpoint, certificate, at))
                 }

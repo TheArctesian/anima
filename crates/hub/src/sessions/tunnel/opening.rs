@@ -6,12 +6,14 @@
 //!
 //! The certificate check (SEC-007, K4 Section 3): for RDP with TLS or NLA and certificates
 //! not ignored, the hub reads the server certificate itself at the checked address, as the
-//! connection test does, before guacd is reached; guacd reports a mismatch only as a generic
-//! error. A different certificate opens nothing at guacd and ends the session
-//! `SERVER_CERTIFICATE_MISMATCH`. guacd still pins `cert-fingerprints`, so a certificate that
-//! changes between the hub's read and guacd's connect fails closed as `GATEWAY_ERROR`. The
-//! read is not kept as an observation: only a connection test lets the operator accept a
-//! certificate.
+//! connection test does, before guacd is reached and before the password is loaded; guacd
+//! reports a mismatch only as a generic error. A different certificate opens nothing at guacd
+//! and ends the session `SERVER_CERTIFICATE_MISMATCH`. When the setting is `ANY`, guacd gets
+//! the TLS security the server chose instead (`pinned_security`), so its connection cannot
+//! fall back to standard RDP security, where no certificate is checked. guacd pins
+//! `cert-fingerprints` on that TLS connection, so a certificate that changes between the hub's
+//! read and guacd's connect fails closed as `GATEWAY_ERROR`. The read is not kept as an
+//! observation: only a connection test lets the operator accept a certificate.
 
 use std::net::{IpAddr, SocketAddr};
 
@@ -19,13 +21,13 @@ use guac_protocol::{ConnectParams, DecodeError};
 use tokio::time::timeout;
 
 use super::{
-    arguments::{BadConnectValue, Sources, audio, connect_values, time_zone},
+    arguments::{BadConnectValue, Sources, audio, connect_values, pinned_security, time_zone},
     guacd::{self, Connected},
     route::Route,
 };
 use crate::{
     credentials, devices,
-    devices::Device,
+    devices::{Device, RdpSecurity},
     sessions::{
         self, Desktop, PendingTicket, Protocol, ServerCertificate,
         ssh::{self, SshError, Target},
@@ -164,7 +166,7 @@ impl NotOpened {
 /// [`NotOpened`] for each step that fails; the caller ends the session `GATEWAY_ERROR`.
 pub(super) async fn open(route: &Route, ticket: &PendingTicket) -> Result<Opening, NotOpened> {
     let desktop = Desktop::of(ticket.protocol).ok_or(NotOpened::NotDesktop)?;
-    let device = devices::get(&route.db, ticket.device)
+    let mut device = devices::get(&route.db, ticket.device)
         .await
         .map_err(|error| match error {
             devices::Error::NotFound(_) => NotOpened::DeviceGone,
@@ -182,10 +184,11 @@ pub(super) async fn open(route: &Route, ticket: &PendingTicket) -> Result<Openin
     let pinned = certificate
         .as_ref()
         .filter(|_| certificate_required(&device.rdp));
-    if let Some(accepted) = pinned
-        && !presents(route, SocketAddr::new(address, port), accepted).await?
-    {
-        return Ok(Opening::CertificateChanged);
+    if let Some(accepted) = pinned {
+        let Some(chosen) = presents(route, SocketAddr::new(address, port), accepted).await? else {
+            return Ok(Opening::CertificateChanged);
+        };
+        device.rdp.security = pinned_security(device.rdp.security, chosen);
     }
     let password =
         credentials::load_password(&route.db, &route.vault, device.id, desktop.password())
@@ -232,14 +235,15 @@ async fn certificate(
     Ok(accepted)
 }
 
-/// Whether the RDP server at the checked `address` presents `accepted`: the hub asks for TLS
-/// or NLA, as the connection test does, and reads the certificate within the connect wait.
-/// The address is an IP, so it is not resolved again; the target rule still checks it.
+/// The TLS security the RDP server at the checked `address` chose when it presents
+/// `accepted`; `None` when it presents another certificate. The hub asks for TLS or NLA, as
+/// the connection test does, and reads the certificate within the connect wait. The address
+/// is an IP, so it is not resolved again; the target rule still checks it.
 async fn presents(
     route: &Route,
     address: SocketAddr,
     accepted: &ServerCertificate,
-) -> Result<bool, NotOpened> {
+) -> Result<Option<RdpSecurity>, NotOpened> {
     let host = address.ip().to_string();
     let target = Target {
         host: &host,
@@ -252,10 +256,11 @@ async fn presents(
         ReadError::RefusedTarget => NotOpened::RefusedTarget,
         other => NotOpened::CertificateUnread(other),
     })? {
-        Reply::Certificate(presented) => Ok(accepted
+        Reply::Certificate(presented, chosen) => Ok(accepted
             .fingerprint_sha256
             .parse::<CertificateFingerprint>()
-            .is_ok_and(|accepted| accepted == presented.fingerprint)),
+            .is_ok_and(|accepted| accepted == presented.fingerprint)
+            .then_some(chosen)),
         Reply::Standard => Err(NotOpened::StandardOnly),
         Reply::Refused => Err(NotOpened::SecurityRefused),
     }

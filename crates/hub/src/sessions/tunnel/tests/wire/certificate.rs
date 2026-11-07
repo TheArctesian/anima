@@ -1,10 +1,10 @@
 //! The RDP server certificate check before the guacd handshake (SEC-007, K4 Sections 3 and
 //! 5): a changed certificate is `error` "Certificate changed" 0x0303, close 4003 and
 //! `SERVER_CERTIFICATE_MISMATCH` with guacd never reached; the accepted one opens; standard
-//! RDP security, ignored certificates and VNC read nothing; a read that fails is 503
-//! `GATEWAY_ERROR`.
+//! RDP security, ignored certificates and VNC read nothing; `ANY` reaches guacd as the TLS
+//! security the server chose; a read that fails is 503 `GATEWAY_ERROR`.
 
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 
 use sqlx::PgPool;
 use tokio::{net::TcpListener, time::timeout};
@@ -13,7 +13,7 @@ use tokio_tungstenite::tungstenite::http::StatusCode;
 use super::{
     bench::{LOOPBACK, Presents, Setup, bench, docker_host},
     decoded, ended_once,
-    fake_guacd::{RDP_ARGS, Script, VNC_ARGS, fake_guacd},
+    fake_guacd::{RDP_ARGS, Script, VNC_ARGS, connect_values, fake_guacd},
     opened,
     records::ended,
     socket::{open, open_with},
@@ -54,14 +54,41 @@ async fn sec_007_a_changed_certificate_closes_4003_and_guacd_is_never_reached(po
     assert!(accepted.is_err(), "guacd sees no connection");
 }
 
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
+)]
+async fn sec_002_the_password_is_not_loaded_before_the_certificate_check(pool: PgPool) {
+    // A stored password that does not open fails the session as GATEWAY_ERROR once loaded,
+    // so a mismatch here shows the check came first.
+    let guacd = TcpListener::bind((LOOPBACK, 0)).await.unwrap();
+    let address = guacd.local_addr().unwrap().to_string();
+    let bench = bench(&pool, &address, Setup::presents(Presents::Changed)).await;
+    sqlx::query(
+        "update credentials.secrets \
+         set ciphertext = set_byte(ciphertext, 0, get_byte(ciphertext, 0) # 1) \
+         where device_id = $1",
+    )
+    .bind(docker_host())
+    .execute(&pool)
+    .await
+    .unwrap();
+    let mut client = open(&bench.url).await;
+    assert_eq!(decoded(&client.text().await).opcode, "error");
+    assert_eq!(client.close_code().await, Some(4003));
+    let ended = ended(&pool, bench.session).await;
+    ended_once(&ended, "server_certificate_mismatch", "error", LOOPBACK);
+}
+
 /// Opens the session of `setup` after `changes` to `docker-host` with a guacd serving
-/// `args`, closes it, and says whether the device's RDP server saw a connection.
+/// `args`, closes it, and gives whether the device's RDP server saw a connection and the
+/// `connect` values guacd got.
 async fn read_certificate(
     pool: &PgPool,
     setup: Setup,
     args: &'static [u8],
     changes: &[&str],
-) -> bool {
+) -> (bool, HashMap<String, String>) {
     let mut guacd = fake_guacd(Script::Serve {
         args,
         with_ready: "",
@@ -77,9 +104,10 @@ async fn read_certificate(
     }
     let mut client = open(&bench.url).await;
     opened(&mut client).await;
-    assert!((&mut guacd.handshake).await.is_ok(), "guacd is reached");
+    let handshake = (&mut guacd.handshake).await.expect("guacd is reached");
     assert_eq!(client.close().await, Some(1000));
-    bench.rdp.was_visited().await
+    let values = connect_values(args, &handshake[6]);
+    (bench.rdp.was_visited().await, values)
 }
 
 #[sqlx::test(
@@ -87,7 +115,38 @@ async fn read_certificate(
     fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
 async fn sec_007_the_accepted_certificate_opens_the_session(pool: PgPool) {
-    assert!(read_certificate(&pool, Setup::default(), RDP_ARGS, &[]).await);
+    let (read, values) = read_certificate(&pool, Setup::default(), RDP_ARGS, &[]).await;
+    assert!(read);
+    assert_eq!(values["security"], "nla", "the setting is kept");
+}
+
+const ANY: &str = "update devices.rdp_settings set security = 'any' where device_id = $1";
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
+)]
+async fn sec_007_any_with_an_nla_server_reaches_guacd_as_nla(pool: PgPool) {
+    let (read, values) = read_certificate(&pool, Setup::default(), RDP_ARGS, &[ANY]).await;
+    assert!(read);
+    assert_eq!(
+        values["security"], "nla",
+        "no fallback to standard security"
+    );
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
+)]
+async fn sec_007_any_with_a_tls_only_server_reaches_guacd_as_tls(pool: PgPool) {
+    let setup = Setup::presents(Presents::AcceptedOverTls);
+    let (read, values) = read_certificate(&pool, setup, RDP_ARGS, &[ANY]).await;
+    assert!(read);
+    assert_eq!(
+        values["security"], "tls",
+        "no fallback to standard security"
+    );
 }
 
 #[sqlx::test(
@@ -96,7 +155,11 @@ async fn sec_007_the_accepted_certificate_opens_the_session(pool: PgPool) {
 )]
 async fn sec_007_standard_rdp_security_reads_no_certificate(pool: PgPool) {
     let standard = "update devices.rdp_settings set security = 'rdp' where device_id = $1";
-    assert!(!read_certificate(&pool, Setup::default(), RDP_ARGS, &[standard]).await);
+    assert!(
+        !read_certificate(&pool, Setup::default(), RDP_ARGS, &[standard])
+            .await
+            .0
+    );
 }
 
 #[sqlx::test(
@@ -105,7 +168,11 @@ async fn sec_007_standard_rdp_security_reads_no_certificate(pool: PgPool) {
 )]
 async fn sec_007_ignored_certificates_are_not_read(pool: PgPool) {
     let ignore = "update devices.rdp_settings set ignore_certificate = true where device_id = $1";
-    assert!(!read_certificate(&pool, Setup::default(), RDP_ARGS, &[ignore]).await);
+    assert!(
+        !read_certificate(&pool, Setup::default(), RDP_ARGS, &[ignore])
+            .await
+            .0
+    );
 }
 
 #[sqlx::test(
@@ -114,7 +181,7 @@ async fn sec_007_ignored_certificates_are_not_read(pool: PgPool) {
 )]
 async fn sec_007_a_vnc_session_reads_no_certificate(pool: PgPool) {
     let setup = Setup::protocol(Protocol::Vnc);
-    assert!(!read_certificate(&pool, setup, VNC_ARGS, &[]).await);
+    assert!(!read_certificate(&pool, setup, VNC_ARGS, &[]).await.0);
 }
 
 /// After `changes`, opening the tunnel of `setup` is 503 `GATEWAY_ERROR` with `message`,

@@ -65,8 +65,10 @@ pub(super) fn ending_within_end_wait() -> Setup {
 /// What the device's RDP server presents when the opening reads its certificate.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Presents {
-    /// The accepted certificate.
+    /// The accepted certificate, over NLA.
     Accepted,
+    /// The accepted certificate, over TLS without NLA.
+    AcceptedOverTls,
     /// Another certificate than the accepted one.
     Changed,
     /// No certificate: it offers standard RDP security only.
@@ -208,13 +210,16 @@ pub(super) async fn move_host(pool: &PgPool, host: &str) {
 /// loopback, and serves the tunnel route to `guacd`.
 pub(super) async fn bench(pool: &PgPool, guacd: &str, setup: Setup) -> Bench {
     let vault = vault();
-    let answer = if setup.presents == Presents::StandardOnly {
-        Answer::Standard
-    } else {
-        Answer::Nla
+    let answer = match setup.presents {
+        Presents::Accepted | Presents::Changed => Answer::Nla,
+        Presents::AcceptedOverTls => Answer::Tls,
+        Presents::StandardOnly => Answer::Standard,
     };
     let rdp = fake_rdp(answer).await;
-    let accepted = if setup.presents == Presents::Accepted {
+    let accepted = if matches!(
+        setup.presents,
+        Presents::Accepted | Presents::AcceptedOverTls
+    ) {
         rdp.fingerprint.clone()
     } else {
         FINGERPRINT.to_owned()
