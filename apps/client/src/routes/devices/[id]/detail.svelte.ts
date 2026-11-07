@@ -142,7 +142,7 @@ export class Detail {
 
   /** Loads the checks the first time a tab needs them, and again after a failure. */
   async loadChecks(): Promise<void> {
-    if ((this.#checksAsked && this.checksError === null)) return;
+    if (this.#checksAsked && this.checksError === null) return;
     this.#checksAsked = true;
     const result = await this.#checks.forDevice(this.id);
     if (this.#stopped) return;

@@ -176,7 +176,6 @@ describe('Detail tabs (D-9)', () => {
     await settle();
     expect(requested(fake, 'DeviceSessions')).toEqual([{ operation: 'DeviceSessions', variables: { deviceId: ID, first: 50, after: null } }]);
   });
-
 });
 
 describe('Detail metrics (D-5)', () => {
