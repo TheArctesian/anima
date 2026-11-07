@@ -18,6 +18,7 @@
   import type { HubError, HubResult } from '$lib/hub/error';
   import { sessionsApi } from '$lib/sessions/api';
   import { useSessions } from '$lib/sessions/sessions.svelte';
+  import type { SessionProtocol } from '$lib/sessions/tabs';
 
   const sessions = useSessions();
   const hub = useHub();
@@ -114,12 +115,12 @@
     void goto(`${resolve('/devices')}/${encodeURIComponent(added.id)}`, { state });
   }
 
-  /** Opens an SSH tab that grows from the button (WP-14 H-1, MOT-005). */
-  function connect(device: CardDevice, button: HTMLElement): void {
+  /** Opens a tab for the protocol of the button that grows from it (WP-14 H-1, RA-030, MOT-005). */
+  function connect(device: CardDevice, protocol: SessionProtocol, button: HTMLElement): void {
     sessions.openSession({
       deviceId: device.id,
       deviceName: device.name,
-      protocol: 'SSH',
+      protocol,
       origin: button.getBoundingClientRect(),
     });
   }

@@ -255,7 +255,7 @@ it('DEV-001: the cards are a list, and the table has column headers', async () =
     'Host',
     'Uptime, 24 h',
     'Heartbeats',
-    'SSH',
+    'Connect',
   ]);
   expect(fake.requests.filter((request) => request.operation === 'Devices')).toHaveLength(1);
 });

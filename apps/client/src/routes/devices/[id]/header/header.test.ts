@@ -2,6 +2,7 @@
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { endTransitionsAtOnce } from '$lib/devices/transitions.fixture';
+import { warningLines } from '$lib/devices/actions/actions';
 import { device } from '../page.fixture.svelte';
 import Header from './Header.svelte';
 import { headerLine, type HeaderDevice } from './header';
@@ -18,10 +19,14 @@ afterEach(async () => {
 });
 
 function show(shown: HeaderDevice) {
-  const calls = { onConnect: vi.fn<(button: HTMLElement) => void>(), onSettings: vi.fn<(section: string | null) => void>() };
+  const calls = { onConnect: vi.fn<(protocol: string, button: HTMLElement) => void>(), onSettings: vi.fn<(section: string | null) => void>() };
   app = mount(Header, { target: document.body, props: { device: shown, ...calls } });
   flushSync();
   return calls;
+}
+
+function web(id: string, label: string) {
+  return { id, deviceId: 'd', label, url: `https://${id}.lan`, openIn: 'ANIMA_TAB' as const, pinnedFingerprintSha256: null, pinnedAt: null };
 }
 
 function labelled(name: string): HTMLButtonElement {
@@ -57,6 +62,25 @@ describe('headerLine (DEV-020, D-8)', () => {
     [{ enabled: false, hostKey: null }, 'set-up'],
   ] as const)('D-8: SSH %j does %s', (ssh, action) => {
     expect(headerLine(device({}, ssh)).ssh).toBe(action);
+  });
+});
+
+describe('protocolButton (DEV-022)', () => {
+  it.each([
+    ['SSH', 'connect', 'SSH to nas', null],
+    ['RDP', 'connect', 'RDP to nas', null],
+    ['SSH', 'test', 'Test the SSH connection', 'test'],
+    ['SSH', 'set-up', 'Set up SSH', 'ssh'],
+    ['RDP', 'set-up', 'Set up RDP', 'rdp'],
+  ] as const)('DEV-022: %s in mode %s is named %s and opens %s', (protocol, mode, label, section) => {
+    expect(protocolButton(protocol, mode, 'nas')).toEqual({ label, section });
+  });
+
+  it('D-4: the line gives RDP connect when on, set-up when off, and VNC only when on', () => {
+    expect(headerLine(device()).rdp).toBe('set-up');
+    expect(headerLine(device()).vnc).toBe(false);
+    const on = headerLine(device({ rdp: { ...device().rdp, enabled: true }, vnc: { ...device().vnc, enabled: true } }));
+    expect([on.rdp, on.vnc]).toEqual(['connect', true]);
   });
 });
 
@@ -140,8 +164,53 @@ describe('Header buttons (D-8, DEV-022)', () => {
     const ssh = labelled('SSH to nas');
     expect(ssh.classList.contains('solid')).toBe(true);
     ssh.click();
-    expect(onConnect).toHaveBeenCalledWith(ssh);
+    expect(onConnect).toHaveBeenCalledWith('SSH', ssh);
     expect(onSettings).not.toHaveBeenCalled();
+  });
+
+  it('RA-030: with RDP on, RDP is solid and connects with its button, never opening Settings', () => {
+    const { onConnect, onSettings } = show(device({ rdp: { ...device().rdp, enabled: true } }));
+    const rdp = labelled('RDP to nas');
+    expect(rdp.classList.contains('dashed')).toBe(false);
+    rdp.click();
+    expect(onConnect).toHaveBeenCalledWith('RDP', rdp);
+    expect(onSettings).not.toHaveBeenCalled();
+  });
+
+  it('D-4: VNC shows only when on, and connects as VNC', () => {
+    show(device());
+    expect(document.querySelector('[aria-label="VNC to nas"]')).toBeNull();
+    document.body.replaceChildren();
+    const { onConnect } = show(device({ vnc: { ...device().vnc, enabled: true } }));
+    const vnc = labelled('VNC to nas');
+    vnc.click();
+    expect(onConnect).toHaveBeenCalledWith('VNC', vnc);
+  });
+
+});
+
+describe('Header Web, Edit and badge (D-4, RA-020)', () => {
+  it('D-4: Edit is last, and Web sits before it only when a route gives onOpenWeb', () => {
+    const shown = device({ webInterfaces: [web('w1', 'Admin')] });
+    show(shown);
+    expect([...document.querySelectorAll('.actions button')].map((node) => node.textContent.replace(/\p{Co}/gu, '').trim())).toEqual(['SSH', 'RDP', 'Edit']);
+    document.body.replaceChildren();
+    const open = vi.fn();
+    app = mount(Header, { target: document.body, props: { device: shown, onConnect: () => undefined, onSettings: () => undefined, onOpenWeb: open } });
+    flushSync();
+    expect([...document.querySelectorAll('.actions button')].map((node) => node.textContent.replace(/\p{Co}/gu, '').trim())).toEqual(['SSH', 'RDP', 'Web', 'Edit']);
+    labelled('Open Admin of nas').click();
+    expect(open).toHaveBeenCalledWith(shown.webInterfaces?.[0], labelled('Open Admin of nas'));
+  });
+
+  it('RA-020: the header shows a Warning badge with each warning in its tooltip, and none without warnings', () => {
+    show(device());
+    expect(document.querySelector('.badge')).toBeNull();
+    document.body.replaceChildren();
+    show(device({ accessWarnings: ['IGNORED_CERTIFICATE', 'UNENCRYPTED_VNC'] }));
+    const badge = document.querySelector<HTMLElement>('.badge');
+    expect(badge?.textContent.replace(/\p{Co}/gu, '').trim()).toBe('Warning');
+    expect(badge?.title.split('\n')).toEqual(warningLines(['IGNORED_CERTIFICATE', 'UNENCRYPTED_VNC']));
   });
 
   it('D-13: while the device loads the line shows only the back link', () => {
