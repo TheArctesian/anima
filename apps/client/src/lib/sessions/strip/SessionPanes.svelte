@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { SessionsApi } from '../api';
+  import { overlayCovers } from '$lib/overlay/overlay.svelte';
   import { useSessions } from '../sessions.svelte';
   import { openScreen } from '../screen/screen';
   import RemoteView from '../view/remote/RemoteView.svelte';
@@ -41,7 +42,7 @@
           device={{ id: tab.deviceId, name: tab.deviceName, status: tab.status }}
           tabId={tab.id}
           {visible}
-          overlayOpen={false}
+          overlayOpen={overlayCovers()}
         />
       {:else if tab.protocol === 'SSH'}
         <SessionView

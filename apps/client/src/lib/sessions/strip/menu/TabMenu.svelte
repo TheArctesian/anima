@@ -2,6 +2,7 @@
   import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
   import { popover } from '$lib/motion/roles/transitions';
+  import { coverWhile } from '$lib/overlay/overlay.svelte';
   import { keepFocus, portal, under } from './anchor';
 
   interface Props {
@@ -19,6 +20,7 @@
   let { label, ready, open = $bindable(false), onpopout, onreturn }: Props = $props();
   let control: HTMLButtonElement | undefined = $state();
   let menu: HTMLElement | undefined = $state();
+  coverWhile(() => open);
 
   function dismiss(event: Event): void {
     if (open && event.target instanceof Node && !control?.contains(event.target) && !menu?.contains(event.target)) {

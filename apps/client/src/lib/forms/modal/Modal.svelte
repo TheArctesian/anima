@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import { coverWhile } from '$lib/overlay/overlay.svelte';
   import { fade, modal } from '$lib/motion/roles/transitions';
   import { offerFooter } from './footer';
   import { initialFocusIn, trapTab } from './focus';
@@ -20,6 +21,7 @@
 
   const { open, title, onClose, size = 'content', children }: Props = $props();
   const titleId = $props.id();
+  coverWhile(() => open);
 
   /**
    * A form's actions, shown below the body by the form inside (see `footer.ts`). Each showing is its own
