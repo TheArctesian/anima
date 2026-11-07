@@ -51,3 +51,14 @@ fn ra_031_mac_refuses_the_all_zero_and_group_addresses() {
     assert_eq!(mac("01:00:5e:00:00:fb"), Err(MacAddressError::Group));
     assert!(mac("02:00:5e:00:00:fb").is_ok());
 }
+
+#[test]
+fn log_007_sec_009_mac_debug_holds_no_octet() {
+    let address = mac("aa:bb:0c:dd:ee:f2").unwrap();
+    for shown in [format!("{address:?}"), format!("{address:#?}")] {
+        assert_eq!(shown, "MacAddress(..)");
+        for octet in ["170", "187", "12", "221", "238", "242", "aa:bb", "0c:dd"] {
+            assert!(!shown.contains(octet), "{shown} holds {octet}");
+        }
+    }
+}

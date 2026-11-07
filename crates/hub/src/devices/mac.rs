@@ -2,8 +2,9 @@
 
 use std::{fmt, str::FromStr};
 
-/// A unicast hardware address. `Display` renders lower-case `aa:bb:cc:dd:ee:ff`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// A unicast hardware address. `Display` renders lower-case `aa:bb:cc:dd:ee:ff` for the wake
+/// command; `Debug` hides it, so a `?mac` in a log line shows no address (LOG-007).
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct MacAddress([u8; 6]);
 
 /// Why text is not a Wake-on-LAN target.
@@ -49,6 +50,12 @@ impl FromStr for MacAddress {
             return Err(MacAddressError::Group);
         }
         Ok(Self(octets))
+    }
+}
+
+impl fmt::Debug for MacAddress {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("MacAddress(..)")
     }
 }
 

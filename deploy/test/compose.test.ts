@@ -19,8 +19,7 @@ interface Container {
   read_only?: boolean;
   cap_drop?: string[];
   security_opt?: string[];
-  command?: string[] | string;
-  entrypoint?: string[] | string;
+  command?: string[];
   cap_add?: string[];
   restart?: string;
   tmpfs?: string[];
@@ -285,10 +284,10 @@ describe("hardening and images (SEC-001)", () => {
 });
 
 describe("process logs (LOG-007, SEC-009)", () => {
-  test("LOG-007 SEC-009 guacd never logs at debug or trace, which write session detail", () => {
-    const { command, entrypoint, environment } = compose.services["guacd"] as Container;
-    const image = readFileSync(join(ROOT, "deploy", "gateway", "Dockerfile"), "utf8").match(/^(CMD|ENTRYPOINT|ENV)\b.*$/gm);
-    expect([command, entrypoint, Object.entries(environment ?? {}), image].flat(2).join(" ")).not.toMatch(/(-L|GUACD_LOG_LEVEL)[\s=,"]*(debug|trace)\b/i);
+  test("LOG-007 SEC-009 guacd logs only at info, warning or error: debug and trace write session detail", () => {
+    const image = readFileSync(join(ROOT, "deploy", "gateway", "Dockerfile"), "utf8").match(/^(CMD|ENTRYPOINT|ENV|ARG)\b.*$/gm) ?? [];
+    const started = [JSON.stringify(compose.services["guacd"]), ...image].join("\n");
+    for (const [, level] of started.matchAll(/(?:-L|GUACD_LOG_LEVEL)[\s=,:"]*([^\s",}]*)/g)) expect(["info", "warning", "error"]).toContain(level);
   });
 });
 
