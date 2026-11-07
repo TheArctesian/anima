@@ -20,7 +20,7 @@ pub(super) use certificate::{CertificateFingerprint, PresentedCertificate};
 pub(super) use connection_test::{
     ConnectionTest, TestRequest, TestSubject, Unsaved, test_connection,
 };
-pub(super) use desktop_test::{Desktop, DesktopSettings, DesktopSubject};
+pub(super) use desktop_test::{DesktopSettings, DesktopSubject};
 pub(super) use observations::{Endpoint, Observation, Observations};
 #[cfg(test)]
 pub(super) use observations::{LIFETIME, MAX_OBSERVATIONS};

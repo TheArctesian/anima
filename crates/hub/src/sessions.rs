@@ -41,6 +41,8 @@ use crate::{
     ids::{DeviceId, SessionId},
 };
 
+use model::Desktop;
+
 pub use end::Actor;
 pub use files::{FilesMutation, files_router};
 pub use link::{CommandOutput, Error as LinkError, FixedCommand, SshLink, link};

@@ -18,7 +18,7 @@ use guac_protocol::{ArgValues, is_zone_name};
 
 use crate::credentials::{PasswordKind, Secret};
 use crate::devices::{Device, RdpSecurity, ResizeMethod, TransferPolicy};
-use crate::sessions::{Protocol, ServerCertificate};
+use crate::sessions::{Desktop, ServerCertificate};
 
 /// The time zone when the client's is not zone-shaped (sites have no zone, R-032).
 const FALLBACK_ZONE: &str = "UTC";
@@ -29,24 +29,7 @@ const SOUND: &[&str] = &["audio/L8", "audio/L16"];
 /// The hash `FreeRDP` names in front of an accepted fingerprint.
 const FINGERPRINT_HASH: &str = "sha256";
 
-/// The protocols the Guacamole tunnel serves (K4 Section 2).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum Desktop {
-    Rdp,
-    Vnc,
-}
-
 impl Desktop {
-    /// The desktop protocol of a ticket's `protocol`; `None` for SSH, which uses the terminal
-    /// tunnel (K4 Section 8).
-    pub(super) const fn of(protocol: Protocol) -> Option<Self> {
-        match protocol {
-            Protocol::Rdp => Some(Self::Rdp),
-            Protocol::Vnc => Some(Self::Vnc),
-            Protocol::Ssh => None,
-        }
-    }
-
     /// The name the handshake's `select` sends (K4 Section 3 step 1).
     pub(super) const fn select(self) -> &'static str {
         match self {

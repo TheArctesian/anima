@@ -52,20 +52,14 @@ pub(in crate::sessions) async fn accept_server_certificate(
     let old = store::server_certificates(&mut *tx, &[device.id])
         .await?
         .remove(&device.id);
-    let fingerprint = seen.presented.fingerprint.as_str();
+    let certificate = ServerCertificate::from(seen);
     if let Some(old) = old
         .as_ref()
-        .filter(|old| old.fingerprint_sha256 == fingerprint)
+        .filter(|old| old.fingerprint_sha256 == certificate.fingerprint_sha256)
     {
         tx.commit().await?;
         return Ok(old.clone());
     }
-    let certificate = ServerCertificate {
-        fingerprint_sha256: fingerprint.to_owned(),
-        subject: seen.presented.subject,
-        not_after: seen.presented.not_after,
-        first_seen_at: seen.first_seen_at,
-    };
     let accepted = AcceptedCertificate {
         device: device.id,
         certificate: &certificate,

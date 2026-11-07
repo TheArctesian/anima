@@ -12,13 +12,11 @@ use std::{
 use chrono::DateTime;
 use guac_protocol::{ConnectParams, Decoder, Display, Handshake, HandshakeStep, Instruction};
 
-use super::super::arguments::{
-    BadConnectValue, Desktop, Sources, audio, connect_values, time_zone,
-};
+use super::super::arguments::{BadConnectValue, Sources, audio, connect_values, time_zone};
 use super::device;
 use crate::credentials::Secret;
 use crate::devices::Device;
-use crate::sessions::{ServerCertificate, tests::Inputs};
+use crate::sessions::{Desktop, ServerCertificate, tests::Inputs};
 
 /// guacd 1.6.0's replies to `select,rdp` and `select,vnc`.
 const RDP_ARGS: &[u8] = include_bytes!("fixtures/guacd-1.6.0-rdp-args.guac");

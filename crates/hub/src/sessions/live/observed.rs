@@ -1,5 +1,6 @@
-//! The host keys and RDP server certificates connection tests saw, for an accept to compare
-//! with (SEC-006, SEC-007). Each has its own lock, so a test never waits on a ticket.
+//! What connection tests saw, as `Live` holds it: the SSH host keys and the RDP server
+//! certificates each endpoint presented, for 15 minutes (SEC-006, SEC-007). Each kind has its
+//! own lock, taken for one short synchronous call.
 
 use std::sync::{MutexGuard, PoisonError};
 
@@ -24,7 +25,7 @@ impl Live {
             .unwrap_or_else(PoisonError::into_inner)
     }
 
-    /// Records that `endpoint` presented `key` at `now`.
+    /// Records that `endpoint` presented `key` at `now` (D-5).
     pub(in crate::sessions) fn observe(
         &self,
         endpoint: Endpoint,
