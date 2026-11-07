@@ -89,13 +89,13 @@ fn k4_5_a_guacd_write_that_fails_or_stalls_is_gateway_error() {
     assert_eq!(failed.cause, Cause::GatewayError);
     assert_eq!(
         failed.message,
-        "The connection to the gateway failed, so the hub closed the SSH session."
+        "The connection to the gateway failed, so the hub closed the session."
     );
     let stalled = gateway_written(None).unwrap_err();
     assert_eq!(stalled.cause, Cause::GatewayError);
     assert_eq!(
         stalled.message,
-        "The gateway stopped reading what the hub sent, so the hub closed the SSH session."
+        "The gateway stopped reading what the hub sent, so the hub closed the session."
     );
 }
 

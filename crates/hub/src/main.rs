@@ -19,7 +19,7 @@ use anima_hub::{
     events::{self, Bus, process_log},
     logged, router,
     schema::{Dependencies, build_schema},
-    serve_until, sessions,
+    serve_until, session_tunnels, sessions,
     targets::AddressPolicy,
 };
 use sqlx::PgPool;
@@ -144,31 +144,25 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         vault: vault.clone(),
         policy: AddressPolicy::new(config.probe_deny.clone()),
     };
-    // SSH uses the terminal tunnel; `/tunnel` waits for RDP and VNC and is not mounted, so no
-    // SSH ticket reaches guacd (R-062).
-    let terminal = sessions::terminal_router(
-        pool.clone(),
-        vault.clone(),
-        bus.clone(),
-        clock.clone(),
-        live.clone(),
-    );
-    let schema = build_schema(Dependencies {
+    let dependencies = Dependencies {
         config,
         clock: clock.clone(),
         pool: pool.clone(),
         bus: bus.clone(),
         vault,
         live: live.clone(),
-    });
+    };
+    let tunnels = session_tunnels(&dependencies);
+    let schema = build_schema(dependencies);
     let upkeep = spawn_upkeep(&pool, &clock);
     let scheduler = checks::spawn_scheduler(pool.clone(), bus.clone(), clock.clone(), probing);
     let push = checks::push_router(pool.clone(), bus.clone(), clock.clone());
-    // `/terminal` and `/push` are behind the same permitted-networks check as every route, and
-    // logged by their templates only, never their tokens (K3, NET-002, LOG-007, R-028, R-051).
+    // `/terminal`, `/tunnel` and `/push` are behind the same permitted-networks check as every
+    // route, and logged by their templates only, never their tokens (K3, NET-002, LOG-007,
+    // R-028, R-051).
     let edge = access::Edge::new(pool.clone(), bus, clock.clone());
     let app = router(schema, pool.clone(), clock.clone())
-        .merge(logged(terminal))
+        .merge(tunnels)
         .merge(logged(push))
         .layer(access::permitted_networks_layer(edge.clone()));
     let shutdown = Shutdown {

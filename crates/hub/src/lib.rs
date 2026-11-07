@@ -92,6 +92,37 @@ pub fn logged(routes: Router) -> Router {
     routes.layer(middleware::from_fn(events::process_log::http_request))
 }
 
+/// The session tunnels over `dependencies`, each logged by its route template only:
+/// `/terminal` for SSH and `/tunnel` to guacd for RDP and VNC, which refuses SSH tickets (K3,
+/// LOG-007, R-062). `main.rs` serves them behind `access::permitted_networks_layer` (NET-002).
+pub fn session_tunnels(dependencies: &schema::Dependencies) -> Router {
+    let schema::Dependencies {
+        config,
+        clock,
+        pool,
+        bus,
+        vault,
+        live,
+    } = dependencies;
+    let terminal = sessions::terminal_router(
+        pool.clone(),
+        vault.clone(),
+        bus.clone(),
+        clock.clone(),
+        live.clone(),
+    );
+    let tunnel = sessions::tunnel_router(
+        pool.clone(),
+        vault.clone(),
+        bus.clone(),
+        clock.clone(),
+        config.guacd.clone(),
+        config.guacd_drive_root.to_string_lossy().into_owned(),
+        live.clone(),
+    );
+    logged(terminal).merge(logged(tunnel))
+}
+
 /// Liveness probe (R-026(4)): no sign-in, no database, body `ok`.
 async fn health() -> &'static str {
     "ok"

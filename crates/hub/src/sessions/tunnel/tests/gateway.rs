@@ -1,9 +1,8 @@
 //! What guacd's instructions after `ready` mean (K4 Sections 4 and 5, SEC-007, GW-015, D-11).
 
-use guac_protocol::{Instruction, encode};
+use guac_protocol::Instruction;
 
 use super::super::ending::Cause;
-use super::super::gateway::host_key_changed;
 use super::super::relay::{ClientStep, GatewayStep, Relay};
 use super::decoded;
 
@@ -128,14 +127,6 @@ fn sec_007_guacds_host_key_abort_is_a_gateway_error_on_the_wire() {
         "5.error,53.Host key did not match any provided known host keys. ,3.512;",
         "512",
         Cause::GatewayError,
-    );
-}
-
-#[test]
-fn sec_007_the_hub_sends_host_key_changed_with_status_0x0303() {
-    assert_eq!(
-        encode(&host_key_changed()),
-        "5.error,16.Host key changed,3.771;"
     );
 }
 

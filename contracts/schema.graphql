@@ -931,7 +931,7 @@ type SessionTicket {
   tunnelPath: String!
   expiresAt: DateTime!
   "A Wake-on-LAN packet was sent; the opening waits longer (K4 §1)."
-  wakeSent: Boolean! @pending
+  wakeSent: Boolean!
 }
 
 type WakeResult @pending {

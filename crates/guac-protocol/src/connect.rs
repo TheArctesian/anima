@@ -98,10 +98,14 @@ impl FromIterator<(String, String)> for ArgValues {
 /// Everything the handshake sends after `select`.
 ///
 /// `display` and `timezone` come from the client; `name` (the operator's
-/// username) and `values` come from the hub. No `Debug`: `values` holds secrets.
+/// username), `audio` and `values` come from the hub. No `Debug`: `values`
+/// holds secrets.
 pub struct ConnectParams {
     pub display: Display,
     pub timezone: String,
     pub name: String,
+    /// The audio mimetypes the client plays, sent as `audio`: hub constants,
+    /// empty when the session has no sound.
+    pub audio: &'static [&'static str],
     pub values: ArgValues,
 }
