@@ -6,7 +6,7 @@
   import { press } from '$lib/motion/roles/press';
   import { popover } from '$lib/motion/roles/transitions';
   import { SetupFlow } from './flow';
-  import { isBusy, liveText, SHARING_PROMPT, type ScreenSharingCalls, type SetupDevice, type SetupState } from './setup';
+  import { isBusy, liveText, type ScreenSharingCalls, type SetupDevice, type SetupState } from './setup';
 
   interface Props {
     device: SetupDevice;
@@ -34,7 +34,7 @@
       stage = next;
     },
     (updated) => {
-      if (button !== undefined) onReady(updated, button);
+      if (button) onReady(updated, button);
     },
   );
   const busy = $derived(isBusy(stage));
