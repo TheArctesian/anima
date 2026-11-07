@@ -15,7 +15,12 @@ vi.mock('motion', async (importOriginal) => ({
 const current = vi.hoisted(() => ({ hub: undefined as unknown, goto: [] as [string, unknown][], opened: [] as unknown[] }));
 vi.mock('$lib/hub/context', () => ({ useHub: () => current.hub }));
 vi.mock('$lib/sessions/sessions.svelte', () => ({
-  useSessions: () => ({ openSession: (request: unknown) => current.opened.push(request) }),
+  useSessions: () => ({ openSession: (request: unknown) => current.opened.push(request), openWeb: (request: unknown) => current.opened.push(request) }),
+}));
+const browser = vi.hoisted(() => vi.fn(() => Promise.resolve()));
+vi.mock('$lib/desktop/webView/webView', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('$lib/desktop/webView/webView')>()),
+  desktopWebView: { openSystemBrowser: browser },
 }));
 vi.mock('$app/navigation', () => ({
   goto: (href: string, options: unknown) => {
@@ -199,6 +204,40 @@ describe('header buttons (D-8, DEV-022)', () => {
     button('Edit').click();
     expect(current.goto.map(([href]) => href)).toEqual([`/devices/${ID}?tab=settings&section=rdp`, `/devices/${ID}?tab=settings`]);
     expect(current.opened).toEqual([]);
+  });
+});
+
+describe('Web button (WEB-003, WEB-011, MOT-005)', () => {
+  type OpenIn = 'ANIMA_TAB' | 'SYSTEM_BROWSER';
+  const showWith = (url: string, openIn: OpenIn, status: 'UP' | 'DOWN' = 'UP') => {
+    const web = { id: 'w1', deviceId: ID, label: 'Admin', url, openIn, pinnedFingerprintSha256: null, pinnedAt: null };
+    return show(answers({ Device: { device: device({ status, webInterfaces: [web] }) } }));
+  };
+
+  beforeEach(() => {
+    browser.mockClear();
+  });
+
+  it('WEB-003 / MOT-005: ANIMA_TAB opens a web tab with the device status, growing from the button', async () => {
+    await showWith('http://nas.lan/', 'ANIMA_TAB', 'DOWN');
+    button('Open Admin of nas').click();
+    const web = expect.objectContaining({ id: 'w1', url: 'http://nas.lan/' }) as unknown;
+    expect(current.opened).toEqual([expect.objectContaining({ deviceId: ID, deviceName: 'nas', status: 'DOWN', web, origin: expect.any(Object) as DOMRect })]);
+    expect(browser).not.toHaveBeenCalled();
+  });
+
+  it('WEB-011: SYSTEM_BROWSER over http opens the system browser and no tab', async () => {
+    await showWith('http://nas.lan/', 'SYSTEM_BROWSER');
+    button('Open Admin of nas').click();
+    expect(browser).toHaveBeenCalledExactlyOnceWith('http://nas.lan/');
+    expect(current.opened).toEqual([]);
+  });
+
+  it('WEB-008: SYSTEM_BROWSER over https opens a web tab, which checks the pin', async () => {
+    await showWith('https://nas.lan/', 'SYSTEM_BROWSER');
+    button('Open Admin of nas').click();
+    expect(browser).not.toHaveBeenCalled();
+    expect(current.opened).toHaveLength(1);
   });
 });
 

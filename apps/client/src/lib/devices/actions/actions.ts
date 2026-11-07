@@ -17,6 +17,11 @@ export function webInterfacesOf(device: { readonly webInterfaces?: readonly WebI
   return device.webInterfaces ?? [];
 }
 
+/** RA-031: a device can be woken from the list only when the operator gave it a MAC address. */
+export function canWake(device: Pick<CardDevice, 'macAddress'>): boolean {
+  return device.macAddress != null && device.macAddress !== '';
+}
+
 /** The accessible name of a protocol button (RA-030). */
 export function connectLabel(protocol: SessionProtocol, deviceName: string): string {
   return `${protocol} to ${deviceName}`;

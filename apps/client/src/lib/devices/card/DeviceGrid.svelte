@@ -3,6 +3,7 @@
   import type { CardDevice } from '$lib/devices/api';
   import { listRow } from '$lib/motion/roles/transitions';
   import type { SessionProtocol } from '$lib/sessions/tabs';
+  import type { WakeApi } from '$lib/sessions/wake/api';
   import type { WebInterface } from '$lib/web-interfaces/api';
   import DeviceCard from './DeviceCard.svelte';
   import './geometry.css';
@@ -13,9 +14,10 @@
     beats: ReadonlyMap<string, readonly Beat[]>;
     onConnect: (device: CardDevice, protocol: SessionProtocol, button: HTMLElement) => void;
     onOpenWeb?: (device: CardDevice, webInterface: WebInterface, button: HTMLElement) => void;
+    wake?: WakeApi;
   }
 
-  const { devices, beats, onConnect, onOpenWeb }: Props = $props();
+  const { devices, beats, onConnect, onOpenWeb, wake }: Props = $props();
   const track = reorderMotion(() => devices.map((device) => device.id).join('\n'));
 </script>
 
@@ -23,7 +25,7 @@
 <ul class="grid" aria-label="Devices">
   {#each devices as device, index (device.id)}
     <li transition:listRow={{ index }} {@attach track(device.id)}>
-      <DeviceCard {device} beats={beats.get(device.id)} {onConnect} {onOpenWeb} />
+      <DeviceCard {device} beats={beats.get(device.id)} {onConnect} {onOpenWeb} {wake} />
     </li>
   {/each}
 </ul>

@@ -4,6 +4,8 @@
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
   import { checksApi, type DeviceCheck } from '$lib/checks/api';
+  import { desktopWebView } from '$lib/desktop/webView/webView';
+  import type { DeviceDetail } from '$lib/devices/api';
   import { devicesApi } from '$lib/devices/client';
   import LiveNotice from '$lib/hub/notice/LiveNotice.svelte';
   import { DEFAULT_LOG_FILTER } from '$lib/events/log';
@@ -16,6 +18,7 @@
   import { press } from '$lib/motion/roles/press';
   import { sessionsApi } from '$lib/sessions/api';
   import { useSessions } from '$lib/sessions/sessions.svelte';
+  import { openWebInterface } from '$lib/sessions/web/open/open';
   import type { SessionProtocol } from '$lib/sessions/tabs';
   import ChecksPanel from './checks/ChecksPanel.svelte';
   import { Detail } from './detail.svelte';
@@ -109,6 +112,12 @@
     sessions.openSession({ deviceId: device.id, deviceName: device.name, protocol, origin: button.getBoundingClientRect() });
   }
 
+  /** Opens the interface as its setting says: a web tab that grows from the button, or the system browser (WEB-003, WEB-011). */
+  function openWeb(webInterface: DeviceDetail['webInterfaces'][number], button: HTMLElement): void {
+    if (device === null) return;
+    void openWebInterface(sessions, desktopWebView, { device, webInterface, origin: button.getBoundingClientRect() });
+  }
+
   async function saveSettings(values: DeviceFormValues): Promise<HubResult<unknown>> {
     if (device === null) return { ok: true, value: undefined };
     const saved = await saveDevice(device, values, devices);
@@ -163,7 +172,7 @@
 {/snippet}
 
 <section class="detail">
-  <Header {device} loading={headerLoading} onConnect={connect} onSettings={settings} />
+  <Header {device} loading={headerLoading} onConnect={connect} onOpenWeb={openWeb} onSettings={settings} />
   {#if page.state.credentialError !== undefined}
     <p class="notice" role="alert">
       The device was added, but its credential was not stored: {page.state.credentialError} Enter it again in Settings.

@@ -313,3 +313,19 @@ it('K4 §8.7: a title reaches its tab only, next to the device name that stays',
   ]);
 });
 
+
+it('WEB-003 / MOT-005: openWeb adds and selects a web tab that keeps the control it grew from and starts no session', async () => {
+  const hub = fakeHub();
+  const sessions = createSessions(hub.port, vi.fn());
+  const origin = { left: 1, top: 2, width: 3, height: 4 };
+  const web = { id: 'wi-1', deviceId: 'web-1', url: 'https://nas.lan/', label: 'NAS', pinnedFingerprintSha256: null };
+  const id = sessions.openWeb({ deviceId: 'web-1', deviceName: 'nas', status: 'UP', web, origin });
+  expect(id).toMatch(/^[A-Za-z0-9_-]{1,128}$/);
+  expect(sessions.active).toMatchObject({ id, protocol: 'WEB', web, status: 'UP', origin, sessionId: null });
+  expect(hub.port.start).not.toHaveBeenCalled();
+  await sessions.popOut(id);
+  expect(sessions.tabs).toHaveLength(1);
+  await sessions.close(id);
+  expect(hub.port.end).not.toHaveBeenCalled();
+  expect(sessions.active).toBeNull();
+});

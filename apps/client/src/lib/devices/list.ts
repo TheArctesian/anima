@@ -1,5 +1,5 @@
 import type { DeviceSort, Status } from '$lib/hub/generated/graphql';
-import type { CardDevice, DevicePage, StatusChange } from './api';
+import type { CardDevice, DevicePage, ReadingsChange, StatusChange } from './api';
 import type { ListQuery } from './query';
 
 /** The devices on screen and where the next page starts. */
@@ -90,5 +90,14 @@ export function applyStatus(list: DeviceList, change: StatusChange, query: ListQ
     ...list,
     devices: reorders ? changed.toSorted(compareDevices(query.sort)) : changed,
     totalCount: leaves ? list.totalCount - 1 : list.totalCount,
+  };
+}
+
+/** The list with a device's latest readings replaced (MET-004). Readings change no order or filter, and an unknown device gives the same list. */
+export function applyReadings(list: DeviceList, change: ReadingsChange): DeviceList {
+  if (!list.devices.some((device) => device.id === change.deviceId)) return list;
+  return {
+    ...list,
+    devices: list.devices.map((device) => (device.id === change.deviceId ? { ...device, readings: change.readings } : device)),
   };
 }

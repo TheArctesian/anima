@@ -3,7 +3,7 @@ import { addBeat, beatOf, latestBeats, type Beat } from '$lib/checks/heartbeats'
 import type { Hub, HubError } from '$lib/hub/hub';
 import type { StatusChange } from '../api';
 import { devicesApi } from '../client';
-import { appendPage, applyStatus, fromPage, type DeviceList } from '../list';
+import { appendPage, applyReadings, applyStatus, fromPage, type DeviceList } from '../list';
 import { DEFAULT_QUERY, listVariables, type ListQuery } from '../query';
 import { coalesced } from '../live/coalesce';
 import { watchLive } from '../live/live';
@@ -77,12 +77,15 @@ export class Listing {
     }
   }
 
-  /** Starts the live status and heartbeat updates; `stop` ends them. */
+  /** Starts the live status, readings and heartbeat updates; `stop` ends them. */
   start(): void {
     this.#stopped = false;
     this.#stopLive = watchLive(this.#hub, {
       onStatus: (change) => {
         this.#onStatus(change);
+      },
+      onReadings: (change) => {
+        if (this.list !== null) this.list = applyReadings(this.list, change);
       },
       onBeat: (added) => {
         const known = this.beats.get(added.deviceId);
