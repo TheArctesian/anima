@@ -1,0 +1,147 @@
+// @vitest-environment jsdom
+import { flushSync, mount, unmount } from 'svelte';
+import { afterEach, expect, it, vi } from 'vitest';
+import { fakeHub } from '../../devices/hub.fixture';
+import { endTransitionsAtOnce } from '../../devices/transitions.fixture';
+import LiveSessions from './LiveSessions.svelte';
+
+vi.mock('motion', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('motion')>()),
+  animate: (await import('../../motion/engine.fixture')).fakeRun,
+}));
+
+endTransitionsAtOnce();
+
+const node = (id: string, deviceName: string, startedAt: string) => ({
+  id,
+  deviceId: `device-${id}`,
+  deviceName,
+  protocol: 'RDP',
+  operatorName: 'ada',
+  startedAt,
+  clientAddr: '100.64.0.2',
+});
+const ANSWER = (...nodes: ReturnType<typeof node>[]) => ({ sessions: { edges: nodes.map((one) => ({ node: one })) } });
+const DESK = node('1', 'desk', '2026-11-04T10:00:00Z');
+const LAPTOP = node('2', 'laptop', '2026-11-04T11:00:00Z');
+const REFUSED = { code: 'INTERNAL', message: 'secret hub text' };
+
+let app: ReturnType<typeof mount> | undefined;
+
+async function show(answers: Record<string, unknown>) {
+  const fake = fakeHub(answers);
+  app = mount(LiveSessions, { target: document.body, props: { hub: fake.hub } });
+  flushSync();
+  await vi.waitFor(() => {
+    expect(fake.requests.some((request) => request.operation === 'LiveSessions')).toBe(true);
+  });
+  await Promise.resolve();
+  flushSync();
+  return fake;
+}
+
+afterEach(async () => {
+  if (app) await unmount(app);
+  app = undefined;
+  document.body.innerHTML = '';
+});
+
+const control = () => document.querySelector<HTMLButtonElement>('.control') as HTMLButtonElement;
+const panel = () => document.querySelector('.panel');
+const rows = () => [...document.querySelectorAll('.row')];
+const stopButton = (device: string) =>
+  document.querySelector<HTMLButtonElement>(`button[aria-label="Stop session on ${device}"]`) as HTMLButtonElement;
+
+async function open(): Promise<void> {
+  control().click();
+  flushSync();
+  await Promise.resolve();
+  await Promise.resolve();
+  flushSync();
+}
+
+const press = (target: Element, key: string, shiftKey = false) => {
+  target.dispatchEvent(new KeyboardEvent('keydown', { key, shiftKey, bubbles: true, cancelable: true }));
+  flushSync();
+};
+
+it('RA-034, C-3: opening moves focus to the first Stop, or to the panel when the list is empty', async () => {
+  await show({ LiveSessions: ANSWER(DESK, LAPTOP) });
+  await open();
+  expect(document.activeElement).toBe(stopButton('laptop'));
+  control().click();
+  flushSync();
+  await vi.waitFor(() => {
+    expect(panel()).toBeNull();
+  });
+  document.body.innerHTML = '';
+  await unmount(app as ReturnType<typeof mount>);
+  await show({ LiveSessions: ANSWER() });
+  await open();
+  expect(document.activeElement).toBe(panel());
+});
+
+it('RA-034, C-3: Tab from the control enters the panel, cycles the Stops, and Shift+Tab from the first returns to the control', async () => {
+  await show({ LiveSessions: ANSWER(DESK, LAPTOP) });
+  await open();
+  control().focus();
+  press(control(), 'Tab');
+  expect(document.activeElement).toBe(stopButton('laptop'));
+  press(stopButton('laptop'), 'Tab');
+  expect(document.activeElement).toBe(stopButton('desk'));
+  press(stopButton('desk'), 'Tab');
+  expect(document.activeElement).toBe(stopButton('laptop'));
+  press(stopButton('laptop'), 'Tab', true);
+  expect(document.activeElement).toBe(control());
+  expect(panel()).not.toBeNull();
+});
+
+it('MOT-007, RA-034: a refused Stop reserves its line in every row first, so the row gains no element and the line fills the held place', async () => {
+  await show({ LiveSessions: ANSWER(DESK), EndSession: REFUSED });
+  await open();
+  const facts = () => document.querySelector('.facts') as HTMLElement;
+  const before = [...facts().children].map((child) => child.className);
+  const reserved = facts().querySelector('.slot .sizer');
+  expect(reserved?.getAttribute('aria-hidden')).toBe('true');
+  expect(reserved?.textContent).toContain('The session could not be stopped.');
+  stopButton('desk').click();
+  await vi.waitFor(() => {
+    expect(document.querySelector('[role="alert"]')?.textContent).toContain('The session could not be stopped.');
+  });
+  expect([...facts().children].map((child) => child.className)).toEqual(before);
+  expect(document.querySelector('[role="alert"]')?.parentElement).toBe(reserved?.parentElement);
+  // A retry clears the line and shows it again in the same place.
+  stopButton('desk').click();
+  await vi.waitFor(() => {
+    expect(document.querySelector('[role="alert"]')).not.toBeNull();
+  });
+  expect([...facts().children].map((child) => child.className)).toEqual(before);
+});
+
+it('MOT-007: a leaving row keeps its place while it fades, then is removed', async () => {
+  const held: { onfinish: (() => void) | null }[] = [];
+  const animate = Element.prototype.animate;
+  Object.defineProperty(Element.prototype, 'animate', {
+    configurable: true,
+    value: function hold() {
+      const playback = { onfinish: null, cancel: () => undefined, finish: () => undefined, currentTime: 0 };
+      held.push(playback);
+      return playback;
+    },
+  });
+  try {
+    const fake = await show({ LiveSessions: ANSWER(DESK, LAPTOP) });
+    await open();
+    held.length = 0;
+    fake.push('LiveSessionChanged', { sessionChanged: { session: { ...LAPTOP, endedAt: '2026-11-04T12:00:00Z', endReason: 'OPERATOR' } } });
+    flushSync();
+    expect(rows()).toHaveLength(2);
+    expect(rows().map((row) => row.querySelector('strong')?.textContent)).toEqual(['laptop', 'desk']);
+    for (const playback of held) playback.onfinish?.();
+    await vi.waitFor(() => {
+      expect(rows()).toHaveLength(1);
+    });
+  } finally {
+    Object.defineProperty(Element.prototype, 'animate', { configurable: true, value: animate });
+  }
+});

@@ -5,8 +5,7 @@
   import { press } from '$lib/motion/roles/press';
   import { listRow, popover } from '$lib/motion/roles/transitions';
   import { reorderMotion } from '$lib/devices/card/reorder.svelte';
-  import { nextTabStop } from './focus';
-  import { liveLabel, startedTime } from './live';
+  import { liveLabel, nextTabStop, startedTime } from './live';
   import { watchLiveSessions } from './live.svelte';
   import { STOP_REFUSED } from './stopping.svelte';
 
