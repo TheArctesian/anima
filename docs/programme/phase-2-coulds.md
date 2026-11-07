@@ -176,3 +176,8 @@ These items are not blocking. The programme orchestrator collects them here and 
 - The wake line's icon nudges 2 px sideways when it changes.
 - The ended-panel button widens when its text changes between Reconnect and "Check certificate".
 - WP-34: the ended text on a 4003 close may read "You ended the session." Check it against the real hub.
+
+## WP-34 (acceptance fixes)
+
+- F5 (should): the compact-header `767.98px` media query literal is not tied to the `bp-compact` token by a test; a token change would not fail any test.
+- F5 (should): the narrow-header test runs in jsdom, which cannot evaluate the media query; a browser test should prove the wrap and icon-only badge at 390 px.
