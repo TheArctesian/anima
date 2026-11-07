@@ -2,9 +2,18 @@ import { checksApi, type DeviceCheck, type HeartbeatPage, type NewHeartbeat } fr
 import type { DeviceDetail, StatusChange } from '$lib/devices/api';
 import { devicesApi } from '$lib/devices/client';
 import { watchLive } from '$lib/devices/live/live';
-import type { Hub, HubError } from '$lib/hub/hub';
+import { DEFAULT_LOG_FILTER } from '$lib/events/log';
+import { LogFeed } from '$lib/events/panel/feed.svelte';
+import type { Hub, HubError, HubResult } from '$lib/hub/hub';
+import type { CheckFormValues } from '$lib/forms/check/model/values';
+import type { MetricRange } from '$lib/metrics/api';
+import { sessionsApi } from '$lib/sessions/api';
 import type { DeviceId } from './device-id';
+import { DeviceMetrics } from './overview/metrics.svelte';
 import { Pages } from './pages.svelte';
+import { saveCheck } from './save';
+import type { DeviceSession } from './sessions/sessions';
+import type { TabName } from './tabs/tabs';
 
 /** One heartbeat in a check's history (CHK-003). */
 export type HistoryBeat = NonNullable<HeartbeatPage>['edges'][number]['node'];
@@ -18,6 +27,9 @@ export interface OpenHistory {
 /** Heartbeats per history page (D-10). */
 export const HISTORY_PAGE = 100;
 
+/** Sessions per page of the Sessions tab. */
+const SESSION_PAGE = 50;
+
 /** Heartbeats have no ID; one check records at most one per instant. */
 function sameBeat(a: HistoryBeat, b: HistoryBeat): boolean {
   return Date.parse(a.at) === Date.parse(b.at);
@@ -30,7 +42,8 @@ function newer(beat: HistoryBeat, last: HistoryBeat | null | undefined): boolean
 
 /**
  * The device the detail page shows and the hub calls behind it: the device, its checks, the open heartbeat
- * history and the live updates (D-10, D-11). A null ID loads nothing: the page is "Device not found" (D-14).
+ * history, the live updates, and the data of each tab (D-5, D-9, D-10, D-11). The route builds it only for a
+ * well-formed ID; a malformed one is "Device not found" without a `Detail` (D-14).
  */
 export class Detail {
   device = $state.raw<DeviceDetail | null>(null);
@@ -42,25 +55,33 @@ export class Detail {
   liveError = $state.raw<HubError | null>(null);
   history = $state.raw<OpenHistory | null>(null);
 
-  readonly id: DeviceId | null;
+  readonly id: DeviceId;
+  readonly metrics: DeviceMetrics;
+  readonly sessionPages: Pages<DeviceSession>;
+  readonly feed: LogFeed;
   readonly #hub: Hub;
   readonly #devices;
   readonly #checks;
+  readonly #started: TabName[] = [];
   #stopLive: (() => void) | undefined;
   #checksAsked = false;
+  #metricsKey = '';
   #stopped = false;
 
-  constructor(hub: Hub, id: DeviceId | null) {
+  constructor(hub: Hub, id: DeviceId, now: () => Date) {
     this.#hub = hub;
     this.#devices = devicesApi(hub);
     this.#checks = checksApi(hub);
     this.id = id;
-    this.missing = id === null;
+    const connections = sessionsApi(hub);
+    this.metrics = new DeviceMetrics(hub, id, now);
+    this.sessionPages = new Pages<DeviceSession>((after) => connections.history(id, SESSION_PAGE, after));
+    this.feed = new LogFeed(hub, now);
+    this.feed.filter = { ...DEFAULT_LOG_FILTER, since: 'all', deviceId: id };
   }
 
   /** Loads the device and starts the live updates; `stop` ends both. */
   start(): void {
-    if (this.id === null) return;
     this.#stopped = false;
     void this.load();
     this.#stopLive = watchLive(this.#hub, {
@@ -82,10 +103,35 @@ export class Detail {
     this.#stopLive?.();
     this.#stopLive = undefined;
     this.history?.pages.stop();
+    this.metrics.stop();
+    this.sessionPages.stop();
+    this.feed.stop();
+  }
+
+  /** D-9: a panel's data loads the first time its tab shows. */
+  showTab(tab: TabName): void {
+    if (this.#started.includes(tab)) return;
+    this.#started.push(tab);
+    if (tab === 'overview' || tab === 'checks') void this.loadChecks();
+    else if (tab === 'sessions') void this.sessionPages.load();
+    else if (tab === 'logs') this.feed.start();
+  }
+
+  /** D-5: the Overview's metrics load when it shows and when the range or source changes; leaving it stops the live points. */
+  showMetrics(tab: TabName, range: MetricRange): void {
+    const source = this.device?.metricsSource ?? null;
+    const key = `${range}:${source ?? ''}`;
+    if (tab !== 'overview') {
+      if (this.#metricsKey !== '') this.metrics.stop();
+      this.#metricsKey = '';
+      return;
+    }
+    if (source === null || key === this.#metricsKey) return;
+    this.#metricsKey = key;
+    void this.metrics.load(range, source);
   }
 
   async load(): Promise<void> {
-    if (this.id === null) return;
     const result = await this.#devices.get(this.id);
     if (this.#stopped) return;
     this.error = result.ok ? null : result.error;
@@ -96,7 +142,7 @@ export class Detail {
 
   /** Loads the checks the first time a tab needs them, and again after a failure. */
   async loadChecks(): Promise<void> {
-    if (this.id === null || (this.#checksAsked && this.checksError === null)) return;
+    if (this.#checksAsked && this.checksError === null) return;
     this.#checksAsked = true;
     const result = await this.#checks.forDevice(this.id);
     if (this.#stopped) return;
@@ -106,6 +152,34 @@ export class Detail {
 
   setDevice(next: DeviceDetail): void {
     this.device = next;
+  }
+
+  /** DEV-014: confirmed in the Settings tab; the hub deletes the rest (DEV-015). `onDeleted` runs after the hub has. */
+  async deleteDevice(onDeleted: () => void): Promise<HubResult<unknown>> {
+    const result = await this.#devices.delete(this.id);
+    if (result.ok) onDeleted();
+    return result;
+  }
+
+  /** Puts the check a create, an update or a pause returns into the list, when that call succeeded. */
+  async applyCheck(pending: Promise<HubResult<DeviceCheck>>): Promise<HubResult<unknown>> {
+    const result = await pending;
+    if (result.ok) this.putCheck(result.value);
+    return result;
+  }
+
+  pauseCheck(check: DeviceCheck, paused: boolean): Promise<HubResult<unknown>> {
+    return this.applyCheck(this.#checks.setPaused(check.id, paused));
+  }
+
+  saveCheckValues(check: DeviceCheck | null, values: CheckFormValues): Promise<HubResult<unknown>> {
+    return this.applyCheck(saveCheck(this.id, check, values, this.#checks));
+  }
+
+  async deleteCheck(check: DeviceCheck): Promise<HubResult<unknown>> {
+    const result = await this.#checks.delete(check.id);
+    if (result.ok) this.dropCheck(check.id);
+    return result;
   }
 
   /** A check the hub returned after a create, an update or a pause: it replaces the old one or joins the list. */
