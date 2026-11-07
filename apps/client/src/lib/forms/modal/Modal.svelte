@@ -93,6 +93,8 @@
     if (!open || dialog === undefined || entry === undefined) return;
     initialFocusIn(dialog).focus();
     const outside = (event: KeyboardEvent) => {
+      // Svelte delegates onkeydown to the document: a key a dialog's surface already handled is not handled twice.
+      if (event.defaultPrevented) return;
       if (!dialog.contains(event.target as Node | null) && entry.isTopmost()) keydown(event, dialog);
     };
     const pullBack = (event: FocusEvent) => {
