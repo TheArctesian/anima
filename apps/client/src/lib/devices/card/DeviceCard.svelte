@@ -5,10 +5,11 @@
   import type { CardDevice } from '$lib/devices/api';
   import DeviceActions from '$lib/devices/actions/DeviceActions.svelte';
   import WarningBadge from '$lib/devices/actions/WarningBadge.svelte';
-  import ReadingBars from '$lib/devices/readings/ReadingBars.svelte';
+  import MetricBars from '$lib/metrics/bars/MetricBars.svelte';
   import { press } from '$lib/motion/roles/press';
   import { sharedItem } from '$lib/motion/shared/shared';
   import type { SessionProtocol } from '$lib/sessions/tabs';
+  import type { WakeApi } from '$lib/sessions/wake/api';
   import type { WebInterface } from '$lib/web-interfaces/api';
   import { hostLine } from './card';
   import './geometry.css';
@@ -23,9 +24,11 @@
     onConnect: (device: CardDevice, protocol: SessionProtocol, button: HTMLElement) => void;
     /** The card's Web button (WEB-003); the button is hidden while no route gives this. */
     onOpenWeb?: (device: CardDevice, webInterface: WebInterface, button: HTMLElement) => void;
+    /** The Wake button's call (RA-031); the button is hidden while no route gives this. */
+    wake?: WakeApi;
   }
 
-  const { device, beats, onConnect, onOpenWeb }: Props = $props();
+  const { device, beats, onConnect, onOpenWeb, wake }: Props = $props();
   const line = $derived(hostLine(device));
 </script>
 
@@ -54,11 +57,10 @@
     {#if line.ip !== null}<span class="ip">{line.ip}</span>{/if}
   </p>
   <p class="uptime"><span>Uptime, 24 h</span> <strong>{uptimeText(device.uptime)}</strong></p>
-  <!-- WP-33's shared bar replaces this one. When WP-28 serves readings, Devices spreads `...CardReadings` under `readings` and the list listens to `metricsAdded` (R-027). -->
-  <ReadingBars readings={device.readings ?? null} source={device.metricsSource} />
+  <MetricBars readings={device.readings ?? null} source={device.metricsSource} />
   <footer>
     {#if beats !== undefined}<HeartbeatBar {beats} />{/if}
-    <DeviceActions {device} {onConnect} {onOpenWeb} />
+    <DeviceActions {device} {onConnect} {onOpenWeb} {wake} />
   </footer>
 </article>
 

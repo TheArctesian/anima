@@ -2,8 +2,10 @@
   import type { CardDevice } from '$lib/devices/api';
   import { press } from '$lib/motion/roles/press';
   import type { SessionProtocol } from '$lib/sessions/tabs';
+  import type { WakeApi } from '$lib/sessions/wake/api';
+  import WakeButton from '$lib/sessions/wake/WakeButton.svelte';
   import type { WebInterface } from '$lib/web-interfaces/api';
-  import { connectLabel, connectProtocols, webInterfacesOf } from './actions';
+  import { canWake, connectLabel, connectProtocols, webInterfacesOf } from './actions';
   import './actions.css';
   import WebMenu from './WebMenu.svelte';
 
@@ -13,9 +15,11 @@
     onConnect: (device: CardDevice, protocol: SessionProtocol, button: HTMLElement) => void;
     /** Hidden while no route gives it (WP-26 D-3). */
     onOpenWeb?: (device: CardDevice, webInterface: WebInterface, button: HTMLElement) => void;
+    /** The wake call (RA-031); the Wake button is hidden while no route gives it. */
+    wake?: WakeApi;
   }
 
-  const { device, onConnect, onOpenWeb }: Props = $props();
+  const { device, onConnect, onOpenWeb, wake }: Props = $props();
   const web = $derived(webInterfacesOf(device));
 </script>
 
@@ -42,6 +46,10 @@
       }}
     />
   {/if}
+  {#if wake !== undefined && canWake(device)}
+    <!-- Up needs no wake. The slot is one button tall, and the button's status line floats above it: it moves nothing (MOT-007). -->
+    <span class="wake-slot"><WakeButton deviceId={device.id} api={wake} disabled={device.status === 'UP'} /></span>
+  {/if}
 </span>
 
 <style>
@@ -49,5 +57,32 @@
     flex: none;
     display: inline-flex;
     gap: var(--space-2);
+  }
+
+  .wake-slot {
+    position: relative;
+    flex: none;
+    block-size: var(--target-min-desktop);
+  }
+
+  /* WakeButton draws its two-line status under itself; here it lies over the card above the button, out of the layout. */
+  .wake-slot :global(.status) {
+    position: absolute;
+    inset-block-end: 100%;
+    inset-inline-end: 0;
+    z-index: 1;
+    inline-size: max-content;
+    max-inline-size: calc(var(--space-16) * 4);
+    min-block-size: 0;
+    margin-block-end: var(--space-1);
+    text-align: end;
+    pointer-events: none;
+  }
+
+  .wake-slot :global(.status:has(> span:not(:empty))) {
+    padding: var(--space-1) var(--space-2);
+    border: var(--border-thin) solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-raised);
   }
 </style>

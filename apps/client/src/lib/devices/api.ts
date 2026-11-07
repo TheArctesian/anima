@@ -28,7 +28,11 @@ export const Devices = graphql(`
           maintenance
           status
           uptime(window: DAY)
+          macAddress
           metricsSource
+          readings {
+            ...CardReadings
+          }
           accessWarnings
           rdp {
             enabled
@@ -88,6 +92,17 @@ export const DeviceStatusChanged = graphql(`
       deviceId
       status
       at
+    }
+  }
+`);
+
+export const CardReadingsAdded = graphql(`
+  subscription CardReadingsAdded {
+    metricsAdded(deviceId: null) {
+      deviceId
+      readings {
+        ...CardReadings
+      }
     }
   }
 `);
@@ -154,7 +169,7 @@ void graphql(`
   }
 `);
 
-// K1 `Device.readings` is not served yet (WP-26 D-1): codegen reads this fragment, no running document spreads it.
+// The latest readings a card shows; `Devices` and `CardReadingsAdded` spread it (MET-004). Codegen inlines it.
 void graphql(`
   fragment CardReadings on Readings {
     at
@@ -264,8 +279,6 @@ export type { AccessWarning };
 
 /** A device with every field a card or table row shows. */
 export type CardDevice = DevicePage['edges'][number]['node'] & {
-  /** Optional until the hub serves K1 `Device.readings`; then spread `CardReadings` into `Devices`. */
-  readonly readings?: Readings | null;
   /** Optional until the hub serves K1 `Device.webInterfaces`; then spread `WebInterfaceFields` into `Devices`. */
   readonly webInterfaces?: readonly WebInterface[];
 };
@@ -295,4 +308,10 @@ export interface StatusChange {
   readonly deviceId: string;
   readonly status: CardDevice['status'];
   readonly at: string;
+}
+
+/** A device's new readings, as the hub pushes them (MET-004). */
+export interface ReadingsChange {
+  readonly deviceId: string;
+  readonly readings: Readings;
 }

@@ -12,6 +12,7 @@ import {
   ClearRdpCredential,
   ClearSshCredential,
   ClearVncCredential,
+  CardReadingsAdded,
   CreateDevice,
   CreateSite,
   DeleteDevice,
@@ -26,6 +27,7 @@ import {
   type DeviceDetail,
   type DevicePage,
   type Site,
+  type ReadingsChange,
   type StatusChange,
   type StoredCredential,
 } from './api';
@@ -133,6 +135,23 @@ export function devicesApi(hub: Hub) {
         {
           next: (value) => {
             sink.next(value.deviceStatusChanged);
+          },
+          error: (error) => {
+            sink.error(error);
+          },
+          complete: () => {
+            sink.complete();
+          },
+        },
+      ),
+    /** Listen for the latest readings of every device (MET-004); returns the function that stops listening. */
+    watchReadings: (sink: Sink<ReadingsChange>): (() => void) =>
+      hub.subscribe(
+        CardReadingsAdded,
+        {},
+        {
+          next: (value) => {
+            sink.next(value.metricsAdded);
           },
           error: (error) => {
             sink.error(error);
