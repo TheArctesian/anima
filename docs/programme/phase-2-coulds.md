@@ -112,3 +112,10 @@ These items are not blocking. The programme orchestrator collects them here and 
 - The files panel has no compact-width layout.
 - In the Tauri shell, wry saves a download under its suggested name in ~/Downloads. Check the save path in the app.
 - Revoking the blob URL at once may fail a WebKit download. Check it in the app.
+- WP-34: a failed Stop in the live-sessions list shifts the rows once (MOT-007).
+- WP-34: check a real download inside the Tauri app.
+- WP-34: add a test for the live-sessions popover's reduced-motion form.
+- The ping and silence timer code is duplicated between the files link and the terminal link. Lift it into one shared file.
+- File names that are not valid UTF-8 come through with their bad bytes replaced, so the client cannot send them back.
+- The file panel shows that upload or download is turned off only after the hub refuses an attempt.
+- Downloads have no size warning.
