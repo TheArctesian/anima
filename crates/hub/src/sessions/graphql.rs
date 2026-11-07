@@ -8,6 +8,7 @@ mod connection;
 pub(super) mod connection_test;
 mod error;
 mod host_key;
+mod server_certificate;
 mod session;
 mod ticket;
 

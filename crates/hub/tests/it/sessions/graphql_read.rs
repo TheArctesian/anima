@@ -1,4 +1,4 @@
-//! `Query.sessions`: fields, filters and keyset paging (RA-008, API-006, K7).
+//! `Query.sessions`: fields, filters and keyset paging (RA-008, RA-034, API-006, K7).
 
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use chrono::{DateTime, SecondsFormat, Utc};
@@ -11,7 +11,8 @@ use super::{
     insert, insert_all, session_id,
 };
 
-const FIELDS: &str = "id deviceId deviceName protocol operatorName startedAt endedAt endReason";
+const FIELDS: &str =
+    "id deviceId deviceName protocol operatorName startedAt endedAt endReason clientAddr";
 
 fn ids(page: &Value) -> Vec<String> {
     page["edges"]
@@ -52,6 +53,11 @@ async fn ra_008_a_session_shows_the_k1_fields_and_outlives_its_device(pool: PgPo
         ],
     )
     .await;
+    sqlx::query("update sessions.sessions set protocol = 'vnc' where id = $1")
+        .bind(session_id(2))
+        .execute(&pool)
+        .await
+        .unwrap();
     delete_device(&pool, PVE_01).await;
 
     let schema = schema_for(&pool);
@@ -71,14 +77,15 @@ async fn ra_008_a_session_shows_the_k1_fields_and_outlives_its_device(pool: PgPo
         [
             json!({
                 "id": id(2), "deviceId": DOCKER_HOST, "deviceName": "docker-host",
-                "protocol": "SSH", "operatorName": "operator",
+                "protocol": "VNC", "operatorName": "operator",
                 "startedAt": "2026-11-04T09:10:00Z", "endedAt": null, "endReason": null,
+                "clientAddr": "10.10.0.77",
             }),
             json!({
                 "id": id(1), "deviceId": PVE_01, "deviceName": "pve-01",
                 "protocol": "SSH", "operatorName": "operator",
                 "startedAt": "2026-11-04T09:00:00Z", "endedAt": "2026-11-04T09:05:00Z",
-                "endReason": "HOST_KEY_MISMATCH",
+                "endReason": "HOST_KEY_MISMATCH", "clientAddr": "10.10.0.77",
             }),
         ]
     );

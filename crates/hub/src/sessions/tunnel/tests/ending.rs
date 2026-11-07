@@ -48,6 +48,16 @@ fn sec_007_host_key_mismatch_ends_4001_error() {
 }
 
 #[test]
+fn sec_007_server_certificate_mismatch_ends_4003_error_and_endsession_maps_back() {
+    let expected = row(4003, EndReason::ServerCertificateMismatch, Severity::Error);
+    assert_eq!(Cause::ServerCertificateMismatch.ending(), expected);
+    // A reason signalled from outside the tunnel names the same cause, for every reason.
+    for reason in EndReason::ALL {
+        assert_eq!(Cause::from(reason).ending().reason, reason, "{reason:?}");
+    }
+}
+
+#[test]
 fn k4_idle_timeout_ends_4002_timeout_info() {
     let expected = row(4002, EndReason::Timeout, Severity::Info);
     assert_eq!(Cause::Timeout.ending(), expected);
