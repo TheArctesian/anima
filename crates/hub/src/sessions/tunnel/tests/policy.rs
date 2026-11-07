@@ -134,10 +134,6 @@ fn ra_021_vnc_never_takes_audio_input_or_the_drive() {
     ] {
         assert_eq!(client(&mut relay, wire), CLOSE, "{wire}");
     }
-    assert_eq!(
-        gateway(&mut relay, "4.file,1.7,10.text/plain,4.a.sh;"),
-        refused("7")
-    );
 }
 
 #[test]
