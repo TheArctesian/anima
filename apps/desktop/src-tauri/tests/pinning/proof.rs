@@ -3,27 +3,21 @@
 //! from what the site served.
 
 use std::{
-    cell::RefCell,
     net::{IpAddr, Ipv4Addr, Ipv6Addr},
     process,
     time::Duration,
 };
 
-use objc2::rc::Weak;
-use objc2_web_kit::WKWebView;
 use serde_json::{Value, json};
 use tauri::{AppHandle, Listener, Manager, Url, Webview, window::WindowBuilder};
-use tokio::{
-    sync::{mpsc, oneshot},
-    time::sleep,
-};
+use tokio::{sync::mpsc, time::sleep};
 
 use crate::{
+    freed,
     site::Site,
     web_view::{
-        Fingerprint, WebViewError,
-        commands::{close_tab, open_tab, pin_tab},
-        macos_trust,
+        Fingerprint,
+        commands::{open_tab, pin_tab},
     },
 };
 
@@ -32,7 +26,7 @@ const LIMIT: Duration = Duration::from_secs(120);
 /// How long one step waits for its event.
 const WAIT: Duration = Duration::from_secs(10);
 /// How long a stopped load is watched for a request that should not come.
-const SETTLE: Duration = Duration::from_secs(1);
+pub const SETTLE: Duration = Duration::from_secs(1);
 const EVENT: &str = "web-view";
 /// One fixed device, so every run reuses one web store.
 const DEVICE: &str = "5e0f7a52-31d4-4b69-9c1e-000000000431";
@@ -104,9 +98,9 @@ fn fingerprint(event: Option<&Value>, field: &str) -> Option<Fingerprint> {
 }
 
 /// One device tab, opened as the client opens it.
-struct Tab {
-    app: AppHandle,
-    id: &'static str,
+pub struct Tab {
+    pub app: AppHandle,
+    pub id: &'static str,
     url: Url,
 }
 
@@ -130,7 +124,7 @@ impl Tab {
         })
     }
 
-    fn view(&self) -> Result<Webview, String> {
+    pub fn view(&self) -> Result<Webview, String> {
         self.app
             .get_webview(&format!("web-{}", self.id))
             .ok_or_else(|| "the tab's web view is gone".to_owned())
@@ -149,12 +143,12 @@ impl Tab {
 
 /// Every check's line, and whether all passed.
 #[derive(Default)]
-struct Proof {
+pub struct Proof {
     failed: bool,
 }
 
 impl Proof {
-    fn check(&mut self, name: &str, passed: bool, detail: &str) {
+    pub fn check(&mut self, name: &str, passed: bool, detail: &str) {
         println!("{} {name} {detail}", if passed { "PASS" } else { "FAIL" });
         self.failed |= !passed;
     }
@@ -239,7 +233,7 @@ async fn loopback_v6(
         ),
     );
     forbidden_schemes(&tab, proof).await?;
-    closed_tab_freed(&tab, proof).await?;
+    freed::closed_tab_freed(&tab, proof).await?;
     site.stop().await;
     Ok(())
 }
@@ -258,55 +252,6 @@ async fn forbidden_schemes(tab: &Tab, proof: &mut Proof) -> Result<(), String> {
             &format!("asked for {target}; the view is on scheme {}", now.scheme()),
         );
     }
-    Ok(())
-}
-
-thread_local! {
-    /// The `WKWebView` the proof watches, held weakly, on the main thread.
-    static WATCHED: RefCell<Option<Weak<WKWebView>>> = const { RefCell::new(None) };
-}
-
-/// Starts watching `view`'s `WKWebView` through a weak reference.
-async fn watch(view: &Webview) -> Result<(), String> {
-    let (sent, done) = oneshot::channel();
-    view.with_webview(move |platform| {
-        let watched = macos_trust::web_view(&platform).map(|view| {
-            WATCHED.with_borrow_mut(|watched| *watched = Some(Weak::new(view)));
-        });
-        // The proof waits for this answer; it is gone only if the proof has already failed.
-        let _proof_gone = sent.send(watched.map_err(WebViewError::code));
-    })
-    .map_err(|error| error.to_string())?;
-    done.await
-        .map_err(|_| "no watch".to_owned())?
-        .map_err(str::to_owned)
-}
-
-/// Whether the watched `WKWebView` is still alive.
-async fn watched_alive(app: &AppHandle) -> Result<bool, String> {
-    let (sent, done) = oneshot::channel();
-    app.run_on_main_thread(move || {
-        let alive = WATCHED
-            .with_borrow(|watched| watched.as_ref().is_some_and(|view| view.load().is_some()));
-        let _proof_gone = sent.send(alive);
-    })
-    .map_err(|error| error.to_string())?;
-    done.await.map_err(|_| "no answer".to_owned())
-}
-
-/// M-1: closing the tab frees its `WKWebView`, so its page stops: no retain cycle runs
-/// through the proxy, its decision closure or wry's delegate.
-async fn closed_tab_freed(tab: &Tab, proof: &mut Proof) -> Result<(), String> {
-    watch(&tab.view()?).await?;
-    let before = watched_alive(&tab.app).await?;
-    close_tab(&tab.app, tab.id).map_err(|error| error.code().to_owned())?;
-    sleep(SETTLE * 2).await;
-    let after = watched_alive(&tab.app).await?;
-    proof.check(
-        "closed-tab-freed",
-        before && !after,
-        &format!("WKWebView alive before close {before}; 2 s after close {after}"),
-    );
     Ok(())
 }
 

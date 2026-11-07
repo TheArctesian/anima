@@ -13,6 +13,8 @@
 //! production code, not a copy.
 
 #[cfg(target_os = "macos")]
+mod freed;
+#[cfg(target_os = "macos")]
 mod proof;
 #[cfg(target_os = "macos")]
 mod site;

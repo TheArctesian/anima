@@ -170,39 +170,25 @@ fn r_069_a_mismatched_certificate_is_cancelled_and_shown_whatever_the_system_tru
     }
 }
 
+/// The pin accepts its own certificate and leaves other hosts to the system, asking it
+/// nothing; without a pin a trusted chain gets the system's handling.
 #[test]
-fn web_008_the_pinned_certificate_is_accepted_without_asking_the_system() {
+fn web_008_accept_and_default_ask_the_system_only_without_a_pin() {
     let pin = pin("https://router.lan/");
-    let answer = answered(
-        Some(&pin),
-        "https://router.lan/",
-        &presented("router.lan", 443, 1),
-        false,
-    );
-    assert_eq!(answer, (Answer::Accept, None, 0));
-}
-
-#[test]
-fn d_4_another_origin_of_a_pinned_tab_gets_the_default_without_asking_the_system() {
-    let pin = pin("https://router.lan/");
-    let answer = answered(
-        Some(&pin),
-        "https://router.lan/",
-        &presented("cdn.lan", 443, 2),
-        false,
-    );
-    assert_eq!(answer, (Answer::Default, None, 0));
-}
-
-#[test]
-fn web_008_without_a_pin_a_trusted_chain_gets_the_default() {
-    let answer = answered(
-        None,
-        "https://router.lan/",
-        &presented("router.lan", 443, 2),
-        true,
-    );
-    assert_eq!(answer, (Answer::Default, None, 1));
+    let cases = [
+        (Some(&pin), "router.lan", 1, (Answer::Accept, None, 0)),
+        (Some(&pin), "cdn.lan", 2, (Answer::Default, None, 0)),
+        (None, "router.lan", 2, (Answer::Default, None, 1)),
+    ];
+    for (tab_pin, host, leaf, expected) in cases {
+        let answer = answered(
+            tab_pin,
+            "https://router.lan/",
+            &presented(host, 443, leaf),
+            true,
+        );
+        assert_eq!(answer, expected, "{host} {leaf}");
+    }
 }
 
 #[test]
