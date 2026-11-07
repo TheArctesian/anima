@@ -1,7 +1,7 @@
 <script lang="ts">
   import Header from './header/Header.svelte';
-  import DetailBody from './device/DetailBody.svelte';
-  import DeviceMissing from './device/DeviceMissing.svelte';
+  import DetailBody from './detail/DetailBody.svelte';
+  import DeviceMissing from './detail/DeviceMissing.svelte';
   import type { PageData } from './$types';
 
   const { data }: { data: PageData } = $props();

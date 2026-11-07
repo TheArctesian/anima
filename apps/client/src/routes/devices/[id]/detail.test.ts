@@ -3,10 +3,17 @@ import { fakeHub } from '$lib/devices/hub.fixture';
 import type { HubResult } from '$lib/hub/hub';
 import { Detail } from './detail.svelte';
 import { parseDeviceId, type DeviceId } from './device-id';
-import { ID, OTHER_ID, answers, beatsPage, check, heartbeat } from './page.fixture.svelte';
+import { ID, OTHER_ID, answers, beatsPage, check, device, heartbeat } from './page.fixture.svelte';
 import { Pages, type Connection } from './pages.svelte';
 
-const DEVICE = parseDeviceId(ID) as DeviceId;
+/** The well-formed ID the fixtures use; a test that cannot parse it fails at once. */
+function deviceId(text: string): DeviceId {
+  const parsed = parseDeviceId(text);
+  if (parsed === null) throw new Error(`not a device ID: ${text}`);
+  return parsed;
+}
+
+const DEVICE = deviceId(ID);
 const NOW = () => new Date('2026-11-05T09:05:00Z');
 
 async function settle(): Promise<void> {
@@ -142,5 +149,94 @@ describe('Pages (D-10)', () => {
     const pages = new Pages<Row>(() => Promise.resolve({ ok: true, value: null }));
     await pages.load();
     expect(pages.items).toEqual([]);
+  });
+});
+
+const requested = (fake: ReturnType<typeof fakeHub>, operation: string) => fake.requests.filter((request) => request.operation === operation);
+
+describe('Detail tabs (D-9)', () => {
+  it('D-9: a tab loads its data the first time it shows, and not again', async () => {
+    const fake = fakeHub(answers());
+    const detail = new Detail(fake.hub, DEVICE, NOW);
+    detail.showTab('overview');
+    detail.showTab('checks');
+    detail.showTab('overview');
+    await settle();
+    expect(requested(fake, 'DeviceChecks')).toHaveLength(1);
+    detail.showTab('settings');
+    detail.showTab('settings');
+    expect(requested(fake, 'DeviceChecks')).toHaveLength(1);
+  });
+
+  it('D-9: the Sessions tab asks for the first page of this device\'s sessions, once', async () => {
+    const fake = fakeHub(answers({ DeviceSessions: { device: { id: ID, sessions: { pageInfo: { hasNextPage: false, endCursor: null }, edges: [] } } } }));
+    const detail = new Detail(fake.hub, DEVICE, NOW);
+    detail.showTab('sessions');
+    detail.showTab('sessions');
+    await settle();
+    expect(requested(fake, 'DeviceSessions')).toEqual([{ operation: 'DeviceSessions', variables: { deviceId: ID, first: 50, after: null } }]);
+  });
+
+});
+
+describe('Detail metrics (D-5)', () => {
+  const withMetrics = () =>
+    fakeHub(answers({ Device: { device: device({ metricsSource: 'SSH' }) }, DeviceMetrics: { device: { id: ID, metricsSource: 'SSH', gpus: [], metrics: [], readings: null } } }));
+
+  it('D-5: the metrics load when the range changes and not when it stays the same', async () => {
+    const fake = withMetrics();
+    const detail = new Detail(fake.hub, DEVICE, NOW);
+    detail.start();
+    await settle();
+    detail.showMetrics('overview', 'HOUR');
+    detail.showMetrics('overview', 'HOUR');
+    detail.showMetrics('overview', 'DAY');
+    await settle();
+    expect(requested(fake, 'DeviceMetrics').map((request) => request.variables)).toEqual([
+      { id: ID, range: 'HOUR' },
+      { id: ID, range: 'DAY' },
+    ]);
+  });
+
+  it('D-5: leaving the Overview stops the live points, and coming back asks again', async () => {
+    const fake = withMetrics();
+    const detail = new Detail(fake.hub, DEVICE, NOW);
+    detail.start();
+    await settle();
+    detail.showMetrics('overview', 'HOUR');
+    await settle();
+    expect(fake.listeners('MetricsAdded')).toBe(1);
+    detail.showMetrics('checks', 'HOUR');
+    expect(fake.listeners('MetricsAdded')).toBe(0);
+    detail.showMetrics('overview', 'HOUR');
+    await settle();
+    expect(requested(fake, 'DeviceMetrics')).toHaveLength(2);
+  });
+
+  it('D-5: a device without a metrics source sends no metrics request', async () => {
+    const fake = fakeHub(answers());
+    const detail = new Detail(fake.hub, DEVICE, NOW);
+    detail.start();
+    await settle();
+    detail.showMetrics('overview', 'HOUR');
+    expect(requested(fake, 'DeviceMetrics')).toEqual([]);
+  });
+});
+
+describe('Detail.deleteDevice (DEV-014)', () => {
+  it('DEV-014: onDeleted runs after the hub deleted the device', async () => {
+    const fake = fakeHub(answers({ DeleteDevice: { deleteDevice: ID } }));
+    const deleted: string[] = [];
+    const result = await new Detail(fake.hub, DEVICE, NOW).deleteDevice(() => deleted.push(ID));
+    expect(result.ok).toBe(true);
+    expect(deleted).toEqual([ID]);
+  });
+
+  it('DEV-014: onDeleted does not run when the hub fails', async () => {
+    const fake = fakeHub(answers());
+    const deleted: string[] = [];
+    const result = await new Detail(fake.hub, DEVICE, NOW).deleteDevice(() => deleted.push(ID));
+    expect(result.ok).toBe(false);
+    expect(deleted).toEqual([]);
   });
 });

@@ -5,11 +5,13 @@ import { watchLive } from '$lib/devices/live/live';
 import { DEFAULT_LOG_FILTER } from '$lib/events/log';
 import { LogFeed } from '$lib/events/panel/feed.svelte';
 import type { Hub, HubError, HubResult } from '$lib/hub/hub';
+import type { CheckFormValues } from '$lib/forms/check/model/values';
 import type { MetricRange } from '$lib/metrics/api';
 import { sessionsApi } from '$lib/sessions/api';
 import type { DeviceId } from './device-id';
 import { DeviceMetrics } from './overview/metrics.svelte';
 import { Pages } from './pages.svelte';
+import { saveCheck } from './save';
 import type { DeviceSession } from './sessions/sessions';
 import type { TabName } from './tabs/tabs';
 
@@ -164,6 +166,14 @@ export class Detail {
     const result = await pending;
     if (result.ok) this.putCheck(result.value);
     return result;
+  }
+
+  pauseCheck(check: DeviceCheck, paused: boolean): Promise<HubResult<unknown>> {
+    return this.applyCheck(this.#checks.setPaused(check.id, paused));
+  }
+
+  saveCheckValues(check: DeviceCheck | null, values: CheckFormValues): Promise<HubResult<unknown>> {
+    return this.applyCheck(saveCheck(this.id, check, values, this.#checks));
   }
 
   async deleteCheck(check: DeviceCheck): Promise<HubResult<unknown>> {
