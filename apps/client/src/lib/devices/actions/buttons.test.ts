@@ -167,6 +167,8 @@ describe('warning badge (RA-020, D-6)', () => {
     showCard({ accessWarnings: ['RDP_SECURITY', 'UNENCRYPTED_VNC'] });
     const badge = document.querySelector<HTMLElement>('.badge');
     expect(badge?.textContent.replace(/\p{Co}/gu, '').trim()).toBe('Warning');
+    // Below bp-compact the word is visually hidden but stays in its own element, so the badge keeps its name (RA-020, UI-003).
+    expect(badge?.querySelector('.label')?.textContent).toBe('Warning');
     expect(badge?.title.split('\n')).toHaveLength(2);
     expect(badge?.title).toContain('RDP');
     expect(badge?.title).toContain('VNC');
