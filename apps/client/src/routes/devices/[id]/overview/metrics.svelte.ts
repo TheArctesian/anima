@@ -3,6 +3,8 @@ import type { Hub, HubError } from '$lib/hub/hub';
 import type { MetricsSource } from '$lib/hub/generated/graphql';
 import type { BarReadings } from '$lib/metrics/bars/bars';
 import { metricsApi, type DeviceMetricsView, type MetricRange, type NewMetrics } from '$lib/metrics/api';
+import { chartsOf } from '$lib/metrics/charts';
+import { chartShapeOf, rememberChartShape } from '$lib/metrics/shapes';
 import { mergeLive } from '$lib/metrics/live';
 import { rangeWindow } from '$lib/metrics/ranges';
 
@@ -19,6 +21,9 @@ export class DeviceMetrics {
   get shownRange(): MetricRange | null {
     return this.#shown;
   }
+
+  /** The series count of each chart the last answer for this device drew, `null` before one: the skeleton copies it. */
+  chartShape = $state.raw<readonly number[] | null>(null);
 
   /** The hub's latest readings at load, then the newest a live batch carried; the bars show them. */
   readings = $state.raw<BarReadings | null>(null);
@@ -37,6 +42,7 @@ export class DeviceMetrics {
     this.#deviceId = deviceId;
     this.#api = metricsApi(hub);
     this.#now = now;
+    this.chartShape = chartShapeOf(deviceId);
   }
 
   /**
@@ -69,6 +75,11 @@ export class DeviceMetrics {
       return;
     }
     this.view = result.value;
+    if (result.value !== null) {
+      const charts = chartsOf(result.value.series, result.value.gpus);
+      rememberChartShape(this.#deviceId, charts);
+      this.chartShape = chartShapeOf(this.#deviceId);
+    }
     this.readings = result.value?.readings ?? this.readings;
     this.#shown = range;
     this.span = rangeWindow(range, at);

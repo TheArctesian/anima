@@ -6,7 +6,13 @@ import { FakeFilesSocket } from './link/fake/socket.fixture';
 import { settle } from './link/fake/link.fixture';
 import type { HubResult } from '$lib/hub/hub';
 import type { FilesTicket } from './api';
+import { endTransitionsAtOnce } from '$lib/devices/transitions.fixture';
+import { manualClock } from '$lib/motion/loading/clock.fixture';
+import type { LoadingClock } from '$lib/motion/loading/loading';
+import { threshold } from '$lib/motion/tokens';
 import { HOME, button, click, entry, listed, off, names, removePanels, resetPanels, show, status } from './panel.fixture';
+
+endTransitionsAtOnce();
 
 beforeEach(resetPanels);
 afterEach(removePanels);
@@ -143,5 +149,60 @@ describe('RA-032: navigation', () => {
     flushSync();
     expect(status(target)).toBe('The device did not allow that.');
     expect(names(target)).toEqual(['secret']);
+  });
+});
+
+describe('MOT-007, 5.7.3 Loading: the listing', () => {
+  const places = (target: HTMLElement) => target.querySelectorAll('.places .entry').length;
+
+  async function listing(clock: LoadingClock) {
+    const shown = await show(undefined, clock);
+    shown.socket.open();
+    await settle();
+    flushSync();
+    return shown;
+  }
+
+  it('MOT-007, 5.7.3 Loading: a slow listing shows placeholder rows only after threshold-loading, then the rows', async () => {
+    const time = manualClock();
+    const { target, socket } = await listing(time.clock);
+    expect(places(target)).toBe(0);
+    time.advance(threshold.loading);
+    flushSync();
+    expect(places(target)).toBeGreaterThan(0);
+    expect(target.querySelector('.entries[aria-busy="true"]')).not.toBeNull();
+    socket.text({ type: 'entries', path: HOME, entries: [entry('a.txt', 'file')] });
+    await settle();
+    flushSync();
+    expect(names(target)).toEqual(['a.txt']);
+  });
+
+  it('MOT-007, 5.7.3 Loading: a fast listing shows no placeholder rows', async () => {
+    const time = manualClock();
+    const { target, socket } = await listing(time.clock);
+    time.advance(threshold.loading - 1);
+    socket.text({ type: 'entries', path: HOME, entries: [entry('a.txt', 'file')] });
+    await settle();
+    flushSync();
+    time.advance(threshold.loading * 2);
+    flushSync();
+    expect(places(target)).toBe(0);
+    expect(names(target)).toEqual(['a.txt']);
+  });
+});
+
+describe('MOT-007, 5.7.3 Loading: a failed listing', () => {
+  it('MOT-007: the placeholders end when the listing fails', async () => {
+    const time = manualClock();
+    const shown = await show(undefined, time.clock);
+    shown.socket.open();
+    await settle();
+    time.advance(threshold.loading);
+    flushSync();
+    expect(shown.target.querySelector('.entries[aria-busy="true"]')).not.toBeNull();
+    shown.socket.text({ type: 'refused', reason: 'DENIED' });
+    await settle();
+    flushSync();
+    expect(shown.target.querySelector('.entries[aria-busy="true"]')).toBeNull();
   });
 });

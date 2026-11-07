@@ -2,7 +2,10 @@
   import { useHub } from '$lib/hub/context';
   import Icon from '$lib/icons/Icon.svelte';
   import type { IconName } from '$lib/icons/icons';
+  import { skeletonDelay } from '$lib/motion/loading/delay.svelte';
+  import type { LoadingClock } from '$lib/motion/loading/loading';
   import { press } from '$lib/motion/roles/press';
+  import { crossFade } from '$lib/motion/roles/transitions';
   import type { SocketConstructor } from '../tunnel/state';
   import { filesApi, type FilesApi } from './api';
   import type { EntryKind } from './link/codec';
@@ -21,9 +24,11 @@
     WebSocket?: SocketConstructor;
     /** Hands a finished download to the operator; defaults to an `<a download>` (CQ-021). */
     save?: BlobSaver;
+    /** The clock of the loading thresholds; tests pass their own. */
+    clock?: LoadingClock;
   }
 
-  const { sessionId, api, origin, WebSocket, save }: Props = $props();
+  const { sessionId, api, origin, WebSocket, save, clock }: Props = $props();
 
   /** The hub of the page stands in for whatever the parent did not pass. */
   function hubOf() {
@@ -41,6 +46,11 @@
   let picker: HTMLInputElement | undefined = $state();
   let dragging = $state(false);
   const idle = $derived(files.idle);
+  // The clock is fixed for the life of the panel.
+  // svelte-ignore state_referenced_locally
+  const skeleton = skeletonDelay(() => files.listLoading, clock);
+  /** Placeholder rows that fill the column's first screen. */
+  const PLACES = Array.from({ length: 8 }, (_, index) => index);
 
   $effect(() => {
     void files.open();
@@ -92,28 +102,44 @@
     <input bind:this={picker} class="picker" type="file" tabindex="-1" aria-hidden="true" onchange={picked} />
   </div>
 
-  <ul class="entries" aria-label="Entries">
-    <!-- Unkeyed: a device may list two entries with one name, and a repeated key would end the list. -->
-    {#each files.entries as entry, at (at)}
-      <li class="entry">
-        <Icon name={ICONS[entry.kind]} size="sm" />
-        {#if entry.kind === 'dir'}
-          <button type="button" class="name open" title={entry.name} aria-disabled={!idle} onclick={() => files.into(entry)}>{entry.name}</button>
-        {:else}
-          <span class="name" title={entry.name}>{entry.name}</span>
-        {/if}
-        <span class="meta">{sizeText(entry.size)}</span>
-        <span class="meta">{timeText(entry.modifiedAt)}</span>
-        {#if entry.kind === 'dir'}
-          <span class="slot"></span>
-        {:else}
-          <button type="button" class="control slot" aria-label="Download {entry.name}" aria-disabled={!idle} onclick={() => void files.download(entry)} {@attach press()}>
-            <Icon name="nf-md-download" size="sm" />
-          </button>
-        {/if}
-      </li>
-    {/each}
-  </ul>
+  <!-- The placeholders lie over the rows in one cell and fade off them, so the swap moves nothing (MOT-007). -->
+  <div class="stack">
+    <ul class="entries" aria-label="Entries" aria-busy={files.listLoading}>
+      <!-- Unkeyed: a device may list two entries with one name, and a repeated key would end the list. -->
+      {#each files.entries as entry, at (at)}
+        <li class="entry">
+          <Icon name={ICONS[entry.kind]} size="sm" />
+          {#if entry.kind === 'dir'}
+            <button type="button" class="name open" title={entry.name} aria-disabled={!idle} onclick={() => files.into(entry)}>{entry.name}</button>
+          {:else}
+            <span class="name" title={entry.name}>{entry.name}</span>
+          {/if}
+          <span class="meta">{sizeText(entry.size)}</span>
+          <span class="meta">{timeText(entry.modifiedAt)}</span>
+          {#if entry.kind === 'dir'}
+            <span class="slot"></span>
+          {:else}
+            <button type="button" class="control slot" aria-label="Download {entry.name}" aria-disabled={!idle} onclick={() => void files.download(entry)} {@attach press()}>
+              <Icon name="nf-md-download" size="sm" />
+            </button>
+          {/if}
+        </li>
+      {/each}
+    </ul>
+    {#if skeleton.visible}
+      <ul class="entries places" aria-hidden="true" transition:crossFade>
+        {#each PLACES as place (place)}
+          <li class="entry">
+            <Icon name="nf-md-file" size="sm" />
+            <span class="hole name-hole"></span>
+            <span class="hole"></span>
+            <span class="hole"></span>
+            <span class="slot"></span>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  </div>
 
   <!-- Both lines keep their height whether or not they have anything to say (MOT-007). -->
   <div class="transfer">
@@ -196,6 +222,35 @@
     padding: 0 var(--space-3);
     overflow: auto;
     list-style: none;
+  }
+
+  /* The placeholders and the rows share one cell; the cell takes the column's height. */
+  .stack {
+    display: grid;
+    flex: 1;
+    grid-template-columns: minmax(0, 1fr);
+    min-block-size: 0;
+  }
+
+  .stack > .entries {
+    grid-area: 1 / 1;
+  }
+
+  .places {
+    overflow: hidden;
+    background: var(--surface);
+  }
+
+  /* A placeholder cell is an empty box; the row's height comes from the grid, so nothing here moves the rows (MOT-007). */
+  .hole {
+    min-inline-size: var(--space-8);
+    block-size: var(--space-3);
+    background: var(--surface-raised);
+  }
+
+  .name-hole {
+    inline-size: 100%;
+    max-inline-size: calc(var(--space-16) * 2);
   }
 
   .entry {
