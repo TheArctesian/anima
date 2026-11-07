@@ -150,6 +150,17 @@ pub(super) fn accepted_fingerprint(certificate: &ServerCertificate) -> String {
     format!("{FINGERPRINT_HASH}:{}", certificate.fingerprint_sha256)
 }
 
+/// The security guacd gets once the hub has read the accepted certificate over `chosen`, the
+/// TLS security the server picked (SEC-007): `ANY` becomes `chosen`, because with `any` guacd
+/// may settle on standard RDP security, which checks no certificate. Every other setting
+/// already rules standard security out and is kept.
+pub(super) const fn pinned_security(set: RdpSecurity, chosen: RdpSecurity) -> RdpSecurity {
+    match set {
+        RdpSecurity::Any => chosen,
+        other => other,
+    }
+}
+
 /// guacd's `security` text (guacamole-server `src/protocols/rdp/settings.c`).
 const fn security(security: RdpSecurity) -> &'static str {
     match security {

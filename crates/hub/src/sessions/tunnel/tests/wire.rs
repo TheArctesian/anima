@@ -5,6 +5,7 @@
 
 mod bench;
 mod causes;
+mod certificate;
 mod deny_list;
 mod devices;
 mod fake_guacd;
