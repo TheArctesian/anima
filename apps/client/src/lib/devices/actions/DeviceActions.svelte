@@ -70,7 +70,7 @@
     position: absolute;
     inset-block-end: 100%;
     inset-inline-end: 0;
-    z-index: 1;
+    z-index: var(--layer-popover);
     inline-size: max-content;
     max-inline-size: calc(var(--space-16) * 4);
     min-block-size: 0;

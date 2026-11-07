@@ -90,6 +90,27 @@ function credentialCalls(hub: Hub) {
   };
 }
 
+/** The live updates of every device: status changes and the latest readings. Each returns the function that stops listening. */
+function liveCalls(hub: Hub) {
+  return {
+    watchStatus: (sink: Sink<StatusChange>): (() => void) =>
+      hub.subscribe(DeviceStatusChanged, {}, {
+        ...sink,
+        next: (value) => {
+          sink.next(value.deviceStatusChanged);
+        },
+      }),
+    /** MET-004. */
+    watchReadings: (sink: Sink<ReadingsChange>): (() => void) =>
+      hub.subscribe(CardReadingsAdded, {}, {
+        ...sink,
+        next: (value) => {
+          sink.next(value.metricsAdded);
+        },
+      }),
+  };
+}
+
 /** The device list, tags and live status changes through a `Hub` (CQ-045). */
 export function devicesApi(hub: Hub) {
   return {
@@ -127,39 +148,6 @@ export function devicesApi(hub: Hub) {
       return result.ok ? { ok: true, value: result.value.deleteDevice } : result;
     },
     ...credentialCalls(hub),
-    /** Listen for status changes of every device; returns the function that stops listening. */
-    watchStatus: (sink: Sink<StatusChange>): (() => void) =>
-      hub.subscribe(
-        DeviceStatusChanged,
-        {},
-        {
-          next: (value) => {
-            sink.next(value.deviceStatusChanged);
-          },
-          error: (error) => {
-            sink.error(error);
-          },
-          complete: () => {
-            sink.complete();
-          },
-        },
-      ),
-    /** Listen for the latest readings of every device (MET-004); returns the function that stops listening. */
-    watchReadings: (sink: Sink<ReadingsChange>): (() => void) =>
-      hub.subscribe(
-        CardReadingsAdded,
-        {},
-        {
-          next: (value) => {
-            sink.next(value.metricsAdded);
-          },
-          error: (error) => {
-            sink.error(error);
-          },
-          complete: () => {
-            sink.complete();
-          },
-        },
-      ),
+    ...liveCalls(hub),
   };
 }

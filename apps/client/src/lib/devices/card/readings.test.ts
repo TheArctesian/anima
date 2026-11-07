@@ -42,7 +42,7 @@ async function show(devices: Parameters<typeof devicesAnswer>[0]) {
   return fake;
 }
 
-const meters = (card: Element | undefined) =>
+const meters = (card: Element | null | undefined) =>
   [...(card?.querySelectorAll('[role="meter"]') ?? [])].map((node) => node.getAttribute('aria-valuenow'));
 
 it('MET-004: a card draws the readings the Devices query returned, and says so when a device has none', async () => {
