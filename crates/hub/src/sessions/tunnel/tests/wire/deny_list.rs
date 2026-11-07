@@ -123,8 +123,7 @@ async fn the_ipv4_mapped_form_of_a_denied_address_is_503_and_never_reached(pool:
     fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
 async fn an_rdp_host_outside_the_deny_list_still_opens(pool: PgPool) {
-    let (_guacd, _bench, mut client) =
-        session(&pool, denying("192.0.2.0/24", Protocol::Rdp)).await;
+    let (_guacd, _bench, mut client) = session(&pool, denying("192.0.2.0/24", Protocol::Rdp)).await;
     assert_eq!(client.close().await, Some(1000));
 }
 

@@ -1,5 +1,6 @@
 //! The remote access fields of K1 `Device` read back through GraphQL, the access warnings
-//! (RA-020, D-5) and the batched RDP and VNC `credentialStored` (API-005).
+//! (RA-020), the batched RDP and VNC `credentialStored` (API-005) and the RDP server
+//! certificate accepted for a device (SEC-007).
 
 use std::sync::{Arc, atomic::Ordering};
 
@@ -7,8 +8,10 @@ use anima_hub::{
     clock::{Clock, FixedClock},
     credentials::PasswordKind,
     devices::graphql::{Mutation, Query, rdp_credential_loader, vnc_credential_loader},
+    sessions::graphql::server_certificate_loader,
 };
 use async_graphql::{EmptySubscription, Schema};
+use chrono::{DateTime, Utc};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
@@ -156,6 +159,68 @@ fixture_test! {
             "{few_statements} statements for 13 devices, {many_statements} for 163"
         );
     }
+}
+
+/// A throwaway SHA-256 fingerprint for PVE-01's accepted RDP server certificate.
+const CERTIFICATE: &str = "0a:1b:2c:3d:4e:5f:60:71:82:93:a4:b5:c6:d7:e8:f9:\
+                           0a:1b:2c:3d:4e:5f:60:71:82:93:a4:b5:c6:d7:e8:f9";
+
+/// Stores `CERTIFICATE` as PVE-01's accepted server certificate, accepted by a new operator.
+async fn accept_certificate(pool: &PgPool) {
+    sqlx::query(
+        "with operator as (insert into access.operators (id, username, password_hash, created_at) \
+             values (gen_random_uuid(), 'operator', '$argon2id$x', now()) returning id) \
+         insert into sessions.server_certificates (device_id, fingerprint_sha256, subject, \
+             not_after, first_seen_at, accepted_by) \
+         select $1::text::uuid, $2, 'CN=PVE-01', '2031-01-01T00:00:00Z', $3, id from operator",
+    )
+    .bind(PVE_01)
+    .bind(CERTIFICATE)
+    .bind(now())
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../fixtures", scripts("devices"))
+)]
+async fn sec_007_rdp_settings_show_the_accepted_server_certificate_and_null_without_one(
+    pool: PgPool,
+) {
+    let schema = Schema::build(Query, Mutation, EmptySubscription)
+        .data(pool.clone())
+        .data(Arc::new(FixedClock(now())) as Arc<dyn Clock>)
+        .data(server_certificate_loader(pool.clone()))
+        .finish();
+    accept_certificate(&pool).await;
+    let query = |id: &str| {
+        format!(
+            r#"{{ device(id: "{id}") {{ rdp {{ serverCertificate {{
+                fingerprintSha256 subject notAfter firstSeenAt }} }} }} }}"#
+        )
+    };
+
+    let accepted = data(&schema, &query(PVE_01)).await;
+    let none = data(&schema, &query(DOCKER_HOST)).await;
+
+    let shown = &accepted["device"]["rdp"]["serverCertificate"];
+    let instant = |field: &str| {
+        shown[field]
+            .as_str()
+            .unwrap()
+            .parse::<DateTime<Utc>>()
+            .unwrap()
+    };
+    assert_eq!(shown["fingerprintSha256"], CERTIFICATE);
+    assert_eq!(shown["subject"], "CN=PVE-01");
+    assert_eq!(
+        instant("notAfter"),
+        "2031-01-01T00:00:00Z".parse::<DateTime<Utc>>().unwrap()
+    );
+    assert_eq!(instant("firstSeenAt"), now());
+    assert_eq!(none["device"]["rdp"]["serverCertificate"], Value::Null);
 }
 
 /// The devices with an RDP password, those with a VNC password, and how many there are.

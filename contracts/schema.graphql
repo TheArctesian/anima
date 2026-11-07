@@ -146,7 +146,7 @@ type RdpSettings {
   "Default false (RA-021)."
   sharedDrive: Boolean!
   credentialStored: Boolean!
-  serverCertificate: ServerCertificate @pending
+  serverCertificate: ServerCertificate
 }
 
 type VncSettings {
