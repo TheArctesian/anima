@@ -24,3 +24,6 @@ pub(super) use desktop_test::{DesktopSettings, DesktopSubject};
 pub(super) use observations::{Endpoint, Observation, Observations};
 #[cfg(test)]
 pub(super) use observations::{LIFETIME, MAX_OBSERVATIONS};
+pub(super) use rdp::{Reply, read_server_certificate};
+pub(super) use reach::ReadError;
+pub(super) use x224::TLS_PROTOCOLS;

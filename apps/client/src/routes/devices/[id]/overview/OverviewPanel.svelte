@@ -11,7 +11,7 @@
   interface Props {
     device: OverviewDevice & { readonly status: DeviceStatus; readonly metricsSource: MetricsSource };
     checks: readonly { readonly status: DeviceStatus }[];
-    metrics: Pick<DeviceMetrics, 'view' | 'span' | 'readings' | 'error' | 'liveError'>;
+    metrics: Pick<DeviceMetrics, 'view' | 'span' | 'shownRange' | 'readings' | 'error' | 'liveError'>;
     range: MetricRange;
     now: () => Date;
     clock?: LoadingClock;

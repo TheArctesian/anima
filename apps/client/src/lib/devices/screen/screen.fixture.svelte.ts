@@ -15,12 +15,15 @@ export function device(id: string, over: Partial<CardDevice> = {}): CardDevice {
     maintenance: false,
     status: 'UP',
     uptime: 0.9995,
+    macAddress: null,
     metricsSource: 'NONE',
+    readings: null,
     accessWarnings: [],
     rdp: { enabled: false },
     vnc: { enabled: false },
     ssh: { enabled: false, hostKey: null },
     checks: [],
+    webInterfaces: [],
     ...over,
   };
 }

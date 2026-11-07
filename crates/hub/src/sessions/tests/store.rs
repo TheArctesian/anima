@@ -98,8 +98,8 @@ async fn ra_008_a_session_ends_once_and_the_first_end_wins(pool: PgPool) {
         at: now() + TimeDelta::minutes(6),
         reason: EndReason::Timeout,
     };
-    assert!(store::end(&mut *conn, id, first).await.unwrap());
-    assert!(!store::end(&mut *conn, id, later).await.unwrap());
+    assert!(store::end(&mut *conn, id, first).await.unwrap().is_some());
+    assert!(store::end(&mut *conn, id, later).await.unwrap().is_none());
 
     let page = store::page(&mut *conn, SessionFilter::default(), 10, None)
         .await
@@ -120,7 +120,7 @@ async fn mv_003_an_end_before_the_start_is_written_at_the_start(pool: PgPool) {
         at: now(),
         reason: EndReason::RemoteClosed,
     };
-    assert!(store::end(&mut *conn, id, end).await.unwrap());
+    assert!(store::end(&mut *conn, id, end).await.unwrap().is_some());
     let session = store::get(&mut *conn, id).await.unwrap().unwrap();
     let at_start = SessionEnd {
         at: now() + TimeDelta::minutes(5),
@@ -148,7 +148,7 @@ async fn log_006_r_016_runtime_role_reads_and_writes_session_tables(pool: PgPool
         at: now() + TimeDelta::minutes(2),
         reason: EndReason::RemoteClosed,
     };
-    assert!(store::end(&mut conn, id, end).await.unwrap());
+    assert!(store::end(&mut conn, id, end).await.unwrap().is_some());
     let stale = store::close_stale(&mut conn, now() + TimeDelta::minutes(3))
         .await
         .unwrap();

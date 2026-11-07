@@ -16,7 +16,7 @@ use super::{
     end::{Actor, end_row, sweep},
     find_device, host_key,
     live::Live,
-    model::{EndReason, FieldError, Protocol, SessionEnd},
+    model::{EndReason, FieldError, Protocol, Session, SessionEnd},
     store::{self, NewSession},
     target::TargetRule,
     tickets::{LIFETIME, PendingTicket, TOKEN_BYTES, Ticket, TicketToken},
@@ -186,17 +186,19 @@ fn random_token() -> Result<TicketToken, Error> {
 /// refuses (`Validation`), and the protocol turned off, an SSH session without an accepted
 /// host key or an RDP session without an accepted server certificate when it needs one
 /// (`Conflict`). A time zone that is not a zone name is dropped, so the tunnel uses UTC.
-/// When `req.wake` says the device is Down, it has a MAC address and its site has a wake
+/// When `req.wake` says the device is asleep, it has a MAC address and its site has a wake
 /// relay, a Wake-on-LAN packet goes first and the ticket holds `wake_sent` when it was sent;
 /// a wake that fails leaves `wake_sent` false and the start goes on. Then, in one
 /// transaction, it writes the live session row and the audit entry `session.start`, and
 /// holds a ticket that the protocol's tunnel redeems once within 30 s from `client`. Tickets
 /// that expired unredeemed are swept first, and a start the ticket table would refuse is
-/// `Unavailable` before any packet is sent.
+/// `Unavailable` before any packet is sent. Once the row commits, its start is published on
+/// `live`'s feed of changes (RA-034); a refused or rolled-back start publishes nothing.
 ///
 /// If the hub shut down while the commit was in flight, `shut_down` took the ticket but could
-/// not yet see the row; the row then ends here with `HUB_SHUTDOWN` and its audit entry, and
-/// the start is `Unavailable` (D-10).
+/// not yet see the row; the start is then not published, the row ends here with
+/// `HUB_SHUTDOWN` and its audit entry (that end is published), and the start is
+/// `Unavailable`.
 ///
 /// # Errors
 /// As above; `Unavailable` when too many tickets are pending or the hub is shutting down;
@@ -239,7 +241,7 @@ pub async fn start(
         wake_sent,
     };
     let mut tx = db.begin().await?;
-    write_start(&mut tx, &device, &pending, now).await?;
+    let started = write_start(&mut tx, &device, &pending, now).await?;
     live.issue(token.hash(), pending.clone())
         .map_err(|_| Error::Unavailable)?;
     if let Err(error) = tx.commit().await {
@@ -251,8 +253,8 @@ pub async fn start(
         }
         return Err(error.into());
     }
-    if live.is_shutting_down() {
-        end_shut_down(db, &pending, now).await?;
+    if !live.publish_start(started) {
+        end_shut_down(db, live, &pending, now).await?;
         return Err(Error::Unavailable);
     }
     let mut ticket = Ticket::new(pending.session, pending.protocol, token, pending.expires_at);
@@ -261,10 +263,11 @@ pub async fn start(
 }
 
 /// Ends the committed row of a ticket `shut_down` withdrew before the row was visible to it,
-/// with `HUB_SHUTDOWN` and its audit entry naming the ticket's operator and client. A row
-/// `shut_down` did end is left as it is (D-9).
+/// with `HUB_SHUTDOWN` and its audit entry naming the ticket's operator and client, then
+/// publishes that end. A row `shut_down` did end is left as it is.
 async fn end_shut_down(
     db: &PgPool,
+    live: &Live,
     pending: &PendingTicket,
     now: DateTime<Utc>,
 ) -> Result<(), Error> {
@@ -278,18 +281,22 @@ async fn end_shut_down(
         at: now,
     };
     let mut tx = db.begin().await?;
-    end_row(&mut tx, pending.session, end, &by).await?;
+    let ended = end_row(&mut tx, pending.session, end, &by).await?;
     tx.commit().await?;
+    if let Some(row) = ended {
+        live.publish_end(row);
+    }
     Ok(())
 }
 
-/// The live row and the audit entry `session.start`; the change never holds the token.
+/// The live row, returned as written, and the audit entry `session.start`; the change never
+/// holds the token.
 async fn write_start(
     conn: &mut PgConnection,
     device: &Device,
     pending: &PendingTicket,
     now: DateTime<Utc>,
-) -> Result<(), Error> {
+) -> Result<Session, Error> {
     let protocol = pending.protocol;
     let new = NewSession {
         id: pending.session,
@@ -300,7 +307,7 @@ async fn write_start(
         client: pending.client.0,
         started_at: now,
     };
-    store::insert(&mut *conn, &new).await?;
+    let started = store::insert(&mut *conn, &new).await?;
     let change = json!({
         "deviceId": device.id.to_string(),
         "deviceName": device.name,
@@ -314,5 +321,5 @@ async fn write_start(
         change,
     };
     events::audit(conn, now, audit).await?;
-    Ok(())
+    Ok(started)
 }

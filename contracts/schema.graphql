@@ -353,7 +353,7 @@ enum CheckType {
   PUSH
   GROUP
   DOCKER
-  SNMP @pending
+  SNMP
   TAILSCALE_PING
   SYSTEMD
 }
@@ -393,13 +393,13 @@ type SystemdConfig {
   timeoutMs: Int!
 }
 
-enum SnmpVersion @pending {
+enum SnmpVersion {
   V2C
   V3
 }
 
 "Community and v3 passwords are never returned (SEC-005)."
-type SnmpConfig @pending {
+type SnmpConfig {
   port: Int!
   version: SnmpVersion!
   oid: String!
@@ -514,7 +514,7 @@ input CheckConfigInput @oneOf {
   push: Boolean
   group: GroupConfigInput
   docker: DockerConfigInput
-  snmp: SnmpConfigInput @pending
+  snmp: SnmpConfigInput
   tailscalePing: TailscalePingConfigInput
   systemd: SystemdConfigInput
 }
@@ -529,7 +529,7 @@ input SystemdConfigInput {
   timeoutMs: Int = 10000
 }
 
-input SnmpConfigInput @pending {
+input SnmpConfigInput {
   port: Int = 161
   version: SnmpVersion = V2C
   oid: String!
@@ -939,7 +939,7 @@ type WakeResult {
   relayName: String!
 }
 
-type SessionChange @pending {
+type SessionChange {
   session: Session!
 }
 
@@ -1060,7 +1060,7 @@ type Subscription {
   heartbeatAdded(checkId: ID, deviceId: ID): HeartbeatAdded!
   eventAdded(minSeverity: Severity = INFO): Event!
   "Every start and end of a session, from every client (RA-034)."
-  sessionChanged: SessionChange! @pending
+  sessionChanged: SessionChange!
   metricsAdded(deviceId: ID): MetricsAdded!
 }
 

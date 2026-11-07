@@ -3,11 +3,11 @@
 use guac_protocol::Instruction;
 
 use super::super::ending::Cause;
-use super::super::relay::{ClientStep, GatewayStep, Relay};
-use super::decoded;
+use super::super::relay::{ClientStep, GatewayStep};
+use super::{decoded, relay};
 
 fn step(wire: &str) -> GatewayStep {
-    Relay::default().on_gateway(decoded(wire))
+    relay().on_gateway(decoded(wire))
 }
 
 /// guacd's `error` in `wire` reaches the client as the fixed text with `status`, then ends.
@@ -33,7 +33,7 @@ fn k4_display_instructions_are_forwarded_unchanged() {
 
 #[test]
 fn gw_015_required_makes_only_its_credentials_answerable() {
-    let mut relay = Relay::default();
+    let mut relay = relay();
     relay.on_gateway(decoded("8.required,8.username,8.hostname;"));
     let argv = |name: &str| Instruction::new("argv", ["0", "text/plain", name]);
     assert_eq!(

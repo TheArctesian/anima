@@ -315,3 +315,25 @@ it('RA-001: RDP and VNC tabs show the remote view, named for their protocol, bes
   expect(labels).toEqual(['SSH session on web-1', 'RDP session on desk', 'VNC session on nas']);
   expect(document.querySelectorAll('[role="tabpanel"] [role="application"]')).toHaveLength(2);
 });
+
+describe('web tab pane (WEB-003, MOT-005)', () => {
+  const web = { id: 'wi-1', deviceId: 'web-1', url: 'http://printer.lan/', label: 'Printer', pinnedFingerprintSha256: null };
+  const origin = new DOMRect(10, 20, 80, 30);
+
+  it('WEB-003 / WEB-010: a web tab shows the web page of its device with the status the tab opened with', async () => {
+    const sessions = show();
+    sessions.openWeb({ deviceId: 'web-1', deviceName: 'nas', status: 'DOWN', web, origin });
+    await settle();
+    expect(document.querySelector('[role="tabpanel"] [data-reason]')?.textContent).toMatch(/down/i);
+    expect(tabs().map((tab) => tab.textContent)).toEqual([expect.stringContaining('nas')]);
+  });
+
+  it('WEB-003: a web tab has no pop-out menu and closes without ending a session', async () => {
+    const sessions = show();
+    const id = sessions.openWeb({ deviceId: 'web-1', deviceName: 'nas', status: 'DOWN', web, origin });
+    flushSync();
+    await sessions.close(id);
+    expect(fake.port.end).not.toHaveBeenCalled();
+    expect(sessions.tabs).toEqual([]);
+  });
+});

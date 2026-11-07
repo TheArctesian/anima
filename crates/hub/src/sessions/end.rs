@@ -7,6 +7,9 @@
 //! no event: the event log records what a tunnel did (K4 §5, D-13).
 //!
 //! An open tunnel ends through the end table (`cause`) and writes its end once (`record`).
+//!
+//! Each end this hub process writes is published on `Live`'s feed of changes once its
+//! transaction commits (RA-034).
 
 mod cause;
 mod record;
@@ -46,18 +49,18 @@ pub struct Actor {
 
 /// Ends a live row with `end` and writes the audit entry `session.end` for it, stamped
 /// `by.at`. Does nothing when the row has already ended: the first end wins (D-9). Returns
-/// whether this call ended it.
+/// the row as this call ended it, for the caller to publish once it commits.
 pub(super) async fn end_row(
     conn: &mut PgConnection,
     session: SessionId,
     end: SessionEnd,
     by: &Actor,
-) -> Result<bool, Error> {
-    if !store::end(&mut *conn, session, end).await? {
-        return Ok(false);
-    }
+) -> Result<Option<Session>, Error> {
+    let Some(ended) = store::end(&mut *conn, session, end).await? else {
+        return Ok(None);
+    };
     audit_end(conn, session, end.reason, by).await?;
-    Ok(true)
+    Ok(Some(ended))
 }
 
 /// The audit entry `session.end` for a row this caller ended: who ended it, from where, at
@@ -80,8 +83,8 @@ async fn audit_end(
 }
 
 /// Ends each ticket's row with its end and the audit entry naming the ticket's operator and
-/// client, stamped `now`, in one transaction. If the rows cannot be ended the tickets go back
-/// (refused, without a token) and the sweep retries.
+/// client, stamped `now`, in one transaction, then publishes each row it ended. If the rows
+/// cannot be ended the tickets go back (refused, without a token) and the sweep retries.
 async fn end_tickets(
     db: &PgPool,
     live: &Live,
@@ -93,21 +96,31 @@ async fn end_tickets(
     }
     let ended = async {
         let mut tx = db.begin().await?;
+        let mut rows = Vec::with_capacity(ends.len());
         for (ticket, end) in &ends {
             let by = Actor {
                 operator: ticket.operator.clone(),
                 client: ticket.client,
                 at: now,
             };
-            end_row(&mut tx, ticket.session, *end, &by).await?;
+            rows.extend(end_row(&mut tx, ticket.session, *end, &by).await?);
         }
-        tx.commit().await.map_err(Error::from)
+        tx.commit().await?;
+        Ok::<_, Error>(rows)
     }
     .await;
-    if ended.is_err() {
-        live.restore(ends.into_iter().map(|(ticket, _)| ticket).collect());
+    match ended {
+        Ok(rows) => {
+            for row in rows {
+                live.publish_end(row);
+            }
+            Ok(())
+        }
+        Err(error) => {
+            live.restore(ends.into_iter().map(|(ticket, _)| ticket).collect());
+            Err(error)
+        }
     }
-    ended
 }
 
 /// Removes every ticket expired at `now`, unredeemed or spent by a refused redemption, and
@@ -162,7 +175,8 @@ pub(super) async fn shut_down(db: &PgPool, live: &Live, now: DateTime<Utc>) -> R
 /// Ends, with `HUB_SHUTDOWN` at `now`, every row a previous hub process left live, and writes
 /// one `session.end` audit entry for each, naming the row's operator and client, in one
 /// transaction. Audit only, no event (D-13): the row's tunnel went with the old process, so
-/// no tunnel ends here. Returns how many rows it ended.
+/// no tunnel ends here. Nothing is published either: this runs before the process's `Live`
+/// exists, so no client can be subscribed yet. Returns how many rows it ended.
 ///
 /// # Errors
 /// `Database` or `Events` when the rows or audit entries cannot be written; then none is.
@@ -181,15 +195,23 @@ pub(super) async fn close_stale(db: &PgPool, now: DateTime<Utc>) -> Result<u64, 
     Ok(u64::try_from(stale.len()).unwrap_or(u64::MAX))
 }
 
-/// Ends the row with `OPERATOR` and its audit entry, in one transaction.
-async fn end_by_operator(db: &PgPool, session: SessionId, by: &Actor) -> Result<(), Error> {
+/// Ends the row with `OPERATOR` and its audit entry, in one transaction, then publishes it.
+async fn end_by_operator(
+    db: &PgPool,
+    live: &Live,
+    session: SessionId,
+    by: &Actor,
+) -> Result<(), Error> {
     let end = SessionEnd {
         at: by.at,
         reason: EndReason::Operator,
     };
     let mut tx = db.begin().await?;
-    end_row(&mut tx, session, end, by).await?;
+    let ended = end_row(&mut tx, session, end, by).await?;
     tx.commit().await?;
+    if let Some(row) = ended {
+        live.publish_end(row);
+    }
     Ok(())
 }
 
@@ -219,12 +241,12 @@ pub(super) async fn end_session(
                 .unwrap_or_default();
         }
         live::Ending::Withdrawn(ticket) => {
-            if let Err(error) = end_by_operator(db, session, by).await {
+            if let Err(error) = end_by_operator(db, live, session, by).await {
                 live.restore(vec![ticket]);
                 return Err(error);
             }
         }
-        live::Ending::Neither => end_by_operator(db, session, by).await?,
+        live::Ending::Neither => end_by_operator(db, live, session, by).await?,
     }
     current(db, session).await
 }

@@ -1,23 +1,7 @@
-import type { TimeWindow } from '$lib/charts/scales';
-import type { MetricRange, MetricSeries, NewMetrics } from './api';
+import type { MetricSeries, NewMetrics } from './api';
+import { rangeWindow } from './ranges';
 
-const HOUR_MS = 60 * 60 * 1000;
-const DAY_MS = 24 * HOUR_MS;
-const SPAN_MS: Record<MetricRange, number> = { HOUR: HOUR_MS, DAY: DAY_MS, WEEK: 7 * DAY_MS };
 const GPU_LABEL = /^GPU (\d+) /;
-
-/** The time window a range shows at `now`, in milliseconds: HOUR 1 h, DAY 24 h, WEEK 7 d (MET-003). */
-export function rangeWindow(range: MetricRange, now: Date): TimeWindow {
-  return { start: now.getTime() - SPAN_MS[range], end: now.getTime() };
-}
-
-/** WP-28 D-5: the width of one bucket of each range, in milliseconds. */
-const BUCKET_MS: Record<MetricRange, number> = { HOUR: 60_000, DAY: 600_000, WEEK: HOUR_MS };
-
-/** A wider gap than this between two points breaks the line (MET-003): two and a half buckets, so a late point does not break it and two missing buckets do. */
-export function rangeGap(range: MetricRange): number {
-  return BUCKET_MS[range] * 2.5;
-}
 
 function gpuIndexOf(kind: string, label: string): number | null {
   const index = kind.startsWith('GPU_') || kind.startsWith('VRAM_') ? GPU_LABEL.exec(label)?.[1] : undefined;
@@ -32,7 +16,7 @@ function gpuIndexOf(kind: string, label: string): number | null {
 export function mergeLive(series: readonly MetricSeries[], added: NewMetrics): readonly MetricSeries[] {
   const at = Date.parse(added.at);
   if (Number.isNaN(at)) return series;
-  const oldest = at - HOUR_MS;
+  const oldest = rangeWindow('HOUR', new Date(at)).start;
   const merged = new Map<string, MetricSeries>(series.map((each) => [`${each.kind}\u0000${each.label}`, each]));
   for (const sample of added.samples) {
     const id = `${sample.kind}\u0000${sample.label}`;

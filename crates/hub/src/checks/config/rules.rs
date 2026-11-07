@@ -31,6 +31,10 @@ pub enum Reason {
     Missing,
     #[error("must not name the destination; the URL sets it")]
     Destination,
+    #[error("is shorter than {min} characters")]
+    TooShort { min: usize },
+    #[error("belongs to the other SNMP version")]
+    OtherVersion,
 }
 
 pub const TIMEOUT_MS: (u32, u32) = (100, 60_000);

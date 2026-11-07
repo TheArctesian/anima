@@ -2,13 +2,13 @@
 //! off after the start, the accepted certificate gone, a host that does not resolve, and the
 //! checked address, values, drive and audio guacd gets for RDP and VNC.
 
+use std::collections::HashMap;
+
 use sqlx::PgPool;
 use tokio_tungstenite::tungstenite::http::StatusCode;
 
 use super::{
-    bench::{
-        DRIVE_ROOT, FINGERPRINT, LOOPBACK, PASSWORD, Setup, VNC_PASSWORD, docker_host, move_host,
-    },
+    bench::{DRIVE_ROOT, LOOPBACK, PASSWORD, Setup, VNC_PASSWORD, docker_host, move_host},
     ended_once,
     fake_guacd::{FakeGuacd, RDP_ARGS, Script, VNC_ARGS, connect_values, fake_guacd},
     opened,
@@ -97,18 +97,13 @@ async fn r_032_a_host_that_does_not_resolve_is_503_gateway_error(pool: PgPool) {
 }
 
 /// Starts the bench's session, applies `changes` (each bound to `docker-host`), opens it,
-/// then returns the protocol guacd was asked for, the `audio` instruction's mimetypes and
-/// the `connect` values by name.
+/// then returns what guacd was sent.
 async fn handshake_of(
     pool: &PgPool,
     setup: Setup,
     args: &'static [u8],
     changes: &[&str],
-) -> (
-    String,
-    Vec<String>,
-    std::collections::HashMap<String, String>,
-) {
+) -> Handshake {
     let mut guacd = serving(args).await;
     let bench = super::bench(pool, &guacd.address, setup).await;
     for change in changes {
@@ -124,8 +119,23 @@ async fn handshake_of(
     let handshake = (&mut guacd.handshake).await.unwrap();
     assert_eq!(client.close().await, Some(1000));
     assert_eq!(handshake[1].opcode, "audio");
-    let values = connect_values(args, &handshake[6]);
-    (selected, handshake[1].args.clone(), values)
+    Handshake {
+        selected,
+        audio: handshake[1].args.clone(),
+        values: connect_values(args, &handshake[6]),
+        rdp_port: bench.rdp.port.to_string(),
+        accepted: bench.accepted.clone(),
+    }
+}
+
+/// What guacd was sent: the protocol it was asked for, the `audio` instruction's mimetypes
+/// and the `connect` values by name; with the bench's RDP port and accepted fingerprint.
+struct Handshake {
+    selected: String,
+    audio: Vec<String>,
+    values: HashMap<String, String>,
+    rdp_port: String,
+    accepted: String,
 }
 
 #[sqlx::test(
@@ -133,7 +143,13 @@ async fn handshake_of(
     fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
 async fn k4_3_an_rdp_session_selects_rdp_with_the_stored_settings(pool: PgPool) {
-    let (selected, audio, values) = handshake_of(&pool, Setup::default(), RDP_ARGS, &[]).await;
+    let Handshake {
+        selected,
+        audio,
+        values,
+        rdp_port,
+        accepted,
+    } = handshake_of(&pool, Setup::default(), RDP_ARGS, &[]).await;
     assert_eq!(selected, "rdp");
     assert_eq!(
         audio,
@@ -141,13 +157,13 @@ async fn k4_3_an_rdp_session_selects_rdp_with_the_stored_settings(pool: PgPool) 
         "audio out is on by default"
     );
     assert_eq!(values["hostname"], LOOPBACK);
-    assert_eq!(values["port"], "3389");
+    assert_eq!(values["port"], rdp_port);
     assert_eq!(values["username"], "ops");
     assert_eq!(values["domain"], "LAB");
     assert_eq!(values["password"], PASSWORD);
     assert_eq!(values["security"], "nla");
     assert_eq!(values["ignore-cert"], "");
-    assert_eq!(values["cert-fingerprints"], format!("sha256:{FINGERPRINT}"));
+    assert_eq!(values["cert-fingerprints"], format!("sha256:{accepted}"));
     assert_eq!(values["drive-path"], "", "no shared drive by default");
 }
 
@@ -158,7 +174,8 @@ async fn k4_3_an_rdp_session_selects_rdp_with_the_stored_settings(pool: PgPool) 
 async fn ra_021_the_shared_drive_is_the_device_s_folder_under_the_configured_root(pool: PgPool) {
     let drive = "update devices.rdp_settings set shared_drive = true, audio_out = false \
                  where device_id = $1";
-    let (_, audio, values) = handshake_of(&pool, Setup::default(), RDP_ARGS, &[drive]).await;
+    let Handshake { audio, values, .. } =
+        handshake_of(&pool, Setup::default(), RDP_ARGS, &[drive]).await;
     assert_eq!(audio, Vec::<String>::new(), "no sound, no audio mimetypes");
     assert_eq!(values["disable-audio"], "true");
     assert_eq!(values["enable-drive"], "true");
@@ -175,7 +192,12 @@ async fn ra_021_the_shared_drive_is_the_device_s_folder_under_the_configured_roo
 )]
 async fn k4_3_a_vnc_session_selects_vnc_with_its_own_password_and_no_audio(pool: PgPool) {
     let setup = Setup::protocol(Protocol::Vnc);
-    let (selected, audio, values) = handshake_of(&pool, setup, VNC_ARGS, &[]).await;
+    let Handshake {
+        selected,
+        audio,
+        values,
+        ..
+    } = handshake_of(&pool, setup, VNC_ARGS, &[]).await;
     assert_eq!(selected, "vnc");
     assert_eq!(audio, Vec::<String>::new());
     assert_eq!(values["hostname"], LOOPBACK);
@@ -212,7 +234,7 @@ async fn sec_007_standard_rdp_security_opens_without_a_certificate(pool: PgPool)
         "update devices.rdp_settings set security = 'rdp' where device_id = $1",
         "delete from sessions.server_certificates where device_id = $1",
     ];
-    let (_, _, values) = handshake_of(&pool, Setup::default(), RDP_ARGS, &changes).await;
+    let Handshake { values, .. } = handshake_of(&pool, Setup::default(), RDP_ARGS, &changes).await;
     assert_eq!(values["security"], "rdp");
     assert_eq!(values["cert-fingerprints"], "");
 }

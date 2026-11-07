@@ -10,6 +10,6 @@ mod listing;
 mod proxy;
 mod reach;
 mod secrets;
-mod support;
+pub(super) mod support;
 mod tcp;
 mod tls;

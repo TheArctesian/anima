@@ -48,7 +48,8 @@ pub use files::{FilesMutation, files_router};
 pub use link::{CommandOutput, Error as LinkError, FixedCommand, SshLink, link};
 pub use live::{EndCause, Live, Redeemed, Refused, Tunnel};
 pub use model::{
-    EndReason, FieldError, HostKey, Protocol, ServerCertificate, Session, SessionEnd, UnknownValue,
+    EndReason, FieldError, HostKey, Protocol, ServerCertificate, Session, SessionChange,
+    SessionEnd, UnknownValue,
 };
 pub use public_key::{BadFingerprint, BadKey, Fingerprint, PublicKey};
 pub use start::{DEFAULT_DPI, DisplayRequest, StartRequest, Waking, start};

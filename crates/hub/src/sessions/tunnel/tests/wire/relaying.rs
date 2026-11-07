@@ -13,7 +13,7 @@ use tokio::time::{Instant, timeout};
 use crate::sessions::Protocol;
 
 use super::{
-    bench::{FINGERPRINT, PASSWORD, Setup, VNC_PASSWORD, bench},
+    bench::{PASSWORD, Setup, VNC_PASSWORD, bench},
     fake_guacd::{Act, CONNECTION_ID, RDP_ARGS, Script, VNC_ARGS, connect_values, fake_guacd},
     heard, opened,
     records::{ended, stored_text},
@@ -49,12 +49,12 @@ async fn gw_010_gw_011_gw_014_ra_008_one_full_rdp_session(pool: PgPool) {
     assert_eq!(handshake[5].args, ["operator"]);
     let values = connect_values(RDP_ARGS, &handshake[6]);
     assert_eq!(values["hostname"], "127.0.0.1");
-    assert_eq!(values["port"], "3389");
+    assert_eq!(values["port"], bench.rdp.port.to_string());
     assert_eq!(values["username"], "ops");
     assert_eq!(values["password"], PASSWORD);
     assert_eq!(
         values["cert-fingerprints"],
-        format!("sha256:{FINGERPRINT}"),
+        format!("sha256:{}", bench.accepted),
         "pinned to the certificate the operator accepted (SEC-007)"
     );
 

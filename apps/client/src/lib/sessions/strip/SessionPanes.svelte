@@ -4,6 +4,7 @@
   import { openScreen } from '../screen/screen';
   import RemoteView from '../view/remote/RemoteView.svelte';
   import SessionView from '../view/SessionView.svelte';
+  import WebTab from '../web/WebTab.svelte';
   import { panelId, tabElementId } from './tablist';
 
   const { api }: { api: Pick<SessionsApi, 'endSession' | 'testConnection' | 'acceptHostKey' | 'acceptServerCertificate' | 'setCredential'> } = $props();
@@ -34,7 +35,15 @@
       hidden={!visible}
       inert={!visible}
     >
-      {#if tab.protocol === 'SSH'}
+      {#if tab.protocol === 'WEB'}
+        <WebTab
+          webInterface={tab.web}
+          device={{ id: tab.deviceId, name: tab.deviceName, status: tab.status }}
+          tabId={tab.id}
+          {visible}
+          overlayOpen={false}
+        />
+      {:else if tab.protocol === 'SSH'}
         <SessionView
           device={{ id: tab.deviceId, name: tab.deviceName }}
           start={sessions.startIn(tab.id)}

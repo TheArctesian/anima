@@ -24,15 +24,16 @@ use tokio_rustls::TlsConnector;
 use super::{
     certificate::PresentedCertificate,
     reach::{ReadError, reach, within},
-    x224::{self, Negotiated, TPKT_HEADER},
+    x224::{self, Negotiated, PROTOCOL_HYBRID, PROTOCOL_HYBRID_EX, TPKT_HEADER},
 };
-use crate::sessions::ssh::Target;
+use crate::{devices::RdpSecurity, sessions::ssh::Target};
 
 /// What the server answered.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(in crate::sessions) enum Reply {
-    /// The leaf certificate of the TLS handshake.
-    Certificate(PresentedCertificate),
+    /// The leaf certificate of the TLS handshake, and the security the server chose: TLS,
+    /// NLA or NLA with the early authorisation result.
+    Certificate(PresentedCertificate, RdpSecurity),
     /// The server offers standard RDP security only: there is no certificate.
     Standard,
     /// The server sent an RDP Negotiation Failure: it refuses what the hub asked for.
@@ -56,10 +57,25 @@ pub(in crate::sessions) async fn read_server_certificate(
         match confirm(&mut stream, requested).await? {
             Negotiated::Standard => Ok(Reply::Standard),
             Negotiated::Failure(_) => Ok(Reply::Refused),
-            Negotiated::Tls(_) => leaf(stream).await.map(Reply::Certificate),
+            Negotiated::Tls(chosen) => {
+                let certificate = leaf(stream).await?;
+                Ok(Reply::Certificate(certificate, chosen_security(chosen)))
+            }
         }
     })
     .await
+}
+
+/// The security setting for the TLS protocol the server chose (`x224::TLS_PROTOCOLS` flags);
+/// none of them is standard RDP security.
+const fn chosen_security(chosen: u32) -> RdpSecurity {
+    if chosen & PROTOCOL_HYBRID_EX != 0 {
+        RdpSecurity::NlaExt
+    } else if chosen & PROTOCOL_HYBRID != 0 {
+        RdpSecurity::Nla
+    } else {
+        RdpSecurity::Tls
+    }
 }
 
 /// Sends the Connection Request and reads the Connection Confirm, at most

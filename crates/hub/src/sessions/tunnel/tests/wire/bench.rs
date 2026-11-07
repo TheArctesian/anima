@@ -1,6 +1,10 @@
 //! A hub serving only `/tunnel` on a loopback port, with a started RDP or VNC session on
 //! `docker-host`. The session starts while the device's host is `10.10.0.21` (a K6 device),
 //! then the device moves to loopback, which the tests' target rule lets the tunnel reach.
+//! Its RDP port is a fake RDP server's, whose certificate is the accepted one unless the
+//! setup says otherwise.
+
+mod fake_rdp;
 
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
@@ -19,6 +23,7 @@ use crate::{
         tests::fixture::{DOCKER_HOST, add_operator, own_pool, vault},
     },
 };
+use fake_rdp::{Answer, FakeRdp, fake_rdp};
 
 pub(super) use crate::sessions::tests::fixture::{
     LOOPBACK, PASSWORD, address, docker_host, now, operator,
@@ -26,7 +31,7 @@ pub(super) use crate::sessions::tests::fixture::{
 
 /// `docker-host`'s VNC password; [`PASSWORD`] is its RDP password.
 pub(super) const VNC_PASSWORD: &str = "vnc tr0ub4dor";
-/// The fingerprint of `docker-host`'s accepted RDP server certificate.
+/// An accepted fingerprint that no fake RDP server presents.
 pub(super) const FINGERPRINT: &str = "0a:1b:2c:3d:4e:5f:60:71:82:93:a4:b5:c6:d7:e8:f9:\
                                       0a:1b:2c:3d:4e:5f:60:71:82:93:a4:b5:c6:d7:e8:f9";
 /// Where the route tells guacd to keep shared drives.
@@ -59,13 +64,30 @@ pub(super) fn ending_within_end_wait() -> Setup {
     }
 }
 
+/// What the device's RDP server presents when the opening reads its certificate.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Presents {
+    /// The accepted certificate, over NLA.
+    Accepted,
+    /// The accepted certificate, over TLS without NLA.
+    AcceptedOverTls,
+    /// The accepted certificate, over NLA with the early authorisation result.
+    AcceptedOverNlaExt,
+    /// Another certificate than the accepted one.
+    Changed,
+    /// No certificate: it offers standard RDP security only.
+    StandardOnly,
+}
+
 /// How the bench differs from the default: the route's waits and clock, the live state and
-/// its target rule, the address the ticket is bound to and the session's protocol.
+/// its target rule, the address the ticket is bound to, the session's protocol and what the
+/// device's RDP server presents.
 pub(super) struct Setup {
     pub(super) route: Box<dyn FnOnce(&mut Route) + Send>,
     pub(super) ticket_client: ClientAddr,
     pub(super) live: Live,
     pub(super) protocol: Protocol,
+    pub(super) presents: Presents,
 }
 
 impl Default for Setup {
@@ -75,6 +97,7 @@ impl Default for Setup {
             ticket_client: address(LOOPBACK),
             live: Live::default().reaching_loopback_for_tests(),
             protocol: Protocol::Rdp,
+            presents: Presents::Accepted,
         }
     }
 }
@@ -93,6 +116,13 @@ impl Setup {
             ..Self::default()
         }
     }
+
+    pub(super) fn presents(presents: Presents) -> Self {
+        Self {
+            presents,
+            ..Self::default()
+        }
+    }
 }
 
 /// A served tunnel route and one started session's ticket.
@@ -105,17 +135,23 @@ pub(super) struct Bench {
     pub(super) url: String,
     /// Where the route listens.
     pub(super) served: SocketAddr,
+    /// The device's RDP server.
+    pub(super) rdp: FakeRdp,
+    /// The fingerprint of the device's accepted RDP server certificate.
+    pub(super) accepted: String,
 }
 
-/// Turns RDP (NLA, user `ops` in `LAB`) and VNC (user `viewer`) on for `docker-host`, accepts
-/// its RDP server certificate and stores both passwords.
-pub(super) async fn desktop_ready(pool: &PgPool, vault: &Vault) {
+/// Turns RDP (NLA on `rdp_port`, user `ops` in `LAB`) and VNC (user `viewer`) on for
+/// `docker-host`, accepts the RDP server certificate whose fingerprint is `accepted` and
+/// stores both passwords.
+pub(super) async fn desktop_ready(pool: &PgPool, vault: &Vault, rdp_port: u16, accepted: &str) {
     add_operator(pool).await;
     sqlx::query(
-        "update devices.rdp_settings set enabled = true, username = 'ops', domain = 'LAB' \
-         where device_id = $1::text::uuid",
+        "update devices.rdp_settings set enabled = true, username = 'ops', domain = 'LAB', \
+         port = $2 where device_id = $1::text::uuid",
     )
     .bind(DOCKER_HOST)
+    .bind(i32::from(rdp_port))
     .execute(pool)
     .await
     .unwrap();
@@ -133,7 +169,7 @@ pub(super) async fn desktop_ready(pool: &PgPool, vault: &Vault) {
          select $1::text::uuid, $2, $3, id from access.operators",
     )
     .bind(DOCKER_HOST)
-    .bind(FINGERPRINT)
+    .bind(accepted)
     .bind(now())
     .execute(pool)
     .await
@@ -175,11 +211,26 @@ pub(super) async fn move_host(pool: &PgPool, host: &str) {
         .unwrap();
 }
 
-/// Starts a session on `docker-host` at `now()`, moves the device to loopback, and serves
-/// the tunnel route to `guacd`.
+/// Starts a fake RDP server and a session on `docker-host` at `now()`, moves the device to
+/// loopback, and serves the tunnel route to `guacd`.
 pub(super) async fn bench(pool: &PgPool, guacd: &str, setup: Setup) -> Bench {
     let vault = vault();
-    desktop_ready(pool, &vault).await;
+    let answer = match setup.presents {
+        Presents::Accepted | Presents::Changed => Answer::Nla,
+        Presents::AcceptedOverTls => Answer::Tls,
+        Presents::AcceptedOverNlaExt => Answer::NlaExt,
+        Presents::StandardOnly => Answer::Standard,
+    };
+    let rdp = fake_rdp(answer).await;
+    let accepted = if matches!(
+        setup.presents,
+        Presents::Accepted | Presents::AcceptedOverTls | Presents::AcceptedOverNlaExt
+    ) {
+        rdp.fingerprint.clone()
+    } else {
+        FINGERPRINT.to_owned()
+    };
+    desktop_ready(pool, &vault, rdp.port, &accepted).await;
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(now()));
     let live = setup.live;
     let client = setup.ticket_client;
@@ -216,6 +267,8 @@ pub(super) async fn bench(pool: &PgPool, guacd: &str, setup: Setup) -> Bench {
         token: ticket.token().to_owned(),
         url: format!("ws://{served}/tunnel?token={}", ticket.token()),
         served,
+        rdp,
+        accepted,
     }
 }
 

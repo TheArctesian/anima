@@ -15,6 +15,7 @@
   import { browserClock, type LoadingClock } from '$lib/motion/loading/loading';
   import LiveNotice from '$lib/hub/notice/LiveNotice.svelte';
   import type { SessionProtocol } from '$lib/sessions/tabs';
+  import type { WakeApi } from '$lib/sessions/wake/api';
   import type { WebInterface } from '$lib/web-interfaces/api';
   import Skeleton from './Skeleton.svelte';
 
@@ -26,11 +27,13 @@
     onConnect: (device: CardDevice, protocol: SessionProtocol, button: HTMLElement) => void;
     /** The Web button of a card or row (WEB-003); hidden while no route gives it. */
     onOpenWeb?: (device: CardDevice, webInterface: WebInterface, button: HTMLElement) => void;
+    /** The Wake button's call on a card (RA-031); hidden while no route gives it. */
+    wake?: WakeApi;
     /** The clock of the loading thresholds; tests pass their own. */
     clock?: LoadingClock;
   }
 
-  const { query, onQueryChange, onAddDevice, onConnect, onOpenWeb, clock = browserClock }: Props = $props();
+  const { query, onQueryChange, onAddDevice, onConnect, onOpenWeb, wake, clock = browserClock }: Props = $props();
   const hub = useHub();
   // The clock is fixed for the life of the screen.
   // svelte-ignore state_referenced_locally
@@ -93,7 +96,7 @@
       {:else if query.view === 'table'}
         <DeviceTable devices={list.devices} beats={listing.beats} {onConnect} {onOpenWeb} />
       {:else}
-        <DeviceGrid devices={list.devices} beats={listing.beats} {onConnect} {onOpenWeb} />
+        <DeviceGrid devices={list.devices} beats={listing.beats} {onConnect} {onOpenWeb} {wake} />
       {/if}
       {#if list.hasNextPage}
         <div class="more">

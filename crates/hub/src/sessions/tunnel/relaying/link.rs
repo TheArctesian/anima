@@ -22,7 +22,8 @@ use super::{
     super::{
         ending::{Cause, End, GATEWAY_LOST},
         gateway::tunnel_opened,
-        guacd::{Connected, ConnectionId, READ_BYTES},
+        guacd::{ConnectionId, READ_BYTES},
+        opening::Opened,
         relay::{ClientStep, GatewayStep, Relay},
         route::Timing,
     },
@@ -30,13 +31,15 @@ use super::{
 };
 use crate::sessions::{EndCause, Tunnel, end::unreadable};
 
-/// Relays between the client and guacd until the first cause, then closes both.
+/// Relays between the client and guacd under the opened session's policy until the first
+/// cause, then closes both.
 pub(super) async fn relay(
     client: WebSocket,
-    connected: Connected,
+    opened: Opened,
     tunnel: &mut Tunnel,
     timing: Timing,
 ) -> End {
+    let Opened { connected, policy } = opened;
     let now = Instant::now();
     let mut link = Link {
         client,
@@ -44,7 +47,7 @@ pub(super) async fn relay(
         tunnel,
         from_client: Decoder::new(),
         from_gateway: connected.decoder,
-        relay: Relay::default(),
+        relay: Relay::new(policy),
         timing,
         buffer: vec![0; READ_BYTES],
         gateway_quiet: now + timing.gateway_silence,
@@ -201,6 +204,11 @@ impl Link<'_> {
                     }
                 }
                 GatewayStep::Drop => {}
+                GatewayStep::Refuse(ack) => {
+                    if let Err(end) = self.forward(&ack).await {
+                        return Some(end);
+                    }
+                }
                 GatewayStep::End { send, cause } => {
                     // The cause stands even if the client is gone by now: it came first.
                     let _ = self.tell_client(&send).await;
@@ -217,7 +225,7 @@ impl Link<'_> {
         send_text(&mut self.client, instruction, self.tunnel, wait).await
     }
 
-    /// Writes one client instruction to guacd (`writes::write_gateway`). The encoded copy may
+    /// Writes one instruction to guacd (`writes::write_gateway`). The encoded copy may
     /// hold what the operator typed, so it is zeroed once written; the decoded instruction
     /// is dropped by the caller without zeroing.
     async fn forward(&mut self, instruction: &Instruction) -> Result<(), End> {

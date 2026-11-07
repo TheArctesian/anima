@@ -48,14 +48,18 @@ async fn waking(pool: &PgPool, woken: Duration) -> (FakeGuacd, Bench) {
     (guacd, bench)
 }
 
-/// Points `docker-host`'s RDP port at `port`.
+/// Points `docker-host`'s RDP port at `port`. The certificate is ignored: the waking device
+/// only accepts the connection, so the hub cannot read one from it.
 async fn move_rdp_port(pool: &PgPool, port: u16) {
-    sqlx::query("update devices.rdp_settings set port = $2 where device_id = $1::text::uuid")
-        .bind(DOCKER_HOST)
-        .bind(i32::from(port))
-        .execute(pool)
-        .await
-        .unwrap();
+    sqlx::query(
+        "update devices.rdp_settings set port = $2, ignore_certificate = true \
+         where device_id = $1::text::uuid",
+    )
+    .bind(DOCKER_HOST)
+    .bind(i32::from(port))
+    .execute(pool)
+    .await
+    .unwrap();
 }
 
 /// The bench's ticket, redeemed and marked as woken.

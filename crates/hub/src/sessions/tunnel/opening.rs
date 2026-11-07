@@ -1,7 +1,19 @@
 //! Everything the tunnel does before the WebSocket upgrade, after the ticket is redeemed:
 //! load the device and check its protocol is still on, resolve and check its host (R-032),
-//! load the accepted RDP server certificate and the stored password, build the `connect`
-//! values and run the guacd handshake (K4 Sections 2 and 3).
+//! load the accepted RDP server certificate and check the device still presents it, load the
+//! stored password, build the `connect` values and run the guacd handshake (K4 Sections 2
+//! and 3).
+//!
+//! The certificate check (SEC-007, K4 Section 3): for RDP with TLS or NLA and certificates
+//! not ignored, the hub reads the server certificate itself at the checked address, as the
+//! connection test does, before guacd is reached and before the password is loaded; guacd
+//! reports a mismatch only as a generic error. A different certificate opens nothing at guacd
+//! and ends the session `SERVER_CERTIFICATE_MISMATCH`. When the setting is `ANY`, guacd gets
+//! the TLS security the server chose instead (`pinned_security`), so its connection cannot
+//! fall back to standard RDP security, where no certificate is checked. guacd pins
+//! `cert-fingerprints` on that TLS connection, so a certificate that changes between the hub's
+//! read and guacd's connect fails closed as `GATEWAY_ERROR`. The read is not kept as an
+//! observation: only a connection test lets the operator accept a certificate.
 //!
 //! When the ticket's start sent a Wake-on-LAN packet, the opening first waits, up to the
 //! woken limit, until the device's port answers, so guacd connects to a device that is up
@@ -16,26 +28,38 @@ use guac_protocol::{ConnectParams, DecodeError};
 use tokio::time::timeout;
 
 use super::{
-    arguments::{BadConnectValue, Sources, audio, connect_values, time_zone},
+    arguments::{BadConnectValue, Sources, audio, connect_values, pinned_security, time_zone},
     guacd::{self, Connected},
+    policy::Policy,
     route::Route,
 };
 use crate::{
     credentials, devices,
-    devices::Device,
+    devices::{Device, RdpSecurity},
     sessions::{
         self, Desktop, PendingTicket, Protocol, ServerCertificate,
         ssh::{self, SshError, Target},
         start::{certificate_required, protocol_off},
         target::TargetRule,
+        trust::{CertificateFingerprint, ReadError, Reply, TLS_PROTOCOLS, read_server_certificate},
     },
 };
 
 /// What the tunnel opens after the upgrade. Each way the opening can end with something to
 /// tell the client, rather than a refusal, is a variant.
 pub(super) enum Opening {
-    /// guacd is past `ready`: relay.
-    Gateway(Connected),
+    /// guacd is past `ready`: relay. Boxed, as it is far larger than the other variant.
+    Gateway(Box<Opened>),
+    /// The device presented another RDP server certificate than the accepted one; guacd was
+    /// never reached.
+    CertificateChanged,
+}
+
+/// guacd past `ready`, and what the device lets the session move, read with the rest of the
+/// device record so it holds for the session's life (K4 Section 4).
+pub(super) struct Opened {
+    pub(super) connected: Connected,
+    pub(super) policy: Policy,
 }
 
 /// Why the tunnel did not open. The messages are for the process log; none holds a value,
@@ -56,6 +80,12 @@ pub(super) enum NotOpened {
     RefusedTarget,
     #[error("the device did not answer in time after the Wake-on-LAN packet")]
     NotAwake,
+    #[error("the device's RDP server certificate could not be read")]
+    CertificateUnread(#[source] ReadError),
+    #[error("the device offers only standard RDP security, so it has no certificate")]
+    StandardOnly,
+    #[error("the device refused the RDP security the hub asked for to read its certificate")]
+    SecurityRefused,
     #[error(transparent)]
     Values(#[from] BadConnectValue),
     #[error("guacd cannot be reached")]
@@ -104,6 +134,15 @@ impl NotOpened {
             Self::NotAwake => {
                 "The device did not answer within 120 seconds of the Wake-on-LAN packet."
             }
+            Self::CertificateUnread(error) => unread_message(*error),
+            Self::StandardOnly => {
+                "The device offers only standard RDP security, so the hub could not check its \
+                 server certificate. Check the security setting."
+            }
+            Self::SecurityRefused => {
+                "The device refused the RDP security the hub asked for to check its server \
+                 certificate. Check the security setting."
+            }
             Self::Values(_) => {
                 "The device's settings or stored credential cannot be sent to the gateway."
             }
@@ -129,6 +168,21 @@ impl NotOpened {
     }
 }
 
+/// The event message for a server certificate the hub could not read from the device.
+const fn unread_message(error: ReadError) -> &'static str {
+    match error {
+        ReadError::Unexpected => {
+            "The device did not answer as an RDP server when the hub checked its server \
+             certificate."
+        }
+        ReadError::Tls => {
+            "The device did not complete a TLS handshake when the hub checked its server \
+             certificate."
+        }
+        _ => "The hub could not reach the device's RDP port to check its server certificate.",
+    }
+}
+
 /// Opens the gateway side of the ticket's session. Safe to drop at any await: the
 /// password leaves the hub only in the handshake's `connect`, after guacd's `args`, so
 /// dropping this earlier sends it nowhere (SEC-002).
@@ -137,7 +191,7 @@ impl NotOpened {
 /// [`NotOpened`] for each step that fails; the caller ends the session `GATEWAY_ERROR`.
 pub(super) async fn open(route: &Route, ticket: &PendingTicket) -> Result<Opening, NotOpened> {
     let desktop = Desktop::of(ticket.protocol).ok_or(NotOpened::NotDesktop)?;
-    let device = devices::get(&route.db, ticket.device)
+    let mut device = devices::get(&route.db, ticket.device)
         .await
         .map_err(|error| match error {
             devices::Error::NotFound(_) => NotOpened::DeviceGone,
@@ -159,6 +213,15 @@ pub(super) async fn open(route: &Route, ticket: &PendingTicket) -> Result<Openin
             .await
             .map_err(|_| NotOpened::Unresolved)??
     };
+    let pinned = certificate
+        .as_ref()
+        .filter(|_| certificate_required(&device.rdp));
+    if let Some(accepted) = pinned {
+        let Some(chosen) = presents(route, SocketAddr::new(address, port), accepted).await? else {
+            return Ok(Opening::CertificateChanged);
+        };
+        device.rdp.security = pinned_security(device.rdp.security, chosen);
+    }
     let password =
         credentials::load_password(&route.db, &route.vault, device.id, desktop.password())
             .await
@@ -179,9 +242,10 @@ pub(super) async fn open(route: &Route, ticket: &PendingTicket) -> Result<Openin
         audio: audio(desktop, &device),
         values,
     };
+    let policy = Policy::of(desktop, &device);
     guacd::connect(&route.guacd, desktop.select(), params, route.timing)
         .await
-        .map(Opening::Gateway)
+        .map(|connected| Opening::Gateway(Box::new(Opened { connected, policy })))
 }
 
 /// The device's accepted RDP server certificate, when it has one; an RDP session that needs
@@ -202,6 +266,37 @@ async fn certificate(
         return Err(NotOpened::NoCertificate);
     }
     Ok(accepted)
+}
+
+/// The TLS security the RDP server at the checked `address` chose when it presents
+/// `accepted`; `None` when it presents another certificate. The hub asks for TLS or NLA, as
+/// the connection test does, and reads the certificate within the connect wait. The address
+/// is an IP, so it is not resolved again; the target rule still checks it.
+async fn presents(
+    route: &Route,
+    address: SocketAddr,
+    accepted: &ServerCertificate,
+) -> Result<Option<RdpSecurity>, NotOpened> {
+    let host = address.ip().to_string();
+    let target = Target {
+        host: &host,
+        port: address.port(),
+        rule: route.live.target_rule(),
+    };
+    let read = read_server_certificate(target, TLS_PROTOCOLS, route.timing.connect).await;
+    match read.map_err(|error| match error {
+        ReadError::Unresolved => NotOpened::Unresolved,
+        ReadError::RefusedTarget => NotOpened::RefusedTarget,
+        other => NotOpened::CertificateUnread(other),
+    })? {
+        Reply::Certificate(presented, chosen) => Ok(accepted
+            .fingerprint_sha256
+            .parse::<CertificateFingerprint>()
+            .is_ok_and(|accepted| accepted == presented.fingerprint)
+            .then_some(chosen)),
+        Reply::Standard => Err(NotOpened::StandardOnly),
+        Reply::Refused => Err(NotOpened::SecurityRefused),
+    }
 }
 
 /// The address the session goes to: the first one the device's host resolves to, when `rule`

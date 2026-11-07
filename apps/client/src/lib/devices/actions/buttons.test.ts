@@ -120,7 +120,6 @@ describe('Web button (WEB-003)', () => {
     });
     expect(document.activeElement).toBe(button);
   });
-
 });
 
 describe('Web menu closing (WEB-003)', () => {
