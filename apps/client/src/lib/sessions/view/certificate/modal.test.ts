@@ -133,12 +133,6 @@ describe('certificate modal closing (SEC-007)', () => {
     expect(button('Close')).toBeDefined();
   });
 
-  it('a click on the scrim does not close the warning', async () => {
-    const { heard } = await showModal();
-    document.querySelector('.frame')?.dispatchEvent(new Event('pointerdown', { bubbles: true }));
-    expect(heard.closed).toBe(0);
-    expect(dialog()).not.toBeNull();
-  });
 
   it('Cancel and Escape close without accepting', async () => {
     const { named, heard } = await showModal();
@@ -147,6 +141,31 @@ describe('certificate modal closing (SEC-007)', () => {
     expect(heard).toEqual({ closed: 2, accepted: 0 });
     expect(named('AcceptServerCertificate')).toEqual([]);
   });
+});
+
+describe('certificate modal scrim and keys (SEC-007)', () => {
+  it('a click on the scrim does not close the warning', async () => {
+    const { heard } = await showModal();
+    document.querySelector('.frame')?.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    expect(heard.closed).toBe(0);
+    expect(dialog()).not.toBeNull();
+  });
+
+  it('SEC-007: after a press on the scrim, Escape with the focus on the page still closes, and Tab stays in the dialog', async () => {
+    const { heard } = await showModal();
+    const press = (init: KeyboardEventInit) => document.body.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init }));
+    const frame = document.querySelector('.frame');
+    const down = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+    frame?.dispatchEvent(down);
+    expect(down.defaultPrevented).toBe(true);
+    (document.activeElement as HTMLElement | null)?.blur();
+    press({ key: 'Tab' });
+    expect(dialog()?.contains(document.activeElement)).toBe(true);
+    (document.activeElement as HTMLElement | null)?.blur();
+    press({ key: 'Escape' });
+    expect(heard.closed).toBe(1);
+  });
+
 });
 
 describe('MOT-007, MV-004: the modal keeps its layout while it reads', () => {

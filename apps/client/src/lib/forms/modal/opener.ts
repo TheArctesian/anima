@@ -52,3 +52,19 @@ export function takeOpener(active: Element | null): HTMLElement | null {
   clicked = null;
   return opener;
 }
+
+/** The dialogs that are open, oldest first: only the last one answers keys pressed outside every dialog. */
+const open: HTMLElement[] = [];
+
+/** Records `dialog` as open and returns the function that removes it. */
+export function enlist(dialog: HTMLElement): () => void {
+  open.push(dialog);
+  return () => {
+    const at = open.indexOf(dialog);
+    if (at !== -1) open.splice(at, 1);
+  };
+}
+
+export function isTopmost(dialog: HTMLElement): boolean {
+  return open.at(-1) === dialog;
+}

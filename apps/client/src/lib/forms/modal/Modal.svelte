@@ -5,7 +5,7 @@
   import { fade, modal } from '$lib/motion/roles/transitions';
   import { offerFooter } from './footer';
   import { initialFocusIn, trapTab } from './focus';
-  import { takeOpener, watchClicks } from './opener';
+  import { enlist, isTopmost, takeOpener, watchClicks } from './opener';
 
   interface Props {
     open: boolean;
@@ -69,8 +69,22 @@
     }
   }
 
-  function enter(dialog: HTMLElement): void {
+  /**
+   * Focus starts inside the dialog. Keys pressed while the focus is outside it (on the body, after a
+   * click that took it away) are handled here too, by the topmost dialog only.
+   */
+  function enter(dialog: HTMLElement): () => void {
     initialFocusIn(dialog).focus();
+    const delist = enlist(dialog);
+    const outside = (event: KeyboardEvent) => {
+      if (dialog.contains(event.target as Node | null) || !isTopmost(dialog)) return;
+      keydown(event, dialog);
+    };
+    document.addEventListener('keydown', outside);
+    return () => {
+      delist();
+      document.removeEventListener('keydown', outside);
+    };
   }
 
   /**
@@ -90,12 +104,16 @@
 
 {#if open}
   <div class="portal" {@attach toBody}>
-    <div class="scrim" transition:fade>
+    <div class="scrim" transition:fade|global>
       <div class="shade"></div>
     </div>
     <div
       class="frame"
       role="presentation"
+      onmousedown={(event) => {
+        // A press on the scrim keeps the focus where it is, so Tab and Escape still reach the dialog.
+        if (event.target === event.currentTarget) event.preventDefault();
+      }}
       onpointerdown={(event) => {
         if (closeOnScrim && event.target === event.currentTarget) onClose();
       }}
@@ -109,7 +127,7 @@
         aria-labelledby={titleId}
         aria-describedby={describedBy}
         tabindex="-1"
-        transition:modal
+        transition:modal|global
         {@attach enter}
         onkeydown={(event) => {
           keydown(event, event.currentTarget);

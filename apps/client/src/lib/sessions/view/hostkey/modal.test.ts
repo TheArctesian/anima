@@ -162,3 +162,15 @@ describe('host key modal keyboard (Section 5.7.3 "Modal")', () => {
     expect(dialog()).toBeNull();
   });
 });
+
+describe('host key modal motion (MV-003, MOT-040)', () => {
+  it('MV-003: a modal mounted already open still fades its scrim and materializes its surface', async () => {
+    const { installAnimations, played } = await import('../../../forms/animations.fixture');
+    installAnimations();
+    played.length = 0;
+    await hostKeyChanged();
+    const keyframes = played.flatMap((call) => call.keyframes.flatMap((frame) => Object.keys(frame)));
+    expect(keyframes).toContain('opacity');
+    expect(keyframes).toContain('scale');
+  });
+});
