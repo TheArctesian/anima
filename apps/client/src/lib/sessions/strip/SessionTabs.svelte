@@ -6,14 +6,14 @@
   import type { Tab } from '../tabs';
   import { dragTab } from './drag/drag';
   import { grow } from './grow';
-  import { enterStrip, exitStrip } from './presence';
+  import { enterStrip } from './presence';
   import { nextFocus, panelId } from './tablist';
   import SessionTab from './SessionTab.svelte';
 
   const sessions = useSessions();
   const preference = motionPreference();
   let strip: HTMLElement | undefined = $state();
-  /** The strip keeps its space while any tab is open or the last one is leaving (MV-004). */
+  /** The strip has its space while a tab is open; it goes on the frame the last tab leaves (MOT-007, R-075). */
   let reserved = $state(false);
 
   /** The tabs in the strip now, without one that is closing. */
@@ -108,20 +108,13 @@
     enterStrip(element, fromHidden, preference);
   }
 
-  /** The space goes only after the strip has left, so the page moves once, after the motion. */
-  function disappear(element: HTMLElement): void {
-    void exitStrip(element, preference).finished.then(() => {
-      if (sessions.tabs.length === 0) reserved = false;
-    });
-  }
-
   $effect(() => {
     const open = sessions.tabs.length > 0;
     const element = strip;
     untrack(() => {
       if (element === undefined) return;
       if (open) void appear(element);
-      else if (reserved) disappear(element);
+      else reserved = false;
     });
   });
 </script>

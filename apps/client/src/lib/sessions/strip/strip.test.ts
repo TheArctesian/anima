@@ -194,17 +194,34 @@ describe('pop out (RA-002, D-13)', () => {
   });
 });
 
-it('MV-004: the strip keeps its space until it has left after the last tab closes', async () => {
+// jsdom has no layout, so this shows the markers the CSS acts on, not pixels: the strip is hidden in the same update
+// in which the pages show, so the page has no 32 px step to take and no tab paints over it (M-1, R-075).
+it('MOT-007, R-075, 5.7.3: after the last tab closes the strip is hidden in the update in which the pages show', async () => {
   const sessions = show();
   const id = await openStarted(sessions);
   const strip = document.querySelector('[role="tablist"]');
-  expect(strip?.hasAttribute('hidden')).toBe(false);
   await sessions.close(id);
   await settle();
-  expect(strip?.hasAttribute('hidden')).toBe(false);
-  for (const run of [...runs]) run.finish();
-  await settle();
+  expect(document.querySelector('.pages')?.hasAttribute('inert')).toBe(false);
   expect(strip?.hasAttribute('hidden')).toBe(true);
+});
+
+it('MOT-007, MOT-040: a tab opened again after the last one closed shows the strip', async () => {
+  const sessions = show();
+  const id = await openStarted(sessions);
+  await sessions.close(id);
+  await settle();
+  await openStarted(sessions);
+  expect(document.querySelector('[role="tablist"]')?.hasAttribute('hidden')).toBe(false);
+});
+
+it('MOT-007: the strip, not the page, carries the exit: no translate is written on an ancestor of the pages', async () => {
+  const sessions = show();
+  const id = await openStarted(sessions);
+  await sessions.close(id);
+  await settle();
+  const pages = document.querySelector<HTMLElement>('.pages');
+  for (let node: HTMLElement | null = pages; node !== null; node = node.parentElement) expect(node.style.translate).toBe('');
 });
 
 it('S4: closing a tab with none selected sends focus to the tab in its place; the last one to the nav', async () => {

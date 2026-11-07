@@ -88,9 +88,10 @@
 
   .wake {
     position: relative;
-    display: flex;
+    display: grid;
+    grid-template-columns: var(--icon-md) minmax(0, 1fr);
+    column-gap: var(--space-1);
     align-items: center;
-    gap: var(--space-1);
     min-inline-size: 0;
     max-inline-size: 100%;
     block-size: 1lh;
@@ -100,8 +101,9 @@
     color: var(--text);
   }
 
+  /* The same fixed icon cell as a step: `done` is wider than `active`, and it must not move the label (MOT-007, M-3). */
   .wake > :global(.icon) {
-    flex: none;
+    justify-self: center;
   }
 
   .wake[data-wake='done'] :global(.icon) {
