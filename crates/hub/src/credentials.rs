@@ -61,6 +61,9 @@ pub enum Error {
     /// No device has the given id.
     #[error("the device does not exist")]
     UnknownDevice,
+    /// The OS random source yielded no nonce, so nothing was sealed.
+    #[error("the OS random source failed")]
+    Random(#[source] getrandom::Error),
 }
 
 /// Replaces every SSH secret of the device with `secret`, sealed per part, in the caller's
@@ -77,18 +80,19 @@ pub enum Error {
 ///
 /// # Errors
 ///
-/// [`Error::UnknownDevice`] when no device has this id, [`Error::Database`] otherwise.
+/// [`Error::Random`] when the OS random source fails, [`Error::UnknownDevice`] when no device
+/// has this id, [`Error::Database`] otherwise.
 pub async fn store_ssh(
     conn: &mut PgConnection,
     vault: &Vault,
     device: DeviceId,
     secret: SshSecret,
 ) -> Result<(), Error> {
-    let sealed: Vec<_> = secret
+    let sealed = secret
         .into_parts()
         .into_iter()
-        .map(|(kind, part)| (kind, vault.seal(&part, &ssh::context(device, kind))))
-        .collect();
+        .map(|(kind, part)| Ok((kind, vault.seal(&part, &ssh::context(device, kind))?)))
+        .collect::<Result<Vec<_>, Error>>()?;
     let mut tx = conn.begin().await?;
     store::lock_device(&mut tx, device).await?;
     store::delete_kinds(&mut tx, device, &SshKind::SQL_KINDS).await?;
@@ -173,7 +177,8 @@ pub async fn clear_ssh(conn: &mut PgConnection, device: DeviceId) -> Result<bool
 ///
 /// # Errors
 ///
-/// [`Error::UnknownDevice`] when no device has this id, [`Error::Database`] otherwise.
+/// [`Error::Random`] when the OS random source fails, [`Error::UnknownDevice`] when no device
+/// has this id, [`Error::Database`] otherwise.
 #[expect(
     clippy::too_many_arguments,
     reason = "the hub contract fixes the signature of store_password"
@@ -185,7 +190,7 @@ pub async fn store_password(
     kind: PasswordKind,
     secret: Secret,
 ) -> Result<(), Error> {
-    let sealed = vault.seal(&secret, &password::context(device, kind));
+    let sealed = vault.seal(&secret, &password::context(device, kind))?;
     drop(secret);
     let mut tx = conn.begin().await?;
     store::lock_device(&mut tx, device).await?;

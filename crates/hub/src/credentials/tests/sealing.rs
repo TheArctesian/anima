@@ -8,7 +8,9 @@ fn with_ciphertext(sealed: &Sealed, ciphertext: Vec<u8>) -> Result<Sealed, Error
 #[test]
 fn sec_003_seal_then_open_returns_plaintext() {
     let vault = vault_from(test_key());
-    let sealed = vault.seal(&secret("correct horse battery staple"), CONTEXT);
+    let sealed = vault
+        .seal(&secret("correct horse battery staple"), CONTEXT)
+        .unwrap();
     assert_eq!(
         vault.open(&sealed, CONTEXT).unwrap().expose(),
         b"correct horse battery staple"
@@ -18,22 +20,24 @@ fn sec_003_seal_then_open_returns_plaintext() {
 #[test]
 fn sec_003_empty_secret_round_trips() {
     let vault = vault_from(test_key());
-    let sealed = vault.seal(&Secret::new(Vec::new()), CONTEXT);
+    let sealed = vault.seal(&Secret::new(Vec::new()), CONTEXT).unwrap();
     assert_eq!(vault.open(&sealed, CONTEXT).unwrap().expose(), b"");
 }
 
 #[test]
 fn sec_003_sealing_twice_uses_fresh_nonces_and_ciphertexts() {
     let vault = vault_from(test_key());
-    let first = vault.seal(&secret("same"), CONTEXT);
-    let second = vault.seal(&secret("same"), CONTEXT);
+    let first = vault.seal(&secret("same"), CONTEXT).unwrap();
+    let second = vault.seal(&secret("same"), CONTEXT).unwrap();
     assert_ne!(first.nonce(), second.nonce());
     assert_ne!(first.ciphertext(), second.ciphertext());
 }
 
 #[test]
 fn sec_003_ciphertext_does_not_contain_plaintext() {
-    let sealed = vault_from(test_key()).seal(&secret("plain-marker-text"), CONTEXT);
+    let sealed = vault_from(test_key())
+        .seal(&secret("plain-marker-text"), CONTEXT)
+        .unwrap();
     let marker = b"plain-marker-text";
     assert!(
         !sealed
@@ -45,7 +49,7 @@ fn sec_003_ciphertext_does_not_contain_plaintext() {
 
 #[test]
 fn sec_003_wrong_key_fails() {
-    let sealed = vault_from(test_key()).seal(&secret("s"), CONTEXT);
+    let sealed = vault_from(test_key()).seal(&secret("s"), CONTEXT).unwrap();
     assert!(matches!(
         other_vault().open(&sealed, CONTEXT),
         Err(Error::WrongKey)
@@ -54,12 +58,16 @@ fn sec_003_wrong_key_fails() {
 
 #[test]
 fn sec_003_same_key_id_with_a_different_key_fails_to_decrypt() {
-    let sealed = vault_from(test_key()).seal(&secret("s"), CONTEXT);
+    let sealed = vault_from(test_key()).seal(&secret("s"), CONTEXT).unwrap();
     let other = other_vault();
     let forged = Sealed::from_parts(
         sealed.nonce(),
         sealed.ciphertext().to_vec(),
-        other.seal(&secret("x"), CONTEXT).key_id().to_owned(),
+        other
+            .seal(&secret("x"), CONTEXT)
+            .unwrap()
+            .key_id()
+            .to_owned(),
     )
     .unwrap();
     assert!(matches!(other.open(&forged, CONTEXT), Err(Error::Decrypt)));
@@ -68,7 +76,7 @@ fn sec_003_same_key_id_with_a_different_key_fails_to_decrypt() {
 #[test]
 fn sec_003_changed_nonce_fails() {
     let vault = vault_from(test_key());
-    let sealed = vault.seal(&secret("s"), CONTEXT);
+    let sealed = vault.seal(&secret("s"), CONTEXT).unwrap();
     let mut nonce = sealed.nonce().to_vec();
     nonce[0] ^= 0x01;
     let changed = Sealed::from_parts(
@@ -83,7 +91,7 @@ fn sec_003_changed_nonce_fails() {
 #[test]
 fn sec_003_changed_ciphertext_fails() {
     let vault = vault_from(test_key());
-    let sealed = vault.seal(&secret("secret text"), CONTEXT);
+    let sealed = vault.seal(&secret("secret text"), CONTEXT).unwrap();
     for bit in 0..sealed.ciphertext().len() * 8 {
         let mut ciphertext = sealed.ciphertext().to_vec();
         ciphertext[bit / 8] ^= 1 << (bit % 8);
@@ -98,7 +106,7 @@ fn sec_003_changed_ciphertext_fails() {
 #[test]
 fn sec_003_truncated_ciphertext_fails() {
     let vault = vault_from(test_key());
-    let sealed = vault.seal(&secret("secret text"), CONTEXT);
+    let sealed = vault.seal(&secret("secret text"), CONTEXT).unwrap();
     for len in 0..sealed.ciphertext().len() {
         let truncated = sealed.ciphertext()[..len].to_vec();
         match with_ciphertext(&sealed, truncated) {
@@ -111,7 +119,7 @@ fn sec_003_truncated_ciphertext_fails() {
 #[test]
 fn sec_003_changed_key_id_fails() {
     let vault = vault_from(test_key());
-    let sealed = vault.seal(&secret("s"), CONTEXT);
+    let sealed = vault.seal(&secret("s"), CONTEXT).unwrap();
     let changed = Sealed::from_parts(
         sealed.nonce(),
         sealed.ciphertext().to_vec(),
@@ -127,7 +135,7 @@ fn sec_003_changed_key_id_fails() {
 #[test]
 fn sec_003_other_context_fails() {
     let vault = vault_from(test_key());
-    let sealed = vault.seal(&secret("s"), b"device-a/ssh_password");
+    let sealed = vault.seal(&secret("s"), b"device-a/ssh_password").unwrap();
     let opened = vault.open(&sealed, b"device-a/ssh_password");
     assert_eq!(opened.unwrap().expose(), b"s");
     for context in [
@@ -142,7 +150,7 @@ fn sec_003_other_context_fails() {
 #[test]
 fn sec_003_empty_context_is_not_a_prefix_of_another() {
     let vault = vault_from(test_key());
-    let sealed = vault.seal(&secret("s"), b"");
+    let sealed = vault.seal(&secret("s"), b"").unwrap();
     assert_eq!(vault.open(&sealed, b"").unwrap().expose(), b"s");
     assert!(matches!(vault.open(&sealed, b"\0"), Err(Error::Decrypt)));
 }

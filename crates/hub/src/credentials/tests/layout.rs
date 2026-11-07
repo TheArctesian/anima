@@ -4,7 +4,7 @@ use crate::credentials::{Error, Sealed};
 #[test]
 fn sec_003_sealed_bytes_round_trip() {
     let vault = vault_from(test_key());
-    let sealed = vault.seal(&secret("s"), CONTEXT);
+    let sealed = vault.seal(&secret("s"), CONTEXT).unwrap();
     let parsed = Sealed::from_bytes(&sealed.to_bytes()).unwrap();
     assert_eq!(parsed, sealed);
     assert_eq!(vault.open(&parsed, CONTEXT).unwrap().expose(), b"s");
@@ -14,6 +14,7 @@ fn sec_003_sealed_bytes_round_trip() {
 fn sec_003_malformed_sealed_bytes_are_rejected() {
     let good = vault_from(test_key())
         .seal(&secret("s"), CONTEXT)
+        .unwrap()
         .to_bytes();
     let mut bad_version = good.clone();
     bad_version[0] = 0x02;
@@ -43,7 +44,7 @@ fn sec_003_malformed_sealed_bytes_are_rejected() {
 #[test]
 fn sec_003_any_altered_sealed_bytes_never_open() {
     let vault = vault_from(test_key());
-    let good = vault.seal(&secret("property"), CONTEXT).to_bytes();
+    let good = vault.seal(&secret("property"), CONTEXT).unwrap().to_bytes();
     for len in 0..good.len() {
         match Sealed::from_bytes(&good[..len]) {
             Ok(sealed) => assert!(vault.open(&sealed, CONTEXT).is_err(), "prefix {len}"),

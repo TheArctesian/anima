@@ -2,6 +2,7 @@
 //! write stores (SEC-003, SEC-005).
 
 use super::{
+    Error,
     config::CheckConfig,
     model::{Definition, FieldError},
     rules::{self, Prepared, Sealable, Stored},
@@ -11,15 +12,22 @@ use crate::{credentials::Vault, ids::CheckId};
 
 /// The sealed bytes of the prepared secrets, bound to the check and to the configuration
 /// they go with; `None` when there are none.
-pub(super) fn sealed(vault: &Vault, id: CheckId, prepared: &Prepared) -> Option<Vec<u8>> {
+///
+/// # Errors
+/// `Credentials` (`Random`) when the OS random source fails.
+pub(super) fn sealed(
+    vault: &Vault,
+    id: CheckId,
+    prepared: &Prepared,
+) -> Result<Option<Vec<u8>>, Error> {
     match (&prepared.secrets, &prepared.config) {
         (Some(Sealable::Http(secrets)), CheckConfig::Http(config)) => {
-            Some(store::seal(vault, id, config, secrets))
+            store::seal(vault, id, config, secrets).map(Some)
         }
         (Some(Sealable::Snmp(secrets)), CheckConfig::Snmp(config)) => {
-            Some(store::seal_snmp(vault, id, config, secrets))
+            store::seal_snmp(vault, id, config, secrets).map(Some)
         }
-        _ => None,
+        _ => Ok(None),
     }
 }
 

@@ -94,15 +94,18 @@ pub(super) fn unframe(plain: &[u8]) -> Result<(&[u8], &[u8]), Error> {
 }
 
 /// Seals the secrets of `config` for the check.
+///
+/// # Errors
+/// `Credentials` (`Random`) when the OS random source fails.
 pub(in crate::checks) fn seal(
     vault: &Vault,
     check: CheckId,
     config: &HttpConfig,
     secrets: &HttpSecrets,
-) -> Vec<u8> {
+) -> Result<Vec<u8>, Error> {
     let binding = serde_json::to_vec(&Binding::of(config)).unwrap_or_default();
     let plain = frame(&binding, &secrets.encode());
-    vault.seal(&plain, &context(check)).to_bytes()
+    Ok(vault.seal(&plain, &context(check))?.to_bytes())
 }
 
 /// Opens the check's secrets, if they were sealed for the destination `config` names.

@@ -70,3 +70,28 @@ pub(super) fn invalid(fields: &[FieldError]) -> GraphQlError {
 fn coded(message: String, code: &'static str) -> GraphQlError {
     GraphQlError::new(message).extend_with(|_, extensions| extensions.set("code", code))
 }
+
+#[cfg(test)]
+mod tests {
+    use async_graphql::Value;
+
+    use super::{INTERNAL_MESSAGE, to_graphql};
+    use crate::{checks::Error, credentials};
+
+    fn code(error: &async_graphql::Error) -> Option<&Value> {
+        error.extensions.as_ref()?.get("code")
+    }
+
+    #[test]
+    fn cq_023_a_failed_random_source_is_internal_with_no_detail() {
+        let failed = getrandom::Error::UNSUPPORTED;
+        for error in [
+            Error::Random(failed),
+            Error::Credentials(credentials::Error::Random(failed)),
+        ] {
+            let answer = to_graphql(error);
+            assert_eq!(answer.message, INTERNAL_MESSAGE);
+            assert_eq!(code(&answer), Some(&Value::from("INTERNAL")));
+        }
+    }
+}
