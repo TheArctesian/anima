@@ -141,7 +141,7 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     tracing::info!(listen = %listening.local_addr()?, "hub started");
     let bus = Bus::new(BUS_CAPACITY);
     let policy = AddressPolicy::new(config.probe_deny.clone());
-    let (probing, collecting) = reaching(&vault, &policy);
+    let (probing, collecting) = reaching(&vault, &policy, config.tailscale_localapi.clone());
     let feed = metrics::Feed::new();
     let dependencies = Dependencies {
         config,
@@ -187,12 +187,17 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
 }
 
 /// What checks and metrics need to reach devices: the vault and the one address policy (P2-004).
-fn reaching(vault: &Vault, policy: &AddressPolicy) -> (checks::Probing, metrics::Collecting) {
+fn reaching(
+    vault: &Vault,
+    policy: &AddressPolicy,
+    localapi: Option<String>,
+) -> (checks::Probing, metrics::Collecting) {
     let (vault, policy) = (vault.clone(), policy.clone());
     (
         checks::Probing {
             vault: vault.clone(),
             policy: policy.clone(),
+            localapi,
         },
         metrics::Collecting { vault, policy },
     )

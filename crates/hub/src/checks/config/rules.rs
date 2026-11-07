@@ -155,6 +155,16 @@ pub(super) fn dns_name(
     }
 }
 
+/// A host name or an IP address (IPv6 may be in brackets), as the device editor accepts it.
+pub(super) fn host(field: &'static str, text: &str) -> Result<(), ConfigError> {
+    let bare = text.trim_start_matches('[').trim_end_matches(']');
+    if bare.parse::<std::net::IpAddr>().is_ok() {
+        Ok(())
+    } else {
+        dns_name(field, text, false)
+    }
+}
+
 /// RFC 6901 JSON Pointer: empty, or `/` segments where `~` is followed by `0` or `1`.
 pub(super) fn json_pointer(field: &'static str, pointer: &str) -> Result<(), ConfigError> {
     max_len(field, pointer, JSON_QUERY_MAX)?;

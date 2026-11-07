@@ -52,6 +52,7 @@ pub fn context(pool: &PgPool, bus: &Bus) -> Context {
         probing: Probing {
             vault: vault(),
             policy: AddressPolicy::default().allowing_loopback(),
+            localapi: None,
         },
     }
 }

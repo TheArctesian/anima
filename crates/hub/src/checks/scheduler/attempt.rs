@@ -33,6 +33,8 @@ use crate::{
 pub struct Probing {
     pub vault: Vault,
     pub policy: AddressPolicy,
+    /// `host:port` of the Tailscale `LocalAPI` proxy; `None` when none is configured (D-4).
+    pub localapi: Option<String>,
 }
 
 /// What the attempts share.
@@ -169,7 +171,8 @@ async fn observe(
     let target = ProbeTarget {
         host: device.host.clone(),
     };
-    let env = ProbeEnv::new(ctx.probing.policy.clone(), now);
+    let env =
+        ProbeEnv::new(ctx.probing.policy.clone(), now).with_localapi(ctx.probing.localapi.clone());
     match &due.config {
         None => Some(ProbeResult::failed(&Failure::BadConfig)),
         Some(CheckConfig::Push) => Some(schedule::missed_push()),

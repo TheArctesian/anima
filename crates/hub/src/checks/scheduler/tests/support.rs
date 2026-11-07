@@ -63,6 +63,7 @@ fn context_with(pool: &PgPool, bus: &Bus, policy: AddressPolicy) -> Context {
         probing: Probing {
             vault: vault(),
             policy,
+            localapi: None,
         },
     }
 }
@@ -101,6 +102,7 @@ pub fn limited(pool: &PgPool, limits: Limits) -> Scheduler {
         probing: Probing {
             vault: vault(),
             policy: AddressPolicy::default().allowing_loopback(),
+            localapi: None,
         },
     };
     Scheduler::new(ctx, limits)

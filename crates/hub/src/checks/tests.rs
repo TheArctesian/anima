@@ -7,4 +7,5 @@ mod heartbeat_cost;
 mod probe;
 mod standing;
 mod stored_config;
+mod tailscale;
 mod uptime;
