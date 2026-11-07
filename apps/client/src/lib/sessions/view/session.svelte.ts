@@ -27,6 +27,8 @@ export type Stage<Tunnel = TerminalLink, State extends FollowedState = FollowedS
   | { readonly kind: 'starting' }
   | {
       readonly kind: 'open';
+      /** The hub's id of this attempt's session, for the file panel (RA-032). */
+      readonly sessionId: string;
       readonly tunnel: Tunnel;
       readonly state: State;
       readonly connected: boolean;
@@ -184,7 +186,7 @@ export class SessionConnection<Tunnel extends FollowedTunnel<State>, State exten
       tunnel.close();
       return;
     }
-    this.stage = { kind: 'open', tunnel, state: tunnel.state(), connected: false, policy };
+    this.stage = { kind: 'open', sessionId, tunnel, state: tunnel.state(), connected: false, policy };
     this.#follow(tunnel, early.state ?? tunnel.state());
     if (early.ended !== undefined) void this.#end(attempt, sessionId, early.ended);
   }
@@ -192,7 +194,7 @@ export class SessionConnection<Tunnel extends FollowedTunnel<State>, State exten
   #follow(tunnel: Tunnel, state: State): void {
     if (this.stage.kind !== 'open') return;
     const connected = this.stage.connected || state.phase === 'connected';
-    this.stage = { kind: 'open', tunnel, state, connected, policy: this.stage.policy };
+    this.stage = { kind: 'open', sessionId: this.stage.sessionId, tunnel, state, connected, policy: this.stage.policy };
   }
 
   /** The text `stop` gave wins; otherwise the hub's recorded reason wins over the close (D-4). */
