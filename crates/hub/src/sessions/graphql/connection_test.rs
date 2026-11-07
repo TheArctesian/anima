@@ -297,6 +297,12 @@ impl ConnectionTest {
         self.certificate_changed
     }
 
+    /// True only when the hub read the RDP server certificate and it equals the accepted pin;
+    /// a null `serverCertificate` alone is no proof of a match (SEC-007).
+    async fn certificate_matched(&self) -> bool {
+        self.certificate_matched
+    }
+
     /// A fixed text for the operator; never the host's banner or error text.
     async fn message(&self) -> Option<&str> {
         Some(self.message)
