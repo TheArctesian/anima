@@ -139,6 +139,20 @@ async fn sec_007_any_with_an_nla_server_reaches_guacd_as_nla(pool: PgPool) {
     migrations = "./migrations",
     fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
+async fn sec_007_any_with_an_nla_ext_server_reaches_guacd_as_nla_ext(pool: PgPool) {
+    let setup = Setup::presents(Presents::AcceptedOverNlaExt);
+    let (read, values) = read_certificate(&pool, setup, RDP_ARGS, &[ANY]).await;
+    assert!(read);
+    assert_eq!(
+        values["security"], "nla-ext",
+        "no fallback to standard security"
+    );
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
+)]
 async fn sec_007_any_with_a_tls_only_server_reaches_guacd_as_tls(pool: PgPool) {
     let setup = Setup::presents(Presents::AcceptedOverTls);
     let (read, values) = read_certificate(&pool, setup, RDP_ARGS, &[ANY]).await;

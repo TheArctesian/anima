@@ -25,6 +25,9 @@ use tokio_rustls::TlsAcceptor;
 pub(super) enum Answer {
     /// Chooses NLA (`HYBRID`), then a TLS handshake with its certificate.
     Nla,
+    /// Chooses NLA with the early authorisation result (`HYBRID_EX`), then a TLS handshake
+    /// with its certificate.
+    NlaExt,
     /// Chooses TLS (`SSL`) only, then a TLS handshake with its certificate.
     Tls,
     /// Chooses standard RDP security: no TLS, so no certificate.
@@ -96,6 +99,7 @@ async fn visit(mut stream: TcpStream, answer: Answer, acceptor: TlsAcceptor) {
     }
     let chosen = match answer {
         Answer::Nla => 0x2,
+        Answer::NlaExt => 0x8,
         Answer::Tls => 0x1,
         Answer::Standard => 0,
     };

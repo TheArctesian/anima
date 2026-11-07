@@ -69,6 +69,8 @@ pub(super) enum Presents {
     Accepted,
     /// The accepted certificate, over TLS without NLA.
     AcceptedOverTls,
+    /// The accepted certificate, over NLA with the early authorisation result.
+    AcceptedOverNlaExt,
     /// Another certificate than the accepted one.
     Changed,
     /// No certificate: it offers standard RDP security only.
@@ -213,12 +215,13 @@ pub(super) async fn bench(pool: &PgPool, guacd: &str, setup: Setup) -> Bench {
     let answer = match setup.presents {
         Presents::Accepted | Presents::Changed => Answer::Nla,
         Presents::AcceptedOverTls => Answer::Tls,
+        Presents::AcceptedOverNlaExt => Answer::NlaExt,
         Presents::StandardOnly => Answer::Standard,
     };
     let rdp = fake_rdp(answer).await;
     let accepted = if matches!(
         setup.presents,
-        Presents::Accepted | Presents::AcceptedOverTls
+        Presents::Accepted | Presents::AcceptedOverTls | Presents::AcceptedOverNlaExt
     ) {
         rdp.fingerprint.clone()
     } else {
