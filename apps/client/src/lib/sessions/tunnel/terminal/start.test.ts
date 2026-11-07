@@ -16,7 +16,7 @@ function fakeApi(tunnelPath = '/terminal') {
     startSession: (deviceId, protocol) => {
       calls.startSession.push(`${deviceId} ${protocol}`);
       issued += 1;
-      const ticket: SessionTicket = { sessionId: `session-${String(issued)}`, token: `token-${String(issued)}`, tunnelPath, expiresAt: '2026-11-04T10:00:30Z' };
+      const ticket: SessionTicket = { sessionId: `session-${String(issued)}`, token: `token-${String(issued)}`, tunnelPath, expiresAt: '2026-11-04T10:00:30Z', wakeSent: false };
       return Promise.resolve({ ok: true, value: ticket });
     },
     endSession: (id) => {
@@ -52,7 +52,7 @@ describe('start and reconnect of an SSH session (D-3, D-5, RA-007)', () => {
   it('API-009: the started session holds the session ID and the link, never the ticket', async () => {
     const { api } = fakeApi();
     const result = await startTerminal(api, TARGET, SETUP);
-    expect(result.ok && Object.keys(result.value).sort()).toEqual(['sessionId', 'tunnel']);
+    expect(result.ok && Object.keys(result.value).sort()).toEqual(['sessionId', 'tunnel', 'wakeSent']);
     expect(JSON.stringify(result.ok && result.value.tunnel.state())).not.toContain('token-1');
   });
 
@@ -67,7 +67,11 @@ describe('start and reconnect of an SSH session (D-3, D-5, RA-007)', () => {
   it('SEC-002: a ticket path the client refuses ends the new session and reports the refusal', async () => {
     const { api, calls } = fakeApi('//evil.example/terminal');
     const result = await startTerminal(api, TARGET, SETUP);
-    expect(result).toEqual({ ok: false, error: { problem: 'bad-address', message: 'The hub gave a tunnel address that Anima does not accept.' } });
+    expect(result).toEqual({
+      ok: false,
+      error: { problem: 'bad-address', message: 'The hub gave a tunnel address that Anima does not accept.' },
+      wakeSent: false,
+    });
     expect(calls.endSession).toEqual(['session-1']);
     expect(FakeTerminalSocket.made).toEqual([]);
   });

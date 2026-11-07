@@ -23,6 +23,7 @@ function fakeApi(tunnelPath = '/tunnel') {
         token: `token-${String(issued)}-${'x'.repeat(34)}`,
         tunnelPath,
         expiresAt: '2026-11-04T10:00:30Z',
+        wakeSent: false,
       };
       return Promise.resolve({ ok: true, value: ticket });
     },
@@ -81,7 +82,7 @@ describe('start and reconnect (D-3, D-5, RA-007)', () => {
   it('API-009: the started session holds the session ID and tunnel, never the ticket', async () => {
     const { api } = fakeApi();
     const result = await start(api);
-    expect(result.ok && Object.keys(result.value).sort()).toEqual(['sessionId', 'tunnel']);
+    expect(result.ok && Object.keys(result.value).sort()).toEqual(['sessionId', 'tunnel', 'wakeSent']);
     expect(JSON.stringify(result.ok && result.value.tunnel.state())).not.toContain('token-1');
   });
 
@@ -96,7 +97,27 @@ describe('start and reconnect (D-3, D-5, RA-007)', () => {
   it('SEC-002: a ticket path the client refuses ends the new session and reports the refusal', async () => {
     const { api, calls } = fakeApi('//evil.example/tunnel');
     const result = await start(api);
-    expect(result).toEqual({ ok: false, error: { problem: 'bad-address', message: 'The hub gave a tunnel address that Anima does not accept.' } });
+    expect(result).toEqual({
+      ok: false,
+      error: { problem: 'bad-address', message: 'The hub gave a tunnel address that Anima does not accept.' },
+      wakeSent: false,
+    });
     expect(calls.endSession).toEqual(['session-1']);
+  });
+});
+
+describe('a start that woke the device (RA-031, K4 §1)', () => {
+  it('RA-031: the started session says the hub sent a wake packet, and the opening waits the 120 s limit', async () => {
+    const { api } = fakeApi();
+    const waking: typeof api.startSession = async (...args) => {
+      const answer = await api.startSession(...args);
+      return answer.ok ? { ok: true, value: { ...answer.value, wakeSent: true } } : answer;
+    };
+    const result = await startTunnel({ ...api, startSession: waking }, TARGET, SETUP);
+    if (!result.ok) throw new Error('not started');
+    started.push(result.value);
+    expect(result.value.wakeSent).toBe(true);
+    vi.advanceTimersByTime(119_000);
+    expect(FakeTunnelSocket.latest().closedByClient).toBeUndefined();
   });
 });

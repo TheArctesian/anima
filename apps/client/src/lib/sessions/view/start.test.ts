@@ -64,7 +64,7 @@ describe('sessionStart: one start per tunnel (K4 §1, §8)', () => {
   it('SEC-002: a started session holds its ID, tunnel and policy, never the ticket', async () => {
     const { api } = hub({ certificateExempt: true });
     const result = kept(await sessionStart(api, 'device-1', ORIGIN, FAKE_TUNNEL_SOCKET).remote('RDP')(DISPLAY, remoteEvents));
-    expect(result.ok && Object.keys(result.value).sort()).toEqual(['policy', 'sessionId', 'tunnel']);
+    expect(result.ok && Object.keys(result.value).sort()).toEqual(['policy', 'sessionId', 'tunnel', 'wakeSent']);
   });
 
   it('K4 §1: an RDP start the hub refuses is the typed error and opens no tunnel', async () => {

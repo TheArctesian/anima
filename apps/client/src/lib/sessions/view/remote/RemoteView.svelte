@@ -96,6 +96,11 @@
     void connection.connect(display);
   }
 
+  /** Show the certificate warning again, which runs a new connection test (K4 §3). */
+  function checkCertificate() {
+    dismissed = undefined;
+  }
+
   function reconnect() {
     dismissed = stage;
     notice = undefined;
@@ -258,10 +263,16 @@
       <!-- Top-aligned, steps first: the ended text appears below the steps, so nothing above it moves (MV-004). -->
       <div class="panel">
         {#if !progressOf(stage).connected}
-          <ConnectionSteps progress={progressOf(stage)} />
+          <ConnectionSteps progress={progressOf(stage)} deviceName={device.name} />
         {/if}
         {#if stage.kind === 'ending' || stage.kind === 'ended'}
-          <EndedPanel ending={stage.ending} settled={stage.kind === 'ended'} onreconnect={reconnect} />
+          {@const changed = stage.kind === 'ended' && stage.certificateChanged}
+          <EndedPanel
+            ending={stage.ending}
+            settled={stage.kind === 'ended'}
+            certificateChanged={changed}
+            onreconnect={changed ? checkCertificate : reconnect}
+          />
         {/if}
       </div>
     {/if}

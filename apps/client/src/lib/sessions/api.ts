@@ -22,6 +22,7 @@ const StartSession = graphql(`
       token
       tunnelPath
       expiresAt
+      wakeSent
     }
   }
 `);

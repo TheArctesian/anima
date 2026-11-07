@@ -24,6 +24,8 @@ declare namespace Guacamole {
   /** The base of every tunnel; `state` is one of `Tunnel.State`. */
   class Tunnel {
     state: number;
+    /** Milliseconds of silence, from `connect` on, after which the tunnel closes itself (default 15000). */
+    receiveTimeout: number;
     /** Sets `state` and calls `onstatechange` when it changed. */
     setState(state: number): void;
     onstatechange: ((state: number) => void) | null;

@@ -5,9 +5,9 @@ import { PROBLEM, READING, transition, type CertificateEvent, type CertificateSt
 
 const CERT: ServerCertificate = { fingerprintSha256: 'sha256:aa', subject: 'CN=desk', notAfter: '2027-01-01T00:00:00Z', firstSeenAt: '2026-11-04T10:00:00Z' };
 const SHOWN = { fingerprintSha256: CERT.fingerprintSha256, subject: CERT.subject, notAfter: CERT.notAfter };
-const tested = (serverCertificate: ServerCertificate | null, reachable = true): HubResult<ConnectionTest> => ({
+const tested = (serverCertificate: ServerCertificate | null, reachable = true, certificateChanged = true): HubResult<ConnectionTest> => ({
   ok: true,
-  value: { reachable, authenticated: true, hostKey: null, hostKeyChanged: false, message: 'hub text', serverCertificate, certificateChanged: true },
+  value: { reachable, authenticated: true, hostKey: null, hostKeyChanged: false, message: 'hub text', serverCertificate, certificateChanged },
 });
 const acceptedAs = (fingerprintSha256: string): HubResult<ServerCertificate> => ({ ok: true, value: { ...CERT, fingerprintSha256 } });
 const refused = (code: 'CONFLICT' | 'INTERNAL'): HubResult<never> => ({ ok: false, error: { code, message: 'hub text' } });
@@ -49,13 +49,19 @@ describe('certificate warning (SEC-007, K4 §3)', () => {
 
   it.each([
     [refused('INTERNAL'), PROBLEM.read],
-    [tested(null), PROBLEM.none],
+    [tested(null, true, true), PROBLEM.none],
     [tested(null, false), PROBLEM.unreachable],
   ])('a read that gives no certificate fails with fixed text', (result, problem) => {
     expect(run({ event: 'readDone', result })).toEqual({ step: 'failed', problem });
   });
 
-  it('a failed read can be tried again; answers in another step are ignored', () => {
+  it('K4 §3: a null certificate with no change is "unchanged", not a missing certificate', () => {
+  expect(run({ event: 'readDone', result: tested(null, true, false) })).toEqual({ step: 'unchanged' });
+  expect(run({ event: 'readDone', result: tested(null, false, false) })).toEqual({ step: 'failed', problem: PROBLEM.unreachable });
+  expect(transition({ step: 'unchanged' }, { event: 'accept' })).toBeUndefined();
+});
+
+it('a failed read can be tried again; answers in another step are ignored', () => {
     const failed = run({ event: 'readDone', result: tested(null) });
     expect(transition(failed, { event: 'read' })).toEqual(READING);
     expect(transition(failed, { event: 'readDone', result: tested(CERT) })).toBeUndefined();

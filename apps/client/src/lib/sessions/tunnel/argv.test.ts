@@ -22,7 +22,7 @@ afterEach(() => {
 
 /** A connected tunnel and its socket. */
 function connected() {
-  const opening = openTunnel({ origin: 'https://hub.anima.ing', ticket: { tunnelPath: '/tunnel', token: 't'.repeat(43) }, WebSocket: FAKE_TUNNEL_SOCKET });
+  const opening = openTunnel({ origin: 'https://hub.anima.ing', ticket: { tunnelPath: '/tunnel', token: 't'.repeat(43) }, waking: false, WebSocket: FAKE_TUNNEL_SOCKET });
   if (!opening.ok) throw new Error(opening.error.message);
   tunnels.push(opening.value);
   const socket = FakeTunnelSocket.latest();

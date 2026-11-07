@@ -58,6 +58,17 @@ describe('certificate modal (SEC-007, K4 §3)', () => {
     expect(document.activeElement).toBe(button('Cancel'));
   });
 
+  it('K4 §3: a null certificate (it matches the accepted one) says nothing needs accepting and offers Reconnect', async () => {
+    const { heard } = await showModal({
+      testConnection: () =>
+        Promise.resolve({ ok: true, value: { reachable: true, authenticated: false, hostKey: null, hostKeyChanged: false, message: null, serverCertificate: null, certificateChanged: false } }),
+    });
+    expect(dialog()?.textContent).toContain(PROBLEM.unchanged);
+    expect(button('Accept new certificate')).toBeUndefined();
+    button('Reconnect')?.click();
+    expect(heard.accepted).toBe(1);
+  });
+
   it('SEC-007: Accept sends exactly the fingerprint read, once, then asks the caller to reconnect', async () => {
     const { named, heard } = await showModal();
     const accept = button('Accept new certificate');

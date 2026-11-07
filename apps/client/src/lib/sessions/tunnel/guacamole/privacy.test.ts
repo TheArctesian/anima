@@ -58,7 +58,7 @@ describe('session paths keep secrets out of logs (LOG-007, SEC-002)', () => {
     const states: GuacamoleState[] = [];
     const api = {
       startSession: () =>
-        Promise.resolve({ ok: true as const, value: { sessionId: 's-1', token: TOKEN_MARKER, tunnelPath: '/tunnel', expiresAt: '2026-11-04T10:00:30Z' } }),
+        Promise.resolve({ ok: true as const, value: { sessionId: 's-1', token: TOKEN_MARKER, tunnelPath: '/tunnel', expiresAt: '2026-11-04T10:00:30Z', wakeSent: false } }),
       endSession: () => Promise.resolve({ ok: false as const, error: { code: 'NOT_FOUND' as const, message: 'No such session.' } }),
     };
     const started = await startTunnel(api, { deviceId: 'd-1', protocol: 'VNC', display: { widthPx: 800, heightPx: 600 } }, {
@@ -98,7 +98,7 @@ describe('session paths keep secrets out of logs (LOG-007, SEC-002)', () => {
     const throwing = function (url: string): never {
       throw new DOMException(`Refused to connect to '${url}'`, 'SecurityError');
     } as unknown as typeof WebSocket;
-    const opening = openTunnel({ origin: 'https://hub.anima.ing', ticket: { tunnelPath: '/tunnel', token: TOKEN_MARKER }, WebSocket: throwing });
+    const opening = openTunnel({ origin: 'https://hub.anima.ing', ticket: { tunnelPath: '/tunnel', token: TOKEN_MARKER }, waking: false, WebSocket: throwing });
     expect(rendered(opening)).not.toContain(TOKEN_MARKER);
     expect(logged(spies)).toEqual([]);
   });

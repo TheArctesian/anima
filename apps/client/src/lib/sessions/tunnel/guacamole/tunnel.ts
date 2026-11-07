@@ -27,6 +27,8 @@ export interface TunnelOptions {
   /** The hub origin, `https://host[:port]` (`hub.address.origin`). */
   readonly origin: string;
   readonly ticket: TunnelTicket;
+  /** The hub sent a Wake-on-LAN packet, so it may take up to `WAKE_OPENING_LIMIT_MS` to open the socket (K4 §1). */
+  readonly waking: boolean;
   /** Hears every change of the state after `openTunnel` has connected; the first call gives the state then. */
   readonly onchange?: (state: GuacamoleState) => void;
   /** Hears the final state once, after the WebSocket closed and the client stopped. */
@@ -50,6 +52,11 @@ export type TunnelOpening =
   | { readonly ok: true; readonly value: SessionTunnel }
   | { readonly ok: false; readonly error: TunnelRefusal };
 
+/** The library's own limit on silence, in ms: it also bounds the opening, from `connect` to the first instruction. */
+const RECEIVE_LIMIT_MS = 15_000;
+/** The hub's opening limit for a start that sent a Wake-on-LAN packet (K4 §1). */
+export const WAKE_OPENING_LIMIT_MS = 120_000;
+
 /** The 1.5.5 client states (private in the library), as phases; 0 IDLE follows a failed `connect`. */
 const PHASES: readonly GuacamolePhase[] = ['disconnected', 'connecting', 'waiting', 'connected', 'disconnected', 'disconnected'];
 
@@ -59,8 +66,11 @@ interface Events {
 }
 
 /** A client on a WebSocket tunnel to `url`, with its state tracked; nothing in this scope sees the token. */
-function trackedTunnel(url: string, events: Events) {
+function trackedTunnel(url: string, events: Events, waking: boolean) {
   const tunnel = new Guacamole.WebSocketTunnel(url);
+  // The library closes a tunnel that hears nothing for `receiveTimeout`, from `connect` on; a waking device may
+  // take the hub longer than that to open the socket, so the wider limit lasts only until it is open.
+  tunnel.receiveTimeout = waking ? WAKE_OPENING_LIMIT_MS : RECEIVE_LIMIT_MS;
   const client = new Guacamole.Client(tunnel);
   const initial: GuacamoleState = { phase: 'connecting', opened: false, gatewayError: undefined, closeCode: undefined };
   let state = initial;
@@ -86,7 +96,10 @@ function trackedTunnel(url: string, events: Events) {
     update({ required: [...parameters] });
   };
   tunnel.onstatechange = (tunnelState) => {
-    if (tunnelState === Guacamole.Tunnel.State.OPEN) update({ opened: true });
+    if (tunnelState === Guacamole.Tunnel.State.OPEN) {
+      tunnel.receiveTimeout = RECEIVE_LIMIT_MS;
+      update({ opened: true });
+    }
     // The 1.5.5 client does not watch its tunnel; stop it so that its keep-alive timer ends too.
     if (tunnelState === Guacamole.Tunnel.State.CLOSED) client.disconnect();
   };
@@ -123,7 +136,11 @@ function trackedTunnel(url: string, events: Events) {
 export function openTunnel(options: TunnelOptions): TunnelOpening {
   const url = tunnelUrl(options.origin, options.ticket.tunnelPath);
   if (url === undefined) return refusal('bad-address');
-  const { handle, socketClosed, abandon, release } = trackedTunnel(url, { onchange: options.onchange, onend: options.onend });
+  const { handle, socketClosed, abandon, release } = trackedTunnel(
+    url,
+    { onchange: options.onchange, onend: options.onend },
+    options.waking,
+  );
   try {
     withObservedSocket(options.WebSocket ?? globalThis.WebSocket, socketClosed, () => {
       handle.client.connect(`token=${encodeURIComponent(options.ticket.token)}`);

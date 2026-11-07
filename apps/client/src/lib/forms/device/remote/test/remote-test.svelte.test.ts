@@ -70,17 +70,18 @@ it('SEC-007: a changed RDP certificate is a warning, never the ok sentence', asy
   rdpTest().click();
   await settle();
   expect(document.body.textContent).toContain('The server certificate changed');
-  expect(document.body.textContent).not.toContain('accepted the credential');
+  expect(document.body.textContent).not.toContain('The device answered');
   expect(document.querySelector('[role="status"] .warning')).not.toBeNull();
 });
 
-it('DEV-013: the VNC test is tested by ID and shows an auth failure', async () => {
-  const calls = show(WITH_RDP, { section: 'vnc' }, answer({ message: 'The VNC password was refused.' }));
+it('DEV-013: the VNC test is tested by ID and, with authenticated false, is not shown as a refused sign-in', async () => {
+  const calls = show(WITH_RDP, { section: 'vnc' }, answer({ authenticated: false, message: 'The VNC password was refused.' }));
   document.querySelector<HTMLButtonElement>('[data-connection-test="vnc"]')?.click();
   flushSync();
   await settle();
   expect(calls.onTest).toHaveBeenCalledWith({ deviceId: 'd1', protocol: 'VNC' });
-  expect(document.body.textContent).toContain('The VNC password was refused.');
+  expect(document.body.textContent).toContain('The device answered');
+  expect(document.body.textContent).not.toContain('refused');
 });
 
 it('DEV-013: for an unsaved device a new certificate shows the save note and no Accept', async () => {
@@ -113,17 +114,27 @@ it('DEV-013: the saved accepted certificate seen again gives ok and no second fi
   show(saved, { section: 'rdp' }, answer({ authenticated: true, serverCertificate: CERTIFICATE, certificateChanged: false }));
   rdpTest().click();
   await settle();
-  expect(document.body.textContent).toContain('accepted the credential');
+  expect(document.body.textContent).toContain('The device answered');
   expect(document.querySelector('[aria-label="Server certificate seen"]')).toBeNull();
+});
+
+it.each([
+  ['RDP', 'rdp', WITH_RDP],
+] as const)('DEV-013: %s test with authenticated false is not shown as a failed sign-in', async (_protocol, section, fields) => {
+  show(fields, { section }, answer({ authenticated: false, serverCertificate: null, certificateChanged: false }));
+  rdpTest().click();
+  await settle();
+  expect(document.body.textContent).toContain('The device answered');
+  expect(document.body.textContent).not.toContain('refused');
 });
 
 it('DEV-013: a save restarts the test, so a shown result does not outlive it', async () => {
   show(WITH_RDP, { section: 'rdp' }, answer({ authenticated: true }));
   rdpTest().click();
   await settle();
-  expect(document.body.textContent).toContain('accepted the credential');
+  expect(document.body.textContent).toContain('The device answered');
   await save();
-  expect(document.body.textContent).not.toContain('accepted the credential');
+  expect(document.body.textContent).not.toContain('The device answered');
 });
 
 it('DEV-011: a save empties the typed RDP password, which a later test then does not send', async () => {

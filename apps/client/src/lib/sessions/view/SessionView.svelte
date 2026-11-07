@@ -216,7 +216,7 @@
       <!-- Top-aligned, steps first: the ended text appears below the steps, so nothing above it moves (MV-004). -->
       <div class="panel">
         {#if !progressOf(stage).connected}
-          <ConnectionSteps progress={progressOf(stage)} />
+          <ConnectionSteps progress={progressOf(stage)} deviceName={device.name} />
         {/if}
         {#if stage.kind === 'ending' || stage.kind === 'ended'}
           <EndedPanel ending={stage.ending} settled={stage.kind === 'ended'} onreconnect={reconnect} />

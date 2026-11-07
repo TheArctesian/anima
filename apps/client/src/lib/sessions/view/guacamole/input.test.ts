@@ -60,7 +60,7 @@ afterEach(() => {
 });
 
 function connected() {
-  const opening = openTunnel({ origin: 'https://hub.anima.ing', ticket: { tunnelPath: '/tunnel', token: 'x'.repeat(40) }, WebSocket: FAKE_TUNNEL_SOCKET });
+  const opening = openTunnel({ origin: 'https://hub.anima.ing', ticket: { tunnelPath: '/tunnel', token: 'x'.repeat(40) }, waking: false, WebSocket: FAKE_TUNNEL_SOCKET });
   if (!opening.ok) throw new Error('not opened');
   const socket = FakeTunnelSocket.latest();
   socket.open();

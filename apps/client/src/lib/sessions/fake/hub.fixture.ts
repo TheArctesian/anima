@@ -62,6 +62,7 @@ function ticket(device: FakeDevice, input: Record<string, unknown>, issued: numb
     token: `token-${n}-${'x'.repeat(36)}`,
     tunnelPath: protocol === 'SSH' ? '/terminal' : '/tunnel',
     expiresAt: '2026-11-04T10:00:30Z',
+    wakeSent: false,
   };
   return { data: { startSession } };
 }

@@ -29,6 +29,8 @@ export type Stage<Tunnel = TerminalLink, State extends FollowedState = FollowedS
       readonly kind: 'open';
       /** The hub's id of this attempt's session, for the file panel (RA-032). */
       readonly sessionId: string;
+      /** The hub sent a Wake-on-LAN packet with this attempt's ticket (K4 §1); the ticket itself is not kept. */
+      readonly wakeSent: boolean;
       readonly tunnel: Tunnel;
       readonly state: State;
       readonly connected: boolean;
@@ -82,8 +84,10 @@ interface Early<State> {
 
 /** The steps' progress for `stage`. */
 export function progressOf(stage: Stage<unknown, FollowedState>): Progress {
-  if (stage.kind === 'starting') return { ticketed: false, opened: false, connected: false, stopped: false };
-  if (stage.kind === 'open') return { ticketed: true, opened: stage.state.opened, connected: stage.connected, stopped: false };
+  if (stage.kind === 'starting') return { ticketed: false, waking: false, opened: false, connected: false, stopped: false };
+  if (stage.kind === 'open') {
+    return { ticketed: true, waking: stage.wakeSent, opened: stage.state.opened, connected: stage.connected, stopped: false };
+  }
   return stage.progress;
 }
 
@@ -175,18 +179,18 @@ export class SessionConnection<Tunnel extends FollowedTunnel<State>, State exten
       const refused = refusedEnding(result.error, this.#conflict);
       // A tunnel refusal comes after the ticket was issued; a hub refusal is the ticket request itself.
       const ticketed = 'problem' in result.error;
-      const progress = { ticketed, opened: false, connected: false, stopped: true };
+      const progress = { ticketed, waking: result.wakeSent === true, opened: false, connected: false, stopped: true };
       this.stage = { kind: 'ended', ending: refused, progress, hostKeyChanged: false, certificateChanged: false };
       this.#onended(refused);
       return;
     }
-    const { tunnel, sessionId, policy } = result.value;
+    const { tunnel, sessionId, policy, wakeSent } = result.value;
     // The view went away (or a newer attempt began) while the hub answered: this tunnel has no one to show it.
     if (attempt !== this.#attempt || this.#closed) {
       tunnel.close();
       return;
     }
-    this.stage = { kind: 'open', sessionId, tunnel, state: tunnel.state(), connected: false, policy };
+    this.stage = { kind: 'open', sessionId, wakeSent, tunnel, state: tunnel.state(), connected: false, policy };
     this.#follow(tunnel, early.state ?? tunnel.state());
     if (early.ended !== undefined) void this.#end(attempt, sessionId, early.ended);
   }
@@ -194,7 +198,8 @@ export class SessionConnection<Tunnel extends FollowedTunnel<State>, State exten
   #follow(tunnel: Tunnel, state: State): void {
     if (this.stage.kind !== 'open') return;
     const connected = this.stage.connected || state.phase === 'connected';
-    this.stage = { kind: 'open', sessionId: this.stage.sessionId, tunnel, state, connected, policy: this.stage.policy };
+    const { sessionId, wakeSent, policy } = this.stage;
+    this.stage = { kind: 'open', sessionId, wakeSent, tunnel, state, connected, policy };
   }
 
   /** The text `stop` gave wins; otherwise the hub's recorded reason wins over the close (D-4). */

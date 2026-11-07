@@ -5,7 +5,7 @@
   import { fade, modal } from '$lib/motion/roles/transitions';
   import type { SessionsApi } from '../../api';
   import { trapFocus } from '../hostkey/focus';
-  import { READING, transition, type CertificateEvent, type CertificateStep } from './certificate';
+  import { PROBLEM, READING, transition, type CertificateEvent, type CertificateStep } from './certificate';
 
   interface Props {
     device: { readonly id: string; readonly name: string };
@@ -128,6 +128,9 @@
         {/if}
       </dd>
     </dl>
+    {#if current.step === 'unchanged'}
+      <p class="notice" role="status">{PROBLEM.unchanged}</p>
+    {/if}
     {#if current.step === 'accepted'}
       <p role="status">The new certificate is accepted. Reconnecting…</p>
     {/if}
@@ -142,7 +145,9 @@
       <button type="button" bind:this={closeButton} onclick={close} {@attach press()}>
         {current.step === 'accepted' ? 'Close' : 'Cancel'}
       </button>
-      {#if current.step === 'failed'}
+      {#if current.step === 'unchanged'}
+        <button type="button" onclick={onaccepted} {@attach press()}>Reconnect</button>
+      {:else if current.step === 'failed'}
         <button type="button" onclick={retry} {@attach press()}>Read again</button>
       {:else if current.step !== 'accepted'}
         <button
