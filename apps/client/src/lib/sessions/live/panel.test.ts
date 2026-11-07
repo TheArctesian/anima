@@ -19,9 +19,10 @@ function rules(): Map<string, Map<string, string>> {
   return found;
 }
 
-it('MAT-008: the panel over a live display is the opaque raised surface with no blur', () => {
+it('MAT-008, UI-002: the panel over a live display is the opaque raised surface with no blur', () => {
   const panel = rules().get('.panel');
   expect(panel?.get('background')).toBe('var(--surface-raised)');
+  expect(panel?.get('color')).toBe('var(--text)');
   expect(panel?.get('box-shadow')).toBe('var(--elevation-2)');
   expect(panel?.get('border')).toContain('var(--border)');
   expect([...(panel?.keys() ?? [])].filter((property) => property.includes('backdrop'))).toEqual([]);

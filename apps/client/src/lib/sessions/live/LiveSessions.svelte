@@ -222,6 +222,8 @@
     border-radius: var(--radius-md);
     /* Opaque always: the panel can sit over a live remote display (MAT-008). --border turns to text-muted under prefers-contrast: more (MAT-006). */
     background: var(--surface-raised);
+    /* The panel is moved to the body, which sets no colour: --text on --surface-raised is 7.49:1 (UI-002). */
+    color: var(--text);
     box-shadow: var(--elevation-2);
     font-size: var(--text-sm);
   }
