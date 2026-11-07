@@ -88,11 +88,11 @@ pub(super) async fn connected(
     opening: Opening,
     socket: oneshot::Receiver<WebSocket>,
 ) -> End {
-    let Opening::Gateway(connected) = opening;
+    let Opening::Gateway(opened) = opening;
     match upgraded(tunnel, socket, timing.handshake).await {
-        Ok(client) => link::relay(client, connected, tunnel, timing).await,
+        Ok(client) => link::relay(client, opened, tunnel, timing).await,
         Err(end) => {
-            leave_gateway(connected.stream).await;
+            leave_gateway(opened.connected.stream).await;
             end
         }
     }

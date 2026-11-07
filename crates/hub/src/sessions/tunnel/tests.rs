@@ -5,6 +5,7 @@ mod arguments;
 mod client;
 mod ending;
 mod gateway;
+mod policy;
 mod rdp_vnc_args;
 mod size;
 mod wire;
@@ -13,12 +14,14 @@ use chrono::DateTime;
 use guac_protocol::{Decoder, Instruction};
 use uuid::Uuid;
 
+use super::policy::Policy;
 use super::relay::Relay;
 use crate::devices::{
     Device, MetricsSource, OperatingSystem, RdpSecurity, RdpSettings, ResizeMethod, SshAuth,
     SshSettings, TransferPolicy, VncSettings,
 };
 use crate::ids::{DeviceId, SiteId};
+use crate::sessions::Desktop;
 
 /// The device's id: its shared drive's folder name.
 const DEVICE_ID: &str = "0190a000-0000-7000-8002-0000000000aa";
@@ -74,9 +77,25 @@ fn decoded(wire: &str) -> Instruction {
     instructions.remove(0)
 }
 
+/// A relay for a `desktop` session on [`device`] after `edit`.
+fn relay_for(desktop: Desktop, edit: impl FnOnce(&mut Device)) -> Relay {
+    let mut device = device("desk.lab");
+    edit(&mut device);
+    Relay::new(Policy::of(desktop, &device))
+}
+
+/// A relay for an RDP session with the database's defaults: copy and paste on, no
+/// microphone and no shared drive.
+fn relay() -> Relay {
+    relay_for(Desktop::Rdp, |device| {
+        device.rdp.microphone = false;
+        device.rdp.shared_drive = false;
+    })
+}
+
 /// A relay after guacd has asked for `names` with `required`.
 fn prompted(names: &[&str]) -> Relay {
-    let mut relay = Relay::default();
+    let mut relay = relay();
     relay.on_gateway(Instruction::new("required", names.iter().copied()));
     relay
 }

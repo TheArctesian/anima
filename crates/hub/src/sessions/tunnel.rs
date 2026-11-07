@@ -15,6 +15,7 @@ mod ending;
 mod gateway;
 mod guacd;
 mod opening;
+mod policy;
 mod relay;
 mod relaying;
 mod route;
