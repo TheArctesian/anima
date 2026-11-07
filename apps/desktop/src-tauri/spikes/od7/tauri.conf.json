@@ -1,0 +1,13 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Anima OD-7 spike",
+  "version": "0.0.0",
+  "identifier": "ing.anima.od7spike",
+  "build": { "frontendDist": "dist" },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [],
+    "security": { "csp": null }
+  },
+  "bundle": { "active": false, "icon": ["icons/icon.png"] }
+}
