@@ -19,7 +19,7 @@
   </thead>
   <tbody>
     {#each rows as row (row.id)}
-      <tr><td>{row.start}</td><td>{row.end}</td><td>{row.duration}</td><td>{row.protocol}</td><td>{row.operator}</td><td>{row.reason}</td></tr>
+      <tr><td>{row.start}</td><td>{row.end}</td><td class="duration">{row.duration}</td><td>{row.protocol}</td><td>{row.operator}</td><td>{row.reason}</td></tr>
     {:else}
       <tr><td colspan="6" class="none">No sessions yet</td></tr>
     {/each}
@@ -53,6 +53,10 @@
   th {
     color: var(--text-muted);
     font-weight: var(--weight-regular);
+  }
+
+  .duration {
+    white-space: nowrap;
   }
 
   .none {
