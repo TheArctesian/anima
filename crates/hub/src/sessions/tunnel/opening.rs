@@ -222,9 +222,14 @@ async fn target(host: &str, port: u16, rule: &TargetRule) -> Result<IpAddr, NotO
 }
 
 /// The address of the device that is waking up, once its port answers: the first of its
-/// checked addresses that accepts a connection, tried again every `retry` (R-032). The
+/// checked addresses that accepts a connection, tried again every `retry`. The
 /// connection is closed at once; guacd makes its own.
-async fn awake(host: &str, port: u16, rule: &TargetRule, retry: Duration) -> Result<IpAddr, NotOpened> {
+async fn awake(
+    host: &str,
+    port: u16,
+    rule: &TargetRule,
+    retry: Duration,
+) -> Result<IpAddr, NotOpened> {
     let stream = ssh::connect_waking(Target { host, port, rule }, retry)
         .await
         .map_err(|error| match error {

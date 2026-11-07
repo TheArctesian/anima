@@ -48,14 +48,15 @@ fn redeemed(bench: &Bench, wake_sent: bool) -> Redeemed {
     migrations = "./migrations",
     fixtures(path = "../../../../../../tests/fixtures", scripts("devices"))
 )]
-async fn ra_031_a_woken_opening_waits_past_the_usual_limit_until_the_device_answers(
-    pool: PgPool,
-) {
+async fn ra_031_a_woken_opening_waits_past_the_usual_limit_until_the_device_answers(pool: PgPool) {
     let bench = waking(&pool).await;
     let redeemed = redeemed(&bench, true);
     let begun = Instant::now();
     let opened = opening::open(&bench.terminal, &redeemed.ticket).await;
-    assert!(matches!(opened, Ok(Opening::SignedIn(_))), "the device opens");
+    assert!(
+        matches!(opened, Ok(Opening::SignedIn(_))),
+        "the device opens"
+    );
     assert!(begun.elapsed() >= ANSWERS_AFTER, "it waited for the device");
 }
 

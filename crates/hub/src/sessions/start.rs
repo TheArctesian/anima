@@ -248,12 +248,7 @@ pub async fn start(
         end_shut_down(db, &pending, now).await?;
         return Err(Error::Unavailable);
     }
-    let mut ticket = Ticket::new(
-        pending.session,
-        pending.protocol,
-        token,
-        pending.expires_at,
-    );
+    let mut ticket = Ticket::new(pending.session, pending.protocol, token, pending.expires_at);
     ticket.wake_sent = pending.wake_sent;
     Ok(ticket)
 }

@@ -26,7 +26,11 @@ async fn waking_pve_01(pool: &PgPool, status: &str) {
         "update devices.vnc_settings set enabled = true where device_id = $1::text::uuid",
         "update devices.devices set mac_address = 'aa:bb:cc:dd:ee:ff' where id = $1::text::uuid",
     ] {
-        sqlx::query(statement).bind(PVE_01).execute(pool).await.unwrap();
+        sqlx::query(statement)
+            .bind(PVE_01)
+            .execute(pool)
+            .await
+            .unwrap();
     }
     sqlx::query(
         "update devices.sites set wake_relay_device_id = $2::text::uuid \

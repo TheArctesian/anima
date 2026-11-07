@@ -83,7 +83,12 @@ async fn ra_031_a_down_device_is_woken_first_and_its_ticket_says_so(pool: PgPool
 )]
 async fn ra_031_a_device_that_is_not_down_gets_no_packet(pool: PgPool) {
     let bench = relay(&pool, exiting(0)).await;
-    for status in [Status::Up, Status::Degraded, Status::Unknown, Status::Maintenance] {
+    for status in [
+        Status::Up,
+        Status::Degraded,
+        Status::Unknown,
+        Status::Maintenance,
+    ] {
         let ticket = started(&bench, &Live::default(), status).await;
         assert!(!ticket.wake_sent, "{status:?}");
     }

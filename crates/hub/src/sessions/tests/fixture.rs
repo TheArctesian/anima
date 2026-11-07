@@ -130,7 +130,9 @@ pub(in crate::sessions) fn waking_port(after: Duration, forward: Option<u16>) ->
     drop(reserved);
     tokio::spawn(async move {
         tokio::time::sleep(after).await;
-        let listener = tokio::net::TcpListener::bind((LOOPBACK, port)).await.unwrap();
+        let listener = tokio::net::TcpListener::bind((LOOPBACK, port))
+            .await
+            .unwrap();
         while let Ok((mut client, _)) = listener.accept().await {
             let Some(forward) = forward else { continue };
             tokio::spawn(async move {
