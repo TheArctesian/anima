@@ -4,7 +4,7 @@ use super::{Cpu, Disk, Interface, Load, Memory, Reading, Sample};
 use crate::metrics::MetricKind;
 
 mod aggregates;
-mod captures;
+pub(super) mod captures;
 mod database;
 mod df;
 mod faces;

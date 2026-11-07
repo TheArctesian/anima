@@ -161,3 +161,69 @@ fn met_002_d5_a_repeated_mount_or_interface_name_makes_one_series() {
     assert_close(value(&out, MetricKind::NetworkInBps, "en0").unwrap(), 10.0);
     assert_close(value(&out, MetricKind::NetworkOutBps, "en0").unwrap(), 20.0);
 }
+
+/// `df -P -B1` on Ubuntu 24.04 with snap packages: each snap is a squashfs image on a loop
+/// device, mounted under `/snap/`.
+const DF_SNAPS: &[u8] =
+    b"Filesystem         1-blocks        Used   Available Capacity Mounted on\n\
+tmpfs             410148864     1806336   408342528       1% /run\n\
+/dev/sda2       31526391808 12348260352 17545732096      42% /\n\
+tmpfs            2050732032           0  2050732032       0% /dev/shm\n\
+/dev/loop0         66322432    66322432           0     100% /snap/core20/2318\n\
+/dev/loop1         93323264    93323264           0     100% /snap/lxd/29351\n\
+/dev/loop2         40763392    40763392           0     100% /snap/snapd/21759\n\
+/dev/sda1        1124999168     6369280  1118629888       1% /boot/efi\n\
+/dev/loop12         4194304     4194304           0     100% /mnt/image\n\
+tmpfs             410144768       12288   410132480       1% /run/user/1000\n";
+
+#[test]
+fn met_002_d5_snap_loop_devices_and_snap_mounts_are_left_out() {
+    let disks = crate::metrics::parse::df::disks(DF_SNAPS, 1);
+    assert_eq!(disks.len(), 9, "the reader keeps every line");
+    let reading = Reading {
+        disks,
+        ..Reading::default()
+    };
+    let out = samples(None, &reading, THIRTY);
+    let mounts: Vec<&str> = out
+        .iter()
+        .filter(|sample| sample.kind == MetricKind::DiskPercent)
+        .map(|sample| sample.label.as_str())
+        .collect();
+    assert_eq!(mounts, ["/", "/boot/efi"]);
+}
+
+#[test]
+fn met_002_d5_a_snap_mount_on_another_device_and_a_snapshots_folder() {
+    let reading = Reading {
+        disks: vec![
+            disk("/dev/sdb1", "/snap/big", 100, 50),
+            disk("/dev/sdb2", "/snapshots", 100, 50),
+            disk("/dev/loopback-disk", "/mnt/x", 100, 50),
+        ],
+        ..Reading::default()
+    };
+    let out = samples(None, &reading, THIRTY);
+    let mounts: Vec<&str> = out
+        .iter()
+        .filter(|sample| sample.kind == MetricKind::DiskPercent)
+        .map(|sample| sample.label.as_str())
+        .collect();
+    assert_eq!(mounts, ["/snapshots"]);
+}
+
+#[test]
+fn met_002_d5_the_macos_loopback_lo0_has_no_network_series() {
+    let mut before = linux_reading();
+    before.interfaces = vec![interface("lo0", 1000, 1000), interface("en0", 1000, 1000)];
+    let mut now = before.clone();
+    now.interfaces = vec![
+        interface("lo0", 31_000, 31_000),
+        interface("en0", 4000, 1000),
+    ];
+    let out = samples(Some(&before), &now, THIRTY);
+    assert_eq!(value(&out, MetricKind::NetworkInBps, "lo0"), None);
+    assert_eq!(value(&out, MetricKind::NetworkOutBps, "lo0"), None);
+    assert_close(value(&out, MetricKind::NetworkInBps, "en0").unwrap(), 100.0);
+    assert_eq!(count(&out, MetricKind::NetworkInBps), 1);
+}
