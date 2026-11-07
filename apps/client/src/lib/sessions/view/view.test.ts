@@ -156,6 +156,20 @@ describe('MAT-008: the terminal', () => {
   });
 });
 
+describe('RA-032: the Files toggle', () => {
+  it('RA-032: the Files button is disabled until the socket is open, like Find, and then reports it is collapsed', async () => {
+    const { target } = show();
+    const files = () => [...target.querySelectorAll('button')].find((each) => each.textContent.includes('Files'));
+    expect(files()?.disabled).toBe(true);
+    FakeResizeObserver.resize(800, 600);
+    await settle();
+    FakeTerminalSocket.latest().open();
+    flushSync();
+    expect(files()?.disabled).toBe(false);
+    expect(files()?.getAttribute('aria-expanded')).toBe('false');
+  });
+});
+
 describe('ended panel and Reconnect (RA-007)', () => {
   it('RA-007: the panel shows the recorded reason, which wins over the end message and the close code (D-4)', async () => {
     const { target, answers, calls, ended } = show();
