@@ -1,4 +1,4 @@
-//! D-9 and WEB-008: the leaf-certificate probe against servers on 127.0.0.1 only.
+//! D-9 and WEB-008: the leaf-certificate probe against servers on the loopback only.
 
 use std::{
     sync::Arc,
@@ -6,9 +6,12 @@ use std::{
 };
 
 use rustls::{
-    ServerConfig,
+    ServerConfig, SupportedProtocolVersion,
     crypto::ring,
-    pki_types::{CertificateDer, PrivatePkcs8KeyDer},
+    pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer},
+    server::{ClientHello, ResolvesServerCert},
+    sign::CertifiedKey,
+    version::{TLS12, TLS13},
 };
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
@@ -21,35 +24,52 @@ use crate::web_view::{CertificateError, Fingerprint, PinnedOrigin, leaf_fingerpr
 
 const PATIENCE: Duration = Duration::from_secs(5);
 
-/// A self-signed certificate for `localhost` and 127.0.0.1, and its server config.
-fn self_signed() -> (CertificateDer<'static>, Arc<ServerConfig>) {
-    let names = vec!["localhost".to_owned(), "127.0.0.1".to_owned()];
-    let generated = rcgen::generate_simple_self_signed(names).unwrap();
-    let der = generated.cert.der().clone();
-    let key = PrivatePkcs8KeyDer::from(generated.signing_key.serialize_der());
-    let config = ServerConfig::builder_with_provider(Arc::new(ring::default_provider()))
+fn server_config(chain: Vec<CertificateDer<'static>>, key: PrivateKeyDer<'static>) -> ServerConfig {
+    ServerConfig::builder_with_provider(Arc::new(ring::default_provider()))
         .with_safe_default_protocol_versions()
         .unwrap()
         .with_no_client_auth()
-        .with_single_cert(vec![der.clone()], key.into())
-        .unwrap();
-    (der, Arc::new(config))
+        .with_single_cert(chain, key)
+        .unwrap()
 }
 
-/// Serves one TLS handshake, then answers how many application bytes the client sent
-/// before it closed.
-async fn tls_server(config: Arc<ServerConfig>) -> (u16, JoinHandle<usize>) {
-    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let port = listener.local_addr().unwrap().port();
-    let served = tokio::spawn(async move {
+/// A self-signed certificate for `localhost`, `127.0.0.1` and `::1`, and its server config.
+fn self_signed() -> (CertificateDer<'static>, ServerConfig) {
+    let names = vec![
+        "localhost".to_owned(),
+        "127.0.0.1".to_owned(),
+        "::1".to_owned(),
+    ];
+    let generated = rcgen::generate_simple_self_signed(names).unwrap();
+    let der = generated.cert.der().clone();
+    let key = PrivatePkcs8KeyDer::from(generated.signing_key.serialize_der());
+    (der.clone(), server_config(vec![der], key.into()))
+}
+
+/// Serves one TLS handshake on `listener`, then answers how many application bytes the
+/// client sent before it closed; `None` when the handshake failed.
+fn tls_server(listener: TcpListener, config: ServerConfig) -> JoinHandle<Option<usize>> {
+    tokio::spawn(async move {
         let (stream, _) = listener.accept().await.unwrap();
-        let mut session = TlsAcceptor::from(config).accept(stream).await.unwrap();
+        let mut session = TlsAcceptor::from(Arc::new(config))
+            .accept(stream)
+            .await
+            .ok()?;
         let mut sent = Vec::new();
         // A close without close_notify reads as an error after the bytes that did arrive.
         let _ = session.read_to_end(&mut sent).await;
-        sent.len()
-    });
-    (port, served)
+        Some(sent.len())
+    })
+}
+
+/// A server on 127.0.0.1 and the `https` URL of it.
+async fn local_server(config: ServerConfig) -> (String, JoinHandle<Option<usize>>) {
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    (
+        format!("https://127.0.0.1:{port}/"),
+        tls_server(listener, config),
+    )
 }
 
 fn origin(url: &str) -> PinnedOrigin {
@@ -59,20 +79,100 @@ fn origin(url: &str) -> PinnedOrigin {
 #[tokio::test]
 async fn d_9_the_probe_reads_the_sha_256_of_the_leaf_and_sends_no_request() {
     let (der, config) = self_signed();
-    let (port, served) = tls_server(config).await;
-    let url = format!("https://127.0.0.1:{port}/admin");
-    let read = leaf_fingerprint(&origin(&url), PATIENCE).await.unwrap();
+    let (url, served) = local_server(config).await;
+    let read = leaf_fingerprint(&origin(&format!("{url}admin")), PATIENCE)
+        .await
+        .unwrap();
     assert_eq!(read, Fingerprint::of_certificate(&der));
-    assert_eq!(served.await.unwrap(), 0, "no application data");
+    assert_eq!(served.await.unwrap(), Some(0), "no application data");
 }
 
 #[tokio::test]
 async fn d_9_the_probe_looks_up_a_host_name() {
     let (der, config) = self_signed();
-    let (port, _served) = tls_server(config).await;
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let _served = tls_server(listener, config);
     let url = format!("https://localhost:{port}/");
     let read = leaf_fingerprint(&origin(&url), PATIENCE).await.unwrap();
     assert_eq!(read, Fingerprint::of_certificate(&der));
+}
+
+#[tokio::test]
+async fn d_9_the_probe_connects_to_an_ipv6_address() {
+    // A host without an IPv6 loopback cannot run this test; it passes there without probing.
+    let Ok(listener) = TcpListener::bind("[::1]:0").await else {
+        return;
+    };
+    let port = listener.local_addr().unwrap().port();
+    let (der, config) = self_signed();
+    let _served = tls_server(listener, config);
+    let url = format!("https://[::1]:{port}/");
+    let read = leaf_fingerprint(&origin(&url), PATIENCE).await.unwrap();
+    assert_eq!(read, Fingerprint::of_certificate(&der));
+}
+
+#[tokio::test]
+async fn d_9_the_probe_reads_the_leaf_of_a_chain_not_its_issuer() {
+    let issuer_key = rcgen::KeyPair::generate().unwrap();
+    let mut issuer_params = rcgen::CertificateParams::new(Vec::<String>::new()).unwrap();
+    issuer_params.is_ca = rcgen::IsCa::Ca(rcgen::BasicConstraints::Unconstrained);
+    let issuer = issuer_params.self_signed(&issuer_key).unwrap();
+    let leaf_key = rcgen::KeyPair::generate().unwrap();
+    let leaf = rcgen::CertificateParams::new(vec!["127.0.0.1".to_owned()])
+        .unwrap()
+        .signed_by(
+            &leaf_key,
+            &rcgen::Issuer::from_params(&issuer_params, &issuer_key),
+        )
+        .unwrap();
+    let chain = vec![leaf.der().clone(), issuer.der().clone()];
+    let key = PrivatePkcs8KeyDer::from(leaf_key.serialize_der());
+    let (url, _served) = local_server(server_config(chain, key.into())).await;
+    let read = leaf_fingerprint(&origin(&url), PATIENCE).await.unwrap();
+    assert_eq!(read, Fingerprint::of_certificate(leaf.der()));
+}
+
+/// Always presents one certificate and signs with one key, whatever the client asks.
+#[derive(Debug)]
+struct Presents(Arc<CertifiedKey>);
+
+impl ResolvesServerCert for Presents {
+    fn resolve(&self, _: ClientHello<'_>) -> Option<Arc<CertifiedKey>> {
+        Some(self.0.clone())
+    }
+}
+
+/// Probes a server that presents another server's certificate but signs with its own key.
+async fn probe_replayed_certificate(
+    version: &'static SupportedProtocolVersion,
+) -> Result<Fingerprint, CertificateError> {
+    let names = vec!["127.0.0.1".to_owned()];
+    let victim = rcgen::generate_simple_self_signed(names.clone()).unwrap();
+    let replayer = rcgen::generate_simple_self_signed(names).unwrap();
+    let provider = Arc::new(ring::default_provider());
+    let key = PrivatePkcs8KeyDer::from(replayer.signing_key.serialize_der());
+    let signer = provider.key_provider.load_private_key(key.into()).unwrap();
+    let presented = CertifiedKey::new(vec![victim.cert.der().clone()], signer);
+    let config = ServerConfig::builder_with_provider(provider)
+        .with_protocol_versions(&[version])
+        .unwrap()
+        .with_no_client_auth()
+        .with_cert_resolver(Arc::new(Presents(Arc::new(presented))));
+    let (url, _served) = local_server(config).await;
+    leaf_fingerprint(&origin(&url), PATIENCE).await
+}
+
+#[tokio::test]
+async fn web_008_a_tls_1_3_server_without_the_certificates_key_fails_the_handshake() {
+    let answer = probe_replayed_certificate(&TLS13).await;
+    assert_eq!(answer, Err(CertificateError::Handshake));
+}
+
+#[tokio::test]
+async fn web_008_a_tls_1_2_server_without_the_certificates_key_fails_the_handshake() {
+    let answer = probe_replayed_certificate(&TLS12).await;
+    assert_eq!(answer, Err(CertificateError::Handshake));
 }
 
 #[tokio::test]
@@ -135,7 +235,7 @@ fn log_007_certificate_errors_carry_only_a_code() {
         (CertificateError::Address, "address"),
         (CertificateError::Unreachable, "unreachable"),
         (CertificateError::Handshake, "handshake"),
-        (CertificateError::NoCertificate, "no-certificate"),
+        (CertificateError::NoCertificate, "no_certificate"),
         (CertificateError::Timeout, "timeout"),
     ];
     for (error, code) in codes {
