@@ -26,12 +26,14 @@ describe('responseSteps (D-10, Chart update role)', () => {
   it('D-10: the newest beat is at the newest step, the right edge of the window, one step per beat to the left', () => {
     const drawn = responseSteps([beat(2, 50), beat(1, null)], 7);
     expect(drawn.points).toEqual([{ at: 7, value: 50 }, { at: 6, value: null }]);
-    expect(drawn.window).toEqual({ start: 7 - (RESPONSE_POINTS - 1), end: 7 });
+    expect(drawn.span).toEqual({ start: 7 - (RESPONSE_POINTS - 1), end: 7 });
   });
 
-  it('D-10: at most one page of beats is drawn', () => {
+  it('D-10: one page of beats is in the window, and one beat more just left of it for the slide', () => {
     const many = Array.from({ length: RESPONSE_POINTS + 20 }, (_, index) => beat(index % 60, 10));
-    expect(responseSteps(many, 0).points).toHaveLength(RESPONSE_POINTS);
+    const { points, span } = responseSteps(many, 0);
+    expect(points.filter((point) => point.at >= span.start)).toHaveLength(RESPONSE_POINTS);
+    expect(points.map((point) => point.at).filter((at) => at < span.start)).toEqual([span.start - 1]);
   });
 
   it('Chart update: each newer beat is one step more; a first load or older beats are none', () => {

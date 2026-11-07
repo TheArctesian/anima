@@ -17,13 +17,16 @@ export interface ChartBeat {
  */
 export interface ResponseSteps {
   readonly points: readonly ChartPoint[];
-  readonly window: TimeWindow;
+  readonly span: TimeWindow;
 }
 
-/** The newest `RESPONSE_POINTS` of `beats` (newest first) as chart points, the newest at step `newest`. */
+/**
+ * The newest `RESPONSE_POINTS` of `beats` (newest first) as chart points, the newest at step `newest`. One beat more
+ * is placed just left of the window, so the left edge is not empty while a new beat slides the line in.
+ */
 export function responseSteps(beats: readonly ChartBeat[], newest: number): ResponseSteps {
-  const points = beats.slice(0, RESPONSE_POINTS).map((beat, index) => ({ at: newest - index, value: beat.responseTimeMs ?? null }));
-  return { points, window: { start: newest - (RESPONSE_POINTS - 1), end: newest } };
+  const points = beats.slice(0, RESPONSE_POINTS + 1).map((beat, index) => ({ at: newest - index, value: beat.responseTimeMs ?? null }));
+  return { points, span: { start: newest - (RESPONSE_POINTS - 1), end: newest } };
 }
 
 /**

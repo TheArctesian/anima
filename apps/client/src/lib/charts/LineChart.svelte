@@ -6,14 +6,14 @@
   import ChartFrame from './ChartFrame.svelte';
   import { chartLabel } from './label';
   import { highestOf, seriesPlot, type ChartSeries } from './plot';
-  import { PLOT, slideOffset, spanOf, valueScale, type TimeWindow, type ValueAxis } from './scales';
+  import { PLOT, slideOffset, lengthOf, valueScale, type TimeWindow, type ValueAxis } from './scales';
 
   interface Props {
     /** What the chart shows, said first in its text alternative ("CPU, last hour"). */
     title: string;
     series: readonly ChartSeries[];
     /** The left and right edges of the x axis, in the points' `at` unit. */
-    window: TimeWindow;
+    span: TimeWindow;
     axis: ValueAxis;
     /** The text of a value with its unit, for the axis labels and the text alternative. */
     format: (value: number) => string;
@@ -31,7 +31,7 @@
   const {
     title,
     series,
-    window,
+    span,
     axis,
     format,
     threshold,
@@ -41,9 +41,9 @@
     preference = motionPreference(),
   }: Props = $props();
   const scale = $derived(valueScale(axis, Math.max(0, ...series.map((one) => highestOf(one.points)))));
-  const plots = $derived(series.map((one) => ({ ...one, ...seriesPlot(one.points, window, scale, gap) })));
+  const plots = $derived(series.map((one) => ({ ...one, ...seriesPlot(one.points, span, scale, gap) })));
   const label = $derived(chartLabel({ title, series, top: scale.top, format, empty }));
-  const span = $derived(spanOf(window));
+  const length = $derived(lengthOf(span));
   let lines = $state<SVGGElement>();
   let before: TimeWindow | undefined;
 
@@ -54,7 +54,7 @@
    * (MOT-041). The grid and the axes stay still. A range change does not slide: the `{#key}` below cross-fades it.
    */
   $effect(() => {
-    const now = window;
+    const now = span;
     const was = before;
     before = now;
     const offset = was === undefined ? 0 : slideOffset(was, now);
@@ -67,9 +67,9 @@
 </script>
 
 <div class="chart">
-  {#key span}
+  {#key length}
     <div class="layer" transition:crossFade={{ preference }}>
-      <ChartFrame {window} {scale} {format} {threshold} {timeAxis} legend={series} {label}>
+      <ChartFrame {span} {scale} {format} {threshold} {timeAxis} legend={series} {label}>
         <svg class="lines" aria-hidden="true" viewBox="0 0 {PLOT.width} {PLOT.height}" preserveAspectRatio="none">
           <g bind:this={lines}>
             {#each plots as plot, index (index)}

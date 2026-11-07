@@ -1,13 +1,13 @@
 import { latestOf, type ChartPoint } from './plot';
 
 /** A series as the chart's text alternative reads it. */
-export interface LabelledSeries {
+interface LabelledSeries {
   readonly label: string;
   readonly points: readonly ChartPoint[];
 }
 
 /** What the chart's text alternative says. */
-export interface ChartText {
+interface ChartText {
   readonly title: string;
   readonly series: readonly LabelledSeries[];
   /** The value at the top of the plot. */

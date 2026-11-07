@@ -19,7 +19,7 @@ export interface ChartSeries {
 }
 
 /** What to draw for one series, in viewBox units. */
-export interface SeriesPlot {
+interface SeriesPlot {
   /** One SVG `points` attribute per unbroken run of readings. */
   readonly lines: readonly string[];
   /** One SVG `points` attribute per run of readings with a min and a max: the max edge, then the min edge back. */
@@ -61,17 +61,17 @@ function runs<T extends Placed>(points: readonly T[], keep: (point: T) => boolea
 }
 
 /**
- * The polylines and min–max bands of one series over `window`. Points are put in time order first; a point without a
+ * The polylines and min–max bands of one series over `span`. Points are put in time order first; a point without a
  * usable value breaks the line, and so does a gap wider than `gap` (in the `at` unit; no limit by default). Points
  * outside the window are kept: the plot clips them, and the Chart update slide shows them coming in.
  */
 export function seriesPlot(
   points: readonly ChartPoint[],
-  window: TimeWindow,
+  span: TimeWindow,
   scale: ValueScale,
   gap: number = Number.POSITIVE_INFINITY,
 ): SeriesPlot {
-  const x = timeScale(window);
+  const x = timeScale(span);
   const placed = points
     .filter((point) => Number.isFinite(point.at))
     .toSorted((a, b) => a.at - b.at)

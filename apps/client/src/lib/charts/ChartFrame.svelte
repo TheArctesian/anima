@@ -5,12 +5,12 @@
   import { timeTicks, valueTicks } from './ticks';
 
   interface Props {
-    window: TimeWindow;
+    span: TimeWindow;
     scale: ValueScale;
     /** The text of a value label; without it the labels keep their place but show nothing (a skeleton's open axis). */
     format?: (value: number) => string;
     threshold?: number;
-    /** Whether `window` is in milliseconds and gets time labels. */
+    /** Whether `span` is in milliseconds and gets time labels. */
     timeAxis: boolean;
     /** Shown when there is more than one series, so colour is never the only cue. */
     legend: readonly { readonly label: string; readonly colour: SeriesColour }[];
@@ -20,11 +20,12 @@
     children?: Snippet;
   }
 
-  const { window, scale, format, threshold, timeAxis, legend, label, children }: Props = $props();
+  const { span, scale, format, threshold, timeAxis, legend, label, children }: Props = $props();
   const values = $derived(valueTicks(scale));
   const thresholdAt = $derived(thresholdY(scale, threshold));
   // The zone is read here, at the edge; the tick rule takes it as a parameter.
-  const times = $derived(timeAxis ? timeTicks(window, -new Date(window.end).getTimezoneOffset() * 60_000) : []);
+  const localOffset = (at: number) => -new Date(at).getTimezoneOffset() * 60_000;
+  const times = $derived(timeAxis ? timeTicks(span, localOffset) : []);
   const percentOf = (part: number, whole: number) => `${String((part / whole) * 100)}%`;
 </script>
 

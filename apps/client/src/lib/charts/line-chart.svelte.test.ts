@@ -30,13 +30,13 @@ afterEach(async () => {
   document.body.replaceChildren();
 });
 
-function cpu(window: TimeWindow): ChartSeries {
-  return { label: 'CPU', colour: 1, points: [{ at: window.start, value: 20 }, { at: window.end, value: 40 }] };
+function cpu(span: TimeWindow): ChartSeries {
+  return { label: 'CPU', colour: 1, points: [{ at: span.start, value: 20 }, { at: span.end, value: 40 }] };
 }
 
 function chart(reduced = false) {
-  const window = { start: 0, end: HOUR };
-  const props = $state({ title: 'CPU, last hour', series: [cpu(window)], window, axis: 'percent' as const, format: percent, threshold: undefined as number | undefined, preference: { reduced } });
+  const span = { start: 0, end: HOUR };
+  const props = $state({ title: 'CPU, last hour', series: [cpu(span)], span, axis: 'percent' as const, format: percent, threshold: undefined as number | undefined, preference: { reduced } });
   apps.push(mount(LineChart, { target: document.body, props }));
   flushSync();
   return props;
@@ -45,8 +45,8 @@ function chart(reduced = false) {
 /** Moves the chart's window forward by `minutes`, with a new point at the right edge. */
 function moveOn(props: ReturnType<typeof chart>, minutes: number): void {
   const step = minutes * 60_000;
-  props.window = { start: props.window.start + step, end: props.window.end + step };
-  props.series = [cpu(props.window)];
+  props.span = { start: props.span.start + step, end: props.span.end + step };
+  props.series = [cpu(props.span)];
   flushSync();
 }
 
@@ -88,7 +88,7 @@ describe('LineChart: Chart update (5.7.3, D-2)', () => {
 
   it('MOT-011: a first draw, or new values in the same window, does not slide', () => {
     const props = chart();
-    props.series = [{ ...cpu(props.window), points: [{ at: 10, value: 90 }] }];
+    props.series = [{ ...cpu(props.span), points: [{ at: 10, value: 90 }] }];
     flushSync();
     expect(runs).toEqual([]);
     expect(lines()?.style.translate).toBe('');
@@ -96,7 +96,7 @@ describe('LineChart: Chart update (5.7.3, D-2)', () => {
 
   it('D-2: a range change does not slide; the old chart cross-fades out in the same cell', async () => {
     const props = chart();
-    props.window = { start: 0, end: 24 * HOUR };
+    props.span = { start: 0, end: 24 * HOUR };
     flushSync();
     expect(runs).toEqual([]);
     expect(document.querySelectorAll('.chart > .layer')).toHaveLength(2);
@@ -148,15 +148,15 @@ function geometry(target: Element): string {
 
 describe('ChartSkeleton (D-3, MOT-007)', () => {
   it('MOT-007: the skeleton is the chart box with the same grid, axes and legend, and no line', () => {
-    const window = { start: Date.UTC(2026, 10, 5, 9), end: Date.UTC(2026, 10, 5, 10) };
+    const span = { start: Date.UTC(2026, 10, 5, 9), end: Date.UTC(2026, 10, 5, 10) };
     const legend = [
       { label: 'In', colour: 1 as const },
       { label: 'Out', colour: 2 as const },
     ];
-    const shared = { window, axis: 'percent' as const, format: percent, threshold: 85 };
+    const shared = { span, axis: 'percent' as const, format: percent, threshold: 85 };
     const chartTarget = document.body.appendChild(document.createElement('div'));
     const skeletonTarget = document.body.appendChild(document.createElement('div'));
-    const series = legend.map((entry) => ({ ...entry, points: [{ at: window.start, value: 10 }, { at: window.end, value: 30 }] }));
+    const series = legend.map((entry) => ({ ...entry, points: [{ at: span.start, value: 10 }, { at: span.end, value: 30 }] }));
     apps.push(mount(LineChart, { target: chartTarget, props: { ...shared, title: 'Network', series } }));
     apps.push(mount(ChartSkeleton, { target: skeletonTarget, props: { ...shared, legend } }));
     flushSync();
@@ -168,7 +168,7 @@ describe('ChartSkeleton (D-3, MOT-007)', () => {
   });
 
   it('D-3: an open axis skeleton keeps its value label places but shows no values it does not know', () => {
-    apps.push(mount(ChartSkeleton, { target: document.body, props: { window: { start: 0, end: HOUR }, axis: 'open', format: percent } }));
+    apps.push(mount(ChartSkeleton, { target: document.body, props: { span: { start: 0, end: HOUR }, axis: 'open', format: percent } }));
     flushSync();
     const labels = [...document.querySelectorAll('.values span')];
     expect(labels).toHaveLength(5);

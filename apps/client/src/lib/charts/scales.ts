@@ -2,9 +2,9 @@
 export const PLOT = { width: 600, height: 120 } as const;
 
 /** The value axis is cut into this many equal intervals, so every chart and its skeleton share one grid. */
-export const VALUE_INTERVALS = 4;
+const VALUE_INTERVALS = 4;
 
-/** The span of the x axis, in the points' `at` unit (milliseconds for a time chart). */
+/** The extent of the x axis, `start` to `end`, in the points' `at` unit (milliseconds for a time chart). */
 export interface TimeWindow {
   readonly start: number;
   readonly end: number;
@@ -30,16 +30,16 @@ function clean(value: number): number {
   return Number(value.toPrecision(12));
 }
 
-/** The span of `window`, or 0 when it is empty, reversed or not a number. */
-export function spanOf(window: TimeWindow): number {
-  const span = window.end - window.start;
-  return Number.isFinite(span) && span > 0 ? span : 0;
+/** The length of `span` (`end - start`), or 0 when it is empty, reversed or not a number. */
+export function lengthOf(span: TimeWindow): number {
+  const length = span.end - span.start;
+  return Number.isFinite(length) && length > 0 ? length : 0;
 }
 
 /** x in viewBox units for `at`; `start` is the left edge and `end` the right edge. An empty window puts all at the right. */
-export function timeScale(window: TimeWindow): (at: number) => number {
-  const span = spanOf(window);
-  return (at) => (span === 0 ? PLOT.width : ((at - window.start) / span) * PLOT.width);
+export function timeScale(span: TimeWindow): (at: number) => number {
+  const length = lengthOf(span);
+  return (at) => (length === 0 ? PLOT.width : ((at - span.start) / length) * PLOT.width);
 }
 
 /**
@@ -62,12 +62,12 @@ export function valueY(scale: ValueScale, value: number): number {
 
 /**
  * Chart update (5.7.3): how far right, in viewBox units, the drawn line starts when the window moves from `was` to
- * `now`. Only a forward move of the same span slides, and only by less than the whole span; a range change, a move
+ * `now`. Only a forward move of the same length slides, and only by less than that length; a range change, a move
  * back or a jump past the old window is 0, and the line is drawn in place.
  */
 export function slideOffset(was: TimeWindow, now: TimeWindow): number {
-  const span = spanOf(now);
+  const length = lengthOf(now);
   const moved = now.start - was.start;
-  if (span === 0 || spanOf(was) !== span || !(moved > 0 && moved < span)) return 0;
-  return (moved / span) * PLOT.width;
+  if (length === 0 || lengthOf(was) !== length || !(moved > 0 && moved < length)) return 0;
+  return (moved / length) * PLOT.width;
 }

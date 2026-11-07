@@ -4,7 +4,7 @@ import { highestOf, latestOf, seriesPlot, thresholdY, type ChartPoint } from './
 import { PLOT, slideOffset, timeScale, valueScale, valueY } from './scales';
 
 const HOUR = 3_600_000;
-const window = { start: 0, end: HOUR };
+const span = { start: 0, end: HOUR };
 const percent = valueScale('percent', 0);
 
 /** The x and y of each point in an SVG `points` attribute. */
@@ -14,7 +14,7 @@ function coordinates(points: string | undefined): number[][] {
 
 describe('scales (D-1)', () => {
   it('D-1: the window start is the left edge and its end the right edge', () => {
-    const x = timeScale(window);
+    const x = timeScale(span);
     expect([x(0), x(HOUR / 2), x(HOUR)]).toEqual([0, PLOT.width / 2, PLOT.width]);
   });
 
@@ -60,44 +60,44 @@ describe('seriesPlot (D-1)', () => {
   });
 
   it('D-1: one line through the points, oldest at the left', () => {
-    const { lines } = seriesPlot([point(30, 50), point(60, 100), point(0, 0)], window, percent);
+    const { lines } = seriesPlot([point(30, 50), point(60, 100), point(0, 0)], span, percent);
     expect(lines.map(coordinates)).toEqual([[[0, PLOT.height], [300, 60], [600, 0]]]);
   });
 
   it('D-1: a missing value, or one that is not a number, breaks the line', () => {
     const points = [point(0, 10), point(1, null), point(2, 10), point(3, Number.NaN), point(4, 10), point(5, 10)];
-    expect(seriesPlot(points, window, percent).lines.map((line) => coordinates(line).length)).toEqual([1, 1, 2]);
+    expect(seriesPlot(points, span, percent).lines.map((line) => coordinates(line).length)).toEqual([1, 1, 2]);
   });
 
   it('D-1: a gap wider than the interval breaks the line; one as wide does not', () => {
     const points = [point(0, 10), point(1, 10), point(5, 10), point(6, 10)];
-    expect(seriesPlot(points, window, percent, 60_000).lines).toHaveLength(2);
-    expect(seriesPlot(points, window, percent, 4 * 60_000).lines).toHaveLength(1);
+    expect(seriesPlot(points, span, percent, 60_000).lines).toHaveLength(2);
+    expect(seriesPlot(points, span, percent, 4 * 60_000).lines).toHaveLength(1);
   });
 
   it('D-1: no points draw nothing', () => {
-    expect(seriesPlot([], window, percent)).toEqual({ lines: [], bands: [] });
+    expect(seriesPlot([], span, percent)).toEqual({ lines: [], bands: [] });
   });
 
   it('D-1: points outside the window are kept so the plot can clip them', () => {
-    const [line] = seriesPlot([point(-30, 10), point(30, 10)], window, percent).lines;
+    const [line] = seriesPlot([point(-30, 10), point(30, 10)], span, percent).lines;
     expect(coordinates(line).map(([x]) => x)).toEqual([-300, 300]);
   });
 
   it('D-1: the band runs along the max, then back along the min', () => {
-    const { bands } = seriesPlot([point(0, 50, [25, 75]), point(60, 50, [0, 100])], window, percent);
+    const { bands } = seriesPlot([point(0, 50, [25, 75]), point(60, 50, [0, 100])], span, percent);
     expect(bands.map(coordinates)).toEqual([[[0, 30], [600, 0], [600, 120], [0, 90]]]);
   });
 
   it('D-1: the band breaks where a point has no min or max, and a lone banded point draws no band', () => {
     const points = [point(0, 5, [1, 9]), point(1, 5, [1, 9]), point(2, 5), point(3, 5, [1, 9])];
-    const { bands, lines } = seriesPlot(points, window, percent);
+    const { bands, lines } = seriesPlot(points, span, percent);
     expect(bands.map((band) => coordinates(band).length)).toEqual([4]);
     expect(lines).toHaveLength(1);
   });
 
   it('D-1: a min above its max still draws the band the right way up', () => {
-    const { bands } = seriesPlot([point(0, 50, [75, 25]), point(60, 50, [75, 25])], window, percent);
+    const { bands } = seriesPlot([point(0, 50, [75, 25]), point(60, 50, [75, 25])], span, percent);
     expect(coordinates(bands[0]).map(([, y]) => y)).toEqual([30, 30, 90, 90]);
   });
 
@@ -125,14 +125,14 @@ describe('thresholdY (MET-004)', () => {
 
 describe('slideOffset (5.7.3 Chart update)', () => {
   it('5.7.3: a window that moves forward slides by the distance the time axis moved', () => {
-    expect(slideOffset(window, { start: HOUR / 4, end: HOUR * 1.25 })).toBe(PLOT.width / 4);
+    expect(slideOffset(span, { start: HOUR / 4, end: HOUR * 1.25 })).toBe(PLOT.width / 4);
   });
 
   it('5.7.3: a range change, a move back, no move or a jump past the whole window does not slide', () => {
-    expect(slideOffset(window, { start: HOUR, end: HOUR * 25 })).toBe(0);
-    expect(slideOffset(window, { start: -10, end: HOUR - 10 })).toBe(0);
-    expect(slideOffset(window, window)).toBe(0);
-    expect(slideOffset(window, { start: HOUR, end: HOUR * 2 })).toBe(0);
+    expect(slideOffset(span, { start: HOUR, end: HOUR * 25 })).toBe(0);
+    expect(slideOffset(span, { start: -10, end: HOUR - 10 })).toBe(0);
+    expect(slideOffset(span, span)).toBe(0);
+    expect(slideOffset(span, { start: HOUR, end: HOUR * 2 })).toBe(0);
     expect(slideOffset({ start: 0, end: 0 }, { start: 1, end: 1 })).toBe(0);
   });
 });

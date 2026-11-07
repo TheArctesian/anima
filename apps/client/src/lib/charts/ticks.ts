@@ -1,14 +1,14 @@
-import { spanOf, timeScale, valueY, type TimeWindow, type ValueScale } from './scales';
+import { lengthOf, timeScale, valueY, type TimeWindow, type ValueScale } from './scales';
 
 /** A label on the time axis at `x` (viewBox units). */
-export interface TimeTick {
+interface TimeTick {
   readonly at: number;
   readonly x: number;
   readonly text: string;
 }
 
 /** A horizontal grid line at `y` (viewBox units) and the value it marks. */
-export interface ValueTick {
+interface ValueTick {
   readonly value: number;
   readonly y: number;
 }
@@ -31,20 +31,33 @@ function tickText(local: number, step: number): string {
   return `${WEEKDAYS[date.getUTCDay()] ?? ''} ${String(date.getUTCDate())}`;
 }
 
+/** The UTC time of local time `local`, for a zone whose offset can change (daylight saving). */
+function utcOf(local: number, offsetAt: (at: number) => number): number {
+  const guess = local - offsetAt(local);
+  return local - offsetAt(guess);
+}
+
 /**
- * Time-axis labels inside `window` (ms), on round local times: every 10 minutes over 1 hour, every 4 hours over
- * 24 hours, every day at midnight over 7 days. `zoneOffset` is the local zone's distance from UTC in ms (east is
- * positive). The edges themselves get no label. A window wider than the largest step gets none.
+ * Time-axis labels inside `span` (ms), on round local times: every 10 minutes over 1 hour, every 4 hours over
+ * 24 hours, every day at midnight over 7 days. `offsetAt(at)` is the local zone's distance from UTC in ms at `at`
+ * (east is positive), so a span across a daylight-saving change keeps its labels on local times. The edges get no
+ * label; each instant gets one label. A span longer than the largest step, or a zone offset that
+ * is not a number, gets none.
  */
-export function timeTicks(window: TimeWindow, zoneOffset: number): readonly TimeTick[] {
-  const span = spanOf(window);
-  const step = TIME_STEPS.find((candidate) => span / candidate <= MAX_TIME_TICKS);
-  if (span === 0 || step === undefined || !Number.isFinite(zoneOffset)) return [];
-  const x = timeScale(window);
+export function timeTicks(span: TimeWindow, offsetAt: (at: number) => number): readonly TimeTick[] {
+  const length = lengthOf(span);
+  const step = TIME_STEPS.find((candidate) => length / candidate <= MAX_TIME_TICKS);
+  if (length === 0 || step === undefined || !Number.isFinite(offsetAt(span.start))) return [];
+  const x = timeScale(span);
   const ticks: TimeTick[] = [];
-  for (let local = Math.floor((window.start + zoneOffset) / step + 1) * step; local - zoneOffset < window.end; local += step) {
-    const at = local - zoneOffset;
-    ticks.push({ at, x: x(at), text: tickText(local, step) });
+  let local = Math.floor((span.start + offsetAt(span.start)) / step + 1) * step;
+  // A change of offset moves a tick by at most a few hours, so this bound is never reached by a real zone.
+  for (let count = 0; count <= 2 * MAX_TIME_TICKS; count += 1, local += step) {
+    const at = utcOf(local, offsetAt);
+    if (!Number.isFinite(at) || at >= span.end) break;
+    // A local time skipped when the clocks go forward lands on the next one; the later, true label wins.
+    if (ticks.at(-1)?.at === at) ticks.pop();
+    if (at > span.start) ticks.push({ at, x: x(at), text: tickText(local, step) });
   }
   return ticks;
 }

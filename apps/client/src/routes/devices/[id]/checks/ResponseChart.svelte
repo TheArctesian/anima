@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import LineChart from '$lib/charts/LineChart.svelte';
   import type { MotionPreference } from '$lib/motion/preference';
   import { RESPONSE_POINTS, responseSteps, stepsAfter, type ChartBeat } from './response';
@@ -11,13 +12,14 @@
   }
 
   const { beats, preference }: Props = $props();
-  // The step count remembers the beats it last saw, so it is kept outside reactive state.
+  /** The step of the newest beat; it counts the beats that came in since the chart was made (Chart update role). */
+  let newest = $state(0);
   let seen: readonly ChartBeat[] = [];
-  let steps = 0;
-  const newest = $derived.by(() => {
-    steps = stepsAfter(seen, beats, steps);
-    seen = beats;
-    return steps;
+  // Before the DOM updates, so the chart draws the new beats and the moved window together.
+  $effect.pre(() => {
+    const now = beats;
+    newest = untrack(() => stepsAfter(seen, now, newest));
+    seen = now;
   });
   const drawn = $derived(responseSteps(beats, newest));
   const series = $derived([{ label: 'Response time', colour: 1 as const, points: drawn.points }]);
@@ -27,7 +29,7 @@
 <LineChart
   {title}
   {series}
-  window={drawn.window}
+  span={drawn.span}
   axis="open"
   format={msText}
   timeAxis={false}
