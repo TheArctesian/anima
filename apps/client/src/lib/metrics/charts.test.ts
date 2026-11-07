@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { chartsOf, seriesColour } from './charts';
-import { CPU_ONLY, INTEGRATED, NVIDIA, TWO_GPUS, series } from './metrics.fixture';
+import { CPU_ONLY, INTEGRATED, NVIDIA, point, TWO_GPUS, series } from './metrics.fixture';
 
 const keys = (charts: ReturnType<typeof chartsOf>) => charts.map((chart) => chart.key);
 
@@ -15,7 +15,7 @@ describe('chartsOf', () => {
       'memory',
       'disk:/',
       'disk:/data',
-      'network',
+      'network:eth0',
       'load',
       'gpu:0:usage',
       'gpu:0:vram',
@@ -26,17 +26,19 @@ describe('chartsOf', () => {
   it('D-4: one chart per mount, titled with the mount, and percent axis with the 85 % threshold (MET-004)', () => {
     const disks = chartsOf(TWO_GPUS, []).filter((chart) => chart.key.startsWith('disk:'));
     expect(disks.map((chart) => chart.title)).toEqual(['Disk /', 'Disk /data']);
-    expect(disks[0]?.axis).toEqual({ kind: 'percent', min: 0, max: 100, threshold: 85 });
+    expect(disks[0]?.axis).toBe('percent');
+    expect(disks[0]?.threshold).toBe(85);
   });
 
   it('D-4: network has in and out, load has 1, 5 and 15 as separate series', () => {
     const charts = chartsOf(TWO_GPUS, []);
-    const network = charts.find((chart) => chart.key === 'network');
+    const network = charts.find((chart) => chart.key === 'network:eth0');
     const load = charts.find((chart) => chart.key === 'load');
-    expect(network?.series.map((line) => line.name)).toEqual(['In', 'Out']);
-    expect(network?.axis).toEqual({ kind: 'open', unit: 'bytesPerSecond' });
+    expect(network?.series.map((line) => line.label)).toEqual(['In', 'Out']);
+    expect(network?.axis).toBe('open');
+    expect(network?.threshold).toBeUndefined();
     expect(network?.format(1024)).toBe('1.0 KiB/s');
-    expect(load?.series.map((line) => line.name)).toEqual(['1 min', '5 min', '15 min']);
+    expect(load?.series.map((line) => line.label)).toEqual(['1 min', '5 min', '15 min']);
     expect(load?.series.map((line) => line.colour)).toEqual([1, 2, 3]);
   });
 
@@ -60,6 +62,37 @@ describe('chartsOf', () => {
   it('lists no chart for a series that does not exist, and one for a series with no points', () => {
     expect(chartsOf([], [NVIDIA])).toEqual([]);
     expect(keys(chartsOf([series('CPU_PERCENT', 'cpu')], []))).toEqual(['cpu']);
+  });
+
+  it('D-4: draws one In and Out chart per interface, ordered by name, each from its own interface', () => {
+    const at = '2026-11-05T09:04:00Z';
+    const charts = chartsOf(
+      [
+        series('NETWORK_OUT_BPS', 'wlan0', [point(at, 2)]),
+        series('NETWORK_IN_BPS', 'wlan0', [point(at, 1)]),
+        series('NETWORK_IN_BPS', 'eth0', [point(at, 10)]),
+        series('NETWORK_OUT_BPS', 'eth0', [point(at, 20)]),
+      ],
+      [],
+    );
+    expect(charts.map((chart) => chart.title)).toEqual(['Network eth0', 'Network wlan0']);
+    expect(charts[1]?.series.map((line) => [line.label, line.points[0]?.value])).toEqual([
+      ['In', 1],
+      ['Out', 2],
+    ]);
+  });
+
+  it('MET-003: points are in milliseconds and sorted oldest first', () => {
+    const late = point('2026-11-05T09:04:00Z', 2);
+    const early = point('2026-11-05T09:00:00Z', 1);
+    const [chart] = chartsOf([series('CPU_PERCENT', 'cpu', [late, early])], []);
+    expect(chart?.series[0]?.points.map((each) => each.at)).toEqual([Date.parse(early.at), Date.parse(late.at)]);
+  });
+
+  it('charts a CPU series with an empty label, the form WP-28 D-5 serves', () => {
+    const [chart] = chartsOf([series('CPU_PERCENT', '', [point('2026-11-05T09:00:00Z', 5)])], []);
+    expect(chart?.key).toBe('cpu');
+    expect(chart?.series[0]?.label).toBe('CPU');
   });
 
   it('cycles colours within the six series colours', () => {

@@ -4,8 +4,6 @@ import {
   formatBytesPerSecond,
   formatLoad,
   formatPercent,
-  formatPower,
-  formatTemperature,
   formatUptime,
 } from './units';
 
@@ -24,13 +22,11 @@ describe('units (MET-007)', () => {
     expect(formatUptime(5 * 3600 + 12 * 60)).toBe('5 h 12 min');
     expect(formatUptime(3 * 86400 + 4 * 3600)).toBe('3 d 4 h');
   });
-  it('writes load, temperature and power', () => {
+  it('writes load with two decimals', () => {
     expect(formatLoad(0.4)).toBe('0.40');
-    expect(formatTemperature(61.6)).toBe('62 °C');
-    expect(formatPower(45.2)).toBe('45 W');
   });
   it('shows a dash for a missing value, never 0, in every unit', () => {
-    for (const format of [formatPercent, formatBytes, formatBytesPerSecond, formatUptime, formatLoad, formatTemperature, formatPower]) {
+    for (const format of [formatPercent, formatBytes, formatBytesPerSecond, formatUptime, formatLoad]) {
       expect(format(null)).toBe('—');
       expect(format(Number.NaN)).toBe('—');
     }

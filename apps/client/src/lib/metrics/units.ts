@@ -43,9 +43,3 @@ export const formatUptime: UnitFormatter = (value) => {
 
 /** Load average with two decimals: "0.42". */
 export const formatLoad: UnitFormatter = (value) => (known(value) ? value.toFixed(2) : UNKNOWN);
-
-/** Degrees Celsius, whole: "62 °C". */
-export const formatTemperature: UnitFormatter = (value) => (known(value) ? `${String(Math.round(value))} °C` : UNKNOWN);
-
-/** Watts, whole: "45 W". */
-export const formatPower: UnitFormatter = (value) => (known(value) ? `${String(Math.round(value))} W` : UNKNOWN);

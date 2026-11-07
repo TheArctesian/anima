@@ -50,6 +50,17 @@ describe('mergeLive (D-5)', () => {
     expect(next[0]?.points.map((each) => each.value)).toEqual([2, 3]);
   });
 
+  it('returns the input unchanged for an unreadable batch time', () => {
+    const input = [CPU];
+    expect(mergeLive(input, added('not a time', [{ kind: 'CPU_PERCENT', label: 'cpu', value: 1 }]))).toBe(input);
+  });
+
+  it('does not wipe a series whose last point has an unreadable time', () => {
+    const odd = series('CPU_PERCENT', 'cpu', [point('garbage', 1)]);
+    const next = mergeLive([odd], added('2026-11-05T09:05:00Z', [{ kind: 'CPU_PERCENT', label: 'cpu', value: 2 }]));
+    expect(next[0]?.points.map((each) => each.value)).toEqual([2]);
+  });
+
   it('does not change its input', () => {
     mergeLive([CPU], added('2026-11-05T09:05:00Z', [{ kind: 'CPU_PERCENT', label: 'cpu', value: 20 }]));
     expect(CPU.points).toHaveLength(5);
@@ -59,9 +70,10 @@ describe('mergeLive (D-5)', () => {
 describe('rangeWindow (MET-003)', () => {
   const now = new Date('2026-11-05T12:00:00Z');
   it('spans 1 hour, 24 hours and 7 days ending at now', () => {
-    expect(rangeWindow('HOUR', now).start.toISOString()).toBe('2026-11-05T11:00:00.000Z');
-    expect(rangeWindow('DAY', now).start.toISOString()).toBe('2026-11-04T12:00:00.000Z');
-    expect(rangeWindow('WEEK', now).start.toISOString()).toBe('2026-10-29T12:00:00.000Z');
-    expect(rangeWindow('WEEK', now).end).toBe(now);
+    const start = (range: 'HOUR' | 'DAY' | 'WEEK') => new Date(rangeWindow(range, now).start).toISOString();
+    expect(start('HOUR')).toBe('2026-11-05T11:00:00.000Z');
+    expect(start('DAY')).toBe('2026-11-04T12:00:00.000Z');
+    expect(start('WEEK')).toBe('2026-10-29T12:00:00.000Z');
+    expect(rangeWindow('WEEK', now).end).toBe(now.getTime());
   });
 });
