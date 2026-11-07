@@ -2,9 +2,9 @@
 //! uptime they add up to (spec 6.4). [`spawn_scheduler`] runs the checks (HUB-003).
 //!
 //! Other domains use only the contract functions: [`statuses`], [`uptimes`], [`for_device`],
-//! [`add_default_check`], [`device_status`], [`resolved_ips`] and [`evaluate`]. The writes,
-//! [`record_beat`], [`due_checks`] and the retention functions serve this domain's GraphQL,
-//! push route and scheduler; they are public so the integration tests can drive them.
+//! [`add_default_check`], [`device_status`], [`resolved_ips`], [`http_urls`] and [`evaluate`].
+//! The writes, [`record_beat`], [`due_checks`] and the retention functions serve this domain's
+//! GraphQL, push route and scheduler; they are public so the integration tests can drive them.
 //!
 //! HTTP and SNMP secrets are sealed with the vault, bound to their check, and never returned
 //! by a read; only [`load_http_secrets`] and [`load_snmp_secrets`] open them, for the probe
