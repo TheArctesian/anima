@@ -192,8 +192,7 @@
       <span>Find</span>
     </button>
     <button type="button" class="find" aria-expanded={filing} disabled={!ready} title="Files on the device" onclick={() => (filing = !filing)} {@attach press()}>
-      <Icon name="nf-md-folder" />
-      <span>Files</span>
+      <Icon name="nf-md-folder" /><span>Files</span>
     </button>
     <span class="device">{device.name}</span>
     {#if ready && rules.notice !== undefined}<span class="policy" data-policy title={rules.notice}>{rules.notice}</span>{/if}
@@ -211,9 +210,7 @@
   <div class="stage">
     <!-- The terminal draws here; its own hidden text field takes the keyboard (D-8). -->
     <div class="pane" role="group" aria-label="Terminal of {device.name}" {@attach attachPane}></div>
-    {#if filing && stage.kind === 'open' && ready}
-      <FilesPanel sessionId={stage.sessionId} />
-    {/if}
+    {#if filing && stage.kind === 'open' && ready}<FilesPanel sessionId={stage.sessionId} />{/if}
     {#if !ready}
       <!-- Top-aligned, steps first: the ended text appears below the steps, so nothing above it moves (MV-004). -->
       <div class="panel">

@@ -66,7 +66,6 @@
 </script>
 
 <!-- A solid column beside the terminal, never over it (MAT-008). Dropping a file is a shortcut for the Upload button. -->
-<!-- svelte-ignore a11y_no_noninteractive_element_interactions -- the Upload button is the keyboard route; drop only adds a pointer shortcut -->
 <section
   class="files"
   class:dragging
