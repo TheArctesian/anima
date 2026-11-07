@@ -208,17 +208,11 @@ describe('header buttons (D-8, DEV-022)', () => {
 });
 
 describe('Web button (WEB-003, WEB-011, MOT-005)', () => {
-  const interfaceAt = (url: string, openIn: 'ANIMA_TAB' | 'SYSTEM_BROWSER') => ({
-    id: 'w1',
-    deviceId: ID,
-    label: 'Admin',
-    url,
-    openIn,
-    pinnedFingerprintSha256: null,
-    pinnedAt: null,
-  });
-  const showWith = (url: string, openIn: 'ANIMA_TAB' | 'SYSTEM_BROWSER', status: 'UP' | 'DOWN' = 'UP') =>
-    show(answers({ Device: { device: device({ status, webInterfaces: [interfaceAt(url, openIn)] }) } }));
+  type OpenIn = 'ANIMA_TAB' | 'SYSTEM_BROWSER';
+  const showWith = (url: string, openIn: OpenIn, status: 'UP' | 'DOWN' = 'UP') => {
+    const web = { id: 'w1', deviceId: ID, label: 'Admin', url, openIn, pinnedFingerprintSha256: null, pinnedAt: null };
+    return show(answers({ Device: { device: device({ status, webInterfaces: [web] }) } }));
+  };
 
   beforeEach(() => {
     browser.mockClear();
@@ -227,9 +221,8 @@ describe('Web button (WEB-003, WEB-011, MOT-005)', () => {
   it('WEB-003 / MOT-005: ANIMA_TAB opens a web tab with the device status, growing from the button', async () => {
     await showWith('http://nas.lan/', 'ANIMA_TAB', 'DOWN');
     button('Open Admin of nas').click();
-    expect(current.opened).toEqual([
-      expect.objectContaining({ deviceId: ID, deviceName: 'nas', status: 'DOWN', web: expect.objectContaining({ id: 'w1', url: 'http://nas.lan/' }) as unknown, origin: expect.any(Object) as DOMRect }),
-    ]);
+    const web = expect.objectContaining({ id: 'w1', url: 'http://nas.lan/' }) as unknown;
+    expect(current.opened).toEqual([expect.objectContaining({ deviceId: ID, deviceName: 'nas', status: 'DOWN', web, origin: expect.any(Object) as DOMRect })]);
     expect(browser).not.toHaveBeenCalled();
   });
 

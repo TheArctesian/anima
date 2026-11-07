@@ -20,7 +20,7 @@
   import { sessionsApi } from '$lib/sessions/api';
   import { wakeApi } from '$lib/sessions/wake/api';
   import { useSessions } from '$lib/sessions/sessions.svelte';
-  import { openWebInterface } from '$lib/sessions/web/open';
+  import { openWebInterface } from '$lib/sessions/web/open/open';
   import type { SessionProtocol } from '$lib/sessions/tabs';
 
   const sessions = useSessions();

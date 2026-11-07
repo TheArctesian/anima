@@ -18,7 +18,7 @@
   import { press } from '$lib/motion/roles/press';
   import { sessionsApi } from '$lib/sessions/api';
   import { useSessions } from '$lib/sessions/sessions.svelte';
-  import { openWebInterface } from '$lib/sessions/web/open';
+  import { openWebInterface } from '$lib/sessions/web/open/open';
   import type { SessionProtocol } from '$lib/sessions/tabs';
   import ChecksPanel from './checks/ChecksPanel.svelte';
   import { Detail } from './detail.svelte';
