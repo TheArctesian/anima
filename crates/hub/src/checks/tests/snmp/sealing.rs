@@ -60,7 +60,7 @@ fn text(secret: &Secret) -> &str {
 fn sec_003_sealed_secrets_open_for_their_check_version_and_user() {
     let (vault, id) = (vault(), check());
     let v3 = config(SnmpVersion::V3, Some("monitor"));
-    let sealed = seal_snmp(&vault, id, &v3, &user());
+    let sealed = seal_snmp(&vault, id, &v3, &user()).unwrap();
     for secret in [AUTH, PRIVACY, "SECRET"] {
         assert!(!String::from_utf8_lossy(&sealed).contains(secret));
     }
@@ -69,7 +69,7 @@ fn sec_003_sealed_secrets_open_for_their_check_version_and_user() {
     };
     assert_eq!((text(&auth), text(&privacy)), (AUTH, PRIVACY));
     let v2c = config(SnmpVersion::V2c, None);
-    let sealed = seal_snmp(&vault, id, &v2c, &community());
+    let sealed = seal_snmp(&vault, id, &v2c, &community()).unwrap();
     let Ok(SnmpSecrets::Community(opened)) = open_snmp(&vault, id, &v2c, &sealed) else {
         panic!("the community did not open");
     };
@@ -80,7 +80,7 @@ fn sec_003_sealed_secrets_open_for_their_check_version_and_user() {
 fn sec_003_secrets_sealed_for_one_check_do_not_open_for_another() {
     let vault = vault();
     let v2c = config(SnmpVersion::V2c, None);
-    let sealed = seal_snmp(&vault, check(), &v2c, &community());
+    let sealed = seal_snmp(&vault, check(), &v2c, &community()).unwrap();
     let opened = open_snmp(&vault, check(), &v2c, &sealed);
     assert!(matches!(
         opened,
@@ -92,7 +92,7 @@ fn sec_003_secrets_sealed_for_one_check_do_not_open_for_another() {
 fn sec_005_another_version_or_user_name_gives_secrets_unbound() {
     let (vault, id) = (vault(), check());
     let v3 = config(SnmpVersion::V3, Some("monitor"));
-    let sealed = seal_snmp(&vault, id, &v3, &user());
+    let sealed = seal_snmp(&vault, id, &v3, &user()).unwrap();
     let others = [
         config(SnmpVersion::V3, Some("other")),
         config(SnmpVersion::V3, Some("Monitor")),
@@ -115,7 +115,7 @@ fn sec_005_another_version_or_user_name_gives_secrets_unbound() {
 fn sec_005_secrets_of_the_wrong_kind_for_the_binding_are_malformed() {
     let (vault, id) = (vault(), check());
     let v2c = config(SnmpVersion::V2c, None);
-    let sealed = seal_snmp(&vault, id, &v2c, &user());
+    let sealed = seal_snmp(&vault, id, &v2c, &user()).unwrap();
     let opened = open_snmp(&vault, id, &v2c, &sealed);
     assert!(matches!(
         opened,
@@ -132,10 +132,12 @@ fn sec_003_garbage_and_http_layouts_do_not_open() {
         Err(Error::Credentials(_))
     ));
     // A value sealed under the HTTP context of the same check does not open as SNMP.
-    let http = vault.seal(
-        &Secret::from(COMMUNITY.to_owned()),
-        format!("checks.checks.http:{id}").as_bytes(),
-    );
+    let http = vault
+        .seal(
+            &Secret::from(COMMUNITY.to_owned()),
+            format!("checks.checks.http:{id}").as_bytes(),
+        )
+        .unwrap();
     assert!(matches!(
         open_snmp(&vault, id, &v2c, &http.to_bytes()),
         Err(Error::Credentials(credentials::Error::Decrypt))
@@ -164,10 +166,12 @@ fn sec_003_a_malformed_plaintext_is_refused() {
         framed(&[2, 0, 1, b'x']),
     ];
     for plain in cases {
-        let sealed = vault.seal(
-            &Secret::new(plain.clone()),
-            format!("checks.checks.snmp:{id}").as_bytes(),
-        );
+        let sealed = vault
+            .seal(
+                &Secret::new(plain.clone()),
+                format!("checks.checks.snmp:{id}").as_bytes(),
+            )
+            .unwrap();
         let opened = open_snmp(&vault, id, &v2c, &sealed.to_bytes());
         assert!(
             matches!(
@@ -177,9 +181,11 @@ fn sec_003_a_malformed_plaintext_is_refused() {
             "{plain:?}"
         );
     }
-    let sealed = vault.seal(
-        &Secret::new(framed(&[1, 0, 1, b'x'])),
-        format!("checks.checks.snmp:{id}").as_bytes(),
-    );
+    let sealed = vault
+        .seal(
+            &Secret::new(framed(&[1, 0, 1, b'x'])),
+            format!("checks.checks.snmp:{id}").as_bytes(),
+        )
+        .unwrap();
     assert!(open_snmp(&vault, id, &v2c, &sealed.to_bytes()).is_ok());
 }

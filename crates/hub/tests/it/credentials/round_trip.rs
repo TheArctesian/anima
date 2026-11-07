@@ -29,7 +29,7 @@ async fn sec_003_stored_row_holds_no_plaintext(pool: PgPool) {
     assert_eq!(nonce.len(), 24);
     assert_ne!(ciphertext, plaintext);
     assert!(!ciphertext.windows(plaintext.len()).any(|w| w == plaintext));
-    assert_eq!(key_id, vault.seal(&secret(""), b"").key_id());
+    assert_eq!(key_id, vault.seal(&secret(""), b"").unwrap().key_id());
 }
 
 #[sqlx::test(

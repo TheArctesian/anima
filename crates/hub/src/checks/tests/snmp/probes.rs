@@ -8,7 +8,7 @@ use crate::{
         config::{SnmpConfig, SnmpSecrets, SnmpVersion},
         probe::{
             Failure, ProbeResult,
-            snmp::{self, Draws, message::Ids},
+            snmp::{self, DRAWS_LEN, Draws, message::Ids},
         },
         tests::probe::support::{LOOPBACK, env, strict_env, target},
     },
@@ -49,8 +49,17 @@ fn right_community() -> SnmpSecrets {
     community(Setup::new().community)
 }
 
+/// The attempt's random values, fixed so a run is deterministic (CQ-021).
+fn draws() -> Draws {
+    let mut bytes = [0_u8; DRAWS_LEN];
+    for (byte, value) in bytes.iter_mut().zip(1_u8..) {
+        *byte = value;
+    }
+    Draws::from_bytes(&bytes)
+}
+
 async fn run(config: &SnmpConfig, secrets: &SnmpSecrets) -> ProbeResult {
-    snmp::observe(&target("127.0.0.1"), config, secrets, &env()).await
+    snmp::observe(&target("127.0.0.1"), (config, secrets), &env(), draws()).await
 }
 
 /// The message as stored, which must name none of the planted secrets.
@@ -186,13 +195,8 @@ async fn d_5_a_reply_from_another_port_is_ignored() {
 async fn d_5_a_refused_address_sends_nothing() {
     let agent = spawn(Setup::new()).await;
     let config = config(&agent, SnmpVersion::V2c, NAME);
-    let result = snmp::observe(
-        &target("127.0.0.1"),
-        &config,
-        &right_community(),
-        &strict_env(),
-    )
-    .await;
+    let pair = (&config, &right_community());
+    let result = snmp::observe(&target("127.0.0.1"), pair, &strict_env(), draws()).await;
     failed_with(&result, &Failure::NotPermitted);
     assert_eq!(agent.requests.load(Ordering::SeqCst), 0);
 }
@@ -232,6 +236,20 @@ async fn d_5_given_draws_are_used_for_the_request() {
     };
     let config = config(&agent, SnmpVersion::V3, NAME);
     let pair = (&config, &right_user());
-    let result = snmp::observe_with(&target("127.0.0.1"), pair, &env(), draws).await;
+    let result = snmp::observe(&target("127.0.0.1"), pair, &env(), draws).await;
     assert!(result.ok, "{}", message(&result));
+}
+
+#[test]
+fn cq_021_draws_come_from_the_given_bytes() {
+    // Each id is a big-endian word shifted right once, so it is never negative.
+    let draws = draws();
+    assert_eq!(draws.discovery.message, 0x0102_0304 >> 1);
+    assert_eq!(draws.discovery.request, 0x0506_0708 >> 1);
+    assert_eq!(draws.get.message, 0x090a_0b0c >> 1);
+    assert_eq!(draws.get.request, 0x0d0e_0f10 >> 1);
+    assert_eq!(draws.salt, [17, 18, 19, 20, 21, 22, 23, 24]);
+    let high = Draws::from_bytes(&[0xff; DRAWS_LEN]);
+    assert_eq!(high.discovery.message, i32::MAX);
+    assert_eq!(high.get.request, i32::MAX);
 }

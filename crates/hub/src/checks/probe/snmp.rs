@@ -38,11 +38,22 @@ pub(in crate::checks) struct Draws {
     pub(in crate::checks) salt: [u8; SALT_LEN],
 }
 
+/// How many random bytes one attempt's [`Draws`] take.
+pub(in crate::checks) const DRAWS_LEN: usize = 16 + SALT_LEN;
+
 impl Draws {
-    /// Fresh values from the operating system's generator: the I/O edge of the randomness.
-    fn fresh() -> Self {
-        let mut bytes = [0_u8; 24];
-        rand::fill(&mut bytes);
+    /// Fresh values from the operating system's random source: the I/O edge of the randomness.
+    ///
+    /// # Errors
+    /// The random source's error when it yields no bytes.
+    pub(in crate::checks) fn fresh() -> Result<Self, getrandom::Error> {
+        let mut bytes = [0_u8; DRAWS_LEN];
+        getrandom::fill(&mut bytes)?;
+        Ok(Self::from_bytes(&bytes))
+    }
+
+    /// The values these random bytes give: four 31-bit ids from the first 16, then the salt.
+    pub(in crate::checks) fn from_bytes(bytes: &[u8; DRAWS_LEN]) -> Self {
         let id = |at: usize| {
             let raw = u32::from_be_bytes([bytes[at], bytes[at + 1], bytes[at + 2], bytes[at + 3]]);
             i32::try_from(raw >> 1).unwrap_or(0)
@@ -63,18 +74,9 @@ impl Draws {
     }
 }
 
-/// One attempt of the SNMP check, within its time limit.
+/// One attempt of the SNMP check, within its time limit, with the attempt's random values
+/// given (CQ-021): the caller draws them at its I/O edge.
 pub(in crate::checks) async fn observe(
-    target: &ProbeTarget,
-    config: &SnmpConfig,
-    secrets: &SnmpSecrets,
-    env: &ProbeEnv,
-) -> ProbeResult {
-    observe_with(target, (config, secrets), env, Draws::fresh()).await
-}
-
-/// [`observe`] with the attempt's random values given.
-pub(in crate::checks) async fn observe_with(
     target: &ProbeTarget,
     (config, secrets): (&SnmpConfig, &SnmpSecrets),
     env: &ProbeEnv,

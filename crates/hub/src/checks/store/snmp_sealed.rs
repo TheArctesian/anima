@@ -93,15 +93,18 @@ fn decode(bytes: &[u8]) -> Result<SnmpSecrets, Error> {
 }
 
 /// Seals the secrets of `config` for the check.
+///
+/// # Errors
+/// `Credentials` (`Random`) when the OS random source fails.
 pub(in crate::checks) fn seal(
     vault: &Vault,
     check: CheckId,
     config: &SnmpConfig,
     secrets: &SnmpSecrets,
-) -> Vec<u8> {
+) -> Result<Vec<u8>, Error> {
     let binding = serde_json::to_vec(&Binding::of(config)).unwrap_or_default();
     let plain = frame(&binding, &encode(secrets));
-    vault.seal(&plain, &context(check)).to_bytes()
+    Ok(vault.seal(&plain, &context(check))?.to_bytes())
 }
 
 /// Opens the check's secrets, if they were sealed for the version and user name `config`

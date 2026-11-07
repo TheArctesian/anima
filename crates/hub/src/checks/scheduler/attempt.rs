@@ -225,7 +225,9 @@ fn unopened(due: &Due, error: &Error) -> Option<ProbeResult> {
 }
 
 /// Probes the SNMP configuration stored now, read with its secrets, like [`observe_http`]:
-/// the secrets go only to the version and user name they were given for (SEC-005).
+/// the secrets go only to the version and user name they were given for (SEC-005). The
+/// request ids and salt are drawn here; if the OS random source fails, nothing is recorded
+/// and the failure is logged, as for a failed read.
 async fn observe_snmp(
     ctx: &Context,
     due: &Due,
@@ -236,7 +238,12 @@ async fn observe_snmp(
         Ok(Some(checks::SnmpSetup {
             config,
             secrets: Some(secrets),
-        })) => Some(snmp::observe(target, &config, &secrets, env).await),
+        })) => {
+            let draws = snmp::Draws::fresh()
+                .inspect_err(|error| warn(due, "the SNMP request ids cannot be drawn", error))
+                .ok()?;
+            Some(snmp::observe(target, (&config, &secrets), env, draws).await)
+        }
         Ok(Some(_)) => Some(ProbeResult::failed(&Failure::SecretMissing)),
         Ok(None) => Some(ProbeResult::failed(&Failure::BadConfig)),
         Err(error) => unopened(due, &error),

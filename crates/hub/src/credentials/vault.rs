@@ -3,10 +3,7 @@
 use std::{fmt, path::Path};
 
 use base64::{Engine as _, engine::general_purpose::STANDARD};
-use chacha20poly1305::{
-    KeyInit, XChaCha20Poly1305, XNonce,
-    aead::{AeadInOut, Generate},
-};
+use chacha20poly1305::{KeyInit, XChaCha20Poly1305, XNonce, aead::AeadInOut};
 use sha2::{Digest, Sha256};
 use zeroize::Zeroizing;
 
@@ -61,14 +58,17 @@ impl Vault {
     /// Seals a secret with a fresh random nonce, bound to `context` (for example a device
     /// and credential kind; may be empty), so the value opens only with the same context.
     ///
+    /// # Errors
+    ///
+    /// [`Error::Random`] when the OS random source yields no nonce.
+    ///
     /// # Panics
     ///
-    /// Only if the OS random source fails or the secret exceeds the cipher's 256 GiB limit.
-    /// Both are invariant violations, so this panics rather than widen the contract's
-    /// infallible `seal`.
-    #[must_use]
-    pub fn seal(&self, plaintext: &Secret, context: &[u8]) -> Sealed {
-        let nonce = XNonce::try_generate().expect("the OS random source must yield a nonce");
+    /// Only if the secret exceeds the cipher's 256 GiB limit, which no secret held in memory
+    /// reaches.
+    pub fn seal(&self, plaintext: &Secret, context: &[u8]) -> Result<Sealed, Error> {
+        let mut nonce = XNonce::default();
+        getrandom::fill(&mut nonce).map_err(Error::Random)?;
         let mut buffer = Zeroizing::new(Vec::with_capacity(plaintext.expose().len() + TAG_LEN));
         buffer.extend_from_slice(plaintext.expose());
         self.cipher()
@@ -78,11 +78,11 @@ impl Vault {
                 &mut *buffer,
             )
             .expect("a secret held in memory is far below the cipher's length limit");
-        Sealed {
+        Ok(Sealed {
             nonce: nonce.into(),
             ciphertext: std::mem::take(&mut *buffer),
             key_id: self.key_id.clone(),
-        }
+        })
     }
 
     /// Opens a value sealed by [`Vault::seal`] with the same `context`.

@@ -282,7 +282,12 @@ pub async fn enrol_totp(db: &PgPool, vault: &Vault, username: &str) -> Result<En
     let account = store::account_by_username(&mut *tx, username)
         .await?
         .ok_or(UNKNOWN_OPERATOR)?;
-    let sealed = vault.seal(&secret, totp::context(account.id).as_bytes());
+    let sealed = vault
+        .seal(&secret, totp::context(account.id).as_bytes())
+        .map_err(|error| match error {
+            credentials::Error::Random(source) => Error::Random(source),
+            other => Error::TotpSecret(other),
+        })?;
     store::set_totp(&mut *tx, account.id, Some(&sealed.to_bytes())).await?;
     // Row first, tokens second, as in `replace_operator` above (D-9).
     store::delete_operator_tokens(&mut tx, account.id).await?;

@@ -13,7 +13,7 @@ use super::{
     trail::{self, Extras, Trail},
 };
 use crate::{
-    checks::{self, Check, CheckChange, Error, FieldError, PushToken, config::CheckType, store},
+    checks::{self, Check, CheckChange, Error, FieldError, config::CheckType, store},
     credentials::Vault,
     devices,
     ids::{CheckId, DeviceId},
@@ -35,14 +35,6 @@ async fn commit(tx: Transaction<'static, Postgres>) -> Result<()> {
     tx.commit()
         .await
         .map_err(|e| to_graphql(Error::Database(e)))
-}
-
-/// A new push token from 32 random bytes of the operating system's generator: the I/O edge
-/// of token making.
-fn fresh_token() -> PushToken {
-    let mut bytes = [0_u8; 32];
-    rand::fill(&mut bytes);
-    PushToken::from_random(&bytes)
 }
 
 /// The device a new check goes on; a missing one is the operator's `deviceId` error.
@@ -126,7 +118,8 @@ async fn regroup(
 }
 
 pub(super) async fn create(ctx: &Context<'_>, input: CreateShape) -> Result<Check> {
-    let form = form::create(input, fresh_token()).map_err(|errors| invalid(&errors))?;
+    let token = checks::fresh_push_token().map_err(to_graphql)?;
+    let form = form::create(input, token).map_err(|errors| invalid(&errors))?;
     let db = pool(ctx)?;
     if let Some(children) = &form.children {
         validate_children(db, children, form.new.device).await?;
@@ -157,7 +150,8 @@ pub(super) async fn update(ctx: &Context<'_>, id: &ID, input: UpdateShape) -> Re
     let id = check_id(id).map_err(|error| invalid(&[error]))?;
     let db = pool(ctx)?;
     let before = checks::get(db, id).await.map_err(to_graphql)?;
-    let form = form::update(input, fresh_token()).map_err(|errors| invalid(&errors))?;
+    let token = checks::fresh_push_token().map_err(to_graphql)?;
+    let form = form::update(input, token).map_err(|errors| invalid(&errors))?;
     if form.is_empty() {
         let nothing = FieldError::new("input", "Send at least one field to change.");
         return Err(invalid(&[nothing]));

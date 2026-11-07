@@ -81,6 +81,9 @@ pub enum Error {
     Devices(#[source] devices::Error),
     #[error("the maintenance windows cannot be read")]
     Maintenance(#[source] maintenance::Error),
+    /// The OS random source failed, so no push token was made.
+    #[error("the OS random source failed")]
+    Random(#[source] getrandom::Error),
 }
 
 /// The names of the fields in error, never their values.
@@ -242,10 +245,22 @@ pub async fn add_default_check(
     Ok(store::insert(conn, id, row).await?.id)
 }
 
+/// A new push token from 32 bytes of the operating system's random source: the I/O edge of
+/// token making.
+///
+/// # Errors
+/// `Random` when the OS random source fails.
+pub(in crate::checks) fn fresh_push_token() -> Result<PushToken, Error> {
+    let mut bytes = [0_u8; 32];
+    getrandom::fill(&mut bytes).map_err(Error::Random)?;
+    Ok(PushToken::from_random(&bytes))
+}
+
 /// Adds a check in the caller's transaction. A parent must be a group on the same device.
 ///
 /// # Errors
-/// `Validation` with every field in error, including the constraint the database refused.
+/// `Validation` with every field in error, including the constraint the database refused;
+/// `Credentials` (`Random`) when the OS random source fails while sealing secrets.
 pub async fn create_check(
     conn: &mut PgConnection,
     vault: &Vault,
@@ -267,7 +282,7 @@ pub async fn create_check(
         config: &prepared.config,
         settings: new.settings,
         push_token: prepared.push_token.as_ref(),
-        sealed: sealed(vault, id, &prepared),
+        sealed: sealed(vault, id, &prepared)?,
     };
     store::insert(conn, id, row).await
 }
@@ -276,7 +291,8 @@ pub async fn create_check(
 /// secret rule). The type of a check never changes.
 ///
 /// # Errors
-/// `NotFound` when there is no such check; `Validation` with the fields in error.
+/// `NotFound` when there is no such check; `Validation` with the fields in error;
+/// `Credentials` (`Random`) when the OS random source fails while sealing secrets.
 pub async fn update_check(
     conn: &mut PgConnection,
     vault: &Vault,
@@ -300,7 +316,8 @@ pub async fn update_check(
     };
     let config = prepared
         .as_ref()
-        .map(|prepared| (&prepared.config, sealed(vault, id, prepared)));
+        .map(|prepared| Ok::<_, Error>((&prepared.config, sealed(vault, id, prepared)?)))
+        .transpose()?;
     let changed = store::Change {
         fields: &change,
         name: name.as_deref(),
