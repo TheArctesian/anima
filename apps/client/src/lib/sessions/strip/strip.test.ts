@@ -194,45 +194,25 @@ describe('pop out (RA-002, D-13)', () => {
   });
 });
 
-it('MV-004: the strip keeps its space until it has left after the last tab closes', async () => {
+// jsdom has no layout, so this shows the markers the CSS acts on, not pixels: the strip is hidden in the same update
+// in which the pages show, so the page has no 32 px step to take and no tab paints over it (M-1, R-075).
+it('MOT-007, R-075, 5.7.3: after the last tab closes the strip is hidden in the update in which the pages show', async () => {
   const sessions = show();
   const id = await openStarted(sessions);
   const strip = document.querySelector('[role="tablist"]');
-  expect(strip?.hasAttribute('hidden')).toBe(false);
   await sessions.close(id);
   await settle();
-  expect(strip?.hasAttribute('hidden')).toBe(false);
-  for (const run of [...runs]) run.finish();
-  await settle();
+  expect(document.querySelector('.pages')?.hasAttribute('inert')).toBe(false);
   expect(strip?.hasAttribute('hidden')).toBe(true);
 });
 
-// jsdom has no layout, so these show the markers the CSS acts on, not pixels: `data-leaving` cancels the strip's
-// reserved height in the same flush that shows the pages again, so the page has no 32 px step to take (M-1).
-it('MOT-007, 5.7.3: the strip gives up its space on the frame the last tab leaves, while it still fades', async () => {
-  const sessions = show();
-  const id = await openStarted(sessions);
-  const strip = document.querySelector('[role="tablist"]');
-  expect(strip?.hasAttribute('data-leaving')).toBe(false);
-  await sessions.close(id);
-  await settle();
-  expect(strip?.hasAttribute('data-leaving')).toBe(true);
-  expect(strip?.hasAttribute('hidden')).toBe(false);
-  expect(document.querySelector('.pages')?.hasAttribute('inert')).toBe(false);
-  for (const run of [...runs]) run.finish();
-  await settle();
-  expect(strip?.hasAttribute('data-leaving')).toBe(false);
-});
-
-it('MOT-007, MOT-040: a tab opened again while the strip leaves takes its space back', async () => {
+it('MOT-007, MOT-040: a tab opened again after the last one closed shows the strip', async () => {
   const sessions = show();
   const id = await openStarted(sessions);
   await sessions.close(id);
   await settle();
   await openStarted(sessions);
-  const strip = document.querySelector('[role="tablist"]');
-  expect(strip?.hasAttribute('data-leaving')).toBe(false);
-  expect(strip?.hasAttribute('hidden')).toBe(false);
+  expect(document.querySelector('[role="tablist"]')?.hasAttribute('hidden')).toBe(false);
 });
 
 it('MOT-007: the strip, not the page, carries the exit: no translate is written on an ancestor of the pages', async () => {

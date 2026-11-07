@@ -26,16 +26,3 @@ export function enterStrip(strip: Animatable, fromHidden: boolean, preference: M
   });
   return playback;
 }
-
-/**
- * The strip leaves after the last tab closes: a fade on `duration-fast` and a slide up by its whole height,
- * so it ends clear of the page that has taken its place and never rests over the page's first row (MOT-007).
- * Reduced: fade.
- */
-export function exitStrip(strip: Animatable, preference: MotionPreference): Playback {
-  const { reduced } = preference;
-  return together([
-    animate(strip, { opacity: 0 }, tweenMotion('fast', 'exit', reduced)),
-    animate(strip, { translate: { y: -strip.getBoundingClientRect().height } }, springMotion('snappy', reduced)),
-  ]);
-}

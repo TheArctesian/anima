@@ -6,19 +6,15 @@
   import type { Tab } from '../tabs';
   import { dragTab } from './drag/drag';
   import { grow } from './grow';
-  import { enterStrip, exitStrip } from './presence';
+  import { enterStrip } from './presence';
   import { nextFocus, panelId } from './tablist';
   import SessionTab from './SessionTab.svelte';
 
   const sessions = useSessions();
   const preference = motionPreference();
   let strip: HTMLElement | undefined = $state();
-  /** The strip keeps its space while any tab is open or the last one is leaving (MV-004). */
+  /** The strip has its space while a tab is open; it goes on the frame the last tab leaves (MOT-007, R-075). */
   let reserved = $state(false);
-  /** The last tab has closed and the strip is leaving: it gives up its space on that frame, so the page never steps (MOT-007). */
-  let leaving = $state(false);
-  /** Counts exits, so an earlier exit's end cannot clear the state of a later one. */
-  let exits = 0;
 
   /** The tabs in the strip now, without one that is closing. */
   function slots(): HTMLElement[] {
@@ -106,28 +102,10 @@
   async function appear(element: HTMLElement): Promise<void> {
     const fromHidden = !reserved;
     reserved = true;
-    leaving = false;
-    exits += 1;
     await tick();
     // The last tab may have closed while the strip waited for its place: entering now would undo the exit.
     if (sessions.tabs.length === 0) return;
     enterStrip(element, fromHidden, preference);
-  }
-
-  /**
-   * The space goes on the frame the pages show again, so the page starts in its place and never moves;
-   * the strip fades out over the page's margin without holding a row (MOT-007, 5.7.3 Session tab open).
-   * Reduced motion: the strip is gone as soon as the exit's fade ends, the page was already in place (MOT-040).
-   */
-  function disappear(element: HTMLElement): void {
-    leaving = true;
-    exits += 1;
-    const exit = exits;
-    void exitStrip(element, preference).finished.then(() => {
-      if (exit !== exits || sessions.tabs.length > 0) return;
-      reserved = false;
-      leaving = false;
-    });
   }
 
   $effect(() => {
@@ -136,12 +114,12 @@
     untrack(() => {
       if (element === undefined) return;
       if (open) void appear(element);
-      else if (reserved) disappear(element);
+      else reserved = false;
     });
   });
 </script>
 
-<div class="strip" role="tablist" aria-label="Sessions" hidden={!reserved && sessions.tabs.length === 0} data-leaving={leaving ? '' : undefined} bind:this={strip}>
+<div class="strip" role="tablist" aria-label="Sessions" hidden={!reserved && sessions.tabs.length === 0} bind:this={strip}>
   {#each sessions.tabs as tab, index (tab.id)}
     {@const selected = sessions.active?.id === tab.id}
     <div
@@ -187,18 +165,11 @@
   .strip {
     position: relative;
     box-sizing: border-box;
-    --strip-block-size: calc(var(--target-min-desktop) + var(--space-2));
-    min-block-size: var(--strip-block-size);
+    min-block-size: calc(var(--target-min-desktop) + var(--space-2));
     display: flex;
     gap: var(--space-1);
     padding-block-end: var(--space-2);
     overflow-x: auto;
-  }
-
-  /* Out of the flow while it fades: a negative end margin cancels its height, and it takes no pointer (MOT-007). */
-  .strip[data-leaving] {
-    margin-block-end: calc(-1 * var(--strip-block-size));
-    pointer-events: none;
   }
 
   .strip[hidden] {
