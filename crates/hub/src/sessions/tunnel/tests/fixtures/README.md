@@ -2,7 +2,7 @@
 
 Each file holds the `args` instruction that guacd sent after `select,rdp` or `select,vnc`. It is
 one instruction, byte for byte as received, with no trailing newline. They were recorded from
-the `guacamole/guacd:1.6.0` image (WP-22 T2; see `docs/programme/packages/WP-22.md`).
+the `guacamole/guacd:1.6.0` image.
 
 | File | guacamole-server | Names after the version |
 | --- | --- | --- |

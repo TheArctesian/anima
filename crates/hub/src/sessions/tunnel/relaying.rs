@@ -82,7 +82,8 @@ async fn session(
 }
 
 /// The tunnel after the response: waits for the upgraded socket, then relays, or tells the
-/// client the certificate changed. When the upgrade fails, guacd is told the hub is leaving.
+/// client the certificate changed. When the upgrade fails, guacd is told the hub is leaving;
+/// after a changed certificate the session still ends `SERVER_CERTIFICATE_MISMATCH` (SEC-007).
 pub(super) async fn connected(
     timing: Timing,
     tunnel: &mut Tunnel,
@@ -101,7 +102,7 @@ pub(super) async fn connected(
         (Opening::CertificateChanged, Ok(client)) => {
             certificate_mismatch(client, tunnel, timing).await
         }
-        (Opening::CertificateChanged, Err(end)) => end,
+        (Opening::CertificateChanged, Err(_)) => Cause::ServerCertificateMismatch.into(),
     }
 }
 

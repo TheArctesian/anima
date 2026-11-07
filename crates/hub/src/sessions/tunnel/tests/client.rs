@@ -76,7 +76,7 @@ fn gw_011_an_opcode_outside_the_allow_list_closes_with_1002() {
         "3.get,1.0,1./;",
         "3.put,1.0,1.0,10.text/plain,1./;",
         "5.audio,1.0,9.audio/L16;",
-        "6.select,3.ssh;",
+        "6.select,3.rdp;",
         "7.connect,13.VERSION_1_5_0;",
         "3.img,1.0,2.14,1.0,9.image/png,1.0,1.0;",
         "3.KEY,1.1,1.1;",

@@ -1,5 +1,4 @@
-//! guacd 1.6.0's recorded `args` for `rdp` and `vnc` hold every name K4 Section 3 sets
-//! (D-5, D-6, WP-22 T2).
+//! guacd 1.6.0's recorded `args` for `rdp` and `vnc` hold every name K4 Section 3 sets.
 
 use std::collections::HashSet;
 

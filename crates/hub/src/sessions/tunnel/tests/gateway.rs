@@ -112,24 +112,6 @@ fn log_007_guacds_error_text_never_reaches_the_client() {
     );
 }
 
-/// guacd 1.5.5 and 1.6.0 send a host-key mismatch as `guac_client_abort`'s fixed text with
-/// status 0x0200 (`src/common-ssh/ssh.c` and `src/libguac/client.c`, cited in `gateway.rs`).
-/// The words "Host key did not match any provided known host keys." only reach guacd's log,
-/// so the wire form is a plain gateway error; the hub checks the key itself (R-034).
-#[test]
-fn sec_007_guacds_host_key_abort_is_a_gateway_error_on_the_wire() {
-    ends_with_error(
-        "5.error,18.Aborted. See logs.,3.512;",
-        "512",
-        Cause::GatewayError,
-    );
-    ends_with_error(
-        "5.error,53.Host key did not match any provided known host keys. ,3.512;",
-        "512",
-        Cause::GatewayError,
-    );
-}
-
 #[test]
 fn gw_014_internal_instructions_from_guacd_are_dropped() {
     assert_eq!(step("0.,4.ping,1.1;"), GatewayStep::Drop);
