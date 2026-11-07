@@ -9,6 +9,7 @@
 mod collector;
 mod commands;
 mod feed;
+pub mod graphql;
 mod latest;
 mod model;
 pub mod parse;
@@ -150,4 +151,27 @@ pub async fn drop_expired_partitions(
         orphan_samples,
         idle_series,
     })
+}
+
+impl Error {
+    /// For the process log: what failed, as a fixed word, never the source text (LOG-007).
+    #[must_use]
+    pub const fn fault(&self) -> &'static str {
+        match self {
+            Self::Database(_) => "database",
+            Self::NoDevice => "no_device",
+            Self::Unreadable => "unreadable",
+        }
+    }
+}
+
+/// The daily job: creates the partitions ahead, then drops what retention allows (DB-004,
+/// DB-005, D-5). Run by `main.rs` with the events one.
+///
+/// # Errors
+/// What [`create_partitions_ahead`] or [`drop_expired_partitions`] returns.
+pub async fn keep_partitions(db: &PgPool, now: DateTime<Utc>) -> Result<(), Error> {
+    create_partitions_ahead(db, now).await?;
+    drop_expired_partitions(db, now, Retention::default()).await?;
+    Ok(())
 }

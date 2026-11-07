@@ -3,6 +3,8 @@
 //! `anima-hub operator totp <username> [--disable]` (D-9) or `anima-hub health` (the compose
 //! healthcheck).
 
+mod upkeep;
+
 use std::{
     io::{BufRead as _, IsTerminal as _},
     process::ExitCode,
@@ -17,7 +19,7 @@ use anima_hub::{
     config::{self, Config},
     credentials::Vault,
     events::{self, Bus, process_log},
-    logged, router,
+    logged, metrics, router,
     schema::{Dependencies, build_schema},
     serve_until, sessions,
     targets::AddressPolicy,
@@ -139,10 +141,8 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     tracing::info!(listen = %listening.local_addr()?, "hub started");
     let bus = Bus::new(BUS_CAPACITY);
     let policy = AddressPolicy::new(config.probe_deny.clone());
-    let probing = checks::Probing {
-        vault: vault.clone(),
-        policy: policy.clone(),
-    };
+    let (probing, collecting) = reaching(&vault, &policy);
+    let feed = metrics::Feed::new();
     let dependencies = Dependencies {
         config,
         clock: clock.clone(),
@@ -151,11 +151,14 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         vault,
         live: live.clone(),
         policy,
+        metrics_feed: feed.clone(),
     };
     let tunnels = tunnels(&dependencies);
     let schema = build_schema(dependencies);
-    let upkeep = spawn_upkeep(&pool, &clock);
+    let upkeep = upkeep::spawn(&pool, &clock);
     let scheduler = checks::spawn_scheduler(pool.clone(), bus.clone(), clock.clone(), probing);
+    let collector =
+        metrics::spawn_collector(pool.clone(), feed, bus.clone(), clock.clone(), collecting);
     let push = checks::push_router(pool.clone(), bus.clone(), clock.clone());
     // The tunnels and `/push` are behind the same permitted-networks check as every route, and
     // logged by their templates only, never their tokens (K3, NET-002, LOG-007, R-028, R-051).
@@ -179,7 +182,20 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     .await;
     upkeep.iter().for_each(tokio::task::JoinHandle::abort);
     scheduler.abort();
+    collector.abort();
     Ok(())
+}
+
+/// What checks and metrics need to reach devices: the vault and the one address policy (P2-004).
+fn reaching(vault: &Vault, policy: &AddressPolicy) -> (checks::Probing, metrics::Collecting) {
+    let (vault, policy) = (vault.clone(), policy.clone());
+    (
+        checks::Probing {
+            vault: vault.clone(),
+            policy: policy.clone(),
+        },
+        metrics::Collecting { vault, policy },
+    )
 }
 
 /// Stores `ANIMA_PERMITTED_NETWORKS` (D-10). A hub fault is logged by its fault word and
@@ -242,37 +258,6 @@ async fn stop_signal() {
         () = interrupt => {}
         () = terminate => {}
     }
-}
-
-/// Starts the daily jobs, each run now and then daily (D-4, DB-004, DB-005, K2 retention):
-/// day partitions ahead and expired ones dropped, and old login attempts and expired tokens
-/// deleted.
-fn spawn_upkeep(
-    pool: &PgPool,
-    clock: &Arc<dyn anima_hub::clock::Clock>,
-) -> [tokio::task::JoinHandle<()>; 2] {
-    let partitions = {
-        let db = pool.clone();
-        events::run_daily("partitions", clock.clone(), move |now| {
-            let db = db.clone();
-            async move {
-                events::keep_partitions(&db, now)
-                    .await
-                    .map_err(|e| e.fault())
-            }
-        })
-    };
-    let prune = {
-        let db = pool.clone();
-        events::run_daily("access_prune", clock.clone(), move |now| {
-            let db = db.clone();
-            async move {
-                let pruned = access::prune(&db, now).await;
-                pruned.map(drop).map_err(|e| e.fault().unwrap_or("access"))
-            }
-        })
-    };
-    [tokio::spawn(partitions), tokio::spawn(prune)]
 }
 
 /// Applies the migrations as the owner role and exits; serving never migrates (R-016).
