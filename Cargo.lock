@@ -122,8 +122,13 @@ dependencies = [
 name = "anima-desktop"
 version = "0.1.0"
 dependencies = [
+ "block2",
+ "core-foundation 0.10.1",
  "if-addrs",
  "keyring",
+ "objc2",
+ "objc2-foundation",
+ "objc2-web-kit",
  "rcgen",
  "rustls",
  "security-framework 3.7.0",
@@ -138,6 +143,7 @@ dependencies = [
  "thiserror 2.0.21",
  "tokio",
  "tokio-rustls",
+ "url",
  "uuid",
  "whoami 2.1.3",
 ]

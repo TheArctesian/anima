@@ -117,8 +117,8 @@ fn d_6_https_is_embedded_with_its_origin_and_pin_where_the_platform_pins() {
 }
 
 #[test]
-fn d_6_no_platform_pins_until_the_trust_hook_is_ruled_on() {
-    assert!(!pinning_available());
+fn d_6_only_macos_pins_until_the_operator_runs_od_7_on_linux() {
+    assert_eq!(pinning_available(), cfg!(target_os = "macos"));
 }
 
 #[test]

@@ -1,6 +1,6 @@
 //! Device web views (WEB-004–008): child web views of the main window, one store per device,
-//! no IPC, navigation only to `http` and `https`, their certificate pins and the
-//! leaf-certificate probe for the system-browser mode (D-9).
+//! no IPC, navigation only to `http` and `https`, their certificate pins, the macOS trust
+//! hook that enforces them and the leaf-certificate probe for the system-browser mode (D-9).
 //!
 //! URLs, hosts, fingerprints and page content are never logged and never part of an error
 //! (LOG-007): every error crosses to the client as `{ code }` only.
@@ -11,6 +11,8 @@ mod bounds;
 pub mod commands;
 mod event;
 mod history;
+#[cfg(target_os = "macos")]
+mod macos_trust;
 mod opening;
 mod storage;
 mod tabs;
@@ -26,17 +28,18 @@ pub use address::WebUrl;
 pub use commands::caller;
 pub use tabs::Tabs;
 pub use trust::{
-    CertificateError, Fingerprint, FingerprintError, OriginError, Pin, PinnedOrigin,
+    CertificateError, Fingerprint, FingerprintError, OriginError, Pin, PinnedOrigin, Verdict,
     leaf_fingerprint,
 };
 
 /// Whether a device web view can pin a certificate on this platform (D-6, D-7).
 ///
-/// The one place that answers it. `false` on every platform until the macOS trust hook (T4)
-/// is ruled on and merged, and until the operator has run the OD-7 spike on Linux. While it
-/// is `false`, `https` URLs open in the system browser and only `http` is embedded.
+/// The one place that answers it. `true` on macOS, where the trust hook (`macos_trust`,
+/// R-069) answers every server-trust challenge with the pin's verdict; `false` elsewhere
+/// until the operator has run the OD-7 spike on Linux. While it is `false`, `https` URLs open
+/// in the system browser and only `http` is embedded.
 pub const fn pinning_available() -> bool {
-    false
+    cfg!(target_os = "macos")
 }
 
 /// Why a web view command was refused. Carries no URL, host, ID or page text (LOG-007).

@@ -5,7 +5,7 @@ use serde_json::json;
 use tauri::Url;
 
 use crate::web_view::{
-    CertificateError, Fingerprint, OriginError, WebViewError,
+    CertificateError, Fingerprint, OriginError, Verdict, WebViewError,
     commands::LeafCertificate,
     event::{EVENT, Failure, MAIN, WebViewEvent},
     tabs::TabId,
@@ -46,19 +46,16 @@ fn web_007_no_load_is_reported_for_the_blank_start_or_another_scheme() {
 
 #[test]
 fn web_008_untrusted_and_mismatch_carry_fingerprints_in_the_hub_form() {
-    let untrusted = WebViewEvent::Untrusted {
-        tab_id: "tab-1".to_owned(),
-        fingerprint_sha256: fingerprint("AB"),
-    };
+    let untrusted = WebViewEvent::refusal(&tab(), Verdict::Untrusted(fingerprint("AB"))).unwrap();
     assert_eq!(
         serde_json::to_value(untrusted).unwrap(),
         json!({ "tabId": "tab-1", "kind": "UNTRUSTED", "fingerprintSha256": "ab".repeat(32) })
     );
-    let mismatch = WebViewEvent::Mismatch {
-        tab_id: "tab-1".to_owned(),
+    let verdict = Verdict::Mismatch {
         expected: fingerprint("01"),
         presented: fingerprint("02"),
     };
+    let mismatch = WebViewEvent::refusal(&tab(), verdict).unwrap();
     assert_eq!(
         serde_json::to_value(mismatch).unwrap(),
         json!({
@@ -68,6 +65,13 @@ fn web_008_untrusted_and_mismatch_carry_fingerprints_in_the_hub_form() {
             "presented": "02".repeat(32),
         })
     );
+}
+
+#[test]
+fn web_008_a_verdict_the_web_view_acts_on_alone_sends_nothing() {
+    for verdict in [Verdict::Accept, Verdict::Default] {
+        assert_eq!(WebViewEvent::refusal(&tab(), verdict), None, "{verdict:?}");
+    }
 }
 
 #[test]

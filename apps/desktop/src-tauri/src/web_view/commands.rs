@@ -78,8 +78,13 @@ async fn open(caller_view: &Webview, body: Option<serde_json::Value>) -> Result<
             .await
             .map_err(|_| WebViewError::Native)
             .flatten();
-    // WP-31 T4 installs the trust hook here, on the blank view, before the first real load.
-    let loaded = attached.and_then(|view| view.navigate(url).map_err(native));
+    // The trust hook goes on the blank view before the first real load, or nothing loads.
+    let loaded = match attached {
+        Ok(view) => view::guard(&view, &new.id)
+            .await
+            .and_then(|()| view.navigate(url).map_err(native)),
+        Err(error) => Err(error),
+    };
     if let Err(error) = loaded {
         app.state::<Tabs>().remove(&new.id);
         return view::close(&app, &new.id, false).and(Err(error));

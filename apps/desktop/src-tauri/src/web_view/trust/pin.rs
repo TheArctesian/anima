@@ -29,6 +29,23 @@ impl Host {
             Err(_) => Self::Name(bare.strip_suffix('.').unwrap_or(bare).to_ascii_lowercase()),
         }
     }
+
+    /// Reads a host as a trust challenge gives it, through the URL standard's host parser,
+    /// the one [`PinnedOrigin::parse`] meets through `Url`: IPv6 with or without brackets,
+    /// IDN in Unicode or punycode, and every IPv4 spelling compare equal to the pinned form.
+    /// `None` if the text is no host at all.
+    pub(in crate::web_view) fn of_challenge(text: &str) -> Option<Self> {
+        let bracketed;
+        let text = if text.contains(':') && !text.starts_with('[') {
+            bracketed = format!("[{text}]");
+            &bracketed
+        } else {
+            text
+        };
+        url::Host::parse(text)
+            .ok()
+            .map(|host| Self::read(&host.to_string()))
+    }
 }
 
 /// The `https` host and port a pin belongs to (H-4: only `https` takes a pin; a change of
@@ -82,8 +99,8 @@ impl PinnedOrigin {
     }
 
     /// Whether a challenge for this host and port belongs to this origin.
-    fn holds(&self, host: &str, port: u16) -> bool {
-        self.port == port && self.host == Host::read(host)
+    pub(in crate::web_view) fn holds(&self, host: &str, port: u16) -> bool {
+        self.port == port && Host::of_challenge(host).is_some_and(|host| host == self.host)
     }
 }
 

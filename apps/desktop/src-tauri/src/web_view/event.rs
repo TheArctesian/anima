@@ -6,7 +6,7 @@ use serde::Serialize;
 use tauri::{Emitter, EventTarget, Runtime, Url};
 use tauri_plugin_log::log;
 
-use super::{Fingerprint, address::is_web, tabs::TabId};
+use super::{Fingerprint, Verdict, address::is_web, tabs::TabId};
 
 /// The event's name.
 pub const EVENT: &str = "web-view";
@@ -39,16 +39,22 @@ pub enum WebViewEvent {
         url: String,
     },
     #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "WP-31 T4 sends it from the trust hook")
+        not(any(target_os = "macos", test)),
+        expect(
+            dead_code,
+            reason = "only macOS has a trust hook until OD-7 runs on Linux"
+        )
     )]
     Untrusted {
         tab_id: String,
         fingerprint_sha256: Fingerprint,
     },
     #[cfg_attr(
-        not(test),
-        expect(dead_code, reason = "WP-31 T4 sends it from the trust hook")
+        not(any(target_os = "macos", test)),
+        expect(
+            dead_code,
+            reason = "only macOS has a trust hook until OD-7 runs on Linux"
+        )
     )]
     Mismatch {
         tab_id: String,
@@ -74,6 +80,34 @@ impl WebViewEvent {
         } else {
             Self::Loading { tab_id, url }
         })
+    }
+
+    /// `UNTRUSTED` or `MISMATCH` for a verdict the operator must see, or `None` for one the
+    /// web view acts on alone.
+    #[cfg_attr(
+        not(any(target_os = "macos", test)),
+        expect(
+            dead_code,
+            reason = "only macOS has a trust hook until OD-7 runs on Linux"
+        )
+    )]
+    pub fn refusal(tab: &TabId, verdict: Verdict) -> Option<Self> {
+        let tab_id = tab.as_str().to_owned();
+        match verdict {
+            Verdict::Untrusted(fingerprint_sha256) => Some(Self::Untrusted {
+                tab_id,
+                fingerprint_sha256,
+            }),
+            Verdict::Mismatch {
+                expected,
+                presented,
+            } => Some(Self::Mismatch {
+                tab_id,
+                expected,
+                presented,
+            }),
+            Verdict::Accept | Verdict::Default => None,
+        }
     }
 }
 

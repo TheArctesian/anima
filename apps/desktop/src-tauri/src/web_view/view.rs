@@ -1,7 +1,8 @@
 //! The native device web view (D-2, D-3, WEB-006, WEB-007): built as a child of the main
 //! window on a blank start, with the device's store, the `http`/`https` filter, new windows
-//! kept in the same view and page loads reported to the main web view. OS work only; the
-//! rules it applies live in the pure units beside it.
+//! kept in the same view, page loads reported to the main web view and, on macOS, the trust
+//! hook that answers certificate challenges with the tab's pin. OS work only; the rules it
+//! applies live in the pure units beside it.
 
 use tauri::{
     AppHandle, LogicalPosition, LogicalSize, Manager, Rect, Url, Webview, WebviewBuilder,
@@ -10,6 +11,8 @@ use tauri::{
     window::WindowBuilder,
 };
 
+#[cfg(target_os = "macos")]
+use super::trust::{Answer, Presented, rule};
 use super::{
     Tabs, WebViewError,
     address::is_web,
@@ -22,6 +25,10 @@ use super::{
 /// view exists, so a trust hook installed on the new view sees the first real load (OD-7).
 /// The filter refuses it like any non-web scheme, which leaves the view empty until then.
 const BLANK: &str = "about:blank";
+
+/// How long the main thread may take to put the trust hook on a new view.
+#[cfg(target_os = "macos")]
+const GUARD_PATIENCE: std::time::Duration = std::time::Duration::from_secs(10);
 
 /// The title of a popped-out web view's window: fixed text, never the page's (LOG-007).
 const POP_OUT_TITLE: &str = "Anima";
@@ -72,6 +79,67 @@ fn builder(app: &AppHandle, id: &TabId) -> Result<WebviewBuilder<tauri::Wry>, We
                 }
             }),
     )
+}
+
+/// Puts the trust hook on a new device web view and waits until it is there (WEB-008, OD-7).
+/// Call it before the first real load; on an error, load nothing and close the view.
+#[cfg(target_os = "macos")]
+pub async fn guard(view: &Webview, id: &TabId) -> Result<(), WebViewError> {
+    let (app, tab) = (view.app_handle().clone(), id.clone());
+    let (sent, installed) = tokio::sync::oneshot::channel();
+    view.with_webview(move |platform| {
+        let decide = Box::new(
+            move |presented: &Presented<'_>, system: &dyn Fn() -> bool| {
+                decide(&app, &tab, presented, system)
+            },
+        );
+        // An error here means the opener stopped waiting; it closes the view itself.
+        let _opener_gone = sent.send(super::macos_trust::install(&platform, decide));
+    })
+    .map_err(native)?;
+    tokio::time::timeout(GUARD_PATIENCE, installed)
+        .await
+        .map_err(|_| WebViewError::Native)?
+        .map_err(|_| WebViewError::Native)?
+}
+
+/// No trust hook outside macOS yet: `https` opens in the system browser (D-6).
+#[cfg(not(target_os = "macos"))]
+#[expect(
+    clippy::unused_async,
+    reason = "the macOS twin waits for the main thread; both answer the same type"
+)]
+pub async fn guard(_view: &Webview, _id: &TabId) -> Result<(), WebViewError> {
+    Ok(())
+}
+
+/// Answers one challenge in tab `id` from the tab's pin, and tells the main web view what the
+/// operator must see. On the main thread, inside `WebKit`'s callback: the tab lock is held only
+/// to copy the tab, and the event is sent from a task. A closed tab loads nothing.
+#[cfg(target_os = "macos")]
+fn decide(
+    app: &AppHandle,
+    id: &TabId,
+    presented: &Presented<'_>,
+    system_trust: &dyn Fn() -> bool,
+) -> Answer {
+    let Some(tab) = app.try_state::<Tabs>().and_then(|tabs| tabs.get(id).ok()) else {
+        return Answer::Cancel;
+    };
+    let ruling = rule(
+        tab.pin.as_ref(),
+        tab.origin.as_ref(),
+        presented,
+        system_trust,
+    );
+    if let Some(event) = ruling
+        .shown
+        .and_then(|shown| WebViewEvent::refusal(id, shown))
+    {
+        let app = app.clone();
+        tauri::async_runtime::spawn(async move { event::send(&app, &event) });
+    }
+    ruling.answer
 }
 
 /// Loads a page's new-window request in its own web view instead. Off the `WebKit` callback,
