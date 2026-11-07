@@ -138,7 +138,7 @@ it('RA-034: a failed Stop keeps the row and shows fixed text, not the hub text',
   });
   expect(rows()).toHaveLength(1);
   expect(panel()?.textContent).not.toContain('secret hub text');
-  expect(stopButton('desk').disabled).toBe(false);
+  expect(stopButton('desk').getAttribute('aria-disabled')).toBe('false');
 });
 
 it('RA-034: Stop shows busy while the hub has not answered', async () => {
@@ -156,7 +156,7 @@ it('RA-034: Stop shows busy while the hub has not answered', async () => {
   await open();
   stopButton('desk').click();
   flushSync();
-  expect(stopButton('desk').disabled).toBe(true);
+  expect(stopButton('desk').getAttribute('aria-disabled')).toBe('true');
   expect(stopButton('desk').getAttribute('aria-busy')).toBe('true');
 });
 
@@ -202,4 +202,99 @@ it('RA-034: a failed query shows fixed text and keeps the last list', async () =
   });
   expect(panel()?.textContent).not.toContain('secret hub text');
   expect(rows()).toHaveLength(1);
+});
+
+it('RA-034 / MAT-002: the open panel lives in the body, outside the bar, and a press inside it is not outside', async () => {
+  await show({ LiveSessions: ANSWER(DESK) });
+  await open();
+  expect(panel()?.parentElement).toBe(document.body);
+  panel()?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+  flushSync();
+  expect(panel()).not.toBeNull();
+  stopButton('desk').focus();
+  stopButton('desk').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  flushSync();
+  await vi.waitFor(() => {
+    expect(panel()).toBeNull();
+  });
+  expect(document.activeElement).toBe(control());
+});
+
+it('RA-034: after Stop succeeds focus moves to the next Stop button, else the previous, else the control', async () => {
+  await show({ LiveSessions: ANSWER(DESK, LAPTOP), EndSession: { id: 'x' } });
+  await open();
+  // Newest first: laptop, desk. Stopping laptop moves focus to desk; stopping desk then has no neighbour.
+  stopButton('laptop').focus();
+  stopButton('laptop').click();
+  await vi.waitFor(() => {
+    expect(document.activeElement).toBe(stopButton('desk'));
+  });
+  stopButton('desk').click();
+  await vi.waitFor(() => {
+    expect(document.activeElement).toBe(control());
+  });
+});
+
+it('RA-034: a failed Stop leaves focus on that row\'s button', async () => {
+  await show({ LiveSessions: ANSWER(DESK), EndSession: REFUSED });
+  await open();
+  stopButton('desk').focus();
+  stopButton('desk').click();
+  await vi.waitFor(() => {
+    expect(panel()?.textContent).toContain('The session could not be stopped.');
+  });
+  expect(document.activeElement).toBe(stopButton('desk'));
+});
+
+it('D-6: an answer that a newer refresh superseded is dropped, and pushed changes are applied over the answer', async () => {
+  const fake = fakeHub({ LiveSessions: ANSWER(DESK) });
+  const release: ((answer: unknown) => void)[] = [];
+  const request = fake.hub.request.bind(fake.hub);
+  fake.hub.request = ((document: never, variables: never) =>
+    (document as { definitions: { name?: { value: string } }[] }).definitions[0]?.name?.value === 'LiveSessions' && release.length < 2
+      ? new Promise((resolve) => release.push((answer) => resolve({ ok: true, value: answer } as never)))
+      : request(document, variables)) as typeof fake.hub.request;
+  app = mount(LiveSessions, { target: document.body, props: { hub: fake.hub } });
+  flushSync();
+  await vi.waitFor(() => {
+    expect(release).toHaveLength(1);
+  });
+  await open();
+  await vi.waitFor(() => {
+    expect(release).toHaveLength(2);
+  });
+  // The second query is the newer: it answers first, then a change arrives, then the stale first answer.
+  release[1]?.(ANSWER(DESK));
+  await vi.waitFor(() => {
+    expect(control().querySelector('.count')?.textContent).toBe('1');
+  });
+  release[0]?.(ANSWER());
+  await Promise.resolve();
+  await Promise.resolve();
+  flushSync();
+  expect(control().querySelector('.count')?.textContent).toBe('1');
+});
+
+it('D-6: a change pushed while a query is in flight survives the answer', async () => {
+  const fake = fakeHub({ LiveSessions: ANSWER(DESK) });
+  let release: ((answer: unknown) => void) | undefined;
+  fake.hub.request = (() => new Promise((resolve) => (release = (answer) => resolve({ ok: true, value: answer } as never)))) as typeof fake.hub.request;
+  app = mount(LiveSessions, { target: document.body, props: { hub: fake.hub } });
+  flushSync();
+  await vi.waitFor(() => {
+    expect(release).toBeDefined();
+  });
+  fake.push('LiveSessionChanged', { sessionChanged: { session: { ...LAPTOP, endedAt: null, endReason: null } } });
+  release?.(ANSWER(DESK));
+  await vi.waitFor(() => {
+    expect(control().querySelector('.count')?.textContent).toBe('2');
+  });
+});
+
+it('D-6: unmounting stops listening to the subscription', async () => {
+  const fake = await show({ LiveSessions: ANSWER(DESK) });
+  expect(fake.listeners('LiveSessionChanged')).toBe(1);
+  await unmount(app as ReturnType<typeof mount>);
+  app = undefined;
+  expect(fake.listeners('LiveSessionChanged')).toBe(0);
 });

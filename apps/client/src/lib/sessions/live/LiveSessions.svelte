@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import type { Hub } from '$lib/hub/hub';
   import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
@@ -20,6 +21,7 @@
   let open = $state(false);
   let root: HTMLElement | undefined;
   let button = $state<HTMLButtonElement>();
+  let panel = $state<HTMLElement>();
 
   $effect(live.start);
 
@@ -27,6 +29,35 @@
     open = !open;
     // The subscription may be unserved: opening is what refreshes the list.
     if (open) void live.refresh();
+  }
+
+  /**
+   * Moves the panel out of the bar to the body, whose blur the bar's own backdrop filter would otherwise hide
+   * (MAT-002), and places it at the bar's outer edge, level with the control; it still grows from the control (MOT-005).
+   */
+  function placeBesideBar(node: HTMLElement): void {
+    document.body.append(node);
+    const edge = (button?.closest('nav') ?? button)?.getBoundingClientRect().right ?? 0;
+    const top = button?.getBoundingClientRect().top ?? 0;
+    node.style.insetInlineStart = `${String(edge)}px`;
+    const room = document.documentElement.clientHeight - node.getBoundingClientRect().height;
+    node.style.insetBlockStart = `${String(Math.max(0, Math.min(top, room)))}px`;
+  }
+
+  const inside = (target: EventTarget | null): boolean =>
+    target instanceof Node && (root?.contains(target) === true || panel?.contains(target) === true);
+
+  /** Stop a session; when its row leaves, focus moves to the next Stop button, else the previous, else the control. */
+  async function stop(id: string): Promise<void> {
+    const ids = live.sessions.map((session) => session.id);
+    const at = ids.indexOf(id);
+    const held = panel?.contains(document.activeElement) === true;
+    await live.stop(id);
+    if (!held || live.sessions.some((session) => session.id === id)) return;
+    await tick();
+    const next = ids[at + 1] ?? ids[at - 1];
+    const target = panel?.querySelector<HTMLElement>(`[data-stop="${next ?? ''}"]`);
+    (target ?? button)?.focus();
   }
 
   function close(): void {
@@ -41,8 +72,8 @@
 
   /** A press outside closes the popover; focus goes back to the control only when it was inside. */
   function onOutside(event: PointerEvent): void {
-    if (!open || root === undefined || (event.target instanceof Node && root.contains(event.target))) return;
-    const hadFocus = root.contains(document.activeElement);
+    if (!open || inside(event.target)) return;
+    const hadFocus = inside(document.activeElement);
     open = false;
     if (hadFocus) button?.focus();
   }
@@ -69,7 +100,12 @@
     <span class="count" aria-hidden="true">{live.sessions.length}</span>
   </button>
   {#if open}
-    <div class="panel" id="{id}-panel" role="group" aria-label="Live sessions" transition:popover={{ from: button }}>
+    <div class="panel" id="{id}-panel" role="group"
+      aria-label="Live sessions"
+      bind:this={panel}
+      transition:popover={{ from: button }}
+      {@attach placeBesideBar}
+    >
       {#if live.loadFailure !== null}
         <p class="note" role="alert">{live.loadFailure}</p>
       {/if}
@@ -89,9 +125,10 @@
             class="stop"
             tabindex="0"
             aria-label="Stop session on {session.deviceName}"
+            data-stop={session.id}
             aria-busy={live.isStopping(session.id)}
-            disabled={live.isStopping(session.id)}
-            onclick={() => void live.stop(session.id)}
+            aria-disabled={live.isStopping(session.id)}
+            onclick={() => void stop(session.id)}
             {@attach press()}
           >
             {live.isStopping(session.id) ? 'Stopping' : 'Stop'}
@@ -170,9 +207,7 @@
   }
 
   .panel {
-    position: absolute;
-    inset-block-start: 0;
-    inset-inline-start: 100%;
+    position: fixed;
     z-index: var(--layer-popover);
     box-sizing: border-box;
     display: flex;
@@ -181,7 +216,6 @@
     min-inline-size: calc(var(--space-16) * 4);
     max-inline-size: calc(100vw - var(--space-4) * 2);
     max-block-size: calc(var(--space-16) * 6);
-    margin-inline-start: var(--space-2);
     padding: var(--space-2);
     overflow-y: auto;
     border: var(--border-thin) solid var(--border);
@@ -211,6 +245,8 @@
     flex: none;
     box-sizing: border-box;
     min-block-size: var(--target-min-desktop);
+    /* Fits "Stopping" as well as "Stop", so busy resizes nothing (MOT-007). */
+    min-inline-size: calc(var(--space-16) * 1.5);
     padding: 0 var(--space-3);
     border: var(--border-thin) solid var(--border);
     border-radius: var(--radius-md);
@@ -219,7 +255,7 @@
     font: inherit;
   }
 
-  .stop:hover:not(:disabled) {
+  .stop:hover:not([aria-disabled='true']) {
     background: var(--surface-raised);
   }
 
