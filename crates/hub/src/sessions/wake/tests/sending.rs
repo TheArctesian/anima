@@ -1,16 +1,20 @@
 //! What the relay hears and what a wake leaves (RA-031, D-4, CHK-012, LOG-005): one `exec` of
 //! `wakeonlan` with the device's MAC address, exit status 0 as the only success, and one
-//! event.
+//! event; and no MAC address or relay output in the process log (LOG-007).
 
 use sqlx::PgPool;
 
 use super::{
-    Answer, Heard, MAC, assert_stored_quiet, events, execs, exiting, one_error_event, pve, refused,
-    relay, woken,
+    Answer, Heard, MAC, assert_quiet, assert_stored_quiet, events, execs, exiting, one_error_event,
+    pve, refused, relay, woken,
 };
-use crate::sessions::{
-    LinkError, WakeError,
-    tests::fixture::{docker_host, now},
+use crate::{
+    events::process_log,
+    sessions::{
+        LinkError, WakeError,
+        link::tests::{SEED, server::serve},
+        tests::fixture::{Capture, LOOPBACK, docker_host, move_device, now},
+    },
 };
 
 #[sqlx::test(
@@ -96,4 +100,38 @@ async fn d_4_a_relay_that_refuses_the_command_sends_nothing(pool: PgPool) {
         "No Wake-on-LAN packet was sent: the wake relay refused to run wakeonlan.",
     )
     .await;
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn log_007_sec_009_no_mac_address_or_relay_output_reaches_the_process_log(pool: PgPool) {
+    let capture = Capture::default();
+    let writer = capture.clone();
+    let subscriber = process_log::subscriber("trace", move || writer.clone()).unwrap();
+    // As in the Guacamole tunnel's test: a second registered dispatcher makes every callsite
+    // registration ask all of them, so another test thread cannot disable these callsites.
+    let _second = tracing::Dispatch::new(tracing::subscriber::NoSubscriber::default());
+    let _default = tracing::subscriber::set_default(subscriber);
+    tracing::callsite::rebuild_interest_cache();
+    tracing::info!("log_007 capture marker");
+
+    // A failed packet with relay output on both streams, then a sent one through a relay that
+    // echoes its command line, MAC address included. No event may hold a MAC address (LOG-005
+    // names the relay only), so no log line may either.
+    let bench = relay(&pool, exiting(1)).await;
+    assert!(matches!(refused(&bench).await, WakeError::NotSent));
+    let echoing = serve(SEED, Answer::Echo).await;
+    move_device(&pool, LOOPBACK, echoing.port).await;
+    woken(&bench, pve()).await.unwrap();
+    assert_eq!(execs(&echoing), [format!("wakeonlan {MAC}")]);
+
+    let log = String::from_utf8(capture.0.lock().unwrap().clone()).unwrap();
+    assert!(
+        log.contains("log_007 capture marker"),
+        "the capture works: {log}"
+    );
+    assert_quiet(&log, &bench.server);
+    assert_quiet(&log, &echoing);
 }

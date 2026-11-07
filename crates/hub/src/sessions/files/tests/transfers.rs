@@ -1,14 +1,18 @@
 //! Listing, downloading and uploading over the files tunnel (K4 Section 9), each with what it
-//! leaves behind: one audit entry with the path and size and no content, and one event.
+//! leaves behind: one audit entry with the path and size and no content, and one event; and
+//! nothing of either in the process log (LOG-007).
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
 use super::{
     bench::{Bench, bench, bench_with},
-    socket::Received,
+    socket::{self, Received},
 };
-use crate::sessions::tests::fixture::stored_text;
+use crate::{
+    events::process_log,
+    sessions::tests::fixture::{Capture, stored_text},
+};
 
 /// Bytes no stored text may hold: the file content of these tests.
 fn content(len: usize) -> Vec<u8> {
@@ -236,4 +240,49 @@ async fn ra_032_a_cancelled_upload_is_removed(pool: PgPool) {
     client.send(r#"{"type":"cancel"}"#).await;
     client.send(r#"{"type":"list","path":"/"}"#).await;
     assert_eq!(client.text().await["type"], "entries");
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn log_007_sec_009_no_path_content_or_token_reaches_the_process_log(pool: PgPool) {
+    let capture = Capture::default();
+    let writer = capture.clone();
+    let subscriber = process_log::subscriber("trace", move || writer.clone()).unwrap();
+    // As in the Guacamole tunnel's test: a second registered dispatcher makes every callsite
+    // registration ask all of them, so another test thread cannot disable these callsites.
+    let _second = tracing::Dispatch::new(tracing::subscriber::NoSubscriber::default());
+    let _default = tracing::subscriber::set_default(subscriber);
+    tracing::callsite::rebuild_interest_cache();
+    tracing::info!("log_007 capture marker");
+
+    let bench = bench(&pool).await;
+    let bytes = content(70_000);
+    bench.server.put("kept-private.bin", &bytes);
+    let token = bench.token().await;
+    let mut client = socket::open(&bench.url(&token)).await;
+    assert_eq!(client.download("/kept-private.bin").await, bytes);
+    client
+        .send(r#"{"type":"upload","path":"/sent-private.bin","size":70000}"#)
+        .await;
+    client.send_binary(&bytes[..65_536]).await;
+    client.send_binary(&bytes[65_536..]).await;
+    assert_eq!(client.text().await, json!({ "type": "done" }));
+    assert_eq!(bench.audits().await.len(), 2, "both transfers ran");
+
+    let log = String::from_utf8(capture.0.lock().unwrap().clone()).unwrap();
+    assert!(
+        log.contains("log_007 capture marker"),
+        "the capture works: {log}"
+    );
+    for secret in [
+        "kept-private",
+        "sent-private",
+        "QZXJ",
+        token.as_str(),
+        "token=",
+    ] {
+        assert!(!log.contains(secret), "{secret} in the log");
+    }
 }

@@ -133,13 +133,25 @@ async fn one_error_event(pool: &PgPool, message: &str) {
     assert_eq!(events(pool).await, [error]);
 }
 
-/// `text` holds no address, port, MAC address, relay output or secret (LOG-007).
+/// `mac`'s octets in decimal as `Debug` prints a byte array: `170, 187, 204, ...`.
+fn decimal_octets(mac: &str) -> String {
+    let octets: Vec<String> = mac
+        .split(':')
+        .map(|pair| u8::from_str_radix(pair, 16).unwrap().to_string())
+        .collect();
+    octets.join(", ")
+}
+
+/// `text` holds no address, port, MAC address (in hex or decimal octets), relay output or
+/// secret (LOG-007).
 fn assert_quiet(text: &str, server: &Server) {
     for secret in [
         LOOPBACK,
         &server.port.to_string(),
         MAC,
         RELAY_MAC,
+        &decimal_octets(MAC),
+        &decimal_octets(RELAY_MAC),
         OUTPUT,
         PASSWORD,
     ] {

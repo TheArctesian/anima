@@ -283,6 +283,14 @@ describe("hardening and images (SEC-001)", () => {
   });
 });
 
+describe("process logs (LOG-007, SEC-009)", () => {
+  test("LOG-007 SEC-009 guacd logs only at info, warning or error: debug and trace write session detail", () => {
+    const image = readFileSync(join(ROOT, "deploy", "gateway", "Dockerfile"), "utf8").match(/^(CMD|ENTRYPOINT|ENV|ARG)\b.*$/gm) ?? [];
+    const started = [JSON.stringify(compose.services["guacd"]), ...image].join("\n");
+    for (const [, level] of started.matchAll(/(?:-L|GUACD_LOG_LEVEL)[\s=,:"]*([^\s",}]*)/g)) expect(["info", "warning", "error"]).toContain(level);
+  });
+});
+
 describe("drives (RA-021, GW-001, GW-002)", () => {
   // Built from two parts, as in the last test of this file, so the literal word is not in the source.
   const makeDir = ["mk", "dir"].join("");
