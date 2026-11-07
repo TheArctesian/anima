@@ -9,6 +9,7 @@
 mod collector;
 mod commands;
 mod feed;
+pub mod graphql;
 mod latest;
 mod model;
 pub mod parse;

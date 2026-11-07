@@ -17,7 +17,7 @@ use anima_hub::{
     config::{self, Config},
     credentials::Vault,
     events::{self, Bus, process_log},
-    logged, router,
+    logged, metrics, router,
     schema::{Dependencies, build_schema},
     serve_until, sessions,
     targets::AddressPolicy,
@@ -143,19 +143,28 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         vault: vault.clone(),
         policy: policy.clone(),
     };
+    let feed = metrics::Feed::new();
     let dependencies = Dependencies {
         config,
         clock: clock.clone(),
         pool: pool.clone(),
         bus: bus.clone(),
-        vault,
+        vault: vault.clone(),
         live: live.clone(),
-        policy,
+        policy: policy.clone(),
+        metrics_feed: feed.clone(),
     };
     let tunnels = tunnels(&dependencies);
     let schema = build_schema(dependencies);
     let upkeep = spawn_upkeep(&pool, &clock);
     let scheduler = checks::spawn_scheduler(pool.clone(), bus.clone(), clock.clone(), probing);
+    let collector = metrics::spawn_collector(
+        pool.clone(),
+        feed,
+        bus.clone(),
+        clock.clone(),
+        metrics::Collecting { vault, policy },
+    );
     let push = checks::push_router(pool.clone(), bus.clone(), clock.clone());
     // The tunnels and `/push` are behind the same permitted-networks check as every route, and
     // logged by their templates only, never their tokens (K3, NET-002, LOG-007, R-028, R-051).
@@ -179,6 +188,7 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     .await;
     upkeep.iter().for_each(tokio::task::JoinHandle::abort);
     scheduler.abort();
+    collector.abort();
     Ok(())
 }
 
@@ -250,7 +260,7 @@ async fn stop_signal() {
 fn spawn_upkeep(
     pool: &PgPool,
     clock: &Arc<dyn anima_hub::clock::Clock>,
-) -> [tokio::task::JoinHandle<()>; 2] {
+) -> [tokio::task::JoinHandle<()>; 3] {
     let partitions = {
         let db = pool.clone();
         events::run_daily("partitions", clock.clone(), move |now| {
@@ -259,6 +269,21 @@ fn spawn_upkeep(
                 events::keep_partitions(&db, now)
                     .await
                     .map_err(|e| e.fault())
+            }
+        })
+    };
+    let metrics_partitions = {
+        let db = pool.clone();
+        events::run_daily("metrics_partitions", clock.clone(), move |now| {
+            let db = db.clone();
+            async move {
+                metrics::create_partitions_ahead(&db, now)
+                    .await
+                    .map_err(|_| "metrics_partitions")?;
+                metrics::drop_expired_partitions(&db, now, metrics::Retention::default())
+                    .await
+                    .map(drop)
+                    .map_err(|_| "metrics_retention")
             }
         })
     };
@@ -272,7 +297,11 @@ fn spawn_upkeep(
             }
         })
     };
-    [tokio::spawn(partitions), tokio::spawn(prune)]
+    [
+        tokio::spawn(partitions),
+        tokio::spawn(metrics_partitions),
+        tokio::spawn(prune),
+    ]
 }
 
 /// Applies the migrations as the owner role and exits; serving never migrates (R-016).

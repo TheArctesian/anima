@@ -11,6 +11,7 @@ mod listening;
 mod login;
 mod logs;
 mod maintenance;
+mod metrics;
 mod networks;
 mod operator;
 mod sessions;

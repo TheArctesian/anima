@@ -10,6 +10,7 @@ use anima_hub::{
     config,
     credentials::Vault,
     events::Bus,
+    metrics::Feed,
     router,
     schema::{Dependencies, build_schema},
     sessions::Live,
@@ -122,6 +123,7 @@ pub fn dependencies(pool: &PgPool, clock: Arc<dyn Clock>, bus: Bus) -> Dependenc
         vault: test_vault(),
         live: Live::default(),
         policy: AddressPolicy::default(),
+        metrics_feed: Feed::new(),
     }
 }
 

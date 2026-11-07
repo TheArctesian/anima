@@ -548,7 +548,7 @@ input TailscalePingConfigInput @pending {
 
 # ---------------------------------------------------------------- metrics (WP-28)
 
-enum MetricKind @pending {
+enum MetricKind {
   CPU_PERCENT
   MEMORY_PERCENT
   MEMORY_BYTES
@@ -568,20 +568,20 @@ enum MetricKind @pending {
 }
 
 # MET-003
-enum MetricRange @pending {
+enum MetricRange {
   HOUR
   DAY
   WEEK
 }
 
-enum GpuVendor @pending {
+enum GpuVendor {
   NVIDIA
   AMD
   INTEL
   APPLE
 }
 
-type Gpu @pending {
+type Gpu {
   index: Int!
   name: String!
   vendor: GpuVendor!
@@ -589,7 +589,7 @@ type Gpu @pending {
   hasVram: Boolean!
 }
 
-type MetricPoint @pending {
+type MetricPoint {
   at: DateTime!
   value: Float!
   min: Float
@@ -597,7 +597,7 @@ type MetricPoint @pending {
 }
 
 "Label: mount point, interface name, or 'GPU <index> <name>' (MET-009). Bytes are Float (above 2^31)."
-type MetricSeries @pending {
+type MetricSeries {
   kind: MetricKind!
   label: String!
   gpuIndex: Int
@@ -605,7 +605,7 @@ type MetricSeries @pending {
 }
 
 "The latest values for the card (MET-004, MET-008). Disk: the fullest mount. VRAM: the GPU with the highest use."
-type Readings @pending {
+type Readings {
   at: DateTime!
   cpuPercent: Float
   memoryPercent: Float
@@ -614,13 +614,13 @@ type Readings @pending {
   vramGpu: Gpu
 }
 
-type MetricSample @pending {
+type MetricSample {
   kind: MetricKind!
   label: String!
   value: Float!
 }
 
-type MetricsAdded @pending {
+type MetricsAdded {
   deviceId: ID!
   at: DateTime!
   samples: [MetricSample!]!
@@ -1061,7 +1061,7 @@ type Subscription {
   eventAdded(minSeverity: Severity = INFO): Event!
   "Every start and end of a session, from every client (RA-034)."
   sessionChanged: SessionChange! @pending
-  metricsAdded(deviceId: ID): MetricsAdded! @pending
+  metricsAdded(deviceId: ID): MetricsAdded!
 }
 
 type DeviceStatusChange {
