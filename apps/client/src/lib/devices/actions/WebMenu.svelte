@@ -48,6 +48,24 @@
     open = false;
     if (hadFocus) button?.focus();
   }
+
+  /** The panel is fixed where it opened: a scroll anywhere outside it, or a resize, would leave it away from its button, so it closes. */
+  function closeOnMove(event: Event): void {
+    if (event.target instanceof Node && root?.contains(event.target) === true) return;
+    const hadFocus = root?.contains(document.activeElement) === true;
+    open = false;
+    if (hadFocus) button?.focus();
+  }
+
+  $effect(() => {
+    if (!open) return;
+    window.addEventListener('scroll', closeOnMove, true);
+    window.addEventListener('resize', closeOnMove);
+    return () => {
+      window.removeEventListener('scroll', closeOnMove, true);
+      window.removeEventListener('resize', closeOnMove);
+    };
+  });
 </script>
 
 <svelte:document onpointerdown={onOutside} onkeydown={onKeydown} />

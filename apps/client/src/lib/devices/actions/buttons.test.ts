@@ -121,6 +121,33 @@ describe('Web button (WEB-003)', () => {
     expect(document.activeElement).toBe(button);
   });
 
+});
+
+describe('Web menu closing (WEB-003)', () => {
+  it.each([
+    ['a scroll outside the menu', () => document.body.dispatchEvent(new Event('scroll'))],
+    ['a window resize', () => window.dispatchEvent(new Event('resize'))],
+  ] as const)('WEB-003: %s closes the open menu, so it never floats away from its button', async (_name, move) => {
+    showCard({ webInterfaces: [web('w1', 'Admin'), web('w2', 'Metrics')] });
+    named('Web interfaces of Device a')?.click();
+    flushSync();
+    expect(document.querySelector('.panel')).not.toBeNull();
+    move();
+    flushSync();
+    await vi.waitFor(() => {
+      expect(document.querySelector('.panel')).toBeNull();
+    });
+  });
+
+  it('WEB-003: a scroll inside the menu keeps it open', () => {
+    showCard({ webInterfaces: [web('w1', 'Admin'), web('w2', 'Metrics')] });
+    named('Web interfaces of Device a')?.click();
+    flushSync();
+    document.querySelector('.panel')?.dispatchEvent(new Event('scroll'));
+    flushSync();
+    expect(document.querySelector('.panel')).not.toBeNull();
+  });
+
   it('WEB-003: a press outside closes the menu', async () => {
     showCard({ webInterfaces: [web('w1', 'Admin'), web('w2', 'Metrics')] });
     named('Web interfaces of Device a')?.click();
