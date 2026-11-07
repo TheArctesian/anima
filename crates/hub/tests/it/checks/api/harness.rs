@@ -67,6 +67,13 @@ pub fn schema_batched_at(pool: &PgPool, at: DateTime<Utc>) -> TestSchema {
     schema_with_window(pool, at, Some(BATCH_WINDOW)).0
 }
 
+fn wait<T>(loader: DataLoader<T>, window: Option<Duration>) -> DataLoader<T> {
+    match window {
+        Some(window) => loader.delay(window),
+        None => loader,
+    }
+}
+
 fn schema_with_window(
     pool: &PgPool,
     at: DateTime<Utc>,
@@ -74,12 +81,6 @@ fn schema_with_window(
 ) -> (TestSchema, Bus) {
     let bus = Bus::new(16);
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(at));
-    fn wait<T>(loader: DataLoader<T>, window: Option<Duration>) -> DataLoader<T> {
-        match window {
-            Some(window) => loader.delay(window),
-            None => loader,
-        }
-    }
     let schema = Schema::build(Query, Mutation, Subscription)
         .data(pool.clone())
         .data(vault())
