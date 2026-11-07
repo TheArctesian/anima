@@ -118,8 +118,7 @@ async fn regroup(
 }
 
 pub(super) async fn create(ctx: &Context<'_>, input: CreateShape) -> Result<Check> {
-    let token = checks::fresh_push_token().map_err(to_graphql)?;
-    let form = form::create(input, token).map_err(|errors| invalid(&errors))?;
+    let form = form::create(input, checks::fresh_push_token).map_err(to_graphql)?;
     let db = pool(ctx)?;
     if let Some(children) = &form.children {
         validate_children(db, children, form.new.device).await?;
@@ -150,8 +149,8 @@ pub(super) async fn update(ctx: &Context<'_>, id: &ID, input: UpdateShape) -> Re
     let id = check_id(id).map_err(|error| invalid(&[error]))?;
     let db = pool(ctx)?;
     let before = checks::get(db, id).await.map_err(to_graphql)?;
-    let token = checks::fresh_push_token().map_err(to_graphql)?;
-    let form = form::update(input, token).map_err(|errors| invalid(&errors))?;
+    // A push configuration is never empty, so its token is drawn only for a real change.
+    let form = form::update(input, checks::fresh_push_token).map_err(to_graphql)?;
     if form.is_empty() {
         let nothing = FieldError::new("input", "Send at least one field to change.");
         return Err(invalid(&[nothing]));

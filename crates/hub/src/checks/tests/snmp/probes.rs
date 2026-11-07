@@ -241,6 +241,17 @@ async fn d_5_given_draws_are_used_for_the_request() {
 }
 
 #[test]
+fn d_5_fresh_draws_differ_in_every_id_and_the_salt() {
+    // Each value has at least 31 random bits, so a repeat here means the draw is not fresh.
+    let (first, second) = (Draws::fresh().unwrap(), Draws::fresh().unwrap());
+    assert_ne!(first.discovery.message, second.discovery.message);
+    assert_ne!(first.discovery.request, second.discovery.request);
+    assert_ne!(first.get.message, second.get.message);
+    assert_ne!(first.get.request, second.get.request);
+    assert_ne!(first.salt, second.salt);
+}
+
+#[test]
 fn cq_021_draws_come_from_the_given_bytes() {
     // Each id is a big-endian word shifted right once, so it is never negative.
     let draws = draws();
