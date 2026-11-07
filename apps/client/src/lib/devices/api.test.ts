@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Hub, HubError, HubResult, Variables } from '$lib/hub/hub';
-import { devicesApi, type StatusChange } from './api';
+import type { StatusChange } from './api';
+import { devicesApi } from './client';
 import { fakeHub } from './hub.fixture';
 import { DEFAULT_QUERY, listVariables } from './query';
 

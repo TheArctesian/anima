@@ -4,7 +4,7 @@
   import type { EditedValues } from '../form/editing';
   import Field from '../form/Field.svelte';
   import type { RdpResizeMethod, RdpSecurity } from '$lib/hub/generated/graphql';
-  import type { ServerCertificate } from '../../hub-pending';
+  import type { ServerCertificate } from '$lib/sessions/api';
   import { rdpWarnings, validUntil } from './warnings';
 
   interface Props {

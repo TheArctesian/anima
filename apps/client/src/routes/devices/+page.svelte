@@ -5,7 +5,8 @@
   import { page } from '$app/state';
   import { readThisMachine, type ThisMachine } from '$lib/desktop/thisMachine';
   import { checksApi } from '$lib/checks/api';
-  import { devicesApi, type CardDevice } from '$lib/devices/api';
+  import type { CardDevice } from '$lib/devices/api';
+  import { devicesApi } from '$lib/devices/client';
   import { parseListQuery, writeListQuery, type ListQuery } from '$lib/devices/query';
   import DeviceScreen from '$lib/devices/screen/DeviceScreen.svelte';
   import { addDevice as createWithCredential, type AddedDevice } from '$lib/forms/add-device';
@@ -17,6 +18,7 @@
   import type { HubError, HubResult } from '$lib/hub/error';
   import { sessionsApi } from '$lib/sessions/api';
   import { useSessions } from '$lib/sessions/sessions.svelte';
+  import type { SessionProtocol } from '$lib/sessions/tabs';
 
   const sessions = useSessions();
   const hub = useHub();
@@ -113,12 +115,12 @@
     void goto(`${resolve('/devices')}/${encodeURIComponent(added.id)}`, { state });
   }
 
-  /** Opens an SSH tab that grows from the button (WP-14 H-1, MOT-005). */
-  function connect(device: CardDevice, button: HTMLElement): void {
+  /** Opens a tab for the protocol of the button that grows from it (WP-14 H-1, RA-030, MOT-005). */
+  function connect(device: CardDevice, protocol: SessionProtocol, button: HTMLElement): void {
     sessions.openSession({
       deviceId: device.id,
       deviceName: device.name,
-      protocol: 'SSH',
+      protocol,
       origin: button.getBoundingClientRect(),
     });
   }

@@ -4,7 +4,7 @@
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
   import { checksApi, type DeviceCheck } from '$lib/checks/api';
-  import { devicesApi } from '$lib/devices/api';
+  import { devicesApi } from '$lib/devices/client';
   import LiveNotice from '$lib/hub/notice/LiveNotice.svelte';
   import { DEFAULT_LOG_FILTER } from '$lib/events/log';
   import { LogFeed } from '$lib/events/panel/feed.svelte';
@@ -16,6 +16,7 @@
   import { press } from '$lib/motion/roles/press';
   import { sessionsApi } from '$lib/sessions/api';
   import { useSessions } from '$lib/sessions/sessions.svelte';
+  import type { SessionProtocol } from '$lib/sessions/tabs';
   import ChecksPanel from './checks/ChecksPanel.svelte';
   import { Detail } from './detail.svelte';
   import Header from './header/Header.svelte';
@@ -83,9 +84,10 @@
     go({ tab: 'settings', section });
   }
 
-  function connect(button: HTMLElement): void {
+  /** Opens a tab for the protocol of the header button that grows from it (RA-030, MOT-005). */
+  function connect(protocol: SessionProtocol, button: HTMLElement): void {
     if (device === null) return;
-    sessions.openSession({ deviceId: device.id, deviceName: device.name, protocol: 'SSH', origin: button.getBoundingClientRect() });
+    sessions.openSession({ deviceId: device.id, deviceName: device.name, protocol, origin: button.getBoundingClientRect() });
   }
 
   async function saveSettings(values: DeviceFormValues): Promise<HubResult<unknown>> {

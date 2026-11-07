@@ -1,5 +1,9 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
+  import WarningBadge from '$lib/devices/actions/WarningBadge.svelte';
+  import WebMenu from '$lib/devices/actions/WebMenu.svelte';
+  import { webInterfacesOf } from '$lib/devices/actions/actions';
+  import '$lib/devices/actions/actions.css';
   import StatusPill from '$lib/devices/card/StatusPill.svelte';
   import { skeletonDelay } from '$lib/motion/loading/delay.svelte';
   import type { LoadingClock } from '$lib/motion/loading/loading';
@@ -7,15 +11,19 @@
   import { press } from '$lib/motion/roles/press';
   import { crossFade } from '$lib/motion/roles/transitions';
   import { sharedItem } from '$lib/motion/shared/shared';
+  import type { SessionProtocol } from '$lib/sessions/tabs';
+  import type { WebInterface } from '$lib/web-interfaces/api';
   import type { SettingsSection } from '../tabs/tabs';
   import { overflowFade } from './fade';
-  import { headerLine, type HeaderDevice } from './header';
+  import { headerLine, protocolButton, type HeaderDevice, type ProtocolMode } from './header';
 
   interface Props {
     /** Null while the device loads: the line keeps its size and shows only the back link (D-13). */
     device: HeaderDevice | null;
-    /** SSH with an accepted host key: the button is passed so the session tab grows from it (WP-14 H-1, MOT-005). */
-    onConnect: (button: HTMLElement) => void;
+    /** A protocol that is ready: the button is passed so the session tab grows from it (WP-14 H-1, RA-030, MOT-005). */
+    onConnect: (protocol: SessionProtocol, button: HTMLElement) => void;
+    /** The Web button (WEB-003); the button is hidden while no route gives this. */
+    onOpenWeb?: (webInterface: WebInterface, button: HTMLElement) => void;
     /** Opens the Settings tab, at `section` when given (DEV-022). */
     onSettings: (section: SettingsSection | null) => void;
     /** The device is on its way: after `threshold-loading` a skeleton of the line shows until it arrives (5.7.3, Loading). */
@@ -23,12 +31,30 @@
     clock?: LoadingClock;
   }
 
-  const { device, onConnect, onSettings, loading = false, clock }: Props = $props();
+  const { device, onConnect, onOpenWeb, onSettings, loading = false, clock }: Props = $props();
   const line = $derived(device === null ? null : headerLine(device));
   // The clock is fixed for the life of the header.
   // svelte-ignore state_referenced_locally
   const skeleton = skeletonDelay(() => loading, clock);
 </script>
+
+{#snippet protocolAction(protocol: SessionProtocol, mode: ProtocolMode, shown: HeaderDevice)}
+  {@const action = protocolButton(protocol, mode, shown.name)}
+  <!-- Off is dashed with a "+" and opens Settings, never a session (DEV-022). -->
+  <button
+    type="button"
+    class="device-action {mode === 'set-up' ? 'dashed' : 'solid'}"
+    tabindex="0"
+    aria-label={action.label}
+    onclick={(event) => {
+      if (action.section === null) onConnect(protocol, event.currentTarget);
+      else onSettings(action.section);
+    }}
+    {@attach press()}
+  >
+    {#if mode === 'set-up'}<Icon name="nf-md-plus" size="sm" />{/if}{protocol}
+  </button>
+{/snippet}
 
 <!-- One line, in the order of DEV-020; the buttons are last. -->
 <header class="line">
@@ -36,30 +62,23 @@
   {#if device !== null && line !== null}
     <h1 title={device.name} {@attach sharedItem(`device-name:${device.id}`)}>{device.name}</h1>
     <!-- A live region, so a status change is heard as well as seen (D-11). -->
-    <span class="status" aria-live="polite"><StatusPill status={device.status} deviceId={device.id} /></span>
+    <span class="status" aria-live="polite">
+      <StatusPill status={device.status} deviceId={device.id} />
+      <WarningBadge warnings={device.accessWarnings} />
+    </span>
     <p class="details" {@attach overflowFade(line.title)}>
       {#each line.items as item, index (index)}
         <span class="item {item.part}" title={item.text}>{item.text}</span>
       {/each}
     </p>
     <div class="actions">
-      <button
-        type="button"
-        class={line.ssh === 'set-up' ? 'dashed' : 'solid'}
-        aria-label={line.ssh === 'set-up' ? 'Set up SSH' : line.ssh === 'test' ? 'Test the SSH connection' : `SSH to ${device.name}`}
-        onclick={(event) => {
-          if (line.ssh === 'connect') onConnect(event.currentTarget);
-          else onSettings(line.ssh === 'test' ? 'test' : 'ssh');
-        }}
-        {@attach press()}
-      >
-        {#if line.ssh === 'set-up'}<Icon name="nf-md-plus" size="sm" />{/if}SSH
-      </button>
-      <!-- RDP comes in Phase 2 (Section 6.3.2): the button only opens its Settings section, never a session. -->
-      <button type="button" class="dashed" aria-label="Set up RDP" onclick={() => { onSettings('rdp'); }} {@attach press()}>
-        <Icon name="nf-md-plus" size="sm" />RDP
-      </button>
-      <button type="button" onclick={() => { onSettings(null); }} {@attach press()}>
+      {@render protocolAction('SSH', line.ssh, device)}
+      {@render protocolAction('RDP', line.rdp, device)}
+      {#if line.vnc}{@render protocolAction('VNC', 'connect', device)}{/if}
+      {#if onOpenWeb !== undefined && webInterfacesOf(device).length > 0}
+        <WebMenu deviceName={device.name} interfaces={webInterfacesOf(device)} onOpen={onOpenWeb} />
+      {/if}
+      <button type="button" class="device-action" tabindex="0" onclick={() => { onSettings(null); }} {@attach press()}>
         <Icon name="nf-md-pencil" size="sm" />Edit
       </button>
     </div>
@@ -134,7 +153,7 @@
   }
 
   .actions-place {
-    inline-size: calc(var(--space-16) * 3);
+    inline-size: calc(var(--space-16) * 4);
     block-size: var(--target-min-desktop);
   }
 
@@ -208,6 +227,12 @@
     flex: none;
   }
 
+  .status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
   .back {
     display: flex;
     align-items: center;
@@ -216,8 +241,7 @@
     text-decoration: none;
   }
 
-  .back:focus-visible,
-  button:focus-visible {
+  .back:focus-visible {
     outline: var(--border-focus) solid var(--accent);
     outline-offset: var(--border-focus);
   }
@@ -269,32 +293,14 @@
     gap: var(--space-2);
   }
 
-  button {
-    box-sizing: border-box;
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-    min-block-size: var(--target-min-desktop);
-    padding: 0 var(--space-3);
-    border: var(--border-thin) solid var(--border);
-    border-radius: var(--radius-md);
-    background: var(--surface-raised);
-    color: var(--text);
-    font: inherit;
-    transition: background-color var(--duration-fast) var(--ease-enter);
-  }
-
-  button:hover {
-    background: var(--border);
-  }
-
   .solid {
     border-color: var(--accent);
     background: var(--accent);
     color: var(--bg);
   }
 
-  .solid:hover {
+  .solid:hover,
+  .solid:active {
     background: var(--accent-deep);
   }
 

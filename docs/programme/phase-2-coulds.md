@@ -65,3 +65,14 @@ These items are not blocking. The programme orchestrator collects them here and 
 - [ ] Two exports that only tests use.
 - [ ] No test cites RA-030.
 - [ ] Check in the end-to-end run whether WebKit in the macOS app refuses device-to-system clipboard writes, because the write does not follow a user action.
+
+## WP-31 (desktop web view)
+
+- Add a test that a certificate challenge for a closed tab is cancelled.
+- Add a load-failure hook, so an unreachable device shows the error page at once instead of after the 30 s timeout.
+- Emit an event when the operator closes a popped-out window.
+- Revisit the navigation filter, which refuses `about:`, `data:` and `blob:` frames that some device pages may need.
+- Move the system trust check for tabs with no pin off the main thread.
+- Run the shell commands in tests.
+- Skipped: the separate whole-package final review (Section 3.2 step 4). Each task had an Opus security review, and T5 also had a Sonnet interface review.
+- Operator: run the OD-7 spike on Linux (`apps/desktop/src-tauri/spikes/od7`, `xvfb-run -a cargo run`). Try a real device with an untrusted certificate (first visit, accept, changed certificate).
