@@ -208,6 +208,7 @@ describe('answers out of place (WEB-008, SEC-007)', () => {
     expect(transition(after(start(), shell({ kind: 'UNTRUSTED', fingerprintSha256: NEW })), event, 0)?.current).toMatchObject({ step: 'mismatch' });
     const others = [
       start({ pinning: false, pinned: PIN }),
+      after(start({ pinning: false }), { event: 'read', presented: NEW }),
       start({ down: true }),
       after(start(), shell({ kind: 'FAILED', reason: 'x' })),
       after(start(), shell({ kind: 'UNTRUSTED', fingerprintSha256: NEW }), { event: 'accept' }),

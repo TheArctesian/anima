@@ -91,6 +91,7 @@ function chained(onfail: (code: string) => void): Run {
 
 export function nativeView({ shell, tabId, onfail, onstate }: NativeViewOptions): NativeView {
   let state: ViewState = 'none';
+  let opens = 0;
   const become = (next: ViewState) => {
     state = next;
     onstate(next);
@@ -110,7 +111,6 @@ export function nativeView({ shell, tabId, onfail, onstate }: NativeViewOptions)
     if (was !== 'none' && (was !== 'popped' || next === 'none')) run(() => shell.close(tabId));
   };
   const live = () => state === 'open';
-  const started = () => state === 'open' || state === 'opening';
   const placing = coalesced<Bounds>(run, live, (sent, wanted) => sent !== undefined && sameBounds(sent, wanted), (to) => shell.place(tabId, to));
   const showing = coalesced<boolean>(run, live, (sent, wanted) => sent === wanted, (to) => shell.show(tabId, to));
 
@@ -118,20 +118,24 @@ export function nativeView({ shell, tabId, onfail, onstate }: NativeViewOptions)
     open(target, bounds) {
       if (state !== 'none') return;
       become('opening');
+      const mine = (opens += 1);
+      // Only the latest open counts: one a restart superseded must not open this run's view or fail it (H-4). A
+      // failure is told first, so the tab leaves its loading step before a new open could start.
+      const current = () => state === 'opening' && mine === opens;
       run(async () => {
-        // A failure is told first, so the tab leaves its loading step before a new open could start.
-        const opened = await shell.open({ tabId, ...target, bounds }).then(() => true, (reason: unknown) => (onfail(codeOf(reason)), false));
-        if (state !== 'opening') return;
+        const opened = await shell.open({ tabId, ...target, bounds }).then(() => true, (reason: unknown) => (current() && onfail(codeOf(reason)), false));
+        if (!current()) return;
         placing.sent(bounds);
         showing.sent(undefined);
         become(opened ? 'open' : 'none');
       });
     },
+    // Before the view is open, the latest bounds and visibility wait for it.
     place(bounds) {
-      if (started()) placing.want(bounds);
+      if (live() || state === 'opening') placing.want(bounds);
     },
     show(shown) {
-      if (started()) showing.want(shown);
+      if (live() || state === 'opening') showing.want(shown);
     },
     go(to) {
       if (live()) run(() => shell.go(tabId, to));
