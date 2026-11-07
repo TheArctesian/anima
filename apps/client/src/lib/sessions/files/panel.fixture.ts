@@ -7,7 +7,7 @@ import type { FileEntry } from './link/codec';
 import { settle } from './link/fake/link.fixture';
 import { FAKE_FILES_SOCKET, FakeFilesSocket } from './link/fake/socket.fixture';
 
-const HOME = '/home/ada';
+export const HOME = '/home/ada';
 export const entry = (name: string, kind: FileEntry['kind'], size: number | null = null, modifiedAt: string | null = null): FileEntry => ({ name, kind, size, modifiedAt });
 
 let cleanups: (() => unknown)[] = [];
