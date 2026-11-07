@@ -3,10 +3,11 @@
 //! feed (HUB-004, MET-001, MET-002, P2-003, D-2, D-9 to D-11).
 //!
 //! The decisions are pure: `plan` picks the devices, `outputs` turns command output into
-//! samples, `failures` decides the events. `collection` and `round` hold the I/O.
+//! samples, `failures` decides the events. `collection`, `fan_out` and `round` hold the I/O.
 
 mod collection;
 mod failures;
+mod fan_out;
 mod outputs;
 mod plan;
 mod round;

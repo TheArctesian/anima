@@ -10,17 +10,17 @@ use tokio::time::timeout;
 
 use super::{
     Context, DEADLINE,
-    outputs::{self, Previous},
+    outputs::{self, Parts, Previous},
 };
 use crate::{
     devices::Device,
     ids::DeviceId,
     metrics::{
-        self, MetricSample, MetricsAdded, Readings, Sample,
-        commands::{Command, Source, commands},
+        self, MetricSample, MetricsAdded, Reading, Readings, Sample,
+        commands::{Command, commands},
         record_collection,
     },
-    sessions::{self, CommandOutput, LinkError},
+    sessions::{self, LinkError},
 };
 
 /// Why a device's collection ended early this round. The texts are fixed (LOG-007).
@@ -78,11 +78,7 @@ async fn collect_at(
     previous: Option<&Previous>,
     at: DateTime<Utc>,
 ) -> Result<Previous, Failure> {
-    let read = timeout(DEADLINE, read(ctx, device, at)).await;
-    let outputs = read
-        .map_err(|_| Failure::Deadline)?
-        .map_err(Failure::Link)?;
-    let reading = outputs::reading(&outputs, at);
+    let reading = within_deadline(read(ctx, device, at)).await?;
     let samples = outputs::collected(previous, &reading, at);
     record_collection(&ctx.db, device.id, at, &samples).await?;
     if !samples.is_empty() {
@@ -91,25 +87,32 @@ async fn collect_at(
     Ok(Previous { at, reading })
 }
 
-/// Opens a link to `device`, runs its commands in order, each within its limit, and drops the
-/// link (D-11). The first link error ends the collection.
-async fn read(
-    ctx: &Context,
-    device: &Device,
-    at: DateTime<Utc>,
-) -> Result<Vec<(Source, CommandOutput)>, LinkError> {
+/// The result of `work`, a device's link and commands, or [`Failure::Deadline`] when it takes
+/// longer than [`DEADLINE`]; dropping it then drops its link (D-11).
+pub(super) async fn within_deadline<T>(
+    work: impl Future<Output = Result<T, LinkError>>,
+) -> Result<T, Failure> {
+    let done = timeout(DEADLINE, work).await;
+    done.map_err(|_| Failure::Deadline)?.map_err(Failure::Link)
+}
+
+/// Opens a link to `device`, runs its commands in order, each within its limit, reads each
+/// output into the reading and drops its bytes before the next command (D-11), then drops the
+/// link. The first link error ends the collection.
+async fn read(ctx: &Context, device: &Device, at: DateTime<Utc>) -> Result<Reading, LinkError> {
     let Context { db, collecting, .. } = ctx;
     let mut link = sessions::link(db, &collecting.vault, &collecting.policy, device, at).await?;
-    let mut outputs = Vec::new();
+    let mut parts = Parts::default();
     for Command {
         source,
         fixed,
         limit,
     } in commands(device.os)
     {
-        outputs.push((source, link.run(&fixed, limit).await?));
+        let output = link.run(&fixed, limit).await?;
+        parts.add(source, &output);
     }
-    Ok(outputs)
+    Ok(parts.reading(at))
 }
 
 /// Publishes what the collection added with the device's readings as stored, so the feed and

@@ -6,7 +6,7 @@ use chrono::{DateTime, TimeDelta, Utc};
 use crate::{
     metrics::{
         Cpu, Load, Memory, MetricKind, Reading, Sample,
-        collector::outputs::{Previous, collected, reading},
+        collector::outputs::{Parts, Previous, collected},
         commands::Source,
         tests::captures::{
             DF_LINUX, DF_MACOS, NETSTAT, PROC_LOADAVG, PROC_MEMINFO, PROC_NET_DEV, PROC_STAT,
@@ -18,6 +18,15 @@ use crate::{
 
 fn at() -> DateTime<Utc> {
     "2026-11-06T09:00:00Z".parse().unwrap()
+}
+
+/// The reading of `outputs`, each added in order as the collector does.
+fn reading(outputs: &[(Source, CommandOutput)], at: DateTime<Utc>) -> Reading {
+    let mut parts = Parts::default();
+    for (source, output) in outputs {
+        parts.add(*source, output);
+    }
+    parts.reading(at)
 }
 
 fn ok(stdout: &[u8]) -> CommandOutput {

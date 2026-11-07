@@ -2,7 +2,7 @@
 //! device's reading kept for its next rates and a failure change reported (MET-001, D-4,
 //! D-10, D-11).
 //!
-//! One task owns this state, so no lock guards it. Collections run in a `JoinSet`; dropping
+//! One task owns this state, so no lock guards it. Collections run as tasks (`fan_out`); dropping
 //! the round, as aborting the collector does, aborts them and drops their links.
 
 use std::{
@@ -10,12 +10,13 @@ use std::{
     sync::Arc,
 };
 
-use tokio::task::{JoinError, JoinSet};
+use tokio::task::JoinError;
 
 use super::{
     AT_ONCE, Context,
     collection::{self, Failure, Finished},
     failures::{self, Change},
+    fan_out::FanOut,
     outputs::Previous,
     plan,
 };
@@ -47,17 +48,15 @@ impl Collector {
         };
         let due = plan::due(listed);
         self.keep_only(&due);
-        let mut running = JoinSet::new();
-        for device in due {
-            if running.len() >= AT_ONCE
-                && let Some(joined) = running.join_next().await
-            {
-                self.finish(joined).await;
-            }
-            let previous = self.previous.get(&device.id).cloned();
-            running.spawn(collection::collect(Arc::clone(&self.ctx), device, previous));
-        }
-        while let Some(joined) = running.join_next().await {
+        let jobs = due
+            .into_iter()
+            .map(|device| {
+                let previous = self.previous.get(&device.id).cloned();
+                collection::collect(Arc::clone(&self.ctx), device, previous)
+            })
+            .collect();
+        let mut collections = FanOut::new(jobs, AT_ONCE);
+        while let Some(joined) = collections.next().await {
             self.finish(joined).await;
         }
     }
@@ -80,7 +79,9 @@ impl Collector {
         } = match joined {
             Ok(finished) => finished,
             Err(error) => {
-                tracing::warn!(domain = "metrics", %error, "a collection stopped early");
+                // The panic message could hold device text, so only its kind is logged (LOG-007).
+                let panicked = error.is_panic();
+                tracing::warn!(domain = "metrics", panicked, "a collection stopped early");
                 return;
             }
         };

@@ -9,7 +9,10 @@ use crate::{
     metrics::{
         Memory, Reading, Sample,
         commands::Source,
-        parse::{df, linux, macos},
+        parse::{
+            df, linux,
+            macos::{self, Sysctl},
+        },
         samples,
     },
     sessions::CommandOutput,
@@ -22,54 +25,73 @@ pub(super) struct Previous {
     pub(super) reading: Reading,
 }
 
-/// The output of `source`'s command when it can be read: present, complete and exit status 0.
-/// Output cut at the link's cap, a non-zero status or no status means the command did not
-/// finish its work, so its source is left out and the others still count.
-fn usable(outputs: &[(Source, CommandOutput)], source: Source) -> Option<&[u8]> {
-    let (_, output) = outputs.iter().find(|(from, _)| *from == source)?;
+/// The output's bytes when they can be read: complete and exit status 0. Output cut at the
+/// link's cap, a non-zero status or no status means the command did not finish its work, so
+/// its source is left out and the others still count.
+fn usable(output: &CommandOutput) -> Option<&[u8]> {
     let finished = !output.cut && output.exit_status == Some(0);
     finished.then_some(output.stdout.as_slice())
 }
 
-/// The reading of one collection taken at `at`. Linux and macOS sources fill the same fields;
-/// a device sends only the ones its commands ask for. `at` dates the macOS boot time.
-pub(super) fn reading(outputs: &[(Source, CommandOutput)], at: DateTime<Utc>) -> Reading {
-    let output = |source| usable(outputs, source);
-    let sysctl = output(Source::Sysctl).map(macos::sysctl);
-    let mac_memory = sysctl.and_then(|sysctl| {
-        let total_bytes = sysctl.memory_bytes?;
-        let used = output(Source::VmStat)?;
-        let used_bytes = macos::memory_used_bytes(used, sysctl.page_size)?;
-        Some(Memory {
-            total_bytes,
+/// A reading built one command output at a time, so the collector keeps only what each
+/// output gave and drops its bytes before the next command runs (D-11). Linux and macOS
+/// sources fill the same fields; a device sends only the ones its commands ask for.
+#[derive(Debug, Default)]
+pub(super) struct Parts {
+    reading: Reading,
+    sysctl: Option<Sysctl>,
+    /// macOS memory in use, from `vm_stat`, waiting for the total from `sysctl`.
+    used_bytes: Option<u64>,
+}
+
+impl Parts {
+    /// Reads `output` of `source`'s command into its fields. An unusable output leaves them
+    /// empty. `vm_stat` takes the page size from a `sysctl` read before it (the command
+    /// table runs `sysctl` first) when its header has none.
+    pub(super) fn add(&mut self, source: Source, output: &CommandOutput) {
+        let Some(bytes) = usable(output) else {
+            return;
+        };
+        let reading = &mut self.reading;
+        match source {
+            Source::Stat => reading.cpu = linux::cpu(bytes),
+            Source::Top => reading.cpu = macos::cpu(bytes),
+            Source::Meminfo => reading.memory = linux::memory(bytes),
+            Source::NetDev => reading.interfaces = linux::interfaces(bytes),
+            Source::Netstat => reading.interfaces = macos::interfaces(bytes),
+            Source::Uptime => reading.uptime_seconds = linux::uptime_seconds(bytes),
+            Source::Loadavg => reading.load = linux::load_average(bytes),
+            Source::DiskBytes => reading.disks = df::disks(bytes, 1),
+            Source::DiskKilobytes => reading.disks = df::disks(bytes, 1024),
+            Source::Sysctl => self.sysctl = Some(macos::sysctl(bytes)),
+            Source::VmStat => {
+                let page_size = self.sysctl.and_then(|sysctl| sysctl.page_size);
+                self.used_bytes = macos::memory_used_bytes(bytes, page_size);
+            }
+        }
+    }
+
+    /// The reading of the collection taken at `at`, which dates the macOS boot time.
+    pub(super) fn reading(self, at: DateTime<Utc>) -> Reading {
+        let Self {
+            mut reading,
+            sysctl,
             used_bytes,
-        })
-    });
-    let disks = match (output(Source::DiskBytes), output(Source::DiskKilobytes)) {
-        (Some(bytes), _) => df::disks(bytes, 1),
-        (None, Some(kilobytes)) => df::disks(kilobytes, 1024),
-        (None, None) => Vec::new(),
-    };
-    let interfaces = match (output(Source::NetDev), output(Source::Netstat)) {
-        (Some(net_dev), _) => linux::interfaces(net_dev),
-        (None, Some(netstat)) => macos::interfaces(netstat),
-        (None, None) => Vec::new(),
-    };
-    Reading {
-        cpu: output(Source::Stat)
-            .and_then(linux::cpu)
-            .or_else(|| output(Source::Top).and_then(macos::cpu)),
-        memory: output(Source::Meminfo)
-            .and_then(linux::memory)
-            .or(mac_memory),
-        load: output(Source::Loadavg)
-            .and_then(linux::load_average)
-            .or_else(|| sysctl.and_then(|sysctl| sysctl.load)),
-        uptime_seconds: output(Source::Uptime)
-            .and_then(linux::uptime_seconds)
-            .or_else(|| sysctl.and_then(|sysctl| sysctl.uptime_seconds(at))),
-        disks,
-        interfaces,
+        } = self;
+        let Some(sysctl) = sysctl else {
+            return reading;
+        };
+        reading.load = reading.load.or(sysctl.load);
+        reading.uptime_seconds = reading.uptime_seconds.or_else(|| sysctl.uptime_seconds(at));
+        if let (None, Some(total_bytes), Some(used_bytes)) =
+            (reading.memory, sysctl.memory_bytes, used_bytes)
+        {
+            reading.memory = Some(Memory {
+                total_bytes,
+                used_bytes,
+            });
+        }
+        reading
     }
 }
 
