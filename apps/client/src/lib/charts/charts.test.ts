@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { chartLabel } from './label';
+import { seriesPattern } from './plot';
 import { highestOf, latestOf, seriesPlot, thresholdY, type ChartPoint } from './plot';
 import { PLOT, slideOffset, timeScale, valueScale, valueY } from './scales';
 
@@ -153,5 +154,18 @@ describe('chartLabel (D-1)', () => {
   it('D-1: no value at all says so', () => {
     expect(chartLabel({ title: 'CPU', series: [{ label: 'CPU', points: [] }], top: 100, format: ms })).toBe('CPU: no values yet');
     expect(chartLabel({ title: 'CPU', series: [], top: 100, format: ms, empty: 'Nothing' })).toBe('Nothing');
+  });
+});
+
+describe('seriesPattern and the threshold in the text (UI-003, MET-004)', () => {
+  it('UI-003: series 1 is solid, 2 dashed, 3 dotted, and 4 to 6 repeat them', () => {
+    expect(([1, 2, 3, 4, 5, 6] as const).map(seriesPattern)).toEqual(['solid', 'dash', 'dot', 'solid', 'dash', 'dot']);
+  });
+
+  it('MET-004: a threshold is named in the text alternative', () => {
+    const one = [{ label: 'CPU', points: [{ at: 1, value: 30 }] }];
+    expect(chartLabel({ title: 'CPU, last hour', series: one, top: 100, format: (v) => `${String(v)} %`, threshold: 85 })).toBe(
+      'CPU, last hour, latest 30 %, top of the chart 100 %, threshold line at 85 %',
+    );
   });
 });

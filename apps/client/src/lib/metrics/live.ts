@@ -11,6 +11,14 @@ export function rangeWindow(range: MetricRange, now: Date): TimeWindow {
   return { start: now.getTime() - SPAN_MS[range], end: now.getTime() };
 }
 
+/** WP-28 D-5: the width of one bucket of each range, in milliseconds. */
+const BUCKET_MS: Record<MetricRange, number> = { HOUR: 60_000, DAY: 600_000, WEEK: HOUR_MS };
+
+/** A wider gap than this between two points breaks the line (MET-003): two and a half buckets, so a late point does not break it and two missing buckets do. */
+export function rangeGap(range: MetricRange): number {
+  return BUCKET_MS[range] * 2.5;
+}
+
 function gpuIndexOf(kind: string, label: string): number | null {
   const index = kind.startsWith('GPU_') || kind.startsWith('VRAM_') ? GPU_LABEL.exec(label)?.[1] : undefined;
   return index === undefined ? null : Number(index);

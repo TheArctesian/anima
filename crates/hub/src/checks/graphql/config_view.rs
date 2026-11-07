@@ -94,6 +94,13 @@ pub(super) struct SystemdView {
     timeout_ms: i32,
 }
 
+#[derive(SimpleObject)]
+#[graphql(name = "TailscalePingConfig")]
+pub(super) struct TailscalePingView {
+    target: Option<String>,
+    timeout_ms: i32,
+}
+
 /// A PUSH check without a token: the database forbids it, so it is a fault, never an empty path.
 #[derive(Debug, thiserror::Error)]
 #[error("push check {0} has no token")]
@@ -150,6 +157,7 @@ pub(super) enum ConfigView {
     Group(GroupView),
     Docker(DockerView),
     Systemd(SystemdView),
+    TailscalePing(TailscalePingView),
 }
 
 fn wide(value: impl Into<u32>) -> i32 {
@@ -189,6 +197,13 @@ fn http(config: &HttpConfig) -> HttpView {
         auth_kind: SignInKind::from(&config.auth),
         verify_tls: config.verify_tls,
         timeout_ms: wide(config.timeout_ms),
+    }
+}
+
+fn tailscale_ping(target: Option<&str>, timeout_ms: u32) -> TailscalePingView {
+    TailscalePingView {
+        target: target.map(str::to_owned),
+        timeout_ms: wide(timeout_ms),
     }
 }
 
@@ -250,6 +265,9 @@ impl ConfigView {
                 unit: unit.clone(),
                 timeout_ms: wide(*timeout_ms),
             }),
+            CheckConfig::TailscalePing { target, timeout_ms } => {
+                Self::TailscalePing(tailscale_ping(target.as_deref(), *timeout_ms))
+            }
         }
     }
 }
