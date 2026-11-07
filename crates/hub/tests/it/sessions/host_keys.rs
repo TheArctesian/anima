@@ -5,6 +5,7 @@
 
 mod accept;
 mod connection_test;
+mod deny_list;
 mod leak;
 mod server;
 

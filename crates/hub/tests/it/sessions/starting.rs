@@ -20,7 +20,7 @@ use super::{
 };
 
 const START: &str = "mutation($input: StartSessionInput!) { startSession(input: $input) { \
-                     sessionId token tunnelPath expiresAt } }";
+                     sessionId token tunnelPath expiresAt wakeSent } }";
 
 const END: &str = "mutation($id: ID!) { endSession(id: $id) { id deviceName operatorName \
                    startedAt endedAt endReason } }";

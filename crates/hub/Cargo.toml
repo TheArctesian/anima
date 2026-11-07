@@ -46,7 +46,6 @@ futures-util = { version = "0.3", default-features = false, features = ["sink"] 
 # client (R-039). Same semver range as axum's own, so the lockfile keeps one copy.
 tungstenite = { version = "0.29", default-features = false }
 guac-protocol = { path = "../guac-protocol" }
-anima-theme = { path = "../theme" }
 russh.workspace = true
 russh-sftp.workspace = true
 hmac.workspace = true

@@ -1,16 +1,24 @@
 //! A device's RDP settings as the GraphQL type K1 calls `RdpSettings`, with whether the hub
-//! holds a password for it (RA-030, DEV-011, SEC-005, API-005).
+//! holds a password for it (RA-030, DEV-011, SEC-005, API-005) and the server certificate
+//! accepted for it (SEC-007).
 
 use std::{collections::HashMap, sync::Arc};
 
-use async_graphql::{Context, Object, Result, dataloader::Loader};
+use async_graphql::{
+    Context, Object, Result,
+    dataloader::{DataLoader, Loader},
+};
 use sqlx::PgPool;
 
-use super::{credential_stored, passwords_stored};
+use super::{
+    super::error::{internal, schema_dependency},
+    credential_stored, passwords_stored,
+};
 use crate::{
     credentials::{self, PasswordKind},
     devices::{Device, RdpSecurity, RdpSettings, ResizeMethod},
     ids::DeviceId,
+    sessions::{ServerCertificate, graphql::ServerCertificatesByDevice},
 };
 
 /// The RDP settings of one device. `credential_stored` is set when the resolver that built it
@@ -79,6 +87,14 @@ impl DeviceRdp {
     /// True when the hub holds an RDP password for this device. Passwords are never returned.
     async fn credential_stored(&self, ctx: &Context<'_>) -> Result<bool> {
         credential_stored::<RdpCredentialStored>(ctx, self.device, self.credential_stored).await
+    }
+
+    /// The server certificate the operator accepted for this device, if any (SEC-007).
+    async fn server_certificate(&self, ctx: &Context<'_>) -> Result<Option<ServerCertificate>> {
+        schema_dependency::<DataLoader<ServerCertificatesByDevice>>(ctx)?
+            .load_one(self.device)
+            .await
+            .map_err(internal)
     }
 }
 

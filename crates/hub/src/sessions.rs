@@ -1,8 +1,9 @@
 //! Remote sessions: the record of every session (RA-008), the SSH host key accepted for
 //! each device (SEC-006), which every SSH connection is pinned to (SEC-007), and the
 //! single-use tickets that open a tunnel (K4 §1, API-009). SSH sessions run on the terminal
-//! tunnel (`terminal`, K4 §8); the Guacamole tunnel (`tunnel`) waits for RDP and VNC. The
-//! connection test reads a host's key and `acceptHostKey` records it (DEV-013, D-5, D-6).
+//! tunnel (`terminal`, K4 §8); RDP and VNC sessions on the Guacamole tunnel (`tunnel`). The
+//! connection test reads a host's key or an RDP server's certificate, and `acceptHostKey` or
+//! `acceptServerCertificate` records it (DEV-013, SEC-006, SEC-007).
 //! Wake-on-LAN (`wake`) runs on a site's wake relay over the hub's SSH link (`link`, RA-031).
 
 mod admission;
@@ -39,6 +40,8 @@ use crate::{
     events,
     ids::{DeviceId, SessionId},
 };
+
+use model::Desktop;
 
 pub use end::Actor;
 pub use files::{FilesMutation, files_router};
@@ -87,12 +90,26 @@ pub enum Conflict {
          again and compare the fingerprint."
     )]
     KeyDiffers,
-    /// No device has RDP settings yet, so RDP is off for every one.
-    #[error("RDP is turned off for this device.")]
+    #[error(
+        "The hub has not seen a server certificate for this device in the last 15 minutes. \
+         Test the connection with RDP, then accept the certificate it shows."
+    )]
+    CertificateNotSeen,
+    #[error(
+        "That fingerprint is not the certificate the hub saw for this device. Test the \
+         connection again and compare the fingerprint."
+    )]
+    CertificateDiffers,
+    #[error("RDP is turned off for this device. Turn it on in the device's RDP settings.")]
     RdpDisabled,
-    /// No device has VNC settings yet, so VNC is off for every one.
-    #[error("VNC is turned off for this device.")]
+    #[error("VNC is turned off for this device. Turn it on in the device's VNC settings.")]
     VncDisabled,
+    /// RDP checks the server certificate, and none is accepted yet (SEC-007).
+    #[error(
+        "No server certificate is accepted for this device. Test the connection and accept \
+         its certificate."
+    )]
+    NoServerCertificate,
 }
 
 /// Why a sessions operation failed. No variant holds a ticket token (LOG-007).

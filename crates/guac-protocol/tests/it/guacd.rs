@@ -86,6 +86,7 @@ pub fn params(display: Display, timezone: &str, values: ArgValues) -> ConnectPar
         display,
         timezone: timezone.to_owned(),
         name: "operator".to_owned(),
+        audio: &[],
         values,
     }
 }

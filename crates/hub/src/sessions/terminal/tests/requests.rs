@@ -8,7 +8,7 @@ use chrono::TimeDelta;
 
 use super::super::shell::handed;
 use crate::sessions::{
-    Actor, Live, Presented, Tunnel,
+    Actor, Live, Presented, Protocol, Tunnel,
     end::Cause,
     tests::tickets::{CLIENT, client, issue, issued_at, session},
 };
@@ -32,7 +32,7 @@ async fn k4_8_5_a_request_the_connection_never_takes_is_gateway_error_at_the_wai
         .unwrap_err();
     assert_eq!(end.cause, Cause::GatewayError);
     assert_eq!(
-        end.message,
+        end.message.of(Protocol::Ssh),
         "The device did not answer the hub's request for a terminal or shell in time, so the \
          hub closed the SSH session."
     );

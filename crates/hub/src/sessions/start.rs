@@ -15,12 +15,12 @@ use super::{
     live::Live,
     model::{EndReason, FieldError, Protocol, SessionEnd},
     store::{self, NewSession},
-    target::is_refused_target,
+    target::TargetRule,
     tickets::{LIFETIME, PendingTicket, TOKEN_BYTES, Ticket, TicketToken},
 };
 use crate::{
     clock::Clock,
-    devices::Device,
+    devices::{Device, RdpSecurity, RdpSettings},
     events::{self, AuditAction, AuditTarget, ClientAddr, NewAudit, Operator},
     ids::{DeviceId, SessionId},
 };
@@ -85,35 +85,70 @@ pub(super) fn checked_display(display: &DisplayRequest) -> Result<Display, Vec<F
     }
 }
 
-/// The host as an IP literal the gateway must not reach, as a field error. Host names are
-/// checked when the tunnel connects (T5), because they resolve only then.
-fn host_problem(host: &str) -> Option<FieldError> {
-    let ip = host.parse::<IpAddr>().ok()?;
-    is_refused_target(ip).then(|| {
+/// The host as an IP literal `rule` refuses, as a field error. Host names are checked when
+/// the tunnel connects, because they resolve only then.
+fn host_problem(host: &str, rule: &TargetRule) -> Option<FieldError> {
+    let ip = host.parse::<IpAddr>().ok()?.to_canonical();
+    rule.refuses(ip).then(|| {
         FieldError::new(
             "host",
-            "The device's host is a loopback, link-local, multicast or unspecified address. \
-             Enter the address the device has on its network.",
+            "The device's host is a loopback, link-local, multicast or unspecified address, \
+             or one in a network the hub refuses (ANIMA_PROBE_DENY). Enter the address the \
+             device has on its network.",
         )
     })
 }
 
-/// Why `protocol` is off for `device`, if it is (K4 Section 1). RDP and VNC are off for every
-/// device until devices have their settings, so no ticket reaches `/tunnel`.
-const fn protocol_off(device: &Device, protocol: Protocol) -> Option<Conflict> {
+/// Why `protocol` is off for `device`, if it is (K4 Section 1). The tunnel checks it again
+/// when it opens, because the operator may turn the protocol off in between.
+pub(super) const fn protocol_off(device: &Device, protocol: Protocol) -> Option<Conflict> {
     match protocol {
-        Protocol::Ssh if device.ssh.enabled => None,
-        Protocol::Ssh => Some(Conflict::SshDisabled),
-        Protocol::Rdp => Some(Conflict::RdpDisabled),
-        Protocol::Vnc => Some(Conflict::VncDisabled),
+        Protocol::Ssh if !device.ssh.enabled => Some(Conflict::SshDisabled),
+        Protocol::Rdp if !device.rdp.enabled => Some(Conflict::RdpDisabled),
+        Protocol::Vnc if !device.vnc.enabled => Some(Conflict::VncDisabled),
+        Protocol::Ssh | Protocol::Rdp | Protocol::Vnc => None,
     }
 }
 
-/// The device's state allows a session: display and host acceptable, the protocol on, a key
-/// accepted.
-async fn admit(db: &PgPool, device: &Device, req: &StartRequest) -> Result<Display, Error> {
+/// Whether an RDP session needs an accepted server certificate: always, unless the device
+/// uses standard RDP security (no TLS, so no certificate) or the operator chose to ignore
+/// the certificate (K4 Section 1, SEC-007).
+pub(super) fn certificate_required(rdp: &RdpSettings) -> bool {
+    rdp.security != RdpSecurity::Rdp && !rdp.ignore_certificate
+}
+
+/// What the device must have accepted before `protocol` may start: an SSH host key, or an
+/// RDP server certificate when [`certificate_required`]; VNC pins nothing (K4 Sections 1
+/// and 6).
+async fn trust_missing(
+    db: &PgPool,
+    device: &Device,
+    protocol: Protocol,
+) -> Result<Option<Conflict>, Error> {
+    let missing = match protocol {
+        Protocol::Ssh => host_key(db, device.id)
+            .await?
+            .is_none()
+            .then_some(Conflict::NoHostKey),
+        Protocol::Rdp if certificate_required(&device.rdp) => {
+            let accepted = store::server_certificates(db, &[device.id]).await?;
+            accepted.is_empty().then_some(Conflict::NoServerCertificate)
+        }
+        Protocol::Rdp | Protocol::Vnc => None,
+    };
+    Ok(missing)
+}
+
+/// The device's state allows a session: display and host acceptable, the protocol on, and
+/// what it pins accepted.
+async fn admit(
+    db: &PgPool,
+    live: &Live,
+    device: &Device,
+    req: &StartRequest,
+) -> Result<Display, Error> {
     let display = &req.display;
-    let host = host_problem(&device.host);
+    let host = host_problem(&device.host, live.target_rule());
     let display = match (checked_display(display), host) {
         (Ok(display), None) => display,
         (display, host) => {
@@ -125,8 +160,8 @@ async fn admit(db: &PgPool, device: &Device, req: &StartRequest) -> Result<Displ
     if let Some(conflict) = protocol_off(device, req.protocol) {
         return Err(Error::Conflict(conflict));
     }
-    if host_key(db, device.id).await?.is_none() {
-        return Err(Error::Conflict(Conflict::NoHostKey));
+    if let Some(conflict) = trust_missing(db, device, req.protocol).await? {
+        return Err(Error::Conflict(conflict));
     }
     Ok(display)
 }
@@ -139,13 +174,13 @@ fn random_token() -> Result<TicketToken, Error> {
 }
 
 /// Starts a session (K3, K4 §1): refuses a missing device (`NotFound`), a display outside
-/// K4 §4's bounds or a host that is a loopback, link-local, multicast or unspecified IP
-/// literal (`Validation`), and the protocol turned off (RDP and VNC always, until devices have their settings) or no
-/// accepted host key (`Conflict`). A time
-/// zone that is not a zone name is dropped, so the tunnel uses UTC. Then, in one
-/// transaction, it writes the live session row and the audit entry `session.start`, and
-/// holds a ticket that the protocol's tunnel redeems once within 30 s from `client`. Tickets that expired
-/// unredeemed are swept first.
+/// K4 §4's bounds or a host that is an IP literal the target rule or the hub's deny list
+/// refuses (`Validation`), and the protocol turned off, an SSH session without an accepted
+/// host key or an RDP session without an accepted server certificate when it needs one
+/// (`Conflict`). A time zone that is not a zone name is dropped, so the tunnel uses UTC.
+/// Then, in one transaction, it writes the live session row and the audit entry
+/// `session.start`, and holds a ticket that the protocol's tunnel redeems once within 30 s
+/// from `client`. Tickets that expired unredeemed are swept first.
 ///
 /// If the hub shut down while the commit was in flight, `shut_down` took the ticket but could
 /// not yet see the row; the row then ends here with `HUB_SHUTDOWN` and its audit entry, and
@@ -167,7 +202,7 @@ pub async fn start(
     req: StartRequest,
 ) -> Result<Ticket, Error> {
     let device = find_device(db, req.device).await?;
-    let display = admit(db, &device, &req).await?;
+    let display = admit(db, live, &device, &req).await?;
     let now = clock.now();
     sweep(db, live, now).await?;
     let token = random_token()?;

@@ -136,6 +136,7 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .data(checks::graphql::check_uptime_loader(pool.clone(), clock).delay(BATCH_WINDOW))
     // sessions (R-032)
     .data(sessions::graphql::host_key_loader(pool.clone()).delay(BATCH_WINDOW))
+    .data(sessions::graphql::server_certificate_loader(pool.clone()).delay(BATCH_WINDOW))
     .data(live)
     .data(policy)
     // metrics

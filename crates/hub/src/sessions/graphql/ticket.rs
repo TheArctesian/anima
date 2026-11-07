@@ -59,12 +59,19 @@ impl Ticket {
         self.token()
     }
 
-    /// The protocol's tunnel, `/terminal` for SSH (K4 §1, R-062), or `/files` (K4 §9).
+    /// The protocol's tunnel: `/terminal` for SSH, `/tunnel` for RDP and VNC (K4 §1), or
+    /// `/files` (K4 §9).
     async fn tunnel_path(&self) -> &str {
         self.tunnel_path
     }
 
     async fn expires_at(&self) -> DateTime<Utc> {
         self.expires_at
+    }
+
+    /// Whether `startSession` sent a Wake-on-LAN packet first (K4 §1). The hub sends none
+    /// yet, so this is always false and the opening keeps its usual limit.
+    async fn wake_sent(&self) -> bool {
+        false
     }
 }
