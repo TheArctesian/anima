@@ -55,6 +55,8 @@ pub struct Trimmed {
     pub day: u64,
     /// Samples whose series no longer exists (DEV-015).
     pub orphan_samples: u64,
+    /// Series with no aggregate row and no recent sample (D-5).
+    pub idle_series: u64,
 }
 
 /// Midnight UTC of the day that holds `now`. Partitions are created from it, so the database's

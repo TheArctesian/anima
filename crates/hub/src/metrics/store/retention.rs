@@ -81,3 +81,25 @@ pub(in crate::metrics) async fn delete_orphan_samples(db: &PgPool) -> Result<u64
     .await?;
     Ok(deleted.rows_affected())
 }
+
+/// Deletes the series that have no minute, hour or day row and no sample since `since`; returns
+/// how many (D-5: a device that renames its mounts cannot grow the table without bound). A
+/// series a collection writes has a sample from the last minute, so it is never idle; one that
+/// is written again later is created again by the upsert of `record`.
+pub(in crate::metrics) async fn delete_idle_series(
+    db: &PgPool,
+    since: DateTime<Utc>,
+) -> Result<u64, Error> {
+    let deleted = sqlx::query(
+        "DELETE FROM metrics.series s \
+         WHERE NOT EXISTS (SELECT 1 FROM metrics.minute a WHERE a.series_id = s.id) \
+           AND NOT EXISTS (SELECT 1 FROM metrics.hour a WHERE a.series_id = s.id) \
+           AND NOT EXISTS (SELECT 1 FROM metrics.day a WHERE a.series_id = s.id) \
+           AND NOT EXISTS (SELECT 1 FROM metrics.samples m \
+                           WHERE m.series_id = s.id AND m.at >= $1)",
+    )
+    .bind(since)
+    .execute(db)
+    .await?;
+    Ok(deleted.rows_affected())
+}

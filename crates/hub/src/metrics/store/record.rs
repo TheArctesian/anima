@@ -16,7 +16,8 @@ const UPSERT_SERIES_SQL: &str = "\
     ON CONFLICT (device_id, kind, label) DO NOTHING";
 
 /// The upsert of one aggregate table from the samples just inserted: the mean is kept as a
-/// running mean over `count` samples, and the bucket starts on the UTC minute, hour or day, as the table is named.
+/// running mean over `count` samples, and the bucket starts on the UTC minute, hour or day, as
+/// the table is named.
 macro_rules! aggregate {
     ($table:literal) => {
         concat!(

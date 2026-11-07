@@ -238,3 +238,43 @@ async fn dev_015_deleting_a_device_removes_its_series_and_aggregates_and_retenti
     assert_eq!(trimmed.orphan_samples, 2);
     assert_eq!(rows(&pool, "samples").await, 1);
 }
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../tests/fixtures", scripts("devices"))
+)]
+async fn d5_rotating_labels_leave_only_the_current_series_after_retention(pool: PgPool) {
+    let pve = device(PVE_01);
+    let disk = MetricKind::DiskPercent;
+    for (days_ago, label) in [(10, "/old1"), (10, "/old2"), (9, "/old3"), (1, "/now")] {
+        let at = day_at(&pool, days_ago, "10:00:00").await;
+        write(&pool, pve, at, &[(disk, label, 1.0)]).await;
+    }
+    let short = Retention {
+        minute: TimeDelta::days(5),
+        hour: TimeDelta::days(5),
+        day: TimeDelta::days(5),
+        ..Retention::default()
+    };
+
+    let trimmed = drop_expired_partitions(&pool, database_now(&pool).await, short)
+        .await
+        .unwrap();
+    let left: Vec<String> = sqlx::query_scalar("SELECT label FROM metrics.series")
+        .fetch_all(&pool)
+        .await
+        .unwrap();
+    // A label that comes back is a new series again.
+    write(
+        &pool,
+        pve,
+        day_at(&pool, 0, "01:00:00").await,
+        &[(disk, "/old1", 2.0)],
+    )
+    .await;
+
+    assert_eq!(trimmed.idle_series, 3);
+    assert_eq!(left, ["/now"]);
+    assert_eq!(rows(&pool, "series").await, 2);
+    assert_eq!(rows(&pool, "samples").await, 2);
+}

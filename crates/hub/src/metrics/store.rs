@@ -13,5 +13,6 @@ pub(super) use gpus::gpus;
 pub(super) use latest::latest;
 pub(super) use record::record;
 pub(super) use retention::{
-    create_days_ahead, database_now, delete_orphan_samples, drop_days_before, trim_aggregates,
+    create_days_ahead, database_now, delete_idle_series, delete_orphan_samples, drop_days_before,
+    trim_aggregates,
 };

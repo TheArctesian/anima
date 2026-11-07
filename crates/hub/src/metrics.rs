@@ -117,7 +117,8 @@ pub async fn create_partitions_ahead(db: &PgPool, now: DateTime<Utc>) -> Result<
 }
 
 /// The daily retention run: drops sample partitions past `retention.samples` (DB-005), deletes
-/// aggregate rows past their periods (DB-009) and the samples of deleted series (DEV-015).
+/// aggregate rows past their periods (DB-009), the samples of deleted series (DEV-015) and the
+/// series that went idle (D-5).
 /// `now` is held to the database clock, so a caller cannot ask for more to go than the
 /// database's own time allows (CQ-021).
 ///
@@ -133,6 +134,7 @@ pub async fn drop_expired_partitions(
     let cutoffs = retention.cutoffs(now);
     let partitions = store::drop_days_before(db, cutoffs.samples, now).await?;
     let [minute, hour, day] = store::trim_aggregates(db, &cutoffs).await?;
+    let idle_series = store::delete_idle_series(db, cutoffs.minute).await?;
     let orphan_samples = store::delete_orphan_samples(db).await?;
     Ok(Trimmed {
         partitions,
@@ -140,5 +142,6 @@ pub async fn drop_expired_partitions(
         hour,
         day,
         orphan_samples,
+        idle_series,
     })
 }
