@@ -124,6 +124,18 @@ describe('wake line (RA-031)', () => {
     expect(second.closedByClient).toBeDefined();
   });
 
+  it('RA-031: a tunnel address the client refuses after a waking ticket shows the wake line as stopped', async () => {
+    const { target, answers, calls } = show();
+    answers.wakeSent = true;
+    answers.tunnelPath = '//evil.example/tunnel';
+    FakeResizeObserver.resize(800, 600);
+    await settle();
+    expect(FakeTunnelSocket.made).toEqual([]);
+    expect(calls.endSession).toEqual(['session-1']);
+    expect(stepMarks(target)).toEqual(['request:done', 'gateway:failed', 'device:waiting', 'ready:waiting']);
+    expect(wakeOf(target)).toEqual({ mark: 'failed', text: 'Waking desk stopped' });
+  });
+
   it('RA-031: with no wake packet the slot stays and is empty', async () => {
     const { target } = show();
     FakeResizeObserver.resize(800, 600);

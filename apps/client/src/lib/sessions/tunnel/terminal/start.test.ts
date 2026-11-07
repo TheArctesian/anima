@@ -9,14 +9,14 @@ const TARGET = { deviceId: 'device-1', display: DISPLAY };
 const SETUP = { origin: 'https://hub.anima.ing', WebSocket: FAKE_TERMINAL_SOCKET, size: () => ({ cols: 80, rows: 24 }), onbytes: () => undefined };
 
 /** A sessions API that issues a new ticket per call and records every call. */
-function fakeApi(tunnelPath = '/terminal') {
+function fakeApi(tunnelPath = '/terminal', wakeSent = false) {
   const calls: { startSession: string[]; endSession: string[] } = { startSession: [], endSession: [] };
   let issued = 0;
   const api: Pick<SessionsApi, 'startSession' | 'endSession'> = {
     startSession: (deviceId, protocol) => {
       calls.startSession.push(`${deviceId} ${protocol}`);
       issued += 1;
-      const ticket: SessionTicket = { sessionId: `session-${String(issued)}`, token: `token-${String(issued)}`, tunnelPath, expiresAt: '2026-11-04T10:00:30Z', wakeSent: false };
+      const ticket: SessionTicket = { sessionId: `session-${String(issued)}`, token: `token-${String(issued)}`, tunnelPath, expiresAt: '2026-11-04T10:00:30Z', wakeSent };
       return Promise.resolve({ ok: true, value: ticket });
     },
     endSession: (id) => {
@@ -62,6 +62,13 @@ describe('start and reconnect of an SSH session (D-3, D-5, RA-007)', () => {
     api.startSession = () => Promise.resolve({ ok: false, error: conflict });
     expect(await startTerminal(api, TARGET, SETUP)).toEqual({ ok: false, error: conflict });
     expect(FakeTerminalSocket.made).toEqual([]);
+  });
+
+  it('RA-031, K4 §1: a refused address after a waking ticket still says the hub woke the device, and ends the session', async () => {
+    const { api, calls } = fakeApi('//evil.example/terminal', true);
+    const result = await startTerminal(api, TARGET, SETUP);
+    expect(result).toMatchObject({ ok: false, error: { problem: 'bad-address' }, wakeSent: true });
+    expect(calls.endSession).toEqual(['session-1']);
   });
 
   it('SEC-002: a ticket path the client refuses ends the new session and reports the refusal', async () => {

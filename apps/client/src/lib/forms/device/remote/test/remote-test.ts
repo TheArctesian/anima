@@ -55,7 +55,7 @@ export function remoteTestInput(
 }
 
 export type RemoteOutcome =
-  | { readonly kind: 'reachable' }
+  | { readonly kind: 'reachable'; readonly message: string }
   | { readonly kind: 'unreachable'; readonly message: string }
   | { readonly kind: 'certificateNew'; readonly certificate: ServerCertificate }
   | { readonly kind: 'certificateChanged'; readonly certificate: ServerCertificate | null };
@@ -76,7 +76,7 @@ export function remoteOutcome(protocol: RemoteProtocol, result: RemoteTestResult
     if (result.certificateChanged === true) return { kind: 'certificateChanged', certificate };
     if (certificate !== null && certificate.fingerprintSha256 !== acceptedFingerprint) return { kind: 'certificateNew', certificate };
   }
-  return { kind: 'reachable' };
+  return { kind: 'reachable', message };
 }
 
 const REACHABLE_TEXT = 'The device answered. Anima signs in when a session starts.';
@@ -86,7 +86,8 @@ const CHANGED_CERTIFICATE_WARNING = 'The server certificate changed. Do not trus
 export function remoteOutcomeText(outcome: RemoteOutcome): string {
   switch (outcome.kind) {
     case 'reachable':
-      return REACHABLE_TEXT;
+      // The hub's message is fixed text (R-035); without one, the sign-in sentence.
+      return outcome.message === '' ? REACHABLE_TEXT : outcome.message;
     case 'unreachable':
       return outcome.message;
     case 'certificateNew':

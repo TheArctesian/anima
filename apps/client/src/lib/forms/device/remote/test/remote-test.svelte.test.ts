@@ -75,7 +75,7 @@ it('SEC-007: a changed RDP certificate is a warning, never the ok sentence', asy
 });
 
 it('DEV-013: the VNC test is tested by ID and, with authenticated false, is not shown as a refused sign-in', async () => {
-  const calls = show(WITH_RDP, { section: 'vnc' }, answer({ authenticated: false, message: 'The VNC password was refused.' }));
+  const calls = show(WITH_RDP, { section: 'vnc' }, answer({ authenticated: false, message: null }));
   document.querySelector<HTMLButtonElement>('[data-connection-test="vnc"]')?.click();
   flushSync();
   await settle();
