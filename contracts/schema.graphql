@@ -939,7 +939,7 @@ type WakeResult {
   relayName: String!
 }
 
-type SessionChange @pending {
+type SessionChange {
   session: Session!
 }
 
@@ -1060,7 +1060,7 @@ type Subscription {
   heartbeatAdded(checkId: ID, deviceId: ID): HeartbeatAdded!
   eventAdded(minSeverity: Severity = INFO): Event!
   "Every start and end of a session, from every client (RA-034)."
-  sessionChanged: SessionChange! @pending
+  sessionChanged: SessionChange!
   metricsAdded(deviceId: ID): MetricsAdded!
 }
 

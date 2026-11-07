@@ -11,9 +11,9 @@ use anima_hub::{
     clock::{Clock, FixedClock},
     events::process_log::subscriber,
     schema::harden,
-    sessions::graphql::{Mutation, Query},
+    sessions::graphql::{Mutation, Query, Subscription},
 };
-use async_graphql::{EmptySubscription, Request, Response, Schema, Variables};
+use async_graphql::{Request, Response, Schema, Variables};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
@@ -65,7 +65,7 @@ async fn logged(schema: &TestSchema, request: Request) -> (String, Response) {
 /// The plain schema shows what the input type itself lets out.
 fn schema_with(pool: &PgPool, hardened: bool) -> TestSchema {
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(now()));
-    let builder = Schema::build(Query, Mutation, EmptySubscription)
+    let builder = Schema::build(Query, Mutation, Subscription)
         .data(pool.clone())
         .data(loopback_live())
         .data(vault())

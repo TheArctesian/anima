@@ -4,7 +4,8 @@
 //! 1. The token from the query and the client address, then the files ticket's single-use
 //!    redemption (403). The token is spent before anything else is checked (K4 Section 1).
 //! 2. The ticket's SSH session must still have its tunnel open, and the hub must not be
-//!    shutting down (403).
+//!    shutting down (403). The relay then registers with `Live`, so hub shutdown waits for it
+//!    to write the audit entry of a transfer it cuts short.
 //! 3. The subprotocol `anima-files` (400).
 //! 4. The device side: the device, a link to it (pinned key, stored credential, deny list,
 //!    P2-003, P2-004), the `sftp` subsystem and the SFTP version exchange, unless the session
@@ -39,7 +40,10 @@ use crate::{
     credentials::Vault,
     devices,
     events::Bus,
-    sessions::{LinkError, Live, SshLink, admission, end::CLIENT_IDLE, link, tickets::FILES_PATH},
+    sessions::{
+        LinkError, Live, SshLink, admission, end::CLIENT_IDLE, link, live::FilesRelay,
+        tickets::FILES_PATH,
+    },
     targets::AddressPolicy,
 };
 
@@ -164,13 +168,10 @@ async fn open(
         return StatusCode::FORBIDDEN.into_response();
     };
     drop(query);
-    let signal = files.live.tunnel_end(ticket.session);
-    let Some(mut session) = signal
-        .filter(|_| !files.live.is_shutting_down())
-        .map(SessionEnd::new)
-    else {
+    let Some((signal, registration)) = files.live.files_relay(ticket.session) else {
         return StatusCode::FORBIDDEN.into_response();
     };
+    let mut session = SessionEnd::new(signal);
     let Some(upgrade) = admission::offering(upgrade, SUBPROTOCOL) else {
         return StatusCode::BAD_REQUEST.into_response();
     };
@@ -188,7 +189,11 @@ async fn open(
             return StatusCode::SERVICE_UNAVAILABLE.into_response();
         }
     };
-    let admitted = Admitted { ticket, session };
+    let admitted = Admitted {
+        ticket,
+        session,
+        registration,
+    };
     upgrade.on_upgrade(move |client| relay(client, files, admitted, opened))
 }
 
@@ -225,10 +230,11 @@ async fn opened(files: &Files, ticket: &FilesTicket) -> Result<Opened, NotOpened
     })
 }
 
-/// A redeemed files ticket and its SSH session's end signal.
+/// A redeemed files ticket, its SSH session's end signal and the relay's registration.
 struct Admitted {
     ticket: FilesTicket,
     session: SessionEnd,
+    registration: FilesRelay,
 }
 
 /// Runs the upgraded tunnel to its end, then leaves the device.
@@ -238,7 +244,11 @@ async fn relay(
     admitted: Admitted,
     opened: Opened,
 ) {
-    let Admitted { ticket, session } = admitted;
+    let Admitted {
+        ticket,
+        session,
+        registration,
+    } = admitted;
     let Opened {
         link,
         remote,
@@ -270,4 +280,6 @@ async fn relay(
     .await;
     // Dropping the link ends the SSH connection.
     drop(link);
+    // Only now, with any transfer's audit entry written, may shutdown stop waiting.
+    drop(registration);
 }
