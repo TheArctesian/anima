@@ -58,7 +58,8 @@
     const was = before;
     before = now;
     const offset = was === undefined ? 0 : slideOffset(was, now);
-    if (lines === undefined || offset === 0) return;
+    // `bind:this` clears to null when the chart goes away.
+    if (!lines || offset === 0) return;
     const shown = Number.parseFloat(getComputedStyle(lines).translate.split(' ')[0] ?? '') || 0;
     animate(lines, { translate: { x: shown + offset } }, { type: 'instant' });
     animate(lines, { translate: { x: 0 } }, springMotion('default', preference.reduced));
