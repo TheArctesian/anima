@@ -187,9 +187,10 @@ fn random_token() -> Result<TicketToken, Error> {
 /// (`Conflict`). A time zone that is not a zone name is dropped, so the tunnel uses UTC.
 /// When `req.wake` says the device is Down, it has a MAC address and its site has a wake
 /// relay, a Wake-on-LAN packet goes first and the ticket holds `wake_sent` when it was sent;
-/// a wake that fails leaves `wake_sent` false and the start goes on. Then, in one transaction, it writes the live session row and the audit entry
-/// `session.start`, and holds a ticket that the protocol's tunnel redeems once within 30 s
-/// from `client`. Tickets that expired unredeemed are swept first.
+/// a wake that fails leaves `wake_sent` false and the start goes on. Then, in one
+/// transaction, it writes the live session row and the audit entry `session.start`, and
+/// holds a ticket that the protocol's tunnel redeems once within 30 s from `client`. Tickets
+/// that expired unredeemed are swept first.
 ///
 /// If the hub shut down while the commit was in flight, `shut_down` took the ticket but could
 /// not yet see the row; the row then ends here with `HUB_SHUTDOWN` and its audit entry, and
