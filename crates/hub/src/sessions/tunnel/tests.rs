@@ -9,6 +9,7 @@ mod policy;
 mod rdp_vnc_args;
 mod size;
 mod wire;
+mod withheld;
 
 use chrono::DateTime;
 use guac_protocol::{Decoder, Instruction};
