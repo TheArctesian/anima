@@ -3,6 +3,8 @@
 //! `anima-hub operator totp <username> [--disable]` (D-9) or `anima-hub health` (the compose
 //! healthcheck).
 
+mod upkeep;
+
 use std::{
     io::{BufRead as _, IsTerminal as _},
     process::ExitCode,
@@ -156,7 +158,7 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     };
     let tunnels = tunnels(&dependencies);
     let schema = build_schema(dependencies);
-    let upkeep = spawn_upkeep(&pool, &clock);
+    let upkeep = upkeep::spawn(&pool, &clock);
     let scheduler = checks::spawn_scheduler(pool.clone(), bus.clone(), clock.clone(), probing);
     let collector = metrics::spawn_collector(
         pool.clone(),
@@ -252,56 +254,6 @@ async fn stop_signal() {
         () = interrupt => {}
         () = terminate => {}
     }
-}
-
-/// Starts the daily jobs, each run now and then daily (D-4, DB-004, DB-005, K2 retention):
-/// day partitions ahead and expired ones dropped, and old login attempts and expired tokens
-/// deleted.
-fn spawn_upkeep(
-    pool: &PgPool,
-    clock: &Arc<dyn anima_hub::clock::Clock>,
-) -> [tokio::task::JoinHandle<()>; 3] {
-    let partitions = {
-        let db = pool.clone();
-        events::run_daily("partitions", clock.clone(), move |now| {
-            let db = db.clone();
-            async move {
-                events::keep_partitions(&db, now)
-                    .await
-                    .map_err(|e| e.fault())
-            }
-        })
-    };
-    let metrics_partitions = {
-        let db = pool.clone();
-        events::run_daily("metrics_partitions", clock.clone(), move |now| {
-            let db = db.clone();
-            async move {
-                metrics::create_partitions_ahead(&db, now)
-                    .await
-                    .map_err(|_| "metrics_partitions")?;
-                metrics::drop_expired_partitions(&db, now, metrics::Retention::default())
-                    .await
-                    .map(drop)
-                    .map_err(|_| "metrics_retention")
-            }
-        })
-    };
-    let prune = {
-        let db = pool.clone();
-        events::run_daily("access_prune", clock.clone(), move |now| {
-            let db = db.clone();
-            async move {
-                let pruned = access::prune(&db, now).await;
-                pruned.map(drop).map_err(|e| e.fault().unwrap_or("access"))
-            }
-        })
-    };
-    [
-        tokio::spawn(partitions),
-        tokio::spawn(metrics_partitions),
-        tokio::spawn(prune),
-    ]
 }
 
 /// Applies the migrations as the owner role and exits; serving never migrates (R-016).
