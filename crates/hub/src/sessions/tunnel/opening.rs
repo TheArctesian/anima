@@ -23,6 +23,7 @@ use tokio::time::timeout;
 use super::{
     arguments::{BadConnectValue, Sources, audio, connect_values, pinned_security, time_zone},
     guacd::{self, Connected},
+    policy::Policy,
     route::Route,
 };
 use crate::{
@@ -40,11 +41,18 @@ use crate::{
 /// What the tunnel opens after the upgrade. Each way the opening can end with something to
 /// tell the client, rather than a refusal, is a variant.
 pub(super) enum Opening {
-    /// guacd is past `ready`: relay.
-    Gateway(Connected),
+    /// guacd is past `ready`: relay. Boxed, as it is far larger than the other variant.
+    Gateway(Box<Opened>),
     /// The device presented another RDP server certificate than the accepted one; guacd was
     /// never reached.
     CertificateChanged,
+}
+
+/// guacd past `ready`, and what the device lets the session move, read with the rest of the
+/// device record so it holds for the session's life (K4 Section 4).
+pub(super) struct Opened {
+    pub(super) connected: Connected,
+    pub(super) policy: Policy,
 }
 
 /// Why the tunnel did not open. The messages are for the process log; none holds a value,
@@ -210,9 +218,10 @@ pub(super) async fn open(route: &Route, ticket: &PendingTicket) -> Result<Openin
         audio: audio(desktop, &device),
         values,
     };
+    let policy = Policy::of(desktop, &device);
     guacd::connect(&route.guacd, desktop.select(), params, route.timing)
         .await
-        .map(Opening::Gateway)
+        .map(|connected| Opening::Gateway(Box::new(Opened { connected, policy })))
 }
 
 /// The device's accepted RDP server certificate, when it has one; an RDP session that needs

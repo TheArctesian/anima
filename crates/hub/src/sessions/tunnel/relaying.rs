@@ -91,11 +91,11 @@ pub(super) async fn connected(
 ) -> End {
     let client = upgraded(tunnel, socket, timing.handshake).await;
     match (opening, client) {
-        (Opening::Gateway(connected), Ok(client)) => {
-            link::relay(client, connected, tunnel, timing).await
+        (Opening::Gateway(opened), Ok(client)) => {
+            link::relay(client, *opened, tunnel, timing).await
         }
-        (Opening::Gateway(connected), Err(end)) => {
-            leave_gateway(connected.stream).await;
+        (Opening::Gateway(opened), Err(end)) => {
+            leave_gateway(opened.connected.stream).await;
             end
         }
         (Opening::CertificateChanged, Ok(client)) => {

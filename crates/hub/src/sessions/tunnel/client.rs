@@ -5,14 +5,21 @@
 //! 1.6.0 `src/libguac/user-handlers.c`; `guac_user_handle_instruction` in `user.c` passes
 //! `argc` through unchecked), so a short instruction would make guacd read past the
 //! arguments it got. Anything else closes the tunnel with 1002.
+//!
+//! The session's policy narrows the list (K4 Section 4). `clipboard` is on the list whatever
+//! the policy, so a paste the device refuses is dropped with its `blob` and `end`, and the
+//! session stays up: guacamole-common-js sends the local clipboard on its own. `audio`,
+//! `file`, `put` and `get` are on the list only while the policy permits them; otherwise they
+//! close the tunnel like any opcode off the list.
 
 use guac_protocol::{Display, Instruction};
 
 use super::decimal::decimal;
 use super::ending::Cause;
-use super::relay::{ClientStep, MAX_CLIENT_STREAMS, PROMPTABLE, Relay};
+use super::relay::{ClientStep, MAX_STREAMS, Relay};
 
-/// The client may always set the terminal colour scheme (GW-012, guacd SSH `argv`).
+/// The client may always set the terminal colour scheme (GW-012, K4 Section 4). Only guacd's
+/// terminal protocols register it; the RDP and VNC plugins do not apply it.
 const COLOR_SCHEME: &str = "color-scheme";
 /// Most digits in a `size` value: 8192 has four; one more allows a leading zero.
 const SIZE_DIGITS: usize = 5;
@@ -39,8 +46,14 @@ impl Relay {
                 cause: Cause::OperatorClosed,
             },
             "ack" => ack(i),
-            "clipboard" => self.open_stream(i, 2),
+            "clipboard" => self.clipboard(i),
             "argv" => self.argv(i),
+            "audio" if self.policy.microphone => self.open_stream(i, 2, 0),
+            "file" if self.policy.uploads() => self.open_stream(i, 3, 0),
+            "put" if self.policy.uploads() && object(&i) => self.open_stream(i, 4, 1),
+            "get" if self.policy.shared_drive && object(&i) && i.args.len() >= 2 => {
+                ClientStep::Forward(i)
+            }
             "blob" => self.on_stream(i, 2, false),
             "end" => self.on_stream(i, 1, true),
             opcode => match INPUT_ARITY.iter().find(|(name, _)| *name == opcode) {
@@ -57,22 +70,41 @@ impl Relay {
             return invalid();
         };
         let allowed = name == COLOR_SCHEME
-            || PROMPTABLE
+            || self
+                .policy
+                .prompts()
                 .iter()
                 .find(|prompt| **prompt == name.as_str())
                 .is_some_and(|prompt| self.prompted.remove(prompt));
         if allowed {
-            self.open_stream(i, 3)
+            self.open_stream(i, 3, 0)
         } else {
             invalid()
         }
     }
 
-    /// An instruction that opens client stream `args[0]`; the stream may then carry `blob`
-    /// and `end`.
-    fn open_stream(&mut self, i: Instruction, arity: usize) -> ClientStep {
-        match stream_index(&i, arity) {
+    /// `clipboard,<stream>,<mimetype>`: forwarded when paste is on; otherwise dropped, and
+    /// the stream's `blob` and `end` with it.
+    fn clipboard(&mut self, i: Instruction) -> ClientStep {
+        if self.policy.transfer.paste {
+            return self.open_stream(i, 2, 0);
+        }
+        match stream_index(&i, 2, 0) {
             Some(stream) => {
+                self.client_streams.remove(&stream);
+                self.dropped_client_streams.insert(stream);
+                ClientStep::Drop
+            }
+            None => invalid(),
+        }
+    }
+
+    /// An instruction that opens client stream `args[at]`; the stream may then carry `blob`
+    /// and `end`.
+    fn open_stream(&mut self, i: Instruction, arity: usize, at: usize) -> ClientStep {
+        match stream_index(&i, arity, at) {
+            Some(stream) => {
+                self.dropped_client_streams.remove(&stream);
                 self.client_streams.insert(stream);
                 ClientStep::Forward(i)
             }
@@ -80,17 +112,27 @@ impl Relay {
         }
     }
 
-    /// `blob` or `end` on client stream `args[0]`, which must be open; `end` closes it.
+    /// `blob` or `end` on client stream `args[0]`: forwarded when the stream is open, dropped
+    /// when its `clipboard` was; `end` closes it either way.
     fn on_stream(&mut self, i: Instruction, arity: usize, closes: bool) -> ClientStep {
-        let open = stream_index(&i, arity).filter(|stream| self.client_streams.contains(stream));
-        match open {
-            Some(stream) => {
-                if closes {
-                    self.client_streams.remove(&stream);
-                }
-                ClientStep::Forward(i)
-            }
-            None => invalid(),
+        let Some(stream) = stream_index(&i, arity, 0) else {
+            return invalid();
+        };
+        let (open, dropped) = if closes {
+            (
+                self.client_streams.remove(&stream),
+                self.dropped_client_streams.remove(&stream),
+            )
+        } else {
+            (
+                self.client_streams.contains(&stream),
+                self.dropped_client_streams.contains(&stream),
+            )
+        };
+        match (open, dropped) {
+            (true, _) => ClientStep::Forward(i),
+            (false, true) => ClientStep::Drop,
+            (false, false) => invalid(),
         }
     }
 }
@@ -140,16 +182,23 @@ fn ack(i: Instruction) -> ClientStep {
     }
 }
 
-/// The client stream index in `args[0]`, when the instruction has `arity` arguments or more
+/// The client stream index in `args[at]`, when the instruction has `arity` arguments or more
 /// and the index is below guacd's stream limit.
-fn stream_index(i: &Instruction, arity: usize) -> Option<u16> {
+fn stream_index(i: &Instruction, arity: usize, at: usize) -> Option<u16> {
     if i.args.len() < arity {
         return None;
     }
-    let index = decimal(i.args.first()?, NUMBER_DIGITS)?;
+    let index = decimal(i.args.get(at)?, NUMBER_DIGITS)?;
     u16::try_from(index)
         .ok()
-        .filter(|index| *index < MAX_CLIENT_STREAMS)
+        .filter(|index| *index < MAX_STREAMS)
+}
+
+/// `get` and `put` name guacd's filesystem object in `args[0]` as a plain number.
+fn object(i: &Instruction) -> bool {
+    i.args
+        .first()
+        .is_some_and(|object| decimal(object, NUMBER_DIGITS).is_some())
 }
 
 fn invalid() -> ClientStep {
