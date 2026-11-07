@@ -159,7 +159,7 @@
 {/snippet}
 
 {#snippet overviewSkeleton()}
-  <OverviewSkeleton range={place.range} source={metricsSource ?? 'NONE'} {now} />
+  <OverviewSkeleton range={place.range} source={metricsSource ?? 'NONE'} ssh={device?.ssh ?? null} {now} />
 {/snippet}
 
 <section class="detail">
