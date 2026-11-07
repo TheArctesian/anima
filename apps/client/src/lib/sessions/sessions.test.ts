@@ -28,7 +28,7 @@ function fakeHub() {
     count += 1;
     const sessionId = `session-${String(count)}`;
     const tunnel = { close: vi.fn() } as unknown as TerminalLink;
-    const answer: TerminalStartResult = { ok: true, value: { sessionId, tunnel, policy: UNREAD_POLICY } };
+    const answer: TerminalStartResult = { ok: true, value: { sessionId, tunnel, wakeSent: false, policy: UNREAD_POLICY } };
     const wait = held.shift();
     return wait === undefined ? Promise.resolve(answer) : new Promise((resolve) => wait(() => resolve(answer)));
   });

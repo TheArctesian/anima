@@ -170,14 +170,15 @@ it('RA-034: a pushed start or end changes the list and the count', async () => {
   expect(control().querySelector('.count')?.textContent).toBe('1');
 });
 
-it('D-6: a subscription error keeps the list and shows no failure; reopening queries again', async () => {
+it('RA-034: a subscription error keeps the list and shows the fixed text; reopening queries again', async () => {
   const answers: Record<string, unknown> = { LiveSessions: ANSWER(DESK) };
   const fake = await show(answers);
   fake.fail('LiveSessionChanged', { code: 'INTERNAL', message: 'Unknown field "sessionChanged"' });
   flushSync();
   await open();
   expect(control().querySelector('.count')?.textContent).toBe('1');
-  expect(document.querySelector('[role="alert"]')).toBeNull();
+  expect(panel()?.textContent).toContain('Live updates stopped; the list refreshes when you open it.');
+  expect(panel()?.textContent).not.toContain('Unknown field');
   const before = fake.requests.filter((request) => request.operation === 'LiveSessions').length;
   control().click();
   flushSync();
@@ -190,6 +191,13 @@ it('D-6: a subscription error keeps the list and shows no failure; reopening que
     expect(control().querySelector('.count')?.textContent).toBe('2');
   });
   expect(fake.requests.filter((request) => request.operation === 'LiveSessions').length).toBe(before + 1);
+  expect(panel()?.textContent).toContain('Live updates stopped');
+});
+
+it('RA-034: with the subscription working the stopped text is absent', async () => {
+  await show({ LiveSessions: ANSWER(DESK) });
+  await open();
+  expect(panel()?.textContent).not.toContain('Live updates stopped');
 });
 
 it('RA-034: a failed query shows fixed text and keeps the last list', async () => {

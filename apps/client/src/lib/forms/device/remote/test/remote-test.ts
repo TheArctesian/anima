@@ -55,18 +55,19 @@ export function remoteTestInput(
 }
 
 export type RemoteOutcome =
-  | { readonly kind: 'ok' }
+  | { readonly kind: 'reachable'; readonly message: string }
   | { readonly kind: 'unreachable'; readonly message: string }
-  | { readonly kind: 'authFailed'; readonly message: string }
   | { readonly kind: 'certificateNew'; readonly certificate: ServerCertificate }
   | { readonly kind: 'certificateChanged'; readonly certificate: ServerCertificate | null };
 
 const UNREACHABLE_MESSAGE = 'The device did not answer.';
-const AUTH_FAILED_MESSAGE = 'The device refused the credential.';
 
 /**
- * DEV-013, SEC-007: one outcome per result. An unreachable host wins, then a changed RDP certificate (never ok, even
- * without the certificate), then a new one (not the saved accepted one, `acceptedFingerprint`), then authentication. VNC has no certificate.
+ * DEV-013, SEC-007: one outcome per result. An unreachable host wins, then a changed RDP certificate (never
+ * reachable-only, even without the certificate), then a new one (not the saved accepted one, `acceptedFingerprint`).
+ * VNC has no certificate. `authenticated` is not read: the hub answers false for RDP and VNC, which sign in only
+ * when a session starts. A `null` certificate says nothing about the pin: the outcome is `reachable`, with the
+ * hub's message (STANDARD_ONLY, NEGOTIATION_REFUSED, NO_TLS).
  */
 export function remoteOutcome(protocol: RemoteProtocol, result: RemoteTestResult, acceptedFingerprint: string | null = null): RemoteOutcome {
   const message = result.message ?? '';
@@ -76,19 +77,19 @@ export function remoteOutcome(protocol: RemoteProtocol, result: RemoteTestResult
     if (result.certificateChanged === true) return { kind: 'certificateChanged', certificate };
     if (certificate !== null && certificate.fingerprintSha256 !== acceptedFingerprint) return { kind: 'certificateNew', certificate };
   }
-  if (!result.authenticated) return { kind: 'authFailed', message: message === '' ? AUTH_FAILED_MESSAGE : message };
-  return { kind: 'ok' };
+  return { kind: 'reachable', message };
 }
 
+const REACHABLE_TEXT = 'The device answered. Anima signs in when a session starts.';
 const CHANGED_CERTIFICATE_WARNING = 'The server certificate changed. Do not trust this device until you check it.';
 
 /** DEV-013, SEC-007: the sentence for a test outcome. */
 export function remoteOutcomeText(outcome: RemoteOutcome): string {
   switch (outcome.kind) {
-    case 'ok':
-      return 'The device answered and accepted the credential.';
+    case 'reachable':
+      // The hub's message is fixed text (R-035); without one, the sign-in sentence.
+      return outcome.message === '' ? REACHABLE_TEXT : outcome.message;
     case 'unreachable':
-    case 'authFailed':
       return outcome.message;
     case 'certificateNew':
       return 'The device has a new server certificate. Check the fingerprint before you trust it.';

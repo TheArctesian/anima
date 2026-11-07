@@ -21,8 +21,25 @@ function open(origin = ORIGIN): Opened {
   const states: GuacamoleState[] = [];
   const ends: GuacamoleState[] = [];
   const opening = openTunnel({
+    waking: false,
     origin,
     ticket: { tunnelPath: '/tunnel', token: TOKEN },
+    onchange: (state) => states.push(state),
+    onend: (state) => ends.push(state),
+    WebSocket: FAKE_TUNNEL_SOCKET,
+  });
+  if (!opening.ok) throw new Error(opening.error.message);
+  tunnels.push(opening.value);
+  return { tunnel: opening.value, socket: FakeTunnelSocket.latest(), states, ends };
+}
+
+function openWaking(waking: boolean): Opened {
+  const ends: GuacamoleState[] = [];
+  const states: GuacamoleState[] = [];
+  const opening = openTunnel({
+    origin: ORIGIN,
+    ticket: { tunnelPath: '/tunnel', token: TOKEN },
+    waking,
     onchange: (state) => states.push(state),
     onend: (state) => ends.push(state),
     WebSocket: FAKE_TUNNEL_SOCKET,
@@ -95,7 +112,7 @@ describe('tunnel request (K4 §2, SEC-002, D-3)', () => {
     const throwing = function (url: string): never {
       throw new SyntaxError(`The URL '${url}' is invalid.`);
     } as unknown as typeof WebSocket;
-    const opening = openTunnel({ origin: ORIGIN, ticket: { tunnelPath: '/tunnel', token: TOKEN }, WebSocket: throwing });
+    const opening = openTunnel({ waking: false, origin: ORIGIN, ticket: { tunnelPath: '/tunnel', token: TOKEN }, WebSocket: throwing });
     expect(opening).toEqual({ ok: false, error: { problem: 'not-opened', message: 'The session tunnel could not be opened.' } });
     expect(globalThis.WebSocket).toBe(real);
     // The library's timers were stopped: nothing fires against the missing socket.
@@ -103,7 +120,7 @@ describe('tunnel request (K4 §2, SEC-002, D-3)', () => {
   });
 
   it('SEC-002: a tunnel path that names another host is refused before any socket', () => {
-    const opening = openTunnel({ origin: ORIGIN, ticket: { tunnelPath: '//evil.example/x', token: TOKEN }, WebSocket: FAKE_TUNNEL_SOCKET });
+    const opening = openTunnel({ waking: false, origin: ORIGIN, ticket: { tunnelPath: '//evil.example/x', token: TOKEN }, WebSocket: FAKE_TUNNEL_SOCKET });
     expect(opening.ok).toBe(false);
     expect(FakeTunnelSocket.made).toEqual([]);
   });
@@ -120,6 +137,7 @@ describe('tunnel connect (D-3, K4 §4)', () => {
     const real = globalThis.WebSocket;
     const heard: { socket: typeof WebSocket; phase: string }[] = [];
     const opening = openTunnel({
+    waking: false,
       origin: ORIGIN,
       ticket: { tunnelPath: '/tunnel', token: TOKEN },
       WebSocket: FAKE_TUNNEL_SOCKET,
@@ -150,7 +168,7 @@ describe('tunnel connect (D-3, K4 §4)', () => {
     const throwing = function (url: string): never {
       throw new SyntaxError(`The URL '${url}' is invalid.`);
     } as unknown as typeof WebSocket;
-    openTunnel({ origin: ORIGIN, ticket: { tunnelPath: '/tunnel', token: TOKEN }, WebSocket: throwing, onchange: (s) => changes.push(s), onend: (s) => ends.push(s) });
+    openTunnel({ waking: false, origin: ORIGIN, ticket: { tunnelPath: '/tunnel', token: TOKEN }, WebSocket: throwing, onchange: (s) => changes.push(s), onend: (s) => ends.push(s) });
     await settle();
     expect(changes).toEqual([]);
     expect(ends).toEqual([]);
@@ -286,5 +304,43 @@ describe('instruction parsing (K4 §4, property)', () => {
     }
     expect(received).toEqual(sent);
     expect(tunnel.state().phase).toBe('waiting');
+  });
+});
+
+describe('the opening limit (K4 §1, RA-031)', () => {
+  it('K4 §1: without a wake packet the library closes a tunnel that has not opened after its 15 s receive limit', async () => {
+    const { ends, socket } = openWaking(false);
+    vi.advanceTimersByTime(15_000);
+    await settle();
+    expect(socket.closedByClient).toBeDefined();
+    expect(ends).toHaveLength(1);
+  });
+
+  it('RA-031, K4 §1: with a wake packet nothing ends the opening before 120 s', async () => {
+    const { ends, socket } = openWaking(true);
+    vi.advanceTimersByTime(119_000);
+    await settle();
+    expect(socket.closedByClient).toBeUndefined();
+    expect(ends).toEqual([]);
+  });
+
+  it('RA-031, K4 §1: with a wake packet the opening still ends at 120 s', async () => {
+    const { ends, socket } = openWaking(true);
+    vi.advanceTimersByTime(120_000);
+    await settle();
+    expect(socket.closedByClient).toBeDefined();
+    expect(ends).toHaveLength(1);
+  });
+
+  it('RA-031: once a waking tunnel is open the normal 15 s silence limit applies again', async () => {
+    const { ends, socket } = openWaking(true);
+    vi.advanceTimersByTime(100_000);
+    socket.open();
+    expect(socket.closedByClient).toBeUndefined();
+    // The hub's opening frame re-armed the receive timer at 15 s; nothing came after it, and the client's own pings do not reset it.
+    vi.advanceTimersByTime(15_000);
+    await settle();
+    expect(socket.closedByClient).toBeDefined();
+    expect(ends).toHaveLength(1);
   });
 });

@@ -31,6 +31,10 @@ function show(...args: Parameters<typeof showRemote>) {
 
 const stepMarks = (target: HTMLElement) =>
   [...target.querySelectorAll<HTMLElement>('[data-step]')].map((step) => `${step.dataset.step ?? ''}:${step.dataset.mark ?? ''}`);
+const wakeOf = (target: HTMLElement) => {
+  const line = target.querySelector<HTMLElement>('.wake');
+  return line === null ? undefined : { mark: line.dataset.wake, text: [...line.querySelectorAll('.label, .sr')].map((span) => span.textContent).join(' ') };
+};
 const reasonOf = (target: HTMLElement) => target.querySelector('[data-reason]')?.textContent;
 const certificateModals = () => document.querySelectorAll('[role="alertdialog"]').length;
 const reconnectOf = (target: HTMLElement) => [...target.querySelectorAll('button')].find((button) => button.textContent.includes('Reconnect'));
@@ -72,6 +76,71 @@ describe('start and connection steps (Section 5.7.3)', () => {
     await settle();
     expect(stepMarks(target)).toEqual(['request:done', 'gateway:failed', 'device:waiting', 'ready:waiting']);
     expect(reasonOf(target)).toBe('Could not open the session.');
+  });
+});
+
+describe('wake line (RA-031)', () => {
+  it('RA-031: a wake packet shows "Waking desk" under the four steps, done when the socket opens', async () => {
+    const { target, answers } = show();
+    answers.wakeSent = true;
+    FakeResizeObserver.resize(800, 600);
+    await settle();
+    expect(stepMarks(target)).toEqual(['request:done', 'gateway:active', 'device:waiting', 'ready:waiting']);
+    expect(wakeOf(target)).toEqual({ mark: 'active', text: 'Waking desk in progress' });
+    FakeTunnelSocket.latest().open();
+    flushSync();
+    expect(wakeOf(target)).toEqual({ mark: 'done', text: 'Waking desk done' });
+  });
+
+  it('RA-031: a tunnel that is refused after a waking ticket still shows the wake line as stopped', async () => {
+    const { target, answers } = show();
+    answers.wakeSent = true;
+    FakeResizeObserver.resize(800, 600);
+    await settle();
+    FakeTunnelSocket.latest().closeWith(1006);
+    await settle();
+    expect(wakeOf(target)).toEqual({ mark: 'failed', text: 'Waking desk stopped' });
+  });
+
+  it('RA-031: Reconnect after a waking attempt: the line clears and the new tunnel has the 15 s limit', async () => {
+    const { target, answers } = show();
+    answers.wakeSent = true;
+    FakeResizeObserver.resize(800, 600);
+    await settle();
+    const first = FakeTunnelSocket.latest();
+    vi.advanceTimersByTime(100_000);
+    expect(first.closedByClient).toBeUndefined();
+    first.closeWith(1006);
+    await settle();
+    answers.wakeSent = false;
+    reconnectOf(target)?.click();
+    await settle();
+    const second = FakeTunnelSocket.latest();
+    expect(second).not.toBe(first);
+    expect(wakeOf(target)).toEqual({ mark: undefined, text: '' });
+    vi.advanceTimersByTime(14_000);
+    expect(second.closedByClient).toBeUndefined();
+    vi.advanceTimersByTime(1_000);
+    expect(second.closedByClient).toBeDefined();
+  });
+
+  it('RA-031: a tunnel address the client refuses after a waking ticket shows the wake line as stopped', async () => {
+    const { target, answers, calls } = show();
+    answers.wakeSent = true;
+    answers.tunnelPath = '//evil.example/tunnel';
+    FakeResizeObserver.resize(800, 600);
+    await settle();
+    expect(FakeTunnelSocket.made).toEqual([]);
+    expect(calls.endSession).toEqual(['session-1']);
+    expect(stepMarks(target)).toEqual(['request:done', 'gateway:failed', 'device:waiting', 'ready:waiting']);
+    expect(wakeOf(target)).toEqual({ mark: 'failed', text: 'Waking desk stopped' });
+  });
+
+  it('RA-031: with no wake packet the slot stays and is empty', async () => {
+    const { target } = show();
+    FakeResizeObserver.resize(800, 600);
+    await settle();
+    expect(wakeOf(target)).toEqual({ mark: undefined, text: '' });
   });
 });
 

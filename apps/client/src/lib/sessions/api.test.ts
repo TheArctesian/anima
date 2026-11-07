@@ -28,7 +28,7 @@ function hubAnswering(body: unknown) {
 }
 
 const DISPLAY = { widthPx: 1280, heightPx: 800, dpi: 192, timezone: 'Europe/London' };
-const TICKET = { sessionId: 's-1', token: 't'.repeat(43), tunnelPath: '/tunnel', expiresAt: '2026-11-04T10:00:30Z' };
+const TICKET = { sessionId: 's-1', token: 't'.repeat(43), tunnelPath: '/tunnel', expiresAt: '2026-11-04T10:00:30Z', wakeSent: false };
 
 describe('sessionsApi (K1, CQ-045)', () => {
   it('K1: startSession asks for SSH on the device with the display and returns the ticket', async () => {

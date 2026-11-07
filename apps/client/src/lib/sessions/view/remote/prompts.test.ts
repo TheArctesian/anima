@@ -253,3 +253,39 @@ describe('D-7: the RDP certificate changed', () => {
     expect(reasonOf(target)).toBe("The device's RDP certificate has changed, so Anima did not connect.");
   });
 });
+
+describe('K4 §3: after the certificate warning is cancelled', () => {
+  it('K4 §3: after Cancel the ended panel offers "Check certificate", which runs a new connection test, not Reconnect', async () => {
+    const { target, calls } = show('RDP');
+    const socket = await connectRemote();
+    socket.closeWith(4003);
+    await settle();
+    buttonNamed(document.querySelector('[role="alertdialog"]'), 'Cancel')?.click();
+    await settle();
+    const names = [...target.querySelectorAll('button')].map((found) => found.textContent);
+    expect(names.some((name) => name.includes('Check certificate'))).toBe(true);
+    expect(names.some((name) => name.includes('Reconnect'))).toBe(false);
+    const tests = calls.testConnection.length;
+    [...target.querySelectorAll('button')].find((found) => found.textContent.includes('Check certificate'))?.click();
+    await settle();
+    expect(document.querySelector('[role="alertdialog"]')).not.toBeNull();
+    expect(calls.testConnection.length).toBe(tests + 1);
+    expect(calls.startSession).toHaveLength(1);
+  });
+
+  it('K4 §3: Check certificate then Cancel returns focus to the ended-panel button that opened the warning', async () => {
+    const { target } = show('RDP');
+    const socket = await connectRemote();
+    socket.closeWith(4003);
+    await settle();
+    buttonNamed(document.querySelector('[role="alertdialog"]'), 'Cancel')?.click();
+    await settle();
+    const check = () => [...target.querySelectorAll('button')].find((found) => found.textContent.includes('Check certificate'));
+    check()?.click();
+    await settle();
+    buttonNamed(document.querySelector('[role="alertdialog"]'), 'Cancel')?.click();
+    await settle();
+    expect(document.querySelector('[role="alertdialog"]')).toBeNull();
+    expect(document.activeElement).toBe(check());
+  });
+});

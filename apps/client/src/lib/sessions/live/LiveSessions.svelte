@@ -139,6 +139,10 @@
           <p class="note">No live sessions.</p>
         {/if}
       {/each}
+      <!-- Last, so that it appearing moves no row (MOT-007). -->
+      {#if live.updatesStopped !== null}
+        <p class="failure" role="status"><Icon name="nf-md-alert" />{live.updatesStopped}</p>
+      {/if}
     </div>
   {/if}
 </div>

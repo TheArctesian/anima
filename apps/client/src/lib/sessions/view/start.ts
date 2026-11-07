@@ -32,7 +32,7 @@ export interface PolicedSession<Tunnel> extends Started<Tunnel> {
 /** The outcome of one view start. */
 export type ViewStartResult<Tunnel> =
   | { readonly ok: true; readonly value: PolicedSession<Tunnel> }
-  | { readonly ok: false; readonly error: HubError | TunnelRefusal };
+  | { readonly ok: false; readonly error: HubError | TunnelRefusal; readonly wakeSent?: boolean };
 
 /** A started SSH session (K4 §8). */
 export type TerminalStartResult = ViewStartResult<TerminalLink>;

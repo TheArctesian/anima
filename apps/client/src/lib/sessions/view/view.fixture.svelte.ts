@@ -29,6 +29,8 @@ export interface HubAnswers {
   accept: (fingerprint: string) => HubResult<AcceptedHostKey>;
   /** The device's copy and paste flags, or `'unanswered'` when the hub does not answer them. */
   transfer: SessionTransfer | 'unanswered';
+  /** `startSession` says it sent a Wake-on-LAN packet. */
+  wakeSent: boolean;
 }
 
 export const NEW_KEY = { algorithm: 'ssh-ed25519', fingerprintSha256: 'SHA256:n3wK3yF1ngerpr1ntAAAAAAAAAAAAAAAAAAAAAAAAAA', firstSeenAt: '2026-11-04T10:00:00Z' };
@@ -43,6 +45,7 @@ export function fakeApi() {
     test: { ok: true, value: { reachable: true, authenticated: true, hostKey: NEW_KEY, hostKeyChanged: true, message: null } },
     accept: (fingerprint) => ({ ok: true, value: { ...NEW_KEY, fingerprintSha256: fingerprint } }),
     transfer: { copy: true, paste: true },
+    wakeSent: false,
   };
   let issued = 0;
   const api: SessionsApi = {
@@ -50,7 +53,7 @@ export function fakeApi() {
       calls.startSession.push([deviceId, display]);
       issued += 1;
       const n = String(issued);
-      const ticket: SessionTicket = { sessionId: `session-${n}`, token: `${TOKEN_MARKER}-${n}`, tunnelPath: '/terminal', expiresAt: '2026-11-04T10:00:30Z' };
+      const ticket: SessionTicket = { sessionId: `session-${n}`, token: `${TOKEN_MARKER}-${n}`, tunnelPath: '/terminal', expiresAt: '2026-11-04T10:00:30Z', wakeSent: answers.wakeSent };
       return Promise.resolve({ ok: true, value: ticket });
     },
     endSession: (id) => {

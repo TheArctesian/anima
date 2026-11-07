@@ -19,15 +19,22 @@ export interface RemoteTarget extends SessionTarget {
   readonly protocol: RemoteProtocol;
 }
 
-/** A started session: its ID and its open tunnel. The ticket is not part of it (SEC-002). */
+/** A started session: its ID, its open tunnel and whether the hub woke the device. The ticket is not part of it (SEC-002). */
 export interface Started<Tunnel> {
   readonly sessionId: string;
   readonly tunnel: Tunnel;
+  /** A Wake-on-LAN packet was sent for this start (K4 §1): the opening may take up to 120 s. */
+  readonly wakeSent: boolean;
 }
 
 export type StartResult<Tunnel> =
   | { readonly ok: true; readonly value: Started<Tunnel> }
-  | { readonly ok: false; readonly error: HubError | TunnelRefusal };
+  | {
+      readonly ok: false;
+      readonly error: HubError | TunnelRefusal;
+      /** The hub's ticket sent a wake packet before the tunnel was refused (K4 §1); absent when no ticket was issued. */
+      readonly wakeSent?: boolean;
+    };
 
 /** A started terminal session (SSH, K4 §8). */
 export type TunnelStart = StartResult<TerminalLink>;
@@ -51,13 +58,13 @@ export async function startWith<Tunnel>(
 ): Promise<StartResult<Tunnel>> {
   const started = await api.startSession(target.deviceId, target.protocol, target.display);
   if (!started.ok) return started;
-  const { sessionId } = started.value;
+  const { sessionId, wakeSent } = started.value;
   const opening = open(started.value);
-  if (opening.ok) return { ok: true, value: { sessionId, tunnel: opening.value } };
+  if (opening.ok) return { ok: true, value: { sessionId, tunnel: opening.value, wakeSent } };
   // The session row exists but will never get a tunnel, so end it. The refusal is what the operator needs to
   // see; a failed `endSession` here is not reported over it.
   await api.endSession(sessionId);
-  return opening;
+  return { ...opening, wakeSent };
 }
 
 /** Start an SSH session and open its terminal tunnel (K4 §8). */

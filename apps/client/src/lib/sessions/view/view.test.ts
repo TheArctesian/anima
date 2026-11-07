@@ -79,6 +79,44 @@ describe('start and display (D-7)', () => {
   });
 });
 
+const wakeOf = (target: HTMLElement) => {
+  const line = target.querySelector<HTMLElement>('.wake');
+  return line === null ? undefined : { mark: line.dataset.wake, text: [...line.querySelectorAll('.label, .sr')].map((span) => span.textContent).join(' ') };
+};
+
+describe('wake line (RA-031)', () => {
+  it('RA-031: a wake packet shows "Waking web-01" under the steps, active until the socket opens; the four steps stay', async () => {
+    const { target, answers } = show();
+    answers.wakeSent = true;
+    expect(wakeOf(target)).toEqual({ mark: undefined, text: '' });
+    FakeResizeObserver.resize(800, 600);
+    await settle();
+    expect(stepMarks(target)).toEqual(['request:done', 'gateway:active', 'device:waiting', 'ready:waiting']);
+    expect(wakeOf(target)).toEqual({ mark: 'active', text: 'Waking web-01 in progress' });
+    expect(target.textContent).not.toContain(TOKEN_MARKER);
+    FakeTerminalSocket.latest().open();
+    flushSync();
+    expect(target.querySelector('.panel')).toBeNull();
+  });
+
+  it('RA-031: a start that stops while waking marks the wake line failed', async () => {
+    const { target, answers } = show();
+    answers.wakeSent = true;
+    FakeResizeObserver.resize(800, 600);
+    await settle();
+    FakeTerminalSocket.latest().closeWith(1006);
+    await settle();
+    expect(wakeOf(target)).toEqual({ mark: 'failed', text: 'Waking web-01 stopped' });
+  });
+
+  it('RA-031: with no wake packet the slot stays and is empty', async () => {
+    const { target } = show();
+    FakeResizeObserver.resize(800, 600);
+    await settle();
+    expect(wakeOf(target)).toEqual({ mark: undefined, text: '' });
+  });
+});
+
 /**
  * The rules of a component's stylesheet as Svelte compiles it, by selector without the scoping class. jsdom applies
  * no component CSS, so the structural style checks read the compiled rules.
@@ -112,6 +150,15 @@ describe('MAT-008: the terminal', () => {
   it('MOT-007: the connection step icon cell has a fixed width, so a mark glyph of another width moves no label', () => {
     const columns = componentRules('./steps/ConnectionSteps.svelte').get('.step')?.get('grid-template-columns') ?? '';
     expect(columns).toMatch(/^var\(--icon-[a-z]+\) 1fr$/);
+  });
+
+  it('MOT-007, MV-004: the steps keep four fixed columns, and the wake slot is one line high even when empty', () => {
+    const rules = componentRules('./steps/ConnectionSteps.svelte');
+    expect(rules.get('.steps')?.get('grid-template-columns')).toMatch(/^repeat\(4,/);
+    expect(rules.get('.wake')?.get('block-size')).toBe('1lh');
+    expect(rules.get('.wake')?.get('max-inline-size')).toBe('100%');
+    expect(rules.get('.label')?.get('text-overflow')).toBe('ellipsis');
+    expect(rules.get('.wake')?.has('transition')).toBe(false);
   });
 
   it('MOT-007: the toolbar has a fixed height and clips, so a notice or the find bar can never move the terminal', () => {

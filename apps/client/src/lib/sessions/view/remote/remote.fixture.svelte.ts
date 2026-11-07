@@ -25,6 +25,10 @@ export interface RemoteAnswers {
   policyGate: Promise<void> | undefined;
   /** While set, `setCredential` waits for it. */
   credentialGate: Promise<void> | undefined;
+  /** `startSession` says it sent a Wake-on-LAN packet. */
+  wakeSent: boolean;
+  /** The path the ticket names; a test sets one the client refuses. */
+  tunnelPath: string;
 }
 
 /** Every call the fake API heard, in order per method. */
@@ -45,7 +49,7 @@ const PHASE_ONE_TEST = { reachable: true, authenticated: true, hostKey: null, ho
 
 function remoteApi() {
   const calls: RemoteCalls = { startSession: [], endSession: [], testConnection: [], acceptServerCertificate: [], setCredential: [] };
-  const answers: RemoteAnswers = { endReason: null, transfer: { copy: true, paste: true }, refuse: undefined, policyGate: undefined, credentialGate: undefined };
+  const answers: RemoteAnswers = { endReason: null, transfer: { copy: true, paste: true }, refuse: undefined, policyGate: undefined, credentialGate: undefined, wakeSent: false, tunnelPath: '/tunnel' };
   let issued = 0;
   const api: RemoteApi = {
     startSession: (deviceId, protocol, display) => {
@@ -53,7 +57,7 @@ function remoteApi() {
       if (answers.refuse !== undefined) return Promise.resolve({ ok: false, error: { code: answers.refuse, message: 'HUB-TEXT-MARKER' } });
       issued += 1;
       const n = String(issued);
-      const ticket: SessionTicket = { sessionId: `session-${n}`, token: `${TOKEN_MARKER}-${n}`, tunnelPath: '/tunnel', expiresAt: '2026-11-04T10:00:30Z' };
+      const ticket: SessionTicket = { sessionId: `session-${n}`, token: `${TOKEN_MARKER}-${n}`, tunnelPath: answers.tunnelPath, expiresAt: '2026-11-04T10:00:30Z', wakeSent: answers.wakeSent };
       return Promise.resolve({ ok: true, value: ticket });
     },
     endSession: (id) => {
@@ -71,7 +75,7 @@ function remoteApi() {
     },
     testConnection: (input) => {
       calls.testConnection.push(input);
-      return Promise.resolve({ ok: true, value: { ...PHASE_ONE_TEST, serverCertificate: CERTIFICATE, certificateChanged: true } });
+      return Promise.resolve({ ok: true, value: { ...PHASE_ONE_TEST, serverCertificate: CERTIFICATE, certificateChanged: true, certificateMatched: false } });
     },
     acceptServerCertificate: (deviceId, fingerprint) => {
       calls.acceptServerCertificate.push([deviceId, fingerprint]);

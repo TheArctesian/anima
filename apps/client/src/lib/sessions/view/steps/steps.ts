@@ -2,6 +2,8 @@
 export interface Progress {
   /** `startSession` answered with a ticket. */
   readonly ticketed: boolean;
+  /** The hub sent a Wake-on-LAN packet for this start (`SessionTicket.wakeSent`, K4 §1); false until it answers. */
+  readonly waking: boolean;
   /** The WebSocket upgrade succeeded (`TunnelState.opened`). */
   readonly opened: boolean;
   /** The socket is open: the terminal can be used. */
@@ -44,4 +46,20 @@ export function connectionSteps(progress: Progress): readonly Step[] {
     if (index > current) return { name, label, mark: 'waiting' };
     return { name, label, mark: progress.stopped ? 'failed' : 'active' };
   });
+}
+
+/** The line under the steps for a start that sent a wake packet (K4 §1): its text and mark. */
+export interface WakeLine {
+  readonly label: string;
+  readonly mark: StepMark;
+}
+
+/**
+ * The wake line, or `undefined` when no packet was sent. The hub opens the socket once the device answers, so the
+ * wait ends with `opened`. `deviceName` is text only.
+ */
+export function wakeLine(progress: Progress, deviceName: string): WakeLine | undefined {
+  if (!progress.waking) return undefined;
+  const mark: StepMark = progress.opened ? 'done' : progress.stopped ? 'failed' : 'active';
+  return { label: `Waking ${deviceName}`, mark };
 }

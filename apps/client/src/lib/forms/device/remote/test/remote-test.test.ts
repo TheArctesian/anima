@@ -84,11 +84,19 @@ describe('DEV-013, SEC-007: remoteOutcome', () => {
   const answer = (partial: Partial<Parameters<typeof testResult>[0]> & { serverCertificate?: ServerCertificate | null; certificateChanged?: boolean }) =>
     ({ ...testResult({ reachable: true, authenticated: true, hostKeyChanged: false }), ...partial });
 
-  it('maps unreachable, auth failed and ok', () => {
+  it('maps unreachable and reachable', () => {
     expect(remoteOutcome('RDP', answer({ reachable: false, authenticated: false }))).toEqual({ kind: 'unreachable', message: 'The device did not answer.' });
-    expect(remoteOutcome('VNC', answer({ authenticated: false, message: 'bad password' }))).toEqual({ kind: 'authFailed', message: 'bad password' });
-    expect(remoteOutcome('RDP', answer({ serverCertificate: null, certificateChanged: false }))).toEqual({ kind: 'ok' });
-    expect(remoteOutcome('VNC', answer({}))).toEqual({ kind: 'ok' });
+    // The hub always answers `authenticated: false` for RDP and VNC; it is not a failed sign-in.
+    expect(remoteOutcome('VNC', answer({ authenticated: false, message: 'bad password' }))).toEqual({ kind: 'reachable', message: 'bad password' });
+    expect(remoteOutcome('RDP', answer({ authenticated: false }))).toEqual({ kind: 'reachable', message: '' });
+    expect(remoteOutcome('RDP', answer({ serverCertificate: null, certificateChanged: false }), 'AA:BB')).toEqual({ kind: 'reachable', message: '' });
+    expect(remoteOutcome('VNC', answer({}))).toEqual({ kind: 'reachable', message: '' });
+  });
+
+  it('DEV-013: a reachable result shows the hub message when it has one, else the sign-in sentence', () => {
+    expect(remoteOutcomeText(remoteOutcome('RDP', answer({ message: 'No TLS on this port.' })))).toBe('No TLS on this port.');
+    expect(remoteOutcomeText(remoteOutcome('RDP', answer({ message: null })))).toBe('The device answered. Anima signs in when a session starts.');
+    expect(remoteOutcomeText(remoteOutcome('VNC', answer({ message: '' })))).toBe('The device answered. Anima signs in when a session starts.');
   });
 
   it('reports a new RDP certificate', () => {
@@ -98,10 +106,10 @@ describe('DEV-013, SEC-007: remoteOutcome', () => {
     });
   });
 
-  it('DEV-013: the saved accepted certificate seen again is not new; the auth outcome follows', () => {
+  it('DEV-013: the saved accepted certificate seen again is not new; a null certificate is only reachable', () => {
     const same = { serverCertificate: CERTIFICATE, certificateChanged: false };
-    expect(remoteOutcome('RDP', answer({ ...same, authenticated: true }), 'AA:BB')).toEqual({ kind: 'ok' });
-    expect(remoteOutcome('RDP', answer({ ...same, authenticated: false }), 'AA:BB')).toEqual({ kind: 'authFailed', message: 'The device refused the credential.' });
+    expect(remoteOutcome('RDP', answer({ ...same, authenticated: true }), 'AA:BB')).toEqual({ kind: 'reachable', message: '' });
+    expect(remoteOutcome('RDP', answer({ ...same, authenticated: false }), 'AA:BB')).toEqual({ kind: 'reachable', message: '' });
     expect(remoteOutcome('RDP', answer(same), 'CC:DD')).toMatchObject({ kind: 'certificateNew' });
   });
 
@@ -114,6 +122,6 @@ describe('DEV-013, SEC-007: remoteOutcome', () => {
   });
 
   it('ignores certificate fields for VNC', () => {
-    expect(remoteOutcome('VNC', answer({ serverCertificate: CERTIFICATE, certificateChanged: true }))).toEqual({ kind: 'ok' });
+    expect(remoteOutcome('VNC', answer({ serverCertificate: CERTIFICATE, certificateChanged: true }))).toEqual({ kind: 'reachable', message: '' });
   });
 });

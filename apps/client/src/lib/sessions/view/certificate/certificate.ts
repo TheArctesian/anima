@@ -15,6 +15,8 @@ export interface ShownCertificate {
 export type CertificateStep =
   | { readonly step: 'reading'; readonly notice?: string }
   | { readonly step: 'failed'; readonly problem: string }
+  /** The hub says the device presents the certificate Anima accepted (`certificateMatched`): nothing to accept. */
+  | { readonly step: 'unchanged' }
   | { readonly step: 'shown'; readonly certificate: ShownCertificate; readonly notice?: string }
   | { readonly step: 'accepting'; readonly certificate: ShownCertificate }
   | { readonly step: 'accepted'; readonly certificate: ShownCertificate };
@@ -33,14 +35,20 @@ export const PROBLEM = {
   unreachable: 'The device could not be reached, so the new certificate could not be read. Try again.',
   none: 'The connection test did not read a server certificate. Close this warning and check the device settings.',
   accept: 'The hub did not accept the certificate. Try again, or close this warning.',
+  unchanged: 'The device now presents the certificate Anima accepted, so there is nothing to accept. Reconnect.',
   changed: 'The certificate changed again while you were reading it. This is the one the device presents now.',
 } as const;
 
 function readDone(notice: string | undefined, result: HubResult<ConnectionTest>): CertificateStep {
   if (!result.ok) return { step: 'failed', problem: PROBLEM.read };
-  const { serverCertificate, reachable } = result.value;
+  const { serverCertificate, reachable, certificateMatched, message } = result.value;
+  // A null certificate proves nothing by itself (STANDARD_ONLY, NEGOTIATION_REFUSED and NO_TLS answer it too):
+  // only `certificateMatched` says the device presents the accepted certificate (CR-3, SEC-007).
+  if (certificateMatched === true) return { step: 'unchanged' };
   if (serverCertificate === undefined || serverCertificate === null) {
-    return { step: 'failed', problem: reachable ? PROBLEM.none : PROBLEM.unreachable };
+    // The hub's message is fixed text (R-035); the fixed fallback stands in when it has none.
+    const fallback = reachable ? PROBLEM.none : PROBLEM.unreachable;
+    return { step: 'failed', problem: message === null || message === '' ? fallback : message };
   }
   const { fingerprintSha256, subject, notAfter } = serverCertificate;
   const certificate = { fingerprintSha256, subject, notAfter };

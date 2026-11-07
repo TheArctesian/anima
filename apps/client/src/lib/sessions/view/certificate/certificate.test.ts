@@ -5,9 +5,13 @@ import { PROBLEM, READING, transition, type CertificateEvent, type CertificateSt
 
 const CERT: ServerCertificate = { fingerprintSha256: 'sha256:aa', subject: 'CN=desk', notAfter: '2027-01-01T00:00:00Z', firstSeenAt: '2026-11-04T10:00:00Z' };
 const SHOWN = { fingerprintSha256: CERT.fingerprintSha256, subject: CERT.subject, notAfter: CERT.notAfter };
-const tested = (serverCertificate: ServerCertificate | null, reachable = true): HubResult<ConnectionTest> => ({
+const tested = (
+  serverCertificate: ServerCertificate | null,
+  reachable = true,
+  { certificateChanged = true, certificateMatched = false, message = 'hub text' as string | null } = {},
+): HubResult<ConnectionTest> => ({
   ok: true,
-  value: { reachable, authenticated: true, hostKey: null, hostKeyChanged: false, message: 'hub text', serverCertificate, certificateChanged: true },
+  value: { reachable, authenticated: true, hostKey: null, hostKeyChanged: false, message, serverCertificate, certificateChanged, certificateMatched },
 });
 const acceptedAs = (fingerprintSha256: string): HubResult<ServerCertificate> => ({ ok: true, value: { ...CERT, fingerprintSha256 } });
 const refused = (code: 'CONFLICT' | 'INTERNAL'): HubResult<never> => ({ ok: false, error: { code, message: 'hub text' } });
@@ -48,11 +52,19 @@ describe('certificate warning (SEC-007, K4 §3)', () => {
   });
 
   it.each([
-    [refused('INTERNAL'), PROBLEM.read],
-    [tested(null), PROBLEM.none],
-    [tested(null, false), PROBLEM.unreachable],
-  ])('a read that gives no certificate fails with fixed text', (result, problem) => {
+    ['a refused read', refused('INTERNAL'), PROBLEM.read],
+    ['null with the hub message', tested(null, true, { certificateChanged: false }), 'hub text'],
+    ['null, unreachable, with the hub message', tested(null, false, { certificateChanged: false }), 'hub text'],
+    ['null with no message, reachable', tested(null, true, { message: null }), PROBLEM.none],
+    ['null with an empty message, unreachable', tested(null, false, { message: '' }), PROBLEM.unreachable],
+  ])('a read that gives no certificate fails with fixed text: %s', (_name, result, problem) => {
     expect(run({ event: 'readDone', result })).toEqual({ step: 'failed', problem });
+  });
+
+  it('CR-3, SEC-007: only certificateMatched makes a read "unchanged"; a null certificate alone does not', () => {
+    expect(run({ event: 'readDone', result: tested(null, true, { certificateChanged: false, certificateMatched: true }) })).toEqual({ step: 'unchanged' });
+    expect(run({ event: 'readDone', result: tested(null, true, { certificateChanged: false }) }).step).toBe('failed');
+    expect(transition({ step: 'unchanged' }, { event: 'accept' })).toBeUndefined();
   });
 
   it('a failed read can be tried again; answers in another step are ignored', () => {

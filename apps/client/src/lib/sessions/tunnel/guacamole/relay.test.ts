@@ -29,6 +29,7 @@ afterEach(() => {
 /** An open tunnel whose client records every `name`, `clipboard` and `error` it hears. */
 function listening() {
   const opening = openTunnel({
+    waking: false,
     origin: 'https://hub.anima.ing',
     ticket: { tunnelPath: '/tunnel', token: 't'.repeat(43) },
     WebSocket: FAKE_TUNNEL_SOCKET,
@@ -85,6 +86,7 @@ describe('GW-015: the gateway `required` instruction', () => {
   it('GW-015: its names reach the state and `onchange`, a new array for each instruction, the phase unchanged', () => {
     const states: (readonly string[] | undefined)[] = [];
     const opening = openTunnel({
+    waking: false,
       origin: 'https://hub.anima.ing',
       ticket: { tunnelPath: '/tunnel', token: 't'.repeat(43) },
       WebSocket: FAKE_TUNNEL_SOCKET,
