@@ -159,6 +159,53 @@ it('Predictable: a credential the hub did not store still opens the device, carr
   expect(JSON.stringify(current.goto)).not.toContain('hunter2');
 });
 
+/** Opens a section of the modal's form and turns its protocol on. */
+function enable(protocol: 'rdp' | 'vnc'): void {
+  document.querySelector<HTMLButtonElement>(`[role="dialog"] [data-section="${protocol}"] button`)?.click();
+  flushSync();
+  document.querySelector<HTMLInputElement>(`[role="dialog"] [data-section="${protocol}"] input[type="checkbox"]`)?.click();
+  flushSync();
+}
+
+it('DEV-011, LOG-007: Save with typed RDP and VNC passwords stores each for the new device ID', async () => {
+  const fake = await show([device('a')], {
+    CreateDevice: { createDevice: DETAIL },
+    SetRdpCredential: { setRdpCredential: { credentialStored: true } },
+    SetVncCredential: { setVncCredential: { credentialStored: true } },
+  });
+  await openAddDevice();
+  type('name', 'nas');
+  type('host', 'nas.lan');
+  enable('rdp');
+  type('rdp-username', 'admin');
+  type('rdp-password', 'rdp-hunter2');
+  enable('vnc');
+  type('vnc-password', 'vnc-hunter2');
+  button('Save').click();
+  // The default check and two passwords make more hub round trips than the SSH case.
+  await settleAll();
+  await settleAll();
+  const stored = fake.requests.filter((request) => request.operation.startsWith('Set'));
+  expect(stored).toEqual([
+    { operation: 'SetRdpCredential', variables: { deviceId: 'd9', credential: { password: 'rdp-hunter2' } } },
+    { operation: 'SetVncCredential', variables: { deviceId: 'd9', credential: { password: 'vnc-hunter2' } } },
+  ]);
+  expect(current.goto).toEqual([['/devices/d9', { state: {} }]]);
+});
+
+it('DEV-011, LOG-007: an RDP password the hub did not store still opens the device, and the message never quotes it', async () => {
+  await show([device('a')], { CreateDevice: { createDevice: DETAIL }, SetRdpCredential: { code: 'INTERNAL', message: 'refused rdp-hunter2' } });
+  await openAddDevice();
+  type('name', 'nas');
+  type('host', 'nas.lan');
+  enable('rdp');
+  type('rdp-username', 'admin');
+  type('rdp-password', 'rdp-hunter2');
+  button('Save').click();
+  await settleAll();
+  expect(current.goto).toEqual([['/devices/d9', { state: { credentialError: 'The hub did not store the password.' } }]]);
+});
+
 it('DEV-013: Test connection in the modal sends the unsaved form values to the hub', async () => {
   const result = { reachable: true, authenticated: true, hostKey: null, hostKeyChanged: false, message: null };
   const fake = await addWithPassword({ TestConnection: { testConnection: result } });

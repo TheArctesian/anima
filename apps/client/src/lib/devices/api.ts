@@ -7,7 +7,6 @@ import type {
   SetSshCredentialMutation,
   SitesQuery,
 } from '$lib/hub/generated/graphql';
-import type { ServerCertificate } from '$lib/sessions/api';
 
 export const Devices = graphql(`
   query Devices($filter: DeviceFilter, $sort: DeviceSort, $first: Int, $after: String) {
@@ -152,6 +151,12 @@ void graphql(`
       microphone
       sharedDrive
       credentialStored
+      serverCertificate {
+        fingerprintSha256
+        subject
+        notAfter
+        firstSeenAt
+      }
     }
     vnc {
       enabled
@@ -288,15 +293,8 @@ export type { AccessWarning };
 /** A device with every field a card or table row shows. */
 export type CardDevice = DevicePage['edges'][number]['node'];
 
-type DeviceDetailRead = NonNullable<DeviceQuery['device']>;
-
-/** One device with everything the detail page and the device form show (DEV-020, D-10). */
-export type DeviceDetail = Omit<DeviceDetailRead, 'rdp'> & {
-  readonly rdp: DeviceDetailRead['rdp'] & {
-    /** Optional until the hub serves K1 `RdpSettings.serverCertificate`; then spread `RdpServerCertificate`. */
-    readonly serverCertificate?: ServerCertificate | null;
-  };
-};
+/** One device with everything the detail page and the device form show (DEV-020, D-10, SEC-007). */
+export type DeviceDetail = NonNullable<DeviceQuery['device']>;
 
 /** A site the Add device form can place a device in. */
 export type Site = SitesQuery['sites'][number];
