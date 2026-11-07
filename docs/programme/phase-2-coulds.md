@@ -162,3 +162,14 @@ These items are not blocking. The programme orchestrator collects them here and 
 - The DEV-001 200-card test bound is 60 s under load.
 - A 1024 px window gets compact header rows.
 - `lib/sessions/web/open/` sits inside WP-31's folder.
+
+## WP-22 (hub RDP and VNC sessions)
+
+- The password copy in `ArgValues` is not zeroed.
+- A woken session has no cap of its own; only the ticket cap applies.
+- The terminal timeout message is vague after a 120 s wake.
+- The certificate-mode tests could be one table-driven test.
+- The `vnc.rs` banner check has no property test.
+- The lagged branch of the `sessionChanged` stream is untested.
+- Old plan IDs remain in comments written before WP-22.
+- Live: Windows RDP with NLA (resolution, clipboard, Ctrl+Alt+Delete, a changed certificate ending 4003); the `sha256:` format of `cert-fingerprints`, worked out from the FreeRDP source and not yet checked on a real server; VNC to macOS Screen Sharing and to a Linux desktop; wake through a real site relay; Hyper-V may fail closed with 503.
