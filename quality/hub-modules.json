@@ -42,6 +42,12 @@
     "web_interfaces": [
       "checks",
       "events"
+    ],
+    "metrics": [
+      "devices",
+      "sessions",
+      "credentials",
+      "events"
     ]
   },
   "graphql": {
@@ -60,6 +66,9 @@
       "access"
     ],
     "web_interfaces": [
+      "access"
+    ],
+    "metrics": [
       "access"
     ]
   }
