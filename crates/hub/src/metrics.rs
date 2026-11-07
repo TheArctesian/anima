@@ -1,10 +1,14 @@
 //! Resource metrics of a device: CPU, memory, disk, network, uptime and load, read from the
 //! output of fixed read-only commands run over SSH (spec 6.6, HUB-004, MET-001, MET-002).
 //!
-//! This part is pure: [`parse`] turns command output into a [`Reading`], and [`samples`] turns
+//! The pure part: [`parse`] turns command output into a [`Reading`], and [`samples`] turns
 //! two readings and the time between them into [`Sample`]s. The device is not trusted, so no
-//! reader panics and none fails on a bad line.
+//! reader panics and none fails on a bad line. [`spawn_collector`] runs the commands every 30
+//! seconds and publishes each collection on the [`Feed`].
 
+mod collector;
+mod commands;
+mod feed;
 mod latest;
 mod model;
 pub mod parse;
@@ -22,6 +26,8 @@ use std::collections::HashMap;
 use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::PgPool;
 
+pub use collector::{Collecting, spawn_collector};
+pub use feed::Feed;
 pub use model::{
     Gpu, GpuVendor, MetricKind, MetricPoint, MetricRange, MetricSample, MetricSeries, MetricsAdded,
     Readings, Sample,
