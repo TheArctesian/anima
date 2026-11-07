@@ -107,7 +107,7 @@
       {@attach placeBesideBar}
     >
       {#if live.loadFailure !== null}
-        <p class="note" role="alert">{live.loadFailure}</p>
+        <p class="failure" role="alert"><Icon name="nf-md-alert" />{live.loadFailure}</p>
       {/if}
       {#each live.sessions as session (session.id)}
         {@const failure = live.stopFailure(session.id)}
@@ -117,7 +117,7 @@
             <span>{session.protocol} · {session.operatorName}</span>
             <span>{session.clientAddr} · {startedTime(session)}</span>
             {#if failure !== null}
-              <span class="failure" role="alert">{failure}</span>
+              <span class="failure" role="alert"><Icon name="nf-md-alert" />{failure}</span>
             {/if}
           </div>
           <button
@@ -220,8 +220,8 @@
     overflow-y: auto;
     border: var(--border-thin) solid var(--border);
     border-radius: var(--radius-md);
-    background: var(--material-overlay-bg);
-    backdrop-filter: blur(var(--material-overlay-blur)) saturate(var(--material-overlay-saturate));
+    /* Opaque always: the panel can sit over a live remote display (MAT-008). --border turns to text-muted under prefers-contrast: more (MAT-006). */
+    background: var(--surface-raised);
     box-shadow: var(--elevation-2);
     font-size: var(--text-sm);
   }
@@ -259,14 +259,20 @@
     background: var(--surface-raised);
   }
 
-  .note,
-  .failure {
+  .note {
     margin: 0;
     padding: var(--space-2);
   }
 
+  /* --text on --status-down-tint is 7.9:1 (nord6 #ECEFF4 on #4B4655); --status-down on the panel was 2.1:1. The icon keeps the meaning off colour alone. */
   .failure {
-    padding: 0;
-    color: var(--status-down);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-md);
+    background: var(--status-down-tint);
+    color: var(--text);
   }
 </style>
