@@ -10,7 +10,7 @@
     "process:allow-restart",
     "log:allow-log",
     "allow-process-log-folder-open",
-    "allow-remote-login-settings-open",
+    "allow-sharing-settings-open",
     "allow-this-machine-read",
     "allow-system-browser-open",
     "allow-web-view-pinning",

@@ -22,7 +22,7 @@ fn main() {
             keystore::access_token_write,
             keystore::access_token_clear,
             process_log::process_log_folder_open,
-            system_settings::remote_login_settings_open,
+            system_settings::sharing_settings_open,
             this_machine::this_machine_read,
             system_browser::system_browser_open,
             web_view::commands::web_view_pinning,
