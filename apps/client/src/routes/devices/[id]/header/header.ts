@@ -11,7 +11,7 @@ export type HeaderDevice = Pick<
 > & {
   readonly ssh: Pick<DeviceDetail['ssh'], 'enabled' | 'hostKey'>;
   readonly rdp: Pick<DeviceDetail['rdp'], 'enabled'>;
-  readonly vnc: Pick<DeviceDetail['vnc'], 'enabled'>;
+  readonly vnc: Pick<DeviceDetail['vnc'], 'enabled' | 'username'>;
 };
 
 /** One text item of the host-to-tags group, in line order. */

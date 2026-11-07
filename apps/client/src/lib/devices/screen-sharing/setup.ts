@@ -21,7 +21,8 @@ export interface SetupDevice {
   readonly name: string;
   readonly host: string;
   readonly os: OperatingSystem;
-  readonly vnc: { readonly enabled: boolean };
+  /** `username` is the stored VNC user, kept when the device is not this computer. */
+  readonly vnc: { readonly enabled: boolean; readonly username?: string | null };
 }
 
 /** R-079: only a macOS or Linux device whose VNC is off is offered the action. */
@@ -39,9 +40,13 @@ export function screenSharingTest(device: Pick<SetupDevice, 'host'>): Connection
   return { host: device.host, protocol: 'VNC', vnc: { enabled: true, port: SCREEN_SHARING_PORT } };
 }
 
-/** The update that turns VNC on with the defaults; no password. The username is this computer's user, or none. */
-export function enableVnc(user: string | null): UpdateDeviceInput {
-  return { vnc: { enabled: true, port: SCREEN_SHARING_PORT, username: user === null || user === '' ? null : user } };
+/**
+ * The update that turns VNC on with the defaults; no password. The hub replaces the whole VNC settings, so the
+ * username is this computer's user, else the one already stored, else none: a stored username is never wiped.
+ */
+export function enableVnc(user: string | null, stored: string | null | undefined): UpdateDeviceInput {
+  const username = [user, stored].find((name) => name !== null && name !== undefined && name !== '') ?? null;
+  return { vnc: { enabled: true, port: SCREEN_SHARING_PORT, username } };
 }
 
 /** What a card or row needs to offer the flow: the calls, and what to do once the device has VNC on (R-079). */

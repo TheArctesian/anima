@@ -21,7 +21,7 @@ export function device(id: string, over: Partial<CardDevice> = {}): CardDevice {
     readings: null,
     accessWarnings: [],
     rdp: { enabled: false },
-    vnc: { enabled: false },
+    vnc: { enabled: false, username: null },
     ssh: { enabled: false, hostKey: null },
     checks: [],
     webInterfaces: [],

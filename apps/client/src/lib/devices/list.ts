@@ -34,7 +34,7 @@ export function appendPage(list: DeviceList, page: DevicePage): DeviceList {
 
 /** The list with VNC on for device `id`, after the flow of R-079 turned it on. */
 export function applyVncEnabled(list: DeviceList, id: string): DeviceList {
-  return { ...list, devices: list.devices.map((device) => (device.id === id ? { ...device, vnc: { enabled: true } } : device)) };
+  return { ...list, devices: list.devices.map((device) => (device.id === id ? { ...device, vnc: { ...device.vnc, enabled: true } } : device)) };
 }
 
 /** Worst first (E-1): the hub's severity order. */

@@ -54,6 +54,13 @@ describe('SetupFlow (R-079)', () => {
     expect(t.calls.openSharing).not.toHaveBeenCalled();
   });
 
+  it('R-079: another device keeps its stored VNC username through the setup', async () => {
+    const t = run();
+    t.calls.test.mockResolvedValue(answer(true));
+    await t.flow.start({ ...NAS, vnc: { enabled: false, username: 'root' } });
+    expect(t.calls.update).toHaveBeenCalledWith('d2', { vnc: { enabled: true, port: 5900, username: 'root' } });
+  });
+
   it('R-079: this computer, answering, has VNC turned on with its OS user as the username', async () => {
     const t = run();
     t.calls.test.mockResolvedValue(answer(true));

@@ -41,6 +41,7 @@ export const Devices = graphql(`
           }
           vnc {
             enabled
+            username
           }
           ssh {
             enabled

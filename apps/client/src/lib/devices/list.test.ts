@@ -19,7 +19,7 @@ function device(name: string, status: CardDevice['status'] = 'UP', uptime: numbe
     readings: null,
     accessWarnings: [],
     rdp: { enabled: false },
-    vnc: { enabled: false },
+    vnc: { enabled: false, username: null },
     ssh: { enabled: false, hostKey: null },
     checks: [],
     webInterfaces: [],

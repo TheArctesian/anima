@@ -116,7 +116,7 @@ export class SetupFlow {
       return;
     }
     this.#show({ kind: 'starting' });
-    const result = await this.#calls.update(device.id, enableVnc(user));
+    const result = await this.#calls.update(device.id, enableVnc(user, device.vnc.username));
     if (run !== this.#run) return;
     if (!result.ok) {
       this.#show({ kind: 'failed', message: result.error.message });

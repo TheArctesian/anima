@@ -75,7 +75,7 @@ it.each([
   ['OTHER', false],
   ['MACOS', true],
 ])('R-079: a card of %s with VNC on=%s has no screen sharing button', (os, enabled) => {
-  showCard({ os: os as CardDevice['os'], vnc: { enabled } }, { calls: fakeCalls().calls, onReady: vi.fn() });
+  showCard({ os: os as CardDevice['os'], vnc: { enabled, username: null } }, { calls: fakeCalls().calls, onReady: vi.fn() });
   expect(button(/screen sharing/i)).toBeUndefined();
 });
 
@@ -217,7 +217,7 @@ it('R-079: a table row of a macOS device with VNC off shows "VNC" set-up; Window
   expect(button('VNC')?.getAttribute('aria-label')).toBe('Set up screen sharing for Studio');
   await unmount(app ?? {});
   document.body.replaceChildren();
-  for (const [over, withCalls] of [[{ os: 'WINDOWS' as const }, true], [{ vnc: { enabled: true } }, true], [{}, false]] as const) {
+  for (const [over, withCalls] of [[{ os: 'WINDOWS' as const }, true], [{ vnc: { enabled: true, username: null } }, true], [{}, false]] as const) {
     showTable(over, withCalls);
     expect(button(/set up screen sharing/i)).toBeUndefined();
     await unmount(app ?? {});
@@ -226,7 +226,7 @@ it('R-079: a table row of a macOS device with VNC off shows "VNC" set-up; Window
   app = undefined;
 });
 
-it('R-079: Cancel while the update is in flight lets it finish but opens no session', async () => {
+it('R-079: Escape while the device is being turned on is ignored, so the update finishes and the session opens', async () => {
   const t = mountButton();
   t.calls.test.mockResolvedValue(answer(true));
   let finish: (value: Awaited<ReturnType<typeof t.calls.update>>) => void = () => undefined;
@@ -234,10 +234,30 @@ it('R-079: Cancel while the update is in flight lets it finish but opens no sess
   button(/screen sharing/i)?.focus();
   press(button(/screen sharing/i));
   await flow();
-  // Starting has no Cancel button; Escape is the way out, and it stops the hand-over only.
   document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
   finish({ ok: true, value: UPDATED });
   await flow();
-  expect(t.calls.update).toHaveBeenCalledTimes(1);
-  expect(t.onReady).not.toHaveBeenCalled();
+  expect(t.onReady).toHaveBeenCalledTimes(1);
+});
+
+it('R-079: a second press while the flow is busy does not test again', async () => {
+  const t = mountButton();
+  press(button(/screen sharing/i));
+  await flow();
+  press(button(/screen sharing/i));
+  await flow();
+  expect(t.calls.test).toHaveBeenCalledTimes(1);
+});
+
+it('R-079: the panel observer is watched while the panel shows and disconnected when the button goes', async () => {
+  const counts = { observe: 0, disconnect: 0 };
+  vi.stubGlobal('ResizeObserver', class { observe = () => { counts.observe += 1; }; disconnect = () => { counts.disconnect += 1; }; unobserve = () => undefined; });
+  mountButton();
+  press(button(/screen sharing/i));
+  await flow();
+  expect(counts.observe).toBeGreaterThan(0);
+  await unmount(app ?? {});
+  app = undefined;
+  expect(counts.disconnect).toBeGreaterThan(0);
+  vi.unstubAllGlobals();
 });

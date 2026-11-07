@@ -11,10 +11,10 @@ export function placeNear(anchor: () => HTMLElement | undefined) {
     const margin = Number.parseFloat(style.paddingInlineStart) || 0;
     // The panel is fixed, so its end margin moves nothing: it only carries the gap to the button.
     const gap = Number.parseFloat(style.marginBlockEnd) || 0;
-    const box = panel.getBoundingClientRect();
+    // The layout size: `getBoundingClientRect` follows the popover's entry scale and would measure it too small.
     const position = panelPosition(
       button.getBoundingClientRect(),
-      { width: box.width, height: box.height },
+      { width: panel.offsetWidth, height: panel.offsetHeight },
       { width: document.documentElement.clientWidth, height: document.documentElement.clientHeight },
       { margin, gap },
     );

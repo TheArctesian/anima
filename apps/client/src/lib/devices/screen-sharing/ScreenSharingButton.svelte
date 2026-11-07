@@ -68,9 +68,9 @@
     button?.focus();
   }
 
-  /** Escape counts only inside this button and its panel, and not when something else already used it. */
+  /** Escape counts only inside this button and its panel, and not when something else already used it. The hand-over is not stopped half way. */
   function onKeydown(event: KeyboardEvent): void {
-    if (event.key !== 'Escape' || event.defaultPrevented || stage.kind === 'idle') return;
+    if (event.key !== 'Escape' || event.defaultPrevented || stage.kind === 'idle' || stage.kind === 'starting') return;
     if (root?.contains(document.activeElement) !== true) return;
     event.preventDefault();
     stop();
@@ -85,6 +85,7 @@
   <button
     type="button"
     class="device-action dashed"
+    class:roomy={!compact}
     tabindex="0"
     bind:this={button}
     title="Set up screen sharing"
@@ -133,6 +134,12 @@
     background: transparent;
   }
 
+  /* Tight, so "+ VNC" is about as wide as the VNC button the card is sized for; the header's full text has the usual padding back. */
+  .setup .dashed {
+    gap: 0;
+    padding-inline: var(--space-2);
+  }
+
   .dashed[aria-disabled='true'] {
     opacity: var(--opacity-disabled);
   }
@@ -147,6 +154,11 @@
   }
 
   @container (inline-size > 56rem) {
+    .setup .dashed.roomy {
+      gap: var(--space-1);
+      padding-inline: var(--space-3);
+    }
+
     .full {
       display: inline;
     }
