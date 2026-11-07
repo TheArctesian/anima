@@ -200,3 +200,35 @@ async fn api_006_a_page_after_the_last_entry_is_empty(pool: PgPool) {
         .await;
     assert_eq!(after["data"]["events"], empty);
 }
+
+#[sqlx::test(migrations = "./migrations")]
+async fn log_004_an_event_from_the_metrics_source_round_trips_through_the_store_and_the_api(
+    pool: PgPool,
+) {
+    let (hub, token) = filter_fixtures(&pool).await;
+    record(
+        &pool,
+        &hub,
+        hours_ago(0),
+        (
+            Severity::Warning,
+            Source::Metrics,
+            Some(ROUTER),
+            "metrics failing",
+        ),
+    )
+    .await;
+
+    let response = hub
+        .post(
+            Some(&token),
+            EVENTS,
+            json!({ "filter": { "source": ["METRICS"] } }),
+        )
+        .await;
+
+    let edges = response["data"]["events"]["edges"].as_array().unwrap();
+    assert_eq!(edges.len(), 1, "{response}");
+    assert_eq!(edges[0]["node"]["source"], "METRICS");
+    assert_eq!(edges[0]["node"]["message"], "metrics failing");
+}
