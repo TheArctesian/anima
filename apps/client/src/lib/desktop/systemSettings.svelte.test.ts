@@ -2,7 +2,7 @@
 import { flushSync, mount, tick, unmount } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import RemoteLoginButton from './RemoteLoginButton.svelte';
-import { openRemoteLoginSettings, remoteLoginSettingsAvailable, SystemSettingsError } from './systemSettings';
+import { openSharingSettings, sharingSettingsAvailable, SystemSettingsError } from './systemSettings';
 
 const shell = vi.hoisted(() => ({ invoke: vi.fn(), isTauri: vi.fn(() => true) }));
 vi.mock('@tauri-apps/api/core', () => ({ invoke: shell.invoke, isTauri: shell.isTauri }));
@@ -22,30 +22,30 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-describe('remoteLoginSettingsAvailable', () => {
-  it('R-059: only the desktop app on a Mac offers the Remote Login settings', () => {
-    expect(remoteLoginSettingsAvailable(MAC)).toBe(true);
-    expect(remoteLoginSettingsAvailable(LINUX)).toBe(false);
+describe('sharingSettingsAvailable', () => {
+  it('R-059: only the desktop app on a Mac offers the Sharing settings', () => {
+    expect(sharingSettingsAvailable(MAC)).toBe(true);
+    expect(sharingSettingsAvailable(LINUX)).toBe(false);
     shell.isTauri.mockReturnValue(false);
-    expect(remoteLoginSettingsAvailable(MAC)).toBe(false);
+    expect(sharingSettingsAvailable(MAC)).toBe(false);
   });
 });
 
-describe('openRemoteLoginSettings', () => {
+describe('openSharingSettings', () => {
   it('R-059: invokes the shell command with no arguments, so the web view names no URL', async () => {
     shell.invoke.mockResolvedValue(null);
-    await openRemoteLoginSettings();
-    expect(shell.invoke).toHaveBeenCalledWith('remote_login_settings_open');
+    await openSharingSettings();
+    expect(shell.invoke).toHaveBeenCalledWith('sharing_settings_open');
   });
 
   it('R-059: shell codes become typed errors without the shell message', async () => {
     shell.invoke.mockRejectedValue({ code: 'unavailable', message: 'raw os text' });
-    const failure = await openRemoteLoginSettings().catch((reason: unknown) => reason);
+    const failure = await openSharingSettings().catch((reason: unknown) => reason);
     expect(failure).toBeInstanceOf(SystemSettingsError);
     expect(failure).toMatchObject({ problem: 'unavailable' });
     expect(String(failure)).not.toContain('raw os text');
     shell.invoke.mockRejectedValue('command not found');
-    await expect(openRemoteLoginSettings()).rejects.toMatchObject({ problem: 'failed' });
+    await expect(openSharingSettings()).rejects.toMatchObject({ problem: 'failed' });
   });
 });
 
@@ -66,7 +66,7 @@ describe('RemoteLoginButton', () => {
     expect(button?.textContent).toBe('Open Remote Login settings');
     button?.click();
     await tick();
-    expect(shell.invoke).toHaveBeenCalledWith('remote_login_settings_open');
+    expect(shell.invoke).toHaveBeenCalledWith('sharing_settings_open');
     expect(document.querySelector('[role="alert"]')).toBeNull();
   });
 

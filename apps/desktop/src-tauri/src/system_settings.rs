@@ -1,13 +1,13 @@
 //! Opens the OS settings pane the operator needs to make this computer a device: on macOS,
-//! Sharing, where Remote Login (SSH) is turned on (R-059). The web view names no pane or URL;
-//! the command opens one fixed pane.
+//! Sharing, where Remote Login (SSH, R-059) and Screen Sharing (R-079) are turned on. The web
+//! view names no pane or URL; the command opens one fixed pane.
 
 use std::process::{Command, Stdio};
 
 use serde::{Serialize, Serializer, ser::SerializeStruct};
 use tauri_plugin_log::log;
 
-/// System Settings → General → Sharing, which holds the Remote Login switch (macOS 13 and later).
+/// System Settings → General → Sharing, which holds the Remote Login and Screen Sharing switches (macOS 13 and later).
 const SHARING_PANE: &str = "x-apple.systempreferences:com.apple.Sharing-Settings.extension";
 
 /// The URL opener. An absolute path, so `PATH` cannot swap it.
@@ -65,9 +65,10 @@ fn open_with(opener: &str, target: &str) -> Result<(), SystemSettingsError> {
     }
 }
 
-/// Opens System Settings at Sharing, where Remote Login is turned on. Unavailable off macOS.
+/// Opens System Settings at Sharing, where Remote Login and Screen Sharing are turned on.
+/// Unavailable off macOS.
 #[tauri::command]
-pub async fn remote_login_settings_open() -> Result<(), SystemSettingsError> {
+pub async fn sharing_settings_open() -> Result<(), SystemSettingsError> {
     if !cfg!(target_os = "macos") {
         return Err(SystemSettingsError::Unavailable);
     }

@@ -1,4 +1,4 @@
-import { openRemoteLoginSettings, remoteLoginSettingsAvailable } from '$lib/desktop/systemSettings';
+import { openSharingSettings, sharingSettingsAvailable } from '$lib/desktop/systemSettings';
 import { readThisMachine } from '$lib/desktop/thisMachine';
 import { devicesApi } from '$lib/devices/client';
 import type { Hub } from '$lib/hub/hub';
@@ -11,8 +11,8 @@ export function screenSharingCalls(hub: Hub): ScreenSharingCalls {
     test: sessionsApi(hub).testConnection,
     update: devicesApi(hub).update,
     thisMachine: readThisMachine,
-    sharingAvailable: remoteLoginSettingsAvailable,
-    openSharing: openRemoteLoginSettings,
+    sharingAvailable: sharingSettingsAvailable,
+    openSharing: openSharingSettings,
     after: (ms, run) => {
       const timer = setTimeout(run, ms);
       return () => {

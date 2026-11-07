@@ -1,6 +1,6 @@
 <script lang="ts">
   import { press } from '$lib/motion/roles/press';
-  import { openRemoteLoginSettings, remoteLoginSettingsAvailable, SystemSettingsError } from './systemSettings';
+  import { openSharingSettings, sharingSettingsAvailable, SystemSettingsError } from './systemSettings';
 
   interface Props {
     /** Shown only in the desktop app on a Mac (R-059). */
@@ -9,13 +9,13 @@
     sshOff?: boolean;
   }
 
-  const { available = remoteLoginSettingsAvailable(), sshOff = false }: Props = $props();
+  const { available = sharingSettingsAvailable(), sshOff = false }: Props = $props();
   let problem = $state<string | null>(null);
 
   async function open(): Promise<void> {
     problem = null;
     try {
-      await openRemoteLoginSettings();
+      await openSharingSettings();
     } catch (reason) {
       problem = reason instanceof SystemSettingsError ? reason.message : new SystemSettingsError('failed').message;
     }
