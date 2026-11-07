@@ -120,11 +120,45 @@ fn web_008_an_http_tab_takes_no_pin() {
 #[test]
 fn web_004_popping_out_is_marked_once() {
     let tabs = Tabs::default();
-    tabs.reserve(id("w"), tab("http://192.0.2.7/")).unwrap();
-    assert_eq!(tabs.pop_out(&id("w")), Ok(false));
-    assert_eq!(tabs.pop_out(&id("w")), Ok(true));
+    let generation = tabs.reserve(id("w"), tab("http://192.0.2.7/")).unwrap();
+    assert_eq!(tabs.pop_out(&id("w")), Ok(Some(generation)));
+    assert_eq!(tabs.pop_out(&id("w")), Ok(None));
     assert!(tabs.get(&id("w")).unwrap().popped_out);
     assert_eq!(tabs.pop_out(&id("x")), Err(WebViewError::UnknownTab));
+}
+
+#[test]
+fn web_004_a_pop_out_that_did_not_happen_is_taken_back_for_its_own_reservation_only() {
+    let tabs = Tabs::default();
+    let old = tabs.reserve(id("w"), tab("http://192.0.2.7/")).unwrap();
+    tabs.pop_out(&id("w")).unwrap();
+    tabs.undo_pop_out(&id("w"), old);
+    assert!(!tabs.get(&id("w")).unwrap().popped_out);
+    tabs.remove(&id("w"));
+    let new = tabs.reserve(id("w"), tab("http://192.0.2.7/")).unwrap();
+    tabs.pop_out(&id("w")).unwrap();
+    tabs.undo_pop_out(&id("w"), old);
+    assert!(tabs.get(&id("w")).unwrap().popped_out);
+    tabs.undo_pop_out(&id("w"), new);
+    assert!(!tabs.get(&id("w")).unwrap().popped_out);
+}
+
+#[test]
+fn web_004_a_tab_opened_again_is_a_new_reservation_the_old_one_cannot_end() {
+    let tabs = Tabs::default();
+    let old = tabs.reserve(id("r"), tab("http://192.0.2.7/")).unwrap();
+    assert!(tabs.holds(&id("r"), old));
+    tabs.remove(&id("r"));
+    assert!(!tabs.holds(&id("r"), old), "closed while its open waited");
+    let new = tabs.reserve(id("r"), tab("http://192.0.2.8/")).unwrap();
+    assert_ne!(old, new);
+    assert!(!tabs.holds(&id("r"), old), "closed and opened again");
+    assert!(tabs.holds(&id("r"), new));
+    assert_eq!(tabs.release(&id("r"), old), None);
+    assert_eq!(tabs.get(&id("r")).unwrap(), tab("http://192.0.2.8/"));
+    assert_eq!(tabs.release(&id("r"), new), Some(tab("http://192.0.2.8/")));
+    assert_eq!(tabs.get(&id("r")), Err(WebViewError::UnknownTab));
+    assert!(!tabs.holds(&id("missing"), new));
 }
 
 /// Every character in every position: a tab ID is accepted only if each character is one

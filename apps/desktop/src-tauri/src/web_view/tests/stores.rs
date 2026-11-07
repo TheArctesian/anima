@@ -53,6 +53,14 @@ fn web_006_a_device_id_is_the_hyphenated_uuid_and_nothing_else() {
 /// A one-character change anywhere in the ID, to any non-hex character, is refused, and a
 /// change to another hex digit is another store: the folder name is always hex and hyphens.
 #[test]
+fn web_006_the_nil_uuid_names_no_device() {
+    assert_eq!(
+        DeviceId::parse("00000000-0000-0000-0000-000000000000"),
+        Err(WebViewError::DeviceId)
+    );
+}
+
+#[test]
 fn web_006_every_one_character_change_is_refused_or_another_device() {
     let original = DeviceId::parse(DEVICE).unwrap();
     for position in 0..DEVICE.len() {

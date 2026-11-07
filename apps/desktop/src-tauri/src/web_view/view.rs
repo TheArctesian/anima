@@ -15,10 +15,11 @@ use tauri::{
 use super::trust::{Answer, Presented, rule};
 use super::{
     Tabs, WebViewError,
-    address::is_web,
+    address::may_load,
     event::{self, Failure, WebViewEvent},
+    pinning_available,
     storage::DeviceId,
-    tabs::TabId,
+    tabs::{Generation, TabId},
 };
 
 /// The address a device web view is created on. The real address is loaded only after the
@@ -65,9 +66,9 @@ fn builder(app: &AppHandle, id: &TabId) -> Result<WebviewBuilder<tauri::Wry>, We
             .focused(false)
             // Files dropped on the page reach the page, not the shell's drop events.
             .disable_drag_drop_handler()
-            .on_navigation(is_web)
+            .on_navigation(|url| may_load(url, pinning_available()))
             .on_new_window(move |url, _features| {
-                if is_web(&url) {
+                if may_load(&url, pinning_available()) {
                     follow(app.clone(), label.clone(), opener.clone(), url);
                 }
                 NewWindowResponse::Deny
@@ -190,20 +191,36 @@ fn with_store(
 }
 
 /// Moves `view` to a window of its own, filling it; the store goes with the view. Closing
-/// that window closes the web view and ends the tab.
-pub fn pop_out(app: &AppHandle, view: &Webview, id: &TabId) -> Result<(), WebViewError> {
-    let window = WindowBuilder::new(app, id.window_label())
+/// that window closes the web view and ends the tab, if the tab is still the reservation
+/// `generation` that moved.
+///
+/// If the window cannot be made or the view cannot move, the tab is back in the main window:
+/// the mark is taken back and the empty window closed. Once the view has moved, it stays.
+pub fn pop_out(
+    app: &AppHandle,
+    view: &Webview,
+    id: &TabId,
+    generation: Generation,
+) -> Result<(), WebViewError> {
+    let moved = WindowBuilder::new(app, id.window_label())
         .title(POP_OUT_TITLE)
         .inner_size(POP_OUT_WIDTH, POP_OUT_HEIGHT)
         .build()
-        .map_err(native)?;
+        .and_then(|window| match view.reparent(&window) {
+            Ok(()) => Ok(window),
+            Err(error) => window.close().and(Err(error)),
+        });
+    let window = moved.map_err(|error| {
+        app.state::<Tabs>().undo_pop_out(id, generation);
+        native(error)
+    })?;
+    // After the move, so closing an empty window above does not end the tab.
     let (ended, owner) = (app.clone(), id.clone());
     window.on_window_event(move |event| {
         if matches!(event, WindowEvent::Destroyed) {
-            ended.state::<Tabs>().remove(&owner);
+            ended.state::<Tabs>().release(&owner, generation);
         }
     });
-    view.reparent(&window).map_err(native)?;
     view.set_bounds(Rect {
         position: LogicalPosition::new(0.0, 0.0).into(),
         size: LogicalSize::new(POP_OUT_WIDTH, POP_OUT_HEIGHT).into(),

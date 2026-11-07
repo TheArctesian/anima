@@ -79,23 +79,33 @@ pub async fn open_tab(app: &AppHandle, body: &serde_json::Value) -> Result<(), W
     let new = Opening::read(body)?.check(pinning_available())?;
     let window = app.get_window(MAIN).ok_or(WebViewError::Window)?;
     let url = new.tab.url.as_url().clone();
-    app.state::<Tabs>().reserve(new.id.clone(), new.tab)?;
+    let generation = app.state::<Tabs>().reserve(new.id.clone(), new.tab)?;
     let (id, device, rect) = (new.id.clone(), new.device, new.rect);
     let attached =
         tauri::async_runtime::spawn_blocking(move || view::attach(&window, &id, device, rect))
             .await
             .map_err(|_| WebViewError::Native)
             .flatten();
-    // The trust hook goes on the blank view before the first real load, or nothing loads.
-    let loaded = match attached {
-        Ok(view) => view::guard(&view, &new.id)
-            .await
-            .and_then(|()| view.navigate(url).map_err(native)),
-        Err(error) => Err(error),
+    let view = match attached {
+        Ok(view) => view,
+        // This open made no view; one under the label, if any, belongs to another open.
+        Err(error) => {
+            app.state::<Tabs>().release(&new.id, generation);
+            return Err(error);
+        }
     };
+    // The trust hook goes on the blank view before the first real load, or nothing loads.
+    // A tab closed, or closed and opened again, while this open waited gets no load either.
+    let loaded = view::guard(&view, &new.id).await.and_then(|()| {
+        if app.state::<Tabs>().holds(&new.id, generation) {
+            view.navigate(url).map_err(native)
+        } else {
+            Err(WebViewError::UnknownTab)
+        }
+    });
     if let Err(error) = loaded {
-        app.state::<Tabs>().remove(&new.id);
-        return view::close(app, &new.id, false).and(Err(error));
+        app.state::<Tabs>().release(&new.id, generation);
+        return view.close().map_err(native).and(Err(error));
     }
     Ok(())
 }
@@ -169,10 +179,10 @@ pub fn pin_tab(app: &AppHandle, tab_id: &str, pin: &str) -> Result<(), WebViewEr
 pub async fn web_view_pop_out(webview: Webview, tab_id: String) -> Result<(), WebViewError> {
     reported(caller(webview.label()).and_then(|()| {
         let (id, view) = open_view(webview.app_handle(), &tab_id)?;
-        if webview.state::<Tabs>().pop_out(&id)? {
-            return Ok(());
+        match webview.state::<Tabs>().pop_out(&id)? {
+            Some(generation) => view::pop_out(webview.app_handle(), &view, &id, generation),
+            None => Ok(()),
         }
-        view::pop_out(webview.app_handle(), &view, &id)
     }))
 }
 

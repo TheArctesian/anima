@@ -2,7 +2,12 @@
 //! view cannot pin its certificate, the client shows the fingerprint and sends the operator
 //! here. Only `http` and `https` addresses; the URL is never logged (LOG-007).
 
-use std::process::{Command, Stdio};
+use std::{
+    io::ErrorKind,
+    process::{Command, Stdio},
+    thread,
+    time::{Duration, Instant},
+};
 
 use serde::{Serialize, Serializer, ser::SerializeStruct};
 use tauri_plugin_log::log;
@@ -16,6 +21,12 @@ const OPENER: &str = if cfg!(target_os = "macos") {
 } else {
     "/usr/bin/xdg-open"
 };
+
+/// How long to wait for the opener's exit status. `open` and most `xdg-open` back ends hand
+/// the address to the browser and exit at once; some `xdg-open` fallbacks run the browser in
+/// the foreground and exit only when it closes.
+const PATIENCE: Duration = Duration::from_secs(3);
+const POLL: Duration = Duration::from_millis(20);
 
 /// Why the address did not open in the system browser. Carries no URL or OS error text.
 ///
@@ -52,23 +63,35 @@ impl Serialize for SystemBrowserError {
     }
 }
 
-/// Runs `opener` with `url` as its one argument (no shell) and waits for its exit status.
-/// A checked URL starts with its scheme, so the opener cannot read it as an option.
-fn open_with(opener: &str, url: &WebUrl) -> Result<(), SystemBrowserError> {
-    let status = Command::new(opener)
+/// Runs `opener` with `url` as its one argument (no shell). A checked URL starts with its
+/// scheme, so the opener cannot read it as an option.
+///
+/// An exit within `patience` decides the result. An opener still running after `patience` is
+/// taken as a browser in the foreground: the call succeeds and a thread reaps the child when
+/// it exits, so a blocking `xdg-open` never leaves the command pending.
+fn open_with(opener: &str, url: &WebUrl, patience: Duration) -> Result<(), SystemBrowserError> {
+    let mut child = Command::new(opener)
         .arg(url.as_str())
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
-        .status()
+        .spawn()
         .map_err(|error| match error.kind() {
-            std::io::ErrorKind::NotFound => SystemBrowserError::Unavailable,
+            ErrorKind::NotFound => SystemBrowserError::Unavailable,
             _ => SystemBrowserError::Failed,
         })?;
-    if status.success() {
-        Ok(())
-    } else {
-        Err(SystemBrowserError::Failed)
+    let deadline = Instant::now() + patience;
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) if status.success() => return Ok(()),
+            Ok(Some(_)) | Err(_) => return Err(SystemBrowserError::Failed),
+            Ok(None) if Instant::now() < deadline => thread::sleep(POLL),
+            Ok(None) => {
+                // The exit status no longer matters; waiting only reaps the child.
+                thread::spawn(move || child.wait());
+                return Ok(());
+            }
+        }
     }
 }
 
@@ -79,7 +102,7 @@ pub async fn system_browser_open(
     url: String,
 ) -> Result<(), SystemBrowserError> {
     let opened = match crate::web_view::caller(webview.label()).and_then(|()| WebUrl::parse(&url)) {
-        Ok(url) => tauri::async_runtime::spawn_blocking(move || open_with(OPENER, &url))
+        Ok(url) => tauri::async_runtime::spawn_blocking(move || open_with(OPENER, &url, PATIENCE))
             .await
             .map_err(|_| SystemBrowserError::Failed)
             .flatten(),
@@ -96,8 +119,18 @@ mod tests {
     //! The tests run `true`, `false` or a missing program in place of the opener, so no test
     //! opens a browser.
 
-    use super::{SystemBrowserError, open_with};
+    use std::{
+        fs,
+        os::unix::fs::PermissionsExt,
+        time::{Duration, Instant},
+    };
+
+    use super::{PATIENCE, SystemBrowserError, open_with};
     use crate::web_view::{WebUrl, WebViewError};
+
+    fn open(opener: &str) -> Result<(), SystemBrowserError> {
+        open_with(opener, &url(), PATIENCE)
+    }
 
     fn url() -> WebUrl {
         WebUrl::parse("https://192.0.2.7:8443/admin").unwrap()
@@ -105,19 +138,37 @@ mod tests {
 
     #[test]
     fn web_004_an_opener_that_succeeds_opens_the_address() {
-        assert_eq!(open_with("true", &url()), Ok(()));
+        assert_eq!(open("true"), Ok(()));
     }
 
     #[test]
     fn web_004_an_opener_that_fails_is_reported_as_failed() {
-        assert_eq!(open_with("false", &url()), Err(SystemBrowserError::Failed));
+        assert_eq!(open("false"), Err(SystemBrowserError::Failed));
     }
 
     #[test]
     fn web_004_a_missing_opener_is_reported_as_unavailable() {
         assert_eq!(
-            open_with("/nonexistent/anima-opener", &url()),
+            open("/nonexistent/anima-opener"),
             Err(SystemBrowserError::Unavailable)
+        );
+    }
+
+    #[test]
+    fn web_004_an_opener_still_running_after_patience_succeeds_without_waiting_for_it() {
+        let folder = std::env::temp_dir().join(format!("anima-browser-{}", std::process::id()));
+        fs::create_dir_all(&folder).unwrap();
+        let opener = folder.join("browser in the foreground");
+        fs::write(&opener, "#!/bin/sh\nexec sleep 10\n").unwrap();
+        fs::set_permissions(&opener, fs::Permissions::from_mode(0o755)).unwrap();
+        let started = Instant::now();
+        let answer = open_with(opener.to_str().unwrap(), &url(), Duration::from_millis(100));
+        fs::remove_dir_all(&folder).unwrap();
+        assert_eq!(answer, Ok(()));
+        assert!(
+            started.elapsed() < Duration::from_secs(5),
+            "{:?}",
+            started.elapsed()
         );
     }
 

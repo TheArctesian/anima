@@ -198,12 +198,14 @@ async fn d_9_a_server_that_never_answers_times_out_within_the_patience() {
 
 #[tokio::test]
 async fn d_9_a_closed_port_is_unreachable() {
-    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let port = listener.local_addr().unwrap().port();
-    drop(listener);
-    let url = format!("https://127.0.0.1:{port}/");
-    let answer = leaf_fingerprint(&origin(&url), PATIENCE).await;
+    // Port 0 is never open: no process can listen on it, so no parallel test can open it
+    // either, and the connect fails at once (refused on Linux, unassignable on macOS). A
+    // freed ephemeral port could be taken by another test before the probe arrives.
+    let url = "https://127.0.0.1:0/";
+    let started = Instant::now();
+    let answer = leaf_fingerprint(&origin(url), PATIENCE).await;
     assert_eq!(answer, Err(CertificateError::Unreachable));
+    assert!(started.elapsed() < PATIENCE, "{:?}", started.elapsed());
 }
 
 #[tokio::test]

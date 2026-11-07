@@ -14,11 +14,12 @@ pub const STORE_FOLDER: &str = "web";
 pub struct DeviceId(Uuid);
 
 impl DeviceId {
-    /// Reads the hub's hyphenated UUID form; no other form, so one device has one store.
+    /// Reads the hub's hyphenated UUID form; no other form, so one device has one store. The
+    /// nil UUID names no device, so it is refused.
     pub fn parse(text: &str) -> Result<Self, WebViewError> {
         let canonical = text.len() == 36 && text.as_bytes().get(8) == Some(&b'-');
         let uuid = Uuid::try_parse(text).map_err(|_| WebViewError::DeviceId)?;
-        if canonical {
+        if canonical && !uuid.is_nil() {
             Ok(Self(uuid))
         } else {
             Err(WebViewError::DeviceId)

@@ -1,6 +1,6 @@
-//! The open device web views, by tab ID: what each was opened on, its pin and whether it has
-//! its own window. No I/O; the lock is held only to copy in or out, never across a call to
-//! the web view or an `await`.
+//! The open device web views, by tab ID: what each was opened on, its pin, whether it has
+//! its own window and which reservation of the ID it is. No I/O; the lock is held only to
+//! copy in or out, never across a call to the web view or an `await`.
 
 use std::{
     collections::HashMap,
@@ -56,37 +56,65 @@ pub struct Tab {
     pub popped_out: bool,
 }
 
+/// One reservation of a tab ID. A tab closed and opened again under the same ID has a new
+/// generation, so work begun for the old one (an open still waiting, a closing pop-out window)
+/// cannot touch the new one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Generation(u64);
+
+#[derive(Debug, Default)]
+struct Open {
+    tabs: HashMap<TabId, (Generation, Tab)>,
+    /// The generation the next reservation takes.
+    next: u64,
+}
+
 /// The open device web views. Bounded by [`TABS_MAX`].
 #[derive(Debug, Default)]
-pub struct Tabs(Mutex<HashMap<TabId, Tab>>);
+pub struct Tabs(Mutex<Open>);
 
 impl Tabs {
-    /// A poisoned lock still holds a consistent map: every change is one insert or remove.
-    fn open(&self) -> MutexGuard<'_, HashMap<TabId, Tab>> {
+    /// A poisoned lock still holds a consistent map: every change is one insert, update or
+    /// remove.
+    fn open(&self) -> MutexGuard<'_, Open> {
         self.0.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
     /// Takes `id` for a new web view, if it is free and the bound allows.
-    pub fn reserve(&self, id: TabId, tab: Tab) -> Result<(), WebViewError> {
+    pub fn reserve(&self, id: TabId, tab: Tab) -> Result<Generation, WebViewError> {
         let mut open = self.open();
-        if open.contains_key(&id) {
+        if open.tabs.contains_key(&id) {
             return Err(WebViewError::TabOpen);
         }
-        if open.len() >= TABS_MAX {
+        if open.tabs.len() >= TABS_MAX {
             return Err(WebViewError::TabLimit);
         }
-        open.insert(id, tab);
-        Ok(())
+        let generation = Generation(open.next);
+        open.next += 1;
+        open.tabs.insert(id, (generation, tab));
+        Ok(generation)
     }
 
     pub fn get(&self, id: &TabId) -> Result<Tab, WebViewError> {
-        self.open().get(id).cloned().ok_or(WebViewError::UnknownTab)
+        self.open()
+            .tabs
+            .get(id)
+            .map(|(_, tab)| tab.clone())
+            .ok_or(WebViewError::UnknownTab)
+    }
+
+    /// Whether `id` is still the reservation `generation`, not closed and not opened again.
+    pub fn holds(&self, id: &TabId, generation: Generation) -> bool {
+        self.open()
+            .tabs
+            .get(id)
+            .is_some_and(|(held, _)| *held == generation)
     }
 
     /// Pins the certificate the operator accepted to the tab's `https` origin.
     pub fn set_pin(&self, id: &TabId, fingerprint: Fingerprint) -> Result<Tab, WebViewError> {
         let mut open = self.open();
-        let tab = open.get_mut(id).ok_or(WebViewError::UnknownTab)?;
+        let (_, tab) = open.tabs.get_mut(id).ok_or(WebViewError::UnknownTab)?;
         let origin = tab.origin.clone().ok_or(WebViewError::PinScheme)?;
         tab.pin = Some(Pin {
             origin,
@@ -95,14 +123,37 @@ impl Tabs {
         Ok(tab.clone())
     }
 
-    /// Marks the tab as moved to its own window; answers whether it already was.
-    pub fn pop_out(&self, id: &TabId) -> Result<bool, WebViewError> {
+    /// Marks the tab as moved to its own window. `None` if it already was; otherwise the
+    /// reservation that moved, for the window to end when it closes.
+    pub fn pop_out(&self, id: &TabId) -> Result<Option<Generation>, WebViewError> {
         let mut open = self.open();
-        let tab = open.get_mut(id).ok_or(WebViewError::UnknownTab)?;
-        Ok(std::mem::replace(&mut tab.popped_out, true))
+        let (generation, tab) = open.tabs.get_mut(id).ok_or(WebViewError::UnknownTab)?;
+        Ok((!std::mem::replace(&mut tab.popped_out, true)).then_some(*generation))
     }
 
+    /// Takes back a pop-out that did not happen, if `id` is still that reservation.
+    pub fn undo_pop_out(&self, id: &TabId, generation: Generation) {
+        if let Some((held, tab)) = self.open().tabs.get_mut(id)
+            && *held == generation
+        {
+            tab.popped_out = false;
+        }
+    }
+
+    /// Ends the tab, whichever reservation it is: the operator closed it.
     pub fn remove(&self, id: &TabId) -> Option<Tab> {
-        self.open().remove(id)
+        self.open().tabs.remove(id).map(|(_, tab)| tab)
+    }
+
+    /// Ends the tab only if it is still the reservation `generation`.
+    pub fn release(&self, id: &TabId, generation: Generation) -> Option<Tab> {
+        let mut open = self.open();
+        let held = open
+            .tabs
+            .get(id)
+            .is_some_and(|(held, _)| *held == generation);
+        held.then(|| open.tabs.remove(id))
+            .flatten()
+            .map(|(_, tab)| tab)
     }
 }

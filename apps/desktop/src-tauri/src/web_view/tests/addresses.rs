@@ -5,7 +5,7 @@ use tauri::Url;
 
 use crate::web_view::{
     Fingerprint, OriginError, PinnedOrigin, WebUrl, WebViewError,
-    address::{Embedding, embedding, is_web},
+    address::{Embedding, embedding, is_web, may_load},
     pinning_available,
 };
 
@@ -38,6 +38,20 @@ fn web_007_the_filter_allows_http_and_https_only() {
 }
 
 #[test]
+fn d_6_the_filter_lets_a_page_reach_https_only_where_the_platform_pins() {
+    let http = url("http://192.0.2.7/");
+    let https = url("https://router.lan:8443/admin");
+    assert!(may_load(&http, false) && may_load(&http, true));
+    assert!(!may_load(&https, false));
+    assert!(may_load(&https, true));
+    for pinning in [false, true] {
+        for refused in ["file:///etc/hosts", "about:blank", "tauri://localhost/"] {
+            assert!(!may_load(&url(refused), pinning), "{refused} {pinning}");
+        }
+    }
+}
+
+#[test]
 fn web_004_an_address_is_http_or_https_with_a_host_and_no_userinfo() {
     assert_eq!(
         WebUrl::parse("http://192.0.2.7/").unwrap().as_str(),
@@ -52,6 +66,7 @@ fn web_004_an_address_is_http_or_https_with_a_host_and_no_userinfo() {
         ("tauri://localhost/", WebViewError::Scheme),
         ("http://admin:secret@192.0.2.7/", WebViewError::Userinfo),
         ("https://admin@192.0.2.7/", WebViewError::Userinfo),
+        ("http://:pw@192.0.2.7/", WebViewError::Userinfo),
     ];
     for (text, error) in cases {
         assert_eq!(WebUrl::parse(text), Err(error), "{text}");
@@ -60,10 +75,12 @@ fn web_004_an_address_is_http_or_https_with_a_host_and_no_userinfo() {
 
 #[test]
 fn web_004_an_address_longer_than_8192_characters_is_refused() {
-    let long = format!("http://192.0.2.7/{}", "a".repeat(8192));
-    assert_eq!(WebUrl::parse(&long), Err(WebViewError::Url));
-    let fits = format!("http://192.0.2.7/{}", "a".repeat(8192 - 17));
+    let prefix = "http://192.0.2.7/";
+    let fits = format!("{prefix}{}", "a".repeat(8192 - prefix.len()));
+    assert_eq!(fits.len(), 8192);
     assert!(WebUrl::parse(&fits).is_ok());
+    let one_over = format!("{fits}a");
+    assert_eq!(WebUrl::parse(&one_over), Err(WebViewError::Url));
 }
 
 #[test]

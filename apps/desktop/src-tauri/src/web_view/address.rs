@@ -8,10 +8,16 @@ use super::{Fingerprint, Pin, PinnedOrigin, WebViewError};
 /// The longest address accepted, as the client's own bound.
 const URL_MAX: usize = 8192;
 
-/// Whether a device web view may go to `url`: `http` or `https`, nothing else. The
-/// navigation filter, asked for every frame and every new-window request.
+/// Whether `url` is a web address: `http` or `https`, nothing else.
 pub fn is_web(url: &Url) -> bool {
     matches!(url.scheme(), "http" | "https")
+}
+
+/// Whether a device web view may go to `url`: `http`, or `https` where the platform can pin
+/// (D-6). The navigation filter, asked for every frame and every new-window request, so a
+/// page cannot take its view to an `https` address the view could not pin.
+pub fn may_load(url: &Url, pinning: bool) -> bool {
+    is_web(url) && (url.scheme() == "http" || pinning)
 }
 
 /// An `http` or `https` address with a host and no user name or password.
