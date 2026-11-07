@@ -122,18 +122,21 @@ async fn write_transfer(
     Ok(())
 }
 
-/// A device that moved to `site` no longer relays for any other site (D-7).
+/// Clears every relay role the device can no longer fill: at a site other than `site` (when
+/// the device moved) and at any site when its SSH was turned off (the relay works over SSH).
 pub(in crate::devices) async fn release_relay(
     conn: &mut PgConnection,
     device: DeviceId,
-    site: SiteId,
+    site: Option<SiteId>,
+    ssh_off: bool,
 ) -> Result<(), Error> {
     sqlx::query(
         "UPDATE devices.sites SET wake_relay_device_id = NULL \
-         WHERE wake_relay_device_id = $1 AND id <> $2",
+         WHERE wake_relay_device_id = $1 AND ($3 OR id <> COALESCE($2, id))",
     )
     .bind(device)
     .bind(site)
+    .bind(ssh_off)
     .execute(conn)
     .await?;
     Ok(())
@@ -172,13 +175,14 @@ pub(in crate::devices) async fn devices_by_ids(
     to_devices(rows)
 }
 
-/// The device, with its row share-locked until the transaction ends, so it cannot move to
-/// another site or turn SSH off before the relay is written; `None` when there is none.
+/// The device, with its row and its SSH settings row share-locked until the transaction ends,
+/// so it cannot move to another site or turn SSH off before the relay is written, and a
+/// concurrent change is read as committed; `None` when there is none.
 pub(in crate::devices) async fn share_device(
     conn: &mut PgConnection,
     id: DeviceId,
 ) -> Result<Option<Device>, Error> {
-    let row = sqlx::query_as::<_, DeviceRow>(select_device!("WHERE d.id = $1 FOR SHARE OF d"))
+    let row = sqlx::query_as::<_, DeviceRow>(select_device!("WHERE d.id = $1 FOR SHARE OF d, s"))
         .bind(id)
         .fetch_optional(conn)
         .await?;

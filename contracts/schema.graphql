@@ -189,9 +189,9 @@ type Device {
   transfer: TransferPolicy!
   accessWarnings: [AccessWarning!]!
   # web_interfaces
-  webInterfaces: [WebInterface!]! @pending
+  webInterfaces: [WebInterface!]!
   # web_interfaces (WEB-002)
-  webInterfaceSuggestions: [WebInterfaceSuggestion!]! @pending
+  webInterfaceSuggestions: [WebInterfaceSuggestion!]!
   # metrics
   readings: Readings @pending
   # metrics (MET-003, MET-009)

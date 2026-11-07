@@ -9,6 +9,7 @@ mod create;
 mod ip;
 mod order;
 mod status;
+mod web_interfaces;
 
 use chrono::{DateTime, TimeDelta, Utc};
 use serde_json::Value;

@@ -182,9 +182,8 @@ pub(super) async fn update_device(
         .await?;
     }
     remote::write_change(&mut tx, id, &change.remote).await?;
-    if let Some(site) = change.site {
-        remote::release_relay(&mut tx, id, site).await?;
-    }
+    let ssh_off = change.ssh.as_ref().is_some_and(|ssh| !ssh.enabled);
+    remote::release_relay(&mut tx, id, change.site, ssh_off).await?;
     let changed = fetch(&mut *tx, id).await?;
     tx.commit().await?;
     Ok(changed)
