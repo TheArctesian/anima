@@ -3,9 +3,12 @@
   import type { Hub } from '$lib/hub/hub';
   import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
-  import { popover } from '$lib/motion/roles/transitions';
+  import { listRow, popover } from '$lib/motion/roles/transitions';
+  import { reorderMotion } from '$lib/devices/card/reorder.svelte';
+  import { nextTabStop } from './focus';
   import { liveLabel, startedTime } from './live';
   import { watchLiveSessions } from './live.svelte';
+  import { STOP_REFUSED } from './stopping.svelte';
 
   interface Props {
     hub: Hub;
@@ -24,6 +27,7 @@
   let panel = $state<HTMLElement>();
 
   $effect(live.start);
+  const track = reorderMotion(() => live.sessions.map((session) => session.id).join('\n'));
 
   function toggle(): void {
     open = !open;
@@ -60,6 +64,27 @@
     (target ?? button)?.focus();
   }
 
+  const stops = (): HTMLElement[] => [...(panel?.querySelectorAll<HTMLElement>('[data-stop]') ?? [])];
+
+  /** On open focus goes in: the first Stop, or the panel itself when the list is empty (C-3). */
+  $effect(() => {
+    if (panel) (stops()[0] ?? panel).focus();
+  });
+
+  /** Tab goes from the control into the panel, which sits in the body; inside it Tab cycles through the Stop buttons. */
+  function onTab(event: KeyboardEvent): void {
+    const found = stops();
+    const active = document.activeElement;
+    const onControl = active === button;
+    if (!open || (!onControl && panel?.contains(active) !== true)) return;
+    if (onControl && event.shiftKey) return;
+    const at = onControl ? -1 : found.findIndex((stop) => stop === active);
+    const next = onControl ? { in: 0 } : nextTabStop(at, found.length, event.shiftKey);
+    const target = 'in' in next ? found[next.in] : button;
+    event.preventDefault();
+    (target ?? (onControl ? panel : button))?.focus();
+  }
+
   function close(): void {
     open = false;
     button?.focus();
@@ -68,6 +93,7 @@
   /** Escape closes the open popover wherever focus is: WebKit does not focus a button that a mouse click opened. */
   function onKeydown(event: KeyboardEvent): void {
     if (event.key === 'Escape' && open) close();
+    else if (event.key === 'Tab') onTab(event);
   }
 
   /** A press outside closes the popover; focus goes back to the control only when it was inside. */
@@ -102,6 +128,7 @@
   {#if open}
     <div class="panel" id="{id}-panel" role="group"
       aria-label="Live sessions"
+      tabindex="-1"
       bind:this={panel}
       transition:popover={{ from: button }}
       {@attach placeBesideBar}
@@ -109,16 +136,20 @@
       {#if live.loadFailure !== null}
         <p class="failure" role="alert"><Icon name="nf-md-alert" />{live.loadFailure}</p>
       {/if}
-      {#each live.sessions as session (session.id)}
+      {#each live.sessions as session, index (session.id)}
         {@const failure = live.stopFailure(session.id)}
-        <div class="row">
+        <div class="row" transition:listRow={{ index }} {@attach track(session.id)}>
           <div class="facts">
             <strong>{session.deviceName}</strong>
             <span>{session.protocol} · {session.operatorName}</span>
             <span>{session.clientAddr} · {startedTime(session)}</span>
-            {#if failure !== null}
-              <span class="failure" role="alert"><Icon name="nf-md-alert" />{failure}</span>
-            {/if}
+            <!-- The sizer holds the failure line's place in every row, so a refused Stop moves nothing (MOT-007). -->
+            <span class="slot">
+              <span class="failure sizer" aria-hidden="true"><Icon name="nf-md-alert" />{STOP_REFUSED}</span>
+              {#if failure !== null}
+                <span class="failure" role="alert"><Icon name="nf-md-alert" />{failure}</span>
+              {/if}
+            </span>
           </div>
           <button
             type="button"
@@ -245,6 +276,23 @@
     flex-direction: column;
     min-inline-size: 0;
     overflow-wrap: anywhere;
+  }
+
+  .slot {
+    display: grid;
+  }
+
+  .slot > * {
+    grid-area: 1 / 1;
+  }
+
+  .sizer {
+    visibility: hidden;
+  }
+
+  .panel:focus-visible {
+    outline: var(--border-focus) solid var(--accent);
+    outline-offset: calc(var(--border-focus) * -1);
   }
 
   .stop {

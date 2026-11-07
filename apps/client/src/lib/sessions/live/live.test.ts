@@ -134,7 +134,7 @@ it('RA-034: a failed Stop keeps the row and shows fixed text, not the hub text',
   stopButton('desk').click();
   flushSync();
   await vi.waitFor(() => {
-    expect(panel()?.textContent).toContain('The session could not be stopped.');
+    expect(panel()?.querySelector('[role="alert"]')?.textContent).toContain('The session could not be stopped.');
   });
   expect(rows()).toHaveLength(1);
   expect(panel()?.textContent).not.toContain('secret hub text');
@@ -249,7 +249,7 @@ it('RA-034: a failed Stop leaves focus on that row\'s button', async () => {
   stopButton('desk').focus();
   stopButton('desk').click();
   await vi.waitFor(() => {
-    expect(panel()?.textContent).toContain('The session could not be stopped.');
+    expect(panel()?.querySelector('[role="alert"]')).not.toBeNull();
   });
   expect(document.activeElement).toBe(stopButton('desk'));
 });
@@ -305,4 +305,90 @@ it('D-6: unmounting stops listening to the subscription', async () => {
   await unmount(app as ReturnType<typeof mount>);
   app = undefined;
   expect(fake.listeners('LiveSessionChanged')).toBe(0);
+});
+
+const press = (target: Element, key: string, shiftKey = false) => {
+  target.dispatchEvent(new KeyboardEvent('keydown', { key, shiftKey, bubbles: true, cancelable: true }));
+  flushSync();
+};
+
+it('RA-034, C-3: opening moves focus to the first Stop, or to the panel when the list is empty', async () => {
+  await show({ LiveSessions: ANSWER(DESK, LAPTOP) });
+  await open();
+  expect(document.activeElement).toBe(stopButton('laptop'));
+  control().click();
+  flushSync();
+  await vi.waitFor(() => {
+    expect(panel()).toBeNull();
+  });
+  document.body.innerHTML = '';
+  await unmount(app as ReturnType<typeof mount>);
+  await show({ LiveSessions: ANSWER() });
+  await open();
+  expect(document.activeElement).toBe(panel());
+});
+
+it('RA-034, C-3: Tab from the control enters the panel, cycles the Stops, and Shift+Tab from the first returns to the control', async () => {
+  await show({ LiveSessions: ANSWER(DESK, LAPTOP) });
+  await open();
+  control().focus();
+  press(control(), 'Tab');
+  expect(document.activeElement).toBe(stopButton('laptop'));
+  press(stopButton('laptop'), 'Tab');
+  expect(document.activeElement).toBe(stopButton('desk'));
+  press(stopButton('desk'), 'Tab');
+  expect(document.activeElement).toBe(stopButton('laptop'));
+  press(stopButton('laptop'), 'Tab', true);
+  expect(document.activeElement).toBe(control());
+  expect(panel()).not.toBeNull();
+});
+
+it('MOT-007, RA-034: a refused Stop reserves its line in every row first, so the row gains no element and the line fills the held place', async () => {
+  await show({ LiveSessions: ANSWER(DESK), EndSession: REFUSED });
+  await open();
+  const facts = () => document.querySelector('.facts') as HTMLElement;
+  const before = [...facts().children].map((child) => child.className);
+  const reserved = facts().querySelector('.slot .sizer');
+  expect(reserved?.getAttribute('aria-hidden')).toBe('true');
+  expect(reserved?.textContent).toContain('The session could not be stopped.');
+  stopButton('desk').click();
+  await vi.waitFor(() => {
+    expect(document.querySelector('[role="alert"]')?.textContent).toContain('The session could not be stopped.');
+  });
+  expect([...facts().children].map((child) => child.className)).toEqual(before);
+  expect(document.querySelector('[role="alert"]')?.parentElement).toBe(reserved?.parentElement);
+  // A retry clears the line and shows it again in the same place.
+  stopButton('desk').click();
+  await vi.waitFor(() => {
+    expect(document.querySelector('[role="alert"]')).not.toBeNull();
+  });
+  expect([...facts().children].map((child) => child.className)).toEqual(before);
+});
+
+it('MOT-007: a leaving row keeps its place while it fades, then is removed', async () => {
+  const held: { onfinish: (() => void) | null }[] = [];
+  const animate = Element.prototype.animate;
+  Object.defineProperty(Element.prototype, 'animate', {
+    configurable: true,
+    value: function hold() {
+      const playback = { onfinish: null, cancel: () => undefined, finish: () => undefined, currentTime: 0 };
+      held.push(playback);
+      return playback;
+    },
+  });
+  try {
+    const fake = await show({ LiveSessions: ANSWER(DESK, LAPTOP) });
+    await open();
+    held.length = 0;
+    fake.push('LiveSessionChanged', { sessionChanged: { session: { ...LAPTOP, endedAt: '2026-11-04T12:00:00Z', endReason: 'OPERATOR' } } });
+    flushSync();
+    expect(rows()).toHaveLength(2);
+    expect(rows().map((row) => row.querySelector('strong')?.textContent)).toEqual(['laptop', 'desk']);
+    for (const playback of held) playback.onfinish?.();
+    await vi.waitFor(() => {
+      expect(rows()).toHaveLength(1);
+    });
+  } finally {
+    Object.defineProperty(Element.prototype, 'animate', { configurable: true, value: animate });
+  }
 });

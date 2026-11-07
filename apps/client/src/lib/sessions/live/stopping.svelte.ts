@@ -1,4 +1,5 @@
-const NOT_STOPPED = 'The session could not be stopped.';
+/** The fixed text for a refused Stop; the rows reserve its room. */
+export const STOP_REFUSED = 'The session could not be stopped.';
 
 /** Which sessions the operator is stopping now, and which Stop the hub refused (RA-034). */
 export class Stopping {
@@ -8,7 +9,7 @@ export class Stopping {
   isStopping = (id: string): boolean => this.#busy.includes(id);
 
   /** Fixed text for a refused Stop of `id`, else null. */
-  failure = (id: string): string | null => (this.#refused.includes(id) ? NOT_STOPPED : null);
+  failure = (id: string): string | null => (this.#refused.includes(id) ? STOP_REFUSED : null);
 
   /** Mark `id` busy and clear its failure; false when it was busy already. */
   begin(id: string): boolean {
