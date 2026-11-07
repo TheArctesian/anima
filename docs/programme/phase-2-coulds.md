@@ -50,3 +50,18 @@ These items are not blocking. The programme orchestrator collects them here and 
   - `k4_8_5` (WP-22 is fixing it);
   - the deploy test DNS-003, for the `make-secrets` interrupt timing;
   - `checks::api::batching::api_005_status_last_heartbeat…`. With the 10 ms loader window under load, the run took 24 statements against a limit of 20, and it passed 3/3 alone. WP-29, which owns checks, should give the test schema a longer batch window.
+
+## WP-21 (hub remote access settings)
+
+- [ ] Clearing a wake relay automatically writes no audit entry of its own.
+- [ ] A cleared relay's event has no device link.
+- [ ] `devices/graphql/standing/interfaces.rs` is a name a newcomer would not look for.
+- [ ] Nothing checks that `metricsSource: SSH` has SSH turned on.
+
+## WP-24 (client RDP and VNC tabs, final)
+
+- [ ] Microphone input and the shared drive in the client.
+- [ ] The `onclient` test seam in `RemoteView`.
+- [ ] Two exports that only tests use.
+- [ ] No test cites RA-030.
+- [ ] Check in the end-to-end run whether WebKit in the macOS app refuses device-to-system clipboard writes, because the write does not follow a user action.
