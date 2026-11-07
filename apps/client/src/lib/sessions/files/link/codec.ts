@@ -106,7 +106,7 @@ function entry(value: unknown): FileEntry | undefined {
 
 function listing(fields: Fields): HubMessage | undefined {
   const { path, entries } = fields;
-  if (typeof path !== 'string' || !Array.isArray(entries) || entries.length > ENTRIES_MAX) return undefined;
+  if (typeof path !== 'string' || path === '' || !Array.isArray(entries) || entries.length > ENTRIES_MAX) return undefined;
   const read: FileEntry[] = [];
   for (const value of entries) {
     const decoded = entry(value);

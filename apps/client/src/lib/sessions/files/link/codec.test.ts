@@ -74,6 +74,7 @@ describe('hub messages, a closed set (K4 §9)', () => {
     ['a size as text', { type: 'download', size: '10' }],
     ['an unknown reason', { type: 'refused', reason: 'BUSY' }],
     ['an entry size as text', { ...ENTRIES, entries: [{ ...ENTRY, size: '12' }] }],
+    ['an entries message with an empty path', { ...ENTRIES, path: '' }],
     ['a negative entry size', { ...ENTRIES, entries: [{ ...ENTRY, size: -1 }] }],
     ['a fractional entry size', { ...ENTRIES, entries: [{ ...ENTRY, size: 1.5 }] }],
     ['an entry size past exact integers', { ...ENTRIES, entries: [{ ...ENTRY, size: 2 ** 53 }] }],
