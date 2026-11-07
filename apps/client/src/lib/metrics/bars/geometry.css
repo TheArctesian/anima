@@ -1,0 +1,7 @@
+/* The metric bars's block size: two lines of bars, each a label line, a gap and a track (MOT-007). */
+:root {
+  --metric-bars-label-block-size: calc(var(--text-xs) * var(--leading-tight));
+  --metric-bars-block-size: calc(
+    (var(--metric-bars-label-block-size) + var(--space-1) * 2) * 2 + var(--space-2)
+  );
+}
