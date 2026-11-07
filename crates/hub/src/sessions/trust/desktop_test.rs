@@ -21,17 +21,10 @@ use crate::{
     devices::RdpSecurity,
     ids::DeviceId,
     sessions::{
-        Error, ServerCertificate, find_device, live::Live, probe::PROBE_TIMEOUT,
+        Desktop, Error, ServerCertificate, find_device, live::Live, probe::PROBE_TIMEOUT,
         server_certificates, ssh::Target,
     },
 };
-
-/// Which desktop protocol to test.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(in crate::sessions) enum Desktop {
-    Rdp,
-    Vnc,
-}
 
 /// The port and, for RDP, the security to test with.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -204,18 +197,13 @@ fn rdp_outcome(
         Seen::Standard => reached(STANDARD_ONLY),
         Seen::Refused => reached(NEGOTIATION_REFUSED),
         Seen::Certificate(seen) => {
-            let fingerprint = seen.presented.fingerprint.as_str();
+            let seen = ServerCertificate::from(seen);
             match accepted {
-                Some(accepted) if accepted.fingerprint_sha256 == fingerprint => {
+                Some(accepted) if accepted.fingerprint_sha256 == seen.fingerprint_sha256 => {
                     reached(ACCEPTED_CERTIFICATE)
                 }
                 accepted => ConnectionTest {
-                    server_certificate: Some(ServerCertificate {
-                        fingerprint_sha256: fingerprint.to_owned(),
-                        subject: seen.presented.subject,
-                        not_after: seen.presented.not_after,
-                        first_seen_at: seen.first_seen_at,
-                    }),
+                    server_certificate: Some(seen),
                     certificate_changed: accepted.is_some(),
                     ..reached(if accepted.is_some() {
                         CHANGED_CERTIFICATE

@@ -9,7 +9,7 @@ use guac_protocol::{ConnectParams, DecodeError};
 use tokio::time::timeout;
 
 use super::{
-    arguments::{BadConnectValue, Desktop, Sources, audio, connect_values, time_zone},
+    arguments::{BadConnectValue, Sources, audio, connect_values, time_zone},
     guacd::{self, Connected},
     route::Route,
 };
@@ -17,7 +17,7 @@ use crate::{
     credentials, devices,
     devices::Device,
     sessions::{
-        self, PendingTicket, Protocol, ServerCertificate,
+        self, Desktop, PendingTicket, Protocol, ServerCertificate,
         ssh::{self, SshError, Target},
         start::{certificate_required, protocol_off},
         target::TargetRule,

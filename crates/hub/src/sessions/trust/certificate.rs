@@ -6,6 +6,9 @@ use std::{fmt, str::FromStr};
 use chrono::{DateTime, Utc};
 use sha2::{Digest, Sha256};
 
+use super::observations::Observation;
+use crate::sessions::ServerCertificate;
+
 /// Longest subject kept, in characters (`server_certificates_subject_check`).
 pub(in crate::sessions) const MAX_SUBJECT: usize = 1024;
 
@@ -80,6 +83,18 @@ impl PresentedCertificate {
             fingerprint: CertificateFingerprint::of(der),
             subject,
             not_after,
+        }
+    }
+}
+
+impl From<Observation<PresentedCertificate>> for ServerCertificate {
+    /// The certificate as a connection test saw it, first seen when the hub first saw it.
+    fn from(seen: Observation<PresentedCertificate>) -> Self {
+        Self {
+            fingerprint_sha256: seen.presented.fingerprint.as_str().to_owned(),
+            subject: seen.presented.subject,
+            not_after: seen.presented.not_after,
+            first_seen_at: seen.first_seen_at,
         }
     }
 }

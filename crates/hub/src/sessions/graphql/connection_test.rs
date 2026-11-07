@@ -21,8 +21,8 @@ use crate::{
     },
     ids::DeviceId,
     sessions::{
-        FieldError, HostKey, Protocol, ServerCertificate,
-        trust::{ConnectionTest, Desktop, DesktopSettings, DesktopSubject, TestSubject, Unsaved},
+        Desktop, FieldError, HostKey, Protocol, ServerCertificate,
+        trust::{ConnectionTest, DesktopSettings, DesktopSubject, TestSubject, Unsaved},
     },
 };
 
