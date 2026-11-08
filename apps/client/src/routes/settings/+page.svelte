@@ -2,6 +2,7 @@
   import ApiKeysSection from '$lib/api-keys/ApiKeysSection.svelte';
   import DefaultsSection from '$lib/checks/defaults/DefaultsSection.svelte';
   import SignOutRow from '$lib/access/SignOutRow.svelte';
+  import NotificationsSection from '$lib/notifications/NotificationsSection.svelte';
   import { capabilities } from '$lib/platform/platform';
   import MotionRow from '$lib/theme/MotionRow.svelte';
   import RetentionSection from '$lib/retention/RetentionSection.svelte';
@@ -26,6 +27,11 @@
   <ThemeRow />
   <MotionRow />
   <TypefaceRows />
+</section>
+
+<section aria-labelledby="settings-notifications">
+  <h2 id="settings-notifications">Notifications</h2>
+  <NotificationsSection />
 </section>
 
 <section aria-labelledby="settings-check-defaults">
