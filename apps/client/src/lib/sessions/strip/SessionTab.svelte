@@ -176,6 +176,6 @@
 
   button:active {
     transition-duration: var(--duration-press);
-    background: var(--border);
+    background: var(--surface-hover);
   }
 </style>

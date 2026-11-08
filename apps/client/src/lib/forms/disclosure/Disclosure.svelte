@@ -199,7 +199,7 @@
   }
 
   button:hover {
-    background: var(--border);
+    background: var(--surface-hover);
   }
 
   button:active {

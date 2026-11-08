@@ -215,7 +215,7 @@
   }
 
   button:hover:not(:disabled) {
-    background: var(--border);
+    background: var(--surface-hover);
   }
 
   button:focus-visible {

@@ -130,7 +130,7 @@
   }
 
   .add:hover {
-    background: var(--border);
+    background: var(--surface-hover);
   }
 
   .add:focus-visible {

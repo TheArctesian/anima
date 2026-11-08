@@ -27,11 +27,11 @@
     transition: background-color var(--duration-fast) var(--ease-enter);
   }
 
-  button:hover:not(:disabled, [aria-disabled='true']) {
-    background: var(--border);
+  button:hover:not(:disabled, [aria-disabled='true'], .primary) {
+    background: var(--surface-hover);
   }
 
-  button:active:not(:disabled, [aria-disabled='true']) {
+  button:active:not(:disabled, [aria-disabled='true'], .primary) {
     transition-duration: var(--duration-press);
     background: var(--accent-tint);
   }
@@ -46,9 +46,21 @@
     color: var(--text-muted);
   }
 
+  /* UI-004: accent with a --bg label, accent-deep while pressed, as WakeButton. */
   .primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg);
+  }
+
+  .primary:active:not(:disabled, [aria-disabled='true']) {
+    transition-duration: var(--duration-press);
     background: var(--accent-deep);
-    border-color: var(--accent-deep);
+  }
+
+  .primary:is(:disabled, [aria-disabled='true']) {
+    color: var(--bg);
+    opacity: var(--opacity-disabled);
   }
 
   .danger {

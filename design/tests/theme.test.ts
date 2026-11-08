@@ -1,11 +1,10 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { renderCss } from '../src/css.ts';
 import { loadTokens } from '../src/load.ts';
 import { TokenSourceError, type ModeValue, type Token } from '../src/model.ts';
-import { buildOutputs, OUTPUT_PATHS } from '../src/outputs.ts';
 
 function colour(name: string, source: string, value: string, light?: ModeValue): Token {
   return { name, path: `color.${name}`, group: 'color', type: 'color', value, source, description: '', reduced: undefined, light };
@@ -74,11 +73,6 @@ describe('light theme blocks (UI-005, K5)', () => {
   test('UI-005: the dark :root block is the same with and without light values', () => {
     expect(body(renderCss(THEMED), ':root')).toEqual(body(renderCss(DARK_ONLY), ':root'));
   });
-
-  test('TOK-002: the token source has no light value yet, so tokens.css has no theme block (R-085)', async () => {
-    const css = (await buildOutputs(resolve(import.meta.dir, '..', '..')))[OUTPUT_PATHS.css] ?? '';
-    expect(css).not.toContain('data-theme');
-  });
 });
 
 const dirs: string[] = [];
@@ -115,6 +109,36 @@ describe('light values in the token source (TOK-011)', () => {
     const result = await loadSource({ color: { ...NORD, nord: { ...NORD.nord, '5': { $value: '#E5E9F0', $extensions: light('#FFFFFF') } } } });
     expect(result).toBeInstanceOf(TokenSourceError);
     expect((result as TokenSourceError).tokenPath).toBe('color.nord.5');
+  });
+
+  test('UI-005: a light colour may be a mix; it renders as color-mix in both light blocks (CR-10)', async () => {
+    const mix = { color: '{color.nord.0}', percent: 12, over: '{color.nord.5}' };
+    const tokens = await loadSource({ color: { ...NORD, 'surface-hover': { $value: '{color.nord.0}', $extensions: light(mix) } } });
+    const expected = ['--surface-hover: color-mix(in srgb, var(--nord-0) 12%, var(--nord-5));'];
+    const css = renderCss(tokens as Token[]);
+    expect(body(css, ':root[data-theme="light"]')).toEqual(expected);
+    expect(body(css, '  :root[data-theme="system"]')).toEqual(expected);
+    expect(body(css, ':root')).toContain('--surface-hover: var(--nord-0);');
+  });
+
+  test('TOK-011: a light colour mix without an over colour is refused, naming the token', async () => {
+    const result = await loadSource({
+      color: { ...NORD, 'surface-hover': { $value: '{color.nord.0}', $extensions: light({ color: '{color.nord.0}', percent: 12 }) } },
+    });
+    expect(result).toBeInstanceOf(TokenSourceError);
+    expect((result as TokenSourceError).tokenPath).toBe('color.surface-hover');
+  });
+
+  test('TOK-011: a light colour that is neither a colour nor a mix is refused', async () => {
+    const result = await loadSource({ color: { ...NORD, 'surface-hover': { $value: '{color.nord.0}', $extensions: light(12) } } });
+    expect(result).toBeInstanceOf(TokenSourceError);
+  });
+
+  test('TOK-011: a light tint given as a plain colour is refused, since a tint is always a mix', async () => {
+    const tint = { $type: 'tint', $value: { color: '{color.nord.0}', percent: 12, over: 'transparent' } };
+    const result = await loadSource({ color: { ...NORD, 'accent-tint': { ...tint, $extensions: light('{color.nord.5}') } } });
+    expect(result).toBeInstanceOf(TokenSourceError);
+    expect((result as TokenSourceError).tokenPath).toBe('color.accent-tint');
   });
 
   test('TOK-011: a light tint without a numeric percent is refused', async () => {

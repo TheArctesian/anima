@@ -30,36 +30,42 @@ Generated from `design/tokens/*.tokens.json` (TOK-001). Names follow contract K5
 | `nord-13` | `--nord-13: #EBCB8B` | Nord primitive nord13. Source token only (TOK-010). |
 | `nord-14` | `--nord-14: #A3BE8C` | Nord primitive nord14. Source token only (TOK-010). |
 | `nord-15` | `--nord-15: #B48EAD` | Nord primitive nord15. Source token only (TOK-010). |
+| `nord-11-deep` | `--nord-11-deep: #BF616A` | Nord primitive nord11 mixed 0 % toward nord-0 until it reaches 3:1 on nord-4, so it holds 3:1 on every light surface (R-086, D-27). Source token only (TOK-010): only the light status and chart values use it. |
+| `nord-12-deep` | `--nord-12-deep: #A67164` | Nord primitive nord12 mixed 26 % toward nord-0 until it reaches 3:1 on nord-4, so it holds 3:1 on every light surface (R-086, D-27). Source token only (TOK-010): only the light status and chart values use it. |
+| `nord-13-deep` | `--nord-13-deep: #897C64` | Nord primitive nord13 mixed 52 % toward nord-0 until it reaches 3:1 on nord-4, so it holds 3:1 on every light surface (R-086, D-27). Source token only (TOK-010): only the light status and chart values use it. |
+| `nord-14-deep` | `--nord-14-deep: #71836B` | Nord primitive nord14 mixed 43 % toward nord-0 until it reaches 3:1 on nord-4, so it holds 3:1 on every light surface (R-086, D-27). Source token only (TOK-010): only the light status and chart values use it. |
+| `nord-15-deep` | `--nord-15-deep: #907690` | Nord primitive nord15 mixed 27 % toward nord-0 until it reaches 3:1 on nord-4, so it holds 3:1 on every light surface (R-086, D-27). Source token only (TOK-010): only the light status and chart values use it. |
 
 ## color
 
 | Token | CSS value | Use |
 | --- | --- | --- |
-| `bg` | `--bg: var(--nord-0)` = `#2E3440` | Main background |
-| `surface` | `--surface: var(--nord-1)` = `#3B4252` | Navigation bar, cards, panels |
-| `surface-raised` | `--surface-raised: var(--nord-2)` = `#434C5E` | Hover state, selected row, input fields |
-| `border` | `--border: var(--nord-3)` = `#4C566A` | Borders and dividers |
-| `text` | `--text: var(--nord-6)` = `#ECEFF4` | Primary text |
-| `text-muted` | `--text-muted: var(--nord-4)` = `#D8DEE9` | Secondary text and labels |
-| `accent` | `--accent: var(--nord-8)` = `#88C0D0` | Primary buttons, links, active navigation item, focus ring. Text on it uses bg (UI-004) |
-| `accent-alt` | `--accent-alt: var(--nord-9)` = `#81A1C1` | Secondary buttons and icons |
-| `accent-deep` | `--accent-deep: var(--nord-10)` = `#5E81AC` | Pressed state of a primary button |
-| `info` | `--info: var(--nord-7)` = `#8FBCBB` | Information messages |
-| `status-up` | `--status-up: var(--nord-14)` = `#A3BE8C` | Device or check is up |
-| `status-down` | `--status-down: var(--nord-11)` = `#BF616A` | Device or check is down. Error messages |
-| `status-degraded` | `--status-degraded: var(--nord-13)` = `#EBCB8B` | Slow response or high resource usage |
-| `status-warning` | `--status-warning: var(--nord-12)` = `#D08770` | Warnings. Host key changed |
-| `status-maintenance` | `--status-maintenance: var(--nord-15)` = `#B48EAD` | Device is in maintenance |
-| `status-unknown` | `--status-unknown: var(--nord-3)` = `#4C566A` | No data, or the check is paused |
-| `chart-grid` | `--chart-grid: var(--nord-3)` = `#4C566A` | Chart grid lines (K5, MET-004). Same colour as border |
-| `chart-axis` | `--chart-axis: var(--nord-4)` = `#D8DEE9` | Chart axis labels (K5, MET-004). Same colour as text-muted |
-| `chart-threshold` | `--chart-threshold: var(--nord-13)` = `#EBCB8B` | Chart 85 % threshold line (K5, MET-004). Same colour as status-degraded |
-| `chart-series-1` | `--chart-series-1: var(--nord-8)` = `#88C0D0` | Chart series 1 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone |
-| `chart-series-2` | `--chart-series-2: var(--nord-9)` = `#81A1C1` | Chart series 2 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone |
-| `chart-series-3` | `--chart-series-3: var(--nord-10)` = `#5E81AC` | Chart series 3 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone |
-| `chart-series-4` | `--chart-series-4: var(--nord-7)` = `#8FBCBB` | Chart series 4 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone |
-| `chart-series-5` | `--chart-series-5: var(--nord-15)` = `#B48EAD` | Chart series 5 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone |
-| `chart-series-6` | `--chart-series-6: var(--nord-12)` = `#D08770` | Chart series 6 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone |
+| `bg` | `--bg: var(--nord-0)` = `#2E3440`<br>light: `--bg: var(--nord-5)` = `#E5E9F0` | Main background |
+| `surface` | `--surface: var(--nord-1)` = `#3B4252`<br>light: `--surface: var(--nord-6)` = `#ECEFF4` | Navigation bar, cards, panels |
+| `surface-raised` | `--surface-raised: var(--nord-2)` = `#434C5E`<br>light: `--surface-raised: var(--nord-4)` = `#D8DEE9` | Hover state, selected row, input fields |
+| `surface-hover` | `--surface-hover: var(--nord-3)` = `#4C566A`<br>light: `--surface-hover: color-mix(in srgb, var(--nord-3) 12%, var(--nord-4))` | Fill under text for a hovered row or control (CR-10). A component never uses border as a fill |
+| `border` | `--border: var(--nord-3)` = `#4C566A`<br>light: `--border: var(--nord-10)` = `#5E81AC` | Borders and dividers |
+| `text` | `--text: var(--nord-6)` = `#ECEFF4`<br>light: `--text: var(--nord-0)` = `#2E3440` | Primary text |
+| `text-muted` | `--text-muted: var(--nord-4)` = `#D8DEE9`<br>light: `--text-muted: var(--nord-3)` = `#4C566A` | Secondary text and labels |
+| `accent` | `--accent: var(--nord-8)` = `#88C0D0`<br>light: `--accent: var(--nord-3)` = `#4C566A` | Primary buttons, links, active navigation item, focus ring. Text on it uses bg (UI-004) |
+| `accent-alt` | `--accent-alt: var(--nord-9)` = `#81A1C1`<br>light: `--accent-alt: var(--nord-10)` = `#5E81AC` | Secondary buttons and icons |
+| `accent-deep` | `--accent-deep: var(--nord-10)` = `#5E81AC`<br>light: `--accent-deep: var(--nord-0)` = `#2E3440` | Pressed state of a primary button |
+| `info` | `--info: var(--nord-7)` = `#8FBCBB`<br>light: `--info: var(--nord-10)` = `#5E81AC` | Information messages |
+| `status-up` | `--status-up: var(--nord-14)` = `#A3BE8C`<br>light: `--status-up: var(--nord-14-deep)` = `#71836B` | Device or check is up |
+| `status-down` | `--status-down: var(--nord-11)` = `#BF616A`<br>light: `--status-down: var(--nord-11-deep)` = `#BF616A` | Device or check is down. Error messages |
+| `status-degraded` | `--status-degraded: var(--nord-13)` = `#EBCB8B`<br>light: `--status-degraded: var(--nord-13-deep)` = `#897C64` | Slow response or high resource usage |
+| `status-warning` | `--status-warning: var(--nord-12)` = `#D08770`<br>light: `--status-warning: var(--nord-12-deep)` = `#A67164` | Warnings. Host key changed |
+| `status-maintenance` | `--status-maintenance: var(--nord-15)` = `#B48EAD`<br>light: `--status-maintenance: var(--nord-15-deep)` = `#907690` | Device is in maintenance |
+| `status-unknown` | `--status-unknown: var(--nord-3)` = `#4C566A`<br>light: `--status-unknown: var(--nord-3)` = `#4C566A` | No data, or the check is paused |
+| `chart-grid` | `--chart-grid: var(--nord-3)` = `#4C566A`<br>light: `--chart-grid: var(--nord-4)` = `#D8DEE9` | Chart grid lines (K5, MET-004). Same colour as border in the dark theme; the light theme uses nord-4, so a grid never matches series 1 (R-086) |
+| `chart-axis` | `--chart-axis: var(--nord-4)` = `#D8DEE9`<br>light: `--chart-axis: var(--nord-3)` = `#4C566A` | Chart axis labels (K5, MET-004). Same colour as text-muted |
+| `chart-threshold` | `--chart-threshold: var(--nord-13)` = `#EBCB8B`<br>light: `--chart-threshold: var(--nord-13-deep)` = `#897C64` | Chart 85 % threshold line (K5, MET-004). Same colour as status-degraded |
+| `chart-series-1` | `--chart-series-1: var(--nord-8)` = `#88C0D0`<br>light: `--chart-series-1: var(--nord-10)` = `#5E81AC` | Chart series 1 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone |
+| `chart-series-2` | `--chart-series-2: var(--nord-9)` = `#81A1C1`<br>light: `--chart-series-2: var(--nord-3)` = `#4C566A` | Chart series 2 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone |
+| `chart-series-3` | `--chart-series-3: var(--nord-10)` = `#5E81AC`<br>light: `--chart-series-3: var(--nord-14-deep)` = `#71836B` | Chart series 3 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone |
+| `chart-series-4` | `--chart-series-4: var(--nord-7)` = `#8FBCBB`<br>light: `--chart-series-4: var(--nord-15-deep)` = `#907690` | Chart series 4 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone |
+| `chart-series-5` | `--chart-series-5: var(--nord-15)` = `#B48EAD`<br>light: `--chart-series-5: var(--nord-12-deep)` = `#A67164` | Chart series 5 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone |
+| `chart-series-6` | `--chart-series-6: var(--nord-12)` = `#D08770`<br>light: `--chart-series-6: var(--nord-11-deep)` = `#BF616A` | Chart series 6 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone |
 | `accent-tint` | `--accent-tint: color-mix(in srgb, var(--accent) 12%, var(--surface))` | accent at 12 % on surface (5.5.3) |
 | `status-up-tint` | `--status-up-tint: color-mix(in srgb, var(--status-up) 12%, var(--surface))` | status-up at 12 % on surface (5.5.3) |
 | `status-down-tint` | `--status-down-tint: color-mix(in srgb, var(--status-down) 12%, var(--surface))` | status-down at 12 % on surface (5.5.3) |

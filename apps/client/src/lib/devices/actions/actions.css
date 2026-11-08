@@ -16,7 +16,7 @@
 }
 
 .device-action:hover {
-  background: var(--border);
+  background: var(--surface-hover);
 }
 
 .device-action:active {

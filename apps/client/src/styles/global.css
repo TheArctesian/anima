@@ -12,11 +12,21 @@ body {
   --nav-inline-size: calc(var(--space-16) * 3);
 }
 
-/* The palette is dark only, so native controls, their popups and scrollbars draw dark to match. */
+/* Native controls, their popups and scrollbars follow the theme: dark by default, light for the light theme (UI-005). */
 :root {
   color-scheme: dark;
   /* The end padding a select keeps clear for its chevron. */
   --select-chevron-room: calc(var(--space-4) + var(--space-2));
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-theme="system"] {
+    color-scheme: light;
+  }
 }
 
 /* WebKitGTK (the Linux shell) draws a native select in the light GTK look and ignores its background,

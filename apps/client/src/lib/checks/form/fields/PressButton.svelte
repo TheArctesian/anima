@@ -38,18 +38,28 @@
     transition: background-color var(--duration-fast) var(--ease-enter);
   }
 
-  button:hover:not(:disabled) {
-    background: var(--border);
-  }
-
-  .primary {
-    border-color: var(--accent-deep);
-    background: var(--accent-deep);
-    color: var(--text);
+  button:hover:not(:disabled, .primary) {
+    background: var(--surface-hover);
   }
 
   button:disabled {
     color: var(--text-muted);
+  }
+
+  /* UI-004: accent with a --bg label, accent-deep while pressed, as WakeButton. */
+  .primary {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--bg);
+  }
+
+  .primary:active:not(:disabled) {
+    background: var(--accent-deep);
+  }
+
+  .primary:disabled {
+    color: var(--bg);
+    opacity: var(--opacity-disabled);
   }
 
   button:focus-visible {

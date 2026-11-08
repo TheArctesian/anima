@@ -164,16 +164,16 @@ it('MOT-007: the Sign out button has the same place before and after the name ar
     release = resolve;
   });
   const target = await open({ Me: pending });
-  const before = [...target.querySelectorAll('section[aria-label="Account"] > *')].map((element) => element.tagName);
+  const who = () => target.querySelector('section[aria-labelledby="settings-account"] p.who');
+  const row = () => [...(who()?.parentElement?.children ?? [])].map((element) => element.tagName);
+  const before = row();
   expect(before).toEqual(['P', 'BUTTON']);
   // The two lines are there before the name is: the label is laid out but hidden, and the name's line is empty.
-  const who = () => target.querySelector('section[aria-label="Account"] > p.who');
   expect(who()?.classList.contains('pending')).toBe(true);
   expect(who()?.querySelector('strong')?.textContent).toBe('');
   release(ok({ me: { username: 'ann' } }));
   await settled();
-  const after = [...target.querySelectorAll('section[aria-label="Account"] > *')].map((element) => element.tagName);
-  expect(after).toEqual(before);
+  expect(row()).toEqual(before);
   expect(who()?.classList.contains('pending')).toBe(false);
 });
 

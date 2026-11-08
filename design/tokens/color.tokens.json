@@ -65,107 +65,265 @@
       "15": {
         "$value": "#B48EAD",
         "$description": "Nord primitive nord15. Source token only (TOK-010)."
+      },
+      "11-deep": {
+        "$value": "#BF616A",
+        "$description": "Nord primitive nord11 mixed 0 % toward nord-0 until it reaches 3:1 on nord-4, so it holds 3:1 on every light surface (R-086, D-27). Source token only (TOK-010): only the light status and chart values use it."
+      },
+      "12-deep": {
+        "$value": "#A67164",
+        "$description": "Nord primitive nord12 mixed 26 % toward nord-0 until it reaches 3:1 on nord-4, so it holds 3:1 on every light surface (R-086, D-27). Source token only (TOK-010): only the light status and chart values use it."
+      },
+      "13-deep": {
+        "$value": "#897C64",
+        "$description": "Nord primitive nord13 mixed 52 % toward nord-0 until it reaches 3:1 on nord-4, so it holds 3:1 on every light surface (R-086, D-27). Source token only (TOK-010): only the light status and chart values use it."
+      },
+      "14-deep": {
+        "$value": "#71836B",
+        "$description": "Nord primitive nord14 mixed 43 % toward nord-0 until it reaches 3:1 on nord-4, so it holds 3:1 on every light surface (R-086, D-27). Source token only (TOK-010): only the light status and chart values use it."
+      },
+      "15-deep": {
+        "$value": "#907690",
+        "$description": "Nord primitive nord15 mixed 27 % toward nord-0 until it reaches 3:1 on nord-4, so it holds 3:1 on every light surface (R-086, D-27). Source token only (TOK-010): only the light status and chart values use it."
       }
     },
     "bg": {
       "$value": "{color.nord.0}",
-      "$description": "Main background"
+      "$description": "Main background",
+      "$extensions": {
+        "anima": {
+          "light": "{color.nord.5}"
+        }
+      }
     },
     "surface": {
       "$value": "{color.nord.1}",
-      "$description": "Navigation bar, cards, panels"
+      "$description": "Navigation bar, cards, panels",
+      "$extensions": {
+        "anima": {
+          "light": "{color.nord.6}"
+        }
+      }
     },
     "surface-raised": {
       "$value": "{color.nord.2}",
-      "$description": "Hover state, selected row, input fields"
+      "$description": "Hover state, selected row, input fields",
+      "$extensions": {
+        "anima": {
+          "light": "{color.nord.4}"
+        }
+      }
+    },
+    "surface-hover": {
+      "$value": "{color.nord.3}",
+      "$description": "Fill under text for a hovered row or control (CR-10). A component never uses border as a fill",
+      "$extensions": {
+        "anima": {
+          "light": {
+            "color": "{color.nord.3}",
+            "percent": 12,
+            "over": "{color.nord.4}"
+          }
+        }
+      }
     },
     "border": {
       "$value": "{color.nord.3}",
-      "$description": "Borders and dividers"
+      "$description": "Borders and dividers",
+      "$extensions": {
+        "anima": {
+          "light": "{color.nord.10}"
+        }
+      }
     },
     "text": {
       "$value": "{color.nord.6}",
-      "$description": "Primary text"
+      "$description": "Primary text",
+      "$extensions": {
+        "anima": {
+          "light": "{color.nord.0}"
+        }
+      }
     },
     "text-muted": {
       "$value": "{color.nord.4}",
-      "$description": "Secondary text and labels"
+      "$description": "Secondary text and labels",
+      "$extensions": {
+        "anima": {
+          "light": "{color.nord.3}"
+        }
+      }
     },
     "accent": {
       "$value": "{color.nord.8}",
-      "$description": "Primary buttons, links, active navigation item, focus ring. Text on it uses bg (UI-004)"
+      "$description": "Primary buttons, links, active navigation item, focus ring. Text on it uses bg (UI-004)",
+      "$extensions": {
+        "anima": {
+          "light": "{color.nord.3}"
+        }
+      }
     },
     "accent-alt": {
       "$value": "{color.nord.9}",
-      "$description": "Secondary buttons and icons"
+      "$description": "Secondary buttons and icons",
+      "$extensions": {
+        "anima": {
+          "light": "{color.nord.10}"
+        }
+      }
     },
     "accent-deep": {
       "$value": "{color.nord.10}",
-      "$description": "Pressed state of a primary button"
+      "$description": "Pressed state of a primary button",
+      "$extensions": {
+        "anima": {
+          "light": "{color.nord.0}"
+        }
+      }
     },
     "info": {
       "$value": "{color.nord.7}",
-      "$description": "Information messages"
+      "$description": "Information messages",
+      "$extensions": {
+        "anima": {
+          "light": "{color.nord.10}"
+        }
+      }
     },
     "status-up": {
       "$value": "{color.nord.14}",
-      "$description": "Device or check is up"
+      "$description": "Device or check is up",
+      "$extensions": {
+        "anima": {
+          "light": "{color.nord.14-deep}"
+        }
+      }
     },
     "status-down": {
       "$value": "{color.nord.11}",
-      "$description": "Device or check is down. Error messages"
+      "$description": "Device or check is down. Error messages",
+      "$extensions": {
+        "anima": {
+          "light": "{color.nord.11-deep}"
+        }
+      }
     },
     "status-degraded": {
       "$value": "{color.nord.13}",
-      "$description": "Slow response or high resource usage"
+      "$description": "Slow response or high resource usage",
+      "$extensions": {
+        "anima": {
+          "light": "{color.nord.13-deep}"
+        }
+      }
     },
     "status-warning": {
       "$value": "{color.nord.12}",
-      "$description": "Warnings. Host key changed"
+      "$description": "Warnings. Host key changed",
+      "$extensions": {
+        "anima": {
+          "light": "{color.nord.12-deep}"
+        }
+      }
     },
     "status-maintenance": {
       "$value": "{color.nord.15}",
-      "$description": "Device is in maintenance"
+      "$description": "Device is in maintenance",
+      "$extensions": {
+        "anima": {
+          "light": "{color.nord.15-deep}"
+        }
+      }
     },
     "status-unknown": {
       "$value": "{color.nord.3}",
-      "$description": "No data, or the check is paused"
+      "$description": "No data, or the check is paused",
+      "$extensions": {
+        "anima": {
+          "light": "{color.nord.3}"
+        }
+      }
     },
     "chart-grid": {
       "$value": "{color.nord.3}",
-      "$description": "Chart grid lines (K5, MET-004). Same colour as border"
+      "$description": "Chart grid lines (K5, MET-004). Same colour as border in the dark theme; the light theme uses nord-4, so a grid never matches series 1 (R-086)",
+      "$extensions": {
+        "anima": {
+          "light": "{color.nord.4}"
+        }
+      }
     },
     "chart-axis": {
       "$value": "{color.nord.4}",
-      "$description": "Chart axis labels (K5, MET-004). Same colour as text-muted"
+      "$description": "Chart axis labels (K5, MET-004). Same colour as text-muted",
+      "$extensions": {
+        "anima": {
+          "light": "{color.nord.3}"
+        }
+      }
     },
     "chart-threshold": {
       "$value": "{color.nord.13}",
-      "$description": "Chart 85 % threshold line (K5, MET-004). Same colour as status-degraded"
+      "$description": "Chart 85 % threshold line (K5, MET-004). Same colour as status-degraded",
+      "$extensions": {
+        "anima": {
+          "light": "{color.nord.13-deep}"
+        }
+      }
     },
     "chart-series-1": {
       "$value": "{color.nord.8}",
-      "$description": "Chart series 1 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone"
+      "$description": "Chart series 1 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone",
+      "$extensions": {
+        "anima": {
+          "light": "{color.nord.10}"
+        }
+      }
     },
     "chart-series-2": {
       "$value": "{color.nord.9}",
-      "$description": "Chart series 2 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone"
+      "$description": "Chart series 2 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone",
+      "$extensions": {
+        "anima": {
+          "light": "{color.nord.3}"
+        }
+      }
     },
     "chart-series-3": {
       "$value": "{color.nord.10}",
-      "$description": "Chart series 3 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone"
+      "$description": "Chart series 3 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone",
+      "$extensions": {
+        "anima": {
+          "light": "{color.nord.14-deep}"
+        }
+      }
     },
     "chart-series-4": {
       "$value": "{color.nord.7}",
-      "$description": "Chart series 4 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone"
+      "$description": "Chart series 4 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone",
+      "$extensions": {
+        "anima": {
+          "light": "{color.nord.15-deep}"
+        }
+      }
     },
     "chart-series-5": {
       "$value": "{color.nord.15}",
-      "$description": "Chart series 5 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone"
+      "$description": "Chart series 5 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone",
+      "$extensions": {
+        "anima": {
+          "light": "{color.nord.12-deep}"
+        }
+      }
     },
     "chart-series-6": {
       "$value": "{color.nord.12}",
-      "$description": "Chart series 6 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone"
+      "$description": "Chart series 6 (K5, MET-004). Nord frost, then aurora; series 5 and 6 share the maintenance and warning hues, so a chart must not tell them apart by hue alone",
+      "$extensions": {
+        "anima": {
+          "light": "{color.nord.11-deep}"
+        }
+      }
     },
     "accent-tint": {
       "$type": "tint",

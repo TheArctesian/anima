@@ -198,7 +198,7 @@
   }
 
   button:hover:not(:disabled) {
-    background: var(--border);
+    background: var(--surface-hover);
   }
 
   button:active:not(:disabled) {

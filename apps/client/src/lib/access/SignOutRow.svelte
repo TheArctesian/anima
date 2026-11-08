@@ -33,7 +33,7 @@
   }
 </script>
 
-<section aria-label="Account">
+<div class="row">
   <!-- Always rendered with two lines reserved (the label, then the name on its own line), so the button does not move when the name arrives, however narrow the column is (MOT-007). -->
   <p class="who" class:pending={username === null}>Signed in as <strong>{username ?? ''}</strong></p>
   <!-- tabindex="0": WebKit skips plain buttons when Tab is pressed unless they are focusable, as for the nav links (NAV-005, WP-11 H-6). -->
@@ -41,10 +41,10 @@
   {#if problem !== null}
     <p role="alert">{problem}</p>
   {/if}
-</section>
+</div>
 
 <style>
-  section {
+  .row {
     display: flex;
     flex-direction: column;
     align-items: start;
