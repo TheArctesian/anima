@@ -125,7 +125,7 @@ Anima has three components: the client, the hub and the gateway.
 
 - **CLI-001.** The client must use the same user interface code on all platforms.
 - **CLI-002.** The client must keep the hub address in local settings.
-- **CLI-003.** The client must keep the hub access token in the operating system key store.
+- **CLI-003.** The client must keep the hub access token in the operating system key store. The web client has no key store. It must keep a browser token in an `HttpOnly` cookie named `__Host-anima` (`Secure`, `SameSite=Strict`). (D-3, R-081)
 - **CLI-004.** The client must not keep device credentials. The hub keeps device credentials.
 
 ### 3.4 Hub
@@ -195,7 +195,7 @@ The hub supplies one GraphQL API at the path `/graphql`.
 
 - **API-001.** The hub must write the API in Rust with `async-graphql` on axum.
 - **API-002.** Subscriptions must use the `graphql-transport-ws` protocol over WebSocket.
-- **API-003.** Every operation must require a valid access token, except the login mutation.
+- **API-003.** Every operation must require a valid access token, except the login mutation. A document that has no access token is permitted only when it is exactly one `login`, one `signInBrowser` or one `joinShare`. (D-4, R-081)
 - **API-004.** The hub must set a maximum query depth of 10 and a maximum query complexity. The hub must refuse a query that is more than these limits.
 - **API-005.** The hub must use a data loader for related items, so that one query does not cause many database queries.
 - **API-006.** Lists must use cursor pagination.
@@ -268,7 +268,7 @@ desktop app ── at start and every 4 hours ── GET latest.json ── vers
 The hub can open a session to every device. Thus the hub is a high-value target. Obey all the requirements in this section.
 
 - **SEC-001.** The hub must use TLS for all client connections.
-- **SEC-002.** The hub must ask for authentication before it accepts an API request or a tunnel request.
+- **SEC-002.** The hub must ask for authentication before it accepts an API request or a tunnel request. There is one exception, as for the push token: a share token. The share token must be only in the URL fragment. The viewer must send it once, in `joinShare`. The viewer must not call any other operation. (D-7, R-081)
 - **SEC-003.** The hub must encrypt credentials before it writes them to the database.
 - **SEC-004.** The hub must read the encryption key from a file or a Docker secret. Do not keep the key in the database.
 - **SEC-005.** The hub must not send a stored password or private key to the client.
@@ -407,7 +407,7 @@ Anima uses the Nord colour scheme. The default theme is dark.
 - **UI-002.** Do not use nord3 for text on nord0 or nord1. The contrast is too low. Use nord4 for secondary text.
 - **UI-003.** A status must not use colour as the only indicator. Show a text label or an icon with the colour.
 - **UI-004.** Text on an `--accent` background must use nord0.
-- **UI-005.** A later version can add a light theme with the Nord Snow Storm colours (nord4 to nord6). Define the tokens so that this change is easy.
+- **UI-005.** The client must have a light theme with the Nord Snow Storm colours (nord4 to nord6). Nord aurora colours on nord6 are less than 3:1, so the light theme must use five derived primitives for the status colours. Make each one by mixing a Nord aurora colour toward nord0 until it is 3:1 on nord6. Use them in light mode only. The default theme is dark. The operator must be able to choose Dark, Light or System. The client must save the choice on the device. (D-27, R-081)
 
 ### 5.2 Typography and spacing
 
@@ -719,13 +719,13 @@ Session procedure:
 5. The client shows the session in a new tab in the main window.
 
 - **RA-001.** The client must show each session in a tab. The operator must be able to open more than one session.
-- **RA-002.** The operator must be able to move a session tab into a separate window on desktop.
+- **RA-002.** The operator must be able to move a session tab into a separate window on desktop. Pop-out is for the desktop client only. The web client has no pop-out, no web view tab (use WEB-011), no updates, no log folder, no This Mac, no System Settings button and no hub address field. (D-5, R-081)
 - **RA-003.** An SSH session must support copy and paste, terminal resize and a scroll-back buffer.
 - **RA-004.** An RDP session must change its resolution when the operator changes the window size.
 - **RA-005.** An RDP session must support the clipboard in text format.
 - **RA-006.** The client must send special key combinations, for example Ctrl+Alt+Delete, from a menu.
 - **RA-007.** If the connection stops, the client must show the reason and a "Reconnect" button.
-- **RA-008.** The hub must record the start time, the end time and the device of each session. The hub must not record the session content, except when the operator sets RA-040 on.
+- **RA-008.** The hub must record the start time, the end time and the device of each session. The hub must not record the session content, except when the operator sets RA-040 on. A share can keep the last 64 KiB of terminal output in memory, for late viewers. This buffer meets this requirement if the hub frees it when the share ends and never writes, logs or records it. (D-10, R-081)
 
 #### 6.3.1 SSH settings (Phase 1)
 
@@ -776,7 +776,7 @@ Since R-062 the hub opens the SSH connection and the client draws the terminal (
 | Session sharing | 3 | **RA-035.** The operator must be able to make a share link for a live session. A share link must be read-only by default, must expire and must stop when the owner disconnects. |
 | Concurrency limit | 3 | **RA-036.** The operator must be able to set a maximum number of sessions for each device. |
 | Session recording | 3 | **RA-040.** The operator must be able to set recording on for each device. It is off by default. The client must show a "Recording" badge during a recorded session. The hub must encrypt recordings at rest. |
-| Recording playback | 3 | **RA-041.** The client must play recordings with `Guacamole.SessionRecording`. |
+| Recording playback | 3 | **RA-041.** The client must play RDP and VNC recordings with `Guacamole.SessionRecording`, which uses the Guacamole format. SSH recordings must be asciicast v2. The client must play them with xterm.js. (D-12, R-081) |
 | Touch input | 5 | **RA-050.** The iOS client must have the on-screen keyboard, text input mode, touchpad mouse mode and pinch zoom. |
 
 #### 6.3.4 Web interfaces
@@ -921,14 +921,14 @@ The view has these tabs:
 - **NOT-003.** The operator must be able to select the channels for each check. A channel can be "on by default" for new checks.
 - **NOT-004.** Each channel must have a "Send test" button.
 - **NOT-005.** The operator must be able to set a resend interval: send the notification again after each N Down heartbeats.
-- **NOT-006.** The hub must send a notification when a TLS certificate expires in less than the set number of days. The default values are 21, 14 and 7 days.
+- **NOT-006.** The hub must send a notification when a TLS certificate expires in less than the set number of days. The default values are 21, 14 and 7 days. The same rule applies to domain expiry checks, with the same thresholds. The hub must send one notification for each threshold for each certificate or domain. (D-22, R-081)
 - **NOT-007.** The operator must be able to change the message text with a template.
 
 ### 6.9 Integrations (Phase 3)
 
 - **INT-001.** The hub must supply a Prometheus endpoint at `/metrics` with the status, response time, uptime ratio and certificate days of each check.
 - **INT-002.** Prometheus labels must not include values that change often.
-- **INT-003.** The operator must be able to make API keys for the GraphQL API. Each key must have a scope (read or write) and an expiry date.
+- **INT-003.** The operator must be able to make API keys for the GraphQL API. Each key must have a scope (read or write) and an expiry date. A key is `anima_` and 43 base64url characters. The hub must keep only the SHA-256 of a key. The expiry date is required and must be at most one year away. An API key must not manage API keys. It must not call `signInBrowser`, `startSession`, `openFiles`, `shareSession`, `joinShare` or `openRecording`. It must not set or clear a device credential. (D-23, R-081)
 - **INT-004.** A later version can add public status pages, incidents and status badges.
 
 ## 7. Settings page
