@@ -1,5 +1,15 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
+  APPRISE_MODES,
+  CHANNEL_KINDS,
+  NOTIFICATION_KINDS,
+  RECORDING_FORMATS,
+  RETENTION_SUBJECTS,
+  SHARE_ACCESS,
+  SMTP_SECURITY,
+  TOKEN_SCOPES,
+  WEBHOOK_METHODS,
   apiKeys,
   asciicastStream,
   channels,
@@ -19,12 +29,14 @@ describe('K6 phase3 client fixtures', () => {
     expect(channels.map((c) => c.kind).sort()).toEqual(['APPRISE', 'EMAIL', 'NTFY', 'WEBHOOK']);
   });
 
-  it('K6: each channel has one ok and one failed delivery, and a failure carries a fixed message', () => {
+  it('K6: each channel has an ok and a failed delivery, and a failure carries one of the fixed messages', () => {
     for (const channel of channels) {
-      const own = deliveries.filter((d) => d.channelId === channel.id);
-      expect(own.map((d) => d.ok).sort()).toEqual([false, true]);
+      const oks = new Set(deliveries.filter((d) => d.channelId === channel.id).map((d) => d.ok));
+      expect([...oks].sort()).toEqual([false, true]);
     }
-    expect(deliveries.filter((d) => !d.ok).every((d) => d.message?.endsWith('.'))).toBe(true);
+    const fixed = ['The target did not answer in 8 seconds.', 'The target address is not permitted.'];
+    expect(deliveries.filter((d) => !d.ok).every((d) => fixed.includes(d.message ?? ''))).toBe(true);
+    expect(deliveries.filter((d) => d.ok).every((d) => d.message === null)).toBe(true);
   });
 
   it('INT-003: one READ and one WRITE key, one expired, none with a secret', () => {
@@ -67,5 +79,59 @@ describe('K6 phase3 client fixtures', () => {
 
   it('CHK-009: the domain expiry check has 12 days left under its 30 warning days', () => {
     expect(domainExpiryCheck.domainDaysLeft).toBeLessThan(domainExpiryCheck.config.domainExpiry.warnDays);
+  });
+});
+
+describe('K6 phase3 client fixtures: ties to K1', () => {
+  const sdl = readFileSync(new URL('../../../../../contracts/schema.graphql', import.meta.url), 'utf8');
+
+  function block(keyword: 'enum' | 'type', name: string): string {
+    const found = new RegExp(`^${keyword} ${name}\\b[^{]*\\{([^}]*)\\}`, 'm').exec(sdl);
+    if (found === null) throw new Error(`${keyword} ${name} is not in schema.graphql`);
+    return found[1] ?? '';
+  }
+  const code = (text: string): string[] =>
+    text.split('\n').map((l) => l.replace(/#.*$/, '').trim()).filter((l) => l !== '' && !l.startsWith('"'));
+  const enumValues = (name: string): string[] => code(block('enum', name)).map((l) => l.split(/\s/)[0] ?? '');
+  const fields = (name: string): { name: string; required: boolean }[] =>
+    code(block('type', name)).map((l) => ({ name: /^(\w+)/.exec(l)?.[1] ?? '', required: /:\s*\S+!(\s|$)/.test(l) }));
+
+  it('every enum list equals its K1 enum', () => {
+    const lists: [readonly string[], string][] = [
+      [CHANNEL_KINDS, 'ChannelKind'],
+      [NOTIFICATION_KINDS, 'NotificationKind'],
+      [TOKEN_SCOPES, 'TokenScope'],
+      [SHARE_ACCESS, 'ShareAccess'],
+      [RECORDING_FORMATS, 'RecordingFormat'],
+      [RETENTION_SUBJECTS, 'RetentionSubject'],
+      [WEBHOOK_METHODS, 'WebhookMethod'],
+      [SMTP_SECURITY, 'SmtpSecurity'],
+      [APPRISE_MODES, 'AppriseMode'],
+    ];
+    for (const [list, name] of lists) expect([...list].sort(), name).toEqual(enumValues(name).sort());
+  });
+
+  it('every slice has the required K1 fields of its type and no key K1 lacks', () => {
+    const slices: [object | undefined, string, string[]][] = [
+      [channels[0], 'NotificationChannel', []],
+      [deliveries[0], 'Delivery', []],
+      [apiKeys[0], 'ApiKey', []],
+      [shares[0], 'SessionShare', []],
+      [recordings[0], 'Recording', ['stoppedReason']],
+      [retention[0], 'RetentionPeriod', []],
+      [checkDefaults, 'CheckDefaults', []],
+      [notificationSettings, 'NotificationSettings', []],
+      [channels.find((c) => c.kind === 'WEBHOOK')?.settings, 'WebhookSettings', []],
+      [channels.find((c) => c.kind === 'NTFY')?.settings, 'NtfySettings', []],
+      [channels.find((c) => c.kind === 'EMAIL')?.settings, 'EmailSettings', []],
+      [channels.find((c) => c.kind === 'APPRISE')?.settings, 'AppriseSettings', []],
+    ];
+    for (const [sample, type, extra] of slices) {
+      const keys = Object.keys(sample ?? {});
+      expect(keys.length, type).toBeGreaterThan(0);
+      const known = fields(type);
+      expect(known.filter((f) => f.required && !keys.includes(f.name)).map((f) => f.name), type).toEqual([]);
+      expect(keys.filter((k) => !extra.includes(k) && !known.some((f) => f.name === k)), type).toEqual([]);
+    }
   });
 });
