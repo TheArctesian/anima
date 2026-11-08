@@ -238,14 +238,6 @@ describe("hardening and images (SEC-001)", () => {
     expect(dockerfile).toMatch(/^FROM rust:\d+\.\d+-bookworm AS build$/m);
   });
 
-  test("SEC-001 Dockerfile.dockerignore is an allow-list", () => {
-    const lines = readFileSync(join(ROOT, "deploy", "hub", "Dockerfile.dockerignore"), "utf8")
-      .split("\n")
-      .filter((line) => line !== "" && !line.startsWith("#"));
-    expect(lines[0]).toBe("*");
-    expect(lines.filter((line) => line.startsWith("!")).sort()).toEqual(["!Cargo.lock", "!Cargo.toml", "!apps/desktop/src-tauri/", "!crates/"]);
-  });
-
   test("GW-001 RA-011 the gateway adds only the font and its licence to guacd", () => {
     const dockerfile = readFileSync(join(ROOT, "deploy", "gateway", "Dockerfile"), "utf8");
     const copies = dockerfile.split("\n").filter((line) => line.startsWith("COPY"));

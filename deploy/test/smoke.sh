@@ -32,11 +32,23 @@ step "Docker Engine version (NET-003)"
 sh "$repo/deploy/bin/preflight" docker "$(docker version --format '{{.Server.Version}}')"
 
 step "Prepare a temporary copy of deploy/ in $work"
-mkdir -p "$work/deploy" "$work/apps/client/src/styles" "$work/apps/desktop"
+mkdir -p "$work/deploy/dns" "$work/deploy/headscale" "$work/apps/desktop" "$work/quality" "$work/design"
 cp -R "$repo/deploy/compose.yaml" "$repo/deploy/postgres" "$repo/deploy/certs" "$repo/deploy/gateway" "$repo/deploy/hub" "$work/deploy/"
 cp -R "$repo/Cargo.toml" "$repo/Cargo.lock" "$repo/crates" "$work/"
 cp -R "$repo/apps/desktop/src-tauri" "$work/apps/desktop/src-tauri"
-cp -R "$repo/apps/client/src/styles/fonts" "$work/apps/client/src/styles/fonts"
+# The web stage of the hub image: root and workspace manifests, the lock file and the client sources.
+cp "$repo/package.json" "$repo/bun.lock" "$work/"
+cp "$repo/apps/desktop/package.json" "$work/apps/desktop/"
+cp "$repo/quality/package.json" "$work/quality/"
+cp "$repo/design/package.json" "$work/design/"
+cp "$repo/deploy/package.json" "$work/deploy/"
+cp "$repo/deploy/dns/package.json" "$work/deploy/dns/"
+cp "$repo/deploy/headscale/package.json" "$work/deploy/headscale/"
+mkdir "$work/apps/client"
+cp -R "$repo/apps/client/src" "$repo/apps/client/static" "$work/apps/client/"
+cp "$repo/apps/client/package.json" "$repo/apps/client/svelte.config.js" "$repo/apps/client/vite.config.ts" \
+    "$repo/apps/client/tsconfig.json" "$work/apps/client/"
+find "$work/apps/client" -name '.env*' -exec rm -f {} +
 printf '%s\n' 'smoke-test-not-a-token' |
     ANIMA_SECRETS_CHOWN=0 sh "$repo/deploy/bin/make-secrets" --cloudflare-token-stdin "$work/deploy/secrets"
 sh "$repo/deploy/bin/preflight" secrets "$work/deploy/secrets"
