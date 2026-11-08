@@ -1,7 +1,7 @@
 //! Validation of the remote access settings of a device (RA-030..033, D-2, D-6).
 //!
-//! Field paths are `rdp.port`, `rdp.username`, `rdp.domain`, `vnc.port`, `vnc.username` and
-//! `macAddress`, `sessionLimit`; the wake relay check names `deviceId`.
+//! Field paths are `rdp.port`, `rdp.username`, `rdp.domain`, `vnc.port`, `vnc.username`,
+//! `macAddress`, `sessionLimit` and `metricsSource`; the wake relay check names `deviceId`.
 
 use std::num::NonZeroU8;
 
@@ -12,7 +12,8 @@ use crate::{
         Device,
         mac::{MacAddress, MacAddressError},
         remote::{
-            RdpInput, RdpSettings, RemoteAccess, RemoteChange, RemoteForm, VncInput, VncSettings,
+            MetricsSource, RdpInput, RdpSettings, RemoteAccess, RemoteChange, RemoteForm, VncInput,
+            VncSettings,
         },
         text::user_name,
     },
@@ -40,17 +41,23 @@ pub(in crate::devices) fn new_remote(form: &RemoteForm) -> Result<RemoteAccess, 
     let vnc = problems.fields(vnc);
     let mac_address = problems.field(form.mac_address.as_deref().map_or(Ok(None), mac_address));
     let session_limit = problems.field(form.session_limit.map_or(Ok(None), new_session_limit));
-    let checked = rdp.zip(vnc).zip(mac_address).zip(session_limit).map(
-        |(((rdp, vnc), mac_address), session_limit)| RemoteAccess {
-            rdp,
-            vnc,
-            mac_address,
-            metrics_source: form.metrics_source.unwrap_or_default(),
-            transfer: form.transfer.unwrap_or_default(),
-            session_limit,
-            record_sessions: form.record_sessions.unwrap_or_default(),
-        },
-    );
+    let metrics_source = problems.field(metrics_source(form.metrics_source.unwrap_or_default()));
+    let checked = rdp
+        .zip(vnc)
+        .zip(mac_address)
+        .zip(session_limit)
+        .zip(metrics_source)
+        .map(
+            |((((rdp, vnc), mac_address), session_limit), metrics_source)| RemoteAccess {
+                rdp,
+                vnc,
+                mac_address,
+                metrics_source,
+                transfer: form.transfer.unwrap_or_default(),
+                session_limit,
+                record_sessions: form.record_sessions.unwrap_or_default(),
+            },
+        );
     problems.finish(checked)
 }
 
@@ -81,11 +88,15 @@ pub(in crate::devices) fn remote_change(
         .session_limit
         .map(changed_session_limit)
         .and_then(|c| problems.field(c));
+    let metrics_source = form
+        .metrics_source
+        .map(metrics_source)
+        .and_then(|c| problems.field(c));
     problems.finish(Some(RemoteChange {
         rdp,
         vnc,
         mac_address,
-        metrics_source: form.metrics_source,
+        metrics_source,
         transfer: form.transfer,
         session_limit,
         record_sessions: form.record_sessions,
@@ -182,6 +193,18 @@ fn domain(text: Option<&str>) -> Result<Option<String>, FieldError> {
         return reject("The domain cannot contain spaces.");
     }
     Ok((!domain.is_empty()).then(|| domain.to_owned()))
+}
+
+/// The source the operator chose. `Agent` is refused: only enrolling an agent sets it, so a
+/// device never waits for an agent that has no token (MET-011, R-092 D-7).
+fn metrics_source(source: MetricsSource) -> Result<MetricsSource, FieldError> {
+    if source == MetricsSource::Agent {
+        return Err(FieldError::new(
+            "metricsSource",
+            "Install the agent to use it: enrolling it sets this source.",
+        ));
+    }
+    Ok(source)
 }
 
 /// `None` for empty text (no address); otherwise the parsed unicast address (D-6).
