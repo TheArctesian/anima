@@ -2,7 +2,20 @@
 # (cargo loads each member's manifest even when it builds only anima-hub).
 *
 !Cargo.toml
+!package.json
 !Cargo.lock
 !crates/
 !apps/desktop/src-tauri/
+# The web stage: manifests, the lock file and the client sources.
+!bun.lock
+!apps/client/
+!apps/desktop/package.json
+!quality/package.json
+!design/package.json
+!deploy/package.json
+!deploy/dns/package.json
+!deploy/headscale/package.json
 **/target
+**/node_modules
+**/.svelte-kit
+**/build

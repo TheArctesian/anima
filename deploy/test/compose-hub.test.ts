@@ -123,4 +123,55 @@ describe("hub image build", () => {
       expect(copied.some((source) => member === source || member.startsWith(`${source}/`))).toBe(true);
     }
   });
+
+  const stage = (name: string): string[] => {
+    const lines = dockerfile.split("\n");
+    const start = lines.findIndex((line) => new RegExp(`^FROM .* AS ${name}$`).test(line));
+    const end = lines.findIndex((line, index) => index > start && line.startsWith("FROM "));
+    return lines.slice(start, end === -1 ? undefined : end);
+  };
+  const finalStage = dockerfile.split("\n").slice(dockerfile.split("\n").map((line) => line.startsWith("FROM ")).lastIndexOf(true));
+
+  test("D-2 the web stage builds the client and the final stage copies its output to /usr/share/anima/web", () => {
+    const web = stage("web");
+    expect(web[0]).toMatch(/^FROM oven\/bun:1\.3\.14-\S+ AS web$/);
+    expect(web).toContain("RUN bun run --cwd apps/client build");
+    expect(web.some((line) => line.startsWith("RUN bun install --frozen-lockfile"))).toBe(true);
+    expect(finalStage).toContain("COPY --from=web /src/apps/client/build /usr/share/anima/web");
+  });
+
+  test("R-031 the one cargo build line is unchanged and lives in the rust stage", () => {
+    expect(builds).toEqual(["RUN cargo build --release --locked --bin anima-hub"]);
+    expect(stage("build")).toContain(builds[0]);
+  });
+
+  test("D-13 the recordings folder is created for 10001:10001 with mode 0700 in the final stage", () => {
+    const run = finalStage.join("\n");
+    expect(run).toMatch(/mkdir -p \/var\/lib\/anima\/recordings/);
+    expect(run).toMatch(/chown 10001:10001 \/var\/lib\/anima\/recordings/);
+    expect(run).toMatch(/chmod 0700 \/var\/lib\/anima\/recordings/);
+    expect(run.indexOf("chmod 0700")).toBeLessThan(run.indexOf("USER 10001:10001"));
+  });
+
+  test("SEC-005 every workspace manifest the frozen install reads is copied by the web stage and allowed by the dockerignore", () => {
+    const root = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")) as { workspaces: string[] };
+    const manifests = ["package.json"];
+    for (const glob of root.workspaces) {
+      for (const found of new Bun.Glob(`${glob}/package.json`).scanSync({ cwd: ROOT })) manifests.push(found);
+    }
+    const members = [...new Set(manifests)].filter((path) => !path.includes("node_modules"));
+    expect(members).toContain("apps/client/package.json");
+    expect(members).toContain("deploy/dns/package.json");
+    const web = stage("web").join("\n");
+    const allowed = readFileSync(join(ROOT, "deploy", "hub", "Dockerfile.dockerignore"), "utf8").split("\n");
+    for (const manifest of members) {
+      expect(web).toContain(`COPY ${manifest} `);
+      const dir = manifest.slice(0, manifest.lastIndexOf("/") + 1);
+      expect(allowed.some((line) => line === `!${manifest}` || (dir !== "" && line === `!${dir}`) || line === `!${dir}**`)).toBe(true);
+    }
+    expect(web).toContain("COPY package.json bun.lock ");
+    expect(allowed).toContain("!bun.lock");
+    expect(allowed).toContain("!apps/client/");
+    for (const excluded of ["**/node_modules", "**/.svelte-kit", "**/build"]) expect(allowed).toContain(excluded);
+  });
 });
