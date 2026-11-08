@@ -130,8 +130,8 @@ fn chk_012_gpu_reads_are_the_static_spec_forms_per_system() {
         .collect();
     let ioreg = fixed(&["ioreg", "-r", "-d", "1", "-c", "IOAccelerator"]);
     assert_eq!(macos, [(GpuVendor::Apple, ioreg)]);
-    assert!(gpu_commands(OperatingSystem::Windows).is_empty());
-    assert!(gpu_commands(OperatingSystem::Other).is_empty());
+    assert_eq!(gpu_commands(OperatingSystem::Windows), []);
+    assert_eq!(gpu_commands(OperatingSystem::Other), []);
 }
 
 #[test]

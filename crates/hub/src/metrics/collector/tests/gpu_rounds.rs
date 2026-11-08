@@ -240,7 +240,7 @@ async fn d11_gpu_reads_stop_at_the_gpu_window_and_the_collection_is_stored(pool:
     );
     let added = bench.feed.try_recv().unwrap();
     assert!(value(&added, MetricKind::MemoryPercent, "").is_some());
-    assert!(stored(&pool).await.is_empty());
+    assert_eq!(stored(&pool).await, []);
     assert_eq!(collection_events(&pool).await, 0, "the collection worked");
 }
 
@@ -307,9 +307,9 @@ async fn p2_004_a_deny_listed_device_gets_no_gpu_discovery_and_no_samples(pool: 
         0,
         "the deny list wins over loopback"
     );
-    assert!(bench.server.heard().is_empty());
+    assert_eq!(bench.server.heard(), Vec::<String>::new());
     assert_eq!(discovery(&pool).await, None);
-    assert!(stored(&pool).await.is_empty());
+    assert_eq!(stored(&pool).await, []);
     let samples: i64 = sqlx::query_scalar("select count(*) from metrics.series")
         .fetch_one(&pool)
         .await

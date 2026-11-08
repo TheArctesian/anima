@@ -142,7 +142,7 @@ impl Look {
             if gpus.len() >= MAX_LABELS {
                 break;
             }
-            let free = (0..).find(|free| gpus.iter().all(|found| found.gpu.index != *free));
+            let free = (0..i32::MAX).find(|free| gpus.iter().all(|found| found.gpu.index != *free));
             gpus.extend(free.map(|index| found(vendor, reading, index)));
         }
         gpus.sort_by_key(|found| found.gpu.index);

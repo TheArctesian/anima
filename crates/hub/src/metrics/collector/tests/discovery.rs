@@ -17,20 +17,27 @@ use crate::{
     },
 };
 
-/// The look due for `known` at `now` with no boot time: `None`, all vendors (`Some(None)`), or
-/// only some.
-fn look(
-    known: Option<&Discovered>,
-    now: chrono::DateTime<chrono::Utc>,
-) -> Option<Option<Vec<GpuVendor>>> {
-    due(known, None, now).map(|look| look.only)
+/// Which look is due.
+#[derive(Debug, PartialEq)]
+enum Due {
+    No,
+    All,
+    Only(Vec<GpuVendor>),
+}
+
+/// The look due for `known` at `now` with no boot time.
+fn look(known: Option<&Discovered>, now: chrono::DateTime<chrono::Utc>) -> Due {
+    match due(known, None, now) {
+        None => Due::No,
+        Some(look) => look.only.map_or(Due::All, Due::Only),
+    }
 }
 
 /// `answers` with the one of `vendor` replaced by `answer`.
 fn with(
     mut answers: Vec<(GpuVendor, Answer)>,
     vendor: GpuVendor,
-    answer: Answer,
+    answer: &Answer,
 ) -> Vec<(GpuVendor, Answer)> {
     for (each, slot) in &mut answers {
         if *each == vendor {
@@ -53,16 +60,16 @@ fn numbers(known: &Discovered) -> Vec<(i32, GpuVendor, u32)> {
 fn met_006_the_first_collection_looks_and_looks_again_after_24_hours() {
     assert_eq!(
         look(None, at()),
-        Some(None),
+        Due::All,
         "nothing known since the hub started"
     );
     let known = found(&linux_answers());
     let soon = at() + EVERY - TimeDelta::seconds(1);
-    assert_eq!(look(Some(&known), soon), None);
-    assert_eq!(look(Some(&known), at() + EVERY), Some(None));
+    assert_eq!(look(Some(&known), soon), Due::No);
+    assert_eq!(look(Some(&known), at() + EVERY), Due::All);
     assert_eq!(
         look(Some(&known), at() - TimeDelta::seconds(1)),
-        Some(None),
+        Due::All,
         "the hub clock went back"
     );
 }
@@ -94,7 +101,11 @@ fn met_006_a_boot_time_later_by_more_than_the_tolerance_is_a_restart() {
 fn met_006_a_look_soon_after_boot_is_made_again_each_round_until_five_minutes() {
     let answers = linux_answers();
     let booted = at() - TimeDelta::seconds(20);
-    let not_ready = with(answers.clone(), GpuVendor::Nvidia, Answer::Gpus(Vec::new()));
+    let not_ready = with(
+        answers.clone(),
+        GpuVendor::Nvidia,
+        &Answer::Gpus(Vec::new()),
+    );
     let early = due(None, Some(booted), at())
         .unwrap()
         .merge(None, &not_ready);
@@ -177,8 +188,8 @@ fn met_006_an_unknown_vendor_keeps_its_gpus_and_alone_is_looked_at_again() {
     let answers = linux_answers();
     let known = found(&answers);
     let later = at() + EVERY;
-    let hung = with(answers.clone(), GpuVendor::Intel, Answer::Unknown);
-    let fewer_amd = with(hung, GpuVendor::Amd, Answer::Gpus(Vec::new()));
+    let hung = with(answers.clone(), GpuVendor::Intel, &Answer::Unknown);
+    let fewer_amd = with(hung, GpuVendor::Amd, &Answer::Gpus(Vec::new()));
     let after = due(Some(&known), None, later)
         .unwrap()
         .merge(Some(&known), &fewer_amd);
@@ -194,10 +205,10 @@ fn met_006_an_unknown_vendor_keeps_its_gpus_and_alone_is_looked_at_again() {
     assert_eq!(after.pending, [GpuVendor::Intel]);
     assert_eq!(after.found_at, later);
     let next = later + TimeDelta::seconds(30);
-    assert_eq!(look(Some(&after), next), Some(Some(vec![GpuVendor::Intel])));
+    assert_eq!(look(Some(&after), next), Due::Only(vec![GpuVendor::Intel]));
     let pending = due(Some(&after), None, next).unwrap();
     let done = pending.merge(Some(&after), &answers);
-    assert!(done.pending.is_empty());
+    assert_eq!(done.pending, []);
     assert_eq!(
         done.found_at, later,
         "a look at one vendor keeps the 24 hours"
@@ -211,7 +222,7 @@ fn met_009_gpus_keep_their_numbers_and_a_new_one_takes_the_lowest_free() {
     let known = found(&answers);
     let later = at() + EVERY;
     let one_nvidia = Answer::Gpus(vec![gpus_of(&answers[0].1)[1].clone()]);
-    let dropped = with(answers.clone(), GpuVendor::Nvidia, one_nvidia);
+    let dropped = with(answers.clone(), GpuVendor::Nvidia, &one_nvidia);
     let after = due(Some(&known), None, later)
         .unwrap()
         .merge(Some(&known), &dropped);
