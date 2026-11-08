@@ -1,6 +1,6 @@
 import type { DeviceCheck } from '$lib/checks/api';
 import type { CheckType } from '$lib/hub/generated/graphql';
-import type { BareDomainExpiryConfig, DomainExpiryConfigFields } from '../probes/domain-expiry';
+import type { DomainExpiryConfigFields } from '../probes/domain-expiry';
 import type { ProbeConfig } from '../probes/values';
 
 /** The K1 check shapes the check form reads and writes, from the generated types (T4, API-008). */

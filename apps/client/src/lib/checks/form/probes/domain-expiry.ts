@@ -68,7 +68,7 @@ export function domainExpiryErrors({ domain, warnDays, timeoutMs }: DomainExpiry
   const found: FieldError[] =
     name === ''
       ? [{ field: 'domain', message: 'Enter the domain, such as example.net.' }]
-      : !isValidHost(name) || !name.includes('.') || name.includes(':')
+      : !isValidHost(name) || !name.includes('.') || name.includes(':') || /^[\d.]+$/.test(name)
         ? [{ field: 'domain', message: 'Enter a domain name such as example.net, not an address.' }]
         : lengthError('domain', name, DOMAIN_BYTES, 'The domain');
   return [
