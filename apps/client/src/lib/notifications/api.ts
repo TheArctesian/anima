@@ -19,7 +19,8 @@ void graphql(`
     kind
     at
     ok
-    message
+    reason
+    code
   }
 `);
 
@@ -134,7 +135,7 @@ const SET_SETTINGS = graphql(`
 /** One channel as the hub lists it: its target as an origin or host, never a secret (D-17). */
 export type NotificationChannel = NotificationChannelFieldsFragment;
 export type ChannelSettings = NotificationChannel['settings'];
-/** One attempt to send; `message` is a fixed sentence, never the target's reply (NOT-004). */
+/** One attempt to send; `reason` and `code` are values the client turns into fixed sentences (NOT-004, CR-14.5). */
 export type Delivery = NonNullable<NotificationChannel['lastDelivery']>;
 export type NotificationSettings = NotificationSettingsFieldsFragment;
 

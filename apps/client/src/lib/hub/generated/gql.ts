@@ -56,6 +56,16 @@ type Documents = {
     "\n  subscription EventAdded($minSeverity: Severity) {\n    eventAdded(minSeverity: $minSeverity) {\n      id\n      at\n      severity\n      source\n      deviceId\n      deviceName\n      message\n    }\n  }\n": typeof types.EventAddedDocument,
     "\n  query DeviceMetrics($id: ID!, $range: MetricRange!) {\n    device(id: $id) {\n      id\n      metricsSource\n      gpus {\n        index\n        name\n        vendor\n        hasVram\n      }\n      readings {\n        at\n        cpuPercent\n        memoryPercent\n        diskPercent\n        vramPercent\n        vramGpu {\n          index\n          name\n          vendor\n          hasVram\n        }\n      }\n      metrics(range: $range) {\n        kind\n        label\n        gpuIndex\n        points {\n          at\n          value\n          min\n          max\n        }\n      }\n    }\n  }\n": typeof types.DeviceMetricsDocument,
     "\n  subscription MetricsAdded($deviceId: ID!) {\n    metricsAdded(deviceId: $deviceId) {\n      deviceId\n      at\n      samples {\n        kind\n        label\n        value\n      }\n      readings {\n        at\n        cpuPercent\n        memoryPercent\n        diskPercent\n        vramPercent\n        vramGpu {\n          index\n          name\n          vendor\n          hasVram\n        }\n      }\n    }\n  }\n": typeof types.MetricsAddedDocument,
+    "\n  fragment DeliveryFields on Delivery {\n    id\n    channelId\n    kind\n    at\n    ok\n    reason\n    code\n  }\n": typeof types.DeliveryFieldsFragmentDoc,
+    "\n  fragment NotificationChannelFields on NotificationChannel {\n    id\n    name\n    kind\n    onByDefault\n    settings {\n      __typename\n      ... on WebhookSettings {\n        origin\n        method\n        headerNames\n      }\n      ... on NtfySettings {\n        server\n        priority\n        tokenStored\n      }\n      ... on EmailSettings {\n        host\n        port\n        security\n        username\n        from\n        to\n        passwordStored\n      }\n      ... on AppriseSettings {\n        server\n        mode\n        tags\n      }\n    }\n    template {\n      title\n      body\n    }\n    lastDelivery {\n      ...DeliveryFields\n    }\n  }\n": typeof types.NotificationChannelFieldsFragmentDoc,
+    "\n  fragment NotificationSettingsFields on NotificationSettings {\n    certificateDays\n    template {\n      title\n      body\n    }\n    placeholders\n  }\n": typeof types.NotificationSettingsFieldsFragmentDoc,
+    "\n  query NotificationChannels {\n    notificationChannels {\n      ...NotificationChannelFields\n    }\n  }\n": typeof types.NotificationChannelsDocument,
+    "\n  query NotificationSettings {\n    notificationSettings {\n      ...NotificationSettingsFields\n    }\n  }\n": typeof types.NotificationSettingsDocument,
+    "\n  mutation CreateNotificationChannel($input: NotificationChannelInput!) {\n    createNotificationChannel(input: $input) {\n      ...NotificationChannelFields\n    }\n  }\n": typeof types.CreateNotificationChannelDocument,
+    "\n  mutation UpdateNotificationChannel($id: ID!, $input: NotificationChannelInput!) {\n    updateNotificationChannel(id: $id, input: $input) {\n      ...NotificationChannelFields\n    }\n  }\n": typeof types.UpdateNotificationChannelDocument,
+    "\n  mutation DeleteNotificationChannel($id: ID!) {\n    deleteNotificationChannel(id: $id)\n  }\n": typeof types.DeleteNotificationChannelDocument,
+    "\n  mutation SendTestNotification($id: ID!) {\n    sendTestNotification(id: $id) {\n      ...DeliveryFields\n    }\n  }\n": typeof types.SendTestNotificationDocument,
+    "\n  mutation SetNotificationSettings($input: NotificationSettingsInput!) {\n    setNotificationSettings(input: $input) {\n      ...NotificationSettingsFields\n    }\n  }\n": typeof types.SetNotificationSettingsDocument,
     "\n  query Retention {\n    retention {\n      subject\n      days\n      minDays\n      maxDays\n      defaultDays\n    }\n  }\n": typeof types.RetentionDocument,
     "\n  mutation SetRetention($subject: RetentionSubject!, $days: Int!) {\n    setRetention(subject: $subject, days: $days) {\n      subject\n      days\n      minDays\n      maxDays\n      defaultDays\n    }\n  }\n": typeof types.SetRetentionDocument,
     "\n  mutation StartSession($input: StartSessionInput!) {\n    startSession(input: $input) {\n      sessionId\n      token\n      tunnelPath\n      expiresAt\n      wakeSent\n    }\n  }\n": typeof types.StartSessionDocument,
@@ -124,6 +134,16 @@ const documents: Documents = {
     "\n  subscription EventAdded($minSeverity: Severity) {\n    eventAdded(minSeverity: $minSeverity) {\n      id\n      at\n      severity\n      source\n      deviceId\n      deviceName\n      message\n    }\n  }\n": types.EventAddedDocument,
     "\n  query DeviceMetrics($id: ID!, $range: MetricRange!) {\n    device(id: $id) {\n      id\n      metricsSource\n      gpus {\n        index\n        name\n        vendor\n        hasVram\n      }\n      readings {\n        at\n        cpuPercent\n        memoryPercent\n        diskPercent\n        vramPercent\n        vramGpu {\n          index\n          name\n          vendor\n          hasVram\n        }\n      }\n      metrics(range: $range) {\n        kind\n        label\n        gpuIndex\n        points {\n          at\n          value\n          min\n          max\n        }\n      }\n    }\n  }\n": types.DeviceMetricsDocument,
     "\n  subscription MetricsAdded($deviceId: ID!) {\n    metricsAdded(deviceId: $deviceId) {\n      deviceId\n      at\n      samples {\n        kind\n        label\n        value\n      }\n      readings {\n        at\n        cpuPercent\n        memoryPercent\n        diskPercent\n        vramPercent\n        vramGpu {\n          index\n          name\n          vendor\n          hasVram\n        }\n      }\n    }\n  }\n": types.MetricsAddedDocument,
+    "\n  fragment DeliveryFields on Delivery {\n    id\n    channelId\n    kind\n    at\n    ok\n    reason\n    code\n  }\n": types.DeliveryFieldsFragmentDoc,
+    "\n  fragment NotificationChannelFields on NotificationChannel {\n    id\n    name\n    kind\n    onByDefault\n    settings {\n      __typename\n      ... on WebhookSettings {\n        origin\n        method\n        headerNames\n      }\n      ... on NtfySettings {\n        server\n        priority\n        tokenStored\n      }\n      ... on EmailSettings {\n        host\n        port\n        security\n        username\n        from\n        to\n        passwordStored\n      }\n      ... on AppriseSettings {\n        server\n        mode\n        tags\n      }\n    }\n    template {\n      title\n      body\n    }\n    lastDelivery {\n      ...DeliveryFields\n    }\n  }\n": types.NotificationChannelFieldsFragmentDoc,
+    "\n  fragment NotificationSettingsFields on NotificationSettings {\n    certificateDays\n    template {\n      title\n      body\n    }\n    placeholders\n  }\n": types.NotificationSettingsFieldsFragmentDoc,
+    "\n  query NotificationChannels {\n    notificationChannels {\n      ...NotificationChannelFields\n    }\n  }\n": types.NotificationChannelsDocument,
+    "\n  query NotificationSettings {\n    notificationSettings {\n      ...NotificationSettingsFields\n    }\n  }\n": types.NotificationSettingsDocument,
+    "\n  mutation CreateNotificationChannel($input: NotificationChannelInput!) {\n    createNotificationChannel(input: $input) {\n      ...NotificationChannelFields\n    }\n  }\n": types.CreateNotificationChannelDocument,
+    "\n  mutation UpdateNotificationChannel($id: ID!, $input: NotificationChannelInput!) {\n    updateNotificationChannel(id: $id, input: $input) {\n      ...NotificationChannelFields\n    }\n  }\n": types.UpdateNotificationChannelDocument,
+    "\n  mutation DeleteNotificationChannel($id: ID!) {\n    deleteNotificationChannel(id: $id)\n  }\n": types.DeleteNotificationChannelDocument,
+    "\n  mutation SendTestNotification($id: ID!) {\n    sendTestNotification(id: $id) {\n      ...DeliveryFields\n    }\n  }\n": types.SendTestNotificationDocument,
+    "\n  mutation SetNotificationSettings($input: NotificationSettingsInput!) {\n    setNotificationSettings(input: $input) {\n      ...NotificationSettingsFields\n    }\n  }\n": types.SetNotificationSettingsDocument,
     "\n  query Retention {\n    retention {\n      subject\n      days\n      minDays\n      maxDays\n      defaultDays\n    }\n  }\n": types.RetentionDocument,
     "\n  mutation SetRetention($subject: RetentionSubject!, $days: Int!) {\n    setRetention(subject: $subject, days: $days) {\n      subject\n      days\n      minDays\n      maxDays\n      defaultDays\n    }\n  }\n": types.SetRetentionDocument,
     "\n  mutation StartSession($input: StartSessionInput!) {\n    startSession(input: $input) {\n      sessionId\n      token\n      tunnelPath\n      expiresAt\n      wakeSent\n    }\n  }\n": types.StartSessionDocument,
@@ -332,6 +352,46 @@ export function graphql(source: "\n  query DeviceMetrics($id: ID!, $range: Metri
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  subscription MetricsAdded($deviceId: ID!) {\n    metricsAdded(deviceId: $deviceId) {\n      deviceId\n      at\n      samples {\n        kind\n        label\n        value\n      }\n      readings {\n        at\n        cpuPercent\n        memoryPercent\n        diskPercent\n        vramPercent\n        vramGpu {\n          index\n          name\n          vendor\n          hasVram\n        }\n      }\n    }\n  }\n"): (typeof documents)["\n  subscription MetricsAdded($deviceId: ID!) {\n    metricsAdded(deviceId: $deviceId) {\n      deviceId\n      at\n      samples {\n        kind\n        label\n        value\n      }\n      readings {\n        at\n        cpuPercent\n        memoryPercent\n        diskPercent\n        vramPercent\n        vramGpu {\n          index\n          name\n          vendor\n          hasVram\n        }\n      }\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  fragment DeliveryFields on Delivery {\n    id\n    channelId\n    kind\n    at\n    ok\n    reason\n    code\n  }\n"): (typeof documents)["\n  fragment DeliveryFields on Delivery {\n    id\n    channelId\n    kind\n    at\n    ok\n    reason\n    code\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  fragment NotificationChannelFields on NotificationChannel {\n    id\n    name\n    kind\n    onByDefault\n    settings {\n      __typename\n      ... on WebhookSettings {\n        origin\n        method\n        headerNames\n      }\n      ... on NtfySettings {\n        server\n        priority\n        tokenStored\n      }\n      ... on EmailSettings {\n        host\n        port\n        security\n        username\n        from\n        to\n        passwordStored\n      }\n      ... on AppriseSettings {\n        server\n        mode\n        tags\n      }\n    }\n    template {\n      title\n      body\n    }\n    lastDelivery {\n      ...DeliveryFields\n    }\n  }\n"): (typeof documents)["\n  fragment NotificationChannelFields on NotificationChannel {\n    id\n    name\n    kind\n    onByDefault\n    settings {\n      __typename\n      ... on WebhookSettings {\n        origin\n        method\n        headerNames\n      }\n      ... on NtfySettings {\n        server\n        priority\n        tokenStored\n      }\n      ... on EmailSettings {\n        host\n        port\n        security\n        username\n        from\n        to\n        passwordStored\n      }\n      ... on AppriseSettings {\n        server\n        mode\n        tags\n      }\n    }\n    template {\n      title\n      body\n    }\n    lastDelivery {\n      ...DeliveryFields\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  fragment NotificationSettingsFields on NotificationSettings {\n    certificateDays\n    template {\n      title\n      body\n    }\n    placeholders\n  }\n"): (typeof documents)["\n  fragment NotificationSettingsFields on NotificationSettings {\n    certificateDays\n    template {\n      title\n      body\n    }\n    placeholders\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query NotificationChannels {\n    notificationChannels {\n      ...NotificationChannelFields\n    }\n  }\n"): (typeof documents)["\n  query NotificationChannels {\n    notificationChannels {\n      ...NotificationChannelFields\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query NotificationSettings {\n    notificationSettings {\n      ...NotificationSettingsFields\n    }\n  }\n"): (typeof documents)["\n  query NotificationSettings {\n    notificationSettings {\n      ...NotificationSettingsFields\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation CreateNotificationChannel($input: NotificationChannelInput!) {\n    createNotificationChannel(input: $input) {\n      ...NotificationChannelFields\n    }\n  }\n"): (typeof documents)["\n  mutation CreateNotificationChannel($input: NotificationChannelInput!) {\n    createNotificationChannel(input: $input) {\n      ...NotificationChannelFields\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation UpdateNotificationChannel($id: ID!, $input: NotificationChannelInput!) {\n    updateNotificationChannel(id: $id, input: $input) {\n      ...NotificationChannelFields\n    }\n  }\n"): (typeof documents)["\n  mutation UpdateNotificationChannel($id: ID!, $input: NotificationChannelInput!) {\n    updateNotificationChannel(id: $id, input: $input) {\n      ...NotificationChannelFields\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation DeleteNotificationChannel($id: ID!) {\n    deleteNotificationChannel(id: $id)\n  }\n"): (typeof documents)["\n  mutation DeleteNotificationChannel($id: ID!) {\n    deleteNotificationChannel(id: $id)\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation SendTestNotification($id: ID!) {\n    sendTestNotification(id: $id) {\n      ...DeliveryFields\n    }\n  }\n"): (typeof documents)["\n  mutation SendTestNotification($id: ID!) {\n    sendTestNotification(id: $id) {\n      ...DeliveryFields\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation SetNotificationSettings($input: NotificationSettingsInput!) {\n    setNotificationSettings(input: $input) {\n      ...NotificationSettingsFields\n    }\n  }\n"): (typeof documents)["\n  mutation SetNotificationSettings($input: NotificationSettingsInput!) {\n    setNotificationSettings(input: $input) {\n      ...NotificationSettingsFields\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
