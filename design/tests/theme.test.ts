@@ -134,6 +134,13 @@ describe('light values in the token source (TOK-011)', () => {
     expect(result).toBeInstanceOf(TokenSourceError);
   });
 
+  test('TOK-011: a light tint given as a plain colour is refused, since a tint is always a mix', async () => {
+    const tint = { $type: 'tint', $value: { color: '{color.nord.0}', percent: 12, over: 'transparent' } };
+    const result = await loadSource({ color: { ...NORD, 'accent-tint': { ...tint, $extensions: light('{color.nord.5}') } } });
+    expect(result).toBeInstanceOf(TokenSourceError);
+    expect((result as TokenSourceError).tokenPath).toBe('color.accent-tint');
+  });
+
   test('TOK-011: a light tint without a numeric percent is refused', async () => {
     const tint = { $type: 'tint', $value: { color: '{color.nord.0}', percent: 12, over: 'transparent' } };
     const result = await loadSource({
