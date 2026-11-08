@@ -98,7 +98,15 @@ async fn not_004_the_event_log_accepts_source_notification_and_still_metrics(poo
         .await
         .unwrap();
 
-    for source in ["notification", "metrics", "hub"] {
+    for source in [
+        "check",
+        "session",
+        "device",
+        "access",
+        "hub",
+        "metrics",
+        "notification",
+    ] {
         let sql = format!(
             "insert into events.event_log (id, at, severity, source, message) \
              values (gen_random_uuid(), now(), 'warning', '{source}', 'm')"
@@ -175,7 +183,9 @@ async fn not_002_deleting_a_channel_removes_links_and_queue_but_keeps_deliveries
         ok: true,
         message: None,
     };
-    sql::insert_delivery(&pool, &delivery).await.unwrap();
+    sql::insert_delivery(&mut pool.acquire().await.unwrap(), &delivery)
+        .await
+        .unwrap();
 
     assert!(sql::delete_channel(&mut conn, doomed).await.unwrap());
 

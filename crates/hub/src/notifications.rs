@@ -37,6 +37,12 @@ pub enum Error {
     /// Another channel already has the name.
     #[error("a channel with this name already exists")]
     NameTaken,
+    /// A check was linked to a channel that does not exist.
+    #[error("the channel does not exist")]
+    UnknownChannel,
+    /// A channel was linked to a check that does not exist.
+    #[error("the check does not exist")]
+    UnknownCheck,
     /// A stored row holds a value this version does not know.
     #[error("a stored notification row cannot be read")]
     Unreadable,
@@ -44,14 +50,14 @@ pub enum Error {
 
 impl From<sqlx::Error> for Error {
     fn from(error: sqlx::Error) -> Self {
-        let name_taken = error
+        match error
             .as_database_error()
             .and_then(|database| database.constraint())
-            == Some("channels_name_key");
-        if name_taken {
-            Self::NameTaken
-        } else {
-            Self::Database(error)
+        {
+            Some("channels_name_key") => Self::NameTaken,
+            Some("check_channels_channel_id_fkey") => Self::UnknownChannel,
+            Some("check_channels_check_id_fkey") => Self::UnknownCheck,
+            _ => Self::Database(error),
         }
     }
 }
@@ -63,6 +69,8 @@ impl Error {
         match self {
             Self::Database(_) => "database",
             Self::NameTaken => "name_taken",
+            Self::UnknownChannel => "unknown_channel",
+            Self::UnknownCheck => "unknown_check",
             Self::Unreadable => "unreadable",
         }
     }

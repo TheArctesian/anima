@@ -1,6 +1,6 @@
 //! The outbox: claims, finishing a row and the 7-day clean-up (D-16, K2).
 
-use std::collections::HashSet;
+use std::{collections::HashSet, time::Duration};
 
 use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::PgPool;
@@ -56,6 +56,42 @@ async fn not_001_two_claimers_take_disjoint_rows_and_none_twice(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
+async fn not_001_a_claim_skips_rows_another_transaction_holds_instead_of_waiting(pool: PgPool) {
+    let runtime = runtime_pool(&pool).await;
+    let ops = channel(&pool, "ops").await;
+    let at = now(&pool).await - TimeDelta::minutes(1);
+    let mut ids = Vec::new();
+    for _ in 0..6 {
+        ids.push(queue(&pool, ops, at).await);
+    }
+    let mut holder = pool.begin().await.unwrap();
+    let held: Vec<OutboxId> =
+        sqlx::query_scalar("SELECT id FROM notifications.outbox ORDER BY id LIMIT 3 FOR UPDATE")
+            .fetch_all(&mut *holder)
+            .await
+            .unwrap();
+    assert_eq!(held, ids[..3]);
+
+    // Without SKIP LOCKED this would wait for the holder, which ends only after the assert.
+    let claimed = tokio::time::timeout(
+        Duration::from_secs(10),
+        sql::claim_due(
+            &runtime,
+            at + TimeDelta::minutes(2),
+            TimeDelta::minutes(5),
+            100,
+        ),
+    )
+    .await
+    .expect("the claim waited for rows another transaction holds")
+    .unwrap();
+    holder.rollback().await.unwrap();
+
+    let claimed: HashSet<OutboxId> = claimed.iter().map(|row| row.id).collect();
+    assert_eq!(claimed, ids[3..].iter().copied().collect());
+}
+
+#[sqlx::test(migrations = "./migrations")]
 async fn not_004_a_claim_skips_future_and_finished_rows_and_a_lease_expires(pool: PgPool) {
     let ops = channel(&pool, "ops").await;
     let at = now(&pool).await;
@@ -79,7 +115,10 @@ async fn not_004_a_claim_skips_future_and_finished_rows_and_a_lease_expires(pool
     assert_eq!(claimed.iter().map(|row| row.id).collect::<Vec<_>>(), [due]);
     assert_eq!(during.len(), 0);
     assert_eq!(after.iter().map(|row| row.id).collect::<Vec<_>>(), [due]);
-    let _ = future;
+    let hour_on = sql::claim_due(&pool, at + TimeDelta::hours(2), TimeDelta::minutes(5), 10)
+        .await
+        .unwrap();
+    assert!(hour_on.iter().any(|row| row.id == future));
 }
 
 #[sqlx::test(migrations = "./migrations")]

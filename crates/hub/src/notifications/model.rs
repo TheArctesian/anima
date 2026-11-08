@@ -166,7 +166,8 @@ pub struct Outbox {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Delivery {
     pub id: DeliveryId,
-    /// `None` after the channel was deleted.
+    /// The id the channel had when this was written. The log keeps no foreign key (DB-004), so
+    /// the channel may be deleted since: `channel_name` is the copy kept.
     pub channel: Option<ChannelId>,
     pub channel_name: String,
     pub kind: NotificationKind,

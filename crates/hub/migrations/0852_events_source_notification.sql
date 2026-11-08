@@ -1,6 +1,7 @@
 -- NOT-004, D-16 (K2 names this change 0503): the notification dispatcher reports its own
--- events (a delivery given up), so `events.event_log.source` accepts 'notification'. As 0701 did for 'metrics': 0500 created the
--- check unnamed, Postgres named it `event_log_source_check`, and every partition inherits it.
+-- events (a delivery given up), so `events.event_log.source` accepts 'notification'. As 0701
+-- did for 'metrics': 0500 created the check unnamed, Postgres named it
+-- `event_log_source_check`, and every partition inherits it.
 --
 -- It is numbered 0852, not 0503, on purpose: 0701 replaces this same check, and a migration
 -- numbered 0503 would run before 0701 on a new database, so 0701 would drop 'notification' again.

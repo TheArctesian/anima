@@ -6,9 +6,9 @@ use uuid::Uuid;
 
 use super::{PING, SSH_PORT, channel, check, fields, now};
 use crate::{
-    ids::{ChannelId, DeliveryId},
+    ids::{ChannelId, CheckId, DeliveryId},
     notifications::{
-        ChannelKind, CheckState, Delivery, DeliveryCursor, ExpiryMark, NotificationKind,
+        ChannelKind, CheckState, Delivery, DeliveryCursor, Error, ExpiryMark, NotificationKind,
         store as sql,
     },
     status::Status,
@@ -150,7 +150,9 @@ async fn not_004_deliveries_page_newest_first_by_keyset_and_last_per_channel(poo
     }
     rows.push(delivery(other, at - TimeDelta::minutes(10), true));
     for row in &rows {
-        sql::insert_delivery(&pool, row).await.unwrap();
+        sql::insert_delivery(&mut pool.acquire().await.unwrap(), row)
+            .await
+            .unwrap();
     }
 
     let first = sql::deliveries_page(&pool, None, None, 3).await.unwrap();
@@ -185,4 +187,33 @@ async fn not_007_installation_settings_round_trip(pool: PgPool) {
         .unwrap();
 
     assert_eq!(sql::installation_settings(&pool).await.unwrap(), settings);
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../tests/fixtures", scripts("devices", "checks"))
+)]
+async fn not_003_linking_a_missing_channel_or_check_is_a_typed_error(pool: PgPool) {
+    let ops = channel(&pool, "ops").await;
+    let missing_channel = ChannelId::from(Uuid::now_v7());
+    let missing_check = CheckId::from(Uuid::now_v7());
+    let mut conn = pool.acquire().await.unwrap();
+
+    let no_channel = sql::set_check_channels(&mut conn, check(PING), &[ops, missing_channel]).await;
+    let no_check = sql::set_check_channels(&mut conn, missing_check, &[ops]).await;
+
+    assert!(matches!(no_channel, Err(Error::UnknownChannel)));
+    assert!(matches!(no_check, Err(Error::UnknownCheck)));
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn not_007_certificate_days_are_read_largest_first(pool: PgPool) {
+    sqlx::query("UPDATE notifications.settings SET certificate_days = '{7,30,14}'")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let settings = sql::installation_settings(&pool).await.unwrap();
+
+    assert_eq!(settings.certificate_days, [30, 14, 7]);
 }

@@ -149,11 +149,13 @@ impl TryFrom<SettingsRow> for InstallationSettings {
     type Error = Error;
 
     fn try_from(row: SettingsRow) -> Result<Self, Error> {
-        let certificate_days = row
+        let mut certificate_days = row
             .certificate_days
             .into_iter()
             .map(|days| u16::try_from(days).map_err(|_| Error::Unreadable))
-            .collect::<Result<_, _>>()?;
+            .collect::<Result<Vec<_>, _>>()?;
+        // Largest first, as the operator reads them, whatever order they were written in.
+        certificate_days.sort_unstable_by(|a, b| b.cmp(a));
         Ok(Self {
             certificate_days,
             title_template: row.title_template,

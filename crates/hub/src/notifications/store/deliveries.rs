@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use chrono::{DateTime, NaiveDate, Utc};
-use sqlx::PgPool;
+use sqlx::{PgConnection, PgExecutor, PgPool};
 use uuid::Uuid;
 
 use super::rows::{DELIVERY_COLUMNS, DeliveryRow};
@@ -57,14 +57,15 @@ pub(in crate::notifications) async fn drop_days_before(
     )
 }
 
-/// Records a delivery, creating its day's partition first when it is missing.
+/// Records a delivery, creating its day's partition first when it is missing. Takes a
+/// connection so the caller can finish the outbox row in the same transaction.
 pub(in crate::notifications) async fn insert_delivery(
-    db: &PgPool,
+    conn: &mut PgConnection,
     delivery: &Delivery,
 ) -> Result<(), Error> {
     sqlx::query("SELECT notifications.ensure_day_partition($1)")
         .bind(delivery.at)
-        .execute(db)
+        .execute(&mut *conn)
         .await?;
     sqlx::query(
         "INSERT INTO notifications.deliveries \
@@ -78,14 +79,14 @@ pub(in crate::notifications) async fn insert_delivery(
     .bind(delivery.at)
     .bind(delivery.ok)
     .bind(&delivery.message)
-    .execute(db)
+    .execute(conn)
     .await?;
     Ok(())
 }
 
 /// The newest delivery of each of `channels`; a channel with none has no entry.
 pub(in crate::notifications) async fn last_deliveries(
-    db: &PgPool,
+    db: impl PgExecutor<'_>,
     channels: &[ChannelId],
 ) -> Result<HashMap<ChannelId, Delivery>, Error> {
     let ids: Vec<Uuid> = channels.iter().map(|id| Uuid::from(*id)).collect();
@@ -109,7 +110,7 @@ pub(in crate::notifications) async fn last_deliveries(
 
 /// Up to `limit` deliveries, newest first, after `after`; of one channel when `channel` is set.
 pub(in crate::notifications) async fn deliveries_page(
-    db: &PgPool,
+    db: impl PgExecutor<'_>,
     channel: Option<ChannelId>,
     after: Option<DeliveryCursor>,
     limit: i64,

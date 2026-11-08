@@ -70,7 +70,9 @@ async fn db_009_runtime_role_does_everything_the_hub_needs(pool: PgPool) {
         ok: false,
         message: Some("The target did not answer in 8 seconds.".to_owned()),
     };
-    sql::insert_delivery(&runtime, &delivery).await.unwrap();
+    sql::insert_delivery(&mut runtime.acquire().await.unwrap(), &delivery)
+        .await
+        .unwrap();
     create_partitions_ahead(&runtime, at).await.unwrap();
 
     let claimed = sql::claim_due(&runtime, at, TimeDelta::minutes(5), 5)
