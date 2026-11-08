@@ -15,7 +15,11 @@ use crate::{
     checks::{
         self, Attempt, Beat, Due, Error,
         config::CheckConfig,
-        probe::{Failure, ProbeEnv, ProbeResult, ProbeTarget, Reach, observe_listing, probe, snmp},
+        probe::{
+            Failure, ProbeEnv, ProbeResult, ProbeTarget, Reach, observe_listing, probe,
+            rdap::{Lookup, Rdap},
+            snmp,
+        },
         store,
     },
     credentials::Vault,
@@ -43,6 +47,21 @@ pub(super) struct Context {
     pub(super) db: PgPool,
     pub(super) bus: Bus,
     pub(super) probing: Probing,
+    /// The domain expiry probes' state, with the RDAP bootstrap file they share (D-29).
+    pub(super) rdap: Rdap,
+}
+
+impl Context {
+    /// The shared state of the attempts; the RDAP probes reach only what `probing` permits.
+    pub(super) fn new(db: PgPool, bus: Bus, probing: Probing) -> Self {
+        let rdap = Rdap::new(probing.policy.clone());
+        Self {
+            db,
+            bus,
+            probing,
+            rdap,
+        }
+    }
 }
 
 /// What an attempt left behind, for the scheduler's bookkeeping.
@@ -186,6 +205,18 @@ async fn observe(
                 policy: &ctx.probing.policy,
             };
             Some(observe_listing(&reach, device, config, now).await)
+        }
+        Some(
+            config @ CheckConfig::DomainExpiry {
+                domain, warn_days, ..
+            },
+        ) => {
+            let lookup = Lookup {
+                domain,
+                warn_days: *warn_days,
+                timeout: config.timeout(),
+            };
+            Some(ctx.rdap.observe(lookup, now).await)
         }
         Some(config) => Some(probe(&target, config, None, &env).await),
     }

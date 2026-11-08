@@ -3,7 +3,8 @@
 //! The serde form of [`CheckConfig`] is JSON with camelCase keys and an internal tag:
 //! `{"type":"tcp","port":22,"timeoutMs":5000}`. The `config` column stores it without the tag,
 //! which the `type` column holds, so it matches the fixtures. The tag values are the fixed
-//! type ids (`icmp tcp tls http dns push group docker systemd snmp tailscale_ping`, and the ids of later types) and never change meaning. Unknown keys are
+//! type ids (`icmp tcp tls http dns push group docker systemd snmp tailscale_ping
+//! domain_expiry`, and the ids of later types) and never change meaning. Unknown keys are
 //! refused, so a stored form that does not match fails loudly instead of falling back to
 //! defaults. Secrets are never part of this JSON: see [`HttpSecrets`] and [`SnmpSecrets`].
 
@@ -37,6 +38,7 @@ pub enum CheckType {
     Systemd,
     Snmp,
     TailscalePing,
+    DomainExpiry,
 }
 
 impl CheckType {
@@ -55,6 +57,7 @@ impl CheckType {
             Self::Systemd => "systemd",
             Self::Snmp => "snmp",
             Self::TailscalePing => "tailscale_ping",
+            Self::DomainExpiry => "domain_expiry",
         }
     }
 
@@ -72,6 +75,7 @@ impl CheckType {
             "systemd" => Self::Systemd,
             "snmp" => Self::Snmp,
             "tailscale_ping" => Self::TailscalePing,
+            "domain_expiry" => Self::DomainExpiry,
             _ => return None,
         })
     }
@@ -112,6 +116,12 @@ const fn listing_timeout_ms() -> u32 {
 }
 const fn tls_port() -> u16 {
     443
+}
+const fn rdap_timeout_ms() -> u32 {
+    10_000
+}
+const fn warn_days() -> u32 {
+    30
 }
 
 /// What a check does, with the settings of its type. Contains no secrets.
@@ -177,6 +187,16 @@ pub enum CheckConfig {
         #[serde(default = "network_timeout_ms")]
         timeout_ms: u32,
     },
+    /// The registration of a domain, read over RDAP: Degraded below `warn_days` days left,
+    /// Down after it expires (spec 6.4, D-29). `domain` is ASCII; the probe asks for it in
+    /// lower case.
+    DomainExpiry {
+        domain: String,
+        #[serde(default = "warn_days")]
+        warn_days: u32,
+        #[serde(default = "rdap_timeout_ms")]
+        timeout_ms: u32,
+    },
 }
 
 impl CheckConfig {
@@ -194,6 +214,7 @@ impl CheckConfig {
             Self::Systemd { .. } => CheckType::Systemd,
             Self::Snmp(_) => CheckType::Snmp,
             Self::TailscalePing { .. } => CheckType::TailscalePing,
+            Self::DomainExpiry { .. } => CheckType::DomainExpiry,
         }
     }
 
@@ -206,7 +227,8 @@ impl CheckConfig {
             | Self::Tls { timeout_ms, .. }
             | Self::Docker { timeout_ms, .. }
             | Self::Systemd { timeout_ms, .. }
-            | Self::TailscalePing { timeout_ms, .. } => *timeout_ms,
+            | Self::TailscalePing { timeout_ms, .. }
+            | Self::DomainExpiry { timeout_ms, .. } => *timeout_ms,
             Self::Http(http) => http.timeout_ms,
             Self::Snmp(snmp) => snmp.timeout_ms,
             Self::Dns { .. } | Self::Push | Self::Group => network_timeout_ms(),
@@ -259,6 +281,15 @@ impl CheckConfig {
                 target
                     .as_deref()
                     .map_or(Ok(()), |host| rules::host("target", host))?;
+                rules::timeout("timeoutMs", *timeout_ms)
+            }
+            Self::DomainExpiry {
+                domain,
+                warn_days,
+                timeout_ms,
+            } => {
+                rules::registered_domain("domain", domain)?;
+                rules::warn_days("warnDays", *warn_days)?;
                 rules::timeout("timeoutMs", *timeout_ms)
             }
             Self::Push | Self::Group => Ok(()),

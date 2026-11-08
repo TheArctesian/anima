@@ -137,6 +137,7 @@ impl Report {
             message: self.message,
             resolved_ip: None,
             cert_not_after: None,
+            domain_not_after: None,
             judgement: Judgement::Answered,
         }
     }

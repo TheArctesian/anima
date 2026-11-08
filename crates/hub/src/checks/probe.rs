@@ -5,7 +5,8 @@
 //! belong to the evaluation (CHK-008). Every probe resolves its host once, keeps only the
 //! addresses the [`AddressPolicy`] allows and connects to one of those addresses, so DNS
 //! rebinding cannot reach a refused address. SNMP checks run through [`snmp::observe`] with
-//! their opened secrets. No probe starts a process or a shell on the hub;
+//! their opened secrets, and domain expiry checks through [`rdap::Rdap`], which keeps the
+//! RDAP bootstrap file between attempts. No probe starts a process or a shell on the hub;
 //! Docker and systemd checks send only fixed commands over the SSH link (CHK-012).
 //!
 //! PUSH and GROUP checks are not probed: the device calls the hub, or the children decide.
@@ -16,6 +17,7 @@ pub(in crate::checks) mod docker;
 mod http;
 mod icmp;
 mod outcome;
+pub(in crate::checks) mod rdap;
 mod resolve;
 pub(in crate::checks) mod snmp;
 mod ssh;
@@ -151,5 +153,7 @@ async fn run(
         }
         // The SNMP probe takes its secrets in `snmp::observe`; this one has none to send.
         CheckConfig::Snmp(_) => ProbeResult::failed(&Failure::SecretMissing),
+        // The RDAP probe keeps its bootstrap file in `rdap::Rdap`, which this one has not.
+        CheckConfig::DomainExpiry { .. } => ProbeResult::unjudged(&Failure::NeedsRdap),
     }
 }

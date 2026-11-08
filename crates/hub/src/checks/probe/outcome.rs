@@ -22,6 +22,9 @@ pub enum Judgement {
     /// An ok result that is not settled yet: Docker `health: starting`. The evaluation
     /// records it as Degraded.
     Starting,
+    /// An ok result near its end: a domain registration that expires within the check's
+    /// warning days (D-29). The evaluation records Degraded.
+    Expiring,
     /// The hub could not test the target (for example, no `LocalAPI` proxy). The evaluation records Unknown.
     Unjudged,
 }
@@ -39,6 +42,8 @@ pub struct ProbeResult {
     pub resolved_ip: Option<IpAddr>,
     /// Leaf certificate expiry, for TLS and HTTPS (CHK-007).
     pub cert_not_after: Option<DateTime<Utc>>,
+    /// Registration expiry from the RDAP reply, for domain expiry checks (D-29).
+    pub domain_not_after: Option<DateTime<Utc>>,
     pub judgement: Judgement,
 }
 
@@ -51,6 +56,7 @@ impl ProbeResult {
             message: None,
             resolved_ip: None,
             cert_not_after: None,
+            domain_not_after: None,
             judgement: Judgement::Answered,
         }
     }
@@ -95,6 +101,7 @@ impl ProbeResult {
             message: Some(text),
             resolved_ip: None,
             cert_not_after: None,
+            domain_not_after: None,
             judgement: Judgement::Answered,
         }
     }
@@ -229,6 +236,25 @@ pub enum Failure {
     SnmpAuthentication,
     #[error("the SNMP reply was not authenticated")]
     SnmpUnauthenticated,
+    /// Domain expiry checks read RDAP through the scheduler's shared state, never `probe`.
+    #[error("this check reads RDAP through the scheduler")]
+    NeedsRdap,
+    #[error("the IANA bootstrap names no RDAP service for this domain")]
+    NoRdapService,
+    #[error("an RDAP address is not HTTPS")]
+    RdapNotHttps,
+    #[error("the RDAP answer was longer than the hub reads")]
+    RdapTooLong,
+    #[error("the RDAP answer cannot be read")]
+    RdapUnreadable,
+    #[error("the registry has no record of the domain")]
+    DomainNotFound,
+    #[error("the RDAP reply gives no expiry date")]
+    NoExpiryDate,
+    #[error("the domain registration expires within its warning days")]
+    DomainExpiring,
+    #[error("the domain registration has expired")]
+    DomainExpired,
 }
 
 impl From<io::Error> for Failure {

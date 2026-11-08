@@ -136,8 +136,6 @@ fn sample(check: &Check, device: &Device, status: Status, reads: &Reads) -> Chec
             .each_ref()
             .map(|ratios| ratios.get(&check.id).copied()),
         certificate_days_left: check.certificate_days_left(reads.now),
-        // WP-46 T4 reads `checks.checks.domain_not_after` for domain expiry checks; until that
-        // column exists no check has a domain expiry date.
-        domain_days_left: None,
+        domain_days_left: check.domain_days_left(reads.now),
     }
 }

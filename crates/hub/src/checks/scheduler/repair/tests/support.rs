@@ -46,15 +46,15 @@ pub fn vault() -> Vault {
 
 /// What one repair needs to reach the local listeners.
 pub fn context(pool: &PgPool, bus: &Bus) -> Context {
-    Context {
-        db: pool.clone(),
-        bus: bus.clone(),
-        probing: Probing {
+    Context::new(
+        pool.clone(),
+        bus.clone(),
+        Probing {
             vault: vault(),
             policy: AddressPolicy::default().allowing_loopback(),
             localapi: None,
         },
-    }
+    )
 }
 
 /// A scheduler whose probes may reach the local listeners.

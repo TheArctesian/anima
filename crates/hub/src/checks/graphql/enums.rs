@@ -39,8 +39,9 @@ pub(super) enum CheckKind {
     Systemd,
     Snmp,
     TailscalePing,
+    DomainExpiry,
 }
-mirror!(CheckType => CheckKind { Icmp, Tcp, Tls, Http, Dns, Push, Group, Docker, Systemd, Snmp, TailscalePing });
+mirror!(CheckType => CheckKind { Icmp, Tcp, Tls, Http, Dns, Push, Group, Docker, Systemd, Snmp, TailscalePing, DomainExpiry });
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Enum)]
 #[graphql(name = "SnmpVersion")]

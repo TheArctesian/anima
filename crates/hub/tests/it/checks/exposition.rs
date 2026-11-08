@@ -166,6 +166,7 @@ async fn record(pool: &PgPool, check: &str, at: DateTime<Utc>, response_time_ms:
         },
         resolved_ip: None,
         cert_not_after: None,
+        domain_not_after: None,
     };
     let id: CheckId = check.parse().unwrap();
     let mut conn = pool.acquire().await.unwrap();

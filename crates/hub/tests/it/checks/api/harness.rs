@@ -262,6 +262,7 @@ pub fn beat(at: DateTime<Utc>, status: Status, response_time_ms: Option<u32>) ->
         },
         resolved_ip: None,
         cert_not_after: None,
+        domain_not_after: None,
     }
 }
 

@@ -18,12 +18,12 @@ pub fn finished(stdout: &str) -> CommandOutput {
 
 /// What the reader answered, as a status word and the message: `up`, `starting`, `down`.
 pub fn verdict(result: &ProbeResult) -> (&'static str, Option<&str>) {
-    use crate::checks::probe::Judgement::{Answered, Starting, Unjudged};
+    use crate::checks::probe::Judgement::{Answered, Expiring, Starting, Unjudged};
     let word = match (result.ok, result.judgement) {
         (true, Answered) => "up",
         (true, Starting) => "starting",
         (false, Answered) => "down",
-        (_, Unjudged) | (false, Starting) => "unexpected",
+        (_, Unjudged | Expiring) | (false, Starting) => "unexpected",
     };
     (word, result.message.as_deref())
 }

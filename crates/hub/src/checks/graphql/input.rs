@@ -220,6 +220,16 @@ pub(super) struct TailscalePingShape {
     pub(super) timeout_ms: Option<i32>,
 }
 
+#[derive(InputObject)]
+#[graphql(name = "DomainExpiryConfigInput")]
+pub(super) struct DomainExpiryShape {
+    pub(super) domain: String,
+    #[graphql(default_with = "Some(30)")]
+    pub(super) warn_days: Option<i32>,
+    #[graphql(default_with = "Some(10000)")]
+    pub(super) timeout_ms: Option<i32>,
+}
+
 /// The secrets are held as [`Secret`] from parse time; an absent one keeps the stored one.
 #[derive(InputObject)]
 #[graphql(name = "SnmpConfigInput")]
@@ -252,6 +262,7 @@ pub(super) enum ConfigShape {
     Snmp(Opaque<SnmpShape>),
     Systemd(SystemdShape),
     TailscalePing(TailscalePingShape),
+    DomainExpiry(DomainExpiryShape),
 }
 
 #[derive(InputObject)]

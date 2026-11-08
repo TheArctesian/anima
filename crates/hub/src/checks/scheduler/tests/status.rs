@@ -181,6 +181,7 @@ tick_test! {
             },
             resolved_ip: None,
             cert_not_after: None,
+            domain_not_after: None,
         };
         let mut conn = pool.acquire().await.unwrap();
         let written = checks::record_beat(&mut conn, id, &beat).await.unwrap();
