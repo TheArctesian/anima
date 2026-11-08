@@ -106,10 +106,12 @@ async fn renew(State(state): State<AgentState>, request: Request) -> Response {
 /// The answer, or `UNAVAILABLE` once `limit` has passed. Dropping the late answer rolls back
 /// its open transaction; a code it already redeemed stays used (MET-012).
 async fn within(limit: Duration, answer: impl Future<Output = Response>) -> Response {
-    tokio::time::timeout(limit, answer).await.unwrap_or_else(|_| {
-        tracing::warn!("an agent request was not answered in time");
-        refusals::answer(RefusalCode::Unavailable)
-    })
+    tokio::time::timeout(limit, answer)
+        .await
+        .unwrap_or_else(|_| {
+            tracing::warn!("an agent request was not answered in time");
+            refusals::answer(RefusalCode::Unavailable)
+        })
 }
 
 /// Swaps an enrolment code for an agent token (K8 Section 3). Every bad code and every
@@ -131,11 +133,17 @@ async fn enrolment(state: AgentState, request: Request) -> Response {
         Err(code) => return state.refuse(refused(code), now).await,
     };
     let Some(EnrolRequest { code }) = code else {
-        return state.refuse(refused(RefusalCode::EnrolmentRefused), now).await;
+        return state
+            .refuse(refused(RefusalCode::EnrolmentRefused), now)
+            .await;
     };
     let device = match enrolment::redeem(&state.db, &code, now).await {
         Ok(Some(device)) => device,
-        Ok(None) => return state.refuse(refused(RefusalCode::EnrolmentRefused), now).await,
+        Ok(None) => {
+            return state
+                .refuse(refused(RefusalCode::EnrolmentRefused), now)
+                .await;
+        }
         Err(error) => return unavailable(&error),
     };
     drop(code);
@@ -145,7 +153,11 @@ async fn enrolment(state: AgentState, request: Request) -> Response {
     };
     match enrolled {
         Ok(enrolled) => refusals::json(StatusCode::OK, &enrolled),
-        Err(Error::NoDevice) => state.refuse(refused(RefusalCode::EnrolmentRefused), now).await,
+        Err(Error::NoDevice) => {
+            state
+                .refuse(refused(RefusalCode::EnrolmentRefused), now)
+                .await
+        }
         Err(error) => unavailable(&error),
     }
 }
@@ -165,11 +177,17 @@ async fn renewal(state: AgentState, request: Request) -> Response {
     };
     let (parts, body) = request.into_parts();
     let Some(current) = credential::bearer(&parts.headers) else {
-        return state.refuse(refused(RefusalCode::TokenRefused, None), now).await;
+        return state
+            .refuse(refused(RefusalCode::TokenRefused, None), now)
+            .await;
     };
     let device = match credential::authenticate(&state.db, &current, now).await {
         Ok(Some(device)) => device,
-        Ok(None) => return state.refuse(refused(RefusalCode::TokenRefused, None), now).await,
+        Ok(None) => {
+            return state
+                .refuse(refused(RefusalCode::TokenRefused, None), now)
+                .await;
+        }
         Err(error) => return unavailable(&error),
     };
     let well_formed = match read_body(&parts.headers, body).await {
@@ -177,7 +195,9 @@ async fn renewal(state: AgentState, request: Request) -> Response {
         Err(code) => return state.refuse(refused(code, Some(device)), now).await,
     };
     if !well_formed {
-        return state.refuse(refused(RefusalCode::Malformed, Some(device)), now).await;
+        return state
+            .refuse(refused(RefusalCode::Malformed, Some(device)), now)
+            .await;
     }
     let renewed = match new_token() {
         Ok(next) => renewal::renew(&state.db, &current, next, now).await,
@@ -185,7 +205,11 @@ async fn renewal(state: AgentState, request: Request) -> Response {
     };
     match renewed {
         Ok(Some(renewed)) => refusals::json(StatusCode::OK, &renewed),
-        Ok(None) => state.refuse(refused(RefusalCode::TokenRefused, None), now).await,
+        Ok(None) => {
+            state
+                .refuse(refused(RefusalCode::TokenRefused, None), now)
+                .await
+        }
         Err(error) => unavailable(&error),
     }
 }

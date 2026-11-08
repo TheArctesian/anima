@@ -56,9 +56,7 @@ impl Mutation {
         let device = device_of(ctx, wanted(&device_id)?).await?;
         let trail = Trail::from_context(ctx)?;
         let mut tx = begin(ctx).await?;
-        let had_token = ingest::revoke(&mut tx, device.id)
-            .await
-            .map_err(internal)?;
+        let had_token = ingest::revoke(&mut tx, device.id).await.map_err(internal)?;
         let entry = token_revoked(&device, had_token);
         trail.write(&mut tx, entry).await.map_err(internal)?;
         commit(tx).await?;
@@ -103,7 +101,7 @@ fn token_revoked(device: &Device, had_token: bool) -> TrailEntry {
         message: format!("Revoked the agent token of {}.", device.name),
         action: AuditAction::Delete,
         target: AuditTarget::Device(device.id),
-        change: json!({ "agentToken": { "revoked": had_token } }),
+        change: json!({ "agent": { "tokenRevoked": had_token } }),
     }
 }
 

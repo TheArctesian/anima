@@ -1,7 +1,7 @@
 //! An agent's enrolment: the operator makes a one-use code, the agent swaps it for a token, and
 //! the operator may revoke that token (K8 Section 3, MET-011, MET-012, MET-013).
 
-use agent_core::wire::{AgentToken, EnrolmentCode, Enrolled};
+use agent_core::wire::{AgentToken, Enrolled, EnrolmentCode};
 use async_graphql::Object;
 use chrono::{DateTime, Utc};
 use sqlx::{PgConnection, PgPool};
