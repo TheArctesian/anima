@@ -48,7 +48,7 @@ function run(args: string[], env: Record<string, string> = {}) {
 }
 
 function listen() {
-  return Bun.listen({ hostname: "127.0.0.1", port: 0, socket: { data() {} } });
+  return Bun.listen({ hostname: "127.0.0.1", port: 0, socket: { data: () => undefined } });
 }
 
 function closedPort(): number {
