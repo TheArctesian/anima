@@ -112,12 +112,20 @@ struct Secret {
     hash: [u8; 32],
 }
 
+/// Room for the base64 text of the longest secret (32 bytes give 43 characters).
+const TEXT_ROOM: usize = 64;
+
 impl Secret {
     fn from_random<const N: usize>(prefix: &str, mut bytes: [u8; N]) -> Self {
-        let encoded = base64::encoded_len(N, false).unwrap_or_default();
-        let mut text = Zeroizing::new(String::with_capacity(prefix.len() + encoded));
+        const { assert!(N <= TEXT_ROOM / 4 * 3) };
+        // Encoded into a buffer wiped on drop, not through the engine's own unwiped one.
+        let mut encoded = Zeroizing::new([0_u8; TEXT_ROOM]);
+        let written = URL_SAFE_NO_PAD
+            .encode_slice(bytes.as_slice(), encoded.as_mut_slice())
+            .expect("the bytes fit the room");
+        let mut text = Zeroizing::new(String::with_capacity(prefix.len() + written));
         text.push_str(prefix);
-        URL_SAFE_NO_PAD.encode_string(bytes.as_slice(), &mut text);
+        text.extend(encoded[..written].iter().copied().map(char::from));
         let hash = Sha256::digest(bytes.as_slice()).into();
         bytes.zeroize();
         Self { text, hash }
@@ -128,14 +136,16 @@ impl Secret {
         if Some(encoded.len()) != base64::encoded_len(N, false) {
             return None;
         }
+        // Room for the engine's estimate, so the buffer never moves and is wiped on every path.
+        let mut bytes = Zeroizing::new(Vec::with_capacity(N + 3));
         // The engine refuses padding and a last character with bits beyond the bytes.
-        let bytes = Zeroizing::new(URL_SAFE_NO_PAD.decode(encoded).ok()?);
+        URL_SAFE_NO_PAD.decode_vec(encoded, &mut bytes).ok()?;
         if bytes.len() != N {
             return None;
         }
         Some(Self {
             text: Zeroizing::new(presented.to_owned()),
-            hash: Sha256::digest(&*bytes).into(),
+            hash: Sha256::digest(bytes.as_slice()).into(),
         })
     }
 
