@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { createHash } from 'node:crypto';
 import { inlineScriptHashes } from '../synthetic/inline-scripts';
 
 // The synthetic hub must read index.html exactly as the hub does (WP-43 A-2), or a page the hub blocks would pass here.
@@ -22,6 +23,13 @@ test('D-2: a script with src gets no hash, in any spelling', () => {
 test('D-2: attributes on an inline script do not change its hash; a quoted > does not end the tag', () => {
   const html = '<script type="module" nonce=x data-src="/no.js" data-y=\'a > b\'>first()</script>' + '<Script\tid=boot>second()</sCrIpT >';
   expect(inlineScriptHashes(html)).toEqual([FIRST, SECOND]);
+});
+
+test('D-2: the body is hashed as written: no whitespace is trimmed and no line end is changed', () => {
+  const body = '\n\t\tfirst();\r\n  ';
+  const exact = `'sha256-${createHash('sha256').update(body, 'utf8').digest('base64')}'`;
+  expect(inlineScriptHashes(`<script>${body}</script>`)).toEqual([exact]);
+  expect(exact).not.toBe(FIRST);
 });
 
 test('D-2: an attribute value that says src is not a src attribute', () => {
