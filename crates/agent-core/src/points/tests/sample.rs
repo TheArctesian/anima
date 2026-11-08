@@ -34,6 +34,31 @@ fn met_002_percent_kinds_are_clamped_to_100_and_others_are_not() {
     );
 }
 
+#[test]
+fn met_009_a_gpu_sample_is_labelled_with_its_index_and_carries_it() {
+    let sample = Sample::gpu(Kind::GpuPercent, 7, 250.0).unwrap();
+    assert_eq!(sample.label, "7");
+    assert_eq!(sample.gpu_index, Some(7));
+    assert_eq!(sample.value.to_bits(), 100.0_f64.to_bits());
+    let last = Sample::gpu(Kind::VramBytes, crate::points::MAX_GPU_INDEX, 1.0).unwrap();
+    assert_eq!(last.label, "63");
+    assert_eq!(Sample::new(Kind::Load1, "", 1.0).unwrap().gpu_index, None);
+}
+
+#[test]
+fn met_009_a_gpu_sample_needs_a_gpu_kind_an_index_k8_allows_and_a_kept_value() {
+    assert_eq!(Sample::gpu(Kind::GpuPercent, 64, 1.0), None, "above 63");
+    assert_eq!(Sample::gpu(Kind::GpuPowerW, u8::MAX, 1.0), None);
+    assert_eq!(
+        Sample::gpu(Kind::CpuPercent, 0, 1.0),
+        None,
+        "not a GPU kind"
+    );
+    assert_eq!(Sample::gpu(Kind::DiskBytes, 0, 1.0), None);
+    assert_eq!(Sample::gpu(Kind::GpuTemperatureC, 0, f64::NAN), None);
+    assert_eq!(Sample::gpu(Kind::GpuPowerW, 0, -1.0), None);
+}
+
 const STORED: [&str; 17] = [
     "cpu_percent",
     "memory_percent",

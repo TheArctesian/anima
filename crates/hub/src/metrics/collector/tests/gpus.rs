@@ -1,6 +1,7 @@
 //! What each GPU vendor's output says, the AMD files split by card, and the samples of the
 //! GPUs a discovery numbered (MET-006, MET-007, MET-009, D-30).
 
+use agent_core::points::Kind;
 use agent_core::readings::captures::{
     AMD_GPU_BUSY_PERCENT, AMD_VRAM_TOTAL, AMD_VRAM_USED, INTEL_GPU_TOP_ARRAY, IOREG_ACCELERATOR,
     NVIDIA_SMI_NOT_AVAILABLE, NVIDIA_SMI_TWO,
@@ -9,7 +10,7 @@ use chrono::{DateTime, Utc};
 
 use crate::{
     metrics::{
-        GpuVendor, MAX_LABELS, MetricKind, Sample,
+        GpuVendor, MAX_LABELS, Sample,
         collector::gpus::{
             Answer, Discovered,
             answers::{OUTPUT_LIMIT, answer},
@@ -77,7 +78,7 @@ pub(super) fn found(answers: &[(GpuVendor, Answer)]) -> Discovered {
     due(None, None, at()).unwrap().merge(None, answers)
 }
 
-fn value(samples: &[Sample], kind: MetricKind, label: &str) -> Option<f64> {
+fn value(samples: &[Sample], kind: Kind, label: &str) -> Option<f64> {
     samples
         .iter()
         .find(|sample| sample.kind == kind && sample.label == label)
@@ -170,26 +171,22 @@ fn met_009_each_gpu_has_samples_labelled_by_its_index() {
     let answers = linux_answers();
     let known = found(&answers);
     let taken = samples(&known, &answers);
-    assert_eq!(value(&taken, MetricKind::GpuPercent, "0"), Some(97.0));
+    assert_eq!(value(&taken, Kind::GpuPercent, "0"), Some(97.0));
     assert_eq!(
-        value(&taken, MetricKind::VramBytes, "0"),
+        value(&taken, Kind::VramBytes, "0"),
         Some(20_480.0 * 1_048_576.0)
     );
-    let share = value(&taken, MetricKind::VramPercent, "1").unwrap();
+    let share = value(&taken, Kind::VramPercent, "1").unwrap();
     assert!((share - 1024.0 / 15_360.0 * 100.0).abs() < 1e-9, "{share}");
-    assert_eq!(value(&taken, MetricKind::GpuTemperatureC, "1"), Some(45.0));
-    assert_eq!(value(&taken, MetricKind::GpuPowerW, "0"), Some(412.33));
+    assert_eq!(value(&taken, Kind::GpuTemperatureC, "1"), Some(45.0));
+    assert_eq!(value(&taken, Kind::GpuPowerW, "0"), Some(412.33));
     assert_eq!(
-        value(&taken, MetricKind::GpuPercent, "2"),
+        value(&taken, Kind::GpuPercent, "2"),
         Some(37.0),
         "AMD card 1"
     );
-    assert_eq!(
-        value(&taken, MetricKind::GpuPercent, "3"),
-        Some(33.25),
-        "Intel"
-    );
-    assert_eq!(value(&taken, MetricKind::GpuPowerW, "3"), Some(1.5));
+    assert_eq!(value(&taken, Kind::GpuPercent, "3"), Some(33.25), "Intel");
+    assert_eq!(value(&taken, Kind::GpuPowerW, "3"), Some(1.5));
     for sample in &taken {
         assert_eq!(
             sample.gpu_index.map(|index| index.to_string()),
@@ -203,9 +200,9 @@ fn met_007_no_vram_for_intel_or_apple_and_no_zero_for_a_missing_value() {
     let answers = linux_answers();
     let known = found(&answers);
     let taken = samples(&known, &answers);
-    assert_eq!(value(&taken, MetricKind::VramPercent, "3"), None, "Intel");
+    assert_eq!(value(&taken, Kind::VramPercent, "3"), None, "Intel");
     assert_eq!(
-        value(&taken, MetricKind::GpuTemperatureC, "2"),
+        value(&taken, Kind::GpuTemperatureC, "2"),
         None,
         "AMD gives none"
     );
@@ -217,21 +214,21 @@ fn met_007_no_vram_for_intel_or_apple_and_no_zero_for_a_missing_value() {
     let known = found(&laptop);
     assert!(!known.gpus[1].gpu.has_vram, "memory not supported");
     let taken = samples(&known, &laptop);
-    assert_eq!(value(&taken, MetricKind::GpuPowerW, "0"), None, "[N/A]");
-    let second: Vec<MetricKind> = taken
+    assert_eq!(value(&taken, Kind::GpuPowerW, "0"), None, "[N/A]");
+    let second: Vec<Kind> = taken
         .iter()
         .filter(|sample| sample.label == "1")
         .map(|sample| sample.kind)
         .collect();
-    assert_eq!(second, [MetricKind::GpuTemperatureC]);
+    assert_eq!(second, [Kind::GpuTemperatureC]);
 
     let apple = [(
         GpuVendor::Apple,
         answer(GpuVendor::Apple, &ok(IOREG_ACCELERATOR)),
     )];
     let taken = samples(&found(&apple), &apple);
-    let kinds: Vec<MetricKind> = taken.iter().map(|sample| sample.kind).collect();
-    assert_eq!(kinds, [MetricKind::GpuPercent, MetricKind::GpuPercent]);
+    let kinds: Vec<Kind> = taken.iter().map(|sample| sample.kind).collect();
+    assert_eq!(kinds, [Kind::GpuPercent, Kind::GpuPercent]);
 }
 
 #[test]
@@ -247,5 +244,35 @@ fn met_007_a_gpu_with_no_answer_or_not_yet_found_gives_no_sample() {
             .iter()
             .all(|sample| sample.label == "0" || sample.label == "1"),
         "AMD and Intel wait for the next discovery"
+    );
+}
+
+#[test]
+fn met_009_a_hostile_own_number_still_gives_a_device_number_k8_allows() {
+    let hostile = [(
+        GpuVendor::Amd,
+        answer(GpuVendor::Amd, &ok(&amd_card(u32::MAX))),
+    )];
+    let known = found(&hostile);
+    let numbers: Vec<(i32, u32)> = known
+        .gpus
+        .iter()
+        .map(|found| (found.gpu.index, found.source))
+        .collect();
+    assert_eq!(numbers, [(0, u32::MAX)], "the lowest free number");
+    let taken = samples(&known, &hostile);
+    assert_eq!(taken.len(), 3);
+    assert!(
+        taken
+            .iter()
+            .all(|sample| sample.gpu_index == Some(0) && sample.label == "0"),
+        "{taken:?}"
+    );
+
+    let mut beyond = known.clone();
+    beyond.gpus[0].gpu.index = 64;
+    assert!(
+        samples(&beyond, &hostile).is_empty(),
+        "a number outside K8 gives no sample"
     );
 }

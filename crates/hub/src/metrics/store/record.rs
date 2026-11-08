@@ -79,7 +79,10 @@ pub(in crate::metrics) async fn record(
     let kinds: Vec<&str> = samples.iter().map(|sample| sample.kind.as_str()).collect();
     let labels: Vec<&str> = samples.iter().map(|sample| sample.label.as_str()).collect();
     let values: Vec<f64> = samples.iter().map(|sample| sample.value).collect();
-    let gpus: Vec<Option<i32>> = samples.iter().map(|sample| sample.gpu_index).collect();
+    let gpus: Vec<Option<i32>> = samples
+        .iter()
+        .map(|sample| sample.gpu_index.map(i32::from))
+        .collect();
 
     let mut tx = db.begin().await?;
     sqlx::query(UPSERT_SERIES_SQL)

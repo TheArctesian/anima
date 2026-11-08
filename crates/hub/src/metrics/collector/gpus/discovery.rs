@@ -5,8 +5,10 @@
 //! not finish keeps the GPUs known before and is looked at again the next round, so one hung
 //! tool never hides the others' GPUs. A GPU keeps its device number while its vendor reports
 //! it under the same number of its own (`nvidia-smi` index, DRM card number, `ioreg` order, 0
-//! for Intel); a new GPU takes the lowest free number. A failed collection keeps the numbers and
-//! only makes the next collection look at every vendor.
+//! for Intel); a new GPU takes the lowest free number. The vendor's own number only matches a
+//! reading to its GPU and never becomes the device number, so an odd or hostile one (a DRM card
+//! number of 4 billion) still gives a number from 0 to [`MAX_GPU_INDEX`], the K8 range. A failed
+//! collection keeps the numbers and only makes the next collection look at every vendor.
 //!
 //! Limitations: the numbers are kept in the collector's memory while the hub runs, not stored,
 //! so after a hub restart, or once a device is collected again after a pause, the first look
@@ -17,7 +19,7 @@
 
 use std::time::Duration;
 
-use agent_core::readings::GpuReading;
+use agent_core::{points::MAX_GPU_INDEX, readings::GpuReading};
 use chrono::{DateTime, TimeDelta, Utc};
 
 use super::answers::Answer;
@@ -122,7 +124,8 @@ impl Look {
     /// What the hub knows after this look, from what it `known` before and the `answers`.
     /// A vendor looked at that answered replaces its GPUs; one whose read did not finish
     /// keeps them and is pending. Known GPUs keep their number; new ones take the lowest free
-    /// one, the first of a repeated own number, at most [`MAX_LABELS`] in all. Only NVIDIA and
+    /// one up to [`MAX_GPU_INDEX`], the first of a repeated own number, at most [`MAX_LABELS`]
+    /// in all. Only NVIDIA and
     /// AMD GPUs that gave their memory have VRAM (MET-007).
     pub(in crate::metrics::collector) fn merge(
         &self,
@@ -152,7 +155,8 @@ impl Look {
             if gpus.len() >= MAX_LABELS {
                 break;
             }
-            let free = (0..i32::MAX).find(|free| gpus.iter().all(|found| found.gpu.index != *free));
+            let free = (0..=i32::from(MAX_GPU_INDEX))
+                .find(|free| gpus.iter().all(|found| found.gpu.index != *free));
             gpus.extend(free.map(|index| found(vendor, reading, index)));
         }
         gpus.sort_by_key(|found| found.gpu.index);
