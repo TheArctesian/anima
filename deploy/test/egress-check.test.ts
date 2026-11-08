@@ -80,7 +80,7 @@ function closedPort(): number {
   return port;
 }
 
-describe("egress-check", () => {
+describe("egress-check results", () => {
   test("NOT-002 reports an open listener and exits 0", () => {
     const server = listen();
     const result = run([`127.0.0.1:${server.port}`]);
@@ -122,6 +122,9 @@ describe("egress-check", () => {
     expect(result.code).toBe(0);
   });
 
+});
+
+describe("egress-check arguments and reasons", () => {
   test("NOT-002 passes host and port as arguments, never inside the bash -c string", () => {
     const result = run(["example.com:587"], { FAKE_NO_CONNECT: "1" });
     expect(result.calls).toEqual([
