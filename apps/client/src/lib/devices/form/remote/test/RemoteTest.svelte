@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { HubError, HubResult } from '$lib/hub/error';
+  import type { HubError, HubResult } from '$lib/hub/hub';
   import FormButton from '../../../../forms/FormButton.svelte';
   import type { DeviceFormValues } from '../../values';
   import { validUntil } from '../warnings';

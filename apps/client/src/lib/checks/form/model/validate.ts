@@ -1,4 +1,4 @@
-import type { FieldError } from '$lib/hub/error';
+import type { FieldError } from '$lib/hub/hub';
 import { isValidHost, normalizeHost } from '$lib/devices/form/host';
 import { configChanged } from './config-input';
 import { integerError, LIMITS, lengthError, portError, timeoutError } from './range';

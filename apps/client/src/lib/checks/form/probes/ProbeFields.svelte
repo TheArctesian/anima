@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { FieldError } from '$lib/hub/error';
+  import type { FieldError } from '$lib/hub/hub';
   import TextField from '../fields/TextField.svelte';
   import { messageFor } from '../model/errors';
   import type { CheckFormValues } from '../model/values';

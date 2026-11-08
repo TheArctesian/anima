@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { FieldError } from '$lib/hub/error';
+  import type { FieldError } from '$lib/hub/hub';
   import FormButton from '../../../forms/FormButton.svelte';
   import type { EditedValues } from '../form/editing';
   import Field from '../form/Field.svelte';

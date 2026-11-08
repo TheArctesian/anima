@@ -1,4 +1,4 @@
-import type { FieldError } from '$lib/hub/error';
+import type { FieldError } from '$lib/hub/hub';
 import type { OpenIn, WebInterface, WebInterfaceInput } from '$lib/web-interfaces/api';
 
 /** What the operator edits for one web interface (Section 6.3.4). */

@@ -1,4 +1,4 @@
-import type { HubError, HubResult } from '$lib/hub/error';
+import type { HubError, HubResult } from '$lib/hub/hub';
 import type {
   CreateCheckInput,
   CreateDeviceInput,

@@ -1,4 +1,4 @@
-import type { FieldError } from '$lib/hub/error';
+import type { FieldError } from '$lib/hub/hub';
 import { FORM_FIELD } from '../field-errors';
 import type { TestOutcome } from '../connection-test';
 

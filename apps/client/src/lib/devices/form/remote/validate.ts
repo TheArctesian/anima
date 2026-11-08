@@ -1,4 +1,4 @@
-import type { FieldError } from '$lib/hub/error';
+import type { FieldError } from '$lib/hub/hub';
 import { isValidPort } from '../values';
 import { isValidMac, type RemoteValues } from './values';
 

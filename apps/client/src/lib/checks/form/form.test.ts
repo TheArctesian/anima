@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { flushSync } from 'svelte';
 import { expect, it, vi } from 'vitest';
-import type { HubResult } from '$lib/hub/error';
+import type { HubResult } from '$lib/hub/hub';
 import { BEARER_SAVED, HTTP_SAVED, saved } from './check.fixture';
 import { button, choose, hasInput, input, installFormHarness, messageOf, messageOfHint, OK, settle, show, submit, type } from './form.fixture';
 import type { SiblingCheck } from './model/group';

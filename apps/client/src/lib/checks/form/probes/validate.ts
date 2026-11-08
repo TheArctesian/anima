@@ -1,4 +1,4 @@
-import type { FieldError } from '$lib/hub/error';
+import type { FieldError } from '$lib/hub/hub';
 import { isValidHost } from '$lib/devices/form/host';
 import { lengthError, portError, timeoutError } from '../model/range';
 import type { ProbeCheckType, ProbeValues } from './values';

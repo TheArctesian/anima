@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { HubError, HubResult } from '$lib/hub/error';
+  import type { HubError, HubResult } from '$lib/hub/hub';
   import FormButton from '../FormButton.svelte';
   import type { HostKey } from '../../devices/form/values';
   import Modal from './Modal.svelte';

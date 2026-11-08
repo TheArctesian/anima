@@ -1,4 +1,4 @@
-import type { FieldError, HubError } from '$lib/hub/error';
+import type { FieldError, HubError } from '$lib/hub/hub';
 
 /** The field path of an error that belongs to no input. */
 export const FORM_FIELD = '';

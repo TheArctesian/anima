@@ -64,7 +64,7 @@ vi.mock('$lib/desktop/updater', () => {
   // Runs when the updater module is first imported: the count says whether it was loaded at all (UPD-001).
   shell.loads += 1;
   return {
-    // While `broken`, reading the loaded module fails, as when the updater cannot be loaded.
+    // While `broken`, using the loaded module fails: the test simulates a failure when the updater is used, not a failed import.
     get desktopUpdater() {
       if (shell.broken) throw new Error('the updater did not load');
       return updater;

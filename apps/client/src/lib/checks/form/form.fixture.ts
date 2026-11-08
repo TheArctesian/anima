@@ -1,6 +1,6 @@
 import { flushSync, mount, tick, unmount } from 'svelte';
 import { afterEach, beforeAll } from 'vitest';
-import type { HubResult } from '$lib/hub/error';
+import type { HubResult } from '$lib/hub/hub';
 import CheckForm from './CheckForm.svelte';
 import type { SiblingCheck } from './model/group';
 import type { CheckFields } from './model/hub-types';
