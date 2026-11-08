@@ -24,6 +24,15 @@
     }
   }
 
+  /**
+   * Empties the field the moment it starts to leave. A closing dialog, or a page left while the key shows, keeps its
+   * last content on screen until the fade ends; the key must not stay in the DOM for that time (INT-003, F-8).
+   */
+  function drop(node: HTMLInputElement): { duration: number } {
+    node.value = '';
+    return { duration: 0 };
+  }
+
   // The field takes focus when it appears, with the key selected, so the system's own copy works at once.
   $effect(() => {
     field?.focus();
@@ -35,6 +44,7 @@
   <div class="row">
     <input
       bind:this={field}
+      out:drop|global
       id={fieldId}
       type="text"
       readonly

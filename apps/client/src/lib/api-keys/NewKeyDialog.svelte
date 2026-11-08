@@ -24,7 +24,6 @@
   let created = $state<ApiKey | null>(null);
   /** The whole key, from the hub's answer until the dialog closes; held nowhere else (INT-003, LOG-007). */
   let secret = $state<string | null>(null);
-  let closed = false;
 
   /** When the dialog opened: the presets' preview and the date field's bounds count from here; the sent date counts from Create. */
   const opened = untrack(() => now());
@@ -51,28 +50,20 @@
       return;
     }
     onCreated(result.value.key);
-    // A dialog closed while the hub answered never shows the key.
-    if (closed) return;
     created = result.value.key;
     secret = result.value.secret;
   }
 
   /**
-   * Drops the key, and lets the DOM lose it, before the dialog fades: a closing dialog keeps its last content until
-   * the fade ends. Refused while the hub is making the key, so a made key's secret is never lost unseen.
+   * Drops the key from this dialog's state and, in the same task, from the DOM, before the dialog fades (`KeySecret`
+   * empties its field as it leaves). Refused while the hub is making the key, so a made key's secret is never lost unseen.
    */
   function close(): void {
     if (busy) return;
-    closed = true;
     secret = null;
     flushSync();
     onClose();
   }
-
-  $effect(() => () => {
-    closed = true;
-    secret = null;
-  });
 </script>
 
 <Modal open title={created === null ? 'Create an API key' : `Copy the key ${created.name}`} describedBy="{ids}-about" closeOnScrim={created === null} width={7} onClose={close}>

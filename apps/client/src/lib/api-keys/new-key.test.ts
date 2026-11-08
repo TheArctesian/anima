@@ -53,6 +53,16 @@ describe('the create form (INT-003, D-23)', () => {
     expect(checkNewKey(form({ expiry: 'date', date: '2027-11-09' }), NOW)).toEqual({ ok: false, problems: [{ field: 'expiry', message: DATE_TOO_FAR }] });
   });
 
+  it('D-23: a date whose day begins exactly now is refused; the latest allowed instant is sent and one millisecond more is not', () => {
+    const midnight = new Date(2027, 5, 1);
+    const onTheDay = form({ expiry: 'date', date: '2027-06-01' });
+    expect(checkNewKey(onTheDay, midnight)).toEqual({ ok: false, problems: [{ field: 'expiry', message: DATE_PAST }] });
+    const atTheBound = new Date(midnight.getTime() - (latestExpiry(NOW).getTime() - NOW.getTime()));
+    expect(latestExpiry(atTheBound).getTime()).toBe(midnight.getTime());
+    expect(checkNewKey(onTheDay, atTheBound).ok).toBe(true);
+    expect(checkNewKey(onTheDay, new Date(atTheBound.getTime() - 1))).toEqual({ ok: false, problems: [{ field: 'expiry', message: DATE_TOO_FAR }] });
+  });
+
   it('D-23: every problem is reported at once', () => {
     const checked = checkNewKey(form({ name: '', expiry: 'date', date: '' }), NOW);
     expect(checked.ok ? [] : checked.problems.map((problem) => problem.field)).toEqual(['name', 'expiry']);
@@ -91,6 +101,12 @@ describe('the list (INT-003, UI-003)', () => {
   it('INT-003: a key whose expiry has passed is expired; one still ahead is not', () => {
     expect(isExpired({ expiresAt: '2026-09-01T00:00:00Z' }, NOW)).toBe(true);
     expect(isExpired({ expiresAt: '2027-06-01T00:00:00Z' }, NOW)).toBe(false);
+  });
+
+  it('INT-003: a key is expired from the exact instant of its expiry, and not one millisecond before', () => {
+    const at = new Date('2027-06-01T00:00:00Z');
+    expect(isExpired({ expiresAt: '2027-06-01T00:00:00Z' }, at)).toBe(true);
+    expect(isExpired({ expiresAt: '2027-06-01T00:00:00Z' }, new Date(at.getTime() - 1))).toBe(false);
   });
 
   it('INT-003: scopes read Read and Write, and a key never used reads Never', () => {
