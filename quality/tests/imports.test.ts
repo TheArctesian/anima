@@ -153,6 +153,10 @@ describe("R-011 graphql composition edges", () => {
     expect(run(...changed)).toEqual([]);
   });
 
+  test.each(["null", "[]", "3", '"text"', '{"domains":[]}'])("a hub-modules root of %s is rejected", (text) => {
+    expect(() => parseHubModules(text)).toThrow(HubModulesShapeError);
+  });
+
   test("a graphql entry must name a domain", () => {
     expect(() => parseHubModules('{"leaves":[],"wiring":[],"domains":{},"graphql":{"nope":[]}}')).toThrow(HubModulesShapeError);
   });

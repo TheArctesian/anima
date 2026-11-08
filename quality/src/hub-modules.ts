@@ -1,3 +1,5 @@
+import { isRecord } from "./record.ts";
+
 /** The hub's top-level modules and which domains each domain may import (the hub-domains contract, REPO-004). */
 export interface HubModules {
   /** May be imported by everyone; import no domain. */
@@ -28,7 +30,7 @@ function stringList(value: unknown, what: string): string[] {
 }
 
 function edgeMap(value: unknown, what: string): Record<string, string[]> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+  if (!isRecord(value)) {
     throw new HubModulesShapeError(`${what} must map names to lists`);
   }
   const map: Record<string, string[]> = {};
@@ -43,16 +45,15 @@ export function parseHubModules(text: string): HubModules {
   } catch {
     throw new HubModulesShapeError("not valid JSON");
   }
-  const root = parsed as Record<string, unknown> | null;
-  if (typeof root !== "object" || root === null || typeof root["domains"] !== "object" || root["domains"] === null) {
+  if (!isRecord(parsed) || !isRecord(parsed["domains"])) {
     throw new HubModulesShapeError("needs leaves, wiring and domains");
   }
-  const domains = edgeMap(root["domains"], "domains");
-  const graphql = root["graphql"] === undefined ? {} : edgeMap(root["graphql"], "graphql");
+  const domains = edgeMap(parsed["domains"], "domains");
+  const graphql = parsed["graphql"] === undefined ? {} : edgeMap(parsed["graphql"], "graphql");
   for (const name of Object.keys(graphql)) {
     if (!Object.hasOwn(domains, name)) throw new HubModulesShapeError(`graphql.${name} is not a domain`);
   }
-  return { leaves: stringList(root["leaves"], "leaves"), wiring: stringList(root["wiring"], "wiring"), domains, graphql };
+  return { leaves: stringList(parsed["leaves"], "leaves"), wiring: stringList(parsed["wiring"], "wiring"), domains, graphql };
 }
 
 export function isListed(modules: HubModules, name: string): boolean {
