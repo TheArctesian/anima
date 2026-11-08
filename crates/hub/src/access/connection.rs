@@ -15,6 +15,7 @@
 //! cannot hold it open (H-6(b)).
 
 mod intake;
+mod sign_in;
 
 use std::{
     future::Future,
@@ -24,7 +25,7 @@ use std::{
 };
 
 use async_graphql::{
-    Data, Executor,
+    Executor,
     futures_util::{Sink, SinkExt as _, Stream, StreamExt as _},
     http::{WebSocket as Protocol, WebSocketProtocols, WsMessage},
 };
@@ -37,15 +38,12 @@ use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use tokio::sync::oneshot;
 use uuid::Uuid;
-use zeroize::Zeroizing;
 
-use self::intake::Intake;
-use super::{
-    ClientAddr, Error, Identity, PublicOrigin, SameOrigin, browser,
-    identity::{identify_connection, resolve},
-    store,
-    tokens::{self, Transport},
+use self::{
+    intake::Intake,
+    sign_in::{CookieToken, sign_in},
 };
+use super::{ClientAddr, Error, PublicOrigin, store, tokens};
 use crate::clock::Clock;
 
 /// The only WebSocket subprotocol served (API-002).
@@ -78,11 +76,6 @@ pub struct SocketAccess {
     init_timeout: Duration,
 }
 
-/// The `__Host-anima` value of an upgrade from the public origin, kept until `connection_init`.
-/// Wiped on drop; no `Debug`, so it cannot reach a log (LOG-007).
-#[derive(Clone)]
-struct CookieToken(Zeroizing<String>);
-
 impl SocketAccess {
     /// Checks for a connection from `client`, with the time from `clock`.
     #[must_use]
@@ -102,10 +95,10 @@ impl SocketAccess {
     /// cookie, and only a `connection_init` bearer signs it in.
     #[must_use]
     pub fn with_upgrade(self, headers: &HeaderMap, origin: &PublicOrigin) -> Self {
-        let cookie = SameOrigin::of(headers, origin)
-            .and_then(|from| browser::cookie_token(headers, &from))
-            .map(|token| CookieToken(Zeroizing::new(token.to_owned())));
-        Self { cookie, ..self }
+        Self {
+            cookie: CookieToken::of(headers, origin),
+            ..self
+        }
     }
 
     /// The same checks with another re-check interval and `connection_init` timeout, for tests
@@ -223,54 +216,6 @@ async fn serve<E: Executor>(socket: WebSocket, executor: E, access: SocketAccess
         // and then there is nobody to tell.
         let close = sink.send(Message::Close(Some(frame)));
         let _ = tokio::time::timeout(WRITE_TIMEOUT, close).await;
-    }
-}
-
-/// The `connection_init` handler: resolves the payload's bearer token, or the upgrade's cookie
-/// when the payload has no `authorization`, never logging either, and reports the verdict to
-/// the connection.
-async fn sign_in(
-    access: SocketAccess,
-    payload: serde_json::Value,
-    verdict: oneshot::Sender<Verdict>,
-) -> async_graphql::Result<Data> {
-    let identified = identify_socket(&access, &payload).await;
-    drop(payload);
-    let (decision, data) = match identified {
-        Ok(Some(identity)) => {
-            let lease = Lease {
-                token: identity.token(),
-                expires_at: identity.expires_at(),
-            };
-            let mut data = identity.into_connection_data();
-            if let Some(client) = access.client {
-                data.insert(client);
-            }
-            (Verdict::Leased(lease), Ok(data))
-        }
-        Ok(None) => (Verdict::Refused, Err("Forbidden".into())),
-        Err(error) => {
-            error.log();
-            (Verdict::Unavailable, Err("Unavailable".into()))
-        }
-    };
-    // Fails only when the connection is gone, and then nobody waits for the verdict.
-    let _ = verdict.send(decision);
-    data
-}
-
-/// The identity of a connection: from the payload's `authorization` when it has one, with the
-/// bearer rules; else from the kept cookie, which must hold a browser token (A-3).
-async fn identify_socket(
-    access: &SocketAccess,
-    payload: &serde_json::Value,
-) -> Result<Option<Identity>, Error> {
-    let now = access.clock.now();
-    match &access.cookie {
-        Some(cookie) if payload.get("authorization").is_none() => {
-            resolve(&access.db, &cookie.0, Transport::Cookie, now).await
-        }
-        _ => identify_connection(&access.db, payload, now).await,
     }
 }
 
