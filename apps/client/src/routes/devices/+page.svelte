@@ -3,7 +3,7 @@
   import { resolve } from '$app/paths';
   import { untrack } from 'svelte';
   import { page } from '$app/state';
-  import { desktopWebView } from '$lib/desktop/webView/webView';
+  import { desktopWebView } from '$lib/desktop/web-view/web-view';
   import { readThisMachine, type ThisMachine } from '$lib/desktop/this-machine';
   import { checksApi } from '$lib/checks/api';
   import type { CardDevice } from '$lib/devices/api';
@@ -21,7 +21,7 @@
   import { screenSharingCalls } from '$lib/devices/screen-sharing/calls';
   import { wakeApi } from '$lib/sessions/wake/api';
   import { useSessions } from '$lib/sessions/sessions.svelte';
-  import { openWebInterface } from '$lib/sessions/web/open/open';
+  import { openWebInterface } from '$lib/web-interfaces/open/open';
   import type { SessionProtocol } from '$lib/sessions/tabs';
 
   const sessions = useSessions();

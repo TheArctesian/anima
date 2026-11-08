@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { desktopWebView, fingerprintFrom, WebViewError, type Fingerprint } from './webView';
+import { desktopWebView } from '$lib/desktop/web-view/web-view';
+import { fingerprintFrom, WebViewError, type Fingerprint } from '$lib/web-interfaces/shell/shell';
 
 const shell = vi.hoisted(() => ({ invoke: vi.fn(), isTauri: vi.fn(() => true), listen: vi.fn() }));
 vi.mock('@tauri-apps/api/core', () => ({ invoke: shell.invoke, isTauri: shell.isTauri }));

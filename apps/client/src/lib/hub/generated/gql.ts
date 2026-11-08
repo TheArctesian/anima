@@ -64,7 +64,6 @@ type Documents = {
     "\n  query LiveSessions($first: Int) {\n    sessions(live: true, first: $first) {\n      edges {\n        node {\n          id\n          deviceId\n          deviceName\n          protocol\n          operatorName\n          startedAt\n          clientAddr\n        }\n      }\n    }\n  }\n": typeof types.LiveSessionsDocument,
     "\n  subscription LiveSessionChanged {\n    sessionChanged {\n      session {\n        id\n        deviceId\n        deviceName\n        protocol\n        operatorName\n        startedAt\n        clientAddr\n        endedAt\n        endReason\n      }\n    }\n  }\n": typeof types.LiveSessionChangedDocument,
     "\n  mutation WakeDevice($deviceId: ID!) {\n    wakeDevice(deviceId: $deviceId) {\n      sentAt\n      relayName\n    }\n  }\n": typeof types.WakeDeviceDocument,
-    "\n  mutation AcceptWebCertificate($id: ID!, $fingerprintSha256: String!) {\n    acceptWebCertificate(id: $id, fingerprintSha256: $fingerprintSha256) {\n      id\n      pinnedFingerprintSha256\n      pinnedAt\n    }\n  }\n": typeof types.AcceptWebCertificateDocument,
     "\n  fragment WebInterfaceSuggestionFields on WebInterfaceSuggestion {\n    checkId\n    url\n    label\n  }\n": typeof types.WebInterfaceSuggestionFieldsFragmentDoc,
     "\n  fragment WebInterfaceFields on WebInterface {\n    id\n    deviceId\n    label\n    url\n    openIn\n    pinnedFingerprintSha256\n    pinnedAt\n  }\n": typeof types.WebInterfaceFieldsFragmentDoc,
     "\n  mutation CreateWebInterface($deviceId: ID!, $input: WebInterfaceInput!) {\n    createWebInterface(deviceId: $deviceId, input: $input) {\n      ...WebInterfaceFields\n    }\n  }\n": typeof types.CreateWebInterfaceDocument,
@@ -72,6 +71,7 @@ type Documents = {
     "\n  mutation DeleteWebInterface($id: ID!) {\n    deleteWebInterface(id: $id)\n  }\n": typeof types.DeleteWebInterfaceDocument,
     "\n  mutation AcceptWebInterfaceSuggestion($checkId: ID!) {\n    acceptWebInterfaceSuggestion(checkId: $checkId) {\n      ...WebInterfaceFields\n    }\n  }\n": typeof types.AcceptWebInterfaceSuggestionDocument,
     "\n  mutation DismissWebInterfaceSuggestion($checkId: ID!) {\n    dismissWebInterfaceSuggestion(checkId: $checkId)\n  }\n": typeof types.DismissWebInterfaceSuggestionDocument,
+    "\n  mutation AcceptWebCertificate($id: ID!, $fingerprintSha256: String!) {\n    acceptWebCertificate(id: $id, fingerprintSha256: $fingerprintSha256) {\n      id\n      pinnedFingerprintSha256\n      pinnedAt\n    }\n  }\n": typeof types.AcceptWebCertificateDocument,
 };
 const documents: Documents = {
     "\n  mutation Login($input: LoginInput!) {\n    login(input: $input) {\n      token\n    }\n  }\n": types.LoginDocument,
@@ -124,7 +124,6 @@ const documents: Documents = {
     "\n  query LiveSessions($first: Int) {\n    sessions(live: true, first: $first) {\n      edges {\n        node {\n          id\n          deviceId\n          deviceName\n          protocol\n          operatorName\n          startedAt\n          clientAddr\n        }\n      }\n    }\n  }\n": types.LiveSessionsDocument,
     "\n  subscription LiveSessionChanged {\n    sessionChanged {\n      session {\n        id\n        deviceId\n        deviceName\n        protocol\n        operatorName\n        startedAt\n        clientAddr\n        endedAt\n        endReason\n      }\n    }\n  }\n": types.LiveSessionChangedDocument,
     "\n  mutation WakeDevice($deviceId: ID!) {\n    wakeDevice(deviceId: $deviceId) {\n      sentAt\n      relayName\n    }\n  }\n": types.WakeDeviceDocument,
-    "\n  mutation AcceptWebCertificate($id: ID!, $fingerprintSha256: String!) {\n    acceptWebCertificate(id: $id, fingerprintSha256: $fingerprintSha256) {\n      id\n      pinnedFingerprintSha256\n      pinnedAt\n    }\n  }\n": types.AcceptWebCertificateDocument,
     "\n  fragment WebInterfaceSuggestionFields on WebInterfaceSuggestion {\n    checkId\n    url\n    label\n  }\n": types.WebInterfaceSuggestionFieldsFragmentDoc,
     "\n  fragment WebInterfaceFields on WebInterface {\n    id\n    deviceId\n    label\n    url\n    openIn\n    pinnedFingerprintSha256\n    pinnedAt\n  }\n": types.WebInterfaceFieldsFragmentDoc,
     "\n  mutation CreateWebInterface($deviceId: ID!, $input: WebInterfaceInput!) {\n    createWebInterface(deviceId: $deviceId, input: $input) {\n      ...WebInterfaceFields\n    }\n  }\n": types.CreateWebInterfaceDocument,
@@ -132,6 +131,7 @@ const documents: Documents = {
     "\n  mutation DeleteWebInterface($id: ID!) {\n    deleteWebInterface(id: $id)\n  }\n": types.DeleteWebInterfaceDocument,
     "\n  mutation AcceptWebInterfaceSuggestion($checkId: ID!) {\n    acceptWebInterfaceSuggestion(checkId: $checkId) {\n      ...WebInterfaceFields\n    }\n  }\n": types.AcceptWebInterfaceSuggestionDocument,
     "\n  mutation DismissWebInterfaceSuggestion($checkId: ID!) {\n    dismissWebInterfaceSuggestion(checkId: $checkId)\n  }\n": types.DismissWebInterfaceSuggestionDocument,
+    "\n  mutation AcceptWebCertificate($id: ID!, $fingerprintSha256: String!) {\n    acceptWebCertificate(id: $id, fingerprintSha256: $fingerprintSha256) {\n      id\n      pinnedFingerprintSha256\n      pinnedAt\n    }\n  }\n": types.AcceptWebCertificateDocument,
 };
 
 /**
@@ -351,10 +351,6 @@ export function graphql(source: "\n  mutation WakeDevice($deviceId: ID!) {\n    
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "\n  mutation AcceptWebCertificate($id: ID!, $fingerprintSha256: String!) {\n    acceptWebCertificate(id: $id, fingerprintSha256: $fingerprintSha256) {\n      id\n      pinnedFingerprintSha256\n      pinnedAt\n    }\n  }\n"): (typeof documents)["\n  mutation AcceptWebCertificate($id: ID!, $fingerprintSha256: String!) {\n    acceptWebCertificate(id: $id, fingerprintSha256: $fingerprintSha256) {\n      id\n      pinnedFingerprintSha256\n      pinnedAt\n    }\n  }\n"];
-/**
- * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
- */
 export function graphql(source: "\n  fragment WebInterfaceSuggestionFields on WebInterfaceSuggestion {\n    checkId\n    url\n    label\n  }\n"): (typeof documents)["\n  fragment WebInterfaceSuggestionFields on WebInterfaceSuggestion {\n    checkId\n    url\n    label\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
@@ -380,6 +376,10 @@ export function graphql(source: "\n  mutation AcceptWebInterfaceSuggestion($chec
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  mutation DismissWebInterfaceSuggestion($checkId: ID!) {\n    dismissWebInterfaceSuggestion(checkId: $checkId)\n  }\n"): (typeof documents)["\n  mutation DismissWebInterfaceSuggestion($checkId: ID!) {\n    dismissWebInterfaceSuggestion(checkId: $checkId)\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation AcceptWebCertificate($id: ID!, $fingerprintSha256: String!) {\n    acceptWebCertificate(id: $id, fingerprintSha256: $fingerprintSha256) {\n      id\n      pinnedFingerprintSha256\n      pinnedAt\n    }\n  }\n"): (typeof documents)["\n  mutation AcceptWebCertificate($id: ID!, $fingerprintSha256: String!) {\n    acceptWebCertificate(id: $id, fingerprintSha256: $fingerprintSha256) {\n      id\n      pinnedFingerprintSha256\n      pinnedAt\n    }\n  }\n"];
 
 export function graphql(source: string) {
   return (documents as any)[source] ?? {};

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { displayFingerprint, fingerprintFrom, type Fingerprint } from '$lib/desktop/webView/webView';
+import { displayFingerprint, fingerprintFrom, type Fingerprint } from '$lib/web-interfaces/shell/shell';
 import { button, field, installLayout, pageField, settle, showTab as show, type Shown } from './fake/shell.fixture.svelte';
 
 const PIN = fingerprintFrom('ab'.repeat(32)) as Fingerprint;

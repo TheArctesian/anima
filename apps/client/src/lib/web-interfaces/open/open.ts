@@ -1,7 +1,7 @@
 import type { OpenIn, Status } from '$lib/hub/generated/graphql';
-import type { WebViewShell } from '$lib/desktop/webView/webView';
-import type { Sessions } from '../../sessions.svelte';
-import type { Origin, WebTarget } from '../../tabs';
+import type { WebViewShell } from '$lib/web-interfaces/shell/shell';
+import type { Sessions } from '$lib/sessions/sessions.svelte';
+import type { Origin, WebTarget } from '$lib/sessions/tabs';
 
 /** The Web button that was pressed: the device, its interface and the control the tab grows from (WEB-003, MOT-005). */
 export interface WebOpening {

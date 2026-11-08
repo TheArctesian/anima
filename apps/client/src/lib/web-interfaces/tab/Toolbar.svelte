@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { displayFingerprint } from '$lib/desktop/webView/webView';
+  import { displayFingerprint } from '$lib/web-interfaces/shell/shell';
   import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
   import type { TlsStatus } from './tab';
