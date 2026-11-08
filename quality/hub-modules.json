@@ -7,7 +7,8 @@
     "scalars",
     "paging",
     "targets",
-    "api_errors"
+    "api_errors",
+    "text"
   ],
   "wiring": [
     "main",

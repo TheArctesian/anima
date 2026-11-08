@@ -11,8 +11,9 @@ use super::{
         DeviceChange, DeviceChangeInput, DeviceFilter, NewDevice, NewDeviceInput, NewSite,
         NewSiteInput, SshInput, SshSettings,
     },
-    text::{host, is_plain, user_name},
+    text::{host, user_name},
 };
+use crate::text::is_plain;
 
 pub use crate::api_errors::FieldError;
 

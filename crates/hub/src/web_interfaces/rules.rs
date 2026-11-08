@@ -4,6 +4,7 @@
 use reqwest::Url;
 
 use super::model::{FieldError, Fingerprint, OpenIn, WebInterfaceInput};
+use crate::text::is_invisible;
 
 const URL_MAX_BYTES: usize = 2048;
 const LABEL_MAX_CHARS: usize = 100;
@@ -104,16 +105,6 @@ pub(super) fn host_label(host: &str) -> String {
 
 fn is_unsafe_in_label(c: char) -> bool {
     c.is_control() || is_invisible(c)
-}
-
-/// Format characters (Unicode Cf) that show nothing or reorder text: zero-width marks,
-/// text-direction controls, joiners, the byte order mark and tag characters.
-fn is_invisible(c: char) -> bool {
-    matches!(c,
-        '\u{ad}' | '\u{600}'..='\u{605}' | '\u{61c}' | '\u{6dd}' | '\u{70f}' | '\u{180e}'
-        | '\u{200b}'..='\u{200f}' | '\u{202a}'..='\u{202e}' | '\u{2060}'..='\u{2064}'
-        | '\u{2066}'..='\u{206f}' | '\u{feff}' | '\u{fff9}'..='\u{fffb}'
-        | '\u{e0000}'..='\u{e007f}')
 }
 
 /// The fingerprint in 64 hex digits, colons between byte pairs allowed, any case (D-5).

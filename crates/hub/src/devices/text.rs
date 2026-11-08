@@ -6,29 +6,11 @@
 use std::net::IpAddr;
 
 use super::rules::FieldError;
+use crate::text::is_plain;
 
 const HOST_MAX: usize = 253;
 const LABEL_MAX: usize = 63;
 const USER_NAME_MAX: usize = 64;
-
-/// Whether the text has no control character or line or paragraph separator (each would split
-/// or break a log line) and no character that changes the reading direction (it would disguise
-/// the text).
-pub(super) fn is_plain(text: &str) -> bool {
-    !text.chars().any(|c| {
-        c.is_control()
-            || matches!(
-                c,
-                '\u{2028}'
-                    | '\u{2029}'
-                    | '\u{200E}'
-                    | '\u{200F}'
-                    | '\u{061C}'
-                    | '\u{202A}'..='\u{202E}'
-                    | '\u{2066}'..='\u{2069}'
-            )
-    })
-}
 
 /// A sign-in name for `field`: trimmed, at most 64 characters, plain and without spaces. An
 /// empty name is allowed unless `required`. `noun` names it in the messages, such as "SSH user name".

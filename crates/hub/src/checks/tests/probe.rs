@@ -7,6 +7,7 @@ mod downgrade;
 mod http;
 mod icmp;
 mod listing;
+mod messages;
 mod proxy;
 mod reach;
 mod secrets;

@@ -7,26 +7,10 @@ use chrono::{DateTime, Utc};
 /// Longest failure message kept (CHK-003).
 pub const MESSAGE_MAX: usize = 512;
 
-/// Format characters (Unicode Cf) and line or paragraph separators (Zl, Zp): bidi
-/// overrides, zero-width characters, the byte order mark and the like.
-fn is_invisible(c: char) -> bool {
-    matches!(c,
-        '\u{00AD}' | '\u{061C}' | '\u{180E}'
-        | '\u{200B}'..='\u{200F}'
-        | '\u{2028}'..='\u{202E}'
-        | '\u{2060}'..='\u{206F}'
-        | '\u{FEFF}'
-        | '\u{FFF9}'..='\u{FFFB}'
-        | '\u{E0001}'..='\u{E007F}')
-}
-
 /// A message as stored: control, format and separator characters removed, at most [`MESSAGE_MAX`] characters.
 #[must_use]
 pub fn clean_message(text: &str) -> String {
-    text.chars()
-        .filter(|c| !c.is_control() && !is_invisible(*c))
-        .take(MESSAGE_MAX)
-        .collect()
+    crate::text::clean(text, MESSAGE_MAX)
 }
 
 /// How a probe judged its own attempt (D-2).
