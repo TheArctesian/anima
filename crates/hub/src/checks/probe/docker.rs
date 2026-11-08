@@ -10,7 +10,7 @@ use super::{
     outcome::{Failure, ProbeResult},
     ssh::readable,
 };
-use crate::sessions::{CommandOutput, FixedCommand};
+use crate::ssh::{CommandOutput, FixedCommand};
 
 /// The command, from static text only: the container name is never part of it.
 pub(in crate::checks) fn command() -> FixedCommand {

@@ -18,7 +18,7 @@ use crate::trust::PublicKey;
 /// The device may open no channel towards the hub: a session, X11, agent, TCP/IP or
 /// stream-local forwarding channel is refused, as is one of a type russh does not know
 /// (K4 Section 8.4: one session channel, opened by the hub).
-pub(in crate::sessions) struct Observer {
+pub(crate) struct Observer {
     expected: Option<PublicKey>,
     seen: Option<oneshot::Sender<Option<PublicKey>>>,
 }
@@ -26,7 +26,7 @@ pub(in crate::sessions) struct Observer {
 impl Observer {
     /// An observer that lets the connection go on only for `expected`, and the receiver of
     /// the key the host presents. The receiver fails when no key exchange reached the key.
-    pub(in crate::sessions) fn expecting(
+    pub(crate) fn expecting(
         expected: Option<PublicKey>,
     ) -> (Self, oneshot::Receiver<Option<PublicKey>>) {
         let (seen, receiver) = oneshot::channel();

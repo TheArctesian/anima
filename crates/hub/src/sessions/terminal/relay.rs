@@ -27,8 +27,8 @@ use super::{
 use crate::sessions::{
     EndCause,
     end::{CLOSE_WAIT, Cause, End, unreadable},
-    ssh::Observer,
 };
+use crate::ssh::Observer;
 
 /// One client message being written to the device's channel.
 pub(super) type Writing = Pin<Box<dyn Future<Output = Result<(), russh::Error>> + Send>>;

@@ -5,7 +5,7 @@ use serde_json::json;
 use super::{assert_unreadable_outputs, finished, verdict};
 use crate::{
     checks::probe::{ProbeResult, docker},
-    sessions::FixedCommand,
+    ssh::FixedCommand,
 };
 
 /// One recorded line of `docker ps`, with the fields Docker prints besides the three read.

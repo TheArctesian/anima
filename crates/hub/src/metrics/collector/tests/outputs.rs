@@ -13,7 +13,7 @@ use crate::{
             PROC_UPTIME, SYSCTL, TOP, VM_STAT,
         },
     },
-    sessions::CommandOutput,
+    ssh::CommandOutput,
 };
 
 fn at() -> DateTime<Utc> {

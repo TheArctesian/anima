@@ -7,7 +7,7 @@ use std::time::Duration;
 use tokio::io::AsyncReadExt as _;
 
 use super::reach::{ReadError, reach, within};
-use crate::sessions::ssh::Target;
+use crate::ssh::Target;
 
 /// The banner's length: `RFB `, three digits, `.`, three digits, a newline.
 pub(in crate::sessions) const BANNER: usize = 12;

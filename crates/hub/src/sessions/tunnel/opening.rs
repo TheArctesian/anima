@@ -39,9 +39,9 @@ use crate::{
     sessions::{
         self, Desktop, PendingTicket, Protocol,
         connection_test::{ReadError, Reply, TLS_PROTOCOLS, read_server_certificate},
-        ssh::{self, SshError, Target},
         start::{certificate_required, protocol_off},
     },
+    ssh::{self, SshError, Target},
     targets::{self, AddressPolicy, TargetError},
     trust::{self, CertificateFingerprint, ServerCertificate},
 };

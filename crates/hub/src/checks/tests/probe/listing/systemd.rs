@@ -2,7 +2,7 @@
 //! output (D-3).
 
 use super::{assert_unreadable_outputs, finished, verdict};
-use crate::{checks::probe::systemd, sessions::FixedCommand};
+use crate::{checks::probe::systemd, ssh::FixedCommand};
 
 /// Rows as `systemctl list-units --all --plain --no-legend` prints them.
 const LISTING: &str = "\

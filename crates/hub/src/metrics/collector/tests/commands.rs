@@ -9,7 +9,7 @@ use crate::{
         collector::DEADLINE,
         commands::{Command, Source, commands},
     },
-    sessions::FixedCommand,
+    ssh::FixedCommand,
 };
 
 /// The command of `words`, built here word by word.

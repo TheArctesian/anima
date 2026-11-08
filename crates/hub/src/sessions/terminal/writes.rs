@@ -17,8 +17,8 @@ use super::{control, opening::SignedIn};
 use crate::sessions::{
     Tunnel,
     end::{CLIENT_STOPPED_READING, CLOSE_WAIT, Cause, End},
-    ssh::Observer,
 };
+use crate::ssh::Observer;
 
 /// Sends one message to the client, unless the session ends first. A failed send is the
 /// client leaving; one that stalls past `wait` is a timeout (K4 Section 8.5).

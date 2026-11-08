@@ -15,13 +15,8 @@ use super::{Error, WakeSent, wake};
 use crate::{
     events::Bus,
     ids::DeviceId,
-    sessions::{
-        link::tests::{
-            Bench, bench, reaching,
-            server::{Answer, Heard, Server},
-        },
-        tests::fixture::{DOCKER_HOST, LOOPBACK, PASSWORD, now, stored_text},
-    },
+    sessions::tests::fixture::{DOCKER_HOST, LOOPBACK, PASSWORD, now, stored_text},
+    ssh::tests::{Answer, Bench, Heard, Server, bench, reaching},
 };
 
 /// `pve-01`, on the home site, the device the tests wake.

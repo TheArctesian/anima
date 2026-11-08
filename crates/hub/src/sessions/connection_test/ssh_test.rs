@@ -10,11 +10,10 @@ use super::desktop_test::{DesktopSubject, test_desktop};
 use crate::{
     credentials::{self, SshSecret, Vault},
     ids::DeviceId,
-    sessions::{
-        Error, FieldError, find_device,
-        live::Live,
+    sessions::{Error, FieldError, find_device, live::Live},
+    ssh::{
+        SshError, Target,
         probe::{Login, PROBE_TIMEOUT, SignIn, read_host_key, sign_in},
-        ssh::{SshError, Target},
     },
     trust::{self, Endpoint, HostKey, Observation, PublicKey, ServerCertificate},
 };
@@ -243,7 +242,7 @@ mod tests {
         AUTH_FAILED, CHANGED_KEY, NEW_KEY, NO_CREDENTIAL, SIGNED_IN, Seen, UNREACHABLE, outcome,
     };
     use crate::{
-        sessions::ssh::SshError,
+        ssh::SshError,
         trust::{HostKey, Observation, PublicKey},
     };
 

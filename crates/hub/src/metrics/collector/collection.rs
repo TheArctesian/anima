@@ -20,7 +20,7 @@ use crate::{
         commands::{Command, commands},
         record_collection,
     },
-    sessions::{self, LinkError},
+    ssh::{self, LinkError},
 };
 
 /// Why a device's collection ended early this round. The texts are fixed (LOG-007).
@@ -101,7 +101,7 @@ pub(super) async fn within_deadline<T>(
 /// link. The first link error ends the collection.
 async fn read(ctx: &Context, device: &Device, at: DateTime<Utc>) -> Result<Reading, LinkError> {
     let Context { db, collecting, .. } = ctx;
-    let mut link = sessions::link(db, &collecting.vault, &collecting.policy, device, at).await?;
+    let mut link = ssh::link(db, &collecting.vault, &collecting.policy, device, at).await?;
     let mut parts = Parts::default();
     for Command {
         source,

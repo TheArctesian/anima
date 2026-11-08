@@ -10,7 +10,7 @@ use super::{
 };
 use crate::{
     credentials,
-    sessions::{
+    ssh::{
         link::{Error, FixedCommand},
         tests::fixture::store_password,
     },

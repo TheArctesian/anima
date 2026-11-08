@@ -9,7 +9,7 @@ use super::{
     LIMIT, assert_quiet, bench,
     server::{Answer, Heard},
 };
-use crate::sessions::link::{Error, FixedCommand, OUTPUT_CAP};
+use crate::ssh::link::{Error, FixedCommand, OUTPUT_CAP};
 
 /// What the server hears for a sign-in and one command with `line`.
 fn one_command(line: &str) -> Vec<Heard> {

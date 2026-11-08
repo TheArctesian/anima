@@ -4,36 +4,28 @@
 //! process log (LOG-007).
 
 use std::{
-    io::{self, Write as _},
+    io,
     sync::{Arc, Mutex},
     time::Duration,
 };
 
-use base64::{Engine as _, engine::general_purpose::STANDARD};
-use chrono::{DateTime, Utc};
 use serde_json::Value;
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
 use crate::{
-    credentials::{self, Secret, SshSecret, Vault},
     events::{ClientAddr, Operator},
-    ids::{DeviceId, OperatorId, SessionId},
+    ids::{OperatorId, SessionId},
     sessions::{
         DisplayRequest, Live, PendingTicket, Protocol, StartRequest,
         tickets::{TOKEN_BYTES, TicketToken},
     },
-    trust::PublicKey,
 };
 
-pub(in crate::sessions) const DOCKER_HOST: &str = "0190a000-0000-7000-8002-000000000002";
-const OPERATOR: &str = "0190a000-0000-7000-8000-000000000001";
-pub(in crate::sessions) const PASSWORD: &str = "correct horse battery staple";
-/// The address the test client connects from, and the device's SSH server.
-pub(in crate::sessions) const LOOPBACK: &str = "127.0.0.1";
-
-pub(in crate::sessions) fn now() -> DateTime<Utc> {
-    "2026-11-04T09:00:00Z".parse().unwrap()
-}
+/// The world `ssh` tests start from is this one's start too.
+pub(in crate::sessions) use crate::ssh::tests::fixture::{
+    DOCKER_HOST, LOOPBACK, OPERATOR, PASSWORD, add_operator, docker_host, move_device, now,
+    prepare, vault,
+};
 
 pub(in crate::sessions) fn operator() -> Operator {
     Operator {
@@ -44,74 +36,6 @@ pub(in crate::sessions) fn operator() -> Operator {
 
 pub(in crate::sessions) fn address(text: &str) -> ClientAddr {
     ClientAddr(text.parse().unwrap())
-}
-
-pub(in crate::sessions) fn docker_host() -> DeviceId {
-    DOCKER_HOST.parse().unwrap()
-}
-
-/// A vault over a throwaway key in a temporary file (SEC-004).
-pub(in crate::sessions) fn vault() -> Vault {
-    let mut key_file = tempfile::NamedTempFile::new().unwrap();
-    writeln!(key_file, "{}", STANDARD.encode([7; 32])).unwrap();
-    Vault::from_key_file(key_file.path()).unwrap()
-}
-
-/// The operator every session belongs to.
-pub(in crate::sessions) async fn add_operator(pool: &PgPool) {
-    sqlx::query(
-        "insert into access.operators (id, username, password_hash, created_at) \
-         values ($1::text::uuid, 'operator', '$argon2id$x', now())",
-    )
-    .bind(OPERATOR)
-    .execute(pool)
-    .await
-    .unwrap();
-}
-
-/// The operator, `accepted` as `docker-host`'s host key, and [`PASSWORD`] for it.
-pub(in crate::sessions) async fn prepare(pool: &PgPool, vault: &Vault, accepted: &PublicKey) {
-    add_operator(pool).await;
-    sqlx::query(
-        "insert into trust.host_keys (device_id, algorithm, fingerprint_sha256, public_key, \
-                first_seen_at, accepted_at, accepted_by) \
-         values ($1::text::uuid, $2, $3, $4, $5, $5, $6::text::uuid)",
-    )
-    .bind(DOCKER_HOST)
-    .bind(accepted.algorithm())
-    .bind(accepted.fingerprint().as_str().to_owned())
-    .bind(accepted.to_base64())
-    .bind(now())
-    .bind(OPERATOR)
-    .execute(pool)
-    .await
-    .unwrap();
-    store_password(pool, vault, PASSWORD).await;
-}
-
-/// Stores `password` as `docker-host`'s SSH credential, replacing the one stored.
-pub(in crate::sessions) async fn store_password(pool: &PgPool, vault: &Vault, password: &str) {
-    let mut conn = pool.acquire().await.unwrap();
-    let password = SshSecret::Password(Secret::from(password.to_owned()));
-    credentials::store_ssh(&mut conn, vault, docker_host(), password)
-        .await
-        .unwrap();
-}
-
-/// Points `docker-host` at `host` and `port`, as an operator's edit would.
-pub(in crate::sessions) async fn move_device(pool: &PgPool, host: &str, port: u16) {
-    sqlx::query("update devices.devices set host = $2 where id = $1::text::uuid")
-        .bind(DOCKER_HOST)
-        .bind(host)
-        .execute(pool)
-        .await
-        .unwrap();
-    sqlx::query("update devices.ssh_settings set port = $2 where device_id = $1::text::uuid")
-        .bind(DOCKER_HOST)
-        .bind(i32::from(port))
-        .execute(pool)
-        .await
-        .unwrap();
 }
 
 /// A pool of its own on the test database for the route. sqlx test pools share 20 connections

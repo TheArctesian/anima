@@ -17,7 +17,7 @@ use crate::{
         collection::{Failure, within_deadline},
         fan_out::FanOut,
     },
-    sessions::LinkError,
+    ssh::LinkError,
 };
 
 /// How many jobs run now, and the most that ever ran together.

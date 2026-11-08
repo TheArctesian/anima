@@ -12,12 +12,12 @@ use crate::{
     events::Bus,
     ids::DeviceId,
     sessions::{
-        LinkError, WakeError,
-        link::tests::{
-            SEED, bench_accepting,
-            server::{host_key, serve},
-        },
+        WakeError,
         tests::fixture::{DOCKER_HOST, docker_host, now},
+    },
+    ssh::{
+        LinkError,
+        tests::{SEED, bench_accepting, host_key, serve},
     },
     targets::AddressPolicy,
 };

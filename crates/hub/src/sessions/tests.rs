@@ -6,7 +6,6 @@ mod failures;
 pub(super) mod fixture;
 mod page;
 mod probe;
-mod ssh;
 mod start;
 mod store;
 pub(super) mod tickets;

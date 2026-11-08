@@ -16,6 +16,7 @@ pub mod paging;
 pub mod scalars;
 pub mod schema;
 pub mod sessions;
+pub mod ssh;
 pub mod status;
 pub mod targets;
 pub mod text;

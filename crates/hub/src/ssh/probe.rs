@@ -8,24 +8,24 @@ use std::{sync::Arc, time::Duration};
 
 use russh::client;
 
-use super::ssh::{self, Observer, SshError, Target};
+use crate::ssh::{self, Observer, SshError, Target};
 use crate::{credentials::SshSecret, trust::PublicKey};
 
 /// How long one probe may take, lookup, connect, key exchange and sign-in included (D-5).
 /// It stays below the client's 10 s request limit (`HUB_TIMEOUT_MS`), so a device that does
 /// not answer is reported as unreachable instead of the hub looking unreachable (NET-004).
-pub(super) const PROBE_TIMEOUT: Duration = Duration::from_secs(8);
+pub(crate) const PROBE_TIMEOUT: Duration = Duration::from_secs(8);
 
 /// What a sign-in sends, and to which key only.
-pub(super) struct Login<'a> {
-    pub(super) accepted: &'a PublicKey,
-    pub(super) username: &'a str,
-    pub(super) secret: &'a SshSecret,
+pub(crate) struct Login<'a> {
+    pub(crate) accepted: &'a PublicKey,
+    pub(crate) username: &'a str,
+    pub(crate) secret: &'a SshSecret,
 }
 
 /// What a sign-in found.
 #[derive(Debug, PartialEq, Eq)]
-pub(super) enum SignIn {
+pub(crate) enum SignIn {
     /// The host presented the accepted key and took the credential.
     SignedIn,
     /// The host presented another key, so no credential was sent.
@@ -38,7 +38,7 @@ pub(super) enum SignIn {
 /// # Errors
 /// [`SshError`] when the host does not resolve, resolves to a refused address, cannot be
 /// reached, does not finish within `timeout` or does not complete a key exchange.
-pub(super) async fn read_host_key(
+pub(crate) async fn read_host_key(
     target: Target<'_>,
     timeout: Duration,
 ) -> Result<PublicKey, SshError> {
@@ -60,7 +60,7 @@ pub(super) async fn read_host_key(
 /// # Errors
 /// As [`read_host_key`]; [`SshError::UnreadableKey`] when a private key or passphrase does
 /// not decode, [`SshError::AuthFailed`] when the host refuses the credential.
-pub(super) async fn sign_in(
+pub(crate) async fn sign_in(
     target: Target<'_>,
     login: &Login<'_>,
     timeout: Duration,

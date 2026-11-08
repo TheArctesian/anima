@@ -1,5 +1,5 @@
 //! Listing checks over the SSH link: one command per attempt, run through
-//! [`sessions::link`] and read by the pure parsers of `docker` and `systemd` (D-3).
+//! [`ssh::link`] and read by the pure parsers of `docker` and `systemd` (D-3).
 //!
 //! The command output is never logged or stored; a link error's text holds no host, address
 //! or secret (LOG-007).
@@ -16,7 +16,7 @@ use crate::{
     checks::config::CheckConfig,
     credentials::Vault,
     devices::Device,
-    sessions::{self, CommandOutput, FixedCommand, LinkError},
+    ssh::{self, CommandOutput, FixedCommand, LinkError},
     targets::AddressPolicy,
 };
 
@@ -52,7 +52,7 @@ async fn run(
     command: &FixedCommand,
     (limit, now): (std::time::Duration, DateTime<Utc>),
 ) -> Result<CommandOutput, Failure> {
-    let mut link = sessions::link(reach.db, reach.vault, reach.policy, device, now)
+    let mut link = ssh::link(reach.db, reach.vault, reach.policy, device, now)
         .await
         .map_err(|error| link_failure(&error))?;
     link.run(command, limit)

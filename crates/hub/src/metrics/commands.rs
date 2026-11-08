@@ -7,7 +7,7 @@
 
 use std::time::Duration;
 
-use crate::{devices::OperatingSystem, sessions::FixedCommand};
+use crate::{devices::OperatingSystem, ssh::FixedCommand};
 
 /// The limit of a command that prints a file or a table at once.
 const QUICK: Duration = Duration::from_secs(5);

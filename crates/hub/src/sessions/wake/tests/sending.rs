@@ -11,9 +11,12 @@ use super::{
 use crate::{
     events::process_log,
     sessions::{
-        LinkError, WakeError,
-        link::tests::{SEED, server::serve},
+        WakeError,
         tests::fixture::{Capture, LOOPBACK, docker_host, move_device, now},
+    },
+    ssh::{
+        LinkError,
+        tests::{SEED, serve},
     },
 };
 

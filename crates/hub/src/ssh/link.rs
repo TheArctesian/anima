@@ -12,7 +12,7 @@ mod connect;
 mod run;
 mod subsystem;
 #[cfg(test)]
-pub(super) mod tests;
+pub(crate) mod tests;
 
 use std::time::Duration;
 
@@ -20,8 +20,8 @@ use chrono::{DateTime, Utc};
 use russh::client::Handle;
 use sqlx::PgPool;
 
-use super::ssh::{Observer, SshError};
-use crate::{credentials, devices::Device, sessions, targets::AddressPolicy};
+use super::{Observer, SshError};
+use crate::{credentials, devices::Device, targets::AddressPolicy, trust};
 
 pub use command::FixedCommand;
 
@@ -93,8 +93,9 @@ pub enum Error {
     CommandRefused,
     #[error("the command did not finish within its time limit")]
     TimeLimit,
+    /// The text stays as it was when the hub's session code held this error (API-010).
     #[error("session store error")]
-    Sessions(#[source] sessions::Error),
+    Trust(#[source] trust::Error),
     #[error("credential store error")]
     Credentials(#[source] credentials::Error),
 }

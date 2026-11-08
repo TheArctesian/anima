@@ -1,7 +1,8 @@
-//! The hub's SSH client side, shared by the connection test and the terminal (R-034, SEC-007):
-//! the host key order and the checked connect (R-032) here, the handler that pins the
-//! presented key (`observer`) and the sign-in with a stored credential (`sign_in`, OD-9).
-//! I/O edge.
+//! The hub's SSH client (P2-003, R-034, SEC-007): the link metrics, checks, Wake-on-LAN and
+//! files run commands on (`link`), the probe the connection test reads a host key with
+//! (`probe`), and what both share: the host key order and the checked connect (R-032) here,
+//! the handler that pins the presented key (`observer`) and the sign-in with a stored
+//! credential (`sign_in`, OD-9). The public-key types are in `trust`. I/O edge.
 //!
 //! The host is resolved once by [`crate::targets::resolve_checked`] and every address it
 //! resolves to must pass the hub's address policy, deny list included (R-030, R-032); the
@@ -9,8 +10,12 @@
 //! cannot point it somewhere else. Nothing here logs, and no error holds a remote text, a
 //! host name or a secret (LOG-007).
 
+mod link;
 mod observer;
+pub(crate) mod probe;
 mod sign_in;
+#[cfg(test)]
+pub(crate) mod tests;
 
 use std::{borrow::Cow, time::Duration};
 
@@ -22,8 +27,9 @@ use tokio::net::TcpStream;
 
 use crate::targets::{self, AddressPolicy, TargetError};
 
-pub(super) use observer::Observer;
-pub(super) use sign_in::authenticate;
+pub use link::{CommandOutput, Error as LinkError, FixedCommand, SshLink, link};
+pub(crate) use observer::Observer;
+pub(crate) use sign_in::authenticate;
 
 /// Host key algorithms in libssh2's order (`hostkey.c`, 1.11), the order guacd used, so the
 /// key the connection test reads is the key a session meets (SEC-007). SHA-1 `ssh-rsa` is
@@ -54,7 +60,7 @@ const HOST_KEY_ORDER: &[Algorithm] = &[
 /// Why an SSH connection gave no key or did not sign in. Holds no host name, remote text or
 /// secret.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
-pub(super) enum SshError {
+pub(crate) enum SshError {
     #[error("the host name does not resolve")]
     Unresolved,
     #[error("the host resolves to an address sessions may not reach")]
@@ -83,15 +89,15 @@ impl From<TargetError> for SshError {
 /// Where a connection goes: the device's host (a name or an IP literal) and SSH port, and the
 /// policy for the addresses the host resolves to.
 #[derive(Clone, Copy, Debug)]
-pub(super) struct Target<'a> {
-    pub(super) host: &'a str,
-    pub(super) port: u16,
-    pub(super) policy: &'a AddressPolicy,
+pub(crate) struct Target<'a> {
+    pub(crate) host: &'a str,
+    pub(crate) port: u16,
+    pub(crate) policy: &'a AddressPolicy,
 }
 
 /// The algorithm preferences every hub SSH connection uses: [`HOST_KEY_ORDER`] for the host
 /// key, russh's defaults for the rest.
-pub(super) fn preferred() -> Preferred {
+pub(crate) fn preferred() -> Preferred {
     Preferred {
         key: Cow::Borrowed(HOST_KEY_ORDER),
         ..Preferred::DEFAULT
@@ -104,7 +110,7 @@ pub(super) fn preferred() -> Preferred {
 /// # Errors
 /// [`SshError::Unresolved`] when the host has no address, [`SshError::RefusedTarget`] when
 /// the policy refuses any address, [`SshError::Unreachable`] when no address answers.
-pub(super) async fn connect(target: Target<'_>) -> Result<TcpStream, SshError> {
+pub(crate) async fn connect(target: Target<'_>) -> Result<TcpStream, SshError> {
     let addresses = targets::resolve_checked(target.host, target.port, target.policy).await?;
     for address in addresses {
         if let Ok(stream) = TcpStream::connect(address).await {
@@ -119,7 +125,7 @@ pub(super) async fn connect(target: Target<'_>) -> Result<TcpStream, SshError> {
 ///
 /// # Errors
 /// [`SshError::RefusedTarget`] when the policy refuses any address.
-pub(super) async fn connect_waking(
+pub(crate) async fn connect_waking(
     target: Target<'_>,
     retry: Duration,
 ) -> Result<TcpStream, SshError> {

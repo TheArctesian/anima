@@ -20,10 +20,7 @@ impl SshLink {
     /// # Errors
     /// [`Error::TimeLimit`] when `limit` passes first, [`Error::CommandRefused`] when the
     /// device refuses the channel or the subsystem, [`Error::Lost`] when the connection fails.
-    pub(in crate::sessions) async fn sftp(
-        &self,
-        limit: Duration,
-    ) -> Result<ChannelStream<Msg>, Error> {
+    pub(crate) async fn sftp(&self, limit: Duration) -> Result<ChannelStream<Msg>, Error> {
         timeout(limit, async {
             let mut channel =
                 self.handle

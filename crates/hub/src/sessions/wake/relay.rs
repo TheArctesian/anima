@@ -6,7 +6,7 @@ use std::time::Duration;
 use super::Error;
 use crate::{
     devices::{Device, MacAddress},
-    sessions::{FixedCommand, SshLink},
+    ssh::{FixedCommand, SshLink},
 };
 
 /// The program the relay runs. Debian and Ubuntu ship it in the `wakeonlan` package.

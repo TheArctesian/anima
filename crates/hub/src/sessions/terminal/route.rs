@@ -35,9 +35,9 @@ use crate::{
     sessions::{
         Live, PendingTicket, Protocol, admission,
         end::{CLIENT_IDLE, Records},
-        probe::PROBE_TIMEOUT,
         tickets::{RECONNECT, WOKEN_OPENING},
     },
+    ssh::probe::PROBE_TIMEOUT,
 };
 
 /// The terminal tunnel's path (K4 Section 1 `tunnelPath`): SSH's.
