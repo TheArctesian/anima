@@ -62,11 +62,14 @@ function isTintShape(value: unknown): boolean {
   return typeof color === 'string' && typeof over === 'string' && typeof percent === 'number' && Number.isFinite(percent);
 }
 
-/** A theme changes only semantic colours (TOK-011), and a light value has the shape of the token's dark one. */
+/**
+ * A theme changes only semantic colours (TOK-011). A light tint is a mix; a light colour is a colour or a mix
+ * (`surface-hover`, CR-10).
+ */
 function lightChecked(token: Token, value: unknown): void {
   if (!isSemanticColour(token)) {
     throw new TokenSourceError(token.path, 'a light value is allowed only on a semantic colour (TOK-011)');
   }
-  const shaped = token.type === 'tint' ? isTintShape(value) : typeof value === 'string';
+  const shaped = isTintShape(value) || (token.type === 'color' && typeof value === 'string');
   if (!shaped) throw new TokenSourceError(token.path, `a light ${token.type} value has the wrong shape`);
 }

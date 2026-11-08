@@ -24,6 +24,7 @@
   --bg: var(--nord-0);
   --surface: var(--nord-1);
   --surface-raised: var(--nord-2);
+  --surface-hover: var(--nord-3);
   --border: var(--nord-3);
   --text: var(--nord-6);
   --text-muted: var(--nord-4);
@@ -137,6 +138,7 @@
   --bg: var(--nord-5);
   --surface: var(--nord-6);
   --surface-raised: var(--nord-4);
+  --surface-hover: color-mix(in srgb, var(--nord-3) 12%, var(--nord-4));
   --border: var(--nord-10);
   --text: var(--nord-0);
   --text-muted: var(--nord-3);
@@ -165,6 +167,7 @@
     --bg: var(--nord-5);
     --surface: var(--nord-6);
     --surface-raised: var(--nord-4);
+    --surface-hover: color-mix(in srgb, var(--nord-3) 12%, var(--nord-4));
     --border: var(--nord-10);
     --text: var(--nord-0);
     --text-muted: var(--nord-3);

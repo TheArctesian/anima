@@ -43,6 +43,7 @@ Generated from `design/tokens/*.tokens.json` (TOK-001). Names follow contract K5
 | `bg` | `--bg: var(--nord-0)` = `#2E3440`<br>light: `--bg: var(--nord-5)` = `#E5E9F0` | Main background |
 | `surface` | `--surface: var(--nord-1)` = `#3B4252`<br>light: `--surface: var(--nord-6)` = `#ECEFF4` | Navigation bar, cards, panels |
 | `surface-raised` | `--surface-raised: var(--nord-2)` = `#434C5E`<br>light: `--surface-raised: var(--nord-4)` = `#D8DEE9` | Hover state, selected row, input fields |
+| `surface-hover` | `--surface-hover: var(--nord-3)` = `#4C566A`<br>light: `--surface-hover: color-mix(in srgb, var(--nord-3) 12%, var(--nord-4))` | Fill under text for a hovered row or control (CR-10). A component never uses border as a fill |
 | `border` | `--border: var(--nord-3)` = `#4C566A`<br>light: `--border: var(--nord-10)` = `#5E81AC` | Borders and dividers |
 | `text` | `--text: var(--nord-6)` = `#ECEFF4`<br>light: `--text: var(--nord-0)` = `#2E3440` | Primary text |
 | `text-muted` | `--text-muted: var(--nord-4)` = `#D8DEE9`<br>light: `--text-muted: var(--nord-3)` = `#4C566A` | Secondary text and labels |

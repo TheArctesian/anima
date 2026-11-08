@@ -46,7 +46,8 @@ function elevation(token: Token): string {
 function valueOf(token: Token): string {
   switch (token.type) {
     case 'color':
-      return aliasOrValue(token.source, token.value);
+      // A light colour may be a mix (CR-10); the loader has checked its shape.
+      return typeof token.value === 'string' ? aliasOrValue(token.source, token.value) : tint(token);
     case 'tint':
       return tint(token);
     case 'fontFamily':

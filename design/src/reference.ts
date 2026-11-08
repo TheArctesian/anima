@@ -20,11 +20,12 @@ function valueCell(token: Token): string {
   return `${lines.join('<br>')}${resolved}${lightLine(token)}`;
 }
 
-/** The light value on a second line, so the page shows both themes (UI-005). */
+/** The light value on a second line, so the page shows both themes (UI-005); a mix shows as its `color-mix`, as a tint does. */
 function lightLine(token: Token): string {
   if (token.light === undefined) return '';
   const [declaration] = declarations({ ...token, ...token.light });
-  return declaration ? `<br>light: \`${declaration[0]}: ${shown(declaration[1])}\` = \`${String(token.light.value)}\`` : '';
+  const resolved = typeof token.light.value === 'string' ? ` = \`${token.light.value}\`` : '';
+  return declaration ? `<br>light: \`${declaration[0]}: ${shown(declaration[1])}\`${resolved}` : '';
 }
 
 function table(tokens: readonly Token[]): string {

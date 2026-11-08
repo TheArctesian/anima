@@ -111,6 +111,29 @@ describe('light values in the token source (TOK-011)', () => {
     expect((result as TokenSourceError).tokenPath).toBe('color.nord.5');
   });
 
+  test('UI-005: a light colour may be a mix; it renders as color-mix in both light blocks (CR-10)', async () => {
+    const mix = { color: '{color.nord.0}', percent: 12, over: '{color.nord.5}' };
+    const tokens = await loadSource({ color: { ...NORD, 'surface-hover': { $value: '{color.nord.0}', $extensions: light(mix) } } });
+    const expected = ['--surface-hover: color-mix(in srgb, var(--nord-0) 12%, var(--nord-5));'];
+    const css = renderCss(tokens as Token[]);
+    expect(body(css, ':root[data-theme="light"]')).toEqual(expected);
+    expect(body(css, '  :root[data-theme="system"]')).toEqual(expected);
+    expect(body(css, ':root')).toContain('--surface-hover: var(--nord-0);');
+  });
+
+  test('TOK-011: a light colour mix without an over colour is refused, naming the token', async () => {
+    const result = await loadSource({
+      color: { ...NORD, 'surface-hover': { $value: '{color.nord.0}', $extensions: light({ color: '{color.nord.0}', percent: 12 }) } },
+    });
+    expect(result).toBeInstanceOf(TokenSourceError);
+    expect((result as TokenSourceError).tokenPath).toBe('color.surface-hover');
+  });
+
+  test('TOK-011: a light colour that is neither a colour nor a mix is refused', async () => {
+    const result = await loadSource({ color: { ...NORD, 'surface-hover': { $value: '{color.nord.0}', $extensions: light(12) } } });
+    expect(result).toBeInstanceOf(TokenSourceError);
+  });
+
   test('TOK-011: a light tint without a numeric percent is refused', async () => {
     const tint = { $type: 'tint', $value: { color: '{color.nord.0}', percent: 12, over: 'transparent' } };
     const result = await loadSource({

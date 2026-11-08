@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { resolve } from 'node:path';
-import { contrastRatio, deriveToContrast, type HexColour } from '../src/contrast.ts';
+import { contrastRatio, deriveToContrast, mixColour, type HexColour } from '../src/contrast.ts';
 import { loadTokens } from '../src/load.ts';
 import { renderCss } from '../src/css.ts';
 import { renderReference } from '../src/reference.ts';
@@ -15,10 +15,22 @@ function find(name: string): Token {
   return token;
 }
 
+/** A resolved colour value as `#RRGGBB`; a mix (`surface-hover`, CR-10) is computed as CSS `color-mix` in sRGB does. */
+function hexOf(value: unknown): HexColour {
+  if (typeof value === 'string') return value as HexColour;
+  const { color, percent, over } = value as { color: string; percent: number; over: string };
+  return mixColour(over, color, percent / 100);
+}
+
 /** The colour a token shows in the light theme: its light value, else its dark one. */
 function lightHex(name: string): HexColour {
   const token = find(name);
-  return String(token.light?.value ?? token.value) as HexColour;
+  return hexOf(token.light?.value ?? token.value);
+}
+
+/** The colour a token shows in the dark theme. */
+function darkHex(name: string): HexColour {
+  return hexOf(find(name).value);
 }
 
 const SURFACES = ['bg', 'surface', 'surface-raised'] as const;
@@ -61,9 +73,40 @@ describe('light theme values (TOK-011, UI-005)', () => {
   });
 });
 
+describe('surface-hover (CR-10, K5)', () => {
+  test('K5: dark surface-hover is nord-3, so the dark hover look does not change', () => {
+    expect(find('surface-hover').source).toBe('{color.nord.3}');
+  });
+
+  test('UI-005: the light surface-hover is nord-3 at 12 % over nord-4, in both light blocks', () => {
+    const declaration = '--surface-hover: color-mix(in srgb, var(--nord-3) 12%, var(--nord-4));';
+    const css = renderCss(tokens);
+    expect(css.split(declaration).length - 1).toBe(2);
+  });
+
+  for (const text of ['text', 'text-muted']) {
+    test(`UI-005: ${text} on the light surface-hover is at least 4.5:1`, () => {
+      expect(ratio(text, 'surface-hover')).toBeGreaterThanOrEqual(4.5);
+    });
+  }
+
+  for (const surface of ['surface', 'surface-raised']) {
+    test(`K5: the light surface-hover differs from ${surface} at least as much as the dark one does`, () => {
+      const dark = contrastRatio(darkHex('surface-hover'), darkHex(surface));
+      expect(ratio('surface-hover', surface)).toBeGreaterThanOrEqual(dark);
+    });
+  }
+});
+
 describe('reference page (UI-005)', () => {
   test('UI-005: a token with a light value shows it under its dark value', () => {
     expect(renderReference(tokens)).toContain('`--bg: var(--nord-0)` = `#2E3440`<br>light: `--bg: var(--nord-5)` = `#E5E9F0`');
+  });
+
+  test('UI-005: a light mix shows as its color-mix, as a tint does', () => {
+    expect(renderReference(tokens)).toContain(
+      '`--surface-hover: var(--nord-3)` = `#4C566A`<br>light: `--surface-hover: color-mix(in srgb, var(--nord-3) 12%, var(--nord-4))` |',
+    );
   });
 });
 

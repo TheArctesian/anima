@@ -114,6 +114,19 @@
         }
       }
     },
+    "surface-hover": {
+      "$value": "{color.nord.3}",
+      "$description": "Fill under text for a hovered row or control (CR-10). A component never uses border as a fill",
+      "$extensions": {
+        "anima": {
+          "light": {
+            "color": "{color.nord.3}",
+            "percent": 12,
+            "over": "{color.nord.4}"
+          }
+        }
+      }
+    },
     "border": {
       "$value": "{color.nord.3}",
       "$description": "Borders and dividers",
