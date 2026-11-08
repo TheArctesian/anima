@@ -4,19 +4,17 @@
 //! Guacamole tunnel (`tunnel`). The connection test (`connection_test`) reads a host's key or
 //! an RDP server's certificate into `trust::Sightings`, and `acceptHostKey` or
 //! `acceptServerCertificate` in `trust` records it (DEV-013, SEC-006, SEC-007).
-//! Wake-on-LAN (`wake`) runs on a site's wake relay over the hub's SSH link (`link`, RA-031).
+//! Wake-on-LAN (`wake`) runs on a site's wake relay over the hub's SSH link (`ssh::link`,
+//! RA-031). The SSH client the terminal and the connection test use is in `ssh`.
 
 mod admission;
 mod connection_test;
 mod end;
 mod files;
 pub mod graphql;
-mod link;
 mod live;
 mod model;
 mod page;
-mod probe;
-mod ssh;
 mod start;
 mod store;
 mod terminal;
@@ -43,7 +41,6 @@ use model::Desktop;
 
 pub use end::Actor;
 pub use files::{FilesMutation, files_router};
-pub use link::{CommandOutput, Error as LinkError, FixedCommand, SshLink, link};
 pub use live::{EndCause, Live, Redeemed, Refused, Tunnel};
 pub use model::{
     EndReason, FieldError, Protocol, Session, SessionChange, SessionEnd, UnknownValue,
