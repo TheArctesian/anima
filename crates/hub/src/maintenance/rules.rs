@@ -10,8 +10,9 @@ use chrono_tz::Tz;
 
 use super::{
     model::{NewWindow, Weekday, WindowForm, WindowKind, WindowRule},
-    targets::{self, is_plain},
+    targets,
 };
+use crate::text::is_plain;
 
 pub use crate::api_errors::FieldError;
 

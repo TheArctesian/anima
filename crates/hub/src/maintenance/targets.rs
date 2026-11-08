@@ -7,29 +7,13 @@ use super::{
     model::{Target, TargetForm, TargetType},
     rules::{FieldError, Problems},
 };
-use crate::ids::{CheckId, DeviceId};
+use crate::{
+    ids::{CheckId, DeviceId},
+    text::is_plain,
+};
 
 const TARGETS_MAX: usize = 100;
 const TAG_MAX: usize = 32;
-
-/// Whether the text has no control character or line or paragraph separator (each would split
-/// or break a log line) and no character that changes the reading direction (it would disguise
-/// the text).
-pub(super) fn is_plain(text: &str) -> bool {
-    !text.chars().any(|c| {
-        c.is_control()
-            || matches!(
-                c,
-                '\u{2028}'
-                    | '\u{2029}'
-                    | '\u{200E}'
-                    | '\u{200F}'
-                    | '\u{061C}'
-                    | '\u{202A}'..='\u{202E}'
-                    | '\u{2066}'..='\u{2069}'
-            )
-    })
-}
 
 /// One to 100 targets, without repeats, in first-seen order (MW-003). A tag follows the same
 /// rules as a device tag.

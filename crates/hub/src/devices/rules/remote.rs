@@ -4,6 +4,7 @@
 //! `macAddress`; the wake relay check names `deviceId`.
 
 use super::{FieldError, Problems};
+use crate::text::is_plain;
 use crate::{
     devices::{
         Device,
@@ -11,7 +12,7 @@ use crate::{
         remote::{
             RdpInput, RdpSettings, RemoteAccess, RemoteChange, RemoteForm, VncInput, VncSettings,
         },
-        text::{is_plain, user_name},
+        text::user_name,
     },
     ids::SiteId,
 };

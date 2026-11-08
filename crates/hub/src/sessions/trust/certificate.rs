@@ -99,27 +99,11 @@ impl From<Observation<PresentedCertificate>> for ServerCertificate {
     }
 }
 
-/// Format characters (Unicode Cf: the bidirectional controls, zero-width characters, the
-/// byte order mark, tags and the like) and the line and paragraph separators (Zl, Zp), which
-/// hide or reorder text or break a line when shown (as K4 Section 8.7 cleans titles).
-fn is_invisible(c: char) -> bool {
-    matches!(c,
-        '\u{ad}' | '\u{600}'..='\u{605}' | '\u{61c}' | '\u{6dd}' | '\u{70f}'
-        | '\u{890}'..='\u{891}' | '\u{8e2}' | '\u{180e}'
-        | '\u{200b}'..='\u{200f}' | '\u{2028}'..='\u{202e}' | '\u{2060}'..='\u{2064}'
-        | '\u{2066}'..='\u{206f}' | '\u{feff}' | '\u{fff9}'..='\u{fffb}'
-        | '\u{110bd}' | '\u{110cd}' | '\u{13430}'..='\u{1343f}' | '\u{1bca0}'..='\u{1bca3}'
-        | '\u{1d173}'..='\u{1d17a}' | '\u{e0001}' | '\u{e0020}'..='\u{e007f}')
-}
-
 /// The subject without control (Cc), format (Cf) or separator (Zl, Zp) characters, trimmed,
 /// at most [`MAX_SUBJECT`] characters; `None` when nothing is left. The device chooses it, so
 /// it must not break a line, hide text or reorder it wherever it is shown.
 pub(in crate::sessions) fn cleaned_subject(text: &str) -> Option<String> {
-    let kept: String = text
-        .chars()
-        .filter(|c| !c.is_control() && !is_invisible(*c))
-        .collect();
+    let kept = crate::text::clean(text, usize::MAX);
     let kept: String = kept.trim().chars().take(MAX_SUBJECT).collect();
     let kept = kept.trim_end();
     (!kept.is_empty()).then(|| kept.to_owned())
