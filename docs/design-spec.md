@@ -124,8 +124,8 @@ Anima has three components: the client, the hub and the gateway.
 | Secret storage | The operating system key store: macOS Keychain, Linux Secret Service |
 
 - **CLI-001.** The client must use the same user interface code on all platforms.
-- **CLI-002.** The client must keep the hub address in local settings.
-- **CLI-003.** The client must keep the hub access token in the operating system key store. The web client has no key store. It must keep a browser token in an `HttpOnly` cookie named `__Host-anima` (`Secure`, `SameSite=Strict`). (D-3, R-081)
+- **CLI-002.** The client must keep the hub address in local settings. The web client has no hub address field. It talks only to the hub that served it. (D-5, R-081)
+- **CLI-003.** The client must keep the hub access token in the operating system key store. The web client has no key store. It must keep a browser token in an `HttpOnly` cookie named `__Host-anima` (`Secure`, `SameSite=Strict`, `Path=/`). The token lives 7 days, with no refresh. The hub must accept the cookie only when `Origin` equals the public origin. (D-3, R-081)
 - **CLI-004.** The client must not keep device credentials. The hub keeps device credentials.
 
 ### 3.4 Hub
@@ -195,7 +195,7 @@ The hub supplies one GraphQL API at the path `/graphql`.
 
 - **API-001.** The hub must write the API in Rust with `async-graphql` on axum.
 - **API-002.** Subscriptions must use the `graphql-transport-ws` protocol over WebSocket.
-- **API-003.** Every operation must require a valid access token, except the login mutation. A document that has no access token is permitted only when it is exactly one `login`, one `signInBrowser` or one `joinShare`. (D-4, R-081)
+- **API-003.** Every operation must require a valid access token, except `login`, `signInBrowser` and `joinShare`. A document that has no access token is permitted only when it is exactly one `login`, one `signInBrowser` or one `joinShare`. (D-4, R-081)
 - **API-004.** The hub must set a maximum query depth of 10 and a maximum query complexity. The hub must refuse a query that is more than these limits.
 - **API-005.** The hub must use a data loader for related items, so that one query does not cause many database queries.
 - **API-006.** Lists must use cursor pagination.
@@ -268,7 +268,7 @@ desktop app ── at start and every 4 hours ── GET latest.json ── vers
 The hub can open a session to every device. Thus the hub is a high-value target. Obey all the requirements in this section.
 
 - **SEC-001.** The hub must use TLS for all client connections.
-- **SEC-002.** The hub must ask for authentication before it accepts an API request or a tunnel request. There is one exception, as for the push token: a share token. The share token must be only in the URL fragment. The viewer must send it once, in `joinShare`. The viewer must not call any other operation. (D-7, R-081)
+- **SEC-002.** The hub must ask for authentication before it accepts an API request or a tunnel request. The share token is an exception, as is the push token (Section 6.4). The share token must be only in the URL fragment. The viewer must send it once, in `joinShare`. The viewer must not call any other operation. (D-7, R-081)
 - **SEC-003.** The hub must encrypt credentials before it writes them to the database.
 - **SEC-004.** The hub must read the encryption key from a file or a Docker secret. Do not keep the key in the database.
 - **SEC-005.** The hub must not send a stored password or private key to the client.
@@ -287,7 +287,7 @@ The devices are at more than one site. Example: office 1, home and office 2. A m
 - **NET-002.** The hub must refuse each API request, tunnel request and login from an address that is not in a permitted network. The hub must write the refusal to the event log.
 - **NET-003.** The hub must listen only on its VPN interface and its private network interfaces. Do not bind the hub to a public interface.
 - **NET-004.** If the client cannot connect to the hub, the navigation bar must show "Not on the network" and the hub address. The message must tell the operator to check the VPN client. Data on the screen must show its age.
-- **NET-005.** The client must find the hub by its DNS name `hub.anima.ing` (DNS-001). mDNS does not cross sites, so use mDNS only as a fallback on the local network. The operator can also type the hub address.
+- **NET-005.** The client must find the hub by its DNS name `hub.anima.ing` (DNS-001). mDNS does not cross sites, so use mDNS only as a fallback on the local network. The operator can also type the hub address in the desktop client.
 - **NET-006.** A later version can let the hub find new devices on each site with mDNS and an ARP scan. The operator must accept each found device before Anima adds it.
 
 ### 4.2 Sites and VPN
@@ -403,11 +403,11 @@ Anima uses the Nord colour scheme. The default theme is dark.
 | `--status-maintenance` | nord15 | `#B48EAD` | Device is in maintenance |
 | `--status-unknown` | nord3 | `#4C566A` | No data, or the check is paused |
 
-- **UI-001.** All colours in the user interface must come from the tokens in this table.
+- **UI-001.** All colours in the user interface must come from the tokens in this table. The one addition is the five derived light-mode primitives (`nord-11-deep` to `nord-15-deep`), kept in `design/tokens/`. (D-27, R-081)
 - **UI-002.** Do not use nord3 for text on nord0 or nord1. The contrast is too low. Use nord4 for secondary text.
 - **UI-003.** A status must not use colour as the only indicator. Show a text label or an icon with the colour.
 - **UI-004.** Text on an `--accent` background must use nord0.
-- **UI-005.** The client must have a light theme with the Nord Snow Storm colours (nord4 to nord6). Nord aurora colours on nord6 are less than 3:1, so the light theme must use five derived primitives for the status colours. Make each one by mixing a Nord aurora colour toward nord0 until it is 3:1 on nord6. Use them in light mode only. The default theme is dark. The operator must be able to choose Dark, Light or System. The client must save the choice on the device. (D-27, R-081)
+- **UI-005.** The client must have a light theme with the Nord Snow Storm colours (nord4 to nord6). Some Nord aurora colours (for example nord13) are less than 3:1 on nord6. WP-50 measures them. So the light theme must use five derived primitives for the status colours, one from each of nord11 to nord15. Make each one by mixing its Nord aurora colour toward nord0 until it is 3:1 on nord6. Use them in light mode only. The default theme is dark. The operator must be able to choose Dark, Light or System. The client must save the choice on the device. (D-27, R-081)
 
 ### 5.2 Typography and spacing
 
@@ -921,7 +921,7 @@ The view has these tabs:
 - **NOT-003.** The operator must be able to select the channels for each check. A channel can be "on by default" for new checks.
 - **NOT-004.** Each channel must have a "Send test" button.
 - **NOT-005.** The operator must be able to set a resend interval: send the notification again after each N Down heartbeats.
-- **NOT-006.** The hub must send a notification when a TLS certificate expires in less than the set number of days. The default values are 21, 14 and 7 days. The same rule applies to domain expiry checks, with the same thresholds. The hub must send one notification for each threshold for each certificate or domain. (D-22, R-081)
+- **NOT-006.** The hub must send a notification when a TLS certificate expires in less than the set number of days. The default values are 21, 14 and 7 days. The same rule applies to domain expiry checks, with the same thresholds. The hub must send one notification for each threshold for each certificate or domain. A renewed certificate starts again. (D-22, R-081)
 - **NOT-007.** The operator must be able to change the message text with a template.
 
 ### 6.9 Integrations (Phase 3)
@@ -938,8 +938,8 @@ The view has these tabs:
 
 A later version adds these items to the Settings page:
 
-- Hub address and hub connection test.
-- Theme: dark or light.
+- Hub address and hub connection test (desktop client only).
+- Theme: Dark, Light or System.
 - Data retention period.
 - Notification channels, for example email, ntfy, Discord or Telegram.
 - Default check settings.
