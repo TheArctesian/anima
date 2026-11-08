@@ -32,7 +32,7 @@ pub(in crate::metrics) async fn create_days_ahead(
 }
 
 /// Drops the sample partitions of the UTC days before `cutoff`; returns their names. The
-/// database refuses a cutoff inside the 30-day retention (DB-005).
+/// database refuses a cutoff inside the 1-day floor (DB-005).
 pub(in crate::metrics) async fn drop_days_before(
     db: &PgPool,
     cutoff: NaiveDate,

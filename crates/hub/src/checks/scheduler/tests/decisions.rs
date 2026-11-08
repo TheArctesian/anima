@@ -1,4 +1,4 @@
-//! The pure decisions: first-run spread, lateness, the daily gate, missed pushes and event
+//! The pure decisions: first-run spread, lateness, missed pushes and event
 //! wording (CHK-001, CHK-002, CHK-010, DB-005).
 
 use std::{collections::HashSet, time::Duration};
@@ -13,8 +13,8 @@ use crate::{
         evaluate,
         probe::{Failure, ProbeResult},
         scheduler::schedule::{
-            Timing, Watchdog, daily_due, first_due, is_late, missed_push, needs_spreading,
-            next_daily, severity_of, status_message,
+            Timing, Watchdog, first_due, is_late, missed_push, needs_spreading, severity_of,
+            status_message,
         },
     },
     events::Severity,
@@ -120,26 +120,6 @@ fn chk_010_the_watchdog_reports_once_per_episode_and_again_after_a_clear() {
     assert!(watchdog.should_report(check, true));
     watchdog.retain(&HashSet::new());
     assert!(watchdog.should_report(check, true));
-}
-
-#[test]
-fn db_005_the_daily_jobs_run_first_then_daily_or_hourly_after_a_failure() {
-    assert!(daily_due(None, now()));
-    let after_success = next_daily(true, now());
-    assert_eq!(after_success, now() + TimeDelta::hours(24));
-    assert!(!daily_due(
-        Some(after_success),
-        now() + TimeDelta::hours(23)
-    ));
-    assert!(daily_due(Some(after_success), now() + TimeDelta::hours(24)));
-    assert_eq!(next_daily(false, now()), now() + TimeDelta::hours(1));
-}
-
-#[test]
-fn cq_021_the_daily_jobs_run_again_when_the_clock_goes_back_more_than_a_day() {
-    let next = next_daily(true, now());
-    assert!(!daily_due(Some(next), now()));
-    assert!(daily_due(Some(next), now() - seconds(1)));
 }
 
 #[test]

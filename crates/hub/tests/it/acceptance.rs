@@ -6,7 +6,7 @@ use anima_hub::{
     ids::CheckId,
     status::Status,
 };
-use chrono::{DateTime, TimeDelta, Utc};
+use chrono::{DateTime, Days, TimeDelta, Utc};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
@@ -154,7 +154,9 @@ async fn dev_015_deleting_a_device_removes_its_whole_chain_and_keeps_its_history
         .fetch_one(&pool)
         .await
         .unwrap();
-    checks::create_days_ahead(&pool, db_now, 1).await.unwrap();
+    checks::drop_expired(&pool, db_now, Days::new(30))
+        .await
+        .unwrap();
     let mut conn = pool.acquire().await.unwrap();
     for second in 0..3 {
         let beat = up_beat(db_now + TimeDelta::seconds(second));
@@ -227,7 +229,9 @@ async fn dev_015_deleting_a_device_removes_its_whole_chain_and_keeps_its_history
         "beats wait for the sweep"
     );
 
-    assert_eq!(checks::delete_orphan_heartbeats(&pool).await.unwrap(), 3);
+    checks::drop_expired(&pool, db_now, Days::new(30))
+        .await
+        .unwrap();
     assert_eq!(
         count(&pool, beats, &check_id).await,
         0,

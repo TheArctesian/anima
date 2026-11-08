@@ -44,7 +44,8 @@ async fn log_006_drop_function_refuses_a_cutoff_inside_retention_even_with_a_lat
         (("audit_log", today - Days::new(30), later), Some("42501")),
         (("audit_log", today - Days::new(300), later), Some("42501")),
         (("event_log", today - Days::new(10), later), Some("42501")),
-        (("event_log", today - Days::new(60), now), Some("42501")),
+        (("event_log", today - Days::new(29), now), Some("42501")),
+        (("event_log", today - Days::new(30), now), None),
         (("audit_log", today - Days::new(400), now), None),
         (("event_log", today - Days::new(100), now), None),
         (("access_log", today - Days::new(800), now), Some("22023")),
@@ -75,7 +76,9 @@ async fn db_005_drop_expired_partitions_removes_old_partitions_and_keeps_newer(p
     }
     let runtime = pool_as(&pool, "anima_runtime").await;
 
-    let mut dropped = drop_expired_partitions(&runtime, now).await.unwrap();
+    let mut dropped = drop_expired_partitions(&runtime, now, Days::new(90))
+        .await
+        .unwrap();
 
     runtime.close().await;
     dropped.sort();
@@ -96,5 +99,32 @@ async fn db_005_drop_expired_partitions_removes_old_partitions_and_keeps_newer(p
     ] {
         let kept = format!("events.{}", name(table, days));
         assert!(table_exists(&mut conn, &kept).await, "{kept}");
+    }
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn hub_005_the_event_log_period_is_honoured_while_the_audit_log_stays_one_year(pool: PgPool) {
+    let now = database_now(&pool).await;
+    let ago = |days: i64| now - TimeDelta::days(days);
+    for days in [200, 45, 20] {
+        create_partitions_ahead(&pool, ago(days), 0).await.unwrap();
+    }
+
+    let mut dropped = drop_expired_partitions(&pool, now, Days::new(30))
+        .await
+        .unwrap();
+
+    dropped.sort();
+    let name = |table: &str, days: i64| format!("{table}_{}", ago(days).format("%Y%m%d"));
+    assert_eq!(dropped, [name("event_log", 200), name("event_log", 45)]);
+    let mut conn = pool.acquire().await.unwrap();
+    for (table, days, kept) in [
+        ("event_log", 20, true),
+        ("audit_log", 200, true),
+        ("audit_log", 45, true),
+        ("event_log", 45, false),
+    ] {
+        let table = format!("events.{}", name(table, days));
+        assert_eq!(table_exists(&mut conn, &table).await, kept, "{table}");
     }
 }

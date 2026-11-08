@@ -46,7 +46,6 @@ pub(super) use beats::record_beat;
 #[cfg(test)]
 pub(in crate::checks) use heartbeats::{LATEST_SQL, PAGES_SQL};
 pub(super) use heartbeats::{latest as latest_heartbeats, pages as heartbeat_pages};
-pub use retention::Trimmed;
 pub(super) use retention::{
     create_days_ahead, delete_orphan_heartbeats, drop_heartbeat_days_before, trim_aggregates,
 };

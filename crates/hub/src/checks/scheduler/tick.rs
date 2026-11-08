@@ -1,5 +1,4 @@
-//! One pass of the scheduler: settle the devices whose checks had beats, run the daily jobs
-//! when due, spread first runs, report late checks and start due attempts within the limits
+//! One pass of the scheduler: settle the devices whose checks had beats, spread first runs, report late checks and start due attempts within the limits
 //! (CHK-001, CHK-010, HUB-003, LOG-004).
 //!
 //! One task owns this state, so no lock guards it. Attempts run in a `JoinSet`; dropping the
@@ -19,7 +18,6 @@ use tokio::{
 
 use super::{
     attempt::{self, Context, Finished, warn},
-    daily,
     log::logged,
     notices,
     schedule::{self, Timing, Watchdog},
@@ -59,7 +57,6 @@ pub(super) struct Scheduler {
     unsettled: HashMap<DeviceId, DateTime<Utc>>,
     started_at: Option<DateTime<Utc>>,
     last_tick: Option<DateTime<Utc>>,
-    next_daily: Option<DateTime<Utc>>,
 }
 
 impl Scheduler {
@@ -75,7 +72,6 @@ impl Scheduler {
             unsettled: HashMap::new(),
             started_at: None,
             last_tick: None,
-            next_daily: None,
         }
     }
 
@@ -90,10 +86,6 @@ impl Scheduler {
         }
         self.collect_beaten(now).await;
         self.settle_devices(now).await;
-        if schedule::daily_due(self.next_daily, now) {
-            let succeeded = daily::run(&self.ctx.db, now).await;
-            self.next_daily = Some(schedule::next_daily(succeeded, now));
-        }
         let due = checks::due_checks(&self.ctx.db, now, self.due_per_tick).await;
         let Some(due) = logged(None, "the due checks cannot be read", due) else {
             return;

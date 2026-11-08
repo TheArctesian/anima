@@ -3,7 +3,7 @@
 use chrono::{DateTime, DurationRound, NaiveDate, TimeDelta, Utc};
 
 /// The periods after which metrics go. The defaults are those of DB-009; a later setting can
-/// change them (HUB-005). The database refuses to drop a sample partition less than 30 days
+/// change them (HUB-005). The database refuses to drop a sample partition less than 1 day
 /// old, so a shorter `samples` period fails the run rather than dropping early.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Retention {

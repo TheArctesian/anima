@@ -31,7 +31,7 @@ async fn db_004_db_005_keep_partitions_creates_a_week_ahead_and_drops_expired_da
         create_partitions_ahead(&pool, old, 0).await.unwrap();
     }
 
-    keep_partitions(&pool, now).await.unwrap();
+    keep_partitions(&pool, now, Days::new(90)).await.unwrap();
 
     let mut conn = pool.acquire().await.unwrap();
     for table in ["event_log", "audit_log"] {
@@ -102,11 +102,17 @@ async fn db_005_dropping_expired_days_gives_up_on_a_lock_held_by_a_long_reader(p
         .unwrap();
     let reader = reader_holding_the_event_log(&pool).await;
 
-    let blocked = async { drop_expired_partitions(&pool, now).await.map(drop) };
+    let blocked = async {
+        drop_expired_partitions(&pool, now, Days::new(90))
+            .await
+            .map(drop)
+    };
     assert_eq!(fault_within_deadline(blocked).await, "lock_timeout");
 
     reader.commit().await.unwrap();
-    let dropped = drop_expired_partitions(&pool, now).await.unwrap();
+    let dropped = drop_expired_partitions(&pool, now, Days::new(90))
+        .await
+        .unwrap();
     let expected = format!("event_log_{}", (now - Days::new(100)).format("%Y%m%d"));
     assert!(dropped.contains(&expected), "{dropped:?}");
 }

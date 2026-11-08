@@ -112,7 +112,9 @@ async fn db_009_runtime_role_cannot_create_or_drop_a_partition_directly(pool: Pg
     migrations = "./migrations",
     fixtures(path = "../../../tests/fixtures", scripts("devices"))
 )]
-async fn db_005_runtime_role_cannot_drop_a_day_inside_30_days_through_the_function(pool: PgPool) {
+async fn db_005_runtime_role_cannot_drop_a_day_inside_the_one_day_floor_through_the_function(
+    pool: PgPool,
+) {
     let runtime = runtime_pool(&pool).await;
     let at = day_at(&pool, 3, "10:00:00").await;
     write(
@@ -123,9 +125,9 @@ async fn db_005_runtime_role_cannot_drop_a_day_inside_30_days_through_the_functi
     )
     .await;
 
-    for days in [0, 10, 29] {
+    for days in [0, -1, -29] {
         let sql = format!(
-            "select metrics.drop_day_partitions_before(current_date - {days}, now() + interval '90 days')"
+            "select metrics.drop_day_partitions_before(current_date - ({days}), now() + interval '90 days')"
         );
         assert_eq!(
             refusal(&runtime, &sql).await.as_deref(),
@@ -136,4 +138,8 @@ async fn db_005_runtime_role_cannot_drop_a_day_inside_30_days_through_the_functi
     let far = "select metrics.ensure_day_partition(now() + interval '9 days')";
     assert_eq!(refusal(&runtime, far).await.as_deref(), Some("22023"));
     assert_eq!(rows(&pool, "samples").await, 1);
+
+    let allowed = "select metrics.drop_day_partitions_before(current_date - 1, now())";
+    assert_eq!(refusal(&runtime, allowed).await, None);
+    assert_eq!(rows(&pool, "samples").await, 0);
 }
