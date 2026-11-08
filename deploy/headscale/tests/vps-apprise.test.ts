@@ -72,18 +72,37 @@ describe("Apprise and this host (NOT-002, D-19)", () => {
   });
 });
 
+// Both ends of every denied range, then the address just outside each (NET-001).
 const DENIED = [
-  "0.1.2.3", "10.10.0.5", "100.64.0.2", "100.100.100.100", "127.0.0.1", "169.254.169.254", "172.17.0.2",
-  "172.30.0.10", "172.30.1.10", "172.31.255.254", "192.168.1.1", "224.0.0.251", "239.255.255.250", "240.0.0.1",
-  "255.255.255.255",
+  "0.0.0.0", "0.0.0.1", "0.255.255.255",
+  "10.0.0.0", "10.0.0.1", "10.255.255.255",
+  "100.64.0.0", "100.64.0.1", "100.100.100.100", "100.127.255.255",
+  "127.0.0.0", "127.0.0.1", "127.255.255.255",
+  "169.254.0.0", "169.254.0.1", "169.254.169.254", "169.254.255.254", "169.254.255.255",
+  "172.16.0.0", "172.16.0.1", "172.17.0.2", "172.29.0.1", "172.30.0.10", "172.30.1.10", "172.31.255.254", "172.31.255.255",
+  "192.168.0.0", "192.168.0.1", "192.168.1.1", "192.168.255.254", "192.168.255.255",
+  "224.0.0.0", "224.0.0.1", "224.0.0.251", "239.255.255.250", "239.255.255.255",
+  "240.0.0.0", "240.0.0.1", "255.255.255.254", "255.255.255.255",
+];
+const JUST_OUTSIDE = [
+  "9.255.255.255", "11.0.0.0", "100.63.255.255", "100.128.0.0", "126.255.255.255", "128.0.0.0",
+  "169.253.255.255", "169.255.0.0", "172.15.255.255", "172.32.0.0", "192.167.255.255", "192.169.0.0", "223.255.255.255",
 ];
 
 describe("Apprise onward traffic (NOT-002, D-19, NET-001)", () => {
-  for (const daddr of DENIED) {
-    test(`NET-001 Apprise to ${daddr} is not forwarded`, () => {
-      expect(forwarded(onward(APPRISE, { daddr, protocol: "tcp", dport: 80 }))).toBe("drop");
-    });
-  }
+  test("NET-001 Apprise is not forwarded to the first or last address of any denied range", () => {
+    const passed = DENIED.filter((daddr) => forwarded(onward(APPRISE, { daddr, protocol: "tcp", dport: 80 })) !== "drop");
+    expect(passed).toEqual([]);
+  });
+
+  test("NET-001 Apprise is forwarded to the addresses just outside the denied ranges", () => {
+    const dropped = JUST_OUTSIDE.filter((daddr) => forwarded(onward(APPRISE, { daddr, protocol: "tcp", dport: 80 })) !== "accept");
+    expect(dropped).toEqual([]);
+  });
+
+  test("NOT-002 an established packet from Apprise outside the notify network is dropped", () => {
+    expect(forwarded(onward(APPRISE, { daddr: "10.10.0.5", protocol: "tcp", dport: 80, ctState: "established" }))).toBe("drop");
+  });
 
   test("NOT-002 Apprise sends nothing into the tailnet, even to a site subnet in a public range", () => {
     const toSite = onward(APPRISE, { daddr: "198.51.100.5", protocol: "tcp", dport: 443, oifname: "tailscale0" });
@@ -128,6 +147,17 @@ describe("Apprise address in the firewall and in compose.yaml (D-19)", () => {
     const subnet = /^ {2}notify:\n^ {4}ipam:\n^ {6}config:\n^ {8}- subnet: (\S+)$/m.exec(compose)?.[1];
     expect(ruleset.commands).toContain(`define apprise = ${String(address)}`);
     expect(ruleset.commands).toContain(`define apprise_network = ${String(subnet)}`);
+  });
+});
+
+describe("notify stays IPv4-only (NOT-002, NET-001)", () => {
+  test("NOT-002 NET-001 neither compose.yaml nor daemon.json gives the notify network IPv6", () => {
+    const compose = readFileSync(join(import.meta.dir, "..", "..", "compose.yaml"), "utf8");
+    const notify = /^ {2}notify:\n((?:^ {4}.*\n|^\s*\n)*)/m.exec(compose.slice(compose.indexOf("\nnetworks:")))?.[1] ?? "";
+    expect(notify).toContain("subnet: 172.30.3.0/24");
+    expect(notify).not.toMatch(/enable_ipv6:\s*(?!false\b)\S/);
+    const daemon = JSON.parse(readFileSync(join(import.meta.dir, "..", "vps", "daemon.json"), "utf8")) as Record<string, unknown>;
+    for (const key of ["ipv6", "fixed-cidr-v6", "default-network-opts"]) expect(daemon).not.toHaveProperty(key);
   });
 });
 

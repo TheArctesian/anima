@@ -2,9 +2,11 @@
  * A minimal packet evaluator for the rule forms in `vps/nftables.conf`: interface name
  * matches (with a trailing `*` wildcard), `fib daddr type local`, `ip saddr` and `ip daddr`
  * prefixes or prefix sets, `ip6` matches (never true: the packets are IPv4), `ct state`,
- * `tcp`/`udp dport`, `icmp`/`icmpv6 type`, `limit rate` (never exceeded), `$name` defines,
- * and the `drop` and `accept` verdicts. A rule using anything else throws, and so does a
- * rule that needs a packet field the test did not give, so nothing is guessed.
+ * `tcp`/`udp dport`, `limit rate` (never exceeded), `$name` defines, and the `drop` and
+ * `accept` verdicts. An `icmp`/`icmpv6 type` rule is skipped (never matches) for a tcp or udp
+ * packet and throws for an ICMP packet, because ICMP types are not evaluated. Any other rule
+ * form throws, and so does a rule that needs a packet field the test did not give, so
+ * nothing is guessed.
  */
 import type { Chain, parseNftables } from "../src/nftables.ts";
 

@@ -383,7 +383,7 @@ If it prints the unit, run it and wait for it to finish:
 ```sh
 # Run on the VPS.
 sudo systemctl start anima-backup.service
-sudo journalctl -u anima-backup.service -n 20
+sudo journalctl -u anima-backup.service -n 50
 ```
 
 The journal shows the dump path (`/var/backups/anima/anima-<UTC time>.dump`). The unit runs
@@ -561,9 +561,11 @@ do not stop that. The Anima host firewall contains it (NOT-002, D-19). The rules
   the VPS: not the bridge gateway `172.30.3.1`, not Headscale on the public address, not the hub's
   VPN address.
 - `forward` drops Apprise's packets to `0.0.0.0/8`, `10.0.0.0/8`, `100.64.0.0/10`, `127.0.0.0/8`,
-  `169.254.0.0/16`, `172.16.0.0/12`, `192.168.0.0/16` and `224.0.0.0/3`, and everything it sends
-  out of `tailscale0`. On the `notify` network it may only answer the hub. Public addresses stay
-  open.
+  `169.254.0.0/16`, `172.16.0.0/12`, `192.168.0.0/16` `224.0.0.0/4` and `240.0.0.0/4`, and everything
+  it sends out of `tailscale0`. On the `notify` network it may only answer the hub. Public addresses
+  stay open. That last claim holds only while the kernel's `br_netfilter` module is loaded, because
+  without it bridged traffic skips the `forward` hook. It rests on deploy's `daemon.json`
+  `"userland-proxy": false`, with which Docker loads `br_netfilter`.
 
 They are part of the table `inet anima_filter`, so you apply them the way WP-03 applied that table:
 `harden.sh firewall` with its 180 s rollback, then `harden.sh confirm` from a new SSH session over the
@@ -620,9 +622,13 @@ Check:
 sudo nft list table inet anima_filter
 sudo grep -n 'define apprise' /etc/nftables/anima.nft
 sudo /opt/anima/headscale/vps/harden.sh check
+lsmod | grep br_netfilter
+sysctl net.bridge.bridge-nf-call-iptables
 ```
 
-The first rule of chain `input` is `ip saddr 172.30.3.10 drop`, and chain `forward` has three rules
+`lsmod` must print a `br_netfilter` line and `sysctl` must print `net.bridge.bridge-nf-call-iptables = 1`.
+If either does not, the hub-only rule on `notify` does not apply: do not start Apprise, and ask the
+programme. The first rule of chain `input` is `ip saddr 172.30.3.10 drop`, and chain `forward` has three rules
 that start with `ip saddr 172.30.3.10`. The boot copy holds the three `define apprise` lines. `check`
 ends with `ok: no violations`.
 
@@ -635,14 +641,16 @@ the address `172.30.3.10`; once Apprise runs, stop it first (`sudo docker compos
 sudo docker compose --profile apprise pull apprise
 image=$(sudo docker compose --profile apprise config --images | grep apprise)
 sudo docker run --rm --network deploy_notify --ip 172.30.3.10 --cap-drop ALL --user 1000:1000 \
-  --entrypoint sh "$image" -c 'for url in https://172.30.3.1/ https://hs.anima.ing/health https://100.64.0.1/ http://172.30.0.10:8443/ https://ntfy.sh/; do curl -s -o /dev/null --connect-timeout 5 "$url"; echo "$? $url"; done'
+  --entrypoint sh "$image" -c 'for url in https://172.30.3.1/ https://hs.anima.ing/health https://100.64.0.1/ http://172.30.0.10:8443/ http://172.30.3.2:8443/ http://169.254.169.254/ https://ntfy.sh/; do curl -s -o /dev/null --connect-timeout 5 "$url"; echo "$? $url"; done'
 ```
 
-Each line is the curl exit code and the URL. The first four must print `28` (the connection timed
+Each line is the curl exit code and the URL. The first six must print `28` (the connection timed
 out: the firewall dropped it). The last must print `0`: Apprise resolves names and reaches the
-internet. Any other code on the first four (for example `7`, connection refused, or `35` or `60`, a
-TLS answer) means the packet got through: do not start Apprise, and ask the programme. After step 8,
-the test notification still arrives.
+internet. Run it with the hub up. On the first six, any other code means the rules do not hold: do not
+start Apprise, and ask the programme. `7` (connection refused) or `35` or `60` (a TLS answer) means
+the packet got through; `7` on `http://172.30.3.2:8443/` means the bridge is unfiltered
+(`br_netfilter` is not loaded). `6` means a resolver problem, not a packet that got through: fix the
+resolver check above first. After step 8, the test notification still arrives.
 
 Undo: stop Apprise first if it runs (`sudo docker compose --profile apprise rm -sf apprise`); it must
 not run without these rules. Then apply the previous file the same way:

@@ -19,8 +19,8 @@ Revoke the key in Settings to stop it at once.
 ## 2. Store the key on the scraper
 
 Put the secret in a file that only the Prometheus user can read. The command is for a Linux scraper:
-`install` reading `/dev/stdin` needs GNU coreutils, and the folder `/etc/prometheus` must exist first (the first line makes it if it is
-missing).
+`install` reading `/dev/stdin` needs GNU coreutils, and the folder `/etc/prometheus` must exist
+first.
 
 ```bash
 # Run in bash, with sudo, on the Linux machine that runs Prometheus. Type the secret; do not paste it into chat.
