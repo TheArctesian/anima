@@ -23,7 +23,7 @@ Components use semantic or component names. Primitive names (`nord-*`) appear on
 | Group | Names |
 | --- | --- |
 | Colour, primitive | `nord-0` … `nord-15` |
-| Colour, semantic | `bg`, `surface`, `surface-raised`, `border`, `text`, `text-muted`, `accent`, `accent-alt`, `accent-deep`, `info`, `status-up`, `status-down`, `status-degraded`, `status-warning`, `status-maintenance`, `status-unknown`, `scrim` (R-049) |
+| Colour, semantic | `bg`, `surface`, `surface-raised`, `border`, `text`, `text-muted`, `accent`, `accent-alt`, `accent-deep`, `info`, `status-up`, `status-down`, `status-degraded`, `status-warning`, `status-maintenance`, `status-unknown`, `scrim` (R-049), `surface-hover` (CR-10: the fill under `text` for a hovered row or control) |
 | Colour, chart (Phase 2) | `chart-grid`, `chart-axis`, `chart-threshold` (the 85 % line, MET-004), `chart-series-1` … `chart-series-6` (Nord frost then aurora, so up to six GPUs or mounts differ; K5) |
 | Colour, tint | `accent-tint`, `status-up-tint`, `status-down-tint`, `status-degraded-tint`, `status-warning-tint`, `status-maintenance-tint`, `status-unknown-tint` |
 | Font family | `font-ui`, `font-mono`, `font-icon`, `font-ui-opendyslexic`, `font-mono-opendyslexic` (added by operator decision, 2026-11-05: the Settings font choice, UI-020) |
@@ -63,6 +63,7 @@ Space numbers follow the 4-pixel grid index (`space-4` = 1 rem = 16 px), as in s
   name them.
 - Light surfaces (R-086): `bg` is `nord-5`, `surface` is `nord-6`, `surface-raised` is `nord-4`. The light
   `accent` is `nord-3`; no derived accent primitive is added.
+- `surface-hover` (CR-10): dark is `nord-3`, today's hover look. Light is a grey that gives `text` at least 4.5:1 and differs visibly from `surface` and `surface-raised`. A component never uses `border` as a fill.
 - The Rust output (`crates/theme`) does not change.
 
 ## Rules for consumers
