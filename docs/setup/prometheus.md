@@ -18,10 +18,13 @@ Revoke the key in Settings to stop it at once.
 
 ## 2. Store the key on the scraper
 
-Put the secret in a file that only the Prometheus user can read:
+Put the secret in a file that only the Prometheus user can read. The command is for a Linux scraper:
+`install` reading `/dev/stdin` needs GNU coreutils, and the folder `/etc/prometheus` must exist first (the first line makes it if it is
+missing).
 
 ```bash
-# Run in bash, with sudo, on the machine that runs Prometheus. Type the secret; do not paste it into chat.
+# Run in bash, with sudo, on the Linux machine that runs Prometheus. Type the secret; do not paste it into chat.
+sudo mkdir -p /etc/prometheus
 read -rs -p 'API key: ' value; echo
 printf '%s' "$value" | sudo install -m 0600 -o prometheus -g prometheus /dev/stdin /etc/prometheus/anima_api_key
 unset value
