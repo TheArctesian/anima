@@ -92,3 +92,13 @@ fn log_007_origin_error_does_not_echo_a_password_in_the_userinfo() {
     assert!(!error.to_string().contains("hunter2"));
     assert!(!format!("{error:?}").contains("hunter2"));
 }
+
+#[test]
+fn log_007_origin_error_hides_userinfo_even_without_a_scheme_separator() {
+    for bad in ["op:hunter2@hub.anima.ing", "https:/op:hunter2@hub"] {
+        let error = from_env(&env(bad)).unwrap_err();
+        assert!(matches!(error, Error::Origin { .. }));
+        assert!(!error.to_string().contains("hunter2"), "{bad}");
+        assert!(!format!("{error:?}").contains("hunter2"), "{bad}");
+    }
+}
