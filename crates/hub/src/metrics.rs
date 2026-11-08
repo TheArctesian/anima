@@ -11,6 +11,7 @@ mod collector;
 mod commands;
 mod feed;
 pub mod graphql;
+mod ingest;
 mod latest;
 mod model;
 mod range;
@@ -30,6 +31,7 @@ pub use agent_core::{
 };
 pub use collector::{Collecting, spawn_collector};
 pub use feed::Feed;
+pub use ingest::agent_router;
 pub use model::{
     Gpu, GpuVendor, MetricKind, MetricPoint, MetricRange, MetricSample, MetricSeries, MetricsAdded,
     Readings,

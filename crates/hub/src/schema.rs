@@ -44,6 +44,7 @@ pub struct Mutation(
     checks::graphql::Mutation,
     devices::graphql::Mutation,
     maintenance::graphql::Mutation,
+    metrics::graphql::Mutation,
     notifications::graphql::Mutation,
     retention::graphql::Mutation,
     sessions::graphql::Mutation,

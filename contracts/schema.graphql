@@ -86,7 +86,7 @@ type ApiKeyCreated {
 }
 
 "Shown once. The hub keeps only its SHA-256; one use, 15 minutes (MET-012, K8)."
-type AgentEnrolment @pending {
+type AgentEnrolment {
   code: String!
   expiresAt: DateTime!
 }
@@ -156,7 +156,7 @@ enum MetricsSource {
   NONE
   SSH
   "Set only by enrolment (MET-011, R-092 D-7)."
-  AGENT @pending
+  AGENT
 }
 
 "RA-020. TELNET joins when Telnet exists."
@@ -1490,9 +1490,9 @@ type Mutation {
   "Login or browser token only (D-23, R-100)."
   revokeApiKey(id: ID!): ID!
   "Login or browser token only (INT-003, D-23, R-100). A new code makes the device's earlier unused codes useless."
-  enrolAgent(deviceId: ID!): AgentEnrolment! @pending
+  enrolAgent(deviceId: ID!): AgentEnrolment!
   "Login or browser token only (D-23, R-100). The source stays AGENT, shown as stale, until the operator changes it (R-092 D-7)."
-  revokeAgentToken(deviceId: ID!): Device! @pending
+  revokeAgentToken(deviceId: ID!): Device!
 
   setCheckDefaults(input: CheckDefaultsInput!): CheckDefaults!
 
