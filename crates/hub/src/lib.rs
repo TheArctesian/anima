@@ -18,6 +18,7 @@ pub mod schema;
 pub mod sessions;
 pub mod status;
 pub mod targets;
+pub mod text;
 pub mod web_interfaces;
 
 use std::{future::Future, sync::Arc, time::Duration};
