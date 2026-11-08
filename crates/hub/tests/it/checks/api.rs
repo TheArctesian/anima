@@ -2,11 +2,10 @@
 //! LOG-005, LOG-007).
 
 mod batching;
-mod defaults;
 mod edge;
 mod group;
 mod guard;
-mod harness;
+pub(super) mod harness;
 mod k1;
 mod listing;
 mod live;
