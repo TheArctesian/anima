@@ -8,6 +8,7 @@ import {
 } from '../src/contrast.ts';
 
 const NORD_0 = '#2E3440';
+const NORD_4 = '#D8DEE9';
 const NORD_6 = '#ECEFF4';
 const AURORA = { 11: '#BF616A', 12: '#D08770', 13: '#EBCB8B', 14: '#A3BE8C', 15: '#B48EAD' } as const;
 
@@ -38,14 +39,14 @@ describe('colour mix', () => {
   });
 });
 
-describe('derived light primitives (UI-005, D-27)', () => {
+describe('derived light primitives (UI-005, D-27, R-086)', () => {
   for (const [name, colour] of Object.entries(AURORA)) {
-    test(`UI-005: nord-${name} derives to 3:1 on nord-6 and one percent less does not`, () => {
-      const derived = deriveToContrast(colour, NORD_0, NORD_6, 3);
-      expect(contrastRatio(derived.colour, NORD_6)).toBeGreaterThanOrEqual(3);
+    test(`UI-005: nord-${name} derives to 3:1 on nord-4 and one percent less does not`, () => {
+      const derived = deriveToContrast(colour, NORD_0, NORD_4, 3);
+      expect(contrastRatio(derived.colour, NORD_4)).toBeGreaterThanOrEqual(3);
       if (derived.mixPercent > 0) {
         const lessMixed = mixColour(colour, NORD_0, (derived.mixPercent - 1) / 100);
-        expect(contrastRatio(lessMixed, NORD_6)).toBeLessThan(3);
+        expect(contrastRatio(lessMixed, NORD_4)).toBeLessThan(3);
       }
     });
   }

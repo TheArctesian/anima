@@ -1,11 +1,10 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { renderCss } from '../src/css.ts';
 import { loadTokens } from '../src/load.ts';
 import { TokenSourceError, type ModeValue, type Token } from '../src/model.ts';
-import { buildOutputs, OUTPUT_PATHS } from '../src/outputs.ts';
 
 function colour(name: string, source: string, value: string, light?: ModeValue): Token {
   return { name, path: `color.${name}`, group: 'color', type: 'color', value, source, description: '', reduced: undefined, light };
@@ -74,11 +73,7 @@ describe('light theme blocks (UI-005, K5)', () => {
   test('UI-005: the dark :root block is the same with and without light values', () => {
     expect(body(renderCss(THEMED), ':root')).toEqual(body(renderCss(DARK_ONLY), ':root'));
   });
-
-  test('TOK-002: the token source has no light value yet, so tokens.css has no theme block (R-085)', async () => {
-    const css = (await buildOutputs(resolve(import.meta.dir, '..', '..')))[OUTPUT_PATHS.css] ?? '';
-    expect(css).not.toContain('data-theme');
-  });
+});
 });
 
 const dirs: string[] = [];
