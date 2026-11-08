@@ -1,7 +1,7 @@
 import type { DeviceDetail } from '$lib/devices/api';
 import type { devicesApi } from '$lib/devices/client';
-import type { WebInterfaceCalls } from '$lib/forms/device/web/WebInterfaces.svelte';
-import type { DeviceFormValues } from '$lib/forms/device/values';
+import type { WebInterfaceCalls } from '$lib/devices/form/web/WebInterfaces.svelte';
+import type { DeviceFormValues } from '$lib/devices/form/values';
 import type { HubResult } from '$lib/hub/hub';
 import type { SessionsApi } from '$lib/sessions/api';
 import type { webInterfacesApi } from '$lib/web-interfaces/api';

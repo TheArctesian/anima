@@ -12,7 +12,7 @@ body {
   --nav-inline-size: calc(var(--space-16) * 3);
 }
 
-/* Below the compact breakpoint the bar is one touch target wide plus its padding (`lib/nav/iconOnly.ts`). */
+/* Below the compact breakpoint the bar is one touch target wide plus its padding (`lib/nav/icon-only.ts`). */
 :root[data-nav="icons"] {
   --nav-inline-size: calc(var(--target-min-touch) + var(--space-3) * 2);
   /* The strip that tells the operator the hub is unreachable: four lines of small text and its padding. */

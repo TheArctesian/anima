@@ -1,10 +1,10 @@
 <script lang="ts">
   import type { DeviceDetail } from '$lib/devices/api';
-  import type { ConnectionTestResult } from '$lib/forms/device/connection-test';
-  import DeviceForm from '$lib/forms/device/form/DeviceForm.svelte';
-  import type { DeviceFields } from '$lib/forms/device/values';
+  import type { ConnectionTestResult } from '$lib/devices/form/connection-test';
+  import DeviceForm from '$lib/devices/form/form/DeviceForm.svelte';
+  import type { DeviceFields } from '$lib/devices/form/values';
   import FormButton from '$lib/forms/FormButton.svelte';
-  import WebInterfaces from '$lib/forms/device/web/WebInterfaces.svelte';
+  import WebInterfaces from '$lib/devices/form/web/WebInterfaces.svelte';
   import ConfirmModal from '$lib/forms/modal/ConfirmModal.svelte';
   import type { ConnectionTestInput } from '$lib/hub/generated/graphql';
   import type { HubResult } from '$lib/hub/hub';

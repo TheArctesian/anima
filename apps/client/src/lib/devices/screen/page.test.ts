@@ -2,7 +2,7 @@
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import Page from '../../../routes/devices/+page.svelte';
-import { button, type } from '../../forms/device/form/form.fixture';
+import { button, type } from '../form/form/form.fixture';
 import { fakeHub } from '../hub.fixture';
 import { endTransitionsAtOnce } from '../transitions.fixture';
 import { device, devicesAnswer, url } from './screen.fixture.svelte';

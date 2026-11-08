@@ -1,5 +1,5 @@
-import { openSharingSettings, sharingSettingsAvailable } from '$lib/desktop/systemSettings';
-import { readThisMachine } from '$lib/desktop/thisMachine';
+import { openSharingSettings, sharingSettingsAvailable } from '$lib/desktop/system-settings';
+import { readThisMachine } from '$lib/desktop/this-machine';
 import { devicesApi } from '$lib/devices/client';
 import type { Hub } from '$lib/hub/hub';
 import { sessionsApi } from '$lib/sessions/api';

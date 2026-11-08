@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, expect, it, vi } from 'vitest';
-import { LogFolderError } from '$lib/desktop/processLog';
+import { LogFolderError } from '$lib/desktop/process-log';
 import LogFolderRow from './LogFolderRow.svelte';
 
 const log = vi.hoisted(() => ({ open: vi.fn() }));
-vi.mock('$lib/desktop/processLog', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('$lib/desktop/processLog')>()),
+vi.mock('$lib/desktop/process-log', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('$lib/desktop/process-log')>()),
   openLogFolder: log.open,
 }));
 

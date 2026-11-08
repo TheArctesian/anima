@@ -1,8 +1,8 @@
 <script lang="ts">
   import type { DeviceCheck } from '$lib/checks/api';
-  import CheckForm from '$lib/forms/check/CheckForm.svelte';
-  import { siblingOf } from '$lib/forms/check/model/group';
-  import type { CheckFormValues } from '$lib/forms/check/model/values';
+  import CheckForm from '$lib/checks/form/CheckForm.svelte';
+  import { siblingOf } from '$lib/checks/form/model/group';
+  import type { CheckFormValues } from '$lib/checks/form/model/values';
   import Modal from '$lib/forms/modal/Modal.svelte';
   import type { HubResult } from '$lib/hub/hub';
 

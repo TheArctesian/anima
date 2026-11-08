@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { DeviceCheck } from '$lib/checks/api';
-  import type { CheckFormValues } from '$lib/forms/check/model/values';
+  import type { CheckFormValues } from '$lib/checks/form/model/values';
   import ConfirmModal from '$lib/forms/modal/ConfirmModal.svelte';
   import type { HubResult } from '$lib/hub/hub';
   import Icon from '$lib/icons/Icon.svelte';

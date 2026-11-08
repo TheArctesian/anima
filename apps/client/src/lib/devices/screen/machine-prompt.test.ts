@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import type { ThisMachine } from '$lib/desktop/thisMachine';
-import { DONT_ASK_KEY, ThisMachinePrompt } from '$lib/forms/this-machine';
+import type { ThisMachine } from '$lib/desktop/this-machine';
+import { DONT_ASK_KEY, ThisMachinePrompt } from '$lib/devices/add/this-machine';
 import Page from '../../../routes/devices/+page.svelte';
-import { button, input } from '../../forms/device/form/form.fixture';
+import { button, input } from '../form/form/form.fixture';
 import { fakeHub } from '../hub.fixture';
 import { endTransitionsAtOnce } from '../transitions.fixture';
 import { device, devicesAnswer } from './screen.fixture.svelte';
@@ -37,8 +37,8 @@ vi.mock('@tauri-apps/api/core', () => ({
     return Promise.resolve(current.machine);
   },
 }));
-vi.mock('$lib/forms/this-machine', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('$lib/forms/this-machine')>()),
+vi.mock('$lib/devices/add/this-machine', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('$lib/devices/add/this-machine')>()),
   get thisMachinePrompt() {
     return current.prompt;
   },

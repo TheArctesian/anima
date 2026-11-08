@@ -1,6 +1,6 @@
 import type { DeviceDetail } from '$lib/devices/api';
-import type { ThisMachine } from '$lib/desktop/thisMachine';
-import { normalizeHost } from '$lib/forms/device/host';
+import type { ThisMachine } from '$lib/desktop/this-machine';
+import { normalizeHost } from '$lib/devices/form/host';
 import type { ConnectionTestInput, OperatingSystem, UpdateDeviceInput } from '$lib/hub/generated/graphql';
 import type { HubResult } from '$lib/hub/hub';
 import type { ConnectionTest } from '$lib/sessions/api';
