@@ -15,6 +15,7 @@ Status: **frozen for Phase 2** (change only through a programme ruling, CON-001)
 | Range | Domain (package) | Schema | Tables |
 | --- | --- | --- | --- |
 | 0001–0099 | access (WP-05) | `access` | `operators`, `api_tokens`, `login_attempts`, `permitted_networks` |
+| 0007 (WP-36, R-081) | access (WP-36) | `access` | `api_tokens.scope` check adds `builder` (D-1) |
 | 0100–0199 | devices (WP-06) | `devices` | `sites`, `devices`, `device_tags`, `ssh_settings` |
 | 0110–0199 (Phase 2) | devices (WP-21) | `devices` | `rdp_settings`, `vnc_settings` (device_id pk fk cascade, columns as K1, defaults in the schema, DB-011); `devices.mac_address macaddr null`, `devices.metrics_source text check in ('none','ssh') default 'none'`, `devices.transfer_upload`, `_download`, `_copy`, `_paste bool default true`; `sites.wake_relay_device_id uuid null fk -> devices.devices on delete set null` |
 | 0200–0299 | credentials (WP-07) | `credentials` | `secrets` |
@@ -28,7 +29,9 @@ Status: **frozen for Phase 2** (change only through a programme ruling, CON-001)
 | 0650–0699 (Phase 2) | sessions (WP-27) | `sessions` | None expected (transfers go to the audit log) |
 | 0700–0799 (Phase 2) | metrics (WP-28) | `metrics` | `series` (id uuid pk, device_id fk cascade, kind, label, gpu_index null, unique (device_id, kind, label)); `samples` (series_id, at, value double precision; partitioned by day on `at`; pk (series_id, at); no fk, as heartbeats); `minute`, `hour`, `day` (series_id, bucket, avg, min, max, count; pk (series_id, bucket)); `gpus` (device_id fk cascade, index, name, vendor, has_vram, found_at; pk (device_id, index)); `discovery` (device_id pk fk cascade, found_at, boot_at) for MET-006 |
 | 0800–0849 (Phase 2) | web_interfaces (WP-30) | `web_interfaces` | `interfaces` (id uuid pk, device_id fk cascade, label, url, open_in check in ('anima_tab','system_browser'), created_at); `pins` (interface_id pk fk cascade, fingerprint_sha256, accepted_by, accepted_at); `dismissed` (check_id pk fk -> checks.checks on delete cascade) |
-| 0850–0999 | reserved | — | Phase 3 (notifications, API keys) |
+| 0850–0899 | reserved | — | Phase 3 (notifications, API keys) |
+| 0900–0949 (WP-36, R-081) | builds (WP-36) | `builds` | `releases`, `builders`, `jobs`, `job_files`, `feeds`, `log_lines` (outlines below) |
+| 0950–0999 | reserved | — | Phase 3 |
 
 ## Roles (R-016, LOG-006)
 
@@ -48,7 +51,8 @@ Columns listed are the contract; a package may add columns to its own tables.
 access.operators          id uuid pk, username text unique, password_hash text (argon2id),
                           totp_secret_enc bytea null, created_at timestamptz
 access.api_tokens         id uuid pk, operator_id uuid fk, token_hash bytea, scope text
-                          check (scope in ('read','write')), expires_at, created_at, last_used_at
+                          check (scope in ('read','write','builder')), expires_at, created_at,
+                          last_used_at
 access.login_attempts     id uuid pk, at timestamptz, username text, client_addr inet, ok bool
 access.permitted_networks id uuid pk, cidr cidr unique, label text
 
@@ -100,6 +104,26 @@ sessions.sessions         id uuid pk, device_id uuid null, device_name text, pro
 sessions.host_keys        device_id uuid pk fk -> devices.devices on delete cascade,
                           algorithm text, fingerprint_sha256 text, first_seen_at,
                           accepted_by uuid
+
+builds.releases           id uuid pk, version text (MAJOR.MINOR.PATCH), commit_sha text (40 hex),
+                          created_by uuid fk -> access.operators, created_by_name text, created_at
+builds.builders           id uuid pk, name text, os text check in ('linux','macos'),
+                          arch text check in ('x86_64','aarch64'), client_addr inet,
+                          token_id uuid unique fk -> access.api_tokens on delete cascade,
+                          enrolled_at, last_seen_at null
+builds.jobs               id uuid pk, release_id uuid fk cascade, target text check in
+                          ('linux-x86_64','darwin-universal'), version text, state text check in
+                          ('queued','claimed','building','uploading','published','failed',
+                          'cancelled'), failure_reason null, attempts int 0..3,
+                          builder_id uuid null fk on delete set null, builder_name null,
+                          lease_ends_at null, log_sequence bigint, one timestamp per state,
+                          state_changed_at; unique (release_id, target); unique (target,
+                          version) where state not in ('failed','cancelled') (BLD-002)
+builds.job_files          job_id uuid fk cascade, name text, sha256 text, size_bytes bigint,
+                          pk (job_id, name)
+builds.feeds              job_id uuid pk fk cascade, feed text (at most 64 KiB), reported_at
+builds.log_lines          job_id uuid fk cascade, sequence bigint, text (at most 4096 bytes,
+                          redacted), pk (job_id, sequence); trimmed to the last 2 MiB per job
 ```
 
 Note on `access.operators`: access (range 0001) cannot reference credentials (0200). TOTP secrets are therefore encrypted by access with the same vault key (via `credentials::Vault`, a pure crypto type with no tables — see `hub-domains.md`).

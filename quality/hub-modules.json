@@ -50,6 +50,10 @@
       "sessions",
       "credentials",
       "events"
+    ],
+    "builds": [
+      "access",
+      "events"
     ]
   },
   "graphql": {
@@ -73,6 +77,9 @@
       "access"
     ],
     "metrics": [
+      "access"
+    ],
+    "builds": [
       "access"
     ]
   }

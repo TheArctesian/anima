@@ -990,6 +990,134 @@ input StartSessionInput {
   display: DisplayInput!
 }
 
+# ---------------------------------------------------------------- builds (WP-36, R-081)
+
+"What a release is built for (BLD-001, BLD-003)."
+enum BuildTarget {
+  "An AppImage, built on Linux on x86_64."
+  LINUX_X86_64
+  "An app and a DMG, built on macOS on aarch64."
+  DARWIN_UNIVERSAL
+}
+
+"Section 3.10.1 says which changes are permitted (BLD-010)."
+enum BuildJobState {
+  QUEUED
+  CLAIMED
+  BUILDING
+  UPLOADING
+  PUBLISHED
+  FAILED
+  CANCELLED
+}
+
+enum BuilderOs {
+  LINUX
+  MACOS
+}
+
+"As Tauri names it."
+enum BuilderArch {
+  X86_64
+  AARCH64
+}
+
+type BuilderPlatform {
+  os: BuilderOs!
+  arch: BuilderArch!
+}
+
+input BuilderPlatformInput {
+  os: BuilderOs!
+  arch: BuilderArch!
+}
+
+type Release {
+  id: ID!
+  version: String!
+  "40 lower-case hex digits."
+  commit: String!
+  createdAt: DateTime!
+  "The operator who started it."
+  createdBy: String!
+  "One job for each selected target."
+  jobs: [BuildJob!]!
+}
+
+type ReleaseEdge {
+  cursor: String!
+  node: Release!
+}
+
+type ReleaseConnection {
+  edges: [ReleaseEdge!]!
+  pageInfo: PageInfo!
+}
+
+type BuildJob {
+  id: ID!
+  releaseId: ID!
+  target: BuildTarget!
+  version: String!
+  commit: String!
+  state: BuildJobState!
+  failureReason: String
+  "Leases that ended without a report (BLD-006)."
+  attempts: Int!
+  builderId: ID
+  "The builder that last claimed it."
+  builderName: String
+  leaseEndsAt: DateTime
+  queuedAt: DateTime!
+  claimedAt: DateTime
+  buildingAt: DateTime
+  uploadingAt: DateTime
+  publishedAt: DateTime
+  failedAt: DateTime
+  cancelledAt: DateTime
+  "When it entered its current state (BLD-080)."
+  stateChangedAt: DateTime!
+}
+
+type BuildLogLine {
+  sequence: Int!
+  "Redacted before it was stored (BLD-049)."
+  text: String!
+}
+
+type BuildJobUpdate {
+  job: BuildJob!
+  "The log lines this change added."
+  logLines: [BuildLogLine!]!
+}
+
+type Builder {
+  id: ID!
+  name: String!
+  platform: BuilderPlatform!
+  "The VPN address it enrolled from and must call from (BLD-024)."
+  clientAddr: IpAddr!
+  enrolledAt: DateTime!
+  lastSeenAt: DateTime
+  "It called within the last 60 seconds (BLD-007)."
+  online: Boolean!
+}
+
+type BuilderEnrolment {
+  builder: Builder!
+  "The builder token, shown once (BLD-023)."
+  token: String!
+  expiresAt: DateTime!
+}
+
+input BuildFileInput {
+  name: String!
+  "64 hex digits."
+  sha256: String!
+  "In bytes."
+  size: Int!
+}
+
 # ---------------------------------------------------------------- root types
 
 type Query {
@@ -1008,6 +1136,14 @@ type Query {
   audit(first: Int = 100, after: String): AuditConnection!
 
   sessions(deviceId: ID, live: Boolean, first: Int = 50, after: String): SessionConnection!
+
+  "Newest first (BLD-080)."
+  releases(first: Int = 20, after: String): ReleaseConnection!
+  "The highest version published or under way with the patch plus 1; null before the first."
+  nextReleaseVersion: String
+  builders: [Builder!]!
+  "Up to `first` (1 to 1000) stored lines after sequence `after`, oldest first (BLD-048)."
+  buildJobLog(id: ID!, after: Int, first: Int = 500): [BuildLogLine!]!
 }
 
 type Mutation {
@@ -1055,6 +1191,22 @@ type Mutation {
   dismissWebInterfaceSuggestion(checkId: ID!): ID!
   "Pins the certificate and writes an audit entry (WEB-008, WEB-009)."
   acceptWebCertificate(id: ID!, fingerprintSha256: String!): WebInterface!
+
+  "One queued job for each target; VALIDATION for a version that is not new (BLD-001, BLD-002)."
+  createRelease(version: String!, commit: String!, targets: [BuildTarget!]!): Release!
+  "Only a QUEUED job; CONFLICT otherwise (BLD-008)."
+  cancelBuildJob(id: ID!): BuildJob!
+  "Records the builder at the request's address; returns its token once (BLD-023, D-1)."
+  enrolBuilder(name: String!, platform: BuilderPlatformInput!): BuilderEnrolment!
+  "Deletes the builder and revokes its token (BLD-025). Returns the ID."
+  revokeBuilder(id: ID!): ID!
+
+  "Builder token only (D-1). Null when no job waits or the builder holds a lease (BLD-004, BLD-029)."
+  claimBuildJob(platform: BuilderPlatformInput!): BuildJob
+  "Builder token only; the lease holder only. Extends the lease (BLD-005, BLD-010, BLD-048)."
+  reportBuildJob(id: ID!, state: BuildJobState, logLines: [String!]!, failureReason: String): BuildJob!
+  "Builder token only. The job stays UPLOADING until the hub publishes it (BLD-063, D-5)."
+  reportBuildUploaded(id: ID!, files: [BuildFileInput!]!, feed: String!): BuildJob!
 }
 
 type Subscription {
@@ -1064,6 +1216,8 @@ type Subscription {
   "Every start and end of a session, from every client (RA-034)."
   sessionChanged: SessionChange!
   metricsAdded(deviceId: ID): MetricsAdded!
+  "Every change to a build job, with the log lines it added (BLD-081)."
+  buildJobUpdated(jobId: ID): BuildJobUpdate!
 }
 
 type DeviceStatusChange {

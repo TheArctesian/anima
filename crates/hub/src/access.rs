@@ -2,6 +2,7 @@
 //! (SEC-002, API-003), and from where: permitted networks and the listening edge (NET-001 to
 //! NET-003, SEC-001, SEC-008).
 
+mod builder_tokens;
 mod connection;
 pub mod graphql;
 mod guard;
@@ -27,8 +28,9 @@ use sqlx::PgPool;
 use zeroize::Zeroizing;
 
 pub use crate::events::{ClientAddr, Operator};
+pub use builder_tokens::{IssuedToken, issue_builder_token, revoke_builder_token};
 pub use connection::{MESSAGE_LIMIT, SUBPROTOCOL, SocketAccess, accept_socket};
-pub use guard::{Authenticated, SignInRequired};
+pub use guard::{Authenticated, BUILDER_FIELDS, BuilderSignedIn, SignInRequired};
 pub use identity::{Identity, client_addr, identify, identify_connection};
 pub use layer::{Edge, permitted_networks_layer};
 pub use password::Password;
@@ -56,6 +58,10 @@ pub enum Error {
     /// A `read` token asked for a mutation.
     #[error("This token may only read.")]
     ReadOnly,
+    /// The token's scope does not cover the field: a builder token asked for an operator
+    /// field, or an operator token for a builder field (BLD-022).
+    #[error("{0}")]
+    OutOfScope(&'static str),
     /// The client address is outside every permitted network (NET-002).
     #[error("This address is not in a permitted network.")]
     NotPermitted,
@@ -114,7 +120,7 @@ impl Error {
             Self::Unauthenticated | Self::WrongCredentials | Self::TotpSecret(_) => {
                 "UNAUTHENTICATED"
             }
-            Self::ReadOnly | Self::NotPermitted => "FORBIDDEN",
+            Self::ReadOnly | Self::NotPermitted | Self::OutOfScope(_) => "FORBIDDEN",
             Self::Validation { .. } => "VALIDATION",
             Self::Unreachable(_) => "UNAVAILABLE",
             Self::Database(_)
@@ -135,6 +141,7 @@ impl Error {
             | Self::WrongCredentials
             | Self::ReadOnly
             | Self::NotPermitted
+            | Self::OutOfScope(_)
             | Self::Validation { .. } => None,
             Self::Unreachable(_) => Some("database_unreachable"),
             Self::Database(_) => Some("database"),
@@ -192,6 +199,7 @@ impl Error {
             | Self::WrongCredentials
             | Self::ReadOnly
             | Self::NotPermitted
+            | Self::OutOfScope(_)
             | Self::Validation { .. }
             | Self::Unavailable => None,
         }
@@ -217,8 +225,8 @@ struct Fault {
 ///
 /// # Errors
 ///
-/// `Error::Unauthenticated` for a malformed, unknown or expired token; `Error::Database` if
-/// it cannot be looked up.
+/// `Error::Unauthenticated` for a malformed, unknown or expired token and for a builder
+/// token, which stands for no operator (BLD-022); `Error::Database` if it cannot be looked up.
 pub async fn operator_for_token(
     db: &PgPool,
     token: &str,
@@ -226,6 +234,7 @@ pub async fn operator_for_token(
 ) -> Result<Operator, Error> {
     let identity = identity::resolve(db, token, now)
         .await?
+        .filter(|identity| identity.scope() != Scope::Builder)
         .ok_or(Error::Unauthenticated)?;
     Ok(identity.operator().clone())
 }
