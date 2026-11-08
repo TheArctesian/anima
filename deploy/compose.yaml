@@ -172,8 +172,9 @@ services:
       # public address, so a device entry cannot reach PostgreSQL, guacd or the host. The notify
       # network is denied except the Apprise address 172.30.3.10: the eight CIDRs below cover
       # 172.30.3.0/24 without it, so the hub can still send to its own Apprise (NET-001, E-1).
-      # Apprise's onward traffic is outside this list. APPRISE_ALLOW_SERVICES limits it to named
-      # cloud services; a host firewall rule for 172.30.3.10 is an optional live step.
+      # Apprise's onward traffic is outside this list. The allow list and the attachment reject
+      # together limit Apprise to the named cloud services. An optional host firewall rule for
+      # 172.30.3.10 is in the README live steps.
       ANIMA_PROBE_DENY: ${ANIMA_HUB_SUBNET:-172.30.0.0/24},${ANIMA_DATABASE_SUBNET:-172.30.1.0/24},${ANIMA_VPS_PUBLIC_ADDRESS:?set to the VPS public IPv4}/32,${ANIMA_LOCALAPI_SUBNET:-172.30.2.0/24},${ANIMA_HUB_ADDRESS:?set ANIMA_HUB_ADDRESS to the hub's VPN address}/32,172.30.3.0/29,172.30.3.8/31,172.30.3.11/32,172.30.3.12/30,172.30.3.16/28,172.30.3.32/27,172.30.3.64/26,172.30.3.128/25
       # Tailscale status and ping checks go through the proxy; empty makes them Unknown (K7).
       ANIMA_TAILSCALE_LOCALAPI: ${ANIMA_TAILSCALE_LOCALAPI:-localapi:8080}
@@ -226,7 +227,7 @@ services:
         condition: service_started
     restart: unless-stopped
 
-  # Optional notification relay (E-2, D-13): `docker compose --profile apprise up -d`. The hub
+  # Optional notification relay (E-2, D-19, NOT-002): `docker compose --profile apprise up -d`. The hub
   # posts stateless /notify calls to it; it keeps no state, publishes no port and holds no secret.
   # The hub does not depend on it.
   apprise:
@@ -242,6 +243,9 @@ services:
       # Only cloud services. json://, xml:// and form:// take any host, so they would reach
       # networks the hub's deny list protects. Any other scheme is refused (S-1).
       APPRISE_ALLOW_SERVICES: ${APPRISE_ALLOW_SERVICES:-discord,tgram,slack}
+      # An `attach` given as an http URL is fetched by Apprise from any host. Reject every URL.
+      # Do not use APPRISE_MAX_ATTACHMENTS 0: it means unlimited.
+      APPRISE_ATTACH_REJECT_URL: "*"
       # No configuration-key page (it is only used in stateful mode).
       APPRISE_ADMIN: "no"
     # /tmp: nginx, gunicorn and supervisord write their pid, socket and temp files there. The
@@ -279,7 +283,7 @@ networks:
     ipam:
       config:
         - subnet: ${ANIMA_LOCALAPI_SUBNET:-172.30.2.0/24}
-  # The hub and Apprise only. It has a route out: Apprise sends to the channels' services (D-13).
+  # The hub and Apprise only. It has a route out: Apprise sends to the channels' services (D-19).
   # The subnet is a literal because the carved deny list in the hub environment cannot follow a
   # variable (E-1).
   notify:
