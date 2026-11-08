@@ -14,7 +14,7 @@ use std::{
 use anima_hub::{
     DRAIN_LIMIT, Shutdown,
     access::{self, listen},
-    checks,
+    builds, checks,
     clock::{Clock as _, SystemClock},
     config::{self, Config},
     credentials::Vault,
@@ -155,10 +155,11 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         live: live.clone(),
         policy,
         metrics_feed: feed.clone(),
+        build_updates: builds::Updates::new(),
     };
     let tunnels = tunnels(&dependencies);
+    let upkeep = upkeep::spawn(&dependencies);
     let schema = build_schema(dependencies);
-    let upkeep = upkeep::spawn(&pool, &clock);
     let scheduler = checks::spawn_scheduler(pool.clone(), bus.clone(), clock.clone(), probing);
     let collector =
         metrics::spawn_collector(pool.clone(), feed, bus.clone(), clock.clone(), collecting);

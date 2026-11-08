@@ -10,7 +10,7 @@ use async_graphql::{MergedObject, MergedSubscription, Schema, SchemaBuilder};
 use sqlx::PgPool;
 
 use crate::{
-    access, checks,
+    access, builds, checks,
     clock::Clock,
     config::Config,
     credentials::Vault,
@@ -29,6 +29,7 @@ use crate::{
 #[derive(MergedObject, Default)]
 pub struct Query(
     access::graphql::Query,
+    builds::graphql::Query,
     checks::graphql::Query,
     devices::graphql::Query,
     events::graphql::Query,
@@ -39,6 +40,8 @@ pub struct Query(
 #[derive(MergedObject, Default)]
 pub struct Mutation(
     access::graphql::Mutation,
+    builds::graphql::Mutation,
+    builds::graphql::BuilderMutation,
     checks::graphql::Mutation,
     devices::graphql::Mutation,
     maintenance::graphql::Mutation,
@@ -50,6 +53,7 @@ pub struct Mutation(
 
 #[derive(MergedSubscription, Default)]
 pub struct Subscription(
+    builds::graphql::Subscription,
     checks::graphql::Subscription,
     events::graphql::Subscription,
     metrics::graphql::Subscription,
@@ -75,6 +79,9 @@ pub struct Dependencies {
     /// The hub's one `Feed`: the collector publishes on it and `metricsAdded` reads it, so
     /// `main.rs` gives the collector a clone of this same value.
     pub metrics_feed: metrics::Feed,
+    /// The hub's one build `Updates`: the lease upkeep publishes on it and `buildJobUpdated`
+    /// reads it, so `main.rs` gives the upkeep this same value.
+    pub build_updates: builds::Updates,
 }
 
 /// Put each dependency into the schema data, with the devices loaders (WP-06 H-2);
@@ -95,6 +102,7 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
         live,
         policy,
         metrics_feed,
+        build_updates,
     } = dependencies;
     harden(
         Schema::build(
@@ -142,6 +150,8 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .data(policy)
     // metrics
     .data(metrics_feed)
+    // builds
+    .data(build_updates)
     .finish()
 }
 

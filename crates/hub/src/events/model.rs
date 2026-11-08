@@ -11,7 +11,10 @@ use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use crate::{
-    ids::{CheckId, DeviceId, EventId, OperatorId, SessionId, SiteId, WindowId},
+    ids::{
+        BuildJobId, BuilderId, CheckId, DeviceId, EventId, OperatorId, ReleaseId, SessionId,
+        SiteId, WindowId,
+    },
     status::Status,
 };
 
@@ -159,6 +162,8 @@ pub enum AuditAction {
     Download,
     /// A Wake-on-LAN packet sent to a device (RA-031).
     Wake,
+    /// A queued build job the operator stopped (BLD-008).
+    Cancel,
 }
 
 impl AuditAction {
@@ -181,6 +186,7 @@ impl AuditAction {
             Self::Upload => "upload",
             Self::Download => "download",
             Self::Wake => "wake",
+            Self::Cancel => "cancel",
         }
     }
 }
@@ -200,6 +206,12 @@ pub enum AuditTarget {
     HostKey(DeviceId),
     /// A file on a device, moved over the files tunnel; the change holds its path.
     File(DeviceId),
+    /// A release and its build jobs (BLD-082).
+    Release(ReleaseId),
+    /// One build job of a release (BLD-082).
+    BuildJob(BuildJobId),
+    /// A computer enrolled to build releases (BLD-082).
+    Builder(BuilderId),
 }
 
 impl AuditTarget {
@@ -216,6 +228,9 @@ impl AuditTarget {
             Self::Credential(_) => "credential",
             Self::HostKey(_) => "host_key",
             Self::File(_) => "file",
+            Self::Release(_) => "release",
+            Self::BuildJob(_) => "build_job",
+            Self::Builder(_) => "builder",
         }
     }
 
@@ -231,6 +246,9 @@ impl AuditTarget {
             Self::Check(id) => id.to_string(),
             Self::Window(id) => id.to_string(),
             Self::Session(id) => id.to_string(),
+            Self::Release(id) => id.to_string(),
+            Self::BuildJob(id) => id.to_string(),
+            Self::Builder(id) => id.to_string(),
         }
     }
 }

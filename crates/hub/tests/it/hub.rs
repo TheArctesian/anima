@@ -124,6 +124,7 @@ pub fn dependencies(pool: &PgPool, clock: Arc<dyn Clock>, bus: Bus) -> Dependenc
         live: Live::default(),
         policy: AddressPolicy::default(),
         metrics_feed: Feed::new(),
+        build_updates: anima_hub::builds::Updates::new(),
     }
 }
 

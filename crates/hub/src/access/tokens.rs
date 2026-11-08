@@ -16,6 +16,9 @@ const TOKEN_CHARS: usize = 43;
 /// A login token is valid this long (D-7).
 pub(super) const LOGIN_LIFETIME: TimeDelta = TimeDelta::days(30);
 
+/// A builder token is valid this long: the VPN client key period (BLD-022, VPN-003).
+pub(super) const BUILDER_LIFETIME: TimeDelta = TimeDelta::days(180);
+
 /// `last_used_at` is written at most this often (D-7).
 const TOUCH_INTERVAL: TimeDelta = TimeDelta::minutes(1);
 
@@ -24,6 +27,8 @@ const TOUCH_INTERVAL: TimeDelta = TimeDelta::minutes(1);
 pub enum Scope {
     Read,
     Write,
+    /// Only the builder operations: claim and report build jobs (BLD-022, D-1).
+    Builder,
 }
 
 impl Scope {
@@ -32,6 +37,7 @@ impl Scope {
         match self {
             Self::Read => "read",
             Self::Write => "write",
+            Self::Builder => "builder",
         }
     }
 
@@ -40,6 +46,7 @@ impl Scope {
         match text {
             "read" => Some(Self::Read),
             "write" => Some(Self::Write),
+            "builder" => Some(Self::Builder),
             _ => None,
         }
     }

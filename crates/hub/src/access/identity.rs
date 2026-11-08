@@ -16,6 +16,7 @@ use super::{
     ClientAddr, Error, Operator, store,
     tokens::{self, Scope},
 };
+use crate::ids::TokenId;
 
 /// A signed-in request: the operator and the token it presented.
 ///
@@ -73,23 +74,41 @@ impl Identity {
         self.token
     }
 
+    /// The token of a builder identity, which names its builder record (BLD-024); `None` for
+    /// an operator token.
+    #[must_use]
+    pub fn builder_token(&self) -> Option<TokenId> {
+        (self.scope == Scope::Builder).then(|| TokenId::from(self.token))
+    }
+
+    /// The `Operator` resolvers may act as: none for a builder token, so an operator resolver
+    /// that forgets its guard still finds no operator (BLD-022).
+    fn acting_operator(&self) -> Option<Operator> {
+        (self.scope != Scope::Builder).then(|| self.operator.clone())
+    }
+
     /// Whether the identity still holds at `now`.
     pub(super) fn valid_at(&self, now: DateTime<Utc>) -> bool {
         tokens::usable(self.expires_at, now)
     }
 
-    /// Adds the identity and its `Operator` to one HTTP request's data.
+    /// Adds the identity and, for an operator token, its `Operator` to one HTTP request's data.
     #[must_use]
     pub fn attach(self, request: Request) -> Request {
-        request.data(self.operator.clone()).data(self)
+        match self.acting_operator() {
+            Some(operator) => request.data(operator).data(self),
+            None => request.data(self),
+        }
     }
 
-    /// The identity and its `Operator` as WebSocket connection data, for the value
-    /// `on_connection_init` returns.
+    /// The identity and, for an operator token, its `Operator` as WebSocket connection data,
+    /// for the value `on_connection_init` returns.
     #[must_use]
     pub fn into_connection_data(self) -> Data {
         let mut data = Data::default();
-        data.insert(self.operator.clone());
+        if let Some(operator) = self.acting_operator() {
+            data.insert(operator);
+        }
         data.insert(self);
         data
     }

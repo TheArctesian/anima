@@ -2,6 +2,7 @@
 //! tests can reach them.
 
 pub mod access;
+pub mod builds;
 pub mod checks;
 pub mod clock;
 pub mod config;

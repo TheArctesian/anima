@@ -280,6 +280,20 @@ pub(super) async fn delete_token(conn: &mut PgConnection, id: Uuid) -> Result<bo
     Ok(done.rows_affected() == 1)
 }
 
+/// Deletes the token if it has the `builder` scope, so no other token is revoked through a
+/// builder. Returns false if there was no such builder token.
+pub(super) async fn delete_builder_token(
+    conn: &mut PgConnection,
+    id: Uuid,
+) -> Result<bool, sqlx::Error> {
+    let done = sqlx::query("delete from access.api_tokens where id = $1 and scope = $2")
+        .bind(id)
+        .bind(Scope::Builder.as_str())
+        .execute(conn)
+        .await?;
+    Ok(done.rows_affected() == 1)
+}
+
 /// Records a login attempt as failed until `finish_attempt` says otherwise, so concurrent
 /// attempts count it at once (D-8). Returns its id.
 pub(super) async fn start_attempt(
