@@ -71,9 +71,9 @@ fn log_004_the_characters_just_outside_the_unsafe_ranges_are_accepted() {
     for ok in [
         "a\u{2027}b",
         "a\u{202F}b",
-        "a\u{2065}b",
-        "a\u{206A}b",
-        "a\u{200D}b",
+        "a\u{200A}b",
+        "a\u{205F}b",
+        "a\u{2070}b",
     ] {
         assert!(device_with(|i| i.name = ok.into()).is_ok(), "{ok:?}");
     }
