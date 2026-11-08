@@ -41,7 +41,7 @@ use crate::{
     devices,
     events::Bus,
     sessions::{
-        Live, admission, end::CLIENT_IDLE, live::FilesRelay, tickets::FILES_PATH, upgrade::Quiet,
+        Live, admission, end::CLIENT_IDLE, live::FilesRelay, quiet::Quiet, tickets::FILES_PATH,
     },
     ssh::{LinkError, SshLink, link},
     targets::AddressPolicy,

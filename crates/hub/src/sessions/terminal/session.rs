@@ -7,8 +7,6 @@
 //! sends a byte after the request headers and then leaves is not seen until the upgrade
 //! never comes, so the opening, the sign-in included, carries on for that session.
 
-use std::sync::Arc;
-
 use axum::extract::ws::WebSocket;
 use tokio::sync::oneshot;
 
@@ -21,21 +19,13 @@ use super::{
 };
 use crate::sessions::{
     PendingTicket, Tunnel,
-    end::{Cause, End, Records},
+    end::{Cause, End},
     upgrade::{FarSide, upgraded},
 };
 
 impl FarSide for Terminal {
     type Opening = Opening;
     const NOT_OFFERED: &'static str = NOT_TERMINAL;
-
-    fn records(&self) -> Records {
-        Records {
-            db: self.db.clone(),
-            bus: self.bus.clone(),
-            clock: Arc::clone(&self.clock),
-        }
-    }
 
     async fn open(&self, ticket: &PendingTicket) -> Result<Opening, End> {
         let session = ticket.session;

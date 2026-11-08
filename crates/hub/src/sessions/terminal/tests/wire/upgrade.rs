@@ -20,9 +20,8 @@ use super::{
 };
 use crate::sessions::{
     Actor, Redeemed,
-    end::{Cause, End, finish},
+    end::{Cause, End, Records, finish},
     tests::fixture::{LOOPBACK, address, ended, ended_once, now, operator},
-    upgrade::FarSide as _,
 };
 
 /// A session redeemed and signed in, with no client socket yet.
@@ -75,7 +74,16 @@ async fn mv_003_a_failed_upgrade_is_operator_and_the_channel_is_closed(pool: PgP
     let end = after_response(&bench, &mut redeemed, opening, socket).await;
     assert_eq!(end.cause, Cause::OperatorClosed);
     channel_closed(&bench).await;
-    finish(&bench.terminal.records(), redeemed, &end).await;
+    finish(
+        &Records::new(
+            &bench.terminal.db,
+            &bench.terminal.bus,
+            &bench.terminal.clock,
+        ),
+        redeemed,
+        &end,
+    )
+    .await;
     ended_once(
         &ended(&pool, bench.session).await,
         "operator",
@@ -129,7 +137,16 @@ async fn sec_007_a_changed_host_key_stays_the_cause_when_the_upgrade_fails(pool:
     drop(socket_tx);
     let end = after_response(&bench, &mut redeemed, Opening::HostKeyChanged, socket).await;
     assert_eq!(end.cause, Cause::HostKeyMismatch);
-    finish(&bench.terminal.records(), redeemed, &end).await;
+    finish(
+        &Records::new(
+            &bench.terminal.db,
+            &bench.terminal.bus,
+            &bench.terminal.clock,
+        ),
+        redeemed,
+        &end,
+    )
+    .await;
     ended_once(
         &ended(&pool, bench.session).await,
         "host_key_mismatch",

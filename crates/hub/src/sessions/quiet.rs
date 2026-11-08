@@ -7,7 +7,7 @@ use std::time::Duration;
 use tokio::time::Instant;
 
 /// When one side's silence comes due: `wait` after it last started.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy)]
 pub(in crate::sessions) struct Quiet {
     wait: Duration,
     due: Instant,

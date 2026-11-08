@@ -14,8 +14,6 @@
 mod link;
 mod writes;
 
-use std::sync::Arc;
-
 use axum::extract::ws::WebSocket;
 use tokio::sync::oneshot;
 
@@ -27,7 +25,6 @@ use super::{
 };
 use crate::sessions::{
     PendingTicket, Tunnel,
-    end::Records,
     upgrade::{FarSide, close, upgraded},
 };
 use writes::{leave_gateway, send_text};
@@ -39,14 +36,6 @@ const NOT_GUACAMOLE: &str = "The client did not open the tunnel as a Guacamole W
 impl FarSide for Route {
     type Opening = Opening;
     const NOT_OFFERED: &'static str = NOT_GUACAMOLE;
-
-    fn records(&self) -> Records {
-        Records {
-            db: self.db.clone(),
-            bus: self.bus.clone(),
-            clock: Arc::clone(&self.clock),
-        }
-    }
 
     async fn open(&self, ticket: &PendingTicket) -> Result<Opening, End> {
         let (session, protocol) = (ticket.session, ticket.protocol);

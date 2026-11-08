@@ -29,11 +29,7 @@ use super::{
     },
     writes::{leave_gateway, send_text, write_gateway},
 };
-use crate::sessions::{
-    EndCause, Tunnel,
-    end::unreadable,
-    upgrade::{Quiet, close},
-};
+use crate::sessions::{EndCause, Tunnel, end::unreadable, quiet::Quiet, upgrade::close};
 
 /// Relays between the client and guacd under the opened session's policy until the first
 /// cause, then closes both.

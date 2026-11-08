@@ -23,7 +23,7 @@ use super::{
 use crate::sessions::{
     Tunnel,
     end::{Cause, End, unreadable},
-    upgrade::Quiet,
+    quiet::Quiet,
 };
 
 /// The terminal type the hub asks the device for (K4 Section 8.4).

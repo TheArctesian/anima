@@ -8,11 +8,7 @@ use russh::{ChannelMsg, ChannelReadHalf, ChannelWriteHalf, client::Msg};
 use tokio::time::Instant;
 
 use super::{control, relay::Writing, route::Timing};
-use crate::sessions::{
-    Tunnel,
-    end::End,
-    upgrade::{self, Quiet},
-};
+use crate::sessions::{Tunnel, end::End, quiet::Quiet, upgrade};
 
 /// One upgraded terminal: the client socket, the device's channel, the end signal, the waits
 /// and the deadlines they set.

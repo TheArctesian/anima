@@ -30,6 +30,17 @@ pub(in crate::sessions) struct Records {
     pub(in crate::sessions) clock: Arc<dyn Clock>,
 }
 
+impl Records {
+    /// The records of a route that holds the three parts itself.
+    pub(in crate::sessions) fn new(db: &PgPool, bus: &Bus, clock: &Arc<dyn Clock>) -> Self {
+        Self {
+            db: db.clone(),
+            bus: bus.clone(),
+            clock: Arc::clone(clock),
+        }
+    }
+}
+
 /// A redeemed session whose end is not written yet. The session task holds it from the
 /// moment it owns the ticket; [`Unfinished::finish`] writes the end. If the task stops
 /// before that (a panic), dropping this writes the end from a new task (MV-003, LOG-005):

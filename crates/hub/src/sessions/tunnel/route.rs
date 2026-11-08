@@ -38,9 +38,10 @@ use crate::{
     credentials::Vault,
     events::Bus,
     sessions::{
-        Live, Protocol, Redeemed, admission,
+        Live, Protocol, Redeemed, Serving, admission,
+        end::{Records, Unfinished},
         tickets::{RECONNECT, WOKEN_OPENING},
-        upgrade::{Serving, run_session},
+        upgrade::run_session,
     },
     ssh::probe::PROBE_TIMEOUT,
 };
@@ -144,7 +145,13 @@ async fn open(
     let (answer, answered) = oneshot::channel();
     // Not awaited here: dropping this handler must not drop the session (MV-003).
     let upgrade = admission::offering(upgrade, SUBPROTOCOL);
-    tokio::spawn(run_session(route, redeemed, upgrade, answer));
+    let records = Records::new(&route.db, &route.bus, &route.clock);
+    tokio::spawn(run_session(
+        route,
+        Unfinished::new(records, redeemed),
+        upgrade,
+        answer,
+    ));
     // No answer only when the task stopped before giving one; it still ended the session.
     answered
         .await

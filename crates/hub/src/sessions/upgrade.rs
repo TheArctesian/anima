@@ -1,16 +1,13 @@
-//! The session task the Guacamole and the terminal tunnel share (K4 Sections 2 and 8.1,
+//! The session task the Guacamole tunnel and the terminal tunnel share (K4 Sections 2 and 8.1,
 //! MV-003): one task per redeemed ticket that checks the subprotocol, opens the far side while
 //! the request waits, unless the session ends first, answers the request with the upgrade,
 //! hands over to the tunnel's own part ([`FarSide`]) and ends the session once. Beside it, the
-//! sends and the close every WebSocket tunnel makes (`writes`), the silence timer (`quiet`) and
-//! what the tunnels serve with (`serving`).
+//! sends and the close every WebSocket tunnel makes (`writes`).
 //!
 //! The session task, not the request handler, runs all of this, so the client leaving (seen
 //! as the handler dropped) ends the session instead of dropping it. It holds the ticket in an
 //! `end::Unfinished` guard, so even a panic ends the row.
 
-mod quiet;
-mod serving;
 mod writes;
 
 use std::{sync::Arc, time::Duration};
@@ -24,11 +21,9 @@ use tokio::{sync::oneshot, time::timeout};
 
 use super::{
     PendingTicket, Redeemed, Tunnel,
-    end::{CLIENT_LEFT, Cause, End, Records, Unfinished},
+    end::{CLIENT_LEFT, Cause, End, Unfinished},
 };
 
-pub(super) use quiet::Quiet;
-pub use serving::Serving;
 pub(super) use writes::{close, send};
 
 /// One tunnel's own part of the session task: how its far side opens for a ticket and what
@@ -39,9 +34,6 @@ pub(super) trait FarSide {
     type Opening;
     /// The event message when the request did not offer the tunnel's subprotocol.
     const NOT_OFFERED: &'static str;
-
-    /// Where this tunnel's sessions write their end.
-    fn records(&self) -> Records;
 
     /// Opens the far side for `ticket`, safe to drop at any await. A failure is logged here
     /// and is the session's end.
@@ -57,15 +49,15 @@ pub(super) trait FarSide {
     ) -> End;
 }
 
-/// Runs the session of `redeemed` to its end and writes the end. `upgrade` is the request's
-/// upgrade when it offered the tunnel's subprotocol; `answer` takes the handler's response.
+/// Runs the session `unfinished` holds to its end and writes the end. `upgrade` is the
+/// request's upgrade when it offered the tunnel's subprotocol; `answer` takes the handler's
+/// response.
 pub(super) async fn run_session<F: FarSide>(
     far: Arc<F>,
-    redeemed: Redeemed,
+    mut unfinished: Unfinished,
     upgrade: Option<WebSocketUpgrade>,
     answer: oneshot::Sender<Response>,
 ) {
-    let mut unfinished = Unfinished::new(far.records(), redeemed);
     let end = session(&*far, unfinished.redeemed(), upgrade, answer).await;
     unfinished.finish(&end).await;
 }

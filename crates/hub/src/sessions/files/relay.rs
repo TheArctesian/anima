@@ -32,7 +32,8 @@ use super::{
 use crate::sessions::{
     EndCause, EndReason,
     end::{CLOSE_WAIT, Cause},
-    upgrade::{Quiet, close},
+    quiet::Quiet,
+    upgrade::close,
 };
 
 /// One request to the device and what it answered.
