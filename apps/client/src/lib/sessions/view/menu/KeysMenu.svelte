@@ -225,7 +225,7 @@
 
   .menu button:hover,
   .menu button:focus {
-    background: var(--border);
+    background: var(--surface-hover);
   }
 
   .label {

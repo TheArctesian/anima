@@ -28,7 +28,7 @@
   }
 
   button:hover:not(:disabled, [aria-disabled='true']) {
-    background: var(--border);
+    background: var(--surface-hover);
   }
 
   button:active:not(:disabled, [aria-disabled='true']) {

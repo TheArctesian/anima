@@ -121,7 +121,7 @@
   }
 
   button:hover {
-    background: var(--border);
+    background: var(--surface-hover);
   }
 
   .name {
