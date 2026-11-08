@@ -1,10 +1,13 @@
 // The editor's values turned into a `NotificationChannelInput`, or refused with fixed messages before anything is
 // sent. The secret rule of K1 lives here: a secret the operator did not touch is `null` (the hub keeps it), a stored
-// optional secret the operator removed is `""` (the hub clears it), and anything typed is sent as typed. No message
-// here ever repeats what was typed into a secret field (LOG-007, F-8).
+// optional secret the operator removed is `""` (the hub clears it), and anything typed is sent as typed. A channel that
+// moves to a new target needs every stored secret again (CR-14.1), so a secret meant for one host is never sent to
+// another. URLs are https only and a server is an origin only (CR-14.6, CR-14.7). No message here ever repeats what
+// was typed into a secret field (LOG-007, F-8).
 import type { NotificationChannelInput } from '../api';
+import { cleanOrigin, mailTarget } from '../channels/target';
 import { templateFine, templateProblems } from '../template/template';
-import type { ChannelDraft, HeaderDraft, Stored } from './draft';
+import type { ChannelDraft, HeaderDraft, SecretDraft, Stored } from './draft';
 
 export type DraftField =
   | 'name'
@@ -12,10 +15,12 @@ export type DraftField =
   | 'webhook.headers'
   | 'ntfy.server'
   | 'ntfy.topic'
+  | 'ntfy.token'
   | 'email.host'
   | 'email.port'
   | 'email.from'
   | 'email.to'
+  | 'email.password'
   | 'apprise.server'
   | 'apprise.urls'
   | 'apprise.key'
@@ -42,6 +47,10 @@ export const ADDRESS_WRONG = 'Enter an email address.';
 export const RECIPIENTS_WRONG = 'Enter one or more email addresses, separated by commas.';
 export const APPRISE_URLS_WRONG = 'Enter one Apprise URL per line, for example discord://….';
 export const APPRISE_KEY_WRONG = 'Use 1 to 128 letters, digits, - or _.';
+export const SERVER_WRONG = 'Enter https:// and the host only, with no user name, path or query.';
+export const AGAIN = 'The target changed: enter this again.';
+export const AGAIN_OR_REMOVE = 'The target changed: enter this again, or remove it.';
+export const HEADERS_AGAIN = 'The target changed: replace the headers with each value typed again, or remove them all.';
 
 const HEADER_NAME = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
 const TOPIC = /^[-_A-Za-z0-9]{1,64}$/;
@@ -56,13 +65,14 @@ export function secretValue(typed: string, clear: boolean): string | null {
   return clear ? '' : null;
 }
 
-function isHttpUrl(text: string): boolean {
+/** The origin of an https URL, or `null`: webhook URLs are https only (CR-14.6). */
+function httpsOrigin(text: string): string | null {
   try {
-    const { protocol } = new URL(text);
-    return protocol === 'https:' || protocol === 'http:';
+    const url = new URL(text);
+    return url.protocol === 'https:' ? url.origin : null;
   } catch {
     // Not a URL; the caller says so in a fixed sentence.
-    return false;
+    return null;
   }
 }
 
@@ -77,7 +87,17 @@ function refuse(problems: Problems, field: DraftField, message: string): void {
   problems.push({ field, message });
 }
 
-/** The headers to send: `null` keeps the stored ones, `[]` removes them all, a list replaces them (K1). */
+/** Whether a saved channel would send somewhere new, so its stored secrets must come again (CR-14.1). */
+function moved(stored: Stored | null, target: string | null): boolean {
+  return stored !== null && (stored.target === null || target !== stored.target);
+}
+
+/** A stored optional secret on a new target: typed again, or removed (`""`); never kept (CR-14.1). */
+function askAgain(problems: Problems, field: DraftField, held: boolean, secret: SecretDraft): void {
+  if (held && secret.value === '' && !secret.clear) refuse(problems, field, AGAIN_OR_REMOVE);
+}
+
+/** The headers to send: `null` keeps the stored ones, `[]` removes them all, a list replaces them (CR-14.3). */
 function headersValue(webhook: ChannelDraft['webhook'], stored: Stored | null, problems: Problems): HeaderDraft[] | null {
   if (!webhook.replaceHeaders) return null;
   const rows = webhook.headers.filter((header) => header.name.trim() !== '' || header.value !== '');
@@ -88,22 +108,29 @@ function headersValue(webhook: ChannelDraft['webhook'], stored: Stored | null, p
 
 function webhookInput(draft: ChannelDraft, stored: Stored | null, problems: Problems): NotificationChannelInput['settings'] {
   const url = draft.webhook.url.trim();
+  const origin = httpsOrigin(url);
   if (url === '' && stored === null) refuse(problems, 'webhook.url', URL_MISSING);
-  else if (url !== '' && !isHttpUrl(url)) refuse(problems, 'webhook.url', URL_WRONG);
+  else if (url !== '' && origin === null) refuse(problems, 'webhook.url', URL_WRONG);
+  // An untouched URL keeps the stored one, and with it the target.
+  const kept = (stored?.headerNames.length ?? 0) > 0 && !draft.webhook.replaceHeaders;
+  if (origin !== null && moved(stored, origin) && kept) refuse(problems, 'webhook.headers', HEADERS_AGAIN);
   const headers = headersValue(draft.webhook, stored, problems);
   return { webhook: { url: secretValue(url, false), method: draft.webhook.method, headers } };
 }
 
 function ntfyInput(draft: ChannelDraft, stored: Stored | null, problems: Problems): NotificationChannelInput['settings'] {
   const { ntfy } = draft;
-  const server = ntfy.server.trim();
+  const server = cleanOrigin(ntfy.server.trim());
   const topic = ntfy.topic.trim();
-  if (!isHttpUrl(server)) refuse(problems, 'ntfy.server', URL_WRONG);
-  if (topic !== '' || stored === null) {
-    if (!TOPIC.test(topic)) refuse(problems, 'ntfy.topic', TOPIC_WRONG);
-  }
+  const away = moved(stored, server);
+  if (server === null) refuse(problems, 'ntfy.server', SERVER_WRONG);
+  if (topic === '' && away) refuse(problems, 'ntfy.topic', AGAIN);
+  else if ((topic !== '' || stored === null) && !TOPIC.test(topic)) refuse(problems, 'ntfy.topic', TOPIC_WRONG);
+  if (away) askAgain(problems, 'ntfy.token', stored?.ntfyToken === true, ntfy.token);
   const clear = stored?.ntfyToken === true && ntfy.token.clear;
-  return { ntfy: { server, topic: secretValue(topic, false), token: secretValue(ntfy.token.value, clear), priority: ntfy.priority } };
+  return {
+    ntfy: { server: server ?? ntfy.server.trim(), topic: secretValue(topic, false), token: secretValue(ntfy.token.value, clear), priority: ntfy.priority },
+  };
 }
 
 function emailInput(draft: ChannelDraft, stored: Stored | null, problems: Problems): NotificationChannelInput['settings'] {
@@ -116,6 +143,7 @@ function emailInput(draft: ChannelDraft, stored: Stored | null, problems: Proble
   if (!/^\d{1,5}$/.test(email.port.trim()) || port < 1 || port > 65_535) refuse(problems, 'email.port', PORT_WRONG);
   if (!ADDRESS.test(from)) refuse(problems, 'email.from', ADDRESS_WRONG);
   if (to.length === 0 || !to.every((address) => ADDRESS.test(address))) refuse(problems, 'email.to', RECIPIENTS_WRONG);
+  if (moved(stored, mailTarget(host, port))) askAgain(problems, 'email.password', stored?.emailPassword === true, email.password);
   const username = email.username.trim();
   const clear = stored?.emailPassword === true && email.password.clear;
   return {
@@ -123,21 +151,23 @@ function emailInput(draft: ChannelDraft, stored: Stored | null, problems: Proble
   };
 }
 
+/** The URLs or key of the mode sent: typed, or kept when the hub holds them for this mode at this server (CR-14.1, CR-14.2). */
 function appriseInput(draft: ChannelDraft, stored: Stored | null, problems: Problems): NotificationChannelInput['settings'] {
   const { apprise } = draft;
-  const server = apprise.server.trim();
-  if (!isHttpUrl(server)) refuse(problems, 'apprise.server', URL_WRONG);
-  // A mode the hub holds nothing for needs its URLs or key now; the mode it holds keeps them when left empty.
-  const required = stored?.appriseMode !== apprise.mode;
+  const server = cleanOrigin(apprise.server.trim());
+  if (server === null) refuse(problems, 'apprise.server', SERVER_WRONG);
+  const required = stored?.appriseMode !== apprise.mode || moved(stored, server);
   const urls = listOf(apprise.urls);
   const key = apprise.key.trim();
   const tags = listOf(apprise.tags);
+  const base = { server: server ?? apprise.server.trim(), mode: apprise.mode, tags };
+  // The other mode's secret is null: the hub deletes it when the mode changes (CR-14.2).
   if (apprise.mode === 'STATELESS_URLS') {
     if ((required || urls.length > 0) && (urls.length === 0 || !urls.every((url) => APPRISE_URL.test(url)))) refuse(problems, 'apprise.urls', APPRISE_URLS_WRONG);
-    return { apprise: { server, mode: apprise.mode, urls: urls.length === 0 ? null : urls, key: null, tags } };
+    return { apprise: { ...base, urls: urls.length === 0 ? null : urls, key: null } };
   }
   if ((required || key !== '') && !APPRISE_KEY.test(key)) refuse(problems, 'apprise.key', APPRISE_KEY_WRONG);
-  return { apprise: { server, mode: apprise.mode, urls: null, key: secretValue(key, false), tags } };
+  return { apprise: { ...base, urls: null, key: secretValue(key, false) } };
 }
 
 const SETTINGS_INPUT = { WEBHOOK: webhookInput, NTFY: ntfyInput, EMAIL: emailInput, APPRISE: appriseInput };

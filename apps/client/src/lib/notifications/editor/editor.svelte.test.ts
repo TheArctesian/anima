@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installAnimations } from '$lib/forms/animations.fixture';
 import type { NotificationChannel } from '../api';
 import NotificationsSection from '../NotificationsSection.svelte';
-import { button, choice, failure, fakeHub, FAKE_SECRET, FAKE_WEBHOOK_URL, field, fixtureChannel, loaded, ok, pick, settled, typeInto } from '../notifications.fixture';
+import { button, choice, dialog, failure, fakeHub, FAKE_SECRET, FAKE_WEBHOOK_URL, field, fixtureChannel, holdAnimations, inDialog, loaded, NOWHERE, ok, pick, places, settled, typeInto } from '../notifications.fixture';
 
 const mocks = vi.hoisted(() => ({ hub: undefined as unknown }));
 
@@ -52,61 +52,9 @@ async function open(answers: Parameters<typeof fakeHub>[0]): Promise<void> {
   await settled();
 }
 
-function dialog(): HTMLElement | null {
-  return document.querySelector('[role="dialog"]');
-}
-
-/** Fades that never finish, so a test sees the document as it is during a fade. */
-function holdAnimations(): void {
-  Object.defineProperty(Element.prototype, 'animate', {
-    configurable: true,
-    value: () => ({ playState: 'running', currentTime: 0, cancel: () => undefined, pause: () => undefined, onfinish: null }),
-  });
-}
-
-/** A button of the open dialog: the page has its own Save. */
-function inDialog(label: string): HTMLButtonElement {
-  const scope = dialog();
-  if (scope === null) throw new Error('no dialog');
-  return button(label, scope.closest('.portal') ?? scope);
-}
-
-/** Whether a node keeps `text` in a property of its own, as a cache keyed by a symbol would. */
-function nodeKeeps(element: Element, text: string): boolean {
-  const own = element as unknown as Record<PropertyKey, unknown>;
-  return [...Object.getOwnPropertyNames(element), ...Object.getOwnPropertySymbols(element)].some((name) => {
-    try {
-      return JSON.stringify(own[name])?.includes(text) === true;
-    } catch {
-      // A value JSON cannot write (a cycle) is a reference to an object, not a copy of the text.
-      return false;
-    }
-  });
-}
-
-/** Every place a secret could linger: the markup, field values, fields' own properties, storage, the URL. */
-function places(text: string): Record<string, number> {
-  const fields = [...document.querySelectorAll('input, textarea, select')];
-  const stored = [localStorage, sessionStorage].flatMap((storage) => Object.keys(storage).map((key) => `${key}=${storage.getItem(key) ?? ''}`));
-  return {
-    markup: document.documentElement.outerHTML.split(text).length - 1,
-    values: fields.filter((element) => (element as HTMLInputElement).value.includes(text)).length,
-    kept: fields.filter((element) => nodeKeeps(element, text)).length,
-    storage: stored.filter((entry) => entry.includes(text)).length,
-    url: window.location.href.includes(text) ? 1 : 0,
-  };
-}
-
-const NOWHERE = { markup: 0, values: 0, kept: 0, storage: 0, url: 0 };
-
-/**
- * Nothing written to the console holds the secret, and nothing is written but Svelte's own development warnings
- * (Modal's footer compares a `$state` proxy with its value, which Svelte warns about in development builds).
- */
+/** Nothing is written to the console at all, so nothing written holds a secret (LOG-007). */
 function expectSilentConsole(): void {
-  const calls = consoleSpies.flatMap((spy) => spy.mock.calls);
-  expect(JSON.stringify(calls)).not.toContain(FAKE_SECRET);
-  expect(calls.filter((call) => !String(call[0]).startsWith('%c[svelte]'))).toEqual([]);
+  expect(consoleSpies.flatMap((spy) => spy.mock.calls)).toEqual([]);
 }
 
 /** Opens Add channel and types a webhook whose URL and header value are secrets. */

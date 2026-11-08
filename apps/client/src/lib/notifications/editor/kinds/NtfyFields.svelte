@@ -1,8 +1,8 @@
 <script lang="ts">
-  import Field from '../Field.svelte';
-  import type { ChannelDraft, Stored } from './draft';
-  import type { DraftField } from './input';
-  import SecretField from './SecretField.svelte';
+  import Field from '../../Field.svelte';
+  import type { ChannelDraft, Stored } from '../draft';
+  import type { DraftField } from '../input';
+  import SecretField from '../SecretField.svelte';
 
   interface Props {
     ntfy: ChannelDraft['ntfy'];
@@ -21,7 +21,7 @@
   ];
 </script>
 
-<Field label="Server" hint="For example https://ntfy.sh." problem={problemOf('ntfy.server')}>
+<Field label="Server" hint="https:// and the host only, for example https://ntfy.sh." problem={problemOf('ntfy.server')}>
   {#snippet control(attributes)}
     <input {...attributes} type="url" bind:value={ntfy.server} autocomplete="off" autocapitalize="off" spellcheck="false" />
   {/snippet}
@@ -33,7 +33,7 @@
   shape="hidden"
   bind:value={ntfy.token.value}
   bind:clear={ntfy.token.clear}
-  problem=""
+  problem={problemOf('ntfy.token')}
   stored={stored?.ntfyToken === true}
   removable
   hint="Optional."

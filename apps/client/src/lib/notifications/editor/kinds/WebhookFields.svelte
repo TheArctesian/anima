@@ -1,9 +1,9 @@
 <script lang="ts">
   import FormButton from '$lib/forms/FormButton.svelte';
-  import Field from '../Field.svelte';
-  import type { ChannelDraft, Stored } from './draft';
-  import type { DraftField } from './input';
-  import SecretField from './SecretField.svelte';
+  import Field from '../../Field.svelte';
+  import type { ChannelDraft, Stored } from '../draft';
+  import type { DraftField } from '../input';
+  import SecretField from '../SecretField.svelte';
 
   interface Props {
     webhook: ChannelDraft['webhook'];

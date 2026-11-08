@@ -22,7 +22,7 @@ const TYPENAMES = {
 function lastDeliveryOf(id: string): Delivery | null {
   const own = deliveries.filter((delivery) => delivery.channelId === id).toSorted((a, b) => Date.parse(b.at) - Date.parse(a.at));
   const [last] = own;
-  return last === undefined ? null : { id: last.id, channelId: last.channelId, kind: last.kind, at: last.at, ok: last.ok, message: last.message };
+  return last === undefined ? null : { id: last.id, channelId: last.channelId, kind: last.kind, at: last.at, ok: last.ok, reason: last.reason, code: last.code };
 }
 
 /** The K6 channels, one of each kind, each with its latest K6 delivery. */
@@ -45,6 +45,22 @@ export function fixtureChannel(kind: NotificationChannel['kind']): NotificationC
   return found;
 }
 
+/** An Apprise channel that sends with a configuration key on the server, which K6 does not have (CR-14.2). */
+export const CONFIG_KEY_CHANNEL: NotificationChannel = {
+  ...fixtureChannel('APPRISE'),
+  id: '0190a000-0000-7000-8017-0000000000ab',
+  name: 'apprise-keyed',
+  settings: { __typename: 'AppriseSettings', server: 'https://apprise.example.net', mode: 'CONFIG_KEY', tags: [] },
+};
+
+/** An ntfy channel whose server, as a hub before CR-14.7 could hold it, carries a user name and password. */
+export const DIRTY_SERVER_CHANNEL: NotificationChannel = {
+  ...fixtureChannel('NTFY'),
+  id: '0190a000-0000-7000-8017-0000000000ac',
+  name: 'dirty-ntfy',
+  settings: { __typename: 'NtfySettings', server: `https://ops:${FAKE_SECRET}@ntfy.example.net`, priority: 3, tokenStored: true },
+};
+
 /** The K6 `notificationSettings`. */
 export const FIXTURE_SETTINGS: NotificationSettings = notificationSettings;
 
@@ -54,7 +70,8 @@ export const TEST_DELIVERY: Delivery = {
   kind: 'TEST',
   at: '2026-11-07T12:00:00Z',
   ok: false,
-  message: 'The target address is not permitted.',
+  reason: 'TARGET_NOT_PERMITTED',
+  code: null,
 };
 
 export type Operation =
@@ -145,3 +162,50 @@ export function pick(control: HTMLSelectElement | HTMLInputElement, value?: stri
   }
   flushSync();
 }
+
+export function dialog(): HTMLElement | null {
+  return document.querySelector('[role="dialog"]');
+}
+
+/** Fades that never finish, so a test sees the document as it is during a fade. */
+export function holdAnimations(): void {
+  Object.defineProperty(Element.prototype, 'animate', {
+    configurable: true,
+    value: () => ({ playState: 'running', currentTime: 0, cancel: () => undefined, pause: () => undefined, onfinish: null }),
+  });
+}
+
+/** A button of the open dialog: the page has its own Save. */
+export function inDialog(label: string): HTMLButtonElement {
+  const scope = dialog();
+  if (scope === null) throw new Error('no dialog');
+  return button(label, scope.closest('.portal') ?? scope);
+}
+
+/** Whether a node keeps `text` in a property of its own, as a cache keyed by a symbol would. */
+function nodeKeeps(element: Element, text: string): boolean {
+  const own = element as unknown as Record<PropertyKey, unknown>;
+  return [...Object.getOwnPropertyNames(element), ...Object.getOwnPropertySymbols(element)].some((name) => {
+    try {
+      return JSON.stringify(own[name])?.includes(text) === true;
+    } catch {
+      // A value JSON cannot write (a cycle) is a reference to an object, not a copy of the text.
+      return false;
+    }
+  });
+}
+
+/** Every place a secret could linger: the markup, field values, fields' own properties, storage, the URL. */
+export function places(text: string): Record<string, number> {
+  const fields = [...document.querySelectorAll('input, textarea, select')];
+  const stored = [localStorage, sessionStorage].flatMap((storage) => Object.keys(storage).map((key) => `${key}=${storage.getItem(key) ?? ''}`));
+  return {
+    markup: document.documentElement.outerHTML.split(text).length - 1,
+    values: fields.filter((element) => (element as HTMLInputElement).value.includes(text)).length,
+    kept: fields.filter((element) => nodeKeeps(element, text)).length,
+    storage: stored.filter((entry) => entry.includes(text)).length,
+    url: window.location.href.includes(text) ? 1 : 0,
+  };
+}
+
+export const NOWHERE = { markup: 0, values: 0, kept: 0, storage: 0, url: 0 };

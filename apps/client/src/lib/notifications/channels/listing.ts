@@ -19,7 +19,8 @@ export const PLACEHOLDER_CHANNEL: NotificationChannel = {
     kind: 'TEST',
     at: '2099-12-31T00:00:00Z',
     ok: false,
-    message: 'The target did not answer in 8 seconds.',
+    reason: 'TIMED_OUT',
+    code: null,
   },
 };
 

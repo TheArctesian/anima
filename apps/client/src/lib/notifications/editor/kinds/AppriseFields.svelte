@@ -1,8 +1,8 @@
 <script lang="ts">
-  import Field from '../Field.svelte';
-  import type { ChannelDraft, Stored } from './draft';
-  import type { DraftField } from './input';
-  import SecretField from './SecretField.svelte';
+  import Field from '../../Field.svelte';
+  import type { ChannelDraft, Stored } from '../draft';
+  import type { DraftField } from '../input';
+  import SecretField from '../SecretField.svelte';
 
   interface Props {
     apprise: ChannelDraft['apprise'];
@@ -13,7 +13,7 @@
   let { apprise = $bindable(), stored, problemOf }: Props = $props();
 </script>
 
-<Field label="Apprise server" hint="The Apprise API, for example https://apprise.example.com." problem={problemOf('apprise.server')}>
+<Field label="Apprise server" hint="The Apprise API: https:// and the host only, for example https://apprise.example.com." problem={problemOf('apprise.server')}>
   {#snippet control(attributes)}
     <input {...attributes} type="url" bind:value={apprise.server} autocomplete="off" autocapitalize="off" spellcheck="false" />
   {/snippet}

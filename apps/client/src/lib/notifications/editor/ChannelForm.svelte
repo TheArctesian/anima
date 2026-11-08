@@ -3,12 +3,12 @@
   import { modalFooter } from '$lib/forms/modal/footer';
   import Field from '../Field.svelte';
   import TemplateFields from '../template/TemplateFields.svelte';
-  import AppriseFields from './AppriseFields.svelte';
+  import AppriseFields from './kinds/AppriseFields.svelte';
   import { KINDS, type ChannelDraft, type Stored } from './draft';
-  import EmailFields from './EmailFields.svelte';
+  import EmailFields from './kinds/EmailFields.svelte';
   import type { DraftField } from './input';
-  import NtfyFields from './NtfyFields.svelte';
-  import WebhookFields from './WebhookFields.svelte';
+  import NtfyFields from './kinds/NtfyFields.svelte';
+  import WebhookFields from './kinds/WebhookFields.svelte';
 
   // The editor's fields, laid out; the editor around it owns the values' life, the check and the save.
   interface Props {

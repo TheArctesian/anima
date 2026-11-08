@@ -29,6 +29,8 @@
   /** The open editor: `channel` is `null` for a new one. */
   let editing = $state<{ readonly channel: NotificationChannel | null } | null>(null);
   let deleting = $state<NotificationChannel | null>(null);
+  /** True while the hub deletes: the dialog stays until it answers, so the outcome is never lost unseen. */
+  let removing = $state(false);
   let root: HTMLElement | undefined = $state();
   const loading = $derived(channels === null && !loadFailed);
   // The clock is fixed for the life of the list.
@@ -67,12 +69,15 @@
   async function remove(): Promise<HubResult<unknown>> {
     if (deleting === null) return { ok: true, value: undefined };
     const { id } = deleting;
+    removing = true;
     const result = await api.remove(id);
+    removing = false;
     if (!result.ok) return { ok: false, error: { code: 'INTERNAL', message: failureText(result.error, 'delete') } };
     const index = channels?.findIndex((channel) => channel.id === id) ?? -1;
     const rest = channels?.filter((channel) => channel.id !== id) ?? [];
     channels = rest;
-    deleting = null;
+    // Only the dialog of this delete closes; one opened for another channel meanwhile stays.
+    if (deleting?.id === id) deleting = null;
     // After the dialog has closed and given focus back to the button that left with its row.
     await tick();
     focusRow(focusAfterDelete(rest, index));
@@ -138,7 +143,7 @@
     confirmLabel="Delete {deleting?.name ?? ''}"
     onConfirm={remove}
     onCancel={() => {
-      deleting = null;
+      if (!removing) deleting = null;
     }}
   />
 {/key}

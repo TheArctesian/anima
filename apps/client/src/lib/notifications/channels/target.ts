@@ -40,6 +40,43 @@ export function mailHostOf(host: string): string {
   return MAIL_HOST.test(host) ? host.toLowerCase() : TARGET_HIDDEN;
 }
 
+/**
+ * The origin of an https URL that is nothing but an origin, `/` allowed (CR-14.6, CR-14.7): no user name or password,
+ * no other path, no query and no fragment, not even an empty one. `null` for anything else.
+ */
+export function cleanOrigin(text: string): string | null {
+  if (/[@?#\s\\]/.test(text)) return null;
+  const url = httpUrl(text);
+  return url?.protocol === 'https:' && url.pathname === '/' ? url.origin : null;
+}
+
+/** The origin of an http(s) URL, or `''`: what the editor shows of a server the hub holds, never its user name. */
+export function shownOrigin(text: string): string {
+  return httpUrl(text)?.origin ?? '';
+}
+
+/** `smtp.example.com:587`: the email target is the host and the port together (CR-14.1). */
+export function mailTarget(host: string, port: number): string | null {
+  return MAIL_HOST.test(host) ? `${host.toLowerCase()}:${String(port)}` : null;
+}
+
+/**
+ * What the saved channel sends to, in the form the editor compares a new target with (CR-14.1): the webhook's origin,
+ * the ntfy or Apprise server as a clean origin, the email host and port. `null` when it cannot be read: any target
+ * then counts as new, so the stored secrets are asked for again.
+ */
+export function storedTarget(settings: ChannelSettings): string | null {
+  switch (settings.__typename) {
+    case 'WebhookSettings':
+      return httpUrl(settings.origin)?.origin ?? null;
+    case 'NtfySettings':
+    case 'AppriseSettings':
+      return cleanOrigin(settings.server);
+    case 'EmailSettings':
+      return mailTarget(settings.host, settings.port);
+  }
+}
+
 /** The one line the list shows for where a channel sends. Email shows the server, never the recipients. */
 export function targetOf(settings: ChannelSettings): string {
   switch (settings.__typename) {

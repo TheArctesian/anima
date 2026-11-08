@@ -3,6 +3,7 @@
 // form never shows a stored one (D-17, F-8). What is stored is known only as a fact (`Stored`).
 import type { AppriseMode, SmtpSecurity, WebhookMethod } from '$lib/hub/generated/graphql';
 import type { ChannelKind, NotificationChannel, NotificationTemplateInput } from '../api';
+import { shownOrigin, storedTarget } from '../channels/target';
 
 /** A secret the operator may type. `clear` asks the hub to remove a stored optional secret (`""` in the input). */
 export interface SecretDraft {
@@ -37,6 +38,8 @@ export interface Stored {
   readonly emailPassword: boolean;
   /** The Apprise mode whose URLs or key the hub holds. */
   readonly appriseMode: AppriseMode | null;
+  /** Where the channel sends now (`storedTarget`); a new target needs every stored secret again (CR-14.1). */
+  readonly target: string | null;
 }
 
 export const KINDS: readonly { readonly id: ChannelKind; readonly label: string }[] = [
@@ -84,7 +87,8 @@ export function savedDraft(channel: NotificationChannel, defaultTemplate: Notifi
       draft.webhook.replaceHeaders = false;
       break;
     case 'NtfySettings':
-      Object.assign(draft.ntfy, { server: settings.server, priority: settings.priority });
+      // Only the parsed origin is shown: a user name and password in what the hub holds never reach the field (CR-14.7).
+      Object.assign(draft.ntfy, { server: shownOrigin(settings.server), priority: settings.priority });
       break;
     case 'EmailSettings':
       Object.assign(draft.email, {
@@ -97,7 +101,7 @@ export function savedDraft(channel: NotificationChannel, defaultTemplate: Notifi
       });
       break;
     case 'AppriseSettings':
-      Object.assign(draft.apprise, { server: settings.server, mode: settings.mode, tags: settings.tags.join(', ') });
+      Object.assign(draft.apprise, { server: shownOrigin(settings.server), mode: settings.mode, tags: settings.tags.join(', ') });
       break;
   }
   return draft;
@@ -111,6 +115,7 @@ export function storedOf(channel: NotificationChannel): Stored {
     ntfyToken: settings.__typename === 'NtfySettings' && settings.tokenStored,
     emailPassword: settings.__typename === 'EmailSettings' && settings.passwordStored,
     appriseMode: settings.__typename === 'AppriseSettings' ? settings.mode : null,
+    target: storedTarget(settings),
   };
 }
 

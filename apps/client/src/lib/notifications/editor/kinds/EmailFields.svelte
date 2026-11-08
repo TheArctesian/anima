@@ -1,9 +1,9 @@
 <script lang="ts">
   import type { SmtpSecurity } from '$lib/hub/generated/graphql';
-  import Field from '../Field.svelte';
-  import { SMTP_PORT, type ChannelDraft, type Stored } from './draft';
-  import type { DraftField } from './input';
-  import SecretField from './SecretField.svelte';
+  import Field from '../../Field.svelte';
+  import { SMTP_PORT, type ChannelDraft, type Stored } from '../draft';
+  import type { DraftField } from '../input';
+  import SecretField from '../SecretField.svelte';
 
   interface Props {
     email: ChannelDraft['email'];
@@ -54,7 +54,7 @@
   shape="hidden"
   bind:value={email.password.value}
   bind:clear={email.password.clear}
-  problem=""
+  problem={problemOf('email.password')}
   stored={stored?.emailPassword === true}
   removable
   hint="Optional."
