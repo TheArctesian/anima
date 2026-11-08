@@ -1,23 +1,17 @@
 //! `Query.checkDefaults` and `Mutation.setCheckDefaults` (D-26, DB-011). The mutation writes
 //! the row, one audit entry and one event in one transaction (API-003, LOG-005).
 
-use std::sync::Arc;
-
 use async_graphql::{Context, InputObject, Object, Result};
 use serde_json::json;
 
 use super::{
-    error::{internal, invalid, schema_dependency, to_graphql},
+    error::to_graphql,
     form::{keep, number},
-    write::pool,
 };
 use crate::{
-    checks::{self, CheckDefaults, Error, FieldError},
-    clock::Clock,
-    events::{
-        self, AuditAction, AuditTarget, Bus, ClientAddr, NewAudit, NewEvent, Operator, Severity,
-        Source,
-    },
+    api_errors::{begin, commit, internal, invalid, pool},
+    checks::{self, CheckDefaults, FieldError},
+    events::{AuditAction, AuditTarget, Severity, Source, Trail, TrailEntry},
 };
 
 #[Object(name = "CheckDefaults")]
@@ -97,38 +91,22 @@ fn change(stored: CheckDefaults) -> serde_json::Value {
 
 pub(super) async fn set(ctx: &Context<'_>, input: &DefaultsInput) -> Result<CheckDefaults> {
     let wanted = input.parse().map_err(|errors| invalid(&errors))?;
-    let bus = schema_dependency::<Bus>(ctx)?;
-    let operator = schema_dependency::<Operator>(ctx)?.clone();
-    let client = *schema_dependency::<ClientAddr>(ctx)?;
-    let now = schema_dependency::<Arc<dyn Clock>>(ctx)?.now();
-    let mut tx = pool(ctx)?
-        .begin()
-        .await
-        .map_err(|e| to_graphql(Error::Database(e)))?;
+    let trail = Trail::from_context(ctx)?;
+    let mut tx = begin(ctx).await?;
     let stored = checks::set_defaults(&mut tx, wanted)
         .await
         .map_err(to_graphql)?;
-    // The settings have no audit target of their own yet: the entry names the operator who
-    // changed them.
-    let audit = NewAudit {
-        target: AuditTarget::Operator(operator.id),
-        operator,
-        action: AuditAction::Update,
-        client,
-        change: change(stored),
-    };
-    events::audit(&mut tx, now, audit).await.map_err(internal)?;
-    let event = NewEvent {
-        severity: Severity::Info,
+    let entry = TrailEntry {
         source: Source::Check,
+        severity: Severity::Info,
         device: None,
         message: "The default check settings were changed.".to_owned(),
+        action: AuditAction::Update,
+        // Becomes `AuditTarget::Setting("checks.defaults")` when WP-46 T1 merges (CR-9).
+        target: AuditTarget::Operator(trail.operator()),
+        change: change(stored),
     };
-    events::record(&mut tx, bus, now, event)
-        .await
-        .map_err(internal)?;
-    tx.commit()
-        .await
-        .map_err(|e| to_graphql(Error::Database(e)))?;
+    trail.write(&mut tx, entry).await.map_err(internal)?;
+    commit(tx).await?;
     Ok(stored)
 }
