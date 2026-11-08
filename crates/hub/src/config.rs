@@ -3,7 +3,9 @@
 use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::net::SocketAddr;
-use std::path::PathBuf;
+use std::path::{Component, PathBuf};
+
+mod origin;
 
 const LISTEN: &str = "ANIMA_LISTEN";
 const DATABASE_URL_FILE: &str = "ANIMA_DATABASE_URL_FILE";
@@ -16,6 +18,10 @@ const PROBE_DENY: &str = "ANIMA_PROBE_DENY";
 const LOG: &str = "ANIMA_LOG";
 const TLS_CERT_FILE: &str = "ANIMA_TLS_CERT_FILE";
 const TLS_KEY_FILE: &str = "ANIMA_TLS_KEY_FILE";
+const PUBLIC_ORIGIN: &str = "ANIMA_PUBLIC_ORIGIN";
+const WEB_ROOT: &str = "ANIMA_WEB_ROOT";
+const RECORDING_ROOT: &str = "ANIMA_RECORDING_ROOT";
+const RECORDING_MAX_BYTES: &str = "ANIMA_RECORDING_MAX_BYTES";
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Config {
@@ -37,6 +43,15 @@ pub struct Config {
     pub log: String,
     pub tls_cert_file: Option<PathBuf>,
     pub tls_key_file: Option<PathBuf>,
+    /// The origin clients use, in canonical form (see `origin`). Compared byte-for-byte with a
+    /// browser's `Origin` header (D-3).
+    pub public_origin: String,
+    /// Folder with the web client's static build. `None` turns the web client off (D-2).
+    pub web_root: Option<PathBuf>,
+    /// Folder for recording files. `None`: recording is unavailable.
+    pub recording_root: Option<PathBuf>,
+    /// Plaintext byte limit of one recording; always positive.
+    pub recording_max_bytes: u64,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -70,6 +85,21 @@ pub enum Error {
         #[source]
         source: ipnet::AddrParseError,
     },
+    #[error("{variable}={value:?} is not a canonical origin: {reason}")]
+    Origin {
+        variable: &'static str,
+        value: String,
+        reason: &'static str,
+    },
+    #[error("{variable} is the file-system root, which is too broad to serve or write")]
+    FilesystemRoot { variable: &'static str },
+    #[error("{variable} has a `..` part, which could climb out of the folder")]
+    ParentDirectory { variable: &'static str },
+    #[error("{variable}={value:?} is not a positive integer")]
+    NotPositive {
+        variable: &'static str,
+        value: String,
+    },
     #[error("{present} is set but {missing} is not")]
     TlsIncomplete {
         present: &'static str,
@@ -95,6 +125,27 @@ fn optional_path(env: &BTreeMap<String, String>, name: &str) -> Option<PathBuf> 
     env.get(name)
         .filter(|text| !text.is_empty())
         .map(PathBuf::from)
+}
+
+/// An absolute folder from `name`; unset or empty is `None`. The root `/` is refused: as a
+/// web root it would serve the whole file system, and so is any path with a `..` part.
+fn optional_root(
+    env: &BTreeMap<String, String>,
+    name: &'static str,
+) -> Result<Option<PathBuf>, Error> {
+    match env.get(name).map(String::as_str) {
+        None | Some("") => Ok(None),
+        Some(text) => {
+            let path = absolute_path(name, text)?;
+            if path.components().any(|part| part == Component::ParentDir) {
+                return Err(Error::ParentDirectory { variable: name });
+            }
+            if path.parent().is_none() {
+                return Err(Error::FilesystemRoot { variable: name });
+            }
+            Ok(Some(path))
+        }
+    }
 }
 
 /// `host:port` where an IPv6 host must be bracketed.
@@ -139,6 +190,17 @@ fn networks(variable: &'static str, text: &str) -> Result<Vec<ipnet::IpNet>, Err
             })
         })
         .collect()
+}
+
+/// A positive `u64`: zero, negative and non-numeric text are refused.
+fn positive_u64(variable: &'static str, text: &str) -> Result<u64, Error> {
+    match text.parse::<u64>() {
+        Ok(number) if number > 0 && !text.starts_with('+') => Ok(number),
+        _ => Err(Error::NotPositive {
+            variable,
+            value: text.to_owned(),
+        }),
+    }
 }
 
 /// Collect process variables into a map. A non-unicode `ANIMA_*` name or value is an error;
@@ -216,8 +278,20 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {
         log: value(env, LOG, "info")?.to_owned(),
         tls_cert_file,
         tls_key_file,
+        public_origin: origin::canonical(
+            PUBLIC_ORIGIN,
+            value(env, PUBLIC_ORIGIN, "https://hub.anima.ing")?,
+        )?,
+        web_root: optional_root(env, WEB_ROOT)?,
+        recording_root: optional_root(env, RECORDING_ROOT)?,
+        recording_max_bytes: positive_u64(
+            RECORDING_MAX_BYTES,
+            value(env, RECORDING_MAX_BYTES, "2147483648")?,
+        )?,
     })
 }
 
+#[cfg(test)]
+mod roots_tests;
 #[cfg(test)]
 mod tests;
