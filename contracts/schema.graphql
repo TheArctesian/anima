@@ -415,7 +415,7 @@ enum CheckType {
   SNMP
   TAILSCALE_PING
   SYSTEMD
-  DOMAIN_EXPIRY @pending
+  DOMAIN_EXPIRY
 }
 
 type Check {
@@ -436,7 +436,7 @@ type Check {
   "Days until the TLS certificate expires (CHK-007). Only TLS and HTTPS checks."
   certificateDaysLeft: Int
   "DOMAIN_EXPIRY only: whole days until the registration expires."
-  domainDaysLeft: Int @pending
+  domainDaysLeft: Int
   # notifications (composition, K3)
   notifications: CheckNotifications! @pending
   heartbeats(first: Int = 100, after: String): HeartbeatConnection!
@@ -570,7 +570,7 @@ type GroupConfig {
 }
 
 "Degraded below warnDays, Down after expiry, Unknown when RDAP gives no expiry date (D-29)."
-type DomainExpiryConfig @pending {
+type DomainExpiryConfig {
   domain: String!
   warnDays: Int!
   timeoutMs: Int!
@@ -588,7 +588,7 @@ input CheckConfigInput @oneOf {
   snmp: SnmpConfigInput
   tailscalePing: TailscalePingConfigInput
   systemd: SystemdConfigInput
-  domainExpiry: DomainExpiryConfigInput @pending
+  domainExpiry: DomainExpiryConfigInput
 }
 
 input DockerConfigInput {
@@ -787,7 +787,7 @@ input UpdateCheckInput {
   invert: Boolean
 }
 
-input DomainExpiryConfigInput @pending {
+input DomainExpiryConfigInput {
   domain: String!
   "1 to 365 (R-093)."
   warnDays: Int = 30
