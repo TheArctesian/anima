@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { expect, it, vi } from 'vitest';
-import { failure, fakeHub, ok, settled, STORED } from '../defaults/defaults.fixture';
-import { saved } from './check.fixture';
-import { input, installFormHarness, show, type } from './form.fixture';
+import { failure, fakeHub, ok, settled, STORED } from './defaults.fixture';
+import { saved } from '../form/check.fixture';
+import { input, installFormHarness, show, type } from '../form/form.fixture';
 
 const mocks = vi.hoisted(() => ({ hub: undefined as unknown }));
 

@@ -13,7 +13,7 @@
   import TypeFields from './fields/TypeFields.svelte';
   import ProbeFields from './probes/ProbeFields.svelte';
   import SnmpFields from './probes/SnmpFields.svelte';
-  import { defaultsReader } from './defaults';
+  import { defaultsReader } from '../defaults/reader';
   import { untouchedSettings } from './model/defaults';
   import { messageFor, placeHubErrors, shownFields, touchesAdvanced, unplaced } from './model/errors';
   import { groupCandidates, type SiblingCheck } from './model/group';
