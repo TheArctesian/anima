@@ -44,8 +44,9 @@ async function signInWith(page: Page, password: string): Promise<void> {
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
 }
 
+/** Opens the sign-in page and waits until its form works; the `load` event (fonts, icons) is not what the specs need. */
 async function openSignIn(page: Page): Promise<void> {
-  await page.goto(`${HUB_ORIGIN}/sign-in`);
+  await page.goto(`${HUB_ORIGIN}/sign-in`, { waitUntil: 'domcontentloaded' });
   await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeEnabled();
 }
 
