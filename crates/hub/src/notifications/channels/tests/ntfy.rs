@@ -48,14 +48,19 @@ fn cr_14_7_an_ntfy_server_is_an_https_origin_only() {
         "http://ntfy.example.test",
         "https://ntfy.example.test/alerts",
         "https://ntfy.example.test/?x=1",
+        "https://ntfy.example.test/#frag",
+        "https://ntfy.example.test#frag",
         "https://user:pw@ntfy.example.test",
         "ntfy.example.test",
+        "https://ntfy.exa\tmple.test",
+        "https://ntfy.exa\nmple.test",
+        "https://ntfy.example.test\r\n",
     ] {
         let topic = Some("alerts");
         assert_eq!(
             new_errors(ntfy(server, topic, None, 3)),
             ["settings.ntfy.server"],
-            "{server}"
+            "{server:?}"
         );
     }
     let prepared = accepted(prepare_new(draft(ntfy(
@@ -138,7 +143,7 @@ fn cr_14_1_null_ntfy_secrets_on_the_same_server_keep_the_stored_ones() {
 }
 
 #[test]
-fn cr_14_2_an_empty_ntfy_token_clears_it() {
+fn not_002_an_empty_ntfy_token_clears_it() {
     let prepared = accepted(changed(ntfy(SERVER, None, Some(""), 3)));
     let (settings, secrets) = parts(&prepared);
     assert!(!settings.token_stored && secrets.token.is_none());

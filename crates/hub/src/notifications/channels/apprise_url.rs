@@ -25,6 +25,10 @@
 //! second `://` or a second `?` is refused, and a key is compared after percent-decoding: it
 //! must be exactly an allowed key in ASCII, any case. A key Apprise would read differently from
 //! the hub is not on the list, so it is refused.
+//!
+//! The comma rule is defence in depth: a second URL after a comma needs its own `://`, which
+//! the one-scheme rule refuses already. The comma is refused on its own anyway, so the rule
+//! does not lean on how Apprise reads what follows a comma that has no scheme.
 
 /// Services that post only to their vendor's fixed host.
 const SCHEMES: [&str; 8] = [

@@ -1,12 +1,14 @@
 //! The webhook rules: an https URL whose origin alone is shown, and headers that cannot frame
-//! or redirect the request (CR-14 items 1, 3, 5, 6 and 7; SEC-005).
+//! or redirect the request (CR-14 items 1, 3, 6 and 7; SEC-003, SEC-005).
 
 use super::{
     Draft, Kept, NONE, Prepared, Secrets, Settings, SettingsDraft, WebhookDraft, WebhookMethod,
     WebhookSecrets, WebhookSettings, accepted, draft, errors_of, fields, new_errors,
     prepare_change, prepare_new, quotes_none, refused, secret, text, webhook,
 };
-use crate::{api_errors::FieldError, credentials::Secret};
+use crate::{
+    api_errors::FieldError, credentials::Secret, notifications::channels::webhook::REFUSED_NAMES,
+};
 
 const URL: &str = "https://hooks.example.test/path/s3cr3t-path?token=s3cr3t-query";
 
@@ -69,6 +71,18 @@ fn cr_14_6_a_webhook_url_must_be_https() {
         new_errors(webhook("hooks.example.test/a")),
         ["settings.webhook.url"]
     );
+    // The URL parser drops a tab or a line break without a word; the hub refuses them first.
+    for url in [
+        "https://hooks.exa\tmple.test/a",
+        "https://hooks.exa\nmple.test/a",
+        "https://hooks.example.test/a\r\n",
+    ] {
+        assert_eq!(
+            new_errors(webhook(url)),
+            ["settings.webhook.url"],
+            "{url:?}"
+        );
+    }
     assert_eq!(new_errors(webhook("https://hooks.example.test/a")), NONE);
     assert_eq!(new_errors(webhook("https://192.0.2.10:8443/a")), NONE);
 }
@@ -116,21 +130,30 @@ fn sec_005_a_webhook_shows_its_origin_and_header_names_and_never_its_url_or_valu
 #[test]
 fn not_002_header_names_are_tokens_that_neither_frame_nor_redirect_the_request() {
     let named = |name: &str| errors_of(with_headers(Some(URL), Some(&[(name, "v")])));
-    for refused in [
-        "Host",
-        "content-length",
-        "Transfer-Encoding",
-        "Connection",
-        "Upgrade",
-        "Proxy-Authorization",
-        "X-Forwarded-For",
-        "TE",
-        "",
-        "Bad Name",
-        "X-Api-Key:",
-        "Ünicode",
-        &"x".repeat(129),
+    for refused in REFUSED_NAMES {
+        assert_eq!(named(refused), ["settings.webhook.headers"], "{refused}");
+        let upper = refused.to_ascii_uppercase();
+        assert_eq!(named(&upper), ["settings.webhook.headers"], "{upper}");
+    }
+    for proxy_routed in [
+        "X-Original-URL",
+        "X-Rewrite-URL",
+        "X-Original-Host",
+        "X-Forwarded-Port",
+        "X-Forwarded-Prefix",
+        "X-Forwarded-Scheme",
+        "X-Real-IP",
+        "Via",
+        "Max-Forwards",
+        "X-HTTP-Method-Override",
     ] {
+        assert_eq!(
+            named(proxy_routed),
+            ["settings.webhook.headers"],
+            "{proxy_routed}"
+        );
+    }
+    for refused in ["", "Bad Name", "X-Api-Key:", "Ünicode", &"x".repeat(129)] {
         assert_eq!(named(refused), ["settings.webhook.headers"], "{refused:?}");
     }
     for allowed in [
@@ -226,7 +249,7 @@ fn cr_14_3_headers_null_keeps_empty_removes_and_a_list_replaces() {
 }
 
 #[test]
-fn cr_14_5_a_kept_secret_that_does_not_open_asks_for_every_secret_again() {
+fn sec_003_a_kept_secret_that_does_not_open_asks_for_every_secret_again() {
     let (before, _) = stored();
     let errors = refused(prepare_change(
         &before,

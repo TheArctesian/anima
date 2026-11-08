@@ -1,6 +1,8 @@
 //! The e-mail rules: a host and port, mailboxes without line breaks, at least one recipient,
 //! and the CR-14 update rules for the password.
 
+use std::str::FromStr as _;
+
 use super::{
     Kept, NONE, Prepared, Secrets, Settings, SettingsDraft, accepted, draft, fields, new_errors,
     prepare_change, prepare_new, quotes_none, refused, secret, text,
@@ -99,6 +101,18 @@ fn log_007_an_address_with_a_line_break_is_refused_without_quoting_it() {
         d.to = vec![injected.to_owned()];
     }))));
     assert_eq!(fields(&errors), ["settings.email.to"]);
+    // lettre reads a mailbox with a trailing line break as valid, so only the hub's own
+    // control-character check keeps it out of the message headers.
+    let trailing = "ops@example.test\r\n";
+    assert!(lettre::message::Mailbox::from_str(trailing).is_ok());
+    assert_eq!(
+        new_errors(email(|d| d.from = trailing.to_owned())),
+        ["settings.email.from"]
+    );
+    assert_eq!(
+        new_errors(email(|d| d.to = vec![trailing.to_owned()])),
+        ["settings.email.to"]
+    );
     let folded = "Anima\r\n <hub@example.test>";
     assert_eq!(
         new_errors(email(|d| d.from = folded.to_owned())),

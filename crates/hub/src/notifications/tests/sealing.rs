@@ -121,7 +121,7 @@ fn sec_005_secrets_must_have_the_shape_the_settings_say() {
 }
 
 #[test]
-fn cr_14_5_an_update_finds_stored_secrets_opened_absent_or_unopened() {
+fn sec_003_an_update_finds_stored_secrets_opened_absent_or_unopened() {
     let (vault, id, settings) = (vault(7), channel(), webhook(ORIGIN, &["X-Key"]));
     let sealed = sealing::seal(&vault, id, &settings, &webhook_secrets()).unwrap();
     assert!(matches!(

@@ -21,9 +21,10 @@ const NAME_MAX: usize = 128;
 const VALUE_MAX: usize = 4096;
 
 /// Header names the hub refuses (compared case-insensitively): the ones that frame the message
-/// or the connection, which the HTTP client sets, and the ones that name another destination
-/// at a proxy in front of the target. Only the URL names where the request goes.
-const REFUSED_NAMES: [&str; 18] = [
+/// or the connection, which the HTTP client sets, and the ones a proxy in front of the target
+/// reads to route the request elsewhere, rewrite its path or change its method. Only the URL
+/// and the method field say where the request goes and what it does.
+pub(super) const REFUSED_NAMES: [&str; 28] = [
     "host",
     "content-length",
     "content-encoding",
@@ -37,11 +38,21 @@ const REFUSED_NAMES: [&str; 18] = [
     "upgrade",
     "expect",
     "forwarded",
+    "via",
+    "max-forwards",
     "x-forwarded-for",
     "x-forwarded-host",
     "x-forwarded-proto",
+    "x-forwarded-port",
+    "x-forwarded-prefix",
+    "x-forwarded-scheme",
     "x-forwarded-server",
+    "x-real-ip",
     "x-host",
+    "x-original-host",
+    "x-original-url",
+    "x-rewrite-url",
+    "x-http-method-override",
 ];
 
 /// What the API shows of a webhook.
@@ -79,7 +90,7 @@ fn checked_url(url: &Secret) -> Result<String, FieldError> {
     https_url(URL, text).map(|url| origin(&url))
 }
 
-/// An RFC 9110 token that does not frame the request or name another destination.
+/// An RFC 9110 token that does not frame the request or reroute it at a proxy.
 fn checked_name(name: &str) -> Result<(), &'static str> {
     let token = |b: u8| b.is_ascii_alphanumeric() || b"!#$%&'*+-.^_`|~".contains(&b);
     if name.is_empty() {
@@ -90,7 +101,7 @@ fn checked_name(name: &str) -> Result<(), &'static str> {
         .iter()
         .any(|refused| name.eq_ignore_ascii_case(refused))
     {
-        Err("The hub sets this header itself, or it would send the request elsewhere.")
+        Err("The hub sets this header itself, or a proxy would reroute the request by it.")
     } else {
         Ok(())
     }

@@ -107,6 +107,20 @@ fn n_4_urls_apprise_would_split_or_read_twice_are_refused() {
     );
 }
 
+/// Defence in depth: each URL below is permitted without its comma, so the comma rule alone
+/// refuses it.
+#[test]
+fn n_4_a_comma_is_refused_when_it_is_the_only_fault() {
+    for (with_comma, without) in [
+        ("discord://1234/to,ken", "discord://1234/token"),
+        ("discord://1234/token,", "discord://1234/token"),
+        ("tgram://1:a/2?to=a,b", "tgram://1:a/2?to=ab"),
+    ] {
+        assert_eq!(permitted(without), Ok(()), "{without}");
+        assert_eq!(permitted(with_comma), Err(Refusal::Shape), "{with_comma}");
+    }
+}
+
 #[test]
 fn log_007_a_refusal_never_quotes_the_url() {
     for refusal in [Refusal::Shape, Refusal::Scheme, Refusal::Key] {

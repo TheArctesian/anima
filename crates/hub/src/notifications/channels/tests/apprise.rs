@@ -59,6 +59,15 @@ fn cr_14_7_an_apprise_server_is_an_https_origin_only() {
     for server in [
         "http://apprise.example.test",
         "https://apprise.example.test/notify/",
+        "https://apprise.example.test/?x=1",
+        "https://apprise.example.test?x=1",
+        "https://apprise.example.test/#frag",
+        "https://apprise.example.test#frag",
+        "https://user:pw@apprise.example.test",
+        "https://user@apprise.example.test",
+        "https://appr\tise.example.test",
+        "https://appr\nise.example.test",
+        "https://apprise.example.test\r\n",
     ] {
         let SettingsDraft::Apprise(mut input) = stateless(&[DISCORD]) else {
             unreachable!()
@@ -66,7 +75,8 @@ fn cr_14_7_an_apprise_server_is_an_https_origin_only() {
         input.server = server.to_owned();
         assert_eq!(
             new_errors(SettingsDraft::Apprise(input)),
-            ["settings.apprise.server"]
+            ["settings.apprise.server"],
+            "{server:?}"
         );
     }
 }
@@ -168,7 +178,7 @@ fn cr_14_1_a_new_apprise_server_needs_the_secret_again() {
 }
 
 #[test]
-fn cr_14_5_a_kept_apprise_secret_that_does_not_open_asks_for_it_again() {
+fn sec_003_a_kept_apprise_secret_that_does_not_open_asks_for_it_again() {
     let before = Settings::Apprise(AppriseSettings {
         server: SERVER.to_owned(),
         mode: AppriseMode::StatelessUrls,
