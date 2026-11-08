@@ -3,7 +3,7 @@ import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installAnimations } from '$lib/forms/animations.fixture';
 import NotificationsSection from '../NotificationsSection.svelte';
-import { button, failure, fakeHub, field, FIXTURE_SETTINGS, loaded, ok, settled, typeInto, type Operation } from '../notifications.fixture';
+import { button, choice, dialog, failure, fakeHub, field, FIXTURE_SETTINGS, inDialog, loaded, ok, pick, settled, typeInto, type Operation } from '../notifications.fixture';
 import { DAYS_NOT_DESCENDING, DAYS_OUT_OF_RANGE, DAYS_TOO_MANY } from './days';
 
 const mocks = vi.hoisted(() => ({ hub: undefined as unknown }));
@@ -77,6 +77,23 @@ it('D-21: a default template with a placeholder outside the list is refused befo
   await settled();
   expect(problemOf(title())).toMatch(/^Not a placeholder: \{ip\}\./);
   expect(sentOperations()).not.toContain('SetNotificationSettings');
+});
+
+it('D-21: the hub\'s placeholder list, not the D-21 one, decides what the settings form and the channel editor accept', async () => {
+  const narrow = { ...FIXTURE_SETTINGS, placeholders: ['{device}'], template: { title: '{device}', body: '{device}' } };
+  await open(loaded({ NotificationSettings: ok({ notificationSettings: narrow }) }));
+  typeInto(title(), '{device} {check}');
+  save().click();
+  await settled();
+  expect(problemOf(title())).toBe('Not a placeholder: {check}. Use only {device}.');
+  button('Add channel').click();
+  flushSync();
+  pick(choice('Own template'));
+  typeInto(field('Title') as HTMLInputElement, '{check}');
+  inDialog('Save').click();
+  await settled();
+  expect(dialog()?.textContent).toContain('Not a placeholder: {check}. Use only {device}.');
+  expect(sentOperations()).toEqual(['NotificationChannels', 'NotificationSettings']);
 });
 
 it('NOT-006, NOT-007: Save sends the days and the template, and says Saved', async () => {

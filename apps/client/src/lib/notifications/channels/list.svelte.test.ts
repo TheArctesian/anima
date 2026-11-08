@@ -167,6 +167,19 @@ it('NOT-002, NAV-005: a confirmed delete sends the id, drops the row and moves f
   expect(document.activeElement?.getAttribute('aria-label')).toBe('Delete ops-email');
 });
 
+it.each([
+  ['the last row', FIXTURE_CHANNELS, 'apprise-bridge', 'Delete ops-email'],
+  ['the only row', FIXTURE_CHANNELS.slice(0, 1), 'ops-webhook', 'Add channel'],
+])('NAV-005: deleting %s moves focus to the row before it, else to Add channel', async (_, channels, name, focused) => {
+  await open(loaded({ NotificationChannels: ok({ notificationChannels: channels }), DeleteNotificationChannel: ok({ deleteNotificationChannel: 'x' }) }));
+  button(`Delete ${name}`).click();
+  flushSync();
+  button(`Delete ${name}`, document.querySelector('[role="dialog"]') ?? document).click();
+  await settled();
+  await settled();
+  expect(document.activeElement?.getAttribute('aria-label') ?? document.activeElement?.textContent.trim()).toBe(focused);
+});
+
 it('LOG-007: a refused delete shows a fixed sentence in the dialog, not the hub\'s text', async () => {
   await open(loaded({ DeleteNotificationChannel: failure('INTERNAL', `hub ${FAKE_SECRET}`) }));
   button('Delete phone-ntfy').click();
