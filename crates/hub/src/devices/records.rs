@@ -54,6 +54,8 @@ pub(super) struct RemoteRow {
     vnc_username: Option<String>,
     mac_address: Option<String>,
     metrics_source: String,
+    session_limit: Option<i32>,
+    record_sessions: bool,
     transfer_upload: bool,
     transfer_download: bool,
     transfer_copy: bool,
@@ -92,6 +94,11 @@ impl TryFrom<RemoteRow> for RemoteAccess {
                 .transpose()
                 .map_err(decode)?,
             metrics_source: row.metrics_source.parse().map_err(decode)?,
+            session_limit: row
+                .session_limit
+                .map(|limit| u8::try_from(limit).map_err(decode)?.try_into().map_err(decode))
+                .transpose()?,
+            record_sessions: row.record_sessions,
             transfer: TransferPolicy {
                 upload: row.transfer_upload,
                 download: row.transfer_download,
@@ -127,6 +134,8 @@ impl TryFrom<DeviceRow> for Device {
             vnc: remote.vnc,
             mac_address: remote.mac_address,
             metrics_source: remote.metrics_source,
+            session_limit: remote.session_limit,
+            record_sessions: remote.record_sessions,
             transfer: remote.transfer,
             created_at: row.created_at,
             updated_at: row.updated_at,
