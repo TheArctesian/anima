@@ -40,10 +40,11 @@
     color: var(--text-muted);
   }
 
+  /* A set width, not the longest option's, so a long option never widens the modal past a 390 px screen (MOT-007). */
   select {
     box-sizing: border-box;
+    inline-size: 100%;
     min-inline-size: 0;
-    max-inline-size: 100%;
     min-block-size: var(--target-min-desktop);
     padding: var(--space-2) var(--select-chevron-room) var(--space-2) var(--space-3);
     border: var(--border-thin) solid var(--border);
