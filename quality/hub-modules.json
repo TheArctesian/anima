@@ -89,7 +89,8 @@
       "access"
     ],
     "retention": [
-      "access"
+      "access",
+      "events"
     ],
     "maintenance": [
       "access"

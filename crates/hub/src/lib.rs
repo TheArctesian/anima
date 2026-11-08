@@ -13,6 +13,7 @@ pub mod ids;
 pub mod maintenance;
 pub mod metrics;
 pub mod paging;
+pub mod retention;
 pub mod scalars;
 pub mod schema;
 pub mod sessions;
