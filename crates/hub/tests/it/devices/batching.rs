@@ -26,7 +26,7 @@ use anima_hub::{
     clock::{Clock, FixedClock},
     devices::graphql::{Mutation, Query, credential_loader, devices_by_site_loader, site_loader},
     events::Bus,
-    sessions::graphql::host_key_loader,
+    trust::graphql::host_key_loader,
 };
 use async_graphql::{EmptySubscription, Schema};
 use serde_json::{Value, json};
@@ -247,7 +247,7 @@ async fn accept_key(pool: &PgPool) {
     sqlx::query(
         "with operator as (insert into access.operators (id, username, password_hash, created_at) \
              values (gen_random_uuid(), 'operator', '$argon2id$x', now()) returning id) \
-         insert into sessions.host_keys (device_id, algorithm, fingerprint_sha256, public_key, \
+         insert into trust.host_keys (device_id, algorithm, fingerprint_sha256, public_key, \
              first_seen_at, accepted_at, accepted_by) \
          select $1::text::uuid, 'ssh-ed25519', $2, $3, now(), now(), id from operator",
     )

@@ -19,9 +19,10 @@ use crate::{
     events::{ClientAddr, Operator},
     ids::{DeviceId, OperatorId, SessionId},
     sessions::{
-        DisplayRequest, Live, PendingTicket, Protocol, PublicKey, StartRequest,
+        DisplayRequest, Live, PendingTicket, Protocol, StartRequest,
         tickets::{TOKEN_BYTES, TicketToken},
     },
+    trust::PublicKey,
 };
 
 pub(in crate::sessions) const DOCKER_HOST: &str = "0190a000-0000-7000-8002-000000000002";
@@ -72,7 +73,7 @@ pub(in crate::sessions) async fn add_operator(pool: &PgPool) {
 pub(in crate::sessions) async fn prepare(pool: &PgPool, vault: &Vault, accepted: &PublicKey) {
     add_operator(pool).await;
     sqlx::query(
-        "insert into sessions.host_keys (device_id, algorithm, fingerprint_sha256, public_key, \
+        "insert into trust.host_keys (device_id, algorithm, fingerprint_sha256, public_key, \
                 first_seen_at, accepted_at, accepted_by) \
          values ($1::text::uuid, $2, $3, $4, $5, $5, $6::text::uuid)",
     )

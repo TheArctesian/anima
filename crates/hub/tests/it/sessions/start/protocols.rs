@@ -27,7 +27,7 @@ async fn set(pool: &PgPool, table: &str, columns: &str) {
 /// Accepts a server certificate for PVE-01.
 async fn accept_certificate(pool: &PgPool) {
     sqlx::query(
-        "insert into sessions.server_certificates (device_id, fingerprint_sha256, \
+        "insert into trust.server_certificates (device_id, fingerprint_sha256, \
                 first_seen_at, accepted_by) \
          values ($1::text::uuid, $2, $3, $4::text::uuid)",
     )

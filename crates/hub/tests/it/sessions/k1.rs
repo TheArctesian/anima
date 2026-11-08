@@ -1,17 +1,16 @@
 //! The sessions part of the hub declares exactly its K1 root fields (CON-002; the exact schema
-//! comparison is `contract`).
+//! comparison is `contract`). `acceptHostKey` and `acceptServerCertificate` are trust's
+//! (`crate::trust::k1`).
 
-use sqlx::PgPool;
-
-use super::harness::schema_for;
 use crate::contract::{Schema, k1, schema};
-use anima_hub::sessions::{EndReason, Protocol};
+use anima_hub::sessions::{
+    EndReason, Protocol,
+    graphql::{Mutation, Query, Subscription},
+};
 
-/// The sessions part alone, for the root fields it declares.
+/// The sessions part alone, for the root fields it declares. The SDL needs no schema data.
 fn part() -> Schema {
-    // The schema never touches the database for its SDL, so a lazy pool is enough.
-    let pool = PgPool::connect_lazy("postgres://unused@127.0.0.1:1/none").unwrap();
-    schema(&schema_for(&pool).sdl())
+    schema(&async_graphql::Schema::new(Query, Mutation, Subscription).sdl())
 }
 
 fn fields(schema: &Schema, root: &str) -> Vec<String> {
@@ -24,13 +23,7 @@ async fn k1_the_sessions_part_declares_exactly_its_root_fields_as_k1_does() {
     assert_eq!(fields(&part, "SessionsQuery"), ["sessions"]);
     assert_eq!(
         fields(&part, "SessionsMutation"),
-        [
-            "acceptHostKey",
-            "acceptServerCertificate",
-            "endSession",
-            "startSession",
-            "testConnection"
-        ]
+        ["endSession", "startSession", "testConnection"]
     );
     for (ours, theirs) in [("SessionsQuery", "Query"), ("SessionsMutation", "Mutation")] {
         for (field, signature) in &part[ours].members {

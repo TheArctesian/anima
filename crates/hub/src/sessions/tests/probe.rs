@@ -17,10 +17,10 @@ use crate::{
     sessions::{
         Live,
         probe::read_host_key,
-        public_key::PublicKey,
         ssh::{SshError, Target},
     },
     targets::{AddressPolicy, TargetError},
+    trust::PublicKey,
 };
 
 /// A server that only presents its key; every authentication is refused by default.

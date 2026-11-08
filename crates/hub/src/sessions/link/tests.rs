@@ -50,7 +50,7 @@ pub(in crate::sessions) async fn bench(pool: &PgPool, answer: Answer) -> Bench {
 pub(in crate::sessions) async fn bench_accepting(
     pool: &PgPool,
     server: Server,
-    accepted: crate::sessions::PublicKey,
+    accepted: crate::trust::PublicKey,
 ) -> Bench {
     let vault = vault();
     prepare(pool, &vault, &accepted).await;

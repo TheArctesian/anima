@@ -63,7 +63,7 @@ async fn sec_007_another_key_sends_no_credential(pool: PgPool) {
 )]
 async fn sec_006_no_accepted_key_refuses_before_connecting(pool: PgPool) {
     let bench = bench(&pool, Answer::Echo).await;
-    sqlx::query("delete from sessions.host_keys")
+    sqlx::query("delete from trust.host_keys")
         .execute(&pool)
         .await
         .unwrap();

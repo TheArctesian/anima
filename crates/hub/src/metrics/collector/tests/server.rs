@@ -13,12 +13,10 @@ use std::{
 
 use russh::{
     Channel, ChannelId, MethodKind, MethodSet,
-    keys::{PrivateKey, ssh_key::private::Ed25519Keypair},
+    keys::{PrivateKey, PublicKey, ssh_key::private::Ed25519Keypair},
     server::{self, Auth, Msg, Session},
 };
 use tokio::net::TcpListener;
-
-use crate::sessions::PublicKey;
 
 /// The user the devices fixture names, and the password the test stores for it.
 const USER: &str = "operator";
@@ -57,9 +55,10 @@ impl Server {
     }
 }
 
-/// The host key the server presents, as the hub stores it.
+/// The host key the server presents. `metrics` may not import `trust`, so the test reads its
+/// stored form with `ssh-key`, not with the hub's own key type.
 pub(super) fn host_key() -> PublicKey {
-    PublicKey::from_blob(private().public_key().to_bytes().unwrap()).unwrap()
+    private().public_key().clone()
 }
 
 fn private() -> PrivateKey {

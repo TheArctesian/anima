@@ -9,21 +9,17 @@ use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 
 use super::{
-    certificate::PresentedCertificate,
-    connection_test::{ConnectionTest, refused_host},
-    observations::{Endpoint, Observation},
     rdp::{Reply, read_server_certificate},
     reach::ReadError,
+    ssh_test::{ConnectionTest, refused_host},
     vnc::read_banner,
     x224::{PROTOCOL_RDP, TLS_PROTOCOLS},
 };
 use crate::{
     devices::RdpSecurity,
     ids::DeviceId,
-    sessions::{
-        Desktop, Error, ServerCertificate, find_device, live::Live, probe::PROBE_TIMEOUT,
-        server_certificates, ssh::Target,
-    },
+    sessions::{Desktop, Error, find_device, live::Live, probe::PROBE_TIMEOUT, ssh::Target},
+    trust::{self, Endpoint, Observation, PresentedCertificate, ServerCertificate},
 };
 
 /// The port and, for RDP, the security to test with.
@@ -102,7 +98,11 @@ pub(in crate::sessions) async fn test_desktop(
             let seen = read.map(|reply| match reply {
                 Reply::Certificate(certificate, _) => {
                     let endpoint = Endpoint::new(&host, port);
-                    Seen::Certificate(live.observe_certificate(endpoint, certificate, at))
+                    Seen::Certificate(live.sightings().observe_certificate(
+                        endpoint,
+                        certificate,
+                        at,
+                    ))
                 }
                 Reply::Standard => Seen::Standard,
                 Reply::Refused => Seen::Refused,
@@ -135,7 +135,7 @@ async fn plan(
     let device = find_device(db, id).await?;
     Ok(match protocol {
         Desktop::Rdp => {
-            let accepted = server_certificates(db, &[id]).await?.remove(&id);
+            let accepted = trust::server_certificates(db, &[id]).await?.remove(&id);
             let settings = DesktopSettings::Rdp {
                 port: device.rdp.port,
                 security: device.rdp.security,
@@ -234,9 +234,9 @@ mod tests {
         ACCEPTED_CERTIFICATE, CHANGED_CERTIFICATE, NEGOTIATION_REFUSED, NEW_CERTIFICATE, NO_TLS,
         STANDARD_ONLY, Seen, UNREACHABLE, VNC_ANSWERED, rdp_outcome, vnc_outcome,
     };
-    use crate::sessions::{
-        ServerCertificate,
-        trust::{Observation, PresentedCertificate, ReadError},
+    use crate::{
+        sessions::connection_test::ReadError,
+        trust::{Observation, PresentedCertificate, ServerCertificate},
     };
 
     fn observed(der: &[u8]) -> Observation<PresentedCertificate> {

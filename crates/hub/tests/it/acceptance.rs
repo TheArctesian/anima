@@ -51,7 +51,7 @@ const CHAIN: [(&str, &str); 6] = [
     ),
     (
         "host key",
-        "select count(*) from sessions.host_keys where device_id = $1::text::uuid",
+        "select count(*) from trust.host_keys where device_id = $1::text::uuid",
     ),
 ];
 
@@ -105,7 +105,7 @@ fn id_of(response: &Value, field: &str) -> String {
 /// Gives the device a stored accepted host key and one ended session.
 async fn add_host_key_and_session(pool: &PgPool, device: &str) {
     sqlx::query(
-        "insert into sessions.host_keys (device_id, algorithm, fingerprint_sha256, public_key, \
+        "insert into trust.host_keys (device_id, algorithm, fingerprint_sha256, public_key, \
              first_seen_at, accepted_at, accepted_by) \
          select $1::text::uuid, 'ssh-ed25519', $2, $3, now(), now(), id from access.operators",
     )

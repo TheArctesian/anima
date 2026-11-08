@@ -8,11 +8,8 @@ use std::{sync::Arc, time::Duration};
 
 use russh::client;
 
-use super::{
-    public_key::PublicKey,
-    ssh::{self, Observer, SshError, Target},
-};
-use crate::credentials::SshSecret;
+use super::ssh::{self, Observer, SshError, Target};
+use crate::{credentials::SshSecret, trust::PublicKey};
 
 /// How long one probe may take, lookup, connect, key exchange and sign-in included (D-5).
 /// It stays below the client's 10 s request limit (`HUB_TIMEOUT_MS`), so a device that does

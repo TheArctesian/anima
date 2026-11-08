@@ -78,7 +78,7 @@ async fn add_operator(pool: &PgPool) {
 /// `KEY` as the device's accepted host key, accepted by the operator named `username`.
 async fn accept_key(pool: &PgPool, device: &str, username: &str) {
     sqlx::query(
-        "insert into sessions.host_keys (device_id, algorithm, fingerprint_sha256, public_key, \
+        "insert into trust.host_keys (device_id, algorithm, fingerprint_sha256, public_key, \
              first_seen_at, accepted_at, accepted_by) \
          select $1::text::uuid, 'ssh-ed25519', $2, $3, $4, $4, id \
          from access.operators where username = $5",

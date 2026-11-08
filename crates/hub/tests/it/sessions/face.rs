@@ -1,5 +1,5 @@
-//! The sessions face other domains call: host keys. The stale-row close and the shutdown
-//! are tested with the other ends (`end/shutdown.rs`).
+//! The trust face sessions call: host keys (moved from sessions, Q2-05). The stale-row close
+//! and the shutdown are tested with the other ends (`end/shutdown.rs`).
 
 use std::collections::BTreeMap;
 
@@ -11,7 +11,7 @@ use super::{
 };
 use anima_hub::{
     ids::DeviceId,
-    sessions::{self, Error},
+    trust::{self, Error},
 };
 
 fn device(id: &str) -> DeviceId {
@@ -25,14 +25,14 @@ fn device(id: &str) -> DeviceId {
 async fn sec_006_host_key_is_none_until_one_is_accepted(pool: PgPool) {
     add_operator(&pool).await;
     assert!(
-        sessions::host_key(&pool, device(PVE_01))
+        trust::host_key(&pool, device(PVE_01))
             .await
             .unwrap()
             .is_none()
     );
 
     put_host_key(&pool, PVE_01, ED25519_KEY).await.unwrap();
-    let key = sessions::host_key(&pool, device(PVE_01))
+    let key = trust::host_key(&pool, device(PVE_01))
         .await
         .unwrap()
         .unwrap();
@@ -51,7 +51,7 @@ async fn api_005_host_keys_returns_each_device_that_has_one(pool: PgPool) {
     put_host_key(&pool, PVE_01, ED25519_KEY).await.unwrap();
     put_host_key(&pool, DOCKER_HOST, ECDSA_KEY).await.unwrap();
 
-    let keys = sessions::host_keys(
+    let keys = trust::host_keys(
         &pool,
         &[device(PVE_01), device(DOCKER_HOST), device(OLLAMA)],
     )
@@ -68,7 +68,7 @@ async fn api_005_host_keys_returns_each_device_that_has_one(pool: PgPool) {
             (DOCKER_HOST.to_owned(), "ecdsa-sha2-nistp256"),
         ])
     );
-    assert!(sessions::host_keys(&pool, &[]).await.unwrap().is_empty());
+    assert!(trust::host_keys(&pool, &[]).await.unwrap().is_empty());
 }
 
 #[sqlx::test(
@@ -81,7 +81,7 @@ async fn sec_007_a_stored_key_whose_algorithm_differs_from_the_blob_is_an_error(
     put_host_key(&pool, PVE_01, ("ssh-rsa", ED25519, ED25519_FINGERPRINT))
         .await
         .unwrap();
-    let error = sessions::host_key(&pool, device(PVE_01)).await.unwrap_err();
+    let error = trust::host_key(&pool, device(PVE_01)).await.unwrap_err();
     assert!(matches!(error, Error::Database(_)));
     assert_eq!(error.to_string(), "database error");
 }

@@ -3,7 +3,7 @@
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 
 use super::{ECDSA, ECDSA_FINGERPRINT, ED25519, ED25519_FINGERPRINT, Inputs};
-use crate::sessions::{
+use crate::trust::{
     BadFingerprint, BadKey, Fingerprint, PublicKey,
     public_key::{MAX_BASE64, MAX_BLOB},
 };

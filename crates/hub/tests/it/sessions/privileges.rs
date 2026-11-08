@@ -250,7 +250,7 @@ async fn sec_006_runtime_role_upserts_host_keys_but_cannot_delete_them(pool: PgP
     let (algorithm, key, fingerprint) = ED25519_KEY;
     for _ in 0..2 {
         sqlx::query(
-            "insert into sessions.host_keys (device_id, algorithm, fingerprint_sha256, \
+            "insert into trust.host_keys (device_id, algorithm, fingerprint_sha256, \
                     public_key, first_seen_at, accepted_at, accepted_by) \
              values ($1::text::uuid, $2, $3, $4, $5, $5, $6::text::uuid) \
              on conflict (device_id) do update set public_key = excluded.public_key, \
@@ -268,8 +268,8 @@ async fn sec_006_runtime_role_upserts_host_keys_but_cannot_delete_them(pool: PgP
         .unwrap();
     }
     for sql in [
-        "delete from sessions.host_keys where device_id <> $1::text::uuid",
-        "update sessions.host_keys set device_id = $1::text::uuid",
+        "delete from trust.host_keys where device_id <> $1::text::uuid",
+        "update trust.host_keys set device_id = $1::text::uuid",
     ] {
         let error = sqlx::query(sql)
             .bind(DOCKER_HOST)
@@ -282,7 +282,7 @@ async fn sec_006_runtime_role_upserts_host_keys_but_cannot_delete_them(pool: PgP
 }
 
 async fn host_key_count(pool: &PgPool) -> i64 {
-    sqlx::query_scalar("select count(*) from sessions.host_keys")
+    sqlx::query_scalar("select count(*) from trust.host_keys")
         .fetch_one(pool)
         .await
         .unwrap()

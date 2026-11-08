@@ -1,14 +1,13 @@
 //! What the hub holds in memory about sessions (D-1, R-032): unredeemed tickets, tickets
 //! spent by a refused redemption, the end signal of each open tunnel and files relay
-//! (`tunnel`), the host keys and RDP server certificates connection tests saw (`observed`,
-//! SEC-006, SEC-007), the feed of session changes (`changes`, RA-034), and the rule for the
-//! addresses sessions may reach.
+//! (`tunnel`), the host keys and RDP server certificates connection tests saw (a clone of
+//! `trust::Sightings`, SEC-006, SEC-007), the feed of session changes (`changes`, RA-034),
+//! and the rule for the addresses sessions may reach.
 //!
 //! Every method takes the lock for a short, synchronous critical section and never across an
 //! `.await`; time comes in as a parameter (CQ-021).
 
 mod changes;
-mod observed;
 mod tunnel;
 
 use std::{
@@ -30,11 +29,9 @@ use super::{
     end::Actor,
     files,
     model::EndReason,
-    public_key::PublicKey,
     tickets::{PendingTicket, Presented, TicketHash, hash_of},
-    trust::{Observations, PresentedCertificate},
 };
-use crate::{ids::SessionId, targets::AddressPolicy};
+use crate::{ids::SessionId, targets::AddressPolicy, trust::Sightings};
 
 /// Most tickets issued and not yet redeemed or swept, spent ones included. A ticket lives
 /// 30 s, so this bounds what one operator can hold in memory by starting sessions in a loop.
@@ -89,10 +86,9 @@ impl State {
 #[derive(Clone)]
 pub struct Live {
     state: Arc<Mutex<State>>,
-    /// Its own lock: a connection test never waits on a ticket redemption.
-    observations: Arc<Mutex<Observations<PublicKey>>>,
-    /// RDP server certificates, apart from host keys: an endpoint may present both.
-    certificates: Arc<Mutex<Observations<PresentedCertificate>>>,
+    /// What connection tests saw, with its own locks: a connection test never waits on a
+    /// ticket redemption. The schema holds the same value for the accept mutations.
+    sightings: Sightings,
     tunnel_end_wait: Duration,
     /// The one target rule every session connection applies (R-030, R-032); shared, so a
     /// clone is cheap.
@@ -141,8 +137,7 @@ impl Live {
     pub fn with_tunnel_end_wait(wait: Duration) -> Self {
         Self {
             state: Arc::default(),
-            observations: Arc::default(),
-            certificates: Arc::default(),
+            sightings: Sightings::default(),
             tunnel_end_wait: wait,
             policy: Arc::default(),
             files: files::Tickets::default(),
@@ -179,6 +174,13 @@ impl Live {
             policy: Arc::new(Arc::unwrap_or_clone(self.policy).allowing_loopback()),
             ..self
         }
+    }
+
+    /// What connection tests saw. `schema.rs` gives the schema a clone of it, so
+    /// `acceptHostKey` and `acceptServerCertificate` read what `testConnection` recorded.
+    #[must_use]
+    pub const fn sightings(&self) -> &Sightings {
+        &self.sightings
     }
 
     pub(super) const fn tunnel_end_wait(&self) -> Duration {

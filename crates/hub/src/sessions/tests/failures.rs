@@ -48,7 +48,7 @@ async fn ready(pool: &PgPool) {
     .await
     .unwrap();
     sqlx::query(
-        "insert into sessions.host_keys (device_id, algorithm, fingerprint_sha256, public_key, \
+        "insert into trust.host_keys (device_id, algorithm, fingerprint_sha256, public_key, \
                 first_seen_at, accepted_at, accepted_by) \
          values ($1::text::uuid, 'ssh-ed25519', $2, $3, $4, $4, $5::text::uuid)",
     )

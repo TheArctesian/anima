@@ -140,7 +140,7 @@ describe("REPO-004 parsing", () => {
 
 describe("R-011 graphql composition edges", () => {
   test("a domain's graphql module may use the extra edges; its other files may not", () => {
-    expect(signals(hub("devices/graphql.rs", "use crate::checks::device_status;\nuse crate::sessions::host_key;"))).toEqual([]);
+    expect(signals(hub("devices/graphql.rs", "use crate::checks::device_status;\nuse crate::trust::host_key;"))).toEqual([]);
     expect(signals(hub("devices/rules.rs", "use crate::checks::device_status;"))).toEqual(["forbidden-edge devices -> checks"]);
   });
 

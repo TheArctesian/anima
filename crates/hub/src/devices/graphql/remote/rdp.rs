@@ -16,7 +16,7 @@ use crate::{
     credentials::{self, PasswordKind},
     devices::{Device, RdpSecurity, RdpSettings, ResizeMethod},
     ids::DeviceId,
-    sessions::{ServerCertificate, graphql::ServerCertificatesByDevice},
+    trust::{ServerCertificate, graphql::ServerCertificatesByDevice},
 };
 
 /// The RDP settings of one device. `credential_stored` is set when the resolver that built it

@@ -9,6 +9,7 @@ use std::{
 
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use chrono::{DateTime, TimeDelta, Utc};
+use russh::keys::HashAlg;
 use sqlx::PgPool;
 use tokio::sync::broadcast::Receiver;
 
@@ -161,14 +162,14 @@ pub(super) fn vault() -> Vault {
 pub(super) async fn accept(pool: &PgPool) {
     let key = host_key();
     sqlx::query(
-        "insert into sessions.host_keys (device_id, algorithm, fingerprint_sha256, public_key, \
+        "insert into trust.host_keys (device_id, algorithm, fingerprint_sha256, public_key, \
                 first_seen_at, accepted_at, accepted_by) \
          values ($1::text::uuid, $2, $3, $4, now(), now(), $5::text::uuid)",
     )
     .bind(DOCKER_HOST)
-    .bind(key.algorithm())
-    .bind(key.fingerprint().as_str().to_owned())
-    .bind(key.to_base64())
+    .bind(key.algorithm().as_str())
+    .bind(key.fingerprint(HashAlg::Sha256).to_string())
+    .bind(STANDARD.encode(key.to_bytes().unwrap()))
     .bind(OPERATOR)
     .execute(pool)
     .await

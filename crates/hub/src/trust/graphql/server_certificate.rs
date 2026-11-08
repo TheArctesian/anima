@@ -9,7 +9,7 @@ use sqlx::PgPool;
 
 use crate::{
     ids::DeviceId,
-    sessions::{Error, ServerCertificate, server_certificates},
+    trust::{Error, ServerCertificate, server_certificates},
 };
 
 #[Object]

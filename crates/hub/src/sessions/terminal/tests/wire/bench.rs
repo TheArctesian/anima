@@ -17,11 +17,12 @@ use crate::{
     events::{Bus, ClientAddr},
     ids::SessionId,
     sessions::{
-        Live, PublicKey, start,
+        Live, start,
         tests::fixture::{
             LOOPBACK, address, move_device, now, operator, own_pool, prepare, request, vault,
         },
     },
+    trust::PublicKey,
 };
 
 /// The seed of the host key the fake SSH server presents.

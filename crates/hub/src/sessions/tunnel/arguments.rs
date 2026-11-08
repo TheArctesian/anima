@@ -18,7 +18,7 @@ use guac_protocol::{ArgValues, is_zone_name};
 
 use crate::credentials::{PasswordKind, Secret};
 use crate::devices::{Device, RdpSecurity, ResizeMethod, TransferPolicy};
-use crate::sessions::{Desktop, ServerCertificate};
+use crate::{sessions::Desktop, trust::ServerCertificate};
 
 /// The time zone when the client's is not zone-shaped (sites have no zone, R-032).
 const FALLBACK_ZONE: &str = "UTC";

@@ -21,9 +21,10 @@ use crate::{
     },
     ids::DeviceId,
     sessions::{
-        Desktop, FieldError, HostKey, Protocol, ServerCertificate,
-        trust::{ConnectionTest, DesktopSettings, DesktopSubject, TestSubject, Unsaved},
+        Desktop, FieldError, Protocol,
+        connection_test::{ConnectionTest, DesktopSettings, DesktopSubject, TestSubject, Unsaved},
     },
+    trust::{HostKey, ServerCertificate},
 };
 
 /// K1's default SSH port when the form sends no `ssh`.

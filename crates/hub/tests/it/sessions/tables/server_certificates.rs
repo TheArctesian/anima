@@ -1,6 +1,6 @@
-//! Migration 0610's `sessions.server_certificates`: its columns and checks, the device delete
-//! that removes a certificate, and a runtime role that may upsert but never delete one (K2,
-//! SEC-007, R-016).
+//! Migration 0610's `server_certificates` (in schema `trust` since 0920): its columns and
+//! checks, the device delete that removes a certificate, and a runtime role that may upsert but
+//! never delete one (K2, SEC-007, R-016).
 
 use sqlx::{PgConnection, PgPool};
 
@@ -23,7 +23,7 @@ async fn put(
     subject: Option<&str>,
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
-        "insert into sessions.server_certificates (device_id, fingerprint_sha256, subject, \
+        "insert into trust.server_certificates (device_id, fingerprint_sha256, subject, \
                 not_after, first_seen_at, accepted_by) \
          values ($1::text::uuid, $2, $3, $4 + interval '1 year', $4, $5::text::uuid) \
          on conflict (device_id) do update set fingerprint_sha256 = excluded.fingerprint_sha256, \
@@ -41,19 +41,17 @@ async fn put(
 }
 
 async fn certified_devices(pool: &PgPool) -> Vec<String> {
-    sqlx::query_scalar(
-        "select device_id::text from sessions.server_certificates order by device_id",
-    )
-    .fetch_all(pool)
-    .await
-    .unwrap()
+    sqlx::query_scalar("select device_id::text from trust.server_certificates order by device_id")
+        .fetch_all(pool)
+        .await
+        .unwrap()
 }
 
 #[sqlx::test(migrations = "./migrations")]
 async fn k2_server_certificates_has_the_contract_columns(pool: PgPool) {
     let (time, text, uuid) = ("timestamp with time zone", "text", "uuid");
     assert_eq!(
-        columns(&pool, "server_certificates").await,
+        columns(&pool, "trust", "server_certificates").await,
         expected(&[
             ("device_id", uuid, "NO"),
             ("fingerprint_sha256", text, "NO"),
@@ -160,10 +158,10 @@ async fn sec_007_runtime_role_upserts_certificates_but_cannot_delete_or_move_the
         .await
         .unwrap();
     for sql in [
-        "delete from sessions.server_certificates where device_id = $1::text::uuid",
-        "delete from sessions.server_certificates where device_id <> $1::text::uuid",
-        "update sessions.server_certificates set device_id = $1::text::uuid",
-        "truncate sessions.server_certificates",
+        "delete from trust.server_certificates where device_id = $1::text::uuid",
+        "delete from trust.server_certificates where device_id <> $1::text::uuid",
+        "update trust.server_certificates set device_id = $1::text::uuid",
+        "truncate trust.server_certificates",
     ] {
         let query = sqlx::query(sql);
         let query = if sql.contains("$1") {

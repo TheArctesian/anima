@@ -12,7 +12,7 @@ use russh::{
     },
 };
 
-use crate::sessions::{PublicKey, ssh::Observer};
+use crate::{sessions::ssh::Observer, trust::PublicKey};
 
 fn private(seed: u8) -> PrivateKey {
     PrivateKey::from(Ed25519Keypair::from_seed(&[seed; 32]))

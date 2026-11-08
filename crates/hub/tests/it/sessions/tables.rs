@@ -1,5 +1,6 @@
 //! Migrations 0600 and 0610: columns, session checks and what a device delete does (K2,
-//! RA-008, SEC-006); the server certificate table is `server_certificates`.
+//! RA-008, SEC-006); the server certificate table is `server_certificates`. Migration 0920
+//! moved `host_keys` and `server_certificates` to schema `trust` (D-31).
 
 mod server_certificates;
 
@@ -11,12 +12,17 @@ use super::{
 };
 use anima_hub::sessions::EndReason;
 
-pub(super) async fn columns(pool: &PgPool, table: &str) -> Vec<(String, String, String)> {
+pub(super) async fn columns(
+    pool: &PgPool,
+    schema: &str,
+    table: &str,
+) -> Vec<(String, String, String)> {
     sqlx::query_as(
         "select column_name::text, data_type::text, is_nullable::text \
-         from information_schema.columns where table_schema = 'sessions' and table_name = $1 \
+         from information_schema.columns where table_schema = $1 and table_name = $2 \
          order by ordinal_position",
     )
+    .bind(schema)
     .bind(table)
     .fetch_all(pool)
     .await
@@ -34,7 +40,7 @@ pub(super) fn expected(columns: &[(&str, &str, &str)]) -> Vec<(String, String, S
 async fn k2_session_tables_have_the_contract_columns(pool: PgPool) {
     let (time, text, uuid) = ("timestamp with time zone", "text", "uuid");
     assert_eq!(
-        columns(&pool, "sessions").await,
+        columns(&pool, "sessions", "sessions").await,
         expected(&[
             ("id", uuid, "NO"),
             ("device_id", uuid, "YES"),
@@ -49,7 +55,7 @@ async fn k2_session_tables_have_the_contract_columns(pool: PgPool) {
         ])
     );
     assert_eq!(
-        columns(&pool, "host_keys").await,
+        columns(&pool, "trust", "host_keys").await,
         expected(&[
             ("device_id", uuid, "NO"),
             ("algorithm", text, "NO"),
@@ -164,7 +170,7 @@ async fn ra_008_session_history_survives_device_delete_and_host_key_does_not(poo
             .await
             .unwrap();
     assert_eq!(kept, (PVE_01.to_owned(), "pve-01".to_owned()));
-    let keys: Vec<String> = sqlx::query_scalar("select device_id::text from sessions.host_keys")
+    let keys: Vec<String> = sqlx::query_scalar("select device_id::text from trust.host_keys")
         .fetch_all(&pool)
         .await
         .unwrap();

@@ -8,11 +8,11 @@ use std::{collections::HashMap, net::IpAddr};
 use chrono::{DateTime, TimeDelta, Utc};
 
 /// How long an observation stays after the hub last saw what was presented.
-pub(in crate::sessions) const LIFETIME: TimeDelta = TimeDelta::minutes(15);
+pub(in crate::trust) const LIFETIME: TimeDelta = TimeDelta::minutes(15);
 
 /// Most observations held. Connection tests come only from signed-in operators, so this
 /// bounds memory even when one tests many hosts in a loop.
-pub(in crate::sessions) const MAX_OBSERVATIONS: usize = 256;
+pub(in crate::trust) const MAX_OBSERVATIONS: usize = 256;
 
 /// A host and a port, in one spelling: a name is trimmed and in lower case; an IP
 /// literal is in its canonical text. So a test of `PVE-01.lan` and a device saved as
@@ -20,13 +20,13 @@ pub(in crate::sessions) const MAX_OBSERVATIONS: usize = 256;
 /// `pve-01.lan` may resolve through a search domain, so they can name different hosts and
 /// never share an observation.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub(in crate::sessions) struct Endpoint {
+pub(crate) struct Endpoint {
     host: String,
     port: u16,
 }
 
 impl Endpoint {
-    pub(in crate::sessions) fn new(host: &str, port: u16) -> Self {
+    pub(crate) fn new(host: &str, port: u16) -> Self {
         let host = host.trim();
         let host = host
             .parse::<IpAddr>()
@@ -38,10 +38,10 @@ impl Endpoint {
 /// What an endpoint presented (a host key or a certificate): when the hub first saw it there,
 /// and when last.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(in crate::sessions) struct Observation<T> {
-    pub(in crate::sessions) presented: T,
-    pub(in crate::sessions) first_seen_at: DateTime<Utc>,
-    pub(in crate::sessions) last_seen_at: DateTime<Utc>,
+pub(crate) struct Observation<T> {
+    pub(crate) presented: T,
+    pub(crate) first_seen_at: DateTime<Utc>,
+    pub(crate) last_seen_at: DateTime<Utc>,
 }
 
 impl<T> Observation<T> {
@@ -53,7 +53,7 @@ impl<T> Observation<T> {
 
 /// The latest thing seen at each endpoint, at most [`MAX_OBSERVATIONS`].
 #[derive(Debug)]
-pub(in crate::sessions) struct Observations<T>(HashMap<Endpoint, Observation<T>>);
+pub(in crate::trust) struct Observations<T>(HashMap<Endpoint, Observation<T>>);
 
 impl<T> Default for Observations<T> {
     fn default() -> Self {
@@ -65,7 +65,7 @@ impl<T: Clone + PartialEq> Observations<T> {
     /// Records that `endpoint` presented `presented` at `now` and returns the observation.
     /// The same thing again keeps its first-seen time; another replaces it. Expired
     /// observations go first; when the map is still full, the one seen longest ago goes.
-    pub(in crate::sessions) fn record(
+    pub(in crate::trust) fn record(
         &mut self,
         endpoint: Endpoint,
         presented: T,
@@ -89,7 +89,7 @@ impl<T: Clone + PartialEq> Observations<T> {
     }
 
     /// What was last seen at `endpoint`, unless it expired at `now`.
-    pub(in crate::sessions) fn find(
+    pub(in crate::trust) fn find(
         &self,
         endpoint: &Endpoint,
         now: DateTime<Utc>,
@@ -112,7 +112,7 @@ impl<T: Clone + PartialEq> Observations<T> {
     }
 
     #[cfg(test)]
-    pub(in crate::sessions) fn len(&self) -> usize {
+    pub(in crate::trust) fn len(&self) -> usize {
         self.0.len()
     }
 }

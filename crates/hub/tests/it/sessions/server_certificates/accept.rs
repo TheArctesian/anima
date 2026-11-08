@@ -31,7 +31,7 @@ struct Row {
 async fn row(pool: &PgPool) -> Option<Row> {
     sqlx::query_as(
         "select fingerprint_sha256, subject, not_after, first_seen_at, accepted_by::text \
-         from sessions.server_certificates where device_id = $1::text::uuid",
+         from trust.server_certificates where device_id = $1::text::uuid",
     )
     .bind(PVE_01)
     .fetch_optional(pool)
