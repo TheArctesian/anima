@@ -150,3 +150,6 @@ impl Mutation {
         .map_err(to_graphql)
     }
 }
+
+#[cfg(test)]
+mod tests;

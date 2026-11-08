@@ -10,7 +10,7 @@ const BYTES: usize = 32;
 
 /// The SHA-256 of a certificate's DER. Two texts that name the same digest, in either form
 /// or case, are one value.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CertificateFingerprint([u8; BYTES]);
 
 impl CertificateFingerprint {
@@ -150,6 +150,11 @@ mod tests {
             PAIRS[..PAIRS.len() - 3].to_owned(),
             PAIRS.replacen(':', "::", 1),
             PAIRS.replacen("e3:b0", "e:3b0", 1),
+            PAIRS.replacen("e3:", "e30:", 1),
+            PAIRS.replacen("e3:b0", "e3b:0", 1),
+            PAIRS.replacen("e3", "é", 1),
+            HEX.replacen("e3", "e ", 1),
+            HEX.replacen("e3", "é", 1),
             format!("{}:{}", &HEX[..3], &HEX[3..]),
             format!("SHA256:{HEX}"),
             "SHA256:4eECQSeWmB0ww/ND7ZkydOxBUAgciI4AwfhKt8R8Nbk".to_owned(),
