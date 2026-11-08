@@ -817,7 +817,10 @@ changes nothing.
 
    The rules also drop packets for this host's own VPN addresses that did not arrive on `lo` or
    `tailscale0` (DNS-005), and a forward rule drops traffic into `tailscale0` unless it comes from
-   `lo`, `tailscale0`, `docker0` or a `br-*` bridge.
+   `lo`, `tailscale0`, `docker0` or a `br-*` bridge. Four more rules contain the optional Apprise
+   container (`172.30.3.10`, NOT-002): it reaches no address of this host, no private, VPN, loopback,
+   link-local, Docker or multicast range and nothing through `tailscale0`, only the internet and its
+   replies to the hub (`deploy/README.md`, Phase 3 operator changes, step 7).
 
    If you do nothing, or the new session cannot connect, after 180 seconds the previous rules come
    back by themselves. The VPS is then as open as before, so keep 22/tcp in the Hostinger firewall

@@ -229,7 +229,9 @@ plain `docker compose up -d` does not start it.
 sudo docker compose --profile apprise up -d apprise
 ```
 
-Do this only after the firewall rule of step 7 is in place.
+Do this only after step 7 of "Phase 3 operator changes (WP-52)" has installed the firewall rules
+through `harden.sh confirm`. Apprise has `restart: unless-stopped`, so once started it starts again
+with Docker at every boot; the rules must already be in the boot copy of the firewall by then.
 
 - It is stateless: it keeps no URL, no key and no result, and has no volume. Every request carries its
   own URLs. It holds no secret and publishes no port.
@@ -344,8 +346,9 @@ Each change to the VPS needs the operator's confirmation in chat first (VPS-005)
 repository does them. Log each one in `docs/programme/operator-changes.md`.
 
 Each feature works once its package is in the image. Browser sign-in needs WP-43 and WP-44. The
-Apprise channel, the test notification and the retention settings need WP-45 and WP-50. Recordings
-need WP-48. Prometheus needs API keys (WP-43, WP-50) and `/metrics` (WP-46). Before that, the new
+Apprise channel and the test notification need WP-45 and WP-50. The retention settings need WP-46 (hub)
+and WP-50 (client). Recordings need WP-47 (the device flag), WP-48 (recording), WP-49 (playback) and
+WP-50 (the toggle). Prometheus needs API keys (WP-43, WP-50) and `/metrics` (WP-46). Before that, the new
 variables are harmless: the hub ignores them.
 
 **1. Check the free disk space (D-14).**
@@ -365,14 +368,38 @@ Undo: nothing changes.
 # Run on the VPS, in /opt/anima/deploy.
 sudo docker tag anima-hub:local anima-hub:previous
 sudo cp -p compose.yaml compose.yaml.before-wp52
-sudo systemctl start anima-backup.service
 ```
 
-The backup is the way back from the Phase 3 migrations (see step 5, Undo). Wait for it to finish, and
-read the dump path with `sudo journalctl -u anima-backup.service -n 20`.
+Then take a database backup. It is the way back from the Phase 3 migrations (see step 5, Undo). First
+check that the backup unit is installed:
+
+```sh
+# Run on the VPS.
+systemctl cat anima-backup.service
+```
+
+If it prints the unit, run it and wait for it to finish:
+
+```sh
+# Run on the VPS.
+sudo systemctl start anima-backup.service
+sudo journalctl -u anima-backup.service -n 20
+```
+
+The journal shows the dump path (`/var/backups/anima/anima-<UTC time>.dump`). The unit runs
+`backup.sh` and then `offsite.sh`. If `offsite.sh` fails, the unit is marked failed although the
+dump was written, so check the dump file itself. If `systemctl cat` says the unit does not exist, run
+the backup script directly; it prints the dump path:
+
+```sh
+# Run on the VPS, in /opt/anima/deploy.
+sudo /opt/anima/deploy/backup/backup.sh
+```
+
+Write down the dump path for step 5.
 
 Check: `sudo docker image ls anima-hub` lists `previous` and `local` with the same image ID,
-`ls compose.yaml.before-wp52` shows the file, and the journal shows a new dump.
+`ls compose.yaml.before-wp52` shows the file, and `sudo ls -l <dump path>` shows the new dump.
 Undo: `sudo docker image rm anima-hub:previous` and `sudo rm compose.yaml.before-wp52`. This step
 overwrites the earlier `previous` tag (the WP-18 image of 2026-11-06), and that image cannot be
 restored from here.
@@ -473,26 +500,43 @@ sudo docker compose exec -T hub printenv ANIMA_PUBLIC_ORIGIN ANIMA_WEB_ROOT ANIM
 The four lines are `https://hub.anima.ing`, `/usr/share/anima/web`, `/var/lib/anima/recordings` and
 `2147483648`.
 
-Undo:
+Undo: restore the database from the dump of step 2, then start the old hub. Everything the hub wrote
+after the backup of step 2 is lost (devices, checks, audit entries, sessions). The order follows
+[backup/README.md](backup/README.md), Restore. Remove Apprise first if you started it (step 8):
+`sudo docker compose --profile apprise rm -sf apprise`.
 
 ```sh
 # Run on the VPS, in /opt/anima/deploy.
+sudo docker compose stop hub
 sudo docker tag anima-hub:previous anima-hub:local
 sudo cp -p compose.yaml.before-wp52 compose.yaml
-sudo docker compose up -d --no-deps hub
+sudo backup/restore.sh --yes <dump path from step 2>
+sudo docker compose up -d migrate
+sudo docker compose ps -a migrate
+```
+
+`restore.sh` refuses while `hub` or `migrate` runs. It restores into a new database and swaps it in
+only when that worked, so a bad dump leaves `anima` unchanged. `migrate` now runs from the old image
+against the restored database; wait until `ps -a` shows it exited with code 0. Then:
+
+```sh
+# Run on the VPS, in /opt/anima/deploy.
+sudo docker compose up -d hub
 sudo docker network rm deploy_notify
 ```
 
-`--no-deps` is required. The hub depends on `migrate`, and `migrate` from the old image fails by design
-when the database holds migrations it does not know (sqlx `VersionMissing`). The old hub then runs against
-the newer schema. The Phase 3 migrations are not all additive: K2 in
-[phase-3-contracts.md](../docs/programme/phase-3-contracts.md) moves `sessions.host_keys` and
-`sessions.server_certificates` to a new schema `trust` (migration 0920), and the old hub reads them in
-`sessions`. So the old hub may not work after the migrations. If it does not, restore the database from
-the dump of step 2 (`backup/README.md`, Restore) before you start the old hub. Remove Apprise first if you
-started it (step 8); then `docker network rm deploy_notify` works. The `recordings` volume stays.
-`sudo docker volume rm deploy_recordings` removes it and **destroys all recordings**. Run it only if the
-operator wants a full revert.
+Check: `https://hub.anima.ing/health` answers `200` from a VPN machine, and the client shows the
+devices and the audit log. The old database stays as `anima_previous_<time>`; drop it with the command
+that `restore.sh` printed once you are sure.
+
+Do not undo with only the old image and `docker compose up -d --no-deps hub`. The old `migrate` fails by
+design on a database that holds migrations it does not know (sqlx `VersionMissing`), and the old hub does
+not work on the new schema: K2 in [phase-3-contracts.md](../docs/programme/phase-3-contracts.md) moves
+`sessions.host_keys` and `sessions.server_certificates` to the new schema `trust` (migration 0920),
+and the old hub reads them in `sessions`.
+
+The `recordings` volume stays. `sudo docker volume rm deploy_recordings` removes it and **destroys all
+recordings**. Run it only if the operator wants a full revert.
 
 **6. Run the egress check.**
 
@@ -523,7 +567,10 @@ do not stop that. The Anima host firewall contains it (NOT-002, D-19). The rules
 
 They are part of the table `inet anima_filter`, so you apply them the way WP-03 applied that table:
 `harden.sh firewall` with its 180 s rollback, then `harden.sh confirm` from a new SSH session over the
-VPN. `confirm` installs the file as `/etc/nftables/anima.nft`, so the rules come back after a reboot.
+VPN. `confirm` installs the file as `/etc/nftables/anima.nft`, so the rules come back after a reboot;
+nothing has to be repeated after a reboot. `harden.sh firewall` replaces the whole table from
+`/opt/anima/headscale/vps/nftables.conf`, so the rules stay as long as the installed file has them.
+A later `firewall` run with an older copy of that file removes them.
 This needs the operator's confirmation (VPS-005). Do not start Apprise before this step is done.
 
 Resolver check, first. Docker's embedded DNS forwards Apprise's lookups from the container to the
@@ -615,7 +662,9 @@ If `/root/nftables.conf.before-wp52` is lost, take the file from git as it was b
 rules: `git show <commit>~1:deploy/headscale/vps/nftables.conf`, where `<commit>` is the commit that
 added them (`git log -1 --format=%h -S 'define apprise' -- deploy/headscale/vps/nftables.conf`).
 
-**8. Optional: start Apprise, only after step 7.**
+**8. Optional: start Apprise, only after step 7.** Run it only once `harden.sh confirm` in step 7 has
+installed the rules for boot. Apprise has `restart: unless-stopped`: from now on Docker starts it at
+every boot, so it must never run on a host whose firewall lacks the rules.
 
 ```sh
 # Run on the VPS, in /opt/anima/deploy.
