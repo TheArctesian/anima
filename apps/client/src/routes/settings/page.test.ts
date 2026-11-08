@@ -17,7 +17,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('$lib/hub/context', () => ({ useHub: () => mocks.hub }));
 vi.mock('$lib/desktop/token', () => ({ clearAccessToken: mocks.clearAccessToken }));
 vi.mock('$lib/platform/platform', () => ({ capabilities: () => mocks.platform }));
-vi.mock('$lib/access/navigation', () => ({ goToSignIn: mocks.goToSignIn }));
+vi.mock('$lib/access/navigation', () => ({ goToSignIn: mocks.goToSignIn, loadClientAt: vi.fn() }));
 // The desktop rows need the shell's update store; stand-ins let the page's sections be counted (UPD-006).
 vi.mock('$lib/updates/UpdatesRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('$lib/updates/tests/RowStub.svelte')).default }));
 vi.mock('$lib/process-log/LogFolderRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('$lib/updates/tests/LogRowStub.svelte')).default }));
@@ -89,7 +89,7 @@ it('SET-001, UI-005, MOT-043: the page is the title, then Account, then Appearan
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
   expect(target.firstElementChild?.tagName).toBe('H1');
   expect(sectionHeadings(target)).toEqual(['Account', 'Appearance', 'API keys']);
-  expect(sectionTexts(target, 'Account')).toEqual(['Account', 'Signed in as ann', 'Sign out']);
+  expect(sectionTexts(target, 'Account')).toEqual(['Account', 'Signed in as ann', 'Sign out', '']);
   const fonts = ['Fira Code', 'OpenDyslexic'];
   expect(sectionTexts(target, 'Appearance')).toEqual([
     'Appearance', 'Theme', 'Dark', 'Light', 'System', 'Reduce motion', 'System', 'On', 'Off',
@@ -108,6 +108,7 @@ it('SET-001, UPD-006: the desktop app adds the Updates section last, holding the
 });
 
 it('CLI-003: Sign out calls logout, clears the token with hub.address, then goes to sign-in', async () => {
+  mocks.platform = DESKTOP_MAC;
   const target = await open({ Me: ok({ me: { username: 'ann' } }), Logout: ok({ logout: true }) });
   signOutButton(target).click();
   await settled();
@@ -117,6 +118,7 @@ it('CLI-003: Sign out calls logout, clears the token with hub.address, then goes
 });
 
 it('CLI-003: Sign out clears the token and goes to sign-in even when logout fails', async () => {
+  mocks.platform = DESKTOP_MAC;
   const target = await open({ Me: ok({ me: { username: 'ann' } }), Logout: failure('unreachable') });
   signOutButton(target).click();
   await settled();
@@ -144,6 +146,7 @@ it('LOG-007: nothing is written to the console while signing out', async () => {
 });
 
 it('SET-002: Sign out disables the button while the hub answers, so a second click sends no second logout', async () => {
+  mocks.platform = DESKTOP_MAC;
   let release: (result: ReturnType<typeof ok>) => void = () => undefined;
   const pending = new Promise<ReturnType<typeof ok>>((resolve) => {
     release = resolve;
@@ -170,7 +173,7 @@ it('MOT-007: the Sign out button has the same place before and after the name ar
   const who = () => target.querySelector('section[aria-labelledby="settings-account"] p.who');
   const row = () => [...(who()?.parentElement?.children ?? [])].map((element) => element.tagName);
   const before = row();
-  expect(before).toEqual(['P', 'BUTTON']);
+  expect(before).toEqual(['P', 'BUTTON', 'P']);
   // The two lines are there before the name is: the label is laid out but hidden, and the name's line is empty.
   expect(who()?.classList.contains('pending')).toBe(true);
   expect(who()?.querySelector('strong')?.textContent).toBe('');
