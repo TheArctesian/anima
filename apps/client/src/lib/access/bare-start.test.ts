@@ -88,7 +88,7 @@ afterEach(async () => {
 });
 
 describe('the root layout on a bare route', () => {
-  it.each(['/shared', '/shared/', '/shared/abc'])('SEC-002: %s renders only the page and creates no hub', async (path) => {
+  it.each(['/shared', '/shared/', '/shared/abc', '/%73hared'])('SEC-002: %s renders only the page and creates no hub', async (path) => {
     const target = open(`https://hub.example.org${path}#share-token`);
     await settled();
     expect(target.querySelector('[data-page]')).not.toBeNull();

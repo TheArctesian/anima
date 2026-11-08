@@ -2,13 +2,16 @@
   import { useHub } from '$lib/hub/context';
   import { clearAccessToken } from '$lib/desktop/token';
   import { press } from '$lib/motion/roles/press';
+  import { capabilities } from '$lib/platform/platform';
   import { accessApi } from './api';
   import { signInNeeded } from './guard';
-  import { goToSignIn } from './navigation';
+  import { goToSignIn, loadClientAt } from './navigation';
+  import { SIGN_IN_PATH } from './routes';
   import { signOut } from './sign-out';
 
   const hub = useHub();
   const api = accessApi(hub);
+  const desktop = capabilities().keyStore;
   let username = $state<string | null>(null);
   let problem = $state<string | null>(null);
   let busy = $state(false);
@@ -24,12 +27,14 @@
     busy = true;
     let kept: string | null;
     try {
-      kept = await signOut({ api, address: hub.address, clearToken: clearAccessToken });
+      kept = await signOut({ api, address: hub.address, desktop, clearToken: clearAccessToken });
     } finally {
       busy = false;
     }
-    if (kept === null) goToSignIn();
-    else problem = kept;
+    if (kept !== null) problem = kept;
+    // The desktop socket reads the key store anew; a browser loads a new page, so no socket keeps the old cookie (E-4).
+    else if (desktop) goToSignIn();
+    else loadClientAt(SIGN_IN_PATH);
   }
 </script>
 

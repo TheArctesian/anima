@@ -1,14 +1,17 @@
 import type { AccessApi } from '$lib/access/api';
 import { storeHubAddress } from '$lib/desktop/address';
 import { AccessTokenError } from '$lib/desktop/token';
-import type { HubAddress } from '$lib/hub/hub';
+import type { HubAddress, HubError } from '$lib/hub/hub';
 import { checkLogin, failureMessage, fieldMessages, type FieldMessages, type LoginForm } from './form';
 
 /** What sign-in needs; every part is injected so that tests need no desktop shell (CLI-003). */
 export interface SignIn {
-  readonly api: Pick<AccessApi, 'login'>;
+  readonly api: Pick<AccessApi, 'login' | 'signInBrowser'>;
   readonly address: HubAddress;
-  /** Whether the key store exists; without it the token would be dropped after the hub issued it (CLI-003). */
+  /**
+   * Whether the key store exists. The desktop app signs in with `login` and keeps the token there; a browser signs in
+   * with `signInBrowser`, and the hub keeps the token in the `HttpOnly` cookie (CLI-003, D-3, E-4).
+   */
   readonly desktop: boolean;
   readonly writeToken: (address: HubAddress, token: string) => Promise<void>;
 }
@@ -23,19 +26,26 @@ function refused(message: string, fields: FieldMessages = {}): SignInOutcome {
   return { signedIn: false, message, fields };
 }
 
-export const DESKTOP_ONLY_MESSAGE = 'Signing in needs the Anima desktop app, which keeps the access token.';
+function failed(error: HubError, desktop: boolean): SignInOutcome {
+  const fields = error.code === 'VALIDATION' ? fieldMessages(error.fields) : {};
+  return refused(failureMessage(error, desktop), fields);
+}
 
-/** The token goes from the hub's answer to the key store inside this function and nowhere else (CLI-003, LOG-007). */
+/**
+ * Signs in with the form. On desktop the token goes from the hub's answer to the key store inside this function and
+ * nowhere else; in a browser no token reaches script at all (CLI-003, LOG-007).
+ */
 export async function signIn({ api, address, desktop, writeToken }: SignIn, form: LoginForm): Promise<SignInOutcome> {
   const problems = checkLogin(form);
   if (Object.keys(problems).length > 0) return refused('Check the marked fields.', problems);
-  if (!desktop) return refused(DESKTOP_ONLY_MESSAGE);
   const totpCode = form.totpCode === '' ? {} : { totpCode: form.totpCode };
-  const result = await api.login({ username: form.username.trim(), password: form.password, ...totpCode });
-  if (!result.ok) {
-    const fields = result.error.code === 'VALIDATION' ? fieldMessages(result.error.fields) : {};
-    return refused(failureMessage(result.error), fields);
+  const input = { username: form.username.trim(), password: form.password, ...totpCode };
+  if (!desktop) {
+    const signedIn = await api.signInBrowser(input);
+    return signedIn.ok ? { signedIn: true } : failed(signedIn.error, desktop);
   }
+  const result = await api.login(input);
+  if (!result.ok) return failed(result.error, desktop);
   try {
     await writeToken(address, result.value);
   } catch (reason) {

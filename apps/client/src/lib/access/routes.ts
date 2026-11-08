@@ -13,6 +13,9 @@ const SIGNED_OUT_ROUTES = [SIGN_IN_PATH, SHARED_PATH] as const;
 /**
  * The signed-out routes that render only their page: no operator hub, socket, guard or shell, so a share viewer calls
  * no operator operation (SEC-002, D-7). `/sign-in` is signed out but keeps the shell: its mutation needs the hub.
+ * A bare route's `load` must stay pure, with all share and token work in the page script: a navigation that crosses
+ * the bare line runs the target's `load` in the old document, with the operator hub, before the layout reloads the
+ * client there (SEC-002, E-10).
  */
 const BARE_ROUTES = [SHARED_PATH] as const;
 

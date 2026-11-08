@@ -1,6 +1,6 @@
 <script lang="ts">
   import { accessApi } from '$lib/access/api';
-  import { goToDevices, reloadClient } from '$lib/access/navigation';
+  import { goToDevices, loadClientAt, reloadClient } from '$lib/access/navigation';
   import { writeAccessToken } from '$lib/desktop/token';
   import { useHub } from '$lib/hub/context';
   import { press } from '$lib/motion/roles/press';
@@ -10,6 +10,8 @@
 
   const hub = useHub();
   const api = accessApi(hub);
+  // Read once: the platform never changes in a page, so the address form below never comes or goes (CLI-002).
+  const desktop = capabilities().keyStore;
 
   let username = $state('');
   let password = $state('');
@@ -24,12 +26,19 @@
 
   async function submit(event: SubmitEvent): Promise<void> {
     event.preventDefault();
+    // One attempt at a time: a second browser sign-in would leave a token on the hub that no cookie holds.
+    if (busy) return;
     const form = { username, password, totpCode };
     // The secrets leave the page state as soon as they are read; only the user name stays (LOG-007).
     password = '';
     totpCode = '';
     busy = true;
-    const outcome = await signIn({ api, address: hub.address, desktop: capabilities().keyStore, writeToken: writeAccessToken }, form);
+    const outcome = await signIn({ api, address: hub.address, desktop, writeToken: writeAccessToken }, form);
+    if (outcome.signedIn && !desktop) {
+      // A new page, so the socket opens with the cookie the hub just set (E-4); the button stays off while it loads.
+      loadClientAt('/devices');
+      return;
+    }
     busy = false;
     if (outcome.signedIn) {
       goToDevices();
@@ -94,12 +103,15 @@
   <p role="alert" class="problem form-problem">{message ?? ''}</p>
 </form>
 
-<form onsubmit={saveAddress} novalidate>
-  <label for="hub-address">Hub address</label>
-  <input id="hub-address" name="hubAddress" autocomplete="off" bind:value={addressText} aria-describedby="address-problem" />
-  <p id="address-problem" class="problem">{addressProblem ?? ''}</p>
-  <button type="submit" tabindex="0" {@attach press()}>Save address</button>
-</form>
+<!-- Desktop only: a browser talks only to the hub that served the page (CLI-002, E-2). -->
+{#if desktop}
+  <form onsubmit={saveAddress} novalidate>
+    <label for="hub-address">Hub address</label>
+    <input id="hub-address" name="hubAddress" autocomplete="off" bind:value={addressText} aria-describedby="address-problem" />
+    <p id="address-problem" class="problem">{addressProblem ?? ''}</p>
+    <button type="submit" tabindex="0" {@attach press()}>Save address</button>
+  </form>
+{/if}
 
 <style>
   h1 {
