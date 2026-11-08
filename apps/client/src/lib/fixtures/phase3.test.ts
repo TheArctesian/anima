@@ -19,7 +19,7 @@ describe('K6 phase3 client fixtures', () => {
     expect(channels.map((c) => c.kind).sort()).toEqual(['APPRISE', 'EMAIL', 'NTFY', 'WEBHOOK']);
   });
 
-  it('NOT-004: each channel has one ok and one failed delivery, and a failure carries a fixed message', () => {
+  it('K6: each channel has one ok and one failed delivery, and a failure carries a fixed message', () => {
     for (const channel of channels) {
       const own = deliveries.filter((d) => d.channelId === channel.id);
       expect(own.map((d) => d.ok).sort()).toEqual([false, true]);
