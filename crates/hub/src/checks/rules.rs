@@ -52,6 +52,46 @@ pub(super) fn name(text: &str) -> Result<String, FieldError> {
     Ok(name.to_owned())
 }
 
+pub(super) const INTERVAL_MESSAGE: &str = "The interval is 10 to 86400 seconds.";
+pub(super) const RETRIES_MESSAGE: &str = "Retries are 0 to 10.";
+pub(super) const RETRY_INTERVAL_MESSAGE: &str = "The retry interval is 5 to 3600 seconds.";
+pub(super) const DEGRADED_MESSAGE: &str = "The Degraded limit is 1 to 600000 milliseconds.";
+
+/// Every one of the four per-check settings that is outside the bounds of `checks.checks`
+/// (the database keeps the same bounds as a backstop and names only the first it meets).
+pub(super) fn setting_bounds(
+    interval_seconds: i32,
+    retries: i32,
+    retry_interval_seconds: i32,
+    degraded_threshold_ms: i32,
+) -> Vec<FieldError> {
+    [
+        (
+            "intervalSeconds",
+            10..=86_400,
+            interval_seconds,
+            INTERVAL_MESSAGE,
+        ),
+        ("retries", 0..=10, retries, RETRIES_MESSAGE),
+        (
+            "retryIntervalSeconds",
+            5..=3_600,
+            retry_interval_seconds,
+            RETRY_INTERVAL_MESSAGE,
+        ),
+        (
+            "degradedThresholdMs",
+            1..=600_000,
+            degraded_threshold_ms,
+            DEGRADED_MESSAGE,
+        ),
+    ]
+    .into_iter()
+    .filter(|(_, bounds, value, _)| !bounds.contains(value))
+    .map(|(field, _, _, message)| FieldError::new(field, message))
+    .collect()
+}
+
 pub(super) fn config_error(error: ConfigError) -> FieldError {
     FieldError::new(error.field, format!("This value {}.", error.reason))
 }

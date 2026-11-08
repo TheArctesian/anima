@@ -10,7 +10,7 @@ use super::{
 };
 use crate::{
     api_errors::{begin, commit, internal, invalid, pool},
-    checks::{self, CheckDefaults, FieldError},
+    checks::{self, CheckDefaults, FieldError, rules},
     events::{AuditAction, AuditTarget, Severity, Source, Trail, TrailEntry},
 };
 
@@ -43,9 +43,17 @@ pub(super) struct DefaultsInput {
 }
 
 impl DefaultsInput {
-    /// The numbers that fit their types, or every field that does not.
+    /// The numbers inside the bounds of a check, or every field that is not.
     fn parse(&self) -> Result<CheckDefaults, Vec<FieldError>> {
-        let mut errors = Vec::new();
+        let mut errors = rules::setting_bounds(
+            self.interval_seconds,
+            self.retries,
+            self.retry_interval_seconds,
+            self.degraded_threshold_ms,
+        );
+        if !errors.is_empty() {
+            return Err(errors);
+        }
         let interval = keep(
             number("intervalSeconds", self.interval_seconds),
             &mut errors,
@@ -102,8 +110,7 @@ pub(super) async fn set(ctx: &Context<'_>, input: &DefaultsInput) -> Result<Chec
         device: None,
         message: "The default check settings were changed.".to_owned(),
         action: AuditAction::Update,
-        // Becomes `AuditTarget::Setting("checks.defaults")` when WP-46 T1 merges (CR-9).
-        target: AuditTarget::Operator(trail.operator()),
+        target: AuditTarget::Setting("checks.defaults"),
         change: change(stored),
     };
     trail.write(&mut tx, entry).await.map_err(internal)?;

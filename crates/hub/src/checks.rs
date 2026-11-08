@@ -239,7 +239,8 @@ pub async fn defaults(db: &PgPool) -> Result<CheckDefaults, Error> {
 /// Replaces the stored defaults in the caller's transaction.
 ///
 /// # Errors
-/// `Validation` naming each field outside the bounds of `checks.checks`.
+/// `Validation` naming the first field outside the bounds of `checks.checks` (the database
+/// backstop); the GraphQL input lists every such field before it gets here (API-010).
 pub async fn set_defaults(
     conn: &mut PgConnection,
     new: CheckDefaults,

@@ -87,6 +87,20 @@ fixture_test! {
         assert_eq!(rows(&pool, "audit_log").await.len(), 0);
     }
 
+    async fn api_010_every_out_of_bounds_default_is_listed_and_nothing_is_stored(pool: PgPool) {
+        let schema = schema_for(&pool);
+        let response =
+            with_variables(&schema, SET, json!({ "input": values(5, 3, 20, 0) })).await;
+        let error = error_json(&response);
+        assert_eq!(
+            validation_fields(&error),
+            ["intervalSeconds", "degradedThresholdMs"]
+        );
+        assert_eq!(stored(&pool).await, (60, 3, 20, 1000));
+        assert_eq!(rows(&pool, "audit_log").await.len(), 0);
+        assert_eq!(rows(&pool, "event_log").await.len(), 0);
+    }
+
     async fn db_011_a_value_in_range_at_each_bound_is_stored(pool: PgPool) {
         let schema = schema_for(&pool);
         for input in [values(10, 0, 5, 1), values(86_400, 10, 3_600, 600_000)] {
@@ -101,6 +115,8 @@ fixture_test! {
         let audits = rows(&pool, "audit_log").await;
         assert_eq!(audits.len(), 1);
         assert_eq!(audits[0]["action"], "update");
+        assert_eq!(audits[0]["target_type"], "setting");
+        assert_eq!(audits[0]["target_id"], "checks.defaults");
         assert_eq!(audits[0]["change"], values(30, 1, 10, 500));
         assert_eq!(rows(&pool, "event_log").await.len(), 1);
     }

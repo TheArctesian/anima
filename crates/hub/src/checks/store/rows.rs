@@ -11,6 +11,7 @@ use crate::{
         config::{CheckConfig, CheckType},
         evaluation::{CheckSettings, CheckState},
         model::{Check, Due, FieldError, PushToken},
+        rules,
         status::Standing,
     },
     ids::{CheckId, DeviceId},
@@ -197,18 +198,14 @@ pub(super) fn write_error(error: sqlx::Error) -> Error {
             ("name", "Another check on this device has that name.")
         }
         Some("checks_name_check") => ("name", "A check name is 1 to 200 characters."),
-        Some("checks_interval_seconds_check") => {
-            ("intervalSeconds", "The interval is 10 to 86400 seconds.")
+        Some("checks_interval_seconds_check") => ("intervalSeconds", rules::INTERVAL_MESSAGE),
+        Some("checks_retries_check") => ("retries", rules::RETRIES_MESSAGE),
+        Some("checks_retry_interval_seconds_check") => {
+            ("retryIntervalSeconds", rules::RETRY_INTERVAL_MESSAGE)
         }
-        Some("checks_retries_check") => ("retries", "Retries are 0 to 10."),
-        Some("checks_retry_interval_seconds_check") => (
-            "retryIntervalSeconds",
-            "The retry interval is 5 to 3600 seconds.",
-        ),
-        Some("checks_degraded_threshold_ms_check") => (
-            "degradedThresholdMs",
-            "The Degraded limit is 1 to 600000 milliseconds.",
-        ),
+        Some("checks_degraded_threshold_ms_check") => {
+            ("degradedThresholdMs", rules::DEGRADED_MESSAGE)
+        }
         Some("checks_parent_fkey") => (
             "parentId",
             "The parent must be a group check on the same device.",
