@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import type { ThisMachine } from '$lib/desktop/thisMachine';
+import type { ThisMachine } from '$lib/desktop/this-machine';
 import type { DeviceDetail } from '$lib/devices/api';
 import type { ConnectionTest } from '$lib/sessions/api';
 import type { HubResult } from '$lib/hub/hub';

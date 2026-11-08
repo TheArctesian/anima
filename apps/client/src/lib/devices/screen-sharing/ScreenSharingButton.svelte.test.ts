@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, expect, it, vi } from 'vitest';
-import { SystemSettingsError } from '$lib/desktop/systemSettings';
+import { SystemSettingsError } from '$lib/desktop/system-settings';
 import type { CardDevice } from '$lib/devices/api';
 import DeviceCard from '../card/DeviceCard.svelte';
 import DeviceTable from '../card/DeviceTable.svelte';

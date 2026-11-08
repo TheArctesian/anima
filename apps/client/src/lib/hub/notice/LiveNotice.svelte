@@ -4,7 +4,7 @@
   import { tweenMotion } from '$lib/motion/options';
   import { motionPreference, type MotionPreference } from '$lib/motion/preference';
   import { flip, measure } from '$lib/motion/roles/flip';
-  import { followers, moved } from './liveNotice';
+  import { followers, moved } from './live-notice';
 
   interface Props {
     /** Why live updates stopped, or null while they run. */

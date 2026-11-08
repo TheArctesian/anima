@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { formValues } from '$lib/forms/device/values';
-import { checkValues } from '$lib/forms/check/model/values';
+import { formValues } from '$lib/devices/form/values';
+import { checkValues } from '$lib/checks/form/model/values';
 import type { HubError } from '$lib/hub/hub';
 import { check, device } from './page.fixture.svelte';
 import { saveCheck, saveDevice, type CheckSaveCalls, type DeviceSaveCalls } from './save';

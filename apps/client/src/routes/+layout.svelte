@@ -9,7 +9,7 @@
   import { createHub } from '$lib/hub/hub';
   import { crossFade } from '$lib/motion/roles/transitions';
   import { DATA_AGE_REFRESH_MS } from '$lib/nav/nav';
-  import { watchIconOnly } from '$lib/nav/iconOnly';
+  import { watchIconOnly } from '$lib/nav/icon-only';
   import { createClock } from '$lib/nav/clock.svelte';
   import Nav from '$lib/nav/Nav.svelte';
   import { sessionsApi } from '$lib/sessions/api';

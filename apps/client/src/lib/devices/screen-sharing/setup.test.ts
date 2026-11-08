@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { SystemSettingsError } from '$lib/desktop/systemSettings';
+import { SystemSettingsError } from '$lib/desktop/system-settings';
 import type { DeviceDetail } from '$lib/devices/api';
 import { fakeCalls, answer, MAC, NAS, settle, STUDIO, UPDATED } from './calls.fixture';
 import { SetupFlow } from './flow';

@@ -59,7 +59,7 @@ vi.mock('$lib/desktop/updater', () => ({
     currentVersion: () => Promise.resolve('1.0.0'),
   },
 }));
-vi.mock('$lib/desktop/processLog', () => ({ warnToProcessLog: () => undefined }));
+vi.mock('$lib/desktop/process-log', () => ({ warnToProcessLog: () => undefined }));
 
 describe('provideDesktopUpdates', () => {
   let app: ReturnType<typeof mount> | undefined;

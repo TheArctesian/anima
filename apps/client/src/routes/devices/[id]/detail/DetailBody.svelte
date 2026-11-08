@@ -6,7 +6,7 @@
   import type { DeviceDetail } from '$lib/devices/api';
   import LiveNotice from '$lib/hub/notice/LiveNotice.svelte';
   import LogList from '$lib/events/panel/LogList.svelte';
-  import type { CheckFormValues } from '$lib/forms/check/model/values';
+  import type { CheckFormValues } from '$lib/checks/form/model/values';
   import { screenSharingCalls } from '$lib/devices/screen-sharing/calls';
   import { useHub } from '$lib/hub/context';
   import { press } from '$lib/motion/roles/press';
