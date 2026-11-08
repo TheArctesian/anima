@@ -60,6 +60,7 @@ Status: **frozen for Phase 3** (change only through a programme ruling, CON-001)
   | `/terminal`, `/tunnel`, `/files`, `/watch`, `/recording` | Single-use ticket (K4 §1) | `sessions` |
   | `GET\|POST /push/{token}` | Push token | `checks` |
   | `GET /metrics` | Bearer token, READ or higher | `checks`, behind `access::bearer_layer` |
+  | `POST /agent/v1/enrol`, `POST /agent/v1/push`, `POST /agent/v1/renew` | Enrolment code in the body, or agent token (K8) | `metrics` |
   | `GET /health` | None; body `ok` | wiring |
   | Any other `GET` (the web client) | None; static files only, `index.html` for unknown paths | `web_client.rs` |
 
@@ -75,7 +76,7 @@ Status: **frozen for Phase 3** (change only through a programme ruling, CON-001)
 - `tracing` with JSON output (LOG-001). Standard fields: `request_id`, `operator_id`, `device_id`, `session_id`, `domain`.
 - Spans at I/O boundaries only (CQ-026): GraphQL request, SQL call, probe, gateway connection, tunnel.
 - Never log: passwords, private keys, passphrases, tokens, tunnel tokens, session content (LOG-007). (Phase 2) Also never log: RDP and VNC passwords, SNMP communities and v3 passwords, file content, and file paths in the process log (paths go only to the audit log). Secret types implement neither `Debug` nor `Display` (see `hub-domains.md`).
-- (Phase 3) Never log API key secrets, browser tokens and cookie values, share tokens and watch tickets, notification secrets (whole webhook URLs, webhook header values, ntfy topics and tokens, SMTP passwords, Apprise URLs and keys), email recipient addresses in the process log, recording content, recording keys and recording file paths in the process log, the replay buffer, and a notification target's reply body.
+- (Phase 3) Never log API key secrets, browser tokens and cookie values, share tokens and watch tickets, notification secrets (whole webhook URLs, webhook header values, ntfy topics and tokens, SMTP passwords, Apprise URLs and keys), email recipient addresses in the process log, recording content, recording keys and recording file paths in the process log, the replay buffer, a notification target's reply body, agent tokens and agent enrolment codes (K8).
 
 ## Configuration
 

@@ -148,7 +148,7 @@ impl Trail {
 | `checks` (Phase 2, adds) | `sessions` (`link`, `SshLink`, `FixedCommand` only; no cycle: `sessions` does not import `checks`) |
 | `checks` (Phase 3, replaces the Phase 2 row above) | `ssh` (`link`, `SshLink`, `FixedCommand`, `CommandOutput`, `LinkError` only; replaces `sessions`; CR-11), `notifications` (`observe`, `adopt_defaults`, `Observation`, `for_checks` only) |
 | `metrics` (Phase 2, new) | `devices`, `sessions` (link only), `credentials` (`Vault` only), `events` |
-| `metrics` (Phase 3, replaces the row above) | `devices`, `ssh` (`link`, `CommandOutput`, `LinkError` only; replaces `sessions`; CR-11), `credentials` (`Vault` only), `events` |
+| `metrics` (Phase 3, replaces the row above) | `devices`, `ssh` (`link`, `CommandOutput`, `LinkError` only; replaces `sessions`; CR-11), `credentials` (`Vault` only), `events`, `access` (`Authenticated`, `Operator`, `ClientAddr` only; agent tokens live in `metrics`, R-092 D-1); crate `agent-core` (CR-8) |
 | `web_interfaces` (Phase 2, new) | `checks` (`http_urls` only), `devices` (CR-5), `events` |
 | `trust` (Phase 3, new) | `devices`, `events` |
 | `ssh` (Phase 3, new) | `devices`, `credentials`, `trust`, `events` |
@@ -200,7 +200,7 @@ pub struct RdpSettings { pub enabled: bool, pub port: u16, pub username: String,
 pub struct VncSettings { pub enabled: bool, pub port: u16, pub username: Option<String> }
 pub struct TransferPolicy { pub upload: bool, pub download: bool, pub copy: bool, pub paste: bool }
 pub struct MacAddress([u8; 6]);            // parsed at the API edge; Display renders aa:bb:cc:dd:ee:ff
-pub enum MetricsSource { None, Ssh }
+pub enum MetricsSource { None, Ssh, Agent }   // Agent (Phase 3, CR-15): set only by metrics enrolment
 pub async fn wake_relay(db: &Db, site: SiteId) -> Result<Option<Device>, Error>;
 ```
 
@@ -389,6 +389,12 @@ pub async fn readings(db: &Db, devices: &[DeviceId], now: DateTime<Utc>) -> Resu
 pub async fn series(db: &Db, device: DeviceId, range: MetricRange, now: DateTime<Utc>) -> Result<Vec<MetricSeries>, Error>;
 pub async fn gpus(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, Vec<Gpu>>, Error>;
 // Wiring only: create_partitions_ahead, drop_expired_partitions (as events and checks).
+
+// (Phase 3, WP-54; K8, R-092)
+/// POST /agent/v1/{enrol,push,renew} (K8). main.rs merges it behind the NET-002 layer.
+pub fn agent_router(db: Db, feed: Feed, bus: events::Bus, clock: Clock) -> axum::Router;
+/// Marks AGENT devices stale after 30 s with no batch (MET-018); spawned from spawns.rs (P3-007).
+pub fn spawn_stale_watch(db: Db, feed: Feed, clock: Clock) -> JoinHandle<()>;
 ```
 
 ## web_interfaces (Phase 2, WP-30)

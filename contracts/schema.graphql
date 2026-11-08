@@ -85,6 +85,12 @@ type ApiKeyCreated @pending {
   secret: String!
 }
 
+"Shown once. The hub keeps only its SHA-256; one use, 15 minutes (MET-012, K8)."
+type AgentEnrolment @pending {
+  code: String!
+  expiresAt: DateTime!
+}
+
 input ApiKeyInput @pending {
   name: String!
   scope: TokenScope!
@@ -149,6 +155,8 @@ enum RdpResizeMethod {
 enum MetricsSource {
   NONE
   SSH
+  "Set only by enrolment (MET-011, R-092 D-7)."
+  AGENT @pending
 }
 
 "RA-020. TELNET joins when Telnet exists."
@@ -224,6 +232,8 @@ type Device {
   "Lower-case aa:bb:cc:dd:ee:ff (RA-031)."
   macAddress: String
   metricsSource: MetricsSource!
+  "True when the source is AGENT and no batch came in the last 30 seconds (MET-018)."
+  metricsStale: Boolean! @pending
   transfer: TransferPolicy!
   accessWarnings: [AccessWarning!]!
   "Most live sessions at once (RA-036); null: no limit. Viewers and file tunnels do not count."
@@ -627,6 +637,8 @@ enum MetricKind {
   VRAM_BYTES
   GPU_TEMPERATURE_C
   GPU_POWER_W
+  "Memory in use by a unified-memory GPU (Apple), shown as a number, never a VRAM bar (MET-007, R-092 D-6)."
+  GPU_MEMORY_BYTES @pending
 }
 
 # MET-003
@@ -1463,6 +1475,10 @@ type Mutation {
   "Login or browser token only (D-23)."
   createApiKey(input: ApiKeyInput!): ApiKeyCreated! @pending
   revokeApiKey(id: ID!): ID! @pending
+  "Login or browser token only (INT-003). A new code makes the device's earlier unused codes useless."
+  enrolAgent(deviceId: ID!): AgentEnrolment! @pending
+  "Login or browser token only. The source stays AGENT, shown as stale, until the operator changes it (R-092 D-7)."
+  revokeAgentToken(deviceId: ID!): Device! @pending
 
   setCheckDefaults(input: CheckDefaultsInput!): CheckDefaults! @pending
 
