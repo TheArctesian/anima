@@ -64,11 +64,11 @@ export interface CheckFormValues extends ProbeValues {
 /** CHK-008 and K1 `CreateCheckInput` defaults. */
 const DEFAULTS = { intervalSeconds: '60', retries: '3', retryIntervalSeconds: '20', degradedThresholdMs: '1000' } as const;
 
-function blank(type: CheckType, defaults: CheckDefaults | null): CheckFormValues {
+function blank(type: CheckType): CheckFormValues {
   return {
     type,
     name: '',
-    ...(defaults === null ? DEFAULTS : defaultsText(defaults)),
+    ...DEFAULTS,
     invert: false,
     icmp: { timeoutMs: '2000', ipVersion: 'V4' },
     tcp: { port: '', timeoutMs: '5000' },
@@ -184,15 +184,15 @@ export function defaultsText(defaults: CheckDefaults): Pick<CheckFormValues, key
 }
 
 /**
- * CHK-009: the form values for a new check of `type`, or for editing `check`. A new check starts from
- * `defaults` (D-26), or from the K1 input defaults when there are none. An existing check keeps its own
- * type and settings; `type` and `defaults` are then ignored. No secret is ever filled in.
+ * CHK-009: the form values for a new check of `type` with the K1 defaults, or for editing `check`.
+ * An existing check keeps its own type; `type` is then ignored. No secret is ever filled in.
+ * The hub's default check settings (D-26) are applied by the form, when they arrive (`untouchedSettings`).
  */
-export function checkValues(check: CheckFields | null, type: CheckType, defaults: CheckDefaults | null = null): CheckFormValues {
-  if (check === null) return blank(type, defaults);
+export function checkValues(check: CheckFields | null, type: CheckType): CheckFormValues {
+  if (check === null) return blank(type);
   return withConfig(
     {
-      ...blank(check.type, null),
+      ...blank(check.type),
       name: check.name,
       intervalSeconds: String(check.intervalSeconds),
       retries: String(check.retries),
