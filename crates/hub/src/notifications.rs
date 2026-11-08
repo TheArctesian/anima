@@ -4,3 +4,9 @@
 //! Every notification connection leaves the hub through one path, `egress`: the target rule
 //! and the deny list judge each resolved address, the connection goes only to a checked
 //! address, and TLS is always verified (P3-003, D-17).
+
+#[cfg_attr(
+    not(test),
+    expect(dead_code, reason = "the dispatcher (WP-45 T6) is the first caller")
+)]
+mod egress;

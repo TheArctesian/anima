@@ -58,6 +58,9 @@ russh-sftp = { version = "3.0.1", default-features = false }
 hmac = "0.13"
 sha1 = "0.11"
 subtle = "2.6"
+# Notification e-mail (WP-45 T1, D-17): SMTP over rustls (ring) with the webpki roots, on tokio.
+# No native-tls or OpenSSL, no connection pool, no `hostname` lookup; implicit TLS or STARTTLS only.
+lettre = { version = "0.11.23", default-features = false, features = ["smtp-transport", "builder", "tokio1-rustls", "ring", "webpki-roots"] }
 
 # Desktop shell (WP-16): Tauri 2 and the OS key store. keyring 3.x: macOS Keychain and Linux
 # Secret Service (pure-Rust crypto, no OpenSSL). Its `mock` builder ships in the crate for tests.
