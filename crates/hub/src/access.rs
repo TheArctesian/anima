@@ -10,6 +10,7 @@ mod layer;
 pub mod listen;
 mod login;
 mod networks;
+mod origin;
 mod password;
 mod store;
 #[cfg(test)]
@@ -31,6 +32,7 @@ pub use connection::{MESSAGE_LIMIT, SUBPROTOCOL, SocketAccess, accept_socket};
 pub use guard::{Authenticated, SignInRequired};
 pub use identity::{Identity, client_addr, identify, identify_connection};
 pub use layer::{Edge, permitted_networks_layer};
+pub use origin::PublicOrigin;
 pub use password::Password;
 pub use tokens::Scope;
 
