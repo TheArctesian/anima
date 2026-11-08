@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { flushSync } from 'svelte';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { motionPreference as tracked } from './preference';
 
 class FakeMedia extends EventTarget {
   constructor(
@@ -35,6 +37,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
   delete document.documentElement.dataset['motion'];
 });
@@ -95,4 +98,65 @@ it('MOT-043: an unknown data-motion value is System', async () => {
   system(true);
   document.documentElement.dataset['motion'] = 'sometimes';
   expect((await motionPreference()).reduced).toBe(true);
+});
+
+/*
+ * Tracking in an effect: the module imported above, never reset, so the effect and the preference share one Svelte
+ * runtime. It keeps the first query it gets, so every test here uses the same OS stand-in.
+ */
+describe('the preference inside an effect (MOT-041)', () => {
+  const os = new FakeMedia('(prefers-reduced-motion: reduce)', false);
+
+  beforeEach(() => {
+    os.matches = false;
+    vi.stubGlobal('matchMedia', () => os);
+  });
+
+  /** Tracks `.reduced` in an effect; returns what each run saw and the effect's stop. */
+  function watch(): { seen: boolean[]; stop: () => void } {
+    const preference = tracked();
+    const seen: boolean[] = [];
+    const stop = $effect.root(() => {
+      $effect(() => {
+        seen.push(preference.reduced);
+      });
+    });
+    flushSync();
+    return { seen, stop };
+  }
+
+  /** The attribute observer and the subscriber's teardown report on a microtask, as in a browser. */
+  async function microtask(): Promise<void> {
+    await Promise.resolve();
+    flushSync();
+  }
+
+  it('MOT-041: an OS change re-runs the effect without a reload', () => {
+    const { seen, stop } = watch();
+    os.change(true);
+    flushSync();
+    os.change(false);
+    flushSync();
+    stop();
+    expect(seen).toEqual([false, true, false]);
+  });
+
+  it('MOT-043: a Settings choice re-runs the effect without a reload', async () => {
+    const { seen, stop } = watch();
+    document.documentElement.dataset['motion'] = 'reduce';
+    await microtask();
+    stop();
+    expect(seen).toEqual([false, true]);
+  });
+
+  it('MOT-041: when the last effect stops, the OS listener is removed and the attribute observer is disconnected', async () => {
+    const removed = vi.spyOn(os, 'removeEventListener');
+    const disconnected = vi.spyOn(MutationObserver.prototype, 'disconnect');
+    const { stop } = watch();
+    expect(removed).not.toHaveBeenCalled();
+    stop();
+    await microtask();
+    expect(removed).toHaveBeenCalledWith('change', expect.any(Function));
+    expect(disconnected).toHaveBeenCalledOnce();
+  });
 });
