@@ -74,7 +74,6 @@ describe('light theme blocks (UI-005, K5)', () => {
     expect(body(renderCss(THEMED), ':root')).toEqual(body(renderCss(DARK_ONLY), ':root'));
   });
 });
-});
 
 const dirs: string[] = [];
 

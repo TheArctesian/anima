@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { contrastRatio, deriveToContrast, type HexColour } from '../src/contrast.ts';
 import { loadTokens } from '../src/load.ts';
 import { renderCss } from '../src/css.ts';
+import { renderReference } from '../src/reference.ts';
 import { isSemanticColour, type Token } from '../src/model.ts';
 
 const tokens = await loadTokens(resolve(import.meta.dir, '..', 'tokens'));
@@ -57,6 +58,12 @@ describe('light theme values (TOK-011, UI-005)', () => {
     const light = css.slice(css.indexOf(':root[data-theme="light"]'), css.indexOf('@media (prefers-color-scheme: light)'));
     expect(light).toContain('--status-up: var(--nord-14-deep);');
     expect(light).not.toMatch(/^\s+--nord-/m);
+  });
+});
+
+describe('reference page (UI-005)', () => {
+  test('UI-005: a token with a light value shows it under its dark value', () => {
+    expect(renderReference(tokens)).toContain('`--bg: var(--nord-0)` = `#2E3440`<br>light: `--bg: var(--nord-5)` = `#E5E9F0`');
   });
 });
 

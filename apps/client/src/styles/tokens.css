@@ -16,6 +16,11 @@
   --nord-13: #EBCB8B;
   --nord-14: #A3BE8C;
   --nord-15: #B48EAD;
+  --nord-11-deep: #BF616A;
+  --nord-12-deep: #A67164;
+  --nord-13-deep: #897C64;
+  --nord-14-deep: #71836B;
+  --nord-15-deep: #907690;
   --bg: var(--nord-0);
   --surface: var(--nord-1);
   --surface-raised: var(--nord-2);
@@ -127,6 +132,63 @@
   --font-mono-opendyslexic: "OpenDyslexicM Nerd Font Mono", ui-monospace, monospace;
   --font-icon: "OpenDyslexic Nerd Font Propo", "Symbols Nerd Font";
 }
+/* Light theme (UI-005): semantic colours only (TOK-011); System follows the OS without a script. */
+:root[data-theme="light"] {
+  --bg: var(--nord-5);
+  --surface: var(--nord-6);
+  --surface-raised: var(--nord-4);
+  --border: var(--nord-10);
+  --text: var(--nord-0);
+  --text-muted: var(--nord-3);
+  --accent: var(--nord-3);
+  --accent-alt: var(--nord-10);
+  --accent-deep: var(--nord-0);
+  --info: var(--nord-10);
+  --status-up: var(--nord-14-deep);
+  --status-down: var(--nord-11-deep);
+  --status-degraded: var(--nord-13-deep);
+  --status-warning: var(--nord-12-deep);
+  --status-maintenance: var(--nord-15-deep);
+  --status-unknown: var(--nord-3);
+  --chart-grid: var(--nord-4);
+  --chart-axis: var(--nord-3);
+  --chart-threshold: var(--nord-13-deep);
+  --chart-series-1: var(--nord-10);
+  --chart-series-2: var(--nord-3);
+  --chart-series-3: var(--nord-14-deep);
+  --chart-series-4: var(--nord-15-deep);
+  --chart-series-5: var(--nord-12-deep);
+  --chart-series-6: var(--nord-11-deep);
+}
+@media (prefers-color-scheme: light) {
+  :root[data-theme="system"] {
+    --bg: var(--nord-5);
+    --surface: var(--nord-6);
+    --surface-raised: var(--nord-4);
+    --border: var(--nord-10);
+    --text: var(--nord-0);
+    --text-muted: var(--nord-3);
+    --accent: var(--nord-3);
+    --accent-alt: var(--nord-10);
+    --accent-deep: var(--nord-0);
+    --info: var(--nord-10);
+    --status-up: var(--nord-14-deep);
+    --status-down: var(--nord-11-deep);
+    --status-degraded: var(--nord-13-deep);
+    --status-warning: var(--nord-12-deep);
+    --status-maintenance: var(--nord-15-deep);
+    --status-unknown: var(--nord-3);
+    --chart-grid: var(--nord-4);
+    --chart-axis: var(--nord-3);
+    --chart-threshold: var(--nord-13-deep);
+    --chart-series-1: var(--nord-10);
+    --chart-series-2: var(--nord-3);
+    --chart-series-3: var(--nord-14-deep);
+    --chart-series-4: var(--nord-15-deep);
+    --chart-series-5: var(--nord-12-deep);
+    --chart-series-6: var(--nord-11-deep);
+  }
+}
 /* Motion changes (D-5): press and stagger are instant, springs jump; thresholds never change (MOT-021). */
 @media (prefers-reduced-motion: reduce) {
   :root {
@@ -140,7 +202,7 @@
 }
 /* Reduced transparency (5.6): solid materials, no blur (D-6). */
 @media (prefers-reduced-transparency: reduce) {
-  :root {
+  :root, :root[data-theme] {
     --material-chrome-bg: var(--surface);
     --material-chrome-blur: 0px;
     --material-chrome-saturate: 100%;
@@ -154,7 +216,7 @@
 }
 /* Increased contrast (MAT-006): solid materials and text-muted borders. */
 @media (prefers-contrast: more) {
-  :root {
+  :root, :root[data-theme] {
     --material-chrome-bg: var(--surface);
     --material-chrome-blur: 0px;
     --material-chrome-saturate: 100%;

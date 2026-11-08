@@ -17,7 +17,14 @@ function valueCell(token: Token): string {
   if (token.type === 'breakpoint') return `\`${JSON.stringify(token.value)}\` (TypeScript only)`;
   if (token.type === 'gesture') return `\`${String(token.value)}\` (TypeScript only)`;
   const resolved = token.type === 'color' && aliasName(token.source) ? ` = \`${String(token.value)}\`` : '';
-  return `${lines.join('<br>')}${resolved}`;
+  return `${lines.join('<br>')}${resolved}${lightLine(token)}`;
+}
+
+/** The light value on a second line, so the page shows both themes (UI-005). */
+function lightLine(token: Token): string {
+  if (token.light === undefined) return '';
+  const [declaration] = declarations({ ...token, ...token.light });
+  return declaration ? `<br>light: \`${declaration[0]}: ${shown(declaration[1])}\` = \`${String(token.light.value)}\`` : '';
 }
 
 function table(tokens: readonly Token[]): string {
