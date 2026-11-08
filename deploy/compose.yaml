@@ -233,7 +233,7 @@ services:
     # capability (SETUID, CHOWN) is needed.
     user: "1000:1000"
     environment:
-      # Nothing is written to /config: URLs arrive with each request.
+      # No URL or result is stored: URLs arrive with each request.
       APPRISE_STATEFUL_MODE: disabled
     # /tmp: nginx, gunicorn and supervisord write their pid, socket and temp files there. The
     # image declares /config, /attach and /plugin as volumes. A tmpfs on each stops Docker making
