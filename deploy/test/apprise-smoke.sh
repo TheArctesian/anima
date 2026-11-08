@@ -1,12 +1,17 @@
 #!/bin/sh
-# Manual smoke test for the optional Apprise service in deploy/compose.yaml (D-13, NOT-002). Needs
+# Manual smoke test for the optional Apprise service in deploy/compose.yaml (D-19, NOT-002). Needs
 # Docker. Not a gate.
 #
 # It copies only compose.yaml to a temporary folder and starts only `apprise`, with the hardening
 # exactly as in the file (read-only root, no capabilities, user 1000, tmpfs mounts). No secret file
 # is read or needed. A throwaway container on the same `notify` network then asks
 # GET /status at the fixed address 172.30.3.10, and posts stateless /notify calls with json://, xml:// and
-# form:// URLs to a listener in that container: all must be refused (APPRISE_ALLOW_SERVICES).
+# form:// URLs to a listener in that container: all must be refused (APPRISE_ALLOW_SERVICES). It
+# then posts an allowed discord:// URL with an http `attach` (refused, listener silent), and checks
+# that dummy discord://, tgram:// and slack:// URLs pass the allow list (424, not 400).
+#
+# The temporary copy of compose.yaml makes `notify` internal, so nothing leaves this machine: an
+# allowed URL cannot reach its service and ends as a delivery failure (424).
 #
 #   sh deploy/test/apprise-smoke.sh
 set -eu
@@ -28,6 +33,8 @@ step() { printf '\n== %s\n' "$1"; }
 fail() { echo "apprise-smoke: $1" >&2; exit 1; }
 
 cp "$repo/deploy/compose.yaml" "$work/compose.yaml"
+# No route out for the smoke run (temporary copy only). The step fails if the line is not found.
+perl -0pi -e 's/(\n  notify:\n)(    ipam:)/$1    internal: true\n$2/ or exit 1' "$work/compose.yaml" || fail "could not make notify internal"
 cd "$work"
 # Dummy values for the variables that compose.yaml requires. Nothing here is a real address.
 export ANIMA_HUB_ADDRESS=127.0.0.1
@@ -85,6 +92,41 @@ s.handle_request()
     ! grep -q "listener got POST" /tmp/listener.log || { echo "the listener received a POST" >&2; exit 1; }
     echo "listener received nothing"
 '
+
+step "An allowed URL with an http attach is refused, and the listener gets nothing (S-3)"
+# shellcheck disable=SC2016
+docker run --rm --network "$network" --entrypoint sh "$image" -c '
+    ip=$(hostname -i)
+    python3 -c "
+import http.server
+class H(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200); self.end_headers()
+        print(\"listener got GET\", flush=True)
+    do_POST = do_GET
+    def log_message(self, *a): pass
+s = http.server.HTTPServer((\"0.0.0.0\", 9998), H)
+s.timeout = 4
+s.handle_request()
+" > /tmp/listener.log 2>&1 &
+    sleep 1
+    code=$(curl -sS -o /tmp/reply -w "%{http_code}" -X POST http://172.30.3.10:8000/notify \
+        -H "Content-Type: application/json" \
+        -d "{\"urls\":\"discord://0/0\",\"body\":\"hello\",\"attach\":\"http://$ip:9998/attach\"}")
+    echo "POST /notify discord:// with attach -> $code"
+    case "$code" in 4??) ;; *) echo "expected a 4xx for the attach" >&2; exit 1 ;; esac
+    sleep 5
+    ! grep -q "listener got" /tmp/listener.log || { echo "the listener received a request" >&2; exit 1; }
+    echo "listener received nothing"
+'
+
+step "Dummy discord://, tgram:// and slack:// URLs pass the allow list (424, not 400)"
+for url in "discord://0/0" "tgram://123456:abcdef/1" "slack://T0/B0/C0"; do
+    code=$(probe curl "$image" -sS -o /dev/null -w "%{http_code}" -X POST http://172.30.3.10:8000/notify \
+        -H "Content-Type: application/json" -d "{\"urls\":\"$url\",\"body\":\"hello\"}")
+    echo "POST /notify $url -> $code"
+    [ "$code" = 424 ] || fail "$url was not accepted by the allow list (expected 424, got $code)"
+done
 
 step "Nothing can be stored"
 mounts=$(docker inspect --format '{{range .Mounts}}{{.Type}}:{{.Destination}} {{end}}' "$container")

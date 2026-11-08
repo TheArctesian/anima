@@ -1,4 +1,4 @@
-// What deploy/compose.yaml gives the optional Apprise service (D-13, NOT-002, SEC-001). Nothing here starts Docker.
+// What deploy/compose.yaml gives the optional Apprise service (D-19, NOT-002, SEC-001). Nothing here starts Docker.
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -32,12 +32,12 @@ const compose = Bun.YAML.parse(readFileSync(join(ROOT, "deploy", "compose.yaml")
 const apprise = compose.services["apprise"] as Container;
 const networksOf = (service: Container): string[] => (Array.isArray(service.networks) ? service.networks : Object.keys(service.networks ?? {}));
 
-describe("apprise service (D-13)", () => {
+describe("apprise service (D-19)", () => {
   test("SEC-001 the image is a pinned tag with a sha256 digest", () => {
     expect(apprise.image).toMatch(/^caronc\/apprise:\d+\.\d+\.\d+@sha256:[0-9a-f]{64}$/);
   });
 
-  test("D-13 apprise starts only under the apprise profile, so a plain up leaves it out", () => {
+  test("D-19 apprise starts only under the apprise profile, so a plain up leaves it out", () => {
     expect(apprise.profiles).toEqual(["apprise"]);
     const others = Object.entries(compose.services).filter(([name, service]) => name !== "apprise" && service.profiles !== undefined);
     expect(others).toEqual([]);
@@ -67,16 +67,18 @@ describe("apprise service (D-13)", () => {
     const mounted = (apprise.tmpfs ?? []).map((entry) => entry.split(":")[0]);
     for (const path of ["/config", "/attach", "/plugin", "/tmp"]) expect(mounted).toContain(path);
   });
-
 });
 
-describe("apprise allow list and networks (D-13, NOT-002)", () => {
-  test("NOT-002 only cloud services are allowed, never a scheme that takes an arbitrary host (S-1)", () => {
+describe("apprise allow list and networks (D-19, NOT-002)", () => {
+  test("NOT-002 the default allow list is exactly the known-safe cloud services (S-1)", () => {
     const value = apprise.environment?.["APPRISE_ALLOW_SERVICES"] ?? "";
     const allowed = /^\$\{APPRISE_ALLOW_SERVICES:-([a-z,]+)\}$/.exec(value)?.[1]?.split(",") ?? [];
-    expect(allowed.length).toBeGreaterThan(0);
-    const arbitraryHost = ["json", "jsons", "xml", "xmls", "form", "forms", "mailto", "mailtos", "ntfy", "ntfys", "apprise", "apprises"];
-    for (const scheme of allowed) expect(arbitraryHost).not.toContain(scheme);
+    expect([...allowed].sort()).toEqual(["discord", "slack", "tgram"]);
+  });
+
+  test("NOT-002 apprise rejects every attachment URL, so it fetches nothing from a host the hub denies (S-3)", () => {
+    expect(apprise.environment?.["APPRISE_ATTACH_REJECT_URL"]).toBe("*");
+    expect(apprise.environment?.["APPRISE_MAX_ATTACHMENTS"]).toBeUndefined();
   });
 
   test("SEC-001 apprise shows no configuration-key page", () => {
@@ -93,24 +95,24 @@ describe("apprise allow list and networks (D-13, NOT-002)", () => {
     expect(hub.environment?.["ANIMA_PROBE_DENY"]).toContain("172.30.3.0/29");
   });
 
-  test("D-13 apprise has only the notify network, at 172.30.3.10 inside its subnet", () => {
+  test("D-19 apprise has only the notify network, at 172.30.3.10 inside its subnet", () => {
     expect(networksOf(apprise)).toEqual(["notify"]);
     const address = (apprise.networks as Record<string, { ipv4_address?: string }>)["notify"]?.ipv4_address;
     expect(address).toBe("172.30.3.10");
     expect(compose.networks["notify"]?.ipam?.config?.[0]?.subnet).toBe("172.30.3.0/24");
   });
 
-  test("D-13 notify has a route out, and exactly the hub and apprise join it", () => {
+  test("D-19 notify has a route out, and exactly the hub and apprise join it", () => {
     expect(compose.networks["notify"]?.internal).not.toBe(true);
     const members = Object.entries(compose.services).filter(([, service]) => networksOf(service).includes("notify")).map(([name]) => name);
     expect(members.sort()).toEqual(["apprise", "hub"]);
   });
 
-  test("D-13 the hub does not depend on apprise", () => {
+  test("D-19 the hub does not depend on apprise", () => {
     expect(Object.keys(compose.services["hub"]?.depends_on ?? {})).not.toContain("apprise");
   });
 
-  test("D-13 the healthcheck asks /status on the port the image listens on", () => {
+  test("D-19 the healthcheck asks /status on the port the image listens on", () => {
     expect(apprise.healthcheck?.test.join(" ")).toContain("http://127.0.0.1:8000/status");
   });
 });
