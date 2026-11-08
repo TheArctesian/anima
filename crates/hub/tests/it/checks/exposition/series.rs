@@ -148,7 +148,8 @@ fixture_test! {
         let text = body(&router).await;
 
         let ratio = |window| {
-            value(&text, "anima_check_uptime_ratio", &[("check_id", PVE_01_PING), ("window", window)])
+            let labels = [("check_id", PVE_01_PING), ("window", window)];
+            value(&text, "anima_check_uptime_ratio", &labels)
         };
         assert_eq!(ratio("1d").as_deref(), Some("0.75"));
         assert_eq!(ratio("7d").as_deref(), Some("1"));
@@ -186,7 +187,9 @@ fixture_test! {
 
         let text = body(&router).await;
 
-        let count = |family: &str| text.lines().filter(|l| l.starts_with(&format!("{family}{{"))).count();
+        let count = |family: &str| {
+            text.lines().filter(|l| l.starts_with(&format!("{family}{{"))).count()
+        };
         assert_eq!(count("anima_check_status"), 28);
         assert_eq!(count("anima_check_up"), 28);
         assert_eq!(count("anima_device_status"), 13);

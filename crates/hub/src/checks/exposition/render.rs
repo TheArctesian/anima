@@ -33,9 +33,15 @@ fn family(
     help: &str,
     samples: impl Iterator<Item = (String, String)>,
 ) {
-    out.push_str(&format!("# HELP {name} {help}\n# TYPE {name} gauge\n"));
+    for line in [
+        ["# HELP ", name, " ", help],
+        ["# TYPE ", name, " gauge", ""],
+    ] {
+        out.extend(line);
+        out.push('\n');
+    }
     for (labels, value) in samples {
-        out.push_str(&format!("{name}{{{labels}}} {value}\n"));
+        out.extend([name, "{", &labels, "} ", &value, "\n"]);
     }
 }
 

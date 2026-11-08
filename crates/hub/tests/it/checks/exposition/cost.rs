@@ -9,6 +9,24 @@ use sqlx::PgPool;
 use super::{body, database_now, rig};
 use crate::checks::face::batching::{add_bulk, counting_pool};
 
+/// The bulk checks of the batching test, given the configuration their type needs.
+async fn add_readable_bulk(pool: &PgPool) {
+    add_bulk(pool).await;
+    for (kind, config) in [
+        ("icmp", r#"{"timeoutMs":2000,"ipVersion":"V4"}"#),
+        ("tcp", r#"{"port":22,"timeoutMs":5000}"#),
+    ] {
+        sqlx::query(
+            "UPDATE checks.checks SET config = $2::jsonb WHERE type = $1 AND config = '{}'",
+        )
+        .bind(kind)
+        .bind(config)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+}
+
 async fn checks_count(pool: &PgPool) -> i64 {
     sqlx::query_scalar("SELECT count(*) FROM checks.checks")
         .fetch_one(pool)
@@ -37,7 +55,7 @@ async fn d_24_a_build_costs_eight_statements_for_28_or_328_checks(pool: PgPool) 
     let cached = body(&router).await;
     let cached_cost = count.swap(0, Ordering::SeqCst);
 
-    add_bulk(&pool).await;
+    add_readable_bulk(&pool).await;
     clock.advance(TimeDelta::seconds(10));
     let many = body(&router).await;
     let many_cost = count.swap(0, Ordering::SeqCst);
