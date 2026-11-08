@@ -12,7 +12,7 @@
     check: DeviceCheck | null;
     /** The device's checks; a group picks its children among them. */
     checks: readonly DeviceCheck[];
-    /** The route builds the input and calls the hub; on success it closes the editor. */
+    /** The route builds the input and calls the hub; the form calls `onClose` once the check and its channels are saved. */
     onSave: (values: CheckFormValues) => Promise<HubResult<unknown>>;
     onClose: () => void;
   }
@@ -22,5 +22,5 @@
 </script>
 
 <Modal {open} title={check === null ? 'Add check' : `Edit ${check.name}`} {onClose} size="form">
-  <CheckForm {check} {siblings} {onSave} onCancel={onClose} />
+  <CheckForm {check} {siblings} {onSave} onDone={onClose} onCancel={onClose} />
 </Modal>
