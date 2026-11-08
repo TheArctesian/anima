@@ -22,6 +22,21 @@ async fn d_2_a_missing_app_file_is_404_never_html() {
 }
 
 #[tokio::test]
+async fn d_2_an_app_file_the_file_system_cannot_look_up_is_never_html() {
+    let web = WebRoot::new();
+    let long = "a".repeat(300);
+    for path in [
+        format!("/_app/immutable/{long}.js"),
+        format!("//_app/{long}.js"),
+    ] {
+        let answer = get(&web.router(), &path).await;
+        assert!(answer.status.is_server_error(), "{path}");
+        assert_eq!(answer.body, "", "{path}");
+        assert_eq!(answer.header("content-type"), "", "{path}");
+    }
+}
+
+#[tokio::test]
 async fn sec_001_traversal_never_leaves_the_root() {
     let web = WebRoot::new();
     let router = web.router();
