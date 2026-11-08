@@ -20,7 +20,7 @@ macro_rules! fixture_test {
     ($(async fn $name:ident($pool:ident: PgPool) $body:block)+) => {$(
         #[sqlx::test(
             migrations = "./migrations",
-            fixtures(path = "../../fixtures", scripts("devices"))
+            fixtures(path = "../../fixtures", scripts("devices", "checks"))
         )]
         async fn $name($pool: PgPool) $body
     )+};
@@ -95,6 +95,7 @@ fixture_test! {
             assert_eq!(read["check"]["certificateDaysLeft"], Value::Null);
         }
         let read = data_with(&schema, READ, json!({ "id": PVE_01_PING })).await;
+        assert_eq!(read["check"]["type"], "ICMP");
         assert_eq!(read["check"]["domainDaysLeft"], Value::Null, "an ICMP check has none");
     }
 
