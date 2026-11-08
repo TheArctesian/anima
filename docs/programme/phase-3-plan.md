@@ -7,7 +7,7 @@
 | Platforms | macOS, Linux, Web |
 | Base | `phase-3`, cut from `phase-2` at 04ab9b61 (Phase 2 complete, all gates pass) |
 | Contract deltas | [phase-3-contracts.md](phase-3-contracts.md) |
-| Version | 0.1 (proposed, for operator checkpoint 1) |
+| Version | 1.0 (adopted, R-081) |
 | Date | 2026-11-07 |
 | Language | Simplified Technical English |
 
