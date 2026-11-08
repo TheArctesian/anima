@@ -9,12 +9,14 @@ const API_DELAY_MS = 400;
 const SETTLE_MS = 1500;
 const CLS_LIMIT = 0.01;
 
-/** One line per page; a page added later is one more entry. */
+/** One line per page; a page added later is one more entry. `enabled` names a field that must be usable too, for a page with several late sections. */
 const PAGES = [
   { name: 'the device list', path: '/devices', shown: { role: 'link', name: 'mac-studio' } },
   { name: 'a device detail page', path: `/devices/${DEVICE_IDS.gpuBox}`, shown: { role: 'heading', name: 'gpu-box' } },
-  { name: 'the settings page', path: '/settings', shown: { role: 'button', name: 'Revoke metrics-scrape' } },
+  { name: 'the settings page', path: '/settings', shown: { role: 'button', name: 'Revoke metrics-scrape' }, enabled: 'Interval (seconds)' },
 ] as const;
+
+type Shown = (typeof PAGES)[number]['shown'];
 
 const SHIFT = 'animaLayoutShift';
 
@@ -43,18 +45,21 @@ async function slowGraphql(page: Page): Promise<void> {
   );
 }
 
-async function layoutShiftOf(page: Page, path: string, shown: { role: 'link' | 'heading' | 'button'; name: string }): Promise<number> {
+async function layoutShiftOf(page: Page, path: string, shown: Shown, enabled?: string): Promise<number> {
   await watchLayoutShift(page);
   await slowGraphql(page);
   await page.goto(path);
   await expect(page.getByRole(shown.role, { name: shown.name, exact: true })).toBeVisible();
+  if (enabled !== undefined) await expect(page.getByLabel(enabled, { exact: true })).toBeEnabled();
   await page.waitForTimeout(SETTLE_MS);
   return page.evaluate((key) => Reflect.get(window, key) as number, SHIFT);
 }
 
-for (const { name, path, shown } of PAGES) {
+for (const entry of PAGES) {
+  const { name, path, shown } = entry;
+  const enabled = 'enabled' in entry ? entry.enabled : undefined;
   test(`R-096: ${name} shifts less than ${String(CLS_LIMIT)} while its data arrives late`, async ({ page }) => {
-    expect(await layoutShiftOf(page, path, shown)).toBeLessThanOrEqual(CLS_LIMIT);
+    expect(await layoutShiftOf(page, path, shown, enabled)).toBeLessThanOrEqual(CLS_LIMIT);
   });
 }
 
