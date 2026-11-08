@@ -12,11 +12,9 @@ use super::Error;
 use crate::{
     credentials,
     devices::Device,
-    sessions::{
-        self,
-        ssh::{self, Observer, SshError},
-    },
+    sessions::ssh::{self, Observer, SshError},
     targets::{self, AddressPolicy},
+    trust,
 };
 
 /// The longest a link takes to open, from the host-key read to the end of the sign-in.
@@ -60,9 +58,9 @@ async fn opened(
     if !device.ssh.enabled {
         return Err(Error::SshOff);
     }
-    let accepted = sessions::host_key(db, device.id)
+    let accepted = trust::host_key(db, device.id)
         .await
-        .map_err(Error::Sessions)?
+        .map_err(|error| Error::Sessions(error.into()))?
         .ok_or(Error::NoHostKey)?
         .public_key;
     let stream = reach(policy, device).await?;

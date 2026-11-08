@@ -20,7 +20,7 @@ use tempfile::TempDir;
 use tokio::net::TcpListener;
 
 use super::sftp::Disk;
-use crate::sessions::{PublicKey, tests::fixture::PASSWORD};
+use crate::{sessions::tests::fixture::PASSWORD, trust::PublicKey};
 
 /// The user `docker-host`'s SSH settings name in the devices fixture.
 const USER: &str = "operator";

@@ -37,12 +37,13 @@ use crate::{
     credentials, devices,
     devices::{Device, RdpSecurity},
     sessions::{
-        self, Desktop, PendingTicket, Protocol, ServerCertificate,
+        self, Desktop, PendingTicket, Protocol,
+        connection_test::{ReadError, Reply, TLS_PROTOCOLS, read_server_certificate},
         ssh::{self, SshError, Target},
         start::{certificate_required, protocol_off},
-        trust::{CertificateFingerprint, ReadError, Reply, TLS_PROTOCOLS, read_server_certificate},
     },
     targets::{self, AddressPolicy, TargetError},
+    trust::{self, CertificateFingerprint, ServerCertificate},
 };
 
 /// What the tunnel opens after the upgrade. Each way the opening can end with something to
@@ -258,9 +259,9 @@ async fn certificate(
     if desktop == Desktop::Vnc {
         return Ok(None);
     }
-    let accepted = sessions::server_certificates(&route.db, &[device.id])
+    let accepted = trust::server_certificates(&route.db, &[device.id])
         .await
-        .map_err(NotOpened::Sessions)?
+        .map_err(|error| NotOpened::Sessions(error.into()))?
         .remove(&device.id);
     if accepted.is_none() && certificate_required(&device.rdp) {
         return Err(NotOpened::NoCertificate);

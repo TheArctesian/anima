@@ -16,7 +16,10 @@ use super::super::arguments::{BadConnectValue, Sources, audio, connect_values, t
 use super::device;
 use crate::credentials::Secret;
 use crate::devices::Device;
-use crate::sessions::{Desktop, ServerCertificate, tests::Inputs};
+use crate::{
+    sessions::{Desktop, tests::Inputs},
+    trust::ServerCertificate,
+};
 
 /// guacd 1.6.0's replies to `select,rdp` and `select,vnc`.
 const RDP_ARGS: &[u8] = include_bytes!("fixtures/guacd-1.6.0-rdp-args.guac");

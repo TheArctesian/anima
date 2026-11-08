@@ -22,11 +22,10 @@ use tokio::{
 use tokio_rustls::TlsConnector;
 
 use super::{
-    certificate::PresentedCertificate,
     reach::{ReadError, reach, within},
     x224::{self, Negotiated, PROTOCOL_HYBRID, PROTOCOL_HYBRID_EX, TPKT_HEADER},
 };
-use crate::{devices::RdpSecurity, sessions::ssh::Target};
+use crate::{devices::RdpSecurity, sessions::ssh::Target, trust::PresentedCertificate};
 
 /// What the server answered.
 #[derive(Clone, Debug, PartialEq, Eq)]

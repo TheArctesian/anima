@@ -4,10 +4,10 @@
 use chrono::{DateTime, TimeDelta, Utc};
 
 use super::{ECDSA, ED25519};
-use crate::sessions::{
-    live::Live,
+use crate::trust::{
+    Sightings,
+    observations::{Endpoint, LIFETIME, MAX_OBSERVATIONS, Observations},
     public_key::PublicKey,
-    trust::{Endpoint, LIFETIME, MAX_OBSERVATIONS, Observations},
 };
 
 fn at() -> DateTime<Utc> {
@@ -24,38 +24,38 @@ fn pve() -> Endpoint {
 
 #[test]
 fn dev_013_an_observation_lasts_fifteen_minutes_from_when_the_key_was_last_seen() {
-    let live = Live::default();
-    live.observe(pve(), key(ED25519), at());
+    let sightings = Sightings::default();
+    sightings.observe(pve(), key(ED25519), at());
     let last_moment = at() + LIFETIME - TimeDelta::nanoseconds(1);
     assert_eq!(
-        live.observed(&pve(), last_moment).unwrap().presented,
+        sightings.observed(&pve(), last_moment).unwrap().presented,
         key(ED25519)
     );
     assert_eq!(
-        live.observed(&pve(), at() + LIFETIME),
+        sightings.observed(&pve(), at() + LIFETIME),
         None,
         "boundary is gone"
     );
 
     // Seeing the same key again keeps when it was first seen and extends its life.
     let again = at() + TimeDelta::minutes(10);
-    let seen = live.observe(pve(), key(ED25519), again);
+    let seen = sightings.observe(pve(), key(ED25519), again);
     assert_eq!((seen.first_seen_at, seen.last_seen_at), (at(), again));
-    assert!(live.observed(&pve(), at() + LIFETIME).is_some());
-    assert_eq!(live.observed(&pve(), again + LIFETIME), None);
+    assert!(sightings.observed(&pve(), at() + LIFETIME).is_some());
+    assert_eq!(sightings.observed(&pve(), again + LIFETIME), None);
 }
 
 #[test]
 fn sec_006_another_key_at_the_same_endpoint_replaces_the_first_and_its_first_seen_time() {
-    let live = Live::default();
-    live.observe(pve(), key(ED25519), at());
+    let sightings = Sightings::default();
+    sightings.observe(pve(), key(ED25519), at());
     let later = at() + TimeDelta::minutes(1);
-    let seen = live.observe(pve(), key(ECDSA), later);
+    let seen = sightings.observe(pve(), key(ECDSA), later);
     assert_eq!(
         (seen.presented.clone(), seen.first_seen_at),
         (key(ECDSA), later)
     );
-    assert_eq!(live.observed(&pve(), later), Some(seen));
+    assert_eq!(sightings.observed(&pve(), later), Some(seen));
 }
 
 #[test]
@@ -67,11 +67,11 @@ fn dev_013_an_endpoint_is_one_spelling_of_host_and_port() {
     );
     assert_ne!(Endpoint::new("pve-01.lan", 2222), pve());
     assert_ne!(Endpoint::new("pve-02.lan", 22), pve());
-    let live = Live::default();
-    live.observe(Endpoint::new("PVE-01.LAN", 22), key(ED25519), at());
-    assert!(live.observed(&pve(), at()).is_some());
+    let sightings = Sightings::default();
+    sightings.observe(Endpoint::new("PVE-01.LAN", 22), key(ED25519), at());
+    assert!(sightings.observed(&pve(), at()).is_some());
     assert_eq!(
-        live.observed(&Endpoint::new("pve-01.lan", 2222), at()),
+        sightings.observed(&Endpoint::new("pve-01.lan", 2222), at()),
         None
     );
 }
@@ -110,11 +110,12 @@ fn dev_013_observations_are_bounded_and_the_oldest_goes_first() {
 fn sec_006_a_name_with_a_final_dot_is_another_endpoint_than_without() {
     // `pve-01.lan.` is absolute; `pve-01.lan` may go through a search domain (S2).
     assert_ne!(Endpoint::new("pve-01.lan.", 22), pve());
-    let live = Live::default();
-    live.observe(Endpoint::new("pve-01.lan.", 22), key(ED25519), at());
-    assert_eq!(live.observed(&pve(), at()), None);
+    let sightings = Sightings::default();
+    sightings.observe(Endpoint::new("pve-01.lan.", 22), key(ED25519), at());
+    assert_eq!(sightings.observed(&pve(), at()), None);
     assert!(
-        live.observed(&Endpoint::new("PVE-01.LAN.", 22), at())
+        sightings
+            .observed(&Endpoint::new("PVE-01.LAN.", 22), at())
             .is_some()
     );
 }

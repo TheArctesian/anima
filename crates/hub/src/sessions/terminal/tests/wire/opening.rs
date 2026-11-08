@@ -18,10 +18,8 @@ use super::{
 };
 use crate::{
     credentials::{self, Secret, SshSecret},
-    sessions::{
-        PublicKey,
-        tests::fixture::{LOOPBACK, PASSWORD, docker_host, ended, ended_once},
-    },
+    sessions::tests::fixture::{LOOPBACK, PASSWORD, docker_host, ended, ended_once},
+    trust::PublicKey,
 };
 
 /// A host key the fake server does not present.

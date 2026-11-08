@@ -14,7 +14,7 @@ use uuid::Uuid;
 use super::{
     Conflict, Error,
     end::{Actor, end_row, sweep},
-    find_device, host_key,
+    find_device,
     live::Live,
     model::{EndReason, FieldError, Protocol, Session, SessionEnd},
     store::{self, NewSession},
@@ -26,6 +26,7 @@ use crate::{
     events::{self, AuditAction, AuditTarget, ClientAddr, NewAudit, Operator},
     ids::{DeviceId, SessionId},
     targets::AddressPolicy,
+    trust,
 };
 
 pub use waking::Waking;
@@ -134,12 +135,12 @@ async fn trust_missing(
     protocol: Protocol,
 ) -> Result<Option<Conflict>, Error> {
     let missing = match protocol {
-        Protocol::Ssh => host_key(db, device.id)
+        Protocol::Ssh => trust::host_key(db, device.id)
             .await?
             .is_none()
             .then_some(Conflict::NoHostKey),
         Protocol::Rdp if certificate_required(&device.rdp) => {
-            let accepted = store::server_certificates(db, &[device.id]).await?;
+            let accepted = trust::server_certificates(db, &[device.id]).await?;
             accepted.is_empty().then_some(Conflict::NoServerCertificate)
         }
         Protocol::Rdp | Protocol::Vnc => None,

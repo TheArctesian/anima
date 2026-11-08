@@ -164,7 +164,7 @@ pub(super) async fn desktop_ready(pool: &PgPool, vault: &Vault, rdp_port: u16, a
     .await
     .unwrap();
     sqlx::query(
-        "insert into sessions.server_certificates (device_id, fingerprint_sha256, \
+        "insert into trust.server_certificates (device_id, fingerprint_sha256, \
                 first_seen_at, accepted_by) \
          select $1::text::uuid, $2, $3, id from access.operators",
     )

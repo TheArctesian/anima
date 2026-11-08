@@ -115,7 +115,7 @@ async fn d_4_a_relay_with_ssh_off_is_refused_before_connecting(pool: PgPool) {
 )]
 async fn sec_006_a_relay_without_an_accepted_key_is_refused_before_connecting(pool: PgPool) {
     let bench = relay(&pool, exiting(0)).await;
-    sqlx::query("delete from sessions.host_keys")
+    sqlx::query("delete from trust.host_keys")
         .execute(&pool)
         .await
         .unwrap();

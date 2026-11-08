@@ -19,6 +19,7 @@ pub(in crate::sessions) fn to_graphql(error: Error) -> GraphQlError {
         Error::Devices(_)
         | Error::Events(_)
         | Error::Credentials(_)
+        | Error::Trust(_)
         | Error::Random(_)
         | Error::Database(_) => internal(error),
     }

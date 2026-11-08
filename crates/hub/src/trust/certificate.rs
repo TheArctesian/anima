@@ -6,19 +6,18 @@ use std::{fmt, str::FromStr};
 use chrono::{DateTime, Utc};
 use sha2::{Digest, Sha256};
 
-use super::observations::Observation;
-use crate::sessions::ServerCertificate;
+use super::{model::ServerCertificate, observations::Observation};
 
 /// Longest subject kept, in characters (`server_certificates_subject_check`).
-pub(in crate::sessions) const MAX_SUBJECT: usize = 1024;
+pub(in crate::trust) const MAX_SUBJECT: usize = 1024;
 
 /// SHA-256 of a certificate's DER as 32 lower-case hex pairs joined by colons, as `FreeRDP`
 /// writes it (`server_certificates_fingerprint_check`).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub(in crate::sessions) struct CertificateFingerprint(String);
+pub(crate) struct CertificateFingerprint(String);
 
 impl CertificateFingerprint {
-    pub(in crate::sessions) fn of(der: &[u8]) -> Self {
+    pub(crate) fn of(der: &[u8]) -> Self {
         let pairs: Vec<String> = Sha256::digest(der)
             .iter()
             .map(|byte| format!("{byte:02x}"))
@@ -26,7 +25,7 @@ impl CertificateFingerprint {
         Self(pairs.join(":"))
     }
 
-    pub(in crate::sessions) fn as_str(&self) -> &str {
+    pub(crate) fn as_str(&self) -> &str {
         &self.0
     }
 }
@@ -40,7 +39,7 @@ impl fmt::Display for CertificateFingerprint {
 /// The text is not 32 hex pairs joined by colons.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 #[error("not a SHA-256 certificate fingerprint")]
-pub(in crate::sessions) struct BadCertificateFingerprint;
+pub(crate) struct BadCertificateFingerprint;
 
 impl FromStr for CertificateFingerprint {
     type Err = BadCertificateFingerprint;
@@ -63,15 +62,15 @@ impl FromStr for CertificateFingerprint {
 
 /// The leaf certificate a server presented, as the hub keeps it.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(in crate::sessions) struct PresentedCertificate {
-    pub(in crate::sessions) fingerprint: CertificateFingerprint,
-    pub(in crate::sessions) subject: Option<String>,
-    pub(in crate::sessions) not_after: Option<DateTime<Utc>>,
+pub(crate) struct PresentedCertificate {
+    pub(crate) fingerprint: CertificateFingerprint,
+    pub(crate) subject: Option<String>,
+    pub(crate) not_after: Option<DateTime<Utc>>,
 }
 
 impl PresentedCertificate {
     /// The fingerprint of any bytes; the subject and expiry only when they parse as X.509.
-    pub(in crate::sessions) fn from_der(der: &[u8]) -> Self {
+    pub(crate) fn from_der(der: &[u8]) -> Self {
         let parsed = x509_parser::parse_x509_certificate(der).ok();
         let subject = parsed
             .as_ref()
@@ -102,7 +101,7 @@ impl From<Observation<PresentedCertificate>> for ServerCertificate {
 /// The subject without control (Cc), format (Cf) or separator (Zl, Zp) characters, trimmed,
 /// at most [`MAX_SUBJECT`] characters; `None` when nothing is left. The device chooses it, so
 /// it must not break a line, hide text or reorder it wherever it is shown.
-pub(in crate::sessions) fn cleaned_subject(text: &str) -> Option<String> {
+pub(in crate::trust) fn cleaned_subject(text: &str) -> Option<String> {
     let kept = crate::text::clean(text, usize::MAX);
     let kept: String = kept.trim().chars().take(MAX_SUBJECT).collect();
     let kept = kept.trim_end();

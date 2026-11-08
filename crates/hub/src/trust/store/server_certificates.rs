@@ -1,4 +1,4 @@
-//! The SQL on `sessions.server_certificates`: the RDP server certificate accepted for each
+//! The SQL on `trust.server_certificates`: the RDP server certificate accepted for each
 //! device (SEC-007).
 
 use std::collections::HashMap;
@@ -9,7 +9,7 @@ use sqlx::{PgConnection, PgExecutor};
 use super::is_violation_of;
 use crate::{
     ids::{DeviceId, OperatorId},
-    sessions::{Error, Missing, model::ServerCertificate},
+    trust::{Error, model::ServerCertificate},
 };
 
 #[derive(sqlx::FromRow)]
@@ -35,7 +35,7 @@ impl From<ServerCertificateRow> for (DeviceId, ServerCertificate) {
 
 /// The accepted server certificate of each listed device that has one, in one query
 /// (API-005). An empty list returns an empty map without a query.
-pub(in crate::sessions) async fn server_certificates<'e>(
+pub(in crate::trust) async fn server_certificates<'e>(
     db: impl PgExecutor<'e>,
     devices: &[DeviceId],
 ) -> Result<HashMap<DeviceId, ServerCertificate>, Error> {
@@ -44,7 +44,7 @@ pub(in crate::sessions) async fn server_certificates<'e>(
     }
     let rows: Vec<ServerCertificateRow> = sqlx::query_as(
         "select device_id, fingerprint_sha256, subject, not_after, first_seen_at \
-         from sessions.server_certificates where device_id = any($1)",
+         from trust.server_certificates where device_id = any($1)",
     )
     .bind(devices)
     .fetch_all(db)
@@ -58,13 +58,13 @@ pub(in crate::sessions) async fn server_certificates<'e>(
 /// Waits for, then holds until the transaction ends, this domain's advisory lock on the
 /// device's server certificate, so two accepts for one device run one after the other and each
 /// audit entry names the certificate it replaced.
-pub(in crate::sessions) async fn lock_server_certificate(
+pub(in crate::trust) async fn lock_server_certificate(
     conn: &mut PgConnection,
     device: DeviceId,
 ) -> Result<(), Error> {
     sqlx::query(
         "select pg_advisory_xact_lock(\
-         hashtextextended('sessions.server_certificates:' || $1::text, 0))",
+         hashtextextended('trust.server_certificates:' || $1::text, 0))",
     )
     .bind(device)
     .execute(conn)
@@ -73,21 +73,21 @@ pub(in crate::sessions) async fn lock_server_certificate(
 }
 
 /// A server certificate the operator accepts for a device.
-pub(in crate::sessions) struct AcceptedCertificate<'a> {
-    pub(in crate::sessions) device: DeviceId,
-    pub(in crate::sessions) certificate: &'a ServerCertificate,
-    pub(in crate::sessions) by: OperatorId,
+pub(in crate::trust) struct AcceptedCertificate<'a> {
+    pub(in crate::trust) device: DeviceId,
+    pub(in crate::trust) certificate: &'a ServerCertificate,
+    pub(in crate::trust) by: OperatorId,
 }
 
 /// Stores the accepted certificate, replacing the device's previous one; `NotFound` when the
 /// device is gone.
-pub(in crate::sessions) async fn put_server_certificate(
+pub(in crate::trust) async fn put_server_certificate(
     conn: &mut PgConnection,
     accepted: &AcceptedCertificate<'_>,
 ) -> Result<(), Error> {
     let certificate = accepted.certificate;
     let stored = sqlx::query(
-        "insert into sessions.server_certificates (device_id, fingerprint_sha256, subject, \
+        "insert into trust.server_certificates (device_id, fingerprint_sha256, subject, \
                 not_after, first_seen_at, accepted_by) \
          values ($1, $2, $3, $4, $5, $6) \
          on conflict (device_id) do update set fingerprint_sha256 = excluded.fingerprint_sha256, \
@@ -105,7 +105,7 @@ pub(in crate::sessions) async fn put_server_certificate(
     match stored {
         Ok(_) => Ok(()),
         Err(error) if is_violation_of(&error, "server_certificates_device_id_fkey") => {
-            Err(Error::NotFound(Missing::Device(accepted.device)))
+            Err(Error::NotFound(accepted.device))
         }
         Err(error) => Err(error.into()),
     }

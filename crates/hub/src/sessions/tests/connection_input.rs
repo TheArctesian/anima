@@ -4,8 +4,8 @@
 use async_graphql::{InputType, value};
 
 use crate::sessions::{
+    connection_test::{TestSubject, Unsaved},
     graphql::connection_test::ConnectionTestInput,
-    trust::{TestSubject, Unsaved},
 };
 
 fn subject(input: async_graphql::Value) -> TestSubject {

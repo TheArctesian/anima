@@ -27,6 +27,7 @@ use crate::{
         end::Cause,
         ssh::{self, Observer, SshError, Target},
     },
+    trust,
 };
 
 /// SSH keep-alive interval (K4 Section 8.2, spec Section 6.3.1); three unanswered end the
@@ -150,9 +151,9 @@ async fn opened(terminal: &Terminal, ticket: &PendingTicket) -> Result<Opening, 
     if !device.ssh.enabled {
         return Err(NotOpened::SshOff);
     }
-    let accepted = sessions::host_key(&terminal.db, device.id)
+    let accepted = trust::host_key(&terminal.db, device.id)
         .await
-        .map_err(NotOpened::Sessions)?
+        .map_err(|error| NotOpened::Sessions(error.into()))?
         .ok_or(NotOpened::NoHostKey)?
         .public_key;
     let target = Target {

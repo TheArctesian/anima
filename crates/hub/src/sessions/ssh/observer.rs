@@ -9,7 +9,7 @@ use russh::{
 };
 use tokio::sync::oneshot;
 
-use crate::sessions::public_key::PublicKey;
+use crate::trust::PublicKey;
 
 /// The hub's side of the key exchange: reports the presented key once, and lets the
 /// connection go on only when it is the expected key. A certificate, or a key the hub does

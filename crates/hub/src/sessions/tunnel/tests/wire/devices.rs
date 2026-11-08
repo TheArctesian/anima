@@ -69,7 +69,7 @@ async fn k4_2_vnc_turned_off_after_start_is_503_gateway_error(pool: PgPool) {
 )]
 async fn sec_007_an_rdp_session_without_an_accepted_certificate_is_503(pool: PgPool) {
     // A changed device record: deleting the device would cascade the certificate too.
-    let gone = "delete from sessions.server_certificates where device_id = $1";
+    let gone = "delete from trust.server_certificates where device_id = $1";
     let message = "The device has no accepted server certificate. Test the connection and \
                    accept its certificate.";
     refused_after(&pool, Protocol::Rdp, gone, message).await;
@@ -232,7 +232,7 @@ async fn sec_007_standard_rdp_security_opens_without_a_certificate(pool: PgPool)
     // No TLS, so no certificate to pin: the tunnel opens and guacd gets no fingerprint.
     let changes = [
         "update devices.rdp_settings set security = 'rdp' where device_id = $1",
-        "delete from sessions.server_certificates where device_id = $1",
+        "delete from trust.server_certificates where device_id = $1",
     ];
     let Handshake { values, .. } = handshake_of(&pool, Setup::default(), RDP_ARGS, &changes).await;
     assert_eq!(values["security"], "rdp");

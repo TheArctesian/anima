@@ -165,7 +165,7 @@ async fn sec_007_another_host_key_is_503_with_an_error_event(pool: PgPool) {
     let bench = bench(&pool).await;
     let other = serve(12).await.key;
     sqlx::query(
-        "update sessions.host_keys set algorithm = $1, fingerprint_sha256 = $2, public_key = $3",
+        "update trust.host_keys set algorithm = $1, fingerprint_sha256 = $2, public_key = $3",
     )
     .bind(other.algorithm())
     .bind(other.fingerprint().as_str().to_owned())

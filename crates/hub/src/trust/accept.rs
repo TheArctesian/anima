@@ -5,25 +5,24 @@
 use serde_json::json;
 use sqlx::PgPool;
 
-use super::observations::Endpoint;
+use super::{
+    Conflict, Error, find_device,
+    model::{Actor, HostKey},
+    observations::Endpoint,
+    public_key::Fingerprint,
+    sightings::Sightings,
+    store::{self, AcceptedKey},
+};
 use crate::{
     events::{self, AuditAction, AuditTarget, NewAudit},
     ids::DeviceId,
-    sessions::{
-        Conflict, Error, HostKey,
-        end::Actor,
-        find_device,
-        live::Live,
-        public_key::Fingerprint,
-        store::{self, AcceptedKey},
-    },
 };
 
 /// The key the operator accepts: the device and the fingerprint they compared.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(in crate::sessions) struct Acceptance {
-    pub(in crate::sessions) device: DeviceId,
-    pub(in crate::sessions) fingerprint: Fingerprint,
+pub(in crate::trust) struct Acceptance {
+    pub(in crate::trust) device: DeviceId,
+    pub(in crate::trust) fingerprint: Fingerprint,
 }
 
 /// Accepts the key a connection test saw at the device's host and port within the last
@@ -35,14 +34,14 @@ pub(in crate::sessions) struct Acceptance {
 /// # Errors
 /// `NotFound` for an unknown device; `Conflict` when no key was seen or it has another
 /// fingerprint; `Database`, `Devices` or `Events` when a dependency fails.
-pub(in crate::sessions) async fn accept_host_key(
+pub(in crate::trust) async fn accept_host_key(
     db: &PgPool,
-    live: &Live,
+    sightings: &Sightings,
     by: &Actor,
     acceptance: Acceptance,
 ) -> Result<HostKey, Error> {
     let device = find_device(db, acceptance.device).await?;
-    let seen = live
+    let seen = sightings
         .observed(&Endpoint::new(&device.host, device.ssh.port), by.at)
         .ok_or(Error::Conflict(Conflict::KeyNotSeen))?;
     if seen.presented.fingerprint() != acceptance.fingerprint {

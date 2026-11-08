@@ -1,24 +1,22 @@
 //! The connection test (DEV-013, K4 §6): for SSH, reads the host's key, keeps what it
-//! saw for `acceptHostKey`, and signs in only when the key is the accepted one, so a man in
-//! the middle never receives a credential. RDP and VNC are tested in `desktop_test`.
+//! saw for `acceptHostKey` (`trust::Sightings`), and signs in only when the key is the
+//! accepted one, so a man in the middle never receives a credential. RDP and VNC are tested
+//! in `desktop_test`.
 
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 
-use super::{
-    desktop_test::{DesktopSubject, test_desktop},
-    observations::{Endpoint, Observation},
-};
+use super::desktop_test::{DesktopSubject, test_desktop};
 use crate::{
     credentials::{self, SshSecret, Vault},
     ids::DeviceId,
     sessions::{
-        Error, FieldError, HostKey, ServerCertificate, find_device, host_key,
+        Error, FieldError, find_device,
         live::Live,
         probe::{Login, PROBE_TIMEOUT, SignIn, read_host_key, sign_in},
-        public_key::PublicKey,
         ssh::{SshError, Target},
     },
+    trust::{self, Endpoint, HostKey, Observation, PublicKey, ServerCertificate},
 };
 
 /// What to test.
@@ -148,7 +146,7 @@ pub(in crate::sessions) async fn test_connection(
     let endpoint = Endpoint::new(&plan.host, plan.port);
     let seen = probed.map(|signed| match signed {
         SignIn::SignedIn => Seen::SignedIn,
-        SignIn::OtherKey(key) => Seen::Key(live.observe(endpoint, key, request.at)),
+        SignIn::OtherKey(key) => Seen::Key(live.sightings().observe(endpoint, key, request.at)),
     });
     outcome(plan.accepted.as_ref(), seen)
 }
@@ -162,7 +160,7 @@ async fn plan(
     credential: Option<SshSecret>,
 ) -> Result<Plan, Error> {
     let device = find_device(db, id).await?;
-    let accepted = host_key(db, id).await?;
+    let accepted = trust::host_key(db, id).await?;
     let secret = match (&accepted, credential) {
         (None, _) => None,
         (Some(_), Some(credential)) => Some(credential),
@@ -244,7 +242,10 @@ mod tests {
     use super::{
         AUTH_FAILED, CHANGED_KEY, NEW_KEY, NO_CREDENTIAL, SIGNED_IN, Seen, UNREACHABLE, outcome,
     };
-    use crate::sessions::{HostKey, public_key::PublicKey, ssh::SshError, trust::Observation};
+    use crate::{
+        sessions::ssh::SshError,
+        trust::{HostKey, Observation, PublicKey},
+    };
 
     fn key(data: &[u8]) -> PublicKey {
         let mut blob = 11_u32.to_be_bytes().to_vec();

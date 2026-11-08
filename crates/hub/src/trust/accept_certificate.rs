@@ -5,24 +5,25 @@
 use serde_json::json;
 use sqlx::PgPool;
 
-use super::{certificate::CertificateFingerprint, observations::Endpoint};
+use super::{
+    Conflict, Error,
+    certificate::CertificateFingerprint,
+    find_device,
+    model::{Actor, ServerCertificate},
+    observations::Endpoint,
+    sightings::Sightings,
+    store::{self, AcceptedCertificate},
+};
 use crate::{
     events::{self, AuditAction, AuditTarget, NewAudit},
     ids::DeviceId,
-    sessions::{
-        Conflict, Error, ServerCertificate,
-        end::Actor,
-        find_device,
-        live::Live,
-        store::{self, AcceptedCertificate},
-    },
 };
 
 /// The certificate the operator accepts: the device and the fingerprint they compared.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(in crate::sessions) struct CertificateAcceptance {
-    pub(in crate::sessions) device: DeviceId,
-    pub(in crate::sessions) fingerprint: CertificateFingerprint,
+pub(in crate::trust) struct CertificateAcceptance {
+    pub(in crate::trust) device: DeviceId,
+    pub(in crate::trust) fingerprint: CertificateFingerprint,
 }
 
 /// Accepts the certificate a connection test saw at the device's host and RDP port within
@@ -34,14 +35,14 @@ pub(in crate::sessions) struct CertificateAcceptance {
 /// # Errors
 /// `NotFound` for an unknown device; `Conflict` when no certificate was seen or it has
 /// another fingerprint; `Database`, `Devices` or `Events` when a dependency fails.
-pub(in crate::sessions) async fn accept_server_certificate(
+pub(in crate::trust) async fn accept_server_certificate(
     db: &PgPool,
-    live: &Live,
+    sightings: &Sightings,
     by: &Actor,
     acceptance: CertificateAcceptance,
 ) -> Result<ServerCertificate, Error> {
     let device = find_device(db, acceptance.device).await?;
-    let seen = live
+    let seen = sightings
         .observed_certificate(&Endpoint::new(&device.host, device.rdp.port), by.at)
         .ok_or(Error::Conflict(Conflict::CertificateNotSeen))?;
     if seen.presented.fingerprint != acceptance.fingerprint {
