@@ -177,7 +177,10 @@ fn refusal(identity: Option<&Identity>, document: &ExecutableDocument) -> Option
 /// keys, signing a browser in or out, sessions, files, shares, recordings and device
 /// credentials. `logout` would delete the key, which is managing it. `enrolAgent` and
 /// `revokeAgentToken` are refused by name before their resolvers exist (R-084, CR-8).
-const API_KEY_REFUSED_ROOTS: [&str; 18] = [
+/// A key may not pin a device identity, move or delete a device, or destroy recordings:
+/// moving a device and accepting the new host key would send its stored password to another
+/// host (R-100).
+pub(super) const API_KEY_REFUSED_ROOTS: [&str; 25] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -196,6 +199,13 @@ const API_KEY_REFUSED_ROOTS: [&str; 18] = [
     "clearVncCredential",
     "enrolAgent",
     "revokeAgentToken",
+    "acceptHostKey",
+    "acceptServerCertificate",
+    "acceptWebCertificate",
+    "updateDevice",
+    "deleteDevice",
+    "setRetention",
+    "deleteRecording",
 ];
 
 /// The root selections a token of `kind` may make, in every operation type. A new kind of

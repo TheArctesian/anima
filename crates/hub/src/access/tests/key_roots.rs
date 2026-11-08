@@ -1,18 +1,23 @@
 //! The root rule of each token kind in the backstop: an API key may not select a field on the
 //! D-23 list or any root fragment, in any operation of a document, and a read key runs no
 //! mutation. Each refusal is one FORBIDDEN in `parse_query`, before validation and before any
-//! resolver (D-23, WP-43 A-6, R-084, CR-8).
+//! resolver (D-23, WP-43 A-6, R-084, CR-8, R-100).
 
-use async_graphql::{Request, Response, Value, value};
+use async_graphql::{EmptySubscription, Request, Response, Schema, Value, value};
 use chrono::TimeDelta;
 
-use super::{backstopped, identity_of, now};
-use crate::access::{Scope, TokenKind, guard::kind_may_select};
+use super::{backstopped, clock, identity_of, now};
+use crate::access::{
+    Scope, TokenKind,
+    graphql::{Mutation, Query},
+    guard::{API_KEY_REFUSED_ROOTS, kind_may_select},
+};
 
 const KIND_REFUSED: &str = "This token cannot do that. Sign in to the hub to do it.";
 
-/// The D-23 list as the spec and A-6 state it, with the CR-8 agent fields.
-const D_23: [&str; 18] = [
+/// The D-23 list as the spec and A-6 state it, with the CR-8 agent fields and the R-100
+/// device identity, device and recording fields.
+const D_23: [&str; 25] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -31,6 +36,13 @@ const D_23: [&str; 18] = [
     "clearVncCredential",
     "enrolAgent",
     "revokeAgentToken",
+    "acceptHostKey",
+    "acceptServerCertificate",
+    "acceptWebCertificate",
+    "updateDevice",
+    "deleteDevice",
+    "setRetention",
+    "deleteRecording",
 ];
 
 async fn run(kind: TokenKind, scope: Scope, request: Request) -> Response {
@@ -63,7 +75,17 @@ fn d_23_only_an_api_key_is_kept_from_the_listed_roots() {
         assert!(kind_may_select(TokenKind::Login, name), "{name}");
         assert!(kind_may_select(TokenKind::Browser, name), "{name}");
     }
-    for name in ["me", "devices", "createSite", "login", "__typename"] {
+    let open = [
+        "me",
+        "devices",
+        "createSite",
+        "createDevice",
+        "testConnection",
+        "createNotificationChannel",
+        "login",
+        "__typename",
+    ];
+    for name in open {
         assert!(kind_may_select(TokenKind::ApiKey, name), "{name}");
     }
 }
@@ -163,4 +185,88 @@ async fn d_23_a_read_key_runs_no_mutation_at_all() {
     )
     .await;
     assert_eq!(typename.data, value!({ "__typename": "Mutation" }));
+}
+
+/// The root field names of K1, `@pending` ones included.
+fn contract_roots() -> Vec<String> {
+    use async_graphql::parser::{
+        parse_schema,
+        types::{TypeKind, TypeSystemDefinition},
+    };
+    let path = concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../contracts/schema.graphql"
+    );
+    let text = std::fs::read_to_string(path).unwrap();
+    let mut roots = Vec::new();
+    for definition in parse_schema(&text).unwrap().definitions {
+        let TypeSystemDefinition::Type(declared) = definition else {
+            continue;
+        };
+        let root =
+            ["Query", "Mutation", "Subscription"].contains(&declared.node.name.node.as_str());
+        if let (true, TypeKind::Object(object)) = (root, &declared.node.kind) {
+            roots.extend(
+                object
+                    .fields
+                    .iter()
+                    .map(|field| field.node.name.node.to_string()),
+            );
+        }
+    }
+    roots
+}
+
+/// A name on the list that K1 does not declare would refuse nothing, so a renamed field would
+/// slip past the rule (D-23, R-100).
+#[test]
+fn d_23_every_refused_name_is_a_root_field_of_k1() {
+    let roots = contract_roots();
+    for name in API_KEY_REFUSED_ROOTS {
+        assert!(
+            roots.iter().any(|root| root == name),
+            "{name} is not a K1 root field"
+        );
+    }
+    assert_eq!(D_23, API_KEY_REFUSED_ROOTS);
+}
+
+/// The key fields' own resolvers on a schema built without the backstop: the hub's roots with a
+/// clock and nothing else, so any resolver that got past its kind check would fail on the
+/// missing database instead.
+async fn unguarded(kind: TokenKind, document: &str) -> Response {
+    let schema = Schema::build(Query, Mutation, EmptySubscription)
+        .data(clock(now()))
+        .finish();
+    let identity = identity_of(kind, Scope::Write, now() + TimeDelta::days(1));
+    schema
+        .execute(identity.attach(Request::new(document)))
+        .await
+}
+
+const KEY_DOCUMENTS: [&str; 3] = [
+    "{ apiKeys { id } }",
+    "mutation { createApiKey(input: { name: \"x\", scope: WRITE, \
+     expiresAt: \"2030-06-01T00:00:00Z\" }) { secret } }",
+    "mutation { revokeApiKey(id: \"0190a000-0000-7000-8000-0000000000aa\") }",
+];
+
+/// The resolvers check the token kind again, so a schema without `SignInRequired` still keeps
+/// an API key from managing keys (D-23).
+#[tokio::test]
+async fn d_23_the_key_resolvers_refuse_an_api_key_without_the_backstop() {
+    for document in KEY_DOCUMENTS {
+        let response = unguarded(TokenKind::ApiKey, document).await;
+        assert_refused(&response, KIND_REFUSED, document);
+    }
+    for document in KEY_DOCUMENTS {
+        let response = unguarded(TokenKind::Login, document).await;
+        let [error] = response.errors.as_slice() else {
+            panic!("{document}: expected one error, got {:?}", response.errors);
+        };
+        assert_ne!(
+            error.message, KIND_REFUSED,
+            "a login token passes: {document}"
+        );
+    }
 }

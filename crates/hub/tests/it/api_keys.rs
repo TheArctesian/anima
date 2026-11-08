@@ -3,8 +3,10 @@
 //! (INT-003, LOG-005, LOG-007, D-23, P3-004).
 
 mod create;
+mod exfiltration;
 mod refused;
 mod revoke;
+mod socket;
 
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use chrono::{DateTime, TimeDelta, Utc};
@@ -56,6 +58,14 @@ async fn secret(hub: &Hub, token: &str, name: &str, scope: &str) -> String {
         .as_str()
         .unwrap()
         .to_owned()
+}
+
+/// What the hub says to a token kind that may not select a field (D-23).
+fn kind_refused() -> (String, String) {
+    (
+        "This token cannot do that. Sign in to the hub to do it.".to_owned(),
+        "FORBIDDEN".to_owned(),
+    )
 }
 
 /// The text after `anima_` in a key's secret.

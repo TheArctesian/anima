@@ -1,16 +1,17 @@
 //! What an API key may not do: the D-23 root fields, by any spelling of the document, and any
 //! mutation with a READ key. Each is refused with FORBIDDEN before any resolver runs (D-23,
-//! WP-43 A-6, R-084, CR-8, API-003).
+//! WP-43 A-6, R-084, CR-8, R-100, API-003).
 
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
-use super::{CREATE, ME, REVOKE, count, input, made, signed_in};
+use super::{CREATE, ME, REVOKE, count, input, kind_refused, made, signed_in};
 use crate::hub::{Hub, PASSWORD, USERNAME, error};
 
 /// Every root field an API key may never select (D-23, A-6; `enrolAgent` and
-/// `revokeAgentToken` by name before they have resolvers, R-084, CR-8).
-const REFUSED: [&str; 18] = [
+/// `revokeAgentToken` by name before they have resolvers, R-084, CR-8; pinning a device
+/// identity, moving or deleting a device and destroying recordings, R-100).
+const REFUSED: [&str; 25] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -29,15 +30,14 @@ const REFUSED: [&str; 18] = [
     "clearVncCredential",
     "enrolAgent",
     "revokeAgentToken",
+    "acceptHostKey",
+    "acceptServerCertificate",
+    "acceptWebCertificate",
+    "updateDevice",
+    "deleteDevice",
+    "setRetention",
+    "deleteRecording",
 ];
-
-/// What the hub says to a token kind that may not select a field.
-fn kind_refused() -> (String, String) {
-    (
-        "This token cannot do that. Sign in to the hub to do it.".to_owned(),
-        "FORBIDDEN".to_owned(),
-    )
-}
 
 /// Documents that select `name` at the root: plainly, through an alias, an inline fragment, a
 /// fragment spread, beside other fields, with arguments, and in an operation of a
