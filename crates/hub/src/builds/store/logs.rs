@@ -34,28 +34,28 @@ pub(in crate::builds) async fn append_lines(
     Ok(())
 }
 
-/// Whether the job's last report ended inside a private key block.
-pub(in crate::builds) async fn log_in_key(
+/// The private key block the job's last report left open: how many more lines it may take.
+pub(in crate::builds) async fn open_key_block(
     conn: &mut PgConnection,
     job: BuildJobId,
-) -> Result<bool, Error> {
-    let in_key: Option<bool> =
-        sqlx::query_scalar("SELECT log_in_key_block FROM builds.jobs WHERE id = $1")
+) -> Result<Option<u16>, Error> {
+    let left: Option<Option<i32>> =
+        sqlx::query_scalar("SELECT log_key_lines_left FROM builds.jobs WHERE id = $1")
             .bind(job)
             .fetch_optional(conn)
             .await?;
-    Ok(in_key.unwrap_or(false))
+    Ok(left.flatten().and_then(|left| u16::try_from(left).ok()))
 }
 
-/// Records whether the job's last report ended inside a private key block.
-pub(in crate::builds) async fn set_log_in_key(
+/// Records the private key block the job's last report left open, if any.
+pub(in crate::builds) async fn set_open_key_block(
     conn: &mut PgConnection,
     job: BuildJobId,
-    in_key: bool,
+    left: Option<u16>,
 ) -> Result<(), Error> {
-    sqlx::query("UPDATE builds.jobs SET log_in_key_block = $2 WHERE id = $1")
+    sqlx::query("UPDATE builds.jobs SET log_key_lines_left = $2 WHERE id = $1")
         .bind(job)
-        .bind(in_key)
+        .bind(left.map(i32::from))
         .execute(conn)
         .await?;
     Ok(())

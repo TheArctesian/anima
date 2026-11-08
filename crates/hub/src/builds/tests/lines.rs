@@ -1,8 +1,9 @@
 //! What the hub keeps of a log line (BLD-048, BLD-049, LOG-007).
 
+use base64::{Engine, engine::general_purpose::STANDARD};
 use proptest::prelude::*;
 
-use crate::builds::log_lines::{self, MAX_LINES_PER_REPORT};
+use crate::builds::log_lines::{self, KEY_BLOCK, MAX_LINES_PER_REPORT};
 
 const TOKEN: &str = "dGhpcyBpcyBhIGJ1aWxkZXIgdG9rZW4gb2YgMzIgYnl0";
 
@@ -12,7 +13,7 @@ fn lines(texts: &[&str]) -> Vec<String> {
 
 /// The lines kept of one report sent outside a key block.
 fn stored(report: &[String]) -> Vec<String> {
-    log_lines::clean_all(report, false).unwrap().0
+    log_lines::clean_all(report, None).unwrap().0
 }
 
 /// Keys that name a secret, in the spellings builds print.
@@ -27,6 +28,24 @@ const SECRET_KEYS: [&str; 10] = [
     "client_secret",
     "pass",
     "X-Amz-Signature",
+];
+
+/// Pieces that split a key: escapes that take the letter after them (`ESC [`, `ESC (`, C1
+/// CSI), and whole sequences and hidden characters that take nothing.
+const SPLIT_PIECES: [&str; 13] = [
+    "\x1b[",
+    "\x1b[1;",
+    "\x1b(",
+    "\u{9b}",
+    "\x1b",
+    "\x1b[0m",
+    "\x1b[m",
+    "\x1b[31m",
+    "\x1b(B",
+    "\x1b7",
+    "\u{200b}",
+    "\u{fe0f}",
+    "\x1b]0;t\x07",
 ];
 
 /// Escape-sequence pieces a hostile builder may put before a key: whole sequences, sequences
@@ -128,9 +147,9 @@ fn bld_049_the_lines_of_a_private_key_block_are_dropped() {
         "done",
     ]);
     let kept = stored(&report);
-    assert_eq!(kept, ["importing the updater key", "[redacted]", "done"]);
+    assert_eq!(kept, ["importing the updater key", KEY_BLOCK, "done"]);
     let unended = lines(&["-----BEGIN PRIVATE KEY-----", "MIIEvQIBADANBg", "more"]);
-    assert_eq!(stored(&unended), ["[redacted]"]);
+    assert_eq!(stored(&unended), [KEY_BLOCK]);
     let pgp = lines(&[
         "-----BEGIN PGP PRIVATE KEY BLOCK-----",
         "",
@@ -139,7 +158,7 @@ fn bld_049_the_lines_of_a_private_key_block_are_dropped() {
         "-----END PGP PRIVATE KEY BLOCK-----",
         "done",
     ]);
-    assert_eq!(stored(&pgp), ["[redacted]", "done"]);
+    assert_eq!(stored(&pgp), [KEY_BLOCK, "done"]);
     let ssh2 = lines(&[
         "---- BEGIN SSH2 ENCRYPTED PRIVATE KEY ----",
         "Comment: \"rsa-key\"",
@@ -147,7 +166,20 @@ fn bld_049_the_lines_of_a_private_key_block_are_dropped() {
         "---- END SSH2 ENCRYPTED PRIVATE KEY ----",
         "done",
     ]);
-    assert_eq!(stored(&ssh2), ["[redacted]", "done"]);
+    assert_eq!(stored(&ssh2), [KEY_BLOCK, "done"]);
+    let pgp_secret = lines(&[
+        "-----BEGIN PGP SECRET KEY BLOCK-----",
+        "Version: GnuPG v2",
+        "",
+        "lQOYBF8AAAABCADnsecretbody",
+        "-----END PGP SECRET KEY BLOCK-----",
+        "done",
+    ]);
+    assert_eq!(stored(&pgp_secret), [KEY_BLOCK, "done"]);
+    let one_line = "---- BEGIN SSH2 ENCRYPTED PRIVATE KEY ---- P2/56wAAA+wsecretbody";
+    let after = lines(&[one_line, "signed the update"]);
+    assert_eq!(stored(&after), [KEY_BLOCK, "signed the update"]);
+    assert_eq!(log_lines::clean(one_line), "[redacted]");
     let putty = lines(&[
         "Public-Lines: 1",
         "AAAAC3NzaC1lZDI1NTE5AAAAIPublic",
@@ -161,7 +193,7 @@ fn bld_049_the_lines_of_a_private_key_block_are_dropped() {
         [
             "Public-Lines: 1",
             "AAAAC3NzaC1lZDI1NTE5AAAAIPublic",
-            "[redacted]",
+            KEY_BLOCK,
             "done"
         ]
     );
@@ -174,13 +206,97 @@ fn bld_049_a_key_block_open_at_a_report_end_stays_open_into_the_next() {
         "-----BEGIN RSA PRIVATE KEY-----",
         "MIIEowIBAAKCAQEA",
     ]);
-    let (kept, in_key) = log_lines::clean_all(&first, false).unwrap();
-    assert_eq!(kept, ["key:", "[redacted]"]);
-    assert!(in_key);
+    let (kept, open) = log_lines::clean_all(&first, None).unwrap();
+    assert_eq!(kept, ["key:", KEY_BLOCK]);
+    assert_eq!(open, Some(199));
     let second = lines(&["secretbody", "-----END RSA PRIVATE KEY-----", "done"]);
-    let (kept, in_key) = log_lines::clean_all(&second, true).unwrap();
+    let (kept, open) = log_lines::clean_all(&second, open).unwrap();
     assert_eq!(kept, ["done"]);
-    assert!(!in_key);
+    assert_eq!(open, None);
+}
+
+#[test]
+fn bld_048_an_opening_line_with_no_key_after_it_keeps_the_rest_of_the_log() {
+    let report = lines(&[
+        "$ grep -rln -- '-----BEGIN .* PRIVATE KEY' src || true",
+        "error[E0308]: mismatched types",
+        "Build failed: exit 101",
+    ]);
+    let (kept, open) = log_lines::clean_all(&report, None).unwrap();
+    assert_eq!(
+        kept,
+        [
+            KEY_BLOCK,
+            "error[E0308]: mismatched types",
+            "Build failed: exit 101"
+        ]
+    );
+    assert_eq!(open, None);
+    // A block left open by an earlier report ends at the first line that is not key material.
+    let next = lines(&["   Compiling anima-hub v0.1.0", "done"]);
+    let (kept, open) = log_lines::clean_all(&next, Some(150)).unwrap();
+    assert_eq!(kept, ["   Compiling anima-hub v0.1.0", "done"]);
+    assert_eq!(open, None);
+}
+
+#[test]
+fn bld_048_a_key_block_takes_at_most_200_lines() {
+    let mut report = vec!["-----BEGIN RSA PRIVATE KEY-----".to_owned()];
+    report.extend((0..201).map(|n| format!("MIIEowIBAAKCAQEA{n:04}")));
+    let (kept, open) = log_lines::clean_all(&report, None).unwrap();
+    assert_eq!(kept, [KEY_BLOCK, "MIIEowIBAAKCAQEA0200"]);
+    assert_eq!(open, None);
+}
+
+/// A minisign key file as the Tauri updater writes it, base64 of its two lines.
+fn minisign_file(comment: &str, key: &str) -> String {
+    STANDARD.encode(format!("untrusted comment: {comment}\n{key}\n"))
+}
+
+#[test]
+fn bld_049_the_updater_secret_key_is_redacted_and_its_public_key_kept() {
+    let secret = "RWRTY0IyhB2rsQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA0secret";
+    let report = lines(&[
+        "untrusted comment: rsign encrypted secret key",
+        secret,
+        "signed",
+    ]);
+    assert_eq!(stored(&report), [KEY_BLOCK, "signed"]);
+    let file = minisign_file("rsign encrypted secret key", secret);
+    assert!(file.starts_with("dW50cnVzdGVkIGNvbW1lbnQ6"));
+    assert_eq!(
+        log_lines::clean(&format!("echo {file} > key")),
+        "[redacted]"
+    );
+    let public = "RWQf6LRCGA9i53mlYecO4IzT51TGPpvWucNSCh1CBM0QTaLn73Y7GFO3";
+    let shown = lines(&["untrusted comment: minisign public key: 1E1D2C3B4A", public]);
+    assert_eq!(stored(&shown), shown);
+    let public_file = minisign_file("minisign public key: 1E1D2C3B4A", public);
+    let config = format!("\"pubkey\": \"{public_file}\"");
+    assert_eq!(log_lines::clean(&config), config);
+}
+
+#[test]
+fn bld_049_two_splits_in_one_key_do_not_unmask_its_value() {
+    for line in [
+        "\x1b[pass\x1b[0mword=hunter2hunter2",
+        "\x1b[pass\u{200b}word=hunter2hunter2",
+        "pa\x1b[ss\x1b[word=hunter2hunter2",
+    ] {
+        let kept = log_lines::clean(line);
+        assert!(
+            !kept.contains("hunter2hunter2"),
+            "{line:?} kept as {kept:?}"
+        );
+    }
+}
+
+#[test]
+fn bld_049_a_hidden_character_does_not_cost_the_rest_of_the_line() {
+    assert_eq!(
+        log_lines::clean("\u{2714}\u{fe0f} uploaded token_count=3 files"),
+        "\u{2714} uploaded token_count=[redacted] files"
+    );
 }
 
 #[test]
@@ -242,7 +358,7 @@ fn bld_048_control_characters_become_spaces_and_tabs_stay() {
 fn bld_048_a_report_carries_at_most_1000_lines() {
     let many = vec!["x".to_owned(); MAX_LINES_PER_REPORT + 1];
     assert_eq!(
-        log_lines::clean_all(&many, false).unwrap_err().field,
+        log_lines::clean_all(&many, None).unwrap_err().field,
         "logLines"
     );
     let enough = vec!["x".to_owned(); MAX_LINES_PER_REPORT];
@@ -274,6 +390,24 @@ proptest! {
         let kept = log_lines::clean(&line);
         prop_assert!(!kept.contains(char::from(0x1b_u8)));
         prop_assert!(kept.chars().all(|c| !crate::builds::hidden_text::is_hidden(c)));
+    }
+
+    #[test]
+    fn bld_049_no_two_splits_in_a_key_unmask_its_value(
+        key in proptest::sample::select(&SECRET_KEYS[..]),
+        cuts in (0..=20_usize, 0..=20_usize),
+        first in proptest::sample::select(&SPLIT_PIECES[..]),
+        second in proptest::sample::select(&SPLIT_PIECES[..]),
+        value in "Q[0-9]{8}[a-z0-9]{0,8}",
+    ) {
+        // Split points inside the key: before its first letter up to before its last one. An
+        // escape between the key and `=` can take the `=` itself (`ESC =`), and then neither a
+        // terminal nor redaction reads a separator.
+        let (a, b) = (cuts.0 % key.len(), cuts.1 % key.len());
+        let (a, b) = (a.min(b), a.max(b));
+        let line = format!("{}{first}{}{second}{}={value}", &key[..a], &key[a..b], &key[b..]);
+        let kept = log_lines::clean(&line);
+        prop_assert!(!kept.contains(&value), "{:?} kept as {:?}", line, kept);
     }
 
     #[test]

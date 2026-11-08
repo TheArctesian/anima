@@ -199,16 +199,25 @@ async fn bld_049_a_key_block_split_across_reports_keeps_none_of_its_body(pool: P
         "-----END OPENSSH PRIVATE KEY-----",
     ];
     data(report(&hub, &builder.token, &job, &second).await);
-    data(report(&hub, &builder.token, &job, &["done", begin]).await);
+    // An opening line with no key after it ends at the next report's first line.
+    let grep = "$ grep -rln -- '-----BEGIN .* PRIVATE KEY' src || true";
+    data(report(&hub, &builder.token, &job, &["done", grep]).await);
+    let errors = ["error[E0308]: mismatched types", "Build failed: exit 101"];
+    data(report(&hub, &builder.token, &job, &errors).await);
+    data(report(&hub, &builder.token, &job, &[begin]).await);
+    let marker = "[redacted: private key block]";
     assert_eq!(
         stored_lines(&pool).await,
-        ["start", "[redacted]", "done", "[redacted]"]
+        [
+            "start", marker, "done", marker, errors[0], errors[1], marker
+        ]
     );
-    // The lease ends with that block open; the next attempt's log is kept from its start.
+    // The lease ends with a block open; the next attempt's log is kept from its first line,
+    // even one that looks like key material.
     let later = hub_at(&pool, 90);
     data(claim(&later, &builder.token).await);
-    data(report(&later, &builder.token, &job, &["attempt two"]).await);
-    assert_eq!(stored_lines(&pool).await.last().unwrap(), "attempt two");
+    data(report(&later, &builder.token, &job, &["AttemptTwo"]).await);
+    assert_eq!(stored_lines(&pool).await.last().unwrap(), "AttemptTwo");
 }
 
 #[sqlx::test(migrations = "./migrations")]

@@ -65,34 +65,62 @@ pub(super) fn is_hidden(c: char) -> bool {
         .any(|&(first, last)| (first..=last).contains(&c))
 }
 
-/// What a reading does with the byte that ends an escape when that byte could be text: the
-/// final byte of a control sequence (`ESC [ p`), a designator (`ESC ( B`) or the byte after a
-/// bare `ESC` (`ESC 7`).
+/// What a reading does with a byte that ends an escape and could be text: the final byte of a
+/// control sequence (`ESC [ p`), a designator (`ESC ( B`) or the byte after a bare `ESC`
+/// (`ESC 7`).
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Finals {
     /// Removed with the sequence, as a terminal does.
     Drop,
     /// Kept as text.
     Keep,
+    /// Removed when real output ends sequences with it (`m` of a colour, `B` of `ESC ( B`,
+    /// the digit of `ESC 7`), else kept as text: an unusual final is more likely a letter the
+    /// sequence took.
+    KeepRare,
+}
+
+impl Finals {
+    /// Whether the reading keeps `c` as text, `usual` saying whether real output ends this
+    /// kind of sequence with it.
+    fn keeps(self, c: char, usual: impl Fn(char) -> bool) -> bool {
+        match self {
+            Self::Drop => false,
+            Self::Keep => true,
+            Self::KeepRare => !usual(c),
+        }
+    }
 }
 
 /// `text` as a terminal shows it: without its escape sequences and hidden characters. A
 /// sequence that is never ended takes the rest of the text with it: the terminal would not
 /// show that either.
 pub(super) fn visible(text: &str) -> String {
-    read(text, Finals::Drop)
+    read(text, Finals::Drop, false)
 }
 
 /// `text` with each escape sequence and hidden character turned into one space, the bytes that
 /// may end a sequence kept. Where [`visible`] takes a key's first letter as a final byte
 /// (`ESC [` then `password`), this reading keeps the key whole and apart from what precedes it.
 pub(super) fn spaced(text: &str) -> String {
-    read(text, Finals::Keep)
+    read(text, Finals::Keep, true)
 }
 
-fn read(text: &str, finals: Finals) -> String {
+/// `text` without its escape introducers, parameters and hidden characters, the bytes that may
+/// end a sequence kept: `ESC [ pass ZWSP word` reads `password`.
+pub(super) fn joined(text: &str) -> String {
+    read(text, Finals::Keep, false)
+}
+
+/// As [`joined`], but the final bytes that real output uses are removed as a terminal does:
+/// `ESC [ pass ESC [0m word` reads `password`.
+pub(super) fn joined_rare(text: &str) -> String {
+    read(text, Finals::KeepRare, false)
+}
+
+fn read(text: &str, finals: Finals, spaced: bool) -> String {
     let gap = |shown: &mut String| {
-        if finals == Finals::Keep {
+        if spaced {
             shown.push(' ');
         }
     };
@@ -101,7 +129,7 @@ fn read(text: &str, finals: Finals) -> String {
     while let Some(c) = chars.next() {
         match c {
             ESC => {
-                skip_escape(&mut chars, finals);
+                skip_escape(&mut chars, finals, &mut shown);
                 gap(&mut shown);
             }
             // C1 CSI, and the C1 starts of OSC, DCS, SOS, PM and APC strings.
@@ -109,8 +137,12 @@ fn read(text: &str, finals: Finals) -> String {
                 skip_control_sequence(&mut chars, finals);
                 gap(&mut shown);
             }
-            '\u{9d}' | '\u{90}' | '\u{98}' | '\u{9e}' | '\u{9f}' => {
-                skip_string(&mut chars);
+            intro @ ('\u{9d}' | '\u{90}' | '\u{98}' | '\u{9e}' | '\u{9f}') => {
+                skip_string(
+                    &mut chars,
+                    finals.keeps(intro, |c| c == '\u{9d}'),
+                    &mut shown,
+                );
                 gap(&mut shown);
             }
             c if is_hidden(c) => gap(&mut shown),
@@ -122,26 +154,31 @@ fn read(text: &str, finals: Finals) -> String {
 
 /// After `ESC`: a control sequence (`ESC [`), a string (`ESC ]`, `ESC P`, `ESC X`, `ESC ^`,
 /// `ESC _`), a character set designation with its one designator byte (`ESC ( B`), or one of
-/// the final bytes of [`ends_escape`] (`ESC 7`). Otherwise only the `ESC` goes; with
-/// [`Finals::Keep`], designations and finals stay too.
-fn skip_escape(chars: &mut Peekable<Chars<'_>>, finals: Finals) {
+/// the final bytes of [`ends_escape`] (`ESC 7`). Otherwise only the `ESC` goes. A designator or
+/// final byte goes only as `finals` says, and so does the text of a string, into `kept`.
+fn skip_escape(chars: &mut Peekable<Chars<'_>>, finals: Finals, kept: &mut String) {
     match chars.peek().copied() {
         Some('[') => {
             chars.next();
             skip_control_sequence(chars, finals);
         }
-        Some(']' | 'P' | 'X' | '^' | '_') => {
+        // A reading that keeps the byte after `ESC` reads the string's introducer and text as
+        // text: `P` and `X` may be a key's letters (`PG ESC PASSWORD`).
+        Some(intro @ (']' | 'P' | 'X' | '^' | '_')) if !finals.keeps(intro, |c| c == ']') => {
             chars.next();
-            skip_string(chars);
+            skip_string(chars, false, kept);
         }
-        Some('(' | ')' | '*' | '+') if finals == Finals::Drop => {
+        Some('(' | ')' | '*' | '+') => {
             chars.next();
-            chars.next_if(|c| ('\u{30}'..='\u{7e}').contains(c));
+            chars.next_if(|&c| {
+                ('\u{30}'..='\u{7e}').contains(&c) && !finals.keeps(c, |c| matches!(c, 'B' | '0'))
+            });
         }
-        _ if finals == Finals::Drop => {
-            chars.next_if(|&c| ends_escape(c));
+        _ => {
+            chars.next_if(|&c| {
+                ends_escape(c) && !finals.keeps(c, |c| c.is_ascii_digit() || matches!(c, '=' | '>'))
+            });
         }
-        _ => {}
     }
 }
 
@@ -152,15 +189,15 @@ fn skip_control_sequence(chars: &mut Peekable<Chars<'_>>, finals: Finals) {
         .next_if(|c| ('\u{20}'..='\u{3f}').contains(c))
         .is_some()
     {}
-    if finals == Finals::Drop {
-        chars.next_if(|c| ('\u{40}'..='\u{7e}').contains(c));
-    }
+    chars.next_if(|&c| ('\u{40}'..='\u{7e}').contains(&c) && !finals.keeps(c, |c| c == 'm'));
 }
 
 /// A string up to its terminator: `BEL`, `ESC \` or the C1 string terminator. Any other `ESC`
 /// ends it too and is left in place, as terminals read it as the start of the next sequence
-/// (`ESC ] ESC [ 31m` is a cut-off string, then a colour).
-fn skip_string(chars: &mut Peekable<Chars<'_>>) {
+/// (`ESC ] ESC [ 31m` is a cut-off string, then a colour). With `keep_text` the string's text
+/// goes into `kept`: a string can hide part of a key (`api ESC _ k ESC \ ey`). Real output
+/// sends OSC strings (titles, links); the other kinds are rare.
+fn skip_string(chars: &mut Peekable<Chars<'_>>, keep_text: bool, kept: &mut String) {
     while let Some(&c) = chars.peek() {
         match c {
             '\u{7}' | '\u{9c}' => {
@@ -175,8 +212,11 @@ fn skip_string(chars: &mut Peekable<Chars<'_>>) {
                 }
                 return;
             }
-            _ => {
+            c => {
                 chars.next();
+                if keep_text {
+                    kept.push(c);
+                }
             }
         }
     }

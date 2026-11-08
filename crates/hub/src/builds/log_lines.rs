@@ -4,7 +4,7 @@
 //!
 //! Pure: the redaction is the event log's text rule, which reads nothing.
 
-use super::{hidden_text, model::FieldError};
+use super::{hidden_text, model::FieldError, private_keys};
 use crate::events;
 
 /// The most lines one report may carry.
@@ -25,6 +25,9 @@ const MAX_REASON_CHARS: usize = 200;
 
 /// What a masked value becomes, as in the event log.
 const REDACTED: &str = "[redacted]";
+
+/// What a private key block's opening line becomes; the block's other lines are not stored.
+pub(super) const KEY_BLOCK: &str = "[redacted: private key block]";
 
 /// A key ending in this, ignoring ASCII case, holds a signature: `X-Amz-Signature=<hex>` in a
 /// presigned URL lets anyone write the object until it expires (T3).
@@ -95,45 +98,106 @@ fn mask_signatures(text: &str) -> String {
     masked
 }
 
-/// `text` with every secret that the event log's rule or the signature rule finds masked.
+/// `text` with every secret masked that the event log's rule, the signature rule or the
+/// minisign rule finds; `[redacted]` whole for private key text. A minisign public key's id is
+/// kept: the build log may show the public key.
 fn redact(text: &str) -> String {
+    if private_keys::is_secret_text(text) {
+        return REDACTED.to_owned();
+    }
+    if let Some(colon) = private_keys::public_key_id_colon(text) {
+        return format!("{}:{}", redact(&text[..colon]), redact(&text[colon + 1..]));
+    }
     mask_signatures(&events::redact_text(text))
 }
 
-/// A line read two ways, both printable: as a terminal shows it (`hidden_text::visible`), and
-/// spaced (`hidden_text::spaced`: each escape a space, the bytes that may end one kept).
+/// The values that redaction replaced in `text`, given `masked = redact(text)`. `None` when
+/// they cannot be told apart from the text around them (the text holds `[redacted]` itself).
+fn masked_values<'a>(text: &'a str, masked: &str) -> Option<Vec<&'a str>> {
+    let mut pieces = masked.split(REDACTED);
+    let first = pieces.next().unwrap_or_default();
+    let mut rest = text.strip_prefix(first)?;
+    let mut values = Vec::new();
+    let mut pieces = pieces.peekable();
+    while let Some(piece) = pieces.next() {
+        let end = if pieces.peek().is_none() {
+            rest.strip_suffix(piece)?.len()
+        } else if piece.is_empty() {
+            return None;
+        } else {
+            rest.find(piece)?
+        };
+        values.push(&rest[..end]);
+        rest = &rest[end + piece.len()..];
+    }
+    Some(values)
+}
+
+/// What `line` stores of the secrets that `reading` finds, given the stored text: `true` when
+/// one of them, or the whole reading, would be kept.
+fn leaks(reading: &str, stored: &str) -> bool {
+    let masked = redact(reading);
+    if masked == reading {
+        return false;
+    }
+    if masked == REDACTED {
+        return stored != REDACTED;
+    }
+    masked_values(reading, &masked).is_none_or(|values| {
+        values
+            .iter()
+            .any(|value| !value.is_empty() && stored.contains(value))
+    })
+}
+
+/// A line read four ways, all printable: as a terminal shows it (`hidden_text::visible`), and
+/// three stricter ways that keep what an escape may have taken from a key (`spaced`, `joined`,
+/// `joined_rare`).
 struct Readings {
     shown: String,
-    spaced: String,
+    stricter: [String; 3],
 }
 
 impl Readings {
     fn of(line: &str) -> Self {
         Self {
             shown: printable(&hidden_text::visible(line)),
-            spaced: printable(&hidden_text::spaced(line)),
+            stricter: [
+                printable(&hidden_text::spaced(line)),
+                printable(&hidden_text::joined(line)),
+                printable(&hidden_text::joined_rare(line)),
+            ],
         }
     }
 
-    /// The shown reading redacted; or `[redacted]` whole when the line holds escapes or hidden
-    /// characters and the spaced reading holds a secret. Removing an escape can take a key's
-    /// first letter with it (`ESC [ p` then `assword=…`), so the shown reading alone could keep
-    /// a value that the spaced reading masks (BLD-049, LOG-007).
+    fn all(&self) -> impl Iterator<Item = &str> {
+        std::iter::once(self.shown.as_str()).chain(self.stricter.iter().map(String::as_str))
+    }
+
+    /// The shown reading redacted; or `[redacted]` whole when it would keep a value that a
+    /// stricter reading masks. Removing an escape can take a key's first letter with it
+    /// (`ESC [ p` then `assword=…`), so the shown reading alone could keep a secret
+    /// (BLD-049, LOG-007).
     fn redacted(&self) -> String {
         let shown = redact(&self.shown);
-        if self.shown != self.spaced && redact(&self.spaced) != self.spaced {
-            REDACTED.to_owned()
-        } else {
-            shown
-        }
+        let leaked = self
+            .stricter
+            .iter()
+            .any(|reading| *reading != self.shown && leaks(reading, &shown));
+        if leaked { REDACTED.to_owned() } else { shown }
     }
 
-    /// Where the line stands to a private key block, read either way: `Some(true)` opens one,
-    /// `Some(false)` closes one (or opens and closes it on one line).
-    fn key_edge(&self) -> Option<bool> {
-        let opens = opens_key(&self.shown) || opens_key(&self.spaced);
-        let closes = closes_key(&self.shown) || closes_key(&self.spaced);
-        (opens || closes).then_some(opens && !closes)
+    /// How many lines after this one belong to the key block it opens, read any way.
+    fn opens_key(&self) -> Option<u16> {
+        self.all().filter_map(private_keys::opens).max()
+    }
+
+    fn closes_key(&self) -> bool {
+        self.all().any(private_keys::closes)
+    }
+
+    fn is_key_material(&self) -> bool {
+        self.all().any(private_keys::is_material)
     }
 }
 
@@ -143,33 +207,20 @@ pub(super) fn clean(line: &str) -> String {
     cut(Readings::of(line).redacted(), MAX_LINE_BYTES)
 }
 
-/// Whether a line opens a private key block: PEM, OpenSSH and PGP (`-----BEGIN` with
-/// `PRIVATE KEY`), SSH2 (`---- BEGIN SSH2` with `PRIVATE KEY`), or the private lines of a
-/// `PuTTY` key file (`Private-Lines:`).
-fn opens_key(line: &str) -> bool {
-    ((line.contains("-----BEGIN") || line.contains("---- BEGIN SSH2"))
-        && line.contains("PRIVATE KEY"))
-        || line.contains("Private-Lines:")
-}
-
-/// Whether a line closes a private key block: `-----END`, `---- END`, or a `PuTTY` key file's
-/// `Private-MAC:`.
-fn closes_key(line: &str) -> bool {
-    line.contains("-----END") || line.contains("---- END") || line.contains("Private-MAC:")
-}
-
-/// The lines of one report as stored, in order, and whether a private key block is still open
-/// after them; `in_key` says whether one was open before them, as a block may run across
-/// reports. Blank lines are dropped, and so is every line after a private key's opening line
-/// up to and including its closing line. The opening line is kept as `[redacted]`.
+/// The lines of one report as stored, in order, and the key block still open after them: how
+/// many more lines it may take. `open` is the block open before them, as a block may run
+/// across reports. Blank lines are dropped. A private key's opening line is stored as
+/// [`KEY_BLOCK`]; the lines after it are dropped up to and including its closing line, while
+/// they are key material and up to the block's line limit. The first other line ends the
+/// block and is kept, so an opening line with no key after it costs the log nothing more.
 ///
 /// # Errors
 ///
 /// `logLines` for more than 1000 lines.
 pub(super) fn clean_all(
     lines: &[String],
-    mut in_key: bool,
-) -> Result<(Vec<String>, bool), FieldError> {
+    mut open: Option<u16>,
+) -> Result<(Vec<String>, Option<u16>), FieldError> {
     if lines.len() > MAX_LINES_PER_REPORT {
         return Err(FieldError::new(
             "logLines",
@@ -179,14 +230,18 @@ pub(super) fn clean_all(
     let mut kept = Vec::with_capacity(lines.len());
     for line in lines {
         let readings = Readings::of(line);
-        let edge = readings.key_edge();
-        if in_key {
-            in_key = edge != Some(false);
-            continue;
+        if let Some(left) = open.take() {
+            if readings.closes_key() {
+                continue;
+            }
+            if left > 0 && readings.is_key_material() {
+                open = Some(left - 1);
+                continue;
+            }
         }
-        if edge.is_some_and(|opens| opens) {
-            in_key = true;
-            kept.push(REDACTED.to_owned());
+        if let Some(block) = readings.opens_key() {
+            open = (!readings.closes_key()).then_some(block);
+            kept.push(KEY_BLOCK.to_owned());
             continue;
         }
         let cleaned = cut(readings.redacted(), MAX_LINE_BYTES);
@@ -194,7 +249,7 @@ pub(super) fn clean_all(
             kept.push(cleaned);
         }
     }
-    Ok((kept, in_key))
+    Ok((kept, open))
 }
 
 /// A builder's failure reason as stored: as a log line, at most 200 characters, and never

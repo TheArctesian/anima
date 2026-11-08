@@ -143,7 +143,7 @@ pub async fn claim(
                 let claimed = queue::claim(&job, builder, now);
                 store::save(&mut tx, &claimed).await?;
                 // A key block an earlier attempt left open must not hide this attempt's log.
-                store::set_log_in_key(&mut tx, claimed.id, false).await?;
+                store::set_open_key_block(&mut tx, claimed.id, None).await?;
                 Some(claimed)
             }
             None => None,
@@ -196,11 +196,11 @@ pub async fn report(
         .await?
         .ok_or(Error::NotFound(Missing::Job(report.job)))?;
     let mut next = queue::report(&job, builder.id, &report, now)?;
-    let was_in_key = store::log_in_key(&mut tx, job.id).await?;
-    let (lines, in_key) =
-        log_lines::clean_all(&report.lines, was_in_key).map_err(|e| Error::Validation(vec![e]))?;
-    if in_key != was_in_key {
-        store::set_log_in_key(&mut tx, job.id, in_key).await?;
+    let was_open = store::open_key_block(&mut tx, job.id).await?;
+    let (lines, open) =
+        log_lines::clean_all(&report.lines, was_open).map_err(|e| Error::Validation(vec![e]))?;
+    if open != was_open {
+        store::set_open_key_block(&mut tx, job.id, open).await?;
     }
     let stored = append(&mut tx, &mut next, lines).await?;
     store::save(&mut tx, &next).await?;

@@ -13,7 +13,7 @@ pub(super) use builders::{
     builder_by_token, builders, delete_builder, insert_builder, lock_builder, touch,
 };
 pub(super) use logs::{
-    append_lines, lines, log_in_key, replace_files, set_feed, set_log_in_key, trim_log,
+    append_lines, lines, open_key_block, replace_files, set_feed, set_open_key_block, trim_log,
 };
 pub(super) use releases::{built, insert_release, jobs_of, lock_releases, releases_after};
 

@@ -12,6 +12,7 @@ mod jobs;
 mod log_lines;
 mod model;
 mod page;
+mod private_keys;
 mod queue;
 mod release;
 mod store;
