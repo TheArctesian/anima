@@ -37,7 +37,8 @@ pub struct CodeHash([u8; 32]);
 pub struct TokenHash([u8; 32]);
 
 impl EnrolmentCode {
-    /// A new code made of `bytes` from the OS random source (R-092 D-1). The bytes are wiped.
+    /// A new code made of `bytes` from the OS random source (R-092 D-1). Its copy of the bytes
+    /// is wiped; pass the array straight from the source and keep no other.
     #[must_use]
     pub fn from_random(bytes: [u8; CODE_BYTES]) -> Self {
         Self(Secret::from_random(CODE_PREFIX, bytes))
@@ -64,7 +65,8 @@ impl EnrolmentCode {
 }
 
 impl AgentToken {
-    /// A new token made of `bytes` from the OS random source (R-092 D-1). The bytes are wiped.
+    /// A new token made of `bytes` from the OS random source (R-092 D-1). Its copy of the bytes
+    /// is wiped; pass the array straight from the source and keep no other.
     #[must_use]
     pub fn from_random(bytes: [u8; TOKEN_BYTES]) -> Self {
         Self(Secret::from_random(TOKEN_PREFIX, bytes))
