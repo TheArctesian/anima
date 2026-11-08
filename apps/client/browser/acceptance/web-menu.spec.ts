@@ -49,3 +49,34 @@ test('WEB-011: a resize that keeps the width keeps the menu open, and a width ch
   await page.setViewportSize({ width: width - 120, height: height - 80 });
   await expect(menu).toHaveCount(0);
 });
+
+test('WEB-011: a height-only resize keeps the open menu inside the window and next to its button', async ({ page }) => {
+  // The panel is fixed, so a shorter window (a mobile keyboard or address bar) must not leave a choice below the edge.
+  await page.setViewportSize({ width: 390, height: 700 });
+  await openDevices(page);
+  const button = page.getByRole('button', MENU);
+  await button.click();
+  const menu = page.getByRole('group', MENU);
+  await expect(menu).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 580 });
+  await page.waitForTimeout(STAYS_OPEN_MS);
+  await expect(menu).toBeVisible();
+
+  const inside = await page.evaluate(() => {
+    const height = document.documentElement.clientHeight;
+    const parts = [...document.querySelectorAll('[role=group][aria-label^="Web interfaces"] .choice, [role=group][aria-label^="Web interfaces"] .pinned')];
+    return parts.map((part) => part.getBoundingClientRect()).map((rect) => rect.top >= 0 && rect.bottom <= height);
+  });
+  expect(inside.length).toBeGreaterThanOrEqual(4);
+  expect(inside.every(Boolean)).toBe(true);
+
+  // placeNear puts the panel flush under the button or flush above it, so the two touch within the gap.
+  const panel = await menu.boundingBox();
+  const anchor = await button.boundingBox();
+  if (panel === null || anchor === null) throw new Error('menu or button has no box');
+  const GAP_PX = 16;
+  const under = panel.y - (anchor.y + anchor.height);
+  const above = anchor.y - (panel.y + panel.height);
+  expect(Math.min(Math.abs(under), Math.abs(above))).toBeLessThanOrEqual(GAP_PX);
+});
