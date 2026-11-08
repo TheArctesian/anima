@@ -1,0 +1,472 @@
+{
+  "_comment": "K6 synthetic fixtures for Phase 3. Not real hosts, mailboxes or credentials: hosts are example.net or 10.x, and no secret field has a value (SEC-005): a webhook gives only its origin, ntfy only tokenStored, email only passwordStored, an Apprise channel only its server, mode and tags; API keys carry only the 12-character prefix that K1 exposes (no hash, no secret). IDs are fixed UUID v7-shaped strings, 0190a000-0000-7000-80NN-0000000000MM, and never collide with phase1.json (NN 00 to 04) or phase2.json (NN 11 to 16). NN segments: 17 notification channels, 18 deliveries, 19 API keys, 20 recordings, 21 shares, 22 checks, and new here 23 devices, 24 sessions. A reference may point at an id in this file, phase2.json or phase1.json: the Phase 1 HTTPS check is 0190a000-0000-7000-8003-00000000001a (pve-01 Web UI), the Phase 2 site is 11-01 and the Phase 2 Mac mini is 12-03. Compact shapes: `checkNotifications` is one entry per check with channelIds (CheckNotifications.channels as ids); `recordings[].stoppedReason` is the K2 column sessions.recordings.stopped_reason, not a K1 field; `streams` holds two plaintext recordings for player tests, one for each recording format: Guacamole instructions (LEN.value elements, a 200 by 120 rectangle on a 640 by 480 layer) and an asciicast v2 file of `echo hello`; `retention` rows hold the D-25 defaults with days at the default; `checkDefaults` are the schema defaults of K1 (intervalSeconds 60, retries 3, retryIntervalSeconds 20, degradedThresholdMs 1000). No session here has a share token or a ticket.",
+  "channels": [
+    {
+      "id": "0190a000-0000-7000-8017-000000000001",
+      "name": "ops-webhook",
+      "kind": "WEBHOOK",
+      "onByDefault": false,
+      "settings": {
+        "origin": "https://hooks.example.net",
+        "method": "POST",
+        "headerNames": [
+          "X-Anima-Source"
+        ]
+      },
+      "template": null,
+      "createdAt": "2026-11-01T08:00:00Z",
+      "updatedAt": "2026-11-01T08:00:00Z"
+    },
+    {
+      "id": "0190a000-0000-7000-8017-000000000002",
+      "name": "phone-ntfy",
+      "kind": "NTFY",
+      "onByDefault": true,
+      "settings": {
+        "server": "https://ntfy.example.net",
+        "priority": 3,
+        "tokenStored": true
+      },
+      "template": null,
+      "createdAt": "2026-11-01T08:00:00Z",
+      "updatedAt": "2026-11-01T08:00:00Z"
+    },
+    {
+      "id": "0190a000-0000-7000-8017-000000000003",
+      "name": "ops-email",
+      "kind": "EMAIL",
+      "onByDefault": false,
+      "settings": {
+        "host": "mail.example.net",
+        "port": 587,
+        "security": "STARTTLS",
+        "username": "anima",
+        "from": "anima@example.net",
+        "to": [
+          "ops@example.net"
+        ],
+        "passwordStored": true
+      },
+      "template": {
+        "title": "{device}: {status}",
+        "body": "{check} changed from {previous} to {status} at {at}. {message}"
+      },
+      "createdAt": "2026-11-01T08:00:00Z",
+      "updatedAt": "2026-11-01T08:00:00Z"
+    },
+    {
+      "id": "0190a000-0000-7000-8017-000000000004",
+      "name": "apprise-bridge",
+      "kind": "APPRISE",
+      "onByDefault": false,
+      "settings": {
+        "server": "https://apprise.example.net",
+        "mode": "STATELESS_URLS",
+        "tags": [
+          "ops"
+        ]
+      },
+      "template": null,
+      "createdAt": "2026-11-01T08:00:00Z",
+      "updatedAt": "2026-11-01T08:00:00Z"
+    }
+  ],
+  "deliveries": [
+    {
+      "id": "0190a000-0000-7000-8018-000000000001",
+      "channelId": "0190a000-0000-7000-8017-000000000001",
+      "channelName": "ops-webhook",
+      "kind": "DOWN",
+      "at": "2026-11-06T08:00:00Z",
+      "ok": true,
+      "message": null
+    },
+    {
+      "id": "0190a000-0000-7000-8018-000000000002",
+      "channelId": "0190a000-0000-7000-8017-000000000002",
+      "channelName": "phone-ntfy",
+      "kind": "DOWN",
+      "at": "2026-11-06T08:05:00Z",
+      "ok": false,
+      "message": "The target address is not permitted."
+    },
+    {
+      "id": "0190a000-0000-7000-8018-000000000003",
+      "channelId": "0190a000-0000-7000-8017-000000000002",
+      "channelName": "phone-ntfy",
+      "kind": "UP",
+      "at": "2026-11-06T09:00:00Z",
+      "ok": true,
+      "message": null
+    },
+    {
+      "id": "0190a000-0000-7000-8018-000000000004",
+      "channelId": "0190a000-0000-7000-8017-000000000003",
+      "channelName": "ops-email",
+      "kind": "UP",
+      "at": "2026-11-06T09:05:00Z",
+      "ok": false,
+      "message": "The target did not answer in 8 seconds."
+    },
+    {
+      "id": "0190a000-0000-7000-8018-000000000005",
+      "channelId": "0190a000-0000-7000-8017-000000000003",
+      "channelName": "ops-email",
+      "kind": "STILL_DOWN",
+      "at": "2026-11-06T10:00:00Z",
+      "ok": true,
+      "message": null
+    },
+    {
+      "id": "0190a000-0000-7000-8018-000000000006",
+      "channelId": "0190a000-0000-7000-8017-000000000004",
+      "channelName": "apprise-bridge",
+      "kind": "STILL_DOWN",
+      "at": "2026-11-06T10:05:00Z",
+      "ok": false,
+      "message": "The target address is not permitted."
+    },
+    {
+      "id": "0190a000-0000-7000-8018-000000000007",
+      "channelId": "0190a000-0000-7000-8017-000000000004",
+      "channelName": "apprise-bridge",
+      "kind": "CERTIFICATE_EXPIRY",
+      "at": "2026-11-06T11:00:00Z",
+      "ok": true,
+      "message": null
+    },
+    {
+      "id": "0190a000-0000-7000-8018-000000000008",
+      "channelId": "0190a000-0000-7000-8017-000000000001",
+      "channelName": "ops-webhook",
+      "kind": "CERTIFICATE_EXPIRY",
+      "at": "2026-11-06T11:05:00Z",
+      "ok": false,
+      "message": "The target did not answer in 8 seconds."
+    },
+    {
+      "id": "0190a000-0000-7000-8018-000000000009",
+      "channelId": "0190a000-0000-7000-8017-000000000001",
+      "channelName": "ops-webhook",
+      "kind": "DOMAIN_EXPIRY",
+      "at": "2026-11-06T12:00:00Z",
+      "ok": true,
+      "message": null
+    },
+    {
+      "id": "0190a000-0000-7000-8018-00000000000a",
+      "channelId": "0190a000-0000-7000-8017-000000000002",
+      "channelName": "phone-ntfy",
+      "kind": "DOMAIN_EXPIRY",
+      "at": "2026-11-06T12:05:00Z",
+      "ok": false,
+      "message": "The target address is not permitted."
+    },
+    {
+      "id": "0190a000-0000-7000-8018-00000000000b",
+      "channelId": "0190a000-0000-7000-8017-000000000002",
+      "channelName": "phone-ntfy",
+      "kind": "TEST",
+      "at": "2026-11-06T13:00:00Z",
+      "ok": true,
+      "message": null
+    },
+    {
+      "id": "0190a000-0000-7000-8018-00000000000c",
+      "channelId": "0190a000-0000-7000-8017-000000000003",
+      "channelName": "ops-email",
+      "kind": "TEST",
+      "at": "2026-11-06T13:05:00Z",
+      "ok": false,
+      "message": "The target did not answer in 8 seconds."
+    }
+  ],
+  "checkNotifications": [
+    {
+      "checkId": "0190a000-0000-7000-8003-00000000001a",
+      "channelIds": [
+        "0190a000-0000-7000-8017-000000000001",
+        "0190a000-0000-7000-8017-000000000002"
+      ],
+      "resendEveryBeats": 5
+    }
+  ],
+  "notificationSettings": {
+    "certificateDays": [
+      21,
+      14,
+      7
+    ],
+    "template": {
+      "title": "{device}: {check} is {status}",
+      "body": "{check} on {device} changed from {previous} to {status} at {at}. {message}"
+    },
+    "placeholders": [
+      "{device}",
+      "{check}",
+      "{status}",
+      "{previous}",
+      "{message}",
+      "{at}",
+      "{days}"
+    ]
+  },
+  "apiKeys": [
+    {
+      "id": "0190a000-0000-7000-8019-000000000001",
+      "name": "metrics-scrape",
+      "scope": "READ",
+      "prefix": "anima_Ab12Cd",
+      "expiresAt": "2027-06-01T00:00:00Z",
+      "createdAt": "2026-10-01T09:00:00Z",
+      "lastUsedAt": "2026-11-07T06:00:00Z"
+    },
+    {
+      "id": "0190a000-0000-7000-8019-000000000002",
+      "name": "old-script",
+      "scope": "WRITE",
+      "prefix": "anima_Zq98Xy",
+      "expiresAt": "2026-09-01T00:00:00Z",
+      "createdAt": "2026-06-01T09:00:00Z",
+      "lastUsedAt": null
+    }
+  ],
+  "devices": [
+    {
+      "id": "0190a000-0000-7000-8023-000000000001",
+      "siteId": "0190a000-0000-7000-8011-000000000001",
+      "name": "build-box",
+      "host": "10.40.0.21",
+      "os": "LINUX",
+      "sessionLimit": 2,
+      "recordSessions": true,
+      "ssh": {
+        "enabled": true,
+        "port": 22,
+        "username": "operator",
+        "credentialStored": false
+      },
+      "vnc": {
+        "enabled": true,
+        "port": 5900,
+        "username": "operator",
+        "credentialStored": true
+      },
+      "gpus": []
+    },
+    {
+      "id": "0190a000-0000-7000-8023-000000000002",
+      "siteId": "0190a000-0000-7000-8011-000000000001",
+      "name": "amd-box",
+      "host": "10.40.0.22",
+      "os": "LINUX",
+      "sessionLimit": null,
+      "recordSessions": false,
+      "gpus": [
+        {
+          "index": 0,
+          "name": "AMD Radeon RX 6700 XT",
+          "vendor": "AMD",
+          "hasVram": true
+        }
+      ]
+    },
+    {
+      "id": "0190a000-0000-7000-8023-000000000003",
+      "siteId": "0190a000-0000-7000-8011-000000000001",
+      "name": "mac-studio",
+      "host": "10.40.0.23",
+      "os": "MACOS",
+      "sessionLimit": null,
+      "recordSessions": false,
+      "gpus": [
+        {
+          "index": 0,
+          "name": "Apple M2 Ultra",
+          "vendor": "APPLE",
+          "hasVram": false
+        }
+      ]
+    }
+  ],
+  "sessions": [
+    {
+      "id": "0190a000-0000-7000-8024-000000000001",
+      "deviceId": "0190a000-0000-7000-8012-000000000003",
+      "deviceName": "mac-mini",
+      "protocol": "VNC",
+      "operatorName": "operator",
+      "startedAt": "2026-11-07T09:00:00Z",
+      "endedAt": null,
+      "endReason": null,
+      "clientAddr": "10.40.0.99",
+      "recording": "OFF"
+    },
+    {
+      "id": "0190a000-0000-7000-8024-000000000002",
+      "deviceId": "0190a000-0000-7000-8023-000000000001",
+      "deviceName": "build-box",
+      "protocol": "SSH",
+      "operatorName": "operator",
+      "startedAt": "2026-11-07T09:10:00Z",
+      "endedAt": null,
+      "endReason": null,
+      "clientAddr": "10.40.0.99",
+      "recording": "ON"
+    },
+    {
+      "id": "0190a000-0000-7000-8024-000000000003",
+      "deviceId": "0190a000-0000-7000-8023-000000000001",
+      "deviceName": "build-box",
+      "protocol": "VNC",
+      "operatorName": "operator",
+      "startedAt": "2026-11-06T14:00:00Z",
+      "endedAt": "2026-11-06T14:20:00Z",
+      "endReason": "OPERATOR",
+      "clientAddr": "10.40.0.99",
+      "recording": "ON"
+    },
+    {
+      "id": "0190a000-0000-7000-8024-000000000004",
+      "deviceId": "0190a000-0000-7000-8023-000000000001",
+      "deviceName": "build-box",
+      "protocol": "SSH",
+      "operatorName": "operator",
+      "startedAt": "2026-11-05T10:00:00Z",
+      "endedAt": "2026-11-05T12:00:00Z",
+      "endReason": "REMOTE_CLOSED",
+      "clientAddr": "10.40.0.99",
+      "recording": "STOPPED"
+    }
+  ],
+  "shares": [
+    {
+      "id": "0190a000-0000-7000-8021-000000000001",
+      "sessionId": "0190a000-0000-7000-8024-000000000001",
+      "access": "VIEW",
+      "maxViewers": 3,
+      "viewers": 1,
+      "createdAt": "2026-11-07T09:05:00Z",
+      "expiresAt": "2026-11-07T10:05:00Z"
+    }
+  ],
+  "recordings": [
+    {
+      "id": "0190a000-0000-7000-8020-000000000001",
+      "sessionId": "0190a000-0000-7000-8024-000000000003",
+      "deviceId": "0190a000-0000-7000-8023-000000000001",
+      "deviceName": "build-box",
+      "protocol": "VNC",
+      "format": "GUACAMOLE",
+      "startedAt": "2026-11-06T14:00:00Z",
+      "endedAt": "2026-11-06T14:20:00Z",
+      "sizeBytes": 110,
+      "complete": true,
+      "expiresAt": "2026-12-06T14:20:00Z",
+      "stoppedReason": null
+    },
+    {
+      "id": "0190a000-0000-7000-8020-000000000002",
+      "sessionId": "0190a000-0000-7000-8024-000000000002",
+      "deviceId": "0190a000-0000-7000-8023-000000000001",
+      "deviceName": "build-box",
+      "protocol": "SSH",
+      "format": "ASCIICAST",
+      "startedAt": "2026-11-07T09:10:00Z",
+      "endedAt": null,
+      "sizeBytes": 172,
+      "complete": false,
+      "expiresAt": "2026-12-07T09:10:00Z",
+      "stoppedReason": null
+    },
+    {
+      "id": "0190a000-0000-7000-8020-000000000003",
+      "sessionId": "0190a000-0000-7000-8024-000000000004",
+      "deviceId": "0190a000-0000-7000-8023-000000000001",
+      "deviceName": "build-box",
+      "protocol": "SSH",
+      "format": "ASCIICAST",
+      "startedAt": "2026-11-05T10:00:00Z",
+      "endedAt": "2026-11-05T12:00:00Z",
+      "sizeBytes": 2147483648,
+      "complete": true,
+      "expiresAt": "2026-12-05T12:00:00Z",
+      "stoppedReason": "size_limit"
+    }
+  ],
+  "streams": {
+    "guacamole": {
+      "recordingId": "0190a000-0000-7000-8020-000000000001",
+      "format": "GUACAMOLE",
+      "text": "4.size,1.0,3.640,3.480;4.rect,1.0,3.100,2.80,3.200,3.120;5.cfill,2.14,1.0,2.76,2.86,3.106,3.255;4.sync,4.1000;"
+    },
+    "asciicast": {
+      "recordingId": "0190a000-0000-7000-8020-000000000002",
+      "format": "ASCIICAST",
+      "text": "{\"version\":2,\"width\":80,\"height\":24,\"timestamp\":1793000000,\"env\":{\"TERM\":\"xterm-256color\"}}\n[0.2,\"o\",\"$ \"]\n[0.9,\"o\",\"echo hello\\r\\n\"]\n[0.91,\"o\",\"hello\\r\\n\"]\n[1.0,\"o\",\"$ \"]\n"
+    }
+  },
+  "checks": [
+    {
+      "id": "0190a000-0000-7000-8022-000000000001",
+      "deviceId": "0190a000-0000-7000-8002-000000000001",
+      "name": "Domain registration",
+      "type": "DOMAIN_EXPIRY",
+      "intervalSeconds": 43200,
+      "retries": 3,
+      "retryIntervalSeconds": 20,
+      "degradedThresholdMs": 1000,
+      "domainDaysLeft": 12,
+      "config": {
+        "domainExpiry": {
+          "domain": "example.net",
+          "warnDays": 30,
+          "timeoutMs": 10000
+        }
+      }
+    }
+  ],
+  "retention": [
+    {
+      "subject": "HEARTBEATS",
+      "days": 30,
+      "minDays": 1,
+      "maxDays": 400,
+      "defaultDays": 30
+    },
+    {
+      "subject": "METRICS",
+      "days": 30,
+      "minDays": 1,
+      "maxDays": 400,
+      "defaultDays": 30
+    },
+    {
+      "subject": "EVENTS",
+      "days": 90,
+      "minDays": 30,
+      "maxDays": 365,
+      "defaultDays": 90
+    },
+    {
+      "subject": "RECORDINGS",
+      "days": 30,
+      "minDays": 1,
+      "maxDays": 365,
+      "defaultDays": 30
+    },
+    {
+      "subject": "DELIVERIES",
+      "days": 30,
+      "minDays": 7,
+      "maxDays": 365,
+      "defaultDays": 30
+    }
+  ],
+  "checkDefaults": {
+    "intervalSeconds": 60,
+    "retries": 3,
+    "retryIntervalSeconds": 20,
+    "degradedThresholdMs": 1000
+  }
+}
