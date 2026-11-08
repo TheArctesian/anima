@@ -15,6 +15,8 @@ pub mod graphql;
 mod live;
 mod model;
 mod page;
+mod quiet;
+mod serving;
 mod start;
 mod store;
 mod terminal;
@@ -45,6 +47,7 @@ pub use live::{EndCause, Live, Redeemed, Refused, Tunnel};
 pub use model::{
     EndReason, FieldError, Protocol, Session, SessionChange, SessionEnd, UnknownValue,
 };
+pub use serving::Serving;
 pub use start::{DEFAULT_DPI, DisplayRequest, StartRequest, Waking, start};
 pub use terminal::terminal_router;
 pub use tickets::{PendingTicket, Presented, Ticket};
