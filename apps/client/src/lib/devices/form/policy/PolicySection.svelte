@@ -27,38 +27,37 @@
 {#if policy.phase !== 'absent'}
   <div data-section="sessions">
     <Disclosure label="Sessions" level={3} bind:open>
-
-    <div class="field">
-      <label for="device-policy-sessionLimit">Session limit</label>
-      <input
-        id="device-policy-sessionLimit"
-        inputmode="numeric"
-        autocomplete="off"
-        placeholder="No limit"
-        disabled={unavailable}
-        aria-invalid={policy.message === LIMIT_SENTENCE}
-        bind:this={limitField}
-        aria-describedby="device-policy-sessionLimit-hint device-policy-message"
-        bind:value={policy.values.sessionLimit}
-      />
-      <small id="device-policy-sessionLimit-hint">The most live sessions at once, from 1 to 100. Viewers and file tunnels do not count.</small>
-    </div>
-    <div class="field">
-      <label class="check">
-        <input type="checkbox" disabled={unavailable} aria-describedby="device-policy-record-hint" bind:checked={policy.values.recordSessions} />
-        Record sessions
-      </label>
-      <small id="device-policy-record-hint">
-        Recordings are encrypted at rest. A "Recording" badge shows during a recorded session.
-      </small>
-    </div>
-    <!-- The message line is always as tall as the Try again button, so loading, loaded and failed look alike. -->
-    <div class="message">
-      <small id="device-policy-message" role="status">{policy.message}</small>
-      {#if retryShown}
-        <FormButton aria-disabled={policy.phase !== 'failed'} aria-busy={policy.phase === 'loading'} onclick={() => void retry()}>Try again</FormButton>
-      {/if}
-    </div>
+      <div class="field">
+        <label for="device-policy-sessionLimit">Session limit</label>
+        <input
+          id="device-policy-sessionLimit"
+          inputmode="numeric"
+          autocomplete="off"
+          placeholder="No limit"
+          disabled={unavailable}
+          aria-invalid={policy.message === LIMIT_SENTENCE}
+          bind:this={limitField}
+          aria-describedby="device-policy-sessionLimit-hint device-policy-message"
+          bind:value={policy.values.sessionLimit}
+        />
+        <small id="device-policy-sessionLimit-hint">The most live sessions at once, from 1 to 100. Viewers and file tunnels do not count.</small>
+      </div>
+      <div class="field">
+        <label class="check">
+          <input type="checkbox" disabled={unavailable} aria-describedby="device-policy-record-hint" bind:checked={policy.values.recordSessions} />
+          Record sessions
+        </label>
+        <small id="device-policy-record-hint">
+          Recordings are encrypted at rest. A "Recording" badge shows during a recorded session.
+        </small>
+      </div>
+      <!-- The message line is always as tall as the Try again button, so loading, loaded and failed look alike. -->
+      <div class="message">
+        <small id="device-policy-message" role="status">{policy.message}</small>
+        {#if retryShown}
+          <FormButton aria-disabled={policy.phase !== 'failed'} aria-busy={policy.phase === 'loading'} onclick={() => void retry()}>Try again</FormButton>
+        {/if}
+      </div>
     </Disclosure>
   </div>
 {/if}
