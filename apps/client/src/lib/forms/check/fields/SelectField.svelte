@@ -43,10 +43,10 @@
   select {
     box-sizing: border-box;
     min-block-size: var(--target-min-desktop);
-    padding: var(--space-2) var(--space-3);
+    padding: var(--space-2) var(--select-chevron-room) var(--space-2) var(--space-3);
     border: var(--border-thin) solid var(--border);
     border-radius: var(--radius-md);
-    background: var(--surface);
+    background-color: var(--surface);
     color: var(--text);
     font: inherit;
   }

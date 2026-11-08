@@ -57,10 +57,10 @@
   select {
     box-sizing: border-box;
     block-size: var(--space-8);
-    padding: 0 var(--space-2);
+    padding: 0 var(--select-chevron-room) 0 var(--space-2);
     border: var(--border-thin) solid var(--border);
     border-radius: var(--radius-md);
-    background: var(--surface);
+    background-color: var(--surface);
     color: var(--text);
     font: inherit;
   }
