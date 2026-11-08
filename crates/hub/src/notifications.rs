@@ -16,11 +16,17 @@ mod decision;
     expect(dead_code, reason = "the dispatcher (WP-45 T6) is the first caller")
 )]
 mod egress;
+#[cfg_attr(
+    not(test),
+    expect(dead_code, reason = "the dispatcher (WP-45 T6) is the first caller")
+)]
+mod encode;
 pub mod graphql;
 mod model;
 mod observe;
 mod sealing;
 mod store;
+mod template;
 #[cfg(test)]
 mod tests;
 
@@ -76,7 +82,9 @@ impl From<sqlx::Error> for Error {
         {
             Some("channels_name_key") => Self::NameTaken,
             Some("check_channels_channel_id_fkey") => Self::UnknownChannel,
-            Some("check_channels_check_id_fkey") => Self::UnknownCheck,
+            Some("check_channels_check_id_fkey" | "check_settings_check_id_fkey") => {
+                Self::UnknownCheck
+            }
             _ => Self::Database(error),
         }
     }

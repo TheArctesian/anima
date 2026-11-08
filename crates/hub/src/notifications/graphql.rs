@@ -6,11 +6,13 @@
 //! audited, recorded as an event or written to the log; the channel input refuses to quote
 //! what it could not read.
 
+mod check;
 mod delivery;
 mod enums;
 mod form;
 mod input;
 mod node;
+mod settings;
 mod trail;
 mod write;
 
@@ -19,10 +21,12 @@ use async_graphql::{Context, Error as GraphQlError, ID, Object, Result};
 pub use self::delivery::{LastDeliveries, last_delivery_loader};
 
 use self::{
+    check::CheckInput,
     input::{ChannelShape, Opaque},
     node::ChannelNode,
+    settings::SettingsInput,
 };
-use super::{Channel, Error, store};
+use super::{Channel, CheckNotifications, Error, InstallationSettings, store};
 use crate::{
     access::Authenticated,
     api_errors::{FieldError, internal, invalid, pool},
@@ -67,6 +71,12 @@ impl Query {
             .map_err(to_graphql)?;
         Ok(channels.into_iter().filter_map(readable).collect())
     }
+
+    /// The certificate thresholds and the default template (NOT-006, NOT-007).
+    #[graphql(guard = "Authenticated")]
+    async fn notification_settings(&self, ctx: &Context<'_>) -> Result<InstallationSettings> {
+        settings::read(ctx).await
+    }
 }
 
 #[derive(Default)]
@@ -97,5 +107,25 @@ impl Mutation {
     #[graphql(guard = "Authenticated")]
     async fn delete_notification_channel(&self, ctx: &Context<'_>, id: ID) -> Result<ID> {
         write::delete(ctx, &id).await
+    }
+
+    /// Replaces the check's channels and its resend setting (NOT-003, NOT-005).
+    #[graphql(guard = "Authenticated")]
+    async fn set_check_notifications(
+        &self,
+        ctx: &Context<'_>,
+        check_id: ID,
+        input: CheckInput,
+    ) -> Result<CheckNotifications> {
+        check::set(ctx, &check_id, &input).await
+    }
+
+    #[graphql(guard = "Authenticated")]
+    async fn set_notification_settings(
+        &self,
+        ctx: &Context<'_>,
+        input: SettingsInput,
+    ) -> Result<InstallationSettings> {
+        settings::set(ctx, &input).await
     }
 }
