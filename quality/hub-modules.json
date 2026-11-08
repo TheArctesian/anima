@@ -27,6 +27,10 @@
       "events",
       "credentials"
     ],
+    "trust": [
+      "devices",
+      "events"
+    ],
     "maintenance": [
       "events"
     ],
@@ -42,7 +46,8 @@
       "access",
       "devices",
       "credentials",
-      "events"
+      "events",
+      "trust"
     ],
     "web_interfaces": [
       "checks",
@@ -66,7 +71,7 @@
       "access",
       "checks",
       "metrics",
-      "sessions",
+      "trust",
       "web_interfaces"
     ],
     "checks": [
@@ -89,6 +94,9 @@
       "access"
     ],
     "metrics": [
+      "access"
+    ],
+    "trust": [
       "access"
     ]
   }

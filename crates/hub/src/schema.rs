@@ -22,7 +22,7 @@ use crate::{
     maintenance, metrics,
     sessions::{self, Live},
     targets::AddressPolicy,
-    web_interfaces,
+    trust, web_interfaces,
 };
 
 // One line per domain in each root (K3).
@@ -45,6 +45,7 @@ pub struct Mutation(
     sessions::graphql::Mutation,
     sessions::FilesMutation,
     sessions::WakeMutation,
+    trust::graphql::Mutation,
     web_interfaces::graphql::Mutation,
 );
 
@@ -135,9 +136,11 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .data(checks::graphql::last_heartbeat_loader(pool.clone()).delay(BATCH_WINDOW))
     .data(checks::graphql::heartbeats_loader(pool.clone()).delay(BATCH_WINDOW))
     .data(checks::graphql::check_uptime_loader(pool.clone(), clock).delay(BATCH_WINDOW))
+    // trust: the accepted keys and certificates, and what the connection tests of `live` saw
+    .data(trust::graphql::host_key_loader(pool.clone()).delay(BATCH_WINDOW))
+    .data(trust::graphql::server_certificate_loader(pool.clone()).delay(BATCH_WINDOW))
+    .data(live.sightings().clone())
     // sessions (R-032)
-    .data(sessions::graphql::host_key_loader(pool.clone()).delay(BATCH_WINDOW))
-    .data(sessions::graphql::server_certificate_loader(pool.clone()).delay(BATCH_WINDOW))
     .data(live)
     .data(policy)
     // metrics

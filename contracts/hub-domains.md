@@ -433,7 +433,7 @@ pub async fn periods(db: &Db) -> Result<Periods, Error>;   // wiring (upkeep.rs)
 ```rust
 pub struct FixedCommand;  pub struct CommandOutput;  pub struct SshLink;  pub enum LinkError;   // as Phase 2 K3
 pub async fn link(db: &Db, vault: &credentials::Vault, policy: &AddressPolicy, device: &Device, now: DateTime<Utc>) -> Result<SshLink, LinkError>;
-// The russh probe (testConnection, R-034) and the public-key types move here unchanged.
+// The russh probe (testConnection, R-034) moves here unchanged; the public-key types are in `trust` (CR-7).
 ```
 
 ## trust (Phase 3, WP-41; moved from sessions, Q2-05)
@@ -443,6 +443,7 @@ pub async fn host_key(db: &Db, device: DeviceId) -> Result<Option<HostKey>, Erro
 pub async fn host_keys(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, HostKey>, Error>;
 pub async fn server_certificates(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, ServerCertificate>, Error>;
 // trust::graphql owns acceptHostKey and acceptServerCertificate (no K1 change).
+// The public-key types (PublicKey, Fingerprint, BadKey, BadFingerprint) are in trust (CR-7).
 ```
 
 ## guac-protocol crate (WP-08)
