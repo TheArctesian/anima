@@ -173,6 +173,48 @@ const boundaryRules = [
   },
 ];
 
+// The hub face (Q2-12, CQ1-17, WP-42 D-5): outside lib/hub, client code reaches the hub through `$lib/hub/hub` (its
+// TypeScript API), `$lib/hub/context` (Svelte context), `$lib/hub/notice/LiveNotice.svelte` (a component, which a .ts
+// barrel cannot re-export) and the codegen output `generated` and `generated/graphql`. Everything else under lib/hub
+// is internal; `socket/fake` is a test fixture, refused outside tests and fixtures.
+// The updater (UPD-001) is reached only by the lazy port in $lib/updates/desktop.svelte.ts: a static value import or
+// re-export puts it in the browser build. This is the typescript-eslint rule, so it does not replace the core
+// `no-restricted-imports` lists above; one object per file set, since a second object for the same files replaces the options.
+const hubFaces = String.raw`(?:hub|context|generated(?:/graphql)?|notice/LiveNotice\.svelte)(?:\.ts|\.js)?`;
+const hubInternalRegex = String.raw`(?:^\$lib/|^\.{1,2}/(?:.*/)?)hub/(?!(?:${hubFaces})$)(?!socket/fake(?:\.ts)?$)`;
+const hubFakeRegex = String.raw`(?:^\$lib/|^\.{1,2}/(?:.*/)?)hub/socket/fake(?:\.ts)?$`;
+const hubFaceHint =
+  'Import from the hub face (CQ1-17): $lib/hub/hub, $lib/hub/context, $lib/hub/notice/LiveNotice.svelte or the generated documents. Everything else in apps/client/src/lib/hub/ is internal.';
+const hubInternalImports = [{ regex: hubInternalRegex, message: hubFaceHint }];
+const hubFakeImports = [
+  { regex: hubFakeRegex, message: 'The hub socket fake is a test fixture (CQ1-17): import it only in tests and *.fixture files.' },
+];
+const updaterImports = [
+  {
+    regex: String.raw`(?:^|/)desktop/updater(?:\.ts|\.js)?$|^\./updater(?:\.ts|\.js)?$`,
+    allowTypeImports: true,
+    message:
+      'Reach the updater through the lazy port in $lib/updates/desktop.svelte.ts (UPD-001): a static import puts it in the browser build.',
+  },
+];
+const tsImportsRule = (patterns) => ({ '@typescript-eslint/no-restricted-imports': ['error', { patterns }] });
+const fixtureFiles = ['**/*.fixture.ts', '**/*.fixture.svelte.ts'];
+const faceRules = [
+  {
+    files: clientFiles,
+    // `codegen.ts` is the entry of the hub's own type generator (API-008), a build tool outside the app code.
+    ignores: [...clientTests, ...fixtureFiles, ...hubFolder, 'apps/client/codegen.ts'],
+    rules: tsImportsRule([...updaterImports, ...hubInternalImports, ...hubFakeImports]),
+  },
+  {
+    files: fixtureFiles.map((glob) => `apps/client/${glob}`),
+    ignores: hubFolder,
+    rules: tsImportsRule([...updaterImports, ...hubInternalImports]),
+  },
+  { files: hubFolder, ignores: clientTests, rules: tsImportsRule(updaterImports) },
+  { files: ['apps/client/**/*.test.ts'], ignores: hubFolder, rules: tsImportsRule(hubInternalImports) },
+];
+
 export default tseslint.config(
   {
     ignores: [
@@ -227,4 +269,5 @@ export default tseslint.config(
     },
   },
   ...boundaryRules,
+  ...faceRules,
 );
