@@ -943,7 +943,7 @@ The view has these tabs:
 
 - **INT-001.** The hub must supply a Prometheus endpoint at `/metrics` with the status, response time, uptime ratio and certificate days of each check.
 - **INT-002.** Prometheus labels must not include values that change often.
-- **INT-003.** The operator must be able to make API keys for the GraphQL API. Each key must have a scope (read or write) and an expiry date. A key is `anima_` and 43 base64url characters. The hub must keep only the SHA-256 of a key. The expiry date is required and must be at most one year away. An API key must not manage API keys. It must not call `signInBrowser`, `startSession`, `openFiles`, `shareSession`, `joinShare`, `openRecording`, `enrolAgent` or `revokeAgentToken`. It must not set or clear a device credential. (D-23, R-081)
+- **INT-003.** The operator must be able to make API keys for the GraphQL API. Each key must have a scope (read or write) and an expiry date. A key is `anima_` and 43 base64url characters. The hub must keep only the SHA-256 of a key. The expiry date is required and must be at most one year away. An API key must not manage API keys. It must not call `signInBrowser`, `startSession`, `openFiles`, `shareSession`, `joinShare`, `openRecording`, `enrolAgent` or `revokeAgentToken`. It must not set or clear a device credential, and it must not decide where one is sent: it must not call `acceptHostKey`, `acceptServerCertificate`, `acceptWebCertificate`, `updateDevice` or `deleteDevice`. It must not call `setRetention` or `deleteRecording`. (D-23, R-081, R-100)
 - **INT-004.** A later version can add public status pages, incidents and status badges.
 
 ## 7. Settings page
