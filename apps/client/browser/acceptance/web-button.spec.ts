@@ -1,6 +1,6 @@
 import type { BrowserContext, Page } from '@playwright/test';
 import { expect, test } from '../test-hub';
-import { openDevices, revealed } from './screens';
+import { openDevices } from './screens';
 
 // Plan criterion 3 (ruled in R-087): in the web client the Web button opens a new browser tab straight to the device, with
 // `noopener` and `noreferrer`, for `http:` and `https:` addresses only. When an interface has a pinned certificate the button
@@ -58,7 +58,7 @@ test('WEB-011, D-5: the Web button of one unpinned interface opens a new tab str
   const device = await serveDevicePages(context);
   await openDevices(page);
   const opened = context.waitForEvent('page');
-  await (await revealed(page.getByRole('button', { name: 'Open Dashboard of mac-mini' }))).click();
+  await page.getByRole('button', { name: 'Open Dashboard of mac-mini' }).click();
   const tab = await opened;
   await tab.waitForLoadState('domcontentloaded');
 
@@ -94,7 +94,7 @@ test('WEB-011, D-5: with a pinned certificate the button opens a menu, each choi
 }) => {
   await serveDevicePages(context);
   await openDevices(page);
-  const button = await revealed(page.getByRole('button', { name: 'Web interfaces of nas' }));
+  const button = page.getByRole('button', { name: 'Web interfaces of nas' });
   await expect(button).toHaveAttribute('aria-expanded', 'false');
   await button.click();
   await expect(button).toHaveAttribute('aria-expanded', 'true');
@@ -126,7 +126,7 @@ test('WEB-011, D-5: with a pinned certificate the button opens a menu, each choi
 
 test('WEB-011: Escape closes the menu and puts focus back on the Web button', async ({ page }) => {
   await openDevices(page);
-  const button = await revealed(page.getByRole('button', { name: 'Web interfaces of nas' }));
+  const button = page.getByRole('button', { name: 'Web interfaces of nas' });
   await button.click();
   await expect(page.getByRole('group', { name: 'Web interfaces of nas' })).toBeVisible();
   await page.keyboard.press('Escape');
