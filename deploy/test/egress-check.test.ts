@@ -9,23 +9,36 @@ import { join } from "node:path";
 const SCRIPT = join(import.meta.dir, "..", "bin", "egress-check");
 let dir = "";
 let calls = "";
+let timeouts = "";
 
 beforeAll(() => {
   dir = mkdtempSync(join(tmpdir(), "egress-"));
   calls = join(dir, "calls");
+  timeouts = join(dir, "timeouts");
+  // Records every argument after the prefix, one per line, ended by a "--" line.
   writeFileSync(
     join(dir, "docker"),
     `#!/bin/sh
 [ "$1 $2 $3 $4" = "compose exec -T hub" ] || { echo "unexpected docker call: $*" >&2; exit 99; }
 shift 4
-# Record "host:port", the last two arguments.
-eval "pair=\\"\\$$(( $# - 1 )):\\$$#\\""
-echo "$pair" >> "${calls}"
+{ for a in "$@"; do printf '%s\\n' "$a"; done; echo --; } >> "${calls}"
+if [ "$1" = true ] && [ -n "\${FAKE_DOWN:-}" ]; then
+  echo 'service "hub" is not running' >&2
+  exit 1
+fi
 [ -z "\${FAKE_NO_CONNECT:-}" ] || exit 0
 exec "$@"
 `,
   );
-  writeFileSync(join(dir, "timeout"), `#!/bin/sh\nshift\nexec "$@"\n`);
+  // Records the seconds, can pretend to time out (exit 124), else enforces them like coreutils.
+  writeFileSync(
+    join(dir, "timeout"),
+    `#!/bin/sh
+echo "$1" >> "${timeouts}"
+[ -z "\${FAKE_TIMEOUT_EXIT:-}" ] || exit "$FAKE_TIMEOUT_EXIT"
+exec perl -e 'alarm shift; exec @ARGV' "$@"
+`,
+  );
   chmodSync(join(dir, "docker"), 0o755);
   chmodSync(join(dir, "timeout"), 0o755);
 });
@@ -36,14 +49,23 @@ afterAll(() => {
 
 function run(args: string[], env: Record<string, string> = {}) {
   writeFileSync(calls, "");
+  writeFileSync(timeouts, "");
   const result = Bun.spawnSync(["sh", SCRIPT, ...args], {
     stdin: "ignore",
     env: { ...process.env, PATH: `${dir}:${process.env.PATH ?? ""}`, ...env },
   });
+  const all = readFileSync(calls, "utf8")
+    .split("--\n")
+    .filter(Boolean)
+    .map((call) => call.split("\n").filter(Boolean));
   return {
     code: result.exitCode,
     out: result.stdout.toString(),
-    calls: readFileSync(calls, "utf8").split("\n").filter(Boolean),
+    err: result.stderr.toString(),
+    // Calls that test a target; the first call of a run is the `true` probe.
+    calls: all.filter((call) => call[0] !== "true"),
+    probed: all.some((call) => call[0] === "true"),
+    timeouts: readFileSync(timeouts, "utf8").split("\n").filter(Boolean),
   };
 }
 
@@ -90,13 +112,61 @@ describe("egress-check", () => {
       const result = run(["127.0.0.1:1", target]);
       expect(result.code).toBe(2);
       expect(result.calls).toEqual([]);
+      expect(result.probed).toBe(false);
     },
   );
 
   test("D-17 checks 443, 465 and 587 by default", () => {
     const result = run([], { FAKE_NO_CONNECT: "1" });
-    expect(result.calls.map((call) => call.split(":")[1])).toEqual(["443", "465", "587"]);
+    expect(result.calls.map((call) => call.at(-1))).toEqual(["443", "465", "587"]);
     expect(result.code).toBe(0);
+  });
+
+  test("NOT-002 passes host and port as arguments, never inside the bash -c string", () => {
+    const result = run(["example.com:587"], { FAKE_NO_CONNECT: "1" });
+    expect(result.calls).toEqual([
+      ["timeout", "5", "bash", "-c", 'exec 3<>"/dev/tcp/$1/$2"', "egress", "example.com", "587"],
+    ]);
+  });
+
+  test("NOT-002 reports a refused port with its reason", () => {
+    const port = closedPort();
+    expect(run([`127.0.0.1:${port}`]).out).toContain(`blocked 127.0.0.1:${port} (refused)`);
+  });
+
+  test("NOT-002 reports an unresolvable name with its reason and exits 1", () => {
+    const result = run(["no-such-host.invalid:443"]);
+    expect(result.out).toContain("blocked no-such-host.invalid:443 (unresolved)");
+    expect(result.code).toBe(1);
+  });
+
+  test("NOT-002 reports a timeout (exit 124) as timed out", () => {
+    const result = run(["127.0.0.1:1"], { FAKE_TIMEOUT_EXIT: "124" });
+    expect(result.out).toContain("blocked 127.0.0.1:1 (timed out)");
+    expect(result.code).toBe(1);
+  });
+
+  test("NOT-002 does not call a missing hub container blocked", () => {
+    const result = run(["127.0.0.1:1"], { FAKE_DOWN: "1" });
+    expect(result.out).not.toContain("blocked");
+    expect(result.err).toContain("not running");
+    expect(result.err).toContain("cannot run in the hub container");
+    expect(result.code).toBe(2);
+    expect(result.calls).toEqual([]);
+  });
+
+  test("D-17 passes the default timeout of 5 seconds to timeout", () => {
+    const server = listen();
+    const result = run([`127.0.0.1:${server.port}`]);
+    void server.stop(true);
+    expect(result.timeouts).toEqual(["5"]);
+  });
+
+  test("D-17 passes EGRESS_TIMEOUT through to timeout", () => {
+    const server = listen();
+    const result = run([`127.0.0.1:${server.port}`], { EGRESS_TIMEOUT: "3" });
+    void server.stop(true);
+    expect(result.timeouts).toEqual(["3"]);
   });
 
   test("D-17 refuses a bad EGRESS_TIMEOUT before any docker call", () => {

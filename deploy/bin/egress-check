@@ -7,7 +7,10 @@
 # mailbox's SMTP host to test that instead. Each target is tried from inside the hub container's
 # own network namespace with bash /dev/tcp (the image has no curl or nc). It prints one line per
 # target, `open HOST:PORT` or `blocked HOST:PORT`, and exits 0 only if every target is open.
-# EGRESS_TIMEOUT sets the seconds to wait per target (default 5). It changes nothing.
+# A blocked line carries the reason: refused, timed out, unresolved or unreachable.
+# EGRESS_TIMEOUT sets the seconds to wait per target (default 5). Targets are IPv4 or DNS names;
+# IPv6 literals are not accepted (the gateway network is IPv4-only). It changes nothing.
+# Exit codes: 0 all open, 1 some blocked, 2 bad usage or the hub container cannot be reached.
 set -eu
 
 fail() {
@@ -39,17 +42,31 @@ for target in "$@"; do
     [ "${#port}" -le 5 ] && [ "$port" -le 65535 ] || fail "port '$port' is not a number from 1 to 65535"
 done
 
+# Tell "the hub container is not there" apart from "the port is blocked".
+if ! probe=$(docker compose exec -T hub true 2>&1); then
+    echo "$probe" >&2
+    fail "cannot run in the hub container (is it up? run from /opt/anima/deploy)"
+fi
+
 blocked=0
 for target in "$@"; do
     host=${target%:*}
     port=${target##*:}
     # Host and port travel as positional arguments, never inside the bash -c string.
-    if docker compose exec -T hub timeout "$seconds" bash -c 'exec 3<>"/dev/tcp/$1/$2"' egress "$host" "$port" >/dev/null 2>&1; then
+    status=0
+    reason=$(docker compose exec -T hub timeout "$seconds" bash -c 'exec 3<>"/dev/tcp/$1/$2"' egress "$host" "$port" 2>&1) || status=$?
+    if [ "$status" -eq 0 ]; then
         echo "open $target"
-    else
-        echo "blocked $target"
-        blocked=$((blocked + 1))
+        continue
     fi
+    case $status:$reason in
+    124:* | 142:*) why="timed out" ;;
+    *[Rr]efused*) why=refused ;;
+    *[Nn]ot\ known* | *[Uu]nknown* | *[Rr]esolution* | *[Nn]o\ address*) why=unresolved ;;
+    *) why=unreachable ;;
+    esac
+    echo "blocked $target ($why)"
+    blocked=$((blocked + 1))
 done
 
 if [ "$blocked" -eq 0 ]; then
