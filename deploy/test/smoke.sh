@@ -44,8 +44,11 @@ cp "$repo/design/package.json" "$work/design/"
 cp "$repo/deploy/package.json" "$work/deploy/"
 cp "$repo/deploy/dns/package.json" "$work/deploy/dns/"
 cp "$repo/deploy/headscale/package.json" "$work/deploy/headscale/"
-cp -R "$repo/apps/client" "$work/apps/client"
-rm -rf "$work/apps/client/node_modules" "$work/apps/client/.svelte-kit" "$work/apps/client/build"
+mkdir "$work/apps/client"
+cp -R "$repo/apps/client/src" "$repo/apps/client/static" "$work/apps/client/"
+cp "$repo/apps/client/package.json" "$repo/apps/client/svelte.config.js" "$repo/apps/client/vite.config.ts" \
+    "$repo/apps/client/tsconfig.json" "$work/apps/client/"
+find "$work/apps/client" -name '.env*' -exec rm -f {} +
 printf '%s\n' 'smoke-test-not-a-token' |
     ANIMA_SECRETS_CHOWN=0 sh "$repo/deploy/bin/make-secrets" --cloudflare-token-stdin "$work/deploy/secrets"
 sh "$repo/deploy/bin/preflight" secrets "$work/deploy/secrets"

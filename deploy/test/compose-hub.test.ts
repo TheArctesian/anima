@@ -104,8 +104,10 @@ describe("hub image build", () => {
   const dockerfile = readFileSync(join(ROOT, "deploy", "hub", "Dockerfile"), "utf8");
   const builds = dockerfile.split("\n").filter((line) => line.includes("cargo build"));
 
-  test("SEC-005 the image builds only the hub binary, so no test-support code ships", () => {
+  test("SEC-005 R-031 the image builds only the hub binary with one unchanged cargo line, in the rust stage", () => {
     expect(builds).toEqual(["RUN cargo build --release --locked --bin anima-hub"]);
+    const rust = dockerfile.slice(dockerfile.indexOf("AS build"), dockerfile.indexOf("\nFROM debian"));
+    expect(rust).toContain(builds[0]);
   });
 
   test("SEC-005 the build never enables test targets or extra features", () => {
@@ -125,39 +127,47 @@ describe("hub image build", () => {
   });
 });
 
-describe("hub image web stage and recordings folder", () => {
-  const dockerfile = readFileSync(join(ROOT, "deploy", "hub", "Dockerfile"), "utf8");
-  const builds = dockerfile.split("\n").filter((line) => line.includes("cargo build"));
+const hubDockerfile = readFileSync(join(ROOT, "deploy", "hub", "Dockerfile"), "utf8");
   const stage = (name: string): string[] => {
-    const lines = dockerfile.split("\n");
-    const start = lines.findIndex((line) => new RegExp(`^FROM .* AS ${name}$`).test(line));
-    const end = lines.findIndex((line, index) => index > start && line.startsWith("FROM "));
-    return lines.slice(start, end === -1 ? undefined : end);
-  };
-  const finalStage = dockerfile.split("\n").slice(dockerfile.split("\n").map((line) => line.startsWith("FROM ")).lastIndexOf(true));
+  const lines = hubDockerfile.split("\n");
+  const start = lines.findIndex((line) => new RegExp(`^FROM .* AS ${name}$`).test(line));
+  const end = lines.findIndex((line, index) => index > start && line.startsWith("FROM "));
+  return lines.slice(start, end === -1 ? undefined : end);
+};
+const finalStage = hubDockerfile.split("\n").slice(hubDockerfile.split("\n").map((line) => line.startsWith("FROM ")).lastIndexOf(true));
 
-  test("D-2 the web stage builds the client and the final stage copies its output to /usr/share/anima/web", () => {
+describe("hub image web stage and recordings folder", () => {
+
+  test("D-2 the web stage builds the client and the final stage copies only its output to /usr/share/anima/web", () => {
     const web = stage("web");
-    expect(web[0]).toMatch(/^FROM oven\/bun:1\.3\.14-\S+ AS web$/);
+    expect(web[0]).toMatch(/^FROM (--platform=\$BUILDPLATFORM )?oven\/bun:1\.3\.14-\S+ AS web$/);
     expect(web).toContain("RUN bun run --cwd apps/client build");
-    expect(web.some((line) => line.startsWith("RUN bun install --frozen-lockfile"))).toBe(true);
-    expect(finalStage).toContain("COPY --from=web /src/apps/client/build /usr/share/anima/web");
+    expect(finalStage.filter((line) => line.includes("--from=web"))).toEqual([
+      "COPY --from=web /src/apps/client/build /usr/share/anima/web",
+    ]);
   });
 
-  test("R-031 the one cargo build line is unchanged and lives in the rust stage", () => {
-    expect(builds).toEqual(["RUN cargo build --release --locked --bin anima-hub"]);
-    expect(stage("build")).toContain(builds[0]);
+  test("E-5 the web stage runs one frozen install limited to the client", () => {
+    expect(stage("web").filter((line) => line.includes("bun install"))).toEqual([
+      "RUN bun install --frozen-lockfile --filter @anima/client",
+    ]);
   });
 
-  test("D-13 the recordings folder is created for 10001:10001 with mode 0700 in the final stage", () => {
-    const run = finalStage.join("\n");
-    expect(run).toMatch(/mkdir -p \/var\/lib\/anima\/recordings/);
-    expect(run).toMatch(/chown 10001:10001 \/var\/lib\/anima\/recordings/);
-    expect(run).toMatch(/chmod 0700 \/var\/lib\/anima\/recordings/);
-    expect(run.indexOf("chmod 0700")).toBeLessThan(run.indexOf("USER 10001:10001"));
+  test("D-13 E-3 the final stage seeds the recordings folder for 10001:10001 with mode 0700 and changes nothing else", () => {
+    const commands = finalStage.join("\n").replace(/\\\n/g, " ").split("\n");
+    const run = commands.find((line) => line.startsWith("RUN mkdir")) ?? "";
+    expect(run.split(/\s*&&\s*/)).toEqual([
+      "RUN mkdir -p /var/lib/anima/recordings",
+      "chown 10001:10001 /var/lib/anima/recordings",
+      "chmod 0700 /var/lib/anima/recordings",
+    ]);
+    expect(commands.filter((line) => /\b(chmod|chown)\b/.test(line))).toEqual([run]);
+    expect(commands.indexOf(run)).toBeLessThan(commands.indexOf("USER 10001:10001"));
   });
+});
 
-  test("SEC-005 every workspace manifest the frozen install reads is copied by the web stage and allowed by the dockerignore", () => {
+describe("hub image build context", () => {
+  test("E-5 every workspace manifest the frozen install reads is copied by the web stage and allowed by the dockerignore", () => {
     const root = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")) as { workspaces: string[] };
     const manifests = ["package.json"];
     for (const glob of root.workspaces) {
@@ -176,7 +186,10 @@ describe("hub image web stage and recordings folder", () => {
     expect(web).toContain("COPY package.json bun.lock ");
     expect(allowed).toContain("!bun.lock");
     expect(allowed).toContain("!apps/client/");
-    for (const excluded of ["**/node_modules", "**/.svelte-kit", "**/build"]) expect(allowed).toContain(excluded);
+    const lastAllow = allowed.findLastIndex((line) => line.startsWith("!"));
+    for (const excluded of ["**/node_modules", "**/.svelte-kit", "**/build", "**/dist", "**/.env*", "**/secrets", "**/.DS_Store"]) {
+      expect(allowed.indexOf(excluded)).toBeGreaterThan(lastAllow);
+    }
   });
 
   test("SEC-001 Dockerfile.dockerignore is an allow-list", () => {

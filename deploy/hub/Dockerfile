@@ -2,7 +2,8 @@
 #   docker build -f deploy/hub/Dockerfile .
 # The web client's static build (D-2). Installs only what apps/client needs (E-5); bun reads every
 # workspace member's manifest, so each one is copied, and nothing else of them.
-FROM oven/bun:1.3.14-slim AS web
+# The output is static files, so the stage runs on the build host and never under emulation.
+FROM --platform=$BUILDPLATFORM oven/bun:1.3.14-slim AS web
 WORKDIR /src
 COPY package.json bun.lock ./
 COPY apps/client/package.json ./apps/client/package.json

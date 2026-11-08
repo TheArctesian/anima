@@ -15,7 +15,12 @@
 !deploy/package.json
 !deploy/dns/package.json
 !deploy/headscale/package.json
+# Excluded anywhere, after the allow lines (the last matching line wins).
 **/target
 **/node_modules
 **/.svelte-kit
 **/build
+**/dist
+**/.env*
+**/secrets
+**/.DS_Store
