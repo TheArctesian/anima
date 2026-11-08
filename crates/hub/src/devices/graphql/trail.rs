@@ -141,7 +141,10 @@ pub(super) fn device_updated(device: &Device, change: &DeviceChange) -> TrailEnt
             .session_limit
             .map(|limit| json!(limit.map(NonZeroU8::get))),
     );
-    put("recordSessions", change.remote.record_sessions.map(|v| json!(v)));
+    put(
+        "recordSessions",
+        change.remote.record_sessions.map(|v| json!(v)),
+    );
     TrailEntry {
         source: Source::Device,
         severity: Severity::Info,

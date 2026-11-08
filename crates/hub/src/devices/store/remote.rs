@@ -69,7 +69,12 @@ pub(in crate::devices) async fn write_change(
     .bind(change.mac_address.flatten().map(|mac| mac.to_string()))
     .bind(change.metrics_source.map(MetricsSource::as_str))
     .bind(change.session_limit.is_some())
-    .bind(change.session_limit.flatten().map(|limit| i32::from(limit.get())))
+    .bind(
+        change
+            .session_limit
+            .flatten()
+            .map(|limit| i32::from(limit.get())),
+    )
     .bind(change.record_sessions)
     .execute(conn)
     .await?;

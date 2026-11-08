@@ -40,11 +40,8 @@ pub(in crate::devices) fn new_remote(form: &RemoteForm) -> Result<RemoteAccess, 
     let vnc = problems.fields(vnc);
     let mac_address = problems.field(form.mac_address.as_deref().map_or(Ok(None), mac_address));
     let session_limit = problems.field(form.session_limit.map_or(Ok(None), new_session_limit));
-    let checked = rdp
-        .zip(vnc)
-        .zip(mac_address)
-        .zip(session_limit)
-        .map(|(((rdp, vnc), mac_address), session_limit)| RemoteAccess {
+    let checked = rdp.zip(vnc).zip(mac_address).zip(session_limit).map(
+        |(((rdp, vnc), mac_address), session_limit)| RemoteAccess {
             rdp,
             vnc,
             mac_address,
@@ -52,7 +49,8 @@ pub(in crate::devices) fn new_remote(form: &RemoteForm) -> Result<RemoteAccess, 
             transfer: form.transfer.unwrap_or_default(),
             session_limit,
             record_sessions: form.record_sessions.unwrap_or_default(),
-        });
+        },
+    );
     problems.finish(checked)
 }
 

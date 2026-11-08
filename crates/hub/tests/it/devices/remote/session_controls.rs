@@ -22,7 +22,10 @@ const UPDATE: &str = "mutation($id: ID!, $input: UpdateDeviceInput!) { updateDev
 
 async fn create(pool: &PgPool, extra: Value) -> Value {
     let mut input = json!({ "siteId": HOME, "name": "win-01", "host": "10.10.0.60" });
-    input.as_object_mut().unwrap().extend(extra.as_object().unwrap().clone());
+    input
+        .as_object_mut()
+        .unwrap()
+        .extend(extra.as_object().unwrap().clone());
     let query = CREATE.replace("{ id }", SHOWN);
     let response = with_variables(&schema_for(pool), &query, json!({ "input": input })).await;
     assert!(response.errors.is_empty(), "{:?}", response.errors);
@@ -30,7 +33,12 @@ async fn create(pool: &PgPool, extra: Value) -> Value {
 }
 
 async fn update(pool: &PgPool, input: Value) -> Value {
-    let response = with_variables(&schema_for(pool), UPDATE, json!({ "id": PVE_01, "input": input })).await;
+    let response = with_variables(
+        &schema_for(pool),
+        UPDATE,
+        json!({ "id": PVE_01, "input": input }),
+    )
+    .await;
     assert!(response.errors.is_empty(), "{:?}", response.errors);
     response.data.into_json().unwrap()["updateDevice"].take()
 }
@@ -43,7 +51,10 @@ async fn read(pool: &PgPool, id: &str) -> Value {
 
 async fn refused(pool: &PgPool, mutation: &str, vars: Value) -> Vec<String> {
     let response = with_variables(&schema_for(pool), mutation, vars).await;
-    validation_fields(&error_json(&response)).into_iter().map(str::to_owned).collect()
+    validation_fields(&error_json(&response))
+        .into_iter()
+        .map(str::to_owned)
+        .collect()
 }
 
 fixture_test! {

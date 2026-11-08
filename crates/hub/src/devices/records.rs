@@ -96,7 +96,12 @@ impl TryFrom<RemoteRow> for RemoteAccess {
             metrics_source: row.metrics_source.parse().map_err(decode)?,
             session_limit: row
                 .session_limit
-                .map(|limit| u8::try_from(limit).map_err(decode)?.try_into().map_err(decode))
+                .map(|limit| {
+                    u8::try_from(limit)
+                        .map_err(decode)?
+                        .try_into()
+                        .map_err(decode)
+                })
                 .transpose()?,
             record_sessions: row.record_sessions,
             transfer: TransferPolicy {
