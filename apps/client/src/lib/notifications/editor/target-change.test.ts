@@ -28,7 +28,7 @@ function settingsOf(check: DraftCheck): unknown {
   return check.input.settings;
 }
 
-describe('a new target (CR-14.1)', () => {
+describe('a new ntfy or webhook target (CR-14.1)', () => {
   it('CR-14.1, D-17: a new ntfy server with the stored topic and token untouched is refused', () => {
     const check = edited(ntfy, (draft) => {
       draft.ntfy.server = 'https://ntfy.attacker.example';
@@ -73,6 +73,9 @@ describe('a new target (CR-14.1)', () => {
     expect(settingsOf(home)).toMatchObject({ webhook: { headers: null } });
   });
 
+});
+
+describe('a new mail or Apprise target, and the same target written again (CR-14.1)', () => {
   it.each([
     ['host', (draft: ChannelDraft) => { draft.email.host = 'smtp.attacker.example'; }],
     ['port', (draft: ChannelDraft) => { draft.email.security = 'TLS'; draft.email.port = '465'; }],
