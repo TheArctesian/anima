@@ -53,6 +53,9 @@ describe('the create form (INT-003, D-23)', () => {
     expect(checkNewKey(form({ expiry: 'date', date: '2027-11-09' }), NOW)).toEqual({ ok: false, problems: [{ field: 'expiry', message: DATE_TOO_FAR }] });
   });
 
+});
+
+describe('the expiry bounds (D-23)', () => {
   it('D-23: a date whose day begins exactly now is refused; the latest allowed instant is sent and one millisecond more is not', () => {
     const midnight = new Date(2027, 5, 1);
     const onTheDay = form({ expiry: 'date', date: '2027-06-01' });

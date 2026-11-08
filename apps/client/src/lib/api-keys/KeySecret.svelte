@@ -1,5 +1,6 @@
 <script lang="ts">
   import FormButton from '$lib/forms/FormButton.svelte';
+  import { duration } from '$lib/motion/tokens';
 
   interface Props {
     /** The whole key. Shown here and nowhere else: never in a title, a live region, a URL, storage or the console (INT-003, LOG-007). */
@@ -30,7 +31,7 @@
    */
   function drop(node: HTMLInputElement): { duration: number } {
     node.value = '';
-    return { duration: 0 };
+    return { duration: duration.instant };
   }
 
   // The field takes focus when it appears, with the key selected, so the system's own copy works at once.
