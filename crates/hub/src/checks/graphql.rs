@@ -8,6 +8,7 @@
 
 mod check;
 mod config_view;
+mod defaults;
 mod enums;
 mod error;
 mod form;
@@ -27,12 +28,13 @@ pub use self::loaders::{
 };
 
 use self::{
+    defaults::DefaultsInput,
     error::{invalid, schema_dependency, to_graphql},
     input::{CreateShape, Opaque, UpdateShape},
     live::{DeviceStatusChange, HeartbeatAdded, device_status_changes, heartbeats_added},
     write::pool,
 };
-use super::{Check, Error, FieldError};
+use super::{Check, CheckDefaults, Error, FieldError};
 use crate::{
     access::Authenticated,
     events::Bus,
@@ -64,6 +66,12 @@ impl Query {
             Err(error) => Err(to_graphql(error)),
         }
     }
+
+    /// What a new check starts with; the client pre-fills the check form from it (D-26).
+    #[graphql(guard = "Authenticated")]
+    async fn check_defaults(&self, ctx: &Context<'_>) -> Result<CheckDefaults> {
+        defaults::read(ctx).await
+    }
 }
 
 #[derive(Default)]
@@ -91,6 +99,15 @@ impl Mutation {
     #[graphql(guard = "Authenticated")]
     async fn delete_check(&self, ctx: &Context<'_>, id: ID) -> Result<ID> {
         write::delete(ctx, &id).await
+    }
+
+    #[graphql(guard = "Authenticated")]
+    async fn set_check_defaults(
+        &self,
+        ctx: &Context<'_>,
+        input: DefaultsInput,
+    ) -> Result<CheckDefaults> {
+        defaults::set(ctx, &input).await
     }
 
     #[graphql(guard = "Authenticated")]

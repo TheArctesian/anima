@@ -2,6 +2,7 @@
 //! LOG-005, LOG-007).
 
 mod batching;
+mod defaults;
 mod edge;
 mod group;
 mod guard;

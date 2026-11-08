@@ -128,6 +128,30 @@ impl Definition {
     }
 }
 
+/// What a new check starts with (D-26): the settings the hub's default check takes and the
+/// client pre-fills in the check form. Bounds as `checks.checks`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CheckDefaults {
+    pub interval_seconds: u32,
+    pub retries: u8,
+    pub retry_interval_seconds: u32,
+    pub degraded_threshold_ms: u32,
+}
+
+impl CheckDefaults {
+    /// The settings of a new check: these defaults, not inverted.
+    #[must_use]
+    pub const fn settings(self) -> CheckSettings {
+        CheckSettings {
+            interval_seconds: self.interval_seconds,
+            retries: self.retries,
+            retry_interval_seconds: self.retry_interval_seconds,
+            degraded_threshold_ms: self.degraded_threshold_ms,
+            invert: false,
+        }
+    }
+}
+
 /// A check to add (the API's `CreateCheckInput`).
 pub struct NewCheck {
     pub device: DeviceId,
