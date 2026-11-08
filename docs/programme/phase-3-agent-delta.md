@@ -1,8 +1,6 @@
 # Phase 3 delta: metrics push agent (R-084)
 
-Status: **Draft for operator approval (checkpoint 3).** No part of this is in
-`docs/design-spec.md` yet. After approval, WP-54 T1 copies the text below into the spec in
-one commit, citing R-084.
+Status: **Approved by the operator on 2026-11-07.** The text is in `docs/design-spec.md` (R-084).
 
 Operator decision: 2026-11-07. Ruling: R-084. Contract change: CR-8. New package: WP-54.
 

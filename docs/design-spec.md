@@ -871,22 +871,27 @@ The hub collects these metrics from each device that has a metrics source:
 | Video memory (VRAM) usage, for each GPU | Percent and bytes |
 | GPU temperature and power, for each GPU | Degrees Celsius and watts |
 
-Metrics sources:
+Metrics sources, in order of preference (R-084):
 
-- **SSH (agentless).** The hub connects with SSH and reads system values. On Linux, the hub reads `/proc`. On macOS, the hub uses `vm_stat`, `sysctl` and `df`.
+- **Anima agent (push).** A small headless program, `anima-agent`, runs on the device. It reads the values on the device and pushes them to the hub over the VPN. Use the agent on each macOS and Linux device that can run software.
+- **SSH (agentless).** This is the fallback for devices that cannot run software, for example routers and NAS appliances. The hub connects with SSH and reads system values. On Linux, the hub reads `/proc`. On macOS, the hub uses `vm_stat`, `sysctl` and `df`.
 - **Proxmox API.** The hub reads the node, virtual machine and container status from the Proxmox VE API.
 
-GPU metrics sources (through SSH):
+The agent and the SSH collector parse the same command output and files with the same code (MET-016).
+
+GPU metrics sources (agent, or SSH as the fallback):
 
 | GPU type | Command or file | Notes |
 | --- | --- | --- |
 | NVIDIA | `nvidia-smi --query-gpu=index,name,utilization.gpu,memory.used,memory.total,temperature.gpu,power.draw --format=csv,noheader,nounits` | The NVIDIA driver must be installed on the device. |
 | AMD | `/sys/class/drm/card*/device/gpu_busy_percent`, `mem_info_vram_used`, `mem_info_vram_total` | The `amdgpu` driver supplies these files. |
 | Intel | `intel_gpu_top -J` | Integrated GPUs share system memory. Show GPU usage only. |
-| Apple silicon (macOS) | None | The GPU shares system memory (unified memory). Do not show a VRAM value. Memory usage includes the GPU. |
+| Apple silicon (macOS) | Agent: IOKit `IOAccelerator` performance statistics (Device Utilization %, In use system memory, `gpu-core-count`); IOReport for GPU power where macOS gives it. SSH: `ioreg -r -d 1 -c IOAccelerator` (GPU usage only). | The GPU shares system memory (unified memory). Do not show a VRAM value (MET-007). Memory usage includes the GPU. The agent shows GPU usage and the GPU's share of memory in use as a number, not as a VRAM bar. |
 
-- **MET-001.** The hub must collect metrics every 30 seconds.
-- **MET-002.** The SSH metrics collector must use read-only commands only.
+The agent may read NVIDIA values through NVML in place of `nvidia-smi`. The values must be the same.
+
+- **MET-001.** The SSH collector must collect metrics every 30 seconds. The agent rules are MET-014 and MET-015. (R-084)
+- **MET-002.** The SSH collector and the agent must only read values on the device. Neither must change the device. The agent may write only its own configuration, token and buffer files. (R-084)
 - **MET-003.** The device detail view must show a chart for each metric for 1 hour, 24 hours and 7 days.
 - **MET-004.** The device card must show a metric in `--status-degraded` colour when the value is more than 85 percent.
 - **MET-005.** Metrics for Windows devices are out of scope for Phase 2. A later version can add an agent or WinRM.
@@ -895,6 +900,16 @@ GPU metrics sources (through SSH):
 - **MET-008.** If a device has a GPU with its own memory, the device card must show a VRAM bar after the disk bar. If the device has more than one GPU, the bar must show the GPU with the highest VRAM usage.
 - **MET-009.** The device detail view must show a chart for GPU usage and VRAM usage for each GPU. The chart label must include the GPU index and name.
 - **MET-010.** A GPU can be passed through to a virtual machine. In this case, the hub must read the GPU metrics from the virtual machine, not from the Proxmox node.
+- **MET-011.** A device's metrics source must be one of `agent`, `ssh`, `proxmox` or `none`. When a device has a working agent, the hub must stop SSH metric collection for it. If the agent is removed or its token is revoked, the operator can switch the device back to `ssh`. (R-084)
+- **MET-012.** Enrolment. The operator makes an enrolment code for one device on the Device page ("Install agent"). The code must be 128 random bits, expire after 15 minutes and work only once. A second use must fail, even when the first use failed later in the exchange. The hub must keep only its SHA-256. `anima-agent enrol <code>` swaps the code for the device's agent token. Only a signed-in operator can make a code. (R-084)
+- **MET-013.** Agent token. The format is `anima_agent_` and 43 base64url characters. The hub must keep only its SHA-256. A token is bound to one device. It allows only two calls: push readings for that device, and renew itself. It must not call the GraphQL API, open a session or read anything. It expires after 365 days. The agent renews it during the last 30 days with the current token; the old token stops working when the new one is first used. The operator can revoke it on the Device page; revocation takes effect on the next push. The agent keeps it in the macOS Keychain, or on Linux in a file with mode `0600` owned by the user that runs the agent. No log, event, metric or error message must contain a token or an enrolment code (LOG-007). (R-084)
+- **MET-014.** Sampling and push. The agent samples every 2 seconds. Each 10 seconds, it makes one point from the samples: the mean, and also the maximum for CPU and GPU usage. It pushes the new points every 10 seconds in one batch. While the hub cannot be reached, it keeps up to 1 hour of points in memory, oldest dropped first, and sends them when the hub comes back. (R-084)
+- **MET-015.** The hub must store agent points at 10-second resolution. The aggregates and retention (D-25) apply to every source. (R-084)
+- **MET-016.** The parsers for `/proc`, `vm_stat`, `sysctl`, `df`, `nvidia-smi`, `amdgpu` sysfs, `intel_gpu_top -J` and `ioreg` must be pure functions in `agent-core`. The hub's SSH collector and the agent must both call them. (R-084)
+- **MET-017.** The hub must refuse a batch, and write the refusal to the event log without the token, if the token is unknown, expired or revoked; if the batch names a device other than the token's device; if a point is more than 1 hour old or more than 60 seconds in the future; or if the batch is larger than 512 KiB. The ingest endpoint must follow NET-002 and NET-003. (R-084)
+- **MET-018.** If the hub gets no batch from an agent for 3 push intervals (30 seconds), the hub must mark the device "metrics stale". The device card and the detail view must show the last values in the muted colour with the label "Stale". The hub must write one event when a device becomes stale and one when it recovers. A stale agent is not a Down check. (R-084)
+- **MET-019.** The Device page must show "Install agent" with the install command and a fresh enrolment code. The desktop app can install the agent on the computer it runs on: the Tauri shell copies the binary and writes the LaunchAgent or systemd unit, and the client's `lib/metrics/` holds the logic. On Linux, the agent runs as a systemd user or system unit. On macOS, it runs as a LaunchAgent. (R-084)
+- **MET-020.** The agent must connect only to the hub, with HTTPS to `hub.anima.ing` on tcp 443 at the hub's VPN address. The agent must not listen on any port in Phase 3. The VPN policy must allow agent devices to reach only that port of the hub (VPS-005 for each live change). (R-084)
 
 ### 6.7 Device detail view
 
@@ -928,7 +943,7 @@ The view has these tabs:
 
 - **INT-001.** The hub must supply a Prometheus endpoint at `/metrics` with the status, response time, uptime ratio and certificate days of each check.
 - **INT-002.** Prometheus labels must not include values that change often.
-- **INT-003.** The operator must be able to make API keys for the GraphQL API. Each key must have a scope (read or write) and an expiry date. A key is `anima_` and 43 base64url characters. The hub must keep only the SHA-256 of a key. The expiry date is required and must be at most one year away. An API key must not manage API keys. It must not call `signInBrowser`, `startSession`, `openFiles`, `shareSession`, `joinShare` or `openRecording`. It must not set or clear a device credential. (D-23, R-081)
+- **INT-003.** The operator must be able to make API keys for the GraphQL API. Each key must have a scope (read or write) and an expiry date. A key is `anima_` and 43 base64url characters. The hub must keep only the SHA-256 of a key. The expiry date is required and must be at most one year away. An API key must not manage API keys. It must not call `signInBrowser`, `startSession`, `openFiles`, `shareSession`, `joinShare`, `openRecording`, `enrolAgent` or `revokeAgentToken`. It must not set or clear a device credential. (D-23, R-081)
 - **INT-004.** A later version can add public status pages, incidents and status badges.
 
 ## 7. Settings page
@@ -1021,7 +1036,7 @@ A later version can manage libvirt hosts and Docker hosts. Prepare for this now:
 | --- | --- | --- |
 | 1 | Repository structure and quality gates (Sections 12 and 13). VPN setup: Headscale on the VPS, subnet routers, clients (Section 4.2). Design token build (Section 5.5), fonts and icons, motion helpers. Application shell, navigation bar, Nord theme, empty Settings page. Hub with authentication, GraphQL API, PostgreSQL and the three logs. Device list, add and edit device, tags. ICMP, TCP, TLS, HTTP(S), DNS, push and group checks. Maintenance windows. SSH sessions. | macOS, Linux |
 | 2 | RDP and VNC sessions. Web interfaces. Wake-on-LAN. SFTP. Live session list. SSH metrics. More check types. Device detail view with charts. | macOS, Linux |
-| 3 | Web client. Notifications. Prometheus endpoint and API keys. Session sharing and recording. Settings page items. | macOS, Linux, Web |
+| 3 | Web client. Notifications. Prometheus endpoint and API keys. Session sharing and recording. Settings page items. Metrics push agent for macOS and Linux (`anima-agent`), with GPU usage on Apple silicon (R-084). | macOS, Linux, Web |
 | 4 | Proxmox VE integration (Sections 8.1 to 8.4). | macOS, Linux, Web |
 | 5 | iOS client. | All |
 | 6 | Proxmox later functions (Section 8.5). Other hypervisors. Site agents for Wake-on-LAN and local checks. Traffic data (Section 4.3). | All |
@@ -1186,7 +1201,7 @@ anima/
 │   │   │   ├── devices/       Device inventory, sites, tags
 │   │   │   ├── checks/        Check types, scheduler, heartbeats, watchdog
 │   │   │   ├── maintenance/   Maintenance windows (pure rules + store)
-│   │   │   ├── metrics/       Collection (SSH, GPU, Proxmox), aggregates, retention
+│   │   │   ├── metrics/       Collection (agent ingest, SSH, GPU, Proxmox), aggregates, retention
 │   │   │   ├── sessions/      Session start, tunnel, history, sharing
 │   │   │   ├── credentials/   Encryption and storage of credentials
 │   │   │   ├── web_interfaces/ Web interface records and suggestions
@@ -1196,6 +1211,8 @@ anima/
 │   │   │   └── traffic/       DNS and flow data (Phase 6)
 │   │   ├── migrations/        sqlx migrations
 │   │   └── tests/it/          Integration tests (CQ-042)
+│   ├── agent/                 The metrics agent binary (anima-agent): enrolment, sampling, push, OS readers
+│   ├── agent-core/            Agent logic with no I/O: parsers (MET-016), points, batching, buffer, wire types
 │   ├── guac-protocol/         Guacamole protocol: parse and encode, no I/O
 │   └── theme/                 Generated Rust tokens (terminal colour scheme)
 ├── apps/
