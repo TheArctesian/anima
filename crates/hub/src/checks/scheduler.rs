@@ -1,11 +1,9 @@
 //! The check scheduler: one task that probes each check at its interval, records and
-//! publishes the beats, reports status changes and late checks, and runs the daily jobs
-//! (HUB-003, CHK-001, CHK-002, CHK-010, DB-005, DB-009).
+//! publishes the beats, reports status changes and late checks (HUB-003, CHK-001, CHK-002, CHK-010).
 //!
 //! The decisions are pure and live in `schedule`; `tick` holds the loop state and the I/O.
 
 mod attempt;
-mod daily;
 mod log;
 mod notices;
 mod repair;

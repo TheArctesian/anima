@@ -27,7 +27,7 @@ mod uptime;
 
 use std::{collections::HashMap, net::IpAddr};
 
-use chrono::{DateTime, NaiveDate, Utc};
+use chrono::{DateTime, Days, Utc};
 use sqlx::{Connection as _, PgConnection, PgPool};
 use uuid::Uuid;
 
@@ -50,8 +50,10 @@ pub use model::{
 };
 pub use push::push_router;
 pub use scheduler::{Probing, spawn_scheduler};
-pub use store::Trimmed;
 pub use uptime::UptimeWindow;
+
+/// Days after today whose heartbeat partitions [`drop_expired`] creates (DB-004).
+const PARTITION_DAYS_AHEAD: u32 = 7;
 
 /// Why a checks operation failed. Messages hold no SQL, no input value and no secret.
 #[derive(Debug, thiserror::Error)]
@@ -84,6 +86,18 @@ pub enum Error {
     /// The OS random source failed, so no push token was made.
     #[error("the OS random source failed")]
     Random(#[source] getrandom::Error),
+}
+
+impl Error {
+    /// For the process log: what failed, as a fixed word, never the source text (LOG-007,
+    /// API-010).
+    #[must_use]
+    pub const fn fault(&self) -> &'static str {
+        match self {
+            Self::Database(_) => "database",
+            _ => "checks",
+        }
+    }
 }
 
 /// The names of the fields in error, never their values.
@@ -420,38 +434,25 @@ pub async fn due_checks(db: &PgPool, now: DateTime<Utc>, limit: u32) -> Result<V
     store::due(db, now, limit).await
 }
 
-/// Deletes the heartbeats of checks that no longer exist (DEV-015).
+/// The daily retention run of checks, passed the operator's period (D-25, HUB-005): creates the
+/// heartbeat partitions of today and the week after it (DB-004), drops those older than
+/// `heartbeats_keep` (DB-005), deletes the aggregate rows past their fixed periods (DB-009) and
+/// the heartbeats of deleted checks (DEV-015). The database refuses to drop a heartbeat
+/// partition less than 1 day old. A step that fails stops the run; `upkeep.rs` retries it.
 ///
 /// # Errors
-/// `Database` when the query fails.
-pub async fn delete_orphan_heartbeats(db: &PgPool) -> Result<u64, Error> {
-    store::delete_orphan_heartbeats(db).await
-}
-
-/// Deletes aggregate rows past their retention (DB-009).
-///
-/// # Errors
-/// `Database` when a query fails.
-pub async fn trim_aggregates(db: &PgPool, now: DateTime<Utc>) -> Result<Trimmed, Error> {
-    store::trim_aggregates(db, now).await
-}
-
-/// Drops the heartbeat partitions of the UTC days before `cutoff` (DB-005).
-///
-/// # Errors
-/// `Database` when the cutoff is inside the 30-day retention.
-pub async fn drop_heartbeat_days_before(
+/// `Database` when a step fails, or when the database refuses the cutoff.
+pub async fn drop_expired(
     db: &PgPool,
-    cutoff: NaiveDate,
     now: DateTime<Utc>,
-) -> Result<Vec<String>, Error> {
-    store::drop_heartbeat_days_before(db, cutoff, now).await
-}
-
-/// Creates the heartbeat partitions of today and the next `days` days (DB-004).
-///
-/// # Errors
-/// `Database` when a day is outside the window the database accepts.
-pub async fn create_days_ahead(db: &PgPool, today: DateTime<Utc>, days: u32) -> Result<(), Error> {
-    store::create_days_ahead(db, today, days).await
+    heartbeats_keep: Days,
+) -> Result<(), Error> {
+    store::create_days_ahead(db, now, PARTITION_DAYS_AHEAD).await?;
+    let dropped = store::drop_heartbeat_days_before(db, now, heartbeats_keep).await?;
+    if !dropped.is_empty() {
+        tracing::info!(domain = "checks", dropped = ?dropped, "old heartbeat partitions dropped");
+    }
+    store::trim_aggregates(db, now).await?;
+    store::delete_orphan_heartbeats(db).await?;
+    Ok(())
 }

@@ -178,7 +178,7 @@ async fn hub_005_the_periods_come_from_the_retention_passed_in(pool: PgPool) {
     migrations = "./migrations",
     fixtures(path = "../../../tests/fixtures", scripts("devices"))
 )]
-async fn db_005_a_retention_shorter_than_30_days_cannot_drop_a_recent_partition(pool: PgPool) {
+async fn db_005_a_retention_inside_the_one_day_floor_cannot_drop_a_recent_partition(pool: PgPool) {
     let pve = device(PVE_01);
     write(
         &pool,
@@ -188,7 +188,7 @@ async fn db_005_a_retention_shorter_than_30_days_cannot_drop_a_recent_partition(
     )
     .await;
     let early = Retention {
-        samples: TimeDelta::days(1),
+        samples: TimeDelta::zero(),
         ..Retention::default()
     };
 

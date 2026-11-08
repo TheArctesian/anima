@@ -1,8 +1,8 @@
-//! The daily jobs' store functions: the orphan sweep, aggregate trimming and heartbeat
-//! partitions (DEV-015, DB-004, DB-005, DB-009).
+//! The daily retention run, `checks::drop_expired`: the orphan sweep, aggregate trimming and
+//! heartbeat partitions (DEV-015, DB-004, DB-005, DB-009, HUB-005).
 
 use anima_hub::{
-    checks::{self, Error, Trimmed},
+    checks::{self, Error},
     status::Status,
 };
 use chrono::{DateTime, Days, Months, TimeDelta, Utc};
@@ -31,6 +31,24 @@ async fn buckets(pool: &PgPool, table: &str) -> Vec<DateTime<Utc>> {
     .unwrap()
 }
 
+const KEEP_30: Days = Days::new(30);
+
+/// As the owner, creates the heartbeat partition of the day `days` days before `now`.
+async fn old_partition(pool: &PgPool, now: DateTime<Utc>, days: i64) -> DateTime<Utc> {
+    let old = now - TimeDelta::days(days);
+    let day = old.date_naive();
+    let next = day.succ_opt().unwrap();
+    sqlx::query(&format!(
+        "CREATE TABLE checks.heartbeats_{} PARTITION OF checks.heartbeats \
+         FOR VALUES FROM ('{day}T00:00:00Z') TO ('{next}T00:00:00Z')",
+        day.format("%Y%m%d")
+    ))
+    .execute(pool)
+    .await
+    .unwrap();
+    old
+}
+
 async fn partition_exists(pool: &PgPool, day: DateTime<Utc>) -> bool {
     let name = format!("checks.heartbeats_{}", day.format("%Y%m%d"));
     sqlx::query_scalar("SELECT to_regclass($1) IS NOT NULL")
@@ -52,9 +70,10 @@ devices_test! {
         }
         let mut conn = pool.acquire().await.unwrap();
         checks::delete_check(&mut conn, gone).await.unwrap();
-        assert_eq!(checks::delete_orphan_heartbeats(&pool).await.unwrap(), 3);
+        checks::drop_expired(&pool, at, KEEP_30).await.unwrap();
         assert_eq!((count(&pool, HEARTBEATS, kept).await, count(&pool, HEARTBEATS, gone).await), (3, 0));
-        assert_eq!(checks::delete_orphan_heartbeats(&pool).await.unwrap(), 0);
+        checks::drop_expired(&pool, at, KEEP_30).await.unwrap();
+        assert_eq!(count(&pool, HEARTBEATS, kept).await, 3);
     }
 
     async fn db_009_aggregates_are_trimmed_at_7_days_90_days_and_2_years(pool: PgPool) {
@@ -78,42 +97,46 @@ devices_test! {
                     .unwrap();
             }
         }
-        let trimmed = checks::trim_aggregates(&pool, now).await.unwrap();
-        assert_eq!(trimmed, Trimmed { minute: 1, hour: 1, day: 1 });
+        checks::drop_expired(&pool, now, KEEP_30).await.unwrap();
         for (table, kept, _) in rows {
             assert_eq!(buckets(&pool, table).await, [kept], "{table}");
         }
     }
 
-    async fn db_004_partitions_are_created_for_today_and_the_days_ahead(pool: PgPool) {
+    async fn db_004_partitions_are_created_for_today_and_a_week_ahead(pool: PgPool) {
         let today = database_now(&pool).await;
-        checks::create_days_ahead(&pool, today, 3).await.unwrap();
-        for days in 0..=3 {
+        checks::drop_expired(&pool, today, KEEP_30).await.unwrap();
+        for days in 0..=7 {
             assert!(partition_exists(&pool, today + TimeDelta::days(days)).await, "day {days}");
         }
-        assert!(!partition_exists(&pool, today + TimeDelta::days(4)).await);
-        let error = checks::create_days_ahead(&pool, today, 30).await.unwrap_err();
+        assert!(!partition_exists(&pool, today + TimeDelta::days(8)).await);
+    }
+
+    async fn db_004_a_clock_far_ahead_of_the_database_fails_the_run(pool: PgPool) {
+        let today = database_now(&pool).await;
+        let error = checks::drop_expired(&pool, today + TimeDelta::days(30), KEEP_30)
+            .await
+            .unwrap_err();
         assert!(matches!(error, Error::Database(_)), "{error:?}");
     }
 
-    async fn db_005_old_heartbeat_days_are_dropped_and_recent_ones_refused(pool: PgPool) {
+    async fn hub_005_heartbeat_days_older_than_the_period_are_dropped_and_newer_kept(pool: PgPool) {
         let now = database_now(&pool).await;
-        let old = (now - TimeDelta::days(40)).date_naive();
-        let next = old.succ_opt().unwrap();
-        sqlx::query(&format!(
-            "CREATE TABLE checks.heartbeats_{} PARTITION OF checks.heartbeats \
-             FOR VALUES FROM ('{old}T00:00:00Z') TO ('{next}T00:00:00Z')",
-            old.format("%Y%m%d")
-        ))
-        .execute(&pool)
-        .await
-        .unwrap();
-        checks::create_days_ahead(&pool, now, 0).await.unwrap();
-        let today = now.date_naive();
-        let refused = checks::drop_heartbeat_days_before(&pool, today - Days::new(29), now).await;
-        assert!(matches!(refused, Err(Error::Database(_))), "{refused:?}");
-        let dropped = checks::drop_heartbeat_days_before(&pool, today - Days::new(30), now).await.unwrap();
-        assert_eq!(dropped, [format!("heartbeats_{}", old.format("%Y%m%d"))]);
-        assert!(partition_exists(&pool, now).await);
+        let mut days = Vec::new();
+        for ago in [40, 12, 9, 3] {
+            days.push((ago, old_partition(&pool, now, ago).await));
+        }
+
+        checks::drop_expired(&pool, now, KEEP_30).await.unwrap();
+        let after_30 = [partition_exists(&pool, days[0].1).await, partition_exists(&pool, days[1].1).await];
+        checks::drop_expired(&pool, now, Days::new(10)).await.unwrap();
+        let after_10 = [partition_exists(&pool, days[1].1).await, partition_exists(&pool, days[2].1).await];
+        checks::drop_expired(&pool, now, Days::new(1)).await.unwrap();
+        let after_1 = [partition_exists(&pool, days[2].1).await, partition_exists(&pool, days[3].1).await];
+
+        assert_eq!(after_30, [false, true], "30 days drops 40 days ago and keeps 12");
+        assert_eq!(after_10, [false, true], "10 days drops 12 days ago and keeps 9");
+        assert_eq!(after_1, [false, false], "1 day drops 9 and 3 days ago");
+        assert!(partition_exists(&pool, now).await, "today is never dropped");
     }
 }

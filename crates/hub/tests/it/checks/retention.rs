@@ -1,5 +1,5 @@
-//! Heartbeat retention drops whole day partitions older than 30 days, and the database
-//! refuses to drop younger ones (DB-005, DB-009).
+//! Heartbeat retention drops whole day partitions, and the database refuses to drop one
+//! younger than its 1-day floor (DB-005, DB-009, CR-6).
 
 use chrono::{DateTime, Days, NaiveDate, TimeDelta, Utc};
 use sqlx::{PgConnection, PgPool};
@@ -28,20 +28,20 @@ async fn drop_before(
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn db_009_drop_refuses_a_cutoff_inside_30_days_even_with_a_later_instant(pool: PgPool) {
+async fn db_005_drop_refuses_a_cutoff_inside_the_one_day_floor_as_runtime(pool: PgPool) {
     let now = database_now(&pool).await;
     let today = now.date_naive();
     let later = now + TimeDelta::days(3 * 366);
     let refused = [
         (None, now),
-        (Some(today - Days::new(29)), now),
         (Some(today), now),
-        (Some(today - Days::new(10)), later),
-        (Some(today - Days::new(29)), later),
+        (Some(today + Days::new(1)), now),
+        (Some(today), later),
+        (Some(today + Days::new(1)), later),
     ];
     let accepted = [
-        (Some(today - Days::new(30)), now),
-        (Some(today - Days::new(30)), later),
+        (Some(today - Days::new(1)), now),
+        (Some(today - Days::new(1)), later),
         (Some(today - Days::new(400)), now),
     ];
     let mut conn = pool.acquire().await.unwrap().detach();

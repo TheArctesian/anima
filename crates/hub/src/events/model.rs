@@ -200,6 +200,8 @@ pub enum AuditTarget {
     HostKey(DeviceId),
     /// A file on a device, moved over the files tunnel; the change holds its path.
     File(DeviceId),
+    /// A hub setting, by its dotted name (for example `retention.events`).
+    Setting(&'static str),
 }
 
 impl AuditTarget {
@@ -216,6 +218,7 @@ impl AuditTarget {
             Self::Credential(_) => "credential",
             Self::HostKey(_) => "host_key",
             Self::File(_) => "file",
+            Self::Setting(_) => "setting",
         }
     }
 
@@ -231,6 +234,7 @@ impl AuditTarget {
             Self::Check(id) => id.to_string(),
             Self::Window(id) => id.to_string(),
             Self::Session(id) => id.to_string(),
+            Self::Setting(name) => name.to_owned(),
         }
     }
 }

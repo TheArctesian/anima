@@ -24,7 +24,7 @@ mod tests;
 
 use std::collections::HashMap;
 
-use chrono::{DateTime, TimeDelta, Utc};
+use chrono::{DateTime, Days, TimeDelta, Utc};
 use sqlx::PgPool;
 
 pub use collector::{Collecting, spawn_collector};
@@ -131,7 +131,7 @@ pub async fn create_partitions_ahead(db: &PgPool, now: DateTime<Utc>) -> Result<
 ///
 /// # Errors
 /// `Database` when a query fails, or when the database refuses to drop a partition still
-/// inside the 30-day retention.
+/// inside the 1-day floor.
 pub async fn drop_expired_partitions(
     db: &PgPool,
     now: DateTime<Utc>,
@@ -166,12 +166,22 @@ impl Error {
 }
 
 /// The daily job: creates the partitions ahead, then drops what retention allows (DB-004,
-/// DB-005, D-5). Run by `main.rs` with the events one.
+/// DB-005, D-5, D-25). Samples are kept `samples_keep` (the operator's period); the aggregates
+/// stay at their fixed periods (DB-009). Run by `upkeep.rs` with the other retention jobs.
 ///
 /// # Errors
 /// What [`create_partitions_ahead`] or [`drop_expired_partitions`] returns.
-pub async fn keep_partitions(db: &PgPool, now: DateTime<Utc>) -> Result<(), Error> {
+pub async fn keep_partitions(
+    db: &PgPool,
+    now: DateTime<Utc>,
+    samples_keep: Days,
+) -> Result<(), Error> {
     create_partitions_ahead(db, now).await?;
-    drop_expired_partitions(db, now, Retention::default()).await?;
+    let samples = now - now.checked_sub_days(samples_keep).unwrap_or(now);
+    let retention = Retention {
+        samples,
+        ..Retention::default()
+    };
+    drop_expired_partitions(db, now, retention).await?;
     Ok(())
 }
