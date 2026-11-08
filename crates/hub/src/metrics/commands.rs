@@ -138,7 +138,9 @@ pub(super) struct GpuCommand {
 
 /// The GPU reads for a device running `os`, one per vendor it can have, in the order they run
 /// (spec 6.6, D-30). A missing tool or file exits non-zero, which reads as no GPU of that
-/// vendor. Windows and other systems get none (MET-005).
+/// vendor. Windows and other systems get none (MET-005). Reading a GPU's values can wake it
+/// from runtime power saving (the driver does that for `nvidia-smi` and the `amdgpu` files);
+/// that is a side effect of the read, not a write (MET-002).
 pub(super) fn gpu_commands(os: OperatingSystem) -> Vec<GpuCommand> {
     match os {
         OperatingSystem::Linux => vec![
@@ -173,10 +175,12 @@ fn amd_sysfs() -> FixedCommand {
         .arg("/sys/class/drm/card*/device/mem_info_vram_total")
 }
 
-/// `intel_gpu_top -J` sampling every 500 ms, interrupted after 2 seconds, which ends its JSON
-/// array, and killed 1 second later if it is still running. `--preserve-status` gives the
-/// tool's own status: 0 after the interrupt, non-zero when it may not read the GPU counters
-/// (D-30: unknown when not permitted). A `timeout` without these options also exits non-zero.
+/// `intel_gpu_top -J` sampling every 500 ms, interrupted after 2 seconds and killed 1 second
+/// later if it is still running. `--preserve-status` gives the tool's own status: non-zero
+/// when it may not read the GPU counters (D-30), and non-zero from a `timeout` without these
+/// options. Unproven: that the tool ends its JSON array and exits 0 on the interrupt; no Intel
+/// device was at hand. If it does not, the read exits non-zero and no Intel GPU is found,
+/// never a failed collection.
 fn intel_gpu_top() -> FixedCommand {
     FixedCommand::new("timeout")
         .arg("--preserve-status")

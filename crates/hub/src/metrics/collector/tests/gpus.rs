@@ -13,7 +13,7 @@ use crate::{
         collector::gpus::{
             Answer, Discovered,
             answers::{OUTPUT_LIMIT, answer},
-            discovery::discovered,
+            discovery::due,
             samples::samples,
             sysfs::cards,
         },
@@ -74,7 +74,7 @@ pub(super) fn linux_answers() -> Vec<(GpuVendor, Answer)> {
 }
 
 pub(super) fn found(answers: &[(GpuVendor, Answer)]) -> Discovered {
-    discovered(answers, at(), None).unwrap()
+    due(None, None, at()).unwrap().merge(None, answers)
 }
 
 fn value(samples: &[Sample], kind: MetricKind, label: &str) -> Option<f64> {

@@ -10,7 +10,7 @@ use chrono::{DateTime, Utc};
 use tokio::time::{Instant, timeout};
 
 use super::{
-    Context, DEADLINE, GPU_WINDOW,
+    Context, DEADLINE,
     gpus::{self, Discovered, GpuRound, Plan},
     outputs::{self, Parts, Previous},
 };
@@ -131,7 +131,7 @@ pub(super) async fn within_deadline<T>(
 
 /// Opens a link to `device`, runs its commands in order, each within its limit, reads each
 /// output into the reading and drops its bytes before the next command (D-11), then runs the
-/// GPU reads its plan asks for until [`GPU_WINDOW`] after the start, then drops the link. The
+/// GPU reads its plan asks for until the context's GPU window after the start, then drops the link. The
 /// first link error of the commands ends the collection; a GPU read never does.
 async fn read(
     ctx: &Context,
@@ -139,7 +139,7 @@ async fn read(
     known: Option<Discovered>,
     at: DateTime<Utc>,
 ) -> Result<(Reading, GpuRound), LinkError> {
-    let gpu_until = Instant::now() + GPU_WINDOW;
+    let gpu_until = Instant::now() + ctx.gpu_window;
     let Context { db, collecting, .. } = ctx;
     let mut link = ssh::link(db, &collecting.vault, &collecting.policy, device, at).await?;
     let mut parts = Parts::default();

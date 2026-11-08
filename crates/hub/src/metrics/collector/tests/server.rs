@@ -4,7 +4,7 @@
 //! never send.
 
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     future::ready,
     sync::{
         Arc, Mutex,
@@ -28,14 +28,23 @@ const SEED: u8 = 11;
 /// What each command line prints; a line not in it exits 127 with no output.
 pub(super) type Answers = Arc<Mutex<HashMap<String, Vec<u8>>>>;
 
-/// The lines the server accepts and never answers, as a hung tool.
-type Stalled = Arc<Mutex<HashSet<String>>>;
+/// How the server misbehaves on a line instead of answering it.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Fault {
+    /// Accepts the line and never prints, exits or closes, as a hung tool.
+    Stall,
+    /// Ends the whole connection, as a device that goes away.
+    HangUp,
+}
+
+/// The lines the server misbehaves on.
+type Faults = Arc<Mutex<HashMap<String, Fault>>>;
 
 /// The server's port, the table it answers from, and what it saw.
 pub(super) struct Server {
     pub(super) port: u16,
     pub(super) answers: Answers,
-    stalled: Stalled,
+    faults: Faults,
     connections: Arc<AtomicUsize>,
     heard: Arc<Mutex<Vec<String>>>,
 }
@@ -61,12 +70,23 @@ impl Server {
 
     /// Makes `line` run without ever printing, exiting or closing, as a hung tool.
     pub(super) fn stall(&self, line: &str) {
-        self.stalled.lock().unwrap().insert(line.to_owned());
+        self.faults
+            .lock()
+            .unwrap()
+            .insert(line.to_owned(), Fault::Stall);
+    }
+
+    /// Makes `line` end the connection, as a device that goes away.
+    pub(super) fn hang_up_on(&self, line: &str) {
+        self.faults
+            .lock()
+            .unwrap()
+            .insert(line.to_owned(), Fault::HangUp);
     }
 
     /// Makes `line` answer from the table again.
     pub(super) fn unstall(&self, line: &str) {
-        self.stalled.lock().unwrap().remove(line);
+        self.faults.lock().unwrap().remove(line);
     }
 }
 
@@ -90,12 +110,12 @@ pub(super) async fn serve() -> Server {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
     let answers = Answers::default();
-    let stalled = Stalled::default();
+    let faults = Faults::default();
     let connections = Arc::new(AtomicUsize::new(0));
     let heard = Arc::new(Mutex::new(Vec::new()));
     let device = Device {
         answers: Arc::clone(&answers),
-        stalled: Arc::clone(&stalled),
+        faults: Arc::clone(&faults),
         heard: Arc::clone(&heard),
     };
     let counted = Arc::clone(&connections);
@@ -113,7 +133,7 @@ pub(super) async fn serve() -> Server {
     Server {
         port,
         answers,
-        stalled,
+        faults,
         connections,
         heard,
     }
@@ -123,7 +143,7 @@ pub(super) async fn serve() -> Server {
 #[derive(Clone)]
 struct Device {
     answers: Answers,
-    stalled: Stalled,
+    faults: Faults,
     heard: Arc<Mutex<Vec<String>>>,
 }
 
@@ -189,10 +209,14 @@ impl server::Handler for Device {
     ) -> impl Future<Output = Result<(), Self::Error>> + Send {
         let line = String::from_utf8_lossy(data).into_owned();
         let stdout = self.answers.lock().unwrap().get(&line).cloned();
-        let stalls = self.stalled.lock().unwrap().contains(&line);
+        let fault = self.faults.lock().unwrap().get(&line).copied();
         self.hear(line);
-        if !stalls {
-            tokio::spawn(reply(session.handle(), channel, stdout));
+        match fault {
+            Some(Fault::HangUp) => return ready(Err(russh::Error::Disconnect)),
+            Some(Fault::Stall) => {}
+            None => {
+                tokio::spawn(reply(session.handle(), channel, stdout));
+            }
         }
         ready(session.channel_success(channel))
     }

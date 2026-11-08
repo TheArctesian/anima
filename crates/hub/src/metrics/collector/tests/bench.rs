@@ -5,6 +5,7 @@
 use std::{
     io::Write as _,
     sync::{Arc, Mutex},
+    time::Duration,
 };
 
 use base64::{Engine as _, engine::general_purpose::STANDARD};
@@ -21,7 +22,7 @@ use crate::{
     ids::DeviceId,
     metrics::{
         Feed, MetricsAdded,
-        collector::{Collecting, Context, round::Collector},
+        collector::{Collecting, Context, GPU_WINDOW, round::Collector},
     },
     targets::AddressPolicy,
 };
@@ -94,11 +95,18 @@ pub(super) async fn execute(pool: &PgPool, sql: &str, id: &str) {
 }
 
 pub(super) async fn bench(pool: &PgPool, accepted: bool) -> Bench {
-    bench_with(pool, accepted, AddressPolicy::default().allowing_loopback()).await
+    let policy = AddressPolicy::default().allowing_loopback();
+    bench_with(pool, accepted, policy, GPU_WINDOW).await
 }
 
-/// [`bench`] with links held to `policy`.
-pub(super) async fn bench_with(pool: &PgPool, accepted: bool, policy: AddressPolicy) -> Bench {
+/// [`bench`] with links held to `policy` and GPU reads cut `gpu_window` after a collection
+/// starts.
+pub(super) async fn bench_with(
+    pool: &PgPool,
+    accepted: bool,
+    policy: AddressPolicy,
+    gpu_window: Duration,
+) -> Bench {
     let server = serve().await;
     for (line, stdout) in LINUX_LINES.iter().zip([
         PROC_STAT,
@@ -125,6 +133,7 @@ pub(super) async fn bench_with(pool: &PgPool, accepted: bool, policy: AddressPol
         bus: Bus::new(64),
         clock: Arc::clone(&clock) as Arc<dyn Clock>,
         collecting: Collecting { vault, policy },
+        gpu_window,
     });
     Bench {
         server,

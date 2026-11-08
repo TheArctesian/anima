@@ -19,7 +19,9 @@ pub(in crate::metrics::collector) const OUTPUT_LIMIT: usize = 256 * 1024;
 #[derive(Clone, Debug, PartialEq)]
 pub(in crate::metrics::collector) enum Answer {
     /// The GPUs it reported; none when the tool or files are missing, the tool may not read
-    /// the GPU, or it found no GPU.
+    /// the GPU, or it found no GPU. An Intel GPU whose counters the tool may not read is
+    /// therefore not discovered until a later look is permitted: D-30's "Unknown" is no value
+    /// shown.
     Gpus(Vec<GpuReading>),
     /// The read did not finish, so the hub cannot tell: it timed out, the device refused it,
     /// the link was lost, or the output was cut or too long.

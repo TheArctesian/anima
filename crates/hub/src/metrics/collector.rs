@@ -50,6 +50,8 @@ struct Context {
     bus: Bus,
     clock: Arc<dyn Clock>,
     collecting: Collecting,
+    /// How long after a collection starts its GPU reads may run: [`GPU_WINDOW`] outside tests.
+    gpu_window: Duration,
 }
 
 /// Starts the collector. A round starts every 30 seconds at the clock's time; a round that
@@ -75,6 +77,7 @@ pub fn spawn_collector(
         bus,
         clock,
         collecting,
+        gpu_window: GPU_WINDOW,
     });
     tokio::spawn(async move {
         let mut ticker = tokio::time::interval(ROUND);
