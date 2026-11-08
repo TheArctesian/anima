@@ -12,7 +12,8 @@
     "main",
     "lib",
     "schema",
-    "upkeep"
+    "upkeep",
+    "web_client"
   ],
   "domains": {
     "events": [],

@@ -17,9 +17,10 @@ pub mod schema;
 pub mod sessions;
 pub mod status;
 pub mod targets;
+pub mod web_client;
 pub mod web_interfaces;
 
-use std::{future::Future, sync::Arc, time::Duration};
+use std::{future::Future, path::Path, sync::Arc, time::Duration};
 
 use async_graphql_axum::GraphQLResponse;
 use axum::{
@@ -90,6 +91,16 @@ pub fn router(schema: schema::HubSchema, db: PgPool, clock: Arc<dyn clock::Clock
 /// in, such as `/tunnel` and `/push`.
 pub fn logged(routes: Router) -> Router {
     routes.layer(middleware::from_fn(events::process_log::http_request))
+}
+
+/// The web client as the hub's fallback when `root` is set (D-2): any other `GET` gets a file
+/// or `index.html`, in a logged span like every route. Merge it beside the explicit routes,
+/// which win, and before the NET-002 layer, which then covers it. Without a root it adds
+/// nothing, so an unknown path gets 404.
+pub fn web_fallback(root: Option<&Path>, origin: &access::PublicOrigin) -> Router {
+    root.map_or_else(Router::new, |root| {
+        logged(web_client::web_client(root, origin))
+    })
 }
 
 /// The session tunnels, each logged by its template only (K4 Sections 8, 9): `/terminal` for
