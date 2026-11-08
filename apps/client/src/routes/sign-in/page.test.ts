@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { flushSync, mount, unmount } from 'svelte';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { failure, fakeHub, ok } from '$lib/access/access.fixture';
 import { TOKEN_UNREADABLE, type Hub } from '$lib/hub/hub';
 import Page from './+page.svelte';
@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   writeAccessToken: vi.fn(),
   goToDevices: vi.fn(),
   reloadClient: vi.fn(),
+  loadClientAt: vi.fn(),
   desktop: true,
 }));
 
@@ -22,7 +23,7 @@ vi.mock('$lib/platform/platform', async () => {
   const { BROWSER, DESKTOP_MAC } = await import('$lib/platform/answers.fixture');
   return { capabilities: () => (mocks.desktop ? DESKTOP_MAC : BROWSER) };
 });
-vi.mock('$lib/access/navigation', () => ({ goToDevices: mocks.goToDevices, reloadClient: mocks.reloadClient }));
+vi.mock('$lib/access/navigation', () => ({ goToDevices: mocks.goToDevices, reloadClient: mocks.reloadClient, loadClientAt: mocks.loadClientAt }));
 
 const TOKEN = 'tok-secret-9f2';
 const PASSWORD = 'hunter2-pw';
@@ -72,6 +73,7 @@ beforeEach(() => {
   mocks.writeAccessToken.mockReset().mockResolvedValue(undefined);
   mocks.goToDevices.mockReset();
   mocks.reloadClient.mockReset();
+  mocks.loadClientAt.mockReset();
   mocks.desktop = true;
   for (const spy of consoleSpies) spy.mockClear();
 });
@@ -81,6 +83,7 @@ afterEach(async () => {
   app = undefined;
   document.body.innerHTML = '';
   localStorage.clear();
+  sessionStorage.clear();
 });
 
 it('DEV-011, OD-2: the fields are labelled; the password is hidden; the code is six numeric digits', () => {
@@ -187,14 +190,6 @@ it('CLI-003: an unreadable key store is not reported as a wrong password', async
   expect(text).not.toContain('wrong');
 });
 
-it('CLI-003: outside the desktop app nothing is sent to the hub and a fixed message shows', async () => {
-  mocks.desktop = false;
-  const target = open({ Login: ok({ login: { token: TOKEN } }) });
-  await signInWith(target);
-  expect(hub.sent).toEqual([]);
-  expect(target.querySelector('[role="alert"]')?.textContent).toBe('Signing in needs the Anima desktop app, which keeps the access token.');
-});
-
 it('DEV-011: after a failed submit the invalid fields are aria-invalid and the first one has focus', async () => {
   const target = open({});
   type(target, 'username', 'ann');
@@ -233,4 +228,97 @@ it('NAV-005: the Sign in and Save address buttons are focusable by Tab in WebKit
   const buttons = [...target.querySelectorAll('button')];
   expect(buttons).toHaveLength(2);
   for (const button of buttons) expect(button.getAttribute('tabindex')).toBe('0');
+});
+
+it('CLI-002: the desktop app never sends SignInBrowser and keeps the page on a router move', async () => {
+  const target = open({ Login: ok({ login: { token: TOKEN } }) });
+  await signInWith(target);
+  expect(hub.sent.map((sent) => sent.operation)).toEqual(['Login']);
+  expect(mocks.loadClientAt).not.toHaveBeenCalled();
+});
+
+describe('in a browser', () => {
+  const SIGNED_IN = ok({ signInBrowser: { expiresAt: '2026-11-14T10:00:00Z' } });
+
+  beforeEach(() => {
+    mocks.desktop = false;
+  });
+
+  it('D-3, E-4: a sign-in sends SignInBrowser with the form input, never Login, and loads /devices as a new page', async () => {
+    const target = open({ SignInBrowser: SIGNED_IN, Login: ok({ login: { token: TOKEN } }) });
+    await signInWith(target);
+    expect(hub.sent).toEqual([{ operation: 'SignInBrowser', variables: { input: { username: 'ann', password: PASSWORD, totpCode: '123456' } } }]);
+    expect(mocks.loadClientAt).toHaveBeenCalledExactlyOnceWith('/devices');
+    expect(mocks.goToDevices).not.toHaveBeenCalled();
+    expect(mocks.writeAccessToken).not.toHaveBeenCalled();
+  });
+
+  it('OD-2: an empty code is left out of the input, as on desktop', async () => {
+    const target = open({ SignInBrowser: SIGNED_IN });
+    await signInWith(target, '');
+    expect(hub.sent[0]?.variables).toEqual({ input: { username: 'ann', password: PASSWORD } });
+  });
+
+  it('CLI-003, LOG-007: after a good sign-in nothing secret is in the DOM, the console or web storage', async () => {
+    const target = open({ SignInBrowser: SIGNED_IN });
+    await signInWith(target);
+    expect(input(target, 'password').value).toBe('');
+    expect(input(target, 'totp').value).toBe('');
+    const kept = [document.body.innerHTML, JSON.stringify({ ...localStorage }), JSON.stringify({ ...sessionStorage }), document.cookie];
+    for (const spy of consoleSpies) kept.push(JSON.stringify(spy.mock.calls));
+    for (const text of kept) expect(text).not.toMatch(new RegExp(`${PASSWORD}|123456`));
+  });
+
+  it('D-3: the Sign in button stays off while the new page loads, so a second submit sends nothing', async () => {
+    const target = open({ SignInBrowser: SIGNED_IN });
+    await signInWith(target);
+    expect(target.querySelector('button')?.disabled).toBe(true);
+    await signInWith(target);
+    expect(hub.sent).toHaveLength(1);
+  });
+
+  it('CLI-002: there is no hub address form, so the page shows one form and one button', () => {
+    const target = open({});
+    expect(target.querySelector('#hub-address')).toBeNull();
+    expect(target.textContent).not.toContain('Hub address');
+    expect(target.querySelectorAll('form')).toHaveLength(1);
+    expect(target.querySelectorAll('button')).toHaveLength(1);
+  });
+
+});
+
+describe('in a browser, a failed sign-in', () => {
+  beforeEach(() => {
+    mocks.desktop = false;
+  });
+
+  it.each([
+    ['UNAUTHENTICATED', 'The user name, password or code is wrong.'],
+    ['FORBIDDEN', 'The hub refused sign-in from here. Check the VPN client and the page address.'],
+    ['malformed', 'The hub refused the request. Check the VPN client.'],
+    ['unreachable', 'The hub did not answer. Check the VPN client.'],
+  ] as const)('LOG-007: %s shows its fixed browser message, never the hub text, and loads no page', async (code, message) => {
+    const target = open({ SignInBrowser: failure(code, `echo ${PASSWORD}`) });
+    await signInWith(target);
+    const shown = target.querySelector('[role="alert"]')?.textContent ?? '';
+    expect(shown).toBe(message);
+    expect(shown).not.toContain('hub address');
+    expect(document.body.innerHTML).not.toContain(PASSWORD);
+    expect(mocks.loadClientAt).not.toHaveBeenCalled();
+    expect(target.querySelector('button')?.disabled).toBe(false);
+  });
+
+  it('NAV-005: after a refusal with no marked field the keyboard focus is back on Sign in', async () => {
+    const target = open({ SignInBrowser: failure('UNAUTHENTICATED') });
+    await signInWith(target);
+    expect(document.activeElement).toBe(target.querySelector('button'));
+  });
+
+  it('DEV-011: hub field errors show beside their fields, as on desktop', async () => {
+    const error = { code: 'VALIDATION' as const, message: 'm', fields: [{ field: 'totpCode', message: 'The code is not accepted.' }] };
+    const target = open({ SignInBrowser: { ok: false, error } });
+    await signInWith(target);
+    expect(target.querySelector('#totp-problem')?.textContent).toBe('The code is not accepted.');
+    expect(document.activeElement).toBe(input(target, 'totp'));
+  });
 });

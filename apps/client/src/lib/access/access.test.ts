@@ -5,7 +5,7 @@ import { accessApi } from './api';
 import { fakeHub, failure, HUB_ADDRESS, ok } from './access.fixture';
 import { signInNeeded, startGuard } from './guard';
 import { isBare, isSignedOut, routePath } from './routes';
-import { signOut, TOKEN_KEPT_AFTER_LOGOUT, TOKEN_KEPT_UNCONFIRMED } from './sign-out';
+import { COOKIE_KEPT, signOut, TOKEN_KEPT_AFTER_LOGOUT, TOKEN_KEPT_UNCONFIRMED } from './sign-out';
 
 const ADDRESS = HUB_ADDRESS;
 
@@ -15,6 +15,13 @@ describe('accessApi', () => {
     const result = await accessApi(hub).login({ username: 'ann', password: 'pw', totpCode: '123456' });
     expect(result).toEqual({ ok: true, value: 'tok-1' });
     expect(sent).toEqual([{ operation: 'Login', variables: { input: { username: 'ann', password: 'pw', totpCode: '123456' } } }]);
+  });
+
+  it('D-3: signInBrowser sends the same input and returns only the expiry; there is no token in the answer', async () => {
+    const { hub, sent } = fakeHub({ SignInBrowser: ok({ signInBrowser: { expiresAt: '2026-11-14T10:00:00Z' } }) });
+    const result = await accessApi(hub).signInBrowser({ username: 'ann', password: 'pw', totpCode: '123456' });
+    expect(result).toEqual({ ok: true, value: '2026-11-14T10:00:00Z' });
+    expect(sent).toEqual([{ operation: 'SignInBrowser', variables: { input: { username: 'ann', password: 'pw', totpCode: '123456' } } }]);
   });
 
   it('SET-002: me returns the user name and logout returns the hub answer', async () => {
@@ -170,7 +177,7 @@ describe('signOut', () => {
       order.push('clear');
       return Promise.resolve();
     });
-    expect(await signOut({ api, address: ADDRESS, clearToken })).toBeNull();
+    expect(await signOut({ api, address: ADDRESS, desktop: true, clearToken })).toBeNull();
     expect(order).toEqual(['logout', 'clear']);
     expect(clearToken).toHaveBeenCalledWith(ADDRESS);
   });
@@ -178,38 +185,65 @@ describe('signOut', () => {
   it('CLI-003: the token is cleared even when logout fails', async () => {
     const { hub } = fakeHub({ Logout: failure('unreachable') });
     const clearToken = vi.fn(() => Promise.resolve());
-    expect(await signOut({ api: accessApi(hub), address: ADDRESS, clearToken })).toBeNull();
+    expect(await signOut({ api: accessApi(hub), address: ADDRESS, desktop: true, clearToken })).toBeNull();
     expect(clearToken).toHaveBeenCalledWith(ADDRESS);
   });
 
   it('CLI-003: the token is cleared even when logout rejects', async () => {
     const api = { logout: () => Promise.reject(new Error('boom')) };
     const clearToken = vi.fn(() => Promise.resolve());
-    expect(await signOut({ api, address: ADDRESS, clearToken })).toBeNull();
+    expect(await signOut({ api, address: ADDRESS, desktop: true, clearToken })).toBeNull();
     expect(clearToken).toHaveBeenCalledWith(ADDRESS);
   });
 
   it('SET-002: a key store that cannot clear after a good logout says the hub signed out', async () => {
     const { hub } = fakeHub({ Logout: ok({ logout: true }) });
     const clearToken = () => Promise.reject(new AccessTokenError('denied'));
-    expect(await signOut({ api: accessApi(hub), address: ADDRESS, clearToken })).toBe(TOKEN_KEPT_AFTER_LOGOUT);
+    expect(await signOut({ api: accessApi(hub), address: ADDRESS, desktop: true, clearToken })).toBe(TOKEN_KEPT_AFTER_LOGOUT);
   });
 
   it('SET-002: a key store that cannot clear after a failed logout does not claim the hub signed out', async () => {
     const { hub } = fakeHub({ Logout: failure('unreachable') });
     const clearToken = () => Promise.reject(new AccessTokenError('denied'));
-    expect(await signOut({ api: accessApi(hub), address: ADDRESS, clearToken })).toBe(TOKEN_KEPT_UNCONFIRMED);
+    expect(await signOut({ api: accessApi(hub), address: ADDRESS, desktop: true, clearToken })).toBe(TOKEN_KEPT_UNCONFIRMED);
   });
 
   it('CLI-003: a plain Error from the key store gives the token-kept text', async () => {
     const { hub } = fakeHub({ Logout: ok({ logout: true }) });
     const clearToken = () => Promise.reject(new Error('anything'));
-    expect(await signOut({ api: accessApi(hub), address: ADDRESS, clearToken })).toBe(TOKEN_KEPT_AFTER_LOGOUT);
+    expect(await signOut({ api: accessApi(hub), address: ADDRESS, desktop: true, clearToken })).toBe(TOKEN_KEPT_AFTER_LOGOUT);
+  });
+});
+
+describe('signOut in a browser', () => {
+  function browserSignOut(answer: HubResult<unknown>) {
+    const { hub, sent } = fakeHub({ Logout: answer });
+    const clearToken = vi.fn(() => Promise.resolve());
+    return { sent, clearToken, run: () => signOut({ api: accessApi(hub), address: ADDRESS, desktop: false, clearToken }) };
+  }
+
+  it('E-4: a confirmed logout signs the browser out and never touches a key store', async () => {
+    const c = browserSignOut(ok({ logout: true }));
+    expect(await c.run()).toBeNull();
+    expect(c.sent.map((sent) => sent.operation)).toEqual(['Logout']);
+    expect(c.clearToken).not.toHaveBeenCalled();
   });
 
-  it('CLI-003: without a key store (not-desktop) there is nothing to clear and sign-out completes', async () => {
-    const { hub } = fakeHub({ Logout: failure('UNAUTHENTICATED') });
-    const clearToken = () => Promise.reject(new AccessTokenError('not-desktop'));
-    expect(await signOut({ api: accessApi(hub), address: ADDRESS, clearToken })).toBeNull();
+  it('E-4: UNAUTHENTICATED means the cookie is no longer valid, so the browser is signed out', async () => {
+    expect(await browserSignOut(failure('UNAUTHENTICATED')).run()).toBeNull();
+  });
+
+  it.each(['unreachable', 'FORBIDDEN', 'malformed', 'INTERNAL'] as const)(
+    'CLI-003: after %s the cookie may still be valid, so the browser says so and does not leave',
+    async (code) => {
+      const c = browserSignOut(failure(code, 'hub text'));
+      expect(await c.run()).toBe(COOKIE_KEPT);
+      expect(c.clearToken).not.toHaveBeenCalled();
+    },
+  );
+
+  it('CLI-003: a logout call that rejects also keeps the browser where it is', async () => {
+    const api = { logout: () => Promise.reject(new Error('boom')) };
+    expect(await signOut({ api, address: ADDRESS, desktop: false, clearToken: () => Promise.resolve() })).toBe(COOKIE_KEPT);
   });
 });

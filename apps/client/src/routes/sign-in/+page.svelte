@@ -1,6 +1,7 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import { accessApi } from '$lib/access/api';
-  import { goToDevices, reloadClient } from '$lib/access/navigation';
+  import { goToDevices, loadClientAt, reloadClient } from '$lib/access/navigation';
   import { writeAccessToken } from '$lib/desktop/token';
   import { useHub } from '$lib/hub/context';
   import { press } from '$lib/motion/roles/press';
@@ -10,6 +11,8 @@
 
   const hub = useHub();
   const api = accessApi(hub);
+  // Read once: the platform never changes in a page, so the address form below never comes or goes (CLI-002).
+  const desktop = capabilities().keyStore;
 
   let username = $state('');
   let password = $state('');
@@ -18,18 +21,26 @@
   let message = $state<string | null>(null);
   let busy = $state(false);
   const inputs: Partial<Record<LoginField, HTMLInputElement>> = {};
+  let submitButton: HTMLButtonElement | undefined = $state();
 
   let addressText = $state(hub.address.origin);
   let addressProblem = $state<string | null>(null);
 
   async function submit(event: SubmitEvent): Promise<void> {
     event.preventDefault();
+    // One attempt at a time: a second browser sign-in would leave a token on the hub that no cookie holds.
+    if (busy) return;
     const form = { username, password, totpCode };
     // The secrets leave the page state as soon as they are read; only the user name stays (LOG-007).
     password = '';
     totpCode = '';
     busy = true;
-    const outcome = await signIn({ api, address: hub.address, desktop: capabilities().keyStore, writeToken: writeAccessToken }, form);
+    const outcome = await signIn({ api, address: hub.address, desktop, writeToken: writeAccessToken }, form);
+    if (outcome.signedIn && !desktop) {
+      // A new page, so the socket opens with the cookie the hub just set (E-4); the button stays off while it loads.
+      loadClientAt('/devices');
+      return;
+    }
     busy = false;
     if (outcome.signedIn) {
       goToDevices();
@@ -38,7 +49,13 @@
     message = outcome.message;
     fields = outcome.fields;
     const first = firstInvalid(fields);
-    if (first !== undefined) inputs[first]?.focus();
+    if (first !== undefined) {
+      inputs[first]?.focus();
+      return;
+    }
+    // The disabled button lost focus; give it back once it is enabled again, so the keyboard user stays on the form.
+    await tick();
+    submitButton?.focus();
   }
 
   function edited(field: LoginField, event: Event & { currentTarget: HTMLInputElement }): void {
@@ -90,16 +107,19 @@
   <p id="totp-problem" class="problem">{fields.totpCode ?? ''}</p>
 
   <!-- tabindex="0": WebKit skips plain buttons when Tab is pressed unless they are focusable, as for the nav links (NAV-005, WP-11 H-6). -->
-  <button type="submit" tabindex="0" disabled={busy} {@attach press()}>Sign in</button>
+  <button type="submit" tabindex="0" disabled={busy} bind:this={submitButton} {@attach press()}>Sign in</button>
   <p role="alert" class="problem form-problem">{message ?? ''}</p>
 </form>
 
-<form onsubmit={saveAddress} novalidate>
-  <label for="hub-address">Hub address</label>
-  <input id="hub-address" name="hubAddress" autocomplete="off" bind:value={addressText} aria-describedby="address-problem" />
-  <p id="address-problem" class="problem">{addressProblem ?? ''}</p>
-  <button type="submit" tabindex="0" {@attach press()}>Save address</button>
-</form>
+<!-- Desktop only: a browser talks only to the hub that served the page (CLI-002, E-2). -->
+{#if desktop}
+  <form onsubmit={saveAddress} novalidate>
+    <label for="hub-address">Hub address</label>
+    <input id="hub-address" name="hubAddress" autocomplete="off" bind:value={addressText} aria-describedby="address-problem" />
+    <p id="address-problem" class="problem">{addressProblem ?? ''}</p>
+    <button type="submit" tabindex="0" {@attach press()}>Save address</button>
+  </form>
+{/if}
 
 <style>
   h1 {
@@ -138,11 +158,19 @@
   }
 
   button {
-    transition: background-color var(--duration-fast) var(--ease-enter);
+    transition:
+      background-color var(--duration-fast) var(--ease-enter),
+      opacity var(--duration-fast) var(--ease-enter);
   }
 
-  button:hover {
+  button:hover:enabled {
     background: var(--surface-raised);
+  }
+
+  /* While the hub answers, the button shows it is off (opacity only, so nothing moves). */
+  button:disabled {
+    opacity: var(--opacity-disabled);
+    cursor: default;
   }
 
   input:focus-visible,

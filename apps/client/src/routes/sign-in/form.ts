@@ -32,11 +32,15 @@ export function fieldMessages(fields: readonly FieldError[]): FieldMessages {
   return messages;
 }
 
+const REFUSED_DESKTOP = 'The hub refused the request. Check the VPN client and the hub address.';
+
 /**
  * A fixed sentence for each way a sign-in can fail. The hub's own text is never shown here: it is the hub's
  * wording, not ours, and sign-in input must not come back in the page (LOG-007). Field messages are the exception, kept beside their field.
+ * A browser has no hub address to check (CLI-002): its FORBIDDEN is a network the hub does not permit (NET-002) or a
+ * page opened at an address other than the hub's own, whose Origin the hub refuses (K7).
  */
-export function failureMessage(error: HubError): string {
+export function failureMessage(error: HubError, desktop: boolean): string {
   switch (error.code) {
     case 'UNAUTHENTICATED':
       // The request never left: the key store could not be read, which is not a wrong password.
@@ -47,8 +51,9 @@ export function failureMessage(error: HubError): string {
     case 'unreachable':
       return 'The hub did not answer. Check the VPN client.';
     case 'FORBIDDEN':
+      return desktop ? REFUSED_DESKTOP : 'The hub refused sign-in from here. Check the VPN client and the page address.';
     case 'malformed':
-      return 'The hub refused the request. Check the VPN client and the hub address.';
+      return desktop ? REFUSED_DESKTOP : 'The hub refused the request. Check the VPN client.';
     case 'UNAVAILABLE':
       return 'The hub cannot reach its database. Try again shortly.';
     default:

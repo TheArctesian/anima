@@ -35,6 +35,16 @@ export function reloadClient(): void {
   location.reload();
 }
 
+/**
+ * Load the whole client at `path` as a new page, not a router move (E-4). After a browser sign-in or sign-out the hub has
+ * set or cleared the `HttpOnly` cookie, and only a new page opens its socket with the cookie as it is now, so no socket
+ * signed by an old cookie survives. `replace`: the page left behind does not stay in the history. The path always
+ * differs from the current one, so this is a load and never a jump within the page.
+ */
+export function loadClientAt(path: '/devices' | typeof SIGN_IN_PATH): void {
+  location.replace(resolve(path));
+}
+
 /** The path the router matches for `url`. `resolve('/')` is the base path and a slash (SvelteKit's `base` is deprecated). */
 function routeOf(url: URL): string {
   return routePath(url.pathname, resolve('/').slice(0, -1));
