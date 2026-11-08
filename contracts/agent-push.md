@@ -1,7 +1,7 @@
 # K8 — Agent push: enrolment, push and renewal
 
-Status: **draft for ruling** (WP-54 T2, CR-8). Owner: WP-54 until Phase 3 acceptance, then the programme
-(CON-001). Spec: MET-011 to MET-020, LOG-007, NET-002, NET-003, P3-004. Rust types: `agent_core::wire`.
+Status: **frozen for Phase 3** (CR-15, R-092; change only through a programme ruling, CON-001). Written by
+WP-54 T2. Spec: MET-011 to MET-020, LOG-007, NET-002, NET-003, P3-004. Rust types: `agent_core::wire`.
 
 This contract is the whole interface between `anima-agent` and the hub. The agent makes no other request.
 
@@ -67,7 +67,8 @@ Request:
   (MET-011, which stops SSH collection), and writes one event (source `metrics`, severity info) naming the
   device.
 - Every refusal (unknown, expired or used code, or a malformed body) is the same `401 ENROLMENT_REFUSED`, so
-  the answer says nothing about which codes exist.
+  the answer says nothing about which codes exist. Each is written to the event log like a push refusal
+  (Section 6), never with the code, at most once a minute per client address (CR-15).
 
 ## 4. Push (MET-014, MET-015, MET-017)
 
@@ -93,7 +94,8 @@ Request:
 - `series`: 1 to 256 entries, no two equal. `kind` is a `series.kind` text (`cpu_percent`, `memory_percent`,
   `memory_bytes`, `disk_percent`, `disk_bytes`, `network_in_bps`, `network_out_bps`, `uptime_seconds`,
   `load_1`, `load_5`, `load_15`, `gpu_percent`, `vram_percent`, `vram_bytes`, `gpu_temperature_c`,
-  `gpu_power_w`). `label` is present exactly for the disk kinds (the mount point) and the network kinds (the
+  `gpu_power_w`, `gpu_memory_bytes`). `gpu_memory_bytes` is the memory in use by a unified-memory GPU (Apple);
+  it is never a VRAM value (MET-007, R-092 D-6). `label` is present exactly for the disk kinds (the mount point) and the network kinds (the
   interface name): 1 to 128 bytes, no control character. `gpu` (0 to 63) is present exactly for the GPU kinds.
   The hub ignores a series whose kind it does not know, and the values in its column, so a newer agent can
   talk to an older hub.
@@ -145,7 +147,7 @@ The body of every refusal is `{ "error": "<CODE>" }` and nothing else. It never 
 | 422 | `OUT_OF_RANGE` | A point's `at` is more than 1 hour before or more than 60 seconds after the hub's clock | Drops that batch |
 | 503 | `UNAVAILABLE` | The hub cannot store now | Keeps the points; tries again |
 
-The hub checks in this order and stops at the first refusal: the bearer (before it reads the body), the size,
+The hub runs the push checks in this order and stops at the first refusal: the bearer (before it reads the body), the size,
 the JSON, the device, the shape, the times. Every push refusal is written to the event log (source `metrics`,
 severity warning) with its code, the client address and, when the token was valid, the device, and never with
 the token (MET-017). A refusal with no valid token is written at most once a minute per client address, so a
