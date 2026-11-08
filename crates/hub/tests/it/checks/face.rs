@@ -4,7 +4,7 @@
 //! Beat times come from the database clock, because the partition functions accept only
 //! instants near it.
 
-mod batching;
+pub(super) mod batching;
 mod beats;
 mod configs;
 mod due;
