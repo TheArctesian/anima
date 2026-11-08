@@ -60,6 +60,7 @@ sha1 = "0.11"
 subtle = "2.6"
 # Notification e-mail (WP-45 T1, D-17): SMTP over rustls (ring) with the webpki roots, on tokio.
 # No native-tls or OpenSSL, no connection pool, no `hostname` lookup; implicit TLS or STARTTLS only.
+# Never enable lettre's `tracing` feature: it logs every SMTP line, AUTH credentials included (LOG-007).
 lettre = { version = "0.11.23", default-features = false, features = ["smtp-transport", "builder", "tokio1-rustls", "ring", "webpki-roots"] }
 
 # Desktop shell (WP-16): Tauri 2 and the OS key store. keyring 3.x: macOS Keychain and Linux

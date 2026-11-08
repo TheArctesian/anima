@@ -14,6 +14,15 @@ mod smtp;
 #[cfg(test)]
 mod tests;
 
+#[cfg_attr(
+    not(test),
+    expect(
+        unused_imports,
+        reason = "the dispatcher (WP-45 T6) is the first caller"
+    )
+)]
+pub(crate) use smtp::{SmtpSecurity, SmtpServer};
+
 use std::{error::Error, io, time::Duration};
 
 use crate::targets::{AddressPolicy, TargetError};
@@ -53,11 +62,17 @@ impl Egress {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub(crate) enum SendError {
     /// The host does not resolve, or names an address the hub may not reach. The dispatcher
-    /// reports it as "The target address is not permitted." (N-5, K7).
+    /// reports it as "The target address is not permitted." (N-5, K7). Unresolved and refused
+    /// are folded into one message on purpose: telling them apart would let an operator probe
+    /// which internal names exist (no DNS oracle).
     #[error("the target address is not permitted")]
     Target(#[from] TargetError),
     #[error("the address is not an http or https URL with a host")]
     Url,
+    /// The hub could not prepare the connection itself (its TLS settings or HTTP client); no
+    /// connection was made.
+    #[error("the notification connection could not be prepared")]
+    Setup,
     #[error("the connection failed or broke")]
     Connect,
     #[error("TLS failed: the certificate is not trusted for the host name, or the handshake broke")]

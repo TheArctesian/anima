@@ -12,6 +12,7 @@ use reqwest::{
     header::HeaderMap,
     redirect::Policy,
 };
+use tokio::time::{Instant, timeout_at};
 
 use super::{Egress, SendError, TIME_LIMIT, causes, tls_broke};
 use crate::targets::{TargetError, resolve_checked};
@@ -37,21 +38,38 @@ impl Resolve for NoLookup {
 }
 
 impl Egress {
-    /// Sends `body` with `headers` to `url` as one POST. The host is resolved once and every
-    /// address checked; the request goes only to those addresses. Every header value is
-    /// marked sensitive, so none is printed in a debug view.
+    /// Sends `body` with `headers` to `url` as one POST, within [`TIME_LIMIT`] from the lookup
+    /// to the last reply byte read. The host is resolved once and every address checked; the
+    /// request goes only to those addresses. Every header value is marked sensitive, so none
+    /// is printed in a debug view.
     ///
     /// # Errors
     /// [`SendError::Url`] for a URL that is not http or https; [`SendError::Target`] when the
     /// host does not resolve or names a refused address, with no connection made;
+    /// [`SendError::TimedOut`] when no answer arrives within the limit;
     /// [`SendError::HttpStatus`] for an answer outside 2xx (a redirect included); otherwise
-    /// the connection, TLS or time limit failure.
+    /// the setup, connection or TLS failure.
     pub(crate) async fn post(
+        &self,
+        url: &Url,
+        headers: HeaderMap,
+        body: Vec<u8>,
+    ) -> Result<(), SendError> {
+        let deadline = Instant::now() + TIME_LIMIT;
+        let response = timeout_at(deadline, self.request(url, headers, body))
+            .await
+            .map_err(|_| SendError::TimedOut)??;
+        judge(response, deadline).await
+    }
+
+    /// Resolves and checks the host of `url`, then sends the POST and waits for the answer's
+    /// head.
+    async fn request(
         &self,
         url: &Url,
         mut headers: HeaderMap,
         body: Vec<u8>,
-    ) -> Result<(), SendError> {
+    ) -> Result<Response, SendError> {
         if !matches!(url.scheme(), "http" | "https") {
             return Err(SendError::Url);
         }
@@ -62,14 +80,13 @@ impl Egress {
         for value in headers.values_mut() {
             value.set_sensitive(true);
         }
-        let response = client
+        client
             .post(url.clone())
             .headers(headers)
             .body(body)
             .send()
             .await
-            .map_err(|error| classify(&error))?;
-        judge(response).await
+            .map_err(|error| classify(&error))
     }
 
     /// A client that reaches `domain` only at `addresses` and resolves no other name. An
@@ -89,32 +106,33 @@ impl Egress {
             .no_brotli()
             .no_deflate()
             .no_zstd()
-            .timeout(TIME_LIMIT)
             .dns_resolver(Arc::new(NoLookup));
         if let Some(domain) = domain {
             builder = builder.resolve_to_addrs(domain, addresses);
         }
         for der in &self.extra_roots {
-            let root = Certificate::from_der(der).map_err(|_| SendError::Tls)?;
+            let root = Certificate::from_der(der).map_err(|_| SendError::Setup)?;
             builder = builder.add_root_certificate(root);
         }
-        builder.build().map_err(|_| SendError::Tls)
+        builder.build().map_err(|_| SendError::Setup)
     }
 }
 
-/// Success for a 2xx answer, after reading and discarding at most [`REPLY_CAP`] body bytes.
-async fn judge(mut response: Response) -> Result<(), SendError> {
+/// Success for a 2xx answer, after reading and discarding at most [`REPLY_CAP`] body bytes
+/// before `deadline`.
+async fn judge(mut response: Response, deadline: Instant) -> Result<(), SendError> {
     let status = response.status();
     if !status.is_success() {
         return Err(SendError::HttpStatus(status.as_u16()));
     }
-    discard_reply(&mut response).await;
+    // The status has decided; a body still arriving at the deadline is left unread.
+    let _ = timeout_at(deadline, discard_reply(&mut response)).await;
     Ok(())
 }
 
 /// Reads and drops body chunks until [`REPLY_CAP`] bytes are read or the body ends, and
 /// returns how many were read. The status has already decided the outcome, so a body that
-/// breaks off or runs past the time limit ends the read and changes nothing.
+/// breaks off ends the read and changes nothing.
 pub(super) async fn discard_reply(response: &mut Response) -> usize {
     let mut read = 0;
     while read < REPLY_CAP {
@@ -131,8 +149,6 @@ pub(super) async fn discard_reply(response: &mut Response) -> usize {
 pub(super) fn classify(error: &reqwest::Error) -> SendError {
     if causes(error).any(<dyn Error>::is::<LookupRefused>) {
         SendError::Target(TargetError::Unresolved)
-    } else if error.is_timeout() {
-        SendError::TimedOut
     } else if tls_broke(error) {
         SendError::Tls
     } else if error.is_connect() {

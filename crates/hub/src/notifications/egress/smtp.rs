@@ -27,7 +27,8 @@ pub(crate) enum SmtpSecurity {
     /// TLS from the first byte (port 465).
     Implicit,
     /// Plain connection upgraded with STARTTLS before anything else (port 587); a server that
-    /// does not offer it is refused.
+    /// does not offer it is refused. Implicit TLS is the recommended mode: lettre reads a reply
+    /// an attacker injects in plaintext right after the STARTTLS answer as if it came over TLS.
     StartTls,
 }
 
@@ -51,8 +52,8 @@ impl Egress {
     /// [`SendError::Target`] when the host does not resolve or names a refused address, with
     /// no connection made; [`SendError::NoStartTls`] when STARTTLS is required and not
     /// offered; [`SendError::Tls`] when the certificate is not trusted for the host name;
-    /// [`SendError::SmtpReply`] when the server refuses a command; otherwise the connection or
-    /// time limit failure.
+    /// [`SendError::SmtpReply`] when the server refuses a command; otherwise the setup,
+    /// connection or time limit failure.
     pub(crate) async fn send_mail(
         &self,
         server: &SmtpServer,
@@ -80,7 +81,7 @@ impl Egress {
 
     /// TLS parameters that verify the server's certificate for `host` against the built-in
     /// roots (and a test's extra root).
-    fn tls_parameters(&self, host: &str) -> Result<TlsParameters, SendError> {
+    pub(super) fn tls_parameters(&self, host: &str) -> Result<TlsParameters, SendError> {
         let name = host
             .strip_prefix('[')
             .and_then(|inside| inside.strip_suffix(']'))
@@ -88,16 +89,16 @@ impl Egress {
         let mut builder = TlsParameters::builder(name.to_owned())
             .certificate_store(CertificateStore::WebpkiRoots);
         for der in &self.extra_roots {
-            let root = Certificate::from_der(der.clone()).map_err(|_| SendError::Tls)?;
+            let root = Certificate::from_der(der.clone()).map_err(|_| SendError::Setup)?;
             builder = builder.add_root_certificate(root);
         }
-        builder.build_rustls().map_err(|_| SendError::Tls)
+        builder.build_rustls().map_err(|_| SendError::Setup)
     }
 }
 
 /// Connects to the first of `addresses` that answers and encrypts the connection as
 /// `security` says. Never returns a connection that is not encrypted.
-async fn open(
+pub(super) async fn open(
     addresses: &[SocketAddr],
     security: SmtpSecurity,
     tls: TlsParameters,

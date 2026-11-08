@@ -1,5 +1,6 @@
 //! Local servers for the egress tests. Each records the connections it accepts, the request or
-//! command lines that reach it and the TLS server name each handshake asked for.
+//! command lines that reach it, the HTTP request headers and bodies, and the TLS server name
+//! each handshake asked for.
 
 use std::{
     net::SocketAddr,
@@ -28,13 +29,44 @@ pub(super) enum Behaviour {
     Http(Vec<u8>, Option<TlsAcceptor>),
     /// HTTP: read one request, answer 200 with a body that never ends.
     Endless,
+    /// Read whatever arrives and never answer, until the client goes.
+    Silent,
     /// SMTP over TLS from the first byte.
     SmtpImplicit(TlsAcceptor),
+    /// SMTP over TLS from the first byte that refuses every login with 535.
+    SmtpRefusingLogin(TlsAcceptor),
     /// Plain SMTP that offers no STARTTLS.
     SmtpPlain,
     /// SMTP that offers STARTTLS and upgrades with this acceptor.
     SmtpStartTls(TlsAcceptor),
+    /// SMTP that offers STARTTLS and writes a plaintext 554 right after its 220 answer, in the
+    /// same write, then upgrades with this acceptor (a STARTTLS response injection).
+    SmtpStartTlsInjecting(TlsAcceptor),
 }
+
+/// How an SMTP server answers.
+#[derive(Clone, Copy)]
+struct Script {
+    /// Whether it writes the 220 greeting first (not after STARTTLS).
+    greet: bool,
+    /// What it answers to STARTTLS; `None` when it does not offer it.
+    starttls: Option<&'static [u8]>,
+    /// What it answers to AUTH.
+    auth: &'static [u8],
+}
+
+const GO_AHEAD: &[u8] = b"220 go ahead\r\n";
+/// A plain conversation with no STARTTLS and every login accepted.
+const PLAIN: Script = Script {
+    greet: true,
+    starttls: None,
+    auth: b"235 accepted\r\n",
+};
+/// The conversation after STARTTLS: no new greeting, no second STARTTLS.
+const AFTER_STARTTLS: Script = Script {
+    greet: false,
+    ..PLAIN
+};
 
 /// What a server saw.
 #[derive(Default)]
@@ -42,6 +74,8 @@ struct Seen {
     peers: Mutex<Vec<SocketAddr>>,
     ended: AtomicUsize,
     lines: Mutex<Vec<String>>,
+    headers: Mutex<Vec<String>>,
+    bodies: Mutex<Vec<Vec<u8>>>,
     names: Mutex<Vec<String>>,
     written: AtomicUsize,
 }
@@ -88,6 +122,16 @@ impl Server {
     /// The HTTP request lines or SMTP command lines received, in order.
     pub(super) fn lines(&self) -> Vec<String> {
         self.seen.lines.lock().unwrap().clone()
+    }
+
+    /// The HTTP header lines received, in order, across all requests.
+    pub(super) fn headers(&self) -> Vec<String> {
+        self.seen.headers.lock().unwrap().clone()
+    }
+
+    /// The HTTP request bodies received, in order.
+    pub(super) fn bodies(&self) -> Vec<Vec<u8>> {
+        self.seen.bodies.lock().unwrap().clone()
     }
 
     /// The server name of each completed TLS handshake ("" when the client sent none).
@@ -148,20 +192,42 @@ async fn answer(stream: TcpStream, behaviour: Behaviour, seen: &Seen) {
             }
         }
         Behaviour::Endless => endless(stream, seen).await,
-        Behaviour::SmtpPlain => drop(smtp(stream, true, false, seen).await),
-        Behaviour::SmtpImplicit(acceptor) => {
-            if let Some(tls) = handshake(&acceptor, stream, seen).await {
-                smtp(tls, true, false, seen).await;
-            }
-        }
-        Behaviour::SmtpStartTls(acceptor) => {
-            let Some(plain) = smtp(stream, true, true, seen).await else {
-                return;
+        Behaviour::Silent => silent(stream).await,
+        Behaviour::SmtpPlain => drop(smtp(stream, PLAIN, seen).await),
+        Behaviour::SmtpImplicit(acceptor) => implicit(&acceptor, stream, PLAIN, seen).await,
+        Behaviour::SmtpRefusingLogin(acceptor) => {
+            let script = Script {
+                auth: b"535 refused\r\n",
+                ..PLAIN
             };
-            if let Some(tls) = handshake(&acceptor, plain, seen).await {
-                smtp(tls, false, false, seen).await;
-            }
+            implicit(&acceptor, stream, script, seen).await;
         }
+        Behaviour::SmtpStartTls(acceptor) => starttls(&acceptor, stream, GO_AHEAD, seen).await,
+        Behaviour::SmtpStartTlsInjecting(acceptor) => {
+            let injected = b"220 go ahead\r\n554 injected before TLS\r\n";
+            starttls(&acceptor, stream, injected, seen).await;
+        }
+    }
+}
+
+/// SMTP over TLS from the first byte, answering as `script` says.
+async fn implicit(acceptor: &TlsAcceptor, stream: TcpStream, script: Script, seen: &Seen) {
+    if let Some(tls) = handshake(acceptor, stream, seen).await {
+        smtp(tls, script, seen).await;
+    }
+}
+
+/// SMTP that offers STARTTLS, answers it with `go_ahead` and upgrades.
+async fn starttls(acceptor: &TlsAcceptor, stream: TcpStream, go_ahead: &'static [u8], seen: &Seen) {
+    let script = Script {
+        starttls: Some(go_ahead),
+        ..PLAIN
+    };
+    let Some(plain) = smtp(stream, script, seen).await else {
+        return;
+    };
+    if let Some(tls) = handshake(acceptor, plain, seen).await {
+        smtp(tls, AFTER_STARTTLS, seen).await;
     }
 }
 
@@ -176,8 +242,8 @@ async fn handshake(
     Some(tls)
 }
 
-/// Reads one request (head and `Content-Length` body), records its request line, returns the
-/// reader.
+/// Reads one request (head and `Content-Length` body), records its request line, header lines
+/// and body, returns the reader.
 async fn request<S: AsyncRead + Unpin>(stream: S, seen: &Seen) -> Option<BufReader<S>> {
     let mut reader = BufReader::new(stream);
     let mut length = 0;
@@ -190,10 +256,9 @@ async fn request<S: AsyncRead + Unpin>(stream: S, seen: &Seen) -> Option<BufRead
         if line == "\r\n" {
             break;
         }
-        if first {
-            seen.lines.lock().unwrap().push(line.trim_end().to_owned());
-            first = false;
-        }
+        let recorded = if first { &seen.lines } else { &seen.headers };
+        recorded.lock().unwrap().push(line.trim_end().to_owned());
+        first = false;
         if let Some((name, value)) = line.split_once(':')
             && name.eq_ignore_ascii_case("content-length")
         {
@@ -202,6 +267,7 @@ async fn request<S: AsyncRead + Unpin>(stream: S, seen: &Seen) -> Option<BufRead
     }
     let mut body = vec![0; length];
     reader.read_exact(&mut body).await.ok()?;
+    seen.bodies.lock().unwrap().push(body);
     Some(reader)
 }
 
@@ -226,16 +292,21 @@ async fn endless(stream: TcpStream, seen: &Seen) {
     }
 }
 
-/// One SMTP conversation. Records every command line but the message content; returns the
-/// stream when the client asks for STARTTLS.
+/// Reads and drops whatever arrives until the client closes.
+async fn silent(mut stream: TcpStream) {
+    let mut sink = [0; 1024];
+    while stream.read(&mut sink).await.is_ok_and(|read| read > 0) {}
+}
+
+/// One SMTP conversation answered as `script` says. Records every command line but the message
+/// content; returns the stream when the client asks for STARTTLS.
 async fn smtp<S: AsyncRead + AsyncWrite + Unpin>(
     stream: S,
-    greet: bool,
-    offer_starttls: bool,
+    script: Script,
     seen: &Seen,
 ) -> Option<S> {
     let mut reader = BufReader::new(stream);
-    if greet {
+    if script.greet {
         reader
             .get_mut()
             .write_all(b"220 test ESMTP\r\n")
@@ -249,21 +320,21 @@ async fn smtp<S: AsyncRead + AsyncWrite + Unpin>(
         }
         seen.lines.lock().unwrap().push(line.trim_end().to_owned());
         let verb = line.get(..4).unwrap_or_default().to_ascii_uppercase();
-        let reply: &[u8] = match verb.as_str() {
-            "EHLO" if offer_starttls => b"250-test\r\n250-STARTTLS\r\n250 AUTH PLAIN LOGIN\r\n",
-            "EHLO" => b"250-test\r\n250 AUTH PLAIN LOGIN\r\n",
-            "STAR" => {
-                reader.get_mut().write_all(b"220 go ahead\r\n").await.ok()?;
+        let reply: &[u8] = match (verb.as_str(), script.starttls) {
+            ("EHLO", Some(_)) => b"250-test\r\n250-STARTTLS\r\n250 AUTH PLAIN LOGIN\r\n",
+            ("EHLO", None) => b"250-test\r\n250 AUTH PLAIN LOGIN\r\n",
+            ("STAR", Some(go_ahead)) => {
+                reader.get_mut().write_all(go_ahead).await.ok()?;
                 return Some(reader.into_inner());
             }
-            "AUTH" => b"235 accepted\r\n",
-            "MAIL" | "RCPT" => b"250 ok\r\n",
-            "DATA" => {
+            ("AUTH", _) => script.auth,
+            ("MAIL" | "RCPT", _) => b"250 ok\r\n",
+            ("DATA", _) => {
                 reader.get_mut().write_all(b"354 go on\r\n").await.ok()?;
                 skip_content(&mut reader).await?;
                 b"250 queued\r\n"
             }
-            "QUIT" => {
+            ("QUIT", _) => {
                 let _ = reader.get_mut().write_all(b"221 bye\r\n").await;
                 return None;
             }

@@ -21,6 +21,7 @@ use crate::{
 };
 
 const NO_CONTENT: &[u8] = b"HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n";
+const BODY: &[u8] = b"{\"text\":\"web is down\"}";
 
 fn url(text: &str) -> Url {
     Url::parse(text).unwrap()
@@ -32,17 +33,12 @@ fn headers() -> HeaderMap {
         "authorization",
         HeaderValue::from_static("Bearer synthetic"),
     );
+    headers.insert("content-type", HeaderValue::from_static("application/json"));
     headers
 }
 
 async fn post(egress: &Egress, target: &str) -> Result<(), SendError> {
-    egress
-        .post(
-            &url(target),
-            headers(),
-            b"{\"text\":\"web is down\"}".to_vec(),
-        )
-        .await
+    egress.post(&url(target), headers(), BODY.to_vec()).await
 }
 
 #[tokio::test]
@@ -55,6 +51,76 @@ async fn p3_003_a_host_name_is_reached_at_its_checked_address() {
     server.settle().await;
     assert_eq!(server.connections(), 1);
     assert_eq!(server.lines(), ["POST /hook HTTP/1.1"]);
+}
+
+#[tokio::test]
+async fn p3_003_the_body_and_the_given_headers_are_sent() {
+    let server = serve(Behaviour::Http(NO_CONTENT.to_vec(), None)).await;
+
+    let sent = post(&local(), &format!("http://localhost:{}/hook", server.port)).await;
+
+    assert_eq!(sent, Ok(()));
+    server.settle().await;
+    assert_eq!(server.bodies(), [BODY]);
+    let headers: Vec<String> = server
+        .headers()
+        .iter()
+        .map(|line| line.to_ascii_lowercase())
+        .collect();
+    assert!(
+        headers.contains(&"authorization: bearer synthetic".to_owned()),
+        "{headers:?}"
+    );
+    assert!(
+        headers.contains(&"content-type: application/json".to_owned()),
+        "{headers:?}"
+    );
+}
+
+#[tokio::test]
+async fn p3_003_an_answer_outside_2xx_is_its_status() {
+    for (reply, status) in [
+        (
+            &b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n"[..],
+            404,
+        ),
+        (
+            &b"HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\n\r\n"[..],
+            503,
+        ),
+    ] {
+        let server = serve(Behaviour::Http(reply.to_vec(), None)).await;
+
+        let sent = post(&local(), &format!("http://localhost:{}/", server.port)).await;
+
+        assert_eq!(sent, Err(SendError::HttpStatus(status)));
+    }
+}
+
+#[tokio::test]
+async fn d_17_a_root_the_hub_cannot_read_is_a_setup_failure_with_no_connection() {
+    let server = serve(Behaviour::Http(NO_CONTENT.to_vec(), None)).await;
+
+    let sent = post(
+        &local().trusting(b"not a certificate".to_vec()),
+        &format!("http://localhost:{}/", server.port),
+    )
+    .await;
+
+    assert_eq!(sent, Err(SendError::Setup));
+    server.settle().await;
+    assert_eq!(server.connections(), 0);
+}
+
+#[tokio::test]
+async fn d_17_a_server_that_never_answers_ends_at_the_time_limit() {
+    let server = serve(Behaviour::Silent).await;
+
+    let sent = post(&local(), &format!("http://localhost:{}/", server.port)).await;
+
+    assert_eq!(sent, Err(SendError::TimedOut));
+    server.settle().await;
+    assert_eq!(server.connections(), 1);
 }
 
 #[tokio::test]

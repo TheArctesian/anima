@@ -1,6 +1,8 @@
 //! SMTP egress: the connection goes to a checked address, TLS names the host, and nothing
 //! that carries a credential or the message is sent before TLS (P3-003, D-17, SEC-005).
 
+use std::net::SocketAddr;
+
 use base64::{Engine, engine::general_purpose::STANDARD};
 use lettre::{Message, transport::smtp::authentication::Credentials};
 
@@ -9,10 +11,7 @@ use super::{
     servers::{Behaviour, Server, certificate, serve},
 };
 use crate::{
-    notifications::egress::{
-        Egress, SendError,
-        smtp::{SmtpSecurity, SmtpServer},
-    },
+    notifications::egress::{Egress, SendError, SmtpSecurity, SmtpServer, smtp::open},
     targets::{AddressPolicy, TargetError},
 };
 
@@ -32,12 +31,16 @@ fn login() -> Credentials {
     Credentials::new(USER.to_owned(), PASSWORD.to_owned())
 }
 
-async fn send(egress: &Egress, server: &Server, security: SmtpSecurity) -> Result<(), SendError> {
-    let target = SmtpServer {
+fn target(server: &Server, security: SmtpSecurity) -> SmtpServer {
+    SmtpServer {
         host: "localhost".to_owned(),
         port: server.port,
         security,
-    };
+    }
+}
+
+async fn send(egress: &Egress, server: &Server, security: SmtpSecurity) -> Result<(), SendError> {
+    let target = target(server, security);
     egress.send_mail(&target, Some(&login()), &message()).await
 }
 
@@ -53,12 +56,18 @@ fn credential_or_message_reached(server: &Server) -> bool {
     })
 }
 
+/// The command verbs the server received, up to DATA: what lettre sends after the message
+/// (QUIT) is its own business.
 fn verbs(server: &Server) -> Vec<String> {
-    server
+    let mut verbs: Vec<String> = server
         .lines()
         .iter()
         .map(|line| line.split(' ').next().unwrap_or_default().to_owned())
-        .collect()
+        .collect();
+    if let Some(data) = verbs.iter().position(|verb| verb == "DATA") {
+        verbs.truncate(data + 1);
+    }
+    verbs
 }
 
 #[tokio::test]
@@ -72,10 +81,7 @@ async fn d_17_implicit_tls_names_the_host_and_then_logs_in() {
     server.settle().await;
     assert_eq!(server.connections(), 1);
     assert_eq!(server.server_names(), ["localhost"]);
-    assert_eq!(
-        verbs(&server),
-        ["EHLO", "AUTH", "MAIL", "RCPT", "DATA", "QUIT"]
-    );
+    assert_eq!(verbs(&server), ["EHLO", "AUTH", "MAIL", "RCPT", "DATA"]);
 }
 
 #[tokio::test]
@@ -93,6 +99,91 @@ async fn d_17_an_untrusted_certificate_ends_implicit_tls_before_any_command() {
 }
 
 #[tokio::test]
+async fn d_17_a_certificate_for_another_name_ends_implicit_tls_before_any_command() {
+    let (der, acceptor) = certificate("other.test");
+    let server = serve(Behaviour::SmtpImplicit(acceptor)).await;
+
+    let sent = send(&local().trusting(der), &server, SmtpSecurity::Implicit).await;
+
+    assert_eq!(sent, Err(SendError::Tls));
+    server.settle().await;
+    assert_eq!(server.lines(), Vec::<String>::new());
+}
+
+#[tokio::test]
+async fn p3_003_open_reaches_the_given_address_and_names_the_given_host() {
+    let (der, acceptor) = certificate("mail.invalid");
+    let server = serve(Behaviour::SmtpImplicit(acceptor)).await;
+    let tls = local()
+        .trusting(der)
+        .tls_parameters("mail.invalid")
+        .unwrap();
+    let address: SocketAddr = ([127, 0, 0, 1], server.port).into();
+
+    // `.invalid` never resolves (RFC 6761): the connection reached the address it was given,
+    // and the handshake named the host it was given.
+    let mut connection = open(&[address], SmtpSecurity::Implicit, tls).await.unwrap();
+    connection.abort().await;
+
+    server.settle().await;
+    assert_eq!(server.connections(), 1);
+    assert_eq!(server.server_names(), ["mail.invalid"]);
+}
+
+#[tokio::test]
+async fn d_17_without_a_login_the_message_goes_over_tls_with_no_auth() {
+    let (der, acceptor) = certificate("localhost");
+    let server = serve(Behaviour::SmtpImplicit(acceptor)).await;
+    let target = target(&server, SmtpSecurity::Implicit);
+
+    let sent = local()
+        .trusting(der)
+        .send_mail(&target, None, &message())
+        .await;
+
+    assert_eq!(sent, Ok(()));
+    server.settle().await;
+    assert_eq!(server.server_names(), ["localhost"]);
+    assert_eq!(verbs(&server), ["EHLO", "MAIL", "RCPT", "DATA"]);
+}
+
+#[tokio::test]
+async fn d_17_a_refused_login_is_its_reply_code_and_sends_no_message() {
+    let (der, acceptor) = certificate("localhost");
+    let server = serve(Behaviour::SmtpRefusingLogin(acceptor)).await;
+
+    let sent = send(&local().trusting(der), &server, SmtpSecurity::Implicit).await;
+
+    assert_eq!(sent, Err(SendError::SmtpReply(535)));
+    server.settle().await;
+    assert_eq!(verbs(&server)[..2], ["EHLO", "AUTH"]);
+    assert!(!verbs(&server).contains(&"MAIL".to_owned()));
+}
+
+#[tokio::test]
+async fn d_17_a_root_the_hub_cannot_read_is_a_setup_failure_with_no_connection() {
+    let server = serve(Behaviour::SmtpPlain).await;
+    let egress = local().trusting(b"not a certificate".to_vec());
+
+    let sent = send(&egress, &server, SmtpSecurity::Implicit).await;
+
+    assert_eq!(sent, Err(SendError::Setup));
+    server.settle().await;
+    assert_eq!(server.connections(), 0);
+}
+
+#[tokio::test]
+async fn d_17_a_mail_server_that_never_answers_ends_at_the_time_limit() {
+    let server = serve(Behaviour::Silent).await;
+
+    let sent = send(&local(), &server, SmtpSecurity::Implicit).await;
+
+    assert_eq!(sent, Err(SendError::TimedOut));
+    server.settle().await;
+    assert_eq!(server.connections(), 1);
+}
+
+#[tokio::test]
 async fn d_17_starttls_names_the_host_before_the_login() {
     let (der, acceptor) = certificate("localhost");
     let server = serve(Behaviour::SmtpStartTls(acceptor)).await;
@@ -104,9 +195,7 @@ async fn d_17_starttls_names_the_host_before_the_login() {
     assert_eq!(server.server_names(), ["localhost"]);
     assert_eq!(
         verbs(&server),
-        [
-            "EHLO", "STARTTLS", "EHLO", "AUTH", "MAIL", "RCPT", "DATA", "QUIT"
-        ]
+        ["EHLO", "STARTTLS", "EHLO", "AUTH", "MAIL", "RCPT", "DATA"]
     );
 }
 
@@ -124,6 +213,19 @@ async fn d_17_a_server_without_starttls_gets_no_login_and_no_message() {
         "{:?}",
         verbs(&server)
     );
+}
+
+#[tokio::test]
+#[ignore = "lettre STARTTLS response injection; known limitation, WP-45 issue #1"]
+async fn d_17_a_reply_injected_before_starttls_is_not_read_as_a_tls_reply() {
+    let (der, acceptor) = certificate("localhost");
+    let server = serve(Behaviour::SmtpStartTlsInjecting(acceptor)).await;
+
+    let sent = send(&local().trusting(der), &server, SmtpSecurity::StartTls).await;
+
+    // The 554 came in plaintext with the STARTTLS answer; a client that discards what it
+    // buffered before the handshake never sees it.
+    assert_ne!(sent, Err(SendError::SmtpReply(554)), "{:?}", verbs(&server));
 }
 
 #[tokio::test]
