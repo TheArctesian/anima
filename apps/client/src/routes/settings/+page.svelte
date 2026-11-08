@@ -2,6 +2,7 @@
   import ApiKeysSection from '$lib/api-keys/ApiKeysSection.svelte';
   import SignOutRow from '$lib/access/SignOutRow.svelte';
   import { capabilities } from '$lib/platform/platform';
+  import MotionRow from '$lib/theme/MotionRow.svelte';
   import ThemeRow from '$lib/theme/ThemeRow.svelte';
   import TypefaceRows from '$lib/typeface/TypefaceRows.svelte';
   import DesktopRows from '$lib/updates/DesktopRows.svelte';
@@ -21,6 +22,7 @@
 <section aria-labelledby="settings-appearance">
   <h2 id="settings-appearance">Appearance</h2>
   <ThemeRow />
+  <MotionRow />
   <TypefaceRows />
 </section>
 

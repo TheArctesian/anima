@@ -85,14 +85,15 @@ function sectionTexts(target: HTMLElement, heading: string): string[] {
   return [...section.querySelectorAll('h2, p, button, span, option')].map((element) => element.textContent.trim());
 }
 
-it('SET-001, UI-005: the page is the title, then Account, then Appearance with Theme before the two fonts, then API keys', async () => {
+it('SET-001, UI-005, MOT-043: the page is the title, then Account, then Appearance with Theme, Reduce motion and the two fonts, then API keys', async () => {
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
   expect(target.firstElementChild?.tagName).toBe('H1');
   expect(sectionHeadings(target)).toEqual(['Account', 'Appearance', 'API keys']);
   expect(sectionTexts(target, 'Account')).toEqual(['Account', 'Signed in as ann', 'Sign out']);
   const fonts = ['Fira Code', 'OpenDyslexic'];
   expect(sectionTexts(target, 'Appearance')).toEqual([
-    'Appearance', 'Theme', 'Dark', 'Light', 'System', 'Interface font', ...fonts, 'Monospace font', ...fonts,
+    'Appearance', 'Theme', 'Dark', 'Light', 'System', 'Reduce motion', 'System', 'On', 'Off',
+    'Interface font', ...fonts, 'Monospace font', ...fonts,
   ]);
   expect(target.querySelectorAll('[role="switch"], img, input, textarea, a, [tabindex]:not(button)')).toHaveLength(0);
 });
