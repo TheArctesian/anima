@@ -174,7 +174,7 @@ fn with_store(
     Ok(builder.data_store_identifier(device.store_identifier()))
 }
 
-/// Linux: a WebKitGTK data folder per device under the app's data folder.
+/// Linux: a `WebKitGTK` data folder per device under the app's data folder.
 #[cfg(not(target_os = "macos"))]
 fn with_store(
     builder: WebviewBuilder<tauri::Wry>,
