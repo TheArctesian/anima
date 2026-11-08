@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { FieldError } from '$lib/hub/hub';
+  import type { SettingKey } from '../../defaults/settings';
   import { messageFor } from '../model/errors';
   import type { CheckFormValues } from '../model/values';
   import TextField from './TextField.svelte';
@@ -8,25 +9,41 @@
   interface Props {
     values: CheckFormValues;
     errors: readonly FieldError[];
+    /** Called when the operator types in one of the four settings. */
+    ontouch?: (setting: SettingKey) => void;
   }
 
-  let { values = $bindable(), errors }: Props = $props();
+  let { values = $bindable(), errors, ontouch }: Props = $props();
   const error = (field: string) => messageFor(errors, field);
 </script>
 
-<TextField label="Interval (seconds)" kind="numeric" bind:value={values.intervalSeconds} error={error('intervalSeconds')} />
-<TextField label="Retries before Down" kind="numeric" bind:value={values.retries} error={error('retries')} />
+<TextField
+  label="Interval (seconds)"
+  kind="numeric"
+  bind:value={values.intervalSeconds}
+  error={error('intervalSeconds')}
+  oninput={() => ontouch?.('intervalSeconds')}
+/>
+<TextField
+  label="Retries before Down"
+  kind="numeric"
+  bind:value={values.retries}
+  error={error('retries')}
+  oninput={() => ontouch?.('retries')}
+/>
 <TextField
   label="Retry interval (seconds)"
   kind="numeric"
   bind:value={values.retryIntervalSeconds}
   error={error('retryIntervalSeconds')}
+  oninput={() => ontouch?.('retryIntervalSeconds')}
 />
 <TextField
   label="Degraded threshold (ms)"
   kind="numeric"
   bind:value={values.degradedThresholdMs}
   error={error('degradedThresholdMs')}
+  oninput={() => ontouch?.('degradedThresholdMs')}
 />
 <ToggleField
   label="Invert"

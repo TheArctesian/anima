@@ -1,16 +1,19 @@
 // @vitest-environment jsdom
 import { expect, it, vi } from 'vitest';
 import { failure, fakeHub, ok, settled, STORED } from './defaults.fixture';
+import { defaultsReader } from './reader';
 import { saved } from '../form/check.fixture';
 import { input, installFormHarness, show, type } from '../form/form.fixture';
 
 const mocks = vi.hoisted(() => ({ hub: undefined as unknown }));
 
 const NO_HUB = Symbol('no hub');
+const BROKEN = Symbol('broken');
 
 vi.mock('$lib/hub/context', () => ({
   useHub: () => {
-    if (mocks.hub === NO_HUB) throw new Error('missing context');
+    if (mocks.hub === NO_HUB) throw new Error('missing_context');
+    if (mocks.hub === BROKEN) throw new Error('broken context');
     return mocks.hub;
   },
 }));
@@ -49,10 +52,29 @@ it('D-26: an edited check keeps its own values and does not ask for the defaults
   expect(hub.sent).toEqual([]);
 });
 
-it('D-26: a failed defaults query leaves the K1 input defaults', async () => {
-  open(failure('unreachable'));
+// The failed answer also carries a payload a wrong success check would read: a mutant that ignores `ok` shows STORED.
+const POISONED = { ...failure('unreachable'), value: { checkDefaults: STORED } } as ReturnType<typeof failure>;
+
+it('D-26: a failed defaults query leaves the K1 input defaults and the form editable', async () => {
+  open(POISONED);
   await settled();
   expect(settings()).toEqual(K1);
+  type('Retries before Down', '4');
+  expect(settings()).toEqual(['60', '4', '20', '1000']);
+});
+
+it('D-26: a defaults query that throws leaves the K1 input defaults and the form editable', async () => {
+  mocks.hub = { request: () => Promise.reject(new Error('socket closed')) };
+  show();
+  await settled();
+  expect(settings()).toEqual(K1);
+  type('Retries before Down', '4');
+  expect(settings()).toEqual(['60', '4', '20', '1000']);
+});
+
+it('D-26: an error that is not a missing hub is not hidden', () => {
+  mocks.hub = BROKEN;
+  expect(() => defaultsReader()).toThrow('broken context');
 });
 
 it('D-26: a form without a hub starts from the K1 input defaults', async () => {
@@ -73,4 +95,17 @@ it('D-26: the form is there with the K1 values before a slow answer, and keeps w
   release(ok({ checkDefaults: STORED }));
   await settled();
   expect(settings()).toEqual(['120', '7', '45', '2500']);
+});
+
+it('D-26: a value typed back to what the form started with is the operator\'s own and survives a late answer', async () => {
+  let release: (result: ReturnType<typeof ok>) => void = () => undefined;
+  const answer = new Promise<ReturnType<typeof ok>>((resolve) => {
+    release = resolve;
+  });
+  open(answer);
+  type('Interval (seconds)', '75');
+  type('Interval (seconds)', '60');
+  release(ok({ checkDefaults: STORED }));
+  await settled();
+  expect(settings()).toEqual(['60', '5', '45', '2500']);
 });

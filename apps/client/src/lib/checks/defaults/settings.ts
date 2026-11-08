@@ -1,8 +1,8 @@
 import type { CheckDefaults } from '$lib/checks/api';
 import type { CheckDefaultsInput } from '$lib/hub/generated/graphql';
-import { LIMITS, toNumber } from './range';
-import type { CheckSettingsText } from './validate';
-import { defaultsText } from './values';
+import { LIMITS, toNumber } from '../form/model/range';
+import type { CheckSettingsText } from '../form/model/validate';
+import { defaultsText } from '../form/model/values';
 
 /** The four settings of D-26, in form order, with the label the check form uses and the hub's bounds for each. */
 export const SETTING_FIELDS = [
@@ -22,13 +22,12 @@ export function defaultsInput(text: CheckSettingsText): CheckDefaultsInput {
   };
 }
 
-/**
- * D-26: the settings of a new check's form that the operator has not touched, set to `defaults`. A setting
- * that differs from `baseline` (what the form started with) is the operator's own and is left out.
- */
-export function untouchedSettings(current: CheckSettingsText, baseline: CheckSettingsText, defaults: CheckDefaults): Partial<CheckSettingsText> {
+export type SettingKey = (typeof SETTING_FIELDS)[number]['key'];
+
+/** D-26: `defaults` for the settings of a new check's form that the operator has not touched; a touched one is left out. */
+export function untouchedSettings(touched: ReadonlySet<SettingKey>, defaults: CheckDefaults): Partial<CheckSettingsText> {
   const wanted = defaultsText(defaults);
   const patch: Partial<CheckSettingsText> = {};
-  for (const { key } of SETTING_FIELDS) if (current[key] === baseline[key]) patch[key] = wanted[key];
+  for (const { key } of SETTING_FIELDS) if (!touched.has(key)) patch[key] = wanted[key];
   return patch;
 }

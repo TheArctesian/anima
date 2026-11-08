@@ -1,6 +1,6 @@
 <script lang="ts">
   import { checkDefaultsApi, type CheckDefaults } from '$lib/checks/api';
-  import { defaultsInput, SETTING_FIELDS } from '$lib/checks/form/model/defaults';
+  import { defaultsInput, SETTING_FIELDS } from './settings';
   import { messageFor } from '$lib/checks/form/model/errors';
   import { settingsErrors } from '$lib/checks/form/model/validate';
   import { defaultsText } from '$lib/checks/form/model/values';
