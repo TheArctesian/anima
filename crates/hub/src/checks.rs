@@ -49,8 +49,8 @@ pub use evaluation::{CheckSettings, CheckState, evaluate};
 pub use exposition::exposition_router;
 pub(in crate::checks) use model::Attempt;
 pub use model::{
-    Beat, Check, CheckChange, Definition, Due, FieldError, Heartbeat, HttpSetup, Missing, NewCheck,
-    PushToken, Recorded, SnmpSetup,
+    Beat, Check, CheckChange, CheckDefaults, Definition, Due, FieldError, Heartbeat, HttpSetup,
+    Missing, NewCheck, PushToken, Recorded, SnmpSetup,
 };
 pub use push::push_router;
 pub use scheduler::{Probing, spawn_scheduler};
@@ -228,8 +228,27 @@ pub async fn resolved_ips(
     store::resolved_ips(db, devices).await
 }
 
-/// Adds the default check, an ICMP check named "Ping" with the contract defaults, in the
-/// caller's transaction (spec 6.2).
+/// The settings a new check starts with (D-26, DB-011).
+///
+/// # Errors
+/// `Database` when the read fails.
+pub async fn defaults(db: &PgPool) -> Result<CheckDefaults, Error> {
+    store::read_defaults(db).await
+}
+
+/// Replaces the stored defaults in the caller's transaction.
+///
+/// # Errors
+/// `Validation` naming each field outside the bounds of `checks.checks`.
+pub async fn set_defaults(
+    conn: &mut PgConnection,
+    new: CheckDefaults,
+) -> Result<CheckDefaults, Error> {
+    store::write_defaults(conn, new).await
+}
+
+/// Adds the default check, an ICMP check named "Ping" with the stored defaults, in the
+/// caller's transaction (spec 6.2, D-26).
 ///
 /// # Errors
 /// `Validation` (`deviceId`) when there is no such device.
@@ -238,6 +257,7 @@ pub async fn add_default_check(
     device: DeviceId,
 ) -> Result<CheckId, Error> {
     let id = CheckId::from(Uuid::now_v7());
+    let settings = store::read_defaults(&mut *conn).await?.settings();
     let config = CheckConfig::Icmp {
         timeout_ms: 2000,
         ip_version: IpVersion::V4,
@@ -247,7 +267,7 @@ pub async fn add_default_check(
         parent: None,
         name: "Ping",
         config: &config,
-        settings: CheckSettings::default(),
+        settings,
         push_token: None,
         sealed: None,
     };

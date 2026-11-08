@@ -21,7 +21,7 @@ use crate::{
     ids::{CheckId, DeviceId},
 };
 
-fn small(value: u32) -> i32 {
+pub(super) fn small(value: u32) -> i32 {
     i32::try_from(value).unwrap_or(i32::MAX)
 }
 
