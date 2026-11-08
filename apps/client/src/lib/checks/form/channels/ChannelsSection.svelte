@@ -27,7 +27,6 @@
   }
 
   function toggle(id: string, on: boolean): void {
-    draft.touch();
     draft.values.channelIds = on ? [...draft.values.channelIds, id] : draft.values.channelIds.filter((chosen) => chosen !== id);
   }
 </script>

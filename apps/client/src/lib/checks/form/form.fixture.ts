@@ -28,10 +28,11 @@ interface Options {
   check?: CheckFields | null;
   siblings?: SiblingCheck[];
   onSave?: (values: CheckFormValues) => Promise<HubResult<unknown>>;
+  onDone?: () => void;
 }
 
-export function show({ check = null, siblings = [], onSave = () => Promise.resolve(OK) }: Options = {}): HTMLFormElement {
-  app = mount(CheckForm, { target: document.body, props: { check, siblings, onSave, onCancel: () => undefined } });
+export function show({ check = null, siblings = [], onSave = () => Promise.resolve(OK), onDone }: Options = {}): HTMLFormElement {
+  app = mount(CheckForm, { target: document.body, props: { check, siblings, onSave, onDone, onCancel: () => undefined } });
   flushSync();
   return document.querySelector('form') as HTMLFormElement;
 }

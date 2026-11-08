@@ -35,10 +35,12 @@
     siblings: readonly SiblingCheck[];
     /** Saves the values; the route builds `createCheckInput` or `updateCheckInput` from them. */
     onSave: (values: CheckFormValues) => Promise<HubResult<unknown>>;
+    /** Called once everything went in, so the owner closes the form; an owner that closes on `onSave` alone would hide a failed channel save. */
+    onDone?: () => void;
     onCancel: () => void;
   }
 
-  const { check, siblings, onSave, onCancel }: Props = $props();
+  const { check, siblings, onSave, onDone, onCancel }: Props = $props();
 
   const TYPES: readonly { value: CheckType; label: string }[] = [
     { value: 'ICMP', label: 'Ping (ICMP)' },
@@ -91,6 +93,8 @@
   let advancedOpen = $state(false);
   /** NOT-003, NOT-005: a check reads and saves its own channels apart from the check (F-3); null without a hub. */
   const channels = new ChannelsDraft(untrack(() => check?.id ?? null), untrack(() => contextChannelCalls()));
+  /** The ID of the check this form created whose channels did not save; a further Save then sends only the channels. */
+  let addedId = $state<string | null>(null);
   const resendId = `${formId}-resend`;
 
   const candidates = $derived(groupCandidates(check?.id ?? null, siblings));
@@ -115,22 +119,41 @@
     document.getElementById(resendId)?.focus();
   }
 
+  /** The channels of the check just created failed: say so, and focus the resend input when it is the one refused. */
+  async function channelsFailed(created: boolean): Promise<void> {
+    if (created && !channels.resendInvalid) channels.checkAdded();
+    await focusResend();
+  }
+
+  /** The check exists already: sends only its channels again. */
+  async function retryChannels(id: string): Promise<void> {
+    if ((await channels.save(id)) === 'failed') await channelsFailed(true);
+    else onDone?.();
+  }
+
   /**
-   * An edit saves the channels first: the route closes the form once the check is saved, and a refusal of the
-   * channels must still be seen. A new check has no ID yet, so its channels go in after it.
+   * An edit saves the channels first, so a refusal is seen while the form is still open. A new check has no ID yet,
+   * so its channels go in after it; if they fail the check exists, and the next Save sends only the channels
+   * (`addedId`), never a second check. The form tells its owner it is done only when everything went in.
    */
   async function submit(event: SubmitEvent): Promise<void> {
     event.preventDefault();
     if (saving) return;
-    const invalid = validateCheck(values, check === null ? null : initial);
-    show(invalid);
-    if (invalid.length > 0) return;
+    if (addedId === null) {
+      const invalid = validateCheck(values, check === null ? null : initial);
+      show(invalid);
+      if (invalid.length > 0) return;
+    }
     if (!channels.check()) {
       await focusResend();
       return;
     }
     saving = true;
     try {
+      if (addedId !== null) {
+        await retryChannels(addedId);
+        return;
+      }
       const sent = check === null ? 'skipped' : await channels.save(check.id);
       if (sent === 'failed') {
         await focusResend();
@@ -143,7 +166,12 @@
         return;
       }
       const id = check === null ? createdId(result.value) : null;
-      if (id !== null && (await channels.save(id)) === 'failed') await focusResend();
+      if (id !== null && (await channels.save(id)) === 'failed') {
+        addedId = id;
+        await channelsFailed(true);
+        return;
+      }
+      onDone?.();
     } finally {
       saving = false;
     }
@@ -206,7 +234,7 @@
 {#snippet actions()}
   <div class="actions">
     <PressButton label="Cancel" onclick={onCancel} />
-    <PressButton label={check === null ? 'Add check' : 'Save check'} kind="primary" submit form={formId} busy={saving} />
+    <PressButton label={addedId !== null ? 'Save channels' : check === null ? 'Add check' : 'Save check'} kind="primary" submit form={formId} busy={saving} />
   </div>
 {/snippet}
 
