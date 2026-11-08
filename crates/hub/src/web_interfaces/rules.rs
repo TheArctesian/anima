@@ -4,6 +4,7 @@
 use reqwest::Url;
 
 use super::model::{FieldError, Fingerprint, OpenIn, WebInterfaceInput};
+use crate::text::is_invisible;
 
 const URL_MAX_BYTES: usize = 2048;
 const LABEL_MAX_CHARS: usize = 100;
@@ -42,7 +43,7 @@ pub(super) fn parse_url(text: &str) -> Result<(String, Url), FieldError> {
     }
     if text
         .chars()
-        .any(|c| c.is_control() || c.is_whitespace() || crate::text::is_invisible(c))
+        .any(|c| c.is_control() || c.is_whitespace() || is_invisible(c))
     {
         return Err(invalid(
             "The URL cannot contain spaces, control or invisible characters.",
@@ -103,7 +104,7 @@ pub(super) fn host_label(host: &str) -> String {
 }
 
 fn is_unsafe_in_label(c: char) -> bool {
-    c.is_control() || crate::text::is_invisible(c)
+    c.is_control() || is_invisible(c)
 }
 
 /// The fingerprint in 64 hex digits, colons between byte pairs allowed, any case (D-5).

@@ -272,7 +272,16 @@ fn log_007_messages_lose_bidi_zero_width_and_separator_characters() {
     let text = "ok\u{202E}gnp.exe\u{2028}line\u{2029}para\u{200B}zw\u{FEFF}bom\u{061C}alm";
     assert_eq!(clean_message(text), "okgnp.exelineparazwbomalm");
     for c in [
-        '\u{200B}', '\u{200F}', '\u{202A}', '\u{2060}', '\u{2069}', '\u{FEFF}', '\u{061C}',
+        '\u{200B}',
+        '\u{200F}',
+        '\u{202A}',
+        '\u{2060}',
+        '\u{2069}',
+        '\u{FEFF}',
+        '\u{061C}',
+        '\u{0600}',
+        '\u{0890}',
+        '\u{1D173}',
     ] {
         assert_eq!(clean_message(&format!("a{c}b")), "ab", "{c:?}");
     }

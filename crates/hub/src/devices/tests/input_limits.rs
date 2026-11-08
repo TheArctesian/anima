@@ -12,7 +12,7 @@ fn device_with(change: impl FnOnce(&mut NewDeviceInput)) -> Result<NewDevice, Ve
 
 /// A newline, a right-to-left override and an isolate, NUL, the line and paragraph separators,
 /// the left-to-right and right-to-left marks, and the Arabic letter mark.
-const UNSAFE: [&str; 9] = [
+const UNSAFE: [&str; 13] = [
     "a\nb",
     "a\u{202E}b",
     "a\u{2067}b",
@@ -22,6 +22,10 @@ const UNSAFE: [&str; 9] = [
     "a\u{200E}b",
     "a\u{200F}b",
     "a\u{061C}b",
+    "a\u{200D}b",
+    "a\u{AD}b",
+    "a\u{2065}b",
+    "a\u{FEFF}b",
 ];
 
 #[test]
