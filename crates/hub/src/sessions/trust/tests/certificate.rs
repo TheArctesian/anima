@@ -89,6 +89,11 @@ fn sec_007_a_subject_loses_control_and_bidirectional_characters() {
         Some("CN=abcd"),
         "format characters and separators go too"
     );
+    assert_eq!(
+        cleaned_subject("CN=a\u{2065}b\u{e0002}c").as_deref(),
+        Some("CN=abc"),
+        "the widest table covers unassigned format slots"
+    );
 }
 
 #[test]
