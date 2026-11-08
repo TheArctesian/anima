@@ -221,6 +221,9 @@ describe("K6 phase3 fixtures", () => {
     expect(strings.filter((v) => /anima_[A-Za-z0-9_-]{20,}/.test(v))).toEqual([]);
   });
 
+});
+
+describe("K6 phase3 fixtures: timestamps and coverage", () => {
   test("every timestamp is RFC 3339 UTC with zero-padded fields", () => {
     const stamp = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/;
     for (const [name, doc] of [["phase1", phase1], ["phase2", phase2], ["phase3", phase3]] as const) {
