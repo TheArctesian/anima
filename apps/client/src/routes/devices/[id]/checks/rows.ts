@@ -13,6 +13,7 @@ const TYPE_LABELS: Record<CheckType, string> = {
   SNMP: 'SNMP',
   TAILSCALE_PING: 'Tailscale ping',
   SYSTEMD: 'systemd',
+  DOMAIN_EXPIRY: 'Domain expiry',
 };
 
 const NONE = '—';

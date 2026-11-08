@@ -6,7 +6,7 @@
 # An addition marked @pending is ignored until the hub declares it; then the
 # programme orchestrator removes @pending (P2-002, P3-002, K7 / WP-17 E-2).
 # Conventions: contracts/conventions.md.
-# Every operation needs a valid token, except `login` (API-003).
+# Every operation needs a valid token, except `login`, `signInBrowser` and `joinShare` (API-003, D-4, D-7).
 
 scalar DateTime # RFC 3339, UTC
 scalar IpAddr # "10.10.0.12" or an IPv6 address

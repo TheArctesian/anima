@@ -44,6 +44,7 @@
     { value: 'SYSTEMD', label: 'systemd service' },
     { value: 'SNMP', label: 'SNMP' },
     { value: 'TAILSCALE_PING', label: 'Tailscale ping' },
+    // DOMAIN_EXPIRY is not offered until its editor exists: WP-50 (D-29).
   ];
 
   // Inside a modal the actions go to its footer; the submit button is tied to the form by its ID.

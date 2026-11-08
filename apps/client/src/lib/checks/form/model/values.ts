@@ -152,6 +152,9 @@ function withConfig(values: CheckFormValues, config: CheckConfigFields): CheckFo
       return { ...values, push: { path: config.pushPath } };
     case 'GroupConfig':
       return { ...values, group: { childIds: config.children.map((child) => child.id) } };
+    case 'DomainExpiryConfig':
+      // DOMAIN_EXPIRY editor: WP-50 (D-29). The form has no fields for it yet; it keeps its defaults.
+      return values;
     case 'DockerConfig':
     case 'SystemdConfig':
     case 'SnmpConfig':

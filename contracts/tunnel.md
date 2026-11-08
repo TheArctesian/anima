@@ -153,7 +153,7 @@ The Guacamole tunnel's causes; Section 8.6 gives the terminal tunnel's causes fo
 | Idle timeout | 4002 | `TIMEOUT` |
 | Hub shutdown | 1001 | `HUB_SHUTDOWN` |
 
-On every end the hub: closes both sockets; sets `ended_at` and `end_reason` on the session row; publishes an `events::Signal::Event` (`Source::Session`, severity Info; Error for `HOST_KEY_MISMATCH` and `SERVER_CERTIFICATE_MISMATCH`; Warning for `AUTH_FAILED`, `GATEWAY_ERROR` and `PROTOCOL_ERROR`; R-032, R-034); writes the audit entry `session.end`. The hub never records session content (RA-008).
+On every end the hub: closes both sockets; sets `ended_at` and `end_reason` on the session row; publishes an `events::Signal::Event` (`Source::Session`, severity Info; Error for `HOST_KEY_MISMATCH` and `SERVER_CERTIFICATE_MISMATCH`; Warning for `AUTH_FAILED`, `GATEWAY_ERROR` and `PROTOCOL_ERROR`; R-032, R-034); writes the audit entry `session.end`. The hub never records session content (RA-008), unless recording is on for the device (RA-040, Section 11, Phase 3).
 
 (Phase 3) When a session ends, every share of it ends, and each viewer's socket closes with 4004 (Section
 10). The recorder finishes before the session row is written.
