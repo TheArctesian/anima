@@ -2,6 +2,9 @@
   import Icon from '$lib/icons/Icon.svelte';
   import { press } from '$lib/motion/roles/press';
   import { popover } from '$lib/motion/roles/transitions';
+  import { capabilities } from '$lib/platform/platform';
+  import PinnedFingerprint from '$lib/web-interfaces/open/PinnedFingerprint.svelte';
+  import { pinnedFingerprintToShow } from '$lib/web-interfaces/open/pinned';
   import type { WebInterface } from '$lib/web-interfaces/api';
   import './actions.css';
   import { placeNear } from './placement';
@@ -16,7 +19,10 @@
 
   const { deviceName, interfaces, onOpen }: Props = $props();
   const id = $props.id();
-  const single = $derived(interfaces.length === 1 ? interfaces[0] : undefined);
+  // A browser cannot pin (WEB-008), so its menu shows each pin for the operator to compare with the browser's certificate view (WEB-011).
+  // The menu then opens even for one interface, so the pin is seen before the tab opens.
+  const showPin = !capabilities().webViewTabs;
+  const single = $derived(interfaces.length === 1 && !(showPin && pinnedFingerprintToShow(interfaces[0]) !== null) ? interfaces[0] : undefined);
   let open = $state(false);
   let root: HTMLElement | undefined;
   let button = $state<HTMLButtonElement>();
@@ -89,17 +95,21 @@
   {#if open}
     <div class="panel" id="{id}-panel" role="group" aria-label="Web interfaces of {deviceName}" transition:popover={{ from: button }} {@attach placeNear(() => button)}>
       {#each interfaces as webInterface (webInterface.id)}
-        <button
-          type="button"
-          class="choice"
-          tabindex="0"
-          onclick={() => {
-            choose(webInterface);
-          }}
-        >
-          <span class="label">{webInterface.label}</span>
-          <span class="url">{webInterface.url}</span>
-        </button>
+        <div class="row">
+          <button
+            type="button"
+            class="choice"
+            tabindex="0"
+            aria-describedby={showPin && pinnedFingerprintToShow(webInterface) !== null ? `${id}-pin-${webInterface.id}` : undefined}
+            onclick={() => {
+              choose(webInterface);
+            }}
+          >
+            <span class="label">{webInterface.label}</span>
+            <span class="url">{webInterface.url}</span>
+          </button>
+          {#if showPin}<PinnedFingerprint {webInterface} id="{id}-pin-{webInterface.id}" />{/if}
+        </div>
       {/each}
     </div>
   {/if}
@@ -129,6 +139,17 @@
     background: var(--material-overlay-bg);
     backdrop-filter: blur(var(--material-overlay-blur)) saturate(var(--material-overlay-saturate));
     box-shadow: var(--elevation-2);
+  }
+
+  /* The pin sits under its choice but outside the button, so it is not part of the button's name. */
+  .row {
+    display: flex;
+    flex-direction: column;
+    padding-block-end: var(--space-1);
+  }
+
+  .row > :global(.pinned) {
+    padding-inline: var(--space-2);
   }
 
   .choice {
