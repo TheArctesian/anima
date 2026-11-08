@@ -1,17 +1,12 @@
-use std::{
-    io::Read,
-    process::{Command, Stdio},
-    thread,
-    time::{Duration, Instant},
-};
+use std::{ffi::OsStr, time::Duration};
 
 use super::OperatingSystem;
+use crate::os_program::{self, AfterLimit, Limit, Stdout};
 
 /// Prints the macOS computer name. An absolute path, so `PATH` cannot swap it.
 const SCUTIL: &str = "/usr/sbin/scutil";
 /// How long `scutil` may take; it answers at once.
 const PATIENCE: Duration = Duration::from_secs(2);
-const POLL: Duration = Duration::from_millis(10);
 /// The most output read from the name program; a computer name is far shorter.
 const MAX_OUTPUT: u64 = 1024;
 
@@ -48,35 +43,13 @@ pub(super) fn short_host_name(host: &str) -> Option<String> {
 /// What `program` prints with `args` (no shell), if it exits successfully within `patience`.
 /// A program still running then is killed. At most `MAX_OUTPUT` bytes are kept.
 pub(super) fn output_of(program: &str, args: &[&str], patience: Duration) -> Option<Vec<u8>> {
-    let mut child = Command::new(program)
-        .args(args)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()
-        .ok()?;
-    let deadline = Instant::now() + patience;
-    let status = loop {
-        match child.try_wait() {
-            Ok(Some(status)) => break status,
-            Ok(None) if Instant::now() < deadline => thread::sleep(POLL),
-            Ok(None) | Err(_) => {
-                // The output no longer matters; killing and waiting only reap the child.
-                let _ = child.kill();
-                let _ = child.wait();
-                return None;
-            }
-        }
+    let args: Vec<&OsStr> = args.iter().map(OsStr::new).collect();
+    let limit = Limit {
+        patience,
+        after: AfterLimit::Kill,
     };
-    if !status.success() {
-        return None;
-    }
-    let mut output = Vec::new();
-    child
-        .stdout
-        .take()?
-        .take(MAX_OUTPUT)
-        .read_to_end(&mut output)
-        .ok()?;
-    Some(output)
+    let output = Stdout::Capture {
+        max_bytes: MAX_OUTPUT,
+    };
+    os_program::run(program, &args, limit, output).ok()
 }

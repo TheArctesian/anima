@@ -2,10 +2,10 @@
 //! Sharing, where Remote Login (SSH, R-059) and Screen Sharing (R-079) are turned on. The web
 //! view names no pane or URL; the command opens one fixed pane.
 
-use std::process::{Command, Stdio};
-
 use serde::{Serialize, Serializer, ser::SerializeStruct};
 use tauri_plugin_log::log;
+
+use crate::os_program::{self, OsProgramError};
 
 /// System Settings → General → Sharing, which holds the Remote Login and Screen Sharing switches (macOS 13 and later).
 const SHARING_PANE: &str = "x-apple.systempreferences:com.apple.Sharing-Settings.extension";
@@ -45,24 +45,14 @@ impl Serialize for SystemSettingsError {
     }
 }
 
-/// Runs `opener` with `target` as its one argument (no shell) and waits for its exit status.
-/// `open` hands a settings URL to System Settings and exits at once.
+/// Runs `opener` with `target` as its one argument (no shell) and waits for its exit status,
+/// as long as every opener may (`os_program::OPENER_PATIENCE`). `open` hands a settings URL to
+/// System Settings and exits at once.
 fn open_with(opener: &str, target: &str) -> Result<(), SystemSettingsError> {
-    let status = Command::new(opener)
-        .arg(target)
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .map_err(|error| match error.kind() {
-            std::io::ErrorKind::NotFound => SystemSettingsError::Unavailable,
-            _ => SystemSettingsError::Failed,
-        })?;
-    if status.success() {
-        Ok(())
-    } else {
-        Err(SystemSettingsError::Failed)
-    }
+    os_program::open(opener, target.as_ref()).map_err(|error| match error {
+        OsProgramError::NotFound => SystemSettingsError::Unavailable,
+        _ => SystemSettingsError::Failed,
+    })
 }
 
 /// Opens System Settings at Sharing, where Remote Login and Screen Sharing are turned on.
