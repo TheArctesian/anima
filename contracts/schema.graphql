@@ -924,7 +924,7 @@ enum EventSource {
   ACCESS
   HUB
   METRICS
-  NOTIFICATION @pending
+  NOTIFICATION
 }
 
 type Event {

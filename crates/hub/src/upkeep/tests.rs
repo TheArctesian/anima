@@ -14,7 +14,7 @@ fn partition(table: &str, now: DateTime<Utc>, days_ago: u64) -> String {
 
 async fn make_partitions(db: &PgPool, now: DateTime<Utc>, days_ago: u64) {
     let day = now - Days::new(days_ago);
-    for schema in ["checks", "metrics"] {
+    for schema in ["checks", "metrics", "notifications"] {
         sqlx::query(&format!("select {schema}.ensure_day_partition($1)"))
             .bind(day)
             .execute(db)
@@ -71,8 +71,11 @@ async fn hub_005_each_domain_drops_by_its_own_period(db: PgPool) {
     set_period(&db, "heartbeats", 5).await;
     set_period(&db, "metrics", 15).await;
     set_period(&db, "events", 30).await;
+    set_period(&db, "deliveries", 7).await;
 
     keep(&db, now).await.unwrap();
+
+    assert!(!exists(&db, &partition("notifications.deliveries", now, 10)).await);
 
     assert!(!exists(&db, &partition("checks.heartbeats", now, 10)).await);
     assert!(exists(&db, &partition("metrics.samples", now, 10)).await);
@@ -81,8 +84,11 @@ async fn hub_005_each_domain_drops_by_its_own_period(db: PgPool) {
     make_partitions(&db, now, 10).await;
     set_period(&db, "heartbeats", 15).await;
     set_period(&db, "metrics", 5).await;
+    set_period(&db, "deliveries", 15).await;
 
     keep(&db, now).await.unwrap();
+
+    assert!(exists(&db, &partition("notifications.deliveries", now, 10)).await);
 
     assert!(exists(&db, &partition("checks.heartbeats", now, 10)).await);
     assert!(!exists(&db, &partition("metrics.samples", now, 10)).await);

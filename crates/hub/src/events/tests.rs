@@ -82,13 +82,14 @@ const SEVERITIES: [(Severity, &str); 3] = [
     (Severity::Error, "error"),
 ];
 
-const SOURCES: [(Source, &str); 6] = [
+const SOURCES: [(Source, &str); 7] = [
     (Source::Check, "check"),
     (Source::Session, "session"),
     (Source::Device, "device"),
     (Source::Access, "access"),
     (Source::Hub, "hub"),
     (Source::Metrics, "metrics"),
+    (Source::Notifications, "notification"),
 ];
 
 /// The value whose contract text is `text`; panics on text the contract does not list.
@@ -313,7 +314,7 @@ async fn log_004_severity_and_source_use_the_contract_graphql_names() {
     );
     assert!(
         sdl.contains(
-            "enum EventSource {\n\tCHECK\n\tSESSION\n\tDEVICE\n\tACCESS\n\tHUB\n\tMETRICS\n}"
+            "enum EventSource {\n\tCHECK\n\tSESSION\n\tDEVICE\n\tACCESS\n\tHUB\n\tMETRICS\n\tNOTIFICATION\n}"
         ),
         "{sdl}"
     );
