@@ -1,8 +1,8 @@
-import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { HUB_HOST } from './access';
+import { inlineScriptHashes } from './inline-scripts';
 
 // The web client as the hub serves it (K7 "HTTP surface", WP-43 A-2): the production build with the static file headers.
 
@@ -25,17 +25,6 @@ const TYPES: Record<string, string> = {
   '.txt': 'text/plain; charset=utf-8',
   '.webmanifest': 'application/manifest+json',
 };
-
-/** `'sha256-<base64>'` of each inline `<script>` body of `html`, in page order, as the hub hashes them (A-2). */
-export function inlineScriptHashes(html: string): string[] {
-  const hashes: string[] = [];
-  for (const match of html.matchAll(/<script(\s[^>]*)?>([\s\S]*?)<\/script/gi)) {
-    const attributes = match[1] ?? '';
-    if (/(^|\s)src\s*=/i.test(attributes)) continue;
-    hashes.push(`'sha256-${createHash('sha256').update(match[2] ?? '', 'utf8').digest('base64')}'`);
-  }
-  return hashes;
-}
 
 /** The K7 `Content-Security-Policy` value for a page whose inline scripts hash to `hashes`. */
 export function contentSecurityPolicy(hashes: readonly string[]): string {

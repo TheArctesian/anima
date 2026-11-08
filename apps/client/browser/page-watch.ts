@@ -16,6 +16,11 @@ export interface PageWatch {
 
 const BINDING = 'animaReportViolation';
 
+/** `url` without its query and fragment: a blocked tunnel URL carries a ticket (LOG-007). */
+export function withoutQuery(url: string): string {
+  return url.replace(/[?#].*$/s, '');
+}
+
 // Runs in the page before any of its scripts.
 function listenForViolations(binding: string): void {
   document.addEventListener(
@@ -33,7 +38,9 @@ export async function watchPage(page: Page): Promise<PageWatch> {
   const cspViolations: CspViolation[] = [];
   const consoleErrors: string[] = [];
   const pageErrors: string[] = [];
-  await page.exposeFunction(BINDING, (violation: CspViolation) => cspViolations.push(violation));
+  await page.exposeFunction(BINDING, (violation: CspViolation) =>
+    cspViolations.push({ ...violation, blockedUri: withoutQuery(violation.blockedUri), sourceFile: withoutQuery(violation.sourceFile) }),
+  );
   await page.addInitScript(listenForViolations, BINDING);
   page.on('console', (message) => {
     if (message.type() === 'error') consoleErrors.push(message.text());
