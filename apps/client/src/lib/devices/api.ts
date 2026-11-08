@@ -316,3 +316,23 @@ export interface ReadingsChange {
   readonly deviceId: string;
   readonly readings: Readings;
 }
+
+// F-3: the pending session policy fields (RA-036, RA-040) have their own documents, so a hub without them
+// still answers every other device operation.
+export const DevicePolicy = graphql(`
+  query DevicePolicy($id: ID!) {
+    device(id: $id) {
+      sessionLimit
+      recordSessions
+    }
+  }
+`);
+
+export const SetDevicePolicy = graphql(`
+  mutation SetDevicePolicy($id: ID!, $input: UpdateDeviceInput!) {
+    updateDevice(id: $id, input: $input) {
+      sessionLimit
+      recordSessions
+    }
+  }
+`);

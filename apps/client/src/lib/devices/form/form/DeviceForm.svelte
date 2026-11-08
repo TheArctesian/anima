@@ -16,6 +16,9 @@
   import { firstInvalidField, formErrors, inputId, replaceField, sectionOf } from './errors';
   import GeneralSection from './GeneralSection.svelte';
   import { emptyRemoteSecrets } from '../remote/values';
+  import { contextPolicyCalls } from '../policy/calls';
+  import { PolicyDraft } from '../policy/draft.svelte';
+  import PolicySection from '../policy/PolicySection.svelte';
   import RdpSection from '../remote/RdpSection.svelte';
   import TransferSection from '../remote/TransferSection.svelte';
   import VncSection from '../remote/VncSection.svelte';
@@ -103,6 +106,9 @@
   let rdp = $state(untrack(() => section === 'rdp'));
   let vnc = $state(untrack(() => section === 'vnc'));
   let files = $state(false);
+  let sessions = $state(false);
+  /** RA-036, RA-040: a saved device reads its own policy and saves it apart from the device (F-3). */
+  const policy = new PolicyDraft(untrack(() => deviceId), device === null ? null : contextPolicyCalls());
   let root = $state<HTMLElement>();
 
   const creating = $derived(device === null);
@@ -187,8 +193,20 @@
       await show(found);
       return;
     }
+    if (!policy.check()) {
+      sessions = true;
+      await tick();
+      root?.querySelector<HTMLElement>('#device-policy-sessionLimit')?.focus();
+      return;
+    }
     saving = true;
-    const result = await onSave($state.snapshot(values), placement());
+    // The policy goes first: the page starts the form again from the saved device once the device save succeeds.
+    if (!(await policy.save())) {
+      saving = false;
+      sessions = true;
+      return;
+    }
+    const result = await onSave({ ...$state.snapshot(values), ...(creating ? { policy: $state.snapshot(policy.values) } : {}) }, placement());
     saving = false;
     if (result.ok) {
       values.credential = { password: '', privateKey: '', passphrase: '' };
@@ -274,6 +292,13 @@
         {/if}
       </Disclosure>
     </div>
+    {#if policy.phase !== 'absent'}
+      <div data-section="sessions">
+        <Disclosure label="Sessions" level={3} bind:open={sessions}>
+          <PolicySection {policy} />
+        </Disclosure>
+      </div>
+    {/if}
     <div data-section="files">
       <Disclosure label="Files and clipboard" level={3} bind:open={files}>
         <TransferSection bind:values />
