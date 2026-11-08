@@ -6,7 +6,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import type { Hub, HubResult } from '$lib/hub/hub';
 import { FIXTURE_CHANNELS } from '$lib/notifications/notifications.fixture';
 import { HTTP_SAVED } from '../check.fixture';
-import { button, installFormHarness, settle, show, submit, type } from '../form.fixture';
+import { button, input, installFormHarness, settle, show, submit, type } from '../form.fixture';
 import { ADDED_SENTENCE, LOAD_SENTENCE, PARTIAL_SENTENCE, SAVE_SENTENCE } from './draft.svelte';
 import { RESEND_SENTENCE } from './channels';
 
@@ -177,7 +177,8 @@ it('F-3: a failed channel save keeps the check unsaved and says so in a fixed se
 it('F-3: "saved; check was not" shows only when the channels were really saved', async () => {
   hubWith({ NotificationChannels: [CHANNELS], CheckNotifications: [OWN], SetCheckNotifications: [stored([], 5)] });
   const refuse = () => Promise.resolve({ ok: false as const, error: { code: 'CONFLICT' as const, message: 'Name already used.' } });
-  const form = show({ check: HTTP_SAVED, onSave: refuse });
+  const done = vi.fn();
+  const form = show({ check: HTTP_SAVED, onSave: refuse, onDone: done });
   await settle();
   await submit(form);
   await later();
@@ -186,6 +187,7 @@ it('F-3: "saved; check was not" shows only when the channels were really saved',
   await submit(form);
   await later();
   expect(status()).toBe(PARTIAL_SENTENCE);
+  expect(done).not.toHaveBeenCalled();
   await submit(form);
   await later();
   expect(status()).toBe(PARTIAL_SENTENCE);
@@ -285,6 +287,9 @@ it('NOT-003: a new check whose channels fail says so, stays open, and a second S
   expect(status()).toBe(ADDED_SENTENCE);
   expect(done).not.toHaveBeenCalled();
   expect(button('Save channels')).toBeDefined();
+  expect(input('Name').matches(':disabled')).toBe(true);
+  expect(boxes().every((box) => !box.disabled)).toBe(true);
+  expect(resend().disabled).toBe(false);
 
   await submit(form);
   await later();

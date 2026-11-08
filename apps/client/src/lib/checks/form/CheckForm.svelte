@@ -187,6 +187,8 @@
     </div>
   {/if}
 
+  <!-- Once the check is added only its channels can be sent again, so the check's own fields are read only. -->
+  <fieldset class="check" disabled={addedId !== null}>
   <TextField label="Name" bind:value={values.name} error={error('name')} />
 
   {#if check === null}
@@ -213,6 +215,7 @@
   <Disclosure label="Advanced settings" bind:open={advancedOpen}>
     <AdvancedFields bind:values {errors} ontouch={(key) => touched.add(key)} />
   </Disclosure>
+  </fieldset>
 
   {#if channels.phase !== 'absent'}
     <ChannelsSection draft={channels} {resendId} />
@@ -244,6 +247,16 @@
     flex-direction: column;
     gap: var(--space-4);
     max-inline-size: calc(var(--space-16) * 8);
+  }
+
+  .check {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-inline-size: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
   }
 
   .actions {

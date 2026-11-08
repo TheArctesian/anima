@@ -142,7 +142,7 @@ it('Section 6.4: a group offers only the other checks that cannot make a cycle',
     { id: 'outer', name: 'outer-group', type: 'GROUP', childIds: ['self'] },
   ];
   show({ check: saved('GROUP', { __typename: 'GroupConfig', children: [] }, { id: 'self', name: 'self-group' }), siblings });
-  const names = [...document.querySelectorAll('fieldset label')].map((label) => label.textContent.trim());
+  const names = [...document.querySelectorAll('fieldset:not(.check) label')].map((label) => label.textContent.trim());
   expect(names).toEqual(['ping']);
 });
 
