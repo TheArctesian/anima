@@ -18,6 +18,7 @@
   import { emptyRemoteSecrets } from '../remote/values';
   import { contextPolicyCalls } from '../policy/calls';
   import { PolicyDraft } from '../policy/draft.svelte';
+  import PolicyNotice from '../policy/PolicyNotice.svelte';
   import PolicySection from '../policy/PolicySection.svelte';
   import RdpSection from '../remote/RdpSection.svelte';
   import TransferSection from '../remote/TransferSection.svelte';
@@ -158,6 +159,13 @@
     root?.querySelector<HTMLElement>(`#${inputId(field)}`)?.focus();
   }
 
+  /** Opens Sessions and focuses the limit field, where the policy sentence is. */
+  async function showLimit(): Promise<void> {
+    sessions = true;
+    await tick();
+    root?.querySelector<HTMLElement>('#device-policy-sessionLimit')?.focus();
+  }
+
   function openSection(name: 'ssh' | 'rdp' | 'vnc' | undefined): void {
     if (name === 'ssh') ssh = true;
     else if (name === 'rdp') rdp = true;
@@ -194,23 +202,20 @@
       return;
     }
     if (!policy.check()) {
-      sessions = true;
-      await tick();
-      root?.querySelector<HTMLElement>('#device-policy-sessionLimit')?.focus();
+      await showLimit();
       return;
     }
     saving = true;
     // The policy goes first: the page starts the form again from the saved device once the device save succeeds.
     if (!(await policy.save())) {
       saving = false;
-      sessions = true;
-      await tick();
-      root?.querySelector<HTMLElement>('#device-policy-sessionLimit')?.focus();
+      await showLimit();
       return;
     }
     const result = await onSave({ ...$state.snapshot(values), ...(creating ? { policy: $state.snapshot(policy.values) } : {}) }, placement());
     saving = false;
     if (result.ok) {
+      policy.deviceSaved();
       values.credential = { password: '', privateKey: '', passphrase: '' };
       values.remoteSecrets = emptyRemoteSecrets();
       errors = [];
@@ -295,18 +300,13 @@
         {/if}
       </Disclosure>
     </div>
-    {#if policy.phase !== 'absent'}
-      <div data-section="sessions">
-        <Disclosure label="Sessions" level={3} bind:open={sessions}>
-          <PolicySection {policy} />
-        </Disclosure>
-      </div>
-    {/if}
+    <PolicySection {policy} bind:open={sessions} />
     <div data-section="files">
       <Disclosure label="Files and clipboard" level={3} bind:open={files}>
         <TransferSection bind:values />
       </Disclosure>
     </div>
+    <PolicyNotice {policy} />
     {#if footer === undefined}
       {@render actions()}
     {/if}

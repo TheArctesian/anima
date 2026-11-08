@@ -168,14 +168,65 @@ it('RA-036: a policy save the hub refuses says so, and the device is not saved',
   expect(calls.onSave).not.toHaveBeenCalled();
 });
 
-it('RA-036, MOT-007: the policy saved but the device did not: a fixed sentence says so, and a second Save sends no second policy', async () => {
-  const { sent, calls } = await editing([ok({ device: POLICY })], [ok({ updateDevice: { sessionLimit: 9, recordSessions: false } })]);
-  calls.onSave.mockResolvedValueOnce({ ok: false, error: { code: 'UNAVAILABLE', message: 'secret hub text' } });
+const notice = () => document.querySelector('p[role="status"]')?.textContent ?? '';
+const REFUSED: HubResult<never> = { ok: false, error: { code: 'UNAVAILABLE', message: 'secret hub text' } };
+
+it('RA-036, MOT-007: the policy saved but the device did not: a status outside the closed disclosure says so, and a second Save sends no second policy', async () => {
+  const sent = hubWith([ok({ device: POLICY })], [ok({ updateDevice: { sessionLimit: 9, recordSessions: false } })]);
+  const calls = show(SAVED);
+  await settle();
+  open();
   type('policy-sessionLimit', '9');
+  open();
+  calls.onSave.mockResolvedValue(REFUSED);
   await save();
-  expect(message()).toBe(PARTIAL_SENTENCE);
-  expect(PARTIAL_SENTENCE.length).toBeLessThanOrEqual(36);
+  expect(notice()).toBe(PARTIAL_SENTENCE);
+  expect(document.querySelector('[data-section="sessions"]')?.contains(document.querySelector('p[role="status"]'))).toBe(false);
   await save();
   expect(sent.filter((request) => request.operation === 'SetDevicePolicy')).toHaveLength(1);
   expect(calls.onSave).toHaveBeenCalledTimes(2);
+  expect(notice()).toBe(PARTIAL_SENTENCE);
+});
+
+it('RA-036: with an unchanged policy a refused device save shows no sessions sentence', async () => {
+  const { calls } = await editing([ok({ device: POLICY })]);
+  calls.onSave.mockResolvedValueOnce(REFUSED);
+  await save();
+  expect(notice()).toBe('');
+});
+
+it('RA-036: after a failed policy load a refused device save shows no sessions sentence', async () => {
+  const { calls } = await editing([down]);
+  calls.onSave.mockResolvedValueOnce(REFUSED);
+  await save();
+  expect(notice()).toBe('');
+});
+
+it('RA-036: adding a device that the hub refuses shows no sessions sentence', async () => {
+  const calls = show(null, { sites: [{ id: 's1', name: 'Home', subnet: '10.0.0.0/24' }] });
+  calls.onSave.mockResolvedValueOnce(REFUSED);
+  type('name', 'new');
+  type('host', 'new.home.arpa');
+  type('policy-sessionLimit', '4');
+  await save();
+  expect(calls.onSave).toHaveBeenCalledTimes(1);
+  expect(notice()).toBe('');
+});
+
+it('MOT-007: every policy sentence fits one short line, so the form does not move when one shows', () => {
+  for (const sentence of [LOAD_SENTENCE, SAVE_SENTENCE, LIMIT_SENTENCE]) expect(sentence.length).toBeLessThanOrEqual(34);
+  expect(PARTIAL_SENTENCE.length).toBeLessThanOrEqual(36);
+});
+
+it('RA-036: Try again stays mounted and busy while it runs, and a successful load moves focus to the limit', async () => {
+  await editing([down, ok({ device: POLICY })]);
+  const again = button('Try again');
+  again.focus();
+  again.click();
+  flushSync();
+  expect(button('Try again')).toBe(again);
+  expect(again.getAttribute('aria-busy')).toBe('true');
+  expect(document.activeElement).toBe(again);
+  await settle();
+  expect(document.activeElement).toBe(limit());
 });

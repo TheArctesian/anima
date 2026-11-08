@@ -20,7 +20,7 @@ export interface PolicyInput {
 export const MAX_SESSION_LIMIT = 100;
 
 /** RA-036: the one sentence for a limit that is not a whole number from 1 to 100. */
-export const LIMIT_SENTENCE = 'Enter a whole number from 1 to 100, or leave it empty for no limit.';
+export const LIMIT_SENTENCE = 'Use a whole number from 1 to 100.';
 
 /** RA-040: a new device is not recorded. */
 export const DEFAULT_POLICY: PolicyValues = { sessionLimit: '', recordSessions: false };

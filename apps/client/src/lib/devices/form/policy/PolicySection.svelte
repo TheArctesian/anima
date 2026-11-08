@@ -1,47 +1,67 @@
 <script lang="ts">
-  import FormButton from '$lib/forms/FormButton.svelte';
+  import { tick } from 'svelte';
+  import Disclosure from '../../../forms/disclosure/Disclosure.svelte';
+  import FormButton from '../../../forms/FormButton.svelte';
   import type { PolicyDraft } from './draft.svelte';
   import { LIMIT_SENTENCE } from './policy';
 
   interface Props {
     policy: PolicyDraft;
+    open: boolean;
   }
 
-  const { policy }: Props = $props();
+  let { policy, open = $bindable() }: Props = $props();
   const unavailable = $derived(policy.phase !== 'ready');
-  const failed = $derived(policy.phase === 'failed');
+  const retryShown = $derived(policy.phase === 'failed' || policy.retrying);
+  let limitField = $state<HTMLInputElement>();
+
+  /** Try again keeps focus while it runs; a successful load moves it to the limit field. */
+  async function retry(): Promise<void> {
+    if (policy.phase !== 'failed') return;
+    if (!(await policy.load())) return;
+    await tick();
+    limitField?.focus();
+  }
 </script>
 
-<div class="field">
-  <label for="device-policy-sessionLimit">Session limit</label>
-  <input
-    id="device-policy-sessionLimit"
-    inputmode="numeric"
-    autocomplete="off"
-    placeholder="No limit"
-    disabled={unavailable}
-    aria-invalid={policy.message === LIMIT_SENTENCE}
-    aria-describedby="device-policy-sessionLimit-hint device-policy-message"
-    bind:value={policy.values.sessionLimit}
-  />
-  <small id="device-policy-sessionLimit-hint">The most live sessions at once, from 1 to 100. Viewers and file tunnels do not count.</small>
-</div>
-<div class="field">
-  <label class="check">
-    <input type="checkbox" disabled={unavailable} aria-describedby="device-policy-record-hint" bind:checked={policy.values.recordSessions} />
-    Record sessions
-  </label>
-  <small id="device-policy-record-hint">
-    Recordings are encrypted at rest. A "Recording" badge shows during a recorded session.
-  </small>
-</div>
-<!-- The message line is always as tall as the Try again button, so loading, loaded and failed look alike. -->
-<div class="message">
-  <small id="device-policy-message" role="status">{policy.message}</small>
-  {#if failed}
-    <FormButton onclick={() => void policy.load()}>Try again</FormButton>
-  {/if}
-</div>
+{#if policy.phase !== 'absent'}
+  <div data-section="sessions">
+    <Disclosure label="Sessions" level={3} bind:open>
+
+    <div class="field">
+      <label for="device-policy-sessionLimit">Session limit</label>
+      <input
+        id="device-policy-sessionLimit"
+        inputmode="numeric"
+        autocomplete="off"
+        placeholder="No limit"
+        disabled={unavailable}
+        aria-invalid={policy.message === LIMIT_SENTENCE}
+        bind:this={limitField}
+        aria-describedby="device-policy-sessionLimit-hint device-policy-message"
+        bind:value={policy.values.sessionLimit}
+      />
+      <small id="device-policy-sessionLimit-hint">The most live sessions at once, from 1 to 100. Viewers and file tunnels do not count.</small>
+    </div>
+    <div class="field">
+      <label class="check">
+        <input type="checkbox" disabled={unavailable} aria-describedby="device-policy-record-hint" bind:checked={policy.values.recordSessions} />
+        Record sessions
+      </label>
+      <small id="device-policy-record-hint">
+        Recordings are encrypted at rest. A "Recording" badge shows during a recorded session.
+      </small>
+    </div>
+    <!-- The message line is always as tall as the Try again button, so loading, loaded and failed look alike. -->
+    <div class="message">
+      <small id="device-policy-message" role="status">{policy.message}</small>
+      {#if retryShown}
+        <FormButton aria-disabled={policy.phase !== 'failed'} aria-busy={policy.phase === 'loading'} onclick={() => void retry()}>Try again</FormButton>
+      {/if}
+    </div>
+    </Disclosure>
+  </div>
+{/if}
 
 <style>
   .field {
@@ -94,13 +114,18 @@
 
   .message {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
+    justify-content: space-between;
     gap: var(--space-2);
-    min-block-size: var(--target-min-desktop);
+    block-size: var(--target-min-desktop);
+  }
+
+  .message :global(button) {
+    flex: none;
   }
 
   .message small {
+    min-inline-size: 0;
     color: var(--status-down);
   }
 </style>
