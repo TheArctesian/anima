@@ -14,3 +14,4 @@ Items found during Phase 3 reviews that are not fixed in Phase 3. Tagged by pack
 ## WP-40 (skeleton and contract gate)
 
 - T5 (could): NET-004 (`design-spec.md` line 289) still says the nav bar shows the hub address; it should be desktop-only. UI-005 holds several rules in one requirement.
+- T1b (could): unexport `BareProbeConfig`; comment that the `default` branch in `withConfig` is the exhaustiveness check.
