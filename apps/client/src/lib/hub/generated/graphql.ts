@@ -16,22 +16,24 @@ export type BasicAuthInput = {
 };
 
 export type CheckConfigInput =
-  {   dns: DnsConfigInput; docker?: never; group?: never; http?: never; icmp?: never; push?: never; snmp?: never; systemd?: never; tailscalePing?: never; tcp?: never; tls?: never; }
-  |  { dns?: never;   docker: DockerConfigInput; group?: never; http?: never; icmp?: never; push?: never; snmp?: never; systemd?: never; tailscalePing?: never; tcp?: never; tls?: never; }
-  |  { dns?: never; docker?: never;   group: GroupConfigInput; http?: never; icmp?: never; push?: never; snmp?: never; systemd?: never; tailscalePing?: never; tcp?: never; tls?: never; }
-  |  { dns?: never; docker?: never; group?: never;   http: HttpConfigInput; icmp?: never; push?: never; snmp?: never; systemd?: never; tailscalePing?: never; tcp?: never; tls?: never; }
-  |  { dns?: never; docker?: never; group?: never; http?: never;   icmp: IcmpConfigInput; push?: never; snmp?: never; systemd?: never; tailscalePing?: never; tcp?: never; tls?: never; }
-  |  { dns?: never; docker?: never; group?: never; http?: never; icmp?: never;   push: boolean; snmp?: never; systemd?: never; tailscalePing?: never; tcp?: never; tls?: never; }
-  |  { dns?: never; docker?: never; group?: never; http?: never; icmp?: never; push?: never;   snmp: SnmpConfigInput; systemd?: never; tailscalePing?: never; tcp?: never; tls?: never; }
-  |  { dns?: never; docker?: never; group?: never; http?: never; icmp?: never; push?: never; snmp?: never;   systemd: SystemdConfigInput; tailscalePing?: never; tcp?: never; tls?: never; }
-  |  { dns?: never; docker?: never; group?: never; http?: never; icmp?: never; push?: never; snmp?: never; systemd?: never;   tailscalePing: TailscalePingConfigInput; tcp?: never; tls?: never; }
-  |  { dns?: never; docker?: never; group?: never; http?: never; icmp?: never; push?: never; snmp?: never; systemd?: never; tailscalePing?: never;   tcp: TcpConfigInput; tls?: never; }
-  |  { dns?: never; docker?: never; group?: never; http?: never; icmp?: never; push?: never; snmp?: never; systemd?: never; tailscalePing?: never; tcp?: never;   tls: TlsConfigInput; };
+  {   dns: DnsConfigInput; docker?: never; domainExpiry?: never; group?: never; http?: never; icmp?: never; push?: never; snmp?: never; systemd?: never; tailscalePing?: never; tcp?: never; tls?: never; }
+  |  { dns?: never;   docker: DockerConfigInput; domainExpiry?: never; group?: never; http?: never; icmp?: never; push?: never; snmp?: never; systemd?: never; tailscalePing?: never; tcp?: never; tls?: never; }
+  |  { dns?: never; docker?: never;   domainExpiry: DomainExpiryConfigInput; group?: never; http?: never; icmp?: never; push?: never; snmp?: never; systemd?: never; tailscalePing?: never; tcp?: never; tls?: never; }
+  |  { dns?: never; docker?: never; domainExpiry?: never;   group: GroupConfigInput; http?: never; icmp?: never; push?: never; snmp?: never; systemd?: never; tailscalePing?: never; tcp?: never; tls?: never; }
+  |  { dns?: never; docker?: never; domainExpiry?: never; group?: never;   http: HttpConfigInput; icmp?: never; push?: never; snmp?: never; systemd?: never; tailscalePing?: never; tcp?: never; tls?: never; }
+  |  { dns?: never; docker?: never; domainExpiry?: never; group?: never; http?: never;   icmp: IcmpConfigInput; push?: never; snmp?: never; systemd?: never; tailscalePing?: never; tcp?: never; tls?: never; }
+  |  { dns?: never; docker?: never; domainExpiry?: never; group?: never; http?: never; icmp?: never;   push: boolean; snmp?: never; systemd?: never; tailscalePing?: never; tcp?: never; tls?: never; }
+  |  { dns?: never; docker?: never; domainExpiry?: never; group?: never; http?: never; icmp?: never; push?: never;   snmp: SnmpConfigInput; systemd?: never; tailscalePing?: never; tcp?: never; tls?: never; }
+  |  { dns?: never; docker?: never; domainExpiry?: never; group?: never; http?: never; icmp?: never; push?: never; snmp?: never;   systemd: SystemdConfigInput; tailscalePing?: never; tcp?: never; tls?: never; }
+  |  { dns?: never; docker?: never; domainExpiry?: never; group?: never; http?: never; icmp?: never; push?: never; snmp?: never; systemd?: never;   tailscalePing: TailscalePingConfigInput; tcp?: never; tls?: never; }
+  |  { dns?: never; docker?: never; domainExpiry?: never; group?: never; http?: never; icmp?: never; push?: never; snmp?: never; systemd?: never; tailscalePing?: never;   tcp: TcpConfigInput; tls?: never; }
+  |  { dns?: never; docker?: never; domainExpiry?: never; group?: never; http?: never; icmp?: never; push?: never; snmp?: never; systemd?: never; tailscalePing?: never; tcp?: never;   tls: TlsConfigInput; };
 
 /** Identifiers are fixed forever (CHK-009). */
 export type CheckType =
   | 'DNS'
   | 'DOCKER'
+  | 'DOMAIN_EXPIRY'
   | 'GROUP'
   | 'HTTP'
   | 'ICMP'
@@ -76,6 +78,8 @@ export type CreateDeviceInput = {
   name: string;
   os?: OperatingSystem | null | undefined;
   rdp?: RdpSettingsInput | null | undefined;
+  recordSessions?: boolean | null | undefined;
+  sessionLimit?: number | null | undefined;
   siteId: string;
   ssh?: SshSettingsInput | null | undefined;
   tags?: Array<string> | null | undefined;
@@ -133,6 +137,12 @@ export type DockerConfigInput = {
   timeoutMs?: number | null | undefined;
 };
 
+export type DomainExpiryConfigInput = {
+  domain: string;
+  timeoutMs?: number | null | undefined;
+  warnDays?: number | null | undefined;
+};
+
 export type EventFilter = {
   deviceId?: string | null | undefined;
   severity?: Array<Severity> | null | undefined;
@@ -146,6 +156,7 @@ export type EventSource =
   | 'DEVICE'
   | 'HUB'
   | 'METRICS'
+  | 'NOTIFICATION'
   | 'SESSION';
 
 export type GpuVendor =
@@ -403,6 +414,9 @@ export type UpdateDeviceInput = {
   name?: string | null | undefined;
   os?: OperatingSystem | null | undefined;
   rdp?: RdpSettingsInput | null | undefined;
+  recordSessions?: boolean | null | undefined;
+  /** 1..100; 0 clears the limit. */
+  sessionLimit?: number | null | undefined;
   siteId?: string | null | undefined;
   ssh?: SshSettingsInput | null | undefined;
   tags?: Array<string> | null | undefined;
@@ -448,6 +462,7 @@ export type HeartbeatAddedSubscription = { heartbeatAdded: { checkId: string, de
 export type CheckFieldsFragment = { id: string, type: CheckType, name: string, intervalSeconds: number, retries: number, retryIntervalSeconds: number, degradedThresholdMs: number, invert: boolean, paused: boolean, status: Status, certificateDaysLeft: number | null, parent: { id: string } | null, lastHeartbeat: { at: string, status: Status, responseTimeMs: number | null, message: string | null } | null, config:
     | { __typename: 'DnsConfig', name: string, recordType: DnsRecordType, resolver: string | null, expected: string | null }
     | { __typename: 'DockerConfig' }
+    | { __typename: 'DomainExpiryConfig' }
     | { __typename: 'GroupConfig', children: Array<{ id: string, name: string }> }
     | { __typename: 'HttpConfig', url: string, method: HttpMethod, body: string | null, maxRedirects: number, keyword: string | null, jsonQuery: string | null, jsonExpected: string | null, authKind: HttpAuthKind, verifyTls: boolean, timeoutMs: number, headers: Array<{ name: string, value: string | null }>, acceptedStatus: Array<{ from: number, to: number }> }
     | { __typename: 'IcmpConfig', timeoutMs: number, ipVersion: IpVersion }
@@ -475,6 +490,7 @@ export type DeviceChecksQueryVariables = Exact<{
 export type DeviceChecksQuery = { device: { id: string, checks: Array<{ id: string, type: CheckType, name: string, intervalSeconds: number, retries: number, retryIntervalSeconds: number, degradedThresholdMs: number, invert: boolean, paused: boolean, status: Status, certificateDaysLeft: number | null, parent: { id: string } | null, lastHeartbeat: { at: string, status: Status, responseTimeMs: number | null, message: string | null } | null, config:
         | { __typename: 'DnsConfig', name: string, recordType: DnsRecordType, resolver: string | null, expected: string | null }
         | { __typename: 'DockerConfig' }
+        | { __typename: 'DomainExpiryConfig' }
         | { __typename: 'GroupConfig', children: Array<{ id: string, name: string }> }
         | { __typename: 'HttpConfig', url: string, method: HttpMethod, body: string | null, maxRedirects: number, keyword: string | null, jsonQuery: string | null, jsonExpected: string | null, authKind: HttpAuthKind, verifyTls: boolean, timeoutMs: number, headers: Array<{ name: string, value: string | null }>, acceptedStatus: Array<{ from: number, to: number }> }
         | { __typename: 'IcmpConfig', timeoutMs: number, ipVersion: IpVersion }
@@ -503,6 +519,7 @@ export type CreateCheckMutationVariables = Exact<{
 export type CreateCheckMutation = { createCheck: { id: string, type: CheckType, name: string, intervalSeconds: number, retries: number, retryIntervalSeconds: number, degradedThresholdMs: number, invert: boolean, paused: boolean, status: Status, certificateDaysLeft: number | null, parent: { id: string } | null, lastHeartbeat: { at: string, status: Status, responseTimeMs: number | null, message: string | null } | null, config:
       | { __typename: 'DnsConfig', name: string, recordType: DnsRecordType, resolver: string | null, expected: string | null }
       | { __typename: 'DockerConfig' }
+      | { __typename: 'DomainExpiryConfig' }
       | { __typename: 'GroupConfig', children: Array<{ id: string, name: string }> }
       | { __typename: 'HttpConfig', url: string, method: HttpMethod, body: string | null, maxRedirects: number, keyword: string | null, jsonQuery: string | null, jsonExpected: string | null, authKind: HttpAuthKind, verifyTls: boolean, timeoutMs: number, headers: Array<{ name: string, value: string | null }>, acceptedStatus: Array<{ from: number, to: number }> }
       | { __typename: 'IcmpConfig', timeoutMs: number, ipVersion: IpVersion }
@@ -523,6 +540,7 @@ export type UpdateCheckMutationVariables = Exact<{
 export type UpdateCheckMutation = { updateCheck: { id: string, type: CheckType, name: string, intervalSeconds: number, retries: number, retryIntervalSeconds: number, degradedThresholdMs: number, invert: boolean, paused: boolean, status: Status, certificateDaysLeft: number | null, parent: { id: string } | null, lastHeartbeat: { at: string, status: Status, responseTimeMs: number | null, message: string | null } | null, config:
       | { __typename: 'DnsConfig', name: string, recordType: DnsRecordType, resolver: string | null, expected: string | null }
       | { __typename: 'DockerConfig' }
+      | { __typename: 'DomainExpiryConfig' }
       | { __typename: 'GroupConfig', children: Array<{ id: string, name: string }> }
       | { __typename: 'HttpConfig', url: string, method: HttpMethod, body: string | null, maxRedirects: number, keyword: string | null, jsonQuery: string | null, jsonExpected: string | null, authKind: HttpAuthKind, verifyTls: boolean, timeoutMs: number, headers: Array<{ name: string, value: string | null }>, acceptedStatus: Array<{ from: number, to: number }> }
       | { __typename: 'IcmpConfig', timeoutMs: number, ipVersion: IpVersion }
@@ -550,6 +568,7 @@ export type SetCheckPausedMutationVariables = Exact<{
 export type SetCheckPausedMutation = { setCheckPaused: { id: string, type: CheckType, name: string, intervalSeconds: number, retries: number, retryIntervalSeconds: number, degradedThresholdMs: number, invert: boolean, paused: boolean, status: Status, certificateDaysLeft: number | null, parent: { id: string } | null, lastHeartbeat: { at: string, status: Status, responseTimeMs: number | null, message: string | null } | null, config:
       | { __typename: 'DnsConfig', name: string, recordType: DnsRecordType, resolver: string | null, expected: string | null }
       | { __typename: 'DockerConfig' }
+      | { __typename: 'DomainExpiryConfig' }
       | { __typename: 'GroupConfig', children: Array<{ id: string, name: string }> }
       | { __typename: 'HttpConfig', url: string, method: HttpMethod, body: string | null, maxRedirects: number, keyword: string | null, jsonQuery: string | null, jsonExpected: string | null, authKind: HttpAuthKind, verifyTls: boolean, timeoutMs: number, headers: Array<{ name: string, value: string | null }>, acceptedStatus: Array<{ from: number, to: number }> }
       | { __typename: 'IcmpConfig', timeoutMs: number, ipVersion: IpVersion }
