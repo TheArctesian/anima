@@ -5,8 +5,8 @@
 # It copies only compose.yaml to a temporary folder and starts only `apprise`, with the hardening
 # exactly as in the file (read-only root, no capabilities, user 1000, tmpfs mounts). No secret file
 # is read or needed. A throwaway container on the same `notify` network then asks
-# GET /status at the fixed address 172.30.3.10, and posts a stateless /notify with a json:// URL
-# to a listener in that container, to show that nothing is stored.
+# GET /status at the fixed address 172.30.3.10, and posts stateless /notify calls with json://, xml:// and
+# form:// URLs to a listener in that container: all must be refused (APPRISE_ALLOW_SERVICES).
 #
 #   sh deploy/test/apprise-smoke.sh
 set -eu
@@ -55,29 +55,35 @@ probe() { docker run --rm --network "$network" --entrypoint "$@"; }
 probe curl "$image" -fsS http://172.30.3.10:8000/status
 echo
 
-step "Stateless POST /notify to a json:// listener on the throwaway container"
-# The single quotes are meant: the shell inside the container expands the variables.
+step "A json:// URL to any host is refused, and the listener gets nothing (S-1)"
+# Apprise sits outside the hub's deny list, so only cloud services are allowed. The listener
+# stands for a host on a protected network. The single quotes are meant: the container expands them.
 # shellcheck disable=SC2016
 docker run --rm --network "$network" --entrypoint sh "$image" -c '
     ip=$(hostname -i)
     python3 -c "
-import http.server, sys
+import http.server
 class H(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         self.rfile.read(int(self.headers.get(\"Content-Length\", 0)))
         self.send_response(200); self.end_headers()
         print(\"listener got POST\", flush=True)
     def log_message(self, *a): pass
-http.server.HTTPServer((\"0.0.0.0\", 9999), H).handle_request()
+s = http.server.HTTPServer((\"0.0.0.0\", 9999), H)
+s.timeout = 4
+s.handle_request()
 " > /tmp/listener.log 2>&1 &
     sleep 1
-    code=$(curl -sS -o /tmp/reply -w "%{http_code}" -X POST http://172.30.3.10:8000/notify \
-        -H "Content-Type: application/json" \
-        -d "{\"urls\":\"json://$ip:9999\",\"title\":\"smoke\",\"body\":\"hello\"}")
-    echo "POST /notify -> $code $(cat /tmp/reply)"
-    sleep 1
-    cat /tmp/listener.log
-    [ "$code" = 200 ] && grep -q "listener got POST" /tmp/listener.log
+    for scheme in json xml form; do
+        code=$(curl -sS -o /tmp/reply -w "%{http_code}" -X POST http://172.30.3.10:8000/notify \
+            -H "Content-Type: application/json" \
+            -d "{\"urls\":\"$scheme://$ip:9999\",\"body\":\"hello\"}")
+        echo "POST /notify $scheme:// -> $code"
+        case "$code" in 4??) ;; *) echo "expected a 4xx for $scheme" >&2; exit 1 ;; esac
+    done
+    sleep 5
+    ! grep -q "listener got POST" /tmp/listener.log || { echo "the listener received a POST" >&2; exit 1; }
+    echo "listener received nothing"
 '
 
 step "Nothing can be stored"

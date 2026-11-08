@@ -68,6 +68,31 @@ describe("apprise service (D-13)", () => {
     for (const path of ["/config", "/attach", "/plugin", "/tmp"]) expect(mounted).toContain(path);
   });
 
+});
+
+describe("apprise allow list and networks (D-13, NOT-002)", () => {
+  test("NOT-002 only cloud services are allowed, never a scheme that takes an arbitrary host (S-1)", () => {
+    const value = apprise.environment?.["APPRISE_ALLOW_SERVICES"] ?? "";
+    const allowed = /^\$\{APPRISE_ALLOW_SERVICES:-([a-z,]+)\}$/.exec(value)?.[1]?.split(",") ?? [];
+    expect(allowed.length).toBeGreaterThan(0);
+    const arbitraryHost = ["json", "jsons", "xml", "xmls", "form", "forms", "mailto", "mailtos", "ntfy", "ntfys", "apprise", "apprises"];
+    for (const scheme of allowed) expect(arbitraryHost).not.toContain(scheme);
+  });
+
+  test("SEC-001 apprise shows no configuration-key page", () => {
+    expect(apprise.environment?.["APPRISE_ADMIN"]).toBe("no");
+  });
+
+  test("NET-001 the hub has a fixed notify address inside the subnet, not Apprise's, covered by the deny list", () => {
+    const hub = compose.services["hub"] as Container;
+    const address = (hub.networks as Record<string, { ipv4_address?: string }>)["notify"]?.ipv4_address ?? "";
+    expect(address).toBe("172.30.3.2");
+    expect(address.startsWith("172.30.3.")).toBe(true);
+    expect(address).not.toBe("172.30.3.10");
+    // The carved blocks: .2 lies in 172.30.3.0/29.
+    expect(hub.environment?.["ANIMA_PROBE_DENY"]).toContain("172.30.3.0/29");
+  });
+
   test("D-13 apprise has only the notify network, at 172.30.3.10 inside its subnet", () => {
     expect(networksOf(apprise)).toEqual(["notify"]);
     const address = (apprise.networks as Record<string, { ipv4_address?: string }>)["notify"]?.ipv4_address;

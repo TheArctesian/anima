@@ -90,6 +90,8 @@ describe("hub deny list, notify network and recordings", () => {
     const entries = denyEntries(hub);
     const attached = Array.isArray(hub.networks) ? hub.networks : Object.keys(hub.networks ?? {});
     expect(attached.sort()).toEqual(["database", "gateway", "localapi", "notify"]);
+    // The hub's own notify address is inside the denied part (172.30.3.2).
+    expect(entries.some((entry) => entry.contains(ipv4("172.30.3.2")))).toBe(true);
     for (const name of attached) {
       const subnet = cidr(resolveDefault(compose.networks[name]?.ipam?.config?.[0]?.subnet ?? `${name} has no fixed subnet`));
       const carved = name === "notify";
@@ -136,8 +138,11 @@ describe("hub deny list, notify network and recordings", () => {
     expect(users).toEqual(["hub"]);
   });
 
-  test("SEC-001 the hub root file system stays read-only with the recordings volume", () => {
-    expect(compose.services["hub"]?.read_only).toBe(true);
+  test("SEC-001 the hub root file system stays read-only, and its mounts are exactly certs, recordings and /tmp", () => {
+    const hub = compose.services["hub"] as Container & { tmpfs?: string[] };
+    expect(hub.read_only).toBe(true);
+    expect(hub.volumes).toEqual(["certs:/certs:ro", "recordings:/var/lib/anima/recordings"]);
+    expect(hub.tmpfs).toEqual(["/tmp"]);
   });
 
   test("D-13 the hub joins notify and does not wait for Apprise", () => {
