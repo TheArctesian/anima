@@ -1,0 +1,77 @@
+#!/bin/sh
+# Proves the hub container reaches the internet on the ports notifications need (NOT-002, D-17):
+# 443 for webhook and ntfy, 465 for SMTP over implicit TLS, 587 for SMTP with STARTTLS. Some
+# providers block the mail ports. Run it on the VPS from /opt/anima/deploy, with the hub running:
+#   sh bin/egress-check [HOST:PORT ...]
+# With no target it checks ntfy.sh:443, smtp.gmail.com:465 and smtp.gmail.com:587; pass your own
+# mailbox's SMTP host to test that instead. Each target is tried from inside the hub container's
+# own network namespace with bash /dev/tcp (the image has no curl or nc). It prints one line per
+# target, `open HOST:PORT` or `blocked HOST:PORT`, and exits 0 only if every target is open.
+# A blocked line carries the reason: refused, timed out, unresolved or unreachable.
+# EGRESS_TIMEOUT sets the seconds to wait per target (default 5). Targets are IPv4 or DNS names;
+# IPv6 literals are not accepted (the gateway network is IPv4-only). It changes nothing.
+# Exit codes: 0 all open, 1 some blocked, 2 bad usage or the hub container cannot be reached.
+set -eu
+
+fail() {
+    echo "egress-check: $1" >&2
+    exit 2
+}
+
+seconds=${EGRESS_TIMEOUT:-5}
+case $seconds in
+*[!0-9]* | '' | 0) fail "EGRESS_TIMEOUT '$seconds' is not a positive whole number of seconds" ;;
+esac
+
+[ "$#" -gt 0 ] || set -- ntfy.sh:443 smtp.gmail.com:465 smtp.gmail.com:587
+
+# Refuse anything that is not HOST:PORT before any docker call.
+for target in "$@"; do
+    case $target in
+    *:*) ;;
+    *) fail "target '$target' is not HOST:PORT" ;;
+    esac
+    host=${target%:*}
+    port=${target##*:}
+    case $host in
+    *[!A-Za-z0-9.-]* | '' | .* | -*) fail "host '$host' may hold only letters, digits, dots and hyphens" ;;
+    esac
+    case $port in
+    *[!0-9]* | '' | 0*) fail "port '$port' is not a number from 1 to 65535" ;;
+    esac
+    [ "${#port}" -le 5 ] && [ "$port" -le 65535 ] || fail "port '$port' is not a number from 1 to 65535"
+done
+
+# Tell "the hub container is not there" apart from "the port is blocked".
+if ! probe=$(docker compose exec -T hub true 2>&1); then
+    echo "$probe" >&2
+    fail "cannot run in the hub container (is it up? run from /opt/anima/deploy)"
+fi
+
+blocked=0
+for target in "$@"; do
+    host=${target%:*}
+    port=${target##*:}
+    # Host and port travel as positional arguments, never inside the bash -c string.
+    status=0
+    reason=$(docker compose exec -T hub timeout "$seconds" bash -c 'exec 3<>"/dev/tcp/$1/$2"' egress "$host" "$port" 2>&1) || status=$?
+    if [ "$status" -eq 0 ]; then
+        echo "open $target"
+        continue
+    fi
+    case $status:$reason in
+    124:* | 142:*) why="timed out" ;;
+    *[Rr]efused*) why=refused ;;
+    *[Nn]ot\ known* | *[Uu]nknown* | *[Rr]esolution* | *[Nn]o\ address*) why=unresolved ;;
+    *) why=unreachable ;;
+    esac
+    echo "blocked $target ($why)"
+    blocked=$((blocked + 1))
+done
+
+if [ "$blocked" -eq 0 ]; then
+    echo "egress-check: all $# targets open"
+else
+    echo "egress-check: $blocked of $# targets blocked" >&2
+    exit 1
+fi
