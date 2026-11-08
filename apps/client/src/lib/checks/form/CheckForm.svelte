@@ -179,14 +179,6 @@
 </script>
 
 <form id={formId} onsubmit={submit} novalidate>
-  {#if alerts.length > 0}
-    <div class="alert" role="alert">
-      {#each alerts as found, index (index)}
-        <p>{found.message}</p>
-      {/each}
-    </div>
-  {/if}
-
   <!-- Once the check is added only its channels can be sent again, so the check's own fields are read only. -->
   <fieldset class="check" disabled={addedId !== null}>
   <TextField label="Name" bind:value={values.name} error={error('name')} />
@@ -229,6 +221,13 @@
     </div>
   {/if}
 
+  <!-- Always mounted, with a line of its own below the fields, so an error nothing else shows moves nothing (MOT-007). -->
+  <div class="alert" role="alert">
+    {#each alerts as found, index (index)}
+      <p>{found.message}</p>
+    {/each}
+  </div>
+
   {#if footer === undefined}
     {@render actions()}
   {/if}
@@ -247,6 +246,10 @@
     flex-direction: column;
     gap: var(--space-4);
     max-inline-size: calc(var(--space-16) * 8);
+  }
+
+  .check:disabled {
+    opacity: var(--opacity-disabled);
   }
 
   .check {
@@ -270,14 +273,18 @@
     color: var(--text-muted);
   }
 
-  .alert,
+  .alert {
+    min-block-size: var(--target-min-desktop);
+  }
+
+  .alert:not(:empty),
   .warning {
     padding: var(--space-2) var(--space-3);
     border-radius: var(--radius-md);
     font-size: var(--text-sm);
   }
 
-  .alert {
+  .alert:not(:empty) {
     background: var(--status-down-tint);
   }
 

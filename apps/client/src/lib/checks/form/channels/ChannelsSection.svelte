@@ -96,7 +96,7 @@
 
   .list {
     box-sizing: border-box;
-    block-size: calc(var(--target-min-desktop) * 3);
+    block-size: calc(var(--target-min-desktop) * 3 + var(--border-thin) * 2);
     overflow-y: auto;
     border: var(--border-thin) solid var(--border);
     border-radius: var(--radius-md);

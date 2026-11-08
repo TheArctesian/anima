@@ -7,7 +7,7 @@ import type { Hub, HubResult } from '$lib/hub/hub';
 import { FIXTURE_CHANNELS } from '$lib/notifications/notifications.fixture';
 import { HTTP_SAVED } from '../check.fixture';
 import { button, input, installFormHarness, settle, show, submit, type } from '../form.fixture';
-import { ADDED_SENTENCE, LOAD_SENTENCE, PARTIAL_SENTENCE, SAVE_SENTENCE } from './draft.svelte';
+import { ADDED_SENTENCE, REFUSED_SENTENCE, LOAD_SENTENCE, PARTIAL_SENTENCE, SAVE_SENTENCE } from './draft.svelte';
 import { RESEND_SENTENCE } from './channels';
 
 const mocks = vi.hoisted(() => ({ hub: undefined as unknown }));
@@ -155,7 +155,8 @@ it('NOT-005: a hub refusal of the interval shows the sentence and focuses the in
   typeResend('999999');
   await submit(form);
   await later();
-  expect(status()).toBe(RESEND_SENTENCE);
+  expect(status()).toBe(REFUSED_SENTENCE);
+  expect(status()).not.toContain('too big');
   expect(document.activeElement).toBe(resend());
   expect(onSave).not.toHaveBeenCalled();
 });

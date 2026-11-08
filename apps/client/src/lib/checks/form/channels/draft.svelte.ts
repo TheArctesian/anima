@@ -1,9 +1,10 @@
 import { fieldErrorsFrom } from '$lib/devices/form/field-errors';
 import type { NotificationChannel } from '$lib/notifications/api';
 import type { ChannelCalls } from './calls';
-import { channelValues, defaultChannelIds, differs, notificationsInput, RESEND_SENTENCE, resendProblem, type ChannelValues, type StoredChannels } from './channels';
+import { channelValues, defaultChannelIds, differs, notificationsInput, resendProblem, type ChannelValues, type StoredChannels } from './channels';
 
 export const LOAD_SENTENCE = 'Channels did not load.';
+export const REFUSED_SENTENCE = 'The hub refused this interval.';
 export const SAVE_SENTENCE = 'Channels were not saved.';
 export const ADDED_SENTENCE = 'Check added; channels were not.';
 export const PARTIAL_SENTENCE = 'Channels saved; check was not.';
@@ -115,7 +116,7 @@ export class ChannelsDraft {
         return 'sent';
       }
       this.resendInvalid = fieldErrorsFrom(result.error).some((error) => error.field === 'resendEveryBeats');
-      this.message = this.resendInvalid ? RESEND_SENTENCE : SAVE_SENTENCE;
+      this.message = this.resendInvalid ? REFUSED_SENTENCE : SAVE_SENTENCE;
     } catch {
       this.resendInvalid = false;
       this.message = SAVE_SENTENCE;

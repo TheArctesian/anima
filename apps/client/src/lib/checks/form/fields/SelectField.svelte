@@ -42,6 +42,8 @@
 
   select {
     box-sizing: border-box;
+    min-inline-size: 0;
+    max-inline-size: 100%;
     min-block-size: var(--target-min-desktop);
     padding: var(--space-2) var(--select-chevron-room) var(--space-2) var(--space-3);
     border: var(--border-thin) solid var(--border);
