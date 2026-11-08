@@ -120,8 +120,11 @@ Also read `docs/programme/phase-3-plan.md`, `phase-3-contracts.md` and the packa
 - Never kill processes by pattern (`pkill -f`, `killall`); other gate runs share the machine.
 - Never use bare `git stash`.
 - Wait for a gate run to finish before merging.
-- Timing tests flake under heavy load and pass alone: `ra_031` waking, the `api_005` statement
-  counts, `log_007` terminal refusals, the deploy localapi "endless upstream body" test, and (seen on `pop-os`) `k4_8_5` client ping while the hub's send waits and the desktop `process_log` `log_008` opener-after-patience test.
+- Timing tests flake under heavy load and pass alone: `ra_031` waking (terminal and tunnel), the `api_005` statement
+  counts, `log_007` terminal refusals, the deploy localapi "endless upstream body" test (on `pop-os` it once spun for
+  45 minutes; stop that one test process by its PID, then run the deploy suite alone), and (seen on `pop-os`)
+  `k4_8_5` client ping while the hub's send waits, the desktop `process_log` `log_008` opener-after-patience test and
+  the `checks::tests::snmp::probes::d_5_*` probes.
   These are logged as a should for issue #1.
 
 ## 6. Open decisions for the next session
