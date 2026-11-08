@@ -17,7 +17,13 @@ and reloads it when the file changes; WP-05 adds this too.
 | `migrate` | `anima-hub:local` | Runs `anima-hub migrate` as `anima_owner`, then exits. | `database` |
 | `certs` | `goacme/lego:v4.25.2` | Gets and renews the certificate for `hub.anima.ing`. | `acme` |
 | `guacd` | built from `gateway/` | The Guacamole daemon with the OpenDyslexic font. No published port. | `gateway` |
-| `hub` | `anima-hub:local` | The hub. The only published port: `ANIMA_HUB_ADDRESS:443`. | `database`, `gateway` |
+| `localapi` | built from `localapi/` | Two Tailscale LocalAPI calls for the hub. No published port. | `localapi` |
+| `hub` | `anima-hub:local` | The hub and the web client. The only published port: `ANIMA_HUB_ADDRESS:443`. | `database`, `gateway`, `localapi`, `notify` |
+| `apprise` | `caronc/apprise` (pinned, with digest) | Optional. Sends notifications to cloud services for the hub. Starts only with `--profile apprise`. No published port. | `notify` |
+
+The `notify` network holds the hub (fixed address `172.30.3.2`) and Apprise (fixed address
+`172.30.3.10`). It has a route out, because Apprise sends to the internet. The hub joins it
+whether or not Apprise runs, so you can turn Apprise on later without a hub restart.
 
 The `database` network has no route out. The hub joins `gateway` at a fixed address
 (`ANIMA_HUB_IP`, default `172.30.0.10`) and listens on port 8443 there.
@@ -70,7 +76,18 @@ Each service writes its log as JSON files, 10 MB each, 10 files.
    | `ANIMA_HUB_IP` | no | `172.30.0.10` | Hub address inside `ANIMA_HUB_SUBNET`. |
    | `ANIMA_PERMITTED_NETWORKS` | no | `100.64.0.0/10` | Client networks that may use the hub (NET-001): the VPN range and the site subnets, comma-separated. |
    | `ANIMA_LOG` | no | `info` | Hub log filter. |
+   | `ANIMA_PUBLIC_ORIGIN` | no | `https://hub.anima.ing` | The origin clients use. The hub checks the browser cookie's `Origin` against it, and the web client's security headers use it. |
+   | `ANIMA_RECORDING_MAX_BYTES` | no | `2147483648` | The most plaintext bytes one recording may hold (2 GiB). |
+   | `APPRISE_ALLOW_SERVICES` | no | `discord,tgram,slack` | The services Apprise may send to. See "Apprise". |
    | `ANIMA_ACME_SERVER` | no | Let's Encrypt production | Use the staging URL to test. |
+
+   The compose file sets two more hub variables as fixed values: `ANIMA_WEB_ROOT`
+   (`/usr/share/anima/web`, the web client; empty turns it off) and `ANIMA_RECORDING_ROOT`
+   (`/var/lib/anima/recordings`; empty turns recording off). The four variables
+   `ANIMA_PUBLIC_ORIGIN`, `ANIMA_WEB_ROOT`, `ANIMA_RECORDING_ROOT` and
+   `ANIMA_RECORDING_MAX_BYTES` are defined in K7 of
+   [phase-3-contracts.md](../docs/programme/phase-3-contracts.md). Until the web client and
+   recording code (WP-43, WP-48) is in the image, they do nothing.
 
 3. Check the host:
 
@@ -179,6 +196,88 @@ The gateway image holds the font family `OpenDyslexicM Nerd Font Mono`. Set guac
 `font-name` to exactly this name. `fc-match OpenDyslexic` returns DejaVu Sans, not this font.
 `test/smoke.sh` checks the name.
 
+## Web client
+
+The hub serves the web client at its own origin. See [../docs/setup/web-client.md](../docs/setup/web-client.md).
+To read metrics with Prometheus, see [../docs/setup/prometheus.md](../docs/setup/prometheus.md).
+
+## Recordings volume
+
+Session recordings (D-14) go to the named volume `recordings`, mounted read-write in the hub only,
+at `/var/lib/anima/recordings`.
+
+- The hub image makes that folder with owner `10001:10001` and mode `0700`. A new volume copies
+  both. The root file system of the hub stays read-only.
+- Retention deletes a recording after 30 days by default (1 to 365, set in Settings).
+- One recording holds at most `ANIMA_RECORDING_MAX_BYTES` plaintext bytes (2 GiB by default).
+- Below 1 GiB of free space, a recording stops. The session goes on.
+- The volume is not in the backups (D-15). See [backup/README.md](backup/README.md).
+- Check the free disk space on the host before the first recording:
+
+  ```sh
+  # Run on the VPS.
+  df -h /var/lib/docker
+  ```
+
+## Apprise (optional)
+
+Apprise sends a notification to a cloud service for the hub (D-19). It is a Compose profile, so a
+plain `docker compose up -d` does not start it.
+
+```sh
+# Run on the VPS, in /opt/anima/deploy.
+sudo docker compose --profile apprise up -d apprise
+```
+
+- It is stateless: it keeps no URL, no key and no result, and has no volume. Every request carries its
+  own URLs. It holds no secret and publishes no port.
+- The hub reaches it on the `notify` network. Enter `http://172.30.3.10:8000` as the Apprise address
+  of the channel in Settings. The port is the one the image listens on.
+- **Allow list.** `APPRISE_ALLOW_SERVICES` sets the only services it will send to. The default is
+  `discord,tgram,slack` (Discord, Telegram, Slack). To change it, set the variable in `deploy/.env`
+  and run `docker compose --profile apprise up -d apprise`. Add only cloud services. Never add
+  `json`, `xml`, `form`, `mailto`, `ntfy` or `apprise`: they take any host, so a channel could then
+  reach networks that the hub's deny list protects.
+- **Attachments.** `APPRISE_ATTACH_REJECT_URL` is `*`, so Apprise never fetches an `attach` URL.
+- **Outside the hub's deny list.** Apprise's own onward traffic is not covered by `ANIMA_PROBE_DENY`.
+  The allow list and the attachment reject limit it to the named services. A host firewall rule is an
+  optional extra: see step 8 of "Phase 3 operator changes (WP-52)".
+
+## Deny list
+
+`ANIMA_PROBE_DENY` lists the addresses that checks and notification targets must never reach
+(NET-001, R-030). It holds the hub's own networks, the VPS public address and the hub's VPN
+address (`ANIMA_HUB_ADDRESS`, as `/32`). It also holds the `notify` network, except the one address
+of Apprise.
+
+The deny list cannot contain `172.30.3.0/24` as a whole: a notification target is checked against
+the same list, so the hub would refuse its own Apprise (E-1). Leaving the subnet out would let a
+check reach the host through the bridge gateway `172.30.3.1`, and the hub itself. So the list holds the
+eight blocks that cover the subnet without `172.30.3.10`. The subnet and the address are fixed values
+in `compose.yaml`; do not make them variables. A test proves that the blocks and the one address
+together are exactly the subnet.
+
+## Egress check
+
+Some providers block outbound mail ports. This check shows what the hub can reach (NOT-002). Start
+the hub first, then run it on the VPS:
+
+```sh
+# Run on the VPS, in /opt/anima/deploy, with the hub running.
+sh bin/egress-check [HOST:PORT ...]
+```
+
+- With no argument it tries `ntfy.sh:443`, `smtp.gmail.com:465` and `smtp.gmail.com:587`. Pass
+  the SMTP host of your own mailbox to test that instead, for example
+  `sh bin/egress-check smtp.example.com:587`.
+- It runs from inside the hub container and prints `open HOST:PORT` or `blocked HOST:PORT (reason)`
+  for each target. `EGRESS_TIMEOUT` sets the seconds to wait (default 5).
+- Exit code `0`: all targets open. `1`: some are blocked. `2`: bad arguments, or the hub container
+  cannot be reached (is it up, and are you in `/opt/anima/deploy`?).
+- It changes nothing.
+- A TCP connect does not prove that SMTP works: a server can accept the connection and still refuse
+  the login. After the check, send a test notification from the channel in Settings.
+
 ## Security notes
 
 - The `postgres` image keeps `POSTGRES_PASSWORD` in the environment of process 1. Only user
@@ -232,10 +331,206 @@ user) or in Cloudflare. Nothing in this repository does them.
 11. Copy `secrets/anima_key` to an offline store. Without it, the stored credentials cannot
     be opened. The database backup does not contain it.
 
+## Phase 3 operator changes (WP-52)
+
+Do these once, in order, on the VPS in `/opt/anima/deploy` (AlmaLinux 10, as the sudo admin user).
+Each change to the VPS needs the operator's confirmation in chat first (VPS-005). Nothing in this
+repository does them. Log each one in `docs/programme/operator-changes.md`.
+
+The web client and recording work only after the WP-43 and WP-48 hub code is in the image. Before
+that, the new variables are harmless: the hub ignores them.
+
+**1. Check the free disk space (D-14).**
+
+```sh
+# Run on the VPS.
+df -h /var/lib/docker
+```
+
+Check: the free space is well above 1 GiB (a recording stops below 1 GiB) and above the recordings you
+expect to keep (30 days by default).
+Undo: nothing changes.
+
+**2. Keep the current image and compose file.**
+
+```sh
+# Run on the VPS, in /opt/anima/deploy.
+sudo docker tag anima-hub:local anima-hub:previous
+sudo cp -p compose.yaml compose.yaml.before-wp52
+```
+
+Check: `sudo docker image ls anima-hub` lists `previous` and `local` with the same image ID, and
+`ls compose.yaml.before-wp52` shows the file.
+Undo: `sudo docker image rm anima-hub:previous` and `sudo rm compose.yaml.before-wp52`.
+
+**3. Build the hub image on the Mac for amd64, and load it on the VPS.** Use the commit that you
+want to deploy (`<sha>` is its short hash).
+
+```sh
+# Run on the Mac, in the repository root.
+docker buildx build --platform linux/amd64 -f deploy/hub/Dockerfile -t anima-hub:<sha> --load .
+docker save anima-hub:<sha> | gzip > /tmp/anima-hub-<sha>.tar.gz
+scp /tmp/anima-hub-<sha>.tar.gz anima-admin@100.64.0.1:/tmp/
+```
+
+```sh
+# Run on the VPS.
+gunzip -c /tmp/anima-hub-<sha>.tar.gz | sudo docker load
+sudo docker tag anima-hub:<sha> anima-hub:local
+```
+
+Check: `sudo docker image ls anima-hub` shows `local` with the image ID of `<sha>`.
+Undo: `sudo docker tag anima-hub:previous anima-hub:local`. The hub still runs the old image until
+step 5.
+
+**4. Install the new compose file and the egress check.**
+
+```sh
+# Run on the Mac, in the repository root.
+scp deploy/compose.yaml deploy/bin/egress-check anima-admin@100.64.0.1:/tmp/
+```
+
+```sh
+# Run on the VPS, in /opt/anima/deploy.
+sudo install -m 0644 -o root -g root /tmp/compose.yaml compose.yaml
+sudo install -m 0755 -o root -g root /tmp/egress-check bin/egress-check
+sudo docker compose config --quiet
+```
+
+Check: `docker compose config --quiet` prints nothing and exits 0. It needs `ANIMA_HUB_ADDRESS`,
+`ANIMA_ACME_EMAIL` and `ANIMA_VPS_PUBLIC_ADDRESS` in `deploy/.env`, which are already there.
+Undo: `sudo cp -p compose.yaml.before-wp52 compose.yaml` and `sudo rm bin/egress-check`.
+
+**5. Start the new hub.** `docker compose up -d hub` runs `migrate` first. The change creates the
+`recordings` volume and the `notify` network.
+
+```sh
+# Run on the VPS, in /opt/anima/deploy.
+sudo docker compose up -d hub
+sudo docker compose ps
+```
+
+Check, in this order:
+
+```sh
+# Run on a VPN machine (an operator@ machine).
+curl -sS -o /dev/null -w '%{http_code}\n' https://hub.anima.ing/health
+```
+
+The answer is `200`.
+
+```sh
+# Run on the VPS, in /opt/anima/deploy.
+sudo docker compose exec -T hub stat -c '%u %a' /var/lib/anima/recordings
+```
+
+The answer is `10001 700`.
+
+```sh
+# Run on the VPS, in /opt/anima/deploy.
+sudo docker inspect -f '{{range $name, $net := .NetworkSettings.Networks}}{{$name}} {{$net.IPAddress}}{{"\n"}}{{end}}' "$(sudo docker compose ps -q hub)"
+```
+
+The hub is on four networks: `deploy_database`, `deploy_gateway` (`172.30.0.10`), `deploy_localapi` and
+`deploy_notify` (`172.30.3.2`). An earlier redeploy came back with only one network (operator-changes.md,
+2026-11-06 05:19Z). If a network is missing, run `sudo docker compose up -d --force-recreate hub`.
+
+```sh
+# Run on the VPS, in /opt/anima/deploy.
+sudo docker compose exec -T hub printenv ANIMA_PUBLIC_ORIGIN ANIMA_WEB_ROOT ANIMA_RECORDING_ROOT ANIMA_RECORDING_MAX_BYTES
+```
+
+The four lines are `https://hub.anima.ing`, `/usr/share/anima/web`, `/var/lib/anima/recordings` and
+`2147483648`.
+
+Undo:
+
+```sh
+# Run on the VPS, in /opt/anima/deploy.
+sudo docker tag anima-hub:previous anima-hub:local
+sudo cp -p compose.yaml.before-wp52 compose.yaml
+sudo docker compose up -d hub
+sudo docker network rm deploy_notify
+```
+
+The new migrations stay in the database; the previous hub ignores them. The last command is needed
+only if `deploy_notify` is left over (and Apprise, if you started it, is removed first: step 7).
+The `recordings` volume stays. `sudo docker volume rm deploy_recordings` removes it and **destroys all
+recordings**. Run it only if the operator wants a full revert.
+
+**6. Run the egress check.**
+
+```sh
+# Run on the VPS, in /opt/anima/deploy, with the hub running.
+sh bin/egress-check
+sh bin/egress-check smtp.example.com:587
+```
+
+Replace `smtp.example.com:587` with the SMTP host and port of the operator's mailbox. Check: every
+line starts with `open` and the exit code is 0. A `blocked` line names the reason; if a mail port
+is blocked, use another port or a provider that allows it. Finish with a test notification from the
+channel in Settings, because an open port does not prove that SMTP works.
+Undo: nothing changes.
+
+**7. Optional: start Apprise.**
+
+```sh
+# Run on the VPS, in /opt/anima/deploy.
+sudo docker compose --profile apprise up -d apprise
+sudo docker compose --profile apprise ps apprise
+sudo docker compose --profile apprise exec -T apprise curl -fsS http://127.0.0.1:8000/status
+```
+
+Check: `apprise` is `Up (healthy)` and the status call prints `OK`. Then, in Settings, make an
+Apprise channel with the address `http://172.30.3.10:8000` and a `discord://`, `tgram://` or
+`slack://` URL, and send a test notification.
+Undo: `sudo docker compose --profile apprise rm -sf apprise`.
+
+**8. Optional, proposed: block Apprise from the host and from private networks.** The allow list and
+the attachment reject already limit Apprise (see "Apprise"). This rule adds a second layer. It needs the
+operator's confirmation (VPS-005), and you must confirm the chain names on the host first:
+
+```sh
+# Run on the VPS.
+sudo nft list table inet anima_filter
+```
+
+Check that the chains `input` and `forward` exist (WP-03's `nftables.conf`). If they do, add:
+
+```sh
+# Run on the VPS.
+# Apprise to the host itself (including the bridge gateway 172.30.3.1).
+sudo nft insert rule inet anima_filter input ip saddr 172.30.3.10 drop
+# Apprise to private and VPN ranges, except the notify subnet, where it answers the hub.
+sudo nft insert rule inet anima_filter forward ip saddr 172.30.3.10 ip daddr != 172.30.3.0/24 ip daddr { 10.0.0.0/8, 100.64.0.0/10, 127.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/16 } drop
+```
+
+Check: `sudo nft -a list table inet anima_filter` shows both rules, and the test notification of
+step 7 still arrives. The rules last until the firewall is reloaded or the host restarts. To keep them,
+WP-03's firewall file must change; that is a separate change.
+Undo, by rule handle:
+
+```sh
+# Run on the VPS.
+sudo nft -a list chain inet anima_filter input
+sudo nft -a list chain inet anima_filter forward
+sudo nft delete rule inet anima_filter input handle <HANDLE_OF_THE_APPRISE_RULE>
+sudo nft delete rule inet anima_filter forward handle <HANDLE_OF_THE_APPRISE_RULE>
+```
+
+**No other change.** Phase 3 makes no change to Cloudflare, DNS, CORS or Headscale (plan Section 6).
+`hub.anima.ing` stays an unproxied record to the VPN address. The web client is same-origin, so
+`CLIENT_ORIGINS` stays as it is. `operator@` already reaches `tag:hub` on tcp:443. Only a Prometheus
+scraper that is not an `operator@` machine needs a grant; see
+[../docs/setup/prometheus.md](../docs/setup/prometheus.md).
+
 ## Checks
 
 - `bun run --cwd deploy test` checks the compose file, the scripts (`bin/preflight`,
-  `certs/install.sh`, `certs/run.sh` with a fake lego) and the database roles. It needs no Docker.
+  `bin/egress-check`, `certs/install.sh`, `certs/run.sh` with a fake lego) and the database roles. It needs no Docker.
+- `sh deploy/test/apprise-smoke.sh` is a manual test that needs Docker. It starts only Apprise, on a
+  copy of the `notify` network with no route out, and checks the hardening, the allow list and the
+  attachment reject. Nothing leaves the machine.
 - `sh deploy/test/smoke.sh` is a manual test that needs Docker. It checks the Docker
   version, builds the gateway and hub images, checks the font, starts `postgres` and checks
   the roles, runs the certificate hook on a fixture certificate with the real container

@@ -88,3 +88,10 @@ describe("offsite.sh (VPS-006)", () => {
     expect(result.out).toContain("manifest");
   });
 });
+
+describe("recordings stay out of the backup (D-15)", () => {
+  test.each(["backup.sh", "offsite.sh"])("D-15: %s never names the recordings volume or folder", (name) => {
+    const script = readFileSync(join(ROOT, "deploy", "backup", name), "utf8");
+    expect(script).not.toMatch(/recording/i);
+  });
+});
