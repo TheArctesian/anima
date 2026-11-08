@@ -9,6 +9,7 @@ Generated from `design/tokens/*.tokens.json` (TOK-001). Names follow contract K5
 - `target-min-touch` is 44 pt on iOS and 44 CSS px on the web.
 - Spring tokens are `<settle time> linear(<curve>)` fragments for CSS transitions; scripts read stiffness and damping from `tokens.ts` through `$lib/motion/` (MOT-001).
 - `threshold-*` never change under reduced motion (MOT-021).
+- Reduce motion in Settings sets `data-motion` on `<html>`: `reduce` takes the reduced values whatever the OS says, `full` keeps the full values; no attribute follows the OS (MOT-043).
 
 ## color.nord
 

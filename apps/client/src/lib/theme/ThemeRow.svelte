@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { crossFadeView } from '$lib/motion/view-transition/cross-fade';
   import { applyTheme, storedTheme, storeTheme, THEMES, type Theme } from './theme';
 
   let theme = $state<Theme>(storedTheme(localStorage));
@@ -6,7 +7,10 @@
 
   function choose(chosen: Theme): void {
     theme = chosen;
-    applyTheme(document.documentElement, chosen);
+    // Only the operator's change fades; the start applies the stored theme at once (5.7.3 Theme change).
+    crossFadeView(() => {
+      applyTheme(document.documentElement, chosen);
+    });
     try {
       storeTheme(localStorage, chosen);
       problem = null;

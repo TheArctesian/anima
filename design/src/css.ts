@@ -117,6 +117,27 @@ function lightBlocks(lines: readonly Declaration[]): string[] {
   ];
 }
 
+/**
+ * The operator's "Reduce motion" choice (MOT-043, D-28): `data-motion="reduce"` takes the reduced values whatever the OS
+ * says, and `data-motion="full"` puts back the full values on an OS that asks for reduced motion. `:root` with one
+ * attribute outranks the plain `:root` of the default and media blocks wherever it sits, and these blocks hold motion
+ * tokens only, so they never meet a theme or preference block. Without the attribute (System) the media query alone
+ * decides, as before. Empty when no token changes under reduced motion.
+ */
+function motionChoiceBlocks(tokens: readonly Token[], reduced: readonly Declaration[]): string[] {
+  if (reduced.length === 0) return [];
+  const values = new Map(tokens.flatMap(declarations));
+  const full = reduced.flatMap(([property]): Declaration[] => {
+    const value = values.get(property);
+    return value === undefined ? [] : [[property, value]];
+  });
+  return [
+    '/* Reduce motion in Settings (MOT-043): On reduces whatever the OS says; Off keeps full motion on a reducing OS. */',
+    block(':root[data-motion="reduce"]', reduced),
+    media('prefers-reduced-motion: reduce', full, ':root[data-motion="full"]'),
+  ];
+}
+
 /** tokens.css: custom properties on :root, the light theme and the user-preference overrides (TOK-001, MAT-006, MOT-040). */
 export function renderCss(tokens: readonly Token[]): string {
   const root = tokens.flatMap(declarations);
@@ -124,12 +145,14 @@ export function renderCss(tokens: readonly Token[]): string {
   const light = lightTheme(tokens);
   // `:root[data-theme]` matches the light selectors' specificity, so these later blocks win over either theme (MAT-006).
   const preference = light.length === 0 ? ':root' : ':root, :root[data-theme]';
+  const reduced = reducedMotion(tokens);
   return [
     `/* ${GENERATED_NOTICE} */`,
     block(':root', root),
     ...lightBlocks(light),
     '/* Motion changes (D-5): press and stagger are instant, springs jump; thresholds never change (MOT-021). */',
-    media('prefers-reduced-motion: reduce', reducedMotion(tokens)),
+    media('prefers-reduced-motion: reduce', reduced),
+    ...motionChoiceBlocks(tokens, reduced),
     '/* Reduced transparency (5.6): solid materials, no blur (D-6). */',
     media('prefers-reduced-transparency: reduce', solid, preference),
     '/* Increased contrast (MAT-006): solid materials and text-muted borders. */',
