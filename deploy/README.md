@@ -561,7 +561,7 @@ do not stop that. The Anima host firewall contains it (NOT-002, D-19). The rules
   the VPS: not the bridge gateway `172.30.3.1`, not Headscale on the public address, not the hub's
   VPN address.
 - `forward` drops Apprise's packets to `0.0.0.0/8`, `10.0.0.0/8`, `100.64.0.0/10`, `127.0.0.0/8`,
-  `169.254.0.0/16`, `172.16.0.0/12`, `192.168.0.0/16` `224.0.0.0/4` and `240.0.0.0/4`, and everything
+  `169.254.0.0/16`, `172.16.0.0/12`, `192.168.0.0/16`, `224.0.0.0/4` and `240.0.0.0/4`, and everything
   it sends out of `tailscale0`. On the `notify` network it may only answer the hub. Public addresses
   stay open. That last claim holds only while the kernel's `br_netfilter` module is loaded, because
   without it bridged traffic skips the `forward` hook. It rests on deploy's `daemon.json`
