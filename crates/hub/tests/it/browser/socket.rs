@@ -113,7 +113,11 @@ async fn d_3_a_socket_from_the_public_origin_signs_in_by_cookie(pool: PgPool) {
 
     for payload in [Value::Null, json!({})] {
         let mut socket = open(served.addr, &[("origin", PUBLIC), ("cookie", &cookie)]).await;
-        assert_eq!(init(&mut socket, payload.clone()).await, Ok(ack()), "{payload}");
+        assert_eq!(
+            init(&mut socket, payload.clone()).await,
+            Ok(ack()),
+            "{payload}"
+        );
         let me = json!({ "id": "1", "type": "subscribe", "payload": { "query": "{ me { username } }" } });
         socket.send(Message::text(me.to_string())).await.unwrap();
         let next = receive(&mut socket).await.unwrap();
@@ -167,7 +171,11 @@ async fn a_3_on_a_socket_the_payload_bearer_wins_and_must_not_be_a_browser_token
         "desktop path"
     );
     let mut tauri = open(served.addr, &[("origin", "tauri://localhost")]).await;
-    assert_eq!(init(&mut tauri, bearer(&login)).await, Ok(ack()), "web view");
+    assert_eq!(
+        init(&mut tauri, bearer(&login)).await,
+        Ok(ack()),
+        "web view"
+    );
 
     let mut stolen = open(served.addr, &[]).await;
     assert_eq!(

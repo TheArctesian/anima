@@ -28,14 +28,17 @@ async fn d_3_sign_in_browser_sets_exactly_the_cookie_and_answers_without_the_tok
         )]
     );
     assert!(!answer.body.contains(&token), "{}", answer.body);
-    let expires_at =
-        (start() + TimeDelta::days(7)).to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
+    let body = answer.json();
+    let signed_in = &body["data"]["signInBrowser"];
     assert_eq!(
-        answer.json(),
-        json!({ "data": { "signInBrowser": {
-            "expiresAt": expires_at,
-            "operator": { "username": USERNAME, "totpEnabled": false } } } })
+        signed_in["operator"],
+        json!({ "username": USERNAME, "totpEnabled": false })
     );
+    let expires_at: chrono::DateTime<chrono::Utc> =
+        signed_in["expiresAt"].as_str().unwrap().parse().unwrap();
+    assert_eq!(expires_at, start() + TimeDelta::days(7));
+    let fields: Vec<&String> = signed_in.as_object().unwrap().keys().collect();
+    assert_eq!(fields, ["expiresAt", "operator"]);
     let (kind, scope, stored_expiry): (String, String, chrono::DateTime<chrono::Utc>) =
         sqlx::query_as(
             "select kind, scope, expires_at from access.api_tokens where token_hash = $1",
