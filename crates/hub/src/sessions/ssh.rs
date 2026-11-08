@@ -3,15 +3,16 @@
 //! presented key (`observer`) and the sign-in with a stored credential (`sign_in`, OD-9).
 //! I/O edge.
 //!
-//! The host is resolved first and every address it resolves to must pass the target rule,
-//! deny list included (R-030, R-032); the connection then goes to a checked address, never
+//! The host is resolved once by [`crate::targets::resolve_checked`] and every address it
+//! resolves to must pass the hub's address policy, deny list included (R-030, R-032); the
+//! connection then goes to a checked address, never
 //! to the name again, so a second lookup cannot point it somewhere else. Nothing here logs,
 //! and no error holds a remote text, a host name or a secret (LOG-007).
 
 mod observer;
 mod sign_in;
 
-use std::{borrow::Cow, net::SocketAddr, time::Duration};
+use std::{borrow::Cow, time::Duration};
 
 use russh::{
     Preferred,
@@ -19,7 +20,7 @@ use russh::{
 };
 use tokio::net::TcpStream;
 
-use super::target::TargetRule;
+use crate::targets::{self, AddressPolicy, TargetError};
 
 pub(super) use observer::Observer;
 pub(super) use sign_in::authenticate;
@@ -70,13 +71,22 @@ pub(super) enum SshError {
     AuthFailed,
 }
 
+impl From<TargetError> for SshError {
+    fn from(error: TargetError) -> Self {
+        match error {
+            TargetError::Unresolved => Self::Unresolved,
+            TargetError::Refused => Self::RefusedTarget,
+        }
+    }
+}
+
 /// Where a connection goes: the device's host (a name or an IP literal) and SSH port, and the
-/// rule for the addresses the host resolves to.
+/// policy for the addresses the host resolves to.
 #[derive(Clone, Copy, Debug)]
 pub(super) struct Target<'a> {
     pub(super) host: &'a str,
     pub(super) port: u16,
-    pub(super) rule: &'a TargetRule,
+    pub(super) policy: &'a AddressPolicy,
 }
 
 /// The algorithm preferences every hub SSH connection uses: [`HOST_KEY_ORDER`] for the host
@@ -88,34 +98,15 @@ pub(super) fn preferred() -> Preferred {
     }
 }
 
-/// The addresses `target`'s host resolves to, each in its canonical form (an IPv4-mapped
-/// address is the IPv4 address it is), when the rule lets the hub reach every one of them; a
-/// name that also points somewhere refused is refused whichever address would answer first.
+/// Connects to the first of `target`'s checked addresses ([`targets::resolve_checked`]) that
+/// answers.
 ///
 /// # Errors
 /// [`SshError::Unresolved`] when the host has no address, [`SshError::RefusedTarget`] when
-/// any address fails the rule.
-pub(super) async fn addresses(target: Target<'_>) -> Result<Vec<SocketAddr>, SshError> {
-    let addresses: Vec<SocketAddr> = tokio::net::lookup_host((target.host, target.port))
-        .await
-        .map_err(|_| SshError::Unresolved)?
-        .map(|address| SocketAddr::new(address.ip().to_canonical(), target.port))
-        .collect();
-    if addresses.is_empty() {
-        return Err(SshError::Unresolved);
-    }
-    target
-        .rule
-        .checked(addresses)
-        .ok_or(SshError::RefusedTarget)
-}
-
-/// Connects to the first of `target`'s checked [`addresses`] that answers.
-///
-/// # Errors
-/// As [`addresses`]; [`SshError::Unreachable`] when no address answers.
+/// the policy refuses any address, [`SshError::Unreachable`] when no address answers.
 pub(super) async fn connect(target: Target<'_>) -> Result<TcpStream, SshError> {
-    for address in addresses(target).await? {
+    let addresses = targets::resolve_checked(target.host, target.port, target.policy).await?;
+    for address in addresses {
         if let Ok(stream) = TcpStream::connect(address).await {
             return Ok(stream);
         }
@@ -127,7 +118,7 @@ pub(super) async fn connect(target: Target<'_>) -> Result<TcpStream, SshError> {
 /// not resolve or no address answers. Never ends on its own; the caller's limit ends it.
 ///
 /// # Errors
-/// [`SshError::RefusedTarget`] when any address fails the rule.
+/// [`SshError::RefusedTarget`] when the policy refuses any address.
 pub(super) async fn connect_waking(
     target: Target<'_>,
     retry: Duration,

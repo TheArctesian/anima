@@ -1,7 +1,8 @@
-//! Which addresses the hub may connect to for probes and, from Phase 2, sessions and metrics
-//! (SSRF protection, R-030).
+//! Which addresses the hub may connect to: probes, sessions, metrics and every new outbound
+//! connection (SSRF protection, R-030, R-032, P3-003). The one target rule, and the one
+//! resolver that applies it before a connection.
 
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 
 use ipnet::IpNet;
 
@@ -30,12 +31,22 @@ impl AddressPolicy {
         }
     }
 
-    /// Also allows loopback, for the tests that probe local listeners only.
+    /// Also allows plain loopback (`127.0.0.0/8` and `::1` as written, not an IPv6 form that
+    /// carries a loopback address), for the tests that reach local listeners only. The deny
+    /// list still wins.
     #[cfg(any(test, feature = "test-support"))]
     #[must_use]
     pub(crate) fn allowing_loopback(mut self) -> Self {
         self.allow_loopback = true;
         self
+    }
+
+    /// Whether [`AddressPolicy::allowing_loopback`] made this policy, so a policy that
+    /// replaces it can keep the test switch.
+    #[cfg(any(test, feature = "test-support"))]
+    #[must_use]
+    pub(crate) const fn allows_loopback(&self) -> bool {
+        self.allow_loopback
     }
 
     /// Whether a probe may connect to `ip`.
@@ -49,11 +60,63 @@ impl AddressPolicy {
         {
             return false;
         }
-        if canonical.is_loopback() && self.allow_loopback {
+        if self.allow_loopback && ip.is_loopback() {
             return true;
         }
         !always_refused(canonical) && !local_use_nat64(ip)
     }
+}
+
+/// Why a host gives no address to connect to. Holds no host name or address (LOG-007).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum TargetError {
+    #[error("the host name does not resolve")]
+    Unresolved,
+    #[error("the host resolves to an address the hub may not reach")]
+    Refused,
+}
+
+/// Resolves `host` (a name, or an IP literal without brackets) once and returns every address
+/// it resolves to, each in its canonical form (an IPv4-mapped address is the IPv4 address it
+/// is) with `port`, when `policy` permits every one. A name that also points at a refused
+/// address is refused whichever address would answer first (D-1, R-032). The caller connects
+/// only to a returned address and never resolves the name again, so a second lookup cannot
+/// point the connection somewhere else.
+///
+/// Check probes keep their own rule, which drops the refused addresses and keeps the rest
+/// (`checks::probe::resolve`, CHK-001).
+///
+/// # Errors
+/// [`TargetError::Unresolved`] when the name has no address, [`TargetError::Refused`] when
+/// `policy` refuses any of them.
+pub async fn resolve_checked(
+    host: &str,
+    port: u16,
+    policy: &AddressPolicy,
+) -> Result<Vec<SocketAddr>, TargetError> {
+    let addresses: Vec<SocketAddr> = tokio::net::lookup_host((host, port))
+        .await
+        .map_err(|_| TargetError::Unresolved)?
+        .map(|address| SocketAddr::new(address.ip().to_canonical(), port))
+        .collect();
+    every_permitted(policy, addresses)
+}
+
+/// `addresses` when there is at least one and `policy` permits every one.
+fn every_permitted(
+    policy: &AddressPolicy,
+    addresses: Vec<SocketAddr>,
+) -> Result<Vec<SocketAddr>, TargetError> {
+    if addresses.is_empty() {
+        return Err(TargetError::Unresolved);
+    }
+    if addresses
+        .iter()
+        .any(|address| !policy.permits(address.ip()))
+    {
+        return Err(TargetError::Refused);
+    }
+    Ok(addresses)
 }
 
 /// The IPv4 address that an IPv6 form carries, if it carries one.
@@ -118,3 +181,6 @@ fn always_refused(ip: IpAddr) -> bool {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

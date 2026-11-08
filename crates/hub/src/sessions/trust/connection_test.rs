@@ -130,7 +130,7 @@ pub(in crate::sessions) async fn test_connection(
     let target = Target {
         host: &plan.host,
         port: plan.port,
-        rule: live.target_rule(),
+        policy: live.policy(),
     };
     let probed = match (&plan.accepted, &plan.login) {
         (Some(accepted), Some((username, secret))) => {

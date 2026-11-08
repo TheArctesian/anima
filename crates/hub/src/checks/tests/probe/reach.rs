@@ -117,12 +117,14 @@ fn default_policy_allows_private_and_public_addresses() {
 }
 
 #[test]
-fn test_policy_allows_loopback_only() {
+fn test_policy_allows_plain_loopback_only() {
     let policy = AddressPolicy::default().allowing_loopback();
-    for text in ["127.0.0.1", "::1", "::ffff:127.0.0.1"] {
+    for text in ["127.0.0.1", "::1"] {
         assert!(policy.permits(ip(text)), "{text}");
     }
+    // An IPv6 form that carries a loopback address stays refused (Q2-09).
     for text in [
+        "::ffff:127.0.0.1",
         "169.254.169.254",
         "0.0.0.0",
         "224.0.0.1",

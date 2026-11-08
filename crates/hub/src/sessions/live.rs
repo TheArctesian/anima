@@ -31,7 +31,6 @@ use super::{
     files,
     model::EndReason,
     public_key::PublicKey,
-    target::TargetRule,
     tickets::{PendingTicket, Presented, TicketHash, hash_of},
     trust::{Observations, PresentedCertificate},
 };
@@ -85,7 +84,7 @@ impl State {
 
 /// Tickets, open tunnels, and host-key and certificate observations, shared by GraphQL and the
 /// tunnel route. Cheap to clone; every clone sees the same state. `sessions::open` builds one
-/// with `Live::default()`, whose target rule has no deny list; `main.rs` gives it the hub's
+/// with `Live::default()`, whose address policy has no deny list; `main.rs` gives it the hub's
 /// `ANIMA_PROBE_DENY` policy with [`Live::denying`].
 #[derive(Clone)]
 pub struct Live {
@@ -95,7 +94,9 @@ pub struct Live {
     /// RDP server certificates, apart from host keys: an endpoint may present both.
     certificates: Arc<Mutex<Observations<PresentedCertificate>>>,
     tunnel_end_wait: Duration,
-    target_rule: TargetRule,
+    /// The one target rule every session connection applies (R-030, R-032); shared, so a
+    /// clone is cheap.
+    policy: Arc<AddressPolicy>,
     /// The files tunnel's own tickets, so a session ticket never opens `/files`.
     files: files::Tickets,
     changes: Changes,
@@ -143,7 +144,7 @@ impl Live {
             observations: Arc::default(),
             certificates: Arc::default(),
             tunnel_end_wait: wait,
-            target_rule: TargetRule::default(),
+            policy: Arc::default(),
             files: files::Tickets::default(),
             changes: Changes::default(),
         }
@@ -152,11 +153,18 @@ impl Live {
     /// This `Live` with every session connection (the terminal, the Guacamole tunnel, the SSH
     /// probe and `testConnection`) also refusing what `policy` refuses: the
     /// `ANIMA_PROBE_DENY` networks and the policy's always-refused ranges. It
-    /// replaces any policy given before.
+    /// replaces any policy given before; a `Live` that reaches loopback for tests keeps
+    /// doing so, whichever builder runs first.
     #[must_use]
     pub fn denying(self, policy: AddressPolicy) -> Self {
+        #[cfg(any(test, feature = "test-support"))]
+        let policy = if self.policy.allows_loopback() {
+            policy.allowing_loopback()
+        } else {
+            policy
+        };
         Self {
-            target_rule: self.target_rule.denying(policy),
+            policy: Arc::new(policy),
             ..self
         }
     }
@@ -168,7 +176,7 @@ impl Live {
     #[must_use]
     pub fn reaching_loopback_for_tests(self) -> Self {
         Self {
-            target_rule: self.target_rule.reaching_loopback_for_tests(),
+            policy: Arc::new(Arc::unwrap_or_clone(self.policy).allowing_loopback()),
             ..self
         }
     }
@@ -221,9 +229,9 @@ impl Live {
         Some((tunnel_end, relay))
     }
 
-    /// The rule every session connection applies to the addresses a host resolves to.
-    pub(super) const fn target_rule(&self) -> &TargetRule {
-        &self.target_rule
+    /// The policy every session connection applies to the addresses a host resolves to.
+    pub(super) fn policy(&self) -> &AddressPolicy {
+        &self.policy
     }
 
     /// The poisoned case is taken over: no critical section here can leave the maps half
