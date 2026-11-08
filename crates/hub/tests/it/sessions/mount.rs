@@ -10,7 +10,7 @@ use anima_hub::{
     clock::{Clock, FixedClock},
     events::Bus,
     logged,
-    sessions::{Live, terminal_router},
+    sessions::{Live, Serving, terminal_router},
     tunnels,
 };
 use axum::{
@@ -38,14 +38,17 @@ async fn mounted(pool: &PgPool, live: &Live, permitted: &str) -> Router {
     access::permit_networks(pool, &networks).await.unwrap();
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(now()));
     let bus = Bus::new(16);
-    // No request in these tests gets past the ticket, so no device is reached.
-    let terminal = terminal_router(
-        pool.clone(),
-        vault(),
-        bus.clone(),
-        clock.clone(),
-        live.clone(),
-    );
+    // No request in these tests gets past the ticket, so no device is reached; the terminal
+    // never uses guacd.
+    let terminal = terminal_router(&Serving {
+        db: pool.clone(),
+        vault: vault(),
+        bus: bus.clone(),
+        clock: clock.clone(),
+        live: live.clone(),
+        guacd: String::new(),
+        drive_root: String::new(),
+    });
     logged(terminal).layer(access::permitted_networks_layer(access::Edge::new(
         pool.clone(),
         bus,

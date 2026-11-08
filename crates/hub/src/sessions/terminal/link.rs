@@ -7,8 +7,8 @@ use axum::extract::ws::{Message, Utf8Bytes, WebSocket};
 use russh::{ChannelMsg, ChannelReadHalf, ChannelWriteHalf, client::Msg};
 use tokio::time::Instant;
 
-use super::{control, relay::Writing, route::Timing, writes};
-use crate::sessions::{Tunnel, end::End};
+use super::{control, relay::Writing, route::Timing};
+use crate::sessions::{Tunnel, end::End, quiet::Quiet, upgrade};
 
 /// One upgraded terminal: the client socket, the device's channel, the end signal, the waits
 /// and the deadlines they set.
@@ -20,9 +20,9 @@ pub(super) struct Link<'a> {
     pub(super) tunnel: &'a mut Tunnel,
     pub(super) timing: Timing,
     /// When the hub's silence earns the client a `ping`.
-    pub(super) hub_quiet: Instant,
+    pub(super) hub_quiet: Quiet,
     /// When the client's silence ends the session (`relay`).
-    pub(super) client_quiet: Instant,
+    pub(super) client_quiet: Quiet,
     /// The client message being written to the device, at most one (`relay`).
     pub(super) writing: Option<Writing>,
     /// When that write has waited on the device too long (`relay`).
@@ -47,12 +47,12 @@ impl Link<'_> {
             .await
     }
 
-    /// Sends one message to the client (`writes::send`); the hub's silence restarts once it
+    /// Sends one message to the client (`upgrade::send`); the hub's silence restarts once it
     /// is sent.
     pub(super) async fn send(&mut self, message: Message) -> Result<(), End> {
         let wait = self.timing.client_idle;
-        writes::send(&mut self.client, message, self.tunnel, wait).await?;
-        self.hub_quiet = Instant::now() + self.timing.hub_silence;
+        upgrade::send(&mut self.client, message, self.tunnel, wait).await?;
+        self.hub_quiet.restart(Instant::now());
         Ok(())
     }
 }

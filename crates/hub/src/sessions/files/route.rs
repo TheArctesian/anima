@@ -25,7 +25,7 @@ use axum::{
     routing::get,
 };
 use sqlx::PgPool;
-use tokio::time::timeout;
+use tokio::time::{Instant, timeout};
 use zeroize::Zeroizing;
 
 use super::{
@@ -40,7 +40,9 @@ use crate::{
     credentials::Vault,
     devices,
     events::Bus,
-    sessions::{Live, admission, end::CLIENT_IDLE, live::FilesRelay, tickets::FILES_PATH},
+    sessions::{
+        Live, admission, end::CLIENT_IDLE, live::FilesRelay, quiet::Quiet, tickets::FILES_PATH,
+    },
     ssh::{LinkError, SshLink, link},
     targets::AddressPolicy,
 };
@@ -269,10 +271,10 @@ async fn relay(
         max_entries: files.max_entries,
         work: None,
         active: None,
-        hub_quiet: after(timing.hub_silence),
-        client_quiet: after(timing.client_idle),
+        hub_quiet: Quiet::new(timing.hub_silence, Instant::now()),
+        client_quiet: Quiet::new(timing.client_idle, Instant::now()),
         work_due: after(timing.device),
-        device_quiet: after(timing.keep_alive),
+        device_quiet: Quiet::new(timing.keep_alive, Instant::now()),
     }
     .run()
     .await;

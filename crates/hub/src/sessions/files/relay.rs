@@ -15,8 +15,8 @@
 
 use std::{pin::Pin, sync::Arc, time::Duration};
 
-use axum::extract::ws::{CloseFrame, Message, Utf8Bytes, WebSocket};
-use futures_util::{FutureExt as _, SinkExt};
+use axum::extract::ws::{Message, Utf8Bytes, WebSocket};
+use futures_util::FutureExt as _;
 use tokio::{
     sync::watch,
     time::{Instant, sleep_until, timeout},
@@ -32,6 +32,8 @@ use super::{
 use crate::sessions::{
     EndCause, EndReason,
     end::{CLOSE_WAIT, Cause},
+    quiet::Quiet,
+    upgrade::close,
 };
 
 /// One request to the device and what it answered.
@@ -131,13 +133,13 @@ pub(super) struct Relay {
     pub(super) work: Option<Work>,
     pub(super) active: Option<Active>,
     /// When the hub's silence earns the client a `ping`.
-    pub(super) hub_quiet: Instant,
+    pub(super) hub_quiet: Quiet,
     /// When the client's silence ends the tunnel.
-    pub(super) client_quiet: Instant,
+    pub(super) client_quiet: Quiet,
     /// When the request in flight has waited on the device too long.
     pub(super) work_due: Instant,
     /// When an idle link gets a request, so it does not end for want of traffic.
-    pub(super) device_quiet: Instant,
+    pub(super) device_quiet: Quiet,
 }
 
 /// From `now`, the instant `wait` later.
@@ -163,7 +165,7 @@ impl Relay {
             };
             self.abandon(active, work, outcome).await;
         }
-        close_client(self.client, cause).await;
+        close(self.client, None, cause).await;
     }
 
     /// Whether the client is read now: when no request is in flight, or beside a download's
@@ -190,10 +192,10 @@ impl Relay {
             reason = self.session.ended() => Turn::Ended(reason),
             message = self.client.recv(), if reading => Turn::Client(message),
             done = finished(&mut self.work), if working => Turn::Done(done),
-            () = sleep_until(self.hub_quiet) => Turn::HubSilent,
-            () = sleep_until(self.client_quiet), if reading => Turn::ClientIdle,
+            () = sleep_until(self.hub_quiet.due()) => Turn::HubSilent,
+            () = sleep_until(self.client_quiet.due()), if reading => Turn::ClientIdle,
             () = sleep_until(self.work_due), if working => Turn::WorkStalled,
-            () = sleep_until(self.device_quiet), if idle => Turn::DeviceQuiet,
+            () = sleep_until(self.device_quiet.due()), if idle => Turn::DeviceQuiet,
         }
     }
 
@@ -247,7 +249,7 @@ impl Relay {
             }),
             sent = timeout(wait, self.client.send(message)) => match sent {
                 Ok(Ok(())) => {
-                    self.hub_quiet = after(self.timing.hub_silence);
+                    self.hub_quiet.restart(Instant::now());
                     Ok(())
                 }
                 Ok(Err(_)) => Err(Cause::OperatorClosed),
@@ -316,18 +318,4 @@ async fn finished(work: &mut Option<Work>) -> Done {
         Some(work) => work.as_mut().await,
         None => std::future::pending().await,
     }
-}
-
-/// Sends the close frame with the cause's code, then flushes and closes the socket. Best
-/// effort within [`CLOSE_WAIT`]: the client may be gone.
-async fn close_client(mut client: WebSocket, cause: Cause) {
-    let frame = CloseFrame {
-        code: cause.ending().close_code,
-        reason: Utf8Bytes::default(),
-    };
-    let _closed = timeout(CLOSE_WAIT, async {
-        let _sent = client.send(Message::Close(Some(frame))).await;
-        SinkExt::close(&mut client).await
-    })
-    .await;
 }

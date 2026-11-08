@@ -23,6 +23,7 @@ use super::{
 use crate::sessions::{
     Tunnel,
     end::{Cause, End, unreadable},
+    quiet::Quiet,
 };
 
 /// The terminal type the hub asks the device for (K4 Section 8.4).
@@ -48,8 +49,8 @@ pub(super) async fn run(
         writer: Arc::new(writer),
         tunnel,
         timing,
-        hub_quiet: now + timing.hub_silence,
-        client_quiet: now + timing.client_idle,
+        hub_quiet: Quiet::new(timing.hub_silence, now),
+        client_quiet: Quiet::new(timing.client_idle, now),
         writing: None,
         write_due: now,
     };
@@ -104,7 +105,7 @@ impl Link<'_> {
                     Some(Ok(Message::Close(_))) | None => return Err(ended(Cause::OperatorClosed)),
                     Some(Err(error)) => return Err(ended(unreadable(error))),
                 },
-                () = sleep_until(self.hub_quiet) => self.ping().await?,
+                () = sleep_until(self.hub_quiet.due()) => self.ping().await?,
                 () = sleep_until(due) => return Err(End::explained(Cause::Timeout, NO_SIZE)),
             }
         }
@@ -119,7 +120,7 @@ impl Link<'_> {
             let message = tokio::select! {
                 signal = self.tunnel.ended() => return Err(End::from(signal)),
                 message = timeout_at(due, self.reader.wait()) => message.ok(),
-                () = sleep_until(self.hub_quiet) => {
+                () = sleep_until(self.hub_quiet.due()) => {
                     self.ping().await?;
                     continue;
                 }

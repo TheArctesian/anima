@@ -7,7 +7,7 @@
 //! 2. The token from the query, the client address and the path, then `Live::redeem` (403;
 //!    a ticket whose `tunnelPath` is not `/terminal` is refused and spent too). The token is
 //!    spent before the subprotocol is checked (K4 Section 1).
-//! 3. From here the session task owns the redeemed ticket (`session`), so the session ends
+//! 3. From here the session task owns the redeemed ticket (`upgrade`), so the session ends
 //!    exactly once even when the client leaves and this handler is dropped (MV-003). The task
 //!    answers this handler: 400 without the subprotocol `anima-terminal` (the session ends
 //!    `PROTOCOL_ERROR`), 503 when the opening fails (`GATEWAY_ERROR`), else the upgrade.
@@ -27,15 +27,15 @@ use sqlx::PgPool;
 use tokio::sync::oneshot;
 use zeroize::Zeroizing;
 
-use super::session;
 use crate::{
     clock::Clock,
     credentials::Vault,
     events::Bus,
     sessions::{
-        Live, PendingTicket, Protocol, admission,
-        end::{CLIENT_IDLE, Records},
+        Live, PendingTicket, Protocol, Serving, admission,
+        end::{CLIENT_IDLE, Records, Unfinished},
         tickets::{RECONNECT, WOKEN_OPENING},
+        upgrade::run_session,
     },
     ssh::probe::PROBE_TIMEOUT,
 };
@@ -115,37 +115,16 @@ pub(super) struct Terminal {
     pub(super) timing: Timing,
 }
 
-impl Terminal {
-    /// Where this route's sessions write their end.
-    pub(super) fn records(&self) -> Records {
-        Records {
-            db: self.db.clone(),
-            bus: self.bus.clone(),
-            clock: Arc::clone(&self.clock),
-        }
-    }
-}
-
-/// The `/terminal` route (K3, K4 Section 8.1). `main.rs` mounts it behind
+/// The `/terminal` route (K3, K4 Section 8.1) over `serving`. `main.rs` mounts it behind
 /// `access::permitted_networks_layer` (NET-002) and serves it with `ConnectInfo<SocketAddr>`,
 /// so the client address is known.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "K3 fixes terminal_router's parameters (R-062)"
-)]
-pub fn terminal_router(
-    db: PgPool,
-    vault: Vault,
-    bus: Bus,
-    clock: Arc<dyn Clock>,
-    live: Live,
-) -> Router {
+pub fn terminal_router(serving: &Serving) -> Router {
     router(Terminal {
-        db,
-        vault,
-        bus,
-        clock,
-        live,
+        db: serving.db.clone(),
+        vault: serving.vault.clone(),
+        bus: serving.bus.clone(),
+        clock: Arc::clone(&serving.clock),
+        live: serving.live.clone(),
         timing: Timing::default(),
     })
 }
@@ -181,7 +160,13 @@ async fn open(
     let upgrade = admission::offering(upgrade, SUBPROTOCOL);
     let (answer, answered) = oneshot::channel();
     // Not awaited here: dropping this handler must not drop the session (MV-003).
-    tokio::spawn(session::run(terminal, redeemed, upgrade, answer));
+    let records = Records::new(&terminal.db, &terminal.bus, &terminal.clock);
+    tokio::spawn(run_session(
+        terminal,
+        Unfinished::new(records, redeemed),
+        upgrade,
+        answer,
+    ));
     // No answer only when the task stopped before giving one; it still ended the session.
     answered
         .await

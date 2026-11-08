@@ -22,7 +22,10 @@ use super::{
     heard,
     records::ended,
 };
-use crate::sessions::{Actor, Redeemed, end::finish};
+use crate::sessions::{
+    Actor, Redeemed,
+    end::{Records, finish},
+};
 
 /// A session redeemed and opened to a guacd past `ready`, with no client socket yet.
 async fn opened(pool: &PgPool, setup: Setup) -> (FakeGuacd, Bench, Redeemed, Opening) {
@@ -124,7 +127,12 @@ async fn mismatch_without_upgrade(pool: &PgPool, leaves: bool) {
     }
     let end = after_response(&bench, &mut redeemed, opening, socket).await;
     assert_eq!(end.cause, Cause::ServerCertificateMismatch);
-    finish(&bench.route.records(), redeemed, &end).await;
+    finish(
+        &Records::new(&bench.route.db, &bench.route.bus, &bench.route.clock),
+        redeemed,
+        &end,
+    )
+    .await;
     let ended = ended(pool, bench.session).await;
     ended_once(&ended, "server_certificate_mismatch", "error", LOOPBACK);
     assert!(guacd.selected.try_recv().is_err(), "guacd is never reached");

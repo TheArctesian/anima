@@ -48,7 +48,7 @@ impl Link<'_> {
     /// Relays until the first cause. `handle` tells, when the channel ends with the
     /// connection, whether the device left or the connection failed.
     pub(super) async fn relay(&mut self, handle: &mut Handle<Observer>) -> End {
-        self.client_quiet = Instant::now() + self.timing.client_idle;
+        self.client_quiet.restart(Instant::now());
         loop {
             let turn = self.next_turn().await;
             if let Some(end) = self.on_turn(turn, handle).await {
@@ -66,8 +66,8 @@ impl Link<'_> {
             message = self.client.recv(), if !writing => Turn::Client(message),
             written = written(&mut self.writing), if writing => Turn::Written(written),
             message = self.reader.wait() => Turn::Device(message),
-            () = sleep_until(self.hub_quiet) => Turn::HubSilent,
-            () = sleep_until(self.client_quiet), if !writing => Turn::ClientIdle,
+            () = sleep_until(self.hub_quiet.due()) => Turn::HubSilent,
+            () = sleep_until(self.client_quiet.due()), if !writing => Turn::ClientIdle,
             () = sleep_until(self.write_due), if writing => Turn::WriteStalled,
         }
     }
@@ -81,7 +81,7 @@ impl Link<'_> {
             Turn::Client(message) => self.on_client(message),
             Turn::Written(written) => {
                 self.writing = None;
-                self.client_quiet = Instant::now() + self.timing.client_idle;
+                self.client_quiet.restart(Instant::now());
                 written.err().map(|_| ended(Cause::GatewayError))
             }
             Turn::Device(Some(ChannelMsg::Close)) => Some(ended(Cause::RemoteClosed)),
@@ -97,7 +97,7 @@ impl Link<'_> {
     /// K4 Section 8.4 message; anything else that is not a ping, pong or close breaks the
     /// protocol.
     fn on_client(&mut self, message: Option<Result<Message, axum::Error>>) -> Option<End> {
-        self.client_quiet = Instant::now() + self.timing.client_idle;
+        self.client_quiet.restart(Instant::now());
         let text = match message {
             Some(Ok(Message::Binary(bytes))) => {
                 let writer = Arc::clone(&self.writer);

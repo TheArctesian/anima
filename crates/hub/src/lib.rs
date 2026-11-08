@@ -114,22 +114,17 @@ pub fn tunnels(dependencies: &schema::Dependencies) -> Router {
         policy,
         ..
     } = dependencies;
-    let terminal = sessions::terminal_router(
-        pool.clone(),
-        vault.clone(),
-        bus.clone(),
-        clock.clone(),
-        live.clone(),
-    );
-    let tunnel = sessions::tunnel_router(
-        pool.clone(),
-        vault.clone(),
-        bus.clone(),
-        clock.clone(),
-        config.guacd.clone(),
-        config.guacd_drive_root.to_string_lossy().into_owned(),
-        live.clone(),
-    );
+    let serving = sessions::Serving {
+        db: pool.clone(),
+        vault: vault.clone(),
+        bus: bus.clone(),
+        clock: clock.clone(),
+        live: live.clone(),
+        guacd: config.guacd.clone(),
+        drive_root: config.guacd_drive_root.to_string_lossy().into_owned(),
+    };
+    let terminal = sessions::terminal_router(&serving);
+    let tunnel = sessions::tunnel_router(&serving);
     let files = sessions::files_router(
         pool.clone(),
         vault.clone(),

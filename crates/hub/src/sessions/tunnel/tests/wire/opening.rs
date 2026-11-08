@@ -28,7 +28,7 @@ use super::{
 };
 use crate::sessions::{
     Actor,
-    end::{Unfinished, end_session, finish},
+    end::{Records, Unfinished, end_session, finish},
 };
 
 /// A guacd that takes `select` and then says nothing until told, and a bench in front of it.
@@ -145,8 +145,8 @@ async fn sec_002_d_10_end_session_during_the_opening_sends_guacd_no_credential(p
 async fn mv_003_a_session_task_that_panics_still_ends_the_session(pool: PgPool) {
     let bench = bench(&pool, "127.0.0.1:9", Setup::default()).await;
     let redeemed = bench.live.redeem(on_tunnel(&bench.token), now()).unwrap();
-    let records = bench.route.records();
-    // As `relaying::run` holds the session from its first line.
+    let records = Records::new(&bench.route.db, &bench.route.bus, &bench.route.clock);
+    // As `upgrade::run_session` holds the session from its first line.
     let task = tokio::spawn(async move {
         let _unfinished = Unfinished::new(records, redeemed);
         panic!("the session task fails");
@@ -173,7 +173,7 @@ async fn d_9_a_session_task_that_panics_after_end_session_ends_with_the_enders_c
         at: now() + TimeDelta::seconds(5),
     };
     bench.live.end_by(bench.session, &by);
-    let records = bench.route.records();
+    let records = Records::new(&bench.route.db, &bench.route.bus, &bench.route.clock);
     let task = tokio::spawn(async move {
         let _unfinished = Unfinished::new(records, redeemed);
         panic!("the session task fails after the end signal");
@@ -229,7 +229,7 @@ async fn log_005_an_end_whose_first_commit_fails_is_written_by_the_retry(pool: P
     let redeemed = bench.live.redeem(on_tunnel(&bench.token), now()).unwrap();
     fail_first_commit_on_update(&pool).await;
     finish(
-        &bench.route.records(),
+        &Records::new(&bench.route.db, &bench.route.bus, &bench.route.clock),
         redeemed,
         &End::from(Cause::OperatorClosed),
     )

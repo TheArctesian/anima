@@ -199,39 +199,6 @@ async fn k4_8_5_client_silence_is_timeout_4002(pool: PgPool) {
     migrations = "./migrations",
     fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
 )]
-async fn k4_8_5_a_send_that_stalls_is_timeout_4002(pool: PgPool) {
-    // The client reads nothing while the shell writes more than the sockets hold, so the
-    // hub's send to the client stalls past the idle wait.
-    let idle = Duration::from_secs(1);
-    let setup = Setup::terminal(move |terminal| terminal.timing.client_idle = idle);
-    let (bench, mut client) = session(&pool, setup).await;
-    let ssh = Arc::new(bench.ssh);
-    let writer = Arc::clone(&ssh);
-    let chunk = vec![b'x'; 32 * 1024];
-    let flood = tokio::spawn(async move {
-        for _ in 0..1_024 {
-            if writer.try_say(&chunk).await.is_err() {
-                return;
-            }
-        }
-    });
-    // The client reads nothing until the hub's send has stalled past the idle wait, then
-    // drains while the hub's `end` and close are still on their way.
-    tokio::time::sleep(idle + Duration::from_millis(500)).await;
-    assert_eq!(client.ended().await, ("TIMEOUT".to_owned(), Some(4002)));
-    let ended = ended(&pool, bench.session).await;
-    ended_once(&ended, "timeout", "info", LOOPBACK);
-    assert_eq!(
-        ended.events[0].3,
-        "The client stopped reading what the hub sent, so the hub closed the SSH session."
-    );
-    flood.abort();
-}
-
-#[sqlx::test(
-    migrations = "./migrations",
-    fixtures(path = "../../../../../tests/fixtures", scripts("devices"))
-)]
 async fn k4_8_5_a_client_ping_sent_while_the_hub_s_send_waits_keeps_the_session(pool: PgPool) {
     // Each round: the client pings and waits until the hub has read it (`read`); a second
     // later the shell floods until the hub's send to the unread client waits; only then does

@@ -12,7 +12,7 @@
 //!    redeemed before the subprotocol is checked: a request without `guacamole` still spends
 //!    it, and cannot be used to test a token without spending it. A ticket whose `tunnelPath`
 //!    is not `/tunnel` is refused and spent in the same redemption (403).
-//! 3. From here the session task owns the redeemed ticket (`relaying`), so the session ends
+//! 3. From here the session task owns the redeemed ticket (`upgrade`), so the session ends
 //!    exactly once even when the client leaves and this handler is dropped (MV-003). The task
 //!    answers this handler: 400 without the subprotocol `guacamole` (the session ends
 //!    `PROTOCOL_ERROR`), 503 when the opening fails (`GATEWAY_ERROR`), else the upgrade.
@@ -32,18 +32,16 @@ use sqlx::PgPool;
 use tokio::sync::oneshot;
 use zeroize::Zeroizing;
 
-use super::{
-    ending::{CLIENT_IDLE, GATEWAY_SILENCE},
-    relaying,
-};
+use super::ending::{CLIENT_IDLE, GATEWAY_SILENCE};
 use crate::{
     clock::Clock,
     credentials::Vault,
     events::Bus,
     sessions::{
-        Live, Protocol, Redeemed, admission,
-        end::Records,
+        Live, Protocol, Redeemed, Serving, admission,
+        end::{Records, Unfinished},
         tickets::{RECONNECT, WOKEN_OPENING},
+        upgrade::run_session,
     },
     ssh::probe::PROBE_TIMEOUT,
 };
@@ -108,42 +106,19 @@ pub(super) struct Route {
     pub(super) timing: Timing,
 }
 
-impl Route {
-    /// Where this route's sessions write their end.
-    pub(super) fn records(&self) -> Records {
-        Records {
-            db: self.db.clone(),
-            bus: self.bus.clone(),
-            clock: Arc::clone(&self.clock),
-        }
-    }
-}
-
-/// The `/tunnel` route for RDP and VNC sessions (K3, K4 Section 2), with guacd at `guacd`
-/// keeping shared drives under `drive_root`. `main.rs` mounts it behind
-/// `access::permitted_networks_layer` (NET-002) and serves it with `ConnectInfo<SocketAddr>`,
-/// so the client address is known.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "K3 fixes tunnel_router's parameters (R-032 E-1)"
-)]
-pub fn tunnel_router(
-    db: PgPool,
-    vault: Vault,
-    bus: Bus,
-    clock: Arc<dyn Clock>,
-    guacd: String,
-    drive_root: String,
-    live: Live,
-) -> Router {
+/// The `/tunnel` route for RDP and VNC sessions (K3, K4 Section 2) over `serving`, with
+/// guacd at its `guacd` keeping shared drives under its `drive_root`. `main.rs` mounts it
+/// behind `access::permitted_networks_layer` (NET-002) and serves it with
+/// `ConnectInfo<SocketAddr>`, so the client address is known.
+pub fn tunnel_router(serving: &Serving) -> Router {
     router(Route {
-        db,
-        vault,
-        bus,
-        clock,
-        guacd,
-        drive_root,
-        live,
+        db: serving.db.clone(),
+        vault: serving.vault.clone(),
+        bus: serving.bus.clone(),
+        clock: Arc::clone(&serving.clock),
+        guacd: serving.guacd.clone(),
+        drive_root: serving.drive_root.clone(),
+        live: serving.live.clone(),
         timing: Timing::default(),
     })
 }
@@ -170,7 +145,13 @@ async fn open(
     let (answer, answered) = oneshot::channel();
     // Not awaited here: dropping this handler must not drop the session (MV-003).
     let upgrade = admission::offering(upgrade, SUBPROTOCOL);
-    tokio::spawn(relaying::run(route, redeemed, upgrade, answer));
+    let records = Records::new(&route.db, &route.bus, &route.clock);
+    tokio::spawn(run_session(
+        route,
+        Unfinished::new(records, redeemed),
+        upgrade,
+        answer,
+    ));
     // No answer only when the task stopped before giving one; it still ended the session.
     answered
         .await
