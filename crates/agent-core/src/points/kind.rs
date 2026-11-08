@@ -25,7 +25,8 @@ pub enum Kind {
 }
 
 impl Kind {
-    const ALL: [Self; 17] = [
+    /// Every kind, in the order of the list above.
+    pub const ALL: [Self; 17] = [
         Self::CpuPercent,
         Self::MemoryPercent,
         Self::MemoryBytes,

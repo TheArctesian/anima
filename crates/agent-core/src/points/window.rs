@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 
 use chrono::{DateTime, Utc};
 
-use super::{MAX_SERIES, Point, Sample, SeriesKey, Summary};
+use super::{MAX_SERIES, Point, SeriesKey, Summary, sample::kept_value};
 
 /// The length of a window, in seconds (MET-014).
 const WINDOW_SECONDS: i64 = 10;
@@ -39,7 +39,7 @@ impl Window {
     /// its point is returned; a window in which no value was kept makes no point.
     ///
     /// A value that is not finite or is below 0 is left out, and a percent is held to 100, as
-    /// [`Sample::new`] does. A window keeps at most [`MAX_SERIES`] series; later new ones are
+    /// [`Sample::new`](super::Sample::new) does. A window keeps at most [`MAX_SERIES`] series; later new ones are
     /// left out.
     pub fn add(
         &mut self,
@@ -59,7 +59,7 @@ impl Window {
     }
 
     fn take(&mut self, key: SeriesKey, value: f64) {
-        let Some(value) = Sample::new(key.kind(), "", value).map(|sample| sample.value) else {
+        let Some(value) = kept_value(key.kind(), value) else {
             return;
         };
         if let Some(column) = self.columns.get_mut(&key) {

@@ -61,6 +61,14 @@ fn k8_every_api_kind_is_a_stored_kind_and_gpu_memory_bytes_is_not_served_yet() {
     for item in MetricKind::items() {
         assert_eq!(MetricKind::served(Kind::from(item.value)), Some(item.value));
     }
-    assert_eq!(MetricKind::served(Kind::GpuMemoryBytes), None);
     assert_eq!(MetricKind::parse("gpu_memory_bytes"), None);
+}
+
+#[test]
+fn k8_the_only_stored_kind_the_api_does_not_serve_is_gpu_memory_bytes() {
+    let unserved: Vec<Kind> = Kind::ALL
+        .into_iter()
+        .filter(|kind| MetricKind::served(*kind).is_none())
+        .collect();
+    assert_eq!(unserved, [Kind::GpuMemoryBytes]);
 }
