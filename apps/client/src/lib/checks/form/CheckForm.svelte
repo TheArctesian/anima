@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import { SvelteSet } from 'svelte/reactivity';
   import { fieldErrorsFrom } from '$lib/devices/form/field-errors';
   import Disclosure from '$lib/forms/disclosure/Disclosure.svelte';
@@ -14,6 +14,9 @@
   import TypeFields from './fields/TypeFields.svelte';
   import ProbeFields from './probes/ProbeFields.svelte';
   import DomainExpiryFields from './probes/DomainExpiryFields.svelte';
+  import { contextChannelCalls } from './channels/calls';
+  import { ChannelsDraft } from './channels/draft.svelte';
+  import ChannelsSection from './channels/ChannelsSection.svelte';
   import { intervalFor } from './probes/domain-expiry';
   import SnmpFields from './probes/SnmpFields.svelte';
   import { defaultsReader } from '../defaults/reader';
@@ -86,6 +89,9 @@
   let errors = $state<FieldError[]>([]);
   let saving = $state(false);
   let advancedOpen = $state(false);
+  /** NOT-003, NOT-005: a check reads and saves its own channels apart from the check (F-3); null without a hub. */
+  const channels = new ChannelsDraft(untrack(() => check?.id ?? null), untrack(() => contextChannelCalls()));
+  const resendId = `${formId}-resend`;
 
   const candidates = $derived(groupCandidates(check?.id ?? null, siblings));
   const warnings = $derived(check === null ? [] : secretWarnings(initial, values));
@@ -98,16 +104,46 @@
     if (touchesAdvanced(found)) advancedOpen = true;
   }
 
+  /** The ID of a check the route has just created, read from its answer. */
+  function createdId(value: unknown): string | null {
+    if (typeof value !== 'object' || value === null || !('id' in value)) return null;
+    return typeof value.id === 'string' ? value.id : null;
+  }
+
+  async function focusResend(): Promise<void> {
+    await tick();
+    document.getElementById(resendId)?.focus();
+  }
+
+  /**
+   * An edit saves the channels first: the route closes the form once the check is saved, and a refusal of the
+   * channels must still be seen. A new check has no ID yet, so its channels go in after it.
+   */
   async function submit(event: SubmitEvent): Promise<void> {
     event.preventDefault();
     if (saving) return;
     const invalid = validateCheck(values, check === null ? null : initial);
     show(invalid);
     if (invalid.length > 0) return;
+    if (!channels.check()) {
+      await focusResend();
+      return;
+    }
     saving = true;
     try {
+      const sent = check === null ? 'skipped' : await channels.save(check.id);
+      if (sent === 'failed') {
+        await focusResend();
+        return;
+      }
       const result = await onSave($state.snapshot(values));
-      if (!result.ok) show(placeHubErrors(fieldErrorsFrom(result.error), values));
+      if (!result.ok) {
+        channels.checkNotSaved();
+        show(placeHubErrors(fieldErrorsFrom(result.error), values));
+        return;
+      }
+      const id = check === null ? createdId(result.value) : null;
+      if (id !== null && (await channels.save(id)) === 'failed') await focusResend();
     } finally {
       saving = false;
     }
@@ -150,6 +186,10 @@
     <AdvancedFields bind:values {errors} ontouch={(key) => touched.add(key)} />
   </Disclosure>
 
+  {#if channels.phase !== 'absent'}
+    <ChannelsSection draft={channels} {resendId} />
+  {/if}
+
   {#if warnings.length > 0}
     <div class="warning" role="status">
       {#each warnings as warning (warning)}
@@ -166,7 +206,7 @@
 {#snippet actions()}
   <div class="actions">
     <PressButton label="Cancel" onclick={onCancel} />
-    <PressButton label={check === null ? 'Add check' : 'Save check'} kind="primary" submit form={formId} disabled={saving} />
+    <PressButton label={check === null ? 'Add check' : 'Save check'} kind="primary" submit form={formId} busy={saving} />
   </div>
 {/snippet}
 
