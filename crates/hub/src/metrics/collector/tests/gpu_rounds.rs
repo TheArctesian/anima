@@ -1,7 +1,8 @@
 //! GPU discovery and GPU samples in rounds against a test SSH device on loopback: found at the
 //! first collection and stored, only the known vendors read after, found again after a
-//! restart, a hung GPU tool, the GPU window and a lost link that end only the GPU reads, and a
-//! deny-listed device that gets nothing (MET-006, MET-007, MET-009, D-11, P2-004).
+//! restart, a hung GPU tool and the GPU window that end only the GPU reads, numbers kept
+//! across a failed collection, and a deny-listed device that gets nothing (MET-006, MET-007,
+//! MET-009, D-11, P2-004).
 
 use std::time::Duration;
 
@@ -248,30 +249,12 @@ async fn d11_gpu_reads_stop_at_the_gpu_window_and_the_collection_is_stored(pool:
     migrations = "./migrations",
     fixtures(path = "../../../../tests/fixtures", scripts("devices"))
 )]
-async fn met_006_a_link_lost_on_a_gpu_read_keeps_the_collection(pool: PgPool) {
-    let mut bench = bench(&pool, true).await;
-    bench.server.hang_up_on(LINUX_GPU_LINES[0]);
-    bench.server.answer(LINUX_GPU_LINES[1], &amd_card(1));
-    bench.collector.round().await;
-    let mut expected = LINUX_LINES.to_vec();
-    expected.push(LINUX_GPU_LINES[0]);
-    assert_eq!(
-        bench.server.heard(),
-        expected,
-        "no GPU read after the link is lost"
-    );
-    let added = bench.feed.try_recv().unwrap();
-    assert!(value(&added, MetricKind::MemoryPercent, "").is_some());
-    assert_eq!(collection_events(&pool).await, 0, "the collection worked");
-}
-
-#[sqlx::test(
-    migrations = "./migrations",
-    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
-)]
-async fn met_006_after_a_failed_collection_the_next_one_looks_for_gpus_again(pool: PgPool) {
+async fn met_009_after_a_failed_collection_the_next_looks_again_and_keeps_the_numbers(
+    pool: PgPool,
+) {
     let mut bench = bench(&pool, true).await;
     bench.server.answer(LINUX_GPU_LINES[0], NVIDIA_SMI_TWO);
+    bench.server.answer(LINUX_GPU_LINES[1], &amd_card(1));
     bench.collector.round().await;
     sqlx::query("delete from trust.host_keys")
         .execute(&pool)
@@ -280,6 +263,15 @@ async fn met_006_after_a_failed_collection_the_next_one_looks_for_gpus_again(poo
     bench.clock.advance(30);
     bench.collector.round().await;
     let failed = bench.server.heard().len();
+    // The device rebooted unseen and its first NVIDIA GPU is gone.
+    let second_line = NVIDIA_SMI_TWO
+        .iter()
+        .position(|byte| *byte == b'\n')
+        .unwrap()
+        + 1;
+    bench
+        .server
+        .answer(LINUX_GPU_LINES[0], &NVIDIA_SMI_TWO[second_line..]);
     accept(&pool).await;
     bench.clock.advance(30);
     bench.collector.round().await;
@@ -289,6 +281,21 @@ async fn met_006_after_a_failed_collection_the_next_one_looks_for_gpus_again(poo
         [&LINUX_LINES[..], &LINUX_GPU_LINES[..]].concat(),
         "the device may have restarted unseen"
     );
+    let numbers: Vec<(i32, GpuVendor)> = stored(&pool)
+        .await
+        .iter()
+        .map(|gpu| (gpu.index, gpu.vendor))
+        .collect();
+    assert_eq!(
+        numbers,
+        [(1, GpuVendor::Nvidia), (2, GpuVendor::Amd)],
+        "the GPUs left keep their numbers (MET-009)"
+    );
+    let _first = bench.feed.try_recv().unwrap();
+    let added = bench.feed.try_recv().unwrap();
+    assert_eq!(value(&added, MetricKind::GpuPercent, "1"), Some(3.0));
+    assert_eq!(value(&added, MetricKind::GpuPercent, "2"), Some(37.0));
+    assert_eq!(value(&added, MetricKind::GpuPercent, "0"), None);
 }
 
 #[sqlx::test(

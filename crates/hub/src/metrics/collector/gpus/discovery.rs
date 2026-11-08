@@ -5,9 +5,15 @@
 //! not finish keeps the GPUs known before and is looked at again the next round, so one hung
 //! tool never hides the others' GPUs. A GPU keeps its device number while its vendor reports
 //! it under the same number of its own (`nvidia-smi` index, DRM card number, `ioreg` order, 0
-//! for Intel); a new GPU takes the lowest free number. Limitation: `nvidia-smi` renumbers the
-//! GPUs after one drops off the bus, and the spec 6.6 query gives no PCI address to match on,
-//! so a later NVIDIA GPU can then take over the series of the one that dropped.
+//! for Intel); a new GPU takes the lowest free number. A failed collection keeps the numbers and
+//! only makes the next collection look at every vendor.
+//!
+//! Limitations: the numbers are kept in the collector's memory while the hub runs, not stored,
+//! so after a hub restart, or once a device is collected again after a pause, the first look
+//! numbers its GPUs afresh in vendor order (NVIDIA, AMD, Intel; Apple on macOS). And
+//! `nvidia-smi` renumbers the GPUs after one drops off the bus, and the spec 6.6 query gives no
+//! PCI address to match on, so a later NVIDIA GPU can then take over the series of the one that
+//! dropped.
 
 use std::time::Duration;
 
@@ -42,14 +48,17 @@ pub(in crate::metrics::collector) struct Found {
 }
 
 /// What the hub knows of a device's GPUs: when it last looked at every vendor, the boot time
-/// the device gave then, the GPUs by device number, and the vendors whose last read did not
-/// finish.
+/// the device gave then, the GPUs by device number, the vendors whose last read did not
+/// finish, and whether a collection failed since.
 #[derive(Clone, Debug, PartialEq)]
 pub(in crate::metrics::collector) struct Discovered {
     pub(in crate::metrics::collector) found_at: DateTime<Utc>,
     pub(in crate::metrics::collector) boot_at: Option<DateTime<Utc>>,
     pub(in crate::metrics::collector) gpus: Vec<Found>,
     pub(in crate::metrics::collector) pending: Vec<GpuVendor>,
+    /// A collection failed since the last look: it may have missed a restart or stored a look
+    /// without its samples, so the next collection looks at every vendor.
+    pub(in crate::metrics::collector) stale: bool,
 }
 
 /// A look a collection makes: at every vendor of the device's system (`only` is `None`), or
@@ -72,10 +81,11 @@ pub(in crate::metrics::collector) fn boot_at(
 }
 
 /// The look of the collection at `now`, of a device whose boot time reads `boot_at`, if any.
-/// Every vendor at the device's first collection since the hub started (nothing `known`), 24
-/// hours after the last look or when the hub clock went back before it, after a restart (a
-/// boot time later than the one seen then by more than [`RESTART_TOLERANCE`]), and while the
-/// last look was within [`SETTLE`] of boot. Otherwise only the pending vendors, if any.
+/// Every vendor at the device's first collection since the hub started (nothing `known`), after
+/// a failed collection (`stale`), 24 hours after the last look or when the hub clock went back
+/// before it, after a restart (a boot time later than the one seen then by more than
+/// [`RESTART_TOLERANCE`]), and while the last look was within [`SETTLE`] of boot. Otherwise
+/// only the pending vendors, if any.
 pub(in crate::metrics::collector) fn due(
     known: Option<&Discovered>,
     boot_at: Option<DateTime<Utc>>,
@@ -89,7 +99,7 @@ pub(in crate::metrics::collector) fn due(
     let Some(known) = known else {
         return Some(look(None));
     };
-    let stale = now < known.found_at || now - known.found_at >= EVERY;
+    let expired = now < known.found_at || now - known.found_at >= EVERY;
     let restarted = match (known.boot_at, boot_at) {
         (Some(was), Some(is)) => is - was > RESTART_TOLERANCE,
         _ => false,
@@ -97,7 +107,7 @@ pub(in crate::metrics::collector) fn due(
     let early = known
         .boot_at
         .is_some_and(|booted| known.found_at - booted < SETTLE);
-    if stale || restarted || early {
+    if known.stale || expired || restarted || early {
         return Some(look(None));
     }
     (!known.pending.is_empty()).then(|| look(Some(known.pending.clone())))
@@ -161,6 +171,7 @@ impl Look {
             boot_at,
             gpus,
             pending,
+            stale: false,
         }
     }
 }

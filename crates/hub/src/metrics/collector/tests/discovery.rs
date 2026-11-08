@@ -72,6 +72,16 @@ fn met_006_the_first_collection_looks_and_looks_again_after_24_hours() {
         Due::All,
         "the hub clock went back"
     );
+    let failed = Discovered {
+        stale: true,
+        ..known.clone()
+    };
+    assert_eq!(look(Some(&failed), soon), Due::All, "a collection failed");
+    let merged = due(Some(&failed), None, soon)
+        .unwrap()
+        .merge(Some(&failed), &linux_answers());
+    assert_eq!(numbers(&merged), numbers(&known), "the numbers are kept");
+    assert!(!merged.stale);
 }
 
 #[test]

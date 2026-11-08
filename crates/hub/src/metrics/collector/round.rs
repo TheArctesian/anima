@@ -61,18 +61,24 @@ impl Collector {
     }
 
     /// Forgets the readings, GPUs and failures of every device not in `due`: deleted, or no
-    /// longer collected. Collected again, it starts with a new discovery.
+    /// longer collected. Collected again, it starts with a new discovery that numbers its GPUs
+    /// afresh.
     fn keep_only(&mut self, due: &[devices::Device]) {
         let kept: HashSet<DeviceId> = due.iter().map(|device| device.id).collect();
         self.kept.retain(|device, _| kept.contains(device));
         self.failing.retain(|device| kept.contains(device));
     }
 
-    /// Makes the next collection of `device` look for its GPUs again: a failed collection may
-    /// have stored a discovery without its samples, or missed a restart (MET-006).
-    fn forget_gpus(&mut self, device: DeviceId) {
-        if let Some(kept) = self.kept.get_mut(&device) {
-            kept.gpus = None;
+    /// Makes the next collection of `device` look for its GPUs again, keeping their numbers: a
+    /// failed collection may have stored a discovery without its samples, or missed a restart
+    /// (MET-006, MET-009).
+    fn look_again(&mut self, device: DeviceId) {
+        if let Some(gpus) = self
+            .kept
+            .get_mut(&device)
+            .and_then(|kept| kept.gpus.as_mut())
+        {
+            gpus.stale = true;
         }
     }
 
@@ -105,7 +111,7 @@ impl Collector {
             }
             Err(error) => {
                 failed(device, was_failing, &error);
-                self.forget_gpus(device);
+                self.look_again(device);
                 false
             }
         };

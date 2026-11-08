@@ -131,8 +131,8 @@ pub(super) async fn within_deadline<T>(
 
 /// Opens a link to `device`, runs its commands in order, each within its limit, reads each
 /// output into the reading and drops its bytes before the next command (D-11), then runs the
-/// GPU reads its plan asks for until the context's GPU window after the start, then drops the link. The
-/// first link error of the commands ends the collection; a GPU read never does.
+/// GPU reads its plan asks for until the context's GPU window after the start, then drops the
+/// link. The first link error of the commands ends the collection; a GPU read never does.
 async fn read(
     ctx: &Context,
     device: &Device,

@@ -1,13 +1,14 @@
 //! Rounds against a test SSH device on loopback: one link per collection with the exact
 //! commands and nothing else, the samples stored and published, rates on the second round,
-//! one event per change, and Windows skipped without a link (MET-001, MET-002, MET-005,
-//! CHK-012, P2-003, D-4, D-10, D-11).
+//! one event per change, Windows skipped without a link, and a link lost on a GPU read that
+//! keeps the collection (MET-001, MET-002, MET-005, MET-006, CHK-012, P2-003, D-4, D-10, D-11).
 
 use sqlx::PgPool;
 use tokio::sync::broadcast::error::TryRecvError;
 
 use super::{
     bench::{DOCKER_HOST, LINUX_GPU_LINES, LINUX_LINES, accept, bench, events, set_source},
+    gpus::amd_card,
     server::Server,
 };
 use crate::{
@@ -191,4 +192,25 @@ async fn met_002_a_failed_command_leaves_its_source_out_and_the_rest_is_stored(p
         stored.iter().all(|(_, name, _)| name != "docker-host"),
         "a partial collection works: {stored:?}"
     );
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn met_006_a_link_lost_on_a_gpu_read_keeps_the_collection(pool: PgPool) {
+    let mut bench = bench(&pool, true).await;
+    bench.server.hang_up_on(LINUX_GPU_LINES[0]);
+    bench.server.answer(LINUX_GPU_LINES[1], &amd_card(1));
+    bench.collector.round().await;
+    let mut expected = LINUX_LINES.to_vec();
+    expected.push(LINUX_GPU_LINES[0]);
+    assert_eq!(
+        bench.server.heard(),
+        expected,
+        "no GPU read after the link is lost"
+    );
+    let added = bench.feed.try_recv().unwrap();
+    assert!(value(&added, MetricKind::MemoryPercent, "").is_some());
+    assert_eq!(events(&pool).await, [], "the collection worked");
 }
