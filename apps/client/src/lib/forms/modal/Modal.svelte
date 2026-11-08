@@ -40,8 +40,9 @@
   /**
    * A form's actions, shown below the body by the form inside (see `footer.ts`). Each showing is its own
    * entry, so a form that is replaced takes out its own actions and never those of the form after it.
+   * Raw, so `shown` is the entry itself and the identity check finds it; a deep proxy never equals its value.
    */
-  let shown = $state<{ readonly actions: Snippet }>();
+  let shown = $state.raw<{ readonly actions: Snippet }>();
   offerFooter({
     show: (actions) => {
       const entry = { actions };
