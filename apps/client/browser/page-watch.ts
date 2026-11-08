@@ -3,6 +3,8 @@ import type { Page } from '@playwright/test';
 /** One `securitypolicyviolation` event: which rule refused what. Never the page's text. */
 export interface CspViolation {
   readonly effectiveDirective: string;
+  /** `enforce` when the enforced policy refused it; `report` when only a Report-Only policy would have. */
+  readonly disposition: string;
   readonly blockedUri: string;
   readonly sourceFile: string;
 }
@@ -27,7 +29,12 @@ function listenForViolations(binding: string): void {
     'securitypolicyviolation',
     (event) => {
       const report = (globalThis as unknown as Record<string, (violation: CspViolation) => void>)[binding];
-      report?.({ effectiveDirective: event.effectiveDirective, blockedUri: event.blockedURI, sourceFile: event.sourceFile });
+      report?.({
+        effectiveDirective: event.effectiveDirective,
+        disposition: event.disposition,
+        blockedUri: event.blockedURI,
+        sourceFile: event.sourceFile,
+      });
     },
     true,
   );

@@ -16,15 +16,25 @@ async function openDevices(page: Page): Promise<void> {
   await expect(page.getByText('mac-mini', { exact: true }).first()).toBeVisible();
 }
 
-test('SEC-001: without the start script hash the app never boots, and both channels report it from the first script', async ({ page, context, watch }) => {
+test('SEC-001: without the start script hash the app never boots, and both channels report it from the first script', async ({ page, context, hub, watch }) => {
   const hashes = inlineScriptHashes(builtIndex());
   expect(hashes).toHaveLength(1);
   const policy = await servePolicy(context, k7Policy([]));
+  const requested: string[] = [];
+  page.on('request', (request) => requested.push(new URL(request.url()).pathname));
   await page.goto(`${HUB_ORIGIN}/devices`);
   const seen = await violationsSeen(page, watch, policy);
-  expect(seen.events.map((found) => found.effectiveDirective)).toContain('script-src-elem');
+  // The enforced policy refused it, not only the Report-Only copy.
+  const enforced = seen.events.filter((found) => found.disposition === 'enforce').map((found) => found.effectiveDirective);
+  expect(enforced).toContain('script-src-elem');
   expect(seen.reports.map((found) => found.effectiveDirective)).toContain('script-src-elem');
-  await expect(page.getByRole('navigation', { name: 'Main' })).toHaveCount(0);
+  // index.html preloads the layout node (and some engines fetch what it imports) whether or not the start script runs. A
+  // page's own route node is imported only by the running app, so no route node beyond the preloads means it never started.
+  const preloaded = [...builtIndex().matchAll(/<link href="([^"]+)" rel="modulepreload">/g)].map((found) => found[1]);
+  expect(preloaded.filter((path) => path?.startsWith('/_app/immutable/nodes/'))).not.toHaveLength(0);
+  expect(requested.filter((path) => path.startsWith('/_app/immutable/nodes/') && !preloaded.includes(path))).toEqual([]);
+  expect(requested).toContain('/devices');
+  expect(hub.recording.requests).toEqual([]);
   await expect(expectNoViolations(page, watch, policy)).rejects.toThrow();
 });
 

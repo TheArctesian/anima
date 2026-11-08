@@ -27,9 +27,13 @@ function places(text: string, pattern: RegExp): string[] {
 }
 
 /** Code K7 refuses at run time, in any script of the build. */
+// `eval` and `Function` count bare and on a global object, with or without `?.`: the minifier writes
+// `(globalThis as …)[['ev','al'].join('')]?.('1')` as `globalThis.eval?.(`. A member of anything else (`a.evaluate(`,
+// `x.isFunction(`) is not the global.
+const GLOBAL_CALL = String.raw`(?:^|[^\w$.]|\b(?:globalThis|window|self)\s*\.\s*)`;
 const FORBIDDEN_CODE: Record<string, RegExp> = {
-  eval: /(?<![\w$.])eval\s*\(/,
-  'Function constructor': /(?<![\w$.])Function\s*\(/,
+  eval: new RegExp(String.raw`${GLOBAL_CALL}eval\s*(?:\?\.\s*)?\(`),
+  'Function constructor': new RegExp(String.raw`${GLOBAL_CALL}Function\s*(?:\?\.\s*)?\(`),
   'string timer': /(?<![\w$.])set(?:Timeout|Interval)\s*\(\s*["'`]/,
   'worker or shared worker': /new\s+(?:Shared)?Worker\s*\(/,
   'service worker registration': /serviceWorker\s*\.\s*register\s*\(/,
@@ -73,19 +77,23 @@ test('SEC-001: no script in the build evals, makes a worker or a frame, or write
 
 test('SEC-001: the rules above find each breach they name', () => {
   // A rule that matches nothing proves nothing: each one must catch its own example.
-  const examples: Record<string, string> = {
-    eval: 'x=eval("1")',
-    'Function constructor': 'new Function("return 1")',
-    'string timer': 'setTimeout(`go()`,0)',
-    'worker or shared worker': 'new Worker(URL.createObjectURL(b))',
-    'service worker registration': 'navigator.serviceWorker.register("/sw.js")',
-    'frame element': 'document.createElement(`iframe`)',
-    'inline handler in markup': '`<img src="x.png" onerror="go()">`',
-    'inline handler set by script': 'e.setAttribute(`onclick`,"go()")',
-    'javascript: URL': 'a.href="javascript:go()"',
+  const examples: Record<string, readonly string[]> = {
+    eval: ['x=eval("1")', 'eval?.("1")', 'globalThis.eval?.(`1`)', 'window.eval("1")', 'self . eval ("1")'],
+    'Function constructor': ['new Function("return 1")', 'self.Function("")', 'globalThis.Function?.("")', 'window.Function("")'],
+    'string timer': ['setTimeout(`go()`,0)'],
+    'worker or shared worker': ['new Worker(URL.createObjectURL(b))'],
+    'service worker registration': ['navigator.serviceWorker.register("/sw.js")'],
+    'frame element': ['document.createElement(`iframe`)'],
+    'inline handler in markup': ['`<img src="x.png" onerror="go()">`'],
+    'inline handler set by script': ['e.setAttribute(`onclick`,"go()")'],
+    'javascript: URL': ['a.href="javascript:go()"'],
   };
-  for (const [rule, pattern] of Object.entries(FORBIDDEN_CODE)) expect(places(examples[rule] ?? '', pattern), rule).not.toEqual([]);
-  for (const near of ['a.evaluate(e)', 'isFunction(x)', 'typeof x.importScripts', 'getRegistration("/")', 'button.onclick=go']) {
+  for (const [rule, pattern] of Object.entries(FORBIDDEN_CODE)) {
+    expect(examples[rule], rule).toBeDefined();
+    for (const example of examples[rule] ?? []) expect(places(example, pattern), `${rule} in ${example}`).not.toEqual([]);
+  }
+  const nearMisses = ['a.evaluate(e)', 'isFunction(x)', 'x.isFunction(y)', 'a.eval(1)', 'typeof x.importScripts', 'getRegistration("/")', 'button.onclick=go'];
+  for (const near of nearMisses) {
     for (const [rule, pattern] of Object.entries(FORBIDDEN_CODE)) expect(places(near, pattern), `${rule} on ${near}`).toEqual([]);
   }
 });

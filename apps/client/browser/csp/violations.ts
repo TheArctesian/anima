@@ -6,8 +6,9 @@ import { staticSite } from '../synthetic/static-files';
 
 // The second channel for CSP violations: the browser's own report, sent by a Report-Only copy of the enforced policy. It
 // needs no script in the page, so a violation during boot, before any page script runs, is reported here too.
-// Reports go to a `.invalid` host (RFC 6761), which never resolves: Firefox sends reports past `context.route`, so a
-// same-origin report URL would reach the real hub.anima.ing.
+// Firefox sends every CSP report past `context.route`, straight to the network, the clean sentinel reports too. The
+// control is the `.invalid` report host (RFC 6761): it never resolves, so a report goes no further than a DNS lookup and
+// no TLS connection or body is ever sent. A same-origin report URL would reach the real hub.anima.ing.
 
 const REPORT_HOST = 'csp-report.invalid';
 /** A URL every K7 `connect-src` refuses; fetching it is the end-of-test marker in both channels. */
@@ -36,6 +37,8 @@ function reportOf(request: Request): CspViolation {
   const field = (name: string): string => (typeof report[name] === 'string' ? report[name] : '');
   return {
     effectiveDirective: field('effective-directive') || field('violated-directive') || 'unknown',
+    // Only the Report-Only copy names a report URL, so every report is of that copy.
+    disposition: 'report',
     blockedUri: withoutQuery(field('blocked-uri')),
     sourceFile: withoutQuery(field('source-file')),
   };
@@ -95,6 +98,11 @@ export async function violationsSeen(page: Page, watch: PageWatch, policy: Polic
       report: policy.reports.some(isSentinel),
     }))
     .toEqual({ event: true, report: true });
+  return violationsSoFar(watch, policy);
+}
+
+/** The violations in both channels, without the sentinel, with no new round trip: for a check after the test body. */
+export function violationsSoFar(watch: PageWatch, policy: PolicyReports): Seen {
   const real = (violations: readonly CspViolation[]): CspViolation[] => violations.filter((violation) => !isSentinel(violation));
   return { events: real(watch.cspViolations), reports: real(policy.reports) };
 }
