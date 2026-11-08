@@ -265,7 +265,14 @@ async fn api_003_backstop_refuses_mixed_fragment_and_introspection_documents() {
         "mutation A { login } query B { open }",
     ];
     for document in documents {
-        let request = Request::new(document).operation_name("A");
+        // Only a document with an operation `A` names it: an anonymous document must reach
+        // the backstop, not fail operation selection.
+        let request = Request::new(document);
+        let request = if document.contains(" A {") {
+            request.operation_name("A")
+        } else {
+            request
+        };
         let response = backstopped().execute(request).await;
         assert_unauthenticated(&response);
     }

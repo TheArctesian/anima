@@ -3,6 +3,8 @@
 
 use anima_hub::access;
 use axum::http::header;
+use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
+use chrono::TimeDelta;
 use serde_json::json;
 use sqlx::PgPool;
 
@@ -80,6 +82,41 @@ async fn a_3_a_browser_token_is_no_bearer(pool: PgPool) {
     assert_eq!(me(&hub, &marked).await, signed_out());
     let tunnel = access::operator_for_token(&pool, &token, start()).await;
     assert!(matches!(tunnel, Err(access::Error::Unauthenticated)));
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn sec_002_operator_for_token_takes_only_a_login_token(pool: PgPool) {
+    set_operator(&pool).await;
+    let hub = browser_hub(&pool, start());
+    let secret = URL_SAFE_NO_PAD.encode([7_u8; 32]);
+    for scope in ["read", "write"] {
+        sqlx::query("delete from access.api_tokens")
+            .execute(&pool)
+            .await
+            .unwrap();
+        sqlx::query(
+            "insert into access.api_tokens (id, operator_id, token_hash, kind, name, \
+             display_prefix, scope, expires_at, created_at) \
+             select gen_random_uuid(), id, $1, 'api_key', 'script', 'anima_BwcHBw', $2, $3, $4 \
+             from access.operators",
+        )
+        .bind(hash(&secret))
+        .bind(scope)
+        .bind(start() + TimeDelta::days(1))
+        .bind(start())
+        .execute(&pool)
+        .await
+        .unwrap();
+        let key = format!("anima_{secret}");
+        let bearer = format!("Bearer {key}");
+        let as_bearer = me(&hub, &[("authorization", &bearer)]).await;
+        assert_eq!(as_bearer.as_deref(), Ok(USERNAME), "a valid {scope} key");
+        let tunnel = access::operator_for_token(&pool, &key, start()).await;
+        assert!(
+            matches!(tunnel, Err(access::Error::Unauthenticated)),
+            "{scope} key"
+        );
+    }
 }
 
 #[sqlx::test(migrations = "./migrations")]

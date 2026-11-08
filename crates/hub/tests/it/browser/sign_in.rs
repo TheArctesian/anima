@@ -184,21 +184,43 @@ async fn sec_002_the_desktop_app_still_signs_in_from_its_web_view(pool: PgPool) 
     );
 }
 
+/// Signed out, these documents select `signInBrowser` beside another root field or through a
+/// root fragment: the backstop refuses each before it runs (API-003).
+const HIDDEN_SIGN_INS: [&str; 3] = [
+    "mutation($input: LoginInput!) { \
+        signInBrowser(input: $input) { expiresAt } login(input: $input) { token } }",
+    "mutation($input: LoginInput!) { \
+        ... on Mutation { signInBrowser(input: $input) { expiresAt } } }",
+    "mutation($input: LoginInput!) { ...F } \
+        fragment F on Mutation { signInBrowser(input: $input) { expiresAt } }",
+];
+
 #[sqlx::test(migrations = "./migrations")]
-async fn api_003_signed_out_only_one_sign_in_runs(pool: PgPool) {
+async fn api_003_signed_out_only_one_sign_in_runs_and_never_through_a_fragment(pool: PgPool) {
     set_operator(&pool).await;
     let hub = browser_hub(&pool, start());
-    let both = "mutation($input: LoginInput!) { \
-        signInBrowser(input: $input) { expiresAt } login(input: $input) { token } }";
     let input = json!({ "input": { "username": USERNAME, "password": PASSWORD } });
-    let answer = post(&hub, &[("origin", PUBLIC)], both, input).await;
-    assert_eq!(error(&answer.json()), crate::hub::unauthenticated());
-    assert!(answer.headers.get(header::SET_COOKIE).is_none());
-    let attempts: i64 = sqlx::query_scalar("select count(*) from access.login_attempts")
-        .fetch_one(&pool)
-        .await
-        .unwrap();
-    assert_eq!(attempts, 0);
+    for document in HIDDEN_SIGN_INS {
+        let answer = post(&hub, &[("origin", PUBLIC)], document, input.clone()).await;
+        assert_eq!(answer.json()["data"], json!(null), "{document}");
+        assert_eq!(
+            error(&answer.json()),
+            crate::hub::unauthenticated(),
+            "{document}"
+        );
+        assert!(
+            answer.headers.get(header::SET_COOKIE).is_none(),
+            "{document}"
+        );
+    }
+    let counts: (i64, i64) = sqlx::query_as(
+        "select (select count(*) from access.login_attempts), \
+         (select count(*) from access.api_tokens)",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(counts, (0, 0), "no attempt recorded, no token issued");
 }
 
 #[sqlx::test(migrations = "./migrations")]

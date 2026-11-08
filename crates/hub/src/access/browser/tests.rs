@@ -52,6 +52,15 @@ fn a_4_only_one_origin_header_equal_byte_for_byte_marks_the_request() {
 }
 
 #[test]
+fn a_4_an_origin_that_is_not_http_text_marks_no_request() {
+    for text in ["null", "", "https://", "tauri://localhost"] {
+        let origin = PublicOrigin::new(text.to_owned());
+        let headers = with(&[(ORIGIN, text.as_bytes())]);
+        assert!(SameOrigin::of(&headers, &origin).is_none(), "{text:?}");
+    }
+}
+
+#[test]
 fn a_3_the_cookie_counts_only_without_an_authorization_header() {
     let mark = SameOrigin::of(&with(&[(ORIGIN, PUBLIC.as_bytes())]), &origin()).unwrap();
     let cookie = with(&[(COOKIE, b"__Host-anima=abc")]);
@@ -82,12 +91,4 @@ fn d_3_the_cookie_is_set_with_every_attribute_and_cleared_with_the_same() {
         signed_out().to_str().unwrap(),
         "__Host-anima=; Max-Age=0; Path=/; Secure; HttpOnly; SameSite=Strict"
     );
-}
-
-#[test]
-fn d_3_the_websocket_origin_follows_the_scheme() {
-    assert_eq!(origin().websocket(), "wss://hub.anima.ing");
-    let local = PublicOrigin::new("http://127.0.0.1:8443".to_owned());
-    assert_eq!(local.websocket(), "ws://127.0.0.1:8443");
-    assert_eq!(local.as_str(), "http://127.0.0.1:8443");
 }

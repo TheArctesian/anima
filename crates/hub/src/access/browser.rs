@@ -30,12 +30,14 @@ pub struct SameOrigin(());
 
 impl SameOrigin {
     /// The mark, when `headers` hold exactly one `Origin` header equal to `origin`. `None` for no
-    /// header, two, `null`, or any other spelling.
+    /// header, two, `null`, or any other spelling, and for an `origin` that is not `http://` or
+    /// `https://` and a host.
     #[must_use]
     pub fn of(headers: &HeaderMap, origin: &PublicOrigin) -> Option<Self> {
+        let expected = origin.origin_header()?;
         let mut values = headers.get_all(ORIGIN).iter();
         let only = values.next()?;
-        let same = values.next().is_none() && only.as_bytes() == origin.as_str().as_bytes();
+        let same = values.next().is_none() && only.as_bytes() == expected.as_bytes();
         same.then_some(Self(()))
     }
 }
@@ -65,7 +67,8 @@ pub(super) fn signed_in(token: &Token) -> HeaderValue {
 
 /// The `Set-Cookie` value that makes the browser drop the cookie at once (A-8).
 pub(super) fn signed_out() -> HeaderValue {
-    HeaderValue::from_static("__Host-anima=; Max-Age=0; Path=/; Secure; HttpOnly; SameSite=Strict")
+    let text = format!("{COOKIE_NAME}=; Max-Age=0; {ATTRIBUTES}");
+    HeaderValue::from_str(&text).expect("the cookie name and attributes are header text")
 }
 
 #[cfg(test)]
