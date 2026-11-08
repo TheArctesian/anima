@@ -3,7 +3,7 @@ import { expect, it, vi } from 'vitest';
 import { failure, fakeHub, ok, settled, STORED } from './defaults.fixture';
 import { defaultsReader } from './reader';
 import { saved } from '../form/check.fixture';
-import { input, installFormHarness, show, type } from '../form/form.fixture';
+import { choose, input, installFormHarness, show, type } from '../form/form.fixture';
 
 const mocks = vi.hoisted(() => ({ hub: undefined as unknown }));
 
@@ -108,4 +108,33 @@ it('D-26: a value typed back to what the form started with is the operator\'s ow
   release(ok({ checkDefaults: STORED }));
   await settled();
   expect(settings()).toEqual(['60', '5', '45', '2500']);
+});
+
+const interval = () => (input('Interval (seconds)') as HTMLInputElement).value;
+
+it('D-29: an existing domain expiry check at 7200 keeps 7200', async () => {
+  mocks.hub = fakeHub({ CheckDefaults: ok({ checkDefaults: STORED }) }).hub;
+  const check = saved('DOMAIN_EXPIRY', { __typename: 'DomainExpiryConfig', domain: 'example.net', warnDays: 30, timeoutMs: 10000 }, { intervalSeconds: 7200 });
+  show({ check });
+  await settled();
+  expect(interval()).toBe('7200');
+});
+
+it('D-29: late defaults while DOMAIN_EXPIRY is selected keep 12 hours, and another type then takes the hub default', async () => {
+  open(ok({ checkDefaults: STORED }));
+  choose('Type', 'DOMAIN_EXPIRY');
+  await settled();
+  expect(interval()).toBe('43200');
+  choose('Type', 'TCP');
+  expect(interval()).toBe('120');
+});
+
+it('D-29: a touched interval survives late defaults and a type round trip', async () => {
+  open(ok({ checkDefaults: STORED }));
+  type('Interval (seconds)', '7200');
+  choose('Type', 'DOMAIN_EXPIRY');
+  await settled();
+  choose('Type', 'TCP');
+  choose('Type', 'DOMAIN_EXPIRY');
+  expect(interval()).toBe('7200');
 });
