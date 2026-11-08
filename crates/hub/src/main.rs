@@ -23,7 +23,7 @@ use anima_hub::{
     schema::{Dependencies, build_schema},
     serve_until, sessions,
     targets::AddressPolicy,
-    tunnels,
+    tunnels, web_fallback,
 };
 use sqlx::PgPool;
 
@@ -147,6 +147,7 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     let (probing, collecting) = reaching(&vault, &policy, config.tailscale_localapi.clone());
     let feed = metrics::Feed::new();
     let origin = access::PublicOrigin::new(config.public_origin.clone());
+    let web = web_fallback(config.web_root.as_deref(), &origin);
     let dependencies = Dependencies {
         config,
         clock: clock.clone(),
@@ -170,6 +171,7 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     let app = router_at(schema, pool.clone(), clock.clone(), origin)
         .merge(tunnels)
         .merge(logged(push))
+        .merge(web)
         .layer(access::permitted_networks_layer(edge.clone()));
     let shutdown = Shutdown {
         db: pool,
