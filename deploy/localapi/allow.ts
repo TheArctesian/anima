@@ -10,13 +10,22 @@ export const PING_PATH = "/localapi/v0/ping";
 
 const refuse = (reason: string): Decision => ({ kind: "refuse", reason });
 
+/** One decimal octet 0-255 without leading zeros, or null. */
+function octet(part: string | undefined): number | null {
+  if (part === undefined || !/^(?:0|[1-9]\d{0,2})$/.test(part)) return null;
+  const value = Number(part);
+  return value > 255 ? null : value;
+}
+
 /** Strict dotted quad inside 100.64.0.0/10 (the tailnet range): no leading zeros, no IPv6. */
 export function tailnetIpv4(text: string): string | null {
-  const parts = text.split(".");
-  if (parts.length !== 4) return null;
-  if (!parts.every((part) => /^(?:0|[1-9]\d{0,2})$/.test(part))) return null;
-  const [a, b, c, d] = parts.map(Number) as [number, number, number, number];
-  if ([a, b, c, d].some((octet) => octet > 255)) return null;
+  const [first, second, third, fourth, ...extra] = text.split(".");
+  if (extra.length > 0) return null;
+  const a = octet(first);
+  const b = octet(second);
+  const c = octet(third);
+  const d = octet(fourth);
+  if (a === null || b === null || c === null || d === null) return null;
   if (a !== 100 || b < 64 || b > 127) return null;
   return `${a}.${b}.${c}.${d}`;
 }

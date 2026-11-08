@@ -1,3 +1,4 @@
+import { isRecord } from "./record.ts";
 import type { Violation } from "./report.ts";
 
 export const SIGNALS = ["file-lines", "folder-files"] as const;
@@ -10,10 +11,6 @@ export class BaselineShapeError extends Error {
     super(`baseline.json: ${message}`);
     this.name = "BaselineShapeError";
   }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function parseEntry(path: string, entry: unknown): Baseline[string] {
