@@ -1,7 +1,7 @@
 //! The Linux `/proc` readers (MET-002).
 
 use super::{captures::*, *};
-use crate::metrics::parse::linux;
+use crate::readings::linux;
 
 #[test]
 fn met_002_proc_stat_gives_idle_and_total_jiffies_of_the_aggregate_line() {

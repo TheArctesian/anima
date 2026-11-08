@@ -11,11 +11,16 @@
 //! A last line without its newline is dropped: the link cuts output at a limit, and half a
 //! line can hold a wrong number. A line that is not UTF-8 is skipped.
 
+#[cfg(any(test, feature = "test-support"))]
+pub mod captures;
 pub mod df;
 pub mod linux;
 pub mod macos;
+mod reading;
+#[cfg(test)]
+mod tests;
 
-use super::reading::Load;
+pub use reading::{Cpu, Disk, Interface, Load, Memory, Reading};
 
 /// The longest label (mount point or interface name) kept, in bytes.
 const LABEL_LIMIT: usize = 128;

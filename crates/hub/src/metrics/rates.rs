@@ -3,8 +3,8 @@
 use std::time::Duration;
 
 use super::{
+    Cpu, Interface, Reading,
     model::{MetricKind, Sample},
-    reading::{Cpu, Interface, Reading},
     series::{kept_disks, kept_interfaces},
 };
 

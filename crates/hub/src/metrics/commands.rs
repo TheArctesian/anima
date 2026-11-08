@@ -14,7 +14,7 @@ const QUICK: Duration = Duration::from_secs(5);
 /// The limit of `top -l 2 -s 1`, which waits one second between its two samples.
 const TOP: Duration = Duration::from_secs(8);
 
-/// Which output a command gives, so its reader is known (see [`super::parse`]).
+/// Which output a command gives, so its reader is known (see [`agent_core::readings`]).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Source {
     /// Linux `cat /proc/stat`.

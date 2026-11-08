@@ -3,7 +3,7 @@
 use chrono::DateTime;
 
 use super::{captures::*, *};
-use crate::metrics::parse::macos;
+use crate::readings::macos;
 
 #[test]
 fn met_002_sysctl_gives_memory_page_size_load_and_boot_time() {
