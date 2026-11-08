@@ -23,13 +23,23 @@ const NON_PUBLIC: readonly Block[] = [
   [[240, 0, 0, 0], 4],
 ];
 
+/** One decimal octet 0–255 without leading zeros, or undefined. */
+function octet(part: string | undefined): number | undefined {
+  if (part === undefined || !/^(0|[1-9]\d{0,2})$/.test(part)) return undefined;
+  const value = Number(part);
+  return value > 255 ? undefined : value;
+}
+
 /** Parses a strict dotted quad: four decimal octets 0–255 without leading zeros. */
 export function parseIpv4(address: string): Ipv4 | undefined {
-  const parts = address.split('.');
-  if (parts.length !== 4) return undefined;
-  const octets = parts.map((part) => (/^(0|[1-9]\d{0,2})$/.test(part) ? Number(part) : Number.NaN));
-  if (octets.some((octet) => Number.isNaN(octet) || octet > 255)) return undefined;
-  return octets as unknown as Ipv4;
+  const [first, second, third, fourth, ...extra] = address.split('.');
+  if (extra.length > 0) return undefined;
+  const a = octet(first);
+  const b = octet(second);
+  const c = octet(third);
+  const d = octet(fourth);
+  if (a === undefined || b === undefined || c === undefined || d === undefined) return undefined;
+  return [a, b, c, d];
 }
 
 function toNumber(octets: Ipv4): number {
