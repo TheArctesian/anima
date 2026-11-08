@@ -1,10 +1,7 @@
-//! The session task (K4 Sections 2 to 5): one task per redeemed ticket that opens the gateway
-//! side, answers the `/tunnel` request and waits for the upgraded socket (`upgrade`), runs the
-//! tunnel (`link`) and ends the session once.
-//!
-//! The task, not the request handler, owns the ticket: hyper drops the handler when the
-//! client goes, and the session must still end (MV-003). It holds the ticket in an
-//! [`Unfinished`] guard, so even a panic ends the row.
+//! The Guacamole tunnel's part of the session task (K4 Sections 2 to 5, `upgrade::FarSide`):
+//! it opens the gateway side, and once the `/tunnel` request is answered waits for the
+//! upgraded socket, runs the tunnel (`link`) or tells the client the certificate changed. The
+//! shared task (`upgrade::run_session`) owns the ticket from redeem to end.
 //!
 //! A known gap, accepted (SEC-002, issue #1): the opening stops when the client leaves only
 //! if hyper notices, and hyper notices an EOF during a request only while its read buffer is
@@ -19,11 +16,7 @@ mod writes;
 
 use std::sync::Arc;
 
-use axum::{
-    extract::{WebSocketUpgrade, ws::WebSocket},
-    http::StatusCode,
-    response::{IntoResponse, Response},
-};
+use axum::extract::ws::WebSocket;
 use tokio::sync::oneshot;
 
 use super::{
@@ -33,51 +26,43 @@ use super::{
     route::{Route, Timing},
 };
 use crate::sessions::{
-    Redeemed, Tunnel,
-    end::Unfinished,
-    upgrade::{handed_over, upgraded},
+    PendingTicket, Tunnel,
+    end::Records,
+    upgrade::{FarSide, close, upgraded},
 };
-use writes::{close_client, leave_gateway, send_text};
+use writes::{leave_gateway, send_text};
 
 /// The event message when the request did not offer the `guacamole` subprotocol.
 const NOT_GUACAMOLE: &str = "The client did not open the tunnel as a Guacamole WebSocket, so \
                              the hub closed the session.";
-/// Runs the session of `redeemed` to its end and writes the end. `upgrade` is the request's
-/// upgrade when it offered `guacamole`; `answer` takes the handler's response.
-pub(super) async fn run(
-    route: Arc<Route>,
-    redeemed: Redeemed,
-    upgrade: Option<WebSocketUpgrade>,
-    answer: oneshot::Sender<Response>,
-) {
-    let mut unfinished = Unfinished::new(route.records(), redeemed);
-    let end = session(&route, unfinished.redeemed(), upgrade, answer).await;
-    unfinished.finish(&end).await;
-}
 
-/// The session up to its first cause: refusals before the upgrade answer 400 or 503
-/// (`upgrade`).
-async fn session(
-    route: &Route,
-    redeemed: &mut Redeemed,
-    upgrade: Option<WebSocketUpgrade>,
-    answer: oneshot::Sender<Response>,
-) -> End {
-    let Some(upgrade) = upgrade else {
-        let _ = answer.send(StatusCode::BAD_REQUEST.into_response());
-        return End::explained(Cause::InvalidInstruction, NOT_GUACAMOLE);
-    };
-    let Redeemed { ticket, tunnel } = redeemed;
-    let (session, protocol) = (ticket.session, ticket.protocol);
-    let opening = async {
-        opening::open(route, ticket).await.map_err(|not_opened| {
+impl FarSide for Route {
+    type Opening = Opening;
+    const NOT_OFFERED: &'static str = NOT_GUACAMOLE;
+
+    fn records(&self) -> Records {
+        Records {
+            db: self.db.clone(),
+            bus: self.bus.clone(),
+            clock: Arc::clone(&self.clock),
+        }
+    }
+
+    async fn open(&self, ticket: &PendingTicket) -> Result<Opening, End> {
+        let (session, protocol) = (ticket.session, ticket.protocol);
+        opening::open(self, ticket).await.map_err(|not_opened| {
             tracing::warn!(%session, error = %not_opened, "the tunnel did not open");
             End::explained(Cause::GatewayError, not_opened.message(protocol))
         })
-    };
-    match handed_over(opening, upgrade, tunnel, answer).await {
-        Ok((opening, socket)) => connected(route.timing, tunnel, opening, socket).await,
-        Err(end) => end,
+    }
+
+    async fn connected(
+        &self,
+        tunnel: &mut Tunnel,
+        opening: Opening,
+        socket: oneshot::Receiver<WebSocket>,
+    ) -> End {
+        connected(self.timing, tunnel, opening, socket).await
     }
 }
 
@@ -117,6 +102,6 @@ async fn certificate_mismatch(mut client: WebSocket, tunnel: &mut Tunnel, timing
         timing.client_idle,
     )
     .await;
-    close_client(client, cause).await;
+    close(client, None, cause).await;
     cause.into()
 }

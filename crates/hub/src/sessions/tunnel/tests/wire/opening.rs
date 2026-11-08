@@ -29,6 +29,7 @@ use super::{
 use crate::sessions::{
     Actor,
     end::{Unfinished, end_session, finish},
+    upgrade::FarSide as _,
 };
 
 /// A guacd that takes `select` and then says nothing until told, and a bench in front of it.
@@ -146,7 +147,7 @@ async fn mv_003_a_session_task_that_panics_still_ends_the_session(pool: PgPool) 
     let bench = bench(&pool, "127.0.0.1:9", Setup::default()).await;
     let redeemed = bench.live.redeem(on_tunnel(&bench.token), now()).unwrap();
     let records = bench.route.records();
-    // As `relaying::run` holds the session from its first line.
+    // As `upgrade::run_session` holds the session from its first line.
     let task = tokio::spawn(async move {
         let _unfinished = Unfinished::new(records, redeemed);
         panic!("the session task fails");

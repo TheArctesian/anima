@@ -22,7 +22,7 @@ use super::{
     heard,
     records::ended,
 };
-use crate::sessions::{Actor, Redeemed, end::finish};
+use crate::sessions::{Actor, Redeemed, end::finish, upgrade::FarSide as _};
 
 /// A session redeemed and opened to a guacd past `ready`, with no client socket yet.
 async fn opened(pool: &PgPool, setup: Setup) -> (FakeGuacd, Bench, Redeemed, Opening) {

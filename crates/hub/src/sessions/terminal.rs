@@ -4,10 +4,11 @@
 //!
 //! Pure rules: the text messages (`control`) and the end messages (`ending`). I/O: the
 //! `/terminal` route and its checks before the upgrade (`route`), the device side up to a
-//! signed-in session channel (`opening`), the session task that owns the ticket from redeem
-//! to end (`session`), the upgraded terminal (`link`), the PTY and shell (`shell`), the relay
-//! after them (`relay`) and the writes that send and close (`writes`). The end's row, audit entry and event are written by
-//! `end::record`.
+//! signed-in session channel (`opening`), the terminal's part of the session task
+//! (`session`; the task that owns the ticket from redeem to end is `sessions::upgrade`), the
+//! upgraded terminal (`link`), the PTY and shell (`shell`), the relay after them (`relay`)
+//! and the terminal's own writes (`writes`). The end's row, audit entry and event are written
+//! by `end::record`.
 
 mod control;
 mod ending;

@@ -22,6 +22,7 @@ use crate::sessions::{
     Actor, Redeemed,
     end::{Cause, End, finish},
     tests::fixture::{LOOPBACK, address, ended, ended_once, now, operator},
+    upgrade::FarSide as _,
 };
 
 /// A session redeemed and signed in, with no client socket yet.

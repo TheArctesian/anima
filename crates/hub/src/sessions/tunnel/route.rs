@@ -12,7 +12,7 @@
 //!    redeemed before the subprotocol is checked: a request without `guacamole` still spends
 //!    it, and cannot be used to test a token without spending it. A ticket whose `tunnelPath`
 //!    is not `/tunnel` is refused and spent in the same redemption (403).
-//! 3. From here the session task owns the redeemed ticket (`relaying`), so the session ends
+//! 3. From here the session task owns the redeemed ticket (`upgrade`), so the session ends
 //!    exactly once even when the client leaves and this handler is dropped (MV-003). The task
 //!    answers this handler: 400 without the subprotocol `guacamole` (the session ends
 //!    `PROTOCOL_ERROR`), 503 when the opening fails (`GATEWAY_ERROR`), else the upgrade.
@@ -32,18 +32,15 @@ use sqlx::PgPool;
 use tokio::sync::oneshot;
 use zeroize::Zeroizing;
 
-use super::{
-    ending::{CLIENT_IDLE, GATEWAY_SILENCE},
-    relaying,
-};
+use super::ending::{CLIENT_IDLE, GATEWAY_SILENCE};
 use crate::{
     clock::Clock,
     credentials::Vault,
     events::Bus,
     sessions::{
         Live, Protocol, Redeemed, admission,
-        end::Records,
         tickets::{RECONNECT, WOKEN_OPENING},
+        upgrade::run_session,
     },
     ssh::probe::PROBE_TIMEOUT,
 };
@@ -108,17 +105,6 @@ pub(super) struct Route {
     pub(super) timing: Timing,
 }
 
-impl Route {
-    /// Where this route's sessions write their end.
-    pub(super) fn records(&self) -> Records {
-        Records {
-            db: self.db.clone(),
-            bus: self.bus.clone(),
-            clock: Arc::clone(&self.clock),
-        }
-    }
-}
-
 /// The `/tunnel` route for RDP and VNC sessions (K3, K4 Section 2), with guacd at `guacd`
 /// keeping shared drives under `drive_root`. `main.rs` mounts it behind
 /// `access::permitted_networks_layer` (NET-002) and serves it with `ConnectInfo<SocketAddr>`,
@@ -170,7 +156,7 @@ async fn open(
     let (answer, answered) = oneshot::channel();
     // Not awaited here: dropping this handler must not drop the session (MV-003).
     let upgrade = admission::offering(upgrade, SUBPROTOCOL);
-    tokio::spawn(relaying::run(route, redeemed, upgrade, answer));
+    tokio::spawn(run_session(route, redeemed, upgrade, answer));
     // No answer only when the task stopped before giving one; it still ended the session.
     answered
         .await

@@ -27,9 +27,13 @@ use super::{
         relay::{ClientStep, GatewayStep, Relay},
         route::Timing,
     },
-    writes::{close_client, leave_gateway, send_text, write_gateway},
+    writes::{leave_gateway, send_text, write_gateway},
 };
-use crate::sessions::{EndCause, Tunnel, end::unreadable};
+use crate::sessions::{
+    EndCause, Tunnel,
+    end::unreadable,
+    upgrade::{Quiet, close},
+};
 
 /// Relays between the client and guacd under the opened session's policy until the first
 /// cause, then closes both.
@@ -50,8 +54,8 @@ pub(super) async fn relay(
         relay: Relay::new(policy),
         timing,
         buffer: vec![0; READ_BYTES],
-        gateway_quiet: now + timing.gateway_silence,
-        client_quiet: now + timing.client_idle,
+        gateway_quiet: Quiet::new(timing.gateway_silence, now),
+        client_quiet: Quiet::new(timing.client_idle, now),
         told_gateway: false,
         _connection_id: connected.connection_id,
     };
@@ -81,9 +85,9 @@ struct Link<'a> {
     /// The one buffer guacd is read into.
     buffer: Vec<u8>,
     /// When guacd's silence earns the client a `nop`.
-    gateway_quiet: Instant,
+    gateway_quiet: Quiet,
     /// When the client's silence ends the session.
-    client_quiet: Instant,
+    client_quiet: Quiet,
     /// The client's own `disconnect` already went to guacd.
     told_gateway: bool,
     /// Kept for the tunnel's life only (GW-014).
@@ -116,8 +120,8 @@ impl Link<'_> {
             signal = self.tunnel.ended() => Turn::Signalled(signal),
             message = self.client.recv() => Turn::Client(message),
             read = self.gateway.read(&mut self.buffer) => Turn::Gateway(read),
-            () = sleep_until(self.gateway_quiet) => Turn::GatewaySilent,
-            () = sleep_until(self.client_quiet) => Turn::ClientIdle,
+            () = sleep_until(self.gateway_quiet.due()) => Turn::GatewaySilent,
+            () = sleep_until(self.client_quiet.due()) => Turn::ClientIdle,
         }
     }
 
@@ -131,16 +135,16 @@ impl Link<'_> {
             Turn::Signalled(signal) => Some(End::from(signal)),
             Turn::Client(message) => {
                 let ended = self.on_client(message).await;
-                self.client_quiet = Instant::now() + self.timing.client_idle;
+                self.client_quiet.restart(Instant::now());
                 ended
             }
             Turn::Gateway(read) => {
                 let ended = self.on_gateway(read).await;
-                self.gateway_quiet = Instant::now() + self.timing.gateway_silence;
+                self.gateway_quiet.restart(Instant::now());
                 ended
             }
             Turn::GatewaySilent => {
-                self.gateway_quiet = Instant::now() + self.timing.gateway_silence;
+                self.gateway_quiet.restart(Instant::now());
                 let nop = Instruction::new("nop", Vec::<String>::new());
                 self.tell_client(&nop).await.err()
             }
@@ -248,6 +252,6 @@ impl Link<'_> {
                 leave_gateway(gateway).await;
             }
         };
-        tokio::join!(gateway, close_client(client, cause));
+        tokio::join!(gateway, close(client, None, cause));
     }
 }

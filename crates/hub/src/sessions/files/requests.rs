@@ -6,11 +6,12 @@ use std::sync::Arc;
 
 use axum::{body::Bytes, extract::ws::Message};
 use sqlx::PgPool;
+use tokio::time::Instant;
 
 use super::{
     device::{Asked, Broken, Handle, Remote},
     protocol::{self, DevicePath, Refusal, Request},
-    relay::{Active, Done, Relay, Stage, after},
+    relay::{Active, Done, Relay, Stage},
     transfer::{Direction, Outcome, Transfer},
 };
 use crate::{
@@ -56,7 +57,7 @@ impl Relay {
         &mut self,
         message: Option<Result<Message, axum::Error>>,
     ) -> Result<(), Cause> {
-        self.client_quiet = after(self.timing.client_idle);
+        self.client_quiet.restart(Instant::now());
         match message {
             Some(Ok(Message::Binary(bytes))) => self.on_frame(bytes),
             Some(Ok(Message::Text(text))) => match protocol::parse(&text) {
@@ -155,8 +156,8 @@ impl Relay {
     /// One answer from the device. The time it took is not the client's silence.
     pub(super) async fn on_done(&mut self, done: Done) -> Result<(), Cause> {
         self.work = None;
-        self.device_quiet = after(self.timing.keep_alive);
-        self.client_quiet = after(self.timing.client_idle);
+        self.device_quiet.restart(Instant::now());
+        self.client_quiet.restart(Instant::now());
         match done {
             Done::Listed(Ok(Ok(listing))) => self.send_owned(protocol::entries(&listing)).await,
             Done::Listed(Ok(Err(refused))) => self.send_owned(protocol::refused(refused)).await,

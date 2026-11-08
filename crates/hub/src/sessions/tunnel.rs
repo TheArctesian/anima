@@ -5,8 +5,9 @@
 //! client and guacd instruction means after `ready` (`relay`, `client`, `gateway`) and how a
 //! tunnel ends (`ending`). I/O: the `/tunnel` route and its checks before the upgrade
 //! (`route`), the device, certificate and guacd side up to `ready` (`opening`, `guacd`), the
-//! session task that owns the ticket from redeem to end (`relaying`); the end's row, audit entry and
-//! event are written by `end::record`.
+//! tunnel's part of the session task (`relaying`; the task that owns the ticket from redeem to
+//! end is `sessions::upgrade`); the end's row, audit entry and event are written by
+//! `end::record`.
 
 mod arguments;
 mod client;
