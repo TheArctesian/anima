@@ -1,6 +1,7 @@
-import type { BrowserContext, Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { expect, test } from './test-hub';
-import { HUB_ORIGIN, OPERATOR, SESSION_COOKIE } from './synthetic/access';
+import { consoleLines, openSignIn, scriptReach, sessionCookie, signInWith } from './sign-in-steps';
+import { HUB_ORIGIN, OPERATOR } from './synthetic/access';
 import type { RecordedRequest } from './synthetic/recorder';
 
 // Browser sign-in and sign-out (WP-44 E-4): the page sends signInBrowser and never login, no token or password is ever in
@@ -16,38 +17,6 @@ async function markPage(page: Page): Promise<void> {
 
 async function isOldPage(page: Page): Promise<boolean> {
   return page.evaluate((mark) => mark in window, OLD_PAGE_MARK);
-}
-
-/** Every console line of the page, from now on and across loads. */
-function consoleLines(page: Page): string[] {
-  const lines: string[] = [];
-  page.on('console', (message) => lines.push(message.text()));
-  return lines;
-}
-
-/** What script on the page can read: `document.cookie`, both web storages and the whole DOM, with field values. */
-function scriptReach(page: Page): Promise<string> {
-  return page.evaluate(() => {
-    const values = [...document.querySelectorAll('input')].map((field) => field.value);
-    return JSON.stringify([document.cookie, { ...localStorage }, { ...sessionStorage }, document.documentElement.outerHTML, values]);
-  });
-}
-
-async function sessionCookie(context: BrowserContext): Promise<string | undefined> {
-  return (await context.cookies(HUB_ORIGIN)).find((found) => found.name === SESSION_COOKIE)?.value;
-}
-
-async function signInWith(page: Page, password: string): Promise<void> {
-  await page.getByLabel('User name', { exact: true }).fill(OPERATOR.username);
-  await page.getByLabel('Password', { exact: true }).fill(password);
-  await page.getByLabel('Code from your authenticator', { exact: true }).fill(OPERATOR.code);
-  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-}
-
-/** Opens the sign-in page and waits until its form works; the `load` event (fonts, icons) is not what the specs need. */
-async function openSignIn(page: Page): Promise<void> {
-  await page.goto(`${HUB_ORIGIN}/sign-in`, { waitUntil: 'domcontentloaded' });
-  await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeEnabled();
 }
 
 /** Whether `requests` hold a graphql-ws socket the hub signed in by the cookie alone, with no Authorization in its payload. */

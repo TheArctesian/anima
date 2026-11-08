@@ -1,9 +1,10 @@
 import type { BrowserContext, Route, WebSocketRoute } from '@playwright/test';
 import { COOKIE_MAX_AGE_SECONDS, HUB_HOST, HUB_ORIGIN, SESSION_COOKIE } from './access';
-import { untilClosed } from './closed';
+import { noteClosing, untilClosed } from './closed';
 import { loadFixtures } from './fixtures';
 import { answerGraphql } from './graphql/graphql-answers';
 import { loadSchema } from './graphql/graphql-schema';
+import { newLive } from './graphql/live';
 import { serveGraphqlSocket } from './graphql/graphql-socket';
 import { newHubState } from './model';
 import { newRecording, type Recorder } from './recorder';
@@ -17,6 +18,8 @@ export interface SyntheticHub {
   signIn(): Promise<void>;
   /** Removes the cookie. */
   signOut(): Promise<void>;
+  /** Pushes one event to the open subscriptions of `operation` (the document's operation name); returns how many got it. */
+  push(operation: string, data: Record<string, unknown>): number;
 }
 
 interface Options {
@@ -71,13 +74,15 @@ export async function installSyntheticHub(context: BrowserContext, options: Opti
   const now = options.now ?? (() => new Date());
   const state = newHubState(loadFixtures(), now);
   const recording = newRecording();
+  const live = newLive();
   const schema = loadSchema();
   const site = staticSite();
   const refuse = (url: string): void => recording.refuseForeign(url);
   const graphql = (route: Route): Promise<void> => answerGraphql({ context, schema, state, recording }, route);
-  await context.route('**/*', (route) => untilClosed(() => serveRoute(route, site, graphql, refuse)));
+  noteClosing(context);
+  await context.route('**/*', (route) => untilClosed(() => serveRoute(route, site, graphql, refuse), context));
   const servers: Record<string, SocketServer> = {
-    '/graphql': (socket) => serveGraphqlSocket({ context, state, recording }, socket),
+    '/graphql': (socket) => serveGraphqlSocket({ context, state, recording, live }, socket),
     '/terminal': (socket) => {
       serveTerminal({ state, recording }, socket);
     },
@@ -85,7 +90,7 @@ export async function installSyntheticHub(context: BrowserContext, options: Opti
       serveGuacamole({ state, recording }, socket);
     },
   };
-  await context.routeWebSocket(/.*/, (socket) => untilClosed(() => serveSocket(socket, servers, refuse)));
+  await context.routeWebSocket(/.*/, (socket) => untilClosed(() => serveSocket(socket, servers, refuse), context));
   return {
     recording,
     async signIn() {
@@ -94,5 +99,6 @@ export async function installSyntheticHub(context: BrowserContext, options: Opti
       await context.addCookies([{ name: SESSION_COOKIE, value, url: HUB_ORIGIN, httpOnly: true, secure: true, sameSite: 'Strict', expires }]);
     },
     signOut: () => context.clearCookies({ name: SESSION_COOKIE }),
+    push: (operation, data) => live.push(operation, data),
   };
 }
