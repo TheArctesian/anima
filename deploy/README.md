@@ -508,54 +508,112 @@ is blocked, use another port or a provider that allows it. Finish with a test no
 channel in Settings, because an open port does not prove that SMTP works.
 Undo: nothing changes.
 
-**7. Required before Apprise: block Apprise from the host and from private networks (proposed).**
-Apprise can fetch any URL through a service URL parameter such as `template`, and the allow list and
-attachment reject do not stop that. This rule is what contains it. Do not start Apprise without it. It
-needs the operator's confirmation (VPS-005), and you must confirm the chain names on the host first:
+**7. Required before Apprise: install the firewall rules that contain Apprise.** Apprise can fetch
+any URL through a service URL parameter such as `template`, and the allow list and attachment reject
+do not stop that. The Anima host firewall contains it (NOT-002, D-19). The rules are in
+`deploy/headscale/vps/nftables.conf`:
 
-```sh
-# Run on the VPS.
-sudo nft list table inet anima_filter
-```
+- `input` drops every packet from `172.30.3.10`, before any accept, so Apprise reaches no address of
+  the VPS: not the bridge gateway `172.30.3.1`, not Headscale on the public address, not the hub's
+  VPN address.
+- `forward` drops Apprise's packets to `0.0.0.0/8`, `10.0.0.0/8`, `100.64.0.0/10`, `127.0.0.0/8`,
+  `169.254.0.0/16`, `172.16.0.0/12`, `192.168.0.0/16` and `224.0.0.0/3`, and everything it sends
+  out of `tailscale0`. On the `notify` network it may only answer the hub. Public addresses stay
+  open.
 
-Check that the chains `input` and `forward` exist (WP-03's `nftables.conf`). If they do, add:
+They are part of the table `inet anima_filter`, so you apply them the way WP-03 applied that table:
+`harden.sh firewall` with its 180 s rollback, then `harden.sh confirm` from a new SSH session over the
+VPN. `confirm` installs the file as `/etc/nftables/anima.nft`, so the rules come back after a reboot.
+This needs the operator's confirmation (VPS-005). Do not start Apprise before this step is done.
 
-```sh
-# Run on the VPS.
-# Apprise to the host itself (including the bridge gateway 172.30.3.1).
-sudo nft insert rule inet anima_filter input ip saddr 172.30.3.10 drop
-# Apprise to private and VPN ranges, except the notify subnet, where it answers the hub.
-sudo nft insert rule inet anima_filter forward ip saddr 172.30.3.10 ip daddr != 172.30.3.0/24 ip daddr { 10.0.0.0/8, 100.64.0.0/10, 127.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/16 } drop
-```
-
-Resolver check. Docker's embedded DNS forwards Apprise's lookups from the container, so they pass the
-`forward` chain. Run this and check that no `nameserver` line is in a dropped range:
+Resolver check, first. Docker's embedded DNS forwards Apprise's lookups from the container to the
+VPS's nameservers, so they pass the `forward` chain:
 
 ```sh
 # Run on the VPS.
 grep nameserver /etc/resolv.conf
 ```
 
-If one is (for example `10.x.x.x`), Apprise cannot resolve names. Add an `accept` rule for that address
-and port 53 before the `forward` drop, with the operator's confirmation.
+If a `nameserver` is in one of the dropped ranges (for example `10.x.x.x`), Apprise cannot resolve
+names. Stop and ask the programme; do not go on.
 
-Check: `sudo nft -a list table inet anima_filter` shows both rules. After step 8, the test notification
-still arrives.
+Copy the file to the folder `harden.sh` reads it from, and keep the current one:
 
-Follow-up, a separate change that needs the operator's confirmation: the rules last until the firewall
-reloads or the host restarts. To keep them, add the same two rules to `deploy/headscale/vps/nftables.conf`
-(installed on the VPS as `/etc/nftables/anima.nft`), and apply it as WP-03 describes. Until then, repeat
-this step after every reboot, before Apprise starts.
+```sh
+# Run on the Mac, in the repository root, at the commit that you deploy.
+scp deploy/headscale/vps/nftables.conf anima-admin@100.64.0.1:/tmp/nftables.conf
+```
 
-Undo, by rule handle:
+```sh
+# Run on the VPS, in an SSH session over the VPN (ssh anima-admin@100.64.0.1).
+sudo cp -p /opt/anima/headscale/vps/nftables.conf /root/nftables.conf.before-wp52
+sudo install -m 0644 -o root -g root /tmp/nftables.conf /opt/anima/headscale/vps/nftables.conf
+rm /tmp/nftables.conf
+sudo --preserve-env=SSH_CONNECTION /opt/anima/headscale/vps/harden.sh --dry-run firewall
+sudo --preserve-env=SSH_CONNECTION /opt/anima/headscale/vps/harden.sh firewall
+```
+
+The dry run checks the file with `nft -c` and changes nothing. If it or `firewall` refuses (for example
+because an open public port would close), stop and ask the operator. `firewall` applies the rules and
+arms the rollback. Keep this session open. Within 180 s, open a **new** SSH session over the VPN and
+confirm:
+
+```sh
+# Run on the VPS, in a NEW SSH session over the VPN.
+sudo --preserve-env=SSH_CONNECTION /opt/anima/headscale/vps/harden.sh confirm
+```
+
+If the new session cannot connect, do nothing: the previous rules come back after 180 s and the boot
+copy is unchanged. Then put the old file back (first command of Undo) and ask the operator.
+
+Check:
 
 ```sh
 # Run on the VPS.
-sudo nft -a list chain inet anima_filter input
-sudo nft -a list chain inet anima_filter forward
-sudo nft delete rule inet anima_filter input handle <HANDLE_OF_THE_APPRISE_RULE>
-sudo nft delete rule inet anima_filter forward handle <HANDLE_OF_THE_APPRISE_RULE>
+sudo nft list table inet anima_filter
+sudo grep -n 'define apprise' /etc/nftables/anima.nft
+sudo /opt/anima/headscale/vps/harden.sh check
 ```
+
+The first rule of chain `input` is `ip saddr 172.30.3.10 drop`, and chain `forward` has three rules
+that start with `ip saddr 172.30.3.10`. The boot copy holds the three `define apprise` lines. `check`
+ends with `ok: no violations`.
+
+Then probe from Apprise's address. It works only while Apprise is not running, because the probe takes
+the address `172.30.3.10`; once Apprise runs, stop it first (`sudo docker compose --profile apprise rm
+-sf apprise`). The probe uses the Apprise image, which has `curl`:
+
+```sh
+# Run on the VPS, in /opt/anima/deploy.
+sudo docker compose --profile apprise pull apprise
+image=$(sudo docker compose --profile apprise config --images | grep apprise)
+sudo docker run --rm --network deploy_notify --ip 172.30.3.10 --cap-drop ALL --user 1000:1000 \
+  --entrypoint sh "$image" -c 'for url in https://172.30.3.1/ https://hs.anima.ing/health https://100.64.0.1/ http://172.30.0.10:8443/ https://ntfy.sh/; do curl -s -o /dev/null --connect-timeout 5 "$url"; echo "$? $url"; done'
+```
+
+Each line is the curl exit code and the URL. The first four must print `28` (the connection timed
+out: the firewall dropped it). The last must print `0`: Apprise resolves names and reaches the
+internet. Any other code on the first four (for example `7`, connection refused, or `35` or `60`, a
+TLS answer) means the packet got through: do not start Apprise, and ask the programme. After step 8,
+the test notification still arrives.
+
+Undo: stop Apprise first if it runs (`sudo docker compose --profile apprise rm -sf apprise`); it must
+not run without these rules. Then apply the previous file the same way:
+
+```sh
+# Run on the VPS, in an SSH session over the VPN.
+sudo install -m 0644 -o root -g root /root/nftables.conf.before-wp52 /opt/anima/headscale/vps/nftables.conf
+sudo --preserve-env=SSH_CONNECTION /opt/anima/headscale/vps/harden.sh firewall
+```
+
+```sh
+# Run on the VPS, in a NEW SSH session over the VPN.
+sudo --preserve-env=SSH_CONNECTION /opt/anima/headscale/vps/harden.sh confirm
+```
+
+If `/root/nftables.conf.before-wp52` is lost, take the file from git as it was before the Apprise
+rules: `git show <commit>~1:deploy/headscale/vps/nftables.conf`, where `<commit>` is the commit that
+added them (`git log -1 --format=%h -S 'define apprise' -- deploy/headscale/vps/nftables.conf`).
 
 **8. Optional: start Apprise, only after step 7.**
 
