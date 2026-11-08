@@ -29,7 +29,9 @@ struct Reads {
 
 /// Every device and check as the exposition shows them at `now`, in eight statements however
 /// many there are: devices, maintenance windows, standings, checks, newest heartbeats and one
-/// uptime sum per window. Uptime comes from the aggregate tables only (CHK-011).
+/// uptime sum per window. Uptime comes from the aggregate tables only (CHK-011). The eight
+/// reads are not one transaction, so a write between two of them can show in one and not the
+/// other until the next build.
 ///
 /// # Errors
 /// `Database`, `Devices`, `Maintenance` or `Unreadable` when a read fails.

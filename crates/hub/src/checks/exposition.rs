@@ -3,9 +3,10 @@
 //!
 //! The route does no authentication: the caller mounts it behind the bearer layer with READ
 //! scope, inside `crate::logged` and the permitted-networks layer. One build reads a fixed
-//! number of statements whatever the number of checks, and its text is served for ten seconds
-//! to every scrape, so a token holder cannot load the database. A failed build answers 500
-//! with a fixed body, is logged once here and is not kept.
+//! number of statements whatever the number of checks. Its text is served to every scrape for
+//! ten seconds; a scrape the client abandons does not stop or restart the build, so scrapes
+//! cost at most one build per ten seconds. A failed build is logged once, here or in the cache
+//! when it took longer than 30 s, and answers 500 with a fixed body for two seconds.
 
 mod cache;
 mod labels;
@@ -41,7 +42,7 @@ struct ExpositionState {
     cache: Arc<Cache>,
 }
 
-/// `GET /metrics`, cached for ten seconds with one shared build at a time (D-24).
+/// `GET /metrics`, cached for ten seconds with one detached build at a time (D-24).
 pub fn exposition_router(db: PgPool, clock: Arc<dyn Clock>) -> Router {
     Router::new()
         .route("/metrics", get(scrape))
@@ -54,8 +55,9 @@ pub fn exposition_router(db: PgPool, clock: Arc<dyn Clock>) -> Router {
 
 async fn scrape(State(state): State<ExpositionState>) -> Response {
     let now = state.clock.now();
-    let build = || async {
-        match snapshot::take(&state.db, now).await {
+    let db = state.db.clone();
+    let build = move || async move {
+        match snapshot::take(&db, now).await {
             Ok(snapshot) => Some(render::render(&snapshot)),
             Err(error) => {
                 // checks::Error's text is fixed and holds no value (LOG-007).

@@ -1,4 +1,4 @@
-//! The ten-second cache on the injected clock, and a failed build (D-24).
+//! The ten-second cache on the injected clock, and a failed build kept two seconds (D-24).
 
 use axum::http::StatusCode;
 use chrono::TimeDelta;
@@ -41,17 +41,22 @@ fixture_test! {
         assert_eq!(of_check(&rebuilt, "anima_check_status", PVE_01_PING).as_deref(), Some("0"));
     }
 
-    async fn d_24_a_failed_build_answers_500_with_a_fixed_body_and_is_not_kept(pool: PgPool) {
+    async fn d_24_a_failed_build_answers_500_with_a_fixed_body_for_two_seconds(pool: PgPool) {
         set_config(&pool, r#"{"unknownKey": "SELECT secret"}"#).await;
-        let (router, _) = rig(&pool, database_now(&pool).await);
+        let (router, clock) = rig(&pool, database_now(&pool).await);
 
         let failed = scrape(&router).await;
         set_config(&pool, r#"{"timeoutMs":2000,"ipVersion":"V4"}"#).await;
-        let next = scrape(&router).await;
+        clock.advance(TimeDelta::milliseconds(1_999));
+        let kept = scrape(&router).await;
+        clock.advance(TimeDelta::milliseconds(1));
+        let rebuilt = scrape(&router).await;
 
-        assert_eq!(failed.status, StatusCode::INTERNAL_SERVER_ERROR);
-        assert_eq!(failed.body, "The metrics cannot be read now.");
-        assert_eq!(next.status, StatusCode::OK, "the failure was not cached");
-        assert!(next.body.contains("anima_check_status{"));
+        for answer in [&failed, &kept] {
+            assert_eq!(answer.status, StatusCode::INTERNAL_SERVER_ERROR);
+            assert_eq!(answer.body, "The metrics cannot be read now.");
+        }
+        assert_eq!(rebuilt.status, StatusCode::OK, "the failure is kept two seconds only");
+        assert!(rebuilt.body.contains("anima_check_status{"));
     }
 }

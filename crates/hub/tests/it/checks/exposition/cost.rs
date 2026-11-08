@@ -1,12 +1,13 @@
-//! D-24, API-005: one build costs the same eight statements for 28 checks as for 328, and a
-//! cached scrape costs none. Statements are counted by the TCP proxy of the batching test.
+//! D-24, API-005: one build costs the same eight statements for 28 checks as for 328, a
+//! cached scrape costs none, and scrapes the client abandons share one build. Statements are
+//! counted by the TCP proxy of the batching test.
 
-use std::sync::atomic::Ordering;
+use std::{sync::atomic::Ordering, time::Duration};
 
 use chrono::TimeDelta;
 use sqlx::PgPool;
 
-use super::{body, database_now, rig};
+use super::{body, database_now, rig, scrape};
 use crate::checks::face::batching::{add_bulk, counting_pool};
 
 /// The bulk checks of the batching test, given the configuration their type needs.
@@ -67,4 +68,36 @@ async fn d_24_a_build_costs_eight_statements_for_28_or_328_checks(pool: PgPool) 
     // Devices, maintenance windows, standings, checks, newest heartbeats and the 1d, 7d and
     // 30d uptime sums.
     assert_eq!((few_cost, many_cost), (8, 8));
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../fixtures", scripts("devices", "checks"))
+)]
+async fn d_24_abandoned_scrapes_cost_one_build_and_the_next_scrape_waits_for_it(pool: PgPool) {
+    let (counted, count) = counting_pool(&pool).await;
+    let (router, clock) = rig(&counted, database_now(&pool).await);
+    body(&router).await;
+
+    clock.advance(TimeDelta::seconds(10));
+    count.store(0, Ordering::SeqCst);
+    // Polled once, then dropped: a client that leaves before any build could answer.
+    let left = tokio::select! {
+        biased;
+        answer = scrape(&router) => Some(answer.status),
+        () = std::future::ready(()) => None,
+    };
+    for _ in 0..40 {
+        // Clients with a 1 ms scrape timeout; some may get the body once the build is done.
+        let _late = tokio::time::timeout(Duration::from_millis(1), scrape(&router)).await;
+    }
+    let waited = body(&router).await;
+    let one_build = count.swap(0, Ordering::SeqCst);
+    let again = body(&router).await;
+    let again_cost = count.swap(0, Ordering::SeqCst);
+
+    // The build the first scrape started is the only one, and the next scrape waits for it.
+    assert_eq!(left, None);
+    assert_eq!(one_build, 8);
+    assert_eq!((again, again_cost), (waited, 0));
 }
