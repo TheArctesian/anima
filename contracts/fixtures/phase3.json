@@ -1,5 +1,5 @@
 {
-  "_comment": "K6 synthetic fixtures for Phase 3. Not real hosts, mailboxes or credentials: hosts are example.net or 10.x, and no secret field has a value (SEC-005): a webhook gives only its origin, ntfy only tokenStored, email only passwordStored, an Apprise channel only its server, mode and tags; API keys give only the 12-character prefix. IDs are fixed UUID v7-shaped strings, 0190a000-0000-7000-80NN-0000000000MM, and never collide with phase1.json (NN 00 to 04) or phase2.json (NN 11 to 16). NN segments: 17 notification channels, 18 deliveries, 19 API keys, 20 recordings, 21 shares, 22 checks, and new here 23 devices, 24 sessions. A reference may point at an id in this file, phase2.json or phase1.json: the Phase 1 HTTPS check is 0190a000-0000-7000-8003-00000000001a (pve-01 Web UI), the Phase 2 site is 11-01 and the Phase 2 Mac mini is 12-03. Compact shapes: `checkNotifications` is one entry per check with channelIds (CheckNotifications.channels as ids); `recordings[].stoppedReason` is the K2 column sessions.recordings.stopped_reason, not a K1 field; `streams` holds two plaintext recordings for player tests, one for each recording format: Guacamole instructions (LEN.value elements, a 200 by 120 rectangle on a 640 by 480 layer) and an asciicast v2 file of `echo hello`; `retention` rows hold the D-25 defaults with days at the default; `checkDefaults` are the schema defaults of K1 (intervalSeconds 60, retries 3, retryIntervalSeconds 20, degradedThresholdMs 1000). No session here has a share token or a ticket.",
+  "_comment": "K6 synthetic fixtures for Phase 3. Not real hosts, mailboxes or credentials: hosts are example.net or 10.x, and no secret field has a value (SEC-005): a webhook gives only its origin, ntfy only tokenStored, email only passwordStored, an Apprise channel only its server, mode and tags; API keys carry only the 12-character prefix that K1 exposes (no hash, no secret). IDs are fixed UUID v7-shaped strings, 0190a000-0000-7000-80NN-0000000000MM, and never collide with phase1.json (NN 00 to 04) or phase2.json (NN 11 to 16). NN segments: 17 notification channels, 18 deliveries, 19 API keys, 20 recordings, 21 shares, 22 checks, and new here 23 devices, 24 sessions. A reference may point at an id in this file, phase2.json or phase1.json: the Phase 1 HTTPS check is 0190a000-0000-7000-8003-00000000001a (pve-01 Web UI), the Phase 2 site is 11-01 and the Phase 2 Mac mini is 12-03. Compact shapes: `checkNotifications` is one entry per check with channelIds (CheckNotifications.channels as ids); `recordings[].stoppedReason` is the K2 column sessions.recordings.stopped_reason, not a K1 field; `streams` holds two plaintext recordings for player tests, one for each recording format: Guacamole instructions (LEN.value elements, a 200 by 120 rectangle on a 640 by 480 layer) and an asciicast v2 file of `echo hello`; `retention` rows hold the D-25 defaults with days at the default; `checkDefaults` are the schema defaults of K1 (intervalSeconds 60, retries 3, retryIntervalSeconds 20, degradedThresholdMs 1000). No session here has a share token or a ticket.",
   "channels": [
     {
       "id": "0190a000-0000-7000-8017-000000000001",
@@ -77,16 +77,16 @@
       "channelId": "0190a000-0000-7000-8017-000000000001",
       "channelName": "ops-webhook",
       "kind": "DOWN",
-      "at": "2026-11-06T8:00:00Z",
+      "at": "2026-11-06T08:00:00Z",
       "ok": true,
       "message": null
     },
     {
       "id": "0190a000-0000-7000-8018-000000000002",
-      "channelId": "0190a000-0000-7000-8017-000000000001",
-      "channelName": "ops-webhook",
+      "channelId": "0190a000-0000-7000-8017-000000000002",
+      "channelName": "phone-ntfy",
       "kind": "DOWN",
-      "at": "2026-11-06T8:01:00Z",
+      "at": "2026-11-06T08:05:00Z",
       "ok": false,
       "message": "The target address is not permitted."
     },
@@ -95,16 +95,16 @@
       "channelId": "0190a000-0000-7000-8017-000000000002",
       "channelName": "phone-ntfy",
       "kind": "UP",
-      "at": "2026-11-06T9:00:00Z",
+      "at": "2026-11-06T09:00:00Z",
       "ok": true,
       "message": null
     },
     {
       "id": "0190a000-0000-7000-8018-000000000004",
-      "channelId": "0190a000-0000-7000-8017-000000000002",
-      "channelName": "phone-ntfy",
-      "kind": "DOWN",
-      "at": "2026-11-06T9:01:00Z",
+      "channelId": "0190a000-0000-7000-8017-000000000003",
+      "channelName": "ops-email",
+      "kind": "UP",
+      "at": "2026-11-06T09:05:00Z",
       "ok": false,
       "message": "The target did not answer in 8 seconds."
     },
@@ -119,10 +119,10 @@
     },
     {
       "id": "0190a000-0000-7000-8018-000000000006",
-      "channelId": "0190a000-0000-7000-8017-000000000003",
-      "channelName": "ops-email",
-      "kind": "DOWN",
-      "at": "2026-11-06T10:01:00Z",
+      "channelId": "0190a000-0000-7000-8017-000000000004",
+      "channelName": "apprise-bridge",
+      "kind": "STILL_DOWN",
+      "at": "2026-11-06T10:05:00Z",
       "ok": false,
       "message": "The target address is not permitted."
     },
@@ -130,17 +130,53 @@
       "id": "0190a000-0000-7000-8018-000000000007",
       "channelId": "0190a000-0000-7000-8017-000000000004",
       "channelName": "apprise-bridge",
-      "kind": "TEST",
+      "kind": "CERTIFICATE_EXPIRY",
       "at": "2026-11-06T11:00:00Z",
       "ok": true,
       "message": null
     },
     {
       "id": "0190a000-0000-7000-8018-000000000008",
-      "channelId": "0190a000-0000-7000-8017-000000000004",
-      "channelName": "apprise-bridge",
-      "kind": "DOWN",
-      "at": "2026-11-06T11:01:00Z",
+      "channelId": "0190a000-0000-7000-8017-000000000001",
+      "channelName": "ops-webhook",
+      "kind": "CERTIFICATE_EXPIRY",
+      "at": "2026-11-06T11:05:00Z",
+      "ok": false,
+      "message": "The target did not answer in 8 seconds."
+    },
+    {
+      "id": "0190a000-0000-7000-8018-000000000009",
+      "channelId": "0190a000-0000-7000-8017-000000000001",
+      "channelName": "ops-webhook",
+      "kind": "DOMAIN_EXPIRY",
+      "at": "2026-11-06T12:00:00Z",
+      "ok": true,
+      "message": null
+    },
+    {
+      "id": "0190a000-0000-7000-8018-00000000000a",
+      "channelId": "0190a000-0000-7000-8017-000000000002",
+      "channelName": "phone-ntfy",
+      "kind": "DOMAIN_EXPIRY",
+      "at": "2026-11-06T12:05:00Z",
+      "ok": false,
+      "message": "The target address is not permitted."
+    },
+    {
+      "id": "0190a000-0000-7000-8018-00000000000b",
+      "channelId": "0190a000-0000-7000-8017-000000000002",
+      "channelName": "phone-ntfy",
+      "kind": "TEST",
+      "at": "2026-11-06T13:00:00Z",
+      "ok": true,
+      "message": null
+    },
+    {
+      "id": "0190a000-0000-7000-8018-00000000000c",
+      "channelId": "0190a000-0000-7000-8017-000000000003",
+      "channelName": "ops-email",
+      "kind": "TEST",
+      "at": "2026-11-06T13:05:00Z",
       "ok": false,
       "message": "The target did not answer in 8 seconds."
     }

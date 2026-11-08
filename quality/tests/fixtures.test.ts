@@ -151,6 +151,15 @@ const phase3EnumPaths: Record<string, string> = {
 /** Field names that would hold a secret value; the Phase 3 fixtures carry none (SEC-005). */
 const SECRET_KEYS = /^(url|urls|token|password|secret|topic|key|headers|headerValues|hash|keyHash)$/i;
 
+/** Every value at a key `at` or ending in `At`, anywhere in the document; null values are left out. */
+function timestamps(node: unknown): unknown[] {
+  if (Array.isArray(node)) return (node as unknown[]).flatMap(timestamps);
+  if (typeof node !== "object" || node === null) return [];
+  return Object.entries(node).flatMap(([key, value]) =>
+    (key === "at" || key.endsWith("At")) && value !== null ? [value] : timestamps(value),
+  );
+}
+
 /** Every property name and every string value of the document, skipping the `_comment`. */
 function namesAndStrings(node: unknown): { names: string[]; strings: string[] } {
   if (Array.isArray(node)) {
@@ -210,6 +219,25 @@ describe("K6 phase3 fixtures", () => {
     expect(urls.length).toBeGreaterThan(0);
     expect(urls.filter((u) => !/^https:\/\/[a-z0-9.-]+\.example\.net$/.test(u))).toEqual([]);
     expect(strings.filter((v) => /anima_[A-Za-z0-9_-]{20,}/.test(v))).toEqual([]);
+  });
+
+  test("every timestamp is RFC 3339 UTC with zero-padded fields", () => {
+    const stamp = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/;
+    for (const [name, doc] of [["phase1", phase1], ["phase2", phase2], ["phase3", phase3]] as const) {
+      const bad = timestamps(doc).filter((v) => typeof v !== "string" || !stamp.test(v) || Number.isNaN(Date.parse(v)));
+      expect(bad, name).toEqual([]);
+    }
+    expect(timestamps(phase3).length).toBeGreaterThan(0);
+  });
+
+  test("every NotificationKind has one ok and one failed delivery", () => {
+    const kinds = [...(schemaEnums(read("schema.graphql")).get("NotificationKind") ?? [])];
+    expect(kinds.length).toBeGreaterThan(0);
+    const rows = valuesAt(phase3, ["deliveries"]) as { kind: string; ok: boolean }[];
+    const missing = kinds.flatMap((kind) =>
+      [true, false].filter((ok) => !rows.some((r) => r.kind === kind && r.ok === ok)).map((ok) => `${kind} ok=${String(ok)}`),
+    );
+    expect(missing).toEqual([]);
   });
 
   test("the fixtures cover each channel kind, each delivery outcome and the stopped recording", () => {
