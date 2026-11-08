@@ -1,7 +1,8 @@
-import { openSharingSettings, sharingSettingsAvailable } from '$lib/desktop/system-settings';
+import { openSharingSettings } from '$lib/desktop/system-settings';
 import { readThisMachine } from '$lib/desktop/this-machine';
 import { devicesApi } from '$lib/devices/client';
 import type { Hub } from '$lib/hub/hub';
+import { capabilities } from '$lib/platform/platform';
 import { sessionsApi } from '$lib/sessions/api';
 import { RETEST_INTERVAL_MS, type ScreenSharingCalls } from './setup';
 
@@ -10,8 +11,8 @@ export function screenSharingCalls(hub: Hub): ScreenSharingCalls {
   return {
     test: sessionsApi(hub).testConnection,
     update: devicesApi(hub).update,
-    thisMachine: readThisMachine,
-    sharingAvailable: sharingSettingsAvailable,
+    thisMachine: () => (capabilities().thisMachine ? readThisMachine() : Promise.resolve(null)),
+    sharingAvailable: () => capabilities().systemSettings,
     openSharing: openSharingSettings,
     after: (ms, run) => {
       const timer = setTimeout(run, ms);

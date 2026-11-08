@@ -47,7 +47,8 @@
     start: (deviceId) => sessionStart(api, deviceId, hub.address.origin),
     end: (sessionId) => api.endSession(sessionId),
   };
-  // WP-16 passes the `popOut` port as the second argument (WP-14 H-2); without it none is offered.
+  // WP-16 passes its pop-out window port as the second argument when `capabilities().popOut` is yes (WP-42 D-4,
+  // WP-14 H-2); no platform says yes yet, so none is offered.
   const sessions = createSessions(sessionsPort);
   provideSessions(sessions);
   // A route change (link, back, goto) shows the pages; the session tabs stay open (D-11).

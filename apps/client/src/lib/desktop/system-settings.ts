@@ -1,4 +1,4 @@
-import { invoke, isTauri } from '@tauri-apps/api/core';
+import { invoke } from '@tauri-apps/api/core';
 
 /** Why System Settings did not open. `unavailable` and `failed` are the shell's codes (R-059). */
 export type SystemSettingsProblem = 'unavailable' | 'failed';
@@ -14,11 +14,6 @@ export class SystemSettingsError extends Error {
     super(MESSAGES[problem]);
     this.name = 'SystemSettingsError';
   }
-}
-
-/** Whether this is the desktop app on a Mac, where Sharing holds Remote Login (SSH, R-059) and Screen Sharing (R-079) in System Settings. */
-export function sharingSettingsAvailable(userAgent: string = navigator.userAgent): boolean {
-  return isTauri() && /Macintosh|Mac OS X/.test(userAgent);
 }
 
 /** Opens System Settings at General → Sharing, where Remote Login (R-059) and Screen Sharing (R-079) are turned on. */
