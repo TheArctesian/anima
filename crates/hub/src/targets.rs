@@ -2,20 +2,24 @@
 //! connection (SSRF protection, R-030, R-032, P3-003). The one target rule, and the one
 //! resolver that applies it before a connection.
 
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
+use std::{
+    collections::HashMap,
+    net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr},
+};
 
 use ipnet::IpNet;
 
 /// The addresses the hub may connect to.
 ///
-/// The default refuses every address a probe must never touch: loopback, unspecified,
+/// The default refuses every address the hub must never touch: loopback, unspecified,
 /// `0.0.0.0/8`, link-local (`169.254.0.0/16`, home of cloud metadata, and `fe80::/10`),
 /// multicast, broadcast and reserved `240.0.0.0/4`, the AWS IPv6 metadata address, Teredo
 /// (`2001::/32`), site-local (`fec0::/10`), Tailscale's `100.100.100.0/24`, the IETF protocol
 /// assignments `192.0.0.0/24`, Azure's `168.63.129.16`, all of the local-use NAT64
-/// `64:ff9b:1::/48`, and the IPv4-mapped, IPv4-compatible, NAT64 and 6to4 forms of the IPv4 ones. Private ranges
-/// (`10/8`, `172.16/12`, `192.168/16`, `100.64/10`, `fc00::/7`) stay allowed, because
-/// devices live there; `extra_deny` removes more, such as the hub's own network.
+/// `64:ff9b:1::/48`, and the IPv4-mapped, IPv4-compatible, NAT64 and 6to4 forms of the IPv4
+/// ones. Private ranges (`10/8`, `172.16/12`, `192.168/16`, `100.64/10`, `fc00::/7`) stay
+/// allowed, because devices live there; `extra_deny` removes more, such as the hub's own
+/// network.
 #[derive(Clone, Debug, Default)]
 pub struct AddressPolicy {
     extra_deny: Vec<IpNet>,
@@ -49,7 +53,7 @@ impl AddressPolicy {
         self.allow_loopback
     }
 
-    /// Whether a probe may connect to `ip`.
+    /// Whether the hub may connect to `ip`.
     #[must_use]
     pub fn permits(&self, ip: IpAddr) -> bool {
         let canonical = canonical(ip);
@@ -76,15 +80,15 @@ pub enum TargetError {
     Refused,
 }
 
-/// Resolves `host` (a name, or an IP literal without brackets) once and returns every address
+/// Resolves `host` once (see [`lookup`] for the forms it takes) and returns every address
 /// it resolves to, each in its canonical form (an IPv4-mapped address is the IPv4 address it
 /// is) with `port`, when `policy` permits every one. A name that also points at a refused
 /// address is refused whichever address would answer first (D-1, R-032). The caller connects
 /// only to a returned address and never resolves the name again, so a second lookup cannot
 /// point the connection somewhere else.
 ///
-/// Check probes keep their own rule, which drops the refused addresses and keeps the rest
-/// (`checks::probe::resolve`, CHK-001).
+/// Check probes share [`lookup`] but keep their own rule, which drops the refused addresses
+/// and keeps the rest (`checks::probe::resolve`, CHK-001).
 ///
 /// # Errors
 /// [`TargetError::Unresolved`] when the name has no address, [`TargetError::Refused`] when
@@ -94,12 +98,49 @@ pub async fn resolve_checked(
     port: u16,
     policy: &AddressPolicy,
 ) -> Result<Vec<SocketAddr>, TargetError> {
-    let addresses: Vec<SocketAddr> = tokio::net::lookup_host((host, port))
-        .await
-        .map_err(|_| TargetError::Unresolved)?
-        .map(|address| SocketAddr::new(address.ip().to_canonical(), port))
+    let addresses = lookup(host, &HashMap::new())
+        .await?
+        .into_iter()
+        .map(|ip| SocketAddr::new(ip.to_canonical(), port))
         .collect();
     every_permitted(policy, addresses)
+}
+
+/// The addresses `host` names, from one lookup, as resolved: unchecked, so every caller
+/// checks each one against the policy before it connects. `host` is a name, an IP literal,
+/// or an IPv6 literal in exactly one pair of brackets (as `Url::host_str` writes it); any
+/// other bracketed text is unresolved and never reaches DNS. A name in `overrides` (lower-case
+/// keys) takes its addresses from there instead of DNS, for the checks tests.
+///
+/// # Errors
+/// [`TargetError::Unresolved`] when `host` names no address.
+pub(crate) async fn lookup(
+    host: &str,
+    overrides: &HashMap<String, Vec<IpAddr>>,
+) -> Result<Vec<IpAddr>, TargetError> {
+    if let Some(inside) = host.strip_prefix('[') {
+        let ip = inside
+            .strip_suffix(']')
+            .and_then(|literal| literal.parse::<Ipv6Addr>().ok())
+            .ok_or(TargetError::Unresolved)?;
+        return Ok(vec![IpAddr::V6(ip)]);
+    }
+    if let Ok(ip) = host.parse::<IpAddr>() {
+        return Ok(vec![ip]);
+    }
+    let found: Vec<IpAddr> = match overrides.get(&host.to_ascii_lowercase()) {
+        Some(ips) => ips.clone(),
+        None => tokio::net::lookup_host((host, 0))
+            .await
+            .map_err(|_| TargetError::Unresolved)?
+            .map(|address| address.ip())
+            .collect(),
+    };
+    if found.is_empty() {
+        Err(TargetError::Unresolved)
+    } else {
+        Ok(found)
+    }
 }
 
 /// `addresses` when there is at least one and `policy` permits every one.

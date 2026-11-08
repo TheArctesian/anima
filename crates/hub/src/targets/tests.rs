@@ -1,5 +1,7 @@
-//! The one target rule (Q2-09, R-030, R-032) and the checked resolver (P3-003). The cases of
-//! the deleted sessions rule (`is_refused_target`) are kept here, aimed at the policy.
+//! The one target rule (Q2-09, R-030, R-032): the policy refuses the gateway's own machine,
+//! link-local neighbours, group and reserved addresses, every IPv6 form that carries one of
+//! them, and the deny list's networks in every form; device ranges pass. The checked resolver
+//! is in `resolver`.
 
 mod resolver;
 
@@ -13,7 +15,7 @@ fn refused(text: &str) -> bool {
     !AddressPolicy::default().permits(text.parse().unwrap())
 }
 
-/// Every class the deleted sessions rule refused, by name, with its edges.
+/// Every class the policy must refuse, by name, with its edges.
 const REFUSED_CLASSES: &[(&str, &[&str])] = &[
     (
         "loopback",
@@ -84,7 +86,7 @@ const REFUSED_CLASSES: &[(&str, &[&str])] = &[
 ];
 
 #[test]
-fn q2_09_the_policy_refuses_every_class_the_sessions_rule_refused() {
+fn q2_09_the_policy_refuses_every_class_a_session_must_not_reach() {
     for (class, addresses) in REFUSED_CLASSES {
         for text in *addresses {
             let ip: IpAddr = text.parse().unwrap();
@@ -141,6 +143,18 @@ fn r_030_the_deny_list_refuses_its_networks_in_every_ipv6_form() {
     }
     for allowed in ["10.10.0.2", "::ffff:10.10.0.2", "192.168.1.10"] {
         assert!(policy.permits(allowed.parse().unwrap()), "{allowed}");
+    }
+}
+
+#[test]
+fn r_030_the_deny_list_refuses_an_ipv6_prefix_that_carries_ipv4_as_resolved() {
+    for (net, ip) in [
+        ("2002::/16", "2002:a0a:2::1"),
+        ("64:ff9b::/96", "64:ff9b::a0a:2"),
+        ("::ffff:0:0/96", "::ffff:10.10.0.2"),
+    ] {
+        let policy = AddressPolicy::new(vec![net.parse().unwrap()]);
+        assert!(!policy.permits(ip.parse().unwrap()), "{net} refuses {ip}");
     }
 }
 
