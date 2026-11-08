@@ -7,7 +7,7 @@ use sqlx::PgPool;
 use tokio::sync::broadcast::error::TryRecvError;
 
 use super::{
-    bench::{DOCKER_HOST, LINUX_LINES, accept, bench, events, set_source},
+    bench::{DOCKER_HOST, LINUX_GPU_LINES, LINUX_LINES, accept, bench, events, set_source},
     server::Server,
 };
 use crate::{
@@ -41,7 +41,11 @@ async fn met_001_a_round_runs_the_exact_commands_over_one_link_stores_and_publis
     let mut bench = bench(&pool, true).await;
     bench.collector.round().await;
     assert_eq!(bench.server.connections(), 1, "one link, Windows skipped");
-    assert_eq!(bench.server.heard(), LINUX_LINES);
+    assert_eq!(
+        bench.server.heard(),
+        [&LINUX_LINES[..], &LINUX_GPU_LINES[..]].concat(),
+        "the first collection also looks for GPUs (MET-006)"
+    );
     let first = bench.feed.try_recv().unwrap();
     assert_eq!(first.device_id.as_str(), DOCKER_HOST);
     assert_eq!(first.at, bench.clock.now());
@@ -69,7 +73,11 @@ async fn met_001_a_round_runs_the_exact_commands_over_one_link_stores_and_publis
         2,
         "a new link per collection (D-11)"
     );
-    assert_eq!(bench.server.heard().len(), 12);
+    assert_eq!(
+        bench.server.heard().len(),
+        15,
+        "no GPU found, so no GPU read the second time"
+    );
     let second = bench.feed.try_recv().unwrap();
     assert_eq!(value(&second, MetricKind::CpuPercent, ""), Some(75.0));
     assert_eq!(
