@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AccessTokenError } from '$lib/desktop/token';
+import type { HubResult } from '$lib/hub/hub';
 import { accessApi } from './api';
 import { fakeHub, failure, HUB_ADDRESS, ok } from './access.fixture';
 import { signInNeeded, startGuard } from './guard';
+import { isBare, isSignedOut, routePath } from './routes';
 import { signOut, TOKEN_KEPT_AFTER_LOGOUT, TOKEN_KEPT_UNCONFIRMED } from './sign-out';
 
 const ADDRESS = HUB_ADDRESS;
@@ -29,11 +31,12 @@ describe('accessApi', () => {
   });
 });
 
-describe('startGuard', () => {
-  function check(pathname: string, token: string | null, desktop = true) {
+describe('startGuard on desktop', () => {
+  function check(route: string, token: string | null, desktop = true) {
     const goToSignIn = vi.fn();
     const read = vi.fn(() => Promise.resolve(token));
-    return { goToSignIn, read, run: () => startGuard({ pathname, address: ADDRESS, token: read, desktop, goToSignIn }) };
+    const me = vi.fn(() => Promise.resolve(ok({ username: 'ann' })));
+    return { goToSignIn, read, me, run: () => startGuard({ route, address: ADDRESS, token: read, desktop, me, goToSignIn }) };
   }
 
   it('API-003: the guard reads the token for the hub address it is given', async () => {
@@ -45,7 +48,8 @@ describe('startGuard', () => {
   it('API-003: an unreadable key store also goes to sign-in', async () => {
     const goToSignIn = vi.fn();
     const token = () => Promise.reject(new AccessTokenError('failed'));
-    await startGuard({ pathname: '/devices', address: ADDRESS, token, desktop: true, goToSignIn });
+    const me = vi.fn();
+    await startGuard({ route: '/devices', address: ADDRESS, token, desktop: true, me, goToSignIn });
     expect(goToSignIn).toHaveBeenCalledOnce();
   });
 
@@ -55,10 +59,11 @@ describe('startGuard', () => {
     expect(c.goToSignIn).toHaveBeenCalledOnce();
   });
 
-  it('API-003: with a stored token the guard does nothing', async () => {
+  it('API-003: with a stored token the guard does nothing and the desktop app does not ask the hub', async () => {
     const c = check('/devices', 'tok');
     await c.run();
     expect(c.goToSignIn).not.toHaveBeenCalled();
+    expect(c.me).not.toHaveBeenCalled();
   });
 
   it('H-5: on /sign-in the guard does nothing and does not read the token', async () => {
@@ -67,11 +72,74 @@ describe('startGuard', () => {
     expect(c.goToSignIn).not.toHaveBeenCalled();
     expect(c.read).not.toHaveBeenCalled();
   });
+});
 
-  it('D-4: outside the desktop app the guard does nothing', async () => {
-    const c = check('/devices', null, false);
+describe('startGuard in a browser', () => {
+  /** A browser start: no key store; the hub answers `me` with `answer`. */
+  function browser(route: string, answer: HubResult<unknown>) {
+    const goToSignIn = vi.fn();
+    const token = vi.fn(() => Promise.resolve(null));
+    const me = vi.fn(() => Promise.resolve(answer));
+    return { goToSignIn, me, token, run: () => startGuard({ route, address: ADDRESS, token, desktop: false, me, goToSignIn }) };
+  }
+
+  it('API-003: in a browser, UNAUTHENTICATED from me goes to sign-in', async () => {
+    const c = browser('/devices', failure('UNAUTHENTICATED'));
+    await c.run();
+    expect(c.me).toHaveBeenCalledOnce();
+    expect(c.goToSignIn).toHaveBeenCalledOnce();
+    expect(c.token).not.toHaveBeenCalled();
+  });
+
+  it.each(['unreachable', 'INTERNAL'] as const)('API-003: in a browser, %s from me stays where it is', async (code) => {
+    const c = browser('/devices/d1', failure(code));
+    await c.run();
+    expect(c.me).toHaveBeenCalledOnce();
+    expect(c.goToSignIn).not.toHaveBeenCalled();
+  });
+
+  it('API-003: in a browser, a signed-in me stays where it is', async () => {
+    const c = browser('/', ok({ me: { username: 'ann' } }));
     await c.run();
     expect(c.goToSignIn).not.toHaveBeenCalled();
+  });
+
+  it.each(['/sign-in', '/shared', '/shared/abc'])('E-3: on the signed-out route %s the browser guard never asks the hub', async (path) => {
+    const c = browser(path, failure('UNAUTHENTICATED'));
+    await c.run();
+    expect(c.me).not.toHaveBeenCalled();
+    expect(c.goToSignIn).not.toHaveBeenCalled();
+  });
+});
+
+describe('signed-out routes', () => {
+  it.each(['/sign-in', '/shared', '/shared/', '/shared/abc'])('E-3: %s needs no sign-in', (route) => {
+    expect(isSignedOut(route)).toBe(true);
+  });
+
+  it.each(['/sharedx', '/sign-in-x', '/sign-inx', '/Shared', '/devices/shared', '/shared%2Fx'])('E-3: the near miss %s needs sign-in', (route) => {
+    expect(isSignedOut(route)).toBe(false);
+  });
+
+  it('SEC-002: only /shared and below render bare; /sign-in keeps the shell for its mutation', () => {
+    expect(['/shared', '/shared/abc'].map(isBare)).toEqual([true, true]);
+    expect(['/sign-in', '/sharedx', '/devices', '/'].map(isBare)).toEqual([false, false, false, false]);
+  });
+
+  it('E-3: the route path is the one the router matches: below the base path, percent-decoded except %25 and reserved escapes', () => {
+    expect(routePath('/shared/abc', '')).toBe('/shared/abc');
+    expect(routePath('/%73hared', '')).toBe('/shared');
+    expect(routePath('/sign-%69n', '')).toBe('/sign-in');
+    expect(routePath('/anima/shared', '/anima')).toBe('/shared');
+    expect(routePath('/anima', '/anima')).toBe('/');
+    expect(routePath('/animax/shared', '/anima')).toBe('/animax/shared');
+    expect(routePath('/shared%2Fx', '')).toBe('/shared%2Fx');
+    expect(routePath('/shared%25x', '')).toBe('/shared%25x');
+  });
+
+  it('E-3: a path the router cannot decode stays as it is', () => {
+    expect(routePath('/shared/%E0%A4%A', '')).toBe('/shared/%E0%A4%A');
+    expect(routePath('/devices%E0', '')).toBe('/devices%E0');
   });
 });
 

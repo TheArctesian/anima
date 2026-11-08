@@ -157,6 +157,8 @@ it('NAV-005: every link is focusable by Tab (tabindex 0 for WebKit)', () => {
 });
 
 it('NET-004: when unreachable the banner shows the problem, the hub, the advice and the data age', () => {
+  // The desktop app, so the hub is the default one the banner names.
+  keyStore.available.mockReturnValue(true);
   const lastContactAt = new Date(NOW.getTime() - 5 * 60_000);
   const nav = show('/devices', { connection: 'unreachable', lastContactAt });
   const text = nav.querySelector('[role="status"]')?.textContent ?? '';
@@ -253,6 +255,7 @@ it('CQ-045: unmounting the layout closes the hub, and a rejected close is handle
 });
 
 it('H-2: the hub is created with the stored address and the key store as its token provider', () => {
+  keyStore.available.mockReturnValue(true);
   localStorage.setItem('anima.hubAddress', 'https://my-hub.example');
   onTestFinished(() => {
     localStorage.clear();
@@ -263,6 +266,7 @@ it('H-2: the hub is created with the stored address and the key store as its tok
 });
 
 it('H-2: with nothing stored the hub is the default one', () => {
+  keyStore.available.mockReturnValue(true);
   show();
   expect(fake.options?.address.origin).toBe('https://hub.anima.ing');
 });
@@ -288,11 +292,12 @@ it('H-5: on /sign-in the layout does not go anywhere', async () => {
   expect(router.goto).not.toHaveBeenCalled();
 });
 
-it('D-4: outside the desktop app the layout does not go to /sign-in', async () => {
+it('E-3: in a browser the layout never reads the key store, and stays while the hub has not answered me', async () => {
   keyStore.available.mockReturnValue(false);
   keyStore.read.mockResolvedValue(null);
   show('/devices');
   await vi.advanceTimersByTimeAsync(0);
+  expect(keyStore.read).not.toHaveBeenCalled();
   expect(router.goto).not.toHaveBeenCalled();
 });
 
