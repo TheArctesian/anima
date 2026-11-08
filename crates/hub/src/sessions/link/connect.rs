@@ -2,7 +2,7 @@
 //! address checked, a connection to a checked address, the key pinned in the key exchange
 //! (SEC-007) and the sign-in with the stored credential (OD-9). I/O edge; nothing here logs.
 
-use std::{net::SocketAddr, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 use russh::client::{self, Handle};
 use sqlx::PgPool;
@@ -14,10 +14,9 @@ use crate::{
     devices::Device,
     sessions::{
         self,
-        ssh::{self, Observer, Target},
-        target::TargetRule,
+        ssh::{self, Observer, SshError},
     },
-    targets::AddressPolicy,
+    targets::{self, AddressPolicy},
 };
 
 /// The longest a link takes to open, from the host-key read to the end of the sign-in.
@@ -35,21 +34,6 @@ const IDLE: Duration = Duration::from_secs(60);
 /// a device that floods a channel stalls instead of growing a buffer. Each is at most one SSH
 /// packet (32 KiB by default).
 const CHANNEL_BUFFER: usize = 8;
-
-/// The target rule the resolved addresses must also pass. Release builds use the default
-/// rule, which holds no deny list: `policy` is applied on its own in [`reach`]. This crate's
-/// tests use the loopback rule, so that a test policy from `AddressPolicy::allowing_loopback`
-/// can reach the test server; the policy refuses every address the default rule refuses
-/// (tested in `link::tests::addresses`), so the policy alone still refuses loopback in a test
-/// that does not allow it.
-#[cfg(not(test))]
-fn rule() -> TargetRule {
-    TargetRule::default()
-}
-#[cfg(test)]
-fn rule() -> TargetRule {
-    TargetRule::default().reaching_loopback_for_tests()
-}
 
 /// Opens a signed-in connection to `device` within [`OPENING`].
 ///
@@ -97,35 +81,18 @@ async fn opened(
 /// within [`ADDRESS_WAIT`].
 ///
 /// # Errors
-/// [`Error::Unresolved`], [`Error::RefusedTarget`] when any address fails [`permitted`], and
+/// [`Error::Unresolved`], [`Error::RefusedTarget`] when `policy` refuses any address, and
 /// [`Error::Unreachable`] when no address answers.
 async fn reach(policy: &AddressPolicy, device: &Device) -> Result<TcpStream, Error> {
-    let rule = rule();
-    let target = Target {
-        host: &device.host,
-        port: device.ssh.port,
-        rule: &rule,
-    };
-    let addresses = ssh::addresses(target).await?;
-    let addresses = permitted(policy, addresses).ok_or(Error::RefusedTarget)?;
+    let addresses = targets::resolve_checked(&device.host, device.ssh.port, policy)
+        .await
+        .map_err(SshError::from)?;
     for address in addresses {
         if let Ok(Ok(stream)) = timeout(ADDRESS_WAIT, TcpStream::connect(address)).await {
             return Ok(stream);
         }
     }
     Err(Error::Unreachable)
-}
-
-/// The addresses, when `policy` permits every one; `None` when it refuses any, so a name that
-/// also points somewhere refused is refused whichever address would answer first (D-1).
-pub(super) fn permitted(
-    policy: &AddressPolicy,
-    addresses: Vec<SocketAddr>,
-) -> Option<Vec<SocketAddr>> {
-    let refused = addresses
-        .iter()
-        .any(|address| !policy.permits(address.ip()));
-    (!refused).then_some(addresses)
 }
 
 /// Signs in as the device's user with its stored credential. The decrypted secret is

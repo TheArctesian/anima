@@ -40,9 +40,9 @@ use crate::{
         self, Desktop, PendingTicket, Protocol, ServerCertificate,
         ssh::{self, SshError, Target},
         start::{certificate_required, protocol_off},
-        target::TargetRule,
         trust::{CertificateFingerprint, ReadError, Reply, TLS_PROTOCOLS, read_server_certificate},
     },
+    targets::{self, AddressPolicy, TargetError},
 };
 
 /// What the tunnel opens after the upgrade. Each way the opening can end with something to
@@ -201,15 +201,15 @@ pub(super) async fn open(route: &Route, ticket: &PendingTicket) -> Result<Openin
         return Err(NotOpened::ProtocolOff);
     }
     let certificate = certificate(route, &device, desktop).await?;
-    let rule = route.live.target_rule();
+    let policy = route.live.policy();
     let port = desktop.port(&device);
     let address = if ticket.wake_sent {
-        let awake = awake(&device.host, port, rule, route.timing.reconnect);
+        let awake = awake(&device.host, port, policy, route.timing.reconnect);
         timeout(route.timing.woken_opening, awake)
             .await
             .map_err(|_| NotOpened::NotAwake)??
     } else {
-        timeout(route.timing.connect, target(&device.host, port, rule))
+        timeout(route.timing.connect, target(&device.host, port, policy))
             .await
             .map_err(|_| NotOpened::Unresolved)??
     };
@@ -271,7 +271,7 @@ async fn certificate(
 /// The TLS security the RDP server at the checked `address` chose when it presents
 /// `accepted`; `None` when it presents another certificate. The hub asks for TLS or NLA, as
 /// the connection test does, and reads the certificate within the connect wait. The address
-/// is an IP, so it is not resolved again; the target rule still checks it.
+/// is an IP, so it is not resolved again; the address policy still checks it.
 async fn presents(
     route: &Route,
     address: SocketAddr,
@@ -281,7 +281,7 @@ async fn presents(
     let target = Target {
         host: &host,
         port: address.port(),
-        rule: route.live.target_rule(),
+        policy: route.live.policy(),
     };
     let read = read_server_certificate(target, TLS_PROTOCOLS, route.timing.connect).await;
     match read.map_err(|error| match error {
@@ -299,16 +299,17 @@ async fn presents(
     }
 }
 
-/// The address the session goes to: the first one the device's host resolves to, when `rule`
-/// lets the gateway reach every one of them (R-030, R-032), in its canonical form, so an
-/// IPv4-mapped address is checked and sent as the IPv4 address it is (`ssh::addresses`).
-async fn target(host: &str, port: u16, rule: &TargetRule) -> Result<IpAddr, NotOpened> {
+/// The address the session goes to: the first one the device's host resolves to, when
+/// `policy` lets the gateway reach every one of them (R-030, R-032), in its canonical form,
+/// so an IPv4-mapped address is checked and sent as the IPv4 address it is
+/// ([`targets::resolve_checked`]).
+async fn target(host: &str, port: u16, policy: &AddressPolicy) -> Result<IpAddr, NotOpened> {
     let checked =
-        ssh::addresses(Target { host, port, rule })
+        targets::resolve_checked(host, port, policy)
             .await
             .map_err(|error| match error {
-                SshError::RefusedTarget => NotOpened::RefusedTarget,
-                _ => NotOpened::Unresolved,
+                TargetError::Refused => NotOpened::RefusedTarget,
+                TargetError::Unresolved => NotOpened::Unresolved,
             })?;
     checked
         .first()
@@ -322,10 +323,10 @@ async fn target(host: &str, port: u16, rule: &TargetRule) -> Result<IpAddr, NotO
 async fn awake(
     host: &str,
     port: u16,
-    rule: &TargetRule,
+    policy: &AddressPolicy,
     retry: Duration,
 ) -> Result<IpAddr, NotOpened> {
-    let stream = ssh::connect_waking(Target { host, port, rule }, retry)
+    let stream = ssh::connect_waking(Target { host, port, policy }, retry)
         .await
         .map_err(|error| match error {
             SshError::RefusedTarget => NotOpened::RefusedTarget,

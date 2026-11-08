@@ -119,7 +119,7 @@ fn target<'a>(live: &'a Live, host: &'a str, port: u16) -> Target<'a> {
     Target {
         host,
         port,
-        rule: live.target_rule(),
+        policy: live.policy(),
     }
 }
 
