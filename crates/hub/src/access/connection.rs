@@ -2,7 +2,9 @@
 //! in with holds (K7 "Authentication transport", R-020, API-003, H-6(b)).
 //!
 //! The client signs in with the `connection_init` payload `{ "authorization": "Bearer <token>" }`;
-//! the URL is never read. A missing or invalid token closes the socket with 4403. After sign-in
+//! the URL is never read. A browser whose upgrade came from the public origin with its
+//! `__Host-anima` cookie may instead send a payload without `authorization` (D-3, K7). A missing
+//! or invalid token closes the socket with 4403. After sign-in
 //! the socket closes with 4403 at the token's `expires_at` by the hub clock, and at the next
 //! re-check (every 15 seconds) after the token is deleted by `logout`, `operator set` or
 //! `prune`. Re-checking the stored token, rather than a bus signal, also sees `operator set`,
@@ -13,6 +15,7 @@
 //! cannot hold it open (H-6(b)).
 
 mod intake;
+mod sign_in;
 
 use std::{
     future::Future,
@@ -22,13 +25,13 @@ use std::{
 };
 
 use async_graphql::{
-    Data, Executor,
+    Executor,
     futures_util::{Sink, SinkExt as _, Stream, StreamExt as _},
     http::{WebSocket as Protocol, WebSocketProtocols, WsMessage},
 };
 use axum::{
     extract::ws::{CloseFrame, Message, WebSocket, WebSocketUpgrade},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::{IntoResponse as _, Response},
 };
 use chrono::{DateTime, Utc};
@@ -36,8 +39,11 @@ use sqlx::PgPool;
 use tokio::sync::oneshot;
 use uuid::Uuid;
 
-use self::intake::Intake;
-use super::{ClientAddr, Error, identity::identify_connection, store, tokens};
+use self::{
+    intake::Intake,
+    sign_in::{CookieToken, sign_in},
+};
+use super::{ClientAddr, Error, PublicOrigin, store, tokens};
 use crate::clock::Clock;
 
 /// The only WebSocket subprotocol served (API-002).
@@ -65,6 +71,7 @@ pub struct SocketAccess {
     db: PgPool,
     clock: Arc<dyn Clock>,
     client: Option<ClientAddr>,
+    cookie: Option<CookieToken>,
     recheck: Duration,
     init_timeout: Duration,
 }
@@ -77,8 +84,20 @@ impl SocketAccess {
             db,
             clock,
             client,
+            cookie: None,
             recheck: RECHECK,
             init_timeout: INIT_TIMEOUT,
+        }
+    }
+
+    /// Keeps the browser cookie of the upgrade's `headers` when their one `Origin` is `origin`
+    /// and they have no `Authorization` header (A-3, A-4); otherwise the connection has no
+    /// cookie, and only a `connection_init` bearer signs it in.
+    #[must_use]
+    pub fn with_upgrade(self, headers: &HeaderMap, origin: &PublicOrigin) -> Self {
+        Self {
+            cookie: CookieToken::of(headers, origin),
+            ..self
         }
     }
 
@@ -198,38 +217,6 @@ async fn serve<E: Executor>(socket: WebSocket, executor: E, access: SocketAccess
         let close = sink.send(Message::Close(Some(frame)));
         let _ = tokio::time::timeout(WRITE_TIMEOUT, close).await;
     }
-}
-
-/// The `connection_init` handler: resolves the payload's bearer token, never logging it, and
-/// reports the verdict to the connection.
-async fn sign_in(
-    access: SocketAccess,
-    payload: serde_json::Value,
-    verdict: oneshot::Sender<Verdict>,
-) -> async_graphql::Result<Data> {
-    let identified = identify_connection(&access.db, &payload, access.clock.now()).await;
-    drop(payload);
-    let (decision, data) = match identified {
-        Ok(Some(identity)) => {
-            let lease = Lease {
-                token: identity.token(),
-                expires_at: identity.expires_at(),
-            };
-            let mut data = identity.into_connection_data();
-            if let Some(client) = access.client {
-                data.insert(client);
-            }
-            (Verdict::Leased(lease), Ok(data))
-        }
-        Ok(None) => (Verdict::Refused, Err("Forbidden".into())),
-        Err(error) => {
-            error.log();
-            (Verdict::Unavailable, Err("Unavailable".into()))
-        }
-    };
-    // Fails only when the connection is gone, and then nobody waits for the verdict.
-    let _ = verdict.send(decision);
-    data
 }
 
 /// Relays the protocol's messages to the client until the connection ends; returns why.

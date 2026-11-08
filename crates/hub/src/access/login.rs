@@ -1,7 +1,7 @@
 //! Signing in and out: the throttle, the password check, the token and their records
-//! (SEC-002, LOG-005, D-7, D-8).
+//! (SEC-002, LOG-005, D-3, D-7, D-8).
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::PgPool;
 use tokio::sync::Semaphore;
 
@@ -10,7 +10,7 @@ use super::{
     password::{self, DUMMY_HASH, Password},
     store::{self, Account, AttemptKey, NewToken, Outcome},
     throttle,
-    tokens::{LOGIN_LIFETIME, Scope, TOKEN_BYTES, Token},
+    tokens::{BROWSER_LIFETIME, LOGIN_LIFETIME, Scope, TOKEN_BYTES, Token, TokenKind},
     totp::{self, SecondFactor},
 };
 use crate::{
@@ -33,6 +33,28 @@ pub(super) struct Attempt {
     pub totp_code: Option<String>,
     pub client: ClientAddr,
     pub at: DateTime<Utc>,
+    /// The token a success gives.
+    pub issue: Issue,
+}
+
+/// The token a sign-in gives: always `write`, of this kind, for this long.
+#[derive(Clone, Copy)]
+pub(super) struct Issue {
+    kind: TokenKind,
+    lifetime: TimeDelta,
+}
+
+impl Issue {
+    /// The desktop app's `login`: a login token for 30 days (D-7).
+    pub(super) const LOGIN: Self = Self {
+        kind: TokenKind::Login,
+        lifetime: LOGIN_LIFETIME,
+    };
+    /// `signInBrowser`: a browser token for 7 days, with no refresh (D-3).
+    pub(super) const BROWSER: Self = Self {
+        kind: TokenKind::Browser,
+        lifetime: BROWSER_LIFETIME,
+    };
 }
 
 /// A successful sign-in: the new token, shown once, and the account.
@@ -42,7 +64,9 @@ pub(super) struct SignedIn {
     pub account: Account,
 }
 
-/// Signs the operator in and issues a `write` token valid for 30 days.
+/// Signs the operator in and issues the `write` token `attempt.issue` names. `login` and
+/// `signInBrowser` share this path, so they share the throttle, the second factor and the
+/// records (D-4).
 ///
 /// Every attempt is recorded. A wrong password, an unknown username, a wrong, reused or
 /// missing TOTP code, a TOTP secret that does not open, an account changed during the check
@@ -75,6 +99,7 @@ pub(super) async fn login(
         let checked = Checked {
             account,
             step: factor.step(),
+            issue: attempt.issue,
         };
         if let Some(signed_in) = succeed(db, bus, &key, checked).await? {
             return Ok(signed_in);
@@ -149,10 +174,12 @@ async fn password_matches(password: Password, account: Option<&Account>) -> Resu
     Ok(known && matched)
 }
 
-/// An account whose password and second factor were checked, and the TOTP step to claim.
+/// An account whose password and second factor were checked, the TOTP step to claim and the
+/// token to give.
 struct Checked {
     account: Account,
     step: Option<i64>,
+    issue: Issue,
 }
 
 /// Records the success, the token, the audit entry and the event in one transaction, or
@@ -169,13 +196,18 @@ async fn succeed(
     attempt: &AttemptKey,
     checked: Checked,
 ) -> Result<Option<SignedIn>, Error> {
-    let Checked { account, step } = checked;
+    let Checked {
+        account,
+        step,
+        issue,
+    } = checked;
     let client = ClientAddr(attempt.client);
     let token = Token::from_random(random::<TOKEN_BYTES>()?);
-    let expires_at = attempt.at + LOGIN_LIFETIME;
+    let expires_at = attempt.at + issue.lifetime;
     let new_token = NewToken {
         operator: account.id,
         hash: token.hash(),
+        kind: issue.kind,
         scope: Scope::Write,
         expires_at,
     };

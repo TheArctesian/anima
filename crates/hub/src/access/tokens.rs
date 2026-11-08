@@ -1,4 +1,5 @@
-//! API tokens: 32 random bytes shown once as base64url; only their SHA-256 is kept (D-7).
+//! API tokens: 32 random bytes shown once as base64url; only their SHA-256 is kept (D-7). Each
+//! kind of token travels one way only (D-3, D-23, WP-43 A-3).
 //!
 //! Pure: the random bytes and the time are parameters.
 
@@ -13,8 +14,17 @@ pub(super) const TOKEN_BYTES: usize = 32;
 /// Length of a token's text: 32 bytes in unpadded base64url.
 const TOKEN_CHARS: usize = 43;
 
+/// What an API key's secret starts with, so secret scanners can find a leaked one (D-23).
+const KEY_PREFIX: &str = "anima_";
+
+/// Length of an API key's secret: the prefix and a token's text.
+const KEY_CHARS: usize = KEY_PREFIX.len() + TOKEN_CHARS;
+
 /// A login token is valid this long (D-7).
 pub(super) const LOGIN_LIFETIME: TimeDelta = TimeDelta::days(30);
+
+/// A browser token is valid this long, with no refresh (D-3).
+pub(super) const BROWSER_LIFETIME: TimeDelta = TimeDelta::days(7);
 
 /// `last_used_at` is written at most this often (D-7).
 const TOUCH_INTERVAL: TimeDelta = TimeDelta::minutes(1);
@@ -42,6 +52,72 @@ impl Scope {
             "write" => Some(Self::Write),
             _ => None,
         }
+    }
+}
+
+/// What a token is for, which decides how it may travel (WP-43 A-3).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TokenKind {
+    /// The desktop app's sign-in: an `Authorization: Bearer` header or the `connection_init`
+    /// payload.
+    Login,
+    /// A browser's sign-in: only the `__Host-anima` cookie.
+    Browser,
+    /// A named key for scripts: a bearer value spelled `anima_` plus the token text.
+    ApiKey,
+}
+
+impl TokenKind {
+    /// The text stored in `api_tokens.kind`.
+    pub(super) const fn as_str(self) -> &'static str {
+        match self {
+            Self::Login => "login",
+            Self::Browser => "browser",
+            Self::ApiKey => "api_key",
+        }
+    }
+
+    /// The kind stored as `text`; `None` for anything else.
+    pub(super) fn from_stored(text: &str) -> Option<Self> {
+        match text {
+            "login" => Some(Self::Login),
+            "browser" => Some(Self::Browser),
+            "api_key" => Some(Self::ApiKey),
+            _ => None,
+        }
+    }
+}
+
+/// How a token reached the hub.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Transport {
+    /// `Authorization: Bearer` or the `connection_init` payload.
+    Bearer,
+    /// The `__Host-anima` cookie of a request from the public origin.
+    Cookie,
+}
+
+/// How a presented token was spelled.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Spelling {
+    /// The token text alone.
+    Plain,
+    /// `anima_` and the token text: an API key.
+    Key,
+}
+
+/// Whether a token of `kind`, spelled so, may be used from `transport`: a browser token only
+/// from the cookie, a login token and an API key only as a bearer, and only an API key with the
+/// `anima_` prefix. Anything else is no identity, so a browser token taken from a cookie jar is
+/// no bearer and a cookie cannot carry a key (A-3).
+pub(super) fn admitted(kind: TokenKind, spelling: Spelling, transport: Transport) -> bool {
+    match (kind, transport) {
+        (TokenKind::Browser, Transport::Cookie) | (TokenKind::Login, Transport::Bearer) => {
+            spelling == Spelling::Plain
+        }
+        (TokenKind::ApiKey, Transport::Bearer) => spelling == Spelling::Key,
+        (TokenKind::Browser, Transport::Bearer)
+        | (TokenKind::Login | TokenKind::ApiKey, Transport::Cookie) => false,
     }
 }
 
@@ -84,6 +160,16 @@ pub(super) fn hash_of(presented: &str) -> Option<TokenHash> {
         return None;
     }
     Some(TokenHash(Sha256::digest(&*bytes).into()))
+}
+
+/// The hash and the spelling of a presented token, or `None` if the text can be neither a
+/// token nor an API key. A key is exactly `anima_` and 43 characters, so a plain token that
+/// happens to start with `anima_` is still read as plain; both hash the 32 decoded bytes.
+pub(super) fn read_presented(presented: &str) -> Option<(TokenHash, Spelling)> {
+    match presented.strip_prefix(KEY_PREFIX) {
+        Some(body) if presented.len() == KEY_CHARS => Some((hash_of(body)?, Spelling::Key)),
+        _ => Some((hash_of(presented)?, Spelling::Plain)),
+    }
 }
 
 /// A token is usable until, not at, its expiry.
