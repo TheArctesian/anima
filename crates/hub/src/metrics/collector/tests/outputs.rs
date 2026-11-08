@@ -11,9 +11,12 @@ use crate::{
     },
     ssh::CommandOutput,
 };
-use agent_core::readings::captures::{
-    DF_LINUX, DF_MACOS, NETSTAT, PROC_LOADAVG, PROC_MEMINFO, PROC_NET_DEV, PROC_STAT, PROC_UPTIME,
-    SYSCTL, TOP, VM_STAT,
+use agent_core::{
+    points::Kind,
+    readings::captures::{
+        DF_LINUX, DF_MACOS, NETSTAT, PROC_LOADAVG, PROC_MEMINFO, PROC_NET_DEV, PROC_STAT,
+        PROC_UPTIME, SYSCTL, TOP, VM_STAT,
+    },
 };
 
 fn at() -> DateTime<Utc> {
@@ -75,7 +78,7 @@ fn with(
 fn value(samples: &[Sample], kind: MetricKind, label: &str) -> Option<f64> {
     samples
         .iter()
-        .find(|sample| sample.kind == kind && sample.label == label)
+        .find(|sample| sample.kind == Kind::from(kind) && sample.label == label)
         .map(|sample| sample.value)
 }
 
@@ -205,10 +208,7 @@ fn d4_the_first_linux_reading_has_no_cpu_or_network_sample() {
     let read = reading(&linux_outputs(), at());
     let out = collected(None, &read, at());
     assert_eq!(value(&out, MetricKind::CpuPercent, ""), None);
-    assert!(
-        !out.iter()
-            .any(|sample| sample.kind == MetricKind::NetworkInBps)
-    );
+    assert!(!out.iter().any(|sample| sample.kind == Kind::NetworkInBps));
     assert_close(value(&out, MetricKind::MemoryPercent, ""), 50.0);
     assert_close(value(&out, MetricKind::DiskPercent, "/"), 25.0);
 }

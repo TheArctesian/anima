@@ -6,7 +6,7 @@ use super::{
     rates::{THIRTY, linux_reading},
     *,
 };
-use crate::metrics::{MAX_LABELS, samples};
+use crate::points::{MAX_LABELS, samples};
 
 #[test]
 fn met_002_d5_pseudo_file_systems_and_mounts_are_left_out() {
@@ -38,7 +38,7 @@ fn met_002_d5_pseudo_file_systems_and_mounts_are_left_out() {
     );
     let mut mounts: Vec<&str> = out
         .iter()
-        .filter(|sample| sample.kind == MetricKind::DiskPercent)
+        .filter(|sample| sample.kind == Kind::DiskPercent)
         .map(|sample| sample.label.as_str())
         .collect();
     mounts.sort_unstable();
@@ -55,25 +55,13 @@ fn met_002_network_rates_are_byte_deltas_over_seconds_per_interface_without_loop
         interface("docker0", 5000, 9000 + 300),
     ];
     let out = samples(Some(&before), &now, THIRTY);
-    assert_eq!(count(&out, MetricKind::NetworkInBps), 2);
-    assert_close(
-        value(&out, MetricKind::NetworkInBps, "eth0").unwrap(),
-        100_000.0,
-    );
-    assert_close(
-        value(&out, MetricKind::NetworkOutBps, "eth0").unwrap(),
-        20_000.0,
-    );
-    assert_close(
-        value(&out, MetricKind::NetworkInBps, "docker0").unwrap(),
-        0.0,
-    );
-    assert_close(
-        value(&out, MetricKind::NetworkOutBps, "docker0").unwrap(),
-        10.0,
-    );
-    assert_eq!(value(&out, MetricKind::NetworkInBps, "lo"), None);
-    assert_eq!(value(&out, MetricKind::NetworkInBps, "lo0"), None);
+    assert_eq!(count(&out, Kind::NetworkInBps), 2);
+    assert_close(value(&out, Kind::NetworkInBps, "eth0").unwrap(), 100_000.0);
+    assert_close(value(&out, Kind::NetworkOutBps, "eth0").unwrap(), 20_000.0);
+    assert_close(value(&out, Kind::NetworkInBps, "docker0").unwrap(), 0.0);
+    assert_close(value(&out, Kind::NetworkOutBps, "docker0").unwrap(), 10.0);
+    assert_eq!(value(&out, Kind::NetworkInBps, "lo"), None);
+    assert_eq!(value(&out, Kind::NetworkInBps, "lo0"), None);
 }
 
 #[test]
@@ -96,9 +84,9 @@ fn met_002_d4_an_interface_whose_counter_went_back_or_is_new_gives_no_network_sa
         ..Reading::default()
     };
     let out = samples(Some(&before), &now, Duration::from_secs(10));
-    assert_eq!(count(&out, MetricKind::NetworkInBps), 1);
-    assert_close(value(&out, MetricKind::NetworkInBps, "eth2").unwrap(), 1.0);
-    assert_close(value(&out, MetricKind::NetworkOutBps, "eth2").unwrap(), 2.0);
+    assert_eq!(count(&out, Kind::NetworkInBps), 1);
+    assert_close(value(&out, Kind::NetworkInBps, "eth2").unwrap(), 1.0);
+    assert_close(value(&out, Kind::NetworkOutBps, "eth2").unwrap(), 2.0);
 }
 
 #[test]
@@ -113,7 +101,7 @@ fn met_002_network_counters_at_u64_max_give_finite_rates() {
     };
     let out = samples(Some(&before), &now, Duration::from_secs(1));
     assert_close(
-        value(&out, MetricKind::NetworkInBps, "eth0").unwrap() / 1e19,
+        value(&out, Kind::NetworkInBps, "eth0").unwrap() / 1e19,
         1.844_674_407_370_955_2e19 / 1e19,
     );
 }
@@ -135,13 +123,13 @@ fn met_002_d5_at_most_32_network_and_32_disk_series_the_first_32_by_name() {
     };
     let out = samples(Some(&before), &now, Duration::from_secs(1));
     assert_eq!(MAX_LABELS, 32);
-    assert_eq!(count(&out, MetricKind::NetworkInBps), 32);
-    assert_eq!(count(&out, MetricKind::NetworkOutBps), 32);
-    assert_eq!(count(&out, MetricKind::DiskPercent), 32);
-    assert!(value(&out, MetricKind::NetworkInBps, "veth31").is_some());
-    assert!(value(&out, MetricKind::NetworkInBps, "veth32").is_none());
-    assert!(value(&out, MetricKind::DiskBytes, "/m31").is_some());
-    assert!(value(&out, MetricKind::DiskBytes, "/m32").is_none());
+    assert_eq!(count(&out, Kind::NetworkInBps), 32);
+    assert_eq!(count(&out, Kind::NetworkOutBps), 32);
+    assert_eq!(count(&out, Kind::DiskPercent), 32);
+    assert!(value(&out, Kind::NetworkInBps, "veth31").is_some());
+    assert!(value(&out, Kind::NetworkInBps, "veth32").is_none());
+    assert!(value(&out, Kind::DiskBytes, "/m31").is_some());
+    assert!(value(&out, Kind::DiskBytes, "/m32").is_none());
 }
 
 #[test]
@@ -156,10 +144,10 @@ fn met_002_d5_a_repeated_mount_or_interface_name_makes_one_series() {
         ..reading.clone()
     };
     let out = samples(Some(&reading), &later, Duration::from_secs(1));
-    assert_eq!(count(&out, MetricKind::DiskPercent), 1);
-    assert_close(value(&out, MetricKind::DiskPercent, "/").unwrap(), 10.0);
-    assert_close(value(&out, MetricKind::NetworkInBps, "en0").unwrap(), 10.0);
-    assert_close(value(&out, MetricKind::NetworkOutBps, "en0").unwrap(), 20.0);
+    assert_eq!(count(&out, Kind::DiskPercent), 1);
+    assert_close(value(&out, Kind::DiskPercent, "/").unwrap(), 10.0);
+    assert_close(value(&out, Kind::NetworkInBps, "en0").unwrap(), 10.0);
+    assert_close(value(&out, Kind::NetworkOutBps, "en0").unwrap(), 20.0);
 }
 
 /// `df -P -B1` on Ubuntu 24.04 with snap packages: each snap is a squashfs image on a loop
@@ -178,7 +166,7 @@ tmpfs             410144768       12288   410132480       1% /run/user/1000\n";
 
 #[test]
 fn met_002_d5_snap_loop_devices_and_snap_mounts_are_left_out() {
-    let disks = agent_core::readings::df::disks(DF_SNAPS, 1);
+    let disks = crate::readings::df::disks(DF_SNAPS, 1);
     assert_eq!(disks.len(), 9, "the reader keeps every line");
     let reading = Reading {
         disks,
@@ -187,7 +175,7 @@ fn met_002_d5_snap_loop_devices_and_snap_mounts_are_left_out() {
     let out = samples(None, &reading, THIRTY);
     let mounts: Vec<&str> = out
         .iter()
-        .filter(|sample| sample.kind == MetricKind::DiskPercent)
+        .filter(|sample| sample.kind == Kind::DiskPercent)
         .map(|sample| sample.label.as_str())
         .collect();
     assert_eq!(mounts, ["/", "/boot/efi"]);
@@ -206,7 +194,7 @@ fn met_002_d5_a_snap_mount_on_another_device_and_a_snapshots_folder() {
     let out = samples(None, &reading, THIRTY);
     let mounts: Vec<&str> = out
         .iter()
-        .filter(|sample| sample.kind == MetricKind::DiskPercent)
+        .filter(|sample| sample.kind == Kind::DiskPercent)
         .map(|sample| sample.label.as_str())
         .collect();
     assert_eq!(mounts, ["/snapshots"]);
@@ -222,8 +210,8 @@ fn met_002_d5_the_macos_loopback_lo0_has_no_network_series() {
         interface("en0", 4000, 1000),
     ];
     let out = samples(Some(&before), &now, THIRTY);
-    assert_eq!(value(&out, MetricKind::NetworkInBps, "lo0"), None);
-    assert_eq!(value(&out, MetricKind::NetworkOutBps, "lo0"), None);
-    assert_close(value(&out, MetricKind::NetworkInBps, "en0").unwrap(), 100.0);
-    assert_eq!(count(&out, MetricKind::NetworkInBps), 1);
+    assert_eq!(value(&out, Kind::NetworkInBps, "lo0"), None);
+    assert_eq!(value(&out, Kind::NetworkOutBps, "lo0"), None);
+    assert_close(value(&out, Kind::NetworkInBps, "en0").unwrap(), 100.0);
+    assert_eq!(count(&out, Kind::NetworkInBps), 1);
 }
