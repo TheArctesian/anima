@@ -4,7 +4,7 @@
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
-use super::harness::{claim, create, create_job, data, enrol, operator, report};
+use super::harness::{claim, create, create_job, data, enrol, hub_at, operator, report};
 use crate::hub::{Hub, error, start};
 
 #[sqlx::test(migrations = "./migrations")]
@@ -152,6 +152,63 @@ async fn bld_048_the_log_is_read_a_page_at_a_time(pool: PgPool) {
             .await;
         assert_eq!(error(&refused).1, "VALIDATION", "{refused}");
     }
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn api_004_a_log_page_costs_by_its_size(pool: PgPool) {
+    let operator = operator(&pool).await;
+    let hub = Hub::new(&pool, start());
+    let job = create_job(&hub, &operator, "0.1.12").await;
+    // 30 pages of 1000 lines cost 30 * (20 + 2) = 660 > 500; 30 of 50 cost 30 * (1 + 2).
+    let pages = |first: i32| {
+        let field = format!("buildJobLog(id: $id, first: {first}) {{ sequence text }}");
+        let fields: Vec<String> = (0..30).map(|n| format!("p{n}: {field}")).collect();
+        format!("query($id: ID!) {{ {} }}", fields.join(" "))
+    };
+    let large = hub
+        .post(Some(&operator), &pages(1000), json!({ "id": job }))
+        .await;
+    let message = large["errors"][0]["message"].as_str().unwrap_or_default();
+    assert!(message.contains("too complex"), "{large}");
+    data(
+        hub.post(Some(&operator), &pages(50), json!({ "id": job }))
+            .await,
+    );
+}
+
+/// The job's stored log lines, oldest first.
+async fn stored_lines(pool: &PgPool) -> Vec<String> {
+    sqlx::query_scalar("SELECT text FROM builds.log_lines ORDER BY sequence")
+        .fetch_all(pool)
+        .await
+        .unwrap()
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn bld_049_a_key_block_split_across_reports_keeps_none_of_its_body(pool: PgPool) {
+    let operator = operator(&pool).await;
+    let hub = Hub::new(&pool, start());
+    let job = create_job(&hub, &operator, "0.1.12").await;
+    let builder = enrol(&hub, &operator, "pop-os").await;
+    data(claim(&hub, &builder.token).await);
+    let begin = "-----BEGIN OPENSSH PRIVATE KEY-----";
+    let first = ["start", begin, "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQ"];
+    data(report(&hub, &builder.token, &job, &first).await);
+    let second = [
+        "QyNTUxOQAAACDRmHUsecretbody",
+        "-----END OPENSSH PRIVATE KEY-----",
+    ];
+    data(report(&hub, &builder.token, &job, &second).await);
+    data(report(&hub, &builder.token, &job, &["done", begin]).await);
+    assert_eq!(
+        stored_lines(&pool).await,
+        ["start", "[redacted]", "done", "[redacted]"]
+    );
+    // The lease ends with that block open; the next attempt's log is kept from its start.
+    let later = hub_at(&pool, 90);
+    data(claim(&later, &builder.token).await);
+    data(report(&later, &builder.token, &job, &["attempt two"]).await);
+    assert_eq!(stored_lines(&pool).await.last().unwrap(), "attempt two");
 }
 
 #[sqlx::test(migrations = "./migrations")]

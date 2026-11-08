@@ -61,6 +61,10 @@ fn bld_063_the_proposed_feed_is_a_json_object_of_at_most_64_kib() {
     ] {
         assert_eq!(upload::feed(bad).unwrap_err().field, "feed");
     }
+    // Under 64 KiB as sent, about 96 KiB written out: `1E2` becomes `100.0`.
+    let growing = format!("{{\"a\":[{}1E2]}}", "1E2,".repeat(16_000));
+    assert!(growing.len() <= 64 * 1024);
+    assert_eq!(upload::feed(&growing).unwrap_err().field, "feed");
 }
 
 fn release(at: chrono::DateTime<Utc>) -> Release {

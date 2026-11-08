@@ -1,5 +1,5 @@
-//! SQL on `builds.log_lines`, `builds.job_files` and `builds.feeds`: what a builder sends
-//! with its reports.
+//! SQL on `builds.log_lines`, `builds.job_files`, `builds.feeds` and the log state of
+//! `builds.jobs`: what a builder sends with its reports.
 
 use chrono::{DateTime, Utc};
 use sqlx::{PgConnection, PgExecutor};
@@ -31,6 +31,33 @@ pub(in crate::builds) async fn append_lines(
     .bind(lines)
     .execute(conn)
     .await?;
+    Ok(())
+}
+
+/// Whether the job's last report ended inside a private key block.
+pub(in crate::builds) async fn log_in_key(
+    conn: &mut PgConnection,
+    job: BuildJobId,
+) -> Result<bool, Error> {
+    let in_key: Option<bool> =
+        sqlx::query_scalar("SELECT log_in_key_block FROM builds.jobs WHERE id = $1")
+            .bind(job)
+            .fetch_optional(conn)
+            .await?;
+    Ok(in_key.unwrap_or(false))
+}
+
+/// Records whether the job's last report ended inside a private key block.
+pub(in crate::builds) async fn set_log_in_key(
+    conn: &mut PgConnection,
+    job: BuildJobId,
+    in_key: bool,
+) -> Result<(), Error> {
+    sqlx::query("UPDATE builds.jobs SET log_in_key_block = $2 WHERE id = $1")
+        .bind(job)
+        .bind(in_key)
+        .execute(conn)
+        .await?;
     Ok(())
 }
 

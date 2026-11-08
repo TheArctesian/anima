@@ -49,7 +49,8 @@ impl Builder {
     }
 }
 
-/// The name as stored: trimmed, 1 to 64 characters, no control character.
+/// The name as stored: trimmed, 1 to 64 characters, no control or hidden character (a
+/// format or default-ignorable character could make two names look alike).
 pub(super) fn name(text: &str) -> Result<String, FieldError> {
     let text = text.trim();
     let count = text.chars().count();
@@ -57,11 +58,11 @@ pub(super) fn name(text: &str) -> Result<String, FieldError> {
         || count > MAX_NAME_CHARS
         || text
             .chars()
-            .any(|c| c.is_control() || hidden_text::is_format(c))
+            .any(|c| c.is_control() || hidden_text::is_hidden(c))
     {
         return Err(FieldError::new(
             "name",
-            "Use 1 to 64 characters with no control or format characters.",
+            "Use 1 to 64 characters with no control or hidden characters.",
         ));
     }
     Ok(text.to_owned())

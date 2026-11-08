@@ -36,6 +36,16 @@ const FIRST_RELEASES: i32 = 20;
 /// The page size of `buildJobLog` when the client names none (K1).
 const FIRST_LOG_LINES: i32 = 500;
 
+/// The lines of `buildJobLog` that cost as much as one field (API-004): a page of 1000 lines
+/// costs 20 more than one line.
+const LOG_LINES_PER_FIELD: usize = 50;
+
+/// What a `buildJobLog` page of `first` lines costs against the query limit (API-004).
+fn log_page_complexity(first: Option<i32>, child_complexity: usize) -> usize {
+    let first = usize::try_from(first.unwrap_or(FIRST_LOG_LINES)).unwrap_or(0);
+    first / LOG_LINES_PER_FIELD + child_complexity
+}
+
 fn pool<'a>(ctx: &Context<'a>) -> Result<&'a PgPool> {
     schema_dependency::<PgPool>(ctx)
 }
@@ -89,7 +99,10 @@ impl Query {
 
     /// Up to `first` (1 to 1000) of the job's stored lines after sequence `after`, oldest first;
     /// the next page starts after the last sequence returned (BLD-048, BLD-081).
-    #[graphql(guard = "Authenticated")]
+    #[graphql(
+        guard = "Authenticated",
+        complexity = "log_page_complexity(first, child_complexity)"
+    )]
     #[expect(
         clippy::too_many_arguments,
         reason = "K1 fixes the argument list of Query.buildJobLog"

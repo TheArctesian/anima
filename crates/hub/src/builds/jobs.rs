@@ -142,6 +142,8 @@ pub async fn claim(
             Some(job) => {
                 let claimed = queue::claim(&job, builder, now);
                 store::save(&mut tx, &claimed).await?;
+                // A key block an earlier attempt left open must not hide this attempt's log.
+                store::set_log_in_key(&mut tx, claimed.id, false).await?;
                 Some(claimed)
             }
             None => None,
@@ -189,12 +191,17 @@ pub async fn report(
     report: Report,
     now: DateTime<Utc>,
 ) -> Result<BuildJob, Error> {
-    let lines = log_lines::clean_all(&report.lines).map_err(|e| Error::Validation(vec![e]))?;
     let mut tx = build_queue.db.begin().await?;
     let job = store::job_locked(&mut tx, report.job)
         .await?
         .ok_or(Error::NotFound(Missing::Job(report.job)))?;
     let mut next = queue::report(&job, builder.id, &report, now)?;
+    let was_in_key = store::log_in_key(&mut tx, job.id).await?;
+    let (lines, in_key) =
+        log_lines::clean_all(&report.lines, was_in_key).map_err(|e| Error::Validation(vec![e]))?;
+    if in_key != was_in_key {
+        store::set_log_in_key(&mut tx, job.id, in_key).await?;
+    }
     let stored = append(&mut tx, &mut next, lines).await?;
     store::save(&mut tx, &next).await?;
     if next.state == JobState::Failed {

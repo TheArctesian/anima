@@ -62,13 +62,16 @@ fn bld_081_a_live_update_carries_only_its_newest_lines_up_to_64_kib() {
 }
 
 #[test]
-fn bld_021_a_builder_name_has_no_control_or_format_character() {
+fn bld_021_a_builder_name_has_no_control_or_hidden_character() {
     for bad in [
         "",
         "  ",
         "pop\u{202e}so",
         "pop\u{200b}os",
         "pop\u{7}os",
+        "pop\u{fe0f}os",
+        "pop\u{3164}os",
+        "pop\u{e0100}os",
         &"x".repeat(65),
     ] {
         assert_eq!(builders::name(bad).unwrap_err().field, "name", "{bad:?}");

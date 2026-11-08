@@ -67,16 +67,18 @@ pub(super) fn files(reported: &[UploadedFile]) -> Result<Vec<UploadedFile>, Fiel
 
 /// The proposed feed, checked: a JSON object of at most 64 KiB, kept as the hub writes it out
 /// again, so what is stored is exactly what the hub read (a repeated key keeps its last value,
-/// and no stray text survives). Written out, it is never longer than the text it came from.
+/// and no stray text survives). Written out, it can be longer than the text it came from
+/// (`1E2` becomes `100.0`), so the 64 KiB limit applies to both.
 pub(super) fn feed(text: &str) -> Result<String, FieldError> {
     let refused = || FieldError::new("feed", "The feed is a JSON object of at most 64 KiB.");
     if text.len() > MAX_FEED_BYTES {
         return Err(refused());
     }
-    match serde_json::from_str::<serde_json::Value>(text) {
-        Ok(object @ serde_json::Value::Object(_)) => {
-            serde_json::to_string(&object).map_err(|_| refused())
-        }
-        _ => Err(refused()),
-    }
+    let Ok(object @ serde_json::Value::Object(_)) = serde_json::from_str(text) else {
+        return Err(refused());
+    };
+    serde_json::to_string(&object)
+        .ok()
+        .filter(|written| written.len() <= MAX_FEED_BYTES)
+        .ok_or_else(refused)
 }

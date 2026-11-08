@@ -1,12 +1,15 @@
 //! Claims are atomic and an ended lease requeues the job, failing it the third time
 //! (BLD-004 to BLD-006, BLD-029, BLD-082, D-2).
 
+use std::{
+    sync::atomic::{AtomicBool, Ordering},
+    time::Duration,
+};
+
 use anima_hub::{
     builds::{self, BuildQueue, Updates},
     events::Bus,
 };
-use std::time::Duration;
-
 use serde_json::Value;
 use sqlx::PgPool;
 
@@ -56,20 +59,69 @@ async fn bld_029_a_builder_holding_a_lease_claims_nothing_more(pool: PgPool) {
     assert_eq!(second["claimBuildJob"], Value::Null);
 }
 
+/// How many sessions of this database wait for a row lock.
+async fn lock_waiters(pool: &PgPool) -> i64 {
+    sqlx::query_scalar(
+        "SELECT count(*) FROM pg_stat_activity \
+         WHERE datname = current_database() AND wait_event_type = 'Lock'",
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap()
+}
+
 #[sqlx::test(migrations = "./migrations")]
 async fn bld_029_concurrent_claims_of_one_builder_take_one_lease(pool: PgPool) {
     let operator = operator(&pool).await;
     let hub = Hub::new(&pool, start());
-    for patch in 1..=6 {
+    for patch in 1..=2 {
         create_job(&hub, &operator, &format!("0.1.{patch}")).await;
     }
-    let builder = enrol(&hub, &operator, "pop-os").await;
-    let claims = (0..16).map(|_| claim(&hub, &builder.token));
-    let responses = async_graphql::futures_util::future::join_all(claims).await;
-    let claimed = responses
-        .into_iter()
-        .filter(|response| !data(response.clone())["claimBuildJob"].is_null())
-        .count();
+    enrol(&hub, &operator, "pop-os").await;
+    let builder = builds::builders(&pool).await.unwrap().remove(0);
+    let (bus, updates) = (Bus::new(4), Updates::new());
+    let queue = BuildQueue {
+        db: &pool,
+        bus: &bus,
+        updates: &updates,
+    };
+    // Another claim of this builder is under way: it holds the builder row as a claim does.
+    // The two claims below must wait for it, so neither can read the builder's leases before
+    // the other's lease is written (a job update's foreign key check does not wait for it).
+    let mut first = pool.begin().await.unwrap();
+    sqlx::query("SELECT 1 FROM builds.builders WHERE id = $1 FOR NO KEY UPDATE")
+        .bind(builder.id)
+        .execute(&mut *first)
+        .await
+        .unwrap();
+    let finished = AtomicBool::new(false);
+    let claims = async {
+        let both = tokio::join!(
+            builds::claim(queue, &builder, at(0)),
+            builds::claim(queue, &builder, at(0)),
+        );
+        finished.store(true, Ordering::SeqCst);
+        both
+    };
+    let gate = async {
+        for _ in 0..500 {
+            if finished.load(Ordering::SeqCst) {
+                return false;
+            }
+            if lock_waiters(&pool).await == 2 {
+                first.rollback().await.unwrap();
+                return true;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        false
+    };
+    let ((a, b), waited) = tokio::join!(claims, gate);
+    assert!(
+        waited,
+        "the claims did not wait for the builder's other claim"
+    );
+    let claimed = [a.unwrap(), b.unwrap()].into_iter().flatten().count();
     assert_eq!(claimed, 1);
     let leased: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM builds.jobs WHERE builder_id IS NOT NULL AND state = 'claimed'",
