@@ -2,17 +2,15 @@
 //! view cannot pin its certificate, the client shows the fingerprint and sends the operator
 //! here. Only `http` and `https` addresses; the URL is never logged (LOG-007).
 
-use std::{
-    io::ErrorKind,
-    process::{Command, Stdio},
-    thread,
-    time::{Duration, Instant},
-};
+use std::time::Duration;
 
 use serde::{Serialize, Serializer, ser::SerializeStruct};
 use tauri_plugin_log::log;
 
-use crate::web_view::{WebUrl, WebViewError};
+use crate::{
+    os_program::{self, OPENER_PATIENCE, OsProgramError},
+    web_view::{WebUrl, WebViewError},
+};
 
 /// The URL opener: `open` on macOS, `xdg-open` on Linux. An absolute path, so `PATH`
 /// cannot swap it.
@@ -21,12 +19,6 @@ const OPENER: &str = if cfg!(target_os = "macos") {
 } else {
     "/usr/bin/xdg-open"
 };
-
-/// How long to wait for the opener's exit status. `open` and most `xdg-open` back ends hand
-/// the address to the browser and exit at once; some `xdg-open` fallbacks run the browser in
-/// the foreground and exit only when it closes.
-const PATIENCE: Duration = Duration::from_secs(3);
-const POLL: Duration = Duration::from_millis(20);
 
 /// Why the address did not open in the system browser. Carries no URL or OS error text.
 ///
@@ -64,35 +56,13 @@ impl Serialize for SystemBrowserError {
 }
 
 /// Runs `opener` with `url` as its one argument (no shell). A checked URL starts with its
-/// scheme, so the opener cannot read it as an option.
-///
-/// An exit within `patience` decides the result. An opener still running after `patience` is
-/// taken as a browser in the foreground: the call succeeds and a thread reaps the child when
-/// it exits, so a blocking `xdg-open` never leaves the command pending.
+/// scheme, so the opener cannot read it as an option. An opener still running after
+/// `patience` is taken as a browser in the foreground (see `os_program::open_within`).
 fn open_with(opener: &str, url: &WebUrl, patience: Duration) -> Result<(), SystemBrowserError> {
-    let mut child = Command::new(opener)
-        .arg(url.as_str())
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
-        .map_err(|error| match error.kind() {
-            ErrorKind::NotFound => SystemBrowserError::Unavailable,
-            _ => SystemBrowserError::Failed,
-        })?;
-    let deadline = Instant::now() + patience;
-    loop {
-        match child.try_wait() {
-            Ok(Some(status)) if status.success() => return Ok(()),
-            Ok(Some(_)) | Err(_) => return Err(SystemBrowserError::Failed),
-            Ok(None) if Instant::now() < deadline => thread::sleep(POLL),
-            Ok(None) => {
-                // The exit status no longer matters; waiting only reaps the child.
-                thread::spawn(move || child.wait());
-                return Ok(());
-            }
-        }
-    }
+    os_program::open_within(opener, url.as_str().as_ref(), patience).map_err(|error| match error {
+        OsProgramError::NotFound => SystemBrowserError::Unavailable,
+        _ => SystemBrowserError::Failed,
+    })
 }
 
 /// Opens an `http` or `https` address in the system's default browser.
@@ -102,10 +72,12 @@ pub async fn system_browser_open(
     url: String,
 ) -> Result<(), SystemBrowserError> {
     let opened = match crate::web_view::caller(webview.label()).and_then(|()| WebUrl::parse(&url)) {
-        Ok(url) => tauri::async_runtime::spawn_blocking(move || open_with(OPENER, &url, PATIENCE))
-            .await
-            .map_err(|_| SystemBrowserError::Failed)
-            .flatten(),
+        Ok(url) => {
+            tauri::async_runtime::spawn_blocking(move || open_with(OPENER, &url, OPENER_PATIENCE))
+                .await
+                .map_err(|_| SystemBrowserError::Failed)
+                .flatten()
+        }
         Err(error) => Err(SystemBrowserError::Address(error)),
     };
     if let Err(error) = opened {
@@ -125,8 +97,11 @@ mod tests {
         time::{Duration, Instant},
     };
 
-    use super::{PATIENCE, SystemBrowserError, open_with};
-    use crate::web_view::{WebUrl, WebViewError};
+    use super::{OPENER_PATIENCE as PATIENCE, SystemBrowserError, open_with};
+    use crate::{
+        os_program::{self, OPENER_PATIENCE, OsProgramError},
+        web_view::{WebUrl, WebViewError},
+    };
 
     fn open(opener: &str) -> Result<(), SystemBrowserError> {
         open_with(opener, &url(), PATIENCE)

@@ -10,9 +10,11 @@ use std::{
 
 use tauri_plugin_log::log::{Level, Record};
 
+use crate::os_program::OPENER_PATIENCE as PATIENCE;
+
 use super::{
     ProcessLogError,
-    folder::{PATIENCE, open_with},
+    folder::open_with,
     line::{Stamp, line_of},
 };
 
