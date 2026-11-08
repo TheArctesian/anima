@@ -3,7 +3,6 @@
   import { resolve } from '$app/paths';
   import { untrack } from 'svelte';
   import { page } from '$app/state';
-  import { desktopWebView } from '$lib/desktop/web-view/web-view';
   import { readThisMachine, type ThisMachine } from '$lib/desktop/this-machine';
   import { checksApi } from '$lib/checks/api';
   import type { CardDevice } from '$lib/devices/api';
@@ -22,6 +21,8 @@
   import { wakeApi } from '$lib/sessions/wake/api';
   import { useSessions } from '$lib/sessions/sessions.svelte';
   import { openWebInterface } from '$lib/web-interfaces/open/open';
+  import { webViewShell } from '$lib/web-interfaces/shell/choice';
+  import { capabilities } from '$lib/platform/platform';
   import type { SessionProtocol } from '$lib/sessions/tabs';
 
   const sessions = useSessions();
@@ -40,6 +41,11 @@
   /** The app opened Add device itself, to ask about `machine`. */
   let asking = $state(false);
   let loadingSites = false;
+
+  /** This computer, where the client can read it; elsewhere nothing to offer (R-060). */
+  function readHere(): Promise<ThisMachine | null> {
+    return capabilities().thisMachine ? readThisMachine() : Promise.resolve(null);
+  }
 
   const query = $derived(parseListQuery(page.url.searchParams));
 
@@ -77,7 +83,7 @@
   async function addDevice(): Promise<void> {
     if (loadingSites || adding) return;
     loadingSites = true;
-    const [found, offer] = await Promise.all([devices.sites(), machineToOffer(readThisMachine, devices.hosts)]);
+    const [found, offer] = await Promise.all([devices.sites(), machineToOffer(readHere, devices.hosts)]);
     loadingSites = false;
     show(found, remember(offer), false);
   }
@@ -89,7 +95,7 @@
   async function askAboutThisMachine(): Promise<void> {
     if (!thisMachinePrompt.due || loadingSites || adding) return;
     loadingSites = true;
-    const offered = remember(await machineToOffer(readThisMachine, devices.hosts));
+    const offered = remember(await machineToOffer(readHere, devices.hosts));
     const found = offered === null ? null : await devices.sites();
     loadingSites = false;
     // The operator may have turned the prompt off, or opened Add device, while the reads were pending.
@@ -136,7 +142,7 @@
 
   /** Opens the interface as its setting says: a web tab that grows from the button, or the system browser (WEB-003, WEB-011). */
   function openWeb(device: CardDevice, webInterface: CardDevice['webInterfaces'][number], button: HTMLElement): void {
-    void openWebInterface(sessions, desktopWebView, { device, webInterface, origin: button.getBoundingClientRect() });
+    void openWebInterface(sessions, webViewShell(), { device, webInterface, origin: button.getBoundingClientRect() });
   }
 </script>
 

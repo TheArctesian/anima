@@ -13,7 +13,11 @@ vi.mock('motion', async (importOriginal) => ({
 }));
 
 const keyStore = vi.hoisted(() => ({ read: vi.fn(), available: vi.fn(() => false) }));
-vi.mock('$lib/desktop/token', () => ({ readAccessToken: keyStore.read, keyStoreAvailable: keyStore.available }));
+vi.mock('$lib/desktop/token', () => ({ readAccessToken: keyStore.read }));
+vi.mock('$lib/platform/platform', async () => {
+  const { BROWSER, DESKTOP_MAC } = await import('$lib/platform/answers.fixture');
+  return { capabilities: () => (keyStore.available() ? DESKTOP_MAC : BROWSER) };
+});
 
 const router = vi.hoisted(() => ({ goto: vi.fn(() => Promise.resolve()) }));
 vi.mock('$app/navigation', () => router);

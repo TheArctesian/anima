@@ -1,7 +1,8 @@
 import { goto } from '$app/navigation';
 import { resolve } from '$app/paths';
-import { keyStoreAvailable, readAccessToken } from '$lib/desktop/token';
+import { readAccessToken } from '$lib/desktop/token';
 import type { HubAddress } from '$lib/hub/hub';
+import { capabilities } from '$lib/platform/platform';
 import { SIGN_IN_PATH, startGuard } from './guard';
 
 // The browser side of access: the router, the page reload and the desktop check. Logic stays in `guard.ts`.
@@ -26,5 +27,5 @@ export function reloadClient(): void {
 
 /** The start guard with the real router and key store; the root layout calls this once. */
 export function guardStart(pathname: string, address: HubAddress): void {
-  startGuard({ pathname, address, token: readAccessToken, desktop: keyStoreAvailable(), goToSignIn }).catch(failed);
+  startGuard({ pathname, address, token: readAccessToken, desktop: capabilities().keyStore, goToSignIn }).catch(failed);
 }

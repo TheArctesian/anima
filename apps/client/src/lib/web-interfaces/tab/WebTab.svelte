@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, tick, untrack } from 'svelte';
-  import { desktopWebView } from '$lib/desktop/web-view/web-view';
+  import { webViewShell } from '$lib/web-interfaces/shell/choice';
   import { codeOf, type Bounds, type WebViewShell } from '$lib/web-interfaces/shell/shell';
   import type { Status } from '$lib/hub/generated/graphql';
   import { useHub } from '$lib/hub/context';
@@ -46,7 +46,7 @@
     now?: () => number;
   }
 
-  const { webInterface, device, tabId, visible, overlayOpen, shell = desktopWebView, api = webTabApi(useHub()), now = Date.now }: Props = $props();
+  const { webInterface, device, tabId, visible, overlayOpen, shell = webViewShell(), api = webTabApi(useHub()), now = Date.now }: Props = $props();
 
   const TEXT = {
     scheme: 'Anima opens only http and https web interfaces.',

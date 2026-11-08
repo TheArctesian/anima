@@ -12,17 +12,20 @@ vi.mock('motion', async (importOriginal) => ({
   animate: (await import('../../motion/engine.fixture')).fakeRun,
 }));
 
-// The Remote Login button shows only in the desktop app on a Mac (R-059).
-vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn(), isTauri: () => true }));
+// The Remote Login button shows only where the platform can open System Settings: the desktop app on a Mac (R-059).
+const platform = vi.hoisted(() => ({ desktop: true }));
+vi.mock('$lib/platform/platform', async () => {
+  const { BROWSER, DESKTOP_MAC } = await import('$lib/platform/answers.fixture');
+  return { capabilities: () => (platform.desktop ? DESKTOP_MAC : BROWSER) };
+});
 
 const MAC: ThisMachine = { name: 'Studio', user: 'stephen', os: 'MACOS', vpnAddress: '100.64.0.7', sshListening: true };
-const MAC_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15';
 
 let app: ReturnType<typeof mount> | undefined;
 
 beforeEach(() => {
   installAnimations();
-  vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(MAC_AGENT);
+  platform.desktop = true;
 });
 
 afterEach(() => {
@@ -142,6 +145,13 @@ it('R-060: when SSH did not answer on this Mac, SSH is off and the Remote Login 
 it('R-060: with SSH answering, the Remote Login button keeps its usual text', () => {
   open({ machine: MAC });
   expect(remoteLogin()).not.toContain('SSH is off');
+});
+
+it('R-059, CLI-001: with the browser answers no Remote Login button is offered', () => {
+  platform.desktop = false;
+  open({ machine: { ...MAC, sshListening: false } });
+  expect(document.querySelector('.remote-login')).toBeNull();
+  expect(document.body.textContent).not.toContain('Open Remote Login settings');
 });
 
 it('R-060: asked by the app, the title is "Add this Mac?" and "Don\'t ask again on this Mac" is offered', () => {

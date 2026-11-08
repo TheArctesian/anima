@@ -2,7 +2,6 @@
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
-  import { desktopWebView } from '$lib/desktop/web-view/web-view';
   import type { DeviceDetail } from '$lib/devices/api';
   import LiveNotice from '$lib/hub/notice/LiveNotice.svelte';
   import LogList from '$lib/events/panel/LogList.svelte';
@@ -12,6 +11,7 @@
   import { press } from '$lib/motion/roles/press';
   import { useSessions } from '$lib/sessions/sessions.svelte';
   import { openWebInterface } from '$lib/web-interfaces/open/open';
+  import { webViewShell } from '$lib/web-interfaces/shell/choice';
   import type { SessionProtocol } from '$lib/sessions/tabs';
   import ChecksPanel from '../checks/ChecksPanel.svelte';
   import type { DeviceId } from '../device-id';
@@ -89,7 +89,7 @@
   /** Opens the interface as its setting says: a web tab that grows from the button, or the system browser (WEB-003, WEB-011). */
   function openWeb(webInterface: DeviceDetail['webInterfaces'][number], button: HTMLElement): void {
     if (device === null) return;
-    void openWebInterface(sessions, desktopWebView, { device, webInterface, origin: button.getBoundingClientRect() });
+    void openWebInterface(sessions, webViewShell(), { device, webInterface, origin: button.getBoundingClientRect() });
   }
 </script>
 

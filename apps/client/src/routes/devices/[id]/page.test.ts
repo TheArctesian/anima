@@ -18,10 +18,8 @@ vi.mock('$lib/sessions/sessions.svelte', () => ({
   useSessions: () => ({ openSession: (request: unknown) => current.opened.push(request), openWeb: (request: unknown) => current.opened.push(request) }),
 }));
 const browser = vi.hoisted(() => vi.fn(() => Promise.resolve()));
-vi.mock('$lib/desktop/web-view/web-view', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('$lib/desktop/web-view/web-view')>()),
-  desktopWebView: { openSystemBrowser: browser },
-}));
+// The desktop shell's web view, as `webViewShell` gives it where the platform has web view tabs (WP-42 D-4).
+vi.mock('$lib/web-interfaces/shell/choice', () => ({ webViewShell: () => ({ openSystemBrowser: browser }) }));
 vi.mock('$app/navigation', () => ({
   goto: (href: string, options: unknown) => {
     current.goto.push([href, options]);

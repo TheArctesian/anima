@@ -2,6 +2,8 @@
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { ThisMachine } from '$lib/desktop/this-machine';
+import { BROWSER } from '$lib/platform/answers.fixture';
+import type { Capabilities } from '$lib/platform/platform';
 import { DONT_ASK_KEY, ThisMachinePrompt } from '$lib/devices/add/this-machine';
 import Page from '../../../routes/devices/+page.svelte';
 import { button, input } from '../form/form/form.fixture';
@@ -19,6 +21,8 @@ const MAC: ThisMachine = { name: 'Studio', user: 'stephen', os: 'MACOS', vpnAddr
 const current = vi.hoisted(() => ({
   hub: undefined as unknown,
   desktop: true,
+  /** The platform's answers; `null` follows `desktop`, as the real answers follow the shell. */
+  answers: null as Capabilities | null,
   machine: null as unknown,
   /** How many times the shell was asked to read this computer. */
   reads: 0,
@@ -37,6 +41,10 @@ vi.mock('@tauri-apps/api/core', () => ({
     return Promise.resolve(current.machine);
   },
 }));
+vi.mock('$lib/platform/platform', async () => {
+  const { BROWSER, DESKTOP_MAC } = await import('$lib/platform/answers.fixture');
+  return { capabilities: () => current.answers ?? (current.desktop ? DESKTOP_MAC : BROWSER) };
+});
 vi.mock('$lib/devices/add/this-machine', async (importOriginal) => ({
   ...(await importOriginal<typeof import('$lib/devices/add/this-machine')>()),
   get thisMachinePrompt() {
@@ -108,6 +116,7 @@ async function openAddDevice(): Promise<void> {
 
 beforeEach(() => {
   current.desktop = true;
+  current.answers = null;
   current.machine = { ...MAC };
   current.reads = 0;
   localStorage.clear();
@@ -139,6 +148,17 @@ it('R-060: outside the desktop app there is no prompt and the hosts are not read
   current.desktop = false;
   const fake = await visit();
   expect(dialog()).toBeNull();
+  expect(fake.requests.map((request) => request.operation)).not.toContain('DeviceHosts');
+});
+
+it('R-060, CLI-001: with the browser answers this Mac is never read, asked about or offered, even inside a shell', async () => {
+  current.answers = BROWSER;
+  const fake = await visit();
+  expect(dialog()).toBeNull();
+  await openAddDevice();
+  expect(title()).toBe('Add device');
+  expect(choice()).toBeNull();
+  expect(current.reads).toBe(0);
   expect(fake.requests.map((request) => request.operation)).not.toContain('DeviceHosts');
 });
 

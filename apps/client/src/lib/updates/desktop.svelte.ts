@@ -1,15 +1,22 @@
-import { keyStoreAvailable } from '$lib/desktop/token';
+import type { UpdaterPort } from '$lib/desktop/updater';
 import { warnToProcessLog } from '$lib/desktop/process-log';
-import { desktopUpdater } from '$lib/desktop/updater';
+import { capabilities } from '$lib/platform/platform';
 import { provideUpdates, Updates } from './updates.svelte';
 
+/** The shell's updater, loaded by the first call that needs it: a client that never calls it never loads it (UPD-001). */
+const lazyUpdater: UpdaterPort = {
+  check: async () => (await import('$lib/desktop/updater')).desktopUpdater.check(),
+  restart: async () => (await import('$lib/desktop/updater')).desktopUpdater.restart(),
+  currentVersion: async () => (await import('$lib/desktop/updater')).desktopUpdater.currentVersion(),
+};
+
 /**
- * Builds the app's `Updates` over the desktop shell and provides it to the components below. Checking starts only in the
- * desktop production app: dev shells have no updater plugin, and the web and iOS clients never check (UPD-001).
- * Call once in the root layout, during component setup.
+ * Builds the app's `Updates` over the desktop shell and provides it to the components below. Checking starts only where
+ * the platform updates itself, in a production build: dev shells have no updater plugin, and the web and iOS clients
+ * never check, so they never load the updater (UPD-001). Call once in the root layout, during component setup.
  */
 export function provideDesktopUpdates(): void {
-  const updates = new Updates(desktopUpdater, { warn: warnToProcessLog });
+  const updates = new Updates(lazyUpdater, { warn: warnToProcessLog });
   provideUpdates(updates);
-  $effect(() => (keyStoreAvailable() && !import.meta.env.DEV ? updates.start() : undefined));
+  $effect(() => (capabilities().updates && !import.meta.env.DEV ? updates.start() : undefined));
 }
