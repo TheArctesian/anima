@@ -10,3 +10,7 @@ Items found during Phase 3 reviews that are not fixed in Phase 3. Tagged by pack
 - T3 (should): hub test `api_005_interfaces_and_suggestions` (`web_interfaces.rs:133`) is load-sensitive (14 > 12 statements under load).
 - T4 (could): `devices/form/form` is an awkward carried-over name; `RemoteLoginButton` uses a relative import and its tests still live in `desktop/system-settings.svelte.test.ts`.
 - T5 (could): `web-interfaces/tab/api.ts` (AcceptWebCertificate) and `web-interfaces/api.ts` are two GraphQL clients in one domain; fold into one. `open/` ↔ `sessions` type-only edges are worth watching; `shell.ts` re-exports make `events` and `fingerprint` reachable two ways.
+
+## WP-40 (skeleton and contract gate)
+
+- T5 (could): NET-004 (`design-spec.md` line 289) still says the nav bar shows the hub address; it should be desktop-only. UI-005 holds several rules in one requirement.
