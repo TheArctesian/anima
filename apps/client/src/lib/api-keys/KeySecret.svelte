@@ -10,7 +10,7 @@
   const { secret }: Props = $props();
   const fieldId = $props.id();
   let copy = $state<'idle' | 'copied' | 'failed'>('idle');
-  let field: HTMLInputElement | undefined = $state();
+  let field: HTMLTextAreaElement | undefined = $state();
 
   const COPIED = 'Copied.';
   const COPY_FAILED = 'Anima could not copy the key. Select it in the field and copy it yourself.';
@@ -29,7 +29,7 @@
    * Empties the field the moment it starts to leave. A closing dialog, or a page left while the key shows, keeps its
    * last content on screen until the fade ends; the key must not stay in the DOM for that time (INT-003, F-8).
    */
-  function drop(node: HTMLInputElement): { duration: number } {
+  function drop(node: HTMLTextAreaElement): { duration: number } {
     node.value = '';
     return { duration: duration.instant };
   }
@@ -49,11 +49,12 @@
 <div class="secret">
   <label for={fieldId}>API key</label>
   <div class="row">
-    <input
+    <!-- A text area, so the whole key wraps into view on a narrow screen; it breaks between any two characters. -->
+    <textarea
       bind:this={field}
       out:drop|global
       id={fieldId}
-      type="text"
+      rows="2"
       readonly
       autocomplete="off"
       autocapitalize="off"
@@ -61,7 +62,7 @@
       onfocus={(event) => {
         event.currentTarget.select();
       }}
-    />
+    ></textarea>
     <FormButton tabindex={0} onclick={copyKey}>Copy</FormButton>
   </div>
   <!-- The live region holds only the outcome of Copy, never the key. -->
@@ -84,10 +85,11 @@
 
   .row {
     display: flex;
+    align-items: start;
     gap: var(--space-2);
   }
 
-  input {
+  textarea {
     box-sizing: border-box;
     flex: 1 1 auto;
     min-inline-size: 0;
@@ -99,9 +101,12 @@
     color: var(--text);
     font-family: var(--font-mono);
     font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+    word-break: break-all;
+    resize: none;
   }
 
-  input:focus-visible {
+  textarea:focus-visible {
     outline: var(--border-focus) solid var(--accent);
     outline-offset: var(--border-focus);
   }

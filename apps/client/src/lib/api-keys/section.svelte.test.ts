@@ -2,6 +2,9 @@
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installAnimations } from '$lib/forms/animations.fixture';
+import { manualClock } from '$lib/motion/loading/clock.fixture';
+import type { LoadingClock } from '$lib/motion/loading/loading';
+import { threshold } from '$lib/motion/tokens';
 import ApiKeysSection from './ApiKeysSection.svelte';
 import { button, failure, fakeHub, FIXTURE_KEYS, NOW, ok, settled } from './api-keys.fixture';
 
@@ -26,15 +29,28 @@ afterEach(async () => {
   document.body.replaceChildren();
 });
 
-async function open(answers: Parameters<typeof fakeHub>[0]): Promise<HTMLElement> {
+async function open(answers: Parameters<typeof fakeHub>[0], clock?: LoadingClock): Promise<HTMLElement> {
   hub = fakeHub(answers);
   mocks.hub = hub.hub;
   const target = document.createElement('div');
   document.body.append(target);
-  app = mount(ApiKeysSection, { target, props: { now: () => NOW } });
+  app = mount(ApiKeysSection, { target, props: { now: () => NOW, clock } });
   flushSync();
   await settled();
   return target;
+}
+
+/** The listed keys' names, in order. */
+function names(target: HTMLElement): (string | null)[] {
+  return [...target.querySelectorAll('.list > li')].map((element) => element.getAttribute('aria-label'));
+}
+
+function pending(): { answer: Promise<never>; release: (result: unknown) => void } {
+  let release: (result: unknown) => void = () => undefined;
+  const answer = new Promise<never>((resolve) => {
+    release = resolve as (result: unknown) => void;
+  });
+  return { answer, release };
 }
 
 function row(target: HTMLElement, name: string): HTMLElement {
@@ -52,13 +68,9 @@ function values(element: HTMLElement): Record<string, string> {
   return Object.fromEntries(pairs) as Record<string, string>;
 }
 
-it('INT-003: the section is a labelled region with the h2 "API keys" and lists each key with scope, prefix, expiry and last use', async () => {
+it('INT-003: the section lists each key with scope, prefix, expiry and last use', async () => {
   const target = await open({ ApiKeys: ok({ apiKeys: FIXTURE_KEYS }) });
-  const section = target.querySelector('section');
-  const heading = section?.querySelector('h2');
-  expect(heading?.textContent).toBe('API keys');
-  expect(section?.getAttribute('aria-labelledby')).toBe(heading?.id);
-  expect([...target.querySelectorAll('li')].map((element) => element.getAttribute('aria-label'))).toEqual(['metrics-scrape', 'old-script']);
+  expect(names(target)).toEqual(['metrics-scrape', 'old-script']);
   const scrape = row(target, 'metrics-scrape');
   expect(values(scrape)).toMatchObject({ Scope: 'Read', Prefix: 'anima_Ab12Cd' });
   expect(scrape.querySelector('dd.mono')?.textContent).toBe('anima_Ab12Cd');
@@ -77,28 +89,51 @@ it('UI-003: an expired key says "Expired" in text, and a key never used says "Ne
 
 it('INT-003: with no keys the section says so and still offers Create', async () => {
   const target = await open({ ApiKeys: ok({ apiKeys: [] }) });
-  expect(target.querySelector('p')?.textContent).toBe("No API keys. Programs that call the hub's GraphQL API need one.");
+  expect(target.querySelector('p.quiet')?.textContent).toBe("No API keys. Programs that call the hub's GraphQL API need one.");
   expect(button('Create API key')).toBeDefined();
 });
 
-it('INT-003: the section shows its loading line until the hub answers', async () => {
-  let release: (result: unknown) => void = () => undefined;
-  const pending = new Promise<never>((resolve) => {
-    release = resolve as (result: unknown) => void;
-  });
-  const target = await open({ ApiKeys: pending });
-  expect(target.querySelector('[role="status"]')?.textContent).toBe('Loading API keys…');
+it('MOT-007: after threshold-loading a skeleton key row shows, hidden from assistive technology, and the answer replaces it', async () => {
+  const time = manualClock();
+  const { answer, release } = pending();
+  const target = await open({ ApiKeys: answer }, time.clock);
+  const stack = target.querySelector('.stack');
+  expect(stack?.getAttribute('aria-busy')).toBe('true');
+  time.advance(threshold.loading - 1);
+  flushSync();
+  expect(target.querySelector('.skeleton')).toBeNull();
+  time.advance(1);
+  flushSync();
+  const skeleton = target.querySelector('.skeleton');
+  expect([skeleton?.getAttribute('aria-hidden'), skeleton?.hasAttribute('inert'), skeleton?.parentElement]).toEqual(['true', true, stack]);
+  expect(skeleton?.querySelectorAll(':scope > li.placeholder > dl > div')).toHaveLength(4);
   release(ok({ apiKeys: FIXTURE_KEYS }));
   await settled();
-  expect(target.querySelector('[role="status"]')).toBeNull();
-  expect(target.querySelectorAll('li')).toHaveLength(2);
+  time.advance(threshold.loadingMin);
+  await settled();
+  expect(target.querySelector('.skeleton')).toBeNull();
+  expect(stack?.getAttribute('aria-busy')).toBe('false');
+  expect(names(target)).toEqual(['metrics-scrape', 'old-script']);
+});
+
+it('MOT-007: a hidden key row keeps one key\'s space in the cell where the list, the empty line and the failure land', async () => {
+  const answers = [ok({ apiKeys: FIXTURE_KEYS.slice(0, 1) }), ok({ apiKeys: [] }), failure('INTERNAL')];
+  const landed = ['.list', 'p.quiet', '.failed'];
+  for (const [index, answer] of answers.entries()) {
+    const target = await open({ ApiKeys: answer });
+    const sizer = target.querySelector('.stack > .sizer');
+    expect([sizer?.getAttribute('aria-hidden'), sizer?.hasAttribute('inert')]).toEqual(['true', true]);
+    expect(sizer?.querySelectorAll(':scope > li.placeholder > dl > div')).toHaveLength(4);
+    expect(target.querySelector(`.stack > ${landed[index] ?? ''}`)).not.toBeNull();
+    if (app !== undefined) await unmount(app);
+    app = undefined;
+  }
 });
 
 it('INT-003: a failed ApiKeys query shows only the section\'s fixed error, keeps Create, and Try again loads again', async () => {
   const target = await open({ ApiKeys: failure('INTERNAL', 'Unknown field "apiKeys"') });
   expect(target.querySelector('[role="alert"]')?.textContent).toBe('Anima could not load the API keys.');
   expect(target.textContent).not.toContain('Unknown field');
-  expect(target.querySelector('h2')?.textContent).toBe('API keys');
   expect(button('Create API key').disabled).toBe(false);
   button('Try again').click();
   await settled();
@@ -117,7 +152,7 @@ it('INT-003: Revoke asks first, naming the key, then sends RevokeApiKey with its
   button('Revoke metrics-scrape').click();
   await settled();
   expect(hub.sent.at(-1)).toEqual({ operation: 'RevokeApiKey', variables: { id: scrape?.id } });
-  expect([...target.querySelectorAll('li')].map((element) => element.getAttribute('aria-label'))).toEqual(['old-script']);
+  expect(names(target)).toEqual(['old-script']);
 });
 
 it('INT-003: Cancel in the revoke question sends nothing and keeps the row', async () => {
@@ -127,7 +162,7 @@ it('INT-003: Cancel in the revoke question sends nothing and keeps the row', asy
   button('Cancel').click();
   await settled();
   expect(hub.sent.map((request) => request.operation)).toEqual(['ApiKeys']);
-  expect(target.querySelectorAll('li')).toHaveLength(2);
+  expect(names(target)).toHaveLength(2);
 });
 
 it('INT-003: a refused revoke keeps the row and the question says why', async () => {
@@ -137,5 +172,32 @@ it('INT-003: a refused revoke keeps the row and the question says why', async ()
   button('Revoke old-script').click();
   await settled();
   expect(document.querySelector('[role="dialog"] [role="alert"]')?.textContent).toBe('The hub did not answer. Check the VPN client.');
-  expect(target.querySelectorAll('li')).toHaveLength(2);
+  expect(names(target)).toHaveLength(2);
+});
+
+/** Opens the revoke question for `name` and confirms it. */
+async function revokeRow(target: HTMLElement, name: string): Promise<void> {
+  row(target, name).querySelector('button')?.click();
+  flushSync();
+  button(`Revoke ${name}`).click();
+  await settled();
+}
+
+it('NAV-005: after a revoke, focus goes to the row that took its place', async () => {
+  const target = await open({ ApiKeys: ok({ apiKeys: FIXTURE_KEYS }), RevokeApiKey: ok({ revokeApiKey: FIXTURE_KEYS[0]?.id }) });
+  await revokeRow(target, 'metrics-scrape');
+  expect(document.activeElement).toBe(row(target, 'old-script').querySelector('button'));
+});
+
+it('NAV-005: after revoking the last row, focus goes to the row before it', async () => {
+  const target = await open({ ApiKeys: ok({ apiKeys: FIXTURE_KEYS }), RevokeApiKey: ok({ revokeApiKey: FIXTURE_KEYS[1]?.id }) });
+  await revokeRow(target, 'old-script');
+  expect(document.activeElement).toBe(row(target, 'metrics-scrape').querySelector('button'));
+});
+
+it('NAV-005: after revoking the only key, focus goes to "Create API key"', async () => {
+  const target = await open({ ApiKeys: ok({ apiKeys: FIXTURE_KEYS.slice(0, 1) }), RevokeApiKey: ok({ revokeApiKey: FIXTURE_KEYS[0]?.id }) });
+  await revokeRow(target, 'metrics-scrape');
+  expect(names(target)).toEqual([]);
+  expect(document.activeElement).toBe(button('Create API key'));
 });

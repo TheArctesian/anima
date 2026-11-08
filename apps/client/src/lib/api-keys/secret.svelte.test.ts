@@ -3,7 +3,7 @@ import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installAnimations } from '$lib/forms/animations.fixture';
 import ApiKeysSection from './ApiKeysSection.svelte';
-import { button, failure, fakeHub, field, FAKE_SECRET, FIXTURE_KEYS, MADE_KEY, NOW, ok, radio, settled, typeInto } from './api-keys.fixture';
+import { button, failure, fakeHub, field, keyField, FAKE_SECRET, FIXTURE_KEYS, MADE_KEY, NOW, ok, radio, settled, typeInto } from './api-keys.fixture';
 import { DATE_MISSING, DATE_TOO_FAR, NAME_MISSING, NAME_TOO_LONG } from './new-key';
 
 const mocks = vi.hoisted(() => ({ hub: undefined as unknown }));
@@ -133,7 +133,7 @@ it('INT-003: after Create the key shows once with the once-only sentence, and th
   typeInto(nameField(), 'backup-job');
   await create();
   const dialog = document.querySelector('[role="dialog"]');
-  const shown = field('[role="dialog"] input[readonly]');
+  const shown = keyField();
   expect(shown.value).toBe(FAKE_SECRET);
   expect(document.activeElement).toBe(shown);
   expect(dialog?.textContent).toContain('Anima shows this key only once.');
@@ -207,7 +207,7 @@ it('INT-003: a refused copy says so and leaves the key selectable in its field',
   const outcome = document.querySelector('[role="dialog"] [role="status"]')?.textContent.trim() ?? '';
   expect(outcome).toBe('Anima could not copy the key. Select it in the field and copy it yourself.');
   expect(outcome).not.toContain(FAKE_SECRET);
-  const shown = field('[role="dialog"] input[readonly]');
+  const shown = keyField();
   expect([shown.value, shown.disabled]).toEqual([FAKE_SECRET, false]);
   for (const spy of consoleSpies) expect(spy).not.toHaveBeenCalled();
 });
@@ -218,5 +218,5 @@ it('INT-003: a click beside the dialog does not close the shown key, so it canno
   await create();
   document.querySelector('.frame')?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
   await settled();
-  expect(field('[role="dialog"] input[readonly]').value).toBe(FAKE_SECRET);
+  expect(keyField().value).toBe(FAKE_SECRET);
 });

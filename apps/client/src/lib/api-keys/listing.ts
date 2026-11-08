@@ -22,3 +22,25 @@ export function shownDate(iso: string, locale?: string): string {
 export function lastUsedText(key: Pick<ApiKey, 'lastUsedAt'>, locale?: string): string {
   return key.lastUsedAt === null ? 'Never' : shownDate(key.lastUsedAt, locale);
 }
+
+/**
+ * A key of typical length that never reaches the screen as text: the loading skeleton and the space the list keeps
+ * are drawn from it, so they have a real row's geometry at every width (MOT-007).
+ */
+export const PLACEHOLDER_KEY: ApiKey = {
+  id: 'placeholder',
+  name: 'placeholder-key',
+  scope: 'WRITE',
+  prefix: 'anima_AAAAAA',
+  expiresAt: '2099-12-31T00:00:00Z',
+  createdAt: '2099-12-31T00:00:00Z',
+  lastUsedAt: '2099-12-31T00:00:00Z',
+};
+
+/**
+ * Where focus goes after the key at `index` was revoked: the id of the key that took its place, else the key before
+ * it, else `null` for "Create API key". `keys` is the list without the revoked key.
+ */
+export function focusAfterRevoke(keys: readonly Pick<ApiKey, 'id'>[], index: number): string | null {
+  return (keys[index] ?? keys[index - 1])?.id ?? null;
+}

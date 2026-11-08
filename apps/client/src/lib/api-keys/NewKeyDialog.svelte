@@ -108,7 +108,8 @@
         {/if}
         <div class="actions">
           <FormButton tabindex={0} onclick={close}>Cancel</FormButton>
-          <FormButton tabindex={0} type="submit" tone="primary" aria-busy={busy}>{busy ? 'Creating' : 'Create key'}</FormButton>
+          <!-- The label stays while the hub works, so neither button moves (MOT-007); the disabled form and aria-busy say it is busy. -->
+          <FormButton tabindex={0} type="submit" tone="primary" aria-busy={busy}>Create key</FormButton>
         </div>
       </fieldset>
     </form>
@@ -157,8 +158,14 @@
     font-size: var(--text-sm);
   }
 
+  .choice {
+    gap: var(--space-1);
+  }
+
+  /* The whole row is the target, at least the desktop target size (UI-013). */
   .choice label {
     display: flex;
+    min-block-size: var(--target-min-desktop);
     align-items: center;
     gap: var(--space-2);
   }

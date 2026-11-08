@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isExpired, lastUsedText, scopeLabel } from './listing';
+import { focusAfterRevoke, isExpired, lastUsedText, scopeLabel } from './listing';
 import {
   checkNewKey,
   createFailure,
@@ -110,6 +110,14 @@ describe('the list (INT-003, UI-003)', () => {
     const at = new Date('2027-06-01T00:00:00Z');
     expect(isExpired({ expiresAt: '2027-06-01T00:00:00Z' }, at)).toBe(true);
     expect(isExpired({ expiresAt: '2027-06-01T00:00:00Z' }, new Date(at.getTime() - 1))).toBe(false);
+  });
+
+  it('NAV-005: after a revoke, focus goes to the key that took its place, else the one before, else Create', () => {
+    const rest = [{ id: 'a' }, { id: 'c' }];
+    expect(focusAfterRevoke(rest, 1)).toBe('c');
+    expect(focusAfterRevoke(rest, 2)).toBe('c');
+    expect(focusAfterRevoke(rest, 0)).toBe('a');
+    expect(focusAfterRevoke([], 0)).toBeNull();
   });
 
   it('INT-003: scopes read Read and Write, and a key never used reads Never', () => {

@@ -85,10 +85,10 @@ function sectionTexts(target: HTMLElement, heading: string): string[] {
   return [...section.querySelectorAll('h2, p, button, span, option')].map((element) => element.textContent.trim());
 }
 
-it('SET-001, UI-005: the page is the title, then Account, then Appearance with Theme before the two fonts', async () => {
+it('SET-001, UI-005: the page is the title, then Account, then Appearance with Theme before the two fonts, then API keys', async () => {
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
   expect(target.firstElementChild?.tagName).toBe('H1');
-  expect(sectionHeadings(target)).toEqual(['Account', 'Appearance']);
+  expect(sectionHeadings(target)).toEqual(['Account', 'Appearance', 'API keys']);
   expect(sectionTexts(target, 'Account')).toEqual(['Account', 'Signed in as ann', 'Sign out']);
   const fonts = ['Fira Code', 'OpenDyslexic'];
   expect(sectionTexts(target, 'Appearance')).toEqual([
@@ -100,7 +100,7 @@ it('SET-001, UI-005: the page is the title, then Account, then Appearance with T
 it('SET-001, UPD-006: the desktop app adds the Updates section last, holding the update and log folder rows', async () => {
   mocks.platform = DESKTOP_MAC;
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
-  expect(sectionHeadings(target)).toEqual(['Account', 'Appearance', 'Updates']);
+  expect(sectionHeadings(target)).toEqual(['Account', 'Appearance', 'API keys', 'Updates']);
   const updates = target.querySelector('section[aria-labelledby="settings-updates"]');
   expect(updates?.querySelectorAll('[data-stub]')).toHaveLength(2);
   expect(target.querySelectorAll('[data-stub]')).toHaveLength(2);

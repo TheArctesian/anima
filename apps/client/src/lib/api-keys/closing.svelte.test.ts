@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installAnimations } from '$lib/forms/animations.fixture';
 import type { HubResult } from '$lib/hub/hub';
 import ApiKeysSection from './ApiKeysSection.svelte';
-import { button, fakeHub, field, FAKE_SECRET, FIXTURE_KEYS, MADE_KEY, NOW, ok, settled, typeInto } from './api-keys.fixture';
+import { button, fakeHub, field, keyField, FAKE_SECRET, FIXTURE_KEYS, MADE_KEY, NOW, ok, settled, typeInto } from './api-keys.fixture';
 
 const mocks = vi.hoisted(() => ({ hub: undefined as unknown }));
 
@@ -117,7 +117,7 @@ it('F-8: Escape is refused while the key is being made, and the key shows when i
   expect(document.querySelector('[role="dialog"]')).not.toBeNull();
   release(CREATED);
   await settled();
-  expect(field('[role="dialog"] input[readonly]').value).toBe(FAKE_SECRET);
+  expect(keyField().value).toBe(FAKE_SECRET);
 });
 
 it('F-8: a click beside the dialog is refused while the key is being made', async () => {
@@ -127,7 +127,7 @@ it('F-8: a click beside the dialog is refused while the key is being made', asyn
   expect(document.querySelector('[role="dialog"]')).not.toBeNull();
   release(CREATED);
   await settled();
-  expect(field('[role="dialog"] input[readonly]').value).toBe(FAKE_SECRET);
+  expect(keyField().value).toBe(FAKE_SECRET);
 });
 
 it('F-8: Cancel is disabled while the key is being made', async () => {
@@ -139,7 +139,14 @@ it('F-8: Cancel is disabled while the key is being made', async () => {
   expect(document.querySelector('[role="dialog"]')).not.toBeNull();
   release(CREATED);
   await settled();
-  expect(field('[role="dialog"] input[readonly]').value).toBe(FAKE_SECRET);
+  expect(keyField().value).toBe(FAKE_SECRET);
+});
+
+it('MOT-007: the Create key label stays while the hub works, so neither button moves; aria-busy says it is busy', async () => {
+  const release = await making();
+  expect(button('Create key').getAttribute('aria-busy')).toBe('true');
+  release(CREATED);
+  await settled();
 });
 
 it('F-8: a page left while the key is being made never puts the key in the document when the hub answers', async () => {

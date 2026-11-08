@@ -85,3 +85,10 @@ export function field(selector: string): HTMLInputElement {
   if (!(found instanceof HTMLInputElement)) throw new Error(`no field ${selector}`);
   return found;
 }
+
+/** The shown key's field: a read-only text area, so the whole key wraps into view. */
+export function keyField(): HTMLTextAreaElement {
+  const found = document.querySelector('[role="dialog"] textarea[readonly]');
+  if (!(found instanceof HTMLTextAreaElement)) throw new Error('no key field');
+  return found;
+}
