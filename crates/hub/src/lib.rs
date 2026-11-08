@@ -49,6 +49,9 @@ struct GraphqlRoute {
     schema: schema::HubSchema,
     db: PgPool,
     clock: Arc<dyn clock::Clock>,
+    /// `ANIMA_PUBLIC_ORIGIN`; without it no request is marked same-origin, so no browser
+    /// cookie is read and `signInBrowser` is refused (D-3, D-4).
+    origin: Option<access::PublicOrigin>,
 }
 
 /// The origins of the desktop app's web view: `tauri://localhost` on macOS and Linux,
@@ -73,14 +76,40 @@ fn client_origins() -> CorsLayer {
 
 /// The hub's HTTP routes: `POST /graphql`, `GET /graphql` (subscriptions) and `GET /health`,
 /// each request in a logged span. `/graphql` answers CORS preflights from the client origins.
+/// Without a public origin it reads no browser cookie; [`router_at`] serves browsers too.
 pub fn router(schema: schema::HubSchema, db: PgPool, clock: Arc<dyn clock::Clock>) -> Router {
+    routes(GraphqlRoute {
+        schema,
+        db,
+        clock,
+        origin: None,
+    })
+}
+
+/// The routes of [`router`] for clients at `origin`, `ANIMA_PUBLIC_ORIGIN`: a request from that
+/// origin may also sign in with the browser cookie and call `signInBrowser` (D-3, D-4).
+pub fn router_at(
+    schema: schema::HubSchema,
+    db: PgPool,
+    clock: Arc<dyn clock::Clock>,
+    origin: access::PublicOrigin,
+) -> Router {
+    routes(GraphqlRoute {
+        schema,
+        db,
+        clock,
+        origin: Some(origin),
+    })
+}
+
+fn routes(route: GraphqlRoute) -> Router {
     logged(
         Router::new()
             .route("/graphql", post(graphql).get(subscriptions))
             .route("/health", get(health))
             .layer(DefaultBodyLimit::max(BODY_LIMIT))
             .layer(client_origins())
-            .with_state(GraphqlRoute { schema, db, clock }),
+            .with_state(route),
     )
 }
 
@@ -194,7 +223,8 @@ fn is_json(headers: &HeaderMap) -> bool {
 }
 
 /// Reads one JSON request of at most [`BODY_LIMIT`] bytes (no batch, no multipart), resolves
-/// the bearer token and the client address once, then runs it (D-6).
+/// the client address, the Origin mark and the bearer token or browser cookie once, then runs
+/// it (D-3, D-6).
 async fn graphql(
     State(route): State<GraphqlRoute>,
     headers: HeaderMap,
@@ -214,7 +244,12 @@ async fn graphql(
     if let Some(client) = access::client_addr(&extensions) {
         request = request.data(client);
     }
-    let response = match access::identify(&route.db, &headers, route.clock.now()).await {
+    let from = (route.origin.as_ref()).and_then(|origin| access::SameOrigin::of(&headers, origin));
+    let identified = access::identify(&route.db, &headers, from.as_ref(), route.clock.now()).await;
+    if let Some(from) = from {
+        request = request.data(from);
+    }
+    let response = match identified {
         Ok(Some(identity)) => route.schema.execute(identity.attach(request)).await,
         Ok(None) => route.schema.execute(request).await,
         // The schema's boundary never sees this error, so the route logs its cause chain (H-5).
@@ -227,17 +262,23 @@ async fn graphql(
     GraphQLResponse::from(response).into_response()
 }
 
-/// Upgrades `GET /graphql` to a `graphql-transport-ws` connection. The token comes only from
-/// the `connection_init` payload, never from the URL (R-020). A `GET` that is not a WebSocket
-/// upgrade gets 405: queries are never read from a URL.
+/// Upgrades `GET /graphql` to a `graphql-transport-ws` connection. The token comes from the
+/// `connection_init` payload, or from the browser cookie of an upgrade from the public origin;
+/// never from the URL (R-020, D-3). A `GET` that is not a WebSocket upgrade gets 405: queries
+/// are never read from a URL.
 async fn subscriptions(
     State(route): State<GraphqlRoute>,
+    headers: HeaderMap,
     extensions: Extensions,
     upgrade: Result<WebSocketUpgrade, WebSocketUpgradeRejection>,
 ) -> Response {
     let Ok(upgrade) = upgrade else {
         return StatusCode::METHOD_NOT_ALLOWED.into_response();
     };
-    let access = access::SocketAccess::new(route.db, route.clock, access::client_addr(&extensions));
+    let mut access =
+        access::SocketAccess::new(route.db, route.clock, access::client_addr(&extensions));
+    if let Some(origin) = &route.origin {
+        access = access.with_upgrade(&headers, origin);
+    }
     access::accept_socket(upgrade, route.schema, access)
 }

@@ -1,4 +1,5 @@
 mod acceptance;
+mod browser;
 mod checks;
 mod contract;
 mod credentials;
