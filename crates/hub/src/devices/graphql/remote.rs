@@ -28,8 +28,8 @@ pub(super) use self::{
     vnc::DeviceVnc,
 };
 
-use super::error::{internal, schema_dependency};
 use crate::{
+    api_errors::{internal, schema_dependency},
     credentials::{self, PasswordKind, with_password},
     devices::TransferPolicy,
     ids::DeviceId,

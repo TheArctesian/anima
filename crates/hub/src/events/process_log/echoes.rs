@@ -14,10 +14,12 @@ use async_graphql::{
     value,
 };
 
+use crate::api_errors::ErrorCode;
+
 const SYNTAX_MESSAGE: &str = "The request is not valid GraphQL.";
 const ARGUMENT_MESSAGE: &str = "An argument has the wrong type or shape.";
 const CODE: &str = "code";
-const VALIDATION: &str = "VALIDATION";
+const VALIDATION: &str = ErrorCode::Validation.as_str();
 
 /// How async-graphql 7.2 begins a validation error about an argument value
 /// (`ArgumentsOfCorrectType`, `DefaultValuesOfCorrectType`). The rest is the argument path in

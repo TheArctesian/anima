@@ -11,8 +11,8 @@ use chrono::{DateTime, Utc};
 use serde_json::{Map, Value, json};
 use sqlx::PgConnection;
 
-use super::error::{internal, schema_dependency};
 use crate::{
+    api_errors::{internal, schema_dependency},
     checks::{
         Check,
         config::{CheckConfig, HttpAuth},

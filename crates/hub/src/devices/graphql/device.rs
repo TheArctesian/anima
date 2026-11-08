@@ -9,7 +9,7 @@ use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 
 use super::{
-    error::{internal, schema_dependency, to_graphql},
+    error::to_graphql,
     remote::{DeviceRdp, DeviceVnc},
     ssh::DeviceSsh,
     standing::{
@@ -18,6 +18,7 @@ use super::{
     },
 };
 use crate::{
+    api_errors::{internal, schema_dependency},
     checks::{Check, UptimeWindow},
     clock::Clock,
     devices::{

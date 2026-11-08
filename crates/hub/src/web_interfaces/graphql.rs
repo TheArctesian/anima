@@ -10,33 +10,15 @@ mod trail;
 mod types;
 
 use async_graphql::{Context, ID, Object, Result};
-use sqlx::{PgPool, Postgres, Transaction};
 
 use self::{
-    error::{schema_dependency, to_graphql},
+    error::to_graphql,
     trail::Trail,
     types::{WebInterfaceFields, parse_id},
 };
-use super::{Acceptance, Error, WebInterface};
+use super::{Acceptance, WebInterface};
+use crate::api_errors::{begin, commit, pool};
 use crate::{access::Authenticated, ids::DeviceId};
-
-fn pool<'a>(ctx: &Context<'a>) -> Result<&'a PgPool> {
-    schema_dependency::<PgPool>(ctx)
-}
-
-/// The transaction a mutation writes its change, its audit entry and its event in.
-async fn begin(ctx: &Context<'_>) -> Result<Transaction<'static, Postgres>> {
-    pool(ctx)?
-        .begin()
-        .await
-        .map_err(|e| to_graphql(Error::Database(e)))
-}
-
-async fn commit(tx: Transaction<'static, Postgres>) -> Result<()> {
-    tx.commit()
-        .await
-        .map_err(|e| to_graphql(Error::Database(e)))
-}
 
 #[derive(Default)]
 pub struct Mutation;

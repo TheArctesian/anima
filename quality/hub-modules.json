@@ -6,7 +6,8 @@
     "config",
     "scalars",
     "paging",
-    "targets"
+    "targets",
+    "api_errors"
   ],
   "wiring": [
     "main",

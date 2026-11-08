@@ -10,8 +10,8 @@ use async_graphql::{
 };
 use sqlx::PgPool;
 
-use super::error::{internal, schema_dependency};
 use crate::{
+    api_errors::{internal, schema_dependency},
     credentials::{self, with_ssh},
     devices::{SshAuth, model::SshSettings},
     ids::DeviceId,

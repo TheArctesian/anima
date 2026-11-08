@@ -4,9 +4,10 @@ use async_graphql::{Context, ID, Object, Result, dataloader::DataLoader};
 
 use super::{
     connection::{DEFAULT_FIRST, DeviceConnection, paging},
-    error::{internal, invalid, schema_dependency, to_graphql},
+    error::to_graphql,
 };
 use crate::{
+    api_errors::{internal, invalid, schema_dependency},
     devices::{
         DevicesById, DevicesBySite,
         model::{Device, Site},

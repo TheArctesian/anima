@@ -13,8 +13,8 @@ use reqwest::Url;
 use serde_json::{Value, json};
 use sqlx::PgConnection;
 
-use super::error::{internal, schema_dependency};
 use crate::{
+    api_errors::{internal, schema_dependency},
     clock::Clock,
     events::{
         self, AuditAction, AuditTarget, Bus, ClientAddr, NewAudit, NewEvent, Operator, Severity,

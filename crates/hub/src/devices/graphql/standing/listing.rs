@@ -13,14 +13,14 @@ use async_graphql::{Context, Result};
 
 use super::ranking::{self, Readings};
 use crate::{
+    api_errors::{internal, pool, schema_dependency},
     checks::{self, UptimeWindow},
     clock::Clock,
     devices::{
         graphql::{
             connection::DeviceConnection,
-            error::{internal, schema_dependency, to_graphql},
+            error::to_graphql,
             filter::{DeviceSort, ListArgs},
-            pool,
         },
         model::Device,
         store,

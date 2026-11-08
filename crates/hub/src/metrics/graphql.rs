@@ -4,16 +4,15 @@
 //! (`readings`, `metrics`, `gpus`) belong to the devices domain.
 
 use async_graphql::futures_util::stream::{self, Stream};
-use async_graphql::{
-    Context, Error as GraphQlError, ErrorExtensions as _, ID, Result, Subscription, value,
-};
+use async_graphql::{Context, ID, Result, Subscription};
 use tokio::sync::broadcast::{Receiver, error::RecvError};
 
 use super::{Feed, MetricsAdded};
-use crate::{access::Authenticated, ids::DeviceId};
-
-/// The text of an `INTERNAL` error: the operator sees no detail.
-const INTERNAL_MESSAGE: &str = "Something went wrong on the hub. Try again.";
+use crate::{
+    access::Authenticated,
+    api_errors::{FieldError, invalid, schema_dependency},
+    ids::DeviceId,
+};
 
 #[derive(Default)]
 pub struct Subscription;
@@ -32,30 +31,15 @@ impl Subscription {
         device_id: Option<ID>,
     ) -> Result<impl Stream<Item = MetricsAdded>> {
         let device = device_id.as_ref().map(wanted).transpose()?;
-        let feed = ctx.data::<Feed>().map_err(|_| internal())?;
+        let feed = schema_dependency::<Feed>(ctx)?;
         Ok(added(feed.subscribe(), device))
     }
 }
 
-/// The device an id argument names. The error has the shape of the checks helpers (`invalid`,
-/// `internal`), which this domain may not import.
+/// The device an id argument names.
 fn wanted(id: &ID) -> Result<DeviceId> {
-    id.parse().map_err(|_| {
-        GraphQlError::new("Some input is not valid.").extend_with(|_, extensions| {
-            extensions.set("code", "VALIDATION");
-            extensions.set(
-                "fields",
-                value!([{ "field": "deviceId", "message": "That id is not valid." }]),
-            );
-        })
-    })
-}
-
-/// A missing feed is a wiring mistake, never the operator's.
-fn internal() -> GraphQlError {
-    GraphQlError::new(INTERNAL_MESSAGE).extend_with(|_, extensions| {
-        extensions.set("code", "INTERNAL");
-    })
+    id.parse()
+        .map_err(|_| invalid(&[FieldError::new("deviceId", "That id is not valid.")]))
 }
 
 /// The collections of `device` (of any device when `None`). A subscriber that fell behind

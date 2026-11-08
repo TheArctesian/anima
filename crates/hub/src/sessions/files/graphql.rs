@@ -9,13 +9,11 @@ use sqlx::PgPool;
 use super::opening::open_files;
 use crate::{
     access::Authenticated,
+    api_errors::{invalid, schema_dependency},
     clock::Clock,
     events::{ClientAddr, Operator},
     ids::SessionId,
-    sessions::{
-        Actor, FieldError, Live, Ticket,
-        graphql::{invalid, schema_dependency, to_graphql},
-    },
+    sessions::{Actor, FieldError, Live, Ticket, graphql::to_graphql},
 };
 
 #[derive(Default)]

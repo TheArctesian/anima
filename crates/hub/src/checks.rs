@@ -32,6 +32,7 @@ use sqlx::{Connection as _, PgConnection, PgPool};
 use uuid::Uuid;
 
 use crate::{
+    api_errors::field_names,
     credentials::{self, Vault},
     devices,
     ids::{CheckId, DeviceId},
@@ -84,15 +85,6 @@ pub enum Error {
     /// The OS random source failed, so no push token was made.
     #[error("the OS random source failed")]
     Random(#[source] getrandom::Error),
-}
-
-/// The names of the fields in error, never their values.
-fn field_names(errors: &[FieldError]) -> String {
-    errors
-        .iter()
-        .map(|error| error.field)
-        .collect::<Vec<_>>()
-        .join(", ")
 }
 
 fn from_devices(error: devices::Error) -> Error {

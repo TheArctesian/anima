@@ -18,6 +18,8 @@ use crate::{
     status::Status,
 };
 
+pub use crate::api_errors::FieldError;
+
 /// A check as stored. HTTP and SNMP secrets are never part of it (LOG-007).
 #[derive(Clone, Debug, PartialEq)]
 pub struct Check {
@@ -161,28 +163,6 @@ pub struct CheckChange {
     /// True when a group's change moves this check in or out of the group. Every other change
     /// is an operator edit and marks the check (CHK-013).
     pub regrouping: bool,
-}
-
-/// One input field the operator must fix. `field` is the GraphQL input field name.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FieldError {
-    pub field: &'static str,
-    pub message: String,
-}
-
-impl FieldError {
-    pub(super) fn new(field: &'static str, message: impl Into<String>) -> Self {
-        Self {
-            field,
-            message: message.into(),
-        }
-    }
-}
-
-impl fmt::Display for FieldError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}: {}", self.field, self.message)
-    }
 }
 
 /// What a lookup could not find.

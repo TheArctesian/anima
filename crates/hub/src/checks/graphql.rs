@@ -27,14 +27,14 @@ pub use self::loaders::{
 };
 
 use self::{
-    error::{invalid, schema_dependency, to_graphql},
+    error::to_graphql,
     input::{CreateShape, Opaque, UpdateShape},
     live::{DeviceStatusChange, HeartbeatAdded, device_status_changes, heartbeats_added},
-    write::pool,
 };
 use super::{Check, Error, FieldError};
 use crate::{
     access::Authenticated,
+    api_errors::{invalid, pool, schema_dependency},
     events::Bus,
     ids::{CheckId, DeviceId},
 };

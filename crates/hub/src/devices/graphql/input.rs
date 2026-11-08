@@ -4,6 +4,7 @@
 use async_graphql::{ID, InputObject, Result};
 
 use crate::{
+    api_errors::invalid,
     devices::{
         FieldError, MetricsSource, OperatingSystem, SshAuth,
         model::{DeviceChangeInput, NewDeviceInput, SshInput},
@@ -13,10 +14,7 @@ use crate::{
     ids::{DeviceId, SiteId},
 };
 
-use super::{
-    error::invalid,
-    remote::{RdpSettingsInput, TransferPolicyInput, VncSettingsInput},
-};
+use super::remote::{RdpSettingsInput, TransferPolicyInput, VncSettingsInput};
 
 #[derive(InputObject)]
 #[graphql(name = "SshSettingsInput")]

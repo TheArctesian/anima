@@ -7,7 +7,8 @@ use std::str::FromStr;
 use async_graphql::{ID, InputObject, Object, Result};
 use chrono::{DateTime, Utc};
 
-use super::{error::invalid, open_in::OpenInValue};
+use super::open_in::OpenInValue;
+use crate::api_errors::invalid;
 use crate::web_interfaces::{FieldError, Suggestion, WebInterface, WebInterfaceInput};
 
 #[Object(name = "WebInterface")]

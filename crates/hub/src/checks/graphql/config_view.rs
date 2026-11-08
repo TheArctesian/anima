@@ -6,9 +6,10 @@ use async_graphql::{Context, Object, Result, SimpleObject, Union};
 
 use super::{
     enums::{IpFamily, RecordType, RequestMethod, SignInKind, SnmpVersion},
-    error::{internal, schema_dependency, to_graphql},
+    error::to_graphql,
 };
 use crate::{
+    api_errors::{internal, schema_dependency},
     checks::{
         self, Check,
         config::{CheckConfig, HttpConfig, HttpHeader, SnmpConfig, StatusRange, is_secret_header},
