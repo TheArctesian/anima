@@ -56,9 +56,13 @@ Space numbers follow the 4-pixel grid index (`space-4` = 1 rem = 16 px), as in s
 - The token source gains a `light` mode. `tokens.css` gains `:root[data-theme="light"] { … }`, and
   `@media (prefers-color-scheme: light) { :root[data-theme="system"] { … } }`. `data-theme="dark"`, or no
   attribute, keeps today's values. `prefers-contrast: more` applies on top of either mode (MAT-006).
-- If D-27 takes option B: the primitive row adds `nord-11-deep`, `nord-12-deep`, `nord-13-deep`,
-  `nord-14-deep` and `nord-15-deep`. Each is the Nord colour mixed toward `nord-0` until it reaches 3:1 against
-  `nord-6`. Only the light mode's `status-*` and `chart-*` values use them. Components never name them.
+- D-27 takes option B, derived against `nord-4` (R-086): the primitive row adds `nord-11-deep`,
+  `nord-12-deep`, `nord-13-deep`, `nord-14-deep` and `nord-15-deep`. Each is the Nord colour mixed toward
+  `nord-0` until it reaches 3:1 against `nord-4`, the darkest light surface, so it holds 3:1 on `nord-4`,
+  `nord-5` and `nord-6`. Only the light mode's `status-*` and `chart-*` values use them. Components never
+  name them.
+- Light surfaces (R-086): `bg` is `nord-5`, `surface` is `nord-6`, `surface-raised` is `nord-4`. The light
+  `accent` is `nord-3`; no derived accent primitive is added.
 - The Rust output (`crates/theme`) does not change.
 
 ## Rules for consumers

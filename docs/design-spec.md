@@ -407,7 +407,7 @@ Anima uses the Nord colour scheme. The default theme is dark.
 - **UI-002.** Do not use nord3 for text on nord0 or nord1. The contrast is too low. Use nord4 for secondary text.
 - **UI-003.** A status must not use colour as the only indicator. Show a text label or an icon with the colour.
 - **UI-004.** Text on an `--accent` background must use nord0.
-- **UI-005.** The client must have a light theme with the Nord Snow Storm colours (nord4 to nord6). Some Nord aurora colours (for example nord13) are less than 3:1 on nord6. WP-50 measures them. So the light theme must use five derived primitives for the status colours, one from each of nord11 to nord15. Make each one by mixing its Nord aurora colour toward nord0 until it is 3:1 on nord6. Use them in light mode only. The default theme is dark. The operator must be able to choose Dark, Light or System. The client must save the choice on the device. (D-27, R-081)
+- **UI-005.** The client must have a light theme with the Nord Snow Storm colours (nord4 to nord6). Some Nord aurora colours (for example nord13) are less than 3:1 on nord6. WP-50 measures them. So the light theme must use five derived primitives for the status colours, one from each of nord11 to nord15. Make each one by mixing its Nord aurora colour toward nord0 until it is 3:1 on nord4, the darkest light surface, so it is at least 3:1 on nord4, nord5 and nord6. Use them in light mode only. In light mode the background is nord5, surfaces are nord6, raised surfaces are nord4, and the accent is nord3. The default theme is dark. The operator must be able to choose Dark, Light or System. The client must save the choice on the device. (D-27, R-081, R-086)
 
 ### 5.2 Typography and spacing
 
