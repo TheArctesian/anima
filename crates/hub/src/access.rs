@@ -1,6 +1,6 @@
 //! Who may use the hub: operator accounts, sign-in (desktop and browser), API tokens and the
-//! GraphQL guard (SEC-002, API-003, D-3), and from where: permitted networks and the listening edge (NET-001 to
-//! NET-003, SEC-001, SEC-008).
+//! GraphQL guard (SEC-002, API-003, D-3), and from where: permitted networks and the listening
+//! edge (NET-001 to NET-003, SEC-001, SEC-008).
 
 mod browser;
 mod connection;
@@ -32,7 +32,7 @@ pub use crate::events::{ClientAddr, Operator};
 pub use browser::SameOrigin;
 pub use connection::{MESSAGE_LIMIT, SUBPROTOCOL, SocketAccess, accept_socket};
 pub use guard::{Authenticated, SignInRequired};
-pub use identity::{Identity, client_addr, identify, identify_connection};
+pub use identity::{Identity, client_addr, identify, identify_connection, operator_for_token};
 pub use layer::{Edge, permitted_networks_layer};
 pub use origin::PublicOrigin;
 pub use password::Password;
@@ -225,23 +225,6 @@ struct Fault {
     kind: &'static str,
     #[source]
     source: Option<Box<dyn std::error::Error + Send + Sync>>,
-}
-/// Used by the tunnel: resolve a bearer token to an operator. A browser token is not a bearer
-/// (WP-43 A-3).
-///
-/// # Errors
-///
-/// `Error::Unauthenticated` for a malformed, unknown, expired or browser token; `Error::Database` if
-/// it cannot be looked up.
-pub async fn operator_for_token(
-    db: &PgPool,
-    token: &str,
-    now: DateTime<Utc>,
-) -> Result<Operator, Error> {
-    let identity = identity::resolve(db, token, tokens::Transport::Bearer, now)
-        .await?
-        .ok_or(Error::Unauthenticated)?;
-    Ok(identity.operator().clone())
 }
 
 /// Sets the one operator account (OD-2) for `anima-hub operator set` (D-9): creates it, or

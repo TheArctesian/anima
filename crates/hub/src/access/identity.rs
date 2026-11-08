@@ -213,6 +213,26 @@ pub(super) async fn resolve(
     Ok(Some(Identity::new(operator, grant)))
 }
 
+/// Used by the tunnel: resolve a bearer token to an operator. Only the desktop app's login token
+/// counts: a browser token is no bearer (WP-43 A-3), and an API key, even a read one, is for
+/// scripts, not for a session.
+///
+/// # Errors
+///
+/// `Error::Unauthenticated` for a malformed, unknown or expired token, a browser token or an API
+/// key; `Error::Database` if it cannot be looked up.
+pub async fn operator_for_token(
+    db: &PgPool,
+    token: &str,
+    now: DateTime<Utc>,
+) -> Result<Operator, Error> {
+    let identity = resolve(db, token, Transport::Bearer, now)
+        .await?
+        .filter(|identity| identity.kind() == TokenKind::Login)
+        .ok_or(Error::Unauthenticated)?;
+    Ok(identity.operator().clone())
+}
+
 /// The client address of a request: the one the network layer (WP-05 T4) put in the request
 /// extensions, else the TCP peer. An IPv4-mapped IPv6 peer is given as IPv4 (D-11).
 #[must_use]
