@@ -134,8 +134,16 @@ impl Look {
             .filter(|found| !replaced(found.gpu.vendor))
             .cloned()
             .collect();
+        let mut new = Vec::new();
         for (vendor, readings) in &answered {
-            add_vendor(&mut gpus, before, *vendor, readings);
+            new.extend(keep_vendor(&mut gpus, before, *vendor, readings));
+        }
+        for (vendor, reading) in new {
+            if gpus.len() >= MAX_LABELS {
+                break;
+            }
+            let free = (0..).find(|free| gpus.iter().all(|found| found.gpu.index != *free));
+            gpus.extend(free.map(|index| found(vendor, reading, index)));
         }
         gpus.sort_by_key(|found| found.gpu.index);
         let pending = answers
@@ -157,9 +165,15 @@ impl Look {
     }
 }
 
-/// Adds `vendor`'s `readings` to `gpus`: each under the number it had `before`, or the
-/// lowest free one while there is room.
-fn add_vendor(gpus: &mut Vec<Found>, before: &[Found], vendor: GpuVendor, readings: &[GpuReading]) {
+/// Adds to `gpus` each of `vendor`'s `readings` known `before`, under the number it had, and
+/// returns the others, new, the first of a repeated own number, in own-number order. Known
+/// numbers are kept first, so a new GPU of an earlier vendor cannot take one.
+fn keep_vendor<'a>(
+    gpus: &mut Vec<Found>,
+    before: &[Found],
+    vendor: GpuVendor,
+    readings: &'a [GpuReading],
+) -> Vec<(GpuVendor, &'a GpuReading)> {
     let mut own: Vec<&GpuReading> = readings.iter().collect();
     own.sort_by_key(|reading| reading.index);
     own.dedup_by_key(|reading| reading.index);
@@ -170,16 +184,10 @@ fn add_vendor(gpus: &mut Vec<Found>, before: &[Found], vendor: GpuVendor, readin
             .find(|found| found.gpu.vendor == vendor && found.source == reading.index);
         match was {
             Some(was) => gpus.push(found(vendor, reading, was.gpu.index)),
-            None => new.push(reading),
+            None => new.push((vendor, reading)),
         }
     }
-    for reading in new {
-        if gpus.len() >= MAX_LABELS {
-            break;
-        }
-        let free = (0..).find(|free| gpus.iter().all(|found| found.gpu.index != *free));
-        gpus.extend(free.map(|index| found(vendor, reading, index)));
-    }
+    new
 }
 
 fn found(vendor: GpuVendor, reading: &GpuReading, index: i32) -> Found {
