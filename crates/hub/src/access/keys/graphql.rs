@@ -164,8 +164,8 @@ fn to_graphql(error: Error) -> GraphQlError {
     match error {
         Error::Invalid(fields) => invalid(&fields),
         Error::NameTaken => {
-            let message = "Another API key has this name. Choose another.";
-            coded(error.to_string(), ErrorCode::Conflict).extend_with(|_, extensions| {
+            let message = error.to_string();
+            coded(message.clone(), ErrorCode::Conflict).extend_with(|_, extensions| {
                 extensions.set("fields", value!([{ "field": "name", "message": message }]));
             })
         }

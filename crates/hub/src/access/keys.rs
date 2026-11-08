@@ -54,7 +54,7 @@ struct Wanted {
 enum Error {
     #[error("Some input is not valid.")]
     Invalid(Vec<FieldError>),
-    #[error("Another API key has this name.")]
+    #[error("Another API key has this name. Choose another.")]
     NameTaken,
     #[error("No such API key.")]
     NotFound,

@@ -65,6 +65,16 @@ fn d_23_the_expiry_is_after_now_and_at_most_one_calendar_year_away() {
     }
 }
 
+/// From 29 February the year runs to 28 February: chrono clamps the month's last day.
+#[test]
+fn d_23_a_key_made_on_29_february_lasts_until_28_february() {
+    let leap = Utc.with_ymd_and_hms(2028, 2, 29, 12, 0, 0).unwrap();
+    let year = Utc.with_ymd_and_hms(2029, 2, 28, 12, 0, 0).unwrap();
+    let expiring = |at| draft(&wanted("k", at), [5; 32], leap).map(|key| key.expires_at);
+    assert_eq!(expiring(year).ok(), Some(year));
+    assert!(expiring(year + TimeDelta::microseconds(1)).is_err());
+}
+
 #[test]
 fn d_23_the_name_is_trimmed_plain_and_1_to_64_characters() {
     let later = now() + TimeDelta::days(1);

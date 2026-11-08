@@ -44,6 +44,23 @@ async fn int_003_d_23_the_secret_is_anima_and_43_base64url_characters_shown_once
 }
 
 #[sqlx::test(migrations = "./migrations")]
+async fn int_003_api_keys_are_listed_by_name(pool: PgPool) {
+    let (hub, token) = signed_in(&pool).await;
+    for name in ["zeta", "alpha", "mid"] {
+        made(&hub, &token, name, "READ").await;
+    }
+    let listed = hub.post(Some(&token), LIST, json!({})).await;
+    let names: Vec<&Value> = (listed["data"]["apiKeys"].as_array().unwrap().iter())
+        .map(|key| &key["name"])
+        .collect();
+    assert_eq!(
+        names,
+        [&json!("alpha"), &json!("mid"), &json!("zeta")],
+        "{listed}"
+    );
+}
+
+#[sqlx::test(migrations = "./migrations")]
 async fn int_003_d_23_a_key_signs_in_and_its_use_is_listed(pool: PgPool) {
     let (hub, token) = signed_in(&pool).await;
     let secret = secret(&hub, &token, "metrics", "READ").await;
@@ -159,7 +176,13 @@ async fn d_23_a_taken_name_is_a_conflict_on_the_name(pool: PgPool) {
     let again = create(&hub, &token, input("deploy", "WRITE")).await;
     let (code, fields) = coded(&again);
     assert_eq!(code, "CONFLICT", "{again}");
-    assert_eq!(fields[0]["field"], "name", "{again}");
+    let taken = "Another API key has this name. Choose another.";
+    assert_eq!(again["errors"][0]["message"], taken, "{again}");
+    assert_eq!(
+        fields,
+        json!([{ "field": "name", "message": taken }]),
+        "{again}"
+    );
     assert_eq!(again["data"], Value::Null);
     assert_eq!(
         count(&pool, "access.api_tokens where kind = 'api_key'").await,
