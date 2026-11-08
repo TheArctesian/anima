@@ -149,7 +149,11 @@ async fn set_statuses(pool: &PgPool, all: &str, each: &[(&str, &str)]) {
 
 /// Records a heartbeat for the check at `at`.
 async fn record(pool: &PgPool, check: &str, at: DateTime<Utc>, response_time_ms: Option<u32>) {
-    checks::create_days_ahead(pool, at, 1).await.unwrap();
+    sqlx::query("select checks.ensure_day_partition($1)")
+        .bind(at)
+        .execute(pool)
+        .await
+        .unwrap();
     let beat = Beat {
         at,
         status: Status::Up,

@@ -134,7 +134,11 @@ fixture_test! {
         aggregate(&pool, "uptime_hour", hour - TimeDelta::hours(2), (1, 0)).await;
         aggregate(&pool, "uptime_hour", hour - TimeDelta::days(20), (0, 1)).await;
         // A raw heartbeat without its aggregates: uptime never reads it (CHK-011).
-        checks::create_days_ahead(&pool, now, 1).await.unwrap();
+        sqlx::query("select checks.ensure_day_partition($1)")
+            .bind(now)
+            .execute(&pool)
+            .await
+            .unwrap();
         sqlx::query(
             "INSERT INTO checks.heartbeats (check_id, at, status) VALUES ($1::uuid, $2, 'down')",
         )
