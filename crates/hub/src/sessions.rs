@@ -19,7 +19,6 @@ mod public_key;
 mod ssh;
 mod start;
 mod store;
-mod target;
 mod terminal;
 #[cfg(test)]
 mod tests;
