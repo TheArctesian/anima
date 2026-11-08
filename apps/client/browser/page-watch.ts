@@ -3,6 +3,8 @@ import type { Page } from '@playwright/test';
 /** One `securitypolicyviolation` event: which rule refused what. Never the page's text. */
 export interface CspViolation {
   readonly effectiveDirective: string;
+  /** `enforce` when the enforced policy refused it; `report` when only a Report-Only policy would have. */
+  readonly disposition: string;
   readonly blockedUri: string;
   readonly sourceFile: string;
 }
@@ -16,13 +18,23 @@ export interface PageWatch {
 
 const BINDING = 'animaReportViolation';
 
+/** `url` without its query and fragment: a blocked tunnel URL carries a ticket (LOG-007). */
+export function withoutQuery(url: string): string {
+  return url.replace(/[?#].*$/s, '');
+}
+
 // Runs in the page before any of its scripts.
 function listenForViolations(binding: string): void {
   document.addEventListener(
     'securitypolicyviolation',
     (event) => {
       const report = (globalThis as unknown as Record<string, (violation: CspViolation) => void>)[binding];
-      report?.({ effectiveDirective: event.effectiveDirective, blockedUri: event.blockedURI, sourceFile: event.sourceFile });
+      report?.({
+        effectiveDirective: event.effectiveDirective,
+        disposition: event.disposition,
+        blockedUri: event.blockedURI,
+        sourceFile: event.sourceFile,
+      });
     },
     true,
   );
@@ -33,7 +45,9 @@ export async function watchPage(page: Page): Promise<PageWatch> {
   const cspViolations: CspViolation[] = [];
   const consoleErrors: string[] = [];
   const pageErrors: string[] = [];
-  await page.exposeFunction(BINDING, (violation: CspViolation) => cspViolations.push(violation));
+  await page.exposeFunction(BINDING, (violation: CspViolation) =>
+    cspViolations.push({ ...violation, blockedUri: withoutQuery(violation.blockedUri), sourceFile: withoutQuery(violation.sourceFile) }),
+  );
   await page.addInitScript(listenForViolations, BINDING);
   page.on('console', (message) => {
     if (message.type() === 'error') consoleErrors.push(message.text());
