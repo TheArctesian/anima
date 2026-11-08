@@ -365,7 +365,8 @@ Wake-on-LAN lives in `sessions` (RA-031 is a remote access rule), so a session s
 (Phase 3, changed: WP-41 moves, WP-47, WP-48):
 
 ```rust
-/// Everything the tunnels need, built once in main.rs (replaces the long tunnel_router argument lists).
+/// Everything the tunnels need, built once at start in `lib.rs::tunnels()`, which main.rs calls (replaces the long
+/// tunnel_router argument lists; CR-12). `recording` is added by WP-48 (D-3).
 #[derive(Clone)] pub struct Serving { pub db: Db, pub vault: credentials::Vault, pub bus: events::Bus,
     pub clock: Clock, pub live: Live, pub guacd: String, pub drive_root: String, pub recording: Recording }
 /// Recording storage (K4 §11); `root: None` makes recording unavailable.
