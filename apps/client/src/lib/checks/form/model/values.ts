@@ -8,6 +8,7 @@ import type {
   IpVersion,
 } from './hub-types';
 import type { CheckDefaults } from '$lib/checks/api';
+import { blankDomainExpiry, withDomainExpiryConfig, type DomainExpiryValues } from '../probes/domain-expiry';
 import { blankProbes, withProbeConfig, type ProbeValues } from '../probes/values';
 
 export interface HeaderRow {
@@ -59,6 +60,7 @@ export interface CheckFormValues extends ProbeValues {
   /** Shown once the push check is saved; the token is part of the path. */
   push: { path: string };
   group: { childIds: string[] };
+  domainExpiry: DomainExpiryValues;
 }
 
 /** CHK-008 and K1 `CreateCheckInput` defaults. */
@@ -94,6 +96,7 @@ function blank(type: CheckType): CheckFormValues {
     dns: { name: '', recordType: 'A', resolver: '', expected: '' },
     push: { path: '' },
     group: { childIds: [] },
+    domainExpiry: blankDomainExpiry(),
     ...blankProbes(),
   };
 }
@@ -142,7 +145,7 @@ function withTransportConfig(values: CheckFormValues, config: TransportConfigFie
   }
 }
 
-function withConfig(values: CheckFormValues, config: CheckConfigFields): CheckFormValues {
+function withConfig(values: CheckFormValues, config: CheckConfigFields, daysLeft: number | null): CheckFormValues {
   switch (config.__typename) {
     case 'HttpConfig':
       return withHttp(values, config);
@@ -167,7 +170,7 @@ function withConfig(values: CheckFormValues, config: CheckConfigFields): CheckFo
       // The hub's check query does not select these fields yet (WP-29); without them the form keeps its defaults.
       return withProbeConfig(values, config);
     case 'DomainExpiryConfig':
-      return values; // No form fields yet (DOMAIN_EXPIRY editor: WP-50, D-29).
+      return { ...values, domainExpiry: withDomainExpiryConfig(values.domainExpiry, config, daysLeft) };
     default:
       return withTransportConfig(values, config); // Typed: the remaining members are ICMP, TCP and TLS.
   }
@@ -201,5 +204,6 @@ export function checkValues(check: CheckFields | null, type: CheckType): CheckFo
       invert: check.invert,
     },
     check.config,
+    check.domainDaysLeft ?? null,
   );
 }

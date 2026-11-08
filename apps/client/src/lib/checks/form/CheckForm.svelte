@@ -13,6 +13,8 @@
   import TextField from './fields/TextField.svelte';
   import TypeFields from './fields/TypeFields.svelte';
   import ProbeFields from './probes/ProbeFields.svelte';
+  import DomainExpiryFields from './probes/DomainExpiryFields.svelte';
+  import { intervalFor } from './probes/domain-expiry';
   import SnmpFields from './probes/SnmpFields.svelte';
   import { defaultsReader } from '../defaults/reader';
   import { untouchedSettings, type SettingKey } from '../defaults/settings';
@@ -47,7 +49,7 @@
     { value: 'SYSTEMD', label: 'systemd service' },
     { value: 'SNMP', label: 'SNMP' },
     { value: 'TAILSCALE_PING', label: 'Tailscale ping' },
-    // DOMAIN_EXPIRY is not offered until its editor exists: WP-50 (D-29).
+    { value: 'DOMAIN_EXPIRY', label: 'Domain expiry' },
   ];
 
   // Inside a modal the actions go to its footer; the submit button is tied to the form by its ID.
@@ -60,10 +62,25 @@
   // D-26: a new check starts from the K1 input defaults at once and takes the hub's defaults when they arrive, so a
   // slow or failed answer never holds the form. A setting the operator has touched is left as it is.
   const touched = new SvelteSet<SettingKey>();
+  /** The interval a new check of any other type than domain expiry shows: the K1 default, then the hub's. */
+  let ordinaryInterval = untrack(() => initial.intervalSeconds);
   const readDefaults = untrack(() => (check === null ? defaultsReader() : null));
   $effect(() => {
     void readDefaults?.().then((defaults) => {
-      if (defaults !== null) Object.assign(values, untouchedSettings(touched, defaults));
+      if (defaults === null) return;
+      const patch = untouchedSettings(touched, defaults);
+      if (patch.intervalSeconds !== undefined) {
+        ordinaryInterval = patch.intervalSeconds;
+        patch.intervalSeconds = intervalFor(values.type, values.intervalSeconds, ordinaryInterval, false);
+      }
+      Object.assign(values, patch);
+    });
+  });
+  // D-29: a new domain expiry check proposes 12 hours; any other type takes the ordinary interval back. A touched one stays.
+  $effect(() => {
+    const { type } = values;
+    untrack(() => {
+      if (check === null) values.intervalSeconds = intervalFor(type, values.intervalSeconds, ordinaryInterval, touched.has('intervalSeconds'));
     });
   });
   let errors = $state<FieldError[]>([]);
@@ -119,6 +136,8 @@
     <HttpFields bind:http={values.http} {errors} />
   {:else if values.type === 'GROUP'}
     <GroupFields {candidates} bind:childIds={values.group.childIds} error={error('childIds')} />
+  {:else if values.type === 'DOMAIN_EXPIRY'}
+    <DomainExpiryFields bind:domainExpiry={values.domainExpiry} {errors} />
   {:else if values.type === 'SNMP'}
     <SnmpFields bind:snmp={values.snmp} {errors} />
   {:else if values.type === 'DOCKER' || values.type === 'SYSTEMD' || values.type === 'TAILSCALE_PING'}

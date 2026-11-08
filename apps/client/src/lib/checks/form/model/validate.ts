@@ -2,6 +2,7 @@ import type { FieldError } from '$lib/hub/hub';
 import { isValidHost, normalizeHost } from '$lib/devices/form/host';
 import { configChanged } from './config-input';
 import { integerError, LIMITS, lengthError, portError, timeoutError } from './range';
+import { domainExpiryErrors, intervalErrors } from '../probes/domain-expiry';
 import { probeErrors } from '../probes/validate';
 import { validateHttp } from './validate-http';
 import type { CheckFormValues } from './values';
@@ -51,8 +52,9 @@ function typeErrors(values: CheckFormValues, configSent: boolean): FieldError[] 
     case 'GROUP':
       return groupErrors(values.group);
     case 'PUSH':
-    case 'DOMAIN_EXPIRY': // DOMAIN_EXPIRY editor: WP-50 (D-29); no fields to check yet.
       return [];
+    case 'DOMAIN_EXPIRY':
+      return [...domainExpiryErrors(values.domainExpiry), ...intervalErrors(values.intervalSeconds)];
     default:
       return probeErrors(values, values.type, configSent);
   }
