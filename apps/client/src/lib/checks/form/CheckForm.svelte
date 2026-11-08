@@ -1,5 +1,6 @@
 <script lang="ts">
   import { untrack } from 'svelte';
+  import { SvelteSet } from 'svelte/reactivity';
   import { fieldErrorsFrom } from '$lib/devices/form/field-errors';
   import Disclosure from '$lib/forms/disclosure/Disclosure.svelte';
   import { modalFooter } from '$lib/forms/modal/footer';
@@ -13,6 +14,8 @@
   import TypeFields from './fields/TypeFields.svelte';
   import ProbeFields from './probes/ProbeFields.svelte';
   import SnmpFields from './probes/SnmpFields.svelte';
+  import { defaultsReader } from '../defaults/reader';
+  import { untouchedSettings, type SettingKey } from '../defaults/settings';
   import { messageFor, placeHubErrors, shownFields, touchesAdvanced, unplaced } from './model/errors';
   import { groupCandidates, type SiblingCheck } from './model/group';
   import type { CheckFields, CheckType } from './model/hub-types';
@@ -54,6 +57,15 @@
 
   const initial = untrack(() => checkValues(check, 'ICMP'));
   let values = $state(initial);
+  // D-26: a new check starts from the K1 input defaults at once and takes the hub's defaults when they arrive, so a
+  // slow or failed answer never holds the form. A setting the operator has touched is left as it is.
+  const touched = new SvelteSet<SettingKey>();
+  const readDefaults = untrack(() => (check === null ? defaultsReader() : null));
+  $effect(() => {
+    void readDefaults?.().then((defaults) => {
+      if (defaults !== null) Object.assign(values, untouchedSettings(touched, defaults));
+    });
+  });
   let errors = $state<FieldError[]>([]);
   let saving = $state(false);
   let advancedOpen = $state(false);
@@ -116,7 +128,7 @@
   {/if}
 
   <Disclosure label="Advanced settings" bind:open={advancedOpen}>
-    <AdvancedFields bind:values {errors} />
+    <AdvancedFields bind:values {errors} ontouch={(key) => touched.add(key)} />
   </Disclosure>
 
   {#if warnings.length > 0}

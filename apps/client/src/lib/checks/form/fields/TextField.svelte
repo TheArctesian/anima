@@ -7,9 +7,11 @@
     error?: string | undefined;
     hint?: string;
     disabled?: boolean;
+    /** Called after each edit by the operator. */
+    oninput?: () => void;
   }
 
-  let { label, value = $bindable(), kind = 'text', error, hint, disabled = false }: Props = $props();
+  let { label, value = $bindable(), kind = 'text', error, hint, disabled = false, oninput }: Props = $props();
   const id = $props.id();
   const describedBy = $derived(
     [error === undefined ? '' : `${id}-error`, hint === undefined ? '' : `${id}-hint`].filter((part) => part !== '').join(' ') || undefined,
@@ -19,12 +21,13 @@
 <div class="field">
   <label for={id}>{label}</label>
   {#if kind === 'multiline'}
-    <textarea {id} bind:value {disabled} rows="3" aria-invalid={error === undefined ? undefined : 'true'} aria-describedby={describedBy}></textarea>
+    <textarea {id} bind:value {disabled} {oninput} rows="3" aria-invalid={error === undefined ? undefined : 'true'} aria-describedby={describedBy}></textarea>
   {:else}
     <input
       {id}
       bind:value
       {disabled}
+      {oninput}
       type={kind === 'password' ? 'password' : 'text'}
       inputmode={kind === 'numeric' ? 'numeric' : undefined}
       autocomplete={kind === 'password' ? 'new-password' : 'off'}

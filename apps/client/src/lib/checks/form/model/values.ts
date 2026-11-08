@@ -7,6 +7,7 @@ import type {
   HttpMethod,
   IpVersion,
 } from './hub-types';
+import type { CheckDefaults } from '$lib/checks/api';
 import { blankProbes, withProbeConfig, type ProbeValues } from '../probes/values';
 
 export interface HeaderRow {
@@ -172,9 +173,20 @@ function withConfig(values: CheckFormValues, config: CheckConfigFields): CheckFo
   }
 }
 
+/** The four settings as the form holds them. */
+export function defaultsText(defaults: CheckDefaults): Pick<CheckFormValues, keyof CheckDefaults> {
+  return {
+    intervalSeconds: String(defaults.intervalSeconds),
+    retries: String(defaults.retries),
+    retryIntervalSeconds: String(defaults.retryIntervalSeconds),
+    degradedThresholdMs: String(defaults.degradedThresholdMs),
+  };
+}
+
 /**
  * CHK-009: the form values for a new check of `type` with the K1 defaults, or for editing `check`.
  * An existing check keeps its own type; `type` is then ignored. No secret is ever filled in.
+ * The hub's default check settings (D-26) are applied by the form, when they arrive (`untouchedSettings`).
  */
 export function checkValues(check: CheckFields | null, type: CheckType): CheckFormValues {
   if (check === null) return blank(type);
