@@ -11,7 +11,7 @@ use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use crate::{
-    ids::{CheckId, DeviceId, EventId, OperatorId, SessionId, SiteId, WindowId},
+    ids::{ChannelId, CheckId, DeviceId, EventId, OperatorId, SessionId, SiteId, WindowId},
     status::Status,
 };
 
@@ -53,6 +53,9 @@ pub enum Source {
     Access,
     Hub,
     Metrics,
+    // The notification dispatcher (NOT-004). K1 names it `NOTIFICATION`.
+    #[graphql(name = "NOTIFICATION")]
+    Notifications,
 }
 
 impl Source {
@@ -66,6 +69,7 @@ impl Source {
             Self::Access => "access",
             Self::Hub => "hub",
             Self::Metrics => "metrics",
+            Self::Notifications => "notification",
         }
     }
 
@@ -79,6 +83,7 @@ impl Source {
             Self::Access,
             Self::Hub,
             Self::Metrics,
+            Self::Notifications,
         ]
         .into_iter()
         .find(|source| source.as_str() == text)
@@ -202,6 +207,8 @@ pub enum AuditTarget {
     File(DeviceId),
     /// A hub setting, by its dotted name (for example `retention.events`).
     Setting(&'static str),
+    /// A notification channel.
+    Channel(ChannelId),
 }
 
 impl AuditTarget {
@@ -219,6 +226,7 @@ impl AuditTarget {
             Self::HostKey(_) => "host_key",
             Self::File(_) => "file",
             Self::Setting(_) => "setting",
+            Self::Channel(_) => "channel",
         }
     }
 
@@ -235,6 +243,7 @@ impl AuditTarget {
             Self::Window(id) => id.to_string(),
             Self::Session(id) => id.to_string(),
             Self::Setting(name) => name.to_owned(),
+            Self::Channel(id) => id.to_string(),
         }
     }
 }
