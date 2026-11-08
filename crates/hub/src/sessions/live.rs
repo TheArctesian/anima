@@ -1,8 +1,8 @@
 //! What the hub holds in memory about sessions (D-1, R-032): unredeemed tickets, tickets
 //! spent by a refused redemption, the end signal of each open tunnel and files relay
 //! (`tunnel`), the host keys and RDP server certificates connection tests saw (a clone of
-//! `trust::Sightings`, SEC-006, SEC-007), the feed of session changes (`changes`, RA-034), and the rule for the
-//! addresses sessions may reach.
+//! `trust::Sightings`, SEC-006, SEC-007), the feed of session changes (`changes`, RA-034),
+//! and the rule for the addresses sessions may reach.
 //!
 //! Every method takes the lock for a short, synchronous critical section and never across an
 //! `.await`; time comes in as a parameter (CQ-021).
