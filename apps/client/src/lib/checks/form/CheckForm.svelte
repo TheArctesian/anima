@@ -16,7 +16,7 @@
   import SnmpFields from './probes/SnmpFields.svelte';
   import { defaultsReader } from '../defaults/reader';
   import { untouchedSettings, type SettingKey } from '../defaults/settings';
-    import { messageFor, placeHubErrors, shownFields, touchesAdvanced, unplaced } from './model/errors';
+  import { messageFor, placeHubErrors, shownFields, touchesAdvanced, unplaced } from './model/errors';
   import { groupCandidates, type SiblingCheck } from './model/group';
   import type { CheckFields, CheckType } from './model/hub-types';
   import { validateCheck } from './model/validate';
