@@ -96,7 +96,7 @@ Phase 1 SSH argument values:
 | --- | --- |
 | `hostname`, `port`, `username` | From `devices.devices` and `devices.ssh_settings` |
 | `password` or `private-key` + `passphrase` | From `credentials::load_ssh` |
-| `host-key` | From `sessions.host_keys` (SEC-006). Empty only before the first accepted connection |
+| `host-key` | From `trust.host_keys` (`sessions.host_keys` before Phase 3; SEC-006, CR-11). Empty only before the first accepted connection |
 | `color-scheme` | Nord scheme built from `crates/theme` (RA-010) |
 | `font-name`, `font-size` | `OpenDyslexicM Nerd Font Mono`, `12` (RA-011) |
 | `scrollback` | `5000` |
@@ -228,7 +228,7 @@ The whole opening has the connection test's limit (8 seconds). `endSession`, hub
 
 ### 8.3 Host key
 
-The hub compares the key the device presents in the key exchange with the accepted key in `sessions.host_keys` (byte equality of the key blob). It sends no authentication request unless the two are equal and the exchange signature verified with that key. When they differ, the hub sends no authentication request: it upgrades, sends `end` `HOST_KEY_MISMATCH` and closes 4001 (Section 8.6). A certificate, or a key `russh` decodes but the hub cannot store, counts as a different key. A key that does not decode at all fails the key exchange: 503 and `GATEWAY_ERROR` (Section 8.1), also with no authentication request. Only a new `testConnection` + `acceptHostKey` replaces the key (Section 6).
+The hub compares the key the device presents in the key exchange with the accepted key in `trust.host_keys` (`sessions.host_keys` before Phase 3; byte equality of the key blob). It sends no authentication request unless the two are equal and the exchange signature verified with that key. When they differ, the hub sends no authentication request: it upgrades, sends `end` `HOST_KEY_MISMATCH` and closes 4001 (Section 8.6). A certificate, or a key `russh` decodes but the hub cannot store, counts as a different key. A key that does not decode at all fails the key exchange: 503 and `GATEWAY_ERROR` (Section 8.1), also with no authentication request. Only a new `testConnection` + `acceptHostKey` replaces the key (Section 6).
 
 ### 8.4 Messages
 

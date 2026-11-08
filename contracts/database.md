@@ -108,6 +108,7 @@ sessions.sessions         id uuid pk, device_id uuid null, device_name text, pro
 sessions.host_keys        device_id uuid pk fk -> devices.devices on delete cascade,
                           algorithm text, fingerprint_sha256 text, first_seen_at,
                           accepted_by uuid
+                          (Phase 3: trust.host_keys, moved by 0920; CR-11)
 ```
 
 Note on `access.operators`: access (range 0001) cannot reference credentials (0200). TOTP secrets are therefore encrypted by access with the same vault key (via `credentials::Vault`, a pure crypto type with no tables — see `hub-domains.md`).

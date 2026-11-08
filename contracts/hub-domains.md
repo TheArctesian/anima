@@ -146,9 +146,9 @@ impl Trail {
 | `sessions` | `access`, `devices`, `credentials`, `events` |
 | `sessions` (Phase 3, replaces the row above) | `access`, `devices`, `credentials`, `events`, `ssh`, `trust` |
 | `checks` (Phase 2, adds) | `sessions` (`link`, `SshLink`, `FixedCommand` only; no cycle: `sessions` does not import `checks`) |
-| `checks` (Phase 3, replaces the Phase 2 row above) | `ssh` (`link`, `SshLink`, `FixedCommand` only; replaces `sessions`), `notifications` (`observe`, `adopt_defaults`, `Observation`, `for_checks` only) |
+| `checks` (Phase 3, replaces the Phase 2 row above) | `ssh` (`link`, `SshLink`, `FixedCommand`, `CommandOutput`, `LinkError` only; replaces `sessions`; CR-11), `notifications` (`observe`, `adopt_defaults`, `Observation`, `for_checks` only) |
 | `metrics` (Phase 2, new) | `devices`, `sessions` (link only), `credentials` (`Vault` only), `events` |
-| `metrics` (Phase 3, replaces the row above) | `devices`, `ssh` (link only; replaces `sessions`), `credentials` (`Vault` only), `events` |
+| `metrics` (Phase 3, replaces the row above) | `devices`, `ssh` (`link`, `CommandOutput`, `LinkError` only; replaces `sessions`; CR-11), `credentials` (`Vault` only), `events` |
 | `web_interfaces` (Phase 2, new) | `checks` (`http_urls` only), `devices` (CR-5), `events` |
 | `trust` (Phase 3, new) | `devices`, `events` |
 | `ssh` (Phase 3, new) | `devices`, `credentials`, `trust`, `events` |
@@ -189,7 +189,7 @@ pub async fn list(db: &Db) -> Result<Vec<Device>, Error>;
 pub async fn in_maintenance(db: &Db, id: DeviceId) -> Result<bool, Error>;
 ```
 
-Delete (DEV-015) is one `DELETE` in `devices`: foreign keys cascade to `device_tags`, `ssh_settings`, `credentials.secrets`, `checks.checks` and `sessions.host_keys`. Heartbeats (partitioned, no foreign key) whose check no longer exists are removed by the checks retention job. Maintenance targets are text; a target that names a deleted device matches nothing. Logs and session history keep their copied names.
+Delete (DEV-015) is one `DELETE` in `devices`: foreign keys cascade to `device_tags`, `ssh_settings`, `credentials.secrets`, `checks.checks` and `trust.host_keys` (`sessions.host_keys` before Phase 3; CR-11). Heartbeats (partitioned, no foreign key) whose check no longer exists are removed by the checks retention job. Maintenance targets are text; a target that names a deleted device matches nothing. Logs and session history keep their copied names.
 
 (Phase 2, WP-21) `Device` gains the fields of K1 `Device`:
 
@@ -444,6 +444,7 @@ pub async fn host_keys(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId
 pub async fn server_certificates(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, ServerCertificate>, Error>;
 // trust::graphql owns acceptHostKey and acceptServerCertificate (no K1 change).
 // The public-key types (PublicKey, Fingerprint, BadKey, BadFingerprint) are in trust (CR-7).
+pub struct Sightings;  pub enum Conflict;  pub enum Error;   // CR-11: what connection tests saw, shared with sessions::Live; accept conflicts
 ```
 
 ## guac-protocol crate (WP-08)
