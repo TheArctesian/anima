@@ -18,8 +18,8 @@ vi.mock('$lib/sessions/sessions.svelte', () => ({
   useSessions: () => ({ openSession: (request: unknown) => current.opened.push(request), openWeb: (request: unknown) => current.opened.push(request) }),
 }));
 const browser = vi.hoisted(() => vi.fn(() => Promise.resolve()));
-vi.mock('$lib/desktop/webView/webView', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('$lib/desktop/webView/webView')>()),
+vi.mock('$lib/desktop/web-view/web-view', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('$lib/desktop/web-view/web-view')>()),
   desktopWebView: { openSystemBrowser: browser },
 }));
 vi.mock('$app/navigation', () => ({

@@ -1,4 +1,4 @@
-import { fingerprintFrom, type Fingerprint, type WebViewEvent } from '$lib/desktop/webView/webView';
+import { fingerprintFrom, type Fingerprint, type WebViewEvent } from '$lib/web-interfaces/shell/shell';
 import type { HubResult } from '$lib/hub/hub';
 import type { WebCertificatePin } from './api';
 

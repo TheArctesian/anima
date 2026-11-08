@@ -21,8 +21,8 @@ vi.mock('motion', async (importOriginal) => ({
 
 // Records every web tab's props, so a test reads the `overlayOpen` the pane passes now.
 const webTabs: { readonly overlayOpen: boolean }[] = [];
-vi.mock('../web/WebTab.svelte', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../web/WebTab.svelte')>();
+vi.mock('$lib/web-interfaces/tab/WebTab.svelte', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('$lib/web-interfaces/tab/WebTab.svelte')>();
   return {
     default: (anchor: never, props: { readonly overlayOpen: boolean }) => {
       webTabs.push(props);

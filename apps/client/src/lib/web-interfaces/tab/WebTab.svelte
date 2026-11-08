@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, tick, untrack } from 'svelte';
-  import { codeOf, desktopWebView, type Bounds, type WebViewShell } from '$lib/desktop/webView/webView';
+  import { desktopWebView } from '$lib/desktop/web-view/web-view';
+  import { codeOf, type Bounds, type WebViewShell } from '$lib/web-interfaces/shell/shell';
   import type { Status } from '$lib/hub/generated/graphql';
   import { useHub } from '$lib/hub/context';
   import { webTabApi, type WebTabApi } from './api';

@@ -1,4 +1,4 @@
-import { codeOf, type Bounds, type Fingerprint, type WebViewShell, type WebViewStep } from '$lib/desktop/webView/webView';
+import { codeOf, type Bounds, type Fingerprint, type WebViewShell, type WebViewStep } from '$lib/web-interfaces/shell/shell';
 
 /** Where the tab's native web view stands. `popped` lives in its own window; `closed` takes no more commands. */
 export type ViewState = 'none' | 'opening' | 'open' | 'popped' | 'closed';

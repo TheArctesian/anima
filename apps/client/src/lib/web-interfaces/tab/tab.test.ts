@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fingerprintFrom, type Fingerprint } from '$lib/desktop/webView/webView';
+import { fingerprintFrom, type Fingerprint } from '$lib/web-interfaces/shell/shell';
 import type { HubResult } from '$lib/hub/hub';
 import type { WebCertificatePin } from './api';
 import { browserAllowed, changeOf, checksBeforeBrowser, failureText, LOAD_TIMEOUT_MS, modeFor, PROBLEM, startTab, tlsStatus, transition, viewShows, type WebTab, type WebTabEvent } from './tab';
