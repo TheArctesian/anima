@@ -5,6 +5,7 @@
 //! [`add_default_check`], [`device_status`], [`resolved_ips`], [`http_urls`] and [`evaluate`].
 //! The writes, [`record_beat`], [`due_checks`] and the retention functions serve this domain's
 //! GraphQL, push route and scheduler; they are public so the integration tests can drive them.
+//! [`exposition_router`] serves `GET /metrics` (INT-001).
 //!
 //! HTTP and SNMP secrets are sealed with the vault, bound to their check, and never returned
 //! by a read; only [`load_http_secrets`] and [`load_snmp_secrets`] open them, for the probe
@@ -12,6 +13,7 @@
 
 pub mod config;
 mod evaluation;
+mod exposition;
 pub mod graphql;
 mod model;
 pub mod probe;
@@ -44,6 +46,7 @@ use config::{CheckConfig, IpVersion};
 use sealing::{prepare_change, sealed};
 
 pub use evaluation::{CheckSettings, CheckState, evaluate};
+pub use exposition::exposition_router;
 pub(in crate::checks) use model::Attempt;
 pub use model::{
     Beat, Check, CheckChange, Definition, Due, FieldError, Heartbeat, HttpSetup, Missing, NewCheck,

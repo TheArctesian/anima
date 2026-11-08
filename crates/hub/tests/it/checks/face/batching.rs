@@ -99,7 +99,7 @@ async fn forward_and_count(client: TcpStream, upstream: Upstream, count: Arc<Ato
 }
 
 /// A one-connection pool on the same database whose statements are counted.
-async fn counting_pool(hub: &PgPool) -> (PgPool, Arc<AtomicUsize>) {
+pub(in crate::checks) async fn counting_pool(hub: &PgPool) -> (PgPool, Arc<AtomicUsize>) {
     let real = hub.connect_options();
     let upstream = real.get_socket().map_or_else(
         || Upstream::Tcp(real.get_host().to_owned(), real.get_port()),
@@ -133,7 +133,7 @@ async fn counting_pool(hub: &PgPool) -> (PgPool, Arc<AtomicUsize>) {
 }
 
 /// 150 more devices on the home site, each with SSH settings and two checks.
-async fn add_bulk(pool: &PgPool) {
+pub(in crate::checks) async fn add_bulk(pool: &PgPool) {
     for sql in [
         "INSERT INTO devices.devices (id, site_id, name, host, kind, os, created_at, updated_at) \
          SELECT gen_random_uuid(), '0190a000-0000-7000-8001-000000000001', 'bulk-' || n, \
