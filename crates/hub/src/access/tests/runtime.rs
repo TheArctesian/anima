@@ -9,7 +9,7 @@ use sqlx::PgPool;
 use super::now;
 use crate::access::{
     store::{self, AttemptKey, NewToken, Outcome},
-    tokens::{Scope, Token},
+    tokens::{Scope, Token, TokenKind},
 };
 
 #[sqlx::test(migrations = "./migrations")]
@@ -28,6 +28,7 @@ async fn log_006_r_016_runtime_role_runs_the_login_flow_on_access_tables(pool: P
     let new_token = NewToken {
         operator: id,
         hash: token.hash(),
+        kind: TokenKind::Browser,
         scope: Scope::Write,
         expires_at: now() + TimeDelta::days(30),
     };
@@ -63,7 +64,12 @@ async fn log_006_r_016_runtime_role_runs_the_login_flow_on_access_tables(pool: P
     store::delete_attempts_of(&mut conn, &["operator"])
         .await
         .unwrap();
-    store::prune(&mut conn, now(), now()).await.unwrap();
+    let cutoffs = store::Cutoffs {
+        attempts: now(),
+        tokens: now(),
+        keys: now(),
+    };
+    store::prune(&mut conn, &cutoffs).await.unwrap();
     store::set_totp(&mut conn, id, Some(b"sealed"))
         .await
         .unwrap();

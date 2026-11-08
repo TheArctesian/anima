@@ -9,12 +9,13 @@ use async_graphql::{
 use chrono::{DateTime, TimeDelta, TimeZone, Utc};
 use uuid::Uuid;
 
-use super::{Authenticated, Identity, Operator, Scope, SignInRequired};
+use super::{Authenticated, Identity, Operator, Scope, SignInRequired, TokenKind, identity::Grant};
 use crate::{
     clock::{Clock, FixedClock},
     credentials::Vault,
 };
 
+mod kinds;
 mod networks;
 mod races;
 mod rules;
@@ -46,7 +47,17 @@ fn operator() -> Operator {
 }
 
 fn identity(expires_at: DateTime<Utc>) -> Identity {
-    Identity::new(operator(), Uuid::now_v7(), Scope::Write, expires_at)
+    identity_of(TokenKind::Login, Scope::Write, expires_at)
+}
+
+fn identity_of(kind: TokenKind, scope: Scope, expires_at: DateTime<Utc>) -> Identity {
+    let grant = Grant {
+        token: Uuid::now_v7(),
+        kind,
+        scope,
+        expires_at,
+    };
+    Identity::new(operator(), grant)
 }
 
 fn clock(at: DateTime<Utc>) -> Arc<dyn Clock> {
@@ -96,6 +107,14 @@ struct Mutation;
 impl Mutation {
     async fn login(&self) -> &'static str {
         "signed in"
+    }
+
+    async fn sign_in_browser(&self) -> &'static str {
+        "browser signed in"
+    }
+
+    async fn join_share(&self) -> &'static str {
+        "joined"
     }
 
     async fn open(&self) -> &'static str {
@@ -188,6 +207,13 @@ async fn api_003_backstop_refuses_an_unguarded_field_without_an_identity() {
 async fn api_003_backstop_lets_one_login_or_typename_through_without_an_identity() {
     let login = backstopped().execute("mutation { login }").await;
     assert_eq!(login.data, value!({ "login": "signed in" }));
+    let browser = backstopped().execute("mutation { signInBrowser }").await;
+    assert_eq!(
+        browser.data,
+        value!({ "signInBrowser": "browser signed in" })
+    );
+    let share = backstopped().execute("mutation { joinShare }").await;
+    assert_eq!(share.data, value!({ "joinShare": "joined" }));
     let renamed = backstopped().execute("mutation { signIn: login }").await;
     assert_eq!(renamed.data, value!({ "signIn": "signed in" }));
     let typename = backstopped().execute("{ __typename a: __typename }").await;
@@ -220,6 +246,15 @@ async fn api_003_backstop_refuses_mixed_fragment_and_introspection_documents() {
     let documents = [
         "mutation { login __typename }",
         "mutation { a0: login a1: login }",
+        "mutation { signInBrowser login }",
+        "mutation { login joinShare }",
+        "mutation { a: signInBrowser b: signInBrowser }",
+        "mutation { signInBrowser open }",
+        "mutation { signInBrowser __typename }",
+        "mutation { ... on Mutation { signInBrowser } }",
+        "mutation A { signInBrowser } query B { open }",
+        "{ signInBrowser }",
+        "{ joinShare }",
         "mutation A { __typename } mutation B { login open }",
         "mutation { login open }",
         "mutation { renamed: open }",

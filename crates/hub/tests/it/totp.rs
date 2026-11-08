@@ -22,7 +22,7 @@ use crate::hub::{
 mod command;
 
 /// Enrols TOTP for the fixture operator; returns the secret read back from the URI.
-async fn enrol(pool: &PgPool) -> Vec<u8> {
+pub async fn enrol(pool: &PgPool) -> Vec<u8> {
     set_operator(pool).await;
     let enrolment = access::enrol_totp(pool, &test_vault(), USERNAME)
         .await
@@ -54,7 +54,7 @@ fn secret_of(uri: &str) -> Vec<u8> {
 }
 
 /// The RFC 6238 code (HMAC-SHA-1, 6 digits, 30 s) for `secret` at `at`.
-fn code(secret: &[u8], at: DateTime<Utc>) -> String {
+pub fn code(secret: &[u8], at: DateTime<Utc>) -> String {
     let counter = u64::try_from(at.timestamp() / 30).unwrap();
     let mut mac = Hmac::<Sha1>::new_from_slice(secret).unwrap();
     mac.update(&counter.to_be_bytes());

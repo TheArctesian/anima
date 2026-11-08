@@ -1,14 +1,16 @@
-//! K1 access fields: `me`, `login` and `logout` (SEC-002, API-003, LOG-005).
+//! K1 access fields: `me`, `login`, `signInBrowser` and `logout` (SEC-002, API-003, LOG-005,
+//! D-3, D-4).
 
 use std::{any::Any, sync::Arc};
 
 use async_graphql::{Context, ID, InputObject, Object, SimpleObject};
+use axum::http::header::SET_COOKIE;
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 
 use super::{
-    Authenticated, ClientAddr, Error, Identity,
-    login::{self, Attempt, SignedIn},
+    Authenticated, ClientAddr, Error, Identity, SameOrigin, TokenKind, browser,
+    login::{self, Attempt, Issue, SignedIn},
     password::Password,
     store::{self, Account},
 };
@@ -59,6 +61,14 @@ impl AuthPayload {
     }
 }
 
+/// K1 `BrowserSignIn`: what `signInBrowser` answers. The token goes only into the cookie,
+/// never into the body (D-3).
+#[derive(SimpleObject)]
+pub struct BrowserSignIn {
+    operator: OperatorProfile,
+    expires_at: DateTime<Utc>,
+}
+
 /// K1 `LoginInput`. No `Debug`: it holds the password.
 #[derive(InputObject)]
 pub struct LoginInput {
@@ -84,36 +94,67 @@ impl Query {
 /// Merged into the root `Mutation`.
 #[Object(name = "AccessMutation")]
 impl Mutation {
-    /// The only operation that needs no token (API-003).
+    /// Signs the desktop app in; needs no token (API-003).
     async fn login(
         &self,
         ctx: &Context<'_>,
         input: LoginInput,
     ) -> async_graphql::Result<AuthPayload> {
-        let attempt = Attempt {
-            username: input.username,
-            password: Password::new(input.password),
-            totp_code: input.totp_code,
-            client: *need::<ClientAddr>(ctx)?,
-            at: need::<Arc<dyn Clock>>(ctx)?.now(),
-        };
-        let (db, bus, vault) = (need::<PgPool>(ctx)?, need::<Bus>(ctx)?, need::<Vault>(ctx)?);
-        login::login(db, bus, vault, attempt)
-            .await
-            .map(AuthPayload)
-            .map_err(Error::into_graphql)
+        sign_in(ctx, input, Issue::LOGIN).await.map(AuthPayload)
     }
 
-    /// Deletes the token of this request.
+    /// Signs a browser in; needs no token (D-4). Refused before any attempt is recorded unless
+    /// the request comes from the public origin (A-4). Sets the `__Host-anima` cookie.
+    async fn sign_in_browser(
+        &self,
+        ctx: &Context<'_>,
+        input: LoginInput,
+    ) -> async_graphql::Result<BrowserSignIn> {
+        if ctx.data_opt::<SameOrigin>().is_none() {
+            return Err(Error::OtherOrigin.into_graphql());
+        }
+        let signed_in = sign_in(ctx, input, Issue::BROWSER).await?;
+        ctx.append_http_header(SET_COOKIE, browser::signed_in(&signed_in.token));
+        Ok(BrowserSignIn {
+            operator: (&signed_in.account).into(),
+            expires_at: signed_in.expires_at,
+        })
+    }
+
+    /// Deletes the token of this request; a browser also gets its cookie cleared (A-8).
     #[graphql(guard = "Authenticated")]
     async fn logout(&self, ctx: &Context<'_>) -> async_graphql::Result<bool> {
         let now = need::<Arc<dyn Clock>>(ctx)?.now();
         let client = *need::<ClientAddr>(ctx)?;
-        login::logout(need::<PgPool>(ctx)?, need::<Identity>(ctx)?, client, now)
+        let identity = need::<Identity>(ctx)?;
+        login::logout(need::<PgPool>(ctx)?, identity, client, now)
             .await
             .map_err(Error::into_graphql)?;
+        if identity.kind() == TokenKind::Browser {
+            ctx.append_http_header(SET_COOKIE, browser::signed_out());
+        }
         Ok(true)
     }
+}
+
+/// Runs one sign-in attempt from `input` for the token `issue` names.
+async fn sign_in(
+    ctx: &Context<'_>,
+    input: LoginInput,
+    issue: Issue,
+) -> async_graphql::Result<SignedIn> {
+    let attempt = Attempt {
+        username: input.username,
+        password: Password::new(input.password),
+        totp_code: input.totp_code,
+        client: *need::<ClientAddr>(ctx)?,
+        at: need::<Arc<dyn Clock>>(ctx)?.now(),
+        issue,
+    };
+    let (db, bus, vault) = (need::<PgPool>(ctx)?, need::<Bus>(ctx)?, need::<Vault>(ctx)?);
+    login::login(db, bus, vault, attempt)
+        .await
+        .map_err(Error::into_graphql)
 }
 
 /// Context data the edge or the schema must provide; its absence is a wiring fault, shown

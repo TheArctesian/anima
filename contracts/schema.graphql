@@ -62,7 +62,7 @@ enum TokenScope @pending {
 }
 
 "Set by signInBrowser together with the __Host-anima cookie. The token itself is never returned (D-3)."
-type BrowserSignIn @pending {
+type BrowserSignIn {
   operator: Operator!
   expiresAt: DateTime!
 }
@@ -1438,7 +1438,7 @@ type Mutation {
 
   # Phase 3
   "Signed out (D-4). Sets the __Host-anima cookie; refused unless Origin is the public origin."
-  signInBrowser(input: LoginInput!): BrowserSignIn! @pending
+  signInBrowser(input: LoginInput!): BrowserSignIn!
   "Login or browser token only (D-23)."
   createApiKey(input: ApiKeyInput!): ApiKeyCreated! @pending
   revokeApiKey(id: ID!): ID! @pending

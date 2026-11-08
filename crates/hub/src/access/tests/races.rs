@@ -12,7 +12,7 @@ use super::{now, test_vault};
 use crate::{
     access::{
         ClientAddr, Password, disable_totp, enrol_totp,
-        login::{self, Attempt},
+        login::{self, Attempt, Issue},
         set_operator,
         store::{self, Account},
     },
@@ -32,6 +32,7 @@ fn attempt(password: &str) -> Attempt {
         totp_code: None,
         client: ClientAddr(IpAddr::V4(Ipv4Addr::new(100, 64, 0, 3))),
         at: now(),
+        issue: Issue::LOGIN,
     }
 }
 

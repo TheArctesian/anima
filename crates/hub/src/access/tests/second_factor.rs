@@ -9,7 +9,7 @@ use super::{now, test_vault};
 use crate::{
     access::{
         ClientAddr, Error, Password, disable_totp, enrol_totp,
-        login::{self, Attempt},
+        login::{self, Attempt, Issue},
         set_operator, store,
         totp::{context, otpauth_uri},
     },
@@ -33,6 +33,7 @@ fn attempt(code: Option<&str>) -> Attempt {
         totp_code: code.map(str::to_owned),
         client: ClientAddr(IpAddr::V4(Ipv4Addr::new(100, 64, 0, 9))),
         at: now(),
+        issue: Issue::LOGIN,
     }
 }
 

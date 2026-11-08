@@ -66,21 +66,23 @@ fn current<'a>(
 /// Schema extension (API-003 backstop, ruling H-6(a)). Without a valid identity:
 /// - in `parse_query`, after the document is parsed and before validation, variable
 ///   coercion or any resolver, a document is allowed only when every operation selects just
-///   `__typename`, or is a mutation with exactly one root field, `login`. Anything else
-///   (other fields, several `login`s, introspection, root fragments) gets one
-///   `UNAUTHENTICATED` error and nothing else;
+///   `__typename`, or is a mutation with exactly one root field, which is `login`,
+///   `signInBrowser` or `joinShare` (D-4, WP-43 A-7). Anything else (other fields, two of
+///   them, introspection, root fragments) gets one `UNAUTHENTICATED` error and nothing else;
 /// - in `validation`, an allowed document that fails validation gets one `UNAUTHENTICATED`
 ///   error in place of all its validation errors. The root check does not look at fragment
 ///   definitions, variable types or directives, and their validation errors would name
 ///   schema types and fields, so a signed-out client cannot map the schema through them
-///   (T3 security SHOULD 1). A `login` whose argument cannot be coerced while resolving is
-///   still answered with the fixed `VALIDATION` text of the API boundary;
+///   (T3 security SHOULD 1). A sign-in whose argument cannot be coerced while resolving is
+///   still answered with the fixed `VALIDATION` text of the API boundary. `joinShare` has no
+///   resolver until WP-47, so today it always fails validation here;
 /// - in `request`, a response holding an error with neither a path nor a code (a syntax
 ///   error, an `operationName` the document lacks) becomes the same one `UNAUTHENTICATED`
 ///   (T8 round 2).
 ///
-/// Accepted (issue #1): signed out, a valid `login` document runs, so its sub-selection and
-/// input fields can be told apart from invalid ones, one throttled attempt per probe.
+/// Accepted (issue #1): signed out, a valid `login` or `signInBrowser` document runs, so its
+/// sub-selection and input fields can be told apart from invalid ones, one throttled attempt per
+/// probe.
 ///
 /// With a `read` token, a mutation that selects more than `login`, `logout` and
 /// `__typename` is refused with `FORBIDDEN`.
@@ -163,18 +165,24 @@ impl Extension for SignInCheck {
     }
 }
 
+/// The mutations a signed-out client may run, one per operation (API-003, D-4, A-7).
+const SIGNED_OUT_MUTATIONS: [&str; 3] = ["login", "signInBrowser", "joinShare"];
+
 /// Whether a document may run without an identity: each operation selects only
-/// `__typename`, or is a mutation whose one root selection is a `login` field.
+/// `__typename`, or is a mutation whose one root selection is a field in
+/// [`SIGNED_OUT_MUTATIONS`].
 fn signed_out_allowed(document: &ExecutableDocument) -> bool {
     operations(document).all(|operation| {
         let items = &operation.selection_set.node.items;
         let typename_only = items
             .iter()
             .all(|item| field_name(item) == Some("__typename"));
-        let one_login = operation.ty == OperationType::Mutation
+        let one_sign_in = operation.ty == OperationType::Mutation
             && items.len() == 1
-            && items.iter().all(|item| field_name(item) == Some("login"));
-        typename_only || one_login
+            && items.iter().all(|item| {
+                field_name(item).is_some_and(|name| SIGNED_OUT_MUTATIONS.contains(&name))
+            });
+        typename_only || one_sign_in
     })
 }
 
