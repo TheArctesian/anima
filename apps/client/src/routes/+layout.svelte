@@ -17,6 +17,7 @@
   import SessionPanes from '$lib/sessions/strip/SessionPanes.svelte';
   import SessionTabs from '$lib/sessions/strip/SessionTabs.svelte';
   import { sessionStart } from '$lib/sessions/view/start';
+  import { applyMotion, storedMotion } from '$lib/theme/motion-choice';
   import { applyTheme, storedTheme } from '$lib/theme/theme';
   import { applyTypefaces, storedTypefaces } from '$lib/typeface/typeface';
   import { provideDesktopUpdates } from '$lib/updates/desktop.svelte';
@@ -27,6 +28,7 @@
   // The operator's fonts apply before the first render, so the text does not change family after it shows (UI-020).
   applyTypefaces(document.documentElement, storedTypefaces(localStorage));
   applyTheme(document.documentElement, storedTheme(localStorage));
+  applyMotion(document.documentElement, storedMotion(localStorage));
   // The bar shows icons only below the compact breakpoint; set before the first render so the width never changes after load.
   let iconOnly = $state(false);
   const stopWatchingWidth = watchIconOnly(document.documentElement, window, (now) => {
