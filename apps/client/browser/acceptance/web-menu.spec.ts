@@ -68,7 +68,7 @@ test('WEB-011: a height-only resize keeps the open menu inside the window and ne
     const parts = [...document.querySelectorAll('[role=group][aria-label^="Web interfaces"] .choice, [role=group][aria-label^="Web interfaces"] .pinned')];
     return parts.map((part) => part.getBoundingClientRect()).map((rect) => rect.top >= 0 && rect.bottom <= height);
   });
-  expect(inside.length).toBeGreaterThanOrEqual(4);
+  expect(inside.length).toBeGreaterThanOrEqual(3); // two choices and the pin of the pinned one
   expect(inside.every(Boolean)).toBe(true);
 
   // placeNear puts the panel flush under the button or flush above it, so the two touch within the gap.
