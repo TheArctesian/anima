@@ -37,6 +37,7 @@ fn bld_063_the_files_are_plain_names_with_a_sha256_and_a_size() {
         vec![file(".hidden", SHA, 1)],
         vec![file("a/b", SHA, 1)],
         vec![file("SHA256SUMS", SHA, 1), file("SHA256SUMS", SHA, 1)],
+        vec![file("Anima.dmg", SHA, 1), file("anima.DMG", SHA, 1)],
         vec![file("x", &SHA[..63], 1)],
         vec![file("x", SHA, 0)],
         vec![file("x", SHA, 1); 9],
@@ -48,6 +49,9 @@ fn bld_063_the_files_are_plain_names_with_a_sha256_and_a_size() {
 #[test]
 fn bld_063_the_proposed_feed_is_a_json_object_of_at_most_64_kib() {
     assert!(upload::feed(r#"{"version":"0.1.12","platforms":{}}"#).is_ok());
+    // Kept as the hub read it: one value for a repeated key, no spacing of the builder's.
+    let kept = upload::feed("{ \"version\" : \"0.1.11\", \"version\": \"0.1.12\" }\n").unwrap();
+    assert_eq!(kept, r#"{"version":"0.1.12"}"#);
     for bad in [
         "",
         "[]",

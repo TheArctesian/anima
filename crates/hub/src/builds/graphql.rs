@@ -33,6 +33,9 @@ use crate::{access::Authenticated, clock::Clock, ids::BuildJobId};
 /// The page size of `releases` when the client names none (K1).
 const FIRST_RELEASES: i32 = 20;
 
+/// The page size of `buildJobLog` when the client names none (K1).
+const FIRST_LOG_LINES: i32 = 500;
+
 fn pool<'a>(ctx: &Context<'a>) -> Result<&'a PgPool> {
     schema_dependency::<PgPool>(ctx)
 }
@@ -84,11 +87,25 @@ impl Query {
         super::builders(pool(ctx)?).await.map_err(to_graphql)
     }
 
-    /// The job's stored log, oldest line first (BLD-081).
+    /// Up to `first` (1 to 1000) of the job's stored lines after sequence `after`, oldest first;
+    /// the next page starts after the last sequence returned (BLD-048, BLD-081).
     #[graphql(guard = "Authenticated")]
-    async fn build_job_log(&self, ctx: &Context<'_>, id: ID) -> Result<Vec<LogLine>> {
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "K1 fixes the argument list of Query.buildJobLog"
+    )]
+    async fn build_job_log(
+        &self,
+        ctx: &Context<'_>,
+        id: ID,
+        after: Option<i64>,
+        #[graphql(default_with = "Some(FIRST_LOG_LINES)")] first: Option<i32>,
+    ) -> Result<Vec<LogLine>> {
         let id: BuildJobId = parse_id(&id, "id")?;
-        super::job_log(pool(ctx)?, id).await.map_err(to_graphql)
+        let first = first.unwrap_or(FIRST_LOG_LINES);
+        super::job_log(pool(ctx)?, id, after, first)
+            .await
+            .map_err(to_graphql)
     }
 }
 

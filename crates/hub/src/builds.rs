@@ -7,6 +7,7 @@
 
 mod builders;
 pub mod graphql;
+mod hidden_text;
 mod jobs;
 mod log_lines;
 mod model;
@@ -220,11 +221,24 @@ pub async fn next_version(db: &PgPool) -> Result<Option<Version>, Error> {
     Ok(release::next_version(&store::built(db).await?))
 }
 
-/// The stored log of a job, oldest line first (BLD-081).
+/// The most log lines one `buildJobLog` page returns.
+pub const MAX_LOG_PAGE: i32 = 1000;
+
+/// Up to `first` stored lines of a job after sequence `after` (from its start when `None`),
+/// oldest first (BLD-048, BLD-081).
 ///
 /// # Errors
 ///
-/// `Database` when the query fails.
-pub async fn job_log(db: &PgPool, id: BuildJobId) -> Result<Vec<LogLine>, Error> {
-    store::lines(db, id).await
+/// `Validation` (`first`) outside 1 to [`MAX_LOG_PAGE`]; `Database` when the query fails.
+pub async fn job_log(
+    db: &PgPool,
+    id: BuildJobId,
+    after: Option<i64>,
+    first: i32,
+) -> Result<Vec<LogLine>, Error> {
+    if !(1..=MAX_LOG_PAGE).contains(&first) {
+        let message = format!("Ask for 1 to {MAX_LOG_PAGE} lines.");
+        return Err(Error::Validation(vec![FieldError::new("first", message)]));
+    }
+    store::lines(db, id, after.unwrap_or(0), i64::from(first)).await
 }

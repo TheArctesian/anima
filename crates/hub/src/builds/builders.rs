@@ -8,7 +8,7 @@ use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
 use super::{
-    Error,
+    Error, hidden_text,
     model::{Builder, FieldError, Missing, Platform},
     queue, store,
 };
@@ -24,7 +24,7 @@ const MAX_NAME_CHARS: usize = 64;
 const WRONG_ADDRESS: &str = "This builder must call from the address it enrolled from.";
 
 /// The refusal of a builder token whose builder record is gone.
-const NOT_ENROLLED: &str = "This builder is not enrolled.";
+pub(super) const NOT_ENROLLED: &str = "This builder is not enrolled.";
 
 /// What the operator's client sends to enrol its computer (BLD-021).
 #[derive(Clone, Debug)]
@@ -50,13 +50,18 @@ impl Builder {
 }
 
 /// The name as stored: trimmed, 1 to 64 characters, no control character.
-fn name(text: &str) -> Result<String, FieldError> {
+pub(super) fn name(text: &str) -> Result<String, FieldError> {
     let text = text.trim();
     let count = text.chars().count();
-    if count == 0 || count > MAX_NAME_CHARS || text.chars().any(char::is_control) {
+    if count == 0
+        || count > MAX_NAME_CHARS
+        || text
+            .chars()
+            .any(|c| c.is_control() || hidden_text::is_format(c))
+    {
         return Err(FieldError::new(
             "name",
-            "Use 1 to 64 characters with no control characters.",
+            "Use 1 to 64 characters with no control or format characters.",
         ));
     }
     Ok(text.to_owned())

@@ -1142,7 +1142,8 @@ type Query {
   "The highest version published or under way with the patch plus 1; null before the first."
   nextReleaseVersion: String
   builders: [Builder!]!
-  buildJobLog(id: ID!): [BuildLogLine!]!
+  "Up to `first` (1 to 1000) stored lines after sequence `after`, oldest first (BLD-048)."
+  buildJobLog(id: ID!, after: Int, first: Int = 500): [BuildLogLine!]!
 }
 
 type Mutation {

@@ -67,6 +67,7 @@ fn queued_job() -> BuildJob {
     }
 }
 
+mod fields;
 mod lines;
 mod queue;
 mod releases;

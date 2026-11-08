@@ -34,35 +34,44 @@ pub(in crate::builds) async fn append_lines(
     Ok(())
 }
 
-/// Deletes the job's oldest lines until its log holds at most `max_bytes` (BLD-048, D-4).
+/// Deletes the job's oldest lines until its log holds at most `max_bytes`, each line counting
+/// its text and `overhead` (BLD-048, D-4).
 pub(in crate::builds) async fn trim_log(
     conn: &mut PgConnection,
     job: BuildJobId,
     max_bytes: i64,
+    overhead: i64,
 ) -> Result<(), Error> {
     sqlx::query(
         "DELETE FROM builds.log_lines l USING ( \
-             SELECT sequence, sum(octet_length(text)) OVER (ORDER BY sequence DESC) AS kept \
+             SELECT sequence, \
+                 sum(octet_length(text) + $3) OVER (ORDER BY sequence DESC) AS kept \
              FROM builds.log_lines WHERE job_id = $1 \
          ) newer \
          WHERE l.job_id = $1 AND l.sequence = newer.sequence AND newer.kept > $2",
     )
     .bind(job)
     .bind(max_bytes)
+    .bind(overhead)
     .execute(conn)
     .await?;
     Ok(())
 }
 
-/// The job's stored log, oldest line first.
+/// At most `first` of the job's stored lines after sequence `after`, oldest first.
 pub(in crate::builds) async fn lines(
     db: impl PgExecutor<'_>,
     job: BuildJobId,
+    after: i64,
+    first: i64,
 ) -> Result<Vec<LogLine>, Error> {
     let rows: Vec<(i64, String)> = sqlx::query_as(
-        "SELECT sequence, text FROM builds.log_lines WHERE job_id = $1 ORDER BY sequence",
+        "SELECT sequence, text FROM builds.log_lines WHERE job_id = $1 AND sequence > $2 \
+         ORDER BY sequence LIMIT $3",
     )
     .bind(job)
+    .bind(after)
+    .bind(first)
     .fetch_all(db)
     .await?;
     Ok(rows

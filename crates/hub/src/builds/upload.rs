@@ -30,8 +30,8 @@ fn sha256(text: &str) -> Option<String> {
         .then(|| text.to_ascii_lowercase())
 }
 
-/// The reported files, checked: 1 to 8 of them, each name valid and named once, each SHA-256
-/// 64 hex digits and each size above zero.
+/// The reported files, checked: 1 to 8 of them, each name valid and named once ignoring ASCII
+/// case, each SHA-256 64 hex digits and each size above zero.
 pub(super) fn files(reported: &[UploadedFile]) -> Result<Vec<UploadedFile>, FieldError> {
     if reported.is_empty() || reported.len() > MAX_FILES {
         return Err(FieldError::new(
@@ -43,7 +43,9 @@ pub(super) fn files(reported: &[UploadedFile]) -> Result<Vec<UploadedFile>, Fiel
     reported
         .iter()
         .map(|file| {
-            if !file_name(&file.name) || !names.insert(file.name.as_str()) {
+            // Compared without case: on a case-insensitive disk or bucket view two such
+            // names are one file (T3).
+            if !file_name(&file.name) || !names.insert(file.name.to_ascii_lowercase()) {
                 return Err(FieldError::new(
                     "files",
                     "Each file needs one plain file name, used once.",
@@ -63,14 +65,18 @@ pub(super) fn files(reported: &[UploadedFile]) -> Result<Vec<UploadedFile>, Fiel
         .collect()
 }
 
-/// The proposed feed, checked: a JSON object of at most 64 KiB.
+/// The proposed feed, checked: a JSON object of at most 64 KiB, kept as the hub writes it out
+/// again, so what is stored is exactly what the hub read (a repeated key keeps its last value,
+/// and no stray text survives). Written out, it is never longer than the text it came from.
 pub(super) fn feed(text: &str) -> Result<String, FieldError> {
     let refused = || FieldError::new("feed", "The feed is a JSON object of at most 64 KiB.");
     if text.len() > MAX_FEED_BYTES {
         return Err(refused());
     }
     match serde_json::from_str::<serde_json::Value>(text) {
-        Ok(serde_json::Value::Object(_)) => Ok(text.to_owned()),
+        Ok(object @ serde_json::Value::Object(_)) => {
+            serde_json::to_string(&object).map_err(|_| refused())
+        }
         _ => Err(refused()),
     }
 }

@@ -54,6 +54,30 @@ async fn bld_029_a_builder_holding_a_lease_claims_nothing_more(pool: PgPool) {
     assert_eq!(second["claimBuildJob"], Value::Null);
 }
 
+#[sqlx::test(migrations = "./migrations")]
+async fn bld_029_concurrent_claims_of_one_builder_take_one_lease(pool: PgPool) {
+    let operator = operator(&pool).await;
+    let hub = Hub::new(&pool, start());
+    for patch in 1..=6 {
+        create_job(&hub, &operator, &format!("0.1.{patch}")).await;
+    }
+    let builder = enrol(&hub, &operator, "pop-os").await;
+    let claims = (0..16).map(|_| claim(&hub, &builder.token));
+    let responses = async_graphql::futures_util::future::join_all(claims).await;
+    let claimed = responses
+        .into_iter()
+        .filter(|response| !data(response.clone())["claimBuildJob"].is_null())
+        .count();
+    assert_eq!(claimed, 1);
+    let leased: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM builds.jobs WHERE builder_id IS NOT NULL AND state = 'claimed'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(leased, 1);
+}
+
 async fn failure_events(pool: &PgPool) -> Vec<String> {
     sqlx::query_scalar(
         "SELECT message FROM events.event_log WHERE source = 'hub' AND severity = 'error'",

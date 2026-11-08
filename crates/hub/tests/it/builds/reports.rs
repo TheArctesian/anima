@@ -1,7 +1,7 @@
 //! Reports from the lease holder only, redacted and trimmed log lines, the upload report and
 //! version refusal (BLD-002, BLD-010, BLD-048, BLD-049, BLD-063, LOG-007).
 
-use serde_json::json;
+use serde_json::{Value, json};
 use sqlx::PgPool;
 
 use super::harness::{claim, create, create_job, data, enrol, operator, report};
@@ -82,15 +82,76 @@ async fn bld_048_a_job_keeps_the_last_2_mib_of_its_log(pool: PgPool) {
         let lines = vec![line.as_str(); 250];
         data(report(&hub, &builder.token, &job, &lines).await);
     }
-    let (bytes, last): (i64, i64) = sqlx::query_as(
-        "SELECT sum(octet_length(text))::bigint, max(sequence) FROM builds.log_lines",
-    )
-    .fetch_one(&pool)
-    .await
-    .unwrap();
+    // Each line counts its text and 64 bytes.
+    let (bytes, last) = log_size(&pool).await;
     assert!(bytes <= 2 * 1024 * 1024, "{bytes}");
-    assert!(bytes > 2 * 1024 * 1024 - 4000, "{bytes}");
+    assert!(bytes > 2 * 1024 * 1024 - 4064, "{bytes}");
     assert_eq!(last, 750);
+}
+
+/// The stored log's size, counting 64 bytes a line, and its last sequence.
+async fn log_size(pool: &PgPool) -> (i64, i64) {
+    sqlx::query_as(
+        "SELECT sum(octet_length(text) + 64)::bigint, max(sequence) FROM builds.log_lines",
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap()
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn bld_048_short_and_blank_lines_cannot_keep_unbounded_rows(pool: PgPool) {
+    let operator = operator(&pool).await;
+    let hub = Hub::new(&pool, start());
+    let job = create_job(&hub, &operator, "0.1.12").await;
+    let builder = enrol(&hub, &operator, "pop-os").await;
+    data(claim(&hub, &builder.token).await);
+    data(report(&hub, &builder.token, &job, &[""; 1000]).await);
+    let rows: i64 = sqlx::query_scalar("SELECT count(*) FROM builds.log_lines")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(rows, 0);
+    for _ in 0..40 {
+        data(report(&hub, &builder.token, &job, &["x"; 1000]).await);
+    }
+    let (bytes, last) = log_size(&pool).await;
+    assert!(bytes <= 2 * 1024 * 1024, "{bytes}");
+    assert_eq!(last, 40_000);
+    let rows: i64 = sqlx::query_scalar("SELECT count(*) FROM builds.log_lines")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(rows, 2 * 1024 * 1024 / 65);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn bld_048_the_log_is_read_a_page_at_a_time(pool: PgPool) {
+    let operator = operator(&pool).await;
+    let hub = Hub::new(&pool, start());
+    let job = create_job(&hub, &operator, "0.1.12").await;
+    let builder = enrol(&hub, &operator, "pop-os").await;
+    data(claim(&hub, &builder.token).await);
+    data(report(&hub, &builder.token, &job, &["a", "b", "c", "d", "e"]).await);
+    let query = "query($id: ID!, $after: Int, $first: Int) { \
+                 buildJobLog(id: $id, after: $after, first: $first) { sequence text } }";
+    let page = |after: Value, first: i32| json!({ "id": job, "after": after, "first": first });
+    let first = data(hub.post(Some(&operator), query, page(Value::Null, 2)).await);
+    assert_eq!(
+        first["buildJobLog"],
+        json!([{ "sequence": 1, "text": "a" }, { "sequence": 2, "text": "b" }])
+    );
+    let rest = data(hub.post(Some(&operator), query, page(json!(2), 10)).await);
+    let texts: Vec<&str> = (rest["buildJobLog"].as_array().unwrap().iter())
+        .map(|line| line["text"].as_str().unwrap())
+        .collect();
+    assert_eq!(texts, ["c", "d", "e"]);
+    for first in [0, 1001] {
+        let refused = hub
+            .post(Some(&operator), query, page(Value::Null, first))
+            .await;
+        assert_eq!(error(&refused).1, "VALIDATION", "{refused}");
+    }
 }
 
 #[sqlx::test(migrations = "./migrations")]

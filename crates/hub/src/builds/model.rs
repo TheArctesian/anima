@@ -230,8 +230,9 @@ pub struct LogLine {
     pub text: String,
 }
 
-/// A builder's report on the job it holds (BLD-010, BLD-048).
-#[derive(Clone, Debug)]
+/// A builder's report on the job it holds (BLD-010, BLD-048). No `Debug`: its lines and reason
+/// are unredacted builder text (LOG-007).
+#[derive(Clone)]
 pub struct Report {
     pub job: BuildJobId,
     /// The new state; `None` (or the current state) only extends the lease.

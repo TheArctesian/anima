@@ -6,7 +6,7 @@ use chrono::{DateTime, Utc};
 use sqlx::{PgConnection, PgPool};
 
 use super::{
-    Error, JobUpdate, Updates, log_lines,
+    Error, JobUpdate, Updates, builders, log_lines,
     model::{BuildJob, Builder, JobState, LogLine, Missing, Report, UploadedFile},
     queue::{self, Refusal},
     store, upload,
@@ -36,8 +36,9 @@ impl BuildQueue<'_> {
     }
 }
 
-/// A builder's report that the job's files are uploaded (BLD-063, D-5).
-#[derive(Clone, Debug)]
+/// A builder's report that the job's files are uploaded (BLD-063, D-5). No `Debug`: its feed is
+/// builder text (LOG-007).
+#[derive(Clone)]
 pub struct Upload {
     pub job: BuildJobId,
     pub files: Vec<UploadedFile>,
@@ -119,13 +120,19 @@ pub async fn expire_leases(
 ///
 /// # Errors
 ///
-/// `Database` or `Events` when the claim cannot be written; nothing is changed then.
+/// `Forbidden` when the builder is no longer enrolled; `Database` or `Events` when the claim
+/// cannot be written. Nothing is changed then.
 pub async fn claim(
     build_queue: BuildQueue<'_>,
     builder: &Builder,
     now: DateTime<Utc>,
 ) -> Result<Option<BuildJob>, Error> {
     let mut tx = build_queue.db.begin().await?;
+    // First: a second claim of the same builder waits here until this one commits, so it sees
+    // the lease this one takes (BLD-029).
+    if !store::lock_builder(&mut tx, builder.id).await? {
+        return Err(Error::Forbidden(builders::NOT_ENROLLED));
+    }
     let mut changed = expire_in(&mut tx, build_queue.bus, now).await?;
     let claimed = if store::holds_lease(&mut *tx, builder.id, now).await? {
         None
@@ -158,7 +165,8 @@ async fn append(
     }
     let last = job.log_sequence;
     store::append_lines(conn, job.id, last, &lines).await?;
-    store::trim_log(conn, job.id, log_lines::MAX_JOB_LOG_BYTES).await?;
+    let (max, overhead) = (log_lines::MAX_JOB_LOG_BYTES, log_lines::LINE_OVERHEAD_BYTES);
+    store::trim_log(conn, job.id, max, overhead).await?;
     let stored: Vec<LogLine> = (last + 1..)
         .zip(lines)
         .map(|(sequence, text)| LogLine { sequence, text })

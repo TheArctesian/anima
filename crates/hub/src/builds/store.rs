@@ -9,7 +9,9 @@ mod releases;
 use chrono::{DateTime, Utc};
 use sqlx::{PgConnection, PgExecutor};
 
-pub(super) use builders::{builder_by_token, builders, delete_builder, insert_builder, touch};
+pub(super) use builders::{
+    builder_by_token, builders, delete_builder, insert_builder, lock_builder, touch,
+};
 pub(super) use logs::{append_lines, lines, replace_files, set_feed, trim_log};
 pub(super) use releases::{built, insert_release, jobs_of, lock_releases, releases_after};
 

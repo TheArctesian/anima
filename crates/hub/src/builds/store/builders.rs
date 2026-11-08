@@ -112,6 +112,21 @@ pub(in crate::builds) async fn delete_builder(
         .transpose()
 }
 
+/// Locks the builder's row until the transaction ends, so one builder's claims run one at a
+/// time (BLD-029); `false` when there is no such builder. `NO KEY UPDATE` leaves the foreign
+/// keys from `builds.jobs` free.
+pub(in crate::builds) async fn lock_builder(
+    conn: &mut PgConnection,
+    id: BuilderId,
+) -> Result<bool, Error> {
+    let locked: Option<i32> =
+        sqlx::query_scalar("SELECT 1 FROM builds.builders WHERE id = $1 FOR NO KEY UPDATE")
+            .bind(id)
+            .fetch_optional(conn)
+            .await?;
+    Ok(locked.is_some())
+}
+
 /// Every builder, in enrolment order.
 pub(in crate::builds) async fn builders(db: impl PgExecutor<'_>) -> Result<Vec<Builder>, Error> {
     let sql = format!("{SELECT}ORDER BY enrolled_at, id");
