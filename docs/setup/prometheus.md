@@ -4,6 +4,8 @@ The hub gives the state of every check at `GET /metrics` in the Prometheus text 
 not deploy a Prometheus server. This page shows how to point your own one at the hub. Spec: INT-001,
 INT-002. Decision: D-24.
 
+Prometheus needs API keys (WP-43, WP-50) and `/metrics` (WP-46) to be deployed in the hub image.
+
 ## 1. Make a read API key
 
 1. Open Settings in the Anima client and make an API key.
@@ -18,16 +20,15 @@ Revoke the key in Settings to stop it at once.
 
 Put the secret in a file that only the Prometheus user can read:
 
-```sh
-# Run on the machine that runs Prometheus. Type the secret; do not paste it into chat.
-umask 077
+```bash
+# Run in bash, with sudo, on the machine that runs Prometheus. Type the secret; do not paste it into chat.
 read -rs -p 'API key: ' value; echo
-printf '%s' "$value" > /etc/prometheus/anima_api_key
+printf '%s' "$value" | sudo install -m 0600 -o prometheus -g prometheus /dev/stdin /etc/prometheus/anima_api_key
 unset value
-chmod 0600 /etc/prometheus/anima_api_key
 ```
 
-Give the file to the user that runs Prometheus. Never commit it.
+The command gives the file to the user that runs Prometheus (`prometheus` here; use your own user name)
+with mode 0600. Never commit it.
 
 ## 3. Add the scrape job
 

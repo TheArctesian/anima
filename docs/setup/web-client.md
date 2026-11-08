@@ -8,15 +8,14 @@ that is on the VPN. Spec: Section 1.3, CLI-001, SEC-001, SEC-002. Decisions: D-2
 1. Make sure the computer is on the VPN as a machine of the Headscale user `operator@`.
 2. Open `https://hub.anima.ing/` in a browser.
 
-Supported browsers:
+Supported browsers (D-6): the two latest major versions of Safari, Chrome, Edge and Firefox. The
+acceptance test (plan criterion 1) uses Safari and Chrome on macOS, and Firefox or Chromium on Linux.
 
-| System | Browsers |
-| --- | --- |
-| macOS | Safari, Chrome |
-| Linux | Firefox, Chromium |
+`hub.anima.ing` has a public, unproxied A record that points to the hub's VPN address (DNS-005). The
+name resolves everywhere, but the address answers only machines on the VPN, so a computer outside the
+VPN gets no answer. Phase 3 adds no new DNS record.
 
-A computer that is not on the VPN cannot reach `hub.anima.ing`. There is no public DNS record for it
-(DNS-005).
+The web client works once WP-43 and WP-44 are deployed in the hub image.
 
 ## Sign in
 
@@ -31,7 +30,7 @@ is treated as signed out.
 
 ## Network and origin
 
-- No public DNS record and no Cloudflare change are needed.
+- No new DNS record and no Cloudflare change are needed.
 - No CORS change is needed. The web client is served by the hub itself, so it is same-origin.
   `CLIENT_ORIGINS` still lists only the desktop app's two origins.
 

@@ -229,19 +229,24 @@ plain `docker compose up -d` does not start it.
 sudo docker compose --profile apprise up -d apprise
 ```
 
+Do this only after the firewall rule of step 7 is in place.
+
 - It is stateless: it keeps no URL, no key and no result, and has no volume. Every request carries its
   own URLs. It holds no secret and publishes no port.
 - The hub reaches it on the `notify` network. Enter `http://172.30.3.10:8000` as the Apprise address
   of the channel in Settings. The port is the one the image listens on.
+- **Run it only with the host firewall rule.** Apprise can still fetch any URL through a service URL
+  parameter such as `template`, so its onward traffic is not contained by the allow list. The rule in
+  step 7 of "Phase 3 operator changes (WP-52)" contains it. Do not start Apprise without that rule.
 - **Allow list.** `APPRISE_ALLOW_SERVICES` sets the only services it will send to. The default is
   `discord,tgram,slack` (Discord, Telegram, Slack). To change it, set the variable in `deploy/.env`
-  and run `docker compose --profile apprise up -d apprise`. Add only cloud services. Never add
+  and run `sudo docker compose --profile apprise up -d apprise`. Add only cloud services. Never add
   `json`, `xml`, `form`, `mailto`, `ntfy` or `apprise`: they take any host, so a channel could then
   reach networks that the hub's deny list protects.
-- **Attachments.** `APPRISE_ATTACH_REJECT_URL` is `*`, so Apprise never fetches an `attach` URL.
+- **Attachments.** `APPRISE_ATTACH_REJECT_URL` is `*`, so Apprise never fetches an `attach` URL. This
+  does not stop a `template` parameter in a service URL.
 - **Outside the hub's deny list.** Apprise's own onward traffic is not covered by `ANIMA_PROBE_DENY`.
-  The allow list and the attachment reject limit it to the named services. A host firewall rule is an
-  optional extra: see step 8 of "Phase 3 operator changes (WP-52)".
+  The allow list and the attachment reject do not contain it. The host firewall rule (step 7) does.
 
 ## Deny list
 
@@ -254,7 +259,8 @@ The deny list cannot contain `172.30.3.0/24` as a whole: a notification target i
 the same list, so the hub would refuse its own Apprise (E-1). Leaving the subnet out would let a
 check reach the host through the bridge gateway `172.30.3.1`, and the hub itself. So the list holds the
 eight blocks that cover the subnet without `172.30.3.10`. The subnet and the address are fixed values
-in `compose.yaml`; do not make them variables. A test proves that the blocks and the one address
+in `compose.yaml`; do not make them variables. The list does not cover Apprise's own onward traffic;
+the host firewall rule does (step 7). A test proves that the blocks and the one address
 together are exactly the subnet.
 
 ## Egress check
@@ -264,12 +270,12 @@ the hub first, then run it on the VPS:
 
 ```sh
 # Run on the VPS, in /opt/anima/deploy, with the hub running.
-sh bin/egress-check [HOST:PORT ...]
+sudo sh bin/egress-check [HOST:PORT ...]
 ```
 
 - With no argument it tries `ntfy.sh:443`, `smtp.gmail.com:465` and `smtp.gmail.com:587`. Pass
   the SMTP host of your own mailbox to test that instead, for example
-  `sh bin/egress-check smtp.example.com:587`.
+  `sudo sh bin/egress-check smtp.example.com:587`.
 - It runs from inside the hub container and prints `open HOST:PORT` or `blocked HOST:PORT (reason)`
   for each target. `EGRESS_TIMEOUT` sets the seconds to wait (default 5).
 - Exit code `0`: all targets open. `1`: some are blocked. `2`: bad arguments, or the hub container
@@ -337,8 +343,10 @@ Do these once, in order, on the VPS in `/opt/anima/deploy` (AlmaLinux 10, as the
 Each change to the VPS needs the operator's confirmation in chat first (VPS-005). Nothing in this
 repository does them. Log each one in `docs/programme/operator-changes.md`.
 
-The web client and recording work only after the WP-43 and WP-48 hub code is in the image. Before
-that, the new variables are harmless: the hub ignores them.
+Each feature works once its package is in the image. Browser sign-in needs WP-43 and WP-44. The
+Apprise channel, the test notification and the retention settings need WP-45 and WP-50. Recordings
+need WP-48. Prometheus needs API keys (WP-43, WP-50) and `/metrics` (WP-46). Before that, the new
+variables are harmless: the hub ignores them.
 
 **1. Check the free disk space (D-14).**
 
@@ -357,11 +365,17 @@ Undo: nothing changes.
 # Run on the VPS, in /opt/anima/deploy.
 sudo docker tag anima-hub:local anima-hub:previous
 sudo cp -p compose.yaml compose.yaml.before-wp52
+sudo systemctl start anima-backup.service
 ```
 
-Check: `sudo docker image ls anima-hub` lists `previous` and `local` with the same image ID, and
-`ls compose.yaml.before-wp52` shows the file.
-Undo: `sudo docker image rm anima-hub:previous` and `sudo rm compose.yaml.before-wp52`.
+The backup is the way back from the Phase 3 migrations (see step 5, Undo). Wait for it to finish, and
+read the dump path with `sudo journalctl -u anima-backup.service -n 20`.
+
+Check: `sudo docker image ls anima-hub` lists `previous` and `local` with the same image ID,
+`ls compose.yaml.before-wp52` shows the file, and the journal shows a new dump.
+Undo: `sudo docker image rm anima-hub:previous` and `sudo rm compose.yaml.before-wp52`. This step
+overwrites the earlier `previous` tag (the WP-18 image of 2026-11-06), and that image cannot be
+restored from here.
 
 **3. Build the hub image on the Mac for amd64, and load it on the VPS.** Use the commit that you
 want to deploy (`<sha>` is its short hash).
@@ -377,6 +391,12 @@ scp /tmp/anima-hub-<sha>.tar.gz anima-admin@100.64.0.1:/tmp/
 # Run on the VPS.
 gunzip -c /tmp/anima-hub-<sha>.tar.gz | sudo docker load
 sudo docker tag anima-hub:<sha> anima-hub:local
+rm /tmp/anima-hub-<sha>.tar.gz
+```
+
+```sh
+# Run on the Mac.
+rm /tmp/anima-hub-<sha>.tar.gz
 ```
 
 Check: `sudo docker image ls anima-hub` shows `local` with the image ID of `<sha>`.
@@ -395,14 +415,24 @@ scp deploy/compose.yaml deploy/bin/egress-check anima-admin@100.64.0.1:/tmp/
 sudo install -m 0644 -o root -g root /tmp/compose.yaml compose.yaml
 sudo install -m 0755 -o root -g root /tmp/egress-check bin/egress-check
 sudo docker compose config --quiet
+rm /tmp/compose.yaml /tmp/egress-check
 ```
 
 Check: `docker compose config --quiet` prints nothing and exits 0. It needs `ANIMA_HUB_ADDRESS`,
 `ANIMA_ACME_EMAIL` and `ANIMA_VPS_PUBLIC_ADDRESS` in `deploy/.env`, which are already there.
 Undo: `sudo cp -p compose.yaml.before-wp52 compose.yaml` and `sudo rm bin/egress-check`.
 
-**5. Start the new hub.** `docker compose up -d hub` runs `migrate` first. The change creates the
-`recordings` volume and the `notify` network.
+**5. Start the new hub.** First check that `172.30.3.0/24` is free on the VPS, because the new `notify`
+network uses it:
+
+```sh
+# Run on the VPS.
+sudo docker network inspect $(sudo docker network ls -q) -f '{{.Name}} {{range .IPAM.Config}}{{.Subnet}}{{end}}'
+```
+
+No line may show `172.30.3.0/24`. If one does, stop and ask the operator. Then run
+`docker compose up -d hub`. It runs `migrate` first, and creates the `recordings` volume and the
+`notify` network.
 
 ```sh
 # Run on the VPS, in /opt/anima/deploy.
@@ -449,21 +479,27 @@ Undo:
 # Run on the VPS, in /opt/anima/deploy.
 sudo docker tag anima-hub:previous anima-hub:local
 sudo cp -p compose.yaml.before-wp52 compose.yaml
-sudo docker compose up -d hub
+sudo docker compose up -d --no-deps hub
 sudo docker network rm deploy_notify
 ```
 
-The new migrations stay in the database; the previous hub ignores them. The last command is needed
-only if `deploy_notify` is left over (and Apprise, if you started it, is removed first: step 7).
-The `recordings` volume stays. `sudo docker volume rm deploy_recordings` removes it and **destroys all
-recordings**. Run it only if the operator wants a full revert.
+`--no-deps` is required. The hub depends on `migrate`, and `migrate` from the old image fails by design
+when the database holds migrations it does not know (sqlx `VersionMissing`). The old hub then runs against
+the newer schema. The Phase 3 migrations are not all additive: K2 in
+[phase-3-contracts.md](../docs/programme/phase-3-contracts.md) moves `sessions.host_keys` and
+`sessions.server_certificates` to a new schema `trust` (migration 0920), and the old hub reads them in
+`sessions`. So the old hub may not work after the migrations. If it does not, restore the database from
+the dump of step 2 (`backup/README.md`, Restore) before you start the old hub. Remove Apprise first if you
+started it (step 8); then `docker network rm deploy_notify` works. The `recordings` volume stays.
+`sudo docker volume rm deploy_recordings` removes it and **destroys all recordings**. Run it only if the
+operator wants a full revert.
 
 **6. Run the egress check.**
 
 ```sh
 # Run on the VPS, in /opt/anima/deploy, with the hub running.
-sh bin/egress-check
-sh bin/egress-check smtp.example.com:587
+sudo sh bin/egress-check
+sudo EGRESS_TIMEOUT=10 sh bin/egress-check smtp.example.com:587
 ```
 
 Replace `smtp.example.com:587` with the SMTP host and port of the operator's mailbox. Check: every
@@ -472,23 +508,10 @@ is blocked, use another port or a provider that allows it. Finish with a test no
 channel in Settings, because an open port does not prove that SMTP works.
 Undo: nothing changes.
 
-**7. Optional: start Apprise.**
-
-```sh
-# Run on the VPS, in /opt/anima/deploy.
-sudo docker compose --profile apprise up -d apprise
-sudo docker compose --profile apprise ps apprise
-sudo docker compose --profile apprise exec -T apprise curl -fsS http://127.0.0.1:8000/status
-```
-
-Check: `apprise` is `Up (healthy)` and the status call prints `OK`. Then, in Settings, make an
-Apprise channel with the address `http://172.30.3.10:8000` and a `discord://`, `tgram://` or
-`slack://` URL, and send a test notification.
-Undo: `sudo docker compose --profile apprise rm -sf apprise`.
-
-**8. Optional, proposed: block Apprise from the host and from private networks.** The allow list and
-the attachment reject already limit Apprise (see "Apprise"). This rule adds a second layer. It needs the
-operator's confirmation (VPS-005), and you must confirm the chain names on the host first:
+**7. Required before Apprise: block Apprise from the host and from private networks (proposed).**
+Apprise can fetch any URL through a service URL parameter such as `template`, and the allow list and
+attachment reject do not stop that. This rule is what contains it. Do not start Apprise without it. It
+needs the operator's confirmation (VPS-005), and you must confirm the chain names on the host first:
 
 ```sh
 # Run on the VPS.
@@ -505,9 +528,25 @@ sudo nft insert rule inet anima_filter input ip saddr 172.30.3.10 drop
 sudo nft insert rule inet anima_filter forward ip saddr 172.30.3.10 ip daddr != 172.30.3.0/24 ip daddr { 10.0.0.0/8, 100.64.0.0/10, 127.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12, 192.168.0.0/16 } drop
 ```
 
-Check: `sudo nft -a list table inet anima_filter` shows both rules, and the test notification of
-step 7 still arrives. The rules last until the firewall is reloaded or the host restarts. To keep them,
-WP-03's firewall file must change; that is a separate change.
+Resolver check. Docker's embedded DNS forwards Apprise's lookups from the container, so they pass the
+`forward` chain. Run this and check that no `nameserver` line is in a dropped range:
+
+```sh
+# Run on the VPS.
+grep nameserver /etc/resolv.conf
+```
+
+If one is (for example `10.x.x.x`), Apprise cannot resolve names. Add an `accept` rule for that address
+and port 53 before the `forward` drop, with the operator's confirmation.
+
+Check: `sudo nft -a list table inet anima_filter` shows both rules. After step 8, the test notification
+still arrives.
+
+Follow-up, a separate change that needs the operator's confirmation: the rules last until the firewall
+reloads or the host restarts. To keep them, add the same two rules to `deploy/headscale/vps/nftables.conf`
+(installed on the VPS as `/etc/nftables/anima.nft`), and apply it as WP-03 describes. Until then, repeat
+this step after every reboot, before Apprise starts.
+
 Undo, by rule handle:
 
 ```sh
@@ -517,6 +556,20 @@ sudo nft -a list chain inet anima_filter forward
 sudo nft delete rule inet anima_filter input handle <HANDLE_OF_THE_APPRISE_RULE>
 sudo nft delete rule inet anima_filter forward handle <HANDLE_OF_THE_APPRISE_RULE>
 ```
+
+**8. Optional: start Apprise, only after step 7.**
+
+```sh
+# Run on the VPS, in /opt/anima/deploy.
+sudo docker compose --profile apprise up -d apprise
+sudo docker compose --profile apprise ps apprise
+sudo docker compose --profile apprise exec -T apprise curl -fsS http://127.0.0.1:8000/status
+```
+
+Check: `apprise` is `Up (healthy)` and the status call prints `OK`. Then, in Settings, make an
+Apprise channel with the address `http://172.30.3.10:8000` and a `discord://`, `tgram://` or
+`slack://` URL, and send a test notification.
+Undo: `sudo docker compose --profile apprise rm -sf apprise`.
 
 **No other change.** Phase 3 makes no change to Cloudflare, DNS, CORS or Headscale (plan Section 6).
 `hub.anima.ing` stays an unproxied record to the VPN address. The web client is same-origin, so

@@ -90,8 +90,9 @@ describe("offsite.sh (VPS-006)", () => {
 });
 
 describe("recordings stay out of the backup (D-15)", () => {
-  test.each(["backup.sh", "offsite.sh"])("D-15: %s never names the recordings volume or folder", (name) => {
+  test.each(["backup.sh", "offsite.sh"])("D-15: %s never names the recordings volume, folder or Docker volume paths", (name) => {
     const script = readFileSync(join(ROOT, "deploy", "backup", name), "utf8");
     expect(script).not.toMatch(/recording/i);
+    expect(script).not.toMatch(/docker volume|\/var\/lib\/docker\/volumes/);
   });
 });

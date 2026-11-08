@@ -173,8 +173,9 @@ services:
       # network is denied except the Apprise address 172.30.3.10: the eight CIDRs below cover
       # 172.30.3.0/24 without it, so the hub can still send to its own Apprise (NET-001, E-1).
       # Apprise's onward traffic is outside this list. The allow list and the attachment reject
-      # together limit Apprise to the named cloud services. An optional host firewall rule for
-      # 172.30.3.10 is in the README live steps.
+      # do not contain it: a service URL parameter such as `template` still makes Apprise fetch
+      # any URL. Containment is the host firewall rule for 172.30.3.10, a required live step
+      # before Apprise runs (README, Phase 3 operator changes).
       ANIMA_PROBE_DENY: ${ANIMA_HUB_SUBNET:-172.30.0.0/24},${ANIMA_DATABASE_SUBNET:-172.30.1.0/24},${ANIMA_VPS_PUBLIC_ADDRESS:?set to the VPS public IPv4}/32,${ANIMA_LOCALAPI_SUBNET:-172.30.2.0/24},${ANIMA_HUB_ADDRESS:?set ANIMA_HUB_ADDRESS to the hub's VPN address}/32,172.30.3.0/29,172.30.3.8/31,172.30.3.11/32,172.30.3.12/30,172.30.3.16/28,172.30.3.32/27,172.30.3.64/26,172.30.3.128/25
       # Tailscale status and ping checks go through the proxy; empty makes them Unknown (K7).
       ANIMA_TAILSCALE_LOCALAPI: ${ANIMA_TAILSCALE_LOCALAPI:-localapi:8080}
