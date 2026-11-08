@@ -317,20 +317,26 @@ it('MAT-008, WEB-005: destroying an open modal lowers the count', async () => {
   expect(overlayCovers()).toBe(false);
 });
 
-it('MOT-007: a form taken out of an open modal takes its footer actions with it, and Svelte warns of nothing', () => {
+it('MOT-007: a form replaced in an open modal leaves its successor\'s footer actions; a form taken out takes its own, and Svelte warns of nothing', () => {
   const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-  const state = $state({ form: true });
+  const state = $state({ form: true, version: 1 });
   app = mount(FooterHost, {
     target: document.body,
     props: {
       get form() {
         return state.form;
       },
+      get version() {
+        return state.version;
+      },
     },
   });
   flushSync();
   const footer = () => document.querySelector('[role="dialog"] .footer');
-  expect(footer()?.textContent.trim()).toBe('Save');
+  expect(footer()?.textContent.trim()).toBe('Save 1');
+  state.version = 2;
+  flushSync();
+  expect(footer()?.textContent.trim()).toBe('Save 2');
   state.form = false;
   flushSync();
   expect(footer()).toBeNull();
