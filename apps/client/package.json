@@ -8,12 +8,14 @@
     "build": "vite build",
     "graphql": "bun codegen.ts",
     "lint": "eslint . && stylelint \"src/**/*.{css,svelte}\" && bun codegen.ts --check",
-    "check": "svelte-kit sync && svelte-check --fail-on-warnings",
-    "test": "vitest run"
+    "check": "svelte-kit sync && svelte-check --fail-on-warnings && tsc -p browser",
+    "test": "vitest run",
+    "test:browsers": "playwright test --config browser/playwright.config.ts"
   },
   "devDependencies": {
     "@graphql-codegen/cli": "7.4.6",
     "@graphql-codegen/client-preset": "6.2.3",
+    "@playwright/test": "1.65.0",
     "@sveltejs/adapter-static": "^3.0.10",
     "@sveltejs/kit": "^2.70.3",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
