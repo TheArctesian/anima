@@ -79,7 +79,8 @@
       "kind": "DOWN",
       "at": "2026-11-06T08:00:00Z",
       "ok": true,
-      "message": null
+      "reason": null,
+      "code": null
     },
     {
       "id": "0190a000-0000-7000-8018-000000000002",
@@ -88,7 +89,8 @@
       "kind": "DOWN",
       "at": "2026-11-06T08:05:00Z",
       "ok": false,
-      "message": "The target address is not permitted."
+      "reason": "TARGET_NOT_PERMITTED",
+      "code": null
     },
     {
       "id": "0190a000-0000-7000-8018-000000000003",
@@ -97,7 +99,8 @@
       "kind": "UP",
       "at": "2026-11-06T09:00:00Z",
       "ok": true,
-      "message": null
+      "reason": null,
+      "code": null
     },
     {
       "id": "0190a000-0000-7000-8018-000000000004",
@@ -106,7 +109,8 @@
       "kind": "UP",
       "at": "2026-11-06T09:05:00Z",
       "ok": false,
-      "message": "The target did not answer in 8 seconds."
+      "reason": "TIMED_OUT",
+      "code": null
     },
     {
       "id": "0190a000-0000-7000-8018-000000000005",
@@ -115,7 +119,8 @@
       "kind": "STILL_DOWN",
       "at": "2026-11-06T10:00:00Z",
       "ok": true,
-      "message": null
+      "reason": null,
+      "code": null
     },
     {
       "id": "0190a000-0000-7000-8018-000000000006",
@@ -124,7 +129,8 @@
       "kind": "STILL_DOWN",
       "at": "2026-11-06T10:05:00Z",
       "ok": false,
-      "message": "The target address is not permitted."
+      "reason": "TARGET_NOT_PERMITTED",
+      "code": null
     },
     {
       "id": "0190a000-0000-7000-8018-000000000007",
@@ -133,7 +139,8 @@
       "kind": "CERTIFICATE_EXPIRY",
       "at": "2026-11-06T11:00:00Z",
       "ok": true,
-      "message": null
+      "reason": null,
+      "code": null
     },
     {
       "id": "0190a000-0000-7000-8018-000000000008",
@@ -142,7 +149,8 @@
       "kind": "CERTIFICATE_EXPIRY",
       "at": "2026-11-06T11:05:00Z",
       "ok": false,
-      "message": "The target did not answer in 8 seconds."
+      "reason": "TIMED_OUT",
+      "code": null
     },
     {
       "id": "0190a000-0000-7000-8018-000000000009",
@@ -151,7 +159,8 @@
       "kind": "DOMAIN_EXPIRY",
       "at": "2026-11-06T12:00:00Z",
       "ok": true,
-      "message": null
+      "reason": null,
+      "code": null
     },
     {
       "id": "0190a000-0000-7000-8018-00000000000a",
@@ -160,7 +169,8 @@
       "kind": "DOMAIN_EXPIRY",
       "at": "2026-11-06T12:05:00Z",
       "ok": false,
-      "message": "The target address is not permitted."
+      "reason": "TARGET_NOT_PERMITTED",
+      "code": null
     },
     {
       "id": "0190a000-0000-7000-8018-00000000000b",
@@ -169,7 +179,8 @@
       "kind": "TEST",
       "at": "2026-11-06T13:00:00Z",
       "ok": true,
-      "message": null
+      "reason": null,
+      "code": null
     },
     {
       "id": "0190a000-0000-7000-8018-00000000000c",
@@ -178,7 +189,8 @@
       "kind": "TEST",
       "at": "2026-11-06T13:05:00Z",
       "ok": false,
-      "message": "The target did not answer in 8 seconds."
+      "reason": "TIMED_OUT",
+      "code": null
     }
   ],
   "checkNotifications": [

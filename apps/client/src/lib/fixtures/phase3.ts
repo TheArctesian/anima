@@ -25,6 +25,19 @@ export const RETENTION_SUBJECTS = ['HEARTBEATS', 'METRICS', 'EVENTS', 'RECORDING
 export const WEBHOOK_METHODS = ['POST', 'PUT'] as const;
 export const SMTP_SECURITY = ['TLS', 'STARTTLS'] as const;
 export const APPRISE_MODES = ['STATELESS_URLS', 'CONFIG_KEY'] as const;
+export const DELIVERY_REASONS = [
+  'TARGET_NOT_PERMITTED',
+  'BAD_ADDRESS',
+  'SECRET_UNREADABLE',
+  'SETUP_FAILED',
+  'CONNECTION_FAILED',
+  'TLS_FAILED',
+  'TIMED_OUT',
+  'HTTP_STATUS',
+  'NO_STARTTLS',
+  'SMTP_REFUSED',
+  'NOT_UNDERSTOOD',
+] as const;
 const STOP_REASONS = ['size_limit', 'disk_full', 'write_failed'] as const;
 const PROTOCOLS = ['SSH', 'RDP', 'VNC'] as const satisfies readonly Protocol[];
 
@@ -65,7 +78,8 @@ export interface Delivery {
   kind: (typeof NOTIFICATION_KINDS)[number];
   at: string;
   ok: boolean;
-  message: string | null;
+  reason: (typeof DELIVERY_REASONS)[number] | null;
+  code: number | null;
 }
 
 export interface ApiKey {
@@ -174,6 +188,7 @@ export const channels: readonly NotificationChannel[] = raw.channels.map((c) => 
 export const deliveries: readonly Delivery[] = raw.deliveries.map((d) => ({
   ...d,
   kind: oneOf(NOTIFICATION_KINDS, d.kind),
+  reason: d.reason === null ? null : oneOf(DELIVERY_REASONS, d.reason),
 }));
 
 export const apiKeys: readonly ApiKey[] = raw.apiKeys.map((k) => ({ ...k, scope: oneOf(TOKEN_SCOPES, k.scope) }));

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   APPRISE_MODES,
   CHANNEL_KINDS,
+  DELIVERY_REASONS,
   NOTIFICATION_KINDS,
   RECORDING_FORMATS,
   RETENTION_SUBJECTS,
@@ -29,14 +30,13 @@ describe('K6 phase3 client fixtures', () => {
     expect(channels.map((c) => c.kind).sort()).toEqual(['APPRISE', 'EMAIL', 'NTFY', 'WEBHOOK']);
   });
 
-  it('K6: each channel has an ok and a failed delivery, and a failure carries one of the fixed messages', () => {
+  it('K6, CR-14: each channel has an ok and a failed delivery; a failure carries a reason, a success none', () => {
     for (const channel of channels) {
       const oks = new Set(deliveries.filter((d) => d.channelId === channel.id).map((d) => d.ok));
       expect([...oks].sort()).toEqual([false, true]);
     }
-    const fixed = ['The target did not answer in 8 seconds.', 'The target address is not permitted.'];
-    expect(deliveries.filter((d) => !d.ok).every((d) => fixed.includes(d.message ?? ''))).toBe(true);
-    expect(deliveries.filter((d) => d.ok).every((d) => d.message === null)).toBe(true);
+    expect(deliveries.filter((d) => !d.ok).every((d) => d.reason !== null)).toBe(true);
+    expect(deliveries.filter((d) => d.ok).every((d) => d.reason === null && d.code === null)).toBe(true);
   });
 
   it('INT-003: one READ and one WRITE key, one expired, none with a secret', () => {
@@ -107,6 +107,7 @@ describe('K6 phase3 client fixtures: ties to K1', () => {
       [WEBHOOK_METHODS, 'WebhookMethod'],
       [SMTP_SECURITY, 'SmtpSecurity'],
       [APPRISE_MODES, 'AppriseMode'],
+      [DELIVERY_REASONS, 'DeliveryReason'],
     ];
     for (const [list, name] of lists) expect([...list].sort(), name).toEqual(enumValues(name).sort());
   });
