@@ -201,7 +201,7 @@ describe('forgetSecrets', () => {
 
 describe('refusal sentences', () => {
   it('MOT-007: each fits the one line kept under a field of the editor at 390 px (36 characters)', () => {
-    const sentences = Object.values(refusals).filter((value): value is string => typeof value === 'string');
+    const sentences = Object.values(refusals).filter((value) => typeof value === 'string');
     expect(sentences.length).toBeGreaterThan(10);
     expect(sentences.filter((sentence) => sentence.length > 36)).toEqual([]);
   });
