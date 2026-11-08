@@ -1,11 +1,17 @@
-//! Tests of the rates and the label rules on captured and hostile input.
+//! Tests of the rates, the label rules, the window and the backlog on captured and hostile
+//! input.
+
+use chrono::{DateTime, Utc};
 
 use super::{Kind, Sample};
 use crate::readings::{Cpu, Disk, Interface, Load, Memory, Reading};
 
+mod backlog;
+mod key;
 mod labels;
 mod rates;
 mod sample;
+mod window;
 
 /// Asserts two floats are the same number, apart from rounding of the last digits.
 fn assert_close(actual: f64, expected: f64) {
@@ -43,4 +49,9 @@ fn disk(filesystem: &str, mount: &str, total_bytes: u64, used_bytes: u64) -> Dis
         total_bytes,
         used_bytes,
     }
+}
+
+/// The UTC time written as RFC 3339 `text`.
+fn at(text: &str) -> DateTime<Utc> {
+    text.parse().unwrap()
 }
