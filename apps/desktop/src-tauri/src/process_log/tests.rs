@@ -10,9 +10,11 @@ use std::{
 
 use tauri_plugin_log::log::{Level, Record};
 
+use crate::os_program::OPENER_PATIENCE;
+
 use super::{
     ProcessLogError,
-    folder::{PATIENCE, open_with},
+    folder::open_with,
     line::{Stamp, line_of},
 };
 
@@ -26,7 +28,7 @@ fn scratch(name: &str) -> PathBuf {
 }
 
 fn open(folder: &Path, opener: &str) -> Result<(), ProcessLogError> {
-    open_with(folder, opener, PATIENCE)
+    open_with(folder, opener, OPENER_PATIENCE)
 }
 
 /// Writes a `sh` script to `path` with the given mode and returns it as an opener.

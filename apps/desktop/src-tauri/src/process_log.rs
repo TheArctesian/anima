@@ -47,7 +47,7 @@ pub async fn process_log_folder_open<R: Runtime>(app: AppHandle<R>) -> Result<()
         .app_log_dir()
         .map_err(|_| ProcessLogError::Unavailable)?;
     let opened = tauri::async_runtime::spawn_blocking(move || {
-        folder::open_with(&folder, folder::OPENER, folder::PATIENCE)
+        folder::open_with(&folder, folder::OPENER, crate::os_program::OPENER_PATIENCE)
     })
     .await
     .map_err(|_| ProcessLogError::Failed)

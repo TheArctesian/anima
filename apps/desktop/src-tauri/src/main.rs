@@ -2,6 +2,7 @@
 //! The UI is the static `apps/client` build; no business logic lives here.
 
 mod keystore;
+mod os_program;
 mod process_log;
 mod system_browser;
 mod system_settings;
