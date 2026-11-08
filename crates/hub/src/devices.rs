@@ -14,7 +14,7 @@ mod tests;
 mod text;
 mod warnings;
 
-use sqlx::PgPool;
+use sqlx::{PgConnection, PgPool};
 
 use crate::api_errors::field_names;
 use crate::ids::{DeviceId, SiteId};
@@ -84,4 +84,14 @@ pub async fn in_maintenance(db: &PgPool, id: DeviceId) -> Result<bool, Error> {
 /// `NotFound` when there is no such site.
 pub async fn wake_relay(db: &PgPool, site: SiteId) -> Result<Option<Device>, Error> {
     store::wake_relay(db, site).await
+}
+
+/// Sets the device's metrics source to `agent` in the caller's transaction, which stops SSH
+/// collection for it, and returns the device's name. Only agent enrolment calls it (MET-011,
+/// R-092 D-7).
+///
+/// # Errors
+/// `NotFound` when there is no such device.
+pub async fn use_agent_metrics(conn: &mut PgConnection, id: DeviceId) -> Result<String, Error> {
+    store::set_agent_source(conn, id).await
 }
