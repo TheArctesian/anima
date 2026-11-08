@@ -35,7 +35,7 @@ use crate::{
         Live, PendingTicket, Protocol, admission,
         end::CLIENT_IDLE,
         tickets::{RECONNECT, WOKEN_OPENING},
-        upgrade::run_session,
+        upgrade::{Serving, run_session},
     },
     ssh::probe::PROBE_TIMEOUT,
 };
@@ -115,26 +115,16 @@ pub(super) struct Terminal {
     pub(super) timing: Timing,
 }
 
-/// The `/terminal` route (K3, K4 Section 8.1). `main.rs` mounts it behind
+/// The `/terminal` route (K3, K4 Section 8.1) over `serving`. `main.rs` mounts it behind
 /// `access::permitted_networks_layer` (NET-002) and serves it with `ConnectInfo<SocketAddr>`,
 /// so the client address is known.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "K3 fixes terminal_router's parameters (R-062)"
-)]
-pub fn terminal_router(
-    db: PgPool,
-    vault: Vault,
-    bus: Bus,
-    clock: Arc<dyn Clock>,
-    live: Live,
-) -> Router {
+pub fn terminal_router(serving: &Serving) -> Router {
     router(Terminal {
-        db,
-        vault,
-        bus,
-        clock,
-        live,
+        db: serving.db.clone(),
+        vault: serving.vault.clone(),
+        bus: serving.bus.clone(),
+        clock: Arc::clone(&serving.clock),
+        live: serving.live.clone(),
         timing: Timing::default(),
     })
 }

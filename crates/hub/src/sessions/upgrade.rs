@@ -2,13 +2,15 @@
 //! MV-003): one task per redeemed ticket that checks the subprotocol, opens the far side while
 //! the request waits, unless the session ends first, answers the request with the upgrade,
 //! hands over to the tunnel's own part ([`FarSide`]) and ends the session once. Beside it, the
-//! sends and the close every WebSocket tunnel makes (`writes`) and the silence timer (`quiet`).
+//! sends and the close every WebSocket tunnel makes (`writes`), the silence timer (`quiet`) and
+//! what the tunnels serve with (`serving`).
 //!
 //! The session task, not the request handler, runs all of this, so the client leaving (seen
 //! as the handler dropped) ends the session instead of dropping it. It holds the ticket in an
 //! `end::Unfinished` guard, so even a panic ends the row.
 
 mod quiet;
+mod serving;
 mod writes;
 
 use std::{sync::Arc, time::Duration};
@@ -26,6 +28,7 @@ use super::{
 };
 
 pub(super) use quiet::Quiet;
+pub use serving::Serving;
 pub(super) use writes::{close, send};
 
 /// One tunnel's own part of the session task: how its far side opens for a ticket and what

@@ -40,7 +40,7 @@ use crate::{
     sessions::{
         Live, Protocol, Redeemed, admission,
         tickets::{RECONNECT, WOKEN_OPENING},
-        upgrade::run_session,
+        upgrade::{Serving, run_session},
     },
     ssh::probe::PROBE_TIMEOUT,
 };
@@ -105,31 +105,19 @@ pub(super) struct Route {
     pub(super) timing: Timing,
 }
 
-/// The `/tunnel` route for RDP and VNC sessions (K3, K4 Section 2), with guacd at `guacd`
-/// keeping shared drives under `drive_root`. `main.rs` mounts it behind
-/// `access::permitted_networks_layer` (NET-002) and serves it with `ConnectInfo<SocketAddr>`,
-/// so the client address is known.
-#[expect(
-    clippy::too_many_arguments,
-    reason = "K3 fixes tunnel_router's parameters (R-032 E-1)"
-)]
-pub fn tunnel_router(
-    db: PgPool,
-    vault: Vault,
-    bus: Bus,
-    clock: Arc<dyn Clock>,
-    guacd: String,
-    drive_root: String,
-    live: Live,
-) -> Router {
+/// The `/tunnel` route for RDP and VNC sessions (K3, K4 Section 2) over `serving`, with
+/// guacd at its `guacd` keeping shared drives under its `drive_root`. `main.rs` mounts it
+/// behind `access::permitted_networks_layer` (NET-002) and serves it with
+/// `ConnectInfo<SocketAddr>`, so the client address is known.
+pub fn tunnel_router(serving: &Serving) -> Router {
     router(Route {
-        db,
-        vault,
-        bus,
-        clock,
-        guacd,
-        drive_root,
-        live,
+        db: serving.db.clone(),
+        vault: serving.vault.clone(),
+        bus: serving.bus.clone(),
+        clock: Arc::clone(&serving.clock),
+        guacd: serving.guacd.clone(),
+        drive_root: serving.drive_root.clone(),
+        live: serving.live.clone(),
         timing: Timing::default(),
     })
 }
