@@ -78,8 +78,13 @@ No more than 7 package orchestrators may run at once (R-066).
 
   O-3 passed on both the Mac and `pop-os` (recorded on `main`). O-1 and O-2 wait for the final
   test on a second Mac (R-076).
-- **Issue #1:** posting `docs/programme/phase-2-coulds.md` needs approval. Later, also post
-  `phase-3-coulds.md` and the shoulds in the package files.
+- **Issue #1:** posting is approved (2026-11-08). `phase-2-coulds.md`, `phase-3-coulds.md` and a
+  Phase 3 package list (WP-43 to WP-54, up to 595c624c) are posted. Post later items as new comments.
+- **Pushing:** approved (2026-11-08). `phase-3` is pushed, and `main` is fast-forwarded to it as a
+  save. Push only fast-forwards; ask before anything else on `main`.
+- **guacd image:** WP-47 may pull `guacamole/guacd:1.6.0` for its join-handshake record (127.0.0.1
+  only, container removed afterwards). The shared `~/.cache/cargo-target` was deleted with the
+  operator's OK (R-101).
 - **Spec 5.7.3 wording:** still open.
 - **Signing key:** `TAURI_SIGNING_PRIVATE_KEY` for the updater signature. The desktop build exits
   1 without it.
