@@ -23,6 +23,8 @@ vi.mock('$lib/updates/UpdatesRow.svelte', async () => ({ default: (await vi.impo
 vi.mock('$lib/process-log/LogFolderRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('$lib/updates/tests/LogRowStub.svelte')).default }));
 // The API keys section loads its own data and has its own tests in `$lib/api-keys/` (WP-50 F-3, F-10).
 vi.mock('$lib/api-keys/ApiKeysSection.svelte', () => ({ default: () => undefined }));
+// The Data retention section loads its own data and has its own tests in `$lib/retention/` (WP-50 F-3, F-10).
+vi.mock('$lib/retention/RetentionSection.svelte', () => ({ default: () => undefined }));
 
 let app: ReturnType<typeof mount> | undefined;
 let hub: ReturnType<typeof fakeHub>;
@@ -85,10 +87,10 @@ function sectionTexts(target: HTMLElement, heading: string): string[] {
   return [...section.querySelectorAll('h2, p, button, span, option')].map((element) => element.textContent.trim());
 }
 
-it('SET-001, UI-005, MOT-043: the page is the title, then Account, then Appearance with Theme, Reduce motion and the two fonts, then API keys', async () => {
+it('SET-001, UI-005, MOT-043: the page is the title, then Account, then Appearance with Theme, Reduce motion and the two fonts, then Data retention, then API keys', async () => {
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
   expect(target.firstElementChild?.tagName).toBe('H1');
-  expect(sectionHeadings(target)).toEqual(['Account', 'Appearance', 'API keys']);
+  expect(sectionHeadings(target)).toEqual(['Account', 'Appearance', 'Data retention', 'API keys']);
   expect(sectionTexts(target, 'Account')).toEqual(['Account', 'Signed in as ann', 'Sign out', '']);
   const fonts = ['Fira Code', 'OpenDyslexic'];
   expect(sectionTexts(target, 'Appearance')).toEqual([
@@ -101,7 +103,7 @@ it('SET-001, UI-005, MOT-043: the page is the title, then Account, then Appearan
 it('SET-001, UPD-006: the desktop app adds the Updates section last, holding the update and log folder rows', async () => {
   mocks.platform = DESKTOP_MAC;
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
-  expect(sectionHeadings(target)).toEqual(['Account', 'Appearance', 'API keys', 'Updates']);
+  expect(sectionHeadings(target)).toEqual(['Account', 'Appearance', 'Data retention', 'API keys', 'Updates']);
   const updates = target.querySelector('section[aria-labelledby="settings-updates"]');
   expect(updates?.querySelectorAll('[data-stub]')).toHaveLength(2);
   expect(target.querySelectorAll('[data-stub]')).toHaveLength(2);
