@@ -76,7 +76,7 @@ fixture_test! {
             assert_eq!(validation_fields(&error), [field], "{input}");
         }
         assert_eq!(stored(&pool).await, (60, 3, 20, 1000));
-        assert!(rows(&pool, "audit_log").await.is_empty());
+        assert_eq!(rows(&pool, "audit_log").await.len(), 0);
     }
 
     async fn db_011_a_value_in_range_at_each_bound_is_stored(pool: PgPool) {
