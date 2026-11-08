@@ -125,7 +125,9 @@ function withHttp(values: CheckFormValues, config: HttpConfigFields): CheckFormV
   };
 }
 
-function withConfig(values: CheckFormValues, config: CheckConfigFields): CheckFormValues {
+type TransportConfigFields = Extract<CheckConfigFields, { __typename: 'IcmpConfig' | 'TcpConfig' | 'TlsConfig' }>;
+
+function withTransportConfig(values: CheckFormValues, config: TransportConfigFields): CheckFormValues {
   switch (config.__typename) {
     case 'IcmpConfig':
       return { ...values, icmp: { timeoutMs: String(config.timeoutMs), ipVersion: config.ipVersion } };
@@ -136,6 +138,11 @@ function withConfig(values: CheckFormValues, config: CheckConfigFields): CheckFo
         ...values,
         tls: { port: String(config.port), serverName: config.serverName ?? '', timeoutMs: String(config.timeoutMs) },
       };
+  }
+}
+
+function withConfig(values: CheckFormValues, config: CheckConfigFields): CheckFormValues {
+  switch (config.__typename) {
     case 'HttpConfig':
       return withHttp(values, config);
     case 'DnsConfig':
@@ -152,10 +159,16 @@ function withConfig(values: CheckFormValues, config: CheckConfigFields): CheckFo
       return { ...values, push: { path: config.pushPath } };
     case 'GroupConfig':
       return { ...values, group: { childIds: config.children.map((child) => child.id) } };
-    default:
-      // Docker, systemd, SNMP and Tailscale ping: the hub's check query does not select their fields yet (WP-29);
-      // without them the form keeps its defaults. DomainExpiryConfig has no form fields yet either (DOMAIN_EXPIRY editor: WP-50, D-29).
+    case 'DockerConfig':
+    case 'SystemdConfig':
+    case 'SnmpConfig':
+    case 'TailscalePingConfig':
+      // The hub's check query does not select these fields yet (WP-29); without them the form keeps its defaults.
       return withProbeConfig(values, config);
+    case 'DomainExpiryConfig':
+      return values; // No form fields yet (DOMAIN_EXPIRY editor: WP-50, D-29).
+    default:
+      return withTransportConfig(values, config); // Typed: the remaining members are ICMP, TCP and TLS.
   }
 }
 

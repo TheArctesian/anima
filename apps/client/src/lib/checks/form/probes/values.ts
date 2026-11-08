@@ -20,9 +20,14 @@ export type ProbeConfig =
   | SnmpCheckConfigFragment
   | TailscalePingCheckConfigFragment;
 
+/** A Phase 2 config as the generated `Check.config` union names it today: the type only, no fields. */
+export interface BareProbeConfig {
+  readonly __typename: 'DockerConfig' | 'SystemdConfig' | 'SnmpConfig' | 'TailscalePingConfig';
+}
+
 /** Whether a Phase 2 config carries its fields; every one has `timeoutMs`, the bare union members do not. */
-function hasProbeFields(config: { readonly __typename: string }): config is ProbeConfig {
-  return 'timeoutMs' in config && config.__typename !== 'DomainExpiryConfig';
+function hasProbeFields(config: ProbeConfig | BareProbeConfig): config is ProbeConfig {
+  return 'timeoutMs' in config;
 }
 
 /** What the operator typed for the Docker, systemd, SNMP and Tailscale ping checks (CHK-009). */
@@ -70,7 +75,7 @@ export function blankProbes(): ProbeValues {
 }
 
 /** `values` with the settings read from a saved config, or as they were when the config has no fields yet; no secret is filled in. */
-export function withProbeConfig<V extends ProbeValues>(values: V, config: { readonly __typename: string }): V {
+export function withProbeConfig<V extends ProbeValues>(values: V, config: ProbeConfig | BareProbeConfig): V {
   if (!hasProbeFields(config)) return values;
   switch (config.__typename) {
     case 'DockerConfig':

@@ -184,3 +184,24 @@ describe('SEC-005: SNMP secrets on edit', () => {
     expect(sentSnmp(updateCheckInput(edit(), values))?.authPassword).toBe('new-secret');
   });
 });
+
+describe('P3-002, D-29: a DOMAIN_EXPIRY check in the form', () => {
+  const domainExpiry = saved('DOMAIN_EXPIRY', { __typename: 'DomainExpiryConfig' });
+
+  it('values from a saved check keep every default and take the name', () => {
+    const values = checkValues(domainExpiry, 'ICMP');
+    expect(values).toEqual({ ...checkValues(null, 'DOMAIN_EXPIRY'), name: 'check' });
+  });
+
+  it('a bare Docker config keeps the defaults (WP-29 not yet selecting its fields)', () => {
+    const values = checkValues(saved('DOCKER', { __typename: 'DockerConfig' }), 'DOCKER');
+    expect(values.docker).toEqual({ container: '', timeoutMs: '10000' });
+  });
+
+  it('a rename alone leaves the config out of the update input', () => {
+    const initial = checkValues(domainExpiry, 'ICMP');
+    const edited = { ...initial, name: 'renamed' };
+    expect(configChanged(initial, edited)).toBe(false);
+    expect(updateCheckInput(initial, edited)).toEqual({ name: 'renamed' });
+  });
+});
