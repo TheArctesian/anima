@@ -64,7 +64,9 @@ fn bld_002_a_version_not_above_a_published_one_of_a_selected_target_is_refused()
         let refused = release::check_new(version, &targets, &published).unwrap_err();
         assert_eq!(refused.field, "version");
         assert!(
-            refused.message.contains("linux-x86_64"),
+            refused
+                .message
+                .contains("linux-x86_64 has published 0.1.11"),
             "{}",
             refused.message
         );

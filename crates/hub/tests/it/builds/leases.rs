@@ -5,6 +5,8 @@ use anima_hub::{
     builds::{self, BuildQueue, Updates},
     events::Bus,
 };
+use std::time::Duration;
+
 use serde_json::Value;
 use sqlx::PgPool;
 
@@ -76,6 +78,28 @@ async fn bld_029_concurrent_claims_of_one_builder_take_one_lease(pool: PgPool) {
     .await
     .unwrap();
     assert_eq!(leased, 1);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn d_3_a_claim_skips_a_job_another_transaction_holds_without_waiting(pool: PgPool) {
+    let operator = operator(&pool).await;
+    let hub = Hub::new(&pool, start());
+    let held = create_job(&hub, &operator, "0.1.1").await;
+    let free = create_job(&hub, &operator, "0.1.2").await;
+    let builder = enrol(&hub, &operator, "pop-os").await;
+    let mut holder = pool.begin().await.unwrap();
+    let locked: String = sqlx::query_scalar(
+        "SELECT id::text FROM builds.jobs ORDER BY created_at, id LIMIT 1 FOR UPDATE",
+    )
+    .fetch_one(&mut *holder)
+    .await
+    .unwrap();
+    assert_eq!(locked, held);
+    let claimed = tokio::time::timeout(Duration::from_secs(5), claim(&hub, &builder.token))
+        .await
+        .expect("the claim waited for the held job");
+    assert_eq!(data(claimed)["claimBuildJob"]["id"], free.as_str());
+    holder.rollback().await.unwrap();
 }
 
 async fn failure_events(pool: &PgPool) -> Vec<String> {
