@@ -52,3 +52,6 @@ async fn keep(db: &PgPool, now: DateTime<Utc>) -> Result<(), &'static str> {
         .map_err(|e| e.fault());
     checks.and(event_logs).and(samples)
 }
+
+#[cfg(test)]
+mod tests;

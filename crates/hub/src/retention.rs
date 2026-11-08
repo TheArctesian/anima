@@ -34,7 +34,8 @@ impl Error {
     pub const fn fault(&self) -> &'static str {
         match self {
             Self::Database(_) => "database",
-            Self::Validation(_) | Self::Unreadable => "unreadable",
+            Self::Validation(_) => "validation",
+            Self::Unreadable => "unreadable",
         }
     }
 }

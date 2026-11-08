@@ -148,10 +148,10 @@ pub async fn check_runtime_role(db: &PgPool) -> Result<(), RoleError> {
 }
 
 /// Drops the day partitions older than each log's retention at `now` (`events_keep` for
-/// events, at least 30 days; 1 year for the audit log; DB-005) and returns the names of the dropped partitions. The
-/// database refuses to drop anything inside retention, by `now` and by its own clock
-/// (LOG-006). Each log's drop runs in a short transaction of its own that waits at most 2
-/// seconds for a lock. Schedule it daily.
+/// events, at least 30 days; 1 year for the audit log; DB-005) and returns the names of the
+/// dropped partitions. The database refuses to drop anything inside retention, by `now` and by
+/// its own clock (LOG-006). Each log's drop runs in a short transaction of its own that waits
+/// at most 2 seconds for a lock. Schedule it daily.
 ///
 /// # Errors
 ///

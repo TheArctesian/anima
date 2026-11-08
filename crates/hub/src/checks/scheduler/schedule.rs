@@ -1,5 +1,6 @@
-//! The scheduler's decisions: when a check runs first, when it is late and how a status change is reported (CHK-001, CHK-002, CHK-010, DB-005). Pure: time
-//! and randomness come in as parameters.
+//! The scheduler's decisions: when a check runs first, when it is late and how a status change
+//! is reported (CHK-001, CHK-002, CHK-010, DB-005). Pure: time and randomness come in as
+//! parameters.
 
 use std::collections::HashSet;
 

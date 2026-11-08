@@ -1,5 +1,6 @@
-//! One pass of the scheduler: settle the devices whose checks had beats, spread first runs, report late checks and start due attempts within the limits
-//! (CHK-001, CHK-010, HUB-003, LOG-004).
+//! One pass of the scheduler: settle the devices whose checks had beats, spread first runs,
+//! report late checks and start due attempts within the limits (CHK-001, CHK-010, HUB-003,
+//! LOG-004).
 //!
 //! One task owns this state, so no lock guards it. Attempts run in a `JoinSet`; dropping the
 //! scheduler aborts them.
