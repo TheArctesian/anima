@@ -15,3 +15,4 @@ Items found during Phase 3 reviews that are not fixed in Phase 3. Tagged by pack
 
 - T5 (could): NET-004 (`design-spec.md` line 289) still says the nav bar shows the hub address; it should be desktop-only. UI-005 holds several rules in one requirement.
 - T1b (could): unexport `BareProbeConfig`; comment that the `default` branch in `withConfig` is the exhaustiveness check.
+- WP-42 T6 (could): adapters in `lib/desktop` keep their own `isTauri` guards; a folder-level type import `lib/desktop` → `lib/platform`; the `schedule.races` "cannot be loaded" test simulates a use-time failure, not a cached failed import. Handoff to WP-44: `platform.ts` and `client-shell.ts` still pull `@tauri-apps/api/core` and `/event` into the browser bundle; a build-time switch in `platform.ts` is the place to cut it.
