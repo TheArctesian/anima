@@ -1,6 +1,6 @@
 # K5 — Design token names
 
-Status: **frozen for Phase 2** (change only through a programme ruling, CON-001). Phase 2 additions are marked (Phase 2).
+Status: **frozen for Phase 3** (change only through a programme ruling, CON-001). Phase 2 additions are marked (Phase 2). Phase 3 additions are marked (Phase 3).
 
 WP-02 owns the token source (`design/tokens/`, W3C DTCG) and the build. Every other package uses **only the names below**. Values come from spec Sections 5.1, 5.2, 5.5, 5.6 and 5.7; WP-02 may tune a value, but a name change is a contract change.
 
@@ -49,6 +49,17 @@ Components use semantic or component names. Primitive names (`nord-*`) appear on
 | Gesture | `projection-deceleration`, `rubberband-constant` (TypeScript only, in a `gesture` object; spec 5.7.2, MOT-032, MOT-033; R-013) |
 
 Space numbers follow the 4-pixel grid index (`space-4` = 1 rem = 16 px), as in spec 5.5.3.
+
+## Light theme (Phase 3)
+
+- No new semantic or component names. The light theme changes only semantic values (TOK-011).
+- The token source gains a `light` mode. `tokens.css` gains `:root[data-theme="light"] { … }`, and
+  `@media (prefers-color-scheme: light) { :root[data-theme="system"] { … } }`. `data-theme="dark"`, or no
+  attribute, keeps today's values. `prefers-contrast: more` applies on top of either mode (MAT-006).
+- If D-27 takes option B: the primitive row adds `nord-11-deep`, `nord-12-deep`, `nord-13-deep`,
+  `nord-14-deep` and `nord-15-deep`. Each is the Nord colour mixed toward `nord-0` until it reaches 3:1 against
+  `nord-6`. Only the light mode's `status-*` and `chart-*` values use them. Components never name them.
+- The Rust output (`crates/theme`) does not change.
 
 ## Rules for consumers
 

@@ -50,6 +50,7 @@ const BY_TYPE: Record<CheckFormValues['type'], readonly string[]> = {
   SYSTEMD: ['unit', 'timeoutMs'],
   SNMP: ['port', 'version', 'oid', 'expected', 'community', 'username', 'authPassword', 'privacyPassword', 'timeoutMs'],
   TAILSCALE_PING: ['target', 'timeoutMs'],
+  DOMAIN_EXPIRY: [], // DOMAIN_EXPIRY editor: WP-50 (D-29)
 };
 
 /** The field names that have an input on screen for `values` (the Advanced ones are opened when needed). */

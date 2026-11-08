@@ -152,11 +152,9 @@ function withConfig(values: CheckFormValues, config: CheckConfigFields): CheckFo
       return { ...values, push: { path: config.pushPath } };
     case 'GroupConfig':
       return { ...values, group: { childIds: config.children.map((child) => child.id) } };
-    case 'DockerConfig':
-    case 'SystemdConfig':
-    case 'SnmpConfig':
-    case 'TailscalePingConfig':
-      // The hub's check query does not select these fields yet (WP-29); without them the form keeps its defaults.
+    default:
+      // Docker, systemd, SNMP and Tailscale ping: the hub's check query does not select their fields yet (WP-29);
+      // without them the form keeps its defaults. DomainExpiryConfig has no form fields yet either (DOMAIN_EXPIRY editor: WP-50, D-29).
       return withProbeConfig(values, config);
   }
 }

@@ -1,12 +1,12 @@
 # K1 — GraphQL schema
 #
-# Status: frozen for Phase 2 (change only through a programme ruling, CON-001).
+# Status: frozen for Phase 3 (change only through a programme ruling, CON-001).
 # The client generates its TypeScript types from this file (API-008, R-020).
 # CON-002 (crates/hub/tests/it/contract.rs) keeps the hub's schema equal to it.
 # An addition marked @pending is ignored until the hub declares it; then the
-# programme orchestrator removes @pending (P2-002, K7 / WP-17 E-2).
+# programme orchestrator removes @pending (P2-002, P3-002, K7 / WP-17 E-2).
 # Conventions: contracts/conventions.md.
-# Every operation needs a valid token, except `login` (API-003).
+# Every operation needs a valid token, except `login`, `signInBrowser` and `joinShare` (API-003, D-4, D-7).
 
 scalar DateTime # RFC 3339, UTC
 scalar IpAddr # "10.10.0.12" or an IPv6 address
@@ -15,7 +15,7 @@ scalar JSON # only for audit change records
 
 directive @oneOf on INPUT_OBJECT
 
-"A K1 addition that the hub does not serve yet (P2-002). CON-002 ignores it only while the hub lacks it."
+"A K1 addition that the hub does not serve yet (P2-002, P3-002). CON-002 ignores it only while the hub lacks it."
 directive @pending on OBJECT | FIELD_DEFINITION | ARGUMENT_DEFINITION | ENUM | ENUM_VALUE | UNION | INPUT_OBJECT | INPUT_FIELD_DEFINITION
 
 # ---------------------------------------------------------------- shared
@@ -52,6 +52,44 @@ input LoginInput {
   username: String!
   password: String!
   totpCode: String
+}
+
+# Phase 3 (WP-43). D-3, D-4, D-23.
+
+enum TokenScope @pending {
+  READ
+  WRITE
+}
+
+"Set by signInBrowser together with the __Host-anima cookie. The token itself is never returned (D-3)."
+type BrowserSignIn @pending {
+  operator: Operator!
+  expiresAt: DateTime!
+}
+
+type ApiKey @pending {
+  id: ID!
+  "1..64 characters, unique."
+  name: String!
+  scope: TokenScope!
+  "The first 12 characters of the secret, for example anima_Ab12Cd, so the operator can tell keys apart."
+  prefix: String!
+  expiresAt: DateTime!
+  createdAt: DateTime!
+  lastUsedAt: DateTime
+}
+
+type ApiKeyCreated @pending {
+  key: ApiKey!
+  "Shown once. The hub keeps only its SHA-256 (INT-003, P3-004)."
+  secret: String!
+}
+
+input ApiKeyInput @pending {
+  name: String!
+  scope: TokenScope!
+  "Required; at most one year from now (D-23)."
+  expiresAt: DateTime!
 }
 
 # ---------------------------------------------------------------- devices (WP-06)
@@ -188,6 +226,10 @@ type Device {
   metricsSource: MetricsSource!
   transfer: TransferPolicy!
   accessWarnings: [AccessWarning!]!
+  "Most live sessions at once (RA-036); null: no limit. Viewers and file tunnels do not count."
+  sessionLimit: Int @pending
+  "RA-040; default false."
+  recordSessions: Boolean! @pending
   # web_interfaces
   webInterfaces: [WebInterface!]!
   # web_interfaces (WEB-002)
@@ -289,6 +331,8 @@ input CreateDeviceInput {
   transfer: TransferPolicyInput
   "When true (the default), the hub adds one ICMP check (spec 6.2)."
   addDefaultCheck: Boolean = true
+  sessionLimit: Int @pending
+  recordSessions: Boolean = false @pending
 }
 
 input UpdateDeviceInput {
@@ -306,6 +350,9 @@ input UpdateDeviceInput {
   macAddress: String
   metricsSource: MetricsSource
   transfer: TransferPolicyInput
+  "1..100; 0 clears the limit."
+  sessionLimit: Int @pending
+  recordSessions: Boolean @pending
 }
 
 input SshCredentialInput @oneOf {
@@ -358,6 +405,7 @@ enum CheckType {
   SNMP
   TAILSCALE_PING
   SYSTEMD
+  DOMAIN_EXPIRY @pending
 }
 
 type Check {
@@ -377,11 +425,15 @@ type Check {
   lastHeartbeat: Heartbeat
   "Days until the TLS certificate expires (CHK-007). Only TLS and HTTPS checks."
   certificateDaysLeft: Int
+  "DOMAIN_EXPIRY only: whole days until the registration expires."
+  domainDaysLeft: Int @pending
+  # notifications (composition, K3)
+  notifications: CheckNotifications! @pending
   heartbeats(first: Int = 100, after: String): HeartbeatConnection!
   uptime(window: UptimeWindow!): Float
 }
 
-union CheckConfig = IcmpConfig | TcpConfig | TlsConfig | HttpConfig | DnsConfig | PushConfig | GroupConfig | DockerConfig | SnmpConfig | TailscalePingConfig | SystemdConfig
+union CheckConfig = IcmpConfig | TcpConfig | TlsConfig | HttpConfig | DnsConfig | PushConfig | GroupConfig | DockerConfig | SnmpConfig | TailscalePingConfig | SystemdConfig | DomainExpiryConfig
 
 "Up when running (and healthy, when a health check exists); Degraded when starting; else Down. Through the SSH link (D-3)."
 type DockerConfig {
@@ -507,6 +559,13 @@ type GroupConfig {
   children: [Check!]!
 }
 
+"Degraded below warnDays, Down after expiry, Unknown when RDAP gives no expiry date (D-29)."
+type DomainExpiryConfig @pending {
+  domain: String!
+  warnDays: Int!
+  timeoutMs: Int!
+}
+
 input CheckConfigInput @oneOf {
   icmp: IcmpConfigInput
   tcp: TcpConfigInput
@@ -519,6 +578,7 @@ input CheckConfigInput @oneOf {
   snmp: SnmpConfigInput
   tailscalePing: TailscalePingConfigInput
   systemd: SystemdConfigInput
+  domainExpiry: DomainExpiryConfigInput @pending
 }
 
 input DockerConfigInput {
@@ -715,6 +775,27 @@ input UpdateCheckInput {
   invert: Boolean
 }
 
+input DomainExpiryConfigInput @pending {
+  domain: String!
+  warnDays: Int = 30
+  timeoutMs: Int = 10000
+}
+
+"The values the client pre-fills in a new check (D-26). Bounds as checks.checks."
+type CheckDefaults @pending {
+  intervalSeconds: Int!
+  retries: Int!
+  retryIntervalSeconds: Int!
+  degradedThresholdMs: Int!
+}
+
+input CheckDefaultsInput @pending {
+  intervalSeconds: Int!
+  retries: Int!
+  retryIntervalSeconds: Int!
+  degradedThresholdMs: Int!
+}
+
 type Heartbeat {
   at: DateTime!
   status: Status!
@@ -830,6 +911,7 @@ enum EventSource {
   ACCESS
   HUB
   METRICS
+  NOTIFICATION @pending
 }
 
 type Event {
@@ -881,6 +963,209 @@ type AuditConnection {
   pageInfo: PageInfo!
 }
 
+# ---------------------------------------------------------------- notifications (WP-45)
+# NOT-001..007, D-16..D-22.
+
+enum ChannelKind @pending {
+  WEBHOOK
+  NTFY
+  EMAIL
+  APPRISE
+}
+
+enum NotificationKind @pending {
+  DOWN
+  UP
+  STILL_DOWN
+  CERTIFICATE_EXPIRY
+  DOMAIN_EXPIRY
+  TEST
+}
+
+enum WebhookMethod @pending {
+  POST
+  PUT
+}
+
+enum SmtpSecurity @pending {
+  TLS
+  STARTTLS
+}
+
+enum AppriseMode @pending {
+  STATELESS_URLS
+  CONFIG_KEY
+}
+
+"The URL can hold a credential, so only its origin is returned (D-17)."
+type WebhookSettings @pending {
+  origin: String!
+  method: WebhookMethod!
+  "Names only; values are sealed."
+  headerNames: [String!]!
+}
+
+"The topic and token are sealed: on a public server the topic is the credential."
+type NtfySettings @pending {
+  server: String!
+  priority: Int!
+  tokenStored: Boolean!
+}
+
+type EmailSettings @pending {
+  host: String!
+  port: Int!
+  security: SmtpSecurity!
+  username: String
+  from: String!
+  to: [String!]!
+  passwordStored: Boolean!
+}
+
+"The URLs or the key are sealed."
+type AppriseSettings @pending {
+  server: String!
+  mode: AppriseMode!
+  tags: [String!]!
+}
+
+union ChannelSettings @pending = WebhookSettings | NtfySettings | EmailSettings | AppriseSettings
+
+type NotificationTemplate @pending {
+  title: String!
+  body: String!
+}
+
+type NotificationChannel @pending {
+  id: ID!
+  name: String!
+  kind: ChannelKind!
+  "On for each new check (NOT-003)."
+  onByDefault: Boolean!
+  settings: ChannelSettings!
+  "Null: the installation's default template (NOT-007)."
+  template: NotificationTemplate
+  lastDelivery: Delivery
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type Delivery @pending {
+  id: ID!
+  channelId: ID
+  channelName: String!
+  kind: NotificationKind!
+  at: DateTime!
+  ok: Boolean!
+  "A fixed sentence, for example \"The target did not answer in 8 seconds.\" Never the target's reply."
+  message: String
+}
+
+type DeliveryEdge @pending {
+  cursor: String!
+  node: Delivery!
+}
+
+type DeliveryConnection @pending {
+  edges: [DeliveryEdge!]!
+  pageInfo: PageInfo!
+}
+
+type CheckNotifications @pending {
+  channels: [NotificationChannel!]!
+  "Send again after each N Down heartbeats; 0: never (NOT-005)."
+  resendEveryBeats: Int!
+}
+
+type NotificationSettings @pending {
+  "Days before expiry, descending, 1..365, at most 5 values (NOT-006, D-22). Default [21, 14, 7]."
+  certificateDays: [Int!]!
+  template: NotificationTemplate!
+  "The placeholders a template may use (D-21)."
+  placeholders: [String!]!
+}
+
+"On update, a secret field that is null keeps the stored value; an empty string clears it where it is optional."
+input WebhookSettingsInput @pending {
+  url: String
+  method: WebhookMethod = POST
+  headers: [HttpHeaderInput!]
+}
+
+input NtfySettingsInput @pending {
+  server: String = "https://ntfy.sh"
+  topic: String
+  token: String
+  priority: Int = 3
+}
+
+input EmailSettingsInput @pending {
+  host: String!
+  port: Int = 587
+  security: SmtpSecurity = STARTTLS
+  username: String
+  password: String
+  from: String!
+  to: [String!]!
+}
+
+input AppriseSettingsInput @pending {
+  server: String!
+  mode: AppriseMode = STATELESS_URLS
+  urls: [String!]
+  key: String
+  tags: [String!] = []
+}
+
+input ChannelSettingsInput @oneOf @pending {
+  webhook: WebhookSettingsInput
+  ntfy: NtfySettingsInput
+  email: EmailSettingsInput
+  apprise: AppriseSettingsInput
+}
+
+input NotificationTemplateInput @pending {
+  title: String!
+  body: String!
+}
+
+input NotificationChannelInput @pending {
+  name: String!
+  onByDefault: Boolean = false
+  settings: ChannelSettingsInput!
+  "Null: the default template."
+  template: NotificationTemplateInput
+}
+
+input CheckNotificationsInput @pending {
+  channelIds: [ID!]!
+  resendEveryBeats: Int = 0
+}
+
+input NotificationSettingsInput @pending {
+  certificateDays: [Int!]!
+  template: NotificationTemplateInput!
+}
+
+# ---------------------------------------------------------------- retention (WP-46)
+# HUB-005, D-25.
+
+enum RetentionSubject @pending {
+  HEARTBEATS
+  METRICS
+  EVENTS
+  RECORDINGS
+  DELIVERIES
+}
+
+type RetentionPeriod @pending {
+  subject: RetentionSubject!
+  days: Int!
+  minDays: Int!
+  maxDays: Int!
+  defaultDays: Int!
+}
+
 # ---------------------------------------------------------------- sessions (WP-10)
 
 enum Protocol {
@@ -914,6 +1199,9 @@ type Session {
   endReason: SessionEndReason
   # RA-034: which computer holds it
   clientAddr: IpAddr!
+  recording: RecordingState! @pending
+  "Live sessions only; empty after the end."
+  shares: [SessionShare!]! @pending
 }
 
 type SessionEdge {
@@ -934,6 +1222,8 @@ type SessionTicket {
   expiresAt: DateTime!
   "A Wake-on-LAN packet was sent; the opening waits longer (K4 §1)."
   wakeSent: Boolean!
+  "The session is recorded; the client shows the badge (RA-040)."
+  recording: Boolean! @pending
 }
 
 type WakeResult {
@@ -943,6 +1233,87 @@ type WakeResult {
 
 type SessionChange {
   session: Session!
+}
+
+# Phase 3 (WP-47, WP-48). RA-035, RA-040, RA-041.
+
+enum ShareAccess @pending {
+  VIEW
+  CONTROL
+}
+
+enum RecordingState @pending {
+  OFF
+  ON
+  STOPPED
+}
+
+enum RecordingFormat @pending {
+  GUACAMOLE
+  ASCIICAST
+}
+
+type SessionShare @pending {
+  id: ID!
+  sessionId: ID!
+  access: ShareAccess!
+  maxViewers: Int!
+  "Viewers connected now."
+  viewers: Int!
+  createdAt: DateTime!
+  expiresAt: DateTime!
+}
+
+type ShareLink @pending {
+  share: SessionShare!
+  "Shown once: <public origin>/shared#<token>. The token is only in the fragment (D-7)."
+  url: String!
+}
+
+input ShareInput @pending {
+  access: ShareAccess = VIEW
+  "5..1440."
+  expiresInMinutes: Int = 60
+  "1..10."
+  maxViewers: Int = 3
+}
+
+"What a viewer gets from joinShare. It names no session ID and no operator."
+type WatchTicket @pending {
+  token: String!
+  "/watch"
+  tunnelPath: String!
+  expiresAt: DateTime!
+  protocol: Protocol!
+  access: ShareAccess!
+  deviceName: String!
+  recording: Boolean!
+}
+
+type Recording @pending {
+  id: ID!
+  sessionId: ID!
+  deviceId: ID
+  deviceName: String!
+  protocol: Protocol!
+  format: RecordingFormat!
+  startedAt: DateTime!
+  endedAt: DateTime
+  "Bytes of plaintext; Float above 2^31."
+  sizeBytes: Float!
+  "False when the hub stopped before the last part (K4 §11)."
+  complete: Boolean!
+  expiresAt: DateTime!
+}
+
+type RecordingEdge @pending {
+  cursor: String!
+  node: Recording!
+}
+
+type RecordingConnection @pending {
+  edges: [RecordingEdge!]!
+  pageInfo: PageInfo!
 }
 
 # ---------------------------------------------------------------- web interfaces (WP-30)
@@ -1008,6 +1379,15 @@ type Query {
   audit(first: Int = 100, after: String): AuditConnection!
 
   sessions(deviceId: ID, live: Boolean, first: Int = 50, after: String): SessionConnection!
+
+  # Phase 3
+  apiKeys: [ApiKey!]! @pending
+  checkDefaults: CheckDefaults! @pending
+  notificationChannels: [NotificationChannel!]! @pending
+  notificationSettings: NotificationSettings! @pending
+  deliveries(channelId: ID, first: Int = 50, after: String): DeliveryConnection! @pending
+  retention: [RetentionPeriod!]! @pending
+  recordings(deviceId: ID, first: Int = 50, after: String): RecordingConnection! @pending
 }
 
 type Mutation {
@@ -1055,6 +1435,35 @@ type Mutation {
   dismissWebInterfaceSuggestion(checkId: ID!): ID!
   "Pins the certificate and writes an audit entry (WEB-008, WEB-009)."
   acceptWebCertificate(id: ID!, fingerprintSha256: String!): WebInterface!
+
+  # Phase 3
+  "Signed out (D-4). Sets the __Host-anima cookie; refused unless Origin is the public origin."
+  signInBrowser(input: LoginInput!): BrowserSignIn! @pending
+  "Login or browser token only (D-23)."
+  createApiKey(input: ApiKeyInput!): ApiKeyCreated! @pending
+  revokeApiKey(id: ID!): ID! @pending
+
+  setCheckDefaults(input: CheckDefaultsInput!): CheckDefaults! @pending
+
+  createNotificationChannel(input: NotificationChannelInput!): NotificationChannel! @pending
+  updateNotificationChannel(id: ID!, input: NotificationChannelInput!): NotificationChannel! @pending
+  deleteNotificationChannel(id: ID!): ID! @pending
+  "Sends at once and waits at most 8 seconds (NOT-004)."
+  sendTestNotification(id: ID!): Delivery! @pending
+  setCheckNotifications(checkId: ID!, input: CheckNotificationsInput!): CheckNotifications! @pending
+  setNotificationSettings(input: NotificationSettingsInput!): NotificationSettings! @pending
+
+  setRetention(subject: RetentionSubject!, days: Int!): RetentionPeriod! @pending
+
+  "The session must be live and the caller's (RA-035)."
+  shareSession(sessionId: ID!, input: ShareInput!): ShareLink! @pending
+  endShare(id: ID!): ID! @pending
+  "Signed out (D-7). Failed attempts count in the login throttle by client address."
+  joinShare(token: String!, name: String, display: DisplayInput!): WatchTicket! @pending
+  "A ticket for the playback tunnel (K4 §12)."
+  openRecording(id: ID!): SessionTicket! @pending
+  "Deletes the key first, then the file (D-13)."
+  deleteRecording(id: ID!): ID! @pending
 }
 
 type Subscription {

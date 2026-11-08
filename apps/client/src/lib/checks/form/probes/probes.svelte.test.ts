@@ -16,6 +16,12 @@ it('CHK-009: the type list offers the four Phase 2 types in operator words', () 
   expect(labels).toEqual(expect.arrayContaining(['Docker container', 'systemd service', 'SNMP', 'Tailscale ping']));
 });
 
+it('CHK-009: the type list does not offer DOMAIN_EXPIRY until its editor exists (WP-50, D-29)', () => {
+  show();
+  const values = [...(input('Type') as HTMLSelectElement).options].map((option) => option.value);
+  expect(values).not.toContain('DOMAIN_EXPIRY');
+});
+
 it.each([
   ['DOCKER', ['Container name', 'Timeout (ms)']],
   ['SYSTEMD', ['Unit name', 'Timeout (ms)']],

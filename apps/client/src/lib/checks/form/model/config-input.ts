@@ -80,6 +80,9 @@ export function configInput(values: CheckFormValues): CheckConfigInput {
       return { push: true };
     case 'GROUP':
       return { group: { childIds: [...values.group.childIds].sort() } };
+    case 'DOMAIN_EXPIRY':
+      // DOMAIN_EXPIRY editor: WP-50 (D-29). No config input yet: the picker never offers it and an edit never asks (configChanged).
+      throw new Error('A DOMAIN_EXPIRY check has no config input in this form yet.');
     default:
       return probeInput(values, values.type);
   }
@@ -91,6 +94,7 @@ export function configInput(values: CheckFormValues): CheckConfigInput {
  * Both sides are built the same way, so an empty secret on both sides is no change.
  */
 export function configChanged(initial: CheckFormValues, values: CheckFormValues): boolean {
+  if (initial.type === 'DOMAIN_EXPIRY') return false; // DOMAIN_EXPIRY editor: WP-50 (D-29)
   const same = JSON.stringify(configInput(initial)) === JSON.stringify(configInput({ ...values, type: initial.type }));
   return !same || initial.http.authKind !== values.http.authKind;
 }

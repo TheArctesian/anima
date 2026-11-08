@@ -8,6 +8,10 @@ describe('checkRowText (D-10, CHK-007)', () => {
     expect(checkRowText(check())).toEqual({ type: 'Ping', responseTime: '12 ms', certificate: null });
   });
 
+  it('CHK-009: a domain expiry check shows its own label', () => {
+    expect(checkRowText(check({ type: 'DOMAIN_EXPIRY' })).type).toBe('Domain expiry');
+  });
+
   it('CHK-007: certificate days for a check that reads one', () => {
     expect(checkRowText(check({ type: 'HTTP', certificateDaysLeft: 30 })).certificate).toBe('Certificate: 30 days');
     expect(checkRowText(check({ type: 'TLS', certificateDaysLeft: 1 })).certificate).toBe('Certificate: 1 day');

@@ -51,6 +51,7 @@ function typeErrors(values: CheckFormValues, configSent: boolean): FieldError[] 
     case 'GROUP':
       return groupErrors(values.group);
     case 'PUSH':
+    case 'DOMAIN_EXPIRY': // DOMAIN_EXPIRY editor: WP-50 (D-29); no fields to check yet.
       return [];
     default:
       return probeErrors(values, values.type, configSent);

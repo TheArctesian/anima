@@ -1,6 +1,6 @@
 # K4 — Remote access tunnel
 
-Status: **frozen for Phase 2** (change only through a programme ruling, CON-001). R-062 split SSH onto the terminal tunnel and added Section 8. Phase 2 additions are marked (Phase 2); Section 9 is new.
+Status: **frozen for Phase 3** (change only through a programme ruling, CON-001). R-062 split SSH onto the terminal tunnel and added Section 8. Phase 2 additions are marked (Phase 2); Section 9 is new. Phase 3 additions are marked (Phase 3); Sections 10 to 12 are new.
 
 The remote access stream does not use GraphQL (API-009). The client gets a ticket from the `startSession` mutation (K1), then opens one WebSocket to the hub. Owners: hub side WP-10 (`sessions`), protocol codec WP-08 (`guac-protocol`), client side WP-14; the terminal tunnel WP-18.
 
@@ -20,11 +20,25 @@ Sections 1, 5 and 6 apply to both tunnels.
 | Lifetime | 30 seconds from issue (`expiresAt` in the ticket) |
 | Use | Single use. The hub removes the token when a tunnel request presents it, valid or not |
 | Binding | Operator ID, session ID, client address. A request from another client address is refused. A ticket is valid only on the path its `tunnelPath` names |
-| `tunnelPath` | `/terminal` for SSH (Section 8). `/tunnel` for RDP and VNC (Phase 2). `/files` for a files ticket (Phase 2, Section 9) |
+| `tunnelPath` | `/terminal` for SSH (Section 8). `/tunnel` for RDP and VNC (Phase 2). `/files` for a files ticket (Phase 2, Section 9). (Phase 3) `/watch` for a viewer's ticket from `joinShare` (Section 10) and `/recording` for a playback ticket from `openRecording` (Section 12) |
 
 `startSession` does these steps before it returns the ticket: checks that the device exists and SSH is enabled; checks that a host key is accepted (Section 6); inserts a `sessions.sessions` row with `started_at`; writes an audit entry `session.start`.
 
 (Phase 2) `startSession` checks, per protocol, that the protocol is on. RDP also needs an accepted server certificate unless `security` is `RDP` or `ignoreCertificate` is on (CONFLICT, as for SSH host keys). When the device is Down and has a MAC address and its site has a wake relay, `startSession` sends the packet first and sets `wakeSent`. The opening limit is then 120 seconds instead of 8.
+
+(Phase 3) `tunnelPath` adds `/watch` (a viewer's ticket from `joinShare`) and `/recording` (a playback
+ticket from `openRecording`). Both keep every Section 1 property: 32 bytes, SHA-256 in memory, 30 seconds,
+single use, bound to the client address and the path.
+
+`startSession` adds, in this order:
+
+1. When `devices.session_limit` is set and the device has that many live sessions, it refuses with CONFLICT
+   ("This device has reached its session limit."). It counts under a transaction advisory lock on the device,
+   so two starts cannot both pass. Viewers and file tunnels do not count (RA-036).
+2. When `devices.record_sessions` is on, recording must be possible (a root that is set and writable, with
+   1 GiB free). If it is not, the hub refuses with UNAVAILABLE ("Recording is on for this device, but the hub
+   cannot record now."), D-14. The ticket then has `recording: true`, and the `session.start` audit change
+   holds `"recorded": true`.
 
 ## 2. Tunnel request (Guacamole, RDP and VNC)
 
@@ -90,6 +104,13 @@ Phase 1 SSH argument values:
 | `server-alive-interval` | `30` |
 | `enable-sftp`, `recording-path`, `typescript-path` | Empty (Phase 1) |
 
+(Phase 3) guacd's own recording stays off: `recording-path`, `recording-name`, `create-recording-path`,
+`typescript-path` and `recording-include-keys` are always empty (D-11). A viewer's join (Section 10) sends
+`select` with `$<gateway connection id>` (the ID from `ready`, GW-014), the viewer's `size` from
+`joinShare.display`, `audio` empty, `video` empty, `image` as for the owner, `timezone` UTC, `name` the cleaned
+viewer name or `viewer`, and `connect` with `read-only` = `true` for VIEW and empty for CONTROL. All other join
+arguments are empty. WP-47 task 1 records guacd 1.6.0's join `args`.
+
 ## 4. Relay (Guacamole, RDP and VNC)
 
 After `ready`, the hub sends to the client, in this order:
@@ -112,6 +133,10 @@ From the client, the hub:
 
 The hub sends a `nop` to the client when the gateway has sent nothing for 5 seconds. If the client sends nothing for 15 seconds (no ping, no input), the hub ends the session with `TIMEOUT`.
 
+(Phase 3) The relay passes each gateway instruction it sends to the owner to the session's recorder
+(Section 11) when recording is on. It also passes it to the session's viewers (Section 10), which have their
+own guacd connections. Client instructions are never recorded.
+
 ## 5. End of session
 
 The Guacamole tunnel's causes; Section 8.6 gives the terminal tunnel's causes for the same reasons and codes.
@@ -128,7 +153,10 @@ The Guacamole tunnel's causes; Section 8.6 gives the terminal tunnel's causes fo
 | Idle timeout | 4002 | `TIMEOUT` |
 | Hub shutdown | 1001 | `HUB_SHUTDOWN` |
 
-On every end the hub: closes both sockets; sets `ended_at` and `end_reason` on the session row; publishes an `events::Signal::Event` (`Source::Session`, severity Info; Error for `HOST_KEY_MISMATCH` and `SERVER_CERTIFICATE_MISMATCH`; Warning for `AUTH_FAILED`, `GATEWAY_ERROR` and `PROTOCOL_ERROR`; R-032, R-034); writes the audit entry `session.end`. The hub never records session content (RA-008).
+On every end the hub: closes both sockets; sets `ended_at` and `end_reason` on the session row; publishes an `events::Signal::Event` (`Source::Session`, severity Info; Error for `HOST_KEY_MISMATCH` and `SERVER_CERTIFICATE_MISMATCH`; Warning for `AUTH_FAILED`, `GATEWAY_ERROR` and `PROTOCOL_ERROR`; R-032, R-034); writes the audit entry `session.end`. The hub never records session content (RA-008), unless recording is on for the device (RA-040, Section 11, Phase 3).
+
+(Phase 3) When a session ends, every share of it ends, and each viewer's socket closes with 4004 (Section
+10). The recorder finishes before the session row is written.
 
 ## 6. Host keys (SEC-006, SEC-007)
 
@@ -145,6 +173,17 @@ On every end the hub: closes both sockets; sets `ended_at` and `end_reason` on t
 - Terminal (Section 8): a fake SSH server (a `russh` server in the test) and a fake client run one full session: bytes both ways, `resize` reaching the server as a window change, `ping` both ways, and each end cause in Section 8.6. A changed host key ends `HOST_KEY_MISMATCH` and the fake server sees no authentication request; a refused credential ends `AUTH_FAILED`; a ticket that is expired, reused or from another address gets 403 and one without the subprotocol gets 400. Also: a first message that is not `resize`, or binary before it; no first `resize` within the wait; a message over 64 KiB (also across fragments) and a text message over 256 bytes; keyboard-interactive and its round and prompt limits; a key that does not decode; a WebSocket ping keeps the session alive; client silence, a stalled send, a stalled device write (`GATEWAY_ERROR`, with hub pings continuing meanwhile) and lost keep-alives or a dropped connection, all with the waits shortened through the sessions module's internal router constructor (the K3 `terminal_router` always uses the Section 8.5 values); `endSession` and the client leaving during the opening; channels the device opens are refused; a ticket on the wrong path is refused; a client that does not read leaves the output waiting in the device, not the hub; the fake server sees only `pty-req`, `shell` and `window-change` on one channel; no secret in any frame to the client and no token or secret in the log. The control-message parser is property-tested: no input panics, and only the messages in Section 8.4 are accepted. The Guacamole relay tests issue SSH tickets with `sessions::start` as their fixture and call the `/tunnel` router directly; `/tunnel` refuses SSH tickets (R-062).
 
 (Phase 2) Add: recorded guacd 1.6.0 `args` for `rdp` and `vnc` give the Section 3 values; a fake guacd sees no `clipboard` when paste is off; a changed certificate ends 4003 before any `connect`. Files (Section 9): a fake SSH server sees only the `sftp` subsystem, each `refused` reason, an upload over `size`, and a ticket for an ended session.
+
+(Phase 3) Add:
+
+- `startSession` beyond the limit gives CONFLICT, and two parallel starts at the limit give one ticket.
+- A recorded fake-guacd session gives a file that has no plaintext byte run of the relayed instructions, and
+  that decrypts to exactly the relayed stream. A swapped, truncated or reordered part fails. A file with a
+  deleted row cannot be opened.
+- A viewer of a fake-guacd session sends a `$id` join with `read-only=true`, and its `key` is dropped under
+  VIEW. A terminal viewer gets the replay buffer, then live output, then 4004 when the owner ends.
+- `joinShare` with a wrong token counts in the throttle. A watch ticket from another address gets 403.
+- Playback of a recording with no last part ends `complete: false` after the verified parts.
 
 ## 8. Terminal tunnel (SSH, R-062)
 
@@ -256,6 +295,13 @@ The remote host controls the bytes the client draws, so the client sets each of 
 - (Phase 2) With `copy` off the client copies nothing from the terminal; with `paste` off it sends no paste. The hub cannot enforce these for bytes (D-6).
 - Copy and paste go through the operator's own actions only (RA-003): selection and the copy shortcut, the paste event or the Keys menu. Paste uses bracketed paste when the shell asks for it.
 
+### 8.8 Sharing and recording (Phase 3)
+
+While a share exists, each output frame also goes to the replay buffer (64 KiB, memory only,
+D-10) and to each viewer. When recording is on, each output frame and each `resize` go to the recorder. A
+viewer that is slow never slows the owner: its queue holds at most 8 frames, and when that is full the viewer
+closes with 4002.
+
 ## 9. Files tunnel (Phase 2, SFTP, RA-032)
 
 - Request `GET /files?token=<token>`, subprotocol `anima-files`, refusals as Section 8.1. The ticket comes from `openFiles(sessionId)`: the session must be a live SSH session of the same operator and client address. The files tunnel ends when that session ends.
@@ -264,3 +310,66 @@ The remote host controls the bytes the client draws, so the client sets each of 
 - Hub text messages: `entries {path, entries: [{name, kind: file|dir|link, size, modifiedAt}]}` (at most 10 000), `download {size}` then binary frames, `done`, `refused {reason: DOWNLOAD_OFF | UPLOAD_OFF | NOT_FOUND | DENIED | EXISTS}`, `ping`.
 - One transfer at a time. Upload never overwrites (`EXISTS`). The flags are read at each request.
 - Backpressure and silence limits as Sections 8.4 and 8.5. Each finished or refused transfer writes the audit entry `file.upload` or `file.download` with the path and size and no content, and an Info event (LOG-005, LOG-007).
+
+## 10. Watch tunnel (Phase 3, RA-035)
+
+- `joinShare(token, name, display)` is a signed-out GraphQL root (D-7). The hub hashes the token and looks it
+  up among the live shares. A miss counts as a failed login attempt for the client address (the Phase 1
+  throttle). It refuses when the share expired, ended or has `maxViewers` viewers. Its error is the same
+  FORBIDDEN text for every case. `name` is cleaned with `text::clean` to 32 characters.
+- A share token is 32 bytes from the OS random source, base64url (43 characters). The hub keeps only its
+  SHA-256, in memory, with the share. It is shown once, in `ShareLink.url` after `#`.
+- Request `GET /watch?token=<ticket>`. Subprotocol `guacamole` for RDP and VNC, `anima-watch` for SSH. The
+  refusals are those of Section 2. The watch ticket names its share; it does not name the owner's session to
+  the viewer.
+- RDP and VNC: the hub opens its own guacd connection with the join handshake (Section 3) and relays as
+  Section 4: the internal UUID first, the BMP guard, and `error` with the fixed text. From the viewer it
+  forwards only `sync`, `ack`, `nop`, `disconnect` and `size` (as Section 4) for VIEW, and also `key`, `mouse`
+  and `touch` for CONTROL. Never `clipboard`, `file`, `put`, `get`, `audio`, `blob`, `end` or `argv`. Any
+  other instruction closes 1002.
+- SSH: hub to viewer: a text message `{"type":"joined","cols":C,"rows":R}`, then the replay buffer as binary
+  frames, then live output as binary frames, `{"type":"resize","cols":C,"rows":R}` when the owner resizes,
+  `{"type":"ping"}`, and `{"type":"end","reason":"SHARE_ENDED"}` before the close. Viewer to hub: `ping` for
+  VIEW; for CONTROL also binary input, written to the owner's shell as the owner's input is (limits as §8.5).
+  A viewer never sends `resize`: the owner sets the size.
+- Close codes: 4004 for a share that ended (expiry, `endShare`, owner session end); 4002 for viewer silence
+  (15 s) or a full viewer queue; 1002 for a protocol error. A viewer's end never ends the owner's session.
+- Audit: `share.create` (access, expiry, maximum viewers), `share.join` (viewer client address and cleaned
+  name, target the share), `share.end` (cause). Each also writes an Info event with `Source::Session`.
+
+## 11. Recording (Phase 3, RA-040)
+
+- What: Guacamole format, every gateway instruction relayed to the owner after `ready`, as relayed (after the
+  BMP guard and the `error` text rewrite), not the internal UUID instruction. asciicast v2 for SSH: the header
+  `{"version":2,"width":C,"height":R,"timestamp":<unix seconds>}`, then `[t,"o",text]` for output and
+  `[t,"r","CxR"]` for resize. Output bytes go through a streaming UTF-8 decoder (bad bytes become U+FFFD). No
+  input event is written.
+- File: `<ANIMA_RECORDING_ROOT>/<recording_id>.anrec`, created with `create_new`, mode 0600. Header: the magic
+  bytes `ANREC1\0`, one format byte, the 16-byte recording ID, a 19-byte STREAM nonce prefix. Body: parts of at
+  most 64 KiB of plaintext, each written as a 4-byte big-endian length and the XChaCha20-Poly1305 STREAM
+  (BE32) ciphertext. The last part carries the STREAM "last" flag. The associated data of every part is the
+  header bytes.
+- Key: 32 random bytes per recording, sealed with the vault (context `sessions.recordings:<recording_id>`) in
+  `sessions.recordings.key_sealed`, and wiped from memory after the last part. The row is written before the
+  first part.
+- Writes: a part is written when it is full, or 5 seconds after its first byte. The relay never waits on the
+  disk: the recorder has a bounded queue (64 parts). When the queue is full, recording stops with
+  `write_failed`.
+- Stop: at `ANIMA_RECORDING_MAX_BYTES` (`size_limit`), below 1 GiB free (`disk_full`) or after a write error
+  (`write_failed`). The recorder writes the last part, sets `stopped_reason`, and the session's
+  `recording` becomes `STOPPED`. The hub publishes `sessionChanged` and writes a Warning event. The session
+  goes on.
+- End: the recorder writes the last part, sets `ended_at`, `size_bytes` and `complete = true`. A recording with
+  no last part (hub crash) stays `complete = false`.
+- Never in a log: recording content, the key, and the file path in the process log.
+
+## 12. Playback tunnel (Phase 3, RA-041)
+
+- `openRecording(id)` returns a ticket for `/recording` (the `sessionId` is the recording's session) and writes
+  the audit entry `recording.view`.
+- Request `GET /recording?token=<ticket>`, subprotocol `anima-recording`, refusals as §8.1.
+- Hub to client: `{"type":"recording","format":"GUACAMOLE"|"ASCIICAST","sizeBytes":N,"complete":B}`, then the
+  plaintext in binary frames of at most 64 KiB, then `{"type":"done"}`. A part that fails to decrypt ends with
+  `{"type":"failed","reason":"DAMAGED"}`, after the parts that verified. A missing file ends with
+  `{"reason":"MISSING"}`. Client to hub: `ping`, `cancel`.
+- Backpressure and silence as §8.4 and §8.5. At most 2 playbacks at once for each hub.

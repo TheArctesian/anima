@@ -1,6 +1,7 @@
 # Phase 3 contract deltas (K1–K7)
 
-Status: **Adopted** (R-081); the Phase 3 freeze. WP-40 moves it into `contracts/`. Plan: [phase-3-plan.md](phase-3-plan.md).
+Status: **Adopted** (R-081). The deltas are now in `contracts/` (WP-40, R-081); this file is the record of the proposal.
+Plan: [phase-3-plan.md](phase-3-plan.md).
 
 Why this file and not `contracts/`: CON-002 keeps the hub schema equal to K1. After approval, WP-40 and the
 programme orchestrator copy each section below into its contract file in one commit, with the file headers
