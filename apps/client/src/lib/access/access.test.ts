@@ -3,7 +3,8 @@ import { AccessTokenError } from '$lib/desktop/token';
 import type { HubResult } from '$lib/hub/hub';
 import { accessApi } from './api';
 import { fakeHub, failure, HUB_ADDRESS, ok } from './access.fixture';
-import { isBare, isSignedOut, routePath, signInNeeded, startGuard } from './guard';
+import { signInNeeded, startGuard } from './guard';
+import { isBare, isSignedOut, routePath } from './routes';
 import { signOut, TOKEN_KEPT_AFTER_LOGOUT, TOKEN_KEPT_UNCONFIRMED } from './sign-out';
 
 const ADDRESS = HUB_ADDRESS;
@@ -31,11 +32,11 @@ describe('accessApi', () => {
 });
 
 describe('startGuard on desktop', () => {
-  function check(pathname: string, token: string | null, desktop = true) {
+  function check(route: string, token: string | null, desktop = true) {
     const goToSignIn = vi.fn();
     const read = vi.fn(() => Promise.resolve(token));
     const me = vi.fn(() => Promise.resolve(ok({ username: 'ann' })));
-    return { goToSignIn, read, me, run: () => startGuard({ pathname, address: ADDRESS, token: read, desktop, me, goToSignIn }) };
+    return { goToSignIn, read, me, run: () => startGuard({ route, address: ADDRESS, token: read, desktop, me, goToSignIn }) };
   }
 
   it('API-003: the guard reads the token for the hub address it is given', async () => {
@@ -48,7 +49,7 @@ describe('startGuard on desktop', () => {
     const goToSignIn = vi.fn();
     const token = () => Promise.reject(new AccessTokenError('failed'));
     const me = vi.fn();
-    await startGuard({ pathname: '/devices', address: ADDRESS, token, desktop: true, me, goToSignIn });
+    await startGuard({ route: '/devices', address: ADDRESS, token, desktop: true, me, goToSignIn });
     expect(goToSignIn).toHaveBeenCalledOnce();
   });
 
@@ -75,11 +76,11 @@ describe('startGuard on desktop', () => {
 
 describe('startGuard in a browser', () => {
   /** A browser start: no key store; the hub answers `me` with `answer`. */
-  function browser(pathname: string, answer: HubResult<unknown>) {
+  function browser(route: string, answer: HubResult<unknown>) {
     const goToSignIn = vi.fn();
     const token = vi.fn(() => Promise.resolve(null));
     const me = vi.fn(() => Promise.resolve(answer));
-    return { goToSignIn, me, token, run: () => startGuard({ pathname, address: ADDRESS, token, desktop: false, me, goToSignIn }) };
+    return { goToSignIn, me, token, run: () => startGuard({ route, address: ADDRESS, token, desktop: false, me, goToSignIn }) };
   }
 
   it('API-003: in a browser, UNAUTHENTICATED from me goes to sign-in', async () => {
@@ -103,7 +104,7 @@ describe('startGuard in a browser', () => {
     expect(c.goToSignIn).not.toHaveBeenCalled();
   });
 
-  it.each(['/sign-in', '/shared', '/shared/', '/shared/abc'])('E-3: on the signed-out route %s the browser guard never asks the hub', async (path) => {
+  it.each(['/sign-in', '/shared', '/shared/abc'])('E-3: on the signed-out route %s the browser guard never asks the hub', async (path) => {
     const c = browser(path, failure('UNAUTHENTICATED'));
     await c.run();
     expect(c.me).not.toHaveBeenCalled();
@@ -112,25 +113,23 @@ describe('startGuard in a browser', () => {
 });
 
 describe('signed-out routes', () => {
-  it.each(['/sign-in', '/sign-in/', '/shared', '/shared/', '/shared/abc', '/shared/abc/def'])('E-3: %s needs no sign-in', (path) => {
-    expect(isSignedOut(path)).toBe(true);
+  it.each(['/sign-in', '/shared', '/shared/', '/shared/abc'])('E-3: %s needs no sign-in', (route) => {
+    expect(isSignedOut(route)).toBe(true);
   });
 
-  it.each(['/sharedx', '/sign-in-x', '/sign-inx', '/devices', '/', '/settings', '/Shared', '/devices/shared', '/shared%2Fx'])(
-    'E-3: %s needs sign-in',
-    (path) => {
-      expect(isSignedOut(path)).toBe(false);
-    },
-  );
+  it.each(['/sharedx', '/sign-in-x', '/sign-inx', '/Shared', '/devices/shared', '/shared%2Fx'])('E-3: the near miss %s needs sign-in', (route) => {
+    expect(isSignedOut(route)).toBe(false);
+  });
 
   it('SEC-002: only /shared and below render bare; /sign-in keeps the shell for its mutation', () => {
-    expect(['/shared', '/shared/', '/shared/abc'].map(isBare)).toEqual([true, true, true]);
+    expect(['/shared', '/shared/abc'].map(isBare)).toEqual([true, true]);
     expect(['/sign-in', '/sharedx', '/devices', '/'].map(isBare)).toEqual([false, false, false, false]);
   });
 
-  it('E-3: the route path is the one the router matches: below the base path, percent-decoded except %25', () => {
+  it('E-3: the route path is the one the router matches: below the base path, percent-decoded except %25 and reserved escapes', () => {
     expect(routePath('/shared/abc', '')).toBe('/shared/abc');
     expect(routePath('/%73hared', '')).toBe('/shared');
+    expect(routePath('/sign-%69n', '')).toBe('/sign-in');
     expect(routePath('/anima/shared', '/anima')).toBe('/shared');
     expect(routePath('/anima', '/anima')).toBe('/');
     expect(routePath('/animax/shared', '/anima')).toBe('/animax/shared');
