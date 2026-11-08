@@ -11,11 +11,55 @@ interface Container {
   networks?: string[] | Record<string, { ipv4_address?: string } | null>;
   environment?: Record<string, string>;
   volumes?: unknown[];
+  read_only?: boolean;
+  depends_on?: Record<string, unknown>;
   healthcheck?: { test: string[]; interval?: string; retries?: number };
 }
 interface Compose {
   services: Record<string, Container>;
   networks: Record<string, { internal?: boolean; ipam?: { config?: { subnet: string }[] } } | null>;
+  volumes: Record<string, unknown>;
+}
+
+interface Block { first: number; size: number; contains: (address: number) => boolean }
+
+function ipv4(text: string): number {
+  const parts = text.split(".").map(Number);
+  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) throw new Error(`not an IPv4 address: ${text}`);
+  return parts.reduce((sum, part) => sum * 256 + part, 0);
+}
+
+function cidr(text: string): Block {
+  const [address, prefixText] = text.split("/");
+  const prefix = Number(prefixText);
+  if (address === undefined || !Number.isInteger(prefix) || prefix < 0 || prefix > 32) throw new Error(`not a CIDR: ${text}`);
+  const size = 2 ** (32 - prefix);
+  const first = ipv4(address);
+  if (first % size !== 0) throw new Error(`${text} has host bits set`);
+  return { first, size, contains: (value) => value >= first && value < first + size };
+}
+
+/** The text of a compose entry with `${NAME:-default}` replaced by its default; other `${...}` become opaque. */
+function resolveDefault(text: string): string {
+  return text.replace(/\$\{[A-Z_]+:-([^}]*)\}/g, "$1");
+}
+
+/** The deny entries that are literal or have a default, as blocks. Required variables (`:?`) are opaque and skipped. */
+function denyEntries(hub: Container): Block[] {
+  return (hub.environment?.["ANIMA_PROBE_DENY"] ?? "")
+    .split(",")
+    .map(resolveDefault)
+    .filter((entry) => !entry.includes("${"))
+    .map(cidr);
+}
+
+/** How many addresses of `subnet` some entry covers. */
+function coveredCount(entries: Block[], subnet: Block): number {
+  let count = 0;
+  for (let host = 0; host < subnet.size; host += 1) {
+    if (entries.some((entry) => entry.contains(subnet.first + host))) count += 1;
+  }
+  return count;
 }
 
 const compose = Bun.YAML.parse(readFileSync(join(ROOT, "deploy", "compose.yaml"), "utf8")) as Compose;
@@ -26,7 +70,9 @@ describe("hub configuration", () => {
     const conventions = readFileSync(join(ROOT, "contracts", "conventions.md"), "utf8");
     // Phase 2 variables (K7) are frozen in phase-2-contracts.md until conventions.md absorbs them.
     const phase2 = readFileSync(join(ROOT, "docs", "programme", "phase-2-contracts.md"), "utf8");
-    const known = new Set([...source.matchAll(/"(ANIMA_[A-Z_]+)"/g), ...conventions.matchAll(/`(ANIMA_[A-Z_]+)`/g), ...phase2.matchAll(/`(ANIMA_[A-Z_]+)`/g)].map((match) => match[1]));
+    // Phase 3 variables (K7) are frozen in phase-3-contracts.md for the same reason.
+    const phase3 = readFileSync(join(ROOT, "docs", "programme", "phase-3-contracts.md"), "utf8");
+    const known = new Set([...source.matchAll(/"(ANIMA_[A-Z_]+)"/g), ...conventions.matchAll(/`(ANIMA_[A-Z_]+)`/g), ...phase2.matchAll(/`(ANIMA_[A-Z_]+)`/g), ...phase3.matchAll(/`(ANIMA_[A-Z_]+)`/g)].map((match) => match[1]));
     for (const name of ["hub", "migrate"]) {
       for (const key of Object.keys(compose.services[name]?.environment ?? {})) {
         expect(known.has(key) ? key : `${name}.${key} is in neither config.rs nor conventions.md`).toBe(key);
@@ -34,21 +80,80 @@ describe("hub configuration", () => {
     }
   });
 
-  test("NET-001 ANIMA_PROBE_DENY names the subnet of every network the hub is attached to, and the VPS public /32", () => {
+});
+
+describe("hub deny list, notify network and recordings", () => {
+  test("NET-001 ANIMA_PROBE_DENY covers every network the hub joins, notify minus exactly the Apprise address", () => {
     const hub = compose.services["hub"] as Container;
+    const apprise = compose.services["apprise"] as Container;
+    const appriseAddress = ipv4(String((apprise.networks as Record<string, { ipv4_address?: string }>)["notify"]?.ipv4_address));
+    const entries = denyEntries(hub);
     const attached = Array.isArray(hub.networks) ? hub.networks : Object.keys(hub.networks ?? {});
-    const subnets = attached.map((name) => {
-      const config = compose.networks[name]?.ipam?.config;
-      return config?.[0]?.subnet ?? `${name} has no fixed subnet`;
-    });
-    expect(subnets.length).toBe(3);
-    const deny = hub.environment?.["ANIMA_PROBE_DENY"] ?? "";
-    expect(deny.split(",").sort()).toEqual([...subnets, "${ANIMA_VPS_PUBLIC_ADDRESS:?set to the VPS public IPv4}/32"].sort());
-    expect(subnets).toContain("${ANIMA_DATABASE_SUBNET:-172.30.1.0/24}");
-    expect(subnets).toContain("${ANIMA_HUB_SUBNET:-172.30.0.0/24}");
-    expect(subnets).toContain("${ANIMA_LOCALAPI_SUBNET:-172.30.2.0/24}");
+    expect(attached.sort()).toEqual(["database", "gateway", "localapi", "notify"]);
+    // The hub's own notify address is inside the denied part (172.30.3.2).
+    expect(entries.some((entry) => entry.contains(ipv4("172.30.3.2")))).toBe(true);
+    for (const name of attached) {
+      const subnet = cidr(resolveDefault(compose.networks[name]?.ipam?.config?.[0]?.subnet ?? `${name} has no fixed subnet`));
+      const carved = name === "notify";
+      // Every address of the subnet is denied, except the Apprise address on notify.
+      expect(coveredCount(entries, subnet)).toBe(subnet.size - (carved ? 1 : 0));
+    }
+    expect(entries.some((entry) => entry.contains(appriseAddress))).toBe(false);
   });
 
+  test("NET-001 the notify carve-out leaves only 172.30.3.10 allowed, with no overlapping blocks", () => {
+    const entries = denyEntries(compose.services["hub"] as Container);
+    const subnet = cidr("172.30.3.0/24");
+    const allowed = [];
+    for (let host = 0; host < subnet.size; host += 1) {
+      if (!entries.some((entry) => entry.contains(subnet.first + host))) allowed.push(host);
+    }
+    expect(allowed).toEqual([10]);
+    // The block sizes add up to the subnet minus one: no block hides behind a wider one.
+    const inside = entries.filter((entry) => subnet.contains(entry.first));
+    expect(inside.length).toBe(8);
+    expect(inside.reduce((sum, entry) => sum + entry.size, 0)).toBe(subnet.size - 1);
+  });
+
+  test("NET-001 the deny list holds the VPS public address and the hub VPN address as /32", () => {
+    const deny = (compose.services["hub"]?.environment?.["ANIMA_PROBE_DENY"] ?? "").split(",");
+    expect(deny).toContain("${ANIMA_VPS_PUBLIC_ADDRESS:?set to the VPS public IPv4}/32");
+    expect(deny).toContain("${ANIMA_HUB_ADDRESS:?set ANIMA_HUB_ADDRESS to the hub's VPN address}/32");
+  });
+
+  test("K7 the hub gets the web, origin and recording variables with the values of plan Section 6", () => {
+    const environment = compose.services["hub"]?.environment ?? {};
+    expect(environment["ANIMA_PUBLIC_ORIGIN"]).toBe("${ANIMA_PUBLIC_ORIGIN:-https://hub.anima.ing}");
+    expect(environment["ANIMA_WEB_ROOT"]).toBe("/usr/share/anima/web");
+    expect(environment["ANIMA_RECORDING_ROOT"]).toBe("/var/lib/anima/recordings");
+    expect(environment["ANIMA_RECORDING_MAX_BYTES"]).toBe("${ANIMA_RECORDING_MAX_BYTES:-2147483648}");
+  });
+
+  test("D-19 only the hub mounts the recordings volume, read-write, at ANIMA_RECORDING_ROOT", () => {
+    const hub = compose.services["hub"] as Container;
+    const root = hub.environment?.["ANIMA_RECORDING_ROOT"];
+    expect(hub.volumes).toContain(`recordings:${root}`);
+    expect(compose.volumes).toHaveProperty("recordings");
+    const users = Object.entries(compose.services).filter(([, service]) => JSON.stringify(service.volumes ?? []).includes("recordings")).map(([name]) => name);
+    expect(users).toEqual(["hub"]);
+  });
+
+  test("SEC-001 the hub root file system stays read-only, and its mounts are exactly certs, recordings and /tmp", () => {
+    const hub = compose.services["hub"] as Container & { tmpfs?: string[] };
+    expect(hub.read_only).toBe(true);
+    expect(hub.volumes).toEqual(["certs:/certs:ro", "recordings:/var/lib/anima/recordings"]);
+    expect(hub.tmpfs).toEqual(["/tmp"]);
+  });
+
+  test("D-13 the hub joins notify and does not wait for Apprise", () => {
+    const hub = compose.services["hub"] as Container;
+    expect(Object.keys(hub.networks as object)).toContain("notify");
+    expect(Object.keys(hub.depends_on ?? {})).not.toContain("apprise");
+  });
+
+});
+
+describe("hub certificates and listen address", () => {
   test("DNS-002 the hub reads certificate and key from the one tls.pem on the certs volume", () => {
     const environment = compose.services["hub"]?.environment ?? {};
     expect(environment["ANIMA_TLS_CERT_FILE"]).toBe("/certs/hub/tls.pem");
