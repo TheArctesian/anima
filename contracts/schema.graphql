@@ -1057,8 +1057,24 @@ type Delivery @pending {
   kind: NotificationKind!
   at: DateTime!
   ok: Boolean!
-  "A fixed sentence, for example \"The target did not answer in 8 seconds.\" Never the target's reply."
-  message: String
+  "Null when ok. The client shows a fixed sentence for each value; no hub or target text is shown (CR-14)."
+  reason: DeliveryReason
+  "The HTTP status or SMTP reply code, when the reason has one."
+  code: Int
+}
+
+enum DeliveryReason @pending {
+  TARGET_NOT_PERMITTED
+  BAD_ADDRESS
+  SECRET_UNREADABLE
+  SETUP_FAILED
+  CONNECTION_FAILED
+  TLS_FAILED
+  TIMED_OUT
+  HTTP_STATUS
+  NO_STARTTLS
+  SMTP_REFUSED
+  NOT_UNDERSTOOD
 }
 
 type DeliveryEdge @pending {
@@ -1085,7 +1101,12 @@ type NotificationSettings @pending {
   placeholders: [String!]!
 }
 
-"On update, a secret field that is null keeps the stored value; an empty string clears it where it is optional."
+"""
+On update, a secret field that is null keeps the stored value; an empty string clears it where it is optional.
+When the target changes (webhook origin, ntfy server, email host or port, Apprise server), every stored secret must
+be sent again or cleared, or the update is VALIDATION. `headers`: null keeps, [] removes all, a list replaces all.
+The kind of a channel never changes. URLs and servers are https only; a server is an origin only (CR-14).
+"""
 input WebhookSettingsInput @pending {
   url: String
   method: WebhookMethod = POST

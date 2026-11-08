@@ -26,7 +26,7 @@ Status: **frozen for Phase 3** (change only through a programme ruling, CON-001)
 | 0320–0349 (Phase 3) | checks (WP-46) | `checks` | `checks.type` adds `domain_expiry`; `checks.checks.domain_not_after timestamptz null` (beside `cert_not_after`); `checks.defaults` (`id bool pk default true check (id)`, `interval_seconds`, `retries`, `retry_interval_seconds`, `degraded_threshold_ms`, each with the schema default and the bounds of `checks.checks`), seeded with one row |
 | 0400–0499 | maintenance (WP-09) | `maintenance` | `windows`, `window_targets` |
 | 0500–0599 | events (WP-05) | `events` | `event_log` (partitioned), `audit_log` (partitioned) |
-| 0503 (Phase 3) | events (WP-45, handoff) | `events` | `event_log_source_check` adds `notification` (as 0701 did for `metrics`) |
+| 0852 (Phase 3) | events (WP-45, handoff) | `events` | `event_log_source_check` lists all seven sources, adding `notification`; numbered after 0701, which re-adds the check (CR-13) |
 | 0600–0699 | sessions (WP-10) | `sessions` | `sessions`, `host_keys` |
 | 0610–0649 (Phase 2) | sessions (WP-22) | `sessions` | `sessions.protocol` check `('ssh','rdp','vnc')`; `end_reason` adds `server_certificate_mismatch`; `server_certificates` (device_id pk fk cascade, fingerprint_sha256, subject null, not_after null, first_seen_at, accepted_by) |
 | 0650–0699 (Phase 2) | sessions (WP-27) | `sessions` | None expected (transfers go to the audit log) |
