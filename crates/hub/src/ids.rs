@@ -66,6 +66,16 @@ entity_id! {
     WebInterfaceId,
     /// A metric series of a device.
     MetricSeriesId,
+    /// An API key.
+    ApiKeyId,
+    /// A notification channel.
+    ChannelId,
+    /// A notification delivery.
+    DeliveryId,
+    /// A session share link.
+    ShareId,
+    /// A session recording.
+    RecordingId,
 }
 
 #[cfg(test)]
