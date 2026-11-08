@@ -1,10 +1,10 @@
-# Desktop release (UPD-007 to UPD-012). It runs on a push to main and by hand, never on a
-# pull request (R-005: gates and tests run on the operator's machine, not here).
+# Desktop release (UPD-007 to UPD-012). It runs only by hand, never on a push or a pull
+# request (R-005: gates and tests run on the operator's machine, not here).
+# Releases are moving into Anima itself: the hub queues builds and operator computers on the
+# VPN build them (WP-36, Builds). This workflow stays as a manual fallback until WP-36 lands.
 name: release
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 concurrency:

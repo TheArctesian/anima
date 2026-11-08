@@ -25,6 +25,7 @@
     // Client computers the operator added as devices (R-061). Each is one /32 tailnet
     // address, reached only by the hub and only on the ports its grant names.
     "device-stephens-mac": "100.64.0.2/32",
+    "device-pop-os": "100.64.0.3/32",
   },
 
   "grants": [
@@ -42,6 +43,7 @@
     // Sharing), TCP only (R-061). Each RDP or VNC client device gets one host entry and
     // one grant like this, from tag:hub only.
     {"src": ["tag:hub"], "dst": ["device-stephens-mac"], "ip": ["tcp:22", "tcp:5900"]},
+    {"src": ["tag:hub"], "dst": ["device-pop-os"], "ip": ["tcp:22", "tcp:5900"]},
     // No other grant targets a client address: devices, routers and the hub cannot start
     // a connection to any other client; replies to permitted connections still flow.
   ],
@@ -68,9 +70,9 @@
     {
       "src": "tag:hub",
       "proto": "tcp",
-      "accept": ["10.10.0.5:161", "10.20.0.5:22", "10.30.0.5:5900", "100.64.0.2:22", "100.64.0.2:5900"],
-      "deny": ["operator@:443", "100.64.0.2:3389"],
+      "accept": ["10.10.0.5:161", "10.20.0.5:22", "10.30.0.5:5900", "100.64.0.2:22", "100.64.0.2:5900", "100.64.0.3:22", "100.64.0.3:5900"],
+      "deny": ["operator@:443", "100.64.0.2:3389", "100.64.0.3:3389"],
     },
-    {"src": "tag:hub", "deny": ["operator@:53", "100.64.0.2:3389"]},
+    {"src": "tag:hub", "deny": ["operator@:53", "100.64.0.2:3389", "100.64.0.3:3389"]},
   ],
 }
