@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { FAKE_SECRET, FAKE_WEBHOOK_URL, fixtureChannel, FIXTURE_SETTINGS } from '../notifications.fixture';
 import { forgetSecrets, newDraft, savedDraft, storedOf, type ChannelDraft } from './draft';
-import { APPRISE_KEY_WRONG, APPRISE_URLS_WRONG, checkDraft, NAME_MISSING, RECIPIENTS_WRONG, secretValue, TOPIC_WRONG, URL_MISSING, URL_WRONG, type DraftCheck } from './input';
+import { APPRISE_KEY_WRONG, APPRISE_URLS_WRONG, checkDraft, NAME_MISSING, RECIPIENTS_WRONG, TOPIC_WRONG, URL_MISSING, URL_WRONG } from './input';
+
+type DraftCheck = ReturnType<typeof checkDraft>;
 
 const { placeholders, template } = FIXTURE_SETTINGS;
 
@@ -24,12 +26,18 @@ function settingsOf(check: DraftCheck): unknown {
   return check.input.settings;
 }
 
-describe('secretValue', () => {
+describe('a stored optional secret', () => {
   it('F-8: typed is sent, an untouched secret is null, a cleared one is ""', () => {
-    expect(secretValue(FAKE_SECRET, false)).toBe(FAKE_SECRET);
-    expect(secretValue(FAKE_SECRET, true)).toBe(FAKE_SECRET);
-    expect(secretValue('', false)).toBeNull();
-    expect(secretValue('', true)).toBe('');
+    const token = (value: string, clear: boolean) =>
+      settingsOf(
+        saved('NTFY', (draft) => {
+          draft.ntfy.token = { value, clear };
+        }),
+      );
+    expect(token(FAKE_SECRET, false)).toMatchObject({ ntfy: { token: FAKE_SECRET } });
+    expect(token(FAKE_SECRET, true)).toMatchObject({ ntfy: { token: FAKE_SECRET } });
+    expect(token('', false)).toMatchObject({ ntfy: { token: null } });
+    expect(token('', true)).toMatchObject({ ntfy: { token: '' } });
   });
 });
 

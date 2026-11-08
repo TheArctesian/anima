@@ -28,16 +28,19 @@ export function originOf(text: string): string {
 }
 
 /** `ntfy.sh`, or `ntfy.example.net:8443` with a port that is not the scheme's own. */
-export function hostOf(text: string): string {
+function hostOf(text: string): string {
   return httpUrl(text)?.host ?? TARGET_HIDDEN;
 }
 
 /** A DNS name or an IPv4 address, or an IPv6 address in brackets; anything else is not shown. */
 const MAIL_HOST = /^(?:[a-z0-9-]+(?:\.[a-z0-9-]+)*|\[[0-9a-f:.]+\])$/i;
 
-/** The SMTP host as the hub gives it, when it is a plain host name. */
-export function mailHostOf(host: string): string {
-  return MAIL_HOST.test(host) ? host.toLowerCase() : TARGET_HIDDEN;
+/**
+ * An SMTP host in the one form the list shows and the editor compares (CR-14.1): lower case, when it is a plain host
+ * name or address; `null` for anything else.
+ */
+export function mailHost(host: string): string | null {
+  return MAIL_HOST.test(host) ? host.toLowerCase() : null;
 }
 
 /**
@@ -57,7 +60,8 @@ export function shownOrigin(text: string): string {
 
 /** `smtp.example.com:587`: the email target is the host and the port together (CR-14.1). */
 export function mailTarget(host: string, port: number): string | null {
-  return MAIL_HOST.test(host) ? `${host.toLowerCase()}:${String(port)}` : null;
+  const known = mailHost(host);
+  return known === null ? null : `${known}:${String(port)}`;
 }
 
 /**
@@ -85,7 +89,7 @@ export function targetOf(settings: ChannelSettings): string {
     case 'NtfySettings':
       return hostOf(settings.server);
     case 'EmailSettings':
-      return mailHostOf(settings.host);
+      return mailHost(settings.host) ?? TARGET_HIDDEN;
     case 'AppriseSettings':
       return originOf(settings.server);
   }

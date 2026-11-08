@@ -3,7 +3,7 @@
 import type { HubError } from '$lib/hub/hub';
 
 /** What the operator was doing, for the sentence of a code that has no sentence of its own. */
-export type Action = 'save' | 'delete' | 'test' | 'settings';
+type Action = 'save' | 'delete' | 'test' | 'settings';
 
 const OTHER: Record<Action, string> = {
   save: 'The hub did not save the channel. Try again.',

@@ -28,6 +28,20 @@ describe('reasonOf', () => {
     expect(reasonOf(failed('TIMED_OUT', 503))).toBe('The target did not answer in 8 seconds.');
   });
 
+  it.each([
+    ['HTTP_STATUS', 99, false],
+    ['HTTP_STATUS', 100, true],
+    ['HTTP_STATUS', 599, true],
+    ['HTTP_STATUS', 600, false],
+    ['SMTP_REFUSED', 5, false],
+    ['SMTP_REFUSED', 199, false],
+    ['SMTP_REFUSED', 200, true],
+    ['SMTP_REFUSED', 599, true],
+    ['SMTP_REFUSED', 600, false],
+  ])('CR-14.5: %s with code %i shows the code: %s', (reason, code, shown) => {
+    expect(reasonOf(failed(reason, code)).includes(String(code))).toBe(shown);
+  });
+
   it('CR-14.5, LOG-007: a value this client does not know gets a fixed fallback, never the value itself', () => {
     for (const reason of ['TARGET_SAID_HELLO', 'constructor', '__proto__', 'toString']) expect(reasonOf(failed(reason))).toBe(UNKNOWN_REASON);
     expect(reasonOf(failed(null))).toBe(NO_REASON);

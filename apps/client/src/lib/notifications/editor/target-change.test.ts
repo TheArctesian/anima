@@ -4,7 +4,9 @@ import { describe, expect, it } from 'vitest';
 import type { NotificationChannel } from '../api';
 import { CONFIG_KEY_CHANNEL, DIRTY_SERVER_CHANNEL, FAKE_SECRET, fixtureChannel, FIXTURE_SETTINGS } from '../notifications.fixture';
 import { savedDraft, storedOf, type ChannelDraft } from './draft';
-import { AGAIN, AGAIN_OR_REMOVE, APPRISE_URLS_WRONG, checkDraft, HEADERS_AGAIN, SERVER_WRONG, URL_WRONG, type DraftCheck } from './input';
+import { AGAIN, AGAIN_OR_REMOVE, APPRISE_URLS_WRONG, checkDraft, HEADERS_AGAIN, SERVER_WRONG, URL_WRONG } from './input';
+
+type DraftCheck = ReturnType<typeof checkDraft>;
 
 const { placeholders, template } = FIXTURE_SETTINGS;
 
@@ -49,6 +51,15 @@ describe('a new ntfy or webhook target (CR-14.1)', () => {
       draft.ntfy.token.clear = true;
     });
     expect(settingsOf(removed)).toMatchObject({ ntfy: { token: '' } });
+  });
+
+  it('CR-14.1: a new ntfy server with no stored token needs only the topic typed again', () => {
+    const channel = { ...ntfy, settings: { ...ntfy.settings, tokenStored: false } } as NotificationChannel;
+    const check = edited(channel, (draft) => {
+      draft.ntfy.server = 'https://ntfy.other.example';
+      draft.ntfy.topic = 'FAKE_SECRET_topic';
+    });
+    expect(settingsOf(check)).toMatchObject({ ntfy: { server: 'https://ntfy.other.example', topic: 'FAKE_SECRET_topic', token: null } });
   });
 
   it('CR-14.1: a webhook URL at a new origin needs the stored headers replaced or removed; at the same origin it does not', () => {
@@ -106,6 +117,7 @@ describe('a new mail or Apprise target, and the same target written again (CR-14
   });
 
   it('CR-14.1: the same target, written with a trailing slash or capitals, is not a new one', () => {
+    expect(settingsOf(edited(email, (draft) => { draft.email.host = 'MAIL.example.net'; }))).toMatchObject({ email: { host: 'MAIL.example.net', password: null } });
     const check = edited(ntfy, (draft) => {
       draft.ntfy.server = 'https://NTFY.example.net/';
     });

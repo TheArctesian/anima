@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FIXTURE_SETTINGS } from '../notifications.fixture';
-import { BODY_MISSING, D21_PLACEHOLDERS, lineProblem, templateFine, templateProblems, TITLE_MISSING, unknownPlaceholders } from './template';
+import { BODY_MISSING, D21_PLACEHOLDERS, templateFine, templateProblems, TITLE_MISSING } from './template';
 
 const allowed = FIXTURE_SETTINGS.placeholders;
 
@@ -15,15 +15,15 @@ describe('template placeholders', () => {
   });
 
   it('D-21: a placeholder outside the list is refused and named', () => {
-    expect(unknownPlaceholders('{device} {host} {host} {Device} { device } {}', allowed)).toEqual(['{host}', '{Device}', '{ device }', '{}']);
-    const problem = lineProblem('{device} on {host}', allowed, TITLE_MISSING);
-    expect(problem).toBe(`Not a placeholder: {host}. Use only ${allowed.join(' ')}.`);
+    const { title, body } = templateProblems({ title: '{device} on {host}', body: '{device} {host} {host} {Device} { device } {}' }, allowed);
+    expect(title).toBe(`Not a placeholder: {host}. Use only ${allowed.join(' ')}.`);
+    expect(body).toBe(`Not a placeholder: {host}, {Device}, { device } and others. Use only ${allowed.join(' ')}.`);
     expect(templateFine(templateProblems({ title: '{device}', body: '{secret}' }, allowed))).toBe(false);
   });
 
   it('D-21: the message names at most three unknown placeholders, each cut short', () => {
     const long = `{${'x'.repeat(100)}}`;
-    const problem = lineProblem(`{a} {b} ${long} {d}`, allowed, BODY_MISSING);
+    const problem = templateProblems({ title: 'Plain title', body: `{a} {b} ${long} {d}` }, allowed).body;
     expect(problem).toMatch(/^Not a placeholder: \{a\}, \{b\}, \{x+… and others\./);
     expect(problem).not.toContain('x'.repeat(40));
   });

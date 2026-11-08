@@ -61,6 +61,14 @@ export const DIRTY_SERVER_CHANNEL: NotificationChannel = {
   settings: { __typename: 'NtfySettings', server: `https://ops:${FAKE_SECRET}@ntfy.example.net`, priority: 3, tokenStored: true },
 };
 
+/** The same for an Apprise channel (CR-14.7). */
+export const DIRTY_APPRISE_CHANNEL: NotificationChannel = {
+  ...fixtureChannel('APPRISE'),
+  id: '0190a000-0000-7000-8017-0000000000ad',
+  name: 'dirty-apprise',
+  settings: { __typename: 'AppriseSettings', server: `https://ops:${FAKE_SECRET}@apprise.example.net`, mode: 'STATELESS_URLS', tags: [] },
+};
+
 /** The K6 `notificationSettings`. */
 export const FIXTURE_SETTINGS: NotificationSettings = notificationSettings;
 
@@ -83,7 +91,7 @@ export type Operation =
   | 'SendTestNotification'
   | 'SetNotificationSettings';
 
-export interface SentRequest {
+interface SentRequest {
   readonly operation: string;
   readonly variables: unknown;
 }

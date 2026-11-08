@@ -13,7 +13,7 @@ export const TITLE_MISSING = 'Enter a title.';
 export const BODY_MISSING = 'Enter a body.';
 
 /** Every `{…}` in `text` that is not in `allowed`, once each, in the order they appear. */
-export function unknownPlaceholders(text: string, allowed: readonly string[]): string[] {
+function unknownPlaceholders(text: string, allowed: readonly string[]): string[] {
   const found = [...text.matchAll(/\{[^{}]*\}/g)].map((match) => match[0]);
   return [...new Set(found)].filter((placeholder) => !allowed.includes(placeholder));
 }
@@ -23,7 +23,7 @@ function shown(placeholder: string): string {
 }
 
 /** The message for one template line: empty when it is fine. */
-export function lineProblem(text: string, allowed: readonly string[], missing: string): string {
+function lineProblem(text: string, allowed: readonly string[], missing: string): string {
   if (text.trim() === '') return missing;
   const unknown = unknownPlaceholders(text, allowed);
   if (unknown.length === 0) return '';

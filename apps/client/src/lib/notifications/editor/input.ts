@@ -5,7 +5,7 @@
 // another. URLs are https only and a server is an origin only (CR-14.6, CR-14.7). No message here ever repeats what
 // was typed into a secret field (LOG-007, F-8).
 import type { NotificationChannelInput } from '../api';
-import { cleanOrigin, mailTarget } from '../channels/target';
+import { cleanOrigin, mailHost, mailTarget } from '../channels/target';
 import { templateFine, templateProblems } from '../template/template';
 import type { ChannelDraft, HeaderDraft, SecretDraft, Stored } from './draft';
 
@@ -32,7 +32,7 @@ export interface DraftProblem {
   readonly message: string;
 }
 
-export type DraftCheck =
+type DraftCheck =
   | { readonly ok: true; readonly input: NotificationChannelInput }
   | { readonly ok: false; readonly problems: readonly DraftProblem[] };
 
@@ -54,13 +54,12 @@ export const HEADERS_AGAIN = 'The target changed: replace the headers with each 
 
 const HEADER_NAME = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
 const TOPIC = /^[-_A-Za-z0-9]{1,64}$/;
-const HOST = /^(?:[a-z0-9-]+(?:\.[a-z0-9-]+)*|\[[0-9a-f:.]+\])$/i;
 const ADDRESS = /^[^\s@,]+@[^\s@,]+$/;
 const APPRISE_URL = /^[a-z][a-z0-9+.-]*:\/\/\S+$/i;
 const APPRISE_KEY = /^[A-Za-z0-9_-]{1,128}$/;
 
 /** What was typed, else `""` to clear a stored optional secret, else `null` to keep what is stored (K1). */
-export function secretValue(typed: string, clear: boolean): string | null {
+function secretValue(typed: string, clear: boolean): string | null {
   if (typed !== '') return typed;
   return clear ? '' : null;
 }
@@ -139,7 +138,7 @@ function emailInput(draft: ChannelDraft, stored: Stored | null, problems: Proble
   const port = Number(email.port.trim());
   const from = email.from.trim();
   const to = listOf(email.to);
-  if (!HOST.test(host)) refuse(problems, 'email.host', HOST_WRONG);
+  if (mailHost(host) === null) refuse(problems, 'email.host', HOST_WRONG);
   if (!/^\d{1,5}$/.test(email.port.trim()) || port < 1 || port > 65_535) refuse(problems, 'email.port', PORT_WRONG);
   if (!ADDRESS.test(from)) refuse(problems, 'email.from', ADDRESS_WRONG);
   if (to.length === 0 || !to.every((address) => ADDRESS.test(address))) refuse(problems, 'email.to', RECIPIENTS_WRONG);

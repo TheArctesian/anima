@@ -10,6 +10,7 @@ import {
   button,
   choice,
   dialog,
+  DIRTY_APPRISE_CHANNEL,
   DIRTY_SERVER_CHANNEL,
   fakeHub,
   FAKE_SECRET,
@@ -108,9 +109,12 @@ it.each([
   expect(dialog()?.textContent).toContain(sentence);
 });
 
-it('CR-14.7, F-8: a server the hub holds with a user name and password shows as its origin only, in the list and the editor', async () => {
-  await edit('dirty-ntfy', [...FIXTURE_CHANNELS, DIRTY_SERVER_CHANNEL]);
-  expect(field('Server').value).toBe('https://ntfy.example.net');
+it.each([
+  [DIRTY_SERVER_CHANNEL, 'Server', 'https://ntfy.example.net'],
+  [DIRTY_APPRISE_CHANNEL, 'Apprise server', 'https://apprise.example.net'],
+])('CR-14.7, F-8: a server the hub holds with a user name and password shows as its origin only, in the list and the editor (%#)', async (channel, label, origin) => {
+  await edit(channel.name, [...FIXTURE_CHANNELS, channel]);
+  expect(field(label).value).toBe(origin);
   expect(places(FAKE_SECRET)).toEqual(NOWHERE);
 });
 
