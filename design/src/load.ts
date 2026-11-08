@@ -1,7 +1,7 @@
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import StyleDictionary from 'style-dictionary';
-import { bezierOf, springOf, tokenName, type Token } from './model.ts';
+import StyleDictionary, { type TransformedToken } from 'style-dictionary';
+import { bezierOf, isSemanticColour, springOf, tokenName, TokenSourceError, type ModeValue, type Token } from './model.ts';
 
 /** Source files in a fixed order, so every output is deterministic. */
 export function tokenSources(tokensDir: string): string[] {
@@ -11,11 +11,18 @@ export function tokenSources(tokensDir: string): string[] {
     .map((file) => join(tokensDir, file));
 }
 
-function extensionReduced(extensions: unknown): unknown {
+/** A mode value under `$extensions.anima` (`reduced`, `light`), or undefined. */
+function animaExtension(extensions: unknown, mode: string): unknown {
   if (typeof extensions !== 'object' || extensions === null) return undefined;
   const anima = (extensions as Record<string, unknown>)['anima'];
   if (typeof anima !== 'object' || anima === null) return undefined;
-  return (anima as Record<string, unknown>)['reduced'];
+  return (anima as Record<string, unknown>)[mode];
+}
+
+/** The light value as written and as resolved: Style Dictionary resolves aliases inside extensions too. */
+function lightOf(token: TransformedToken): ModeValue | undefined {
+  const source = animaExtension(token.original.$extensions, 'light');
+  return source === undefined ? undefined : { source, value: animaExtension(token.$extensions, 'light') };
 }
 
 /** Read the DTCG files with Style Dictionary, which resolves every alias (D-2). */
@@ -35,7 +42,8 @@ export async function loadTokens(tokensDir: string): Promise<Token[]> {
     value: token.$value,
     source: token.original.$value,
     description: String(token.$description ?? ''),
-    reduced: extensionReduced(token.$extensions),
+    reduced: animaExtension(token.$extensions, 'reduced'),
+    light: lightOf(token),
   }));
   for (const token of tokens) validated(token);
   return tokens;
@@ -45,4 +53,20 @@ export async function loadTokens(tokensDir: string): Promise<Token[]> {
 function validated(token: Token): void {
   if (token.type === 'spring') springOf(token);
   if (token.type === 'cubicBezier') bezierOf(token);
+  if (token.light !== undefined) lightChecked(token, token.light.value);
+}
+
+function isTintShape(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null) return false;
+  const { color, percent, over } = value as Record<string, unknown>;
+  return typeof color === 'string' && typeof over === 'string' && typeof percent === 'number' && Number.isFinite(percent);
+}
+
+/** A theme changes only semantic colours (TOK-011), and a light value has the shape of the token's dark one. */
+function lightChecked(token: Token, value: unknown): void {
+  if (!isSemanticColour(token)) {
+    throw new TokenSourceError(token.path, 'a light value is allowed only on a semantic colour (TOK-011)');
+  }
+  const shaped = token.type === 'tint' ? isTintShape(value) : typeof value === 'string';
+  if (!shaped) throw new TokenSourceError(token.path, `a light ${token.type} value has the wrong shape`);
 }

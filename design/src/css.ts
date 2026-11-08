@@ -95,23 +95,44 @@ function solidMaterials(tokens: readonly Token[]): Declaration[] {
   });
 }
 
-function media(query: string, lines: readonly Declaration[]): string {
-  return [`@media (${query}) {`, block(':root', lines, '  '), '}'].join('\n');
+function media(query: string, lines: readonly Declaration[], selector = ':root'): string {
+  return [`@media (${query}) {`, block(selector, lines, '  '), '}'].join('\n');
 }
 
-/** tokens.css: custom properties on :root and the user-preference overrides (TOK-001, MAT-006, MOT-040). */
+function lightTheme(tokens: readonly Token[]): Declaration[] {
+  return tokens.flatMap((token) => (token.light === undefined ? [] : declarations({ ...token, ...token.light })));
+}
+
+/**
+ * The light theme (UI-005, K5): one set of declarations for the operator's Light and for System on a light OS.
+ * Empty when no token has a light value, so the dark-only output stays as it was.
+ */
+function lightBlocks(lines: readonly Declaration[]): string[] {
+  if (lines.length === 0) return [];
+  return [
+    '/* Light theme (UI-005): semantic colours only (TOK-011); System follows the OS without a script. */',
+    block(':root[data-theme="light"]', lines),
+    media('prefers-color-scheme: light', lines, ':root[data-theme="system"]'),
+  ];
+}
+
+/** tokens.css: custom properties on :root, the light theme and the user-preference overrides (TOK-001, MAT-006, MOT-040). */
 export function renderCss(tokens: readonly Token[]): string {
   const root = tokens.flatMap(declarations);
   const solid = solidMaterials(tokens);
+  const light = lightTheme(tokens);
+  // `:root[data-theme]` matches the light selectors' specificity, so these later blocks win over either theme (MAT-006).
+  const preference = light.length === 0 ? ':root' : ':root, :root[data-theme]';
   return [
     `/* ${GENERATED_NOTICE} */`,
     block(':root', root),
+    ...lightBlocks(light),
     '/* Motion changes (D-5): press and stagger are instant, springs jump; thresholds never change (MOT-021). */',
     media('prefers-reduced-motion: reduce', reducedMotion(tokens)),
     '/* Reduced transparency (5.6): solid materials, no blur (D-6). */',
-    media('prefers-reduced-transparency: reduce', solid),
+    media('prefers-reduced-transparency: reduce', solid, preference),
     '/* Increased contrast (MAT-006): solid materials and text-muted borders. */',
-    media('prefers-contrast: more', [...solid, ['--border', 'var(--text-muted)']]),
+    media('prefers-contrast: more', [...solid, ['--border', 'var(--text-muted)']], preference),
     '',
   ].join('\n');
 }
