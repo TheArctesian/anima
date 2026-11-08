@@ -12,11 +12,11 @@ use crate::{
     clock::{Clock, FixedClock},
     events::Bus,
     sessions::{
-        DisplayRequest, Error, Live, Presented, Protocol, StartRequest, Ticket, Waking,
-        link::tests::{Bench, reaching},
-        shut_down, start,
+        DisplayRequest, Error, Live, Presented, Protocol, StartRequest, Ticket, Waking, shut_down,
+        start,
         tests::fixture::{LOOPBACK, address, now, operator},
     },
+    ssh::tests::{Bench, reaching},
 };
 
 /// Turns VNC on for `pve-01`, so a session needs no accepted key or certificate.

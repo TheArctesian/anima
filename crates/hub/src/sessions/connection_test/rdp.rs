@@ -25,7 +25,7 @@ use super::{
     reach::{ReadError, reach, within},
     x224::{self, Negotiated, PROTOCOL_HYBRID, PROTOCOL_HYBRID_EX, TPKT_HEADER},
 };
-use crate::{devices::RdpSecurity, sessions::ssh::Target, trust::PresentedCertificate};
+use crate::{devices::RdpSecurity, ssh::Target, trust::PresentedCertificate};
 
 /// What the server answered.
 #[derive(Clone, Debug, PartialEq, Eq)]

@@ -3,7 +3,7 @@
 //! address or the relay's output. Pure.
 
 use super::Error;
-use crate::sessions::LinkError;
+use crate::ssh::LinkError;
 
 /// The sentence for `error`.
 pub(super) fn sentence(error: &Error) -> &'static str {
@@ -73,6 +73,6 @@ fn link_sentence(error: &LinkError) -> &'static str {
             "No Wake-on-LAN packet was sent: wakeonlan did not finish on the wake relay \
              within 10 seconds."
         }
-        LinkError::Sessions(_) | LinkError::Credentials(_) => HUB_FAULT,
+        LinkError::Trust(_) | LinkError::Credentials(_) => HUB_FAULT,
     }
 }

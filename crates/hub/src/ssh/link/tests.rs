@@ -6,7 +6,7 @@
 mod command;
 mod opening;
 mod running;
-pub(in crate::sessions) mod server;
+pub(crate) mod server;
 
 use std::time::Duration;
 
@@ -18,36 +18,36 @@ use super::{Error, SshLink, link};
 use crate::{
     credentials::Vault,
     devices::{self, Device},
-    sessions::tests::fixture::{LOOPBACK, PASSWORD, docker_host, move_device, now, prepare, vault},
+    ssh::tests::fixture::{LOOPBACK, PASSWORD, docker_host, move_device, now, prepare, vault},
     targets::AddressPolicy,
 };
 
 /// The seed of the host key the test server presents.
-pub(in crate::sessions) const SEED: u8 = 9;
+pub(crate) const SEED: u8 = 9;
 /// A command limit no healthy test command reaches.
 const LIMIT: Duration = Duration::from_secs(5);
 
 /// `docker-host` pointed at a test server, with its key accepted and its password stored.
-pub(in crate::sessions) struct Bench {
-    pub(in crate::sessions) db: PgPool,
-    pub(in crate::sessions) vault: Vault,
-    pub(in crate::sessions) device: Device,
-    pub(in crate::sessions) server: Server,
+pub(crate) struct Bench {
+    pub(crate) db: PgPool,
+    pub(crate) vault: Vault,
+    pub(crate) device: Device,
+    pub(crate) server: Server,
 }
 
 /// The only policy that reaches the loopback test server: no release build has it.
-pub(in crate::sessions) fn reaching() -> AddressPolicy {
+pub(crate) fn reaching() -> AddressPolicy {
     AddressPolicy::default().allowing_loopback()
 }
 
 /// A bench whose server answers `answer`.
-pub(in crate::sessions) async fn bench(pool: &PgPool, answer: Answer) -> Bench {
+pub(crate) async fn bench(pool: &PgPool, answer: Answer) -> Bench {
     let server = serve(SEED, answer).await;
     bench_accepting(pool, server, server::host_key(SEED)).await
 }
 
 /// A bench over `server` with `accepted` stored as the device's host key.
-pub(in crate::sessions) async fn bench_accepting(
+pub(crate) async fn bench_accepting(
     pool: &PgPool,
     server: Server,
     accepted: crate::trust::PublicKey,

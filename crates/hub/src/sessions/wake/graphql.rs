@@ -15,7 +15,8 @@ use crate::{
     credentials::Vault,
     events::{Bus, ClientAddr, Operator},
     ids::DeviceId,
-    sessions::{Actor, FieldError, LinkError, Missing},
+    sessions::{Actor, FieldError, Missing},
+    ssh::LinkError,
     targets::AddressPolicy,
 };
 
@@ -111,6 +112,6 @@ const fn link_code(error: &LinkError) -> Option<ErrorCode> {
         | LinkError::Lost
         | LinkError::CommandRefused
         | LinkError::TimeLimit => Some(ErrorCode::Unavailable),
-        LinkError::Sessions(_) | LinkError::Credentials(_) => None,
+        LinkError::Trust(_) | LinkError::Credentials(_) => None,
     }
 }

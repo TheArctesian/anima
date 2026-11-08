@@ -22,11 +22,8 @@ use super::{
 use crate::{
     credentials,
     devices::{self, Device},
-    sessions::{
-        self, PendingTicket, Protocol,
-        end::Cause,
-        ssh::{self, Observer, SshError, Target},
-    },
+    sessions::{self, PendingTicket, Protocol, end::Cause},
+    ssh::{self, Observer, SshError, Target},
     trust,
 };
 

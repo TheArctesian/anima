@@ -17,14 +17,14 @@ use russh::{
 };
 use tokio::net::TcpListener;
 
-use crate::{sessions::tests::fixture::PASSWORD, trust::PublicKey};
+use crate::{ssh::tests::fixture::PASSWORD, trust::PublicKey};
 
 /// The user `docker-host`'s SSH settings name in the devices fixture.
 const USER: &str = "operator";
 
 /// What the hub asked of the server, in order.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(in crate::sessions) enum Heard {
+pub(crate) enum Heard {
     /// An authentication request by this method.
     Auth(&'static str),
     /// A session channel opened.
@@ -39,7 +39,7 @@ pub(in crate::sessions) enum Heard {
 
 /// How the server answers every `exec`.
 #[derive(Clone, Debug)]
-pub(in crate::sessions) enum Answer {
+pub(crate) enum Answer {
     /// Writes `stdout` and `stderr`, then exits with `status`.
     Exit {
         stdout: Vec<u8>,
@@ -58,26 +58,26 @@ pub(in crate::sessions) enum Answer {
 }
 
 /// The server's port and host key, the TCP connections it accepted and what it heard.
-pub(in crate::sessions) struct Server {
-    pub(in crate::sessions) port: u16,
+pub(crate) struct Server {
+    pub(crate) port: u16,
     connections: Arc<AtomicUsize>,
     heard: Arc<Mutex<Vec<Heard>>>,
 }
 
 impl Server {
     /// The TCP connections accepted so far.
-    pub(in crate::sessions) fn connections(&self) -> usize {
+    pub(crate) fn connections(&self) -> usize {
         self.connections.load(Ordering::SeqCst)
     }
 
     /// Everything heard so far.
-    pub(in crate::sessions) fn heard(&self) -> Vec<Heard> {
+    pub(crate) fn heard(&self) -> Vec<Heard> {
         self.heard.lock().unwrap().clone()
     }
 
     /// Everything heard so far except channel closes, which may arrive after a command
     /// returns.
-    pub(in crate::sessions) fn requests(&self) -> Vec<Heard> {
+    pub(crate) fn requests(&self) -> Vec<Heard> {
         let mut heard = self.heard();
         heard.retain(|heard| *heard != Heard::Close);
         heard
@@ -85,7 +85,7 @@ impl Server {
 }
 
 /// The ed25519 host key made from `seed`, as the hub stores it.
-pub(in crate::sessions) fn host_key(seed: u8) -> PublicKey {
+pub(crate) fn host_key(seed: u8) -> PublicKey {
     let key = private(seed);
     PublicKey::from_blob(key.public_key().to_bytes().unwrap()).unwrap()
 }
@@ -95,7 +95,7 @@ fn private(seed: u8) -> PrivateKey {
 }
 
 /// Starts a server presenting the key made from `seed`, answering every `exec` with `answer`.
-pub(in crate::sessions) async fn serve(seed: u8, answer: Answer) -> Server {
+pub(crate) async fn serve(seed: u8, answer: Answer) -> Server {
     let config = Arc::new(server::Config {
         keys: vec![private(seed)],
         methods: MethodSet::from(&[MethodKind::Password, MethodKind::PublicKey][..]),

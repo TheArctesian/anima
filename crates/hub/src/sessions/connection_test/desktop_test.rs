@@ -18,7 +18,8 @@ use super::{
 use crate::{
     devices::RdpSecurity,
     ids::DeviceId,
-    sessions::{Desktop, Error, find_device, live::Live, probe::PROBE_TIMEOUT, ssh::Target},
+    sessions::{Desktop, Error, find_device, live::Live},
+    ssh::{Target, probe::PROBE_TIMEOUT},
     trust::{self, Endpoint, Observation, PresentedCertificate, ServerCertificate},
 };
 

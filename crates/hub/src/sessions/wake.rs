@@ -25,7 +25,8 @@ use crate::{
     devices::{self, Device},
     events::{self, AuditAction, AuditTarget, Bus, NewAudit, NewEvent, Severity, Source},
     ids::DeviceId,
-    sessions::{Actor, LinkError, link},
+    sessions::Actor,
+    ssh::{LinkError, link},
     targets::AddressPolicy,
 };
 

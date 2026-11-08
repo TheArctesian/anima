@@ -15,9 +15,9 @@ use crate::{
     events::Bus,
     sessions::{
         WakeMutation,
-        link::tests::{Bench, reaching},
         tests::fixture::{DOCKER_HOST, address, now, operator},
     },
+    ssh::tests::{Bench, reaching},
 };
 
 /// The address the operator's client calls from.

@@ -12,7 +12,7 @@ use super::Error;
 use crate::{
     credentials,
     devices::Device,
-    sessions::ssh::{self, Observer, SshError},
+    ssh::{self, Observer, SshError},
     targets::{self, AddressPolicy},
     trust,
 };
@@ -60,7 +60,7 @@ async fn opened(
     }
     let accepted = trust::host_key(db, device.id)
         .await
-        .map_err(|error| Error::Sessions(error.into()))?
+        .map_err(Error::Trust)?
         .ok_or(Error::NoHostKey)?
         .public_key;
     let stream = reach(policy, device).await?;

@@ -40,10 +40,8 @@ use crate::{
     credentials::Vault,
     devices,
     events::Bus,
-    sessions::{
-        LinkError, Live, SshLink, admission, end::CLIENT_IDLE, link, live::FilesRelay,
-        tickets::FILES_PATH,
-    },
+    sessions::{Live, admission, end::CLIENT_IDLE, live::FilesRelay, tickets::FILES_PATH},
+    ssh::{LinkError, SshLink, link},
     targets::AddressPolicy,
 };
 

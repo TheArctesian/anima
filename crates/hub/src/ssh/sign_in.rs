@@ -27,7 +27,7 @@ const PROMPTS_PER_ROUND: usize = 4;
 /// # Errors
 /// [`SshError::AuthFailed`] when the device refuses, [`SshError::UnreadableKey`] when the key
 /// or passphrase does not decode, [`SshError::Protocol`] when the connection fails meanwhile.
-pub(in crate::sessions) async fn authenticate(
+pub(crate) async fn authenticate(
     handle: &mut Handle<Observer>,
     username: &str,
     secret: &SshSecret,

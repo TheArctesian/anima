@@ -15,7 +15,7 @@ use crate::{
         },
         samples,
     },
-    sessions::CommandOutput,
+    ssh::CommandOutput,
 };
 
 /// The reading of a device's earlier collection and the hub time it was taken.

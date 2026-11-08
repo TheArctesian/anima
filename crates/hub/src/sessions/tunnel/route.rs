@@ -43,9 +43,9 @@ use crate::{
     sessions::{
         Live, Protocol, Redeemed, admission,
         end::Records,
-        probe::PROBE_TIMEOUT,
         tickets::{RECONNECT, WOKEN_OPENING},
     },
+    ssh::probe::PROBE_TIMEOUT,
 };
 
 /// The tunnel's path (K4 Section 1 `tunnelPath` of RDP and VNC).

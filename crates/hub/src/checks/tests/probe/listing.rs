@@ -5,7 +5,7 @@ mod config;
 mod docker;
 mod systemd;
 
-use crate::{checks::probe::ProbeResult, sessions::CommandOutput};
+use crate::{checks::probe::ProbeResult, ssh::CommandOutput};
 
 /// Output that finished with exit status 0 and was read whole.
 pub fn finished(stdout: &str) -> CommandOutput {

@@ -3,7 +3,7 @@
 
 use proptest::prelude::*;
 
-use crate::{devices::MacAddress, sessions::link::FixedCommand};
+use crate::{devices::MacAddress, ssh::link::FixedCommand};
 
 fn mac(text: &str) -> MacAddress {
     text.parse().unwrap()

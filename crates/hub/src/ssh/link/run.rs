@@ -11,7 +11,7 @@ use russh::{
 use tokio::time::timeout;
 
 use super::{CommandOutput, Error, OUTPUT_CAP};
-use crate::sessions::ssh::Observer;
+use crate::ssh::Observer;
 
 /// The longest the hub waits to hand the channel's close to the connection, past the
 /// command's limit; a connection that cannot take it within this is stalled.

@@ -6,7 +6,7 @@ use std::{future::Future, time::Duration};
 
 use tokio::net::TcpStream;
 
-use crate::sessions::ssh::{self, SshError, Target};
+use crate::ssh::{self, SshError, Target};
 
 /// Why a desktop protocol read gave nothing. Holds no host name or remote text (LOG-007).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
