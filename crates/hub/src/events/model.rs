@@ -11,7 +11,9 @@ use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 use crate::{
-    ids::{ChannelId, CheckId, DeviceId, EventId, OperatorId, SessionId, SiteId, WindowId},
+    ids::{
+        ChannelId, CheckId, DeviceId, EventId, OperatorId, SessionId, ShareId, SiteId, WindowId,
+    },
     status::Status,
 };
 
@@ -209,6 +211,8 @@ pub enum AuditTarget {
     Setting(&'static str),
     /// A notification channel.
     Channel(ChannelId),
+    /// A share of a session (RA-035).
+    Share(ShareId),
 }
 
 impl AuditTarget {
@@ -227,6 +231,7 @@ impl AuditTarget {
             Self::File(_) => "file",
             Self::Setting(_) => "setting",
             Self::Channel(_) => "channel",
+            Self::Share(_) => "share",
         }
     }
 
@@ -244,6 +249,7 @@ impl AuditTarget {
             Self::Session(id) => id.to_string(),
             Self::Setting(name) => name.to_owned(),
             Self::Channel(id) => id.to_string(),
+            Self::Share(id) => id.to_string(),
         }
     }
 }
