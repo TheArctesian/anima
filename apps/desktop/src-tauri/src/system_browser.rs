@@ -98,10 +98,7 @@ mod tests {
     };
 
     use super::{OPENER_PATIENCE as PATIENCE, SystemBrowserError, open_with};
-    use crate::{
-        os_program::{self, OPENER_PATIENCE, OsProgramError},
-        web_view::{WebUrl, WebViewError},
-    };
+    use crate::web_view::{WebUrl, WebViewError};
 
     fn open(opener: &str) -> Result<(), SystemBrowserError> {
         open_with(opener, &url(), PATIENCE)

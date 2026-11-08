@@ -204,10 +204,10 @@ mod tests {
     fn pid_in(file: &Path) -> String {
         let started = Instant::now();
         while started.elapsed() < Duration::from_secs(5) {
-            if let Ok(text) = fs::read_to_string(file) {
-                if text.ends_with('\n') {
-                    return text.trim().to_owned();
-                }
+            if let Ok(text) = fs::read_to_string(file)
+                && text.ends_with('\n')
+            {
+                return text.trim().to_owned();
             }
             thread::sleep(Duration::from_millis(10));
         }
