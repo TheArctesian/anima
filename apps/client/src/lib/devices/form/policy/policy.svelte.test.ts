@@ -21,7 +21,7 @@ afterEach(leave);
 
 const POLICY = { sessionLimit: 5, recordSessions: false };
 const ok = <T,>(value: T): HubResult<T> => ({ ok: true, value });
-const down: HubResult<never> = { ok: false, error: { code: 'UNAVAILABLE', message: 'secret hub text', fields: [] } };
+const down: HubResult<never> = { ok: false, error: { code: 'UNAVAILABLE', message: 'secret hub text' } };
 
 interface Sent {
   readonly operation: string;

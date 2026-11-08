@@ -42,6 +42,7 @@ function typedLimit(text: string): number | null | undefined {
  */
 export function limitProblem(values: PolicyValues, creating: boolean): string | null {
   const limit = typedLimit(values.sessionLimit);
+  if (limit === null) return null;
   if (limit === undefined || limit > MAX_SESSION_LIMIT) return LIMIT_SENTENCE;
   return creating && limit === 0 ? LIMIT_SENTENCE : null;
 }

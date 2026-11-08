@@ -9,7 +9,7 @@ export interface PolicyCalls {
   save: (deviceId: string, input: PolicyInput) => Promise<HubResult<StoredPolicy>>;
 }
 
-const NOT_FOUND: HubResult<never> = { ok: false, error: { code: 'NOT_FOUND', message: 'No such device', fields: [] } };
+const NOT_FOUND: HubResult<never> = { ok: false, error: { code: 'NOT_FOUND', message: 'No such device' } };
 
 export function policyCalls(hub: Hub): PolicyCalls {
   return {

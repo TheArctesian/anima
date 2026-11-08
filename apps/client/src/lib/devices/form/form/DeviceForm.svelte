@@ -108,7 +108,7 @@
   let files = $state(false);
   let sessions = $state(false);
   /** RA-036, RA-040: a saved device reads its own policy and saves it apart from the device (F-3). */
-  const policy = new PolicyDraft(untrack(() => deviceId), device === null ? null : contextPolicyCalls());
+  const policy = new PolicyDraft(untrack(() => deviceId), untrack(() => (device === null ? null : contextPolicyCalls())));
   let root = $state<HTMLElement>();
 
   const creating = $derived(device === null);
