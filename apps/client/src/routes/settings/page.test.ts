@@ -21,6 +21,8 @@ vi.mock('$lib/access/navigation', () => ({ goToSignIn: mocks.goToSignIn }));
 // The desktop rows need the shell's update store; stand-ins let the page's sections be counted (UPD-006).
 vi.mock('$lib/updates/UpdatesRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('$lib/updates/tests/RowStub.svelte')).default }));
 vi.mock('$lib/process-log/LogFolderRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('$lib/updates/tests/LogRowStub.svelte')).default }));
+// The API keys section loads its own data and has its own tests in `$lib/api-keys/` (WP-50 F-3, F-10).
+vi.mock('$lib/api-keys/ApiKeysSection.svelte', () => ({ default: () => undefined }));
 
 let app: ReturnType<typeof mount> | undefined;
 let hub: ReturnType<typeof fakeHub>;

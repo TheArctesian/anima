@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { flushSync } from 'svelte';
+  import { flushSync, untrack } from 'svelte';
   import FormButton from '$lib/forms/FormButton.svelte';
   import Modal from '$lib/forms/modal/Modal.svelte';
   import type { ApiKey, ApiKeysApi } from './api';
@@ -26,7 +26,8 @@
   let secret = $state<string | null>(null);
   let closed = false;
 
-  const opened = now();
+  /** When the dialog opened: the presets' preview and the date field's bounds count from here; the sent date counts from Create. */
+  const opened = untrack(() => now());
   const preview = $derived(expiryOf(form, opened));
   const nameProblem = $derived(problems.find((problem) => problem.field === 'name')?.message ?? '');
   const expiryProblem = $derived(problems.find((problem) => problem.field === 'expiry')?.message ?? '');

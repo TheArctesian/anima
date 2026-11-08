@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ApiKeysSection from '$lib/api-keys/ApiKeysSection.svelte';
   import SignOutRow from '$lib/access/SignOutRow.svelte';
   import { capabilities } from '$lib/platform/platform';
   import ThemeRow from '$lib/theme/ThemeRow.svelte';
@@ -23,12 +24,15 @@
   <TypefaceRows />
 </section>
 
+<ApiKeysSection />
+
 {#if updates || processLog}
   <section aria-labelledby="settings-updates">
     <h2 id="settings-updates">Updates</h2>
     <DesktopRows />
   </section>
 {/if}
+
 
 <style>
   /* The title's line height is reserved from tokens, so the font load cannot move it (WP-11 H-7, R-042). */
