@@ -1,6 +1,6 @@
 import type { BrowserContext, Route, WebSocketRoute } from '@playwright/test';
 import { COOKIE_MAX_AGE_SECONDS, HUB_HOST, HUB_ORIGIN, SESSION_COOKIE } from './access';
-import { untilClosed } from './closed';
+import { noteClosing, untilClosed } from './closed';
 import { loadFixtures } from './fixtures';
 import { answerGraphql } from './graphql/graphql-answers';
 import { loadSchema } from './graphql/graphql-schema';
@@ -75,7 +75,8 @@ export async function installSyntheticHub(context: BrowserContext, options: Opti
   const site = staticSite();
   const refuse = (url: string): void => recording.refuseForeign(url);
   const graphql = (route: Route): Promise<void> => answerGraphql({ context, schema, state, recording }, route);
-  await context.route('**/*', (route) => untilClosed(() => serveRoute(route, site, graphql, refuse)));
+  noteClosing(context);
+  await context.route('**/*', (route) => untilClosed(() => serveRoute(route, site, graphql, refuse), context));
   const servers: Record<string, SocketServer> = {
     '/graphql': (socket) => serveGraphqlSocket({ context, state, recording }, socket),
     '/terminal': (socket) => {
@@ -85,7 +86,7 @@ export async function installSyntheticHub(context: BrowserContext, options: Opti
       serveGuacamole({ state, recording }, socket);
     },
   };
-  await context.routeWebSocket(/.*/, (socket) => untilClosed(() => serveSocket(socket, servers, refuse)));
+  await context.routeWebSocket(/.*/, (socket) => untilClosed(() => serveSocket(socket, servers, refuse), context));
   return {
     recording,
     async signIn() {

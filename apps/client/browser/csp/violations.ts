@@ -76,7 +76,7 @@ export async function servePolicy(context: BrowserContext, policy: string): Prom
       } else {
         await route.fallback();
       }
-    }),
+    }, context),
   );
   return { reports };
 }

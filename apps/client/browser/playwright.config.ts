@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
 import { defineConfig, devices } from '@playwright/test';
+import { runProxyUrl } from './isolation/shared-proxy';
 import { BUILD_FOLDER, BUILD_MISSING } from './synthetic/static-files';
 
 // Not part of `bun run gates`: gate 7 runs before the build exists. Build first (`bun run --cwd apps/client build`), install
@@ -12,6 +13,7 @@ const TEST_TIMEOUT_MS = 30_000;
 const EXPECT_TIMEOUT_MS = 10_000;
 
 export default defineConfig({
+  globalTeardown: './isolation/global-teardown.ts',
   testDir: '.',
   testMatch: '*.spec.ts',
   outputDir: '../node_modules/.playwright-results',
@@ -21,9 +23,10 @@ export default defineConfig({
   fullyParallel: true,
   reporter: 'list',
   use: { headless: true, baseURL: 'https://hub.anima.ing' },
+  // Every engine goes through its own deny-all proxy (isolation/): no test browser can reach a real host (ruling S3).
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
-    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
-    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+    { name: 'chromium', use: { ...devices['Desktop Chrome'], proxy: { server: await runProxyUrl('chromium') } } },
+    { name: 'webkit', use: { ...devices['Desktop Safari'], proxy: { server: await runProxyUrl('webkit') } } },
+    { name: 'firefox', use: { ...devices['Desktop Firefox'], proxy: { server: await runProxyUrl('firefox') } } },
   ],
 });

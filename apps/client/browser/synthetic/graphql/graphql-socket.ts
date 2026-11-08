@@ -66,7 +66,7 @@ export function serveGraphqlSocket(parts: SocketParts, socket: WebSocketRoute): 
         recordSocket(parts, 'connection_init', facts);
         if (facts.signedIn) socket.send(JSON.stringify({ type: 'connection_ack' }));
         else await socket.close({ code: FORBIDDEN_CLOSE, reason: 'Forbidden' });
-      });
+      }, parts.context);
     }
   });
 }
