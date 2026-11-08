@@ -3,17 +3,24 @@ import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { failure, fakeHub, ok } from '$lib/access/access.fixture';
 import { SETTINGS } from '$lib/nav/nav';
+import { BROWSER, DESKTOP_MAC } from '$lib/platform/answers.fixture';
+import type { Capabilities } from '$lib/platform/platform';
 import Page from './+page.svelte';
 
-const mocks = vi.hoisted(() => ({ hub: undefined as unknown, clearAccessToken: vi.fn(), goToSignIn: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  hub: undefined as unknown,
+  clearAccessToken: vi.fn(),
+  goToSignIn: vi.fn(),
+  platform: undefined as Capabilities | undefined,
+}));
 
 vi.mock('$lib/hub/context', () => ({ useHub: () => mocks.hub }));
 vi.mock('$lib/desktop/token', () => ({ clearAccessToken: mocks.clearAccessToken }));
-vi.mock('$lib/platform/platform', async () => {
-  const { BROWSER } = await import('$lib/platform/answers.fixture');
-  return { capabilities: () => BROWSER };
-});
+vi.mock('$lib/platform/platform', () => ({ capabilities: () => mocks.platform }));
 vi.mock('$lib/access/navigation', () => ({ goToSignIn: mocks.goToSignIn }));
+// The desktop rows need the shell's update store; stand-ins let the page's sections be counted (UPD-006).
+vi.mock('$lib/updates/UpdatesRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('$lib/updates/tests/RowStub.svelte')).default }));
+vi.mock('$lib/process-log/LogFolderRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('$lib/updates/tests/LogRowStub.svelte')).default }));
 
 let app: ReturnType<typeof mount> | undefined;
 let hub: ReturnType<typeof fakeHub>;
@@ -42,6 +49,7 @@ function signOutButton(target: HTMLElement): HTMLButtonElement {
 }
 
 beforeEach(() => {
+  mocks.platform = BROWSER;
   mocks.clearAccessToken.mockReset().mockResolvedValue(undefined);
   mocks.goToSignIn.mockReset();
   for (const spy of consoleSpies) spy.mockClear();
@@ -51,6 +59,7 @@ afterEach(async () => {
   if (app !== undefined) await unmount(app);
   app = undefined;
   document.body.innerHTML = '';
+  localStorage.clear();
 });
 
 it('SET-001: the nav link to Settings is /settings and the page renders the h1 "Settings"', async () => {
@@ -59,16 +68,40 @@ it('SET-001: the nav link to Settings is /settings and the page renders the h1 "
   expect(target.querySelector('h1')?.textContent).toBe(SETTINGS.label);
 });
 
-it('SET-002: the page holds the title, "Signed in as <name>", "Sign out" and the two font choices, and nothing else', async () => {
+/** Each section's heading, from the `aria-labelledby` that names it, so a section without its heading fails. */
+function sectionHeadings(target: HTMLElement): string[] {
+  return [...target.querySelectorAll(':scope > section')].map((section) => {
+    const id = section.getAttribute('aria-labelledby') ?? '';
+    const heading = section.querySelector(`:scope > h2[id="${id}"]`);
+    return heading === section.firstElementChild ? (heading?.textContent ?? '') : '';
+  });
+}
+
+function sectionTexts(target: HTMLElement, heading: string): string[] {
+  const section = [...target.querySelectorAll(':scope > section')].find((each) => each.querySelector('h2')?.textContent === heading);
+  if (section === undefined) throw new Error(`no ${heading} section`);
+  return [...section.querySelectorAll('h2, p, button, span, option')].map((element) => element.textContent.trim());
+}
+
+it('SET-001, UI-005: the page is the title, then Account, then Appearance with Theme before the two fonts', async () => {
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
-  const texts = [...target.querySelectorAll('h1, p, button, span, option')].map((element) => element.textContent.trim());
+  expect(target.firstElementChild?.tagName).toBe('H1');
+  expect(sectionHeadings(target)).toEqual(['Account', 'Appearance']);
+  expect(sectionTexts(target, 'Account')).toEqual(['Account', 'Signed in as ann', 'Sign out']);
   const fonts = ['Fira Code', 'OpenDyslexic'];
-  expect(texts).toEqual(['Settings', 'Signed in as ann', 'Sign out', 'Interface font', ...fonts, 'Monospace font', ...fonts]);
-  const elements = [...target.querySelectorAll('*')].map((element) => element.tagName.toLowerCase());
-  const fontRow = ['label', 'span', 'select', 'option', 'option'];
-  expect(elements).toEqual(['h1', 'section', 'p', 'strong', 'button', 'section', ...fontRow, ...fontRow]);
+  expect(sectionTexts(target, 'Appearance')).toEqual([
+    'Appearance', 'Theme', 'Dark', 'Light', 'System', 'Interface font', ...fonts, 'Monospace font', ...fonts,
+  ]);
   expect(target.querySelectorAll('[role="switch"], img, input, textarea, a, [tabindex]:not(button)')).toHaveLength(0);
-  expect(signOutButton(target).textContent).toBe('Sign out');
+});
+
+it('SET-001, UPD-006: the desktop app adds the Updates section last, holding the update and log folder rows', async () => {
+  mocks.platform = DESKTOP_MAC;
+  const target = await open({ Me: ok({ me: { username: 'ann' } }) });
+  expect(sectionHeadings(target)).toEqual(['Account', 'Appearance', 'Updates']);
+  const updates = target.querySelector('section[aria-labelledby="settings-updates"]');
+  expect(updates?.querySelectorAll('[data-stub]')).toHaveLength(2);
+  expect(target.querySelectorAll('[data-stub]')).toHaveLength(2);
 });
 
 it('CLI-003: Sign out calls logout, clears the token with hub.address, then goes to sign-in', async () => {
