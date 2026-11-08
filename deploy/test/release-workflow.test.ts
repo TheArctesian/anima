@@ -44,9 +44,8 @@ function needsOf(job: Job): string[] {
 }
 
 describe("triggers and concurrency (UPD-007, R-005)", () => {
-  test("UPD-007 runs only on a push to main and by hand", () => {
-    expect(Object.keys(workflow.on).sort()).toEqual(["push", "workflow_dispatch"]);
-    expect(workflow.on["push"]).toEqual({ branches: ["main"] });
+  test("UPD-007 runs only by hand until WP-36 builds land (R-005)", () => {
+    expect(Object.keys(workflow.on)).toEqual(["workflow_dispatch"]);
   });
 
   test("UPD-007 never uses a pull request trigger", () => {
