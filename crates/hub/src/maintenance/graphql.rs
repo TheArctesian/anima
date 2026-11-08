@@ -14,11 +14,10 @@ use uuid::Uuid;
 use self::{
     error::to_graphql,
     input::{MaintenanceWindowInput, window_id},
-    trail::Trail,
 };
 use super::{FieldError, Window, model::NewWindow, rules::validate, store};
-use crate::api_errors::{begin, commit, invalid, pool};
-use crate::{access::Authenticated, ids::WindowId};
+use crate::api_errors::{begin, commit, internal, invalid, pool};
+use crate::{access::Authenticated, events::Trail, ids::WindowId};
 
 /// The window an update names and the window to replace it with, with every field error
 /// together.
@@ -65,7 +64,10 @@ impl Mutation {
         let window = store::insert(&mut tx, id, trail.now, &new)
             .await
             .map_err(to_graphql)?;
-        trail.write(&mut tx, trail::window_added(&window)).await?;
+        trail
+            .write(&mut tx, trail::window_added(&window))
+            .await
+            .map_err(internal)?;
         commit(tx).await?;
         Ok(window)
     }
@@ -86,7 +88,8 @@ impl Mutation {
             .map_err(to_graphql)?;
         trail
             .write(&mut tx, trail::window_updated(&before, &after))
-            .await?;
+            .await
+            .map_err(internal)?;
         commit(tx).await?;
         Ok(after)
     }
@@ -97,7 +100,10 @@ impl Mutation {
         let trail = Trail::from_context(ctx)?;
         let mut tx = begin(ctx).await?;
         let window = store::delete(&mut tx, id).await.map_err(to_graphql)?;
-        trail.write(&mut tx, trail::window_deleted(&window)).await?;
+        trail
+            .write(&mut tx, trail::window_deleted(&window))
+            .await
+            .map_err(internal)?;
         commit(tx).await?;
         Ok(ID(window.id.to_string()))
     }
@@ -118,7 +124,8 @@ impl Mutation {
             .map_err(to_graphql)?;
         trail
             .write(&mut tx, trail::manual_switched(&window))
-            .await?;
+            .await
+            .map_err(internal)?;
         commit(tx).await?;
         Ok(window)
     }

@@ -10,13 +10,14 @@ use super::{
     error::{from_devices, to_graphql},
     form::{self, check_id},
     input::{CreateShape, UpdateShape},
-    trail::{self, Extras, Trail},
+    trail::{self, Extras},
 };
 use crate::{
-    api_errors::{begin, commit, invalid, pool, schema_dependency},
+    api_errors::{begin, commit, internal, invalid, pool, schema_dependency},
     checks::{self, Check, CheckChange, FieldError, config::CheckType, store},
     credentials::Vault,
     devices,
+    events::Trail,
     ids::{CheckId, DeviceId},
 };
 
@@ -123,7 +124,8 @@ pub(super) async fn create(ctx: &Context<'_>, input: CreateShape) -> Result<Chec
     };
     trail
         .write(&mut tx, trail::created(&check, &device, &extras))
-        .await?;
+        .await
+        .map_err(internal)?;
     commit(tx).await?;
     Ok(check)
 }
@@ -166,7 +168,8 @@ pub(super) async fn update(ctx: &Context<'_>, id: &ID, input: UpdateShape) -> Re
     };
     trail
         .write(&mut tx, trail::updated(&before, &after, &device, &extras))
-        .await?;
+        .await
+        .map_err(internal)?;
     commit(tx).await?;
     Ok(after)
 }
@@ -194,7 +197,8 @@ pub(super) async fn delete(ctx: &Context<'_>, id: &ID) -> Result<ID> {
         .map_err(to_graphql)?;
     trail
         .write(&mut tx, trail::deleted(&check, &device, &freed))
-        .await?;
+        .await
+        .map_err(internal)?;
     commit(tx).await?;
     Ok(ID(check.id.to_string()))
 }
@@ -209,7 +213,10 @@ pub(super) async fn set_paused(ctx: &Context<'_>, id: &ID, paused: bool) -> Resu
     let check = checks::set_paused(&mut tx, id, paused)
         .await
         .map_err(to_graphql)?;
-    trail.write(&mut tx, trail::paused(&check, &device)).await?;
+    trail
+        .write(&mut tx, trail::paused(&check, &device))
+        .await
+        .map_err(internal)?;
     commit(tx).await?;
     Ok(check)
 }

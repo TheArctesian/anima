@@ -46,7 +46,6 @@ use self::{
     input::{CreateDeviceInput, UpdateDeviceInput, checked, device_id},
     remote::{DeviceRdp, DeviceVnc, clear_password, set_password, set_wake_relay},
     ssh::DeviceSsh,
-    trail::Trail,
 };
 use super::{
     DevicesById, DevicesBySite, Error, FieldError, SitesById,
@@ -60,6 +59,7 @@ use crate::{
     checks,
     clock::Clock,
     credentials::{PasswordKind, clear_ssh},
+    events::Trail,
     ids::{DeviceId, SiteId},
     scalars::Cidr,
 };
@@ -200,7 +200,10 @@ impl Mutation {
         let site = store::create_site(&mut tx, id, &new)
             .await
             .map_err(to_graphql)?;
-        trail.write(&mut tx, trail::site_added(&site)).await?;
+        trail
+            .write(&mut tx, trail::site_added(&site))
+            .await
+            .map_err(internal)?;
         commit(tx).await?;
         Ok(site)
     }
@@ -226,7 +229,8 @@ impl Mutation {
                 &mut tx,
                 trail::device_added(&device, &new, add_default_check),
             )
-            .await?;
+            .await
+            .map_err(internal)?;
         commit(tx).await?;
         Ok(device)
     }
@@ -260,7 +264,8 @@ impl Mutation {
             .map_err(to_graphql)?;
         trail
             .write(&mut tx, trail::device_updated(&device, &change))
-            .await?;
+            .await
+            .map_err(internal)?;
         commit(tx).await?;
         Ok(device)
     }
@@ -278,7 +283,10 @@ impl Mutation {
         let device = store::delete_device(&mut tx, id)
             .await
             .map_err(to_graphql)?;
-        trail.write(&mut tx, trail::device_deleted(&device)).await?;
+        trail
+            .write(&mut tx, trail::device_deleted(&device))
+            .await
+            .map_err(internal)?;
         commit(tx).await?;
         Ok(ID(device.id.to_string()))
     }

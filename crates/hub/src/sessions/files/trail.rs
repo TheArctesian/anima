@@ -17,7 +17,7 @@ use super::{
 use crate::{
     clock::Clock,
     devices::Device,
-    events::{self, AuditAction, AuditTarget, Bus, NewAudit, NewEvent, Severity, Source},
+    events::{self, AuditAction, AuditTarget, Bus, NewEvent, Severity, Source, TrailEntry},
     sessions::Error,
 };
 
@@ -78,11 +78,14 @@ impl Trail {
             Direction::Download => AuditAction::Download,
         };
         let ticket = &self.ticket;
-        let audit = NewAudit {
-            operator: ticket.operator.clone(),
+        let (severity, message) = sentence(transfer.direction, outcome);
+        let entry = TrailEntry {
+            source: Source::Session,
+            severity,
+            device: Some((ticket.device, self.device_name.clone())),
+            message: message.to_owned(),
             action,
             target: AuditTarget::File(ticket.device),
-            client: ticket.client,
             change: json!({
                 "path": transfer.path.as_str(),
                 "size": transfer.size,
@@ -92,17 +95,10 @@ impl Trail {
                 "sessionId": ticket.session.to_string(),
             }),
         };
-        let (severity, message) = sentence(transfer.direction, outcome);
-        let event = NewEvent {
-            severity,
-            source: Source::Session,
-            device: Some((ticket.device, self.device_name.clone())),
-            message: message.to_owned(),
-        };
-        let now = self.clock.now();
+        let actor = (ticket.operator.clone(), ticket.client);
+        let trail = events::Trail::new(&self.bus, actor, self.clock.now());
         let mut tx = self.db.begin().await?;
-        events::audit(&mut tx, now, audit).await?;
-        events::record(&mut tx, &self.bus, now, event).await?;
+        trail.write(&mut tx, entry).await?;
         tx.commit().await?;
         Ok(())
     }

@@ -11,6 +11,7 @@ mod retention;
 mod store;
 #[cfg(test)]
 mod tests;
+mod trail;
 mod upkeep;
 
 use chrono::{DateTime, TimeDelta, Utc};
@@ -21,6 +22,7 @@ pub use model::{
     AuditAction, AuditTarget, ClientAddr, EventSummary, HeartbeatSummary, NewAudit, NewEvent,
     Operator, Severity, Source,
 };
+pub use trail::{Trail, TrailEntry};
 pub use upkeep::run_daily;
 
 use crate::ids::EventId;

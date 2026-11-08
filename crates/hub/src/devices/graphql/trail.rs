@@ -4,86 +4,17 @@
 //! The messages and the `change` objects are built by pure functions from the stored rows and the
 //! validated input. They hold names, hosts and settings, never a secret.
 
-use std::sync::Arc;
-
-use async_graphql::{Context, Result};
 use serde_json::{Value, json};
-use sqlx::PgConnection;
 
 use super::credential_input::CredentialKind;
 use crate::{
-    api_errors::{internal, schema_dependency},
-    clock::Clock,
     credentials::PasswordKind,
     devices::{
         RdpSettings, TransferPolicy, VncSettings,
         model::{Device, DeviceChange, NewDevice, Site, SshSettings},
     },
-    events::{
-        self, AuditAction, AuditTarget, Bus, ClientAddr, NewAudit, NewEvent, Operator, Severity,
-        Source,
-    },
-    ids::DeviceId,
+    events::{AuditAction, AuditTarget, Severity, Source, TrailEntry},
 };
-
-/// One mutation's entry in both logs.
-pub(super) struct Entry {
-    device: Option<(DeviceId, String)>,
-    message: String,
-    action: AuditAction,
-    target: AuditTarget,
-    change: Value,
-}
-
-/// Who did it, from where and when; the same `at` stamps the store write and both entries.
-pub(super) struct Trail<'a> {
-    bus: &'a Bus,
-    operator: Operator,
-    client: ClientAddr,
-    pub(super) now: chrono::DateTime<chrono::Utc>,
-}
-
-impl<'a> Trail<'a> {
-    /// Reads the request's operator and address and the schema's bus and clock. The clock is
-    /// read once.
-    pub(super) fn from_context(ctx: &Context<'a>) -> Result<Self> {
-        Ok(Self {
-            bus: schema_dependency::<Bus>(ctx)?,
-            operator: schema_dependency::<Operator>(ctx)?.clone(),
-            client: *schema_dependency::<ClientAddr>(ctx)?,
-            now: schema_dependency::<Arc<dyn Clock>>(ctx)?.now(),
-        })
-    }
-
-    /// Writes the audit entry, then the event. The caller commits both with its own write.
-    ///
-    /// The event goes last because `events::record` publishes it on the bus at once (D-5): if
-    /// the audit write fails, no subscriber has seen an event for a change that is rolled
-    /// back. A commit that fails after this still publishes an event that is not stored; the
-    /// stored event list is the truth.
-    pub(super) async fn write(self, conn: &mut PgConnection, entry: Entry) -> Result<()> {
-        let audit = NewAudit {
-            operator: self.operator,
-            action: entry.action,
-            target: entry.target,
-            client: self.client,
-            change: entry.change,
-        };
-        events::audit(conn, self.now, audit)
-            .await
-            .map_err(internal)?;
-        let event = NewEvent {
-            severity: Severity::Info,
-            source: Source::Device,
-            device: entry.device,
-            message: entry.message,
-        };
-        events::record(conn, self.bus, self.now, event)
-            .await
-            .map(drop)
-            .map_err(internal)
-    }
-}
 
 fn ssh_json(ssh: &SshSettings) -> Value {
     // `signIn`, not `auth`: the audit log hides values under keys that name a credential.
@@ -123,8 +54,10 @@ fn transfer_json(transfer: TransferPolicy) -> Value {
     })
 }
 
-pub(super) fn site_added(site: &Site) -> Entry {
-    Entry {
+pub(super) fn site_added(site: &Site) -> TrailEntry {
+    TrailEntry {
+        source: Source::Device,
+        severity: Severity::Info,
         device: None,
         message: format!("Site {} added.", site.name),
         action: AuditAction::Create,
@@ -133,7 +66,7 @@ pub(super) fn site_added(site: &Site) -> Entry {
     }
 }
 
-pub(super) fn device_added(device: &Device, new: &NewDevice, default_check: bool) -> Entry {
+pub(super) fn device_added(device: &Device, new: &NewDevice, default_check: bool) -> TrailEntry {
     let mut change = json!({
         "siteId": new.site.to_string(),
         "name": new.name,
@@ -151,7 +84,9 @@ pub(super) fn device_added(device: &Device, new: &NewDevice, default_check: bool
     if default_check {
         change["defaultCheck"] = json!(true);
     }
-    Entry {
+    TrailEntry {
+        source: Source::Device,
+        severity: Severity::Info,
         device: Some((device.id, device.name.clone())),
         message: format!("Device {} added.", device.name),
         action: AuditAction::Create,
@@ -161,7 +96,7 @@ pub(super) fn device_added(device: &Device, new: &NewDevice, default_check: bool
 }
 
 /// Only the fields the operator sent appear in `change`.
-pub(super) fn device_updated(device: &Device, change: &DeviceChange) -> Entry {
+pub(super) fn device_updated(device: &Device, change: &DeviceChange) -> TrailEntry {
     let mut fields = serde_json::Map::new();
     let mut put = |key: &str, value: Option<Value>| {
         if let Some(value) = value {
@@ -194,7 +129,9 @@ pub(super) fn device_updated(device: &Device, change: &DeviceChange) -> Entry {
             .map(|source| json!(source.as_str())),
     );
     put("transfer", change.remote.transfer.map(transfer_json));
-    Entry {
+    TrailEntry {
+        source: Source::Device,
+        severity: Severity::Info,
         device: Some((device.id, device.name.clone())),
         message: format!("Device {} updated.", device.name),
         action: AuditAction::Update,
@@ -204,8 +141,10 @@ pub(super) fn device_updated(device: &Device, change: &DeviceChange) -> Entry {
 }
 
 /// The deleted device's name, host and site, so the entry outlives the device (DEV-015).
-pub(super) fn device_deleted(device: &Device) -> Entry {
-    Entry {
+pub(super) fn device_deleted(device: &Device) -> TrailEntry {
+    TrailEntry {
+        source: Source::Device,
+        severity: Severity::Info,
         device: Some((device.id, device.name.clone())),
         message: format!("Device {} deleted.", device.name),
         action: AuditAction::Delete,
@@ -220,14 +159,16 @@ pub(super) fn device_deleted(device: &Device) -> Entry {
 
 /// Names the kind of secret and whether the key is encrypted, never the secret. The flag is
 /// called `encrypted` because the audit log hides the value of any key that names a passphrase.
-pub(super) fn credential_set(device: &Device, kind: CredentialKind) -> Entry {
+pub(super) fn credential_set(device: &Device, kind: CredentialKind) -> TrailEntry {
     let change = match kind {
         CredentialKind::Password => json!({ "kind": "password" }),
         CredentialKind::PrivateKey { passphrase } => {
             json!({ "kind": "privateKey", "encrypted": passphrase })
         }
     };
-    Entry {
+    TrailEntry {
+        source: Source::Device,
+        severity: Severity::Info,
         device: Some((device.id, device.name.clone())),
         message: format!("Device {} SSH credential set.", device.name),
         action: AuditAction::Update,
@@ -236,8 +177,10 @@ pub(super) fn credential_set(device: &Device, kind: CredentialKind) -> Entry {
     }
 }
 
-pub(super) fn credential_cleared(device: &Device) -> Entry {
-    Entry {
+pub(super) fn credential_cleared(device: &Device) -> TrailEntry {
+    TrailEntry {
+        source: Source::Device,
+        severity: Severity::Info,
         device: Some((device.id, device.name.clone())),
         message: format!("Device {} SSH credential cleared.", device.name),
         action: AuditAction::Delete,
@@ -255,9 +198,11 @@ const fn protocol(kind: PasswordKind) -> (&'static str, &'static str) {
 }
 
 /// Names the protocol and that a password was stored, never the password.
-pub(super) fn password_set(device: &Device, kind: PasswordKind) -> Entry {
+pub(super) fn password_set(device: &Device, kind: PasswordKind) -> TrailEntry {
     let (audit, message) = protocol(kind);
-    Entry {
+    TrailEntry {
+        source: Source::Device,
+        severity: Severity::Info,
         device: Some((device.id, device.name.clone())),
         message: format!("Device {} {message} password set.", device.name),
         action: AuditAction::Update,
@@ -266,9 +211,11 @@ pub(super) fn password_set(device: &Device, kind: PasswordKind) -> Entry {
     }
 }
 
-pub(super) fn password_cleared(device: &Device, kind: PasswordKind) -> Entry {
+pub(super) fn password_cleared(device: &Device, kind: PasswordKind) -> TrailEntry {
     let (audit, message) = protocol(kind);
-    Entry {
+    TrailEntry {
+        source: Source::Device,
+        severity: Severity::Info,
         device: Some((device.id, device.name.clone())),
         message: format!("Device {} {message} password cleared.", device.name),
         action: AuditAction::Delete,
@@ -278,7 +225,7 @@ pub(super) fn password_cleared(device: &Device, kind: PasswordKind) -> Entry {
 }
 
 /// The site's new wake relay, by id and name, or null when it was cleared (D-7).
-pub(super) fn wake_relay_changed(site: &Site, relay: Option<&Device>) -> Entry {
+pub(super) fn wake_relay_changed(site: &Site, relay: Option<&Device>) -> TrailEntry {
     let (device, message, change) = match relay {
         Some(relay) => (
             Some((relay.id, relay.name.clone())),
@@ -291,7 +238,9 @@ pub(super) fn wake_relay_changed(site: &Site, relay: Option<&Device>) -> Entry {
             Value::Null,
         ),
     };
-    Entry {
+    TrailEntry {
+        source: Source::Device,
+        severity: Severity::Info,
         device,
         message,
         action: AuditAction::Update,

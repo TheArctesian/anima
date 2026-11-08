@@ -4,83 +4,16 @@
 //! The `change` objects are built by pure functions from the stored checks. A secret appears
 //! only as `"[set]"` under the key `sealed`; no URL, body or header value is recorded.
 
-use std::sync::Arc;
-
-use async_graphql::{Context, Result};
-use chrono::{DateTime, Utc};
 use serde_json::{Map, Value, json};
-use sqlx::PgConnection;
 
 use crate::{
-    api_errors::{internal, schema_dependency},
     checks::{
         Check,
         config::{CheckConfig, HttpAuth},
     },
-    clock::Clock,
-    events::{
-        self, AuditAction, AuditTarget, Bus, ClientAddr, NewAudit, NewEvent, Operator, Severity,
-        Source,
-    },
-    ids::{CheckId, DeviceId},
+    events::{AuditAction, AuditTarget, Severity, Source, TrailEntry},
+    ids::CheckId,
 };
-
-/// One mutation's entry in both logs.
-pub(super) struct Entry {
-    device: (DeviceId, String),
-    message: String,
-    action: AuditAction,
-    target: AuditTarget,
-    change: Value,
-}
-
-/// Who did it, from where and when; the same `at` stamps the store write and both entries.
-pub(super) struct Trail<'a> {
-    bus: &'a Bus,
-    operator: Operator,
-    client: ClientAddr,
-    pub(super) now: DateTime<Utc>,
-}
-
-impl<'a> Trail<'a> {
-    /// Reads the request's operator and address and the schema's bus and clock. The clock is
-    /// read once.
-    pub(super) fn from_context(ctx: &Context<'a>) -> Result<Self> {
-        Ok(Self {
-            bus: schema_dependency::<Bus>(ctx)?,
-            operator: schema_dependency::<Operator>(ctx)?.clone(),
-            client: *schema_dependency::<ClientAddr>(ctx)?,
-            now: schema_dependency::<Arc<dyn Clock>>(ctx)?.now(),
-        })
-    }
-
-    /// Writes the audit entry, then the event. The caller commits both with its own write.
-    ///
-    /// The event goes last because `events::record` publishes it on the bus at once: if the
-    /// audit write fails, no subscriber has seen an event for a change that is rolled back.
-    pub(super) async fn write(self, conn: &mut PgConnection, entry: Entry) -> Result<()> {
-        let audit = NewAudit {
-            operator: self.operator,
-            action: entry.action,
-            target: entry.target,
-            client: self.client,
-            change: entry.change,
-        };
-        events::audit(conn, self.now, audit)
-            .await
-            .map_err(internal)?;
-        let event = NewEvent {
-            severity: Severity::Info,
-            source: Source::Check,
-            device: Some(entry.device),
-            message: entry.message,
-        };
-        events::record(conn, self.bus, self.now, event)
-            .await
-            .map(drop)
-            .map_err(internal)
-    }
-}
 
 /// What the configuration says without its secrets: the type, and for HTTP only the method,
 /// the sign-in kind and the header names.
@@ -131,9 +64,16 @@ fn fields(check: &Check) -> Map<String, Value> {
     fields
 }
 
-fn entry(check: &Check, device: &str, action: AuditAction, (verb, change): (&str, Value)) -> Entry {
-    Entry {
-        device: (check.device, device.to_owned()),
+fn entry(
+    check: &Check,
+    device: &str,
+    action: AuditAction,
+    (verb, change): (&str, Value),
+) -> TrailEntry {
+    TrailEntry {
+        source: Source::Check,
+        severity: Severity::Info,
+        device: Some((check.device, device.to_owned())),
         message: format!("Check {} on {device} {verb}.", check.name),
         action,
         target: AuditTarget::Check(check.id),
@@ -167,7 +107,7 @@ fn add_extras(change: &mut Map<String, Value>, extras: &Extras<'_>) {
     }
 }
 
-pub(super) fn created(check: &Check, device: &str, extras: &Extras<'_>) -> Entry {
+pub(super) fn created(check: &Check, device: &str, extras: &Extras<'_>) -> TrailEntry {
     let mut change = fields(check);
     change.insert("deviceId".into(), json!(check.device.to_string()));
     add_extras(&mut change, extras);
@@ -180,7 +120,12 @@ pub(super) fn created(check: &Check, device: &str, extras: &Extras<'_>) -> Entry
 }
 
 /// Only the fields that differ appear in `change`.
-pub(super) fn updated(before: &Check, after: &Check, device: &str, extras: &Extras<'_>) -> Entry {
+pub(super) fn updated(
+    before: &Check,
+    after: &Check,
+    device: &str,
+    extras: &Extras<'_>,
+) -> TrailEntry {
     let (old, new) = (fields(before), fields(after));
     let mut change = Map::new();
     for (key, value) in &new {
@@ -199,7 +144,7 @@ pub(super) fn updated(before: &Check, after: &Check, device: &str, extras: &Extr
 
 /// The deleted check's name and type, so the entry outlives the check. A deleted group also
 /// lists the children it let go of.
-pub(super) fn deleted(check: &Check, device: &str, freed: &[CheckId]) -> Entry {
+pub(super) fn deleted(check: &Check, device: &str, freed: &[CheckId]) -> TrailEntry {
     let mut change = json!({ "name": check.name, "type": check.kind().as_sql() });
     if !freed.is_empty() {
         change["childIds"] = child_ids(freed);
@@ -207,7 +152,7 @@ pub(super) fn deleted(check: &Check, device: &str, freed: &[CheckId]) -> Entry {
     entry(check, device, AuditAction::Delete, ("deleted", change))
 }
 
-pub(super) fn paused(check: &Check, device: &str) -> Entry {
+pub(super) fn paused(check: &Check, device: &str) -> TrailEntry {
     let (verb, action) = if check.paused {
         ("paused", AuditAction::Pause)
     } else {

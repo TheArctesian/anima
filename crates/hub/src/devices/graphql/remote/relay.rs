@@ -3,18 +3,15 @@
 use async_graphql::{Context, ID, Result};
 
 use crate::{
-    api_errors::{begin, commit, invalid},
+    api_errors::{begin, commit, internal, invalid},
     devices::{
         FieldError,
-        graphql::{
-            credential::device_arg,
-            error::to_graphql,
-            trail::{self, Trail},
-        },
+        graphql::{credential::device_arg, error::to_graphql, trail},
         model::Site,
         rules::wake_relay,
         store,
     },
+    events::Trail,
     ids::SiteId,
 };
 
@@ -60,7 +57,8 @@ pub(in crate::devices::graphql) async fn set_wake_relay(
         .map_err(to_graphql)?;
     trail
         .write(&mut tx, trail::wake_relay_changed(&changed, relay))
-        .await?;
+        .await
+        .map_err(internal)?;
     commit(tx).await?;
     Ok(changed)
 }
