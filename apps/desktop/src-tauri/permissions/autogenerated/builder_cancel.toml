@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-builder-cancel"
+description = "Enables the builder_cancel command without any pre-configured scope."
+commands.allow = ["builder_cancel"]
+
+[[permission]]
+identifier = "deny-builder-cancel"
+description = "Denies the builder_cancel command without any pre-configured scope."
+commands.deny = ["builder_cancel"]

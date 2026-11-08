@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-builder-tools-check"
+description = "Enables the builder_tools_check command without any pre-configured scope."
+commands.allow = ["builder_tools_check"]
+
+[[permission]]
+identifier = "deny-builder-tools-check"
+description = "Denies the builder_tools_check command without any pre-configured scope."
+commands.deny = ["builder_tools_check"]

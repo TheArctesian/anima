@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-builder-token-write"
+description = "Enables the builder_token_write command without any pre-configured scope."
+commands.allow = ["builder_token_write"]
+
+[[permission]]
+identifier = "deny-builder-token-write"
+description = "Denies the builder_token_write command without any pre-configured scope."
+commands.deny = ["builder_token_write"]

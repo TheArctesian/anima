@@ -29,16 +29,31 @@ whoami.workspace = true
 sha2.workspace = true
 rustls.workspace = true
 tokio-rustls.workspace = true
-tokio.workspace = true
+tokio = { workspace = true, features = ["process"] }
 # Device IDs name each device's web store (WEB-006, D-2).
 uuid.workspace = true
 # Challenge hosts go through the URL standard's host parser, as pinned origins do (D-4).
 url = "2"
+# The builder (WP-36, BLD-026 to BLD-046): the updater key in memory only as `Zeroizing`, minisign
+# signing in this process (ed25519, BLAKE2b, scrypt for an encrypted key file), and the check with
+# the verifier tauri-plugin-updater itself uses. The operator picks the key file in a native dialog.
+zeroize.workspace = true
+subtle.workspace = true
+base64.workspace = true
+blake2 = "0.11"
+scrypt = { version = "0.12", default-features = false }
+ed25519-dalek = { version = "3", default-features = false, features = ["fast", "zeroize"] }
+minisign-verify = "0.3"
+tauri-plugin-dialog = "2"
 
 # Self-update and relaunch: desktop only, registered only in release builds (UPD-001).
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater.workspace = true
 tauri-plugin-process.workspace = true
+
+# Cancelling a build step kills the step's whole process group (BLD-027).
+[target.'cfg(unix)'.dependencies]
+nix = { version = "0.31", default-features = false, features = ["signal"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # Downcasts keyring's macOS PlatformFailure to tell a refused Keychain prompt from a failure;
@@ -53,6 +68,11 @@ objc2-web-kit = { version = "0.3.2", default-features = false, features = ["std"
 
 [dev-dependencies]
 rcgen.workspace = true
+# The reference minisign implementation (the one tauri-cli signs with) makes the test key files
+# and checks the signatures, so the format is proved against it and not only against itself.
+minisign = "0.10"
+static_assertions.workspace = true
+tempfile.workspace = true
 
 # R-069's proof that the macOS trust hook cancels a mismatched certificate, in a real
 # WKWebView. Not libtest: Tauri's event loop must own the main thread (tests/pinning/main.rs).

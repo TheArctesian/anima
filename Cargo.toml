@@ -94,3 +94,10 @@ opt-level = 3
 
 [profile.dev.package.blake2]
 opt-level = 3
+
+# An updater key file is scrypt-encrypted (WP-36 T2); its tests decrypt test keys.
+[profile.dev.package.scrypt]
+opt-level = 3
+
+[profile.dev.package.salsa20]
+opt-level = 3

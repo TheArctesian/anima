@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-updater-key-import"
+description = "Enables the updater_key_import command without any pre-configured scope."
+commands.allow = ["updater_key_import"]
+
+[[permission]]
+identifier = "deny-updater-key-import"
+description = "Denies the updater_key_import command without any pre-configured scope."
+commands.deny = ["updater_key_import"]

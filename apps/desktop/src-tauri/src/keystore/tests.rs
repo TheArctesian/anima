@@ -10,6 +10,8 @@ use std::{
 
 use tauri::async_runtime::block_on;
 
+mod builder;
+
 use keyring::{
     Error as BackendError,
     credential::{Credential, CredentialApi, CredentialBuilderApi},
@@ -17,7 +19,7 @@ use keyring::{
 
 use super::{
     KeystoreError, access_token_clear, access_token_read, access_token_write, blocking,
-    token::{RELEASE_SERVICE, SERVICE, clear_token, read_token, write_token},
+    token::{RELEASE_SERVICE, SERVICE, TokenKind, clear_token, read_token, write_token},
 };
 
 type Store = Arc<Mutex<HashMap<(String, String), String>>>;
@@ -74,7 +76,7 @@ impl CredentialBuilderApi for MemoryStore {
 
 /// Installs the in-memory store once for the test process and returns it, so a test can see
 /// the exact (service, account) keys. Each test uses its own origins.
-fn use_memory_store() -> &'static Store {
+pub(crate) fn use_memory_store() -> &'static Store {
     static STORE: OnceLock<Store> = OnceLock::new();
     STORE.get_or_init(|| {
         let store = Store::default();
@@ -90,42 +92,54 @@ const BACKEND_TEXT: &str = "backend echoed hub-access-token and tok-s3cret-value
 fn cli_003_token_round_trips_through_write_read_clear() {
     use_memory_store();
     let origin = "https://round-trip.anima.test";
-    write_token(origin, SECRET).unwrap();
-    assert_eq!(read_token(origin).unwrap().as_deref(), Some(SECRET));
-    clear_token(origin).unwrap();
-    assert_eq!(read_token(origin).unwrap(), None);
+    write_token(TokenKind::Access, origin, SECRET).unwrap();
+    assert_eq!(
+        read_token(TokenKind::Access, origin).unwrap().as_deref(),
+        Some(SECRET)
+    );
+    clear_token(TokenKind::Access, origin).unwrap();
+    assert_eq!(read_token(TokenKind::Access, origin).unwrap(), None);
 }
 
 #[test]
 fn cli_003_missing_entry_reads_as_none() {
     use_memory_store();
-    assert_eq!(read_token("https://missing.anima.test").unwrap(), None);
+    assert_eq!(
+        read_token(TokenKind::Access, "https://missing.anima.test").unwrap(),
+        None
+    );
 }
 
 #[test]
 fn cli_003_clearing_a_missing_entry_is_ok() {
     use_memory_store();
-    clear_token("https://never-written.anima.test").unwrap();
+    clear_token(TokenKind::Access, "https://never-written.anima.test").unwrap();
 }
 
 #[test]
 fn cli_003_empty_token_is_refused_and_nothing_is_stored() {
     use_memory_store();
     let origin = "https://empty.anima.test";
-    assert_eq!(write_token(origin, ""), Err(KeystoreError::EmptyToken));
-    assert_eq!(read_token(origin).unwrap(), None);
+    assert_eq!(
+        write_token(TokenKind::Access, origin, ""),
+        Err(KeystoreError::EmptyToken)
+    );
+    assert_eq!(read_token(TokenKind::Access, origin).unwrap(), None);
 }
 
 #[test]
 fn cli_003_tokens_for_two_origins_are_independent() {
     use_memory_store();
     let (a, b) = ("https://a.anima.test", "https://b.anima.test");
-    write_token(a, "token-for-a").unwrap();
-    assert_eq!(read_token(b).unwrap(), None);
-    write_token(b, "token-for-b").unwrap();
-    clear_token(a).unwrap();
-    assert_eq!(read_token(a).unwrap(), None);
-    assert_eq!(read_token(b).unwrap().as_deref(), Some("token-for-b"));
+    write_token(TokenKind::Access, a, "token-for-a").unwrap();
+    assert_eq!(read_token(TokenKind::Access, b).unwrap(), None);
+    write_token(TokenKind::Access, b, "token-for-b").unwrap();
+    clear_token(TokenKind::Access, a).unwrap();
+    assert_eq!(read_token(TokenKind::Access, a).unwrap(), None);
+    assert_eq!(
+        read_token(TokenKind::Access, b).unwrap().as_deref(),
+        Some("token-for-b")
+    );
 }
 
 #[test]
@@ -147,17 +161,17 @@ fn cli_003_an_origin_that_is_not_canonical_https_is_refused_by_every_command() {
         "https://hub?x",
     ] {
         assert_eq!(
-            read_token(origin),
+            read_token(TokenKind::Access, origin),
             Err(KeystoreError::BadOrigin),
             "{origin}"
         );
         assert_eq!(
-            write_token(origin, SECRET),
+            write_token(TokenKind::Access, origin, SECRET),
             Err(KeystoreError::BadOrigin),
             "{origin}"
         );
         assert_eq!(
-            clear_token(origin),
+            clear_token(TokenKind::Access, origin),
             Err(KeystoreError::BadOrigin),
             "{origin}"
         );
@@ -175,7 +189,7 @@ fn cli_003_canonical_origins_with_port_or_ip_are_accepted() {
         "https://[::1]:8443",
         "https://my_hub.lan",
     ] {
-        assert_eq!(read_token(origin), Ok(None), "{origin}");
+        assert_eq!(read_token(TokenKind::Access, origin), Ok(None), "{origin}");
     }
 }
 
