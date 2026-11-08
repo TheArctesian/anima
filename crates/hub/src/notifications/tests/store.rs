@@ -9,7 +9,7 @@ use crate::{
     ids::{ChannelId, CheckId, DeliveryId},
     notifications::{
         ChannelKind, CheckState, Delivery, DeliveryCursor, DeliveryReason, Error, ExpiryMark,
-        NotificationKind, store as sql,
+        ExpirySubject, NotificationKind, store as sql,
     },
     status::Status,
 };
@@ -68,6 +68,7 @@ async fn not_005_check_state_starts_empty_and_is_written_back_in_the_transaction
     let mut tx = pool.begin().await.unwrap();
     let first = sql::lock_check_state(&mut tx, check(PING)).await.unwrap();
     let marks = vec![ExpiryMark {
+        subject: ExpirySubject::Certificate,
         threshold_days: 14,
         not_after: DateTime::from_timestamp(1_900_000_000, 0).unwrap(),
     }];
