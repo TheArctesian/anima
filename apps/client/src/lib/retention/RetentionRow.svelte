@@ -69,7 +69,7 @@
   <!-- Two lines in every state, so the answer changes no height at any width; the placeholder has the same two lines, hidden. -->
   <p class="hint" id="{id}-hint" class:waiting={period === null}>
     <span>{period === null ? 'Keeps 00 days.' : `Keeps ${daysText(period.days)}.`}</span>
-    <span>{period === null ? 'Allowed 0 to 000 days. Default 00.' : `Allowed ${String(period.minDays)} to ${String(period.maxDays)} days. Default ${String(period.defaultDays)}.`}</span>
+    <span>{period === null ? '00 to 000 days, default 00' : `${String(period.minDays)} to ${String(period.maxDays)} days, default ${String(period.defaultDays)}`}</span>
   </p>
   <div class="problem" id="{id}-problem" role="alert">{problem}</div>
 </form>

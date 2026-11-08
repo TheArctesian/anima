@@ -69,7 +69,7 @@ it('HUB-005, D-25: each subject has a row showing its days, bounds and default f
   expect(field?.value).toBe('90');
   expect(field?.min).toBe('30');
   expect(field?.max).toBe('365');
-  expect(events.querySelector('.hint')?.textContent.replace(/\s+/g, ' ').trim()).toBe('Keeps 90 days. Allowed 30 to 365 days. Default 90.');
+  expect(events.querySelector('.hint')?.textContent.replace(/\s+/g, ' ').trim()).toBe('Keeps 90 days. 30 to 365 days, default 90');
   expect(field?.getAttribute('aria-describedby')).toContain(events.querySelector('.hint')?.id);
 });
 
@@ -124,7 +124,7 @@ it('HUB-005: the note that changes apply at the next daily run is shown', async 
 
 it('HUB-005: a failed load shows a fixed message and Try again loads the periods', async () => {
   const target = await open({ Retention: failure('unreachable', 'secret hub text') });
-  expect(target.querySelector('.note [role="alert"]')?.textContent).toBe('Anima could not load the retention periods.');
+  expect(target.querySelector('.note [role="alert"]')?.textContent).toBe('Could not load the periods.');
   expect(target.textContent).not.toContain('secret hub text');
   hub.hub.request = (() => Promise.resolve(ok({ retention: FIXTURE_PERIODS }))) as typeof hub.hub.request;
   [...target.querySelectorAll('button')].find((each) => each.textContent === 'Try again')?.click();
@@ -239,7 +239,7 @@ it('MOT-007, MV-005: the loading and loaded hints have the same two-line structu
   expect(lines()).toEqual([2, 2, 2, 2, 2]);
   expect(target.querySelectorAll('.problem')).toHaveLength(5);
   expect(row(target, 'Events').querySelectorAll('.hint > span')[0]?.textContent).toBe('Keeps 90 days.');
-  expect(row(target, 'Events').querySelectorAll('.hint > span')[1]?.textContent).toBe('Allowed 30 to 365 days. Default 90.');
+  expect(row(target, 'Events').querySelectorAll('.hint > span')[1]?.textContent).toBe('30 to 365 days, default 90');
 });
 
 it('MOT-007: the note block is present in the loaded and the failed state', async () => {
