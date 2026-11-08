@@ -45,7 +45,7 @@
     {/each}
   {/if}
 </div>
-<!-- One line holds the note or, when the load failed, its message and retry, so the section keeps its height. -->
+<!-- One block holds the note or, when the load failed, its message and retry, so the section keeps its height at every width. -->
 <div class="note">
   {#if loadFailed}
     <p role="alert">Anima could not load the retention periods.</p>
@@ -65,10 +65,11 @@
 
   .note {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
+    justify-content: space-between;
     gap: var(--space-2);
-    min-block-size: var(--target-min-desktop);
+    /* The note, and the failure message that wraps to two lines beside Try again, fill the same block (MOT-007). */
+    min-block-size: max(var(--target-min-desktop), calc(var(--text-md) * var(--leading-tight) * 2));
     margin-block-start: var(--space-3);
   }
 

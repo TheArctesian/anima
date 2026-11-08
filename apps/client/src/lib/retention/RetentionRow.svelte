@@ -66,12 +66,10 @@
     <span class="unit">days</span>
     <FormButton tabindex={0} type="submit" aria-label="Save {label}" aria-disabled={period === null || busy}>Save</FormButton>
   </div>
+  <!-- Two lines in every state, so the answer changes no height at any width; the placeholder has the same two lines, hidden. -->
   <p class="hint" id="{id}-hint" class:waiting={period === null}>
-    {#if period === null}
-      Loading
-    {:else}
-      Keeps {daysText(period.days)}. Allowed {period.minDays} to {period.maxDays} days. Default {period.defaultDays}.
-    {/if}
+    <span>{period === null ? 'Keeps 00 days.' : `Keeps ${daysText(period.days)}.`}</span>
+    <span>{period === null ? 'Allowed 0 to 000 days. Default 00.' : `Allowed ${String(period.minDays)} to ${String(period.maxDays)} days. Default ${String(period.defaultDays)}.`}</span>
   </p>
   <div class="problem" id="{id}-problem" role="alert">{problem}</div>
 </form>
@@ -126,9 +124,18 @@
   .hint,
   .problem {
     margin: 0;
-    min-block-size: calc(var(--text-sm) * var(--leading-tight));
     font-size: var(--text-sm);
     line-height: var(--leading-tight);
+  }
+
+  .hint span {
+    display: block;
+    min-block-size: calc(var(--text-sm) * var(--leading-tight));
+  }
+
+  /* The message may wrap to a second line at a narrow width, so two lines are reserved. */
+  .problem {
+    min-block-size: calc(var(--text-sm) * var(--leading-tight) * 2);
   }
 
   .hint {

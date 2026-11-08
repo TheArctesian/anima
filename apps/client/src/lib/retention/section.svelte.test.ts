@@ -224,3 +224,30 @@ it('HUB-005: a save that works after a failed one, with no edit between, clears 
   await save(target, 'Events');
   expect(problemOf(target, 'Events')).toBe('');
 });
+
+it('MOT-007, MV-005: the loading and loaded hints have the same two-line structure, and each row reserves its message block', async () => {
+  let release: (result: ReturnType<typeof ok>) => void = () => undefined;
+  const pending = new Promise<ReturnType<typeof ok>>((resolve) => {
+    release = resolve;
+  });
+  const target = await open({ Retention: pending }, false);
+  const lines = () => [...target.querySelectorAll('form')].map((form) => form.querySelectorAll('.hint > span').length);
+  expect(lines()).toEqual([2, 2, 2, 2, 2]);
+  expect(target.querySelectorAll('.problem')).toHaveLength(5);
+  release(ok({ retention: FIXTURE_PERIODS }));
+  await settled();
+  expect(lines()).toEqual([2, 2, 2, 2, 2]);
+  expect(target.querySelectorAll('.problem')).toHaveLength(5);
+  expect(row(target, 'Events').querySelectorAll('.hint > span')[0]?.textContent).toBe('Keeps 90 days.');
+  expect(row(target, 'Events').querySelectorAll('.hint > span')[1]?.textContent).toBe('Allowed 30 to 365 days. Default 90.');
+});
+
+it('MOT-007: the note block is present in the loaded and the failed state', async () => {
+  const loaded = await open(LIST);
+  expect(loaded.querySelectorAll('.note')).toHaveLength(1);
+  await unmount(app as ReturnType<typeof mount>);
+  app = undefined;
+  document.body.replaceChildren();
+  const failed = await open({ Retention: failure('unreachable') });
+  expect(failed.querySelectorAll('.note')).toHaveLength(1);
+});
