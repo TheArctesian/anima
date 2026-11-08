@@ -1,4 +1,5 @@
 import { readdirSync, readFileSync } from 'node:fs';
+import { posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { desktopCapabilities } from '$lib/desktop/capabilities';
@@ -66,28 +67,57 @@ describe('the seam holds (WP-42 D-4)', () => {
   });
 
   it('UPD-001: the updater module is imported for its values only by the lazy port in lib/updates', () => {
-    const importers = sources.filter(({ text }) => importsUpdaterValues(text)).map(({ path }) => path);
+    const importers = sources.filter(({ path, text }) => importsUpdaterValues(path, text)).map(({ path }) => path);
     expect(importers).toEqual([]);
     const lazy = sources.filter(({ text }) => /import\(\s*['"`][^'"`]*desktop\/updater['"`]\s*\)/.test(text)).map(({ path }) => path);
     expect(lazy).toEqual(['lib/updates/desktop.svelte.ts']);
   });
 
-  it('UPD-001: the scan catches a relative or $lib value import and a re-export, and lets type imports through', () => {
-    expect(importsUpdaterValues("import { desktopUpdater } from '$lib/desktop/updater';")).toBe(true);
-    expect(importsUpdaterValues("import { desktopUpdater } from '../desktop/updater';")).toBe(true);
-    expect(importsUpdaterValues("import { desktopUpdater } from '../../../desktop/updater.ts';")).toBe(true);
-    expect(importsUpdaterValues("export { desktopUpdater } from '$lib/desktop/updater';")).toBe(true);
-    expect(importsUpdaterValues("export * from './desktop/updater';")).toBe(true);
-    expect(importsUpdaterValues("import '$lib/desktop/updater';")).toBe(true);
-    expect(importsUpdaterValues("import type { UpdaterPort } from '../desktop/updater';")).toBe(false);
-    expect(importsUpdaterValues("export type { UpdaterPort } from '$lib/desktop/updater';")).toBe(false);
+  it('UPD-001: the scan resolves each specifier against the file, catches value imports and re-exports, and lets type imports through', () => {
+    const scan = (text: string, path = 'lib/updates/x.ts'): boolean => importsUpdaterValues(path, text);
+    expect(scan("import { desktopUpdater } from '$lib/desktop/updater';")).toBe(true);
+    expect(scan("import { desktopUpdater } from '../desktop/updater';")).toBe(true);
+    expect(scan("import { desktopUpdater } from '../../../desktop/updater.ts';", 'lib/a/b/c/x.ts')).toBe(true);
+    expect(scan("import { desktopUpdater } from '../../desktop/updater';", 'lib/a/b/c/x.ts')).toBe(false);
+    expect(scan("export { desktopUpdater } from '$lib/desktop/updater';")).toBe(true);
+    expect(scan("export * from '../desktop/updater';")).toBe(true);
+    expect(scan("import '$lib/desktop/updater';")).toBe(true);
+    expect(scan("import type { UpdaterPort } from '../desktop/updater';")).toBe(false);
+    expect(scan("export type { UpdaterPort } from '$lib/desktop/updater';")).toBe(false);
+    // From inside lib/desktop the same folder is reached by './updater'.
+    expect(scan("export { desktopUpdater } from './updater';", 'lib/desktop/x.ts')).toBe(true);
+    expect(scan("export { desktopUpdater } from './updater.js';", 'lib/desktop/x.ts')).toBe(true);
+    expect(scan("export type { UpdaterPort } from './updater';", 'lib/desktop/x.ts')).toBe(false);
+    // './updater' elsewhere is another module; the updater's own file is skipped.
+    expect(scan("import { x } from './updater';", 'lib/other/x.ts')).toBe(false);
+    expect(scan("import { x } from './updater';", 'lib/desktop/updater.ts')).toBe(false);
+  });
+
+  it("UPD-001: a comment with an apostrophe between 'import' and 'from' does not hide the specifier", () => {
+    const text = "import {\n  // the port's value\n  desktopUpdater,\n} from './updater';\n/* it's */";
+    expect(importsUpdaterValues('lib/desktop/x.ts', text)).toBe(true);
+    expect(importsUpdaterValues('lib/desktop/x.ts', "// import { a } from './updater';")).toBe(false);
   });
 });
 
-/** Whether `text` imports or re-exports values of the updater module by any specifier ending in `desktop/updater`. */
-function importsUpdaterValues(text: string): boolean {
-  const specifier = String.raw`['"][^'"]*\bdesktop/updater(?:\.ts)?['"]`;
-  const fromClause = new RegExp(String.raw`\b(?:import|export)\s+(?!type\b)[^;'"]*?\bfrom\s+${specifier}`);
-  const bare = new RegExp(String.raw`\bimport\s+${specifier}`);
-  return fromClause.test(text) || bare.test(text);
+/** The module path a specifier names, as `lib/...` without extension; null for a package. */
+function resolveSpecifier(file: string, specifier: string): string | null {
+  const target = specifier.startsWith('$lib/')
+    ? `lib/${specifier.slice('$lib/'.length)}`
+    : specifier.startsWith('.')
+      ? posix.join(posix.dirname(file), specifier)
+      : null;
+  return target?.replace(/\.(?:ts|js)$/, '') ?? null;
+}
+
+/** `text` without its comments; strings are kept whole, so an apostrophe in a comment cannot open one. */
+function withoutComments(text: string): string {
+  return text.replace(/(['"`])(?:\\.|(?!\1)[^\\])*\1|\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, (match) => (/^(?:\/\/|\/\*)/.test(match) ? ' ' : match));
+}
+
+/** Whether the file at `path` imports or re-exports values of `lib/desktop/updater` (its own file and type-only forms excepted). */
+function importsUpdaterValues(path: string, text: string): boolean {
+  if (/^lib\/desktop\/updater\.(?:ts|js)$/.test(path)) return false;
+  const statement = /\b(?:import|export)\s+(?!type\b)(?:[^;'"]*?\bfrom\s+)?['"]([^'"]+)['"]/g;
+  return [...withoutComments(text).matchAll(statement)].some(([, specifier]) => resolveSpecifier(path, specifier ?? '') === 'lib/desktop/updater');
 }
