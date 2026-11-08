@@ -1171,7 +1171,7 @@ input NotificationSettingsInput @pending {
 # ---------------------------------------------------------------- retention (WP-46)
 # HUB-005, D-25.
 
-enum RetentionSubject @pending {
+enum RetentionSubject {
   HEARTBEATS
   METRICS
   EVENTS
@@ -1179,7 +1179,7 @@ enum RetentionSubject @pending {
   DELIVERIES
 }
 
-type RetentionPeriod @pending {
+type RetentionPeriod {
   subject: RetentionSubject!
   days: Int!
   minDays: Int!
@@ -1407,7 +1407,7 @@ type Query {
   notificationChannels: [NotificationChannel!]! @pending
   notificationSettings: NotificationSettings! @pending
   deliveries(channelId: ID, first: Int = 50, after: String): DeliveryConnection! @pending
-  retention: [RetentionPeriod!]! @pending
+  retention: [RetentionPeriod!]!
   recordings(deviceId: ID, first: Int = 50, after: String): RecordingConnection! @pending
 }
 
@@ -1474,7 +1474,7 @@ type Mutation {
   setCheckNotifications(checkId: ID!, input: CheckNotificationsInput!): CheckNotifications! @pending
   setNotificationSettings(input: NotificationSettingsInput!): NotificationSettings! @pending
 
-  setRetention(subject: RetentionSubject!, days: Int!): RetentionPeriod! @pending
+  setRetention(subject: RetentionSubject!, days: Int!): RetentionPeriod!
 
   "The session must be live and the caller's (RA-035)."
   shareSession(sessionId: ID!, input: ShareInput!): ShareLink! @pending

@@ -14,6 +14,7 @@ pub mod maintenance;
 pub mod metrics;
 pub mod notifications;
 pub mod paging;
+pub mod retention;
 pub mod scalars;
 pub mod schema;
 pub mod sessions;

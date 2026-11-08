@@ -14,7 +14,7 @@ mod tests;
 mod trail;
 mod upkeep;
 
-use chrono::{DateTime, TimeDelta, Utc};
+use chrono::{DateTime, Days, TimeDelta, Utc};
 use sqlx::{PgConnection, PgPool};
 
 pub use bus::{Bus, Signal};
@@ -59,7 +59,8 @@ impl Error {
 const LOCK_NOT_AVAILABLE: &str = "55P03";
 
 /// The daily partition upkeep (D-4, DB-004, DB-005): creates the partitions of both logs for
-/// the UTC day of `now` and the week after it, then drops the expired ones. Each change runs
+/// the UTC day of `now` and the week after it, then drops the expired ones: `event_log` keeps
+/// `events_keep` (the operator's period, D-25) and `audit_log` one year. Each change runs
 /// in a short transaction of its own that waits at most 2 seconds for a lock and then fails,
 /// so a long reader or writer delays the job, never the other way round; [`run_daily`]
 /// retries it.
@@ -68,9 +69,13 @@ const LOCK_NOT_AVAILABLE: &str = "55P03";
 ///
 /// `Error::Database` if a partition cannot be created or dropped, or a lock is not granted in
 /// time.
-pub async fn keep_partitions(db: &PgPool, now: DateTime<Utc>) -> Result<(), Error> {
+pub async fn keep_partitions(
+    db: &PgPool,
+    now: DateTime<Utc>,
+    events_keep: Days,
+) -> Result<(), Error> {
     create_partitions_ahead(db, now, PARTITION_DAYS_AHEAD).await?;
-    drop_expired_partitions(db, now).await?;
+    drop_expired_partitions(db, now, events_keep).await?;
     Ok(())
 }
 
@@ -142,11 +147,11 @@ pub async fn check_runtime_role(db: &PgPool) -> Result<(), RoleError> {
     }
 }
 
-/// Drops the day partitions older than each log's retention at `now` (90 days for events,
-/// 1 year for the audit log; DB-005) and returns the names of the dropped partitions. The
-/// database refuses to drop anything inside retention, by `now` and by its own clock
-/// (LOG-006). Each log's drop runs in a short transaction of its own that waits at most 2
-/// seconds for a lock. Schedule it daily.
+/// Drops the day partitions older than each log's retention at `now` (`events_keep` for
+/// events, at least 30 days; 1 year for the audit log; DB-005) and returns the names of the
+/// dropped partitions. The database refuses to drop anything inside retention, by `now` and by
+/// its own clock (LOG-006). Each log's drop runs in a short transaction of its own that waits
+/// at most 2 seconds for a lock. Schedule it daily.
 ///
 /// # Errors
 ///
@@ -154,10 +159,11 @@ pub async fn check_runtime_role(db: &PgPool) -> Result<(), RoleError> {
 pub async fn drop_expired_partitions(
     db: &PgPool,
     now: DateTime<Utc>,
+    events_keep: Days,
 ) -> Result<Vec<String>, Error> {
     let mut dropped = Vec::new();
     for log in retention::LOGS {
-        let first_kept_day = log.first_kept_day(now);
+        let first_kept_day = log.first_kept_day(now, events_keep);
         dropped.extend(store::drop_day_partitions_before(db, log, first_kept_day, now).await?);
     }
     Ok(dropped)

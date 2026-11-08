@@ -19,7 +19,7 @@ use crate::{
         self, Bus,
         process_log::{InternalErrors, RequestSpan},
     },
-    maintenance, metrics,
+    maintenance, metrics, retention,
     sessions::{self, Live},
     targets::AddressPolicy,
     trust, web_interfaces,
@@ -33,6 +33,7 @@ pub struct Query(
     devices::graphql::Query,
     events::graphql::Query,
     maintenance::graphql::Query,
+    retention::graphql::Query,
     sessions::graphql::Query,
 );
 
@@ -42,6 +43,7 @@ pub struct Mutation(
     checks::graphql::Mutation,
     devices::graphql::Mutation,
     maintenance::graphql::Mutation,
+    retention::graphql::Mutation,
     sessions::graphql::Mutation,
     sessions::FilesMutation,
     sessions::WakeMutation,

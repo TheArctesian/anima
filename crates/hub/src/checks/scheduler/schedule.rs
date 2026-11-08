@@ -1,6 +1,6 @@
-//! The scheduler's decisions: when a check runs first, when it is late, when the daily jobs
-//! run and how a status change is reported (CHK-001, CHK-002, CHK-010, DB-005). Pure: time
-//! and randomness come in as parameters.
+//! The scheduler's decisions: when a check runs first, when it is late and how a status change
+//! is reported (CHK-001, CHK-002, CHK-010, DB-005). Pure: time and randomness come in as
+//! parameters.
 
 use std::collections::HashSet;
 
@@ -17,9 +17,6 @@ use crate::{
     ids::CheckId,
     status::Status,
 };
-
-const DAY: TimeDelta = TimeDelta::hours(24);
-const HOUR: TimeDelta = TimeDelta::hours(1);
 
 fn interval(seconds: u32) -> TimeDelta {
     TimeDelta::seconds(i64::from(seconds.max(1)))
@@ -89,18 +86,6 @@ impl Watchdog {
     pub(super) fn retain(&mut self, kept: &HashSet<CheckId>) {
         self.reported.retain(|check| kept.contains(check));
     }
-}
-
-/// Whether the daily jobs run at `now`: they never ran, they are due, or the clock is more
-/// than a day before their next run, which after a success means before the last run
-/// (DB-005, CQ-021).
-pub(super) fn daily_due(next_daily: Option<DateTime<Utc>>, now: DateTime<Utc>) -> bool {
-    next_daily.is_none_or(|at| now >= at || now < at - DAY)
-}
-
-/// When the daily jobs run next: a day after a full success, an hour after any failure.
-pub(super) fn next_daily(succeeded: bool, now: DateTime<Utc>) -> DateTime<Utc> {
-    now + if succeeded { DAY } else { HOUR }
 }
 
 /// A due PUSH check got no push within its interval: a failed attempt, so retries apply
