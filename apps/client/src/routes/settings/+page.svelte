@@ -38,17 +38,17 @@
   <RetentionSection />
 </section>
 
-<section aria-labelledby="settings-api-keys">
-  <h2 id="settings-api-keys">API keys</h2>
-  <ApiKeysSection />
-</section>
-
 {#if updates || processLog}
   <section aria-labelledby="settings-updates">
     <h2 id="settings-updates">Updates</h2>
     <DesktopRows />
   </section>
 {/if}
+
+<section aria-labelledby="settings-api-keys">
+  <h2 id="settings-api-keys">API keys</h2>
+  <ApiKeysSection />
+</section>
 
 <style>
   /* The title's line height is reserved from tokens, so the font load cannot move it (WP-11 H-7, R-042). */

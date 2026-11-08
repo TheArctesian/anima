@@ -102,10 +102,10 @@ it('SET-001, UI-005, MOT-043: the page is the title, then Account, then Appearan
   expect(target.querySelectorAll('[role="switch"], img, input, textarea, a, [tabindex]:not(button)')).toHaveLength(0);
 });
 
-it('SET-001, UPD-006: the desktop app adds the Updates section last, holding the update and log folder rows', async () => {
+it('SET-001, UPD-006: the desktop app adds the Updates section before API keys, holding the update and log folder rows', async () => {
   mocks.platform = DESKTOP_MAC;
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
-  expect(sectionHeadings(target)).toEqual(['Account', 'Appearance', 'Default check settings', 'Data retention', 'API keys', 'Updates']);
+  expect(sectionHeadings(target)).toEqual(['Account', 'Appearance', 'Default check settings', 'Data retention', 'Updates', 'API keys']);
   const updates = target.querySelector('section[aria-labelledby="settings-updates"]');
   expect(updates?.querySelectorAll('[data-stub]')).toHaveLength(2);
   expect(target.querySelectorAll('[data-stub]')).toHaveLength(2);

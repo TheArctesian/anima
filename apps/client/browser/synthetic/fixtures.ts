@@ -17,6 +17,10 @@ export interface Fixtures {
   readonly checks: Row[];
   readonly sessions: Row[];
   readonly metrics: Row[];
+  /** The Settings slices (WP-50): the retention periods, the check defaults and the API keys. */
+  readonly retention: Row[];
+  readonly checkDefaults: Row;
+  readonly apiKeys: Row[];
 }
 
 function readPhase(name: string): Row | undefined {
@@ -35,6 +39,12 @@ function mergedById(files: readonly Row[], name: string): Row[] {
   return [...byId.values()];
 }
 
+function checkDefaultsOf(files: readonly Row[]): Row {
+  const found = files.map((file) => file.checkDefaults).find((each) => each !== undefined);
+  if (found === undefined) throw new Error('no contract fixture file holds checkDefaults');
+  return found as Row;
+}
+
 /** Reads `contracts/fixtures/phase*.json`. */
 export function loadFixtures(): Fixtures {
   const files = PHASES.map(readPhase).filter((file): file is Row => file !== undefined);
@@ -48,5 +58,8 @@ export function loadFixtures(): Fixtures {
     checks: collection('checks'),
     sessions: collection('sessions'),
     metrics: collection('metrics'),
+    retention: later.flatMap((file) => rows(file, 'retention')),
+    checkDefaults: checkDefaultsOf(later),
+    apiKeys: later.flatMap((file) => rows(file, 'apiKeys')),
   };
 }

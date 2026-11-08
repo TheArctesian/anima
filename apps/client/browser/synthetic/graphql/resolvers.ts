@@ -87,6 +87,9 @@ export function rootValue(state: HubState): Record<string, unknown> {
       );
       return connection(rows, page);
     },
+    retention: () => state.fixtures.retention,
+    checkDefaults: () => state.fixtures.checkDefaults,
+    apiKeys: () => state.fixtures.apiKeys,
     login: ({ input }: { input: LoginInput }) => {
       checkCredentials(input);
       return { token: BEARER_TOKEN, expiresAt: expiry(state), operator: operatorView(state) };
