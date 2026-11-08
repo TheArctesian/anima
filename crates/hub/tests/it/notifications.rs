@@ -5,4 +5,6 @@ mod channels;
 mod deliveries;
 mod guard;
 mod harness;
+mod k1;
+mod unreadable;
 mod updates;

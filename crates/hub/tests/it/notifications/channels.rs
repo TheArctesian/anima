@@ -88,6 +88,46 @@ async fn not_002_each_kind_is_created_with_the_k1_defaults(pool: PgPool) {
     holds_no_secret("the channel list", &Value::Array(listed).to_string());
 }
 
+/// An explicit null takes the K1 default, as an absent field does.
+#[sqlx::test(migrations = "./migrations")]
+async fn not_002_an_explicit_null_takes_the_k1_default(pool: PgPool) {
+    let schema = schema_for(&pool);
+    let hook = create(
+        &schema,
+        json!({ "name": "Hook", "onByDefault": null, "settings": { "webhook": {
+            "url": WEBHOOK_URL, "method": null } } }),
+    )
+    .await;
+    assert_eq!(hook["onByDefault"], false);
+    assert_eq!(hook["settings"]["method"], "POST");
+    let ntfy = create(
+        &schema,
+        json!({ "name": "Phone", "settings": { "ntfy": {
+            "server": null, "topic": "topic-s3cr3t", "priority": null } } }),
+    )
+    .await;
+    assert_eq!(ntfy["settings"]["server"], "https://ntfy.sh");
+    assert_eq!(ntfy["settings"]["priority"], 3);
+    let email = create(
+        &schema,
+        json!({ "name": "Mail", "settings": { "email": { "host": "smtp.example.test",
+            "port": null, "security": null, "from": "hub@example.test",
+            "to": ["ops@example.test"] } } }),
+    )
+    .await;
+    assert_eq!(email["settings"]["port"], 587);
+    assert_eq!(email["settings"]["security"], "STARTTLS");
+    let apprise = create(
+        &schema,
+        json!({ "name": "Apprise", "settings": { "apprise": {
+            "server": "https://apprise.example.test", "mode": null, "tags": null,
+            "urls": ["discord://1234/apprise-s3cr3t"] } } }),
+    )
+    .await;
+    assert_eq!(apprise["settings"]["mode"], "STATELESS_URLS");
+    assert_eq!(apprise["settings"]["tags"], json!([]));
+}
+
 #[sqlx::test(migrations = "./migrations")]
 async fn not_002_a_taken_name_is_a_validation_error_on_name(pool: PgPool) {
     let schema = schema_for(&pool);

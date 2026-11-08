@@ -71,7 +71,7 @@ async fn cr_14_4_a_kind_change_is_refused(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn cr_14_5_secrets_copied_from_another_channel_do_not_open(pool: PgPool) {
+async fn sec_003_secrets_copied_from_another_channel_do_not_open(pool: PgPool) {
     let schema = schema_for(&pool);
     let first = create(&schema, webhook("First")).await;
     let second = create(&schema, webhook("Second")).await;
@@ -103,7 +103,7 @@ async fn cr_14_5_secrets_copied_from_another_channel_do_not_open(pool: PgPool) {
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn cr_14_2_an_empty_ntfy_token_clears_it_and_a_missing_channel_is_not_found(pool: PgPool) {
+async fn not_002_an_empty_ntfy_token_clears_it_and_a_missing_channel_is_not_found(pool: PgPool) {
     let schema = schema_for(&pool);
     let input = json!({ "name": "Phone",
         "settings": { "ntfy": { "topic": "topic-s3cr3t", "token": "tk_s3cr3t" } } });
@@ -116,4 +116,21 @@ async fn cr_14_2_an_empty_ntfy_token_clears_it_and_a_missing_channel_is_not_foun
     let missing = json!("0190a000-0000-7000-8fff-000000000001");
     let response = update(&schema, &missing, cleared).await;
     assert_eq!(error_json(&response)["extensions"]["code"], "NOT_FOUND");
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn not_002_an_update_to_a_taken_name_is_a_validation_error_on_name(pool: PgPool) {
+    let schema = schema_for(&pool);
+    create(&schema, webhook("First")).await;
+    let second = create(&schema, webhook("Second")).await;
+    let before = stored_row(&pool, &second["id"]).await;
+    let mut renamed = webhook_change(&Value::Null, &Value::Null);
+    renamed["name"] = json!("First");
+    let response = update(&schema, &second["id"], renamed).await;
+    assert_eq!(validation_fields(&response), ["name"]);
+    assert_eq!(
+        error_json(&response)["extensions"]["fields"][0]["message"],
+        "Another channel has this name."
+    );
+    assert_eq!(stored_row(&pool, &second["id"]).await, before);
 }

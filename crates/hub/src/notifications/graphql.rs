@@ -22,7 +22,7 @@ use self::{
     input::{ChannelShape, Opaque},
     node::ChannelNode,
 };
-use super::{Error, store};
+use super::{Channel, Error, store};
 use crate::{
     access::Authenticated,
     api_errors::{FieldError, internal, invalid, pool},
@@ -37,21 +37,35 @@ fn to_graphql(error: Error) -> GraphQlError {
     }
 }
 
+/// The channel with its settings read, or `None` after logging its id and the fault word
+/// (never the stored settings; LOG-007).
+fn readable(channel: Channel) -> Option<ChannelNode> {
+    let id = channel.id;
+    ChannelNode::try_from(channel)
+        .inspect_err(|error| {
+            tracing::warn!(
+                channel = %id,
+                fault = error.fault(),
+                "a notification channel's stored settings cannot be read; it is left out of the list"
+            );
+        })
+        .ok()
+}
+
 #[derive(Default)]
 pub struct Query;
 
 #[Object(name = "NotificationsQuery")]
 impl Query {
-    /// Every notification channel, by name.
+    /// Every notification channel, by name. A channel whose stored settings cannot be read is
+    /// left out and its id written to the process log: K1 has no settings value that says
+    /// "unreadable", and one bad row must not hide every other channel.
     #[graphql(guard = "Authenticated")]
     async fn notification_channels(&self, ctx: &Context<'_>) -> Result<Vec<ChannelNode>> {
         let channels = store::list_channels(pool(ctx)?, None)
             .await
             .map_err(to_graphql)?;
-        channels
-            .into_iter()
-            .map(|channel| ChannelNode::try_from(channel).map_err(to_graphql))
-            .collect()
+        Ok(channels.into_iter().filter_map(readable).collect())
     }
 }
 

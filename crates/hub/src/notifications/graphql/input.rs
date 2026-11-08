@@ -7,6 +7,12 @@
 //! keys. The argument parses through [`Opaque`], which replaces any parse error with a fixed
 //! `VALIDATION` error, and every secret string moves into a [`Secret`] at parse time
 //! ([`SecretText`]), without a copy. The checks inputs do the same.
+//!
+//! [`Opaque`] and [`SecretText`] are defence in depth. The `InternalErrors` extension already
+//! replaces an argument error that echoes the argument with a fixed refusal before it leaves
+//! the hub or reaches the log, so no schema shape or response tells these types from the
+//! derived ones. They keep the secret out of the error value itself, so nothing that reads the
+//! error before that boundary, or after a change to it, can see a secret.
 
 use std::borrow::Cow;
 
@@ -99,6 +105,16 @@ fn unreadable<T: InputType>() -> InputValueError<T> {
         )
 }
 
+/// K1's defaults, for an absent field and an explicit null alike (`form` reads them too).
+pub(super) const DEFAULT_ON_BY_DEFAULT: bool = false;
+pub(super) const DEFAULT_METHOD: WebhookMethod = WebhookMethod::Post;
+/// The public ntfy server.
+pub(super) const DEFAULT_NTFY: &str = "https://ntfy.sh";
+pub(super) const DEFAULT_PRIORITY: i32 = 3;
+pub(super) const DEFAULT_PORT: i32 = 587;
+pub(super) const DEFAULT_SECURITY: SmtpSecurity = SmtpSecurity::StartTls;
+pub(super) const DEFAULT_MODE: AppriseMode = AppriseMode::StatelessUrls;
+
 #[derive(InputObject)]
 #[graphql(name = "HttpHeaderInput")]
 pub(super) struct HeaderShape {
@@ -107,8 +123,8 @@ pub(super) struct HeaderShape {
 }
 
 /// K1's one `HttpHeaderInput`, which the checks inputs declare too. Both describe the same
-/// fields, so the schema keeps whichever registers first and accepts the other under the same
-/// name instead of refusing to build.
+/// fields (the `k1` integration test compares them), so the schema keeps whichever registers
+/// first and accepts the other under the same name instead of refusing to build.
 pub(super) struct Header(pub(super) HeaderShape);
 
 impl InputType for Header {
@@ -144,7 +160,7 @@ impl InputType for Header {
 #[graphql(name = "WebhookSettingsInput")]
 pub(super) struct WebhookShape {
     pub(super) url: Option<SecretText>,
-    #[graphql(default_with = "Some(WebhookMethod::Post)")]
+    #[graphql(default_with = "Some(DEFAULT_METHOD)")]
     pub(super) method: Option<WebhookMethod>,
     pub(super) headers: Option<Vec<Header>>,
 }
@@ -156,20 +172,17 @@ pub(super) struct NtfyShape {
     pub(super) server: Option<String>,
     pub(super) topic: Option<SecretText>,
     pub(super) token: Option<SecretText>,
-    #[graphql(default_with = "Some(3)")]
+    #[graphql(default_with = "Some(DEFAULT_PRIORITY)")]
     pub(super) priority: Option<i32>,
 }
-
-/// The public ntfy server, K1's default.
-pub(super) const DEFAULT_NTFY: &str = "https://ntfy.sh";
 
 #[derive(InputObject)]
 #[graphql(name = "EmailSettingsInput")]
 pub(super) struct EmailShape {
     pub(super) host: String,
-    #[graphql(default_with = "Some(587)")]
+    #[graphql(default_with = "Some(DEFAULT_PORT)")]
     pub(super) port: Option<i32>,
-    #[graphql(default_with = "Some(SmtpSecurity::StartTls)")]
+    #[graphql(default_with = "Some(DEFAULT_SECURITY)")]
     pub(super) security: Option<SmtpSecurity>,
     pub(super) username: Option<String>,
     pub(super) password: Option<SecretText>,
@@ -181,7 +194,7 @@ pub(super) struct EmailShape {
 #[graphql(name = "AppriseSettingsInput")]
 pub(super) struct AppriseShape {
     pub(super) server: String,
-    #[graphql(default_with = "Some(AppriseMode::StatelessUrls)")]
+    #[graphql(default_with = "Some(DEFAULT_MODE)")]
     pub(super) mode: Option<AppriseMode>,
     pub(super) urls: Option<Vec<SecretText>>,
     pub(super) key: Option<SecretText>,
@@ -209,7 +222,7 @@ pub(super) struct TemplateShape {
 #[graphql(name = "NotificationChannelInput")]
 pub(super) struct ChannelShape {
     pub(super) name: String,
-    #[graphql(default_with = "Some(false)")]
+    #[graphql(default_with = "Some(DEFAULT_ON_BY_DEFAULT)")]
     pub(super) on_by_default: Option<bool>,
     pub(super) settings: SettingsShape,
     pub(super) template: Option<TemplateShape>,

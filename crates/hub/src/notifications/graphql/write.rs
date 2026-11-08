@@ -65,12 +65,11 @@ fn sealed(
 }
 
 /// The channel `id`, locked until the transaction ends; `NOT_FOUND` when there is none.
-async fn locked(conn: &mut PgConnection, id: ChannelId) -> Result<ChannelNode> {
-    let channel = store::channel_for_update(conn, id)
+async fn locked(conn: &mut PgConnection, id: ChannelId) -> Result<Channel> {
+    store::channel_for_update(conn, id)
         .await
         .map_err(to_graphql)?
-        .ok_or_else(|| coded("No such channel.", ErrorCode::NotFound))?;
-    ChannelNode::try_from(channel).map_err(internal)
+        .ok_or_else(|| coded("No such channel.", ErrorCode::NotFound))
 }
 
 pub(super) async fn create(ctx: &Context<'_>, input: ChannelShape) -> Result<ChannelNode> {
@@ -108,7 +107,7 @@ pub(super) async fn update(ctx: &Context<'_>, id: &ID, input: ChannelShape) -> R
     let trail = Trail::from_context(ctx)?;
     let now = stored_time(trail.now);
     let mut tx = begin(ctx).await?;
-    let before = locked(&mut tx, id).await?;
+    let before = ChannelNode::try_from(locked(&mut tx, id).await?).map_err(internal)?;
     let stored = sealing::kept(
         vault,
         id,
@@ -137,6 +136,8 @@ pub(super) async fn update(ctx: &Context<'_>, id: &ID, input: ChannelShape) -> R
 }
 
 /// The channel's deliveries stay in the log under the name they were sent with (NOT-004).
+/// Only the row is read, never its settings, so a channel whose settings cannot be read can be
+/// deleted.
 pub(super) async fn delete(ctx: &Context<'_>, id: &ID) -> Result<ID> {
     let channel_id = channel_id(id)?;
     let trail = Trail::from_context(ctx)?;

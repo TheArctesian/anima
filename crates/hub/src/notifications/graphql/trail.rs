@@ -12,7 +12,7 @@ use serde_json::{Map, Value, json};
 use super::node::ChannelNode;
 use crate::{
     events::{AuditAction, AuditTarget, Severity, Source, TrailEntry},
-    notifications::channels::Touched,
+    notifications::{Channel, channels::Touched},
 };
 
 /// The audited fields of a channel; `settings` is the stored, secret-free JSON.
@@ -49,14 +49,14 @@ fn add_touched(change: &mut Map<String, Value>, touched: &Touched) {
     }
 }
 
-fn entry(node: &ChannelNode, action: AuditAction, (verb, change): (&str, Value)) -> TrailEntry {
+fn entry(channel: &Channel, action: AuditAction, (verb, change): (&str, Value)) -> TrailEntry {
     TrailEntry {
         source: Source::Notifications,
         severity: Severity::Info,
         device: None,
-        message: format!("Notification channel {} {verb}.", node.channel.fields.name),
+        message: format!("Notification channel {} {verb}.", channel.fields.name),
         action,
-        target: AuditTarget::Channel(node.channel.id),
+        target: AuditTarget::Channel(channel.id),
         change,
     }
 }
@@ -64,7 +64,11 @@ fn entry(node: &ChannelNode, action: AuditAction, (verb, change): (&str, Value))
 pub(super) fn created(node: &ChannelNode, touched: &Touched) -> TrailEntry {
     let mut change = fields(node);
     add_touched(&mut change, touched);
-    entry(node, AuditAction::Create, ("added", Value::Object(change)))
+    entry(
+        &node.channel,
+        AuditAction::Create,
+        ("added", Value::Object(change)),
+    )
 }
 
 /// Only the fields that differ appear in `change`; within `settings`, only the settings that
@@ -84,15 +88,16 @@ pub(super) fn updated(before: &ChannelNode, after: &ChannelNode, touched: &Touch
     }
     add_touched(&mut change, touched);
     entry(
-        after,
+        &after.channel,
         AuditAction::Update,
         ("updated", Value::Object(change)),
     )
 }
 
-/// The deleted channel's name and kind, so the entry outlives the channel.
-pub(super) fn deleted(node: &ChannelNode) -> TrailEntry {
-    let fields = &node.channel.fields;
+/// The deleted channel's name and kind, so the entry outlives the channel. Its settings are
+/// not read, so a channel whose stored settings cannot be read can still be deleted.
+pub(super) fn deleted(channel: &Channel) -> TrailEntry {
+    let fields = &channel.fields;
     let change = json!({ "name": fields.name, "kind": fields.kind.as_str() });
-    entry(node, AuditAction::Delete, ("deleted", change))
+    entry(channel, AuditAction::Delete, ("deleted", change))
 }

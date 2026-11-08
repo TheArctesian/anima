@@ -2,15 +2,12 @@
 //! as the domain's, and every secret still a [`Secret`](crate::credentials::Secret).
 
 use super::input::{
-    AppriseShape, ChannelShape, DEFAULT_NTFY, EmailShape, NtfyShape, SettingsShape, TemplateShape,
-    WebhookShape,
+    AppriseShape, ChannelShape, DEFAULT_METHOD, DEFAULT_MODE, DEFAULT_NTFY, DEFAULT_ON_BY_DEFAULT,
+    DEFAULT_PORT, DEFAULT_PRIORITY, DEFAULT_SECURITY, EmailShape, NtfyShape, SettingsShape,
+    TemplateShape, WebhookShape,
 };
-use crate::notifications::{
-    channels::{
-        AppriseDraft, AppriseMode, Draft, EmailDraft, NtfyDraft, SettingsDraft, Template,
-        WebhookDraft, WebhookMethod,
-    },
-    egress::SmtpSecurity,
+use crate::notifications::channels::{
+    AppriseDraft, Draft, EmailDraft, NtfyDraft, SettingsDraft, Template, WebhookDraft,
 };
 
 /// The draft of `input`. A null field with a K1 default takes that default, as an absent
@@ -18,7 +15,7 @@ use crate::notifications::{
 pub(super) fn draft(input: ChannelShape) -> Draft {
     Draft {
         name: input.name,
-        on_by_default: input.on_by_default.unwrap_or(false),
+        on_by_default: input.on_by_default.unwrap_or(DEFAULT_ON_BY_DEFAULT),
         settings: settings(input.settings),
         template: input
             .template
@@ -38,7 +35,7 @@ fn settings(input: SettingsShape) -> SettingsDraft {
 fn webhook(input: WebhookShape) -> WebhookDraft {
     WebhookDraft {
         url: input.url.map(|url| url.0),
-        method: input.method.map_or(WebhookMethod::Post, Into::into),
+        method: input.method.unwrap_or(DEFAULT_METHOD).into(),
         headers: input.headers.map(|headers| {
             headers
                 .into_iter()
@@ -53,15 +50,15 @@ fn ntfy(input: NtfyShape) -> NtfyDraft {
         server: input.server.unwrap_or_else(|| DEFAULT_NTFY.to_owned()),
         topic: input.topic.map(|topic| topic.0),
         token: input.token.map(|token| token.0),
-        priority: input.priority.unwrap_or(3),
+        priority: input.priority.unwrap_or(DEFAULT_PRIORITY),
     }
 }
 
 fn email(input: EmailShape) -> EmailDraft {
     EmailDraft {
         host: input.host,
-        port: input.port.unwrap_or(587),
-        security: input.security.map_or(SmtpSecurity::StartTls, Into::into),
+        port: input.port.unwrap_or(DEFAULT_PORT),
+        security: input.security.unwrap_or(DEFAULT_SECURITY).into(),
         username: input.username,
         password: input.password.map(|password| password.0),
         from: input.from,
@@ -72,7 +69,7 @@ fn email(input: EmailShape) -> EmailDraft {
 fn apprise(input: AppriseShape) -> AppriseDraft {
     AppriseDraft {
         server: input.server,
-        mode: input.mode.map_or(AppriseMode::StatelessUrls, Into::into),
+        mode: input.mode.unwrap_or(DEFAULT_MODE).into(),
         urls: input
             .urls
             .map(|urls| urls.into_iter().map(|url| url.0).collect()),
