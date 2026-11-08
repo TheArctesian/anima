@@ -16,7 +16,7 @@ mod sample;
 mod tests;
 mod window;
 
-pub use backlog::{BATCH_POINTS, Backlog, MAX_AGE, MAX_POINTS};
+pub use backlog::{BATCH_POINTS, Backlog, MAX_AGE, MAX_POINTS, Outgoing, Receipt};
 pub(crate) use key::is_label;
 pub use key::{MAX_GPU_INDEX, MAX_SERIES, SeriesKey};
 pub use kind::Kind;

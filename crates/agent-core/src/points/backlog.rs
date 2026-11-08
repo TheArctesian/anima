@@ -2,7 +2,7 @@
 //!
 //! Pure: the time is a parameter, and the retry pace belongs to the caller (CQ-021).
 
-use std::collections::{BTreeSet, VecDeque};
+use std::collections::BTreeSet;
 
 use chrono::{DateTime, TimeDelta, Utc};
 
@@ -18,11 +18,32 @@ pub const BATCH_POINTS: usize = 60;
 /// 1-hour bound (K8 Sections 6, 7).
 pub const MAX_AGE: TimeDelta = TimeDelta::minutes(59);
 
-/// The points waiting to be sent, oldest first, with `at` strictly increasing.
+/// The points waiting to be sent, oldest first, with `at` strictly increasing. Each has a
+/// sequence number given when it was kept, which only grows, so a [`Receipt`] removes exactly
+/// the points that were sent, even when the clock went back during the send.
 #[derive(Debug, Default)]
 pub struct Backlog {
-    points: VecDeque<Point>,
+    kept: Vec<Kept>,
+    next: u64,
 }
+
+/// A point and its sequence number.
+#[derive(Debug)]
+struct Kept {
+    sequence: u64,
+    point: Point,
+}
+
+/// The oldest points to send next, from [`Backlog::batch`].
+#[derive(Clone, Copy, Debug)]
+pub struct Outgoing<'a> {
+    kept: &'a [Kept],
+}
+
+/// What removes the points of one batch once the hub accepted it or refused it for good: the
+/// sequence number of its newest point.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Receipt(u64);
 
 impl Backlog {
     #[must_use]
@@ -35,51 +56,81 @@ impl Backlog {
     /// oldest are dropped.
     pub fn push(&mut self, point: Point) {
         while self
-            .points
-            .back()
-            .is_some_and(|newest| newest.at() >= point.at())
+            .kept
+            .last()
+            .is_some_and(|newest| newest.point.at() >= point.at())
         {
-            self.points.pop_back();
+            self.kept.pop();
         }
-        self.points.push_back(point);
-        while self.points.len() > MAX_POINTS {
-            self.points.pop_front();
-        }
+        self.kept.push(Kept {
+            sequence: self.next,
+            point,
+        });
+        self.next += 1;
+        let over = self.kept.len().saturating_sub(MAX_POINTS);
+        self.kept.drain(..over);
     }
 
-    /// Drops the points older than [`MAX_AGE`] before `now`, then gives the oldest points to
-    /// send next: at most [`BATCH_POINTS`], with at most [`MAX_SERIES`] series between them.
-    /// Empty when none wait. The points stay until [`Backlog::remove_through`]; a caller that
-    /// was told the body is too large may send the first ones of this slice only.
-    pub fn batch(&mut self, now: DateTime<Utc>) -> &[Point] {
-        while self
-            .points
-            .front()
-            .is_some_and(|oldest| now - oldest.at() > MAX_AGE)
-        {
-            self.points.pop_front();
-        }
+    /// Drops the points older than [`MAX_AGE`] before `now`. Call it before each
+    /// [`Backlog::batch`] (K8 Section 7).
+    pub fn drop_stale(&mut self, now: DateTime<Utc>) {
+        let stale = self
+            .kept
+            .iter()
+            .take_while(|kept| now - kept.point.at() > MAX_AGE)
+            .count();
+        self.kept.drain(..stale);
+    }
+
+    /// The oldest points to send next: at most [`BATCH_POINTS`], with at most [`MAX_SERIES`]
+    /// series between them. Empty when none wait. They stay until [`Backlog::remove_through`].
+    #[must_use]
+    pub fn batch(&self) -> Outgoing<'_> {
         let mut series = BTreeSet::new();
         let mut count = 0;
-        for point in self.points.iter().take(BATCH_POINTS) {
-            series.extend(point.values().keys());
+        for kept in self.kept.iter().take(BATCH_POINTS) {
+            series.extend(kept.point.values().keys());
             if count > 0 && series.len() > MAX_SERIES {
                 break;
             }
             count += 1;
         }
-        &self.points.make_contiguous()[..count]
+        Outgoing {
+            kept: &self.kept[..count],
+        }
     }
 
-    /// Removes the points at or before `through`: the `at` of the newest point of a batch the
-    /// hub accepted, or refused for good (K8 Section 6). Points kept since then stay.
-    pub fn remove_through(&mut self, through: DateTime<Utc>) {
-        while self
-            .points
-            .front()
-            .is_some_and(|oldest| oldest.at() <= through)
-        {
-            self.points.pop_front();
+    /// Removes the points of the batch `receipt` came from, and any kept before them: the hub
+    /// accepted that batch, or refused it for good (K8 Section 6). Points kept after the batch
+    /// was made stay, whatever their time.
+    pub fn remove_through(&mut self, receipt: Receipt) {
+        let sent = self
+            .kept
+            .iter()
+            .take_while(|kept| kept.sequence <= receipt.0)
+            .count();
+        self.kept.drain(..sent);
+    }
+}
+
+impl<'a> Outgoing<'a> {
+    /// The points, oldest first.
+    pub fn points(self) -> impl ExactSizeIterator<Item = &'a Point> {
+        self.kept.iter().map(|kept| &kept.point)
+    }
+
+    /// The receipt of these points; `None` when there are none.
+    #[must_use]
+    pub fn receipt(self) -> Option<Receipt> {
+        self.kept.last().map(|kept| Receipt(kept.sequence))
+    }
+
+    /// The first `count` points only, for a smaller batch after the hub said the body was too
+    /// large (K8 Section 6).
+    #[must_use]
+    pub fn first(self, count: usize) -> Self {
+        Self {
+            kept: &self.kept[..count.min(self.kept.len())],
         }
     }
 }

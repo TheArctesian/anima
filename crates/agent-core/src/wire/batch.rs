@@ -67,9 +67,14 @@ pub enum GpuVendor {
 impl Batch {
     /// The batch of `points` for `device`: its series are every series of the points, in
     /// [`SeriesKey`] order, and a point holds `null` for a series it has no value of (K8
-    /// Section 4). Give it a slice [`Backlog::batch`](crate::points::Backlog::batch) returned.
+    /// Section 4). Give it the points of an [`Outgoing`](crate::points::Outgoing).
     #[must_use]
-    pub fn new(device: Uuid, points: &[Point], gpus: Option<Vec<BatchGpu>>) -> Self {
+    pub fn new<'a>(
+        device: Uuid,
+        points: impl IntoIterator<Item = &'a Point>,
+        gpus: Option<Vec<BatchGpu>>,
+    ) -> Self {
+        let points: Vec<&Point> = points.into_iter().collect();
         let keys: BTreeSet<&SeriesKey> = points
             .iter()
             .flat_map(|point| point.values().keys())
