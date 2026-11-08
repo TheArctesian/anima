@@ -9,7 +9,7 @@
 use async_graphql::{Context, ID, Result};
 
 use crate::{
-    api_errors::{begin, commit, invalid, schema_dependency},
+    api_errors::{begin, commit, internal, invalid, schema_dependency},
     credentials::{PasswordKind, Vault, clear_password as clear, store_password},
     devices::{
         Device,
@@ -18,10 +18,11 @@ use crate::{
             credential_input::PasswordCredential,
             error::to_graphql,
             input::checked,
-            trail::{self, Trail},
+            trail,
         },
         store,
     },
+    events::Trail,
 };
 
 /// Replaces the device's password of `kind`, then audits and records the change. Returns the
@@ -44,7 +45,8 @@ pub(in crate::devices::graphql) async fn set_password(
     let device = store::fetch(&mut *tx, id).await.map_err(to_graphql)?;
     trail
         .write(&mut tx, trail::password_set(&device, kind))
-        .await?;
+        .await
+        .map_err(internal)?;
     commit(tx).await?;
     Ok(device)
 }
@@ -66,7 +68,8 @@ pub(in crate::devices::graphql) async fn clear_password(
     if removed {
         trail
             .write(&mut tx, trail::password_cleared(&device, kind))
-            .await?;
+            .await
+            .map_err(internal)?;
     }
     commit(tx).await?;
     Ok(device)

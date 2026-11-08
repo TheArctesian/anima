@@ -84,6 +84,21 @@ fixture_test! {
         assert_eq!(event_count(&pool).await, 3);
     }
 
+    async fn cr_5_a_web_interface_event_names_the_device(pool: PgPool) {
+        let schema = schema_for(&pool);
+        let id = create(&schema, "https://pve-01.home.lan:8006/").await;
+        data(&schema, DELETE, json!({ "id": id })).await;
+        let events: Vec<(Option<String>, Option<String>)> = sqlx::query_as(
+            "SELECT device_id::text, device_name FROM events.event_log \
+             WHERE source = 'device' ORDER BY at, id",
+        )
+        .fetch_all(&pool)
+        .await
+        .unwrap();
+        let named = (Some(PVE_01.to_owned()), Some("pve-01".to_owned()));
+        assert_eq!(events, vec![named.clone(), named]);
+    }
+
     async fn web_009_accepting_a_certificate_audits_the_interface_origin_and_fingerprint(pool: PgPool) {
         add_operator(&pool).await;
         let schema = schema_for(&pool);

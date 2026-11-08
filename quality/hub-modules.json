@@ -45,6 +45,7 @@
     ],
     "web_interfaces": [
       "checks",
+      "devices",
       "events"
     ],
     "metrics": [

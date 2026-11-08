@@ -13,12 +13,22 @@ use async_graphql::{Context, ID, Object, Result};
 
 use self::{
     error::to_graphql,
-    trail::Trail,
     types::{WebInterfaceFields, parse_id},
 };
 use super::{Acceptance, WebInterface};
-use crate::api_errors::{begin, commit, pool};
-use crate::{access::Authenticated, ids::DeviceId};
+use crate::api_errors::{begin, commit, internal, pool};
+use crate::{
+    access::Authenticated,
+    devices::{self, Device},
+    events::Trail,
+    ids::DeviceId,
+};
+
+/// The device an interface belongs to, for the event's device name (CR-5). It is read after
+/// the change succeeded, so the device exists; a failure here is the hub's, not the operator's.
+async fn device_of(ctx: &Context<'_>, id: DeviceId) -> Result<Device> {
+    devices::get(pool(ctx)?, id).await.map_err(internal)
+}
 
 #[derive(Default)]
 pub struct Mutation;
@@ -38,7 +48,11 @@ impl Mutation {
         let interface = super::create(&mut tx, device, &input.into(), trail.now)
             .await
             .map_err(to_graphql)?;
-        trail.write(&mut tx, trail::added(&interface)).await?;
+        let device = device_of(ctx, device).await?;
+        trail
+            .write(&mut tx, trail::added(&interface, &device))
+            .await
+            .map_err(internal)?;
         commit(tx).await?;
         Ok(interface)
     }
@@ -57,9 +71,14 @@ impl Mutation {
         let updated = super::update(&mut tx, id, &input.into())
             .await
             .map_err(to_graphql)?;
+        let device = device_of(ctx, updated.after.device).await?;
         trail
-            .write(&mut tx, trail::updated(&updated.before, &updated.after))
-            .await?;
+            .write(
+                &mut tx,
+                trail::updated(&updated.before, &updated.after, &device),
+            )
+            .await
+            .map_err(internal)?;
         commit(tx).await?;
         Ok(updated.after)
     }
@@ -72,9 +91,11 @@ impl Mutation {
         let device = super::delete(&mut tx, interface)
             .await
             .map_err(to_graphql)?;
+        let device = device_of(ctx, device).await?;
         trail
-            .write(&mut tx, trail::deleted(interface, device))
-            .await?;
+            .write(&mut tx, trail::deleted(interface, &device))
+            .await
+            .map_err(internal)?;
         commit(tx).await?;
         Ok(id)
     }
@@ -93,8 +114,10 @@ impl Mutation {
         let accepted = super::accept_suggestion(pool(ctx)?, &mut tx, check, trail.now)
             .await
             .map_err(to_graphql)?;
-        let entry = trail::suggestion_accepted(&accepted.interface, check, accepted.created);
-        trail.write(&mut tx, entry).await?;
+        let device = device_of(ctx, accepted.interface.device).await?;
+        let entry =
+            trail::suggestion_accepted(&accepted.interface, &device, (check, accepted.created));
+        trail.write(&mut tx, entry).await.map_err(internal)?;
         commit(tx).await?;
         Ok(accepted.interface)
     }
@@ -111,9 +134,11 @@ impl Mutation {
         let device = super::dismiss_suggestion(pool(ctx)?, &mut tx, check, trail.now)
             .await
             .map_err(to_graphql)?;
+        let device = device_of(ctx, device).await?;
         trail
-            .write(&mut tx, trail::suggestion_dismissed(check, device))
-            .await?;
+            .write(&mut tx, trail::suggestion_dismissed(check, &device))
+            .await
+            .map_err(internal)?;
         commit(tx).await?;
         Ok(check_id)
     }
@@ -137,9 +162,11 @@ impl Mutation {
         let interface = super::accept_certificate(&mut tx, id, acceptance)
             .await
             .map_err(to_graphql)?;
+        let device = device_of(ctx, interface.device).await?;
         trail
-            .write(&mut tx, trail::certificate_accepted(&interface))
-            .await?;
+            .write(&mut tx, trail::certificate_accepted(&interface, &device))
+            .await
+            .map_err(internal)?;
         commit(tx).await?;
         Ok(interface)
     }

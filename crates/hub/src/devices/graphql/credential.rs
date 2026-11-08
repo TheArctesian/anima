@@ -12,12 +12,13 @@ use super::{
     error::to_graphql,
     input::checked,
     ssh::DeviceSsh,
-    trail::{self, Trail},
+    trail,
 };
 use crate::{
     api_errors::{begin, commit, internal, invalid, schema_dependency},
     credentials::{Vault, clear_ssh, store_ssh},
     devices::{Device, Error, FieldError, Missing, store},
+    events::Trail,
     ids::DeviceId,
 };
 
@@ -64,7 +65,8 @@ pub(super) async fn set(
     let device = store::fetch(&mut *tx, id).await.map_err(to_graphql)?;
     trail
         .write(&mut tx, trail::credential_set(&device, kind))
-        .await?;
+        .await
+        .map_err(internal)?;
     commit(tx).await?;
     Ok(settings(device, true))
 }
@@ -82,7 +84,8 @@ pub(super) async fn clear(ctx: &Context<'_>, device: &ID) -> Result<DeviceSsh> {
     if removed {
         trail
             .write(&mut tx, trail::credential_cleared(&device))
-            .await?;
+            .await
+            .map_err(internal)?;
     }
     commit(tx).await?;
     Ok(settings(device, false))
