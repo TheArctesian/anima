@@ -16,7 +16,7 @@
   }
 </script>
 
-<section aria-label="Fonts">
+<div class="rows">
   {#each TEXT_ROLES as role (role.id)}
     <label>
       <span>{role.label}</span>
@@ -30,10 +30,10 @@
   {#if problem !== null}
     <p role="alert">{problem}</p>
   {/if}
-</section>
+</div>
 
 <style>
-  section {
+  .rows {
     display: flex;
     flex-direction: column;
     align-items: start;
