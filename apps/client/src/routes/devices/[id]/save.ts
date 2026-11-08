@@ -1,10 +1,10 @@
 import type { DeviceCheck } from '$lib/checks/api';
 import type { DeviceDetail, StoredCredential } from '$lib/devices/api';
-import { createCheckInput, updateCheckInput } from '$lib/forms/check/model/input';
-import { checkValues, type CheckFormValues } from '$lib/forms/check/model/values';
-import { credentialInput, updateInput } from '$lib/forms/device/input';
-import { rdpCredentialInput, vncCredentialInput } from '$lib/forms/device/remote/input';
-import { formValues, type DeviceFormValues } from '$lib/forms/device/values';
+import { createCheckInput, updateCheckInput } from '$lib/checks/form/model/input';
+import { checkValues, type CheckFormValues } from '$lib/checks/form/model/values';
+import { credentialInput, updateInput } from '$lib/devices/form/input';
+import { rdpCredentialInput, vncCredentialInput } from '$lib/devices/form/remote/input';
+import { formValues, type DeviceFormValues } from '$lib/devices/form/values';
 import type { HubResult } from '$lib/hub/hub';
 import type {
   CreateCheckInput,

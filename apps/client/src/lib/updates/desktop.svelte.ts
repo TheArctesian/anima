@@ -1,5 +1,5 @@
 import { keyStoreAvailable } from '$lib/desktop/token';
-import { warnToProcessLog } from '$lib/desktop/processLog';
+import { warnToProcessLog } from '$lib/desktop/process-log';
 import { desktopUpdater } from '$lib/desktop/updater';
 import { provideUpdates, Updates } from './updates.svelte';
 

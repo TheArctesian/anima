@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { LogFolderError, openLogFolder } from '$lib/desktop/processLog';
+  import { LogFolderError, openLogFolder } from '$lib/desktop/process-log';
   import { press } from '$lib/motion/roles/press';
 
   let problem = $state<string | null>(null);

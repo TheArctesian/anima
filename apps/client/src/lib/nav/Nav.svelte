@@ -5,7 +5,7 @@
   import LiveSessions from '$lib/sessions/live/LiveSessions.svelte';
   import { press } from '$lib/motion/roles/press';
   import { fade } from '$lib/motion/roles/transitions';
-  import { watchHubBanner } from './bannerShift';
+  import { watchHubBanner } from './banner-shift';
   import { DEVICES, SETTINGS, isActive, statusLabel, unreachableBanner, type NavDestination } from './nav';
 
   interface Props {

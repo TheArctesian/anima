@@ -5,7 +5,7 @@ import { watchLive } from '$lib/devices/live/live';
 import { DEFAULT_LOG_FILTER } from '$lib/events/log';
 import { LogFeed } from '$lib/events/panel/feed.svelte';
 import type { Hub, HubError, HubResult } from '$lib/hub/hub';
-import type { CheckFormValues } from '$lib/forms/check/model/values';
+import type { CheckFormValues } from '$lib/checks/form/model/values';
 import type { MetricRange } from '$lib/metrics/api';
 import { sessionsApi } from '$lib/sessions/api';
 import type { DeviceId } from './device-id';

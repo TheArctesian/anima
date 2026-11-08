@@ -1,5 +1,5 @@
 import type { DeviceDetail } from '$lib/devices/api';
-import { SystemSettingsError } from '$lib/desktop/systemSettings';
+import { SystemSettingsError } from '$lib/desktop/system-settings';
 import {
   enableVnc,
   isThisComputer,
