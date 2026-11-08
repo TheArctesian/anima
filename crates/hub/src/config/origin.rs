@@ -3,7 +3,10 @@
 //! Rules: scheme `https`, or `http` only for a loopback host (`localhost`, `127.0.0.0/8`,
 //! `[::1]`) so tests can run without TLS; a lowercase host; a port only when it is not the
 //! scheme default and has no leading zeros; nothing else (no userinfo, path, query, fragment
-//! or trailing slash).
+//! or trailing slash). A host is a dotted-quad IPv4 address, a bracketed IPv6 address, or a
+//! DNS name whose last label is not numeric (browsers read `127.1` or `0x7f000001` as an
+//! address and send it differently). A trailing-dot host (`hub.anima.ing.`) is refused on
+//! purpose: browsers send it as typed, so it would be a second spelling of the same origin.
 
 use std::net::{Ipv4Addr, Ipv6Addr};
 
@@ -15,9 +18,21 @@ pub(super) fn canonical(variable: &'static str, text: &str) -> Result<String, Er
         Ok(()) => Ok(text.to_owned()),
         Err(reason) => Err(Error::Origin {
             variable,
-            value: text.to_owned(),
+            value: without_userinfo(text),
             reason,
         }),
+    }
+}
+
+/// `text` with everything between `://` and the last `@` replaced by `***`, so an error never
+/// echoes a password typed into the URL (LOG-007).
+fn without_userinfo(text: &str) -> String {
+    let Some((scheme, rest)) = text.split_once("://") else {
+        return text.to_owned();
+    };
+    match rest.rfind('@') {
+        Some(at) => format!("{scheme}://***{}", &rest[at..]),
+        None => text.to_owned(),
     }
 }
 
@@ -65,25 +80,45 @@ fn split_port(authority: &str) -> Result<(&str, Option<&str>), &'static str> {
 
 fn check_host(host: &str) -> Result<(), &'static str> {
     if let Some(inner) = host.strip_prefix('[').and_then(|h| h.strip_suffix(']')) {
-        let address: Ipv6Addr = inner.parse().map_err(|_| "the IPv6 host is invalid")?;
-        return if address.to_string() == inner {
-            Ok(())
-        } else {
-            Err("the IPv6 host must be in its shortest lowercase form")
-        };
+        return check_ipv6(inner);
     }
-    let label_ok = |label: &str| {
-        !label.is_empty()
-            && !label.starts_with('-')
-            && !label.ends_with('-')
-            && label
-                .bytes()
-                .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
-    };
-    if host.split('.').all(label_ok) {
+    if host.len() > 253 {
+        return Err("the host is longer than 253 bytes");
+    }
+    let labels: Vec<&str> = host.split('.').collect();
+    if !labels.iter().all(|label| label_ok(label)) {
+        return Err("the host must be lowercase letters, digits, hyphens and dots");
+    }
+    let last = labels.last().copied().unwrap_or_default();
+    let numeric = last.bytes().all(|b| b.is_ascii_digit()) || last.starts_with("0x");
+    let dotted_quad = host
+        .parse::<Ipv4Addr>()
+        .is_ok_and(|address| address.to_string() == host);
+    if numeric && !dotted_quad {
+        return Err("a numeric host must be a dotted-quad IPv4 address");
+    }
+    Ok(())
+}
+
+fn label_ok(label: &str) -> bool {
+    !label.is_empty()
+        && label.len() <= 63
+        && !label.starts_with('-')
+        && !label.ends_with('-')
+        && label
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
+}
+
+fn check_ipv6(inner: &str) -> Result<(), &'static str> {
+    if inner.contains('.') || inner.starts_with("::ffff:") {
+        return Err("an IPv4-mapped or IPv4-compatible IPv6 host is not accepted");
+    }
+    let address: Ipv6Addr = inner.parse().map_err(|_| "the IPv6 host is invalid")?;
+    if address.to_string() == inner {
         Ok(())
     } else {
-        Err("the host must be lowercase letters, digits, hyphens and dots")
+        Err("the IPv6 host must be in its shortest lowercase form")
     }
 }
 
@@ -105,3 +140,6 @@ fn check_port(port: &str) -> Result<(), &'static str> {
         _ => Err("the port must be a number from 1 to 65535 without leading zeros"),
     }
 }
+
+#[cfg(test)]
+mod tests;

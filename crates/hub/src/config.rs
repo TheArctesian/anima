@@ -91,6 +91,8 @@ pub enum Error {
         value: String,
         reason: &'static str,
     },
+    #[error("{variable} is the file-system root, which is too broad to serve or write")]
+    FilesystemRoot { variable: &'static str },
     #[error("{variable}={value:?} is not a positive integer")]
     NotPositive {
         variable: &'static str,
@@ -121,6 +123,24 @@ fn optional_path(env: &BTreeMap<String, String>, name: &str) -> Option<PathBuf> 
     env.get(name)
         .filter(|text| !text.is_empty())
         .map(PathBuf::from)
+}
+
+/// An absolute folder from `name`; unset or empty is `None`. The root `/` is refused: as a
+/// web root it would serve the whole file system.
+fn optional_root(
+    env: &BTreeMap<String, String>,
+    name: &'static str,
+) -> Result<Option<PathBuf>, Error> {
+    match env.get(name).map(String::as_str) {
+        None | Some("") => Ok(None),
+        Some(text) => {
+            let path = absolute_path(name, text)?;
+            if path.parent().is_none() {
+                return Err(Error::FilesystemRoot { variable: name });
+            }
+            Ok(Some(path))
+        }
+    }
 }
 
 /// `host:port` where an IPv6 host must be bracketed.
@@ -170,7 +190,7 @@ fn networks(variable: &'static str, text: &str) -> Result<Vec<ipnet::IpNet>, Err
 /// A positive `u64`: zero, negative and non-numeric text are refused.
 fn positive_u64(variable: &'static str, text: &str) -> Result<u64, Error> {
     match text.parse::<u64>() {
-        Ok(number) if number > 0 => Ok(number),
+        Ok(number) if number > 0 && !text.starts_with('+') => Ok(number),
         _ => Err(Error::NotPositive {
             variable,
             value: text.to_owned(),
@@ -257,8 +277,8 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {
             PUBLIC_ORIGIN,
             value(env, PUBLIC_ORIGIN, "https://hub.anima.ing")?,
         )?,
-        web_root: optional_path(env, WEB_ROOT),
-        recording_root: optional_path(env, RECORDING_ROOT),
+        web_root: optional_root(env, WEB_ROOT)?,
+        recording_root: optional_root(env, RECORDING_ROOT)?,
         recording_max_bytes: positive_u64(
             RECORDING_MAX_BYTES,
             value(env, RECORDING_MAX_BYTES, "2147483648")?,
@@ -266,7 +286,5 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {
     })
 }
 
-#[cfg(test)]
-mod k7_tests;
 #[cfg(test)]
 mod tests;
