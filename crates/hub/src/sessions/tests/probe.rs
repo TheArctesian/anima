@@ -20,7 +20,7 @@ use crate::{
         public_key::PublicKey,
         ssh::{SshError, Target},
     },
-    targets::AddressPolicy,
+    targets::{AddressPolicy, TargetError},
 };
 
 /// A server that only presents its key; every authentication is refused by default.
@@ -192,4 +192,16 @@ async fn r_030_the_probe_never_connects_to_a_denied_address() {
     }
     let accepted = tokio::time::timeout(Duration::from_millis(50), listener.accept()).await;
     assert!(accepted.is_err(), "the probe never connected");
+}
+
+#[test]
+fn r_032_a_resolver_error_keeps_its_meaning_for_sessions() {
+    assert_eq!(
+        SshError::from(TargetError::Unresolved),
+        SshError::Unresolved
+    );
+    assert_eq!(
+        SshError::from(TargetError::Refused),
+        SshError::RefusedTarget
+    );
 }

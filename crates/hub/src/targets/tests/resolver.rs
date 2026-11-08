@@ -1,9 +1,9 @@
 //! The checked resolver (P3-003): a name is refused when any of its addresses is, and the
 //! caller gets only checked addresses in canonical form.
 
-use std::net::SocketAddr;
+use std::{collections::HashMap, net::SocketAddr};
 
-use crate::targets::{AddressPolicy, TargetError, every_permitted, resolve_checked};
+use crate::targets::{AddressPolicy, TargetError, every_permitted, lookup, resolve_checked};
 
 fn socket(text: &str) -> SocketAddr {
     SocketAddr::new(text.parse().unwrap(), 22)
@@ -90,9 +90,42 @@ async fn p3_003_a_refused_or_unresolved_host_gives_no_address() {
         resolve_checked("no-such-device.invalid", 22, &policy).await,
         Err(TargetError::Unresolved)
     );
+}
+
+#[tokio::test]
+async fn p3_003_one_pair_of_brackets_holds_only_an_ipv6_literal() {
+    let policy = AddressPolicy::default();
     assert_eq!(
         resolve_checked("[::1]", 22, &policy).await,
-        Err(TargetError::Unresolved),
-        "no brackets"
+        Err(TargetError::Refused)
+    );
+    assert_eq!(
+        resolve_checked("[fd7a:115c:a1e0::21]", 22, &policy).await,
+        Ok(vec![socket("fd7a:115c:a1e0::21")])
+    );
+    for host in ["[10.0.0.1]", "[[::1]]", "[::1", "::1]", "[docker-host]"] {
+        assert_eq!(
+            resolve_checked(host, 22, &policy).await,
+            Err(TargetError::Unresolved),
+            "{host}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn p3_003_an_override_answers_for_a_name_in_any_case_and_nothing_else() {
+    let overrides = HashMap::from([("both.test".to_owned(), vec!["10.10.0.2".parse().unwrap()])]);
+    assert_eq!(
+        lookup("Both.TEST", &overrides).await,
+        Ok(vec!["10.10.0.2".parse().unwrap()])
+    );
+    assert_eq!(
+        lookup("10.10.0.3", &overrides).await,
+        Ok(vec!["10.10.0.3".parse().unwrap()])
+    );
+    let empty = HashMap::from([("empty.test".to_owned(), Vec::new())]);
+    assert_eq!(
+        lookup("empty.test", &empty).await,
+        Err(TargetError::Unresolved)
     );
 }

@@ -268,6 +268,19 @@ async fn tcp_and_tls_and_icmp_refuse_refused_hosts_by_literal_and_by_name() {
     }
 }
 
+/// Q2-09, P3-003: the shared lookup keeps the checks reading of brackets, so an IP literal in
+/// any number of them is judged by the policy, not left unresolved.
+#[tokio::test]
+async fn an_ip_literal_in_loose_brackets_is_judged_by_the_policy() {
+    let tcp = CheckConfig::Tcp {
+        port: 9,
+        timeout_ms: 1000,
+    };
+    for host in ["[127.0.0.1]", "[[::1]]", "[::1", "::1]"] {
+        assert_refused(&probe(&target(host), &tcp, None, &strict_env()).await);
+    }
+}
+
 #[tokio::test]
 async fn a_failure_message_never_holds_the_address() {
     let result = probe(

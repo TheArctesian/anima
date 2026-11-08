@@ -5,9 +5,9 @@
 //!
 //! The host is resolved once by [`crate::targets::resolve_checked`] and every address it
 //! resolves to must pass the hub's address policy, deny list included (R-030, R-032); the
-//! connection then goes to a checked address, never
-//! to the name again, so a second lookup cannot point it somewhere else. Nothing here logs,
-//! and no error holds a remote text, a host name or a secret (LOG-007).
+//! connection then goes to a checked address, never to the name again, so a second lookup
+//! cannot point it somewhere else. Nothing here logs, and no error holds a remote text, a
+//! host name or a secret (LOG-007).
 
 mod observer;
 mod sign_in;
