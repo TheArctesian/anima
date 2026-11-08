@@ -27,6 +27,8 @@
   let open = $state(false);
   let root: HTMLElement | undefined;
   let button = $state<HTMLButtonElement>();
+  let panel = $state<HTMLElement>();
+  const place = placeNear(() => button);
 
   function close(): void {
     open = false;
@@ -59,7 +61,13 @@
   /** The panel is fixed where it opened: it closes when the button has moved from there (a scroll) or the width changed (a resize), not on a stray event. */
   function closeOnMove(opened: MenuAnchor, event: Event): void {
     if (event.target instanceof Node && root?.contains(event.target) === true) return;
-    if (button === undefined || !menuLeftBehind(opened, button.getBoundingClientRect(), window.innerWidth, event.type === 'resize' ? 'resize' : 'scroll')) return;
+    if (button === undefined) return;
+    const resize = event.type === 'resize';
+    if (!menuLeftBehind(opened, button.getBoundingClientRect(), window.innerWidth, resize ? 'resize' : 'scroll')) {
+      // A height-only resize (an address bar, a keyboard) keeps the menu open, so the panel is placed again inside the new window (WEB-011).
+      if (resize && panel !== undefined) place(panel);
+      return;
+    }
     const hadFocus = root?.contains(document.activeElement) === true;
     open = false;
     if (hadFocus) button.focus();
@@ -99,7 +107,7 @@
     <Icon name="nf-md-web" size="sm" />Web
   </button>
   {#if open}
-    <div class="panel" id="{id}-panel" role="group" aria-label="Web interfaces of {deviceName}" transition:popover={{ from: button }} {@attach placeNear(() => button)}>
+    <div class="panel" id="{id}-panel" role="group" aria-label="Web interfaces of {deviceName}" bind:this={panel} transition:popover={{ from: button }} {@attach place}>
       {#each interfaces as webInterface (webInterface.id)}
         <div class="row">
           <button

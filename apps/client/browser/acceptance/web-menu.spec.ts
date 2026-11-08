@@ -49,3 +49,39 @@ test('WEB-011: a resize that keeps the width keeps the menu open, and a width ch
   await page.setViewportSize({ width: width - 120, height: height - 80 });
   await expect(menu).toHaveCount(0);
 });
+
+test('WEB-011: a height-only resize that cuts the panel keeps the open menu inside the window and next to its button', async ({ page }) => {
+  // The panel is fixed, so a shorter window (a mobile keyboard or address bar) must not leave a choice below the edge.
+  await page.setViewportSize({ width: 390, height: 700 });
+  await openDevices(page);
+  const button = page.getByRole('button', MENU);
+  await button.click();
+  const menu = page.getByRole('group', MENU);
+  await expect(menu).toBeVisible();
+
+  // Cut the window to 40 px above the panel's bottom edge, so the panel no longer fits where it was placed.
+  const opened = await menu.boundingBox();
+  if (opened === null) throw new Error('menu has no box');
+  const CUT_PX = 40;
+  const shorter = Math.floor(opened.y + opened.height) - CUT_PX;
+  await page.setViewportSize({ width: 390, height: shorter });
+  await page.waitForTimeout(STAYS_OPEN_MS);
+  await expect(menu).toBeVisible();
+
+  const inside = await page.evaluate(() => {
+    const height = document.documentElement.clientHeight;
+    const parts = [...document.querySelectorAll('[role=group][aria-label^="Web interfaces"] .choice, [role=group][aria-label^="Web interfaces"] .pinned')];
+    return parts.map((part) => part.getBoundingClientRect()).map((rect) => rect.top >= 0 && rect.bottom <= height);
+  });
+  expect(inside.length).toBeGreaterThanOrEqual(3); // two choices and the pin of the pinned one
+  expect(inside.every(Boolean)).toBe(true);
+
+  // placeNear puts the panel flush under the button or flush above it, so the two touch within the gap.
+  const panel = await menu.boundingBox();
+  const anchor = await button.boundingBox();
+  if (panel === null || anchor === null) throw new Error('menu or button has no box');
+  const GAP_PX = 16;
+  const under = panel.y - (anchor.y + anchor.height);
+  const above = anchor.y - (panel.y + panel.height);
+  expect(Math.min(Math.abs(under), Math.abs(above))).toBeLessThanOrEqual(GAP_PX);
+});
