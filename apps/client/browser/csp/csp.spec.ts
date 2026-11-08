@@ -21,6 +21,11 @@ test('SEC-001: the synthetic hub sends the K7 text with the A-2 hashes and the p
 
 let policy: PolicyReports;
 
+async function openDevices(page: Page): Promise<void> {
+  await page.goto(`${HUB_ORIGIN}/devices`);
+  await expect(page.getByText('mac-mini', { exact: true }).first()).toBeVisible();
+}
+
 /** Serves each test of the enclosing group under K7 with the report channel, and re-checks both channels after it. */
 function eachTestUnderK7(): void {
   test.beforeEach(async ({ context }) => {
@@ -32,67 +37,71 @@ function eachTestUnderK7(): void {
   });
 }
 
-test.describe('under K7 with a report channel', () => {
+test.describe('signed out, under K7 with a report channel', () => {
   eachTestUnderK7();
 
-  test.describe('signed out', () => {
-    test('SEC-001: the sign-in page boots and sends a sign-in under K7 with no violation', async ({ page, hub, watch }) => {
-      await page.goto(`${HUB_ORIGIN}/sign-in`);
-      await page.getByLabel('User name').fill(OPERATOR.username);
-      await page.getByLabel('Password').fill('not-the-password');
-      await page.getByLabel('Code from your authenticator').fill(OPERATOR.code);
-      await page.getByRole('button', { name: 'Sign in', exact: true }).click();
-      await expect.poll(() => hub.recording.where({ channel: 'graphql' }).length).toBeGreaterThan(0);
-      await expectNoViolations(page, watch, policy);
-    });
+  test('SEC-001: the sign-in page boots and sends a sign-in under K7 with no violation', async ({ page, hub, watch }) => {
+    await page.goto(`${HUB_ORIGIN}/sign-in`);
+    await page.getByLabel('User name').fill(OPERATOR.username);
+    await page.getByLabel('Password').fill('not-the-password');
+    await page.getByLabel('Code from your authenticator').fill(OPERATOR.code);
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await expect.poll(() => hub.recording.where({ channel: 'graphql' }).length).toBeGreaterThan(0);
+    await expectNoViolations(page, watch, policy);
+  });
+});
+
+test.describe('signed in, under K7 with a report channel', () => {
+  eachTestUnderK7();
+  test.use({ signedIn: true });
+
+  test('SEC-001: the device list and the live sessions panel run under K7 with no violation', async ({ page, watch }) => {
+    await openDevices(page);
+    await page.getByRole('button', { name: /^Live sessions/ }).click();
+    await expect(page.getByRole('button', { name: /^Live sessions/ })).toHaveAttribute('aria-expanded', 'true');
+    await expectNoViolations(page, watch, policy);
   });
 
-  test.describe('signed in', () => {
-    test.use({ signedIn: true });
-
-    async function openDevices(page: Page): Promise<void> {
-      await page.goto(`${HUB_ORIGIN}/devices`);
-      await expect(page.getByText('mac-mini', { exact: true }).first()).toBeVisible();
+  test('SEC-001: a device detail page and each of its tabs run under K7 with no violation', async ({ page, watch }) => {
+    await page.goto(`${HUB_ORIGIN}/devices/${MAC_MINI}`);
+    await expect(page.getByRole('heading', { level: 1, name: 'mac-mini' })).toBeVisible();
+    for (const name of DETAIL_TABS) {
+      await page.getByRole('tab', { name }).click();
+      await expect(page.getByRole('tabpanel', { name })).toBeVisible();
     }
+    await expectNoViolations(page, watch, policy);
+  });
 
-    test('SEC-001: the device list and the live sessions panel run under K7 with no violation', async ({ page, watch }) => {
-      await openDevices(page);
-      await page.getByRole('button', { name: /^Live sessions/ }).click();
-      await expect(page.getByRole('button', { name: /^Live sessions/ })).toHaveAttribute('aria-expanded', 'true');
-      await expectNoViolations(page, watch, policy);
-    });
+  test('SEC-001: a VNC session opens its tunnel and draws under K7 with no violation', async ({ page, hub, watch }) => {
+    await openDevices(page);
+    await page.getByRole('button', { name: 'VNC to mac-mini' }).first().click();
+    await expect
+      .poll(
+        () =>
+          hub.recording.where({
+            channel: 'tunnel',
+            operation: 'ticket accepted',
+          }).length,
+      )
+      .toBe(1);
+    await expect(page.getByRole('tab', { name: /mac-mini/ })).toBeVisible();
+    await expect(page.locator('canvas').first()).toBeVisible();
+    await expectNoViolations(page, watch, policy);
+  });
 
-    test('SEC-001: a device detail page and each of its tabs run under K7 with no violation', async ({ page, watch }) => {
-      await page.goto(`${HUB_ORIGIN}/devices/${MAC_MINI}`);
-      await expect(page.getByRole('heading', { level: 1, name: 'mac-mini' })).toBeVisible();
-      for (const name of DETAIL_TABS) {
-        await page.getByRole('tab', { name }).click();
-        await expect(page.getByRole('tabpanel', { name })).toBeVisible();
-      }
-      await expectNoViolations(page, watch, policy);
-    });
-
-    test('SEC-001: a VNC session opens its tunnel and draws under K7 with no violation', async ({ page, hub, watch }) => {
-      await openDevices(page);
-      await page.getByRole('button', { name: 'VNC to mac-mini' }).first().click();
-      await expect
-        .poll(
-          () =>
-            hub.recording.where({
-              channel: 'tunnel',
-              operation: 'ticket accepted',
-            }).length,
-        )
-        .toBe(1);
-      await expect(page.getByRole('tab', { name: /mac-mini/ })).toBeVisible();
-      await expect(page.locator('canvas').first()).toBeVisible();
-      await expectNoViolations(page, watch, policy);
-    });
-
-    test('SEC-001: the settings page runs under K7 with no violation', async ({ page, watch }) => {
-      await page.goto(`${HUB_ORIGIN}/settings`);
-      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-      await expectNoViolations(page, watch, policy);
-    });
+  test('SEC-001: settings, with the theme cross-fade, Reduce motion and API keys, run under K7 with no violation', async ({ page, watch }) => {
+    await page.goto(`${HUB_ORIGIN}/settings`);
+    await expect(page.getByRole('heading', { level: 1, name: 'Settings' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 2, name: 'API keys' })).toBeVisible();
+    // Each theme change runs the view-transition cross-fade (WP-50); each motion choice rewrites the root's attributes.
+    for (const theme of ['light', 'dark']) {
+      await page.getByLabel('Theme').selectOption(theme);
+      await expect(page.getByLabel('Theme')).toHaveValue(theme);
+    }
+    for (const motion of ['reduce', 'full']) {
+      await page.getByLabel('Reduce motion').selectOption(motion);
+      await expect(page.getByLabel('Reduce motion')).toHaveValue(motion);
+    }
+    await expectNoViolations(page, watch, policy);
   });
 });
