@@ -1,7 +1,7 @@
 // Test support: a fake desktop shell and hub API for mounting `WebTab` in jsdom, and a ResizeObserver a test drives.
 import { flushSync, mount, unmount } from 'svelte';
-import type { Bounds, Fingerprint, WebViewEvent, WebViewOpening, WebViewShell } from '$lib/desktop/webView/webView';
-import { WebViewError } from '$lib/desktop/webView/webView';
+import type { Bounds, Fingerprint, WebViewEvent, WebViewOpening, WebViewShell } from '$lib/web-interfaces/shell/shell';
+import { WebViewError } from '$lib/web-interfaces/shell/shell';
 import type { Status } from '$lib/hub/generated/graphql';
 import type { HubResult } from '$lib/hub/hub';
 import type { WebCertificatePin, WebTabApi } from '../api';

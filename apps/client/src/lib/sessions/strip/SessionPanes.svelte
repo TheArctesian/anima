@@ -5,7 +5,7 @@
   import { openScreen } from '../screen/screen';
   import RemoteView from '../view/remote/RemoteView.svelte';
   import SessionView from '../view/SessionView.svelte';
-  import WebTab from '../web/WebTab.svelte';
+  import WebTab from '$lib/web-interfaces/tab/WebTab.svelte';
   import { panelId, tabElementId } from './tablist';
 
   const { api }: { api: Pick<SessionsApi, 'endSession' | 'testConnection' | 'acceptHostKey' | 'acceptServerCertificate' | 'setCredential'> } = $props();

@@ -2,7 +2,7 @@
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
-  import { desktopWebView } from '$lib/desktop/webView/webView';
+  import { desktopWebView } from '$lib/desktop/web-view/web-view';
   import type { DeviceDetail } from '$lib/devices/api';
   import LiveNotice from '$lib/hub/notice/LiveNotice.svelte';
   import LogList from '$lib/events/panel/LogList.svelte';
@@ -11,7 +11,7 @@
   import { useHub } from '$lib/hub/context';
   import { press } from '$lib/motion/roles/press';
   import { useSessions } from '$lib/sessions/sessions.svelte';
-  import { openWebInterface } from '$lib/sessions/web/open/open';
+  import { openWebInterface } from '$lib/web-interfaces/open/open';
   import type { SessionProtocol } from '$lib/sessions/tabs';
   import ChecksPanel from '../checks/ChecksPanel.svelte';
   import type { DeviceId } from '../device-id';
