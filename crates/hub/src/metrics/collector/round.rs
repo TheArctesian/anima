@@ -68,6 +68,14 @@ impl Collector {
         self.failing.retain(|device| kept.contains(device));
     }
 
+    /// Makes the next collection of `device` look for its GPUs again: a failed collection may
+    /// have stored a discovery without its samples, or missed a restart (MET-006).
+    fn forget_gpus(&mut self, device: DeviceId) {
+        if let Some(kept) = self.kept.get_mut(&device) {
+            kept.gpus = None;
+        }
+    }
+
     /// Keeps a collection's reading, or reports its failure, and writes the event of a change.
     /// A change whose event cannot be written is left as it was, so the next round tries again.
     async fn finish(&mut self, joined: Result<Finished, JoinError>) {
@@ -97,6 +105,7 @@ impl Collector {
             }
             Err(error) => {
                 failed(device, was_failing, &error);
+                self.forget_gpus(device);
                 false
             }
         };

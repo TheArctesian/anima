@@ -8,7 +8,7 @@ use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 
 use super::{
-    bench::{DOCKER_HOST, LINUX_GPU_LINES, LINUX_LINES, bench, bench_with, device},
+    bench::{DOCKER_HOST, LINUX_GPU_LINES, LINUX_LINES, accept, bench, bench_with, device},
     gpus::amd_card,
 };
 use crate::{
@@ -189,6 +189,32 @@ async fn met_006_a_hung_gpu_tool_ends_only_its_read_and_the_next_round_looks_aga
     bench.clock.advance(30);
     bench.collector.round().await;
     assert_eq!(stored(&pool).await.len(), 3, "found on the next round");
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn met_006_after_a_failed_collection_the_next_one_looks_for_gpus_again(pool: PgPool) {
+    let mut bench = bench(&pool, true).await;
+    bench.server.answer(LINUX_GPU_LINES[0], NVIDIA_SMI_TWO);
+    bench.collector.round().await;
+    sqlx::query("delete from trust.host_keys")
+        .execute(&pool)
+        .await
+        .unwrap();
+    bench.clock.advance(30);
+    bench.collector.round().await;
+    let failed = bench.server.heard().len();
+    accept(&pool).await;
+    bench.clock.advance(30);
+    bench.collector.round().await;
+    let heard = bench.server.heard();
+    assert_eq!(
+        heard_since(&heard, failed),
+        [&LINUX_LINES[..], &LINUX_GPU_LINES[..]].concat(),
+        "the device may have restarted unseen"
+    );
 }
 
 #[sqlx::test(
