@@ -173,8 +173,67 @@ pub struct Delivery {
     pub kind: NotificationKind,
     pub at: DateTime<Utc>,
     pub ok: bool,
-    /// A fixed sentence, never the target's reply (LOG-007).
-    pub message: Option<String>,
+    /// Why it failed; `None` exactly when `ok`.
+    pub reason: Option<DeliveryReason>,
+    /// The HTTP status or SMTP reply code, when the reason has one. Never the reply text
+    /// (LOG-007).
+    pub code: Option<i32>,
+}
+
+/// Why a send failed, as a fixed word (K1 `DeliveryReason`, CR-14).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum DeliveryReason {
+    TargetNotPermitted,
+    BadAddress,
+    SecretUnreadable,
+    SetupFailed,
+    ConnectionFailed,
+    TlsFailed,
+    TimedOut,
+    HttpStatus,
+    NoStarttls,
+    SmtpRefused,
+    NotUnderstood,
+}
+
+impl DeliveryReason {
+    const ALL: [Self; 11] = [
+        Self::TargetNotPermitted,
+        Self::BadAddress,
+        Self::SecretUnreadable,
+        Self::SetupFailed,
+        Self::ConnectionFailed,
+        Self::TlsFailed,
+        Self::TimedOut,
+        Self::HttpStatus,
+        Self::NoStarttls,
+        Self::SmtpRefused,
+        Self::NotUnderstood,
+    ];
+
+    /// The text stored in `deliveries.reason`.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::TargetNotPermitted => "target_not_permitted",
+            Self::BadAddress => "bad_address",
+            Self::SecretUnreadable => "secret_unreadable",
+            Self::SetupFailed => "setup_failed",
+            Self::ConnectionFailed => "connection_failed",
+            Self::TlsFailed => "tls_failed",
+            Self::TimedOut => "timed_out",
+            Self::HttpStatus => "http_status",
+            Self::NoStarttls => "no_starttls",
+            Self::SmtpRefused => "smtp_refused",
+            Self::NotUnderstood => "not_understood",
+        }
+    }
+
+    /// The reason whose stored text is `text`.
+    #[must_use]
+    pub fn from_stored(text: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|reason| reason.as_str() == text)
+    }
 }
 
 /// Where a page of deliveries starts: after this delivery, newest first.

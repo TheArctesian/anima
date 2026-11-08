@@ -181,7 +181,8 @@ async fn not_002_deleting_a_channel_removes_links_and_queue_but_keeps_deliveries
         kind: NotificationKind::Down,
         at,
         ok: true,
-        message: None,
+        reason: None,
+        code: None,
     };
     sql::insert_delivery(&mut pool.acquire().await.unwrap(), &delivery)
         .await
@@ -211,4 +212,37 @@ async fn not_002_a_channel_name_is_unique(pool: PgPool) {
     .unwrap_err();
 
     assert!(matches!(error, Error::NameTaken));
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn not_004_an_ok_delivery_has_no_reason_and_a_failed_one_has_one(pool: PgPool) {
+    sqlx::query("select notifications.ensure_day_partition(now())")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let insert = |ok: bool, reason: &str| {
+        format!(
+            "insert into notifications.deliveries (id, channel_name, kind, at, ok, reason) \
+             values (gen_random_uuid(), 'ops', 'test', now(), {ok}, {reason})"
+        )
+    };
+
+    assert_eq!(refusal(&pool, &insert(true, "null")).await, None);
+    assert_eq!(refusal(&pool, &insert(false, "'timed_out'")).await, None);
+    assert_eq!(
+        refusal(&pool, &insert(true, "'timed_out'"))
+            .await
+            .as_deref(),
+        Some("23514")
+    );
+    assert_eq!(
+        refusal(&pool, &insert(false, "null")).await.as_deref(),
+        Some("23514")
+    );
+    assert_eq!(
+        refusal(&pool, &insert(false, "'free text'"))
+            .await
+            .as_deref(),
+        Some("23514")
+    );
 }

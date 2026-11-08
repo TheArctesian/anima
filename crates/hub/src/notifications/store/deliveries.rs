@@ -11,7 +11,7 @@ use crate::{
     ids::ChannelId,
     notifications::{
         Error,
-        model::{Delivery, DeliveryCursor},
+        model::{Delivery, DeliveryCursor, DeliveryReason},
     },
 };
 
@@ -69,8 +69,8 @@ pub(in crate::notifications) async fn insert_delivery(
         .await?;
     sqlx::query(
         "INSERT INTO notifications.deliveries \
-         (id, channel_id, channel_name, kind, at, ok, message) \
-         VALUES ($1, $2, $3, $4, $5, $6, $7)",
+         (id, channel_id, channel_name, kind, at, ok, reason, code) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
     )
     .bind(delivery.id)
     .bind(delivery.channel)
@@ -78,7 +78,8 @@ pub(in crate::notifications) async fn insert_delivery(
     .bind(delivery.kind.as_str())
     .bind(delivery.at)
     .bind(delivery.ok)
-    .bind(&delivery.message)
+    .bind(delivery.reason.map(DeliveryReason::as_str))
+    .bind(delivery.code)
     .execute(conn)
     .await?;
     Ok(())

@@ -20,7 +20,8 @@ use sqlx::PgPool;
 
 pub use model::{
     Channel, ChannelFields, ChannelKind, CheckSettings, CheckState, Delivery, DeliveryCursor,
-    ExpiryMark, InstallationSettings, NewOutbox, NotificationKind, Outbox, OutboxId,
+    DeliveryReason, ExpiryMark, InstallationSettings, NewOutbox, NotificationKind, Outbox,
+    OutboxId,
 };
 
 /// How many days of delivery partitions exist ahead of today (DB-004).
@@ -105,6 +106,22 @@ pub async fn drop_expired_deliveries(
         .checked_sub_days(keep)
         .unwrap_or(NaiveDate::MIN);
     store::drop_days_before(db, cutoff, now).await
+}
+
+/// The daily delivery upkeep (D-25, K2): creates the partitions ahead, drops the expired ones
+/// (`deliveries_keep` days) and deletes the outbox rows finished more than 7 days ago.
+///
+/// # Errors
+/// `Database` when a query fails or the database refuses the cutoff.
+pub async fn keep_deliveries(
+    db: &PgPool,
+    now: DateTime<Utc>,
+    deliveries_keep: Days,
+) -> Result<(), Error> {
+    create_partitions_ahead(db, now).await?;
+    drop_expired_deliveries(db, now, deliveries_keep).await?;
+    delete_finished_outbox(db, now).await?;
+    Ok(())
 }
 
 /// Deletes the outbox rows sent or given up more than 7 days before `now`; returns how many

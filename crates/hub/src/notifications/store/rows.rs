@@ -7,7 +7,7 @@ use crate::{
     notifications::{
         Error,
         model::{
-            Channel, ChannelFields, ChannelKind, CheckState, Delivery, ExpiryMark,
+            Channel, ChannelFields, ChannelKind, CheckState, Delivery, DeliveryReason, ExpiryMark,
             InstallationSettings, NotificationKind, Outbox, OutboxId, status_from_stored,
         },
     },
@@ -116,7 +116,8 @@ pub(super) struct DeliveryRow {
     kind: String,
     at: DateTime<Utc>,
     ok: bool,
-    message: Option<String>,
+    reason: Option<String>,
+    code: Option<i32>,
 }
 
 impl TryFrom<DeliveryRow> for Delivery {
@@ -130,13 +131,18 @@ impl TryFrom<DeliveryRow> for Delivery {
             kind: NotificationKind::from_stored(&row.kind).ok_or(Error::Unreadable)?,
             at: row.at,
             ok: row.ok,
-            message: row.message,
+            reason: row
+                .reason
+                .map(|text| DeliveryReason::from_stored(&text).ok_or(Error::Unreadable))
+                .transpose()?,
+            code: row.code,
         })
     }
 }
 
 /// Every column of a delivery, in the order `DeliveryRow` reads them.
-pub(super) const DELIVERY_COLUMNS: &str = "id, channel_id, channel_name, kind, at, ok, message";
+pub(super) const DELIVERY_COLUMNS: &str =
+    "id, channel_id, channel_name, kind, at, ok, reason, code";
 
 #[derive(sqlx::FromRow)]
 pub(super) struct SettingsRow {

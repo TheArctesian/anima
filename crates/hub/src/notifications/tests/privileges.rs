@@ -9,7 +9,7 @@ use super::{PING, check, fields, now, refusal, runtime_pool};
 use crate::{
     ids::ChannelId,
     notifications::{
-        CheckSettings, CheckState, Delivery, NewOutbox, NotificationKind, OutboxId,
+        CheckSettings, CheckState, Delivery, DeliveryReason, NewOutbox, NotificationKind, OutboxId,
         create_partitions_ahead, delete_finished_outbox, store as sql,
     },
 };
@@ -68,7 +68,8 @@ async fn db_009_runtime_role_does_everything_the_hub_needs(pool: PgPool) {
         kind: NotificationKind::Down,
         at,
         ok: false,
-        message: Some("The target did not answer in 8 seconds.".to_owned()),
+        reason: Some(DeliveryReason::TimedOut),
+        code: None,
     };
     sql::insert_delivery(&mut runtime.acquire().await.unwrap(), &delivery)
         .await

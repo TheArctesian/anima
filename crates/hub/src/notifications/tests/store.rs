@@ -8,8 +8,8 @@ use super::{PING, SSH_PORT, channel, check, fields, now};
 use crate::{
     ids::{ChannelId, CheckId, DeliveryId},
     notifications::{
-        ChannelKind, CheckState, Delivery, DeliveryCursor, Error, ExpiryMark, NotificationKind,
-        store as sql,
+        ChannelKind, CheckState, Delivery, DeliveryCursor, DeliveryReason, Error, ExpiryMark,
+        NotificationKind, store as sql,
     },
     status::Status,
 };
@@ -22,7 +22,8 @@ fn delivery(channel: ChannelId, at: DateTime<Utc>, ok: bool) -> Delivery {
         kind: NotificationKind::Up,
         at,
         ok,
-        message: None,
+        reason: (!ok).then_some(DeliveryReason::HttpStatus),
+        code: (!ok).then_some(503),
     }
 }
 

@@ -115,7 +115,8 @@ create index outbox_finished on notifications.outbox ((coalesce(sent_at, given_u
     where sent_at is not null or given_up_at is not null;
 
 -- What was sent, or failed to send, to whom. No foreign key (DB-004): the name is a copy.
--- `message` is a fixed sentence, never the target's reply (LOG-007).
+-- `reason` is a fixed word and `code` an HTTP status or SMTP reply code: never the target's
+-- reply text (CR-14, LOG-007).
 create table notifications.deliveries (
     id uuid not null,
     channel_id uuid null,
@@ -123,12 +124,18 @@ create table notifications.deliveries (
     kind text not null,
     at timestamptz not null,
     ok boolean not null,
-    message text null,
+    reason text null,
+    code int null,
     constraint deliveries_pkey primary key (at, id),
     constraint deliveries_kind_check check (kind in (
         'down', 'up', 'still_down', 'certificate_expiry', 'domain_expiry', 'test'
     )),
-    constraint deliveries_message_check check (char_length(message) <= 500)
+    constraint deliveries_reason_check check (reason in (
+        'target_not_permitted', 'bad_address', 'secret_unreadable', 'setup_failed',
+        'connection_failed', 'tls_failed', 'timed_out', 'http_status', 'no_starttls',
+        'smtp_refused', 'not_understood'
+    )),
+    constraint deliveries_outcome_check check (ok = (reason is null))
 ) partition by range (at);
 
 -- The last delivery of each channel.
