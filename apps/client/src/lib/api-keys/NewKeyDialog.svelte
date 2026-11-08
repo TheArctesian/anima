@@ -50,6 +50,8 @@
       return;
     }
     onCreated(result.value.key);
+    // No guard for an answer that comes late: a dialog that is gone, or fading out with its page, renders nothing new;
+    // one whose page returns before its fade ends is the same dialog, still the operator's.
     created = result.value.key;
     secret = result.value.secret;
   }

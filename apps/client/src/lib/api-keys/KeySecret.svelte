@@ -34,6 +34,12 @@
     return { duration: duration.instant };
   }
 
+  // Written by hand rather than as `value={secret}`: Svelte keeps an attribute's last value on the node, where it would
+  // outlive `drop` (F-8).
+  $effect(() => {
+    if (field !== undefined) field.value = secret;
+  });
+
   // The field takes focus when it appears, with the key selected, so the system's own copy works at once.
   $effect(() => {
     field?.focus();
@@ -49,7 +55,6 @@
       id={fieldId}
       type="text"
       readonly
-      value={secret}
       autocomplete="off"
       autocapitalize="off"
       spellcheck="false"

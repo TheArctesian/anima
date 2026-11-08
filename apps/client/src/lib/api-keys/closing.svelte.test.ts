@@ -38,10 +38,25 @@ function holdAnimations(): void {
   });
 }
 
-/** How many times the key appears in the markup, and in field values. */
-function places(text: string): { markup: number; values: number } {
-  const values = [...document.querySelectorAll('input, textarea')].filter((element) => (element as HTMLInputElement).value.includes(text));
-  return { markup: document.documentElement.outerHTML.split(text).length - 1, values: values.length };
+/** Whether a node keeps `text` in a property of its own, as a cache keyed by a symbol would. */
+function nodeKeeps(element: Element, text: string): boolean {
+  const own = element as unknown as Record<PropertyKey, unknown>;
+  return [...Object.getOwnPropertyNames(element), ...Object.getOwnPropertySymbols(element)].some((name) => {
+    try {
+      return JSON.stringify(own[name])?.includes(text) === true;
+    } catch {
+      // A value JSON cannot write (a cycle) is a reference to an object, not a copy of the text.
+      return false;
+    }
+  });
+}
+
+/** How many times the key appears in the markup, in field values, and in fields' own properties. */
+function places(text: string): { markup: number; values: number; kept: number } {
+  const fields = [...document.querySelectorAll('input, textarea')];
+  const values = fields.filter((element) => (element as HTMLInputElement).value.includes(text));
+  const kept = fields.filter((element) => nodeKeeps(element, text));
+  return { markup: document.documentElement.outerHTML.split(text).length - 1, values: values.length, kept: kept.length };
 }
 
 async function openDialog(createAnswer: HubResult<unknown> | Promise<HubResult<unknown>>, now: () => Date = () => NOW): Promise<void> {
@@ -69,7 +84,7 @@ it('INT-003: while shown, the key is in exactly one place: the field value, neve
   await openDialog(CREATED);
   button('Create key').click();
   await settled();
-  expect(places(FAKE_SECRET)).toEqual({ markup: 0, values: 1 });
+  expect(places(FAKE_SECRET)).toEqual({ markup: 0, values: 1, kept: 0 });
 });
 
 it('F-8: leaving Settings while the key shows empties the field at once, though the dialog is still fading', async () => {
@@ -80,19 +95,46 @@ it('F-8: leaving Settings while the key shows empties the field at once, though 
   if (app !== undefined) void unmount(app, { outro: true });
   app = undefined;
   flushSync();
+  expect(places(FAKE_SECRET)).toEqual({ markup: 0, values: 0, kept: 0 });
   await settled();
   expect(document.querySelector('[role="dialog"]')).not.toBeNull();
-  expect(places(FAKE_SECRET)).toEqual({ markup: 0, values: 0 });
+  expect(places(FAKE_SECRET)).toEqual({ markup: 0, values: 0, kept: 0 });
 });
 
-it('F-8: Escape, Cancel and a click beside the dialog do not close it while the key is being made, and the key shows when it arrives', async () => {
+/** Opens the dialog and presses Create; the hub has not answered yet. */
+async function making(): Promise<(result: HubResult<unknown>) => void> {
   const { answer, release } = pending();
   await openDialog(answer);
   button('Create key').click();
   flushSync();
+  return release;
+}
+
+it('F-8: Escape is refused while the key is being made, and the key shows when it arrives', async () => {
+  const release = await making();
   document.querySelector('[role="dialog"]')?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-  button('Cancel').click();
+  await settled();
+  expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+  release(CREATED);
+  await settled();
+  expect(field('[role="dialog"] input[readonly]').value).toBe(FAKE_SECRET);
+});
+
+it('F-8: a click beside the dialog is refused while the key is being made', async () => {
+  const release = await making();
   document.querySelector('.frame')?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+  await settled();
+  expect(document.querySelector('[role="dialog"]')).not.toBeNull();
+  release(CREATED);
+  await settled();
+  expect(field('[role="dialog"] input[readonly]').value).toBe(FAKE_SECRET);
+});
+
+it('F-8: Cancel is disabled while the key is being made', async () => {
+  const release = await making();
+  // The form's fieldset disables it, so the button's own `disabled` stays false; `:disabled` is what the browser honours.
+  expect(button('Cancel').matches(':disabled')).toBe(true);
+  button('Cancel').click();
   await settled();
   expect(document.querySelector('[role="dialog"]')).not.toBeNull();
   release(CREATED);
@@ -111,7 +153,7 @@ it('F-8: a page left while the key is being made never puts the key in the docum
   flushSync();
   release(CREATED);
   await settled();
-  expect(places(FAKE_SECRET)).toEqual({ markup: 0, values: 0 });
+  expect(places(FAKE_SECRET)).toEqual({ markup: 0, values: 0, kept: 0 });
 });
 
 it('D-23: the expiry counts from when Create is pressed, not from when the dialog opened', async () => {
