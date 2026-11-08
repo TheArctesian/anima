@@ -54,7 +54,8 @@ function typeErrors(values: CheckFormValues, configSent: boolean): FieldError[] 
     case 'PUSH':
       return [];
     case 'DOMAIN_EXPIRY':
-      return [...domainExpiryErrors(values.domainExpiry), ...intervalErrors(values.intervalSeconds)];
+      // The config is checked only when it is sent: an unloaded one (F-3) must not block a rename.
+      return [...(configSent ? domainExpiryErrors(values.domainExpiry) : []), ...intervalErrors(values.intervalSeconds)];
     default:
       return probeErrors(values, values.type, configSent);
   }

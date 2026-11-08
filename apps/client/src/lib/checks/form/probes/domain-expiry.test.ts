@@ -42,6 +42,11 @@ describe('CHK-009, D-29: DOMAIN_EXPIRY validation', () => {
     expect(fieldsOf(fresh('DOMAIN_EXPIRY', (v) => { GOOD(v); v.domainExpiry.domain = ''; }))).toEqual(['domain']);
     expect(fieldsOf(fresh('DOMAIN_EXPIRY', (v) => { GOOD(v); v.domainExpiry.domain = '192.0.2.1'; }))).toEqual(['domain']);
     expect(fieldsOf(fresh('DOMAIN_EXPIRY', (v) => { GOOD(v); v.domainExpiry.warnDays = '0'; }))).toEqual(['warnDays']);
+    expect(fieldsOf(fresh('DOMAIN_EXPIRY', (v) => { GOOD(v); v.domainExpiry.warnDays = '366'; }))).toEqual(['warnDays']);
+    for (const days of ['1', '365']) expect(fieldsOf(fresh('DOMAIN_EXPIRY', (v) => { GOOD(v); v.domainExpiry.warnDays = days; }))).toEqual([]);
+    for (const host of ['::1', '[::1]', 'localhost']) {
+      expect(fieldsOf(fresh('DOMAIN_EXPIRY', (v) => { GOOD(v); v.domainExpiry.domain = host; }))).toEqual(['domain']);
+    }
     expect(fieldsOf(fresh('DOMAIN_EXPIRY', (v) => { GOOD(v); v.domainExpiry.timeoutMs = '5'; }))).toEqual(['timeoutMs']);
   });
 });

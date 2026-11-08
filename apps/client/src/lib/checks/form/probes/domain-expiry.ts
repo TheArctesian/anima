@@ -9,7 +9,7 @@ export const MIN_INTERVAL_SECONDS = 3600;
 export const PROPOSED_INTERVAL_SECONDS = 43_200;
 
 const DOMAIN_BYTES = 253;
-const WARN_DAYS: readonly [number, number] = [1, 3650];
+const WARN_DAYS: readonly [number, number] = [1, 365];
 
 /** A domain expiry config with its fields; the generated `Check.config` union names it without them until the hub declares them (F-3). */
 export interface DomainExpiryConfigFields {
@@ -20,7 +20,7 @@ export interface DomainExpiryConfigFields {
 }
 
 /** A domain expiry config as the generated union names it today: the type only. */
-export interface BareDomainExpiryConfig {
+interface BareDomainExpiryConfig {
   readonly __typename: 'DomainExpiryConfig';
 }
 
@@ -62,17 +62,18 @@ export function intervalErrors(intervalSeconds: string): FieldError[] {
   return [{ field: 'intervalSeconds', message: 'A domain expiry check runs at most once an hour: enter 3600 seconds or more.' }];
 }
 
+function domainError(name: string): FieldError[] {
+  if (name === '') return [{ field: 'domain', message: 'Enter the domain, such as example.net.' }];
+  if (!isValidHost(name) || !name.includes('.') || name.includes(':') || /^[\d.]+$/.test(name)) {
+    return [{ field: 'domain', message: 'Enter a domain name such as example.net, not an address.' }];
+  }
+  return lengthError('domain', name, DOMAIN_BYTES, 'The domain');
+}
+
 /** CHK-009, D-29: every reason the domain, warn days or timeout cannot be saved. */
 export function domainExpiryErrors({ domain, warnDays, timeoutMs }: DomainExpiryValues): FieldError[] {
-  const name = normalizeHost(domain);
-  const found: FieldError[] =
-    name === ''
-      ? [{ field: 'domain', message: 'Enter the domain, such as example.net.' }]
-      : !isValidHost(name) || !name.includes('.') || name.includes(':') || /^[\d.]+$/.test(name)
-        ? [{ field: 'domain', message: 'Enter a domain name such as example.net, not an address.' }]
-        : lengthError('domain', name, DOMAIN_BYTES, 'The domain');
   return [
-    ...found,
+    ...domainError(normalizeHost(domain)),
     ...integerError('warnDays', warnDays, WARN_DAYS, `Enter the warn days from ${String(WARN_DAYS[0])} to ${String(WARN_DAYS[1])}.`),
     ...timeoutError(timeoutMs),
   ];
