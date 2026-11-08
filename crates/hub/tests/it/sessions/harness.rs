@@ -1,4 +1,5 @@
-//! A schema with the sessions part only, and requests from a signed-in operator.
+//! A schema with the sessions part and trust's accept mutations, which the connection test
+//! leads to, and requests from a signed-in operator.
 
 use std::{io::Write as _, sync::Arc};
 
@@ -11,17 +12,22 @@ use anima_hub::{
     ids::OperatorId,
     sessions::{
         Live,
-        graphql::{Mutation, Query, Subscription},
+        graphql::{Mutation as SessionsMutation, Query, Subscription},
     },
     targets::AddressPolicy,
+    trust::graphql::Mutation as TrustMutation,
 };
-use async_graphql::{Request, Response, Schema};
+use async_graphql::{MergedObject, Request, Response, Schema};
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use chrono::{DateTime, TimeDelta, Utc};
 use serde_json::Value;
 use sqlx::PgPool;
 
 use super::{OPERATOR_ID, now};
+
+/// The sessions mutations and trust's, merged as `schema.rs` merges them.
+#[derive(MergedObject, Default)]
+pub struct Mutation(SessionsMutation, TrustMutation);
 
 pub type TestSchema = Schema<Query, Mutation, Subscription>;
 
@@ -33,14 +39,16 @@ pub fn schema_for(pool: &PgPool) -> TestSchema {
     schema_at(pool, now() + TimeDelta::hours(1), &Live::default())
 }
 
-/// The schema with a clock fixed at `at`, sharing `live`, and what `startSession` needs to
-/// wake a device as `schema.rs` gives it: the status loader, an address policy and a bus.
+/// The schema with a clock fixed at `at`, sharing `live` and what its connection tests saw, and
+/// what `startSession` needs to wake a device as `schema.rs` gives it: the status loader, an
+/// address policy and a bus.
 pub fn schema_at(pool: &PgPool, at: DateTime<Utc>, live: &Live) -> TestSchema {
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(at));
-    Schema::build(Query, Mutation, Subscription)
+    Schema::build(Query, Mutation::default(), Subscription)
         .data(pool.clone())
         .data(status_loader(pool.clone(), clock.clone()))
         .data(clock)
+        .data(live.sightings().clone())
         .data(live.clone())
         .data(vault())
         .data(AddressPolicy::default())

@@ -118,7 +118,7 @@ async fn put_host_key(
     (algorithm, key, fingerprint): (&str, &str, &str),
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
-        "insert into sessions.host_keys (device_id, algorithm, fingerprint_sha256, public_key, \
+        "insert into trust.host_keys (device_id, algorithm, fingerprint_sha256, public_key, \
                 first_seen_at, accepted_at, accepted_by) \
          values ($1::text::uuid, $2, $3, $4, $5, $5 + interval '1 minute', $6::text::uuid)",
     )

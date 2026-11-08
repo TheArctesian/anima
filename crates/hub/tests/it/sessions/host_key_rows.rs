@@ -2,7 +2,7 @@
 
 use anima_hub::{
     ids::DeviceId,
-    sessions::{self, Fingerprint},
+    trust::{self, Fingerprint},
 };
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use sqlx::PgPool;
@@ -12,7 +12,7 @@ use super::{
     put_host_key,
 };
 
-/// The 8190-byte blob cap of `sessions::public_key::MAX_BLOB`.
+/// The 8190-byte blob cap of `trust::public_key::MAX_BLOB`.
 const MAX_BLOB: usize = 8190;
 
 /// An `ssh-rsa` key blob of `len` bytes in base64, with its fingerprint.
@@ -98,7 +98,7 @@ async fn sec_007_the_largest_key_the_table_takes_is_one_the_hub_reads(pool: PgPo
     put_host_key(&pool, PVE_01, ("ssh-rsa", &largest, &fingerprint))
         .await
         .unwrap();
-    let key = sessions::host_key(&pool, PVE_01.parse::<DeviceId>().unwrap())
+    let key = trust::host_key(&pool, PVE_01.parse::<DeviceId>().unwrap())
         .await
         .unwrap()
         .unwrap();

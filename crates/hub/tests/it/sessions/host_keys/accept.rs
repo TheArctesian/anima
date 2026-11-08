@@ -1,6 +1,13 @@
 //! `acceptHostKey` (D-6, SEC-006, LOG-005): only the key a test saw in the last 15 minutes,
 //! by its fingerprint; stored with an audit entry in the same transaction.
 
+use std::sync::Arc;
+
+use anima_hub::{
+    clock::{Clock, FixedClock},
+    events::Bus,
+    schema::{Dependencies, build_schema},
+};
 use chrono::{DateTime, TimeDelta, Utc};
 use russh::keys::PrivateKey;
 use serde_json::{Value, json};
@@ -9,7 +16,7 @@ use sqlx::PgPool;
 use super::{
     accept_directly, accept_request, fingerprint, loopback_live, password, point_at, schema,
     server::{PASSWORD, SshServer, ed25519},
-    store_credential, tested,
+    store_credential, test_request, tested,
 };
 use crate::sessions::{
     OPERATOR_ID, PVE_01, add_operator,
@@ -31,7 +38,7 @@ struct Row {
 async fn row(pool: &PgPool) -> Option<Row> {
     sqlx::query_as(
         "select algorithm, fingerprint_sha256, public_key, first_seen_at, accepted_at, \
-                accepted_by::text from sessions.host_keys where device_id = $1::text::uuid",
+                accepted_by::text from trust.host_keys where device_id = $1::text::uuid",
     )
     .bind(PVE_01)
     .fetch_optional(pool)
@@ -214,11 +221,42 @@ async fn sec_006_accept_for_an_unknown_device_is_not_found(pool: PgPool) {
     assert_eq!(code(&response), "NOT_FOUND");
 }
 
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../fixtures", scripts("devices"))
+)]
+async fn d_31_the_hub_schema_accepts_the_key_its_connection_test_saw(pool: PgPool) {
+    // `build_schema` as `main.rs` calls it: `testConnection` records into the `Live`'s
+    // sightings and `acceptHostKey` reads the trust domain's copy of them (WP-41 T6).
+    add_operator(&pool).await;
+    let host_key = ed25519(1);
+    let server = SshServer::start(vec![host_key.clone()], None).await;
+    point_at(&pool, &server).await;
+    let clock: Arc<dyn Clock> = Arc::new(FixedClock(now()));
+    let schema = build_schema(Dependencies {
+        live: loopback_live(),
+        ..crate::hub::dependencies(&pool, clock, Bus::new(16))
+    });
+    let input = json!({ "deviceId": PVE_01 });
+
+    let tested = schema.execute(test_request(&input)).await;
+    let accepted = schema
+        .execute(accept_request(PVE_01, &fingerprint(&host_key)))
+        .await;
+
+    assert!(tested.errors.is_empty(), "{:?}", tested.errors);
+    assert!(accepted.errors.is_empty(), "{:?}", accepted.errors);
+    assert_eq!(
+        row(&pool).await.map(|row| row.fingerprint_sha256),
+        Some(fingerprint(&host_key))
+    );
+}
+
 /// Puts `key` back as PVE-01's accepted key, keeping the row's other columns.
 async fn restore(pool: &PgPool, key: &PrivateKey) {
     let openssh = key.public_key().to_openssh().unwrap();
     sqlx::query(
-        "update sessions.host_keys set fingerprint_sha256 = $2, public_key = $3 \
+        "update trust.host_keys set fingerprint_sha256 = $2, public_key = $3 \
          where device_id = $1::text::uuid",
     )
     .bind(PVE_01)

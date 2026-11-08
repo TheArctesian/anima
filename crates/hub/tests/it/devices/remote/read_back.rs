@@ -8,7 +8,7 @@ use anima_hub::{
     clock::{Clock, FixedClock},
     credentials::PasswordKind,
     devices::graphql::{Mutation, Query, rdp_credential_loader, vnc_credential_loader},
-    sessions::graphql::server_certificate_loader,
+    trust::graphql::server_certificate_loader,
 };
 use async_graphql::{EmptySubscription, Schema};
 use chrono::{DateTime, Utc};
@@ -170,7 +170,7 @@ async fn accept_certificate(pool: &PgPool) {
     sqlx::query(
         "with operator as (insert into access.operators (id, username, password_hash, created_at) \
              values (gen_random_uuid(), 'operator', '$argon2id$x', now()) returning id) \
-         insert into sessions.server_certificates (device_id, fingerprint_sha256, subject, \
+         insert into trust.server_certificates (device_id, fingerprint_sha256, subject, \
              not_after, first_seen_at, accepted_by) \
          select $1::text::uuid, $2, 'CN=PVE-01', '2031-01-01T00:00:00Z', $3, id from operator",
     )

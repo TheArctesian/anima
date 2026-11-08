@@ -102,7 +102,7 @@ pub async fn accept_directly(pool: &PgPool, key: &PrivateKey) {
     let mut parts = openssh.split(' ');
     let (algorithm, base64) = (parts.next().unwrap(), parts.next().unwrap());
     sqlx::query(
-        "insert into sessions.host_keys (device_id, algorithm, fingerprint_sha256, public_key, \
+        "insert into trust.host_keys (device_id, algorithm, fingerprint_sha256, public_key, \
                 first_seen_at, accepted_at, accepted_by) \
          values ($1::text::uuid, $2, $3, $4, $5, $5, $6::text::uuid)",
     )
