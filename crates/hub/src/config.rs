@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::net::SocketAddr;
-use std::path::PathBuf;
+use std::path::{Component, PathBuf};
 
 mod origin;
 
@@ -93,6 +93,8 @@ pub enum Error {
     },
     #[error("{variable} is the file-system root, which is too broad to serve or write")]
     FilesystemRoot { variable: &'static str },
+    #[error("{variable} has a `..` part, which could climb out of the folder")]
+    ParentDirectory { variable: &'static str },
     #[error("{variable}={value:?} is not a positive integer")]
     NotPositive {
         variable: &'static str,
@@ -126,7 +128,7 @@ fn optional_path(env: &BTreeMap<String, String>, name: &str) -> Option<PathBuf> 
 }
 
 /// An absolute folder from `name`; unset or empty is `None`. The root `/` is refused: as a
-/// web root it would serve the whole file system.
+/// web root it would serve the whole file system, and so is any path with a `..` part.
 fn optional_root(
     env: &BTreeMap<String, String>,
     name: &'static str,
@@ -135,6 +137,9 @@ fn optional_root(
         None | Some("") => Ok(None),
         Some(text) => {
             let path = absolute_path(name, text)?;
+            if path.components().any(|part| part == Component::ParentDir) {
+                return Err(Error::ParentDirectory { variable: name });
+            }
             if path.parent().is_none() {
                 return Err(Error::FilesystemRoot { variable: name });
             }

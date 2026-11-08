@@ -24,14 +24,11 @@ pub(super) fn canonical(variable: &'static str, text: &str) -> Result<String, Er
     }
 }
 
-/// `text` with everything between `://` and the last `@` replaced by `***`, so an error never
-/// echoes a password typed into the URL (LOG-007).
+/// `text` with everything before the last `@` replaced by `***`, so an error never echoes a
+/// password typed into the URL, with or without a scheme (LOG-007).
 fn without_userinfo(text: &str) -> String {
-    let Some((scheme, rest)) = text.split_once("://") else {
-        return text.to_owned();
-    };
-    match rest.rfind('@') {
-        Some(at) => format!("{scheme}://***{}", &rest[at..]),
+    match text.rfind('@') {
+        Some(at) => format!("***{}", &text[at..]),
         None => text.to_owned(),
     }
 }
