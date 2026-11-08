@@ -6,7 +6,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { Hub, HubResult } from '$lib/hub/hub';
 import { installAnimations } from '../../../forms/animations.fixture';
 import { button, input, leave, SAVED, save, settle, show, type } from '../form/form.fixture';
-import { LOAD_SENTENCE, SAVE_SENTENCE } from './draft.svelte';
+import { LOAD_SENTENCE, PARTIAL_SENTENCE, SAVE_SENTENCE } from './draft.svelte';
 import { LIMIT_SENTENCE } from './policy';
 
 const mocks = vi.hoisted(() => ({ hub: undefined as unknown }));
@@ -47,7 +47,8 @@ function open(): void {
 }
 
 const limit = () => input('policy-sessionLimit');
-const record = () => document.querySelector<HTMLInputElement>('input[type="checkbox"][aria-describedby="device-policy-record-hint"]');
+const record = () =>
+  [...document.querySelectorAll('label')].find((label) => label.textContent.includes('Record sessions'))?.querySelector('input') ?? null;
 const message = () => document.getElementById('device-policy-message')?.textContent ?? '';
 
 async function editing(loads: HubResult<unknown>[], saves: HubResult<unknown>[] = []) {
@@ -150,7 +151,7 @@ it('RA-036: a failed policy load keeps the rest of the form usable, sends no pol
   expect(message()).toBe('');
 });
 
-it('RA-036: the policy fields keep their geometry while loading: the hint and message lines are always there', async () => {
+it('RA-036: while loading the limit is disabled and the hint and message lines exist', async () => {
   hubWith([new Promise<never>(() => undefined) as never]);
   show(SAVED);
   open();
@@ -165,4 +166,16 @@ it('RA-036: a policy save the hub refuses says so, and the device is not saved',
   await save();
   expect(message()).toBe(SAVE_SENTENCE);
   expect(calls.onSave).not.toHaveBeenCalled();
+});
+
+it('RA-036, MOT-007: the policy saved but the device did not: a fixed sentence says so, and a second Save sends no second policy', async () => {
+  const { sent, calls } = await editing([ok({ device: POLICY })], [ok({ updateDevice: { sessionLimit: 9, recordSessions: false } })]);
+  calls.onSave.mockResolvedValueOnce({ ok: false, error: { code: 'UNAVAILABLE', message: 'secret hub text' } });
+  type('policy-sessionLimit', '9');
+  await save();
+  expect(message()).toBe(PARTIAL_SENTENCE);
+  expect(PARTIAL_SENTENCE.length).toBeLessThanOrEqual(36);
+  await save();
+  expect(sent.filter((request) => request.operation === 'SetDevicePolicy')).toHaveLength(1);
+  expect(calls.onSave).toHaveBeenCalledTimes(2);
 });

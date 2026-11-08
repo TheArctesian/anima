@@ -1,6 +1,7 @@
 <script lang="ts">
   import FormButton from '$lib/forms/FormButton.svelte';
   import type { PolicyDraft } from './draft.svelte';
+  import { LIMIT_SENTENCE } from './policy';
 
   interface Props {
     policy: PolicyDraft;
@@ -19,7 +20,7 @@
     autocomplete="off"
     placeholder="No limit"
     disabled={unavailable}
-    aria-invalid={policy.message !== '' && !failed}
+    aria-invalid={policy.message === LIMIT_SENTENCE}
     aria-describedby="device-policy-sessionLimit-hint device-policy-message"
     bind:value={policy.values.sessionLimit}
   />
@@ -58,6 +59,7 @@
     display: flex;
     align-items: center;
     gap: var(--space-2);
+    min-block-size: var(--target-min-desktop);
     color: var(--text);
   }
 

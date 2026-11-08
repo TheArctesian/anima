@@ -2,6 +2,7 @@ import type { PolicyCalls } from './calls';
 import { DEFAULT_POLICY, limitProblem, policyValues, updatePolicyInput, type PolicyValues } from './policy';
 
 export const LOAD_SENTENCE = 'The session settings could not be loaded. The other fields can still be saved.';
+export const PARTIAL_SENTENCE = 'Sessions saved; the device was not.';
 export const SAVE_SENTENCE = 'The session settings could not be saved. Nothing else was saved.';
 
 /** `loading` and `failed` keep the fields disabled and send nothing; `absent`: an edit with no hub to ask. */
@@ -38,6 +39,7 @@ export class PolicyDraft {
     if (this.#deviceId === null || this.#calls === null) return;
     this.phase = 'loading';
     this.message = '';
+    this.#stored = null;
     try {
       const result = await this.#calls.load(this.#deviceId);
       if (result.ok) {
@@ -53,6 +55,11 @@ export class PolicyDraft {
     this.message = LOAD_SENTENCE;
   }
 
+  /** Says the policy went in but the device did not, so the operator knows what a second Save will and will not send. */
+  deviceNotSaved(): void {
+    this.message = PARTIAL_SENTENCE;
+  }
+
   /** RA-036: shows the sentence for an unusable limit and answers whether the form may save. */
   check(): boolean {
     const problem = this.phase === 'ready' ? limitProblem(this.values, this.creating) : null;
@@ -62,7 +69,7 @@ export class PolicyDraft {
 
   /** Saves the changed values of a saved device; answers false, with the sentence, when the hub did not take them. */
   async save(): Promise<boolean> {
-    if (this.#deviceId === null || this.#calls === null || this.#stored === null || this.phase !== 'ready') return true;
+    if (this.#deviceId === null || this.#calls === null || this.#stored === null) return true;
     const input = updatePolicyInput(this.#stored, this.values);
     if (Object.keys(input).length === 0) return true;
     try {

@@ -204,6 +204,8 @@
     if (!(await policy.save())) {
       saving = false;
       sessions = true;
+      await tick();
+      root?.querySelector<HTMLElement>('#device-policy-sessionLimit')?.focus();
       return;
     }
     const result = await onSave({ ...$state.snapshot(values), ...(creating ? { policy: $state.snapshot(policy.values) } : {}) }, placement());
@@ -214,6 +216,7 @@
       errors = [];
       saves += 1;
     } else {
+      policy.deviceNotSaved();
       await show(fieldErrorsFrom(result.error));
     }
   }
