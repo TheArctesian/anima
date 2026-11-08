@@ -39,9 +39,20 @@ async fn bld_049_a_token_in_a_log_line_is_redacted_before_it_is_stored(pool: PgP
     let job = create_job(&hub, &operator, "0.1.12").await;
     let builder = enrol(&hub, &operator, "pop-os").await;
     data(claim(&hub, &builder.token).await);
-    let leaked = format!("curl -H 'Authorization: Bearer {}' https://hub", builder.token);
+    let leaked = format!(
+        "curl -H 'Authorization: Bearer {}' https://hub",
+        builder.token
+    );
     let env = format!("GITHUB_TOKEN={} bun run gates", builder.token);
-    data(report(&hub, &builder.token, &job, &["Compiling anima", &leaked, &env]).await);
+    data(
+        report(
+            &hub,
+            &builder.token,
+            &job,
+            &["Compiling anima", &leaked, &env],
+        )
+        .await,
+    );
 
     let stored: Vec<String> =
         sqlx::query_scalar("SELECT text FROM builds.log_lines ORDER BY sequence")
@@ -92,7 +103,10 @@ async fn bld_063_an_uploaded_report_keeps_the_job_uploading(pool: PgPool) {
     data(report(&hub, &builder.token, &job, &[]).await);
     let uploading = "mutation($id: ID!) { reportBuildJob(id: $id, state: UPLOADING, \
                      logLines: []) { state } }";
-    data(hub.post(Some(&builder.token), uploading, json!({ "id": job })).await);
+    data(
+        hub.post(Some(&builder.token), uploading, json!({ "id": job }))
+            .await,
+    );
     let query = "mutation($id: ID!, $files: [BuildFileInput!]!, $feed: String!) { \
                  reportBuildUploaded(id: $id, files: $files, feed: $feed) { state } }";
     let files = json!([{ "name": "SHA256SUMS", "sha256": "ab".repeat(32), "size": 90 }]);
@@ -120,6 +134,9 @@ async fn bld_002_a_version_that_is_not_new_is_refused(pool: PgPool) {
         .await
         .unwrap();
     assert_eq!(releases, 1);
-    let next = data(hub.post(Some(&operator), "{ nextReleaseVersion }", json!({})).await);
+    let next = data(
+        hub.post(Some(&operator), "{ nextReleaseVersion }", json!({}))
+            .await,
+    );
     assert_eq!(next["nextReleaseVersion"], "0.1.13");
 }

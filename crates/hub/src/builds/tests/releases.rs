@@ -63,7 +63,11 @@ fn bld_002_a_version_not_above_a_published_one_of_a_selected_target_is_refused()
     for version in [Version::new(0, 1, 11), Version::new(0, 1, 2)] {
         let refused = release::check_new(version, &targets, &published).unwrap_err();
         assert_eq!(refused.field, "version");
-        assert!(refused.message.contains("linux-x86_64"), "{}", refused.message);
+        assert!(
+            refused.message.contains("linux-x86_64"),
+            "{}",
+            refused.message
+        );
     }
     assert!(release::check_new(Version::new(0, 1, 12), &targets, &published).is_ok());
     // The other target's published versions do not count.
@@ -77,11 +81,17 @@ fn bld_002_a_version_is_built_at_most_once_for_a_target() {
     let target = [Target::LinuxX86_64];
     for state in [JobState::Queued, JobState::Building, JobState::Uploading] {
         let under_way = [built(Target::LinuxX86_64, version, state)];
-        assert!(release::check_new(version, &target, &under_way).is_err(), "{state:?}");
+        assert!(
+            release::check_new(version, &target, &under_way).is_err(),
+            "{state:?}"
+        );
     }
     for state in [JobState::Failed, JobState::Cancelled] {
         let freed = [built(Target::LinuxX86_64, version, state)];
-        assert!(release::check_new(version, &target, &freed).is_ok(), "{state:?}");
+        assert!(
+            release::check_new(version, &target, &freed).is_ok(),
+            "{state:?}"
+        );
     }
 }
 
@@ -89,8 +99,16 @@ fn bld_002_a_version_is_built_at_most_once_for_a_target() {
 fn bld_002_the_form_proposes_the_highest_version_with_the_patch_plus_one() {
     assert_eq!(release::next_version(&[]), None);
     let built = [
-        built(Target::LinuxX86_64, Version::new(0, 1, 9), JobState::Published),
-        built(Target::DarwinUniversal, Version::new(0, 1, 10), JobState::Building),
+        built(
+            Target::LinuxX86_64,
+            Version::new(0, 1, 9),
+            JobState::Published,
+        ),
+        built(
+            Target::DarwinUniversal,
+            Version::new(0, 1, 10),
+            JobState::Building,
+        ),
         built(Target::LinuxX86_64, Version::new(0, 2, 0), JobState::Failed),
     ];
     assert_eq!(release::next_version(&built), Some(Version::new(0, 1, 11)));

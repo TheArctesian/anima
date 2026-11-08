@@ -63,7 +63,10 @@ async fn bld_024_a_builder_token_from_another_address_is_refused(pool: PgPool) {
         .await
         .unwrap();
     assert_eq!(queued, "queued");
-    assert_eq!(data(claim(&hub, &builder.token).await)["claimBuildJob"]["state"], "CLAIMED");
+    assert_eq!(
+        data(claim(&hub, &builder.token).await)["claimBuildJob"]["state"],
+        "CLAIMED"
+    );
 }
 
 #[sqlx::test(migrations = "./migrations")]
@@ -72,11 +75,17 @@ async fn bld_023_a_revoked_builder_token_stops_working(pool: PgPool) {
     let hub = Hub::new(&pool, start());
     let builder = enrol(&hub, &operator, "pop-os").await;
     let revoke = "mutation($id: ID!) { revokeBuilder(id: $id) }";
-    let revoked = data(hub.post(Some(&operator), revoke, json!({ "id": builder.id })).await);
+    let revoked = data(
+        hub.post(Some(&operator), revoke, json!({ "id": builder.id }))
+            .await,
+    );
     assert_eq!(revoked["revokeBuilder"], builder.id.as_str());
     let response = claim(&hub, &builder.token).await;
     assert_eq!(error(&response), unauthenticated());
-    let listed = data(hub.post(Some(&operator), "{ builders { id } }", json!({})).await);
+    let listed = data(
+        hub.post(Some(&operator), "{ builders { id } }", json!({}))
+            .await,
+    );
     assert_eq!(listed["builders"], json!([]));
 }
 
@@ -97,8 +106,12 @@ async fn bld_023_the_builder_token_is_kept_only_as_its_hash_for_180_days(pool: P
     assert_eq!(stored.1, "builder");
     assert_eq!(stored.2, start() + chrono::TimeDelta::days(180));
     let listed = data(
-        hub.post(Some(&operator), "{ builders { id clientAddr online } }", json!({}))
-            .await,
+        hub.post(
+            Some(&operator),
+            "{ builders { id clientAddr online } }",
+            json!({}),
+        )
+        .await,
     );
     assert_eq!(
         listed["builders"],

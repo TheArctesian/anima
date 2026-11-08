@@ -74,6 +74,10 @@ impl BuilderMutation {
     /// Extends the lease, records the state change and appends the log lines; only the lease
     /// holder may report (BLD-005, BLD-010, BLD-048). `failureReason` is read for `FAILED`.
     #[graphql(guard = "BuilderSignedIn")]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "K1 fixes the argument list of Mutation.reportBuildJob"
+    )]
     async fn report_build_job(
         &self,
         ctx: &Context<'_>,
@@ -98,6 +102,10 @@ impl BuilderMutation {
     /// Records the uploaded files and the proposed feed of an `UPLOADING` job and extends its
     /// lease; the job stays `UPLOADING` until the hub publishes it (BLD-063, D-5).
     #[graphql(guard = "BuilderSignedIn")]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "K1 fixes the argument list of Mutation.reportBuildUploaded"
+    )]
     async fn report_build_uploaded(
         &self,
         ctx: &Context<'_>,

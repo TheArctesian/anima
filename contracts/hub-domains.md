@@ -8,7 +8,7 @@ These are the only functions and types one hub domain may use from another. Ever
 
 | Module | Content |
 | --- | --- |
-| `crates/hub/src/ids.rs` | All entity ID newtypes (see `conventions.md`): `OperatorId`, `SiteId`, `DeviceId`, `CheckId`, `WindowId`, `SessionId`, `EventId`, and (Phase 2) `WebInterfaceId`, `MetricSeriesId` |
+| `crates/hub/src/ids.rs` | All entity ID newtypes (see `conventions.md`): `OperatorId`, `SiteId`, `DeviceId`, `CheckId`, `WindowId`, `SessionId`, `EventId`, and (Phase 2) `WebInterfaceId`, `MetricSeriesId`, and (WP-36, R-081) `TokenId`, `ReleaseId`, `BuildJobId`, `BuilderId` |
 | `crates/hub/src/status.rs` | `pub enum Status { Up, Down, Degraded, Maintenance, Unknown }` with `fn worst(a, b)` (CHK-004) |
 | `crates/hub/src/clock.rs` | `pub trait Clock: Send + Sync { fn now(&self) -> DateTime<Utc>; }`, `SystemClock`, and `FixedClock` for tests. The only clock read in the hub (CQ-021). |
 | `crates/hub/src/config.rs` | `pub struct Config` from the environment (see `conventions.md`) |
@@ -56,6 +56,20 @@ pub mod listen; // listen, Listening, Entrance, TlsFiles, TlsListener, Fault, Er
 pub async fn operator_for_token(db: &Db, token: &str, now: DateTime<Utc>) -> Result<Operator, Error>;
 ```
 
+(WP-36, R-081, D-1) Builder tokens are access tokens of scope `builder` (`Scope::Builder`), live 180 days and
+are stored only as their hash. `Authenticated`, `operator_for_token` and the document backstop refuse them
+outside the builder fields; an operator token is refused on the builder fields (`Error::OutOfScope`, FORBIDDEN).
+
+```rust
+/// GraphQL guard: requires a valid builder token (BLD-022).
+pub struct BuilderSignedIn;
+impl Identity { pub fn builder_token(&self) -> Option<TokenId>; }
+/// A new builder token; `secret()` is the only way to read it and it has no `Debug`.
+pub struct IssuedToken { pub id: TokenId, pub expires_at: DateTime<Utc>, /* token */ }
+pub async fn issue_builder_token(conn: &mut PgConnection, operator: OperatorId, now: DateTime<Utc>) -> Result<IssuedToken, Error>;
+pub async fn revoke_builder_token(conn: &mut PgConnection, id: TokenId) -> Result<bool, Error>;
+```
+
 ## events (WP-05)
 
 ```rust
@@ -72,6 +86,9 @@ pub struct NewAudit { pub operator: Operator, pub action: AuditAction,
 
 pub async fn record(conn: &mut PgConnection, bus: &Bus, at: DateTime<Utc>, e: NewEvent) -> Result<EventId, Error>;
 pub async fn audit(conn: &mut PgConnection, at: DateTime<Utc>, a: NewAudit) -> Result<(), Error>;
+/// The redaction `record` applies, for text other domains store (WP-36: build log lines, BLD-049).
+pub fn redact_text(text: &str) -> String;
+// (WP-36) AuditAction adds Cancel; AuditTarget adds Release(ReleaseId), BuildJob(BuildJobId), Builder(BuilderId).
 
 /// Broadcast of new events and status changes for subscriptions (LOG-010).
 #[derive(Clone)] pub struct Bus { /* tokio::sync::broadcast */ }
@@ -98,6 +115,7 @@ Wiring only (called from `main.rs`, never from another domain): `create_partitio
 | `checks` (Phase 2, adds) | `sessions` (`link`, `SshLink`, `FixedCommand` only; no cycle: `sessions` does not import `checks`) |
 | `metrics` (Phase 2, new) | `devices`, `sessions` (link only), `credentials` (`Vault` only), `events` |
 | `web_interfaces` (Phase 2, new) | `checks` (`http_urls` only), `events` |
+| `builds` (WP-36, new) | `access` (builder tokens, `Identity`, the guards), `events` |
 
 GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also import these domains' public faces, to resolve K1 fields that join domains. These edges never permit a `store` import and do not count toward cycles. They live in `quality/hub-modules.json` under `graphql`.
 
@@ -107,6 +125,7 @@ GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also 
 
 | `devices` (Phase 2, adds) | `metrics`, `web_interfaces` | `Device.readings`, `Device.metrics`, `Device.gpus`, `Device.webInterfaces`, `Device.webInterfaceSuggestions` |
 | `metrics`, `web_interfaces` (Phase 2) | `access` (R-022) | the `Authenticated` guard on their root fields |
+| `builds` (WP-36) | `access` | the `Authenticated` and `BuilderSignedIn` guards |
 | `checks`, `maintenance`, `events` | `access` (R-022) | the `Authenticated` guard on their root fields (API-003) |
 
 `sessions` already depends on `access`. Through these edges a `graphql.rs` uses only `access::Authenticated`; `Operator` and `ClientAddr` come from `events` (R-019).
@@ -301,6 +320,18 @@ pub async fn gpus(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, Vec
 pub async fn for_devices(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, Vec<WebInterface>>, Error>;
 pub async fn suggestions(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, Vec<Suggestion>>, Error>;
 ```
+
+## builds (WP-36, R-081)
+
+```rust
+#[derive(Clone)] pub struct Updates { /* bounded broadcast of JobUpdate */ }   // BLD-081
+#[derive(Clone, Copy)] pub struct BuildQueue<'a> { pub db: &'a Db, pub bus: &'a events::Bus, pub updates: &'a Updates }
+pub const LEASE_SWEEP: Duration;   // 30 s (D-2)
+/// Wiring only (upkeep.rs): ends every lease that ran out by `now`; the third end fails the job (BLD-006).
+pub async fn expire_leases(queue: BuildQueue<'_>, now: DateTime<Utc>) -> Result<usize, Error>;
+```
+
+No other domain imports `builds`.
 
 ## guac-protocol crate (WP-08)
 

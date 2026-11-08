@@ -31,6 +31,8 @@ const NOT_ENROLLED: &str = "This builder is not enrolled.";
 pub struct BuilderInput {
     pub name: String,
     pub platform: Platform,
+    /// The VPN address the request came from; the builder must call from it (BLD-024).
+    pub client: IpAddr,
 }
 
 /// A new builder and its token, shown once. No `Debug`: it holds the token (LOG-007).
@@ -60,7 +62,7 @@ fn name(text: &str) -> Result<String, FieldError> {
     Ok(text.to_owned())
 }
 
-/// Records a builder that calls from `client` and issues its token, valid 180 days
+/// Records a builder that calls from the input's address and issues its token, valid 180 days
 /// (BLD-021, BLD-022). The caller commits it with its audit entry.
 ///
 /// # Errors
@@ -70,7 +72,6 @@ pub async fn enrol(
     conn: &mut PgConnection,
     operator: OperatorId,
     input: &BuilderInput,
-    client: IpAddr,
     now: DateTime<Utc>,
 ) -> Result<Enrolment, Error> {
     let name = name(&input.name).map_err(|e| Error::Validation(vec![e]))?;
@@ -81,7 +82,7 @@ pub async fn enrol(
         id: BuilderId::from(Uuid::now_v7()),
         name,
         platform: input.platform,
-        client,
+        client: input.client,
         enrolled_at: now,
         last_seen_at: None,
     };

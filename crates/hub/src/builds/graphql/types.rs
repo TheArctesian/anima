@@ -207,6 +207,11 @@ impl Builder {
     }
 
     /// It called within the last 60 seconds (BLD-007).
+    #[expect(
+        clippy::unused_async,
+        clippy::unused_async_trait_impl,
+        reason = "the Object macro requires async resolvers"
+    )]
     async fn online(&self, ctx: &Context<'_>) -> Result<bool> {
         let now = schema_dependency::<Arc<dyn Clock>>(ctx)?.now();
         Ok(self.online_at(now))

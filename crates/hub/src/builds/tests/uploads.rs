@@ -22,7 +22,11 @@ fn file(name: &str, sha256: &str, size: i64) -> UploadedFile {
 #[test]
 fn bld_063_the_files_are_plain_names_with_a_sha256_and_a_size() {
     let good = [
-        file("Anima_0.1.12_amd64.AppImage", &SHA.to_uppercase(), 120_000_000),
+        file(
+            "Anima_0.1.12_amd64.AppImage",
+            &SHA.to_uppercase(),
+            120_000_000,
+        ),
         file("SHA256SUMS", SHA, 200),
     ];
     let kept = upload::files(&good).unwrap();
@@ -44,7 +48,13 @@ fn bld_063_the_files_are_plain_names_with_a_sha256_and_a_size() {
 #[test]
 fn bld_063_the_proposed_feed_is_a_json_object_of_at_most_64_kib() {
     assert!(upload::feed(r#"{"version":"0.1.12","platforms":{}}"#).is_ok());
-    for bad in ["", "[]", "\"x\"", "{", &format!("{{\"a\":\"{}\"}}", "x".repeat(65_536))] {
+    for bad in [
+        "",
+        "[]",
+        "\"x\"",
+        "{",
+        &format!("{{\"a\":\"{}\"}}", "x".repeat(65_536)),
+    ] {
         assert_eq!(upload::feed(bad).unwrap_err().field, "feed");
     }
 }

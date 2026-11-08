@@ -7,7 +7,7 @@ use sqlx::{PgConnection, PgPool};
 
 use super::{
     Error, JobUpdate, Updates, log_lines,
-    model::{BuildJob, Builder, JobState, LogLine, Missing, UploadedFile},
+    model::{BuildJob, Builder, JobState, LogLine, Missing, Report, UploadedFile},
     queue::{self, Refusal},
     store, upload,
 };
@@ -34,17 +34,6 @@ impl BuildQueue<'_> {
             });
         }
     }
-}
-
-/// A builder's report on the job it holds (BLD-010, BLD-048).
-#[derive(Clone, Debug)]
-pub struct Report {
-    pub job: BuildJobId,
-    /// The new state; `None` (or the current state) only extends the lease.
-    pub state: Option<JobState>,
-    /// Why the job failed, for a `failed` report.
-    pub reason: Option<String>,
-    pub lines: Vec<String>,
 }
 
 /// A builder's report that the job's files are uploaded (BLD-063, D-5).
@@ -193,12 +182,11 @@ pub async fn report(
     now: DateTime<Utc>,
 ) -> Result<BuildJob, Error> {
     let lines = log_lines::clean_all(&report.lines).map_err(|e| Error::Validation(vec![e]))?;
-    let reason = log_lines::reason(report.reason.as_deref());
     let mut tx = build_queue.db.begin().await?;
     let job = store::job_locked(&mut tx, report.job)
         .await?
         .ok_or(Error::NotFound(Missing::Job(report.job)))?;
-    let mut next = queue::report(&job, builder.id, report.state, &reason, now)?;
+    let mut next = queue::report(&job, builder.id, &report, now)?;
     let stored = append(&mut tx, &mut next, lines).await?;
     store::save(&mut tx, &next).await?;
     if next.state == JobState::Failed {
@@ -231,7 +219,13 @@ pub async fn report_uploaded(
     let job = store::job_locked(&mut tx, uploaded.job)
         .await?
         .ok_or(Error::NotFound(Missing::Job(uploaded.job)))?;
-    let next = queue::report(&job, builder.id, None, "", now)?;
+    let extend = Report {
+        job: uploaded.job,
+        state: None,
+        reason: None,
+        lines: Vec::new(),
+    };
+    let next = queue::report(&job, builder.id, &extend, now)?;
     if next.state != JobState::Uploading {
         return Err(Error::Conflict(
             "Report the files while the job is uploading.".to_owned(),

@@ -23,13 +23,22 @@ async fn bld_080_create_cancel_enrol_and_revoke_are_audited(pool: PgPool) {
     let hub = Hub::new(&pool, start());
     let release = data(create(&hub, &operator, "0.1.12").await);
     let release_id = release["createRelease"]["id"].as_str().unwrap().to_owned();
-    let job = release["createRelease"]["jobs"][0]["id"].as_str().unwrap().to_owned();
+    let job = release["createRelease"]["jobs"][0]["id"]
+        .as_str()
+        .unwrap()
+        .to_owned();
     let cancel = "mutation($id: ID!) { cancelBuildJob(id: $id) { state cancelledAt } }";
-    let cancelled = data(hub.post(Some(&operator), cancel, json!({ "id": job })).await);
+    let cancelled = data(
+        hub.post(Some(&operator), cancel, json!({ "id": job }))
+            .await,
+    );
     assert_eq!(cancelled["cancelBuildJob"]["state"], "CANCELLED");
     let builder = enrol(&hub, &operator, "pop-os").await;
     let revoke = "mutation($id: ID!) { revokeBuilder(id: $id) }";
-    data(hub.post(Some(&operator), revoke, json!({ "id": builder.id })).await);
+    data(
+        hub.post(Some(&operator), revoke, json!({ "id": builder.id }))
+            .await,
+    );
 
     let rows = audit_rows(&pool).await;
     let summary: Vec<(&str, &str, &str)> = rows
@@ -62,7 +71,9 @@ async fn bld_008_only_a_queued_job_can_be_cancelled(pool: PgPool) {
     let builder = enrol(&hub, &operator, "pop-os").await;
     data(claim(&hub, &builder.token).await);
     let cancel = "mutation($id: ID!) { cancelBuildJob(id: $id) { state } }";
-    let response = hub.post(Some(&operator), cancel, json!({ "id": job })).await;
+    let response = hub
+        .post(Some(&operator), cancel, json!({ "id": job }))
+        .await;
     assert_eq!(error(&response).1, "CONFLICT", "{response}");
     let cancels = audit_rows(&pool)
         .await

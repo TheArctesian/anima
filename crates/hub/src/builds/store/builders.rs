@@ -27,6 +27,14 @@ struct Row {
     last_seen_at: Option<DateTime<Utc>>,
 }
 
+/// A deleted builder's row and its token.
+#[derive(sqlx::FromRow)]
+struct Deleted {
+    #[sqlx(flatten)]
+    row: Row,
+    token_id: TokenId,
+}
+
 impl TryFrom<Row> for Builder {
     type Error = Error;
 
@@ -92,34 +100,16 @@ pub(in crate::builds) async fn delete_builder(
     conn: &mut PgConnection,
     id: BuilderId,
 ) -> Result<Option<(Builder, TokenId)>, Error> {
-    let row: Option<(
-        BuilderId,
-        String,
-        String,
-        String,
-        IpAddr,
-        DateTime<Utc>,
-        TokenId,
-    )> = sqlx::query_as(
+    let deleted: Option<Deleted> = sqlx::query_as(
         "DELETE FROM builds.builders WHERE id = $1 \
-             RETURNING id, name, os, arch, client_addr, enrolled_at, token_id",
+         RETURNING id, name, os, arch, client_addr, enrolled_at, last_seen_at, token_id",
     )
     .bind(id)
     .fetch_optional(conn)
     .await?;
-    row.map(|(id, name, os, arch, client_addr, enrolled_at, token)| {
-        let row = Row {
-            id,
-            name,
-            os,
-            arch,
-            client_addr,
-            enrolled_at,
-            last_seen_at: None,
-        };
-        Ok((Builder::try_from(row)?, token))
-    })
-    .transpose()
+    deleted
+        .map(|deleted| Ok((Builder::try_from(deleted.row)?, deleted.token_id)))
+        .transpose()
 }
 
 /// Every builder, in enrolment order.

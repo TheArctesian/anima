@@ -30,6 +30,9 @@ use super::{
 };
 use crate::{access::Authenticated, clock::Clock, ids::BuildJobId};
 
+/// The page size of `releases` when the client names none (K1).
+const FIRST_RELEASES: i32 = 20;
+
 fn pool<'a>(ctx: &Context<'a>) -> Result<&'a PgPool> {
     schema_dependency::<PgPool>(ctx)
 }
@@ -58,9 +61,10 @@ impl Query {
     async fn releases(
         &self,
         ctx: &Context<'_>,
-        #[graphql(default = 20)] first: i32,
+        #[graphql(default_with = "Some(FIRST_RELEASES)")] first: Option<i32>,
         after: Option<String>,
     ) -> Result<ReleaseConnection> {
+        let first = first.unwrap_or(FIRST_RELEASES);
         let page = super::releases(pool(ctx)?, first, after.as_deref())
             .await
             .map_err(to_graphql)?;
@@ -95,6 +99,10 @@ pub struct Mutation;
 impl Mutation {
     /// Queues one job for each target (BLD-001, BLD-002).
     #[graphql(guard = "Authenticated")]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "K1 fixes the argument list of Mutation.createRelease"
+    )]
     async fn create_release(
         &self,
         ctx: &Context<'_>,
@@ -151,17 +159,12 @@ impl Mutation {
         let input = BuilderInput {
             name,
             platform: platform.into(),
+            client: trail.client.0,
         };
         let mut tx = begin(ctx).await?;
-        let enrolment = super::enrol(
-            &mut tx,
-            trail.operator.id,
-            &input,
-            trail.client.0,
-            trail.now,
-        )
-        .await
-        .map_err(to_graphql)?;
+        let enrolment = super::enrol(&mut tx, trail.operator.id, &input, trail.now)
+            .await
+            .map_err(to_graphql)?;
         trail
             .write(&mut tx, trail::builder_enrolled(&enrolment.builder))
             .await?;

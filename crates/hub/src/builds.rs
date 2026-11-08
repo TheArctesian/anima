@@ -25,10 +25,10 @@ use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
 pub use builders::{BuilderInput, Enrolment, builder_for, builders, enrol, revoke};
-pub use jobs::{BuildQueue, Report, Upload, claim, expire_leases, report, report_uploaded};
+pub use jobs::{BuildQueue, Upload, claim, expire_leases, report, report_uploaded};
 pub use model::{
     Arch, BuildJob, Builder, Commit, FieldError, JobState, JobUpdate, LogLine, Missing, Os,
-    Platform, Release, StateTimes, Target, UploadedFile,
+    Platform, Release, Report, StateTimes, Target, UploadedFile,
 };
 pub use page::{ReleasePage, cursor};
 pub use release::ReleaseInput;

@@ -17,10 +17,10 @@ use crate::ids::{BuildJobId, BuilderId, ReleaseId};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Enum)]
 #[graphql(name = "BuildTarget")]
 pub enum Target {
-    /// An AppImage, built on Linux on x86_64.
+    /// An `AppImage`, built on Linux on `x86_64`.
     #[graphql(name = "LINUX_X86_64")]
     LinuxX86_64,
-    /// An app and a DMG, built on macOS on aarch64.
+    /// An app and a DMG, built on macOS on `aarch64`.
     #[graphql(name = "DARWIN_UNIVERSAL")]
     DarwinUniversal,
 }
@@ -228,6 +228,17 @@ pub struct Builder {
 pub struct LogLine {
     pub sequence: i64,
     pub text: String,
+}
+
+/// A builder's report on the job it holds (BLD-010, BLD-048).
+#[derive(Clone, Debug)]
+pub struct Report {
+    pub job: BuildJobId,
+    /// The new state; `None` (or the current state) only extends the lease.
+    pub state: Option<JobState>,
+    /// Why the job failed, for a `failed` report.
+    pub reason: Option<String>,
+    pub lines: Vec<String>,
 }
 
 /// A file a builder reported uploaded (BLD-063).

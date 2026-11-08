@@ -74,7 +74,7 @@ async fn bld_006_an_ended_lease_requeues_the_job_and_fails_it_the_third_time(poo
         assert_eq!(claimed["claimBuildJob"]["id"], job.as_str());
         assert_eq!(claimed["claimBuildJob"]["attempts"], attempts);
     }
-    assert!(failure_events(&pool).await.is_empty());
+    assert_eq!(failure_events(&pool).await, Vec::<String>::new());
     let after = data(claim(&hub_at(&pool, 270), &builder.token).await);
     assert_eq!(after["claimBuildJob"], Value::Null);
 

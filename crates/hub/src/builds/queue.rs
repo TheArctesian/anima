@@ -3,7 +3,10 @@
 
 use chrono::{DateTime, TimeDelta, Utc};
 
-use super::model::{Arch, BuildJob, Builder, JobState, Os, Platform, Target};
+use super::{
+    log_lines,
+    model::{Arch, BuildJob, Builder, JobState, Os, Platform, Report, Target},
+};
 use crate::ids::BuilderId;
 
 /// How long a claim or a report holds the job (BLD-005).
@@ -104,15 +107,14 @@ pub(super) fn claim(job: &BuildJob, builder: &Builder, now: DateTime<Utc>) -> Bu
     next
 }
 
-/// The job after its holder's report at `now`: in state `to` when given (a report of the
-/// current state only extends the lease), with the lease extended, or ended for `failed`
-/// with `reason` (BLD-005, BLD-010). A builder may report only `building`, `uploading` and
+/// The job after its holder's report at `now`: in the reported state when given (a report of
+/// the current state only extends the lease), with the lease extended, or ended for `failed`
+/// with the cleaned reason (BLD-005, BLD-010). A builder may report only `building`, `uploading` and
 /// `failed`; publishing is the hub's (BLD-066).
 pub(super) fn report(
     job: &BuildJob,
     holder: BuilderId,
-    to: Option<JobState>,
-    reason: &str,
+    report: &Report,
     now: DateTime<Utc>,
 ) -> Result<BuildJob, Refusal> {
     if job.builder != Some(holder) || !job.state.is_leased() {
@@ -121,7 +123,7 @@ pub(super) fn report(
     if lease_ended(job, now) {
         return Err(Refusal::LeaseEnded);
     }
-    let to = to.unwrap_or(job.state);
+    let to = report.state.unwrap_or(job.state);
     let reportable = matches!(
         to,
         JobState::Building | JobState::Uploading | JobState::Failed
@@ -138,7 +140,7 @@ pub(super) fn report(
     };
     if to == JobState::Failed {
         next.lease_ends_at = None;
-        next.failure_reason = Some(reason.to_owned());
+        next.failure_reason = Some(log_lines::reason(report.reason.as_deref()));
     } else {
         next.lease_ends_at = Some(lease_end(now));
     }

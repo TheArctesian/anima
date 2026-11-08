@@ -12,7 +12,10 @@ pub const COMMIT: &str = "0123456789abcdef0123456789abcdef01234567";
 /// The data of a response that must have no errors.
 pub fn data(response: Value) -> Value {
     assert!(response["errors"].is_null(), "{response}");
-    response["data"].clone()
+    let Value::Object(mut fields) = response else {
+        panic!("a GraphQL response is an object");
+    };
+    fields.remove("data").unwrap_or_default()
 }
 
 /// The operator's session token, from a hub at `start()`.
@@ -27,13 +30,16 @@ pub struct Enrolled {
     pub token: String,
 }
 
-/// Enrols a builder for linux/x86_64 from the hub's client address.
+/// Enrols a builder for `linux/x86_64` from the hub's client address.
 pub async fn enrol(hub: &Hub, operator: &str, name: &str) -> Enrolled {
     let query = format!(
         "mutation($name: String!) {{ enrolBuilder(name: $name, platform: {LINUX}) \
          {{ token builder {{ id }} }} }}"
     );
-    let enrolment = data(hub.post(Some(operator), &query, json!({ "name": name })).await);
+    let enrolment = data(
+        hub.post(Some(operator), &query, json!({ "name": name }))
+            .await,
+    );
     let enrolment = &enrolment["enrolBuilder"];
     Enrolled {
         id: enrolment["builder"]["id"].as_str().unwrap().to_owned(),

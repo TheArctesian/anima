@@ -1,10 +1,21 @@
 //! The job rules: state changes, the lease and its end, platform match (BLD-003 to BLD-010).
 
 use super::{BUILDER, OTHER_BUILDER, builder, queued_job, seconds, start};
+use crate::builds::Report;
 use crate::builds::{
     model::{Arch, JobState, Os, Platform, Target},
     queue::{self, Refusal, STOPPED_REASON},
 };
+
+/// A report of `state` (none: only the lease) with `reason`.
+fn says(state: Option<JobState>, reason: &str) -> Report {
+    Report {
+        job: queued_job().id,
+        state,
+        reason: Some(reason.to_owned()),
+        lines: Vec::new(),
+    }
+}
 
 fn claimed() -> crate::builds::BuildJob {
     queue::claim(&queued_job(), &builder(BUILDER), start())
@@ -23,14 +34,19 @@ fn bld_005_a_claim_leases_the_job_for_90_seconds_to_the_builder() {
 
 #[test]
 fn bld_005_each_report_extends_the_lease_to_90_seconds_from_the_report() {
-    let job = queue::report(&claimed(), builder(BUILDER).id, None, "", seconds(15)).unwrap();
+    let job = queue::report(
+        &claimed(),
+        builder(BUILDER).id,
+        &says(None, ""),
+        seconds(15),
+    )
+    .unwrap();
     assert_eq!(job.state, JobState::Claimed);
     assert_eq!(job.lease_ends_at, Some(seconds(105)));
     let job = queue::report(
         &job,
         builder(BUILDER).id,
-        Some(JobState::Building),
-        "",
+        &says(Some(JobState::Building), ""),
         seconds(30),
     )
     .unwrap();
@@ -41,15 +57,30 @@ fn bld_005_each_report_extends_the_lease_to_90_seconds_from_the_report() {
 
 #[test]
 fn bld_010_a_report_from_a_builder_without_the_lease_is_refused() {
-    let refused = queue::report(&claimed(), builder(OTHER_BUILDER).id, None, "", seconds(5));
+    let refused = queue::report(
+        &claimed(),
+        builder(OTHER_BUILDER).id,
+        &says(None, ""),
+        seconds(5),
+    );
     assert_eq!(refused, Err(Refusal::NotHolder));
-    let queued = queue::report(&queued_job(), builder(BUILDER).id, None, "", seconds(5));
+    let queued = queue::report(
+        &queued_job(),
+        builder(BUILDER).id,
+        &says(None, ""),
+        seconds(5),
+    );
     assert_eq!(queued, Err(Refusal::NotHolder));
 }
 
 #[test]
 fn bld_006_a_report_after_the_lease_ended_is_refused() {
-    let late = queue::report(&claimed(), builder(BUILDER).id, None, "", seconds(90));
+    let late = queue::report(
+        &claimed(),
+        builder(BUILDER).id,
+        &says(None, ""),
+        seconds(90),
+    );
     assert_eq!(late, Err(Refusal::LeaseEnded));
 }
 
@@ -62,7 +93,7 @@ fn bld_010_a_builder_may_report_only_the_changes_the_diagram_permits() {
         JobState::Queued,
         JobState::Cancelled,
     ] {
-        let refused = queue::report(&claimed(), holder, Some(to), "", seconds(1));
+        let refused = queue::report(&claimed(), holder, &says(Some(to), ""), seconds(1));
         assert_eq!(
             refused,
             Err(Refusal::Change {
@@ -75,9 +106,14 @@ fn bld_010_a_builder_may_report_only_the_changes_the_diagram_permits() {
     let uploading = [JobState::Building, JobState::Uploading]
         .into_iter()
         .fold(claimed(), |job, to| {
-            queue::report(&job, holder, Some(to), "", seconds(1)).unwrap()
+            queue::report(&job, holder, &says(Some(to), ""), seconds(1)).unwrap()
         });
-    let published = queue::report(&uploading, holder, Some(JobState::Published), "", seconds(2));
+    let published = queue::report(
+        &uploading,
+        holder,
+        &says(Some(JobState::Published), ""),
+        seconds(2),
+    );
     assert!(matches!(published, Err(Refusal::Change { .. })));
 }
 
@@ -86,8 +122,7 @@ fn bld_010_a_failed_report_ends_the_lease_with_its_reason() {
     let job = queue::report(
         &claimed(),
         builder(BUILDER).id,
-        Some(JobState::Failed),
-        "gates failed",
+        &says(Some(JobState::Failed), "gates failed"),
         seconds(10),
     )
     .unwrap();
@@ -140,7 +175,10 @@ fn bld_003_a_platform_builds_only_its_own_target() {
     let platform = |os, arch| Platform { os, arch };
     let cases = [
         (platform(Os::Linux, Arch::X86_64), vec![Target::LinuxX86_64]),
-        (platform(Os::Macos, Arch::Aarch64), vec![Target::DarwinUniversal]),
+        (
+            platform(Os::Macos, Arch::Aarch64),
+            vec![Target::DarwinUniversal],
+        ),
         (platform(Os::Linux, Arch::Aarch64), vec![]),
         (platform(Os::Macos, Arch::X86_64), vec![]),
     ];
