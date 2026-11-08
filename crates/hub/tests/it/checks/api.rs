@@ -5,7 +5,7 @@ mod batching;
 mod edge;
 mod group;
 mod guard;
-mod harness;
+pub(super) mod harness;
 mod k1;
 mod listing;
 mod live;

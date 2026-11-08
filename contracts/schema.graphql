@@ -795,14 +795,14 @@ input DomainExpiryConfigInput @pending {
 }
 
 "The values the client pre-fills in a new check (D-26). Bounds as checks.checks."
-type CheckDefaults @pending {
+type CheckDefaults {
   intervalSeconds: Int!
   retries: Int!
   retryIntervalSeconds: Int!
   degradedThresholdMs: Int!
 }
 
-input CheckDefaultsInput @pending {
+input CheckDefaultsInput {
   intervalSeconds: Int!
   retries: Int!
   retryIntervalSeconds: Int!
@@ -1416,7 +1416,7 @@ type Query {
 
   # Phase 3
   apiKeys: [ApiKey!]! @pending
-  checkDefaults: CheckDefaults! @pending
+  checkDefaults: CheckDefaults!
   notificationChannels: [NotificationChannel!]! @pending
   notificationSettings: NotificationSettings! @pending
   deliveries(channelId: ID, first: Int = 50, after: String): DeliveryConnection! @pending
@@ -1481,7 +1481,7 @@ type Mutation {
   "Login or browser token only. The source stays AGENT, shown as stale, until the operator changes it (R-092 D-7)."
   revokeAgentToken(deviceId: ID!): Device! @pending
 
-  setCheckDefaults(input: CheckDefaultsInput!): CheckDefaults! @pending
+  setCheckDefaults(input: CheckDefaultsInput!): CheckDefaults!
 
   createNotificationChannel(input: NotificationChannelInput!): NotificationChannel! @pending
   updateNotificationChannel(id: ID!, input: NotificationChannelInput!): NotificationChannel! @pending

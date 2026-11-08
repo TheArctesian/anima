@@ -20,6 +20,7 @@ macro_rules! select_check {
 
 mod attempts;
 mod beats;
+mod defaults;
 mod heartbeats;
 pub(super) mod repairs;
 mod retention;
@@ -42,6 +43,7 @@ use crate::ids::{CheckId, DeviceId};
 
 pub(super) use attempts::record_attempt;
 pub(super) use beats::record_beat;
+pub(super) use defaults::{read as read_defaults, write as write_defaults};
 #[cfg(test)]
 pub(in crate::checks) use heartbeats::{LATEST_SQL, PAGES_SQL};
 pub(super) use heartbeats::{latest as latest_heartbeats, pages as heartbeat_pages};
