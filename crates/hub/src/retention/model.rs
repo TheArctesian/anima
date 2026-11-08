@@ -44,10 +44,3 @@ impl Subject {
             .find(|subject| subject.as_str() == text)
     }
 }
-
-/// An input field the operator must fix.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FieldError {
-    pub field: &'static str,
-    pub message: String,
-}

@@ -4,25 +4,28 @@
 //! `setRetention` writes the period, one audit entry and one event in one transaction: if any
 //! step fails, nothing is stored.
 
-mod error;
 mod trail;
 
-use async_graphql::{Context, Object, Result, SimpleObject};
-use sqlx::PgPool;
+use async_graphql::{Context, Error as GraphQlError, Object, Result, SimpleObject};
 
-use self::{
-    error::{internal, invalid, schema_dependency, to_graphql},
-    trail::Trail,
-};
 use super::{
     Error, Periods, Subject,
     bounds::{bounds, checked},
     periods, store,
 };
-use crate::access::Authenticated;
+use crate::{
+    access::Authenticated,
+    api_errors::{internal, invalid, pool},
+    events::Trail,
+};
 
-fn pool<'a>(ctx: &Context<'a>) -> Result<&'a PgPool> {
-    schema_dependency::<PgPool>(ctx)
+/// The GraphQL error with its `extensions.code`; anything the operator cannot act on is
+/// `INTERNAL` with no detail (K7, API-010).
+fn to_graphql(error: Error) -> GraphQlError {
+    match error {
+        Error::Validation(fields) => invalid(&fields),
+        other => internal(other),
+    }
 }
 
 /// One subject's period and the range it may be set in.
@@ -94,7 +97,8 @@ impl Mutation {
             .ok_or_else(|| to_graphql(Error::Unreadable))?;
         trail
             .write(&mut tx, trail::changed(subject, days, previous))
-            .await?;
+            .await
+            .map_err(internal)?;
         tx.commit()
             .await
             .map_err(|e| internal(Error::Database(e)))?;

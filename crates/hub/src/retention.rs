@@ -11,7 +11,9 @@ mod tests;
 use chrono::Days;
 use sqlx::PgPool;
 
-pub use model::{FieldError, Subject};
+use crate::api_errors::{FieldError, field_names};
+
+pub use model::Subject;
 
 /// Why a retention operation failed. Messages hold no SQL and no input value.
 #[derive(Debug, thiserror::Error)]
@@ -35,15 +37,6 @@ impl Error {
             Self::Validation(_) | Self::Unreadable => "unreadable",
         }
     }
-}
-
-/// The names of the fields in error, never their values.
-fn field_names(errors: &[FieldError]) -> String {
-    errors
-        .iter()
-        .map(|error| error.field)
-        .collect::<Vec<_>>()
-        .join(", ")
 }
 
 /// The stored period of every subject, in days.

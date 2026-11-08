@@ -1,7 +1,8 @@
 //! The range of days the operator may set for each subject, and its default (D-25, DB-011).
 //! `migrations/0900_retention_periods.sql` states the same numbers in its check constraint.
 
-use super::model::{FieldError, Subject};
+use super::model::Subject;
+use crate::api_errors::FieldError;
 
 /// The smallest, largest and default number of days a subject is kept.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -27,8 +28,10 @@ pub(super) fn checked(subject: Subject, days: i64) -> Result<u16, FieldError> {
     u16::try_from(days)
         .ok()
         .filter(|days| (min..=max).contains(days))
-        .ok_or_else(|| FieldError {
-            field: "days",
-            message: format!("Keep {} for {min} to {max} days.", subject.as_str()),
+        .ok_or_else(|| {
+            FieldError::new(
+                "days",
+                format!("Keep {} for {min} to {max} days.", subject.as_str()),
+            )
         })
 }
