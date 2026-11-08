@@ -8,13 +8,14 @@ const FALLBACK_NAME: &str = "Apple GPU";
 
 /// One reading per `IOAccelerator` entry, indexed in the order they print. From each entry:
 /// `"Device Utilization %"` is busy, `"In use system memory"` is the memory the GPU holds, and
-/// `"model"` is the name. There is no VRAM: the GPU shares system memory (MET-007). An entry
+/// `"model"` is the name; a number is read up to its first character that is not a digit or
+/// a point, so `1e3` gives 1. There is no VRAM: the GPU shares system memory (MET-007). An entry
 /// with none of the three is skipped.
 #[must_use]
 pub fn gpus(output: &[u8]) -> Vec<GpuReading> {
     let mut entries: Vec<Entry<'_>> = Vec::new();
     for line in lines(output) {
-        if line.trim_start().starts_with("+-o ") || entries.is_empty() {
+        if line.trim_start_matches(['|', ' ']).starts_with("+-o ") || entries.is_empty() {
             entries.push(Entry::default());
         }
         if let Some(entry) = entries.last_mut() {
@@ -65,7 +66,9 @@ impl<'a> Entry<'a> {
 
 /// The text after `"key" =` in `line`, without the spaces before it.
 fn value<'a>(line: &'a str, key: &str) -> Option<&'a str> {
-    let (_, after) = line.split_once(&format!("\"{key}\""))?;
+    let (before, after) = line.split_once(key)?;
+    let after = after.strip_prefix('"')?;
+    before.ends_with('"').then_some(())?;
     Some(after.trim_start().strip_prefix('=')?.trim_start())
 }
 

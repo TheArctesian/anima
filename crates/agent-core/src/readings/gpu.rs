@@ -30,7 +30,8 @@ pub struct GpuReading {
     pub index: u32,
     pub name: String,
     pub vendor: GpuVendor,
-    /// The share of time the GPU was busy, 0 to 100.
+    /// The share of time the GPU was busy, as the device reported it. Not capped here: the hub
+    /// (`Sample::new`) and the agent cap percent kinds.
     pub busy_percent: Option<f64>,
     pub vram: Option<Vram>,
     pub temperature_c: Option<f64>,

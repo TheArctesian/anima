@@ -68,8 +68,9 @@ x, Name, 1, 2, 3, 4, 5\n\
 4, Good, 1, 2, 3, 4, 5\n\
 \n";
     let gpus = nvidia::gpus(output);
-    assert_eq!(gpus.len(), 1);
-    assert_eq!((gpus[0].index, gpus[0].name.as_str()), (4, "Good"));
+    // A name with a control character or bad bytes keeps its GPU under the fixed name.
+    let names: Vec<(u32, &str)> = gpus.iter().map(|g| (g.index, g.name.as_str())).collect();
+    assert_eq!(names, [(2, "NVIDIA GPU"), (4, "Good")]);
 }
 
 #[test]
@@ -263,4 +264,29 @@ fn met_016_ioreg_reads_hostile_values_without_failing() {
 #[test]
 fn met_016_ioreg_empty_output_gives_nothing() {
     assert_eq!(apple::gpus(b"").len(), 0);
+}
+
+#[test]
+fn met_016_intel_passes_over_a_last_complete_sample_without_engines() {
+    let output = br#"[{"engines": {"R": {"busy": 40.0}}},
+{"engines": {}}]"#;
+    assert_close(intel::gpu(output).unwrap().busy_percent.unwrap(), 40.0);
+}
+
+#[test]
+fn met_016_ioreg_reads_entries_indented_as_in_nested_output() {
+    let output = b"| +-o AGX  <class X>\n\
+|   \"model\" = \"Apple M3\"\n\
+|   \"PerformanceStatistics\" = {\"Device Utilization %\"=7}\n";
+    let gpus = apple::gpus(output);
+    assert_eq!(gpus.len(), 1);
+    assert_eq!(gpus[0].name, "Apple M3");
+    assert_close(gpus[0].busy_percent.unwrap(), 7.0);
+}
+
+#[test]
+fn met_016_ioreg_busy_in_exponent_form_reads_up_to_the_exponent() {
+    let output = b"+-o AGX  <class X>\n\
+    \"PerformanceStatistics\" = {\"Device Utilization %\"=1e3}\n";
+    assert_close(apple::gpus(output)[0].busy_percent.unwrap(), 1.0);
 }

@@ -87,7 +87,8 @@ Load Avg: 1.23, 1.45, 1.67\n\
 CPU usage: 5.26% user, 10.52% sys, 84.22% idle\n\
 SharedLibs: 600M resident, 100M data, 50M linkedit.\n";
 
-/// Captured on a Linux host with one RTX A5000 (`nvidia-smi` driver output, unedited).
+/// Captured on pop-os (the operator's Linux machine, one RTX A5000) on 2026-11-07 with the
+/// design spec §6.6 `nvidia-smi` command, unedited.
 pub const NVIDIA_SMI: &[u8] = b"0, NVIDIA RTX A5000, 12, 735, 24564, 61, 30.52\n";
 
 /// Constructed from the documented format: two GPUs, one with a comma in its name.

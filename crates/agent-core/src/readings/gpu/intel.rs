@@ -11,7 +11,8 @@ const NAME: &str = "Intel GPU";
 /// array of samples or, in older versions, objects separated by commas with no brackets; both
 /// read the same. A sample cut off by the link is ignored. Busy is the highest `busy` among the
 /// `engines`; power is `power.GPU`. An integrated GPU shares system memory, so there is no VRAM
-/// (MET-007). `None` when no complete sample has a usable engine.
+/// (MET-007). The sample used is the last complete one that has a usable
+/// engine, so a final sample with no engines is passed over. `None` when there is none.
 #[must_use]
 pub fn gpu(output: &[u8]) -> Option<GpuReading> {
     let text = String::from_utf8_lossy(output);
@@ -19,14 +20,15 @@ pub fn gpu(output: &[u8]) -> Option<GpuReading> {
         .filter_map(|object| serde_json::from_str::<Value>(object).ok())
         .filter_map(|sample| busy(&sample).map(|busy| (busy, power(&sample))))
         .last()?;
+    let (busy_percent, power_w) = sample;
     Some(GpuReading {
         index: 0,
         name: NAME.to_owned(),
         vendor: GpuVendor::Intel,
-        busy_percent: Some(sample.0),
+        busy_percent: Some(busy_percent),
         vram: None,
         temperature_c: None,
-        power_w: sample.1,
+        power_w,
         shared_memory_bytes: None,
     })
 }
