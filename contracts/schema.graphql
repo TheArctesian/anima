@@ -979,14 +979,14 @@ type AuditConnection {
 # ---------------------------------------------------------------- notifications (WP-45)
 # NOT-001..007, D-16..D-22.
 
-enum ChannelKind @pending {
+enum ChannelKind {
   WEBHOOK
   NTFY
   EMAIL
   APPRISE
 }
 
-enum NotificationKind @pending {
+enum NotificationKind {
   DOWN
   UP
   STILL_DOWN
@@ -995,23 +995,23 @@ enum NotificationKind @pending {
   TEST
 }
 
-enum WebhookMethod @pending {
+enum WebhookMethod {
   POST
   PUT
 }
 
-enum SmtpSecurity @pending {
+enum SmtpSecurity {
   TLS
   STARTTLS
 }
 
-enum AppriseMode @pending {
+enum AppriseMode {
   STATELESS_URLS
   CONFIG_KEY
 }
 
 "The URL can hold a credential, so only its origin is returned (D-17)."
-type WebhookSettings @pending {
+type WebhookSettings {
   origin: String!
   method: WebhookMethod!
   "Names only; values are sealed."
@@ -1019,13 +1019,13 @@ type WebhookSettings @pending {
 }
 
 "The topic and token are sealed: on a public server the topic is the credential."
-type NtfySettings @pending {
+type NtfySettings {
   server: String!
   priority: Int!
   tokenStored: Boolean!
 }
 
-type EmailSettings @pending {
+type EmailSettings {
   host: String!
   port: Int!
   security: SmtpSecurity!
@@ -1036,20 +1036,20 @@ type EmailSettings @pending {
 }
 
 "The URLs or the key are sealed."
-type AppriseSettings @pending {
+type AppriseSettings {
   server: String!
   mode: AppriseMode!
   tags: [String!]!
 }
 
-union ChannelSettings @pending = WebhookSettings | NtfySettings | EmailSettings | AppriseSettings
+union ChannelSettings = WebhookSettings | NtfySettings | EmailSettings | AppriseSettings
 
-type NotificationTemplate @pending {
+type NotificationTemplate {
   title: String!
   body: String!
 }
 
-type NotificationChannel @pending {
+type NotificationChannel {
   id: ID!
   name: String!
   kind: ChannelKind!
@@ -1063,7 +1063,7 @@ type NotificationChannel @pending {
   updatedAt: DateTime!
 }
 
-type Delivery @pending {
+type Delivery {
   id: ID!
   channelId: ID
   channelName: String!
@@ -1076,7 +1076,7 @@ type Delivery @pending {
   code: Int
 }
 
-enum DeliveryReason @pending {
+enum DeliveryReason {
   TARGET_NOT_PERMITTED
   BAD_ADDRESS
   SECRET_UNREADABLE
@@ -1120,20 +1120,20 @@ When the target changes (webhook origin, ntfy server, email host or port, Appris
 be sent again or cleared, or the update is VALIDATION. `headers`: null keeps, [] removes all, a list replaces all.
 The kind of a channel never changes. URLs and servers are https only; a server is an origin only (CR-14).
 """
-input WebhookSettingsInput @pending {
+input WebhookSettingsInput {
   url: String
   method: WebhookMethod = POST
   headers: [HttpHeaderInput!]
 }
 
-input NtfySettingsInput @pending {
+input NtfySettingsInput {
   server: String = "https://ntfy.sh"
   topic: String
   token: String
   priority: Int = 3
 }
 
-input EmailSettingsInput @pending {
+input EmailSettingsInput {
   host: String!
   port: Int = 587
   security: SmtpSecurity = STARTTLS
@@ -1143,7 +1143,7 @@ input EmailSettingsInput @pending {
   to: [String!]!
 }
 
-input AppriseSettingsInput @pending {
+input AppriseSettingsInput {
   server: String!
   mode: AppriseMode = STATELESS_URLS
   urls: [String!]
@@ -1151,19 +1151,19 @@ input AppriseSettingsInput @pending {
   tags: [String!] = []
 }
 
-input ChannelSettingsInput @oneOf @pending {
+input ChannelSettingsInput @oneOf {
   webhook: WebhookSettingsInput
   ntfy: NtfySettingsInput
   email: EmailSettingsInput
   apprise: AppriseSettingsInput
 }
 
-input NotificationTemplateInput @pending {
+input NotificationTemplateInput {
   title: String!
   body: String!
 }
 
-input NotificationChannelInput @pending {
+input NotificationChannelInput {
   name: String!
   onByDefault: Boolean = false
   settings: ChannelSettingsInput!
@@ -1417,7 +1417,7 @@ type Query {
   # Phase 3
   apiKeys: [ApiKey!]! @pending
   checkDefaults: CheckDefaults!
-  notificationChannels: [NotificationChannel!]! @pending
+  notificationChannels: [NotificationChannel!]!
   notificationSettings: NotificationSettings! @pending
   deliveries(channelId: ID, first: Int = 50, after: String): DeliveryConnection! @pending
   retention: [RetentionPeriod!]!
@@ -1483,9 +1483,9 @@ type Mutation {
 
   setCheckDefaults(input: CheckDefaultsInput!): CheckDefaults!
 
-  createNotificationChannel(input: NotificationChannelInput!): NotificationChannel! @pending
-  updateNotificationChannel(id: ID!, input: NotificationChannelInput!): NotificationChannel! @pending
-  deleteNotificationChannel(id: ID!): ID! @pending
+  createNotificationChannel(input: NotificationChannelInput!): NotificationChannel!
+  updateNotificationChannel(id: ID!, input: NotificationChannelInput!): NotificationChannel!
+  deleteNotificationChannel(id: ID!): ID!
   "Sends at once and waits at most 8 seconds (NOT-004)."
   sendTestNotification(id: ID!): Delivery! @pending
   setCheckNotifications(checkId: ID!, input: CheckNotificationsInput!): CheckNotifications! @pending
