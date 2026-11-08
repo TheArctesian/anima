@@ -1,12 +1,13 @@
-//! Who may use the hub: operator accounts, sign-in (desktop and browser), API tokens and the
-//! GraphQL guard (SEC-002, API-003, D-3), and from where: permitted networks and the listening
-//! edge (NET-001 to NET-003, SEC-001, SEC-008).
+//! Who may use the hub: operator accounts, sign-in (desktop and browser), API tokens, API keys
+//! for scripts and the GraphQL guard (SEC-002, API-003, INT-003, D-3, D-23), and from where:
+//! permitted networks and the listening edge (NET-001 to NET-003, SEC-001, SEC-008).
 
 mod browser;
 mod connection;
 pub mod graphql;
 mod guard;
 mod identity;
+mod keys;
 mod layer;
 pub mod listen;
 mod login;
@@ -64,6 +65,10 @@ pub enum Error {
     /// A `read` token asked for a mutation.
     #[error("This token may only read.")]
     ReadOnly,
+    /// The token's kind may not select a root field of the document, such as an API key
+    /// asking to manage keys or start a session (D-23, WP-43 A-6).
+    #[error("This token cannot do that. Sign in to the hub to do it.")]
+    KindRefused,
     /// `signInBrowser` came from another origin than the hub's own, or with none (A-4).
     #[error("Sign in from the hub's own address.")]
     OtherOrigin,
@@ -125,7 +130,9 @@ impl Error {
             Self::Unauthenticated | Self::WrongCredentials | Self::TotpSecret(_) => {
                 "UNAUTHENTICATED"
             }
-            Self::ReadOnly | Self::OtherOrigin | Self::NotPermitted => "FORBIDDEN",
+            Self::ReadOnly | Self::KindRefused | Self::OtherOrigin | Self::NotPermitted => {
+                "FORBIDDEN"
+            }
             Self::Validation { .. } => "VALIDATION",
             Self::Unreachable(_) => "UNAVAILABLE",
             Self::Database(_)
@@ -145,6 +152,7 @@ impl Error {
             Self::Unauthenticated
             | Self::WrongCredentials
             | Self::ReadOnly
+            | Self::KindRefused
             | Self::OtherOrigin
             | Self::NotPermitted
             | Self::Validation { .. } => None,
@@ -203,6 +211,7 @@ impl Error {
             Self::Unauthenticated
             | Self::WrongCredentials
             | Self::ReadOnly
+            | Self::KindRefused
             | Self::OtherOrigin
             | Self::NotPermitted
             | Self::Validation { .. }

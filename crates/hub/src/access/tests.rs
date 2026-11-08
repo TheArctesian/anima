@@ -15,6 +15,7 @@ use crate::{
     credentials::Vault,
 };
 
+mod key_roots;
 mod kinds;
 mod networks;
 mod races;

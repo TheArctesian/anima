@@ -56,7 +56,7 @@ input LoginInput {
 
 # Phase 3 (WP-43). D-3, D-4, D-23.
 
-enum TokenScope @pending {
+enum TokenScope {
   READ
   WRITE
 }
@@ -67,7 +67,7 @@ type BrowserSignIn {
   expiresAt: DateTime!
 }
 
-type ApiKey @pending {
+type ApiKey {
   id: ID!
   "1..64 characters, unique."
   name: String!
@@ -79,7 +79,7 @@ type ApiKey @pending {
   lastUsedAt: DateTime
 }
 
-type ApiKeyCreated @pending {
+type ApiKeyCreated {
   key: ApiKey!
   "Shown once. The hub keeps only its SHA-256 (INT-003, P3-004)."
   secret: String!
@@ -91,7 +91,7 @@ type AgentEnrolment @pending {
   expiresAt: DateTime!
 }
 
-input ApiKeyInput @pending {
+input ApiKeyInput {
   name: String!
   scope: TokenScope!
   "Required; at most one year from now (D-23)."
@@ -1415,7 +1415,7 @@ type Query {
   sessions(deviceId: ID, live: Boolean, first: Int = 50, after: String): SessionConnection!
 
   # Phase 3
-  apiKeys: [ApiKey!]! @pending
+  apiKeys: [ApiKey!]!
   checkDefaults: CheckDefaults!
   notificationChannels: [NotificationChannel!]! @pending
   notificationSettings: NotificationSettings! @pending
@@ -1474,8 +1474,8 @@ type Mutation {
   "Signed out (D-4). Sets the __Host-anima cookie; refused unless Origin is the public origin."
   signInBrowser(input: LoginInput!): BrowserSignIn!
   "Login or browser token only (D-23)."
-  createApiKey(input: ApiKeyInput!): ApiKeyCreated! @pending
-  revokeApiKey(id: ID!): ID! @pending
+  createApiKey(input: ApiKeyInput!): ApiKeyCreated!
+  revokeApiKey(id: ID!): ID!
   "Login or browser token only (INT-003). A new code makes the device's earlier unused codes useless."
   enrolAgent(deviceId: ID!): AgentEnrolment! @pending
   "Login or browser token only. The source stays AGENT, shown as stale, until the operator changes it (R-092 D-7)."

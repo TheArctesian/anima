@@ -1,7 +1,9 @@
-//! The only SQL for `access.operators`, `access.api_tokens`, `access.login_attempts` (in
-//! `store/attempts.rs`) and `access.permitted_networks` (in `store/permitted.rs`).
+//! The only SQL for `access.operators`, `access.api_tokens` (API keys in `store/keys.rs`),
+//! `access.login_attempts` (in `store/attempts.rs`) and `access.permitted_networks` (in
+//! `store/permitted.rs`).
 
 mod attempts;
+mod keys;
 mod permitted;
 
 use chrono::{DateTime, Utc};
@@ -11,6 +13,7 @@ use uuid::Uuid;
 pub(super) use attempts::{
     AttemptKey, Outcome, delete_attempts_of, failures, finish_attempt, start_attempt,
 };
+pub(super) use keys::{KEY_NAME_INDEX, NewKey, StoredKey, delete_key, insert_key, keys_of};
 pub(super) use permitted::{permitted_networks, replace_labelled_networks};
 
 use super::tokens::{Scope, TokenHash, TokenKind};
