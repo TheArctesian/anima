@@ -20,6 +20,11 @@ vi.mock('$lib/sessions/sessions.svelte', () => ({
 const browser = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 // The desktop shell's web view, as `webViewShell` gives it where the platform has web view tabs (WP-42 D-4).
 vi.mock('$lib/web-interfaces/shell/client-shell', () => ({ webViewShell: () => ({ openSystemBrowser: browser }) }));
+// ...and so these paths run with the desktop's answers: a browser opens a tab of its own instead (WEB-011).
+vi.mock('$lib/platform/platform', async () => {
+  const { DESKTOP_MAC } = await import('$lib/platform/answers.fixture');
+  return { capabilities: () => DESKTOP_MAC };
+});
 vi.mock('$app/navigation', () => ({
   goto: (href: string, options: unknown) => {
     current.goto.push([href, options]);
