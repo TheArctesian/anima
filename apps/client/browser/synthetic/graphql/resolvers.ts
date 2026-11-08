@@ -1,7 +1,7 @@
 import { GraphQLError } from 'graphql';
-import { BEARER_TOKEN, COOKIE_MAX_AGE_SECONDS, HUB_ORIGIN, OPERATOR, type Caller } from './access';
-import type { Row } from './fixtures';
-import { allDevices, connection, checkView, deviceOf, eventRows, sessionRows, type HubState } from './model';
+import { BEARER_TOKEN, COOKIE_MAX_AGE_SECONDS, HUB_ORIGIN, OPERATOR, type Caller } from '../access';
+import type { Row } from '../fixtures';
+import { allDevices, connection, checkView, deviceOf, eventRows, sessionRows, type HubState } from '../model';
 
 /** What one GraphQL call brings to its resolvers, and what they hand back for the answer's headers. */
 export interface CallContext {

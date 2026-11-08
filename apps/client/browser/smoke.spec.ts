@@ -1,4 +1,5 @@
 import { expect, test } from './test-hub';
+import { createHash } from 'node:crypto';
 import { HUB_ORIGIN } from './synthetic/access';
 
 // Smoke: the harness serves the production build, the client signs in by cookie and lists the fixture devices.
@@ -20,6 +21,13 @@ test.describe('signed in', () => {
     expect(headers['cross-origin-opener-policy']).toBe('same-origin');
     expect(headers['strict-transport-security']).toBe('max-age=31536000');
     expect(headers['cache-control']).toBe('no-cache');
+
+    // Every inline script of the built page is allowed by hash (a stale hash would block the app start).
+    const inline = await page.locator('script:not([src])').evaluateAll((scripts) => scripts.map((script) => script.textContent ?? ''));
+    expect(inline.length).toBeGreaterThan(0);
+    for (const body of inline) {
+      expect(headers['content-security-policy']).toContain(`'sha256-${createHash('sha256').update(body).digest('base64')}'`);
+    }
 
     expect(hub.recording.foreignRequests, `foreign origins: ${hub.recording.foreignOrigins.join(', ')}`).toBe(0);
     expect(hub.recording.where({ operation: 'Devices' }).length).toBeGreaterThan(0);

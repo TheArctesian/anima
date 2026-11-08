@@ -15,7 +15,7 @@ import {
 } from 'graphql';
 
 // The real K1 schema, with its `@pending` directive declared in the file, so it builds as it is.
-const SCHEMA_FILE = fileURLToPath(new URL('../../../../contracts/schema.graphql', import.meta.url));
+const SCHEMA_FILE = fileURLToPath(new URL('../../../../../contracts/schema.graphql', import.meta.url));
 
 export function loadSchema(): GraphQLSchema {
   return buildSchema(readFileSync(SCHEMA_FILE, 'utf8'));

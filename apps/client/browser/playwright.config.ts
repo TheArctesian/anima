@@ -2,6 +2,8 @@ import { existsSync } from 'node:fs';
 import { defineConfig, devices } from '@playwright/test';
 import { BUILD_FOLDER, BUILD_MISSING } from './synthetic/static-files';
 
+// Not part of `bun run gates`: gate 7 runs before the build exists. Build first (`bun run --cwd apps/client build`), install
+// the engines once (`bunx playwright install chromium webkit firefox`), then `bun run --cwd apps/client test:browsers`.
 // Browser tests run against the production build, which the synthetic hub serves from `apps/client/build/` (WP-44 E-7).
 // There is no web server and no network: every request ends in the hub inside the browser context.
 if (!existsSync(`${BUILD_FOLDER}index.html`)) throw new Error(`apps/client/build/ is missing: ${BUILD_MISSING}`);

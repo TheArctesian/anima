@@ -1,9 +1,18 @@
 import type { BrowserContext, Route } from '@playwright/test';
 import { graphql, parse, Kind, type DocumentNode, type ExecutionResult, type GraphQLSchema } from 'graphql';
-import { callerOf, clearedCookie, HUB_ORIGIN, sessionCookie, SESSION_COOKIE, SIGNED_OUT_FIELDS, COOKIE_MAX_AGE_SECONDS, type RequestFacts } from './access';
+import {
+  callerOf,
+  clearedCookie,
+  COOKIE_MAX_AGE_SECONDS,
+  HUB_ORIGIN,
+  SESSION_COOKIE,
+  sessionCookie,
+  SIGNED_OUT_FIELDS,
+  type RequestFacts,
+} from '../access';
 import { fieldFromFixtures } from './graphql-schema';
-import type { HubState } from './model';
-import type { Recording } from './recorder';
+import type { HubState } from '../model';
+import type { Recording } from '../recorder';
 import { rootValue, type CallContext } from './resolvers';
 
 /** What `POST /graphql` needs: the context holds the cookie jar. */
@@ -54,9 +63,9 @@ export async function requestFacts(context: BrowserContext, route: Route): Promi
 }
 
 /** Keeps the browser's cookie jar in step with what the hub says; the header is sent too, as the real hub does. */
-async function applyCookieEffects(context: BrowserContext, reply: CallContext['reply']): Promise<Record<string, string>> {
+async function applyCookieEffects(context: BrowserContext, reply: CallContext['reply'], now: Date): Promise<Record<string, string>> {
   if (reply.issuedToken !== undefined) {
-    const expires = Math.floor(Date.now() / 1000) + COOKIE_MAX_AGE_SECONDS;
+    const expires = Math.floor(now.getTime() / 1000) + COOKIE_MAX_AGE_SECONDS;
     await context.addCookies([
       { name: SESSION_COOKIE, value: reply.issuedToken, url: HUB_ORIGIN, httpOnly: true, secure: true, sameSite: 'Strict', expires },
     ]);
@@ -100,6 +109,6 @@ export async function answerGraphql(parts: GraphqlParts, route: Route): Promise<
   });
   const call: CallContext = { state: parts.state, caller, origin: facts.origin, cookie: facts.cookie, reply: {} };
   const result = caller === 'signed-out' && !allowedSignedOut(fields) ? unauthenticated() : await run(parts, body, call);
-  const headers = await applyCookieEffects(parts.context, call.reply);
+  const headers = await applyCookieEffects(parts.context, call.reply, parts.state.now());
   await route.fulfill({ status: 200, contentType: 'application/graphql-response+json', headers, body: JSON.stringify(result) });
 }

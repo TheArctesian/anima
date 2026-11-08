@@ -1,9 +1,10 @@
 import type { BrowserContext, Route, WebSocketRoute } from '@playwright/test';
-import { COOKIE_MAX_AGE_SECONDS, HUB_ORIGIN, SESSION_COOKIE } from './access';
+import { COOKIE_MAX_AGE_SECONDS, HUB_HOST, HUB_ORIGIN, SESSION_COOKIE } from './access';
+import { untilClosed } from './closed';
 import { loadFixtures } from './fixtures';
-import { answerGraphql } from './graphql-answers';
-import { loadSchema } from './graphql-schema';
-import { serveGraphqlSocket } from './graphql-socket';
+import { answerGraphql } from './graphql/graphql-answers';
+import { loadSchema } from './graphql/graphql-schema';
+import { serveGraphqlSocket } from './graphql/graphql-socket';
 import { newHubState } from './model';
 import { newRecording, type Recorder } from './recorder';
 import { staticSite, type StaticSite } from './static-files';
@@ -19,82 +20,76 @@ export interface SyntheticHub {
 }
 
 interface Options {
-  /** The clock for tickets and expiry; a spec may fix it. */
+  /** The clock for tickets and cookie expiry; a spec may fix it. */
   readonly now?: () => Date;
 }
 
 const METHOD_NOT_ALLOWED = 405;
 
-async function installHttp(
-  context: BrowserContext,
+async function serveRoute(
+  route: Route,
   site: StaticSite,
   answer: (route: Route) => Promise<void>,
   refuse: (url: string) => void,
 ): Promise<void> {
-  await context.route('**/*', async (route) => {
-    const request = route.request();
-    const url = new URL(request.url());
-    if (url.origin !== HUB_ORIGIN) {
-      refuse(request.url());
-      await route.abort('blockedbyclient');
-    } else if (request.method() === 'POST' && url.pathname === '/graphql') {
-      await answer(route);
-    } else if (url.pathname === '/health' && request.method() === 'GET') {
-      await route.fulfill({ status: 200, contentType: 'text/plain', body: 'ok' });
-    } else if (request.method() !== 'GET' && request.method() !== 'HEAD') {
-      await route.fulfill({ status: METHOD_NOT_ALLOWED, headers: { allow: 'GET, HEAD' }, body: '' });
-    } else {
-      const answered = site.answer(url.pathname);
-      await route.fulfill({ status: answered.status, headers: answered.headers, body: answered.body });
-    }
-  });
+  const request = route.request();
+  const url = new URL(request.url());
+  if (url.origin !== HUB_ORIGIN) {
+    refuse(request.url());
+    await route.abort('blockedbyclient');
+  } else if (request.method() === 'POST' && url.pathname === '/graphql') {
+    await answer(route);
+  } else if (url.pathname === '/health' && request.method() === 'GET') {
+    await route.fulfill({ status: 200, contentType: 'text/plain', body: 'ok' });
+  } else if (request.method() !== 'GET' && request.method() !== 'HEAD') {
+    await route.fulfill({ status: METHOD_NOT_ALLOWED, headers: { allow: 'GET, HEAD' }, body: '' });
+  } else {
+    const answered = site.answer(url.pathname);
+    await route.fulfill({ status: answered.status, headers: answered.headers, body: answered.body });
+  }
 }
 
-async function installSockets(
-  context: BrowserContext,
-  serve: Record<string, (socket: WebSocketRoute) => void | Promise<void>>,
-  refuse: (url: string) => void,
-): Promise<void> {
-  await context.routeWebSocket(/.*/, async (socket) => {
-    const url = new URL(socket.url());
-    const serveOne = url.origin === `wss://${new URL(HUB_ORIGIN).host}` ? serve[url.pathname] : undefined;
-    if (serveOne === undefined) {
-      refuse(socket.url());
-      await socket.close({ code: 1008, reason: 'Refused' });
-    } else {
-      await serveOne(socket);
-    }
-  });
+type SocketServer = (socket: WebSocketRoute) => void | Promise<void>;
+
+async function serveSocket(socket: WebSocketRoute, serve: Record<string, SocketServer>, refuse: (url: string) => void): Promise<void> {
+  const url = new URL(socket.url());
+  const serveOne = url.origin === `wss://${HUB_HOST}` ? serve[url.pathname] : undefined;
+  if (serveOne === undefined) {
+    refuse(socket.url());
+    await socket.close({ code: 1008, reason: 'Refused' });
+  } else {
+    await serveOne(socket);
+  }
 }
 
 /**
  * Installs the hub on `context`. The page origin is `https://hub.anima.ing`: navigate there. It serves `apps/client/build/`
  * with the K7 headers, runs the K1 schema over the contract fixtures, answers graphql-ws and both tunnels, and aborts and
- * counts every request to another origin.
+ * counts every request to another origin. A request still in flight when the test closes its context is dropped quietly.
  */
 export async function installSyntheticHub(context: BrowserContext, options: Options = {}): Promise<SyntheticHub> {
-  const state = newHubState(loadFixtures(), options.now ?? (() => new Date()));
+  const now = options.now ?? (() => new Date());
+  const state = newHubState(loadFixtures(), now);
   const recording = newRecording();
   const schema = loadSchema();
+  const site = staticSite();
   const refuse = (url: string): void => recording.refuseForeign(url);
-  await installHttp(context, staticSite(), (route) => answerGraphql({ context, schema, state, recording }, route), refuse);
-  await installSockets(
-    context,
-    {
-      '/graphql': (socket) => serveGraphqlSocket({ context, state, recording }, socket),
-      '/terminal': (socket) => {
-        serveTerminal({ state, recording }, socket);
-      },
-      '/tunnel': (socket) => {
-        serveGuacamole({ state, recording }, socket);
-      },
+  const graphql = (route: Route): Promise<void> => answerGraphql({ context, schema, state, recording }, route);
+  await context.route('**/*', (route) => untilClosed(() => serveRoute(route, site, graphql, refuse)));
+  const servers: Record<string, SocketServer> = {
+    '/graphql': (socket) => serveGraphqlSocket({ context, state, recording }, socket),
+    '/terminal': (socket) => {
+      serveTerminal({ state, recording }, socket);
     },
-    refuse,
-  );
+    '/tunnel': (socket) => {
+      serveGuacamole({ state, recording }, socket);
+    },
+  };
+  await context.routeWebSocket(/.*/, (socket) => untilClosed(() => serveSocket(socket, servers, refuse)));
   return {
     recording,
     async signIn() {
-      const expires = Math.floor(Date.now() / 1000) + COOKIE_MAX_AGE_SECONDS;
+      const expires = Math.floor(now().getTime() / 1000) + COOKIE_MAX_AGE_SECONDS;
       const value = state.browserSessions.issue();
       await context.addCookies([{ name: SESSION_COOKIE, value, url: HUB_ORIGIN, httpOnly: true, secure: true, sameSite: 'Strict', expires }]);
     },

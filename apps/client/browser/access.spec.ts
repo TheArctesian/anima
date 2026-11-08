@@ -2,9 +2,9 @@ import { graphql } from 'graphql';
 import { expect, test } from '@playwright/test';
 import { OPERATOR } from './synthetic/access';
 import { loadFixtures } from './synthetic/fixtures';
-import { fieldFromFixtures, loadSchema } from './synthetic/graphql-schema';
+import { fieldFromFixtures, loadSchema } from './synthetic/graphql/graphql-schema';
 import { newHubState } from './synthetic/model';
-import { rootValue, type CallContext } from './synthetic/resolvers';
+import { rootValue, type CallContext } from './synthetic/graphql/resolvers';
 
 // The other half of the K7 cookie model, which a page cannot show: a browser always sends its own Origin. These run in Node
 // against the hub's resolvers, with no browser.

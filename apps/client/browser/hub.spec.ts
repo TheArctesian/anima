@@ -72,6 +72,15 @@ test.describe('signed in', () => {
     expect((await callGraphql(page, ME)).errors?.[0]?.extensions?.code).toBe('UNAUTHENTICATED');
   });
 
+  test('API-002: a socket whose payload has a bad Authorization is closed even with the cookie', async ({ page }) => {
+    await open(page);
+    const outcome = await talkOnSocket(page, 'wss://hub.anima.ing/graphql', 'graphql-transport-ws', {
+      send: ['{"type":"connection_init","payload":{"authorization":"Bearer wrong"}}'],
+      expect: 1,
+    });
+    expect(outcome).toEqual({ frames: [], closeCode: 4403 });
+  });
+
   test('API-002: a socket with the cookie is acknowledged', async ({ page }) => {
     await open(page);
     const outcome = await talkOnSocket(page, 'wss://hub.anima.ing/graphql', 'graphql-transport-ws', {
@@ -80,6 +89,11 @@ test.describe('signed in', () => {
     });
     expect(outcome).toEqual({ frames: ['{"type":"connection_ack"}'], closeCode: null });
   });
+
+});
+
+test.describe('tunnels and the wall', () => {
+  test.use({ signedIn: true });
 
   test('RA-007: an SSH ticket opens the terminal once, and shows a prompt after the first resize', async ({ page }) => {
     await open(page);
