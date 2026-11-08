@@ -17,6 +17,10 @@ export interface Fixtures {
   readonly checks: Row[];
   readonly sessions: Row[];
   readonly metrics: Row[];
+  /** The Settings slices (WP-50): the retention periods, the check defaults and the API keys. */
+  readonly retention: Row[];
+  readonly checkDefaults: Row;
+  readonly apiKeys: Row[];
 }
 
 function readPhase(name: string): Row | undefined {
@@ -48,5 +52,8 @@ export function loadFixtures(): Fixtures {
     checks: collection('checks'),
     sessions: collection('sessions'),
     metrics: collection('metrics'),
+    retention: later.flatMap((file) => rows(file, 'retention')),
+    checkDefaults: (later.map((file) => file.checkDefaults).find((found) => found !== undefined) ?? {}) as Row,
+    apiKeys: later.flatMap((file) => rows(file, 'apiKeys')),
   };
 }

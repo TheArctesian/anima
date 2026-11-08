@@ -9,10 +9,11 @@ const API_DELAY_MS = 400;
 const SETTLE_MS = 1500;
 const CLS_LIMIT = 0.01;
 
-/** One line per page; a page added later (WP-50 adds /settings) is one more entry. */
+/** One line per page; a page added later is one more entry. */
 const PAGES = [
   { name: 'the device list', path: '/devices', shown: { role: 'link', name: 'mac-studio' } },
   { name: 'a device detail page', path: `/devices/${DEVICE_IDS.gpuBox}`, shown: { role: 'heading', name: 'gpu-box' } },
+  { name: 'the settings page', path: '/settings', shown: { role: 'button', name: 'Revoke metrics-scrape' } },
 ] as const;
 
 const SHIFT = 'animaLayoutShift';
@@ -42,7 +43,7 @@ async function slowGraphql(page: Page): Promise<void> {
   );
 }
 
-async function layoutShiftOf(page: Page, path: string, shown: { role: 'link' | 'heading'; name: string }): Promise<number> {
+async function layoutShiftOf(page: Page, path: string, shown: { role: 'link' | 'heading' | 'button'; name: string }): Promise<number> {
   await watchLayoutShift(page);
   await slowGraphql(page);
   await page.goto(path);
