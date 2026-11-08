@@ -12,7 +12,7 @@ db_test! {
             .await
             .unwrap();
         let pin = pinned.pin.clone().unwrap();
-        assert_eq!(pin.fingerprint.as_str(), HEX);
+        assert_eq!(pin.fingerprint.hex(), HEX);
 
         let moved = web_interfaces::update(&mut conn, id, &input("https://pve.lan:8006/other"))
             .await
@@ -44,7 +44,7 @@ db_test! {
         let again = web_interfaces::accept_certificate(&mut conn, secure, acceptance(&other))
             .await
             .unwrap();
-        assert_eq!(again.pin.unwrap().fingerprint.as_str(), other);
+        assert_eq!(again.pin.unwrap().fingerprint.hex(), other);
         assert_eq!(count(&pool, "pins").await, 1);
 
         for (id, text) in [(secure, "nope"), (plain, HEX)] {

@@ -6,9 +6,7 @@ use serde_json::json;
 use sqlx::PgPool;
 
 use super::{
-    Conflict, Error,
-    certificate::CertificateFingerprint,
-    find_device,
+    Conflict, Error, find_device,
     model::{Actor, ServerCertificate},
     observations::Endpoint,
     sightings::Sightings,
@@ -16,6 +14,7 @@ use super::{
 };
 use crate::{
     events::{self, AuditAction, AuditTarget, NewAudit},
+    fingerprint::CertificateFingerprint,
     ids::DeviceId,
 };
 

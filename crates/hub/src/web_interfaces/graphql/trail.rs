@@ -112,7 +112,7 @@ pub(super) fn suggestion_dismissed(check: CheckId, device: &Device) -> TrailEntr
 pub(super) fn certificate_accepted(interface: &WebInterface, device: &Device) -> TrailEntry {
     let mut change = fields(interface);
     if let Some(pin) = &interface.pin {
-        change["fingerprint"] = json!(pin.fingerprint.as_str());
+        change["fingerprint"] = json!(pin.fingerprint.hex());
     }
     entry(
         device,

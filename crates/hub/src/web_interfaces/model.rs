@@ -4,7 +4,10 @@ use std::fmt;
 
 use chrono::{DateTime, Utc};
 
-use crate::ids::{CheckId, DeviceId, OperatorId, WebInterfaceId};
+use crate::{
+    fingerprint::CertificateFingerprint,
+    ids::{CheckId, DeviceId, OperatorId, WebInterfaceId},
+};
 
 pub use crate::api_errors::FieldError;
 
@@ -33,28 +36,11 @@ impl OpenIn {
     }
 }
 
-/// A SHA-256 certificate fingerprint as 64 lower-case hex digits (D-5). Only the rules
-/// make one.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Fingerprint(pub(super) String);
-
-impl Fingerprint {
-    #[must_use]
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
-
-impl fmt::Display for Fingerprint {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.0)
-    }
-}
-
-/// The certificate the operator accepted for an interface, and when.
+/// The certificate the operator accepted for an interface, and when. It is stored and shown
+/// as 64 lower-case hex digits (D-5).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Pin {
-    pub fingerprint: Fingerprint,
+    pub fingerprint: CertificateFingerprint,
     pub at: DateTime<Utc>,
 }
 

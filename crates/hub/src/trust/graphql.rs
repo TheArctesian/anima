@@ -18,7 +18,7 @@ pub use self::{host_key::HostKeysByDevice, server_certificate::ServerCertificate
 
 use self::error::to_graphql;
 use super::{
-    CertificateFingerprint, Fingerprint, HostKey, ServerCertificate, Sightings,
+    Fingerprint, HostKey, ServerCertificate, Sightings,
     accept::{Acceptance, accept_host_key},
     accept_certificate::{CertificateAcceptance, accept_server_certificate},
     model::Actor,
@@ -28,6 +28,7 @@ use crate::{
     api_errors::{FieldError, invalid, schema_dependency},
     clock::Clock,
     events::{ClientAddr, Operator},
+    fingerprint::CertificateFingerprint,
     ids::DeviceId,
 };
 
@@ -82,13 +83,16 @@ fn certificate_acceptance(
     let device = device_id
         .parse::<DeviceId>()
         .map_err(|_| FieldError::new("deviceId", "That device id is not valid."));
-    let fingerprint = fingerprint.parse::<CertificateFingerprint>().map_err(|_| {
-        FieldError::new(
-            "fingerprintSha256",
-            "Enter the fingerprint as the connection test shows it: 32 pairs of hex digits \
+    let fingerprint = fingerprint
+        .trim()
+        .parse::<CertificateFingerprint>()
+        .map_err(|_| {
+            FieldError::new(
+                "fingerprintSha256",
+                "Enter the fingerprint as the connection test shows it: 32 pairs of hex digits \
              joined by colons.",
-        )
-    });
+            )
+        });
     match (device, fingerprint) {
         (Ok(device), Ok(fingerprint)) => Ok(CertificateAcceptance {
             device,

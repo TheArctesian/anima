@@ -20,7 +20,7 @@ fn d_5_accepts_64_hex_digits_with_or_without_colons_in_any_case() {
         with_colons(HEX),
         with_colons(&HEX.to_uppercase()),
     ] {
-        assert_eq!(fingerprint(&text).unwrap().as_str(), HEX, "{text}");
+        assert_eq!(fingerprint(&text).unwrap().hex(), HEX, "{text}");
     }
 }
 
