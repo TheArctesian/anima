@@ -7,6 +7,7 @@ import type {
   HttpMethod,
   IpVersion,
 } from './hub-types';
+import type { CheckDefaults } from '$lib/checks/api';
 import { blankProbes, withProbeConfig, type ProbeValues } from '../probes/values';
 
 export interface HeaderRow {
@@ -63,11 +64,11 @@ export interface CheckFormValues extends ProbeValues {
 /** CHK-008 and K1 `CreateCheckInput` defaults. */
 const DEFAULTS = { intervalSeconds: '60', retries: '3', retryIntervalSeconds: '20', degradedThresholdMs: '1000' } as const;
 
-function blank(type: CheckType): CheckFormValues {
+function blank(type: CheckType, defaults: CheckDefaults | null): CheckFormValues {
   return {
     type,
     name: '',
-    ...DEFAULTS,
+    ...(defaults === null ? DEFAULTS : defaultsText(defaults)),
     invert: false,
     icmp: { timeoutMs: '2000', ipVersion: 'V4' },
     tcp: { port: '', timeoutMs: '5000' },
@@ -172,15 +173,26 @@ function withConfig(values: CheckFormValues, config: CheckConfigFields): CheckFo
   }
 }
 
+/** The four settings as the form holds them. */
+export function defaultsText(defaults: CheckDefaults): Pick<CheckFormValues, keyof CheckDefaults> {
+  return {
+    intervalSeconds: String(defaults.intervalSeconds),
+    retries: String(defaults.retries),
+    retryIntervalSeconds: String(defaults.retryIntervalSeconds),
+    degradedThresholdMs: String(defaults.degradedThresholdMs),
+  };
+}
+
 /**
- * CHK-009: the form values for a new check of `type` with the K1 defaults, or for editing `check`.
- * An existing check keeps its own type; `type` is then ignored. No secret is ever filled in.
+ * CHK-009: the form values for a new check of `type`, or for editing `check`. A new check starts from
+ * `defaults` (D-26), or from the K1 input defaults when there are none. An existing check keeps its own
+ * type and settings; `type` and `defaults` are then ignored. No secret is ever filled in.
  */
-export function checkValues(check: CheckFields | null, type: CheckType): CheckFormValues {
-  if (check === null) return blank(type);
+export function checkValues(check: CheckFields | null, type: CheckType, defaults: CheckDefaults | null = null): CheckFormValues {
+  if (check === null) return blank(type, defaults);
   return withConfig(
     {
-      ...blank(check.type),
+      ...blank(check.type, null),
       name: check.name,
       intervalSeconds: String(check.intervalSeconds),
       retries: String(check.retries),

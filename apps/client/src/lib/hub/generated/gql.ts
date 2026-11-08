@@ -27,6 +27,8 @@ type Documents = {
     "\n  fragment SystemdCheckConfig on SystemdConfig {\n    __typename\n    unit\n    timeoutMs\n  }\n": typeof types.SystemdCheckConfigFragmentDoc,
     "\n  fragment SnmpCheckConfig on SnmpConfig {\n    __typename\n    port\n    version\n    oid\n    expected\n    username\n    timeoutMs\n  }\n": typeof types.SnmpCheckConfigFragmentDoc,
     "\n  fragment TailscalePingCheckConfig on TailscalePingConfig {\n    __typename\n    target\n    timeoutMs\n  }\n": typeof types.TailscalePingCheckConfigFragmentDoc,
+    "\n  query CheckDefaults {\n    checkDefaults {\n      intervalSeconds\n      retries\n      retryIntervalSeconds\n      degradedThresholdMs\n    }\n  }\n": typeof types.CheckDefaultsDocument,
+    "\n  mutation SetCheckDefaults($input: CheckDefaultsInput!) {\n    setCheckDefaults(input: $input) {\n      intervalSeconds\n      retries\n      retryIntervalSeconds\n      degradedThresholdMs\n    }\n  }\n": typeof types.SetCheckDefaultsDocument,
     "\n  query DeviceChecks($deviceId: ID!) {\n    device(id: $deviceId) {\n      id\n      checks {\n        ...CheckFields\n      }\n    }\n  }\n": typeof types.DeviceChecksDocument,
     "\n  query CheckHeartbeats($id: ID!, $first: Int, $after: String) {\n    check(id: $id) {\n      id\n      heartbeats(first: $first, after: $after) {\n        pageInfo {\n          hasNextPage\n          endCursor\n        }\n        edges {\n          node {\n            at\n            status\n            responseTimeMs\n            message\n          }\n        }\n      }\n    }\n  }\n": typeof types.CheckHeartbeatsDocument,
     "\n  mutation CreateCheck($input: CreateCheckInput!) {\n    createCheck(input: $input) {\n      ...CheckFields\n    }\n  }\n": typeof types.CreateCheckDocument,
@@ -93,6 +95,8 @@ const documents: Documents = {
     "\n  fragment SystemdCheckConfig on SystemdConfig {\n    __typename\n    unit\n    timeoutMs\n  }\n": types.SystemdCheckConfigFragmentDoc,
     "\n  fragment SnmpCheckConfig on SnmpConfig {\n    __typename\n    port\n    version\n    oid\n    expected\n    username\n    timeoutMs\n  }\n": types.SnmpCheckConfigFragmentDoc,
     "\n  fragment TailscalePingCheckConfig on TailscalePingConfig {\n    __typename\n    target\n    timeoutMs\n  }\n": types.TailscalePingCheckConfigFragmentDoc,
+    "\n  query CheckDefaults {\n    checkDefaults {\n      intervalSeconds\n      retries\n      retryIntervalSeconds\n      degradedThresholdMs\n    }\n  }\n": types.CheckDefaultsDocument,
+    "\n  mutation SetCheckDefaults($input: CheckDefaultsInput!) {\n    setCheckDefaults(input: $input) {\n      intervalSeconds\n      retries\n      retryIntervalSeconds\n      degradedThresholdMs\n    }\n  }\n": types.SetCheckDefaultsDocument,
     "\n  query DeviceChecks($deviceId: ID!) {\n    device(id: $deviceId) {\n      id\n      checks {\n        ...CheckFields\n      }\n    }\n  }\n": types.DeviceChecksDocument,
     "\n  query CheckHeartbeats($id: ID!, $first: Int, $after: String) {\n    check(id: $id) {\n      id\n      heartbeats(first: $first, after: $after) {\n        pageInfo {\n          hasNextPage\n          endCursor\n        }\n        edges {\n          node {\n            at\n            status\n            responseTimeMs\n            message\n          }\n        }\n      }\n    }\n  }\n": types.CheckHeartbeatsDocument,
     "\n  mutation CreateCheck($input: CreateCheckInput!) {\n    createCheck(input: $input) {\n      ...CheckFields\n    }\n  }\n": types.CreateCheckDocument,
@@ -212,6 +216,14 @@ export function graphql(source: "\n  fragment SnmpCheckConfig on SnmpConfig {\n 
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  fragment TailscalePingCheckConfig on TailscalePingConfig {\n    __typename\n    target\n    timeoutMs\n  }\n"): (typeof documents)["\n  fragment TailscalePingCheckConfig on TailscalePingConfig {\n    __typename\n    target\n    timeoutMs\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query CheckDefaults {\n    checkDefaults {\n      intervalSeconds\n      retries\n      retryIntervalSeconds\n      degradedThresholdMs\n    }\n  }\n"): (typeof documents)["\n  query CheckDefaults {\n    checkDefaults {\n      intervalSeconds\n      retries\n      retryIntervalSeconds\n      degradedThresholdMs\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation SetCheckDefaults($input: CheckDefaultsInput!) {\n    setCheckDefaults(input: $input) {\n      intervalSeconds\n      retries\n      retryIntervalSeconds\n      degradedThresholdMs\n    }\n  }\n"): (typeof documents)["\n  mutation SetCheckDefaults($input: CheckDefaultsInput!) {\n    setCheckDefaults(input: $input) {\n      intervalSeconds\n      retries\n      retryIntervalSeconds\n      degradedThresholdMs\n    }\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

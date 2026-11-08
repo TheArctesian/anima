@@ -13,6 +13,8 @@
   import TypeFields from './fields/TypeFields.svelte';
   import ProbeFields from './probes/ProbeFields.svelte';
   import SnmpFields from './probes/SnmpFields.svelte';
+  import { defaultsReader } from './defaults';
+  import { untouchedSettings } from './model/defaults';
   import { messageFor, placeHubErrors, shownFields, touchesAdvanced, unplaced } from './model/errors';
   import { groupCandidates, type SiblingCheck } from './model/group';
   import type { CheckFields, CheckType } from './model/hub-types';
@@ -54,6 +56,14 @@
 
   const initial = untrack(() => checkValues(check, 'ICMP'));
   let values = $state(initial);
+  // D-26: a new check starts from the K1 input defaults at once and takes the hub's defaults when they arrive, so a
+  // slow or failed answer never holds the form. A setting the operator has already changed is left as it is.
+  const readDefaults = untrack(() => (check === null ? defaultsReader() : null));
+  $effect(() => {
+    void readDefaults?.().then((result) => {
+      if (result.ok) Object.assign(values, untouchedSettings(values, initial, result.value));
+    });
+  });
   let errors = $state<FieldError[]>([]);
   let saving = $state(false);
   let advancedOpen = $state(false);

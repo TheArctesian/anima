@@ -64,16 +64,23 @@ function nameErrors(name: string): FieldError[] {
   return [...trimmed].length > LIMITS.nameChars ? [{ field: 'name', message: `A name is at most ${String(LIMITS.nameChars)} characters.` }] : [];
 }
 
-function commonErrors(values: CheckFormValues): FieldError[] {
+/** The four settings every check has, as text; the Default check settings section checks the same four (D-26). */
+export type CheckSettingsText = Pick<CheckFormValues, 'intervalSeconds' | 'retries' | 'retryIntervalSeconds' | 'degradedThresholdMs'>;
+
+/** CHK-008: the reasons the interval, retries, retry interval or degraded threshold is outside the hub's bounds. */
+export function settingsErrors(values: CheckSettingsText): FieldError[] {
   const { intervalSeconds, retries, retryIntervalSeconds, degradedThresholdMs } = LIMITS;
   const range = ([min, max]: readonly [number, number], what: string) => `${what} from ${String(min)} to ${String(max)}.`;
   return [
-    ...nameErrors(values.name),
     ...integerError('intervalSeconds', values.intervalSeconds, intervalSeconds, range(intervalSeconds, 'Enter an interval in seconds')),
     ...integerError('retries', values.retries, retries, range(retries, 'Enter the retries')),
     ...integerError('retryIntervalSeconds', values.retryIntervalSeconds, retryIntervalSeconds, range(retryIntervalSeconds, 'Enter a retry interval in seconds')),
     ...integerError('degradedThresholdMs', values.degradedThresholdMs, degradedThresholdMs, range(degradedThresholdMs, 'Enter a threshold in ms')),
   ];
+}
+
+function commonErrors(values: CheckFormValues): FieldError[] {
+  return [...nameErrors(values.name), ...settingsErrors(values)];
 }
 
 /**

@@ -1,5 +1,6 @@
 <script lang="ts">
   import ApiKeysSection from '$lib/api-keys/ApiKeysSection.svelte';
+  import DefaultsSection from '$lib/checks/defaults/DefaultsSection.svelte';
   import SignOutRow from '$lib/access/SignOutRow.svelte';
   import { capabilities } from '$lib/platform/platform';
   import MotionRow from '$lib/theme/MotionRow.svelte';
@@ -25,6 +26,11 @@
   <ThemeRow />
   <MotionRow />
   <TypefaceRows />
+</section>
+
+<section aria-labelledby="settings-check-defaults">
+  <h2 id="settings-check-defaults">Default check settings</h2>
+  <DefaultsSection />
 </section>
 
 <section aria-labelledby="settings-retention">

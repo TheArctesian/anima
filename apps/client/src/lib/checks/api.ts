@@ -1,5 +1,7 @@
 import { graphql } from '$lib/hub/generated';
 import type {
+  CheckDefaultsInput,
+  CheckDefaultsQuery,
   CheckHeartbeatsQuery,
   CreateCheckInput,
   DeviceChecksQuery,
@@ -137,6 +139,29 @@ void graphql(`
   }
 `);
 
+// Own documents (WP-50 F-3): the K1 default fields are @pending, so a hub without them fails these two documents only.
+const CheckDefaultsDocument = graphql(`
+  query CheckDefaults {
+    checkDefaults {
+      intervalSeconds
+      retries
+      retryIntervalSeconds
+      degradedThresholdMs
+    }
+  }
+`);
+
+const SetCheckDefaultsDocument = graphql(`
+  mutation SetCheckDefaults($input: CheckDefaultsInput!) {
+    setCheckDefaults(input: $input) {
+      intervalSeconds
+      retries
+      retryIntervalSeconds
+      degradedThresholdMs
+    }
+  }
+`);
+
 const DeviceChecks = graphql(`
   query DeviceChecks($deviceId: ID!) {
     device(id: $deviceId) {
@@ -206,6 +231,9 @@ export type NewHeartbeat = HeartbeatAddedSubscription['heartbeatAdded'];
 /** A check with its full configuration, as the check list and the check form need it (CHK-005, CHK-007, Section 6.4). */
 export type DeviceCheck = NonNullable<DeviceChecksQuery['device']>['checks'][number];
 
+/** The values a new check starts with (D-26). */
+export type CheckDefaults = CheckDefaultsQuery['checkDefaults'];
+
 /** One page of a check's heartbeats, newest first. */
 export type HeartbeatPage = NonNullable<CheckHeartbeatsQuery['check']>['heartbeats'];
 
@@ -257,5 +285,20 @@ export function checksApi(hub: Hub) {
           },
         },
       ),
+  };
+}
+
+/** The default check settings of the hub (D-26) as plain functions of a `Hub`. */
+export function checkDefaultsApi(hub: Hub) {
+  return {
+    get: async (): Promise<HubResult<CheckDefaults>> => {
+      const result = await hub.request(CheckDefaultsDocument, {});
+      return result.ok ? { ok: true, value: result.value.checkDefaults } : result;
+    },
+    /** The defaults as the hub now holds them. */
+    set: async (input: CheckDefaultsInput): Promise<HubResult<CheckDefaults>> => {
+      const result = await hub.request(SetCheckDefaultsDocument, { input });
+      return result.ok ? { ok: true, value: result.value.setCheckDefaults } : result;
+    },
   };
 }
