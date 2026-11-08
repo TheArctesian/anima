@@ -80,6 +80,9 @@ describe("hub configuration", () => {
     }
   });
 
+});
+
+describe("hub deny list, notify network and recordings", () => {
   test("NET-001 ANIMA_PROBE_DENY covers every network the hub joins, notify minus exactly the Apprise address", () => {
     const hub = compose.services["hub"] as Container;
     const apprise = compose.services["apprise"] as Container;
@@ -143,6 +146,9 @@ describe("hub configuration", () => {
     expect(Object.keys(hub.depends_on ?? {})).not.toContain("apprise");
   });
 
+});
+
+describe("hub certificates and listen address", () => {
   test("DNS-002 the hub reads certificate and key from the one tls.pem on the certs volume", () => {
     const environment = compose.services["hub"]?.environment ?? {};
     expect(environment["ANIMA_TLS_CERT_FILE"]).toBe("/certs/hub/tls.pem");
