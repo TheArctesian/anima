@@ -6,10 +6,10 @@ export const COUNT_MAX = 5;
 export const DEFAULT_DAYS: readonly number[] = [21, 14, 7];
 
 export const DAYS_MISSING = 'Enter at least one number of days.';
-export const DAYS_NOT_WHOLE = 'Use whole numbers of days, separated by commas.';
-export const DAYS_OUT_OF_RANGE = `Each value must be from ${String(DAYS_MIN)} to ${String(DAYS_MAX)} days.`;
+export const DAYS_NOT_WHOLE = 'Use whole days, separated by commas.';
+export const DAYS_OUT_OF_RANGE = `Use days from ${String(DAYS_MIN)} to ${String(DAYS_MAX)}.`;
 export const DAYS_TOO_MANY = `Use at most ${String(COUNT_MAX)} values.`;
-export const DAYS_NOT_DESCENDING = 'List the days from largest to smallest, each once.';
+export const DAYS_NOT_DESCENDING = 'List the largest first, each once.';
 
 export type DaysCheck = { readonly ok: true; readonly days: number[] } | { readonly ok: false; readonly message: string };
 

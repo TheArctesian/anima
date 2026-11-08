@@ -164,7 +164,7 @@ it('LOG-007: a refused save shows a fixed sentence, keeps the typed values for a
   await typeNewWebhook({ CreateNotificationChannel: failure('INTERNAL', `target said ${FAKE_SECRET}`) });
   inDialog('Save').click();
   await settled();
-  expect(dialog()?.querySelector('.failure')?.textContent).toBe('The hub did not save the channel. Try again.');
+  expect(dialog()?.querySelector('.failure')?.textContent).toBe('Channel not saved. Try again.');
   expect(places(FAKE_SECRET)).toMatchObject({ markup: 0, values: 2, storage: 0, url: 0 });
   expectSilentConsole();
 });

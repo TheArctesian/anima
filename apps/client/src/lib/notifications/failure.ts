@@ -6,7 +6,7 @@ import type { HubError } from '$lib/hub/hub';
 type Action = 'save' | 'delete' | 'test' | 'settings';
 
 const OTHER: Record<Action, string> = {
-  save: 'The hub did not save the channel. Try again.',
+  save: 'Channel not saved. Try again.',
   delete: 'The hub did not delete the channel. Try again.',
   test: 'Anima could not send the test. Try again.',
   settings: 'The hub did not save the settings. Try again.',
@@ -50,11 +50,11 @@ export function failureText(error: HubError, action: Action): string {
       return labels.length === 0 ? 'The hub refused what was entered.' : `The hub refused: ${labels.join(', ')}.`;
     }
     case 'CONFLICT':
-      return action === 'save' ? 'A channel with this name exists. Choose another name.' : OTHER[action];
+      return action === 'save' ? 'Name in use. Choose another.' : OTHER[action];
     case 'NOT_FOUND':
       return 'This channel no longer exists.';
     case 'FORBIDDEN':
-      return 'This sign-in cannot change notifications.';
+      return 'Not allowed for this sign-in.';
     case 'unreachable':
     case 'malformed':
       // These two are the client's own fixed sentences (`$lib/hub/error`).

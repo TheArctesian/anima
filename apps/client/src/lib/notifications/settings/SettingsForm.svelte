@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { flushSync } from 'svelte';
   import FormButton from '$lib/forms/FormButton.svelte';
   import type { HubResult } from '$lib/hub/hub';
   import Field from '../Field.svelte';
@@ -43,7 +44,12 @@
     daysProblem = checked.ok ? '' : checked.message;
     problems = found;
     outcome = '';
-    if (!checked.ok || !templateFine(found)) return;
+    if (!checked.ok || !templateFine(found)) {
+      // Focus goes to the first refused field, which reads out its problem (F-9, UI-015).
+      flushSync();
+      (event.currentTarget as HTMLFormElement).querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+      return;
+    }
     busy = true;
     const result = await save({ certificateDays: checked.days, template: { title: template.title, body: template.body } });
     busy = false;

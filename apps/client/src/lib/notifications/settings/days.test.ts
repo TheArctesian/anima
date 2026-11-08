@@ -28,4 +28,9 @@ describe('certificate expiry days', () => {
     for (const text of ['21.5', '-7', '14 days', '1e2', '0x10']) expect(checkDays(text)).toEqual({ ok: false, message: DAYS_NOT_WHOLE });
     expect(checkDays(' , ')).toEqual({ ok: false, message: DAYS_MISSING });
   });
+
+  it('MOT-007: each refusal fits the one line kept under the field at 390 px (36 characters)', () => {
+    const messages = [DAYS_MISSING, DAYS_NOT_DESCENDING, DAYS_NOT_WHOLE, DAYS_OUT_OF_RANGE, DAYS_TOO_MANY];
+    expect(messages.filter((message) => message.length > 36)).toEqual([]);
+  });
 });

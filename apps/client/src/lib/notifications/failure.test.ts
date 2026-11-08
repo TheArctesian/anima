@@ -9,6 +9,12 @@ function errorOf(result: ReturnType<typeof failure>) {
 }
 
 describe('failureText', () => {
+  it('MOT-007: what a refused save says fits the line kept in the editor footer at 390 px (35 characters)', () => {
+    const codes = ['VALIDATION', 'CONFLICT', 'NOT_FOUND', 'FORBIDDEN', 'UNAVAILABLE', 'INTERNAL', 'UNAUTHENTICATED'] as const;
+    const sentences = codes.map((code) => failureText(errorOf(failure(code)), 'save'));
+    expect(sentences.filter((sentence) => sentence.length > 35)).toEqual([]);
+  });
+
   it('LOG-007, F-8: the hub text is never shown, whatever the code', () => {
     for (const code of ['VALIDATION', 'CONFLICT', 'NOT_FOUND', 'FORBIDDEN', 'UNAVAILABLE', 'INTERNAL', 'UNAUTHENTICATED'] as const) {
       for (const action of ['save', 'delete', 'test', 'settings'] as const) {
@@ -33,7 +39,7 @@ describe('failureText', () => {
   });
 
   it('NOT-004: a name conflict on save asks for another name; elsewhere the action\'s own sentence', () => {
-    expect(failureText(errorOf(failure('CONFLICT')), 'save')).toBe('A channel with this name exists. Choose another name.');
+    expect(failureText(errorOf(failure('CONFLICT')), 'save')).toBe('Name in use. Choose another.');
     expect(failureText(errorOf(failure('INTERNAL')), 'test')).toBe('Anima could not send the test. Try again.');
   });
 });

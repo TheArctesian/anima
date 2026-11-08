@@ -28,29 +28,30 @@ export function outcomeWord(delivery: Pick<Delivery, 'ok'>): string {
 }
 
 /** Said for a reason this client does not know, for example one a newer hub added (CR-14.5). */
-export const UNKNOWN_REASON = 'The delivery failed for a reason this version of Anima does not know.';
+export const UNKNOWN_REASON = 'Reason not known to Anima.';
 
+// Each sentence fits one line of a row at 390 px (29 characters), so no reason moves the list (MOT-007).
 // The `Record` makes every K1 value need a sentence; lookups go through a map, so a value such as `constructor` finds nothing.
 const SENTENCES: Record<DeliveryReason, string> = {
-  TARGET_NOT_PERMITTED: 'The target address is not permitted.',
-  BAD_ADDRESS: 'The target address is not valid.',
-  SECRET_UNREADABLE: 'The hub could not open the stored secrets. Enter them again.',
-  SETUP_FAILED: 'The hub could not prepare the message.',
-  CONNECTION_FAILED: 'The hub could not connect to the target.',
-  TLS_FAILED: "The target's TLS certificate was not accepted.",
-  TIMED_OUT: 'The target did not answer in 8 seconds.',
-  HTTP_STATUS: 'The target answered with an error status.',
-  NO_STARTTLS: 'The mail server does not offer STARTTLS.',
-  SMTP_REFUSED: 'The mail server refused the message.',
-  NOT_UNDERSTOOD: 'The target did not understand the message.',
+  TARGET_NOT_PERMITTED: 'Target address not permitted.',
+  BAD_ADDRESS: 'Target address not valid.',
+  SECRET_UNREADABLE: 'Secrets unreadable: re-enter.',
+  SETUP_FAILED: 'Message could not be built.',
+  CONNECTION_FAILED: 'Could not connect to target.',
+  TLS_FAILED: 'TLS certificate not accepted.',
+  TIMED_OUT: 'No answer in 8 seconds.',
+  HTTP_STATUS: 'Target answered an error.',
+  NO_STARTTLS: 'Mail server has no STARTTLS.',
+  SMTP_REFUSED: 'Mail server refused it.',
+  NOT_UNDERSTOOD: 'Target did not understand it.',
 };
 const REASONS = new Map<string, string>(Object.entries(SENTENCES));
 
 /** A code is shown only as a number in the range its protocol uses: HTTP 100..599, SMTP 200..599. */
 function codeText(reason: string, code: number | null): string | null {
   if (code === null || !Number.isInteger(code)) return null;
-  if (reason === 'HTTP_STATUS' && code >= 100 && code <= 599) return `The target answered with HTTP status ${String(code)}.`;
-  if (reason === 'SMTP_REFUSED' && code >= 200 && code <= 599) return `The mail server refused the message (reply ${String(code)}).`;
+  if (reason === 'HTTP_STATUS' && code >= 100 && code <= 599) return `Target answered HTTP ${String(code)}.`;
+  if (reason === 'SMTP_REFUSED' && code >= 200 && code <= 599) return `Mail server refused (${String(code)}).`;
   return null;
 }
 

@@ -16,8 +16,8 @@ describe('template placeholders', () => {
 
   it('D-21: a placeholder outside the list is refused and named', () => {
     const { title, body } = templateProblems({ title: '{device} on {host}', body: '{device} {host} {host} {Device} { device } {}' }, allowed);
-    expect(title).toBe(`Not a placeholder: {host}. Use only ${allowed.join(' ')}.`);
-    expect(body).toBe(`Not a placeholder: {host}, {Device}, { device } and others. Use only ${allowed.join(' ')}.`);
+    expect(title).toBe('Not a placeholder: {host}.');
+    expect(body).toBe('Not a placeholder: {host}, {Device}, { device } and others.');
     expect(templateFine(templateProblems({ title: '{device}', body: '{secret}' }, allowed))).toBe(false);
   });
 

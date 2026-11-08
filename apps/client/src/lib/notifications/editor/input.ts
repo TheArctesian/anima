@@ -37,20 +37,20 @@ type DraftCheck =
   | { readonly ok: false; readonly problems: readonly DraftProblem[] };
 
 export const NAME_MISSING = 'Enter a name.';
-export const URL_WRONG = 'Enter the whole address, starting with https://.';
+export const URL_WRONG = 'Enter a full https:// address.';
 export const URL_MISSING = 'Enter the webhook URL.';
-export const HEADERS_WRONG = 'Each header needs a name (letters, digits, -) and a value.';
+export const HEADERS_WRONG = 'Each header needs a name and value.';
 export const TOPIC_WRONG = 'Use 1 to 64 letters, digits, - or _.';
-export const HOST_WRONG = 'Enter a host name, for example smtp.example.com.';
+export const HOST_WRONG = 'Enter a host, like smtp.example.com.';
 export const PORT_WRONG = 'Use a port from 1 to 65535.';
 export const ADDRESS_WRONG = 'Enter an email address.';
-export const RECIPIENTS_WRONG = 'Enter one or more email addresses, separated by commas.';
-export const APPRISE_URLS_WRONG = 'Enter one Apprise URL per line, for example discord://….';
-export const APPRISE_KEY_WRONG = 'Use 1 to 128 letters, digits, - or _.';
-export const SERVER_WRONG = 'Enter https:// and the host only, with no user name, path or query.';
-export const AGAIN = 'The target changed: enter this again.';
-export const AGAIN_OR_REMOVE = 'The target changed: enter this again, or remove it.';
-export const HEADERS_AGAIN = 'The target changed: replace the headers with each value typed again, or remove them all.';
+export const RECIPIENTS_WRONG = 'Enter addresses, comma-separated.';
+export const APPRISE_URLS_WRONG = 'Enter Apprise URLs, one per line.';
+export const APPRISE_KEY_WRONG = 'Use 1-128 letters, digits, - or _.';
+export const SERVER_WRONG = 'Use https:// and a host only.';
+export const AGAIN = 'New target: enter this again.';
+export const AGAIN_OR_REMOVE = 'New target: enter again or remove.';
+export const HEADERS_AGAIN = 'New target: replace the headers.';
 
 const HEADER_NAME = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
 const TOPIC = /^[-_A-Za-z0-9]{1,64}$/;

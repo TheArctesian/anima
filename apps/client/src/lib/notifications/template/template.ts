@@ -29,7 +29,7 @@ function lineProblem(text: string, allowed: readonly string[], missing: string):
   if (unknown.length === 0) return '';
   const named = unknown.slice(0, NAMED_MAX).map(shown).join(', ');
   const more = unknown.length > NAMED_MAX ? ' and others' : '';
-  return `Not a placeholder: ${named}${more}. Use only ${allowed.join(' ')}.`;
+  return `Not a placeholder: ${named}${more}.`;
 }
 
 export interface TemplateProblems {

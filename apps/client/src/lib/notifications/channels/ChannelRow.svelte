@@ -43,12 +43,14 @@
     <div class="last">
       <dt>Last delivery</dt>
       {#if last === null}
-        <dd>{NEVER_SENT}</dd>
+        <dd class="when">{NEVER_SENT}</dd>
         <dd class="reason"></dd>
       {:else}
-        <dd>
+        <!-- The time and the rest are two lines in a narrow row, so the longest kind and word never wrap a third (MOT-007). -->
+        <dd class="when">
           <time datetime={last.at}>{shownTime(last.at)}</time>
-          · {notificationLabel(last.kind)} ·
+          <span class="joint">·</span>
+          {notificationLabel(last.kind)} ·
           <span class="state" class:failed={!last.ok}>{outcomeWord(last)}</span>
         </dd>
         <dd class="reason">{reasonOf(last)}</dd>
@@ -66,6 +68,7 @@
 
 <style>
   li {
+    container-type: inline-size;
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
@@ -132,12 +135,31 @@
     font-weight: var(--weight-bold);
   }
 
-  /* Two lines kept for what Send test came to, so its arrival moves nothing at 390 px (MOT-007). */
+  /* What Send test came to keeps one line in a wide row and two in a narrow one, where the longest sentence wraps (MOT-007). */
   .outcome {
-    min-block-size: calc(var(--text-sm) * var(--leading-normal) * 2);
+    min-block-size: calc(var(--text-sm) * var(--leading-normal));
     margin: 0;
     font-size: var(--text-sm);
     line-height: var(--leading-normal);
+  }
+
+  /* Narrower than the longest "time · kind · word" line: the time takes a line of its own, and two are kept. */
+  @container (inline-size < 32rem) {
+    .when {
+      min-block-size: calc(var(--text-sm) * var(--leading-normal) * 2);
+    }
+
+    .when time {
+      display: block;
+    }
+
+    .joint {
+      display: none;
+    }
+
+    .outcome {
+      min-block-size: calc(var(--text-sm) * var(--leading-normal) * 2);
+    }
   }
 
   .actions {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FAKE_SECRET, FAKE_WEBHOOK_URL, fixtureChannel, FIXTURE_SETTINGS } from '../notifications.fixture';
 import { forgetSecrets, newDraft, savedDraft, storedOf, type ChannelDraft } from './draft';
+import * as refusals from './input';
 import { APPRISE_KEY_WRONG, APPRISE_URLS_WRONG, checkDraft, NAME_MISSING, RECIPIENTS_WRONG, TOPIC_WRONG, URL_MISSING, URL_WRONG } from './input';
 
 type DraftCheck = ReturnType<typeof checkDraft>;
@@ -195,5 +196,13 @@ describe('forgetSecrets', () => {
     forgetSecrets(draft);
     expect(JSON.stringify(draft)).not.toContain(FAKE_SECRET);
     expect([draft.name, draft.webhook.headers[0]?.name]).toEqual(['kept', 'X-Kept']);
+  });
+});
+
+describe('refusal sentences', () => {
+  it('MOT-007: each fits the one line kept under a field of the editor at 390 px (36 characters)', () => {
+    const sentences = Object.values(refusals).filter((value): value is string => typeof value === 'string');
+    expect(sentences.length).toBeGreaterThan(10);
+    expect(sentences.filter((sentence) => sentence.length > 36)).toEqual([]);
   });
 });

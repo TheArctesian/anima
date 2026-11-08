@@ -12,7 +12,12 @@ describe('reasonOf', () => {
     const sentences = DELIVERY_REASONS.map((reason) => reasonOf(failed(reason)));
     expect(sentences.every((sentence) => sentence !== '' && sentence !== UNKNOWN_REASON && sentence !== NO_REASON)).toBe(true);
     expect(new Set(sentences).size).toBe(DELIVERY_REASONS.length);
-    expect(reasonOf(failed('TIMED_OUT'))).toBe('The target did not answer in 8 seconds.');
+    expect(reasonOf(failed('TIMED_OUT'))).toBe('No answer in 8 seconds.');
+  });
+
+  it('MOT-007: every sentence, with any code shown, fits one line of a row at 390 px (29 characters)', () => {
+    const all = [...DELIVERY_REASONS, 'NEW_REASON', null].flatMap((reason) => [reasonOf(failed(reason)), reasonOf(failed(reason, 599))]);
+    expect(all.filter((sentence) => sentence.length > 29)).toEqual([]);
   });
 
   it('CR-14.5: a delivery that went through has no reason line', () => {
@@ -21,11 +26,11 @@ describe('reasonOf', () => {
   });
 
   it('CR-14.5: the code is shown as a number for HTTP_STATUS and SMTP_REFUSED only, and only in its range', () => {
-    expect(reasonOf(failed('HTTP_STATUS', 503))).toBe('The target answered with HTTP status 503.');
-    expect(reasonOf(failed('SMTP_REFUSED', 550))).toBe('The mail server refused the message (reply 550).');
-    expect(reasonOf(failed('HTTP_STATUS', 99_999))).toBe('The target answered with an error status.');
-    expect(reasonOf(failed('HTTP_STATUS', 503.5))).toBe('The target answered with an error status.');
-    expect(reasonOf(failed('TIMED_OUT', 503))).toBe('The target did not answer in 8 seconds.');
+    expect(reasonOf(failed('HTTP_STATUS', 503))).toBe('Target answered HTTP 503.');
+    expect(reasonOf(failed('SMTP_REFUSED', 550))).toBe('Mail server refused (550).');
+    expect(reasonOf(failed('HTTP_STATUS', 99_999))).toBe('Target answered an error.');
+    expect(reasonOf(failed('HTTP_STATUS', 503.5))).toBe('Target answered an error.');
+    expect(reasonOf(failed('TIMED_OUT', 503))).toBe('No answer in 8 seconds.');
   });
 
   it.each([
@@ -45,6 +50,6 @@ describe('reasonOf', () => {
   it('CR-14.5, LOG-007: a value this client does not know gets a fixed fallback, never the value itself', () => {
     for (const reason of ['TARGET_SAID_HELLO', 'constructor', '__proto__', 'toString']) expect(reasonOf(failed(reason))).toBe(UNKNOWN_REASON);
     expect(reasonOf(failed(null))).toBe(NO_REASON);
-    expect(testOutcome(failed('TARGET_NOT_PERMITTED'))).toBe('Test failed. The target address is not permitted.');
+    expect(testOutcome(failed('TARGET_NOT_PERMITTED'))).toBe('Test failed. Target address not permitted.');
   });
 });

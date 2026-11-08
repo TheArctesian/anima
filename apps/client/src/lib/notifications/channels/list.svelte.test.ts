@@ -99,7 +99,7 @@ it('NOT-004: the last delivery shows its time, kind, Delivered or Failed in word
   const webhook = row(target, 'ops-webhook');
   expect(values(webhook)['Last delivery']).toMatch(/· Domain expiry · Delivered \/ $/);
   expect(webhook.querySelector('time')?.getAttribute('datetime')).toBe('2026-11-06T12:00:00Z');
-  expect(values(row(target, 'ops-email'))['Last delivery']).toMatch(/· Test · Failed \/ The target did not answer in 8 seconds\.$/);
+  expect(values(row(target, 'ops-email'))['Last delivery']).toMatch(/· Test · Failed \/ No answer in 8 seconds\.$/);
 });
 
 it('NOT-004: Send test sends the test mutation and shows the delivery\'s fixed sentence, never more', async () => {
@@ -108,8 +108,8 @@ it('NOT-004: Send test sends the test mutation and shows the delivery\'s fixed s
   button('Send test through ops-webhook').click();
   await settled();
   expect(hub.sent.at(-1)).toEqual({ operation: 'SendTestNotification', variables: { id: TEST_DELIVERY.channelId } });
-  expect(webhook.querySelector('[role="status"]')?.textContent).toBe('Test failed. The target address is not permitted.');
-  expect(values(webhook)['Last delivery']).toMatch(/· Test · Failed \/ The target address is not permitted\.$/);
+  expect(webhook.querySelector('[role="status"]')?.textContent).toBe('Test failed. Target address not permitted.');
+  expect(values(webhook)['Last delivery']).toMatch(/· Test · Failed \/ Target address not permitted\.$/);
 });
 
 it('NOT-004: a delivered test says so; a refused call shows a fixed sentence, not the hub\'s text', async () => {

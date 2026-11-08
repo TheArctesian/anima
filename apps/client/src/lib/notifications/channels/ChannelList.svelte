@@ -32,6 +32,9 @@
   /** True while the hub deletes: the dialog stays until it answers, so the outcome is never lost unseen. */
   let removing = $state(false);
   let root: HTMLElement | undefined = $state();
+  let scroller: HTMLElement | undefined = $state();
+  /** The rows whose space the list keeps; more channels scroll inside it. */
+  const KEPT_ROWS = ['first', 'second'];
   const loading = $derived(channels === null && !loadFailed);
   // The clock is fixed for the life of the list.
   // svelte-ignore state_referenced_locally
@@ -54,8 +57,15 @@
     return result;
   }
 
-  function saved(channel: NotificationChannel): void {
-    if (channels !== null) channels = withSaved(channels, channel);
+  /** A new channel goes at the end of the list, scrolled into view inside it (the scroller is its rows' offset parent). */
+  async function saved(channel: NotificationChannel): Promise<void> {
+    if (channels === null) return;
+    const added = !channels.some((known) => known.id === channel.id);
+    channels = withSaved(channels, channel);
+    if (!added) return;
+    await tick();
+    const row = scroller?.querySelector<HTMLElement>(`[data-delete="${CSS.escape(channel.id)}"]`)?.closest('li');
+    if (scroller !== undefined && row instanceof HTMLElement) scroller.scrollTop = row.offsetTop + row.offsetHeight - scroller.clientHeight;
   }
 
   /** Focus for the operator after a delete: the row that took its place, the row before, or Add channel (NAV-005). */
@@ -90,35 +100,42 @@
     <FormButton tabindex={0} data-add onclick={() => { editing = { channel: null }; }}>Add channel</FormButton>
   </div>
   <!--
-    One grid cell. A hidden row keeps one channel's space, the skeleton lies over it, and what the hub answers lands
-    in the same place: one channel, none or a failure moves nothing below (MOT-007). More channels need more room.
+    One grid cell of a fixed height: hidden rows keep the space of two channels, the skeleton lies over them, and what
+    the hub answers lands in the same place and scrolls inside it. However many channels arrive, are added or are
+    deleted, nothing below the list moves (MOT-007).
   -->
   <div class="stack" aria-busy={loading}>
     <ul class="sizer" aria-hidden="true" inert>
-      <ChannelRow channel={PLACEHOLDER_CHANNEL} onSendTest={() => new Promise(() => undefined)} onEdit={() => undefined} onDelete={() => undefined} placeholder />
+      {#each KEPT_ROWS as key (key)}
+        <ChannelRow channel={PLACEHOLDER_CHANNEL} onSendTest={() => new Promise(() => undefined)} onEdit={() => undefined} onDelete={() => undefined} placeholder />
+      {/each}
     </ul>
-    {#if loadFailed}
-      <div class="failed">
-        <p role="alert">Anima could not load the notification channels.</p>
-        <div><FormButton tabindex={0} onclick={load}>Try again</FormButton></div>
-      </div>
-    {:else if channels !== null && channels.length === 0}
-      <p class="quiet">No channels. Add one to hear when a check goes down or comes back up.</p>
-    {:else if channels !== null}
-      <ul class="list">
-        {#each channels as channel (channel.id)}
-          <ChannelRow
-            {channel}
-            onSendTest={() => sendTest(channel.id)}
-            onEdit={() => { editing = { channel }; }}
-            onDelete={() => { deleting = channel; }}
-          />
-        {/each}
-      </ul>
-    {/if}
+    <div class="scroller" bind:this={scroller}>
+      {#if loadFailed}
+        <div class="failed">
+          <p role="alert">Anima could not load the notification channels.</p>
+          <div><FormButton tabindex={0} onclick={load}>Try again</FormButton></div>
+        </div>
+      {:else if channels !== null && channels.length === 0}
+        <p class="quiet">No channels. Add one to hear when a check goes down or comes back up.</p>
+      {:else if channels !== null}
+        <ul class="list">
+          {#each channels as channel (channel.id)}
+            <ChannelRow
+              {channel}
+              onSendTest={() => sendTest(channel.id)}
+              onEdit={() => { editing = { channel }; }}
+              onDelete={() => { deleting = channel; }}
+            />
+          {/each}
+        </ul>
+      {/if}
+    </div>
     {#if skeleton.visible}
       <ul class="skeleton" aria-hidden="true" inert transition:crossFade>
-        <ChannelRow channel={PLACEHOLDER_CHANNEL} onSendTest={() => new Promise(() => undefined)} onEdit={() => undefined} onDelete={() => undefined} placeholder />
+        {#each KEPT_ROWS as key (key)}
+          <ChannelRow channel={PLACEHOLDER_CHANNEL} onSendTest={() => new Promise(() => undefined)} onEdit={() => undefined} onDelete={() => undefined} placeholder />
+        {/each}
       </ul>
     {/if}
   </div>
@@ -130,7 +147,9 @@
     channel={editing.channel}
     {defaultTemplate}
     {placeholders}
-    onSaved={saved}
+    onSaved={(channel) => {
+      void saved(channel);
+    }}
     onClose={() => { editing = null; }}
   />
 {/if}
@@ -167,6 +186,15 @@
 
   .sizer {
     visibility: hidden;
+  }
+
+  /* Adds nothing to the cell's height (the sizer sets it) and fills it, scrolling what does not fit. */
+  .scroller {
+    position: relative;
+    align-self: stretch;
+    contain: size;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
   }
 
   .skeleton {

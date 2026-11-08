@@ -60,22 +60,23 @@ it.each([
   ['0', DAYS_OUT_OF_RANGE],
   ['90, 60, 30, 21, 14, 7', DAYS_TOO_MANY],
   ['7, 14, 21', DAYS_NOT_DESCENDING],
-])('D-22: expiry days "%s" are refused before sending', async (typed, message) => {
+])('D-22, F-9: expiry days "%s" are refused before sending, and focus goes to the field', async (typed, message) => {
   await open(loaded());
   typeInto(days(), typed);
   save().click();
   await settled();
   expect(problemOf(days())).toBe(message);
-  expect(days().getAttribute('aria-invalid')).toBe('true');
+  expect([days().getAttribute('aria-invalid'), document.activeElement]).toEqual(['true', days()]);
   expect(sentOperations()).not.toContain('SetNotificationSettings');
 });
 
-it('D-21: a default template with a placeholder outside the list is refused before sending', async () => {
+it('D-21, F-9, UI-015: a default template with a placeholder outside the list is refused before sending; focus goes to it', async () => {
   await open(loaded());
   typeInto(title(), '{device} {ip}');
   save().click();
   await settled();
   expect(problemOf(title())).toMatch(/^Not a placeholder: \{ip\}\./);
+  expect([title().getAttribute('aria-invalid'), document.activeElement]).toEqual(['true', title()]);
   expect(sentOperations()).not.toContain('SetNotificationSettings');
 });
 
@@ -85,14 +86,14 @@ it('D-21: the hub\'s placeholder list, not the D-21 one, decides what the settin
   typeInto(title(), '{device} {check}');
   save().click();
   await settled();
-  expect(problemOf(title())).toBe('Not a placeholder: {check}. Use only {device}.');
+  expect(problemOf(title())).toBe('Not a placeholder: {check}.');
   button('Add channel').click();
   flushSync();
   pick(choice('Own template'));
   typeInto(field('Title') as HTMLInputElement, '{check}');
   inDialog('Save').click();
   await settled();
-  expect(dialog()?.textContent).toContain('Not a placeholder: {check}. Use only {device}.');
+  expect(dialog()?.textContent).toContain('Not a placeholder: {check}.');
   expect(sentOperations()).toEqual(['NotificationChannels', 'NotificationSettings']);
 });
 
