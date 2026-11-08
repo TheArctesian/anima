@@ -43,7 +43,7 @@ impl Cache {
         Fut: Future<Output = Option<String>>,
     {
         let round = self.round(now);
-        let built = round
+        let finished = round
             .get_or_init(|| async move {
                 build().await.map(|text| Built {
                     at: now,
@@ -51,7 +51,7 @@ impl Cache {
                 })
             })
             .await;
-        built.as_ref().map(|built| built.body.clone())
+        finished.as_ref().map(|done| done.body.clone())
     }
 
     /// The round a scrape at `now` joins: the current one unless it is finished and either

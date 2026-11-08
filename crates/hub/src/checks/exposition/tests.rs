@@ -225,9 +225,9 @@ fn at(seconds: i64) -> DateTime<Utc> {
 }
 
 /// A build that counts its runs and names the run in its text.
-async fn counted(builds: &AtomicUsize) -> Option<String> {
+fn counted(builds: &AtomicUsize) -> std::future::Ready<Option<String>> {
     let run = builds.fetch_add(1, Ordering::SeqCst) + 1;
-    Some(format!("build {run}"))
+    std::future::ready(Some(format!("build {run}")))
 }
 
 #[tokio::test]

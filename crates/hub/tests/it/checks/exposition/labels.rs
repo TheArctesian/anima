@@ -72,11 +72,14 @@ fixture_test! {
                 assert_eq!(found, CHECK_LABELS, "{line}");
             }
             let labels = line.rsplit_once(' ').unwrap().0;
-            for leak in ["10.10.0.2", "pve-01.home.lan", "\"up\"", "\"Up\"", "\"unknown\"", &now.format("%Y-%m-%d").to_string()] {
+            let day = now.format("%Y-%m-%d").to_string();
+            let leaks = ["10.10.0.2", "pve-01.home.lan", "\"up\"", "\"Up\"", "\"unknown\"", &day];
+            for leak in leaks {
                 assert!(!labels.contains(leak), "{leak} in {line}");
             }
         }
-        assert!(text.contains(&format!("device_id=\"{PVE_01}\",device_name=\"pve-01\",site=\"{HOME_SITE}\"")));
+        let device = format!("device_id=\"{PVE_01}\",device_name=\"pve-01\",site=\"{HOME_SITE}\"");
+        assert!(text.contains(&device));
     }
 
     async fn int_002_labels_do_not_change_when_status_and_values_change(pool: PgPool) {
