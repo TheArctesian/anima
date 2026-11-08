@@ -13,9 +13,7 @@ pub mod graphql;
 mod latest;
 mod model;
 mod range;
-mod rates;
 mod retention;
-mod series;
 mod store;
 #[cfg(test)]
 mod tests;
@@ -25,16 +23,17 @@ use std::collections::HashMap;
 use chrono::{DateTime, Days, TimeDelta, Utc};
 use sqlx::PgPool;
 
-pub use agent_core::readings::{Cpu, Disk, Interface, Load, Memory, Reading};
+pub use agent_core::{
+    points::{MAX_LABELS, Sample, samples},
+    readings::{Cpu, Disk, Interface, Load, Memory, Reading},
+};
 pub use collector::{Collecting, spawn_collector};
 pub use feed::Feed;
 pub use model::{
     Gpu, GpuVendor, MetricKind, MetricPoint, MetricRange, MetricSample, MetricSeries, MetricsAdded,
-    Readings, Sample,
+    Readings,
 };
-pub use rates::samples;
 pub use retention::{Retention, Trimmed};
-pub use series::MAX_LABELS;
 
 use crate::ids::DeviceId;
 
