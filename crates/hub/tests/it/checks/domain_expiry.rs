@@ -2,6 +2,7 @@
 //! `DomainExpiryConfig`, `Check.domainDaysLeft`): create, read, the hourly interval floor, the
 //! expiry date's column and its days left.
 
+use anima_hub::status::Status;
 use chrono::TimeDelta;
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -10,8 +11,8 @@ use uuid::Uuid;
 use super::{
     PVE_01, PVE_01_PING,
     api::harness::{
-        CREATE, UPDATE, create, data_with, error_json, input, now, schema_for, validation_fields,
-        with_variables,
+        CREATE, UPDATE, beat, create, data_with, database_now, error_json, input, now, record,
+        schema_for, validation_fields, with_variables,
     },
     constraint_of, id,
 };
@@ -167,5 +168,23 @@ fixture_test! {
             .await
             .unwrap_err();
         assert_eq!(constraint_of(&too_often), Some("checks_domain_expiry_interval_check"));
+    }
+
+    async fn d_29_a_beat_without_a_date_keeps_the_last_expiry_date(pool: PgPool) {
+        let schema = schema_for(&pool);
+        let id = create(&schema, domain_input("kept", &json!({ "domain": "example.net" }))).await;
+        let at = database_now(&pool).await;
+        let not_after = at + TimeDelta::days(12);
+        let mut dated = beat(at, Status::Degraded, None);
+        dated.domain_not_after = Some(not_after);
+        record(&pool, &id, &dated).await;
+
+        record(&pool, &id, &beat(at + TimeDelta::seconds(1), Status::Unknown, None)).await;
+        assert_eq!(stored_not_after(&pool, &id).await, Some(not_after));
+
+        let mut renewed = beat(at + TimeDelta::seconds(2), Status::Up, None);
+        renewed.domain_not_after = Some(not_after + TimeDelta::days(365));
+        record(&pool, &id, &renewed).await;
+        assert_eq!(stored_not_after(&pool, &id).await, renewed.domain_not_after);
     }
 }

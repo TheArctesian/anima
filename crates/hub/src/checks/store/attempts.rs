@@ -13,6 +13,7 @@ use crate::{
         Error,
         evaluation::{CheckSettings, CheckState, evaluate},
         model::{Attempt, Beat, Missing, Recorded},
+        probe::ProbeResult,
         status::maintained,
     },
     ids::CheckId,
@@ -29,6 +30,8 @@ struct Locked {
     retry_interval_seconds: i32,
     degraded_threshold_ms: i32,
     invert: bool,
+    /// The domain the stored configuration names, if any.
+    domain: Option<String>,
 }
 
 impl Locked {
@@ -62,7 +65,8 @@ pub(in crate::checks) async fn record_attempt(
     let mut tx = conn.begin().await?;
     let locked: Locked = sqlx::query_as(
         "SELECT status, failures, next_due_at, interval_seconds, retries, \
-                retry_interval_seconds, degraded_threshold_ms, invert \
+                retry_interval_seconds, degraded_threshold_ms, invert, \
+                config ->> 'domain' AS domain \
          FROM checks.checks WHERE id = $1 FOR UPDATE",
     )
     .bind(check)
@@ -72,8 +76,22 @@ pub(in crate::checks) async fn record_attempt(
     let (state, settings) = (locked.state()?, locked.settings()?);
     let (state, status) = evaluate(&state, attempt.result, &settings, attempt.at);
     let shown = maintained(status, attempt.in_maintenance);
-    let beat = Beat::of(attempt.result.clone(), (state, shown), attempt.at);
+    let beat = Beat::of(
+        dated_for(attempt, locked.domain.as_deref()),
+        (state, shown),
+        attempt.at,
+    );
     let recorded = record_beat(&mut tx, check, &beat).await?;
     tx.commit().await?;
     Ok((recorded == Recorded::Written).then_some(beat))
+}
+
+/// The attempt's result, without its expiry date when the check names another domain than
+/// the one probed: a probe of the old domain that ends after a change keeps no date (D-29).
+fn dated_for(attempt: &Attempt<'_>, stored: Option<&str>) -> ProbeResult {
+    let mut result = attempt.result.clone();
+    if attempt.domain != stored {
+        result.domain_not_after = None;
+    }
+    result
 }

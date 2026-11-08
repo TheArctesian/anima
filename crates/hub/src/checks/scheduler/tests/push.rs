@@ -46,6 +46,7 @@ async fn failed_attempt(pool: PgPool, id: CheckId, at: DateTime<Utc>) {
         result: &result,
         in_maintenance: false,
         at,
+        domain: None,
     };
     let mut tx = pool.begin().await.unwrap();
     checks::store::record_attempt(&mut tx, id, &attempt)

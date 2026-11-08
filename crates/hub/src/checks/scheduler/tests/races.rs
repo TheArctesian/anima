@@ -114,6 +114,7 @@ async fn failed_attempt(pool: PgPool, id: CheckId, at: DateTime<Utc>) -> bool {
         result: &result,
         in_maintenance: false,
         at,
+        domain: None,
     };
     let mut tx = pool.begin().await.unwrap();
     let beat = checks::record_attempt(&mut tx, id, &attempt).await.unwrap();

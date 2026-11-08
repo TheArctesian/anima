@@ -6,7 +6,10 @@ use std::time::Duration;
 
 use chrono::{DateTime, TimeDelta, TimeZone as _, Utc};
 
-use super::server::{Server, reply, serve};
+use super::{
+    registry::{rdap, registry},
+    server::{reply, serve},
+};
 use crate::{
     checks::probe::{
         outcome::{Failure, Judgement, ProbeResult},
@@ -24,33 +27,10 @@ fn now() -> DateTime<Utc> {
     Utc.with_ymd_and_hms(2026, 11, 8, 12, 0, 0).unwrap()
 }
 
-/// A registry for `.test` whose bootstrap file lives at `/dns.json` and whose RDAP service
-/// answers `/rdap/domain/<name>` with `answer(name)`.
-async fn registry(answer: RdapAnswer) -> Server {
-    serve(move |path, port| {
-        if path == "/dns.json" {
-            let file =
-                format!(r#"{{"services": [[["test"], ["https://localhost:{port}/rdap/"]]]}}"#);
-            reply("200 OK", file.as_bytes())
-        } else {
-            answer(path.trim_start_matches("/rdap/domain/"))
-        }
-    })
-    .await
-}
-
 fn expiring(_: &str) -> Vec<u8> {
     let body =
         format!(r#"{{"events": [{{"eventAction": "expiration", "eventDate": "{NOT_AFTER}"}}]}}"#);
     reply("200 OK", body.as_bytes())
-}
-
-fn rdap(server: &Server) -> Rdap {
-    Rdap::for_tests(
-        AddressPolicy::default().allowing_loopback(),
-        server.root.clone(),
-        server.url("/dns.json"),
-    )
 }
 
 async fn observe(rdap: &Rdap, domain: &str, at: DateTime<Utc>) -> ProbeResult {
@@ -148,7 +128,13 @@ async fn d_29_a_domain_the_registry_does_not_know_fails() {
 
     assert!(!result.ok);
     assert_eq!(result.judgement, Judgement::Answered);
-    assert_eq!(result.message, Some(Failure::DomainNotFound.to_string()));
+    assert_eq!(
+        result.message.as_deref(),
+        Some(
+            "the registry does not know this domain: check that it is the registered domain, \
+             such as example.com rather than www.example.com"
+        )
+    );
 }
 
 #[tokio::test]

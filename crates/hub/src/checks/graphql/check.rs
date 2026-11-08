@@ -121,7 +121,8 @@ impl Check {
         clippy::unused_async_trait_impl,
         reason = "the Object macro requires async resolvers"
     )]
-    /// `DOMAIN_EXPIRY` only: whole days until the registration expires (D-29).
+    /// `DOMAIN_EXPIRY` only: whole days until the registration expires, from the last expiry
+    /// date the registry gave (D-29).
     #[graphql(name = "domainDaysLeft")]
     async fn domain_days(&self, ctx: &Context<'_>) -> Result<Option<i32>> {
         Ok(Check::domain_days_left(self, now(ctx)?))

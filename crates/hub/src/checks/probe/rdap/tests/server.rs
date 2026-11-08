@@ -24,7 +24,7 @@ use tokio::{
 use tokio_rustls::TlsAcceptor;
 
 /// The bytes a server writes for a request path; the second argument is its port.
-pub(super) type Answer = Arc<dyn Fn(&str, u16) -> Vec<u8> + Send + Sync>;
+pub(in crate::checks) type Answer = Arc<dyn Fn(&str, u16) -> Vec<u8> + Send + Sync>;
 
 #[derive(Default)]
 struct Seen {
@@ -32,11 +32,11 @@ struct Seen {
     lines: Mutex<Vec<String>>,
 }
 
-pub(super) struct Server {
+pub(in crate::checks) struct Server {
     address: SocketAddr,
-    pub(super) port: u16,
+    pub(in crate::checks) port: u16,
     /// The DER of the certificate the server presents, for the client to trust.
-    pub(super) root: Vec<u8>,
+    pub(in crate::checks) root: Vec<u8>,
     seen: Arc<Seen>,
     sentinels: AtomicUsize,
 }
@@ -45,7 +45,7 @@ impl Server {
     /// The TCP connections accepted before this call. The accept loop takes connections in
     /// order, so once a sentinel connection shows, every earlier one has; sentinels are not
     /// counted.
-    pub(super) async fn connections(&self) -> usize {
+    pub(in crate::checks) async fn connections(&self) -> usize {
         let sentinel = TcpStream::connect(self.address).await.unwrap();
         let mine = sentinel.local_addr().unwrap();
         drop(sentinel);
@@ -67,13 +67,13 @@ impl Server {
     }
 
     /// The request lines received, in order (`GET /path HTTP/1.1`).
-    pub(super) fn lines(&self) -> Vec<String> {
+    pub(in crate::checks) fn lines(&self) -> Vec<String> {
         let lines = self.seen.lines.lock();
         lines.unwrap_or_else(PoisonError::into_inner).clone()
     }
 
     /// The requests received for paths that end with `suffix`.
-    pub(super) fn requests_for(&self, suffix: &str) -> usize {
+    pub(in crate::checks) fn requests_for(&self, suffix: &str) -> usize {
         let path_ends = |line: &String| {
             line.split(' ')
                 .nth(1)
@@ -82,13 +82,13 @@ impl Server {
         self.lines().iter().filter(|line| path_ends(line)).count()
     }
 
-    pub(super) fn url(&self, path: &str) -> reqwest::Url {
+    pub(in crate::checks) fn url(&self, path: &str) -> reqwest::Url {
         reqwest::Url::parse(&format!("https://localhost:{}{path}", self.port)).unwrap()
     }
 }
 
 /// A complete HTTP/1.1 answer with this status line and body.
-pub(super) fn reply(status: &str, body: &[u8]) -> Vec<u8> {
+pub(in crate::checks) fn reply(status: &str, body: &[u8]) -> Vec<u8> {
     let head = format!(
         "HTTP/1.1 {status}\r\nContent-Type: application/rdap+json\r\nContent-Length: {}\r\n\
          Connection: close\r\n\r\n",
@@ -98,7 +98,7 @@ pub(super) fn reply(status: &str, body: &[u8]) -> Vec<u8> {
 }
 
 /// A redirect to `location`.
-pub(super) fn redirect(location: &str) -> Vec<u8> {
+pub(in crate::checks) fn redirect(location: &str) -> Vec<u8> {
     format!(
         "HTTP/1.1 302 Found\r\nLocation: {location}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
     )
@@ -122,7 +122,7 @@ fn acceptor() -> (Vec<u8>, TlsAcceptor) {
 }
 
 /// A server on `ip` that answers each request with `answer(path, port)`.
-pub(super) async fn serve_on(ip: [u8; 4], answer: Answer) -> Server {
+pub(in crate::checks) async fn serve_on(ip: [u8; 4], answer: Answer) -> Server {
     let listener = TcpListener::bind(SocketAddr::from((ip, 0))).await.unwrap();
     let address = listener.local_addr().unwrap();
     let (root, acceptor) = acceptor();
@@ -154,7 +154,9 @@ pub(super) async fn serve_on(ip: [u8; 4], answer: Answer) -> Server {
 }
 
 /// A server on 127.0.0.1.
-pub(super) async fn serve(answer: impl Fn(&str, u16) -> Vec<u8> + Send + Sync + 'static) -> Server {
+pub(in crate::checks) async fn serve(
+    answer: impl Fn(&str, u16) -> Vec<u8> + Send + Sync + 'static,
+) -> Server {
     serve_on([127, 0, 0, 1], Arc::new(answer)).await
 }
 

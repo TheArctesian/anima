@@ -20,7 +20,7 @@ mod egress;
 mod expiry;
 mod reply;
 #[cfg(test)]
-mod tests;
+pub(in crate::checks) mod tests;
 
 use std::{sync::Arc, time::Duration};
 

@@ -71,6 +71,9 @@ impl Check {
     /// Whole days from `now` to the domain's registration expiry, rounded down, so negative
     /// once it has expired. `None` unless the check is a domain expiry check and RDAP gave a
     /// date (D-29).
+    ///
+    /// The days count from the last expiry date the registry gave: a later reply without a
+    /// date keeps it. The status follows the latest probe alone, so that reply is Unknown.
     #[must_use]
     pub fn domain_days_left(&self, now: DateTime<Utc>) -> Option<i32> {
         let not_after = self.domain_not_after?;
@@ -276,6 +279,9 @@ pub(in crate::checks) struct Attempt<'a> {
     /// (CHK-006); every other status is recorded as evaluated.
     pub(in crate::checks) in_maintenance: bool,
     pub(in crate::checks) at: DateTime<Utc>,
+    /// The domain a domain expiry probe asked about. Its expiry date is kept only while the
+    /// check still names that domain (D-29).
+    pub(in crate::checks) domain: Option<&'a str>,
 }
 
 /// What `record_beat` did with a beat.

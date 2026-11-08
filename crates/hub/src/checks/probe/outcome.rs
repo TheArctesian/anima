@@ -247,7 +247,11 @@ pub enum Failure {
     RdapTooLong,
     #[error("the RDAP answer cannot be read")]
     RdapUnreadable,
-    #[error("the registry has no record of the domain")]
+    /// Fixed text: the domain is not echoed (LOG-007).
+    #[error(
+        "the registry does not know this domain: check that it is the registered domain, \
+         such as example.com rather than www.example.com"
+    )]
     DomainNotFound,
     #[error("the RDAP reply gives no expiry date")]
     NoExpiryDate,

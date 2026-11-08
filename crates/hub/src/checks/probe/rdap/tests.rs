@@ -5,6 +5,7 @@ mod bootstrap;
 mod config;
 mod egress;
 mod observe;
+pub(in crate::checks) mod registry;
 mod reply;
 mod server;
 mod status;
