@@ -58,6 +58,9 @@ fn k8_4_mean_and_max_have_one_entry_per_series() {
     assert_malformed("an empty max", |batch| {
         batch.points[1].max = Some(Vec::new());
     });
+    assert_malformed("a long max", |batch| {
+        batch.points[0].max.as_mut().unwrap().push(None);
+    });
     assert_accepted("an all-null max", |batch| {
         batch.points[1].max = Some(vec![None; 3]);
     });
@@ -106,6 +109,24 @@ fn k8_4_every_number_is_finite_at_least_0_and_a_percent_at_most_100() {
         };
         batch.points[1].mean[1] = Some(1.5e19);
     });
+}
+
+#[test]
+fn k8_4_a_byte_count_is_finite() {
+    let bytes = |value: f64| {
+        move |batch: &mut Batch| {
+            batch.series[1] = crate::wire::BatchSeries {
+                kind: "memory_bytes".into(),
+                label: None,
+                gpu: None,
+            };
+            batch.points[1].mean[1] = Some(value);
+        }
+    };
+    assert_accepted("8 GB", bytes(8.0e9));
+    for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+        assert_malformed(&format!("memory {bad}"), bytes(bad));
+    }
 }
 
 fn gpu(index: u8, name: &str, vendor: GpuVendor, has_vram: bool) -> BatchGpu {

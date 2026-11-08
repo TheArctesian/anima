@@ -107,3 +107,45 @@ fn log_007_a_body_with_a_bad_secret_is_refused_without_echoing_it() {
         .to_string();
     assert!(!error.contains("AAEC"), "{error}");
 }
+
+#[test]
+fn k8_1_a_time_is_read_only_in_the_form_k8_writes() {
+    let renewed = |time: &str| {
+        let body = include_str!("k8/renewed.json").replace("2027-11-08T10:00:00Z", time);
+        serde_json::from_str::<Renewed>(&body).map(|body| body.expires_at)
+    };
+    assert_eq!(
+        renewed("2027-11-08T10:00:00Z").unwrap(),
+        at("2027-11-08T10:00:00Z")
+    );
+    assert_eq!(
+        renewed("2028-02-29T23:59:59Z").unwrap(),
+        at("2028-02-29T23:59:59Z")
+    );
+    for other in [
+        "2027-11-08T10:00:00+00:00",
+        "2027-11-08T11:00:00+01:00",
+        "2027-11-08T10:00:00.0Z",
+        "2027-11-08T10:00:00.5Z",
+        "2027-11-08t10:00:00z",
+        "2027-11-08T10:00:00z",
+        "2027-11-08 10:00:00Z",
+        "2027-11-08T10:00:00",
+        "2027-11-08T10:00:00Z ",
+        "+2027-11-08T10:00:00Z",
+        "20271108T100000Z",
+        "2027-11-08T10:00:60Z",
+        "2027-13-08T10:00:00Z",
+        "2027-02-29T10:00:00Z",
+        "2027-11-08T24:00:00Z",
+        "",
+    ] {
+        let error = renewed(other).err().map(|error| error.to_string());
+        assert!(error.is_some(), "{other:?}");
+    }
+    let body = BATCH.replace("2026-11-08T10:00:20Z", "2026-11-08T10:00:20+00:00");
+    assert!(
+        serde_json::from_str::<Batch>(&body).is_err(),
+        "a point's at too"
+    );
+}

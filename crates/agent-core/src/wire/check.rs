@@ -119,7 +119,8 @@ fn value_fits(kind: Kind, mean: Option<f64>, max: Option<f64>) -> bool {
     }
 }
 
-/// Finite, at least 0 (not `-0`, as a sample), and at most 100 for a percent kind.
+/// Finite, at least 0, and at most 100 for a percent kind. `-0` is refused, as a sample
+/// refuses it; the agent never sends it.
 fn number_fits(kind: Kind, value: f64) -> bool {
     value.is_finite() && !value.is_sign_negative() && (!kind.is_percent() || value <= 100.0)
 }
