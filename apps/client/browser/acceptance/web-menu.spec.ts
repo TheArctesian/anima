@@ -50,7 +50,7 @@ test('WEB-011: a resize that keeps the width keeps the menu open, and a width ch
   await expect(menu).toHaveCount(0);
 });
 
-test('WEB-011: a height-only resize keeps the open menu inside the window and next to its button', async ({ page }) => {
+test('WEB-011: a height-only resize that cuts the panel keeps the open menu inside the window and next to its button', async ({ page }) => {
   // The panel is fixed, so a shorter window (a mobile keyboard or address bar) must not leave a choice below the edge.
   await page.setViewportSize({ width: 390, height: 700 });
   await openDevices(page);
@@ -59,7 +59,12 @@ test('WEB-011: a height-only resize keeps the open menu inside the window and ne
   const menu = page.getByRole('group', MENU);
   await expect(menu).toBeVisible();
 
-  await page.setViewportSize({ width: 390, height: 580 });
+  // Cut the window to 40 px above the panel's bottom edge, so the panel no longer fits where it was placed.
+  const opened = await menu.boundingBox();
+  if (opened === null) throw new Error('menu has no box');
+  const CUT_PX = 40;
+  const shorter = Math.floor(opened.y + opened.height) - CUT_PX;
+  await page.setViewportSize({ width: 390, height: shorter });
   await page.waitForTimeout(STAYS_OPEN_MS);
   await expect(menu).toBeVisible();
 
