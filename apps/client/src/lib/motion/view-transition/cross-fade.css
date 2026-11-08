@@ -1,0 +1,11 @@
+/*
+ * The view cross-fade (crossFadeView, 5.7.3 Theme change): the group sets the length of the whole transition and the
+ * old and new snapshots run on it with one curve, ease-enter, so under the browser's plus-lighter blend their
+ * opacities sum to 1 at every frame. Only opacity animates (MOT-006).
+ */
+::view-transition-group(root),
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--duration-base);
+  animation-timing-function: var(--ease-enter);
+}

@@ -39,6 +39,7 @@ afterEach(async () => {
   document.body.innerHTML = '';
   localStorage.clear();
   delete document.documentElement.dataset['theme'];
+  Reflect.deleteProperty(document, 'startViewTransition');
   vi.restoreAllMocks();
 });
 
@@ -85,4 +86,38 @@ it('UI-005: the "could not save" message goes once a later choice is saved', () 
   choose(themeSelect(target), 'system');
   expect(target.querySelector('[role="alert"]')).toBeNull();
   expect(localStorage.getItem('anima.theme')).toBe('system');
+});
+
+/** A browser with view transitions: records each start and keeps the update for the test to run as the next frame. */
+function viewTransitions(): { starts: number; frame: () => void } {
+  const pending: (() => void)[] = [];
+  const record = { starts: 0, frame: () => { for (const update of pending.splice(0)) update(); } };
+  Object.defineProperty(document, 'startViewTransition', {
+    configurable: true,
+    value: (update: () => void) => {
+      record.starts += 1;
+      pending.push(update);
+    },
+  });
+  return record;
+}
+
+it('5.7.3 theme change: showing the row with a stored theme starts no cross-fade', () => {
+  const browser = viewTransitions();
+  localStorage.setItem('anima.theme', 'light');
+  expect(themeSelect(show()).value).toBe('light');
+  expect(browser.starts).toBe(0);
+});
+
+it('5.7.3 theme change, MOT-042: the operator\'s choice cross-fades in a view transition; the row and storage do not wait', () => {
+  const browser = viewTransitions();
+  const control = themeSelect(show());
+  choose(control, 'light');
+  expect(browser.starts).toBe(1);
+  expect(control.value).toBe('light');
+  expect(localStorage.getItem('anima.theme')).toBe('light');
+  // The browser snapshots the old look, then applies the new theme on its next frame and fades between them.
+  expect(document.documentElement.dataset['theme']).toBeUndefined();
+  browser.frame();
+  expect(document.documentElement.dataset['theme']).toBe('light');
 });
