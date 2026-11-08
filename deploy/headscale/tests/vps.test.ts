@@ -33,7 +33,9 @@ describe("nftables.conf", () => {
   });
 
   test("VPS-002: replaces only its own table and never flushes the ruleset", () => {
-    expect(ruleset.commands).toEqual(["table inet anima_filter", "delete table inet anima_filter"]);
+    expect(ruleset.commands.slice(0, 2)).toEqual(["table inet anima_filter", "delete table inet anima_filter"]);
+    // NOT-002: the only other top-level lines are the Apprise defines (vps-apprise.test.ts).
+    expect(ruleset.commands.slice(2).filter((command) => !/^define \w+ = /.test(command))).toEqual([]);
     expect(readVps("nftables.conf")).not.toMatch(/^\s*flush\s+ruleset/m);
   });
 
@@ -44,7 +46,8 @@ describe("nftables.conf", () => {
   // These tests read the rules as text; they cannot prove what packets do. The packet
   // behaviour (neighbour blocked, VPN peer reaches a DNAT-published port, container
   // reaches a tailnet peer) was checked in network namespaces on ubuntu:24.04 (T3) and
-  // again on almalinux:10 with nftables 1.1.5 and Docker 29.9 (T7).
+  // again on almalinux:10 with nftables 1.1.5 and Docker 29.9 (T7). The Apprise rules were
+  // checked the same way on alpine:3.22 with nftables 1.1.3, br_netfilter off and on (WP-52 T5).
 });
 
 describe("nftables.conf keeps the VPN addresses on tailscale0 (DNS-005)", () => {
@@ -76,7 +79,9 @@ describe("nftables.conf keeps the VPN addresses on tailscale0 (DNS-005)", () => 
     const forward = hooked("forward");
     expect(forward.table).toBe("inet anima_filter");
     expect(forward.policy).toBe("accept");
-    expect(forward.rules).toEqual(['oifname "tailscale0" iifname != { "lo", "tailscale0", "docker0", "br-*" } drop']);
+    expect(forward.rules[0]).toBe('oifname "tailscale0" iifname != { "lo", "tailscale0", "docker0", "br-*" } drop');
+    // NOT-002: every later rule only narrows what Apprise may send (vps-apprise.test.ts).
+    expect(forward.rules.slice(1).filter((rule) => !rule.startsWith("ip saddr $apprise "))).toEqual([]);
   });
 
   test("VPS-002/DNS-005: the input chain drops VPN destinations off tailscale0 before any accept", () => {
