@@ -52,15 +52,16 @@ pub struct Limit {
 
 /// What to do with the program's standard output.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Output {
+pub enum Stdout {
     /// Throw it away: an opener can echo the path or URL.
     Discard,
-    /// Keep at most this many bytes.
+    /// Keep at most this many bytes. Use it with `Kill`: a program left running (`LetRun`)
+    /// has its output dropped.
     Capture { max_bytes: u64 },
 }
 
 /// Runs `program` with `args`, standard input and error closed. Returns the captured output
-/// (empty for `Output::Discard`) when it exits successfully within `limit.patience`.
+/// (empty for `Stdout::Discard`) when it exits successfully within `limit.patience`.
 ///
 /// # Errors
 /// `NotFound` when `program` does not exist; `CouldNotStart` for any other start failure;
@@ -70,11 +71,11 @@ pub fn run(
     program: &str,
     args: &[&OsStr],
     limit: Limit,
-    output: Output,
+    output: Stdout,
 ) -> Result<Vec<u8>, OsProgramError> {
     let stdout = match output {
-        Output::Discard => Stdio::null(),
-        Output::Capture { .. } => Stdio::piped(),
+        Stdout::Discard => Stdio::null(),
+        Stdout::Capture { .. } => Stdio::piped(),
     };
     let mut child = Command::new(program)
         .args(args)
@@ -86,13 +87,18 @@ pub fn run(
             ErrorKind::NotFound => OsProgramError::NotFound,
             _ => OsProgramError::CouldNotStart,
         })?;
-    match wait_within(&mut child, limit.patience)? {
-        None => {
+    match wait_within(&mut child, limit.patience) {
+        Ok(Some(status)) if !status.success() => Err(OsProgramError::Exited),
+        Ok(Some(_)) => read_output(&mut child, output),
+        // Still running at the limit, or its state unknown: the reap rule applies either way.
+        Ok(None) => {
             leave(child, limit.after);
             Err(OsProgramError::TimedOut)
         }
-        Some(status) if !status.success() => Err(OsProgramError::Exited),
-        Some(_) => read_output(&mut child, output),
+        Err(error) => {
+            leave(child, limit.after);
+            Err(error)
+        }
     }
 }
 
@@ -115,7 +121,7 @@ pub fn open_within(opener: &str, target: &OsStr, patience: Duration) -> Result<(
         patience,
         after: AfterLimit::LetRun,
     };
-    match run(opener, &[target], limit, Output::Discard) {
+    match run(opener, &[target], limit, Stdout::Discard) {
         Ok(_) | Err(OsProgramError::TimedOut) => Ok(()),
         Err(error) => Err(error),
     }
@@ -152,8 +158,8 @@ fn leave(mut child: Child, after: AfterLimit) {
     }
 }
 
-fn read_output(child: &mut Child, output: Output) -> Result<Vec<u8>, OsProgramError> {
-    let Output::Capture { max_bytes } = output else {
+fn read_output(child: &mut Child, output: Stdout) -> Result<Vec<u8>, OsProgramError> {
+    let Stdout::Capture { max_bytes } = output else {
         return Ok(Vec::new());
     };
     let mut bytes = Vec::new();
@@ -180,16 +186,17 @@ mod tests {
         time::{Duration, Instant},
     };
 
-    use super::{AfterLimit, Limit, OsProgramError, Output, open_within, run};
+    use super::{AfterLimit, Limit, OsProgramError, Stdout, open_within, run};
 
     const SH: &str = "/bin/sh";
     const QUICK: Duration = Duration::from_millis(100);
+    const SLOW_START: Duration = Duration::from_secs(1);
 
     fn limit(patience: Duration, after: AfterLimit) -> Limit {
         Limit { patience, after }
     }
 
-    fn sh(script: &str, limit: Limit, output: Output) -> Result<Vec<u8>, OsProgramError> {
+    fn sh(script: &str, limit: Limit, output: Stdout) -> Result<Vec<u8>, OsProgramError> {
         run(SH, &[OsStr::new("-c"), OsStr::new(script)], limit, output)
     }
 
@@ -220,7 +227,7 @@ mod tests {
 
     #[test]
     fn a_program_that_exits_in_time_gives_its_output() {
-        let kept = Output::Capture { max_bytes: 1024 };
+        let kept = Stdout::Capture { max_bytes: 1024 };
         let answer = sh(
             "echo studio",
             limit(Duration::from_secs(5), AfterLimit::Kill),
@@ -233,16 +240,16 @@ mod tests {
     fn output_is_cut_at_the_byte_limit_and_discarded_on_request() {
         let wide = limit(Duration::from_secs(5), AfterLimit::Kill);
         let script = "head -c 4096 /dev/zero";
-        let cut = sh(script, wide, Output::Capture { max_bytes: 16 }).unwrap();
+        let cut = sh(script, wide, Stdout::Capture { max_bytes: 16 }).unwrap();
         assert_eq!(cut.len(), 16);
-        assert_eq!(sh(script, wide, Output::Discard), Ok(Vec::new()));
+        assert_eq!(sh(script, wide, Stdout::Discard), Ok(Vec::new()));
     }
 
     #[test]
     fn a_non_zero_exit_is_reported_as_exited() {
         let wide = limit(Duration::from_secs(5), AfterLimit::Kill);
         assert_eq!(
-            sh("exit 3", wide, Output::Discard),
+            sh("exit 3", wide, Stdout::Discard),
             Err(OsProgramError::Exited)
         );
     }
@@ -251,7 +258,7 @@ mod tests {
     fn a_missing_program_is_reported_as_not_found() {
         let wide = limit(Duration::from_secs(5), AfterLimit::Kill);
         assert_eq!(
-            run("/nonexistent/anima-program", &[], wide, Output::Discard),
+            run("/nonexistent/anima-program", &[], wide, Stdout::Discard),
             Err(OsProgramError::NotFound)
         );
     }
@@ -261,7 +268,7 @@ mod tests {
         let wide = limit(Duration::from_secs(5), AfterLimit::Kill);
         // A folder is not an executable: the start fails with a permission error.
         assert_eq!(
-            run("/", &[], wide, Output::Discard),
+            run("/", &[], wide, Stdout::Discard),
             Err(OsProgramError::CouldNotStart)
         );
     }
@@ -271,7 +278,12 @@ mod tests {
         let file = pid_file("kill");
         let script = format!("echo $$ > '{}'; exec /bin/sleep 30", file.display());
         let started = Instant::now();
-        let answer = sh(&script, limit(QUICK, AfterLimit::Kill), Output::Discard);
+        // The limit is long enough for a loaded machine to start `sh` and write its pid.
+        let answer = sh(
+            &script,
+            limit(SLOW_START, AfterLimit::Kill),
+            Stdout::Discard,
+        );
         let pid = pid_in(&file);
         fs::remove_file(&file).unwrap();
         assert_eq!(answer, Err(OsProgramError::TimedOut));
@@ -283,8 +295,12 @@ mod tests {
     #[test]
     fn a_program_left_running_is_reaped_when_it_exits() {
         let file = pid_file("let-run");
-        let script = format!("echo $$ > '{}'; exec /bin/sleep 1", file.display());
-        let answer = sh(&script, limit(QUICK, AfterLimit::LetRun), Output::Discard);
+        let script = format!("echo $$ > '{}'; exec /bin/sleep 4", file.display());
+        let answer = sh(
+            &script,
+            limit(SLOW_START, AfterLimit::LetRun),
+            Stdout::Discard,
+        );
         let pid = pid_in(&file);
         fs::remove_file(&file).unwrap();
         assert_eq!(answer, Err(OsProgramError::TimedOut));

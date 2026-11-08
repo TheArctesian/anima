@@ -1,7 +1,7 @@
 use std::{ffi::OsStr, time::Duration};
 
 use super::OperatingSystem;
-use crate::os_program::{self, AfterLimit, Limit, Output};
+use crate::os_program::{self, AfterLimit, Limit, Stdout};
 
 /// Prints the macOS computer name. An absolute path, so `PATH` cannot swap it.
 const SCUTIL: &str = "/usr/sbin/scutil";
@@ -48,7 +48,7 @@ pub(super) fn output_of(program: &str, args: &[&str], patience: Duration) -> Opt
         patience,
         after: AfterLimit::Kill,
     };
-    let output = Output::Capture {
+    let output = Stdout::Capture {
         max_bytes: MAX_OUTPUT,
     };
     os_program::run(program, &args, limit, output).ok()
