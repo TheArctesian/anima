@@ -5,12 +5,14 @@
 //! and the deny list judge each resolved address, the connection goes only to a checked
 //! address, and TLS is always verified (P3-003, D-17).
 
+mod decision;
 #[cfg_attr(
     not(test),
     expect(dead_code, reason = "the dispatcher (WP-45 T6) is the first caller")
 )]
 mod egress;
 mod model;
+mod observe;
 mod store;
 #[cfg(test)]
 mod tests;
@@ -19,10 +21,11 @@ use chrono::{DateTime, Days, DurationRound, NaiveDate, TimeDelta, Utc};
 use sqlx::PgPool;
 
 pub use model::{
-    Channel, ChannelFields, ChannelKind, CheckSettings, CheckState, Delivery, DeliveryCursor,
-    DeliveryReason, ExpiryMark, InstallationSettings, NewOutbox, NotificationKind, Outbox,
-    OutboxId,
+    Channel, ChannelFields, ChannelKind, CheckNotifications, CheckSettings, CheckState, Delivery,
+    DeliveryCursor, DeliveryReason, ExpiryMark, ExpirySubject, InstallationSettings, NewOutbox,
+    NotificationKind, Observation, Outbox, OutboxId,
 };
+pub use observe::{adopt_defaults, for_checks, observe};
 
 /// How many days of delivery partitions exist ahead of today (DB-004).
 const DAYS_AHEAD: i32 = 7;

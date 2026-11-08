@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{
-    ids::{ChannelId, CheckId, DeliveryId},
+    ids::{ChannelId, CheckId, DeliveryId, DeviceId},
     status::Status,
 };
 
@@ -103,9 +103,21 @@ pub struct Channel {
     pub updated_at: DateTime<Utc>,
 }
 
+/// What an expiry notification is about (D-22). Marks of the two never mix.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ExpirySubject {
+    #[default]
+    Certificate,
+    Domain,
+}
+
 /// A threshold already announced for one certificate or domain, keyed by its `notAfter` (D-22).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ExpiryMark {
+    /// Rows written before domain expiry existed have none and mean the certificate.
+    #[serde(default)]
+    pub subject: ExpirySubject,
     pub threshold_days: u16,
     pub not_after: DateTime<Utc>,
 }
@@ -274,4 +286,28 @@ pub(super) fn status_from_stored(text: &str) -> Option<Status> {
     ]
     .into_iter()
     .find(|status| status_text(*status) == text)
+}
+
+/// What checks tells notifications about one heartbeat, inside the heartbeat transaction (D-16).
+pub struct Observation {
+    pub check: CheckId,
+    pub check_name: String,
+    pub check_type: &'static str,
+    pub device: (DeviceId, String),
+    pub site: String,
+    pub previous: Status,
+    pub status: Status,
+    pub in_maintenance: bool,
+    pub at: DateTime<Utc>,
+    pub message: Option<String>,
+    pub certificate_not_after: Option<DateTime<Utc>>,
+    pub domain_not_after: Option<DateTime<Utc>>,
+}
+
+/// What one check notifies, for `Check.notifications` (API-005). The channels carry no sealed
+/// secrets.
+#[derive(Clone)]
+pub struct CheckNotifications {
+    pub channels: Vec<Channel>,
+    pub resend_every_beats: u16,
 }

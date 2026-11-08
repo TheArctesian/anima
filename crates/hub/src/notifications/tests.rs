@@ -1,5 +1,6 @@
 //! Tests of the notification store against a real database (K2 `notifications`, D-16, D-25).
 
+mod observe;
 mod outbox;
 mod partitions;
 mod privileges;
