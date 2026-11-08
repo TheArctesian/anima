@@ -9,28 +9,42 @@ const reducedMotionQuery = '(prefers-reduced-motion: reduce)';
 const noPreference: MotionPreference = { reduced: false };
 let shared: MotionPreference | undefined;
 
-function follow(media: MediaQueryList): MotionPreference {
+/**
+ * The Settings choice wins over the OS (MOT-043): `data-motion="reduce"` is reduced and `"full"` is not, whatever
+ * the OS says; without the attribute (System) the OS decides. The generated `tokens.css` reads the same attribute.
+ */
+function reduces(choice: string | undefined, systemReduces: boolean): boolean {
+  if (choice === 'reduce') return true;
+  if (choice === 'full') return false;
+  return systemReduces;
+}
+
+function follow(root: HTMLElement, media: MediaQueryList | undefined): MotionPreference {
   const subscribe = createSubscriber((update) => {
-    media.addEventListener('change', update);
+    media?.addEventListener('change', update);
+    const choice = new MutationObserver(update);
+    choice.observe(root, { attributes: true, attributeFilter: ['data-motion'] });
     return () => {
-      media.removeEventListener('change', update);
+      media?.removeEventListener('change', update);
+      choice.disconnect();
     };
   });
   return {
     get reduced() {
       subscribe();
-      return media.matches;
+      return reduces(root.dataset['motion'], media?.matches ?? false);
     },
   };
 }
 
 /**
- * The window's `prefers-reduced-motion` setting, kept current by the query's `change` event
- * (MOT-041). Without a window there is no preference.
+ * The operator's reduced-motion setting: the Settings choice on `<html data-motion>`, else the window's
+ * `prefers-reduced-motion`, kept current by the attribute and the query's `change` event, so a change applies
+ * without a reload (MOT-041, MOT-043). Without a document there is no preference.
  */
 export function motionPreference(): MotionPreference {
   if (shared) return shared;
-  if (typeof matchMedia !== 'function') return noPreference;
-  shared = follow(matchMedia(reducedMotionQuery));
+  if (typeof document === 'undefined') return noPreference;
+  shared = follow(document.documentElement, typeof matchMedia === 'function' ? matchMedia(reducedMotionQuery) : undefined);
   return shared;
 }
