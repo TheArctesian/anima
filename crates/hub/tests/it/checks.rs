@@ -4,6 +4,7 @@
 mod api;
 mod cascade;
 mod columns;
+mod defaults;
 mod exposition;
 mod face;
 mod fixture;

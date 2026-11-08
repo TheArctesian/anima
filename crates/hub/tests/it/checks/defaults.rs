@@ -5,9 +5,8 @@ use anima_hub::checks::{self, CheckSettings};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
-use super::{
-    harness::{PVE_01, data_with, error_json, schema_for, validation_fields, with_variables},
-    writes::rows,
+use super::api::harness::{
+    PVE_01, data_with, error_json, schema_for, validation_fields, with_variables,
 };
 
 const READ: &str =
@@ -19,7 +18,7 @@ macro_rules! fixture_test {
     ($(async fn $name:ident($pool:ident: PgPool) $body:block)+) => {$(
         #[sqlx::test(
             migrations = "./migrations",
-            fixtures(path = "../../../fixtures", scripts("devices"))
+            fixtures(path = "../../fixtures", scripts("devices"))
         )]
         async fn $name($pool: PgPool) $body
     )+};
@@ -30,6 +29,15 @@ fn values(interval: i32, retries: i32, retry_interval: i32, degraded: i32) -> Va
         "intervalSeconds": interval, "retries": retries,
         "retryIntervalSeconds": retry_interval, "degradedThresholdMs": degraded,
     })
+}
+
+async fn rows(pool: &PgPool, table: &str) -> Vec<Value> {
+    sqlx::query_scalar(&format!(
+        "SELECT to_jsonb(t) FROM events.{table} t ORDER BY at, id"
+    ))
+    .fetch_all(pool)
+    .await
+    .unwrap()
 }
 
 async fn stored(pool: &PgPool) -> (i32, i32, i32, i32) {
