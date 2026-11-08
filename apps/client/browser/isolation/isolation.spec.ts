@@ -52,6 +52,16 @@ test.describe('escapedAttempts, the check at the end of the run', () => {
     ]);
   });
 
+  test('S3: a fixture device host under annex.example is explained in every engine, and no other `.example` host is', () => {
+    const fixture = connect('nas.annex.example:5001');
+    for (const engine of ['chromium', 'webkit', 'firefox']) {
+      expect(escapedAttempts(engine, [fixture, connect('nas.annex.example.net:443'), connect('other.example:443')])).toEqual([
+        connect('nas.annex.example.net:443'),
+        connect('other.example:443'),
+      ]);
+    }
+  });
+
   test('S3: the Firefox CSP report host and the probe are the only `.invalid` hosts the harness asks for', () => {
     expect(escapedAttempts('firefox', [connect('csp-report.invalid:443'), connect('other.invalid:443')])).toEqual([connect('other.invalid:443')]);
   });

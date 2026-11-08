@@ -15,6 +15,12 @@ export const HARNESS_TARGETS: readonly string[] = [
 ];
 
 /**
+ * The fixture hosts a spec opens a tab to (`synthetic/device-additions.ts`, the NAS fixture). `.example` is reserved (RFC 2606)
+ * and never resolves; WebKit connects to a tab's address before `context.route` answers it, and the proxy refuses.
+ */
+const FIXTURE_HOST_SUFFIX = '.annex.example';
+
+/**
  * WebKit opens a TLS connection to the page's origin when a navigation starts, before `context.route` can answer it. With
  * the proxy it ends in a refusal; no other engine does it, and the hub origin is the only host it asks for.
  */
@@ -23,5 +29,6 @@ const ENGINE_TARGETS: Readonly<Record<string, readonly string[]>> = { webkit: ['
 /** The attempts of `engine`'s proxy that the harness does not explain: each one is a browser reaching for a host. */
 export function escapedAttempts(engine: string, attempts: readonly Attempt[]): Attempt[] {
   const explained = [...HARNESS_TARGETS, ...(ENGINE_TARGETS[engine] ?? [])];
-  return attempts.filter((attempt) => !explained.includes(attempt.target));
+  const isFixtureHost = (target: string): boolean => target.slice(0, target.lastIndexOf(':')).endsWith(FIXTURE_HOST_SUFFIX);
+  return attempts.filter((attempt) => !explained.includes(attempt.target) && !isFixtureHost(attempt.target));
 }

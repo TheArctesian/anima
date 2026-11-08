@@ -4,6 +4,7 @@ import { callerOf, HUB_ORIGIN, SESSION_COOKIE } from '../access';
 import { untilClosed } from '../closed';
 import type { HubState } from '../model';
 import type { Recording } from '../recorder';
+import type { Live } from './live';
 
 // `wss://hub.anima.ing/graphql`: graphql-transport-ws (API-002). The hub accepts `connection_init` from a socket whose upgrade
 // carried the session cookie and whose payload has no `authorization` (K7), or whose payload brings the good bearer value,
@@ -25,6 +26,7 @@ export interface SocketParts {
   readonly context: BrowserContext;
   readonly state: HubState;
   readonly recording: Recording;
+  readonly live: Live;
 }
 
 function operationOf(message: ClientMessage): string | null {
@@ -52,14 +54,21 @@ async function factsOf(parts: SocketParts, message: ClientMessage): Promise<Sock
   return { hadAuthorization: message.payload?.authorization !== undefined, hadCookie: cookie !== null, signedIn: caller !== 'signed-out' };
 }
 
-/** Serves one graphql-transport-ws socket. A subscription answers nothing: the fixtures hold no live events. */
+/** Serves one graphql-transport-ws socket. A subscription answers nothing until a spec pushes an event through `live`. */
 export function serveGraphqlSocket(parts: SocketParts, socket: WebSocketRoute): void {
   let facts: SocketFacts | undefined;
   socket.onMessage((raw) => {
     const message = JSON.parse(String(raw)) as ClientMessage;
     if (message.type === 'ping') socket.send(JSON.stringify({ type: 'pong' }));
-    else if (message.type === 'subscribe' && facts !== undefined) recordSocket(parts, operationOf(message), facts);
-    else if (message.type === 'connection_init') {
+    else if (message.type === 'subscribe' && facts !== undefined) {
+      const operation = operationOf(message);
+      const leave = parts.live.join({
+        operation,
+        deliver: (data) => socket.send(JSON.stringify({ type: 'next', id: message.id, payload: { data } })),
+      });
+      socket.onClose(leave);
+      recordSocket(parts, operation, facts);
+    } else if (message.type === 'connection_init') {
       // The callback is not awaited, so a context closed meanwhile is dropped here.
       void untilClosed(async () => {
         facts = await factsOf(parts, message);

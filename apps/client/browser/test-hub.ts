@@ -9,8 +9,16 @@ interface Fixtures {
   watch: PageWatch;
 }
 
+/** The page is ready when the app says so (a spec waits for an element); `load` also waits for fonts and icons, which a loaded machine delays. */
+const DOCUMENT_READY = 'domcontentloaded';
+
 /** `test` with the synthetic hub on every context and every page watched. Specs import it instead of Playwright's. */
 export const test = base.extend<Fixtures>({
+  page: async ({ page }, use) => {
+    const goto = page.goto.bind(page);
+    page.goto = (url, options) => goto(url, { waitUntil: DOCUMENT_READY, ...options });
+    await use(page);
+  },
   signedIn: [false, { option: true }],
   hub: [
     async ({ context, signedIn }, use) => {

@@ -8,7 +8,9 @@ import type { Recording } from './recorder';
 // The hub refuses a bad ticket with HTTP 403 before the upgrade; a mocked socket cannot, so it closes at once.
 
 export const TICKET_REFUSED_CLOSE = 1008;
-const PROMPT = 'ann@example-host:~$ ';
+/** The window title the shell sets (OSC 0), which the tab shows: a visible sign in the page that the bytes were read (K4 section 8.7). */
+export const TERMINAL_TITLE = 'ann@example-host: ~';
+const PROMPT = `\u001b]0;${TERMINAL_TITLE}\u0007ann@example-host:~$ `;
 const PAGE_WIDTH = 1024;
 const PAGE_HEIGHT = 768;
 
@@ -39,7 +41,7 @@ function redeem(parts: TunnelParts, socket: WebSocketRoute, path: string): boole
   return result.ok;
 }
 
-/** SSH bytes: the prompt, once the client's first `resize` has opened the PTY (K4 section 8.4). */
+/** SSH bytes: the title and the prompt, once the client's first `resize` has opened the PTY (K4 section 8.4). */
 export function serveTerminal(parts: TunnelParts, socket: WebSocketRoute): void {
   if (!redeem(parts, socket, '/terminal')) return;
   let opened = false;

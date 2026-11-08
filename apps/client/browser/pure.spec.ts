@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { BEARER_TOKEN, browserSessions, callerOf, HUB_ORIGIN } from './synthetic/access';
+import { BEARER_TOKEN, browserSessions, callerOf, clearedCookie, HUB_ORIGIN, sessionCookie } from './synthetic/access';
 import { isClosedError, noteClosing, untilClosed } from './synthetic/closed';
 import { ticketBook } from './synthetic/tickets';
 
@@ -31,6 +31,16 @@ test.describe('callerOf (K7 "Authentication transport")', () => {
     const { sessions, token } = issued();
     expect(callerOf({ origin: HUB_ORIGIN, authorization: `Bearer ${BEARER_TOKEN}`, cookie: token }, sessions)).toBe('bearer');
     expect(callerOf({ origin: HUB_ORIGIN, authorization: 'Bearer wrong', cookie: token }, sessions)).toBe('signed-out');
+  });
+});
+
+test.describe('the Set-Cookie text (K7 "Authentication transport")', () => {
+  test('SEC-002, D-3: the cookie is __Host-anima with Secure, HttpOnly, SameSite=Strict, Path=/, no Domain and seven days', () => {
+    expect(sessionCookie('token-value')).toBe('__Host-anima=token-value; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=604800');
+  });
+
+  test('SEC-002, D-3: the clearing cookie has the same name and attributes with an empty value and Max-Age=0', () => {
+    expect(clearedCookie()).toBe('__Host-anima=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0');
   });
 });
 

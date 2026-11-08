@@ -1,4 +1,5 @@
 import { browserSessions, type BrowserSessions } from './access';
+import { withAdditions } from './device-additions';
 import type { Fixtures, Row } from './fixtures';
 import { ticketBook, type TicketBook } from './tickets';
 
@@ -76,7 +77,8 @@ function seriesOf(state: HubState, deviceId: string, range: string): Row[] {
 
 const READINGS: Row = { at: '2026-11-06T10:00:00Z', cpuPercent: 18.5, memoryPercent: 41.2, diskPercent: 63, vramPercent: null, vramGpu: null };
 
-export function deviceView(state: HubState, row: Row): Row {
+export function deviceView(state: HubState, source: Row): Row {
+  const row = withAdditions(source);
   const id = String(row.id);
   const site = state.fixtures.sites.find((found) => found.id === row.siteId);
   const gpus = (row.gpus ?? []) as Row[];

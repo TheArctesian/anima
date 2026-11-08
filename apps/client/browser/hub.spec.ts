@@ -122,7 +122,7 @@ test.describe('tunnels and the wall', () => {
     await open(page);
     expect(hub.recording.foreignRequests).toBe(0);
     // The page's own CSP stops a script from reaching another origin; a navigation is what reaches the hub's wall.
-    await expect(page.goto('https://example.net/anything')).rejects.toThrow();
-    expect(hub.recording.foreignOrigins).toEqual(['https://example.net']);
+    await expect(page.goto('https://elsewhere.annex.example/anything')).rejects.toThrow();
+    expect(hub.recording.foreignOrigins).toEqual(['https://elsewhere.annex.example']);
   });
 });
