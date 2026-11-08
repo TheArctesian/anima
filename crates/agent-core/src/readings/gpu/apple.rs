@@ -66,9 +66,12 @@ impl<'a> Entry<'a> {
 
 /// The text after `"key" =` in `line`, without the spaces before it.
 fn value<'a>(line: &'a str, key: &str) -> Option<&'a str> {
-    let (before, after) = line.split_once(key)?;
-    let after = after.strip_prefix('"')?;
-    before.ends_with('"').then_some(())?;
+    let after = line.match_indices(key).find_map(|(at, _)| {
+        let before = line.get(..at)?;
+        let after = line.get(at + key.len()..)?;
+        before.ends_with('"').then_some(())?;
+        after.strip_prefix('"')
+    })?;
     Some(after.trim_start().strip_prefix('=')?.trim_start())
 }
 

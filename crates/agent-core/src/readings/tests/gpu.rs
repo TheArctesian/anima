@@ -290,3 +290,14 @@ fn met_016_ioreg_busy_in_exponent_form_reads_up_to_the_exponent() {
     \"PerformanceStatistics\" = {\"Device Utilization %\"=1e3}\n";
     assert_close(apple::gpus(output)[0].busy_percent.unwrap(), 1.0);
 }
+
+#[test]
+fn met_016_ioreg_memory_key_is_found_after_a_longer_key_that_starts_the_same() {
+    let both = b"+-o AGX  <class X>\n\
+    \"PerformanceStatistics\" = {\"In use system memory (driver)\"=5,\"In use system memory\"=1000}\n";
+    assert_eq!(apple::gpus(both)[0].shared_memory_bytes, Some(1000));
+    let only_driver = b"+-o AGX  <class X>\n\
+    \"model\" = \"Apple M1\"\n\
+    \"PerformanceStatistics\" = {\"In use system memory (driver)\"=5}\n";
+    assert_eq!(apple::gpus(only_driver)[0].shared_memory_bytes, None);
+}
