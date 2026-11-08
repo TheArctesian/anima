@@ -1,6 +1,7 @@
 <script lang="ts">
   import { press } from '$lib/motion/roles/press';
-  import { openSharingSettings, sharingSettingsAvailable, SystemSettingsError } from '../../../desktop/system-settings';
+  import { openSharingSettings, SystemSettingsError } from '$lib/desktop/system-settings';
+  import { capabilities } from '$lib/platform/platform';
 
   interface Props {
     /** Shown only in the desktop app on a Mac (R-059). */
@@ -9,7 +10,7 @@
     sshOff?: boolean;
   }
 
-  const { available = sharingSettingsAvailable(), sshOff = false }: Props = $props();
+  const { available = capabilities().systemSettings, sshOff = false }: Props = $props();
   let problem = $state<string | null>(null);
 
   async function open(): Promise<void> {

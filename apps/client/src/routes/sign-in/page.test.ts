@@ -18,8 +18,11 @@ vi.mock('$lib/hub/context', () => ({ useHub: () => mocks.hub }));
 vi.mock('$lib/desktop/token', async (importOriginal) => ({
   ...(await importOriginal<typeof import('$lib/desktop/token')>()),
   writeAccessToken: mocks.writeAccessToken,
-  keyStoreAvailable: () => mocks.desktop,
 }));
+vi.mock('$lib/platform/platform', async () => {
+  const { BROWSER, DESKTOP_MAC } = await import('$lib/platform/answers.fixture');
+  return { capabilities: () => (mocks.desktop ? DESKTOP_MAC : BROWSER) };
+});
 vi.mock('$lib/access/navigation', () => ({ goToDevices: mocks.goToDevices, reloadClient: mocks.reloadClient }));
 
 const TOKEN = 'tok-secret-9f2';

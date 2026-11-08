@@ -2,7 +2,10 @@
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fakeUpdater, offering, recordingLog, scheduleHarness as setup } from './updates.fixture';
+import { CHECK_FAILED_LINE, CHECK_INTERVAL_MS } from '../schedule';
 import { Updates } from '../updates.svelte';
+import { BROWSER, DESKTOP_MAC } from '$lib/platform/answers.fixture';
+import type { Capabilities } from '$lib/platform/platform';
 import DesktopProbe from './DesktopProbe.svelte';
 
 describe('overlapping work', () => {
@@ -47,19 +50,28 @@ describe('Updates store', () => {
   });
 });
 
-const shell = vi.hoisted(() => ({ desktop: true, checks: 0 }));
-vi.mock('$lib/desktop/token', () => ({ keyStoreAvailable: () => shell.desktop }));
-vi.mock('$lib/desktop/updater', () => ({
-  desktopUpdater: {
-    check: () => {
-      shell.checks += 1;
-      return Promise.resolve(null);
-    },
-    restart: () => Promise.resolve(),
-    currentVersion: () => Promise.resolve('1.0.0'),
+const shell = vi.hoisted(() => ({ answers: undefined as Capabilities | undefined, checks: 0, loads: 0, broken: false, warn: vi.fn() }));
+const updater = vi.hoisted(() => ({
+  check: () => {
+    shell.checks += 1;
+    return Promise.resolve(null);
   },
+  restart: () => Promise.resolve(),
+  currentVersion: () => Promise.resolve('1.0.0'),
 }));
-vi.mock('$lib/desktop/process-log', () => ({ warnToProcessLog: () => undefined }));
+vi.mock('$lib/platform/platform', () => ({ capabilities: () => shell.answers }));
+vi.mock('$lib/desktop/updater', () => {
+  // Runs when the updater module is first imported: the count says whether it was loaded at all (UPD-001).
+  shell.loads += 1;
+  return {
+    // While `broken`, reading the loaded module fails, as when the updater cannot be loaded.
+    get desktopUpdater() {
+      if (shell.broken) throw new Error('the updater did not load');
+      return updater;
+    },
+  };
+});
+vi.mock('$lib/desktop/process-log', () => ({ warnToProcessLog: shell.warn }));
 
 describe('provideDesktopUpdates', () => {
   let app: ReturnType<typeof mount> | undefined;
@@ -68,28 +80,60 @@ describe('provideDesktopUpdates', () => {
     app = undefined;
     document.body.innerHTML = '';
     vi.unstubAllEnvs();
+    vi.useRealTimers();
     shell.checks = 0;
+    shell.broken = false;
+    shell.warn.mockClear();
   });
 
-  function run(desktop: boolean, dev: boolean): void {
-    shell.desktop = desktop;
+  function run(answers: Capabilities, dev: boolean): void {
+    shell.answers = answers;
     vi.stubEnv('DEV', dev);
     app = mount(DesktopProbe, { target: document.body });
     flushSync();
   }
 
-  it('UPD-001: the desktop production app checks at start', () => {
-    run(true, false);
-    expect(shell.checks).toBe(1);
+  it('UPD-001: the desktop production app checks at start, loading the updater to do it', async () => {
+    run(DESKTOP_MAC, false);
+    await vi.waitFor(() => {
+      expect(shell.checks).toBe(1);
+    });
+    expect(shell.loads).toBe(1);
   });
 
-  it('UPD-001: a dev shell does not check', () => {
-    run(true, true);
+  it('UPD-001, UPD-006: an updater that cannot be loaded fails the check, logs it, and the next tick checks again', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    shell.broken = true;
+    run(DESKTOP_MAC, false);
+    await vi.waitFor(() => {
+      expect(document.querySelector('[data-update-state]')?.textContent).toBe('failed');
+    });
+    expect(shell.warn).toHaveBeenCalledExactlyOnceWith(CHECK_FAILED_LINE);
+    expect(shell.checks).toBe(0);
+    shell.broken = false;
+    vi.advanceTimersByTime(CHECK_INTERVAL_MS);
+    await vi.waitFor(() => {
+      expect(shell.checks).toBe(1);
+    });
+    await vi.waitFor(() => {
+      expect(document.querySelector('[data-update-state]')?.textContent).toBe('idle');
+    });
+  });
+
+  it('UPD-001: a dev shell does not check', async () => {
+    run(DESKTOP_MAC, true);
+    await settle();
     expect(shell.checks).toBe(0);
   });
 
-  it('UPD-001: the web and iOS clients do not check', () => {
-    run(false, false);
+  it('UPD-001: the web and iOS clients do not check', async () => {
+    run(BROWSER, false);
+    await settle();
     expect(shell.checks).toBe(0);
   });
 });
+
+/** Lets every pending import and promise run, so a check that was going to start has started. */
+async function settle(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}

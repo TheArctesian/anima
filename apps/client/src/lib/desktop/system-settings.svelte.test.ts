@@ -2,13 +2,11 @@
 import { flushSync, mount, tick, unmount } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import RemoteLoginButton from '../devices/form/form/RemoteLoginButton.svelte';
-import { openSharingSettings, sharingSettingsAvailable, SystemSettingsError } from './system-settings';
+import { openSharingSettings, SystemSettingsError } from './system-settings';
 
 const shell = vi.hoisted(() => ({ invoke: vi.fn(), isTauri: vi.fn(() => true) }));
 vi.mock('@tauri-apps/api/core', () => ({ invoke: shell.invoke, isTauri: shell.isTauri }));
 
-const MAC = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15';
-const LINUX = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/605.1.15';
 let app: ReturnType<typeof mount> | undefined;
 
 beforeEach(() => {
@@ -20,15 +18,6 @@ afterEach(() => {
   if (app !== undefined) void unmount(app);
   app = undefined;
   document.body.innerHTML = '';
-});
-
-describe('sharingSettingsAvailable', () => {
-  it('R-059: only the desktop app on a Mac offers the Sharing settings', () => {
-    expect(sharingSettingsAvailable(MAC)).toBe(true);
-    expect(sharingSettingsAvailable(LINUX)).toBe(false);
-    shell.isTauri.mockReturnValue(false);
-    expect(sharingSettingsAvailable(MAC)).toBe(false);
-  });
 });
 
 describe('openSharingSettings', () => {
