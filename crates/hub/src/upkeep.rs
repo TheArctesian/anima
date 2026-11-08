@@ -6,7 +6,7 @@ use std::sync::Arc;
 use anima_hub::{
     access, checks,
     clock::Clock,
-    events, metrics,
+    events, metrics, notifications,
     retention::{self, Subject},
 };
 use chrono::{DateTime, Utc};
@@ -50,7 +50,10 @@ async fn keep(db: &PgPool, now: DateTime<Utc>) -> Result<(), &'static str> {
     let samples = metrics::keep_partitions(db, now, periods.keep(Subject::Metrics))
         .await
         .map_err(|e| e.fault());
-    checks.and(event_logs).and(samples)
+    let deliveries = notifications::keep_deliveries(db, now, periods.keep(Subject::Deliveries))
+        .await
+        .map_err(|e| e.fault());
+    checks.and(event_logs).and(samples).and(deliveries)
 }
 
 #[cfg(test)]
