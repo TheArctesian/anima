@@ -1,4 +1,5 @@
-//! Output captured from a Linux 6.x host and a macOS 15 host.
+//! Output captured from a Linux 6.x host and a macOS 15 host. The GPU outputs say in their own
+//! comments which are captured and which are built from the documented format.
 
 pub const PROC_STAT: &[u8] = b"cpu  4705 356 584 3699 23 23 0 0 0 0\n\
 cpu0 1393 87 149 982 5 12 0 0 0 0\n\
@@ -85,3 +86,57 @@ Processes: 500 total, 3 running, 497 sleeping, 2000 threads\n\
 Load Avg: 1.23, 1.45, 1.67\n\
 CPU usage: 5.26% user, 10.52% sys, 84.22% idle\n\
 SharedLibs: 600M resident, 100M data, 50M linkedit.\n";
+
+/// Captured on pop-os (the operator's Linux machine, one RTX A5000) on 2026-11-07 with the
+/// design spec §6.6 `nvidia-smi` command, unedited.
+pub const NVIDIA_SMI: &[u8] = b"0, NVIDIA RTX A5000, 12, 735, 24564, 61, 30.52\n";
+
+/// Constructed from the documented format: two GPUs, one with a comma in its name.
+pub const NVIDIA_SMI_TWO: &[u8] = b"0, NVIDIA GeForce RTX 4090, 97, 20480, 24564, 71, 412.33\n\
+1, Tesla T4, Quadro, Mixed, 3, 1024, 15360, 45, 28.10\n";
+
+/// Constructed from the documented format: the fields a laptop GPU does not give.
+pub const NVIDIA_SMI_NOT_AVAILABLE: &[u8] = b"0, NVIDIA GeForce MX150, 5, 100, 2048, 40, [N/A]\n\
+1, NVIDIA Grid, [Not Supported], [Not Supported], [Not Supported], 50, [Not Supported]\n";
+
+/// Constructed from the documented format: `amdgpu` sysfs file contents of one card.
+pub const AMD_GPU_BUSY_PERCENT: &[u8] = b"37\n";
+pub const AMD_VRAM_USED: &[u8] = b"2147483648\n";
+pub const AMD_VRAM_TOTAL: &[u8] = b"17163091968\n";
+
+/// Constructed from the documented format (`intel_gpu_top -J`, newer versions): a JSON array.
+pub const INTEL_GPU_TOP_ARRAY: &[u8] = b"[\n\
+{\n\"period\": {\"duration\": 1000.1, \"unit\": \"ms\"},\n\
+\"power\": {\"GPU\": 0.5, \"Package\": 6.2, \"unit\": \"W\"},\n\
+\"engines\": {\"Render/3D/0\": {\"busy\": 4.0, \"sema\": 0.0, \"wait\": 0.0, \"unit\": \"%\"}, \
+\"Video/0\": {\"busy\": 0.0, \"unit\": \"%\"}}\n\
+},\n\
+{\n\"period\": {\"duration\": 1000.4, \"unit\": \"ms\"},\n\
+\"power\": {\"GPU\": 1.5, \"Package\": 7.0, \"unit\": \"W\"},\n\
+\"engines\": {\"Render/3D/0\": {\"busy\": 21.5, \"unit\": \"%\"}, \
+\"Video/0\": {\"busy\": 33.25, \"unit\": \"%\"}}\n\
+}\n]\n";
+
+/// Constructed from the documented format (older `intel_gpu_top -J`): objects separated by
+/// commas, no brackets, the last one cut off.
+pub const INTEL_GPU_TOP_STREAM_CUT: &[u8] =
+    b"{\"engines\": {\"Render/3D/0\": {\"busy\": 10.0}}},\n\
+{\"engines\": {\"Render/3D/0\": {\"busy\": 60.0}}},\n\
+{\"engines\": {\"Render/3D/0\": {\"bus";
+
+/// Constructed from the documented format: two accelerators, as `ioreg -r -d 1 -c
+/// IOAccelerator` prints them (properties trimmed to the ones read and a few neighbours).
+pub const IOREG_ACCELERATOR: &[u8] = b"+-o AGXAcceleratorG14X  <class AGXAcceleratorG14X, id 0x100000436, registered, matched, active, busy 0 (0 ms), retain 28>\n\
+  {\n\
+    \"IOClass\" = \"AGXAcceleratorG14X\"\n\
+    \"model\" = \"Apple M2 Pro\"\n\
+    \"gpu-core-count\" = 19\n\
+    \"PerformanceStatistics\" = {\"Alloc system memory\"=1234567168,\"Device Utilization %\"=17,\"In use system memory\"=987654321,\"Renderer Utilization %\"=12}\n\
+  }\n\
+\n\
++-o AGXAcceleratorG14X  <class AGXAcceleratorG14X, id 0x100000437, registered, matched, active, busy 0 (0 ms), retain 28>\n\
+  {\n\
+    \"model\" = \"Apple M2 Pro\"\n\
+    \"PerformanceStatistics\" = {\"Device Utilization %\"=3,\"In use system memory\"=1000}\n\
+  }\n\
+\n";

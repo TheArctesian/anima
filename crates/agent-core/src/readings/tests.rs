@@ -3,6 +3,7 @@
 use super::{Cpu, Disk, Interface, Load, Memory, captures};
 
 mod df;
+mod gpu;
 mod linux;
 mod macos;
 

@@ -1,12 +1,16 @@
 //! Readers of device command output (MET-002). Each takes the bytes a command printed and gives
 //! typed readings; none panics and none fails on one bad line.
 //!
-//! The commands are fixed text; the forms read here are the ones the collector runs:
+//! The commands are fixed text. The hub's SSH collector and the agent run the same forms and
+//! read them here (MET-016):
 //!
 //! - Linux: `cat /proc/stat`, `cat /proc/meminfo`, `cat /proc/net/dev`, `cat /proc/uptime`,
 //!   `cat /proc/loadavg`, `df -P -B1` (block size 1, see [`df::disks`]).
 //! - macOS: `sysctl -n hw.memsize hw.pagesize vm.loadavg kern.boottime`, `vm_stat`,
 //!   `df -P -k` (block size 1024), `netstat -ib -n`, `top -l 2 -n 0 -s 1`.
+//! - GPU: `nvidia-smi --query-gpu=... --format=csv,noheader,nounits`, the `amdgpu` sysfs files
+//!   `gpu_busy_percent`, `mem_info_vram_used` and `mem_info_vram_total`, `intel_gpu_top -J`,
+//!   and on macOS `ioreg -r -d 1 -c IOAccelerator` (see [`gpu`]).
 //!
 //! A last line without its newline is dropped: the link cuts output at a limit, and half a
 //! line can hold a wrong number. A line that is not UTF-8 is skipped.
@@ -14,12 +18,14 @@
 #[cfg(any(test, feature = "test-support"))]
 pub mod captures;
 pub mod df;
+pub mod gpu;
 pub mod linux;
 pub mod macos;
 mod reading;
 #[cfg(test)]
 mod tests;
 
+pub use gpu::{GpuReading, GpuVendor, Vram};
 pub use reading::{Cpu, Disk, Interface, Load, Memory, Reading};
 
 /// The longest label (mount point or interface name) kept, in bytes.
