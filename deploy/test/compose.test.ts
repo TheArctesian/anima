@@ -110,6 +110,7 @@ describe("secrets (DB-002, SEC-004, DNS-003)", () => {
     hub: ["anima_key", "hub_database_url"],
     guacd: [],
     localapi: [],
+    apprise: [],
   };
 
   for (const [name, secrets] of Object.entries(expected)) {
@@ -225,7 +226,8 @@ describe("hardening and images (SEC-001)", () => {
   test("SEC-001 every image has a fixed version tag, and lego is pinned", () => {
     for (const [name, container] of services) {
       if (container.image === undefined) continue;
-      const tag = container.image.split(":")[1] ?? "";
+      // `image:tag@sha256:digest`: the digest is checked in compose-apprise.test.ts.
+      const tag = (container.image.split(":")[1] ?? "").split("@")[0] ?? "";
       expect(`${name}:${tag}`).toMatch(/^[a-z]+:(?!latest$)[\w.-]+$/);
     }
     expect(compose.services["certs"]?.image).toMatch(/^goacme\/lego:v\d+\.\d+\.\d+$/);
@@ -264,7 +266,7 @@ describe("hardening and images (SEC-001)", () => {
   });
 
   test("every long-running service restarts, and migrate does not", () => {
-    for (const name of ["postgres", "hub", "guacd", "certs", "localapi"]) {
+    for (const name of ["postgres", "hub", "guacd", "certs", "localapi", "apprise"]) {
       expect(compose.services[name]?.restart).toBe("unless-stopped");
     }
     expect(compose.services["migrate"]?.restart).toBe("no");

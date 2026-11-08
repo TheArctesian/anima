@@ -168,11 +168,17 @@ services:
       ANIMA_GUACD: guacd:4822
       ANIMA_GUACD_DRIVE_ROOT: /var/lib/guacd/drives
       ANIMA_PERMITTED_NETWORKS: ${ANIMA_PERMITTED_NETWORKS:-100.64.0.0/10}
-      # Checks never probe the hub's own networks or the VPS public address, so a device
-      # entry cannot reach PostgreSQL or guacd.
-      ANIMA_PROBE_DENY: ${ANIMA_HUB_SUBNET:-172.30.0.0/24},${ANIMA_DATABASE_SUBNET:-172.30.1.0/24},${ANIMA_VPS_PUBLIC_ADDRESS:?set to the VPS public IPv4}/32,${ANIMA_LOCALAPI_SUBNET:-172.30.2.0/24}
+      # Checks and channels never reach the hub's own networks, the hub's VPN address or the VPS
+      # public address, so a device entry cannot reach PostgreSQL, guacd or the host. The notify
+      # network is denied except the Apprise address 172.30.3.10: the eight CIDRs below cover
+      # 172.30.3.0/24 without it, so the hub can still send to its own Apprise (NET-001, E-1).
+      ANIMA_PROBE_DENY: ${ANIMA_HUB_SUBNET:-172.30.0.0/24},${ANIMA_DATABASE_SUBNET:-172.30.1.0/24},${ANIMA_VPS_PUBLIC_ADDRESS:?set to the VPS public IPv4}/32,${ANIMA_LOCALAPI_SUBNET:-172.30.2.0/24},${ANIMA_HUB_ADDRESS:?set ANIMA_HUB_ADDRESS to the hub's VPN address}/32,172.30.3.0/29,172.30.3.8/31,172.30.3.11/32,172.30.3.12/30,172.30.3.16/28,172.30.3.32/27,172.30.3.64/26,172.30.3.128/25
       # Tailscale status and ping checks go through the proxy; empty makes them Unknown (K7).
       ANIMA_TAILSCALE_LOCALAPI: ${ANIMA_TAILSCALE_LOCALAPI:-localapi:8080}
+      ANIMA_PUBLIC_ORIGIN: ${ANIMA_PUBLIC_ORIGIN:-https://hub.anima.ing}
+      ANIMA_WEB_ROOT: /usr/share/anima/web
+      ANIMA_RECORDING_ROOT: /var/lib/anima/recordings
+      ANIMA_RECORDING_MAX_BYTES: ${ANIMA_RECORDING_MAX_BYTES:-2147483648}
       ANIMA_LOG: ${ANIMA_LOG:-info}
     secrets:
       - source: hub_database_url
@@ -180,6 +186,9 @@ services:
       - anima_key
     volumes:
       - certs:/certs:ro
+      # Read-write. The image creates this folder for 10001:10001 with mode 0700 and the new
+      # volume copies both (E-3); the root file system stays read-only.
+      - recordings:/var/lib/anima/recordings
     tmpfs: ["/tmp"]
     # `anima-hub health` asks GET /health over TLS on the listen address, pinned to tls.pem.
     # After a renewal it fails until the hub's hourly reload; unhealthy restarts nothing.
@@ -199,6 +208,8 @@ services:
       gateway:
         ipv4_address: ${ANIMA_HUB_IP:-172.30.0.10}
       localapi: {}
+      # Joined whether or not Apprise runs, so turning it on needs no hub restart (E-2).
+      notify: {}
     # No dependency on localapi: the hub starts without it and the Tailscale checks report Unknown.
     depends_on:
       postgres:
@@ -209,6 +220,36 @@ services:
         condition: service_healthy
       guacd:
         condition: service_started
+    restart: unless-stopped
+
+  # Optional notification relay (E-2, D-13): `docker compose --profile apprise up -d`. The hub
+  # posts stateless /notify calls to it; it keeps no state, publishes no port and holds no secret.
+  # The hub does not depend on it.
+  apprise:
+    <<: *hardened
+    profiles: [apprise]
+    image: caronc/apprise:2.0.2@sha256:6ae97e24b3447f85f725a03ba73c6dc3a5f4b99f4273ac126de2d9b5ed6205d5
+    # The image starts as root and drops to PUID. Starting as 1000 skips that step, so no
+    # capability (SETUID, CHOWN) is needed.
+    user: "1000:1000"
+    environment:
+      # Nothing is written to /config: URLs arrive with each request.
+      APPRISE_STATEFUL_MODE: disabled
+    # /tmp: nginx, gunicorn and supervisord write their pid, socket and temp files there. The
+    # image declares /config, /attach and /plugin as volumes. A tmpfs on each stops Docker making
+    # anonymous volumes, so nothing persists. /status answers 417 unless /config and /attach are
+    # writable, so those two are small writable tmpfs mounts; /plugin stays empty and read-only.
+    tmpfs: ["/tmp", "/config:rw,noexec,nosuid,size=1m", "/attach:rw,noexec,nosuid,size=1m", "/plugin:ro"]
+    networks:
+      notify:
+        ipv4_address: 172.30.3.10
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:8000/status"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+      start_interval: 2s
     restart: unless-stopped
 
 networks:
@@ -229,6 +270,13 @@ networks:
     ipam:
       config:
         - subnet: ${ANIMA_LOCALAPI_SUBNET:-172.30.2.0/24}
+  # The hub and Apprise only. It has a route out: Apprise sends to the channels' services (D-13).
+  # The subnet is a literal because the carved deny list in the hub environment cannot follow a
+  # variable (E-1).
+  notify:
+    ipam:
+      config:
+        - subnet: 172.30.3.0/24
   acme: {}
 
 volumes:
@@ -236,6 +284,7 @@ volumes:
   certs: {}
   lego_state: {}
   gateway_drives: {}
+  recordings: {}
 
 secrets:
   postgres_password:
