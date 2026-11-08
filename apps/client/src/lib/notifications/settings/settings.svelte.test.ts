@@ -89,6 +89,23 @@ it('NOT-006, NOT-007: Save sends the days and the template, and says Saved', asy
   expect([outcome(), days().value]).toEqual(['Saved.', '30, 7']);
 });
 
+it('NOT-006: Save pressed twice while the hub saves sends the settings once', async () => {
+  let release: (value: unknown) => void = () => undefined;
+  const answer = new Promise((resolve) => {
+    release = resolve;
+  });
+  await open(loaded({ SetNotificationSettings: answer as Promise<never> }));
+  save().click();
+  save().click();
+  flushSync();
+  save().click();
+  expect(save().getAttribute('aria-busy')).toBe('true');
+  release(ok({ setNotificationSettings: FIXTURE_SETTINGS }));
+  await settled();
+  expect(sentOperations().filter((operation) => operation === 'SetNotificationSettings')).toHaveLength(1);
+  expect(outcome()).toBe('Saved.');
+});
+
 it('LOG-007: a refused save says so in a fixed sentence and keeps what was typed', async () => {
   await open(loaded({ SetNotificationSettings: failure('VALIDATION', 'hub text', [{ field: 'input.certificateDays', message: 'hub text' }]) }));
   typeInto(days(), '30, 7');

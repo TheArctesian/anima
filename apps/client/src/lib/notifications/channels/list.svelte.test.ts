@@ -177,6 +177,28 @@ it('LOG-007: a refused delete shows a fixed sentence in the dialog, not the hub\
   expect(document.body.textContent).not.toContain(FAKE_SECRET);
 });
 
+it('NOT-002: while the hub deletes, Cancel and Escape are refused; its answer then drops the row and closes the dialog', async () => {
+  let release: (value: unknown) => void = () => undefined;
+  const answer = new Promise((resolve) => {
+    release = resolve;
+  });
+  const target = await open(loaded({ DeleteNotificationChannel: answer as Promise<never> }));
+  button('Delete phone-ntfy').click();
+  flushSync();
+  const dialog = () => document.querySelector('[role="dialog"]');
+  button('Delete phone-ntfy', dialog() ?? document).click();
+  flushSync();
+  button('Cancel', dialog() ?? document).click();
+  dialog()?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await settled();
+  expect(dialog()?.querySelector('h2')?.textContent).toBe('Delete phone-ntfy?');
+  release(ok({ deleteNotificationChannel: FIXTURE_CHANNELS[1]?.id }));
+  await settled();
+  await settled();
+  expect(names(target)).not.toContain('phone-ntfy');
+  expect(dialog()).toBeNull();
+});
+
 it('MOT-007: after threshold-loading a skeleton row shows over the kept space, hidden from assistive technology', async () => {
   const time = manualClock();
   const { answer, release } = pending();
