@@ -117,12 +117,14 @@ fn default_policy_allows_private_and_public_addresses() {
 }
 
 #[test]
-fn test_policy_allows_loopback_only() {
+fn test_policy_allows_plain_loopback_only() {
     let policy = AddressPolicy::default().allowing_loopback();
-    for text in ["127.0.0.1", "::1", "::ffff:127.0.0.1"] {
+    for text in ["127.0.0.1", "::1"] {
         assert!(policy.permits(ip(text)), "{text}");
     }
+    // An IPv6 form that carries a loopback address stays refused (Q2-09).
     for text in [
+        "::ffff:127.0.0.1",
         "169.254.169.254",
         "0.0.0.0",
         "224.0.0.1",
@@ -263,6 +265,19 @@ async fn tcp_and_tls_and_icmp_refuse_refused_hosts_by_literal_and_by_name() {
             }
             assert_refused(&result);
         }
+    }
+}
+
+/// Q2-09, P3-003: the shared lookup keeps the checks reading of brackets, so an IP literal in
+/// any number of them is judged by the policy, not left unresolved.
+#[tokio::test]
+async fn an_ip_literal_in_loose_brackets_is_judged_by_the_policy() {
+    let tcp = CheckConfig::Tcp {
+        port: 9,
+        timeout_ms: 1000,
+    };
+    for host in ["[127.0.0.1]", "[[::1]]", "[::1", "::1]"] {
+        assert_refused(&probe(&target(host), &tcp, None, &strict_env()).await);
     }
 }
 

@@ -18,7 +18,6 @@ use super::{
     live::Live,
     model::{EndReason, FieldError, Protocol, Session, SessionEnd},
     store::{self, NewSession},
-    target::TargetRule,
     tickets::{LIFETIME, PendingTicket, TOKEN_BYTES, Ticket, TicketToken},
 };
 use crate::{
@@ -26,6 +25,7 @@ use crate::{
     devices::{Device, RdpSecurity, RdpSettings},
     events::{self, AuditAction, AuditTarget, ClientAddr, NewAudit, Operator},
     ids::{DeviceId, SessionId},
+    targets::AddressPolicy,
 };
 
 pub use waking::Waking;
@@ -93,11 +93,11 @@ pub(super) fn checked_display(display: &DisplayRequest) -> Result<Display, Vec<F
     }
 }
 
-/// The host as an IP literal `rule` refuses, as a field error. Host names are checked when
+/// The host as an IP literal `policy` refuses, as a field error. Host names are checked when
 /// the tunnel connects, because they resolve only then.
-fn host_problem(host: &str, rule: &TargetRule) -> Option<FieldError> {
+fn host_problem(host: &str, policy: &AddressPolicy) -> Option<FieldError> {
     let ip = host.parse::<IpAddr>().ok()?.to_canonical();
-    rule.refuses(ip).then(|| {
+    (!policy.permits(ip)).then(|| {
         FieldError::new(
             "host",
             "The device's host is a loopback, link-local, multicast or unspecified address, \
@@ -156,7 +156,7 @@ async fn admit(
     req: &StartRequest,
 ) -> Result<Display, Error> {
     let display = &req.display;
-    let host = host_problem(&device.host, live.target_rule());
+    let host = host_problem(&device.host, live.policy());
     let display = match (checked_display(display), host) {
         (Ok(display), None) => display,
         (display, host) => {

@@ -4,7 +4,10 @@
 use std::net::IpAddr;
 
 use super::{ProbeEnv, outcome::Failure};
-use crate::checks::config::IpVersion;
+use crate::{
+    checks::config::IpVersion,
+    targets::{self, TargetError},
+};
 
 /// Resolves `host` once and keeps only the addresses of `family` (if given) that the policy
 /// allows.
@@ -37,22 +40,18 @@ pub(super) async fn allowed_addresses(
     }
 }
 
+/// The hub's one lookup ([`targets::lookup`]) with the test host overrides. An IP literal in
+/// any number of brackets is read as the check editor accepts it (`config::rules::host`).
 async fn lookup(host: &str, env: &ProbeEnv) -> Result<Vec<IpAddr>, Failure> {
     let bare = host.trim_start_matches('[').trim_end_matches(']');
-    if let Ok(ip) = bare.parse::<IpAddr>() {
-        return Ok(vec![ip]);
-    }
-    let found: Vec<IpAddr> = match env.overrides.hosts.get(&host.to_ascii_lowercase()) {
-        Some(ips) => ips.clone(),
-        None => tokio::net::lookup_host((host, 0))
-            .await
-            .map_err(|_| Failure::Unresolved)?
-            .map(|addr| addr.ip())
-            .collect(),
-    };
-    if found.is_empty() {
-        Err(Failure::Unresolved)
+    let host = if bare.parse::<IpAddr>().is_ok() {
+        bare
     } else {
-        Ok(found)
-    }
+        host
+    };
+    targets::lookup(host, &env.overrides.hosts)
+        .await
+        .map_err(|error| match error {
+            TargetError::Unresolved | TargetError::Refused => Failure::Unresolved,
+        })
 }

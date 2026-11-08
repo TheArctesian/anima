@@ -114,7 +114,7 @@ impl From<SshError> for Error {
 }
 
 /// Opens a link to `device` within 10 seconds: its accepted host key, its host resolved once
-/// and checked against `policy` and the target rule, a connection to a checked address, the
+/// and every address checked against `policy`, a connection to a checked address, the
 /// key pinned, and the sign-in with the stored credential. The credential is loaded only
 /// after the presented key equals the accepted one, and dropped as soon as the sign-in
 /// returns (SEC-007). Safe to drop at any await.

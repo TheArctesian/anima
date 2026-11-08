@@ -1,9 +1,8 @@
-//! Tests of the link: the command line (`command`), the address checks (`addresses`), and the
-//! link against a test SSH server on loopback (`opening`, `running`). In-crate tests, so the
-//! loopback policy and the target rule stay crate-private. The bench and the server serve the
-//! other link users' tests in `sessions` too (Wake-on-LAN).
+//! Tests of the link: the command line (`command`) and the link against a test SSH server on
+//! loopback (`opening`, `running`). In-crate tests, so the loopback policy stays
+//! crate-private; the address checks are the policy's (`targets::tests`). The bench and the
+//! server serve the other link users' tests in `sessions` too (Wake-on-LAN).
 
-mod addresses;
 mod command;
 mod opening;
 mod running;

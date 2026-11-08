@@ -158,7 +158,7 @@ async fn opened(terminal: &Terminal, ticket: &PendingTicket) -> Result<Opening, 
     let target = Target {
         host: &device.host,
         port: device.ssh.port,
-        rule: terminal.live.target_rule(),
+        policy: terminal.live.policy(),
     };
     let stream = if ticket.wake_sent {
         ssh::connect_waking(target, terminal.timing.reconnect).await?
