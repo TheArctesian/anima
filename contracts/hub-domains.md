@@ -147,7 +147,7 @@ impl Trail {
 | `checks` (Phase 3, replaces the Phase 2 row above) | `ssh` (`link`, `SshLink`, `FixedCommand` only; replaces `sessions`), `notifications` (`observe`, `adopt_defaults`, `Observation`, `for_checks` only) |
 | `metrics` (Phase 2, new) | `devices`, `sessions` (link only), `credentials` (`Vault` only), `events` |
 | `metrics` (Phase 3, replaces the row above) | `devices`, `ssh` (link only; replaces `sessions`), `credentials` (`Vault` only), `events` |
-| `web_interfaces` (Phase 2, new) | `checks` (`http_urls` only), `events` |
+| `web_interfaces` (Phase 2, new) | `checks` (`http_urls` only), `devices` (CR-5), `events` |
 | `trust` (Phase 3, new) | `devices`, `events` |
 | `ssh` (Phase 3, new) | `devices`, `credentials`, `trust`, `events` |
 | `notifications` (Phase 3, new) | `events`, `credentials` (`Vault`, `Secret`, `Sealed` only) |
