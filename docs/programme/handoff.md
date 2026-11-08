@@ -7,7 +7,7 @@ section 5.
 ## 1. Where things are
 
 - **Integration branch:** `phase-3`. It was cut from `phase-2` at 04ab9b61 (R-081) and has
-  `origin/main` merged in. Gates: `env -u DATABASE_URL BASE_REF=04ab9b61 bun run gates`
+  `origin/main` merged in. Gates: `CARGO_TARGET_DIR=$PWD/target CARGO_INCREMENTAL=0 env -u DATABASE_URL BASE_REF=04ab9b61 bun run gates` (R-101)
   (12 gates). Client-only changes can run gates 4–12 (R-068).
 - **Phase 1 and 2:** finished and merged into `main` (PR #3, PR #51). The hub at fd8cc03c is
   live on the VPS.
