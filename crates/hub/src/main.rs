@@ -19,7 +19,7 @@ use anima_hub::{
     config::{self, Config},
     credentials::Vault,
     events::{self, Bus, process_log},
-    logged, metrics, router,
+    logged, metrics, router_at,
     schema::{Dependencies, build_schema},
     serve_until, sessions,
     targets::AddressPolicy,
@@ -146,6 +146,7 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     let bus = Bus::new(BUS_CAPACITY);
     let (probing, collecting) = reaching(&vault, &policy, config.tailscale_localapi.clone());
     let feed = metrics::Feed::new();
+    let origin = access::PublicOrigin::new(config.public_origin.clone());
     let dependencies = Dependencies {
         config,
         clock: clock.clone(),
@@ -166,7 +167,7 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     // The tunnels and `/push` are behind the same permitted-networks check as every route, and
     // logged by their templates only, never their tokens (K3, NET-002, LOG-007, R-028, R-051).
     let edge = access::Edge::new(pool.clone(), bus, clock.clone());
-    let app = router(schema, pool.clone(), clock.clone())
+    let app = router_at(schema, pool.clone(), clock.clone(), origin)
         .merge(tunnels)
         .merge(logged(push))
         .layer(access::permitted_networks_layer(edge.clone()));
