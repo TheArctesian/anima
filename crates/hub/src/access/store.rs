@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 pub(super) use permitted::{permitted_networks, replace_labelled_networks};
 
-use super::tokens::{Scope, TokenHash};
+use super::tokens::{Scope, TokenHash, TokenKind};
 use crate::ids::OperatorId;
 
 /// An operator account as stored. No `Debug`: it holds the password hash.
@@ -164,21 +164,32 @@ pub(super) async fn delete_attempts_of(
     Ok(())
 }
 
-/// Deletes login attempts at or before `cutoff` and tokens expired at `now` (K2 retention).
-/// Returns how many of each.
+/// What [`prune`] deletes: attempts at or before `attempts`, login and browser tokens that
+/// expired at or before `tokens`, and API keys that expired at or before `keys`.
+pub(super) struct Cutoffs {
+    pub attempts: DateTime<Utc>,
+    pub tokens: DateTime<Utc>,
+    pub keys: DateTime<Utc>,
+}
+
+/// Deletes the attempts and tokens past their cutoffs (K2 retention). Returns how many
+/// attempts, then how many tokens of any kind.
 pub(super) async fn prune(
     conn: &mut PgConnection,
-    cutoff: DateTime<Utc>,
-    now: DateTime<Utc>,
+    cutoffs: &Cutoffs,
 ) -> Result<(u64, u64), sqlx::Error> {
     let attempts = sqlx::query("delete from access.login_attempts where at <= $1")
-        .bind(cutoff)
+        .bind(cutoffs.attempts)
         .execute(&mut *conn)
         .await?;
-    let tokens = sqlx::query("delete from access.api_tokens where expires_at <= $1")
-        .bind(now)
-        .execute(&mut *conn)
-        .await?;
+    let tokens = sqlx::query(
+        "delete from access.api_tokens where (kind <> 'api_key' and expires_at <= $1) \
+         or (kind = 'api_key' and expires_at <= $2)",
+    )
+    .bind(cutoffs.tokens)
+    .bind(cutoffs.keys)
+    .execute(&mut *conn)
+    .await?;
     Ok((attempts.rows_affected(), tokens.rows_affected()))
 }
 
@@ -194,10 +205,11 @@ pub(super) async fn delete_operator_tokens(
     Ok(())
 }
 
-/// A token row to insert.
+/// A login or browser token row to insert; neither has a name or a display prefix.
 pub(super) struct NewToken {
     pub operator: OperatorId,
     pub hash: TokenHash,
+    pub kind: TokenKind,
     pub scope: Scope,
     pub expires_at: DateTime<Utc>,
 }
@@ -211,12 +223,13 @@ pub(super) async fn insert_token(
     let id = Uuid::now_v7();
     sqlx::query(
         "insert into access.api_tokens \
-         (id, operator_id, token_hash, scope, expires_at, created_at) \
-         values ($1, $2, $3, $4, $5, $6)",
+         (id, operator_id, token_hash, kind, scope, expires_at, created_at) \
+         values ($1, $2, $3, $4, $5, $6, $7)",
     )
     .bind(id)
     .bind(token.operator)
     .bind(&token.hash.0[..])
+    .bind(token.kind.as_str())
     .bind(token.scope.as_str())
     .bind(token.expires_at)
     .bind(now)
@@ -231,6 +244,7 @@ pub(super) struct StoredToken {
     pub id: Uuid,
     pub operator_id: OperatorId,
     pub username: String,
+    pub kind: String,
     pub scope: String,
     pub expires_at: DateTime<Utc>,
     pub last_used_at: Option<DateTime<Utc>>,
@@ -241,7 +255,7 @@ pub(super) async fn token_by_hash(
     hash: TokenHash,
 ) -> Result<Option<StoredToken>, sqlx::Error> {
     sqlx::query_as(
-        "select t.id, t.operator_id, o.username, t.scope, t.expires_at, t.last_used_at \
+        "select t.id, t.operator_id, o.username, t.kind, t.scope, t.expires_at, t.last_used_at \
          from access.api_tokens t join access.operators o on o.id = t.operator_id \
          where t.token_hash = $1",
     )

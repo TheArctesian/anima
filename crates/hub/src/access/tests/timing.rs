@@ -11,7 +11,7 @@ use super::{now, test_vault};
 use crate::{
     access::{
         ClientAddr, Error, Password,
-        login::{self, Attempt},
+        login::{self, Attempt, Issue},
         password::{self, DUMMY_HASH},
     },
     events::Bus,
@@ -24,6 +24,7 @@ fn attempt(username: &str) -> Attempt {
         totp_code: None,
         client: ClientAddr(IpAddr::V4(Ipv4Addr::new(100, 64, 0, 9))),
         at: now(),
+        issue: Issue::LOGIN,
     }
 }
 

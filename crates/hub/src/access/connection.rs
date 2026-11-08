@@ -2,7 +2,9 @@
 //! in with holds (K7 "Authentication transport", R-020, API-003, H-6(b)).
 //!
 //! The client signs in with the `connection_init` payload `{ "authorization": "Bearer <token>" }`;
-//! the URL is never read. A missing or invalid token closes the socket with 4403. After sign-in
+//! the URL is never read. A browser whose upgrade came from the public origin with its
+//! `__Host-anima` cookie may instead send a payload without `authorization` (D-3, K7). A missing
+//! or invalid token closes the socket with 4403. After sign-in
 //! the socket closes with 4403 at the token's `expires_at` by the hub clock, and at the next
 //! re-check (every 15 seconds) after the token is deleted by `logout`, `operator set` or
 //! `prune`. Re-checking the stored token, rather than a bus signal, also sees `operator set`,
@@ -28,16 +30,22 @@ use async_graphql::{
 };
 use axum::{
     extract::ws::{CloseFrame, Message, WebSocket, WebSocketUpgrade},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::{IntoResponse as _, Response},
 };
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use tokio::sync::oneshot;
 use uuid::Uuid;
+use zeroize::Zeroizing;
 
 use self::intake::Intake;
-use super::{ClientAddr, Error, identity::identify_connection, store, tokens};
+use super::{
+    ClientAddr, Error, Identity, PublicOrigin, SameOrigin, browser,
+    identity::{identify_connection, resolve},
+    store,
+    tokens::{self, Transport},
+};
 use crate::clock::Clock;
 
 /// The only WebSocket subprotocol served (API-002).
@@ -65,9 +73,15 @@ pub struct SocketAccess {
     db: PgPool,
     clock: Arc<dyn Clock>,
     client: Option<ClientAddr>,
+    cookie: Option<CookieToken>,
     recheck: Duration,
     init_timeout: Duration,
 }
+
+/// The `__Host-anima` value of an upgrade from the public origin, kept until `connection_init`.
+/// Wiped on drop; no `Debug`, so it cannot reach a log (LOG-007).
+#[derive(Clone)]
+struct CookieToken(Zeroizing<String>);
 
 impl SocketAccess {
     /// Checks for a connection from `client`, with the time from `clock`.
@@ -77,9 +91,21 @@ impl SocketAccess {
             db,
             clock,
             client,
+            cookie: None,
             recheck: RECHECK,
             init_timeout: INIT_TIMEOUT,
         }
+    }
+
+    /// Keeps the browser cookie of the upgrade's `headers` when their one `Origin` is `origin`
+    /// and they have no `Authorization` header (A-3, A-4); otherwise the connection has no
+    /// cookie, and only a `connection_init` bearer signs it in.
+    #[must_use]
+    pub fn with_upgrade(self, headers: &HeaderMap, origin: &PublicOrigin) -> Self {
+        let cookie = SameOrigin::of(headers, origin)
+            .and_then(|from| browser::cookie_token(headers, &from))
+            .map(|token| CookieToken(Zeroizing::new(token.to_owned())));
+        Self { cookie, ..self }
     }
 
     /// The same checks with another re-check interval and `connection_init` timeout, for tests
@@ -200,14 +226,15 @@ async fn serve<E: Executor>(socket: WebSocket, executor: E, access: SocketAccess
     }
 }
 
-/// The `connection_init` handler: resolves the payload's bearer token, never logging it, and
-/// reports the verdict to the connection.
+/// The `connection_init` handler: resolves the payload's bearer token, or the upgrade's cookie
+/// when the payload has no `authorization`, never logging either, and reports the verdict to
+/// the connection.
 async fn sign_in(
     access: SocketAccess,
     payload: serde_json::Value,
     verdict: oneshot::Sender<Verdict>,
 ) -> async_graphql::Result<Data> {
-    let identified = identify_connection(&access.db, &payload, access.clock.now()).await;
+    let identified = identify_socket(&access, &payload).await;
     drop(payload);
     let (decision, data) = match identified {
         Ok(Some(identity)) => {
@@ -230,6 +257,21 @@ async fn sign_in(
     // Fails only when the connection is gone, and then nobody waits for the verdict.
     let _ = verdict.send(decision);
     data
+}
+
+/// The identity of a connection: from the payload's `authorization` when it has one, with the
+/// bearer rules; else from the kept cookie, which must hold a browser token (A-3).
+async fn identify_socket(
+    access: &SocketAccess,
+    payload: &serde_json::Value,
+) -> Result<Option<Identity>, Error> {
+    let now = access.clock.now();
+    match &access.cookie {
+        Some(cookie) if payload.get("authorization").is_none() => {
+            resolve(&access.db, &cookie.0, Transport::Cookie, now).await
+        }
+        _ => identify_connection(&access.db, payload, now).await,
+    }
 }
 
 /// Relays the protocol's messages to the client until the connection ends; returns why.

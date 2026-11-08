@@ -2,18 +2,12 @@
 
 use async_graphql::{EmptySubscription, Request, Schema, value};
 use chrono::TimeDelta;
-use uuid::Uuid;
 
-use super::{assert_unauthenticated, backstopped, clock, now, operator};
-use crate::access::{Identity, Scope, graphql};
+use super::{assert_unauthenticated, backstopped, clock, identity_of, now, operator};
+use crate::access::{Identity, Scope, TokenKind, graphql};
 
 fn read_identity() -> Identity {
-    Identity::new(
-        operator(),
-        Uuid::now_v7(),
-        Scope::Read,
-        now() + TimeDelta::days(1),
-    )
+    identity_of(TokenKind::ApiKey, Scope::Read, now() + TimeDelta::days(1))
 }
 
 #[tokio::test]

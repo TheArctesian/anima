@@ -1,7 +1,8 @@
-//! Who may use the hub: operator accounts, sign-in, API tokens and the GraphQL guard
-//! (SEC-002, API-003), and from where: permitted networks and the listening edge (NET-001 to
+//! Who may use the hub: operator accounts, sign-in (desktop and browser), API tokens and the
+//! GraphQL guard (SEC-002, API-003, D-3), and from where: permitted networks and the listening edge (NET-001 to
 //! NET-003, SEC-001, SEC-008).
 
+mod browser;
 mod connection;
 pub mod graphql;
 mod guard;
@@ -10,6 +11,7 @@ mod layer;
 pub mod listen;
 mod login;
 mod networks;
+mod origin;
 mod password;
 mod store;
 #[cfg(test)]
@@ -27,12 +29,14 @@ use sqlx::PgPool;
 use zeroize::Zeroizing;
 
 pub use crate::events::{ClientAddr, Operator};
+pub use browser::SameOrigin;
 pub use connection::{MESSAGE_LIMIT, SUBPROTOCOL, SocketAccess, accept_socket};
 pub use guard::{Authenticated, SignInRequired};
 pub use identity::{Identity, client_addr, identify, identify_connection};
 pub use layer::{Edge, permitted_networks_layer};
+pub use origin::PublicOrigin;
 pub use password::Password;
-pub use tokens::Scope;
+pub use tokens::{Scope, TokenKind};
 
 use crate::{
     credentials::{self, Secret, Vault},
@@ -41,6 +45,10 @@ use crate::{
 
 /// Login attempts are kept this long (K2 retention).
 const ATTEMPTS_KEPT: TimeDelta = TimeDelta::days(90);
+
+/// An expired API key is kept this long, so the operator still sees why a script stopped
+/// (K2 0010-0029, WP-43 A-5).
+const EXPIRED_KEYS_KEPT: TimeDelta = TimeDelta::days(30);
 
 /// The label of the networks that come from `ANIMA_PERMITTED_NETWORKS` (D-10).
 const CONFIGURED_NETWORKS: &str = "ANIMA_PERMITTED_NETWORKS";
@@ -56,6 +64,9 @@ pub enum Error {
     /// A `read` token asked for a mutation.
     #[error("This token may only read.")]
     ReadOnly,
+    /// `signInBrowser` came from another origin than the hub's own, or with none (A-4).
+    #[error("Sign in from the hub's own address.")]
+    OtherOrigin,
     /// The client address is outside every permitted network (NET-002).
     #[error("This address is not in a permitted network.")]
     NotPermitted,
@@ -114,7 +125,7 @@ impl Error {
             Self::Unauthenticated | Self::WrongCredentials | Self::TotpSecret(_) => {
                 "UNAUTHENTICATED"
             }
-            Self::ReadOnly | Self::NotPermitted => "FORBIDDEN",
+            Self::ReadOnly | Self::OtherOrigin | Self::NotPermitted => "FORBIDDEN",
             Self::Validation { .. } => "VALIDATION",
             Self::Unreachable(_) => "UNAVAILABLE",
             Self::Database(_)
@@ -134,6 +145,7 @@ impl Error {
             Self::Unauthenticated
             | Self::WrongCredentials
             | Self::ReadOnly
+            | Self::OtherOrigin
             | Self::NotPermitted
             | Self::Validation { .. } => None,
             Self::Unreachable(_) => Some("database_unreachable"),
@@ -191,6 +203,7 @@ impl Error {
             Self::Unauthenticated
             | Self::WrongCredentials
             | Self::ReadOnly
+            | Self::OtherOrigin
             | Self::NotPermitted
             | Self::Validation { .. }
             | Self::Unavailable => None,
@@ -213,18 +226,19 @@ struct Fault {
     #[source]
     source: Option<Box<dyn std::error::Error + Send + Sync>>,
 }
-/// Used by the tunnel: resolve a bearer token to an operator.
+/// Used by the tunnel: resolve a bearer token to an operator. A browser token is not a bearer
+/// (WP-43 A-3).
 ///
 /// # Errors
 ///
-/// `Error::Unauthenticated` for a malformed, unknown or expired token; `Error::Database` if
+/// `Error::Unauthenticated` for a malformed, unknown, expired or browser token; `Error::Database` if
 /// it cannot be looked up.
 pub async fn operator_for_token(
     db: &PgPool,
     token: &str,
     now: DateTime<Utc>,
 ) -> Result<Operator, Error> {
-    let identity = identity::resolve(db, token, now)
+    let identity = identity::resolve(db, token, tokens::Transport::Bearer, now)
         .await?
         .ok_or(Error::Unauthenticated)?;
     Ok(identity.operator().clone())
@@ -377,15 +391,20 @@ pub struct Pruned {
     pub tokens: u64,
 }
 
-/// Deletes login attempts older than 90 days and expired tokens (K2 retention). A scheduled
-/// job calls it daily.
+/// Deletes login attempts older than 90 days, expired login and browser tokens, and API keys
+/// 30 days after they expired (K2 retention, WP-43 A-5). A scheduled job calls it daily.
 ///
 /// # Errors
 ///
 /// `Error::Database` if the rows cannot be deleted.
 pub async fn prune(db: &PgPool, now: DateTime<Utc>) -> Result<Pruned, Error> {
     let mut conn = db.acquire().await?;
-    let (attempts, tokens) = store::prune(&mut conn, now - ATTEMPTS_KEPT, now).await?;
+    let cutoffs = store::Cutoffs {
+        attempts: now - ATTEMPTS_KEPT,
+        tokens: now,
+        keys: now - EXPIRED_KEYS_KEPT,
+    };
+    let (attempts, tokens) = store::prune(&mut conn, &cutoffs).await?;
     Ok(Pruned { attempts, tokens })
 }
 

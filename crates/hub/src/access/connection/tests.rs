@@ -147,6 +147,7 @@ fn unreachable_access() -> SocketAccess {
             start: Instant::now(),
         }),
         client: None,
+        cookie: None,
         recheck: Duration::from_secs(15),
         init_timeout: INIT_TIMEOUT,
     }
