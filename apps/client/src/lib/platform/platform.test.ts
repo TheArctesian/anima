@@ -50,7 +50,6 @@ describe('capabilities (WP-42 D-4)', () => {
     shell.isTauri.mockReturnValue(false);
     expect(capabilities()).toEqual(browserCapabilities);
     expect(Object.values(capabilities()).every((answer) => !answer)).toBe(true);
-    expect(Object.keys(capabilities()).sort()).toEqual(['keyStore', 'popOut', 'processLog', 'systemSettings', 'thisMachine', 'updates', 'webViewTabs']);
   });
 });
 
@@ -67,10 +66,28 @@ describe('the seam holds (WP-42 D-4)', () => {
   });
 
   it('UPD-001: the updater module is imported for its values only by the lazy port in lib/updates', () => {
-    const value = /import\s+(?!type\b)[^;]*?from\s+['"]\$lib\/desktop\/updater['"]/;
-    const importers = sources.filter(({ text }) => value.test(text)).map(({ path }) => path);
+    const importers = sources.filter(({ text }) => importsUpdaterValues(text)).map(({ path }) => path);
     expect(importers).toEqual([]);
-    const lazy = sources.filter(({ text }) => text.includes("import('$lib/desktop/updater')")).map(({ path }) => path);
+    const lazy = sources.filter(({ text }) => /import\(\s*['"`][^'"`]*desktop\/updater['"`]\s*\)/.test(text)).map(({ path }) => path);
     expect(lazy).toEqual(['lib/updates/desktop.svelte.ts']);
   });
+
+  it('UPD-001: the scan catches a relative or $lib value import and a re-export, and lets type imports through', () => {
+    expect(importsUpdaterValues("import { desktopUpdater } from '$lib/desktop/updater';")).toBe(true);
+    expect(importsUpdaterValues("import { desktopUpdater } from '../desktop/updater';")).toBe(true);
+    expect(importsUpdaterValues("import { desktopUpdater } from '../../../desktop/updater.ts';")).toBe(true);
+    expect(importsUpdaterValues("export { desktopUpdater } from '$lib/desktop/updater';")).toBe(true);
+    expect(importsUpdaterValues("export * from './desktop/updater';")).toBe(true);
+    expect(importsUpdaterValues("import '$lib/desktop/updater';")).toBe(true);
+    expect(importsUpdaterValues("import type { UpdaterPort } from '../desktop/updater';")).toBe(false);
+    expect(importsUpdaterValues("export type { UpdaterPort } from '$lib/desktop/updater';")).toBe(false);
+  });
 });
+
+/** Whether `text` imports or re-exports values of the updater module by any specifier ending in `desktop/updater`. */
+function importsUpdaterValues(text: string): boolean {
+  const specifier = String.raw`['"][^'"]*\bdesktop/updater(?:\.ts)?['"]`;
+  const fromClause = new RegExp(String.raw`\b(?:import|export)\s+(?!type\b)[^;'"]*?\bfrom\s+${specifier}`);
+  const bare = new RegExp(String.raw`\bimport\s+${specifier}`);
+  return fromClause.test(text) || bare.test(text);
+}

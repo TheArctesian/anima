@@ -4,10 +4,11 @@ import { capabilities } from '$lib/platform/platform';
 import { provideUpdates, Updates } from './updates.svelte';
 
 /** The shell's updater, loaded by the first call that needs it: a client that never calls it never loads it (UPD-001). */
+const load = () => import('$lib/desktop/updater');
 const lazyUpdater: UpdaterPort = {
-  check: async () => (await import('$lib/desktop/updater')).desktopUpdater.check(),
-  restart: async () => (await import('$lib/desktop/updater')).desktopUpdater.restart(),
-  currentVersion: async () => (await import('$lib/desktop/updater')).desktopUpdater.currentVersion(),
+  check: async () => (await load()).desktopUpdater.check(),
+  restart: async () => (await load()).desktopUpdater.restart(),
+  currentVersion: async () => (await load()).desktopUpdater.currentVersion(),
 };
 
 /**

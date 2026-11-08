@@ -6,7 +6,7 @@ import { BROWSER, DESKTOP_MAC } from '$lib/platform/answers.fixture';
 import type { Capabilities } from '$lib/platform/platform';
 import { fakeApi, installLayout, settle } from '../tab/fake/shell.fixture.svelte';
 import WebTab from '../tab/WebTab.svelte';
-import { webViewShell } from './choice';
+import { webViewShell } from './client-shell';
 import { WebViewError, type WebViewShell } from './shell';
 
 const platform = vi.hoisted(() => ({ answers: undefined as Capabilities | undefined, pinnings: 0 }));
@@ -51,7 +51,7 @@ describe('webViewShell (WP-42 D-4)', () => {
     expect(webViewShell()).toBe(desktopWebView);
   });
 
-  it('CLI-001, WEB-011: without them every answer is what the desktop adapter gives without a shell', async () => {
+  it('CLI-001, WEB-011: without them it cannot pin and every command fails, as the desktop adapter does for well-formed URLs with no shell', async () => {
     platform.answers = BROWSER;
     const absent = webViewShell();
     expect(absent).not.toBe(desktopWebView);

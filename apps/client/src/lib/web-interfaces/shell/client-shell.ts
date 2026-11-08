@@ -5,9 +5,8 @@ import { WebViewError, type WebViewShell } from './shell';
 const refuse = (): Promise<never> => Promise.reject(new WebViewError('failed'));
 
 /**
- * No web view: a client without the desktop shell. It answers as the shell's commands do where there is no shell —
- * no pinning, and every command fails — so an `http` interface for the system browser opens a tab that says why,
- * and a tab shows its error page (WEB-010, WEB-011).
+ * No web view: a client without the desktop shell. It cannot pin and every command fails, so an `http` interface
+ * for the system browser opens a tab that says why, and a tab shows its error page (WEB-010, WEB-011).
  */
 const absentWebView: WebViewShell = {
   pinning: () => Promise.resolve(false),

@@ -11,7 +11,7 @@
   import { press } from '$lib/motion/roles/press';
   import { useSessions } from '$lib/sessions/sessions.svelte';
   import { openWebInterface } from '$lib/web-interfaces/open/open';
-  import { webViewShell } from '$lib/web-interfaces/shell/choice';
+  import { webViewShell } from '$lib/web-interfaces/shell/client-shell';
   import type { SessionProtocol } from '$lib/sessions/tabs';
   import ChecksPanel from '../checks/ChecksPanel.svelte';
   import type { DeviceId } from '../device-id';

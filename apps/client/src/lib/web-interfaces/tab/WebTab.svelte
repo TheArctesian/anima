@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, tick, untrack } from 'svelte';
-  import { webViewShell } from '$lib/web-interfaces/shell/choice';
+  import { webViewShell } from '$lib/web-interfaces/shell/client-shell';
   import { codeOf, type Bounds, type WebViewShell } from '$lib/web-interfaces/shell/shell';
   import type { Status } from '$lib/hub/generated/graphql';
   import { useHub } from '$lib/hub/context';

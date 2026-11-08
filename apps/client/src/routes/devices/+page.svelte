@@ -21,7 +21,7 @@
   import { wakeApi } from '$lib/sessions/wake/api';
   import { useSessions } from '$lib/sessions/sessions.svelte';
   import { openWebInterface } from '$lib/web-interfaces/open/open';
-  import { webViewShell } from '$lib/web-interfaces/shell/choice';
+  import { webViewShell } from '$lib/web-interfaces/shell/client-shell';
   import { capabilities } from '$lib/platform/platform';
   import type { SessionProtocol } from '$lib/sessions/tabs';
 

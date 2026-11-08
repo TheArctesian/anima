@@ -14,8 +14,7 @@
   import Nav from '$lib/nav/Nav.svelte';
   import { sessionsApi } from '$lib/sessions/api';
   import { restoredScroll, type CoveredScroll } from '$lib/sessions/covered';
-  import { capabilities } from '$lib/platform/platform';
-  import { createSessions, provideSessions, type PopOutPort, type SessionPort } from '$lib/sessions/sessions.svelte';
+  import { createSessions, provideSessions, type SessionPort } from '$lib/sessions/sessions.svelte';
   import SessionPanes from '$lib/sessions/strip/SessionPanes.svelte';
   import SessionTabs from '$lib/sessions/strip/SessionTabs.svelte';
   import { sessionStart } from '$lib/sessions/view/start';
@@ -48,13 +47,9 @@
     start: (deviceId) => sessionStart(api, deviceId, hub.address.origin),
     end: (sessionId) => api.endSession(sessionId),
   };
-  /** The window port that pops a session out (D-13), only where the platform can; none can yet (WP-42 D-4, WP-14 H-2). */
-  function popOutPort(): PopOutPort | undefined {
-    if (!capabilities().popOut) return undefined;
-    // WP-16 returns the shell's pop-out window port here; until then nothing is offered.
-    return undefined;
-  }
-  const sessions = createSessions(sessionsPort, popOutPort());
+  // WP-16 passes its pop-out window port as the second argument when `capabilities().popOut` is yes (WP-42 D-4,
+  // WP-14 H-2); no platform says yes yet, so none is offered.
+  const sessions = createSessions(sessionsPort);
   provideSessions(sessions);
   // A route change (link, back, goto) shows the pages; the session tabs stay open (D-11).
   $effect(() => {
