@@ -1,7 +1,7 @@
 //! The `df -P` reader (MET-002).
 
 use super::{captures::*, *};
-use crate::metrics::parse::df;
+use crate::readings::df;
 
 #[test]
 fn met_002_df_in_bytes_gives_every_listed_file_system_with_its_mount_point() {

@@ -2,11 +2,10 @@
 
 use std::time::Duration;
 
-use super::{captures::*, *};
-use crate::metrics::{
-    parse::{df, linux, macos},
-    samples,
-};
+use agent_core::readings::{captures::*, df, linux, macos};
+
+use super::*;
+use crate::metrics::samples;
 
 pub const THIRTY: Duration = Duration::from_secs(30);
 

@@ -3,18 +3,14 @@
 
 use std::time::Duration;
 
+use agent_core::readings::{
+    df, linux,
+    macos::{self, Sysctl},
+};
 use chrono::{DateTime, Utc};
 
 use crate::{
-    metrics::{
-        Memory, Reading, Sample,
-        commands::Source,
-        parse::{
-            df, linux,
-            macos::{self, Sysctl},
-        },
-        samples,
-    },
+    metrics::{Memory, Reading, Sample, commands::Source, samples},
     ssh::CommandOutput,
 };
 

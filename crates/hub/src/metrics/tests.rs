@@ -4,13 +4,9 @@ use super::{Cpu, Disk, Interface, Load, Memory, Reading, Sample};
 use crate::metrics::MetricKind;
 
 mod aggregates;
-pub(super) mod captures;
 mod database;
-mod df;
 mod faces;
 mod kinds;
-mod linux;
-mod macos;
 mod privileges;
 mod rates;
 mod retention;

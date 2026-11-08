@@ -8,12 +8,12 @@ use crate::{
         Cpu, Load, Memory, MetricKind, Reading, Sample,
         collector::outputs::{Parts, Previous, collected},
         commands::Source,
-        tests::captures::{
-            DF_LINUX, DF_MACOS, NETSTAT, PROC_LOADAVG, PROC_MEMINFO, PROC_NET_DEV, PROC_STAT,
-            PROC_UPTIME, SYSCTL, TOP, VM_STAT,
-        },
     },
     ssh::CommandOutput,
+};
+use agent_core::readings::captures::{
+    DF_LINUX, DF_MACOS, NETSTAT, PROC_LOADAVG, PROC_MEMINFO, PROC_NET_DEV, PROC_STAT, PROC_UPTIME,
+    SYSCTL, TOP, VM_STAT,
 };
 
 fn at() -> DateTime<Utc> {

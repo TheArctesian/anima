@@ -178,7 +178,7 @@ tmpfs             410144768       12288   410132480       1% /run/user/1000\n";
 
 #[test]
 fn met_002_d5_snap_loop_devices_and_snap_mounts_are_left_out() {
-    let disks = crate::metrics::parse::df::disks(DF_SNAPS, 1);
+    let disks = agent_core::readings::df::disks(DF_SNAPS, 1);
     assert_eq!(disks.len(), 9, "the reader keeps every line");
     let reading = Reading {
         disks,

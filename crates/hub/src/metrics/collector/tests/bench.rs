@@ -22,11 +22,11 @@ use crate::{
     metrics::{
         Feed, MetricsAdded,
         collector::{Collecting, Context, round::Collector},
-        tests::captures::{
-            DF_LINUX, PROC_LOADAVG, PROC_MEMINFO, PROC_NET_DEV, PROC_STAT, PROC_UPTIME,
-        },
     },
     targets::AddressPolicy,
+};
+use agent_core::readings::captures::{
+    DF_LINUX, PROC_LOADAVG, PROC_MEMINFO, PROC_NET_DEV, PROC_STAT, PROC_UPTIME,
 };
 
 pub(super) const DOCKER_HOST: &str = "0190a000-0000-7000-8002-000000000002";

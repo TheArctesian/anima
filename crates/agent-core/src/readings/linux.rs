@@ -1,7 +1,6 @@
 //! Readers of the Linux `/proc` files (MET-002).
 
-use super::{label, lines, load, number};
-use crate::metrics::reading::{Cpu, Interface, Load, Memory};
+use super::{Cpu, Interface, Load, Memory, label, lines, load, number};
 
 /// The aggregate `cpu` line of `/proc/stat`: `total` is user, nice, system, idle, iowait, irq,
 /// softirq and steal (guest time is already in user); `idle` is idle plus iowait. Fields an

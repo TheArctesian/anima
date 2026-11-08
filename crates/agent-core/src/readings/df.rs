@@ -1,7 +1,6 @@
 //! Reader of `df -P` (MET-002).
 
-use super::{label, lines};
-use crate::metrics::reading::Disk;
+use super::{Disk, label, lines};
 
 /// `df -P` output: one [`Disk`] per line of `Filesystem Blocks Used Available Capacity
 /// Mounted-on`. `block_bytes` is the size of a block: 1 for `df -P -B1` (Linux), 1024 for

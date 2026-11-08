@@ -2,8 +2,7 @@
 
 use chrono::{DateTime, Utc};
 
-use super::{label, lines, load, number, positional_lines};
-use crate::metrics::reading::{Cpu, Interface, Load};
+use super::{Cpu, Interface, Load, label, lines, load, number, positional_lines};
 
 /// What `sysctl -n hw.memsize hw.pagesize vm.loadavg kern.boottime` printed, one value per line
 /// in that order. A line that does not read leaves its field empty.
