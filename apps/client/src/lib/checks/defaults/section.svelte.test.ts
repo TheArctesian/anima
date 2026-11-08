@@ -173,15 +173,78 @@ it('MOT-007: the loading placeholder has the same rows, hints and message lines 
   expect(field(target, 'Interval (seconds)').disabled).toBe(false);
 });
 
+function retryButton(target: HTMLElement): HTMLButtonElement {
+  const found = target.querySelector<HTMLButtonElement>('[data-retry]');
+  if (found === null) throw new Error('no Try again');
+  return found;
+}
+
 it('D-26: a failed load shows a fixed message with Try again, and Try again loads the values', async () => {
   const answers: Parameters<typeof fakeHub>[0] = { CheckDefaults: failure('unreachable') };
   const target = await open(answers);
-  expect(target.querySelector('[role="alert"]:not(.problem)')?.textContent).toBe('Anima could not load the default check settings.');
+  expect(target.querySelector('.message')?.textContent).toBe('Anima could not load the defaults.');
+  expect(target.textContent).not.toContain('secret hub text');
   expect(save(target).getAttribute('aria-disabled')).toBe('true');
   answers.CheckDefaults = ok({ checkDefaults: STORED });
-  const retry = [...target.querySelectorAll('button')].find((each) => each.textContent === 'Try again');
-  retry?.click();
+  retryButton(target).click();
   await settled();
   expect(values(target)).toEqual(['120', '5', '45', '2500']);
-  expect(target.textContent).not.toContain('could not load');
+  expect(target.querySelector('.message')?.textContent).toBe('');
+});
+
+it('MOT-007, MV-005: the note block has the same rows when idle, failed, retrying and after a save failure', async () => {
+  let release: (result: ReturnType<typeof failure>) => void = () => undefined;
+  const answers: Parameters<typeof fakeHub>[0] = { CheckDefaults: failure('unreachable') };
+  const target = await open(answers);
+  const shape = () => [...(target.querySelector('.note-block')?.children ?? [])].map((each) => `${each.tagName}.${each.classList[0] ?? ''}`);
+  const failed = shape();
+  answers.CheckDefaults = new Promise((resolve) => {
+    release = resolve;
+  });
+  retryButton(target).click();
+  flushSync();
+  expect(shape()).toEqual(failed);
+  release(failure('unreachable'));
+  await settled();
+  expect(shape()).toEqual(failed);
+  answers.CheckDefaults = ok({ checkDefaults: STORED });
+  retryButton(target).click();
+  await settled();
+  expect(shape()).toEqual(failed);
+});
+
+it('UI-015: Try again stays mounted and aria-disabled while it retries, and keeps focus', async () => {
+  let release: (result: ReturnType<typeof failure>) => void = () => undefined;
+  const answers: Parameters<typeof fakeHub>[0] = { CheckDefaults: failure('unreachable') };
+  const target = await open(answers);
+  const button = retryButton(target);
+  const label = button.textContent;
+  answers.CheckDefaults = new Promise((resolve) => {
+    release = resolve;
+  });
+  button.focus();
+  button.click();
+  flushSync();
+  expect(document.activeElement).toBe(button);
+  expect(button.getAttribute('aria-disabled')).toBe('true');
+  expect(button.disabled).toBe(false);
+  expect(button.textContent).toBe(label);
+  button.click();
+  await settled();
+  expect(hub.sent.filter((each) => each.operation === 'CheckDefaults')).toHaveLength(2);
+  release(failure('unreachable'));
+  await settled();
+  expect(document.activeElement).toBe(button);
+  expect(button.getAttribute('aria-disabled')).toBe('false');
+});
+
+it('UI-015: when Try again succeeds focus moves to the first field, never to the page', async () => {
+  const answers: Parameters<typeof fakeHub>[0] = { CheckDefaults: failure('unreachable') };
+  const target = await open(answers);
+  answers.CheckDefaults = ok({ checkDefaults: STORED });
+  retryButton(target).focus();
+  retryButton(target).click();
+  await settled();
+  await settled();
+  expect(document.activeElement).toBe(field(target, 'Interval (seconds)'));
 });
