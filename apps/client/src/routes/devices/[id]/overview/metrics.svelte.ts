@@ -3,7 +3,7 @@ import type { Hub, HubError } from '$lib/hub/hub';
 import type { MetricsSource } from '$lib/hub/generated/graphql';
 import type { BarReadings } from '$lib/metrics/bars/bars';
 import { metricsApi, type DeviceMetricsView, type MetricRange, type NewMetrics } from '$lib/metrics/api';
-import { chartsOf } from '$lib/metrics/charts';
+import { chartsOf } from '$lib/metrics/overview-charts';
 import { chartShapeOf, rememberChartShape } from '$lib/metrics/shapes';
 import { mergeLive } from '$lib/metrics/live';
 import { rangeWindow } from '$lib/metrics/ranges';

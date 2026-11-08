@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chartsOf } from './charts';
+import { chartsOf } from './overview-charts';
 import { CPU_ONLY, INTEGRATED, NVIDIA, point, TWO_GPUS, series } from './metrics.fixture';
 
 const keys = (charts: ReturnType<typeof chartsOf>) => charts.map((chart) => chart.key);

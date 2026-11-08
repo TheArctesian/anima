@@ -1,7 +1,5 @@
 import type { MetricsSource } from '$lib/hub/generated/graphql';
-
-/** MET-004: a metric strictly above this is degraded. */
-export const DEGRADED_ABOVE = 85;
+import { DEGRADED_ABOVE } from '../units';
 
 /** The readings the bars draw. Structural, so a hub `CardReadings` fragment fits without this folder knowing devices. */
 export interface BarReadings {

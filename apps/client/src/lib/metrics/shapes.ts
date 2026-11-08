@@ -1,4 +1,4 @@
-import type { Chart } from './charts';
+import type { Chart } from './overview-charts';
 
 /** Series per chart of a device's last answer, by device id: what its loading skeleton must look like (MOT-007). */
 const last = new Map<string, readonly number[]>();
