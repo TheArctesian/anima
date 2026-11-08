@@ -1,4 +1,4 @@
-import type { FieldError } from '$lib/hub/error';
+import type { FieldError } from '$lib/hub/hub';
 import type { CheckFormValues } from './values';
 
 /** The settings that sit in the Advanced disclosure. */

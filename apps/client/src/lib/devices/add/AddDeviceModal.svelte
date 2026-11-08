@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { ThisMachine } from '$lib/desktop/this-machine';
-  import type { HubResult } from '$lib/hub/error';
+  import type { HubResult } from '$lib/hub/hub';
   import type { ConnectionTestInput } from '$lib/hub/generated/graphql';
   import type { AddedDevice } from './add-device';
   import type { SitePlacement } from '../form/site';

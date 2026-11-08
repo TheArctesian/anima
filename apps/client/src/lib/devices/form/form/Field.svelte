@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import type { FieldError } from '$lib/hub/error';
+  import type { FieldError } from '$lib/hub/hub';
   import { errorFor, errorId, inputId } from './errors';
 
   /** What the control must carry so the label and the error reach a screen reader. */

@@ -1,4 +1,4 @@
-import type { FieldError } from '$lib/hub/error';
+import type { FieldError } from '$lib/hub/hub';
 
 /** The largest value of a GraphQL `Int`. */
 export const MAX_INT = 2_147_483_647;

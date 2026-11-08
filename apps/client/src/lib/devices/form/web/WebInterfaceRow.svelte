@@ -1,6 +1,6 @@
 <script lang="ts">
   import { fieldErrorsFrom } from '../field-errors';
-  import type { FieldError, HubResult } from '$lib/hub/error';
+  import type { FieldError, HubResult } from '$lib/hub/hub';
   import FormButton from '../../../forms/FormButton.svelte';
   import type { WebInterface, WebInterfaceInput } from '$lib/web-interfaces/api';
   import { OPEN_IN_CHOICES, validateWeb, webChanged, webInput, webValuesFrom } from './interface';

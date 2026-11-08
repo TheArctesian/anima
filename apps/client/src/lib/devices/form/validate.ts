@@ -1,4 +1,4 @@
-import type { FieldError } from '$lib/hub/error';
+import type { FieldError } from '$lib/hub/hub';
 import { isValidHost } from './host';
 import { validateRemote } from './remote/validate';
 import { isValidPort, type DeviceFormValues } from './values';

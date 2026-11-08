@@ -15,7 +15,7 @@
   import type { DeviceFormValues, SiteOption } from '$lib/devices/form/values';
   import { machineToOffer, offeredMachine, thisMachinePrompt, type MachineOffer } from '$lib/devices/add/this-machine';
   import { useHub } from '$lib/hub/context';
-  import type { HubError, HubResult } from '$lib/hub/error';
+  import type { HubError, HubResult } from '$lib/hub/hub';
   import { sessionsApi } from '$lib/sessions/api';
   import { screenSharingCalls } from '$lib/devices/screen-sharing/calls';
   import { wakeApi } from '$lib/sessions/wake/api';

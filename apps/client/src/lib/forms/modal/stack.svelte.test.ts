@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { flushSync, mount, unmount } from 'svelte';
 import { vi, expect, it } from 'vitest';
-import type { HubResult } from '$lib/hub/error';
+import type { HubResult } from '$lib/hub/hub';
 import { installAnimations } from '../animations.fixture';
 import ConfirmModal from './ConfirmModal.svelte';
 

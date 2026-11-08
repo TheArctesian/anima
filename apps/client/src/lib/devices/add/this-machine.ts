@@ -1,5 +1,5 @@
 import type { ThisMachine } from '$lib/desktop/this-machine';
-import type { HubResult } from '$lib/hub/error';
+import type { HubResult } from '$lib/hub/hub';
 import { normalizeHost } from '../form/host';
 
 /** What Add device adds: the computer the app runs on, pre-filled, or another device typed in (R-060). */

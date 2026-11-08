@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { flushSync, mount, tick, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import type { HubResult } from '$lib/hub/error';
+import type { HubResult } from '$lib/hub/hub';
 import { overlayCovers } from '$lib/overlay/overlay.svelte';
 import { installAnimations } from '../animations.fixture';
 import ConfirmModal from './ConfirmModal.svelte';

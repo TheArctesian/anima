@@ -1,5 +1,4 @@
-import { TOKEN_UNREADABLE } from '$lib/hub/error';
-import type { FieldError, HubError } from '$lib/hub/hub';
+import { TOKEN_UNREADABLE, type FieldError, type HubError } from '$lib/hub/hub';
 
 /** The three fields of the sign-in form. */
 export type LoginField = 'username' | 'password' | 'totpCode';

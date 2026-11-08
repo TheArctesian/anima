@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { HubResult } from '$lib/hub/error';
+  import type { HubResult } from '$lib/hub/hub';
   import FormButton from '../../../forms/FormButton.svelte';
   import type { WebInterface, WebInterfaceInput, WebInterfaceSuggestion } from '$lib/web-interfaces/api';
   import ConfirmModal from '../../../forms/modal/ConfirmModal.svelte';

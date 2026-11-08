@@ -1,6 +1,6 @@
 import { flushSync, mount, tick, unmount } from 'svelte';
 import { vi } from 'vitest';
-import type { HubResult } from '$lib/hub/error';
+import type { HubResult } from '$lib/hub/hub';
 import type { ConnectionTestInput } from '$lib/hub/generated/graphql';
 import type { ConnectionTestResult } from '../connection-test';
 import type { SitePlacement } from '../site';

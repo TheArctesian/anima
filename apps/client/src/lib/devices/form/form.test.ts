@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { HubError } from '$lib/hub/error';
+import type { HubError } from '$lib/hub/hub';
 import { connectionTestInput, testOutcome, testsSavedRecord, testsStoredCredential } from './connection-test';
 import { FORM_FIELD, fieldErrorsFrom } from './field-errors';
 import { testResult } from './result.fixture';

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { flushSync } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import type { HubResult } from '$lib/hub/error';
+import type { HubResult } from '$lib/hub/hub';
 import { installAnimations } from '../../../forms/animations.fixture';
 import type { ConnectionTestResult } from '../connection-test';
 import { testResult } from '../result.fixture';
