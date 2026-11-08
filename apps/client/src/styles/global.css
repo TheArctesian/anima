@@ -12,6 +12,29 @@ body {
   --nav-inline-size: calc(var(--space-16) * 3);
 }
 
+/* The palette is dark only, so native controls, their popups and scrollbars draw dark to match. */
+:root {
+  color-scheme: dark;
+  /* The end padding a select keeps clear for its chevron. */
+  --select-chevron-room: calc(var(--space-4) + var(--space-2));
+}
+
+/* WebKitGTK (the Linux shell) draws a native select in the light GTK look and ignores its background,
+   so every select draws itself: a chevron in the text colour. Component rules set `background-color`,
+   not `background`, so the chevron survives. */
+select {
+  appearance: none;
+  padding-inline-end: var(--select-chevron-room);
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentcolor 50%),
+    linear-gradient(135deg, currentcolor 50%, transparent 50%);
+  background-position:
+    right calc(var(--space-2) + var(--space-1)) center,
+    right var(--space-2) center;
+  background-size: var(--space-1) var(--space-1);
+  background-repeat: no-repeat;
+}
+
 /* Below the compact breakpoint the bar is one touch target wide plus its padding (`lib/nav/icon-only.ts`). */
 :root[data-nav="icons"] {
   --nav-inline-size: calc(var(--target-min-touch) + var(--space-3) * 2);

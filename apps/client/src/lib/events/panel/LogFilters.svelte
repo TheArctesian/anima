@@ -90,10 +90,10 @@
     text-overflow: ellipsis;
     box-sizing: border-box;
     min-block-size: var(--target-min-desktop);
-    padding: 0 var(--space-2);
+    padding: 0 var(--select-chevron-room) 0 var(--space-2);
     border: var(--border-thin) solid var(--border);
     border-radius: var(--radius-md);
-    background: var(--surface);
+    background-color: var(--surface);
     color: var(--text);
     font: inherit;
   }

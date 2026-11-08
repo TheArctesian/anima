@@ -127,11 +127,15 @@
     box-sizing: border-box;
     min-block-size: var(--target-min-desktop);
     padding: var(--space-2) var(--space-3);
-    background: var(--surface);
+    background-color: var(--surface);
     border: var(--border-thin) solid var(--border);
     border-radius: var(--radius-md);
     color: var(--text);
     font: inherit;
+  }
+
+  select {
+    padding-inline-end: var(--select-chevron-room);
   }
 
   [aria-invalid='true'] {
