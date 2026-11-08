@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ApiKeysSection from '$lib/api-keys/ApiKeysSection.svelte';
   import SignOutRow from '$lib/access/SignOutRow.svelte';
   import { capabilities } from '$lib/platform/platform';
   import ThemeRow from '$lib/theme/ThemeRow.svelte';
@@ -21,6 +22,11 @@
   <h2 id="settings-appearance">Appearance</h2>
   <ThemeRow />
   <TypefaceRows />
+</section>
+
+<section aria-labelledby="settings-api-keys">
+  <h2 id="settings-api-keys">API keys</h2>
+  <ApiKeysSection />
 </section>
 
 {#if updates || processLog}

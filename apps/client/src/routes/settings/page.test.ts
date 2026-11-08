@@ -21,6 +21,8 @@ vi.mock('$lib/access/navigation', () => ({ goToSignIn: mocks.goToSignIn }));
 // The desktop rows need the shell's update store; stand-ins let the page's sections be counted (UPD-006).
 vi.mock('$lib/updates/UpdatesRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('$lib/updates/tests/RowStub.svelte')).default }));
 vi.mock('$lib/process-log/LogFolderRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('$lib/updates/tests/LogRowStub.svelte')).default }));
+// The API keys section loads its own data and has its own tests in `$lib/api-keys/` (WP-50 F-3, F-10).
+vi.mock('$lib/api-keys/ApiKeysSection.svelte', () => ({ default: () => undefined }));
 
 let app: ReturnType<typeof mount> | undefined;
 let hub: ReturnType<typeof fakeHub>;
@@ -83,10 +85,10 @@ function sectionTexts(target: HTMLElement, heading: string): string[] {
   return [...section.querySelectorAll('h2, p, button, span, option')].map((element) => element.textContent.trim());
 }
 
-it('SET-001, UI-005: the page is the title, then Account, then Appearance with Theme before the two fonts', async () => {
+it('SET-001, UI-005: the page is the title, then Account, then Appearance with Theme before the two fonts, then API keys', async () => {
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
   expect(target.firstElementChild?.tagName).toBe('H1');
-  expect(sectionHeadings(target)).toEqual(['Account', 'Appearance']);
+  expect(sectionHeadings(target)).toEqual(['Account', 'Appearance', 'API keys']);
   expect(sectionTexts(target, 'Account')).toEqual(['Account', 'Signed in as ann', 'Sign out']);
   const fonts = ['Fira Code', 'OpenDyslexic'];
   expect(sectionTexts(target, 'Appearance')).toEqual([
@@ -98,7 +100,7 @@ it('SET-001, UI-005: the page is the title, then Account, then Appearance with T
 it('SET-001, UPD-006: the desktop app adds the Updates section last, holding the update and log folder rows', async () => {
   mocks.platform = DESKTOP_MAC;
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
-  expect(sectionHeadings(target)).toEqual(['Account', 'Appearance', 'Updates']);
+  expect(sectionHeadings(target)).toEqual(['Account', 'Appearance', 'API keys', 'Updates']);
   const updates = target.querySelector('section[aria-labelledby="settings-updates"]');
   expect(updates?.querySelectorAll('[data-stub]')).toHaveLength(2);
   expect(target.querySelectorAll('[data-stub]')).toHaveLength(2);

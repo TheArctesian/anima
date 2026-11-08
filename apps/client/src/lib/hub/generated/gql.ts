@@ -17,6 +17,9 @@ type Documents = {
     "\n  mutation Login($input: LoginInput!) {\n    login(input: $input) {\n      token\n    }\n  }\n": typeof types.LoginDocument,
     "\n  mutation Logout {\n    logout\n  }\n": typeof types.LogoutDocument,
     "\n  query Me {\n    me {\n      username\n    }\n  }\n": typeof types.MeDocument,
+    "\n  query ApiKeys {\n    apiKeys {\n      id\n      name\n      scope\n      prefix\n      expiresAt\n      createdAt\n      lastUsedAt\n    }\n  }\n": typeof types.ApiKeysDocument,
+    "\n  mutation CreateApiKey($input: ApiKeyInput!) {\n    createApiKey(input: $input) {\n      key {\n        id\n        name\n        scope\n        prefix\n        expiresAt\n        createdAt\n        lastUsedAt\n      }\n      secret\n    }\n  }\n": typeof types.CreateApiKeyDocument,
+    "\n  mutation RevokeApiKey($id: ID!) {\n    revokeApiKey(id: $id)\n  }\n": typeof types.RevokeApiKeyDocument,
     "\n  subscription HeartbeatAdded {\n    heartbeatAdded(deviceId: null) {\n      checkId\n      deviceId\n      heartbeat {\n        at\n        status\n        responseTimeMs\n      }\n    }\n  }\n": typeof types.HeartbeatAddedDocument,
     "\n  fragment CheckFields on Check {\n    id\n    parent {\n      id\n    }\n    type\n    name\n    intervalSeconds\n    retries\n    retryIntervalSeconds\n    degradedThresholdMs\n    invert\n    paused\n    status\n    certificateDaysLeft\n    lastHeartbeat {\n      at\n      status\n      responseTimeMs\n      message\n    }\n    config {\n      __typename\n      ... on IcmpConfig {\n        timeoutMs\n        ipVersion\n      }\n      ... on TcpConfig {\n        port\n        timeoutMs\n      }\n      ... on TlsConfig {\n        port\n        serverName\n        timeoutMs\n      }\n      ... on HttpConfig {\n        url\n        method\n        headers {\n          name\n          value\n        }\n        body\n        maxRedirects\n        acceptedStatus {\n          from\n          to\n        }\n        keyword\n        jsonQuery\n        jsonExpected\n        authKind\n        verifyTls\n        timeoutMs\n      }\n      ... on DnsConfig {\n        name\n        recordType\n        resolver\n        expected\n      }\n      ... on PushConfig {\n        pushPath\n      }\n      ... on GroupConfig {\n        children {\n          id\n          name\n        }\n      }\n    }\n  }\n": typeof types.CheckFieldsFragmentDoc,
     "\n  fragment DockerCheckConfig on DockerConfig {\n    __typename\n    container\n    timeoutMs\n  }\n": typeof types.DockerCheckConfigFragmentDoc,
@@ -77,6 +80,9 @@ const documents: Documents = {
     "\n  mutation Login($input: LoginInput!) {\n    login(input: $input) {\n      token\n    }\n  }\n": types.LoginDocument,
     "\n  mutation Logout {\n    logout\n  }\n": types.LogoutDocument,
     "\n  query Me {\n    me {\n      username\n    }\n  }\n": types.MeDocument,
+    "\n  query ApiKeys {\n    apiKeys {\n      id\n      name\n      scope\n      prefix\n      expiresAt\n      createdAt\n      lastUsedAt\n    }\n  }\n": types.ApiKeysDocument,
+    "\n  mutation CreateApiKey($input: ApiKeyInput!) {\n    createApiKey(input: $input) {\n      key {\n        id\n        name\n        scope\n        prefix\n        expiresAt\n        createdAt\n        lastUsedAt\n      }\n      secret\n    }\n  }\n": types.CreateApiKeyDocument,
+    "\n  mutation RevokeApiKey($id: ID!) {\n    revokeApiKey(id: $id)\n  }\n": types.RevokeApiKeyDocument,
     "\n  subscription HeartbeatAdded {\n    heartbeatAdded(deviceId: null) {\n      checkId\n      deviceId\n      heartbeat {\n        at\n        status\n        responseTimeMs\n      }\n    }\n  }\n": types.HeartbeatAddedDocument,
     "\n  fragment CheckFields on Check {\n    id\n    parent {\n      id\n    }\n    type\n    name\n    intervalSeconds\n    retries\n    retryIntervalSeconds\n    degradedThresholdMs\n    invert\n    paused\n    status\n    certificateDaysLeft\n    lastHeartbeat {\n      at\n      status\n      responseTimeMs\n      message\n    }\n    config {\n      __typename\n      ... on IcmpConfig {\n        timeoutMs\n        ipVersion\n      }\n      ... on TcpConfig {\n        port\n        timeoutMs\n      }\n      ... on TlsConfig {\n        port\n        serverName\n        timeoutMs\n      }\n      ... on HttpConfig {\n        url\n        method\n        headers {\n          name\n          value\n        }\n        body\n        maxRedirects\n        acceptedStatus {\n          from\n          to\n        }\n        keyword\n        jsonQuery\n        jsonExpected\n        authKind\n        verifyTls\n        timeoutMs\n      }\n      ... on DnsConfig {\n        name\n        recordType\n        resolver\n        expected\n      }\n      ... on PushConfig {\n        pushPath\n      }\n      ... on GroupConfig {\n        children {\n          id\n          name\n        }\n      }\n    }\n  }\n": types.CheckFieldsFragmentDoc,
     "\n  fragment DockerCheckConfig on DockerConfig {\n    __typename\n    container\n    timeoutMs\n  }\n": types.DockerCheckConfigFragmentDoc,
@@ -160,6 +166,18 @@ export function graphql(source: "\n  mutation Logout {\n    logout\n  }\n"): (ty
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "\n  query Me {\n    me {\n      username\n    }\n  }\n"): (typeof documents)["\n  query Me {\n    me {\n      username\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  query ApiKeys {\n    apiKeys {\n      id\n      name\n      scope\n      prefix\n      expiresAt\n      createdAt\n      lastUsedAt\n    }\n  }\n"): (typeof documents)["\n  query ApiKeys {\n    apiKeys {\n      id\n      name\n      scope\n      prefix\n      expiresAt\n      createdAt\n      lastUsedAt\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation CreateApiKey($input: ApiKeyInput!) {\n    createApiKey(input: $input) {\n      key {\n        id\n        name\n        scope\n        prefix\n        expiresAt\n        createdAt\n        lastUsedAt\n      }\n      secret\n    }\n  }\n"): (typeof documents)["\n  mutation CreateApiKey($input: ApiKeyInput!) {\n    createApiKey(input: $input) {\n      key {\n        id\n        name\n        scope\n        prefix\n        expiresAt\n        createdAt\n        lastUsedAt\n      }\n      secret\n    }\n  }\n"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "\n  mutation RevokeApiKey($id: ID!) {\n    revokeApiKey(id: $id)\n  }\n"): (typeof documents)["\n  mutation RevokeApiKey($id: ID!) {\n    revokeApiKey(id: $id)\n  }\n"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
