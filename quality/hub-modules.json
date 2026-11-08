@@ -8,7 +8,8 @@
     "paging",
     "targets",
     "api_errors",
-    "text"
+    "text",
+    "fingerprint"
   ],
   "wiring": [
     "main",

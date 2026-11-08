@@ -1,50 +1,14 @@
 //! What the hub keeps of a server certificate (SEC-007): the fingerprint in the stored format,
-//! the subject cleaned for display, the expiry, and the fingerprint argument as typed.
+//! the subject cleaned for display, and the expiry. The fingerprint's forms are tested in the
+//! `fingerprint` leaf.
 
 use chrono::{DateTime, Utc};
 use proptest::prelude::*;
 use rcgen::{CertificateParams, DnType, KeyPair, date_time_ymd};
 use sha2::{Digest, Sha256};
 
-use super::super::certificate::{
-    CertificateFingerprint, MAX_SUBJECT, PresentedCertificate, cleaned_subject,
-};
-
-/// SHA-256 of no bytes, in the stored format.
-const EMPTY: &str = "e3:b0:c4:42:98:fc:1c:14:9a:fb:f4:c8:99:6f:b9:24:\
-                     27:ae:41:e4:64:9b:93:4c:a4:95:99:1b:78:52:b8:55";
-
-#[test]
-fn sec_007_the_fingerprint_is_sha256_as_lower_case_hex_pairs_joined_by_colons() {
-    assert_eq!(CertificateFingerprint::of(b"").as_str(), EMPTY);
-}
-
-#[test]
-fn sec_007_a_typed_fingerprint_reads_in_either_case_with_space_around_it() {
-    let typed = format!("  {}\n", EMPTY.to_ascii_uppercase());
-    assert_eq!(typed.parse(), Ok(CertificateFingerprint::of(b"")));
-}
-
-#[test]
-fn sec_007_a_fingerprint_of_another_shape_is_refused() {
-    let short = &EMPTY[..EMPTY.len() - 3];
-    let dashes = EMPTY.replace(':', "-");
-    let no_separators = EMPTY.replace(':', "");
-    let not_hex = EMPTY.replacen("e3", "g3", 1);
-    let openssh = "SHA256:4eECQSeWmB0ww/ND7ZkydOxBUAgciI4AwfhKt8R8Nbk";
-    let extra = format!("{EMPTY}:00");
-    for text in [
-        short,
-        &dashes,
-        &no_separators,
-        &not_hex,
-        openssh,
-        &extra,
-        "",
-    ] {
-        assert!(text.parse::<CertificateFingerprint>().is_err(), "{text}");
-    }
-}
+use super::super::certificate::{MAX_SUBJECT, PresentedCertificate, cleaned_subject};
+use crate::fingerprint::CertificateFingerprint;
 
 #[test]
 fn sec_007_a_certificate_gives_its_fingerprint_subject_and_expiry() {
@@ -61,7 +25,7 @@ fn sec_007_a_certificate_gives_its_fingerprint_subject_and_expiry() {
         .iter()
         .map(|b| format!("{b:02x}"))
         .collect();
-    assert_eq!(presented.fingerprint.as_str(), sha256.join(":"));
+    assert_eq!(presented.fingerprint.colon_pairs(), sha256.join(":"));
     assert_eq!(presented.subject.as_deref(), Some("CN=DESKTOP-01"));
     let not_after: DateTime<Utc> = "2030-06-01T00:00:00Z".parse().unwrap();
     assert_eq!(presented.not_after, Some(not_after));

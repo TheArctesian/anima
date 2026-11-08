@@ -25,7 +25,7 @@ use crate::{
     ids::DeviceId,
 };
 
-pub(crate) use certificate::{CertificateFingerprint, PresentedCertificate};
+pub(crate) use certificate::PresentedCertificate;
 pub use model::{HostKey, ServerCertificate};
 pub(crate) use observations::{Endpoint, Observation};
 pub use public_key::{BadFingerprint, BadKey, Fingerprint, PublicKey};

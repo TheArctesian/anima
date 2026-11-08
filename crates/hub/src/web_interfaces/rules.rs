@@ -3,12 +3,11 @@
 
 use reqwest::Url;
 
-use super::model::{FieldError, Fingerprint, OpenIn, WebInterfaceInput};
-use crate::text::is_invisible;
+use super::model::{FieldError, OpenIn, WebInterfaceInput};
+use crate::{fingerprint::CertificateFingerprint, text::is_invisible};
 
 const URL_MAX_BYTES: usize = 2048;
 const LABEL_MAX_CHARS: usize = 100;
-const FINGERPRINT_DIGITS: usize = 64;
 
 /// An input that passed the rules: the URL trimmed, the label filled in.
 pub(super) struct NewInterface {
@@ -107,26 +106,15 @@ fn is_unsafe_in_label(c: char) -> bool {
     c.is_control() || is_invisible(c)
 }
 
-/// The fingerprint in 64 hex digits, colons between byte pairs allowed, any case (D-5).
-pub(super) fn fingerprint(text: &str) -> Result<Fingerprint, FieldError> {
-    let digits: String = if text.contains(':') {
-        let pairs: Vec<&str> = text.split(':').collect();
-        if pairs.len() * 2 != FINGERPRINT_DIGITS || pairs.iter().any(|pair| pair.len() != 2) {
-            String::new()
-        } else {
-            pairs.concat()
-        }
-    } else {
-        text.to_owned()
-    };
-    if digits.len() == FINGERPRINT_DIGITS && digits.bytes().all(|b| b.is_ascii_hexdigit()) {
-        Ok(Fingerprint(digits.to_ascii_lowercase()))
-    } else {
-        Err(FieldError::new(
+/// The fingerprint in 64 hex digits, colons between byte pairs allowed, any case, nothing
+/// around it (D-5).
+pub(super) fn fingerprint(text: &str) -> Result<CertificateFingerprint, FieldError> {
+    text.parse().map_err(|_| {
+        FieldError::new(
             "fingerprintSha256",
             "Enter 64 hexadecimal digits, with or without colons between byte pairs.",
-        ))
-    }
+        )
+    })
 }
 
 /// Whether both addresses have the same scheme, host and port (D-6). An address that does

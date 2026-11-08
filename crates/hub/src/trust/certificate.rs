@@ -1,64 +1,13 @@
 //! What the hub keeps of an RDP server's leaf certificate (SEC-007): the SHA-256 of its DER,
 //! which is pinned, and its subject and expiry, which are shown and never trusted. Pure.
 
-use std::{fmt, str::FromStr};
-
 use chrono::{DateTime, Utc};
-use sha2::{Digest, Sha256};
 
 use super::{model::ServerCertificate, observations::Observation};
+use crate::fingerprint::CertificateFingerprint;
 
 /// Longest subject kept, in characters (`server_certificates_subject_check`).
 pub(in crate::trust) const MAX_SUBJECT: usize = 1024;
-
-/// SHA-256 of a certificate's DER as 32 lower-case hex pairs joined by colons, as `FreeRDP`
-/// writes it (`server_certificates_fingerprint_check`).
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub(crate) struct CertificateFingerprint(String);
-
-impl CertificateFingerprint {
-    pub(crate) fn of(der: &[u8]) -> Self {
-        let pairs: Vec<String> = Sha256::digest(der)
-            .iter()
-            .map(|byte| format!("{byte:02x}"))
-            .collect();
-        Self(pairs.join(":"))
-    }
-
-    pub(crate) fn as_str(&self) -> &str {
-        &self.0
-    }
-}
-
-impl fmt::Display for CertificateFingerprint {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.0)
-    }
-}
-
-/// The text is not 32 hex pairs joined by colons.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
-#[error("not a SHA-256 certificate fingerprint")]
-pub(crate) struct BadCertificateFingerprint;
-
-impl FromStr for CertificateFingerprint {
-    type Err = BadCertificateFingerprint;
-
-    /// Surrounding space is ignored and upper-case hex is read as lower case.
-    fn from_str(text: &str) -> Result<Self, Self::Err> {
-        let text = text.trim().to_ascii_lowercase();
-        let shaped = text.len() == 32 * 3 - 1
-            && text.split(':').count() == 32
-            && text
-                .split(':')
-                .all(|pair| pair.len() == 2 && pair.bytes().all(|byte| byte.is_ascii_hexdigit()));
-        if shaped {
-            Ok(Self(text))
-        } else {
-            Err(BadCertificateFingerprint)
-        }
-    }
-}
 
 /// The leaf certificate a server presented, as the hub keeps it.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -90,7 +39,7 @@ impl From<Observation<PresentedCertificate>> for ServerCertificate {
     /// The certificate as a connection test saw it, first seen when the hub first saw it.
     fn from(seen: Observation<PresentedCertificate>) -> Self {
         Self {
-            fingerprint_sha256: seen.presented.fingerprint.as_str().to_owned(),
+            fingerprint_sha256: seen.presented.fingerprint.colon_pairs(),
             subject: seen.presented.subject,
             not_after: seen.presented.not_after,
             first_seen_at: seen.first_seen_at,

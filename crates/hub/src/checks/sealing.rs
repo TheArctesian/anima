@@ -14,6 +14,7 @@ use crate::{credentials::Vault, ids::CheckId};
 /// they go with; `None` when there are none.
 ///
 /// # Errors
+/// `Validation` (`url`) when the HTTP URL has no origin to bind the secrets to;
 /// `Credentials` (`Random`) when the OS random source fails.
 pub(super) fn sealed(
     vault: &Vault,
@@ -22,7 +23,7 @@ pub(super) fn sealed(
 ) -> Result<Option<Vec<u8>>, Error> {
     match (&prepared.secrets, &prepared.config) {
         (Some(Sealable::Http(secrets)), CheckConfig::Http(config)) => {
-            store::seal(vault, id, config, secrets).map(Some)
+            store::seal_http(vault, id, config, secrets).map(Some)
         }
         (Some(Sealable::Snmp(secrets)), CheckConfig::Snmp(config)) => {
             store::seal_snmp(vault, id, config, secrets).map(Some)

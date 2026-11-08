@@ -27,8 +27,8 @@ use crate::{
 };
 
 pub use model::{
-    Acceptance, Accepted, FieldError, Fingerprint, Missing, OpenIn, Pin, Suggestion, Updated,
-    WebInterface, WebInterfaceInput,
+    Acceptance, Accepted, FieldError, Missing, OpenIn, Pin, Suggestion, Updated, WebInterface,
+    WebInterfaceInput,
 };
 
 /// Why a web interface operation failed.

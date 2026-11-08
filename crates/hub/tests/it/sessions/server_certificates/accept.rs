@@ -186,3 +186,35 @@ async fn sec_007_a_server_that_sends_its_issuer_too_is_reported_and_accepted_by_
     let stored = row(&pool).await.unwrap();
     assert_eq!(stored.fingerprint_sha256, certificate.fingerprint());
 }
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../fixtures", scripts("devices"))
+)]
+async fn q2_10_the_fingerprint_may_be_typed_as_64_digits_and_is_stored_as_colon_pairs(
+    pool: PgPool,
+) {
+    add_operator(&pool).await;
+    let certificate = Certificate::new("DESKTOP-01");
+    let server = rdp(Answer::Tls, &certificate).await;
+    point_at(&pool, server.port, "nla", false).await;
+    let live = loopback_live();
+    let schema = schema(&pool, &live);
+    let tested = schema.execute(test_request(&saved())).await;
+
+    // As a web interface shows it: no colons, upper case, with space around it.
+    let digits = certificate
+        .fingerprint()
+        .replace(':', "")
+        .to_ascii_uppercase();
+    let response = schema
+        .execute(accept_request(PVE_01, &format!(" {digits}\n")))
+        .await;
+
+    assert!(tested.errors.is_empty(), "{:?}", tested.errors);
+    assert!(response.errors.is_empty(), "{:?}", response.errors);
+    let accepted = response.data.into_json().unwrap()["acceptServerCertificate"].clone();
+    assert_eq!(accepted["fingerprintSha256"], certificate.fingerprint());
+    let stored = row(&pool).await.unwrap();
+    assert_eq!(stored.fingerprint_sha256, certificate.fingerprint());
+}

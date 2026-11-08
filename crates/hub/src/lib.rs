@@ -9,6 +9,7 @@ pub mod config;
 pub mod credentials;
 pub mod devices;
 pub mod events;
+pub mod fingerprint;
 pub mod ids;
 pub mod maintenance;
 pub mod metrics;

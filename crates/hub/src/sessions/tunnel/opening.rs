@@ -36,6 +36,7 @@ use super::{
 use crate::{
     credentials, devices,
     devices::{Device, RdpSecurity},
+    fingerprint::CertificateFingerprint,
     sessions::{
         self, Desktop, PendingTicket, Protocol,
         connection_test::{ReadError, Reply, TLS_PROTOCOLS, read_server_certificate},
@@ -43,7 +44,7 @@ use crate::{
     },
     ssh::{self, SshError, Target},
     targets::{self, AddressPolicy, TargetError},
-    trust::{self, CertificateFingerprint, ServerCertificate},
+    trust::{self, ServerCertificate},
 };
 
 /// What the tunnel opens after the upgrade. Each way the opening can end with something to

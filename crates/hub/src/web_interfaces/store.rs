@@ -35,7 +35,7 @@ impl TryFrom<Row> for WebInterface {
     fn try_from(row: Row) -> Result<Self, Error> {
         let pin = match (row.fingerprint_sha256, row.accepted_at) {
             (Some(text), Some(at)) => Some(Pin {
-                fingerprint: rules::fingerprint(&text).map_err(|_| Error::Unreadable)?,
+                fingerprint: text.parse().map_err(|_| Error::Unreadable)?,
                 at,
             }),
             _ => None,
@@ -206,7 +206,7 @@ pub(super) async fn set_pin(
              accepted_by = excluded.accepted_by, accepted_at = excluded.accepted_at",
     )
     .bind(id)
-    .bind(pin.fingerprint.as_str())
+    .bind(pin.fingerprint.hex())
     .bind(operator)
     .bind(pin.at)
     .execute(conn)

@@ -34,8 +34,8 @@ impl WebInterface {
     }
 
     /// Lower-case hex, 64 digits.
-    async fn pinned_fingerprint_sha256(&self) -> Option<&str> {
-        self.pin.as_ref().map(|pin| pin.fingerprint.as_str())
+    async fn pinned_fingerprint_sha256(&self) -> Option<String> {
+        self.pin.as_ref().map(|pin| pin.fingerprint.hex())
     }
 
     async fn pinned_at(&self) -> Option<DateTime<Utc>> {
