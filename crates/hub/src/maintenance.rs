@@ -14,6 +14,7 @@ mod tests;
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 
+use crate::api_errors::field_names;
 use crate::ids::{CheckId, DeviceId, WindowId};
 
 pub use active::ActiveTargets;
@@ -30,15 +31,6 @@ pub enum Error {
     Validation(Vec<FieldError>),
     #[error("database error")]
     Database(#[from] sqlx::Error),
-}
-
-/// The names of the fields in error, never their values.
-fn field_names(errors: &[FieldError]) -> String {
-    errors
-        .iter()
-        .map(|error| error.field)
-        .collect::<Vec<_>>()
-        .join(", ")
 }
 
 /// What the windows in force at `now` apply to, from one query. Ask it about every device in

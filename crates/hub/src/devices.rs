@@ -16,6 +16,7 @@ mod warnings;
 
 use sqlx::PgPool;
 
+use crate::api_errors::field_names;
 use crate::ids::{DeviceId, SiteId};
 
 pub use loaders::{DevicesById, DevicesBySite, SitesById};
@@ -51,15 +52,6 @@ pub enum Error {
     Validation(Vec<FieldError>),
     #[error("database error")]
     Database(#[from] sqlx::Error),
-}
-
-/// The names of the fields in error, never their values.
-fn field_names(errors: &[FieldError]) -> String {
-    errors
-        .iter()
-        .map(|error| error.field)
-        .collect::<Vec<_>>()
-        .join(", ")
 }
 
 /// The device with this id, with its tags and SSH settings.

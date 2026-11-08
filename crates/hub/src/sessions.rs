@@ -35,6 +35,7 @@ use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 
 use crate::{
+    api_errors::field_names,
     credentials,
     devices::{self, Device},
     events,
@@ -136,15 +137,6 @@ pub enum Error {
     Random(#[source] getrandom::Error),
     #[error("database error")]
     Database(#[from] sqlx::Error),
-}
-
-/// The names of the fields in error, never their values.
-fn field_names(errors: &[FieldError]) -> String {
-    errors
-        .iter()
-        .map(|error| error.field)
-        .collect::<Vec<_>>()
-        .join(", ")
 }
 
 /// The device, or `NotFound` for it.

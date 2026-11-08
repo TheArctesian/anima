@@ -21,6 +21,7 @@ use sqlx::{Connection, PgConnection, PgPool};
 use uuid::Uuid;
 
 use crate::{
+    api_errors::field_names,
     checks::{self, config::CheckConfig},
     ids::{CheckId, DeviceId, WebInterfaceId},
 };
@@ -44,15 +45,6 @@ pub enum Error {
     Unreadable,
     #[error("the checks cannot be read")]
     Checks(#[source] checks::Error),
-}
-
-/// The names of the fields in error, never their values.
-fn field_names(errors: &[FieldError]) -> String {
-    errors
-        .iter()
-        .map(|error| error.field)
-        .collect::<Vec<_>>()
-        .join(", ")
 }
 
 /// The interfaces of each device in creation order, in one query (API-005). A device with
