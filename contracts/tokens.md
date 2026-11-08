@@ -64,6 +64,10 @@ Space numbers follow the 4-pixel grid index (`space-4` = 1 rem = 16 px), as in s
 - Light surfaces (R-086): `bg` is `nord-5`, `surface` is `nord-6`, `surface-raised` is `nord-4`. The light
   `accent` is `nord-3`; no derived accent primitive is added.
 - `surface-hover` (CR-10): dark is `nord-3`, today's hover look. Light is a grey that gives `text` at least 4.5:1 and differs visibly from `surface` and `surface-raised`. A component never uses `border` as a fill.
+- Reduce motion in Settings (D-28, MOT-043, R-085): `tokens.css` gains `:root[data-motion="reduce"] { … }`, holding the
+  reduced values of the motion tokens, and `@media (prefers-reduced-motion: reduce) { :root[data-motion="full"] { … } }`,
+  putting their full values back. No attribute (System) leaves the media query to decide. No token name is added, and
+  the blocks hold motion tokens only, so they never meet the theme blocks.
 - The Rust output (`crates/theme`) does not change.
 
 ## Rules for consumers
