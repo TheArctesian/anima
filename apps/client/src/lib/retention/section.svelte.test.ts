@@ -170,3 +170,57 @@ it('MOT-007: Save keeps its label and place while the hub answers, and keeps foc
   await settled();
   expect(document.activeElement).toBe(button);
 });
+
+it('HUB-005: after a save resolves the row can save again', async () => {
+  const target = await open({ ...LIST, SetRetention: ok({ setRetention: { ...FIXTURE_PERIODS[2], days: 120 } }) });
+  type(input(target, 'Events'), '120');
+  await save(target, 'Events');
+  type(input(target, 'Events'), '150');
+  await save(target, 'Events');
+  expect(sentSets().map((request) => request.variables)).toEqual([
+    { subject: 'EVENTS', days: 120 },
+    { subject: 'EVENTS', days: 150 },
+  ]);
+});
+
+it('HUB-005, D-25: saving another subject sends that subject and leaves the other rows as they were', async () => {
+  const returned = { ...FIXTURE_PERIODS[3], days: 60 };
+  const target = await open({ ...LIST, SetRetention: ok({ setRetention: returned }) });
+  type(input(target, 'Session recordings'), '60');
+  await save(target, 'Session recordings');
+  expect(sentSets().map((request) => request.variables)).toEqual([{ subject: 'RECORDINGS', days: 60 }]);
+  expect(input(target, 'Session recordings').value).toBe('60');
+  const others = ['Check results', 'Metrics', 'Events', 'Notification deliveries'];
+  expect(others.map((label) => input(target, label).value)).toEqual(['30', '30', '90', '30']);
+});
+
+it('HUB-005: a valid save after a refusal clears the refusal', async () => {
+  const target = await open({ ...LIST, SetRetention: ok({ setRetention: { ...FIXTURE_PERIODS[2], days: 120 } }) });
+  type(input(target, 'Events'), '10');
+  await save(target, 'Events');
+  expect(problemOf(target, 'Events')).not.toBe('');
+  type(input(target, 'Events'), '120');
+  await save(target, 'Events');
+  expect(sentSets()).toHaveLength(1);
+  expect(problemOf(target, 'Events')).toBe('');
+});
+
+it('HUB-005: editing the field clears the refusal; the loading hint is not read as a description', async () => {
+  const target = await open(LIST);
+  type(input(target, 'Events'), '10');
+  await save(target, 'Events');
+  type(input(target, 'Events'), '11');
+  expect(problemOf(target, 'Events')).toBe('');
+  expect(target.querySelectorAll('form')).toHaveLength(5);
+  expect(row(target, 'Events').getAttribute('role')).toBe('group');
+});
+
+it('HUB-005: a save that works after a failed one, with no edit between, clears the failure message', async () => {
+  const target = await open({ ...LIST, SetRetention: failure('INTERNAL') });
+  type(input(target, 'Events'), '120');
+  await save(target, 'Events');
+  expect(problemOf(target, 'Events')).not.toBe('');
+  hub.hub.request = (() => Promise.resolve(ok({ setRetention: { ...FIXTURE_PERIODS[2], days: 120 } }))) as typeof hub.hub.request;
+  await save(target, 'Events');
+  expect(problemOf(target, 'Events')).toBe('');
+});

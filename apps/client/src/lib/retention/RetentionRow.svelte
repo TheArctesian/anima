@@ -33,13 +33,18 @@
     }
     problem = '';
     busy = true;
-    const result = await save(checked.days);
-    busy = false;
+    let result;
+    try {
+      result = await save(checked.days);
+    } finally {
+      busy = false;
+    }
     if (!result.ok) problem = `Anima could not save the ${label.toLowerCase()} period.`;
   }
 </script>
 
-<form class="row" novalidate onsubmit={submit} aria-label={label}>
+<!-- A group, not a form landmark: five named forms would be five landmarks; Enter still submits. -->
+<form class="row" role="group" novalidate onsubmit={submit} aria-label={label}>
   <label for="{id}-days">{label}</label>
   <div class="control">
     <input
@@ -51,10 +56,11 @@
       max={period?.maxDays}
       disabled={period === null}
       aria-invalid={problem === '' ? undefined : true}
-      aria-describedby="{id}-hint {id}-problem"
+      aria-describedby={period === null ? undefined : `${id}-hint ${id}-problem`}
       value={draft}
       oninput={(event) => {
         draft = event.currentTarget.value;
+        problem = '';
       }}
     />
     <span class="unit">days</span>
