@@ -106,6 +106,18 @@ fn web_001_refuses_a_long_label_and_control_or_direction_characters() {
 }
 
 #[test]
+fn q2_11_a_label_with_a_line_or_paragraph_separator_is_refused() {
+    for c in ['\u{2028}', '\u{2029}'] {
+        let label = format!("a{c}b");
+        let errors = validate(&input(Some(&label), "http://ha.lan/"))
+            .err()
+            .unwrap();
+        assert_eq!(errors.len(), 1, "{c:?}");
+        assert_eq!(errors[0].field, "label");
+    }
+}
+
+#[test]
 fn web_001_reports_the_url_and_the_label_together() {
     let errors = validate(&input(Some("a\nb"), "ftp://x")).err().unwrap();
     let fields: Vec<_> = errors.iter().map(|e| e.field).collect();

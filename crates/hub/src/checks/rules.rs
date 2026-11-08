@@ -8,7 +8,7 @@ use super::{
     },
     model::{Definition, FieldError, PushToken},
 };
-use crate::credentials::Secret;
+use crate::{credentials::Secret, text::is_plain};
 
 /// The secrets a definition seals, of its type.
 pub(super) enum Sealable {
@@ -35,24 +35,6 @@ pub(super) enum Stored {
     Nothing,
     Http(StoredHttp),
     Snmp(StoredSnmp),
-}
-
-/// Whether the text has no control character, line or paragraph separator, or mark that
-/// changes the reading direction: names reach the event and audit logs (LOG-004).
-fn is_plain(text: &str) -> bool {
-    !text.chars().any(|c| {
-        c.is_control()
-            || matches!(
-                c,
-                '\u{2028}'
-                    | '\u{2029}'
-                    | '\u{200E}'
-                    | '\u{200F}'
-                    | '\u{061C}'
-                    | '\u{202A}'..='\u{202E}'
-                    | '\u{2066}'..='\u{2069}'
-            )
-    })
 }
 
 /// A trimmed, plain, non-empty name. The length limit is the database's (`checks_name_check`).
