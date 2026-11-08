@@ -1,6 +1,9 @@
 /** A reading as text; `null` (no value yet) is a dash, never 0 (MET-007). */
 export type UnitFormatter = (value: number | null) => string;
 
+/** MET-004: a metric strictly above this is degraded. */
+export const DEGRADED_ABOVE = 85;
+
 const UNKNOWN = '—';
 const IEC = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB'] as const;
 

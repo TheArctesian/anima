@@ -3,7 +3,7 @@
   import ChartSkeleton from '$lib/charts/ChartSkeleton.svelte';
   import type { SeriesColour } from '$lib/charts/plot';
   import type { MetricRange } from '$lib/metrics/api';
-  import { DEGRADED_ABOVE } from '$lib/metrics/bars/bars';
+  import { DEGRADED_ABOVE } from '$lib/metrics/units';
   import { rangeWindow } from '$lib/metrics/ranges';
   import { formatPercent } from '$lib/metrics/units';
   import './geometry.css';
