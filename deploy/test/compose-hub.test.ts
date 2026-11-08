@@ -123,7 +123,11 @@ describe("hub image build", () => {
       expect(copied.some((source) => member === source || member.startsWith(`${source}/`))).toBe(true);
     }
   });
+});
 
+describe("hub image web stage and recordings folder", () => {
+  const dockerfile = readFileSync(join(ROOT, "deploy", "hub", "Dockerfile"), "utf8");
+  const builds = dockerfile.split("\n").filter((line) => line.includes("cargo build"));
   const stage = (name: string): string[] => {
     const lines = dockerfile.split("\n");
     const start = lines.findIndex((line) => new RegExp(`^FROM .* AS ${name}$`).test(line));
@@ -173,5 +177,16 @@ describe("hub image build", () => {
     expect(allowed).toContain("!bun.lock");
     expect(allowed).toContain("!apps/client/");
     for (const excluded of ["**/node_modules", "**/.svelte-kit", "**/build"]) expect(allowed).toContain(excluded);
+  });
+
+  test("SEC-001 Dockerfile.dockerignore is an allow-list", () => {
+    const lines = readFileSync(join(ROOT, "deploy", "hub", "Dockerfile.dockerignore"), "utf8")
+      .split("\n")
+      .filter((line) => line !== "" && !line.startsWith("#"));
+    expect(lines[0]).toBe("*");
+    const allowed = lines.filter((line) => line.startsWith("!"));
+    // The Rust build, the lock files and the web stage's manifests and client; nothing else (SEC-001).
+    expect(allowed.filter((line) => !/^!(Cargo\.(toml|lock)|bun\.lock|package\.json|crates\/|apps\/client\/|apps\/desktop\/(src-tauri\/|package\.json)|(deploy(\/dns|\/headscale)?|design|quality)\/package\.json)$/.test(line))).toEqual([]);
+    expect(allowed).toContain("!crates/");
   });
 });
