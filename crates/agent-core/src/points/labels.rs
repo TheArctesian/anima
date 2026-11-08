@@ -1,7 +1,7 @@
 //! Which disks and interfaces become series, so a device cannot grow the table without bound
 //! (D-5).
 
-use super::{Disk, Interface};
+use crate::readings::{Disk, Interface};
 
 /// The most disk series, and the most network series, one device has.
 pub const MAX_LABELS: usize = 32;

@@ -138,7 +138,7 @@ async fn publish(
     ctx.feed.publish(MetricsAdded {
         device_id: ID(device.to_string()),
         at,
-        samples: samples.iter().map(MetricSample::from).collect(),
+        samples: samples.iter().filter_map(MetricSample::served).collect(),
         readings,
     });
     Ok(())

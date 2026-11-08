@@ -165,7 +165,7 @@ async fn db_004_a_sample_beyond_the_partition_window_is_refused_and_nothing_is_w
 ) {
     let pve = device(PVE_01);
     let far = day_at(&pool, 0, "10:00:00").await + chrono::TimeDelta::days(9);
-    let sample = crate::metrics::Sample::new(CPU, "", 1.0).unwrap();
+    let sample = crate::metrics::Sample::new(CPU.into(), "", 1.0).unwrap();
 
     let refused = crate::metrics::record_collection(&pool, pve, far, &[sample]).await;
 
@@ -177,7 +177,7 @@ async fn db_004_a_sample_beyond_the_partition_window_is_refused_and_nothing_is_w
 #[sqlx::test(migrations = "./migrations")]
 async fn db_008_a_collection_for_a_missing_device_says_so(pool: PgPool) {
     let at = day_at(&pool, 1, "10:05:10").await;
-    let sample = crate::metrics::Sample::new(CPU, "", 1.0).unwrap();
+    let sample = crate::metrics::Sample::new(CPU.into(), "", 1.0).unwrap();
 
     let missing = crate::metrics::record_collection(&pool, device(PVE_01), at, &[sample]).await;
 

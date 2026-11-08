@@ -39,7 +39,7 @@ pub(super) async fn write(
 ) {
     let samples: Vec<Sample> = values
         .iter()
-        .map(|&(kind, label, value)| Sample::new(kind, label, value).unwrap())
+        .map(|&(kind, label, value)| Sample::new(kind.into(), label, value).unwrap())
         .collect();
     record_collection(pool, device, at, &samples).await.unwrap();
 }

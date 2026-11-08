@@ -1,5 +1,6 @@
-//! The K1 enums and the sample guard.
+//! The K1 enums and their stored names.
 
+use agent_core::points::Kind;
 use async_graphql::EnumType;
 
 use super::*;
@@ -56,36 +57,18 @@ fn unknown_stored_kind_text_is_rejected() {
 }
 
 #[test]
-fn met_002_a_sample_is_a_finite_value_of_at_least_zero() {
-    for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, -1.0, -0.0] {
-        assert_eq!(Sample::new(MetricKind::Load1, "", bad), None, "{bad}");
+fn k8_every_api_kind_is_a_stored_kind_and_gpu_memory_bytes_is_not_served_yet() {
+    for item in MetricKind::items() {
+        assert_eq!(MetricKind::served(Kind::from(item.value)), Some(item.value));
     }
-    let sample = Sample::new(MetricKind::DiskBytes, "/", 1.5e19).unwrap();
-    assert_eq!(sample.value.to_bits(), 1.5e19_f64.to_bits());
-    assert_eq!(sample.label, "/");
+    assert_eq!(MetricKind::parse("gpu_memory_bytes"), None);
 }
 
 #[test]
-fn met_002_percent_kinds_are_clamped_to_100_and_others_are_not() {
-    assert_eq!(
-        Sample::new(MetricKind::CpuPercent, "", 250.0)
-            .unwrap()
-            .value
-            .to_bits(),
-        100.0_f64.to_bits()
-    );
-    assert_eq!(
-        Sample::new(MetricKind::VramPercent, "", 100.5)
-            .unwrap()
-            .value
-            .to_bits(),
-        100.0_f64.to_bits()
-    );
-    assert_eq!(
-        Sample::new(MetricKind::Load5, "", 250.0)
-            .unwrap()
-            .value
-            .to_bits(),
-        250.0_f64.to_bits()
-    );
+fn k8_the_only_stored_kind_the_api_does_not_serve_is_gpu_memory_bytes() {
+    let unserved: Vec<Kind> = Kind::ALL
+        .into_iter()
+        .filter(|kind| MetricKind::served(*kind).is_none())
+        .collect();
+    assert_eq!(unserved, [Kind::GpuMemoryBytes]);
 }

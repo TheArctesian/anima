@@ -37,8 +37,8 @@ async fn database_now(pool: &PgPool) -> DateTime<Utc> {
 /// Records a CPU and a memory sample for `device` taken at `at`.
 async fn record(pool: &PgPool, device: &str, at: DateTime<Utc>, cpu: f64) {
     let samples = [
-        Sample::new(MetricKind::CpuPercent, "", cpu).unwrap(),
-        Sample::new(MetricKind::MemoryPercent, "", 40.0).unwrap(),
+        Sample::new(MetricKind::CpuPercent.into(), "", cpu).unwrap(),
+        Sample::new(MetricKind::MemoryPercent.into(), "", 40.0).unwrap(),
     ];
     record_collection(pool, device.parse().unwrap(), at, &samples)
         .await
