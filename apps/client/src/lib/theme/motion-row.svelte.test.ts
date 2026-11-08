@@ -93,6 +93,18 @@ it('MOT-043: a storage that refuses to save still applies the choice and says it
   );
 });
 
+it('MOT-043: the "could not save" message goes once a later choice is saved', () => {
+  vi.spyOn(Storage.prototype, 'setItem').mockImplementationOnce(() => {
+    throw new Error('quota');
+  });
+  const target = show();
+  choose(motionSelect(target), 'reduce');
+  expect(target.querySelector('[role="alert"]')).not.toBeNull();
+  choose(motionSelect(target), 'full');
+  expect(target.querySelector('[role="alert"]')).toBeNull();
+  expect(localStorage.getItem('anima.motion')).toBe('full');
+});
+
 it('MOT-041, MOT-043: On makes the JS springs instant while the OS has no preference, with no reload', async () => {
   const preference = motionPreference();
   const seen: boolean[] = [];
