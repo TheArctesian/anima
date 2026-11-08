@@ -5,12 +5,14 @@ use super::harness::schema_for;
 use crate::contract::{k1, schema};
 
 /// The K1 root fields the checks part builds; the others belong to other packages.
-const OWNED_ROOT: [&str; 7] = [
+const OWNED_ROOT: [&str; 9] = [
     "check",
+    "checkDefaults",
     "createCheck",
     "deleteCheck",
     "deviceStatusChanged",
     "heartbeatAdded",
+    "setCheckDefaults",
     "setCheckPaused",
     "updateCheck",
 ];
