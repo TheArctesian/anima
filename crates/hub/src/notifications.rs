@@ -4,21 +4,30 @@
 //! Every notification connection leaves the hub through one path, `egress`: the target rule
 //! and the deny list judge each resolved address, the connection goes only to a checked
 //! address, and TLS is always verified (P3-003, D-17).
+//!
+//! A channel's settings are checked by `channels` before anything is stored; its secrets are
+//! sealed by `sealing` with the context `notifications.channels:<channel_id>` and never leave
+//! the hub (SEC-003, SEC-005).
 
+mod channels;
 mod decision;
 #[cfg_attr(
     not(test),
     expect(dead_code, reason = "the dispatcher (WP-45 T6) is the first caller")
 )]
 mod egress;
+pub mod graphql;
 mod model;
 mod observe;
+mod sealing;
 mod store;
 #[cfg(test)]
 mod tests;
 
 use chrono::{DateTime, Days, DurationRound, NaiveDate, TimeDelta, Utc};
 use sqlx::PgPool;
+
+use crate::credentials;
 
 pub use model::{
     Channel, ChannelFields, ChannelKind, CheckNotifications, CheckSettings, CheckState, Delivery,
@@ -50,6 +59,13 @@ pub enum Error {
     /// A stored row holds a value this version does not know.
     #[error("a stored notification row cannot be read")]
     Unreadable,
+    /// Sealed channel secrets do not open, are malformed, or could not be sealed.
+    #[error("the channel secrets cannot be sealed or opened")]
+    Credentials(#[from] credentials::Error),
+    /// Sealed channel secrets were given for another kind, target or header names than the
+    /// stored settings name, so they are not sent there (SEC-005).
+    #[error("the channel secrets were sealed for another target")]
+    SecretsUnbound,
 }
 
 impl From<sqlx::Error> for Error {
@@ -76,6 +92,8 @@ impl Error {
             Self::UnknownChannel => "unknown_channel",
             Self::UnknownCheck => "unknown_check",
             Self::Unreadable => "unreadable",
+            Self::Credentials(_) => "credentials",
+            Self::SecretsUnbound => "secrets_unbound",
         }
     }
 }

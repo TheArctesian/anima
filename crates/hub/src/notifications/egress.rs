@@ -67,7 +67,7 @@ pub(crate) enum SendError {
     /// which internal names exist (no DNS oracle).
     #[error("the target address is not permitted")]
     Target(#[from] TargetError),
-    #[error("the address is not an http or https URL with a host")]
+    #[error("the address is not an https URL with a host")]
     Url,
     /// The hub could not prepare the connection itself (its TLS settings or HTTP client); no
     /// connection was made.

@@ -1,4 +1,5 @@
-//! HTTP egress: one POST over a client pinned to the checked addresses of one host.
+//! HTTP egress: one POST over a client pinned to the checked addresses of one host, always
+//! over TLS (CR-14).
 //!
 //! The client resolves no name itself, follows no redirect, uses no proxy, keeps no cookie,
 //! decompresses nothing and verifies TLS with the built-in roots. It reads at most
@@ -44,7 +45,7 @@ impl Egress {
     /// is printed in a debug view.
     ///
     /// # Errors
-    /// [`SendError::Url`] for a URL that is not http or https; [`SendError::Target`] when the
+    /// [`SendError::Url`] for a URL that is not https (CR-14); [`SendError::Target`] when the
     /// host does not resolve or names a refused address, with no connection made;
     /// [`SendError::TimedOut`] when no answer arrives within the limit;
     /// [`SendError::HttpStatus`] for an answer outside 2xx (a redirect included); otherwise
@@ -70,7 +71,8 @@ impl Egress {
         mut headers: HeaderMap,
         body: Vec<u8>,
     ) -> Result<Response, SendError> {
-        if !matches!(url.scheme(), "http" | "https") {
+        // Always TLS (CR-14 item 6): a plain `http` URL gets no lookup and no connection.
+        if url.scheme() != "https" {
             return Err(SendError::Url);
         }
         let host = url.host_str().ok_or(SendError::Url)?;
