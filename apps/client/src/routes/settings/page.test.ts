@@ -2,6 +2,7 @@
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { failure, fakeHub, ok } from '$lib/access/access.fixture';
+import { TOKEN_KEPT_AFTER_LOGOUT } from '$lib/access/sign-out';
 import { SETTINGS } from '$lib/nav/nav';
 import { BROWSER, DESKTOP_MAC } from '$lib/platform/answers.fixture';
 import type { Capabilities } from '$lib/platform/platform';
@@ -209,11 +210,10 @@ it('CLI-002, D-5: the browser shows no Hub section', async () => {
 
 it('CLI-002, F-10: desktop shows Hub after Account and before Appearance, with the stored address and an empty status line', async () => {
   mocks.platform = DESKTOP_MAC;
-  localStorage.setItem('anima.hubAddress', 'https://hub.example.org');
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
   const headings = sectionHeadings(target);
   expect(headings.slice(0, 3)).toEqual(['Account', 'Hub', 'Appearance']);
-  expect(sectionTexts(target, 'Hub')).toEqual(['Hub', 'Hub addresshttps://hub.example.org', 'Test connection', 'Change hub', '']);
+  expect(sectionTexts(target, 'Hub')).toEqual(['Hub', `Hub address${hub.hub.address.origin}`, 'Test connection', 'Change hub', '']);
   expect(hubStatus(target)?.textContent).toBe('');
 });
 
@@ -234,6 +234,15 @@ it('CLI-002, NET-004: Test connection failure shows a fixed sentence, never the 
   expect(target.textContent).not.toContain('secret hub text');
 });
 
+it('CLI-002, NET-004: a malformed answer shows a fixed sentence, never the hub text', async () => {
+  mocks.platform = DESKTOP_MAC;
+  const target = await open({ Me: failure('malformed', 'secret hub text') });
+  hubButton(target, 'Test connection').click();
+  await settled();
+  expect(hubStatus(target)?.textContent).toBe('The hub sent an odd answer.');
+  expect(target.textContent).not.toContain('secret hub text');
+});
+
 it('MOT-007: a busy Hub button is aria-disabled, keeps focus and sends no second request', async () => {
   mocks.platform = DESKTOP_MAC;
   let release: (result: ReturnType<typeof ok>) => void = () => undefined;
@@ -246,6 +255,7 @@ it('MOT-007: a busy Hub button is aria-disabled, keeps focus and sends no second
   button.click();
   flushSync();
   expect(button.getAttribute('aria-disabled')).toBe('true');
+  expect(button.getAttribute('aria-busy')).toBe('true');
   expect(button.disabled).toBe(false);
   expect(document.activeElement).toBe(button);
   expect(hubStatus(target)?.textContent).toBe('Testing the hub…');
@@ -269,12 +279,12 @@ it('CLI-002, D-5: Change hub signs out, clears the token and goes to sign-in', a
   expect(mocks.goToSignIn).toHaveBeenCalledOnce();
 });
 
-it('CLI-002: Change hub stays put with a fixed sentence when the token cannot be removed', async () => {
+it('CLI-002: Change hub stays put and shows the sign-out sentence when the token cannot be removed', async () => {
   mocks.platform = DESKTOP_MAC;
   mocks.clearAccessToken.mockRejectedValue(new Error('keychain secret'));
   const target = await open({ Me: ok({ me: { username: 'ann' } }), Logout: ok({ logout: true }) });
   hubButton(target, 'Change hub').click();
   await settled();
   expect(mocks.goToSignIn).not.toHaveBeenCalled();
-  expect(hubStatus(target)?.textContent).toBe('Could not remove the token.');
+  expect(hubStatus(target)?.textContent).toBe(TOKEN_KEPT_AFTER_LOGOUT);
 });

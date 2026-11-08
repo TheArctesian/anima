@@ -5,7 +5,6 @@ export const CHECKING = 'Testing the hub…';
 export const HUB_ANSWERED = 'The hub answered.';
 export const HUB_SILENT = 'The hub did not answer.';
 export const HUB_ODD = 'The hub sent an odd answer.';
-export const TOKEN_STAYS = 'Could not remove the token.';
 
 /**
  * The sentence for a connection test. Any answer from the hub, including a refusal because nobody is signed in, shows
