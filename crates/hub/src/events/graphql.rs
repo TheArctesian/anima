@@ -4,9 +4,8 @@
 mod connection;
 
 use async_graphql::{
-    Context, Error as GraphQlError, ErrorExtensions as _, ID, InputObject, Object, Result,
+    Context, ID, InputObject, Object, Result,
     futures_util::{Stream, stream},
-    value,
 };
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
@@ -20,12 +19,13 @@ use super::{
     retention::Log,
     store,
 };
-use crate::access::Authenticated;
+use crate::{
+    access::Authenticated,
+    api_errors::{FieldError, internal, invalid, schema_dependency},
+};
 
 /// K1's default for `first` on both lists.
 const DEFAULT_FIRST: i32 = 100;
-
-const INTERNAL_MESSAGE: &str = "Something went wrong on the hub. Try again.";
 
 #[derive(Default)]
 pub struct Query;
@@ -62,8 +62,9 @@ impl Query {
         #[graphql(default_with = "Some(DEFAULT_FIRST)")] first: Option<i32>,
         after: Option<String>,
     ) -> Result<EventConnection> {
-        let ((size, after), filter) = validate(filter, first, after.as_deref()).map_err(invalid)?;
-        let rows = store::list_events(dependency(ctx)?, &filter, after, fetch_limit(size))
+        let ((size, after), filter) =
+            validate(filter, first, after.as_deref()).map_err(|bad| invalid(&bad))?;
+        let rows = store::list_events(schema_dependency(ctx)?, &filter, after, fetch_limit(size))
             .await
             .map_err(internal)?;
         Ok(split_page(rows, size).into())
@@ -78,8 +79,8 @@ impl Query {
         after: Option<String>,
     ) -> Result<AuditConnection> {
         let (size, after) =
-            paging(Log::Audit, first, after.as_deref()).map_err(|bad| invalid([bad]))?;
-        let rows = store::list_audit(dependency::<PgPool>(ctx)?, after, fetch_limit(size))
+            paging(Log::Audit, first, after.as_deref()).map_err(|bad| invalid(&[bad]))?;
+        let rows = store::list_audit(schema_dependency::<PgPool>(ctx)?, after, fetch_limit(size))
             .await
             .map_err(internal)?;
         Ok(split_page(rows, size).into())
@@ -101,7 +102,7 @@ impl Subscription {
         ctx: &Context<'_>,
         #[graphql(default_with = "Some(Severity::Info)")] min_severity: Option<Severity>,
     ) -> Result<impl Stream<Item = EventNode> + use<>> {
-        let receiver = dependency::<Bus>(ctx)?.subscribe();
+        let receiver = schema_dependency::<Bus>(ctx)?.subscribe();
         let min = min_severity.unwrap_or(Severity::Info);
         Ok(stream::unfold(receiver, move |receiver| {
             next_event(receiver, min)
@@ -136,9 +137,6 @@ fn delivered(signal: Signal, min: Severity) -> Option<EventSummary> {
     }
 }
 
-/// A field the operator must fix, and why.
-type Bad = (&'static str, &'static str);
-
 /// A page size, and the position the page starts after.
 type Paging = (usize, Option<Position>);
 
@@ -147,7 +145,7 @@ fn validate(
     filter: Option<EventFilterInput>,
     first: Option<i32>,
     after: Option<&str>,
-) -> Result<(Paging, EventFilter), Vec<Bad>> {
+) -> Result<(Paging, EventFilter), Vec<FieldError>> {
     match (
         paging(Log::Events, first, after),
         event_filter(filter.unwrap_or_default()),
@@ -158,10 +156,13 @@ fn validate(
 }
 
 /// Reads `first` (K1 default when omitted) and `after` for `log`; the first bad one.
-fn paging(log: Log, first: Option<i32>, after: Option<&str>) -> Result<Paging, Bad> {
-    let size = page_size(first.unwrap_or(DEFAULT_FIRST)).ok_or(("first", PAGE_SIZE_MESSAGE))?;
+fn paging(log: Log, first: Option<i32>, after: Option<&str>) -> Result<Paging, FieldError> {
+    let size = page_size(first.unwrap_or(DEFAULT_FIRST))
+        .ok_or_else(|| FieldError::new("first", PAGE_SIZE_MESSAGE))?;
     let after = after
-        .map(|cursor| decode_cursor(log, cursor).ok_or(("after", CURSOR_MESSAGE)))
+        .map(|cursor| {
+            decode_cursor(log, cursor).ok_or_else(|| FieldError::new("after", CURSOR_MESSAGE))
+        })
         .transpose()?;
     Ok((size, after))
 }
@@ -173,10 +174,13 @@ const DEVICE_MESSAGE: &str = "That device id is not valid.";
 const _: () = assert!(MAX_PAGE_SIZE == 200, "PAGE_SIZE_MESSAGE names the maximum");
 
 /// The event filter the input asks for; a bad device id is refused.
-fn event_filter(input: EventFilterInput) -> Result<EventFilter, Bad> {
+fn event_filter(input: EventFilterInput) -> Result<EventFilter, FieldError> {
     let device = input
         .device_id
-        .map(|id| id.parse().map_err(|_| ("filter.deviceId", DEVICE_MESSAGE)))
+        .map(|id| {
+            id.parse()
+                .map_err(|_| FieldError::new("filter.deviceId", DEVICE_MESSAGE))
+        })
         .transpose()?;
     Ok(EventFilter {
         severities: input.severity,
@@ -184,35 +188,6 @@ fn event_filter(input: EventFilterInput) -> Result<EventFilter, Bad> {
         device,
         since: input.since,
     })
-}
-
-/// A `VALIDATION` error that lists every field the operator must fix (K7).
-fn invalid(fields: impl IntoIterator<Item = Bad>) -> GraphQlError {
-    let listed: Vec<_> = fields
-        .into_iter()
-        .map(|(field, message)| value!({ "field": field, "message": message }))
-        .collect();
-    GraphQlError::new("Some input is not valid.").extend_with(|_, extensions| {
-        extensions.set("code", "VALIDATION");
-        extensions.set("fields", async_graphql::Value::List(listed));
-    })
-}
-
-/// The generic `INTERNAL` error (API-010). The cause stays as the error's source, which is
-/// never serialised.
-fn internal(cause: impl std::error::Error + Send + Sync + 'static) -> GraphQlError {
-    let mut error = GraphQlError::new_with_source(cause);
-    INTERNAL_MESSAGE.clone_into(&mut error.message);
-    error.extend_with(|_, extensions| extensions.set("code", "INTERNAL"))
-}
-
-/// A schema datum a resolver needs is not registered: a wiring mistake, never the operator's.
-#[derive(Debug, thiserror::Error)]
-#[error("schema dependency not registered")]
-struct Unregistered;
-
-fn dependency<'a, T: Send + Sync + 'static>(ctx: &Context<'a>) -> Result<&'a T> {
-    ctx.data_opt::<T>().ok_or_else(|| internal(Unregistered))
 }
 
 #[cfg(test)]

@@ -9,34 +9,16 @@ mod trail;
 mod window;
 
 use async_graphql::{Context, ID, Object, Result};
-use sqlx::{PgPool, Postgres, Transaction};
 use uuid::Uuid;
 
 use self::{
-    error::{invalid, schema_dependency, to_graphql},
+    error::to_graphql,
     input::{MaintenanceWindowInput, window_id},
     trail::Trail,
 };
-use super::{Error, FieldError, Window, model::NewWindow, rules::validate, store};
+use super::{FieldError, Window, model::NewWindow, rules::validate, store};
+use crate::api_errors::{begin, commit, invalid, pool};
 use crate::{access::Authenticated, ids::WindowId};
-
-fn pool<'a>(ctx: &Context<'a>) -> Result<&'a PgPool> {
-    schema_dependency::<PgPool>(ctx)
-}
-
-/// The transaction a mutation writes its change, its audit entry and its event in.
-async fn begin(ctx: &Context<'_>) -> Result<Transaction<'static, Postgres>> {
-    pool(ctx)?
-        .begin()
-        .await
-        .map_err(|e| to_graphql(Error::Database(e)))
-}
-
-async fn commit(tx: Transaction<'static, Postgres>) -> Result<()> {
-    tx.commit()
-        .await
-        .map_err(|e| to_graphql(Error::Database(e)))
-}
 
 /// The window an update names and the window to replace it with, with every field error
 /// together.

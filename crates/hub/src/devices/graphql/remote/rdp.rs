@@ -10,11 +10,9 @@ use async_graphql::{
 };
 use sqlx::PgPool;
 
-use super::{
-    super::error::{internal, schema_dependency},
-    credential_stored, passwords_stored,
-};
+use super::{credential_stored, passwords_stored};
 use crate::{
+    api_errors::{internal, schema_dependency},
     credentials::{self, PasswordKind},
     devices::{Device, RdpSecurity, RdpSettings, ResizeMethod},
     ids::DeviceId,

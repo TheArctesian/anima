@@ -13,6 +13,8 @@ use super::{
     targets::{self, is_plain},
 };
 
+pub use crate::api_errors::FieldError;
+
 const NAME_MAX: usize = 100;
 /// Seven days; the database constraint on a stored rule says the same.
 pub(super) const DURATION_MAX_MINUTES: u32 = 7 * 24 * 60;
@@ -20,29 +22,6 @@ pub(super) const DURATION_MAX_MINUTES: u32 = 7 * 24 * 60;
 /// scan of the list, so an oversized input costs nothing (API-005).
 const DAYS_OF_MONTH_MAX: usize = 32;
 const WEEKDAYS_MAX: usize = 7;
-
-/// One input field the operator must fix. `field` is the GraphQL input field name.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FieldError {
-    /// The GraphQL input field in camelCase, as the client form names it.
-    pub field: &'static str,
-    pub message: String,
-}
-
-impl FieldError {
-    pub(super) fn new(field: &'static str, message: impl Into<String>) -> Self {
-        Self {
-            field,
-            message: message.into(),
-        }
-    }
-}
-
-impl std::fmt::Display for FieldError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {}", self.field, self.message)
-    }
-}
 
 /// Collects field errors while the remaining fields are still checked.
 #[derive(Default)]

@@ -17,10 +17,11 @@ use super::{
     causes::{Cause, chain},
     echoes::{self, Arguments},
 };
+use crate::api_errors::ErrorCode;
 
 const CODE: &str = "code";
-const INTERNAL: &str = "INTERNAL";
-const VALIDATION: &str = "VALIDATION";
+const INTERNAL: &str = ErrorCode::Internal.as_str();
+const VALIDATION: &str = ErrorCode::Validation.as_str();
 const GENERIC_MESSAGE: &str = "Something went wrong on the hub.";
 
 /// The API boundary for errors. For each request it:

@@ -7,8 +7,8 @@ use std::sync::Arc;
 use async_graphql::{Context, ID, Object, Result};
 use chrono::{DateTime, Utc};
 
-use super::error::schema_dependency;
 use crate::{
+    api_errors::schema_dependency,
     clock::Clock,
     maintenance::{Target, TargetType, Weekday, Window, WindowKind, WindowRule},
 };

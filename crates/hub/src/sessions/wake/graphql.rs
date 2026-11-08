@@ -10,14 +10,12 @@ use sqlx::PgPool;
 use super::{Error, WakeSent, audit, refusal::sentence, wake};
 use crate::{
     access::Authenticated,
+    api_errors::{ErrorCode, coded, internal, invalid, schema_dependency},
     clock::Clock,
     credentials::Vault,
     events::{Bus, ClientAddr, Operator},
     ids::DeviceId,
-    sessions::{
-        Actor, FieldError, LinkError, Missing,
-        graphql::error::{coded, internal, invalid, schema_dependency},
-    },
+    sessions::{Actor, FieldError, LinkError, Missing},
     targets::AddressPolicy,
 };
 
@@ -86,18 +84,18 @@ fn to_graphql(error: Error) -> GraphQlError {
 
 /// What the operator can fix is `CONFLICT`; a relay that does not answer or a command that
 /// fails is `UNAVAILABLE`; `None` for a store failure.
-const fn code(error: &Error) -> Option<&'static str> {
+const fn code(error: &Error) -> Option<ErrorCode> {
     match error {
-        Error::NotFound(_) => Some("NOT_FOUND"),
-        Error::NoMacAddress | Error::NoRelay | Error::RelayIsDevice => Some("CONFLICT"),
-        Error::NotSent => Some("UNAVAILABLE"),
+        Error::NotFound(_) => Some(ErrorCode::NotFound),
+        Error::NoMacAddress | Error::NoRelay | Error::RelayIsDevice => Some(ErrorCode::Conflict),
+        Error::NotSent => Some(ErrorCode::Unavailable),
         Error::Link(link) => link_code(link),
         Error::Devices(_) | Error::Events(_) | Error::Database(_) => None,
     }
 }
 
 /// [`code`] for a link to the relay that failed.
-const fn link_code(error: &LinkError) -> Option<&'static str> {
+const fn link_code(error: &LinkError) -> Option<ErrorCode> {
     match error {
         LinkError::SshOff
         | LinkError::NoHostKey
@@ -105,14 +103,14 @@ const fn link_code(error: &LinkError) -> Option<&'static str> {
         | LinkError::RefusedTarget
         | LinkError::NoCredential
         | LinkError::CredentialRefused
-        | LinkError::UnreadableKey => Some("CONFLICT"),
+        | LinkError::UnreadableKey => Some(ErrorCode::Conflict),
         LinkError::Unresolved
         | LinkError::Unreachable
         | LinkError::Timeout
         | LinkError::NoKeyExchange
         | LinkError::Lost
         | LinkError::CommandRefused
-        | LinkError::TimeLimit => Some("UNAVAILABLE"),
+        | LinkError::TimeLimit => Some(ErrorCode::Unavailable),
         LinkError::Sessions(_) | LinkError::Credentials(_) => None,
     }
 }

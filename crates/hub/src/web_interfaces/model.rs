@@ -6,6 +6,8 @@ use chrono::{DateTime, Utc};
 
 use crate::ids::{CheckId, DeviceId, OperatorId, WebInterfaceId};
 
+pub use crate::api_errors::FieldError;
+
 /// Where the client opens an interface.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OpenIn {
@@ -103,29 +105,6 @@ pub struct Updated {
 pub struct Accepted {
     pub interface: WebInterface,
     pub created: bool,
-}
-
-/// An input field the rules refuse. The message never holds the input.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FieldError {
-    /// The GraphQL input field in camelCase.
-    pub field: &'static str,
-    pub message: String,
-}
-
-impl FieldError {
-    pub(super) fn new(field: &'static str, message: impl Into<String>) -> Self {
-        Self {
-            field,
-            message: message.into(),
-        }
-    }
-}
-
-impl fmt::Display for FieldError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}: {}", self.field, self.message)
-    }
 }
 
 /// What a lookup could not find.

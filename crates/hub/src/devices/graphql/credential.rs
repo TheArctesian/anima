@@ -8,14 +8,14 @@
 use async_graphql::{Context, Error as GraphQlError, ID, Result};
 
 use super::{
-    begin, commit,
     credential_input::{SshCredential, checked_secret},
-    error::{internal, invalid, schema_dependency, to_graphql},
+    error::to_graphql,
     input::checked,
     ssh::DeviceSsh,
     trail::{self, Trail},
 };
 use crate::{
+    api_errors::{begin, commit, internal, invalid, schema_dependency},
     credentials::{Vault, clear_ssh, store_ssh},
     devices::{Device, Error, FieldError, Missing, store},
     ids::DeviceId,

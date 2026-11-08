@@ -5,16 +5,16 @@ use std::sync::Arc;
 
 use async_graphql::{Context, ID, Object, Result, dataloader::DataLoader};
 use chrono::{DateTime, Utc};
-use sqlx::PgPool;
 
 use super::{
     config_view::ConfigView,
     enums::CheckKind,
-    error::{from_devices, from_shared, invalid, schema_dependency, to_graphql},
+    error::{from_devices, from_shared, to_graphql},
     heartbeat::{HeartbeatConnection, connection, paging},
     loaders::{CheckStatuses, CheckUptimes, HeartbeatPages, LastHeartbeats},
 };
 use crate::{
+    api_errors::{invalid, pool, schema_dependency},
     checks::{self, Check, Error, Heartbeat, UptimeWindow},
     clock::Clock,
     devices::{self, Device},
@@ -23,10 +23,6 @@ use crate::{
 
 fn now(ctx: &Context<'_>) -> Result<DateTime<Utc>> {
     Ok(schema_dependency::<Arc<dyn Clock>>(ctx)?.now())
-}
-
-fn pool<'a>(ctx: &Context<'a>) -> Result<&'a PgPool> {
-    schema_dependency::<PgPool>(ctx)
 }
 
 fn seconds(value: u32) -> i32 {

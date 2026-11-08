@@ -22,7 +22,7 @@ use async_graphql::{
 use sqlx::PgPool;
 
 /// For the files part's resolver (WP-27 D-8): the same errors and schema data.
-pub(super) use self::error::{invalid, schema_dependency, to_graphql};
+pub(super) use self::error::to_graphql;
 pub use self::{host_key::HostKeysByDevice, server_certificate::ServerCertificatesByDevice};
 
 use self::{
@@ -43,6 +43,7 @@ use super::{
 };
 use crate::{
     access::Authenticated,
+    api_errors::{invalid, schema_dependency},
     clock::Clock,
     credentials::Vault,
     events::{ClientAddr, Operator},

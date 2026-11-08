@@ -4,38 +4,21 @@
 use std::collections::HashMap;
 
 use async_graphql::{Context, ID, Result};
-use sqlx::{PgConnection, PgPool, Postgres, Transaction};
+use sqlx::{PgConnection, PgPool};
 
 use super::{
-    error::{from_devices, invalid, schema_dependency, to_graphql},
+    error::{from_devices, to_graphql},
     form::{self, check_id},
     input::{CreateShape, UpdateShape},
     trail::{self, Extras, Trail},
 };
 use crate::{
-    checks::{self, Check, CheckChange, Error, FieldError, config::CheckType, store},
+    api_errors::{begin, commit, invalid, pool, schema_dependency},
+    checks::{self, Check, CheckChange, FieldError, config::CheckType, store},
     credentials::Vault,
     devices,
     ids::{CheckId, DeviceId},
 };
-
-pub(super) fn pool<'a>(ctx: &Context<'a>) -> Result<&'a PgPool> {
-    schema_dependency::<PgPool>(ctx)
-}
-
-/// The transaction a mutation writes its change, its audit entry and its event in.
-async fn begin(ctx: &Context<'_>) -> Result<Transaction<'static, Postgres>> {
-    pool(ctx)?
-        .begin()
-        .await
-        .map_err(|e| to_graphql(Error::Database(e)))
-}
-
-async fn commit(tx: Transaction<'static, Postgres>) -> Result<()> {
-    tx.commit()
-        .await
-        .map_err(|e| to_graphql(Error::Database(e)))
-}
 
 /// The device a new check goes on; a missing one is the operator's `deviceId` error.
 async fn new_device_name(db: &PgPool, device: DeviceId) -> Result<String> {

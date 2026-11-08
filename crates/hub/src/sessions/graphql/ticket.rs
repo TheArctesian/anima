@@ -4,8 +4,8 @@
 use async_graphql::{Context, ID, InputObject, Object, Result, dataloader::DataLoader};
 use chrono::{DateTime, Utc};
 
-use super::error::schema_dependency;
 use crate::{
+    api_errors::schema_dependency,
     credentials::Vault,
     devices::graphql::StatusOf,
     events::Bus,

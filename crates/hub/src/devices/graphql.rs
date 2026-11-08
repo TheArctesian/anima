@@ -21,7 +21,7 @@ mod trail;
 use std::sync::Arc;
 
 use async_graphql::{Context, ID, Object, Result, dataloader::DataLoader};
-use sqlx::{PgPool, Postgres, Transaction};
+use sqlx::PgPool;
 use uuid::Uuid;
 
 pub use self::{
@@ -41,7 +41,7 @@ pub use self::{
 
 use self::{
     connection::{DEFAULT_FIRST, DeviceConnection},
-    error::{internal, invalid, schema_dependency, to_graphql},
+    error::to_graphql,
     filter::{DeviceFilterInput, DeviceSort, list_args},
     input::{CreateDeviceInput, UpdateDeviceInput, checked, device_id},
     remote::{DeviceRdp, DeviceVnc, clear_password, set_password, set_wake_relay},
@@ -56,6 +56,7 @@ use super::{
 };
 use crate::{
     access::Authenticated,
+    api_errors::{begin, commit, internal, invalid, pool},
     checks,
     clock::Clock,
     credentials::{PasswordKind, clear_ssh},
@@ -127,24 +128,6 @@ pub fn checks_loader(pool: PgPool) -> DataLoader<ChecksOf> {
 #[must_use]
 pub fn resolved_ip_loader(pool: PgPool) -> DataLoader<ResolvedIpOf> {
     DataLoader::new(ResolvedIpOf(pool), tokio::spawn)
-}
-
-fn pool<'a>(ctx: &Context<'a>) -> Result<&'a PgPool> {
-    schema_dependency::<PgPool>(ctx)
-}
-
-/// The transaction a mutation writes its change, its event and its audit entry in.
-async fn begin(ctx: &Context<'_>) -> Result<Transaction<'static, Postgres>> {
-    pool(ctx)?
-        .begin()
-        .await
-        .map_err(|e| to_graphql(Error::Database(e)))
-}
-
-async fn commit(tx: Transaction<'static, Postgres>) -> Result<()> {
-    tx.commit()
-        .await
-        .map_err(|e| to_graphql(Error::Database(e)))
 }
 
 #[derive(Default)]

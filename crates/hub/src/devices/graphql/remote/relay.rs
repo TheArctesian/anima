@@ -3,12 +3,12 @@
 use async_graphql::{Context, ID, Result};
 
 use crate::{
+    api_errors::{begin, commit, invalid},
     devices::{
         FieldError,
         graphql::{
-            begin, commit,
             credential::device_arg,
-            error::{invalid, to_graphql},
+            error::to_graphql,
             trail::{self, Trail},
         },
         model::Site,

@@ -14,36 +14,14 @@ use super::{
     text::{host, is_plain, user_name},
 };
 
+pub use crate::api_errors::FieldError;
+
 const NAME_MAX: usize = 64;
 const TAG_MAX: usize = 32;
 /// What a blank kind becomes; K1's schema default for `kind` is the same text.
 pub(in crate::devices) const DEFAULT_KIND: &str = "server";
 const DEFAULT_SSH_PORT: i32 = 22;
 const TAGS_MAX: usize = 32;
-
-/// One input field the operator must fix. `field` is the GraphQL input field name.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FieldError {
-    /// The GraphQL input field in camelCase, as the client form names it; nested SSH
-    /// fields are written `ssh.port` and `ssh.username`.
-    pub field: &'static str,
-    pub message: String,
-}
-
-impl FieldError {
-    pub(super) fn new(field: &'static str, message: impl Into<String>) -> Self {
-        Self {
-            field,
-            message: message.into(),
-        }
-    }
-}
-
-impl std::fmt::Display for FieldError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {}", self.field, self.message)
-    }
-}
 
 /// Collects field errors while the remaining fields are still checked.
 #[derive(Default)]

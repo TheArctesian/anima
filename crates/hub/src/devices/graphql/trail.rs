@@ -10,11 +10,9 @@ use async_graphql::{Context, Result};
 use serde_json::{Value, json};
 use sqlx::PgConnection;
 
-use super::{
-    credential_input::CredentialKind,
-    error::{internal, schema_dependency},
-};
+use super::credential_input::CredentialKind;
 use crate::{
+    api_errors::{internal, schema_dependency},
     clock::Clock,
     credentials::PasswordKind,
     devices::{

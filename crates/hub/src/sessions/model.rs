@@ -14,6 +14,8 @@ use chrono::{DateTime, Utc};
 use super::public_key::PublicKey;
 use crate::ids::{DeviceId, OperatorId, SessionId};
 
+pub use crate::api_errors::FieldError;
+
 /// The database holds text that is not a known value of an enum.
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 #[error("unknown {kind} '{text}'")]
@@ -214,20 +216,4 @@ pub struct ServerCertificate {
     pub not_after: Option<DateTime<Utc>>,
     /// When the hub first saw this certificate.
     pub first_seen_at: DateTime<Utc>,
-}
-
-/// One query argument the operator must fix. `field` is the GraphQL argument name.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FieldError {
-    pub field: &'static str,
-    pub message: String,
-}
-
-impl FieldError {
-    pub(super) fn new(field: &'static str, message: impl Into<String>) -> Self {
-        Self {
-            field,
-            message: message.into(),
-        }
-    }
 }

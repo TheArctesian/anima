@@ -69,10 +69,10 @@ fn api_006_paging_takes_the_k1_default_and_refuses_bad_sizes_and_cursors() {
     );
     for first in [0, 201] {
         let refused = paging(Log::Events, Some(first), None).unwrap_err();
-        assert_eq!(refused.0, "first");
+        assert_eq!(refused.field, "first");
     }
     let refused = paging(Log::Events, Some(1), Some(&cursor)).unwrap_err();
-    assert_eq!(refused.0, "after");
+    assert_eq!(refused.field, "after");
 }
 
 #[test]
@@ -93,7 +93,7 @@ fn log_004_the_filter_parses_the_device_id_and_keeps_the_rest() {
         device_id: Some("lab-router".into()),
         ..EventFilterInput::default()
     });
-    assert_eq!(bad.unwrap_err().0, "filter.deviceId");
+    assert_eq!(bad.unwrap_err().field, "filter.deviceId");
 }
 
 struct Root;

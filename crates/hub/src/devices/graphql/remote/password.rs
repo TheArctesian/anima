@@ -9,14 +9,14 @@
 use async_graphql::{Context, ID, Result};
 
 use crate::{
+    api_errors::{begin, commit, invalid, schema_dependency},
     credentials::{PasswordKind, Vault, clear_password as clear, store_password},
     devices::{
         Device,
         graphql::{
-            begin, commit,
             credential::{credential_error, device_arg},
             credential_input::PasswordCredential,
-            error::{invalid, schema_dependency, to_graphql},
+            error::to_graphql,
             input::checked,
             trail::{self, Trail},
         },
