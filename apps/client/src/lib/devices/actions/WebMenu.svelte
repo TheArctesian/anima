@@ -7,6 +7,7 @@
   import { pinnedFingerprintToShow } from '$lib/web-interfaces/open/pinned';
   import type { WebInterface } from '$lib/web-interfaces/api';
   import './actions.css';
+  import { anchorOf, menuLeftBehind, type MenuAnchor } from './menu-anchor';
   import { placeNear } from './placement';
 
   interface Props {
@@ -55,21 +56,26 @@
     if (hadFocus) button?.focus();
   }
 
-  /** The panel is fixed where it opened: a scroll anywhere outside it, or a resize, would leave it away from its button, so it closes. */
-  function closeOnMove(event: Event): void {
+  /** The panel is fixed where it opened: it closes when the button has moved from there (a scroll) or the width changed (a resize), not on a stray event. */
+  function closeOnMove(opened: MenuAnchor, event: Event): void {
     if (event.target instanceof Node && root?.contains(event.target) === true) return;
+    if (button === undefined || !menuLeftBehind(opened, button.getBoundingClientRect(), window.innerWidth, event.type === 'resize' ? 'resize' : 'scroll')) return;
     const hadFocus = root?.contains(document.activeElement) === true;
     open = false;
-    if (hadFocus) button?.focus();
+    if (hadFocus) button.focus();
   }
 
   $effect(() => {
-    if (!open) return;
-    window.addEventListener('scroll', closeOnMove, true);
-    window.addEventListener('resize', closeOnMove);
+    if (!open || button === undefined) return;
+    const opened = anchorOf(button.getBoundingClientRect(), window.innerWidth);
+    const onMove = (event: Event): void => {
+      closeOnMove(opened, event);
+    };
+    window.addEventListener('scroll', onMove, true);
+    window.addEventListener('resize', onMove);
     return () => {
-      window.removeEventListener('scroll', closeOnMove, true);
-      window.removeEventListener('resize', closeOnMove);
+      window.removeEventListener('scroll', onMove, true);
+      window.removeEventListener('resize', onMove);
     };
   });
 </script>

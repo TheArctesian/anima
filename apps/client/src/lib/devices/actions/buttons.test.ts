@@ -15,6 +15,8 @@ afterEach(async () => {
   if (app) await unmount(app);
   app = undefined;
   document.body.replaceChildren();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 const KEYED = { enabled: true, hostKey: { fingerprintSha256: 'SHA256:abc' } };
@@ -122,20 +124,49 @@ describe('Web button (WEB-003)', () => {
   });
 });
 
+const openMenu = (): HTMLElement => {
+  showCard({ webInterfaces: [web('w1', 'Admin'), web('w2', 'Metrics')] });
+  const button = named('Web interfaces of Device a');
+  if (button === null || button === undefined) throw new Error('no Web button');
+  button.click();
+  flushSync();
+  expect(document.querySelector('.panel')).not.toBeNull();
+  return button;
+};
+const closed = (): Promise<void> =>
+  vi.waitFor(() => {
+    expect(document.querySelector('.panel')).toBeNull();
+  });
+
 describe('Web menu closing (WEB-003)', () => {
-  it.each([
-    ['a scroll outside the menu', () => document.body.dispatchEvent(new Event('scroll'))],
-    ['a window resize', () => window.dispatchEvent(new Event('resize'))],
-  ] as const)('WEB-003: %s closes the open menu, so it never floats away from its button', async (_name, move) => {
-    showCard({ webInterfaces: [web('w1', 'Admin'), web('w2', 'Metrics')] });
-    named('Web interfaces of Device a')?.click();
+  it('WEB-003: a scroll that moves the button closes the open menu, so it never floats away from its button', async () => {
+    const button = openMenu();
+    vi.spyOn(button, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 120, 40, 20));
+    document.body.dispatchEvent(new Event('scroll'));
+    flushSync();
+    await closed();
+  });
+
+  it('WEB-003: a scroll that leaves the button where it was keeps the menu open', () => {
+    openMenu();
+    document.body.dispatchEvent(new Event('scroll'));
     flushSync();
     expect(document.querySelector('.panel')).not.toBeNull();
-    move();
+  });
+
+  it('WEB-003: a resize that changes the width closes the open menu', async () => {
+    openMenu();
+    vi.stubGlobal('innerWidth', window.innerWidth + 200);
+    window.dispatchEvent(new Event('resize'));
     flushSync();
-    await vi.waitFor(() => {
-      expect(document.querySelector('.panel')).toBeNull();
-    });
+    await closed();
+  });
+
+  it('WEB-003: a resize that keeps the width keeps the menu open', () => {
+    openMenu();
+    window.dispatchEvent(new Event('resize'));
+    flushSync();
+    expect(document.querySelector('.panel')).not.toBeNull();
   });
 
   it('WEB-003: a scroll inside the menu keeps it open', () => {
