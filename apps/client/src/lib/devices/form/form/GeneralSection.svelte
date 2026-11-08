@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { FieldError } from '$lib/hub/error';
+  import type { FieldError } from '$lib/hub/hub';
   import type { MetricsSource, OperatingSystem } from '$lib/hub/generated/graphql';
   import type { NewSite } from '../site';
   import type { SiteOption } from '../values';

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { FieldError } from '$lib/hub/error';
+  import type { FieldError } from '$lib/hub/hub';
   import type { SnmpVersion } from '$lib/hub/generated/graphql';
   import SelectField from '../fields/SelectField.svelte';
   import TextField from '../fields/TextField.svelte';

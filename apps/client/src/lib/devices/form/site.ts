@@ -1,4 +1,4 @@
-import type { FieldError } from '$lib/hub/error';
+import type { FieldError } from '$lib/hub/hub';
 import { normalizeHost } from './host';
 
 /** A site Add device creates with the device when the hub has none yet (VPN-001, VPN-002). */

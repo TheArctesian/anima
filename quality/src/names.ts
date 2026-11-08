@@ -10,6 +10,20 @@ const BANNED_FOLDERS = new Set(["utils", "helpers", "common", "components", "ser
 const SKIPPED_PREFIXES = ["docs/", "node_modules/"];
 const TYPE_EXTENSIONS = [".rs", ".ts", ".js", ".svelte"];
 
+// Casing of TypeScript, JavaScript and Svelte file names (CQ1-18): kebab-case words with dot-separated suffixes
+// (`.svelte.test.ts`, `.fixture.ts`, `.d.ts`); PascalCase components; SvelteKit route files start with `+`.
+// A test named for the component it tests keeps the component's PascalCase stem.
+const SCRIPT_FILE = /\.(?:ts|mts|cts|js|mjs|cjs)$/;
+const KEBAB_WORDS = String.raw`[a-z0-9]+(?:-[a-z0-9]+)*`;
+const SCRIPT_NAMES = [
+  new RegExp(`^(?:${KEBAB_WORDS}(?:\\.${KEBAB_WORDS})*|\\+[a-z]+(?:\\.[a-z]+)*)\\.(?:ts|mts|cts|js|mjs|cjs)$`),
+  /^[A-Z][A-Za-z0-9]*(?:\.svelte)?\.test\.ts$/,
+];
+const SVELTE_NAMES = [
+  /^(?:[A-Z][A-Za-z0-9]*|\+[a-z]+(?:\.[a-z]+)*)\.svelte$/,
+  new RegExp(`^${KEBAB_WORDS}\\.fixture\\.svelte$`),
+];
+
 const RUST_TYPE = /^\s*(?:pub(?:\([^)]*\))?\s+)?(?:struct|enum|trait|type|union)\s+([A-Za-z_]\w*)/gm;
 const TS_TYPE =
   /^\s*(?:export\s+)?(?:default\s+)?(?:declare\s+)?(?:abstract\s+)?(?:const\s+)?(?:class|interface|type|enum)\s+([A-Za-z_$][\w$]*)/gm;
@@ -48,6 +62,15 @@ function pathViolations(path: string): Violation[] {
   return violations;
 }
 
+/** CQ1-18: script files are kebab-case, components PascalCase. Rust and other files are not checked here. */
+function casingViolations(path: string): Violation[] {
+  const name = path.slice(path.lastIndexOf("/") + 1);
+  const isScript = SCRIPT_FILE.test(name);
+  if (!isScript && !name.endsWith(".svelte")) return [];
+  if ((isScript ? SCRIPT_NAMES : SVELTE_NAMES).some((pattern) => pattern.test(name))) return [];
+  return [{ path, signal: "file-casing", detail: `"${name}" should be ${isScript ? "kebab-case" : "PascalCase"}` }];
+}
+
 /** Source without comments; for Svelte, only the `<script>` blocks. */
 function codeOf(text: string, extension: string): string {
   if (extension !== ".svelte") return stripComments(text, extension);
@@ -69,9 +92,9 @@ function typeViolations(file: SourceFile): Violation[] {
   });
 }
 
-/** CQ-030: banned words in file names, folder names and declared type names. */
+/** CQ-030: banned words in file names, folder names and declared type names. CQ1-18: file-name casing. */
 export function checkNames(files: SourceFile[]): Violation[] {
   return files
     .filter((file) => !SKIPPED_PREFIXES.some((prefix) => file.path.startsWith(prefix)))
-    .flatMap((file) => [...pathViolations(file.path), ...typeViolations(file)]);
+    .flatMap((file) => [...pathViolations(file.path), ...casingViolations(file.path), ...typeViolations(file)]);
 }

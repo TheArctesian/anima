@@ -1,4 +1,4 @@
-import type { FieldError } from '$lib/hub/error';
+import type { FieldError } from '$lib/hub/hub';
 import { isSecretHeader } from './config-input';
 import { byteLength, integerError, isIntegerIn, LIMITS, lengthError, timeoutError } from './range';
 import type { CheckFormValues } from './values';

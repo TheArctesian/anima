@@ -3,13 +3,11 @@
 // xterm.js (its DOM renderer runs in jsdom).
 import { flushSync, mount, unmount } from 'svelte';
 import { vi } from 'vitest';
-import { UNREACHABLE } from '$lib/hub/error';
-import type { HubResult } from '$lib/hub/hub';
+import { UNREACHABLE, type HubResult, type Hub } from '$lib/hub/hub';
 import type { AcceptedHostKey, ConnectionTest, ConnectionTestInput, EndedSession, SessionDisplay, SessionsApi, SessionTicket, SessionTransfer } from '../api';
 import type { SessionEndReason, SessionEnding } from '../ending';
 import { openScreen, type ScreenHooks, type ScreenOpener } from '../screen/screen';
 import { FAKE_TERMINAL_SOCKET, FakeTerminalSocket } from '../tunnel/terminal/fake/socket.fixture';
-import type { Hub } from '$lib/hub/hub';
 import Hubbed from './filing/hubbed.fixture.svelte';
 import SessionView from './SessionView.svelte';
 import { sessionStart } from './start';

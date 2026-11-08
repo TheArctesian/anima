@@ -1,7 +1,7 @@
 <script lang="ts">
   import RemoteLoginButton from '$lib/devices/form/form/RemoteLoginButton.svelte';
   import { tick, untrack } from 'svelte';
-  import type { FieldError, HubResult } from '$lib/hub/error';
+  import type { FieldError, HubResult } from '$lib/hub/hub';
   import Disclosure from '../../../forms/disclosure/Disclosure.svelte';
   import FormButton from '../../../forms/FormButton.svelte';
   import { modalFooter } from '../../../forms/modal/footer';

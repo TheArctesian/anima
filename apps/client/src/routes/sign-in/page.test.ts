@@ -2,8 +2,7 @@
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { failure, fakeHub, ok } from '$lib/access/access.fixture';
-import { TOKEN_UNREADABLE } from '$lib/hub/error';
-import type { Hub } from '$lib/hub/hub';
+import { TOKEN_UNREADABLE, type Hub } from '$lib/hub/hub';
 import Page from './+page.svelte';
 
 const mocks = vi.hoisted(() => ({

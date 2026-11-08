@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { FieldError } from '$lib/hub/error';
+  import type { FieldError } from '$lib/hub/hub';
   import type { HttpAuthKind, HttpMethod } from '../model/hub-types';
   import { isSecretHeader } from '../model/config-input';
   import { messageFor } from '../model/errors';

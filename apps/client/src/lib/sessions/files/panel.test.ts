@@ -1,10 +1,9 @@
 // @vitest-environment jsdom
 import { flushSync } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { UNREACHABLE } from '$lib/hub/error';
+import { UNREACHABLE, type HubResult } from '$lib/hub/hub';
 import { FakeFilesSocket } from './link/fake/socket.fixture';
 import { settle } from './link/fake/link.fixture';
-import type { HubResult } from '$lib/hub/hub';
 import type { FilesTicket } from './api';
 import { endTransitionsAtOnce } from '$lib/devices/transitions.fixture';
 import { manualClock } from '$lib/motion/loading/clock.fixture';

@@ -3,7 +3,7 @@
   import { fieldErrorsFrom } from '$lib/devices/form/field-errors';
   import Disclosure from '$lib/forms/disclosure/Disclosure.svelte';
   import { modalFooter } from '$lib/forms/modal/footer';
-  import type { FieldError, HubResult } from '$lib/hub/error';
+  import type { FieldError, HubResult } from '$lib/hub/hub';
   import AdvancedFields from './fields/AdvancedFields.svelte';
   import GroupFields from './fields/GroupFields.svelte';
   import HttpFields from './fields/HttpFields.svelte';

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { expect, it, vi } from 'vitest';
-import type { FieldError, HubResult } from '$lib/hub/error';
+import type { FieldError, HubResult } from '$lib/hub/hub';
 import { BEARER_SAVED, HTTP_SAVED } from './check.fixture';
 import { button, choose, installFormHarness, input, messageOf, show, submit, type } from './form.fixture';
 import type { CheckFields } from './model/hub-types';

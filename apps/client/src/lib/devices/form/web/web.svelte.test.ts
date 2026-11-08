@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { flushSync, mount, tick, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import type { HubResult } from '$lib/hub/error';
+import type { HubResult } from '$lib/hub/hub';
 import { installAnimations } from '../../../forms/animations.fixture';
 import type { WebInterface, WebInterfaceSuggestion } from '$lib/web-interfaces/api';
 import WebInterfaces from './WebInterfaces.svelte';

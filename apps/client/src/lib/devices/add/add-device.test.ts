@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import type { HubError, HubResult } from '$lib/hub/error';
+import type { HubError, HubResult } from '$lib/hub/hub';
 import { addDevice, type AddDeviceApi } from './add-device';
 import { VPN_SITE, type SitePlacement } from '../form/site';
 import { formValues, type DeviceFormValues } from '../form/values';
