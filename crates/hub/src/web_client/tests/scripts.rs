@@ -70,6 +70,27 @@ fn d_2_non_ascii_text_around_and_in_a_script_is_hashed_as_utf_8() {
     assert_eq!(hashes.len(), 2);
 }
 
+/// The CSP source of `text`, hashed here as the browser hashes the parsed script.
+fn hash_of(text: &str) -> String {
+    use base64::{Engine as _, engine::general_purpose::STANDARD};
+    use sha2::{Digest as _, Sha256};
+    format!("'sha256-{}'", STANDARD.encode(Sha256::digest(text)))
+}
+
+#[test]
+fn d_2_a_crlf_in_a_script_is_hashed_as_the_lf_the_browser_parses() {
+    let html = "<script>\r\n\tfirst();\r\n</script>";
+    assert_eq!(inline_script_hashes(html), [hash_of("\n\tfirst();\n")]);
+}
+
+#[test]
+fn d_2_a_lone_cr_in_a_script_is_hashed_as_lf() {
+    assert_eq!(
+        inline_script_hashes("<script>a()\rb()\r\r\nc()\r</script>"),
+        [hash_of("a()\nb()\n\nc()\n")]
+    );
+}
+
 /// Text that cannot open or close a script element or end a start tag.
 fn plain() -> impl Strategy<Value = String> {
     "[a-zA-Z0-9 ;(){}=.\"'ü]{0,40}"

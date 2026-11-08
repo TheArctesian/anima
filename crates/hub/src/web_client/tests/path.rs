@@ -55,6 +55,25 @@ fn d_2_app_paths_are_assets_in_any_encoding() {
 }
 
 #[test]
+fn d_2_a_run_of_slashes_counts_as_one_as_the_file_server_reads_it() {
+    assert_eq!(wanted("//"), Wanted::Index);
+    assert_eq!(wanted("//index.html"), Wanted::Index);
+    assert_eq!(wanted("/%2Findex.html"), Wanted::Index);
+    for path in [
+        "//_app/immutable/missing.js",
+        "/%2F_app/immutable/missing.js",
+        "/%2f%2F_app//immutable/a.js",
+        "///_app/immutable/a.js",
+    ] {
+        assert_eq!(wanted(path), Wanted::Asset { immutable: true }, "{path}");
+    }
+    assert_eq!(
+        wanted("/_app//version.json"),
+        Wanted::Asset { immutable: false }
+    );
+}
+
+#[test]
 fn d_2_other_paths_are_pages() {
     for path in [
         "/devices",

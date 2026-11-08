@@ -21,10 +21,13 @@ pub enum Wanted {
 }
 
 /// What `path` (the request URI's path, still percent-encoded) asks for. Segments are split
-/// at `/` and at `\`, so a backslash spelling of `..` is hidden too.
+/// at `/` and at `\`, so a backslash spelling of `..` is hidden too. A run of `/`, plain or
+/// encoded, counts as one, as it does when `ServeDir` finds the file: `//_app/x.js` is an
+/// asset and `//index.html` the index.
 #[must_use]
 pub fn wanted(path: &str) -> Wanted {
-    let decoded = percent_decoded(path.as_bytes());
+    let mut decoded = percent_decoded(path.as_bytes());
+    decoded.dedup_by(|later, earlier| *later == b'/' && *earlier == b'/');
     let hidden = decoded
         .split(|byte| matches!(byte, b'/' | b'\\'))
         .any(|segment| segment.first() == Some(&b'.') || segment.contains(&0));

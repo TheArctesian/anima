@@ -86,6 +86,19 @@ async fn send(router: &Router, method: Method, path: &str) -> Answer {
         .uri(path)
         .body(Body::empty())
         .unwrap();
+    answer_to(router, request).await
+}
+
+/// The answer to a `GET` of `path` with one request header.
+async fn get_with(router: &Router, path: &str, name: &str, value: &str) -> Answer {
+    let request = Request::get(path)
+        .header(name, value)
+        .body(Body::empty())
+        .unwrap();
+    answer_to(router, request).await
+}
+
+async fn answer_to(router: &Router, request: Request<Body>) -> Answer {
     let response = router.clone().oneshot(request).await.unwrap();
     let status = response.status();
     let headers = response.headers().clone();

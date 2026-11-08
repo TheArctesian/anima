@@ -3,7 +3,7 @@
 
 use axum::http::{Method, StatusCode};
 
-use super::{DOTFILE, OUTSIDE, WebRoot, get, router_at, send};
+use super::{DOTFILE, INDEX_HTML, OUTSIDE, WebRoot, get, router_at, send};
 
 #[tokio::test]
 async fn d_2_a_missing_app_file_is_404_never_html() {
@@ -25,6 +25,7 @@ async fn d_2_a_missing_app_file_is_404_never_html() {
 async fn sec_001_traversal_never_leaves_the_root() {
     let web = WebRoot::new();
     let router = web.router();
+    // Every spelling is a URI the hub can receive: `get` fails the test on one that is not.
     for path in [
         "/../outside.txt",
         "/%2e%2e/outside.txt",
@@ -36,14 +37,16 @@ async fn sec_001_traversal_never_leaves_the_root() {
         "/_app/%2e%2e/%2e%2e/outside.txt",
         "//outside.txt",
         "/%2Foutside.txt",
+        "/%2F%2E%2E/outside.txt",
     ] {
-        // Some spellings are not a valid URI at all; the hub never receives those.
-        let Ok(uri) = path.parse::<axum::http::Uri>() else {
-            continue;
-        };
-        let answer = get(&router, &uri.to_string()).await;
+        let answer = get(&router, path).await;
+        let page = answer.status == StatusCode::OK && answer.body == INDEX_HTML;
+        assert!(
+            answer.status == StatusCode::NOT_FOUND || page,
+            "{path}: {}",
+            answer.status
+        );
         assert!(!answer.body.contains(OUTSIDE), "{path} escaped the root");
-        assert_ne!(answer.status.as_u16() / 100, 5, "{path}");
     }
 }
 
@@ -60,6 +63,23 @@ async fn sec_001_dotfiles_and_dot_folders_are_404() {
         let answer = get(&web.router(), path).await;
         assert_eq!(answer.status, StatusCode::NOT_FOUND, "{path}");
         assert!(!answer.body.contains(DOTFILE), "{path}");
+    }
+}
+
+#[tokio::test]
+async fn d_2_a_missing_app_file_behind_extra_slashes_is_404_never_html() {
+    let web = WebRoot::new();
+    for path in [
+        "//_app/immutable/missing.js",
+        "/%2F_app/immutable/missing.js",
+        "/_app//immutable/missing.js",
+    ] {
+        let answer = get(&web.router(), path).await;
+        assert_eq!(
+            (answer.status, answer.body.as_str()),
+            (StatusCode::NOT_FOUND, ""),
+            "{path}"
+        );
     }
 }
 

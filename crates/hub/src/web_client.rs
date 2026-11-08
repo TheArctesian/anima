@@ -1,10 +1,15 @@
 //! The web client (D-2, K7, Section 1.3): the static build from `ANIMA_WEB_ROOT`, served as
-//! the router's fallback, so every explicit route wins. Wiring only.
+//! the router's fallback, so every explicit route wins. A leaf: of the hub it imports only
+//! `access::PublicOrigin`, and only `lib.rs` uses it.
 //!
 //! Each answer carries the K7 headers, the 404s and 405s too, so no HTML ever leaves without
 //! the CSP. `GET` and `HEAD` only. A path with a segment starting with `.` is 404 (dotfiles,
 //! `..`, in any encoding). Under `/_app/` a missing file is 404; elsewhere an unknown path
 //! gets `index.html` with 200, for client-side routes. `ServeDir` reads the files (A-1).
+//!
+//! The root is trusted build output, set by the operator: `ServeDir` follows a symlink in it,
+//! even one that points outside the root, so the root must hold no link the operator did not
+//! mean to publish (SEC-001).
 
 mod headers;
 mod path;
@@ -94,7 +99,10 @@ async fn respond(site: &Site, wanted: Wanted, request: Request) -> Response {
         Wanted::Asset { .. } => file(&site.files, request).await,
         Wanted::Page => {
             let response = file(&site.files, request).await;
-            if response.status() == StatusCode::NOT_FOUND {
+            // A name the file system cannot look up (too long, a symlink loop) is a 5xx from
+            // `ServeDir`; for a client-side route it is just no file, so the page answers.
+            let status = response.status();
+            if status == StatusCode::NOT_FOUND || status.is_server_error() {
                 page(index, head)
             } else {
                 response

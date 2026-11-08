@@ -44,11 +44,13 @@ pub fn inline_script_hashes(html: &str) -> Vec<String> {
     hashes
 }
 
-/// `'sha256-<base64>'` of `script`'s UTF-8 bytes, as a browser hashes an inline script.
+/// `'sha256-<base64>'` of `script`'s UTF-8 bytes, as a browser hashes an inline script: after
+/// its HTML parser has turned each CRLF and each lone CR into LF.
 fn source_hash(script: &str) -> String {
+    let parsed = script.replace("\r\n", "\n").replace('\r', "\n");
     format!(
         "'sha256-{}'",
-        STANDARD.encode(Sha256::digest(script.as_bytes()))
+        STANDARD.encode(Sha256::digest(parsed.as_bytes()))
     )
 }
 

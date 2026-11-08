@@ -35,11 +35,35 @@ async fn d_2_an_unknown_path_outside_app_gets_index_html_with_200() {
 async fn d_2_a_folder_is_never_listed_or_redirected() {
     let answer = get(&WebRoot::new().router(), "/_app/immutable/entry").await;
     assert_eq!(answer.status, StatusCode::NOT_FOUND);
+    assert_eq!(answer.header("location"), "");
+}
+
+#[tokio::test]
+async fn d_2_the_root_serves_index_html() {
     let answer = get(&WebRoot::new().router(), "/").await;
     assert_eq!(
         (answer.status, answer.body.as_str()),
         (StatusCode::OK, INDEX_HTML)
     );
+}
+
+#[tokio::test]
+async fn d_2_a_name_the_file_system_cannot_look_up_gets_index_html() {
+    let web = WebRoot::new();
+    let long = "a".repeat(300);
+    for path in [format!("/{long}"), format!("/devices/{long}")] {
+        let answer = get(&web.router(), &path).await;
+        assert_eq!(
+            (answer.status, answer.body.as_str()),
+            (StatusCode::OK, INDEX_HTML)
+        );
+        assert!(
+            answer
+                .header("content-security-policy")
+                .contains("script-src 'self' 'sha256-")
+        );
+        assert_eq!(answer.header("cache-control"), "no-cache");
+    }
 }
 
 #[tokio::test]
@@ -67,7 +91,13 @@ async fn d_2_index_html_is_the_page_read_when_the_web_client_was_built() {
     let web = WebRoot::new();
     let router = web.router();
     std::fs::write(web.root().join("index.html"), "<script>changed()</script>").unwrap();
-    for path in ["/", "/index.html", "/devices"] {
+    for path in [
+        "/",
+        "/index.html",
+        "//index.html",
+        "/%2Findex.html",
+        "/devices",
+    ] {
         assert_eq!(get(&router, path).await.body, INDEX_HTML, "{path}");
     }
 }

@@ -2,7 +2,7 @@
 
 use axum::http::{Method, StatusCode};
 
-use super::{Answer, WebRoot, get, router_at, send};
+use super::{Answer, WebRoot, get, get_with, router_at, send};
 use crate::access::PublicOrigin;
 use crate::web_client::web_client;
 
@@ -76,6 +76,53 @@ async fn sec_001_refusals_carry_the_headers_and_are_never_cached_as_immutable() 
     let post = send(&router, Method::POST, "/_app/immutable/entry/start.js").await;
     assert_eq!(post.status, StatusCode::METHOD_NOT_ALLOWED);
     assert_k7_headers(&post, NO_CACHE);
+}
+
+#[tokio::test]
+async fn d_2_a_conditional_or_range_answer_keeps_the_headers_and_its_cache_rule() {
+    let web = WebRoot::new();
+    let router = web.router();
+    let future = "Fri, 01 Jan 2100 00:00:00 GMT";
+    let past = "Fri, 01 Jan 1971 00:00:00 GMT";
+    // A 304 and a 206 are the immutable file itself; a 416 and a 412 are refusals.
+    let cases = [
+        (
+            "if-modified-since",
+            future,
+            StatusCode::NOT_MODIFIED,
+            IMMUTABLE,
+        ),
+        ("range", "bytes=0-3", StatusCode::PARTIAL_CONTENT, IMMUTABLE),
+        (
+            "range",
+            "bytes=900-999",
+            StatusCode::RANGE_NOT_SATISFIABLE,
+            NO_CACHE,
+        ),
+        (
+            "if-unmodified-since",
+            past,
+            StatusCode::PRECONDITION_FAILED,
+            NO_CACHE,
+        ),
+    ];
+    for (name, value, status, cache) in cases {
+        let answer = get_with(&router, "/_app/immutable/entry/start.js", name, value).await;
+        assert_eq!(answer.status, status, "{name}: {value}");
+        assert_k7_headers(&answer, cache);
+    }
+}
+
+#[tokio::test]
+async fn d_2_a_304_for_a_file_outside_app_is_not_replaced_by_the_page() {
+    let web = WebRoot::new();
+    let future = "Fri, 01 Jan 2100 00:00:00 GMT";
+    let answer = get_with(&web.router(), "/robots.txt", "if-modified-since", future).await;
+    assert_eq!(
+        (answer.status, answer.body.as_str()),
+        (StatusCode::NOT_MODIFIED, "")
+    );
+    assert_k7_headers(&answer, NO_CACHE);
 }
 
 #[tokio::test]
