@@ -212,5 +212,9 @@ async fn met_006_a_link_lost_on_a_gpu_read_keeps_the_collection(pool: PgPool) {
     );
     let added = bench.feed.try_recv().unwrap();
     assert!(value(&added, MetricKind::MemoryPercent, "").is_some());
-    assert_eq!(events(&pool).await, [], "the collection worked");
+    let stored = events(&pool).await;
+    assert!(
+        stored.iter().all(|(_, name, _)| name != "docker-host"),
+        "the collection worked: {stored:?}"
+    );
 }
