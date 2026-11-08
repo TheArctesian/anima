@@ -1,7 +1,7 @@
 <script lang="ts">
   import LineChart from '$lib/charts/LineChart.svelte';
   import type { MetricsSource } from '$lib/hub/generated/graphql';
-  import { chartsOf } from '$lib/metrics/charts';
+  import { chartsOf } from '$lib/metrics/overview-charts';
     import type { MetricRange } from '$lib/metrics/api';
   import MetricBars from '$lib/metrics/bars/MetricBars.svelte';
   import { skeletonDelay } from '$lib/motion/loading/delay.svelte';

@@ -1,8 +1,7 @@
 import type { ChartPoint, ChartSeries, SeriesColour } from '$lib/charts/plot';
 import type { ValueAxis } from '$lib/charts/scales';
 import type { DeviceGpu, MetricKind, MetricSeries } from './api';
-import { DEGRADED_ABOVE } from './bars/bars';
-import { formatBytesPerSecond, formatLoad, formatPercent } from './units';
+import { DEGRADED_ABOVE, formatBytesPerSecond, formatLoad, formatPercent } from './units';
 
 /** K5: `chart-series-1` to `-6`. */
 const SERIES_COLOURS = 6;
