@@ -154,6 +154,7 @@ export type DockerConfigInput = {
 export type DomainExpiryConfigInput = {
   domain: string;
   timeoutMs?: number | null | undefined;
+  /** 1 to 365 (R-093). */
   warnDays?: number | null | undefined;
 };
 
@@ -240,6 +241,8 @@ export type MetricKind =
   | 'CPU_PERCENT'
   | 'DISK_BYTES'
   | 'DISK_PERCENT'
+  /** Memory in use by a unified-memory GPU (Apple), shown as a number, never a VRAM bar (MET-007, R-092 D-6). */
+  | 'GPU_MEMORY_BYTES'
   | 'GPU_PERCENT'
   | 'GPU_POWER_W'
   | 'GPU_TEMPERATURE_C'
@@ -260,6 +263,8 @@ export type MetricRange =
   | 'WEEK';
 
 export type MetricsSource =
+  /** Set only by enrolment (MET-011, R-092 D-7). */
+  | 'AGENT'
   | 'NONE'
   | 'SSH';
 

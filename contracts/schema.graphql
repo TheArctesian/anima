@@ -789,6 +789,7 @@ input UpdateCheckInput {
 
 input DomainExpiryConfigInput @pending {
   domain: String!
+  "1 to 365 (R-093)."
   warnDays: Int = 30
   timeoutMs: Int = 10000
 }
