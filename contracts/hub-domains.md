@@ -86,6 +86,11 @@ pub fn bearer_layer(db: Db, clock: Clock, scope: Scope) -> impl tower::Layer<axu
 #[derive(Clone)] pub struct PublicOrigin(/* scheme, host, port */);
 // identify(..) also reads the __Host-anima cookie when Origin equals the public origin (D-3).
 // SocketAccess also takes the upgrade's headers, so a WebSocket can sign in by cookie (K7).
+/// Whether the login throttle refuses this address now (CR-16; joinShare, K4 §10).
+pub async fn throttled(db: &Db, client: ClientAddr, now: DateTime<Utc>) -> Result<bool, Error>;
+/// Records one failed signed-out attempt for this address, counted as a failed login. The stored
+/// username marker never matches or locks a real account (CR-16).
+pub async fn record_failure(db: &Db, client: ClientAddr, now: DateTime<Utc>) -> Result<(), Error>;
 ```
 
 ## events (WP-05)

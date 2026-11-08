@@ -134,8 +134,9 @@ From the client, the hub:
 The hub sends a `nop` to the client when the gateway has sent nothing for 5 seconds. If the client sends nothing for 15 seconds (no ping, no input), the hub ends the session with `TIMEOUT`.
 
 (Phase 3) The relay passes each gateway instruction it sends to the owner to the session's recorder
-(Section 11) when recording is on. It also passes it to the session's viewers (Section 10), which have their
-own guacd connections. Client instructions are never recorded.
+(Section 11) when recording is on. It copies nothing to the session's viewers: each RDP or VNC viewer has its
+own guacd join connection (Section 10). The owner's relay only registers its guacd connection ID (GW-014) and
+ends the viewers when it ends (CR-16). Client instructions are never recorded.
 
 ## 5. End of session
 
