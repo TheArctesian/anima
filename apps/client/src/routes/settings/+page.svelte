@@ -3,6 +3,7 @@
   import SignOutRow from '$lib/access/SignOutRow.svelte';
   import { capabilities } from '$lib/platform/platform';
   import MotionRow from '$lib/theme/MotionRow.svelte';
+  import RetentionSection from '$lib/retention/RetentionSection.svelte';
   import ThemeRow from '$lib/theme/ThemeRow.svelte';
   import TypefaceRows from '$lib/typeface/TypefaceRows.svelte';
   import DesktopRows from '$lib/updates/DesktopRows.svelte';
@@ -24,6 +25,11 @@
   <ThemeRow />
   <MotionRow />
   <TypefaceRows />
+</section>
+
+<section aria-labelledby="settings-retention">
+  <h2 id="settings-retention">Data retention</h2>
+  <RetentionSection />
 </section>
 
 <section aria-labelledby="settings-api-keys">
