@@ -1,6 +1,8 @@
 //! The webhook rules: an https URL whose origin alone is shown, and headers that cannot frame
 //! or redirect the request (CR-14 items 1, 3, 6 and 7; SEC-003, SEC-005).
 
+use std::collections::BTreeSet;
+
 use super::{
     Draft, Kept, NONE, Prepared, Secrets, Settings, SettingsDraft, WebhookDraft, WebhookMethod,
     WebhookSecrets, WebhookSettings, accepted, draft, errors_of, fields, new_errors,
@@ -11,6 +13,38 @@ use crate::{
 };
 
 const URL: &str = "https://hooks.example.test/path/s3cr3t-path?token=s3cr3t-query";
+
+/// The names the spec refuses, written out so a dropped or renamed production entry fails.
+const EXPECTED_REFUSED: [&str; 28] = [
+    "host",
+    "content-length",
+    "content-encoding",
+    "transfer-encoding",
+    "connection",
+    "keep-alive",
+    "proxy-connection",
+    "proxy-authorization",
+    "te",
+    "trailer",
+    "upgrade",
+    "expect",
+    "forwarded",
+    "via",
+    "max-forwards",
+    "x-forwarded-for",
+    "x-forwarded-host",
+    "x-forwarded-proto",
+    "x-forwarded-port",
+    "x-forwarded-prefix",
+    "x-forwarded-scheme",
+    "x-forwarded-server",
+    "x-real-ip",
+    "x-host",
+    "x-original-host",
+    "x-original-url",
+    "x-rewrite-url",
+    "x-http-method-override",
+];
 
 fn with_headers(url: Option<&str>, headers: Option<&[(&str, &str)]>) -> Draft {
     draft(SettingsDraft::Webhook(WebhookDraft {
@@ -97,6 +131,16 @@ fn cr_14_7_a_webhook_url_with_a_user_name_or_password_is_refused() {
         new_errors(webhook("https://operator@hooks.example.test/a")),
         ["settings.webhook.url"]
     );
+    for password_only in [
+        "https://:pw@hooks.example.test",
+        "https://:pw@hooks.example.test/a",
+    ] {
+        assert_eq!(
+            new_errors(webhook(password_only)),
+            ["settings.webhook.url"],
+            "{password_only}"
+        );
+    }
 }
 
 #[test]
@@ -130,7 +174,12 @@ fn sec_005_a_webhook_shows_its_origin_and_header_names_and_never_its_url_or_valu
 #[test]
 fn not_002_header_names_are_tokens_that_neither_frame_nor_redirect_the_request() {
     let named = |name: &str| errors_of(with_headers(Some(URL), Some(&[(name, "v")])));
-    for refused in REFUSED_NAMES {
+    let produced: BTreeSet<&str> = REFUSED_NAMES.into_iter().collect();
+    assert_eq!(
+        produced,
+        EXPECTED_REFUSED.into_iter().collect::<BTreeSet<_>>()
+    );
+    for refused in EXPECTED_REFUSED {
         assert_eq!(named(refused), ["settings.webhook.headers"], "{refused}");
         let upper = refused.to_ascii_uppercase();
         assert_eq!(named(&upper), ["settings.webhook.headers"], "{upper}");

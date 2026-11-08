@@ -2,7 +2,9 @@
 //! never change one (API-003).
 
 use async_graphql::{Request, Variables};
+use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use serde_json::{Value, json};
+use sha2::{Digest as _, Sha256};
 use sqlx::PgPool;
 
 use super::harness::{
@@ -39,6 +41,26 @@ async fn api_003_channel_fields_without_an_operator_are_unauthenticated(pool: Pg
     assert_eq!(stored(&pool).await, 0);
 }
 
+/// Only an API key may be read-only (migration 0010); it is spelled `anima_` + token.
+async fn api_key(pool: &PgPool, byte: u8, scope: &str) -> String {
+    let secret = [byte; 32];
+    sqlx::query(
+        "insert into access.api_tokens \
+         (id, operator_id, token_hash, kind, name, display_prefix, scope, expires_at, created_at) \
+         select gen_random_uuid(), id, $1, 'api_key', $4, 'anima_BQUFBQ', $5, $2, $3 \
+         from access.operators",
+    )
+    .bind(Sha256::digest(secret).to_vec())
+    .bind(start() + chrono::TimeDelta::days(1))
+    .bind(start())
+    .bind(format!("{scope} key"))
+    .bind(scope)
+    .execute(pool)
+    .await
+    .unwrap();
+    format!("anima_{}", URL_SAFE_NO_PAD.encode(secret))
+}
+
 /// Through the hub as `main.rs` builds it: the channel roots and the loader are wired.
 #[sqlx::test(migrations = "./migrations")]
 async fn api_003_a_read_token_lists_channels_but_cannot_change_one(pool: PgPool) {
@@ -50,12 +72,10 @@ async fn api_003_a_read_token_lists_channels_but_cannot_change_one(pool: PgPool)
     assert_eq!(created["errors"], Value::Null, "{created}");
     holds_no_secret("the hub answer", &created.to_string());
 
-    sqlx::query("UPDATE access.api_tokens SET scope = 'read'")
-        .execute(&pool)
-        .await
-        .unwrap();
+    let reader = api_key(&pool, 5, "read").await;
+    let writer = api_key(&pool, 6, "write").await;
     let list = format!("{{ notificationChannels {{ {FIELDS} }} }}");
-    let listed = hub.post(Some(&token), &list, json!({})).await;
+    let listed = hub.post(Some(&reader), &list, json!({})).await;
     let channels = &listed["data"]["notificationChannels"];
     assert_eq!(
         channels[0]["id"],
@@ -71,7 +91,7 @@ async fn api_003_a_read_token_lists_channels_but_cannot_change_one(pool: PgPool)
         ),
         (DELETE.to_owned(), json!({ "id": id })),
     ] {
-        let refused = hub.post(Some(&token), &query, variables).await;
+        let refused = hub.post(Some(&reader), &query, variables).await;
         let read_only = (
             "This token may only read.".to_owned(),
             "FORBIDDEN".to_owned(),
@@ -79,4 +99,15 @@ async fn api_003_a_read_token_lists_channels_but_cannot_change_one(pool: PgPool)
         assert_eq!(error(&refused), read_only);
     }
     assert_eq!(stored(&pool).await, 1);
+
+    // R-100: a write API key may still change channels.
+    let made = hub
+        .post(
+            Some(&writer),
+            &create_query(),
+            json!({ "input": webhook("Key hook") }),
+        )
+        .await;
+    assert_eq!(made["errors"], Value::Null, "{made}");
+    assert_eq!(stored(&pool).await, 2);
 }

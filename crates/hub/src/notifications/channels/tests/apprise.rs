@@ -64,6 +64,7 @@ fn cr_14_7_an_apprise_server_is_an_https_origin_only() {
         "https://apprise.example.test/#frag",
         "https://apprise.example.test#frag",
         "https://user:pw@apprise.example.test",
+        "https://:pw@apprise.example.test",
         "https://user@apprise.example.test",
         "https://appr\tise.example.test",
         "https://appr\nise.example.test",

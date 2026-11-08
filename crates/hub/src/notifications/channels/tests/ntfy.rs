@@ -51,6 +51,7 @@ fn cr_14_7_an_ntfy_server_is_an_https_origin_only() {
         "https://ntfy.example.test/#frag",
         "https://ntfy.example.test#frag",
         "https://user:pw@ntfy.example.test",
+        "https://:pw@ntfy.example.test",
         "ntfy.example.test",
         "https://ntfy.exa\tmple.test",
         "https://ntfy.exa\nmple.test",
