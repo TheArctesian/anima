@@ -124,7 +124,8 @@ Also read `docs/programme/phase-3-plan.md`, `phase-3-contracts.md` and the packa
   counts, `log_007` terminal refusals, the deploy localapi "endless upstream body" test (on `pop-os` it once spun for
   45 minutes; stop that one test process by its PID, then run the deploy suite alone), and (seen on `pop-os`)
   `k4_8_5` client ping while the hub's send waits, the desktop `process_log` `log_008` opener-after-patience test and
-  the `checks::tests::snmp::probes::d_5_*` probes.
+  the `checks::tests::snmp::probes::d_5_*` probes, and the deploy `secrets-token` DNS-003 interrupt test (it waits
+  only 5 s for the `stty` shim; run `bun run --cwd deploy test` alone).
   These are logged as a should for issue #1.
 
 ## 6. Open decisions for the next session
