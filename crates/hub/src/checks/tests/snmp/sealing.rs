@@ -12,7 +12,7 @@ use crate::{
         config::{SnmpConfig, SnmpSecrets, SnmpVersion},
         store::{open_snmp, seal_snmp},
     },
-    credentials::{self, Secret, Vault},
+    credentials::{self, Sealed, Secret, Vault},
     ids::CheckId,
 };
 
@@ -74,6 +74,26 @@ fn sec_003_sealed_secrets_open_for_their_check_version_and_user() {
         panic!("the community did not open");
     };
     assert_eq!(text(&opened), COMMUNITY);
+}
+
+#[test]
+fn sec_003_the_plaintext_is_the_binding_length_the_binding_then_the_secrets() {
+    let (vault, id) = (vault(), check());
+    let v3 = config(SnmpVersion::V3, Some("monitor"));
+    let bytes = seal_snmp(&vault, id, &v3, &user()).unwrap();
+    let context = format!("checks.checks.snmp:{id}");
+    let plain = vault
+        .open(&Sealed::from_bytes(&bytes).unwrap(), context.as_bytes())
+        .unwrap();
+    let binding = br#"{"version":"V3","username":"monitor"}"#;
+    let mut expected = u32::try_from(binding.len()).unwrap().to_be_bytes().to_vec();
+    expected.extend_from_slice(binding);
+    expected.push(2); // a v3 user
+    for secret in [AUTH, PRIVACY] {
+        expected.extend_from_slice(&u16::try_from(secret.len()).unwrap().to_be_bytes());
+        expected.extend_from_slice(secret.as_bytes());
+    }
+    assert_eq!(plain.expose(), expected.as_slice());
 }
 
 #[test]

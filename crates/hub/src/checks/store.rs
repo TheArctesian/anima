@@ -25,7 +25,6 @@ pub(super) mod repairs;
 mod retention;
 mod rows;
 mod sealed;
-mod snmp_sealed;
 mod uptime;
 mod writes;
 
@@ -51,10 +50,9 @@ pub(super) use retention::{
     create_days_ahead, delete_orphan_heartbeats, drop_heartbeat_days_before, trim_aggregates,
 };
 use rows::{CheckRow, StandingRow, to_checks};
-pub(super) use sealed::seal;
 #[cfg(test)]
-pub(in crate::checks) use snmp_sealed::open as open_snmp;
-pub(super) use snmp_sealed::seal as seal_snmp;
+pub(in crate::checks) use sealed::{open_http, open_snmp};
+pub(super) use sealed::{seal_http, seal_snmp};
 pub(super) use uptime::{check_tallies, tallies};
 pub(super) use writes::{
     Change, Current, Insert, delete, insert, load_http_secrets, load_snmp_secrets, lock,

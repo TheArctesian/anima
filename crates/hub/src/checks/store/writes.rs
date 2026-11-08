@@ -7,8 +7,7 @@ use sqlx::{Connection as _, PgConnection, PgExecutor};
 
 use super::{
     rows::{CheckRow, config_of, stored_config, write_error},
-    sealed::open,
-    snmp_sealed,
+    sealed::{open_http, open_snmp},
 };
 use crate::{
     checks::{
@@ -89,7 +88,7 @@ impl Current {
             return Ok(None);
         };
         let secrets = match self.sealed {
-            Some(bytes) => open(vault, check, &config, &bytes)?,
+            Some(bytes) => open_http(vault, check, &config, &bytes)?,
             None => HttpSecrets::default(),
         };
         Ok(Some((config, secrets)))
@@ -107,7 +106,7 @@ impl Current {
         };
         self.sealed
             .map(|bytes| {
-                let secrets = snmp_sealed::open(vault, check, &config, &bytes)?;
+                let secrets = open_snmp(vault, check, &config, &bytes)?;
                 Ok((config, secrets))
             })
             .transpose()
@@ -249,7 +248,7 @@ pub(in crate::checks) async fn load_http_secrets<'e>(
         _ => return Err(Error::Unreadable(id)),
     };
     let secrets = sealed
-        .map(|bytes| open(vault, id, &config, &bytes))
+        .map(|bytes| open_http(vault, id, &config, &bytes))
         .transpose()?;
     Ok(Some(HttpSetup { config, secrets }))
 }
@@ -274,7 +273,7 @@ pub(in crate::checks) async fn load_snmp_secrets<'e>(
         _ => return Err(Error::Unreadable(id)),
     };
     let secrets = sealed
-        .map(|bytes| snmp_sealed::open(vault, id, &config, &bytes))
+        .map(|bytes| open_snmp(vault, id, &config, &bytes))
         .transpose()?;
     Ok(Some(SnmpSetup { config, secrets }))
 }

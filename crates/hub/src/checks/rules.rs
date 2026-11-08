@@ -52,7 +52,7 @@ pub(super) fn name(text: &str) -> Result<String, FieldError> {
     Ok(name.to_owned())
 }
 
-fn config_error(error: ConfigError) -> FieldError {
+pub(super) fn config_error(error: ConfigError) -> FieldError {
     FieldError::new(error.field, format!("This value {}.", error.reason))
 }
 
