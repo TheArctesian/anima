@@ -33,7 +33,7 @@ describe('secretValue', () => {
   });
 });
 
-describe('an edited channel', () => {
+describe('an edited channel\'s secrets', () => {
   it('F-8: no secret field is filled from the saved channel', () => {
     for (const kind of ['WEBHOOK', 'NTFY', 'EMAIL', 'APPRISE'] as const) {
       const draft = savedDraft(fixtureChannel(kind), template);
@@ -76,6 +76,9 @@ describe('an edited channel', () => {
     expect(settingsOf(check)).toMatchObject({ webhook: { url: FAKE_WEBHOOK_URL } });
   });
 
+});
+
+describe('an edited channel\'s headers, mode and template', () => {
   it('F-8: replacing the headers needs every value again; none left removes them all', () => {
     const replaced = saved('WEBHOOK', (draft) => {
       draft.webhook.replaceHeaders = true;
