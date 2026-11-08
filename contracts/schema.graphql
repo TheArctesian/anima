@@ -1100,13 +1100,13 @@ type DeliveryConnection @pending {
   pageInfo: PageInfo!
 }
 
-type CheckNotifications @pending {
+type CheckNotifications {
   channels: [NotificationChannel!]!
   "Send again after each N Down heartbeats; 0: never (NOT-005)."
   resendEveryBeats: Int!
 }
 
-type NotificationSettings @pending {
+type NotificationSettings {
   "Days before expiry, descending, 1..365, at most 5 values (NOT-006, D-22). Default [21, 14, 7]."
   certificateDays: [Int!]!
   template: NotificationTemplate!
@@ -1171,12 +1171,12 @@ input NotificationChannelInput {
   template: NotificationTemplateInput
 }
 
-input CheckNotificationsInput @pending {
+input CheckNotificationsInput {
   channelIds: [ID!]!
   resendEveryBeats: Int = 0
 }
 
-input NotificationSettingsInput @pending {
+input NotificationSettingsInput {
   certificateDays: [Int!]!
   template: NotificationTemplateInput!
 }
@@ -1418,7 +1418,7 @@ type Query {
   apiKeys: [ApiKey!]! @pending
   checkDefaults: CheckDefaults!
   notificationChannels: [NotificationChannel!]!
-  notificationSettings: NotificationSettings! @pending
+  notificationSettings: NotificationSettings!
   deliveries(channelId: ID, first: Int = 50, after: String): DeliveryConnection! @pending
   retention: [RetentionPeriod!]!
   recordings(deviceId: ID, first: Int = 50, after: String): RecordingConnection! @pending
@@ -1488,8 +1488,8 @@ type Mutation {
   deleteNotificationChannel(id: ID!): ID!
   "Sends at once and waits at most 8 seconds (NOT-004)."
   sendTestNotification(id: ID!): Delivery! @pending
-  setCheckNotifications(checkId: ID!, input: CheckNotificationsInput!): CheckNotifications! @pending
-  setNotificationSettings(input: NotificationSettingsInput!): NotificationSettings! @pending
+  setCheckNotifications(checkId: ID!, input: CheckNotificationsInput!): CheckNotifications!
+  setNotificationSettings(input: NotificationSettingsInput!): NotificationSettings!
 
   setRetention(subject: RetentionSubject!, days: Int!): RetentionPeriod!
 
