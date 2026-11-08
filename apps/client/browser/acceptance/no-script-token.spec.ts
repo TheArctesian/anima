@@ -53,14 +53,18 @@ test.describe('signed out', () => {
     const [cookie] = await context.cookies(HUB_ORIGIN);
     expect(cookie?.httpOnly).toBe(true);
 
-    // A reload starts a new page: the secrets must be absent from it too, not only from the page that took the password.
-    for (const stage of ['after sign-in', 'after a reload']) {
-      if (stage === 'after a reload') await page.reload({ waitUntil: 'domcontentloaded' });
+    const expectNothingReadable = async (stage: string): Promise<void> => {
       await expect(page.getByRole('link', { name: 'mac-studio', exact: true })).toBeVisible();
-      const reach = JSON.stringify([await scriptReach(page), await otherStores(page), page.url(), await page.evaluate(() => [window.name, JSON.stringify(history.state)])]);
-      for (const secret of [token ?? 'missing', OPERATOR.password]) expect(reach, `${stage}: ${secret === token ? 'token' : 'password'}`).not.toContain(secret);
-      expect(await otherStores(page)).toEqual({ databases: [], caches: [], workers: 0 });
-    }
+      const stores = await otherStores(page);
+      const reach = JSON.stringify([await scriptReach(page), stores, page.url(), await page.evaluate(() => [window.name, JSON.stringify(history.state)])]);
+      expect(reach, `${stage}: token`).not.toContain(token ?? 'missing');
+      expect(reach, `${stage}: password`).not.toContain(OPERATOR.password);
+      expect(stores, stage).toEqual({ databases: [], caches: [], workers: 0 });
+    };
+    await expectNothingReadable('after sign-in');
+    // A reload starts a new page: the secrets must be absent from it too, not only from the page that took the password.
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await expectNothingReadable('after a reload');
     for (const secret of [token ?? 'missing', OPERATOR.password]) expect(lines.filter((line) => line.includes(secret))).toEqual([]);
   });
 });

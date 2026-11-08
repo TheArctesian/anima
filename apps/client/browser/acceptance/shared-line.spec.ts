@@ -1,12 +1,13 @@
 import type { BrowserContext, Page } from '@playwright/test';
 import { expect, test } from '../test-hub';
 import { HUB_ORIGIN } from '../synthetic/access';
-import { DEVICE_IDS } from './screens';
 
 // Back and Forward across the `/shared` line (WP-44 E-3, T1 `holdsAt`): `/shared` and below it is a bare document with no
 // operator hub, socket or shell, and every other route is the shell. A navigation across that line is a full load, so
 // Back from one to the other brings the right kind of document, never a stale one of the other kind (SEC-002, D-7).
-// `/shared` is WP-49's; until it exists the line is tested at its 404 page, which the root layout renders bare too.
+// `/shared` is WP-49's; until it exists the line is tested at its 404 page, which the root layout renders bare too. With no
+// route there, a link into `/shared` is a native navigation, so the first test shows the browser's own Back; the second
+// crosses by the router, and only the layout's reload (`holdsAt`) keeps the bare document from staying on a shell page.
 
 const STARTED_AT = 'animaStartedAt';
 const OLD_PAGE_MARK = 'animaOldPage';
@@ -83,21 +84,25 @@ test('SEC-002, D-7: from the shell to /shared and Back, the shell comes back as 
 
 test('SEC-002, D-7: from /shared to an operator page and Back, the bare page comes back as a fresh document with no hub', async ({ page, hub }) => {
   await page.goto(`${HUB_ORIGIN}/shared#tok`, { waitUntil: 'domcontentloaded' });
+  // The 404 page is the bare page's content: once it shows, the client has started and its router takes the next link. Before
+  // that, the browser would follow the link by itself, as a new document, and the test would prove nothing about the router.
+  await expect(page.getByText('Not Found', { exact: true })).toBeVisible();
   expect(await documentOnScreen(page)).toMatchObject({ startedAt: '/shared#tok', shell: false });
   await page.evaluate((mark) => Reflect.set(window, mark, true), OLD_PAGE_MARK);
   // A bare page calls no operator operation: the hub has heard nothing yet.
   expect(hub.recording.requests).toEqual([]);
 
-  await followLink(page, `/devices/${DEVICE_IDS.nas}`);
-  await page.waitForURL(`${HUB_ORIGIN}/devices/${DEVICE_IDS.nas}`);
-  await expect(page.getByRole('heading', { level: 1, name: 'nas' })).toBeVisible();
-  expect(await documentOnScreen(page)).toMatchObject({ startedAt: `/devices/${DEVICE_IDS.nas}`, shell: true, marked: false });
+  // The router knows `/devices`, so this link is a router move that crosses the line: only the layout's reload makes it a new page.
+  await followLink(page, '/devices');
+  await page.waitForURL(`${HUB_ORIGIN}/devices`);
+  await expect(page.getByRole('link', { name: 'mac-studio', exact: true })).toBeVisible();
+  expect(await documentOnScreen(page)).toMatchObject({ startedAt: '/devices', shell: true, marked: false });
   const requestsAtShell = hub.recording.requests.length;
   expect(requestsAtShell).toBeGreaterThan(0);
 
   await page.goBack();
   await page.waitForURL(`${HUB_ORIGIN}/shared#tok`);
-  await expect.poll(() => documentOnScreen(page).then((found) => found.shell)).toBe(false);
+  await expect(page.getByText('Not Found', { exact: true })).toBeVisible();
   expect(await documentOnScreen(page)).toMatchObject({ startedAt: '/shared#tok', shell: false });
   await expect(page.getByRole('link', { name: 'Settings' })).toHaveCount(0);
   // The bare document started no hub: nothing was asked of the hub since the shell ended, and its sockets all came from shell documents.
