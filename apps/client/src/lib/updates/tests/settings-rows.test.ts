@@ -10,6 +10,11 @@ vi.mock('$lib/platform/platform', () => ({ capabilities: () => platform.answers 
 vi.mock('$lib/access/SignOutRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('./RowStub.svelte')).default }));
 vi.mock('$lib/updates/UpdatesRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('./RowStub.svelte')).default }));
 vi.mock('$lib/process-log/LogFolderRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('./LogRowStub.svelte')).default }));
+// Settings sections that load their own data (WP-50 F-3) find a hub that answers nothing, so they show their own error.
+vi.mock('$lib/hub/context', async () => {
+  const { fakeHub } = await import('$lib/access/access.fixture');
+  return { useHub: () => fakeHub({}).hub };
+});
 
 let app: ReturnType<typeof mount> | undefined;
 
