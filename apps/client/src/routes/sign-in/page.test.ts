@@ -308,6 +308,12 @@ describe('in a browser, a failed sign-in', () => {
     expect(target.querySelector('button')?.disabled).toBe(false);
   });
 
+  it('NAV-005: after a refusal with no marked field the keyboard focus is back on Sign in', async () => {
+    const target = open({ SignInBrowser: failure('UNAUTHENTICATED') });
+    await signInWith(target);
+    expect(document.activeElement).toBe(target.querySelector('button'));
+  });
+
   it('DEV-011: hub field errors show beside their fields, as on desktop', async () => {
     const error = { code: 'VALIDATION' as const, message: 'm', fields: [{ field: 'totpCode', message: 'The code is not accepted.' }] };
     const target = open({ SignInBrowser: { ok: false, error } });

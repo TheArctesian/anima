@@ -82,3 +82,31 @@ it('CLI-003: on desktop, Sign out clears the key store and goes to sign-in withi
   expect(mocks.goToSignIn).toHaveBeenCalledOnce();
   expect(mocks.loadClientAt).not.toHaveBeenCalled();
 });
+
+it('MOT-007: the alert is in the row from the start, empty, so a message only fills it', async () => {
+  mocks.desktop = false;
+  const fake = fakeHub({ Me: ok({ me: { username: 'ann' } }) });
+  mocks.hub = fake.hub;
+  const target = document.createElement('div');
+  document.body.append(target);
+  app = mount(SignOutRow, { target });
+  await settled();
+  const idle = target.querySelector('[role="alert"]');
+  expect(idle?.textContent).toBe('');
+  target.querySelector('button')?.click();
+  await settled();
+  expect(target.querySelector('[role="alert"]')).toBe(idle);
+  expect(idle?.textContent).toBe(COOKIE_KEPT);
+});
+
+it('E-4: in a browser the button stays off after a good sign-out, while the new page loads', async () => {
+  mocks.desktop = false;
+  const target = await signOutWith(ok({ logout: true }));
+  expect(target.querySelector('button')?.disabled).toBe(true);
+});
+
+it('NAV-005: after an unconfirmed sign-out the keyboard focus is back on Sign out', async () => {
+  mocks.desktop = false;
+  const target = await signOutWith(failure('unreachable'));
+  expect(document.activeElement).toBe(target.querySelector('button'));
+});

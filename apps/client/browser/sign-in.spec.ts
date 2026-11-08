@@ -106,6 +106,37 @@ test.describe('signed out, a good sign-in', () => {
 
 });
 
+test.describe('signed out, one attempt at a time', () => {
+  test('D-3: while signInBrowser is unanswered, two more submits and Enter send nothing, and the button shows it is off', async ({
+    page,
+    hub,
+  }) => {
+    let release: () => void = () => undefined;
+    const answered = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    // The page route holds the sign-in until the test lets it through to the synthetic hub, which records it then.
+    await page.route('**/graphql', async (route) => {
+      if ((route.request().postData() ?? '').includes('signInBrowser')) await answered;
+      await route.fallback();
+    });
+    await openSignIn(page);
+    const button = page.getByRole('button', { name: 'Sign in', exact: true });
+    const enabledOpacity = await button.evaluate((element) => getComputedStyle(element).opacity);
+    await signInWith(page, OPERATOR.password);
+    await expect(button).toBeDisabled();
+    await expect.poll(() => button.evaluate((element) => getComputedStyle(element).opacity)).not.toBe(enabledOpacity);
+    await page.locator('main form').evaluate((form: HTMLFormElement) => {
+      form.requestSubmit();
+      form.requestSubmit();
+    });
+    await page.getByLabel('User name', { exact: true }).press('Enter');
+    release();
+    await page.waitForURL(`${HUB_ORIGIN}/devices`);
+    expect(hub.recording.where({ operation: 'SignInBrowser' })).toHaveLength(1);
+  });
+});
+
 test.describe('signed out, refusals', () => {
   test('LOG-007: a wrong password shows the fixed message, sets no cookie and leaves the password nowhere on the page', async ({
     page,

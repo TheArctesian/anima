@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import { accessApi } from '$lib/access/api';
   import { goToDevices, loadClientAt, reloadClient } from '$lib/access/navigation';
   import { writeAccessToken } from '$lib/desktop/token';
@@ -20,6 +21,7 @@
   let message = $state<string | null>(null);
   let busy = $state(false);
   const inputs: Partial<Record<LoginField, HTMLInputElement>> = {};
+  let submitButton: HTMLButtonElement | undefined = $state();
 
   let addressText = $state(hub.address.origin);
   let addressProblem = $state<string | null>(null);
@@ -47,7 +49,13 @@
     message = outcome.message;
     fields = outcome.fields;
     const first = firstInvalid(fields);
-    if (first !== undefined) inputs[first]?.focus();
+    if (first !== undefined) {
+      inputs[first]?.focus();
+      return;
+    }
+    // The disabled button lost focus; give it back once it is enabled again, so the keyboard user stays on the form.
+    await tick();
+    submitButton?.focus();
   }
 
   function edited(field: LoginField, event: Event & { currentTarget: HTMLInputElement }): void {
@@ -99,7 +107,7 @@
   <p id="totp-problem" class="problem">{fields.totpCode ?? ''}</p>
 
   <!-- tabindex="0": WebKit skips plain buttons when Tab is pressed unless they are focusable, as for the nav links (NAV-005, WP-11 H-6). -->
-  <button type="submit" tabindex="0" disabled={busy} {@attach press()}>Sign in</button>
+  <button type="submit" tabindex="0" disabled={busy} bind:this={submitButton} {@attach press()}>Sign in</button>
   <p role="alert" class="problem form-problem">{message ?? ''}</p>
 </form>
 
@@ -150,11 +158,19 @@
   }
 
   button {
-    transition: background-color var(--duration-fast) var(--ease-enter);
+    transition:
+      background-color var(--duration-fast) var(--ease-enter),
+      opacity var(--duration-fast) var(--ease-enter);
   }
 
-  button:hover {
+  button:hover:enabled {
     background: var(--surface-raised);
+  }
+
+  /* While the hub answers, the button shows it is off (opacity only, so nothing moves). */
+  button:disabled {
+    opacity: var(--opacity-disabled);
+    cursor: default;
   }
 
   input:focus-visible,
