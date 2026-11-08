@@ -5,3 +5,7 @@ Items found during Phase 3 reviews that are not fixed in Phase 3. Tagged by pack
 ## WP-42 (client groundwork)
 
 - T1 (could): the error text in `quality/src/hub-modules.ts` for `{"domains":[]}` changed wording (same class); the `octet()` helpers in `deploy/localapi` and `deploy/dns` duplicate each other on purpose (separate workspaces); no test for an invalid `graphql` value.
+- T2 (could): import order in `MetricsSkeleton`; `DEGRADED_ABOVE` could move to `thresholds.ts`; three import styles for units; `phase-2-acceptance.md:25` cites the old `charts.test.ts` path.
+- T3 (could): `Capture` reads stdout after exit (document it); the `try_wait` error reap path is untested (cannot be provoked); `name.rs` poll 10 → 20 ms. Behaviour: `sharing_settings_open` now has the 3 s opener wait limit.
+- T3 (should): hub test `api_005_interfaces_and_suggestions` (`web_interfaces.rs:133`) is load-sensitive (14 > 12 statements under load).
+- T4 (could): `devices/form/form` is an awkward carried-over name; `RemoteLoginButton` uses a relative import and its tests still live in `desktop/system-settings.svelte.test.ts`.
