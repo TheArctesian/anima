@@ -1,6 +1,14 @@
+// @vitest-environment jsdom
+import { createRawSnippet, flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { FONT_WAIT_MS } from '$lib/typeface/first-paint';
 import { load } from './+layout';
+import Layout from './+layout.svelte';
+
+// A bare route (the share viewer) starts no hub, so the layout mounts with only the router stood in (SEC-002).
+vi.mock('$app/state', () => ({ page: { url: new URL('https://hub.example.org/shared#share-token') } }));
+vi.mock('$app/navigation', () => ({ goto: vi.fn(() => Promise.resolve()) }));
+vi.mock('$app/paths', () => ({ resolve: (path: string) => path, asset: (path: string) => path }));
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -44,4 +52,22 @@ it('MOT-007: the first render stops waiting for fonts after the cap', async () =
   expect(await settled(result)).toBe(false);
   await vi.advanceTimersByTimeAsync(1);
   expect(await settled(result)).toBe(true);
+});
+
+it('F-6, F-7, UI-005, D-28: the stored theme and motion choice are on <html> from the start', () => {
+  vi.useRealTimers();
+  localStorage.setItem('anima.theme', 'light');
+  localStorage.setItem('anima.motion', 'reduce');
+  const target = document.createElement('div');
+  document.body.append(target);
+  const app = mount(Layout, { target, props: { children: createRawSnippet(() => ({ render: () => '<p>the page</p>' })) } });
+  flushSync();
+  const root = document.documentElement;
+  const started = { theme: root.dataset['theme'], motion: root.dataset['motion'] };
+  void unmount(app);
+  target.remove();
+  localStorage.clear();
+  delete root.dataset['theme'];
+  delete root.dataset['motion'];
+  expect(started).toEqual({ theme: 'light', motion: 'reduce' });
 });
