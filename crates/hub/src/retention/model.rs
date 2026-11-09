@@ -28,7 +28,7 @@ impl Subject {
 
     /// The text stored in `retention.periods.subject`.
     #[must_use]
-    pub const fn as_str(self) -> &'static str {
+    pub(super) const fn as_str(self) -> &'static str {
         match self {
             Self::Heartbeats => "heartbeats",
             Self::Metrics => "metrics",
