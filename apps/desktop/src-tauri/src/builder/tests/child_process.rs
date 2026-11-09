@@ -16,7 +16,7 @@ use crate::builder::{
 };
 
 /// A command for `program` with `args`; the planned program is not used by `Claim::run`.
-fn command(args: &[&str]) -> Command {
+pub(super) fn command(args: &[&str]) -> Command {
     Command {
         program: Program::Git,
         args: args.iter().map(OsString::from).collect(),
@@ -25,7 +25,7 @@ fn command(args: &[&str]) -> Command {
     }
 }
 
-fn collecting() -> (Sink, Arc<Mutex<Vec<String>>>) {
+pub(super) fn collecting() -> (Sink, Arc<Mutex<Vec<String>>>) {
     let seen = Arc::new(Mutex::new(Vec::new()));
     let sink_seen = Arc::clone(&seen);
     let sink: Sink = Arc::new(move |line| sink_seen.lock().unwrap().push(line));
@@ -48,11 +48,14 @@ async fn bld_044_a_real_child_sees_only_the_scrubbed_environment() {
     assert_eq!(
         names,
         [
+            "ANIMA_BUILD_STEP",
             "BASE_REF",
             "CARGO_TERM_COLOR",
             "CI",
             "GIT_CONFIG_GLOBAL",
             "GIT_CONFIG_NOSYSTEM",
+            "GIT_GRAFT_FILE",
+            "GIT_NO_REPLACE_OBJECTS",
             "GIT_TERMINAL_PROMPT",
             "HOME",
             "LANG",
@@ -102,7 +105,7 @@ async fn bld_027_a_step_cancelled_before_it_starts_starts_nothing() {
     assert!(seen.lock().unwrap().is_empty());
 }
 
-fn alive(pid: i32) -> bool {
+pub(super) fn alive(pid: i32) -> bool {
     nix::sys::signal::kill(nix::unistd::Pid::from_raw(pid), None).is_ok()
 }
 

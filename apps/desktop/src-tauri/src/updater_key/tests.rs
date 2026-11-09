@@ -6,9 +6,12 @@ use std::io::Cursor;
 use base64::{Engine, engine::general_purpose::STANDARD};
 use minisign::{KeyPair, SignatureBox};
 
+mod sealing;
+
 use super::{
     UpdaterKeyError,
-    secret::{SecretKey, scrypt_cost},
+    sealed::scrypt_cost,
+    secret::SecretKey,
     signature::{Signed, sign, verify},
     state_of,
 };
@@ -125,27 +128,8 @@ fn bld_045_scrypt_cost_matches_minisign_and_refuses_crafted_limits() {
     assert_eq!(scrypt_cost(1 << 40, 1 << 34), None);
     assert_eq!(scrypt_cost(u64::MAX, 33_554_432), None);
     assert_eq!(scrypt_cost(0, 0), None);
-}
-
-#[test]
-fn bld_045_the_stored_text_round_trips_and_must_be_one_key() {
-    let (file, public) = tauri_key_file(None);
-    let key = SecretKey::from_key_file(file.as_bytes(), None).unwrap();
-    let stored = key.to_stored();
-    let again = SecretKey::from_stored(&stored).unwrap();
-    assert_eq!(again.public_key().line(), public.to_base64());
-
-    let mut bytes = STANDARD.decode(stored.as_str()).unwrap();
-    let last = bytes.len() - 1;
-    bytes[last] ^= 1;
-    assert_eq!(
-        SecretKey::from_stored(&STANDARD.encode(&bytes)).err(),
-        Some(UpdaterKeyError::Format)
-    );
-    assert_eq!(
-        SecretKey::from_stored("short").err(),
-        Some(UpdaterKeyError::Format)
-    );
+    // p = 32: more parallel work than a real key file asks for (C-4).
+    assert_eq!(scrypt_cost(33_554_432, 33_554_432), None);
 }
 
 #[test]
@@ -203,19 +187,22 @@ fn bld_046_a_trusted_comment_field_cannot_hold_a_tab_or_a_line_break() {
 fn bld_045_the_web_view_sees_the_public_key_and_whether_it_matches_the_app() {
     let (file, public) = tauri_key_file(None);
     let key = SecretKey::from_key_file(file.as_bytes(), None).unwrap();
-    let line = public.to_base64();
-    let state = state_of(Some(&key), Some(&line));
-    assert!(state.present);
+    let line = key.public_key().line();
+    assert_eq!(line, public.to_base64());
+    let state = state_of(Some(line.clone()), true, Some(&line));
+    assert!(state.present && state.unlocked);
     assert_eq!(state.public_key.as_deref(), Some(line.as_str()));
     assert_eq!(state.matches_app, Some(true));
+    let other = state_of(Some(line.clone()), false, Some("RWQother"));
+    assert_eq!((other.matches_app, other.unlocked), (Some(false), false));
+    let missing = state_of(None, true, Some(&line));
     assert_eq!(
-        state_of(Some(&key), Some("RWQother")).matches_app,
-        Some(false)
+        (missing.present, missing.unlocked, missing.matches_app),
+        (false, false, None)
     );
-    let missing = state_of(None, Some(&line));
-    assert_eq!((missing.present, missing.matches_app), (false, None));
     let json = serde_json::to_string(&state).unwrap();
-    assert!(!json.contains(key.to_stored().as_str()));
+    let seed = STANDARD.encode(&key.sealed_body()[8..40]);
+    assert!(!json.contains(&seed));
 }
 
 #[test]

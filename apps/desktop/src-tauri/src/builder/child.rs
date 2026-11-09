@@ -1,18 +1,22 @@
 //! Runs the processes of one build step (BLD-027, BLD-029, BLD-044): a scrubbed environment, its
 //! own process group, its output passed on line by line, and cancellation that kills the whole
-//! group. The lock is held only for short synchronous sections, never across an `await`.
+//! group and every process that left it (`reaper`). The lock is held only for short synchronous
+//! sections, never across an `await`.
 
 use std::{
     ffi::OsString,
     path::Path,
     process::{ExitStatus, Stdio},
-    sync::{Arc, Mutex, PoisonError},
+    sync::{
+        Arc, Mutex, PoisonError,
+        atomic::{AtomicU64, Ordering},
+    },
     time::Duration,
 };
 
 use tokio::io::{AsyncRead, AsyncReadExt};
 
-use super::{error::BuilderError, lines::Lines, plan::Command};
+use super::{error::BuilderError, lines::Lines, plan::Command, reaper};
 
 /// Receives each output line of a step.
 pub type Sink = Arc<dyn Fn(String) + Send + Sync>;
@@ -29,6 +33,18 @@ struct Slot {
     busy: bool,
     group: Option<i32>,
     cancelled: bool,
+    /// The `reaper::MARKER` value of the step's processes.
+    marker: Option<String>,
+}
+
+/// Each step's marker is this process's ID and a count, so no two steps share one.
+fn next_marker() -> String {
+    static COUNT: AtomicU64 = AtomicU64::new(0);
+    format!(
+        "{}-{}",
+        std::process::id(),
+        COUNT.fetch_add(1, Ordering::Relaxed)
+    )
 }
 
 /// The one build step that may run at a time on this computer (BLD-029), and its process group.
@@ -41,6 +57,7 @@ pub struct Running {
 pub struct Claim<'a> {
     running: &'a Running,
     sink: Sink,
+    marker: String,
 }
 
 /// Sends SIGKILL to the process group `group`. A group that is gone is not an error.
@@ -67,24 +84,31 @@ impl Running {
             if slot.busy {
                 return Err(BuilderError::Busy);
             }
+            reaper::become_subreaper();
+            let marker = next_marker();
             *slot = Slot {
                 busy: true,
+                marker: Some(marker.clone()),
                 ..Slot::default()
             };
             Ok(Claim {
                 running: self,
                 sink,
+                marker,
             })
         })
     }
 
-    /// Kills the running step's process group and marks the step cancelled. Also called when
-    /// the app exits, so no build outlives it.
+    /// Kills the running step's process group and every process that left it, and marks the
+    /// step cancelled. Also called when the app exits, so no build outlives it.
     pub fn cancel(&self) {
         self.with_slot(|slot| {
             if slot.busy {
                 slot.cancelled = true;
                 kill_group(slot.group);
+                if let Some(marker) = &slot.marker {
+                    reaper::kill_marked(marker);
+                }
             }
         });
     }
@@ -124,8 +148,9 @@ impl Claim<'_> {
         &self,
         command: &Command,
         program: &Path,
-        env: Vec<(OsString, OsString)>,
+        mut env: Vec<(OsString, OsString)>,
     ) -> Result<Vec<String>, BuilderError> {
+        env.push((reaper::MARKER.into(), self.marker.clone().into()));
         let mut process = tokio::process::Command::new(program);
         process
             .args(&command.args)
@@ -150,11 +175,15 @@ impl Claim<'_> {
         let out = tokio::spawn(read_lines(stdout, Arc::clone(&self.sink), true));
         let err = tokio::spawn(read_lines(stderr, Arc::clone(&self.sink), false));
         let status = child.wait().await;
-        // Anything the step left in its group would hold the output open.
-        let cancelled = self.running.with_slot(|slot| {
-            kill_group(slot.group.take());
-            slot.cancelled
+        // Anything the step left, in its group or out of it, would hold the output open.
+        let group = self.running.with_slot(|slot| {
+            let group = slot.group.take();
+            kill_group(group);
+            group
         });
+        let marker = self.marker.clone();
+        let _ = tokio::task::spawn_blocking(move || reaper::sweep(&marker, group)).await;
+        let cancelled = self.running.with_slot(|slot| slot.cancelled);
         let kept = tokio::time::timeout(DRAIN, out).await;
         let _ = tokio::time::timeout(DRAIN, err).await;
         outcome(cancelled, status.ok(), kept.ok().and_then(Result::ok))

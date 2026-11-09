@@ -40,7 +40,8 @@ fn trusted_comment(signed: &Signed<'_>) -> Result<String, UpdaterKeyError> {
     ))
 }
 
-fn prehash(mut file: impl Read) -> Result<[u8; 64], UpdaterKeyError> {
+/// The BLAKE2b-512 hash minisign signs in prehashed mode.
+pub(crate) fn prehash(mut file: impl Read) -> Result<[u8; 64], UpdaterKeyError> {
     let mut hash = Blake2b512::new();
     let mut buffer = vec![0; CHUNK];
     loop {
@@ -53,14 +54,24 @@ fn prehash(mut file: impl Read) -> Result<[u8; 64], UpdaterKeyError> {
 }
 
 /// The `.sig` file text for `file`: base64 of the four minisign lines.
+#[cfg(test)]
 pub(crate) fn sign(
     key: &SecretKey,
     file: impl Read,
     signed: &Signed<'_>,
 ) -> Result<String, UpdaterKeyError> {
+    sign_prehashed(key, &prehash(file)?, signed)
+}
+
+/// The `.sig` file text for the file whose `prehash` is `digest`.
+pub(crate) fn sign_prehashed(
+    key: &SecretKey,
+    digest: &[u8; 64],
+    signed: &Signed<'_>,
+) -> Result<String, UpdaterKeyError> {
     let comment = trusted_comment(signed)?;
     let signing = key.signing_key();
-    let file_signature = signing.sign(&prehash(file)?).to_bytes();
+    let file_signature = signing.sign(digest).to_bytes();
     let mut global_input = file_signature.to_vec();
     global_input.extend_from_slice(comment.as_bytes());
     let global = signing.sign(&global_input).to_bytes();

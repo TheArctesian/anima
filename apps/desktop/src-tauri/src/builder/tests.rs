@@ -1,10 +1,12 @@
 //! Argument checks, plans, the environment allow-list and the tool check are pure; the
 //! process tests in `tests/child_process.rs` start real (harmless) programs.
 
+mod checkout;
 mod child_process;
 mod files;
 mod output;
 mod plans;
+mod reaping;
 
 use std::{
     ffi::OsString,
@@ -15,7 +17,7 @@ use super::{
     environment::Environment,
     error::BuilderError,
     job::{Commit, Target, Version},
-    tools::{self, Tool},
+    tools::{self, KeyReadiness, Tool},
 };
 
 const COMMIT: &str = "0123456789abcdef0123456789abcdef01234567";
@@ -127,6 +129,8 @@ fn bld_044_a_step_gets_only_the_allow_list_and_never_a_secret() {
             "GIT_TERMINAL_PROMPT",
             "GIT_CONFIG_NOSYSTEM",
             "GIT_CONFIG_GLOBAL",
+            "GIT_NO_REPLACE_OBJECTS",
+            "GIT_GRAFT_FILE",
             "BASE_REF"
         ]
     );
@@ -161,7 +165,7 @@ fn bld_044_relative_path_entries_are_dropped_and_tool_folders_are_added() {
 #[test]
 fn bld_028_each_missing_tool_is_named() {
     let env = Environment::from_parent(os(&[("PATH", "/usr/bin"), ("HOME", "/home/op")]));
-    let everything = tools::missing(Target::LinuxX86_64, &env, false, |_| false);
+    let everything = tools::missing(Target::LinuxX86_64, &env, KeyReadiness::Missing, |_| false);
     assert_eq!(
         everything,
         [
@@ -187,19 +191,51 @@ fn bld_028_each_missing_tool_is_named() {
             || text == "/usr/bin/cc"
             || text.starts_with("/usr/lib/x86_64-linux-gnu/pkgconfig/")
     };
-    assert_eq!(tools::missing(Target::LinuxX86_64, &env, true, present), []);
+    assert_eq!(
+        tools::missing(Target::LinuxX86_64, &env, KeyReadiness::Unlocked, present),
+        []
+    );
     let no_rustc = |path: &Path| present(path) && path != Path::new("/usr/bin/rustc");
     assert_eq!(
-        tools::missing(Target::LinuxX86_64, &env, true, no_rustc),
+        tools::missing(Target::LinuxX86_64, &env, KeyReadiness::Unlocked, no_rustc),
         [Tool::Rust]
     );
     let pg16 = |path: &Path| present(path) && !path.starts_with("/usr/lib/postgresql/17");
     assert_eq!(
-        tools::missing(Target::LinuxX86_64, &env, true, pg16),
+        tools::missing(Target::LinuxX86_64, &env, KeyReadiness::Unlocked, pg16),
         [Tool::Postgres]
     );
     let json = serde_json::to_string(&[Tool::TauriPackages, Tool::UpdaterKey]).unwrap();
     assert_eq!(json, r#"["tauri-packages","updater-key"]"#);
+}
+
+#[test]
+fn bld_028_a_locked_key_is_its_own_missing_tool_and_an_unlocked_one_is_none() {
+    let env = Environment::from_parent(os(&[("PATH", "/usr/bin")]));
+    let all = |_: &Path| true;
+    assert_eq!(
+        tools::missing(Target::LinuxX86_64, &env, KeyReadiness::Locked, all),
+        [Tool::UpdaterKeyLocked]
+    );
+    assert_eq!(
+        tools::missing(Target::LinuxX86_64, &env, KeyReadiness::Missing, all),
+        [Tool::UpdaterKey]
+    );
+    assert_eq!(
+        tools::missing(Target::LinuxX86_64, &env, KeyReadiness::Unlocked, all),
+        []
+    );
+    let json = serde_json::to_string(&[Tool::UpdaterKeyLocked]).unwrap();
+    assert_eq!(json, r#"["updater-key-locked"]"#);
+}
+
+#[test]
+fn bld_045_memory_is_guarded_only_when_yama_ptrace_scope_is_one_or_more() {
+    assert!(tools::memory_guarded(Some("1\n")));
+    assert!(tools::memory_guarded(Some("3")));
+    assert!(!tools::memory_guarded(Some("0\n")));
+    assert!(!tools::memory_guarded(None));
+    assert!(!tools::memory_guarded(Some("garbage")));
 }
 
 #[test]

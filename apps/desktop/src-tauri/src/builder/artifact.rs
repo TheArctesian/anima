@@ -3,8 +3,9 @@
 //! the clone: a link to `~/.ssh` or elsewhere is refused before it is signed.
 
 use std::{
-    fs,
+    fs::{self, File},
     io::{Read, Write},
+    os::unix::fs::{MetadataExt, OpenOptionsExt},
     path::{Path, PathBuf},
 };
 
@@ -49,6 +50,22 @@ pub fn own_file(clone: &Path, path: &Path) -> Result<PathBuf, BuilderError> {
     let root = fs::canonicalize(clone).map_err(|_| BuilderError::Bundle)?;
     (kind.is_file() && real.starts_with(&root))
         .then_some(real)
+        .ok_or(BuilderError::Bundle)
+}
+
+/// Opens the build's own file at `path` for reading, once (D-13): never through a link, and only
+/// when it has one name, so a hard link to a file outside the clone is refused. Hash and sign
+/// from this one descriptor, so the bytes signed are the bytes checked.
+pub fn open_own(clone: &Path, path: &Path) -> Result<File, BuilderError> {
+    let real = own_file(clone, path)?;
+    let file = fs::OpenOptions::new()
+        .read(true)
+        .custom_flags(nix::libc::O_NOFOLLOW)
+        .open(real)
+        .map_err(|_| BuilderError::Bundle)?;
+    let kind = file.metadata().map_err(|_| BuilderError::Bundle)?;
+    (kind.is_file() && kind.nlink() == 1)
+        .then_some(file)
         .ok_or(BuilderError::Bundle)
 }
 

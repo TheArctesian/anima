@@ -30,6 +30,8 @@ pub enum BuilderError {
     Bundle,
     #[error("the updater file could not be signed")]
     Signing(UpdaterKeyError),
+    #[error("only the main window may run build steps")]
+    Caller,
     #[error("the builder could not start the step")]
     Failed,
 }
@@ -51,7 +53,9 @@ impl BuilderError {
             Self::Bundle => "bundle",
             Self::Signing(UpdaterKeyError::Missing) => "key-missing",
             Self::Signing(UpdaterKeyError::SignedVersion) => "signed-version",
+            Self::Signing(UpdaterKeyError::Locked) => "key-locked",
             Self::Signing(_) => "signing",
+            Self::Caller => "caller",
             Self::Failed => "failed",
         }
     }

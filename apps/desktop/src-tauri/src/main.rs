@@ -24,6 +24,8 @@ fn main() {
         .plugin(tauri_plugin_process::init());
     app.manage(web_view::Tabs::default())
         .manage(builder::Running::default())
+        .manage(builder::Bundled::default())
+        .manage(updater_key::UnlockedKey::default())
         .invoke_handler(tauri::generate_handler![
             keystore::access_token_read,
             keystore::access_token_write,
@@ -33,6 +35,8 @@ fn main() {
             keystore::builder_token_clear,
             updater_key::updater_key_read,
             updater_key::updater_key_import,
+            updater_key::updater_key_unlock,
+            updater_key::updater_key_lock,
             builder::builder_tools_check,
             builder::builder_checkout,
             builder::builder_gates_run,
@@ -57,9 +61,10 @@ fn main() {
         .build(tauri::generate_context!())
         .expect("the Tauri application failed to start")
         .run(|app, event| {
-            // No build step outlives the app (BLD-026).
+            // No build step outlives the app (BLD-026), and the opened key goes with it (D-19).
             if let tauri::RunEvent::Exit = event {
                 app.state::<builder::Running>().cancel();
+                app.state::<updater_key::UnlockedKey>().lock();
             }
         });
 }

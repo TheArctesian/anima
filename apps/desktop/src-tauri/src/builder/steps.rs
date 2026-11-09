@@ -13,14 +13,21 @@ use super::{
     environment::Environment,
     error::BuilderError,
     job::{Commit, Target, Version},
-    plan::{self, Command},
+    plan::{self, CLONE_CONFIG_KEYS, Command, Repository},
 };
 
-/// The claim, the environment and the clone of one step.
+/// The claim, the environment, the repository and the clone of one step.
 pub struct Workshop<'a> {
     pub claim: Claim<'a>,
     pub env: Environment,
+    pub repository: Repository,
     pub clone: PathBuf,
+}
+
+/// Whether every key `git config --local --name-only --list` printed is one `git clone` writes.
+pub fn config_is_clones(keys: &[String]) -> bool {
+    keys.iter()
+        .all(|key| CLONE_CONFIG_KEYS.contains(&key.to_ascii_lowercase().as_str()))
 }
 
 impl Workshop<'_> {
@@ -42,18 +49,39 @@ impl Workshop<'_> {
         Ok(())
     }
 
-    /// Clones when there is no clone yet, fetches `main`, refuses a commit that is not on it,
-    /// then checks the commit out with a clean tree (BLD-040, BLD-041).
-    pub async fn checkout(&self, commit: &Commit) -> Result<(), BuilderError> {
-        if !self.clone.join(".git").is_dir() {
-            if self.clone.exists() {
-                fs::remove_dir_all(&self.clone).map_err(|_| BuilderError::Failed)?;
-            }
-            let parent = self.clone.parent().ok_or(BuilderError::Failed)?;
-            fs::create_dir_all(parent).map_err(|_| BuilderError::Failed)?;
-            self.run(&plan::clone(&self.clone)).await?;
+    /// Whether the clone is one `git clone` made: a `.git` folder, no graft or shallow file,
+    /// and no config key a build could have added to redirect or rewrite it (D-15).
+    async fn trusted_clone(&self) -> bool {
+        let git = self.clone.join(".git");
+        if !git.is_dir() || git.join("info/grafts").exists() || git.join("shallow").exists() {
+            return false;
         }
-        self.run_all(&plan::fetch(&self.clone)).await?;
+        self.run(&plan::config_keys(&self.clone))
+            .await
+            .is_ok_and(|keys| config_is_clones(&keys))
+    }
+
+    /// Clones the repository anew when the clone is missing or no longer trusted.
+    async fn fresh_clone(&self) -> Result<(), BuilderError> {
+        if self.trusted_clone().await {
+            return Ok(());
+        }
+        if self.clone.exists() {
+            fs::remove_dir_all(&self.clone).map_err(|_| BuilderError::Failed)?;
+        }
+        let parent = self.clone.parent().ok_or(BuilderError::Failed)?;
+        fs::create_dir_all(parent).map_err(|_| BuilderError::Failed)?;
+        self.run(&plan::clone(&self.repository, &self.clone))
+            .await?;
+        Ok(())
+    }
+
+    /// Clones when there is no trusted clone, fetches `main` by URL, refuses a commit that is
+    /// not on it, then checks the commit out with a clean tree (BLD-040, BLD-041).
+    pub async fn checkout(&self, commit: &Commit) -> Result<(), BuilderError> {
+        self.fresh_clone().await?;
+        self.run(&plan::fetch(&self.repository, &self.clone))
+            .await?;
         match self.run(&plan::ancestry(&self.clone, commit)).await {
             Err(BuilderError::StepFailed) => return Err(BuilderError::NotOnMain),
             other => other?,

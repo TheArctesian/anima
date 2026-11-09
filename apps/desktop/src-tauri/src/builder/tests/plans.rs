@@ -5,7 +5,7 @@ use std::path::Path;
 use super::COMMIT;
 use crate::builder::{
     job::{Commit, Target, Version},
-    plan::{self, Program},
+    plan::{self, Program, Repository},
 };
 
 fn args(command: &plan::Command) -> Vec<&str> {
@@ -16,13 +16,15 @@ fn args(command: &plan::Command) -> Vec<&str> {
 fn bld_040_every_git_command_runs_with_hooks_and_helpers_off() {
     let clone = Path::new("/data/builds/anima");
     let commit = Commit::parse(COMMIT).unwrap();
+    let anima = Repository::anima();
     let mut commands = vec![
-        plan::clone(clone),
+        plan::clone(&anima, clone),
         plan::ancestry(clone, &commit),
         plan::status(clone),
         plan::head(clone),
+        plan::fetch(&anima, clone),
+        plan::config_keys(clone),
     ];
-    commands.extend(plan::fetch(clone));
     commands.extend(plan::checkout(clone, &commit));
     for command in &commands {
         assert_eq!(command.program, Program::Git);
@@ -31,10 +33,11 @@ fn bld_040_every_git_command_runs_with_hooks_and_helpers_off() {
             "core.hooksPath=/dev/null",
             "core.fsmonitor=false",
             "credential.helper=",
-            "protocol.file.allow=never",
+            "protocol.allow=never",
         ] {
             assert!(args.contains(&setting), "{args:?}");
         }
+        assert!(!args.contains(&"protocol.file.allow=always"), "{args:?}");
     }
     let clone_args = args(&commands[0]);
     assert_eq!(
@@ -63,10 +66,38 @@ fn bld_041_ancestry_asks_git_whether_the_commit_is_on_main() {
             "refs/remotes/origin/main"
         ]
     );
-    let fetch = plan::fetch(Path::new("/c"));
+}
+
+#[test]
+fn bld_040_d_15_main_is_fetched_by_its_url_over_https_only() {
+    let fetch = plan::fetch(&Repository::anima(), Path::new("/c"));
     assert_eq!(
-        args_tail(&fetch[0], 4),
-        ["remote", "set-url", "origin", plan::REPOSITORY]
+        args_tail(&fetch, 5),
+        [
+            "fetch",
+            "--no-tags",
+            "--",
+            plan::REPOSITORY,
+            "+refs/heads/main:refs/remotes/origin/main"
+        ]
+    );
+    let args = args(&fetch);
+    let never = args
+        .iter()
+        .position(|a| *a == "protocol.allow=never")
+        .unwrap();
+    let https = args
+        .iter()
+        .position(|a| *a == "protocol.https.allow=always")
+        .unwrap();
+    assert!(
+        never < https,
+        "the repository's transport is allowed after all are refused"
+    );
+    assert!(
+        !args
+            .iter()
+            .any(|a| a.contains("origin") && !a.contains("refs/"))
     );
 }
 

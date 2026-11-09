@@ -18,6 +18,35 @@ pub enum Tool {
     Postgres,
     TauriPackages,
     UpdaterKey,
+    /// The key is stored but not unlocked in this app session (D-19).
+    UpdaterKeyLocked,
+}
+
+/// Where the updater key stands for signing (BLD-028, D-19).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum KeyReadiness {
+    Missing,
+    Locked,
+    Unlocked,
+}
+
+impl KeyReadiness {
+    fn missing_tool(self) -> Option<Tool> {
+        match self {
+            Self::Missing => Some(Tool::UpdaterKey),
+            Self::Locked => Some(Tool::UpdaterKeyLocked),
+            Self::Unlocked => None,
+        }
+    }
+}
+
+/// Whether Yama's `ptrace_scope` (the text of `/proc/sys/kernel/yama/ptrace_scope`, `None` when
+/// the file is missing) stops a build process from reading this process's memory, where the
+/// unlocked key is (D-19): 1 and above do; 0, or no Yama at all, does not.
+pub fn memory_guarded(ptrace_scope: Option<&str>) -> bool {
+    ptrace_scope
+        .and_then(|text| text.trim().parse::<u8>().ok())
+        .is_some_and(|scope| scope >= 1)
 }
 
 /// The PostgreSQL major version the gates start (DB-001, R-009).
@@ -71,12 +100,12 @@ fn tauri_packages(target: Target, env: &Environment, exists: &impl Fn(&Path) -> 
     }
 }
 
-/// The tools missing for `target`, in the order the Settings row lists them. `key_present`
-/// says whether the updater key is in the key store.
+/// The tools missing for `target`, in the order the Settings row lists them; `key` is where the
+/// updater key stands.
 pub fn missing(
     target: Target,
     env: &Environment,
-    key_present: bool,
+    key: KeyReadiness,
     exists: impl Fn(&Path) -> bool,
 ) -> Vec<Tool> {
     let has = |program: &str| env.find(program, &exists).is_some();
@@ -89,9 +118,9 @@ pub fn missing(
         (Tool::Rust, has("cargo") && has("rustc")),
         (Tool::Postgres, postgres),
         (Tool::TauriPackages, tauri_packages(target, env, &exists)),
-        (Tool::UpdaterKey, key_present),
     ]
     .into_iter()
     .filter_map(|(tool, present)| (!present).then_some(tool))
+    .chain(key.missing_tool())
     .collect()
 }

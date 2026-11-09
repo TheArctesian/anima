@@ -23,7 +23,8 @@ const PASSED: &[&str] = &[
 ];
 
 /// Set for every step: CI behaviour, no colour codes, no prompts, and git with no user or system
-/// configuration (a credential helper or `url.insteadOf` there could redirect the clone).
+/// configuration (a credential helper or `url.insteadOf` there could redirect the clone), no
+/// replace refs and no grafts.
 const FIXED: &[(&str, &str)] = &[
     ("CI", "true"),
     ("NO_COLOR", "1"),
@@ -31,6 +32,9 @@ const FIXED: &[(&str, &str)] = &[
     ("GIT_TERMINAL_PROMPT", "0"),
     ("GIT_CONFIG_NOSYSTEM", "1"),
     ("GIT_CONFIG_GLOBAL", "/dev/null"),
+    // Replace refs and grafts a build left in the clone cannot rewrite history (D-15).
+    ("GIT_NO_REPLACE_OBJECTS", "1"),
+    ("GIT_GRAFT_FILE", "/dev/null"),
 ];
 
 /// Folders searched after the app's `PATH`: an app started from the Dock or a desktop menu often

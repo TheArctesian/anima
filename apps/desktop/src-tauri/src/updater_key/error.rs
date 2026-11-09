@@ -16,8 +16,14 @@ pub enum UpdaterKeyError {
     PasswordNeeded,
     #[error("the password does not open the key file")]
     WrongPassword,
+    #[error("the key file has no password; set a new one to import it")]
+    NewPasswordNeeded,
     #[error("no updater key is stored on this computer")]
     Missing,
+    #[error("the updater key is locked; unlock it with its password")]
+    Locked,
+    #[error("only the main window may use the updater key")]
+    Caller,
     #[error("the file could not be signed or the signature does not verify")]
     Signature,
     #[error("the signature is not for this version")]
@@ -35,7 +41,10 @@ impl UpdaterKeyError {
             Self::Format => "format",
             Self::PasswordNeeded => "password-needed",
             Self::WrongPassword => "password",
+            Self::NewPasswordNeeded => "new-password-needed",
             Self::Missing => "missing",
+            Self::Locked => "locked",
+            Self::Caller => "caller",
             Self::Signature => "signature",
             Self::SignedVersion => "signed-version",
             Self::Store(KeystoreError::Unavailable) => "unavailable",

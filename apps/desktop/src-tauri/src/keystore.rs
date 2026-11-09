@@ -10,7 +10,7 @@ mod token;
 pub(crate) mod tests;
 
 pub use error::KeystoreError;
-pub use signing_key::{read_signing_key, write_signing_key};
+pub use signing_key::{read_signing_key, read_signing_public_key, write_signing_key};
 use token::TokenKind;
 
 /// Runs a blocking key-store call off the main thread: the OS may prompt the operator.

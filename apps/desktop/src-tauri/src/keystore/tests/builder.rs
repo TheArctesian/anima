@@ -5,7 +5,7 @@ use tauri::async_runtime::block_on;
 use super::{SECRET, use_memory_store};
 use crate::keystore::{
     KeystoreError, access_token_write, builder_token_clear, builder_token_read,
-    builder_token_write, read_signing_key,
+    builder_token_write, read_signing_key, read_signing_public_key,
     token::{BUILDER_SERVICE, SERVICE, TokenKind, read_token, write_token},
     write_signing_key,
 };
@@ -76,12 +76,23 @@ fn bld_023_builder_token_commands_refuse_an_origin_that_is_not_canonical() {
 #[test]
 fn bld_045_the_updater_key_round_trips_and_an_empty_key_is_refused() {
     let store = use_memory_store();
-    assert_eq!(write_signing_key(""), Err(KeystoreError::EmptyToken));
-    write_signing_key("stored-key-text").unwrap();
+    assert_eq!(
+        write_signing_key("", "RWQpublic"),
+        Err(KeystoreError::EmptyToken)
+    );
+    assert_eq!(
+        write_signing_key("sealed", ""),
+        Err(KeystoreError::EmptyToken)
+    );
+    assert_eq!(read_signing_public_key(), Ok(None));
+    write_signing_key("sealed-key-text", "RWQpublic").unwrap();
     assert_eq!(
         read_signing_key().unwrap().as_deref().map(String::as_str),
-        Some("stored-key-text")
+        Some("sealed-key-text")
     );
-    let key = (SERVICE.to_owned(), "updater-key".to_owned());
-    assert!(store.lock().unwrap().contains_key(&key));
+    // C-2: the public line is its own entry, read without the sealed key.
+    assert_eq!(read_signing_public_key(), Ok(Some("RWQpublic".to_owned())));
+    let entries = store.lock().unwrap();
+    assert!(entries.contains_key(&(SERVICE.to_owned(), "updater-key".to_owned())));
+    assert!(entries.contains_key(&(SERVICE.to_owned(), "updater-key-public".to_owned())));
 }

@@ -11,8 +11,63 @@ use super::job::{Commit, Target, Version};
 
 /// The only repository a builder builds (BLD-040).
 pub const REPOSITORY: &str = "https://github.com/TheArctesian/anima.git";
-/// Where `fetch` keeps `main` of `REPOSITORY`.
+/// Where `fetch` keeps `main` of the repository.
 const MAIN: &str = "refs/remotes/origin/main";
+
+/// The repository a builder clones and fetches, and the one transport git may use for it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Repository {
+    url: String,
+    scheme: &'static str,
+}
+
+impl Repository {
+    /// The Anima repository over HTTPS (BLD-040).
+    pub fn anima() -> Self {
+        Self {
+            url: REPOSITORY.to_owned(),
+            scheme: "https",
+        }
+    }
+
+    /// A local repository at `path`, for tests of the checkout: git may then use `file`.
+    #[cfg(test)]
+    pub fn local(path: &Path) -> Self {
+        Self {
+            url: format!("file://{}", path.display()),
+            scheme: "file",
+        }
+    }
+
+    pub fn url(&self) -> &str {
+        &self.url
+    }
+
+    /// The `-c` pair that lets git use this repository's transport and no other.
+    fn transport(&self) -> [String; 2] {
+        [
+            "-c".to_owned(),
+            format!("protocol.{}.allow=always", self.scheme),
+        ]
+    }
+}
+
+/// The keys `git clone` writes to a clone's `.git/config`, lower-cased as `git config --list`
+/// prints them. A clone whose config holds any other key (`url.*.insteadOf`, an `include`, a
+/// filter) was changed by a build and is cloned anew (D-15).
+pub const CLONE_CONFIG_KEYS: &[&str] = &[
+    "core.repositoryformatversion",
+    "core.filemode",
+    "core.bare",
+    "core.logallrefupdates",
+    "core.ignorecase",
+    "core.precomposeunicode",
+    "core.symlinks",
+    "remote.origin.url",
+    "remote.origin.fetch",
+    "branch.main.remote",
+    "branch.main.merge",
+];
 
 /// The programs a step may start. Found in the step's program folders, never in the clone.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -55,8 +110,9 @@ fn command(program: Program, cwd: &Path, args: &[&str]) -> Command {
     }
 }
 
-/// git with hooks, fsmonitor, credential helpers, submodules and local transports off, whatever
-/// the clone's own `.git/config` says: a build writes to the clone (BLD-044).
+/// git with hooks, fsmonitor, credential helpers, submodules and every transport off, whatever
+/// the clone's own `.git/config` says: a build writes to the clone (BLD-044). `clone` and
+/// `fetch` allow the repository's own transport again.
 fn git(cwd: &Path, args: &[&str]) -> Command {
     let mut all = vec![
         "-c",
@@ -66,9 +122,7 @@ fn git(cwd: &Path, args: &[&str]) -> Command {
         "-c",
         "credential.helper=",
         "-c",
-        "protocol.file.allow=never",
-        "-c",
-        "protocol.ext.allow=never",
+        "protocol.allow=never",
         "-c",
         "submodule.recurse=false",
         "-c",
@@ -78,29 +132,45 @@ fn git(cwd: &Path, args: &[&str]) -> Command {
     command(Program::Git, cwd, &all)
 }
 
-/// A fresh clone into `clone`, run from its parent folder. No checkout yet.
-pub fn clone(clone: &Path) -> Command {
+/// git over `repository`'s transport.
+fn git_over(repository: &Repository, cwd: &Path, args: &[&str]) -> Command {
+    let mut step = git(cwd, &[]);
+    step.args.extend(repository.transport().map(OsString::from));
+    step.args.extend(args.iter().map(OsString::from));
+    step
+}
+
+/// A fresh clone of `repository` into `clone`, run from its parent folder. No checkout yet.
+pub fn clone(repository: &Repository, clone: &Path) -> Command {
     let parent = clone.parent().unwrap_or(clone);
-    let mut step = git(parent, &["clone", "--no-checkout", "--", REPOSITORY]);
+    let mut step = git_over(
+        repository,
+        parent,
+        &["clone", "--no-checkout", "--", repository.url()],
+    );
     step.args.push(clone.as_os_str().to_owned());
     step
 }
 
-/// Points `origin` at `REPOSITORY` again, then fetches `main` (BLD-040).
-pub fn fetch(clone: &Path) -> Vec<Command> {
-    vec![
-        git(clone, &["remote", "set-url", "origin", REPOSITORY]),
-        git(
-            clone,
-            &[
-                "fetch",
-                "--no-tags",
-                "--prune",
-                "origin",
-                &format!("+refs/heads/main:{MAIN}"),
-            ],
-        ),
-    ]
+/// Fetches `main` from `repository` by its URL, never through a remote the clone's config could
+/// redirect (BLD-040, D-15).
+pub fn fetch(repository: &Repository, clone: &Path) -> Command {
+    git_over(
+        repository,
+        clone,
+        &[
+            "fetch",
+            "--no-tags",
+            "--",
+            repository.url(),
+            &format!("+refs/heads/main:{MAIN}"),
+        ],
+    )
+}
+
+/// Prints the name of each key in the clone's own `.git/config`.
+pub fn config_keys(clone: &Path) -> Command {
+    git(clone, &["config", "--local", "--name-only", "--list"])
 }
 
 /// Exits 0 only when `commit` is an ancestor of `main` (BLD-041).

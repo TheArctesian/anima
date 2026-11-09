@@ -10,6 +10,8 @@ const APP_COMMANDS: &[&str] = &[
     "builder_token_clear",
     "updater_key_read",
     "updater_key_import",
+    "updater_key_unlock",
+    "updater_key_lock",
     "builder_tools_check",
     "builder_checkout",
     "builder_gates_run",

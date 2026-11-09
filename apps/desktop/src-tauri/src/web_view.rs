@@ -10,6 +10,7 @@ mod bounds;
 /// The commands, by path for `generate_handler!`, which needs each command's own module.
 pub mod commands;
 mod event;
+pub use event::MAIN;
 mod history;
 /// Public only so the pinning proof (`tests/pinning`) can reach `macos_trust::web_view`.
 #[cfg(target_os = "macos")]
