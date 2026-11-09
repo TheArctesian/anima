@@ -1,7 +1,7 @@
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import { parse } from 'graphql';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createHub, DEFAULT_HUB_ADDRESS, type Hub, type TokenProvider } from './hub';
+import { createHub, DEFAULT_HUB_ADDRESS, TOKEN_UNREADABLE, type Hub, type TokenProvider } from './hub';
 import { acknowledge, FAKE_WEBSOCKET, FakeSocket } from './socket/fake';
 
 const ME = parse('query Me($first: Int) { me { username } }') as TypedDocumentNode<
@@ -140,6 +140,7 @@ describe('Hub.request with an unreadable token', () => {
     const { hub, sent } = hubAnswering(graphQLAnswer({ data: {} }), () => Promise.reject(new Error('keychain item s3cret-token locked')));
     const result = await hub.request(ME, {});
     expect(result).toEqual({ ok: false, error: { code: 'UNAUTHENTICATED', message: 'The access token could not be read.' } });
+    expect(result.ok ? undefined : result.error).toBe(TOKEN_UNREADABLE);
     expect(JSON.stringify(result)).not.toContain('s3cret-token');
     expect(sent).toEqual([]);
     expect(hub.status.current.connection).toBe('connecting');
