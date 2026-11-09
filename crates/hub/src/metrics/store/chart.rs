@@ -11,22 +11,28 @@ use crate::{
     },
 };
 
-/// The bins of every series of a device: the mean weighted by sample count, the lowest minimum
+/// The bins of every series of a device: the mean weighted by sample count (each row's share of
+/// the bin's samples, so a huge average cannot overflow a sum of products), the lowest minimum
 /// and the highest maximum of the rows in each bin. Bins are aligned to 2000-01-01 UTC, so
 /// 10-minute and hourly bins start on the clock.
 macro_rules! chart {
     ($table:literal) => {
         concat!(
-            "SELECT s.id AS series_id, s.kind, s.label, s.gpu_index, \
+            "SELECT series_id, kind, label, gpu_index, at, \
+                    SUM(avg * weight) AS value, MIN(min) AS min, MAX(max) AS max \
+             FROM (SELECT s.id AS series_id, s.kind, s.label, s.gpu_index, \
                     date_bin(make_interval(secs => $4), a.bucket, \
                              TIMESTAMPTZ '2000-01-01 00:00:00+00') AS at, \
-                    SUM(a.avg * a.count) / SUM(a.count) AS value, \
-                    MIN(a.min) AS min, MAX(a.max) AS max \
-             FROM metrics.series s JOIN metrics.",
+                    a.avg, a.min, a.max, \
+                    a.count::float8 / SUM(a.count) OVER (PARTITION BY s.id, \
+                        date_bin(make_interval(secs => $4), a.bucket, \
+                                 TIMESTAMPTZ '2000-01-01 00:00:00+00')) AS weight \
+                 FROM metrics.series s JOIN metrics.",
             $table,
             " a ON a.series_id = s.id \
-             WHERE s.device_id = $1 AND a.bucket >= $2 AND a.bucket <= $3 \
-             GROUP BY s.id, at ORDER BY s.kind, s.label, s.id, at"
+                 WHERE s.device_id = $1 AND a.bucket >= $2 AND a.bucket <= $3) bins \
+             GROUP BY series_id, kind, label, gpu_index, at \
+             ORDER BY kind, label, series_id, at"
         )
     };
 }
