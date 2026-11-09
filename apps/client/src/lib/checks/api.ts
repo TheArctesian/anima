@@ -41,6 +41,7 @@ void graphql(`
     paused
     status
     certificateDaysLeft
+    domainDaysLeft
     lastHeartbeat {
       at
       status

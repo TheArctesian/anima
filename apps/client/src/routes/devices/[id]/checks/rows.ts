@@ -22,8 +22,11 @@ const NONE = '—';
 export interface CheckRowText {
   readonly type: string;
   readonly responseTime: string;
-  /** CHK-007: days until the certificate expires; null for a check that reads no certificate. */
-  readonly certificate: string | null;
+  /**
+   * CHK-007, D-29: days until the certificate or the domain registration expires;
+   * null for a check that reads neither. One line, so the row keeps its height (MOT-007).
+   */
+  readonly expiry: string | null;
 }
 
 /** A response time in milliseconds as text, "—" for none. */
@@ -31,11 +34,19 @@ export function msText(ms: number | null | undefined): string {
   return ms == null ? NONE : `${String(ms)} ms`;
 }
 
-export function checkRowText(check: Pick<DeviceCheck, 'type' | 'lastHeartbeat' | 'certificateDaysLeft'>): CheckRowText {
-  const days = check.certificateDaysLeft;
+function daysText(label: string, days: number | null | undefined): string | null {
+  return days == null ? null : `${label}: ${String(days)} ${Math.abs(days) === 1 ? 'day' : 'days'}`;
+}
+
+export function checkRowText(
+  check: Pick<DeviceCheck, 'type' | 'lastHeartbeat' | 'certificateDaysLeft' | 'domainDaysLeft'>,
+): CheckRowText {
   return {
     type: TYPE_LABELS[check.type],
     responseTime: msText(check.lastHeartbeat?.responseTimeMs),
-    certificate: days == null ? null : `Certificate: ${String(days)} ${Math.abs(days) === 1 ? 'day' : 'days'}`,
+    expiry:
+      check.type === 'DOMAIN_EXPIRY'
+        ? daysText('Domain', check.domainDaysLeft)
+        : daysText('Certificate', check.certificateDaysLeft),
   };
 }

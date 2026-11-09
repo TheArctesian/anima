@@ -44,7 +44,7 @@
   <span class="reading ms">
     {#key text.responseTime}<span transition:crossFade>{text.responseTime}</span>{/key}
   </span>
-  <span class="certificate">{text.certificate ?? ''}</span>
+  <span class="expiry">{text.expiry ?? ''}</span>
   <span class="actions">
     <!-- The name starts with the visible text, Pause or Resume (label in name). -->
     <button
@@ -89,7 +89,7 @@
   }
 
   .type,
-  .certificate {
+  .expiry {
     color: var(--text-muted);
     font-size: var(--text-sm);
   }

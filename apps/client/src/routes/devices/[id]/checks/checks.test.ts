@@ -5,7 +5,7 @@ import { checkRowText } from './rows';
 
 describe('checkRowText (D-10, CHK-007)', () => {
   it('D-10: type, last response time, and no certificate for a ping', () => {
-    expect(checkRowText(check())).toEqual({ type: 'Ping', responseTime: '12 ms', certificate: null });
+    expect(checkRowText(check())).toEqual({ type: 'Ping', responseTime: '12 ms', expiry: null });
   });
 
   it('CHK-009: a domain expiry check shows its own label', () => {
@@ -13,9 +13,25 @@ describe('checkRowText (D-10, CHK-007)', () => {
   });
 
   it('CHK-007: certificate days for a check that reads one', () => {
-    expect(checkRowText(check({ type: 'HTTP', certificateDaysLeft: 30 })).certificate).toBe('Certificate: 30 days');
-    expect(checkRowText(check({ type: 'TLS', certificateDaysLeft: 1 })).certificate).toBe('Certificate: 1 day');
-    expect(checkRowText(check({ type: 'TLS', certificateDaysLeft: 0 })).certificate).toBe('Certificate: 0 days');
+    expect(checkRowText(check({ type: 'HTTP', certificateDaysLeft: 30 })).expiry).toBe('Certificate: 30 days');
+    expect(checkRowText(check({ type: 'TLS', certificateDaysLeft: 1 })).expiry).toBe('Certificate: 1 day');
+    expect(checkRowText(check({ type: 'TLS', certificateDaysLeft: 0 })).expiry).toBe('Certificate: 0 days');
+  });
+
+  it('D-29: a domain expiry check shows the domain days left, with day and days agreeing', () => {
+    const domain = (domainDaysLeft: number | null) => checkRowText(check({ type: 'DOMAIN_EXPIRY', domainDaysLeft })).expiry;
+    expect(domain(12)).toBe('Domain: 12 days');
+    expect(domain(1)).toBe('Domain: 1 day');
+    expect(domain(0)).toBe('Domain: 0 days');
+    expect(domain(-1)).toBe('Domain: -1 day');
+    expect(domain(-5)).toBe('Domain: -5 days');
+    expect(domain(null)).toBeNull();
+  });
+
+  it('D-29: a domain expiry check ignores certificate days, and TLS and HTTP ignore domain days', () => {
+    expect(checkRowText(check({ type: 'DOMAIN_EXPIRY', certificateDaysLeft: 30, domainDaysLeft: null })).expiry).toBeNull();
+    expect(checkRowText(check({ type: 'TLS', certificateDaysLeft: 30, domainDaysLeft: 12 })).expiry).toBe('Certificate: 30 days');
+    expect(checkRowText(check({ type: 'HTTP', certificateDaysLeft: null, domainDaysLeft: 12 })).expiry).toBeNull();
   });
 
   it('D-10: no heartbeat yet, or one without a time, is "—"', () => {
