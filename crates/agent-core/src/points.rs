@@ -23,6 +23,6 @@ pub use kind::Kind;
 pub use labels::MAX_LABELS;
 pub use point::{Point, Summary};
 pub use rates::samples;
-pub use sample::Sample;
+pub use sample::{Sample, ceiling};
 pub use window::Window;
 pub(crate) use window::is_window_end;

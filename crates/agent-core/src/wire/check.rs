@@ -11,7 +11,8 @@ use uuid::Uuid;
 
 use super::{Batch, BatchGpu, BatchPoint, BatchSeries, GpuVendor, RefusalCode};
 use crate::points::{
-    Kind, MAX_GPU_INDEX, MAX_POINTS, MAX_SERIES, Point, SeriesKey, Summary, is_label, is_window_end,
+    Kind, MAX_GPU_INDEX, MAX_POINTS, MAX_SERIES, Point, SeriesKey, Summary, ceiling, is_label,
+    is_window_end,
 };
 
 /// The oldest a point may be on the hub's clock (MET-017).
@@ -119,10 +120,14 @@ fn value_fits(kind: Kind, mean: Option<f64>, max: Option<f64>) -> bool {
     }
 }
 
-/// Finite, at least 0, and at most 100 for a percent kind. `-0` is refused, as a sample
-/// refuses it; the agent never sends it.
+/// Finite, at least 0, at most 100 for a percent kind and at most the kind's [`ceiling`] (a
+/// GPU temperature 1000, a GPU power 10 000; CR-17). `-0` is refused, as a sample refuses it;
+/// the agent never sends it.
 fn number_fits(kind: Kind, value: f64) -> bool {
-    value.is_finite() && !value.is_sign_negative() && (!kind.is_percent() || value <= 100.0)
+    value.is_finite()
+        && !value.is_sign_negative()
+        && (!kind.is_percent() || value <= 100.0)
+        && value <= ceiling(kind)
 }
 
 /// Each GPU: index 0 to 63 and unique, a name of 1 to 128 bytes without a control character,
@@ -145,7 +150,7 @@ fn in_range(points: &[BatchPoint], now: DateTime<Utc>) -> bool {
     oldest_fits && newest_fits
 }
 
-/// The point the hub stores: the known columns with a mean.
+/// The point the hub stores: the known columns that have a mean.
 fn accepted(point: BatchPoint, keys: &[Option<SeriesKey>]) -> Point {
     let max = point.max.unwrap_or_default();
     let values = keys
@@ -153,11 +158,12 @@ fn accepted(point: BatchPoint, keys: &[Option<SeriesKey>]) -> Point {
         .zip(point.mean)
         .enumerate()
         .filter_map(|(column, (key, mean))| {
+            let key = key.as_ref()?;
             let summary = Summary {
                 mean: mean?,
                 max: max.get(column).copied().flatten(),
             };
-            Some((key.clone()?, summary))
+            Some((key.clone(), summary))
         })
         .collect();
     Point::new(point.at, values)

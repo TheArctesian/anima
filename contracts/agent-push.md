@@ -103,7 +103,9 @@ Request:
   covers the 10 seconds that end at `at`. `mean[i]` is the mean of the 2-second samples of `series[i]` in that
   window, or `null` when the window has none. `max`, when present, has the same length; only `cpu_percent`
   and `gpu_percent` columns may be non-null, and each is at least its mean. Every number is finite and at
-  least 0; percent kinds are at most 100.
+  least 0; percent kinds are at most 100; a `gpu_temperature_c` is at most 1000 (°C) and a `gpu_power_w` at
+  most 10 000 (W), and a batch with a value past either is `MALFORMED` (MET-002, CR-17). The agent drops such a
+  2-second sample before it makes a mean, so it never sends one.
 - `gpus`: optional. The agent sends it in its first batch after start and after each GPU discovery (at start
   and every 24 hours, MET-006). Absent means "unchanged". `vendor` is `nvidia`, `amd`, `intel` or `apple`;
   `name` is 1 to 128 bytes, no control character; `hasVram` is false for `intel` and `apple` (MET-007).

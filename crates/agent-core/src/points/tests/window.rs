@@ -73,6 +73,30 @@ fn met_014_a_window_in_which_nothing_was_kept_makes_no_point() {
 }
 
 #[test]
+fn cr_17_a_gpu_reading_past_its_ceiling_never_reaches_the_mean() {
+    let mut window = Window::new();
+    let heat = gpu(Kind::GpuTemperatureC, 0);
+    let power = gpu(Kind::GpuPowerW, 0);
+    window.add(
+        at("2026-11-08T10:00:02Z"),
+        [(heat.clone(), 1000.0), (power.clone(), 10_000.0)],
+    );
+    window.add(
+        at("2026-11-08T10:00:04Z"),
+        [(heat.clone(), 1000.5), (power.clone(), f64::MAX)],
+    );
+    let point = window.add(at("2026-11-08T10:00:12Z"), []).unwrap();
+    assert_eq!(
+        summary(&point, &heat).unwrap().mean.to_bits(),
+        1000.0_f64.to_bits()
+    );
+    assert_eq!(
+        summary(&point, &power).unwrap().mean.to_bits(),
+        10_000.0_f64.to_bits()
+    );
+}
+
+#[test]
 fn k8_points_end_on_multiples_of_10_seconds_of_utc() {
     let cpu = plain(Kind::CpuPercent);
     for (taken, end) in [
