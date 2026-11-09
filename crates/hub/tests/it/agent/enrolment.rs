@@ -124,10 +124,13 @@ async fn met_012_uses_of_one_code_at_once_enrol_once(pool: PgPool) {
 async fn met_012_a_new_code_leaves_other_devices_codes_working(pool: PgPool) {
     let agents = Agents::new(&pool).await;
     let pve = agents.code_for(PVE_01).await;
-    let _docker = agents.code_for(DOCKER_HOST).await;
+    let docker = agents.code_for(DOCKER_HOST).await;
     let enrolled = agents.enrolled(&pve).await;
     assert_eq!(enrolled["device"], PVE_01);
     assert_eq!(rows_of(&pool, "agents", DOCKER_HOST).await, 0);
+    let enrolled = agents.enrolled(&docker).await;
+    assert_eq!(enrolled["device"], DOCKER_HOST);
+    assert_eq!(rows_of(&pool, "agents", DOCKER_HOST).await, 1);
 }
 
 #[sqlx::test(
