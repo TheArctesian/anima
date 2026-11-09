@@ -10,6 +10,7 @@
 mod collector;
 mod commands;
 mod feed;
+mod gpu_label;
 pub mod graphql;
 mod ingest;
 mod latest;
