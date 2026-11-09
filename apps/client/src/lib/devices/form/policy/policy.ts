@@ -17,7 +17,7 @@ export interface PolicyInput {
   recordSessions?: boolean;
 }
 
-export const MAX_SESSION_LIMIT = 100;
+const MAX_SESSION_LIMIT = 100;
 
 /** RA-036: the one sentence for a limit that is not a whole number from 1 to 100. */
 export const LIMIT_SENTENCE = 'Use a whole number from 1 to 100.';

@@ -13,9 +13,9 @@ const HUB_BOUND_MS = 365 * DAY_MS;
  */
 const BOUND_MARGIN_MS = 5 * MINUTE_MS;
 
-export const NAME_MAX = 64;
+const NAME_MAX = 64;
 
-export type ExpiryChoice = '30d' | '90d' | '1y' | 'date';
+type ExpiryChoice = '30d' | '90d' | '1y' | 'date';
 
 export const EXPIRY_CHOICES: readonly { readonly id: ExpiryChoice; readonly label: string }[] = [
   { id: '30d', label: '30 days' },
@@ -58,7 +58,7 @@ export interface NewKeyProblem {
   readonly message: string;
 }
 
-export type NewKeyCheck = { readonly ok: true; readonly input: ApiKeyInput } | { readonly ok: false; readonly problems: readonly NewKeyProblem[] };
+type NewKeyCheck = { readonly ok: true; readonly input: ApiKeyInput } | { readonly ok: false; readonly problems: readonly NewKeyProblem[] };
 
 /** Local midnight at the start of a `YYYY-MM-DD` day, or `null` when the text is not a real calendar day. */
 function startOfDay(text: string): Date | null {

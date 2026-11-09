@@ -242,3 +242,23 @@ it('F-3, MOT-007: a failed load shows its own message and Try again in the kept 
   await settled();
   expect(target.querySelector('.stack p.quiet')?.textContent).toBe('No channels. Add one to hear when a check goes down or comes back up.');
 });
+
+it('MOT-007, NAV-005: Try again stays mounted and keeps focus while it retries and when it fails again, then focus goes to Add channel', async () => {
+  const answers = loaded({ NotificationChannels: failure('UNAVAILABLE') });
+  await open(answers);
+  const again = button('Try again');
+  again.focus();
+  again.click();
+  flushSync();
+  expect([document.activeElement === again, again.getAttribute('aria-disabled'), again.getAttribute('aria-busy')]).toEqual([true, 'true', 'true']);
+  again.click();
+  await settled();
+  expect(hub.sent.filter((each) => each.operation === 'NotificationChannels')).toHaveLength(2);
+  await settled();
+  expect([document.activeElement === again, again.isConnected, again.getAttribute('aria-disabled')]).toEqual([true, true, 'false']);
+  answers.NotificationChannels = ok({ notificationChannels: FIXTURE_CHANNELS });
+  again.click();
+  await settled();
+  await settled();
+  expect(document.activeElement).toBe(button('Add channel'));
+});

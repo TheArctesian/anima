@@ -21,10 +21,11 @@
   let settingsFailed = $state(false);
 
   async function loadSettings(): Promise<void> {
-    settingsFailed = false;
     const result = await api.settings();
-    if (result.ok) settings = result.value;
-    else settingsFailed = true;
+    if (result.ok) {
+      settings = result.value;
+      settingsFailed = false;
+    } else settingsFailed = true;
   }
 
   $effect(() => {

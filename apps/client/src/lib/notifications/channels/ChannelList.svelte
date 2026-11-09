@@ -26,6 +26,7 @@
   /** `null` while loading or after a failed load. */
   let channels = $state<readonly NotificationChannel[] | null>(null);
   let loadFailed = $state(false);
+  let retrying = $state(false);
   /** The open editor: `channel` is `null` for a new one. */
   let editing = $state<{ readonly channel: NotificationChannel | null } | null>(null);
   let deleting = $state<NotificationChannel | null>(null);
@@ -41,10 +42,26 @@
   const skeleton = skeletonDelay(() => loading, clock);
 
   async function load(): Promise<void> {
-    loadFailed = false;
     const result = await api.channels();
-    if (result.ok) channels = result.value;
-    else loadFailed = true;
+    if (result.ok) {
+      channels = result.value;
+      loadFailed = false;
+    } else loadFailed = true;
+  }
+
+  /** Try again: the button stays mounted, and aria-disabled, while the hub answers; on success focus goes to Add channel (NAV-005). */
+  async function retry(): Promise<void> {
+    if (retrying) return;
+    retrying = true;
+    try {
+      await load();
+    } finally {
+      retrying = false;
+    }
+    if (!loadFailed) {
+      await tick();
+      root?.querySelector<HTMLElement>('[data-add]')?.focus();
+    }
   }
 
   $effect(() => {
@@ -114,7 +131,7 @@
       {#if loadFailed}
         <div class="failed">
           <p role="alert">Anima could not load the notification channels.</p>
-          <div><FormButton tabindex={0} onclick={load}>Try again</FormButton></div>
+          <div><FormButton tabindex={0} aria-disabled={retrying} aria-busy={retrying} onclick={retry}>Try again</FormButton></div>
         </div>
       {:else if channels !== null && channels.length === 0}
         <p class="quiet">No channels. Add one to hear when a check goes down or comes back up.</p>

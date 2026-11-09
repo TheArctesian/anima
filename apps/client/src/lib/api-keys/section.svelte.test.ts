@@ -201,3 +201,23 @@ it('NAV-005: after revoking the only key, focus goes to "Create API key"', async
   expect(names(target)).toEqual([]);
   expect(document.activeElement).toBe(button('Create API key'));
 });
+
+it('MOT-007, NAV-005: Try again stays mounted and keeps focus while it retries and when it fails again, then focus goes to Create', async () => {
+  const answers: Parameters<typeof fakeHub>[0] = { ApiKeys: failure('INTERNAL') };
+  await open(answers);
+  const again = button('Try again');
+  again.focus();
+  again.click();
+  flushSync();
+  expect([document.activeElement === again, again.getAttribute('aria-disabled'), again.getAttribute('aria-busy')]).toEqual([true, 'true', 'true']);
+  again.click();
+  await settled();
+  expect(hub.sent.filter((each) => each.operation === 'ApiKeys')).toHaveLength(2);
+  await settled();
+  expect([document.activeElement === again, again.isConnected, again.getAttribute('aria-disabled')]).toEqual([true, true, 'false']);
+  answers.ApiKeys = ok({ apiKeys: FIXTURE_KEYS });
+  again.click();
+  await settled();
+  await settled();
+  expect(document.activeElement).toBe(button('Create API key'));
+});

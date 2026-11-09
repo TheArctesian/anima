@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { flushSync } from 'svelte';
+  import { flushSync, tick } from 'svelte';
   import FormButton from '$lib/forms/FormButton.svelte';
   import type { HubResult } from '$lib/hub/hub';
   import Field from '../Field.svelte';
@@ -7,13 +7,13 @@
   import { failureText } from '../failure';
   import { D21_PLACEHOLDERS, templateFine, templateProblems, type TemplateProblems } from '../template/template';
   import TemplateFields from '../template/TemplateFields.svelte';
-  import { checkDays, daysText, DEFAULT_DAYS } from './days';
+  import { checkThresholds, thresholdsText, DEFAULT_DAYS } from './days';
 
   interface Props {
     /** `null` while the hub has not answered: the form keeps its size and its controls wait. */
     settings: NotificationSettings | null;
     loadFailed: boolean;
-    onRetry: () => void;
+    onRetry: () => Promise<void>;
     save: (input: NotificationSettingsInput) => Promise<HubResult<NotificationSettings>>;
   }
 
@@ -25,13 +25,15 @@
   let problems = $state<TemplateProblems>({ title: '', body: '' });
   let outcome = $state('');
   let busy = $state(false);
+  let retrying = $state(false);
+  let form: HTMLFormElement | undefined = $state();
   const waiting = $derived(settings === null);
   const placeholders = $derived(settings?.placeholders ?? D21_PLACEHOLDERS);
 
   // The fields follow the hub's settings when they arrive or are saved; a refused save leaves what the operator typed.
   $effect(() => {
     if (settings === null) return;
-    days = daysText(settings.certificateDays);
+    days = thresholdsText(settings.certificateDays);
     template.title = settings.template.title;
     template.body = settings.template.body;
   });
@@ -39,7 +41,7 @@
   async function submit(event: SubmitEvent): Promise<void> {
     event.preventDefault();
     if (waiting || busy) return;
-    const checked = checkDays(days);
+    const checked = checkThresholds(days);
     const found = templateProblems(template, placeholders);
     daysProblem = checked.ok ? '' : checked.message;
     problems = found;
@@ -55,13 +57,28 @@
     busy = false;
     outcome = result.ok ? 'Saved.' : failureText(result.error, 'settings');
   }
+
+  /** Try again: the button stays mounted, and aria-disabled, while the hub answers; on success focus goes to the first field (NAV-005). */
+  async function retry(): Promise<void> {
+    if (retrying) return;
+    retrying = true;
+    try {
+      await onRetry();
+    } finally {
+      retrying = false;
+    }
+    if (!loadFailed) {
+      await tick();
+      form?.querySelector('input')?.focus();
+    }
+  }
 </script>
 
-<form class="settings" novalidate onsubmit={submit} aria-busy={waiting}>
+<form bind:this={form} class="settings" novalidate onsubmit={submit} aria-busy={waiting}>
   <fieldset disabled={waiting || busy}>
     <Field
       label="Certificate expiry days"
-      hint="A notice when a certificate or domain has fewer days left: up to 5 values from 1 to 365, largest first. Default {daysText(DEFAULT_DAYS)}."
+      hint="A notice when a certificate or domain has fewer days left: up to 5 values from 1 to 365, largest first. Default {thresholdsText(DEFAULT_DAYS)}."
       problem={daysProblem}
     >
       {#snippet control(attributes)}
@@ -77,7 +94,7 @@
   <div class="note">
     {#if loadFailed}
       <p id="{id}-failed" role="alert">Anima could not load the notification settings.</p>
-      <FormButton tabindex={0} onclick={onRetry}>Try again</FormButton>
+      <FormButton tabindex={0} aria-disabled={retrying} aria-busy={retrying} onclick={retry}>Try again</FormButton>
     {:else}
       <p class="outcome" role="status">{outcome}</p>
       <FormButton tabindex={0} type="submit" tone="primary" aria-disabled={waiting || busy} aria-busy={busy}>Save</FormButton>
