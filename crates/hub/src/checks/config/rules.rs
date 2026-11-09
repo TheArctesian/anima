@@ -35,6 +35,10 @@ pub enum Reason {
     TooShort { min: usize },
     #[error("belongs to the other SNMP version")]
     OtherVersion,
+    #[error("must be ASCII: write an internationalised domain in its xn-- form")]
+    NotAscii,
+    #[error("must be a domain name such as example.net, with no scheme, path or port")]
+    NotDomain,
 }
 
 pub const TIMEOUT_MS: (u32, u32) = (100, 60_000);
@@ -45,6 +49,8 @@ pub const KEYWORD_MAX: usize = 1024;
 pub const JSON_QUERY_MAX: usize = 512;
 pub const DNS_NAME_MAX: usize = 253;
 pub const REDIRECTS_MAX: u8 = 10;
+/// The fewest and most warning days of a domain expiry check (D-29).
+pub const WARN_DAYS: (u32, u32) = (1, 365);
 
 pub(super) const fn err(field: &'static str, reason: Reason) -> ConfigError {
     ConfigError { field, reason }
@@ -53,6 +59,15 @@ pub(super) const fn err(field: &'static str, reason: Reason) -> ConfigError {
 pub(super) fn timeout(field: &'static str, ms: u32) -> Result<(), ConfigError> {
     let (min, max) = TIMEOUT_MS;
     if (min..=max).contains(&ms) {
+        Ok(())
+    } else {
+        Err(err(field, Reason::OutOfRange { min, max }))
+    }
+}
+
+pub(super) fn warn_days(field: &'static str, days: u32) -> Result<(), ConfigError> {
+    let (min, max) = WARN_DAYS;
+    if (min..=max).contains(&days) {
         Ok(())
     } else {
         Err(err(field, Reason::OutOfRange { min, max }))
@@ -156,6 +171,32 @@ pub(super) fn dns_name(
         Ok(())
     } else {
         Err(err(field, Reason::Invalid))
+    }
+}
+
+/// A domain to look up over RDAP (D-29): ASCII only, so an internationalised name comes in
+/// its `xn--` form; a DNS name of at least two labels with no trailing dot, whose last label
+/// is letters or an `xn--` label, so an IP address, a scheme, a path or a port never pass.
+pub(super) fn registered_domain(field: &'static str, name: &str) -> Result<(), ConfigError> {
+    if name.is_empty() {
+        return Err(err(field, Reason::Empty));
+    }
+    if !name.is_ascii() {
+        return Err(err(field, Reason::NotAscii));
+    }
+    dns_name(field, name, false).map_err(|error| match error.reason {
+        Reason::Invalid => err(field, Reason::NotDomain),
+        _ => error,
+    })?;
+    let top = name.rsplit('.').next().unwrap_or_default();
+    let top_ok = top.bytes().all(|b| b.is_ascii_alphabetic())
+        || top
+            .get(..4)
+            .is_some_and(|start| start.eq_ignore_ascii_case("xn--"));
+    if name.contains('.') && !name.ends_with('.') && top_ok {
+        Ok(())
+    } else {
+        Err(err(field, Reason::NotDomain))
     }
 }
 

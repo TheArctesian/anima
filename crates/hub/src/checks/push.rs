@@ -137,6 +137,7 @@ impl Report {
             message: self.message,
             resolved_ip: None,
             cert_not_after: None,
+            domain_not_after: None,
             judgement: Judgement::Answered,
         }
     }
@@ -190,6 +191,7 @@ async fn store_beat(
         result: probe,
         in_maintenance,
         at: now,
+        domain: None,
     };
     let mut tx = db.begin().await?;
     let beat = store::record_attempt(&mut tx, check.id, &attempt).await?;

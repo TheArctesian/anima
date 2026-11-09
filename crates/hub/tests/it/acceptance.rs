@@ -92,6 +92,7 @@ fn up_beat(at: DateTime<Utc>) -> Beat {
         },
         resolved_ip: None,
         cert_not_after: None,
+        domain_not_after: None,
     }
 }
 

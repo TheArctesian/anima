@@ -109,7 +109,7 @@ pub(super) fn render(snapshot: &Snapshot) -> String {
     family(
         &mut out,
         "anima_check_domain_days_left",
-        "Whole days until the checked domain's registration expires.",
+        "Whole days until the checked domain's registration expires, from the last date the registry gave.",
         each(|c| c.domain_days_left.map(|days| days.to_string())),
     );
     family(

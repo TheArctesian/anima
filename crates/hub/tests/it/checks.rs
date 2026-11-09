@@ -1,10 +1,12 @@
 //! The `checks` schema: checks, partitioned heartbeats, uptime aggregates and the partition
-//! functions (CHK-009, DB-004, DB-005, DB-008, DB-009, DB-011), and `GET /metrics` (INT-001).
+//! functions (CHK-009, DB-004, DB-005, DB-008, DB-009, DB-011), the domain expiry check (D-29), and
+//! `GET /metrics` (INT-001).
 
 mod api;
 mod cascade;
 mod columns;
 mod defaults;
+mod domain_expiry;
 mod exposition;
 mod face;
 mod fixture;

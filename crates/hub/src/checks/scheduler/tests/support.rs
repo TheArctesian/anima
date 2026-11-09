@@ -57,15 +57,15 @@ pub fn rng() -> StdRng {
 
 /// What the attempts of a test share, with this policy.
 fn context_with(pool: &PgPool, bus: &Bus, policy: AddressPolicy) -> Context {
-    Context {
-        db: pool.clone(),
-        bus: bus.clone(),
-        probing: Probing {
+    Context::new(
+        pool.clone(),
+        bus.clone(),
+        Probing {
             vault: vault(),
             policy,
             localapi: None,
         },
-    }
+    )
 }
 
 /// What one attempt needs to reach the local listeners.
@@ -96,15 +96,15 @@ pub fn scheduler(pool: &PgPool, bus: &Bus) -> Scheduler {
 
 /// A scheduler that reaches the local listeners within these limits.
 pub fn limited(pool: &PgPool, limits: Limits) -> Scheduler {
-    let ctx = Context {
-        db: pool.clone(),
-        bus: Bus::new(16),
-        probing: Probing {
+    let ctx = Context::new(
+        pool.clone(),
+        Bus::new(16),
+        Probing {
             vault: vault(),
             policy: AddressPolicy::default().allowing_loopback(),
             localapi: None,
         },
-    };
+    );
     Scheduler::new(ctx, limits)
 }
 

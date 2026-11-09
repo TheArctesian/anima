@@ -114,6 +114,7 @@ async fn failed_attempt(pool: PgPool, id: CheckId, at: DateTime<Utc>) -> bool {
         result: &result,
         in_maintenance: false,
         at,
+        domain: None,
     };
     let mut tx = pool.begin().await.unwrap();
     let beat = checks::record_attempt(&mut tx, id, &attempt).await.unwrap();
@@ -219,6 +220,7 @@ tick_test! {
             },
             resolved_ip: None,
             cert_not_after: None,
+            domain_not_after: None,
         };
         let mut conn = pool.acquire().await.unwrap();
         let written = checks::record_beat(&mut conn, id, &push).await.unwrap();
