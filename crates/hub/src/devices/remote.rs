@@ -69,9 +69,11 @@ pub enum MetricsSource {
     #[default]
     None,
     Ssh,
+    /// Set only by enrolment (MET-011, R-092 D-7).
+    Agent,
 }
 
-stored_text!(MetricsSource, "metrics source", { None => "none", Ssh => "ssh" });
+stored_text!(MetricsSource, "metrics source", { None => "none", Ssh => "ssh", Agent => "agent" });
 
 /// How to reach a device over RDP. The password lives in `credentials`, never here.
 #[derive(Clone, Debug, PartialEq, Eq)]

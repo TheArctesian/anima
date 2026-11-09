@@ -14,7 +14,7 @@ mod tests;
 mod text;
 mod warnings;
 
-use sqlx::PgPool;
+use sqlx::{PgConnection, PgPool};
 
 use crate::api_errors::field_names;
 use crate::ids::{DeviceId, SiteId};
@@ -84,4 +84,25 @@ pub async fn in_maintenance(db: &PgPool, id: DeviceId) -> Result<bool, Error> {
 /// `NotFound` when there is no such site.
 pub async fn wake_relay(db: &PgPool, site: SiteId) -> Result<Option<Device>, Error> {
     store::wake_relay(db, site).await
+}
+
+/// Locks the device row (`FOR UPDATE`) until the caller's transaction ends, so no other
+/// transaction changes or deletes the device meanwhile. A transaction that writes rows deleted
+/// with the device takes this first, the order a device delete takes the rows in, so the two
+/// cannot deadlock.
+///
+/// # Errors
+/// `NotFound` when there is no such device.
+pub async fn lock(conn: &mut PgConnection, id: DeviceId) -> Result<(), Error> {
+    store::lock_device(conn, id).await
+}
+
+/// Sets the device's metrics source to `agent` in the caller's transaction, which stops SSH
+/// collection for it, and returns the device's name. Only agent enrolment calls it (MET-011,
+/// R-092 D-7).
+///
+/// # Errors
+/// `NotFound` when there is no such device.
+pub async fn use_agent_metrics(conn: &mut PgConnection, id: DeviceId) -> Result<String, Error> {
+    store::set_agent_source(conn, id).await
 }

@@ -1,4 +1,5 @@
 mod acceptance;
+mod agent;
 mod api_keys;
 mod browser;
 mod checks;
