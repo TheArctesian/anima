@@ -134,7 +134,12 @@ Also read `docs/programme/phase-3-plan.md`, `phase-3-contracts.md` and the packa
 
 ## 6. Open decisions for the next session
 
-- WP-46 T1: the two K3 additions (see section 3).
+- K1 doc-string bounds for `resendEveryBeats` and `certificateDays` (section 3, programme to-do).
+- `crates/hub/src/main.rs` `serve()` is at the 60-line limit: WP-43 T4 (or the next wiring change)
+  moves router assembly into its own function (at most 4 params).
+- Background agents still running at the stop (WP-43 T4 security review, WP-45 T6 reviews, WP-47 T1b
+  and T3 review, WP-54 T3a and T4 builds) may have pushed commits to their branches after this file:
+  check each branch tip against section 3 before merging.
 - Compute plan (branch `claude/distributed-compute-devices-25e110`): rename its crates to
   `agent` and `agent-core`, and keep "the agent opens no port" (R-084, delta §5).
 
