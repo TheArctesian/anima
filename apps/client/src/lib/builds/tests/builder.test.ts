@@ -2,16 +2,19 @@ import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vite
 import type { HubResult } from '$lib/hub/hub';
 import type { BuildsApi, Enrolment } from '../api';
 import { ThisBuilder, type ThisBuilderPorts } from '../builder.svelte';
-import { BUILDER_TOKEN, FakeBuildsApi, FakeShell, ok, refused, sleep } from './builds.fixture';
+import { BUILDER_TOKEN, FakeBuildsApi, FakeShell, JOB, ok, refused, sleep } from './builds.fixture';
+
+const OPERATOR_TOKEN = 'ana_operator-token-0123456789';
 
 class Stores {
   token: string | null = null;
   id: string | null = null;
   writeFails = false;
+  clearFails = false;
   readonly tokens = {
     read: () => Promise.resolve(this.token),
     write: (token: string) => (this.writeFails ? Promise.reject(new Error('denied')) : Promise.resolve(void (this.token = token))),
-    clear: () => Promise.resolve(void (this.token = null)),
+    clear: () => (this.clearFails ? Promise.reject(new Error('denied')) : Promise.resolve(void (this.token = null))),
   };
   readonly ids = {
     read: () => this.id,
@@ -25,6 +28,7 @@ let shell: FakeShell;
 let builderApi: FakeBuildsApi;
 let operator: { enrol: Mock<BuildsApi['enrol']>; revoke: Mock<BuildsApi['revoke']> };
 let builder: ThisBuilder;
+let locks: number;
 
 beforeEach(() => {
   vi.useFakeTimers({ now: 0 });
@@ -35,8 +39,11 @@ beforeEach(() => {
     enrol: vi.fn<BuildsApi['enrol']>((): Promise<HubResult<Enrolment>> => Promise.resolve(ok({ builderId: 'b-1', token: BUILDER_TOKEN }))),
     revoke: vi.fn<BuildsApi['revoke']>((): Promise<HubResult<string>> => Promise.resolve(ok('b-1'))),
   };
+  locks = 0;
   const ports: ThisBuilderPorts = {
     operator,
+    operatorToken: () => Promise.resolve(OPERATOR_TOKEN),
+    lockKey: () => Promise.resolve(void (locks += 1)),
     builder: builderApi,
     shell,
     tokens: stores.tokens,
@@ -125,5 +132,48 @@ describe('turning building off (BLD-025)', () => {
     await builder.revoked('b-1');
     expect(stores.token).toBeNull();
     expect(builder.enrolled).toBe(false);
+  });
+
+  it('S-5: without a builder ID here nothing is revoked, the token goes, and the row says to revoke in the list', async () => {
+    await builder.enable();
+    stores.id = null;
+    await builder.disable();
+    expect(operator.revoke).not.toHaveBeenCalled();
+    expect(stores.token).toBeNull();
+    expect(builder.problem).toBe("This computer's builder could not be revoked here; revoke it in the list below.");
+  });
+
+  it('S-6: when the key store keeps the token, the builder ID and the enrolled state stay, and the row says so', async () => {
+    await builder.enable();
+    stores.clearFails = true;
+    await builder.disable();
+    expect(stores.token).toBe(BUILDER_TOKEN);
+    expect(stores.id).toBe('b-1');
+    expect(builder.enrolled).toBe(true);
+    expect(builder.problem).toBe('The builder token could not be deleted from the key store. Turn building off again.');
+    stores.clearFails = false;
+    await builder.disable();
+    expect(stores.token).toBeNull();
+    expect(builder.enrolled).toBe(false);
+  });
+});
+
+describe('the updater key and the operator token (D-19, BLD-049)', () => {
+  it('D-19: stopping the builder, and turning it off, lock the updater key', async () => {
+    await builder.enable();
+    await builder.stop();
+    expect(locks).toBe(1);
+    await builder.resume();
+    await builder.disable();
+    expect(locks).toBeGreaterThanOrEqual(2);
+  });
+
+  it('BLD-049, C-1: a log line loses the operator token as well as the builder token', async () => {
+    builderApi.jobs = [JOB];
+    shell.scripts.checkout = { lines: [`op ${OPERATOR_TOKEN} builder ${BUILDER_TOKEN}`] };
+    await builder.enable();
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(builderApi.lines()).toContain('op [redacted] builder [redacted]');
+    expect(builderApi.lines().join('\n')).not.toContain('operator-token');
   });
 });

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BuilderShellError, desktopBuilderShell, toolCheckFrom } from './shell';
-import { importUpdaterKey, readUpdaterKey, UpdaterKeyError, updaterKeyStateFrom } from './updaterKey';
+import { importUpdaterKey, lockUpdaterKey, readUpdaterKey, unlockUpdaterKey, UpdaterKeyError, updaterKeyStateFrom } from './updaterKey';
 
 const core = vi.hoisted(() => ({ invoke: vi.fn(), isTauri: vi.fn() }));
 const events = vi.hoisted(() => ({ listen: vi.fn() }));
@@ -76,14 +76,22 @@ describe('the build steps (BLD-027)', () => {
 
 describe('toolCheckFrom (BLD-028)', () => {
   it('BLD-028: reads the platform and the missing tools', () => {
-    expect(toolCheckFrom({ os: 'LINUX', arch: 'X86_64', missing: ['postgres', 'updater-key'] })).toEqual({
+    expect(toolCheckFrom({ os: 'LINUX', arch: 'X86_64', missing: ['postgres', 'updater-key-locked'], memoryGuarded: false })).toEqual({
       os: 'LINUX',
       arch: 'X86_64',
-      missing: ['postgres', 'updater-key'],
+      missing: ['postgres', 'updater-key-locked'],
+      memoryGuarded: false,
     });
   });
 
-  it.each([null, 'LINUX', { os: 'WINDOWS', arch: 'X86_64', missing: [] }, { os: 'LINUX', arch: 'MIPS', missing: [] }, { os: 'LINUX', arch: 'X86_64', missing: ['compiler'] }])(
+  it.each([
+    null,
+    'LINUX',
+    { os: 'WINDOWS', arch: 'X86_64', missing: [], memoryGuarded: true },
+    { os: 'LINUX', arch: 'MIPS', missing: [], memoryGuarded: true },
+    { os: 'LINUX', arch: 'X86_64', missing: ['compiler'], memoryGuarded: true },
+    { os: 'LINUX', arch: 'X86_64', missing: [] },
+  ])(
     'BLD-028: refuses %j',
     (answer) => {
       expect(() => toolCheckFrom(answer)).toThrow(BuilderShellError);
@@ -92,33 +100,50 @@ describe('toolCheckFrom (BLD-028)', () => {
 });
 
 describe('the updater key bridge (BLD-045)', () => {
-  it('BLD-045: reads only the state: present, the public key and whether it matches the app', async () => {
-    core.invoke.mockResolvedValue({ present: true, publicKey: 'RWQpublic', matchesApp: true });
-    await expect(readUpdaterKey()).resolves.toEqual({ present: true, publicKey: 'RWQpublic', matchesApp: true });
+  it('BLD-045: reads only the state: present, unlocked, the public key and whether it matches the app', async () => {
+    const state = { present: true, unlocked: false, publicKey: 'RWQpublic', matchesApp: true };
+    core.invoke.mockResolvedValue(state);
+    await expect(readUpdaterKey()).resolves.toEqual(state);
     expect(core.invoke).toHaveBeenCalledWith('updater_key_read', {});
   });
 
-  it('BLD-045: import sends the password and no path; an empty password is none', async () => {
-    core.invoke.mockResolvedValue({ present: true, publicKey: 'RWQpublic', matchesApp: false });
-    await importUpdaterKey('pw');
-    await importUpdaterKey('');
+  it('BLD-045, D-19: import sends the passwords and no path; an empty password is none', async () => {
+    core.invoke.mockResolvedValue({ present: true, unlocked: true, publicKey: 'RWQpublic', matchesApp: false });
+    await importUpdaterKey('pw', '');
+    await importUpdaterKey('', 'new');
     expect(core.invoke.mock.calls).toEqual([
-      ['updater_key_import', { password: 'pw' }],
-      ['updater_key_import', { password: null }],
+      ['updater_key_import', { password: 'pw', newPassword: null }],
+      ['updater_key_import', { password: null, newPassword: 'new' }],
     ]);
+  });
+
+  it('D-19: unlock sends the password; lock asks the shell to drop the key', async () => {
+    core.invoke.mockResolvedValue({ present: true, unlocked: true, publicKey: 'RWQpublic', matchesApp: true });
+    await expect(unlockUpdaterKey('pw')).resolves.toMatchObject({ unlocked: true });
+    core.invoke.mockResolvedValue(null);
+    await lockUpdaterKey();
+    expect(core.invoke.mock.calls).toEqual([
+      ['updater_key_unlock', { password: 'pw' }],
+      ['updater_key_lock', {}],
+    ]);
+    core.invoke.mockRejectedValue({ code: 'locked' });
+    await expect(unlockUpdaterKey('pw')).rejects.toMatchObject({ problem: 'locked' });
+    core.invoke.mockRejectedValue({ code: 'new-password-needed' });
+    await expect(importUpdaterKey(null, null)).rejects.toMatchObject({ problem: 'new-password-needed' });
   });
 
   it('BLD-045, LOG-007: a failure is a fixed sentence for its code, never the shell text', async () => {
     core.invoke.mockRejectedValue({ code: 'password', message: `bad ${KEY_TEXT}` });
-    const error: unknown = await importUpdaterKey('wrong').catch((reason: unknown) => reason);
+    const error: unknown = await importUpdaterKey('wrong', null).catch((reason: unknown) => reason);
     expect(error).toBeInstanceOf(UpdaterKeyError);
-    expect((error as UpdaterKeyError).message).toBe('The password does not open the key file.');
+    expect((error as UpdaterKeyError).message).toBe('The password does not open the key.');
     expect(String(error)).not.toContain(KEY_TEXT);
   });
 
   it('BLD-045: an answer of the wrong shape is failed, and outside the desktop app nothing is asked', async () => {
-    expect(() => updaterKeyStateFrom({ present: 'yes', publicKey: null, matchesApp: null })).toThrow(UpdaterKeyError);
-    expect(() => updaterKeyStateFrom({ present: true, publicKey: 3, matchesApp: null })).toThrow(UpdaterKeyError);
+    expect(() => updaterKeyStateFrom({ present: 'yes', unlocked: false, publicKey: null, matchesApp: null })).toThrow(UpdaterKeyError);
+    expect(() => updaterKeyStateFrom({ present: true, unlocked: false, publicKey: 3, matchesApp: null })).toThrow(UpdaterKeyError);
+    expect(() => updaterKeyStateFrom({ present: true, publicKey: 'RWQ', matchesApp: null })).toThrow(UpdaterKeyError);
     core.isTauri.mockReturnValue(false);
     await expect(readUpdaterKey()).rejects.toMatchObject({ problem: 'not-desktop' });
     expect(core.invoke).not.toHaveBeenCalled();

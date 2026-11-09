@@ -85,6 +85,7 @@ const REASONS: Partial<Record<BuilderShellCode, string>> = {
   cancelled: 'The build was cancelled on this computer.',
   bundle: 'The bundle is not where the build puts it.',
   'key-missing': 'No updater key is stored on this computer.',
+  'key-locked': 'The updater key was locked on this computer.',
   'signed-version': 'The signature is not for this version.',
   signing: 'The updater file could not be signed.',
   busy: 'Another build step was running on this computer.',

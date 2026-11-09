@@ -7,6 +7,19 @@ describe('cleanLine (BLD-049, LOG-007)', () => {
     expect(cleanLine(`a ${BUILDER_TOKEN} b ${BUILDER_TOKEN}`, [BUILDER_TOKEN])).toBe('a [redacted] b [redacted]');
   });
 
+  it('BLD-049, C-1: a line the shell cut inside a known secret loses the start of that secret', () => {
+    const cut = BUILDER_TOKEN.slice(0, 11);
+    expect(cleanLine(`export TOKEN=${cut} [line cut]`, [BUILDER_TOKEN])).toBe('export TOKEN=[redacted] [line cut]');
+    expect(cleanLine(`x${BUILDER_TOKEN.slice(0, 1)} [line cut]`, [BUILDER_TOKEN])).toBe('x[redacted] [line cut]');
+    expect(cleanLine(`${BUILDER_TOKEN} then ${cut} [line cut]`, [BUILDER_TOKEN])).toBe('[redacted] then [redacted] [line cut]');
+  });
+
+  it('BLD-049, C-1: a line that was not cut keeps an end that only looks like the start of a secret', () => {
+    const start = BUILDER_TOKEN.slice(0, 11);
+    expect(cleanLine(`prefix ${start}`, [BUILDER_TOKEN])).toBe(`prefix ${start}`);
+    expect(cleanLine('cargo build [line cut]', [BUILDER_TOKEN])).toBe('cargo build [line cut]');
+  });
+
   it('BLD-049: a known value shorter than 8 characters is not looked for', () => {
     expect(cleanLine('cargo test a', ['a'])).toBe('cargo test a');
   });

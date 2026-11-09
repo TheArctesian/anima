@@ -1,9 +1,11 @@
 import { desktopBuilderShell } from '$lib/desktop/builder/shell';
+import { lockUpdaterKey } from '$lib/desktop/builder/updaterKey';
 import { readThisMachine } from '$lib/desktop/thisMachine';
-import { clearBuilderToken, keyStoreAvailable, readBuilderToken, writeBuilderToken } from '$lib/desktop/token';
+import { clearBuilderToken, keyStoreAvailable, readAccessToken, readBuilderToken, writeBuilderToken } from '$lib/desktop/token';
 import { createRequestHub, type Hub, type HubAddress } from '$lib/hub/hub';
 import { buildsApi } from './api';
 import { provideThisBuilder, ThisBuilder, type BuilderIdStore } from './builder.svelte';
+import { BUILDER_CALL_TIMEOUT_MS } from './loop';
 
 /** The `localStorage` key of this computer's builder ID at a hub; the ID is not secret, the token is (BLD-023). */
 export function builderIdKey(address: HubAddress): string {
@@ -42,8 +44,9 @@ async function computerName(): Promise<string> {
  */
 export function provideDesktopBuilder(hub: Hub): void {
   const { address } = hub;
-  // The builder's calls carry the builder token and open no socket (D-1, BLD-022).
-  const builderHub = createRequestHub({ address, token: readBuilderToken });
+  // The builder's calls carry the builder token and open no socket (D-1, BLD-022); a short timeout keeps reports
+  // inside the lease's 15 s (BLD-005).
+  const builderHub = createRequestHub({ address, token: readBuilderToken, timeoutMs: BUILDER_CALL_TIMEOUT_MS });
   const builder = new ThisBuilder({
     operator: buildsApi(hub),
     builder: buildsApi(builderHub),
@@ -54,6 +57,8 @@ export function provideDesktopBuilder(hub: Hub): void {
       clear: () => clearBuilderToken(address),
     },
     ids: builderIdStore(localStorage, address),
+    operatorToken: () => readAccessToken(address),
+    lockKey: lockUpdaterKey,
     computerName,
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   });

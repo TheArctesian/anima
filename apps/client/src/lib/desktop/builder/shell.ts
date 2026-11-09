@@ -1,14 +1,18 @@
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 
-/** A tool the builder lacks (BLD-028), as the shell names it. */
-export type BuilderTool = 'git' | 'bun' | 'rust' | 'postgres' | 'tauri-packages' | 'updater-key';
+const TOOLS = ['git', 'bun', 'rust', 'postgres', 'tauri-packages', 'updater-key', 'updater-key-locked'] as const;
+
+/** A tool the builder lacks (BLD-028), as the shell names it; `updater-key-locked` means stored but not unlocked. */
+export type BuilderTool = (typeof TOOLS)[number];
 
 /** This computer's platform, as K1 `BuilderPlatformInput` names it, and the tools it lacks. */
 export interface ToolCheck {
   readonly os: 'LINUX' | 'MACOS';
   readonly arch: 'X86_64' | 'AARCH64';
   readonly missing: readonly BuilderTool[];
+  /** Whether other processes of the operator's user are kept from reading the app's memory (D-19). */
+  readonly memoryGuarded: boolean;
 }
 
 /** The job fields a step needs, as the hub sent them; the shell checks each before any process starts (BLD-027). */
@@ -59,8 +63,10 @@ const SHELL_CODES = [
   'cancelled',
   'bundle',
   'key-missing',
+  'key-locked',
   'signed-version',
   'signing',
+  'caller',
   'failed',
 ] as const;
 
@@ -96,15 +102,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /** The shell's tool check, with each field checked: it crosses a process boundary. */
 export function toolCheckFrom(answer: unknown): ToolCheck {
   if (!isRecord(answer)) throw new BuilderShellError('failed');
-  const { os, arch, missing } = answer;
+  const { os, arch, missing, memoryGuarded } = answer;
   const tools: readonly unknown[] = Array.isArray(missing) ? missing : [];
-  const known = tools.filter((tool): tool is BuilderTool =>
-    ['git', 'bun', 'rust', 'postgres', 'tauri-packages', 'updater-key'].includes(String(tool)),
-  );
-  if ((os !== 'LINUX' && os !== 'MACOS') || (arch !== 'X86_64' && arch !== 'AARCH64') || known.length !== tools.length) {
+  const known = tools.filter((tool): tool is BuilderTool => TOOLS.some((name) => name === tool));
+  const platform = (os === 'LINUX' || os === 'MACOS') && (arch === 'X86_64' || arch === 'AARCH64');
+  if (!platform || known.length !== tools.length || typeof memoryGuarded !== 'boolean') {
     throw new BuilderShellError('failed');
   }
-  return { os, arch, missing: known };
+  return { os, arch, missing: known, memoryGuarded };
 }
 
 function signedFileFrom(answer: unknown): SignedFile {

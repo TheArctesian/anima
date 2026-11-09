@@ -39,6 +39,19 @@ describe('a pass of the builder loop', () => {
     expect(statuses).toEqual([{ kind: 'missing', tools: ['postgres', 'updater-key'] }]);
   });
 
+  it('BLD-028, D-19: a locked updater key is its own state, and the builder claims nothing until it is unlocked', async () => {
+    shell.missing(['updater-key-locked']);
+    await expect(settle(builderPass(ports))).resolves.toBe(POLL_MS);
+    expect(api.claims).toBe(0);
+    shell.missing(['git', 'updater-key-locked']);
+    await settle(builderPass(ports));
+    expect(api.claims).toBe(0);
+    expect(statuses).toEqual([{ kind: 'locked' }, { kind: 'missing', tools: ['git', 'updater-key-locked'] }]);
+    shell.missing([]);
+    await settle(builderPass(ports));
+    expect(api.claims).toBe(1);
+  });
+
   it('BLD-028: a computer that cannot build, or whose tool check fails, does not claim', async () => {
     shell.toolsFail = 'platform';
     await settle(builderPass(ports));

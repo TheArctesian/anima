@@ -28,7 +28,7 @@ export interface StepScript {
 export class FakeShell implements BuilderShell {
   calls: StepCall[] = [];
   cancels = 0;
-  tools: ToolCheck = { os: 'LINUX', arch: 'X86_64', missing: [] };
+  tools: ToolCheck = { os: 'LINUX', arch: 'X86_64', missing: [], memoryGuarded: true };
   toolsFail: BuilderShellCode | null = null;
   scripts: Partial<Record<StepCall, StepScript>> = {};
   #listeners = new Set<(line: string) => void>();

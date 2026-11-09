@@ -24,15 +24,32 @@ const KEY_ASSIGNMENT = /\b(TAURI_SIGNING_PRIVATE_KEY(?:_PASSWORD)?|TAURI_PRIVATE
 const BLOCK_START = /-----BEGIN [A-Z0-9 ]*PRIVATE KEY( BLOCK)?-----/;
 const BLOCK_END = /-----END [A-Z0-9 ]*PRIVATE KEY( BLOCK)?-----/;
 
-function withoutKnown(line: string, secrets: readonly string[]): string {
-  let text = line;
-  for (const secret of secrets) {
-    if (secret.length >= SHORTEST_SECRET) text = text.replaceAll(secret, REDACTED);
+/** What the shell puts after a line it cut at 4096 bytes (BLD-048). */
+const CUT = ' [line cut]';
+
+/** `text` with its end removed when that end is the start of `secret`: a cut can split a secret in two. */
+function withoutSecretStart(text: string, secret: string): string {
+  for (let length = Math.min(secret.length - 1, text.length); length > 0; length -= 1) {
+    if (text.endsWith(secret.slice(0, length))) return `${text.slice(0, -length)}${REDACTED}`;
   }
   return text;
 }
 
-/** `line` with every known secret, signed URL, minisign text and key assignment replaced by `[redacted]`. */
+function withoutKnown(line: string, secrets: readonly string[]): string {
+  const cut = line.endsWith(CUT);
+  let text = cut ? line.slice(0, -CUT.length) : line;
+  for (const secret of secrets) {
+    if (secret.length < SHORTEST_SECRET) continue;
+    text = text.replaceAll(secret, REDACTED);
+    if (cut) text = withoutSecretStart(text, secret);
+  }
+  return cut ? `${text}${CUT}` : text;
+}
+
+/**
+ * `line` with every known secret, signed URL, minisign text and key assignment replaced by `[redacted]`. When the shell
+ * cut the line, an end that could be the start of a known secret goes too.
+ */
 export function cleanLine(line: string, secrets: readonly string[]): string {
   return withoutKnown(line, secrets)
     .replace(SIGNED_URL, REDACTED)

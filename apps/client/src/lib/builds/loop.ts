@@ -7,6 +7,11 @@ import { failureReason, JobReporter, type Sent } from './report';
 export const POLL_MS = 20_000;
 /** How often a running job reports; the hub needs one at least each 15 s (BLD-005). */
 export const REPORT_MS = 10_000;
+/**
+ * The longest a builder call may take: with `REPORT_MS` between reports, a report that the hub accepts still arrives
+ * within the 15 s it needs (BLD-005).
+ */
+export const BUILDER_CALL_TIMEOUT_MS = 4_000;
 /** Reports that may fail in a row before the lease (90 s, BLD-005) has surely ended. */
 const MISSED_REPORTS_MAX = 8;
 
@@ -21,6 +26,8 @@ export const PUBLISHING_LATER = 'Built and signed. Publishing arrives in WP-36 t
 export type BuilderStatus =
   | { readonly kind: 'starting' }
   | { readonly kind: 'missing'; readonly tools: readonly BuilderTool[] }
+  /** Every tool is there and the updater key is stored, but it is not unlocked in this app session (D-19). */
+  | { readonly kind: 'locked' }
   | { readonly kind: 'unsupported' }
   | { readonly kind: 'tools-unknown' }
   | { readonly kind: 'waiting' }
@@ -52,7 +59,7 @@ export interface LoopPorts {
   /** The builder's calls, sent with the builder token. */
   readonly api: Pick<BuildsApi, 'claim' | 'report'>;
   readonly shell: BuilderShell;
-  /** The values removed from every line before it is sent: the builder token (BLD-049). */
+  /** The values removed from every line before it is sent: the builder and operator tokens (BLD-049). */
   readonly secrets: () => readonly string[];
   /** Resolves after `ms`. */
   readonly sleep: (ms: number) => Promise<void>;
@@ -127,7 +134,7 @@ export async function buildJob(job: ClaimedJob, ports: LoopPorts, stopping: () =
   }
 }
 
-/** The tool check, or `null` after it has said why the builder cannot claim (BLD-028). */
+/** The tool check, or `null` after it has said why the builder cannot claim (BLD-028); a locked key claims nothing. */
 async function readyTools(ports: LoopPorts): Promise<ToolCheck | null> {
   let tools: ToolCheck;
   try {
@@ -137,7 +144,8 @@ async function readyTools(ports: LoopPorts): Promise<ToolCheck | null> {
     return null;
   }
   if (tools.missing.length === 0) return tools;
-  ports.onStatus({ kind: 'missing', tools: tools.missing });
+  const locked = tools.missing.every((tool) => tool === 'updater-key-locked');
+  ports.onStatus(locked ? { kind: 'locked' } : { kind: 'missing', tools: tools.missing });
   return null;
 }
 

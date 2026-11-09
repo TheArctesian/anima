@@ -25,6 +25,10 @@ export interface ThisBuilderPorts {
   readonly shell: BuilderShell;
   readonly tokens: BuilderTokenStore;
   readonly ids: BuilderIdStore;
+  /** The operator's access token, removed from every log line like the builder token (BLD-049). */
+  readonly operatorToken: () => Promise<string | null>;
+  /** Drops the unlocked updater key from the shell's memory; the builder is stopping (D-19). */
+  readonly lockKey: () => Promise<void>;
   /** The name the hub records for this computer (BLD-021). */
   readonly computerName: () => Promise<string>;
   readonly sleep: (ms: number) => Promise<void>;
@@ -34,6 +38,8 @@ const PROBLEMS = {
   enrol: 'The hub did not enrol this computer as a builder.',
   store: 'The builder token could not be kept in the key store.',
   revoke: 'The hub could not revoke this builder. Revoke it in the list below.',
+  unknownId: "This computer's builder could not be revoked here; revoke it in the list below.",
+  clear: 'The builder token could not be deleted from the key store. Turn building off again.',
   read: 'The builder token could not be read from the key store.',
   tools: 'This computer could not say which platform it is.',
 } as const;
@@ -48,18 +54,33 @@ export class ThisBuilder {
 
   readonly #ports: ThisBuilderPorts;
   #token: string | null = null;
+  #operatorToken: string | null = null;
   #stop: (() => Promise<void>) | null = null;
 
   constructor(ports: ThisBuilderPorts) {
     this.#ports = ports;
   }
 
-  #start(token: string): void {
+  /** The operator's token, or `null` when the key store cannot say; a log line is then cleaned of the builder token only. */
+  async #readOperatorToken(): Promise<string | null> {
+    try {
+      return await this.#ports.operatorToken();
+    } catch {
+      return null;
+    }
+  }
+
+  #secrets(): readonly string[] {
+    return [this.#token, this.#operatorToken].filter((secret) => secret !== null);
+  }
+
+  #start(token: string, operatorToken: string | null): void {
     this.#token = token;
+    this.#operatorToken = operatorToken;
     this.#stop = startBuilderLoop({
       api: this.#ports.builder,
       shell: this.#ports.shell,
-      secrets: () => (this.#token === null ? [] : [this.#token]),
+      secrets: () => this.#secrets(),
       sleep: this.#ports.sleep,
       onStatus: (status) => {
         this.status = status;
@@ -72,7 +93,9 @@ export class ThisBuilder {
     try {
       const token = await this.#ports.tokens.read();
       this.enrolled = token !== null;
-      if (token !== null && this.#stop === null) this.#start(token);
+      if (token === null) return;
+      const operatorToken = await this.#readOperatorToken();
+      if (this.#stop === null) this.#start(token, operatorToken);
     } catch {
       this.enrolled = false;
       this.problem = PROBLEMS.read;
@@ -119,19 +142,24 @@ export class ThisBuilder {
         return;
       }
       this.#ports.ids.write(builderId);
+      const operatorToken = await this.#readOperatorToken();
       this.enrolled = true;
-      this.#start(token);
+      this.#start(token, operatorToken);
     } finally {
       this.busy = false;
     }
   }
 
-  /** Stops the loop and forgets the token and the builder ID on this computer. */
+  /**
+   * Stops the loop and forgets the token and the builder ID on this computer. When the key store keeps the token, the ID
+   * and the enrolled state stay too, so turning building off again can finish the work.
+   */
   async #forgetHere(): Promise<void> {
     await this.stop();
-    await this.#attempt(PROBLEMS.store, () => this.#ports.tokens.clear());
+    if (!(await this.#attempt(PROBLEMS.clear, () => this.#ports.tokens.clear()))) return;
     this.#ports.ids.clear();
     this.#token = null;
+    this.#operatorToken = null;
     this.enrolled = false;
     this.status = { kind: 'stopped' };
   }
@@ -145,7 +173,8 @@ export class ThisBuilder {
       await this.stop();
       const id = this.#ports.ids.read();
       const revoked: HubResult<string> | null = id === null ? null : await this.#ports.operator.revoke(id);
-      if (revoked !== null && !revoked.ok && revoked.error.code !== 'NOT_FOUND') this.problem = PROBLEMS.revoke;
+      if (revoked === null) this.problem = PROBLEMS.unknownId;
+      else if (!revoked.ok && revoked.error.code !== 'NOT_FOUND') this.problem = PROBLEMS.revoke;
       await this.#forgetHere();
     } finally {
       this.busy = false;
@@ -157,11 +186,12 @@ export class ThisBuilder {
     if (this.#ports.ids.read() === id) await this.#forgetHere();
   }
 
-  /** Stops the loop, for example when the app closes; the token stays. */
+  /** Stops the loop, for example when the app closes, and locks the updater key (D-19); the token stays. */
   async stop(): Promise<void> {
     const stop = this.#stop;
     this.#stop = null;
     if (stop !== null) await stop();
+    await this.#ports.lockKey().catch(() => undefined);
   }
 }
 
