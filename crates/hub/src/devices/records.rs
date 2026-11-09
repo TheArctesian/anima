@@ -1,6 +1,6 @@
 //! Database records of the `devices` schema and how its constraints map to field errors.
 
-use std::net::IpAddr;
+use std::{net::IpAddr, num::NonZeroU8};
 
 use chrono::{DateTime, Utc};
 use ipnet::IpNet;
@@ -66,6 +66,18 @@ fn decode<E: std::error::Error + Send + Sync + 'static>(error: E) -> sqlx::Error
     sqlx::Error::Decode(Box::new(error))
 }
 
+/// The stored `session_limit` column: null is no limit (RA-036).
+pub(super) fn session_limit(stored: Option<i32>) -> Result<Option<NonZeroU8>, sqlx::Error> {
+    stored
+        .map(|limit| {
+            u8::try_from(limit)
+                .map_err(decode)?
+                .try_into()
+                .map_err(decode)
+        })
+        .transpose()
+}
+
 impl TryFrom<RemoteRow> for RemoteAccess {
     type Error = sqlx::Error;
 
@@ -94,15 +106,7 @@ impl TryFrom<RemoteRow> for RemoteAccess {
                 .transpose()
                 .map_err(decode)?,
             metrics_source: row.metrics_source.parse().map_err(decode)?,
-            session_limit: row
-                .session_limit
-                .map(|limit| {
-                    u8::try_from(limit)
-                        .map_err(decode)?
-                        .try_into()
-                        .map_err(decode)
-                })
-                .transpose()?,
+            session_limit: session_limit(row.session_limit)?,
             record_sessions: row.record_sessions,
             transfer: TransferPolicy {
                 upload: row.transfer_upload,

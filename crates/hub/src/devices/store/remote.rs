@@ -5,14 +5,16 @@
 //! A relay change locks the device row before the site row, the order `update_device` and
 //! `delete_device` take them in, so the two cannot deadlock.
 
-use sqlx::{PgConnection, PgPool};
+use std::num::NonZeroU8;
+
+use sqlx::{PgConnection, PgExecutor, PgPool};
 
 use super::fetch;
 use crate::{
     devices::{
         Device, Error, Missing,
         model::Site,
-        records::{DeviceRow, to_devices, to_site},
+        records::{self, DeviceRow, to_devices, to_site},
         remote::{
             MetricsSource, RdpSettings, RemoteAccess, RemoteChange, TransferPolicy, VncSettings,
         },
@@ -169,6 +171,20 @@ pub(in crate::devices) async fn release_relay(
     .execute(conn)
     .await?;
     Ok(())
+}
+
+/// The device's session limit, `None` for no limit (RA-036).
+pub(in crate::devices) async fn session_limit<'e>(
+    db: impl PgExecutor<'e>,
+    id: DeviceId,
+) -> Result<Option<NonZeroU8>, Error> {
+    let stored: Option<Option<i32>> =
+        sqlx::query_scalar("SELECT session_limit FROM devices.devices WHERE id = $1")
+            .bind(id)
+            .fetch_optional(db)
+            .await?;
+    let stored = stored.ok_or(Error::NotFound(Missing::Device(id)))?;
+    Ok(records::session_limit(stored)?)
 }
 
 /// The site's wake relay device, if one is set.
