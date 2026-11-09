@@ -1,9 +1,10 @@
-//! Builders: enrolment with a builder token, revocation, the list, and the check of each
-//! builder request (BLD-021 to BLD-025, D-1).
+//! Builders: enrolment with a builder token, revocation, the list, the check of each builder
+//! request, and the audit of builders that went with their tokens (BLD-021 to BLD-025, D-1).
 
-use std::net::IpAddr;
+use std::net::{IpAddr, Ipv4Addr};
 
 use chrono::{DateTime, Utc};
+use serde_json::json;
 use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
@@ -14,6 +15,7 @@ use super::{
 };
 use crate::{
     access::{self, IssuedToken},
+    events::{self, AuditAction, AuditTarget, ClientAddr, NewAudit, Operator},
     ids::{BuilderId, OperatorId, TokenId},
 };
 
@@ -144,4 +146,65 @@ pub async fn builder_for(
         last_seen_at: Some(now),
         ..builder
     })
+}
+
+/// Why builders went with their tokens other than by `revokeBuilder` (BLD-025).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Removal {
+    /// `anima-hub operator set` or `operator totp` deleted every token of the operator.
+    CredentialsChanged,
+    /// The daily prune deleted the expired builder token.
+    TokenExpired,
+}
+
+impl Removal {
+    const fn reason(self) -> &'static str {
+        match self {
+            Self::CredentialsChanged => "credentials changed",
+            Self::TokenExpired => "token expired",
+        }
+    }
+}
+
+/// Writes one audit entry, by the hub itself, for each builder of `before` that is gone now:
+/// deleting its token deleted it (BLD-025, LOG-004). Read `before` with [`builders`] just ahead
+/// of the deletion. Returns how many builders went.
+///
+/// # Errors
+///
+/// `Database` or `Events` when the builders cannot be read or an entry cannot be written.
+pub async fn audit_removed(
+    db: &PgPool,
+    before: &[Builder],
+    now: DateTime<Utc>,
+    why: Removal,
+) -> Result<usize, Error> {
+    let left: Vec<BuilderId> = store::builders(db).await?.iter().map(|b| b.id).collect();
+    let gone: Vec<&Builder> = before.iter().filter(|b| !left.contains(&b.id)).collect();
+    if gone.is_empty() {
+        return Ok(0);
+    }
+    let hub = Operator {
+        id: OperatorId::from(Uuid::nil()),
+        name: "Anima".to_owned(),
+    };
+    let mut tx = db.begin().await?;
+    for builder in &gone {
+        let entry = NewAudit {
+            operator: hub.clone(),
+            action: AuditAction::Delete,
+            target: AuditTarget::Builder(builder.id),
+            client: ClientAddr(IpAddr::V4(Ipv4Addr::LOCALHOST)),
+            change: json!({
+                "name": builder.name,
+                "os": builder.platform.os_str(),
+                "arch": builder.platform.arch_str(),
+                "clientAddr": builder.client.to_string(),
+                "reason": why.reason(),
+            }),
+        };
+        events::audit(&mut tx, now, entry).await?;
+    }
+    tx.commit().await?;
+    Ok(gone.len())
 }

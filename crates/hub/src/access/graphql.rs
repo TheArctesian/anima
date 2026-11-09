@@ -1,5 +1,6 @@
-//! K1 access fields: `me`, `login`, `signInBrowser` and `logout` (SEC-002, API-003, LOG-005,
-//! D-3, D-4).
+//! K1 access fields: `me`, `login`, `signInBrowser`, `logout` and the API key fields
+//! `apiKeys`, `createApiKey` and `revokeApiKey` (SEC-002, API-003, INT-003, LOG-005, D-3, D-4,
+//! D-23).
 
 use std::{any::Any, sync::Arc};
 
@@ -10,6 +11,7 @@ use sqlx::PgPool;
 
 use super::{
     Authenticated, ClientAddr, Error, Identity, SameOrigin, TokenKind, browser,
+    keys::{self, ApiKey, ApiKeyCreated, ApiKeyInput},
     login::{self, Attempt, Issue, SignedIn},
     password::Password,
     store::{self, Account},
@@ -83,11 +85,20 @@ impl Query {
     #[graphql(guard = "Authenticated")]
     async fn me(&self, ctx: &Context<'_>) -> async_graphql::Result<OperatorProfile> {
         let identity = need::<Identity>(ctx)?;
-        let account = store::account_by_id(need::<PgPool>(ctx)?, identity.operator().id)
+        let operator = identity
+            .operator()
+            .ok_or_else(|| Error::Unauthenticated.into_graphql())?;
+        let account = store::account_by_id(need::<PgPool>(ctx)?, operator.id)
             .await
             .map_err(|error| Error::from(error).into_graphql())?
             .ok_or_else(|| Error::Unauthenticated.into_graphql())?;
         Ok((&account).into())
+    }
+
+    /// The operator's API keys; never their secrets (D-23). Refused for an API key.
+    #[graphql(guard = "Authenticated")]
+    async fn api_keys(&self, ctx: &Context<'_>) -> async_graphql::Result<Vec<ApiKey>> {
+        keys::api_keys(ctx).await
     }
 }
 
@@ -134,6 +145,22 @@ impl Mutation {
             ctx.append_http_header(SET_COOKIE, browser::signed_out());
         }
         Ok(true)
+    }
+
+    /// Makes an API key and shows its secret once (INT-003, D-23). Login or browser token only.
+    #[graphql(guard = "Authenticated")]
+    async fn create_api_key(
+        &self,
+        ctx: &Context<'_>,
+        input: ApiKeyInput,
+    ) -> async_graphql::Result<ApiKeyCreated> {
+        keys::create_api_key(ctx, input).await
+    }
+
+    /// Deletes an API key; the next request with it is signed out (D-23).
+    #[graphql(guard = "Authenticated")]
+    async fn revoke_api_key(&self, ctx: &Context<'_>, id: ID) -> async_graphql::Result<ID> {
+        keys::revoke_api_key(ctx, id).await
     }
 }
 

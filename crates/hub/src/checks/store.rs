@@ -6,8 +6,8 @@ macro_rules! check_columns {
     () => {
         "id, device_id, parent_id, type, name, interval_seconds, retries, \
          retry_interval_seconds, degraded_threshold_ms, invert, paused, config, created_at, \
-         updated_at, status, failures, next_due_at, last_beat_at, cert_not_after, resolved_ip, \
-         push_token"
+         updated_at, status, failures, next_due_at, last_beat_at, cert_not_after, \
+         domain_not_after, resolved_ip, push_token"
     };
 }
 

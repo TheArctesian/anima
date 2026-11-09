@@ -1,11 +1,12 @@
-//! Every operator change to builds leaves one audit entry and never the token (BLD-080,
-//! LOG-004, LOG-007).
+//! Every operator change to builds leaves one audit entry and never the token, and so does each
+//! builder that goes with its token (BLD-080, BLD-025, LOG-004, LOG-007).
 
+use anima_hub::{access, builds};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
 use super::harness::{claim, create, create_job, data, enrol, operator};
-use crate::hub::{CLIENT, Hub, error, start};
+use crate::hub::{CLIENT, Hub, error, set_operator, start};
 
 async fn audit_rows(pool: &PgPool) -> Vec<Value> {
     sqlx::query_scalar(
@@ -81,4 +82,52 @@ async fn bld_008_only_a_queued_job_can_be_cancelled(pool: PgPool) {
         .filter(|row| row["action"] == "cancel")
         .count();
     assert_eq!(cancels, 0);
+}
+
+/// The `(action, reason)` of each builder audit entry the hub itself wrote.
+async fn removals(pool: &PgPool) -> Vec<(String, String)> {
+    sqlx::query_as(
+        "SELECT action, change ->> 'reason' FROM events.audit_log \
+         WHERE target_type = 'builder' AND change ? 'reason' ORDER BY at, id",
+    )
+    .fetch_all(pool)
+    .await
+    .unwrap()
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn bld_025_a_builder_pruned_with_its_expired_token_is_audited(pool: PgPool) {
+    let operator = operator(&pool).await;
+    enrol(&Hub::new(&pool, start()), &operator, "pop-os").await;
+    let early = start() + chrono::TimeDelta::days(179);
+    let before = builds::builders(&pool).await.unwrap();
+    access::prune(&pool, early).await.unwrap();
+    let gone = builds::audit_removed(&pool, &before, early, builds::Removal::TokenExpired);
+    assert_eq!(gone.await.unwrap(), 0);
+    let late = start() + chrono::TimeDelta::days(180);
+    let before = builds::builders(&pool).await.unwrap();
+    access::prune(&pool, late).await.unwrap();
+    let gone = builds::audit_removed(&pool, &before, late, builds::Removal::TokenExpired);
+    assert_eq!(gone.await.unwrap(), 1);
+    assert_eq!(
+        builds::builders(&pool).await.unwrap(),
+        [] as [builds::Builder; 0]
+    );
+    let expected = vec![("delete".to_owned(), "token expired".to_owned())];
+    assert_eq!(removals(&pool).await, expected);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn bld_025_builders_gone_with_changed_credentials_are_audited(pool: PgPool) {
+    let operator = operator(&pool).await;
+    let hub = Hub::new(&pool, start());
+    enrol(&hub, &operator, "pop-os").await;
+    enrol(&hub, &operator, "mac").await;
+    let before = builds::builders(&pool).await.unwrap();
+    set_operator(&pool).await;
+    let why = builds::Removal::CredentialsChanged;
+    let gone = builds::audit_removed(&pool, &before, start(), why).await;
+    assert_eq!(gone.unwrap(), 2);
+    let reason = ("delete".to_owned(), "credentials changed".to_owned());
+    assert_eq!(removals(&pool).await, vec![reason.clone(), reason]);
 }

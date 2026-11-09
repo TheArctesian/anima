@@ -81,6 +81,22 @@ pub(in crate::devices) async fn write_change(
     Ok(())
 }
 
+/// Sets the metrics source to `agent` and returns the device's name; the update locks the
+/// device row first, the order `delete_device` takes it in.
+pub(in crate::devices) async fn set_agent_source(
+    conn: &mut PgConnection,
+    id: DeviceId,
+) -> Result<String, Error> {
+    let name: Option<String> = sqlx::query_scalar(
+        "UPDATE devices.devices SET metrics_source = $2 WHERE id = $1 RETURNING name",
+    )
+    .bind(id)
+    .bind(MetricsSource::Agent.as_str())
+    .fetch_optional(conn)
+    .await?;
+    name.ok_or(Error::NotFound(Missing::Device(id)))
+}
+
 async fn write_rdp(conn: &mut PgConnection, id: DeviceId, rdp: &RdpSettings) -> Result<(), Error> {
     sqlx::query(
         "UPDATE devices.rdp_settings SET enabled = $2, port = $3, username = $4, domain = $5, \

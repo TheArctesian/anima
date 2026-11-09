@@ -18,7 +18,7 @@ function stored(value: { channels: readonly { id: string }[]; resendEveryBeats: 
   return { channelIds: value.channels.map((channel) => channel.id), resendEveryBeats: value.resendEveryBeats };
 }
 
-export function channelCalls(hub: Hub): ChannelCalls {
+function channelCalls(hub: Hub): ChannelCalls {
   return {
     channels: () => notificationsApi(hub).channels(),
     load: async (checkId) => {

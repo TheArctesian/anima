@@ -59,9 +59,11 @@ impl Identity {
         Self::new(operator, grant)
     }
 
+    /// The operator the token stands for; `None` for a builder token, which stands for no
+    /// operator, not even the one who enrolled it (BLD-022, R-102).
     #[must_use]
-    pub const fn operator(&self) -> &Operator {
-        &self.operator
+    pub fn operator(&self) -> Option<&Operator> {
+        (self.grant.scope != Scope::Builder).then_some(&self.operator)
     }
 
     #[must_use]
@@ -95,7 +97,7 @@ impl Identity {
     /// The `Operator` resolvers may act as: none for a builder token, so an operator resolver
     /// that forgets its guard still finds no operator (BLD-022).
     fn acting_operator(&self) -> Option<Operator> {
-        (self.grant.scope != Scope::Builder).then(|| self.operator.clone())
+        self.operator().cloned()
     }
 
     /// Whether the identity still holds at `now`.
@@ -252,7 +254,7 @@ pub async fn operator_for_token(
         .await?
         .filter(|identity| identity.kind() == TokenKind::Login)
         .ok_or(Error::Unauthenticated)?;
-    Ok(identity.operator().clone())
+    identity.operator().cloned().ok_or(Error::Unauthenticated)
 }
 
 /// The client address of a request: the one the network layer (WP-05 T4) put in the request

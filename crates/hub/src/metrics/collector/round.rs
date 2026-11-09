@@ -14,10 +14,9 @@ use tokio::task::JoinError;
 
 use super::{
     AT_ONCE, Context,
-    collection::{self, Failure, Finished},
+    collection::{self, Failure, Finished, Kept},
     failures::{self, Change},
     fan_out::FanOut,
-    outputs::Previous,
     plan,
 };
 use crate::{devices, events, ids::DeviceId};
@@ -25,8 +24,8 @@ use crate::{devices, events, ids::DeviceId};
 /// What the collector remembers between rounds.
 pub(super) struct Collector {
     ctx: Arc<Context>,
-    /// Each due device's last reading, for its rates (D-4).
-    previous: HashMap<DeviceId, Previous>,
+    /// Each due device's last reading, for its rates (D-4), and its known GPUs (MET-006).
+    kept: HashMap<DeviceId, Kept>,
     /// The due devices whose last collection failed (D-10).
     failing: HashSet<DeviceId>,
 }
@@ -35,7 +34,7 @@ impl Collector {
     pub(super) fn new(ctx: Context) -> Self {
         Self {
             ctx: Arc::new(ctx),
-            previous: HashMap::new(),
+            kept: HashMap::new(),
             failing: HashSet::new(),
         }
     }
@@ -51,8 +50,8 @@ impl Collector {
         let jobs = due
             .into_iter()
             .map(|device| {
-                let previous = self.previous.get(&device.id).cloned();
-                collection::collect(Arc::clone(&self.ctx), device, previous)
+                let kept = self.kept.get(&device.id).cloned();
+                collection::collect(Arc::clone(&self.ctx), device, kept)
             })
             .collect();
         let mut collections = FanOut::new(jobs, AT_ONCE);
@@ -61,12 +60,26 @@ impl Collector {
         }
     }
 
-    /// Forgets the readings and failures of every device not in `due`: deleted, or no longer
-    /// collected.
+    /// Forgets the readings, GPUs and failures of every device not in `due`: deleted, or no
+    /// longer collected. Collected again, it starts with a new discovery that numbers its GPUs
+    /// afresh.
     fn keep_only(&mut self, due: &[devices::Device]) {
         let kept: HashSet<DeviceId> = due.iter().map(|device| device.id).collect();
-        self.previous.retain(|device, _| kept.contains(device));
+        self.kept.retain(|device, _| kept.contains(device));
         self.failing.retain(|device| kept.contains(device));
+    }
+
+    /// Makes the next collection of `device` look for its GPUs again, keeping their numbers: a
+    /// failed collection may have stored a discovery without its samples, or missed a restart
+    /// (MET-006, MET-009).
+    fn look_again(&mut self, device: DeviceId) {
+        if let Some(gpus) = self
+            .kept
+            .get_mut(&device)
+            .and_then(|kept| kept.gpus.as_mut())
+        {
+            gpus.stale = true;
+        }
     }
 
     /// Keeps a collection's reading, or reports its failure, and writes the event of a change.
@@ -87,17 +100,18 @@ impl Collector {
         };
         let was_failing = self.failing.contains(&device);
         let collected = match result {
-            Ok(previous) => {
-                self.previous.insert(device, previous);
+            Ok(kept) => {
+                self.kept.insert(device, kept);
                 true
             }
             Err(Failure::Gone) => {
                 self.failing.remove(&device);
-                self.previous.remove(&device);
+                self.kept.remove(&device);
                 return;
             }
             Err(error) => {
                 failed(device, was_failing, &error);
+                self.look_again(device);
                 false
             }
         };

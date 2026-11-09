@@ -20,6 +20,10 @@ const KEY_PREFIX: &str = "anima_";
 /// Length of an API key's secret: the prefix and a token's text.
 const KEY_CHARS: usize = KEY_PREFIX.len() + TOKEN_CHARS;
 
+/// Characters of an API key's secret the operator sees again: `anima_` and six more, enough to
+/// tell keys apart, far too few to use one (D-23).
+const KEY_DISPLAY_CHARS: usize = 12;
+
 /// A login token is valid this long (D-7).
 pub(super) const LOGIN_LIFETIME: TimeDelta = TimeDelta::days(30);
 
@@ -159,6 +163,20 @@ impl Token {
     /// The hash stored for this token.
     pub(super) fn hash(&self) -> TokenHash {
         hash_of(self.expose()).expect("a token encodes 32 bytes")
+    }
+
+    /// The token spelled as an API key: `anima_` and its text, so secret scanners can find a
+    /// leaked one (D-23). Shown once, in `createApiKey`'s answer. Wiped on drop.
+    pub(super) fn key_secret(&self) -> Zeroizing<String> {
+        let mut secret = Zeroizing::new(String::with_capacity(KEY_CHARS));
+        secret.push_str(KEY_PREFIX);
+        secret.push_str(self.expose());
+        secret
+    }
+
+    /// The first 12 characters of the key's secret, which `apiKeys` shows (K1 `ApiKey.prefix`).
+    pub(super) fn key_display_prefix(&self) -> String {
+        self.key_secret()[..KEY_DISPLAY_CHARS].to_owned()
     }
 }
 

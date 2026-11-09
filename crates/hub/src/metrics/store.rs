@@ -9,7 +9,7 @@ mod retention;
 mod rows;
 
 pub(super) use chart::chart;
-pub(super) use gpus::gpus;
+pub(super) use gpus::{Discovery, gpus, replace_gpus};
 pub(super) use latest::latest;
 pub(super) use record::record;
 pub(super) use retention::{

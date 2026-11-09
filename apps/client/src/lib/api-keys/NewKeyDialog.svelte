@@ -103,15 +103,15 @@
           <small>{preview === null ? 'At most one year away.' : `The key stops working on ${shownDate(preview.toISOString())}.`}</small>
           <small id="{ids}-expiry-problem" class="problem">{expiryProblem}</small>
         </fieldset>
-        {#if failure !== null}
-          <p class="failure" role="alert">{failure}</p>
-        {/if}
-        <div class="actions">
-          <FormButton tabindex={0} onclick={close}>Cancel</FormButton>
-          <!-- The label stays while the hub works, so neither button moves (MOT-007); the disabled form and aria-busy say it is busy. -->
-          <FormButton tabindex={0} type="submit" tone="primary" aria-busy={busy}>Create key</FormButton>
-        </div>
       </fieldset>
+      {#if failure !== null}
+        <p class="failure" role="alert">{failure}</p>
+      {/if}
+      <div class="actions">
+        <FormButton tabindex={0} onclick={close} aria-disabled={busy}>Cancel</FormButton>
+        <!-- The buttons sit outside the disabled fieldset, so focus stays on Create key while the hub works; the label stays, so neither button moves (MOT-007). -->
+        <FormButton tabindex={0} type="submit" tone="primary" aria-disabled={busy} aria-busy={busy}>Create key</FormButton>
+      </div>
     </form>
   {:else}
     <p id="{ids}-about">Anima shows this key only once. Copy it now and keep it where your program reads it; the hub keeps only a hash of it.</p>
@@ -142,6 +142,12 @@
   }
 
   .fields {
+    gap: var(--space-3);
+  }
+
+  form {
+    display: flex;
+    flex-direction: column;
     gap: var(--space-3);
   }
 

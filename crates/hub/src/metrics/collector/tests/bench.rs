@@ -5,6 +5,7 @@
 use std::{
     io::Write as _,
     sync::{Arc, Mutex},
+    time::Duration,
 };
 
 use base64::{Engine as _, engine::general_purpose::STANDARD};
@@ -21,7 +22,7 @@ use crate::{
     ids::DeviceId,
     metrics::{
         Feed, MetricsAdded,
-        collector::{Collecting, Context, round::Collector},
+        collector::{Collecting, Context, GPU_WINDOW, round::Collector},
     },
     targets::AddressPolicy,
 };
@@ -43,6 +44,22 @@ pub(super) const LINUX_LINES: [&str; 6] = [
     "cat /proc/uptime",
     "cat /proc/loadavg",
     "df -P -B1",
+];
+
+/// The GPU read lines of a Linux collection that looks for GPUs, in order: NVIDIA, AMD,
+/// Intel (spec 6.6, D-30). The test server answers none of them unless a test says so, as a
+/// device without GPUs (exit status 127).
+pub(super) const LINUX_GPU_LINES: [&str; 3] = [
+    concat!(
+        "nvidia-smi --query-gpu=index,name,utilization.gpu,memory.used,memory.total,",
+        "temperature.gpu,power.draw --format=csv,noheader,nounits"
+    ),
+    concat!(
+        "grep -H . /sys/class/drm/card*/device/gpu_busy_percent ",
+        "/sys/class/drm/card*/device/mem_info_vram_used ",
+        "/sys/class/drm/card*/device/mem_info_vram_total"
+    ),
+    "timeout --preserve-status -s INT -k 1 2 intel_gpu_top -J -s 500",
 ];
 
 /// A clock the test moves.
@@ -78,6 +95,18 @@ pub(super) async fn execute(pool: &PgPool, sql: &str, id: &str) {
 }
 
 pub(super) async fn bench(pool: &PgPool, accepted: bool) -> Bench {
+    let policy = AddressPolicy::default().allowing_loopback();
+    bench_with(pool, accepted, policy, GPU_WINDOW).await
+}
+
+/// [`bench`] with links held to `policy` and GPU reads cut `gpu_window` after a collection
+/// starts.
+pub(super) async fn bench_with(
+    pool: &PgPool,
+    accepted: bool,
+    policy: AddressPolicy,
+    gpu_window: Duration,
+) -> Bench {
     let server = serve().await;
     for (line, stdout) in LINUX_LINES.iter().zip([
         PROC_STAT,
@@ -103,10 +132,8 @@ pub(super) async fn bench(pool: &PgPool, accepted: bool) -> Bench {
         feed,
         bus: Bus::new(64),
         clock: Arc::clone(&clock) as Arc<dyn Clock>,
-        collecting: Collecting {
-            vault,
-            policy: AddressPolicy::default().allowing_loopback(),
-        },
+        collecting: Collecting { vault, policy },
+        gpu_window,
     });
     Bench {
         server,

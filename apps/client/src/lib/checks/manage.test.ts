@@ -16,6 +16,7 @@ const CHECK: DeviceCheck = {
   paused: false,
   status: 'UP',
   certificateDaysLeft: null,
+  domainDaysLeft: null,
   lastHeartbeat: { at: '2026-11-04T10:00:00Z', status: 'UP', responseTimeMs: 4, message: null },
   config: { __typename: 'TcpConfig', port: 22, timeoutMs: 5000 },
 };

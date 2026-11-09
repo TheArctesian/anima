@@ -19,7 +19,7 @@ use anima_hub::{
     config::{self, Config},
     credentials::Vault,
     events::{self, Bus, process_log},
-    logged, metrics, router_at,
+    metrics, pushes, router_at,
     schema::{Dependencies, build_schema},
     serve_until, sessions,
     targets::AddressPolicy,
@@ -50,6 +50,9 @@ enum StartError {
     },
     #[error("{0}")]
     RuntimeRole(#[from] events::RoleError),
+    /// The builds error's text is fixed and holds no value (LOG-007).
+    #[error("the builders that went with the operator's tokens cannot be audited ({0})")]
+    Builds(#[from] builds::Error),
     /// The source's text is fixed and holds no value (LOG-007).
     #[error("the sessions a previous hub left open cannot be ended ({0})")]
     StaleSessions(#[from] sessions::Error),
@@ -161,17 +164,17 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     };
     let tunnels = tunnels(&dependencies);
     let upkeep = upkeep::spawn(&dependencies);
+    let pushes = pushes(&dependencies);
     let schema = build_schema(dependencies);
     let scheduler = checks::spawn_scheduler(pool.clone(), bus.clone(), clock.clone(), probing);
     let collector =
         metrics::spawn_collector(pool.clone(), feed, bus.clone(), clock.clone(), collecting);
-    let push = checks::push_router(pool.clone(), bus.clone(), clock.clone());
-    // The tunnels and `/push` are behind the same permitted-networks check as every route, and
+    // The tunnels and the push routes are behind the same permitted-networks check as every route, and
     // logged by their templates only, never their tokens (K3, NET-002, LOG-007, R-028, R-051).
     let edge = access::Edge::new(pool.clone(), bus, clock.clone());
     let app = router_at(schema, pool.clone(), clock.clone(), origin)
         .merge(tunnels)
-        .merge(logged(push))
+        .merge(pushes)
         .merge(web)
         .layer(access::permitted_networks_layer(edge.clone()));
     let shutdown = Shutdown {
@@ -281,13 +284,10 @@ async fn migrate(config: &Config) -> Result<(), StartError> {
 async fn set_operator(config: &Config, username: &str) -> Result<(), StartError> {
     let typed = read_password().map_err(|_| StartError::Stdin)?;
     let pool = connect(config).await?;
-    access::set_operator(
-        &pool,
-        username,
-        access::Password::new(typed),
-        SystemClock.now(),
-    )
-    .await?;
+    let now = SystemClock.now();
+    let before = builds::builders(&pool).await?;
+    access::set_operator(&pool, username, access::Password::new(typed), now).await?;
+    builds::audit_removed(&pool, &before, now, builds::Removal::CredentialsChanged).await?;
     println!("Operator {username} is set.");
     Ok(())
 }
@@ -300,7 +300,10 @@ async fn enrol_totp(config: &Config, username: &str) -> Result<(), StartError> {
     }
     let vault = vault(config)?;
     let pool = connect(config).await?;
+    let before = builds::builders(&pool).await?;
     let enrolment = access::enrol_totp(&pool, &vault, username).await?;
+    let removal = builds::Removal::CredentialsChanged;
+    builds::audit_removed(&pool, &before, SystemClock.now(), removal).await?;
     println!(
         "Add this to an authenticator app, then sign in again with its code:\n{}",
         enrolment.uri()

@@ -10,10 +10,10 @@ export const ADDED_SENTENCE = 'Check added; channels were not.';
 export const PARTIAL_SENTENCE = 'Channels saved; check was not.';
 
 /** `loading` and `failed` keep the controls disabled and send nothing; `absent`: no hub to ask. */
-export type ChannelsPhase = 'ready' | 'loading' | 'failed' | 'absent';
+type ChannelsPhase = 'ready' | 'loading' | 'failed' | 'absent';
 
 /** What `save` did: `sent` means the hub took new values; `failed` means it did not. */
-export type ChannelsSaved = 'sent' | 'skipped' | 'failed';
+type ChannelsSaved = 'sent' | 'skipped' | 'failed';
 
 /**
  * The channels and resend interval of one check in the form (NOT-003, NOT-005). A new check starts from the channels

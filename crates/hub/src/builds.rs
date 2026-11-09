@@ -26,7 +26,9 @@ use chrono::{DateTime, Utc};
 use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
-pub use builders::{BuilderInput, Enrolment, builder_for, builders, enrol, revoke};
+pub use builders::{
+    BuilderInput, Enrolment, Removal, audit_removed, builder_for, builders, enrol, revoke,
+};
 pub use jobs::{BuildQueue, Upload, claim, expire_leases, report, report_uploaded};
 pub use model::{
     Arch, BuildJob, Builder, Commit, FieldError, JobState, JobUpdate, LogLine, Missing, Os,

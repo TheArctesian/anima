@@ -40,6 +40,7 @@ pub(super) struct CheckRow {
     next_due_at: Option<DateTime<Utc>>,
     last_beat_at: Option<DateTime<Utc>>,
     cert_not_after: Option<DateTime<Utc>>,
+    domain_not_after: Option<DateTime<Utc>>,
     resolved_ip: Option<IpAddr>,
     push_token: Option<String>,
 }
@@ -164,6 +165,7 @@ impl TryFrom<CheckRow> for Check {
             state,
             last_beat_at: row.last_beat_at,
             cert_not_after: row.cert_not_after,
+            domain_not_after: row.domain_not_after,
             resolved_ip: row.resolved_ip,
             push_token: row.push_token.map(PushToken::stored),
             created_at: row.created_at,
@@ -206,6 +208,10 @@ pub(super) fn write_error(error: sqlx::Error) -> Error {
         Some("checks_degraded_threshold_ms_check") => {
             ("degradedThresholdMs", rules::DEGRADED_MESSAGE)
         }
+        Some("checks_domain_expiry_interval_check") => (
+            "intervalSeconds",
+            "A domain expiry check runs at most once an hour: the interval is 3600 seconds or more.",
+        ),
         Some("checks_parent_fkey") => (
             "parentId",
             "The parent must be a group check on the same device.",

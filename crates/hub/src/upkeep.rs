@@ -17,8 +17,8 @@ use tokio::time::MissedTickBehavior;
 
 /// Starts the scheduled jobs: the daily ones, each run now and then daily (`retention` makes the
 /// day partitions ahead and drops the expired ones, and `access_prune` deletes old login attempts
-/// and expired tokens; D-4, DB-004, DB-005, D-25), and every 30 seconds the end of build leases
-/// that ran out (D-2).
+/// and expired tokens, and audits each builder that went with its token; D-4, DB-004, DB-005,
+/// D-25, BLD-025), and every 30 seconds the end of build leases that ran out (D-2).
 pub fn spawn(dependencies: &Dependencies) -> [tokio::task::JoinHandle<()>; 3] {
     let (pool, clock) = (&dependencies.pool, &dependencies.clock);
     let retention = {
@@ -33,8 +33,15 @@ pub fn spawn(dependencies: &Dependencies) -> [tokio::task::JoinHandle<()>; 3] {
         events::run_daily("access_prune", clock.clone(), move |now| {
             let db = db.clone();
             async move {
-                let pruned = access::prune(&db, now).await;
-                pruned.map(drop).map_err(|e| e.fault().unwrap_or("access"))
+                let builders = builds::builders(&db).await;
+                let before = builders.map_err(|e| e.fault().unwrap_or("builds"))?;
+                access::prune(&db, now)
+                    .await
+                    .map_err(|e| e.fault().unwrap_or("access"))?;
+                builds::audit_removed(&db, &before, now, builds::Removal::TokenExpired)
+                    .await
+                    .map(drop)
+                    .map_err(|e| e.fault().unwrap_or("builds"))
             }
         })
     };

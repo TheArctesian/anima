@@ -145,7 +145,8 @@ pub(super) async fn logout(
     if !store::delete_token(&mut tx, identity.token()).await? {
         return Err(Error::Unauthenticated);
     }
-    let entry = audit_entry(identity.operator().clone(), AuditAction::Logout, client);
+    let operator = identity.operator().cloned().ok_or(Error::Unauthenticated)?;
+    let entry = audit_entry(operator, AuditAction::Logout, client);
     events::audit(&mut tx, now, entry).await?;
     tx.commit().await?;
     Ok(())

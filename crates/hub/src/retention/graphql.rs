@@ -15,7 +15,7 @@ use super::{
 };
 use crate::{
     access::Authenticated,
-    api_errors::{internal, invalid, pool},
+    api_errors::{begin, commit, internal, invalid, pool},
     events::Trail,
 };
 
@@ -87,10 +87,7 @@ impl Mutation {
     ) -> Result<Period> {
         let days = checked(subject, days.into()).map_err(|e| invalid(&[e]))?;
         let trail = Trail::from_context(ctx)?;
-        let mut tx = pool(ctx)?
-            .begin()
-            .await
-            .map_err(|e| to_graphql(Error::Database(e)))?;
+        let mut tx = begin(ctx).await?;
         let previous = store::set(&mut tx, subject, days)
             .await
             .map_err(|e| to_graphql(Error::Database(e)))?
@@ -99,9 +96,7 @@ impl Mutation {
             .write(&mut tx, trail::changed(subject, days, previous))
             .await
             .map_err(internal)?;
-        tx.commit()
-            .await
-            .map_err(|e| internal(Error::Database(e)))?;
+        commit(tx).await?;
         Ok(Period::new(subject, days))
     }
 }

@@ -4,7 +4,7 @@
 
 mod cookie;
 mod sign_in;
-mod socket;
+pub(crate) mod socket;
 mod table;
 
 use std::{net::SocketAddr, sync::Arc};

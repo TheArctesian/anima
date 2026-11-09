@@ -12,8 +12,8 @@ use uuid::Uuid;
 
 use crate::{
     ids::{
-        BuildJobId, BuilderId, ChannelId, CheckId, DeviceId, EventId, OperatorId, ReleaseId,
-        SessionId, ShareId, SiteId, WindowId,
+        ApiKeyId, BuildJobId, BuilderId, ChannelId, CheckId, DeviceId, EventId, OperatorId,
+        ReleaseId, SessionId, ShareId, SiteId, WindowId,
     },
     status::Status,
 };
@@ -223,6 +223,8 @@ pub enum AuditTarget {
     BuildJob(BuildJobId),
     /// A computer enrolled to build releases (BLD-082).
     Builder(BuilderId),
+    /// An API key for scripts (D-23).
+    ApiKey(ApiKeyId),
 }
 
 impl AuditTarget {
@@ -245,6 +247,7 @@ impl AuditTarget {
             Self::Release(_) => "release",
             Self::BuildJob(_) => "build_job",
             Self::Builder(_) => "builder",
+            Self::ApiKey(_) => "api_key",
         }
     }
 
@@ -266,6 +269,7 @@ impl AuditTarget {
             Self::Release(id) => id.to_string(),
             Self::BuildJob(id) => id.to_string(),
             Self::Builder(id) => id.to_string(),
+            Self::ApiKey(id) => id.to_string(),
         }
     }
 }

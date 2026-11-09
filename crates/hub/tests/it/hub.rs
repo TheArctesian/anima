@@ -60,6 +60,17 @@ impl Hub {
         }
     }
 
+    /// A hub over `dependencies`, at their clock, for a test that needs other parts than
+    /// `dependencies` gives.
+    pub fn serving(pool: &PgPool, dependencies: Dependencies) -> Self {
+        let (clock, bus) = (dependencies.clock.clone(), dependencies.bus.clone());
+        Self {
+            router: router(build_schema(dependencies), pool.clone(), clock),
+            bus,
+            client: CLIENT,
+        }
+    }
+
     /// Sends a raw request from this hub's client; returns the status and the body text.
     pub async fn send(&self, request: Request<Body>) -> (StatusCode, String) {
         let mut request = request;

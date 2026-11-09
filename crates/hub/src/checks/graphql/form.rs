@@ -13,8 +13,8 @@ use std::collections::HashSet;
 use async_graphql::ID;
 
 use super::input::{
-    ConfigShape, CreateShape, DnsShape, DockerShape, IcmpShape, SystemdShape, TailscalePingShape,
-    TcpShape, TlsShape, UpdateShape,
+    ConfigShape, CreateShape, DnsShape, DockerShape, DomainExpiryShape, IcmpShape, SystemdShape,
+    TailscalePingShape, TcpShape, TlsShape, UpdateShape,
 };
 use super::settings::RawSettings;
 use crate::{
@@ -109,6 +109,15 @@ fn tailscale_ping(shape: TailscalePingShape) -> Result<ConfigForm, FieldError> {
     }))
 }
 
+/// The domain in lower case, as the probe asks for it; the domain rules check the rest.
+fn domain_expiry(shape: &DomainExpiryShape) -> Result<ConfigForm, FieldError> {
+    Ok(ConfigForm::plain(CheckConfig::DomainExpiry {
+        domain: shape.domain.to_ascii_lowercase(),
+        warn_days: or_default("warnDays", shape.warn_days, 30)?,
+        timeout_ms: or_default("timeoutMs", shape.timeout_ms, 10_000)?,
+    }))
+}
+
 fn dns(shape: DnsShape) -> ConfigForm {
     ConfigForm::plain(CheckConfig::Dns {
         name: shape.name,
@@ -177,6 +186,7 @@ fn config(shape: ConfigShape) -> Result<Draft, FieldError> {
         ConfigShape::Docker(shape) => docker(shape),
         ConfigShape::Systemd(shape) => systemd(shape),
         ConfigShape::TailscalePing(shape) => tailscale_ping(shape),
+        ConfigShape::DomainExpiry(shape) => domain_expiry(&shape),
         ConfigShape::Push(false) => Err(FieldError::new("config", "Send push: true.")),
         ConfigShape::Group(shape) => Ok(ConfigForm {
             definition: Definition::Config(CheckConfig::Group),

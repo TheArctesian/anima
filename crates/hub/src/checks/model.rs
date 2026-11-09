@@ -36,6 +36,8 @@ pub struct Check {
     pub last_beat_at: Option<DateTime<Utc>>,
     /// Leaf certificate expiry from the last TLS or HTTPS result that had one (CHK-007).
     pub cert_not_after: Option<DateTime<Utc>>,
+    /// Registration expiry from the last RDAP reply that gave one (D-29).
+    pub domain_not_after: Option<DateTime<Utc>>,
     /// The address the last probe that resolved one used.
     pub resolved_ip: Option<IpAddr>,
     /// Only PUSH checks have one.
@@ -62,10 +64,29 @@ impl Check {
             }
             _ => false,
         };
-        let seconds = (self.cert_not_after? - now).num_seconds();
-        let days = seconds.div_euclid(86_400);
-        secure.then(|| i32::try_from(days).unwrap_or(if days < 0 { i32::MIN } else { i32::MAX }))
+        let not_after = self.cert_not_after?;
+        secure.then(|| whole_days(not_after, now))
     }
+
+    /// Whole days from `now` to the domain's registration expiry, rounded down, so negative
+    /// once it has expired. `None` unless the check is a domain expiry check and RDAP gave a
+    /// date (D-29).
+    ///
+    /// The days count from the last expiry date the registry gave: a later reply without a
+    /// date keeps it. The status follows the latest probe alone, so that reply is Unknown.
+    #[must_use]
+    pub fn domain_days_left(&self, now: DateTime<Utc>) -> Option<i32> {
+        let not_after = self.domain_not_after?;
+        matches!(self.config, CheckConfig::DomainExpiry { .. }).then(|| whole_days(not_after, now))
+    }
+}
+
+/// Whole days from `now` to `end`, rounded down (negative once `end` has passed), held to
+/// the range of `i32`.
+#[must_use]
+pub(in crate::checks) fn whole_days(end: DateTime<Utc>, now: DateTime<Utc>) -> i32 {
+    let days = (end - now).num_seconds().div_euclid(86_400);
+    i32::try_from(days).unwrap_or(if days < 0 { i32::MIN } else { i32::MAX })
 }
 
 /// One stored result of a check (CHK-003), as the heartbeat list shows it.
@@ -218,6 +239,8 @@ pub struct Beat {
     /// Kept on the check only when the probe reported one.
     pub resolved_ip: Option<IpAddr>,
     pub cert_not_after: Option<DateTime<Utc>>,
+    /// Kept on the check only when the probe reported one.
+    pub domain_not_after: Option<DateTime<Utc>>,
 }
 
 impl Beat {
@@ -241,6 +264,7 @@ impl Beat {
             state,
             resolved_ip: probe.resolved_ip,
             cert_not_after: probe.cert_not_after,
+            domain_not_after: probe.domain_not_after,
         }
     }
 }
@@ -255,6 +279,9 @@ pub(in crate::checks) struct Attempt<'a> {
     /// (CHK-006); every other status is recorded as evaluated.
     pub(in crate::checks) in_maintenance: bool,
     pub(in crate::checks) at: DateTime<Utc>,
+    /// The domain a domain expiry probe asked about. Its expiry date is kept only while the
+    /// check still names that domain (D-29).
+    pub(in crate::checks) domain: Option<&'a str>,
 }
 
 /// What `record_beat` did with a beat.

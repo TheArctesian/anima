@@ -2,7 +2,7 @@
 //! LOG-010, API-006, R-020, H-6).
 
 mod audit;
-mod client;
+pub mod client;
 mod lists;
 mod operations;
 mod pages;

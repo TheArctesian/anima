@@ -66,7 +66,8 @@ fn after(now: DateTime<Utc>, seconds: u32) -> DateTime<Utc> {
 ///
 /// A result the probe could not judge ([`Judgement::Unjudged`]) is recorded as Unknown with
 /// its message: failures reset, the next probe due after the interval, invert not applied.
-/// A [`Judgement::Starting`] success is Degraded; inverted, it is a failure (D-2).
+/// A [`Judgement::Starting`] or [`Judgement::Expiring`] success is Degraded; inverted, it is
+/// a failure (D-2, D-29).
 ///
 /// A failure is Down only when `failures > retries`: the first attempt plus `retries` failed
 /// retries (CHK-002). Until then the check keeps its previous status, the next probe is due
@@ -95,8 +96,8 @@ pub fn evaluate(
             probe.response_time
         };
         let limit = Duration::from_millis(u64::from(cfg.degraded_threshold_ms));
-        let starting = probe.judgement == Judgement::Starting;
-        let status = if starting || response_time.is_some_and(|time| time > limit) {
+        let warned = matches!(probe.judgement, Judgement::Starting | Judgement::Expiring);
+        let status = if warned || response_time.is_some_and(|time| time > limit) {
             Status::Degraded
         } else {
             Status::Up

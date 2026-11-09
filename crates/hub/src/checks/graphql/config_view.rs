@@ -113,6 +113,16 @@ pub(super) struct SnmpView {
     timeout_ms: i32,
 }
 
+/// Degraded below `warn_days`, Down after expiry, Unknown when RDAP gives no expiry date
+/// (D-29).
+#[derive(SimpleObject)]
+#[graphql(name = "DomainExpiryConfig")]
+pub(super) struct DomainExpiryView {
+    domain: String,
+    warn_days: i32,
+    timeout_ms: i32,
+}
+
 /// A PUSH check without a token: the database forbids it, so it is a fault, never an empty path.
 #[derive(Debug, thiserror::Error)]
 #[error("push check {0} has no token")]
@@ -171,6 +181,7 @@ pub(super) enum ConfigView {
     Snmp(SnmpView),
     Systemd(SystemdView),
     TailscalePing(TailscalePingView),
+    DomainExpiry(DomainExpiryView),
 }
 
 fn wide(value: impl Into<u32>) -> i32 {
@@ -213,6 +224,33 @@ fn http(config: &HttpConfig) -> HttpView {
     }
 }
 
+fn tls(port: u16, server_name: Option<&str>, timeout_ms: u32) -> TlsView {
+    TlsView {
+        port: wide(port),
+        server_name: server_name.map(str::to_owned),
+        timeout_ms: wide(timeout_ms),
+    }
+}
+
+fn domain_expiry(domain: &str, warn_days: u32, timeout_ms: u32) -> DomainExpiryView {
+    DomainExpiryView {
+        domain: domain.to_owned(),
+        warn_days: wide(warn_days),
+        timeout_ms: wide(timeout_ms),
+    }
+}
+
+/// A PUSH check shows its path, which holds its token.
+fn push(check: &Check) -> PushView {
+    PushView {
+        check: check.id,
+        path: check
+            .push_token
+            .as_ref()
+            .map(|token| format!("/push/{}", token.expose())),
+    }
+}
+
 fn tailscale_ping(target: Option<&str>, timeout_ms: u32) -> TailscalePingView {
     TailscalePingView {
         target: target.map(str::to_owned),
@@ -250,11 +288,7 @@ impl ConfigView {
                 port,
                 server_name,
                 timeout_ms,
-            } => Self::Tls(TlsView {
-                port: wide(*port),
-                server_name: server_name.clone(),
-                timeout_ms: wide(*timeout_ms),
-            }),
+            } => Self::Tls(tls(*port, server_name.as_deref(), *timeout_ms)),
             CheckConfig::Http(config) => Self::Http(http(config)),
             CheckConfig::Snmp(config) => Self::Snmp(snmp(config)),
             CheckConfig::Dns {
@@ -268,13 +302,7 @@ impl ConfigView {
                 resolver: resolver.map(IpAddr),
                 expected: expected.clone(),
             }),
-            CheckConfig::Push => Self::Push(PushView {
-                check: check.id,
-                path: check
-                    .push_token
-                    .as_ref()
-                    .map(|token| format!("/push/{}", token.expose())),
-            }),
+            CheckConfig::Push => Self::Push(push(check)),
             CheckConfig::Group => Self::Group(GroupView {
                 group: check.id,
                 device: check.device,
@@ -293,6 +321,11 @@ impl ConfigView {
             CheckConfig::TailscalePing { target, timeout_ms } => {
                 Self::TailscalePing(tailscale_ping(target.as_deref(), *timeout_ms))
             }
+            CheckConfig::DomainExpiry {
+                domain,
+                warn_days,
+                timeout_ms,
+            } => Self::DomainExpiry(domain_expiry(domain, *warn_days, *timeout_ms)),
         }
     }
 }
