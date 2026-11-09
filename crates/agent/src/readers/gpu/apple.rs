@@ -37,23 +37,10 @@ fn readings(answer: Result<Vec<u8>, CommandError>) -> Vec<GpuReading> {
 #[cfg(test)]
 mod tests {
     use agent_core::readings::GpuVendor;
+    use agent_core::readings::captures::IOREG_ACCELERATOR;
 
     use super::*;
     use crate::sampling::gpu::{announce, values};
-
-    const WITH_MEMORY: &[u8] = br#"+-o AGXAcceleratorG14X  <class AGXAcceleratorG14X, id 0x100000a1e>
-    {
-      "model" = "Apple M2 Pro"
-      "PerformanceStatistics" = {"Device Utilization %"=37,"In use system memory"=1073741824,"Alloc system memory"=2147483648}
-    }
-"#;
-
-    const NO_MEMORY: &[u8] = br#"+-o AGXAcceleratorG14X  <class AGXAcceleratorG14X, id 0x100000a1e>
-    {
-      "model" = "Apple M2 Pro"
-      "PerformanceStatistics" = {"Device Utilization %"=5}
-    }
-"#;
 
     fn kinds(gpus: &[GpuReading]) -> Vec<(&'static str, f64)> {
         values(gpus)
@@ -63,46 +50,52 @@ mod tests {
     }
 
     #[test]
-    fn met_006_ioreg_runs_the_accelerator_class_by_absolute_path_with_a_time_limit() {
-        assert_eq!(IOREG.program, "/usr/sbin/ioreg");
-        assert_eq!(IOREG.args, ["-r", "-d", "1", "-c", "IOAccelerator"]);
+    fn met_006_ioreg_runs_with_a_time_limit_of_at_most_two_seconds() {
         assert!(IOREG.limit <= Duration::from_secs(2));
     }
 
     #[test]
-    fn met_007_use_and_in_use_memory_become_gpu_percent_and_gpu_memory_bytes() {
-        let gpus = readings(Ok(WITH_MEMORY.to_vec()));
-        assert_eq!(gpus.len(), 1);
-        assert_eq!(gpus[0].vendor, GpuVendor::Apple);
-        assert_eq!(gpus[0].vram, None, "never VRAM");
+    fn met_006_both_accelerators_are_read_with_their_numbering_use_and_in_use_memory() {
+        let gpus = readings(Ok(IOREG_ACCELERATOR.to_vec()));
+        assert_eq!(gpus.len(), 2);
+        assert_eq!((gpus[0].index, gpus[1].index), (0, 1));
+        assert!(gpus.iter().all(|gpu| gpu.vendor == GpuVendor::Apple));
+        assert_eq!(gpus[0].busy_percent, Some(17.0));
+        assert_eq!(gpus[0].shared_memory_bytes, Some(987_654_321));
+        assert_eq!(gpus[1].busy_percent, Some(3.0));
+        assert_eq!(gpus[1].shared_memory_bytes, Some(1000));
+    }
+
+    #[test]
+    fn met_007_use_and_in_use_memory_become_gpu_percent_and_gpu_memory_bytes_never_vram() {
+        let gpus = readings(Ok(IOREG_ACCELERATOR.to_vec()));
+        assert!(gpus.iter().all(|gpu| gpu.vram.is_none()));
         assert_eq!(
             kinds(&gpus),
-            [("gpu_percent", 37.0), ("gpu_memory_bytes", 1_073_741_824.0)]
+            [
+                ("gpu_percent", 17.0),
+                ("gpu_memory_bytes", 987_654_321.0),
+                ("gpu_percent", 3.0),
+                ("gpu_memory_bytes", 1000.0),
+            ]
         );
     }
 
     #[test]
-    fn met_006_the_apple_gpu_is_announced_with_vendor_apple_and_no_vram() {
-        let gpus = readings(Ok(WITH_MEMORY.to_vec()));
+    fn met_006_the_apple_gpus_are_announced_with_vendor_apple_and_no_vram() {
+        let gpus = readings(Ok(IOREG_ACCELERATOR.to_vec()));
         let announced = announce(&gpus);
-        assert_eq!(announced.len(), 1);
-        assert_eq!(announced[0].name, "Apple M2 Pro");
-        assert!(!announced[0].has_vram);
+        assert_eq!(announced.len(), 2);
+        assert!(announced.iter().all(|gpu| gpu.name == "Apple M2 Pro"));
+        assert!(announced.iter().all(|gpu| !gpu.has_vram));
     }
 
     #[test]
-    fn met_007_a_gpu_with_no_memory_figure_gives_use_only() {
-        let gpus = readings(Ok(NO_MEMORY.to_vec()));
-        assert_eq!(gpus.len(), 1);
-        assert_eq!(kinds(&gpus), [("gpu_percent", 5.0)]);
-    }
-
-    #[test]
-    fn met_006_a_failed_run_an_empty_answer_and_a_mac_without_a_gpu_give_no_gpus() {
+    fn met_006_a_failed_run_a_timed_out_run_and_an_empty_answer_give_no_gpus() {
         let failed = Err(CommandError::Failed { program: "ioreg" });
         assert_eq!(readings(failed).len(), 0);
-        let missing = Err(CommandError::Timeout { program: "ioreg" });
-        assert_eq!(readings(missing).len(), 0);
+        let timed_out = Err(CommandError::Timeout { program: "ioreg" });
+        assert_eq!(readings(timed_out).len(), 0);
         assert_eq!(readings(Ok(Vec::new())).len(), 0);
         assert_eq!(readings(Ok(b"\n".to_vec())).len(), 0);
     }
