@@ -232,6 +232,15 @@ pub async fn record(
     Ok(id)
 }
 
+/// `text` with the secrets the event-log redaction finds masked, as `record` stores a message:
+/// `"[redacted]"` for a private key, an `otpauth://` URI or an `Authorization:` header, else
+/// each URL password, secret `key=value`, scheme credential and JWT masked (LOG-007). For text
+/// another domain stores outside the logs, such as a build log line (BLD-049).
+#[must_use]
+pub fn redact_text(text: &str) -> String {
+    redaction::redact_text(text)
+}
+
 /// Stores an audit entry. Secret values in `change` are replaced with `"[redacted]"` first
 /// (LOG-007); callers should not pass secrets, this is the backstop.
 ///

@@ -12,7 +12,8 @@ use uuid::Uuid;
 
 use crate::{
     ids::{
-        ChannelId, CheckId, DeviceId, EventId, OperatorId, SessionId, ShareId, SiteId, WindowId,
+        BuildJobId, BuilderId, ChannelId, CheckId, DeviceId, EventId, OperatorId, ReleaseId,
+        SessionId, ShareId, SiteId, WindowId,
     },
     status::Status,
 };
@@ -166,6 +167,8 @@ pub enum AuditAction {
     Download,
     /// A Wake-on-LAN packet sent to a device (RA-031).
     Wake,
+    /// A queued build job the operator stopped (BLD-008).
+    Cancel,
 }
 
 impl AuditAction {
@@ -188,6 +191,7 @@ impl AuditAction {
             Self::Upload => "upload",
             Self::Download => "download",
             Self::Wake => "wake",
+            Self::Cancel => "cancel",
         }
     }
 }
@@ -213,6 +217,12 @@ pub enum AuditTarget {
     Channel(ChannelId),
     /// A share of a session (RA-035).
     Share(ShareId),
+    /// A release and its build jobs (BLD-082).
+    Release(ReleaseId),
+    /// One build job of a release (BLD-082).
+    BuildJob(BuildJobId),
+    /// A computer enrolled to build releases (BLD-082).
+    Builder(BuilderId),
 }
 
 impl AuditTarget {
@@ -232,6 +242,9 @@ impl AuditTarget {
             Self::Setting(_) => "setting",
             Self::Channel(_) => "channel",
             Self::Share(_) => "share",
+            Self::Release(_) => "release",
+            Self::BuildJob(_) => "build_job",
+            Self::Builder(_) => "builder",
         }
     }
 
@@ -250,6 +263,9 @@ impl AuditTarget {
             Self::Setting(name) => name.to_owned(),
             Self::Channel(id) => id.to_string(),
             Self::Share(id) => id.to_string(),
+            Self::Release(id) => id.to_string(),
+            Self::BuildJob(id) => id.to_string(),
+            Self::Builder(id) => id.to_string(),
         }
     }
 }

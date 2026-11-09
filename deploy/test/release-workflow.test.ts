@@ -44,7 +44,7 @@ function needsOf(job: Job): string[] {
 }
 
 describe("triggers and concurrency (UPD-007, R-005)", () => {
-  test("UPD-007 runs only by hand until WP-36 builds land (R-005)", () => {
+  test("UPD-007 runs only by hand, never on a push (R-102)", () => {
     expect(Object.keys(workflow.on)).toEqual(["workflow_dispatch"]);
   });
 

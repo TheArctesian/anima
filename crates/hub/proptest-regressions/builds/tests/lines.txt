@@ -1,0 +1,11 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 8306cd2a0b2d512cf005d486bb7b082910c67a3723967cba41bdcb1360b681f2 # shrinks to pieces = ["\u{1b}]", "\u{1b}[31m"], key = "pass", separator = "=", value = "Q00000000"
+cc 34befe641d1dc285357418d93e32a9485c2e6229ab05098f7717074c5db40671 # shrinks to key = "api_key", cuts = (5, 11), first = "\u{1b}", second = "\u{1b}[", value = "Q00000000"
+cc 6d529d53563070ae6783070e10047e6a3253473aa4727b3187fdec6eb2837294 # shrinks to key = "secret", cuts = (1, 1), first = "\u{1b}]0;t\u{7}", second = "\u{1b}[", value = "Q00000000"
+cc 6ca8b74ec5df2cd1a40aa44a70e31f4382f759c696d143ea4bf37ba8e510a7f6 # shrinks to key = "secret", cuts = (1, 6), first = "\u{1b}[0m", second = "\u{1b}", value = "Q00000000"
+cc f5d7602e27b59d29ad6918a4f35f32249b354fdbe010f77034d94a598c5ec509 # shrinks to key = "PGPASSWORD", cuts = (3, 12), first = "\u{1b}", second = "\u{1b}[", value = "Q00000000"

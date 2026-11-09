@@ -77,6 +77,7 @@ packages send handoff notes, and the programme orchestrator applies them at inte
 | WP-32 | Client files, wake and live sessions | `apps/client/src/lib/sessions/files/`, `lib/sessions/live/`, the navigation bar item (D-8) | WP-20 | Sonnet, Opus (transfers) | Sonnet (interface), Opus (security) | RA-031, RA-032, RA-034, MOT menu, MOT-009 |
 | WP-33 | Client detail view and charts | `apps/client/src/lib/charts/`, `lib/metrics/`, `routes/devices/[id]/overview/`, `checks/`, `sessions/`, `tabs/` | WP-20 (K5 chart names) | Opus (chart motion), Sonnet | Sonnet (interface) | Section 6.7, MET-003, MET-007–009, MOT-008, MOT chart update and loading |
 | WP-34 | Phase 2 integration and acceptance | `docs/research/`, acceptance tests | All | Sonnet | Opus | Section 4 of this plan, spec Section 5.8, CQ-050 |
+| WP-36 | Builds (R-102) | `crates/hub/src/builds/`, migrations 0960–0979 (0900–0949 before R-102; the package row is now in `phase-3-plan.md`), `apps/client/src/lib/builds/`, `apps/client/src/routes/builds/`, `apps/desktop/src-tauri/src/builder/`, `deploy/release/`, `docs/releases.md` | `main` at 8b231e0c | Opus (hub queue, leases, signing, upload URLs), Sonnet (views) | Opus (security), Sonnet, Sonnet (interface) | Section 3.10, BLD-001–082, UPD-001–012, DNS-007, LOG-005, LOG-007, REPO-003 |
 
 Package notes:
 

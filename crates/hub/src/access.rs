@@ -3,6 +3,7 @@
 //! edge (NET-001 to NET-003, SEC-001, SEC-008).
 
 mod browser;
+mod builder_tokens;
 mod connection;
 pub mod graphql;
 mod guard;
@@ -30,8 +31,9 @@ use zeroize::Zeroizing;
 
 pub use crate::events::{ClientAddr, Operator};
 pub use browser::SameOrigin;
+pub use builder_tokens::{IssuedToken, issue_builder_token, revoke_builder_token};
 pub use connection::{MESSAGE_LIMIT, SUBPROTOCOL, SocketAccess, accept_socket};
-pub use guard::{Authenticated, SignInRequired};
+pub use guard::{Authenticated, BUILDER_FIELDS, BuilderSignedIn, SignInRequired};
 pub use identity::{Identity, client_addr, identify, identify_connection, operator_for_token};
 pub use layer::{Edge, permitted_networks_layer};
 pub use origin::PublicOrigin;
@@ -67,6 +69,10 @@ pub enum Error {
     /// `signInBrowser` came from another origin than the hub's own, or with none (A-4).
     #[error("Sign in from the hub's own address.")]
     OtherOrigin,
+    /// The token's scope does not cover the field: a builder token asked for an operator
+    /// field, or an operator token for a builder field (BLD-022).
+    #[error("{0}")]
+    OutOfScope(&'static str),
     /// The client address is outside every permitted network (NET-002).
     #[error("This address is not in a permitted network.")]
     NotPermitted,
@@ -125,7 +131,9 @@ impl Error {
             Self::Unauthenticated | Self::WrongCredentials | Self::TotpSecret(_) => {
                 "UNAUTHENTICATED"
             }
-            Self::ReadOnly | Self::OtherOrigin | Self::NotPermitted => "FORBIDDEN",
+            Self::ReadOnly | Self::OtherOrigin | Self::NotPermitted | Self::OutOfScope(_) => {
+                "FORBIDDEN"
+            }
             Self::Validation { .. } => "VALIDATION",
             Self::Unreachable(_) => "UNAVAILABLE",
             Self::Database(_)
@@ -147,6 +155,7 @@ impl Error {
             | Self::ReadOnly
             | Self::OtherOrigin
             | Self::NotPermitted
+            | Self::OutOfScope(_)
             | Self::Validation { .. } => None,
             Self::Unreachable(_) => Some("database_unreachable"),
             Self::Database(_) => Some("database"),
@@ -205,6 +214,7 @@ impl Error {
             | Self::ReadOnly
             | Self::OtherOrigin
             | Self::NotPermitted
+            | Self::OutOfScope(_)
             | Self::Validation { .. }
             | Self::Unavailable => None,
         }

@@ -227,13 +227,10 @@ Anima keeps three types of log.
 
 ### 3.9 Desktop releases and updates
 
-The desktop app updates itself, as Sparkle does on macOS. GitHub Actions builds and publishes each release. The app downloads a new version in the background and asks the operator to restart.
+The desktop app updates itself, as Sparkle does on macOS. The hub queues each release and builder computers build and publish it (Section 3.10). The app downloads a new version in the background and asks the operator to restart.
 
 ```text
-push to main ─► version job ─► build macOS + build Linux (parallel; each signs its updater file)
-                                         │
-                                         ▼
-                 feed job: latest.json lists only the platforms that built ─► publish the release
+"Release <version>" ─► hub queues one job for each target ─► builder builds, signs, uploads ─► hub verifies, writes <target>/latest.json
                                                                                      │
 desktop app ── at start and every 4 hours ── GET latest.json ── version differs? ── download, verify signature, install
                                                                                      │
@@ -242,13 +239,13 @@ desktop app ── at start and every 4 hours ── GET latest.json ── vers
 
 | Item | Value |
 | --- | --- |
-| Host | Public GitHub Releases of `TheArctesian/anima` (the repository is public, so the app needs no credential) |
-| Feed URL | `https://updates.anima.ing/latest.json`. It redirects to the latest GitHub release (DNS-007). |
-| Version | `0.1.<workflow run number>`, computed once in the version job. Do not commit version changes. |
+| Host | Cloudflare R2 bucket `anima-releases` at `https://releases.anima.ing` (public, so the app needs no credential) (R-102) |
+| Feed URL | `https://releases.anima.ing/{{target}}-{{arch}}/latest.json`, one feed for each target (BLD-067) |
+| Version | Chosen by the operator in the release form (BLD-001, BLD-002). Do not commit version changes. |
 | Platforms | macOS universal (`.app.tar.gz` for the updater, `Anima.dmg` for people), Linux x86_64 (`.AppImage`) |
-| Updater signature | Tauri updater key pair. The public key is in `tauri.conf.json`. The private key is the GitHub secret `TAURI_SIGNING_PRIVATE_KEY`. |
-| macOS signature | Ad-hoc (`APPLE_SIGNING_IDENTITY=-`). The workflow uses Developer ID signing and notarization only when all Apple secrets are present. |
-| Rollback | `allowDowngrades: true`. To roll back, mark an older release as "latest". |
+| Updater signature | Tauri updater key pair. The public key is in `tauri.conf.json`. The private key is in the key store of each builder computer (BLD-045). |
+| macOS signature | Ad-hoc (`APPLE_SIGNING_IDENTITY=-`) until the operator has an Apple Developer ID (OD-13). Until then macOS has no feed (BLD-068). |
+| Rollback | `allowDowngrades: true`. To roll back, the operator writes an older `latest.json` to the target by hand (BLD-069). |
 
 - **UPD-001.** The desktop app must check the feed at start and then every 4 hours. Development builds, the web client and the iOS client must not check and must not load the updater plugin.
 - **UPD-002.** The app must verify the signature of each update with the public key in the app before it installs the update. If the signature is not correct, the app must not install the update. It must record the failure and continue.
@@ -256,12 +253,120 @@ desktop app ── at start and every 4 hours ── GET latest.json ── vers
 - **UPD-004.** When an update is installed, the client must show a banner with the text "Anima <version> is installed" and a "Restart to update" button. The banner must have `role="status"`.
 - **UPD-005.** After one update is installed, the app must stop checking until it restarts.
 - **UPD-006.** The Settings page must show an "Updates" row with the current version, the update state and a "Check for updates" button. A failed check must not show an error dialog; the next check runs at the usual time.
-- **UPD-007.** The release workflow must run only on a push to `main` and on manual start. It must not run on pull requests (CQ-010). It must not cancel a release run that is in progress.
-- **UPD-008.** The workflow must upload all files before it publishes the release. The release becomes "latest", and thus visible to the app, only after `latest.json` is uploaded.
-- **UPD-009.** `latest.json` must list only the platforms whose build passed in this run. Do not list a platform with a file from an older version. (With `allowDowngrades`, the app would install that file again at each check.)
+- **UPD-007.** A release must start only from the Builds view (BLD-001). The workflow `release.yml` runs only by hand, as a fallback until WP-36 is accepted; then it is deleted (changed by R-102).
+- **UPD-008.** The hub must write `latest.json` only after it has verified all files of the job (BLD-064 to BLD-066) (changed by R-102).
+- **UPD-009.** Each `latest.json` must list only the platform keys of its own target. A target that did not build keeps its older feed (changed by R-102).
 - **UPD-010.** Each release must have versioned updater files, stable-named files for people (`Anima.dmg`, `Anima-x86_64.AppImage`) and a `SHA256SUMS` file.
-- **UPD-011.** The macOS build job must verify the bundle with `codesign --verify --deep --strict` and must verify that `lipo -archs` gives `x86_64` and `arm64`.
-- **UPD-012.** Only the operator makes the updater key pair and sets the GitHub secrets. Agents must not read the private key file. The operator must keep a backup of the private key: if it is lost, each installed app must be installed again by hand.
+- **UPD-011.** The macOS builder must verify the bundle with `codesign --verify --deep --strict` and must verify that `lipo -archs` gives `x86_64` and `arm64`.
+- **UPD-012.** Only the operator makes the updater key pair and imports the private key into the key store of each builder. Agents must not read the private key file. The operator must keep a backup of the private key: if it is lost, each installed app must be installed again by hand (changed by R-102).
+
+### 3.10 Builds
+
+Anima builds its own desktop releases. The hub keeps a build queue. Operator computers on the VPN do the builds. GitHub Actions does not build or publish a release (R-005, R-102).
+
+```text
+operator: Builds view ─► "Release 0.1.12" ─► hub: one job for each target, state queued
+                                                       │
+builder (operator computer, VPN) ── polls ── claimBuild(own platform) ◄┘
+   │  claimed ─► building: fetch commit, check it is on main, run the gates, tauri build, sign
+   │  uploading: hub gives presigned R2 URLs for this job's files only ─► PUT to R2
+   ▼
+hub: GET each file from releases.anima.ing (200, SHA-256, signature) ─► write <target>/latest.json ─► published
+                                                                                   │
+desktop app ── GET https://releases.anima.ing/{{target}}-{{arch}}/latest.json ◄────┘
+```
+
+| Item | Decision |
+| --- | --- |
+| Trigger | The operator selects "Release" in the Builds view. The hub does not poll GitHub and has no webhook. |
+| Commit | The hub reads the head of `main` from the public GitHub API when the operator opens the release form. The operator sees the commit and confirms it. |
+| Version | The operator types it. The form proposes the highest released version with the patch number plus 1. Do not commit version changes. |
+| Targets | `linux-x86_64` (AppImage) and `darwin-universal` (app and DMG, built on an Apple Silicon Mac). |
+| Builder | A desktop app with "Build releases on this computer" on. Off by default. |
+| Storage | Cloudflare R2 bucket `anima-releases`, served at `https://releases.anima.ing` |
+| Upload credential | A presigned R2 `PUT` URL for each file of one job. It expires after 30 minutes. |
+| Updater endpoint | `https://releases.anima.ing/{{target}}-{{arch}}/latest.json`. Tauri 2 replaces `{{target}}` with `linux`, `darwin` or `windows` and `{{arch}}` with `x86_64`, `aarch64`, `i686` or `armv7`. |
+
+Reasons for the trigger: a release is a deliberate operator act. A poll would build each push to `main` and run the gates each time on an operator computer. A poll also needs a GitHub rate-limit budget. Section 11 OD-12 records the later option.
+
+#### 3.10.1 Jobs
+
+A release has one job for each selected target. A job has these fields: target, commit (40 hex characters), version, state, log, attempts, the claiming builder, the lease end and the time of each state change.
+
+```text
+queued ──► claimed ──► building ──► uploading ──► published
+  ▲  │        │           │            │
+  │  │        └───────────┴────────────┴──► failed
+  │  └──► cancelled (operator)
+  └──── lease ends (attempts < 3) ── claimed, building or uploading
+```
+
+- **BLD-001.** The operator must start a release from the Builds view with "Release <version>". The hub must make one job in state `queued` for each selected target.
+- **BLD-002.** The hub must refuse a release whose version is not more than each published version of each selected target. A version is never built twice for one target.
+- **BLD-003.** A builder must claim only a job whose target its platform can build. `linux-x86_64` needs Linux on x86_64. `darwin-universal` needs macOS on aarch64.
+- **BLD-004.** A claim must be atomic. Two builders must not claim the same job.
+- **BLD-005.** A claim gives the builder a lease of 90 seconds. The builder must report at least each 15 seconds. Each report extends the lease to 90 seconds from the report.
+- **BLD-006.** When a lease ends without a report, the hub must put the job back to `queued` and add 1 to its attempts. After 3 attempts the job must go to `failed` with the reason "builder stopped 3 times".
+- **BLD-007.** A queued job must wait with no time limit until a matching builder claims it. The Builds view must show "Waiting for a <target> builder" when no matching builder is online.
+- **BLD-008.** The operator can cancel a job in `queued`. A job in another state cannot be cancelled; the operator can turn the builder off instead.
+- **BLD-009.** The pure job rules (permitted state changes, lease end, platform match, next version) must take the time as a parameter (CQ-021).
+- **BLD-010.** A builder must report each state change. The hub must refuse a report from a builder that does not hold the lease, and a state change that the diagram does not permit.
+
+#### 3.10.2 Builders
+
+- **BLD-020.** The Settings page must show a "Builds" row in the desktop app: the toggle "Build releases on this computer", the platform, the builder state and the updater key state. The toggle is off by default.
+- **BLD-021.** When the operator turns the toggle on, the client must call `enrolBuilder` with the operator's session. The hub must record the builder with its name, platform and VPN address, and return a builder token.
+- **BLD-022.** The builder token must be different from the operator access token. It must permit only the builder operations: claim, report, upload URLs. It must expire after 180 days (the VPN client key period, VPN-003).
+- **BLD-023.** The client must keep the builder token in the operating system key store (CLI-003). The hub must keep only a hash of it.
+- **BLD-024.** The hub must refuse a builder request from an address other than the VPN address recorded at enrolment.
+- **BLD-025.** Turning the toggle off must revoke the builder token on the hub and delete it from the key store. The Settings page must list all builders and let the operator revoke each one.
+- **BLD-026.** The builder runs inside the desktop app while the app runs. The client holds the builder loop (`$lib/builds/`). The Tauri shell holds only the OS work: child processes, the key store, file signing and file upload (REPO-003).
+- **BLD-027.** The shell must expose fixed build steps, not a general command runner. The web view can ask for "check out commit C", "run the gates", "bundle target T at version V", "sign file F", "upload file F to URL U". It cannot name a program.
+- **BLD-028.** Before the builder claims a job, it must check its tools: git, bun, Rust, PostgreSQL 17 (R-009), the Tauri system packages, and the updater key. The Settings row must name each missing tool. A builder with a missing tool must not claim.
+- **BLD-029.** A builder runs one job at a time. It connects out to the hub over the VPN. It needs no open port and no GitHub runner.
+
+#### 3.10.3 The build
+
+- **BLD-040.** The builder must use its own clone of `https://github.com/TheArctesian/anima.git` in the app data folder. It must fetch, then check out the job commit with a clean tree.
+- **BLD-041.** The builder must refuse a commit that is not an ancestor of `origin/main` (`git merge-base --is-ancestor`). GitHub serves fork commits through the main repository, so a commit hash alone is not proof.
+- **BLD-042.** The builder must run `bun run gates` with `DATABASE_URL` unset and `BASE_REF` set to the job commit. A gate failure makes the job `failed`.
+- **BLD-043.** The builder must compile with `tauri build --no-bundle` and the version in `--config`. Then it must bundle: `--bundles appimage` on Linux, `--bundles app,dmg` with `--target universal-apple-darwin` on macOS.
+- **BLD-044.** The build steps must run with no secret in their environment: no updater key, no builder token, no hub token, no upload URL. Build scripts, `build.rs`, proc-macros and npm packages run in these steps.
+- **BLD-045.** The shell must sign the updater file in its own process, with the key from the key store. The key must not go to a child process, to a file, to the web view or to the hub.
+- **BLD-046.** The signature must have the format that `tauri-plugin-updater` verifies, with the version in the trusted comment (`requireSignedVersion`, UPD-002). The builder must check it with `assertSignedVersion` before upload.
+- **BLD-047.** On macOS the builder must verify the bundle as UPD-011 states.
+- **BLD-048.** The builder must send the log of each step to the hub in parts, with each report. The hub must keep at most the last 2 MB of each job log.
+- **BLD-049.** Build logs must obey LOG-007. The builder must remove the builder token, upload URLs and key material from each line before it sends it. The hub must apply the event-log redaction (`events/redaction`) before it stores a line.
+
+#### 3.10.4 Publishing
+
+```text
+releases.anima.ing/
+├── linux-x86_64/latest.json                         no-cache            hub
+├── linux-x86_64/0.1.12/Anima_0.1.12_amd64.AppImage  public, max-age=3600 builder
+├── linux-x86_64/0.1.12/SHA256SUMS                   public, max-age=3600 builder
+├── darwin-universal/0.1.12/Anima_0.1.12_universal.dmg (and .app.tar.gz)  builder
+├── Anima-x86_64.AppImage                            no-cache            hub copy (stable name)
+└── Anima.dmg                                        no-cache            hub copy (stable name)
+```
+
+- **BLD-060.** In `uploading`, the hub must give the lease holder one presigned `PUT` URL for each file of the job. Each URL names one object key under `<target>/<version>/`, fixes its `Cache-Control`, and expires after 30 minutes.
+- **BLD-061.** The hub must not give a builder the R2 account token, an R2 API key, or a URL for `latest.json` or a stable name.
+- **BLD-062.** The hub must sign upload URLs with an R2 API token that has "Object Read & Write" on the bucket `anima-releases` only. The hub must read it from a Docker secret (SEC-004 rules apply) and must not log it.
+- **BLD-063.** The builder must upload the versioned updater file, the DMG on macOS, and `SHA256SUMS` (made with `checksums` from `feed.ts`). Then it must report `uploaded` with the SHA-256 of each file and the proposed feed (made with `buildFeed` from `feed.ts`).
+- **BLD-064.** Before it publishes, the hub must GET each file from `https://releases.anima.ing`. Each must answer 200 and have the reported SHA-256. The updater file signature in the feed must verify with the public key in `tauri.conf.json` for the job version.
+- **BLD-065.** The hub must check the proposed feed: the job version, only the platform keys of the job target, and URLs under `https://releases.anima.ing/<target>/<version>/`. The hub must refuse any other feed.
+- **BLD-066.** When the checks pass, the hub must copy the file to its stable name with R2 `CopyObject` (UPD-010). Then the hub must write `latest.json` with `Cache-Control: no-cache` last. Then the job is `published`.
+- **BLD-067.** For `darwin-universal`, the hub writes the same feed to `darwin-aarch64/latest.json` and `darwin-x86_64/latest.json`, because the bundle is universal.
+- **BLD-068.** The hub must not write a macOS feed until the build has Developer ID signing and notarization (OD-13). Until then a macOS job publishes the DMG and its stable name only.
+- **BLD-069.** The hub must not write a feed whose version is lower than the published feed of that target. Rollback is a manual act (Section 3.9).
+- **BLD-070.** If a check fails, the job must go to `failed` with the reason. The hub must not write `latest.json`. The older feed stays.
+
+#### 3.10.5 In the app
+
+- **BLD-080.** The navigation bar must have a "Builds" item in the desktop app. The Builds view must list releases, newest first, with the state of each job and its time in that state.
+- **BLD-081.** Selecting a job must show its log. The log of a job that is not finished must update through a subscription (API-002).
+- **BLD-082.** The hub must write the release, the cancellation and each builder enrolment and revocation to the audit log (LOG-005). It must write each published and failed job to the event log.
 
 ## 4. Security
 
@@ -352,7 +457,7 @@ The operator owns the domain `anima.ing`. Cloudflare holds its DNS.
 | --- | --- | --- | --- |
 | `hs.anima.ing` | A, not proxied | VPS public IP | Headscale control server and DERP relay (Headscale `server_url`) |
 | `hub.anima.ing` | A, not proxied | Hub VPN address (`100.64.0.0/10`) | Hub address for clients. The name is public, but only VPN members can connect. |
-| `updates.anima.ing` | Proxied | Cloudflare redirect rule | Update feed and downloads (Section 3.9) |
+| `releases.anima.ing` | R2 custom domain (proxied) | Bucket `anima-releases` | Update feeds and downloads (Sections 3.9 and 3.10) |
 | `<device>.net.anima.ing` | None | Headscale DNS only | VPN names of hosts (Headscale `dns.base_domain` = `net.anima.ing`) |
 
 - **DNS-001.** The client must use `hub.anima.ing` as the default hub address (NET-005).
@@ -361,7 +466,7 @@ The operator owns the domain `anima.ing`. Cloudflare holds its DNS.
 - **DNS-004.** The `hs.anima.ing` and `hub.anima.ing` records must not be proxied. Cloudflare cannot proxy WireGuard, STUN or a VPN address.
 - **DNS-005.** `hub.anima.ing` points to a private address. A connection from outside the VPN must fail. This keeps SEC-008: the public record shows the name and a VPN address only.
 - **DNS-006.** Headscale `dns.base_domain` must be `net.anima.ing`. It must not be `anima.ing`, because Headscale does not permit a base domain that contains the `server_url` host. Device names under `net.anima.ing` do not have public records.
-- **DNS-007.** `updates.anima.ing/latest.json` must redirect (HTTP 302) to `https://github.com/TheArctesian/anima/releases/latest/download/latest.json`. `updates.anima.ing/<file>` must redirect to the same file of the latest release. The app keeps the `updates.anima.ing` URL, so the host can change later without a new app build.
+- **DNS-007.** `releases.anima.ing` must be the custom domain of the R2 bucket `anima-releases`. `updates.anima.ing` and its redirect rule are removed (changed by R-102).
 - **DNS-008.** The operator must confirm each change to the Cloudflare account or the `anima.ing` zone, as for the VPS (VPS-005).
 
 ### 4.3 Traffic data (later)
@@ -1058,7 +1163,7 @@ A later version can manage libvirt hosts and Docker hosts. Prepare for this now:
 13. All colours, spaces, font sizes and motion values come from tokens. The token gate (TOK-003) passes.
 14. Each motion role in Section 5.7.3 that Phase 1 uses has a reduced-motion form. The Phase 1 motion audit (Section 5.8) has no open finding of the classes "layout jump" or "wrong motion".
 15. The CUPID gates (CQ-010, CQ-040, CQ-043) and the import graph check (REPO-004) pass in the gate script (`bun run gates`). The baseline file is empty.
-16. A merge to `main` publishes a release. An installed earlier build downloads it, shows the restart banner, and runs the new version after "Restart to update". A feed with a bad signature is refused and the app continues to run (UPD-001–012).
+16. "Release <version>" in the Builds view publishes a release through a builder (BLD-001 to BLD-070). An installed earlier build downloads it, shows the restart banner, and runs the new version after "Restart to update". A feed with a bad signature is refused and the app continues to run (UPD-001–012).
 
 ## 10. iOS constraints
 
@@ -1083,6 +1188,8 @@ These constraints apply to Phase 5. Record them now so that the earlier phases d
 | OD-9 | Hub location | Hostinger VPS. The hub continues to operate when a site loses power or internet, and it can report that the site is down. Risk: a VPS breach exposes the device credentials (SEC-003 and SEC-004 decrease this risk). Alternative: the hub at home, and a small outside checker on the VPS. |
 | OD-10 | Headscale or the Tailscale hosted control server | Headscale, because it keeps the control server under the control of the operator. Headscale does not have "Tailnet Lock" (devices must approve each new node). The Tailscale hosted plan has it. Verify this before Phase 1. |
 | OD-11 | Gateway location | The gateway runs with the hub on the VPS. A session to a device at a site then goes VPS to site. If the latency is too high, a later version can run a gateway at each site (Guacamole supports a gateway for each connection). |
+| OD-12 | Build trigger | Phase 2: the operator starts each release (Section 3.10). A later version can let the hub poll `main` and queue a release for each new commit. |
+| OD-13 | Apple Developer ID | Until the operator has one, macOS builds are ad-hoc signed and do not update themselves (BLD-068). With one, the macOS builder signs and notarizes with keys from its key store. |
 | OD-6 | Central log search | Not necessary now. A later version can send the process log to Loki or a similar system. |
 
 ## 12. Code quality (CUPID)
@@ -1206,6 +1313,7 @@ anima/
 │   │   │   ├── credentials/   Encryption and storage of credentials
 │   │   │   ├── web_interfaces/ Web interface records and suggestions
 │   │   │   ├── events/        Event log and audit log
+│   │   │   ├── builds/        Release queue, builders, leases, publishing (Section 3.10)
 │   │   │   ├── notifications/ Channels and rules (Phase 3)
 │   │   │   ├── proxmox/       Proxmox VE provider (Phase 4)
 │   │   │   └── traffic/       DNS and flow data (Phase 6)
@@ -1228,6 +1336,7 @@ anima/
 │   │       │   ├── metrics/   Metric bars, GPU panel
 │   │       │   ├── sessions/  Session tabs: terminal, remote desktop, web view
 │   │       │   ├── events/    Logs panel
+│   │       │   ├── builds/    Builds view, builder loop, feed.ts, api.ts
 │   │       │   ├── hub/       GraphQL connection, subscriptions, network status
 │   │       │   ├── charts/    Chart primitives
 │   │       │   ├── forms/     Form primitives and validation

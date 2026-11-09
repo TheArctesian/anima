@@ -26,6 +26,9 @@ pub(super) const LOGIN_LIFETIME: TimeDelta = TimeDelta::days(30);
 /// A browser token is valid this long, with no refresh (D-3).
 pub(super) const BROWSER_LIFETIME: TimeDelta = TimeDelta::days(7);
 
+/// A builder token is valid this long: the VPN client key period (BLD-022, VPN-003).
+pub(super) const BUILDER_LIFETIME: TimeDelta = TimeDelta::days(180);
+
 /// `last_used_at` is written at most this often (D-7).
 const TOUCH_INTERVAL: TimeDelta = TimeDelta::minutes(1);
 
@@ -34,6 +37,8 @@ const TOUCH_INTERVAL: TimeDelta = TimeDelta::minutes(1);
 pub enum Scope {
     Read,
     Write,
+    /// Only the builder operations: claim and report build jobs (BLD-022, D-1).
+    Builder,
 }
 
 impl Scope {
@@ -42,6 +47,7 @@ impl Scope {
         match self {
             Self::Read => "read",
             Self::Write => "write",
+            Self::Builder => "builder",
         }
     }
 
@@ -50,6 +56,7 @@ impl Scope {
         match text {
             "read" => Some(Self::Read),
             "write" => Some(Self::Write),
+            "builder" => Some(Self::Builder),
             _ => None,
         }
     }
@@ -65,6 +72,9 @@ pub enum TokenKind {
     Browser,
     /// A named key for scripts: a bearer value spelled `anima_` plus the token text.
     ApiKey,
+    /// An enrolled builder computer's token: a bearer value, the token text alone. It always has
+    /// the `builder` scope and stands for no operator (BLD-022, D-1).
+    Builder,
 }
 
 impl TokenKind {
@@ -74,6 +84,7 @@ impl TokenKind {
             Self::Login => "login",
             Self::Browser => "browser",
             Self::ApiKey => "api_key",
+            Self::Builder => "builder",
         }
     }
 
@@ -83,6 +94,7 @@ impl TokenKind {
             "login" => Some(Self::Login),
             "browser" => Some(Self::Browser),
             "api_key" => Some(Self::ApiKey),
+            "builder" => Some(Self::Builder),
             _ => None,
         }
     }
@@ -107,18 +119,24 @@ pub(super) enum Spelling {
 }
 
 /// Whether a token of `kind`, spelled so, may be used from `transport`: a browser token only
-/// from the cookie, a login token and an API key only as a bearer, and only an API key with the
-/// `anima_` prefix. Anything else is no identity, so a browser token taken from a cookie jar is
+/// from the cookie, a login token, a builder token and an API key only as a bearer, and only an
+/// API key with the `anima_` prefix. Anything else is no identity, so a browser token taken from a cookie jar is
 /// no bearer and a cookie cannot carry a key (A-3).
 pub(super) fn admitted(kind: TokenKind, spelling: Spelling, transport: Transport) -> bool {
     match (kind, transport) {
-        (TokenKind::Browser, Transport::Cookie) | (TokenKind::Login, Transport::Bearer) => {
-            spelling == Spelling::Plain
-        }
+        (TokenKind::Browser, Transport::Cookie)
+        | (TokenKind::Login | TokenKind::Builder, Transport::Bearer) => spelling == Spelling::Plain,
         (TokenKind::ApiKey, Transport::Bearer) => spelling == Spelling::Key,
         (TokenKind::Browser, Transport::Bearer)
-        | (TokenKind::Login | TokenKind::ApiKey, Transport::Cookie) => false,
+        | (TokenKind::Login | TokenKind::ApiKey | TokenKind::Builder, Transport::Cookie) => false,
     }
+}
+
+/// Whether a stored kind and scope belong together: the `builder` scope on a builder token and
+/// on nothing else (BLD-022, D-1). Migration 0030 checks the same; a row that breaks it is no
+/// identity.
+pub(super) fn consistent(kind: TokenKind, scope: Scope) -> bool {
+    (kind == TokenKind::Builder) == (scope == Scope::Builder)
 }
 
 /// A token as the operator holds it. Wiped on drop. Deliberately implements no `Debug`,

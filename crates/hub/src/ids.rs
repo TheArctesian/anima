@@ -76,6 +76,14 @@ entity_id! {
     ShareId,
     /// A session recording.
     RecordingId,
+    /// An access token of the operator or of a builder.
+    TokenId,
+    /// A release: one version and commit, built for one or more targets.
+    ReleaseId,
+    /// The build of one release for one target.
+    BuildJobId,
+    /// A computer the operator enrolled to build releases.
+    BuilderId,
 }
 
 #[cfg(test)]

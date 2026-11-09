@@ -17,4 +17,6 @@ export interface Capabilities {
   readonly thisMachine: boolean;
   /** The shell can open System Settings at Sharing, for Remote Login and Screen Sharing (R-059, R-079). */
   readonly systemSettings: boolean;
+  /** This computer can build releases: the shell runs the build steps and keeps the builder token (BLD-020, BLD-026). */
+  readonly builds: boolean;
 }
