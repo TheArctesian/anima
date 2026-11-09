@@ -9,22 +9,28 @@ function gpuIndexOf(kind: string, label: string): number | null {
   return index === undefined ? null : Number(index);
 }
 
+/** A GPU series is told apart by kind and GPU index, as its chart label is `GPU <index> <name>`; any other by kind and label. */
+function seriesKey(kind: string, label: string, gpuIndex: number | null): string {
+  return gpuIndex === null ? `${kind}\u0000${label}` : `${kind}\u0000gpu${String(gpuIndex)}`;
+}
+
 /**
  * Add a live batch to the HOUR series (D-5). Each sample becomes a point at `added.at` on the series with the
- * same kind and label; a sample for an unknown series starts a new one. A sample not newer than the series'
+ * same kind and label, or for a GPU the same kind and GPU index; a sample for an unknown series starts a new one. A sample not newer than the series'
  * last point is ignored; a batch with an unreadable time changes nothing, and a point with one, is dropped rather than trusted. Points older than `added.at` minus one hour drop off the left. The input is not changed.
  */
 export function mergeLive(series: readonly MetricSeries[], added: NewMetrics): readonly MetricSeries[] {
   const at = Date.parse(added.at);
   if (Number.isNaN(at)) return series;
   const oldest = rangeWindow('HOUR', new Date(at)).start;
-  const merged = new Map<string, MetricSeries>(series.map((each) => [`${each.kind}\u0000${each.label}`, each]));
+  const merged = new Map<string, MetricSeries>(series.map((each) => [seriesKey(each.kind, each.label, each.gpuIndex), each]));
   for (const sample of added.samples) {
-    const id = `${sample.kind}\u0000${sample.label}`;
+    const gpuIndex = gpuIndexOf(sample.kind, sample.label);
+    const id = seriesKey(sample.kind, sample.label, gpuIndex);
     const current = merged.get(id) ?? {
       kind: sample.kind,
-      label: sample.label,
-      gpuIndex: gpuIndexOf(sample.kind, sample.label),
+      label: gpuIndex === null ? sample.label : `GPU ${String(gpuIndex)}`,
+      gpuIndex,
       points: [],
     };
     const last = current.points.findLast((each) => Number.isFinite(Date.parse(each.at)));

@@ -30,7 +30,7 @@ describe('mergeLive (D-5)', () => {
     expect(next.map((each) => [each.kind, each.label, each.gpuIndex])).toEqual([
       ['CPU_PERCENT', 'cpu', null],
       ['DISK_PERCENT', '/data', null],
-      ['GPU_PERCENT', '1', 1],
+      ['GPU_PERCENT', 'GPU 1', 1],
     ]);
   });
 
@@ -72,6 +72,17 @@ describe('mergeLive GPU series (MET-009, R-099)', () => {
     mergeLive([], added('2026-11-05T09:05:00Z', samples.map((sample) => ({ ...sample, value: 1 })))).map(
       (each) => each.gpuIndex,
     );
+
+  it('joins a live GPU sample to the chart series of that GPU, whatever its label', () => {
+    const chart = series('GPU_PERCENT', 'GPU 0 RTX 4090', [point('2026-11-05T09:00:00Z', 10)], 0);
+    const next = mergeLive([chart], added('2026-11-05T09:05:00Z', [{ kind: 'GPU_PERCENT', label: '0', value: 50 }]));
+    expect(next.map((each) => [each.label, each.gpuIndex, each.points.length])).toEqual([['GPU 0 RTX 4090', 0, 2]]);
+  });
+
+  it('starts a series labelled GPU <index> for a live GPU sample with no chart series yet', () => {
+    const next = mergeLive([], added('2026-11-05T09:05:00Z', [{ kind: 'VRAM_PERCENT', label: '2', value: 50 }]));
+    expect(next.map((each) => [each.kind, each.label, each.gpuIndex])).toEqual([['VRAM_PERCENT', 'GPU 2', 2]]);
+  });
 
   it('reads the GPU index from a GPU or VRAM label that is decimal text', () => {
     expect(
