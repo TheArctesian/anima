@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { FieldError } from '$lib/hub/hub';
   import type { SettingKey } from '../../defaults/settings';
+  import { takesRetries } from '../model/input';
   import { messageFor } from '../model/errors';
   import type { CheckFormValues } from '../model/values';
   import TextField from './TextField.svelte';
@@ -24,6 +25,7 @@
   error={error('intervalSeconds')}
   oninput={() => ontouch?.('intervalSeconds')}
 />
+{#if takesRetries(values.type)}
 <TextField
   label="Retries before Down"
   kind="numeric"
@@ -38,6 +40,7 @@
   error={error('retryIntervalSeconds')}
   oninput={() => ontouch?.('retryIntervalSeconds')}
 />
+{/if}
 <TextField
   label="Degraded threshold (ms)"
   kind="numeric"

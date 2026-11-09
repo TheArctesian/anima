@@ -27,7 +27,7 @@ describe('update keeps the type of the saved check', () => {
 });
 
 describe('CHK-009, D-29: update of a DOMAIN_EXPIRY check', () => {
-  const loaded = saved('DOMAIN_EXPIRY', { __typename: 'DomainExpiryConfig', domain: 'example.net', warnDays: 30, timeoutMs: 10000 }, { intervalSeconds: 43_200 });
+  const loaded = saved('DOMAIN_EXPIRY', { __typename: 'DomainExpiryConfig', domain: 'example.net', warnDays: 30, timeoutMs: 10000 }, { intervalSeconds: 43_200, retries: 0 });
 
   it('an unchanged config sends no config', () => {
     const edited = { ...checkValues(loaded, 'ICMP'), name: 'renamed' };

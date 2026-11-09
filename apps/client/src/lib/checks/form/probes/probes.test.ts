@@ -203,7 +203,7 @@ describe('P3-002, D-29: a DOMAIN_EXPIRY check in the form', () => {
   });
 
   it('a rename alone leaves the config out of the update input', () => {
-    const initial = checkValues(domainExpiry, 'ICMP');
+    const initial = { ...checkValues(domainExpiry, 'ICMP'), retries: '0' };
     const edited = { ...initial, name: 'renamed' };
     expect(configChanged(initial, edited)).toBe(false);
     expect(updateCheckInput(initial, edited)).toEqual({ name: 'renamed' });
