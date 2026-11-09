@@ -4,20 +4,20 @@
 use std::{sync::Arc, time::Duration};
 
 use chrono::TimeDelta;
-use sqlx::postgres::PgPoolOptions;
+use sqlx::{PgPool, postgres::PgPoolOptions};
 use tokio::sync::watch;
 use uuid::Uuid;
 
-use super::CLIENT;
+use super::{CLIENT, bench, ending::sharing, share_end};
 use crate::{
     clock::{Clock, FixedClock},
     events::Bus,
-    ids::ShareId,
+    ids::{SessionId, ShareId},
     sessions::{
-        Live,
+        EndCause, Live,
         share::{
             Sharing,
-            keeper::{Keeper, recorded},
+            keeper::{Keeper, recorded_from},
             model::{ShareAccess, ShareEnd},
             registry::Share,
         },
@@ -27,29 +27,97 @@ use crate::{
 };
 
 #[test]
-fn ra_035_a_cause_end_share_set_first_stands_over_the_one_the_keeper_woke_for() {
+fn ra_035_end_share_records_its_caller_and_any_other_cause_where_the_owner_shared_from() {
     let owner = address(CLIENT);
     let caller = address("100.64.0.9");
-    for woke_for in [ShareEnd::Expired, ShareEnd::SessionEnded] {
-        assert_eq!(
-            recorded(Some(ShareEnd::Ended(caller)), woke_for, owner),
-            (ShareEnd::Ended(caller), caller),
-            "{woke_for:?}"
-        );
+    assert_eq!(recorded_from(ShareEnd::Ended(caller), owner), caller);
+    for end in [ShareEnd::Expired, ShareEnd::SessionEnded] {
+        assert_eq!(recorded_from(end, owner), owner, "{end:?}");
     }
 }
 
-#[test]
-fn ra_035_without_end_share_the_cause_the_keeper_woke_for_is_recorded_from_the_owner() {
-    let owner = address(CLIENT);
-    let caller = address("100.64.0.9");
-    for woke_for in [ShareEnd::Expired, ShareEnd::SessionEnded] {
-        assert_eq!(recorded(None, woke_for, owner), (woke_for, owner));
+/// The keeper of `share`, held under `token` in `sharing`'s registry, whose owner shared from
+/// [`CLIENT`] and whose tunnel signals on `tunnel_end`.
+fn keeper_of(
+    sharing: Sharing,
+    share: Share,
+    token: &TicketToken,
+    tunnel_end: watch::Receiver<Option<EndCause>>,
+) -> Keeper {
+    let (id, expires_at) = (share.id, share.expires_at);
+    let ended = sharing.live.shares().open(token.hash(), share).unwrap();
+    Keeper {
+        sharing,
+        id,
+        expires_at,
+        client: address(CLIENT),
+        device: None,
+        ended,
+        tunnel_end,
     }
-    assert_eq!(
-        recorded(None, ShareEnd::Ended(caller), owner),
-        (ShareEnd::Ended(caller), caller)
-    );
+}
+
+/// A share of `session` that expires `lifetime` after `now()`.
+fn share_for(session: SessionId, lifetime: TimeDelta) -> Share {
+    Share {
+        id: ShareId::from(Uuid::now_v7()),
+        session,
+        owner: operator(),
+        access: ShareAccess::View,
+        max_viewers: 3,
+        viewers: 0,
+        created_at: now(),
+        expires_at: now() + lifetime,
+        end: watch::Sender::new(None),
+    }
+}
+
+/// S-5: the keeper woke for expiry or the session's end, then `endShare` landed before it
+/// removed the share. `share.end` records `endShare`'s cause and caller, as viewers see it.
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn s_5_end_share_set_after_the_keeper_woke_is_the_cause_share_end_records(pool: PgPool) {
+    let bench = bench(&pool).await;
+    let caller = address("100.64.0.9");
+    for (n, woke_for) in [(1, ShareEnd::Expired), (2, ShareEnd::SessionEnded)] {
+        let share = share_for(bench.session, TimeDelta::minutes(10));
+        let (id, mut seen) = (share.id, share.end.subscribe());
+        let token = TicketToken::from_random([n; 32]);
+        let keeper = keeper_of(sharing(&bench), share, &token, watch::channel(None).1);
+        bench.live.shares().end_by(id, &operator(), caller).unwrap();
+
+        keeper.end(woke_for).await;
+        let (client, change) = share_end(&pool, &id.to_string()).await;
+        assert_eq!(change["cause"], "ended", "{woke_for:?}");
+        assert_eq!(client, "100.64.0.9");
+        assert_eq!(*seen.borrow_and_update(), Some(ShareEnd::Ended(caller)));
+    }
+    assert!(bench.live.shares().hashes().is_empty());
+}
+
+/// Without `endShare`, `share.end` records the cause the keeper woke for, from the owner.
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn s_5_without_end_share_share_end_records_the_cause_the_keeper_woke_for(pool: PgPool) {
+    let bench = bench(&pool).await;
+    for (n, woke_for, cause) in [
+        (1, ShareEnd::Expired, "expired"),
+        (2, ShareEnd::SessionEnded, "session_ended"),
+    ] {
+        let share = share_for(bench.session, TimeDelta::minutes(10));
+        let id = share.id;
+        let token = TicketToken::from_random([n; 32]);
+        let keeper = keeper_of(sharing(&bench), share, &token, watch::channel(None).1);
+
+        keeper.end(woke_for).await;
+        let (client, change) = share_end(&pool, &id.to_string()).await;
+        assert_eq!(change["cause"], cause);
+        assert_eq!(client, CLIENT);
+    }
 }
 
 /// Lets every ready task run.
@@ -74,32 +142,12 @@ async fn d_9_a_share_ends_at_its_expiry_and_not_a_millisecond_before() {
         clock,
         live: Live::default(),
     };
-    let share = Share {
-        id: ShareId::from(Uuid::now_v7()),
-        session: Uuid::now_v7().into(),
-        owner: operator(),
-        access: ShareAccess::View,
-        max_viewers: 3,
-        viewers: 0,
-        created_at: now(),
-        expires_at: now() + lifetime,
-        end: watch::Sender::new(None),
-    };
-    let (id, expires_at) = (share.id, share.expires_at);
+    let share = share_for(Uuid::now_v7().into(), lifetime);
     let mut seen = share.end.subscribe();
     let token = TicketToken::from_random([7; 32]);
     let shares = sharing.live.shares().clone();
-    let ended = shares.open(token.hash(), share).unwrap();
     let (_tunnel, tunnel_end) = watch::channel(None);
-    let keeper = Keeper {
-        sharing,
-        id,
-        expires_at,
-        client: address(CLIENT),
-        device: None,
-        ended,
-        tunnel_end,
-    };
+    let keeper = keeper_of(sharing, share, &token, tunnel_end);
     tokio::spawn(keeper.keep());
     settle_tasks().await;
 
