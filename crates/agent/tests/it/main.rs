@@ -12,6 +12,7 @@ mod kit;
 #[cfg(target_os = "linux")]
 mod log;
 #[cfg(target_os = "linux")]
+mod gpus;
 mod push;
 #[cfg(target_os = "linux")]
 mod readers;
