@@ -1,10 +1,9 @@
 //! Signing in: identical refusals, the throttle and the records it leaves (SEC-002, LOG-005,
 //! D-8).
 
-use anima_hub::{
-    access::{self, ClientAddr, Password},
-    events::{Severity, Signal, Source},
-};
+mod outside;
+
+use anima_hub::events::{Severity, Signal, Source};
 use chrono::TimeDelta;
 use serde_json::json;
 use sqlx::PgPool;
@@ -226,70 +225,4 @@ async fn sec_002_d_9_operator_set_clears_the_attempts_so_the_operator_gets_back_
 
     set_operator(&pool).await;
     assert!(hub.login(USERNAME, PASSWORD).await["data"]["login"]["token"].is_string());
-}
-
-fn address(text: &str) -> ClientAddr {
-    ClientAddr(text.parse().unwrap())
-}
-
-/// A failure from outside sign-in (a `joinShare` miss) counts with wrong passwords: four of
-/// those and one of these throttle the address, so the operator's own sign-in from there is
-/// refused for 15 minutes; another address is not throttled (D-8, CR-16).
-#[sqlx::test(migrations = "./migrations")]
-async fn sec_002_d_8_a_failure_outside_sign_in_counts_toward_the_throttle(pool: PgPool) {
-    set_operator(&pool).await;
-    let hub = Hub::new(&pool, start());
-    for _ in 0..4 {
-        hub.login(USERNAME, "wrong password").await;
-    }
-    let (here, elsewhere) = (address(CLIENT), address("100.64.0.99"));
-    assert!(!access::throttled(&pool, here, start()).await.unwrap());
-
-    access::record_failure(&pool, here, start()).await.unwrap();
-
-    assert!(access::throttled(&pool, here, start()).await.unwrap());
-    assert!(!access::throttled(&pool, elsewhere, start()).await.unwrap());
-    assert_eq!(
-        error(&hub.login(USERNAME, PASSWORD).await),
-        wrong_credentials()
-    );
-    let other = Hub::from_client(&pool, start(), "100.64.0.99");
-    assert!(other.login(USERNAME, PASSWORD).await["data"]["login"]["token"].is_string());
-    let later = start() + TimeDelta::minutes(15);
-    assert!(!access::throttled(&pool, here, later).await.unwrap());
-}
-
-/// Five failures from outside sign-in alone throttle the address, as five wrong passwords do
-/// (D-8, CR-16).
-#[sqlx::test(migrations = "./migrations")]
-async fn sec_002_d_8_five_failures_outside_sign_in_refuse_a_real_login(pool: PgPool) {
-    set_operator(&pool).await;
-    let here = address(CLIENT);
-    for _ in 0..5 {
-        access::record_failure(&pool, here, start()).await.unwrap();
-    }
-    assert!(access::throttled(&pool, here, start()).await.unwrap());
-    assert_eq!(
-        error(&Hub::new(&pool, start()).login(USERNAME, PASSWORD).await),
-        wrong_credentials()
-    );
-}
-
-/// The username a failure outside sign-in is recorded under can never be an operator's, so it
-/// never matches or locks a real account (CR-16).
-#[sqlx::test(migrations = "./migrations")]
-async fn sec_002_d_8_a_failure_outside_sign_in_names_no_account(pool: PgPool) {
-    access::record_failure(&pool, address(CLIENT), start())
-        .await
-        .unwrap();
-    let marker: String = sqlx::query_scalar("select username from access.login_attempts")
-        .fetch_one(&pool)
-        .await
-        .unwrap();
-
-    let refused = access::set_operator(&pool, &marker, Password::new(PASSWORD.to_owned()), start());
-    assert!(
-        matches!(refused.await, Err(access::Error::Validation { .. })),
-        "{marker} could name an operator"
-    );
 }

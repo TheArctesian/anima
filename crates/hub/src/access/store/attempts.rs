@@ -7,6 +7,8 @@ use chrono::{DateTime, Utc};
 use sqlx::{PgConnection, PgExecutor};
 use uuid::Uuid;
 
+use crate::access::throttle::LOOKBACK;
+
 /// Deletes the login attempts of these usernames and every attempt from an address where one
 /// of them was tried, so a reset operator can sign in at once, even after typos that locked
 /// the address (D-8, D-9).
@@ -69,42 +71,25 @@ pub(in crate::access) async fn finish_attempt(
     Ok(())
 }
 
-/// Times of the checked failures from the attempt's client address in `(since, attempt.at]`,
-/// other than the attempt itself, oldest first.
+/// Times of the checked failures from `client` that can still throttle an attempt at `at`,
+/// those in `(at - LOOKBACK, at]`, oldest first, leaving out `except`: the caller's own
+/// attempt, already recorded as failed. Sign-in and `joinShare` both read through here, so
+/// they share one rule (D-8, CR-16).
 pub(in crate::access) async fn failures(
-    conn: &mut PgConnection,
-    attempt: &AttemptKey,
-    since: DateTime<Utc>,
-) -> Result<Vec<DateTime<Utc>>, sqlx::Error> {
-    sqlx::query_scalar(
-        "select at from access.login_attempts \
-         where client_addr = $1 and not ok and not refused and at > $2 and at <= $3 \
-         and id <> $4 order by at",
-    )
-    .bind(attempt.client)
-    .bind(since)
-    .bind(attempt.at)
-    .bind(attempt.id)
-    .fetch_all(conn)
-    .await
-}
-
-/// Times of the checked failures from `client` in `(since, until]`, oldest first, for a caller
-/// that has no attempt of its own to leave out (`joinShare`, CR-16).
-pub(in crate::access) async fn failures_from(
     db: impl PgExecutor<'_>,
     client: IpAddr,
-    since: DateTime<Utc>,
-    until: DateTime<Utc>,
+    at: DateTime<Utc>,
+    except: Option<Uuid>,
 ) -> Result<Vec<DateTime<Utc>>, sqlx::Error> {
     sqlx::query_scalar(
         "select at from access.login_attempts \
          where client_addr = $1 and not ok and not refused and at > $2 and at <= $3 \
-         order by at",
+         and ($4::uuid is null or id <> $4) order by at",
     )
     .bind(client)
-    .bind(since)
-    .bind(until)
+    .bind(at - LOOKBACK)
+    .bind(at)
+    .bind(except)
     .fetch_all(db)
     .await
 }

@@ -37,6 +37,7 @@ pub use connection::{MESSAGE_LIMIT, SUBPROTOCOL, SocketAccess, accept_socket};
 pub use guard::{Authenticated, SignInRequired};
 pub use identity::{Identity, client_addr, identify, identify_connection, operator_for_token};
 pub use layer::{Edge, permitted_networks_layer};
+pub use login::{record_failure, throttled};
 pub use origin::PublicOrigin;
 pub use password::Password;
 pub use tokens::{Scope, TokenKind};
@@ -400,38 +401,6 @@ pub async fn prune(db: &PgPool, now: DateTime<Utc>) -> Result<Pruned, Error> {
     };
     let (attempts, tokens) = store::prune(&mut conn, &cutoffs).await?;
     Ok(Pruned { attempts, tokens })
-}
-
-/// The username a failure from outside sign-in is recorded under. It fails the operator
-/// username check (`^[A-Za-z0-9._-]{1,64}$`), so no operator can have it: it never matches an
-/// account, and `operator set` never clears it by name (D-8, D-9, CR-16).
-const OUTSIDE_SIGN_IN: &str = "(share join)";
-
-/// Whether the login throttle turns away an attempt from `client` at `now` (D-8). `joinShare`
-/// asks before it checks a share secret, so a share miss and a wrong password count against
-/// the same address (CR-16).
-///
-/// # Errors
-///
-/// `Error::Database` if the attempts cannot be read.
-pub async fn throttled(db: &PgPool, client: ClientAddr, now: DateTime<Utc>) -> Result<bool, Error> {
-    let failures = store::failures_from(db, client.0, now - throttle::LOOKBACK, now).await?;
-    Ok(throttle::refused(&failures, now))
-}
-
-/// Records a failed attempt from `client` at `now` that counts toward the login throttle like a
-/// wrong password (D-8): `joinShare` calls it when a share secret does not match (CR-16).
-///
-/// # Errors
-///
-/// `Error::Database` if the attempt cannot be recorded.
-pub async fn record_failure(
-    db: &PgPool,
-    client: ClientAddr,
-    now: DateTime<Utc>,
-) -> Result<(), Error> {
-    store::start_attempt(db, now, OUTSIDE_SIGN_IN, client.0).await?;
-    Ok(())
 }
 
 /// The guarded value: the access state behind a lock (counts, maps and timestamps) stays valid

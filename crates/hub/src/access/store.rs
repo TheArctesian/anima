@@ -11,7 +11,7 @@ use sqlx::{FromRow, PgConnection, PgExecutor};
 use uuid::Uuid;
 
 pub(super) use attempts::{
-    AttemptKey, Outcome, delete_attempts_of, failures, failures_from, finish_attempt, start_attempt,
+    AttemptKey, Outcome, delete_attempts_of, failures, finish_attempt, start_attempt,
 };
 pub(super) use keys::{KEY_NAME_INDEX, NewKey, StoredKey, delete_key, insert_key, keys_of};
 pub(super) use permitted::{permitted_networks, replace_labelled_networks};
