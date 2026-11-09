@@ -7,13 +7,18 @@ import { DEVICE_IDS } from './screens';
 
 const API_DELAY_MS = 400;
 const SETTLE_MS = 1500;
+const TALL_VIEWPORT = { width: 1280, height: 5000 };
 const CLS_LIMIT = 0.01;
 
-/** One line per page; a page added later is one more entry. `enabled` names a field that must be usable too, for a page with several late sections. */
+/**
+ * One line per page; a page added later is one more entry. `enabled` names a field that must be usable too, for a page with
+ * several late sections. `tall` gives the page a viewport as high as the whole page, since the engine reports only shifts
+ * inside the viewport and a long page shifts below the fold.
+ */
 const PAGES = [
   { name: 'the device list', path: '/devices', shown: { role: 'link', name: 'mac-studio' } },
   { name: 'a device detail page', path: `/devices/${DEVICE_IDS.gpuBox}`, shown: { role: 'heading', name: 'gpu-box' } },
-  { name: 'the settings page', path: '/settings', shown: { role: 'button', name: 'Revoke metrics-scrape' }, enabled: 'Interval (seconds)' },
+  { name: 'the settings page', path: '/settings', shown: { role: 'button', name: 'Revoke metrics-scrape' }, enabled: 'Interval (seconds)', tall: true },
 ] as const;
 
 type Shown = (typeof PAGES)[number]['shown'];
@@ -45,7 +50,8 @@ async function slowGraphql(page: Page): Promise<void> {
   );
 }
 
-async function layoutShiftOf(page: Page, path: string, shown: Shown, enabled?: string): Promise<number> {
+async function layoutShiftOf(page: Page, path: string, shown: Shown, enabled?: string, tall = false): Promise<number> {
+  if (tall) await page.setViewportSize(TALL_VIEWPORT);
   await watchLayoutShift(page);
   await slowGraphql(page);
   await page.goto(path);
@@ -58,8 +64,9 @@ async function layoutShiftOf(page: Page, path: string, shown: Shown, enabled?: s
 for (const entry of PAGES) {
   const { name, path, shown } = entry;
   const enabled = 'enabled' in entry ? entry.enabled : undefined;
+  const tall = 'tall' in entry;
   test(`R-096: ${name} shifts less than ${String(CLS_LIMIT)} while its data arrives late`, async ({ page }) => {
-    expect(await layoutShiftOf(page, path, shown, enabled)).toBeLessThanOrEqual(CLS_LIMIT);
+    expect(await layoutShiftOf(page, path, shown, enabled, tall)).toBeLessThanOrEqual(CLS_LIMIT);
   });
 }
 
