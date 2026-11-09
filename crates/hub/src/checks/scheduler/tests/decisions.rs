@@ -1,5 +1,5 @@
-//! The pure decisions: first-run spread, lateness, missed pushes and event
-//! wording (CHK-001, CHK-002, CHK-010, DB-005).
+//! The pure decisions: first-run spread, the domain expiry floor, lateness, missed pushes
+//! and event wording (CHK-001, CHK-002, CHK-010, DB-005, R-102).
 
 use std::{collections::HashSet, time::Duration};
 
@@ -13,8 +13,8 @@ use crate::{
         evaluate,
         probe::{Failure, ProbeResult},
         scheduler::schedule::{
-            Timing, Watchdog, first_due, is_late, missed_push, needs_spreading, severity_of,
-            status_message,
+            Timing, Watchdog, is_late, missed_push, needs_new_due, new_due, not_before_floor,
+            severity_of, status_message,
         },
     },
     events::Severity,
@@ -41,6 +41,7 @@ fn due(config: CheckConfig, next_due_at: Option<DateTime<Utc>>) -> Due {
             next_due_at,
             ..CheckState::default()
         },
+        last_beat_at: None,
     }
 }
 
@@ -62,9 +63,7 @@ fn late(ago: i64, started: i64) -> bool {
 fn chk_001_first_runs_are_spread_over_the_interval() {
     let mut rng = rng();
     let check = due(tcp(), None);
-    let runs: Vec<_> = (0..50)
-        .map(|_| first_due(&check, now(), &mut rng))
-        .collect();
+    let runs: Vec<_> = (0..50).map(|_| new_due(&check, now(), &mut rng)).collect();
     assert!(
         runs.iter()
             .all(|at| *at >= now() && *at < now() + seconds(10)),
@@ -77,18 +76,95 @@ fn chk_001_first_runs_are_spread_over_the_interval() {
 fn chk_001_a_push_check_first_waits_its_whole_interval() {
     let mut rng = rng();
     let check = due(CheckConfig::Push, None);
-    assert_eq!(first_due(&check, now(), &mut rng), now() + seconds(10));
+    assert_eq!(new_due(&check, now(), &mut rng), now() + seconds(10));
 }
 
 #[test]
 fn chk_001_checks_due_before_the_start_are_spread_and_later_ones_run() {
     let started = now() - seconds(60);
-    assert!(needs_spreading(&due(tcp(), None), started));
-    assert!(needs_spreading(
+    assert!(needs_new_due(&due(tcp(), None), started));
+    assert!(needs_new_due(
         &due(tcp(), Some(started - seconds(1))),
         started
     ));
-    assert!(!needs_spreading(&due(tcp(), Some(started)), started));
+    assert!(!needs_new_due(&due(tcp(), Some(started)), started));
+}
+
+fn domain() -> CheckConfig {
+    CheckConfig::DomainExpiry {
+        domain: "example.net".to_owned(),
+        warn_days: 30,
+        timeout_ms: 10_000,
+    }
+}
+
+/// A check of `config` due at `next_due_at`, with an hourly interval and its last beat
+/// `ago` seconds before `now()`.
+fn hourly(config: CheckConfig, next_due_at: Option<DateTime<Utc>>, ago: Option<i64>) -> Due {
+    let mut check = due(config, next_due_at);
+    check.settings.interval_seconds = 3600;
+    check.last_beat_at = ago.map(|ago| now() - seconds(ago));
+    check
+}
+
+#[test]
+fn r_102_a_domain_check_is_never_due_before_its_last_beat_plus_the_interval() {
+    let floor = now() + seconds(3000);
+    let mut rng = rng();
+    for next_due_at in [None, Some(now() - seconds(1)), Some(now())] {
+        let check = hourly(domain(), next_due_at, Some(600));
+        assert!(
+            needs_new_due(&check, now() - seconds(60)),
+            "{next_due_at:?}"
+        );
+        let runs: Vec<_> = (0..50).map(|_| new_due(&check, now(), &mut rng)).collect();
+        assert!(runs.iter().all(|at| *at >= floor), "{runs:?}");
+    }
+    let at_floor = hourly(domain(), Some(floor), Some(600));
+    assert!(!needs_new_due(&at_floor, now() - seconds(60)));
+    let retry = now() + seconds(5);
+    assert_eq!(
+        not_before_floor(&at_floor, Some(now()), retry),
+        now() + seconds(3600)
+    );
+    assert_eq!(
+        not_before_floor(&at_floor, at_floor.last_beat_at, retry),
+        floor
+    );
+}
+
+#[test]
+fn r_102_a_domain_check_with_no_beat_may_run_at_once() {
+    let started = now() - seconds(60);
+    assert!(!needs_new_due(
+        &hourly(domain(), Some(now()), None),
+        started
+    ));
+    let mut rng = rng();
+    let unscheduled = hourly(domain(), None, None);
+    let runs: Vec<_> = (0..50)
+        .map(|_| new_due(&unscheduled, now(), &mut rng))
+        .collect();
+    assert!(runs.iter().any(|at| *at < now() + seconds(600)), "{runs:?}");
+    assert_eq!(not_before_floor(&unscheduled, None, now()), now());
+}
+
+#[test]
+fn r_102_other_check_types_have_no_floor() {
+    let started = now() - seconds(60);
+    let port = hourly(tcp(), Some(now()), Some(600));
+    assert!(!needs_new_due(&port, started));
+    let retry = now() + seconds(5);
+    assert_eq!(not_before_floor(&port, Some(now()), retry), retry);
+    let mut rng = rng();
+    let unscheduled = hourly(tcp(), None, Some(600));
+    let runs: Vec<_> = (0..50)
+        .map(|_| new_due(&unscheduled, now(), &mut rng))
+        .collect();
+    assert!(
+        runs.iter().any(|at| *at < now() + seconds(3000)),
+        "{runs:?}"
+    );
 }
 
 #[test]

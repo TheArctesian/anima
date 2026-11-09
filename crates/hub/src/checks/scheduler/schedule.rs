@@ -1,5 +1,5 @@
-//! The scheduler's decisions: when a check runs first, when it is late and how a status change
-//! is reported (CHK-001, CHK-002, CHK-010, DB-005). Pure: time and randomness come in as
+//! The scheduler's decisions: when a check runs first, how soon it may run again, when it is
+//! late and how a status change is reported (CHK-001, CHK-002, CHK-010, DB-005, R-102). Pure: time and randomness come in as
 //! parameters.
 
 use std::collections::HashSet;
@@ -22,21 +22,47 @@ fn interval(seconds: u32) -> TimeDelta {
     TimeDelta::seconds(i64::from(seconds.max(1)))
 }
 
-/// Whether the check gets a new, spread due time instead of running: it has none, or it was
-/// due before the scheduler started, so a hub restart does not probe everything at once.
-pub(super) fn needs_spreading(due: &Due, started_at: DateTime<Utc>) -> bool {
-    due.state.next_due_at.is_none_or(|at| at < started_at)
+/// The earliest a check may be probed again, when its type has such a floor (R-102,
+/// CHK-009): a domain expiry check asks its RDAP server at most once an interval, so it waits
+/// its whole interval after `queried_at`, its last query. A check never queried, or of
+/// another type, has none.
+pub(super) fn floor(due: &Due, queried_at: Option<DateTime<Utc>>) -> Option<DateTime<Utc>> {
+    let domain = matches!(due.config, Some(CheckConfig::DomainExpiry { .. }));
+    queried_at
+        .filter(|_| domain)
+        .map(|at| at + interval(due.settings.interval_seconds))
 }
 
-/// The spread due time. A probed check gets a uniform instant in `[now, now + interval)`
-/// (CHK-001). A PUSH check waits its whole interval: its device has had no chance to call.
-pub(super) fn first_due(due: &Due, now: DateTime<Utc>, rng: &mut impl Rng) -> DateTime<Utc> {
+/// `at`, or the check's [`floor`] after `queried_at` when that is later.
+pub(super) fn not_before_floor(
+    due: &Due,
+    queried_at: Option<DateTime<Utc>>,
+    at: DateTime<Utc>,
+) -> DateTime<Utc> {
+    floor(due, queried_at).map_or(at, |floor| at.max(floor))
+}
+
+/// Whether the check gets a new due time instead of running: it has none; it was due before
+/// the scheduler started, so a hub restart does not probe everything at once; or it is due
+/// before its [`floor`] after its last beat, however that due time was set (R-102).
+pub(super) fn needs_new_due(due: &Due, started_at: DateTime<Utc>) -> bool {
+    let floor = floor(due, due.last_beat_at);
+    due.state
+        .next_due_at
+        .is_none_or(|at| at < started_at || floor.is_some_and(|floor| at < floor))
+}
+
+/// The new due time: spread, and never before the check's [`floor`] after its last beat. A
+/// probed check gets a uniform instant in `[now, now + interval)` (CHK-001). A PUSH check
+/// waits its whole interval: its device has had no chance to call.
+pub(super) fn new_due(due: &Due, now: DateTime<Utc>, rng: &mut impl Rng) -> DateTime<Utc> {
     let interval = interval(due.settings.interval_seconds);
     if matches!(due.config, Some(CheckConfig::Push)) {
         return now + interval;
     }
     let millis = interval.num_milliseconds();
-    now + TimeDelta::milliseconds(rng.random_range(0..millis))
+    let spread = now + TimeDelta::milliseconds(rng.random_range(0..millis));
+    not_before_floor(due, due.last_beat_at, spread)
 }
 
 /// When a check is due and how often it runs, for the lateness rule.

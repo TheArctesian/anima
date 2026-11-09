@@ -143,6 +143,7 @@ impl CheckRow {
             device: self.device_id,
             parent: self.parent_id,
             config: config_of(&self.kind, self.config),
+            last_beat_at: self.last_beat_at,
         })
     }
 }
