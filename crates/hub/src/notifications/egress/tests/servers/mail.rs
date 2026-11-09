@@ -18,6 +18,8 @@ pub(super) struct Script {
     pub(super) starttls: Option<&'static [u8]>,
     /// What it answers to AUTH.
     pub(super) auth: &'static [u8],
+    /// What it answers to QUIT; `None` when it never answers and waits for the client to go.
+    pub(super) quit: Option<&'static [u8]>,
 }
 
 pub(super) const GO_AHEAD: &[u8] = b"220 go ahead\r\n";
@@ -26,6 +28,7 @@ pub(super) const PLAIN: Script = Script {
     greet: true,
     starttls: None,
     auth: b"235 accepted\r\n",
+    quit: Some(b"221 bye\r\n"),
 };
 /// The conversation after STARTTLS: no new greeting, no second STARTTLS.
 const AFTER_STARTTLS: Script = Script {
@@ -101,7 +104,10 @@ pub(super) async fn smtp<S: AsyncRead + AsyncWrite + Unpin>(
                 b"250 queued\r\n"
             }
             ("QUIT", _) => {
-                let _ = reader.get_mut().write_all(b"221 bye\r\n").await;
+                match script.quit {
+                    Some(bye) => drop(reader.get_mut().write_all(bye).await),
+                    None => super::drain(reader).await,
+                }
                 return None;
             }
             _ => b"500 unknown\r\n",

@@ -4,7 +4,7 @@
 //! Local servers stand in for the targets; the policy allows loopback for them.
 
 mod http;
-mod servers;
+pub(in crate::notifications) mod servers;
 mod smtp;
 
 use ipnet::IpNet;
@@ -13,7 +13,7 @@ use super::Egress;
 use crate::targets::AddressPolicy;
 
 /// An egress that may reach the local test servers.
-fn local() -> Egress {
+pub(in crate::notifications) fn local() -> Egress {
     Egress::new(AddressPolicy::default().allowing_loopback())
 }
 

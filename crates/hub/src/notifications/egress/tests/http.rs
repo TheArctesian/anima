@@ -1,12 +1,13 @@
 //! HTTP egress: https only, checked address only, no second lookup, no redirect, TLS verified
 //! for the host name, and at most 4 KiB of the reply read (P3-003, D-17, CR-14).
 
-use std::net::SocketAddr;
+use std::{net::SocketAddr, time::Duration};
 
 use reqwest::{
-    Url,
+    Method, Url,
     header::{HeaderMap, HeaderValue},
 };
+use tokio::time::Instant;
 
 use super::{
     local, loopback_denied,
@@ -14,7 +15,7 @@ use super::{
 };
 use crate::{
     notifications::egress::{
-        Egress, SendError,
+        Egress, HttpRequest, SendError, TIME_LIMIT,
         http::{REPLY_CAP, classify, discard_reply},
     },
     targets::{AddressPolicy, TargetError},
@@ -37,8 +38,28 @@ fn headers() -> HeaderMap {
     headers
 }
 
+fn request(method: Method, target: Url) -> HttpRequest {
+    HttpRequest {
+        method,
+        url: target,
+        headers: headers(),
+        body: BODY.to_vec(),
+    }
+}
+
 async fn post(egress: &Egress, target: &str) -> Result<(), SendError> {
-    egress.post(&url(target), headers(), BODY.to_vec()).await
+    egress.send_http(request(Method::POST, url(target))).await
+}
+
+/// How late past the time limit a send may end on a loaded machine.
+const SLACK: Duration = Duration::from_secs(3);
+
+/// Asserts that a send that waited for the time limit took it, and no second limit after it
+/// (C-1, C-2).
+fn ended_at_the_limit(started: Instant) {
+    let took = started.elapsed();
+    assert!(took >= TIME_LIMIT.saturating_sub(Duration::from_millis(100)), "{took:?}");
+    assert!(took < TIME_LIMIT + SLACK, "{took:?}");
 }
 
 /// A TLS server for `name` that answers `reply`, and an egress that trusts its certificate.
@@ -122,12 +143,66 @@ async fn d_17_a_root_the_hub_cannot_read_is_a_setup_failure_with_no_connection()
 #[tokio::test]
 async fn d_17_a_server_that_never_answers_ends_at_the_time_limit() {
     let server = serve(Behaviour::Silent).await;
+    let started = Instant::now();
 
     let sent = post(&local(), &format!("https://localhost:{}/", server.port)).await;
 
     assert_eq!(sent, Err(SendError::TimedOut));
+    ended_at_the_limit(started);
     server.settle().await;
     assert_eq!(server.connections(), 1);
+}
+
+const OK_HEAD: &[u8] = b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\n";
+const UNAVAILABLE_HEAD: &[u8] = b"HTTP/1.1 503 Service Unavailable\r\nContent-Length: 100\r\n\r\n";
+
+#[tokio::test]
+async fn d_17_a_2xx_whose_body_stalls_is_sent_and_ends_at_the_one_time_limit() {
+    let (der, acceptor) = certificate("localhost");
+    let server = serve(Behaviour::Stalled(OK_HEAD, acceptor)).await;
+    let started = Instant::now();
+
+    let sent = post(
+        &local().trusting(der),
+        &format!("https://localhost:{}/", server.port),
+    )
+    .await;
+
+    // The status decided (S-B): a stalled body is not a time-out, and its read ends at the
+    // send's own deadline, with no fresh limit of its own (C-2).
+    assert_eq!(sent, Ok(()));
+    ended_at_the_limit(started);
+    server.settle().await;
+    assert_eq!(server.connections(), 1);
+}
+
+#[tokio::test]
+async fn d_17_a_failing_status_decides_at_once_though_its_body_stalls() {
+    let (der, acceptor) = certificate("localhost");
+    let server = serve(Behaviour::Stalled(UNAVAILABLE_HEAD, acceptor)).await;
+    let started = Instant::now();
+
+    let sent = post(
+        &local().trusting(der),
+        &format!("https://localhost:{}/", server.port),
+    )
+    .await;
+
+    assert_eq!(sent, Err(SendError::HttpStatus(503)));
+    assert!(started.elapsed() < TIME_LIMIT / 2, "{:?}", started.elapsed());
+}
+
+#[tokio::test]
+async fn not_002_a_put_is_sent_as_a_put() {
+    let (server, egress) = tls_server("localhost", NO_CONTENT).await;
+    let target = url(&format!("https://localhost:{}/hook", server.port));
+
+    let sent = egress.send_http(request(Method::PUT, target)).await;
+
+    assert_eq!(sent, Ok(()));
+    server.settle().await;
+    assert_eq!(server.lines(), ["PUT /hook HTTP/1.1"]);
+    assert_eq!(server.bodies(), [BODY]);
 }
 
 #[tokio::test]
