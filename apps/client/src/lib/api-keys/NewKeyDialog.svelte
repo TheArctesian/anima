@@ -145,6 +145,7 @@
   }
 
   form {
+    min-inline-size: 0;
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
@@ -220,7 +221,10 @@
     outline-offset: var(--border-focus);
   }
 
+  /* It adds no width of its own (zero inline size, stretched to the form), so a long line is cut and never widens the dialog. */
   .failure {
+    inline-size: 0;
+    min-inline-size: 100%;
     min-block-size: 1lh;
     overflow: hidden;
     text-overflow: ellipsis;

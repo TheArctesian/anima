@@ -134,6 +134,20 @@
     min-block-size: max(var(--target-min-desktop), calc(var(--text-sm) * var(--leading-normal) * 2));
   }
 
+  /* Narrow: the message (or the outcome) and the button are two lines of their own in both states, so a retry moves nothing (MOT-007). */
+  @media (max-width: 767.98px) {
+    .note {
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: start;
+      min-block-size: calc(var(--text-sm) * var(--leading-normal) * 2 + var(--space-2) + var(--target-min-desktop));
+    }
+
+    .note :global(button) {
+      align-self: flex-end;
+    }
+  }
+
   .note p {
     margin: 0;
     font-size: var(--text-sm);

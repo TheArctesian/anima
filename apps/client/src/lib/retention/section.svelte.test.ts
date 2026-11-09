@@ -119,7 +119,7 @@ it('HUB-005: a failed save shows a fixed message, not the hub text, and keeps wh
 
 it('HUB-005: the note that changes apply at the next daily run is shown', async () => {
   const target = await open(LIST);
-  expect(target.textContent).toContain('Changes apply at the next daily run.');
+  expect(target.textContent).toContain('Applied at the next daily run.');
 });
 
 it('HUB-005: a failed load shows a fixed message and Try again loads the periods', async () => {

@@ -33,10 +33,10 @@
 </script>
 
 <li class="row" class:paused={check.paused}>
-  <button type="button" class="name" aria-expanded={open} onclick={onHistory} {@attach press()}>
+  <button type="button" class="name" title={check.name} aria-expanded={open} onclick={onHistory} {@attach press()}>
     <span>{check.name}</span>
   </button>
-  <span class="type">{text.type}</span>
+  <span class="type" title={text.type}>{text.type}</span>
   <!-- A reading changes with a cross-fade, in place (MOT-008, Status change). -->
   <span class="reading">
     {#key check.status}<span transition:crossFade>{check.paused ? 'Paused' : statusLabel(check.status)}</span>{/key}
@@ -102,69 +102,56 @@
     white-space: nowrap;
   }
 
-  /*
-   * Below the wide breakpoint the expiry has no column of its own: it takes a second line, reserved in every row so no row
-   * differs in height (MOT-007). The breakpoints are the compact and medium edges of `$lib/motion/tokens`, less 0.02px.
-   */
-  @media (max-width: 1100.98px) {
-    .row {
-      grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr)) auto;
-    }
-
-    .expiry {
-      grid-row: 2;
-      grid-column: 1 / -1;
-      min-block-size: 1lh;
-    }
-
-    .actions {
-      grid-row: 1;
-      grid-column: 5;
-    }
+  /* One line in its cell at every width: a long reading is cut with an ellipsis, never wrapped (MOT-007). */
+  .type,
+  .reading > span {
+    min-inline-size: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   /*
-   * Compact: row 1 is the name and the actions, row 2 the type, the status and the latency, row 3 the expiry; each cell is one
-   * line with an ellipsis, so a long name or reading never wraps or changes a row's height (MOT-007).
+   * Below the wide breakpoint the row is two lines, each reserved in every row so no row differs in height (MOT-007): the
+   * name and the actions, then the type, the status, the latency and the expiry in a quarter of the width each. The
+   * breakpoints are the compact and medium edges of `$lib/motion/tokens`, less 0.02px.
    */
-  @media (max-width: 767.98px) {
+  @media (max-width: 1100.98px) {
     .row {
-      grid-template-columns: repeat(6, minmax(0, 1fr));
+      grid-template-columns: repeat(12, minmax(0, 1fr));
     }
 
     .name {
       grid-row: 1;
-      grid-column: 1 / 4;
+      grid-column: 1 / 7;
     }
 
     .actions {
       grid-row: 1;
-      grid-column: 4 / 7;
+      grid-column: 7 / 13;
       justify-self: end;
     }
 
-    .type {
+    .type,
+    .reading,
+    .expiry {
       grid-row: 2;
-      grid-column: span 2;
-    }
-
-    .reading {
-      grid-row: 2;
-      grid-column: span 2;
+      grid-column: span 3;
       min-inline-size: 0;
       min-block-size: 1lh;
     }
+  }
 
+  /* Compact: the expiry takes a third line of its own. */
+  @media (max-width: 767.98px) {
     .type,
-    .reading > span {
-      min-inline-size: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+    .reading {
+      grid-column: span 4;
     }
 
     .expiry {
       grid-row: 3;
+      grid-column: 1 / -1;
     }
   }
 

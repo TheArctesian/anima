@@ -70,7 +70,7 @@
     <p role="alert">Could not load the periods.</p>
     <FormButton tabindex={0} aria-disabled={retrying} aria-busy={retrying} onclick={retry}>Try again</FormButton>
   {:else}
-    <p>Changes apply at the next daily run.</p>
+    <p>Applied at the next daily run.</p>
   {/if}
 </div>
 
