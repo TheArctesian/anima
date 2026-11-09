@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createHub, DEFAULT_HUB_ADDRESS, parseHubAddress, type HubAddress } from '$lib/hub/hub';
 import { FakeSocket, newHub, onlySocket, recordingSink, settle, STATUS_CHANGED } from '$lib/hub/socket/fake';
 import { storedHubAddress, storeHubAddress } from './address';
-import { AccessTokenError, clearAccessToken, readAccessToken, writeAccessToken } from './token';
+import { AccessTokenError, clearAccessToken, clearBuilderToken, readAccessToken, readBuilderToken, writeAccessToken, writeBuilderToken } from './token';
 
 const core = vi.hoisted(() => ({ invoke: vi.fn(), isTauri: vi.fn() }));
 vi.mock('@tauri-apps/api/core', () => core);
@@ -152,6 +152,45 @@ describe('writeAccessToken and clearAccessToken', () => {
     await expect(writeAccessToken(HUB, SECRET)).rejects.toMatchObject({ problem: 'not-desktop' });
     await expect(clearAccessToken(HUB)).rejects.toMatchObject({ problem: 'not-desktop' });
     expect(core.invoke).not.toHaveBeenCalled();
+  });
+});
+
+describe('the builder token', () => {
+  const other = addressOf('my-hub.example:8443');
+
+  it('BLD-023: read, write and clear go to the builder commands of the key store for the hub origin', async () => {
+    core.invoke.mockResolvedValue(undefined);
+    await writeBuilderToken(other, SECRET);
+    expect(core.invoke).toHaveBeenCalledWith('builder_token_write', { origin: 'https://my-hub.example:8443', token: SECRET });
+    await clearBuilderToken(other);
+    expect(core.invoke).toHaveBeenCalledWith('builder_token_clear', { origin: 'https://my-hub.example:8443' });
+    core.invoke.mockResolvedValue(SECRET);
+    await expect(readBuilderToken(other)).resolves.toBe(SECRET);
+    expect(core.invoke).toHaveBeenLastCalledWith('builder_token_read', { origin: 'https://my-hub.example:8443' });
+  });
+
+  it('BLD-023: an answer that is not a string is a failure, and a missing token is null', async () => {
+    core.invoke.mockResolvedValue(42);
+    await expect(readBuilderToken(HUB)).rejects.toMatchObject({ problem: 'failed' });
+    core.invoke.mockResolvedValue(null);
+    await expect(readBuilderToken(HUB)).resolves.toBeNull();
+  });
+
+  it('BLD-023: outside the desktop app nothing is read and nothing is kept', async () => {
+    core.isTauri.mockReturnValue(false);
+    await expect(readBuilderToken(HUB)).resolves.toBeNull();
+    await expect(writeBuilderToken(HUB, SECRET)).rejects.toMatchObject({ problem: 'not-desktop' });
+    await expect(clearBuilderToken(HUB)).rejects.toMatchObject({ problem: 'not-desktop' });
+    expect(core.invoke).not.toHaveBeenCalled();
+  });
+
+  it('BLD-023: the builder token is never written to localStorage', async () => {
+    const storage = { setItem: vi.fn() };
+    vi.stubGlobal('localStorage', storage);
+    core.invoke.mockResolvedValue(undefined);
+    await writeBuilderToken(HUB, SECRET);
+    expect(storage.setItem).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
   });
 });
 
