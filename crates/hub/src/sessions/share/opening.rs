@@ -8,7 +8,7 @@ use super::{
     Error, Sharing,
     keeper::Keeper,
     model::{SessionShare, ShareEnd},
-    registry::Share,
+    registry::{Share, Shares},
     terms::Terms,
     trail,
 };
@@ -19,6 +19,40 @@ use crate::{
         tickets::{TOKEN_BYTES, TicketToken},
     },
 };
+
+/// A held share that has no keeper yet. Dropped before [`Unkept::kept`], because its opening
+/// failed, panicked or was cancelled, it withdraws the share, so no share is held without a
+/// keeper (S-5).
+#[must_use = "dropping it withdraws the share"]
+pub(super) struct Unkept {
+    shares: Shares,
+    id: ShareId,
+    kept: bool,
+}
+
+impl Unkept {
+    /// Watches over the share `id`, which `shares` has just opened.
+    pub(super) const fn new(shares: Shares, id: ShareId) -> Self {
+        Self {
+            shares,
+            id,
+            kept: false,
+        }
+    }
+
+    /// The share's keeper runs: the share is its to end.
+    pub(super) fn kept(mut self) {
+        self.kept = true;
+    }
+}
+
+impl Drop for Unkept {
+    fn drop(&mut self) {
+        if !self.kept {
+            self.shares.remove(self.id);
+        }
+    }
+}
 
 /// Random bytes from the operating system.
 fn random_token() -> Result<TicketToken, Error> {
@@ -83,6 +117,7 @@ pub(super) async fn share_session(
         .shares()
         .open(token.hash(), share)
         .map_err(|_| Error::Unavailable)?;
+    let unkept = Unkept::new(sharing.live.shares().clone(), view.id);
     let keeper = Keeper {
         sharing: sharing.clone(),
         id: view.id,
@@ -93,21 +128,28 @@ pub(super) async fn share_session(
         tunnel_end,
     };
     // Dropping a join handle does not cancel its task: once the share is held, the task runs
-    // to the end even when the caller goes away, so a held share always has its keeper.
-    tokio::spawn(created_then_kept(keeper, by.clone(), view.clone()))
+    // to the end even when the caller goes away, so a held share always has its keeper. If
+    // the task panics or the runtime drops it first, `unkept` withdraws the share.
+    tokio::spawn(created_then_kept(keeper, unkept, by.clone(), view.clone()))
         .await
         .map_err(Error::Stopped)??;
     Ok((view, token))
 }
 
-/// Writes `share.create` by `by` for the held share `view`, then hands the share to `keeper`.
-/// When the write fails, it withdraws the share instead.
-async fn created_then_kept(keeper: Keeper, by: Actor, view: SessionShare) -> Result<(), Error> {
-    let sharing = keeper.sharing.clone();
-    if let Err(error) = trail::created(&sharing, &by, keeper.device.clone(), &view).await {
-        sharing.live.shares().remove(view.id);
+/// Writes `share.create` by `by` for the held share `view`, then hands the `unkept` share to
+/// `keeper`. When the write fails, it withdraws the share instead.
+async fn created_then_kept(
+    keeper: Keeper,
+    unkept: Unkept,
+    by: Actor,
+    view: SessionShare,
+) -> Result<(), Error> {
+    if let Err(error) = trail::created(&keeper.sharing, &by, keeper.device.clone(), &view).await {
+        // No `share.create`, no share: dropped, `unkept` withdraws it.
+        drop(unkept);
         return Err(error);
     }
     tokio::spawn(keeper.keep());
+    unkept.kept();
     Ok(())
 }
