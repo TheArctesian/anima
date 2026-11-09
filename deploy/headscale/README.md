@@ -27,11 +27,18 @@ uses it. The procedures are in the guide, not here. Public DNS records are in
 
 `config/policy.hujson` carries `tag:agent` for a device that runs `anima-agent` and nothing
 else. One grant names it: `tag:agent` to `tag:hub`, `tcp:443`. No grant has it as a
-destination (the agent listens on no port), and no other grant gives it reach, so it cannot
-touch the hub's SSH, a site or another device. Like every tag, its owner list is empty:
-only the operator applies it, with `headscale nodes tag -i <id> -t tag:agent` or a pre-auth
-key created with `--tags tag:agent` (a proposal, see below). A tagged node stops being a
-personal node and does not expire (VPN-003).
+destination (the agent listens on no port) while every `device-*` host entry is kept current
+(see "Removing a client device" below). No other grant gives it reach, so it cannot touch the
+hub's SSH, a site or another device.
+
+Like every tag, its owner list is empty. The operator applies the tag in one of two ways, both
+operator steps (VPS-005): with `headscale nodes tag -i <id> -t tag:agent` on an existing node,
+or with a pre-auth key made with `--tags tag:agent` when the device registers.
+
+A tagged node stops being a personal node, and tagged nodes do not expire in Headscale.
+VPN-003 lists only the hub and routers as tagged nodes. Whether agent-only devices need a
+forced re-key schedule is pending a programme ruling. Until it is decided, the operator
+revokes an agent device by deleting the node (`headscale nodes delete`) or by removing the tag.
 
 A device that is also an operator machine (a laptop or the Mac) stays a personal node of
 `operator`, untagged: it keeps its operator reach, and its agent still only dials the hub on
@@ -39,5 +46,21 @@ A device that is also an operator machine (a laptop or the Mac) stays a personal
 
 Applying the policy on the live Headscale is the operator's step (VPS-005). The tests block
 does not name `tag:agent` yet: Headscale refuses a policy that names a tag no node carries.
-Its rows wait in `AGENT_ROWS` in `tests/policy.test.ts` and move into the policy once the
-first agent-only device is tagged.
+Its rows wait in `AGENT_ROWS` in `tests/policy.test.ts`.
+
+### First agent device
+
+1. Tag the enrolled node, or register it with a pre-auth key made with `--tags tag:agent`
+   (both operator steps, VPS-005).
+2. Run `headscale nodes list`. The node must show `tag:agent` and no user. Do not continue
+   if it shows a user: it is not an agent-only device.
+3. Move `AGENT_ROWS` from `tests/policy.test.ts` into the policy `tests` block, then apply
+   the policy on the live Headscale (VPS-005).
+
+### Removing a client device
+
+When the operator removes a client device, delete its `device-*` host entry and its grant from
+`config/policy.hujson` too. The hub's device grants match by address, so a reused address could
+otherwise reach an agent. `tests/policy.test.ts` checks that no host `/32` equals the address of
+a tagged node in its test inventory, but the test cannot see the live tailnet, so keep the
+entries current.
