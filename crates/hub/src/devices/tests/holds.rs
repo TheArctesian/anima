@@ -1,5 +1,5 @@
-//! A device row held for another domain's transaction: kept, it cannot be deleted; locked, it
-//! cannot be changed either; a missing device is `NotFound`.
+//! A device row locked for another domain's transaction can be neither changed nor deleted
+//! until that transaction ends; locking a missing device is `NotFound`.
 
 use sqlx::{Connection, PgConnection, PgPool};
 
@@ -7,7 +7,7 @@ use super::*;
 
 const PVE_01: &str = "0190a000-0000-7000-8002-000000000001";
 
-/// Whether `sql` on the device runs on another connection while the row is held, waiting at
+/// Whether `sql` on the device runs on another connection while the row is locked, waiting at
 /// most a moment for the lock.
 async fn runs_beside(pool: &PgPool, sql: &str) -> bool {
     let mut other = pool.acquire().await.unwrap();
@@ -25,40 +25,25 @@ async fn runs_beside(pool: &PgPool, sql: &str) -> bool {
     ran
 }
 
-async fn held(pool: &PgPool, hold_as: Hold) -> sqlx::Transaction<'static, sqlx::Postgres> {
-    let mut tx = pool.begin().await.unwrap();
-    let conn: &mut PgConnection = &mut tx;
-    hold(conn, device_id(PVE_01), hold_as).await.unwrap();
-    tx
-}
-
 const CHANGE: &str =
     "UPDATE devices.devices SET maintenance = NOT maintenance WHERE id = $1::text::uuid";
 const DELETE: &str = "DELETE FROM devices.devices WHERE id = $1::text::uuid";
 
 store_test! {
-    async fn met_011_a_kept_device_may_change_but_not_be_deleted(pool: PgPool) {
-        let tx = held(&pool, Hold::Kept).await;
-        assert!(runs_beside(&pool, CHANGE).await);
-        assert!(!runs_beside(&pool, DELETE).await);
-        tx.rollback().await.unwrap();
-        assert!(runs_beside(&pool, DELETE).await);
-    }
-
     async fn met_013_a_locked_device_may_neither_change_nor_be_deleted(pool: PgPool) {
-        let tx = held(&pool, Hold::Locked).await;
+        let mut tx = pool.begin().await.unwrap();
+        let conn: &mut PgConnection = &mut tx;
+        lock(conn, device_id(PVE_01)).await.unwrap();
         assert!(!runs_beside(&pool, CHANGE).await);
         assert!(!runs_beside(&pool, DELETE).await);
         tx.rollback().await.unwrap();
         assert!(runs_beside(&pool, CHANGE).await);
     }
 
-    async fn met_011_holding_a_missing_device_is_not_found(pool: PgPool) {
+    async fn met_011_locking_a_missing_device_is_not_found(pool: PgPool) {
         let missing = device_id("0190a000-0000-7000-8002-0000000000ff");
         let mut conn = pool.acquire().await.unwrap();
-        for hold_as in [Hold::Kept, Hold::Locked] {
-            let error = hold(&mut conn, missing, hold_as).await.unwrap_err();
-            assert!(matches!(error, Error::NotFound(Missing::Device(id)) if id == missing));
-        }
+        let error = lock(&mut conn, missing).await.unwrap_err();
+        assert!(matches!(error, Error::NotFound(Missing::Device(id)) if id == missing));
     }
 }

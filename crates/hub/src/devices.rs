@@ -86,23 +86,15 @@ pub async fn wake_relay(db: &PgPool, site: SiteId) -> Result<Option<Device>, Err
     store::wake_relay(db, site).await
 }
 
-/// How firmly another domain's transaction holds a device row until it ends.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Hold {
-    /// The device cannot be deleted (`FOR KEY SHARE`); its settings may still change.
-    Kept,
-    /// The device cannot be changed or deleted (`FOR UPDATE`).
-    Locked,
-}
-
-/// Holds the device row as `hold` says until the caller's transaction ends. A transaction that
-/// writes rows deleted with the device takes this first, the order a device delete takes the
-/// rows in, so the two cannot deadlock.
+/// Locks the device row (`FOR UPDATE`) until the caller's transaction ends, so no other
+/// transaction changes or deletes the device meanwhile. A transaction that writes rows deleted
+/// with the device takes this first, the order a device delete takes the rows in, so the two
+/// cannot deadlock.
 ///
 /// # Errors
 /// `NotFound` when there is no such device.
-pub async fn hold(conn: &mut PgConnection, id: DeviceId, hold: Hold) -> Result<(), Error> {
-    store::hold_device(conn, id, hold).await
+pub async fn lock(conn: &mut PgConnection, id: DeviceId) -> Result<(), Error> {
+    store::lock_device(conn, id).await
 }
 
 /// Sets the device's metrics source to `agent` in the caller's transaction, which stops SSH
