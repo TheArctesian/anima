@@ -232,7 +232,7 @@ type Device {
   macAddress: String
   metricsSource: MetricsSource!
   "True when the source is AGENT and no batch came in the last 30 seconds (MET-018)."
-  metricsStale: Boolean! @pending
+  metricsStale: Boolean!
   transfer: TransferPolicy!
   accessWarnings: [AccessWarning!]!
   "Most live sessions at once (RA-036); null: no limit. Viewers and file tunnels do not count."
@@ -637,7 +637,7 @@ enum MetricKind {
   GPU_TEMPERATURE_C
   GPU_POWER_W
   "Memory in use by a unified-memory GPU (Apple), shown as a number, never a VRAM bar (MET-007, R-092 D-6)."
-  GPU_MEMORY_BYTES @pending
+  GPU_MEMORY_BYTES
 }
 
 # MET-003
