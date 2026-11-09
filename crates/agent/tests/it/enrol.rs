@@ -3,7 +3,7 @@
 use agent_core::wire::EnrolmentCode;
 use anima_agent::config::home::Home;
 use anima_agent::config::origin::Origin;
-use anima_agent::hub::HubClient;
+use anima_agent::hub::{HubClient, TIMEOUT};
 use anima_agent::hub::enrolment::{EnrolError, Enrolment, REFUSED};
 use anima_agent::token_store::TokenStore;
 
@@ -33,7 +33,7 @@ async fn met_012_enrol_posts_the_code_and_stores_the_token_the_device_and_the_hu
     let dir = tempfile::tempdir().expect("a folder");
     let home = Home::at(dir.path().join("agent"));
     let store = TokenStore::open(&home);
-    let client = HubClient::new(hub.url.clone()).expect("a client");
+    let client = HubClient::new(hub.url.clone(), TIMEOUT).expect("a client");
     let origin = Origin::parse("https://hub.example").expect("an origin");
     let name = Enrolment {
         hub: &client,
@@ -63,7 +63,7 @@ async fn met_012_a_refused_code_gives_the_fixed_sentence_and_stores_nothing() {
     let dir = tempfile::tempdir().expect("a folder");
     let home = Home::at(dir.path().join("agent"));
     let store = TokenStore::open(&home);
-    let client = HubClient::new(hub.url.clone()).expect("a client");
+    let client = HubClient::new(hub.url.clone(), TIMEOUT).expect("a client");
     let origin = Origin::default_hub();
     let error = Enrolment {
         hub: &client,
@@ -87,7 +87,7 @@ async fn met_012_an_unavailable_hub_is_a_failure_that_says_the_code_may_be_spent
     let hub = FakeHub::start().await;
     let dir = tempfile::tempdir().expect("a folder");
     let home = Home::at(dir.path().join("agent"));
-    let client = HubClient::new(hub.url.clone()).expect("a client");
+    let client = HubClient::new(hub.url.clone(), TIMEOUT).expect("a client");
     let store = TokenStore::open(&home);
     let origin = Origin::default_hub();
     let error = Enrolment {
@@ -127,7 +127,7 @@ async fn enrol_with(
     let dir = tempfile::tempdir().expect("a folder");
     let home = Home::at(dir.path().join("agent"));
     let store = TokenStore::open(&home);
-    let client = HubClient::new(hub.url.clone()).expect("a client");
+    let client = HubClient::new(hub.url.clone(), TIMEOUT).expect("a client");
     let origin = Origin::parse("https://hub.example").expect("an origin");
     let done = Enrolment {
         hub: &client,

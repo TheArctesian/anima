@@ -5,6 +5,7 @@
 //! its callers log at their own boundary, and never a code, a token or a body (LOG-007).
 
 pub mod answer;
+pub mod body;
 pub mod enrolment;
 
 use std::time::Duration;
@@ -12,16 +13,15 @@ use std::time::Duration;
 use agent_core::wire::{
     AgentToken, Batch, EnrolRequest, Enrolled, EnrolmentCode, RenewRequest, Renewed,
 };
+use bytes::Bytes;
 use reqwest::{Client, Url, redirect};
 use zeroize::Zeroizing;
 
 use answer::{Answer, Cause, answer};
+use body::Body;
 
 /// How long one request may take, connection and answer together (K8 Section 7).
 pub const TIMEOUT: Duration = Duration::from_secs(10);
-
-/// The most of an answer the agent reads: far above any K8 answer.
-const ANSWER_LIMIT: usize = 64 * 1024;
 
 #[derive(Debug, thiserror::Error)]
 #[error("the HTTP client could not be built")]
@@ -43,20 +43,13 @@ pub struct HubClient {
 }
 
 impl HubClient {
-    /// A client for the hub at `base`. Pass an [`Origin`](crate::config::origin::Origin)'s URL; tests
-    /// pass a local `http` URL, since the https rule belongs to the origin's parser.
+    /// A client for the hub at `base` that gives up on a request after `limit`, connection and
+    /// answer together (callers pass [`TIMEOUT`]). Pass an [`Origin`](crate::config::origin::Origin)'s
+    /// URL; tests pass a local `http` URL, since the https rule belongs to the origin's parser.
     ///
     /// # Errors
     /// [`HubError`] when the TLS roots cannot be set up.
-    pub fn new(base: Url) -> Result<Self, HubError> {
-        Self::with_timeout(base, TIMEOUT)
-    }
-
-    /// As [`HubClient::new`] with another time limit, so a test need not wait 10 seconds.
-    ///
-    /// # Errors
-    /// [`HubError`] when the TLS roots cannot be set up.
-    pub fn with_timeout(base: Url, limit: Duration) -> Result<Self, HubError> {
+    pub fn new(base: Url, limit: Duration) -> Result<Self, HubError> {
         let http = Client::builder()
             .redirect(redirect::Policy::none())
             .no_proxy()
@@ -107,7 +100,9 @@ impl HubClient {
             .http
             .post(url)
             .header("content-type", "application/json")
-            .body(call.body.to_vec());
+            // The request owns the body as `Bytes`, so the one copy is wiped when the last
+            // reference to it drops, and no other copy is made.
+            .body(Bytes::from_owner(call.body));
         if let Some(token) = call.bearer {
             request = request.bearer_auth(token.expose());
         }
@@ -116,20 +111,15 @@ impl HubClient {
             Err(error) => return Answer::Failed(cause(&error)),
         };
         let status = response.status().as_u16();
-        // Room for the whole answer from the start, so the buffer never moves and is wiped on
-        // every path. (hyper's and rustls's own buffers are not wiped: a known remainder.)
-        let mut bytes = Zeroizing::new(Vec::with_capacity(ANSWER_LIMIT));
-        while bytes.len() < ANSWER_LIMIT {
+        let mut bytes = Body::new();
+        while !bytes.is_full() {
             match response.chunk().await {
-                Ok(Some(chunk)) => {
-                    let room = ANSWER_LIMIT - bytes.len();
-                    bytes.extend_from_slice(&chunk[..chunk.len().min(room)]);
-                }
+                Ok(Some(chunk)) => bytes.add(&chunk),
                 Ok(None) => break,
                 Err(error) => return Answer::Failed(cause(&error)),
             }
         }
-        answer(status, &bytes, call.ok_status, read_ok)
+        answer(status, bytes.bytes(), call.ok_status, read_ok)
     }
 }
 

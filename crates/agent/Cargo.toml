@@ -17,6 +17,7 @@ path = "src/main.rs"
 
 [dependencies]
 agent-core = { path = "../agent-core" }
+bytes.workspace = true
 chrono.workspace = true
 # Plain `rustls-tls` (web PKI roots, no OpenSSL); no `cookies`, no `json`, no proxy support is
 # used: the client turns the proxy off (MET-020, K8 Section 1).

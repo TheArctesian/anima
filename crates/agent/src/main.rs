@@ -5,7 +5,7 @@ use std::process::ExitCode;
 
 use anima_agent::cli::{self, CliError, CodeSource, Command};
 use anima_agent::config::home::Home;
-use anima_agent::hub::HubClient;
+use anima_agent::hub::{HubClient, TIMEOUT};
 use anima_agent::hub::enrolment::Enrolment;
 use anima_agent::readers::Platform;
 use anima_agent::runtime;
@@ -56,7 +56,7 @@ async fn enrol(
             Err(error) => return usage(&error),
         },
     };
-    let client = match HubClient::new(hub.url().clone()) {
+    let client = match HubClient::new(hub.url().clone(), TIMEOUT) {
         Ok(client) => client,
         Err(error) => return failure(&error),
     };

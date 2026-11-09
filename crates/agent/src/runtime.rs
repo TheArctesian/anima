@@ -10,7 +10,7 @@ use tokio::time::{Instant, MissedTickBehavior, interval, sleep_until};
 use uuid::Uuid;
 
 use crate::config::home::{Home, HomeError};
-use crate::hub::{HubClient, HubError};
+use crate::hub::{HubClient, HubError, TIMEOUT};
 use crate::push::pacing::RHYTHM;
 use crate::push::{Event, Pusher};
 use crate::readers::{self, Platform, gpu};
@@ -82,7 +82,7 @@ fn prepare(home: &Home) -> Result<(Pusher, Uuid), RunError> {
     {
         return Err(RunError::OriginMismatch);
     }
-    let hub = HubClient::new(config.hub.url().clone())?;
+    let hub = HubClient::new(config.hub.url().clone(), TIMEOUT)?;
     Ok((
         Pusher::new(hub, config.device, credential, store),
         config.device,

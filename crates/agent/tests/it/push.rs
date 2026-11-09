@@ -199,7 +199,10 @@ async fn k8_7_a_network_error_keeps_the_points_and_backs_off() {
         expires_at: at(0) + year(),
         hub: None,
     };
-    let client = anima_agent::hub::HubClient::new(format!("http://{dead}").parse().expect("url"))
+    let client = anima_agent::hub::HubClient::new(
+        format!("http://{dead}").parse().expect("url"),
+        anima_agent::hub::TIMEOUT,
+    )
         .expect("client");
     let mut pusher =
         anima_agent::push::Pusher::new(client, device(), credential, TokenStore::open(&home));

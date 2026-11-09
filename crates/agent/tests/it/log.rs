@@ -6,7 +6,7 @@ use agent_core::wire::{EnrolmentCode, RefusalCode};
 use anima_agent::cli::{self, CliError};
 use anima_agent::config::home::Home;
 use anima_agent::config::origin::Origin;
-use anima_agent::hub::HubClient;
+use anima_agent::hub::{HubClient, TIMEOUT};
 use anima_agent::hub::answer::Cause;
 use anima_agent::hub::enrolment::{EnrolError, Enrolment};
 use anima_agent::push::Event;
@@ -66,7 +66,7 @@ async fn log_007_trace_logs_hold_no_token_and_no_code() {
     let dir = tempfile::tempdir().expect("a folder");
     let home = Home::at(dir.path().join("agent"));
     let store = TokenStore::open(&home);
-    let client = HubClient::new(hub.url.clone()).expect("a client");
+    let client = HubClient::new(hub.url.clone(), TIMEOUT).expect("a client");
     Enrolment {
         hub: &client,
         origin: Origin::parse("https://hub.example").expect("origin"),

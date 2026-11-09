@@ -3,7 +3,7 @@
 use std::process::Command;
 
 use agent_core::wire::{Batch, RefusalCode};
-use anima_agent::hub::HubClient;
+use anima_agent::hub::{HubClient, TIMEOUT};
 use anima_agent::hub::answer::{Answer, Cause};
 use reqwest::Url;
 
@@ -21,7 +21,7 @@ fn batch() -> Batch {
 async fn met_020_a_redirect_is_a_failed_request_and_is_not_followed() {
     let hub = FakeHub::start().await;
     hub.queue_push([Reply::Redirect("/agent/v1/renew".to_owned())]);
-    let client = HubClient::new(hub.url.clone()).expect("a client");
+    let client = HubClient::new(hub.url.clone(), TIMEOUT).expect("a client");
     let answer = client.push(&token(), &batch()).await;
     assert_eq!(answer, Answer::Failed(Cause::Status(302)));
     assert!(
@@ -33,7 +33,7 @@ async fn met_020_a_redirect_is_a_failed_request_and_is_not_followed() {
 #[tokio::test]
 async fn met_020_no_cookie_the_hub_sets_comes_back() {
     let hub = FakeHub::start().await;
-    let client = HubClient::new(hub.url.clone()).expect("a client");
+    let client = HubClient::new(hub.url.clone(), TIMEOUT).expect("a client");
     client.push(&token(), &batch()).await;
     client.push(&token(), &batch()).await;
     assert!(hub.seen("push").iter().all(|seen| !seen.cookie));
@@ -43,7 +43,7 @@ async fn met_020_no_cookie_the_hub_sets_comes_back() {
 async fn k8_6_a_refusal_reads_through_the_client() {
     let hub = FakeHub::start().await;
     hub.queue_push([Reply::refuse(RefusalCode::WrongDevice)]);
-    let client = HubClient::new(hub.url.clone()).expect("a client");
+    let client = HubClient::new(hub.url.clone(), TIMEOUT).expect("a client");
     let answer = client.push(&token(), &batch()).await;
     assert_eq!(answer, Answer::Refused(RefusalCode::WrongDevice));
 }
@@ -55,7 +55,7 @@ async fn proxy_child() {
     let Ok(address) = std::env::var("ANIMA_TEST_HUB") else {
         return;
     };
-    let client = HubClient::new(Url::parse(&address).expect("a URL")).expect("a client");
+    let client = HubClient::new(Url::parse(&address).expect("a URL"), TIMEOUT).expect("a client");
     let answer = client.push(&token(), &batch()).await;
     assert_eq!(
         answer,
@@ -102,8 +102,7 @@ async fn met_020_a_hub_that_accepts_and_never_answers_ends_in_a_timeout() {
         drop(socket);
     });
     let url = Url::parse(&format!("http://{address}")).expect("url");
-    let client =
-        HubClient::with_timeout(url, std::time::Duration::from_millis(300)).expect("a client");
+    let client = HubClient::new(url, std::time::Duration::from_millis(300)).expect("a client");
     let started = std::time::Instant::now();
     let answer = client.push(&token(), &batch()).await;
     assert_eq!(answer, Answer::Failed(Cause::Timeout));
@@ -143,7 +142,7 @@ async fn met_020_an_endless_answer_is_cut_at_the_limit_and_does_not_read() {
         }
     });
     let url = Url::parse(&format!("http://{address}")).expect("url");
-    let client = HubClient::new(url).expect("a client");
+    let client = HubClient::new(url, TIMEOUT).expect("a client");
     let started = std::time::Instant::now();
     let answer = client.renew(&token()).await;
     assert!(matches!(answer, Answer::Failed(Cause::Unreadable)));
@@ -157,7 +156,70 @@ async fn met_020_an_endless_answer_is_cut_at_the_limit_and_does_not_read() {
 async fn k8_1_a_2xx_that_is_not_the_routes_success_status_is_a_failure() {
     let hub = FakeHub::start().await;
     hub.queue_push([Reply::json(200, "{}")]);
-    let client = HubClient::new(hub.url.clone()).expect("a client");
+    let client = HubClient::new(hub.url.clone(), TIMEOUT).expect("a client");
     let answer = client.push(&token(), &batch()).await;
     assert_eq!(answer, Answer::Failed(Cause::Status(200)));
+}
+
+/// A hub that sends the headers of a 200 and then `body` after `pause`, with the length it
+/// promises (K8 answers are small; the body is what the client waits for).
+async fn slow_hub(promised: usize, body: Vec<u8>, pause: std::time::Duration) -> Url {
+    use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("bind");
+    let address = listener.local_addr().expect("addr");
+    tokio::spawn(async move {
+        let (mut socket, _) = listener.accept().await.expect("accept");
+        let mut head = vec![0_u8; 4096];
+        let _ = socket.read(&mut head).await;
+        let head = format!(
+            "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ncontent-length: {promised}\r\n\r\n"
+        );
+        socket.write_all(head.as_bytes()).await.ok();
+        tokio::time::sleep(pause).await;
+        socket.write_all(&body).await.ok();
+        tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+    });
+    Url::parse(&format!("http://{address}")).expect("url")
+}
+
+#[tokio::test]
+async fn met_020_a_body_that_trickles_in_after_the_headers_ends_in_a_timeout() {
+    let url = slow_hub(100, b"{".to_vec(), std::time::Duration::from_secs(30)).await;
+    let client = HubClient::new(url, std::time::Duration::from_millis(300)).expect("a client");
+    let started = std::time::Instant::now();
+    let answer = client.renew(&token()).await;
+    assert!(matches!(answer, Answer::Failed(Cause::Timeout)));
+    assert!(started.elapsed() < std::time::Duration::from_secs(5));
+}
+
+/// A renewal answer with `padding` spaces before the JSON, so a cut at the limit leaves only
+/// spaces and cannot be read.
+fn padded_renewal(padding: usize) -> Vec<u8> {
+    let json = format!(
+        r#"{{"token":"{}","expiresAt":"2030-01-01T00:00:00Z"}}"#,
+        token().expose()
+    );
+    let mut body = vec![b' '; padding];
+    body.extend_from_slice(json.as_bytes());
+    body
+}
+
+#[tokio::test]
+async fn met_020_an_answer_of_60_kib_is_read_and_one_of_70_kib_is_cut_and_does_not_read() {
+    for (padding, accepted) in [(60 * 1024, true), (70 * 1024, false)] {
+        let body = padded_renewal(padding);
+        let url = slow_hub(body.len(), body, std::time::Duration::ZERO).await;
+        let client = HubClient::new(url, TIMEOUT).expect("a client");
+        let answer = client.renew(&token()).await;
+        if accepted {
+            assert!(matches!(answer, Answer::Accepted(_)), "{padding} bytes");
+        } else {
+            assert!(
+                matches!(answer, Answer::Failed(Cause::Unreadable)),
+                "{padding} bytes"
+            );
+        }
+    }
 }

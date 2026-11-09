@@ -3,7 +3,7 @@
 use agent_core::points::{Kind, Point, SeriesKey, Window};
 use agent_core::wire::AgentToken;
 use anima_agent::config::home::Home;
-use anima_agent::hub::HubClient;
+use anima_agent::hub::{HubClient, TIMEOUT};
 use anima_agent::push::Pusher;
 use anima_agent::token_store::{Credential, TokenStore};
 use chrono::{DateTime, TimeDelta, Utc};
@@ -56,7 +56,7 @@ pub fn rig(hub: &FakeHub, seed: u8, expires_in: TimeDelta) -> Rig {
         hub: None,
     };
     store.save(&credential).expect("stored");
-    let client = HubClient::new(hub.url.clone()).expect("a client");
+    let client = HubClient::new(hub.url.clone(), TIMEOUT).expect("a client");
     Rig {
         pusher: Pusher::new(client, device(), credential, store),
         home,
