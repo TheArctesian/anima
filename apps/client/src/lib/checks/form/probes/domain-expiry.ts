@@ -5,9 +5,9 @@ import type { CheckConfigInput, CheckType } from '../model/hub-types';
 import { integerError, isIntegerIn, lengthError, timeoutError, toNumber } from '../model/range';
 
 /** D-29: RDAP is slow to change, so a domain expiry check runs at most once an hour. */
-export const MIN_INTERVAL_SECONDS = 3600;
+const MIN_INTERVAL_SECONDS = 3600;
 /** D-29: the interval the form proposes for a new domain expiry check, 12 hours. */
-export const PROPOSED_INTERVAL_SECONDS = 43_200;
+const PROPOSED_INTERVAL_SECONDS = 43_200;
 
 const DOMAIN_BYTES = 253;
 const WARN_DAYS: readonly [number, number] = [1, 365];
