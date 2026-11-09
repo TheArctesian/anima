@@ -81,9 +81,12 @@ impl Home {
 
     /// Makes the folder (mode 0700) when it is missing, and refuses one that is a link, is not
     /// owned by the user running the agent, or gives group or others any access: files in it
-    /// decide where the bearer goes. A folder under one that others can write to without the
-    /// sticky bit is refused too, since another user could replace the agent's folder there:
-    /// a custom `ANIMA_AGENT_HOME` must not sit under such a folder.
+    /// decide where the bearer goes. Each folder above it (as the path stands, not
+    /// with links resolved) is refused when others can write to it without the sticky bit, since
+    /// another user could replace the agent's folder there. Not checked: the owner of those
+    /// folders, whether the group can write to them (a private group per user is common), and
+    /// links in the path. This is weaker than the OpenSSH `StrictModes` rule, which refuses
+    /// group-writable folders too and would refuse homes made with `umask 002`.
     ///
     /// # Errors
     /// [`HomeError::Exposed`] for such a folder, [`HomeError::Io`] when it cannot be made.

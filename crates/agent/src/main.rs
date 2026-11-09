@@ -77,7 +77,9 @@ async fn enrol(
     }
 }
 
-/// The enrolment code from standard input; with echo off when it is a terminal.
+/// The enrolment code from standard input; with echo off when it is a terminal. The code also
+/// stays in `rpassword`'s buffer (terminal) or the `StdinLock`'s buffer (pipe), neither of which
+/// is wiped (LOG-007); the process is short-lived.
 fn read_code() -> Result<agent_core::wire::EnrolmentCode, CliError> {
     if std::io::stdin().is_terminal() {
         eprint!("Enrolment code: ");

@@ -87,6 +87,9 @@ const CODE_INPUT_LIMIT: usize = 256;
 /// [`CliError::NotACode`] for an empty line, a line that is not a code (a code split by a
 /// newline leaves only its first part), or 256 bytes with no newline. The error holds none of
 /// the input.
+///
+/// The code also stays in the `StdinLock`'s own buffer, which is not wiped (LOG-007); the
+/// process is short-lived, and only reads the one line.
 pub fn read_code(mut input: impl BufRead) -> Result<EnrolmentCode, CliError> {
     // The buffer has room for every byte that can come, so it never moves and is wiped whole.
     let mut line = Zeroizing::new(String::with_capacity(CODE_INPUT_LIMIT + 1));

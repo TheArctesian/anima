@@ -101,7 +101,9 @@ impl HubClient {
             .post(url)
             .header("content-type", "application/json")
             // The request owns the body as `Bytes`, so the one copy is wiped when the last
-            // reference to it drops, and no other copy is made.
+            // reference to it drops, and no other copy is made by the agent. (hyper and rustls
+            // copy the request body into their own buffers, which are not wiped: a known
+            // remainder, as for the answer in `body`.)
             .body(Bytes::from_owner(call.body));
         if let Some(token) = call.bearer {
             request = request.bearer_auth(token.expose());
