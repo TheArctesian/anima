@@ -42,7 +42,7 @@ impl Mutation {
         let mut tx = begin(ctx).await?;
         let enrolment = ingest::make_code(&mut tx, device.id, code, trail.now)
             .await
-            .map_err(internal)?;
+            .map_err(ingest_error)?;
         let entry = code_made(&device, &enrolment);
         trail.write(&mut tx, entry).await.map_err(internal)?;
         commit(tx).await?;
@@ -56,7 +56,9 @@ impl Mutation {
         let device = device_of(ctx, wanted(&device_id)?).await?;
         let trail = Trail::from_context(ctx)?;
         let mut tx = begin(ctx).await?;
-        let had_token = ingest::revoke(&mut tx, device.id).await.map_err(internal)?;
+        let had_token = ingest::revoke(&mut tx, device.id)
+            .await
+            .map_err(ingest_error)?;
         let entry = token_revoked(&device, had_token);
         trail.write(&mut tx, entry).await.map_err(internal)?;
         commit(tx).await?;
@@ -72,6 +74,14 @@ async fn device_of(ctx: &Context<'_>, id: DeviceId) -> Result<Device> {
 fn device_error(error: devices::Error) -> GraphQlError {
     match error {
         devices::Error::NotFound(_) => coded("No such device.", ErrorCode::NotFound),
+        other => internal(other),
+    }
+}
+
+/// `NOT_FOUND` for a device deleted after it was read; anything else is internal.
+fn ingest_error(error: ingest::Error) -> GraphQlError {
+    match error {
+        ingest::Error::NoDevice => coded("No such device.", ErrorCode::NotFound),
         other => internal(other),
     }
 }

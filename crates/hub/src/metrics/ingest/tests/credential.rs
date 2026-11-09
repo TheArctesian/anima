@@ -1,10 +1,18 @@
 //! K8 Sections 2 and 5: the agent token is read from one `Authorization: Bearer` header, and
-//! only its canonical spelling; anything else is no credential.
+//! only its canonical spelling; anything else is no credential. A token works until, not at,
+//! its expiry, and a renewed token is promoted only while it works (MET-013).
 
 use agent_core::wire::{AgentToken, EnrolmentCode};
 use axum::http::{HeaderMap, HeaderValue, header::AUTHORIZATION};
+use chrono::TimeDelta;
+use sqlx::PgPool;
 
-use crate::metrics::ingest::credential::bearer;
+use super::{database_now, enrolled_pve, pve, token_hashes};
+use crate::metrics::ingest::{
+    TOKEN_LIFETIME,
+    credential::{authenticate, bearer},
+    renewal::renew,
+};
 
 fn token() -> AgentToken {
     AgentToken::from_random([7; 32])
@@ -53,4 +61,42 @@ fn met_013_anything_but_one_bearer_agent_token_is_no_credential() {
         let values: Vec<&str> = values.iter().map(String::as_str).collect();
         assert_eq!(read(&values), None, "{}", values.len());
     }
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn met_013_the_current_token_stops_working_at_its_expiry(pool: PgPool) {
+    let now = database_now(&pool).await;
+    let token = enrolled_pve(&pool, now, 7).await;
+    let expiry = now + TOKEN_LIFETIME;
+    let before = authenticate(&pool, &token, expiry - TimeDelta::seconds(1)).await;
+    assert_eq!(before.unwrap(), Some(pve()));
+    assert_eq!(authenticate(&pool, &token, expiry).await.unwrap(), None);
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn met_013_an_unused_renewed_token_at_its_expiry_is_refused_and_never_promoted(pool: PgPool) {
+    let now = database_now(&pool).await;
+    let current = enrolled_pve(&pool, now, 7).await;
+    let renewed_at = now + TimeDelta::days(30);
+    let next = AgentToken::from_random([8; 32]);
+    let presented = AgentToken::parse(next.expose()).unwrap();
+    renew(&pool, &current, next, renewed_at)
+        .await
+        .unwrap()
+        .unwrap();
+    let stored = token_hashes(&pool).await;
+    let expiry = renewed_at + TOKEN_LIFETIME;
+
+    assert_eq!(authenticate(&pool, &presented, expiry).await.unwrap(), None);
+    assert_eq!(token_hashes(&pool).await, stored);
+    // A second earlier its first use promotes it.
+    let in_time = authenticate(&pool, &presented, expiry - TimeDelta::seconds(1)).await;
+    assert_eq!(in_time.unwrap(), Some(pve()));
+    assert_eq!(token_hashes(&pool).await, (stored.1.unwrap(), None));
 }

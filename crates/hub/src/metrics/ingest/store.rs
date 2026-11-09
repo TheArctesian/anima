@@ -125,12 +125,31 @@ pub(super) async fn set_next(
     .await
 }
 
-/// Deletes the device's token and its unused codes; whether it had a token.
+/// Whether the code, used or not, is still stored for the device: a revoke deletes it.
+pub(super) async fn code_kept(
+    conn: &mut PgConnection,
+    code: CodeHash,
+    device: DeviceId,
+) -> Result<bool, sqlx::Error> {
+    sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM metrics.enrolments WHERE code_sha256 = $1 AND device_id = $2)",
+    )
+    .bind(code.to_bytes().as_slice())
+    .bind(device)
+    .fetch_one(conn)
+    .await
+}
+
+/// Deletes the device's token and all its codes, used ones too, so an exchange whose code was
+/// redeemed before the revoke finds it gone; whether the device had a token.
 pub(super) async fn revoke(conn: &mut PgConnection, device: DeviceId) -> Result<bool, sqlx::Error> {
     let deleted = sqlx::query("DELETE FROM metrics.agents WHERE device_id = $1")
         .bind(device)
         .execute(&mut *conn)
         .await?;
-    void_unused_codes(conn, device).await?;
+    sqlx::query("DELETE FROM metrics.enrolments WHERE device_id = $1")
+        .bind(device)
+        .execute(conn)
+        .await?;
     Ok(deleted.rows_affected() > 0)
 }

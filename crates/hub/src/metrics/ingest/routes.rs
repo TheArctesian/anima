@@ -67,7 +67,8 @@ pub fn agent_router(db: PgPool, feed: Feed, bus: Bus, clock: Arc<dyn Clock>) -> 
     })
 }
 
-/// [`agent_router`] with its answer time as a parameter, so a test need not wait ten seconds.
+/// The test seam of [`agent_router`]: the answer time is a parameter, so a test of the deadline
+/// need not wait ten seconds.
 #[cfg(test)]
 pub(in crate::metrics) fn agent_router_within(
     db: PgPool,
@@ -95,12 +96,12 @@ fn routes(state: AgentState) -> Router {
 
 async fn enrol(State(state): State<AgentState>, request: Request) -> Response {
     let limit = state.answer_time;
-    within(limit, enrolment(state, request)).await
+    within(limit, serve_enrol(state, request)).await
 }
 
 async fn renew(State(state): State<AgentState>, request: Request) -> Response {
     let limit = state.answer_time;
-    within(limit, renewal(state, request)).await
+    within(limit, serve_renew(state, request)).await
 }
 
 /// The answer, or `UNAVAILABLE` once `limit` has passed. Dropping the late answer rolls back
@@ -114,9 +115,10 @@ async fn within(limit: Duration, answer: impl Future<Output = Response>) -> Resp
         })
 }
 
-/// Swaps an enrolment code for an agent token (K8 Section 3). Every bad code and every
-/// malformed body gets the same `ENROLMENT_REFUSED`.
-async fn enrolment(state: AgentState, request: Request) -> Response {
+/// Swaps an enrolment code for an agent token (K8 Section 3). Every bad code, every malformed
+/// body and a code whose device was revoked or deleted meanwhile gets the same
+/// `ENROLMENT_REFUSED`.
+async fn serve_enrol(state: AgentState, request: Request) -> Response {
     let Some(client) = client_of(&request) else {
         return unmounted();
     };
@@ -137,8 +139,8 @@ async fn enrolment(state: AgentState, request: Request) -> Response {
             .refuse(refused(RefusalCode::EnrolmentRefused), now)
             .await;
     };
-    let device = match enrolment::redeem(&state.db, &code, now).await {
-        Ok(Some(device)) => device,
+    let redeemed = match enrolment::redeem(&state.db, &code, now).await {
+        Ok(Some(redeemed)) => redeemed,
         Ok(None) => {
             return state
                 .refuse(refused(RefusalCode::EnrolmentRefused), now)
@@ -148,12 +150,12 @@ async fn enrolment(state: AgentState, request: Request) -> Response {
     };
     drop(code);
     let enrolled = match new_token() {
-        Ok(token) => enrolment::enrol(&state.db, &state.bus, (device, token), now).await,
+        Ok(token) => enrolment::enrol(&state.db, &state.bus, (redeemed, token), now).await,
         Err(error) => Err(error),
     };
     match enrolled {
-        Ok(enrolled) => refusals::json(StatusCode::OK, &enrolled),
-        Err(Error::NoDevice) => {
+        Ok(Some(enrolled)) => refusals::json(StatusCode::OK, &enrolled),
+        Ok(None) | Err(Error::NoDevice) => {
             state
                 .refuse(refused(RefusalCode::EnrolmentRefused), now)
                 .await
@@ -164,7 +166,7 @@ async fn enrolment(state: AgentState, request: Request) -> Response {
 
 /// Stores a renewed token for the holder of the bearer token (K8 Section 5). The bearer is
 /// checked before the body is read.
-async fn renewal(state: AgentState, request: Request) -> Response {
+async fn serve_renew(state: AgentState, request: Request) -> Response {
     let Some(client) = client_of(&request) else {
         return unmounted();
     };

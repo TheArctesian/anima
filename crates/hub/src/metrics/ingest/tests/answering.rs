@@ -1,6 +1,6 @@
-//! MET-012, K8 Section 3: the code is marked used before the token is made, so a code whose
-//! exchange failed after the mark (here: the answer deadline passed) never works again. A
-//! route without the permitted-networks layer serves nothing.
+//! How the enrol route answers when it cannot finish: past its deadline it is `UNAVAILABLE`
+//! and the code it marked used stays used (MET-012, K8 Section 3); without the
+//! permitted-networks layer it serves nothing (NET-002).
 
 use std::{sync::Arc, time::Duration};
 
@@ -19,22 +19,10 @@ use tower::ServiceExt as _;
 use crate::{
     clock::{Clock, FixedClock},
     events::{Bus, ClientAddr},
-    ids::DeviceId,
     metrics::ingest::{make_code, routes::agent_router_within},
 };
 
-const PVE_01: &str = "0190a000-0000-7000-8002-000000000001";
-
-fn pve() -> DeviceId {
-    PVE_01.parse().unwrap()
-}
-
-async fn database_now(pool: &PgPool) -> DateTime<Utc> {
-    sqlx::query_scalar("SELECT pg_catalog.now()")
-        .fetch_one(pool)
-        .await
-        .unwrap()
-}
+use super::{database_now, pve};
 
 fn router(pool: &PgPool, now: DateTime<Utc>, answer_time: Duration) -> Router {
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(now));
