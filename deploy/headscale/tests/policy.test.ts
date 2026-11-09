@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { parseHujson } from '../src/hujson.ts';
-import { parsePolicy, PolicyError, type Policy, type PolicyErrorCode } from '../src/policy.ts';
+import { parsePolicy, parsePrefix, PolicyError, type Policy, type PolicyErrorCode } from '../src/policy.ts';
 import { allows, runPolicyTests, type Connection, type TailnetNode } from '../src/tailnet.ts';
 
 const policyText = await Bun.file(new URL('../config/policy.hujson', import.meta.url)).text();
@@ -94,12 +94,20 @@ describe('policy tests block', () => {
 });
 
 describe('agent devices (MET-020, R-084)', () => {
+  // A second agent node, so the tests show that one agent cannot reach another (agent-to-agent isolation, MET-020).
   const more: TailnetNode = { name: 'agent2', identity: { tags: ['tag:agent'] }, ip: '100.64.0.31' };
   const everyone = [...nodes, more];
   const probe = (from: From, to: To, port: number, proto: string): boolean => allows(policy, everyone, { from, to, port, proto });
 
   test('met_020 every agent-tag row passes in the evaluator', () => {
     expect(runPolicyTests(withTests(AGENT_ROWS), nodes)).toEqual([]);
+  });
+
+  test('met_020 no host /32 is the address of a tagged node in the test inventory, so a device grant cannot reach it', () => {
+    const taggedAddresses = everyone.filter((node) => 'tags' in node.identity).map((node) => parsePrefix(`${node.ip}/32`).base);
+    const hostPrefixes = Object.values(raw.hosts as Record<string, string>).map((cidr) => parsePrefix(cidr));
+    const hostAddresses = hostPrefixes.filter((prefix) => prefix.bits === 32).map((prefix) => prefix.base);
+    expect(hostAddresses.filter((address) => taggedAddresses.includes(address))).toEqual([]);
   });
 
   test('met_020 an agent reaches tcp 443 of the hub', () => {

@@ -2,7 +2,8 @@
 // Only `grants` are used: anything no grant names is denied. Never use `*` or
 // `autogroup:` selectors, and never add `autoApprovers`: the operator approves routes.
 // Client computers are personal nodes of `operator`, never tagged, so their keys keep
-// the 180-day expiry; the hub and routers are tagged and do not expire (VPN-003).
+// the 180-day expiry; the hub, routers and agents are tagged and do not expire. VPN-003
+// names only the hub and routers.
 {
   // Every owner list is empty, so no node can claim a tag when it registers: with an
   // owner, a client re-registered by its user could advertise tag:hub and lose its
