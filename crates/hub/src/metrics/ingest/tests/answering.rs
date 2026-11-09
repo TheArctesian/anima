@@ -22,7 +22,7 @@ use crate::{
     metrics::ingest::{make_code, routes::agent_router_within},
 };
 
-use super::{database_now, pve};
+use super::{database_now, enrolment::waits_for_locks, pve};
 
 fn router(pool: &PgPool, now: DateTime<Utc>, answer_time: Duration) -> Router {
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(now));
@@ -69,8 +69,10 @@ async fn agents(pool: &PgPool) -> i64 {
 async fn met_012_a_code_stays_used_when_its_exchange_failed_after_the_mark(pool: PgPool) {
     let now = database_now(&pool).await;
     let code = code_for_pve(&pool, now).await;
-    let router = router(&pool, now, Duration::from_millis(500));
-    // A slow writer holds the device row, so the exchange's second step cannot finish in time.
+    // A slow writer holds the device row, so the exchange's second step waits for it. Its
+    // deadline passes only once it waits, after the code was marked: the wait is seen in
+    // pg_stat_activity, not guessed from a short deadline, so a loaded machine cannot turn it
+    // into another outcome.
     let mut holder = pool.begin().await.unwrap();
     sqlx::query("SELECT 1 FROM devices.devices WHERE id = $1 FOR UPDATE")
         .bind(pve())
@@ -78,9 +80,17 @@ async fn met_012_a_code_stays_used_when_its_exchange_failed_after_the_mark(pool:
         .await
         .unwrap();
 
-    let first = enrol(&router, &code, true).await;
+    let deadline = router(&pool, now, Duration::from_secs(3));
+    let first = tokio::spawn({
+        let code = code.clone();
+        async move { enrol(&deadline, &code, true).await }
+    });
+    assert!(
+        waits_for_locks(&pool, &first, 1).await,
+        "the exchange waits"
+    );
     assert_eq!(
-        first,
+        first.await.unwrap(),
         (
             StatusCode::SERVICE_UNAVAILABLE,
             r#"{"error":"UNAVAILABLE"}"#.to_owned()
@@ -88,6 +98,7 @@ async fn met_012_a_code_stays_used_when_its_exchange_failed_after_the_mark(pool:
     );
     holder.rollback().await.unwrap();
 
+    let router = router(&pool, now, Duration::from_secs(30));
     let second = enrol(&router, &code, true).await;
     assert_eq!(
         second,

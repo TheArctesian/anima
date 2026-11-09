@@ -22,7 +22,7 @@ use crate::{
 /// Whether `task` came to wait before it finished, seen as `count` sessions of this test's
 /// database waiting for a lock. Read from `pg_stat_activity`, so the answer does not depend on
 /// how fast either side runs.
-async fn waits_for_locks<T>(pool: &PgPool, task: &JoinHandle<T>, count: i64) -> bool {
+pub(super) async fn waits_for_locks<T>(pool: &PgPool, task: &JoinHandle<T>, count: i64) -> bool {
     for _ in 0..2000 {
         if task.is_finished() {
             return false;
