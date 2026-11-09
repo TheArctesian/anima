@@ -222,7 +222,7 @@ pub(super) fn create(
     let config = keep(config(input.config.0), &mut errors);
     let raw = RawSettings {
         interval_seconds: input.interval_seconds,
-        retries: input.retries,
+        retries: input.retries.0,
         retry_interval_seconds: input.retry_interval_seconds,
         degraded_threshold_ms: input.degraded_threshold_ms,
     };
@@ -234,7 +234,9 @@ pub(super) fn create(
     let base = CheckSettings::default();
     let settings = CheckSettings {
         interval_seconds: given.interval_seconds.unwrap_or(base.interval_seconds),
-        retries: given.retries.unwrap_or(base.retries),
+        retries: given
+            .retries
+            .unwrap_or_else(|| default_retries(&config.definition)),
         retry_interval_seconds: given
             .retry_interval_seconds
             .unwrap_or(base.retry_interval_seconds),
@@ -254,6 +256,15 @@ pub(super) fn create(
         children: config.children,
         sealed: config.sealed,
     })
+}
+
+/// The retries of a check whose create input sent none: a domain expiry check does not
+/// retry (R-102, CHK-009); every other type takes the default.
+fn default_retries(definition: &Definition) -> u8 {
+    match definition {
+        Definition::Config(CheckConfig::DomainExpiry { .. }) => 0,
+        _ => CheckSettings::default().retries,
+    }
 }
 
 /// A change to apply, with what the mutation does besides the update.
