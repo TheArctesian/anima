@@ -22,3 +22,22 @@ uses it. The procedures are in the guide, not here. Public DNS records are in
 | (operator's file) | `/etc/anima/firewall-allow`: extra public ports to keep open, one `PORT/PROTO` per line; read by `harden.sh firewall` | 4 |
 | `backup/` | Units, scripts and secret files as listed in [`backup/README.md`](backup/README.md) | 9 |
 | `src/`, `tests/`, `package.json`, `tsconfig.json` | Not installed. Local checks: `bun test deploy/headscale` | 8 |
+
+## Agent devices (MET-020, R-084)
+
+`config/policy.hujson` carries `tag:agent` for a device that runs `anima-agent` and nothing
+else. One grant names it: `tag:agent` to `tag:hub`, `tcp:443`. No grant has it as a
+destination (the agent listens on no port), and no other grant gives it reach, so it cannot
+touch the hub's SSH, a site or another device. Like every tag, its owner list is empty:
+only the operator applies it, with `headscale nodes tag -i <id> -t tag:agent` or a pre-auth
+key created with `--tags tag:agent` (a proposal, see below). A tagged node stops being a
+personal node and does not expire (VPN-003).
+
+A device that is also an operator machine (a laptop or the Mac) stays a personal node of
+`operator`, untagged: it keeps its operator reach, and its agent still only dials the hub on
+443, which `operator@` already allows. Do not tag it, or it would lose that reach.
+
+Applying the policy on the live Headscale is the operator's step (VPS-005). The tests block
+does not name `tag:agent` yet: Headscale refuses a policy that names a tag no node carries.
+Its rows wait in `AGENT_ROWS` in `tests/policy.test.ts` and move into the policy once the
+first agent-only device is tagged.
