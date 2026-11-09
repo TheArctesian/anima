@@ -41,6 +41,7 @@ void graphql(`
     paused
     status
     certificateDaysLeft
+    domainDaysLeft
     lastHeartbeat {
       at
       status
@@ -96,6 +97,11 @@ void graphql(`
           id
           name
         }
+      }
+      ... on DomainExpiryConfig {
+        domain
+        warnDays
+        timeoutMs
       }
     }
   }

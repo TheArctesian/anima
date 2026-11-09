@@ -170,7 +170,7 @@ function withConfig(values: CheckFormValues, config: CheckConfigFields, daysLeft
       // The hub's check query does not select these fields yet (WP-29); without them the form keeps its defaults.
       return withProbeConfig(values, config);
     case 'DomainExpiryConfig':
-      return { ...values, domainExpiry: withDomainExpiryConfig(values.domainExpiry, config, daysLeft) };
+      return { ...values, domainExpiry: withDomainExpiryConfig(config, daysLeft) };
     default:
       return withTransportConfig(values, config); // Typed: the remaining members are ICMP, TCP and TLS.
   }
@@ -204,6 +204,6 @@ export function checkValues(check: CheckFields | null, type: CheckType): CheckFo
       invert: check.invert,
     },
     check.config,
-    check.domainDaysLeft ?? null,
+    check.domainDaysLeft,
   );
 }

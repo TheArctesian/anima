@@ -12,6 +12,7 @@ export function saved(type: CheckType, config: CheckConfigFields, change: Partia
     retryIntervalSeconds: 20,
     degradedThresholdMs: 1000,
     invert: false,
+    domainDaysLeft: null,
     config,
     ...change,
   };

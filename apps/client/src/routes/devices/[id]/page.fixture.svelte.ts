@@ -63,6 +63,7 @@ export function check(change: Partial<DeviceCheck> = {}): DeviceCheck {
     paused: false,
     status: 'UP',
     certificateDaysLeft: null,
+    domainDaysLeft: null,
     lastHeartbeat: { at: '2026-11-04T10:00:00Z', status: 'UP', responseTimeMs: 12, message: null },
     config: { __typename: 'IcmpConfig', timeoutMs: 1000, ipVersion: 'V4' },
     ...change,
