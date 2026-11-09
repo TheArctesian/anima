@@ -148,7 +148,7 @@ async fn not_007_an_unknown_placeholder_or_stray_brace_names_the_field(pool: PgP
 async fn d_21_a_channel_template_is_checked_for_placeholders_too(pool: PgPool) {
     let schema = schema_for(&pool);
     let mut channel = webhook("Ops");
-    channel["template"] = json!({ "title": "{nope}", "body": "{check} {{" });
+    channel["template"] = json!({ "title": "{nope}", "body": "{check} {" });
     let response = run(&schema, &create_query(), json!({ "input": channel })).await;
     assert_eq!(
         validation_fields(&response),

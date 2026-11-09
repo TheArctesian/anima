@@ -93,7 +93,7 @@ async fn not_003_the_channel_set_is_replaced_and_the_answer_lists_it(pool: PgPoo
     )
     .await;
     assert_eq!(none["setCheckNotifications"]["channels"], json!([]));
-    assert!(links(&pool, PING).await.is_empty());
+    assert_eq!(links(&pool, PING).await.len(), 0);
     assert_eq!(
         resend(&pool, SSH_PORT).await,
         None,
@@ -108,7 +108,7 @@ async fn not_003_the_channel_set_is_replaced_and_the_answer_lists_it(pool: PgPoo
 async fn not_005_resend_beats_outside_zero_to_1000_are_refused(pool: PgPool) {
     let schema = schema_for(&pool);
     let a = create(&schema, webhook("Alpha")).await["id"].clone();
-    for beats in [-1, 1001, 70_000, 4_294_967_297] {
+    for beats in [-1, 1001, 70_000, i32::MAX.into()] {
         let response = set(&schema, PING, input(&json!([a]), Some(beats))).await;
         assert_eq!(
             validation_fields(&response).first().map(String::as_str),
@@ -116,16 +116,16 @@ async fn not_005_resend_beats_outside_zero_to_1000_are_refused(pool: PgPool) {
             "{beats}"
         );
     }
-    assert!(links(&pool, PING).await.is_empty());
+    assert_eq!(links(&pool, PING).await.len(), 0);
     assert_eq!(resend(&pool, PING).await, None);
-    for beats in [0, 1000] {
+    for beats in [0_i32, 1000] {
         data(
             &schema,
             SET,
-            json!({ "check": PING, "input": input(&json!([a]), Some(beats)) }),
+            json!({ "check": PING, "input": input(&json!([a]), Some(i64::from(beats))) }),
         )
         .await;
-        assert_eq!(resend(&pool, PING).await, Some(beats as i32));
+        assert_eq!(resend(&pool, PING).await, Some(beats));
     }
 }
 

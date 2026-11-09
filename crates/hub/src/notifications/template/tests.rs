@@ -126,7 +126,7 @@ fn not_007_field_errors_name_title_and_body() {
     assert_eq!(errors.len(), 1);
     assert_eq!(errors[0].field, "template.body");
     assert!(errors[0].message.contains("at most 4000"));
-    assert!(field_errors("{device}", "{{}}").is_empty());
+    assert_eq!(field_errors("{device}", "{{}}").len(), 0);
 }
 
 #[test]

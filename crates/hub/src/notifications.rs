@@ -26,6 +26,13 @@ mod model;
 mod observe;
 mod sealing;
 mod store;
+#[cfg_attr(
+    not(test),
+    expect(
+        dead_code,
+        reason = "rendering and the payload values are first used by the dispatcher (WP-45 T6)"
+    )
+)]
 mod template;
 #[cfg(test)]
 mod tests;
