@@ -5,14 +5,13 @@ Read it first, then the rulings listed in section 5 and R-093 to R-101 in `progr
 
 ## 1. Where things are
 
-- **Integration branch:** `phase-3`, pushed, at the commit that adds this handoff. `main` is fast-forwarded
-  to it as a save (operator, 2026-11-08). Gates: `CARGO_TARGET_DIR=$PWD/target CARGO_INCREMENTAL=0 env -u
+- **Integration branch:** `phase-3`. The last recorded push put `phase-3` and `main` at `b1e893ca`
+  (operator, 2026-11-08). Gates: `CARGO_TARGET_DIR=$PWD/target CARGO_INCREMENTAL=0 env -u
   DATABASE_URL BASE_REF=04ab9b61 bun run gates` (R-101; 12 gates). Client-only changes run gates 4–12 (R-068).
   PATH needs nvm Node 22 and `/usr/lib/postgresql/17/bin`.
-- **Last fully gated commit:** cabe1c94 (12/12 at 595c624c, then docs only).
-- **441b8384** (WP-50 T13 merge, client only) is on `phase-3`, but its own gates 4–12 run was stopped
-  at the hand-off. WP-45 T3, WP-46 T4 and WP-51 T3 each passed 12/12 on top of 441b8384, so it is
-  covered. Run gates 4–12 once to confirm before the next merge.
+- **Last fully gated commit:** `52f87d1f` (WP-47 T1b merge, 12/12).
+- **441b8384** (WP-50 T13 merge, client only) is on `phase-3`. Its gates 4–12 were confirmed at
+  `b1e893ca` after the handoff.
 - **R-101:** every gate and review run uses its own `CARGO_TARGET_DIR` and `CARGO_INCREMENTAL=0`; delete
   the target folder when the task is accepted. The shared `~/.cache/cargo-target` was deleted (operator OK).
   A full disk shows up as sqlx test-database failures or a linker SIGBUS, not as code failures.
@@ -27,6 +26,7 @@ Read it first, then the rulings listed in section 5 and R-093 to R-101 in `progr
 | WP-40, WP-41, WP-42, WP-52 | Done (see their package files and reports). |
 | WP-44 web client | Complete except its rebase onto WP-43's last tasks; parked. |
 | WP-46 checks | T1–T3 merged; **T4 accepted, queued** (below). Then the final package review. |
+| WP-47 session sharing | T3 shares merged at `d398a8f1`. T1b join-record merged at `52f87d1f`. Each merge passed 12/12. |
 | WP-43 access | T1 web client and T2 browser sign-in merged with their `main.rs` lines (8319b999, 5d4860c2). |
 | WP-45 notifications | T1 egress, T2 store, T5 decide merged (1ea7bb1a). |
 | WP-54 agent | T2 points merged (595c624c; K8 `contracts/agent-push.md` frozen). |
@@ -55,10 +55,15 @@ Read it first, then the rulings listed in section 5 and R-093 to R-101 in `progr
 | --- | --- | --- |
 | WP-43 | T3 api-keys (f4eee5ed) has the R-100 deny-list round; T5 rotation (f3ab2eb3); T4 bearer (`wp/43-access/bearer` 22b5ff16); T6 throttle (`wp/43-access/throttle` d8f880c4, CR-16 b). | Reviews and gates per package file `docs/programme/packages/WP-43.md` (branch `claude/wp-43-access`). T4's handoff must move router assembly out of `serve()` in `main.rs` (60/60 lines). |
 | WP-45 | T6 dispatcher built (4 commits on a6c05227), going to gates and both reviewers. | T7: the checks/ handoff edits (with WP-46), `Check.notifications`. |
-| WP-47 | T3 shares (`wp/47-sharing/shares` 1daa8922): security review round 2 **approved** (MUST-1 closed, 16/17 mutants killed; could items: N2 `keep()` signal read untested, consider `Shares::take`; a drop guard for the panic gap; `keeper.rs:81` line length). The `wp-47-rev-t3` worktree is removed. Still needs the Sonnet review and 12 gates. T1b join-record (`wp/47-sharing/join-record` **9e2bb42c**, on 441b8384): round 1 accepted (12/12 at 728bbcc8); the round-1 fixes are in at 9e2bb42c (two join-notice fixtures, per-joiner timings, shared-flag assert; 10/10 module tests, fmt and clippy clean). Next: review round 2 and 12 gates. Its recording scripts and logs are in the old session's scratchpad (`.../scratchpad/t1b/`), which may not survive. The `guacamole/guacd:1.6.0` image is still pulled; WP-47 removes it after T1b round 2. Package log: `docs/programme/packages/WP-47.md` on `claude/wp-47-sharing` d001b86c. | Resume agent a91042fdb55f93636. T2 after T1a merges; then T4 (needs CR-16 b from WP-43 T6), T5, T6. WP-47 will raise Q-5 before T6: pass or drop guacd's `msg` join notices to the owner (K4 §4 is silent). |
 | WP-50 | Above, plus R-094 rows handoff after WP-46 T4. | Final package review and interface pass. |
 | WP-51 | T3 queued. | T4 read side (MET-008, MET-009) after T3 merges; owns `store/chart.rs` mean overflow. |
 | WP-54 | T3a built and gated (c7874fde), review next; `wp/54-agent/token` 4fa2a6f8, `wp/54-agent/binary` a38195d0. | Fix `SeriesKey::of` (drops the GPU index) and cap pushed GPU temperature/power (WP-51 note). |
+
+**WP-47 next:** T2 starts after T1a merges. T4 needs CR-16(b) from WP-43 T6. T5 and T6
+follow T4. See Q-5 below before T6. The package log is `docs/programme/packages/WP-47.md` on
+`claude/wp-47-sharing` (`d001b86c`). The T1b recording scripts and synthetic captures were preserved
+from the scratchpad in `.claude/worktrees/wp-47-t1b-evidence/` on this machine. All eight fixtures
+regenerate byte-for-byte from that copy. The unused local `guacamole/guacd:1.6.0` image was removed.
 
 **Not started:** WP-48 (after WP-47 T1a), WP-49, WP-53. At most 7 package orchestrators (R-066).
 
@@ -131,16 +136,29 @@ Also read `docs/programme/phase-3-plan.md`, `phase-3-contracts.md` and the packa
   the `checks::tests::snmp::probes::d_5_*` probes, and the deploy `secrets-token` DNS-003 interrupt test (it waits
   only 5 s for the `stty` shim; run `bun run --cwd deploy test` alone).
   These are logged as a should for issue #1.
+- WP-47 T3's full run also hit
+  `k4_5_a_client_write_stalled_past_the_idle_wait_is_4002_timeout`. It reported client silence
+  instead of a stalled write. The full run passed on retry with `RUST_TEST_THREADS=8`.
 
-## 6. Open decisions for the next session
+## 6. Decisions and follow-ups for the next session
 
 - K1 doc-string bounds for `resendEveryBeats` and `certificateDays` (section 3, programme to-do).
-- D-23 / R-100: should the API-key deny list also refuse `shareSession`? (WP-47's note for WP-43 T3.)
+- D-23 / R-100: INT-003 already requires refusing `shareSession` for API keys. WP-43 T3 (`f4eee5ed`)
+  includes it in the deny list and its test. A merge preview with WP-47 T3 found conflicts in
+  `contracts/schema.graphql` and `crates/hub/src/events/model.rs`. Keep the login/browser-only wording
+  alongside WP-47's removal of `@pending`, plus both audit target variants.
+- WP-47 Q-5: K4 §4's general relay rule already forwards the owner's gateway instructions, which
+  includes `msg`. The recorded notice carries a guacd user ID (`@` and a UUID) and the viewer name.
+  T4 cleans the name before T6 sends it to guacd. Keep the existing owner relay rule unless T6 adopts
+  an explicit contract exception.
+- WP-47 T3 security round 2 passed with 16/17 mutants killed. Coulds: cover the remaining
+  `keep()` signal-read mutant (N2), consider
+  `Shares::take` and a drop guard for the panic gap, and wrap the long line in `keeper.rs`.
 - COULD-3: three copies of `random_token` (sessions/start.rs, sessions/files/opening.rs, sessions/share/opening.rs); needs an owner.
 - `crates/hub/src/main.rs` `serve()` is at the 60-line limit: WP-43 T4 (or the next wiring change)
   moves router assembly into its own function (at most 4 params).
-- Background agents still running at the stop (WP-43 T4 security review, WP-45 T6 reviews, WP-47 T1b
-  and T3 review, WP-54 T3a and T4 builds) may have pushed commits to their branches after this file:
+- Background agents still running at the stop (WP-43 T4 security review, WP-45 T6 reviews, WP-54 T3a
+  and T4 builds) may have pushed commits to their branches after this file:
   check each branch tip against section 3 before merging.
 - Compute plan (branch `claude/distributed-compute-devices-25e110`): rename its crates to
   `agent` and `agent-core`, and keep "the agent opens no port" (R-084, delta §5).
@@ -159,4 +177,5 @@ Also read `docs/programme/phase-3-plan.md`, `phase-3-contracts.md` and the packa
   - the scratchpad worktrees `wt` and `wt35`
 - **Keep:**
   - `phase-3`
+  - `.claude/worktrees/wp-47-t1b-evidence/` (local synthetic captures and scripts)
   - every branch in section 3, until it merges or the Linux machine has it from the push
