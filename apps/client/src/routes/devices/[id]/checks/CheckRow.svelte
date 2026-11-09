@@ -65,7 +65,7 @@
 <style>
   .row {
     display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.5fr) auto;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr) auto;
     align-items: center;
     gap: var(--space-2);
     min-block-size: var(--target-min-touch);
@@ -100,6 +100,24 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  /* Narrow: the expiry takes a second line of its own, reserved in every row so no row differs in height (MOT-007). */
+  @media (max-width: 767.98px) {
+    .row {
+      grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr)) auto;
+    }
+
+    .expiry {
+      grid-row: 2;
+      grid-column: 1 / -1;
+      min-block-size: 1lh;
+    }
+
+    .actions {
+      grid-row: 1;
+      grid-column: 5;
+    }
   }
 
   .actions {
