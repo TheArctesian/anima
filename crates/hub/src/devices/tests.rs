@@ -12,6 +12,7 @@ macro_rules! store_test {
 }
 
 mod graphql_error;
+mod holds;
 mod host;
 mod input_limits;
 mod mac;

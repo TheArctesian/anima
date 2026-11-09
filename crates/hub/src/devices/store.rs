@@ -44,8 +44,10 @@ macro_rules! device_filter {
     };
 }
 
+mod holds;
 mod remote;
 
+pub(super) use holds::hold_device;
 pub(super) use remote::{
     devices_by_ids, lock_site, set_agent_source, set_wake_relay, share_device, wake_relay,
 };
