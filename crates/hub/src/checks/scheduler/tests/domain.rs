@@ -84,4 +84,21 @@ tick_test! {
         assert_eq!(server.requests_for("/rdap/domain/example.test"), 1);
         assert_eq!(stored(&pool, id).await.domain_not_after, None);
     }
+
+    async fn d_29_an_expired_domain_check_is_down_at_once_and_next_due_after_the_interval(pool: PgPool) {
+        let now = database_now(&pool).await;
+        let server = registry(expiring_at(now - TimeDelta::days(1))).await;
+        let id = add_domain_check(&pool).await;
+        due_at(&pool, id, now).await;
+        let due = checks::due_checks(&pool, now, 10).await.unwrap().remove(0);
+        let mut ctx = context(&pool);
+        ctx.rdap = rdap(&server);
+
+        attempt::run(&ctx, due, now).await;
+
+        let state = stored(&pool, id).await.state;
+        assert_eq!(state.status, Status::Down, "no retry holds it Unknown");
+        assert_eq!(state.next_due_at, Some(now + TimeDelta::seconds(3600)), "not the 5-second retry");
+        assert_eq!(beats(&pool, id).await, ["down"]);
+    }
 }

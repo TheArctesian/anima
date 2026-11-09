@@ -212,6 +212,10 @@ pub(super) fn write_error(error: sqlx::Error) -> Error {
             "intervalSeconds",
             "A domain expiry check runs at most once an hour: the interval is 3600 seconds or more.",
         ),
+        Some("checks_domain_expiry_retries_check") => (
+            "retries",
+            "A domain expiry check does not retry: it runs at most once an hour, so retries is 0.",
+        ),
         Some("checks_parent_fkey") => (
             "parentId",
             "The parent must be a group check on the same device.",
