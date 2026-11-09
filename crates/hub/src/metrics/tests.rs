@@ -5,6 +5,8 @@ use crate::metrics::MetricKind;
 mod aggregates;
 mod database;
 mod faces;
+mod gpu_labels;
+mod gpu_reads;
 mod kinds;
 mod privileges;
 mod retention;
