@@ -64,7 +64,7 @@ mod tests {
     #[test]
     fn met_020_a_buffer_below_the_limit_is_not_full() {
         let mut body = Body::new();
-        body.add(&[1; LIMIT - 1]);
+        body.add(&vec![1; LIMIT - 1]);
         assert!(!body.is_full());
         body.add(&[1]);
         assert!(body.is_full());

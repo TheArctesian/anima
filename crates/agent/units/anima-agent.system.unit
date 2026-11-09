@@ -45,6 +45,9 @@ PrivateIPC=yes
 RemoveIPC=yes
 LimitCORE=0
 SocketBindDeny=any
+# The agent reaches only this computer and the VPN ranges. The hub's name must therefore resolve
+# through a local stub (systemd-resolved at 127.0.0.53) or through a DNS server inside the VPN;
+# a resolver anywhere else is blocked here, and so is a hub that is not on the VPN.
 IPAddressDeny=any
 IPAddressAllow=localhost 100.64.0.0/10 fd7a:115c:a1e0::/48
 

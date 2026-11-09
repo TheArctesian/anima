@@ -28,7 +28,9 @@ pub enum HomeError {
     NoFolder,
     #[error("the agent's folder: {0}")]
     Io(#[from] io::Error),
-    #[error("the agent's folder is not a real folder owned by this user with no access for others")]
+    #[error(
+        "the agent's folder is not a real folder owned by this user with no access for others, or sits under a folder others can write to"
+    )]
     Exposed,
     #[error("the agent's configuration file: {0}")]
     File(#[from] PrivateFileError),
@@ -79,7 +81,9 @@ impl Home {
 
     /// Makes the folder (mode 0700) when it is missing, and refuses one that is a link, is not
     /// owned by the user running the agent, or gives group or others any access: files in it
-    /// decide where the bearer goes.
+    /// decide where the bearer goes. A folder under one that others can write to without the
+    /// sticky bit is refused too, since another user could replace the agent's folder there:
+    /// a custom `ANIMA_AGENT_HOME` must not sit under such a folder.
     ///
     /// # Errors
     /// [`HomeError::Exposed`] for such a folder, [`HomeError::Io`] when it cannot be made.
@@ -94,6 +98,13 @@ impl Home {
             || private_file::folder_exposed(metadata.permissions().mode(), metadata.uid(), running)
         {
             return Err(HomeError::Exposed);
+        }
+        for parent in self.dir.ancestors().skip(1) {
+            if !parent.as_os_str().is_empty()
+                && private_file::parent_replaceable(std::fs::metadata(parent)?.permissions().mode())
+            {
+                return Err(HomeError::Exposed);
+            }
         }
         Ok(())
     }

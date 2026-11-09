@@ -233,3 +233,27 @@ fn met_020_the_hub_is_stored_with_the_token_and_read_back() {
     let loaded = store.load().expect("reads").expect("a token");
     assert_eq!(loaded.hub, origin());
 }
+
+#[test]
+fn met_013_a_folder_owned_by_another_user_is_exposed() {
+    // `/root` is mode 0700 and owned by root, so only the owner rule can refuse it.
+    let running = fs::metadata("/proc/self").expect("self").uid();
+    if running == 0 || !std::path::Path::new("/root").is_dir() {
+        return; // Root owns it then, or the machine has no such folder: nothing to prove.
+    }
+    assert!(matches!(
+        Home::at("/root".into()).ensure(),
+        Err(HomeError::Exposed)
+    ));
+}
+
+#[test]
+fn met_013_a_home_under_a_folder_others_can_write_is_refused_unless_it_is_sticky() {
+    let dir = tempfile::tempdir().expect("a folder");
+    let home = Home::at(dir.path().join("agent"));
+    mode(dir.path(), 0o777);
+    assert!(matches!(home.ensure(), Err(HomeError::Exposed)));
+    mode(dir.path(), 0o1777);
+    assert!(home.ensure().is_ok());
+    mode(dir.path(), 0o700);
+}

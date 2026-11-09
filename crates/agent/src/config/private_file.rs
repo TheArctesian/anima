@@ -25,6 +25,13 @@ pub const fn folder_exposed(mode: u32, owner: u32, running: u32) -> bool {
     mode & 0o077 != 0 || owner != running
 }
 
+/// Whether a folder with this `mode` lets any user replace what is in it: others can write
+/// and the sticky bit (which keeps users to their own entries, as in `/tmp`) is not set.
+#[must_use]
+pub const fn parent_replaceable(mode: u32) -> bool {
+    mode & 0o002 != 0 && mode & 0o1000 == 0
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum PrivateFileError {
     #[error("file access failed: {0}")]
@@ -104,5 +111,17 @@ mod tests {
         assert!(folder_exposed(0o040_750, 1000, 1000));
         assert!(folder_exposed(0o040_701, 1000, 1000));
         assert!(folder_exposed(0o040_700, 0, 1000));
+    }
+
+    #[test]
+    fn met_013_a_parent_others_can_write_is_replaceable_unless_it_is_sticky() {
+        assert!(parent_replaceable(0o040_777));
+        assert!(parent_replaceable(0o040_702));
+        assert!(!parent_replaceable(0o041_777), "sticky, like /tmp");
+        assert!(
+            !parent_replaceable(0o040_775),
+            "group may write, others may not"
+        );
+        assert!(!parent_replaceable(0o040_755));
     }
 }
