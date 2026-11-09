@@ -1,7 +1,11 @@
 //! Which agent refusals with no valid credential reach the event log: at most one a minute
 //! per client address, so a flood of guesses cannot fill the log (K8 Sections 3 and 6, CR-15).
 //!
-//! Pure: the time is a parameter, and the memory is bounded by [`ADDRESSES_PER_SPAN`].
+//! Pure: the time is a parameter, and the memory is bounded by [`ADDRESSES_PER_SPAN`]. Nothing
+//! ticks: the count of refusals left out is written with the first refusal recorded a minute or
+//! more after the first of them, so after the last refusal of a flood its count waits for the
+//! next one. Past the budget a new address's refusal is counted, not written, for the rest of
+//! the minute.
 
 use std::{collections::HashMap, net::IpAddr};
 
