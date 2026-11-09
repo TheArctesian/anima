@@ -3,7 +3,7 @@
 use std::net::IpAddr;
 
 use chrono::{DateTime, Utc};
-use sqlx::PgExecutor;
+use sqlx::{PgConnection, PgExecutor};
 
 use super::{
     Error,
@@ -127,6 +127,33 @@ pub(super) async fn insert<'e>(
     .fetch_one(db)
     .await?;
     Ok(Session::try_from(row)?)
+}
+
+/// Holds the device's start lock until the transaction ends, so starts on one device count
+/// its live rows one at a time (RA-036). The key is the hub's advisory lock scheme, a 64-bit
+/// hash of a namespace and the id (as in `trust` and `credentials`); the `sessions.start:`
+/// namespace keeps it apart from every other lock. A hash collision only makes two starts
+/// wait on each other, never lets one through.
+pub(super) async fn lock_starts(conn: &mut PgConnection, device: DeviceId) -> Result<(), Error> {
+    sqlx::query("select pg_advisory_xact_lock(hashtextextended('sessions.start:' || $1::text, 0))")
+        .bind(device)
+        .execute(conn)
+        .await?;
+    Ok(())
+}
+
+/// How many of the device's sessions are live: rows with no end yet.
+pub(super) async fn live_count<'e>(
+    db: impl PgExecutor<'e>,
+    device: DeviceId,
+) -> Result<i64, Error> {
+    let count = sqlx::query_scalar(
+        "select count(*) from sessions.sessions where device_id = $1 and ended_at is null",
+    )
+    .bind(device)
+    .fetch_one(db)
+    .await?;
+    Ok(count)
 }
 
 /// Ends a live session at `end.at`, or at its start if that is later (a clock that stepped
