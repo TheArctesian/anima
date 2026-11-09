@@ -47,7 +47,8 @@ fn open_tunnel(sharing: &Sharing, row: &Session) -> Option<watch::Receiver<Optio
 /// `UnknownSession` when there is no such session; `NotOwner` when another operator started
 /// it; `NotOpen` when it has ended or its tunnel is not open; `Unavailable` when the hub is
 /// shutting down or holds 32 shares; `Sessions`, `Database`, `Events` or `Random` when a
-/// dependency fails, and then no share is held.
+/// dependency fails, and then no share is held; `Stopped` when the task that writes
+/// `share.create` panicked or the runtime is shutting down.
 pub(super) async fn share_session(
     sharing: &Sharing,
     by: &Actor,
@@ -77,24 +78,36 @@ pub(super) async fn share_session(
         end: watch::Sender::new(None::<ShareEnd>),
     };
     let view = share.view();
-    let shares = sharing.live.shares();
-    let ended = shares
+    let ended = sharing
+        .live
+        .shares()
         .open(token.hash(), share)
         .map_err(|_| Error::Unavailable)?;
-    let device = row.device.map(|id| (id, row.device_name.clone()));
-    if let Err(error) = trail::created(sharing, by, device.clone(), &view).await {
-        shares.remove(view.id);
-        return Err(error);
-    }
     let keeper = Keeper {
         sharing: sharing.clone(),
         id: view.id,
         expires_at: view.expires_at,
         client: by.client,
-        device,
+        device: row.device.map(|id| (id, row.device_name.clone())),
         ended,
         tunnel_end,
     };
-    tokio::spawn(keeper.keep());
+    // Dropping a join handle does not cancel its task: once the share is held, the task runs
+    // to the end even when the caller goes away, so a held share always has its keeper.
+    tokio::spawn(created_then_kept(keeper, by.clone(), view.clone()))
+        .await
+        .map_err(Error::Stopped)??;
     Ok((view, token))
+}
+
+/// Writes `share.create` by `by` for the held share `view`, then hands the share to `keeper`.
+/// When the write fails, it withdraws the share instead.
+async fn created_then_kept(keeper: Keeper, by: Actor, view: SessionShare) -> Result<(), Error> {
+    let sharing = keeper.sharing.clone();
+    if let Err(error) = trail::created(&sharing, &by, keeper.device.clone(), &view).await {
+        sharing.live.shares().remove(view.id);
+        return Err(error);
+    }
+    tokio::spawn(keeper.keep());
+    Ok(())
 }

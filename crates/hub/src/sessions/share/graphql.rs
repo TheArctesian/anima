@@ -109,9 +109,11 @@ fn to_graphql(error: Error) -> GraphQlError {
             "The hub cannot share a session now. End a share or try again in a moment.",
             ErrorCode::Unavailable,
         ),
-        Error::Sessions(_) | Error::Events(_) | Error::Database(_) | Error::Random(_) => {
-            internal(error)
-        }
+        Error::Sessions(_)
+        | Error::Events(_)
+        | Error::Database(_)
+        | Error::Random(_)
+        | Error::Stopped(_) => internal(error),
     }
 }
 

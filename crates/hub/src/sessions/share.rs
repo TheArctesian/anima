@@ -71,4 +71,7 @@ pub(super) enum Error {
     Database(#[from] sqlx::Error),
     #[error("no random bytes for a share token")]
     Random(#[source] getrandom::Error),
+    /// The task that writes `share.create` and starts the keeper did not finish.
+    #[error("the opening of a share stopped")]
+    Stopped(#[source] tokio::task::JoinError),
 }

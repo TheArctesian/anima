@@ -2,6 +2,7 @@
 //! `endShare`, `Session.shares` and the keeper, against a session whose tunnel is registered
 //! in `Live` from a redeemed ticket, as a tunnel task holds it.
 
+mod cancelling;
 mod ending;
 mod logging;
 mod racing;
