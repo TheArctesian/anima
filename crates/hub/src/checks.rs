@@ -241,7 +241,7 @@ pub async fn defaults(db: &PgPool) -> Result<CheckDefaults, Error> {
 /// # Errors
 /// `Validation` naming the first field outside the bounds of `checks.checks` (the database
 /// backstop); the GraphQL input lists every such field before it gets here (API-010).
-pub async fn set_defaults(
+pub(in crate::checks) async fn set_defaults(
     conn: &mut PgConnection,
     new: CheckDefaults,
 ) -> Result<CheckDefaults, Error> {
