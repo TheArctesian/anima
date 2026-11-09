@@ -5,7 +5,7 @@ export const CHECKING = 'Testing the hub…';
 const HUB_ANSWERED = 'The hub answered.';
 const HUB_SILENT = 'The hub did not answer.';
 const HUB_ODD = 'The hub sent an odd answer.';
-const TOKEN_SILENT = 'Anima cannot read the token.';
+const TOKEN_UNREAD = 'Anima cannot read the token.';
 
 /**
  * The sentence for a connection test. Any answer from the hub, including a refusal because nobody is signed in, shows
@@ -14,7 +14,7 @@ const TOKEN_SILENT = 'Anima cannot read the token.';
  */
 export function connectionSentence(answer: HubResult<unknown>): string {
   if (answer.ok) return HUB_ANSWERED;
-  if (answer.error === TOKEN_UNREADABLE) return TOKEN_SILENT;
+  if (answer.error === TOKEN_UNREADABLE) return TOKEN_UNREAD;
   switch (answer.error.code) {
     case 'unreachable':
       return HUB_SILENT;

@@ -161,6 +161,17 @@ it('MOT-007: Create key keeps focus while the hub makes the key, and after the h
   expect([document.activeElement === create, create.getAttribute('aria-disabled')]).toEqual([true, 'false']);
 });
 
+it('INT-003: pressing Create key again while the hub makes the key sends one CreateApiKey, and the fields wait', async () => {
+  const release = await making();
+  button('Create key').click();
+  flushSync();
+  await settled();
+  expect(hub.sent.filter((each) => each.operation === 'CreateApiKey')).toHaveLength(1);
+  expect(field('[role="dialog"] input[type="text"]').matches(':disabled')).toBe(true);
+  release(CREATED);
+  await settled();
+});
+
 it('F-8: a page left while the key is being made never puts the key in the document when the hub answers', async () => {
   const { answer, release } = pending();
   await openDialog(answer);

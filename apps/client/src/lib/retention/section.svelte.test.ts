@@ -261,6 +261,9 @@ it('MOT-007, NAV-005: Try again stays mounted and keeps focus while it retries a
   again.click();
   flushSync();
   expect([document.activeElement === again, again.getAttribute('aria-disabled'), again.getAttribute('aria-busy')]).toEqual([true, 'true', 'true']);
+  again.click();
+  await settled();
+  expect(hub.sent.filter((each) => each.operation === 'Retention')).toHaveLength(2);
   await settled();
   expect([document.activeElement === again, again.isConnected, again.getAttribute('aria-disabled')]).toEqual([true, true, 'false']);
   answers.Retention = ok({ retention: FIXTURE_PERIODS });
