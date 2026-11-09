@@ -171,20 +171,24 @@ const OUTSIDE_SIGN_IN: &str = "(share join)";
 /// the failures `login` reads (D-8). `joinShare` asks before it checks a share secret, so a
 /// share miss and a wrong password count against the same address (CR-16).
 ///
-/// Asking and then calling [`record_failure`] is two steps, so guesses sent in parallel all
-/// pass before any is recorded; `login` records its attempt first and has no such gap.
+/// The limit is not exact under concurrent calls: asking and then calling [`record_failure`]
+/// is two steps, so guesses sent in parallel can all pass before any is recorded, and far more
+/// than five get through in a burst. Do not rely on it to protect a guessable secret; `login`
+/// records its attempt first and has no such gap.
 ///
 /// # Errors
 ///
 /// `Error::Database` if the attempts cannot be read.
 pub async fn throttled(db: &PgPool, client: ClientAddr, now: DateTime<Utc>) -> Result<bool, Error> {
-    let failures = store::failures(db, client.0.to_canonical(), now, None).await?;
+    let failures = store::failures(db, client.0, now, None).await?;
     Ok(throttle::refused(&failures, now))
 }
 
 /// Records a failed attempt from `client` at `now` that counts toward the login throttle like a
-/// wrong password (D-8). Call it only after [`throttled`] answered `false` and the secret did
-/// not match: a miss recorded during a lockout would extend it (CR-16).
+/// wrong password (D-8, CR-16). When the address is already throttled at `now` the attempt is
+/// recorded as refused, so it does not extend the lockout. Like [`throttled`], the limit is not
+/// exact under concurrent calls. `operator set` does not clear an address throttled only by
+/// these failures, as they name no operator; the lockout ends on its own (D-9).
 ///
 /// # Errors
 ///
@@ -194,7 +198,11 @@ pub async fn record_failure(
     client: ClientAddr,
     now: DateTime<Utc>,
 ) -> Result<(), Error> {
-    store::start_attempt(db, now, OUTSIDE_SIGN_IN, client.0.to_canonical()).await?;
+    let refused = throttled(db, client, now).await?;
+    let id = store::start_attempt(db, now, OUTSIDE_SIGN_IN, client.0).await?;
+    if refused {
+        store::finish_attempt(db, id, Outcome::Refused).await?;
+    }
     Ok(())
 }
 

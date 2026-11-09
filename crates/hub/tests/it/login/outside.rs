@@ -119,6 +119,47 @@ async fn sec_002_d_8_a_mapped_address_counts_as_its_ipv4_address(pool: PgPool) {
     );
 }
 
+/// The same address read the other way: failures from the IPv4 address throttle it when it is
+/// seen as IPv4-mapped IPv6 (D-11).
+#[sqlx::test(migrations = "./migrations")]
+async fn sec_002_d_11_an_ipv4_address_counts_toward_its_mapped_address(pool: PgPool) {
+    for _ in 0..5 {
+        access::record_failure(&pool, address(CLIENT), start())
+            .await
+            .unwrap();
+    }
+    let mapped = address("::ffff:100.64.0.7");
+    assert!(access::throttled(&pool, mapped, start()).await.unwrap());
+}
+
+/// A failure outside sign-in recorded during a lockout does not extend it, even when the
+/// caller did not ask `throttled` first.
+#[sqlx::test(migrations = "./migrations")]
+async fn sec_002_d_8_a_failure_outside_sign_in_during_a_lockout_does_not_extend_it(pool: PgPool) {
+    let here = address(CLIENT);
+    for _ in 0..5 {
+        access::record_failure(&pool, here, start()).await.unwrap();
+    }
+    for minute in 1..15 {
+        let at = start() + TimeDelta::minutes(minute);
+        access::record_failure(&pool, here, at).await.unwrap();
+    }
+    let released = start() + TimeDelta::minutes(15);
+    assert!(!access::throttled(&pool, here, released).await.unwrap());
+}
+
+/// A failure dated after `now` does not count at `now`.
+#[sqlx::test(migrations = "./migrations")]
+async fn sec_002_d_8_a_later_failure_does_not_count_now(pool: PgPool) {
+    let here = address(CLIENT);
+    let later = start() + TimeDelta::minutes(1);
+    for _ in 0..5 {
+        access::record_failure(&pool, here, later).await.unwrap();
+    }
+    assert!(access::throttled(&pool, here, later).await.unwrap());
+    assert!(!access::throttled(&pool, here, start()).await.unwrap());
+}
+
 /// The username a failure outside sign-in is stored under can never be an operator's, so it
 /// never matches or locks a real account.
 #[sqlx::test(migrations = "./migrations")]

@@ -27,7 +27,8 @@ pub(in crate::access) async fn delete_attempts_of(
 }
 
 /// Records a login attempt as failed until `finish_attempt` says otherwise, so concurrent
-/// attempts count it at once (D-8). Returns its id.
+/// attempts count it at once (D-8). Stores `client` in canonical form, so an IPv4-mapped IPv6
+/// address and its IPv4 address are one address to the throttle (D-11). Returns its id.
 pub(in crate::access) async fn start_attempt(
     db: impl PgExecutor<'_>,
     at: DateTime<Utc>,
@@ -42,7 +43,7 @@ pub(in crate::access) async fn start_attempt(
     .bind(id)
     .bind(at)
     .bind(username)
-    .bind(client)
+    .bind(client.to_canonical())
     .execute(db)
     .await?;
     Ok(id)
@@ -73,8 +74,9 @@ pub(in crate::access) async fn finish_attempt(
 
 /// Times of the checked failures from `client` that can still throttle an attempt at `at`,
 /// those in `(at - LOOKBACK, at]`, oldest first, leaving out `except`: the caller's own
-/// attempt, already recorded as failed. Sign-in and `joinShare` both read through here, so
-/// they share one rule (D-8, CR-16).
+/// attempt, already recorded as failed. Reads `client` in canonical form, as `start_attempt`
+/// stores it (D-11). Sign-in and `joinShare` both read through here, so they share one rule
+/// (D-8, CR-16).
 pub(in crate::access) async fn failures(
     db: impl PgExecutor<'_>,
     client: IpAddr,
@@ -86,7 +88,7 @@ pub(in crate::access) async fn failures(
          where client_addr = $1 and not ok and not refused and at > $2 and at <= $3 \
          and ($4::uuid is null or id <> $4) order by at",
     )
-    .bind(client)
+    .bind(client.to_canonical())
     .bind(at - LOOKBACK)
     .bind(at)
     .bind(except)
