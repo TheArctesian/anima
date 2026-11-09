@@ -8,7 +8,7 @@ use sqlx::{PgConnection, PgPool};
 
 use super::{CODE_LIFETIME, Error, TOKEN_LIFETIME, store};
 use crate::{
-    devices::{self, Hold},
+    devices,
     events::{self, Bus, NewEvent, Severity, Source},
     ids::DeviceId,
 };
@@ -51,8 +51,9 @@ pub(in crate::metrics) async fn make_code(
     now: DateTime<Utc>,
 ) -> Result<AgentEnrolment, Error> {
     let expires_at = now + CODE_LIFETIME;
-    // The device row first, the order a device delete takes the rows in.
-    devices::hold(conn, device, Hold::Kept).await?;
+    // The device row first, the order a device delete takes the rows in; a second code for
+    // the device waits here, then voids this one.
+    devices::lock(conn, device).await?;
     store::void_unused_codes(conn, device).await?;
     store::insert_code(conn, code.hash(), device, expires_at).await?;
     Ok(AgentEnrolment { code, expires_at })
@@ -133,6 +134,6 @@ pub(in crate::metrics) async fn revoke(
     conn: &mut PgConnection,
     device: DeviceId,
 ) -> Result<bool, Error> {
-    devices::hold(conn, device, Hold::Locked).await?;
+    devices::lock(conn, device).await?;
     Ok(store::revoke(conn, device).await?)
 }
