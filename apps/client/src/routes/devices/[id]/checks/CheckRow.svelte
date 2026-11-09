@@ -102,8 +102,11 @@
     white-space: nowrap;
   }
 
-  /* Narrow: the expiry takes a second line of its own, reserved in every row so no row differs in height (MOT-007). */
-  @media (max-width: 767.98px) {
+  /*
+   * Below the wide breakpoint the expiry has no column of its own: it takes a second line, reserved in every row so no row
+   * differs in height (MOT-007). The breakpoints are the compact and medium edges of `$lib/motion/tokens`, less 0.02px.
+   */
+  @media (max-width: 1100.98px) {
     .row {
       grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr)) auto;
     }
@@ -117,6 +120,51 @@
     .actions {
       grid-row: 1;
       grid-column: 5;
+    }
+  }
+
+  /*
+   * Compact: row 1 is the name and the actions, row 2 the type, the status and the latency, row 3 the expiry; each cell is one
+   * line with an ellipsis, so a long name or reading never wraps or changes a row's height (MOT-007).
+   */
+  @media (max-width: 767.98px) {
+    .row {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+
+    .name {
+      grid-row: 1;
+      grid-column: 1 / 4;
+    }
+
+    .actions {
+      grid-row: 1;
+      grid-column: 4 / 7;
+      justify-self: end;
+    }
+
+    .type {
+      grid-row: 2;
+      grid-column: span 2;
+    }
+
+    .reading {
+      grid-row: 2;
+      grid-column: span 2;
+      min-inline-size: 0;
+      min-block-size: 1lh;
+    }
+
+    .type,
+    .reading > span {
+      min-inline-size: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .expiry {
+      grid-row: 3;
     }
   }
 
