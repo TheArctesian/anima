@@ -1,20 +1,36 @@
 //! Tests of the agent ingest parts below the HTTP client: the throttle, the bearer header, the
-//! refusal answers, how the routes answer when they cannot finish, and the token and code rows
-//! at their edges.
+//! refusal answers, how the routes answer when they cannot finish, the token and code rows at
+//! their edges, and the stale mark at its edges.
 
 mod answering;
 mod credential;
 mod enrolment;
 mod refusals;
 mod renewal;
+mod stale;
 mod throttle;
 
-use agent_core::wire::{AgentToken, EnrolmentCode};
-use chrono::{DateTime, Utc};
-use sqlx::PgPool;
+use std::{sync::Arc, time::Duration};
 
-use super::enrolment::{enrol, make_code, redeem};
-use crate::{events::Bus, ids::DeviceId};
+use agent_core::wire::{AgentToken, EnrolmentCode};
+use axum::{
+    body::Body,
+    http::{Request, StatusCode},
+};
+use chrono::{DateTime, DurationRound as _, TimeDelta, Utc};
+use serde_json::Value;
+use sqlx::PgPool;
+use tower::ServiceExt as _;
+
+use super::{
+    enrolment::{enrol, make_code, redeem},
+    routes::agent_router_within,
+};
+use crate::{
+    clock::{Clock, FixedClock},
+    events::{Bus, ClientAddr},
+    ids::DeviceId,
+};
 
 /// pve-01 of the devices fixture.
 fn pve() -> DeviceId {
@@ -22,10 +38,25 @@ fn pve() -> DeviceId {
 }
 
 async fn database_now(pool: &PgPool) -> DateTime<Utc> {
-    sqlx::query_scalar("SELECT pg_catalog.now()")
+    let now: DateTime<Utc> = sqlx::query_scalar("SELECT pg_catalog.now()")
         .fetch_one(pool)
         .await
-        .unwrap()
+        .unwrap();
+    now.duration_trunc(TimeDelta::seconds(1)).unwrap()
+}
+
+/// Pushes `batch` with `token` at `now` from a permitted address; the status.
+async fn push(pool: &PgPool, now: DateTime<Utc>, token: &AgentToken, batch: &Value) -> StatusCode {
+    let clock: Arc<dyn Clock> = Arc::new(FixedClock(now));
+    let router = agent_router_within(pool.clone(), Bus::new(16), clock, Duration::from_secs(10));
+    let mut request = Request::post("/agent/v1/push")
+        .header("content-type", "application/json")
+        .header("authorization", format!("Bearer {}", token.expose()))
+        .body(Body::from(batch.to_string()))
+        .unwrap();
+    let client = ClientAddr("100.64.0.7".parse().unwrap());
+    request.extensions_mut().insert(client);
+    router.oneshot(request).await.unwrap().status()
 }
 
 /// pve-01 enrolled at `now` with the token spelled by `seed`; the token as an agent presents it.

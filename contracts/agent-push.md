@@ -116,7 +116,19 @@ The hub:
   key follows the SSH collector's rule for the same kind, label and GPU;
 - folds `max` into the `max` column of the minute, hour and day aggregates; the samples hold the mean;
 - skips a point whose series and `at` are already stored, so sending a batch twice adds nothing twice;
-- records the time of the last accepted batch for MET-018 (stale after 30 seconds with none).
+- keys a GPU series by its index: its label is the index as text. A GPU series with a `label` is `MALFORMED`;
+- takes a batch that would give the device more than 1024 series with a sample in the last hour, its own
+  series included, as `MALFORMED` and stores none of it. One agent sends at most 519 series at once
+  (R-098 e);
+- with `gpus` present, replaces the device's GPU set with it; `[]` means the device has no GPUs now, and an
+  absent `gpus` leaves the set as it is. A GPU that leaves the set keeps its series and their history
+  (R-098 b);
+- records the time of the last accepted batch for MET-018 (R-098 a). Any accepted batch resets it, even one
+  whose series the hub all ignores; a refused batch does not. 30 seconds after the last accepted batch the
+  device's metrics are stale: the hub writes one event (source `metrics`, severity warning) and serves
+  `Device.metricsStale` true. The next accepted batch clears the mark and writes one event (severity info).
+  An agent that has never pushed is not marked, and `metricsStale` is true for it. Stale changes no check:
+  a stale agent is never a Down check.
 
 ## 5. Renewal (MET-013)
 
@@ -142,7 +154,7 @@ The body of every refusal is `{ "error": "<CODE>" }` and nothing else. It never 
 | Status | Code | When | Agent does |
 | --- | --- | --- | --- |
 | 400 | `MALFORMED` | The body is not a valid `Batch` or `{}` by Section 4 or 5 | Drops that batch; logs the code |
-| 401 | `TOKEN_REFUSED` | The token is missing, malformed, unknown, expired or revoked | Stops pushing; keeps sampling and buffering; logs once; tries again every 10 minutes and after the token store changes |
+| 401 | `TOKEN_REFUSED` | The token is missing, malformed, unknown, expired or revoked, or the device's metrics source is no longer `agent` (CR-18) | Stops pushing; keeps sampling and buffering; logs once; tries again every 10 minutes and after the token store changes |
 | 401 | `ENROLMENT_REFUSED` | Section 3 | `anima-agent enrol` exits 1 with a fixed sentence |
 | 403 | `WRONG_DEVICE` | `device` is not the token's device | As `TOKEN_REFUSED` |
 | 413 | `TOO_LARGE` | The body exceeds its limit | Drops that batch; sends smaller batches |

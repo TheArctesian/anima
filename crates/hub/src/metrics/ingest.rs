@@ -1,5 +1,5 @@
-//! The Anima agent's side of the hub: enrolment codes, agent tokens and the `/agent/v1/` routes
-//! (K8, MET-011 to MET-013, R-092 D-1).
+//! The Anima agent's side of the hub: enrolment codes, agent tokens, the `/agent/v1/` routes
+//! and the stale mark of an agent that stopped pushing (K8, MET-011 to MET-018, R-092 D-1).
 //!
 //! A code and a token are kept only as the SHA-256 of their random bytes, and each belongs to
 //! one device. Neither reaches a log, an event, an error or any response other than the one
@@ -8,9 +8,11 @@
 
 mod credential;
 mod enrolment;
+mod push;
 mod refusals;
 mod renewal;
 mod routes;
+mod stale;
 mod store;
 #[cfg(test)]
 mod tests;
@@ -22,6 +24,8 @@ use zeroize::Zeroizing;
 pub use enrolment::AgentEnrolment;
 pub(super) use enrolment::{make_code, revoke};
 pub use routes::agent_router;
+pub use stale::spawn_stale_watch;
+pub(super) use stale::without_fresh_agent;
 
 use crate::{devices, events};
 
@@ -46,6 +50,8 @@ pub(super) enum Error {
     NoDevice,
     #[error("the device cannot be read")]
     Devices(#[source] devices::Error),
+    #[error("the metrics cannot be stored")]
+    Metrics(#[from] super::Error),
 }
 
 impl From<devices::Error> for Error {

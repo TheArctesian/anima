@@ -26,6 +26,7 @@ use crate::{
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Route {
     Enrol,
+    Push,
     Renew,
 }
 
@@ -33,6 +34,7 @@ impl Route {
     const fn noun(self) -> &'static str {
         match self {
             Self::Enrol => "an agent enrolment",
+            Self::Push => "an agent push",
             Self::Renew => "an agent token renewal",
         }
     }
