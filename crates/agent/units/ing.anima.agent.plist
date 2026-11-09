@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Anima agent as a LaunchAgent (MET-019). The installer replaces the first ProgramArguments
+     string with the place it copied the binary to. The agent listens on no port (MET-020). -->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>ing.anima.agent</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/anima-agent</string>
+        <string>run</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>

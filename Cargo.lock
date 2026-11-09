@@ -133,6 +133,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "anima-agent"
+version = "0.1.0"
+dependencies = [
+ "agent-core",
+ "axum",
+ "bytes",
+ "chrono",
+ "keyring",
+ "plist",
+ "reqwest 0.12.28",
+ "rpassword",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+ "zeroize",
+]
+
+[[package]]
 name = "anima-desktop"
 version = "0.1.0"
 dependencies = [
