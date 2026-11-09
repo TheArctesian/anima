@@ -1,6 +1,6 @@
-//! The service files parse and name the binary and `run` (MET-019, MET-020).
+//! The unit files parse and name the binary and `run` (MET-019, MET-020).
 
-use anima_agent::service_files::{LAUNCH_AGENT, SYSTEMD_SYSTEM, SYSTEMD_USER};
+use anima_agent::units::{LAUNCH_AGENT, SYSTEMD_SYSTEM, SYSTEMD_USER};
 
 /// The `key=value` lines of a unit with the section they are in.
 fn unit(text: &str) -> Vec<(String, String, String)> {
