@@ -87,17 +87,15 @@ fn prepare(home: &Home) -> Result<(Pusher, Uuid), RunError> {
 async fn sample(platform: Platform, events: mpsc::Sender<Event>) {
     let mac = platform == Platform::Macos;
     let mut sampler = Sampler::new();
-    let mut found = discover(mac, &events).await;
-    let mut next_discovery = found.next_at(Instant::now(), None);
+    let mut watch = Watch::start(discover(mac, &events).await, Instant::now());
     let mut ticks = interval(SAMPLE_EVERY);
     ticks.set_missed_tick_behavior(MissedTickBehavior::Skip);
     loop {
         ticks.tick().await;
-        if Instant::now() >= next_discovery {
-            let again = discover(mac, &events).await;
-            next_discovery = again.next_at(Instant::now(), Some(&found));
-            found = again;
+        if watch.due(Instant::now()) {
+            watch.replace(discover(mac, &events).await, Instant::now());
         }
+        let found = &watch.found;
         let now = Utc::now();
         let reading = readers::reading(platform, now).await;
         let gpus = found
@@ -108,6 +106,29 @@ async fn sample(platform: Platform, events: mpsc::Sender<Event>) {
         {
             return;
         }
+    }
+}
+
+/// The GPUs found last, and when to look again.
+struct Watch {
+    found: Discovery,
+    next: Instant,
+}
+
+impl Watch {
+    fn start(found: Discovery, now: Instant) -> Self {
+        let next = found.next_at(now, None);
+        Self { found, next }
+    }
+
+    fn due(&self, now: Instant) -> bool {
+        now >= self.next
+    }
+
+    /// Keeps `again`, and looks again soon only if it lost GPUs (MET-006).
+    fn replace(&mut self, again: Discovery, now: Instant) {
+        self.next = again.next_at(now, Some(&self.found));
+        self.found = again;
     }
 }
 
@@ -178,6 +199,16 @@ mod tests {
         let first = tokio::time::timeout(Duration::from_secs(20), events.recv()).await;
         sampling.abort();
         assert!(matches!(first, Ok(Some(Event::Gpus(_)))));
+    }
+
+    #[test]
+    fn met_006_a_stable_discovery_is_not_repeated_on_the_next_tick() {
+        let now = Instant::now();
+        let mut watch = Watch::start(Discovery::new(Vec::new()), now);
+        assert!(!watch.due(now + SAMPLE_EVERY), "no GPU: soon, not at once");
+        watch.replace(Discovery::new(Vec::new()), now);
+        assert!(!watch.due(now + SAMPLE_EVERY));
+        assert!(watch.due(now + Duration::from_hours(25)));
     }
 
     #[test]
