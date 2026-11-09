@@ -27,7 +27,7 @@ const LATEST_SQL: &str = "\
         WHERE series_id = s.id AND at >= $3 AND at <= $4 \
         ORDER BY at DESC LIMIT 1) l \
     WHERE s.device_id = ANY($1) AND s.kind = ANY($2) \
-        AND (s.kind <> $5 OR g.has_vram)";
+        AND (s.kind <> $5 OR g.has_vram)"; // not a reading, so it cannot set `Readings.at`
 
 /// The newest sample of each card series of `devices` taken in `[now - within, now]`, in one
 /// query.

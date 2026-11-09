@@ -4,7 +4,10 @@ use chrono::{DateTime, Utc};
 
 use crate::{
     ids::{DeviceId, MetricSeriesId},
-    metrics::{Error, Gpu, GpuVendor, MetricKind, MetricPoint, MetricSeries, latest::Latest},
+    metrics::{
+        Error, Gpu, GpuVendor, MetricKind, MetricPoint, MetricSeries, gpu_label::chart_label,
+        latest::Latest,
+    },
 };
 
 #[derive(sqlx::FromRow)]
@@ -13,6 +16,7 @@ pub(super) struct ChartRow {
     kind: String,
     label: String,
     gpu_index: Option<i32>,
+    gpu_name: Option<String>,
     at: DateTime<Utc>,
     value: f64,
     min: f64,
@@ -41,7 +45,7 @@ pub(super) fn chart_of(rows: Vec<ChartRow>) -> Result<Vec<MetricSeries>, Error> 
             row.series_id,
             MetricSeries {
                 kind,
-                label: row.label,
+                label: chart_label(&row.label, row.gpu_index, row.gpu_name.as_deref()),
                 gpu_index: row.gpu_index,
                 points: vec![point],
             },

@@ -55,8 +55,18 @@ pub(super) fn readings(latest: Vec<Latest>) -> HashMap<DeviceId, Readings> {
                 readings.disk_percent = Some(readings.disk_percent.map_or(value, |d| d.max(value)));
             }
             MetricKind::VramPercent => {
+                // The store also drops a series without VRAM, so it cannot set `Readings.at`; this
+                // keeps the rule true of the function on its own. A tie keeps the lower index.
                 if let Some(gpu) = gpu.filter(|gpu| gpu.has_vram)
-                    && readings.vram_percent.is_none_or(|top| value > top)
+                    && readings
+                        .vram_percent
+                        .zip(readings.vram_gpu.as_ref())
+                        .is_none_or(|(top, held)| {
+                            value
+                                .total_cmp(&top)
+                                .then(held.index.cmp(&gpu.index))
+                                .is_gt()
+                        })
                 {
                     readings.vram_percent = Some(value);
                     readings.vram_gpu = Some(gpu);
