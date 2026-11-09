@@ -100,10 +100,10 @@ mod tests {
     #[test]
     fn met_006_a_failed_run_an_empty_answer_and_a_mac_without_a_gpu_give_no_gpus() {
         let failed = Err(CommandError::Failed { program: "ioreg" });
-        assert!(readings(failed).is_empty());
+        assert_eq!(readings(failed).len(), 0);
         let missing = Err(CommandError::Timeout { program: "ioreg" });
-        assert!(readings(missing).is_empty());
-        assert!(readings(Ok(Vec::new())).is_empty());
-        assert!(readings(Ok(b"\n".to_vec())).is_empty());
+        assert_eq!(readings(missing).len(), 0);
+        assert_eq!(readings(Ok(Vec::new())).len(), 0);
+        assert_eq!(readings(Ok(b"\n".to_vec())).len(), 0);
     }
 }
