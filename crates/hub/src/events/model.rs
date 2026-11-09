@@ -167,6 +167,8 @@ pub enum AuditAction {
     Download,
     /// A Wake-on-LAN packet sent to a device (RA-031).
     Wake,
+    /// A test notification sent through a channel (NOT-004).
+    Send,
 }
 
 impl AuditAction {
@@ -189,6 +191,7 @@ impl AuditAction {
             Self::Upload => "upload",
             Self::Download => "download",
             Self::Wake => "wake",
+            Self::Send => "send",
         }
     }
 }
