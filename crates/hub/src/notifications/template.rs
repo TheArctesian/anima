@@ -21,14 +21,15 @@ mod values;
 
 pub(super) use values::Values;
 
-use crate::api_errors::FieldError;
+use crate::{api_errors::FieldError, text::clean};
 
 /// The longest template title and body, in characters (K2 `title_template` and
 /// `body_template` checks).
 pub(super) const TITLE_MAX: usize = 500;
 pub(super) const BODY_MAX: usize = 4000;
 
-/// The longest unknown name an error message repeats.
+/// The longest unknown name an error message repeats, cleaned of control and invisible
+/// characters (LOG-007).
 const NAME_SHOWN: usize = 30;
 
 /// A value a template can show (D-21).
@@ -120,7 +121,7 @@ impl Template {
                         }
                     }
                     let field = Placeholder::from_name(&name)
-                        .ok_or_else(|| Invalid::Unknown(name.chars().take(NAME_SHOWN).collect()))?;
+                        .ok_or_else(|| Invalid::Unknown(clean(&name, NAME_SHOWN)))?;
                     if !literal.is_empty() {
                         pieces.push(Piece::Text(std::mem::take(&mut literal)));
                     }

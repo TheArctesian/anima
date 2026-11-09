@@ -163,6 +163,37 @@ async fn not_003_an_unknown_check_is_not_found_and_an_unknown_channel_is_validat
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices", "checks"))
 )]
+async fn not_003_a_repeated_channel_id_is_answered_and_audited_once(pool: PgPool) {
+    let schema = schema_for(&pool);
+    let a = create(&schema, webhook("Alpha")).await["id"].clone();
+    sqlx::query("DELETE FROM events.audit_log")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let answer = data(
+        &schema,
+        SET,
+        json!({ "check": PING, "input": input(&json!([a, a, a]), Some(2)) }),
+    )
+    .await;
+    assert_eq!(
+        answer["setCheckNotifications"]["channels"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
+    let change: Value = sqlx::query_scalar("SELECT change FROM events.audit_log")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(change["channelIds"], json!([a]));
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices", "checks"))
+)]
 async fn log_005_a_change_writes_one_audit_entry_on_the_check_and_one_event(pool: PgPool) {
     let schema = schema_for(&pool);
     let a = create(&schema, webhook("Alpha")).await["id"].clone();

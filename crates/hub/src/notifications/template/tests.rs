@@ -108,6 +108,27 @@ fn not_007_the_rendered_text_is_cut_at_the_template_limits() {
 }
 
 #[test]
+fn not_007_a_body_made_long_by_its_values_is_cut_at_body_max_on_a_character_boundary() {
+    let long = Values {
+        message: Some("é€".repeat(250)),
+        ..Values::default()
+    };
+    let rendered = render("t", &"{message}".repeat(20), &long).unwrap();
+    assert_eq!(rendered.body.chars().count(), BODY_MAX);
+    assert!(rendered.body.starts_with("é€é€"));
+    assert!(rendered.body.ends_with('é') || rendered.body.ends_with('€'));
+}
+
+#[test]
+fn log_007_an_unknown_name_is_cleaned_before_the_error_quotes_it() {
+    let name = "ev\u{202e}il\r\n\0\u{200b}x";
+    let error = Template::parse(&format!("{{{name}}}")).err();
+    assert_eq!(error, Some(Invalid::Unknown("evilx".into())));
+    let message = field_errors(&format!("{{{name}}}"), "")[0].message.clone();
+    assert!(message.starts_with("{evilx} is not a placeholder"));
+}
+
+#[test]
 fn not_007_a_stored_template_that_does_not_parse_is_an_error_not_a_guess() {
     assert_eq!(
         render("{oops}", "x", &Values::default()).err(),
