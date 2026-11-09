@@ -46,6 +46,14 @@ export function intervalFor(type: CheckType, current: string, ordinary: string, 
   return type === 'DOMAIN_EXPIRY' ? String(PROPOSED_INTERVAL_SECONDS) : ordinary;
 }
 
+/**
+ * R-102, D-29, CHK-009: a domain expiry check takes no retries (RDAP is queried at most once an hour), so its form
+ * has no retries or retry-interval fields; the input sends `retries: 0` and no retry interval.
+ */
+export function takesRetries(type: CheckType): boolean {
+  return type !== 'DOMAIN_EXPIRY';
+}
+
 /** D-29: refuses an interval under one hour; a malformed interval is left to the general settings check. */
 export function intervalErrors(intervalSeconds: string): FieldError[] {
   if (!isIntegerIn(intervalSeconds, 0) || toNumber(intervalSeconds) >= MIN_INTERVAL_SECONDS) return [];

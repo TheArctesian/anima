@@ -84,3 +84,12 @@ it('R-102: another type (HTTP) still shows retries and the retry interval with t
   expect(input('Retries before Down').value).toBe('3');
   expect(hasInput('Retry interval (seconds)')).toBe(true);
 });
+
+it('R-102: a typed retries value comes back when the type goes domain expiry and back to HTTP', () => {
+  show();
+  choose('Type', 'HTTP');
+  type('Retries before Down', '7');
+  choose('Type', 'DOMAIN_EXPIRY');
+  choose('Type', 'HTTP');
+  expect(input('Retries before Down').value).toBe('7');
+});

@@ -102,3 +102,14 @@ it('D-2: the hub auth error that is not about the password goes to the user name
 
   expect(messageOf('User name')).toBe('This value is not valid.');
 });
+
+it('R-102: a hub error on retries for a domain expiry check is listed at the top, since it has no retries input', async () => {
+  const form = show({ onSave: refuse({ field: 'retries', message: 'A domain expiry check takes no retries.' }) });
+  choose('Type', 'DOMAIN_EXPIRY');
+  type('Name', 'Registration');
+  type('Domain', 'example.net');
+
+  await submit(form);
+
+  expect(document.querySelector('[role="alert"]')?.textContent).toContain('A domain expiry check takes no retries.');
+});

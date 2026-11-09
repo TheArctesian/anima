@@ -1,9 +1,9 @@
 <script lang="ts">
   import type { FieldError } from '$lib/hub/hub';
   import type { SettingKey } from '../../defaults/settings';
-  import { takesRetries } from '../model/input';
-  import { messageFor } from '../model/errors';
+    import { messageFor } from '../model/errors';
   import type { CheckFormValues } from '../model/values';
+  import { takesRetries } from '../probes/domain-expiry';
   import TextField from './TextField.svelte';
   import ToggleField from './ToggleField.svelte';
 
@@ -26,20 +26,20 @@
   oninput={() => ontouch?.('intervalSeconds')}
 />
 {#if takesRetries(values.type)}
-<TextField
-  label="Retries before Down"
-  kind="numeric"
-  bind:value={values.retries}
-  error={error('retries')}
-  oninput={() => ontouch?.('retries')}
-/>
-<TextField
-  label="Retry interval (seconds)"
-  kind="numeric"
-  bind:value={values.retryIntervalSeconds}
-  error={error('retryIntervalSeconds')}
-  oninput={() => ontouch?.('retryIntervalSeconds')}
-/>
+  <TextField
+    label="Retries before Down"
+    kind="numeric"
+    bind:value={values.retries}
+    error={error('retries')}
+    oninput={() => ontouch?.('retries')}
+  />
+  <TextField
+    label="Retry interval (seconds)"
+    kind="numeric"
+    bind:value={values.retryIntervalSeconds}
+    error={error('retryIntervalSeconds')}
+    oninput={() => ontouch?.('retryIntervalSeconds')}
+  />
 {/if}
 <TextField
   label="Degraded threshold (ms)"

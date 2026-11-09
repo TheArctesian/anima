@@ -1,4 +1,5 @@
 import type { FieldError } from '$lib/hub/hub';
+import { takesRetries } from '../probes/domain-expiry';
 import type { CheckFormValues } from './values';
 
 /** The settings that sit in the Advanced disclosure. */
@@ -8,6 +9,8 @@ export const COMMON_FIELDS: ReadonlySet<string> = new Set([
   'retryIntervalSeconds',
   'degradedThresholdMs',
 ]);
+
+const RETRY_FIELDS: ReadonlySet<string> = new Set(['retries', 'retryIntervalSeconds']);
 
 /** The first message for `field`, or undefined. */
 export function messageFor(errors: readonly FieldError[], field: string): string | undefined {
@@ -56,7 +59,9 @@ const BY_TYPE: Record<CheckFormValues['type'], readonly string[]> = {
 /** The field names that have an input on screen for `values` (the Advanced ones are opened when needed). */
 export function shownFields(values: CheckFormValues): Set<string> {
   const auth = values.type === 'HTTP' ? { BASIC: ['username', 'password'], BEARER: ['bearerToken'], NONE: [] }[values.http.authKind] : [];
-  return new Set(['name', ...COMMON_FIELDS, ...BY_TYPE[values.type], ...auth]);
+  // R-102: a domain expiry form has no retries inputs, so a hub error on them goes to the alert line.
+  const common = [...COMMON_FIELDS].filter((field) => takesRetries(values.type) || !RETRY_FIELDS.has(field));
+  return new Set(['name', ...common, ...BY_TYPE[values.type], ...auth]);
 }
 
 /**

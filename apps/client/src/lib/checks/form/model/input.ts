@@ -1,18 +1,14 @@
 import { configChanged, configInput } from './config-input';
-import type { CheckType, CreateCheckInput, UpdateCheckInput } from './hub-types';
+import type { CreateCheckInput, UpdateCheckInput } from './hub-types';
+import { takesRetries } from '../probes/domain-expiry';
 import { toNumber } from './range';
 import type { CheckFormValues } from './values';
 
 /**
- * R-102, D-29, CHK-009: a domain expiry check takes no retries (RDAP is queried at most once an hour), so
- * its form has no retries or retry-interval fields. Retries are sent as 0; the retry interval is
- * optional in `CreateCheckInput` and never changes after create, so it is left out.
+ * CHK-008, CHK-009: the create mutation input; every common setting is sent, so the hub applies no default of its own.
+ * R-102: a domain expiry check is the exception. It sends `retries: 0` explicitly (an omitted value takes the hub default
+ * of 3, which the hub refuses) and leaves out the retry interval.
  */
-export function takesRetries(type: CheckType): boolean {
-  return type !== 'DOMAIN_EXPIRY';
-}
-
-/** CHK-008, CHK-009: the create mutation input; every common setting is sent, so the hub applies no default of its own. */
 export function createCheckInput(values: CheckFormValues, deviceId: string): CreateCheckInput {
   return {
     deviceId,

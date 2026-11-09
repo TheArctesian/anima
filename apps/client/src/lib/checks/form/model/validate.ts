@@ -1,9 +1,8 @@
 import type { FieldError } from '$lib/hub/hub';
 import { isValidHost, normalizeHost } from '$lib/devices/form/host';
 import { configChanged } from './config-input';
-import { takesRetries } from './input';
 import { integerError, LIMITS, lengthError, portError, timeoutError } from './range';
-import { domainExpiryErrors, intervalErrors } from '../probes/domain-expiry';
+import { domainExpiryErrors, intervalErrors, takesRetries } from '../probes/domain-expiry';
 import { probeErrors } from '../probes/validate';
 import { validateHttp } from './validate-http';
 import type { CheckFormValues } from './values';
