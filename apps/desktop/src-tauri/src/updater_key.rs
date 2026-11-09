@@ -28,7 +28,9 @@ use crate::{keystore, web_view::MAIN};
 pub use error::UpdaterKeyError;
 use secret::PublicKey;
 pub(crate) use signature::{Signed, prehash};
-pub use unlocked::UnlockedKey;
+#[cfg(target_os = "linux")]
+pub use unlocked::keep_out_of_core_dumps;
+pub use unlocked::{UnlockedKey, dumpable};
 
 /// A key file is a few hundred bytes; anything larger is not one.
 const KEY_FILE_MAX_BYTES: u64 = 4096;
@@ -137,8 +139,9 @@ async fn chosen_file<R: Runtime>(
 }
 
 /// Reads the minisign secret key file the operator picks, checks `password` opens it, and stores
-/// it sealed (BLD-045, UPD-012, D-19): as it is when it has a password, sealed anew with
-/// `new_password` when it has none. The key is then unlocked for this app session.
+/// it sealed (BLD-045, UPD-012, D-19): as it is when it has a password and scrypt `N` of 2^15 or
+/// more, sealed anew otherwise (see `sealed::imported`). The key is then unlocked for this app
+/// session.
 #[tauri::command]
 pub async fn updater_key_import<R: Runtime>(
     webview: Webview<R>,
@@ -173,7 +176,8 @@ pub async fn updater_key_import<R: Runtime>(
 }
 
 /// Opens the stored key with `password` and keeps it in this process's memory until it is
-/// locked or the app quits (D-19). A wrong password is refused and leaves the key locked.
+/// locked or the app quits (D-19). A wrong password is refused and leaves the key locked, and so
+/// is a key whose public key is not the line stored beside it.
 #[tauri::command]
 pub async fn updater_key_unlock<R: Runtime>(
     webview: Webview<R>,
@@ -186,7 +190,8 @@ pub async fn updater_key_unlock<R: Runtime>(
     let app_key = app_public_key(&app);
     let key = off_main(move || {
         let stored = keystore::read_signing_key()?.ok_or(UpdaterKeyError::Missing)?;
-        sealed::unlocked(&stored, &password)
+        let public = keystore::read_signing_public_key()?.ok_or(UpdaterKeyError::Missing)?;
+        sealed::unlocked(&stored, &password, &public)
     })
     .await?;
     let public = key.public_key().line();

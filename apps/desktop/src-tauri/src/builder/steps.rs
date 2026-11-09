@@ -24,6 +24,18 @@ pub struct Workshop<'a> {
     pub clone: PathBuf,
 }
 
+/// The files in `.git` that make git read objects, parents or history from somewhere other than
+/// the clone's own objects. `git clone` writes none of them; a build may (D-15, D-21).
+const UNTRUSTED_FILES: &[&str] = &[
+    "info/grafts",
+    "shallow",
+    "commondir",
+    "objects/info/alternates",
+    "objects/info/http-alternates",
+    "objects/info/commit-graph",
+    "objects/info/commit-graphs",
+];
+
 /// Whether every key `git config --local --name-only --list` printed is one `git clone` writes.
 pub fn config_is_clones(keys: &[String]) -> bool {
     keys.iter()
@@ -49,11 +61,12 @@ impl Workshop<'_> {
         Ok(())
     }
 
-    /// Whether the clone is one `git clone` made: a `.git` folder, no graft or shallow file,
-    /// and no config key a build could have added to redirect or rewrite it (D-15).
+    /// Whether the clone is one `git clone` made: a `.git` folder, none of the files that make
+    /// git read history from elsewhere, and no config key a build could have added to redirect
+    /// or rewrite it (D-15, D-21).
     async fn trusted_clone(&self) -> bool {
         let git = self.clone.join(".git");
-        if !git.is_dir() || git.join("info/grafts").exists() || git.join("shallow").exists() {
+        if !git.is_dir() || UNTRUSTED_FILES.iter().any(|file| git.join(file).exists()) {
             return false;
         }
         self.run(&plan::config_keys(&self.clone))
@@ -61,11 +74,8 @@ impl Workshop<'_> {
             .is_ok_and(|keys| config_is_clones(&keys))
     }
 
-    /// Clones the repository anew when the clone is missing or no longer trusted.
-    async fn fresh_clone(&self) -> Result<(), BuilderError> {
-        if self.trusted_clone().await {
-            return Ok(());
-        }
+    /// Deletes the clone, if there is one, and clones the repository anew.
+    async fn clone_anew(&self) -> Result<(), BuilderError> {
         if self.clone.exists() {
             fs::remove_dir_all(&self.clone).map_err(|_| BuilderError::Failed)?;
         }
@@ -76,12 +86,30 @@ impl Workshop<'_> {
         Ok(())
     }
 
-    /// Clones when there is no trusted clone, fetches `main` by URL, refuses a commit that is
-    /// not on it, then checks the commit out with a clean tree (BLD-040, BLD-041).
-    pub async fn checkout(&self, commit: &Commit) -> Result<(), BuilderError> {
-        self.fresh_clone().await?;
+    /// A trusted clone with `main` fetched by URL, whose objects `git fsck` finds whole. A clone
+    /// that fails either check is cloned anew once; a fresh clone that fails `fsck` is refused
+    /// (D-15, D-21).
+    async fn whole_clone(&self) -> Result<(), BuilderError> {
+        let fresh = !self.trusted_clone().await;
+        if fresh {
+            self.clone_anew().await?;
+        }
         self.run(&plan::fetch(&self.repository, &self.clone))
             .await?;
+        match self.run(&plan::fsck(&self.clone)).await {
+            Err(BuilderError::StepFailed) if !fresh => {}
+            other => return other.map(drop),
+        }
+        self.clone_anew().await?;
+        self.run(&plan::fetch(&self.repository, &self.clone))
+            .await?;
+        self.run(&plan::fsck(&self.clone)).await.map(drop)
+    }
+
+    /// Makes the clone whole, refuses a commit that is not on `main`, then checks the commit out
+    /// with a clean tree (BLD-040, BLD-041).
+    pub async fn checkout(&self, commit: &Commit) -> Result<(), BuilderError> {
+        self.whole_clone().await?;
         match self.run(&plan::ancestry(&self.clone, commit)).await {
             Err(BuilderError::StepFailed) => return Err(BuilderError::NotOnMain),
             other => other?,

@@ -132,6 +132,16 @@ describe('the updater key bridge (BLD-045)', () => {
     await expect(importUpdaterKey(null, null)).rejects.toMatchObject({ problem: 'new-password-needed' });
   });
 
+  it('D-19: a short new password and a key that does not match its public line are named', async () => {
+    core.invoke.mockRejectedValue({ code: 'short-password' });
+    await expect(importUpdaterKey(null, 'short')).rejects.toMatchObject({
+      problem: 'short-password',
+      message: 'A new password needs at least 12 characters.',
+    });
+    core.invoke.mockRejectedValue({ code: 'mismatch' });
+    await expect(unlockUpdaterKey('a long password')).rejects.toMatchObject({ problem: 'mismatch' });
+  });
+
   it('BLD-045, LOG-007: a failure is a fixed sentence for its code, never the shell text', async () => {
     core.invoke.mockRejectedValue({ code: 'password', message: `bad ${KEY_TEXT}` });
     const error: unknown = await importUpdaterKey('wrong', null).catch((reason: unknown) => reason);

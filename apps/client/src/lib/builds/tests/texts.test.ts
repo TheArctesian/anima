@@ -60,6 +60,7 @@ describe('the Builds row texts (BLD-020)', () => {
     expect(memoryText(null)).toBe('');
     expect(memoryText({ ...check, memoryGuarded: true })).toBe('');
     expect(memoryText({ ...check, memoryGuarded: false })).toContain('kernel.yama.ptrace_scope');
+    expect(memoryText({ ...check, memoryGuarded: false })).toContain('crash dump');
   });
 
   it('BLD-020, BLD-045, D-19: says whether the key is stored, matches this app and is unlocked', () => {

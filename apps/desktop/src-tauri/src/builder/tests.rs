@@ -230,12 +230,13 @@ fn bld_028_a_locked_key_is_its_own_missing_tool_and_an_unlocked_one_is_none() {
 }
 
 #[test]
-fn bld_045_memory_is_guarded_only_when_yama_ptrace_scope_is_one_or_more() {
-    assert!(tools::memory_guarded(Some("1\n")));
-    assert!(tools::memory_guarded(Some("3")));
-    assert!(!tools::memory_guarded(Some("0\n")));
-    assert!(!tools::memory_guarded(None));
-    assert!(!tools::memory_guarded(Some("garbage")));
+fn d_19_memory_is_guarded_only_when_not_dumpable_and_yama_ptrace_scope_is_one_or_more() {
+    assert!(tools::memory_guarded(Some("1\n"), false));
+    assert!(tools::memory_guarded(Some("3"), false));
+    assert!(!tools::memory_guarded(Some("1\n"), true));
+    assert!(!tools::memory_guarded(Some("0\n"), false));
+    assert!(!tools::memory_guarded(None, false));
+    assert!(!tools::memory_guarded(Some("garbage"), false));
 }
 
 #[test]

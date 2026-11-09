@@ -19,6 +19,11 @@ use super::{
 /// minisign's ceiling: scrypt `N` at most 2^20 (1 GiB with r = 8). Real key files use p = 1, so
 /// a crafted file cannot ask for more parallel work than that.
 const N_LOG2_MAX: u8 = 20;
+/// A key file sealed with a smaller scrypt `N` than 2^15 (minisign's default) is sealed anew
+/// on import (D-19).
+const N_LOG2_MIN: u8 = 15;
+/// The fewest characters a password the app seals a key with may have (D-19).
+const NEW_PASSWORD_MIN_CHARS: usize = 12;
 const P_MAX: u32 = 1;
 /// The limits a key is sealed with here: minisign's own defaults, scrypt N = 2^15, r = 8, p = 1.
 const SEAL_OPSLIMIT: u64 = 1_048_576;
@@ -44,11 +49,16 @@ fn checksum(body: &[u8]) -> [u8; CHK_BYTES] {
     hash.finalize().into()
 }
 
+/// The scrypt `log2(N)` and `p` the key bytes ask for; `None` above the ceilings.
+fn cost_of(bytes: &[u8]) -> Option<(u8, u32)> {
+    let ops = u64::from_le_bytes(bytes[OPS_AT..MEM_AT].try_into().ok()?);
+    let mem = u64::from_le_bytes(bytes[MEM_AT..SEALED_AT].try_into().ok()?);
+    scrypt_cost(ops, mem)
+}
+
 /// XORs the sealed part with the scrypt stream of `password`, which opens or seals it.
 pub(super) fn unseal(bytes: &mut [u8], password: &[u8]) -> Result<(), UpdaterKeyError> {
-    let ops = u64::from_le_bytes(bytes[OPS_AT..MEM_AT].try_into().unwrap_or_default());
-    let mem = u64::from_le_bytes(bytes[MEM_AT..SEALED_AT].try_into().unwrap_or_default());
-    let (n_log2, p) = scrypt_cost(ops, mem).ok_or(UpdaterKeyError::Format)?;
+    let (n_log2, p) = cost_of(bytes).ok_or(UpdaterKeyError::Format)?;
     let params = scrypt::Params::new(n_log2, 8, p).map_err(|_| UpdaterKeyError::Format)?;
     let mut stream = Zeroizing::new([0; SEALED_BYTES]);
     scrypt::scrypt(
@@ -91,6 +101,15 @@ fn usable(password: Option<&str>) -> Option<&str> {
     password.filter(|text| !text.is_empty() && text.len() <= PASSWORD_MAX_BYTES)
 }
 
+/// A password to seal a key with anew: given, and at least `NEW_PASSWORD_MIN_CHARS` long.
+fn new_password_of(new_password: Option<&str>) -> Result<&str, UpdaterKeyError> {
+    let new = usable(new_password).ok_or(UpdaterKeyError::NewPasswordNeeded)?;
+    if new.chars().count() < NEW_PASSWORD_MIN_CHARS {
+        return Err(UpdaterKeyError::PasswordTooShort);
+    }
+    Ok(new)
+}
+
 /// `key` sealed with `password` under `salt`, as base64 of minisign's key bytes.
 pub(super) fn seal(
     key: &SecretKey,
@@ -112,8 +131,10 @@ pub(super) fn seal(
 }
 
 /// What to store for an imported key file (BLD-045, D-19). A file sealed with a password is kept
-/// as it is, once `password` opens it. A file with no password, or an empty one, is sealed anew
-/// with `new_password`; without one it is `NewPasswordNeeded`.
+/// as it is, once `password` opens it, unless its scrypt `N` is below 2^15: then it is sealed
+/// anew under `salt`, with `new_password` when one is given and with `password` when not. A file
+/// with no password, or an empty one, is sealed anew with `new_password`; without one it is
+/// `NewPasswordNeeded`. A new password shorter than 12 characters is `PasswordTooShort`.
 pub(crate) fn imported(
     file: &[u8],
     password: Option<&str>,
@@ -123,11 +144,19 @@ pub(crate) fn imported(
     let bytes = key_bytes(file)?;
     if let (true, Some(given)) = (&bytes[2..4] == KDF_SCRYPT, usable(password)) {
         let key = open(&bytes, given)?;
-        let stored = Zeroizing::new(STANDARD.encode(bytes.as_slice()));
+        if cost_of(&bytes).is_some_and(|(n_log2, _)| n_log2 >= N_LOG2_MIN) {
+            let stored = Zeroizing::new(STANDARD.encode(bytes.as_slice()));
+            return Ok(Imported { key, stored });
+        }
+        let reseal = match usable(new_password) {
+            Some(_) => new_password_of(new_password)?,
+            None => given,
+        };
+        let stored = seal(&key, reseal, salt)?;
         return Ok(Imported { key, stored });
     }
     let key = SecretKey::from_key_file(file, None)?;
-    let new = usable(new_password).ok_or(UpdaterKeyError::NewPasswordNeeded)?;
+    let new = new_password_of(new_password)?;
     let stored = seal(&key, new, salt)?;
     Ok(Imported { key, stored })
 }
@@ -143,8 +172,13 @@ fn open(bytes: &[u8], password: &str) -> Result<SecretKey, UpdaterKeyError> {
 }
 
 /// Opens what `imported` stored (BLD-045). Only a sealed key is accepted: a bare key in the store
-/// is `Format`, never used.
-pub(crate) fn unlocked(stored: &str, password: &str) -> Result<SecretKey, UpdaterKeyError> {
+/// is `Format`, never used. A key whose public key is not `public`, the line stored beside it, is
+/// `Mismatch` (D-19).
+pub(crate) fn unlocked(
+    stored: &str,
+    password: &str,
+    public: &str,
+) -> Result<SecretKey, UpdaterKeyError> {
     let password = usable(Some(password)).ok_or(UpdaterKeyError::WrongPassword)?;
     let bytes = Zeroizing::new(
         STANDARD
@@ -158,5 +192,9 @@ pub(crate) fn unlocked(stored: &str, password: &str) -> Result<SecretKey, Update
     if !shaped {
         return Err(UpdaterKeyError::Format);
     }
-    open(&bytes, password)
+    let key = open(&bytes, password)?;
+    if key.public_key().line() != public.trim() {
+        return Err(UpdaterKeyError::Mismatch);
+    }
+    Ok(key)
 }

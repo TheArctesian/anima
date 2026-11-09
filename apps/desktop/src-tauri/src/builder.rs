@@ -143,10 +143,11 @@ fn key_readiness(unlocked: &UnlockedKey) -> KeyReadiness {
     }
 }
 
-/// Yama's `ptrace_scope`, read at the edge (D-19).
+/// Yama's `ptrace_scope` and whether this process is dumpable, read at the edge (D-19). macOS
+/// writes no core dump of the app and lets no other process of the user read its memory.
 fn memory_guarded() -> bool {
     let scope = std::fs::read_to_string("/proc/sys/kernel/yama/ptrace_scope").ok();
-    cfg!(target_os = "macos") || tools::memory_guarded(scope.as_deref())
+    cfg!(target_os = "macos") || tools::memory_guarded(scope.as_deref(), updater_key::dumpable())
 }
 
 /// This computer's platform and the tools it lacks (BLD-028).

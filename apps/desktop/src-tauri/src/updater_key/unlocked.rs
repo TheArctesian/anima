@@ -48,3 +48,20 @@ impl UnlockedKey {
         })
     }
 }
+
+/// Marks this process not dumpable (D-19): the kernel then writes no core dump of it, so a build
+/// step that crashes the app cannot read the opened key from the dump, and no process without
+/// `CAP_SYS_PTRACE` may attach to it or read its memory. Call once at startup, before a key is
+/// opened. Linux only; `builder_tools_check` reads the state back and the row warns if it failed.
+#[cfg(target_os = "linux")]
+pub fn keep_out_of_core_dumps() -> nix::Result<()> {
+    nix::sys::prctl::set_dumpable(false)
+}
+
+/// Whether this process may be dumped; on systems other than Linux, as if it may (D-19).
+pub fn dumpable() -> bool {
+    #[cfg(target_os = "linux")]
+    return nix::sys::prctl::get_dumpable().unwrap_or(true);
+    #[cfg(not(target_os = "linux"))]
+    true
+}

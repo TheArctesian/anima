@@ -112,9 +112,14 @@ fn command(program: Program, cwd: &Path, args: &[&str]) -> Command {
 
 /// git with hooks, fsmonitor, credential helpers, submodules and every transport off, whatever
 /// the clone's own `.git/config` says: a build writes to the clone (BLD-044). `clone` and
-/// `fetch` allow the repository's own transport again.
+/// `fetch` allow the repository's own transport again. No automatic `gc` or maintenance, so git
+/// itself never writes the commit graph that makes a clone untrusted (D-21).
 fn git(cwd: &Path, args: &[&str]) -> Command {
     let mut all = vec![
+        "-c",
+        "gc.auto=0",
+        "-c",
+        "maintenance.auto=false",
         "-c",
         "core.hooksPath=/dev/null",
         "-c",
@@ -171,6 +176,12 @@ pub fn fetch(repository: &Repository, clone: &Path) -> Command {
 /// Prints the name of each key in the clone's own `.git/config`.
 pub fn config_keys(clone: &Path) -> Command {
     git(clone, &["config", "--local", "--name-only", "--list"])
+}
+
+/// Exits 0 only when every object in the clone hashes to its name and every link resolves, so
+/// an object a build forged cannot make another commit look like part of `main` (D-21).
+pub fn fsck(clone: &Path) -> Command {
+    git(clone, &["fsck", "--no-dangling", "--no-progress"])
 }
 
 /// Exits 0 only when `commit` is an ancestor of `main` (BLD-041).

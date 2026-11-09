@@ -40,13 +40,15 @@ impl KeyReadiness {
     }
 }
 
-/// Whether Yama's `ptrace_scope` (the text of `/proc/sys/kernel/yama/ptrace_scope`, `None` when
-/// the file is missing) stops a build process from reading this process's memory, where the
-/// unlocked key is (D-19): 1 and above do; 0, or no Yama at all, does not.
-pub fn memory_guarded(ptrace_scope: Option<&str>) -> bool {
-    ptrace_scope
-        .and_then(|text| text.trim().parse::<u8>().ok())
-        .is_some_and(|scope| scope >= 1)
+/// Whether a build process is kept from reading this process's memory, where the unlocked key is
+/// (D-19): this process must not be dumpable (`PR_GET_DUMPABLE` is 0, so no core dump of it is
+/// written for a step to read) and Yama's `ptrace_scope` (the text of
+/// `/proc/sys/kernel/yama/ptrace_scope`, `None` when the file is missing) must be 1 or above.
+pub fn memory_guarded(ptrace_scope: Option<&str>, dumpable: bool) -> bool {
+    !dumpable
+        && ptrace_scope
+            .and_then(|text| text.trim().parse::<u8>().ok())
+            .is_some_and(|scope| scope >= 1)
 }
 
 /// The PostgreSQL major version the gates start (DB-001, R-009).

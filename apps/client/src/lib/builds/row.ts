@@ -82,10 +82,10 @@ export function keyText(key: UpdaterKeyState | null): string {
 }
 
 /**
- * The warning when other programs of the operator's user may read this app's memory, where the unlocked key is
- * (D-19); empty when they may not, or before the shell has said.
+ * The warning when other programs of the operator's user may read this app's memory or a core dump of it, where
+ * the unlocked key is (D-19); empty when they may not, or before the shell has said.
  */
 export function memoryText(check: ToolCheck | null): string {
   if (check === null || check.memoryGuarded) return '';
-  return "Other programs you run can read this app's memory, where the unlocked updater key is. Set kernel.yama.ptrace_scope to 1 to stop that.";
+  return "Other programs you run, build steps included, may read this app's memory or a crash dump of it, where the unlocked updater key is. Set kernel.yama.ptrace_scope to 1, then restart the app.";
 }

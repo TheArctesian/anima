@@ -18,6 +18,10 @@ pub enum UpdaterKeyError {
     WrongPassword,
     #[error("the key file has no password; set a new one to import it")]
     NewPasswordNeeded,
+    #[error("a new password needs at least 12 characters")]
+    PasswordTooShort,
+    #[error("the stored key does not match its public key; import the key file again")]
+    Mismatch,
     #[error("no updater key is stored on this computer")]
     Missing,
     #[error("the updater key is locked; unlock it with its password")]
@@ -42,6 +46,8 @@ impl UpdaterKeyError {
             Self::PasswordNeeded => "password-needed",
             Self::WrongPassword => "password",
             Self::NewPasswordNeeded => "new-password-needed",
+            Self::PasswordTooShort => "short-password",
+            Self::Mismatch => "mismatch",
             Self::Missing => "missing",
             Self::Locked => "locked",
             Self::Caller => "caller",

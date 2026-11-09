@@ -51,7 +51,7 @@ fn bld_045_d_19_a_key_file_with_a_password_is_stored_as_it_is_once_the_password_
     let Imported { key, stored } = imported(file.as_bytes(), Some(PASSWORD), None, &SALT).unwrap();
     assert_eq!(key.public_key().line(), public.to_base64());
     assert_sealed(&stored, &key);
-    let opened = unlocked(&stored, PASSWORD).unwrap();
+    let opened = unlocked(&stored, PASSWORD, &key.public_key().line()).unwrap();
     assert_eq!(opened.public_key(), key.public_key());
     assert_eq!(
         imported(file.as_bytes(), Some("wrong"), None, &SALT).err(),
@@ -79,7 +79,9 @@ fn bld_045_d_19_a_key_file_without_a_password_needs_a_new_one_and_is_sealed_with
             imported(file.as_bytes(), None, Some(NEW_PASSWORD), &SALT).unwrap();
         assert_sealed(&stored, &key);
         assert_eq!(
-            unlocked(&stored, NEW_PASSWORD).unwrap().public_key(),
+            unlocked(&stored, NEW_PASSWORD, &key.public_key().line())
+                .unwrap()
+                .public_key(),
             key.public_key()
         );
     }
@@ -99,17 +101,17 @@ fn bld_045_d_19_a_wrong_unlock_password_is_refused_and_a_bare_stored_key_is_neve
     let Imported { key, stored } =
         imported(file.as_bytes(), None, Some(NEW_PASSWORD), &SALT).unwrap();
     assert_eq!(
-        unlocked(&stored, "wrong").err(),
+        unlocked(&stored, "wrong", &key.public_key().line()).err(),
         Some(UpdaterKeyError::WrongPassword)
     );
     assert_eq!(
-        unlocked(&stored, "").err(),
+        unlocked(&stored, "", &key.public_key().line()).err(),
         Some(UpdaterKeyError::WrongPassword)
     );
     // The bare form T2 first stored (key number, seed, public key) is not a key here.
     let bare = STANDARD.encode(key.sealed_body().as_slice());
     assert_eq!(
-        unlocked(&bare, NEW_PASSWORD).err(),
+        unlocked(&bare, NEW_PASSWORD, &key.public_key().line()).err(),
         Some(UpdaterKeyError::Format)
     );
     // Nor is an unencrypted minisign key, whose seed would be in the clear.
@@ -117,7 +119,7 @@ fn bld_045_d_19_a_wrong_unlock_password_is_refused_and_a_bare_stored_key_is_neve
     let plain = pair.sk.to_box(None).unwrap().into_string();
     let unencrypted = plain.lines().nth(1).unwrap();
     assert_eq!(
-        unlocked(unencrypted, NEW_PASSWORD).err(),
+        unlocked(unencrypted, NEW_PASSWORD, &key.public_key().line()).err(),
         Some(UpdaterKeyError::Format)
     );
 }

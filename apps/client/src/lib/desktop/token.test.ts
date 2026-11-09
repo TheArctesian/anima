@@ -90,6 +90,11 @@ describe('readAccessToken origin and errors', () => {
     expect(core.invoke).toHaveBeenLastCalledWith('access_token_read', { origin: b.origin });
   });
 
+  it('C-5: the shell code caller is a typed problem', async () => {
+    core.invoke.mockRejectedValue({ code: 'caller', message: 'no' });
+    await expect(readAccessToken(HUB)).rejects.toMatchObject({ problem: 'caller' });
+  });
+
   it('CLI-002: the shell code origin is a typed problem', async () => {
     core.invoke.mockRejectedValue({ code: 'origin', message: 'bad' });
     await expect(readAccessToken(HUB)).rejects.toMatchObject({ problem: 'origin' });

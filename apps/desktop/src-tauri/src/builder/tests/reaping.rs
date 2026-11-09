@@ -1,5 +1,6 @@
 //! Processes that leave the step's process group with `setsid`, as `pg_ctl` does, are ended too
-//! (S-1). Linux only: there is no subreaper on macOS.
+//! (S-1, D-20), and processes the app did not start through a step are left alone. Linux only:
+//! there is no subreaper on macOS.
 
 use std::{
     path::Path,
@@ -91,6 +92,43 @@ async fn s_1_cancel_ends_a_process_that_left_the_group() {
     assert!(
         gone_within(escaped, Duration::from_secs(5)).await,
         "it outlived the cancel"
+    );
+}
+
+#[cfg(target_os = "linux")]
+#[tokio::test]
+async fn d_20_an_orphan_no_step_started_is_never_killed_and_never_waited_for() {
+    let running = Running::default();
+    let (sink, _) = collecting();
+    let claim = running.claim(Arc::clone(&sink)).unwrap();
+    // Not through a step: an opener the app ran, whose browser left in a session of its own and
+    // was re-parented to this process, the subreaper.
+    let opener = std::process::Command::new("/bin/sh")
+        .args([
+            "-c",
+            "setsid sleep 30 </dev/null >/dev/null 2>&1 & echo \"$!\"",
+        ])
+        .output()
+        .unwrap();
+    let orphan: i32 = String::from_utf8(opener.stdout)
+        .unwrap()
+        .trim()
+        .parse()
+        .unwrap();
+    let started = Instant::now();
+    claim
+        .run(&command(&["-c", "true"]), Path::new("/bin/sh"), Vec::new())
+        .await
+        .unwrap();
+    let took = started.elapsed();
+    let survived = alive(orphan);
+    let orphan = nix::unistd::Pid::from_raw(orphan);
+    let _ = nix::sys::signal::kill(orphan, nix::sys::signal::Signal::SIGKILL);
+    let _ = nix::sys::wait::waitpid(orphan, None);
+    assert!(survived, "a process no step started was killed");
+    assert!(
+        took < Duration::from_millis(1500),
+        "the sweep waited for a process no step started: {took:?}"
     );
 }
 

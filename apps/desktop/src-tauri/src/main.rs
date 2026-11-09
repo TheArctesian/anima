@@ -17,7 +17,15 @@ fn main() {
     // The dialog plugin is used from Rust only (the updater key file); no capability names it.
     let app = tauri::Builder::default()
         .plugin(process_log::plugin())
-        .plugin(tauri_plugin_dialog::init());
+        .plugin(tauri_plugin_dialog::init())
+        .setup(|_| {
+            // Before any key is opened: no core dump of this process may hold it (D-19).
+            #[cfg(target_os = "linux")]
+            if let Err(error) = updater_key::keep_out_of_core_dumps() {
+                tauri_plugin_log::log::warn!("this process is still dumpable: {error}");
+            }
+            Ok(())
+        });
     // Release desktop builds only: `tauri dev` never checks for or loads an update (UPD-001).
     #[cfg(all(desktop, not(debug_assertions)))]
     let app = app

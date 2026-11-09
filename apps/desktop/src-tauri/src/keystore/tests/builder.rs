@@ -4,8 +4,9 @@ use tauri::async_runtime::block_on;
 
 use super::{SECRET, use_memory_store};
 use crate::keystore::{
-    KeystoreError, access_token_write, builder_token_clear, builder_token_read,
-    builder_token_write, read_signing_key, read_signing_public_key,
+    KeystoreError, access_token_write, builder_clear as builder_token_clear,
+    builder_read as builder_token_read, builder_write as builder_token_write, from_main,
+    read_signing_key, read_signing_public_key,
     token::{BUILDER_SERVICE, SERVICE, TokenKind, read_token, write_token},
     write_signing_key,
 };
@@ -95,4 +96,12 @@ fn bld_045_the_updater_key_round_trips_and_an_empty_key_is_refused() {
     let entries = store.lock().unwrap();
     assert!(entries.contains_key(&(SERVICE.to_owned(), "updater-key".to_owned())));
     assert!(entries.contains_key(&(SERVICE.to_owned(), "updater-key-public".to_owned())));
+}
+
+#[test]
+fn c_5_only_the_main_web_view_may_use_the_builder_token() {
+    assert_eq!(from_main("main"), Ok(()));
+    for other in ["web-tab-1", "pop-tab-1", "Main", "main ", ""] {
+        assert_eq!(from_main(other), Err(KeystoreError::Caller), "{other:?}");
+    }
 }

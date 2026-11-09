@@ -151,6 +151,7 @@ dependencies = [
  "objc2-foundation",
  "objc2-web-kit",
  "rcgen",
+ "rustix",
  "rustls",
  "scrypt 0.12.0",
  "security-framework 3.7.0",

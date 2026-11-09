@@ -2,7 +2,7 @@ import { invoke, isTauri } from '@tauri-apps/api/core';
 import { parseHubAddress, type HubAddress } from '$lib/hub/hub';
 
 /** Why the key store did not answer. `not-desktop` is the client's own; the rest are the shell's (CLI-003). */
-export type AccessTokenProblem = 'unavailable' | 'denied' | 'failed' | 'empty' | 'origin' | 'not-desktop';
+export type AccessTokenProblem = 'unavailable' | 'denied' | 'failed' | 'empty' | 'origin' | 'caller' | 'not-desktop';
 
 const MESSAGES: Record<AccessTokenProblem, string> = {
   unavailable: 'The key store is not available.',
@@ -10,10 +10,11 @@ const MESSAGES: Record<AccessTokenProblem, string> = {
   failed: 'The key store failed.',
   empty: 'The access token is empty.',
   origin: 'The hub address is not valid for the key store.',
+  caller: 'Only the main window may use the builder token.',
   'not-desktop': 'The access token is kept by the desktop app only.',
 };
 
-const SHELL_CODES: readonly AccessTokenProblem[] = ['unavailable', 'denied', 'failed', 'empty', 'origin'];
+const SHELL_CODES: readonly AccessTokenProblem[] = ['unavailable', 'denied', 'failed', 'empty', 'origin', 'caller'];
 
 /** A key-store failure. The message is fixed text chosen here; nothing from the shell's error is kept (LOG-007). */
 export class AccessTokenError extends Error {

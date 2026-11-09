@@ -6,6 +6,9 @@ use std::io::Cursor;
 use base64::{Engine, engine::general_purpose::STANDARD};
 use minisign::{KeyPair, SignatureBox};
 
+#[cfg(target_os = "linux")]
+mod memory;
+mod resealing;
 mod sealing;
 
 use super::{

@@ -58,6 +58,10 @@ tauri-plugin-process.workspace = true
 [target.'cfg(unix)'.dependencies]
 nix = { version = "0.31", default-features = false, features = ["signal", "process"] }
 
+# pidfd_open and pidfd_send_signal for the reaper (D-20): nix 0.31 has neither.
+[target.'cfg(target_os = "linux")'.dependencies]
+rustix = { version = "1.1", default-features = false, features = ["std", "process"] }
+
 [target.'cfg(target_os = "macos")'.dependencies]
 # Downcasts keyring's macOS PlatformFailure to tell a refused Keychain prompt from a failure;
 # `macos-12` reads a server's certificate chain for the web-view trust hook (WEB-008, R-069).

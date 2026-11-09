@@ -1,8 +1,13 @@
-//! Ends every process a build step started, including those that left the step's process group
-//! with `setsid` (`pg_ctl` does; so can a hostile build script). On Linux this process is the
-//! child subreaper of its descendants, so an escaped process is re-parented here rather than to
-//! `init`; each step's processes carry a marker variable, and after the step, and on cancel,
-//! every live descendant with the step's marker is killed and reaped (BLD-026, S-1).
+//! Ends the processes a build step started that still carry the step's marker, including those
+//! that left the step's process group with `setsid` (`pg_ctl` does). On Linux this process is
+//! the child subreaper of its descendants, so an escaped process is re-parented here rather than
+//! to `init`; each step's processes carry a marker variable, and after the step, and on cancel,
+//! every live descendant with the step's marker is killed and reaped (BLD-026, D-20).
+//!
+//! Only processes that still carry the marker are reaped. A hostile step can escape: a process
+//! started without the variable (`setsid env -u ANIMA_BUILD_STEP ...`) is not seen. The step
+//! sandbox (the issue #1 follow-up) closes that. A process the app did not start through a step
+//! is never marked, so it is never killed, and the sweep never waits for it.
 //!
 //! On macOS there is no subreaper: only the step's process group is killed, and a process that
 //! called `setsid` outlives the step (a known limit).
@@ -114,25 +119,42 @@ mod linux {
         i32::try_from(std::process::id()).unwrap_or(i32::MAX)
     }
 
+    /// Sends SIGKILL to `pid` if it carries the marker `value`; whether it was sent. The pidfd is
+    /// opened before the marker is read, so the signal reaches the process that was read even if
+    /// it ended and its ID was reused meanwhile. Without pidfd (Linux before 5.3), `kill`.
+    fn kill_if_marked(pid: i32, value: &str) -> bool {
+        let Some(id) = rustix::process::Pid::from_raw(pid) else {
+            return false;
+        };
+        match rustix::process::pidfd_open(id, rustix::process::PidfdFlags::empty()) {
+            Ok(pidfd) => {
+                carries(pid, value)
+                    && rustix::process::pidfd_send_signal(&pidfd, rustix::process::Signal::KILL)
+                        .is_ok()
+            }
+            Err(rustix::io::Errno::NOSYS) => {
+                carries(pid, value) && kill(Pid::from_raw(pid), Signal::SIGKILL).is_ok()
+            }
+            Err(_) => false,
+        }
+    }
+
     /// Sends SIGKILL to every live descendant that carries the marker `value`; returns them.
     pub fn kill_marked(value: &str) -> Vec<i32> {
         let all = processes();
-        let live: Vec<i32> = descendants(me(), &all)
+        descendants(me(), &all)
             .into_iter()
-            .filter(|process| !process.zombie && carries(process.pid, value))
+            .filter(|process| !process.zombie && kill_if_marked(process.pid, value))
             .map(|process| process.pid)
-            .collect();
-        for pid in &live {
-            let _ = kill(Pid::from_raw(*pid), Signal::SIGKILL);
-        }
-        live
+            .collect()
     }
 
     /// Kills every descendant with the marker `value` until none is left, and reaps those that
-    /// were re-parented here. Only processes seen with the marker, of the step's process
-    /// `group`, or of another session (they called `setsid`) are reaped, so a child the app
-    /// waits for elsewhere is never taken from it. Run it after the step's own process was waited
-    /// for. Blocking: at most `ROUNDS` pauses.
+    /// were re-parented here. It waits only for processes seen with the marker or in the step's
+    /// process `group`. Zombies of another session re-parented here (they called `setsid`) are
+    /// reaped when seen but never waited for, and a child the app waits for elsewhere, in this
+    /// session, is never taken from it. Run it after the step's own process was waited for.
+    /// Blocking: at most `ROUNDS` pauses.
     pub fn sweep(value: &str, group: Option<i32>) {
         let mut killed: HashSet<i32> = HashSet::new();
         for _ in 0..ROUNDS {
@@ -144,19 +166,20 @@ mod linux {
                 .iter()
                 .find(|process| process.pid == me)
                 .map(|process| process.session);
-            let ours = |process: &Process| {
-                killed.contains(&process.pid)
-                    || Some(process.group) == group
-                    || (process.parent == me && Some(process.session) != session)
+            let step =
+                |process: &Process| killed.contains(&process.pid) || Some(process.group) == group;
+            let reapable = |process: &Process| {
+                process.parent == me
+                    && process.zombie
+                    && (step(process) || Some(process.session) != session)
             };
-            let waiting: Vec<Process> = all.into_iter().filter(|process| ours(process)).collect();
-            for process in waiting
-                .iter()
-                .filter(|process| process.parent == me && process.zombie)
-            {
+            for process in all.iter().filter(|process| reapable(process)) {
                 let _ = waitpid(Pid::from_raw(process.pid), Some(WaitPidFlag::WNOHANG));
             }
-            if live.is_empty() && waiting.iter().all(|process| process.parent != me) {
+            let pending = all
+                .iter()
+                .any(|process| process.parent == me && !process.zombie && step(process));
+            if live.is_empty() && !pending {
                 return;
             }
             thread::sleep(PAUSE);
