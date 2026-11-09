@@ -28,7 +28,6 @@ describe('update keeps the type of the saved check', () => {
 
 describe('CHK-009, D-29: update of a DOMAIN_EXPIRY check', () => {
   const loaded = saved('DOMAIN_EXPIRY', { __typename: 'DomainExpiryConfig', domain: 'example.net', warnDays: 30, timeoutMs: 10000 }, { intervalSeconds: 43_200 });
-  const bare = saved('DOMAIN_EXPIRY', { __typename: 'DomainExpiryConfig' }, { intervalSeconds: 43_200 });
 
   it('an unchanged config sends no config', () => {
     const edited = { ...checkValues(loaded, 'ICMP'), name: 'renamed' };
@@ -48,10 +47,12 @@ describe('CHK-009, D-29: update of a DOMAIN_EXPIRY check', () => {
     expect(updateCheckInput(initial, edited)).toEqual({ config: { domainExpiry: want } });
   });
 
-  it('a rename of a check with an unloaded config is valid and sends no config', () => {
-    const initial = checkValues(bare, 'ICMP');
-    const edited = { ...initial, name: 'renamed' };
+  it('CHK-009: an edit that changes only the warn days loads the stored domain, validates, and sends the whole config', () => {
+    const initial = checkValues(loaded, 'ICMP');
+    expect(initial.domainExpiry).toMatchObject({ domain: 'example.net', warnDays: '30', timeoutMs: '10000' });
+    const edited = checkValues(loaded, 'ICMP');
+    edited.domainExpiry.warnDays = '14';
     expect(validateCheck(edited, initial)).toEqual([]);
-    expect(updateCheckInput(initial, edited)).toEqual({ name: 'renamed' });
+    expect(updateCheckInput(initial, edited)).toEqual({ config: { domainExpiry: { domain: 'example.net', warnDays: 14, timeoutMs: 10000 } } });
   });
 });

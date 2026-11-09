@@ -98,6 +98,11 @@ void graphql(`
           name
         }
       }
+      ... on DomainExpiryConfig {
+        domain
+        warnDays
+        timeoutMs
+      }
     }
   }
 `);

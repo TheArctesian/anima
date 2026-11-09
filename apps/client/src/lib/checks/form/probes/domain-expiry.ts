@@ -12,17 +12,11 @@ export const PROPOSED_INTERVAL_SECONDS = 43_200;
 const DOMAIN_BYTES = 253;
 const WARN_DAYS: readonly [number, number] = [1, 365];
 
-/** A domain expiry config with its fields; the generated `Check.config` union names it without them until the hub declares them (F-3). */
-export interface DomainExpiryConfigFields {
-  readonly __typename: 'DomainExpiryConfig';
+/** The stored settings of a domain expiry check, as K1 serves them. */
+interface DomainExpiryStored {
   readonly domain: string;
   readonly warnDays: number;
   readonly timeoutMs: number;
-}
-
-/** A domain expiry config as the generated union names it today: the type only. */
-interface BareDomainExpiryConfig {
-  readonly __typename: 'DomainExpiryConfig';
 }
 
 /** What the operator typed for a domain expiry check (CHK-009). */
@@ -38,13 +32,8 @@ export function blankDomainExpiry(): DomainExpiryValues {
   return { domain: '', warnDays: '30', timeoutMs: '10000', daysLeft: null };
 }
 
-/** `values` with the settings of a saved config, or as they were when the config has no fields yet. */
-export function withDomainExpiryConfig(
-  values: DomainExpiryValues,
-  config: DomainExpiryConfigFields | BareDomainExpiryConfig,
-  daysLeft: number | null,
-): DomainExpiryValues {
-  if (!('domain' in config)) return { ...values, daysLeft };
+/** The form's values for a saved domain expiry config (CHK-009) and the days the hub last read. */
+export function withDomainExpiryConfig(config: DomainExpiryStored, daysLeft: number | null): DomainExpiryValues {
   return { domain: config.domain, warnDays: String(config.warnDays), timeoutMs: String(config.timeoutMs), daysLeft };
 }
 
@@ -88,5 +77,6 @@ export function domainExpiryInput({ domain, warnDays, timeoutMs }: DomainExpiryV
 /** The days-left line for the check form; the same words in every place that shows it. */
 export function daysLeftText(daysLeft: number | null): string {
   if (daysLeft === null) return 'Days left: not known yet';
+  if (daysLeft < 0) return `Expired ${dayCount(-daysLeft)} ago`;
   return `Days left: ${dayCount(daysLeft)}`;
 }
