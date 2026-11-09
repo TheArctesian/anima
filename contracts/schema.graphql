@@ -1090,12 +1090,12 @@ enum DeliveryReason {
   NOT_UNDERSTOOD
 }
 
-type DeliveryEdge @pending {
+type DeliveryEdge {
   cursor: String!
   node: Delivery!
 }
 
-type DeliveryConnection @pending {
+type DeliveryConnection {
   edges: [DeliveryEdge!]!
   pageInfo: PageInfo!
 }
@@ -1422,7 +1422,7 @@ type Query {
   checkDefaults: CheckDefaults!
   notificationChannels: [NotificationChannel!]!
   notificationSettings: NotificationSettings!
-  deliveries(channelId: ID, first: Int = 50, after: String): DeliveryConnection! @pending
+  deliveries(channelId: ID, first: Int = 50, after: String): DeliveryConnection!
   retention: [RetentionPeriod!]!
   recordings(deviceId: ID, first: Int = 50, after: String): RecordingConnection! @pending
 }
@@ -1500,7 +1500,7 @@ type Mutation {
   updateNotificationChannel(id: ID!, input: NotificationChannelInput!): NotificationChannel!
   deleteNotificationChannel(id: ID!): ID!
   "Sends at once and waits at most 8 seconds (NOT-004)."
-  sendTestNotification(id: ID!): Delivery! @pending
+  sendTestNotification(id: ID!): Delivery!
   setCheckNotifications(checkId: ID!, input: CheckNotificationsInput!): CheckNotifications!
   setNotificationSettings(input: NotificationSettingsInput!): NotificationSettings!
 
