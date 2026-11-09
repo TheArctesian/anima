@@ -23,6 +23,7 @@ mod settings;
 mod tests;
 mod webhook;
 
+use super::template;
 use crate::api_errors::FieldError;
 
 pub(super) use apprise::{AppriseDraft, AppriseSecrets, AppriseSettings};
@@ -47,12 +48,9 @@ use rules::Problems;
 
 /// The longest channel name, in characters (K2 `channels_name_check`).
 const NAME_MAX: usize = 100;
-/// The longest template title and body, in characters (K2).
-const TITLE_MAX: usize = 500;
-const BODY_MAX: usize = 4000;
 
-/// A template that replaces the installation's default (NOT-007). Placeholders are checked by
-/// the template rules, not here.
+/// A template that replaces the installation's default (NOT-007). Its length and placeholders
+/// are checked by `template::field_errors`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct Template {
     pub(super) title: String,
@@ -159,17 +157,8 @@ fn check_common(problems: &mut Problems, draft: &Draft) {
         problems.add("name", "Remove line breaks and invisible characters.");
     }
     if let Some(template) = &draft.template {
-        if template.title.chars().count() > TITLE_MAX {
-            problems.add(
-                "template.title",
-                format!("Use at most {TITLE_MAX} characters."),
-            );
-        }
-        if template.body.chars().count() > BODY_MAX {
-            problems.add(
-                "template.body",
-                format!("Use at most {BODY_MAX} characters."),
-            );
+        for error in template::field_errors(&template.title, &template.body) {
+            problems.add(error.field, error.message);
         }
     }
 }

@@ -42,7 +42,7 @@ async fn api_003_channel_fields_without_an_operator_are_unauthenticated(pool: Pg
 }
 
 /// Only an API key may be read-only (migration 0010); it is spelled `anima_` + token.
-async fn api_key(pool: &PgPool, byte: u8, scope: &str) -> String {
+pub async fn api_key(pool: &PgPool, byte: u8, scope: &str) -> String {
     let secret = [byte; 32];
     sqlx::query(
         "insert into access.api_tokens \
