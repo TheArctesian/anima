@@ -2,18 +2,21 @@
 //! another dispatcher send, a late outcome changes nothing in a row another claim holds, and a
 //! send whose outcome is never written ends with the row's tries (D-16, NOT-001).
 
-use std::collections::HashSet;
+use std::{collections::HashSet, sync::Arc, time::Duration};
 
 use chrono::TimeDelta;
 use sqlx::PgPool;
 
 use super::{
-    NO_CONTENT, answering, channel, deliveries, dispatcher, queue, row, start, warnings, webhook,
+    NO_CONTENT, answering, channel, deliveries, dispatcher, queue, row, start, vault, warnings,
+    webhook,
 };
 use crate::{
+    clock::{Clock, FixedClock},
+    events::Bus,
     notifications::{
-        DeliveryReason,
-        dispatch::{LEASE, claimed::Finished},
+        DeliveryReason, Sending,
+        dispatch::{LEASE, claimed::Finished, spawn_dispatcher},
         egress::{Egress, tests::local},
         store,
     },
@@ -220,5 +223,40 @@ async fn d_16_a_send_whose_outcome_is_never_written_ends_with_its_tries(pool: Pg
             "Notification channel hooks gave up a Down notification for web on pve-01 after 5 \
           tries: the outcome of the last try was not recorded."
         ]
+    );
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn d_16_the_spawned_dispatcher_tries_a_queued_row(pool: PgPool) {
+    let (server, _) = answering(NO_CONTENT).await;
+    let hooks = channel(&pool, "hooks", webhook(&server)).await;
+    let t0 = start(&pool).await;
+    let queued = queue(&pool, hooks, None, t0).await;
+    // The spawned dispatcher trusts only the built-in roots, so its try reaches the target and
+    // fails the handshake with the test certificate.
+    let sending = Sending {
+        vault: vault(),
+        policy: AddressPolicy::default().allowing_loopback(),
+    };
+    let clock: Arc<dyn Clock> = Arc::new(FixedClock(t0));
+    let task = spawn_dispatcher(pool.clone(), Bus::new(16), clock, sending);
+
+    let tried = async {
+        while deliveries(&pool).await.is_empty() {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+    };
+    let ended = tokio::time::timeout(Duration::from_secs(20), tried).await;
+    task.abort();
+
+    ended.expect("the spawned dispatcher tried the row");
+    server.settle().await;
+    assert_eq!(server.connections(), 1);
+    let reasons: Vec<_> = deliveries(&pool).await.iter().map(|d| d.reason).collect();
+    assert_eq!(reasons, [Some(DeliveryReason::TlsFailed)]);
+    let state = row(&pool, queued).await;
+    assert_eq!(
+        (state.attempts, state.next_attempt_at),
+        (1, t0 + TimeDelta::minutes(1))
     );
 }
