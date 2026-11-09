@@ -44,7 +44,7 @@
   <span class="reading ms">
     {#key text.responseTime}<span transition:crossFade>{text.responseTime}</span>{/key}
   </span>
-  <span class="expiry">{text.expiry ?? ''}</span>
+  <span class="expiry" title={text.expiry ?? undefined}>{text.expiry ?? ''}</span>
   <span class="actions">
     <!-- The name starts with the visible text, Pause or Resume (label in name). -->
     <button
@@ -92,6 +92,14 @@
   .expiry {
     color: var(--text-muted);
     font-size: var(--text-sm);
+  }
+
+  /* One line in its column, so a long reading never changes the row's height (MOT-007). */
+  .expiry {
+    min-inline-size: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .actions {
