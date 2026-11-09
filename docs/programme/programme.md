@@ -213,6 +213,8 @@ Integration branch: `phase-1`. Merge to `main` only after operator checkpoint 4.
 
 - **CR-17 (orchestrator, 2026-11-09; WP-51 final package review S2, S3; MET-016, K8 §4, R-099).** An agent push could store GPU values the SSH path refuses: `number_fits` in agent-core's wire check skips the GPU ceilings `Sample::gpu` applies. K8 §4 now states them: a GPU temperature is at most 1000 °C and a GPU power at most 10 000 W, and the hub refuses a sample past either. The consts are shared and checked in `value_fits`. WP-54 T3b writes K8 and the code in one commit, and makes `Sample::new` refuse a GPU kind, so a GPU sample is built only with its index (R-099).
 
+- **CR-18 (orchestrator, 2026-11-09; WP-54 T3b; MET-012, MET-013, K2, K3, K8 §4 and §6, R-098, R-099).** WP-54 T3b's ingest changes four contracts, all accepted as built. **K8 §4** gains R-098 (a), (b) and (e), the GPU label rule, and a cap on series per device: at most 1024 live series per device, where a live series has a sample in the last hour. A batch that would pass the cap is MALFORMED. Labels can differ from batch to batch, so without the cap the series count has no bound. **K8 §6:** TOKEN_REFUSED also covers a device whose metrics source is no longer the agent. **K3:** `spawn_stale_watch(db, bus, clock)` takes the event bus, not the metrics feed, and the metrics face gains `stale_agents`. **K2:** `metrics.agents` gains `stale_at` (migration 0712); 0711 adds the R-099 GPU series check and `gpu_memory_bytes`. The devices row lists `Device.metricsStale`. T3b writes the K-text in the commit with its code, next to CR-17.
+
 ## Escalations
 
 None open.
