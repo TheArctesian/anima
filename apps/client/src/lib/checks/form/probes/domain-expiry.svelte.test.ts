@@ -69,3 +69,18 @@ it('CHK-009: an existing domain expiry check loads its own values and shows days
   expect(document.body.textContent).toContain('Days left: 9 days');
   expect(button('Save check')).toBeDefined();
 });
+
+it('R-102, D-29: the domain expiry form has no retries or retry interval fields', () => {
+  show();
+  choose('Type', 'DOMAIN_EXPIRY');
+  expect(hasInput('Interval (seconds)')).toBe(true);
+  expect(hasInput('Retries before Down')).toBe(false);
+  expect(hasInput('Retry interval (seconds)')).toBe(false);
+});
+
+it('R-102: another type (HTTP) still shows retries and the retry interval with their defaults', () => {
+  show();
+  choose('Type', 'HTTP');
+  expect(input('Retries before Down').value).toBe('3');
+  expect(hasInput('Retry interval (seconds)')).toBe(true);
+});
