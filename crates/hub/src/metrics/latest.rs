@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
 
-use super::{MetricKind, Readings};
+use super::{Gpu, MetricKind, Readings};
 use crate::ids::DeviceId;
 
 /// The newest sample of one series.
@@ -14,17 +14,21 @@ pub(super) struct Latest {
     pub(super) kind: MetricKind,
     pub(super) at: DateTime<Utc>,
     pub(super) value: f64,
+    /// The stored GPU of a GPU series; `None` for the other series.
+    pub(super) gpu: Option<Gpu>,
 }
 
 /// The kinds the card shows.
-pub(super) const READ_KINDS: [MetricKind; 3] = [
+pub(super) const READ_KINDS: [MetricKind; 4] = [
     MetricKind::CpuPercent,
     MetricKind::MemoryPercent,
     MetricKind::DiskPercent,
+    MetricKind::VramPercent,
 ];
 
 /// One `Readings` per device that has a latest sample. Its time is the newest of them, and its
-/// disk is the fullest mount. VRAM stays empty: nothing collects it yet (D-1).
+/// disk is the fullest mount. VRAM is that of the GPU with VRAM whose usage is the highest;
+/// without one it stays empty, never 0 (MET-007, MET-008).
 pub(super) fn readings(latest: Vec<Latest>) -> HashMap<DeviceId, Readings> {
     let mut by_device: HashMap<DeviceId, Readings> = HashMap::new();
     for Latest {
@@ -32,6 +36,7 @@ pub(super) fn readings(latest: Vec<Latest>) -> HashMap<DeviceId, Readings> {
         kind,
         at,
         value,
+        gpu,
     } in latest
     {
         let readings = by_device.entry(device).or_insert_with(|| Readings {
@@ -48,6 +53,14 @@ pub(super) fn readings(latest: Vec<Latest>) -> HashMap<DeviceId, Readings> {
             MetricKind::MemoryPercent => readings.memory_percent = Some(value),
             MetricKind::DiskPercent => {
                 readings.disk_percent = Some(readings.disk_percent.map_or(value, |d| d.max(value)));
+            }
+            MetricKind::VramPercent => {
+                if let Some(gpu) = gpu.filter(|gpu| gpu.has_vram)
+                    && readings.vram_percent.is_none_or(|top| value > top)
+                {
+                    readings.vram_percent = Some(value);
+                    readings.vram_gpu = Some(gpu);
+                }
             }
             _ => {}
         }

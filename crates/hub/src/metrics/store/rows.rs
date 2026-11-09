@@ -56,17 +56,36 @@ pub(super) struct LatestRow {
     kind: String,
     at: DateTime<Utc>,
     value: f64,
+    gpu_index: Option<i32>,
+    gpu_name: Option<String>,
+    gpu_vendor: Option<String>,
+    gpu_has_vram: Option<bool>,
 }
 
 impl TryFrom<LatestRow> for Latest {
     type Error = Error;
 
     fn try_from(row: LatestRow) -> Result<Self, Error> {
+        let gpu = match (
+            row.gpu_index,
+            row.gpu_name,
+            row.gpu_vendor,
+            row.gpu_has_vram,
+        ) {
+            (Some(index), Some(name), Some(vendor), Some(has_vram)) => Some(Gpu {
+                index,
+                name,
+                vendor: GpuVendor::parse(&vendor).ok_or(Error::Unreadable)?,
+                has_vram,
+            }),
+            _ => None,
+        };
         Ok(Self {
             device: row.device_id,
             kind: MetricKind::parse(&row.kind).ok_or(Error::Unreadable)?,
             at: row.at,
             value: row.value,
+            gpu,
         })
     }
 }
