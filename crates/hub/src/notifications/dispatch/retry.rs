@@ -2,7 +2,9 @@
 //!
 //! A queued notification is tried at once. After a failure that is not permanent it waits 1,
 //! then 5, then 15, then 60 minutes before the next try, so it is tried five times in all.
-//! After the fifth failure, or after the first permanent one, it is given up.
+//! After the fifth failure, or after the first permanent one, it is given up. A claim counts
+//! the try before the send, so a try whose outcome was never written (the hub stopped, or the
+//! write failed) still counts.
 
 use chrono::{DateTime, TimeDelta, Utc};
 
@@ -25,14 +27,25 @@ pub(super) enum Next {
     GiveUp,
 }
 
-/// What follows `failure` at `now` for a notification that had already failed `failed_before`
-/// times.
-pub(super) fn after_failure(failure: Failure, failed_before: u32, now: DateTime<Utc>) -> Next {
+/// The most tries of one notification: the first and one after each wait.
+const TRIES: usize = WAITS.len() + 1;
+
+/// What follows `failure` at `now` for a notification tried `tried` times, this try included
+/// (each claim counts one).
+pub(super) fn after_failure(failure: Failure, tried: u32, now: DateTime<Utc>) -> Next {
     if failure.is_permanent() {
         return Next::GiveUp;
     }
-    usize::try_from(failed_before)
-        .ok()
-        .and_then(|failed| WAITS.get(failed))
+    tried
+        .checked_sub(1)
+        .and_then(|failed_before| usize::try_from(failed_before).ok())
+        .and_then(|failed_before| WAITS.get(failed_before))
         .map_or(Next::GiveUp, |wait| Next::RetryAt(now + *wait))
+}
+
+/// Whether a notification claimed for its `tried`th try has no try left: every earlier claim
+/// sent, or may have sent, and none wrote an outcome. It is given up unsent, so a send whose
+/// outcome cannot be written is not repeated without end (D-16).
+pub(super) fn out_of_tries(tried: u32) -> bool {
+    usize::try_from(tried).map_or(true, |tried| tried > TRIES)
 }

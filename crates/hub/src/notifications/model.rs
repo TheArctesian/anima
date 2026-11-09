@@ -170,8 +170,12 @@ pub struct Outbox {
     pub kind: NotificationKind,
     pub payload: serde_json::Value,
     pub created_at: DateTime<Utc>,
-    /// Sends already tried.
+    /// Tries so far, this claim's included: each claim counts one (D-16).
     pub attempts: u32,
+    /// When this claim's lease ends: the `next_attempt_at` the claim set. It is the claim's
+    /// token: an outcome changes the row only while the row still carries it, so a claimer
+    /// whose lease ended changes nothing (D-16).
+    pub lease_end: DateTime<Utc>,
 }
 
 /// One send, or one failure to send, as the delivery log keeps it (NOT-004).

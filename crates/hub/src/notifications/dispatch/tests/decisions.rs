@@ -8,7 +8,7 @@ use crate::{
         DeliveryReason,
         dispatch::{
             failure::Failure,
-            retry::{Next, WAITS, after_failure},
+            retry::{Next, WAITS, after_failure, out_of_tries},
         },
         egress::SendError,
     },
@@ -156,8 +156,8 @@ fn at() -> DateTime<Utc> {
 #[test]
 fn d_16_a_failed_try_waits_1_5_15_and_60_minutes_then_gives_up() {
     let failure = Failure::of(DeliveryReason::TimedOut);
-    let waits: Vec<Next> = (0..5)
-        .map(|before| after_failure(failure, before, at()))
+    let waits: Vec<Next> = (1..=5)
+        .map(|tried| after_failure(failure, tried, at()))
         .collect();
 
     assert_eq!(
@@ -177,5 +177,14 @@ fn d_16_a_failed_try_waits_1_5_15_and_60_minutes_then_gives_up() {
 #[test]
 fn d_16_a_permanent_failure_is_given_up_at_the_first_try() {
     let failure = Failure::from(SendError::HttpStatus(404));
-    assert_eq!(after_failure(failure, 0, at()), Next::GiveUp);
+    assert_eq!(after_failure(failure, 1, at()), Next::GiveUp);
+}
+
+#[test]
+fn d_16_a_sixth_claim_has_no_try_left() {
+    assert_eq!(
+        (1..=7).map(out_of_tries).collect::<Vec<_>>(),
+        [false, false, false, false, false, true, true]
+    );
+    assert!(out_of_tries(u32::MAX));
 }

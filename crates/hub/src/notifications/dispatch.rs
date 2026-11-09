@@ -18,7 +18,9 @@
 //!
 //! Delivery is at least once. A row is sent again only when its lease ends before its outcome
 //! is written: the hub stopped or crashed between the send and the write, or that write kept
-//! failing for the whole lease. Within a lease no row is sent twice. A send whose outcome the
+//! failing for the whole lease. Within a lease no row is sent twice. Each claim counts a try,
+//! so those resends end with the row's tries, and a claimer whose lease ended changes nothing
+//! in the row: every outcome write matches the lease end its claim set. A send whose outcome the
 //! target decided is never retried for a late answer: the egress counts an answered 2xx and a
 //! mail accepted after DATA as sent (S-A, S-B).
 //!
@@ -48,6 +50,7 @@ use crate::{
 };
 
 use claimed::Finished;
+use failure::Failure;
 pub(super) use failure::delivery;
 pub(super) use sender::Sender;
 
@@ -156,20 +159,30 @@ impl Dispatcher {
 }
 
 /// The process log line of a finished row: the channel id, the reason word and the code only
-/// (LOG-007). A sent row writes nothing.
+/// (LOG-007). A sent or ended row writes nothing.
 fn log_finished(row: &Outbox, finished: &Result<Finished, Fault>) {
     match finished {
         Ok(Finished::Sent | Finished::Ended) => {}
-        Ok(Finished::Failed(failure)) => tracing::info!(
+        Ok(Finished::OutOfTries) => tracing::info!(
             domain = "notifications",
             channel_id = %row.channel,
-            reason = failure.reason.as_str(),
-            code = failure.code,
-            attempts = row.attempts.saturating_add(1),
-            "a notification was not delivered"
+            attempts = row.attempts,
+            "a notification ran out of tries with no outcome recorded"
         ),
+        Ok(Finished::Failed(failure)) => log_failed(row, *failure),
         Err(fault) => warn_fault(Some(row), fault),
     }
+}
+
+fn log_failed(row: &Outbox, failure: Failure) {
+    tracing::info!(
+        domain = "notifications",
+        channel_id = %row.channel,
+        reason = failure.reason.as_str(),
+        code = failure.code,
+        attempts = row.attempts,
+        "a notification was not delivered"
+    );
 }
 
 fn warn_fault(row: Option<&Outbox>, fault: &Fault) {

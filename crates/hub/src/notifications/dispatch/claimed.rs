@@ -13,8 +13,14 @@
 //! - A channel whose settings or secrets cannot be read sends nothing and gets a delivery with
 //!   the reason, then the row is given up with a Warning event: `notificationChannels` hides
 //!   such a channel, so the delivery and the event are how the operator learns of it.
+//! - A row claimed once more than it has tries (every earlier claim sent, or may have sent,
+//!   and wrote no outcome) is given up unsent with a Warning event and no delivery.
+//!
+//! Every write matches the claim's lease end (`Outbox::lease_end`): a claimer whose lease
+//! ended, and whose row another claimer took, changes nothing but its own delivery.
 
 use chrono::{DateTime, Utc};
+use sqlx::PgConnection;
 use uuid::Uuid;
 
 use super::{
@@ -38,6 +44,8 @@ pub(super) enum Finished {
     Ended,
     /// The send failed; the row is rescheduled or given up.
     Failed(Failure),
+    /// Sent nothing: the row had no try left and is given up.
+    OutOfTries,
 }
 
 impl Dispatcher {
@@ -56,14 +64,21 @@ impl Dispatcher {
             .await?
             .pop()
         else {
-            store::give_up(&self.db, row.id, now).await?;
+            store::give_up(&self.db, row, now).await?;
             return Ok(Finished::Ended);
         };
         if let Some(check) = row.check
             && store::channel_turned_off(&self.db, check, channel.id).await?
         {
-            store::give_up(&self.db, row.id, now).await?;
+            store::give_up(&self.db, row, now).await?;
             return Ok(Finished::Ended);
+        }
+        if retry::out_of_tries(row.attempts) {
+            let mut tx = self.db.begin().await.map_err(store_fault)?;
+            let warning = given_up(&channel.fields.name, row, None);
+            self.give_up(&mut tx, row, (now, warning)).await?;
+            tx.commit().await.map_err(store_fault)?;
+            return Ok(Finished::OutOfTries);
         }
         let values = Values::from_payload(&row.payload);
         let sent = self
@@ -91,19 +106,31 @@ impl Dispatcher {
         store::insert_delivery(&mut tx, delivery).await?;
         match sent.map_err(|failure| (failure, retry::after_failure(failure, row.attempts, now))) {
             Ok(()) => {
-                store::mark_sent(&mut *tx, row.id, now).await?;
+                store::mark_sent(&mut *tx, row, now).await?;
             }
             Err((_, Next::RetryAt(at))) => {
-                store::reschedule(&mut *tx, row.id, at).await?;
+                store::reschedule(&mut *tx, row, at).await?;
             }
             Err((failure, Next::GiveUp)) => {
-                if store::give_up(&mut *tx, row.id, now).await? {
-                    let warning = given_up(&delivery.channel_name, row, failure);
-                    events::record(&mut tx, &self.bus, now, warning).await?;
-                }
+                let warning = given_up(&delivery.channel_name, row, Some(failure));
+                self.give_up(&mut tx, row, (now, warning)).await?;
             }
         }
         tx.commit().await.map_err(store_fault)?;
+        Ok(())
+    }
+
+    /// Gives up `row` at `now` and, only when this claim still held it, writes `warning`: a
+    /// row is given up once, with one Warning event.
+    async fn give_up(
+        &self,
+        tx: &mut PgConnection,
+        row: &Outbox,
+        (now, warning): (DateTime<Utc>, NewEvent),
+    ) -> Result<(), Fault> {
+        if store::give_up(&mut *tx, row, now).await? {
+            events::record(tx, &self.bus, now, warning).await?;
+        }
         Ok(())
     }
 }
@@ -125,29 +152,39 @@ const fn kind_words(kind: NotificationKind) -> &'static str {
 }
 
 /// The Warning event of a row given up: the channel's name, the kind, the check and device it was
-/// about, the tries and the last reason. Never a target, URL, topic, header or reply
-/// (NOT-002, LOG-007).
-pub(super) fn given_up(channel_name: &str, row: &Outbox, failure: Failure) -> NewEvent {
+/// about, the tries and the `last` failure's reason, or that no outcome of the last try was
+/// written. Never a target, URL, topic, header or reply (NOT-002, LOG-007).
+pub(super) fn given_up(channel_name: &str, row: &Outbox, last: Option<Failure>) -> NewEvent {
     let values = Values::from_payload(&row.payload);
     let about = match (values.check, values.device) {
         (Some(check), Some(device)) => format!(" for {check} on {device}"),
         _ => String::new(),
     };
-    let tries = row.attempts.saturating_add(1);
-    let code = failure
-        .code
-        .map(|code| format!(" {code}"))
-        .unwrap_or_default();
+    // A row out of tries is given up at a claim that sent nothing, so that claim is no try.
+    let (tries, why) = match last {
+        Some(failure) => (row.attempts, failure_words(failure)),
+        None => (
+            row.attempts.saturating_sub(1),
+            "the outcome of the last try was not recorded".to_owned(),
+        ),
+    };
     NewEvent {
         severity: Severity::Warning,
         source: Source::Notifications,
         device: None,
         message: format!(
-            "Notification channel {} gave up a {} notification{about} after {tries} {}: {}{code}.",
+            "Notification channel {} gave up a {} notification{about} after {tries} {}: {why}.",
             channel_name,
             kind_words(row.kind),
             if tries == 1 { "try" } else { "tries" },
-            failure.reason.as_str(),
         ),
+    }
+}
+
+/// A failure as an event names it: its reason word and code.
+fn failure_words(failure: Failure) -> String {
+    match failure.code {
+        Some(code) => format!("{} {code}", failure.reason.as_str()),
+        None => failure.reason.as_str().to_owned(),
     }
 }
