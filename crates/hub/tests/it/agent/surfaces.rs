@@ -96,7 +96,6 @@ async fn api_key(pool: &PgPool) -> String {
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
 )]
-#[ignore = "needs WP-43 T3 deny list (D-23): enrolAgent and revokeAgentToken are login or browser token only"]
 async fn int_003_an_api_key_may_not_enrol_or_revoke_an_agent(pool: PgPool) {
     let agents = Agents::new(&pool).await;
     let key = api_key(&pool).await;
