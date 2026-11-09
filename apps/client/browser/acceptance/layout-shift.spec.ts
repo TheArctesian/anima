@@ -50,7 +50,8 @@ async function slowGraphql(page: Page): Promise<void> {
   );
 }
 
-async function layoutShiftOf(page: Page, path: string, shown: Shown, enabled?: string, tall = false): Promise<number> {
+async function layoutShiftOf(page: Page, entry: { path: string; shown: Shown; enabled?: string; tall: boolean }): Promise<number> {
+  const { path, shown, enabled, tall } = entry;
   if (tall) await page.setViewportSize(TALL_VIEWPORT);
   await watchLayoutShift(page);
   await slowGraphql(page);
@@ -66,7 +67,7 @@ for (const entry of PAGES) {
   const enabled = 'enabled' in entry ? entry.enabled : undefined;
   const tall = 'tall' in entry;
   test(`R-096: ${name} shifts less than ${String(CLS_LIMIT)} while its data arrives late`, async ({ page }) => {
-    expect(await layoutShiftOf(page, path, shown, enabled, tall)).toBeLessThanOrEqual(CLS_LIMIT);
+    expect(await layoutShiftOf(page, { path, shown, enabled, tall })).toBeLessThanOrEqual(CLS_LIMIT);
   });
 }
 
