@@ -175,3 +175,29 @@ async fn met_013_a_far_future_expiry_is_capped_at_366_days_and_the_hub_is_kept_w
     );
     assert_eq!(stored.hub.as_text(), "https://hub.example");
 }
+
+#[tokio::test]
+async fn met_012_a_refused_folder_sends_no_request_and_spends_no_code() {
+    use std::os::unix::fs::PermissionsExt as _;
+    let hub = FakeHub::start().await;
+    hub.queue_enrol(enrolled(3));
+    let dir = tempfile::tempdir().expect("a folder");
+    let parent = dir.path().join("shared");
+    std::fs::create_dir(&parent).expect("parent");
+    std::fs::set_permissions(&parent, std::fs::Permissions::from_mode(0o777)).expect("chmod");
+    let home = Home::at(parent.join("agent"));
+    let store = TokenStore::open(&home);
+    let client = HubClient::new(hub.url.clone(), TIMEOUT).expect("a client");
+    let error = Enrolment {
+        hub: &client,
+        origin: Origin::default_hub(),
+        home: &home,
+        store: &store,
+        now: crate::kit::at(0),
+    }
+    .spend(code())
+    .await
+    .expect_err("the folder is refused");
+    assert!(matches!(error, EnrolError::Folder(_)));
+    assert!(hub.seen("enrol").is_empty(), "the code never left");
+}

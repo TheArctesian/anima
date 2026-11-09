@@ -20,6 +20,8 @@ pub enum EnrolError {
     Refused,
     #[error("{0}; if the hub may have received the code, make a new one")]
     Failed(Cause),
+    #[error("the code was not sent; the agent's folder cannot be used: {0}")]
+    Folder(HomeError),
     #[error("enrolled, but the token could not be kept: {0}")]
     Token(#[from] TokenStoreError),
     #[error("enrolled, but the configuration could not be kept: {0}")]
@@ -46,14 +48,17 @@ pub fn is_device_name(name: &str) -> bool {
 }
 
 impl Enrolment<'_> {
-    /// Spends `code` at the hub, stores the token with its expiry, then the configuration.
-    /// Returns the name of the device.
+    /// Checks the folder, spends `code` at the hub, stores the token with its expiry, then the
+    /// configuration. Returns the name of the device. A folder that is refused is found before
+    /// the hub sees the code, so the code is not spent for a token that has nowhere safe to go.
     ///
     /// # Errors
+    /// [`EnrolError::Folder`] when the folder is refused (the hub is not called);
     /// [`EnrolError::Refused`] for `ENROLMENT_REFUSED` and [`EnrolError::Failed`] for any other
     /// failure of the request. A failure to store after a good answer is reported as such: the
     /// code is spent then (MET-012).
     pub async fn spend(self, code: EnrolmentCode) -> Result<String, EnrolError> {
+        self.home.ensure().map_err(EnrolError::Folder)?;
         let enrolled = match self.hub.enrol(code).await {
             Answer::Accepted(enrolled) => enrolled,
             Answer::Refused(RefusalCode::EnrolmentRefused) => return Err(EnrolError::Refused),
