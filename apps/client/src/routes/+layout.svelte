@@ -3,6 +3,7 @@
   import { tick, untrack, type Snippet } from 'svelte';
   import '../styles/global.css';
   import { guardStart } from '$lib/access/navigation';
+  import { provideDesktopBuilder } from '$lib/builds/desktop.svelte';
   import { provideHub } from '$lib/hub/context';
   import { storedHubAddress } from '$lib/desktop/address';
   import { readAccessToken } from '$lib/desktop/token';
@@ -40,6 +41,8 @@
   guardStart(page.url.pathname, hub.address);
   const clock = createClock(DATA_AGE_REFRESH_MS);
   provideDesktopUpdates();
+  // A computer enrolled as a builder builds while the app runs (BLD-026).
+  provideDesktopBuilder(hub);
 
   // Each session view starts its own sessions, since only it knows its display (D-7); the store ends them (D-11).
   const api = sessionsApi(hub);

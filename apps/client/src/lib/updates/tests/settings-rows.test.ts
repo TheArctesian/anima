@@ -7,6 +7,7 @@ const desktop = vi.hoisted(() => ({ available: false }));
 vi.mock('$lib/desktop/token', () => ({ keyStoreAvailable: () => desktop.available }));
 vi.mock('$lib/access/SignOutRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('./RowStub.svelte')).default }));
 vi.mock('$lib/updates/UpdatesRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('./RowStub.svelte')).default }));
+vi.mock('$lib/builds/BuildsRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('./RowStub.svelte')).default }));
 vi.mock('$lib/process-log/LogFolderRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('./RowStub.svelte')).default }));
 
 let app: ReturnType<typeof mount> | undefined;
@@ -17,16 +18,16 @@ afterEach(async () => {
   document.body.innerHTML = '';
 });
 
-it('UPD-006: the browser shows no Updates or log folder row', () => {
+it('UPD-006, BLD-020: the browser shows no Updates, log folder or Builds row', () => {
   desktop.available = false;
   app = mount(Page, { target: document.body });
   flushSync();
   expect(document.querySelectorAll('[data-stub]')).toHaveLength(1);
 });
 
-it('UPD-006, LOG-008: the desktop app shows the Updates and log folder rows after Sign out', () => {
+it('UPD-006, LOG-008, BLD-020: the desktop app shows the Updates, log folder and Builds rows after Sign out', () => {
   desktop.available = true;
   app = mount(Page, { target: document.body });
   flushSync();
-  expect(document.querySelectorAll('[data-stub]')).toHaveLength(3);
+  expect(document.querySelectorAll('[data-stub]')).toHaveLength(4);
 });
