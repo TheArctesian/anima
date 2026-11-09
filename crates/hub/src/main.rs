@@ -19,7 +19,7 @@ use anima_hub::{
     config::{self, Config},
     credentials::Vault,
     events::{self, Bus, process_log},
-    logged, metrics, router_at,
+    metrics, pushes, router_at,
     schema::{Dependencies, build_schema},
     serve_until, sessions,
     targets::AddressPolicy,
@@ -159,18 +159,18 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         metrics_feed: feed.clone(),
     };
     let tunnels = tunnels(&dependencies);
+    let pushes = pushes(&dependencies);
     let schema = build_schema(dependencies);
     let upkeep = upkeep::spawn(&pool, &clock);
     let scheduler = checks::spawn_scheduler(pool.clone(), bus.clone(), clock.clone(), probing);
     let collector =
         metrics::spawn_collector(pool.clone(), feed, bus.clone(), clock.clone(), collecting);
-    let push = checks::push_router(pool.clone(), bus.clone(), clock.clone());
-    // The tunnels and `/push` are behind the same permitted-networks check as every route, and
+    // The tunnels and the push routes are behind the same permitted-networks check as every route, and
     // logged by their templates only, never their tokens (K3, NET-002, LOG-007, R-028, R-051).
     let edge = access::Edge::new(pool.clone(), bus, clock.clone());
     let app = router_at(schema, pool.clone(), clock.clone(), origin)
         .merge(tunnels)
-        .merge(logged(push))
+        .merge(pushes)
         .merge(web)
         .layer(access::permitted_networks_layer(edge.clone()));
     let shutdown = Shutdown {
