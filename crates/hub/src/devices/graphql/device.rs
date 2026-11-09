@@ -13,7 +13,7 @@ use super::{
     remote::{DeviceRdp, DeviceVnc},
     ssh::DeviceSsh,
     standing::{
-        ChecksOf, GpusOf, ReadingsOf, ResolvedIpOf, StatusOf, SuggestionsOf, UptimeOf,
+        ChecksOf, GpusOf, ReadingsOf, ResolvedIpOf, StaleOf, StatusOf, SuggestionsOf, UptimeOf,
         WebInterfacesOf,
     },
 };
@@ -176,6 +176,19 @@ impl Device {
 
     async fn metrics_source(&self) -> MetricsSource {
         self.metrics_source
+    }
+
+    /// True when the source is AGENT and the agent is stale: no batch in the last 30 seconds,
+    /// none yet, or its token revoked (MET-018, R-092 D-7).
+    async fn metrics_stale(&self, ctx: &Context<'_>) -> Result<bool> {
+        if self.metrics_source != MetricsSource::Agent {
+            return Ok(false);
+        }
+        let stale = schema_dependency::<DataLoader<StaleOf>>(ctx)?
+            .load_one(self.id)
+            .await
+            .map_err(internal)?;
+        Ok(stale.unwrap_or(true))
     }
 
     /// Most sessions open at once; null is no limit (RA-036).
