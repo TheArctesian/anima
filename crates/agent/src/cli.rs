@@ -1,7 +1,10 @@
 //! The command line: `anima-agent enrol <code|-> [--hub <origin>]` and `anima-agent run`
 //! (MET-012, MET-019).
 
+use std::io::{BufRead, Read as _};
+
 use agent_core::wire::EnrolmentCode;
+use zeroize::Zeroizing;
 
 use crate::config::origin::{Origin, OriginError};
 
@@ -74,6 +77,37 @@ fn enrol(args: impl Iterator<Item = String>) -> Result<Command, CliError> {
     Ok(Command::Enrol { code, hub })
 }
 
+/// The most bytes read for a code from standard input: a code is under 40.
+const CODE_INPUT_LIMIT: usize = 256;
+
+/// The enrolment code on the first line of `input`: at most 256 bytes are read, and the line
+/// may end in LF or CRLF.
+///
+/// # Errors
+/// [`CliError::NotACode`] for an empty line, a line that is not a code (a code split by a
+/// newline leaves only its first part), or 256 bytes with no newline. The error holds none of
+/// the input.
+pub fn read_code(mut input: impl BufRead) -> Result<EnrolmentCode, CliError> {
+    // The buffer has room for every byte that can come, so it never moves and is wiped whole.
+    let mut line = Zeroizing::new(String::with_capacity(CODE_INPUT_LIMIT + 1));
+    input
+        .by_ref()
+        .take(CODE_INPUT_LIMIT as u64)
+        .read_line(&mut line)
+        .map_err(|_| CliError::NotACode)?;
+    code_from_line(&line)
+}
+
+/// The code in `line`, which may end in one LF or CRLF (a terminal read gives none).
+///
+/// # Errors
+/// [`CliError::NotACode`] when the rest is not a code.
+pub fn code_from_line(line: &str) -> Result<EnrolmentCode, CliError> {
+    let text = line.strip_suffix('\n').unwrap_or(line);
+    let text = text.strip_suffix('\r').unwrap_or(text);
+    EnrolmentCode::parse(text).ok_or(CliError::NotACode)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -131,5 +165,48 @@ mod tests {
         };
         assert_eq!(error, CliError::NotACode);
         assert!(!error.to_string().contains("short"));
+    }
+
+    fn read(input: &[u8]) -> Result<EnrolmentCode, CliError> {
+        read_code(input)
+    }
+
+    #[test]
+    fn met_012_a_code_on_standard_input_ends_at_its_line_feed_or_carriage_return_and_line_feed() {
+        for input in [
+            format!("{CODE}\n"),
+            format!("{CODE}\r\n"),
+            CODE.to_owned(),
+            format!("{CODE}\nmore"),
+        ] {
+            assert!(read(input.as_bytes()).is_ok(), "{input:?}");
+        }
+    }
+
+    #[test]
+    fn met_012_an_empty_a_split_or_a_padded_line_is_not_a_code() {
+        let (head, tail) = CODE.split_at(10);
+        for input in [
+            String::new(),
+            "\n".to_owned(),
+            "\r\n".to_owned(),
+            format!("{head}\n{tail}\n"),
+            format!(" {CODE}\n"),
+            format!("{CODE}\r\r\n"),
+        ] {
+            assert_eq!(
+                read(input.as_bytes()).err(),
+                Some(CliError::NotACode),
+                "{input:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn met_012_at_most_256_bytes_are_read_and_300_without_a_newline_are_not_a_code() {
+        let long = vec![b'A'; 300];
+        let mut input = std::io::Cursor::new(long);
+        assert_eq!(read_code(&mut input).err(), Some(CliError::NotACode));
+        assert_eq!(input.position(), 256, "the rest was never read");
     }
 }

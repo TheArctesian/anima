@@ -1,6 +1,6 @@
 //! `anima-agent`: wires the command line to the library and sets the exit code. No rules here.
 
-use std::io::{BufRead as _, IsTerminal as _, Read as _};
+use std::io::IsTerminal as _;
 use std::process::ExitCode;
 
 use anima_agent::cli::{self, CliError, CodeSource, Command};
@@ -77,21 +77,15 @@ async fn enrol(
     }
 }
 
-/// The enrolment code from one line of standard input; with echo off when it is a terminal.
+/// The enrolment code from standard input; with echo off when it is a terminal.
 fn read_code() -> Result<agent_core::wire::EnrolmentCode, CliError> {
-    let line = if std::io::stdin().is_terminal() {
+    if std::io::stdin().is_terminal() {
         eprint!("Enrolment code: ");
-        Zeroizing::new(rpassword::read_password().map_err(|_| CliError::NotACode)?)
+        let line = Zeroizing::new(rpassword::read_password().map_err(|_| CliError::NotACode)?);
+        cli::code_from_line(&line)
     } else {
-        let mut input = Zeroizing::new(String::with_capacity(257));
-        std::io::stdin()
-            .lock()
-            .take(256)
-            .read_line(&mut input)
-            .map_err(|_| CliError::NotACode)?;
-        input
-    };
-    agent_core::wire::EnrolmentCode::parse(line.trim()).ok_or(CliError::NotACode)
+        cli::read_code(std::io::stdin().lock())
+    }
 }
 
 /// Completes on Ctrl-C or SIGTERM.
