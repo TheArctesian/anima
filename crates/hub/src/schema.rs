@@ -19,7 +19,7 @@ use crate::{
         self, Bus,
         process_log::{InternalErrors, RequestSpan},
     },
-    maintenance, metrics, retention,
+    maintenance, metrics, notifications, retention,
     sessions::{self, Live},
     targets::AddressPolicy,
     trust, web_interfaces,
@@ -33,6 +33,7 @@ pub struct Query(
     devices::graphql::Query,
     events::graphql::Query,
     maintenance::graphql::Query,
+    notifications::graphql::Query,
     retention::graphql::Query,
     sessions::graphql::Query,
 );
@@ -43,6 +44,7 @@ pub struct Mutation(
     checks::graphql::Mutation,
     devices::graphql::Mutation,
     maintenance::graphql::Mutation,
+    notifications::graphql::Mutation,
     retention::graphql::Mutation,
     sessions::graphql::Mutation,
     sessions::FilesMutation,
@@ -139,6 +141,8 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .data(checks::graphql::last_heartbeat_loader(pool.clone()).delay(BATCH_WINDOW))
     .data(checks::graphql::heartbeats_loader(pool.clone()).delay(BATCH_WINDOW))
     .data(checks::graphql::check_uptime_loader(pool.clone(), clock).delay(BATCH_WINDOW))
+    // notifications
+    .data(notifications::graphql::last_delivery_loader(pool.clone()).delay(BATCH_WINDOW))
     // trust: the accepted keys and certificates, and what the connection tests of `live` saw
     .data(trust::graphql::host_key_loader(pool.clone()).delay(BATCH_WINDOW))
     .data(trust::graphql::server_certificate_loader(pool.clone()).delay(BATCH_WINDOW))

@@ -17,7 +17,8 @@ mod rows;
 mod settings;
 
 pub(super) use channels::{
-    delete_channel, insert_channel, list_channels, on_by_default, update_channel,
+    channel_for_update, delete_channel, insert_channel, list_channels, on_by_default,
+    update_channel,
 };
 pub(super) use check_choices::{
     check_channels, check_settings, lock_check_state, set_check_channels, write_check_settings,

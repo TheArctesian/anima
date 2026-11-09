@@ -79,6 +79,22 @@ pub(in crate::notifications) async fn delete_channel(
     Ok(done.rows_affected() == 1)
 }
 
+/// The channel with `id`, locked until the caller's transaction ends, so an update or delete
+/// reads, checks and writes the row no other writer changes meanwhile; `None` when there is
+/// no such channel.
+pub(in crate::notifications) async fn channel_for_update(
+    conn: &mut PgConnection,
+    id: ChannelId,
+) -> Result<Option<Channel>, Error> {
+    let row: Option<ChannelRow> = sqlx::query_as(&format!(
+        "SELECT {CHANNEL_COLUMNS} FROM notifications.channels WHERE id = $1 FOR UPDATE"
+    ))
+    .bind(id)
+    .fetch_optional(conn)
+    .await?;
+    row.map(Channel::try_from).transpose()
+}
+
 /// The channels with `ids`, or every channel when `ids` is `None`, by name; an id with no
 /// channel has no entry.
 pub(in crate::notifications) async fn list_channels(

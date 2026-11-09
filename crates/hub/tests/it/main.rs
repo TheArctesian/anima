@@ -14,6 +14,7 @@ mod logs;
 mod maintenance;
 mod metrics;
 mod networks;
+mod notifications;
 mod operator;
 mod retention;
 mod sessions;

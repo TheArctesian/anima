@@ -18,17 +18,22 @@ use lettre::{
     },
 };
 
+use serde::{Deserialize, Serialize};
+
 use super::{Egress, SendError, TIME_LIMIT, causes, tls_broke};
 use crate::targets::resolve_checked;
 
-/// How the connection to a mail server is encrypted. There is no plaintext choice.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// How the connection to a mail server is encrypted. There is no plaintext choice. An e-mail
+/// channel stores it as `tls` or `starttls` (K1 `SmtpSecurity`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) enum SmtpSecurity {
     /// TLS from the first byte (port 465).
+    #[serde(rename = "tls")]
     Implicit,
     /// Plain connection upgraded with STARTTLS before anything else (port 587); a server that
     /// does not offer it is refused. Implicit TLS is the recommended mode: lettre reads a reply
     /// an attacker injects in plaintext right after the STARTTLS answer as if it came over TLS.
+    #[serde(rename = "starttls")]
     StartTls,
 }
 
