@@ -1,0 +1,42 @@
+[package]
+name = "anima-agent"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[lib]
+name = "anima_agent"
+
+[[bin]]
+name = "anima-agent"
+path = "src/main.rs"
+
+[dependencies]
+agent-core = { path = "../agent-core" }
+chrono.workspace = true
+# Plain `rustls-tls` (web PKI roots, no OpenSSL); no `cookies`, no `json`, no proxy support is
+# used: the client turns the proxy off (MET-020, K8 Section 1).
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tempfile.workspace = true
+thiserror.workspace = true
+# `process` runs the fixed read-only commands, `signal` ends the agent on SIGTERM, `fs` reads /proc.
+tokio = { workspace = true, features = ["process", "signal", "fs"] }
+tracing.workspace = true
+tracing-subscriber.workspace = true
+uuid.workspace = true
+zeroize.workspace = true
+
+# The macOS Keychain holds the agent token (MET-013). Linux uses a 0600 file and never builds this.
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring.workspace = true
+
+[dev-dependencies]
+agent-core = { path = "../agent-core", features = ["test-support"] }
+axum.workspace = true
+plist.workspace = true
