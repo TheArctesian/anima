@@ -65,7 +65,7 @@ async function layoutShiftOf(page: Page, entry: { path: string; shown: Shown; en
 for (const entry of PAGES) {
   const { name, path, shown } = entry;
   const enabled = 'enabled' in entry ? entry.enabled : undefined;
-  const tall = 'tall' in entry;
+  const tall = 'tall' in entry && entry.tall;
   test(`R-096: ${name} shifts less than ${String(CLS_LIMIT)} while its data arrives late`, async ({ page }) => {
     expect(await layoutShiftOf(page, { path, shown, enabled, tall })).toBeLessThanOrEqual(CLS_LIMIT);
   });
