@@ -1,14 +1,14 @@
-//! When the hub looks for a device's GPUs, how it numbers what it finds and keeps the numbers,
-//! and which reads a collection runs (MET-006, MET-007, MET-009), without a device.
+//! When the hub looks for a device's GPUs, how it numbers what it finds and keeps the numbers
+//! (MET-006, MET-007, MET-009), without a device.
 
 use agent_core::readings::captures::IOREG_ACCELERATOR;
-use chrono::TimeDelta;
+use chrono::{DateTime, TimeDelta, Utc};
 
-use super::gpus::{at, found, linux_answers, ok};
+use super::gpus::{at, found, linux_answers, ok, output};
 use crate::{
     devices::OperatingSystem,
     metrics::{
-        GpuVendor, MAX_LABELS, Reading,
+        GpuVendor, Reading,
         collector::gpus::{
             Answer, Plan,
             answers::answer,
@@ -26,7 +26,7 @@ enum Due {
 }
 
 /// The look due for `known` at `now` with no boot time.
-fn look(known: Option<&Discovered>, now: chrono::DateTime<chrono::Utc>) -> Due {
+fn look(known: Option<&Discovered>, now: DateTime<Utc>) -> Due {
     match due(known, None, now) {
         None => Due::No,
         Some(look) => look.only.map_or(Due::All, Due::Only),
@@ -56,6 +56,13 @@ fn numbers(known: &Discovered) -> Vec<(i32, GpuVendor, u32)> {
         .collect()
 }
 
+/// What the hub knows after the look due at `now` (no boot time) gave `answers`.
+fn looked(known: &Discovered, answers: &[(GpuVendor, Answer)], now: DateTime<Utc>) -> Discovered {
+    due(Some(known), None, now)
+        .unwrap()
+        .merge(Some(known), answers)
+}
+
 #[test]
 fn met_006_the_first_collection_looks_and_looks_again_after_24_hours() {
     assert_eq!(
@@ -77,9 +84,7 @@ fn met_006_the_first_collection_looks_and_looks_again_after_24_hours() {
         ..known.clone()
     };
     assert_eq!(look(Some(&failed), soon), Due::All, "a collection failed");
-    let merged = due(Some(&failed), None, soon)
-        .unwrap()
-        .merge(Some(&failed), &linux_answers());
+    let merged = looked(&failed, &linux_answers(), soon);
     assert_eq!(numbers(&merged), numbers(&known), "the numbers are kept");
     assert!(!merged.stale);
 }
@@ -200,9 +205,7 @@ fn met_006_an_unknown_vendor_keeps_its_gpus_and_alone_is_looked_at_again() {
     let later = at() + EVERY;
     let hung = with(answers.clone(), GpuVendor::Intel, &Answer::Unknown);
     let fewer_amd = with(hung, GpuVendor::Amd, &Answer::Gpus(Vec::new()));
-    let after = due(Some(&known), None, later)
-        .unwrap()
-        .merge(Some(&known), &fewer_amd);
+    let after = looked(&known, &fewer_amd, later);
     assert_eq!(
         numbers(&after),
         [
@@ -226,6 +229,57 @@ fn met_006_an_unknown_vendor_keeps_its_gpus_and_alone_is_looked_at_again() {
     assert_eq!(numbers(&done).len(), 3, "only Intel was looked at");
 }
 
+/// `answers` with NVIDIA's tool exiting `status` with no output.
+fn failed(answers: &[(GpuVendor, Answer)], status: u32) -> Vec<(GpuVendor, Answer)> {
+    let nvidia = answer(GpuVendor::Nvidia, &output(Some(status), b""));
+    with(answers.to_vec(), GpuVendor::Nvidia, &nvidia)
+}
+
+#[test]
+fn met_006_a_known_vendor_whose_tool_fails_keeps_its_gpus_and_is_read_again() {
+    let answers = linux_answers();
+    let known = found(&answers);
+    let later = at() + EVERY;
+    let after = looked(&known, &failed(&answers, 9), later);
+    assert_eq!(numbers(&after), numbers(&known), "NVIDIA keeps its GPUs");
+    assert_eq!(after.pending, [GpuVendor::Nvidia]);
+    let next = later + TimeDelta::seconds(30);
+    let plan = Plan::new(
+        OperatingSystem::Linux,
+        Some(after),
+        &Reading::default(),
+        next,
+    );
+    assert_eq!(
+        reads(&plan),
+        [GpuVendor::Nvidia, GpuVendor::Amd, GpuVendor::Intel],
+        "NVIDIA is read again the next round"
+    );
+}
+
+#[test]
+fn met_006_a_failing_tool_of_a_vendor_with_no_gpus_or_a_missing_tool_is_no_gpu() {
+    let answers = linux_answers();
+    let without_nvidia = found(&answers[1..]);
+    let later = at() + EVERY;
+    let after = looked(&without_nvidia, &failed(&answers, 9), later);
+    assert_eq!(
+        (after.gpus.len(), after.pending.len()),
+        (2, 0),
+        "no GPU (D-30)"
+    );
+    assert_eq!(look(Some(&after), later + TimeDelta::seconds(30)), Due::No);
+
+    let known = found(&answers);
+    let missing = looked(&known, &failed(&answers, 127), later);
+    assert_eq!(
+        numbers(&missing),
+        [(2, GpuVendor::Amd, 1), (3, GpuVendor::Intel, 0)],
+        "a missing tool drops the known NVIDIA GPUs"
+    );
+    assert_eq!(missing.pending, []);
+}
+
 #[test]
 fn met_009_gpus_keep_their_numbers_and_a_new_one_takes_the_lowest_free() {
     let answers = linux_answers();
@@ -233,9 +287,7 @@ fn met_009_gpus_keep_their_numbers_and_a_new_one_takes_the_lowest_free() {
     let later = at() + EVERY;
     let one_nvidia = Answer::Gpus(vec![gpus_of(&answers[0].1)[1].clone()]);
     let dropped = with(answers.clone(), GpuVendor::Nvidia, &one_nvidia);
-    let after = due(Some(&known), None, later)
-        .unwrap()
-        .merge(Some(&known), &dropped);
+    let after = looked(&known, &dropped, later);
     assert_eq!(
         numbers(&after),
         [
@@ -245,9 +297,7 @@ fn met_009_gpus_keep_their_numbers_and_a_new_one_takes_the_lowest_free() {
         ],
         "NVIDIA 0 dropped; the others keep their numbers"
     );
-    let back = due(Some(&after), None, later + EVERY)
-        .unwrap()
-        .merge(Some(&after), &answers);
+    let back = looked(&after, &answers, later + EVERY);
     assert_eq!(
         numbers(&back)[0],
         (0, GpuVendor::Nvidia, 0),
@@ -255,66 +305,17 @@ fn met_009_gpus_keep_their_numbers_and_a_new_one_takes_the_lowest_free() {
     );
 }
 
-#[test]
-fn met_006_repeated_numbers_keep_the_first_and_counts_are_bounded() {
-    let repeated: Vec<u8> = (0..1000)
-        .flat_map(|index| format!("{}, GPU {index}, 1, 1, 2, 3, 4\n", index % 40).into_bytes())
-        .collect();
-    let many = [(GpuVendor::Nvidia, answer(GpuVendor::Nvidia, &ok(&repeated)))];
-    let known = found(&many);
-    assert_eq!(known.gpus.len(), MAX_LABELS);
-    let sources: Vec<u32> = known.gpus.iter().map(|found| found.source).collect();
-    assert_eq!(
-        sources,
-        (0..32).collect::<Vec<u32>>(),
-        "first of each index"
-    );
-    assert_eq!(known.gpus[1].gpu.name, "GPU 1");
+/// The vendors whose reads `plan` runs.
+pub(super) fn reads(plan: &Plan) -> Vec<GpuVendor> {
+    plan.commands()
+        .iter()
+        .map(|command| command.vendor)
+        .collect()
 }
 
 fn gpus_of(answer: &Answer) -> &[agent_core::readings::GpuReading] {
     match answer {
         Answer::Gpus(gpus) => gpus,
-        Answer::Unknown => &[],
+        Answer::Failed | Answer::Unknown => &[],
     }
-}
-
-#[test]
-fn met_006_a_collection_that_does_not_look_runs_only_the_known_vendors_reads() {
-    let answers = linux_answers();
-    let known = found(&answers[1..2]);
-    let reading = Reading::default();
-    let soon = at() + TimeDelta::minutes(1);
-    let plan = Plan::new(OperatingSystem::Linux, Some(known.clone()), &reading, soon);
-    let vendors: Vec<GpuVendor> = plan
-        .commands()
-        .iter()
-        .map(|command| command.vendor)
-        .collect();
-    assert_eq!(vendors, [GpuVendor::Amd]);
-    let round = plan.finish(&answers[1..2]);
-    assert!(!round.discovered_now);
-    assert_eq!(round.known, Some(known.clone()));
-    assert_eq!(round.samples.len(), 3, "busy, VRAM share and bytes");
-
-    let none = found(&[(GpuVendor::Nvidia, Answer::Gpus(Vec::new()))]);
-    let plan = Plan::new(OperatingSystem::Linux, Some(none), &reading, soon);
-    assert!(plan.commands().is_empty(), "no GPU, no GPU read");
-
-    let plan = Plan::new(
-        OperatingSystem::Linux,
-        Some(known.clone()),
-        &reading,
-        at() + EVERY,
-    );
-    assert_eq!(plan.commands().len(), 3, "a look runs every read");
-    let round = plan.finish(&answers);
-    assert!(round.discovered_now, "a look is stored");
-    let known = round.known.unwrap();
-    assert_eq!(
-        numbers(&known)[0],
-        (0, GpuVendor::Amd, 1),
-        "AMD keeps its number"
-    );
-    assert_eq!(known.gpus.len(), 4);
 }

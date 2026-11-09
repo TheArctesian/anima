@@ -3,12 +3,21 @@
 //!
 //! A look is per vendor. A vendor that answered replaces its own GPUs; a vendor whose read did
 //! not finish keeps the GPUs known before and is looked at again the next round, so one hung
-//! tool never hides the others' GPUs. A GPU keeps its device number while its vendor reports
-//! it under the same number of its own (`nvidia-smi` index, DRM card number, `ioreg` order, 0
-//! for Intel); a new GPU takes the lowest free number. The vendor's own number only matches a
-//! reading to its GPU and never becomes the device number, so an odd or hostile one (a DRM card
-//! number of 4 billion) still gives a number from 0 to [`MAX_GPU_INDEX`], the K8 range. A failed
-//! collection keeps the numbers and only makes the next collection look at every vendor.
+//! tool never hides the others' GPUs.
+//!
+//! A failed read (the tool ran and exited non-zero, not 127) counts by what was known before
+//! the look. For a vendor with no GPUs known it is no GPU, so a device without that vendor's
+//! card is not read again each round (D-30). For a vendor with GPUs known it is a read that did
+//! not finish, so a driver that broke after an upgrade, or a GPU that fell off the bus, does
+//! not hide the vendor's GPUs until the next 24-hour look. A missing tool (exit 127) is always
+//! no GPU.
+//!
+//! A GPU keeps its device number while its vendor reports it under the same number of its own
+//! (`nvidia-smi` index, DRM card number, `ioreg` order, 0 for Intel); a new GPU takes the
+//! lowest free number. The vendor's own number only matches a reading to its GPU and never
+//! becomes the device number, so an odd or hostile one (a DRM card number of 4 billion) still
+//! gives a number from 0 to [`MAX_GPU_INDEX`], the K8 range. A failed collection keeps the
+//! numbers and only makes the next collection look at every vendor.
 //!
 //! Limitations: the numbers are kept in the collector's memory while the hub runs, not stored,
 //! so after a hub restart, or once a device is collected again after a pause, the first look
@@ -37,8 +46,8 @@ pub(in crate::metrics::collector) const EVERY: TimeDelta = TimeDelta::hours(24);
 pub(in crate::metrics::collector) const RESTART_TOLERANCE: TimeDelta = TimeDelta::seconds(60);
 
 /// How long after boot a look is provisional: a GPU driver may not be ready yet (a tool that
-/// fails reads as no GPU), so the hub looks again each round until a look is this far from
-/// boot.
+/// fails reads as no GPU of a vendor with none known), so the hub looks again each round until
+/// a look is this far from boot.
 pub(in crate::metrics::collector) const SETTLE: TimeDelta = TimeDelta::minutes(5);
 
 /// A GPU the hub found, with its number in its vendor's own output, which matches each later
@@ -122,24 +131,25 @@ impl Look {
     }
 
     /// What the hub knows after this look, from what it `known` before and the `answers`.
-    /// A vendor looked at that answered replaces its GPUs; one whose read did not finish
-    /// keeps them and is pending. Known GPUs keep their number; new ones take the lowest free
-    /// one up to [`MAX_GPU_INDEX`], the first of a repeated own number, at most [`MAX_LABELS`]
-    /// in all. Only NVIDIA and
-    /// AMD GPUs that gave their memory have VRAM (MET-007).
+    /// A vendor looked at that answered replaces its GPUs; one whose read did not finish, or
+    /// failed with GPUs known, keeps them and is pending. Known GPUs keep their number; new
+    /// ones take the lowest free one up to [`MAX_GPU_INDEX`], the first of a repeated own
+    /// number, at most [`MAX_LABELS`] in all. Only NVIDIA and AMD GPUs that gave their memory
+    /// have VRAM (MET-007).
     pub(in crate::metrics::collector) fn merge(
         &self,
         known: Option<&Discovered>,
         answers: &[(GpuVendor, Answer)],
     ) -> Discovered {
         let before: &[Found] = known.map_or(&[], |known| &known.gpus);
-        let answered: Vec<(GpuVendor, &[GpuReading])> = answers
+        let looked: Vec<(GpuVendor, Option<&[GpuReading]>)> = answers
             .iter()
             .filter(|(vendor, _)| self.includes(*vendor))
-            .filter_map(|(vendor, answer)| match answer {
-                Answer::Gpus(gpus) => Some((*vendor, gpus.as_slice())),
-                Answer::Unknown => None,
-            })
+            .map(|(vendor, answer)| (*vendor, readings(*vendor, answer, before)))
+            .collect();
+        let answered: Vec<(GpuVendor, &[GpuReading])> = looked
+            .iter()
+            .filter_map(|(vendor, readings)| readings.map(|readings| (*vendor, readings)))
             .collect();
         let replaced = |vendor: GpuVendor| answered.iter().any(|(each, _)| *each == vendor);
         let mut gpus: Vec<Found> = before
@@ -160,9 +170,9 @@ impl Look {
             gpus.extend(free.map(|index| found(vendor, reading, index)));
         }
         gpus.sort_by_key(|found| found.gpu.index);
-        let pending = answers
+        let pending = looked
             .iter()
-            .filter(|(vendor, answer)| self.includes(*vendor) && matches!(answer, Answer::Unknown))
+            .filter(|(_, readings)| readings.is_none())
             .map(|(vendor, _)| *vendor)
             .collect();
         // A look at the pending vendors only does not restart the 24 hours.
@@ -177,6 +187,22 @@ impl Look {
             pending,
             stale: false,
         }
+    }
+}
+
+/// The readings `vendor`'s `answer` gives, or `None` when the hub cannot tell and keeps the
+/// GPUs known `before`: a read that did not finish, or a failed read of a vendor with GPUs
+/// known. A failed read of a vendor with none known is no GPU (D-30).
+fn readings<'a>(
+    vendor: GpuVendor,
+    answer: &'a Answer,
+    before: &[Found],
+) -> Option<&'a [GpuReading]> {
+    match answer {
+        Answer::Gpus(gpus) => Some(gpus),
+        Answer::Failed if before.iter().any(|found| found.gpu.vendor == vendor) => None,
+        Answer::Failed => Some(&[]),
+        Answer::Unknown => None,
     }
 }
 
