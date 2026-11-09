@@ -204,6 +204,6 @@ export function checkValues(check: CheckFields | null, type: CheckType): CheckFo
       invert: check.invert,
     },
     check.config,
-    check.domainDaysLeft ?? null,
+    check.domainDaysLeft,
   );
 }

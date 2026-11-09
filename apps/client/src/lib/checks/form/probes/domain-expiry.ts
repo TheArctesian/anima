@@ -74,7 +74,7 @@ export function domainExpiryInput({ domain, warnDays, timeoutMs }: DomainExpiryV
   return { domainExpiry: { domain: normalizeHost(domain), warnDays: toNumber(warnDays), timeoutMs: toNumber(timeoutMs) } };
 }
 
-/** The days-left line for the check form; the same words in every place that shows it. */
+/** The days-left line of the domain expiry check form; a check row words it its own way (rows.ts). */
 export function daysLeftText(daysLeft: number | null): string {
   if (daysLeft === null) return 'Days left: not known yet';
   if (daysLeft < 0) return `Expired ${dayCount(-daysLeft)} ago`;

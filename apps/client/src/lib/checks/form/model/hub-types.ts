@@ -22,10 +22,8 @@ export type CheckConfigFields = DeviceCheck['config'] | ProbeConfig;
 /** The part of K1 `Check` the form edits. */
 export type CheckFields = Pick<
   DeviceCheck,
-  'id' | 'name' | 'intervalSeconds' | 'retries' | 'retryIntervalSeconds' | 'degradedThresholdMs' | 'invert'
+  'id' | 'name' | 'intervalSeconds' | 'retries' | 'retryIntervalSeconds' | 'degradedThresholdMs' | 'invert' | 'domainDaysLeft'
 > & {
   type: CheckType;
   config: CheckConfigFields;
-  /** DOMAIN_EXPIRY only: whole days left, from a document the route loads once the hub declares the field (F-3). */
-  domainDaysLeft?: number | null;
 };
