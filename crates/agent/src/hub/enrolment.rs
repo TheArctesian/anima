@@ -68,7 +68,7 @@ impl Enrolment<'_> {
         let credential = Credential::received(
             enrolled.token,
             enrolled.expires_at,
-            Some(self.origin.clone()),
+            self.origin.clone(),
             self.now,
         );
         self.store.save_new(&credential)?;

@@ -3,11 +3,12 @@
 use std::time::Duration;
 
 use agent_core::wire::RefusalCode;
+use anima_agent::config::origin::Origin;
 use anima_agent::push::Event;
 use anima_agent::token_store::{Credential, TokenStore};
 
 use crate::fake_hub::{FakeHub, Reply};
-use crate::kit::{at, device, points, pushed_times, rig, token, year};
+use crate::kit::{at, device, origin, points, pushed_times, rig, token, year};
 
 fn feed(rig: &mut crate::kit::Rig, first: i64, count: i64) {
     for point in points(first, count) {
@@ -149,13 +150,39 @@ async fn k8_6_a_changed_token_store_ends_the_stop_at_once() {
     let fresh = Credential {
         token: token(9),
         expires_at: at(0) + year(),
-        hub: None,
+        hub: origin(),
     };
     TokenStore::open(&rig.home).save(&fresh).expect("stored");
     rig.pusher.push_due(at(40)).await;
     let pushes = hub.seen("push");
     assert_eq!(pushes.len(), 2);
     assert_eq!(pushes[1].bearer.as_deref(), Some(token(9).expose()));
+}
+
+#[tokio::test]
+async fn met_020_a_token_bound_to_another_hub_is_never_adopted_and_never_sent() {
+    let hub = FakeHub::start().await;
+    let mut rig = rig(&hub, 1, year());
+    hub.queue_push([Reply::refuse(RefusalCode::TokenRefused)]);
+    feed(&mut rig, 1, 2);
+    rig.pusher.push_due(at(30)).await;
+    // The store now holds a token that belongs to another hub.
+    let foreign = Credential {
+        token: token(9),
+        expires_at: at(0) + year(),
+        hub: Origin::parse("https://other.example").expect("origin"),
+    };
+    TokenStore::open(&rig.home).save(&foreign).expect("stored");
+    rig.pusher.push_due(at(40)).await;
+    assert!(
+        rig.pusher.is_stopped(),
+        "still stopped: nothing was adopted"
+    );
+    assert_eq!(
+        hub.seen("push").len(),
+        1,
+        "no request carried the foreign token"
+    );
 }
 
 #[tokio::test]
@@ -197,13 +224,13 @@ async fn k8_7_a_network_error_keeps_the_points_and_backs_off() {
     let credential = Credential {
         token: token(1),
         expires_at: at(0) + year(),
-        hub: None,
+        hub: origin(),
     };
     let client = anima_agent::hub::HubClient::new(
         format!("http://{dead}").parse().expect("url"),
         anima_agent::hub::TIMEOUT,
     )
-        .expect("client");
+    .expect("client");
     let mut pusher =
         anima_agent::push::Pusher::new(client, device(), credential, TokenStore::open(&home));
     for point in points(1, 2) {

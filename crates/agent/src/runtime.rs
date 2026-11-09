@@ -27,7 +27,9 @@ const CHANNEL_ROOM: usize = 64;
 
 #[derive(Debug, thiserror::Error)]
 pub enum RunError {
-    #[error("this agent is not enrolled: run `anima-agent enrol <code>` first")]
+    #[error(
+        "this agent is not enrolled: run `anima-agent enrol -` (the code on standard input) first"
+    )]
     NotEnrolled,
     #[error("{0}")]
     Home(#[from] HomeError),
@@ -75,11 +77,7 @@ fn prepare(home: &Home) -> Result<(Pusher, Uuid), RunError> {
     let config = home.read_config()?.ok_or(RunError::NotEnrolled)?;
     let store = TokenStore::open(home);
     let credential = store.load()?.ok_or(RunError::NotEnrolled)?;
-    if credential
-        .hub
-        .as_ref()
-        .is_some_and(|issued| *issued != config.hub)
-    {
+    if credential.hub != config.hub {
         return Err(RunError::OriginMismatch);
     }
     let hub = HubClient::new(config.hub.url().clone(), TIMEOUT)?;
@@ -167,7 +165,7 @@ mod tests {
         let credential = Credential {
             token: AgentToken::from_random([1; 32]),
             expires_at: DateTime::UNIX_EPOCH,
-            hub: Some(Origin::parse(issued_by).expect("origin")),
+            hub: Origin::parse(issued_by).expect("origin"),
         };
         TokenStore::open(&home)
             .save_new(&credential)

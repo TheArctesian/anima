@@ -3,8 +3,8 @@
 use agent_core::wire::EnrolmentCode;
 use anima_agent::config::home::Home;
 use anima_agent::config::origin::Origin;
-use anima_agent::hub::{HubClient, TIMEOUT};
 use anima_agent::hub::enrolment::{EnrolError, Enrolment, REFUSED};
+use anima_agent::hub::{HubClient, TIMEOUT};
 use anima_agent::token_store::TokenStore;
 
 use crate::fake_hub::{FakeHub, Reply};
@@ -173,5 +173,5 @@ async fn met_013_a_far_future_expiry_is_capped_at_366_days_and_the_hub_is_kept_w
         stored.expires_at,
         crate::kit::at(0) + chrono::TimeDelta::days(366)
     );
-    assert_eq!(stored.hub.expect("a hub").as_text(), "https://hub.example");
+    assert_eq!(stored.hub.as_text(), "https://hub.example");
 }

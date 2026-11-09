@@ -167,12 +167,15 @@ impl Pusher {
         RHYTHM
     }
 
-    /// When the token store holds another token than the one in use, takes it and resumes.
+    /// When the token store holds another token than the one in use, issued by the same hub,
+    /// takes it and resumes. A token bound to another hub is never taken: it would be sent
+    /// to this one.
     fn adopt_changed_token(&mut self) -> bool {
         let Ok(Some(stored)) = self.store.load() else {
             return false;
         };
-        if stored.token.hash() == self.credential.token.hash() {
+        if stored.hub != self.credential.hub || stored.token.hash() == self.credential.token.hash()
+        {
             return false;
         }
         self.credential = stored;

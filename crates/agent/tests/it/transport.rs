@@ -3,8 +3,8 @@
 use std::process::Command;
 
 use agent_core::wire::{Batch, RefusalCode};
-use anima_agent::hub::{HubClient, TIMEOUT};
 use anima_agent::hub::answer::{Answer, Cause};
+use anima_agent::hub::{HubClient, TIMEOUT};
 use reqwest::Url;
 
 use crate::fake_hub::{FakeHub, Reply};

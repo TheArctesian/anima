@@ -5,7 +5,7 @@ use anima_agent::token_store::TokenStore;
 use chrono::TimeDelta;
 
 use crate::fake_hub::{FakeHub, Reply};
-use crate::kit::{at, points, rig, token};
+use crate::kit::{at, origin, points, rig, token};
 
 fn renewed(seed: u8, expires_in: TimeDelta) -> Reply {
     let body = format!(
@@ -128,4 +128,9 @@ async fn met_013_a_renewed_far_future_expiry_is_capped_and_the_hub_stays_with_th
         .expect("a token");
     assert_eq!(stored.token.expose(), token(9).expose());
     assert_eq!(stored.expires_at, at(0) + TimeDelta::days(366));
+    assert_eq!(
+        stored.hub,
+        origin(),
+        "the renewed token stays bound to its hub"
+    );
 }

@@ -54,7 +54,11 @@ mod tests {
         assert!(body.is_full());
         assert_eq!(body.bytes().len(), LIMIT, "the third chunk is cut to fit");
         assert_eq!(body.0.capacity(), room);
-        assert_eq!(body.0.as_ptr(), place, "no reallocation, so no unwiped copy");
+        assert_eq!(
+            body.0.as_ptr(),
+            place,
+            "no reallocation, so no unwiped copy"
+        );
     }
 
     #[test]

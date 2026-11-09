@@ -4,7 +4,7 @@
 
 use agent_core::wire::{AgentToken, Renewed};
 use chrono::{DateTime, TimeDelta, Utc};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use zeroize::Zeroizing;
 
 use crate::config::home::Home;
@@ -31,12 +31,27 @@ pub struct Credential {
     pub expires_at: DateTime<Utc>,
     /// The hub origin kept beside the token: the agent refuses to send the token to another
     /// (on macOS the Keychain record is the one place an attacker with file access cannot edit).
-    pub hub: Option<Origin>,
+    pub hub: Origin,
 }
 
+/// The hub as the record names it; a record without one does not read.
 #[derive(Deserialize)]
 struct HubField {
-    hub: Option<String>,
+    hub: String,
+}
+
+/// The stored record: the `Renewed` body with the hub beside it.
+#[derive(Serialize)]
+struct Record<'a> {
+    #[serde(flatten)]
+    renewed: Renewed,
+    hub: &'a str,
+}
+
+/// Bytes a record needs besides the hub's text: the token, its key, the expiry and the
+/// punctuation come to under 150; the hub's text may grow to 6 bytes a character when escaped.
+fn record_room(hub: &str) -> usize {
+    256 + 6 * hub.len()
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -63,7 +78,7 @@ impl Credential {
     pub fn received(
         token: AgentToken,
         expires_at: DateTime<Utc>,
-        hub: Option<Origin>,
+        hub: Origin,
         now: DateTime<Utc>,
     ) -> Self {
         Self {
@@ -73,21 +88,19 @@ impl Credential {
         }
     }
 
-    /// The record: the `Renewed` body with the hub origin added.
+    /// The record: the `Renewed` body with the hub origin added. The buffer has room for it
+    /// from the start, so it never moves and its wipe on drop covers the token.
     fn render(self) -> Zeroizing<Vec<u8>> {
-        let record = Renewed {
-            token: self.token,
-            expires_at: self.expires_at,
+        let hub = self.hub.as_text();
+        let record = Record {
+            renewed: Renewed {
+                token: self.token,
+                expires_at: self.expires_at,
+            },
+            hub: &hub,
         };
-        let mut bytes =
-            Zeroizing::new(serde_json::to_vec(&record).expect("a token record serialises"));
-        if let Some(hub) = self.hub {
-            bytes.pop();
-            bytes.extend_from_slice(b",\"hub\":");
-            let text = serde_json::to_string(&hub.as_text()).expect("a string serialises");
-            bytes.extend_from_slice(text.as_bytes());
-            bytes.push(b'}');
-        }
+        let mut bytes = Zeroizing::new(Vec::with_capacity(record_room(&hub)));
+        serde_json::to_writer(&mut *bytes, &record).expect("a token record serialises");
         bytes
     }
 }
@@ -112,10 +125,7 @@ impl TokenStore {
             serde_json::from_slice(&bytes).map_err(|_| TokenStoreError::Corrupt)?;
         let field: HubField =
             serde_json::from_slice(&bytes).map_err(|_| TokenStoreError::Corrupt)?;
-        let hub = match field.hub {
-            Some(text) => Some(Origin::parse(&text).map_err(|_| TokenStoreError::Corrupt)?),
-            None => None,
-        };
+        let hub = Origin::parse(&field.hub).map_err(|_| TokenStoreError::Corrupt)?;
         Ok(Some(Credential {
             token: record.token,
             expires_at: record.expires_at,
@@ -148,5 +158,29 @@ impl TokenStore {
             hub: credential.hub.clone(),
         };
         self.backend.write(&copy.render(), fresh)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn met_013_the_record_is_written_into_room_made_at_the_start() {
+        let hub = Origin::parse("https://hub.example").expect("origin");
+        let credential = Credential {
+            token: AgentToken::from_random([3; 32]),
+            expires_at: DateTime::UNIX_EPOCH,
+            hub: hub.clone(),
+        };
+        let room = Vec::<u8>::with_capacity(record_room(&hub.as_text())).capacity();
+        let bytes = credential.render();
+        assert_eq!(
+            bytes.capacity(),
+            room,
+            "the buffer did not grow, so it did not move"
+        );
+        assert!(bytes.starts_with(b"{\"token\":"));
+        assert!(bytes.ends_with(b"\"hub\":\"https://hub.example\"}"));
     }
 }

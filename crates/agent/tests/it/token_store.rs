@@ -11,13 +11,13 @@ use anima_agent::config::origin::Origin;
 use anima_agent::config::private_file::PrivateFileError;
 use anima_agent::token_store::{Credential, TokenStore, TokenStoreError};
 
-use crate::kit::{at, token};
+use crate::kit::{at, origin, token};
 
 fn credential(seed: u8, days: i64) -> Credential {
     Credential {
         token: token(seed),
         expires_at: at(0) + chrono::TimeDelta::days(days),
-        hub: None,
+        hub: origin(),
     }
 }
 
@@ -194,7 +194,7 @@ fn met_013_a_symlink_at_the_token_path_is_replaced_and_its_target_left_alone() {
     let credential = anima_agent::token_store::Credential {
         token: token(4),
         expires_at: at(0),
-        hub: None,
+        hub: origin(),
     };
     TokenStore::open(&home).save(&credential).expect("saved");
     assert_eq!(fs::read(&target).expect("victim"), b"untouched");
@@ -204,4 +204,32 @@ fn met_013_a_symlink_at_the_token_path_is_replaced_and_its_target_left_alone() {
             .file_type()
             .is_symlink()
     );
+}
+
+#[test]
+fn met_020_a_stored_record_without_a_hub_reads_as_corrupt() {
+    let dir = tempfile::tempdir().expect("a folder");
+    let home = Home::at(dir.path().join("agent"));
+    home.ensure().expect("folder");
+    let bare = format!(
+        r#"{{"token":"{}","expiresAt":"2030-01-01T00:00:00Z"}}"#,
+        token(1).expose()
+    );
+    let path = home.token_path();
+    fs::write(&path, bare).expect("written");
+    fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).expect("chmod");
+    assert!(matches!(
+        TokenStore::open(&home).load(),
+        Err(TokenStoreError::Corrupt)
+    ));
+}
+
+#[test]
+fn met_020_the_hub_is_stored_with_the_token_and_read_back() {
+    let dir = tempfile::tempdir().expect("a folder");
+    let home = Home::at(dir.path().join("agent"));
+    let store = TokenStore::open(&home);
+    store.save(&credential(1, 365)).expect("stored");
+    let loaded = store.load().expect("reads").expect("a token");
+    assert_eq!(loaded.hub, origin());
 }
