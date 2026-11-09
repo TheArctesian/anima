@@ -97,6 +97,19 @@ pub async fn lock(conn: &mut PgConnection, id: DeviceId) -> Result<(), Error> {
     store::lock_device(conn, id).await
 }
 
+/// Locks the device row as [`lock`] does and returns its metrics source as it is now, so the
+/// caller's transaction acts on a source no other transaction can change before it ends
+/// (MET-011, MET-018).
+///
+/// # Errors
+/// `NotFound` when there is no such device.
+pub async fn lock_metrics_source(
+    conn: &mut PgConnection,
+    id: DeviceId,
+) -> Result<MetricsSource, Error> {
+    store::lock_metrics_source(conn, id).await
+}
+
 /// Sets the device's metrics source to `agent` in the caller's transaction, which stops SSH
 /// collection for it, and returns the device's name. Only agent enrolment calls it (MET-011,
 /// R-092 D-7).
