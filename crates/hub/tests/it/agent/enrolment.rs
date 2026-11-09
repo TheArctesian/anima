@@ -2,12 +2,17 @@
 //! minutes, and makes earlier unused codes of its device useless; enrolling replaces the
 //! device's token and sets its metrics source to `agent` (MET-011).
 
-use axum::http::StatusCode;
+use axum::{
+    body::Body,
+    http::{Request, StatusCode, header},
+};
 use chrono::{DateTime, TimeDelta, Utc};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
-use super::harness::{Agents, PERMITTED, PVE_01, metrics_events, refusal, source};
+use super::harness::{
+    Agents, DOCKER_HOST, PERMITTED, PVE_01, metrics_events, refusal, rows_of, source,
+};
 use crate::hub::{error, start};
 
 fn time(value: &Value) -> DateTime<Utc> {
@@ -96,6 +101,39 @@ async fn met_012_a_new_code_makes_the_older_unused_one_useless(pool: PgPool) {
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
 )]
+async fn met_012_uses_of_one_code_at_once_enrol_once(pool: PgPool) {
+    let agents = Agents::new(&pool).await;
+    let code = agents.code_for(PVE_01).await;
+    let uses = (0..8).map(|_| agents.enrol(&code));
+    let answers = futures_util::future::join_all(uses).await;
+    let accepted = answers
+        .iter()
+        .filter(|(status, _)| *status == StatusCode::OK);
+    assert_eq!(accepted.count(), 1, "{answers:?}");
+    let refused = (StatusCode::UNAUTHORIZED, refusal("ENROLMENT_REFUSED"));
+    assert_eq!(
+        answers.iter().filter(|answer| **answer == refused).count(),
+        7
+    );
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn met_012_a_new_code_leaves_other_devices_codes_working(pool: PgPool) {
+    let agents = Agents::new(&pool).await;
+    let pve = agents.code_for(PVE_01).await;
+    let _docker = agents.code_for(DOCKER_HOST).await;
+    let enrolled = agents.enrolled(&pve).await;
+    assert_eq!(enrolled["device"], PVE_01);
+    assert_eq!(rows_of(&pool, "agents", DOCKER_HOST).await, 0);
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
 async fn met_013_enrolling_again_replaces_the_token(pool: PgPool) {
     let agents = Agents::new(&pool).await;
     let first = agents.token_for(PVE_01).await;
@@ -146,6 +184,28 @@ async fn k8_every_bad_enrol_body_is_the_same_refusal_and_a_large_one_is_too_larg
     let extra = json!({ "code": code, "agentVersion": "0.1.0" }).to_string();
     let accepted = agents.enrol_body(extra, PERMITTED).await;
     assert_eq!(accepted.0, StatusCode::OK, "{}", accepted.1);
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn k8_a_declared_length_past_4_kib_is_too_large_before_the_body_is_read(pool: PgPool) {
+    let agents = Agents::new(&pool).await;
+    let code = agents.code_for(PVE_01).await;
+    let body = json!({ "code": code }).to_string();
+    let request = Request::post("/agent/v1/enrol")
+        .header(header::CONTENT_TYPE, "application/json")
+        .header(header::CONTENT_LENGTH, "4097")
+        .body(Body::from(body))
+        .unwrap();
+    let answer = agents.send(request, PERMITTED).await;
+    assert_eq!(
+        answer,
+        (StatusCode::PAYLOAD_TOO_LARGE, refusal("TOO_LARGE"))
+    );
+    // The code was never read, so it still works.
+    assert_eq!(agents.enrol(&code).await.0, StatusCode::OK);
 }
 
 #[sqlx::test(

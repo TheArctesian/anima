@@ -95,3 +95,33 @@ async fn k8_renewal_checks_the_bearer_then_the_body(pool: PgPool) {
         .await;
     assert_eq!(extra.0, StatusCode::OK, "{}", extra.1);
 }
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn met_013_two_first_uses_of_a_renewed_token_at_once_both_work(pool: PgPool) {
+    let agents = Agents::new(&pool).await;
+    let first = agents.token_for(PVE_01).await;
+    let renewed = agents.renewed(&first).await;
+    let (one, other) = tokio::join!(agents.renew(&renewed), agents.renew(&renewed));
+    assert_eq!(
+        (one.0, other.0),
+        (StatusCode::OK, StatusCode::OK),
+        "{one:?} {other:?}"
+    );
+    assert_eq!(agents.renew(&first).await, refused());
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn met_013_enrolling_again_ends_a_renewed_token_never_used(pool: PgPool) {
+    let agents = Agents::new(&pool).await;
+    let first = agents.token_for(PVE_01).await;
+    let renewed = agents.renewed(&first).await;
+    let again = agents.token_for(PVE_01).await;
+    assert_eq!(agents.renew(&renewed).await, refused());
+    assert_eq!(agents.renew(&again).await.0, StatusCode::OK);
+}

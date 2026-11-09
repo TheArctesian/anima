@@ -1,6 +1,6 @@
-//! The hub's routes as `main.rs` mounts them, with the agent routes inside the request log and
-//! behind the permitted networks, at a clock the test moves; and the requests an operator and
-//! an agent send.
+//! The hub's routes with the agent routes inside the request log and behind the permitted
+//! networks, the composition the programme's `main.rs` handoff is to mount, at a clock the test
+//! moves; and the requests an operator and an agent send.
 
 use std::{
     net::SocketAddr,
@@ -53,7 +53,7 @@ impl Clock for SetClock {
     }
 }
 
-/// The hub's routes with the agent routes, as `main.rs` composes them.
+/// The hub's routes with the agent routes, composed as the `main.rs` handoff is to mount them.
 pub fn app(pool: &PgPool, clock: Arc<dyn Clock>) -> Router {
     let bus = Bus::new(64);
     let schema = build_schema(dependencies(pool, clock.clone(), bus.clone()));
