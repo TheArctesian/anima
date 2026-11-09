@@ -187,8 +187,8 @@ async fn d_23_a_read_key_runs_no_mutation_at_all() {
     assert_eq!(typename.data, value!({ "__typename": "Mutation" }));
 }
 
-/// The root field names of K1, `@pending` ones included.
-fn contract_roots() -> Vec<String> {
+/// The root fields of K1 with their doc strings, `@pending` ones included.
+fn contract_roots() -> Vec<(String, String)> {
     use async_graphql::parser::{
         parse_schema,
         types::{TypeKind, TypeSystemDefinition},
@@ -206,12 +206,11 @@ fn contract_roots() -> Vec<String> {
         let root =
             ["Query", "Mutation", "Subscription"].contains(&declared.node.name.node.as_str());
         if let (true, TypeKind::Object(object)) = (root, &declared.node.kind) {
-            roots.extend(
-                object
-                    .fields
-                    .iter()
-                    .map(|field| field.node.name.node.to_string()),
-            );
+            roots.extend(object.fields.iter().map(|field| {
+                let doc = field.node.description.as_ref();
+                let doc = doc.map(|doc| doc.node.clone()).unwrap_or_default();
+                (field.node.name.node.to_string(), doc)
+            }));
         }
     }
     roots
@@ -224,11 +223,31 @@ fn d_23_every_refused_name_is_a_root_field_of_k1() {
     let roots = contract_roots();
     for name in API_KEY_REFUSED_ROOTS {
         assert!(
-            roots.iter().any(|root| root == name),
+            roots.iter().any(|(root, _)| root == name),
             "{name} is not a K1 root field"
         );
     }
     assert_eq!(D_23, API_KEY_REFUSED_ROOTS);
+}
+
+/// The other direction: a K1 root documented as closed to API keys is on the list, so the
+/// contract's doc string and the guard cannot drift apart (D-23, R-100).
+#[test]
+fn d_23_every_k1_root_documented_closed_to_keys_is_listed() {
+    let closed: Vec<String> = contract_roots()
+        .into_iter()
+        .filter(|(_, doc)| {
+            doc.contains("Login or browser token only") || doc.contains("never an API key")
+        })
+        .map(|(name, _)| name)
+        .collect();
+    for name in &closed {
+        assert!(
+            API_KEY_REFUSED_ROOTS.contains(&name.as_str()),
+            "{name} is documented closed to API keys but not listed"
+        );
+    }
+    assert_eq!(closed.len(), API_KEY_REFUSED_ROOTS.len(), "{closed:?}");
 }
 
 /// The key fields' own resolvers on a schema built without the backstop: the hub's roots with a
