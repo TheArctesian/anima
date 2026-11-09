@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/hub", "crates/guac-protocol", "crates/agent-core", "crates/theme", "apps/desktop/src-tauri"]
+members = ["crates/hub", "crates/guac-protocol", "crates/agent-core", "crates/agent", "crates/theme", "apps/desktop/src-tauri"]
 
 [workspace.package]
 version = "0.1.0"
@@ -37,6 +37,7 @@ tempfile = "3.27"
 surge-ping = "0.9"
 hickory-resolver = { version = "0.26", default-features = false, features = ["system-config", "tokio"] }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+bytes = "1.9"
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
 x509-parser = "0.18"
@@ -77,6 +78,8 @@ tauri-plugin-log = { version = "2.10", default-features = false }
 # address, and the OS user name of the process.
 if-addrs = "0.15"
 whoami = { version = "2.1", default-features = false, features = ["std"] }
+# Reads the agent's launchd property list in its tests (WP-54 T4, MET-019).
+plist = "1"
 
 [workspace.lints.rust]
 warnings = "deny"
