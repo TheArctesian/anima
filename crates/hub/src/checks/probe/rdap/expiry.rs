@@ -2,7 +2,8 @@
 //!
 //! Up while the days left are at least the warning days; Degraded below them; Down once the
 //! registration has expired; Unknown when RDAP gives no expiry date. The evaluation applies
-//! invert and retries to the result as for every check.
+//! invert to the result as for every check, but never retries: a domain expiry check has no
+//! retries, so a failure settles at once (R-102).
 
 use chrono::{DateTime, Utc};
 
