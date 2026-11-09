@@ -53,11 +53,11 @@ it('CHK-009: a second submit while the first is saving does nothing', async () =
   await submit(form);
   await submit(form);
   expect(onSave).toHaveBeenCalledOnce();
-  expect(button('Add check').disabled).toBe(true);
+  expect(button('Add check').getAttribute('aria-disabled')).toBe('true');
 
   finish(OK);
   await settle();
-  expect(button('Add check').disabled).toBe(false);
+  expect(button('Add check').getAttribute('aria-disabled')).toBeNull();
 });
 
 it('CHK-009: a hub error with no input is listed at the top', async () => {
@@ -142,7 +142,7 @@ it('Section 6.4: a group offers only the other checks that cannot make a cycle',
     { id: 'outer', name: 'outer-group', type: 'GROUP', childIds: ['self'] },
   ];
   show({ check: saved('GROUP', { __typename: 'GroupConfig', children: [] }, { id: 'self', name: 'self-group' }), siblings });
-  const names = [...document.querySelectorAll('fieldset label')].map((label) => label.textContent.trim());
+  const names = [...document.querySelectorAll('fieldset:not(.check) label')].map((label) => label.textContent.trim());
   expect(names).toEqual(['ping']);
 });
 

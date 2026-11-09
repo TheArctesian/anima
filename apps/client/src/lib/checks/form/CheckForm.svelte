@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import { SvelteSet } from 'svelte/reactivity';
   import { fieldErrorsFrom } from '$lib/devices/form/field-errors';
   import Disclosure from '$lib/forms/disclosure/Disclosure.svelte';
@@ -14,6 +14,9 @@
   import TypeFields from './fields/TypeFields.svelte';
   import ProbeFields from './probes/ProbeFields.svelte';
   import DomainExpiryFields from './probes/DomainExpiryFields.svelte';
+  import { contextChannelCalls } from './channels/calls';
+  import { ChannelsDraft } from './channels/draft.svelte';
+  import ChannelsSection from './channels/ChannelsSection.svelte';
   import { intervalFor } from './probes/domain-expiry';
   import SnmpFields from './probes/SnmpFields.svelte';
   import { defaultsReader } from '../defaults/reader';
@@ -32,10 +35,12 @@
     siblings: readonly SiblingCheck[];
     /** Saves the values; the route builds `createCheckInput` or `updateCheckInput` from them. */
     onSave: (values: CheckFormValues) => Promise<HubResult<unknown>>;
+    /** Called once everything went in, so the owner closes the form; an owner that closes on `onSave` alone would hide a failed channel save. */
+    onDone?: () => void;
     onCancel: () => void;
   }
 
-  const { check, siblings, onSave, onCancel }: Props = $props();
+  const { check, siblings, onSave, onDone, onCancel }: Props = $props();
 
   const TYPES: readonly { value: CheckType; label: string }[] = [
     { value: 'ICMP', label: 'Ping (ICMP)' },
@@ -86,6 +91,11 @@
   let errors = $state<FieldError[]>([]);
   let saving = $state(false);
   let advancedOpen = $state(false);
+  /** NOT-003, NOT-005: a check reads and saves its own channels apart from the check (F-3); null without a hub. */
+  const channels = new ChannelsDraft(untrack(() => check?.id ?? null), untrack(() => contextChannelCalls()));
+  /** The ID of the check this form created whose channels did not save; a further Save then sends only the channels. */
+  let addedId = $state<string | null>(null);
+  const resendId = `${formId}-resend`;
 
   const candidates = $derived(groupCandidates(check?.id ?? null, siblings));
   const warnings = $derived(check === null ? [] : secretWarnings(initial, values));
@@ -98,16 +108,70 @@
     if (touchesAdvanced(found)) advancedOpen = true;
   }
 
+  /** The ID of a check the route has just created, read from its answer. */
+  function createdId(value: unknown): string | null {
+    if (typeof value !== 'object' || value === null || !('id' in value)) return null;
+    return typeof value.id === 'string' ? value.id : null;
+  }
+
+  async function focusResend(): Promise<void> {
+    await tick();
+    document.getElementById(resendId)?.focus();
+  }
+
+  /** The channels of the check just created failed: say so, and focus the resend input when it is the one refused. */
+  async function channelsFailed(created: boolean): Promise<void> {
+    if (created && !channels.resendInvalid) channels.checkAdded();
+    await focusResend();
+  }
+
+  /** The check exists already: sends only its channels again. */
+  async function retryChannels(id: string): Promise<void> {
+    if ((await channels.save(id)) === 'failed') await channelsFailed(true);
+    else onDone?.();
+  }
+
+  /**
+   * An edit saves the channels first, so a refusal is seen while the form is still open. A new check has no ID yet,
+   * so its channels go in after it; if they fail the check exists, and the next Save sends only the channels
+   * (`addedId`), never a second check. The form tells its owner it is done only when everything went in.
+   */
   async function submit(event: SubmitEvent): Promise<void> {
     event.preventDefault();
     if (saving) return;
-    const invalid = validateCheck(values, check === null ? null : initial);
-    show(invalid);
-    if (invalid.length > 0) return;
+    if (addedId === null) {
+      const invalid = validateCheck(values, check === null ? null : initial);
+      show(invalid);
+      if (invalid.length > 0) return;
+    }
+    if (!channels.check()) {
+      await focusResend();
+      return;
+    }
     saving = true;
     try {
+      if (addedId !== null) {
+        await retryChannels(addedId);
+        return;
+      }
+      const sent = check === null ? 'skipped' : await channels.save(check.id);
+      if (sent === 'failed') {
+        await focusResend();
+        return;
+      }
       const result = await onSave($state.snapshot(values));
-      if (!result.ok) show(placeHubErrors(fieldErrorsFrom(result.error), values));
+      if (!result.ok) {
+        channels.checkNotSaved();
+        show(placeHubErrors(fieldErrorsFrom(result.error), values));
+        return;
+      }
+      const id = check === null ? createdId(result.value) : null;
+      if (id !== null && (await channels.save(id)) === 'failed') {
+        addedId = id;
+        await channelsFailed(true);
+        return;
+      }
+      onDone?.();
     } finally {
       saving = false;
     }
@@ -115,14 +179,8 @@
 </script>
 
 <form id={formId} onsubmit={submit} novalidate>
-  {#if alerts.length > 0}
-    <div class="alert" role="alert">
-      {#each alerts as found, index (index)}
-        <p>{found.message}</p>
-      {/each}
-    </div>
-  {/if}
-
+  <!-- Once the check is added only its channels can be sent again, so the check's own fields are read only. -->
+  <fieldset class="check" disabled={addedId !== null}>
   <TextField label="Name" bind:value={values.name} error={error('name')} />
 
   {#if check === null}
@@ -149,6 +207,11 @@
   <Disclosure label="Advanced settings" bind:open={advancedOpen}>
     <AdvancedFields bind:values {errors} ontouch={(key) => touched.add(key)} />
   </Disclosure>
+  </fieldset>
+
+  {#if channels.phase !== 'absent'}
+    <ChannelsSection draft={channels} {resendId} />
+  {/if}
 
   {#if warnings.length > 0}
     <div class="warning" role="status">
@@ -158,6 +221,13 @@
     </div>
   {/if}
 
+  <!-- Always mounted, with a line of its own below the fields, so an error nothing else shows moves nothing (MOT-007). -->
+  <div class="alert" role="alert">
+    {#each alerts as found, index (index)}
+      <p>{found.message}</p>
+    {/each}
+  </div>
+
   {#if footer === undefined}
     {@render actions()}
   {/if}
@@ -166,7 +236,7 @@
 {#snippet actions()}
   <div class="actions">
     <PressButton label="Cancel" onclick={onCancel} />
-    <PressButton label={check === null ? 'Add check' : 'Save check'} kind="primary" submit form={formId} disabled={saving} />
+    <PressButton label={addedId !== null ? 'Save channels' : check === null ? 'Add check' : 'Save check'} kind="primary" submit form={formId} busy={saving} />
   </div>
 {/snippet}
 
@@ -176,6 +246,20 @@
     flex-direction: column;
     gap: var(--space-4);
     max-inline-size: calc(var(--space-16) * 8);
+  }
+
+  .check:disabled {
+    opacity: var(--opacity-disabled);
+  }
+
+  .check {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-inline-size: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
   }
 
   .actions {
@@ -189,14 +273,18 @@
     color: var(--text-muted);
   }
 
-  .alert,
+  .alert {
+    min-block-size: var(--target-min-desktop);
+  }
+
+  .alert:not(:empty),
   .warning {
     padding: var(--space-2) var(--space-3);
     border-radius: var(--radius-md);
     font-size: var(--text-sm);
   }
 
-  .alert {
+  .alert:not(:empty) {
     background: var(--status-down-tint);
   }
 

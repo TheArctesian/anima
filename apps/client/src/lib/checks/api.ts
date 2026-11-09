@@ -225,6 +225,32 @@ const SetCheckPaused = graphql(`
   }
 `);
 
+// Own documents (WP-50 F-3, R-085): `Check.notifications` is @pending, so a hub without it fails these two documents
+// only; the check's own documents never select it and the rest of the form still loads and saves.
+export const CheckNotifications = graphql(`
+  query CheckNotifications($id: ID!) {
+    check(id: $id) {
+      notifications {
+        channels {
+          id
+        }
+        resendEveryBeats
+      }
+    }
+  }
+`);
+
+export const SetCheckNotifications = graphql(`
+  mutation SetCheckNotifications($checkId: ID!, $input: CheckNotificationsInput!) {
+    setCheckNotifications(checkId: $checkId, input: $input) {
+      channels {
+        id
+      }
+      resendEveryBeats
+    }
+  }
+`);
+
 /** A heartbeat the hub just recorded, with the check and device it belongs to. */
 export type NewHeartbeat = HeartbeatAddedSubscription['heartbeatAdded'];
 
