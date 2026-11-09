@@ -10,6 +10,7 @@ use anima_hub::{
     access::{self, Scope},
     clock::{Clock, FixedClock},
     events::process_log,
+    exposition,
 };
 use axum::{
     Router,
@@ -161,8 +162,8 @@ async fn net_002_the_bearer_check_covers_metrics_and_nothing_else(pool: PgPool) 
     );
     assert_refused(&scrape(&app, &[]).await, "with a web root");
 
-    // Without a web root, the hub's fallback stays the default 404: a bearer layer that also
-    // wrapped the exposition's fallback would answer 401 here.
+    // Without a web root, the hub's fallback stays the default 404. `all_routes` merges the
+    // empty web router after `/metrics`, so its default fallback is the one kept here.
     let app = app_at(&pool, now, None).await;
 
     let health = send(&app, PERMITTED, get("/health")).await;
@@ -187,6 +188,14 @@ async fn net_002_the_bearer_check_covers_metrics_and_nothing_else(pool: PgPool) 
     )
     .await;
     assert_eq!(outside.status, StatusCode::FORBIDDEN, "{outside:?}");
+
+    // Merged last, `/metrics` gives the router its fallback: the bearer check must not wrap
+    // it, or every unknown path would answer 401 (axum keeps the last merged default fallback).
+    let clock: Arc<dyn Clock> = Arc::new(FixedClock(now));
+    let last = Router::new().merge(exposition(pool.clone(), clock));
+    let unknown = send(&last, PERMITTED, get("/nothing-here")).await;
+    assert_eq!(unknown.status, StatusCode::NOT_FOUND, "{unknown:?}");
+    assert_refused(&scrape(&last, &[]).await, "merged last");
 }
 
 #[sqlx::test(migrations = "./migrations")]

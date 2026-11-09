@@ -209,8 +209,7 @@ const ENROLMENT_CODE_CHARS: usize = 22;
 /// so one whose text begins `agent_` or `enrol_` is still a key.
 ///
 /// The length rule of [`read_presented`] also refuses both shapes today (55 and 34 characters
-/// are neither a token nor a key), so a mutant that removes this call is equivalent: the rule
-/// is named so that it holds if token lengths ever change.
+/// are neither a token nor a key); this rule keeps holding if token lengths change.
 pub(super) fn is_agent_secret(presented: &str) -> bool {
     spelled(presented, AGENT_TOKEN_PREFIX, AGENT_TOKEN_CHARS)
         || spelled(presented, ENROLMENT_CODE_PREFIX, ENROLMENT_CODE_CHARS)

@@ -1,18 +1,18 @@
-//! `GET /metrics` behind the bearer layer as `main.rs` mounts it, and the agent secrets the
+//! `GET /metrics` behind the bearer layer as `main.rs` serves it, and the agent secrets the
 //! access guard refuses (WP-43 A-9, R-092, INT-001, INT-003, D-24, NET-002).
 
 mod agent;
+mod lookup;
 mod metrics;
 
-use std::{net::SocketAddr, path::Path, sync::Arc};
+use std::{collections::BTreeMap, net::SocketAddr, path::Path, sync::Arc};
 
 use anima_hub::{
-    access::{self, PublicOrigin},
+    access, all_routes,
     clock::{Clock, FixedClock},
+    config,
     events::Bus,
-    exposition, router_at,
-    schema::build_schema,
-    web_fallback,
+    schema::Dependencies,
 };
 use axum::{
     Router,
@@ -47,22 +47,25 @@ async fn app(pool: &PgPool, now: DateTime<Utc>) -> (Router, TempDir) {
     (app_at(pool, now, Some(web.path())).await, web)
 }
 
-/// The hub's routes at `now` in the order of the `main.rs` handoff: GraphQL at the public
-/// origin, then `/metrics`, then the web client at `root` when there is one, all behind the
-/// permitted networks `10.10.0.0/16`. The tunnels and `/push` are left out.
+/// The hub's routes at `now` as `main.rs` serves them, [`all_routes`]: GraphQL at the public
+/// origin, the tunnels, `/push`, `/metrics` and the web client at `root` when there is one,
+/// all behind the permitted networks `10.10.0.0/16`.
 async fn app_at(pool: &PgPool, now: DateTime<Utc>, root: Option<&Path>) -> Router {
     let networks: Vec<IpNet> = vec!["10.10.0.0/16".parse().unwrap()];
     access::permit_networks(pool, &networks).await.unwrap();
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(now));
     let bus = Bus::new(16);
-    let schema = build_schema(dependencies(pool, clock.clone(), bus.clone()));
-    let edge = access::Edge::new(pool.clone(), bus, clock.clone());
-    let origin = PublicOrigin::new(PUBLIC.to_owned());
-    let web = web_fallback(root, &origin);
-    router_at(schema, pool.clone(), clock.clone(), origin)
-        .merge(exposition(pool.clone(), clock))
-        .merge(web)
-        .layer(access::permitted_networks_layer(edge))
+    let mut env = BTreeMap::from([("ANIMA_PUBLIC_ORIGIN".to_owned(), PUBLIC.to_owned())]);
+    if let Some(root) = root {
+        let root = root.to_str().unwrap().to_owned();
+        env.insert("ANIMA_WEB_ROOT".to_owned(), root);
+    }
+    let edge = access::Edge::new(pool.clone(), bus.clone(), clock.clone());
+    let dependencies = Dependencies {
+        config: Arc::new(config::from_env(&env).unwrap()),
+        ..dependencies(pool, clock, bus)
+    };
+    all_routes(dependencies, edge)
 }
 
 /// The database clock to the second: heartbeat partitions exist only near it.
