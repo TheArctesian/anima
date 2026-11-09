@@ -13,6 +13,11 @@ RestartSec=10
 NoNewPrivileges=yes
 PrivateTmp=yes
 RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%E/anima-agent
+LimitCORE=0
+SocketBindDeny=any
 
 [Install]
 WantedBy=default.target

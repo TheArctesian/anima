@@ -12,6 +12,7 @@ Type=simple
 User=anima-agent
 Group=anima-agent
 Environment=ANIMA_AGENT_HOME=/var/lib/anima-agent
+Environment=PATH=/usr/sbin:/usr/bin
 ExecStart=/usr/local/bin/anima-agent run
 Restart=on-failure
 RestartSec=10
@@ -36,6 +37,16 @@ RestrictSUIDSGID=yes
 RestrictNamespaces=yes
 RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
 SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+MemoryDenyWriteExecute=yes
+ProtectProc=invisible
+PrivateIPC=yes
+RemoveIPC=yes
+LimitCORE=0
+SocketBindDeny=any
+IPAddressDeny=any
+IPAddressAllow=localhost 100.64.0.0/10 fd7a:115c:a1e0::/48
 
 [Install]
 WantedBy=multi-user.target
