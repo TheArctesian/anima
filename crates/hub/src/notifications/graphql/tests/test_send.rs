@@ -9,7 +9,7 @@ use tokio::time::Instant;
 use uuid::Uuid;
 
 use crate::{
-    events::{Bus, ClientAddr, Operator, Trail},
+    events::{Bus, ClientAddr, Operator},
     ids::{ChannelId, OperatorId},
     notifications::{
         Delivery, DeliveryReason, NotificationKind,
@@ -23,7 +23,7 @@ use crate::{
             Egress, TIME_LIMIT,
             tests::servers::{Behaviour, Server},
         },
-        graphql::test_send::send_test,
+        graphql::test_send::{Asker, send_test},
     },
 };
 
@@ -37,11 +37,13 @@ fn operator() -> Operator {
     }
 }
 
-async fn send(pool: &PgPool, egress: Egress, id: ChannelId) -> async_graphql::Result<Delivery> {
-    let bus = Bus::new(16);
+fn asker() -> Asker {
     let client = ClientAddr("192.0.2.10".parse::<IpAddr>().unwrap());
-    let trail = Trail::new(&bus, (operator(), client), Utc::now());
-    send_test(pool, &Sender::new(vault(), egress), trail, id).await
+    (Bus::new(16), (operator(), client), Utc::now())
+}
+
+async fn send(pool: &PgPool, egress: Egress, id: ChannelId) -> async_graphql::Result<Delivery> {
+    send_test(pool, &Sender::new(vault(), egress), asker(), id).await
 }
 
 async fn answering_hook(pool: &PgPool, reply: &[u8]) -> (Server, Egress, ChannelId) {
@@ -171,4 +173,49 @@ async fn not_004_a_test_through_no_such_channel_is_not_found_and_records_nothing
         .await
         .unwrap();
     assert_eq!(deliveries.len(), 0);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn log_005_a_test_whose_request_is_dropped_after_the_target_has_it_is_still_recorded(
+    pool: PgPool,
+) {
+    start(&pool).await;
+    let (server, egress) = target(|acceptor| {
+        Behaviour::Stalled(
+            b"HTTP/1.1 200 OK\r\nContent-Length: 100000\r\n\r\n",
+            acceptor,
+        )
+    })
+    .await;
+    let hooks = channel(&pool, "hooks", webhook(&server)).await;
+
+    // The client goes away while the hub still reads the reply body.
+    let dropped = tokio::time::timeout(Duration::from_secs(2), send(&pool, egress, hooks)).await;
+
+    assert!(dropped.is_err(), "the send was still reading the reply");
+    let audited = async {
+        while count(&pool, "events.audit_log").await == 0 {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+    };
+    tokio::time::timeout(TIME_LIMIT + SLACK, audited)
+        .await
+        .expect("the dropped test send is recorded");
+    assert_eq!(count(&pool, "events.audit_log").await, 1);
+    assert_eq!(count(&pool, "events.event_log").await, 1);
+    let deliveries = crate::notifications::store::deliveries_page(&pool, None, None, 10)
+        .await
+        .unwrap();
+    assert_eq!(
+        deliveries.iter().map(|d| d.ok).collect::<Vec<_>>(),
+        [true],
+        "the 2xx head decided"
+    );
+}
+
+async fn count(pool: &PgPool, table: &str) -> i64 {
+    sqlx::query_scalar(&format!("SELECT count(*) FROM {table}"))
+        .fetch_one(pool)
+        .await
+        .unwrap()
 }
