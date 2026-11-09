@@ -56,7 +56,7 @@ input LoginInput {
 
 # Phase 3 (WP-43). D-3, D-4, D-23.
 
-enum TokenScope @pending {
+enum TokenScope {
   READ
   WRITE
 }
@@ -67,7 +67,7 @@ type BrowserSignIn {
   expiresAt: DateTime!
 }
 
-type ApiKey @pending {
+type ApiKey {
   id: ID!
   "1..64 characters, unique."
   name: String!
@@ -79,7 +79,7 @@ type ApiKey @pending {
   lastUsedAt: DateTime
 }
 
-type ApiKeyCreated @pending {
+type ApiKeyCreated {
   key: ApiKey!
   "Shown once. The hub keeps only its SHA-256 (INT-003, P3-004)."
   secret: String!
@@ -91,7 +91,7 @@ type AgentEnrolment @pending {
   expiresAt: DateTime!
 }
 
-input ApiKeyInput @pending {
+input ApiKeyInput {
   name: String!
   scope: TokenScope!
   "Required; at most one year from now (D-23)."
@@ -1415,7 +1415,8 @@ type Query {
   sessions(deviceId: ID, live: Boolean, first: Int = 50, after: String): SessionConnection!
 
   # Phase 3
-  apiKeys: [ApiKey!]! @pending
+  "Login or browser token only (D-23, R-100)."
+  apiKeys: [ApiKey!]!
   checkDefaults: CheckDefaults!
   notificationChannels: [NotificationChannel!]!
   notificationSettings: NotificationSettings!
@@ -1426,17 +1427,21 @@ type Query {
 
 type Mutation {
   login(input: LoginInput!): AuthPayload!
+  "Login or browser token only (D-23, R-100)."
   logout: Boolean!
 
   createSite(name: String!, subnet: Cidr!): Site!
   createDevice(input: CreateDeviceInput!): Device!
+  "Login or browser token only (D-23, R-100)."
   updateDevice(id: ID!, input: UpdateDeviceInput!): Device!
-  "Deletes credentials, checks, heartbeats and metrics too (DEV-015). Returns the deleted ID."
+  "Deletes credentials, checks, heartbeats and metrics too (DEV-015). Returns the deleted ID. Login or browser token only (D-23, R-100)."
   deleteDevice(id: ID!): ID!
+  "Login or browser token only (D-23, R-100)."
   setSshCredential(deviceId: ID!, credential: SshCredentialInput!): SshSettings!
+  "Login or browser token only (D-23, R-100)."
   clearSshCredential(deviceId: ID!): SshSettings!
   testConnection(input: ConnectionTestInput!): ConnectionTestResult!
-  "The fingerprint must equal the one the hub saw, or the hub returns CONFLICT."
+  "The fingerprint must equal the one the hub saw, or the hub returns CONFLICT. Login or browser token only (D-23, R-100)."
   acceptHostKey(deviceId: ID!, fingerprintSha256: String!): HostKey!
 
   createCheck(input: CreateCheckInput!): Check!
@@ -1449,17 +1454,22 @@ type Mutation {
   deleteMaintenanceWindow(id: ID!): ID!
   setManualWindowActive(id: ID!, active: Boolean!): MaintenanceWindow!
 
+  "Login or browser token only (D-23, R-100)."
   startSession(input: StartSessionInput!): SessionTicket!
   endSession(id: ID!): Session!
 
   setSiteWakeRelay(siteId: ID!, deviceId: ID): Site!
+  "Login or browser token only (D-23, R-100)."
   setRdpCredential(deviceId: ID!, credential: PasswordCredentialInput!): RdpSettings!
+  "Login or browser token only (D-23, R-100)."
   clearRdpCredential(deviceId: ID!): RdpSettings!
+  "Login or browser token only (D-23, R-100)."
   setVncCredential(deviceId: ID!, credential: PasswordCredentialInput!): VncSettings!
+  "Login or browser token only (D-23, R-100)."
   clearVncCredential(deviceId: ID!): VncSettings!
-  "The fingerprint must equal the one the hub saw, or CONFLICT."
+  "The fingerprint must equal the one the hub saw, or CONFLICT. Login or browser token only (D-23, R-100)."
   acceptServerCertificate(deviceId: ID!, fingerprintSha256: String!): ServerCertificate!
-  "A ticket for the files tunnel of a live SSH session (K4 §9)."
+  "A ticket for the files tunnel of a live SSH session (K4 §9). Login or browser token only (D-23, R-100)."
   openFiles(sessionId: ID!): SessionTicket!
   wakeDevice(deviceId: ID!): WakeResult!
   createWebInterface(deviceId: ID!, input: WebInterfaceInput!): WebInterface!
@@ -1467,18 +1477,19 @@ type Mutation {
   deleteWebInterface(id: ID!): ID!
   acceptWebInterfaceSuggestion(checkId: ID!): WebInterface!
   dismissWebInterfaceSuggestion(checkId: ID!): ID!
-  "Pins the certificate and writes an audit entry (WEB-008, WEB-009)."
+  "Pins the certificate and writes an audit entry (WEB-008, WEB-009). Login or browser token only (D-23, R-100)."
   acceptWebCertificate(id: ID!, fingerprintSha256: String!): WebInterface!
 
   # Phase 3
-  "Signed out (D-4). Sets the __Host-anima cookie; refused unless Origin is the public origin."
+  "Signed out (D-4), or a login or browser token; never an API key (D-23, R-100). Sets the __Host-anima cookie; refused unless Origin is the public origin."
   signInBrowser(input: LoginInput!): BrowserSignIn!
-  "Login or browser token only (D-23)."
-  createApiKey(input: ApiKeyInput!): ApiKeyCreated! @pending
-  revokeApiKey(id: ID!): ID! @pending
-  "Login or browser token only (INT-003). A new code makes the device's earlier unused codes useless."
+  "Login or browser token only (D-23, R-100)."
+  createApiKey(input: ApiKeyInput!): ApiKeyCreated!
+  "Login or browser token only (D-23, R-100)."
+  revokeApiKey(id: ID!): ID!
+  "Login or browser token only (INT-003, D-23, R-100). A new code makes the device's earlier unused codes useless."
   enrolAgent(deviceId: ID!): AgentEnrolment! @pending
-  "Login or browser token only. The source stays AGENT, shown as stale, until the operator changes it (R-092 D-7)."
+  "Login or browser token only (D-23, R-100). The source stays AGENT, shown as stale, until the operator changes it (R-092 D-7)."
   revokeAgentToken(deviceId: ID!): Device! @pending
 
   setCheckDefaults(input: CheckDefaultsInput!): CheckDefaults!
@@ -1491,16 +1502,17 @@ type Mutation {
   setCheckNotifications(checkId: ID!, input: CheckNotificationsInput!): CheckNotifications!
   setNotificationSettings(input: NotificationSettingsInput!): NotificationSettings!
 
+  "Login or browser token only (D-23, R-100)."
   setRetention(subject: RetentionSubject!, days: Int!): RetentionPeriod!
 
-  "The session must be live and the caller's (RA-035)."
+  "The session must be live and the caller's (RA-035). Login or browser token only (D-23, R-100)."
   shareSession(sessionId: ID!, input: ShareInput!): ShareLink!
   endShare(id: ID!): ID!
-  "Signed out (D-7). Failed attempts count in the login throttle by client address."
+  "Signed out (D-7), or a login or browser token; never an API key (D-23, R-100). Failed attempts count in the login throttle by client address."
   joinShare(token: String!, name: String, display: DisplayInput!): WatchTicket! @pending
-  "A ticket for the playback tunnel (K4 §12)."
+  "A ticket for the playback tunnel (K4 §12). Login or browser token only (D-23, R-100)."
   openRecording(id: ID!): SessionTicket! @pending
-  "Deletes the key first, then the file (D-13)."
+  "Deletes the key first, then the file (D-13). Login or browser token only (D-23, R-100)."
   deleteRecording(id: ID!): ID! @pending
 }
 

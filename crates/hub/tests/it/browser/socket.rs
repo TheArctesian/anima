@@ -32,8 +32,8 @@ use crate::hub::{Hub, set_operator, start};
 const DEADLINE: Duration = Duration::from_secs(10);
 
 /// A server on a loopback port; dropping it stops the server.
-struct Served {
-    addr: SocketAddr,
+pub(crate) struct Served {
+    pub(crate) addr: SocketAddr,
     task: JoinHandle<()>,
 }
 
@@ -51,10 +51,10 @@ async fn serve(app: Router) -> Served {
     Served { addr, task }
 }
 
-type Socket = WebSocketStream<MaybeTlsStream<TcpStream>>;
+pub(crate) type Socket = WebSocketStream<MaybeTlsStream<TcpStream>>;
 
 /// Opens a `graphql-transport-ws` socket to `/graphql` with the extra upgrade `headers`.
-async fn open(addr: SocketAddr, headers: &[(&'static str, &str)]) -> Socket {
+pub(crate) async fn open(addr: SocketAddr, headers: &[(&'static str, &str)]) -> Socket {
     let mut request = format!("ws://{addr}/graphql")
         .into_client_request()
         .unwrap();
@@ -73,7 +73,7 @@ async fn open(addr: SocketAddr, headers: &[(&'static str, &str)]) -> Socket {
 }
 
 /// What the hub sent next: a JSON message, or the close code (`None` without a frame).
-async fn receive(socket: &mut Socket) -> Result<Value, Option<u16>> {
+pub(crate) async fn receive(socket: &mut Socket) -> Result<Value, Option<u16>> {
     loop {
         match tokio::time::timeout(DEADLINE, socket.next()).await.unwrap() {
             Some(Ok(Message::Text(text))) => return Ok(serde_json::from_str(&text).unwrap()),
@@ -85,7 +85,7 @@ async fn receive(socket: &mut Socket) -> Result<Value, Option<u16>> {
 }
 
 /// Sends `connection_init` with `payload` (none when null); returns the answer.
-async fn init(socket: &mut Socket, payload: Value) -> Result<Value, Option<u16>> {
+pub(crate) async fn init(socket: &mut Socket, payload: Value) -> Result<Value, Option<u16>> {
     let message = if payload.is_null() {
         json!({ "type": "connection_init" })
     } else {
@@ -98,11 +98,11 @@ async fn init(socket: &mut Socket, payload: Value) -> Result<Value, Option<u16>>
     receive(socket).await
 }
 
-fn ack() -> Value {
+pub(crate) fn ack() -> Value {
     json!({ "type": "connection_ack" })
 }
 
-const FORBIDDEN: Result<Value, Option<u16>> = Err(Some(4403));
+pub(crate) const FORBIDDEN: Result<Value, Option<u16>> = Err(Some(4403));
 
 #[sqlx::test(migrations = "./migrations")]
 async fn d_3_a_socket_from_the_public_origin_signs_in_by_cookie(pool: PgPool) {
@@ -217,7 +217,7 @@ impl Clock for Running {
 }
 
 /// Only the WebSocket route at the public origin, re-checking every 100 ms.
-async fn serve_watched(pool: &PgPool, clock: Arc<dyn Clock>) -> Served {
+pub(crate) async fn serve_watched(pool: &PgPool, clock: Arc<dyn Clock>) -> Served {
     let schema = build_schema(crate::hub::dependencies(pool, clock.clone(), Bus::new(16)));
     let access = access::SocketAccess::new(pool.clone(), clock, None)
         .with_timings(Duration::from_millis(100), DEADLINE);

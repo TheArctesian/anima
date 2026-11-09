@@ -16,7 +16,7 @@ use async_graphql::{
     },
 };
 
-use super::{Error, Identity, Scope};
+use super::{Error, Identity, Scope, TokenKind};
 use crate::clock::Clock;
 
 /// GraphQL guard: requires a valid token; puts `Operator` in the context (API-003).
@@ -84,8 +84,11 @@ fn current<'a>(
 /// sub-selection and input fields can be told apart from invalid ones, one throttled attempt per
 /// probe.
 ///
-/// With a `read` token, a mutation that selects more than `login`, `logout` and
-/// `__typename` is refused with `FORBIDDEN`.
+/// With an identity, also in `parse_query` and before any resolver, each with `FORBIDDEN`:
+/// - a root selection its token kind may not make ([`kind_roots`]): for an API key, any field
+///   in [`API_KEY_REFUSED_ROOTS`] or any root fragment, in any operation of the document, by
+///   field name whatever the alias (D-23, WP-43 A-6);
+/// - with a `read` token, any mutation field other than `__typename` (D-23).
 pub struct SignInRequired;
 
 impl ExtensionFactory for SignInRequired {
@@ -136,17 +139,7 @@ impl Extension for SignInCheck {
         let identity = current(ctx.data_opt(), ctx.data_opt());
         let _ = self.signed_out.set(identity.is_none());
         let document = next.run(ctx, query, variables).await?;
-        let refusal = match identity {
-            None => (!signed_out_allowed(&document)).then_some(Error::Unauthenticated),
-            Some(identity)
-                if identity.scope() == Scope::Read
-                    && !roots_only(&document, Roots::Any, Roots::Only(&["login", "logout"])) =>
-            {
-                Some(Error::ReadOnly)
-            }
-            Some(_) => None,
-        };
-        match refusal {
+        match refusal(identity, &document) {
             Some(error) => Err(error.into_response_error()),
             None => Ok(document),
         }
@@ -163,6 +156,71 @@ impl Extension for SignInCheck {
         }
         result
     }
+}
+
+/// Why the document may not run for this identity, if it may not: signed out, a root its
+/// token kind may not select, or a mutation with a `read` token.
+fn refusal(identity: Option<&Identity>, document: &ExecutableDocument) -> Option<Error> {
+    let Some(identity) = identity else {
+        return (!signed_out_allowed(document)).then_some(Error::Unauthenticated);
+    };
+    let by_kind = kind_roots(identity.kind());
+    if !roots_admitted(document, by_kind, by_kind) {
+        return Some(Error::KindRefused);
+    }
+    let read_only = identity.scope() == Scope::Read;
+    (read_only && !roots_admitted(document, Roots::Any, Roots::Only(&[])))
+        .then_some(Error::ReadOnly)
+}
+
+/// The root fields an API key may never select, in any operation (D-23, WP-43 A-6): managing
+/// keys, signing a browser in or out, sessions, files, shares, recordings and device
+/// credentials. `logout` would delete the key, which is managing it. `enrolAgent` and
+/// `revokeAgentToken` are refused by name before their resolvers exist (R-084, CR-8).
+/// A key may not pin a device identity, move or delete a device, or destroy recordings:
+/// moving a device and accepting the new host key would send its stored password to another
+/// host (R-100).
+pub(super) const API_KEY_REFUSED_ROOTS: [&str; 25] = [
+    "createApiKey",
+    "revokeApiKey",
+    "apiKeys",
+    "signInBrowser",
+    "logout",
+    "startSession",
+    "openFiles",
+    "shareSession",
+    "joinShare",
+    "openRecording",
+    "setSshCredential",
+    "clearSshCredential",
+    "setRdpCredential",
+    "clearRdpCredential",
+    "setVncCredential",
+    "clearVncCredential",
+    "enrolAgent",
+    "revokeAgentToken",
+    "acceptHostKey",
+    "acceptServerCertificate",
+    "acceptWebCertificate",
+    "updateDevice",
+    "deleteDevice",
+    "setRetention",
+    "deleteRecording",
+];
+
+/// The root selections a token of `kind` may make, in every operation type. A new kind of
+/// token must state its own rule here.
+const fn kind_roots(kind: TokenKind) -> Roots<'static> {
+    match kind {
+        TokenKind::Login | TokenKind::Browser => Roots::Any,
+        TokenKind::ApiKey => Roots::AllBut(&API_KEY_REFUSED_ROOTS),
+    }
+}
+
+/// Whether a token of `kind` may select the root field `name`: the rule of [`kind_roots`], for
+/// a resolver that checks it again behind the backstop.
+pub(super) fn kind_may_select(kind: TokenKind, name: &str) -> bool {
+    kind_roots(kind).admits(name)
 }
 
 /// The mutations a signed-out client may run, one per operation (API-003, D-4, A-7).
@@ -201,11 +259,29 @@ enum Roots<'a> {
     Any,
     /// Only these fields; a fragment is refused rather than followed.
     Only(&'a [&'a str]),
+    /// Any field but these; a fragment is refused rather than followed, so it cannot hide one.
+    AllBut(&'a [&'a str]),
 }
 
-/// Whether every operation in the document selects at its root only `__typename` and the
-/// allowed fields: `queries` for query and subscription operations, `mutations` for mutations.
-fn roots_only(document: &ExecutableDocument, queries: Roots<'_>, mutations: Roots<'_>) -> bool {
+impl Roots<'_> {
+    /// Whether a root field of this name may be selected.
+    fn admits(self, name: &str) -> bool {
+        match self {
+            Self::Any => true,
+            Self::Only(names) => name == "__typename" || names.contains(&name),
+            Self::AllBut(names) => !names.contains(&name),
+        }
+    }
+
+    /// Whether a root fragment may be selected: only where any field may be.
+    const fn admits_fragment(self) -> bool {
+        matches!(self, Self::Any)
+    }
+}
+
+/// Whether every operation in the document selects at its root only what its rule admits:
+/// `queries` for query and subscription operations, `mutations` for mutations.
+fn roots_admitted(document: &ExecutableDocument, queries: Roots<'_>, mutations: Roots<'_>) -> bool {
     operations(document).all(|operation| {
         let roots = if operation.ty == OperationType::Mutation {
             mutations
@@ -217,14 +293,10 @@ fn roots_only(document: &ExecutableDocument, queries: Roots<'_>, mutations: Root
             .node
             .items
             .iter()
-            .all(|selection| match (&selection.node, roots) {
-                (_, Roots::Any) => true,
-                (Selection::Field(field), Roots::Only(names)) => {
-                    let name = field.node.name.node.as_str();
-                    name == "__typename" || names.contains(&name)
-                }
-                (Selection::FragmentSpread(_) | Selection::InlineFragment(_), Roots::Only(_)) => {
-                    false
+            .all(|selection| match &selection.node {
+                Selection::Field(field) => roots.admits(field.node.name.node.as_str()),
+                Selection::FragmentSpread(_) | Selection::InlineFragment(_) => {
+                    roots.admits_fragment()
                 }
             })
     })
