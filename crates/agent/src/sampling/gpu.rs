@@ -226,6 +226,18 @@ mod tests {
     }
 
     #[test]
+    fn met_007_an_apple_gpu_without_a_memory_figure_gives_use_only() {
+        let apple = gpu(GpuVendor::Apple, 0);
+        assert!(apple.busy_percent.is_some());
+        assert!(apple.shared_memory_bytes.is_none());
+        let kinds: Vec<&str> = values(&[apple])
+            .iter()
+            .map(|(key, _)| key.kind().as_str())
+            .collect();
+        assert_eq!(kinds, ["gpu_percent"]);
+    }
+
+    #[test]
     fn met_007_vram_gives_bytes_and_a_share() {
         let mut card = gpu(GpuVendor::Nvidia, 0);
         card.vram = Some(Vram {
