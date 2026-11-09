@@ -14,6 +14,8 @@ const nodes: TailnetNode[] = [
   { name: 'mac', identity: { user: 'operator' }, ip: '100.64.0.2' },
   { name: 'laptop', identity: { user: 'operator' }, ip: '100.64.0.11' },
   { name: 'hub', identity: { tags: ['tag:hub'] }, ip: '100.64.0.1' },
+  // An agent-only device (MET-020): tagged, not a personal node.
+  { name: 'agent', identity: { tags: ['tag:agent'] }, ip: '100.64.0.30' },
   { name: 'router-home', identity: { tags: ['tag:router', 'tag:site-home'] }, ip: '100.64.0.20', routes: [SITES.home] },
   { name: 'router-office2', identity: { tags: ['tag:router', 'tag:site-office2'] }, ip: '100.64.0.21', routes: [SITES.office2] },
 ];
@@ -39,6 +41,14 @@ const ROUTER_ROWS = [
   // The office 2 router (tag:router, tag:site-office2).
   { src: 'tag:site-office2', proto: 'tcp', accept: ['10.30.0.5:22'], deny: ['10.10.0.5:22', '10.20.0.5:22', 'operator@:22', 'tag:hub:443'] },
   { src: '10.30.0.5', deny: ['operator@:22', 'tag:hub:443', '10.10.0.5:22'] },
+];
+
+/** Rows for the agent tag. Headscale refuses the policy while no node carries tag:agent, so they move into the policy's tests block once one is enrolled. */
+const AGENT_ROWS = [
+  { src: 'tag:agent', proto: 'tcp', accept: ['tag:hub:443'], deny: ['tag:hub:22', 'tag:hub:80', 'tag:hub:5432', '10.10.0.5:22', '10.20.0.5:443', '10.30.0.5:3389', '100.64.0.2:22', '100.64.0.3:5900', 'operator@:443'] },
+  { src: 'tag:agent', proto: 'udp', deny: ['tag:hub:443', 'tag:hub:53'] },
+  { src: 'tag:hub', proto: 'tcp', deny: ['tag:agent:22', 'tag:agent:443'] },
+  { src: 'operator@', proto: 'tcp', deny: ['tag:agent:22', 'tag:agent:443'] },
 ];
 
 describe('policy tests block', () => {
@@ -80,6 +90,47 @@ describe('policy tests block', () => {
 
   test('vpn_004 a test row whose source matches no node fails instead of passing vacuously', () => {
     expect(runPolicyTests(withTests([{ src: 'tag:site-office1', deny: ['operator@:22'] }]), nodes)[0]?.reason).toBe('source matches no node');
+  });
+});
+
+describe('agent devices (MET-020, R-084)', () => {
+  const more: TailnetNode = { name: 'agent2', identity: { tags: ['tag:agent'] }, ip: '100.64.0.31' };
+  const everyone = [...nodes, more];
+  const probe = (from: From, to: To, port: number, proto: string): boolean => allows(policy, everyone, { from, to, port, proto });
+
+  test('met_020 every agent-tag row passes in the evaluator', () => {
+    expect(runPolicyTests(withTests(AGENT_ROWS), nodes)).toEqual([]);
+  });
+
+  test('met_020 an agent reaches tcp 443 of the hub', () => {
+    expect(probe({ node: 'agent' }, { node: 'hub' }, 443, 'tcp')).toBe(true);
+    expect(probe({ node: 'agent2' }, { node: 'hub' }, 443, 'tcp')).toBe(true);
+  });
+
+  test('met_020 an agent is refused every other hub port and protocol', () => {
+    for (const port of [22, 80, 5432, 8080, 5900]) expect(probe({ node: 'agent' }, { node: 'hub' }, port, 'tcp')).toBe(false);
+    for (const proto of ['udp', 'icmp']) expect(probe({ node: 'agent' }, { node: 'hub' }, 443, proto)).toBe(false);
+  });
+
+  test('met_020 an agent reaches no site, device, client, router or other agent', () => {
+    for (const port of [22, 443, 3389, 5900]) {
+      for (const address of ['10.10.0.5', '10.20.0.5', '10.30.0.5']) expect(probe({ node: 'agent' }, { address }, port, 'tcp')).toBe(false);
+      for (const node of ['mac', 'laptop', 'router-home', 'router-office2', 'agent2']) expect(probe({ node: 'agent' }, { node }, port, 'tcp')).toBe(false);
+    }
+  });
+
+  test('met_020 nothing reaches an agent device: the agent listens on no port', () => {
+    for (const from of ['hub', 'mac', 'laptop', 'router-home', 'agent2']) {
+      for (const port of [22, 443, 5900]) {
+        for (const proto of ['tcp', 'udp', 'icmp']) expect(probe({ node: from }, { node: 'agent' }, port, proto)).toBe(false);
+      }
+    }
+    expect(probe({ lan: '10.10.0.5' }, { node: 'agent' }, 443, 'tcp')).toBe(false);
+  });
+
+  test('met_020 exactly one grant names tag:agent, and only as a source to the hub on tcp 443', () => {
+    const named = (raw.grants as { src: string[]; dst: string[]; ip: string[] }[]).filter((entry) => [...entry.src, ...entry.dst].includes('tag:agent'));
+    expect(named).toEqual([{ src: ['tag:agent'], dst: ['tag:hub'], ip: ['tcp:443'] }]);
   });
 });
 
@@ -252,7 +303,7 @@ describe('evaluator rules', () => {
 
 describe('policy structure', () => {
   const grants = raw.grants as { src: string[]; dst: string[]; ip: string[] }[];
-  const rows = [...(raw.tests as unknown[]), ...ROUTER_ROWS] as { src: string; accept?: string[]; deny?: string[] }[];
+  const rows = [...(raw.tests as unknown[]), ...ROUTER_ROWS, ...AGENT_ROWS] as { src: string; accept?: string[]; deny?: string[] }[];
   const tagOwners = raw.tagOwners as Record<string, string[]>;
   const hosts = raw.hosts as Record<string, string>;
   const selectors = [
@@ -271,7 +322,7 @@ describe('policy structure', () => {
 
   test('vpn_004 every tag used is in tagOwners', () => {
     expect(selectors.filter((selector) => selector.startsWith('tag:') && !(selector in tagOwners))).toEqual([]);
-    expect(Object.keys(tagOwners).sort()).toEqual(['tag:hub', 'tag:router', 'tag:site-home', 'tag:site-office1', 'tag:site-office2']);
+    expect(Object.keys(tagOwners).sort()).toEqual(['tag:agent', 'tag:hub', 'tag:router', 'tag:site-home', 'tag:site-office1', 'tag:site-office2']);
   });
 
   test('vpn_003 every tag owner list is empty, so no node can claim a tag when it registers', () => {

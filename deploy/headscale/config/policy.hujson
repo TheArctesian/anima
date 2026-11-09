@@ -10,6 +10,8 @@
   // tagged pre-auth key or `headscale nodes tag`.
   "tagOwners": {
     "tag:hub": [],
+    // An agent-only device (anima-agent, MET-020, R-084): one with no operator in front of it.
+    "tag:agent": [],
     // Every subnet router carries tag:router and the tag of its own site.
     "tag:router": [],
     "tag:site-home": [],
@@ -44,6 +46,9 @@
     // one grant like this, from tag:hub only.
     {"src": ["tag:hub"], "dst": ["device-stephens-mac"], "ip": ["tcp:22", "tcp:5900"]},
     {"src": ["tag:hub"], "dst": ["device-pop-os"], "ip": ["tcp:22", "tcp:5900"]},
+    // An agent device dials the hub's HTTPS port and nothing else (MET-020, R-084). No
+    // grant names tag:agent as a destination: the agent listens on no port.
+    {"src": ["tag:agent"], "dst": ["tag:hub"], "ip": ["tcp:443"]},
     // No other grant targets a client address: devices, routers and the hub cannot start
     // a connection to any other client; replies to permitted connections still flow.
   ],
