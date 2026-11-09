@@ -2,6 +2,7 @@
   import ApiKeysSection from '$lib/api-keys/ApiKeysSection.svelte';
   import DefaultsSection from '$lib/checks/defaults/DefaultsSection.svelte';
   import SignOutRow from '$lib/access/SignOutRow.svelte';
+  import HubRows from '$lib/hub-address/HubRows.svelte';
   import NotificationsSection from '$lib/notifications/NotificationsSection.svelte';
   import { capabilities } from '$lib/platform/platform';
   import MotionRow from '$lib/theme/MotionRow.svelte';
@@ -11,7 +12,8 @@
   import DesktopRows from '$lib/updates/DesktopRows.svelte';
 
   // The desktop rows decide each row themselves; the page only leaves out the heading when none can show (UPD-006, LOG-008).
-  const { updates, processLog } = capabilities();
+  // The Hub section is desktop only: a browser talks only to the hub that served it (CLI-002, D-5).
+  const { updates, processLog, keyStore } = capabilities();
 </script>
 
 <h1>Settings</h1>
@@ -21,6 +23,13 @@
   <h2 id="settings-account">Account</h2>
   <SignOutRow />
 </section>
+
+{#if keyStore}
+  <section aria-labelledby="settings-hub">
+    <h2 id="settings-hub">Hub</h2>
+    <HubRows />
+  </section>
+{/if}
 
 <section aria-labelledby="settings-appearance">
   <h2 id="settings-appearance">Appearance</h2>
