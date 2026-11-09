@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-builder-signature-verify"
+description = "Enables the builder_signature_verify command without any pre-configured scope."
+commands.allow = ["builder_signature_verify"]
+
+[[permission]]
+identifier = "deny-builder-signature-verify"
+description = "Denies the builder_signature_verify command without any pre-configured scope."
+commands.deny = ["builder_signature_verify"]

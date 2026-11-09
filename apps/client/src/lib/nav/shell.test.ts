@@ -13,7 +13,14 @@ vi.mock('motion', async (importOriginal) => ({
 }));
 
 const keyStore = vi.hoisted(() => ({ read: vi.fn(), available: vi.fn(() => false) }));
-vi.mock('$lib/desktop/token', () => ({ readAccessToken: keyStore.read, keyStoreAvailable: keyStore.available }));
+vi.mock('$lib/desktop/token', () => ({
+  readAccessToken: keyStore.read,
+  keyStoreAvailable: keyStore.available,
+  // The browser holds no builder token (BLD-026): the layout's builder never starts here.
+  readBuilderToken: () => Promise.resolve(null),
+  writeBuilderToken: () => Promise.reject(new Error('not desktop')),
+  clearBuilderToken: () => Promise.reject(new Error('not desktop')),
+}));
 
 const router = vi.hoisted(() => ({ goto: vi.fn(() => Promise.resolve()) }));
 vi.mock('$app/navigation', () => router);
