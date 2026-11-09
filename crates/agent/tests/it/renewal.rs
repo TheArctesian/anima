@@ -26,7 +26,7 @@ fn feed(rig: &mut crate::kit::Rig, first: i64, count: i64) {
 async fn met_013_inside_the_last_30_days_the_agent_renews_stores_the_new_token_and_uses_it() {
     let hub = FakeHub::start().await;
     let mut rig = rig(&hub, 1, TimeDelta::days(10));
-    hub.queue_renew(renewed(2, TimeDelta::days(375)));
+    hub.queue_renew(renewed(2, TimeDelta::days(365)));
     feed(&mut rig, 1, 2);
     rig.pusher.push_due(at(30)).await;
     let renewals = hub.seen("renew");
@@ -44,7 +44,7 @@ async fn met_013_inside_the_last_30_days_the_agent_renews_stores_the_new_token_a
     assert_eq!(stored.token.expose(), token(2).expose());
     assert_eq!(
         stored.expires_at,
-        at(0) + TimeDelta::days(375),
+        at(0) + TimeDelta::days(365),
         "the expiry is stored with it"
     );
     assert_eq!(
@@ -89,7 +89,7 @@ async fn k8_5_a_token_that_cannot_be_stored_is_not_used_and_the_current_one_stay
     use std::os::unix::fs::PermissionsExt as _;
     let hub = FakeHub::start().await;
     let mut rig = rig(&hub, 1, TimeDelta::days(10));
-    hub.queue_renew(renewed(2, TimeDelta::days(375)));
+    hub.queue_renew(renewed(2, TimeDelta::days(365)));
     // A folder nobody can write to: the store cannot take the new token.
     std::fs::set_permissions(rig.home.dir(), std::fs::Permissions::from_mode(0o500))
         .expect("chmod");
@@ -110,4 +110,22 @@ async fn k8_5_a_token_that_cannot_be_stored_is_not_used_and_the_current_one_stay
         .expect("reads")
         .expect("a token");
     assert_eq!(stored.token.expose(), token(1).expose());
+}
+
+#[tokio::test]
+async fn met_013_a_renewed_far_future_expiry_is_capped_and_the_hub_stays_with_the_token() {
+    let hub = FakeHub::start().await;
+    let mut rig = rig(&hub, 1, TimeDelta::days(1));
+    let far = format!(
+        r#"{{"token":"{}","expiresAt":"9999-12-31T23:59:59Z"}}"#,
+        token(9).expose()
+    );
+    hub.queue_renew(Reply::json(200, &far));
+    rig.pusher.push_due(at(0)).await;
+    let stored = TokenStore::open(&rig.home)
+        .load()
+        .expect("reads")
+        .expect("a token");
+    assert_eq!(stored.token.expose(), token(9).expose());
+    assert_eq!(stored.expires_at, at(0) + TimeDelta::days(366));
 }

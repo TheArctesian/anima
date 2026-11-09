@@ -48,11 +48,12 @@ pub struct Rig {
 
 pub fn rig(hub: &FakeHub, seed: u8, expires_in: TimeDelta) -> Rig {
     let dir = tempfile::tempdir().expect("a folder");
-    let home = Home::at(dir.path().to_path_buf());
+    let home = Home::at(dir.path().join("agent"));
     let store = TokenStore::open(&home);
     let credential = Credential {
         token: token(seed),
         expires_at: at(0) + expires_in,
+        hub: None,
     };
     store.save(&credential).expect("stored");
     let client = HubClient::new(hub.url.clone()).expect("a client");

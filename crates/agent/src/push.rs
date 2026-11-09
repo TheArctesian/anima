@@ -9,7 +9,7 @@ pub mod renewal;
 use std::time::Duration;
 
 use agent_core::points::{BATCH_POINTS, Backlog, Point};
-use agent_core::wire::{Batch, BatchGpu, RefusalCode};
+use agent_core::wire::{Batch, BatchGpu, RefusalCode, Renewed};
 use chrono::{DateTime, TimeDelta, Utc};
 use uuid::Uuid;
 
@@ -189,14 +189,16 @@ impl Pusher {
         }
         self.renewal_tried = Some(now);
         match self.hub.renew(&self.credential.token).await {
-            Answer::Accepted(renewed) => self.keep_renewed(Credential::from(renewed)),
+            Answer::Accepted(renewed) => self.keep_renewed(renewed, now),
             Answer::Refused(code) => report::renewal_refused(code),
             Answer::Failed(cause) => report::renewal_failed(cause),
         }
     }
 
     /// Stores the renewed token and only then uses it; on a failure the current one stays.
-    fn keep_renewed(&mut self, next: Credential) {
+    fn keep_renewed(&mut self, renewed: Renewed, now: DateTime<Utc>) {
+        let hub = self.credential.hub.clone();
+        let next = Credential::received(renewed.token, renewed.expires_at, hub, now);
         match self.store.save(&next) {
             Ok(()) => {
                 self.credential = next;

@@ -12,6 +12,9 @@ use tokio::time::timeout;
 /// The most output kept from one command.
 const OUTPUT_LIMIT: u64 = 1024 * 1024;
 
+/// The only search path a command gets: the agent's own environment is not passed on.
+const PATH: &str = "/usr/sbin:/usr/bin:/sbin:/bin";
+
 /// How long a finished command may take to report its exit status.
 const EXIT_GRACE: Duration = Duration::from_secs(1);
 
@@ -41,7 +44,8 @@ pub enum CommandError {
 
 impl FixedCommand {
     /// Runs the command and returns what it printed (at most 1 MiB). It gets no input and its
-    /// error output is thrown away; `LC_ALL=C` fixes the number format its parser expects.
+    /// error output is thrown away; it gets a fixed `PATH` and `LC_ALL=C` (the number format its parser
+    /// expects) and nothing else from the environment.
     ///
     /// # Errors
     /// [`CommandError`] when it cannot start, runs past its limit (unless
@@ -50,6 +54,8 @@ impl FixedCommand {
         let program = self.program;
         let mut child = Command::new(program)
             .args(self.args)
+            .env_clear()
+            .env("PATH", PATH)
             .env("LC_ALL", "C")
             .stdin(Stdio::null())
             .stdout(Stdio::piped())

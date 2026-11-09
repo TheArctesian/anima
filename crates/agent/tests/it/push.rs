@@ -149,6 +149,7 @@ async fn k8_6_a_changed_token_store_ends_the_stop_at_once() {
     let fresh = Credential {
         token: token(9),
         expires_at: at(0) + year(),
+        hub: None,
     };
     TokenStore::open(&rig.home).save(&fresh).expect("stored");
     rig.pusher.push_due(at(40)).await;
@@ -192,10 +193,11 @@ async fn k8_7_a_network_error_keeps_the_points_and_backs_off() {
         address
     };
     let dir = tempfile::tempdir().expect("a folder");
-    let home = anima_agent::config::home::Home::at(dir.path().to_path_buf());
+    let home = anima_agent::config::home::Home::at(dir.path().join("agent"));
     let credential = Credential {
         token: token(1),
         expires_at: at(0) + year(),
+        hub: None,
     };
     let client = anima_agent::hub::HubClient::new(format!("http://{dead}").parse().expect("url"))
         .expect("client");
@@ -261,4 +263,114 @@ async fn met_014_a_point_older_than_59_minutes_is_dropped_before_a_send() {
     rig.pusher.push_due(at(36_000)).await;
     let last = hub.seen("push").pop().expect("a push");
     assert_eq!(pushed_times(&last.body), [36_000]);
+}
+
+fn gpu_list() -> Vec<agent_core::wire::BatchGpu> {
+    vec![agent_core::wire::BatchGpu {
+        index: 0,
+        name: "RTX A5000".to_owned(),
+        vendor: agent_core::wire::GpuVendor::Nvidia,
+        has_vram: true,
+    }]
+}
+
+fn gpus_of(hub: &FakeHub) -> Vec<Option<serde_json::Value>> {
+    hub.seen("push")
+        .iter()
+        .map(|seen| seen.body.get("gpus").cloned())
+        .collect()
+}
+
+fn expected_gpus() -> serde_json::Value {
+    serde_json::json!([{ "index": 0, "name": "RTX A5000", "vendor": "nvidia", "hasVram": true }])
+}
+
+#[tokio::test]
+async fn k8_4_the_gpu_list_goes_in_the_first_batch_after_a_discovery_and_not_in_the_next() {
+    let hub = FakeHub::start().await;
+    let mut rig = rig(&hub, 1, year());
+    rig.pusher.accept(Event::Gpus(gpu_list()));
+    feed(&mut rig, 1, 2);
+    rig.pusher.push_due(at(30)).await;
+    feed(&mut rig, 3, 2);
+    rig.pusher.push_due(at(50)).await;
+    assert_eq!(
+        gpus_of(&hub),
+        [Some(expected_gpus()), None],
+        "cleared after the 204"
+    );
+}
+
+#[tokio::test]
+async fn k8_4_a_discovery_that_found_no_gpu_sends_an_empty_list_once() {
+    let hub = FakeHub::start().await;
+    let mut rig = rig(&hub, 1, year());
+    rig.pusher.accept(Event::Gpus(Vec::new()));
+    feed(&mut rig, 1, 1);
+    rig.pusher.push_due(at(20)).await;
+    feed(&mut rig, 2, 1);
+    rig.pusher.push_due(at(30)).await;
+    assert_eq!(gpus_of(&hub), [Some(serde_json::json!([])), None]);
+}
+
+#[tokio::test]
+async fn k8_4_the_gpu_list_is_kept_when_the_hub_drops_the_batch() {
+    for code in [RefusalCode::Malformed, RefusalCode::OutOfRange] {
+        let hub = FakeHub::start().await;
+        let mut rig = rig(&hub, 1, year());
+        hub.queue_push([Reply::refuse(code)]);
+        rig.pusher.accept(Event::Gpus(gpu_list()));
+        feed(&mut rig, 1, 2);
+        rig.pusher.push_due(at(30)).await;
+        feed(&mut rig, 3, 1);
+        rig.pusher.push_due(at(40)).await;
+        assert_eq!(
+            gpus_of(&hub),
+            [Some(expected_gpus()), Some(expected_gpus())],
+            "{code:?}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn k8_4_the_gpu_list_is_kept_through_a_5xx_and_a_503() {
+    let hub = FakeHub::start().await;
+    let mut rig = rig(&hub, 1, year());
+    hub.queue_push([
+        Reply::json(500, ""),
+        Reply::refuse(RefusalCode::Unavailable),
+    ]);
+    rig.pusher.accept(Event::Gpus(gpu_list()));
+    feed(&mut rig, 1, 2);
+    for round in 0..3 {
+        rig.pusher.push_due(at(30 + round * 10)).await;
+    }
+    assert_eq!(
+        gpus_of(&hub),
+        [
+            Some(expected_gpus()),
+            Some(expected_gpus()),
+            Some(expected_gpus())
+        ]
+    );
+    rig.pusher.push_due(at(70)).await;
+    assert_eq!(
+        hub.seen("push").len(),
+        3,
+        "the third try was accepted and nothing waits"
+    );
+}
+
+#[tokio::test]
+async fn k8_4_the_gpu_list_is_sent_again_with_a_smaller_batch_after_too_large() {
+    let hub = FakeHub::start().await;
+    let mut rig = rig(&hub, 1, year());
+    hub.queue_push([Reply::refuse(RefusalCode::TooLarge)]);
+    rig.pusher.accept(Event::Gpus(gpu_list()));
+    feed(&mut rig, 1, 4);
+    rig.pusher.push_due(at(50)).await;
+    assert_eq!(
+        gpus_of(&hub),
+        [Some(expected_gpus()), Some(expected_gpus()), None]
+    );
 }

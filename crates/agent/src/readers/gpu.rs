@@ -112,24 +112,27 @@ async fn output(command: &FixedCommand) -> Option<Vec<u8>> {
     }
 }
 
-/// One reading per AMD card under `drm` that has a `gpu_busy_percent` file, in card order.
-async fn amd_cards(drm: &Path) -> Vec<GpuReading> {
+/// One reading per AMD card under `drm` that has a `gpu_busy_percent` file. A card is numbered
+/// by its `/sys/class/drm/cardN` number, not its place in the list, so its index does not move
+/// when another card appears or goes.
+pub async fn amd_cards(drm: &Path) -> Vec<GpuReading> {
     let Ok(mut entries) = tokio::fs::read_dir(drm).await else {
         return Vec::new();
     };
     let mut cards = Vec::new();
     while let Ok(Some(entry)) = entries.next_entry().await {
         let name = entry.file_name().to_string_lossy().into_owned();
-        let is_card = name
+        let number = name
             .strip_prefix("card")
-            .is_some_and(|rest| rest.bytes().all(|b| b.is_ascii_digit()));
-        if is_card {
-            cards.push((name, entry.path().join("device")));
+            .filter(|rest| !rest.is_empty() && rest.bytes().all(|b| b.is_ascii_digit()))
+            .and_then(|rest| rest.parse::<u32>().ok());
+        if let Some(number) = number {
+            cards.push((number, entry.path().join("device")));
         }
     }
     cards.sort();
     let mut found = Vec::new();
-    for (_, device) in cards {
+    for (index, device) in cards {
         let vendor = tokio::fs::read_to_string(device.join("vendor"))
             .await
             .unwrap_or_default();
@@ -145,7 +148,6 @@ async fn amd_cards(drm: &Path) -> Vec<GpuReading> {
         let name = tokio::fs::read_to_string(device.join("product_name"))
             .await
             .unwrap_or_default();
-        let index = u32::try_from(found.len()).unwrap_or(u32::MAX);
         let files = amd::CardFiles {
             busy_percent: &busy,
             vram_used: &used,

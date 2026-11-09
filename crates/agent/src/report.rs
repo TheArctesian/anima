@@ -64,3 +64,11 @@ pub fn running(device: uuid::Uuid) {
 pub fn stopping() {
     tracing::info!("the agent is stopping");
 }
+
+pub fn sampling_panicked() {
+    tracing::error!("sampling stopped: its task panicked");
+}
+
+pub fn sampling_stopped() {
+    tracing::error!("sampling stopped before the agent was told to stop");
+}

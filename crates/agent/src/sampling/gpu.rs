@@ -4,9 +4,55 @@
 //! [`Placement`] gives each vendor a base, fixed at discovery so that a GPU keeps its index
 //! when another is briefly unreadable.
 
+use std::time::Duration;
+
 use agent_core::points::{Kind, MAX_GPU_INDEX, SeriesKey};
 use agent_core::readings::{GpuReading, GpuVendor, Vram};
 use agent_core::wire::{BatchGpu, GpuVendor as WireVendor};
+
+use crate::readers::gpu::Sources;
+
+/// The time to the next discovery when the GPUs are as they were (MET-006).
+pub const DISCOVER_EVERY: Duration = Duration::from_hours(24);
+
+/// The time to the next discovery after one that found fewer GPUs than before, or none the
+/// first time: a driver may still be loading.
+pub const DISCOVER_SOON: Duration = Duration::from_mins(5);
+
+/// What one discovery found, and what follows from it.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Discovery {
+    /// The sources to read at each sampling.
+    pub sources: Sources,
+    pub placement: Placement,
+    /// The `gpus` member of the next batch: the whole set, `[]` when there is none (R-098 b).
+    pub announce: Vec<BatchGpu>,
+    count: usize,
+}
+
+impl Discovery {
+    /// The discovery of `found`, each vendor numbering its GPUs from 0.
+    #[must_use]
+    pub fn new(found: Vec<GpuReading>) -> Self {
+        let sources = Sources::seen(&found);
+        let placement = Placement::from_discovery(&found);
+        let placed = placement.place_all(found);
+        Self {
+            sources,
+            placement,
+            announce: announce(&placed),
+            count: placed.len(),
+        }
+    }
+
+    /// How long to wait before discovering again: soon after a discovery that lost GPUs (or
+    /// found none the first time), else a day.
+    #[must_use]
+    pub fn next_after(&self, previous: Option<&Self>) -> Duration {
+        let lost = previous.map_or(self.count == 0, |earlier| self.count < earlier.count);
+        if lost { DISCOVER_SOON } else { DISCOVER_EVERY }
+    }
+}
 
 /// Each vendor's first index, in the order NVIDIA, AMD, Intel, Apple.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -40,6 +86,15 @@ impl Placement {
             next = next.saturating_add(count);
         }
         Self { bases }
+    }
+
+    /// The readings that have an index in the batch's index space (0 to 63), placed.
+    #[must_use]
+    pub fn place_all(&self, readings: Vec<GpuReading>) -> Vec<GpuReading> {
+        readings
+            .into_iter()
+            .filter_map(|reading| self.place(reading))
+            .collect()
     }
 
     /// `reading` with its index in the batch's index space; `None` past index 63.
@@ -176,5 +231,52 @@ mod tests {
             .find(|(key, _)| key.kind() == Kind::VramPercent)
             .map(|(_, value)| *value);
         assert_eq!(share, Some(25.0));
+    }
+
+    #[test]
+    fn met_006_a_discovery_that_finds_nothing_announces_an_empty_list() {
+        let none = Discovery::new(Vec::new());
+        assert_eq!(none.announce, []);
+        assert_eq!(none.sources, Sources::default());
+    }
+
+    #[test]
+    fn met_006_a_discovery_announces_every_gpu_and_names_the_sources_to_keep() {
+        let found = vec![gpu(GpuVendor::Nvidia, 0), gpu(GpuVendor::Intel, 0)];
+        let found = Discovery::new(found);
+        let indexes: Vec<u8> = found.announce.iter().map(|gpu| gpu.index).collect();
+        assert_eq!(indexes, [0, 1]);
+        assert!(found.sources.nvidia && found.sources.intel);
+        assert!(!found.sources.amd && !found.sources.apple);
+    }
+
+    #[test]
+    fn met_006_discovery_comes_soon_after_losing_gpus_and_daily_once_stable() {
+        let two = Discovery::new(vec![gpu(GpuVendor::Nvidia, 0), gpu(GpuVendor::Nvidia, 1)]);
+        let one = Discovery::new(vec![gpu(GpuVendor::Nvidia, 0)]);
+        let none = Discovery::new(Vec::new());
+        assert_eq!(
+            two.next_after(None),
+            DISCOVER_EVERY,
+            "the first finding is trusted"
+        );
+        assert_eq!(
+            one.next_after(Some(&two)),
+            DISCOVER_SOON,
+            "fewer than before"
+        );
+        assert_eq!(one.next_after(Some(&one)), DISCOVER_EVERY, "stable again");
+        assert_eq!(none.next_after(None), DISCOVER_SOON, "none the first time");
+        assert_eq!(none.next_after(Some(&two)), DISCOVER_SOON, "all gone");
+        assert_eq!(
+            none.next_after(Some(&none)),
+            DISCOVER_EVERY,
+            "still none: stable"
+        );
+        assert_eq!(
+            two.next_after(Some(&one)),
+            DISCOVER_EVERY,
+            "more than before"
+        );
     }
 }

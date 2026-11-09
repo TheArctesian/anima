@@ -20,7 +20,7 @@ const fn fixed(program: &'static str, args: &'static [&'static str], seconds: u6
 }
 
 const SYSCTL: FixedCommand = fixed(
-    "sysctl",
+    "/usr/sbin/sysctl",
     &[
         "-n",
         "hw.memsize",
@@ -30,11 +30,11 @@ const SYSCTL: FixedCommand = fixed(
     ],
     1,
 );
-const VM_STAT: FixedCommand = fixed("vm_stat", &[], 1);
-const DF: FixedCommand = fixed("df", &["-P", "-k"], 2);
-const NETSTAT: FixedCommand = fixed("netstat", &["-ib", "-n"], 2);
+const VM_STAT: FixedCommand = fixed("/usr/bin/vm_stat", &[], 1);
+const DF: FixedCommand = fixed("/bin/df", &["-P", "-k"], 2);
+const NETSTAT: FixedCommand = fixed("/usr/sbin/netstat", &["-ib", "-n"], 2);
 /// Two samples a second apart: the first is the average since boot (see `macos::cpu`).
-const TOP: FixedCommand = fixed("top", &["-l", "2", "-n", "0", "-s", "1"], 5);
+const TOP: FixedCommand = fixed("/usr/bin/top", &["-l", "2", "-n", "0", "-s", "1"], 5);
 
 pub async fn reading(now: DateTime<Utc>) -> Reading {
     let (sysctl, vm_stat, df_out, netstat, top) = tokio::join!(
