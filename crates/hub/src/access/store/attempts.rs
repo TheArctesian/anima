@@ -89,6 +89,26 @@ pub(in crate::access) async fn failures(
     .await
 }
 
+/// Times of the checked failures from `client` in `(since, until]`, oldest first, for a caller
+/// that has no attempt of its own to leave out (`joinShare`, CR-16).
+pub(in crate::access) async fn failures_from(
+    db: impl PgExecutor<'_>,
+    client: IpAddr,
+    since: DateTime<Utc>,
+    until: DateTime<Utc>,
+) -> Result<Vec<DateTime<Utc>>, sqlx::Error> {
+    sqlx::query_scalar(
+        "select at from access.login_attempts \
+         where client_addr = $1 and not ok and not refused and at > $2 and at <= $3 \
+         order by at",
+    )
+    .bind(client)
+    .bind(since)
+    .bind(until)
+    .fetch_all(db)
+    .await
+}
+
 /// The attempt whose throttle state is read.
 pub(in crate::access) struct AttemptKey {
     pub id: Uuid,
