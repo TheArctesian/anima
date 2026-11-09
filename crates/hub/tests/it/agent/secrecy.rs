@@ -1,6 +1,6 @@
 //! MET-012, MET-013, LOG-007: the hub keeps only the SHA-256 of a code's or a token's random
 //! bytes, and no code or token reaches the process log, an event or an audit entry. The whole
-//! flow runs as the runtime role (K2 "Roles").
+//! flow, a push included, runs as the runtime role (K2 "Roles").
 
 use std::{
     io,
@@ -14,7 +14,10 @@ use serde_json::json;
 use sha2::{Digest as _, Sha256};
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
-use super::harness::{Agents, PVE_01};
+use super::{
+    batches::{cpu_batch, samples_of},
+    harness::{Agents, PVE_01, pushing_now},
+};
 
 /// The SHA-256 of the random bytes behind `secret` (its text after the prefix).
 fn hash_of(secret: &str, prefix: &str) -> Vec<u8> {
@@ -103,13 +106,23 @@ async fn log_007_the_process_log_of_the_whole_flow_holds_no_code_or_token(pool: 
     let _default = tracing::subscriber::set_default(subscriber);
     tracing::callsite::rebuild_interest_cache();
 
-    let agents = Agents::new(&pool).await;
+    let now = pushing_now(&pool).await;
+    let agents = Agents::at(&pool, now).await;
     let code = agents.code_for(PVE_01).await;
     let token = agents.enrolled(&code).await["token"]
         .as_str()
         .unwrap()
         .to_owned();
     assert_eq!(agents.enrol(&code).await.0, StatusCode::UNAUTHORIZED);
+    assert_eq!(
+        agents.push(&token, &cpu_batch(PVE_01, now, 5.0)).await.0,
+        StatusCode::NO_CONTENT
+    );
+    // A body that is not a batch, quoting the token: its parse error is never logged.
+    let quoted = json!({ "device": PVE_01, "series": token, "points": [] }).to_string();
+    agents
+        .push_raw(Some(&format!("Bearer {token}")), quoted, "100.64.0.11")
+        .await;
     let next = agents.renewed(&token).await;
     agents.renewed(&next).await;
     agents.renew(&token).await;
@@ -133,6 +146,10 @@ async fn log_007_the_process_log_of_the_whole_flow_holds_no_code_or_token(pool: 
     );
     assert!(
         logged.contains("/agent/v1/renew"),
+        "the capture saw the flow"
+    );
+    assert!(
+        logged.contains("/agent/v1/push"),
         "the capture saw the flow"
     );
     assert!(
@@ -172,8 +189,12 @@ async fn runtime_pool(pool: &PgPool) -> PgPool {
 )]
 async fn k2_roles_the_runtime_role_runs_the_whole_agent_flow(pool: PgPool) {
     let runtime = runtime_pool(&pool).await;
-    let agents = Agents::new(&runtime).await;
+    let now = pushing_now(&pool).await;
+    let agents = Agents::at(&runtime, now).await;
     let token = agents.token_for(PVE_01).await;
+    let pushed = agents.push(&token, &cpu_batch(PVE_01, now, 5.0)).await;
+    assert_eq!(pushed.0, StatusCode::NO_CONTENT, "{}", pushed.1);
+    assert_eq!(samples_of(&pool, PVE_01).await, 1);
     let next = agents.renewed(&token).await;
     agents.renewed(&next).await;
     let query = "mutation($id: ID!) { revokeAgentToken(deviceId: $id) { id } }";
