@@ -21,6 +21,8 @@ chrono.workspace = true
 # Plain `rustls-tls` (web PKI roots, no OpenSSL); no `cookies`, no `json`, no proxy support is
 # used: the client turns the proxy off (MET-020, K8 Section 1).
 reqwest.workspace = true
+# `enrol -` reads the code with echo off when stdin is a terminal.
+rpassword.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true

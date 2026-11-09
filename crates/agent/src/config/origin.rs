@@ -5,7 +5,8 @@ use reqwest::Url;
 /// The hub's public origin when the operator names none (K8 Section 1).
 pub const DEFAULT_HUB: &str = "https://hub.anima.ing";
 
-/// An `https` origin: scheme, host and optional port, with no user, path, query or fragment.
+/// An `https` origin: scheme and host on port 443 (MET-020), with no user, path, query or
+/// fragment.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Origin(Url);
 
@@ -15,8 +16,10 @@ pub enum OriginError {
     NotUrl,
     #[error("the hub origin must start with https://")]
     NotHttps,
-    #[error("the hub origin must be only scheme, host and port, like https://hub.anima.ing")]
+    #[error("the hub origin must be only scheme and host, like https://hub.anima.ing")]
     NotOrigin,
+    #[error("the hub origin must use port 443")]
+    Port,
 }
 
 impl Origin {
@@ -30,6 +33,7 @@ impl Origin {
             return Err(OriginError::NotHttps);
         }
         let bare = url.host_str().is_some()
+            && !text.contains('@')
             && url.username().is_empty()
             && url.password().is_none()
             && url.query().is_none()
@@ -37,6 +41,9 @@ impl Origin {
             && url.path() == "/";
         if !bare {
             return Err(OriginError::NotOrigin);
+        }
+        if url.port().is_some() {
+            return Err(OriginError::Port);
         }
         Ok(Self(url))
     }
@@ -98,8 +105,50 @@ mod tests {
     }
 
     #[test]
-    fn met_020_a_port_is_kept() {
-        let origin = Origin::parse("https://hub.example:8443/").expect("an origin");
-        assert_eq!(origin.as_text(), "https://hub.example:8443");
+    fn met_020_any_port_but_443_is_refused() {
+        for text in [
+            "https://hub.example:8443",
+            "https://hub.anima.ing:22",
+            "https://hub.anima.ing:0",
+        ] {
+            assert_eq!(Origin::parse(text), Err(OriginError::Port), "{text}");
+        }
+        let explicit = Origin::parse("https://hub.anima.ing:443").expect("443 is the default");
+        assert_eq!(explicit.as_text(), DEFAULT_HUB);
+    }
+
+    #[test]
+    fn met_020_a_user_or_password_in_the_origin_is_refused() {
+        for text in [
+            "https://user@hub.anima.ing",
+            "https://:pw@hub.anima.ing",
+            "https://hub.anima.ing@evil.example",
+            "https://:@hub.anima.ing",
+        ] {
+            assert_eq!(Origin::parse(text), Err(OriginError::NotOrigin), "{text}");
+        }
+    }
+
+    #[test]
+    fn met_020_backslash_and_odd_spellings_do_not_move_the_host() {
+        for text in [
+            "https://evil.example\\@hub.anima.ing",
+            "https://evil.example\\hub.anima.ing",
+            "https://hub.anima.ing/.",
+            "https://hub.anima.ing/%2e",
+            "https:hub.anima.ing",
+        ] {
+            let parsed = Origin::parse(text);
+            assert!(
+                parsed
+                    .as_ref()
+                    .ok()
+                    .is_none_or(|origin| origin.as_text() == DEFAULT_HUB),
+                "{text} -> {parsed:?}"
+            );
+        }
+        let upper =
+            Origin::parse("HTTPS://HUB.ANIMA.ING").expect("scheme and host fold to lower case");
+        assert_eq!(upper.as_text(), DEFAULT_HUB);
     }
 }

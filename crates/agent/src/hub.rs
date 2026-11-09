@@ -13,6 +13,7 @@ use agent_core::wire::{
     AgentToken, Batch, EnrolRequest, Enrolled, EnrolmentCode, RenewRequest, Renewed,
 };
 use reqwest::{Client, Url, redirect};
+use zeroize::Zeroizing;
 
 use answer::{Answer, Cause, answer};
 
@@ -31,7 +32,7 @@ pub struct HubError;
 struct Call<'a> {
     route: &'static str,
     bearer: Option<&'a AgentToken>,
-    body: Vec<u8>,
+    body: Zeroizing<Vec<u8>>,
     ok_status: u16,
 }
 
@@ -48,10 +49,18 @@ impl HubClient {
     /// # Errors
     /// [`HubError`] when the TLS roots cannot be set up.
     pub fn new(base: Url) -> Result<Self, HubError> {
+        Self::with_timeout(base, TIMEOUT)
+    }
+
+    /// As [`HubClient::new`] with another time limit, so a test need not wait 10 seconds.
+    ///
+    /// # Errors
+    /// [`HubError`] when the TLS roots cannot be set up.
+    pub fn with_timeout(base: Url, limit: Duration) -> Result<Self, HubError> {
         let http = Client::builder()
             .redirect(redirect::Policy::none())
             .no_proxy()
-            .timeout(TIMEOUT)
+            .timeout(limit)
             .build()
             .map_err(|_| HubError)?;
         Ok(Self { http, base })
@@ -98,7 +107,7 @@ impl HubClient {
             .http
             .post(url)
             .header("content-type", "application/json")
-            .body(call.body);
+            .body(call.body.to_vec());
         if let Some(token) = call.bearer {
             request = request.bearer_auth(token.expose());
         }
@@ -107,10 +116,15 @@ impl HubClient {
             Err(error) => return Answer::Failed(cause(&error)),
         };
         let status = response.status().as_u16();
-        let mut bytes = Vec::new();
+        // Room for the whole answer from the start, so the buffer never moves and is wiped on
+        // every path. (hyper's and rustls's own buffers are not wiped: a known remainder.)
+        let mut bytes = Zeroizing::new(Vec::with_capacity(ANSWER_LIMIT));
         while bytes.len() < ANSWER_LIMIT {
             match response.chunk().await {
-                Ok(Some(chunk)) => bytes.extend_from_slice(&chunk),
+                Ok(Some(chunk)) => {
+                    let room = ANSWER_LIMIT - bytes.len();
+                    bytes.extend_from_slice(&chunk[..chunk.len().min(room)]);
+                }
                 Ok(None) => break,
                 Err(error) => return Answer::Failed(cause(&error)),
             }
@@ -127,8 +141,8 @@ fn cause(error: &reqwest::Error) -> Cause {
     }
 }
 
-fn json(value: &impl serde::Serialize) -> Vec<u8> {
-    serde_json::to_vec(value).expect("a K8 request body serialises")
+fn json(value: &impl serde::Serialize) -> Zeroizing<Vec<u8>> {
+    Zeroizing::new(serde_json::to_vec(value).expect("a K8 request body serialises"))
 }
 
 fn read_json<T: serde::de::DeserializeOwned>(bytes: &[u8]) -> Option<T> {

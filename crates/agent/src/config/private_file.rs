@@ -1,7 +1,7 @@
 //! Files only the running user can read: created `0600` from the start in the folder they will
 //! live in, then renamed into place (MET-013, K8 Section 2).
 
-use std::fs::{self, File};
+use std::fs::File;
 use std::io::{self, Read as _, Write as _};
 use std::os::unix::fs::{MetadataExt as _, PermissionsExt as _};
 use std::path::Path;
@@ -10,6 +10,20 @@ use zeroize::Zeroizing;
 
 /// The only mode a private file has.
 const MODE: u32 = 0o600;
+
+/// Whether a private file with this `mode` and `owner` is not safe to trust when the agent runs
+/// as `running`: the mode must be exactly 0600 and the owner the running user.
+#[must_use]
+pub const fn exposed(mode: u32, owner: u32, running: u32) -> bool {
+    mode & 0o777 != MODE || owner != running
+}
+
+/// Whether a private folder with this `mode` and `owner` is not safe to trust: no access for
+/// group or others, and the running user as owner.
+#[must_use]
+pub const fn folder_exposed(mode: u32, owner: u32, running: u32) -> bool {
+    mode & 0o077 != 0 || owner != running
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum PrivateFileError {
@@ -48,7 +62,11 @@ pub fn read(path: &Path) -> Result<Option<Zeroizing<Vec<u8>>>, PrivateFileError>
         Err(error) => return Err(error.into()),
     };
     let metadata = file.metadata()?;
-    if metadata.permissions().mode() & 0o777 != MODE || metadata.uid() != running_user()? {
+    if exposed(
+        metadata.permissions().mode(),
+        metadata.uid(),
+        running_user()?,
+    ) {
         return Err(PrivateFileError::Exposed);
     }
     let mut bytes = Zeroizing::new(Vec::new());
@@ -56,7 +74,35 @@ pub fn read(path: &Path) -> Result<Option<Zeroizing<Vec<u8>>>, PrivateFileError>
     Ok(Some(bytes))
 }
 
-/// The user ID of this process: the owner of its `/proc/self` folder (Linux).
-fn running_user() -> io::Result<u32> {
-    Ok(fs::metadata("/proc/self")?.uid())
+/// The user ID of this process: the owner of a file it creates (an unnamed temporary file, so
+/// this works on Linux and macOS alike).
+///
+/// # Errors
+/// An I/O error when the temporary file cannot be made.
+pub fn running_user() -> io::Result<u32> {
+    Ok(tempfile::tempfile()?.metadata()?.uid())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn met_013_a_file_is_exposed_unless_it_is_0600_and_the_runner_s() {
+        assert!(!exposed(0o100_600, 1000, 1000));
+        assert!(exposed(0o100_600, 1001, 1000), "another owner");
+        assert!(exposed(0o100_644, 1000, 1000), "readable by others");
+        assert!(exposed(0o100_400, 1000, 1000), "not exactly 0600");
+        assert!(exposed(0o100_660, 1000, 1000));
+    }
+
+    #[test]
+    fn met_013_a_folder_is_exposed_when_group_or_others_have_any_access_or_it_is_not_the_runner_s()
+    {
+        assert!(!folder_exposed(0o040_700, 1000, 1000));
+        assert!(!folder_exposed(0o040_500, 1000, 1000));
+        assert!(folder_exposed(0o040_750, 1000, 1000));
+        assert!(folder_exposed(0o040_701, 1000, 1000));
+        assert!(folder_exposed(0o040_700, 0, 1000));
+    }
 }

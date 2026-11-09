@@ -13,6 +13,7 @@ fn credential(seed: u8, days: i64) -> Credential {
     Credential {
         token: token(seed),
         expires_at: at(0) + chrono::TimeDelta::days(days),
+        hub: None,
     }
 }
 
@@ -59,7 +60,7 @@ fn met_013_the_token_file_is_0600_owned_by_the_user_and_holds_the_expiry() {
 #[test]
 fn met_013_a_new_token_replaces_the_file_by_rename_and_leaves_no_temporary_file() {
     let dir = tempfile::tempdir().expect("a folder");
-    let home = Home::at(dir.path().to_path_buf());
+    let home = Home::at(dir.path().join("agent"));
     let store = TokenStore::open(&home);
     store.save(&credential(1, 365)).expect("stored");
     let first = fs::metadata(home.token_path()).expect("a file").ino();
@@ -69,7 +70,7 @@ fn met_013_a_new_token_replaces_the_file_by_rename_and_leaves_no_temporary_file(
         first, second,
         "a rename gives the file a new inode; a rewrite keeps it"
     );
-    assert_eq!(names(dir.path()), ["token"]);
+    assert_eq!(names(&dir.path().join("agent")), ["token"]);
     assert_eq!(
         fs::metadata(home.token_path())
             .expect("a file")
@@ -85,7 +86,7 @@ fn met_013_a_new_token_replaces_the_file_by_rename_and_leaves_no_temporary_file(
 #[test]
 fn met_013_a_token_file_others_can_read_is_refused() {
     let dir = tempfile::tempdir().expect("a folder");
-    let home = Home::at(dir.path().to_path_buf());
+    let home = Home::at(dir.path().join("agent"));
     let store = TokenStore::open(&home);
     store.save(&credential(1, 365)).expect("stored");
     fs::set_permissions(home.token_path(), fs::Permissions::from_mode(0o644)).expect("chmod");
@@ -98,7 +99,7 @@ fn met_013_a_token_file_others_can_read_is_refused() {
 #[test]
 fn met_013_a_store_with_no_token_is_empty_and_a_damaged_one_is_an_error() {
     let dir = tempfile::tempdir().expect("a folder");
-    let home = Home::at(dir.path().to_path_buf());
+    let home = Home::at(dir.path().join("agent"));
     let store = TokenStore::open(&home);
     assert!(store.load().expect("reads").is_none());
     store.save(&credential(1, 1)).expect("stored");

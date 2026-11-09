@@ -38,9 +38,7 @@ pub fn answer<T>(
         return read_ok(body).map_or(Answer::Failed(Cause::Unreadable), Answer::Accepted);
     }
     match serde_json::from_slice::<Refusal>(body) {
-        Ok(Refusal { error }) if error.status() == status && status != 503 => {
-            Answer::Refused(error)
-        }
+        Ok(Refusal { error }) if error.status() == status => Answer::Refused(error),
         _ => Answer::Failed(Cause::Status(status)),
     }
 }
@@ -62,6 +60,7 @@ mod tests {
             (403, "WRONG_DEVICE", RefusalCode::WrongDevice),
             (413, "TOO_LARGE", RefusalCode::TooLarge),
             (422, "OUT_OF_RANGE", RefusalCode::OutOfRange),
+            (503, "UNAVAILABLE", RefusalCode::Unavailable),
         ] {
             let body = format!(r#"{{"error":"{text}"}}"#);
             assert_eq!(push(status, &body), Answer::Refused(code), "{text}");
@@ -69,13 +68,14 @@ mod tests {
     }
 
     #[test]
-    fn k8_6_a_503_a_5xx_a_redirect_and_a_mismatched_code_are_failures() {
+    fn k8_6_a_5xx_a_redirect_a_stray_2xx_and_a_mismatched_code_are_failures() {
         let cases = [
-            (503, r#"{"error":"UNAVAILABLE"}"#),
             (500, ""),
             (302, ""),
             (400, r#"{"error":"TOKEN_REFUSED"}"#),
             (400, "not json"),
+            (200, ""),
+            (201, r#"{"error":"MALFORMED"}"#),
         ];
         for (status, body) in cases {
             assert_eq!(push(status, body), Answer::Failed(Cause::Status(status)));

@@ -1,6 +1,7 @@
 //! `anima-agent enrol`: trade a code for a token and keep both (MET-012, MET-013, K8 Section 3).
 
 use agent_core::wire::{EnrolmentCode, RefusalCode};
+use chrono::{DateTime, Utc};
 
 use crate::config::Config;
 use crate::config::home::{Home, HomeError};
@@ -33,6 +34,15 @@ pub struct Enrolment<'a> {
     pub origin: Origin,
     pub home: &'a Home,
     pub store: &'a TokenStore,
+    /// The time of the enrolment, which caps the expiry the hub names.
+    pub now: DateTime<Utc>,
+}
+
+/// A device name the agent will keep and print: 1 to 128 bytes, no control character (the K8
+/// label rule), since the hub's text goes to the operator's terminal.
+#[must_use]
+pub fn is_device_name(name: &str) -> bool {
+    (1..=128).contains(&name.len()) && !name.chars().any(char::is_control)
 }
 
 impl Enrolment<'_> {
@@ -47,13 +57,21 @@ impl Enrolment<'_> {
         let enrolled = match self.hub.enrol(code).await {
             Answer::Accepted(enrolled) => enrolled,
             Answer::Refused(RefusalCode::EnrolmentRefused) => return Err(EnrolError::Refused),
-            Answer::Refused(_) => return Err(EnrolError::Failed(Cause::Status(401))),
+            Answer::Refused(other) => {
+                return Err(EnrolError::Failed(Cause::Status(other.status())));
+            }
             Answer::Failed(cause) => return Err(EnrolError::Failed(cause)),
         };
-        self.store.save(&Credential {
-            token: enrolled.token,
-            expires_at: enrolled.expires_at,
-        })?;
+        if !is_device_name(&enrolled.device_name) {
+            return Err(EnrolError::Failed(Cause::Unreadable));
+        }
+        let credential = Credential::received(
+            enrolled.token,
+            enrolled.expires_at,
+            Some(self.origin.clone()),
+            self.now,
+        );
+        self.store.save_new(&credential)?;
         self.home.write_config(&Config {
             hub: self.origin,
             device: enrolled.device,

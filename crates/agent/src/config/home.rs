@@ -3,7 +3,7 @@
 
 use std::fs::DirBuilder;
 use std::io;
-use std::os::unix::fs::DirBuilderExt as _;
+use std::os::unix::fs::{DirBuilderExt as _, MetadataExt as _, PermissionsExt as _};
 use std::path::{Path, PathBuf};
 
 use crate::config::private_file::{self, PrivateFileError};
@@ -28,6 +28,8 @@ pub enum HomeError {
     NoFolder,
     #[error("the agent's folder: {0}")]
     Io(#[from] io::Error),
+    #[error("the agent's folder is not a real folder owned by this user with no access for others")]
+    Exposed,
     #[error("the agent's configuration file: {0}")]
     File(#[from] PrivateFileError),
     #[error("{0}")]
@@ -75,27 +77,37 @@ impl Home {
         self.dir.join(TOKEN_FILE)
     }
 
-    /// Makes the folder (mode 0700) when it is missing.
+    /// Makes the folder (mode 0700) when it is missing, and refuses one that is a link, is not
+    /// owned by the user running the agent, or gives group or others any access: files in it
+    /// decide where the bearer goes.
     ///
     /// # Errors
-    /// [`HomeError::Io`] when it cannot be made.
+    /// [`HomeError::Exposed`] for such a folder, [`HomeError::Io`] when it cannot be made.
     pub fn ensure(&self) -> Result<(), HomeError> {
         DirBuilder::new()
             .recursive(true)
             .mode(0o700)
             .create(&self.dir)?;
+        let metadata = std::fs::symlink_metadata(&self.dir)?;
+        let running = private_file::running_user()?;
+        if !metadata.is_dir()
+            || private_file::folder_exposed(metadata.permissions().mode(), metadata.uid(), running)
+        {
+            return Err(HomeError::Exposed);
+        }
         Ok(())
     }
 
-    /// The configuration file; `None` when the agent was never enrolled.
+    /// The configuration file; `None` when the agent was never enrolled. The folder and the
+    /// file are held to the same rules as the token file.
     ///
     /// # Errors
-    /// [`HomeError`] when the file cannot be read or does not parse.
+    /// [`HomeError`] when the folder or file is exposed, or the file cannot be read or parsed.
     pub fn read_config(&self) -> Result<Option<Config>, HomeError> {
-        match std::fs::read(self.dir.join(CONFIG_FILE)) {
-            Ok(bytes) => Ok(Some(Config::parse(&bytes)?)),
-            Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(None),
-            Err(error) => Err(error.into()),
+        self.ensure()?;
+        match private_file::read(&self.dir.join(CONFIG_FILE))? {
+            Some(bytes) => Ok(Some(Config::parse(&bytes)?)),
+            None => Ok(None),
         }
     }
 

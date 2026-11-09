@@ -6,7 +6,11 @@
 mod enrol;
 mod fake_hub;
 #[cfg(target_os = "linux")]
+mod home;
+#[cfg(target_os = "linux")]
 mod kit;
+#[cfg(target_os = "linux")]
+mod log;
 #[cfg(target_os = "linux")]
 mod push;
 #[cfg(target_os = "linux")]

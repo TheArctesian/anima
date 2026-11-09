@@ -89,3 +89,75 @@ async fn met_020_proxy_variables_are_ignored() {
     );
     assert_eq!(hub.seen("push").len(), 1, "the push reached the hub");
 }
+
+#[tokio::test]
+async fn met_020_a_hub_that_accepts_and_never_answers_ends_in_a_timeout() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("bind");
+    let address = listener.local_addr().expect("addr");
+    tokio::spawn(async move {
+        let (socket, _) = listener.accept().await.expect("accept");
+        tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+        drop(socket);
+    });
+    let url = Url::parse(&format!("http://{address}")).expect("url");
+    let client =
+        HubClient::with_timeout(url, std::time::Duration::from_millis(300)).expect("a client");
+    let started = std::time::Instant::now();
+    let answer = client.push(&token(), &batch()).await;
+    assert_eq!(answer, Answer::Failed(Cause::Timeout));
+    assert!(started.elapsed() < std::time::Duration::from_secs(5));
+}
+
+#[test]
+fn k8_7_the_request_time_limit_is_10_seconds() {
+    assert_eq!(
+        anima_agent::hub::TIMEOUT,
+        std::time::Duration::from_secs(10)
+    );
+}
+
+#[tokio::test]
+async fn met_020_an_endless_answer_is_cut_at_the_limit_and_does_not_read() {
+    use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("bind");
+    let address = listener.local_addr().expect("addr");
+    tokio::spawn(async move {
+        let (mut socket, _) = listener.accept().await.expect("accept");
+        let mut head = vec![0_u8; 4096];
+        let _ = socket.read(&mut head).await;
+        let head = "HTTP/1.1 200 OK\r\ncontent-type: application/json\r\ntransfer-encoding: chunked\r\n\r\n";
+        socket.write_all(head.as_bytes()).await.ok();
+        let chunk = vec![b' '; 1 << 20];
+        loop {
+            let frame = format!("{:x}\r\n", chunk.len());
+            let wrote = socket.write_all(frame.as_bytes()).await.is_ok()
+                && socket.write_all(&chunk).await.is_ok()
+                && socket.write_all(b"\r\n").await.is_ok();
+            if !wrote {
+                break;
+            }
+        }
+    });
+    let url = Url::parse(&format!("http://{address}")).expect("url");
+    let client = HubClient::new(url).expect("a client");
+    let started = std::time::Instant::now();
+    let answer = client.renew(&token()).await;
+    assert!(matches!(answer, Answer::Failed(Cause::Unreadable)));
+    assert!(
+        started.elapsed() < std::time::Duration::from_secs(5),
+        "the read stopped at the limit"
+    );
+}
+
+#[tokio::test]
+async fn k8_1_a_2xx_that_is_not_the_routes_success_status_is_a_failure() {
+    let hub = FakeHub::start().await;
+    hub.queue_push([Reply::json(200, "{}")]);
+    let client = HubClient::new(hub.url.clone()).expect("a client");
+    let answer = client.push(&token(), &batch()).await;
+    assert_eq!(answer, Answer::Failed(Cause::Status(200)));
+}

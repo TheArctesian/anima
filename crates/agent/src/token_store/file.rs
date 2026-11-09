@@ -22,10 +22,11 @@ impl Backend {
     }
 
     pub fn read(&self) -> Result<Option<Zeroizing<Vec<u8>>>, TokenStoreError> {
+        self.home.ensure()?;
         Ok(private_file::read(&self.path)?)
     }
 
-    pub fn write(&self, bytes: &[u8]) -> Result<(), TokenStoreError> {
+    pub fn write(&self, bytes: &[u8], _fresh: bool) -> Result<(), TokenStoreError> {
         self.home.ensure()?;
         private_file::write(self.home.dir(), "token", bytes)?;
         Ok(())

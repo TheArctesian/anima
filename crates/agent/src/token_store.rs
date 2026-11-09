@@ -1,11 +1,14 @@
 //! Where the agent keeps its token: the macOS Keychain, or on Linux a private file (MET-013,
-//! K8 Section 2). The record is the `Renewed` body, so the expiry is stored with the token.
+//! K8 Section 2). The record is the `Renewed` body with the hub origin added, so the expiry and
+//! the hub are stored with the token.
 
 use agent_core::wire::{AgentToken, Renewed};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, TimeDelta, Utc};
+use serde::Deserialize;
 use zeroize::Zeroizing;
 
 use crate::config::home::Home;
+use crate::config::origin::Origin;
 
 #[cfg(not(target_os = "macos"))]
 mod file;
@@ -17,10 +20,23 @@ use file::Backend;
 #[cfg(target_os = "macos")]
 use keychain::Backend;
 
-/// The agent token and when it expires. Neither `Debug` nor `Clone`, as the token is not.
+/// The latest expiry the agent keeps: a token lives 365 days (MET-013), so a later date from
+/// the hub is capped here and the agent renews on its own schedule.
+pub const MAX_LIFE: TimeDelta = TimeDelta::days(366);
+
+/// The agent token, when it expires, and the hub it was issued by. Neither `Debug` nor `Clone`,
+/// as the token is not.
 pub struct Credential {
     pub token: AgentToken,
     pub expires_at: DateTime<Utc>,
+    /// The hub origin kept beside the token: the agent refuses to send the token to another
+    /// (on macOS the Keychain record is the one place an attacker with file access cannot edit).
+    pub hub: Option<Origin>,
+}
+
+#[derive(Deserialize)]
+struct HubField {
+    hub: Option<String>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -41,22 +57,38 @@ pub struct TokenStore {
     backend: Backend,
 }
 
-impl From<Renewed> for Credential {
-    fn from(renewed: Renewed) -> Self {
+impl Credential {
+    /// A token the hub just gave: its expiry is capped at `now` plus [`MAX_LIFE`].
+    #[must_use]
+    pub fn received(
+        token: AgentToken,
+        expires_at: DateTime<Utc>,
+        hub: Option<Origin>,
+        now: DateTime<Utc>,
+    ) -> Self {
         Self {
-            token: renewed.token,
-            expires_at: renewed.expires_at,
+            token,
+            expires_at: expires_at.min(now + MAX_LIFE),
+            hub,
         }
     }
-}
 
-impl Credential {
+    /// The record: the `Renewed` body with the hub origin added.
     fn render(self) -> Zeroizing<Vec<u8>> {
         let record = Renewed {
             token: self.token,
             expires_at: self.expires_at,
         };
-        Zeroizing::new(serde_json::to_vec(&record).expect("a token record serialises"))
+        let mut bytes =
+            Zeroizing::new(serde_json::to_vec(&record).expect("a token record serialises"));
+        if let Some(hub) = self.hub {
+            bytes.pop();
+            bytes.extend_from_slice(b",\"hub\":");
+            let text = serde_json::to_string(&hub.as_text()).expect("a string serialises");
+            bytes.extend_from_slice(text.as_bytes());
+            bytes.push(b'}');
+        }
+        bytes
     }
 }
 
@@ -78,19 +110,43 @@ impl TokenStore {
         };
         let record: Renewed =
             serde_json::from_slice(&bytes).map_err(|_| TokenStoreError::Corrupt)?;
-        Ok(Some(record.into()))
+        let field: HubField =
+            serde_json::from_slice(&bytes).map_err(|_| TokenStoreError::Corrupt)?;
+        let hub = match field.hub {
+            Some(text) => Some(Origin::parse(&text).map_err(|_| TokenStoreError::Corrupt)?),
+            None => None,
+        };
+        Ok(Some(Credential {
+            token: record.token,
+            expires_at: record.expires_at,
+            hub,
+        }))
     }
 
-    /// Replaces the stored credential. The old one stays when this fails (K8 Section 5).
+    /// Replaces the stored credential after a renewal. The old one stays when this fails
+    /// (K8 Section 5).
     ///
     /// # Errors
     /// [`TokenStoreError`] when it cannot be written.
     pub fn save(&self, credential: &Credential) -> Result<(), TokenStoreError> {
+        self.write(credential, false)
+    }
+
+    /// Stores the credential of a new enrolment; the Keychain item is made afresh.
+    ///
+    /// # Errors
+    /// [`TokenStoreError`] when it cannot be written.
+    pub fn save_new(&self, credential: &Credential) -> Result<(), TokenStoreError> {
+        self.write(credential, true)
+    }
+
+    fn write(&self, credential: &Credential, fresh: bool) -> Result<(), TokenStoreError> {
         let token = AgentToken::parse(credential.token.expose()).ok_or(TokenStoreError::Corrupt)?;
         let copy = Credential {
             token,
             expires_at: credential.expires_at,
+            hub: credential.hub.clone(),
         };
-        self.backend.write(&copy.render())
+        self.backend.write(&copy.render(), fresh)
     }
 }

@@ -8,6 +8,9 @@ use crate::config::origin::{Origin, OriginError};
 pub const USAGE: &str =
     "usage: anima-agent enrol <code | -> [--hub <https origin>]\n       anima-agent run";
 
+/// Printed when the code is on the command line, where `ps` and the shell history show it.
+pub const ARGV_WARNING: &str = "warning: a code on the command line shows in process lists and shell history; use: printf '%s\\n' '<code>' | anima-agent enrol -";
+
 /// What the operator asked for.
 pub enum Command {
     /// Exchange an enrolment code for a token and store both (K8 Section 3).

