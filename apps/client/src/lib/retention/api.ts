@@ -34,7 +34,7 @@ export type RetentionPeriod = RetentionQuery['retention'][number];
 export type { RetentionSubject };
 
 /** The retention calls of the hub (HUB-005) as plain functions of a `Hub`. */
-export interface RetentionApi {
+interface RetentionApi {
   list(): Promise<HubResult<readonly RetentionPeriod[]>>;
   /** The period as the hub now holds it. */
   set(subject: RetentionSubject, days: number): Promise<HubResult<RetentionPeriod>>;

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import FormButton from '$lib/forms/FormButton.svelte';
   import { useHub } from '$lib/hub/context';
   import type { HubResult } from '$lib/hub/hub';
@@ -10,12 +11,30 @@
   /** `null` while loading or after a failed load. */
   let periods = $state<readonly RetentionPeriod[] | null>(null);
   let loadFailed = $state(false);
+  let retrying = $state(false);
+  let rows: HTMLElement | undefined = $state();
 
   async function load(): Promise<void> {
-    loadFailed = false;
     const result = await api.list();
-    if (result.ok) periods = inPageOrder(result.value);
-    else loadFailed = true;
+    if (result.ok) {
+      periods = inPageOrder(result.value);
+      loadFailed = false;
+    } else loadFailed = true;
+  }
+
+  /** Try again: the button stays mounted, and aria-disabled, while the hub answers; on success focus goes to the first period (NAV-005). */
+  async function retry(): Promise<void> {
+    if (retrying) return;
+    retrying = true;
+    try {
+      await load();
+    } finally {
+      retrying = false;
+    }
+    if (!loadFailed) {
+      await tick();
+      rows?.querySelector('input')?.focus();
+    }
   }
 
   $effect(() => {
@@ -30,7 +49,7 @@
   }
 </script>
 
-<div class="rows">
+<div class="rows" bind:this={rows}>
   {#if periods === null}
     {#each SUBJECTS as { subject, label } (subject)}
       <RetentionRow {label} period={null} />
@@ -49,7 +68,7 @@
 <div class="note">
   {#if loadFailed}
     <p role="alert">Could not load the periods.</p>
-    <FormButton tabindex={0} onclick={load}>Try again</FormButton>
+    <FormButton tabindex={0} aria-disabled={retrying} aria-busy={retrying} onclick={retry}>Try again</FormButton>
   {:else}
     <p>Changes apply at the next daily run.</p>
   {/if}

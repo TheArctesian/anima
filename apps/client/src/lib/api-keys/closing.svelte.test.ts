@@ -132,8 +132,8 @@ it('F-8: a click beside the dialog is refused while the key is being made', asyn
 
 it('F-8: Cancel is disabled while the key is being made', async () => {
   const release = await making();
-  // The form's fieldset disables it, so the button's own `disabled` stays false; `:disabled` is what the browser honours.
-  expect(button('Cancel').matches(':disabled')).toBe(true);
+  // It is aria-disabled, not disabled, so focus is never lost; the dialog still refuses to close.
+  expect(button('Cancel').getAttribute('aria-disabled')).toBe('true');
   button('Cancel').click();
   await settled();
   expect(document.querySelector('[role="dialog"]')).not.toBeNull();
@@ -147,6 +147,18 @@ it('MOT-007: the Create key label stays while the hub works, so neither button m
   expect(button('Create key').getAttribute('aria-busy')).toBe('true');
   release(CREATED);
   await settled();
+});
+
+it('MOT-007: Create key keeps focus while the hub makes the key, and after the hub refuses', async () => {
+  const release = await making();
+  const create = button('Create key');
+  create.focus();
+  create.click();
+  flushSync();
+  expect([document.activeElement === create, create.getAttribute('aria-disabled'), create.disabled]).toEqual([true, 'true', false]);
+  release({ ok: false, error: { code: 'INTERNAL', message: 'hub text' } });
+  await settled();
+  expect([document.activeElement === create, create.getAttribute('aria-disabled')]).toEqual([true, 'false']);
 });
 
 it('F-8: a page left while the key is being made never puts the key in the document when the hub answers', async () => {

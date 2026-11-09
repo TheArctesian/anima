@@ -251,3 +251,21 @@ it('MOT-007: the note block is present in the loaded and the failed state', asyn
   const failed = await open({ Retention: failure('unreachable') });
   expect(failed.querySelectorAll('.note')).toHaveLength(1);
 });
+
+it('MOT-007, NAV-005: Try again stays mounted and keeps focus while it retries and when it fails again, then focus goes to the first period', async () => {
+  const answers: Parameters<typeof fakeHub>[0] = { Retention: failure('unreachable') };
+  const target = await open(answers);
+  const again = [...target.querySelectorAll('button')].find((each) => each.textContent === 'Try again');
+  if (again === undefined) throw new Error('no Try again');
+  again.focus();
+  again.click();
+  flushSync();
+  expect([document.activeElement === again, again.getAttribute('aria-disabled'), again.getAttribute('aria-busy')]).toEqual([true, 'true', 'true']);
+  await settled();
+  expect([document.activeElement === again, again.isConnected, again.getAttribute('aria-disabled')]).toEqual([true, true, 'false']);
+  answers.Retention = ok({ retention: FIXTURE_PERIODS });
+  again.click();
+  await settled();
+  await settled();
+  expect(document.activeElement).toBe(target.querySelector('input'));
+});

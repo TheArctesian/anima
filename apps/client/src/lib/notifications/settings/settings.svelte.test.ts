@@ -143,3 +143,20 @@ it('F-3, MOT-007: while loading the fields wait, empty; a failed load offers Try
   await settled();
   expect([days().value, days().matches(':disabled'), form.getAttribute('aria-busy')]).toEqual(['21, 14, 7', false, 'false']);
 });
+
+it('MOT-007, NAV-005: Try again stays mounted and keeps focus while it retries and when it fails again, then focus goes to the first field', async () => {
+  const answers: Partial<Record<Operation, unknown>> = loaded({ NotificationSettings: failure('UNAVAILABLE') });
+  await open(answers as Parameters<typeof fakeHub>[0]);
+  const again = button('Try again', form);
+  again.focus();
+  again.click();
+  flushSync();
+  expect([document.activeElement === again, again.getAttribute('aria-disabled'), again.getAttribute('aria-busy')]).toEqual([true, 'true', 'true']);
+  await settled();
+  expect([document.activeElement === again, again.isConnected, again.getAttribute('aria-disabled')]).toEqual([true, true, 'false']);
+  answers.NotificationSettings = ok({ notificationSettings: FIXTURE_SETTINGS });
+  again.click();
+  await settled();
+  await settled();
+  expect(document.activeElement).toBe(days());
+});

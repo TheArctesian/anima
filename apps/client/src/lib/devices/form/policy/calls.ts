@@ -11,7 +11,7 @@ export interface PolicyCalls {
 
 const NOT_FOUND: HubResult<never> = { ok: false, error: { code: 'NOT_FOUND', message: 'No such device' } };
 
-export function policyCalls(hub: Hub): PolicyCalls {
+function policyCalls(hub: Hub): PolicyCalls {
   return {
     load: async (deviceId) => {
       const result = await hub.request(DevicePolicy, { id: deviceId });

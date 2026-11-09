@@ -6,7 +6,7 @@ export const PARTIAL_SENTENCE = 'Sessions saved; the device was not.';
 export const SAVE_SENTENCE = 'Sessions were not saved.';
 
 /** `loading` and `failed` keep the fields disabled and send nothing; `absent`: an edit with no hub to ask. */
-export type PolicyPhase = 'ready' | 'loading' | 'failed' | 'absent';
+type PolicyPhase = 'ready' | 'loading' | 'failed' | 'absent';
 
 /**
  * The session limit and recording setting of one device in the form (RA-036, RA-040). A new device starts from the

@@ -50,8 +50,8 @@ export const KINDS: readonly { readonly id: ChannelKind; readonly label: string 
 ];
 
 /** The K1 input defaults. */
-export const NTFY_SERVER = 'https://ntfy.sh';
-export const NTFY_PRIORITY = 3;
+const NTFY_SERVER = 'https://ntfy.sh';
+const NTFY_PRIORITY = 3;
 export const SMTP_PORT: Record<SmtpSecurity, number> = { STARTTLS: 587, TLS: 465 };
 
 function emptySecret(): SecretDraft {
