@@ -1,6 +1,6 @@
-//! Starting a session (K4 §1, K3 `start`): checks the device and the display, wakes it when
-//! it is Down (`waking`), writes the row and its audit entry, and issues the single-use
-//! ticket.
+//! Starting a session (K4 §1, K3 `start`): checks the device and the display, holds the
+//! device to its session limit (`limit`), wakes it when it is Down (`waking`), writes the row
+//! and its audit entry, and issues the single-use ticket.
 
 mod limit;
 mod waking;
