@@ -1,0 +1,137 @@
+{
+  "image": "guacamole/guacd:1.6.0",
+  "vnc_server": "fake RFB 3.8, security None, 64x48",
+  "rfb_connections": 1,
+  "rfb_client_init_shared": [
+    1
+  ],
+  "input": [
+    {
+      "sender": "joiner",
+      "connection": "join-read-only",
+      "read_only": "true",
+      "sent": [
+        "mouse 10,10 buttons 1 then 0",
+        "key 97 down then up"
+      ],
+      "reached_vnc_server": []
+    },
+    {
+      "sender": "owner",
+      "connection": "owner",
+      "read_only": "",
+      "sent": [
+        "mouse 20,20 buttons 1 then 0",
+        "key 98 down then up"
+      ],
+      "reached_vnc_server": [
+        {
+          "event": "PointerEvent",
+          "mask": 1,
+          "x": 20,
+          "y": 20
+        },
+        {
+          "event": "PointerEvent",
+          "mask": 0,
+          "x": 20,
+          "y": 20
+        },
+        {
+          "down": 1,
+          "event": "KeyEvent",
+          "keysym": 98
+        },
+        {
+          "down": 0,
+          "event": "KeyEvent",
+          "keysym": 98
+        }
+      ]
+    },
+    {
+      "sender": "joiner",
+      "connection": "join-empty",
+      "read_only": "",
+      "sent": [
+        "mouse 30,30 buttons 1 then 0",
+        "key 99 down then up"
+      ],
+      "reached_vnc_server": [
+        {
+          "event": "PointerEvent",
+          "mask": 1,
+          "x": 30,
+          "y": 30
+        },
+        {
+          "event": "PointerEvent",
+          "mask": 0,
+          "x": 30,
+          "y": 30
+        },
+        {
+          "down": 1,
+          "event": "KeyEvent",
+          "keysym": 99
+        },
+        {
+          "down": 0,
+          "event": "KeyEvent",
+          "keysym": 99
+        }
+      ]
+    },
+    {
+      "sender": "joiner",
+      "connection": "join-false",
+      "read_only": "false",
+      "sent": [
+        "mouse 40,40 buttons 1 then 0",
+        "key 100 down then up"
+      ],
+      "reached_vnc_server": [
+        {
+          "event": "PointerEvent",
+          "mask": 1,
+          "x": 40,
+          "y": 40
+        },
+        {
+          "event": "PointerEvent",
+          "mask": 0,
+          "x": 40,
+          "y": 40
+        },
+        {
+          "down": 1,
+          "event": "KeyEvent",
+          "keysym": 100
+        },
+        {
+          "down": 0,
+          "event": "KeyEvent",
+          "keysym": 100
+        }
+      ]
+    }
+  ],
+  "unknown_id": {
+    "instructions_received": 1,
+    "tcp_closed_after_reply": true
+  },
+  "owner_leaves": {
+    "owner_received": [
+      "disconnect"
+    ],
+    "owner_tcp_closed_after_last_joiner_s": 0.977,
+    "joiner_opcodes_after_owner_left": [
+      "cfill",
+      "copy",
+      "rect",
+      "sync"
+    ],
+    "join_after_owner_left": "ready",
+    "joiner_tcp_closed_after_own_disconnect": true
+  }
+}
