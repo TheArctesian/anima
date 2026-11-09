@@ -1,70 +1,69 @@
-# Programme handoff — 2026-11-07
+# Programme handoff — 2026-11-08
 
-The programme moves from the Mac session to a new Claude account run from the Linux machine
-(`pop-os`). This file is the state at the stop. Read it first, then the rulings listed in
-section 5.
+The programme orchestrator stopped at the operator's usage limit. This file is the state at the stop.
+Read it first, then the rulings listed in section 5 and R-093 to R-101 in `programme.md`.
 
 ## 1. Where things are
 
-- **Integration branch:** `phase-3`. It was cut from `phase-2` at 04ab9b61 (R-081) and has
-  `origin/main` merged in. Gates: `CARGO_TARGET_DIR=$PWD/target CARGO_INCREMENTAL=0 env -u DATABASE_URL BASE_REF=04ab9b61 bun run gates` (R-101)
-  (12 gates). Client-only changes can run gates 4–12 (R-068).
-- **Phase 1 and 2:** finished and merged into `main` (PR #3, PR #51). The hub at fd8cc03c is
-  live on the VPS.
-- **Phase 3:** started 2026-11-07 (R-081). The plan is `docs/programme/phase-3-plan.md`, with
-  packages WP-40 to WP-54. R-084 (the metrics push agent) was approved and added to the spec
-  the same day.
-- **Stop rule used:** every accepted task is merged into `phase-3`. No builder, reviewer or fix
-  step is half-done. Each task below that is not merged is built and committed, and waits for
-  its review.
-- **Not touched:** `wp-36-builds` (WP-36 Builds runs on the Linux machine).
+- **Integration branch:** `phase-3`, pushed, at the commit that adds this handoff. `main` is fast-forwarded
+  to it as a save (operator, 2026-11-08). Gates: `CARGO_TARGET_DIR=$PWD/target CARGO_INCREMENTAL=0 env -u
+  DATABASE_URL BASE_REF=04ab9b61 bun run gates` (R-101; 12 gates). Client-only changes run gates 4–12 (R-068).
+  PATH needs nvm Node 22 and `/usr/lib/postgresql/17/bin`.
+- **Last fully gated commit:** cabe1c94 (12/12 at 595c624c, then docs only).
+- **441b8384** (WP-50 T13 merge, client only) is on `phase-3`, but its own gates 4–12 run was stopped
+  at the hand-off. WP-45 T3, WP-46 T4 and WP-51 T3 each passed 12/12 on top of 441b8384, so it is
+  covered. Run gates 4–12 once to confirm before the next merge.
+- **R-101:** every gate and review run uses its own `CARGO_TARGET_DIR` and `CARGO_INCREMENTAL=0`; delete
+  the target folder when the task is accepted. The shared `~/.cache/cargo-target` was deleted (operator OK).
+  A full disk shows up as sqlx test-database failures or a linker SIGBUS, not as code failures.
+- **Stop rule used:** nothing half-merged. All seven package orchestrators were running when the session
+  stopped; they will stop with it. Resume each with SendMessage if the ids still exist, otherwise start a
+  new package-orchestrator per package and point it at its package file.
 
-## 2. Finished
+## 2. Finished in Phase 3
 
 | Package | State |
 | --- | --- |
-| WP-42 client groundwork | **Done.** All 7 tasks are merged (last merge a329eebf). Report: `docs/programme/packages/WP-42-report.md`. |
-| WP-40 skeleton | T1 (K1–K7 contract freeze), T1b, T3 (module map) and T5 (spec changes) are merged. |
-| WP-41 hub groundwork | T1 `api_errors` and T2 `events::Trail` are merged (065989af). |
-| WP-52 deploy | T1 web image, T2 Apprise and T3 egress check are merged. |
-| R-084 / CR-8 | The spec has MET-011 to MET-020, the agent crates in §13 and the changed INT-003 (845b9660). WP-51 is narrowed, and WP-54 is new. |
+| WP-40, WP-41, WP-42, WP-52 | Done (see their package files and reports). |
+| WP-44 web client | Complete except its rebase onto WP-43's last tasks; parked. |
+| WP-46 checks | T1–T3 merged; **T4 accepted, queued** (below). Then the final package review. |
+| WP-43 access | T1 web client and T2 browser sign-in merged with their `main.rs` lines (8319b999, 5d4860c2). |
+| WP-45 notifications | T1 egress, T2 store, T5 decide merged (1ea7bb1a). |
+| WP-54 agent | T2 points merged (595c624c; K8 `contracts/agent-push.md` frozen). |
+| WP-50 settings | T1–T7, T10 merged; T13 merged as 441b8384. |
+| WP-51 parsers | T1, T2 merged. |
 
-## 3. In progress (built, committed, not merged)
+## 3. Merge queue and work in progress
 
-Each branch lives in a worktree under `.claude/worktrees/`, and all of them are pushed with this
-handoff.
+**Accepted, ready to merge, in this order** (each merge: all 12 gates if Rust changed, else 4–12):
 
-| Package / task | Branch | Last commit | State | Next step |
-| --- | --- | --- | --- | --- |
-| WP-40 T2 ids/config | `wp/40-skeleton/ids-config` | d77d8667 | Could fixes: `..` refused in `ANIMA_WEB_ROOT` and `ANIMA_RECORDING_ROOT`; userinfo hidden without `://`. Mutation-proved. fmt, clippy and quality pass on d77d8667; cargo-test through build passed on 3dd6c01f. | Short review of 3dd6c01f..d77d8667, then the 12 gates, then merge. WP-43 main.rs and WP-46 need its `public_origin` and `web_root`. |
-| WP-40 T4 fixtures | `wp/40-skeleton/fixtures` | 737fad78 | Round-2 fixes (M1 timestamps, S1, S2); 12/12 gates. | Round-3 review, then merge. |
-| WP-40 package | `claude/wp-40-skeleton` | 5014d5b8 | Package plan and log. | Write WP-40-report.md when T2 and T4 merge. |
-| WP-41 T3 text | `wp/41-groundwork/text` | d6b6a0de | Review accepted (round 2). Gate 9 fails: `crates/hub/src/checks/tests/probe/secrets.rs` is 306 lines, over the limit of 300. | Move the strip cases to a sibling test file, then the 12 gates, then merge. The PR must say that names now refuse U+200C/U+200D, U+00AD and U+FEFF. |
-| WP-41 T4 targets | `wp/41-groundwork/targets-r2` | a0f81930 | Round 1 accepted by both reviewers (39 mutants). Round 2 fixes are in fa3c0e5c. fmt, clippy, it (710) and lib pass; limits fails only on T3's file. The old branch `wp/41-groundwork/targets` (8ff0c592) is round 1. | Reviewer check of fa3c0e5c, then gates after T3, then merge. Handoff: remove `mod target;` from `sessions.rs`. |
-| WP-41 T5–T8 | — | — | Not started. | Order per CR-7: T6 trust (migration 0920, PublicKey move), then T5 ssh, then T7 relay and Serving (security), then T8 fingerprint and seal fallbacks. |
-| WP-41 package | `claude/wp-41-groundwork` | ac01df9a | Plan, decisions and review log. | — |
-| WP-43 T1 web-client | `wp/43-access/web-client` | 3608d0f8 | 12/12 gates (builder run), not reviewed. | Review round 1: reviewer-security with mutations, plus reviewer. |
-| WP-43 T2 browser | `wp/43-access/browser` | c14bfb26 | 12/12 gates (builder run), not reviewed. Migration 0010_access_token_kinds. | Same review. T1 and T2 both add `access/origin.rs`: keep one copy at merge. |
-| WP-43 T3, T4 | — | — | Not started. | The T3 API-key deny list must include `enrolAgent` and `revokeAgentToken` (R-084). |
-| WP-43 package | `claude/wp-43-access` | db2294f0 | Plan, state and the main.rs handoff lines. | — |
-| WP-46 T1 retention | `wp/46-checks/retention` | e34b3f46 | 12/12 gates (builder run), not reviewed. Migration 0900; CR-6 floors. | **Needs a ruling:** two K3 additions, `AuditTarget::Setting` and `events::drop_expired_partitions(events_keep)`. Then review. |
-| WP-46 T2 defaults | `wp/46-checks/defaults` | 445fb372 | 12/12 gates (builder run), not reviewed. Migration 0321. | Review. Change its audit target to `AuditTarget::Setting`. |
-| WP-46 T3 exposition | `wp/46-checks/exposition` | 7bf4638e | 12/12 gates (builder run), not reviewed. | Review (reviewer plus reviewer-security). Mount it after WP-43 T4. |
-| WP-46 T4 domain expiry | — | — | Not started. | Waits on WP-41 T4. |
-| WP-46 package | `claude/wp-46-checks` | f60100d9 | Plan and log. | — |
-| WP-52 T4 docs + T5 firewall | `wp/52-deploy/apprise-firewall` | cd36c290 | T5 Apprise nftables rules and the T4 round-2 doc fixes. Lint, check, deploy 442/0, headscale 483/0 and quality pass. Not reviewed. | Review (reviewer-security for nftables), then full gates, then merge. Nothing has run on the live VPS. |
-| WP-52 package | `claude/wp-52-deploy` | e4fb8a43 | Plan and log. | — |
+| # | Task | Branch | Tip | Gated on | Notes |
+| --- | --- | --- | --- | --- | --- |
+| 1 | WP-50 T8 channels | `wp/50-settings/channels` | 40684cb6 | 4–12 | Client only; on T13. |
+| 2 | WP-50 T9 check-channels | `wp/50-settings/check-channels` | a8ce67a6 | 4–12 | On T8. Its handoff touches `routes/devices/[id]/checks/` (ChecksPanel keeps the editor open). |
+| 3 | WP-50 T12 hub-row | `wp/50-settings/hub-row` | 1598fbda | 4–12 | On T8. |
+| 4 | WP-47 T1a devices | `wp/47-sharing/devices` | 939b7163 | 12/12 R-101 | Clears 6 K1 `@pending` (sessionLimit, recordSessions). WP-48 and WP-50 T11 wait for it. |
+| 5 | WP-50 T11 device-policy | `wp/50-settings/device-policy` | 03d41258 | 4–12 | After #4. |
+| 6 | WP-45 T3 channels | `wp/45-notifications/channels` | 315ed5ff | 12/12 R-101 on 441b8384 | Handoff: schema.rs notifications roots + loader; 25 K1 members un-pended. |
+| 7 | WP-45 T4 templates | `wp/45-notifications/templates` | a6c05227 | 12/12 R-101 | On T3; merge right after #6. |
+| 8 | WP-46 T4 domain expiry | `wp/46-checks/domain-expiry` | 1063ee20 | 12/12 R-101 on 441b8384 | 5 K1 members un-pended; no wiring lines. |
+| 9 | WP-51 T3 gpu-discovery | `wp/51-parsers/gpu-discovery` | 571064f5 | 12/12 R-101 on 441b8384 | Merge commit only (intermediate commits do not compile). |
 
-**Not started:**
-- WP-44, after WP-42 (done) and WP-43.
-- WP-45, after WP-41 T1–T4.
-- WP-47, WP-48 and WP-49.
-- WP-50.
-- WP-51 (R-084: T1 creates `agent-core` and moves the parsers; T1 and T2 do not need WP-41 T5).
-- WP-53.
-- WP-54, after WP-51 T1.
+**In progress (not accepted yet):**
 
-No more than 7 package orchestrators may run at once (R-066).
+| Package | State | Next |
+| --- | --- | --- |
+| WP-43 | T3 api-keys (f4eee5ed) has the R-100 deny-list round; T5 rotation (f3ab2eb3); T4 bearer (`wp/43-access/bearer` 22b5ff16); T6 throttle (`wp/43-access/throttle` d8f880c4, CR-16 b). | Reviews and gates per package file `docs/programme/packages/WP-43.md` (branch `claude/wp-43-access`). T4's handoff must move router assembly out of `serve()` in `main.rs` (60/60 lines). |
+| WP-45 | T6 dispatcher built (4 commits on a6c05227), going to gates and both reviewers. | T7: the checks/ handoff edits (with WP-46), `Check.notifications`. |
+| WP-47 | T3 shares (`wp/47-sharing/shares` 1daa8922) round-2 fixes; T1b next with the approved `guacd:1.6.0` pull (127.0.0.1 only). | T2 after T1a merges; then T4–T6. CR-16 b comes from WP-43 T6. |
+| WP-50 | Above, plus R-094 rows handoff after WP-46 T4. | Final package review and interface pass. |
+| WP-51 | T3 queued. | T4 read side (MET-008, MET-009) after T3 merges; owns `store/chart.rs` mean overflow. |
+| WP-54 | T3a built and gated (c7874fde), review next; `wp/54-agent/token` 4fa2a6f8, `wp/54-agent/binary` a38195d0. | Fix `SeriesKey::of` (drops the GPU index) and cap pushed GPU temperature/power (WP-51 note). |
+
+**Not started:** WP-48 (after WP-47 T1a), WP-49, WP-53. At most 7 package orchestrators (R-066).
+
+**Programme to-do:** add the bounds to K1 doc strings `CheckNotificationsInput.resendEveryBeats`
+(0 to 1000) and `NotificationSettingsInput.certificateDays` (1 to 365, 1 to 5 values, kept largest first).
 
 ## 4. Waiting on the operator
 
