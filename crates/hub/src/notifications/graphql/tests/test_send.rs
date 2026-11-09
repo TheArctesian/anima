@@ -183,6 +183,7 @@ async fn log_005_a_test_whose_request_is_dropped_after_the_target_has_it_is_stil
     let (server, egress) = target(|acceptor| {
         Behaviour::Stalled(
             b"HTTP/1.1 200 OK\r\nContent-Length: 100000\r\n\r\n",
+            Duration::ZERO,
             acceptor,
         )
     })

@@ -48,7 +48,7 @@ const UNAVAILABLE_HEAD: &[u8] = b"HTTP/1.1 503 Service Unavailable\r\nContent-Le
 #[tokio::test]
 async fn d_17_a_2xx_whose_body_stalls_is_sent_and_ends_at_the_one_time_limit() {
     let (der, acceptor) = certificate("localhost");
-    let server = serve(Behaviour::Stalled(OK_HEAD, acceptor)).await;
+    let server = serve(Behaviour::Stalled(OK_HEAD, Duration::ZERO, acceptor)).await;
     let started = Instant::now();
 
     let sent = post(
@@ -66,9 +66,33 @@ async fn d_17_a_2xx_whose_body_stalls_is_sent_and_ends_at_the_one_time_limit() {
 }
 
 #[tokio::test]
+async fn d_17_a_late_2xx_head_leaves_the_body_read_only_what_is_left_of_the_limit() {
+    let (der, acceptor) = certificate("localhost");
+    let late = TIME_LIMIT / 2;
+    let server = serve(Behaviour::Stalled(OK_HEAD, late, acceptor)).await;
+    let started = Instant::now();
+
+    let sent = post(
+        &local().trusting(der),
+        &format!("https://localhost:{}/", server.port),
+    )
+    .await;
+
+    // The head came halfway through the limit; a fresh limit for the body read would end the
+    // send at one and a half limits (C-2).
+    assert_eq!(sent, Ok(()));
+    ended_at_the_limit(started);
+}
+
+#[tokio::test]
 async fn d_17_a_failing_status_decides_at_once_though_its_body_stalls() {
     let (der, acceptor) = certificate("localhost");
-    let server = serve(Behaviour::Stalled(UNAVAILABLE_HEAD, acceptor)).await;
+    let server = serve(Behaviour::Stalled(
+        UNAVAILABLE_HEAD,
+        Duration::ZERO,
+        acceptor,
+    ))
+    .await;
     let started = Instant::now();
 
     let sent = post(

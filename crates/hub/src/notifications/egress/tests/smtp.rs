@@ -197,13 +197,21 @@ async fn d_17_a_mail_server_that_never_answers_ends_at_the_time_limit() {
 #[tokio::test]
 async fn d_16_a_queued_message_is_sent_though_quit_is_never_answered() {
     let (der, acceptor) = certificate("localhost");
-    let server = serve(Behaviour::SmtpSilentAtQuit(acceptor)).await;
+    // The message is queued 5 s into the 8 s limit, so QUIT has 3 s left.
+    let queuing = Duration::from_secs(5);
+    let server = serve(Behaviour::SmtpSilentAtQuit(queuing, acceptor)).await;
     let started = Instant::now();
 
-    let sent = send(&local().trusting(der), &server, SmtpSecurity::Implicit).await;
+    // An outer bound, so a QUIT with no limit fails the test instead of hanging the run.
+    let sent = tokio::time::timeout(
+        Duration::from_secs(30),
+        send(&local().trusting(der), &server, SmtpSecurity::Implicit),
+    )
+    .await
+    .expect("QUIT waited past the time limit");
 
     // The 250 after DATA decided (S-A): a retry would send the mail twice. QUIT got only what
-    // was left of the one time limit.
+    // was left of the one time limit (C-1).
     assert_eq!(sent, Ok(()));
     assert!(
         started.elapsed() < TIME_LIMIT + SLACK,

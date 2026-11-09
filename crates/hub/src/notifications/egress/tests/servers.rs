@@ -34,17 +34,19 @@ pub(in crate::notifications) enum Behaviour {
     /// HTTP: read one request, answer 200 with a body that never ends; over TLS when an
     /// acceptor is given.
     Endless(Option<TlsAcceptor>),
-    /// HTTP over TLS: read one request, write this head (status line and headers, the blank
-    /// line included) and a few body bytes, then send nothing more until the client goes.
-    Stalled(&'static [u8], TlsAcceptor),
+    /// HTTP over TLS: read one request, wait this long, write this head (status line and
+    /// headers, the blank line included) and a few body bytes, then send nothing more until the
+    /// client goes.
+    Stalled(&'static [u8], Duration, TlsAcceptor),
     /// Read whatever arrives and never answer, until the client goes.
     Silent,
     /// SMTP over TLS from the first byte.
     SmtpImplicit(TlsAcceptor),
     /// SMTP over TLS from the first byte that refuses every login with 535.
     SmtpRefusingLogin(TlsAcceptor),
-    /// SMTP over TLS from the first byte that queues the message and never answers QUIT.
-    SmtpSilentAtQuit(TlsAcceptor),
+    /// SMTP over TLS from the first byte that queues the message, taking this long, and never
+    /// answers QUIT.
+    SmtpSilentAtQuit(Duration, TlsAcceptor),
     /// Plain SMTP that offers no STARTTLS.
     SmtpPlain,
     /// SMTP that offers STARTTLS and upgrades with this acceptor.
@@ -173,9 +175,9 @@ async fn answer(stream: TcpStream, behaviour: Behaviour, seen: &Seen) {
     match behaviour {
         Behaviour::Http(reply, acceptor) => web(stream, acceptor, Some(&reply), seen).await,
         Behaviour::Endless(acceptor) => web(stream, acceptor, None, seen).await,
-        Behaviour::Stalled(head, acceptor) => {
+        Behaviour::Stalled(head, wait, acceptor) => {
             if let Some(tls) = handshake(&acceptor, stream, seen).await {
-                stalled(tls, head, seen).await;
+                stalled(tls, (wait, head), seen).await;
             }
         }
         Behaviour::Silent => silent(stream).await,
@@ -188,9 +190,10 @@ async fn answer(stream: TcpStream, behaviour: Behaviour, seen: &Seen) {
             };
             implicit(&acceptor, stream, script, seen).await;
         }
-        Behaviour::SmtpSilentAtQuit(acceptor) => {
+        Behaviour::SmtpSilentAtQuit(queuing, acceptor) => {
             let script = Script {
                 quit: None,
+                queuing,
                 ..PLAIN
             };
             implicit(&acceptor, stream, script, seen).await;
@@ -283,11 +286,17 @@ async fn endless<S: AsyncRead + AsyncWrite + Unpin>(stream: S, seen: &Seen) {
     }
 }
 
-/// Reads one request, writes `head` and a few body bytes, then holds the connection.
-async fn stalled<S: AsyncRead + AsyncWrite + Unpin>(stream: S, head: &[u8], seen: &Seen) {
+/// Reads one request, waits `wait`, writes `head` and a few body bytes, then holds the
+/// connection.
+async fn stalled<S: AsyncRead + AsyncWrite + Unpin>(
+    stream: S,
+    (wait, head): (Duration, &[u8]),
+    seen: &Seen,
+) {
     let Some(mut reader) = request(stream, seen).await else {
         return;
     };
+    tokio::time::sleep(wait).await;
     let wrote = reader.get_mut().write_all(head).await.is_ok()
         && reader.get_mut().write_all(b"xx").await.is_ok()
         && reader.get_mut().flush().await.is_ok();
