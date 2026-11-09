@@ -1235,7 +1235,7 @@ type Session {
   clientAddr: IpAddr!
   recording: RecordingState! @pending
   "Live sessions only; empty after the end."
-  shares: [SessionShare!]! @pending
+  shares: [SessionShare!]!
 }
 
 type SessionEdge {
@@ -1271,7 +1271,7 @@ type SessionChange {
 
 # Phase 3 (WP-47, WP-48). RA-035, RA-040, RA-041.
 
-enum ShareAccess @pending {
+enum ShareAccess {
   VIEW
   CONTROL
 }
@@ -1287,7 +1287,7 @@ enum RecordingFormat @pending {
   ASCIICAST
 }
 
-type SessionShare @pending {
+type SessionShare {
   id: ID!
   sessionId: ID!
   access: ShareAccess!
@@ -1298,13 +1298,13 @@ type SessionShare @pending {
   expiresAt: DateTime!
 }
 
-type ShareLink @pending {
+type ShareLink {
   share: SessionShare!
   "Shown once: <public origin>/shared#<token>. The token is only in the fragment (D-7)."
   url: String!
 }
 
-input ShareInput @pending {
+input ShareInput {
   access: ShareAccess = VIEW
   "5..1440."
   expiresInMinutes: Int = 60
@@ -1494,8 +1494,8 @@ type Mutation {
   setRetention(subject: RetentionSubject!, days: Int!): RetentionPeriod!
 
   "The session must be live and the caller's (RA-035)."
-  shareSession(sessionId: ID!, input: ShareInput!): ShareLink! @pending
-  endShare(id: ID!): ID! @pending
+  shareSession(sessionId: ID!, input: ShareInput!): ShareLink!
+  endShare(id: ID!): ID!
   "Signed out (D-7). Failed attempts count in the login throttle by client address."
   joinShare(token: String!, name: String, display: DisplayInput!): WatchTicket! @pending
   "A ticket for the playback tunnel (K4 §12)."

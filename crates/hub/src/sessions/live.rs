@@ -29,6 +29,7 @@ use super::{
     end::Actor,
     files,
     model::EndReason,
+    share::Shares,
     tickets::{PendingTicket, Presented, TicketHash, hash_of},
 };
 use crate::{ids::SessionId, targets::AddressPolicy, trust::Sightings};
@@ -95,6 +96,8 @@ pub struct Live {
     policy: Arc<AddressPolicy>,
     /// The files tunnel's own tickets, so a session ticket never opens `/files`.
     files: files::Tickets,
+    /// The live shares of sessions, with their own lock (RA-035).
+    shares: Shares,
     changes: Changes,
 }
 
@@ -141,6 +144,7 @@ impl Live {
             tunnel_end_wait: wait,
             policy: Arc::default(),
             files: files::Tickets::default(),
+            shares: Shares::default(),
             changes: Changes::default(),
         }
     }
@@ -192,9 +196,15 @@ impl Live {
         &self.files
     }
 
-    /// The end signal of the session's open tunnel, for a tunnel that lives only as long as
-    /// it (the files tunnel, K4 Section 9): it carries the first cause, and closes when the
-    /// session's tunnel deregisters. `None` when the session has no open tunnel.
+    /// The live shares of sessions.
+    pub(super) const fn shares(&self) -> &Shares {
+        &self.shares
+    }
+
+    /// The end signal of the session's open tunnel, for what lives only as long as it (the
+    /// files tunnel, K4 Section 9; a share's keeper, K4 Section 5): it carries the first cause,
+    /// and closes when the session's tunnel deregisters. `None` when the session has no open
+    /// tunnel.
     pub(super) fn tunnel_end(
         &self,
         session: SessionId,
