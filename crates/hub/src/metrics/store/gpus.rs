@@ -5,7 +5,7 @@
 use std::collections::HashMap;
 
 use chrono::{DateTime, Utc};
-use sqlx::PgPool;
+use sqlx::{PgConnection, PgPool};
 
 use super::{record::device_missing, rows::GpuRow};
 use crate::{
@@ -62,16 +62,27 @@ pub(in crate::metrics) async fn replace_gpus(
     device: DeviceId,
     discovery: Discovery<'_>,
 ) -> Result<(), Error> {
+    let mut tx = db.begin().await?;
+    write_gpus(&mut tx, device, discovery).await?;
+    tx.commit().await?;
+    Ok(())
+}
+
+/// [`replace_gpus`] in the caller's transaction.
+pub(in crate::metrics) async fn write_gpus(
+    conn: &mut PgConnection,
+    device: DeviceId,
+    discovery: Discovery<'_>,
+) -> Result<(), Error> {
     let gpus = discovery.gpus;
     let indexes: Vec<i32> = gpus.iter().map(|gpu| gpu.index).collect();
     let names: Vec<&str> = gpus.iter().map(|gpu| gpu.name.as_str()).collect();
     let vendors: Vec<&str> = gpus.iter().map(|gpu| gpu.vendor.as_str()).collect();
     let vram: Vec<bool> = gpus.iter().map(|gpu| gpu.has_vram).collect();
 
-    let mut tx = db.begin().await?;
     sqlx::query("DELETE FROM metrics.gpus WHERE device_id = $1")
         .bind(device)
-        .execute(&mut *tx)
+        .execute(&mut *conn)
         .await?;
     sqlx::query(REPLACE_GPUS_SQL)
         .bind(device)
@@ -80,16 +91,15 @@ pub(in crate::metrics) async fn replace_gpus(
         .bind(names)
         .bind(vendors)
         .bind(vram)
-        .execute(&mut *tx)
+        .execute(&mut *conn)
         .await
         .map_err(device_missing)?;
     sqlx::query(DISCOVERY_SQL)
         .bind(device)
         .bind(discovery.found_at)
         .bind(discovery.boot_at)
-        .execute(&mut *tx)
+        .execute(conn)
         .await
         .map_err(device_missing)?;
-    tx.commit().await?;
     Ok(())
 }
