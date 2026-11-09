@@ -65,10 +65,12 @@ pub fn stopping() {
     tracing::info!("the agent is stopping");
 }
 
-pub fn sampling_panicked() {
-    tracing::error!("sampling stopped: its task panicked");
-}
-
-pub fn sampling_stopped() {
-    tracing::error!("sampling stopped before the agent was told to stop");
+/// Logs why sampling ended before the agent was told to stop: its task panicked, or it
+/// returned (the channel to the pusher closed).
+pub fn sampling_ended(ended: &Result<(), tokio::task::JoinError>) {
+    if ended.is_err() {
+        tracing::error!("sampling stopped: its task panicked");
+    } else {
+        tracing::error!("sampling stopped before the agent was told to stop");
+    }
 }

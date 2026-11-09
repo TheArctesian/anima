@@ -10,6 +10,7 @@ use anima_agent::hub::answer::Cause;
 use anima_agent::hub::enrolment::{EnrolError, Enrolment};
 use anima_agent::hub::{HubClient, TIMEOUT};
 use anima_agent::push::Event;
+use anima_agent::report;
 use anima_agent::runtime::RunError;
 use anima_agent::token_store::TokenStore;
 
@@ -132,4 +133,33 @@ fn log_007_no_error_message_holds_a_token_or_a_code() {
         assert!(!message.contains(CODE), "{message}");
         assert!(!message.contains(token(1).expose()), "{message}");
     }
+}
+
+#[tokio::test]
+async fn met_014_the_log_tells_a_panicked_sampler_from_one_that_returned() {
+    LazyLock::force(&LOG);
+    let panicked_before = LOG.text().matches("its task panicked").count();
+    let returned_before = LOG
+        .text()
+        .matches("before the agent was told to stop")
+        .count();
+    let panicked = tokio::spawn(async { panic!("sampling broke") }).await;
+    report::sampling_ended(&panicked);
+    let text = LOG.text();
+    assert_eq!(
+        text.matches("its task panicked").count(),
+        panicked_before + 1
+    );
+    assert_eq!(
+        text.matches("before the agent was told to stop").count(),
+        returned_before,
+        "a panic is not logged as a return"
+    );
+    report::sampling_ended(&Ok(()));
+    assert_eq!(
+        LOG.text()
+            .matches("before the agent was told to stop")
+            .count(),
+        returned_before + 1
+    );
 }

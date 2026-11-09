@@ -4,6 +4,7 @@
 //! [`Placement`] gives each vendor a base, fixed at discovery so that a GPU keeps its index
 //! when another is briefly unreadable.
 
+use std::ops::Add;
 use std::time::Duration;
 
 use agent_core::points::{Kind, MAX_GPU_INDEX, SeriesKey};
@@ -45,12 +46,12 @@ impl Discovery {
         }
     }
 
-    /// How long to wait before discovering again: soon after a discovery that lost GPUs (or
-    /// found none the first time), else a day.
+    /// When to discover again, from `now`: soon after a discovery that lost GPUs (or found
+    /// none the first time), else a day.
     #[must_use]
-    pub fn next_after(&self, previous: Option<&Self>) -> Duration {
+    pub fn next_at<T: Add<Duration, Output = T>>(&self, now: T, previous: Option<&Self>) -> T {
         let lost = previous.map_or(self.count == 0, |earlier| self.count < earlier.count);
-        if lost { DISCOVER_SOON } else { DISCOVER_EVERY }
+        now + if lost { DISCOVER_SOON } else { DISCOVER_EVERY }
     }
 }
 
@@ -173,6 +174,12 @@ const fn float(count: u64) -> f64 {
 mod tests {
     use super::*;
 
+    /// How long `found` waits before the next discovery.
+    fn after(found: &Discovery, previous: Option<&Discovery>) -> Duration {
+        let now = std::time::Instant::now();
+        found.next_at(now, previous) - now
+    }
+
     fn gpu(vendor: GpuVendor, index: u32) -> GpuReading {
         GpuReading {
             index,
@@ -256,27 +263,19 @@ mod tests {
         let one = Discovery::new(vec![gpu(GpuVendor::Nvidia, 0)]);
         let none = Discovery::new(Vec::new());
         assert_eq!(
-            two.next_after(None),
+            after(&two, None),
             DISCOVER_EVERY,
             "the first finding is trusted"
         );
+        assert_eq!(after(&one, Some(&two)), DISCOVER_SOON, "fewer than before");
+        assert_eq!(after(&one, Some(&one)), DISCOVER_EVERY, "stable again");
+        assert_eq!(after(&none, None), DISCOVER_SOON, "none the first time");
+        assert_eq!(after(&none, Some(&two)), DISCOVER_SOON, "all gone");
         assert_eq!(
-            one.next_after(Some(&two)),
-            DISCOVER_SOON,
-            "fewer than before"
-        );
-        assert_eq!(one.next_after(Some(&one)), DISCOVER_EVERY, "stable again");
-        assert_eq!(none.next_after(None), DISCOVER_SOON, "none the first time");
-        assert_eq!(none.next_after(Some(&two)), DISCOVER_SOON, "all gone");
-        assert_eq!(
-            none.next_after(Some(&none)),
+            after(&none, Some(&none)),
             DISCOVER_EVERY,
             "still none: stable"
         );
-        assert_eq!(
-            two.next_after(Some(&one)),
-            DISCOVER_EVERY,
-            "more than before"
-        );
+        assert_eq!(after(&two, Some(&one)), DISCOVER_EVERY, "more than before");
     }
 }

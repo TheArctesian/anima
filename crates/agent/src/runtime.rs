@@ -56,11 +56,7 @@ pub async fn run(home: &Home, stop: impl Future<Output = ()>) -> Result<(), RunE
     let outcome = tokio::select! {
         () = push(pusher, receiver) => Err(RunError::SamplingStopped),
         ended = &mut sampling => {
-            if ended.is_err() {
-                report::sampling_panicked();
-            } else {
-                report::sampling_stopped();
-            }
+            report::sampling_ended(&ended);
             Err(RunError::SamplingStopped)
         }
         () = stop => {
@@ -92,14 +88,14 @@ async fn sample(platform: Platform, events: mpsc::Sender<Event>) {
     let mac = platform == Platform::Macos;
     let mut sampler = Sampler::new();
     let mut found = discover(mac, &events).await;
-    let mut next_discovery = Instant::now() + found.next_after(None);
+    let mut next_discovery = found.next_at(Instant::now(), None);
     let mut ticks = interval(SAMPLE_EVERY);
     ticks.set_missed_tick_behavior(MissedTickBehavior::Skip);
     loop {
         ticks.tick().await;
         if Instant::now() >= next_discovery {
             let again = discover(mac, &events).await;
-            next_discovery = Instant::now() + again.next_after(Some(&found));
+            next_discovery = again.next_at(Instant::now(), Some(&found));
             found = again;
         }
         let now = Utc::now();
@@ -171,6 +167,17 @@ mod tests {
             .save_new(&credential)
             .expect("token");
         (dir, home)
+    }
+
+    /// The first thing sampling sends is the GPU list, `[]` included (K8 Section 4): the hub
+    /// is told the set before any point arrives.
+    #[tokio::test]
+    async fn k8_4_sampling_starts_by_announcing_the_gpus() {
+        let (sender, mut events) = mpsc::channel(CHANNEL_ROOM);
+        let sampling = tokio::spawn(sample(Platform::Linux, sender));
+        let first = tokio::time::timeout(Duration::from_secs(20), events.recv()).await;
+        sampling.abort();
+        assert!(matches!(first, Ok(Some(Event::Gpus(_)))));
     }
 
     #[test]
