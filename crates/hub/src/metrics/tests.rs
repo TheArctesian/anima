@@ -7,6 +7,7 @@ mod database;
 mod faces;
 mod gpu_labels;
 mod gpu_reads;
+mod gpu_series;
 mod kinds;
 mod privileges;
 mod retention;

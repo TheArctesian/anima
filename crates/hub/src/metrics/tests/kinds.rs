@@ -28,6 +28,7 @@ fn k1_metric_kind_names_match_the_contract() {
             "VRAM_BYTES",
             "GPU_TEMPERATURE_C",
             "GPU_POWER_W",
+            "GPU_MEMORY_BYTES",
         ]
     );
 }
@@ -57,18 +58,20 @@ fn unknown_stored_kind_text_is_rejected() {
 }
 
 #[test]
-fn k8_every_api_kind_is_a_stored_kind_and_gpu_memory_bytes_is_not_served_yet() {
+fn k8_every_api_kind_is_a_stored_kind() {
     for item in MetricKind::items() {
         assert_eq!(MetricKind::served(Kind::from(item.value)), Some(item.value));
     }
-    assert_eq!(MetricKind::parse("gpu_memory_bytes"), None);
 }
 
 #[test]
-fn k8_the_only_stored_kind_the_api_does_not_serve_is_gpu_memory_bytes() {
-    let unserved: Vec<Kind> = Kind::ALL
-        .into_iter()
-        .filter(|kind| MetricKind::served(*kind).is_none())
-        .collect();
-    assert_eq!(unserved, [Kind::GpuMemoryBytes]);
+fn r_092_d_6_every_stored_kind_is_served_gpu_memory_bytes_too() {
+    for kind in Kind::ALL {
+        let served = MetricKind::served(kind);
+        assert_eq!(served.map(Kind::from), Some(kind), "{kind:?}");
+    }
+    assert_eq!(
+        MetricKind::parse("gpu_memory_bytes"),
+        Some(MetricKind::GpuMemoryBytes)
+    );
 }
