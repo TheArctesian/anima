@@ -1,7 +1,8 @@
 //! Rounds against a test SSH device on loopback: one link per collection with the exact
 //! commands and nothing else, the samples stored and published, rates on the second round,
 //! one event per change, Windows skipped without a link, and a link lost on a GPU read that
-//! keeps the collection (MET-001, MET-002, MET-005, MET-006, CHK-012, P2-003, D-4, D-10, D-11).
+//! keeps the collection, and a huge GPU value that fails nothing (MET-001, MET-002, MET-005,
+//! MET-006, CHK-012, P2-003, D-4, D-10, D-11).
 
 use sqlx::PgPool;
 use tokio::sync::broadcast::error::TryRecvError;
@@ -216,5 +217,33 @@ async fn met_006_a_link_lost_on_a_gpu_read_keeps_the_collection(pool: PgPool) {
     assert!(
         stored.iter().all(|(_, name, _)| name != "docker-host"),
         "the collection worked: {stored:?}"
+    );
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn met_002_a_huge_gpu_value_is_dropped_and_never_fails_a_later_collection(pool: PgPool) {
+    let mut bench = bench(&pool, true).await;
+    let hostile = b"0, Hostile GPU, 50, 1024, 2048, 40, 1.7e308\n";
+    bench.server.answer(LINUX_GPU_LINES[0], hostile);
+    bench.collector.round().await;
+    bench.clock.advance(30);
+    bench.collector.round().await;
+    let first = bench.feed.try_recv().unwrap();
+    assert_eq!(
+        value(&first, MetricKind::GpuPowerW, "0"),
+        None,
+        "above 10 kW"
+    );
+    assert_eq!(value(&first, MetricKind::GpuTemperatureC, "0"), Some(40.0));
+    let second = bench.feed.try_recv().unwrap();
+    assert!(value(&second, MetricKind::MemoryPercent, "").is_some());
+    assert_eq!(value(&second, MetricKind::GpuPercent, "0"), Some(50.0));
+    let stored = events(&pool).await;
+    assert!(
+        stored.iter().all(|(_, name, _)| name != "docker-host"),
+        "both collections worked: {stored:?}"
     );
 }

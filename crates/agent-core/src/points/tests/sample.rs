@@ -59,6 +59,21 @@ fn met_009_a_gpu_sample_needs_a_gpu_kind_an_index_k8_allows_and_a_kept_value() {
     assert_eq!(Sample::gpu(Kind::GpuPowerW, 0, -1.0), None);
 }
 
+#[test]
+fn met_002_a_gpu_temperature_or_power_beyond_its_ceiling_is_refused() {
+    for (kind, ceiling, above) in [
+        (Kind::GpuTemperatureC, 1000.0, 1000.5),
+        (Kind::GpuPowerW, 10_000.0, 10_000.5),
+    ] {
+        let kept = Sample::gpu(kind, 0, ceiling).unwrap();
+        assert_eq!(kept.value.to_bits(), f64::to_bits(ceiling), "{kind:?}");
+        assert_eq!(Sample::gpu(kind, 0, above), None, "{kind:?}");
+        assert_eq!(Sample::gpu(kind, 0, 1.7e308), None, "{kind:?}");
+    }
+    let bytes = Sample::gpu(Kind::VramBytes, 0, 1.7e19).unwrap();
+    assert_eq!(bytes.value.to_bits(), 1.7e19_f64.to_bits(), "no ceiling");
+}
+
 const STORED: [&str; 17] = [
     "cpu_percent",
     "memory_percent",
