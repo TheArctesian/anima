@@ -9,15 +9,19 @@ use crate::{
     metrics::{Error, Sample},
 };
 
+/// A GPU series is labelled with its GPU index, so the index of an existing series never
+/// changes and the conflict leaves it as it is (MET-009).
 const UPSERT_SERIES_SQL: &str = "\
-    INSERT INTO metrics.series (id, device_id, kind, label) \
-    SELECT w.id, $1, w.kind, w.label \
-    FROM unnest($2::uuid[], $3::text[], $4::text[]) AS w(id, kind, label) \
+    INSERT INTO metrics.series (id, device_id, kind, label, gpu_index) \
+    SELECT w.id, $1, w.kind, w.label, w.gpu_index \
+    FROM unnest($2::uuid[], $3::text[], $4::text[], $5::int4[]) \
+        AS w(id, kind, label, gpu_index) \
     ON CONFLICT (device_id, kind, label) DO NOTHING";
 
 /// The upsert of one aggregate table from the samples just inserted: the mean is kept as a
-/// running mean over `count` samples, and the bucket starts on the UTC minute, hour or day, as
-/// the table is named.
+/// running mean over `count` samples, moved by a share of the new value's difference so it
+/// never overflows for values of at least zero (MET-002), and the bucket starts on the UTC
+/// minute, hour or day, as the table is named.
 macro_rules! aggregate {
     ($table:literal) => {
         concat!(
@@ -30,7 +34,7 @@ macro_rules! aggregate {
             $table,
             "', $2::timestamptz, 'UTC'), value, value, value, 1 FROM added \
                ON CONFLICT (series_id, bucket) DO UPDATE SET \
-                  avg = (a.avg * a.count + excluded.avg) / (a.count + 1), \
+                  avg = a.avg + (excluded.avg - a.avg) / (a.count + 1), \
                   min = LEAST(a.min, excluded.min), \
                   max = GREATEST(a.max, excluded.max), \
                   count = a.count + 1)"
@@ -76,6 +80,10 @@ pub(in crate::metrics) async fn record(
     let kinds: Vec<&str> = samples.iter().map(|sample| sample.kind.as_str()).collect();
     let labels: Vec<&str> = samples.iter().map(|sample| sample.label.as_str()).collect();
     let values: Vec<f64> = samples.iter().map(|sample| sample.value).collect();
+    let gpus: Vec<Option<i32>> = samples
+        .iter()
+        .map(|sample| sample.gpu_index.map(i32::from))
+        .collect();
 
     let mut tx = db.begin().await?;
     sqlx::query(UPSERT_SERIES_SQL)
@@ -83,6 +91,7 @@ pub(in crate::metrics) async fn record(
         .bind(ids)
         .bind(&kinds)
         .bind(&labels)
+        .bind(gpus)
         .execute(&mut *tx)
         .await
         .map_err(device_missing)?;
@@ -98,8 +107,8 @@ pub(in crate::metrics) async fn record(
     Ok(())
 }
 
-/// A foreign key violation on the series table means the device is gone.
-fn device_missing(error: sqlx::Error) -> Error {
+/// A foreign key violation on a table keyed by device means the device is gone.
+pub(super) fn device_missing(error: sqlx::Error) -> Error {
     match error.as_database_error() {
         Some(db_error) if db_error.is_foreign_key_violation() => Error::NoDevice,
         _ => Error::Database(error),
