@@ -1,7 +1,7 @@
 //! guacd 1.6.0's answers to a join of a live VNC connection (`select,$<id>`), recorded from
 //! `guacamole/guacd:1.6.0` against a fake RFB server: the join's `args`, the `ready` id, the
-//! joiner's opening, an unknown id, the `read-only` effect and the owner leaving
-//! (K4 Sections 3 and 10, GW-014, RA-035).
+//! joiner's opening, an unknown id, the `read-only` effect, the owner's join notices, a
+//! silent joiner's drop and the owner leaving (K4 Sections 3 and 10, GW-014, RA-035).
 
 use guac_protocol::{
     ArgValues, ConnectParams, Decoder, Display, Handshake, HandshakeError, HandshakeStep,
@@ -22,7 +22,12 @@ const OPENING: &[u8] = include_bytes!("fixtures/guacd-1.6.0-vnc-join-opening.gua
 const OWNER_LEFT: &[u8] = include_bytes!("fixtures/guacd-1.6.0-vnc-join-owner-left.guac");
 /// guacd's reply to `select` with a well-formed id no connection has.
 const UNKNOWN: &[u8] = include_bytes!("fixtures/guacd-1.6.0-join-unknown.guac");
-/// What the fake RFB server and the recording client observed in the same run.
+/// The `msg` notices guacd sent the owner, one per joiner, in join order.
+const NOTICES: &[u8] = include_bytes!("fixtures/guacd-1.6.0-vnc-join-notices.guac");
+/// What a joiner got when guacd dropped it for 15 seconds of silence (a run with no `sync`
+/// answers).
+const SILENT_DROP: &[u8] = include_bytes!("fixtures/guacd-1.6.0-vnc-join-silent-drop.guac");
+/// What the fake RFB server and the recording client observed, in both runs.
 const OBSERVED: &str = include_str!("fixtures/guacd-1.6.0-vnc-join-observed.json");
 
 /// The id the recording sent for the unknown-id case.
@@ -37,6 +42,10 @@ const JOINER_DISPLAY: Display = Display {
 const DROPPED: [&str; 6] = ["clipboard", "file", "audio", "argv", "pipe", "required"];
 /// guacd's status for an id it does not know: `RESOURCE_NOT_FOUND`.
 const RESOURCE_NOT_FOUND: u16 = 0x0204;
+/// guacd's status for a user that sent nothing for 15 seconds: `CLIENT_TIMEOUT`.
+const CLIENT_TIMEOUT: u16 = 0x0308;
+/// The names the recorded joiners sent, in join order.
+const JOINER_NAMES: [&str; 3] = ["viewer", "second", "third"];
 
 /// Every instruction in `fixture`; the fixture is whole instructions with nothing after them.
 fn instructions(fixture: &[u8]) -> Vec<Instruction> {
@@ -77,6 +86,16 @@ fn join_params(read_only: &str) -> ConnectParams {
 
 fn observed() -> Value {
     serde_json::from_str(OBSERVED).unwrap()
+}
+
+/// True when the RFB `event` is the sender's own: a pointer event at its position or a key
+/// event with its keysym.
+fn is_senders_own(event: &Value, sender: &Value) -> bool {
+    match event["event"].as_str() {
+        Some("PointerEvent") => serde_json::json!([event["x"], event["y"]]) == sender["pointer"],
+        Some("KeyEvent") => event["keysym"] == sender["keysym"],
+        _ => false,
+    }
 }
 
 /// The stream indexes `img` opens in `instructions` (its first argument).
@@ -211,6 +230,7 @@ fn gw_014_an_unknown_id_is_refused_as_resource_not_found() {
 fn ra_035_read_only_true_keeps_a_joiners_input_from_the_vnc_server() {
     let observed = observed();
     assert_eq!(observed["rfb_connections"], 1);
+    assert_eq!(observed["rfb_client_init_shared"], serde_json::json!([1]));
     let senders = observed["input"].as_array().unwrap();
     assert!(senders.iter().any(|s| s["read_only"] == "true"));
     assert!(senders.iter().any(|s| s["read_only"] == ""));
@@ -218,6 +238,10 @@ fn ra_035_read_only_true_keeps_a_joiners_input_from_the_vnc_server() {
         let reached = sender["reached_vnc_server"].as_array().unwrap();
         let blocked = sender["read_only"] == "true";
         assert_eq!(reached.is_empty(), blocked, "{}", sender["connection"]);
+        assert!(reached.iter().all(|event| is_senders_own(event, sender)));
+        for kind in ["PointerEvent", "KeyEvent"] {
+            assert_eq!(blocked, !reached.iter().any(|e| e["event"] == kind));
+        }
     }
 }
 
@@ -236,10 +260,51 @@ fn ra_035_guacd_keeps_joiners_after_the_owner_leaves() {
     let leaves = &observed()["owner_leaves"];
     assert_eq!(leaves["owner_received"], serde_json::json!(["disconnect"]));
     assert_eq!(leaves["join_after_owner_left"], "ready");
-    assert!(
-        leaves["owner_tcp_closed_after_last_joiner_s"]
-            .as_f64()
-            .unwrap()
-            > 0.0
+    assert_eq!(leaves["owner_tcp_held_until_last_joiner_left"], true);
+}
+
+/// guacd tells only the owner of each join, with `msg` `1`, the joiner's guacd user id (`@`
+/// and a UUID, never the connection id) and the name the joiner sent.
+#[test]
+fn ra_035_guacd_tells_only_the_owner_of_each_join() {
+    let connection_id = owner_id();
+    let notices = instructions(NOTICES);
+    let mut names = Vec::new();
+    for notice in &notices {
+        assert_eq!(notice.opcode, "msg");
+        let [code, user, name] = notice.args.as_slice() else {
+            panic!("msg has a code, a user id and a name");
+        };
+        assert_eq!(code, "1");
+        assert_ne!(user, &connection_id);
+        let uuid = user.strip_prefix('@').expect("a user id starts with @");
+        assert!(Uuid::parse_str(uuid).is_ok());
+        names.push(name.as_str());
+    }
+    assert_eq!(names, JOINER_NAMES);
+    let recipients = &observed()["join_notices"]["recipients"];
+    assert_eq!(recipients, &serde_json::json!(["owner"]));
+}
+
+/// A joiner that sends nothing for 15 seconds gets `error` `CLIENT_TIMEOUT` and `disconnect`,
+/// and guacd leaves its socket open: the viewer relay must close it itself (RA-035).
+#[test]
+fn ra_035_guacd_drops_a_silent_joiner_and_leaves_its_socket_open() {
+    let dropped = instructions(SILENT_DROP);
+    let [error, disconnect] = dropped.as_slice() else {
+        panic!("an error and a disconnect");
+    };
+    assert_eq!(error.opcode, "error");
+    assert_eq!(error.args[1].parse::<u16>(), Ok(CLIENT_TIMEOUT));
+    assert_eq!(
+        *disconnect,
+        Instruction::new("disconnect", Vec::<String>::new())
     );
+    let observed = observed();
+    let silent = observed["silent_joiners"].as_array().unwrap();
+    assert_eq!(silent.len(), JOINER_NAMES.len());
+    for joiner in silent {
+        assert_eq!(joiner["silence_before_drop_s"], 15);
+        assert_eq!(joiner["tcp_closed_before_recorder_exit"], false);
+    }
 }

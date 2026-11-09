@@ -10,6 +10,11 @@
       "sender": "joiner",
       "connection": "join-read-only",
       "read_only": "true",
+      "pointer": [
+        10,
+        10
+      ],
+      "keysym": 97,
       "sent": [
         "mouse 10,10 buttons 1 then 0",
         "key 97 down then up"
@@ -20,6 +25,11 @@
       "sender": "owner",
       "connection": "owner",
       "read_only": "",
+      "pointer": [
+        20,
+        20
+      ],
+      "keysym": 98,
       "sent": [
         "mouse 20,20 buttons 1 then 0",
         "key 98 down then up"
@@ -53,6 +63,11 @@
       "sender": "joiner",
       "connection": "join-empty",
       "read_only": "",
+      "pointer": [
+        30,
+        30
+      ],
+      "keysym": 99,
       "sent": [
         "mouse 30,30 buttons 1 then 0",
         "key 99 down then up"
@@ -86,6 +101,11 @@
       "sender": "joiner",
       "connection": "join-false",
       "read_only": "false",
+      "pointer": [
+        40,
+        40
+      ],
+      "keysym": 100,
       "sent": [
         "mouse 40,40 buttons 1 then 0",
         "key 100 down then up"
@@ -124,7 +144,7 @@
     "owner_received": [
       "disconnect"
     ],
-    "owner_tcp_closed_after_last_joiner_s": 0.977,
+    "owner_tcp_held_until_last_joiner_left": true,
     "joiner_opcodes_after_owner_left": [
       "cfill",
       "copy",
@@ -133,5 +153,42 @@
     ],
     "join_after_owner_left": "ready",
     "joiner_tcp_closed_after_own_disconnect": true
-  }
+  },
+  "join_notices": {
+    "recipients": [
+      "owner"
+    ]
+  },
+  "silent_joiners": [
+    {
+      "connection": "join-read-only",
+      "error": [
+        "Aborted. See logs.",
+        "776"
+      ],
+      "silence_before_drop_s": 15,
+      "tcp_closed_before_recorder_exit": false,
+      "open_after_drop_at_least_s": 71
+    },
+    {
+      "connection": "join-empty",
+      "error": [
+        "Aborted. See logs.",
+        "776"
+      ],
+      "silence_before_drop_s": 15,
+      "tcp_closed_before_recorder_exit": false,
+      "open_after_drop_at_least_s": 65
+    },
+    {
+      "connection": "join-false",
+      "error": [
+        "Aborted. See logs.",
+        "776"
+      ],
+      "silence_before_drop_s": 15,
+      "tcp_closed_before_recorder_exit": false,
+      "open_after_drop_at_least_s": 61
+    }
+  ]
 }

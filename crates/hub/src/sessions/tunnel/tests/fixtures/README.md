@@ -22,8 +22,10 @@ Each file holds the one `args` instruction that guacd sent after `select,rdp` or
 | `guacd-1.6.0-vnc-join-args.guac` | `args` after `select,$<that id>`: byte for byte the same as `guacd-1.6.0-vnc-args.guac` |
 | `guacd-1.6.0-vnc-join-opening.guac` | To a joiner with `read-only` `true`: `ready` with the owner's id, then the owner's screen (cursor layer, `size` of layer 0 at the remote's 64 x 48, `img` streams, `set`, `cursor`, `mouse`) up to the first `sync` |
 | `guacd-1.6.0-vnc-join-owner-left.guac` | To that joiner after the owner sent `disconnect` and before the joiner sent its own: only frames (`rect`, `cfill`, `copy`, `sync`) |
+| `guacd-1.6.0-vnc-join-notices.guac` | To the owner, one per joiner in join order: `msg` `1`, the joiner's guacd user id (`@` and a UUID, not the connection id) and the `name` the joiner sent. No joiner got any `msg` |
+| `guacd-1.6.0-vnc-join-silent-drop.guac` | From the silent run (below): to a joiner that sent nothing for 15 seconds, `error` `Aborted. See logs.` `776` (0x0308) and `disconnect` |
 | `guacd-1.6.0-join-unknown.guac` | `error` `No such connection.` `516` (0x0204) after `select` with an unknown `$` id; guacd then closed the socket |
-| `guacd-1.6.0-vnc-join-observed.json` | What the fake VNC server and the recording client saw in the same run (see below) |
+| `guacd-1.6.0-vnc-join-observed.json` | What the fake VNC server and the recording client saw in both runs (see below) |
 
 The connection id in these files belongs to a container that no longer exists.
 
@@ -36,10 +38,11 @@ bridge address `172.17.0.1`, port 5909: security type None, no password, a 64 x 
 updates, and a log of every client message with its decoded fields. A Python standard-library client
 spoke the Guacamole protocol to guacd, wrote every received instruction to a file, and answered each
 `sync` with `sync`, as guacamole-common-js does. The only `connect` values were `hostname`
-`172.17.0.1` and `port` `5909` for the owner, and `read-only` for the joiners. The scripts are not
-in the repository; WP-47's package file records the method.
+`172.17.0.1` and `port` `5909` for the owner, and `read-only` for the joiners. A third script cut
+the `.guac` files from the received bytes by their recorded offsets and wrote the observation file
+from the logs. The scripts are not in the repository; WP-47's package file records the method.
 
-In one run, in this order:
+In the main run, in this order:
 
 1. The owner: `select,vnc`, `size` 1024 x 768 x 96, `audio` and `video` empty, `image` PNG, JPEG and
    WebP, `timezone` `UTC`, `name`, `connect`, then `ready`.
@@ -61,12 +64,18 @@ What the observation file records:
   all four users.
 - `unknown_id`: one instruction, then guacd closed the socket.
 - `owner_leaves`: the owner got `disconnect` back. The joiners got no notice and kept getting
-  frames. The new join after the owner left got `ready`. guacd closed the owner's socket only when
+  frames. The new join after the owner left got `ready`. guacd held the owner's socket open until
   the last joiner had gone. Each joiner's socket closed as soon as it sent `disconnect`.
+- `join_notices`: only the owner's connection received `msg`.
+- `silent_joiners`: from the silent run below.
 
-guacd also sent the owner `msg` `1` `@<user id>` `<name>` for each joiner, and only to the owner.
+### The silent run
 
-In an earlier run the client did not answer `sync`. guacd then dropped each joiner 15 seconds after
-that joiner's last instruction, with `error` `Aborted. See logs.` `776` and `disconnect`, and did not
-close the socket in the next 60 seconds, while the client kept its own side open. The files above
-come from the run that answered `sync`.
+An earlier run used the same client before two changes: it did not answer `sync`, and after the
+owner's `disconnect` it only waited for each socket to close (20 seconds each, then the client
+exited) instead of joining again. Steps 1 to 4 were the same. guacd dropped each of the three
+joiners 15 seconds after that joiner's last instruction, with `error` `Aborted. See logs.` `776` and
+`disconnect`. None of their sockets closed before the client exited, while the client kept its own
+side open: 71, 65 and 61 seconds after each joiner's `error`. Only
+`guacd-1.6.0-vnc-join-silent-drop.guac` and `silent_joiners` come from this run; every other file
+comes from the main run, which answered `sync`.
