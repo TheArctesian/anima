@@ -1,7 +1,8 @@
 import type { MetricSeries, NewMetrics } from './api';
 import { rangeWindow } from './ranges';
 
-const GPU_LABEL = /^GPU (\d+) /;
+/** A GPU series is labelled with its index as decimal text (R-099). */
+const GPU_LABEL = /^(0|[1-9]\d*)$/;
 
 function gpuIndexOf(kind: string, label: string): number | null {
   const index = kind.startsWith('GPU_') || kind.startsWith('VRAM_') ? GPU_LABEL.exec(label)?.[1] : undefined;
