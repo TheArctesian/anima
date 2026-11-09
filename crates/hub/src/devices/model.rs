@@ -5,7 +5,7 @@
     reason = "the async-graphql Enum derive generates async trait impls"
 )]
 
-use std::{net::IpAddr, str::FromStr};
+use std::{net::IpAddr, num::NonZeroU8, str::FromStr};
 
 use async_graphql::Enum;
 use chrono::{DateTime, Utc};
@@ -158,6 +158,10 @@ pub struct Device {
     pub vnc: VncSettings,
     pub mac_address: Option<MacAddress>,
     pub metrics_source: MetricsSource,
+    /// Most sessions open at once on this device; `None` is no limit (RA-036).
+    pub session_limit: Option<NonZeroU8>,
+    /// Whether new sessions are recorded (RA-040).
+    pub record_sessions: bool,
     pub transfer: TransferPolicy,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,

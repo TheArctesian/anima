@@ -1,7 +1,9 @@
 //! Validation of the remote access settings of a device (RA-030..033, D-2, D-6).
 //!
 //! Field paths are `rdp.port`, `rdp.username`, `rdp.domain`, `vnc.port`, `vnc.username` and
-//! `macAddress`; the wake relay check names `deviceId`.
+//! `macAddress`, `sessionLimit`; the wake relay check names `deviceId`.
+
+use std::num::NonZeroU8;
 
 use super::{FieldError, Problems};
 use crate::text::is_plain;
@@ -18,6 +20,7 @@ use crate::{
 };
 
 const DOMAIN_MAX: usize = 255;
+const SESSION_LIMIT_MAX: u8 = 100;
 
 /// Checks the remote access part of a new device; settings left out take the K1 defaults.
 ///
@@ -36,16 +39,18 @@ pub(in crate::devices) fn new_remote(form: &RemoteForm) -> Result<RemoteAccess, 
     let rdp = problems.fields(rdp);
     let vnc = problems.fields(vnc);
     let mac_address = problems.field(form.mac_address.as_deref().map_or(Ok(None), mac_address));
-    let checked = rdp
-        .zip(vnc)
-        .zip(mac_address)
-        .map(|((rdp, vnc), mac_address)| RemoteAccess {
+    let session_limit = problems.field(form.session_limit.map_or(Ok(None), new_session_limit));
+    let checked = rdp.zip(vnc).zip(mac_address).zip(session_limit).map(
+        |(((rdp, vnc), mac_address), session_limit)| RemoteAccess {
             rdp,
             vnc,
             mac_address,
             metrics_source: form.metrics_source.unwrap_or_default(),
             transfer: form.transfer.unwrap_or_default(),
-        });
+            session_limit,
+            record_sessions: form.record_sessions.unwrap_or_default(),
+        },
+    );
     problems.finish(checked)
 }
 
@@ -72,12 +77,18 @@ pub(in crate::devices) fn remote_change(
         .as_deref()
         .map(mac_address)
         .and_then(|c| problems.field(c));
+    let session_limit = form
+        .session_limit
+        .map(changed_session_limit)
+        .and_then(|c| problems.field(c));
     problems.finish(Some(RemoteChange {
         rdp,
         vnc,
         mac_address,
         metrics_source: form.metrics_source,
         transfer: form.transfer,
+        session_limit,
+        record_sessions: form.record_sessions,
     }))
 }
 
@@ -174,6 +185,27 @@ fn domain(text: Option<&str>) -> Result<Option<String>, FieldError> {
 }
 
 /// `None` for empty text (no address); otherwise the parsed unicast address (D-6).
+const SESSION_LIMIT_MESSAGE: &str = "Enter a number from 1 to 100, or leave it empty for no limit.";
+
+/// A new device's limit: 1 to 100 (RA-036).
+fn new_session_limit(limit: i32) -> Result<Option<NonZeroU8>, FieldError> {
+    u8::try_from(limit)
+        .ok()
+        .filter(|limit| (1..=SESSION_LIMIT_MAX).contains(limit))
+        .and_then(NonZeroU8::new)
+        .map(Some)
+        .ok_or_else(|| FieldError::new("sessionLimit", SESSION_LIMIT_MESSAGE))
+}
+
+/// An update's limit: 0 clears it, 1 to 100 sets it (RA-036).
+fn changed_session_limit(limit: i32) -> Result<Option<NonZeroU8>, FieldError> {
+    if limit == 0 {
+        Ok(None)
+    } else {
+        new_session_limit(limit)
+    }
+}
+
 fn mac_address(text: &str) -> Result<Option<MacAddress>, FieldError> {
     let text = text.trim();
     if text.is_empty() {

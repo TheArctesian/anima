@@ -66,6 +66,8 @@ fn device(host: &str) -> Device {
         },
         mac_address: None,
         metrics_source: MetricsSource::default(),
+        session_limit: None,
+        record_sessions: false,
         transfer: TransferPolicy::default(),
         created_at: DateTime::UNIX_EPOCH,
         updated_at: DateTime::UNIX_EPOCH,

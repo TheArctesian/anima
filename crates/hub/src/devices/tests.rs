@@ -18,6 +18,7 @@ mod mac;
 mod page;
 mod remote;
 mod rules;
+mod session_controls;
 mod store_read;
 mod store_write;
 mod warnings;

@@ -237,9 +237,9 @@ type Device {
   transfer: TransferPolicy!
   accessWarnings: [AccessWarning!]!
   "Most live sessions at once (RA-036); null: no limit. Viewers and file tunnels do not count."
-  sessionLimit: Int @pending
+  sessionLimit: Int
   "RA-040; default false."
-  recordSessions: Boolean! @pending
+  recordSessions: Boolean!
   # web_interfaces
   webInterfaces: [WebInterface!]!
   # web_interfaces (WEB-002)
@@ -341,8 +341,8 @@ input CreateDeviceInput {
   transfer: TransferPolicyInput
   "When true (the default), the hub adds one ICMP check (spec 6.2)."
   addDefaultCheck: Boolean = true
-  sessionLimit: Int @pending
-  recordSessions: Boolean = false @pending
+  sessionLimit: Int
+  recordSessions: Boolean = false
 }
 
 input UpdateDeviceInput {
@@ -361,8 +361,8 @@ input UpdateDeviceInput {
   metricsSource: MetricsSource
   transfer: TransferPolicyInput
   "1..100; 0 clears the limit."
-  sessionLimit: Int @pending
-  recordSessions: Boolean @pending
+  sessionLimit: Int
+  recordSessions: Boolean
 }
 
 input SshCredentialInput @oneOf {

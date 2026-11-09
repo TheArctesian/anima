@@ -4,6 +4,8 @@
 //! The messages and the `change` objects are built by pure functions from the stored rows and the
 //! validated input. They hold names, hosts and settings, never a secret.
 
+use std::num::NonZeroU8;
+
 use serde_json::{Value, json};
 
 use super::credential_input::CredentialKind;
@@ -80,6 +82,8 @@ pub(super) fn device_added(device: &Device, new: &NewDevice, default_check: bool
         "macAddress": new.remote.mac_address.map(|mac| mac.to_string()),
         "metricsSource": new.remote.metrics_source.as_str(),
         "transfer": transfer_json(new.remote.transfer),
+        "sessionLimit": new.remote.session_limit.map(NonZeroU8::get),
+        "recordSessions": new.remote.record_sessions,
     });
     if default_check {
         change["defaultCheck"] = json!(true);
@@ -129,6 +133,18 @@ pub(super) fn device_updated(device: &Device, change: &DeviceChange) -> TrailEnt
             .map(|source| json!(source.as_str())),
     );
     put("transfer", change.remote.transfer.map(transfer_json));
+    // A cleared limit is recorded as null.
+    put(
+        "sessionLimit",
+        change
+            .remote
+            .session_limit
+            .map(|limit| json!(limit.map(NonZeroU8::get))),
+    );
+    put(
+        "recordSessions",
+        change.remote.record_sessions.map(|v| json!(v)),
+    );
     TrailEntry {
         source: Source::Device,
         severity: Severity::Info,

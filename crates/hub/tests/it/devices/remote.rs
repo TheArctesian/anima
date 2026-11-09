@@ -4,6 +4,7 @@
 mod passwords;
 mod read_back;
 mod relay;
+mod session_controls;
 
 use anima_hub::{
     devices::{

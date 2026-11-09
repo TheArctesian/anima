@@ -64,6 +64,10 @@ pub(super) struct CreateDeviceInput {
     #[graphql(default_with = "Some(MetricsSource::None)")]
     metrics_source: Option<MetricsSource>,
     transfer: Option<TransferPolicyInput>,
+    /// Empty is no limit; 1 to 100 sets one.
+    session_limit: Option<i32>,
+    #[graphql(default_with = "Some(false)")]
+    record_sessions: Option<bool>,
     /// When true (the default), the hub adds one ICMP check (spec 6.2).
     #[graphql(default_with = "Some(true)")]
     add_default_check: Option<bool>,
@@ -85,6 +89,9 @@ pub(super) struct UpdateDeviceInput {
     mac_address: Option<String>,
     metrics_source: Option<MetricsSource>,
     transfer: Option<TransferPolicyInput>,
+    /// Empty keeps the limit, 0 clears it, 1 to 100 sets it.
+    session_limit: Option<i32>,
+    record_sessions: Option<bool>,
 }
 
 fn site_id(id: &ID) -> Result<SiteId, FieldError> {
@@ -125,6 +132,8 @@ impl CreateDeviceInput {
                 mac_address: self.mac_address,
                 metrics_source: self.metrics_source,
                 transfer: self.transfer.map(Into::into),
+                session_limit: self.session_limit,
+                record_sessions: self.record_sessions,
             },
         };
         (form, bad_site)
@@ -153,6 +162,8 @@ impl UpdateDeviceInput {
                 mac_address: self.mac_address,
                 metrics_source: self.metrics_source,
                 transfer: self.transfer.map(Into::into),
+                session_limit: self.session_limit,
+                record_sessions: self.record_sessions,
             },
         };
         (form, bad_site)
