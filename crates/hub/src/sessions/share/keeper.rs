@@ -1,6 +1,7 @@
 //! The one task per share that ends it (S-5): it waits for the first of expiry, `endShare` and
 //! the end of the owner's session, removes the share, then writes `share.end` and its event.
-//! S-3's cap bounds the tasks to 32.
+//! A keeper frees its share's slot before it writes, so beyond S-3's 32 waiting keepers a few
+//! more may still be writing.
 
 use chrono::{DateTime, Utc};
 use tokio::sync::watch;
@@ -59,10 +60,25 @@ async fn owner_ended(tunnel_end: &mut watch::Receiver<Option<EndCause>>) {
     }
 }
 
+/// The cause and the address `share.end` records. A cause already `set` (by `endShare`, while
+/// the keeper woke for another) stands over the one the keeper `woke_for`. `endShare` records
+/// its caller's address; any other cause records where the owner `shared_from`.
+pub(super) fn recorded(
+    set: Option<ShareEnd>,
+    woke_for: ShareEnd,
+    shared_from: ClientAddr,
+) -> (ShareEnd, ClientAddr) {
+    let end = set.unwrap_or(woke_for);
+    match end {
+        ShareEnd::Ended(by) => (end, by),
+        ShareEnd::Expired | ShareEnd::SessionEnded => (end, shared_from),
+    }
+}
+
 impl Keeper {
     /// Waits for the share's first end, removes it, then writes `share.end` with the cause
-    /// that stands: a cause `endShare` set before the removal wins over the one this keeper
-    /// woke for, so the share ends once, with one cause. A failed write is logged with the
+    /// that stands ([`recorded`]): a cause `endShare` set before the removal wins over the one
+    /// this keeper woke for, so the share ends once, with one cause. A failed write is logged with the
     /// share's id and no token; the share is removed all the same.
     ///
     /// The owner tunnel's receiver drops only after the write, so `endSession` and hub
@@ -72,11 +88,10 @@ impl Keeper {
         let Some(share) = self.sharing.live.shares().remove(self.id) else {
             return;
         };
-        let end = settle(&share.end, woke_for);
-        let client = match end {
-            ShareEnd::Ended(by) => by,
-            ShareEnd::Expired | ShareEnd::SessionEnded => self.client,
-        };
+        // Removed, the share is out of `endShare`'s reach: the cause it holds now is final.
+        let set = *share.end.borrow();
+        let (end, client) = recorded(set, woke_for, self.client);
+        settle(&share.end, end);
         let ended = Ended {
             id: self.id,
             owner: share.owner.clone(),
