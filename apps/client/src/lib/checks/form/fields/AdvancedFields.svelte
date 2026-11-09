@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { FieldError } from '$lib/hub/hub';
   import type { SettingKey } from '../../defaults/settings';
-    import { messageFor } from '../model/errors';
+  import { messageFor } from '../model/errors';
   import type { CheckFormValues } from '../model/values';
   import { takesRetries } from '../probes/domain-expiry';
   import TextField from './TextField.svelte';

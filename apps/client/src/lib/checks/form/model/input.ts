@@ -6,8 +6,8 @@ import type { CheckFormValues } from './values';
 
 /**
  * CHK-008, CHK-009: the create mutation input; every common setting is sent, so the hub applies no default of its own.
- * R-102: a domain expiry check is the exception. It sends `retries: 0` explicitly (an omitted value takes the hub default
- * of 3, which the hub refuses) and leaves out the retry interval.
+ * R-102: a domain expiry check is the exception. It always sends `retries: 0` explicitly, whatever the hub does with an
+ * omitted value, and leaves out the retry interval.
  */
 export function createCheckInput(values: CheckFormValues, deviceId: string): CreateCheckInput {
   return {
