@@ -4,7 +4,7 @@
 mod agent;
 mod metrics;
 
-use std::{net::SocketAddr, sync::Arc};
+use std::{net::SocketAddr, path::Path, sync::Arc};
 
 use anima_hub::{
     access::{self, PublicOrigin},
@@ -12,6 +12,7 @@ use anima_hub::{
     events::Bus,
     exposition, router_at,
     schema::build_schema,
+    web_fallback,
 };
 use axum::{
     Router,
@@ -25,6 +26,7 @@ use http_body_util::BodyExt as _;
 use ipnet::IpNet;
 use sha2::{Digest as _, Sha256};
 use sqlx::PgPool;
+use tempfile::TempDir;
 use tower::ServiceExt as _;
 
 use crate::hub::{dependencies, set_operator};
@@ -34,9 +36,21 @@ const PUBLIC: &str = "https://hub.anima.ing";
 /// A client inside the permitted networks.
 const PERMITTED: &str = "10.10.0.5:40000";
 
-/// The hub's routes as `main.rs` composes them at `now`, `/metrics` merged last, behind the
-/// permitted networks `10.10.0.0/16`.
-async fn app(pool: &PgPool, now: DateTime<Utc>) -> Router {
+/// The body of the web client's `index.html`.
+const INDEX_HTML: &str = "<!doctype html><title>Anima</title>";
+
+/// The hub's routes at `now` with a web root holding only `index.html`, kept while the
+/// returned folder lives: see [`app_at`].
+async fn app(pool: &PgPool, now: DateTime<Utc>) -> (Router, TempDir) {
+    let web = tempfile::tempdir().unwrap();
+    std::fs::write(web.path().join("index.html"), INDEX_HTML).unwrap();
+    (app_at(pool, now, Some(web.path())).await, web)
+}
+
+/// The hub's routes at `now` in the order of the `main.rs` handoff: GraphQL at the public
+/// origin, then `/metrics`, then the web client at `root` when there is one, all behind the
+/// permitted networks `10.10.0.0/16`. The tunnels and `/push` are left out.
+async fn app_at(pool: &PgPool, now: DateTime<Utc>, root: Option<&Path>) -> Router {
     let networks: Vec<IpNet> = vec!["10.10.0.0/16".parse().unwrap()];
     access::permit_networks(pool, &networks).await.unwrap();
     let clock: Arc<dyn Clock> = Arc::new(FixedClock(now));
@@ -44,8 +58,10 @@ async fn app(pool: &PgPool, now: DateTime<Utc>) -> Router {
     let schema = build_schema(dependencies(pool, clock.clone(), bus.clone()));
     let edge = access::Edge::new(pool.clone(), bus, clock.clone());
     let origin = PublicOrigin::new(PUBLIC.to_owned());
+    let web = web_fallback(root, &origin);
     router_at(schema, pool.clone(), clock.clone(), origin)
         .merge(exposition(pool.clone(), clock))
+        .merge(web)
         .layer(access::permitted_networks_layer(edge))
 }
 

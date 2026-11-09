@@ -13,7 +13,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use super::{
-    ClientAddr, Error, Operator, bearer,
+    ClientAddr, Error, Operator,
     browser::{self, SameOrigin},
     store,
     tokens::{self, Scope, TokenKind, Transport},
@@ -175,17 +175,13 @@ pub(super) fn bearer_token(authorization: &str) -> Option<&str> {
 }
 
 /// The identity a presented token stands for at `now`, when its kind may come from
-/// `transport` (A-3), writing `last_used_at` at most once a minute. An agent token or an
-/// enrolment code is no identity and is never looked up (R-092 D-1).
+/// `transport` (A-3), writing `last_used_at` at most once a minute.
 pub(super) async fn resolve(
     db: &PgPool,
     presented: &str,
     transport: Transport,
     now: DateTime<Utc>,
 ) -> Result<Option<Identity>, Error> {
-    if bearer::is_agent_secret(presented) {
-        return Ok(None);
-    }
     let Some((hash, spelling)) = tokens::read_presented(presented) else {
         return Ok(None);
     };

@@ -1,7 +1,6 @@
 //! The bearer check of HTTP routes outside GraphQL, such as `GET /metrics` (K3, K7 "HTTP
 //! surface", WP-43 A-9).
 
-mod agent;
 #[cfg(test)]
 mod tests;
 
@@ -16,8 +15,6 @@ use axum::{
 };
 use sqlx::PgPool;
 use tower::{Layer, Service};
-
-pub(super) use agent::is_agent_secret;
 
 use super::{Error, Scope, identity, tokens::Transport};
 use crate::clock::Clock;

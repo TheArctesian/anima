@@ -22,8 +22,8 @@ use serde_json::Value;
 use sqlx::PgPool;
 
 use super::{
-    Answer, BROWSER, LOGIN, PERMITTED, PUBLIC, READ_KEY, WRITE_KEY, app, assert_refused,
-    database_now, scrape, scrape_with, send, stored,
+    Answer, BROWSER, INDEX_HTML, LOGIN, PERMITTED, PUBLIC, READ_KEY, WRITE_KEY, app, app_at,
+    assert_refused, database_now, scrape, scrape_with, send, stored,
 };
 
 /// The Prometheus text format 0.0.4 (INT-002).
@@ -55,7 +55,7 @@ async fn set_status(pool: &PgPool, check: &str, status: &str) {
 async fn d_24_int_001_metrics_without_a_token_answers_401_and_starts_no_build(pool: PgPool) {
     let now = database_now(&pool).await;
     let key = stored(&pool, READ_KEY, now + TimeDelta::days(1)).await;
-    let app = app(&pool, now).await;
+    let (app, _web) = app(&pool, now).await;
 
     assert_refused(&scrape(&app, &[]).await, "no token");
     // A build started by the refused scrape would serve this second for ten seconds, with
@@ -74,7 +74,7 @@ async fn d_24_int_001_metrics_without_a_token_answers_401_and_starts_no_build(po
 async fn int_001_a_read_key_a_write_key_and_a_login_token_scrape_prometheus_text(pool: PgPool) {
     let now = database_now(&pool).await;
     let until = now + TimeDelta::seconds(1);
-    let app = app(&pool, now).await;
+    let (app, _web) = app(&pool, now).await;
     for token in [READ_KEY, WRITE_KEY, LOGIN] {
         let presented = stored(&pool, token, until).await;
         let answer = scrape_with(&app, &presented).await;
@@ -106,7 +106,7 @@ async fn int_003_a_9_every_other_bearer_and_the_browser_cookie_get_an_empty_401(
     let mut at_expiry = WRITE_KEY;
     at_expiry.fill = 8;
     let at_expiry = stored(&pool, at_expiry, now).await;
-    let app = app(&pool, now).await;
+    let (app, _web) = app(&pool, now).await;
     let cookie = [
         ("cookie", format!("__Host-anima={browser}")),
         ("origin", PUBLIC.to_owned()),
@@ -152,8 +152,18 @@ async fn int_003_a_9_every_other_bearer_and_the_browser_cookie_get_an_empty_401(
 async fn net_002_the_bearer_check_covers_metrics_and_nothing_else(pool: PgPool) {
     let now = database_now(&pool).await;
     let key = stored(&pool, READ_KEY, now + TimeDelta::days(1)).await;
-    let app = app(&pool, now).await;
     let get = |uri: &str| Request::get(uri).body(Body::empty()).unwrap();
+    let (app, _web) = app(&pool, now).await;
+    let page = send(&app, PERMITTED, get("/devices/pve-01")).await;
+    assert_eq!(
+        (page.status, page.body.as_str()),
+        (StatusCode::OK, INDEX_HTML)
+    );
+    assert_refused(&scrape(&app, &[]).await, "with a web root");
+
+    // Without a web root, the hub's fallback stays the default 404: a bearer layer that also
+    // wrapped the exposition's fallback would answer 401 here.
+    let app = app_at(&pool, now, None).await;
 
     let health = send(&app, PERMITTED, get("/health")).await;
     assert_eq!(
@@ -226,7 +236,7 @@ async fn log_007_a_scrape_is_logged_by_its_route_never_its_token(pool: PgPool) {
     let mut expired = WRITE_KEY;
     expired.fill = 9;
     let expired = stored(&pool, expired, now).await;
-    let app = super::app(&pool, now).await;
+    let (app, _web) = super::app(&pool, now).await;
 
     assert_eq!(scrape_with(&app, &key).await.status, StatusCode::OK);
     assert_refused(&scrape_with(&app, &expired).await, "expired key");

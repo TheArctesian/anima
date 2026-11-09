@@ -1,6 +1,6 @@
-//! The bearer layer and the agent-secret rule on a pool that fails on use: an answer of 401
-//! proves no lookup ran, because a lookup on that pool fails (A-9, R-092 D-1). The answers on
-//! a database are in the `it` crate (`tests/it/bearer/`).
+//! The bearer layer, and agent secrets on every transport, on a pool that fails on use: an
+//! answer of 401 or no identity proves no lookup ran, because a lookup on that pool fails (A-9,
+//! R-092 D-1). The answers on a database are in the `it` crate (`tests/it/bearer/`).
 
 use std::{
     sync::{
@@ -19,12 +19,11 @@ use axum::{
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use chrono::{TimeZone as _, Utc};
 use http_body_util::BodyExt as _;
-use proptest::prelude::*;
 use serde_json::json;
 use sqlx::PgPool;
 use tower::ServiceExt as _;
 
-use super::{bearer_layer, covers, is_agent_secret};
+use super::{bearer_layer, covers};
 use crate::{
     access::{
         Error, Scope, identify, identify_connection, identity::resolve, operator_for_token,
@@ -52,70 +51,6 @@ fn enrolment_code() -> String {
 /// A login token's spelling: what the hub would look up.
 fn plain_token() -> String {
     URL_SAFE_NO_PAD.encode([3_u8; 32])
-}
-
-#[test]
-fn r_092_agent_tokens_and_enrolment_codes_are_spelled_exactly() {
-    assert!(is_agent_secret(&agent_token()));
-    assert!(is_agent_secret(&enrolment_code()));
-    assert!(is_agent_secret(&format!(
-        "anima_agent_{}",
-        "-_aZ09".repeat(7) + "x"
-    )));
-    let body = URL_SAFE_NO_PAD.encode([9_u8; 32]);
-    let code = URL_SAFE_NO_PAD.encode([9_u8; 16]);
-    for other in [
-        // API keys (`anima_` + 43) whose text begins like an agent secret.
-        format!("anima_agent_{}", &body[..37]),
-        format!("anima_enrol_{}", &body[..37]),
-        format!("anima_{body}"),
-        plain_token(),
-        format!("anima_agent_{}", &body[..42]),
-        format!("anima_agent_{body}A"),
-        format!("anima_enrol_{}", &code[..21]),
-        format!("anima_enrol_{code}A"),
-        format!("anima_agent_{}+", &body[..42]),
-        format!("anima_agent_{}=", &body[..42]),
-        format!("anima_enrol_{}/", &code[..21]),
-        format!("anima_agent_{}\u{e9}", &body[..41]),
-        format!("Anima_agent_{body}"),
-        format!("anima_Agent_{body}"),
-        format!("anima-agent_{body}"),
-        format!("xanima_agent_{}", &body[..42]),
-        format!(" anima_agent_{body}"),
-        "anima_agent_".to_owned(),
-        "anima_enrol_".to_owned(),
-        String::new(),
-    ] {
-        assert!(!is_agent_secret(&other), "{other}");
-    }
-}
-
-proptest! {
-    #[test]
-    fn r_092_no_login_token_or_api_key_is_ever_an_agent_secret(
-        bytes in any::<[u8; 32]>(),
-        rest in "[A-Za-z0-9_-]{37}",
-    ) {
-        let token = URL_SAFE_NO_PAD.encode(bytes);
-        // API keys: `anima_` and 43 characters, the second pair beginning like an agent secret.
-        let keys = [format!("anima_{token}"), format!("anima_agent_{rest}"), format!("anima_enrol_{rest}")];
-        prop_assert!(!is_agent_secret(&token));
-        for key in keys {
-            prop_assert!(!is_agent_secret(&key), "{}", key);
-        }
-    }
-
-    #[test]
-    fn r_092_every_agent_token_and_enrolment_code_is_an_agent_secret(
-        token in any::<[u8; 32]>(),
-        code in any::<[u8; 16]>(),
-    ) {
-        let token = format!("anima_agent_{}", URL_SAFE_NO_PAD.encode(token));
-        let code = format!("anima_enrol_{}", URL_SAFE_NO_PAD.encode(code));
-        prop_assert!(is_agent_secret(&token));
-        prop_assert!(is_agent_secret(&code));
-    }
 }
 
 #[test]

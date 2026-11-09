@@ -31,11 +31,12 @@ async fn me(app: &axum::Router, token: &str) -> Value {
 async fn r_092_met_013_agent_secrets_are_signed_out_everywhere(pool: PgPool) {
     let now = database_now(&pool).await;
     let login = stored(&pool, LOGIN, now + TimeDelta::days(1)).await;
-    let app = app(&pool, now).await;
+    let (app, _web) = app(&pool, now).await;
     // The control: the stored login token signs in.
     assert_eq!(me(&app, &login).await["data"]["me"]["username"], "operator");
 
-    // An agent token whose 43 characters are a stored login token's text.
+    // An agent token whose 43 characters are a stored login token's text: refused by its
+    // spelling, and by the token length rule too (55 characters are neither token nor key).
     let agent = format!("anima_agent_{login}");
     let enrolment = format!("anima_enrol_{}", URL_SAFE_NO_PAD.encode([3_u8; 16]));
     for secret in [agent, enrolment] {
@@ -59,7 +60,7 @@ async fn r_092_met_013_agent_secrets_are_signed_out_everywhere(pool: PgPool) {
 #[sqlx::test(migrations = "./migrations")]
 async fn r_092_an_api_key_whose_text_begins_agent_or_enrol_is_still_a_key(pool: PgPool) {
     let now = database_now(&pool).await;
-    let app = app(&pool, now).await;
+    let (app, _web) = app(&pool, now).await;
     for (fill, begins) in [(11, "agent_"), (12, "enrol_")] {
         let text = format!("{begins}{}", "A".repeat(37));
         let bytes: [u8; 32] = URL_SAFE_NO_PAD.decode(&text).unwrap().try_into().unwrap();
