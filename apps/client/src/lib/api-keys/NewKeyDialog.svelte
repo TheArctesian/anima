@@ -104,9 +104,8 @@
           <small id="{ids}-expiry-problem" class="problem">{expiryProblem}</small>
         </fieldset>
       </fieldset>
-      {#if failure !== null}
-        <p class="failure" role="alert">{failure}</p>
-      {/if}
+      <!-- Always mounted, one line high, so a refusal moves neither the form nor the buttons (MOT-007). -->
+      <p class="failure" role="alert">{failure ?? ''}</p>
       <div class="actions">
         <FormButton tabindex={0} onclick={close} aria-disabled={busy}>Cancel</FormButton>
         <!-- The buttons sit outside the disabled fieldset, so focus stays on Create key while the hub works; the label stays, so neither button moves (MOT-007). -->
@@ -222,6 +221,13 @@
   }
 
   .failure {
+    min-block-size: 1lh;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .failure:not(:empty) {
     padding-inline-start: var(--space-2);
     border-inline-start: var(--border-focus) solid var(--status-down);
   }

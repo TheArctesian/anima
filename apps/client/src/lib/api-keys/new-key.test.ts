@@ -96,7 +96,14 @@ describe('the expiry bounds (D-23)', () => {
     for (const code of ['CONFLICT', 'VALIDATION', 'FORBIDDEN', 'INTERNAL', 'UNAUTHENTICATED'] as const) {
       expect(createFailure({ code, message: 'hub text', fields: [] } as never)).not.toContain('hub text');
     }
-    expect(createFailure({ code: 'CONFLICT', message: 'hub text' })).toBe('An API key with this name exists. Choose another name.');
+    expect(createFailure({ code: 'CONFLICT', message: 'hub text' })).toBe('An API key has this name already.');
+  });
+
+  it('MOT-007: every fixed failure sentence fits one line of 36 characters', () => {
+    const codes = ['CONFLICT', 'VALIDATION', 'FORBIDDEN', 'INTERNAL', 'UNAUTHENTICATED', 'unreachable', 'malformed'] as const;
+    for (const code of codes) {
+      expect(createFailure({ code, message: 'hub text', fields: [] } as never).length).toBeLessThanOrEqual(36);
+    }
   });
 });
 

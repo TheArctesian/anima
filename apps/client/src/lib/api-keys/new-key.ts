@@ -119,16 +119,16 @@ export function checkNewKey(form: NewKeyForm, now: Date): NewKeyCheck {
 export function createFailure(error: HubError): string {
   switch (error.code) {
     case 'CONFLICT':
-      return 'An API key with this name exists. Choose another name.';
+      return 'An API key has this name already.';
     case 'VALIDATION':
-      return 'The hub refused the name or the expiry date.';
+      return 'The hub refused the name or date.';
     case 'FORBIDDEN':
       return 'This sign-in cannot make API keys.';
     case 'unreachable':
+      return 'The hub did not answer.';
     case 'malformed':
-      // These two are the client's own fixed sentences (`$lib/hub/error`).
-      return error.message;
+      return 'The hub sent an unreadable answer.';
     default:
-      return 'The hub did not make the key. Try again.';
+      return 'The hub did not make the key.';
   }
 }
