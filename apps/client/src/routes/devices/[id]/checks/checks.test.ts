@@ -18,13 +18,13 @@ describe('checkRowText (D-10, CHK-007)', () => {
     expect(checkRowText(check({ type: 'TLS', certificateDaysLeft: 0 })).expiry).toBe('Certificate: 0 days');
   });
 
-  it('D-29: a domain expiry check shows the domain days left, with day and days agreeing', () => {
+  it('D-29: a domain expiry check shows the domain days left, expired reads "expired N days ago", and day and days agree', () => {
     const domain = (domainDaysLeft: number | null) => checkRowText(check({ type: 'DOMAIN_EXPIRY', domainDaysLeft })).expiry;
     expect(domain(12)).toBe('Domain: 12 days');
     expect(domain(1)).toBe('Domain: 1 day');
     expect(domain(0)).toBe('Domain: 0 days');
-    expect(domain(-1)).toBe('Domain: -1 day');
-    expect(domain(-5)).toBe('Domain: -5 days');
+    expect(domain(-1)).toBe('Domain: expired 1 day ago');
+    expect(domain(-5)).toBe('Domain: expired 5 days ago');
     expect(domain(null)).toBeNull();
   });
 

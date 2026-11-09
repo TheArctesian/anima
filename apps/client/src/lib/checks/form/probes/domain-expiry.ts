@@ -1,5 +1,6 @@
 import type { FieldError } from '$lib/hub/hub';
 import { isValidHost, normalizeHost } from '$lib/devices/form/host';
+import { dayCount } from '../../days';
 import type { CheckConfigInput, CheckType } from '../model/hub-types';
 import { integerError, isIntegerIn, lengthError, timeoutError, toNumber } from '../model/range';
 
@@ -87,5 +88,5 @@ export function domainExpiryInput({ domain, warnDays, timeoutMs }: DomainExpiryV
 /** The days-left line for the check form; the same words in every place that shows it. */
 export function daysLeftText(daysLeft: number | null): string {
   if (daysLeft === null) return 'Days left: not known yet';
-  return `Days left: ${String(daysLeft)} ${Math.abs(daysLeft) === 1 ? 'day' : 'days'}`;
+  return `Days left: ${dayCount(daysLeft)}`;
 }

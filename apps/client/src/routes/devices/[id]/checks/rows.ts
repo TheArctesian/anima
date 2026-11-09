@@ -1,4 +1,5 @@
 import type { DeviceCheck } from '$lib/checks/api';
+import { dayCount } from '$lib/checks/days';
 import type { CheckType } from '$lib/hub/generated/graphql';
 
 const TYPE_LABELS: Record<CheckType, string> = {
@@ -34,8 +35,14 @@ export function msText(ms: number | null | undefined): string {
   return ms == null ? NONE : `${String(ms)} ms`;
 }
 
-function daysText(label: string, days: number | null | undefined): string | null {
-  return days == null ? null : `${label}: ${String(days)} ${Math.abs(days) === 1 ? 'day' : 'days'}`;
+function certificateText(days: number | null | undefined): string | null {
+  return days == null ? null : `Certificate: ${dayCount(days)}`;
+}
+
+/** D-29: a registration past its date reads "expired N days ago", not a negative count. */
+function domainText(days: number | null | undefined): string | null {
+  if (days == null) return null;
+  return days < 0 ? `Domain: expired ${dayCount(-days)} ago` : `Domain: ${dayCount(days)}`;
 }
 
 export function checkRowText(
@@ -46,7 +53,7 @@ export function checkRowText(
     responseTime: msText(check.lastHeartbeat?.responseTimeMs),
     expiry:
       check.type === 'DOMAIN_EXPIRY'
-        ? daysText('Domain', check.domainDaysLeft)
-        : daysText('Certificate', check.certificateDaysLeft),
+        ? domainText(check.domainDaysLeft)
+        : certificateText(check.certificateDaysLeft),
   };
 }
