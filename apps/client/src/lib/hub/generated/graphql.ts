@@ -69,6 +69,7 @@ export type CheckDefaultsInput = {
 
 export type CheckNotificationsInput = {
   channelIds: Array<string>;
+  /** Send again after each N Down heartbeats, 0..1000; 0: never (NOT-005). */
   resendEveryBeats?: number | null | undefined;
 };
 
@@ -337,6 +338,7 @@ export type NotificationKind =
   | 'UP';
 
 export type NotificationSettingsInput = {
+  /** Days 1..365, in any order; at most 5 once duplicates are removed; stored largest first (NOT-006, D-22). */
   certificateDays: Array<number>;
   template: NotificationTemplateInput;
 };
