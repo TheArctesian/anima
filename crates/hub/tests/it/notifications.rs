@@ -7,6 +7,7 @@ mod deliveries;
 mod guard;
 mod harness;
 mod k1;
+mod log;
 mod settings;
 mod unreadable;
 mod updates;

@@ -11,28 +11,14 @@
 
 mod channels;
 mod decision;
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "the dispatcher (WP-45 T6) is the first caller")
-)]
+mod dispatch;
 mod egress;
-#[cfg_attr(
-    not(test),
-    expect(dead_code, reason = "the dispatcher (WP-45 T6) is the first caller")
-)]
 mod encode;
 pub mod graphql;
 mod model;
 mod observe;
 mod sealing;
 mod store;
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "rendering and the payload values are first used by the dispatcher (WP-45 T6)"
-    )
-)]
 mod template;
 #[cfg(test)]
 mod tests;
@@ -42,6 +28,7 @@ use sqlx::PgPool;
 
 use crate::credentials;
 
+pub use dispatch::{Sending, spawn_dispatcher};
 pub use model::{
     Channel, ChannelFields, ChannelKind, CheckNotifications, CheckSettings, CheckState, Delivery,
     DeliveryCursor, DeliveryReason, ExpiryMark, ExpirySubject, InstallationSettings, NewOutbox,

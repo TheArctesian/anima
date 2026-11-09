@@ -26,7 +26,6 @@ use tokio_rustls::TlsAcceptor;
 
 use mail::{GO_AHEAD, PLAIN, Script, implicit, smtp, starttls};
 
-
 /// How a server answers each connection.
 #[derive(Clone)]
 pub(in crate::notifications) enum Behaviour {

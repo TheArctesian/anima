@@ -185,7 +185,10 @@ async fn d_17_a_mail_server_that_never_answers_ends_at_the_time_limit() {
 
     assert_eq!(sent, Err(SendError::TimedOut));
     let took = started.elapsed();
-    assert!(took >= TIME_LIMIT.saturating_sub(Duration::from_millis(100)), "{took:?}");
+    assert!(
+        took >= TIME_LIMIT.saturating_sub(Duration::from_millis(100)),
+        "{took:?}"
+    );
     assert!(took < TIME_LIMIT + SLACK, "{took:?}");
     server.settle().await;
     assert_eq!(server.connections(), 1);
@@ -202,7 +205,11 @@ async fn d_16_a_queued_message_is_sent_though_quit_is_never_answered() {
     // The 250 after DATA decided (S-A): a retry would send the mail twice. QUIT got only what
     // was left of the one time limit.
     assert_eq!(sent, Ok(()));
-    assert!(started.elapsed() < TIME_LIMIT + SLACK, "{:?}", started.elapsed());
+    assert!(
+        started.elapsed() < TIME_LIMIT + SLACK,
+        "{:?}",
+        started.elapsed()
+    );
     server.settle().await;
     assert_eq!(server.connections(), 1);
     assert_eq!(verbs(&server), ["EHLO", "AUTH", "MAIL", "RCPT", "DATA"]);

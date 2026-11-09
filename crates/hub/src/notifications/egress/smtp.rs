@@ -82,10 +82,9 @@ impl Egress {
         message: &Message,
     ) -> Result<(), SendError> {
         let deadline = Instant::now() + TIME_LIMIT;
-        let (mut connection, outcome) =
-            timeout_at(deadline, self.deliver(server, login, message))
-                .await
-                .map_err(|_| SendError::TimedOut)??;
+        let (mut connection, outcome) = timeout_at(deadline, self.deliver(server, login, message))
+            .await
+            .map_err(|_| SendError::TimedOut)??;
         // The outcome is decided; a QUIT that is not answered in time is dropped with the
         // connection.
         let _ = timeout_at(deadline, connection.abort()).await;

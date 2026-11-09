@@ -1,30 +1,26 @@
-//! HTTP egress: https only, checked address only, no second lookup, no redirect, TLS verified
-//! for the host name, and at most 4 KiB of the reply read (P3-003, D-17, CR-14).
+//! HTTP egress: https only, checked address only, no second lookup, no redirect, and TLS
+//! verified for the host name (P3-003, D-17, CR-14). How the reply is read is in `replies`.
 
-use std::{net::SocketAddr, time::Duration};
+use std::net::SocketAddr;
 
 use reqwest::{
     Method, Url,
     header::{HeaderMap, HeaderValue},
 };
-use tokio::time::Instant;
 
 use super::{
     local, loopback_denied,
     servers::{Behaviour, Server, certificate, serve},
 };
 use crate::{
-    notifications::egress::{
-        Egress, HttpRequest, SendError, TIME_LIMIT,
-        http::{REPLY_CAP, classify, discard_reply},
-    },
+    notifications::egress::{Egress, HttpRequest, SendError, http::classify},
     targets::{AddressPolicy, TargetError},
 };
 
 const NO_CONTENT: &[u8] = b"HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n";
 const BODY: &[u8] = b"{\"text\":\"web is down\"}";
 
-fn url(text: &str) -> Url {
+pub(super) fn url(text: &str) -> Url {
     Url::parse(text).unwrap()
 }
 
@@ -47,19 +43,8 @@ fn request(method: Method, target: Url) -> HttpRequest {
     }
 }
 
-async fn post(egress: &Egress, target: &str) -> Result<(), SendError> {
+pub(super) async fn post(egress: &Egress, target: &str) -> Result<(), SendError> {
     egress.send_http(request(Method::POST, url(target))).await
-}
-
-/// How late past the time limit a send may end on a loaded machine.
-const SLACK: Duration = Duration::from_secs(3);
-
-/// Asserts that a send that waited for the time limit took it, and no second limit after it
-/// (C-1, C-2).
-fn ended_at_the_limit(started: Instant) {
-    let took = started.elapsed();
-    assert!(took >= TIME_LIMIT.saturating_sub(Duration::from_millis(100)), "{took:?}");
-    assert!(took < TIME_LIMIT + SLACK, "{took:?}");
 }
 
 /// A TLS server for `name` that answers `reply`, and an egress that trusts its certificate.
@@ -138,58 +123,6 @@ async fn d_17_a_root_the_hub_cannot_read_is_a_setup_failure_with_no_connection()
     assert_eq!(sent, Err(SendError::Setup));
     server.settle().await;
     assert_eq!(server.connections(), 0);
-}
-
-#[tokio::test]
-async fn d_17_a_server_that_never_answers_ends_at_the_time_limit() {
-    let server = serve(Behaviour::Silent).await;
-    let started = Instant::now();
-
-    let sent = post(&local(), &format!("https://localhost:{}/", server.port)).await;
-
-    assert_eq!(sent, Err(SendError::TimedOut));
-    ended_at_the_limit(started);
-    server.settle().await;
-    assert_eq!(server.connections(), 1);
-}
-
-const OK_HEAD: &[u8] = b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\n";
-const UNAVAILABLE_HEAD: &[u8] = b"HTTP/1.1 503 Service Unavailable\r\nContent-Length: 100\r\n\r\n";
-
-#[tokio::test]
-async fn d_17_a_2xx_whose_body_stalls_is_sent_and_ends_at_the_one_time_limit() {
-    let (der, acceptor) = certificate("localhost");
-    let server = serve(Behaviour::Stalled(OK_HEAD, acceptor)).await;
-    let started = Instant::now();
-
-    let sent = post(
-        &local().trusting(der),
-        &format!("https://localhost:{}/", server.port),
-    )
-    .await;
-
-    // The status decided (S-B): a stalled body is not a time-out, and its read ends at the
-    // send's own deadline, with no fresh limit of its own (C-2).
-    assert_eq!(sent, Ok(()));
-    ended_at_the_limit(started);
-    server.settle().await;
-    assert_eq!(server.connections(), 1);
-}
-
-#[tokio::test]
-async fn d_17_a_failing_status_decides_at_once_though_its_body_stalls() {
-    let (der, acceptor) = certificate("localhost");
-    let server = serve(Behaviour::Stalled(UNAVAILABLE_HEAD, acceptor)).await;
-    let started = Instant::now();
-
-    let sent = post(
-        &local().trusting(der),
-        &format!("https://localhost:{}/", server.port),
-    )
-    .await;
-
-    assert_eq!(sent, Err(SendError::HttpStatus(503)));
-    assert!(started.elapsed() < TIME_LIMIT / 2, "{:?}", started.elapsed());
 }
 
 #[tokio::test]
@@ -347,41 +280,4 @@ async fn d_17_a_trusted_server_sees_the_host_name_as_sni() {
     server.settle().await;
     assert_eq!(server.server_names(), ["localhost"]);
     assert_eq!(server.lines(), ["POST /hook HTTP/1.1"]);
-}
-
-#[tokio::test]
-async fn d_17_an_endless_reply_is_read_only_to_the_cap() {
-    let server = serve(Behaviour::Endless(None)).await;
-    let target: SocketAddr = ([127, 0, 0, 1], server.port).into();
-    let client = local().pinned_client(Some("localhost"), &[target]).unwrap();
-    let mut response = client
-        .post(url(&format!("http://localhost:{}/", server.port)))
-        .send()
-        .await
-        .unwrap();
-
-    let read = discard_reply(&mut response).await;
-
-    // The body never ends, so the read stopped at the cap, within the one chunk that
-    // crossed it.
-    assert!(read >= REPLY_CAP, "read {read}");
-    assert!(read < 1024 * 1024, "read {read}");
-}
-
-#[tokio::test]
-async fn d_17_an_endless_reply_ends_the_send_and_closes_the_connection() {
-    let (der, acceptor) = certificate("localhost");
-    let server = serve(Behaviour::Endless(Some(acceptor))).await;
-
-    let sent = post(
-        &local().trusting(der),
-        &format!("https://localhost:{}/", server.port),
-    )
-    .await;
-
-    assert_eq!(sent, Ok(()));
-    server.settle().await;
-    // Read to the time limit, loopback would carry gigabytes; the socket buffers hold a few
-    // megabytes once the client stops reading and closes.
-    assert!(server.written() < 64 * 1024 * 1024, "{}", server.written());
 }

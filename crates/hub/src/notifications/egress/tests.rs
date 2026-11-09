@@ -4,6 +4,7 @@
 //! Local servers stand in for the targets; the policy allows loopback for them.
 
 mod http;
+mod replies;
 pub(in crate::notifications) mod servers;
 mod smtp;
 

@@ -34,13 +34,6 @@ pub(super) use secrets::{Secrets, Wire};
 pub(super) use settings::{AppriseMode, Settings, WebhookMethod};
 pub(super) use webhook::{WebhookDraft, WebhookSecrets, WebhookSettings};
 
-#[cfg_attr(
-    not(test),
-    expect(
-        unused_imports,
-        reason = "the dispatcher (WP-45 T6) refuses each Apprise URL again before it sends (N-4)"
-    )
-)]
 pub(super) use apprise_url::permitted as permitted_apprise_url;
 
 use outcome::Outcome;
