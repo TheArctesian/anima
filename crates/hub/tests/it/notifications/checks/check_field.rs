@@ -33,7 +33,7 @@ async fn notifications_of(rig: &Rig, check: &str) -> Value {
 
 #[sqlx::test(
     migrations = "./migrations",
-    fixtures(path = "../../fixtures", scripts("devices"))
+    fixtures(path = "../../../fixtures", scripts("devices"))
 )]
 async fn not_003_a_new_check_notifies_the_channels_on_by_default(pool: PgPool) {
     let rig = rig(&pool).await;
@@ -52,7 +52,7 @@ async fn not_003_a_new_check_notifies_the_channels_on_by_default(pool: PgPool) {
 
 #[sqlx::test(
     migrations = "./migrations",
-    fixtures(path = "../../fixtures", scripts("devices"))
+    fixtures(path = "../../../fixtures", scripts("devices"))
 )]
 async fn not_003_with_no_channel_on_by_default_a_new_check_notifies_none(pool: PgPool) {
     let rig = rig(&pool).await;
@@ -73,7 +73,7 @@ async fn not_003_with_no_channel_on_by_default_a_new_check_notifies_none(pool: P
 
 #[sqlx::test(
     migrations = "./migrations",
-    fixtures(path = "../../fixtures", scripts("devices"))
+    fixtures(path = "../../../fixtures", scripts("devices"))
 )]
 async fn not_003_check_notifications_answers_the_choices_set_for_the_check(pool: PgPool) {
     let rig = rig(&pool).await;
@@ -131,7 +131,7 @@ async fn failed_create(rig: &Rig) -> (i64, i64) {
 
 #[sqlx::test(
     migrations = "./migrations",
-    fixtures(path = "../../fixtures", scripts("devices"))
+    fixtures(path = "../../../fixtures", scripts("devices"))
 )]
 async fn not_003_a_create_whose_audit_cannot_be_written_keeps_no_check_and_no_link(pool: PgPool) {
     let rig = rig(&pool).await;
@@ -143,7 +143,7 @@ async fn not_003_a_create_whose_audit_cannot_be_written_keeps_no_check_and_no_li
 
 #[sqlx::test(
     migrations = "./migrations",
-    fixtures(path = "../../fixtures", scripts("devices"))
+    fixtures(path = "../../../fixtures", scripts("devices"))
 )]
 async fn not_003_a_create_whose_channel_links_cannot_be_written_keeps_no_check(pool: PgPool) {
     let rig = rig(&pool).await;
@@ -165,7 +165,7 @@ async fn twelve_checks(rig: &Rig) -> Vec<String> {
 
 #[sqlx::test(
     migrations = "./migrations",
-    fixtures(path = "../../fixtures", scripts("devices"))
+    fixtures(path = "../../../fixtures", scripts("devices"))
 )]
 async fn api_005_the_loader_reads_1_or_12_checks_in_the_same_3_statements(pool: PgPool) {
     let rig = rig(&pool).await;
@@ -197,7 +197,7 @@ async fn api_005_the_loader_reads_1_or_12_checks_in_the_same_3_statements(pool: 
 
 #[sqlx::test(
     migrations = "./migrations",
-    fixtures(path = "../../fixtures", scripts("devices"))
+    fixtures(path = "../../../fixtures", scripts("devices"))
 )]
 async fn not_003_check_notifications_answers_for_each_of_many_checks_in_one_query(pool: PgPool) {
     let rig = rig(&pool).await;
