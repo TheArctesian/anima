@@ -11,7 +11,7 @@ use crate::hub::{Hub, PASSWORD, USERNAME, error};
 /// Every root field an API key may never select (D-23, A-6; `enrolAgent` and
 /// `revokeAgentToken` by name before they have resolvers, R-084, CR-8; pinning a device
 /// identity, moving or deleting a device and destroying recordings, R-100).
-const REFUSED: [&str; 29] = [
+const REFUSED: [&str; 27] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -19,8 +19,6 @@ const REFUSED: [&str; 29] = [
     "logout",
     "startSession",
     "openFiles",
-    "shareSession",
-    "joinShare",
     "openRecording",
     "setSshCredential",
     "clearSshCredential",

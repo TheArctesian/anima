@@ -39,7 +39,7 @@ async fn log_006_r_016_runtime_role_runs_the_login_flow_on_access_tables(pool: P
     let attempt = store::start_attempt(&mut conn, now(), "operator", client)
         .await
         .unwrap();
-    store::failures(&mut conn, client, now(), Some(attempt))
+    store::failures(&mut conn, client, now(), attempt)
         .await
         .unwrap();
     store::finish_attempt(&mut conn, attempt, Outcome::Ok)

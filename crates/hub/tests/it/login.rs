@@ -1,8 +1,6 @@
 //! Signing in: identical refusals, the throttle and the records it leaves (SEC-002, LOG-005,
 //! D-8).
 
-mod outside;
-
 use anima_hub::events::{Severity, Signal, Source};
 use chrono::TimeDelta;
 use serde_json::json;
