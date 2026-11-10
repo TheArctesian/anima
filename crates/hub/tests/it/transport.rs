@@ -62,7 +62,7 @@ async fn api_003_r_020_connection_init_takes_a_bearer_authorization(pool: PgPool
             access::identify_connection(&pool, &payload, start())
                 .await
                 .unwrap()
-                .map(|identity| identity.operator().name.clone())
+                .and_then(|identity| identity.operator().map(|operator| operator.name.clone()))
         }
     };
     let bearer = json!({ "authorization": format!("Bearer {token}") });

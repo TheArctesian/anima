@@ -3,6 +3,7 @@
   import { tick, untrack, type Snippet } from 'svelte';
   import '../styles/global.css';
   import { guardStart, holdsAt, reloadClient, startAt } from '$lib/access/navigation';
+  import { provideDesktopBuilder } from '$lib/builds/desktop.svelte';
   import { provideHub } from '$lib/hub/context';
   import { readAccessToken } from '$lib/desktop/token';
   import { createHub, type HubAddress } from '$lib/hub/hub';
@@ -47,7 +48,7 @@
   });
   const shell = start.kind === 'shell' ? startShell(start.address) : null;
 
-  /** The operator shell's parts: the hub and its start guard, the clock, updates and the session strip. */
+  /** The operator shell's parts: the hub and its start guard, the clock, updates, the builder and the session strip. */
   function startShell(address: HubAddress) {
     // The hub address is the stored setting on desktop and the serving origin in a browser (CLI-002, E-2); the token is
     // read from the desktop key store per call, and is none in a browser, where the cookie travels by itself (CLI-003).
@@ -56,6 +57,8 @@
     guardStart(page.url, hub);
     const clock = createClock(DATA_AGE_REFRESH_MS);
     provideDesktopUpdates();
+    // A computer enrolled as a builder builds while the app runs (BLD-026).
+    provideDesktopBuilder(hub);
 
     // Each session view starts its own sessions, since only it knows its display (D-7); the store ends them (D-11).
     const api = sessionsApi(hub);

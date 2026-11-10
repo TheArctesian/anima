@@ -58,7 +58,7 @@ enum Error {
     NameTaken,
     #[error("No such API key.")]
     NotFound,
-    /// A stored row holds a scope this hub does not know.
+    /// A stored row holds a scope this hub does not know, or one no API key has.
     #[error("an API key row cannot be read")]
     Unreadable,
     #[error("database error")]
@@ -73,7 +73,9 @@ impl ApiKey {
         Ok(Self {
             id: row.id,
             name: row.name,
-            scope: Scope::from_stored(&row.scope).ok_or(Error::Unreadable)?,
+            scope: Scope::from_stored(&row.scope)
+                .filter(|scope| *scope != Scope::Builder)
+                .ok_or(Error::Unreadable)?,
             prefix: row.display_prefix,
             expires_at: row.expires_at,
             created_at: row.created_at,

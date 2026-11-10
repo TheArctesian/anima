@@ -11,9 +11,10 @@
   import TypefaceRows from '$lib/typeface/TypefaceRows.svelte';
   import DesktopRows from '$lib/updates/DesktopRows.svelte';
 
-  // The desktop rows decide each row themselves; the page only leaves out the heading when none can show (UPD-006, LOG-008).
+  // The desktop rows decide each row themselves; the page only leaves out the heading when none can show (UPD-006, LOG-008,
+  // BLD-020).
   // The Hub section is desktop only: a browser talks only to the hub that served it (CLI-002, D-5).
-  const { updates, processLog, keyStore } = capabilities();
+  const { updates, processLog, builds, keyStore } = capabilities();
 </script>
 
 <h1>Settings</h1>
@@ -53,7 +54,7 @@
   <RetentionSection />
 </section>
 
-{#if updates || processLog}
+{#if updates || processLog || builds}
   <section aria-labelledby="settings-updates">
     <h2 id="settings-updates">Updates</h2>
     <DesktopRows />

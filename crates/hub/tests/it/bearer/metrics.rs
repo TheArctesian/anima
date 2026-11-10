@@ -23,8 +23,8 @@ use serde_json::Value;
 use sqlx::PgPool;
 
 use super::{
-    Answer, BROWSER, INDEX_HTML, LOGIN, PERMITTED, PUBLIC, READ_KEY, WRITE_KEY, app, app_at,
-    assert_refused, database_now, scrape, scrape_with, send, stored,
+    Answer, BROWSER, BUILDER, INDEX_HTML, LOGIN, PERMITTED, PUBLIC, READ_KEY, WRITE_KEY, app,
+    app_at, assert_refused, database_now, scrape, scrape_with, send, stored,
 };
 
 /// The Prometheus text format 0.0.4 (INT-002).
@@ -101,6 +101,7 @@ async fn int_003_a_9_every_other_bearer_and_the_browser_cookie_get_an_empty_401(
     let now = database_now(&pool).await;
     let key = stored(&pool, READ_KEY, now + TimeDelta::days(1)).await;
     let browser = stored(&pool, BROWSER, now + TimeDelta::days(1)).await;
+    let builder = stored(&pool, BUILDER, now + TimeDelta::days(1)).await;
     let mut expired = READ_KEY;
     expired.fill = 7;
     let expired = stored(&pool, expired, now - TimeDelta::seconds(1)).await;
@@ -139,6 +140,7 @@ async fn int_003_a_9_every_other_bearer_and_the_browser_cookie_get_an_empty_401(
     }
     for (case, token) in [
         ("browser token as bearer", browser.as_str()),
+        ("builder token", &builder),
         ("expired key", &expired),
         ("key at its expiry", &at_expiry),
         ("unknown key", &unknown),

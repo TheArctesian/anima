@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-builder-gates-run"
+description = "Enables the builder_gates_run command without any pre-configured scope."
+commands.allow = ["builder_gates_run"]
+
+[[permission]]
+identifier = "deny-builder-gates-run"
+description = "Denies the builder_gates_run command without any pre-configured scope."
+commands.deny = ["builder_gates_run"]

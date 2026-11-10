@@ -156,6 +156,11 @@ const BROWSER: Token = Token {
     scope: "write",
     fill: 4,
 };
+const BUILDER: Token = Token {
+    kind: "builder",
+    scope: "builder",
+    fill: 5,
+};
 
 /// What the hub answered.
 #[derive(Debug)]

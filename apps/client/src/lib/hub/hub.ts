@@ -98,3 +98,22 @@ export function createHub(options: HubOptions): Hub {
     close: () => socket.close(),
   };
 }
+
+/** A hub that sends requests only: no socket, no status. */
+export type RequestHub = Pick<Hub, 'address' | 'request'>;
+
+/**
+ * A hub at `address` for HTTP requests only, for a token that opens no socket: the builder token permits only the
+ * builder operations (BLD-022, D-1). Its failures do not change the operator's connection status.
+ */
+export function createRequestHub(options: Omit<HubOptions, 'WebSocket' | 'now'>): RequestHub {
+  const address: HubAddress = Object.freeze({ ...options.address });
+  const http = {
+    address,
+    fetch: options.fetch ?? globalThis.fetch.bind(globalThis),
+    token: options.token,
+    signal: () => undefined,
+    timeoutMs: options.timeoutMs ?? HUB_TIMEOUT_MS,
+  };
+  return { address, request: (document, variables) => sendRequest(http, document, variables) };
+}

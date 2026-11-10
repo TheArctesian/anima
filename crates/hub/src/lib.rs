@@ -3,6 +3,7 @@
 
 pub mod access;
 pub mod api_errors;
+pub mod builds;
 pub mod checks;
 pub mod clock;
 pub mod config;

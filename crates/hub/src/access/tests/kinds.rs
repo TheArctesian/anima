@@ -4,20 +4,22 @@ use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use sha2::{Digest as _, Sha256};
 
 use crate::access::tokens::{
-    Spelling, TokenHash, TokenKind, Transport, admitted, hash_of, is_agent_secret, read_presented,
+    Scope, Spelling, TokenHash, TokenKind, Transport, admitted, consistent, hash_of,
+    is_agent_secret, read_presented,
 };
 
 #[test]
 fn a_3_each_kind_is_admitted_only_from_its_transport_and_spelling() {
     use Spelling::{Key, Plain};
-    use TokenKind::{ApiKey, Browser, Login};
+    use TokenKind::{ApiKey, Browser, Builder, Login};
     use Transport::{Bearer, Cookie};
     let admitted_cases = [
         (Browser, Plain, Cookie),
         (Login, Plain, Bearer),
         (ApiKey, Key, Bearer),
+        (Builder, Plain, Bearer),
     ];
-    for kind in [Login, Browser, ApiKey] {
+    for kind in [Login, Browser, ApiKey, Builder] {
         for spelling in [Plain, Key] {
             for transport in [Bearer, Cookie] {
                 let case = (kind, spelling, transport);
@@ -70,11 +72,28 @@ fn a_3_a_plain_token_that_starts_with_anima_is_still_plain() {
 
 #[test]
 fn a_3_kind_round_trips_its_stored_text() {
-    for kind in [TokenKind::Login, TokenKind::Browser, TokenKind::ApiKey] {
+    for kind in [
+        TokenKind::Login,
+        TokenKind::Browser,
+        TokenKind::ApiKey,
+        TokenKind::Builder,
+    ] {
         assert_eq!(TokenKind::from_stored(kind.as_str()), Some(kind));
     }
     assert_eq!(TokenKind::from_stored("API_KEY"), None);
     assert_eq!(TokenKind::from_stored(""), None);
+}
+
+#[test]
+fn bld_022_the_builder_scope_belongs_to_the_builder_kind_alone() {
+    use Scope::{Builder as BuilderScope, Read, Write};
+    use TokenKind::{ApiKey, Browser, Builder, Login};
+    for kind in [Login, Browser, ApiKey, Builder] {
+        for scope in [Read, Write, BuilderScope] {
+            let expected = (kind == Builder) == (scope == BuilderScope);
+            assert_eq!(consistent(kind, scope), expected, "{kind:?} {scope:?}");
+        }
+    }
 }
 
 #[test]

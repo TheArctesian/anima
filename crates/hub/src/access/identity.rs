@@ -18,6 +18,7 @@ use super::{
     store,
     tokens::{self, Scope, TokenKind, Transport},
 };
+use crate::ids::TokenId;
 
 /// What a stored token grants: its row, its kind and scope, and until when.
 #[derive(Clone, Copy)]
@@ -58,9 +59,11 @@ impl Identity {
         Self::new(operator, grant)
     }
 
+    /// The operator the token stands for; `None` for a builder token, which stands for no
+    /// operator, not even the one who enrolled it (BLD-022, R-107).
     #[must_use]
-    pub const fn operator(&self) -> &Operator {
-        &self.operator
+    pub fn operator(&self) -> Option<&Operator> {
+        (self.grant.scope != Scope::Builder).then_some(&self.operator)
     }
 
     #[must_use]
@@ -84,23 +87,41 @@ impl Identity {
         self.grant.token
     }
 
+    /// The token of a builder identity, which names its builder record (BLD-024); `None` for
+    /// an operator token.
+    #[must_use]
+    pub fn builder_token(&self) -> Option<TokenId> {
+        (self.grant.scope == Scope::Builder).then(|| TokenId::from(self.grant.token))
+    }
+
+    /// The `Operator` resolvers may act as: none for a builder token, so an operator resolver
+    /// that forgets its guard still finds no operator (BLD-022).
+    fn acting_operator(&self) -> Option<Operator> {
+        self.operator().cloned()
+    }
+
     /// Whether the identity still holds at `now`.
     pub(super) fn valid_at(&self, now: DateTime<Utc>) -> bool {
         tokens::usable(self.grant.expires_at, now)
     }
 
-    /// Adds the identity and its `Operator` to one HTTP request's data.
+    /// Adds the identity and, for an operator token, its `Operator` to one HTTP request's data.
     #[must_use]
     pub fn attach(self, request: Request) -> Request {
-        request.data(self.operator.clone()).data(self)
+        match self.acting_operator() {
+            Some(operator) => request.data(operator).data(self),
+            None => request.data(self),
+        }
     }
 
-    /// The identity and its `Operator` as WebSocket connection data, for the value
-    /// `on_connection_init` returns.
+    /// The identity and, for an operator token, its `Operator` as WebSocket connection data,
+    /// for the value `on_connection_init` returns.
     #[must_use]
     pub fn into_connection_data(self) -> Data {
         let mut data = Data::default();
-        data.insert(self.operator.clone());
+        if let Some(operator) = self.acting_operator() {
+            data.insert(operator);
+        }
         data.insert(self);
         data
     }
@@ -194,7 +215,10 @@ pub(super) async fn resolve(
     ) else {
         return Ok(None);
     };
-    if !tokens::admitted(kind, spelling, transport) || !tokens::usable(row.expires_at, now) {
+    if !tokens::consistent(kind, scope)
+        || !tokens::admitted(kind, spelling, transport)
+        || !tokens::usable(row.expires_at, now)
+    {
         return Ok(None);
     }
     if tokens::touch_due(row.last_used_at, now) {
@@ -230,7 +254,7 @@ pub async fn operator_for_token(
         .await?
         .filter(|identity| identity.kind() == TokenKind::Login)
         .ok_or(Error::Unauthenticated)?;
-    Ok(identity.operator().clone())
+    identity.operator().cloned().ok_or(Error::Unauthenticated)
 }
 
 /// The client address of a request: the one the network layer (WP-05 T4) put in the request

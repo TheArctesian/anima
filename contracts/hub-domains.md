@@ -8,7 +8,7 @@ These are the only functions and types one hub domain may use from another. Ever
 
 | Module | Content |
 | --- | --- |
-| `crates/hub/src/ids.rs` | All entity ID newtypes (see `conventions.md`): `OperatorId`, `SiteId`, `DeviceId`, `CheckId`, `WindowId`, `SessionId`, `EventId`, and (Phase 2) `WebInterfaceId`, `MetricSeriesId`, and (Phase 3) `ApiKeyId`, `ChannelId`, `DeliveryId`, `ShareId`, `RecordingId` |
+| `crates/hub/src/ids.rs` | All entity ID newtypes (see `conventions.md`): `OperatorId`, `SiteId`, `DeviceId`, `CheckId`, `WindowId`, `SessionId`, `EventId`, and (Phase 2) `WebInterfaceId`, `MetricSeriesId`, and (Phase 3) `ApiKeyId`, `ChannelId`, `DeliveryId`, `ShareId`, `RecordingId`, and (Phase 3, WP-36, R-107) `TokenId`, `ReleaseId`, `BuildJobId`, `BuilderId` |
 | `crates/hub/src/status.rs` | `pub enum Status { Up, Down, Degraded, Maintenance, Unknown }` with `fn worst(a, b)` (CHK-004) |
 | `crates/hub/src/clock.rs` | `pub trait Clock: Send + Sync { fn now(&self) -> DateTime<Utc>; }`, `SystemClock`, and `FixedClock` for tests. The only clock read in the hub (CQ-021). |
 | `crates/hub/src/config.rs` | `pub struct Config` from the environment (see `conventions.md`) |
@@ -77,8 +77,8 @@ pub async fn operator_for_token(db: &Db, token: &str, now: DateTime<Utc>) -> Res
 (Phase 3, WP-43):
 
 ```rust
-pub use tokens::Scope;                       // Read, Write
-pub enum TokenKind { Login, Browser, ApiKey }
+pub use tokens::Scope;                       // Read, Write, and Builder (WP-36, R-107)
+pub enum TokenKind { Login, Browser, ApiKey, Builder }   // Builder: WP-36, R-107
 impl Identity { pub const fn kind(&self) -> TokenKind; }   // the guard refuses API keys on the D-23 list
 /// For routes outside GraphQL (/metrics): a bearer token of at least `scope`; 401 with no body otherwise.
 pub fn bearer_layer(db: Db, clock: Clock, scope: Scope) -> impl tower::Layer<axum::routing::Route> + Clone;
@@ -91,6 +91,21 @@ pub async fn throttled(db: &Db, client: ClientAddr, now: DateTime<Utc>) -> Resul
 /// Records one failed signed-out attempt for this address, counted as a failed login. The stored
 /// username marker never matches or locks a real account (CR-16).
 pub async fn record_failure(db: &Db, client: ClientAddr, now: DateTime<Utc>) -> Result<(), Error>;
+```
+
+(Phase 3, WP-36, R-107, D-1) Builder tokens are access tokens of kind `builder` (`TokenKind::Builder`)
+and scope `builder` (`Scope::Builder`), always both (migration 0030). They travel only as a bearer, live
+180 days and are stored only as their hash. `Authenticated`, `operator_for_token` and the document backstop refuse them
+outside the builder fields; an operator token is refused on the builder fields (`Error::OutOfScope`, FORBIDDEN).
+
+```rust
+/// GraphQL guard: requires a valid builder token (BLD-022).
+pub struct BuilderSignedIn;
+impl Identity { pub fn builder_token(&self) -> Option<TokenId>; }
+/// A new builder token; `secret()` is the only way to read it and it has no `Debug`.
+pub struct IssuedToken { pub id: TokenId, pub expires_at: DateTime<Utc>, /* token */ }
+pub async fn issue_builder_token(conn: &mut PgConnection, operator: OperatorId, now: DateTime<Utc>) -> Result<IssuedToken, Error>;
+pub async fn revoke_builder_token(conn: &mut PgConnection, id: TokenId) -> Result<bool, Error>;
 ```
 
 ## events (WP-05)
@@ -109,6 +124,9 @@ pub struct NewAudit { pub operator: Operator, pub action: AuditAction,
 
 pub async fn record(conn: &mut PgConnection, bus: &Bus, at: DateTime<Utc>, e: NewEvent) -> Result<EventId, Error>;
 pub async fn audit(conn: &mut PgConnection, at: DateTime<Utc>, a: NewAudit) -> Result<(), Error>;
+/// The redaction `record` applies, for text other domains store (WP-36: build log lines, BLD-049).
+pub fn redact_text(text: &str) -> String;
+// (WP-36) AuditAction adds Cancel; AuditTarget adds Release(ReleaseId), BuildJob(BuildJobId), Builder(BuilderId).
 
 /// Broadcast of new events and status changes for subscriptions (LOG-010).
 #[derive(Clone)] pub struct Bus { /* tokio::sync::broadcast */ }
@@ -159,6 +177,7 @@ impl Trail {
 | `ssh` (Phase 3, new) | `devices`, `credentials`, `trust`, `events` |
 | `notifications` (Phase 3, new) | `events`, `credentials` (`Vault`, `Secret`, `Sealed` only) |
 | `retention` (Phase 3, new) | — |
+| `builds` (Phase 3, WP-36, new) | `access` (builder tokens, `Identity`, the guards), `events` |
 
 (Phase 3) No cycle: `notifications` imports neither `checks` nor `sessions`. `ssh` and `trust` import neither `sessions` nor `checks`.
 
@@ -170,6 +189,7 @@ GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also 
 
 | `devices` (Phase 2, adds) | `metrics`, `web_interfaces` | `Device.readings`, `Device.metrics`, `Device.gpus`, `Device.webInterfaces`, `Device.webInterfaceSuggestions` |
 | `metrics`, `web_interfaces` (Phase 2) | `access` (R-022) | the `Authenticated` guard on their root fields |
+| `builds` (Phase 3, WP-36) | `access` | the `Authenticated` and `BuilderSignedIn` guards |
 | `checks`, `maintenance`, `events` | `access` (R-022) | the `Authenticated` guard on their root fields (API-003) |
 | `devices` (Phase 3) | `trust` (replaces `sessions` for these fields) | `SshSettings.hostKey`, `RdpSettings.serverCertificate` |
 | `checks` (Phase 3) | `notifications` | `Check.notifications` |
@@ -458,6 +478,18 @@ pub async fn server_certificates(db: &Db, devices: &[DeviceId]) -> Result<HashMa
 // The public-key types (PublicKey, Fingerprint, BadKey, BadFingerprint) are in trust (CR-7).
 pub struct Sightings;  pub enum Conflict;  pub enum Error;   // CR-11: what connection tests saw, shared with sessions::Live; accept conflicts
 ```
+
+## builds (Phase 3, WP-36, R-107)
+
+```rust
+#[derive(Clone)] pub struct Updates { /* bounded broadcast of JobUpdate */ }   // BLD-081
+#[derive(Clone, Copy)] pub struct BuildQueue<'a> { pub db: &'a Db, pub bus: &'a events::Bus, pub updates: &'a Updates }
+pub const LEASE_SWEEP: Duration;   // 30 s (D-2)
+/// Wiring only (upkeep.rs): ends every lease that ran out by `now`; the third end fails the job (BLD-006).
+pub async fn expire_leases(queue: BuildQueue<'_>, now: DateTime<Utc>) -> Result<usize, Error>;
+```
+
+No other domain imports `builds`.
 
 ## guac-protocol crate (WP-08)
 

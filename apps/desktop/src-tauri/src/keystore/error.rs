@@ -11,6 +11,7 @@ use serde::{Serialize, Serializer, ser::SerializeStruct};
 ///   the keychain is missing, read-only or invalid.
 /// - `failed`: anything else, including data the store returned in an unexpected form.
 /// - `empty` and `origin`: input refused before the store was touched.
+/// - `caller`: a web view other than the main one asked for the builder token (C-5).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum KeystoreError {
     #[error("the OS key store is not available")]
@@ -23,6 +24,8 @@ pub enum KeystoreError {
     BadOrigin,
     #[error("the OS key store failed")]
     Failed,
+    #[error("only the main window may use the builder token")]
+    Caller,
 }
 
 impl KeystoreError {
@@ -34,6 +37,7 @@ impl KeystoreError {
             Self::EmptyToken => "empty",
             Self::BadOrigin => "origin",
             Self::Failed => "failed",
+            Self::Caller => "caller",
         }
     }
 }

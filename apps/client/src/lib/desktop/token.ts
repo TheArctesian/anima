@@ -2,7 +2,7 @@ import { invoke, isTauri } from '@tauri-apps/api/core';
 import { parseHubAddress, type HubAddress } from '$lib/hub/hub';
 
 /** Why the key store did not answer. `not-desktop` is the client's own; the rest are the shell's (CLI-003). */
-export type AccessTokenProblem = 'unavailable' | 'denied' | 'failed' | 'empty' | 'origin' | 'not-desktop';
+export type AccessTokenProblem = 'unavailable' | 'denied' | 'failed' | 'empty' | 'origin' | 'caller' | 'not-desktop';
 
 const MESSAGES: Record<AccessTokenProblem, string> = {
   unavailable: 'The key store is not available.',
@@ -10,10 +10,11 @@ const MESSAGES: Record<AccessTokenProblem, string> = {
   failed: 'The key store failed.',
   empty: 'The access token is empty.',
   origin: 'The hub address is not valid for the key store.',
+  caller: 'Only the main window may use the builder token.',
   'not-desktop': 'The access token is kept by the desktop app only.',
 };
 
-const SHELL_CODES: readonly AccessTokenProblem[] = ['unavailable', 'denied', 'failed', 'empty', 'origin'];
+const SHELL_CODES: readonly AccessTokenProblem[] = ['unavailable', 'denied', 'failed', 'empty', 'origin', 'caller'];
 
 /** A key-store failure. The message is fixed text chosen here; nothing from the shell's error is kept (LOG-007). */
 export class AccessTokenError extends Error {
@@ -82,4 +83,25 @@ export async function writeAccessToken(address: HubAddress, token: string): Prom
 export async function clearAccessToken(address: HubAddress): Promise<void> {
   requireDesktop();
   await invokeKeyStore('access_token_clear', { origin: keyOf(address) });
+}
+
+/** This computer's builder token for `address.origin`, or `null` when none is stored or off desktop (BLD-023). */
+export async function readBuilderToken(address: HubAddress): Promise<string | null> {
+  if (!isTauri()) return null;
+  const token = await invokeKeyStore('builder_token_read', { origin: keyOf(address) });
+  if (token === null) return null;
+  if (typeof token !== 'string') throw new AccessTokenError('failed');
+  return token;
+}
+
+/** Keep the builder token `enrolBuilder` returned in the OS key store, never in `localStorage` (BLD-023). */
+export async function writeBuilderToken(address: HubAddress, token: string): Promise<void> {
+  requireDesktop();
+  await invokeKeyStore('builder_token_write', { origin: keyOf(address), token });
+}
+
+/** Remove the builder token when the operator turns building off (BLD-025). */
+export async function clearBuilderToken(address: HubAddress): Promise<void> {
+  requireDesktop();
+  await invokeKeyStore('builder_token_clear', { origin: keyOf(address) });
 }

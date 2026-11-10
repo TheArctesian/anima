@@ -19,37 +19,69 @@ use async_graphql::{
 use super::{Error, Identity, Scope, TokenKind};
 use crate::clock::Clock;
 
-/// GraphQL guard: requires a valid token; puts `Operator` in the context (API-003).
+/// The root mutations a builder token may call, and only it (BLD-022, D-1). `access` keeps the
+/// list because the backstop below refuses every other root field to a builder; a `builds` test
+/// keeps it equal to the fields of `builds::graphql::BuilderMutation`.
+pub const BUILDER_FIELDS: [&str; 3] = ["claimBuildJob", "reportBuildJob", "reportBuildUploaded"];
+
+/// The refusal a builder token gets for an operator field.
+const BUILDER_ONLY: &str = "A builder token may only claim and report build jobs.";
+
+/// The refusal an operator token gets for a builder field.
+const NOT_BUILDER: &str = "Only a builder token may do this.";
+
+/// GraphQL guard: requires a valid operator token; puts `Operator` in the context (API-003).
 ///
 /// A guard cannot add context data (D-6): the HTTP and WebSocket edges resolve the bearer
 /// token and attach an [`Identity`] with its `Operator`. This guard passes only when the
-/// identity is there and has not expired by the context's `Arc<dyn Clock>`, and refuses with
-/// `UNAUTHENTICATED` otherwise. An `Operator` alone does not pass. A schema without a clock
-/// refuses every identity with `INTERNAL` and writes the fault (`missing_context`) to the
-/// process log: the hub is miswired, not the operator signed out.
+/// identity is there, has not expired by the context's `Arc<dyn Clock>` and is not a builder
+/// token, and refuses with `UNAUTHENTICATED` otherwise (`FORBIDDEN` for a builder token,
+/// BLD-022). An `Operator` alone does not pass. A schema without a clock refuses every identity
+/// with `INTERNAL` and writes the fault (`missing_context`) to the process log: the hub is
+/// miswired, not the operator signed out.
 pub struct Authenticated;
 
 impl Guard for Authenticated {
     fn check(&self, ctx: &Context<'_>) -> impl Future<Output = async_graphql::Result<()>> + Send {
-        let identity = ctx.data_opt::<Identity>();
-        let clock = ctx.data_opt::<Arc<dyn Clock>>();
-        let verdict = if identity.is_some() && clock.is_none() {
-            let error = Error::Unavailable;
-            error.log();
-            Err(error.into_graphql())
-        } else if signed_in(identity, clock) {
-            Ok(())
-        } else {
-            Err(Error::Unauthenticated.into_graphql())
-        };
-        ready(verdict)
+        ready(holder_verdict(ctx, Holder::Operator))
     }
 }
 
-/// Whether the request data holds an identity that is valid now. Without a clock nothing is
-/// valid: the check fails closed.
-fn signed_in(identity: Option<&Identity>, clock: Option<&Arc<dyn Clock>>) -> bool {
-    current(identity, clock).is_some()
+/// GraphQL guard of the builder fields: requires a valid `builder` token and refuses an
+/// operator token with `FORBIDDEN` (BLD-022, D-1). The field still checks the builder record and
+/// its address (BLD-024).
+pub struct BuilderSignedIn;
+
+impl Guard for BuilderSignedIn {
+    fn check(&self, ctx: &Context<'_>) -> impl Future<Output = async_graphql::Result<()>> + Send {
+        ready(holder_verdict(ctx, Holder::Builder))
+    }
+}
+
+/// Who a guard lets through.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Holder {
+    Operator,
+    Builder,
+}
+
+/// A guard's answer: the identity must be valid now and its scope must belong to `wanted`.
+fn holder_verdict(ctx: &Context<'_>, wanted: Holder) -> async_graphql::Result<()> {
+    let identity = ctx.data_opt::<Identity>();
+    let clock = ctx.data_opt::<Arc<dyn Clock>>();
+    if identity.is_some() && clock.is_none() {
+        let error = Error::Unavailable;
+        error.log();
+        return Err(error.into_graphql());
+    }
+    let Some(identity) = current(identity, clock) else {
+        return Err(Error::Unauthenticated.into_graphql());
+    };
+    match (wanted, identity.scope() == Scope::Builder) {
+        (Holder::Operator, true) => Err(Error::OutOfScope(BUILDER_ONLY).into_graphql()),
+        (Holder::Builder, false) => Err(Error::OutOfScope(NOT_BUILDER).into_graphql()),
+        _ => Ok(()),
+    }
 }
 
 /// The identity, if it is valid now by the clock.
@@ -85,6 +117,8 @@ fn current<'a>(
 /// probe.
 ///
 /// With an identity, also in `parse_query` and before any resolver, each with `FORBIDDEN`:
+/// - with a `builder` token, any root selection but the builder mutations and `__typename`;
+///   with any other token, a builder mutation at the root (BLD-022);
 /// - a root selection its token kind may not make ([`kind_roots`]): for an API key, any field
 ///   in [`API_KEY_REFUSED_ROOTS`] or any root fragment, in any operation of the document, by
 ///   field name whatever the alias (D-23, WP-43 A-6);
@@ -158,12 +192,20 @@ impl Extension for SignInCheck {
     }
 }
 
-/// Why the document may not run for this identity, if it may not: signed out, a root its
-/// token kind may not select, or a mutation with a `read` token.
+/// Why the document may not run for this identity, if it may not: signed out, a root outside
+/// the builder rule (BLD-022), a root its token kind may not select, or a mutation with a
+/// `read` token.
 fn refusal(identity: Option<&Identity>, document: &ExecutableDocument) -> Option<Error> {
     let Some(identity) = identity else {
         return (!signed_out_allowed(document)).then_some(Error::Unauthenticated);
     };
+    if identity.scope() == Scope::Builder {
+        return (!roots_admitted(document, NO_ROOTS, BUILDER_ROOTS))
+            .then_some(Error::OutOfScope(BUILDER_ONLY));
+    }
+    if selects_any(document, &BUILDER_FIELDS) {
+        return Some(Error::OutOfScope(NOT_BUILDER));
+    }
     let by_kind = kind_roots(identity.kind());
     if !roots_admitted(document, by_kind, by_kind) {
         return Some(Error::KindRefused);
@@ -179,8 +221,10 @@ fn refusal(identity: Option<&Identity>, document: &ExecutableDocument) -> Option
 /// `revokeAgentToken` are refused by name before their resolvers exist (R-084, CR-8).
 /// A key may not pin a device identity, move or delete a device, or destroy recordings:
 /// moving a device and accepting the new host key would send its stored password to another
-/// host (R-100).
-pub(super) const API_KEY_REFUSED_ROOTS: [&str; 25] = [
+/// host (R-100). Enrolling or revoking a builder, and publishing or cancelling a release, are
+/// supply-chain actions only a login or browser token may take: a builder token outlives the key
+/// that enrolled it (D-23, R-107).
+pub(super) const API_KEY_REFUSED_ROOTS: [&str; 29] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -206,6 +250,10 @@ pub(super) const API_KEY_REFUSED_ROOTS: [&str; 25] = [
     "deleteDevice",
     "setRetention",
     "deleteRecording",
+    "enrolBuilder",
+    "revokeBuilder",
+    "createRelease",
+    "cancelBuildJob",
 ];
 
 /// The root selections a token of `kind` may make, in every operation type. A new kind of
@@ -214,6 +262,7 @@ const fn kind_roots(kind: TokenKind) -> Roots<'static> {
     match kind {
         TokenKind::Login | TokenKind::Browser => Roots::Any,
         TokenKind::ApiKey => Roots::AllBut(&API_KEY_REFUSED_ROOTS),
+        TokenKind::Builder => BUILDER_ROOTS,
     }
 }
 
@@ -261,6 +310,20 @@ enum Roots<'a> {
     Only(&'a [&'a str]),
     /// Any field but these; a fragment is refused rather than followed, so it cannot hide one.
     AllBut(&'a [&'a str]),
+}
+
+/// Only `__typename`.
+const NO_ROOTS: Roots<'static> = Roots::Only(&[]);
+/// The builder mutations and `__typename`.
+const BUILDER_ROOTS: Roots<'static> = Roots::Only(&BUILDER_FIELDS);
+
+/// Whether any operation in the document names one of `names` as a root field. A root fragment
+/// is not followed: the field guards refuse what it hides.
+fn selects_any(document: &ExecutableDocument, names: &[&str]) -> bool {
+    operations(document).any(|operation| {
+        (operation.selection_set.node.items.iter())
+            .any(|selection| field_name(selection).is_some_and(|name| names.contains(&name)))
+    })
 }
 
 impl Roots<'_> {

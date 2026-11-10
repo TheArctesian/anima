@@ -16,6 +16,7 @@ Status: **frozen for Phase 3** (change only through a programme ruling, CON-001)
 | --- | --- | --- | --- |
 | 0001–0099 | access (WP-05) | `access` | `operators`, `api_tokens`, `login_attempts`, `permitted_networks` |
 | 0010–0029 (Phase 3) | access (WP-43) | `access` | `api_tokens.kind text not null default 'login' check (kind in ('login','browser','api_key'))`; `api_tokens.name text null` (required and unique for `api_key`, 1..64 characters); `api_tokens.display_prefix text null` (12 characters, `api_key` only); a check that `browser` and `login` rows have scope `write`; index `(kind, operator_id)`. Prune: expired `login` and `browser` rows at once, expired `api_key` rows 30 days after expiry |
+| 0030 (Phase 3, WP-36, R-107) | access (WP-36) | `access` | Builder tokens (D-1, BLD-022): `api_tokens.kind` check adds `builder`; `api_tokens.scope` check adds `builder`; a check that a row has kind `builder` exactly when it has scope `builder`; `api_tokens_signed_in_write` lets `api_key` and `builder` rows skip scope `write`. Prune: expired `builder` rows at once (deleting the token deletes its `builds.builders` row) |
 | 0100–0199 | devices (WP-06) | `devices` | `sites`, `devices`, `device_tags`, `ssh_settings` |
 | 0110–0199 (Phase 2) | devices (WP-21) | `devices` | `rdp_settings`, `vnc_settings` (device_id pk fk cascade, columns as K1, defaults in the schema, DB-011); `devices.mac_address macaddr null`, `devices.metrics_source text check in ('none','ssh') default 'none'`, `devices.transfer_upload`, `_download`, `_copy`, `_paste bool default true`; `sites.wake_relay_device_id uuid null fk -> devices.devices on delete set null` |
 | 0120–0129 (Phase 3) | devices (WP-47) | `devices` | `devices.session_limit int null check (session_limit between 1 and 100)`; `devices.record_sessions bool not null default false` |
@@ -37,7 +38,9 @@ Status: **frozen for Phase 3** (change only through a programme ruling, CON-001)
 | 0850–0899 (Phase 3) | notifications (WP-45) | `notifications` | `channels` (`id uuid pk`, `name text unique`, `kind text check (kind in ('webhook','ntfy','email','apprise'))`, `on_by_default bool default false`, `settings jsonb` (the non-secret fields, typed in Rust), `secrets bytea null` (sealed JSON of the kind's secret fields, context `notifications.channels:<id>`), `title_template text null`, `body_template text null`, `created_at`, `updated_at`); `check_channels` (`check_id fk -> checks.checks on delete cascade`, `channel_id fk on delete cascade`, pk both); `check_settings` (`check_id pk fk -> checks.checks on delete cascade`, `resend_every_beats int not null default 0 check (0..1000)`); `check_state` (`check_id pk fk -> checks.checks on delete cascade`, `notified_status text null`, `down_beats int not null default 0`, `expiry_marks jsonb not null default '[]'` (threshold and `notAfter` pairs sent)); `outbox` (`id uuid pk`, `channel_id fk on delete cascade`, `check_id uuid null`, `kind`, `payload jsonb` (rendered placeholder values, never a secret), `created_at`, `attempts int default 0`, `next_attempt_at`, `sent_at null`, `given_up_at null`); `deliveries` (`id uuid`, `channel_id uuid null`, `channel_name text`, `kind`, `at timestamptz`, `ok bool`, `reason text null` (a K1 `DeliveryReason` in lower case, null when `ok`), `code int null` (HTTP status or SMTP reply code, never the target's text; CR-14); partitioned by day on `at`, no foreign key, as the logs); `settings` (one row: `certificate_days int[] default '{21,14,7}'`, `title_template`, `body_template`) |
 | 0900–0919 (Phase 3) | retention (WP-46) | `retention` | `periods` (`subject text pk check (subject in ('heartbeats','metrics','events','recordings','deliveries'))`, `days int not null`, a per-subject bounds check as D-25), seeded with 30, 30, 90, 30, 30 |
 | 0920–0939 (Phase 3) | trust (WP-41) | `trust` | `create schema trust`; `alter table sessions.host_keys set schema trust`; `alter table sessions.server_certificates set schema trust`. Metadata only (DB-010). Grants and the R-040 revocation move with the tables; migration 0001's default privileges give `anima_runtime` USAGE on the new schema |
-| 0940–0999 | reserved | — | Phase 4 |
+| 0940–0959 | reserved | — | Phase 4 |
+| 0960–0979 (Phase 3, WP-36, R-107) | builds (WP-36) | `builds` | `releases`, `builders`, `jobs`, `job_files`, `feeds`, `log_lines` (outlines below) |
+| 0980–0999 | reserved | — | Phase 4 |
 
 ## Roles (R-016, LOG-006)
 
@@ -57,7 +60,8 @@ Columns listed are the contract; a package may add columns to its own tables.
 access.operators          id uuid pk, username text unique, password_hash text (argon2id),
                           totp_secret_enc bytea null, created_at timestamptz
 access.api_tokens         id uuid pk, operator_id uuid fk, token_hash bytea, scope text
-                          check (scope in ('read','write')), expires_at, created_at, last_used_at
+                          check (scope in ('read','write','builder')), expires_at, created_at,
+                          last_used_at
 access.login_attempts     id uuid pk, at timestamptz, username text, client_addr inet, ok bool
 access.permitted_networks id uuid pk, cidr cidr unique, label text
 
@@ -110,6 +114,26 @@ sessions.host_keys        device_id uuid pk fk -> devices.devices on delete casc
                           algorithm text, fingerprint_sha256 text, first_seen_at,
                           accepted_by uuid
                           (Phase 3: trust.host_keys, moved by 0920; CR-11)
+
+builds.releases           id uuid pk, version text (MAJOR.MINOR.PATCH), commit_sha text (40 hex),
+                          created_by uuid fk -> access.operators, created_by_name text, created_at
+builds.builders           id uuid pk, name text, os text check in ('linux','macos'),
+                          arch text check in ('x86_64','aarch64'), client_addr inet,
+                          token_id uuid unique fk -> access.api_tokens on delete cascade,
+                          enrolled_at, last_seen_at null
+builds.jobs               id uuid pk, release_id uuid fk cascade, target text check in
+                          ('linux-x86_64','darwin-universal'), version text, state text check in
+                          ('queued','claimed','building','uploading','published','failed',
+                          'cancelled'), failure_reason null, attempts int 0..3,
+                          builder_id uuid null fk on delete set null, builder_name null,
+                          lease_ends_at null, log_sequence bigint, one timestamp per state,
+                          state_changed_at; unique (release_id, target); unique (target,
+                          version) where state not in ('failed','cancelled') (BLD-002)
+builds.job_files          job_id uuid fk cascade, name text, sha256 text, size_bytes bigint,
+                          pk (job_id, name)
+builds.feeds              job_id uuid pk fk cascade, feed text (at most 64 KiB), reported_at
+builds.log_lines          job_id uuid fk cascade, sequence bigint, text (at most 4096 bytes,
+                          redacted), pk (job_id, sequence); trimmed to the last 2 MiB per job
 ```
 
 Note on `access.operators`: access (range 0001) cannot reference credentials (0200). TOTP secrets are therefore encrypted by access with the same vault key (via `credentials::Vault`, a pure crypto type with no tables — see `hub-domains.md`).

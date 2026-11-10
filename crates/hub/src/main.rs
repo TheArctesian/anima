@@ -14,7 +14,7 @@ use std::{
 use anima_hub::{
     DRAIN_LIMIT, Shutdown,
     access::{self, listen},
-    all_routes, checks,
+    all_routes, builds, checks,
     clock::{Clock as _, SystemClock},
     config::{self, Config},
     credentials::Vault,
@@ -49,6 +49,9 @@ enum StartError {
     },
     #[error("{0}")]
     RuntimeRole(#[from] events::RoleError),
+    /// The builds error's text is fixed and holds no value (LOG-007).
+    #[error("the builders that went with the operator's tokens cannot be audited ({0})")]
+    Builds(#[from] builds::Error),
     /// The source's text is fixed and holds no value (LOG-007).
     #[error("the sessions a previous hub left open cannot be ended ({0})")]
     StaleSessions(#[from] sessions::Error),
@@ -155,8 +158,9 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         live: live.clone(),
         policy,
         metrics_feed: feed.clone(),
+        build_updates: builds::Updates::new(),
     };
-    let upkeep = upkeep::spawn(&pool, &clock);
+    let upkeep = upkeep::spawn(&dependencies);
     let scheduler = checks::spawn_scheduler(pool.clone(), bus.clone(), clock.clone(), probing);
     let collector =
         metrics::spawn_collector(pool.clone(), feed, bus.clone(), clock.clone(), collecting);
@@ -178,10 +182,8 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         first_stop_signal(),
     )
     .await;
-    upkeep.iter().for_each(tokio::task::JoinHandle::abort);
-    scheduler.abort();
-    collector.abort();
-    dispatcher.abort();
+    (upkeep.iter().chain([&scheduler, &collector, &dispatcher]))
+        .for_each(tokio::task::JoinHandle::abort);
     Ok(())
 }
 
@@ -280,13 +282,10 @@ async fn migrate(config: &Config) -> Result<(), StartError> {
 async fn set_operator(config: &Config, username: &str) -> Result<(), StartError> {
     let typed = read_password().map_err(|_| StartError::Stdin)?;
     let pool = connect(config).await?;
-    access::set_operator(
-        &pool,
-        username,
-        access::Password::new(typed),
-        SystemClock.now(),
-    )
-    .await?;
+    let now = SystemClock.now();
+    let before = builds::builders(&pool).await?;
+    access::set_operator(&pool, username, access::Password::new(typed), now).await?;
+    builds::audit_removed(&pool, &before, now, builds::Removal::CredentialsChanged).await?;
     println!("Operator {username} is set.");
     Ok(())
 }
@@ -299,7 +298,10 @@ async fn enrol_totp(config: &Config, username: &str) -> Result<(), StartError> {
     }
     let vault = vault(config)?;
     let pool = connect(config).await?;
+    let before = builds::builders(&pool).await?;
     let enrolment = access::enrol_totp(&pool, &vault, username).await?;
+    let removal = builds::Removal::CredentialsChanged;
+    builds::audit_removed(&pool, &before, SystemClock.now(), removal).await?;
     println!(
         "Add this to an authenticator app, then sign in again with its code:\n{}",
         enrolment.uri()

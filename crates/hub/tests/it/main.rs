@@ -3,6 +3,7 @@ mod agent;
 mod api_keys;
 mod bearer;
 mod browser;
+mod builds;
 mod checks;
 mod contract;
 mod credentials;

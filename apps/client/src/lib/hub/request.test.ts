@@ -1,7 +1,7 @@
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import { parse } from 'graphql';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createHub, DEFAULT_HUB_ADDRESS, TOKEN_UNREADABLE, type Hub, type TokenProvider } from './hub';
+import { createHub, createRequestHub, DEFAULT_HUB_ADDRESS, TOKEN_UNREADABLE, type Hub, type TokenProvider } from './hub';
 import { acknowledge, FAKE_WEBSOCKET, FakeSocket } from './socket/fake';
 
 const ME = parse('query Me($first: Int) { me { username } }') as TypedDocumentNode<
@@ -144,5 +144,21 @@ describe('Hub.request with an unreadable token', () => {
     expect(JSON.stringify(result)).not.toContain('s3cret-token');
     expect(sent).toEqual([]);
     expect(hub.status.current.connection).toBe('connecting');
+  });
+});
+
+describe('createRequestHub', () => {
+  it('BLD-022, D-1: sends requests with its own token and opens no socket', async () => {
+    const sent: Sent[] = [];
+    const fakeFetch: typeof fetch = (input, init) => {
+      const headers = init?.headers;
+      sent.push({ url: String(input), headers: headers !== undefined && !Array.isArray(headers) && !(headers instanceof Headers) ? headers : {}, body: undefined });
+      return Promise.resolve(new Response(JSON.stringify({ data: { me: { username: 'builder' } } })));
+    };
+    const hub = createRequestHub({ address: DEFAULT_HUB_ADDRESS, token: () => Promise.resolve('builder-token'), fetch: fakeFetch });
+    await expect(hub.request(ME, {})).resolves.toEqual({ ok: true, value: { me: { username: 'builder' } } });
+    expect(sent).toHaveLength(1);
+    expect(sent[0]?.headers.authorization).toBe('Bearer builder-token');
+    expect(FakeSocket.opened).toHaveLength(0);
   });
 });

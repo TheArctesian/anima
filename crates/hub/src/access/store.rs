@@ -1,10 +1,11 @@
-//! The only SQL for `access.operators`, `access.api_tokens` (API keys in `store/keys.rs`),
-//! `access.login_attempts` (in `store/attempts.rs`) and `access.permitted_networks` (in
-//! `store/permitted.rs`).
+//! The only SQL for `access.operators`, `access.api_tokens` (login, browser and builder tokens
+//! in `store/tokens.rs`, API keys in `store/keys.rs`), `access.login_attempts` (in
+//! `store/attempts.rs`) and `access.permitted_networks` (in `store/permitted.rs`).
 
 mod attempts;
 mod keys;
 mod permitted;
+mod tokens;
 
 use chrono::{DateTime, Utc};
 use sqlx::{FromRow, PgConnection, PgExecutor};
@@ -15,8 +16,11 @@ pub(super) use attempts::{
 };
 pub(super) use keys::{KEY_NAME_INDEX, NewKey, StoredKey, delete_key, insert_key, keys_of};
 pub(super) use permitted::{permitted_networks, replace_labelled_networks};
+pub(super) use tokens::{
+    NewToken, delete_builder_token, delete_operator_tokens, delete_token, insert_token,
+    token_by_hash, token_exists, touch_token,
+};
 
-use super::tokens::{Scope, TokenHash, TokenKind};
 use crate::ids::OperatorId;
 
 /// An operator account as stored. No `Debug`: it holds the password hash.
@@ -179,105 +183,4 @@ pub(super) async fn prune(
     .execute(&mut *conn)
     .await?;
     Ok((attempts.rows_affected(), tokens.rows_affected()))
-}
-
-/// Deletes every token of the operator.
-pub(super) async fn delete_operator_tokens(
-    conn: &mut PgConnection,
-    operator: OperatorId,
-) -> Result<(), sqlx::Error> {
-    sqlx::query("delete from access.api_tokens where operator_id = $1")
-        .bind(operator)
-        .execute(conn)
-        .await?;
-    Ok(())
-}
-
-/// A login or browser token row to insert; neither has a name or a display prefix.
-pub(super) struct NewToken {
-    pub operator: OperatorId,
-    pub hash: TokenHash,
-    pub kind: TokenKind,
-    pub scope: Scope,
-    pub expires_at: DateTime<Utc>,
-}
-
-/// Inserts the token and returns its id.
-pub(super) async fn insert_token(
-    conn: &mut PgConnection,
-    token: &NewToken,
-    now: DateTime<Utc>,
-) -> Result<Uuid, sqlx::Error> {
-    let id = Uuid::now_v7();
-    sqlx::query(
-        "insert into access.api_tokens \
-         (id, operator_id, token_hash, kind, scope, expires_at, created_at) \
-         values ($1, $2, $3, $4, $5, $6, $7)",
-    )
-    .bind(id)
-    .bind(token.operator)
-    .bind(&token.hash.0[..])
-    .bind(token.kind.as_str())
-    .bind(token.scope.as_str())
-    .bind(token.expires_at)
-    .bind(now)
-    .execute(conn)
-    .await?;
-    Ok(id)
-}
-
-/// A stored token with its operator's name.
-#[derive(FromRow)]
-pub(super) struct StoredToken {
-    pub id: Uuid,
-    pub operator_id: OperatorId,
-    pub username: String,
-    pub kind: String,
-    pub scope: String,
-    pub expires_at: DateTime<Utc>,
-    pub last_used_at: Option<DateTime<Utc>>,
-}
-
-pub(super) async fn token_by_hash(
-    db: impl PgExecutor<'_>,
-    hash: TokenHash,
-) -> Result<Option<StoredToken>, sqlx::Error> {
-    sqlx::query_as(
-        "select t.id, t.operator_id, o.username, t.kind, t.scope, t.expires_at, t.last_used_at \
-         from access.api_tokens t join access.operators o on o.id = t.operator_id \
-         where t.token_hash = $1",
-    )
-    .bind(&hash.0[..])
-    .fetch_optional(db)
-    .await
-}
-
-pub(super) async fn touch_token(
-    db: impl PgExecutor<'_>,
-    id: Uuid,
-    now: DateTime<Utc>,
-) -> Result<(), sqlx::Error> {
-    sqlx::query("update access.api_tokens set last_used_at = $2 where id = $1")
-        .bind(id)
-        .bind(now)
-        .execute(db)
-        .await?;
-    Ok(())
-}
-
-/// Whether the token is still stored: `logout`, `operator set` and `prune` delete tokens.
-pub(super) async fn token_exists(db: impl PgExecutor<'_>, id: Uuid) -> Result<bool, sqlx::Error> {
-    sqlx::query_scalar("select exists (select from access.api_tokens where id = $1)")
-        .bind(id)
-        .fetch_one(db)
-        .await
-}
-
-/// Deletes the token. Returns false if it was already gone.
-pub(super) async fn delete_token(conn: &mut PgConnection, id: Uuid) -> Result<bool, sqlx::Error> {
-    let done = sqlx::query("delete from access.api_tokens where id = $1")
-        .bind(id)
-        .execute(conn)
-        .await?;
-    Ok(done.rows_affected() == 1)
 }

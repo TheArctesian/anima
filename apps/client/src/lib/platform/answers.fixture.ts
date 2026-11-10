@@ -13,6 +13,7 @@ export const DESKTOP_MAC: Capabilities = {
   processLog: true,
   thisMachine: true,
   systemSettings: true,
+  builds: true,
 };
 
 /** A browser: every desktop-only feature off. */

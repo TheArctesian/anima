@@ -22,6 +22,7 @@ vi.mock('$lib/access/navigation', () => ({ goToSignIn: mocks.goToSignIn, loadCli
 // The desktop rows need the shell's update store; stand-ins let the page's sections be counted (UPD-006).
 vi.mock('$lib/updates/UpdatesRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('$lib/updates/tests/RowStub.svelte')).default }));
 vi.mock('$lib/process-log/LogFolderRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('$lib/updates/tests/LogRowStub.svelte')).default }));
+vi.mock('$lib/builds/BuildsRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('$lib/updates/tests/RowStub.svelte')).default }));
 // The API keys section loads its own data and has its own tests in `$lib/api-keys/` (WP-50 F-3, F-10).
 vi.mock('$lib/api-keys/ApiKeysSection.svelte', () => ({ default: () => undefined }));
 // The Notifications section loads its own data and has its own tests in `$lib/notifications/` (WP-50 F-3, F-10).
@@ -105,13 +106,13 @@ it('SET-001, UI-005, MOT-043: the page is the title, then Account, then Appearan
   expect(target.querySelectorAll('[role="switch"], img, input, textarea, a, [tabindex]:not(button)')).toHaveLength(0);
 });
 
-it('SET-001, UPD-006: the desktop app adds the Updates section before API keys, holding the update and log folder rows', async () => {
+it('SET-001, UPD-006, BLD-020: the desktop app adds the Updates section before API keys, holding the update, log folder and Builds rows', async () => {
   mocks.platform = DESKTOP_MAC;
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
   expect(sectionHeadings(target)).toEqual(['Account', 'Hub', 'Appearance', 'Notifications', 'Default check settings', 'Data retention', 'Updates', 'API keys']);
   const updates = target.querySelector('section[aria-labelledby="settings-updates"]');
-  expect(updates?.querySelectorAll('[data-stub]')).toHaveLength(2);
-  expect(target.querySelectorAll('[data-stub]')).toHaveLength(2);
+  expect(updates?.querySelectorAll('[data-stub]')).toHaveLength(3);
+  expect(target.querySelectorAll('[data-stub]')).toHaveLength(3);
 });
 
 it('CLI-003: Sign out calls logout, clears the token with hub.address, then goes to sign-in', async () => {

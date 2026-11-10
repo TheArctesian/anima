@@ -10,14 +10,14 @@ use super::{backstopped, clock, identity_of, now};
 use crate::access::{
     Scope, TokenKind,
     graphql::{Mutation, Query},
-    guard::{API_KEY_REFUSED_ROOTS, kind_may_select},
+    guard::{API_KEY_REFUSED_ROOTS, BUILDER_FIELDS, kind_may_select},
 };
 
 const KIND_REFUSED: &str = "This token cannot do that. Sign in to the hub to do it.";
 
-/// The D-23 list as the spec and A-6 state it, with the CR-8 agent fields and the R-100
-/// device identity, device and recording fields.
-const D_23: [&str; 25] = [
+/// The D-23 list as the spec and A-6 state it, with the CR-8 agent fields, the R-100
+/// device identity, device and recording fields, and the R-107 builder and release fields.
+const D_23: [&str; 29] = [
     "createApiKey",
     "revokeApiKey",
     "apiKeys",
@@ -43,6 +43,10 @@ const D_23: [&str; 25] = [
     "deleteDevice",
     "setRetention",
     "deleteRecording",
+    "enrolBuilder",
+    "revokeBuilder",
+    "createRelease",
+    "cancelBuildJob",
 ];
 
 async fn run(kind: TokenKind, scope: Scope, request: Request) -> Response {
@@ -87,6 +91,23 @@ fn d_23_only_an_api_key_is_kept_from_the_listed_roots() {
     ];
     for name in open {
         assert!(kind_may_select(TokenKind::ApiKey, name), "{name}");
+    }
+}
+
+#[test]
+fn r_102_a_builder_token_may_select_only_the_builder_mutations() {
+    for name in BUILDER_FIELDS.into_iter().chain(["__typename"]) {
+        assert!(kind_may_select(TokenKind::Builder, name), "{name}");
+    }
+    for name in [
+        "me",
+        "builders",
+        "enrolBuilder",
+        "createRelease",
+        "logout",
+        "__schema",
+    ] {
+        assert!(!kind_may_select(TokenKind::Builder, name), "{name}");
     }
 }
 

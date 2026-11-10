@@ -85,7 +85,10 @@ impl Query {
     #[graphql(guard = "Authenticated")]
     async fn me(&self, ctx: &Context<'_>) -> async_graphql::Result<OperatorProfile> {
         let identity = need::<Identity>(ctx)?;
-        let account = store::account_by_id(need::<PgPool>(ctx)?, identity.operator().id)
+        let operator = identity
+            .operator()
+            .ok_or_else(|| Error::Unauthenticated.into_graphql())?;
+        let account = store::account_by_id(need::<PgPool>(ctx)?, operator.id)
             .await
             .map_err(|error| Error::from(error).into_graphql())?
             .ok_or_else(|| Error::Unauthenticated.into_graphql())?;

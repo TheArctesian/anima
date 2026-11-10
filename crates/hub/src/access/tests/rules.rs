@@ -200,7 +200,7 @@ fn sec_002_login_attempts_keep_at_most_128_characters_without_nul() {
 
 #[test]
 fn sec_002_d_7_scope_round_trips_its_stored_text() {
-    for scope in [Scope::Read, Scope::Write] {
+    for scope in [Scope::Read, Scope::Write, Scope::Builder] {
         assert_eq!(Scope::from_stored(scope.as_str()), Some(scope));
     }
     assert_eq!(Scope::from_stored("read"), Some(Scope::Read));

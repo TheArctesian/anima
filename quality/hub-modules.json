@@ -73,7 +73,11 @@
       "events",
       "credentials"
     ],
-    "retention": []
+    "retention": [],
+    "builds": [
+      "access",
+      "events"
+    ]
   },
   "graphql": {
     "devices": [
@@ -107,6 +111,9 @@
       "access"
     ],
     "trust": [
+      "access"
+    ],
+    "builds": [
       "access"
     ]
   }

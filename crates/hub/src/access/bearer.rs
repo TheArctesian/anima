@@ -85,9 +85,11 @@ impl Gate {
 }
 
 /// Whether a token of scope `granted` may do what `wanted` asks: a write token may also read.
+/// The builder scope covers nothing here and nothing covers it: a builder token reaches only
+/// the builder mutations (BLD-022, D-23).
 const fn covers(granted: Scope, wanted: Scope) -> bool {
     matches!(
         (granted, wanted),
-        (Scope::Write, _) | (Scope::Read, Scope::Read)
+        (Scope::Write, Scope::Read | Scope::Write) | (Scope::Read, Scope::Read)
     )
 }

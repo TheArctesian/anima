@@ -61,6 +61,15 @@ fn int_003_a_read_scope_never_covers_a_write_scope() {
     assert!(!covers(Scope::Read, Scope::Write));
 }
 
+#[test]
+fn bld_022_the_builder_scope_covers_nothing_and_nothing_covers_it() {
+    for other in [Scope::Read, Scope::Write] {
+        assert!(!covers(Scope::Builder, other), "{other:?}");
+        assert!(!covers(other, Scope::Builder), "{other:?}");
+    }
+    assert!(!covers(Scope::Builder, Scope::Builder));
+}
+
 fn bearer_headers(value: &str) -> HeaderMap {
     let mut headers = HeaderMap::new();
     headers.insert(

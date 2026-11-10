@@ -13,7 +13,11 @@ vi.mock('motion', async (importOriginal) => ({
 }));
 
 const keyStore = vi.hoisted(() => ({ read: vi.fn(), available: vi.fn(() => false) }));
-vi.mock('$lib/desktop/token', () => ({ readAccessToken: keyStore.read }));
+vi.mock('$lib/desktop/token', () => ({
+  readAccessToken: keyStore.read,
+  // No builder token is stored (BLD-026), so the layout's builder starts no loop and never writes or clears one.
+  readBuilderToken: () => Promise.resolve(null),
+}));
 vi.mock('$lib/platform/platform', async () => {
   const { BROWSER, DESKTOP_MAC } = await import('$lib/platform/answers.fixture');
   return { capabilities: () => (keyStore.available() ? DESKTOP_MAC : BROWSER) };

@@ -39,12 +39,13 @@ impl From<TokenScope> for Scope {
     }
 }
 
-impl From<Scope> for TokenScope {
-    fn from(scope: Scope) -> Self {
-        match scope {
-            Scope::Read => Self::Read,
-            Scope::Write => Self::Write,
-        }
+/// The K1 scope of an API key: `read` or `write`, never `builder`. The builder scope has no
+/// `TokenScope` and is never shown as `write` (D-23, R-107); `ApiKey::from_row` refuses it too.
+fn token_scope(scope: Scope) -> Result<TokenScope> {
+    match scope {
+        Scope::Read => Ok(TokenScope::Read),
+        Scope::Write => Ok(TokenScope::Write),
+        Scope::Builder => Err(to_graphql(Error::Unreadable)),
     }
 }
 
@@ -59,8 +60,12 @@ impl ApiKey {
         &self.name
     }
 
-    async fn scope(&self) -> TokenScope {
-        self.scope.into()
+    #[expect(
+        clippy::unused_async,
+        reason = "async-graphql resolvers must be async; this one can fail"
+    )]
+    async fn scope(&self) -> Result<TokenScope> {
+        token_scope(self.scope)
     }
 
     /// The first 12 characters of the secret, so the operator can tell keys apart.
@@ -108,9 +113,10 @@ pub struct ApiKeyInput {
 /// `apiKeys`: the signed-in operator's keys.
 pub(in crate::access) async fn api_keys(ctx: &Context<'_>) -> Result<Vec<ApiKey>> {
     let identity = operator_only(ctx, "apiKeys")?;
-    list(pool(ctx)?, identity.operator().id)
-        .await
-        .map_err(to_graphql)
+    let operator = identity
+        .operator()
+        .ok_or_else(|| AccessError::Unauthenticated.into_graphql())?;
+    list(pool(ctx)?, operator.id).await.map_err(to_graphql)
 }
 
 /// `createApiKey`: stores the key with its audit entry and event, and shows its secret once.
