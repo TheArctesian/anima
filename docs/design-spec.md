@@ -284,7 +284,7 @@ desktop app ── GET https://releases.anima.ing/{{target}}-{{arch}}/latest.jso
 | Targets | `linux-x86_64` (AppImage) and `darwin-universal` (app and DMG, built on an Apple Silicon Mac). |
 | Builder | A desktop app with "Build releases on this computer" on. Off by default. |
 | Storage | Cloudflare R2 bucket `anima-releases`, served at `https://releases.anima.ing` |
-| Upload credential | A presigned R2 `PUT` URL for each file of one job. It expires after 30 minutes. |
+| Upload credential | A presigned R2 `PUT` URL for each file of one job. It expires after 15 minutes (changed by R-108). |
 | Updater endpoint | `https://releases.anima.ing/{{target}}-{{arch}}/latest.json`. Tauri 2 replaces `{{target}}` with `linux`, `darwin` or `windows` and `{{arch}}` with `x86_64`, `aarch64`, `i686` or `armv7`. |
 
 Reasons for the trigger: a release is a deliberate operator act. A poll would build each push to `main` and run the gates each time on an operator computer. A poll also needs a GitHub rate-limit budget. Section 11 OD-12 records the later option.
@@ -350,13 +350,13 @@ releases.anima.ing/
 └── Anima.dmg                                        no-cache            hub copy (stable name)
 ```
 
-- **BLD-060.** In `uploading`, the hub must give the lease holder one presigned `PUT` URL for each file of the job. Each URL names one object key under `<target>/<version>/`, fixes its `Cache-Control`, and expires after 30 minutes.
+- **BLD-060.** In `uploading`, the hub must give the lease holder one presigned `PUT` URL for each file of the job. Each URL names one object key under `<target>/<version>/`, fixes its `Cache-Control`, and expires after 15 minutes. The hub must keep the latest expiry of the job's URLs (changed by R-108).
 - **BLD-061.** The hub must not give a builder the R2 account token, an R2 API key, or a URL for `latest.json` or a stable name.
 - **BLD-062.** The hub must sign upload URLs with an R2 API token that has "Object Read & Write" on the bucket `anima-releases` only. The hub must read it from a Docker secret (SEC-004 rules apply) and must not log it.
 - **BLD-063.** The builder must upload the versioned updater file, the DMG on macOS, and `SHA256SUMS` (made with `checksums` from `feed.ts`). Then it must report `uploaded` with the SHA-256 of each file and the proposed feed (made with `buildFeed` from `feed.ts`).
-- **BLD-064.** Before it publishes, the hub must GET each file from `https://releases.anima.ing`. Each must answer 200 and have the reported SHA-256. The updater file signature in the feed must verify with the public key in `tauri.conf.json` for the job version.
+- **BLD-064.** The hub must start these checks only after every upload URL of the job has expired. It must read each file from the R2 bucket itself with a signed S3 `GET`, and keep its `ETag`. Each file must have the reported size and SHA-256. Each file must also answer 200 at `https://releases.anima.ing`; the bytes of that answer prove nothing, because a cache may hold older ones. The updater file signature in the feed must verify for the job version with the hub's `ANIMA_UPDATER_PUBLIC_KEY`, which must equal `plugins.updater.pubkey` in `tauri.conf.json`. Without that key the hub publishes nothing (changed by R-108).
 - **BLD-065.** The hub must check the proposed feed: the job version, only the platform keys of the job target, and URLs under `https://releases.anima.ing/<target>/<version>/`. The hub must refuse any other feed.
-- **BLD-066.** When the checks pass, the hub must copy the file to its stable name with R2 `CopyObject` (UPD-010). Then the hub must write `latest.json` with `Cache-Control: no-cache` last. Then the job is `published`.
+- **BLD-066.** When the checks pass, the hub must copy the file to its stable name with R2 `CopyObject` and `x-amz-copy-source-if-match: <ETag>` (UPD-010). An answer of 412 fails the job. Then the hub must write `latest.json` with `Cache-Control: no-cache` last. Then the job is `published` (changed by R-108).
 - **BLD-067.** For `darwin-universal`, the hub writes the same feed to `darwin-aarch64/latest.json` and `darwin-x86_64/latest.json`, because the bundle is universal.
 - **BLD-068.** The hub must not write a macOS feed until the build has Developer ID signing and notarization (OD-13). Until then a macOS job publishes the DMG and its stable name only.
 - **BLD-069.** The hub must not write a feed whose version is lower than the published feed of that target. Rollback is a manual act (Section 3.9).

@@ -487,6 +487,21 @@ pub struct Sightings;  pub enum Conflict;  pub enum Error;   // CR-11: what conn
 pub const LEASE_SWEEP: Duration;   // 30 s (D-2)
 /// Wiring only (upkeep.rs): ends every lease that ran out by `now`; the third end fails the job (BLD-006).
 pub async fn expire_leases(queue: BuildQueue<'_>, now: DateTime<Utc>) -> Result<usize, Error>;
+
+// Publishing (WP-36 T3, R-108, BLD-060 to BLD-070, D-24 to D-28)
+pub struct Bucket;   pub enum BucketError;   // no Debug on Bucket; BucketError names a setting, never a value
+impl Bucket { pub fn open(releases: &config::Releases) -> Result<Bucket, BucketError>; }   // main.rs, when ANIMA_RELEASES_ENDPOINT is set
+pub struct UploadUrl { pub name: String, pub url: String, pub headers: Vec<(String, String)>, pub expires_at: DateTime<Utc> }   // no Debug
+pub struct Grant<'a> { pub builder: &'a Builder, pub job: BuildJobId, pub files: &'a [UploadedFile] }
+/// graphql only: presigned PUTs of 15 min for an `uploading` job, only for its target's release files, each with its
+/// content type; records the files as its grant (D-26) and the latest URL expiry (D-28).
+pub async fn upload_urls(db: &Db, bucket: &Bucket, grant: Grant<'_>, now: DateTime<Utc>) -> Result<Vec<UploadUrl>, Error>;
+pub const PUBLISH_SWEEP: Duration;   // 10 s
+/// Wiring only (upkeep.rs): verifies, copies and writes the feeds of jobs whose files are in and whose upload URLs
+/// expired (D-25, D-28). Reads `clock` for each take, hold, signed request and end.
+pub async fn publish_ready(queue: BuildQueue<'_>, bucket: &Bucket, http: &reqwest::Client, clock: &dyn Clock) -> Result<usize, Error>;
+/// Wiring only (upkeep.rs), on a hub with no bucket: fails the jobs handed to the publisher with a fixed reason (D-25).
+pub async fn publishing_off(queue: BuildQueue<'_>, now: DateTime<Utc>) -> Result<usize, Error>;
 ```
 
 No other domain imports `builds`.

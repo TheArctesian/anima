@@ -22,7 +22,12 @@ use crate::clock::Clock;
 /// The root mutations a builder token may call, and only it (BLD-022, D-1). `access` keeps the
 /// list because the backstop below refuses every other root field to a builder; a `builds` test
 /// keeps it equal to the fields of `builds::graphql::BuilderMutation`.
-pub const BUILDER_FIELDS: [&str; 3] = ["claimBuildJob", "reportBuildJob", "reportBuildUploaded"];
+pub const BUILDER_FIELDS: [&str; 4] = [
+    "claimBuildJob",
+    "reportBuildJob",
+    "buildUploadUrls",
+    "reportBuildUploaded",
+];
 
 /// The refusal a builder token gets for an operator field.
 const BUILDER_ONLY: &str = "A builder token may only claim and report build jobs.";

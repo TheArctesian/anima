@@ -1,5 +1,6 @@
-//! Builds: the release queue, the builders that claim its jobs under a lease, and their logs
-//! (spec Section 3.10, BLD-001 to BLD-082; WP-36 D-1 to D-5).
+//! Builds: the release queue, the builders that claim its jobs under a lease, their logs, and
+//! the publishing of what they built (spec Section 3.10, BLD-001 to BLD-082; WP-36 D-1 to D-5,
+//! D-24 to D-27).
 //!
 //! Operator writes take the caller's connection, so the GraphQL layer adds the audit entry in
 //! the same transaction (LOG-005). Builder operations run their own transactions. Messages in
@@ -13,6 +14,7 @@ mod log_lines;
 mod model;
 mod page;
 mod private_keys;
+mod publishing;
 mod queue;
 mod release;
 mod store;
@@ -35,6 +37,10 @@ pub use model::{
     Platform, Release, Report, StateTimes, Target, UploadedFile,
 };
 pub use page::{ReleasePage, cursor};
+pub use publishing::{
+    Bucket, BucketError, Grant, PUBLISH_SWEEP, UploadUrl, publish_ready, publishing_off,
+    upload_urls,
+};
 pub use release::ReleaseInput;
 pub use updates::Updates;
 pub use version::Version;

@@ -250,6 +250,33 @@ with Docker at every boot; the rules must already be in the boot copy of the fir
 - **Outside the hub's deny list.** Apprise's own onward traffic is not covered by `ANIMA_PROBE_DENY`.
   The allow list and the attachment reject do not contain it. The host firewall rule (step 7) does.
 
+## Release publishing (WP-36, R-108)
+
+The hub publishes the desktop releases its builders upload to the R2 bucket `anima-releases`
+(spec Section 3.10, BLD-060 to BLD-070). It is off until `ANIMA_RELEASES_ENDPOINT` is set; while
+it is off, a builder's upload is refused and nothing is published. Setting it up is an operator
+step (VPS-005): agents do not create the R2 token or change `deploy/.env` on the VPS.
+
+- **Two secret files** hold the R2 API token: its access key ID and its secret access key. Make the
+  token in Cloudflare with Object Read and Write on `anima-releases` only. Put each value in its own
+  file, `secrets/r2_access_key_id` and `secrets/r2_secret_access_key`, owned `root:10001`, mode
+  `0440`, and give them to the hub as Docker secrets. The hub reads them once at start
+  (`ANIMA_RELEASES_ACCESS_KEY_ID_FILE`, `ANIMA_RELEASES_SECRET_ACCESS_KEY_FILE`) and never logs them.
+- **`ANIMA_RELEASES_ENDPOINT`** is the bucket's S3 API origin,
+  `https://<account>.r2.cloudflarestorage.com`. `ANIMA_RELEASES_BUCKET` (default `anima-releases`)
+  and `ANIMA_RELEASES_PUBLIC_BASE` (default `https://releases.anima.ing`) rarely change.
+- **`ANIMA_UPDATER_PUBLIC_KEY` must be the same text as `plugins.updater.pubkey` in
+  `apps/desktop/src-tauri/tauri.conf.json`.** The hub checks every updater file's signature with
+  it before it writes a feed. If the two differ, every publish fails; if the variable is empty,
+  every publish fails with a reason that names it. The key is public, so it is a plain variable.
+- The hub reads every file back from the bucket with the R2 token, and checks that the public base
+  answers 200 for it, before it writes `latest.json`, so the `releases.anima.ing` custom domain must
+  serve the bucket first. It starts that check about 17 minutes after the upload: a builder's upload
+  URLs live 15 minutes, and the hub waits 2 more for clock skew (D-28).
+- **A hub with publishing off fails the jobs already handed to it.** If you unset
+  `ANIMA_RELEASES_ENDPOINT` while a job waits to be published, that job fails with "Publishing is off
+  on this hub"; release that version again once publishing is back.
+
 ## Deny list
 
 `ANIMA_PROBE_DENY` lists the addresses that checks and notification targets must never reach

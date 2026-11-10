@@ -1,6 +1,8 @@
-//! The builder's mutations: claim a job, report on it, report its upload (BLD-004 to BLD-010,
-//! BLD-063). Each is behind `BuilderSignedIn` and then checks the builder record and the
+//! The builder's mutations: claim a job, report on it, get its upload URLs, report its upload
+//! (BLD-004 to BLD-010, BLD-060, BLD-063). Each is behind `BuilderSignedIn` and then checks the builder record and the
 //! address it enrolled from (BLD-022, BLD-024).
+
+use std::sync::Arc;
 
 use async_graphql::{Context, ID, Object, Result};
 use sqlx::PgPool;
@@ -9,12 +11,14 @@ use super::{
     error::{parse_id, to_graphql},
     invalid_field, now,
     types::{FileFields, PlatformFields},
+    uploads::UploadUrlFields,
 };
 use crate::{
     access::{BuilderSignedIn, Identity},
     api_errors::schema_dependency,
     builds::{
-        self, BuildJob, BuildQueue, Builder, Error, JobState, Platform, Report, Updates, Upload,
+        self, Bucket, BuildJob, BuildQueue, Builder, Error, Grant, JobState, Platform, Report,
+        Updates, Upload, UploadedFile,
     },
     events::{Bus, ClientAddr},
     ids::BuildJobId,
@@ -38,6 +42,9 @@ async fn signed_builder(ctx: &Context<'_>) -> Result<Builder> {
             to_graphql(error)
         })
 }
+
+/// The refusal of `buildUploadUrls` on a hub with no release bucket set up.
+const NOT_PUBLISHING: &str = "Publishing is not set up on this hub.";
 
 fn build_queue<'a>(ctx: &Context<'a>) -> Result<BuildQueue<'a>> {
     Ok(BuildQueue {
@@ -100,8 +107,37 @@ impl BuilderMutation {
             .map_err(to_graphql)
     }
 
-    /// Records the uploaded files and the proposed feed of an `UPLOADING` job and extends its
-    /// lease; the job stays `UPLOADING` until the hub publishes it (BLD-063, D-5).
+    /// One presigned `PUT` URL for each named file of an `UPLOADING` job its builder holds; the
+    /// files become the job's grant (BLD-060, BLD-061, D-26). `CONFLICT` when this hub does not
+    /// publish. No error names a URL (LOG-007).
+    #[graphql(guard = "BuilderSignedIn")]
+    async fn build_upload_urls(
+        &self,
+        ctx: &Context<'_>,
+        id: ID,
+        files: Vec<FileFields>,
+    ) -> Result<Vec<UploadUrlFields>> {
+        let job: BuildJobId = parse_id(&id, "id")?;
+        let builder = signed_builder(ctx).await?;
+        let bucket = schema_dependency::<Option<Arc<Bucket>>>(ctx)?
+            .as_deref()
+            .ok_or_else(|| to_graphql(Error::Conflict(NOT_PUBLISHING.to_owned())))?;
+        let files: Vec<UploadedFile> = files.into_iter().map(Into::into).collect();
+        let grant = Grant {
+            builder: &builder,
+            job,
+            files: &files,
+        };
+        let db = schema_dependency::<PgPool>(ctx)?;
+        let urls = builds::upload_urls(db, bucket, grant, now(ctx)?)
+            .await
+            .map_err(to_graphql)?;
+        Ok(urls.into_iter().map(Into::into).collect())
+    }
+
+    /// Records the uploaded files and the proposed feed of an `UPLOADING` job and ends its
+    /// lease; the hub then verifies and publishes it in the background (BLD-063 to BLD-070,
+    /// D-25).
     #[graphql(guard = "BuilderSignedIn")]
     #[expect(
         clippy::too_many_arguments,

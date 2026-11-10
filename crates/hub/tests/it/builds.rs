@@ -4,6 +4,7 @@ mod keys;
 mod kinds;
 mod leases;
 mod live;
+mod publishing;
 mod reports;
 mod scopes;
 mod versions;

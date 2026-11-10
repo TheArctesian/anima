@@ -4,6 +4,7 @@
 
 mod builders;
 mod logs;
+mod publishing;
 mod releases;
 
 use chrono::{DateTime, Utc};
@@ -14,6 +15,10 @@ pub(super) use builders::{
 };
 pub(super) use logs::{
     append_lines, lines, open_key_block, replace_files, set_feed, set_open_key_block, trim_log,
+};
+pub(super) use publishing::{
+    extend_upload_expiry, feed_of, files_of, hand_to_publisher, handed_over, hold, is_published,
+    is_publishing, next_publishable, publish_attempt, published_versions, set_written, still_held,
 };
 pub(super) use releases::{built, insert_release, jobs_of, lock_releases, releases_after};
 
@@ -167,13 +172,16 @@ pub(super) async fn insert_job(conn: &mut PgConnection, job: &BuildJob) -> Resul
     Ok(())
 }
 
-/// Writes every field of the job that a change can touch.
+/// Writes every field of the job that a change can touch. A job that left `uploading` is no
+/// longer the publisher's (D-25).
 pub(super) async fn save(conn: &mut PgConnection, job: &BuildJob) -> Result<(), Error> {
     sqlx::query(
         "UPDATE builds.jobs SET state = $2, failure_reason = $3, attempts = $4, builder_id = $5, \
              builder_name = $6, lease_ends_at = $7, log_sequence = $8, queued_at = $9, \
              claimed_at = $10, building_at = $11, uploading_at = $12, published_at = $13, \
-             failed_at = $14, cancelled_at = $15, state_changed_at = $16 \
+             failed_at = $14, cancelled_at = $15, state_changed_at = $16, \
+             publishing_since = CASE WHEN $2 = 'uploading' THEN publishing_since END, \
+             publish_held_until = CASE WHEN $2 = 'uploading' THEN publish_held_until END \
          WHERE id = $1",
     )
     .bind(job.id)

@@ -224,6 +224,8 @@ dependencies = [
  "hyper-util",
  "ipnet",
  "lettre",
+ "minisign",
+ "minisign-verify",
  "proptest",
  "rand 0.10.3",
  "rcgen",
