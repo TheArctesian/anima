@@ -14,7 +14,9 @@ mod tests;
 mod text;
 mod warnings;
 
-use sqlx::{PgConnection, PgPool};
+use std::num::NonZeroU8;
+
+use sqlx::{PgConnection, PgExecutor, PgPool};
 
 use crate::api_errors::field_names;
 use crate::ids::{DeviceId, SiteId};
@@ -105,4 +107,16 @@ pub async fn lock(conn: &mut PgConnection, id: DeviceId) -> Result<(), Error> {
 /// `NotFound` when there is no such device.
 pub async fn use_agent_metrics(conn: &mut PgConnection, id: DeviceId) -> Result<String, Error> {
     store::set_agent_source(conn, id).await
+}
+
+/// The most live sessions the device allows, `None` for no limit (RA-036). Any executor, so
+/// `sessions` reads it inside the transaction that starts a session.
+///
+/// # Errors
+/// `NotFound` when there is no such device.
+pub async fn session_limit<'e>(
+    db: impl PgExecutor<'e>,
+    id: DeviceId,
+) -> Result<Option<NonZeroU8>, Error> {
+    store::remote::session_limit(db, id).await
 }

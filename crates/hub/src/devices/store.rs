@@ -45,7 +45,7 @@ macro_rules! device_filter {
 }
 
 mod holds;
-mod remote;
+pub(super) mod remote;
 
 pub(super) use holds::lock_device;
 pub(super) use remote::{

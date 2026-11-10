@@ -143,6 +143,26 @@ store_test! {
         assert_eq!(after.session_limit, None);
     }
 
+    async fn ra_036_the_face_reads_the_limit_in_a_transaction_and_not_found_without_a_device(
+        pool: PgPool
+    ) {
+        let id = device_id(PVE_01);
+        let mut tx = pool.begin().await.unwrap();
+        assert_eq!(crate::devices::session_limit(&mut *tx, id).await.unwrap(), None);
+        sqlx::query("UPDATE devices.devices SET session_limit = 7 WHERE id = $1")
+            .bind(id)
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+        assert_eq!(crate::devices::session_limit(&mut *tx, id).await.unwrap(), nz(7));
+        tx.rollback().await.unwrap();
+        let missing = device_id("0190a000-0000-7000-8002-0000000000ff");
+        match crate::devices::session_limit(&pool, missing).await {
+            Err(Error::NotFound(Missing::Device(gone))) => assert_eq!(gone, missing),
+            other => panic!("{other:?}"),
+        }
+    }
+
     async fn ra_040_an_update_sets_and_keeps_the_flag_in_the_row(pool: PgPool) {
         let mut conn = pool.acquire().await.unwrap();
         let id = device_id(PVE_01);
