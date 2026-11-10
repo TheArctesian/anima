@@ -2,6 +2,7 @@
 //! for scripts and the GraphQL guard (SEC-002, API-003, INT-003, D-3, D-23), and from where:
 //! permitted networks and the listening edge (NET-001 to NET-003, SEC-001, SEC-008).
 
+mod bearer;
 mod browser;
 mod builder_tokens;
 mod connection;
@@ -31,6 +32,7 @@ use sqlx::PgPool;
 use zeroize::Zeroizing;
 
 pub use crate::events::{ClientAddr, Operator};
+pub use bearer::bearer_layer;
 pub use browser::SameOrigin;
 pub use builder_tokens::{IssuedToken, issue_builder_token, revoke_builder_token};
 pub use connection::{MESSAGE_LIMIT, SUBPROTOCOL, SocketAccess, accept_socket};

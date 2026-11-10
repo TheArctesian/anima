@@ -14,16 +14,15 @@ use std::{
 use anima_hub::{
     DRAIN_LIMIT, Shutdown,
     access::{self, listen},
-    builds, checks,
+    all_routes, builds, checks,
     clock::{Clock as _, SystemClock},
     config::{self, Config},
     credentials::Vault,
     events::{self, Bus, process_log},
-    metrics, pushes, router_at,
-    schema::{Dependencies, build_schema},
+    metrics,
+    schema::Dependencies,
     serve_until, sessions,
     targets::AddressPolicy,
-    tunnels, web_fallback,
 };
 use sqlx::PgPool;
 
@@ -149,8 +148,6 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     let bus = Bus::new(BUS_CAPACITY);
     let (probing, collecting) = reaching(&vault, &policy, config.tailscale_localapi.clone());
     let feed = metrics::Feed::new();
-    let origin = access::PublicOrigin::new(config.public_origin.clone());
-    let web = web_fallback(config.web_root.as_deref(), &origin);
     let dependencies = Dependencies {
         config,
         clock: clock.clone(),
@@ -162,21 +159,13 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         metrics_feed: feed.clone(),
         build_updates: builds::Updates::new(),
     };
-    let tunnels = tunnels(&dependencies);
     let upkeep = upkeep::spawn(&dependencies);
-    let pushes = pushes(&dependencies);
-    let schema = build_schema(dependencies);
     let scheduler = checks::spawn_scheduler(pool.clone(), bus.clone(), clock.clone(), probing);
     let collector =
         metrics::spawn_collector(pool.clone(), feed, bus.clone(), clock.clone(), collecting);
-    // The tunnels and the push routes are behind the same permitted-networks check as every route, and
-    // logged by their templates only, never their tokens (K3, NET-002, LOG-007, R-028, R-051).
+    // Every route is behind the same permitted-networks check (K3, NET-002).
     let edge = access::Edge::new(pool.clone(), bus, clock.clone());
-    let app = router_at(schema, pool.clone(), clock.clone(), origin)
-        .merge(tunnels)
-        .merge(pushes)
-        .merge(web)
-        .layer(access::permitted_networks_layer(edge.clone()));
+    let app = all_routes(dependencies, edge.clone());
     let shutdown = Shutdown {
         db: pool,
         live,

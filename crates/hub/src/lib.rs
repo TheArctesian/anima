@@ -124,8 +124,8 @@ fn routes(route: GraphqlRoute) -> Router {
 
 /// Runs every route of `routes` in an `http_request` span that records the route template,
 /// never a path value, so `/push/{token}` is logged as `/push/[redacted]` (LOG-007, R-028).
-/// Apply it to a router after its last route is added; `main.rs` wraps each router it merges
-/// in, such as `/tunnel` and `/push`.
+/// Apply it to a router after its last route is added; [`all_routes`] wraps each router it
+/// merges in, such as `/tunnel` and `/push`.
 pub fn logged(routes: Router) -> Router {
     routes.layer(middleware::from_fn(events::process_log::http_request))
 }
@@ -157,6 +157,39 @@ pub fn pushes(dependencies: &schema::Dependencies) -> Router {
         clock.clone(),
     );
     logged(checks::push_router(pool.clone(), bus.clone(), clock.clone()).merge(agent))
+}
+
+/// Every route the hub serves, as `main.rs` serves it: `/graphql` and `/health` at the public
+/// origin of `dependencies.config`, then the routes [`beside_graphql`] adds, all behind the
+/// permitted-networks layer of `edge` (K3, NET-002). The schema takes `dependencies`.
+pub fn all_routes(dependencies: schema::Dependencies, edge: access::Edge) -> Router {
+    let origin = access::PublicOrigin::new(dependencies.config.public_origin.clone());
+    let beside = beside_graphql(&dependencies, &origin);
+    let (pool, clock) = (dependencies.pool.clone(), dependencies.clock.clone());
+    router_at(schema::build_schema(dependencies), pool, clock, origin)
+        .merge(beside)
+        .layer(access::permitted_networks_layer(edge))
+}
+
+/// The routes beside `/graphql`, each logged by its template only, never its token (K3,
+/// LOG-007, R-028, R-051): the session tunnels, the push routes ([`pushes`]), `/metrics` behind a READ bearer
+/// (D-24) and, last, the web client at `config.web_root` as the fallback (D-2).
+fn beside_graphql(dependencies: &schema::Dependencies, origin: &access::PublicOrigin) -> Router {
+    let (pool, clock) = (&dependencies.pool, &dependencies.clock);
+    let web_root = dependencies.config.web_root.as_deref();
+    tunnels(dependencies)
+        .merge(pushes(dependencies))
+        .merge(exposition(pool.clone(), clock.clone()))
+        .merge(web_fallback(web_root, origin))
+}
+
+/// `GET /metrics` for scrapers (INT-001, D-24): the checks' exposition behind a bearer token of
+/// READ scope or more, in a logged span (K3, WP-43 A-9). A refused scrape gets 401 and starts
+/// no build. The layer wraps the route only, never the fallback, so a merge cannot put the
+/// bearer check on unknown paths. Merge it before the NET-002 layer, which then covers it.
+pub fn exposition(db: PgPool, clock: Arc<dyn clock::Clock>) -> Router {
+    let scrapes = checks::exposition_router(db.clone(), clock.clone());
+    logged(scrapes.route_layer(access::bearer_layer(db, clock, access::Scope::Read)))
 }
 
 /// The session tunnels, each logged by its template only (K4 Sections 8, 9): `/terminal` for

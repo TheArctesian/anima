@@ -430,7 +430,7 @@ How it operates:
 
 - **VPN-001.** Each site must use a different subnet, for example home `10.10.0.0/24`, office 1 `10.20.0.0/24`, office 2 `10.30.0.0/24`. Overlapping subnets cause route conflicts.
 - **VPN-002.** Each device in Anima must record its site. The device list must have a site filter.
-- **VPN-003.** Node keys of subnet routers and of the hub must not expire. Node keys of client computers must expire after 180 days.
+- **VPN-003.** Node keys of subnet routers, of the hub and of agent-only devices (`tag:agent`, which reach only the hub on TCP 443) must not expire. Node keys of client computers must expire after 180 days.
 - **VPN-004.** The VPN access rules (ACLs) must permit only these connections:
   - Anima client computers to the hub, and to all devices.
   - The hub to all devices, for checks, metrics and sessions.
