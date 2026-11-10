@@ -1,45 +1,7 @@
 import { describe, expect, test } from 'bun:test';
-import { parseHujson } from '../src/hujson.ts';
-import { parsePolicy, PolicyError, type Policy, type PolicyErrorCode } from '../src/policy.ts';
-import { allows, runPolicyTests, type Connection, type TailnetNode } from '../src/tailnet.ts';
-
-const policyText = await Bun.file(new URL('../config/policy.hujson', import.meta.url)).text();
-const raw = parseHujson(policyText) as Record<string, unknown>;
-const policy = parsePolicy(raw);
-
-const SITES = { home: '10.10.0.0/24', office1: '10.20.0.0/24', office2: '10.30.0.0/24' };
-const TAILNET_IPV4 = '100.64.0.0/10';
-const nodes: TailnetNode[] = [
-  // The Mac the operator added as a device (R-061): `device-stephens-mac` in the policy.
-  { name: 'mac', identity: { user: 'operator' }, ip: '100.64.0.2' },
-  { name: 'laptop', identity: { user: 'operator' }, ip: '100.64.0.11' },
-  { name: 'hub', identity: { tags: ['tag:hub'] }, ip: '100.64.0.1' },
-  { name: 'router-home', identity: { tags: ['tag:router', 'tag:site-home'] }, ip: '100.64.0.20', routes: [SITES.home] },
-  { name: 'router-office2', identity: { tags: ['tag:router', 'tag:site-office2'] }, ip: '100.64.0.21', routes: [SITES.office2] },
-];
-
-type From = Connection['from'];
-type To = Connection['to'];
-const tcp = (from: From, to: To, port: number): Connection => ({ from, to, port });
-const allowed = (connection: Connection, under: Policy = policy, inventory = nodes): boolean => allows(under, inventory, connection);
-const withGrants = (grants: unknown[]): Policy => parsePolicy({ ...raw, grants });
-const withTests = (tests: unknown[]): Policy => parsePolicy({ ...raw, tests });
-
-/**
- * Test rows that need a router node. Headscale refuses the policy while a row names a tag no node
- * has, so each group moves into the policy's tests block once its router is enrolled.
- */
-const ROUTER_ROWS = [
-  // The home router (tag:router, tag:site-home).
-  { src: 'tag:site-home', proto: 'tcp', accept: ['10.10.0.5:22'], deny: ['10.20.0.5:22', '10.30.0.5:22', 'operator@:22', 'tag:hub:443'] },
-  { src: '10.10.0.5', deny: ['operator@:22', 'tag:hub:443', '10.30.0.5:22'] },
-  { src: 'tag:router', proto: 'tcp', deny: ['operator@:22', 'operator@:443', 'tag:hub:443', 'tag:hub:22'] },
-  { src: 'operator@', proto: 'tcp', deny: ['tag:router:22'] },
-  { src: 'tag:hub', proto: 'tcp', deny: ['tag:router:22'] },
-  // The office 2 router (tag:router, tag:site-office2).
-  { src: 'tag:site-office2', proto: 'tcp', accept: ['10.30.0.5:22'], deny: ['10.10.0.5:22', '10.20.0.5:22', 'operator@:22', 'tag:hub:443'] },
-  { src: '10.30.0.5', deny: ['operator@:22', 'tag:hub:443', '10.10.0.5:22'] },
-];
+import { parsePolicy, PolicyError, type PolicyErrorCode } from '../src/policy.ts';
+import { allows, runPolicyTests, type TailnetNode } from '../src/tailnet.ts';
+import { AGENT_ROWS, allowed, everyone, nodes, policy, raw, ROUTER_ROWS, SITES, tcp, withGrants, withTests, type From, type To } from './policy-fixture.ts';
 
 describe('policy tests block', () => {
   test('vpn_004 every row of the policy tests block passes in the evaluator', () => {
@@ -80,6 +42,40 @@ describe('policy tests block', () => {
 
   test('vpn_004 a test row whose source matches no node fails instead of passing vacuously', () => {
     expect(runPolicyTests(withTests([{ src: 'tag:site-office1', deny: ['operator@:22'] }]), nodes)[0]?.reason).toBe('source matches no node');
+  });
+});
+
+describe('agent devices (MET-020, R-084)', () => {
+  const probe = (from: From, to: To, port: number, proto: string): boolean => allows(policy, everyone, { from, to, port, proto });
+
+  test('met_020 every agent-tag row passes in the evaluator', () => {
+    expect(runPolicyTests(withTests(AGENT_ROWS), nodes)).toEqual([]);
+  });
+
+  test('met_020 an agent reaches tcp 443 of the hub', () => {
+    expect(probe({ node: 'agent' }, { node: 'hub' }, 443, 'tcp')).toBe(true);
+    expect(probe({ node: 'agent2' }, { node: 'hub' }, 443, 'tcp')).toBe(true);
+  });
+
+  test('met_020 an agent is refused every other hub port and protocol', () => {
+    for (const port of [22, 80, 5432, 8080, 5900]) expect(probe({ node: 'agent' }, { node: 'hub' }, port, 'tcp')).toBe(false);
+    for (const proto of ['udp', 'icmp']) expect(probe({ node: 'agent' }, { node: 'hub' }, 443, proto)).toBe(false);
+  });
+
+  test('met_020 an agent reaches no site, device, client, router or other agent', () => {
+    for (const port of [22, 443, 3389, 5900]) {
+      for (const address of ['10.10.0.5', '10.20.0.5', '10.30.0.5']) expect(probe({ node: 'agent' }, { address }, port, 'tcp')).toBe(false);
+      for (const node of ['mac', 'laptop', 'router-home', 'router-office2', 'agent2']) expect(probe({ node: 'agent' }, { node }, port, 'tcp')).toBe(false);
+    }
+  });
+
+  test('met_020 nothing reaches an agent device: the agent listens on no port', () => {
+    for (const from of ['hub', 'mac', 'laptop', 'router-home', 'agent2']) {
+      for (const port of [22, 443, 5900]) {
+        for (const proto of ['tcp', 'udp', 'icmp']) expect(probe({ node: from }, { node: 'agent' }, port, proto)).toBe(false);
+      }
+    }
+    expect(probe({ lan: '10.10.0.5' }, { node: 'agent' }, 443, 'tcp')).toBe(false);
   });
 });
 
@@ -250,76 +246,6 @@ describe('evaluator rules', () => {
   });
 });
 
-describe('policy structure', () => {
-  const grants = raw.grants as { src: string[]; dst: string[]; ip: string[] }[];
-  const rows = [...(raw.tests as unknown[]), ...ROUTER_ROWS] as { src: string; accept?: string[]; deny?: string[] }[];
-  const tagOwners = raw.tagOwners as Record<string, string[]>;
-  const hosts = raw.hosts as Record<string, string>;
-  const selectors = [
-    ...grants.flatMap((grant) => [...grant.src, ...grant.dst]),
-    ...rows.flatMap((row) => [row.src, ...[...(row.accept ?? []), ...(row.deny ?? [])].map((dst) => dst.slice(0, dst.lastIndexOf(':')))]),
-  ];
-
-  test('vpn_004 policy uses grants only, with no acls and no autoApprovers', () => {
-    expect(Object.keys(raw).sort()).toEqual(['grants', 'hosts', 'tagOwners', 'tests']);
-  });
-
-  test('vpn_004 no wildcard or autogroup selector appears in src or dst', () => {
-    expect(selectors.filter((selector) => selector === '*' || selector.startsWith('autogroup:'))).toEqual([]);
-    expect(policyText).not.toContain('autogroup:danger-all');
-  });
-
-  test('vpn_004 every tag used is in tagOwners', () => {
-    expect(selectors.filter((selector) => selector.startsWith('tag:') && !(selector in tagOwners))).toEqual([]);
-    expect(Object.keys(tagOwners).sort()).toEqual(['tag:hub', 'tag:router', 'tag:site-home', 'tag:site-office1', 'tag:site-office2']);
-  });
-
-  test('vpn_003 every tag owner list is empty, so no node can claim a tag when it registers', () => {
-    expect(Object.entries(tagOwners).filter(([, owners]) => owners.length > 0)).toEqual([]);
-  });
-
-  test('vpn_003 no tag:client exists, so client keys keep their expiry', () => {
-    expect(policyText).not.toContain('tag:client');
-  });
-
-  test('vpn_001 site subnets are the planned ones and do not overlap', () => {
-    const sites = Object.fromEntries(Object.entries(hosts).filter(([name]) => name.startsWith('site-')));
-    expect(sites).toEqual({ 'site-home': SITES.home, 'site-office1': SITES.office1, 'site-office2': SITES.office2 });
-    const ranges = Object.values(sites).map(addressRange);
-    for (const [index, a] of ranges.entries()) {
-      for (const b of ranges.slice(index + 1)) expect(overlaps(a, b)).toBe(false);
-    }
-  });
-
-  test('vpn_004 a client added as a device is one /32, reached only by tag:hub on named tcp ports (R-061)', () => {
-    const devices = Object.entries(hosts).filter(([name]) => name.startsWith('device-'));
-    expect(devices.length).toBeGreaterThan(0);
-    for (const [name, cidr] of devices) {
-      expect(cidr).toMatch(/^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d{1,3}\.\d{1,3}\/32$/);
-      const reaching = grants.filter((grant) => grant.dst.includes(name));
-      expect(reaching.length).toBeGreaterThan(0);
-      for (const grant of reaching) {
-        expect(grant.src).toEqual(['tag:hub']);
-        expect(grant.dst).toEqual([name]);
-        for (const range of grant.ip) expect(range).toMatch(/^tcp:\d+$/);
-      }
-    }
-  });
-
-  test('vpn_004 no grant dst reaches a tailnet address except through tag:hub', () => {
-    const reachesTailnet = (selector: string): boolean => {
-      if (selector === 'tag:hub') return false;
-      // A client added as a device; the test above limits its grants (R-061).
-      if (selector.startsWith('device-')) return false;
-      if (selector.startsWith('tag:') || selector.includes('@')) return true;
-      const address = hosts[selector] ?? selector;
-      // Every IPv6 target counts, which covers the tailnet's fd7a:115c:a1e0::/48.
-      return address.includes(':') || overlaps(addressRange(address), addressRange(TAILNET_IPV4));
-    };
-    expect(grants.flatMap((grant) => grant.dst).filter(reachesTailnet)).toEqual([]);
-  });
-});
-
 function catchPolicyError(attempt: () => unknown): PolicyError {
   try {
     attempt();
@@ -330,12 +256,3 @@ function catchPolicyError(attempt: () => unknown): PolicyError {
   throw new Error('expected a PolicyError');
 }
 
-function addressRange(cidr: string): { first: number; last: number } {
-  const [address = '', bits = '32'] = cidr.split('/');
-  const first = address.split('.').reduce((sum, octet) => sum * 256 + Number(octet), 0);
-  return { first, last: first + 2 ** (32 - Number(bits)) - 1 };
-}
-
-function overlaps(a: { first: number; last: number }, b: { first: number; last: number }): boolean {
-  return a.first <= b.last && b.first <= a.last;
-}
