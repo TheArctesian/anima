@@ -1,5 +1,5 @@
 {
-  "_comment": "K6 synthetic fixtures for Phase 3. Not real hosts, mailboxes or credentials: hosts are example.net or 10.x, and no secret field has a value (SEC-005): a webhook gives only its origin, ntfy only tokenStored, email only passwordStored, an Apprise channel only its server, mode and tags; API keys carry only the 12-character prefix that K1 exposes (no hash, no secret). IDs are fixed UUID v7-shaped strings, 0190a000-0000-7000-80NN-0000000000MM, and never collide with phase1.json (NN 00 to 04) or phase2.json (NN 11 to 16). NN segments: 17 notification channels, 18 deliveries, 19 API keys, 20 recordings, 21 shares, 22 checks, and new here 23 devices, 24 sessions. A reference may point at an id in this file, phase2.json or phase1.json: the Phase 1 HTTPS check is 0190a000-0000-7000-8003-00000000001a (pve-01 Web UI), the Phase 2 site is 11-01 and the Phase 2 Mac mini is 12-03. Compact shapes: `checkNotifications` is one entry per check with channelIds (CheckNotifications.channels as ids); `recordings[].stoppedReason` is the K2 column sessions.recordings.stopped_reason, not a K1 field; `streams` holds two plaintext recordings for player tests, one for each recording format: Guacamole instructions (LEN.value elements, a 200 by 120 rectangle on a 640 by 480 layer) and an asciicast v2 file of `echo hello`; `retention` rows hold the D-25 defaults with days at the default; `checkDefaults` are the schema defaults of K1 (intervalSeconds 60, retries 3, retryIntervalSeconds 20, degradedThresholdMs 1000). No session here has a share token or a ticket.",
+  "_comment": "K6 synthetic fixtures for Phase 3. Not real hosts, mailboxes or credentials: hosts are example.net or 10.x, and no secret field has a value (SEC-005): a webhook gives only its origin, ntfy only tokenStored, email only passwordStored, an Apprise channel only its server, mode and tags; API keys carry only the 12-character prefix that K1 exposes (no hash, no secret). IDs are fixed UUID v7-shaped strings, 0190a000-0000-7000-80NN-0000000000MM, and never collide with phase1.json (NN 00 to 04) or phase2.json (NN 11 to 16). NN segments: 17 notification channels, 18 deliveries, 19 API keys, 20 recordings, 22 checks (21 was shares, withdrawn by R-111), and new here 23 devices, 24 sessions. A reference may point at an id in this file, phase2.json or phase1.json: the Phase 1 HTTPS check is 0190a000-0000-7000-8003-00000000001a (pve-01 Web UI), the Phase 2 site is 11-01 and the Phase 2 Mac mini is 12-03. Compact shapes: `checkNotifications` is one entry per check with channelIds (CheckNotifications.channels as ids); `recordings[].stoppedReason` is the K2 column sessions.recordings.stopped_reason, not a K1 field; `streams` holds two plaintext recordings for player tests, one for each recording format: Guacamole instructions (LEN.value elements, a 200 by 120 rectangle on a 640 by 480 layer) and an asciicast v2 file of `echo hello`; `retention` rows hold the D-25 defaults with days at the default; `checkDefaults` are the schema defaults of K1 (intervalSeconds 60, retries 3, retryIntervalSeconds 20, degradedThresholdMs 1000). No session here has a ticket.",
   "channels": [
     {
       "id": "0190a000-0000-7000-8017-000000000001",
@@ -349,17 +349,6 @@
       "endReason": "REMOTE_CLOSED",
       "clientAddr": "10.40.0.99",
       "recording": "STOPPED"
-    }
-  ],
-  "shares": [
-    {
-      "id": "0190a000-0000-7000-8021-000000000001",
-      "sessionId": "0190a000-0000-7000-8024-000000000001",
-      "access": "VIEW",
-      "maxViewers": 3,
-      "viewers": 1,
-      "createdAt": "2026-11-07T09:05:00Z",
-      "expiresAt": "2026-11-07T10:05:00Z"
     }
   ],
   "recordings": [

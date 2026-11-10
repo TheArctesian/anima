@@ -6,7 +6,7 @@
 # An addition marked @pending is ignored until the hub declares it; then the
 # programme orchestrator removes @pending (P2-002, P3-002, K7 / WP-17 E-2).
 # Conventions: contracts/conventions.md.
-# Every operation needs a valid token, except `login`, `signInBrowser` and `joinShare` (API-003, D-4, D-7).
+# Every operation needs a valid token, except `login` and `signInBrowser` (API-003, D-4, R-111).
 
 scalar DateTime # RFC 3339, UTC
 scalar IpAddr # "10.10.0.12" or an IPv6 address
@@ -235,7 +235,7 @@ type Device {
   metricsStale: Boolean! @pending
   transfer: TransferPolicy!
   accessWarnings: [AccessWarning!]!
-  "Most live sessions at once (RA-036); null: no limit. Viewers and file tunnels do not count."
+  "Most live sessions at once (RA-036); null: no limit. File tunnels do not count."
   sessionLimit: Int
   "RA-040; default false."
   recordSessions: Boolean!
@@ -1235,8 +1235,6 @@ type Session {
   # RA-034: which computer holds it
   clientAddr: IpAddr!
   recording: RecordingState! @pending
-  "Live sessions only; empty after the end."
-  shares: [SessionShare!]!
 }
 
 type SessionEdge {
@@ -1270,12 +1268,7 @@ type SessionChange {
   session: Session!
 }
 
-# Phase 3 (WP-47, WP-48). RA-035, RA-040, RA-041.
-
-enum ShareAccess {
-  VIEW
-  CONTROL
-}
+# Phase 3 (WP-48). RA-040, RA-041.
 
 enum RecordingState @pending {
   OFF
@@ -1286,43 +1279,6 @@ enum RecordingState @pending {
 enum RecordingFormat @pending {
   GUACAMOLE
   ASCIICAST
-}
-
-type SessionShare {
-  id: ID!
-  sessionId: ID!
-  access: ShareAccess!
-  maxViewers: Int!
-  "Viewers connected now."
-  viewers: Int!
-  createdAt: DateTime!
-  expiresAt: DateTime!
-}
-
-type ShareLink {
-  share: SessionShare!
-  "Shown once: <public origin>/shared#<token>. The token is only in the fragment (D-7)."
-  url: String!
-}
-
-input ShareInput {
-  access: ShareAccess = VIEW
-  "5..1440."
-  expiresInMinutes: Int = 60
-  "1..10."
-  maxViewers: Int = 3
-}
-
-"What a viewer gets from joinShare. It names no session ID and no operator."
-type WatchTicket @pending {
-  token: String!
-  "/watch"
-  tunnelPath: String!
-  expiresAt: DateTime!
-  protocol: Protocol!
-  access: ShareAccess!
-  deviceName: String!
-  recording: Boolean!
 }
 
 type Recording @pending {
@@ -1657,11 +1613,6 @@ type Mutation {
   "Login or browser token only (D-23, R-100)."
   setRetention(subject: RetentionSubject!, days: Int!): RetentionPeriod!
 
-  "The session must be live and the caller's (RA-035). Login or browser token only (D-23, R-100)."
-  shareSession(sessionId: ID!, input: ShareInput!): ShareLink!
-  endShare(id: ID!): ID!
-  "Signed out (D-7), or a login or browser token; never an API key (D-23, R-100). Failed attempts count in the login throttle by client address."
-  joinShare(token: String!, name: String, display: DisplayInput!): WatchTicket! @pending
   "A ticket for the playback tunnel (K4 §12). Login or browser token only (D-23, R-100)."
   openRecording(id: ID!): SessionTicket! @pending
   "Deletes the key first, then the file (D-13). Login or browser token only (D-23, R-100)."
