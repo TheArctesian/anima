@@ -47,11 +47,12 @@ pub fn spawn_stale_watch(db: PgPool, bus: Bus, clock: Arc<dyn Clock>) -> JoinHan
 
 /// Marks every agent with no batch accepted for more than 30 seconds before `now` stale, with
 /// one event for each whose device still takes its metrics from the agent; how many it marked.
-/// An agent that has never pushed is never marked: it never became stale.
+/// An agent that has never pushed is never marked: it never became stale. One device that
+/// cannot be marked is logged by its ID and does not keep the others from being marked.
 ///
 /// # Errors
-/// `Database`, `Devices` or `Events` when a read or write fails; the agents marked before it
-/// stay marked.
+/// `Database`, `Devices` or `Events` when the overdue agents cannot be read, or the first
+/// device's failure once every other device was tried.
 pub(in crate::metrics) async fn mark_stale(
     db: &PgPool,
     bus: &Bus,
@@ -59,12 +60,18 @@ pub(in crate::metrics) async fn mark_stale(
 ) -> Result<usize, Error> {
     let cutoff = now - STALE_AFTER;
     let mut marked = 0;
+    let mut failed = None;
     for device in store::overdue(db, cutoff).await? {
-        if mark_one(db, bus, device, (cutoff, now)).await? {
-            marked += 1;
+        match mark_one(db, bus, device, (cutoff, now)).await {
+            Ok(true) => marked += 1,
+            Ok(false) => {}
+            Err(error) => {
+                tracing::error!(%error, %device, "an agent could not be marked stale");
+                failed.get_or_insert(error);
+            }
         }
     }
-    Ok(marked)
+    failed.map_or(Ok(marked), Err)
 }
 
 /// Marks one agent stale unless a batch came meanwhile; whether it did. The device row is taken

@@ -1,7 +1,8 @@
 //! MET-018, R-098 a: an agent is stale after more than 30 seconds with no accepted batch, with
 //! one event when it goes stale and one when it sends again; a refused batch does not count, a
-//! batch of only unknown series does, an agent that never pushed is never marked, and a device
-//! switched away from the agent is marked without an event.
+//! batch of only unknown series does, an agent that never pushed is never marked, a device
+//! switched away from the agent is marked without an event, and one device that cannot be
+//! marked does not keep the others from being marked.
 
 use axum::http::StatusCode;
 use chrono::{DateTime, DurationRound as _, TimeDelta, Utc};
@@ -169,4 +170,48 @@ async fn met_018_a_device_switched_away_from_the_agent_is_marked_without_an_even
         "kept out of later rounds"
     );
     assert_eq!(events(&pool).await, [] as [String; 0]);
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn met_018_one_device_that_cannot_be_marked_does_not_keep_the_others_fresh(pool: PgPool) {
+    let now = database_now(&pool).await;
+    let docker = "0190a000-0000-7000-8002-000000000002";
+    sqlx::query("UPDATE devices.devices SET metrics_source = 'agent' WHERE id = ANY($1::uuid[])")
+        .bind([pve().to_string(), docker.to_owned()])
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query(
+        "INSERT INTO metrics.agents (device_id, token_sha256, expires_at, last_batch_at) \
+         SELECT d, sha256(d::text::bytea), $2, $3 FROM unnest($1::uuid[]) AS d",
+    )
+    .bind([pve().to_string(), docker.to_owned()])
+    .bind(now + TimeDelta::days(1))
+    .bind(now)
+    .execute(&pool)
+    .await
+    .unwrap();
+    // The device sorted first fails each time it is marked; the other must still be.
+    sqlx::raw_sql(&format!(
+        "CREATE FUNCTION metrics.refuse_mark() RETURNS trigger LANGUAGE plpgsql AS $$ \
+         BEGIN RAISE EXCEPTION 'cannot mark'; END $$; \
+         CREATE TRIGGER refuse_mark BEFORE UPDATE ON metrics.agents FOR EACH ROW \
+         WHEN (NEW.device_id = '{}') EXECUTE FUNCTION metrics.refuse_mark();",
+        pve()
+    ))
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    let later = now + TimeDelta::seconds(31);
+    assert!(mark_stale(&pool, &Bus::new(16), later).await.is_err());
+    let stale: Vec<String> =
+        sqlx::query_scalar("SELECT device_id::text FROM metrics.agents WHERE stale_at IS NOT NULL")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+    assert_eq!(stale, [docker]);
 }
