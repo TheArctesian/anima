@@ -86,6 +86,7 @@ pub(super) struct OutboxRow {
     payload: serde_json::Value,
     created_at: DateTime<Utc>,
     attempts: i32,
+    next_attempt_at: DateTime<Utc>,
 }
 
 impl TryFrom<OutboxRow> for Outbox {
@@ -100,13 +101,14 @@ impl TryFrom<OutboxRow> for Outbox {
             payload: row.payload,
             created_at: row.created_at,
             attempts: u32::try_from(row.attempts).map_err(|_| Error::Unreadable)?,
+            lease_end: row.next_attempt_at,
         })
     }
 }
 
 /// Every column of an outbox row, in the order `OutboxRow` reads them.
 pub(super) const OUTBOX_COLUMNS: &str =
-    "id, channel_id, check_id, kind, payload, created_at, attempts";
+    "id, channel_id, check_id, kind, payload, created_at, attempts, next_attempt_at";
 
 #[derive(sqlx::FromRow)]
 pub(super) struct DeliveryRow {

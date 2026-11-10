@@ -1,6 +1,8 @@
 //! The SMTP side of the test servers: a scripted conversation, in plain text, over TLS from the
 //! first byte, or upgraded by STARTTLS.
 
+use std::time::Duration;
+
 use tokio::{
     io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader},
     net::TcpStream,
@@ -18,6 +20,10 @@ pub(super) struct Script {
     pub(super) starttls: Option<&'static [u8]>,
     /// What it answers to AUTH.
     pub(super) auth: &'static [u8],
+    /// What it answers to QUIT; `None` when it never answers and waits for the client to go.
+    pub(super) quit: Option<&'static [u8]>,
+    /// How long it takes to queue a message before it answers the end of DATA.
+    pub(super) queuing: Duration,
 }
 
 pub(super) const GO_AHEAD: &[u8] = b"220 go ahead\r\n";
@@ -26,6 +32,8 @@ pub(super) const PLAIN: Script = Script {
     greet: true,
     starttls: None,
     auth: b"235 accepted\r\n",
+    quit: Some(b"221 bye\r\n"),
+    queuing: Duration::ZERO,
 };
 /// The conversation after STARTTLS: no new greeting, no second STARTTLS.
 const AFTER_STARTTLS: Script = Script {
@@ -95,19 +103,29 @@ pub(super) async fn smtp<S: AsyncRead + AsyncWrite + Unpin>(
             }
             ("AUTH", _) => script.auth,
             ("MAIL" | "RCPT", _) => b"250 ok\r\n",
-            ("DATA", _) => {
-                reader.get_mut().write_all(b"354 go on\r\n").await.ok()?;
-                skip_content(&mut reader).await?;
-                b"250 queued\r\n"
-            }
+            ("DATA", _) => queue_message(&mut reader, script.queuing).await?,
             ("QUIT", _) => {
-                let _ = reader.get_mut().write_all(b"221 bye\r\n").await;
+                match script.quit {
+                    Some(bye) => drop(reader.get_mut().write_all(bye).await),
+                    None => super::drain(reader).await,
+                }
                 return None;
             }
             _ => b"500 unknown\r\n",
         };
         reader.get_mut().write_all(reply).await.ok()?;
     }
+}
+
+/// Answers DATA: takes the message content, then answers that it is queued after `queuing`.
+async fn queue_message<S: AsyncRead + AsyncWrite + Unpin>(
+    reader: &mut BufReader<S>,
+    queuing: Duration,
+) -> Option<&'static [u8]> {
+    reader.get_mut().write_all(b"354 go on\r\n").await.ok()?;
+    skip_content(reader).await?;
+    tokio::time::sleep(queuing).await;
+    Some(b"250 queued\r\n")
 }
 
 /// Reads the message content up to the line holding a single dot.

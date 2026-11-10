@@ -12,7 +12,7 @@ use serde_json::{Map, Value, json};
 use super::node::ChannelNode;
 use crate::{
     events::{AuditAction, AuditTarget, Severity, Source, TrailEntry},
-    notifications::{Channel, channels::Touched},
+    notifications::{Channel, Delivery, DeliveryReason, channels::Touched},
 };
 
 /// The audited fields of a channel; `settings` is the stored, secret-free JSON.
@@ -100,4 +100,21 @@ pub(super) fn deleted(channel: &Channel) -> TrailEntry {
     let fields = &channel.fields;
     let change = json!({ "name": fields.name, "kind": fields.kind.as_str() });
     entry(channel, AuditAction::Delete, ("deleted", change))
+}
+
+/// A test notification sent through `channel`: the channel's name and the delivery's outcome
+/// (its reason word and code), never the target, the message or a reply (NOT-004, LOG-007).
+pub(super) fn tested(channel: &Channel, delivery: &Delivery) -> TrailEntry {
+    let reason = delivery.reason.map(DeliveryReason::as_str);
+    let change = json!({
+        "name": channel.fields.name,
+        "ok": delivery.ok,
+        "reason": reason,
+        "code": delivery.code,
+    });
+    let verb = match reason {
+        None => "sent a test notification".to_owned(),
+        Some(reason) => format!("failed to send a test notification: {reason}"),
+    };
+    entry(channel, AuditAction::Send, (&verb, change))
 }

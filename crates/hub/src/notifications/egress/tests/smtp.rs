@@ -1,17 +1,18 @@
 //! SMTP egress: the connection goes to a checked address, TLS names the host, and nothing
 //! that carries a credential or the message is sent before TLS (P3-003, D-17, SEC-005).
 
-use std::net::SocketAddr;
+use std::{net::SocketAddr, time::Duration};
 
 use base64::{Engine, engine::general_purpose::STANDARD};
 use lettre::{Message, transport::smtp::authentication::Credentials};
+use tokio::time::Instant;
 
 use super::{
     local, loopback_denied,
     servers::{Behaviour, Server, certificate, serve},
 };
 use crate::{
-    notifications::egress::{Egress, SendError, SmtpSecurity, SmtpServer, smtp::open},
+    notifications::egress::{Egress, SendError, SmtpSecurity, SmtpServer, TIME_LIMIT, smtp::open},
     targets::{AddressPolicy, TargetError},
 };
 
@@ -172,15 +173,72 @@ async fn d_17_a_root_the_hub_cannot_read_is_a_setup_failure_with_no_connection()
     assert_eq!(server.connections(), 0);
 }
 
+/// How late past the time limit a send may end on a loaded machine.
+const SLACK: Duration = Duration::from_secs(3);
+
 #[tokio::test]
 async fn d_17_a_mail_server_that_never_answers_ends_at_the_time_limit() {
     let server = serve(Behaviour::Silent).await;
+    let started = Instant::now();
 
     let sent = send(&local(), &server, SmtpSecurity::Implicit).await;
 
     assert_eq!(sent, Err(SendError::TimedOut));
+    let took = started.elapsed();
+    assert!(
+        took >= TIME_LIMIT.saturating_sub(Duration::from_millis(100)),
+        "{took:?}"
+    );
+    assert!(took < TIME_LIMIT + SLACK, "{took:?}");
     server.settle().await;
     assert_eq!(server.connections(), 1);
+}
+
+#[tokio::test]
+async fn d_16_a_queued_message_is_sent_though_quit_is_never_answered() {
+    let (der, acceptor) = certificate("localhost");
+    // The message is queued 5 s into the 8 s limit, so QUIT has 3 s left.
+    let queuing = Duration::from_secs(5);
+    let server = serve(Behaviour::SmtpSilentAtQuit(queuing, acceptor)).await;
+    let started = Instant::now();
+
+    // An outer bound, so a QUIT with no limit fails the test instead of hanging the run.
+    let sent = tokio::time::timeout(
+        Duration::from_secs(30),
+        send(&local().trusting(der), &server, SmtpSecurity::Implicit),
+    )
+    .await
+    .expect("QUIT waited past the time limit");
+
+    // The 250 after DATA decided (S-A): a retry would send the mail twice. QUIT got only what
+    // was left of the one time limit (C-1).
+    assert_eq!(sent, Ok(()));
+    assert!(
+        started.elapsed() < TIME_LIMIT + SLACK,
+        "{:?}",
+        started.elapsed()
+    );
+    server.settle().await;
+    assert_eq!(server.connections(), 1);
+    assert_eq!(verbs(&server), ["EHLO", "AUTH", "MAIL", "RCPT", "DATA"]);
+    assert_eq!(server.lines().last().map(String::as_str), Some("QUIT"));
+}
+
+#[tokio::test]
+async fn log_007_the_greeting_names_no_host_of_the_hub() {
+    let (der, acceptor) = certificate("localhost");
+    let server = serve(Behaviour::SmtpStartTls(acceptor)).await;
+
+    let sent = send(&local().trusting(der), &server, SmtpSecurity::StartTls).await;
+
+    assert_eq!(sent, Ok(()));
+    server.settle().await;
+    let greetings: Vec<String> = server
+        .lines()
+        .into_iter()
+        .filter(|line| line.starts_with("EHLO"))
+        .collect();
+    assert_eq!(greetings, ["EHLO [127.0.0.1]", "EHLO [127.0.0.1]"]);
 }
 
 #[tokio::test]
