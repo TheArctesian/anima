@@ -25,6 +25,13 @@ describe('DeviceMetrics (D-5, D-6, D-7)', () => {
     expect(metrics.view).toBeNull();
   });
 
+  it('MET-011: an AGENT device asks for its metrics and listens, like an SSH one', async () => {
+    const fake = fakeHub({ DeviceMetrics: answer() });
+    await metricsOf(fake).load('HOUR', 'AGENT');
+    expect(fake.requests.map((request) => request.operation)).toEqual(['DeviceMetrics']);
+    expect(fake.subscriptions.map((request) => request.operation)).toEqual(['MetricsAdded']);
+  });
+
   it('MOT-007, 5.7.3 Loading: the chart shape of the last answer is kept, and a later visit starts with it', async () => {
     const fake = fakeHub({ DeviceMetrics: answer() });
     const first = metricsOf(fake);

@@ -3,6 +3,7 @@
   import Icon from '$lib/icons/Icon.svelte';
   import type { MetricRange } from '$lib/metrics/api';
   import '$lib/metrics/bars/geometry.css';
+  import { hasMetrics } from '$lib/metrics/source/has-metrics';
   import './geometry.css';
   import OverviewFacts from './facts/OverviewFacts.svelte';
   import MetricsSkeleton from './MetricsSkeleton.svelte';
@@ -38,8 +39,8 @@
   <OverviewFacts device={shape} checks={[]} />
 </div>
 <div class="overview-card metrics" aria-hidden="true">
-  <div class="head" class:ssh={source === 'SSH'}><div class="overview-card-title">&nbsp;</div></div>
-  {#if source === 'SSH'}
+  <div class="head" class:ssh={hasMetrics(source)}><div class="overview-card-title">&nbsp;</div></div>
+  {#if hasMetrics(source)}
     <div class="bars"></div>
     <MetricsSkeleton {range} {now} />
   {:else}

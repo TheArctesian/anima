@@ -7,6 +7,7 @@ import { chartsOf } from '$lib/metrics/overview-charts';
 import { chartShapeOf, rememberChartShape } from '$lib/metrics/shapes';
 import { mergeLive } from '$lib/metrics/live';
 import { rangeWindow } from '$lib/metrics/ranges';
+import { hasMetrics } from '$lib/metrics/source/has-metrics';
 
 /**
  * The metrics the Overview shows for one device and the hub calls behind them (D-5, D-6): the series of the chosen
@@ -57,7 +58,7 @@ export class DeviceMetrics {
     this.#unwatch = undefined;
     this.error = null;
     this.liveError = null;
-    if (source !== 'SSH') {
+    if (!hasMetrics(source)) {
       this.view = null;
       this.#shown = null;
       this.span = null;

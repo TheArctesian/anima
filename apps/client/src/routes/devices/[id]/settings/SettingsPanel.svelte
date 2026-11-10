@@ -8,6 +8,8 @@
   import ConfirmModal from '$lib/forms/modal/ConfirmModal.svelte';
   import type { ConnectionTestInput } from '$lib/hub/generated/graphql';
   import type { HubResult } from '$lib/hub/hub';
+  import AgentPanel from '$lib/metrics/agent/AgentPanel.svelte';
+  import type { AgentCalls } from '$lib/metrics/agent/install.svelte';
   import type { SettingsSection } from '../tabs/tabs';
   import type { SettingsCalls } from './calls';
 
@@ -18,6 +20,9 @@
     section: SettingsSection | null;
     /** The hub calls of the form and the web interfaces (WEB-001, WEB-002, DEV-011, SEC-007). */
     calls: SettingsCalls;
+    /** The Install agent panel's hub calls and the hub origin the agent must reach (MET-019). */
+    agent: { calls: AgentCalls; origin: string; reveal: boolean };
+    now: () => Date;
     onTest: (input: ConnectionTestInput) => Promise<HubResult<ConnectionTestResult>>;
     /** Discards the edits: the form starts again from the saved device. */
     onCancel: () => void;
@@ -25,7 +30,7 @@
     onDelete: () => Promise<HubResult<unknown>>;
   }
 
-  const { device, revision, section, calls, onTest, onCancel, onDelete }: Props = $props();
+  const { device, revision, section, calls, agent, now, onTest, onCancel, onDelete }: Props = $props();
   /** The device as the fields the form edits (D-3). */
   const fields: DeviceFields = $derived(device);
   let confirming = $state(false);
@@ -55,6 +60,7 @@
     above 1000 ms. Change the checks in the Checks tab.
   </p>
   <WebInterfaces interfaces={device.webInterfaces} suggestions={device.webInterfaceSuggestions} calls={calls.webInterfaces} />
+  <AgentPanel deviceId={device.id} deviceName={device.name} source={device.metricsSource} calls={agent.calls} origin={agent.origin} reveal={agent.reveal} {now} />
   <section class="danger" aria-labelledby="device-delete-heading">
     <h3 id="device-delete-heading">Delete device</h3>
     <p>Its credentials, checks and history are deleted too.</p>

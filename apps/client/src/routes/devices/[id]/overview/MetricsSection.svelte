@@ -2,6 +2,7 @@
   import LineChart from '$lib/charts/LineChart.svelte';
   import type { MetricsSource } from '$lib/hub/generated/graphql';
   import Icon from '$lib/icons/Icon.svelte';
+  import { hasMetrics } from '$lib/metrics/source/has-metrics';
   import { chartsOf } from '$lib/metrics/overview-charts';
   import type { MetricRange } from '$lib/metrics/api';
   import MetricBars from '$lib/metrics/bars/MetricBars.svelte';
@@ -39,7 +40,7 @@
 <section class="overview-card metrics" aria-labelledby="overview-metrics">
   <div class="head">
     <h2 id="overview-metrics" class="overview-card-title"><Icon name="nf-md-chart_line" />Metrics</h2>
-    {#if source === 'SSH'}
+    {#if hasMetrics(source)}
       <div class="range" role="group" aria-label="Time range">
         {#each RANGES as choice (choice.range)}
           <button type="button" aria-pressed={choice.range === range} onclick={() => { onRange(choice.range); }} {@attach press()}>
@@ -49,11 +50,11 @@
       </div>
     {/if}
   </div>
-  {#if source !== 'SSH'}
+  {#if !hasMetrics(source)}
     <!-- D-7: an empty state with its icon, the sentence and the way to turn metrics on. -->
     <div class="metrics-off">
       <span class="off-icon"><Icon name="nf-md-chart_line" size="lg" /></span>
-      <p>Metrics are off for this device.</p>
+      <p>Metrics are off. Install the agent or turn on SSH metrics in Settings.</p>
       <button type="button" class="settings" onclick={onSettings} {@attach press()}><Icon name="nf-md-cog_outline" size="sm" />Open Settings</button>
     </div>
   {:else}
