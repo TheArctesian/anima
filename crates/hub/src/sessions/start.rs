@@ -195,8 +195,9 @@ fn random_token() -> Result<TicketToken, Error> {
 /// transaction, it counts the device's live sessions again under the device's start lock, so
 /// two starts cannot both pass the limit, writes the live session row and the audit entry
 /// `session.start`, and holds a ticket that the protocol's tunnel redeems once within 30 s
-/// from `client`. Tickets that expired unredeemed are swept first, and a start the ticket
-/// table or the limit would refuse is refused before any packet is sent. Once the row
+/// from `client`. Tickets that expired unredeemed are swept first. A start the ticket table
+/// would refuse is refused before any packet is sent, and so is one the limit refuses,
+/// unless another start passed the same early count and wins the device's lock. Once the row
 /// commits, its start is published on `live`'s feed of changes (RA-034); a refused or
 /// rolled-back start publishes nothing.
 ///

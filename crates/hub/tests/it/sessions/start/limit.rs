@@ -1,7 +1,8 @@
 //! `startSession` and the device's session limit (RA-036, K4 §1 step 1): a device with as many
 //! live sessions as its limit refuses the next start with CONFLICT until one ends, two starts
 //! at the limit cannot both pass, files tickets and shares hold no session, and a device with
-//! no limit, or another device, is never refused.
+//! no limit, or another device, is never refused. A refused start tries no wake, an expired
+//! unredeemed ticket frees its slot, and a limit lowered below the live count refuses.
 
 use std::{collections::BTreeMap, sync::Arc};
 
@@ -15,6 +16,7 @@ use anima_hub::{
     },
 };
 use async_graphql::{MergedObject, Request, Response, Schema, Variables};
+use chrono::TimeDelta;
 use serde_json::{Value, json};
 use sqlx::{PgPool, postgres::PgPoolOptions};
 
@@ -22,7 +24,9 @@ use crate::sessions::{
     DOCKER_HOST, PVE_01,
     harness::{TestSchema, error_json, schema_at, signed_in_until},
     now,
-    starting::{display, end_request, ready, redeem, session_count, start_request, started},
+    starting::{
+        display, end_request, event_count, ready, redeem, session_count, start_request, started,
+    },
 };
 
 const LIMIT_REACHED: &str = "This device has reached its session limit.";
@@ -200,5 +204,84 @@ async fn ra_036_files_tickets_and_shares_hold_no_session_and_never_count(pool: P
     assert_eq!(session_count(&pool).await, 1, "only the owner's row");
 
     started(&schema, PVE_01).await;
+    assert_limit_reached(&start(&schema, PVE_01).await);
+}
+
+/// PVE-01 Down, with a MAC address and DOCKER-HOST (no accepted key) as its site's wake relay:
+/// each wake tried writes one Error event.
+async fn asleep_with_relay(pool: &PgPool) {
+    for statement in [
+        "update devices.devices set mac_address = 'aa:bb:cc:dd:ee:ff' where id = $1::text::uuid",
+        "insert into checks.checks (id, device_id, type, name, config, status) \
+         values (gen_random_uuid(), $1::text::uuid, 'icmp', 'Ping', \
+                 '{\"timeoutMs\":2000,\"ipVersion\":\"V4\"}', 'down')",
+    ] {
+        sqlx::query(statement)
+            .bind(PVE_01)
+            .execute(pool)
+            .await
+            .unwrap();
+    }
+    sqlx::query(
+        "update devices.sites set wake_relay_device_id = $2::text::uuid \
+         where id = (select site_id from devices.devices where id = $1::text::uuid)",
+    )
+    .bind(PVE_01)
+    .bind(DOCKER_HOST)
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../fixtures", scripts("devices"))
+)]
+async fn ra_036_a_start_refused_at_the_limit_tries_no_wake(pool: PgPool) {
+    ready(&pool, &[PVE_01]).await;
+    asleep_with_relay(&pool).await;
+    set_limit(&pool, PVE_01, Some(1)).await;
+    let schema = schema_at(&pool, now(), &Live::default());
+    started(&schema, PVE_01).await;
+    assert_eq!(
+        event_count(&pool).await,
+        1,
+        "the first start tried the wake"
+    );
+
+    assert_limit_reached(&start(&schema, PVE_01).await);
+    assert_eq!(
+        event_count(&pool).await,
+        1,
+        "the refused start tried no wake"
+    );
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../fixtures", scripts("devices"))
+)]
+async fn ra_036_an_expired_unredeemed_ticket_frees_its_slot(pool: PgPool) {
+    ready(&pool, &[PVE_01]).await;
+    set_limit(&pool, PVE_01, Some(1)).await;
+    let live = Live::default();
+    started(&schema_at(&pool, now(), &live), PVE_01).await;
+
+    let after_expiry = schema_at(&pool, now() + TimeDelta::seconds(31), &live);
+    started(&after_expiry, PVE_01).await;
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../fixtures", scripts("devices"))
+)]
+async fn ra_036_a_limit_lowered_below_the_live_count_refuses_the_next_start(pool: PgPool) {
+    ready(&pool, &[PVE_01]).await;
+    let schema = schema_at(&pool, now(), &Live::default());
+    for _ in 0..3 {
+        started(&schema, PVE_01).await;
+    }
+
+    set_limit(&pool, PVE_01, Some(2)).await;
     assert_limit_reached(&start(&schema, PVE_01).await);
 }
