@@ -153,3 +153,29 @@ async fn r_098_e_back_dated_points_cannot_create_series_past_the_cap(pool: PgPoo
     }
     assert_eq!(series_of(&pool, PVE_01).await.len(), 1024);
 }
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn r_098_e_two_batches_at_once_cannot_pass_the_cap_together(pool: PgPool) {
+    let now = pushing_now(&pool).await;
+    let agents = Agents::at(&pool, now).await;
+    let token = agents.token_for(PVE_01).await;
+    let filled = push_all(&agents, &token, &disks(0, 768), now).await;
+    assert_eq!(filled, [StatusCode::NO_CONTENT; 3]);
+    for round in 0..20 {
+        let first = disks(10_000 + round * 1000, 256);
+        let second = disks(10_000 + round * 1000 + 500, 256);
+        let (one, other) = tokio::join!(
+            push_all(&agents, &token, &first, now),
+            push_all(&agents, &token, &second, now)
+        );
+        let accepted = [one[0], other[0]]
+            .iter()
+            .filter(|status| **status == StatusCode::NO_CONTENT)
+            .count();
+        assert_eq!(accepted, usize::from(round == 0), "round {round}");
+        assert_eq!(series_of(&pool, PVE_01).await.len(), 1024, "round {round}");
+    }
+}
