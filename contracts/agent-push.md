@@ -117,9 +117,9 @@ The hub:
 - folds `max` into the `max` column of the minute, hour and day aggregates; the samples hold the mean;
 - skips a point whose series and `at` are already stored, so sending a batch twice adds nothing twice;
 - keys a GPU series by its index: its label is the index as text. A GPU series with a `label` is `MALFORMED`;
-- takes a batch that would give the device more than 1024 series with a sample in the last hour, its own
-  series included, as `MALFORMED` and stores none of it. One agent sends at most 519 series at once
-  (R-098 e);
+- lets a device create at most 1024 series in any hour, counted by when the hub created each series, never
+  by the times of its points: a batch whose new series would pass that is `MALFORMED` and stores none of it.
+  One agent sends at most 519 series at once (R-098 e, CR-20);
 - with `gpus` present, replaces the device's GPU set with it; `[]` means the device has no GPUs now, and an
   absent `gpus` leaves the set as it is. A GPU that leaves the set keeps its series and their history
   (R-098 b);

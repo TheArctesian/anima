@@ -21,14 +21,15 @@ use crate::{
     },
 };
 
-/// How far back a series counts as live: the oldest point a batch may hold (MET-017).
-const LIVE_SPAN: TimeDelta = TimeDelta::hours(1);
+/// The span in which a device may create at most [`MAX_NEW_SERIES`] series.
+const NEW_SERIES_SPAN: TimeDelta = TimeDelta::hours(1);
 
-/// The most series of one device with a sample in the last hour, a batch's own included
-/// (R-098 e). One agent sends at most 519 at a time (one per plain kind, `MAX_LABELS` per disk
-/// and network kind, one per GPU kind for each of the 64 GPU indexes K8 allows); the rest is
-/// room for disks and interfaces that come and go within the hour.
-pub(super) const MAX_LIVE_SERIES: i64 = 1024;
+/// The most series one device may create in any hour, a batch's new ones included (R-098 e,
+/// CR-20). Counted by the hub's creation time, so the times of a batch's points cannot reset it.
+/// One agent sends at most 519 at a time (one per plain kind, `MAX_LABELS` per disk and network
+/// kind, one per GPU kind for each of the 64 GPU indexes K8 allows); the rest is room for disks
+/// and interfaces that come and go within the hour.
+pub(super) const MAX_NEW_SERIES: i64 = 1024;
 
 /// The batch's device and credential, and its GPUs when it listed them.
 pub(super) struct Push<'a> {
@@ -46,7 +47,7 @@ pub(super) enum Written {
     /// Stored, with how many of its samples were new.
     Kept(i64),
     /// Not stored: the source or the token changed since the batch was checked
-    /// (`TOKEN_REFUSED`), or it would pass [`MAX_LIVE_SERIES`] (`MALFORMED`).
+    /// (`TOKEN_REFUSED`), or it would pass [`MAX_NEW_SERIES`] (`MALFORMED`).
     Refused(RefusalCode),
 }
 
@@ -61,6 +62,8 @@ pub(super) async fn write(
     now: DateTime<Utc>,
 ) -> Result<Written, Error> {
     let mut tx = db.begin().await?;
+    // Checked again under the device row lock: an operator's switch away from the agent that
+    // committed after the first check, while this batch waited for the row, must refuse it.
     match devices::lock_metrics_source(&mut tx, push.device).await {
         Ok(MetricsSource::Agent) => {}
         Ok(MetricsSource::None | MetricsSource::Ssh) | Err(devices::Error::NotFound(_)) => {
@@ -71,9 +74,9 @@ pub(super) async fn write(
     let Some(was_stale) = store::take_batch(&mut tx, push.device, push.token, now).await? else {
         return Ok(Written::Refused(RefusalCode::TokenRefused));
     };
-    let live =
-        metrics_store::live_series(&mut tx, push.device, now - LIVE_SPAN, &rows.series).await?;
-    if live > MAX_LIVE_SERIES {
+    let since = now - NEW_SERIES_SPAN;
+    let created = metrics_store::created_series(&mut tx, push.device, since, &rows.series).await?;
+    if created > MAX_NEW_SERIES {
         return Ok(Written::Refused(RefusalCode::Malformed));
     }
     if let Some(gpus) = push.gpus {
@@ -86,7 +89,7 @@ pub(super) async fn write(
         };
         metrics_store::write_gpus(&mut tx, push.device, discovery).await?;
     }
-    metrics_store::add_series(&mut tx, push.device, &rows.series).await?;
+    metrics_store::add_series(&mut tx, push.device, &rows.series, now).await?;
     let kept = metrics_store::add_points(&mut tx, push.device, &rows.values).await?;
     if was_stale {
         events::record(&mut tx, bus, now, fresh_again(push.device, push.name)).await?;

@@ -73,19 +73,22 @@ const ADD_POINTS_SQL: &str = concat!(
     " SELECT count(*) FROM kept"
 );
 
-/// How many series of the device had a sample at or after `since`, counted together with the
-/// series of `samples`, each once.
-const LIVE_SERIES_SQL: &str = "\
-    SELECT count(*) FROM ( \
-        SELECT s.kind, s.label FROM metrics.series s \
-        WHERE s.device_id = $1 AND EXISTS ( \
-            SELECT 1 FROM metrics.samples m WHERE m.series_id = s.id AND m.at >= $2) \
-        UNION \
-        SELECT w.kind, w.label FROM unnest($3::text[], $4::text[]) AS w(kind, label)) live";
+/// How many series of the device were created at or after `since`, and how many of the
+/// series of `samples` it does not have yet, each counted once.
+const NEW_SERIES_SQL: &str = "\
+    SELECT (SELECT count(*) FROM metrics.series \
+            WHERE device_id = $1 AND created_at >= $2) \
+         + (SELECT count(*) FROM ( \
+                SELECT DISTINCT w.kind, w.label \
+                FROM unnest($3::text[], $4::text[]) AS w(kind, label)) w \
+            WHERE NOT EXISTS ( \
+                SELECT 1 FROM metrics.series s \
+                WHERE s.device_id = $1 AND s.kind = w.kind AND s.label = w.label))";
 
-/// How many series `device` would have with a sample at or after `since` once the series of
-/// `samples` are added (R-098 e).
-pub(in crate::metrics) async fn live_series(
+/// How many series `device` will have created at or after `since` once the series of `samples`
+/// it lacks are added (R-098 e, CR-20). The creation time is the hub's, so a batch cannot move
+/// a series out of the count by the times of its points.
+pub(in crate::metrics) async fn created_series(
     conn: &mut PgConnection,
     device: DeviceId,
     since: DateTime<Utc>,
@@ -93,7 +96,7 @@ pub(in crate::metrics) async fn live_series(
 ) -> Result<i64, Error> {
     let kinds: Vec<&str> = samples.iter().map(|sample| sample.kind.as_str()).collect();
     let labels: Vec<&str> = samples.iter().map(|sample| sample.label.as_str()).collect();
-    let count = sqlx::query_scalar(LIVE_SERIES_SQL)
+    let count = sqlx::query_scalar(NEW_SERIES_SQL)
         .bind(device)
         .bind(since)
         .bind(kinds)

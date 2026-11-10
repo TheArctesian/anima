@@ -1,6 +1,7 @@
-//! R-098 e: a device holds at most 1024 series with a sample in the last hour, a batch's own
-//! included. Every series one agent can send at once fits; a batch that would pass the cap is
-//! refused `MALFORMED` with an event, and a series idle for an hour frees its place.
+//! R-098 e, CR-20: a device creates at most 1024 series in any hour, a batch's new ones
+//! included, counted by when the hub created them. Every series one agent can send at once
+//! fits; a batch that would pass the cap is refused `MALFORMED` with an event and stores
+//! nothing; back-dated points do not reset the count, and an hour later there is room again.
 
 use axum::http::StatusCode;
 use chrono::{DateTime, TimeDelta, Utc};
@@ -8,7 +9,7 @@ use serde_json::{Value, json};
 use sqlx::PgPool;
 
 use super::{
-    batches::{batch, point, samples_of, warnings},
+    batches::{batch, point, samples_of, series_of, warnings},
     harness::{Agents, PERMITTED, PVE_01, pushing_now},
 };
 
@@ -75,7 +76,7 @@ async fn push_all(
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
 )]
-async fn r_098_e_a_device_holds_at_most_1024_live_series(pool: PgPool) {
+async fn r_098_e_a_device_creates_at_most_1024_series_in_an_hour(pool: PgPool) {
     let now = pushing_now(&pool).await;
     let agents = Agents::at(&pool, now).await;
     let token = agents.token_for(PVE_01).await;
@@ -118,7 +119,7 @@ async fn r_098_e_a_device_holds_at_most_1024_live_series(pool: PgPool) {
         )]
     );
 
-    // An hour on, the old series hold no sample of the last hour and free their places.
+    // An hour on, the series made then were not created in the last hour: there is room again.
     agents
         .clock
         .advance(TimeDelta::hours(1) + TimeDelta::seconds(10));
@@ -127,4 +128,28 @@ async fn r_098_e_a_device_holds_at_most_1024_live_series(pool: PgPool) {
         push_all(&agents, &token, &disks(600, 1), next).await,
         [StatusCode::NO_CONTENT]
     );
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn r_098_e_back_dated_points_cannot_create_series_past_the_cap(pool: PgPool) {
+    let now = pushing_now(&pool).await;
+    let agents = Agents::at(&pool, now).await;
+    let token = agents.token_for(PVE_01).await;
+    for round in 0..5 {
+        // Every point as old as K8 allows, so it is out of any "last hour" 10 seconds on.
+        let oldest = now + TimeDelta::seconds(10 * round) - TimeDelta::hours(1);
+        let first = usize::try_from(round).unwrap() * 1024;
+        let statuses = push_all(&agents, &token, &disks(first, 1024), oldest).await;
+        let expected = if round == 0 {
+            StatusCode::NO_CONTENT
+        } else {
+            StatusCode::BAD_REQUEST
+        };
+        assert_eq!(statuses, [expected; 4], "round {round}");
+        agents.clock.advance(TimeDelta::seconds(10));
+    }
+    assert_eq!(series_of(&pool, PVE_01).await.len(), 1024);
 }
