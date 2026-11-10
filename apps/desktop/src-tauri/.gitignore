@@ -1,0 +1,2 @@
+# The release build puts the agent here before `tauri build --config tauri.release.conf.json` (MET-019, D-10 d).
+/binaries/

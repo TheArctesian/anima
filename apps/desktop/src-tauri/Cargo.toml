@@ -56,9 +56,10 @@ tauri-plugin-updater.workspace = true
 tauri-plugin-process.workspace = true
 
 # Cancelling a build step kills the step's whole process group (BLD-027); on Linux the shell is
-# the child subreaper of every step process and reaps what escaped the group (S-1).
+# the child subreaper of every step process and reaps what escaped the group (S-1). `user`: the
+# user ID the agent's install folder must belong to (MET-019).
 [target.'cfg(unix)'.dependencies]
-nix = { version = "0.31", default-features = false, features = ["signal", "process"] }
+nix = { version = "0.31", default-features = false, features = ["signal", "process", "user"] }
 
 # pidfd_open and pidfd_send_signal for the reaper (D-20): nix 0.31 has neither.
 [target.'cfg(target_os = "linux")'.dependencies]
