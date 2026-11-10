@@ -1,16 +1,18 @@
-# Programme handoff — 2026-11-09
+# Programme handoff — 2026-11-10
 
 The programme orchestrator stopped at the operator's usage limit. This file is the state at the stop.
-Read it first, then the rulings listed in section 5 and R-093 to R-106, CR-17 to CR-19 in `programme.md`.
+Read it first, then the rulings listed in section 5 and R-093 to R-111, CR-17 to CR-21 in `programme.md`.
 
 ## 1. Where things are
 
-- **Integration branch:** `phase-3`, pushed with `main` fast-forwarded to it as a save (operator,
-  2026-11-08). Gates: `CARGO_TARGET_DIR=$PWD/target CARGO_INCREMENTAL=0 env -u DATABASE_URL
+- **Integration branch:** `phase-3`, pushed. `main` was fast-forwarded to it as a save (operator,
+  2026-11-08) up to `26a5a9bd`. Since then `main` has its own commits (client redesign, the Phase 3
+  hub deployed at `22f426b6`, `c49a1698`), so `phase-3` no longer fast-forwards onto `main`. Merging
+  the two needs the operator's OK. Gates: `CARGO_TARGET_DIR=$PWD/target CARGO_INCREMENTAL=0 env -u DATABASE_URL
   BASE_REF=04ab9b61 bun run gates` (R-101; 12 gates). Client-only changes run gates 4–12 (R-068).
   PATH needs nvm Node 22 and `/usr/lib/postgresql/17/bin`.
-- **Last fully gated commit:** `2821cc2d` (WP-46 package log, gates 4–12). The last Rust merge, `e12da074` (R-102
-  pair), passed all 12 gates after the flake procedure.
+- **Last Rust merge gated 12/12:** `26a5a9bd` (WP-45 T6 and the dispatcher wiring in `main.rs`). After it came the WP-36
+  deploy merges (`fbdd525f`, `e1e7ff2c`) and the R-109 to R-111 docs commits, through `9baf6aeb`.
 - **R-101:** every gate and review run uses its own `CARGO_TARGET_DIR` and `CARGO_INCREMENTAL=0`; delete
   the target folder when the task is accepted. A full disk shows up as sqlx test-database failures or a
   linker SIGBUS. About 116 GB free on 2026-11-09.
@@ -26,23 +28,23 @@ Read it first, then the rulings listed in section 5 and R-093 to R-106, CR-17 to
 | WP-46 checks | Done. Last merges: package fixes `a28410c4`, R-102 domain retries and hourly floor `53f0a031`, log `2821cc2d`. |
 | WP-50 settings | Done. Last merges: check-row `5fbebf60`, log `0cbc06d4`, R-102 client `e12da074`. |
 | WP-51 parsers | Done. T4 `a67ae69e`, vendor retry `4080416c`, log `8f44adc3`. |
-| WP-43 access | T1–T3, T4 bearer `2446f367` (router assembly now in lib.rs `all_routes`), T5 rotation `4ee029fe` merged. |
-| WP-45 notifications | T1–T5 merged. |
-| WP-47 session sharing | T1a, T1b, T3 merged. |
+| WP-43 access | Done. T4 bearer `2446f367` (router assembly in lib.rs `all_routes`), T5 rotation `4ee029fe`, T6 throttle `15b8f9d0`, log `8d064256`. |
+| WP-45 notifications | T1–T6 merged; dispatcher wired in `main.rs` (`26a5a9bd`). |
+| WP-47 session sharing | T1a, T1b, T3, T3c (`693f2720`) merged. The share parts are to be removed (R-111). |
+| WP-48 recording | T1 playback proof `a4192d68`. |
 | WP-54 agent | T2, T3a token `839b827f`, T4 binary `ef93c13d`, T5 Apple GPU `61320129`, T7 VPN policy `176cb4b1` merged. |
 
-## 3. Work in progress (2026-11-09)
+## 3. Work in progress (2026-11-10)
 
-Six package orchestrators are running (R-066 allows seven). Each package log on its `claude/wp-NN-*` branch has the detail.
+Five package orchestrators are running (R-066 allows seven). Each package's log, on its `claude/wp-NN-*` branch, has the detail.
 
 | Package | State | Next |
 | --- | --- | --- |
-| WP-43 | T6 throttle (CR-16 b), with the `log_007` needle fix. | Package close. |
-| WP-45 | T6 dispatcher passed review round 2, including R-103; delta check and gates are next. T7 checks edits (`271d51c5`) is in review, and WP-46 approved its off-list lines. | T6 merges as one merge commit. T7 rebases after it. |
-| WP-47 | T2 limit in security review. Asked to fix the three `ra_031` tests in `waking.rs` on their own branch (they fail merge gates under load). | T4, T5, T6. |
-| WP-48 | Recording: plan at `claude/wp-48-recording`. T1 playback proof, T2 format and T3 asciicast are building. | T5a, T7 and T8 wait for WP-47 T2, T5 and T6 (CR-19). |
-| WP-49 | Client sharing, players and watch: plan at `claude/wp-49-sharing`. T1 share, T2 watch-join and T5 asciicast are building (R-106). | Recording UI waits for WP-48 T5b and T6. |
-| WP-54 | T3b ingest (`e9246f96`, 12/12) is in review. T6a install is in fix round 1 (D-10 accepted). | T8: final security review of the whole package. |
+| WP-45 | T7 checks edits is in fix round 1. At merge, add `.data(checks::graphql::check_notifications_loader(pool.clone()).delay(BATCH_WINDOW))` to schema.rs unless the branch already has it. | Package close. |
+| WP-47 | T2 limit; the `ra_031` waking-flake branch. T4, T5 and T6 are cancelled (R-111). | One task removes the merged share code: `sessions/share/`, the K1 share types and roots, the `joinShare` path in `access/`, `ShareId`, the share event kinds. Then package close. |
+| WP-48 | T2 and T3 asciicast branch (`982ae270`) is gating. | T4, then T5–T8. T7 and T8 wait only for WP-47 T2 and tee the owner's stream only (R-111 amends CR-19 Q-3). |
+| WP-49 | T5 asciicast player. T1 share and T2 watch-join are cancelled (R-111). | Recording UI waits for WP-48 T5b and T6. |
+| WP-54 | T3b ingest round 3 (CR-20, CR-21); T6a install fix round 2. | T8: final security review of the whole package. |
 
 **Not started:** WP-53 (integration and acceptance) starts when the other packages are near done.
 
