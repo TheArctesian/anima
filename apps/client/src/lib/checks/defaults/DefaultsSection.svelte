@@ -79,7 +79,7 @@
 
 <!-- A group, not a form landmark; Enter still submits. -->
 <form bind:this={form} role="group" aria-label="Default check settings" novalidate onsubmit={submit}>
-  <p class="note">New checks start with these settings.</p>
+  <p class="note">New checks start with these.</p>
   {#each SETTING_FIELDS as { key, label, bounds } (key)}
     <div class="field">
       <label for="{id}-{key}">{label}</label>

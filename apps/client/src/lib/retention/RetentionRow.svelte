@@ -130,6 +130,9 @@
 
   .hint span {
     display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     min-block-size: calc(var(--text-sm) * var(--leading-tight));
   }
 
