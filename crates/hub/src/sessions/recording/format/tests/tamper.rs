@@ -5,11 +5,11 @@ use std::io;
 
 use uuid::Uuid;
 
-use super::{End, Sealed, damaged, read, read_from, recording, seal};
+use super::{End, Sealed, damaged, key, read, read_from, recording, seal};
 use crate::{
     ids::RecordingId,
     sessions::recording::format::{
-        Damage, Format, HEADER_LEN, Header, MAX_PART, ReadError, Reader, RecordingKey,
+        Damage, Format, HEADER_LEN, Header, MAX_PART, Opener, ReadError, Reader, RecordingKey,
     },
 };
 
@@ -207,4 +207,13 @@ fn ra_040_a_failing_source_is_a_read_error_not_damage() {
         read_from(Failing).1,
         End::Failed(ReadError::Read(io::ErrorKind::PermissionDenied))
     );
+}
+
+#[test]
+fn ra_040_an_opener_that_has_opened_the_last_part_takes_no_other() {
+    let sealed = seal(&[], b"only");
+    let mut opener = Opener::new(key(), &sealed.header, recording()).unwrap();
+    let last = sealed.parts[0][4..].to_vec();
+    assert!(opener.open(last.clone()).unwrap().last);
+    assert_eq!(opener.open(last).err(), Some(Damage::AfterLast));
 }

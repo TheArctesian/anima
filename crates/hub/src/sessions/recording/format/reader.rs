@@ -15,8 +15,9 @@ pub enum Step {
     Part(Zeroizing<Vec<u8>>),
     /// The last part verified and nothing follows it.
     Done,
-    /// The file ends cleanly between parts with no last part: the hub stopped before it
-    /// wrote one (K4 §11). The parts read so far verified.
+    /// The file ends cleanly between parts with no last part: a hub that stopped before it
+    /// wrote one (K4 §11), or a file cut at a part boundary, which reads the same. The parts
+    /// read so far verified; only `Done` proves the whole recording.
     Incomplete,
 }
 
