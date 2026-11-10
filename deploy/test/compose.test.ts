@@ -107,7 +107,7 @@ describe("secrets (DB-002, SEC-004, DNS-003)", () => {
     postgres: ["hub_password", "owner_password", "postgres_password"],
     migrate: ["owner_database_url"],
     certs: ["cloudflare_dns_token"],
-    hub: ["anima_key", "hub_database_url"],
+    hub: ["anima_key", "hub_database_url", "r2_access_key_id", "r2_secret_access_key"],
     guacd: [],
     localapi: [],
     apprise: [],
@@ -141,7 +141,8 @@ describe("secrets (DB-002, SEC-004, DNS-003)", () => {
     for (const [name, service] of services) {
       for (const [key, value] of Object.entries(service.environment ?? {})) {
         const label = `${name}.${key}`;
-        if (/(PASSWORD|TOKEN|SECRET|KEY)/.test(key)) expect(`${label}:${key}`).toMatch(/_FILE$/);
+        // A public key is not secret (R-108): ANIMA_UPDATER_PUBLIC_KEY is a plain value.
+        if (/(PASSWORD|TOKEN|SECRET|KEY)/.test(key) && !key.endsWith("_PUBLIC_KEY")) expect(`${label}:${key}`).toMatch(/_FILE$/);
         expect(`${label}=${value}`).not.toMatch(/:\/\/[^/\s:@]+:[^/\s@]+@/);
       }
     }
@@ -210,8 +211,8 @@ describe("host integration (AlmaLinux host firewall)", () => {
 
   test("preflight checks exactly the secret files that compose declares", () => {
     const script = readFileSync(join(ROOT, "deploy", "bin", "preflight"), "utf8");
-    const loop = /for name in ([^;]*?); do/s.exec(script)?.[1] ?? "";
-    const listed = loop.replaceAll("\\", " ").split(/\s+/).filter((word) => word !== "");
+    const loops = [...script.matchAll(/for name in ([^;]*?); do/gs)].map((match) => match[1] ?? "");
+    const listed = loops.join(" ").replaceAll("\\", " ").split(/\s+/).filter((word) => word !== "");
     expect(listed.sort()).toEqual(Object.keys(compose.secrets).sort());
   });
 });

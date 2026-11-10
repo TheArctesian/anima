@@ -184,10 +184,16 @@ services:
       ANIMA_RECORDING_ROOT: /var/lib/anima/recordings
       ANIMA_RECORDING_MAX_BYTES: ${ANIMA_RECORDING_MAX_BYTES:-2147483648}
       ANIMA_LOG: ${ANIMA_LOG:-info}
+      # Release publishing (WP-36, R-108): off while the endpoint is empty. The R2 token is two
+      # secret files the operator makes (README, Release publishing); the updater key is public.
+      ANIMA_RELEASES_ENDPOINT: ${ANIMA_RELEASES_ENDPOINT:-}
+      ANIMA_UPDATER_PUBLIC_KEY: ${ANIMA_UPDATER_PUBLIC_KEY:-}
     secrets:
       - source: hub_database_url
         target: database_url
       - anima_key
+      - r2_access_key_id
+      - r2_secret_access_key
     volumes:
       - certs:/certs:ro
       # Read-write. The image creates this folder for 10001:10001 with mode 0700 and the new
@@ -315,3 +321,7 @@ secrets:
     file: ./secrets/anima_key
   cloudflare_dns_token:
     file: ./secrets/cloudflare_dns_token
+  r2_access_key_id:
+    file: ./secrets/r2_access_key_id
+  r2_secret_access_key:
+    file: ./secrets/r2_secret_access_key
