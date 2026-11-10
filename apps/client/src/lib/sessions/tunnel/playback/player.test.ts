@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { guacamoleStream } from '$lib/fixtures/phase3';
 import { installBlankCanvas } from '../fake/canvas.fixture';
+import Guacamole from '../vendor/guacamole.js';
 import { FAKE_TERMINAL_SOCKET, FakeTerminalSocket } from '../terminal/fake/socket.fixture';
 import { openRecordingLink } from './link';
 import { openGuacamolePlayer, type GuacamolePlayer, type PlayerEvents } from './player';
@@ -12,15 +13,29 @@ const LONGER = `${guacamoleStream.text}4.rect,1.0,1.0,1.0,2.10,2.10;5.cfill,2.14
 
 let restoreCanvas: () => void;
 
+/**
+ * An image that loads as soon as it has a source. jsdom never loads one, and a seek that restores a keyframe draws
+ * its layers from data URLs; the display waits for them before `seek` resolves.
+ */
+class LoadingImage {
+  onload: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  set src(_url: string) {
+    queueMicrotask(() => this.onload?.());
+  }
+}
+
 beforeEach(() => {
   restoreCanvas = installBlankCanvas();
   // Keyframes are stored as data URLs; jsdom has no encoder and prints "Not implemented".
   vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue('data:,');
+  vi.stubGlobal('Image', LoadingImage);
 });
 
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   restoreCanvas();
 });
 
@@ -145,6 +160,46 @@ describe('seeking (RA-041)', () => {
   });
 });
 
+describe('a seek and the display (RA-041)', () => {
+  it('RA-041: seek resolves only once the display has drawn the frame, not when 1.5.5 calls back', async () => {
+    const vendor = Guacamole as unknown as { Display: new () => Guacamole.Display };
+    const Original = vendor.Display;
+    const held: (() => void)[] = [];
+    let holding = false;
+    const Held = function HeldDisplay() {
+      const display = new Original();
+      const flush = display.flush.bind(display);
+      display.flush = (callback) => {
+        flush(() => {
+          if (holding && callback) held.push(callback);
+          else callback?.();
+        });
+      };
+      return display;
+    };
+    // The vendor's Display reads its layer classes from `Guacamole.Display` itself.
+    vendor.Display = Object.assign(Held, Original) as unknown as typeof Original;
+    try {
+      const player = await loaded(LONGER);
+      holding = true;
+      let resolved = false;
+      const seeking = player.seek(3000).then(() => {
+        resolved = true;
+      });
+      await settled();
+      expect(player.position()).toBe(3000);
+      expect(resolved).toBe(false);
+      holding = false;
+      for (const callback of held.splice(0)) callback();
+      await seeking;
+      expect(resolved).toBe(true);
+      player.dispose();
+    } finally {
+      vendor.Display = Original;
+    }
+  });
+});
+
 describe('playing (RA-041)', () => {
   it('RA-041: play shows the next frame at once, then each later one after its recorded gap', async () => {
     const player = await loaded(LONGER);
@@ -195,7 +250,9 @@ describe('the display and faults (MAT-008, LOG-007)', () => {
     player.dispose();
   });
 
-  it('LOG-007: text the 1.5.5 parser refuses calls onunreadable with nothing of the vendor message or the content', async () => {
+  it('LOG-007: text the 1.5.5 parser refuses calls onunreadable with no arguments, and nothing reaches the console', async () => {
+    const methods = Object.keys(console).filter((key): key is keyof Console => typeof (console as unknown as Record<string, unknown>)[key] === 'function');
+    const spies = methods.map((method) => vi.spyOn(console, method).mockImplementation(() => undefined));
     const heard: unknown[][] = [];
     const player = openGuacamolePlayer(new Blob(['4.sync,4.1000;x.SECRET-CONTENT;']), {
       onunreadable: (...args: unknown[]) => heard.push(args),
@@ -204,5 +261,6 @@ describe('the display and faults (MAT-008, LOG-007)', () => {
       expect(heard).toEqual([[]]);
     });
     player.dispose();
+    expect(spies.flatMap((spy) => spy.mock.calls)).toEqual([]);
   });
 });

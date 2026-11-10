@@ -55,6 +55,14 @@ describe('the Guacamole transcript (K4 §11, §12, RA-041)', () => {
     expect(await transcript.blob().text()).toBe('4.sync,1.0;');
   });
 
+  it('LOG-007: the decoder fails closed: a byte that is not UTF-8 inside an element is not replaced, so it cannot pass as text', async () => {
+    const transcript = openTranscript();
+    const bytes = Uint8Array.from([...encoder.encode('4.name,1.'), 0xff, ...encoder.encode(';4.sync,1.1;')]);
+    expect(transcript.receive(bytes)).toBe(false);
+    expect(transcript.unreadable()).toBe(true);
+    expect(await transcript.blob().text()).toBe('');
+  });
+
   it('text that is not instructions makes it unreadable', () => {
     const { transcript, accepted } = received('{"version":2}\n', 4);
     expect(accepted.at(-1)).toBe(false);

@@ -1,7 +1,14 @@
 import { inspect } from 'node:util';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FAKE_TERMINAL_SOCKET, FakeTerminalSocket } from '../terminal/fake/socket.fixture';
-import { PING_AFTER_MS, SILENCE_LIMIT_MS, openRecordingLink, type RecordingLinkOptions, type RecordingLinkState } from './link';
+import {
+  PING_AFTER_MS,
+  RECORDING_MAX_BYTES,
+  SILENCE_LIMIT_MS,
+  openRecordingLink,
+  type RecordingLinkOptions,
+  type RecordingLinkState,
+} from './link';
 
 const TOKEN = 'TOKEN-MARKER-5e7a';
 const TICKET = { tunnelPath: '/recording', token: TOKEN };
@@ -81,6 +88,14 @@ describe('opening (K4 §12, §8.1)', () => {
     expect(reported).not.toContain('SECRET');
   });
 
+  it('LOG-007: a token holding + / = & reaches the socket URL encoded, so it stays one query value', () => {
+    const token = 'a+b/c=d&e';
+    openRecordingLink({ origin: 'https://hub.anima.ing', ticket: { tunnelPath: '/recording', token }, WebSocket: FAKE_TERMINAL_SOCKET, onbytes: () => undefined });
+    const { url } = FakeTerminalSocket.latest();
+    expect(url).toBe('wss://hub.anima.ing/recording?token=a%2Bb%2Fc%3Dd%26e');
+    expect(new URL(url).searchParams.get('token')).toBe(token);
+  });
+
   it('K4 §8.1: a socket that closes before it opened ends as refused, with its close code', () => {
     const { socket, heard } = open();
     socket.closeWith(1006);
@@ -97,6 +112,14 @@ describe('the stream (K4 §12, RA-041)', () => {
     socket.output(new Uint8Array(65_536));
     expect(heard.bytes.slice(0, 2)).toEqual([[1, 2], [3]]);
     expect(link.state().receivedBytes).toBe(65_539);
+  });
+
+  it('RA-041: an incomplete recording\'s sizeBytes bounds nothing; the hub may send past it', () => {
+    const { link, socket, heard } = receiving({ ...HEADER, sizeBytes: 3, complete: false });
+    socket.output(Uint8Array.from([1, 2, 3, 4]));
+    socket.control({ type: 'done' });
+    expect(heard.ends).toMatchObject([{ outcome: 'done', receivedBytes: 4 }]);
+    expect(link.state().receivedBytes).toBe(4);
   });
 
 });
@@ -133,6 +156,7 @@ describe('the end of a playback (K4 §12, RA-041)', () => {
     ['a second header', [HEADER, HEADER]],
     ['a frame over 64 KiB', [HEADER, new Uint8Array(65_537)]],
     ['a failed with an unknown reason', [{ type: 'failed', reason: 'LOST' }]],
+    ['done before the header', [{ type: 'done' }]],
   ])('K4 §12: %s is a protocol fault: the client sends cancel, closes and delivers nothing more', (_name, frames: unknown[]) => {
     const { socket, heard } = open();
     socket.open();
@@ -157,6 +181,53 @@ describe('the end of a playback (K4 §12, RA-041)', () => {
     const { socket, heard } = receiving();
     socket.closeWith(1011);
     expect(heard.ends).toMatchObject([{ outcome: 'interrupted', closeCode: 1011 }]);
+  });
+});
+
+describe('the byte bounds (RA-041, D-14)', () => {
+  it('RA-041, K4 §12: a complete recording that sends more than its sizeBytes is a fault: the frame past it is not delivered', () => {
+    const { link, socket, heard } = receiving({ ...HEADER, sizeBytes: 3, complete: true });
+    socket.output(Uint8Array.from([1, 2, 3]));
+    socket.output(Uint8Array.from([4]));
+    socket.output(Uint8Array.from([5]));
+    expect(heard.bytes).toEqual([[1, 2, 3]]);
+    expect(heard.ends).toMatchObject([{ outcome: 'fault', receivedBytes: 3 }]);
+    expect(link.state().receivedBytes).toBe(3);
+    expect(socket.messages().at(-1)).toEqual({ type: 'cancel' });
+    expect(socket.closedByClient).toBe(1000);
+  });
+
+  it('RA-041, D-14: a frame that would pass maxBytes ends the link as too-large; the bytes before it were delivered', () => {
+    const { socket, heard } = open({ maxBytes: 4 });
+    socket.open();
+    socket.control({ ...HEADER, complete: false });
+    socket.output(Uint8Array.from([1, 2, 3]));
+    socket.output(Uint8Array.from([4, 5]));
+    socket.output(Uint8Array.from([6]));
+    expect(heard.bytes).toEqual([[1, 2, 3]]);
+    expect(heard.ends).toMatchObject([{ phase: 'ended', outcome: 'too-large', receivedBytes: 3 }]);
+    expect(socket.messages().at(-1)).toEqual({ type: 'cancel' });
+    expect(socket.closedByClient).toBe(1000);
+  });
+
+  it.each([
+    ['no maxBytes', {}],
+    ['a larger maxBytes', { maxBytes: Number.MAX_SAFE_INTEGER }],
+    ['a maxBytes that is not a number', { maxBytes: Number.NaN }],
+  ])('D-14: with %s the link takes at most RECORDING_MAX_BYTES (2 GiB, the hub default)', (_name, limits: Partial<RecordingLinkOptions>) => {
+    expect(RECORDING_MAX_BYTES).toBe(2 * 1024 ** 3);
+    let delivered = 0;
+    const { socket, heard } = open({ ...limits, onbytes: (bytes) => (delivered += bytes.byteLength) });
+    socket.open();
+    socket.control({ ...HEADER, complete: false });
+    // One 64 KiB buffer sent again and again: the link only counts it.
+    const frame = { data: new ArrayBuffer(65_536) };
+    const deliver = socket.onmessage as (event: typeof frame) => void;
+    for (let sent = 0; sent < RECORDING_MAX_BYTES / 65_536; sent += 1) deliver(frame);
+    expect(heard.ends).toEqual([]);
+    deliver(frame);
+    expect(delivered).toBe(RECORDING_MAX_BYTES);
+    expect(heard.ends).toMatchObject([{ outcome: 'too-large', receivedBytes: RECORDING_MAX_BYTES }]);
   });
 });
 

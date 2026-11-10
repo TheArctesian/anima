@@ -31,7 +31,9 @@ export interface GuacamolePlayer {
   pause(): void;
   /**
    * Show the frame at `positionMs` (clamped to the recording), or one next to it when none starts then (1.5.5's
-   * binary search); resolves when it is shown or another seek, play or pause replaced it.
+   * binary search); resolves once the display has drawn where the seek stopped: at that frame, or where another
+   * seek, play or pause replaced it. A seek back replays from the nearest keyframe before it, which in a stream whose
+   * frames come less than 5 s apart is frame 0.
    */
   seek(positionMs: number): Promise<void>;
   duration(): number;
@@ -85,7 +87,11 @@ export function openGuacamolePlayer(transcript: Blob, events: PlayerEvents = {})
           return;
         }
         const target = Number.isFinite(positionMs) ? Math.min(Math.max(positionMs, 0), recording.getDuration()) : 0;
-        recording.seek(target, resolve);
+        // 1.5.5 calls back once the frame's instructions are parsed, before the display has drawn them; a flush
+        // calls back after every drawing queued before it.
+        recording.seek(target, () => {
+          display.flush(resolve);
+        });
       }),
     duration: () => recording.getDuration(),
     position: () => recording.getPosition(),

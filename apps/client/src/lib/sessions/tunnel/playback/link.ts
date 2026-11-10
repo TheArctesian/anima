@@ -15,12 +15,29 @@ import {
 export { PING_AFTER_MS, SILENCE_LIMIT_MS };
 
 /**
+ * The most plaintext one playback takes by default: the hub's default `ANIMA_RECORDING_MAX_BYTES` (D-14, K7). A hub
+ * that sends more ends the link as `too-large`; what came before still plays.
+ */
+export const RECORDING_MAX_BYTES = 2_147_483_648;
+
+/**
  * How a playback ended. `done`: every part arrived. `damaged`: a part failed to decrypt, after the parts that
  * verified; `missing`: the file is gone (K4 §12). `refused`: the socket closed before it opened (K4 §8.1).
  * `interrupted`: it closed before `done` (see `closeCode`). `lost`: nothing came for `SILENCE_LIMIT_MS`. `fault`: the
- * hub broke the protocol (no header first, a bad header, an oversize frame). `cancelled`: the owner closed it.
+ * hub broke the protocol (no header first, `done` before the header, a bad header, an oversize frame, more bytes than
+ * a complete recording's `sizeBytes`). `too-large`: the next frame would pass `maxBytes`; it is not delivered, and
+ * the bytes before it may be played. `cancelled`: the owner closed it.
  */
-export type RecordingOutcome = 'done' | 'damaged' | 'missing' | 'refused' | 'interrupted' | 'lost' | 'fault' | 'cancelled';
+export type RecordingOutcome =
+  | 'done'
+  | 'damaged'
+  | 'missing'
+  | 'refused'
+  | 'interrupted'
+  | 'lost'
+  | 'fault'
+  | 'too-large'
+  | 'cancelled';
 
 /** What a playback link knows; it holds no token, no URL and no recording content (SEC-002, LOG-007). */
 export interface RecordingLinkState {
@@ -52,6 +69,8 @@ export interface RecordingLinkOptions extends RecordingLinkEvents {
   readonly ticket: TunnelTicket;
   /** The WebSocket constructor; defaults to the global one (CQ-021). */
   readonly WebSocket?: SocketConstructor;
+  /** The most plaintext the link delivers: `RECORDING_MAX_BYTES` unless a lower number is given (RA-041, D-14). */
+  readonly maxBytes?: number;
 }
 
 /** One open playback tunnel (K4 §12). */
@@ -65,6 +84,9 @@ export type RecordingLinkOpening =
   | { readonly ok: true; readonly value: RecordingLink }
   | { readonly ok: false; readonly error: TunnelRefusal };
 
+/** The outcomes the hub itself sends; after them it reads nothing more, so the link sends no `cancel`. */
+const HUB_ENDINGS: ReadonlySet<RecordingOutcome> = new Set(['done', 'damaged', 'missing']);
+
 const OPEN = 1;
 const CLOSING = 2;
 
@@ -74,7 +96,7 @@ const CLOSING = 2;
  * lives only in that one expression: the link keeps the events, not the ticket.
  */
 export function openRecordingLink(options: RecordingLinkOptions): RecordingLinkOpening {
-  const { origin, ticket, WebSocket: Socket = globalThis.WebSocket, ...events } = options;
+  const { origin, ticket, WebSocket: Socket = globalThis.WebSocket, maxBytes = RECORDING_MAX_BYTES, ...events } = options;
   const url = ticket.tunnelPath === RECORDING_PATH ? tunnelUrl(origin, ticket.tunnelPath) : undefined;
   if (url === undefined) return refusal('bad-address');
   let socket: WebSocket;
@@ -85,7 +107,8 @@ export function openRecordingLink(options: RecordingLinkOptions): RecordingLinkO
     return refusal('not-opened');
   }
   socket.binaryType = 'arraybuffer';
-  return { ok: true, value: linkOver(socket, events) };
+  const limit = Number.isFinite(maxBytes) ? Math.min(maxBytes, RECORDING_MAX_BYTES) : RECORDING_MAX_BYTES;
+  return { ok: true, value: linkOver(socket, events, limit) };
 }
 
 /** The two liveness timers: a ping after our own quiet spell (K4 §8.4), a lost link after the hub's (K4 §8.5). */
@@ -111,13 +134,17 @@ function liveness(ping: () => void, lost: () => void) {
 /** What one message from the hub does: a state change, an outcome that ends the link, or nothing. */
 type Step = { readonly change: Partial<RecordingLinkState> } | { readonly outcome: RecordingOutcome } | undefined;
 
-/** A text message against the state so far: the header comes once, first; `done` and `failed` end the playback. */
+/**
+ * A text message against the state so far: the header comes once, first; `done` and `failed` end the playback. Only
+ * `failed` may come before the header (a missing file); `done` before it is a fault, so it never passes for a whole
+ * recording (K4 §12).
+ */
 function textStep(message: HubMessage | undefined, state: RecordingLinkState): Step {
   switch (message?.kind) {
     case 'recording':
       return state.header === undefined ? { change: { header: message.header } } : { outcome: 'fault' };
     case 'done':
-      return { outcome: 'done' };
+      return { outcome: state.header === undefined ? 'fault' : 'done' };
     case 'failed':
       return { outcome: message.reason === 'DAMAGED' ? 'damaged' : 'missing' };
     case 'malformed':
@@ -127,16 +154,21 @@ function textStep(message: HubMessage | undefined, state: RecordingLinkState): S
   }
 }
 
-/** A frame from the hub: binary is plaintext (after the header, at most 64 KiB), text is a control message. */
-function frameStep(data: unknown, state: RecordingLinkState, onbytes: RecordingLinkEvents['onbytes']): Step {
-  if (typeof data === 'string') return textStep(decodeHubMessage(data), state);
-  if (!(data instanceof ArrayBuffer) || state.header === undefined || data.byteLength > FRAME_MAX_BYTES) return { outcome: 'fault' };
-  onbytes(new Uint8Array(data));
-  return { change: { receivedBytes: state.receivedBytes + data.byteLength } };
+/**
+ * A binary frame against the state so far: plaintext after the header, at most 64 KiB, never past a complete
+ * recording's `sizeBytes` (a fault) or `maxBytes` (too large). An incomplete recording's `sizeBytes` bounds nothing.
+ */
+function bytesStep(data: unknown, state: RecordingLinkState, maxBytes: number): Step {
+  const { header } = state;
+  if (!(data instanceof ArrayBuffer) || header === undefined || data.byteLength > FRAME_MAX_BYTES) return { outcome: 'fault' };
+  const receivedBytes = state.receivedBytes + data.byteLength;
+  if (header.complete && receivedBytes > header.sizeBytes) return { outcome: 'fault' };
+  if (receivedBytes > maxBytes) return { outcome: 'too-large' };
+  return { change: { receivedBytes } };
 }
 
 /** The link on `socket`: state, liveness and the message handling. */
-function linkOver(socket: WebSocket, events: RecordingLinkEvents): RecordingLink {
+function linkOver(socket: WebSocket, events: RecordingLinkEvents, maxBytes: number): RecordingLink {
   let state: RecordingLinkState = { phase: 'connecting', header: undefined, receivedBytes: 0, closeCode: undefined, outcome: undefined };
   /** Read through a call, so a check after a callback is not narrowed by one before it. */
   const ended = () => state.phase === 'ended';
@@ -175,12 +207,17 @@ function linkOver(socket: WebSocket, events: RecordingLinkEvents): RecordingLink
   socket.onmessage = (event: MessageEvent) => {
     if (state.phase !== 'receiving') return;
     beats.heard();
-    const step = frameStep(event.data, state, events.onbytes);
+    const { data } = event as { readonly data: unknown };
+    const step = typeof data === 'string' ? textStep(decodeHubMessage(data), state) : bytesStep(data, state, maxBytes);
+    if (step === undefined) return;
+    if ('outcome' in step) {
+      // After `done` or `failed` the hub has nothing left to read; anything else that ends here stops it reading.
+      finish({ outcome: step.outcome }, !HUB_ENDINGS.has(step.outcome));
+      return;
+    }
+    if (data instanceof ArrayBuffer) events.onbytes(new Uint8Array(data));
     // The owner may have closed the link from `onbytes`.
-    if (step === undefined || ended()) return;
-    if ('change' in step) publish(step.change);
-    // After `done` or `failed` the hub has nothing left to read; anything else that ends here stops it reading.
-    else finish({ outcome: step.outcome }, step.outcome === 'fault');
+    if (!ended()) publish(step.change);
   };
   socket.onclose = (event: CloseEvent) => {
     finish({ outcome: state.phase === 'connecting' ? 'refused' : 'interrupted', closeCode: event.code }, false);
