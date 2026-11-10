@@ -39,8 +39,12 @@ use crate::{clock::Clock, ids::BuildJobId};
 /// How often the upkeep runs the publisher (D-25).
 pub const PUBLISH_SWEEP: Duration = Duration::from_secs(10);
 
-/// The longest one try may run, inside its hold.
-const RUN_LIMIT: Duration = Duration::from_mins(9);
+/// The longest one try may run, well inside its hold.
+const RUN_LIMIT: Duration = Duration::from_mins(7);
+
+// A try ends at least 3 minutes before its hold, so a write it sent near the end lands before a
+// later try can take the job (D-25).
+const _: () = assert!(RUN_LIMIT.as_secs() + 180 <= tries::HOLD.num_seconds().unsigned_abs());
 
 /// The most jobs one sweep publishes.
 const MAX_PER_SWEEP: usize = 4;
@@ -124,7 +128,7 @@ pub async fn publish_ready(
                     .await
                     .unwrap_or(Outcome::Unavailable("time limit"))
             }
-            None => tries::spent(),
+            None => Outcome::Spent,
         };
         tries::finish(build_queue, reach, tried, outcome).await?;
         ended += 1;

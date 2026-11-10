@@ -216,6 +216,16 @@ impl Bucket {
         self.signed("GET", write, now)
     }
 
+    /// A signed `HEAD` of `object` from the bucket itself: its `ETag` now (D-28).
+    pub(super) fn head(&self, object: &str, now: DateTime<Utc>) -> Signed {
+        let write = Write {
+            object,
+            headers: Vec::new(),
+            body: b"",
+        };
+        self.signed("HEAD", write, now)
+    }
+
     /// A signed `DELETE` of `object` (BLD-070).
     pub(super) fn delete(&self, object: &str, now: DateTime<Utc>) -> Signed {
         let write = Write {

@@ -59,6 +59,8 @@ pub struct Store {
     pub writes: Vec<String>,
     /// The keys deleted, in order.
     pub deletes: Vec<String>,
+    /// The keys whose `ETag` was asked for with `HEAD`, in order.
+    pub heads: Vec<String>,
     /// Why each refused request was refused.
     pub refused: Vec<String>,
     /// The fake's clock for expiry and skew; `None` takes the request's own date.
@@ -202,6 +204,14 @@ async fn api(State(store): State<Shared>, request: Request) -> Response {
     }
     match parts.method {
         Method::GET => read(&store, &key).await,
+        Method::HEAD => {
+            let mut store = store.lock().unwrap();
+            store.heads.push(key.clone());
+            match store.objects.get(&key) {
+                Some(object) => [(header::ETAG, object.etag())].into_response(),
+                None => StatusCode::NOT_FOUND.into_response(),
+            }
+        }
         Method::PUT => write(&store, &key, &parts.headers, body.to_vec()).await,
         Method::DELETE => {
             let mut store = store.lock().unwrap();

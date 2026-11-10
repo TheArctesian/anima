@@ -85,13 +85,14 @@ pub(in crate::builds) async fn extend_upload_expiry(
     Ok(())
 }
 
-/// Whether try `attempt` still holds the job at `now`: the hub publishes it, no later try took
-/// it, and its hold has not run out (D-25). The last fence before a write.
+/// Whether try `attempt` still holds the job at `by`: the hub publishes it, no later try took
+/// it, and its hold runs past `by` (D-25). The last fence before a write; `by` leaves room for
+/// the write itself.
 pub(in crate::builds) async fn still_held(
     db: impl PgExecutor<'_>,
     job: BuildJobId,
     attempt: i32,
-    now: DateTime<Utc>,
+    by: DateTime<Utc>,
 ) -> Result<bool, Error> {
     Ok(sqlx::query_scalar(
         "SELECT EXISTS (SELECT 1 FROM builds.jobs WHERE id = $1 AND state = 'uploading' \
@@ -100,9 +101,37 @@ pub(in crate::builds) async fn still_held(
     )
     .bind(job)
     .bind(attempt)
-    .bind(now)
+    .bind(by)
     .fetch_one(db)
     .await?)
+}
+
+/// Records that the publisher is about to write the job's feed, keeping the first time
+/// (D-25): from then on the feed may name the job's files.
+pub(in crate::builds) async fn mark_feed_sent(
+    db: impl PgExecutor<'_>,
+    job: BuildJobId,
+    now: DateTime<Utc>,
+) -> Result<(), Error> {
+    sqlx::query("UPDATE builds.jobs SET feed_sent_at = coalesce(feed_sent_at, $2) WHERE id = $1")
+        .bind(job)
+        .bind(now)
+        .execute(db)
+        .await?;
+    Ok(())
+}
+
+/// Whether a feed write was ever sent for the job (D-25).
+pub(in crate::builds) async fn feed_sent(
+    db: impl PgExecutor<'_>,
+    job: BuildJobId,
+) -> Result<bool, Error> {
+    let sent: Option<bool> =
+        sqlx::query_scalar("SELECT feed_sent_at IS NOT NULL FROM builds.jobs WHERE id = $1")
+            .bind(job)
+            .fetch_optional(db)
+            .await?;
+    Ok(sent.unwrap_or(false))
 }
 
 /// The jobs the hub was given to publish, locked, the oldest first; for a hub whose publishing

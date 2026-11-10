@@ -4,6 +4,8 @@
 //! past its reported size. Nothing here logs; a URL, a header or a response body never reaches
 //! an error (LOG-007).
 
+use std::time::Duration;
+
 use minisign_verify::StreamVerifier;
 use reqwest::{Client, Method, RequestBuilder, Response, StatusCode};
 
@@ -15,6 +17,10 @@ const MAX_REPLY_BYTES: usize = 64 * 1024;
 
 /// The longest `ETag` the hub keeps; R2 sends a quoted MD5 or a multipart digest.
 const MAX_ETAG_BYTES: usize = 128;
+
+/// The longest one write, delete or `HEAD` may take. A try writes only while its hold has at
+/// least this long left (D-25).
+pub(super) const WRITE_LIMIT: Duration = Duration::from_mins(2);
 
 /// Why a step of publishing stopped.
 pub(super) enum Stop {
@@ -143,6 +149,7 @@ pub(super) async fn send(
     what: &str,
 ) -> Result<(), Stop> {
     let mut response = request(http, &signed, body)
+        .timeout(WRITE_LIMIT)
         .send()
         .await
         .map_err(|_| Stop::Unavailable("bucket write"))?;
@@ -176,4 +183,21 @@ pub(super) async fn send(
         return Err(Stop::Unavailable("bucket write"));
     }
     Ok(())
+}
+
+/// The `ETag` the bucket gives `HEAD` `signed` now, or `None` when it has no such object
+/// (D-28).
+pub(super) async fn etag_now(http: &Client, signed: &Signed) -> Result<Option<String>, Stop> {
+    let response = request(http, signed, Vec::new())
+        .timeout(WRITE_LIMIT)
+        .send()
+        .await
+        .map_err(|_| Stop::Unavailable("bucket head"))?;
+    let status = response.status();
+    if busy(status) {
+        return Err(Stop::Unavailable("bucket head"));
+    }
+    Ok((status == StatusCode::OK)
+        .then(|| etag_of(&response))
+        .flatten())
 }

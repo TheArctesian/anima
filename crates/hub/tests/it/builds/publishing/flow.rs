@@ -117,15 +117,15 @@ async fn bld_068_a_macos_job_publishes_without_a_feed(pool: PgPool) {
     assert_eq!(written(&publishing, &held).await, Some(Vec::new()));
 }
 
-/// D-25: a hub that stops after the stable copy, before `latest.json`, leaves the job held; once
-/// the hold ends, the next sweep runs every step again and publishes.
+/// D-25: a hub that stops after the stable copy, before it sends `latest.json`, leaves the job
+/// held; once the hold ends, the next sweep runs every step again and publishes.
 #[sqlx::test(migrations = "./migrations")]
 async fn d_25_a_publisher_stopped_between_copy_and_feed_is_taken_over(pool: PgPool) {
     let publishing = std::sync::Arc::new(Publishing::start(&pool, true).await);
     let (held, _) = uploaded_linux(&publishing, "0.1.12").await;
     publishing
         .fake
-        .with(|store| store.hang = Some(LINUX_FEED.to_owned()));
+        .with(|store| store.hang_answer = Some(LINUX_STABLE.to_owned()));
     let running = {
         let publishing = publishing.clone();
         tokio::spawn(async move { publishing.sweep(ready()).await })
@@ -141,7 +141,7 @@ async fn d_25_a_publisher_stopped_between_copy_and_feed_is_taken_over(pool: PgPo
     running.abort();
     assert!(publishing.fake.object(LINUX_FEED).is_none());
     assert_eq!(publishing.job(&held).await.0, "uploading");
-    publishing.fake.with(|store| store.hang = None);
+    publishing.fake.with(|store| store.hang_answer = None);
     assert_eq!(publishing.sweep(ready() + TimeDelta::minutes(5)).await, 0);
     assert_eq!(publishing.sweep(ready() + TimeDelta::minutes(11)).await, 1);
     assert_eq!(publishing.job(&held).await.0, "published");

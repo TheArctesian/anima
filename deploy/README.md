@@ -273,6 +273,10 @@ step (VPS-005): agents do not create the R2 token or change `deploy/.env` on the
   answers 200 for it, before it writes `latest.json`, so the `releases.anima.ing` custom domain must
   serve the bucket first. It starts that check about 17 minutes after the upload: a builder's upload
   URLs live 15 minutes, and the hub waits 2 more for clock skew (D-28).
+- **The hub host must keep time with NTP.** If the hub's clock runs more than 2 minutes ahead of
+  R2's, a builder's upload URL still works while the hub publishes. The hub reads the checked files'
+  `ETag`s again after it writes the feed and records a warning event ("... changed in the release
+  bucket after the hub checked it") when one changed; check the clock and release the version again.
 - **A hub with publishing off fails the jobs already handed to it.** If you unset
   `ANIMA_RELEASES_ENDPOINT` while a job waits to be published, that job fails with "Publishing is off
   on this hub"; release that version again once publishing is back.
