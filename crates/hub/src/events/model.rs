@@ -169,6 +169,8 @@ pub enum AuditAction {
     Wake,
     /// A queued build job the operator stopped (BLD-008).
     Cancel,
+    /// A test notification sent through a channel (NOT-004).
+    Send,
 }
 
 impl AuditAction {
@@ -192,6 +194,7 @@ impl AuditAction {
             Self::Download => "download",
             Self::Wake => "wake",
             Self::Cancel => "cancel",
+            Self::Send => "send",
         }
     }
 }

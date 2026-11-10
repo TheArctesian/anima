@@ -1,10 +1,10 @@
-//! HTTP egress: https only, checked address only, no second lookup, no redirect, TLS verified
-//! for the host name, and at most 4 KiB of the reply read (P3-003, D-17, CR-14).
+//! HTTP egress: https only, checked address only, no second lookup, no redirect, and TLS
+//! verified for the host name (P3-003, D-17, CR-14). How the reply is read is in `replies`.
 
 use std::net::SocketAddr;
 
 use reqwest::{
-    Url,
+    Method, Url,
     header::{HeaderMap, HeaderValue},
 };
 
@@ -13,17 +13,14 @@ use super::{
     servers::{Behaviour, Server, certificate, serve},
 };
 use crate::{
-    notifications::egress::{
-        Egress, SendError,
-        http::{REPLY_CAP, classify, discard_reply},
-    },
+    notifications::egress::{Egress, HttpRequest, SendError, http::classify},
     targets::{AddressPolicy, TargetError},
 };
 
 const NO_CONTENT: &[u8] = b"HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n";
 const BODY: &[u8] = b"{\"text\":\"web is down\"}";
 
-fn url(text: &str) -> Url {
+pub(super) fn url(text: &str) -> Url {
     Url::parse(text).unwrap()
 }
 
@@ -37,8 +34,17 @@ fn headers() -> HeaderMap {
     headers
 }
 
-async fn post(egress: &Egress, target: &str) -> Result<(), SendError> {
-    egress.post(&url(target), headers(), BODY.to_vec()).await
+fn request(method: Method, target: Url) -> HttpRequest {
+    HttpRequest {
+        method,
+        url: target,
+        headers: headers(),
+        body: BODY.to_vec(),
+    }
+}
+
+pub(super) async fn post(egress: &Egress, target: &str) -> Result<(), SendError> {
+    egress.send_http(request(Method::POST, url(target))).await
 }
 
 /// A TLS server for `name` that answers `reply`, and an egress that trusts its certificate.
@@ -120,14 +126,16 @@ async fn d_17_a_root_the_hub_cannot_read_is_a_setup_failure_with_no_connection()
 }
 
 #[tokio::test]
-async fn d_17_a_server_that_never_answers_ends_at_the_time_limit() {
-    let server = serve(Behaviour::Silent).await;
+async fn not_002_a_put_is_sent_as_a_put() {
+    let (server, egress) = tls_server("localhost", NO_CONTENT).await;
+    let target = url(&format!("https://localhost:{}/hook", server.port));
 
-    let sent = post(&local(), &format!("https://localhost:{}/", server.port)).await;
+    let sent = egress.send_http(request(Method::PUT, target)).await;
 
-    assert_eq!(sent, Err(SendError::TimedOut));
+    assert_eq!(sent, Ok(()));
     server.settle().await;
-    assert_eq!(server.connections(), 1);
+    assert_eq!(server.lines(), ["PUT /hook HTTP/1.1"]);
+    assert_eq!(server.bodies(), [BODY]);
 }
 
 #[tokio::test]
@@ -272,41 +280,4 @@ async fn d_17_a_trusted_server_sees_the_host_name_as_sni() {
     server.settle().await;
     assert_eq!(server.server_names(), ["localhost"]);
     assert_eq!(server.lines(), ["POST /hook HTTP/1.1"]);
-}
-
-#[tokio::test]
-async fn d_17_an_endless_reply_is_read_only_to_the_cap() {
-    let server = serve(Behaviour::Endless(None)).await;
-    let target: SocketAddr = ([127, 0, 0, 1], server.port).into();
-    let client = local().pinned_client(Some("localhost"), &[target]).unwrap();
-    let mut response = client
-        .post(url(&format!("http://localhost:{}/", server.port)))
-        .send()
-        .await
-        .unwrap();
-
-    let read = discard_reply(&mut response).await;
-
-    // The body never ends, so the read stopped at the cap, within the one chunk that
-    // crossed it.
-    assert!(read >= REPLY_CAP, "read {read}");
-    assert!(read < 1024 * 1024, "read {read}");
-}
-
-#[tokio::test]
-async fn d_17_an_endless_reply_ends_the_send_and_closes_the_connection() {
-    let (der, acceptor) = certificate("localhost");
-    let server = serve(Behaviour::Endless(Some(acceptor))).await;
-
-    let sent = post(
-        &local().trusting(der),
-        &format!("https://localhost:{}/", server.port),
-    )
-    .await;
-
-    assert_eq!(sent, Ok(()));
-    server.settle().await;
-    // Read to the time limit, loopback would carry gigabytes; the socket buffers hold a few
-    // megabytes once the client stops reading and closes.
-    assert!(server.written() < 64 * 1024 * 1024, "{}", server.written());
 }

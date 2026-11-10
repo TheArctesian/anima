@@ -7,12 +7,16 @@
 //! what it could not read.
 
 mod check;
+mod deliveries;
 mod delivery;
 mod enums;
 mod form;
 mod input;
 mod node;
 mod settings;
+mod test_send;
+#[cfg(test)]
+mod tests;
 mod trail;
 mod write;
 
@@ -22,6 +26,8 @@ pub use self::delivery::{LastDeliveries, last_delivery_loader};
 
 use self::{
     check::CheckInput,
+    deliveries::DeliveryConnection,
+    delivery::DeliveryNode,
     input::{ChannelShape, Opaque},
     node::ChannelNode,
     settings::SettingsInput,
@@ -77,6 +83,23 @@ impl Query {
     async fn notification_settings(&self, ctx: &Context<'_>) -> Result<InstallationSettings> {
         settings::read(ctx).await
     }
+
+    /// The delivery log, newest first; of one channel when `channelId` is given (NOT-004).
+    /// `first` is 1 to 200; `after` is the `endCursor` of the page before.
+    #[graphql(guard = "Authenticated")]
+    #[expect(
+        clippy::too_many_arguments,
+        reason = "K1 fixes the argument list of Query.deliveries"
+    )]
+    async fn deliveries(
+        &self,
+        ctx: &Context<'_>,
+        channel_id: Option<ID>,
+        #[graphql(default_with = "Some(deliveries::DEFAULT_FIRST)")] first: Option<i32>,
+        after: Option<String>,
+    ) -> Result<DeliveryConnection> {
+        deliveries::resolve(ctx, channel_id.as_ref(), first, after.as_deref()).await
+    }
 }
 
 #[derive(Default)]
@@ -107,6 +130,13 @@ impl Mutation {
     #[graphql(guard = "Authenticated")]
     async fn delete_notification_channel(&self, ctx: &Context<'_>, id: ID) -> Result<ID> {
         write::delete(ctx, &id).await
+    }
+
+    /// Sends at once and waits at most 8 seconds (NOT-004). A failed send is answered as a
+    /// delivery with its reason.
+    #[graphql(guard = "Authenticated")]
+    async fn send_test_notification(&self, ctx: &Context<'_>, id: ID) -> Result<DeliveryNode> {
+        test_send::resolve(ctx, &id).await
     }
 
     /// Replaces the check's channels and its resend setting (NOT-003, NOT-005).

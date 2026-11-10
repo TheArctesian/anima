@@ -59,6 +59,25 @@ pub(in crate::notifications) async fn check_channels(
     Ok(by_check)
 }
 
+/// Whether `check` still exists and no longer notifies `channel`: the operator turned the
+/// channel off for the check after a notification was queued. A check that is gone has no
+/// state row (its foreign key cascades), so this is false for it and its rows still go out.
+pub(in crate::notifications) async fn channel_turned_off(
+    db: impl PgExecutor<'_>,
+    check: CheckId,
+    channel: ChannelId,
+) -> Result<bool, Error> {
+    Ok(sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM notifications.check_state WHERE check_id = $1) \
+           AND NOT EXISTS (SELECT 1 FROM notifications.check_channels \
+                           WHERE check_id = $1 AND channel_id = $2)",
+    )
+    .bind(check)
+    .bind(channel)
+    .fetch_one(db)
+    .await?)
+}
+
 /// The settings of each of `checks`; a check with no row has no entry (the default applies).
 pub(in crate::notifications) async fn check_settings(
     db: impl PgExecutor<'_>,
