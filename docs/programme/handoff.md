@@ -1,7 +1,7 @@
-# Programme handoff — 2026-11-08
+# Programme handoff — 2026-11-09
 
 The programme orchestrator stopped at the operator's usage limit. This file is the state at the stop.
-Read it first, then the rulings listed in section 5 and R-093 to R-101 in `programme.md`.
+Read it first, then the rulings listed in section 5 and R-093 to R-106, CR-17 to CR-19 in `programme.md`.
 
 ## 1. Where things are
 
@@ -9,8 +9,8 @@ Read it first, then the rulings listed in section 5 and R-093 to R-101 in `progr
   2026-11-08). Gates: `CARGO_TARGET_DIR=$PWD/target CARGO_INCREMENTAL=0 env -u DATABASE_URL
   BASE_REF=04ab9b61 bun run gates` (R-101; 12 gates). Client-only changes run gates 4–12 (R-068).
   PATH needs nvm Node 22 and `/usr/lib/postgresql/17/bin`.
-- **Last fully gated commit:** `4d4242fa` (WP-43 T3 merge, 12/12). `c42b17c2` (K1 bounds doc
-  strings) passed gates 4–12 and the hub contract test.
+- **Last fully gated commit:** `2821cc2d` (WP-46 package log, gates 4–12). The last Rust merge, `e12da074` (R-102
+  pair), passed all 12 gates after the flake procedure.
 - **R-101:** every gate and review run uses its own `CARGO_TARGET_DIR` and `CARGO_INCREMENTAL=0`; delete
   the target folder when the task is accepted. A full disk shows up as sqlx test-database failures or a
   linker SIGBUS. About 116 GB free on 2026-11-09.
@@ -22,34 +22,39 @@ Read it first, then the rulings listed in section 5 and R-093 to R-101 in `progr
 | Package | State |
 | --- | --- |
 | WP-40, WP-41, WP-42, WP-52 | Done. |
-| WP-44 web client | Complete except its rebase onto WP-43's last tasks; parked. |
-| WP-46 checks | All tasks merged (T4 domain expiry `43babf5e`). Final package review running. |
-| WP-43 access | T1, T2 and T3 api-keys (`4d4242fa`) merged. |
-| WP-45 notifications | T1, T2, T3 channels (`92091f20`), T4 templates (`89ec75b1`), T5 merged. |
-| WP-47 session sharing | T1a devices (`6eb66ca6`), T1b join-record (`52f87d1f`), T3 shares (`d398a8f1`) merged. |
-| WP-50 settings | T1–T13 merged (last: T8 `6d0e1822`, T9 `4088bccf`, T12 `f4fa5abc`, T11 `5e660958`). Close-out running. |
-| WP-51 parsers | T1, T2, T3 gpu-discovery (`22284904`) merged. |
-| WP-54 agent | T2 points merged (`595c624c`; K8 frozen). |
+| WP-44 web client | Complete; `/shared` is already a bare route on phase-3. Its branch has nothing beyond phase-3. |
+| WP-46 checks | Done. Last merges: package fixes `a28410c4`, R-102 domain retries and hourly floor `53f0a031`, log `2821cc2d`. |
+| WP-50 settings | Done. Last merges: check-row `5fbebf60`, log `0cbc06d4`, R-102 client `e12da074`. |
+| WP-51 parsers | Done. T4 `a67ae69e`, vendor retry `4080416c`, log `8f44adc3`. |
+| WP-43 access | T1–T3, T4 bearer `2446f367` (router assembly now in lib.rs `all_routes`), T5 rotation `4ee029fe` merged. |
+| WP-45 notifications | T1–T5 merged. |
+| WP-47 session sharing | T1a, T1b, T3 merged. |
+| WP-54 agent | T2, T3a token `839b827f`, T4 binary `ef93c13d`, T5 Apple GPU `61320129`, T7 VPN policy `176cb4b1` merged. |
 
 ## 3. Work in progress (2026-11-09)
 
-The WP-43, WP-45 and WP-54 orchestrators were restarted as new agents (operator OK); WP-46, WP-47,
-WP-50 and WP-51 were resumed. Each package log on its `claude/wp-NN-*` branch is the detail.
+Six package orchestrators are running (R-066 allows seven). Each package log on its `claude/wp-NN-*` branch has the detail.
 
 | Package | State | Next |
 | --- | --- | --- |
-| WP-43 | T4 bearer (`wp/43-access/bearer`), T5 rotation, T6 throttle (stacked on T3; CR-16 b). | T4 must move router assembly out of `serve()` (`main.rs` 60/60). |
-| WP-45 | T6 dispatcher (`wp/45-notifications/dispatcher` f222ab84): reviews restarted, rebase onto 89ec75b1. | T7: checks/ edits with WP-46, `Check.notifications`. |
-| WP-46 | Final package review; also checks WP-50's domain-rows against the T4 K1 shape. | Package done after the review. |
-| WP-47 | T2 limit from 6eb66ca6. | T4 needs CR-16 b from WP-43 T6; then T5, T6. Q-5 ruled: keep the K4 §4 owner relay (forward `msg`). |
-| WP-50 | Final review asked for fixes: `wp/50-settings/domain-rows` (R-094 rows + M2, ruled in scope) and `wp/50-settings/package-close` (M1 focus, S3–S7, `/settings` CLS handoff). | Gate both, review round 2, interface pass, report for merge, package log onto phase-3. |
-| WP-51 | T4 read side (MET-008, MET-009), on 22284904. | `store/chart.rs` mean overflow. |
-| WP-54 | T3a token (`wp/54-agent/token` 708db9ec) to gates; T4 binary (`wp/54-agent/binary` 2a1cc5d4) after its handoff reorder. | `SeriesKey::of` GPU index; cap pushed GPU temperature/power. |
+| WP-43 | T6 throttle (CR-16 b), with the `log_007` needle fix. | Package close. |
+| WP-45 | T6 dispatcher passed review round 2, including R-103; delta check and gates are next. T7 checks edits (`271d51c5`) is in review, and WP-46 approved its off-list lines. | T6 merges as one merge commit. T7 rebases after it. |
+| WP-47 | T2 limit in security review. Asked to fix the three `ra_031` tests in `waking.rs` on their own branch (they fail merge gates under load). | T4, T5, T6. |
+| WP-48 | Recording: plan at `claude/wp-48-recording`. T1 playback proof, T2 format and T3 asciicast are building. | T5a, T7 and T8 wait for WP-47 T2, T5 and T6 (CR-19). |
+| WP-49 | Client sharing, players and watch: plan at `claude/wp-49-sharing`. T1 share, T2 watch-join and T5 asciicast are building (R-106). | Recording UI waits for WP-48 T5b and T6. |
+| WP-54 | T3b ingest (`e9246f96`, 12/12) is in review. T6a install is in fix round 1 (D-10 accepted). | T8: final security review of the whole package. |
 
-**Not started:** WP-48 (can start now that WP-47 T1a is in), WP-49, WP-53. At most 7 package
-orchestrators (R-066); all 7 slots are in use.
+**Not started:** WP-53 (integration and acceptance) starts when the other packages are near done.
 
-The T1b recording scripts and captures are in `.claude/worktrees/wp-47-t1b-evidence/`.
+**Load flakes seen in merge gates this stretch, all passing alone:**
+- the three `ra_031` tests, with WP-47;
+- `access::listen` sec_001 large-body tests;
+- `k4_8_5`;
+- `met_012`, fixed in WP-54 T3b;
+- `d11_gpu`;
+- `totp::log_007`, which is a real needle bug: WP-43 T6 fixes it.
+
+The issue #1 items not yet posted are listed in the orchestrator's scratchpad, `issue1-pending.md`. If the scratchpad is lost, rebuild the list from the package logs' Outcome sections.
 
 ## 4. Waiting on the operator
 
@@ -135,8 +140,10 @@ Also read `docs/programme/phase-3-plan.md`, `phase-3-contracts.md` and the packa
   `keep()` signal-read mutant (N2), consider
   `Shares::take` and a drop guard for the panic gap, and wrap the long line in `keeper.rs`.
 - COULD-3: three copies of `random_token` (sessions/start.rs, sessions/files/opening.rs, sessions/share/opening.rs); needs an owner.
-- `crates/hub/src/main.rs` `serve()` is at the 60-line limit: WP-43 T4 (or the next wiring change)
-  moves router assembly into its own function (at most 4 params).
+- New HTTP routes go in `crates/hub/src/lib.rs` `beside_graphql`, not in `main.rs` (WP-43 T4).
+- Operator steps added this stretch:
+  - Apply the Headscale agent policy (R-105, VPS-005).
+  - Upload the agent binaries to R2 for the D-10 install command.
 - Background agents still running at the stop (WP-43 T4 security review, WP-45 T6 reviews, WP-54 T3a
   and T4 builds) may have pushed commits to their branches after this file:
   check each branch tip against section 3 before merging.
