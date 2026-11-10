@@ -10,6 +10,10 @@ use super::trust;
 use crate::config::private_file;
 use crate::token_store::Credential;
 
+/// The file type bits of an `st_mode`, and their value for a regular file.
+const REGULAR_MASK: u32 = 0o170_000;
+const REGULAR: u32 = 0o100_000;
+
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 pub enum NotReady {
     #[error(
@@ -35,7 +39,7 @@ pub enum NotReady {
     )]
     SystemNotEnrolled { program: String },
     #[error(
-        "{SYSTEM_HOME}/token must be mode 0600 and owned by the {ACCOUNT} account, which otherwise cannot read it: as root run `chown {ACCOUNT}:{ACCOUNT} {SYSTEM_HOME}/token` and `chmod 0600 {SYSTEM_HOME}/token`"
+        "{SYSTEM_HOME}/token must be a regular file (not a link or a pipe), mode 0600, owned by the {ACCOUNT} account, which otherwise cannot read it: as root run `chown {ACCOUNT}:{ACCOUNT} {SYSTEM_HOME}/token` and `chmod 0600 {SYSTEM_HOME}/token`"
     )]
     TokenOwner,
     #[error(
@@ -80,8 +84,9 @@ pub(super) fn token_usable(
 }
 
 /// The system unit's agent runs as [`ACCOUNT`]: it must exist in `passwd` (the text of
-/// `/etc/passwd`), and its token file (`token`: its mode and owner, `None` when there is none)
-/// must be the account's own 0600 file, or the agent cannot read it. Only then does the caller
+/// `/etc/passwd`), and its token file (`token`: its `st_mode`, file type bits included, and its
+/// owner; `None` when there is none) must be the account's own regular 0600 file, or the agent
+/// cannot read it. Only then does the caller
 /// read the token, as root, for [`system_token`]. `program` is printed in the enrol command.
 ///
 /// # Errors
@@ -95,7 +100,7 @@ pub(super) fn system(
     let (mode, owner) = token.ok_or_else(|| NotReady::SystemNotEnrolled {
         program: program.to_owned(),
     })?;
-    if private_file::exposed(mode, owner, account) {
+    if mode & REGULAR_MASK != REGULAR || private_file::exposed(mode, owner, account) {
         return Err(NotReady::TokenOwner);
     }
     Ok(())
@@ -188,6 +193,13 @@ mod tests {
             Err(NotReady::TokenOwner)
         );
         assert_eq!(system(PASSWD, Some((0o100_600, 998)), program), Ok(()));
+        for other in [0o010_600, 0o120_600, 0o040_600] {
+            assert_eq!(
+                system(PASSWD, Some((other, 998)), program),
+                Err(NotReady::TokenOwner),
+                "a pipe, a link or a folder is no token: {other:o}"
+            );
+        }
     }
 
     #[test]

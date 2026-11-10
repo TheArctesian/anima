@@ -1,7 +1,7 @@
 //! Decides which file the unit goes to and which commands start it (MET-019, D-10): pure, from
 //! the platform, the user and the environment.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::Duration;
 
 use super::render::Unit;
@@ -124,24 +124,6 @@ pub(super) fn plan(
     }
 }
 
-/// The folders a unit's sandbox hides from the agent, so a binary under one never starts:
-/// `ProtectHome=yes` in the system unit, `PrivateTmp=yes` in both systemd units.
-const fn hidden_roots(unit: Unit) -> &'static [&'static str] {
-    match unit {
-        Unit::SystemdSystem => &["/home", "/root", "/run/user", "/tmp", "/var/tmp"],
-        Unit::SystemdUser => &["/tmp", "/var/tmp"],
-        Unit::LaunchAgent => &[],
-    }
-}
-
-/// The folder of [`hidden_roots`] that `program` (a real path) is under, if any.
-pub(super) fn hidden_root(unit: Unit, program: &Path) -> Option<&'static str> {
-    hidden_roots(unit)
-        .iter()
-        .copied()
-        .find(|root| program.starts_with(root))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -205,35 +187,6 @@ mod tests {
             PathBuf::from("/home/ada/.config/systemd/user/anima-agent.service")
         );
         assert_eq!(plan.home, PathBuf::from("/home/ada/.config/anima-agent"));
-    }
-
-    #[test]
-    fn met_019_a_binary_the_unit_s_sandbox_hides_is_found() {
-        let at = |unit, path: &str| hidden_root(unit, Path::new(path));
-        assert_eq!(
-            at(Unit::SystemdSystem, "/home/ada/.local/bin/anima-agent"),
-            Some("/home")
-        );
-        assert_eq!(at(Unit::SystemdSystem, "/root/anima-agent"), Some("/root"));
-        assert_eq!(
-            at(Unit::SystemdSystem, "/run/user/1000/anima-agent"),
-            Some("/run/user")
-        );
-        assert_eq!(at(Unit::SystemdSystem, "/usr/local/bin/anima-agent"), None);
-        assert_eq!(
-            at(Unit::SystemdSystem, "/homestead/anima-agent"),
-            None,
-            "whole parts"
-        );
-        for unit in [Unit::SystemdSystem, Unit::SystemdUser] {
-            assert_eq!(at(unit, "/tmp/x/anima-agent"), Some("/tmp"));
-            assert_eq!(at(unit, "/var/tmp/anima-agent"), Some("/var/tmp"));
-        }
-        assert_eq!(
-            at(Unit::SystemdUser, "/home/ada/.local/bin/anima-agent"),
-            None
-        );
-        assert_eq!(at(Unit::LaunchAgent, "/tmp/anima-agent"), None);
     }
 
     #[test]

@@ -3,12 +3,15 @@
 
 use super::plan::Target;
 
-/// A file's mode, owner and group, as `stat` gives them.
+/// A file's mode, owner and group, as `stat` gives them, and whether it has a POSIX access ACL.
+/// With an ACL the group bits of the mode are the ACL's mask, which named users and groups get
+/// too. macOS ACLs (`chmod +a`) do not show in the mode at all and are not read.
 #[derive(Clone, Copy, Debug)]
 pub(super) struct Stat {
     pub mode: u32,
     pub owner: u32,
     pub group: u32,
+    pub acl: bool,
 }
 
 /// Who installs, and which unit.
@@ -27,32 +30,50 @@ pub(super) struct Account<'a> {
     pub gid: u32,
 }
 
-/// The accounts in `passwd` (the text of `/etc/passwd`); a line that does not read is skipped.
-pub(super) fn accounts(passwd: &str) -> impl Iterator<Item = Account<'_>> {
-    passwd.lines().filter_map(|line| {
-        let mut fields = line.split(':');
-        let name = fields.next()?;
-        let uid = fields.nth(1)?.parse().ok()?;
-        let gid = fields.next()?.parse().ok()?;
-        Some(Account { name, uid, gid })
-    })
+/// The account on one `/etc/passwd` line; `None` when it does not read. The IDs are trimmed.
+fn account(line: &str) -> Option<Account<'_>> {
+    let mut fields = line.split(':');
+    let name = fields.next()?;
+    let uid = fields.nth(1)?.trim().parse().ok()?;
+    let gid = fields.next()?.trim().parse().ok()?;
+    Some(Account { name, uid, gid })
 }
 
-/// The group only user `uid` is in, from `passwd` and `group` (the text of `/etc/group`): the
-/// user's primary group, named as the user, listing no other member, and no other account's
-/// primary group. `umask 002` homes rely on such a group; any other group may hold other users.
-pub(super) fn private_group(uid: u32, passwd: &str, group: &str) -> Option<u32> {
+/// The accounts in `passwd` (the text of `/etc/passwd`); a line that does not read is skipped.
+pub(super) fn accounts(passwd: &str) -> impl Iterator<Item = Account<'_>> {
+    passwd.lines().filter_map(account)
+}
+
+/// The group only user `uid` is in, from `passwd` and `group` (the text of `/etc/group`;
+/// `None` when it cannot be read): the user's primary group, named as the user, listing no
+/// other member, and no other account's primary group. `umask 002` homes rely on such a group;
+/// any other group may hold other users.
+///
+/// Only the files are seen, not other NSS sources (LDAP, sssd), so an account or a group
+/// member that lives elsewhere is unseen: this fails closed for an account missing from the
+/// files (no private group), and any line that does not read means no private group either.
+pub(super) fn private_group(uid: u32, passwd: &str, group: Option<&str>) -> Option<u32> {
+    let group = group?;
+    if passwd
+        .lines()
+        .any(|line| !line.is_empty() && account(line).is_none())
+    {
+        return None;
+    }
     let user = accounts(passwd).find(|account| account.uid == uid)?;
     if accounts(passwd).any(|account| account.gid == user.gid && account.uid != uid) {
         return None;
     }
     let mut found = false;
-    for line in group.lines() {
+    for line in group.lines().filter(|line| !line.is_empty()) {
         let mut fields = line.split(':');
         let (Some(name), Some(gid), members) = (fields.next(), fields.nth(1), fields.next()) else {
-            continue;
+            return None;
         };
-        if gid.parse() != Ok(user.gid) {
+        let Ok(gid) = gid.trim().parse::<u32>() else {
+            return None;
+        };
+        if gid != user.gid {
             continue;
         }
         let only_user = members
@@ -67,10 +88,11 @@ pub(super) fn private_group(uid: u32, passwd: &str, group: &str) -> Option<u32> 
     found.then_some(user.gid)
 }
 
-/// The group may write to what `stat` describes: it does not, or it is owned by the user and
-/// its group is the user's private one.
+/// The group may write to what `stat` describes: it does not, or it is owned by the user, its
+/// group is the user's private one, and no ACL lets anyone else in through the mask.
 fn group_write_safe(stat: Stat, by: Installer) -> bool {
-    stat.mode & 0o020 == 0 || (stat.owner == by.uid && by.private_group == Some(stat.group))
+    stat.mode & 0o020 == 0
+        || (stat.owner == by.uid && by.private_group == Some(stat.group) && !stat.acl)
 }
 
 /// Whether a folder on the binary's or the unit's path may stay there. For the user unit:
@@ -111,7 +133,12 @@ mod tests {
         "root:x:0:\nadm:x:4:ada,bob\nada:x:1000:\nbob:x:1001:bob,ada\nusers:x:100:\n";
 
     const fn stat(mode: u32, owner: u32, group: u32) -> Stat {
-        Stat { mode, owner, group }
+        Stat {
+            mode,
+            owner,
+            group,
+            acl: false,
+        }
     }
 
     const ADA: Installer = Installer {
@@ -122,32 +149,94 @@ mod tests {
 
     #[test]
     fn met_019_a_private_group_is_the_user_s_own_named_and_shared_with_no_one() {
-        assert_eq!(private_group(1000, PASSWD, GROUP), Some(1000));
-        assert_eq!(private_group(1001, PASSWD, GROUP), None, "lists ada too");
-        assert_eq!(private_group(1002, PASSWD, GROUP), None, "users is shared");
-        assert_eq!(private_group(4242, PASSWD, GROUP), None, "no account");
+        assert_eq!(private_group(1000, PASSWD, Some(GROUP)), Some(1000));
         assert_eq!(
-            private_group(1000, PASSWD, "root:x:0:\n"),
+            private_group(1001, PASSWD, Some(GROUP)),
+            None,
+            "lists ada too"
+        );
+        assert_eq!(
+            private_group(1002, PASSWD, Some(GROUP)),
+            None,
+            "users is shared"
+        );
+        assert_eq!(private_group(4242, PASSWD, Some(GROUP)), None, "no account");
+        assert_eq!(
+            private_group(1000, PASSWD, Some("root:x:0:\n")),
             None,
             "no group line"
         );
         let renamed = GROUP.replace("ada:x:1000:", "devs:x:1000:");
         assert_eq!(
-            private_group(1000, PASSWD, &renamed),
+            private_group(1000, PASSWD, Some(&renamed)),
             None,
             "not named as the user"
         );
         let shared = format!("{PASSWD}mallory:x:1003:1000::/:/bin/sh\n");
         assert_eq!(
-            private_group(1000, &shared, GROUP),
+            private_group(1000, &shared, Some(GROUP)),
             None,
             "another account's primary"
         );
         let twice = format!("{GROUP}staff:x:1000:bob\n");
         assert_eq!(
-            private_group(1000, PASSWD, &twice),
+            private_group(1000, PASSWD, Some(&twice)),
             None,
             "another name, same gid"
+        );
+    }
+
+    #[test]
+    fn met_019_a_private_group_is_none_when_a_line_does_not_read_or_group_cannot_be_read() {
+        assert_eq!(private_group(1000, PASSWD, None), None, "no /etc/group");
+        let spaced = GROUP.replace("ada:x:1000:", "ada:x: 1000 :");
+        assert_eq!(
+            private_group(1000, PASSWD, Some(&spaced)),
+            Some(1000),
+            "trimmed"
+        );
+        let odd = format!("{GROUP}mallory:x:10x0:ada,mallory\n");
+        assert_eq!(
+            private_group(1000, PASSWD, Some(&odd)),
+            None,
+            "a gid that does not read"
+        );
+        let short = format!("{GROUP}mallory\n");
+        assert_eq!(
+            private_group(1000, PASSWD, Some(&short)),
+            None,
+            "a group line too short"
+        );
+        let broken = format!("{PASSWD}mallory:x:1003:1000x::/:/bin/sh\n");
+        assert_eq!(
+            private_group(1000, &broken, Some(GROUP)),
+            None,
+            "a passwd line too odd"
+        );
+    }
+
+    #[test]
+    fn met_019_an_acl_makes_group_write_untrusted_even_in_the_private_group() {
+        let with_acl = Stat {
+            acl: true,
+            ..stat(0o040_775, 1000, 1000)
+        };
+        assert!(
+            !folder_trusted(with_acl, ADA),
+            "setfacl -m u:nobody:rwx shows as 0775"
+        );
+        let binary = Stat {
+            acl: true,
+            ..stat(0o100_775, 1000, 1000)
+        };
+        assert!(!binary_trusted(binary, ADA));
+        let masked = Stat {
+            acl: true,
+            ..stat(0o040_755, 1000, 1000)
+        };
+        assert!(
+            folder_trusted(masked, ADA),
+            "a mask without write lets no one else write"
         );
     }
 

@@ -10,7 +10,10 @@ pub mod install;
 pub mod plan;
 pub mod ready;
 pub mod render;
+mod sandbox;
+pub mod session;
 pub mod step;
+pub mod token_file;
 mod trust;
 
 /// A systemd user unit: `~/.config/systemd/user/anima-agent.service`, run by the operator.

@@ -109,3 +109,30 @@ fn met_019_install_refuses_a_binary_whose_path_systemd_would_misread() {
     assert!(matches!(result, Err(InstallError::Program(_))));
     assert!(!rig.unit().exists());
 }
+
+#[test]
+fn met_019_install_refuses_a_bin_folder_another_user_may_write_through_an_acl() {
+    let rig = enrolled();
+    let bin = rig.dir.path().join("bin");
+    let Ok(status) = std::process::Command::new("setfacl")
+        .args(["-m", "u:nobody:rwx"])
+        .arg(&bin)
+        .status()
+    else {
+        eprintln!("setfacl is missing: skipped");
+        return;
+    };
+    if !status.success() {
+        eprintln!("this file system takes no ACL: skipped");
+        return;
+    }
+    let mode = fs::metadata(&bin).expect("bin").permissions().mode();
+    assert_eq!(mode & 0o070, 0o070, "the mask shows as the group bits");
+    let (result, ran) = rig.install(true);
+    assert!(matches!(
+        result.expect_err("refused"),
+        InstallError::Folder(FolderError::UntrustedFolder(folder)) if folder == bin.canonicalize().expect("path")
+    ));
+    assert!(!rig.unit().exists());
+    assert_eq!(ran.len(), 0);
+}

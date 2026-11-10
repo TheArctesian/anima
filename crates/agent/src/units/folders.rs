@@ -17,7 +17,7 @@ pub enum FolderError {
     )]
     UntrustedBinary(PathBuf),
     #[error(
-        "{} is not owned by root or this user, or other users may write to it (through its group or as others), so the agent or its unit could be swapped: move the binary or fix the folder",
+        "{} is not owned by root or this user, or other users may write to it (through its group, an ACL or as others), so the agent or its unit could be swapped. A folder its group may write, such as Debian's /usr/local/bin (root:staff 2775) or Homebrew's on macOS (you:admin 0775), is fixed with `chmod g-w` on it; otherwise move the binary",
         .0.display()
     )]
     UntrustedFolder(PathBuf),
@@ -38,7 +38,30 @@ fn stat(path: &Path) -> Result<Stat, FolderError> {
         mode: metadata.mode(),
         owner: metadata.uid(),
         group: metadata.gid(),
+        acl: has_acl(path)?,
     })
+}
+
+/// Whether `path` carries a POSIX access ACL (the `system.posix_acl_access` attribute). A file
+/// system without ACLs has none.
+#[cfg(target_os = "linux")]
+fn has_acl(path: &Path) -> Result<bool, FolderError> {
+    use rustix::io::Errno;
+    match rustix::fs::getxattr_query(path, "system.posix_acl_access") {
+        Ok(_) => Ok(true),
+        Err(Errno::NODATA | Errno::NOTSUP) => Ok(false),
+        Err(error) => Err(io_error(path)(error.into())),
+    }
+}
+
+/// macOS ACLs (`chmod +a`) do not show in the mode and are not read here.
+#[cfg(not(target_os = "linux"))]
+#[expect(
+    clippy::unnecessary_wraps,
+    reason = "the same signature as the Linux reader"
+)]
+fn has_acl(_path: &Path) -> Result<bool, FolderError> {
+    Ok(false)
 }
 
 /// The binary (by its real path) and every folder above it.
@@ -90,4 +113,24 @@ pub(super) fn make_folder(dir: &Path, by: Installer) -> Result<PathBuf, FolderEr
         check_folders(&real, by)?;
     }
     Ok(real)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn met_019_the_untrusted_folder_message_names_the_group_writable_cases_and_the_fix() {
+        let text = FolderError::UntrustedFolder(PathBuf::from("/usr/local/bin")).to_string();
+        assert!(
+            text.contains("Debian's /usr/local/bin (root:staff 2775)"),
+            "{text}"
+        );
+        assert!(
+            text.contains("Homebrew's on macOS (you:admin 0775)"),
+            "{text}"
+        );
+        assert!(text.contains("`chmod g-w`"), "{text}");
+        assert!(text.contains("an ACL"), "{text}");
+    }
 }

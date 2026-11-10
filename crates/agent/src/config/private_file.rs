@@ -11,6 +11,9 @@ use zeroize::Zeroizing;
 /// The only mode a private file has.
 const MODE: u32 = 0o600;
 
+/// The most a private file may hold: a token record or the configuration is a few hundred bytes.
+pub const LIMIT: usize = 64 * 1024;
+
 /// Whether a private file with this `mode` and `owner` is not safe to trust when the agent runs
 /// as `running`: the mode must be exactly 0600 and the owner the running user.
 #[must_use]
@@ -63,7 +66,7 @@ pub fn write(dir: &Path, name: &str, bytes: &[u8]) -> Result<(), PrivateFileErro
 /// # Errors
 /// [`PrivateFileError::Exposed`] for such a file, [`PrivateFileError::Io`] for a read failure.
 pub fn read(path: &Path) -> Result<Option<Zeroizing<Vec<u8>>>, PrivateFileError> {
-    let mut file = match File::open(path) {
+    let file = match File::open(path) {
         Ok(file) => file,
         Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(None),
         Err(error) => return Err(error.into()),
@@ -76,9 +79,24 @@ pub fn read(path: &Path) -> Result<Option<Zeroizing<Vec<u8>>>, PrivateFileError>
     ) {
         return Err(PrivateFileError::Exposed);
     }
-    let mut bytes = Zeroizing::new(Vec::new());
-    file.read_to_end(&mut bytes)?;
-    Ok(Some(bytes))
+    Ok(Some(read_limited(file, LIMIT)?))
+}
+
+/// Reads at most `limit` bytes from `reader` into one buffer that has room for `limit + 1` from
+/// the start, so it never moves and its wipe on drop covers every byte read (LOG-007).
+///
+/// # Errors
+/// [`io::ErrorKind::FileTooLarge`] when `reader` holds more than `limit` bytes; the read error.
+pub fn read_limited(reader: impl io::Read, limit: usize) -> io::Result<Zeroizing<Vec<u8>>> {
+    let mut bytes = Zeroizing::new(Vec::with_capacity(limit + 1));
+    reader.take(limit as u64 + 1).read_to_end(&mut bytes)?;
+    if bytes.len() > limit {
+        return Err(io::Error::new(
+            io::ErrorKind::FileTooLarge,
+            format!("more than {limit} bytes"),
+        ));
+    }
+    Ok(bytes)
 }
 
 /// The user ID of this process: the owner of a file it creates (an unnamed temporary file, so
@@ -93,6 +111,21 @@ pub fn running_user() -> io::Result<u32> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn met_019_a_private_file_is_read_into_one_buffer_that_never_moves() {
+        let bytes = read_limited(&b"0123456789"[..], 16).expect("read");
+        assert_eq!(&bytes[..], b"0123456789");
+        assert_eq!(
+            bytes.capacity(),
+            17,
+            "room made at the start; the buffer never grew"
+        );
+        let full = read_limited(&[7_u8; 16][..], 16).expect("exactly the limit");
+        assert_eq!((full.len(), full.capacity()), (16, 17));
+        let over = read_limited(&[7_u8; 17][..], 16).expect_err("one byte too many");
+        assert_eq!(over.kind(), io::ErrorKind::FileTooLarge);
+    }
 
     #[test]
     fn met_013_a_file_is_exposed_unless_it_is_0600_and_the_runner_s() {

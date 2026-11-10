@@ -1,21 +1,24 @@
 //! Writes the unit file and starts it (MET-019, D-10): the only I/O of `anima-agent install`.
 //! The decisions are in [`super::plan`], [`super::ready`], [`super::render`],
-//! [`super::step`] and [`super::trust`]; the folders are made and checked in
-//! [`super::folders`].
+//! [`super::sandbox`] and [`super::trust`]; the folders are made and checked in
+//! [`super::folders`], the system token in [`super::token_file`], the session bus found in
+//! [`super::session`] and the commands run by [`super::step`].
 
 use std::fs::{self, File};
-use std::io::{self, Read as _, Write as _};
-use std::os::unix::fs::{MetadataExt as _, PermissionsExt as _};
+use std::io::{self, Write as _};
+use std::os::unix::fs::PermissionsExt as _;
 use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Utc};
-use zeroize::Zeroizing;
 
 use super::folders::{self, FolderError};
 use super::plan::{self, Plan, PlanError, Target};
 use super::ready::{self, NotReady};
 use super::render::{self, Program, RenderError, Unit};
-use super::step::{self, NoSessionBus, Step};
+use super::sandbox;
+use super::session::{self, NoSessionBus};
+use super::step::Step;
+use super::token_file::{self, SystemTokenError};
 use super::trust::{self, Installer};
 use crate::config::home::Home;
 use crate::readers::Platform;
@@ -27,9 +30,6 @@ const UNIT_MODE: u32 = 0o644;
 /// Where accounts and groups are looked up.
 const PASSWD: &str = "/etc/passwd";
 const GROUP: &str = "/etc/group";
-
-/// The most of the system token file that is read: a record is a few hundred bytes.
-const RECORD_LIMIT: u64 = 64 * 1024;
 
 #[derive(Debug, thiserror::Error)]
 pub enum InstallError {
@@ -53,6 +53,8 @@ pub enum InstallError {
     NotReady(#[from] NotReady),
     #[error("{0}")]
     NoSessionBus(#[from] NoSessionBus),
+    #[error("{0}")]
+    SystemToken(#[from] SystemTokenError),
     #[error("the token store: {0}")]
     Token(#[from] TokenStoreError),
     #[error("reading {}: {source}", path.display())]
@@ -101,26 +103,29 @@ pub fn install(
 ) -> Result<PathBuf, InstallError> {
     let mut plan = plan::plan(target, host.platform, host.uid, &env)?;
     if plan.unit == Unit::SystemdUser {
-        let bus = session_bus(&env, host.uid)?;
+        let bus = session::session_bus(&env, host.uid)?;
         for step in &mut plan.steps {
             step.env.clone_from(&bus);
         }
     }
     let passwd = read_text(Path::new(PASSWD))?;
+    // An unreadable /etc/group means no private group: group write is then refused.
+    let group = fs::read_to_string(GROUP).ok();
     let by = Installer {
         target,
         uid: host.uid,
-        private_group: trust::private_group(host.uid, &passwd, &read_text(Path::new(GROUP))?),
+        private_group: trust::private_group(host.uid, &passwd, group.as_deref()),
     };
     let program = host.program.canonicalize().map_err(InstallError::Binary)?;
-    if let Some(root) = plan::hidden_root(plan.unit, &program) {
+    if let Some(root) = sandbox::hidden_root(&hidden_roots(plan.unit)?, &program) {
         return Err(InstallError::Hidden { program, root });
     }
     folders::check_binary(&program, by)?;
     let program = Program::parse(&program)?;
     let text = render::render(plan.unit, &program)?;
     if plan.unit == Unit::SystemdSystem {
-        check_system_ready(&plan, &passwd, host.now, program.as_str())?;
+        let token = Home::at(plan.home.clone()).token_path();
+        token_file::check(&token, &passwd, host.now, program.as_str())?;
     } else {
         check_user_ready(&plan, host)?;
     }
@@ -131,28 +136,30 @@ pub fn install(
     Ok(plan.file)
 }
 
+/// The folders `unit`'s sandbox hides, each with its real path (`None` when it does not exist).
+fn hidden_roots(unit: Unit) -> Result<Vec<(&'static str, Option<PathBuf>)>, InstallError> {
+    let mut roots = Vec::new();
+    for root in sandbox::hidden_roots(unit) {
+        let real = match Path::new(root).canonicalize() {
+            Ok(real) => Some(real),
+            Err(error) if error.kind() == io::ErrorKind::NotFound => None,
+            Err(source) => {
+                return Err(InstallError::Read {
+                    path: PathBuf::from(root),
+                    source,
+                });
+            }
+        };
+        roots.push((*root, real));
+    }
+    Ok(roots)
+}
+
 fn read_text(path: &Path) -> Result<String, InstallError> {
     fs::read_to_string(path).map_err(|source| InstallError::Read {
         path: path.to_owned(),
         source,
     })
-}
-
-/// The variables `systemctl --user` reaches the user's manager through.
-fn session_bus(
-    env: impl Fn(&str) -> Option<String>,
-    uid: u32,
-) -> Result<Vec<(&'static str, String)>, NoSessionBus> {
-    let fallback = fs::metadata(step::fallback_session_folder(uid))
-        .ok()
-        .filter(fs::Metadata::is_dir)
-        .map(|folder| folder.uid());
-    let folder = step::session_folder(env("XDG_RUNTIME_DIR"), uid, fallback)?;
-    let mut vars = vec![("XDG_RUNTIME_DIR", folder)];
-    if let Some(address) = env("DBUS_SESSION_BUS_ADDRESS").filter(|a| !a.is_empty()) {
-        vars.push(("DBUS_SESSION_BUS_ADDRESS", address));
-    }
-    Ok(vars)
 }
 
 /// The user unit's agent must find a token that has not expired, in the folder this shell
@@ -163,42 +170,6 @@ fn check_user_ready(plan: &Plan, host: &Host<'_>) -> Result<(), InstallError> {
         .load()?
         .map(|credential| credential.expires_at);
     ready::token_usable(expires_at, host.now)?;
-    Ok(())
-}
-
-/// The system unit's account must exist and own its token, which must not have expired. Root
-/// reads the token itself only after its owner and mode are checked, and never shows it.
-fn check_system_ready(
-    plan: &Plan,
-    passwd: &str,
-    now: DateTime<Utc>,
-    program: &str,
-) -> Result<(), InstallError> {
-    let token = Home::at(plan.home.clone()).token_path();
-    let read = |source| InstallError::Read {
-        path: token.clone(),
-        source,
-    };
-    // A link or a pipe is no token; checked before opening, so a pipe never blocks the open.
-    let file = match fs::symlink_metadata(&token) {
-        Ok(found) if found.is_file() => Some(File::open(&token).map_err(read)?),
-        Ok(_) => None,
-        Err(error) if error.kind() == io::ErrorKind::NotFound => None,
-        Err(source) => return Err(read(source)),
-    };
-    let found = match &file {
-        Some(file) => Some(file.metadata().map_err(read)?),
-        None => None,
-    };
-    ready::system(passwd, found.as_ref().map(|m| (m.mode(), m.uid())), program)?;
-    let Some(file) = file else {
-        return Ok(());
-    };
-    let mut record = Zeroizing::new(Vec::new());
-    file.take(RECORD_LIMIT)
-        .read_to_end(&mut record)
-        .map_err(read)?;
-    ready::system_token(&record, now, program)?;
     Ok(())
 }
 
@@ -227,7 +198,7 @@ fn replace_file(file: &Path, dir: &Path, text: &str) -> Result<(), InstallError>
 }
 
 /// Runs each step in order; a failure stops the rest unless the step may fail.
-fn run_steps(
+pub(super) fn run_steps(
     steps: &[Step],
     mut run: impl FnMut(&Step) -> io::Result<bool>,
 ) -> Result<(), InstallError> {
@@ -244,4 +215,50 @@ fn run_steps(
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::units::plan::plan;
+
+    fn macos() -> Vec<Step> {
+        let env = |name: &str| (name == "HOME").then(|| "/Users/ada".to_owned());
+        plan(Target::User, Platform::Macos, 501, env)
+            .expect("a plan")
+            .steps
+    }
+
+    /// Runs the macOS steps, `bootout` and `bootstrap` answering as given; returns the
+    /// result and the verbs that ran.
+    fn run_macos(bootout: bool, bootstrap: bool) -> (Result<(), InstallError>, Vec<String>) {
+        let mut ran = Vec::new();
+        let result = run_steps(&macos(), |step| {
+            ran.push(step.args[0].clone());
+            Ok(if step.args[0] == "bootout" {
+                bootout
+            } else {
+                bootstrap
+            })
+        });
+        (result, ran)
+    }
+
+    #[test]
+    fn met_019_a_first_macos_install_whose_bootout_fails_still_bootstraps() {
+        let (result, ran) = run_macos(false, true);
+        result.expect("bootout may fail");
+        assert_eq!(ran, ["bootout", "bootstrap"]);
+    }
+
+    #[test]
+    fn met_019_a_failed_macos_bootstrap_is_an_error_naming_it() {
+        let (result, ran) = run_macos(true, false);
+        let error = result.expect_err("bootstrap must succeed");
+        assert!(
+            matches!(&error, InstallError::Step { program: "/bin/launchctl", args } if args[0] == "bootstrap"),
+            "{error}"
+        );
+        assert_eq!(ran, ["bootout", "bootstrap"]);
+    }
 }
