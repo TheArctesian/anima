@@ -36,7 +36,7 @@ fn reading_of<'a>(found: &Found, answers: &'a [(GpuVendor, Answer)]) -> Option<&
             Answer::Gpus(readings) => readings
                 .iter()
                 .find(|reading| reading.index == found.source),
-            Answer::Unknown => None,
+            Answer::Failed | Answer::Unknown => None,
         })
 }
 

@@ -137,10 +137,11 @@ pub(super) struct GpuCommand {
 }
 
 /// The GPU reads for a device running `os`, one per vendor it can have, in the order they run
-/// (spec 6.6, D-30). A missing tool or file exits non-zero, which reads as no GPU of that
-/// vendor. Windows and other systems get none (MET-005). Reading a GPU's values can wake it
-/// from runtime power saving (the driver does that for `nvidia-smi` and the `amdgpu` files);
-/// that is a side effect of the read, not a write (MET-002).
+/// (spec 6.6, D-30). A missing tool exits 127, which reads as no GPU of that vendor; another
+/// non-zero exit is a failed read, which discovery counts by the GPUs known (MET-006). Windows
+/// and other systems get none (MET-005). Reading a GPU's values can wake it from runtime power
+/// saving (the driver does that for `nvidia-smi` and the `amdgpu` files); that is a side
+/// effect of the read, not a write (MET-002).
 pub(super) fn gpu_commands(os: OperatingSystem) -> Vec<GpuCommand> {
     match os {
         OperatingSystem::Linux => vec![

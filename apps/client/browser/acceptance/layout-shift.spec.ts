@@ -7,13 +7,15 @@ import { DEVICE_IDS } from './screens';
 
 const API_DELAY_MS = 400;
 const SETTLE_MS = 1500;
-const TALL_VIEWPORT = { width: 1280, height: 5000 };
+const WIDTH = 1280;
+const FIRST_PASS_HEIGHT = 720;
 const CLS_LIMIT = 0.01;
 
 /**
  * One line per page; a page added later is one more entry. `enabled` names a field that must be usable too, for a page with
- * several late sections. `tall` gives the page a viewport as high as the whole page, since the engine reports only shifts
- * inside the viewport and a long page shifts below the fold.
+ * several late sections. `tall` gives the page a viewport exactly as high as the page (measured by a first pass), since the
+ * engine reports only shifts inside the viewport and a long page shifts below the fold; a taller viewport would dilute the
+ * score, because a shift counts its area against the viewport's.
  */
 const PAGES = [
   { name: 'the device list', path: '/devices', shown: { role: 'link', name: 'mac-studio' } },
@@ -50,16 +52,37 @@ async function slowGraphql(page: Page): Promise<void> {
   );
 }
 
-async function layoutShiftOf(page: Page, entry: { path: string; shown: Shown; enabled?: string; tall: boolean }): Promise<number> {
-  const { path, shown, enabled, tall } = entry;
-  if (tall) await page.setViewportSize(TALL_VIEWPORT);
-  await watchLayoutShift(page);
-  await slowGraphql(page);
-  await page.goto(path);
+async function settle(page: Page, entry: { shown: Shown; enabled?: string }): Promise<void> {
+  const { shown, enabled } = entry;
   await expect(page.getByRole(shown.role, { name: shown.name, exact: true })).toBeVisible();
   if (enabled !== undefined) await expect(page.getByLabel(enabled, { exact: true })).toBeEnabled();
   await page.waitForTimeout(SETTLE_MS);
-  return page.evaluate((key) => Reflect.get(window, key) as number, SHIFT);
+}
+
+/** Where every section heading sits, top edge in page pixels, by its text. */
+async function headingTops(page: Page): Promise<Record<string, number>> {
+  return page.evaluate(() => Object.fromEntries([...document.querySelectorAll('h2')].map((h) => [h.textContent, Math.round(h.getBoundingClientRect().top + scrollY)])));
+}
+
+async function layoutShiftOf(page: Page, entry: { path: string; shown: Shown; enabled?: string; tall: boolean }): Promise<{ shift: number; moved: string[] }> {
+  if (entry.tall) {
+    // First pass: how high the settled page is. The viewport then is that high, and the page loads again from nothing.
+    await page.setViewportSize({ width: WIDTH, height: FIRST_PASS_HEIGHT });
+    await slowGraphql(page);
+    await page.goto(entry.path);
+    await settle(page, entry);
+    const height = await page.evaluate(() => document.documentElement.scrollHeight);
+    await page.setViewportSize({ width: WIDTH, height });
+  } else {
+    await slowGraphql(page);
+  }
+  await watchLayoutShift(page);
+  await page.goto(entry.path);
+  const first = await headingTops(page);
+  await settle(page, entry);
+  const last = await headingTops(page);
+  const moved = Object.keys(first).filter((heading) => first[heading] !== last[heading]);
+  return { shift: await page.evaluate((key) => Reflect.get(window, key) as number, SHIFT), moved };
 }
 
 for (const entry of PAGES) {
@@ -67,7 +90,10 @@ for (const entry of PAGES) {
   const enabled = 'enabled' in entry ? entry.enabled : undefined;
   const tall = 'tall' in entry && entry.tall;
   test(`R-096: ${name} shifts less than ${String(CLS_LIMIT)} while its data arrives late`, async ({ page }) => {
-    expect(await layoutShiftOf(page, { path, shown, enabled, tall })).toBeLessThanOrEqual(CLS_LIMIT);
+    const { shift, moved } = await layoutShiftOf(page, { path, shown, enabled, tall });
+    expect(shift).toBeLessThanOrEqual(CLS_LIMIT);
+    // A section heading is already where it will stay when the first paint is done.
+    expect(moved).toEqual([]);
   });
 }
 
