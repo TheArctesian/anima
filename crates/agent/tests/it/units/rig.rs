@@ -25,10 +25,15 @@ pub struct Rig {
 }
 
 /// A HOME whose default agent folder holds a token expiring `expires_in` after `kit::at(0)`
-/// (none when `None`), and a stand-in binary. It is in Cargo's own temporary folder, as the
-/// units' `PrivateTmp=yes` hides `/tmp` from the agent.
+/// (none when `None`), and a stand-in binary. It lives in the crate's own `target/rig` (ignored
+/// by git), not in a temporary folder or the target folder, which may be under `/tmp`: the
+/// units' `PrivateTmp=yes` hides `/tmp`, so `install` rightly refuses a binary there. The
+/// checkout itself must therefore sit outside `/tmp` and `/var/tmp`, in folders only root or
+/// the user can write.
 pub fn rig(expires_in: Option<TimeDelta>) -> Rig {
-    let dir = tempfile::tempdir_in(env!("CARGO_TARGET_TMPDIR")).expect("a folder");
+    let scratch = concat!(env!("CARGO_MANIFEST_DIR"), "/target/rig");
+    fs::create_dir_all(scratch).expect("the scratch folder");
+    let dir = tempfile::tempdir_in(scratch).expect("a folder");
     let program = dir.path().join("bin/anima-agent");
     fs::create_dir(dir.path().join("bin")).expect("bin");
     fs::write(&program, b"#!/bin/true\n").expect("binary");

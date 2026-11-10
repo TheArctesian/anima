@@ -51,12 +51,31 @@ mod tests {
             (Unit::SystemdUser, SYSTEMD_USER),
             (Unit::LaunchAgent, LAUNCH_AGENT),
         ] {
-            let set = |line: &str| template.lines().any(|l| l.trim() == line);
+            let value = |key: &str| {
+                template
+                    .lines()
+                    .find_map(|line| line.trim().strip_prefix(key)?.strip_prefix('='))
+            };
+            // Only these values are understood here: `tmpfs`, say, hides as well, and must be
+            // added to `hidden_roots` before it is allowed.
+            let home = value("ProtectHome");
+            assert!(
+                matches!(home, None | Some("yes" | "read-only")),
+                "{unit:?}: ProtectHome={home:?}"
+            );
+            let tmp = value("PrivateTmp");
+            assert!(
+                matches!(tmp, None | Some("yes")),
+                "{unit:?}: PrivateTmp={tmp:?}"
+            );
+            for key in ["InaccessiblePaths", "TemporaryFileSystem"] {
+                assert_eq!(value(key), None, "{unit:?}: {key} hides folders too");
+            }
             let mut expected = Vec::new();
-            if set("ProtectHome=yes") {
+            if home == Some("yes") {
                 expected.extend(["/home", "/root", "/run/user"]);
             }
-            if set("PrivateTmp=yes") {
+            if tmp == Some("yes") {
                 expected.extend(["/tmp", "/var/tmp"]);
             }
             assert_eq!(hidden_roots(unit), expected, "{unit:?}");

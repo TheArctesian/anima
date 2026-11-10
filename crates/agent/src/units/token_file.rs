@@ -44,8 +44,9 @@ pub(super) fn check(
             (Some(file), Some((metadata.mode(), metadata.uid())))
         }
         Err(error) if error.kind() == io::ErrorKind::NotFound => (None, None),
-        // A link: described as the link itself, which is no regular file.
-        Err(error) if error.raw_os_error() == Some(Errno::LOOP.raw_os_error()) => {
+        // A link (ELOOP), a socket (ENXIO) or another file that cannot be opened as one
+        // (EOPNOTSUPP): described as itself, which is no regular file.
+        Err(error) if not_a_file(&error) => {
             let link = fs::symlink_metadata(token).map_err(read)?;
             (None, Some((link.mode(), link.uid())))
         }
@@ -66,6 +67,13 @@ pub(super) fn check(
     Ok(())
 }
 
+/// Whether opening failed because the path is a link, a socket or another special file.
+fn not_a_file(error: &io::Error) -> bool {
+    [Errno::LOOP, Errno::NXIO, Errno::OPNOTSUPP]
+        .iter()
+        .any(|errno| error.raw_os_error() == Some(errno.raw_os_error()))
+}
+
 /// Opens `token` for reading: never through a link at its end, never waiting on a pipe, never
 /// as the controlling terminal.
 fn open(token: &Path) -> io::Result<File> {
@@ -83,7 +91,6 @@ mod tests {
     use std::time::Duration;
 
     use agent_core::wire::AgentToken;
-    use rustix::fs::{CWD, FileType, Mode};
 
     use super::*;
 
@@ -148,8 +155,13 @@ mod tests {
     #[test]
     fn met_019_a_token_that_is_a_pipe_is_refused_without_blocking() {
         let (_dir, token, passwd) = rig();
-        rustix::fs::mknodat(CWD, &token, FileType::Fifo, Mode::RUSR | Mode::WUSR, 0)
-            .expect("a pipe");
+        // `mkfifo(1)`: `mknodat` is not in rustix on macOS.
+        let made = std::process::Command::new("mkfifo")
+            .args(["-m", "600"])
+            .arg(&token)
+            .status()
+            .expect("mkfifo runs");
+        assert!(made.success(), "a pipe");
         let (sent, answer) = mpsc::channel();
         thread::spawn(move || sent.send(not_ready(checked(&token, &passwd))));
         let result = answer.recv_timeout(Duration::from_secs(5));
@@ -157,6 +169,13 @@ mod tests {
             result.expect("the open did not block"),
             NotReady::TokenOwner
         );
+    }
+
+    #[test]
+    fn met_019_a_token_that_is_a_socket_is_refused() {
+        let (_dir, token, passwd) = rig();
+        let _listener = std::os::unix::net::UnixListener::bind(&token).expect("a socket");
+        assert_eq!(not_ready(checked(&token, &passwd)), NotReady::TokenOwner);
     }
 
     #[test]

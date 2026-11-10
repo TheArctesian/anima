@@ -12,7 +12,7 @@ use super::trust::{self, Installer, Stat};
 #[derive(Debug, thiserror::Error)]
 pub enum FolderError {
     #[error(
-        "{} is not owned by root or this user, or users other than its owner may write it (through its group or as others), so the agent could be swapped: run `chmod go-w` on it or reinstall it",
+        "{} is not owned by root or this user, or users other than its owner may write it (through its group, an ACL or as others), so the agent could be swapped: run `chmod go-w` on it (and `setfacl -b` for an ACL) or reinstall it",
         .0.display()
     )]
     UntrustedBinary(PathBuf),
@@ -132,5 +132,12 @@ mod tests {
         );
         assert!(text.contains("`chmod g-w`"), "{text}");
         assert!(text.contains("an ACL"), "{text}");
+    }
+
+    #[test]
+    fn met_019_the_untrusted_binary_message_names_an_acl_too() {
+        let text = FolderError::UntrustedBinary(PathBuf::from("/opt/anima-agent")).to_string();
+        assert!(text.contains("an ACL"), "{text}");
+        assert!(text.contains("`setfacl -b`"), "{text}");
     }
 }
