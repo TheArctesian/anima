@@ -63,11 +63,17 @@ pub struct Listing<'a> {
 
 impl<'a> Listing<'a> {
     pub fn here(build: &'a Build) -> Self {
-        Self { key: target(), build }
+        Self {
+            key: target(),
+            build,
+        }
     }
 
     pub fn elsewhere(build: &'a Build) -> Self {
-        Self { key: "plan9-mips".to_owned(), build }
+        Self {
+            key: "plan9-mips".to_owned(),
+            build,
+        }
     }
 }
 
@@ -164,7 +170,11 @@ impl Served {
         }
         let asked = Arc::new(Mutex::new(Vec::new()));
         tokio::spawn(answer(socket, routes, Arc::clone(&asked)));
-        Self { port, pubkey: channel.pubkey(), asked }
+        Self {
+            port,
+            pubkey: channel.pubkey(),
+            asked,
+        }
     }
 
     /// The paths the server was asked for, in order.
@@ -176,11 +186,16 @@ impl Served {
     /// origin swapped for this server's.
     pub async fn check(&self) -> tauri_plugin_updater::Result<Option<Update>> {
         let mut updater = shipped_updater();
-        let endpoint = shipped_endpoint().replace(ORIGIN, &format!("http://127.0.0.1:{}", self.port));
+        let endpoint =
+            shipped_endpoint().replace(ORIGIN, &format!("http://127.0.0.1:{}", self.port));
         updater["pubkey"] = self.pubkey.clone().into();
         updater["endpoints"] = serde_json::json!([endpoint]);
         let mut context = mock_context(noop_assets());
-        context.config_mut().plugins.0.insert("updater".to_owned(), updater);
+        context
+            .config_mut()
+            .plugins
+            .0
+            .insert("updater".to_owned(), updater);
         let app = mock_builder()
             .plugin(tauri_plugin_updater::Builder::new().build())
             .build(context)
@@ -196,15 +211,24 @@ async fn answer(socket: TcpListener, routes: Routes, asked: Arc<Mutex<Vec<String
         let mut head = vec![0_u8; 4096];
         let read = stream.read(&mut head).await.unwrap();
         let request = String::from_utf8_lossy(&head[..read]).into_owned();
-        let path = request.split_whitespace().nth(1).unwrap_or_default().to_owned();
+        let path = request
+            .split_whitespace()
+            .nth(1)
+            .unwrap_or_default()
+            .to_owned();
         let reply = match routes.get(&path) {
             Some(body) => [
-                format!("HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n", body.len())
-                    .into_bytes(),
+                format!(
+                    "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                    body.len()
+                )
+                .into_bytes(),
                 body.clone(),
             ]
             .concat(),
-            None => b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".to_vec(),
+            None => {
+                b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".to_vec()
+            }
         };
         asked.lock().unwrap().push(path);
         stream.write_all(&reply).await.unwrap();

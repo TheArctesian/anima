@@ -19,7 +19,11 @@ async fn bld_067_the_app_asks_for_the_feed_of_its_own_target_and_arch() {
     let channel = Channel::new();
     let build = channel.build("0.2.0");
     let served = Served::start(&channel, Some(Listing::here(&build))).await;
-    let update = served.check().await.unwrap().expect("a newer build is offered");
+    let update = served
+        .check()
+        .await
+        .unwrap()
+        .expect("a newer build is offered");
     assert_eq!(update.version, "0.2.0");
     assert_eq!(served.requested(), [feed::feed_path()]);
 }
@@ -29,7 +33,11 @@ async fn upd_002_the_newer_build_is_taken_and_its_bytes_verify() {
     let channel = Channel::new();
     let build = channel.build("0.2.0");
     let served = Served::start(&channel, Some(Listing::here(&build))).await;
-    let update = served.check().await.unwrap().expect("0.2.0 is newer than 0.1.0");
+    let update = served
+        .check()
+        .await
+        .unwrap()
+        .expect("0.2.0 is newer than 0.1.0");
     let bytes = update.download(|_, _| {}, || {}).await.unwrap();
     assert_eq!(bytes, build.bytes());
 }
@@ -47,7 +55,11 @@ async fn bld_069_an_older_signed_build_is_installed_as_a_rollback() {
     let channel = Channel::new();
     let build = channel.build("0.0.9");
     let served = Served::start(&channel, Some(Listing::here(&build))).await;
-    let update = served.check().await.unwrap().expect("allowDowngrades takes a rollback");
+    let update = served
+        .check()
+        .await
+        .unwrap()
+        .expect("allowDowngrades takes a rollback");
     let bytes = update.download(|_, _| {}, || {}).await.unwrap();
     assert_eq!(bytes, build.bytes());
 }
@@ -57,7 +69,11 @@ async fn upd_002_a_signature_by_another_key_is_refused() {
     let channel = Channel::new();
     let build = Channel::new().build("0.2.0");
     let served = Served::start(&channel, Some(Listing::here(&build))).await;
-    let update = served.check().await.unwrap().expect("the feed names a newer build");
+    let update = served
+        .check()
+        .await
+        .unwrap()
+        .expect("the feed names a newer build");
     let refused = update.download(|_, _| {}, || {}).await.unwrap_err();
     assert!(refused.to_string().contains("different key"), "{refused}");
 }
@@ -67,9 +83,18 @@ async fn upd_002_bytes_changed_after_signing_are_refused() {
     let channel = Channel::new();
     let build = channel.build_tampered("0.2.0");
     let served = Served::start(&channel, Some(Listing::here(&build))).await;
-    let update = served.check().await.unwrap().expect("the feed names a newer build");
+    let update = served
+        .check()
+        .await
+        .unwrap()
+        .expect("the feed names a newer build");
     let refused = update.download(|_, _| {}, || {}).await.unwrap_err();
-    assert!(refused.to_string().contains("signature verification failed"), "{refused}");
+    assert!(
+        refused
+            .to_string()
+            .contains("signature verification failed"),
+        "{refused}"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -78,9 +103,16 @@ async fn upd_002_a_build_signed_for_another_version_is_refused() {
     // `requireSignedVersion` (shipped true) stops a feed that labels an old build as a new one.
     let build = channel.build_signed_for("0.9.0", "0.2.0");
     let served = Served::start(&channel, Some(Listing::here(&build))).await;
-    let update = served.check().await.unwrap().expect("the feed names a newer build");
+    let update = served
+        .check()
+        .await
+        .unwrap()
+        .expect("the feed names a newer build");
     let refused = update.download(|_, _| {}, || {}).await.unwrap_err();
-    assert!(refused.to_string().contains("signed for version"), "{refused}");
+    assert!(
+        refused.to_string().contains("signed for version"),
+        "{refused}"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -88,16 +120,26 @@ async fn upd_002_a_signature_that_names_no_version_is_refused() {
     let channel = Channel::new();
     let build = channel.build_unversioned("0.2.0");
     let served = Served::start(&channel, Some(Listing::here(&build))).await;
-    let update = served.check().await.unwrap().expect("the feed names a newer build");
+    let update = served
+        .check()
+        .await
+        .unwrap()
+        .expect("the feed names a newer build");
     let refused = update.download(|_, _| {}, || {}).await.unwrap_err();
-    assert!(refused.to_string().contains("does not specify the version"), "{refused}");
+    assert!(
+        refused.to_string().contains("does not specify the version"),
+        "{refused}"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn bld_068_a_target_with_no_feed_is_a_missing_release() {
     let served = Served::start(&Channel::new(), None).await;
     let refused = served.check().await.map(|_| ()).unwrap_err();
-    assert!(refused.to_string().contains("valid release JSON"), "{refused}");
+    assert!(
+        refused.to_string().contains("valid release JSON"),
+        "{refused}"
+    );
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -106,7 +148,10 @@ async fn bld_068_a_feed_with_no_entry_for_this_target_installs_nothing() {
     let build = channel.build("0.2.0");
     let served = Served::start(&channel, Some(Listing::elsewhere(&build))).await;
     let refused = served.check().await.map(|_| ()).unwrap_err();
-    assert!(refused.to_string().contains("fallback platforms"), "{refused}");
+    assert!(
+        refused.to_string().contains("fallback platforms"),
+        "{refused}"
+    );
 }
 
 #[test]
