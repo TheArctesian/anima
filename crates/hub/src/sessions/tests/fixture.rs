@@ -11,6 +11,7 @@ use std::{
 
 use serde_json::Value;
 use sqlx::{PgPool, postgres::PgPoolOptions};
+use tokio::sync::oneshot;
 
 use crate::{
     events::{ClientAddr, Operator},
@@ -49,15 +50,20 @@ pub(in crate::sessions) async fn own_pool(pool: &PgPool) -> PgPool {
         .unwrap()
 }
 
-/// A loopback port nothing listens on until `after` has passed, as a device that is still
-/// waking up; then it accepts, and forwards each connection to the loopback port `forward`
-/// when there is one.
-pub(in crate::sessions) fn waking_port(after: Duration, forward: Option<u16>) -> u16 {
+/// A loopback port nothing listens on, as a device that is still waking up, and the sender
+/// that wakes it: once the test sends, the port accepts, and forwards each connection to the
+/// loopback port `forward` when there is one. The device answers when the test says, not
+/// after a time, so a loaded machine cannot move the answer across an opening limit. Dropping
+/// the sender leaves the device asleep.
+pub(in crate::sessions) fn waking_port(forward: Option<u16>) -> (u16, oneshot::Sender<()>) {
     let reserved = std::net::TcpListener::bind((LOOPBACK, 0)).unwrap();
     let port = reserved.local_addr().unwrap().port();
     drop(reserved);
+    let (answer, answered) = oneshot::channel();
     tokio::spawn(async move {
-        tokio::time::sleep(after).await;
+        if answered.await.is_err() {
+            return;
+        }
         let listener = tokio::net::TcpListener::bind((LOOPBACK, port))
             .await
             .unwrap();
@@ -69,7 +75,20 @@ pub(in crate::sessions) fn waking_port(after: Duration, forward: Option<u16>) ->
             });
         }
     });
-    port
+    (port, answer)
+}
+
+/// Wakes the device `pause` after the opening began, then returns. The opening signals
+/// `began` in the poll that starts its limit, so the device answers at least `pause` after the
+/// limit started, however late the machine schedules either side.
+pub(in crate::sessions) async fn answer_after(
+    began: oneshot::Receiver<()>,
+    pause: Duration,
+    answer: oneshot::Sender<()>,
+) {
+    began.await.unwrap();
+    tokio::time::sleep(pause).await;
+    answer.send(()).unwrap();
 }
 
 /// Puts `session`'s pending ticket back as one whose start sent a Wake-on-LAN packet, under
