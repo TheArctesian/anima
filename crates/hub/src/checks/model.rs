@@ -324,4 +324,7 @@ pub struct Due {
     pub config: Option<CheckConfig>,
     pub settings: CheckSettings,
     pub state: CheckState,
+    /// When the last beat was recorded: for a domain expiry check, its last RDAP query
+    /// (R-102).
+    pub last_beat_at: Option<DateTime<Utc>>,
 }

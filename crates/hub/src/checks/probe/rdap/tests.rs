@@ -7,5 +7,5 @@ mod egress;
 mod observe;
 pub(in crate::checks) mod registry;
 mod reply;
-mod server;
+pub(in crate::checks) mod server;
 mod status;

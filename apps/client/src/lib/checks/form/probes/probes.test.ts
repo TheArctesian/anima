@@ -193,6 +193,7 @@ describe('P3-002, D-29: a DOMAIN_EXPIRY check in the form', () => {
     expect(values).toEqual({
       ...checkValues(null, 'DOMAIN_EXPIRY'),
       name: 'check',
+      retries: '0',
       domainExpiry: { domain: 'example.net', warnDays: '30', timeoutMs: '10000', daysLeft: null },
     });
   });

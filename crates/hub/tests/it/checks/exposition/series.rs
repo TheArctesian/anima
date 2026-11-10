@@ -194,9 +194,9 @@ fixture_test! {
         let expiry = now + TimeDelta::days(12) + TimeDelta::hours(1);
         sqlx::query(
             "INSERT INTO checks.checks \
-                 (id, device_id, type, name, config, interval_seconds, domain_not_after) \
+                 (id, device_id, type, name, config, interval_seconds, retries, domain_not_after) \
              VALUES ($1::uuid, $2::uuid, 'domain_expiry', 'Domain', \
-                     '{\"domain\":\"example.com\"}', 86400, $3)",
+                     '{\"domain\":\"example.com\"}', 86400, 0, $3)",
         )
         .bind(DOMAIN_CHECK)
         .bind(PVE_01)

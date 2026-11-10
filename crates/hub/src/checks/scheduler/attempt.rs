@@ -91,8 +91,8 @@ enum Outcome {
     Written(Beat, bool),
     /// Nothing to record: the check is paused, has a newer beat or was deleted.
     Skipped,
-    /// A read or write failed; it was logged.
-    Failed,
+    /// A read or write failed; it was logged. `probed` tells whether the probe ran first.
+    Failed { probed: bool },
 }
 
 /// Runs the attempt. After a failed read or write the check is tried again only after its
@@ -127,7 +127,7 @@ pub(super) async fn run(ctx: &Context, due: Due, now: DateTime<Utc>) -> Finished
             }
         }
         Outcome::Skipped => {}
-        Outcome::Failed => back_off(ctx, &due, now).await,
+        Outcome::Failed { probed } => back_off(ctx, &due, now, probed).await,
     }
     finished
 }
@@ -137,11 +137,11 @@ async fn attempt(ctx: &Context, due: &Due, now: DateTime<Utc>) -> Outcome {
         Ok(device) => device,
         Err(error) => {
             warn(due, "the device of a due check cannot be read", &error);
-            return Outcome::Failed;
+            return Outcome::Failed { probed: false };
         }
     };
     let Some(result) = observe(ctx, due, &device, now).await else {
-        return Outcome::Failed;
+        return Outcome::Failed { probed: false };
     };
     // Read for every result, because the settings that decide Down are read only when the
     // beat is written.
@@ -149,7 +149,7 @@ async fn attempt(ctx: &Context, due: &Due, now: DateTime<Utc>) -> Outcome {
         Ok(covered) => covered,
         Err(error) => {
             warn(due, "the maintenance windows cannot be read", &error);
-            return Outcome::Failed;
+            return Outcome::Failed { probed: true };
         }
     };
     let attempt = Attempt {
@@ -170,15 +170,19 @@ async fn attempt(ctx: &Context, due: &Due, now: DateTime<Utc>) -> Outcome {
         }
         Err(error) => {
             warn(due, "the heartbeat cannot be recorded", &error);
-            Outcome::Failed
+            Outcome::Failed { probed: true }
         }
     }
 }
 
-/// Moves the due time past the retry interval, unless a beat moved it meanwhile.
-async fn back_off(ctx: &Context, due: &Due, now: DateTime<Utc>) {
+/// Moves the due time past the retry interval, unless a beat moved it meanwhile. A probe that
+/// ran counts as the last query for the check's floor, though no beat recorded it: a domain
+/// expiry check whose RDAP server was asked waits its whole interval (R-102).
+async fn back_off(ctx: &Context, due: &Due, now: DateTime<Utc>, probed: bool) {
     let retry = TimeDelta::seconds(i64::from(due.settings.retry_interval_seconds));
-    let moved = store::set_next_due(&ctx.db, due.id, due.state.next_due_at, now + retry).await;
+    let queried_at = if probed { Some(now) } else { due.last_beat_at };
+    let at = schedule::not_before_floor(due, queried_at, now + retry);
+    let moved = store::set_next_due(&ctx.db, due.id, due.state.next_due_at, at).await;
     if let Err(error) = moved {
         warn(due, "the retry time cannot be stored", &error);
     }
