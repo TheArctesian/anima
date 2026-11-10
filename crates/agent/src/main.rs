@@ -11,7 +11,8 @@ use anima_agent::hub::{HubClient, TIMEOUT};
 use anima_agent::readers::Platform;
 use anima_agent::runtime;
 use anima_agent::token_store::TokenStore;
-use anima_agent::units::install::{Host, run_step};
+use anima_agent::units::install::Host;
+use anima_agent::units::step::{STEP_DEADLINE, run_step};
 use anima_agent::units::{self, plan::Target};
 use zeroize::Zeroizing;
 
@@ -94,8 +95,10 @@ fn install(target: Target, home: &Home) -> ExitCode {
         },
         program: &program,
         home,
+        now: chrono::Utc::now(),
     };
-    match units::install::install(target, &host, |name| std::env::var(name).ok(), run_step) {
+    let env = |name: &str| std::env::var(name).ok();
+    match units::install::install(target, &host, env, |step| run_step(step, STEP_DEADLINE)) {
         Ok(file) => {
             eprintln!("Installed {} and started the agent.", file.display());
             ExitCode::SUCCESS

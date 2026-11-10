@@ -7,7 +7,7 @@ use super::{LAUNCH_AGENT, SYSTEMD_SYSTEM, SYSTEMD_USER};
 
 /// Which unit file to make.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Unit {
+pub(super) enum Unit {
     SystemdUser,
     SystemdSystem,
     LaunchAgent,
@@ -26,13 +26,13 @@ pub enum RenderError {
 /// A path to the binary that is safe to write into a unit: absolute, and made only of
 /// characters that systemd (`%`, `$`, quotes, spaces, backslash) and XML never treat as syntax.
 #[derive(Debug, PartialEq, Eq)]
-pub struct Program<'a>(&'a str);
+pub(super) struct Program<'a>(&'a str);
 
 impl<'a> Program<'a> {
     /// # Errors
     /// [`RenderError::Path`] for a path that is relative, not UTF-8, empty of a name, has a
     /// `..` part, or holds a character outside `A-Za-z0-9/._+-` (a newline included).
-    pub fn parse(path: &'a Path) -> Result<Self, RenderError> {
+    pub(super) fn parse(path: &'a Path) -> Result<Self, RenderError> {
         let text = path.to_str().ok_or(RenderError::Path)?;
         let plain = text
             .bytes()
@@ -49,7 +49,7 @@ impl<'a> Program<'a> {
     }
 
     #[must_use]
-    pub const fn as_str(&self) -> &str {
+    pub(super) const fn as_str(&self) -> &str {
         self.0
     }
 }
@@ -89,7 +89,7 @@ const fn slot(unit: Unit) -> Slot {
 ///
 /// # Errors
 /// [`RenderError::Template`] when the template does not hold the placeholder exactly once.
-pub fn render(unit: Unit, program: &Program<'_>) -> Result<String, RenderError> {
+pub(super) fn render(unit: Unit, program: &Program<'_>) -> Result<String, RenderError> {
     fill(&slot(unit), program)
 }
 
@@ -100,14 +100,6 @@ fn fill(slot: &Slot, program: &Program<'_>) -> Result<String, RenderError> {
     }
     let filled = format!("{}{}{}", slot.before, program.as_str(), slot.after);
     Ok(slot.template.replacen(&marked, &filled, 1))
-}
-
-/// Whether `passwd` (the text of `/etc/passwd`) has an account named `name`.
-#[must_use]
-pub fn has_account(passwd: &str, name: &str) -> bool {
-    passwd
-        .lines()
-        .any(|line| line.split(':').next() == Some(name))
 }
 
 #[cfg(test)]
@@ -188,16 +180,5 @@ mod tests {
             };
             assert_eq!(fill(&slot, &path), Err(RenderError::Template));
         }
-    }
-
-    #[test]
-    fn met_019_an_account_is_found_by_its_whole_name() {
-        let passwd = "root:x:0:0::/root:/bin/bash\nanima-agent-old:x:5:5::/:/bin/false\n";
-        assert!(has_account(passwd, "root"));
-        assert!(!has_account(passwd, "anima-agent"));
-        assert!(has_account(
-            "anima-agent:x:9:9::/:/bin/false",
-            "anima-agent"
-        ));
     }
 }

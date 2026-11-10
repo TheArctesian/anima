@@ -7,7 +7,9 @@
 
 pub mod install;
 pub mod plan;
+pub mod ready;
 pub mod render;
+pub mod step;
 
 /// A systemd user unit: `~/.config/systemd/user/anima-agent.service`, run by the operator.
 pub const SYSTEMD_USER: &str = include_str!("../units/anima-agent.user.unit");

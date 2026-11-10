@@ -2,8 +2,10 @@
 //! the platform, the user and the environment.
 
 use std::path::PathBuf;
+use std::time::Duration;
 
 use super::render::Unit;
+use super::step::Step;
 use crate::readers::Platform;
 
 /// Whose unit: the operator's own, or the whole computer's (Linux, needs root).
@@ -14,25 +16,21 @@ pub enum Target {
 }
 
 /// The account the system unit runs as; the operator makes it (the unit says `User=` this).
-pub const ACCOUNT: &str = "anima-agent";
+pub(super) const ACCOUNT: &str = "anima-agent";
 
 /// The system unit's state folder, which holds the token (`ANIMA_AGENT_HOME` in the unit).
-pub const SYSTEM_HOME: &str = "/var/lib/anima-agent";
+pub(super) const SYSTEM_HOME: &str = "/var/lib/anima-agent";
 
-/// One fixed command to run after the file is written.
-#[derive(Debug, PartialEq, Eq)]
-pub struct Step {
-    pub program: &'static str,
-    pub args: Vec<String>,
-    /// A failure is expected and fine (`launchctl bootout` of an agent that is not loaded).
-    pub may_fail: bool,
-}
+/// How long `launchctl bootstrap` waits before its one retry.
+const BOOTSTRAP_RETRY: Duration = Duration::from_secs(1);
 
-/// What `install` does: write `contents of unit` as `file`, then run `steps` in order.
+/// What `install` does: write `contents of unit` as `file`, then run `steps` in order. `home` is
+/// the agent folder the started agent finds: the unit sets no `ANIMA_AGENT_HOME` for the user.
 #[derive(Debug, PartialEq, Eq)]
-pub struct Plan {
+pub(super) struct Plan {
     pub unit: Unit,
     pub file: PathBuf,
+    pub home: PathBuf,
     pub steps: Vec<Step>,
 }
 
@@ -48,19 +46,28 @@ pub enum PlanError {
     NoHome,
 }
 
-fn step(program: &'static str, args: &[&str]) -> Step {
-    Step {
-        program,
-        args: args.iter().map(|arg| (*arg).to_owned()).collect(),
-        may_fail: false,
-    }
+/// `systemctl [--user]` reload, enable, then restart: `restart` starts a stopped unit and
+/// restarts a running one, so an upgrade (a new binary, then `install`) runs the new binary.
+fn systemctl(user: bool) -> Vec<Step> {
+    let scope: &[&str] = if user { &["--user"] } else { &[] };
+    ["daemon-reload", "enable", "restart"]
+        .iter()
+        .map(|verb| {
+            let mut step = Step::new("/usr/bin/systemctl", scope);
+            step.args.push((*verb).to_owned());
+            if *verb != "daemon-reload" {
+                step.args.push("anima-agent.service".to_owned());
+            }
+            step
+        })
+        .collect()
 }
 
 /// The plan for `target` on `platform`, run by user `uid`; `env` looks up environment variables.
 ///
 /// # Errors
 /// [`PlanError`] for `--system` on macOS or without root, and for no `HOME`.
-pub fn plan(
+pub(super) fn plan(
     target: Target,
     platform: Platform,
     uid: u32,
@@ -78,13 +85,8 @@ pub fn plan(
         (Target::System, Platform::Linux) => Ok(Plan {
             unit: Unit::SystemdSystem,
             file: PathBuf::from("/etc/systemd/system/anima-agent.service"),
-            steps: vec![
-                step("/usr/bin/systemctl", &["daemon-reload"]),
-                step(
-                    "/usr/bin/systemctl",
-                    &["enable", "--now", "anima-agent.service"],
-                ),
-            ],
+            home: PathBuf::from(SYSTEM_HOME),
+            steps: systemctl(false),
         }),
         (Target::User, Platform::Linux) => {
             let config = match env("XDG_CONFIG_HOME").filter(|dir| !dir.is_empty()) {
@@ -94,47 +96,60 @@ pub fn plan(
             Ok(Plan {
                 unit: Unit::SystemdUser,
                 file: config.join("systemd/user/anima-agent.service"),
-                steps: vec![
-                    step("/usr/bin/systemctl", &["--user", "daemon-reload"]),
-                    step(
-                        "/usr/bin/systemctl",
-                        &["--user", "enable", "--now", "anima-agent.service"],
-                    ),
-                ],
+                // The user manager's `%E` (the unit's `ReadWritePaths`) is `~/.config`.
+                home: home()?.join(".config/anima-agent"),
+                steps: systemctl(true),
             })
         }
         (Target::User, Platform::Macos) => {
-            let file = home()?.join("Library/LaunchAgents/ing.anima.agent.plist");
+            let home = home()?;
+            let file = home.join("Library/LaunchAgents/ing.anima.agent.plist");
             let domain = format!("gui/{uid}");
             // `bootstrap` fails on an agent that is already loaded, so a re-run first takes the
             // old one out; that `bootout` fails, harmlessly, when nothing was loaded.
-            let mut bootout = step("/bin/launchctl", &["bootout"]);
+            let mut bootout = Step::new("/bin/launchctl", &["bootout"]);
             bootout.args.push(format!("{domain}/ing.anima.agent"));
             bootout.may_fail = true;
-            let mut bootstrap = step("/bin/launchctl", &["bootstrap"]);
+            let mut bootstrap = Step::new("/bin/launchctl", &["bootstrap"]);
             bootstrap.args.push(domain);
             bootstrap.args.push(file.display().to_string());
+            bootstrap.retry_after = Some(BOOTSTRAP_RETRY);
             Ok(Plan {
                 unit: Unit::LaunchAgent,
                 file,
+                home: home.join("Library/Application Support/anima-agent"),
                 steps: vec![bootout, bootstrap],
             })
         }
     }
 }
 
-/// Whether a folder on the binary's path (`mode`, owned by `owner`) may stay there: not
-/// writable by others without the sticky bit, and for the system unit (which runs the binary
-/// as another account) owned by root and not writable by its group either.
+/// Whether a folder on the binary's or the unit's path (`mode`, owned by `owner`) may stay
+/// there when user `uid` installs. For the user unit: owned by root or the user, and either
+/// sticky or not writable by others; its group may write only to the user's own folder (a
+/// private group per user, as with `umask 002`). For the system unit, which runs the binary as
+/// another account: owned by root and writable by no one else, sticky or not.
 #[must_use]
-pub const fn folder_trusted(target: Target, mode: u32, owner: u32) -> bool {
-    if crate::config::private_file::parent_replaceable(mode) {
-        return false;
-    }
+pub(super) const fn folder_trusted(target: Target, mode: u32, owner: u32, uid: u32) -> bool {
     match target {
-        Target::User => true,
-        Target::System => owner == 0 && mode & 0o020 == 0,
+        Target::User => {
+            let own = owner == uid;
+            let sticky = mode & 0o1000 != 0;
+            (own || owner == 0) && (sticky || (mode & 0o002 == 0 && (own || mode & 0o020 == 0)))
+        }
+        Target::System => owner == 0 && mode & 0o022 == 0,
     }
+}
+
+/// Whether the binary itself (`mode`, owned by `owner`) may be started by the unit: writable
+/// by no one but its owner, who is root or, for the user unit, user `uid`.
+#[must_use]
+pub(super) const fn binary_trusted(target: Target, mode: u32, owner: u32, uid: u32) -> bool {
+    let owner_trusted = match target {
+        Target::User => owner == 0 || owner == uid,
+        Target::System => owner == 0,
+    };
+    owner_trusted && mode & 0o022 == 0
 }
 
 #[cfg(test)]
@@ -148,29 +163,44 @@ mod tests {
         }
     }
 
+    fn commands(plan: &Plan) -> Vec<String> {
+        plan.steps
+            .iter()
+            .map(|s| format!("{} {}", s.program, s.args.join(" ")))
+            .collect()
+    }
+
     #[test]
-    fn met_019_a_linux_user_unit_goes_under_the_config_folder_and_is_enabled_now() {
+    fn met_019_a_linux_user_unit_goes_under_the_config_folder_and_is_enabled_then_restarted() {
         let plan = plan(Target::User, Platform::Linux, 1000, env).expect("a plan");
         assert_eq!(plan.unit, Unit::SystemdUser);
         assert_eq!(
             plan.file,
             PathBuf::from("/home/ada/.config/systemd/user/anima-agent.service")
         );
-        let commands: Vec<_> = plan
-            .steps
-            .iter()
-            .map(|s| (s.program, s.args.join(" ")))
-            .collect();
+        assert_eq!(plan.home, PathBuf::from("/home/ada/.config/anima-agent"));
         assert_eq!(
-            commands,
+            commands(&plan),
             [
-                ("/usr/bin/systemctl", "--user daemon-reload".to_owned()),
-                (
-                    "/usr/bin/systemctl",
-                    "--user enable --now anima-agent.service".to_owned()
-                ),
+                "/usr/bin/systemctl --user daemon-reload",
+                "/usr/bin/systemctl --user enable anima-agent.service",
+                "/usr/bin/systemctl --user restart anima-agent.service",
             ]
         );
+    }
+
+    #[test]
+    fn met_019_an_upgrade_restarts_the_system_unit_after_enabling_it() {
+        let plan = plan(Target::System, Platform::Linux, 0, |_| None).expect("a plan");
+        assert_eq!(
+            commands(&plan),
+            [
+                "/usr/bin/systemctl daemon-reload",
+                "/usr/bin/systemctl enable anima-agent.service",
+                "/usr/bin/systemctl restart anima-agent.service",
+            ]
+        );
+        assert_eq!(plan.home, PathBuf::from(SYSTEM_HOME));
     }
 
     #[test]
@@ -224,7 +254,13 @@ mod tests {
             PathBuf::from("/home/ada/Library/LaunchAgents/ing.anima.agent.plist")
         );
         assert_eq!(plan.steps.len(), 2);
+        assert_eq!(
+            plan.home,
+            PathBuf::from("/home/ada/Library/Application Support/anima-agent")
+        );
         assert!(plan.steps[0].may_fail);
+        assert_eq!(plan.steps[0].retry_after, None);
+        assert_eq!(plan.steps[1].retry_after, Some(BOOTSTRAP_RETRY));
         assert_eq!(plan.steps[0].args, ["bootout", "gui/501/ing.anima.agent"]);
         assert!(!plan.steps[1].may_fail);
         assert_eq!(
@@ -239,26 +275,59 @@ mod tests {
 
     #[test]
     fn met_019_a_folder_others_can_replace_in_is_not_trusted_and_the_system_unit_wants_root_s() {
-        assert!(folder_trusted(Target::User, 0o040_755, 1000));
+        assert!(folder_trusted(Target::User, 0o040_755, 1000, 1000));
         assert!(
-            folder_trusted(Target::User, 0o041_777, 0),
+            folder_trusted(Target::User, 0o041_777, 0, 1000),
             "sticky, like /tmp"
         );
-        assert!(!folder_trusted(Target::User, 0o040_777, 0));
-        assert!(!folder_trusted(Target::User, 0o040_702, 1000));
-        assert!(folder_trusted(Target::System, 0o040_755, 0));
+        assert!(!folder_trusted(Target::User, 0o040_777, 0, 1000));
+        assert!(!folder_trusted(Target::User, 0o040_702, 1000, 1000));
+        assert!(folder_trusted(Target::System, 0o040_755, 0, 0));
         assert!(
-            !folder_trusted(Target::System, 0o040_755, 1000),
+            !folder_trusted(Target::System, 0o040_755, 1000, 0),
             "not root's"
         );
         assert!(
-            !folder_trusted(Target::System, 0o040_775, 0),
+            !folder_trusted(Target::System, 0o040_775, 0, 0),
             "group may write"
         );
         assert!(
-            !folder_trusted(Target::System, 0o041_777, 0),
+            !folder_trusted(Target::System, 0o041_777, 0, 0),
             "sticky is not enough"
         );
+    }
+
+    #[test]
+    fn met_019_a_user_folder_must_be_root_s_or_the_user_s_and_only_the_user_s_may_be_group_writable()
+     {
+        assert!(
+            !folder_trusted(Target::User, 0o040_755, 1001, 1000),
+            "another user's folder"
+        );
+        assert!(
+            !folder_trusted(Target::User, 0o041_777, 1001, 1000),
+            "another user's sticky folder: its owner may still rename what is in it"
+        );
+        assert!(
+            folder_trusted(Target::User, 0o040_775, 1000, 1000),
+            "umask 002 with a private group, like ~/.local/bin"
+        );
+        assert!(
+            !folder_trusted(Target::User, 0o042_775, 0, 1000),
+            "root's folder that its group may write"
+        );
+        assert!(folder_trusted(Target::User, 0o040_755, 0, 1000));
+    }
+
+    #[test]
+    fn met_019_the_binary_is_writable_only_by_its_owner_who_is_root_or_the_user() {
+        assert!(binary_trusted(Target::User, 0o100_755, 1000, 1000));
+        assert!(binary_trusted(Target::User, 0o100_755, 0, 1000));
+        assert!(!binary_trusted(Target::User, 0o100_777, 1000, 1000));
+        assert!(!binary_trusted(Target::User, 0o100_775, 1000, 1000));
+        assert!(!binary_trusted(Target::User, 0o100_755, 1001, 1000));
+        assert!(binary_trusted(Target::System, 0o100_755, 0, 0));
+        assert!(!binary_trusted(Target::System, 0o100_755, 1000, 0));
     }
 
     #[test]
