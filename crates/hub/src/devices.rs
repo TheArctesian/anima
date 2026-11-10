@@ -118,5 +118,5 @@ pub async fn session_limit<'e>(
     db: impl PgExecutor<'e>,
     id: DeviceId,
 ) -> Result<Option<NonZeroU8>, Error> {
-    store::session_limit(db, id).await
+    store::remote::session_limit(db, id).await
 }
