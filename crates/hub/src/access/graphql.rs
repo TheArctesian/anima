@@ -115,7 +115,9 @@ impl Mutation {
     }
 
     /// Signs a browser in; needs no token (D-4). Refused before any attempt is recorded unless
-    /// the request comes from the public origin (A-4). Sets the `__Host-anima` cookie.
+    /// the request comes from the public origin (A-4). Sets the `__Host-anima` cookie; once
+    /// signed in, deletes the browser token the request's cookie held, which the new cookie
+    /// overwrites (SEC-002).
     async fn sign_in_browser(
         &self,
         ctx: &Context<'_>,
@@ -124,7 +126,8 @@ impl Mutation {
         if ctx.data_opt::<SameOrigin>().is_none() {
             return Err(Error::OtherOrigin.into_graphql());
         }
-        let signed_in = sign_in(ctx, input, Issue::BROWSER).await?;
+        let issue = Issue::browser(ctx.data_opt::<Identity>());
+        let signed_in = sign_in(ctx, input, issue).await?;
         ctx.append_http_header(SET_COOKIE, browser::signed_in(&signed_in.token));
         Ok(BrowserSignIn {
             operator: (&signed_in.account).into(),

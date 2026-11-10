@@ -2,8 +2,9 @@
 //! (SEC-002, LOG-005, D-3, D-7, D-8).
 
 use chrono::{DateTime, TimeDelta, Utc};
-use sqlx::PgPool;
+use sqlx::{PgConnection, PgPool};
 use tokio::sync::Semaphore;
+use uuid::Uuid;
 
 use super::{
     ClientAddr, Error, Identity, Operator,
@@ -37,24 +38,50 @@ pub(super) struct Attempt {
     pub issue: Issue,
 }
 
-/// The token a sign-in gives: always `write`, of this kind, for this long.
-#[derive(Clone, Copy)]
+/// The token a sign-in gives: always `write`, of this kind, for this long; and the browser
+/// token it replaces, if any.
 pub(super) struct Issue {
     kind: TokenKind,
     lifetime: TimeDelta,
+    replaces: Option<Replaced>,
 }
 
 impl Issue {
-    /// The desktop app's `login`: a login token for 30 days (D-7).
+    /// The desktop app's `login`: a login token for 30 days (D-7). It replaces nothing: the
+    /// app keeps its token in the OS key store, where the hub cannot see what it overwrites.
     pub(super) const LOGIN: Self = Self {
         kind: TokenKind::Login,
         lifetime: LOGIN_LIFETIME,
+        replaces: None,
     };
-    /// `signInBrowser`: a browser token for 7 days, with no refresh (D-3).
-    pub(super) const BROWSER: Self = Self {
-        kind: TokenKind::Browser,
-        lifetime: BROWSER_LIFETIME,
-    };
+
+    /// `signInBrowser`: a browser token for 7 days, with no refresh (D-3). It replaces the
+    /// browser token of `cookie`, the identity the request's `__Host-anima` cookie gave, since
+    /// the new cookie overwrites that one in the browser and nothing else holds it.
+    ///
+    /// Only a `browser` identity is replaced, whichever operator it names: a request carries
+    /// one only when its cookie came from the public origin with no `Authorization` header
+    /// (A-3, A-4), so the browser that sent it held the token and could have deleted it with
+    /// `logout` instead. A bearer identity is never replaced.
+    pub(super) fn browser(cookie: Option<&Identity>) -> Self {
+        let replaces = cookie
+            .filter(|identity| identity.kind() == TokenKind::Browser)
+            .map(|identity| Replaced {
+                token: identity.token(),
+                operator: identity.operator().clone(),
+            });
+        Self {
+            kind: TokenKind::Browser,
+            lifetime: BROWSER_LIFETIME,
+            replaces,
+        }
+    }
+}
+
+/// A browser token that a successful sign-in deletes, and its operator.
+struct Replaced {
+    token: Uuid,
+    operator: Operator,
 }
 
 /// A successful sign-in: the new token, shown once, and the account.
@@ -152,6 +179,21 @@ pub(super) async fn logout(
     Ok(())
 }
 
+/// Deletes the replaced browser token and audits it as a sign-out of its operator, as
+/// `logout` does. A token already gone (a `logout` that committed first) is left alone.
+async fn retire(
+    conn: &mut PgConnection,
+    replaced: Replaced,
+    client: ClientAddr,
+    at: DateTime<Utc>,
+) -> Result<(), Error> {
+    if store::delete_token(conn, replaced.token).await? {
+        let entry = audit_entry(replaced.operator, AuditAction::Logout, client);
+        events::audit(conn, at, entry).await?;
+    }
+    Ok(())
+}
+
 /// Random bytes from the operating system.
 pub(super) fn random<const N: usize>() -> Result<[u8; N], Error> {
     let mut bytes = [0; N];
@@ -184,7 +226,8 @@ struct Checked {
 }
 
 /// Records the success, the token, the audit entry and the event in one transaction, or
-/// `None` when the account changed since it was checked.
+/// `None` when the account changed since it was checked. The browser token the issue replaces
+/// is deleted in the same transaction, so a sign-in that does not commit deletes nothing.
 ///
 /// The transaction locks the operator row and checks that its password hash and TOTP secret
 /// are still the ones checked, so an `operator set` or `operator totp` that commits during
@@ -228,6 +271,9 @@ async fn succeed(
     }
     store::finish_attempt(&mut *tx, attempt.id, Outcome::Ok).await?;
     store::insert_token(&mut tx, &new_token, attempt.at).await?;
+    if let Some(replaced) = issue.replaces {
+        retire(&mut tx, replaced, client, attempt.at).await?;
+    }
     let message = format!("Operator {} signed in.", operator.name);
     events::audit(
         &mut tx,

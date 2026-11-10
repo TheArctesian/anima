@@ -46,7 +46,7 @@ A device that is also an operator machine (a laptop or the Mac) stays a personal
 
 Applying the policy on the live Headscale is the operator's step (VPS-005). The tests block
 does not name `tag:agent` yet: Headscale refuses a policy that names a tag no node carries.
-Its rows wait in `AGENT_ROWS` in `tests/policy.test.ts`.
+Its rows wait in `AGENT_ROWS` in `tests/policy-fixture.ts`.
 
 ### First agent device
 
@@ -54,13 +54,13 @@ Its rows wait in `AGENT_ROWS` in `tests/policy.test.ts`.
    (both operator steps, VPS-005).
 2. Run `headscale nodes list`. The node must show `tag:agent` and no user. Do not continue
    if it shows a user: it is not an agent-only device.
-3. Move `AGENT_ROWS` from `tests/policy.test.ts` into the policy `tests` block, then apply
+3. Move `AGENT_ROWS` from `tests/policy-fixture.ts` into the policy `tests` block, then apply
    the policy on the live Headscale (VPS-005).
 
 ### Removing a client device
 
 When the operator removes a client device, delete its `device-*` host entry and its grant from
 `config/policy.hujson` too. The hub's device grants match by address, so a reused address could
-otherwise reach an agent. `tests/policy.test.ts` checks that no host `/32` equals the address of
+otherwise reach an agent. `tests/policy-rules.test.ts` checks that no host `/32` equals the address of
 a tagged node in its test inventory, but the test cannot see the live tailnet, so keep the
 entries current.
