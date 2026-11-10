@@ -58,17 +58,24 @@
   let codeLabel = $state<HTMLElement>();
   const result = $derived(install.code === null ? null : installCommand({ release, target, code: install.code, origin }));
   const commandText = $derived(result?.ok === true ? result.command.text : null);
-  const view = $derived(install.code !== null ? 'code' : source === 'AGENT' ? 'agent' : 'idle');
+  // A read after Close or expiry can show that the code was used: the device is then an AGENT device.
+  const isAgent = $derived(source === 'AGENT' || install.status?.metricsSource === 'AGENT');
+  const view = $derived(install.code !== null ? 'code' : isAgent ? 'agent' : 'idle');
   const copyShown = $derived(install.copied !== null && install.copied.text === commandText ? install.copied : null);
+  /** Everything that changes the panel's height; each change moves what lies below by FLIP (MOT-002, 5.7.3 Disclosure, MOT-006). */
+  const layout = $derived(
+    [view, copyShown?.count ?? 'no-copy', install.error?.message ?? '', install.expired, install.revoked, install.status?.metricsStale ?? 'unread', install.statusError !== null, result?.ok ?? 'no-command'].join('|'),
+  );
 
-  // What lies below the panel moves by FLIP when the view changes its height (5.7.3 Disclosure, MOT-006).
+  // What lies below the panel moves by FLIP when the panel changes its height.
   let below: Places | null = null;
   $effect.pre(() => {
-    void view;
+    void layout;
     below = measure([...followers()]);
   });
   let previous = 'idle';
   $effect(() => {
+    void layout;
     const shown = view;
     if (below !== null) flip(below, { spring: 'default' });
     below = null;
@@ -101,7 +108,7 @@
 </script>
 
 {#snippet starter(label: string)}
-  <p>{source === 'AGENT' ? `Install the agent again on ${deviceName}, for example after a revoke.` : `Install the Anima agent on ${deviceName} to send its metrics.`}</p>
+  <p>{isAgent ? `Install the agent again on ${deviceName}, for example after a revoke.` : `Install the Anima agent on ${deviceName} to send its metrics.`}</p>
   {#if install.expired}
     <p role="status">The code expired. Make a new one.</p>
   {/if}
@@ -160,11 +167,12 @@
   {:else if result?.ok === false}
     <p role="alert">{refusalMessage(result.refusal)}</p>
   {/if}
-  <FormButton onclick={() => { install.clear(); }}>Close</FormButton>
+  <FormButton onclick={() => { install.close(); }}>Close</FormButton>
 {/snippet}
 
 <section class="agent" id="agent" aria-labelledby="agent-heading" bind:this={section}>
   <h3 id="agent-heading" tabindex="-1" bind:this={heading}>Agent</h3>
+  <!-- One-sided on purpose: the outgoing view holds the code and the focused button, so it leaves the document at once (LOG-007, WCAG 2.4.3); the incoming one fades in. -->
   {#key view}
     <div class="body" in:fade>
       {#if view === 'code' && install.code !== null}

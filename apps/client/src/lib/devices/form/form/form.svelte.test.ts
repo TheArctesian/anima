@@ -306,7 +306,7 @@ it('D-7: an AGENT device shows the source as set by the agent, and offers only N
   const options = [...(select?.options ?? [])].map((option) => ({ value: option.value, text: option.text, disabled: option.disabled }));
   expect(select?.value).toBe('AGENT');
   expect(options).toEqual([
-    { value: 'AGENT', text: 'Agent (set by the agent)', disabled: true },
+    { value: 'AGENT', text: 'Agent', disabled: true },
     { value: 'NONE', text: 'None', disabled: false },
     { value: 'SSH', text: 'SSH', disabled: false },
   ]);

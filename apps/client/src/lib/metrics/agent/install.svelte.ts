@@ -74,6 +74,7 @@ export class AgentInstall {
       this.error = result.error;
       return;
     }
+    this.revoked = false;
     this.show(result.value);
   }
 
@@ -90,6 +91,13 @@ export class AgentInstall {
     if (this.left > 0) return;
     this.clear();
     this.expired = true;
+    void this.loadStatus();
+  }
+
+  /** The operator closes the code. The code may have been used, so the agent state is read again. */
+  close(): void {
+    this.clear();
+    void this.loadStatus();
   }
 
   /** Forgets the code and anything about it; the panel calls it when it closes. */
@@ -133,6 +141,7 @@ export class AgentInstall {
     if (epoch !== this.statusEpoch) return;
     this.statusError = result.ok ? null : result.error;
     this.status = result.ok ? result.value : null;
+    if (result.ok && result.value?.metricsStale === false) this.revoked = false;
   }
 
   /** Revokes the token after the operator confirmed; the hub keeps the source AGENT, shown stale (R-092 D-7). */

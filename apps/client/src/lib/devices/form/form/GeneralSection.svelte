@@ -98,10 +98,10 @@
         <input {...attributes} bind:value={values.macAddress} autocomplete="off" spellcheck="false" />
       {/snippet}
     </Field>
-    <Field label="Metrics source" field="metricsSource" {errors}>
+    <Field label="Metrics source" field="metricsSource" {errors} hint={agentSet ? "Set by the agent. Revoke it, or pick None or SSH, to change." : undefined}>
       {#snippet control(attributes)}
         <select {...attributes} bind:value={values.metricsSource}>
-          {#if agentSet}<option value="AGENT" disabled>Agent (set by the agent)</option>{/if}
+          {#if agentSet}<option value="AGENT" disabled>Agent</option>{/if}
           {#each METRICS as source (source.value)}
             <option value={source.value}>{source.label}</option>
           {/each}
