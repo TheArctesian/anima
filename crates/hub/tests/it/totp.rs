@@ -283,7 +283,8 @@ async fn log_007_the_secret_and_codes_reach_no_log_event_or_audit_entry(pool: Pg
         encoded.as_str(),
         &hex,
         "otpauth",
-        "999999",
+        // Codes as whole JSON strings: a bare digit run also matches timing floats.
+        "\"999999\"",
         &format!("\"{typed}\""),
     ] {
         assert!(!written.contains(needle), "{needle} in {written}");
