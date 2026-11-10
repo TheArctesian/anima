@@ -10,8 +10,8 @@ use crate::metrics::{MetricKind, MetricRange, record_collection, series};
 /// Inserts one series row of pve-01 as a writer could, and whether the database took it.
 async fn stored(pool: &PgPool, kind: &str, label: &str, gpu_index: Option<i32>) -> bool {
     sqlx::query(
-        "INSERT INTO metrics.series (id, device_id, kind, label, gpu_index) \
-         VALUES (gen_random_uuid(), $1, $2, $3, $4)",
+        "INSERT INTO metrics.series (id, device_id, kind, label, gpu_index, created_at) \
+         VALUES (gen_random_uuid(), $1, $2, $3, $4, now())",
     )
     .bind(device(PVE_01))
     .bind(kind)

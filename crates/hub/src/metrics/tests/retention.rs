@@ -29,13 +29,15 @@ fn name_of(at: DateTime<Utc>) -> String {
 /// A series of `device` and its aggregate rows `age` before `now`, one row per table.
 async fn aged_aggregates(pool: &PgPool, device: DeviceId, kind: &str, ages: [TimeDelta; 3]) {
     let series = Uuid::now_v7();
-    sqlx::query("INSERT INTO metrics.series (id, device_id, kind) VALUES ($1, $2, $3)")
-        .bind(series)
-        .bind(device)
-        .bind(kind)
-        .execute(pool)
-        .await
-        .unwrap();
+    sqlx::query(
+        "INSERT INTO metrics.series (id, device_id, kind, created_at) VALUES ($1, $2, $3, now())",
+    )
+    .bind(series)
+    .bind(device)
+    .bind(kind)
+    .execute(pool)
+    .await
+    .unwrap();
     let now = database_now(pool).await;
     for (table, age) in ["minute", "hour", "day"].into_iter().zip(ages) {
         sqlx::query(&format!(
@@ -70,12 +72,15 @@ async fn db_004_partitions_are_created_for_today_and_seven_days_ahead_and_again_
     fixtures(path = "../../../tests/fixtures", scripts("devices"))
 )]
 async fn db_004_a_sample_in_a_day_without_a_partition_is_refused(pool: PgPool) {
-    sqlx::query("INSERT INTO metrics.series (id, device_id, kind) VALUES ($1, $2, 'cpu_percent')")
-        .bind(Uuid::now_v7())
-        .bind(device(PVE_01))
-        .execute(&pool)
-        .await
-        .unwrap();
+    sqlx::query(
+        "INSERT INTO metrics.series (id, device_id, kind, created_at) \
+         VALUES ($1, $2, 'cpu_percent', now())",
+    )
+    .bind(Uuid::now_v7())
+    .bind(device(PVE_01))
+    .execute(&pool)
+    .await
+    .unwrap();
 
     let refused = sqlx::query(
         "INSERT INTO metrics.samples (series_id, at, value) \
