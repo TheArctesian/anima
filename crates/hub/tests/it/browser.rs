@@ -1,9 +1,12 @@
 //! Browser sign-in through the hub's router at a public origin: `signInBrowser`, the
-//! `__Host-anima` cookie, the Origin check on `POST /graphql` and the WebSocket upgrade, and
-//! `logout` (D-3, D-4, SEC-002, API-003, WP-43 A-3 to A-8).
+//! `__Host-anima` cookie, the Origin check on `POST /graphql` and the WebSocket upgrade,
+//! `logout`, and the sockets a second sign-in or a `logout` closes (D-3, D-4, SEC-002, API-003,
+//! WP-43 A-3 to A-8).
 
 mod cookie;
+mod rotation;
 mod sign_in;
+mod sign_out;
 pub(crate) mod socket;
 mod table;
 
