@@ -236,6 +236,7 @@ dependencies = [
  "rpassword",
  "russh",
  "russh-sftp",
+ "rustix",
  "rustls",
  "serde",
  "serde_json",

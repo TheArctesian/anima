@@ -162,6 +162,7 @@ impl Trail {
 | `checks` | `devices`, `maintenance`, `events`, `credentials` (`Vault`, `Secret`, `Sealed` only; R-028) |
 | `sessions` | `access`, `devices`, `credentials`, `events` |
 | `sessions` (Phase 3, replaces the row above) | `access`, `devices`, `credentials`, `events`, `ssh`, `trust` |
+| `sessions` (Phase 3, adds; CR-19) | `retention` (`periods`, `Subject`, `Error` only): the recorder sets `recordings.expires_at = started_at + period` at insert. No cycle: `retention` imports no domain |
 | `checks` (Phase 2, adds) | `sessions` (`link`, `SshLink`, `FixedCommand` only; no cycle: `sessions` does not import `checks`) |
 | `checks` (Phase 3, replaces the Phase 2 row above) | `ssh` (`link`, `SshLink`, `FixedCommand`, `CommandOutput`, `LinkError` only; replaces `sessions`; CR-11), `notifications` (`observe`, `adopt_defaults`, `Observation`, `for_checks` only) |
 | `metrics` (Phase 2, new) | `devices`, `sessions` (link only), `credentials` (`Vault` only), `events` |
@@ -394,6 +395,7 @@ pub fn tunnel_router(s: &Serving) -> axum::Router;      // signature change only
 pub fn terminal_router(s: &Serving) -> axum::Router;    // signature change only
 pub fn playback_router(s: &Serving) -> axum::Router;    // GET /recording, K4 §12 (WP-48)
 // Wiring only: drop_expired_recordings(db, root, now, keep: chrono::Days) -> Result<u64, Error>.
+// The recorder reads retention::periods at each recording's start for its expires_at (CR-19).
 // Session start, files and wake keep their Phase 2 signatures; wake now uses ssh::link.
 ```
 
