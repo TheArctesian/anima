@@ -11,7 +11,7 @@ use sqlx::PgPool;
 
 use super::support::{
     DOCKER_HOST, JELLYFIN, Listener, add, allow_event_writes, closed_port, database_now, due_at,
-    events_of, fail_event_writes, on_loopback, rng, scheduler, tcp,
+    events_of, fail_event_writes, notify_on, on_loopback, queued, rng, scheduler, tcp,
 };
 use crate::{
     checks::{
@@ -201,35 +201,6 @@ tick_test! {
         assert_eq!(device_statuses(&drain(&mut receiver)), [Status::Up]);
         assert_eq!(events_of(&pool, device).await, [event("info", "docker-host is Up")]);
     }
-}
-
-/// Selects a new channel for `check`.
-async fn notify_on(pool: &PgPool, check: CheckId) {
-    let channel = uuid::Uuid::now_v7();
-    sqlx::query(
-        "INSERT INTO notifications.channels (id, name, kind) VALUES ($1, 'Ops', 'webhook')",
-    )
-    .bind(channel)
-    .execute(pool)
-    .await
-    .unwrap();
-    sqlx::query("INSERT INTO notifications.check_channels (check_id, channel_id) VALUES ($1, $2)")
-        .bind(check)
-        .bind(channel)
-        .execute(pool)
-        .await
-        .unwrap();
-}
-
-/// The kinds queued for `check`, oldest first.
-async fn queued(pool: &PgPool, check: CheckId) -> Vec<String> {
-    sqlx::query_scalar(
-        "SELECT kind FROM notifications.outbox WHERE check_id = $1 ORDER BY created_at, id",
-    )
-    .bind(check)
-    .fetch_all(pool)
-    .await
-    .unwrap()
 }
 
 async fn heartbeats(pool: &PgPool, check: CheckId) -> i64 {

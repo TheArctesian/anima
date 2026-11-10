@@ -1,5 +1,7 @@
 //! A push and a scheduled attempt that run at the same time on one check count every written
-//! failure: both evaluate on the state the row lock leaves them (CHK-002, CHK-003).
+//! failure: both evaluate on the state the row lock leaves them (CHK-002, CHK-003). An attempt
+//! queues its notifications only with a written beat, and in the beat's own transaction
+//! (D-16, NOT-001).
 
 use std::{
     sync::{
@@ -18,7 +20,9 @@ use sqlx::PgPool;
 use tokio::task::JoinSet;
 use tower::ServiceExt as _;
 
-use super::support::{DOCKER_HOST, add_check, database_now, device, new_check, stored};
+use super::support::{
+    DOCKER_HOST, add, add_check, database_now, device, new_check, notify_on, queued, stored, tcp,
+};
 use crate::{
     checks::{
         self, Attempt, Definition, PushToken,
@@ -128,5 +132,114 @@ tick_test! {
             .await
             .unwrap();
         assert_eq!(written, 0);
+    }
+}
+
+/// Records one failed attempt at `at` on a connection with no transaction, so the attempt's
+/// own transaction is the one that commits; returns whether the beat was written.
+async fn attempt_alone(pool: PgPool, id: CheckId, at: DateTime<Utc>) -> bool {
+    let result = ProbeResult::failed(&Failure::NoPush);
+    let device = devices::get(&pool, device(DOCKER_HOST)).await.unwrap();
+    let attempt = Attempt {
+        result: &result,
+        in_maintenance: false,
+        at,
+        domain: None,
+        device: &device,
+    };
+    let mut conn = pool.acquire().await.unwrap();
+    checks::record_attempt(&mut conn, id, &attempt)
+        .await
+        .unwrap()
+        .is_some()
+}
+
+/// How many notification state rows `check` has.
+async fn states(pool: &PgPool, id: CheckId) -> i64 {
+    sqlx::query_scalar("SELECT count(*) FROM notifications.check_state WHERE check_id = $1")
+        .bind(id)
+        .fetch_one(pool)
+        .await
+        .unwrap()
+}
+
+/// Waits until some statement of this database waits for a row lock.
+async fn until_a_statement_waits(pool: &PgPool) {
+    for _ in 0..500 {
+        let waiting: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM pg_catalog.pg_stat_activity \
+             WHERE datname = current_database() AND wait_event_type = 'Lock'",
+        )
+        .fetch_one(pool)
+        .await
+        .unwrap();
+        if waiting > 0 {
+            return;
+        }
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    panic!("no statement waited for the lock");
+}
+
+tick_test! {
+    async fn d_16_a_skipped_attempt_queues_nothing_and_keeps_no_state(pool: PgPool) {
+        let at = database_now(&pool).await;
+        let paused = add_check(&pool, new_check(device(DOCKER_HOST), "Paused", tcp(1), 0)).await;
+        let stale = add_check(&pool, new_check(device(DOCKER_HOST), "Stale", tcp(2), 0)).await;
+        for id in [paused, stale] {
+            notify_on(&pool, id).await;
+        }
+        sqlx::query("UPDATE checks.checks SET paused = true WHERE id = $1")
+            .bind(paused)
+            .execute(&pool)
+            .await
+            .unwrap();
+        // A newer beat landed while the attempt ran.
+        sqlx::query("UPDATE checks.checks SET last_beat_at = $2 WHERE id = $1")
+            .bind(stale)
+            .bind(at + TimeDelta::seconds(10))
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        for id in [paused, stale] {
+            assert!(!attempt_alone(pool.clone(), id, at).await, "the beat is skipped");
+            assert_eq!(queued(&pool, id).await, Vec::<String>::new());
+            assert_eq!(states(&pool, id).await, 0);
+        }
+    }
+
+    async fn d_16_the_beat_commits_only_with_its_notifications(pool: PgPool) {
+        let id = add(&pool, device(DOCKER_HOST), tcp(1), 0).await;
+        notify_on(&pool, id).await;
+        sqlx::query("INSERT INTO notifications.check_state (check_id) VALUES ($1)")
+            .bind(id)
+            .execute(&pool)
+            .await
+            .unwrap();
+        let mut holder = pool.begin().await.unwrap();
+        sqlx::query("SELECT 1 FROM notifications.check_state WHERE check_id = $1 FOR UPDATE")
+            .bind(id)
+            .execute(&mut *holder)
+            .await
+            .unwrap();
+        let at = database_now(&pool).await;
+        let writer = tokio::spawn(attempt_alone(pool.clone(), id, at));
+
+        until_a_statement_waits(&pool).await;
+        // The check row, not the heartbeats: a read of the partitioned table would wait for
+        // the day partition the attempt may have created in its open transaction.
+        let visible: Option<DateTime<Utc>> =
+            sqlx::query_scalar("SELECT last_beat_at FROM checks.checks WHERE id = $1")
+                .bind(id)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        holder.rollback().await.unwrap();
+
+        assert_eq!(visible, None, "the beat was visible before its notifications were queued");
+        let written = tokio::time::timeout(Duration::from_secs(10), writer).await;
+        assert!(written.expect("the attempt finishes").unwrap(), "the beat is written");
+        assert_eq!(queued(&pool, id).await, ["down"]);
     }
 }
