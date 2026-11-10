@@ -68,6 +68,35 @@ const MetricsAdded = graphql(`
   }
 `);
 
+const AgentStatus = graphql(`
+  query AgentStatus($id: ID!) {
+    device(id: $id) {
+      id
+      metricsSource
+      metricsStale
+    }
+  }
+`);
+
+const EnrolAgent = graphql(`
+  mutation EnrolAgent($deviceId: ID!) {
+    enrolAgent(deviceId: $deviceId) {
+      code
+      expiresAt
+    }
+  }
+`);
+
+const RevokeAgentToken = graphql(`
+  mutation RevokeAgentToken($deviceId: ID!) {
+    revokeAgentToken(deviceId: $deviceId) {
+      id
+      metricsSource
+      metricsStale
+    }
+  }
+`);
+
 type DeviceNode = NonNullable<DeviceMetricsQuery['device']>;
 
 /** The metric series of one device for one range (WP-28 D-5: HOUR minutes, DAY ten minutes, WEEK hours). */
@@ -84,6 +113,16 @@ export interface DeviceMetricsView {
   /** The latest readings the hub holds, for the bars before the first live batch; `null` when it has none. */
   readonly readings: DeviceNode['readings'] | null;
 }
+/** The agent state of one device: its source, and whether an AGENT device has gone quiet (MET-018). */
+export interface AgentStatusView {
+  readonly metricsSource: DeviceNode['metricsSource'];
+  readonly metricsStale: boolean;
+}
+/** A one-use enrolment code and when it stops working (MET-012). Show it once; never log or store it (LOG-007). */
+export interface AgentEnrolment {
+  readonly code: string;
+  readonly expiresAt: string;
+}
 export type { MetricRange };
 
 /** Metric history and live samples through a `Hub` (CQ-045). */
@@ -96,6 +135,25 @@ export function metricsApi(hub: Hub) {
       const { device } = result.value;
       if (!device) return { ok: true, value: null };
       return { ok: true, value: { metricsSource: device.metricsSource, gpus: device.gpus, series: device.metrics, readings: device.readings ?? null } };
+    },
+    /** The device's agent source and stale flag; `null` when the hub has no such device. */
+    agentStatus: async (deviceId: string): Promise<HubResult<AgentStatusView | null>> => {
+      const result = await hub.request(AgentStatus, { id: deviceId });
+      if (!result.ok) return result;
+      const { device } = result.value;
+      return { ok: true, value: device ? { metricsSource: device.metricsSource, metricsStale: device.metricsStale } : null };
+    },
+    /** Makes a fresh enrolment code for the device (MET-012); a new code voids the earlier unused ones (K8 Section 3) and each works once. */
+    enrolAgent: async (deviceId: string): Promise<HubResult<AgentEnrolment>> => {
+      const result = await hub.request(EnrolAgent, { deviceId });
+      return result.ok ? { ok: true, value: result.value.enrolAgent } : result;
+    },
+    /** Revokes the device's agent token (MET-013); the source stays AGENT, shown stale (R-092 D-7). */
+    revokeAgentToken: async (deviceId: string): Promise<HubResult<AgentStatusView>> => {
+      const result = await hub.request(RevokeAgentToken, { deviceId });
+      if (!result.ok) return result;
+      const { metricsSource, metricsStale } = result.value.revokeAgentToken;
+      return { ok: true, value: { metricsSource, metricsStale } };
     },
     /** Listen for new samples of one device; returns the function that stops listening. */
     watch: (deviceId: string, sink: Sink<NewMetrics>): (() => void) =>
