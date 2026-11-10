@@ -1,7 +1,7 @@
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 
-const TOOLS = ['git', 'bun', 'rust', 'postgres', 'tauri-packages', 'updater-key', 'updater-key-locked'] as const;
+const TOOLS = ['git', 'bun', 'rust', 'postgres', 'tauri-packages', 'updater-key', 'updater-key-locked', 'updater-public-key'] as const;
 
 /** A tool the builder lacks (BLD-028), as the shell names it; `updater-key-locked` means stored but not unlocked. */
 export type BuilderTool = (typeof TOOLS)[number];
@@ -28,6 +28,26 @@ export interface SignedFile {
   readonly signature: string;
 }
 
+/** One file of the job's release: its name, lower-case hex SHA-256 and size in bytes (BLD-063). */
+export interface ReleaseFile {
+  readonly name: string;
+  readonly sha256: string;
+  readonly size: number;
+}
+
+/** The files of the last bundle, `SHA256SUMS` last as the shell wrote it, and its signed updater file (BLD-063, UPD-010). */
+export interface ReleaseFiles {
+  readonly files: readonly ReleaseFile[];
+  readonly updater: SignedFile;
+}
+
+/** A presigned `PUT` from the hub. The URL is a credential: it goes to the shell and nowhere else (BLD-049). */
+export interface PresignedUpload {
+  readonly name: string;
+  readonly url: string;
+  readonly headers: readonly { readonly name: string; readonly value: string }[];
+}
+
 /**
  * The fixed build steps of the desktop shell (BLD-026, BLD-027). No call names a program, a path or an argument list.
  * Each step rejects with a `BuilderShellError`.
@@ -44,6 +64,13 @@ export interface BuilderShell {
   sign(job: StepJob): Promise<SignedFile>;
   /** Checks the written signature again for the job's version (BLD-046). */
   verify(job: StepJob): Promise<void>;
+  /** The files of the job's bundle with their sizes and SHA-256, read by the shell (BLD-063, D-22). */
+  releaseFiles(job: StepJob): Promise<ReleaseFiles>;
+  /**
+   * Sends one file of the job's bundle, or the `SHA256SUMS` the shell writes, to its presigned URL (BLD-060, BLD-063).
+   * The shell checks the URL is for that file of this job, checks its headers and follows no redirect.
+   */
+  upload(job: StepJob, upload: PresignedUpload): Promise<void>;
   /** Stops the running step and every process it started. */
   cancel(): Promise<void>;
   /** Hears each output line of the running step; resolves with the function that stops listening. */
@@ -66,6 +93,7 @@ const SHELL_CODES = [
   'key-locked',
   'signed-version',
   'signing',
+  'upload',
   'caller',
   'failed',
 ] as const;
@@ -119,6 +147,24 @@ function signedFileFrom(answer: unknown): SignedFile {
   return { file: answer.file, signature: answer.signature };
 }
 
+const SHA256 = /^[0-9a-f]{64}$/;
+
+function releaseFileFrom(answer: unknown): ReleaseFile {
+  if (!isRecord(answer)) throw new BuilderShellError('bundle');
+  const { name, sha256, size } = answer;
+  const sized = typeof size === 'number' && Number.isSafeInteger(size) && size > 0;
+  if (typeof name !== 'string' || typeof sha256 !== 'string' || !SHA256.test(sha256) || !sized) {
+    throw new BuilderShellError('bundle');
+  }
+  return { name, sha256, size };
+}
+
+/** The shell's release files, with each field checked: they cross a process boundary and go to the hub. */
+export function releaseFilesFrom(answer: unknown): ReleaseFiles {
+  if (!isRecord(answer) || !Array.isArray(answer.files) || answer.files.length === 0) throw new BuilderShellError('bundle');
+  return { files: answer.files.map(releaseFileFrom), updater: signedFileFrom(answer.updater) };
+}
+
 /** The `builder-line` events of the main web view (BLD-048). */
 async function onLine(listener: (line: string) => void): Promise<() => void> {
   if (!isTauri()) return () => undefined;
@@ -135,6 +181,12 @@ export const desktopBuilderShell: BuilderShell = {
   bundle: (job) => step('builder_bundle', { job }),
   sign: async (job) => signedFileFrom(await step<unknown>('builder_sign', { target: job.target, version: job.version })),
   verify: (job) => step('builder_signature_verify', { target: job.target, version: job.version }),
+  releaseFiles: async (job) =>
+    releaseFilesFrom(await step<unknown>('builder_release_files', { target: job.target, version: job.version })),
+  upload: (job, upload) =>
+    step('builder_upload', {
+      job: { target: job.target, version: job.version, upload: { name: upload.name, url: upload.url, headers: upload.headers } },
+    }),
   cancel: () => step('builder_cancel', {}),
   onLine,
 };

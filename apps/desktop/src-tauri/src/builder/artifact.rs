@@ -37,6 +37,17 @@ pub fn updater_file(clone: &Path, target: Target, version: &Version) -> PathBuf 
     }
 }
 
+/// The DMG people download, made on macOS only (BLD-063).
+pub fn dmg_file(clone: &Path, target: Target, version: &Version) -> Option<PathBuf> {
+    match target {
+        Target::LinuxX86_64 => None,
+        Target::DarwinUniversal => Some(
+            bundle_folder(clone, target)
+                .join(format!("dmg/{PRODUCT}_{}_universal.dmg", version.as_str())),
+        ),
+    }
+}
+
 /// The macOS app folder.
 pub fn mac_app(clone: &Path) -> PathBuf {
     bundle_folder(clone, Target::DarwinUniversal).join(format!("macos/{PRODUCT}.app"))

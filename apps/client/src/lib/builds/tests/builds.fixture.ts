@@ -1,7 +1,16 @@
 // Test support: a fake desktop shell and a fake builds API that record what the builder loop asks of them.
-import { BuilderShellError, type BuilderShell, type BuilderShellCode, type BuilderTool, type ToolCheck } from '$lib/desktop/builder/shell';
+import {
+  BuilderShellError,
+  type BuilderShell,
+  type BuilderShellCode,
+  type BuilderTool,
+  type PresignedUpload,
+  type ReleaseFile,
+  type ReleaseFiles,
+  type ToolCheck,
+} from '$lib/desktop/builder/shell';
 import type { HubError, HubResult } from '$lib/hub/hub';
-import type { BuildJobState, BuildsApi, ClaimedJob, JobReport } from '../api';
+import type { BuildJobState, BuildsApi, ClaimedJob, JobFile, JobReport, UploadUrl } from '../api';
 
 export const BUILDER_TOKEN = 'anb_builder-token-0123456789';
 
@@ -15,7 +24,13 @@ export function refused(code: HubError['code']): HubResult<never> {
   return { ok: false, error: { code, message: 'hub text' } as HubError };
 }
 
-export type StepCall = 'checkout' | 'gates' | 'bundle' | 'sign' | 'verify';
+export type StepCall = 'checkout' | 'gates' | 'bundle' | 'sign' | 'verify' | 'release-files' | 'upload';
+
+/** The updater file of `JOB` and its signature, as the fake shell signs it. */
+export const UPDATER: ReleaseFile = { name: 'Anima_0.1.12_amd64.AppImage', sha256: 'b'.repeat(64), size: 5 };
+/** The `SHA256SUMS` the shell writes for the job's files. */
+export const SUMS_FILE: ReleaseFile = { name: 'SHA256SUMS', sha256: 'd'.repeat(64), size: 94 };
+export const SIGNATURE = 'c2lnbmF0dXJl';
 
 /** What one step does when it runs: print lines, wait, then end or fail. */
 export interface StepScript {
@@ -69,6 +84,17 @@ export class FakeShell implements BuilderShell {
     return { file: 'Anima_0.1.12_amd64.AppImage', signature: 'c2lnbmF0dXJl' };
   };
   verify = () => this.#run('verify');
+  release: ReleaseFiles = { files: [UPDATER, SUMS_FILE], updater: { file: UPDATER.name, signature: SIGNATURE } };
+  /** The name of each file whose upload started. */
+  uploads: string[] = [];
+  releaseFiles = async () => {
+    await this.#run('release-files');
+    return this.release;
+  };
+  upload = async (_job: unknown, upload: PresignedUpload) => {
+    this.uploads.push(upload.name);
+    await this.#run('upload');
+  };
 
   cancel(): Promise<void> {
     this.cancels += 1;
@@ -88,12 +114,29 @@ export interface SentReport extends JobReport {
 }
 
 /** A builds API for the builder token: claims hand out `jobs` in turn, reports are recorded with the fake time. */
-export class FakeBuildsApi implements Pick<BuildsApi, 'claim' | 'report'> {
+export class FakeBuildsApi implements Pick<BuildsApi, 'claim' | 'report' | 'uploadUrls' | 'reportUploaded'> {
   jobs: ClaimedJob[] = [];
   claims = 0;
   claimAnswer: HubResult<ClaimedJob | null> | null = null;
   reports: SentReport[] = [];
   reportAnswer: (report: JobReport) => HubResult<BuildJobState> = (report) => ok(report.state ?? 'BUILDING');
+  /** The files of each `uploadUrls` call. */
+  granted: (readonly JobFile[])[] = [];
+  urlsAnswer: ((files: readonly JobFile[]) => HubResult<readonly UploadUrl[]>) | null = null;
+  /** The files and feed of each accepted `reportUploaded`. */
+  uploaded: { files: readonly JobFile[]; feed: string }[] = [];
+  uploadedAnswer: HubResult<BuildJobState> = ok('UPLOADING');
+
+  uploadUrls(_id: string, files: readonly JobFile[]): Promise<HubResult<readonly UploadUrl[]>> {
+    this.granted.push(files);
+    const urls = files.map((file) => ({ name: file.name, url: `https://r2.example/${file.name}?X-Amz-Signature=ab`, headers: [] }));
+    return Promise.resolve(this.urlsAnswer?.(files) ?? ok(urls));
+  }
+
+  reportUploaded(_id: string, files: readonly JobFile[], feed: string): Promise<HubResult<BuildJobState>> {
+    if (this.uploadedAnswer.ok) this.uploaded.push({ files, feed });
+    return Promise.resolve(this.uploadedAnswer);
+  }
 
   claim(): Promise<HubResult<ClaimedJob | null>> {
     this.claims += 1;

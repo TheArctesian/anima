@@ -21,7 +21,7 @@ export interface BuilderIdStore {
 export interface ThisBuilderPorts {
   /** `enrol` and `revoke` with the operator's session; `claim` and `report` with the builder token. */
   readonly operator: Pick<BuildsApi, 'enrol' | 'revoke'>;
-  readonly builder: Pick<BuildsApi, 'claim' | 'report'>;
+  readonly builder: Pick<BuildsApi, 'claim' | 'report' | 'uploadUrls' | 'reportUploaded'>;
   readonly shell: BuilderShell;
   readonly tokens: BuilderTokenStore;
   readonly ids: BuilderIdStore;
@@ -32,6 +32,8 @@ export interface ThisBuilderPorts {
   /** The name the hub records for this computer (BLD-021). */
   readonly computerName: () => Promise<string>;
   readonly sleep: (ms: number) => Promise<void>;
+  /** The time now; it dates a release's feed (CQ-021). */
+  readonly now: () => Date;
 }
 
 const PROBLEMS = {
@@ -82,6 +84,7 @@ export class ThisBuilder {
       shell: this.#ports.shell,
       secrets: () => this.#secrets(),
       sleep: this.#ports.sleep,
+      now: this.#ports.now,
       onStatus: (status) => {
         this.status = status;
       },

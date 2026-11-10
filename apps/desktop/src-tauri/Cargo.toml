@@ -45,6 +45,8 @@ scrypt = { version = "0.12", default-features = false }
 ed25519-dalek = { version = "3", default-features = false, features = ["fast", "zeroize"] }
 minisign-verify = "0.3"
 tauri-plugin-dialog = "2"
+# The upload of a job's files to the presigned URLs the hub gives (BLD-060, BLD-063).
+reqwest.workspace = true
 # The salt a key without a password is sealed under on import (D-19).
 getrandom = "0.3"
 

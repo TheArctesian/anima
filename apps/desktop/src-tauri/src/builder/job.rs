@@ -71,6 +71,14 @@ impl Target {
         }
     }
 
+    /// The folder of the target's files in the release bucket (BLD-060).
+    pub const fn folder(self) -> &'static str {
+        match self {
+            Self::LinuxX86_64 => "linux-x86_64",
+            Self::DarwinUniversal => "darwin-universal",
+        }
+    }
+
     /// The target this computer can build, if any.
     pub fn here() -> Result<Self, BuilderError> {
         [Self::LinuxX86_64, Self::DarwinUniversal]

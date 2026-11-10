@@ -1,7 +1,8 @@
 import { BuilderShellError, type BuilderShell, type BuilderTool, type StepJob, type ToolCheck } from '$lib/desktop/builder/shell';
 import type { BuildsApi, ClaimedJob } from './api';
 import { LineCleaner } from './redaction';
-import { failureReason, JobReporter, type Sent } from './report';
+import { failureReason, JobReporter, type Sent, type StepCode } from './report';
+import { uploadRelease, UploadRefusedError } from './upload';
 
 /** How long the builder waits between claims when no job waits; well inside the 60 s that count as online (BLD-007). */
 export const POLL_MS = 20_000;
@@ -14,13 +15,6 @@ export const REPORT_MS = 10_000;
 export const BUILDER_CALL_TIMEOUT_MS = 4_000;
 /** Reports that may fail in a row before the lease (90 s, BLD-005) has surely ended. */
 const MISSED_REPORTS_MAX = 8;
-
-/**
- * The job reaches the upload point and stops there: publishing (presigned upload, verification, the feed) is WP-36
- * task 3. Until then the job is reported `FAILED` with this reason, so its lease ends at once rather than after three
- * attempts (D-10).
- */
-export const PUBLISHING_LATER = 'Built and signed. Publishing arrives in WP-36 task 3, so this job stops here.';
 
 /** What the builder is doing, for the Settings row (BLD-020). */
 export type BuilderStatus =
@@ -36,7 +30,7 @@ export type BuilderStatus =
   | { readonly kind: 'refused' }
   | { readonly kind: 'stopped' };
 
-export type StepName = 'checkout' | 'gates' | 'bundle' | 'sign' | 'verify';
+export type StepName = 'checkout' | 'gates' | 'bundle' | 'sign' | 'verify' | 'upload';
 
 interface Step {
   readonly name: StepName;
@@ -44,6 +38,9 @@ interface Step {
   readonly label: string;
   run(shell: BuilderShell, job: StepJob): Promise<unknown>;
 }
+
+/** The upload, the last step: it runs once the job is reported `UPLOADING` (BLD-060 to BLD-063). */
+const UPLOAD = { name: 'upload', label: 'The upload' } as const;
 
 /** The steps of one job, in order (BLD-040 to BLD-046). */
 const STEPS: readonly Step[] = [
@@ -57,18 +54,21 @@ const STEPS: readonly Step[] = [
 /** What the loop needs; every part is injected, time included, so tests run without a shell, a hub or a clock (CQ-021). */
 export interface LoopPorts {
   /** The builder's calls, sent with the builder token. */
-  readonly api: Pick<BuildsApi, 'claim' | 'report'>;
+  readonly api: Pick<BuildsApi, 'claim' | 'report' | 'uploadUrls' | 'reportUploaded'>;
   readonly shell: BuilderShell;
   /** The values removed from every line before it is sent: the builder and operator tokens (BLD-049). */
   readonly secrets: () => readonly string[];
   /** Resolves after `ms`. */
   readonly sleep: (ms: number) => Promise<void>;
+  /** The time now; it dates the proposed feed. */
+  readonly now: () => Date;
   readonly onStatus: (status: BuilderStatus) => void;
 }
 
-type Outcome = { readonly kind: 'done' } | { readonly kind: 'failed'; readonly code: BuilderShellError['code'] } | { readonly kind: 'lost' };
+type Outcome = { readonly kind: 'done' } | { readonly kind: 'failed'; readonly code: StepCode } | { readonly kind: 'lost' };
 
-function codeOf(reason: unknown): BuilderShellError['code'] {
+function codeOf(reason: unknown): StepCode {
+  if (reason instanceof UploadRefusedError) return 'hub-refused';
   return reason instanceof BuilderShellError ? reason.code : 'failed';
 }
 
@@ -88,6 +88,8 @@ async function withReports(work: Promise<unknown>, reporter: JobReporter, ports:
     await Promise.race([settled, ports.sleep(REPORT_MS)]);
     if (outcome !== undefined) return outcome;
     const sent: Sent = await reporter.send(null);
+    // The work may have ended while the report was out; the upload's last call ends the lease (D-25).
+    if (outcome !== undefined) return outcome;
     missed = sent === 'unreachable' ? missed + 1 : 0;
     if (sent === 'lost' || missed >= MISSED_REPORTS_MAX) {
       await ports.shell.cancel().catch(() => undefined);
@@ -127,11 +129,22 @@ export async function buildJob(job: ClaimedJob, ports: LoopPorts, stopping: () =
         return;
       }
     }
-    // TODO(WP-36 T3): upload the files, then report `UPLOADING` and `reportBuildUploaded` (BLD-060 to BLD-063).
-    await finish(reporter, PUBLISHING_LATER, ports);
+    await upload(job, reporter, ports, stopping);
   } finally {
     stopListening();
   }
+}
+
+/** Reports the built job `UPLOADING`, then uploads its files and reports them; a failure ends the job (BLD-060 to BLD-063). */
+async function upload(job: ClaimedJob, reporter: JobReporter, ports: LoopPorts, stopping: () => boolean): Promise<void> {
+  if (stopping()) {
+    await finish(reporter, failureReason(UPLOAD.label, 'cancelled'), ports);
+    return;
+  }
+  if ((await reporter.send('UPLOADING')) !== 'sent') return;
+  ports.onStatus({ kind: 'building', job, step: UPLOAD.name });
+  const outcome = await withReports(uploadRelease(job, ports, stopping), reporter, ports);
+  if (outcome.kind === 'failed') await finish(reporter, failureReason(UPLOAD.label, outcome.code), ports);
 }
 
 /** The tool check, or `null` after it has said why the builder cannot claim (BLD-028); a locked key claims nothing. */
