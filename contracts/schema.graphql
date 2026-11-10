@@ -151,7 +151,6 @@ enum RdpResizeMethod {
   RECONNECT
 }
 
-# PROXMOX joins in Phase 4
 enum MetricsSource {
   NONE
   SSH

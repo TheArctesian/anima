@@ -30,7 +30,7 @@ Anima is an application that manages the devices on a home network or a small pr
 
 - Remote access. The operator connects to a device with SSH or RDP.
 - Monitoring. Anima checks the uptime of each device. Anima also records the resource usage of each device.
-- Device management. A later version controls virtual machines and containers on a hypervisor, for example Proxmox VE.
+- Device management. Anima manages all of the operator's own compute resources from one place. A later version may also run virtual machines and containers (R-109).
 
 ### 1.2 Reference products
 
@@ -40,9 +40,8 @@ Anima uses the functions of these products as a reference:
 | --- | --- | --- |
 | Apache Guacamole (`guacamole-server`) | Apache 2.0 | Remote access with SSH, RDP and VNC through a gateway |
 | Uptime Kuma | MIT | Uptime checks, status history and notifications |
-| Proxmox VE | AGPL 3.0 | Management of virtual machines and containers |
 
-Anima uses `guacd` from Guacamole as a separate process. Anima does not copy source code from Uptime Kuma or Proxmox VE.
+Anima uses `guacd` from Guacamole as a separate process. Anima does not copy source code from Uptime Kuma.
 
 ### 1.3 Target platforms
 
@@ -211,7 +210,7 @@ Anima keeps three types of log.
 | Log type | Content | Location | Retention |
 | --- | --- | --- | --- |
 | Process log | Technical events of the hub process: start, stop, errors, warnings, slow queries, scheduler events | Standard output in JSON format. Docker collects it. | Docker log rotation: 10 files of 10 MB |
-| Event log | Events that the operator must see: device status changes, check failures, session start and end, Proxmox tasks, errors | PostgreSQL table `event_log` | 90 days |
+| Event log | Events that the operator must see: device status changes, check failures, session start and end, errors | PostgreSQL table `event_log` | 90 days |
 | Audit log | Each change that the operator makes: login, logout, add, change and delete of items, power actions | PostgreSQL table `audit_log` | 1 year |
 
 - **LOG-001.** The hub must use the Rust `tracing` crate for all process log entries.
@@ -802,7 +801,7 @@ The operator uses a form to add or edit a device. The form has these fields:
 | SSH | On or off, port, credential | No | Off, port 22 |
 | RDP | On or off, port, credential, security mode | No | Off, port 3389 |
 | Checks | List of checks (Section 6.4) | No | One ICMP check |
-| Metrics source | None, SSH, Proxmox API | No | None |
+| Metrics source | None, SSH | No | None |
 
 - **DEV-010.** The form must validate the host before the operator saves the device.
 - **DEV-011.** The form must show a password field as hidden text.
@@ -980,7 +979,6 @@ Metrics sources, in order of preference (R-084):
 
 - **Anima agent (push).** A small headless program, `anima-agent`, runs on the device. It reads the values on the device and pushes them to the hub over the VPN. Use the agent on each macOS and Linux device that can run software.
 - **SSH (agentless).** This is the fallback for devices that cannot run software, for example routers and NAS appliances. The hub connects with SSH and reads system values. On Linux, the hub reads `/proc`. On macOS, the hub uses `vm_stat`, `sysctl` and `df`.
-- **Proxmox API.** The hub reads the node, virtual machine and container status from the Proxmox VE API.
 
 The agent and the SSH collector parse the same command output and files with the same code (MET-016).
 
@@ -1004,8 +1002,8 @@ The agent may read NVIDIA values through NVML in place of `nvidia-smi`. The valu
 - **MET-007.** If a device has no GPU with its own memory, the client must not show VRAM. Do not show "0 %" for a missing GPU.
 - **MET-008.** If a device has a GPU with its own memory, the device card must show a VRAM bar after the disk bar. If the device has more than one GPU, the bar must show the GPU with the highest VRAM usage.
 - **MET-009.** The device detail view must show a chart for GPU usage and VRAM usage for each GPU. The chart label must include the GPU index and name.
-- **MET-010.** A GPU can be passed through to a virtual machine. In this case, the hub must read the GPU metrics from the virtual machine, not from the Proxmox node.
-- **MET-011.** A device's metrics source must be one of `agent`, `ssh`, `proxmox` or `none`. When a device has a working agent, the hub must stop SSH metric collection for it. If the agent is removed or its token is revoked, the operator can switch the device back to `ssh`. (R-084)
+- **MET-010.** Withdrawn with the Proxmox VE integration (R-109). A GPU passed through to a virtual machine is read by the agent in that virtual machine.
+- **MET-011.** A device's metrics source must be one of `agent`, `ssh` or `none`. When a device has a working agent, the hub must stop SSH metric collection for it. If the agent is removed or its token is revoked, the operator can switch the device back to `ssh`. (R-084)
 - **MET-012.** Enrolment. The operator makes an enrolment code for one device on the Device page ("Install agent"). The code must be 128 random bits, expire after 15 minutes and work only once. A second use must fail, even when the first use failed later in the exchange. The hub must keep only its SHA-256. `anima-agent enrol <code>` swaps the code for the device's agent token. Only a signed-in operator can make a code. (R-084)
 - **MET-013.** Agent token. The format is `anima_agent_` and 43 base64url characters. The hub must keep only its SHA-256. A token is bound to one device. It allows only two calls: push readings for that device, and renew itself. It must not call the GraphQL API, open a session or read anything. It expires after 365 days. The agent renews it during the last 30 days with the current token; the old token stops working when the new one is first used. The operator can revoke it on the Device page; revocation takes effect on the next push. The agent keeps it in the macOS Keychain, or on Linux in a file with mode `0600` owned by the user that runs the agent. No log, event, metric or error message must contain a token or an enrolment code (LOG-007). (R-084)
 - **MET-014.** Sampling and push. The agent samples every 2 seconds. Each 10 seconds, it makes one point from the samples: the mean, and also the maximum for CPU and GPU usage. It pushes the new points every 10 seconds in one batch. While the hub cannot be reached, it keeps up to 1 hour of points in memory, oldest dropped first, and sends them when the hub comes back. (R-084)
@@ -1064,76 +1062,9 @@ A later version adds these items to the Settings page:
 - Notification channels, for example email, ntfy, Discord or Telegram.
 - Default check settings.
 
-## 8. Device management (Proxmox VE)
+## 8. Device management (withdrawn)
 
-This function starts in Phase 4. It uses the Proxmox VE REST API (`/api2/json`) with an API token. Proxmox VE versions 8.4 and 9.x are in scope.
-
-### 8.1 Connection
-
-- **PVE-001.** The operator must be able to add a Proxmox VE node or cluster as a device.
-- **PVE-002.** If the node is part of a cluster, the hub must add the cluster one time. Do not add each node as a separate device, because each node gives access to the full cluster.
-- **PVE-003.** The hub must record the TLS certificate fingerprint at the first connection (`/nodes/{node}/certificates/info`). Do not turn off certificate verification.
-- **PVE-004.** If the fingerprint changes, the hub must stop the connection and show a warning, as in SEC-007.
-- **PVE-005.** The hub must read `/version` at each connection. The hub must use the correct privilege names and fields for that version.
-- **PVE-006.** The hub must show the token expiry date. The hub must write an event log entry 14 days before the token expires.
-
-### 8.2 API token privileges
-
-Create the token with privilege separation on. Give the role on the path `/` with propagation, or on one pool.
-
-| Role | Privileges |
-| --- | --- |
-| Anima read-only | `VM.Audit`, `Sys.Audit`, `Datastore.Audit`, `Pool.Audit`, `SDN.Audit`, and `VM.GuestAgent.Audit` (9.x) or `VM.Monitor` (8.x) |
-| Anima power control | The read-only privileges and `VM.PowerMgmt`. Add `VM.Console` only if consoles are on. |
-| Later phases | `VM.Snapshot`, `VM.Snapshot.Rollback`, `VM.Backup`, `Datastore.AllocateSpace`, `VM.Migrate`, only when the operator sets on the related function |
-
-- **PVE-010.** The hub must not ask for `Sys.PowerMgmt` or `Sys.Modify`.
-- **PVE-011.** The operator documentation must show the commands that make the two roles.
-
-### 8.3 Phase 4 functions
-
-| Function | API endpoints | Requirement |
-| --- | --- | --- |
-| Inventory | `/cluster/resources`, `/cluster/status` | **PVE-020.** The hub must read all nodes, virtual machines, containers and storage with one call. The hub must show virtual machines and containers as child devices of the cluster. |
-| Status | `/nodes/{node}/{type}/{id}/status/current` | **PVE-021.** The hub must show the state, uptime, lock and HA state of each guest. |
-| Metrics | `/cluster/metrics/export`, `/nodes/{node}/{type}/{id}/rrddata` | **PVE-022.** The hub must collect metrics with `/cluster/metrics/export`. Use `rrddata` only for history that the hub does not have. Do not poll each guest separately. |
-| Pressure metrics | `rrddata` (9.x only) | **PVE-023.** On 9.x, the hub must show CPU, memory and IO pressure (PSI). |
-| Guest agent | `.../qemu/{id}/agent/network-get-interfaces`, `get-fsinfo`, `get-osinfo`; `.../lxc/{id}/interfaces` | **PVE-024.** The hub must find the IP addresses of each guest. The SSH and RDP buttons must use these addresses. If the agent is not installed, the status is Unknown. It is not an error. |
-| Power control | `.../status/start`, `shutdown`, `stop`, `reboot` | **PVE-025.** The operator must be able to start, shut down, stop and restart a guest. The operator must confirm before a stop or a restart. |
-| Tasks | `/cluster/tasks`, `/nodes/{node}/tasks/{upid}/status`, `.../log` | **PVE-026.** Each write call gives a task ID (UPID). The hub must wait for the task result and write it to the event log. An HTTP 200 result only means that the task started. |
-| Tags | Guest `tags` field | **PVE-027.** The hub must show Proxmox tags as Anima tags. |
-| HA | `/cluster/ha/status/current`, `/cluster/ha/resources` | **PVE-028.** The client must show an HA badge on a guest that HA manages. Before a stop, the client must tell the operator that HA can start the guest again. |
-| Storage | `/nodes/{node}/storage` | **PVE-029.** The hub must show the usage of each storage. The usage limit for Degraded is 85 percent. |
-
-### 8.4 Consoles
-
-The gateway cannot open a Proxmox console. Proxmox sends VNC and terminal data over a WebSocket, and the VNC port is only available on the node. Thus consoles use a separate path.
-
-- **PVE-030.** The hub must relay the console WebSocket. The hub must call `vncproxy` or `termproxy` and then connect to `vncwebsocket` at once, because the ticket expires after about 10 seconds.
-- **PVE-031.** The client must use noVNC for a virtual machine console. The client must use xterm.js for a container console and a node shell.
-- **PVE-032.** Test if an API token can open a console. If it cannot, the hub must use a separate console user and renew its ticket every 90 minutes.
-- **PVE-033.** For a guest with an IP address, SSH (the hub's terminal tunnel, R-062) and RDP (through the gateway) are the preferred methods. The console is for a guest without network access.
-
-### 8.5 Later functions (Phase 6 or later)
-
-| Function | Endpoints | Priority |
-| --- | --- | --- |
-| Snapshots: make, list, roll back | `.../snapshot`, `.../snapshot/{name}/rollback` | Should |
-| Backups: last backup age, start a backup, guests without a backup | `/nodes/{node}/vzdump`, `/cluster/backup`, `/cluster/backup-info/not-backed-up` | Should |
-| Bulk start and stop by tag (9.x) | `/cluster/bulk-action/guest/...` | Should |
-| Proxmox sends events to the hub (webhook) | `/cluster/notifications/endpoints/webhook`, `/matchers` | Should |
-| Clone from a template, cloud-init with SSH keys | `.../clone`, `.../template`, `.../cloudinit` | Could |
-| Migration to a different node | `.../migrate` | Could |
-| Pending updates and disk SMART status | `/nodes/{node}/apt/update`, `/nodes/{node}/disks/smart` | Could |
-| SPICE: download a `.vv` file for `remote-viewer` | `.../spiceproxy` | Could |
-| Firewall, SDN and replication status | `/cluster/firewall`, `/cluster/sdn`, `/cluster/replication` | Could |
-
-### 8.6 Other hypervisors
-
-A later version can manage libvirt hosts and Docker hosts. Prepare for this now:
-
-- **PVE-040.** The hub must use one provider interface for inventory, power control, metrics, consoles and snapshots. Each provider must declare the functions that it supports.
-- **PVE-041.** The database must keep a provider task ID as opaque text (`external_task_id`). Do not use a Proxmox-only column type.
+The Proxmox VE integration (PVE-001 to PVE-041) is withdrawn (R-109). Anima manages the operator's own compute resources directly, with the agent (R-084), SSH and the remote access tunnels. It does not manage a hypervisor through the hypervisor's API. The IDs PVE-001 to PVE-041 are not used again. A later version may run virtual machines and containers itself; that function gets its own section when it is specified.
 
 ## 9. Delivery phases
 
@@ -1142,9 +1073,9 @@ A later version can manage libvirt hosts and Docker hosts. Prepare for this now:
 | 1 | Repository structure and quality gates (Sections 12 and 13). VPN setup: Headscale on the VPS, subnet routers, clients (Section 4.2). Design token build (Section 5.5), fonts and icons, motion helpers. Application shell, navigation bar, Nord theme, empty Settings page. Hub with authentication, GraphQL API, PostgreSQL and the three logs. Device list, add and edit device, tags. ICMP, TCP, TLS, HTTP(S), DNS, push and group checks. Maintenance windows. SSH sessions. | macOS, Linux |
 | 2 | RDP and VNC sessions. Web interfaces. Wake-on-LAN. SFTP. Live session list. SSH metrics. More check types. Device detail view with charts. | macOS, Linux |
 | 3 | Web client. Notifications. Prometheus endpoint and API keys. Session sharing and recording. Settings page items. Metrics push agent for macOS and Linux (`anima-agent`), with GPU usage on Apple silicon (R-084). | macOS, Linux, Web |
-| 4 | Proxmox VE integration (Sections 8.1 to 8.4). | macOS, Linux, Web |
+| 4 | Withdrawn (R-109). | — |
 | 5 | iOS client. | All |
-| 6 | Proxmox later functions (Section 8.5). Other hypervisors. Site agents for Wake-on-LAN and local checks. Traffic data (Section 4.3). | All |
+| 6 | Site agents for Wake-on-LAN and local checks. Traffic data (Section 4.3). | All |
 
 ### 9.1 Phase 1 acceptance criteria
 
@@ -1308,14 +1239,13 @@ anima/
 │   │   │   ├── devices/       Device inventory, sites, tags
 │   │   │   ├── checks/        Check types, scheduler, heartbeats, watchdog
 │   │   │   ├── maintenance/   Maintenance windows (pure rules + store)
-│   │   │   ├── metrics/       Collection (agent ingest, SSH, GPU, Proxmox), aggregates, retention
+│   │   │   ├── metrics/       Collection (agent ingest, SSH, GPU), aggregates, retention
 │   │   │   ├── sessions/      Session start, tunnel, history, sharing
 │   │   │   ├── credentials/   Encryption and storage of credentials
 │   │   │   ├── web_interfaces/ Web interface records and suggestions
 │   │   │   ├── events/        Event log and audit log
 │   │   │   ├── builds/        Release queue, builders, leases, publishing (Section 3.10)
 │   │   │   ├── notifications/ Channels and rules (Phase 3)
-│   │   │   ├── proxmox/       Proxmox VE provider (Phase 4)
 │   │   │   └── traffic/       DNS and flow data (Phase 6)
 │   │   ├── migrations/        sqlx migrations
 │   │   └── tests/it/          Integration tests (CQ-042)
@@ -1382,12 +1312,6 @@ Each hub domain folder has the same shape. Add only the files that the domain ne
 | Uptime Kuma v1 to v2 migration lessons | https://github.com/louislam/uptime-kuma/wiki/Migration-From-v1-To-v2 |
 | Nerd Fonts (OpenDyslexic patched font, icon cheat sheet) | https://www.nerdfonts.com/ and https://github.com/ryanoasis/nerd-fonts/tree/master/patched-fonts/OpenDyslexic |
 | CUPID properties | https://cupid.dev/properties/ |
-| Proxmox VE API viewer | https://pve.proxmox.com/pve-docs/api-viewer/ |
-| Proxmox VE users, roles and tokens | https://pve.proxmox.com/pve-docs/chapter-pveum.html |
-| Proxmox VE roadmap (version changes) | https://pve.proxmox.com/wiki/Roadmap |
 
 Items that are not yet verified:
 
-- If a Proxmox API token can open a console (PVE-032).
-- The exact names of the Proxmox 9.x pressure metric fields (PVE-023).
-- The privileges in the built-in `PVEAuditor` role on Proxmox 9.x.

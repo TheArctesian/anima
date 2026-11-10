@@ -27,7 +27,7 @@ enum EventSource { ...  METRICS @pending }
 # ---- devices (WP-21)
 enum RdpSecurity @pending { ANY NLA NLA_EXT TLS VMCONNECT RDP }
 enum RdpResizeMethod @pending { DISPLAY_UPDATE RECONNECT }
-enum MetricsSource @pending { NONE SSH }          # PROXMOX in Phase 4
+enum MetricsSource @pending { NONE SSH }
 "RA-020. TELNET joins when Telnet exists."
 enum AccessWarning @pending { IGNORED_CERTIFICATE RDP_SECURITY UNENCRYPTED_VNC }
 
