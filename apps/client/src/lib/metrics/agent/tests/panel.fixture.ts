@@ -3,6 +3,7 @@ import { vi } from 'vitest';
 import { fakeHub } from '$lib/devices/hub.fixture';
 import { installAnimations } from '$lib/forms/animations.fixture';
 import { metricsApi } from '$lib/metrics/api';
+import type { ThisComputerShell } from '$lib/desktop/agent/shell';
 import AgentPanel from '../AgentPanel.svelte';
 import type { AgentCalls, ClipboardSink } from '../install.svelte';
 import type { AgentRelease } from '../release';
@@ -20,10 +21,22 @@ export async function settle(): Promise<void> {
 }
 
 /** Mounts the panel for device d1 on the hub's origin, with the fixture's clock. */
-function mountPanel(calls: AgentCalls, source: 'NONE' | 'AGENT', release: AgentRelease | null, clipboard: ClipboardSink): void {
+/** Where the panel runs: the device's host, and the desktop shell (`null`, a browser, by default). */
+export interface Place {
+  readonly host?: string;
+  readonly shell?: ThisComputerShell | null;
+}
+
+interface Setup extends Place {
+  readonly release: AgentRelease | null;
+  readonly clipboard: ClipboardSink;
+}
+
+function mountPanel(calls: AgentCalls, source: 'NONE' | 'AGENT', setup: Setup): void {
+  const { release, clipboard, host = '100.64.0.9', shell = null } = setup;
   app = mount(AgentPanel, {
     target: document.body,
-    props: { deviceId: 'd1', deviceName: 'nas', source, calls, origin: 'https://hub.test', now: () => clock, release, clipboard },
+    props: { deviceId: 'd1', deviceName: 'nas', host, source, calls, origin: 'https://hub.test', now: () => clock, release, clipboard, shell },
   });
 }
 
@@ -31,7 +44,7 @@ function mountPanel(calls: AgentCalls, source: 'NONE' | 'AGENT', release: AgentR
 export async function showPending(call: 'agentStatus' | 'enrolAgent', source: 'NONE' | 'AGENT'): Promise<(value: unknown) => Promise<void>> {
   let answer: (value: unknown) => void = () => undefined;
   const calls = { ...metricsApi(fakeHub({}).hub), [call]: () => new Promise<never>((resolve) => { answer = resolve as typeof answer; }) };
-  mountPanel(calls, source, null, { writeText: () => Promise.resolve() });
+  mountPanel(calls, source, { release: null, clipboard: { writeText: () => Promise.resolve() } });
   await settle();
   return async (value) => {
     answer(value);
@@ -46,14 +59,19 @@ export interface Shown {
 
 export async function show(
   answers: Record<string, unknown>,
-  props: { source?: 'NONE' | 'AGENT'; release?: AgentRelease | null; copyFails?: boolean } = {},
+  props: { source?: 'NONE' | 'AGENT'; release?: AgentRelease | null; copyFails?: boolean } & Place = {},
 ): Promise<Shown> {
   const fake = fakeHub(answers);
   const copied: string[] = [];
   const clipboard = {
     writeText: (text: string) => (props.copyFails === true ? Promise.reject(new Error('denied')) : (copied.push(text), Promise.resolve())),
   };
-  mountPanel(metricsApi(fake.hub), props.source ?? 'NONE', props.release === undefined ? RELEASE : props.release, clipboard);
+  mountPanel(metricsApi(fake.hub), props.source ?? 'NONE', {
+    release: props.release === undefined ? RELEASE : props.release,
+    clipboard,
+    host: props.host,
+    shell: props.shell,
+  });
   await settle();
   return { fake, copied };
 }

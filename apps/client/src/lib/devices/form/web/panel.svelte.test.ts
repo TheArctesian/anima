@@ -41,7 +41,7 @@ function show(): void {
         onClearVncCredential: done,
         webInterfaces: { onCreate: done, onUpdate: done, onDelete: done, onAcceptSuggestion: done, onDismissSuggestion: done },
       },
-      agent: { calls: metricsApi(fakeHub().hub), origin: 'https://hub.test', reveal: false },
+      agent: { calls: metricsApi(fakeHub().hub), origin: 'https://hub.test', reveal: false, shell: null },
       now: () => new Date(),
       onTest: vi.fn(),
       onCancel: () => undefined,

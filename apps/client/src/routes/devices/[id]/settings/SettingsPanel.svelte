@@ -10,6 +10,7 @@
   import type { HubResult } from '$lib/hub/hub';
   import AgentPanel from '$lib/metrics/agent/AgentPanel.svelte';
   import type { AgentCalls } from '$lib/metrics/agent/install.svelte';
+  import type { ThisComputerShell } from '$lib/desktop/agent/shell';
   import type { SettingsSection } from '../tabs/tabs';
   import type { SettingsCalls } from './calls';
 
@@ -21,7 +22,7 @@
     /** The hub calls of the form and the web interfaces (WEB-001, WEB-002, DEV-011, SEC-007). */
     calls: SettingsCalls;
     /** The Install agent panel's hub calls and the hub origin the agent must reach (MET-019). */
-    agent: { calls: AgentCalls; origin: string; reveal: boolean };
+    agent: { calls: AgentCalls; origin: string; reveal: boolean; shell: ThisComputerShell | null };
     now: () => Date;
     onTest: (input: ConnectionTestInput) => Promise<HubResult<ConnectionTestResult>>;
     /** Discards the edits: the form starts again from the saved device. */
@@ -60,7 +61,7 @@
     above 1000 ms. Change the checks in the Checks tab.
   </p>
   <WebInterfaces interfaces={device.webInterfaces} suggestions={device.webInterfaceSuggestions} calls={calls.webInterfaces} />
-  <AgentPanel deviceId={device.id} deviceName={device.name} source={device.metricsSource} calls={agent.calls} origin={agent.origin} reveal={agent.reveal} {now} />
+  <AgentPanel deviceId={device.id} deviceName={device.name} host={device.host} source={device.metricsSource} calls={agent.calls} origin={agent.origin} reveal={agent.reveal} shell={agent.shell} {now} />
   <section class="danger" aria-labelledby="device-delete-heading">
     <h3 id="device-delete-heading">Delete device</h3>
     <p>Its credentials, checks and history are deleted too.</p>

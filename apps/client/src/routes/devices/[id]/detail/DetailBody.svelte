@@ -6,6 +6,7 @@
   import LiveNotice from '$lib/hub/notice/LiveNotice.svelte';
   import LogList from '$lib/events/panel/LogList.svelte';
   import type { CheckFormValues } from '$lib/checks/form/model/values';
+  import { thisComputerShell } from '$lib/desktop/agent/shell';
   import { screenSharingCalls } from '$lib/devices/screen-sharing/calls';
   import { metricsApi } from '$lib/metrics/api';
   import { useHub } from '$lib/hub/context';
@@ -37,7 +38,8 @@
   const screenSharing = { calls: screenSharingCalls(hub), onEnabled: (next: DeviceDetail) => { detail.setDevice(next); } };
   const now = () => new Date();
   const agentCalls = metricsApi(hub);
-  const agent = $derived({ calls: agentCalls, origin: hub.address.origin, reveal: page.url.hash === '#agent' });
+  const agentShell = thisComputerShell();
+  const agent = $derived({ calls: agentCalls, origin: hub.address.origin, reveal: page.url.hash === '#agent', shell: agentShell });
   // The layout mounts a new page for each path, so the ID never changes under this one.
   // svelte-ignore state_referenced_locally
   const detail = new Detail(hub, id, now);

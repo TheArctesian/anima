@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
+  import { onDestroy, onMount, tick } from 'svelte';
+  import type { ThisComputerShell } from '$lib/desktop/agent/shell';
   import Field from '$lib/devices/form/form/Field.svelte';
   import FormButton from '$lib/forms/FormButton.svelte';
   import ConfirmModal from '$lib/forms/modal/ConfirmModal.svelte';
@@ -10,10 +11,14 @@
   import { clockText } from './countdown';
   import { AgentInstall, type AgentCalls, type ClipboardSink } from './install.svelte';
   import { AGENT_TARGETS, BUILT_RELEASE, targetOfPlatform, type AgentRelease, type AgentTarget } from './release';
+  import { ThisComputerInstall } from './this-computer.svelte';
+  import ThisComputerButton from './ThisComputerButton.svelte';
 
   interface Props {
     deviceId: string;
     deviceName: string;
+    /** The device's host: when it is this computer's VPN address, the desktop app can install here (R-060). */
+    host: string;
     /** The device's saved source: AGENT shows the installed state. */
     source: MetricsSource;
     calls: AgentCalls;
@@ -26,11 +31,14 @@
     later?: (run: () => void, milliseconds: number) => () => void;
     /** True when the page was opened at `#agent`: the panel's heading takes focus. */
     reveal?: boolean;
+    /** The desktop shell's calls; `null` in a browser, where only the install command is shown. */
+    shell?: ThisComputerShell | null;
   }
 
   const {
     deviceId,
     deviceName,
+    host,
     source,
     calls,
     origin,
@@ -42,11 +50,14 @@
       return () => { clearTimeout(timer); };
     },
     reveal = false,
+    shell = null,
   }: Props = $props();
 
   // The device, hub and clock are fixed for the life of the panel.
   // svelte-ignore state_referenced_locally
   const install = new AgentInstall(calls, deviceId, { now, clipboard, later });
+  // svelte-ignore state_referenced_locally
+  const here = new ThisComputerInstall(calls, shell, { id: deviceId, host }, origin);
   // The release is fixed for the life of the panel.
   // svelte-ignore state_referenced_locally
   let target = $state<AgentTarget | null>(release === null ? null : targetOfPlatform(navigator.platform, navigator.userAgent));
@@ -64,7 +75,7 @@
   const copyShown = $derived(install.copied !== null && install.copied.text === commandText ? install.copied : null);
   /** Everything that changes the panel's height; each change moves what lies below by FLIP (MOT-002, 5.7.3 Disclosure, MOT-006). */
   const layout = $derived(
-    [view, copyShown?.count ?? 'no-copy', install.error?.message ?? '', install.expired, install.revoked, install.status?.metricsStale ?? 'unread', install.statusError !== null, result?.ok ?? 'no-command'].join('|'),
+    [view, copyShown?.count ?? 'no-copy', install.error?.message ?? '', install.expired, install.revoked, install.status?.metricsStale ?? 'unread', install.statusError !== null, result?.ok ?? 'no-command', here.offered, here.installed, here.error ?? ''].join('|'),
   );
 
   // What lies below the panel moves by FLIP when the panel changes its height.
@@ -98,8 +109,10 @@
 
   onMount(() => {
     if (source === 'AGENT') void install.loadStatus();
+    void here.check();
     if (reveal) heading?.focus();
   });
+  onDestroy(() => { here.dispose(); });
   $effect(() => {
     if (install.code === null) return;
     const timer = setInterval(() => { install.tick(); }, 1000);
@@ -115,8 +128,12 @@
   {#if install.error !== null}
     <p role="alert">{install.error.message}</p>
   {/if}
+  {#if here.offered}
+    <ThisComputerButton install={here} onInstalled={() => void install.loadStatus()} />
+  {/if}
+  <!-- On this computer the command stays as the way round a failed install, and for an install by hand. -->
   <FormButton data-agent-start onclick={() => void install.makeCode()} aria-disabled={install.busy} aria-busy={install.busy}>
-    {install.busy ? 'Making a code…' : label}
+    {install.busy ? 'Making a code…' : here.offered ? 'Show install command' : label}
   </FormButton>
 {/snippet}
 
