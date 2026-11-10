@@ -194,7 +194,7 @@ The hub supplies one GraphQL API at the path `/graphql`.
 
 - **API-001.** The hub must write the API in Rust with `async-graphql` on axum.
 - **API-002.** Subscriptions must use the `graphql-transport-ws` protocol over WebSocket.
-- **API-003.** Every operation must require a valid access token, except `login`, `signInBrowser` and `joinShare`. A document that has no access token is permitted only when it is exactly one `login`, one `signInBrowser` or one `joinShare`. (D-4, R-081)
+- **API-003.** Every operation must require a valid access token, except `login` and `signInBrowser`. A document that has no access token is permitted only when it is exactly one `login` or one `signInBrowser`. (D-4, R-081, R-111)
 - **API-004.** The hub must set a maximum query depth of 10 and a maximum query complexity. The hub must refuse a query that is more than these limits.
 - **API-005.** The hub must use a data loader for related items, so that one query does not cause many database queries.
 - **API-006.** Lists must use cursor pagination.
@@ -267,7 +267,7 @@ desktop app ── at start and every 4 hours ── GET latest.json ── vers
 The hub can open a session to every device. Thus the hub is a high-value target. Obey all the requirements in this section.
 
 - **SEC-001.** The hub must use TLS for all client connections.
-- **SEC-002.** The hub must ask for authentication before it accepts an API request or a tunnel request. The share token is an exception, as is the push token (Section 6.4). The share token must be only in the URL fragment. The viewer must send it once, in `joinShare`. The viewer must not call any other operation. (D-7, R-081)
+- **SEC-002.** The hub must ask for authentication before it accepts an API request or a tunnel request. The push token is an exception (Section 6.4). (D-7, R-081, R-111)
 - **SEC-003.** The hub must encrypt credentials before it writes them to the database.
 - **SEC-004.** The hub must read the encryption key from a file or a Docker secret. Do not keep the key in the database.
 - **SEC-005.** The hub must not send a stored password or private key to the client.
@@ -729,7 +729,7 @@ Session procedure:
 - **RA-005.** An RDP session must support the clipboard in text format.
 - **RA-006.** The client must send special key combinations, for example Ctrl+Alt+Delete, from a menu.
 - **RA-007.** If the connection stops, the client must show the reason and a "Reconnect" button.
-- **RA-008.** The hub must record the start time, the end time and the device of each session. The hub must not record the session content, except when the operator sets RA-040 on. A share can keep the last 64 KiB of terminal output in memory, for late viewers. This buffer meets this requirement if the hub frees it when the share ends and never writes, logs or records it. (D-10, R-081)
+- **RA-008.** The hub must record the start time, the end time and the device of each session. The hub must not record the session content, except when the operator sets RA-040 on. (R-111)
 
 #### 6.3.1 SSH settings (Phase 1)
 
@@ -777,7 +777,7 @@ Since R-062 the hub opens the SSH connection and the client draws the terminal (
 | SFTP file transfer | 2 | **RA-032.** An SSH session must have a file panel for upload and download through SFTP. The operator must be able to set upload off and download off for each device. |
 | Clipboard control | 2 | **RA-033.** The operator must be able to set copy off and paste off for each device. |
 | Live sessions | 2 | **RA-034.** The client must show a list of live sessions. The operator must be able to stop a live session. |
-| Session sharing | 3 | **RA-035.** The operator must be able to make a share link for a live session. A share link must be read-only by default, must expire and must stop when the owner disconnects. |
+| Session sharing | Deferred | **RA-035.** Deferred (R-111). Anima is for the operator's own use of their own resources. No share links, no viewers without an operator account, and no sign-in exception for viewers. |
 | Concurrency limit | 3 | **RA-036.** The operator must be able to set a maximum number of sessions for each device. |
 | Session recording | 3 | **RA-040.** The operator must be able to set recording on for each device. It is off by default. The client must show a "Recording" badge during a recorded session. The hub must encrypt recordings at rest. |
 | Recording playback | 3 | **RA-041.** The client must play RDP and VNC recordings with `Guacamole.SessionRecording`, which uses the Guacamole format. SSH recordings must be asciicast v2. The client must play them with xterm.js. (D-12, R-081) |
@@ -946,7 +946,7 @@ The view has these tabs:
 
 - **INT-001.** The hub must supply a Prometheus endpoint at `/metrics` with the status, response time, uptime ratio and certificate days of each check.
 - **INT-002.** Prometheus labels must not include values that change often.
-- **INT-003.** The operator must be able to make API keys for the GraphQL API. Each key must have a scope (read or write) and an expiry date. A key is `anima_` and 43 base64url characters. The hub must keep only the SHA-256 of a key. The expiry date is required and must be at most one year away. An API key must not manage API keys. It must not call `signInBrowser`, `startSession`, `openFiles`, `shareSession`, `joinShare`, `openRecording`, `enrolAgent` or `revokeAgentToken`. It must not set or clear a device credential, and it must not decide where one is sent: it must not call `acceptHostKey`, `acceptServerCertificate`, `acceptWebCertificate`, `updateDevice` or `deleteDevice`. It must not call `setRetention` or `deleteRecording`. (D-23, R-081, R-100)
+- **INT-003.** The operator must be able to make API keys for the GraphQL API. Each key must have a scope (read or write) and an expiry date. A key is `anima_` and 43 base64url characters. The hub must keep only the SHA-256 of a key. The expiry date is required and must be at most one year away. An API key must not manage API keys. It must not call `signInBrowser`, `startSession`, `openFiles`, `openRecording`, `enrolAgent` or `revokeAgentToken`. It must not set or clear a device credential, and it must not decide where one is sent: it must not call `acceptHostKey`, `acceptServerCertificate`, `acceptWebCertificate`, `updateDevice` or `deleteDevice`. It must not call `setRetention` or `deleteRecording`. (D-23, R-081, R-100)
 - **INT-004.** A later version can add public status pages, incidents and status badges.
 
 ## 7. Settings page
@@ -972,7 +972,7 @@ The Proxmox VE integration (PVE-001 to PVE-041) is withdrawn (R-109). Anima mana
 | --- | --- | --- |
 | 1 | Repository structure and quality gates (Sections 12 and 13). VPN setup: Headscale on the VPS, subnet routers, clients (Section 4.2). Design token build (Section 5.5), fonts and icons, motion helpers. Application shell, navigation bar, Nord theme, empty Settings page. Hub with authentication, GraphQL API, PostgreSQL and the three logs. Device list, add and edit device, tags. ICMP, TCP, TLS, HTTP(S), DNS, push and group checks. Maintenance windows. SSH sessions. | macOS, Linux |
 | 2 | RDP and VNC sessions. Web interfaces. Wake-on-LAN. SFTP. Live session list. SSH metrics. More check types. Device detail view with charts. | macOS, Linux |
-| 3 | Web client. Notifications. Prometheus endpoint and API keys. Session sharing and recording. Settings page items. Metrics push agent for macOS and Linux (`anima-agent`), with GPU usage on Apple silicon (R-084). | macOS, Linux, Web |
+| 3 | Web client. Notifications. Prometheus endpoint and API keys. Session recording. Settings page items. Metrics push agent for macOS and Linux (`anima-agent`), with GPU usage on Apple silicon (R-084). | macOS, Linux, Web |
 | 4 | Withdrawn (R-109). | — |
 | 5 | iOS client. The iOS device as a part-time member of the network (Section 10.1). | All |
 | 6 | Site agents for Wake-on-LAN and local checks. Traffic data (Section 4.3). | All |
@@ -1010,7 +1010,7 @@ These constraints apply to Phase 5. Record them now so that the earlier phases d
 The iOS client is a full client for other devices. It is also a part-time member of the network: it contributes while the application is open. Nothing may depend on an iOS device being available.
 
 - **IOS-001.** The iOS application must report its own device to the hub as an agent while the application is in the foreground: battery level, charging state, thermal state, free storage and network type. The hub must show the device as Unknown, not Down, when the application is closed. iOS does not give system CPU or memory use.
-- **IOS-002.** The operator must be able to broadcast the screen of the iOS device into a shared session (ReplayKit broadcast extension), view-only. The operator starts each broadcast. Remote control of an iOS device is not possible.
+- **IOS-002.** The operator must be able to broadcast the screen of the iOS device to the operator's own signed-in Anima clients (ReplayKit broadcast extension), view-only. The operator starts each broadcast. No other person can watch it (R-111). Remote control of an iOS device is not possible.
 - **IOS-003.** The iOS application must keep an offline copy of the hub data in SQLite: devices, checks, recent metrics and the event log. The copy is updated while the application is open, and the client shows it with its age when the hub cannot be reached. The desktop clients may use the same copy.
 - **IOS-004.** The operator may make an iOS device a backup store. While the application is open and on Wi-Fi, the hub sends encrypted, incremental database backups and session recordings to it. The device stores only ciphertext; the key stays with the hub and the operator.
 
@@ -1150,7 +1150,7 @@ anima/
 │   │   │   ├── checks/        Check types, scheduler, heartbeats, watchdog
 │   │   │   ├── maintenance/   Maintenance windows (pure rules + store)
 │   │   │   ├── metrics/       Collection (agent ingest, SSH, GPU), aggregates, retention
-│   │   │   ├── sessions/      Session start, tunnel, history, sharing
+│   │   │   ├── sessions/      Session start, tunnel, history
 │   │   │   ├── credentials/   Encryption and storage of credentials
 │   │   │   ├── web_interfaces/ Web interface records and suggestions
 │   │   │   ├── events/        Event log and audit log
