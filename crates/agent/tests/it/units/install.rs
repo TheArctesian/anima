@@ -1,107 +1,19 @@
-//! `anima-agent install` for the user against a temporary HOME. The system unit needs root and
-//! `/etc`, so only its pure parts are tested (`units::plan`, `units::ready`).
+//! `anima-agent install` for the user against a temporary HOME: what it writes and runs, and
+//! when it refuses for the token. The system unit needs root and `/etc`, so only its pure parts
+//! are tested (`units::plan`, `units::ready`).
 
 use std::fs;
 use std::io;
 use std::os::unix::fs::PermissionsExt as _;
-use std::path::{Path, PathBuf};
 
 use anima_agent::config::home::Home;
-use anima_agent::config::private_file;
-use anima_agent::readers::Platform;
-use anima_agent::token_store::{Credential, TokenStore};
 use anima_agent::units::install::{Host, InstallError, install};
 use anima_agent::units::plan::Target;
 use anima_agent::units::ready::NotReady;
 use anima_agent::units::step::Step;
 use chrono::TimeDelta;
-use tempfile::TempDir;
 
-use crate::kit;
-
-struct Rig {
-    dir: TempDir,
-    program: PathBuf,
-    home: Home,
-    uid: u32,
-}
-
-/// A HOME whose default agent folder holds a token expiring `expires_in` after `kit::at(0)`
-/// (none when `None`), and a stand-in binary.
-fn rig(expires_in: Option<TimeDelta>) -> Rig {
-    let dir = tempfile::tempdir().expect("a folder");
-    let program = dir.path().join("bin/anima-agent");
-    fs::create_dir(dir.path().join("bin")).expect("bin");
-    fs::write(&program, b"#!/bin/true\n").expect("binary");
-    fs::set_permissions(&program, fs::Permissions::from_mode(0o755)).expect("chmod");
-    let home = Home::at(dir.path().join(".config/anima-agent"));
-    if let Some(expires_in) = expires_in {
-        enrol(&home, expires_in);
-    }
-    let uid = private_file::running_user().expect("a uid");
-    Rig {
-        dir,
-        program,
-        home,
-        uid,
-    }
-}
-
-fn enrol(home: &Home, expires_in: TimeDelta) {
-    let credential = Credential {
-        token: kit::token(1),
-        expires_at: kit::at(0) + expires_in,
-        hub: kit::origin(),
-    };
-    TokenStore::open(home)
-        .save_new(&credential)
-        .expect("stored");
-}
-
-fn enrolled() -> Rig {
-    rig(Some(TimeDelta::days(300)))
-}
-
-impl Rig {
-    fn env(&self) -> impl Fn(&str) -> Option<String> + use<> {
-        let home = self.dir.path().display().to_string();
-        move |name| match name {
-            "HOME" => Some(home.clone()),
-            "XDG_RUNTIME_DIR" => Some("/run/user/test".to_owned()),
-            _ => None,
-        }
-    }
-
-    fn host(&self) -> Host<'_> {
-        Host {
-            platform: Platform::Linux,
-            uid: self.uid,
-            program: &self.program,
-            home: &self.home,
-            now: kit::at(0),
-        }
-    }
-
-    fn unit(&self) -> PathBuf {
-        self.dir
-            .path()
-            .join(".config/systemd/user/anima-agent.service")
-    }
-
-    /// Runs `install` for the user, returning the commands it ran.
-    fn install(&self, succeed: bool) -> (Result<PathBuf, InstallError>, Vec<String>) {
-        let mut ran = Vec::new();
-        let result = install(Target::User, &self.host(), self.env(), |step: &Step| {
-            ran.push(format!("{} {}", step.program, step.args.join(" ")));
-            Ok(succeed)
-        });
-        (result, ran)
-    }
-}
-
-fn read(path: &Path) -> String {
-    fs::read_to_string(path).expect("a file")
-}
+use super::rig::{enrol, enrolled, read, rig};
 
 #[test]
 fn met_019_install_writes_the_user_unit_with_this_binary_s_path_then_enables_and_restarts_it() {
@@ -201,68 +113,6 @@ fn met_019_install_refuses_an_agent_folder_the_unit_s_agent_would_not_find() {
         result,
         Err(InstallError::NotReady(NotReady::OtherHome { .. }))
     ));
-    assert!(!rig.unit().exists());
-}
-
-#[test]
-fn met_019_install_refuses_a_binary_in_a_folder_other_users_can_replace_in() {
-    let rig = enrolled();
-    let bin = rig.dir.path().join("bin");
-    fs::set_permissions(&bin, fs::Permissions::from_mode(0o777)).expect("chmod");
-    let (result, ran) = rig.install(true);
-    assert!(matches!(
-        result.expect_err("refused"),
-        InstallError::UntrustedFolder(folder) if folder == bin.canonicalize().expect("path")
-    ));
-    assert!(!rig.unit().exists());
-    assert_eq!(ran.len(), 0);
-}
-
-#[test]
-fn met_019_install_refuses_a_binary_other_users_can_write() {
-    let rig = enrolled();
-    fs::set_permissions(&rig.program, fs::Permissions::from_mode(0o777)).expect("chmod");
-    let (result, ran) = rig.install(true);
-    assert!(matches!(
-        result.expect_err("refused"),
-        InstallError::UntrustedBinary(file) if file == rig.program.canonicalize().expect("path")
-    ));
-    assert!(!rig.unit().exists());
-    assert_eq!(ran.len(), 0);
-}
-
-#[test]
-fn met_019_install_refuses_a_unit_folder_that_links_to_one_others_can_write() {
-    let rig = enrolled();
-    let open = rig.dir.path().join("open");
-    fs::create_dir(&open).expect("open");
-    fs::set_permissions(&open, fs::Permissions::from_mode(0o777)).expect("chmod");
-    fs::create_dir_all(rig.dir.path().join(".config/systemd")).expect("systemd");
-    std::os::unix::fs::symlink(&open, rig.dir.path().join(".config/systemd/user")).expect("link");
-    let (result, ran) = rig.install(true);
-    assert!(matches!(
-        result.expect_err("refused"),
-        InstallError::UntrustedFolder(folder) if folder == open.canonicalize().expect("path")
-    ));
-    assert_eq!(
-        fs::read_dir(&open).expect("open").count(),
-        0,
-        "nothing written"
-    );
-    assert_eq!(ran.len(), 0);
-}
-
-#[test]
-fn met_019_install_refuses_a_binary_whose_path_systemd_would_misread() {
-    let rig = enrolled();
-    let odd = rig.dir.path().join("bin/anima agent%h");
-    fs::rename(&rig.program, &odd).expect("rename");
-    let host = Host {
-        program: &odd,
-        ..rig.host()
-    };
-    let result = install(Target::User, &host, rig.env(), |_| Ok(true));
-    assert!(matches!(result, Err(InstallError::Program(_))));
     assert!(!rig.unit().exists());
 }
 

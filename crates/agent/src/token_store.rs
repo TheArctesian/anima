@@ -88,6 +88,24 @@ impl Credential {
         }
     }
 
+    /// The credential a stored record holds. The error says only that it does not read: the
+    /// parser's message could quote the token (LOG-007).
+    ///
+    /// # Errors
+    /// [`TokenStoreError::Corrupt`] for a record that does not read.
+    pub fn from_record(bytes: &[u8]) -> Result<Self, TokenStoreError> {
+        let record: Renewed =
+            serde_json::from_slice(bytes).map_err(|_| TokenStoreError::Corrupt)?;
+        let field: HubField =
+            serde_json::from_slice(bytes).map_err(|_| TokenStoreError::Corrupt)?;
+        let hub = Origin::parse(&field.hub).map_err(|_| TokenStoreError::Corrupt)?;
+        Ok(Self {
+            token: record.token,
+            expires_at: record.expires_at,
+            hub,
+        })
+    }
+
     /// The record: the `Renewed` body with the hub origin added. The buffer has room for it
     /// from the start, so it never moves and its wipe on drop covers the token.
     fn render(self) -> Zeroizing<Vec<u8>> {
@@ -121,16 +139,7 @@ impl TokenStore {
         let Some(bytes) = self.backend.read()? else {
             return Ok(None);
         };
-        let record: Renewed =
-            serde_json::from_slice(&bytes).map_err(|_| TokenStoreError::Corrupt)?;
-        let field: HubField =
-            serde_json::from_slice(&bytes).map_err(|_| TokenStoreError::Corrupt)?;
-        let hub = Origin::parse(&field.hub).map_err(|_| TokenStoreError::Corrupt)?;
-        Ok(Some(Credential {
-            token: record.token,
-            expires_at: record.expires_at,
-            hub,
-        }))
+        Credential::from_record(&bytes).map(Some)
     }
 
     /// Replaces the stored credential after a renewal. The old one stays when this fails

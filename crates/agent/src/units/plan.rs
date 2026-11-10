@@ -1,7 +1,7 @@
 //! Decides which file the unit goes to and which commands start it (MET-019, D-10): pure, from
 //! the platform, the user and the environment.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use super::render::Unit;
@@ -89,15 +89,15 @@ pub(super) fn plan(
             steps: systemctl(false),
         }),
         (Target::User, Platform::Linux) => {
-            let config = match env("XDG_CONFIG_HOME").filter(|dir| !dir.is_empty()) {
-                Some(dir) => PathBuf::from(dir),
-                None => home()?.join(".config"),
-            };
+            // The user manager reads its units from, and sets `%E` (the unit's
+            // `ReadWritePaths`) to, its own config folder: `~/.config` unless its environment
+            // says otherwise, which this shell cannot see. This shell's `XDG_CONFIG_HOME` is
+            // therefore not followed; an agent folder found through it is refused later.
+            let config = home()?.join(".config");
             Ok(Plan {
                 unit: Unit::SystemdUser,
                 file: config.join("systemd/user/anima-agent.service"),
-                // The user manager's `%E` (the unit's `ReadWritePaths`) is `~/.config`.
-                home: home()?.join(".config/anima-agent"),
+                home: config.join("anima-agent"),
                 steps: systemctl(true),
             })
         }
@@ -124,32 +124,22 @@ pub(super) fn plan(
     }
 }
 
-/// Whether a folder on the binary's or the unit's path (`mode`, owned by `owner`) may stay
-/// there when user `uid` installs. For the user unit: owned by root or the user, and either
-/// sticky or not writable by others; its group may write only to the user's own folder (a
-/// private group per user, as with `umask 002`). For the system unit, which runs the binary as
-/// another account: owned by root and writable by no one else, sticky or not.
-#[must_use]
-pub(super) const fn folder_trusted(target: Target, mode: u32, owner: u32, uid: u32) -> bool {
-    match target {
-        Target::User => {
-            let own = owner == uid;
-            let sticky = mode & 0o1000 != 0;
-            (own || owner == 0) && (sticky || (mode & 0o002 == 0 && (own || mode & 0o020 == 0)))
-        }
-        Target::System => owner == 0 && mode & 0o022 == 0,
+/// The folders a unit's sandbox hides from the agent, so a binary under one never starts:
+/// `ProtectHome=yes` in the system unit, `PrivateTmp=yes` in both systemd units.
+const fn hidden_roots(unit: Unit) -> &'static [&'static str] {
+    match unit {
+        Unit::SystemdSystem => &["/home", "/root", "/run/user", "/tmp", "/var/tmp"],
+        Unit::SystemdUser => &["/tmp", "/var/tmp"],
+        Unit::LaunchAgent => &[],
     }
 }
 
-/// Whether the binary itself (`mode`, owned by `owner`) may be started by the unit: writable
-/// by no one but its owner, who is root or, for the user unit, user `uid`.
-#[must_use]
-pub(super) const fn binary_trusted(target: Target, mode: u32, owner: u32, uid: u32) -> bool {
-    let owner_trusted = match target {
-        Target::User => owner == 0 || owner == uid,
-        Target::System => owner == 0,
-    };
-    owner_trusted && mode & 0o022 == 0
+/// The folder of [`hidden_roots`] that `program` (a real path) is under, if any.
+pub(super) fn hidden_root(unit: Unit, program: &Path) -> Option<&'static str> {
+    hidden_roots(unit)
+        .iter()
+        .copied()
+        .find(|root| program.starts_with(root))
 }
 
 #[cfg(test)]
@@ -204,7 +194,7 @@ mod tests {
     }
 
     #[test]
-    fn met_019_the_user_unit_follows_xdg_config_home_as_the_agent_s_own_folder_does() {
+    fn met_019_the_user_unit_and_its_agent_folder_come_from_one_config_folder() {
         let xdg = |name: &str| match name {
             "XDG_CONFIG_HOME" => Some("/srv/cfg".to_owned()),
             other => env(other),
@@ -212,8 +202,38 @@ mod tests {
         let plan = plan(Target::User, Platform::Linux, 1000, xdg).expect("a plan");
         assert_eq!(
             plan.file,
-            PathBuf::from("/srv/cfg/systemd/user/anima-agent.service")
+            PathBuf::from("/home/ada/.config/systemd/user/anima-agent.service")
         );
+        assert_eq!(plan.home, PathBuf::from("/home/ada/.config/anima-agent"));
+    }
+
+    #[test]
+    fn met_019_a_binary_the_unit_s_sandbox_hides_is_found() {
+        let at = |unit, path: &str| hidden_root(unit, Path::new(path));
+        assert_eq!(
+            at(Unit::SystemdSystem, "/home/ada/.local/bin/anima-agent"),
+            Some("/home")
+        );
+        assert_eq!(at(Unit::SystemdSystem, "/root/anima-agent"), Some("/root"));
+        assert_eq!(
+            at(Unit::SystemdSystem, "/run/user/1000/anima-agent"),
+            Some("/run/user")
+        );
+        assert_eq!(at(Unit::SystemdSystem, "/usr/local/bin/anima-agent"), None);
+        assert_eq!(
+            at(Unit::SystemdSystem, "/homestead/anima-agent"),
+            None,
+            "whole parts"
+        );
+        for unit in [Unit::SystemdSystem, Unit::SystemdUser] {
+            assert_eq!(at(unit, "/tmp/x/anima-agent"), Some("/tmp"));
+            assert_eq!(at(unit, "/var/tmp/anima-agent"), Some("/var/tmp"));
+        }
+        assert_eq!(
+            at(Unit::SystemdUser, "/home/ada/.local/bin/anima-agent"),
+            None
+        );
+        assert_eq!(at(Unit::LaunchAgent, "/tmp/anima-agent"), None);
     }
 
     #[test]
@@ -271,63 +291,6 @@ mod tests {
                 "/home/ada/Library/LaunchAgents/ing.anima.agent.plist"
             ]
         );
-    }
-
-    #[test]
-    fn met_019_a_folder_others_can_replace_in_is_not_trusted_and_the_system_unit_wants_root_s() {
-        assert!(folder_trusted(Target::User, 0o040_755, 1000, 1000));
-        assert!(
-            folder_trusted(Target::User, 0o041_777, 0, 1000),
-            "sticky, like /tmp"
-        );
-        assert!(!folder_trusted(Target::User, 0o040_777, 0, 1000));
-        assert!(!folder_trusted(Target::User, 0o040_702, 1000, 1000));
-        assert!(folder_trusted(Target::System, 0o040_755, 0, 0));
-        assert!(
-            !folder_trusted(Target::System, 0o040_755, 1000, 0),
-            "not root's"
-        );
-        assert!(
-            !folder_trusted(Target::System, 0o040_775, 0, 0),
-            "group may write"
-        );
-        assert!(
-            !folder_trusted(Target::System, 0o041_777, 0, 0),
-            "sticky is not enough"
-        );
-    }
-
-    #[test]
-    fn met_019_a_user_folder_must_be_root_s_or_the_user_s_and_only_the_user_s_may_be_group_writable()
-     {
-        assert!(
-            !folder_trusted(Target::User, 0o040_755, 1001, 1000),
-            "another user's folder"
-        );
-        assert!(
-            !folder_trusted(Target::User, 0o041_777, 1001, 1000),
-            "another user's sticky folder: its owner may still rename what is in it"
-        );
-        assert!(
-            folder_trusted(Target::User, 0o040_775, 1000, 1000),
-            "umask 002 with a private group, like ~/.local/bin"
-        );
-        assert!(
-            !folder_trusted(Target::User, 0o042_775, 0, 1000),
-            "root's folder that its group may write"
-        );
-        assert!(folder_trusted(Target::User, 0o040_755, 0, 1000));
-    }
-
-    #[test]
-    fn met_019_the_binary_is_writable_only_by_its_owner_who_is_root_or_the_user() {
-        assert!(binary_trusted(Target::User, 0o100_755, 1000, 1000));
-        assert!(binary_trusted(Target::User, 0o100_755, 0, 1000));
-        assert!(!binary_trusted(Target::User, 0o100_777, 1000, 1000));
-        assert!(!binary_trusted(Target::User, 0o100_775, 1000, 1000));
-        assert!(!binary_trusted(Target::User, 0o100_755, 1001, 1000));
-        assert!(binary_trusted(Target::System, 0o100_755, 0, 0));
-        assert!(!binary_trusted(Target::System, 0o100_755, 1000, 0));
     }
 
     #[test]

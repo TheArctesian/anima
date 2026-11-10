@@ -1,18 +1,22 @@
 //! Writes the unit file and starts it (MET-019, D-10): the only I/O of `anima-agent install`.
-//! The decisions are in [`super::plan`], [`super::ready`], [`super::render`] and
-//! [`super::step`].
+//! The decisions are in [`super::plan`], [`super::ready`], [`super::render`],
+//! [`super::step`] and [`super::trust`]; the folders are made and checked in
+//! [`super::folders`].
 
 use std::fs::{self, File};
-use std::io::{self, Write as _};
+use std::io::{self, Read as _, Write as _};
 use std::os::unix::fs::{MetadataExt as _, PermissionsExt as _};
 use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Utc};
+use zeroize::Zeroizing;
 
+use super::folders::{self, FolderError};
 use super::plan::{self, Plan, PlanError, Target};
 use super::ready::{self, NotReady};
 use super::render::{self, Program, RenderError, Unit};
 use super::step::{self, NoSessionBus, Step};
+use super::trust::{self, Installer};
 use crate::config::home::Home;
 use crate::readers::Platform;
 use crate::token_store::{TokenStore, TokenStoreError};
@@ -20,8 +24,12 @@ use crate::token_store::{TokenStore, TokenStoreError};
 /// A unit file is public text: the operator and the system manager read it.
 const UNIT_MODE: u32 = 0o644;
 
-/// Where the system unit's account is looked up.
+/// Where accounts and groups are looked up.
 const PASSWD: &str = "/etc/passwd";
+const GROUP: &str = "/etc/group";
+
+/// The most of the system token file that is read: a record is a few hundred bytes.
+const RECORD_LIMIT: u64 = 64 * 1024;
 
 #[derive(Debug, thiserror::Error)]
 pub enum InstallError {
@@ -31,10 +39,16 @@ pub enum InstallError {
     Program(#[from] RenderError),
     #[error("the agent's own file: {0}")]
     Binary(io::Error),
-    #[error("{} is writable by others or not owned by root or this user, so the agent could be swapped: reinstall it", .0.display())]
-    UntrustedBinary(PathBuf),
-    #[error("{} is writable by other users, so the agent could be swapped: move it", .0.display())]
-    UntrustedFolder(PathBuf),
+    #[error(
+        "{} is under {root}, which the unit's sandbox hides from the agent: move the binary out of {root} (for example to /usr/local/bin) and install again",
+        program.display()
+    )]
+    Hidden {
+        program: PathBuf,
+        root: &'static str,
+    },
+    #[error("{0}")]
+    Folder(#[from] FolderError),
     #[error("{0}")]
     NotReady(#[from] NotReady),
     #[error("{0}")]
@@ -92,14 +106,36 @@ pub fn install(
             step.env.clone_from(&bus);
         }
     }
+    let passwd = read_text(Path::new(PASSWD))?;
+    let by = Installer {
+        target,
+        uid: host.uid,
+        private_group: trust::private_group(host.uid, &passwd, &read_text(Path::new(GROUP))?),
+    };
     let program = host.program.canonicalize().map_err(InstallError::Binary)?;
-    check_binary(target, host.uid, &program)?;
+    if let Some(root) = plan::hidden_root(plan.unit, &program) {
+        return Err(InstallError::Hidden { program, root });
+    }
+    folders::check_binary(&program, by)?;
     let program = Program::parse(&program)?;
     let text = render::render(plan.unit, &program)?;
-    check_ready(&plan, host, program.as_str())?;
-    replace_file(&plan, target, host.uid, &text)?;
+    if plan.unit == Unit::SystemdSystem {
+        check_system_ready(&plan, &passwd, host.now, program.as_str())?;
+    } else {
+        check_user_ready(&plan, host)?;
+    }
+    let dir = plan.file.parent().unwrap_or_else(|| Path::new("."));
+    let dir = folders::make_folder(dir, by)?;
+    replace_file(&plan.file, &dir, &text)?;
     run_steps(&plan.steps, run)?;
     Ok(plan.file)
+}
+
+fn read_text(path: &Path) -> Result<String, InstallError> {
+    fs::read_to_string(path).map_err(|source| InstallError::Read {
+        path: path.to_owned(),
+        source,
+    })
 }
 
 /// The variables `systemctl --user` reaches the user's manager through.
@@ -119,78 +155,64 @@ fn session_bus(
     Ok(vars)
 }
 
-/// The binary itself (by its real path) and every folder above it, for the parts another user
-/// could replace.
-fn check_binary(target: Target, uid: u32, program: &Path) -> Result<(), InstallError> {
-    let metadata = fs::metadata(program).map_err(InstallError::Binary)?;
-    if !plan::binary_trusted(target, metadata.mode(), metadata.uid(), uid) {
-        return Err(InstallError::UntrustedBinary(program.to_owned()));
-    }
-    let folder = program.parent().unwrap_or_else(|| Path::new("/"));
-    check_folders(target, uid, folder)
-}
-
-/// `folder` and every folder above it, as they stand: the caller passes a real path.
-fn check_folders(target: Target, uid: u32, folder: &Path) -> Result<(), InstallError> {
-    for folder in folder.ancestors() {
-        let metadata = fs::metadata(folder).map_err(|source| InstallError::Read {
-            path: folder.to_owned(),
-            source,
-        })?;
-        if !plan::folder_trusted(target, metadata.mode(), metadata.uid(), uid) {
-            return Err(InstallError::UntrustedFolder(folder.to_owned()));
-        }
-    }
+/// The user unit's agent must find a token that has not expired, in the folder this shell
+/// found: else it fails and restarts for ever.
+fn check_user_ready(plan: &Plan, host: &Host<'_>) -> Result<(), InstallError> {
+    ready::same_home(host.home.dir(), &plan.home)?;
+    let expires_at = TokenStore::open(host.home)
+        .load()?
+        .map(|credential| credential.expires_at);
+    ready::token_usable(expires_at, host.now)?;
     Ok(())
 }
 
-/// The unit must never start an agent that has no usable token: it would fail and restart for
-/// ever.
-fn check_ready(plan: &Plan, host: &Host<'_>, program: &str) -> Result<(), InstallError> {
-    if plan.unit == Unit::SystemdSystem {
-        let passwd = fs::read_to_string(PASSWD).map_err(|source| InstallError::Read {
-            path: PathBuf::from(PASSWD),
-            source,
-        })?;
-        let token = Home::at(plan.home.clone()).token_path();
-        let found = match fs::metadata(&token) {
-            Ok(file) if file.is_file() => Some((file.mode(), file.uid())),
-            Ok(_) => None,
-            Err(error) if error.kind() == io::ErrorKind::NotFound => None,
-            Err(source) => {
-                return Err(InstallError::Read {
-                    path: token,
-                    source,
-                });
-            }
-        };
-        ready::system(&passwd, found, program)?;
-    } else {
-        ready::same_home(host.home.dir(), &plan.home)?;
-        let expires_at = TokenStore::open(host.home)
-            .load()?
-            .map(|credential| credential.expires_at);
-        ready::token_usable(expires_at, host.now)?;
-    }
-    Ok(())
-}
-
-/// Writes `plan.file` through a temporary file in its folder, renamed over the old one. The
-/// folder is made first, then checked by its real path, so a link to a folder others can write
-/// never gets the unit.
-fn replace_file(plan: &Plan, target: Target, uid: u32, text: &str) -> Result<(), InstallError> {
-    let write = |source| InstallError::Write {
-        path: plan.file.clone(),
+/// The system unit's account must exist and own its token, which must not have expired. Root
+/// reads the token itself only after its owner and mode are checked, and never shows it.
+fn check_system_ready(
+    plan: &Plan,
+    passwd: &str,
+    now: DateTime<Utc>,
+    program: &str,
+) -> Result<(), InstallError> {
+    let token = Home::at(plan.home.clone()).token_path();
+    let read = |source| InstallError::Read {
+        path: token.clone(),
         source,
     };
-    let dir = plan.file.parent().unwrap_or_else(|| Path::new("."));
-    fs::create_dir_all(dir).map_err(write)?;
-    let dir = dir.canonicalize().map_err(write)?;
-    check_folders(target, uid, &dir)?;
-    let name = plan.file.file_name().unwrap_or(plan.file.as_os_str());
+    // A link or a pipe is no token; checked before opening, so a pipe never blocks the open.
+    let file = match fs::symlink_metadata(&token) {
+        Ok(found) if found.is_file() => Some(File::open(&token).map_err(read)?),
+        Ok(_) => None,
+        Err(error) if error.kind() == io::ErrorKind::NotFound => None,
+        Err(source) => return Err(read(source)),
+    };
+    let found = match &file {
+        Some(file) => Some(file.metadata().map_err(read)?),
+        None => None,
+    };
+    ready::system(passwd, found.as_ref().map(|m| (m.mode(), m.uid())), program)?;
+    let Some(file) = file else {
+        return Ok(());
+    };
+    let mut record = Zeroizing::new(Vec::new());
+    file.take(RECORD_LIMIT)
+        .read_to_end(&mut record)
+        .map_err(read)?;
+    ready::system_token(&record, now, program)?;
+    Ok(())
+}
+
+/// Writes `file` as `name` in `dir` (its folder's checked real path) through a temporary file
+/// there, renamed over the old one.
+fn replace_file(file: &Path, dir: &Path, text: &str) -> Result<(), InstallError> {
+    let write = |source| InstallError::Write {
+        path: file.to_owned(),
+        source,
+    };
+    let name = file.file_name().unwrap_or(file.as_os_str());
     let mut temporary = tempfile::Builder::new()
         .prefix(".tmp-")
-        .tempfile_in(&dir)
+        .tempfile_in(dir)
         .map_err(write)?;
     temporary.write_all(text.as_bytes()).map_err(write)?;
     temporary
@@ -201,7 +223,7 @@ fn replace_file(plan: &Plan, target: Target, uid: u32, text: &str) -> Result<(),
     temporary
         .persist(dir.join(name))
         .map_err(|error| write(error.error))?;
-    File::open(&dir).and_then(|d| d.sync_all()).map_err(write)
+    File::open(dir).and_then(|d| d.sync_all()).map_err(write)
 }
 
 /// Runs each step in order; a failure stops the rest unless the step may fail.

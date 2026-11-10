@@ -6,16 +6,18 @@ use std::path::{Path, PathBuf};
 use chrono::{DateTime, Utc};
 
 use super::plan::{ACCOUNT, SYSTEM_HOME};
+use super::trust;
 use crate::config::private_file;
+use crate::token_store::Credential;
 
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
 pub enum NotReady {
     #[error(
-        "this agent is not enrolled: run `anima-agent enrol -` (the code on standard input) first"
+        "this agent is not enrolled: run `anima-agent enrol -` and paste the code at the hidden prompt, then install again"
     )]
     NotEnrolled,
     #[error(
-        "this agent's token has expired: enrol again with `anima-agent enrol -`, then install again"
+        "this agent's token has expired: run `anima-agent enrol -` and paste the code at the hidden prompt, then install again"
     )]
     Expired,
     #[error(
@@ -36,6 +38,14 @@ pub enum NotReady {
         "{SYSTEM_HOME}/token must be mode 0600 and owned by the {ACCOUNT} account, which otherwise cannot read it: as root run `chown {ACCOUNT}:{ACCOUNT} {SYSTEM_HOME}/token` and `chmod 0600 {SYSTEM_HOME}/token`"
     )]
     TokenOwner,
+    #[error(
+        "the system unit's token has expired: as root run `sudo -u {ACCOUNT} env ANIMA_AGENT_HOME={SYSTEM_HOME} {program} enrol -` and paste the code at the hidden prompt, then install again"
+    )]
+    SystemExpired { program: String },
+    #[error(
+        "{SYSTEM_HOME}/token does not read: enrol the system unit's agent again, then install again"
+    )]
+    SystemTokenCorrupt,
 }
 
 /// The folder this shell found (`found`) must be the one the unit's agent finds (`unit`): the
@@ -71,8 +81,8 @@ pub(super) fn token_usable(
 
 /// The system unit's agent runs as [`ACCOUNT`]: it must exist in `passwd` (the text of
 /// `/etc/passwd`), and its token file (`token`: its mode and owner, `None` when there is none)
-/// must be the account's own 0600 file. Root cannot read the account's token as it, so the
-/// token itself is not opened. `program` is printed in the enrol command.
+/// must be the account's own 0600 file, or the agent cannot read it. Only then does the caller
+/// read the token, as root, for [`system_token`]. `program` is printed in the enrol command.
 ///
 /// # Errors
 /// [`NotReady::MissingAccount`], [`NotReady::SystemNotEnrolled`] or [`NotReady::TokenOwner`].
@@ -91,16 +101,31 @@ pub(super) fn system(
     Ok(())
 }
 
+/// The system unit's stored token (`record`, the file's bytes) must read and expire after
+/// `now`. The record's text never reaches an error (LOG-007).
+///
+/// # Errors
+/// [`NotReady::SystemTokenCorrupt`] or [`NotReady::SystemExpired`].
+pub(super) fn system_token(
+    record: &[u8],
+    now: DateTime<Utc>,
+    program: &str,
+) -> Result<(), NotReady> {
+    let credential = Credential::from_record(record).map_err(|_| NotReady::SystemTokenCorrupt)?;
+    match token_usable(Some(credential.expires_at), now) {
+        Err(NotReady::Expired) => Err(NotReady::SystemExpired {
+            program: program.to_owned(),
+        }),
+        other => other,
+    }
+}
+
 /// The user ID of the account `name` in `passwd`; `None` when it is missing or its line does
 /// not read.
 fn account_uid(passwd: &str, name: &str) -> Option<u32> {
-    passwd.lines().find_map(|line| {
-        let mut fields = line.split(':');
-        if fields.next() != Some(name) {
-            return None;
-        }
-        fields.nth(1)?.parse().ok()
-    })
+    trust::accounts(passwd)
+        .find(|account| account.name == name)
+        .map(|account| account.uid)
 }
 
 #[cfg(test)]
@@ -163,6 +188,33 @@ mod tests {
             Err(NotReady::TokenOwner)
         );
         assert_eq!(system(PASSWD, Some((0o100_600, 998)), program), Ok(()));
+    }
+
+    #[test]
+    fn met_019_the_system_token_must_read_and_not_be_expired_and_its_text_is_never_shown() {
+        use agent_core::wire::AgentToken;
+        let now = DateTime::from_timestamp(1_800_000_000, 0).expect("a time");
+        let token = AgentToken::from_random([7; 32]);
+        let record = |expires: &str| {
+            format!(
+                r#"{{"token":"{}","expiresAt":"{expires}","hub":"https://hub.example"}}"#,
+                token.expose()
+            )
+        };
+        let program = "/usr/local/bin/anima-agent";
+        let fresh = record("2028-01-01T00:00:00Z");
+        assert_eq!(system_token(fresh.as_bytes(), now, program), Ok(()));
+        let stale = system_token(record("2020-01-01T00:00:00Z").as_bytes(), now, program);
+        let stale = stale.expect_err("expired");
+        assert!(matches!(stale, NotReady::SystemExpired { .. }));
+        assert!(stale.to_string().contains(&format!("{program} enrol -")));
+        let broken = format!(r#"{{"token":"{}","expiresAt":12}}"#, token.expose());
+        let corrupt = system_token(broken.as_bytes(), now, program).expect_err("corrupt");
+        assert_eq!(corrupt, NotReady::SystemTokenCorrupt);
+        for error in [stale, corrupt] {
+            assert!(!error.to_string().contains(token.expose()));
+            assert!(!format!("{error:?}").contains(token.expose()));
+        }
     }
 
     #[test]
