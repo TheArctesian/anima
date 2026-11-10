@@ -79,6 +79,8 @@ async fn k8_6_each_push_refusal_has_its_status_code_and_event_and_never_the_toke
         let answer = agents.push_raw(*authorization, body.clone(), from).await;
         assert_eq!(answer.0.as_u16(), *status, "{code}");
         assert_eq!(answer.1, refusal(code));
+        // A minute apart, so neither throttle holds an event back (CR-15, CR-21).
+        agents.clock.advance(TimeDelta::minutes(1));
     }
     let expected: Vec<_> = cases
         .iter()
@@ -138,17 +140,14 @@ async fn cr_15_push_refusals_without_a_valid_token_are_written_once_a_minute_per
         agents.push_raw(bad, "{}", PERMITTED).await;
         agents.push_raw(None, "{}", NEIGHBOUR).await;
     }
-    // A valid token's refusals are never held back.
-    for _ in 0..2 {
-        agents
-            .push_raw(Some(&format!("Bearer {token}")), "[]", PERMITTED)
-            .await;
-    }
+    // A valid token's refusals are held back per device, not per address (CR-21).
+    agents
+        .push_raw(Some(&format!("Bearer {token}")), "[]", NEIGHBOUR)
+        .await;
     let mut expected = vec![
         refused(None, PERMITTED, "TOKEN_REFUSED"),
         refused(None, NEIGHBOUR, "TOKEN_REFUSED"),
-        refused(Some("pve-01"), PERMITTED, "MALFORMED"),
-        refused(Some("pve-01"), PERMITTED, "MALFORMED"),
+        refused(Some("pve-01"), NEIGHBOUR, "MALFORMED"),
     ];
     expected.sort();
     let mut written = warnings(&pool).await;
@@ -157,7 +156,7 @@ async fn cr_15_push_refusals_without_a_valid_token_are_written_once_a_minute_per
 
     agents.clock.advance(TimeDelta::minutes(1));
     agents.push_raw(bad, "{}", PERMITTED).await;
-    assert_eq!(warnings(&pool).await.len(), 5);
+    assert_eq!(warnings(&pool).await.len(), 4);
 }
 
 #[sqlx::test(

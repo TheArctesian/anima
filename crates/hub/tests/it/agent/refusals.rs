@@ -1,15 +1,20 @@
-//! K8 Sections 3 and 6, CR-15, NET-002: every enrol refusal and every token refusal on renew
-//! reaches the event log as a warning with its code and address, never the code or token; one
-//! with no valid credential at most once a minute per address. An address outside the
-//! permitted networks reaches neither route.
+//! K8 Sections 3 and 6, CR-15, CR-21, NET-002: every enrol refusal and every token refusal on
+//! renew reaches the event log as a warning with its code and address, never the code or token;
+//! one with no valid credential at most once a minute per address, one with a valid credential
+//! at most once a minute per device. An address outside the permitted networks reaches neither
+//! route.
 
 use axum::http::StatusCode;
 use chrono::TimeDelta;
 use serde_json::json;
 use sqlx::PgPool;
 
-use super::harness::{
-    Agents, DOCKER_HOST, NEIGHBOUR, OUTSIDE, PERMITTED, PVE_01, metrics_events, refusal,
+use super::{
+    batches::cpu_batch,
+    harness::{
+        Agents, DOCKER_HOST, NEIGHBOUR, OUTSIDE, PERMITTED, PVE_01, metrics_events, pushing_now,
+        refusal,
+    },
 };
 
 #[sqlx::test(
@@ -47,26 +52,65 @@ async fn cr_15_refusals_without_a_credential_are_written_once_a_minute_per_addre
     migrations = "./migrations",
     fixtures(path = "../../fixtures", scripts("devices"))
 )]
-async fn k8_a_refusal_with_a_valid_token_is_always_written_with_its_device(pool: PgPool) {
-    let agents = Agents::new(&pool).await;
+async fn cr_21_refusals_with_a_valid_token_are_written_once_a_minute_per_device(pool: PgPool) {
+    let now = pushing_now(&pool).await;
+    let agents = Agents::at(&pool, now).await;
     let token = agents.token_for(PVE_01).await;
     let bearer = format!("Bearer {token}");
-    for _ in 0..2 {
-        let answer = agents.renew_raw(Some(&bearer), "[]", PERMITTED).await;
+    // From any address and on either route: the device decides, and every answer stays.
+    for from in [PERMITTED, NEIGHBOUR, PERMITTED] {
+        let answer = agents.renew_raw(Some(&bearer), "[]", from).await;
+        assert_eq!(answer, (StatusCode::BAD_REQUEST, refusal("MALFORMED")));
+        let answer = agents.push_raw(Some(&bearer), "[]", from).await;
         assert_eq!(answer, (StatusCode::BAD_REQUEST, refusal("MALFORMED")));
     }
-    let written: Vec<(Option<String>, String)> = sqlx::query_as(
-        "SELECT device_name, message FROM events.event_log \
-         WHERE source = 'metrics' AND severity = 'warning'",
-    )
-    .fetch_all(&pool)
-    .await
-    .unwrap();
-    let expected = (
+    let first = (
         Some("pve-01".to_owned()),
         "Refused an agent token renewal from 100.64.0.7: MALFORMED.".to_owned(),
     );
-    assert_eq!(written, [expected.clone(), expected]);
+    assert_eq!(device_warnings(&pool).await, std::slice::from_ref(&first));
+
+    agents.clock.advance(TimeDelta::minutes(1));
+    agents.push_raw(Some(&bearer), "[]", NEIGHBOUR).await;
+    agents.push_raw(Some(&bearer), "[]", NEIGHBOUR).await;
+    let next = (
+        Some("pve-01".to_owned()),
+        "Refused an agent push from 100.64.0.8: MALFORMED.".to_owned(),
+    );
+    assert_eq!(device_warnings(&pool).await, [first, next]);
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn cr_18_cr_21_a_token_of_a_device_switched_away_cannot_flood_the_event_log(pool: PgPool) {
+    let now = pushing_now(&pool).await;
+    let agents = Agents::at(&pool, now).await;
+    let token = agents.token_for(PVE_01).await;
+    let switch =
+        "mutation($id: ID!) { updateDevice(id: $id, input: { metricsSource: SSH }) { id } }";
+    agents.operate(switch, json!({ "id": PVE_01 })).await;
+    for _ in 0..100 {
+        let answer = agents.push(&token, &cpu_batch(PVE_01, now, 5.0)).await;
+        assert_eq!(answer, (StatusCode::UNAUTHORIZED, refusal("TOKEN_REFUSED")));
+    }
+    assert_eq!(device_warnings(&pool).await.len(), 1);
+    agents.clock.advance(TimeDelta::minutes(1));
+    agents.push(&token, &cpu_batch(PVE_01, now, 5.0)).await;
+    assert_eq!(device_warnings(&pool).await.len(), 2);
+}
+
+/// The device name and message of each metrics warning that names a device, oldest first.
+async fn device_warnings(pool: &PgPool) -> Vec<(Option<String>, String)> {
+    sqlx::query_as(
+        "SELECT device_name, message FROM events.event_log \
+         WHERE source = 'metrics' AND severity = 'warning' AND device_id IS NOT NULL \
+         ORDER BY at, id",
+    )
+    .fetch_all(pool)
+    .await
+    .unwrap()
 }
 
 #[sqlx::test(

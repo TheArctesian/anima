@@ -165,7 +165,8 @@ The hub runs the push checks in this order and stops at the first refusal: the b
 the JSON, the device, the shape, the times. Every push refusal is written to the event log (source `metrics`,
 severity warning) with its code, the client address and, when the token was valid, the device, and never with
 the token (MET-017). A refusal with no valid token is written at most once a minute per client address, so a
-flood cannot fill the event log.
+flood cannot fill the event log. A refusal with a valid token, on any agent route, is written at most once a
+minute per device (CR-21). Only the event is held back: the refusal and its answer are the same.
 
 ## 7. Agent buffer (MET-014)
 

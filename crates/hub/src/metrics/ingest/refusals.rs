@@ -1,4 +1,5 @@
-//! How the agent routes answer a refusal and write it to the event log (K8 Section 6, CR-15).
+//! How the agent routes answer a refusal and write it to the event log (K8 Section 6, CR-15,
+//! CR-21).
 //!
 //! The body is `{"error":"<CODE>"}` and nothing else; the event names the code, the client
 //! address and, when the credential was valid, the device. Neither ever holds a value from the
@@ -84,7 +85,8 @@ pub(super) fn unrecorded_sentence(count: usize) -> String {
 }
 
 /// The refusal events of the agent routes, written at most once a minute per client address
-/// when the request had no valid credential.
+/// when the request had no valid credential, and once a minute per device when it had one
+/// (CR-21).
 #[derive(Clone)]
 pub(super) struct Recorder {
     db: PgPool,
@@ -101,11 +103,15 @@ impl Recorder {
         }
     }
 
-    /// The events `refused` at `now` writes: its own unless the throttle holds it back, and the
+    /// The events `refused` at `now` writes: its own unless the throttle holds it back (once a
+    /// minute per address without a valid credential, per device with one), and the
     /// count of refusals left out once a minute has passed since the first of them.
     fn due(&self, refused: &Refused, now: DateTime<Utc>) -> (bool, Option<usize>) {
         let mut throttle = self.throttle.lock().unwrap_or_else(PoisonError::into_inner);
-        let own = refused.device.is_some() || throttle.admit(refused.client.0, now);
+        let own = match refused.device {
+            Some(device) => throttle.admit_device(device, now),
+            None => throttle.admit(refused.client.0, now),
+        };
         (own, throttle.unrecorded(now).filter(|count| *count > 0))
     }
 
