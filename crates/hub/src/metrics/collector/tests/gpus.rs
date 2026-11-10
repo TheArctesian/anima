@@ -26,7 +26,7 @@ pub(super) fn at() -> DateTime<Utc> {
     "2026-11-07T09:00:00Z".parse().unwrap()
 }
 
-fn output(status: Option<u32>, stdout: &[u8]) -> CommandOutput {
+pub(super) fn output(status: Option<u32>, stdout: &[u8]) -> CommandOutput {
     CommandOutput {
         exit_status: status,
         stdout: stdout.to_vec(),
@@ -55,7 +55,7 @@ pub(super) fn amd_card(card: u32) -> Vec<u8> {
 fn gpus(answer: &Answer) -> &[agent_core::readings::GpuReading] {
     match answer {
         Answer::Gpus(gpus) => gpus,
-        Answer::Unknown => panic!("unknown"),
+        Answer::Failed | Answer::Unknown => panic!("no readings"),
     }
 }
 
@@ -86,7 +86,7 @@ fn value(samples: &[Sample], kind: Kind, label: &str) -> Option<f64> {
 }
 
 #[test]
-fn met_006_a_missing_or_refused_tool_is_no_gpu_and_an_unfinished_read_is_unknown() {
+fn met_006_exit_127_is_no_gpu_another_exit_a_failed_read_and_an_unfinished_read_unknown() {
     for vendor in [GpuVendor::Nvidia, GpuVendor::Intel, GpuVendor::Apple] {
         assert_eq!(
             answer(vendor, &output(Some(127), b"")),
@@ -94,7 +94,7 @@ fn met_006_a_missing_or_refused_tool_is_no_gpu_and_an_unfinished_read_is_unknown
         );
         assert_eq!(
             answer(vendor, &output(Some(1), NVIDIA_SMI_TWO)),
-            Answer::Gpus(Vec::new()),
+            Answer::Failed,
             "a failed tool's output is not read"
         );
     }
@@ -164,6 +164,23 @@ fn met_006_hostile_sysfs_lines_are_skipped_and_cards_are_capped() {
         })
         .collect();
     assert_eq!(cards(&many).len(), MAX_LABELS);
+}
+
+#[test]
+fn met_006_repeated_numbers_keep_the_first_and_counts_are_bounded() {
+    let repeated: Vec<u8> = (0..1000)
+        .flat_map(|index| format!("{}, GPU {index}, 1, 1, 2, 3, 4\n", index % 40).into_bytes())
+        .collect();
+    let many = [(GpuVendor::Nvidia, answer(GpuVendor::Nvidia, &ok(&repeated)))];
+    let known = found(&many);
+    assert_eq!(known.gpus.len(), MAX_LABELS);
+    let sources: Vec<u32> = known.gpus.iter().map(|found| found.source).collect();
+    assert_eq!(
+        sources,
+        (0..32).collect::<Vec<u32>>(),
+        "first of each index"
+    );
+    assert_eq!(known.gpus[1].gpu.name, "GPU 1");
 }
 
 #[test]

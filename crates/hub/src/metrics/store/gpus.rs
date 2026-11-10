@@ -1,4 +1,6 @@
 //! The GPUs found on devices and when the hub last looked (MET-006).
+//! The collector writes these tables; the 0700 migration's comment that nothing writes them
+//! is outdated and stays, because an applied migration is never edited.
 
 use std::collections::HashMap;
 
