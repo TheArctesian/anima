@@ -7,6 +7,8 @@ use chrono::{DateTime, Utc};
 use sqlx::{PgConnection, PgExecutor};
 use uuid::Uuid;
 
+use crate::access::throttle::LOOKBACK;
+
 /// Deletes the login attempts of these usernames and every attempt from an address where one
 /// of them was tried, so a reset operator can sign in at once, even after typos that locked
 /// the address (D-8, D-9).
@@ -25,7 +27,8 @@ pub(in crate::access) async fn delete_attempts_of(
 }
 
 /// Records a login attempt as failed until `finish_attempt` says otherwise, so concurrent
-/// attempts count it at once (D-8). Returns its id.
+/// attempts count it at once (D-8). Stores `client` in canonical form, so an IPv4-mapped IPv6
+/// address and its IPv4 address are one address to the throttle (D-11). Returns its id.
 pub(in crate::access) async fn start_attempt(
     db: impl PgExecutor<'_>,
     at: DateTime<Utc>,
@@ -40,7 +43,7 @@ pub(in crate::access) async fn start_attempt(
     .bind(id)
     .bind(at)
     .bind(username)
-    .bind(client)
+    .bind(client.to_canonical())
     .execute(db)
     .await?;
     Ok(id)
@@ -69,23 +72,27 @@ pub(in crate::access) async fn finish_attempt(
     Ok(())
 }
 
-/// Times of the checked failures from the attempt's client address in `(since, attempt.at]`,
-/// other than the attempt itself, oldest first.
+/// Times of the checked failures from `client` that can still throttle an attempt at `at`,
+/// those in `(at - LOOKBACK, at]`, oldest first, leaving out `except`: the caller's own
+/// attempt, already recorded as failed. Reads `client` in canonical form, as `start_attempt`
+/// stores it (D-11). Sign-in and `joinShare` both read through here, so they share one rule
+/// (D-8, CR-16).
 pub(in crate::access) async fn failures(
-    conn: &mut PgConnection,
-    attempt: &AttemptKey,
-    since: DateTime<Utc>,
+    db: impl PgExecutor<'_>,
+    client: IpAddr,
+    at: DateTime<Utc>,
+    except: Option<Uuid>,
 ) -> Result<Vec<DateTime<Utc>>, sqlx::Error> {
     sqlx::query_scalar(
         "select at from access.login_attempts \
          where client_addr = $1 and not ok and not refused and at > $2 and at <= $3 \
-         and id <> $4 order by at",
+         and ($4::uuid is null or id <> $4) order by at",
     )
-    .bind(attempt.client)
-    .bind(since)
-    .bind(attempt.at)
-    .bind(attempt.id)
-    .fetch_all(conn)
+    .bind(client.to_canonical())
+    .bind(at - LOOKBACK)
+    .bind(at)
+    .bind(except)
+    .fetch_all(db)
     .await
 }
 

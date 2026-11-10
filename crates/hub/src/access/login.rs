@@ -1,8 +1,11 @@
-//! Signing in and out: the throttle, the password check, the token and their records
-//! (SEC-002, LOG-005, D-3, D-7, D-8).
+//! Signing in: the throttle, the password check, the token and their records (SEC-002,
+//! LOG-005, D-3, D-7, D-8). Signing out is in `sign_out`; failures outside sign-in in `outside`.
+
+mod outside;
+mod sign_out;
 
 use chrono::{DateTime, TimeDelta, Utc};
-use sqlx::{PgConnection, PgPool};
+use sqlx::PgPool;
 use tokio::sync::Semaphore;
 use uuid::Uuid;
 
@@ -14,6 +17,10 @@ use super::{
     tokens::{BROWSER_LIFETIME, LOGIN_LIFETIME, Scope, TOKEN_BYTES, Token, TokenKind},
     totp::{self, SecondFactor},
 };
+pub use outside::{record_failure, throttled};
+pub(super) use sign_out::logout;
+use sign_out::retire;
+
 use crate::{
     credentials::Vault,
     events::{self, AuditAction, AuditTarget, Bus, NewAudit, NewEvent, Severity, Source},
@@ -130,7 +137,7 @@ pub(super) async fn login(
             return Ok(signed_in);
         }
     }
-    record_failure(db, bus, &key, name.as_deref()).await?;
+    warn_failed_sign_in(db, bus, &key, name.as_deref()).await?;
     match factor {
         SecondFactor::Unopenable(error) => {
             record_unopenable(db, bus, &key, name.as_deref()).await?;
@@ -148,7 +155,7 @@ async fn unthrottled_account(
     username: &str,
 ) -> Result<Option<Account>, Error> {
     let mut conn = db.acquire().await?;
-    let failures = store::failures(&mut conn, key, key.at - throttle::LOOKBACK).await?;
+    let failures = store::failures(&mut *conn, key.client, key.at, Some(key.id)).await?;
     if throttle::refused(&failures, key.at) {
         store::finish_attempt(&mut *conn, key.id, Outcome::Refused).await?;
         return Err(Error::WrongCredentials);
@@ -157,39 +164,6 @@ async fn unthrottled_account(
         return Ok(None);
     }
     Ok(store::account_by_username(&mut *conn, username).await?)
-}
-
-/// Deletes the identity's token and audits the sign-out.
-pub(super) async fn logout(
-    db: &PgPool,
-    identity: &Identity,
-    client: ClientAddr,
-    now: DateTime<Utc>,
-) -> Result<(), Error> {
-    let mut tx = db.begin().await?;
-    if !store::delete_token(&mut tx, identity.token()).await? {
-        return Err(Error::Unauthenticated);
-    }
-    let operator = identity.operator().cloned().ok_or(Error::Unauthenticated)?;
-    let entry = audit_entry(operator, AuditAction::Logout, client);
-    events::audit(&mut tx, now, entry).await?;
-    tx.commit().await?;
-    Ok(())
-}
-
-/// Deletes the replaced browser token and audits it as a sign-out of its operator, as
-/// `logout` does. A token already gone (a `logout` that committed first) is left alone.
-async fn retire(
-    conn: &mut PgConnection,
-    replaced: Replaced,
-    client: ClientAddr,
-    at: DateTime<Utc>,
-) -> Result<(), Error> {
-    if store::delete_token(conn, replaced.token).await? {
-        let entry = audit_entry(replaced.operator, AuditAction::Logout, client);
-        events::audit(conn, at, entry).await?;
-    }
-    Ok(())
 }
 
 /// Random bytes from the operating system.
@@ -296,7 +270,7 @@ async fn succeed(
 
 /// Records a failed sign-in as an `ACCESS` warning. The typed username is named only when it
 /// belongs to an operator: an unknown one may be a password typed in the wrong field.
-async fn record_failure(
+async fn warn_failed_sign_in(
     db: &PgPool,
     bus: &Bus,
     attempt: &AttemptKey,
