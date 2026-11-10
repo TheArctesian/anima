@@ -16,6 +16,7 @@ mod live;
 mod model;
 mod page;
 mod quiet;
+mod recording;
 mod serving;
 mod start;
 mod store;
