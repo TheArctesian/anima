@@ -160,6 +160,7 @@ async fn attempt(ctx: &Context, due: &Due, now: DateTime<Utc>) -> Outcome {
             Some(CheckConfig::DomainExpiry { domain, .. }) => Some(domain.as_str()),
             _ => None,
         },
+        device: &device,
     };
     match record(&ctx.db, due.id, &attempt).await {
         Ok(Some(beat)) => Outcome::Written(beat, in_maintenance),

@@ -27,6 +27,7 @@ use crate::{
         push_router,
     },
     clock::Clock,
+    devices,
     events::Bus,
     ids::CheckId,
 };
@@ -42,11 +43,14 @@ impl Clock for Stepping {
 
 async fn failed_attempt(pool: PgPool, id: CheckId, at: DateTime<Utc>) {
     let result = ProbeResult::failed(&Failure::NoPush);
+    let owner = checks::get(&pool, id).await.unwrap().device;
+    let device = devices::get(&pool, owner).await.unwrap();
     let attempt = Attempt {
         result: &result,
         in_maintenance: false,
         at,
         domain: None,
+        device: &device,
     };
     let mut tx = pool.begin().await.unwrap();
     checks::store::record_attempt(&mut tx, id, &attempt)

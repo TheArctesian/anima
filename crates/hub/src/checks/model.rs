@@ -14,6 +14,7 @@ use super::{
     probe::ProbeResult,
 };
 use crate::{
+    devices::Device,
     ids::{CheckId, DeviceId},
     status::Status,
 };
@@ -282,6 +283,8 @@ pub(in crate::checks) struct Attempt<'a> {
     /// The domain a domain expiry probe asked about. Its expiry date is kept only while the
     /// check still names that domain (D-29).
     pub(in crate::checks) domain: Option<&'a str>,
+    /// The check's device, as the attempt read it: a notification names it (D-16).
+    pub(in crate::checks) device: &'a Device,
 }
 
 /// What `record_beat` did with a beat.

@@ -1,17 +1,26 @@
 //! What a tick tells live views about devices: heartbeat signals after commit, and one
 //! stored event plus one signal per status change, from the scheduler's beats or the push
-//! route's (LOG-004, LOG-010).
+//! route's (LOG-004, LOG-010). What it tells the operator's channels: one notification per
+//! selected channel, queued in the beat's transaction, none under maintenance (NOT-001, D-16,
+//! Section 6.5).
 
 use chrono::TimeDelta;
 use tokio::sync::broadcast::Receiver;
 
+use sqlx::PgPool;
+
 use super::support::{
-    DOCKER_HOST, Listener, add, allow_event_writes, closed_port, database_now, due_at, events_of,
-    fail_event_writes, on_loopback, rng, scheduler, tcp,
+    DOCKER_HOST, JELLYFIN, Listener, add, allow_event_writes, closed_port, database_now, due_at,
+    events_of, fail_event_writes, on_loopback, rng, scheduler, tcp,
 };
 use crate::{
-    checks::{self, Beat, CheckState, Definition, PushToken},
+    checks::{
+        self, Attempt, Beat, CheckState, Definition, PushToken,
+        probe::{Failure, ProbeResult},
+    },
+    devices,
     events::{Bus, Signal},
+    ids::CheckId,
     status::Status,
 };
 
@@ -191,5 +200,106 @@ tick_test! {
 
         assert_eq!(device_statuses(&drain(&mut receiver)), [Status::Up]);
         assert_eq!(events_of(&pool, device).await, [event("info", "docker-host is Up")]);
+    }
+}
+
+/// Selects a new channel for `check`.
+async fn notify_on(pool: &PgPool, check: CheckId) {
+    let channel = uuid::Uuid::now_v7();
+    sqlx::query(
+        "INSERT INTO notifications.channels (id, name, kind) VALUES ($1, 'Ops', 'webhook')",
+    )
+    .bind(channel)
+    .execute(pool)
+    .await
+    .unwrap();
+    sqlx::query("INSERT INTO notifications.check_channels (check_id, channel_id) VALUES ($1, $2)")
+        .bind(check)
+        .bind(channel)
+        .execute(pool)
+        .await
+        .unwrap();
+}
+
+/// The kinds queued for `check`, oldest first.
+async fn queued(pool: &PgPool, check: CheckId) -> Vec<String> {
+    sqlx::query_scalar(
+        "SELECT kind FROM notifications.outbox WHERE check_id = $1 ORDER BY created_at, id",
+    )
+    .bind(check)
+    .fetch_all(pool)
+    .await
+    .unwrap()
+}
+
+async fn heartbeats(pool: &PgPool, check: CheckId) -> i64 {
+    sqlx::query_scalar("SELECT count(*) FROM checks.heartbeats WHERE check_id = $1")
+        .bind(check)
+        .fetch_one(pool)
+        .await
+        .unwrap()
+}
+
+tick_test! {
+    async fn not_001_a_scheduled_down_beat_queues_one_notification_for_the_selected_channel(pool: PgPool) {
+        let device = on_loopback(&pool, DOCKER_HOST).await;
+        let id = add(&pool, device, tcp(closed_port()), 0).await;
+        notify_on(&pool, id).await;
+        let now = database_now(&pool).await;
+        due_at(&pool, id, now).await;
+        let mut scheduler = scheduler(&pool, &Bus::new(16));
+
+        scheduler.tick(now, &mut rng()).await;
+        scheduler.finish_running(now).await;
+        let later = now + TimeDelta::seconds(10);
+        scheduler.tick(later, &mut rng()).await;
+        scheduler.finish_running(later).await;
+
+        assert_eq!(heartbeats(&pool, id).await, 2);
+        assert_eq!(queued(&pool, id).await, ["down"], "one Down, not one per beat");
+    }
+
+    async fn not_001_a_down_beat_under_maintenance_queues_nothing(pool: PgPool) {
+        // jellyfin's manual maintenance flag is set (Section 6.5).
+        let device = on_loopback(&pool, JELLYFIN).await;
+        let id = add(&pool, device, tcp(closed_port()), 0).await;
+        notify_on(&pool, id).await;
+        let now = database_now(&pool).await;
+        due_at(&pool, id, now).await;
+        let mut scheduler = scheduler(&pool, &Bus::new(16));
+
+        scheduler.tick(now, &mut rng()).await;
+        scheduler.finish_running(now).await;
+
+        assert_eq!(heartbeats(&pool, id).await, 1);
+        assert_eq!(queued(&pool, id).await, Vec::<String>::new());
+    }
+
+    async fn d_16_a_rolled_back_attempt_leaves_no_notification(pool: PgPool) {
+        let device = on_loopback(&pool, DOCKER_HOST).await;
+        let id = add(&pool, device, tcp(1), 0).await;
+        notify_on(&pool, id).await;
+        let device = devices::get(&pool, device).await.unwrap();
+        let result = ProbeResult::failed(&Failure::NoPush);
+        let attempt = Attempt {
+            result: &result,
+            in_maintenance: false,
+            at: database_now(&pool).await,
+            domain: None,
+            device: &device,
+        };
+
+        let mut tx = pool.begin().await.unwrap();
+        let beat = checks::record_attempt(&mut tx, id, &attempt).await.unwrap();
+        assert_eq!(beat.map(|beat| beat.status), Some(Status::Down));
+        let inside: i64 = sqlx::query_scalar("SELECT count(*) FROM notifications.outbox")
+            .fetch_one(&mut *tx)
+            .await
+            .unwrap();
+        tx.rollback().await.unwrap();
+
+        assert_eq!(inside, 1, "queued in the beat's transaction");
+        assert_eq!(heartbeats(&pool, id).await, 0);
+        assert_eq!(queued(&pool, id).await, Vec::<String>::new());
     }
 }
