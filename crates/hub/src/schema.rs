@@ -154,6 +154,7 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .data(checks::graphql::last_heartbeat_loader(pool.clone()).delay(BATCH_WINDOW))
     .data(checks::graphql::heartbeats_loader(pool.clone()).delay(BATCH_WINDOW))
     .data(checks::graphql::check_uptime_loader(pool.clone(), clock).delay(BATCH_WINDOW))
+    .data(checks::graphql::check_notifications_loader(pool.clone()).delay(BATCH_WINDOW))
     // notifications
     .data(notifications::graphql::last_delivery_loader(pool.clone()).delay(BATCH_WINDOW))
     // trust: the accepted keys and certificates, and what the connection tests of `live` saw
