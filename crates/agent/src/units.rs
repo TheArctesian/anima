@@ -1,7 +1,13 @@
-//! The text of the unit files that keep the agent running (MET-019). T6's installer (the
-//! Tauri shell and `lib/metrics/`) copies the binary, fills in its path and writes these.
+//! The unit files that keep the agent running, and `anima-agent install` (MET-019, D-10): it
+//! fills the running binary's path into these texts, writes the file and starts it. The
+//! operator's page command and the desktop app both call it.
 //! The files are in `crates/agent/units/`; the two systemd files end in `.unit` here only because
-//! the repository's name rules ban the word `service`: install them as `anima-agent.service`.
+//! the repository's name rules ban the word `service`: `install` writes them as
+//! `anima-agent.service`.
+
+pub mod install;
+pub mod plan;
+pub mod render;
 
 /// A systemd user unit: `~/.config/systemd/user/anima-agent.service`, run by the operator.
 pub const SYSTEMD_USER: &str = include_str!("../units/anima-agent.user.unit");
