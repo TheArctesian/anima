@@ -2,7 +2,7 @@ import type { FieldError } from '$lib/hub/hub';
 import { isValidHost, normalizeHost } from '$lib/devices/form/host';
 import { configChanged } from './config-input';
 import { integerError, LIMITS, lengthError, portError, timeoutError } from './range';
-import { domainExpiryErrors, intervalErrors } from '../probes/domain-expiry';
+import { domainExpiryErrors, intervalErrors, takesRetries } from '../probes/domain-expiry';
 import { probeErrors } from '../probes/validate';
 import { validateHttp } from './validate-http';
 import type { CheckFormValues } from './values';
@@ -83,7 +83,9 @@ export function settingsErrors(values: CheckSettingsText): FieldError[] {
 }
 
 function commonErrors(values: CheckFormValues): FieldError[] {
-  return [...nameErrors(values.name), ...settingsErrors(values)];
+  // R-102: a domain expiry form has no retries fields, so they cannot be wrong.
+  const hidden = takesRetries(values.type) ? [] : ['retries', 'retryIntervalSeconds'];
+  return [...nameErrors(values.name), ...settingsErrors(values).filter((error) => !hidden.includes(error.field))];
 }
 
 /**
