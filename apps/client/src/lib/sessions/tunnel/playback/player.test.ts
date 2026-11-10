@@ -151,6 +151,14 @@ describe('seeking (RA-041)', () => {
     empty.dispose();
   });
 
+  it('RA-041: play during a seek still resolves the seek', async () => {
+    const player = await loaded(LONGER);
+    const seeking = player.seek(3000);
+    player.play();
+    await expect(seeking).resolves.toBeUndefined();
+    player.dispose();
+  });
+
   it('RA-041: pause during a seek still resolves the seek', async () => {
     const player = await loaded(LONGER);
     const seeking = player.seek(3000);

@@ -12,8 +12,6 @@ import {
   type RecordingHeader,
 } from './codec';
 
-export { PING_AFTER_MS, SILENCE_LIMIT_MS };
-
 /**
  * The most plaintext one playback takes by default: the hub's default `ANIMA_RECORDING_MAX_BYTES` (D-14, K7). A hub
  * that sends more ends the link as `too-large`; what came before still plays.
@@ -21,7 +19,8 @@ export { PING_AFTER_MS, SILENCE_LIMIT_MS };
 export const RECORDING_MAX_BYTES = 2_147_483_648;
 
 /**
- * How a playback ended. `done`: every part arrived. `damaged`: a part failed to decrypt, after the parts that
+ * How a playback ended. `done`: every part arrived (a complete recording that ends with `receivedBytes` below
+ * `header.sizeBytes` also ends `done`; K4 §12 does not define it, so the owner compares the two). `damaged`: a part failed to decrypt, after the parts that
  * verified; `missing`: the file is gone (K4 §12). `refused`: the socket closed before it opened (K4 §8.1).
  * `interrupted`: it closed before `done` (see `closeCode`). `lost`: nothing came for `SILENCE_LIMIT_MS`. `fault`: the
  * hub broke the protocol (no header first, `done` before the header, a bad header, an oversize frame, more bytes than

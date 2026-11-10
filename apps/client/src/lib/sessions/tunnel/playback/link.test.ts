@@ -1,10 +1,9 @@
 import { inspect } from 'node:util';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FAKE_TERMINAL_SOCKET, FakeTerminalSocket } from '../terminal/fake/socket.fixture';
+import { PING_AFTER_MS, SILENCE_LIMIT_MS } from '../terminal/link';
 import {
-  PING_AFTER_MS,
   RECORDING_MAX_BYTES,
-  SILENCE_LIMIT_MS,
   openRecordingLink,
   type RecordingLinkOptions,
   type RecordingLinkState,
@@ -154,7 +153,7 @@ describe('the end of a playback (K4 §12, RA-041)', () => {
     ['binary before the header', [new Uint8Array(1)]],
     ['an unknown format', [{ ...HEADER, format: 'WEBM' }]],
     ['a second header', [HEADER, HEADER]],
-    ['a frame over 64 KiB', [HEADER, new Uint8Array(65_537)]],
+    ['a frame over 64 KiB', [{ ...HEADER, complete: false }, new Uint8Array(65_537)]],
     ['a failed with an unknown reason', [{ type: 'failed', reason: 'LOST' }]],
     ['done before the header', [{ type: 'done' }]],
   ])('K4 §12: %s is a protocol fault: the client sends cancel, closes and delivers nothing more', (_name, frames: unknown[]) => {
@@ -185,6 +184,16 @@ describe('the end of a playback (K4 §12, RA-041)', () => {
 });
 
 describe('the byte bounds (RA-041, D-14)', () => {
+  it('K4 §12: the 64 KiB frame cap alone faults a frame one byte over it; a frame of exactly 64 KiB is accepted', () => {
+    const { link, socket, heard } = receiving({ ...HEADER, sizeBytes: 1_000_000, complete: false });
+    socket.output(new Uint8Array(65_536));
+    expect(heard.bytes.map((frame) => frame.length)).toEqual([65_536]);
+    expect(link.state().phase).toBe('receiving');
+    socket.output(new Uint8Array(65_537));
+    expect(heard.ends.map((state) => state.outcome)).toEqual(['fault']);
+    expect(heard.bytes).toHaveLength(1);
+  });
+
   it('RA-041, K4 §12: a complete recording that sends more than its sizeBytes is a fault: the frame past it is not delivered', () => {
     const { link, socket, heard } = receiving({ ...HEADER, sizeBytes: 3, complete: true });
     socket.output(Uint8Array.from([1, 2, 3]));
