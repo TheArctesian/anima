@@ -175,3 +175,18 @@ pub(super) fn cancel(job: &BuildJob, now: DateTime<Utc>) -> Result<BuildJob, Ref
         })
     }
 }
+
+/// The `uploading` job the hub published at `now` (BLD-066).
+pub(super) fn published(job: &BuildJob, now: DateTime<Utc>) -> BuildJob {
+    let mut next = entered(job, JobState::Published, now);
+    next.lease_ends_at = None;
+    next
+}
+
+/// The `uploading` job the hub refused to publish at `now`, with the reason (BLD-070).
+pub(super) fn publish_failed(job: &BuildJob, reason: &str, now: DateTime<Utc>) -> BuildJob {
+    let mut next = entered(job, JobState::Failed, now);
+    next.lease_ends_at = None;
+    next.failure_reason = Some(log_lines::reason(Some(reason)));
+    next
+}

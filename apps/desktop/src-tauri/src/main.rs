@@ -53,6 +53,8 @@ fn main() {
             builder::builder_sign,
             builder::builder_signature_verify,
             builder::builder_cancel,
+            builder::upload::builder_release_files,
+            builder::upload::builder_upload,
             process_log::process_log_folder_open,
             system_settings::sharing_settings_open,
             this_machine::this_machine_read,

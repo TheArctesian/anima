@@ -1,5 +1,5 @@
 //! What builders do to jobs, and the end of their leases: claim, report, report the upload
-//! (BLD-004 to BLD-010, BLD-048, BLD-063, D-2 to D-5). Each runs in its own transaction and
+//! (BLD-004 to BLD-010, BLD-048, BLD-063, D-2 to D-5, D-25). Each runs in its own transaction and
 //! sends the changed jobs to the live view after it commits.
 
 use chrono::{DateTime, Utc};
@@ -7,7 +7,7 @@ use sqlx::{PgConnection, PgPool};
 
 use super::{
     Error, JobUpdate, Updates, builders, log_lines,
-    model::{BuildJob, Builder, JobState, LogLine, Missing, Report, UploadedFile},
+    model::{BuildJob, Builder, FieldError, JobState, LogLine, Missing, Report, UploadedFile},
     queue::{self, Refusal},
     store, upload,
 };
@@ -62,7 +62,11 @@ impl From<Refusal> for Error {
 }
 
 /// Writes the event of a job that failed (BLD-082). Its reason is redacted by `record`.
-async fn record_failure(conn: &mut PgConnection, bus: &Bus, job: &BuildJob) -> Result<(), Error> {
+pub(super) async fn record_failure(
+    conn: &mut PgConnection,
+    bus: &Bus,
+    job: &BuildJob,
+) -> Result<(), Error> {
     let reason = job.failure_reason.as_deref().unwrap_or_default();
     let event = NewEvent {
         severity: Severity::Error,
@@ -183,8 +187,8 @@ async fn append(
 /// # Errors
 ///
 /// `NotFound` for no such job; `Forbidden` when `builder` does not hold its lease; `Conflict`
-/// for a lease that ended or a change the diagram does not permit; `Validation` (`logLines`)
-/// for too many lines.
+/// for a lease that ended, a change the diagram does not permit or a job the hub publishes;
+/// `Validation` (`logLines`) for too many lines.
 pub async fn report(
     build_queue: BuildQueue<'_>,
     builder: &Builder,
@@ -195,6 +199,9 @@ pub async fn report(
     let job = store::job_locked(&mut tx, report.job)
         .await?
         .ok_or(Error::NotFound(Missing::Job(report.job)))?;
+    if store::is_publishing(&mut *tx, job.id).await? {
+        return Err(Error::Conflict(PUBLISHING.to_owned()));
+    }
     let mut next = queue::report(&job, builder.id, &report, now)?;
     let was_open = store::open_key_block(&mut tx, job.id).await?;
     let (lines, open) =
@@ -215,13 +222,52 @@ pub async fn report(
     Ok(next)
 }
 
-/// Records the holder's files and proposed feed for an `uploading` job and extends its lease
-/// (BLD-063). The job stays `uploading`: publishing comes in task 3 (D-5).
+/// The refusal of a builder call on a job whose files are in: the hub owns it now (D-25).
+const PUBLISHING: &str = "The hub is publishing this job.";
+
+/// The `uploading` job `id`, locked, as its holder `builder` extends the lease at `now`; not yet
+/// saved. Refused once the hub publishes it.
+pub(super) async fn extend_uploading(
+    conn: &mut PgConnection,
+    builder: &Builder,
+    id: BuildJobId,
+    now: DateTime<Utc>,
+) -> Result<BuildJob, Error> {
+    let job = store::job_locked(conn, id)
+        .await?
+        .ok_or(Error::NotFound(Missing::Job(id)))?;
+    if store::is_publishing(&mut *conn, id).await? {
+        return Err(Error::Conflict(PUBLISHING.to_owned()));
+    }
+    let extend = Report {
+        job: id,
+        state: None,
+        reason: None,
+        lines: Vec::new(),
+    };
+    let next = queue::report(&job, builder.id, &extend, now)?;
+    if next.state != JobState::Uploading {
+        return Err(Error::Conflict(
+            "Upload the files while the job is uploading.".to_owned(),
+        ));
+    }
+    Ok(next)
+}
+
+/// Whether `reported` names exactly the files of the grant, each with its size and SHA-256.
+fn same_files(mut reported: Vec<UploadedFile>, granted: &[UploadedFile]) -> bool {
+    reported.sort_by(|a, b| a.name.cmp(&b.name));
+    reported == granted
+}
+
+/// Records the holder's proposed feed for an `uploading` job whose files are the grant of its
+/// upload URLs, ends the builder's lease and gives the job to the publisher (BLD-063, D-25,
+/// D-26). The job stays `uploading` until the publisher ends it.
 ///
 /// # Errors
 ///
-/// As [`report`], and `Conflict` when the job is not `uploading`; `Validation` (`files`,
-/// `feed`) for a bad file list or feed.
+/// As [`report`], and `Conflict` when the job is not `uploading` or the hub publishes it;
+/// `Validation` (`files`, `feed`) for a bad feed or files other than the grant.
 pub async fn report_uploaded(
     build_queue: BuildQueue<'_>,
     builder: &Builder,
@@ -231,24 +277,16 @@ pub async fn report_uploaded(
     let files = upload::files(&uploaded.files).map_err(|e| Error::Validation(vec![e]))?;
     let feed = upload::feed(&uploaded.feed).map_err(|e| Error::Validation(vec![e]))?;
     let mut tx = build_queue.db.begin().await?;
-    let job = store::job_locked(&mut tx, uploaded.job)
-        .await?
-        .ok_or(Error::NotFound(Missing::Job(uploaded.job)))?;
-    let extend = Report {
-        job: uploaded.job,
-        state: None,
-        reason: None,
-        lines: Vec::new(),
-    };
-    let next = queue::report(&job, builder.id, &extend, now)?;
-    if next.state != JobState::Uploading {
-        return Err(Error::Conflict(
-            "Report the files while the job is uploading.".to_owned(),
-        ));
+    let mut next = extend_uploading(&mut tx, builder, uploaded.job, now).await?;
+    let granted = store::files_of(&mut *tx, next.id).await?;
+    if !same_files(files, &granted) {
+        let message = "Report the files the upload URLs were given for.";
+        return Err(Error::Validation(vec![FieldError::new("files", message)]));
     }
-    store::replace_files(&mut tx, next.id, &files).await?;
     store::set_feed(&mut tx, next.id, &feed, now).await?;
     store::save(&mut tx, &next).await?;
+    store::hand_to_publisher(&mut tx, next.id, now).await?;
+    next.lease_ends_at = None;
     tx.commit().await?;
     build_queue.updates.publish(JobUpdate {
         job: next.clone(),

@@ -8,6 +8,7 @@ mod builder;
 mod error;
 mod trail;
 mod types;
+mod uploads;
 
 use std::sync::Arc;
 

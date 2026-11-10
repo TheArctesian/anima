@@ -77,6 +77,9 @@ enum StartError {
     /// The cause is in the process log, by fault word and SQLSTATE (LOG-007).
     #[error("the permitted networks cannot be stored")]
     PermittedNetworks,
+    /// Names the setting, never a value (SEC-004, LOG-007).
+    #[error("{0}")]
+    Bucket(#[from] builds::BucketError),
 }
 
 /// Prints the plain error (`Display`, never `Debug`) and exits with a failure code.
@@ -136,6 +139,7 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     let listening = listen::listen(config.listen, tls_files(&config), clock.clone()).await?;
     warn_without_probe_deny(&config);
     let vault = vault(&config)?;
+    let bucket = release_bucket(&config)?;
     let pool = connect(&config).await?;
     events::check_runtime_role(&pool).await?;
     permit_networks(&pool, &config).await?;
@@ -159,6 +163,7 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         policy,
         metrics_feed: feed.clone(),
         build_updates: builds::Updates::new(),
+        bucket,
     };
     let upkeep = upkeep::spawn(&dependencies);
     let scheduler = checks::spawn_scheduler(pool.clone(), bus.clone(), clock.clone(), probing);
@@ -322,6 +327,15 @@ fn vault(config: &Config) -> Result<Vault, StartError> {
         path: config.key_file.display().to_string(),
         source,
     })
+}
+
+/// The release bucket when `ANIMA_RELEASES_ENDPOINT` is set, its token read from its files now
+/// (BLD-060, R-108); whether the hub publishes is logged, never a value (LOG-007).
+fn release_bucket(config: &Config) -> Result<Option<Arc<builds::Bucket>>, StartError> {
+    let open = config.releases.as_ref().map(builds::Bucket::open);
+    let bucket = open.transpose()?;
+    tracing::info!(publishing = bucket.is_some(), "release bucket");
+    Ok(bucket.map(Arc::new))
 }
 
 /// The password from standard input: prompted without echo on a terminal, else one line.

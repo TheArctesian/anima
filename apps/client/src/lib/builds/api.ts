@@ -53,6 +53,29 @@ const REPORT_BUILD_JOB = graphql(`
   }
 `);
 
+const BUILD_UPLOAD_URLS = graphql(`
+  mutation BuildUploadUrls($id: ID!, $files: [BuildFileInput!]!) {
+    buildUploadUrls(id: $id, files: $files) {
+      name
+      url
+      headers {
+        name
+        value
+      }
+      expiresAt
+    }
+  }
+`);
+
+const REPORT_BUILD_UPLOADED = graphql(`
+  mutation ReportBuildUploaded($id: ID!, $files: [BuildFileInput!]!, $feed: String!) {
+    reportBuildUploaded(id: $id, files: $files, feed: $feed) {
+      id
+      state
+    }
+  }
+`);
+
 export type { BuildJobState, BuildTarget, BuilderPlatformInput as BuilderPlatform };
 
 /** A builder as the Settings row lists it (BLD-025). */
@@ -84,9 +107,23 @@ export interface JobReport {
   readonly failureReason: string | null;
 }
 
+/** One file of a job as the hub records it: its name, lower-case hex SHA-256 and size in bytes (BLD-063). */
+export interface JobFile {
+  readonly name: string;
+  readonly sha256: string;
+  readonly size: number;
+}
+
+/** A presigned `PUT` for one file (BLD-060). The URL is a credential: it is never logged or reported (BLD-049). */
+export interface UploadUrl {
+  readonly name: string;
+  readonly url: string;
+  readonly headers: readonly { readonly name: string; readonly value: string }[];
+}
+
 /**
- * The builds calls of the hub. `builders`, `enrol` and `revoke` need the operator's session (BLD-021, BLD-025); `claim`
- * and `report` need the builder token (D-1), so the builder loop sends them through a hub that reads that token.
+ * The builds calls of the hub. `builders`, `enrol` and `revoke` need the operator's session (BLD-021, BLD-025); `claim`,
+ * `report`, `uploadUrls` and `reportUploaded` need the builder token (D-1), so the builder loop sends them through a hub that reads that token.
  */
 export interface BuildsApi {
   builders(): Promise<HubResult<readonly Builder[]>>;
@@ -96,6 +133,10 @@ export interface BuildsApi {
   claim(platform: BuilderPlatformInput): Promise<HubResult<ClaimedJob | null>>;
   /** Sends one report and extends the lease (BLD-005). */
   report(id: string, report: JobReport): Promise<HubResult<BuildJobState>>;
+  /** One presigned upload URL for each file of an `UPLOADING` job; extends the lease (BLD-060, D-26). */
+  uploadUrls(id: string, files: readonly JobFile[]): Promise<HubResult<readonly UploadUrl[]>>;
+  /** Reports the uploaded files and the proposed feed; the hub then publishes in the background (BLD-063). */
+  reportUploaded(id: string, files: readonly JobFile[], feed: string): Promise<HubResult<BuildJobState>>;
 }
 
 function mapValue<T, U>(result: HubResult<T>, pick: (value: T) => U): HubResult<U> {
@@ -124,6 +165,13 @@ export function buildsApi(hub: Requests): BuildsApi {
           failureReason: report.failureReason,
         }),
         (value) => value.reportBuildJob.state,
+      ),
+    uploadUrls: async (id, files) =>
+      mapValue(await hub.request(BUILD_UPLOAD_URLS, { id, files: [...files] }), (value) => value.buildUploadUrls),
+    reportUploaded: async (id, files, feed) =>
+      mapValue(
+        await hub.request(REPORT_BUILD_UPLOADED, { id, files: [...files], feed }),
+        (value) => value.reportBuildUploaded.state,
       ),
   };
 }

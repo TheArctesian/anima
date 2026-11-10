@@ -184,3 +184,26 @@ async fn a_8_a_desktop_logout_sets_no_cookie(pool: PgPool) {
     assert_eq!(answer.json(), json!({ "data": { "logout": true } }));
     assert!(answer.headers.get(header::SET_COOKIE).is_none());
 }
+
+/// R-108: a browser token gets no upload URLs, even from the public origin.
+#[sqlx::test(migrations = "./migrations")]
+async fn r_108_a_browser_token_gets_no_upload_urls(pool: PgPool) {
+    set_operator(&pool).await;
+    let hub = browser_hub(&pool, start());
+    let cookie = cookie(&browser_token(&hub).await);
+    let urls = "mutation { buildUploadUrls(id: \"0190a000-0000-7000-8009-000000000001\", \
+                files: []) { url } }";
+    let answer = post(
+        &hub,
+        &[("cookie", &cookie), ("origin", PUBLIC)],
+        urls,
+        json!({}),
+    )
+    .await
+    .json();
+    assert_eq!(
+        answer["errors"][0]["extensions"]["code"], "FORBIDDEN",
+        "{answer}"
+    );
+    assert!(answer["data"].is_null(), "{answer}");
+}

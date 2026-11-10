@@ -1,9 +1,10 @@
 //! The tools a builder needs before it claims a job (BLD-028): git, bun, Rust, PostgreSQL 17
-//! (R-009), the Tauri system packages and the updater key. Pure: whether a path exists is a
-//! parameter, and nothing is run.
+//! (R-009), the Tauri system packages, the updater key and the app's own updater public key.
+//! Pure: whether a path exists is a parameter, and nothing is run.
 
 use std::path::{Path, PathBuf};
 
+use base64::{Engine as _, engine::general_purpose::STANDARD};
 use serde::Serialize;
 
 use super::{environment::Environment, job::Target};
@@ -20,6 +21,21 @@ pub enum Tool {
     UpdaterKey,
     /// The key is stored but not unlocked in this app session (D-19).
     UpdaterKeyLocked,
+    /// This app was built without the updater public key (`plugins.updater.pubkey` is the
+    /// placeholder), so what it builds could never update (R-108).
+    UpdaterPublicKey,
+}
+
+/// The length of a minisign public key: `Ed`, the 8-byte key ID and the 32-byte key.
+const PUBLIC_KEY_BYTES: usize = 42;
+
+/// [`Tool::UpdaterPublicKey`] unless `line`, the key line of the app's updater public key, is a
+/// minisign public key (R-108). The placeholder has no key line.
+pub fn app_public_key(line: Option<&str>) -> Option<Tool> {
+    let key = line
+        .and_then(|line| STANDARD.decode(line).ok())
+        .is_some_and(|bytes| bytes.len() == PUBLIC_KEY_BYTES && bytes.starts_with(b"Ed"));
+    (!key).then_some(Tool::UpdaterPublicKey)
 }
 
 /// Where the updater key stands for signing (BLD-028, D-19).

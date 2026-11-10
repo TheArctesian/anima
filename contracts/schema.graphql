@@ -1525,6 +1525,20 @@ input BuildFileInput {
   size: Int!
 }
 
+"A presigned PUT for one file of a job (BLD-060). The URL is a credential: never log it (LOG-007, BLD-049)."
+type BuildUploadUrl {
+  name: String!
+  url: String!
+  "Headers the PUT must send exactly as given: Content-Length, Cache-Control and Content-Type."
+  headers: [BuildUploadHeader!]!
+  expiresAt: DateTime!
+}
+
+type BuildUploadHeader {
+  name: String!
+  value: String!
+}
+
 # ---------------------------------------------------------------- root types
 
 type Query {
@@ -1668,7 +1682,9 @@ type Mutation {
   claimBuildJob(platform: BuilderPlatformInput!): BuildJob
   "Builder token only; the lease holder only. Extends the lease (BLD-005, BLD-010, BLD-048)."
   reportBuildJob(id: ID!, state: BuildJobState, logLines: [String!]!, failureReason: String): BuildJob!
-  "Builder token only. The job stays UPLOADING until the hub publishes it (BLD-063, D-5)."
+  "Builder token only; the lease holder of an UPLOADING job only. One presigned PUT URL, 15 minutes, for each named file under <target>/<version>/ (BLD-060, BLD-061). Only the target's updater file, its DMG on macOS and SHA256SUMS are granted (R-108). The files later reported must be exactly these."
+  buildUploadUrls(id: ID!, files: [BuildFileInput!]!): [BuildUploadUrl!]!
+  "Builder token only. Ends the lease; the hub then verifies and publishes in the background, ending PUBLISHED or FAILED (BLD-063 to BLD-070)."
   reportBuildUploaded(id: ID!, files: [BuildFileInput!]!, feed: String!): BuildJob!
 }
 

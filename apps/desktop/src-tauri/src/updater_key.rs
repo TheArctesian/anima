@@ -49,7 +49,7 @@ pub struct UpdaterKeyState {
 }
 
 /// The key line of the base64 public key file in `plugins.updater.pubkey`, if it has one.
-fn app_public_key<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
+pub(crate) fn app_public_key<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
     let encoded = app
         .config()
         .plugins
@@ -57,6 +57,11 @@ fn app_public_key<R: Runtime>(app: &AppHandle<R>) -> Option<String> {
         .get("updater")?
         .get("pubkey")?
         .as_str()?;
+    key_line(encoded)
+}
+
+/// The last line of the public key file whose base64 is `encoded`, if it is text.
+pub(crate) fn key_line(encoded: &str) -> Option<String> {
     let text = String::from_utf8(STANDARD.decode(encoded).ok()?).ok()?;
     text.lines()
         .map(str::trim)

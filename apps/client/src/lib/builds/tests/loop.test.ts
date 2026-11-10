@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { vi } from 'vitest';
-import { builderPass, buildJob, POLL_MS, PUBLISHING_LATER, startBuilderLoop, type BuilderStatus, type LoopPorts } from '../loop';
-import { BUILDER_TOKEN, FakeBuildsApi, FakeShell, JOB, refused, sleep } from './builds.fixture';
+import { builderPass, buildJob, POLL_MS, startBuilderLoop, type BuilderStatus, type LoopPorts } from '../loop';
+import { BUILDER_TOKEN, FakeBuildsApi, FakeShell, JOB, refused, SIGNATURE, sleep, SUMS_FILE, UPDATER } from './builds.fixture';
+
+/** The steps of a job that is built and uploaded: the updater file, then `SHA256SUMS`. */
+const ALL_STEPS = ['checkout', 'gates', 'bundle', 'sign', 'verify', 'release-files', 'upload', 'upload'];
 
 /** The hub's limit between two reports of a running job (BLD-005). */
 const REPORT_LIMIT_MS = 15_000;
@@ -16,7 +19,7 @@ beforeEach(() => {
   shell = new FakeShell(sleep);
   api = new FakeBuildsApi();
   statuses = [];
-  ports = { api, shell, secrets: () => [BUILDER_TOKEN], sleep, onStatus: (status) => statuses.push(status) };
+  ports = { api, shell, secrets: () => [BUILDER_TOKEN], sleep, now: () => new Date(), onStatus: (status) => statuses.push(status) };
 });
 
 afterEach(() => {
@@ -37,6 +40,13 @@ describe('a pass of the builder loop', () => {
     await expect(settle(builderPass(ports))).resolves.toBe(POLL_MS);
     expect(api.claims).toBe(0);
     expect(statuses).toEqual([{ kind: 'missing', tools: ['postgres', 'updater-key'] }]);
+  });
+
+  it('R-108: an app built without its updater public key names it and does not claim', async () => {
+    shell.missing(['updater-public-key']);
+    await expect(settle(builderPass(ports))).resolves.toBe(POLL_MS);
+    expect(api.claims).toBe(0);
+    expect(statuses).toEqual([{ kind: 'missing', tools: ['updater-public-key'] }]);
   });
 
   it('BLD-028, D-19: a locked updater key is its own state, and the builder claims nothing until it is unlocked', async () => {
@@ -73,17 +83,24 @@ describe('a pass of the builder loop', () => {
   it('BLD-029: a claimed job is built, then the next pass follows at once', async () => {
     api.jobs = [JOB];
     await expect(settle(builderPass(ports))).resolves.toBe(0);
-    expect(shell.calls).toEqual(['checkout', 'gates', 'bundle', 'sign', 'verify']);
+    expect(shell.calls).toEqual(ALL_STEPS);
   });
 });
 
 describe('building one job', () => {
-  it('BLD-010, D-10: reports BUILDING, runs every step in order and stops at the upload point with a fixed reason', async () => {
+  it('BLD-010, BLD-060: reports BUILDING, runs every step in order, then reports UPLOADING and uploads', async () => {
     await settle(buildJob(JOB, ports));
     expect(api.reports[0]).toMatchObject({ id: JOB.id, state: 'BUILDING' });
-    expect(shell.calls).toEqual(['checkout', 'gates', 'bundle', 'sign', 'verify']);
-    expect(api.reports.at(-1)).toMatchObject({ state: 'FAILED', failureReason: PUBLISHING_LATER });
-    expect(statuses.map((status) => (status.kind === 'building' ? status.step : status.kind))).toEqual(['checkout', 'gates', 'bundle', 'sign', 'verify']);
+    expect(shell.calls).toEqual(ALL_STEPS);
+    expect(api.reports.map((report) => report.state).filter((state) => state !== null)).toEqual(['BUILDING', 'UPLOADING']);
+    expect(statuses.map((status) => (status.kind === 'building' ? status.step : status.kind))).toEqual([
+      'checkout',
+      'gates',
+      'bundle',
+      'sign',
+      'verify',
+      'upload',
+    ]);
   });
 
   it('BLD-005: a long step reports at least every 15 s', async () => {
@@ -104,6 +121,86 @@ describe('building one job', () => {
     expect(lines.join('\n')).not.toContain('dW50cnVzdGVkIGNvbW1lbnQ6abc');
   });
 
+});
+
+describe('uploading a built job', () => {
+  it('BLD-063, UPD-010: the hub is given each file the shell named, SHA256SUMS included, with its size and digest', async () => {
+    const dmg = { name: 'Anima_0.1.12_universal.dmg', sha256: 'c'.repeat(64), size: 9 };
+    shell.release = { ...shell.release, files: [UPDATER, dmg, SUMS_FILE] };
+    await settle(buildJob(JOB, ports));
+    expect(api.granted).toEqual([[UPDATER, dmg, SUMS_FILE]]);
+    expect(shell.uploads).toEqual([UPDATER.name, dmg.name, 'SHA256SUMS']);
+    expect(api.uploaded.map((uploaded) => uploaded.files)).toEqual([[UPDATER, dmg, SUMS_FILE]]);
+  });
+
+  it('BLD-063, BLD-067: the proposed feed names the updater file under the release folder, dated by the injected clock', async () => {
+    await settle(buildJob(JOB, { ...ports, now: () => new Date('2026-11-09T12:00:00.000Z') }));
+    const feed: unknown = JSON.parse(api.uploaded[0]?.feed ?? 'null');
+    const entry = { signature: SIGNATURE, url: `https://releases.anima.ing/linux-x86_64/0.1.12/${UPDATER.name}` };
+    expect(feed).toEqual({ version: '0.1.12', notes: 'Anima 0.1.12', pub_date: '2026-11-09T12:00:00Z', platforms: { 'linux-x86_64': entry } });
+  });
+
+  it('BLD-067: a macOS job proposes both Mac platform keys under its own folder', async () => {
+    const mac = { ...JOB, target: 'DARWIN_UNIVERSAL' as const };
+    shell.release = { files: [{ ...UPDATER, name: 'Anima.app.tar.gz' }], updater: { file: 'Anima.app.tar.gz', signature: SIGNATURE } };
+    await settle(buildJob(mac, ports));
+    const feed = JSON.parse(api.uploaded[0]?.feed ?? 'null') as { platforms: Record<string, { url: string }> };
+    expect(Object.keys(feed.platforms)).toEqual(['darwin-aarch64', 'darwin-x86_64']);
+    expect(feed.platforms['darwin-x86_64']?.url).toBe('https://releases.anima.ing/darwin-universal/0.1.12/Anima.app.tar.gz');
+  });
+
+  it('BLD-049: no upload URL reaches a report or a status', async () => {
+    await settle(buildJob(JOB, ports));
+    expect(JSON.stringify([api.reports, api.uploaded, statuses])).not.toContain('X-Amz-Signature');
+  });
+
+  it('BLD-063: once the files are reported the hub owns the job, so the builder sends nothing more', async () => {
+    await settle(buildJob(JOB, ports));
+    expect(api.uploaded).toHaveLength(1);
+    expect(api.reports.at(-1)).toMatchObject({ state: 'UPLOADING' });
+  });
+});
+
+describe('an upload that does not finish', () => {
+  it('BLD-060: a refused grant ends the job with a fixed reason and uploads nothing', async () => {
+    api.urlsAnswer = () => refused('VALIDATION');
+    await settle(buildJob(JOB, ports));
+    expect(shell.uploads).toEqual([]);
+    expect(api.reports.at(-1)).toMatchObject({ state: 'FAILED', failureReason: 'The hub did not take the upload.' });
+  });
+
+  it('BLD-060: a grant that leaves a file out, or names another, uploads nothing', async () => {
+    api.urlsAnswer = (files) => ({ ok: true, value: files.map((file) => ({ name: `${file.name}.x`, url: 'https://r2.example/x', headers: [] })) });
+    await settle(buildJob(JOB, ports));
+    expect(shell.uploads).toEqual([]);
+    expect(api.uploaded).toEqual([]);
+    expect(api.reports.at(-1)).toMatchObject({ state: 'FAILED' });
+  });
+
+  it('BLD-060: a failed upload ends the job and reports no files', async () => {
+    shell.scripts.upload = { fails: 'upload' };
+    await settle(buildJob(JOB, ports));
+    expect(api.uploaded).toEqual([]);
+    expect(api.reports.at(-1)).toMatchObject({ state: 'FAILED', failureReason: 'A file could not be sent to the release bucket.' });
+  });
+
+  it('BLD-026: once the builder is stopping no further file is sent, and the job ends as cancelled', async () => {
+    let stopping = false;
+    shell.scripts.upload = { ms: 1_000 };
+    const work = buildJob(JOB, ports, () => stopping);
+    while (shell.uploads.length === 0) await vi.advanceTimersByTimeAsync(100);
+    stopping = true;
+    await settle(work);
+    expect(shell.uploads).toHaveLength(1);
+    expect(api.uploaded).toEqual([]);
+    expect(api.reports.at(-1)).toMatchObject({ state: 'FAILED', failureReason: 'The build was cancelled on this computer.' });
+  });
+
+  it('BLD-063: a refused uploaded report ends the job as failed', async () => {
+    api.uploadedAnswer = refused('VALIDATION');
+    await settle(buildJob(JOB, ports));
+    expect(api.reports.at(-1)).toMatchObject({ state: 'FAILED', failureReason: 'The hub did not take the upload.' });
+  });
 });
 
 describe('a job that does not finish', () => {

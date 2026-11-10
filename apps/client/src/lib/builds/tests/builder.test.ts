@@ -50,6 +50,7 @@ beforeEach(() => {
     ids: stores.ids,
     computerName: () => Promise.resolve('pop-os'),
     sleep,
+    now: () => new Date(),
   };
   builder = new ThisBuilder(ports);
 });

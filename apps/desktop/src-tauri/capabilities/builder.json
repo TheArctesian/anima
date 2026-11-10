@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "builder",
-  "description": "The builder on desktop (WP-36, BLD-020 to BLD-049): this computer's builder token in the key store, the updater key state, its import, unlock and lock (the shell opens the file dialog, keeps the key sealed in the key store and opened only in its own memory; the web view never sees it), the tool check, and the fixed build steps: check out a commit, run the gates, bundle a target at a version, sign and verify the updater file, cancel. No step takes a program, a path or an argument list. Main web view only.",
+  "description": "The builder on desktop (WP-36, BLD-020 to BLD-049): this computer's builder token in the key store, the updater key state, its import, unlock and lock (the shell opens the file dialog, keeps the key sealed in the key store and opened only in its own memory; the web view never sees it), the tool check, and the fixed build steps: check out a commit, run the gates, bundle a target at a version, sign and verify the updater file, list the job's files with their digests and upload one to the presigned URL the hub gave, cancel. No step takes a program, a path or an argument list. Main web view only.",
   "webviews": ["main"],
   "platforms": ["macOS", "linux"],
   "permissions": [
@@ -18,6 +18,8 @@
     "allow-builder-bundle",
     "allow-builder-sign",
     "allow-builder-signature-verify",
-    "allow-builder-cancel"
+    "allow-builder-cancel",
+    "allow-builder-release-files",
+    "allow-builder-upload"
   ]
 }

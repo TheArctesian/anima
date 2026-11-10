@@ -89,6 +89,9 @@ pub struct Dependencies {
     /// The hub's one build `Updates`: the lease upkeep publishes on it and `buildJobUpdated`
     /// reads it, so `main.rs` gives the upkeep this same value.
     pub build_updates: builds::Updates,
+    /// The release bucket `buildUploadUrls` signs for; `None` when publishing is off (BLD-060,
+    /// R-108). `main.rs` gives the publish upkeep the same value.
+    pub bucket: Option<Arc<builds::Bucket>>,
 }
 
 /// Put each dependency into the schema data, with the devices loaders (WP-06 H-2);
@@ -110,6 +113,7 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
         policy,
         metrics_feed,
         build_updates,
+        bucket,
     } = dependencies;
     harden(
         Schema::build(
@@ -163,6 +167,7 @@ pub fn build_schema(dependencies: Dependencies) -> HubSchema {
     .data(metrics_feed)
     // builds
     .data(build_updates)
+    .data(bucket)
     .finish()
 }
 

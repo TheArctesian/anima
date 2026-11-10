@@ -62,6 +62,8 @@ export function provideDesktopBuilder(hub: Hub): void {
     lockKey: lockUpdaterKey,
     computerName,
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity -- a value for the feed's date, never held or rendered
+    now: () => new Date(),
   });
   provideThisBuilder(builder);
   $effect(() => {

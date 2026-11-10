@@ -6,6 +6,9 @@ use std::net::SocketAddr;
 use std::path::{Component, PathBuf};
 
 mod origin;
+mod releases;
+
+pub use releases::Releases;
 
 const LISTEN: &str = "ANIMA_LISTEN";
 const DATABASE_URL_FILE: &str = "ANIMA_DATABASE_URL_FILE";
@@ -52,6 +55,8 @@ pub struct Config {
     pub recording_root: Option<PathBuf>,
     /// Plaintext byte limit of one recording; always positive.
     pub recording_max_bytes: u64,
+    /// Where releases are published; `None` turns publishing off (R-108).
+    pub releases: Option<Releases>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -97,6 +102,11 @@ pub enum Error {
     ParentDirectory { variable: &'static str },
     #[error("{variable}={value:?} is not a positive integer")]
     NotPositive {
+        variable: &'static str,
+        value: String,
+    },
+    #[error("{variable}={value:?} is not an R2 bucket name")]
+    Bucket {
         variable: &'static str,
         value: String,
     },
@@ -288,6 +298,7 @@ pub fn from_env(env: &BTreeMap<String, String>) -> Result<Config, Error> {
             RECORDING_MAX_BYTES,
             value(env, RECORDING_MAX_BYTES, "2147483648")?,
         )?,
+        releases: releases::from_env(env)?,
     })
 }
 

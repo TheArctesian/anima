@@ -32,6 +32,8 @@ pub enum BuilderError {
     Signing(UpdaterKeyError),
     #[error("only the main window may run build steps")]
     Caller,
+    #[error("the file could not be uploaded")]
+    Upload,
     #[error("the builder could not start the step")]
     Failed,
 }
@@ -56,6 +58,7 @@ impl BuilderError {
             Self::Signing(UpdaterKeyError::Locked) => "key-locked",
             Self::Signing(_) => "signing",
             Self::Caller => "caller",
+            Self::Upload => "upload",
             Self::Failed => "failed",
         }
     }

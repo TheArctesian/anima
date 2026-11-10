@@ -98,6 +98,12 @@ Environment variables, read once in `main.rs` into a typed `Config` that is pass
   | `ANIMA_RECORDING_MAX_BYTES` | The plaintext limit of one recording | `2147483648` |
 | `ANIMA_LOG` | Log level filter (LOG-003) | `info` |
 | `ANIMA_TLS_CERT_FILE`, `ANIMA_TLS_KEY_FILE` | Hub TLS (SEC-001) | — (required outside tests) |
+| `ANIMA_RELEASES_ENDPOINT` (Phase 3, WP-36, R-108) | The R2 S3 API origin, `https://<account>.r2.cloudflarestorage.com` (`http` only for a loopback host). Empty: publishing is off, and `buildUploadUrls` is refused | empty |
+| `ANIMA_RELEASES_BUCKET` (R-108) | The release bucket's name | `anima-releases` |
+| `ANIMA_RELEASES_PUBLIC_BASE` (R-108) | The origin published files are read from; the feed URLs must start with it (BLD-064, BLD-065) | `https://releases.anima.ing` |
+| `ANIMA_RELEASES_ACCESS_KEY_ID_FILE` (R-108) | File containing the R2 access key ID (SEC-004) | `/run/secrets/r2_access_key_id` |
+| `ANIMA_RELEASES_SECRET_ACCESS_KEY_FILE` (R-108) | File containing the R2 secret access key (SEC-004) | `/run/secrets/r2_secret_access_key` |
+| `ANIMA_UPDATER_PUBLIC_KEY` (R-108) | The minisign public key of the updater, the same text as `plugins.updater.pubkey` in `tauri.conf.json`; not secret. Empty: every publish fails with a fixed reason | empty |
 
 ## Prometheus series (Phase 3, INT-001, INT-002)
 

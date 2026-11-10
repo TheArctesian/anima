@@ -220,8 +220,10 @@ async fn bld_049_a_key_block_split_across_reports_keeps_none_of_its_body(pool: P
     assert_eq!(stored_lines(&pool).await.last().unwrap(), "AttemptTwo");
 }
 
+/// D-26: an `uploaded` report names the files of the job's upload URLs; with none given, as on a
+/// hub that does not publish, every report is refused and the job keeps its lease.
 #[sqlx::test(migrations = "./migrations")]
-async fn bld_063_an_uploaded_report_keeps_the_job_uploading(pool: PgPool) {
+async fn d_26_an_uploaded_report_needs_the_files_of_its_upload_urls(pool: PgPool) {
     let operator = operator(&pool).await;
     let hub = Hub::new(&pool, start());
     let job = create_job(&hub, &operator, "0.1.12").await;
@@ -238,13 +240,25 @@ async fn bld_063_an_uploaded_report_keeps_the_job_uploading(pool: PgPool) {
                  reportBuildUploaded(id: $id, files: $files, feed: $feed) { state } }";
     let files = json!([{ "name": "SHA256SUMS", "sha256": "ab".repeat(32), "size": 90 }]);
     let variables = json!({ "id": job, "files": files, "feed": "{\"version\":\"0.1.12\"}" });
-    let uploaded = data(hub.post(Some(&builder.token), query, variables).await);
-    assert_eq!(uploaded["reportBuildUploaded"]["state"], "UPLOADING");
-    let kept: (String, i64) = sqlx::query_as("SELECT name, size_bytes FROM builds.job_files")
-        .fetch_one(&pool)
-        .await
-        .unwrap();
-    assert_eq!(kept, ("SHA256SUMS".to_owned(), 90));
+    let refused = hub.post(Some(&builder.token), query, variables).await;
+    assert_eq!(error(&refused).1, "VALIDATION", "{refused}");
+    let urls = "mutation($id: ID!, $files: [BuildFileInput!]!) { \
+                buildUploadUrls(id: $id, files: $files) { url } }";
+    let variables = json!({ "id": job, "files": files });
+    let off = hub.post(Some(&builder.token), urls, variables).await;
+    assert_eq!(
+        error(&off),
+        (
+            "Publishing is not set up on this hub.".to_owned(),
+            "CONFLICT".to_owned()
+        )
+    );
+    let job: (String, bool) =
+        sqlx::query_as("SELECT state, lease_ends_at IS NOT NULL FROM builds.jobs")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(job, ("uploading".to_owned(), true));
 }
 
 #[sqlx::test(migrations = "./migrations")]

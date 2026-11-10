@@ -1,7 +1,7 @@
 //! An API key never enrols or revokes a builder, publishes or cancels a release, or claims a job:
 //! a builder token outlives the key that would have enrolled it (D-23, R-100, R-107). A builder
 //! token reaches no root field but the builder mutations, by fragment, introspection or socket
-//! (BLD-022).
+//! (BLD-022). Only a builder token gets upload URLs (R-108).
 
 use std::sync::Arc;
 
@@ -17,22 +17,30 @@ use crate::{
     hub::{Hub, error, start},
 };
 
-/// A WRITE API key of the operator, as `createApiKey` stores one.
-async fn write_key(pool: &PgPool) -> String {
-    let secret = [7_u8; 32];
+/// An API key of the operator with `scope`, made of `fill`, as `createApiKey` stores one.
+async fn api_key(pool: &PgPool, scope: &str, fill: u8) -> String {
+    let secret = [fill; 32];
+    let name = format!("script-{scope}");
     sqlx::query(
         "INSERT INTO access.api_tokens \
          (id, operator_id, token_hash, kind, name, display_prefix, scope, expires_at, created_at) \
-         SELECT gen_random_uuid(), id, $1, 'api_key', 'script', 'anima_BwcHBw', 'write', $2, $3 \
+         SELECT gen_random_uuid(), id, $1, 'api_key', $4, 'anima_BwcHBw', $5, $2, $3 \
          FROM access.operators",
     )
     .bind(Sha256::digest(secret).to_vec())
     .bind(start() + chrono::TimeDelta::days(30))
     .bind(start())
+    .bind(name)
+    .bind(scope)
     .execute(pool)
     .await
     .unwrap();
     format!("anima_{}", URL_SAFE_NO_PAD.encode(secret))
+}
+
+/// A WRITE API key of the operator.
+async fn write_key(pool: &PgPool) -> String {
+    api_key(pool, "write", 7).await
 }
 
 async fn count(pool: &PgPool, table: &str) -> i64 {
@@ -89,6 +97,26 @@ async fn bld_022_a_write_api_key_may_not_claim_a_job(pool: PgPool) {
     let hub = Hub::new(&pool, start());
     create_job(&hub, &operator, "0.1.12").await;
     forbidden(&claim(&hub, &key).await, "claimBuildJob");
+}
+
+/// R-108: only a builder token gets upload URLs; an API key of either scope and an operator
+/// token are refused before any resolver, so no URL is signed for them.
+#[sqlx::test(migrations = "./migrations")]
+async fn r_108_only_a_builder_token_may_get_upload_urls(pool: PgPool) {
+    let operator = operator(&pool).await;
+    let key = write_key(&pool).await;
+    let read = api_key(&pool, "read", 9).await;
+    let hub = Hub::new(&pool, start());
+    let job = create_job(&hub, &operator, "0.1.12").await;
+    let urls = "mutation($id: ID!) { buildUploadUrls(id: $id, files: []) { url } }";
+    for token in [&key, &read, &operator] {
+        let response = hub.post(Some(token), urls, json!({ "id": job })).await;
+        forbidden(&response, "buildUploadUrls");
+    }
+    let aliased = "mutation($id: ID!) { a: buildUploadUrls(id: $id, files: []) { url } }";
+    let response = hub.post(Some(&key), aliased, json!({ "id": job })).await;
+    forbidden(&response, "aliased buildUploadUrls");
+    assert_eq!(count(&pool, "builds.job_files").await, 0);
 }
 
 #[sqlx::test(migrations = "./migrations")]

@@ -4,7 +4,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { SignedVersionError, assertSignedVersion, signedVersion } from "../release/signed-version.ts";
-import { buildFeed, checksums, NoPlatformsError, stableName } from "../release/feed.ts";
+import { buildFeed, checksums, NoPlatformsError, stableName } from "../../apps/client/src/lib/builds/feed.ts";
 
 const BASE = "https://github.com/TheArctesian/anima/releases/download/v0.1.7";
 const DATE = new Date("2026-11-04T10:20:30.456Z");
@@ -57,8 +57,8 @@ describe("stable names and sums (UPD-010)", () => {
 
   test("UPD-010 SHA256SUMS has one '<hex>  <name>' line per file, sorted by name", () => {
     const text = checksums([
-      { name: "b.txt", bytes: new TextEncoder().encode("hello") },
-      { name: "a.txt", bytes: new Uint8Array() },
+      { name: "b.txt", sha256: "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824" },
+      { name: "a.txt", sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" },
     ]);
     expect(text).toBe(
       "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  a.txt\n" +

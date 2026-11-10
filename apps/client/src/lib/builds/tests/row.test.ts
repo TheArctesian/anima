@@ -66,6 +66,7 @@ beforeEach(() => {
     lockKey: () => Promise.resolve(),
     computerName: () => Promise.resolve('pop-os'),
     sleep: () => new Promise(() => undefined),
+    now: () => new Date(0),
   });
 });
 

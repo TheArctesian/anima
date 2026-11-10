@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { BuilderShellError, desktopBuilderShell, toolCheckFrom } from './shell';
+import { BuilderShellError, desktopBuilderShell, releaseFilesFrom, toolCheckFrom } from './shell';
 import { importUpdaterKey, lockUpdaterKey, readUpdaterKey, unlockUpdaterKey, UpdaterKeyError, updaterKeyStateFrom } from './updater-key';
 
 const core = vi.hoisted(() => ({ invoke: vi.fn(), isTauri: vi.fn() }));
@@ -74,12 +74,47 @@ describe('the build steps (BLD-027)', () => {
   });
 });
 
+describe('the upload (BLD-060, BLD-063)', () => {
+  const FILE = { name: 'Anima_0.1.12_amd64.AppImage', sha256: 'a'.repeat(64), size: 5 };
+  const UPDATER = { file: FILE.name, signature: 'c2ln' };
+
+  it('BLD-063: the release files are read for the job, each field checked', async () => {
+    core.invoke.mockResolvedValue({ files: [FILE], updater: UPDATER });
+    await expect(desktopBuilderShell.releaseFiles(JOB)).resolves.toEqual({ files: [FILE], updater: UPDATER });
+    expect(core.invoke).toHaveBeenCalledWith('builder_release_files', { target: JOB.target, version: JOB.version });
+  });
+
+  it('BLD-063: a file without a lower-case SHA-256 or a positive whole size is a bundle failure', () => {
+    for (const file of [
+      { ...FILE, sha256: 'A'.repeat(64) },
+      { ...FILE, sha256: 'a'.repeat(63) },
+      { ...FILE, size: 0 },
+      { ...FILE, size: 1.5 },
+      { ...FILE, name: 3 },
+    ]) {
+      expect(() => releaseFilesFrom({ files: [file], updater: UPDATER })).toThrow(BuilderShellError);
+    }
+    expect(() => releaseFilesFrom({ files: [], updater: UPDATER })).toThrow(BuilderShellError);
+  });
+
+  it('BLD-060: an upload carries the job and the presigned upload, and no bytes or text of the web view', async () => {
+    core.invoke.mockResolvedValue(null);
+    const upload = { name: 'SHA256SUMS', url: 'https://r2.example/x', headers: [{ name: 'content-length', value: '5' }] };
+    await desktopBuilderShell.upload(JOB, { ...upload, extra: 'x' } as typeof upload);
+    await desktopBuilderShell.upload(JOB, { ...upload, name: FILE.name });
+    expect(core.invoke.mock.calls).toEqual([
+      ['builder_upload', { job: { target: JOB.target, version: JOB.version, upload } }],
+      ['builder_upload', { job: { target: JOB.target, version: JOB.version, upload: { ...upload, name: FILE.name } } }],
+    ]);
+  });
+});
+
 describe('toolCheckFrom (BLD-028)', () => {
   it('BLD-028: reads the platform and the missing tools', () => {
-    expect(toolCheckFrom({ os: 'LINUX', arch: 'X86_64', missing: ['postgres', 'updater-key-locked'], memoryGuarded: false })).toEqual({
+    expect(toolCheckFrom({ os: 'LINUX', arch: 'X86_64', missing: ['postgres', 'updater-key-locked', 'updater-public-key'], memoryGuarded: false })).toEqual({
       os: 'LINUX',
       arch: 'X86_64',
-      missing: ['postgres', 'updater-key-locked'],
+      missing: ['postgres', 'updater-key-locked', 'updater-public-key'],
       memoryGuarded: false,
     });
   });

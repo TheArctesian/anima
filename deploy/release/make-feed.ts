@@ -4,11 +4,20 @@
 //
 // DIR/macos and DIR/linux hold the artifact of each build that passed in this run. A folder
 // that is missing means that platform did not build, and the feed leaves it out.
+import { createHash } from "node:crypto";
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { parseArgs } from "node:util";
 import { assertSignedVersion } from "./signed-version.ts";
-import { buildFeed, checksums, stableName, type BuiltPlatforms, type NamedBytes, type UpdateFile } from "./feed.ts";
+// The feed is the builder's too (BLD-063), so it lives with the builder loop in the client.
+import {
+  buildFeed,
+  checksums,
+  stableName,
+  type BuiltPlatforms,
+  type NamedDigest,
+  type UpdateFile,
+} from "../../apps/client/src/lib/builds/feed.ts";
 
 const RELEASES = "https://github.com/TheArctesian/anima/releases/download";
 
@@ -59,10 +68,10 @@ const built: BuiltPlatforms = {
 };
 
 mkdirSync(out, { recursive: true });
-const released: NamedBytes[] = [];
+const released: NamedDigest[] = [];
 const publish = (name: string, source: string): void => {
   copyFileSync(source, join(out, name));
-  released.push({ name, bytes: readFileSync(source) });
+  released.push({ name, sha256: createHash("sha256").update(readFileSync(source)).digest("hex") });
 };
 for (const path of [...macos, ...linux]) {
   publish(basename(path), path);

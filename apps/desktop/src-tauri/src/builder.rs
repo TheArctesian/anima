@@ -1,5 +1,5 @@
 //! The OS work of a builder computer (BLD-026, BLD-027): fixed build steps in the builder's own
-//! clone, the tool check, and signing the updater file. The builder loop is the client's
+//! clone, the tool check, signing the updater file and uploading the job's files. The builder loop is the client's
 //! (`$lib/builds/`); it names a step and the job's commit, version and target, never a program.
 //!
 //! Each step's output goes to the main web view as `builder-line` events, which the client
@@ -16,6 +16,7 @@ mod plan;
 mod reaper;
 mod steps;
 mod tools;
+pub mod upload;
 
 #[cfg(test)]
 mod tests;
@@ -162,13 +163,15 @@ pub async fn builder_tools_check<R: Runtime>(
         Target::LinuxX86_64 => ("LINUX", "X86_64"),
         Target::DarwinUniversal => ("MACOS", "AARCH64"),
     };
-    let missing = tauri::async_runtime::spawn_blocking(move || {
+    let app_key = tools::app_public_key(crate::updater_key::app_public_key(&app).as_deref());
+    let mut missing = tauri::async_runtime::spawn_blocking(move || {
         let env = Environment::from_parent(std::env::vars_os());
         let key = key_readiness(&app.state::<UnlockedKey>());
         tools::missing(target, &env, key, std::path::Path::exists)
     })
     .await
     .map_err(|_| BuilderError::Failed)?;
+    missing.extend(app_key);
     let memory_guarded = memory_guarded();
     Ok(ToolCheck {
         os,

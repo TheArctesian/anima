@@ -19,6 +19,8 @@ const APP_COMMANDS: &[&str] = &[
     "builder_sign",
     "builder_signature_verify",
     "builder_cancel",
+    "builder_release_files",
+    "builder_upload",
     "process_log_folder_open",
     "sharing_settings_open",
     "this_machine_read",

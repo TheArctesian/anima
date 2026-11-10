@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-builder-release-files"
+description = "Enables the builder_release_files command without any pre-configured scope."
+commands.allow = ["builder_release_files"]
+
+[[permission]]
+identifier = "deny-builder-release-files"
+description = "Denies the builder_release_files command without any pre-configured scope."
+commands.deny = ["builder_release_files"]

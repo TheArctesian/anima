@@ -78,7 +78,10 @@ export class JobReporter {
   }
 }
 
-const REASONS: Partial<Record<BuilderShellCode, string>> = {
+/** Why a step did not finish: the shell's code, or `hub-refused` when the hub did not take the upload's calls. */
+export type StepCode = BuilderShellCode | 'hub-refused';
+
+const REASONS: Partial<Record<StepCode, string>> = {
   'not-on-main': 'The commit is not on main of the Anima repository.',
   dirty: 'The working tree was not clean after the checkout.',
   'tool-missing': 'A build tool is missing on this computer.',
@@ -88,6 +91,8 @@ const REASONS: Partial<Record<BuilderShellCode, string>> = {
   'key-locked': 'The updater key was locked on this computer.',
   'signed-version': 'The signature is not for this version.',
   signing: 'The updater file could not be signed.',
+  upload: 'A file could not be sent to the release bucket.',
+  'hub-refused': 'The hub did not take the upload.',
   busy: 'Another build step was running on this computer.',
   commit: 'The builder refused the job: its commit is not a commit hash.',
   version: 'The builder refused the job: its version is not MAJOR.MINOR.PATCH.',
@@ -96,7 +101,7 @@ const REASONS: Partial<Record<BuilderShellCode, string>> = {
 };
 
 /** The failure reason the hub shows for a step that ended with `code` (BLD-010); fixed text, never process output. */
-export function failureReason(stepLabel: string, code: BuilderShellCode): string {
+export function failureReason(stepLabel: string, code: StepCode): string {
   if (code === 'step-failed') return `${stepLabel} failed. The job log says why.`;
   return REASONS[code] ?? `${stepLabel} could not run on this computer.`;
 }

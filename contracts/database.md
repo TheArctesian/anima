@@ -128,10 +128,17 @@ builds.jobs               id uuid pk, release_id uuid fk cascade, target text ch
                           builder_id uuid null fk on delete set null, builder_name null,
                           lease_ends_at null, log_sequence bigint, one timestamp per state,
                           state_changed_at; unique (release_id, target); unique (target,
-                          version) where state not in ('failed','cancelled') (BLD-002)
+                          version) where state not in ('failed','cancelled') (BLD-002);
+                          0962 (R-108, D-25): publishing_since null (set only while
+                          'uploading', and then no lease), publish_held_until null,
+                          publish_attempts int 0..3; 0963 (R-108, D-28):
+                          upload_urls_expire_at null, the latest end of the job's upload URLs;
+                          0964 (R-108, D-25): feed_sent_at null, set before the first feed
+                          write, after which the job's objects are never deleted
 builds.job_files          job_id uuid fk cascade, name text, sha256 text, size_bytes bigint,
-                          pk (job_id, name)
-builds.feeds              job_id uuid pk fk cascade, feed text (at most 64 KiB), reported_at
+                          pk (job_id, name); the grant of the upload URLs (D-26)
+builds.feeds              job_id uuid pk fk cascade, feed text (at most 64 KiB), reported_at;
+                          0962: written text[] null, the feed folders the hub wrote (BLD-068)
 builds.log_lines          job_id uuid fk cascade, sequence bigint, text (at most 4096 bytes,
                           redacted), pk (job_id, sequence); trimmed to the last 2 MiB per job
 ```

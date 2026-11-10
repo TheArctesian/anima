@@ -7,6 +7,7 @@ mod files;
 mod output;
 mod plans;
 mod reaping;
+mod upload;
 
 use std::{
     ffi::OsString,
@@ -251,4 +252,42 @@ fn log_007_builder_errors_serialise_as_a_code_and_fixed_text() {
     );
     let missing = BuilderError::from(crate::updater_key::UpdaterKeyError::Missing);
     assert_eq!(missing.code(), "key-missing");
+}
+
+/// N-4, R-108: an app built with the placeholder `plugins.updater.pubkey` names the updater
+/// public key as missing, so it claims no job; a real key line is not missing.
+#[test]
+fn r_108_an_app_without_its_updater_public_key_claims_no_job() {
+    use base64::{Engine as _, engine::general_purpose::STANDARD};
+    let placeholder = crate::updater_key::key_line("REPLACE_WITH_OPERATOR_PUBLIC_KEY");
+    assert_eq!(
+        tools::app_public_key(placeholder.as_deref()),
+        Some(Tool::UpdaterPublicKey)
+    );
+    let config: serde_json::Value =
+        serde_json::from_str(include_str!("../../tauri.conf.json")).unwrap();
+    let pubkey = config["plugins"]["updater"]["pubkey"].as_str().unwrap();
+    let line = crate::updater_key::key_line(pubkey);
+    if pubkey == "REPLACE_WITH_OPERATOR_PUBLIC_KEY" {
+        assert_eq!(
+            tools::app_public_key(line.as_deref()),
+            Some(Tool::UpdaterPublicKey)
+        );
+    }
+    assert_eq!(tools::app_public_key(None), Some(Tool::UpdaterPublicKey));
+    let mut key = b"Ed".to_vec();
+    key.extend([7_u8; 40]);
+    let real = STANDARD.encode(&key);
+    assert_eq!(tools::app_public_key(Some(&real)), None);
+    let mut other_kind = key.clone();
+    other_kind[0] = b'X';
+    for wrong in [&key[..41], &key[1..], &other_kind[..]] {
+        let wrong = STANDARD.encode(wrong);
+        assert_eq!(
+            tools::app_public_key(Some(&wrong)),
+            Some(Tool::UpdaterPublicKey)
+        );
+    }
+    let json = serde_json::to_string(&[Tool::UpdaterPublicKey]).unwrap();
+    assert_eq!(json, r#"["updater-public-key"]"#);
 }

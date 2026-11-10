@@ -14,6 +14,7 @@ export const TOOL_NAMES: Readonly<Record<MissingTool, string>> = {
   postgres: 'PostgreSQL 17',
   'tauri-packages': 'the Tauri system packages',
   'updater-key': 'the updater key',
+  'updater-public-key': "this app's updater public key (an app built with the placeholder cannot build releases)",
 };
 
 /** The tools of `tools` that are not there, for the "Missing:" list. */
@@ -41,6 +42,7 @@ const STEP_NAMES: Readonly<Record<StepName, string>> = {
   bundle: 'bundling',
   sign: 'signing',
   verify: 'checking the signature',
+  upload: 'uploading',
 };
 
 const STATUS_TEXT: Readonly<Record<Exclude<BuilderStatus['kind'], 'building' | 'missing'>, string>> = {
