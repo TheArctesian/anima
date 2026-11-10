@@ -1,8 +1,11 @@
 //! Signing in and out: the throttle, the password check, the token and their records
 //! (SEC-002, LOG-005, D-3, D-7, D-8).
 
+mod outside;
+mod sign_out;
+
 use chrono::{DateTime, TimeDelta, Utc};
-use sqlx::{PgConnection, PgPool};
+use sqlx::PgPool;
 use tokio::sync::Semaphore;
 use uuid::Uuid;
 
@@ -14,6 +17,10 @@ use super::{
     tokens::{BROWSER_LIFETIME, LOGIN_LIFETIME, Scope, TOKEN_BYTES, Token, TokenKind},
     totp::{self, SecondFactor},
 };
+pub use outside::{record_failure, throttled};
+pub(super) use sign_out::logout;
+use sign_out::retire;
+
 use crate::{
     credentials::Vault,
     events::{self, AuditAction, AuditTarget, Bus, NewAudit, NewEvent, Severity, Source},
@@ -159,83 +166,6 @@ async fn unthrottled_account(
         return Ok(None);
     }
     Ok(store::account_by_username(&mut *conn, username).await?)
-}
-
-/// The username a failure from outside sign-in is stored under. It fails the operator username
-/// check (`^[A-Za-z0-9._-]{1,64}$`), so no operator can have it: it never matches an account and
-/// `operator set` never clears it by name (D-8, D-9, CR-16). A `login` typing this text as its
-/// username is stored under the same text.
-const OUTSIDE_SIGN_IN: &str = "(share join)";
-
-/// Whether the login throttle turns away an attempt from `client` at `now`, by the rule and
-/// the failures `login` reads (D-8). `joinShare` asks before it checks a share secret, so a
-/// share miss and a wrong password count against the same address (CR-16).
-///
-/// The limit is not exact under concurrent calls: asking and then calling [`record_failure`]
-/// is two steps, so guesses sent in parallel can all pass before any is recorded, and far more
-/// than five get through in a burst. Do not rely on it to protect a guessable secret; `login`
-/// records its attempt first and has no such gap.
-///
-/// # Errors
-///
-/// `Error::Database` if the attempts cannot be read.
-pub async fn throttled(db: &PgPool, client: ClientAddr, now: DateTime<Utc>) -> Result<bool, Error> {
-    let failures = store::failures(db, client.0, now, None).await?;
-    Ok(throttle::refused(&failures, now))
-}
-
-/// Records a failed attempt from `client` at `now` that counts toward the login throttle like a
-/// wrong password (D-8, CR-16). When the address is already throttled at `now` the attempt is
-/// recorded as refused, so it does not extend the lockout. Like [`throttled`], the limit is not
-/// exact under concurrent calls. `operator set` does not clear an address throttled only by
-/// these failures, as they name no operator; the lockout ends on its own (D-9).
-///
-/// # Errors
-///
-/// `Error::Database` if the attempt cannot be recorded.
-pub async fn record_failure(
-    db: &PgPool,
-    client: ClientAddr,
-    now: DateTime<Utc>,
-) -> Result<(), Error> {
-    let refused = throttled(db, client, now).await?;
-    let id = store::start_attempt(db, now, OUTSIDE_SIGN_IN, client.0).await?;
-    if refused {
-        store::finish_attempt(db, id, Outcome::Refused).await?;
-    }
-    Ok(())
-}
-
-/// Deletes the identity's token and audits the sign-out.
-pub(super) async fn logout(
-    db: &PgPool,
-    identity: &Identity,
-    client: ClientAddr,
-    now: DateTime<Utc>,
-) -> Result<(), Error> {
-    let mut tx = db.begin().await?;
-    if !store::delete_token(&mut tx, identity.token()).await? {
-        return Err(Error::Unauthenticated);
-    }
-    let entry = audit_entry(identity.operator().clone(), AuditAction::Logout, client);
-    events::audit(&mut tx, now, entry).await?;
-    tx.commit().await?;
-    Ok(())
-}
-
-/// Deletes the replaced browser token and audits it as a sign-out of its operator, as
-/// `logout` does. A token already gone (a `logout` that committed first) is left alone.
-async fn retire(
-    conn: &mut PgConnection,
-    replaced: Replaced,
-    client: ClientAddr,
-    at: DateTime<Utc>,
-) -> Result<(), Error> {
-    if store::delete_token(conn, replaced.token).await? {
-        let entry = audit_entry(replaced.operator, AuditAction::Logout, client);
-        events::audit(conn, at, entry).await?;
-    }
-    Ok(())
 }
 
 /// Random bytes from the operating system.
