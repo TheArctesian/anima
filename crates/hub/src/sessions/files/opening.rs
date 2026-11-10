@@ -45,7 +45,7 @@ pub(super) async fn open_files(
                 && row.protocol == Protocol::Ssh
                 && row.operator == operator.id
                 && row.client == client.0
-                && live.tunnel_end(session).is_some() =>
+                && live.has_tunnel(session) =>
         {
             device
         }

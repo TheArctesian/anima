@@ -25,7 +25,7 @@ pub(super) const READ_BYTES: usize = MAX_INSTRUCTION_BYTES;
 /// (GW-014). No `Debug`, `Display` or `Clone`.
 #[expect(
     dead_code,
-    reason = "GW-014: held for the tunnel's life; Phase 1 has no shared sessions to read it"
+    reason = "GW-014: held for the tunnel's life and never read; session sharing, which would join with it, is deferred (R-111)"
 )]
 pub(super) struct ConnectionId(String);
 

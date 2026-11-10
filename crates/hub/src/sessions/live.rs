@@ -192,17 +192,9 @@ impl Live {
         &self.files
     }
 
-    /// The end signal of the session's open tunnel, for a tunnel that lives only as long as
-    /// it (the files tunnel, K4 Section 9): it carries the first cause, and closes when the
-    /// session's tunnel deregisters. `None` when the session has no open tunnel.
-    pub(super) fn tunnel_end(
-        &self,
-        session: SessionId,
-    ) -> Option<watch::Receiver<Option<EndCause>>> {
-        self.state()
-            .tunnels
-            .get(&session)
-            .map(watch::Sender::subscribe)
+    /// Whether the session's tunnel is open now.
+    pub(super) fn has_tunnel(&self, session: SessionId) -> bool {
+        self.state().tunnels.contains_key(&session)
     }
 
     /// Registers a files relay beside the session's open tunnel, deciding under one lock so
