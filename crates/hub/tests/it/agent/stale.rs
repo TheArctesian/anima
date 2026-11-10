@@ -1,6 +1,7 @@
 //! MET-018, R-098 a: the stale watch the hub spawns marks an agent stale once no batch came for
 //! more than 30 seconds, with one warning; the next batch clears it with one note.
-//! `Device.metricsStale` serves the mark, and a stale agent never makes the device Down.
+//! `Device.metricsStale` serves the mark, and a stale agent never makes the device Down. The
+//! time of the last batch never moves back.
 
 use std::time::Duration;
 
@@ -81,4 +82,28 @@ async fn met_018_the_spawned_watch_marks_a_silent_agent_stale_and_a_batch_clears
     );
     assert_eq!(standing(&agents).await, (false, status));
     watch.abort();
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn met_018_the_time_of_the_last_batch_never_moves_back(pool: PgPool) {
+    let now = pushing_now(&pool).await;
+    let agents = Agents::at(&pool, now).await;
+    let token = agents.token_for(PVE_01).await;
+    let pushed = agents.push(&token, &cpu_batch(PVE_01, now, 5.0)).await;
+    assert_eq!(pushed.0, StatusCode::NO_CONTENT);
+    // A batch whose request started earlier commits later, as one behind a slow lock would.
+    agents.clock.advance(TimeDelta::seconds(-20));
+    let early = now - TimeDelta::seconds(20);
+    let pushed = agents.push(&token, &cpu_batch(PVE_01, early, 5.0)).await;
+    assert_eq!(pushed.0, StatusCode::NO_CONTENT);
+    let last: chrono::DateTime<chrono::Utc> =
+        sqlx::query_scalar("SELECT last_batch_at FROM metrics.agents WHERE device_id = $1::uuid")
+            .bind(PVE_01)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(last, now);
 }

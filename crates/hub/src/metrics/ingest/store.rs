@@ -157,7 +157,8 @@ pub(super) async fn revoke(conn: &mut PgConnection, device: DeviceId) -> Result<
 }
 
 /// Records a batch accepted at `now` from the device whose usable token is still `token`, in
-/// the caller's transaction, and clears its stale mark; whether it was marked stale. `None`
+/// the caller's transaction, and clears its stale mark; the time of the last batch never moves
+/// back, should a batch that started earlier commit later; whether it was marked stale. `None`
 /// when the token was revoked or replaced since it was checked (MET-013, MET-018).
 pub(super) async fn take_batch(
     conn: &mut PgConnection,
@@ -169,7 +170,8 @@ pub(super) async fn take_batch(
         "WITH old AS ( \
             SELECT device_id, stale_at FROM metrics.agents \
             WHERE device_id = $1 AND token_sha256 = $2 AND expires_at > $3 FOR UPDATE) \
-         UPDATE metrics.agents a SET last_batch_at = $3, stale_at = NULL FROM old \
+         UPDATE metrics.agents a \
+         SET last_batch_at = GREATEST(a.last_batch_at, $3), stale_at = NULL FROM old \
          WHERE a.device_id = old.device_id RETURNING old.stale_at IS NOT NULL",
     )
     .bind(device)
