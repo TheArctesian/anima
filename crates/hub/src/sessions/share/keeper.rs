@@ -9,7 +9,6 @@ use tokio::sync::watch;
 use super::{
     Sharing,
     model::ShareEnd,
-    registry::settle,
     trail::{self, Ended},
 };
 use crate::{
@@ -60,49 +59,50 @@ async fn owner_ended(tunnel_end: &mut watch::Receiver<Option<EndCause>>) {
     }
 }
 
-/// The cause and the address `share.end` records. A cause already `set` (by `endShare`, while
-/// the keeper woke for another) stands over the one the keeper `woke_for`. `endShare` records
-/// its caller's address; any other cause records where the owner `shared_from`.
-pub(super) fn recorded(
-    set: Option<ShareEnd>,
-    woke_for: ShareEnd,
-    shared_from: ClientAddr,
-) -> (ShareEnd, ClientAddr) {
-    let end = set.unwrap_or(woke_for);
+/// The address `share.end` records for `end`: `endShare`'s caller, else where the owner
+/// `shared_from`.
+pub(super) fn recorded_from(end: ShareEnd, shared_from: ClientAddr) -> ClientAddr {
     match end {
-        ShareEnd::Ended(by) => (end, by),
-        ShareEnd::Expired | ShareEnd::SessionEnded => (end, shared_from),
+        ShareEnd::Ended(by) => by,
+        ShareEnd::Expired | ShareEnd::SessionEnded => shared_from,
     }
 }
 
 impl Keeper {
-    /// Waits for the share's first end, removes it, then writes `share.end` with the cause
-    /// that stands ([`recorded`]): a cause `endShare` set before the removal wins over the one
-    /// this keeper woke for, so the share ends once, with one cause. A failed write is logged with the
-    /// share's id and no token; the share is removed all the same.
+    /// Waits for the share's first end, then ends it ([`Keeper::end`]).
+    pub(super) async fn keep(mut self) {
+        let woke_for = self.first_end().await;
+        self.end(woke_for).await;
+    }
+
+    /// Ends the share this keeper woke for `woke_for`: takes it from the registry with the
+    /// cause that stands ([`Shares::take`]), so a cause `endShare` set first wins and the share
+    /// ends once, with one cause. Then writes `share.end` with that cause. A failed write is
+    /// logged with the share's id and no token; the share is removed all the same.
     ///
     /// The owner tunnel's receiver drops only after the write, so `endSession` and hub
     /// shutdown, which wait for it within their tunnel end wait, return after `share.end`.
-    pub(super) async fn keep(mut self) {
-        let woke_for = self.first_end().await;
-        let Some(share) = self.sharing.live.shares().remove(self.id) else {
+    ///
+    /// [`Shares::take`]: super::Shares::take
+    pub(super) async fn end(self, woke_for: ShareEnd) {
+        let Some((share, end)) = self.sharing.live.shares().take(self.id, woke_for) else {
             return;
         };
-        // Removed, the share is out of `endShare`'s reach: the cause it holds now is final.
-        let set = *share.end.borrow();
-        let (end, client) = recorded(set, woke_for, self.client);
-        settle(&share.end, end);
         let ended = Ended {
             id: self.id,
             owner: share.owner.clone(),
-            client,
-            device: self.device.take(),
+            client: recorded_from(end, self.client),
+            device: self.device,
             end,
         };
         // Viewers see the sender close once the share is gone.
         drop(share);
         if let Err(error) = trail::ended(&self.sharing, ended).await {
-            tracing::error!(share = %self.id, %error, "the end of a session share could not be recorded");
+            tracing::error!(
+                share = %self.id,
+                %error,
+                "the end of a session share could not be recorded"
+            );
         }
     }
 
