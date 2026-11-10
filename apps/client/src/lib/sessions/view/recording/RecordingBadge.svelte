@@ -1,10 +1,10 @@
 <script lang="ts" module>
-  /** Mirrors the hub's `RecordingState` (contracts/schema.graphql). */
+  /** Mirrors the hub's `RecordingState`; the generated enum replaces this when codegen for the @pending field lands. */
   export type RecordingState = 'OFF' | 'ON' | 'STOPPED';
 </script>
 
 <script lang="ts">
-  let { state }: { state: RecordingState } = $props();
+  let { recording }: { recording: RecordingState } = $props();
 
   const words: Record<RecordingState, string> = { OFF: '', ON: 'Recording', STOPPED: 'Recording stopped' };
 </script>
@@ -14,17 +14,26 @@
   the change to "Recording" and then to "Recording stopped". It is static (MOT-011), solid (MAT-008), and sits in the
   toolbar row, never over the display. The state is in the words and the dot shape, not in colour alone.
 -->
-<span class="live" role="status">
-  {#if state !== 'OFF'}
-    <span class="badge" class:stopped={state === 'STOPPED'}>
-      <span class="dot" aria-hidden="true"></span>{words[state]}
+<span class="status" role="status">
+  {#if recording !== 'OFF'}
+    <span class="badge" class:stopped={recording === 'STOPPED'}>
+      <span class="dot" aria-hidden="true"></span>{words[recording]}
     </span>
   {/if}
 </span>
 
 <style>
+  /* Never shrinks in the flex toolbar (UI-009 is for the name and policy). */
+  .status {
+    display: flex;
+    flex: none;
+    align-items: center;
+  }
+
   .badge {
     display: inline-flex;
+    box-sizing: border-box;
+    min-block-size: var(--target-min-desktop);
     align-items: center;
     gap: var(--space-2);
     padding: var(--space-1) var(--space-3);
