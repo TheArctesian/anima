@@ -1074,7 +1074,7 @@ The Proxmox VE integration (PVE-001 to PVE-041) is withdrawn (R-109). Anima mana
 | 2 | RDP and VNC sessions. Web interfaces. Wake-on-LAN. SFTP. Live session list. SSH metrics. More check types. Device detail view with charts. | macOS, Linux |
 | 3 | Web client. Notifications. Prometheus endpoint and API keys. Session sharing and recording. Settings page items. Metrics push agent for macOS and Linux (`anima-agent`), with GPU usage on Apple silicon (R-084). | macOS, Linux, Web |
 | 4 | Withdrawn (R-109). | — |
-| 5 | iOS client. | All |
+| 5 | iOS client. The iOS device as a part-time member of the network (Section 10.1). | All |
 | 6 | Site agents for Wake-on-LAN and local checks. Traffic data (Section 4.3). | All |
 
 ### 9.1 Phase 1 acceptance criteria
@@ -1105,6 +1105,17 @@ These constraints apply to Phase 5. Record them now so that the earlier phases d
 - The RDP session needs a software keyboard with special keys, for example Ctrl, Alt, Esc and the function keys.
 - The interface must use the bottom navigation bar from Section 5.3.
 
+### 10.1 The iOS device as a member of the network (R-110)
+
+The iOS client is a full client for other devices. It is also a part-time member of the network: it contributes while the application is open. Nothing may depend on an iOS device being available.
+
+- **IOS-001.** The iOS application must report its own device to the hub as an agent while the application is in the foreground: battery level, charging state, thermal state, free storage and network type. The hub must show the device as Unknown, not Down, when the application is closed. iOS does not give system CPU or memory use.
+- **IOS-002.** The operator must be able to broadcast the screen of the iOS device into a shared session (ReplayKit broadcast extension), view-only. The operator starts each broadcast. Remote control of an iOS device is not possible.
+- **IOS-003.** The iOS application must keep an offline copy of the hub data in SQLite: devices, checks, recent metrics and the event log. The copy is updated while the application is open, and the client shows it with its age when the hub cannot be reached. The desktop clients may use the same copy.
+- **IOS-004.** The operator may make an iOS device a backup store. While the application is open and on Wi-Fi, the hub sends encrypted, incremental database backups and session recordings to it. The device stores only ciphertext; the key stays with the hub and the operator.
+
+What iOS does not allow, so no phase plans it: control of the device, SSH, VNC or RDP servers, background agents, native or downloaded programs, builds (Xcode needs a Mac), and serving a database to other devices.
+
 ## 11. Open decisions
 
 | Number | Decision | Recommendation |
@@ -1121,6 +1132,7 @@ These constraints apply to Phase 5. Record them now so that the earlier phases d
 | OD-11 | Gateway location | The gateway runs with the hub on the VPS. A session to a device at a site then goes VPS to site. If the latency is too high, a later version can run a gateway at each site (Guacamole supports a gateway for each connection). |
 | OD-12 | Build trigger | Phase 2: the operator starts each release (Section 3.10). A later version can let the hub poll `main` and queue a release for each new commit. |
 | OD-13 | Apple Developer ID | Until the operator has one, macOS builds are ad-hoc signed and do not update themselves (BLD-068). With one, the macOS builder signs and notarizes with keys from its key store. |
+| OD-14 | Compute workers (R-110) | The hub keeps a job queue for compute work. A job is a WebGPU (WGSL) compute shader with WebAssembly, so every client runs it: desktop, web and iOS (WebKit on iOS 26 has WebGPU). An iOS device works only in the foreground and on the charger, and stops when it gets hot. Built-in jobs can use Core ML, for example the transcription and text search of session recordings. Before a phase depends on it: one test job on an iPad and a Mac, compared. Background GPU work on iOS 26 (continued processing tasks) is not verified. |
 | OD-6 | Central log search | Not necessary now. A later version can send the process log to Loki or a similar system. |
 
 ## 12. Code quality (CUPID)
