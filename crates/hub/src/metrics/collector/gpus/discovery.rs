@@ -9,8 +9,11 @@
 //! the look. For a vendor with no GPUs known it is no GPU, so a device without that vendor's
 //! card is not read again each round (D-30). For a vendor with GPUs known it is a read that did
 //! not finish, so a driver that broke after an upgrade, or a GPU that fell off the bus, does
-//! not hide the vendor's GPUs until the next 24-hour look. A missing tool (exit 127) is always
-//! no GPU.
+//! not hide the vendor's GPUs until the next 24-hour look. But a full look at a vendor that was
+//! already pending counts its failed read as no GPU, so a tool that keeps failing is cleared
+//! at the next full look (24 hours, a restart or a failed collection) and is not read every
+//! round forever. A missing tool (exit 127) is always no GPU. AMD never fails: `grep` exits 2
+//! when a glob matched no file, so known AMD cards are dropped when it prints nothing.
 //!
 //! A GPU keeps its device number while its vendor reports it under the same number of its own
 //! (`nvidia-smi` index, DRM card number, `ioreg` order, 0 for Intel); a new GPU takes the
@@ -132,7 +135,7 @@ impl Look {
 
     /// What the hub knows after this look, from what it `known` before and the `answers`.
     /// A vendor looked at that answered replaces its GPUs; one whose read did not finish, or
-    /// failed with GPUs known, keeps them and is pending. Known GPUs keep their number; new
+    /// failed with GPUs known (see [`Look::outcome`]), keeps them and is pending. Known GPUs keep their number; new
     /// ones take the lowest free one up to [`MAX_GPU_INDEX`], the first of a repeated own
     /// number, at most [`MAX_LABELS`] in all. Only NVIDIA and AMD GPUs that gave their memory
     /// have VRAM (MET-007).
@@ -145,7 +148,7 @@ impl Look {
         let looked: Vec<(GpuVendor, Option<&[GpuReading]>)> = answers
             .iter()
             .filter(|(vendor, _)| self.includes(*vendor))
-            .map(|(vendor, answer)| (*vendor, readings(*vendor, answer, before)))
+            .map(|(vendor, answer)| (*vendor, self.outcome(*vendor, answer, known)))
             .collect();
         let answered: Vec<(GpuVendor, &[GpuReading])> = looked
             .iter()
@@ -188,21 +191,27 @@ impl Look {
             stale: false,
         }
     }
-}
 
-/// The readings `vendor`'s `answer` gives, or `None` when the hub cannot tell and keeps the
-/// GPUs known `before`: a read that did not finish, or a failed read of a vendor with GPUs
-/// known. A failed read of a vendor with none known is no GPU (D-30).
-fn readings<'a>(
-    vendor: GpuVendor,
-    answer: &'a Answer,
-    before: &[Found],
-) -> Option<&'a [GpuReading]> {
-    match answer {
-        Answer::Gpus(gpus) => Some(gpus),
-        Answer::Failed if before.iter().any(|found| found.gpu.vendor == vendor) => None,
-        Answer::Failed => Some(&[]),
-        Answer::Unknown => None,
+    /// The readings `vendor`'s `answer` gives in this look, or `None` when the hub cannot tell
+    /// and keeps the GPUs `known` before: a read that did not finish, or a failed read of a
+    /// vendor with GPUs known, unless this is a full look and the vendor was already pending.
+    /// Otherwise a failed read is no GPU (D-30).
+    fn outcome<'a>(
+        &self,
+        vendor: GpuVendor,
+        answer: &'a Answer,
+        known: Option<&Discovered>,
+    ) -> Option<&'a [GpuReading]> {
+        let had = |known: &Discovered| known.gpus.iter().any(|found| found.gpu.vendor == vendor);
+        let retry = known.is_some_and(|known| {
+            had(known) && (self.only.is_some() || !known.pending.contains(&vendor))
+        });
+        match answer {
+            Answer::Gpus(gpus) => Some(gpus),
+            Answer::Failed if retry => None,
+            Answer::Failed => Some(&[]),
+            Answer::Unknown => None,
+        }
     }
 }
 

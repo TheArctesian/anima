@@ -1,11 +1,13 @@
 //! What a round plans: the devices it collects (D-2, MET-005) and the GPU reads each
 //! collection runs (MET-006).
 
-use chrono::TimeDelta;
+use std::collections::BTreeSet;
+
+use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::PgPool;
 
 use super::{
-    discovery::reads,
+    discovery::{failed, reads},
     gpus::{at, found, linux_answers},
 };
 use crate::{
@@ -13,7 +15,7 @@ use crate::{
     metrics::{
         GpuVendor, Reading,
         collector::{
-            gpus::{Answer, Plan, discovery::EVERY},
+            gpus::{Answer, Discovered, GpuRound, Plan, discovery::EVERY},
             plan::{due, is_collected},
         },
     },
@@ -98,4 +100,58 @@ fn met_006_a_collection_that_does_not_look_runs_only_the_known_vendors_reads() {
         "AMD keeps its number"
     );
     assert_eq!(known.gpus.len(), 4);
+}
+
+/// The GPU part of a collection at `now` with the GPUs `known`, its reads answering `answers`.
+fn round(
+    known: Option<Discovered>,
+    answers: &[(GpuVendor, Answer)],
+    now: DateTime<Utc>,
+) -> GpuRound {
+    let plan = Plan::new(OperatingSystem::Linux, known, &Reading::default(), now);
+    plan.finish(answers)
+}
+
+#[test]
+fn met_006_a_failing_known_vendor_is_retried_until_the_next_full_look_clears_it() {
+    let answers = linux_answers();
+    let nvidia_fails = failed(&answers, 9);
+    let full = round(Some(found(&answers)), &nvidia_fails, at() + EVERY);
+    let labelled: BTreeSet<u8> = full
+        .samples
+        .iter()
+        .filter_map(|sample| sample.gpu_index)
+        .collect();
+    assert_eq!(labelled, BTreeSet::from([2, 3]), "AMD and Intel, no NVIDIA");
+    let known = full.known.as_ref().unwrap();
+    assert_eq!(
+        (known.gpus.len(), known.pending.as_slice()),
+        (4, [GpuVendor::Nvidia].as_slice())
+    );
+
+    let again = round(
+        full.known,
+        &nvidia_fails,
+        at() + EVERY + TimeDelta::seconds(30),
+    );
+    let known = again.known.as_ref().unwrap();
+    assert_eq!(
+        known.found_at,
+        at() + EVERY,
+        "a pending-only look keeps the 24 hours"
+    );
+    assert_eq!(
+        (known.gpus.len(), known.pending.as_slice()),
+        (4, [GpuVendor::Nvidia].as_slice())
+    );
+
+    let cleared = round(again.known, &nvidia_fails, at() + EVERY * 2);
+    let known = cleared.known.unwrap();
+    let vendors: Vec<GpuVendor> = known.gpus.iter().map(|found| found.gpu.vendor).collect();
+    assert_eq!(
+        vendors,
+        [GpuVendor::Amd, GpuVendor::Intel],
+        "the full look drops NVIDIA"
+    );
+    assert_eq!(known.pending, []);
 }

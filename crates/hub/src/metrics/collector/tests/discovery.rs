@@ -230,7 +230,7 @@ fn met_006_an_unknown_vendor_keeps_its_gpus_and_alone_is_looked_at_again() {
 }
 
 /// `answers` with NVIDIA's tool exiting `status` with no output.
-fn failed(answers: &[(GpuVendor, Answer)], status: u32) -> Vec<(GpuVendor, Answer)> {
+pub(super) fn failed(answers: &[(GpuVendor, Answer)], status: u32) -> Vec<(GpuVendor, Answer)> {
     let nvidia = answer(GpuVendor::Nvidia, &output(Some(status), b""));
     with(answers.to_vec(), GpuVendor::Nvidia, &nvidia)
 }
