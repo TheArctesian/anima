@@ -1,4 +1,4 @@
--- Builder tokens (WP-36 D-1, BLD-022, R-102). A builder token is its own kind of access token
+-- Builder tokens (WP-36 D-1, BLD-022, R-107). A builder token is its own kind of access token
 -- with its own scope, `builder`: it travels as a bearer like a login token, stands for no
 -- operator and may only claim and report build jobs. Only its SHA-256 is stored (BLD-023).
 -- Numbered after 0010, which added `kind`; 0002 and 0010 created the scope and kind checks

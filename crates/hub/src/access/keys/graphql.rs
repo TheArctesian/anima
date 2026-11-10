@@ -40,7 +40,7 @@ impl From<TokenScope> for Scope {
 }
 
 /// The K1 scope of an API key: `read` or `write`, never `builder`. The builder scope has no
-/// `TokenScope` and is never shown as `write` (D-23, R-102); `ApiKey::from_row` refuses it too.
+/// `TokenScope` and is never shown as `write` (D-23, R-107); `ApiKey::from_row` refuses it too.
 fn token_scope(scope: Scope) -> Result<TokenScope> {
     match scope {
         Scope::Read => Ok(TokenScope::Read),

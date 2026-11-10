@@ -1,5 +1,5 @@
 //! An API key never enrols or revokes a builder, publishes or cancels a release, or claims a job:
-//! a builder token outlives the key that would have enrolled it (D-23, R-100, R-102). A builder
+//! a builder token outlives the key that would have enrolled it (D-23, R-100, R-107). A builder
 //! token reaches no root field but the builder mutations, by fragment, introspection or socket
 //! (BLD-022).
 

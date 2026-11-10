@@ -1,4 +1,4 @@
--- The build queue (K2 range 0960-0979; WP-36, R-102; spec Section 3.10, BLD-001 to BLD-082).
+-- The build queue (K2 range 0960-0979; WP-36, R-107; spec Section 3.10, BLD-001 to BLD-082).
 --
 -- Privileges (R-016, K2 "Roles"): anima_runtime gets SELECT, INSERT, UPDATE and DELETE on
 -- these tables from the default privileges that migration 0001 sets for the owner role.

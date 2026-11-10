@@ -239,7 +239,7 @@ desktop app ── at start and every 4 hours ── GET latest.json ── vers
 
 | Item | Value |
 | --- | --- |
-| Host | Cloudflare R2 bucket `anima-releases` at `https://releases.anima.ing` (public, so the app needs no credential) (R-102) |
+| Host | Cloudflare R2 bucket `anima-releases` at `https://releases.anima.ing` (public, so the app needs no credential) (R-107) |
 | Feed URL | `https://releases.anima.ing/{{target}}-{{arch}}/latest.json`, one feed for each target (BLD-067) |
 | Version | Chosen by the operator in the release form (BLD-001, BLD-002). Do not commit version changes. |
 | Platforms | macOS universal (`.app.tar.gz` for the updater, `Anima.dmg` for people), Linux x86_64 (`.AppImage`) |
@@ -253,16 +253,16 @@ desktop app ── at start and every 4 hours ── GET latest.json ── vers
 - **UPD-004.** When an update is installed, the client must show a banner with the text "Anima <version> is installed" and a "Restart to update" button. The banner must have `role="status"`.
 - **UPD-005.** After one update is installed, the app must stop checking until it restarts.
 - **UPD-006.** The Settings page must show an "Updates" row with the current version, the update state and a "Check for updates" button. A failed check must not show an error dialog; the next check runs at the usual time.
-- **UPD-007.** A release must start only from the Builds view (BLD-001). The workflow `release.yml` runs only by hand, as a fallback until WP-36 is accepted; then it is deleted (changed by R-102).
-- **UPD-008.** The hub must write `latest.json` only after it has verified all files of the job (BLD-064 to BLD-066) (changed by R-102).
-- **UPD-009.** Each `latest.json` must list only the platform keys of its own target. A target that did not build keeps its older feed (changed by R-102).
+- **UPD-007.** A release must start only from the Builds view (BLD-001). The workflow `release.yml` runs only by hand, as a fallback until WP-36 is accepted; then it is deleted (changed by R-107).
+- **UPD-008.** The hub must write `latest.json` only after it has verified all files of the job (BLD-064 to BLD-066) (changed by R-107).
+- **UPD-009.** Each `latest.json` must list only the platform keys of its own target. A target that did not build keeps its older feed (changed by R-107).
 - **UPD-010.** Each release must have versioned updater files, stable-named files for people (`Anima.dmg`, `Anima-x86_64.AppImage`) and a `SHA256SUMS` file.
 - **UPD-011.** The macOS builder must verify the bundle with `codesign --verify --deep --strict` and must verify that `lipo -archs` gives `x86_64` and `arm64`.
-- **UPD-012.** Only the operator makes the updater key pair and imports the private key into the key store of each builder. Agents must not read the private key file. The operator must keep a backup of the private key: if it is lost, each installed app must be installed again by hand (changed by R-102).
+- **UPD-012.** Only the operator makes the updater key pair and imports the private key into the key store of each builder. Agents must not read the private key file. The operator must keep a backup of the private key: if it is lost, each installed app must be installed again by hand (changed by R-107).
 
 ### 3.10 Builds
 
-Anima builds its own desktop releases. The hub keeps a build queue. Operator computers on the VPN do the builds. GitHub Actions does not build or publish a release (R-005, R-102).
+Anima builds its own desktop releases. The hub keeps a build queue. Operator computers on the VPN do the builds. GitHub Actions does not build or publish a release (R-005, R-107).
 
 ```text
 operator: Builds view ─► "Release 0.1.12" ─► hub: one job for each target, state queued
@@ -466,7 +466,7 @@ The operator owns the domain `anima.ing`. Cloudflare holds its DNS.
 - **DNS-004.** The `hs.anima.ing` and `hub.anima.ing` records must not be proxied. Cloudflare cannot proxy WireGuard, STUN or a VPN address.
 - **DNS-005.** `hub.anima.ing` points to a private address. A connection from outside the VPN must fail. This keeps SEC-008: the public record shows the name and a VPN address only.
 - **DNS-006.** Headscale `dns.base_domain` must be `net.anima.ing`. It must not be `anima.ing`, because Headscale does not permit a base domain that contains the `server_url` host. Device names under `net.anima.ing` do not have public records.
-- **DNS-007.** `releases.anima.ing` must be the custom domain of the R2 bucket `anima-releases`. `updates.anima.ing` and its redirect rule are removed (changed by R-102).
+- **DNS-007.** `releases.anima.ing` must be the custom domain of the R2 bucket `anima-releases`. `updates.anima.ing` and its redirect rule are removed (changed by R-107).
 - **DNS-008.** The operator must confirm each change to the Cloudflare account or the `anima.ing` zone, as for the VPS (VPS-005).
 
 ### 4.3 Traffic data (later)

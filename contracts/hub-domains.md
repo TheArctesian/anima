@@ -8,7 +8,7 @@ These are the only functions and types one hub domain may use from another. Ever
 
 | Module | Content |
 | --- | --- |
-| `crates/hub/src/ids.rs` | All entity ID newtypes (see `conventions.md`): `OperatorId`, `SiteId`, `DeviceId`, `CheckId`, `WindowId`, `SessionId`, `EventId`, and (Phase 2) `WebInterfaceId`, `MetricSeriesId`, and (Phase 3) `ApiKeyId`, `ChannelId`, `DeliveryId`, `ShareId`, `RecordingId`, and (Phase 3, WP-36, R-102) `TokenId`, `ReleaseId`, `BuildJobId`, `BuilderId` |
+| `crates/hub/src/ids.rs` | All entity ID newtypes (see `conventions.md`): `OperatorId`, `SiteId`, `DeviceId`, `CheckId`, `WindowId`, `SessionId`, `EventId`, and (Phase 2) `WebInterfaceId`, `MetricSeriesId`, and (Phase 3) `ApiKeyId`, `ChannelId`, `DeliveryId`, `ShareId`, `RecordingId`, and (Phase 3, WP-36, R-107) `TokenId`, `ReleaseId`, `BuildJobId`, `BuilderId` |
 | `crates/hub/src/status.rs` | `pub enum Status { Up, Down, Degraded, Maintenance, Unknown }` with `fn worst(a, b)` (CHK-004) |
 | `crates/hub/src/clock.rs` | `pub trait Clock: Send + Sync { fn now(&self) -> DateTime<Utc>; }`, `SystemClock`, and `FixedClock` for tests. The only clock read in the hub (CQ-021). |
 | `crates/hub/src/config.rs` | `pub struct Config` from the environment (see `conventions.md`) |
@@ -77,8 +77,8 @@ pub async fn operator_for_token(db: &Db, token: &str, now: DateTime<Utc>) -> Res
 (Phase 3, WP-43):
 
 ```rust
-pub use tokens::Scope;                       // Read, Write, and Builder (WP-36, R-102)
-pub enum TokenKind { Login, Browser, ApiKey, Builder }   // Builder: WP-36, R-102
+pub use tokens::Scope;                       // Read, Write, and Builder (WP-36, R-107)
+pub enum TokenKind { Login, Browser, ApiKey, Builder }   // Builder: WP-36, R-107
 impl Identity { pub const fn kind(&self) -> TokenKind; }   // the guard refuses API keys on the D-23 list
 /// For routes outside GraphQL (/metrics): a bearer token of at least `scope`; 401 with no body otherwise.
 pub fn bearer_layer(db: Db, clock: Clock, scope: Scope) -> impl tower::Layer<axum::routing::Route> + Clone;
@@ -93,7 +93,7 @@ pub async fn throttled(db: &Db, client: ClientAddr, now: DateTime<Utc>) -> Resul
 pub async fn record_failure(db: &Db, client: ClientAddr, now: DateTime<Utc>) -> Result<(), Error>;
 ```
 
-(Phase 3, WP-36, R-102, D-1) Builder tokens are access tokens of kind `builder` (`TokenKind::Builder`)
+(Phase 3, WP-36, R-107, D-1) Builder tokens are access tokens of kind `builder` (`TokenKind::Builder`)
 and scope `builder` (`Scope::Builder`), always both (migration 0030). They travel only as a bearer, live
 180 days and are stored only as their hash. `Authenticated`, `operator_for_token` and the document backstop refuse them
 outside the builder fields; an operator token is refused on the builder fields (`Error::OutOfScope`, FORBIDDEN).
@@ -479,7 +479,7 @@ pub async fn server_certificates(db: &Db, devices: &[DeviceId]) -> Result<HashMa
 pub struct Sightings;  pub enum Conflict;  pub enum Error;   // CR-11: what connection tests saw, shared with sessions::Live; accept conflicts
 ```
 
-## builds (Phase 3, WP-36, R-102)
+## builds (Phase 3, WP-36, R-107)
 
 ```rust
 #[derive(Clone)] pub struct Updates { /* bounded broadcast of JobUpdate */ }   // BLD-081

@@ -60,7 +60,7 @@ impl Identity {
     }
 
     /// The operator the token stands for; `None` for a builder token, which stands for no
-    /// operator, not even the one who enrolled it (BLD-022, R-102).
+    /// operator, not even the one who enrolled it (BLD-022, R-107).
     #[must_use]
     pub fn operator(&self) -> Option<&Operator> {
         (self.grant.scope != Scope::Builder).then_some(&self.operator)

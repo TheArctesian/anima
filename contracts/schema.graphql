@@ -1397,7 +1397,7 @@ input StartSessionInput {
   display: DisplayInput!
 }
 
-# ---------------------------------------------------------------- builds (WP-36, R-102)
+# ---------------------------------------------------------------- builds (WP-36, R-107)
 
 "What a release is built for (BLD-001, BLD-003)."
 enum BuildTarget {
@@ -1554,7 +1554,7 @@ type Query {
   retention: [RetentionPeriod!]!
   recordings(deviceId: ID, first: Int = 50, after: String): RecordingConnection! @pending
 
-  # Phase 3: builds (WP-36, R-102)
+  # Phase 3: builds (WP-36, R-107)
   "Newest first (BLD-080)."
   releases(first: Int = 20, after: String): ReleaseConnection!
   "The highest version published or under way with the patch plus 1; null before the first."
@@ -1654,14 +1654,14 @@ type Mutation {
   "Deletes the key first, then the file (D-13). Login or browser token only (D-23, R-100)."
   deleteRecording(id: ID!): ID! @pending
 
-  # Phase 3: builds (WP-36, R-102)
-  "One queued job for each target; VALIDATION for a version that is not new (BLD-001, BLD-002). Login or browser token only (D-23, R-102)."
+  # Phase 3: builds (WP-36, R-107)
+  "One queued job for each target; VALIDATION for a version that is not new (BLD-001, BLD-002). Login or browser token only (D-23, R-107)."
   createRelease(version: String!, commit: String!, targets: [BuildTarget!]!): Release!
-  "Only a QUEUED job; CONFLICT otherwise (BLD-008). Login or browser token only (D-23, R-102)."
+  "Only a QUEUED job; CONFLICT otherwise (BLD-008). Login or browser token only (D-23, R-107)."
   cancelBuildJob(id: ID!): BuildJob!
-  "Records the builder at the request's address; returns its token once (BLD-023, D-1). Login or browser token only (D-23, R-102)."
+  "Records the builder at the request's address; returns its token once (BLD-023, D-1). Login or browser token only (D-23, R-107)."
   enrolBuilder(name: String!, platform: BuilderPlatformInput!): BuilderEnrolment!
-  "Deletes the builder and revokes its token (BLD-025). Returns the ID. Login or browser token only (D-23, R-102)."
+  "Deletes the builder and revokes its token (BLD-025). Returns the ID. Login or browser token only (D-23, R-107)."
   revokeBuilder(id: ID!): ID!
 
   "Builder token only (D-1). Null when no job waits or the builder holds a lease (BLD-004, BLD-029)."

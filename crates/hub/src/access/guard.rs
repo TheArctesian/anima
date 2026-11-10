@@ -223,7 +223,7 @@ fn refusal(identity: Option<&Identity>, document: &ExecutableDocument) -> Option
 /// moving a device and accepting the new host key would send its stored password to another
 /// host (R-100). Enrolling or revoking a builder, and publishing or cancelling a release, are
 /// supply-chain actions only a login or browser token may take: a builder token outlives the key
-/// that enrolled it (D-23, R-102).
+/// that enrolled it (D-23, R-107).
 pub(super) const API_KEY_REFUSED_ROOTS: [&str; 29] = [
     "createApiKey",
     "revokeApiKey",

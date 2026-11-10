@@ -16,7 +16,7 @@ Status: **frozen for Phase 3** (change only through a programme ruling, CON-001)
 | --- | --- | --- | --- |
 | 0001–0099 | access (WP-05) | `access` | `operators`, `api_tokens`, `login_attempts`, `permitted_networks` |
 | 0010–0029 (Phase 3) | access (WP-43) | `access` | `api_tokens.kind text not null default 'login' check (kind in ('login','browser','api_key'))`; `api_tokens.name text null` (required and unique for `api_key`, 1..64 characters); `api_tokens.display_prefix text null` (12 characters, `api_key` only); a check that `browser` and `login` rows have scope `write`; index `(kind, operator_id)`. Prune: expired `login` and `browser` rows at once, expired `api_key` rows 30 days after expiry |
-| 0030 (Phase 3, WP-36, R-102) | access (WP-36) | `access` | Builder tokens (D-1, BLD-022): `api_tokens.kind` check adds `builder`; `api_tokens.scope` check adds `builder`; a check that a row has kind `builder` exactly when it has scope `builder`; `api_tokens_signed_in_write` lets `api_key` and `builder` rows skip scope `write`. Prune: expired `builder` rows at once (deleting the token deletes its `builds.builders` row) |
+| 0030 (Phase 3, WP-36, R-107) | access (WP-36) | `access` | Builder tokens (D-1, BLD-022): `api_tokens.kind` check adds `builder`; `api_tokens.scope` check adds `builder`; a check that a row has kind `builder` exactly when it has scope `builder`; `api_tokens_signed_in_write` lets `api_key` and `builder` rows skip scope `write`. Prune: expired `builder` rows at once (deleting the token deletes its `builds.builders` row) |
 | 0100–0199 | devices (WP-06) | `devices` | `sites`, `devices`, `device_tags`, `ssh_settings` |
 | 0110–0199 (Phase 2) | devices (WP-21) | `devices` | `rdp_settings`, `vnc_settings` (device_id pk fk cascade, columns as K1, defaults in the schema, DB-011); `devices.mac_address macaddr null`, `devices.metrics_source text check in ('none','ssh') default 'none'`, `devices.transfer_upload`, `_download`, `_copy`, `_paste bool default true`; `sites.wake_relay_device_id uuid null fk -> devices.devices on delete set null` |
 | 0120–0129 (Phase 3) | devices (WP-47) | `devices` | `devices.session_limit int null check (session_limit between 1 and 100)`; `devices.record_sessions bool not null default false` |
@@ -39,7 +39,7 @@ Status: **frozen for Phase 3** (change only through a programme ruling, CON-001)
 | 0900–0919 (Phase 3) | retention (WP-46) | `retention` | `periods` (`subject text pk check (subject in ('heartbeats','metrics','events','recordings','deliveries'))`, `days int not null`, a per-subject bounds check as D-25), seeded with 30, 30, 90, 30, 30 |
 | 0920–0939 (Phase 3) | trust (WP-41) | `trust` | `create schema trust`; `alter table sessions.host_keys set schema trust`; `alter table sessions.server_certificates set schema trust`. Metadata only (DB-010). Grants and the R-040 revocation move with the tables; migration 0001's default privileges give `anima_runtime` USAGE on the new schema |
 | 0940–0959 | reserved | — | Phase 4 |
-| 0960–0979 (Phase 3, WP-36, R-102) | builds (WP-36) | `builds` | `releases`, `builders`, `jobs`, `job_files`, `feeds`, `log_lines` (outlines below) |
+| 0960–0979 (Phase 3, WP-36, R-107) | builds (WP-36) | `builds` | `releases`, `builders`, `jobs`, `job_files`, `feeds`, `log_lines` (outlines below) |
 | 0980–0999 | reserved | — | Phase 4 |
 
 ## Roles (R-016, LOG-006)

@@ -1,4 +1,4 @@
-//! A builder token is its own token kind with the builder scope (R-102, D-1, D-23): it travels
+//! A builder token is its own token kind with the builder scope (R-107, D-1, D-23): it travels
 //! only as a plain bearer, stands for no operator on the tunnels, and the database keeps the kind
 //! and the scope together (BLD-022).
 
