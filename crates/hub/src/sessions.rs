@@ -17,7 +17,6 @@ mod model;
 mod page;
 mod quiet;
 mod serving;
-mod share;
 mod start;
 mod store;
 mod terminal;
@@ -49,7 +48,6 @@ pub use model::{
     EndReason, FieldError, Protocol, Session, SessionChange, SessionEnd, UnknownValue,
 };
 pub use serving::Serving;
-pub use share::ShareMutation;
 pub use start::{DEFAULT_DPI, DisplayRequest, StartRequest, Waking, start};
 pub use terminal::terminal_router;
 pub use tickets::{PendingTicket, Presented, Ticket};
