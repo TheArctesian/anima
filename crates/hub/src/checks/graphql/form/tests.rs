@@ -7,7 +7,7 @@ use async_graphql::{ID, MaybeUndefined};
 use super::{create, update};
 use crate::checks::{
     Definition, Error, PushToken,
-    graphql::input::{ConfigShape, CreateShape, IcmpShape, Opaque, UpdateShape},
+    graphql::input::{ConfigShape, CreateRetries, CreateShape, IcmpShape, Opaque, UpdateShape},
 };
 
 const DEVICE: &str = "0190a7f4-0000-7000-8000-000000000001";
@@ -19,7 +19,7 @@ fn create_input(device: &str, config: ConfigShape) -> CreateShape {
         name: "Push".to_owned(),
         config: Opaque(config),
         interval_seconds: Some(60),
-        retries: Some(3),
+        retries: CreateRetries(Some(3)),
         retry_interval_seconds: Some(20),
         degraded_threshold_ms: Some(1000),
         invert: Some(false),

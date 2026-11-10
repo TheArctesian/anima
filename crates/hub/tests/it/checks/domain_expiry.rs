@@ -46,6 +46,14 @@ async fn set_not_after(pool: &PgPool, check: &str, offset: TimeDelta) -> Result<
         .map(|_| ())
 }
 
+async fn stored_retries(pool: &PgPool, check: &str) -> i32 {
+    sqlx::query_scalar("SELECT retries FROM checks.checks WHERE id = $1::text::uuid")
+        .bind(check)
+        .fetch_one(pool)
+        .await
+        .unwrap()
+}
+
 async fn stored_not_after(pool: &PgPool, check: &str) -> Option<chrono::DateTime<chrono::Utc>> {
     sqlx::query_scalar("SELECT domain_not_after FROM checks.checks WHERE id = $1::text::uuid")
         .bind(check)
@@ -118,6 +126,39 @@ fixture_test! {
         assert_eq!(validation_fields(&error_json(&response)), ["intervalSeconds"]);
     }
 
+    async fn d_29_a_domain_expiry_check_does_not_retry(pool: PgPool) {
+        let schema = schema_for(&pool);
+        let mut retrying = domain_input("retrying", &json!({ "domain": "example.net" }));
+        retrying["retries"] = json!(1);
+        let response = with_variables(&schema, CREATE, json!({ "input": retrying })).await;
+        assert_eq!(validation_fields(&error_json(&response)), ["retries"]);
+        let omitted = create(&schema, domain_input("omitted", &json!({ "domain": "example.org" }))).await;
+        assert_eq!(stored_retries(&pool, &omitted).await, 0, "an omitted retries is 0, not the default 3");
+        let mut null = domain_input("null", &json!({ "domain": "example.com" }));
+        null["retries"] = Value::Null;
+        assert_eq!(stored_retries(&pool, &create(&schema, null).await).await, 0);
+
+        let mut steady = domain_input("steady", &json!({ "domain": "example.net" }));
+        steady["retries"] = json!(0);
+        let id = create(&schema, steady).await;
+        let update = json!({ "id": id, "input": { "retries": 2 } });
+        let response = with_variables(&schema, UPDATE, update).await;
+        assert_eq!(validation_fields(&error_json(&response)), ["retries"]);
+        assert_eq!(stored_retries(&pool, &id).await, 0, "the row is unchanged");
+        data_with(&schema, UPDATE, json!({ "id": id, "input": { "name": "renamed" } })).await;
+        assert_eq!(stored_retries(&pool, &id).await, 0, "an update without retries keeps 0");
+        data_with(&schema, UPDATE, json!({ "id": id, "input": { "retries": 0 } })).await;
+    }
+
+    async fn d_29_another_check_type_still_accepts_retries(pool: PgPool) {
+        let schema = schema_for(&pool);
+        let mut input_3 = input(PVE_01, "ping", json!({ "icmp": { "timeoutMs": 1000 } }));
+        input_3["retries"] = json!(3);
+        assert_eq!(stored_retries(&pool, &create(&schema, input_3).await).await, 3);
+        let omitted = input(PVE_01, "port", json!({ "tcp": { "port": 22 } }));
+        assert_eq!(stored_retries(&pool, &create(&schema, omitted).await).await, 3, "the default");
+    }
+
     async fn d_29_a_domain_that_is_not_a_registrable_name_is_a_field_error(pool: PgPool) {
         let schema = schema_for(&pool);
         for domain in ["https://example.net", "example.net/x", "example.net:443", "localhost", "10.0.0.1", "bücher.example"] {
@@ -153,8 +194,8 @@ fixture_test! {
 
         let check = Uuid::now_v7();
         sqlx::query(
-            "INSERT INTO checks.checks (id, device_id, type, name, interval_seconds, config) \
-             VALUES ($1, $2, 'domain_expiry', 'raw', 3600, '{\"domain\": \"example.net\"}')",
+            "INSERT INTO checks.checks (id, device_id, type, name, interval_seconds, retries, config) \
+             VALUES ($1, $2, 'domain_expiry', 'raw', 3600, 0, '{\"domain\": \"example.net\"}')",
         )
         .bind(check)
         .bind(id(PVE_01))
@@ -168,6 +209,12 @@ fixture_test! {
             .await
             .unwrap_err();
         assert_eq!(constraint_of(&too_often), Some("checks_domain_expiry_interval_check"));
+        let retrying = sqlx::query("UPDATE checks.checks SET retries = 1 WHERE id = $1")
+            .bind(check)
+            .execute(&pool)
+            .await
+            .unwrap_err();
+        assert_eq!(constraint_of(&retrying), Some("checks_domain_expiry_retries_check"));
     }
 
     async fn d_29_a_beat_without_a_date_keeps_the_last_expiry_date(pool: PgPool) {

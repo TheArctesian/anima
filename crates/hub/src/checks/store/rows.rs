@@ -143,6 +143,7 @@ impl CheckRow {
             device: self.device_id,
             parent: self.parent_id,
             config: config_of(&self.kind, self.config),
+            last_beat_at: self.last_beat_at,
         })
     }
 }
@@ -211,6 +212,10 @@ pub(super) fn write_error(error: sqlx::Error) -> Error {
         Some("checks_domain_expiry_interval_check") => (
             "intervalSeconds",
             "A domain expiry check runs at most once an hour: the interval is 3600 seconds or more.",
+        ),
+        Some("checks_domain_expiry_retries_check") => (
+            "retries",
+            "A domain expiry check does not retry: it runs at most once an hour, so retries is 0.",
         ),
         Some("checks_parent_fkey") => (
             "parentId",

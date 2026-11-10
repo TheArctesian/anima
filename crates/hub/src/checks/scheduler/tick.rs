@@ -1,6 +1,6 @@
 //! One pass of the scheduler: settle the devices whose checks had beats, spread first runs,
 //! report late checks and start due attempts within the limits (CHK-001, CHK-010, HUB-003,
-//! LOG-004).
+//! LOG-004). A check due before its floor is moved to it, not run (R-102).
 //!
 //! One task owns this state, so no lock guards it. Attempts run in a `JoinSet`; dropping the
 //! scheduler aborts them.
@@ -113,8 +113,8 @@ impl Scheduler {
         self.settle_devices(now).await;
     }
 
-    /// Reports the check when it is late, then spreads it or starts it, unless it is in
-    /// flight or every permit is taken.
+    /// Reports the check when it is late, then gives it a new due time or starts it, unless
+    /// it is in flight or every permit is taken.
     async fn consider(&mut self, check: Due, now: DateTime<Utc>, rng: &mut impl Rng) {
         let started = self.started_at.unwrap_or(now);
         let late = schedule::is_late(Timing::from(&check), started, now);
@@ -126,11 +126,11 @@ impl Scheduler {
         if self.in_flight.values().any(|id| *id == check.id) {
             return;
         }
-        if schedule::needs_spreading(&check, started) {
-            let at = schedule::first_due(&check, now, rng);
+        if schedule::needs_new_due(&check, started) {
+            let at = schedule::new_due(&check, now, rng);
             let moved = store::set_next_due(&self.ctx.db, check.id, check.state.next_due_at, at);
             if let Err(error) = moved.await {
-                warn(&check, "the first due time cannot be stored", &error);
+                warn(&check, "the new due time cannot be stored", &error);
             }
             return;
         }
