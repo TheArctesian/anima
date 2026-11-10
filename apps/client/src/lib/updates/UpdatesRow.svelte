@@ -3,6 +3,7 @@
   import { describeUpdate, canCheck } from './status';
   import { useUpdates } from './updates.svelte';
 
+  const MAC = /Macintosh|Mac OS X/;
   const updates = useUpdates();
   const snapshot = $derived(updates.snapshot);
 
@@ -18,7 +19,7 @@
   <p class="version">
     {#if updates.current !== null}Anima <strong>{updates.current}</strong>{/if}
   </p>
-  <p class="state" aria-live="polite">{describeUpdate(snapshot, time)}</p>
+  <p class="state" aria-live="polite">{describeUpdate(snapshot, time, MAC.test(navigator.userAgent))}</p>
   <button type="button" tabindex="0" disabled={!canCheck(snapshot)} onclick={() => void updates.checkNow()} {@attach press()}>
     Check for updates
   </button>

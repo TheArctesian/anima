@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CHECK_FAILED_LINE, CHECK_INTERVAL_MS, INSTALL_FAILED_LINE } from '../schedule';
+import { CHECK_FAILED_LINE, CHECK_INTERVAL_MS, INSTALL_FAILED_LINE, NO_FEED_LINE, SIGNATURE_REFUSED_LINE } from '../schedule';
 import { offering, scheduleHarness as setup, START } from './updates.fixture';
 
 beforeEach(() => {
@@ -76,6 +76,24 @@ describe('update failures and manual checks', () => {
     await s.tick();
     expect(s.last().state.kind).toBe('idle');
     expect(s.port.checks).toBe(2);
+  });
+
+  it('BLD-068: a feed with no release for this target logs its own line and shows the no-feed reason', async () => {
+    const s = setup();
+    s.port.next = () => Promise.reject(Object.assign(new Error('x'), { reason: 'no-feed' }));
+    s.schedule.start();
+    await vi.waitFor(() => { expect(s.last().state).toEqual({ kind: 'failed', reason: 'no-feed' }); });
+    expect(s.log.lines).toEqual([NO_FEED_LINE]);
+  });
+
+  it('UPD-002: a refused signature logs its own line, shows the signature reason and installs nothing', async () => {
+    const s = setup();
+    s.port.next = () =>
+      Promise.resolve(offering(s.port, '1.1.0', () => Promise.reject(Object.assign(new Error('x'), { reason: 'signature' }))));
+    s.schedule.start();
+    await vi.waitFor(() => { expect(s.last().state).toEqual({ kind: 'failed', reason: 'signature' }); });
+    expect(s.log.lines).toEqual([SIGNATURE_REFUSED_LINE]);
+    expect(s.history.some((h) => h.state.kind === 'installed')).toBe(false);
   });
 
   it('UPD-002: an install that fails (a bad signature) logs one fixed line, installs nothing and keeps checking', async () => {

@@ -76,6 +76,8 @@ objc2-foundation = { version = "0.3.2", default-features = false, features = ["s
 objc2-web-kit = { version = "0.3.2", default-features = false, features = ["std", "objc2-app-kit", "block2", "WKWebView", "WKNavigationDelegate"] }
 
 [dev-dependencies]
+# The mock runtime the updater proof runs the real updater plugin in (tests/updater).
+tauri = { workspace = true, features = ["unstable", "test"] }
 rcgen.workspace = true
 # The reference minisign implementation (the one tauri-cli signs with) makes the test key files
 # and checks the signatures, so the format is proved against it and not only against itself.

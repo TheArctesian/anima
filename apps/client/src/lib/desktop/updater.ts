@@ -25,9 +25,30 @@ const MESSAGES: Record<UpdaterStep, string> = {
   version: 'The app version could not be read.',
 };
 
+/**
+ * Why an update failed, in the three cases the operator can act on: the feed has no release for this target (a 404, an
+ * absent feed, or no entry for the platform: macOS has none until BLD-068 is lifted), the signature was refused (UPD-002),
+ * or anything else (the network, the disk).
+ */
+export type UpdateFailure = 'no-feed' | 'signature' | 'other';
+
+const NO_FEED = /valid release JSON|was not found in the response|fallback platforms/i;
+const SIGNATURE = /signature|signed for/i;
+
+/** Sorts the plugin's error text into an `UpdateFailure`. Only the sort is kept, never the text (LOG-007). */
+export function failureOf(error: unknown): UpdateFailure {
+  const text = typeof error === 'string' ? error : error instanceof Error ? error.message : '';
+  if (SIGNATURE.test(text)) return 'signature';
+  if (NO_FEED.test(text)) return 'no-feed';
+  return 'other';
+}
+
 /** An updater failure. The message is fixed text chosen here; nothing from the plugin's error is kept (LOG-007). */
 export class UpdaterError extends Error {
-  constructor(readonly step: UpdaterStep) {
+  constructor(
+    readonly step: UpdaterStep,
+    readonly reason: UpdateFailure = 'other',
+  ) {
     super(MESSAGES[step]);
     this.name = 'UpdaterError';
   }
@@ -37,8 +58,8 @@ export class UpdaterError extends Error {
 async function inShell<T>(step: UpdaterStep, call: () => Promise<T>): Promise<T> {
   try {
     return await call();
-  } catch {
-    throw new UpdaterError(step);
+  } catch (error) {
+    throw new UpdaterError(step, failureOf(error));
   }
 }
 
