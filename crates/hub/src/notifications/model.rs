@@ -298,7 +298,11 @@ pub struct Observation {
     pub check_name: String,
     pub check_type: &'static str,
     pub device: (DeviceId, String),
+    /// The device's site, by id as text: checks reads no site names. Not shown in a
+    /// notification.
     pub site: String,
+    /// The check's stored status before the beat, as evaluated: maintenance is in
+    /// `in_maintenance` and `status`, not here.
     pub previous: Status,
     pub status: Status,
     pub in_maintenance: bool,
