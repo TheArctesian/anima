@@ -1,5 +1,5 @@
 //! The share registry (S-1, S-2, S-3, S-5): the 32-share cap, which shares a session lists,
-//! the owner rule of `endShare`, and the first cause winning.
+//! the owner rule of `endShare`, the first cause winning, and the keeper's take of a share.
 
 use chrono::TimeDelta;
 use tokio::sync::watch;
@@ -22,18 +22,18 @@ use crate::{
     },
 };
 
-fn share_id(n: u128) -> ShareId {
+pub(super) fn share_id(n: u128) -> ShareId {
     ShareId::from(Uuid::from_u128(
         0x0190_a000_0000_7000_8020_0000_0000_0000 + n,
     ))
 }
 
-fn hash(n: u8) -> TicketHash {
+pub(super) fn hash(n: u8) -> TicketHash {
     TicketToken::from_random([n; TOKEN_BYTES]).hash()
 }
 
 /// Share `n` of `session`, made `n` seconds after `now()`.
-fn share(n: u8, session: SessionId) -> Share {
+pub(super) fn share(n: u8, session: SessionId) -> Share {
     let created_at = now() + TimeDelta::seconds(n.into());
     Share {
         id: share_id(n.into()),
@@ -149,4 +149,45 @@ fn ra_035_a_share_is_removed_once() {
     assert_eq!(removed.id, share_id(1));
     assert!(shares.remove(share_id(1)).is_none());
     assert!(shares.hashes() == [hash(2)], "the other share stays");
+}
+
+#[test]
+fn s_5_a_cause_end_share_set_before_the_take_stands_over_the_one_the_keeper_woke_for() {
+    let caller = address("10.0.0.9");
+    for woke_for in [ShareEnd::Expired, ShareEnd::SessionEnded] {
+        let shares = Shares::default();
+        let mut ended = shares.open(hash(1), share(1, session(1))).unwrap();
+        // The keeper woke for `woke_for`; endShare lands before it takes the share.
+        shares.end_by(share_id(1), &operator(), caller).unwrap();
+
+        let (taken, end) = shares.take(share_id(1), woke_for).unwrap();
+        assert_eq!(taken.id, share_id(1));
+        assert_eq!(end, ShareEnd::Ended(caller), "{woke_for:?}");
+        assert_eq!(*ended.borrow_and_update(), Some(ShareEnd::Ended(caller)));
+        assert!(shares.hashes().is_empty());
+    }
+}
+
+#[test]
+fn s_5_without_end_share_the_take_settles_the_cause_the_keeper_woke_for() {
+    for woke_for in [ShareEnd::Expired, ShareEnd::SessionEnded] {
+        let shares = Shares::default();
+        let mut ended = shares.open(hash(1), share(1, session(1))).unwrap();
+
+        let (_, end) = shares.take(share_id(1), woke_for).unwrap();
+        assert_eq!(end, woke_for);
+        assert_eq!(*ended.borrow_and_update(), Some(woke_for), "viewers see it");
+    }
+}
+
+#[test]
+fn s_5_a_taken_share_is_out_of_end_share_reach_and_taken_once() {
+    let shares = Shares::default();
+    shares.open(hash(1), share(1, session(1))).unwrap();
+    let (taken, end) = shares.take(share_id(1), ShareEnd::Expired).unwrap();
+
+    let late = shares.end_by(share_id(1), &operator(), address("10.0.0.9"));
+    assert!(matches!(late, Err(Error::UnknownShare(_))), "{late:?}");
+    assert_eq!(*taken.end.borrow(), Some(end), "the cause taken is final");
+    assert!(shares.take(share_id(1), ShareEnd::SessionEnded).is_none());
 }

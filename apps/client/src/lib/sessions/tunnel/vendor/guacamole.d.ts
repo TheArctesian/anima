@@ -84,9 +84,37 @@ declare namespace Guacamole {
     getElement(): HTMLDivElement;
     getWidth(): number;
     getHeight(): number;
+    /** Draws the queued operations as one frame and calls `callback` once every earlier frame is drawn. */
+    flush(callback?: () => void): void;
     scale(scale: number): void;
     getScale(): number;
     onresize: ((width: number, height: number) => void) | null;
+  }
+
+  /**
+   * Plays back a recording (the instructions the hub tees, K4 §11) from a `Blob`; parsing starts at once. Frames
+   * end at each `sync`; positions and the duration are milliseconds from the first `sync` timestamp. `seek`
+   * picks the frame `findFrame` finds for `position` (a binary search; a time just after a frame gives that frame) (past the end it lands on the last frame) and calls `callback` when done.
+   */
+  class SessionRecording {
+    constructor(source: Blob);
+    getDisplay(): Display;
+    getDuration(): number;
+    getPosition(): number;
+    isPlaying(): boolean;
+    play(): void;
+    pause(): void;
+    seek(position: number, callback?: () => void): void;
+    cancel(): void;
+    abort(): void;
+    onload: (() => void) | null;
+    onerror: ((message: string) => void) | null;
+    onabort: (() => void) | null;
+    onprogress: ((duration: number, parsedSize: number) => void) | null;
+    onplay: (() => void) | null;
+    onpause: (() => void) | null;
+    /** Called while a seek replays frames, with the position reached, frames done and frames to do. */
+    onseek: ((position: number, current: number, total: number) => void) | null;
   }
 
   /**

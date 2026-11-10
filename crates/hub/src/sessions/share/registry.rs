@@ -149,7 +149,20 @@ impl Shares {
 
     /// Removes and returns the share with this id.
     pub(super) fn remove(&self, id: ShareId) -> Option<Share> {
+        Self::removed(&mut self.held(), id)
+    }
+
+    /// Removes the share with this id for its keeper, which woke for `woke_for`, and settles its
+    /// end (S-5): a cause already set, by `endShare`, stands; else `woke_for` does. Both happen
+    /// under one lock, so no `endShare` lands between them and the cause returned is final.
+    pub(super) fn take(&self, id: ShareId, woke_for: ShareEnd) -> Option<(Share, ShareEnd)> {
         let mut held = self.held();
+        let share = Self::removed(&mut held, id)?;
+        let end = settle(&share.end, woke_for);
+        Some((share, end))
+    }
+
+    fn removed(held: &mut HashMap<TicketHash, Share>, id: ShareId) -> Option<Share> {
         let hash = held
             .iter()
             .find_map(|(hash, share)| (share.id == id).then_some(*hash))?;
