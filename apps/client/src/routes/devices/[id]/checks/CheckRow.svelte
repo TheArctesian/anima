@@ -36,15 +36,17 @@
   <button type="button" class="name" title={check.name} aria-expanded={open} onclick={onHistory} {@attach press()}>
     <span>{check.name}</span>
   </button>
-  <span class="type" title={text.type}>{text.type}</span>
-  <!-- A reading changes with a cross-fade, in place (MOT-008, Status change). -->
-  <span class="reading">
-    {#key check.status}<span transition:crossFade>{check.paused ? 'Paused' : statusLabel(check.status)}</span>{/key}
+  <span class="facts">
+    <span class="type" title={text.type}>{text.type}</span>
+    <!-- A reading changes with a cross-fade, in place (MOT-008, Status change). -->
+    <span class="reading">
+      {#key check.status}<span transition:crossFade>{check.paused ? 'Paused' : statusLabel(check.status)}</span>{/key}
+    </span>
+    <span class="reading ms">
+      {#key text.responseTime}<span transition:crossFade>{text.responseTime}</span>{/key}
+    </span>
+    <span class="expiry" title={text.expiry ?? undefined}>{text.expiry ?? ''}</span>
   </span>
-  <span class="reading ms">
-    {#key text.responseTime}<span transition:crossFade>{text.responseTime}</span>{/key}
-  </span>
-  <span class="expiry" title={text.expiry ?? undefined}>{text.expiry ?? ''}</span>
   <span class="actions">
     <!-- The name starts with the visible text, Pause or Resume (label in name). -->
     <button
@@ -111,46 +113,47 @@
     white-space: nowrap;
   }
 
+  /* Wide: the facts are the row's own columns. */
+  .facts {
+    display: contents;
+  }
+
   /*
-   * Below the wide breakpoint the row is two lines, each reserved in every row so no row differs in height (MOT-007): the
-   * name and the actions, then the type, the status, the latency and the expiry in a quarter of the width each. The
-   * breakpoints are the compact and medium edges of `$lib/motion/tokens`, less 0.02px.
+   * Below the wide breakpoint the row is three lines, each reserved in every row so no row differs in height (MOT-007): the
+   * name and the actions at their natural width, then the type, the status and the latency, then the expiry on a line of its
+   * own. The breakpoint is the medium edge of `$lib/motion/tokens`, less 0.02px.
    */
   @media (max-width: 1100.98px) {
     .row {
-      grid-template-columns: repeat(12, minmax(0, 1fr));
+      grid-template-columns: minmax(0, 1fr) auto;
+      padding-block: var(--space-1);
     }
 
-    .name {
+    .name,
+    .actions {
       grid-row: 1;
-      grid-column: 1 / 7;
     }
 
     .actions {
-      grid-row: 1;
-      grid-column: 7 / 13;
-      justify-self: end;
+      grid-column: 2;
+    }
+
+    .facts {
+      display: grid;
+      grid-row: 2;
+      grid-column: 1 / -1;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--space-1) var(--space-2);
     }
 
     .type,
     .reading,
     .expiry {
-      grid-row: 2;
-      grid-column: span 3;
       min-inline-size: 0;
       min-block-size: 1lh;
     }
-  }
-
-  /* Compact: the expiry takes a third line of its own. */
-  @media (max-width: 767.98px) {
-    .type,
-    .reading {
-      grid-column: span 4;
-    }
 
     .expiry {
-      grid-row: 3;
       grid-column: 1 / -1;
     }
   }

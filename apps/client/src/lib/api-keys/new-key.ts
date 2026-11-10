@@ -119,7 +119,7 @@ export function checkNewKey(form: NewKeyForm, now: Date): NewKeyCheck {
 export function createFailure(error: HubError): string {
   switch (error.code) {
     case 'CONFLICT':
-      return 'An API key has this name already.';
+      return 'This name is taken.';
     case 'VALIDATION':
       return 'The hub refused the name or date.';
     case 'FORBIDDEN':

@@ -96,7 +96,7 @@ describe('the expiry bounds (D-23)', () => {
     for (const code of ['CONFLICT', 'VALIDATION', 'FORBIDDEN', 'INTERNAL', 'UNAUTHENTICATED'] as const) {
       expect(createFailure({ code, message: 'hub text', fields: [] } as never)).not.toContain('hub text');
     }
-    expect(createFailure({ code: 'CONFLICT', message: 'hub text' })).toBe('An API key has this name already.');
+    expect(createFailure({ code: 'CONFLICT', message: 'hub text' })).toBe('This name is taken.');
   });
 
   it('MOT-007: every fixed failure sentence fits one line of 36 characters', () => {

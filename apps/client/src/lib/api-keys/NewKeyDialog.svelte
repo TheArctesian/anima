@@ -223,6 +223,7 @@
 
   /* It adds no width of its own (zero inline size, stretched to the form), so a long line is cut and never widens the dialog. */
   .failure {
+    box-sizing: border-box;
     inline-size: 0;
     min-inline-size: 100%;
     min-block-size: 1lh;

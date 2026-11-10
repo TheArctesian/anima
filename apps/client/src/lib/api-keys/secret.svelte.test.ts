@@ -124,7 +124,7 @@ it('INT-003: a refused create shows a fixed sentence, not the hub text, and keep
   await openDialog({ CreateApiKey: failure('CONFLICT', 'duplicate key value "backup-job"') });
   typeInto(nameField(), 'backup-job');
   await create();
-  expect(document.querySelector('[role="dialog"] [role="alert"]')?.textContent).toBe('An API key has this name already.');
+  expect(document.querySelector('[role="dialog"] [role="alert"]')?.textContent).toBe('This name is taken.');
   expect(nameField().value).toBe('backup-job');
 });
 
@@ -135,7 +135,7 @@ it('MOT-007: the failure line is mounted before a refusal, so the buttons stay i
   typeInto(nameField(), 'backup-job');
   await create();
   expect(document.querySelector('[role="dialog"] form [role="alert"]')).toBe(line);
-  expect(line?.textContent).toBe('An API key has this name already.');
+  expect(line?.textContent).toBe('This name is taken.');
 });
 
 it('INT-003: after Create the key shows once with the once-only sentence, and the list gains the key without it', async () => {
