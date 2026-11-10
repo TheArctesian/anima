@@ -80,6 +80,7 @@ pub(in crate::checks) async fn record_attempt(
     .fetch_optional(&mut *tx)
     .await?
     .ok_or(Error::NotFound(Missing::Check(check)))?;
+    let kind = CheckType::from_sql(&locked.kind).ok_or(Error::Unreadable(check))?;
     let (state, settings) = (locked.state()?, locked.settings()?);
     let previous = state.status;
     let (state, status) = evaluate(&state, attempt.result, &settings, attempt.at);
@@ -91,7 +92,7 @@ pub(in crate::checks) async fn record_attempt(
     );
     let recorded = record_beat(&mut tx, check, &beat).await?;
     if recorded == Recorded::Written {
-        let seen = observation(check, &locked, attempt, (previous, &beat));
+        let seen = observation((check, kind), &locked, attempt, (previous, &beat));
         notify(&mut tx, &seen).await?;
     }
     tx.commit().await?;
@@ -99,9 +100,11 @@ pub(in crate::checks) async fn record_attempt(
 }
 
 /// What notifications needs to know about the written beat (D-16). Maintenance is passed as
-/// the attempt saw it, so no Down is sent under a window (Section 6.5).
+/// the attempt saw it, so no Down is sent under a window (Section 6.5). `previous` is the
+/// check's stored status before this beat as evaluated, without the maintenance a beat
+/// shows. The site is the device's site id, as checks reads no site names.
 fn observation(
-    check: CheckId,
+    (check, kind): (CheckId, CheckType),
     locked: &Locked,
     attempt: &Attempt<'_>,
     (previous, beat): (Status, &Beat),
@@ -109,7 +112,7 @@ fn observation(
     Observation {
         check,
         check_name: locked.name.clone(),
-        check_type: CheckType::from_sql(&locked.kind).map_or("unknown", CheckType::as_sql),
+        check_type: kind.as_sql(),
         device: (attempt.device.id, attempt.device.name.clone()),
         site: attempt.device.site.to_string(),
         previous,
