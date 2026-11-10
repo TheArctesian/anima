@@ -10,7 +10,7 @@ use anima_hub::{
     clock::{Clock, FixedClock},
     events::Bus,
     logged,
-    sessions::{Live, Serving, terminal_router},
+    sessions::{Live, Recording, Serving, terminal_router},
     tunnels,
 };
 use axum::{
@@ -48,6 +48,10 @@ async fn mounted(pool: &PgPool, live: &Live, permitted: &str) -> Router {
         live: live.clone(),
         guacd: String::new(),
         drive_root: String::new(),
+        recording: Recording {
+            root: None,
+            max_bytes: 1,
+        },
     });
     logged(terminal).layer(access::permitted_networks_layer(access::Edge::new(
         pool.clone(),
