@@ -279,14 +279,21 @@ async fn log_007_the_secret_and_codes_reach_no_log_event_or_audit_entry(pool: Pg
         write!(hex, "{byte:02x}").unwrap();
         hex
     });
-    for needle in [
-        encoded.as_str(),
-        &hex,
-        "otpauth",
-        // Codes as whole JSON strings: a bare digit run also matches timing floats.
-        "\"999999\"",
-        &format!("\"{typed}\""),
-    ] {
+    for needle in [encoded.as_str(), &hex, "otpauth"] {
         assert!(!written.contains(needle), "{needle} in {written}");
     }
+    for code in ["999999", typed.as_str()] {
+        assert!(!holds_code(&written, code), "{code} in {written}");
+    }
+}
+
+/// Whether `text` holds `code` as a number of its own: not inside a longer digit run, such as
+/// a timing float, or after a `.`, such as the fraction of a timestamp.
+fn holds_code(text: &str, code: &str) -> bool {
+    text.match_indices(code).any(|(at, _)| {
+        let before = text[..at].chars().next_back();
+        let after = text[at + code.len()..].chars().next();
+        !matches!(before, Some(c) if c.is_ascii_digit() || c == '.')
+            && !after.is_some_and(|c| c.is_ascii_digit())
+    })
 }

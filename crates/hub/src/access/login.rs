@@ -1,5 +1,5 @@
-//! Signing in and out: the throttle, the password check, the token and their records
-//! (SEC-002, LOG-005, D-3, D-7, D-8).
+//! Signing in: the throttle, the password check, the token and their records (SEC-002,
+//! LOG-005, D-3, D-7, D-8). Signing out is in `sign_out`; failures outside sign-in in `outside`.
 
 mod outside;
 mod sign_out;
