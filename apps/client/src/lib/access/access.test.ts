@@ -4,7 +4,7 @@ import type { HubResult } from '$lib/hub/hub';
 import { accessApi } from './api';
 import { fakeHub, failure, HUB_ADDRESS, ok } from './access.fixture';
 import { signInNeeded, startGuard } from './guard';
-import { isBare, isSignedOut, routePath } from './routes';
+import { isSignedOut, routePath } from './routes';
 import { COOKIE_KEPT, signOut, TOKEN_KEPT_AFTER_LOGOUT, TOKEN_KEPT_UNCONFIRMED } from './sign-out';
 
 const ADDRESS = HUB_ADDRESS;
@@ -111,27 +111,32 @@ describe('startGuard in a browser', () => {
     expect(c.goToSignIn).not.toHaveBeenCalled();
   });
 
-  it.each(['/sign-in', '/shared', '/shared/abc'])('E-3: on the signed-out route %s the browser guard never asks the hub', async (path) => {
+  it.each(['/sign-in', '/sign-in/x'])('E-3: on the signed-out route %s the browser guard never asks the hub', async (path) => {
     const c = browser(path, failure('UNAUTHENTICATED'));
     await c.run();
     expect(c.me).not.toHaveBeenCalled();
     expect(c.goToSignIn).not.toHaveBeenCalled();
   });
+
+  it.each(['/shared', '/shared/', '/shared/x'])('R-111, API-003: %s needs sign-in like any other route', async (path) => {
+    const c = browser(path, failure('UNAUTHENTICATED'));
+    await c.run();
+    expect(c.me).toHaveBeenCalledOnce();
+    expect(c.goToSignIn).toHaveBeenCalledOnce();
+  });
 });
 
 describe('signed-out routes', () => {
-  it.each(['/sign-in', '/shared', '/shared/', '/shared/abc'])('E-3: %s needs no sign-in', (route) => {
+  it.each(['/sign-in', '/sign-in/', '/sign-in/x'])('E-3: %s needs no sign-in', (route) => {
     expect(isSignedOut(route)).toBe(true);
   });
 
-  it.each(['/sharedx', '/sign-in-x', '/sign-inx', '/Shared', '/devices/shared', '/shared%2Fx'])('E-3: the near miss %s needs sign-in', (route) => {
-    expect(isSignedOut(route)).toBe(false);
-  });
-
-  it('SEC-002: only /shared and below render bare; /sign-in keeps the shell for its mutation', () => {
-    expect(['/shared', '/shared/abc'].map(isBare)).toEqual([true, true]);
-    expect(['/sign-in', '/sharedx', '/devices', '/'].map(isBare)).toEqual([false, false, false, false]);
-  });
+  it.each(['/sign-in-x', '/sign-inx', '/Sign-in', '/devices/sign-in', '/sign-in%2Fx', '/shared', '/shared/x', '/'])(
+    'E-3, R-111: the route %s needs sign-in',
+    (route) => {
+      expect(isSignedOut(route)).toBe(false);
+    },
+  );
 
   it('E-3: the route path is the one the router matches: below the base path, percent-decoded except %25 and reserved escapes', () => {
     expect(routePath('/shared/abc', '')).toBe('/shared/abc');

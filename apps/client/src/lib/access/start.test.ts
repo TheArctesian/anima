@@ -3,15 +3,15 @@ import { readAccessToken } from '$lib/desktop/token';
 import { createHub, DEFAULT_HUB_ADDRESS, type HubAddress } from '$lib/hub/hub';
 import { FAKE_WEBSOCKET, FakeSocket, recordingSink, settle, STATUS_CHANGED } from '$lib/hub/socket/fake';
 import { accessApi } from './api';
-import { clientStart, ORIGIN_REFUSED, startHolds, type ClientStart } from './start';
+import { clientStart, ORIGIN_REFUSED, type ClientStart } from './start';
 
 /** A storage holding `stored` as the desktop app's hub address setting. */
 function storage(stored: string | null = null): Storage {
   return { getItem: (key: string) => (key === 'anima.hubAddress' ? stored : null) } as Storage;
 }
 
-function browserAt(origin: string, route = '/devices', stored: string | null = null): ClientStart {
-  return clientStart({ route, desktop: false, storage: storage(stored), origin });
+function browserAt(origin: string, stored: string | null = null): ClientStart {
+  return clientStart({ desktop: false, storage: storage(stored), origin });
 }
 
 function addressOf(start: ClientStart): HubAddress {
@@ -30,7 +30,7 @@ describe('the hub address a client starts with', () => {
   });
 
   it('CLI-002: a browser ignores a stored hub address, so script on the page cannot point it at another hub', () => {
-    expect(addressOf(browserAt('https://hub.example.org', '/devices', 'https://other.example.net')).origin).toBe('https://hub.example.org');
+    expect(addressOf(browserAt('https://hub.example.org', 'https://other.example.net')).origin).toBe('https://hub.example.org');
   });
 
   it.each([
@@ -51,29 +51,10 @@ describe('the hub address a client starts with', () => {
   );
 
   it('CLI-002: the desktop app still talks to its stored hub, whatever the page origin', () => {
-    const stored = clientStart({ route: '/devices', desktop: true, storage: storage('https://my-hub.example.org'), origin: 'tauri://localhost' });
+    const stored = clientStart({ desktop: true, storage: storage('https://my-hub.example.org'), origin: 'tauri://localhost' });
     expect(addressOf(stored).origin).toBe('https://my-hub.example.org');
-    const unset = clientStart({ route: '/', desktop: true, storage: storage(), origin: 'http://tauri.localhost' });
+    const unset = clientStart({ desktop: true, storage: storage(), origin: 'http://tauri.localhost' });
     expect(addressOf(unset)).toEqual(DEFAULT_HUB_ADDRESS);
-  });
-
-  it.each(['/shared', '/shared/abc'])('SEC-002: %s starts bare, with no hub address at all', (route) => {
-    expect(browserAt('https://hub.example.org', route)).toEqual({ kind: 'bare' });
-    expect(browserAt('http://hub.example.org', route)).toEqual({ kind: 'bare' });
-    expect(clientStart({ route, desktop: true, storage: storage(), origin: 'tauri://localhost' })).toEqual({ kind: 'bare' });
-  });
-
-  it('SEC-002: a start holds only for routes on its side of the bare line', () => {
-    const bare = browserAt('https://hub.example.org', '/shared');
-    const shell = browserAt('https://hub.example.org');
-    const refused = browserAt('http://hub.example.org');
-    expect(['/shared', '/shared/abc', '/devices', '/sign-in'].map((route) => startHolds(bare, route))).toEqual([true, true, false, false]);
-    expect(['/devices', '/sign-in', '/shared', '/shared/abc'].map((route) => startHolds(shell, route))).toEqual([true, true, false, false]);
-    expect([startHolds(refused, '/devices'), startHolds(refused, '/shared')]).toEqual([true, false]);
-  });
-
-  it('E-3: /sign-in starts with the shell, since its mutation needs the hub', () => {
-    expect(browserAt('https://hub.example.org', '/sign-in').kind).toBe('shell');
   });
 });
 
