@@ -39,9 +39,9 @@ struct Sealed {
 impl Sealed {
     fn bytes(&self) -> Vec<u8> {
         let mut bytes = self.header.to_vec();
-        self.parts
-            .iter()
-            .for_each(|part| bytes.extend_from_slice(part));
+        for part in &self.parts {
+            bytes.extend_from_slice(part);
+        }
         bytes
     }
 }

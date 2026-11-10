@@ -26,7 +26,7 @@ fn k4_11_an_empty_recording_is_its_header_and_an_empty_last_part() {
     let (parts, end) = read(&sealed.bytes());
 
     assert_eq!(sealed.bytes().len(), HEADER_LEN + 4 + 16);
-    assert!(parts.is_empty());
+    assert_eq!(parts, Vec::<Vec<u8>>::new());
     assert_eq!(end, End::Done);
 }
 
@@ -47,7 +47,7 @@ fn k4_11_a_file_that_stops_between_parts_without_a_last_part_is_incomplete() {
 fn k4_11_a_file_with_only_its_header_is_incomplete() {
     let (parts, end) = read(&seal(&[], b"").header);
 
-    assert!(parts.is_empty());
+    assert_eq!(parts, Vec::<Vec<u8>>::new());
     assert_eq!(end, End::Incomplete);
 }
 

@@ -113,7 +113,7 @@ proptest! {
     #[test]
     fn ra_040_any_bytes_after_a_header_never_panic_or_end_done(
         tail in prop::collection::vec(any::<u8>(), 0..2048),
-        length in 0..(MAX_PART as u32 + 64),
+        length in 0..u32::try_from(MAX_PART + 64).unwrap(),
     ) {
         let mut bytes = seal(&[], b"").header.to_vec();
         bytes.extend_from_slice(&length.to_be_bytes());

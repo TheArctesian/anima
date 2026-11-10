@@ -112,11 +112,11 @@ fn k4_11_the_opener_refuses_a_part_before_the_last_at_the_counters_final_value()
 
     let refused = opener().open(not_last[4..].to_vec()).err();
     let mut final_opener = opener();
-    let opened = final_opener.open(last[4..].to_vec()).unwrap();
+    let last_part = final_opener.open(last[4..].to_vec()).unwrap();
 
     assert_eq!(refused, Some(Damage::TooManyParts));
-    assert!(opened.last);
-    assert_eq!(*opened.plaintext, b"y");
+    assert!(last_part.last);
+    assert_eq!(*last_part.plaintext, b"y");
     assert!(final_opener.is_finished());
     assert_eq!(
         final_opener.part_length([0, 0, 0, 16]),

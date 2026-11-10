@@ -19,7 +19,9 @@ fn three() -> Sealed {
 
 fn file(header: &[u8], parts: &[&Vec<u8>]) -> Vec<u8> {
     let mut bytes = header.to_vec();
-    parts.iter().for_each(|part| bytes.extend_from_slice(part));
+    for part in parts {
+        bytes.extend_from_slice(part);
+    }
     bytes
 }
 
