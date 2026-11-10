@@ -69,10 +69,14 @@ async fn agents(pool: &PgPool) -> i64 {
 async fn met_012_a_code_stays_used_when_its_exchange_failed_after_the_mark(pool: PgPool) {
     let now = database_now(&pool).await;
     let code = code_for_pve(&pool, now).await;
-    // A slow writer holds the device row, so the exchange's second step waits for it. Its
-    // deadline passes only once it waits, after the code was marked: the wait is seen in
-    // pg_stat_activity, not guessed from a short deadline, so a loaded machine cannot turn it
-    // into another outcome.
+    // A slow writer holds the device row, so the exchange's second step waits for it, after
+    // the code was marked; the wait is seen in pg_stat_activity, not guessed.
+    //
+    // Residual risk: the 3 s deadline also covers the work before the wait (redeeming the code,
+    // reaching the lock). A machine stalled for 3 s before the exchange waits fails the
+    // assertion below instead of proving anything. Removing it is not cheap: the deadline is
+    // tokio's timer, and pausing tokio's clock would also fire it during the database round
+    // trips; a longer deadline only adds its length to every run.
     let mut holder = pool.begin().await.unwrap();
     sqlx::query("SELECT 1 FROM devices.devices WHERE id = $1 FOR UPDATE")
         .bind(pve())
