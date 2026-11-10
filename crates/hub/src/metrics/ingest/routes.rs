@@ -196,6 +196,16 @@ async fn serve_renew(state: AgentState, request: Request) -> Response {
         }
         Err(error) => return unavailable(&error),
     };
+    // A device switched away from the agent renews nothing (CR-18), as it pushes nothing.
+    match credential::agent_name(&state.db, device).await {
+        Ok(Some(_)) => {}
+        Ok(None) => {
+            return state
+                .refuse(refused(RefusalCode::TokenRefused, Some(device)), now)
+                .await;
+        }
+        Err(error) => return unavailable(&error),
+    }
     let well_formed = match read_body(&parts.headers, body, BODY_LIMIT).await {
         Ok(body) => is_renew_request(&body),
         Err(code) => return state.refuse(refused(code, Some(device)), now).await,
@@ -213,7 +223,7 @@ async fn serve_renew(state: AgentState, request: Request) -> Response {
         Ok(Some(renewed)) => refusals::json(StatusCode::OK, &renewed),
         Ok(None) => {
             state
-                .refuse(refused(RefusalCode::TokenRefused, None), now)
+                .refuse(refused(RefusalCode::TokenRefused, Some(device)), now)
                 .await
         }
         Err(error) => unavailable(&error),

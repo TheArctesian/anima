@@ -101,6 +101,62 @@ async fn cr_18_cr_21_a_token_of_a_device_switched_away_cannot_flood_the_event_lo
     assert_eq!(device_warnings(&pool).await.len(), 2);
 }
 
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn cr_21_one_devices_refusals_do_not_hold_back_anothers(pool: PgPool) {
+    let now = pushing_now(&pool).await;
+    let agents = Agents::at(&pool, now).await;
+    let pve = format!("Bearer {}", agents.token_for(PVE_01).await);
+    let docker = format!("Bearer {}", agents.token_for(DOCKER_HOST).await);
+    for _ in 0..20 {
+        agents.push_raw(Some(&pve), "[]", PERMITTED).await;
+    }
+    agents.push_raw(Some(&docker), "[]", PERMITTED).await;
+    agents.renew_raw(Some(&docker), "[]", PERMITTED).await;
+    let names: Vec<Option<String>> = device_warnings(&pool)
+        .await
+        .into_iter()
+        .map(|(name, _)| name)
+        .collect();
+    assert_eq!(
+        names,
+        [Some("pve-01".to_owned()), Some("docker-host".to_owned())]
+    );
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn cr_18_a_token_of_a_device_switched_away_cannot_renew(pool: PgPool) {
+    let now = pushing_now(&pool).await;
+    let agents = Agents::at(&pool, now).await;
+    let token = agents.token_for(PVE_01).await;
+    let switch =
+        "mutation($id: ID!) { updateDevice(id: $id, input: { metricsSource: SSH }) { id } }";
+    agents.operate(switch, json!({ "id": PVE_01 })).await;
+    let renewed = agents.renew(&token).await;
+    assert_eq!(
+        renewed,
+        (StatusCode::UNAUTHORIZED, refusal("TOKEN_REFUSED"))
+    );
+    let next: Option<Vec<u8>> = sqlx::query_scalar(
+        "SELECT next_token_sha256 FROM metrics.agents WHERE device_id = $1::uuid",
+    )
+    .bind(PVE_01)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(next, None, "no renewed token was made");
+    let refused = (
+        Some("pve-01".to_owned()),
+        "Refused an agent token renewal from 100.64.0.7: TOKEN_REFUSED.".to_owned(),
+    );
+    assert_eq!(device_warnings(&pool).await, [refused]);
+}
+
 /// The device name and message of each metrics warning that names a device, oldest first.
 async fn device_warnings(pool: &PgPool) -> Vec<(Option<String>, String)> {
     sqlx::query_as(

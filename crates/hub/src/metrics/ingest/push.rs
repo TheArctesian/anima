@@ -27,7 +27,6 @@ use super::{
     routes::{AgentState, client_of, read_body, unavailable, unmounted},
 };
 use crate::{
-    devices::{self, MetricsSource},
     ids::DeviceId,
     metrics::{self, Gpu, MetricSample, MetricsAdded, Readings},
 };
@@ -126,12 +125,10 @@ async fn holder(
 /// The device's name while its metrics come from the agent; `TOKEN_REFUSED` once the operator
 /// switched the source away or deleted the device.
 async fn agent_name(state: &AgentState, device: DeviceId) -> Result<String, Stop> {
-    match devices::get(&state.db, device).await {
-        Ok(found) if found.metrics_source == MetricsSource::Agent => Ok(found.name),
-        Ok(_) | Err(devices::Error::NotFound(_)) => {
-            Err(Stop::Refused(RefusalCode::TokenRefused, Some(device)))
-        }
-        Err(other) => Err(Stop::Failed(Error::Devices(other))),
+    match credential::agent_name(&state.db, device).await {
+        Ok(Some(name)) => Ok(name),
+        Ok(None) => Err(Stop::Refused(RefusalCode::TokenRefused, Some(device))),
+        Err(error) => Err(Stop::Failed(error)),
     }
 }
 
