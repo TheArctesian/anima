@@ -1,5 +1,6 @@
-//! Batched reads behind `Check.status`, `Check.lastHeartbeat` and `Check.uptime`: a fixed number
-//! of queries per level of a nested selection, however many checks it holds (API-005).
+//! Batched reads behind `Check.status`, `Check.lastHeartbeat`, `Check.uptime` and
+//! `Check.notifications`: a fixed number of queries per level of a nested selection, however
+//! many checks it holds (API-005).
 //!
 //! None of the loaders caches, so one instance serves every request. The ones that judge
 //! time read the clock once per batch.
@@ -16,6 +17,7 @@ use crate::{
     devices,
     ids::{CheckId, DeviceId},
     maintenance,
+    notifications::{self, CheckNotifications},
     status::Status,
 };
 
@@ -163,6 +165,24 @@ impl Loader<(CheckId, UptimeWindow)> for CheckUptimes {
     }
 }
 
+/// The channels each check notifies and its resend setting, through the notifications face
+/// (NOT-003). Every key gets a value; a check with no choices notifies no channel.
+pub struct NotificationChoices(PgPool);
+
+impl Loader<CheckId> for NotificationChoices {
+    type Value = CheckNotifications;
+    type Error = Arc<notifications::Error>;
+
+    async fn load(
+        &self,
+        keys: &[CheckId],
+    ) -> Result<HashMap<CheckId, CheckNotifications>, Self::Error> {
+        notifications::for_checks(&self.0, keys)
+            .await
+            .map_err(Arc::new)
+    }
+}
+
 /// The loader behind `Check.status`: a few queries per batch of check ids, however many.
 #[must_use]
 pub fn check_status_loader(pool: PgPool, clock: Arc<dyn Clock>) -> DataLoader<CheckStatuses> {
@@ -185,4 +205,10 @@ pub fn heartbeats_loader(pool: PgPool) -> DataLoader<HeartbeatPages> {
 #[must_use]
 pub fn check_uptime_loader(pool: PgPool, clock: Arc<dyn Clock>) -> DataLoader<CheckUptimes> {
     DataLoader::new(CheckUptimes { db: pool, clock }, tokio::spawn)
+}
+
+/// The loader behind `Check.notifications`: three queries per batch of check ids.
+#[must_use]
+pub fn check_notifications_loader(pool: PgPool) -> DataLoader<NotificationChoices> {
+    DataLoader::new(NotificationChoices(pool), tokio::spawn)
 }

@@ -41,7 +41,7 @@ impl io::Write for Capture {
 }
 
 /// The process log this thread writes while `run` runs, and its result.
-async fn logged<R>(run: impl Future<Output = R>) -> (String, R) {
+pub(super) async fn logged<R>(run: impl Future<Output = R>) -> (String, R) {
     let capture = Capture::default();
     let writer = capture.clone();
     let guard =

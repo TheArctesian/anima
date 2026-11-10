@@ -11,13 +11,14 @@ use super::{
     enums::CheckKind,
     error::{from_devices, from_shared, to_graphql},
     heartbeat::{HeartbeatConnection, connection, paging},
-    loaders::{CheckStatuses, CheckUptimes, HeartbeatPages, LastHeartbeats},
+    loaders::{CheckStatuses, CheckUptimes, HeartbeatPages, LastHeartbeats, NotificationChoices},
 };
 use crate::{
-    api_errors::{invalid, pool, schema_dependency},
+    api_errors::{internal, invalid, pool, schema_dependency},
     checks::{self, Check, Error, Heartbeat, UptimeWindow},
     clock::Clock,
     devices::{self, Device},
+    notifications::CheckNotifications,
     status::Status,
 };
 
@@ -126,6 +127,18 @@ impl Check {
     #[graphql(name = "domainDaysLeft")]
     async fn domain_days(&self, ctx: &Context<'_>) -> Result<Option<i32>> {
         Ok(Check::domain_days_left(self, now(ctx)?))
+    }
+
+    /// The channels this check notifies and how often it repeats a Down (NOT-003, NOT-005).
+    async fn notifications(&self, ctx: &Context<'_>) -> Result<CheckNotifications> {
+        let choices = schema_dependency::<DataLoader<NotificationChoices>>(ctx)?
+            .load_one(self.id)
+            .await
+            .map_err(internal)?;
+        Ok(choices.unwrap_or_else(|| CheckNotifications {
+            channels: Vec::new(),
+            resend_every_beats: 0,
+        }))
     }
 
     async fn heartbeats(

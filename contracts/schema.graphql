@@ -437,7 +437,7 @@ type Check {
   "DOMAIN_EXPIRY only: whole days until the registration expires."
   domainDaysLeft: Int
   # notifications (composition, K3)
-  notifications: CheckNotifications! @pending
+  notifications: CheckNotifications!
   heartbeats(first: Int = 100, after: String): HeartbeatConnection!
   uptime(window: UptimeWindow!): Float
 }

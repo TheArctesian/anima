@@ -243,3 +243,26 @@ async fn api_005_for_checks_batches_channels_and_defaults_without_secrets(pool: 
     assert!(ssh.channels.is_empty());
     assert_eq!(ssh.resend_every_beats, 0);
 }
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../tests/fixtures", scripts("devices", "checks"))
+)]
+async fn log_007_a_dirty_device_name_is_cleaned_and_a_201_character_check_name_is_cut_at_200(
+    pool: PgPool,
+) {
+    let a = channel(&pool, "a").await;
+    link(&pool, check(PING), &[a]).await;
+    let mut o = beat(check(PING), Down, now(&pool).await);
+    o.device.1 = "pve\u{202e}-\u{7}01\r\n\u{200b}".into();
+    o.check_name = format!("{}x", "c".repeat(200));
+
+    observe_in_tx(&pool, &o).await;
+
+    let payload: serde_json::Value = sqlx::query_scalar("SELECT payload FROM notifications.outbox")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(payload["device"], "pve-01");
+    assert_eq!(payload["check"], "c".repeat(200));
+}

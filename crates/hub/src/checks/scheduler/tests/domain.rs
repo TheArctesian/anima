@@ -1,27 +1,35 @@
 //! A domain expiry check through the attempt path against a local registry (D-29, P3-003):
 //! the stored status and expiry date, a probe of a domain the check no longer names, and the
-//! hour after the last query before the next, on every path that sets a due time (R-102).
+//! hour after the last query before the next, on every path that sets a due time (R-102). The
+//! expiry notices such a beat queues: none under maintenance (Section 6.5, NOT-006), and none
+//! for a domain the check no longer names.
+
+use std::time::Duration;
 
 use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::PgPool;
 
 use super::support::{
-    DOCKER_HOST, add_check, beats, context, database_now, device, due_at, new_check, rng, stored,
-    vault,
+    DOCKER_HOST, add_check, beats, context, database_now, device, due_at, new_check, notify_on,
+    queued, rng, stored, vault,
 };
 use crate::{
     checks::{
-        self, CheckChange, CheckSettings, Definition,
+        self, Attempt, CheckChange, CheckSettings, Definition,
         config::CheckConfig,
-        probe::rdap::tests::{
-            registry::{expiring_at, rdap, registry},
-            server::Server,
+        probe::{
+            ProbeResult,
+            rdap::tests::{
+                registry::{expiring_at, rdap, registry},
+                server::Server,
+            },
         },
         scheduler::{
             attempt,
             tick::{Limits, Scheduler},
         },
     },
+    devices,
     ids::CheckId,
     status::Status,
 };
@@ -251,5 +259,67 @@ tick_test! {
 
         assert_eq!(server.requests_for(QUERY), 1);
         assert_eq!(beats(&pool, id).await, ["up"]);
+    }
+}
+
+/// An answered probe at `at` of `domain` whose certificate and registration both end at
+/// `ends`, recorded under maintenance or not.
+async fn expiring(
+    pool: &PgPool,
+    id: CheckId,
+    (at, ends): (DateTime<Utc>, DateTime<Utc>),
+    (domain, maintained): (&str, bool),
+) {
+    let mut result = ProbeResult::up(Duration::from_millis(1));
+    result.cert_not_after = Some(ends);
+    result.domain_not_after = Some(ends);
+    let device = devices::get(pool, device(DOCKER_HOST)).await.unwrap();
+    let attempt = Attempt {
+        result: &result,
+        in_maintenance: maintained,
+        at,
+        domain: Some(domain),
+        device: &device,
+    };
+    let mut conn = pool.acquire().await.unwrap();
+    let beat = checks::record_attempt(&mut conn, id, &attempt)
+        .await
+        .unwrap();
+    assert!(beat.is_some(), "the beat is written");
+}
+
+tick_test! {
+    async fn not_006_an_expiry_seen_under_maintenance_queues_nothing(pool: PgPool) {
+        let id = add_domain_check(&pool).await;
+        notify_on(&pool, id).await;
+        let at = database_now(&pool).await;
+
+        let ends = at + TimeDelta::days(3);
+        expiring(&pool, id, (at, ends), ("example.test", true)).await;
+        assert_eq!(queued(&pool, id).await, Vec::<String>::new());
+
+        let later = at + TimeDelta::seconds(1);
+        expiring(&pool, id, (later, ends), ("example.test", false)).await;
+        assert_eq!(queued(&pool, id).await, ["certificate_expiry", "domain_expiry"]);
+    }
+
+    async fn d_29_a_date_for_a_domain_the_check_no_longer_names_queues_no_notice(pool: PgPool) {
+        let id = add_domain_check(&pool).await;
+        notify_on(&pool, id).await;
+        let change = CheckChange {
+            definition: Some(domain_expiry("other.test")),
+            ..CheckChange::default()
+        };
+        let mut conn = pool.acquire().await.unwrap();
+        checks::update_check(&mut conn, &vault(), id, change).await.unwrap();
+        let at = database_now(&pool).await;
+
+        let ends = at + TimeDelta::days(3);
+        expiring(&pool, id, (at, ends), ("example.test", false)).await;
+        assert_eq!(queued(&pool, id).await, ["certificate_expiry"], "no domain notice");
+
+        let later = at + TimeDelta::seconds(1);
+        expiring(&pool, id, (later, ends), ("other.test", false)).await;
+        assert_eq!(queued(&pool, id).await, ["certificate_expiry", "domain_expiry"]);
     }
 }
