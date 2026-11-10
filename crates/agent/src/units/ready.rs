@@ -29,7 +29,7 @@ pub enum NotReady {
     )]
     MissingAccount,
     #[error(
-        "the system unit has no token: as root run `install -d -m 0700 -o {ACCOUNT} -g {ACCOUNT} {SYSTEM_HOME}`, then `printf '%s\\n' '<code>' | sudo -u {ACCOUNT} env ANIMA_AGENT_HOME={SYSTEM_HOME} {program} enrol -`, then install again"
+        "the system unit has no token: as root run `install -d -m 0700 -o {ACCOUNT} -g {ACCOUNT} {SYSTEM_HOME}`, then `sudo -u {ACCOUNT} env ANIMA_AGENT_HOME={SYSTEM_HOME} {program} enrol -` and paste the code at the hidden prompt, then install again"
     )]
     SystemNotEnrolled { program: String },
     #[error(
@@ -145,6 +145,14 @@ mod tests {
         );
         assert!(none.to_string().contains(&format!("{program} enrol -")));
         assert!(none.to_string().contains("as root run `install -d"));
+        assert!(
+            !none.to_string().contains("<code>"),
+            "the code never goes on a command line"
+        );
+        assert!(
+            none.to_string()
+                .contains("paste the code at the hidden prompt")
+        );
         assert_eq!(
             system(PASSWD, Some((0o100_600, 0)), program),
             Err(NotReady::TokenOwner),

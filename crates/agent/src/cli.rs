@@ -12,7 +12,7 @@ use crate::units::plan::Target;
 pub const USAGE: &str = "usage: anima-agent enrol <code | -> [--hub <https origin>]\n       anima-agent run\n       anima-agent install [--system]";
 
 /// Printed when the code is on the command line, where `ps` and the shell history show it.
-pub const ARGV_WARNING: &str = "warning: a code on the command line shows in process lists and shell history; use: printf '%s\\n' '<code>' | anima-agent enrol -";
+pub const ARGV_WARNING: &str = "warning: a code on the command line shows in process lists and shell history; next time run `anima-agent enrol -` and paste the code at the hidden prompt";
 
 /// What the operator asked for.
 pub enum Command {
@@ -141,6 +141,15 @@ mod tests {
         assert!(matches!(parse(args("run")), Ok(Command::Run)));
         assert!(matches!(parse(args("run now")), Err(CliError::Usage)));
         assert!(matches!(parse(args("")), Err(CliError::Usage)));
+    }
+
+    #[test]
+    fn met_019_the_enrol_hint_never_puts_the_code_on_a_command_line() {
+        assert!(!ARGV_WARNING.contains("<code>"), "{ARGV_WARNING}");
+        assert!(!ARGV_WARNING.contains("printf"), "{ARGV_WARNING}");
+        assert!(
+            ARGV_WARNING.contains("`anima-agent enrol -` and paste the code at the hidden prompt")
+        );
     }
 
     #[test]
