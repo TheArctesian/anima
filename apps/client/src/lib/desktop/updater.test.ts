@@ -54,7 +54,9 @@ describe('desktopUpdater', () => {
     expect(JSON.stringify(failure)).not.toContain('pw');
     expect((failure as Error).cause).toBeUndefined();
   });
+});
 
+describe('desktopUpdater failure reasons', () => {
   it('UPD-002: the plugin refusing a signature, or the version it was signed for, is sorted as a signature failure', () => {
     expect(failureOf('The signature verification failed')).toBe('signature');
     expect(failureOf(new Error('The update was signed for version 1.0.0 but the update endpoint announced version 2.0.0.'))).toBe('signature');
