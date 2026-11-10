@@ -44,7 +44,7 @@ pub fn spawn_scheduler(
     probing: Probing,
 ) -> tokio::task::JoinHandle<()> {
     let mut rng = StdRng::from_rng(&mut rand::rng());
-    let mut scheduler = Scheduler::new(Context { db, bus, probing }, LIMITS);
+    let mut scheduler = Scheduler::new(Context::new(db, bus, probing), LIMITS);
     tokio::spawn(async move {
         let mut ticker = tokio::time::interval(TICK);
         ticker.set_missed_tick_behavior(MissedTickBehavior::Delay);

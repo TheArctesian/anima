@@ -1,0 +1,36 @@
+import { describe, expect, it } from 'vitest';
+import { checkThresholds, DAYS_MISSING, DAYS_NOT_DESCENDING, DAYS_NOT_WHOLE, DAYS_OUT_OF_RANGE, DAYS_TOO_MANY, thresholdsText, DEFAULT_DAYS } from './days';
+
+describe('certificate expiry days', () => {
+  it('NOT-006, D-22: the default is 21, 14 and 7, and it reads back as typed', () => {
+    expect(DEFAULT_DAYS).toEqual([21, 14, 7]);
+    expect(checkThresholds(thresholdsText(DEFAULT_DAYS))).toEqual({ ok: true, days: [21, 14, 7] });
+    expect(checkThresholds(' 30 21,14 , 7 ')).toEqual({ ok: true, days: [30, 21, 14, 7] });
+  });
+
+  it('D-22: each value is from 1 to 365', () => {
+    expect(checkThresholds('365, 1')).toEqual({ ok: true, days: [365, 1] });
+    expect(checkThresholds('366, 14')).toEqual({ ok: false, message: DAYS_OUT_OF_RANGE });
+    expect(checkThresholds('14, 0')).toEqual({ ok: false, message: DAYS_OUT_OF_RANGE });
+  });
+
+  it('D-22: at most five values', () => {
+    expect(checkThresholds('60, 30, 21, 14, 7')).toEqual({ ok: true, days: [60, 30, 21, 14, 7] });
+    expect(checkThresholds('90, 60, 30, 21, 14, 7')).toEqual({ ok: false, message: DAYS_TOO_MANY });
+  });
+
+  it('D-22: the values descend, each once', () => {
+    expect(checkThresholds('7, 14, 21')).toEqual({ ok: false, message: DAYS_NOT_DESCENDING });
+    expect(checkThresholds('21, 14, 14')).toEqual({ ok: false, message: DAYS_NOT_DESCENDING });
+  });
+
+  it('D-22: only whole numbers, and at least one', () => {
+    for (const text of ['21.5', '-7', '14 days', '1e2', '0x10']) expect(checkThresholds(text)).toEqual({ ok: false, message: DAYS_NOT_WHOLE });
+    expect(checkThresholds(' , ')).toEqual({ ok: false, message: DAYS_MISSING });
+  });
+
+  it('MOT-007: each refusal fits the one line kept under the field at 390 px (36 characters)', () => {
+    const messages = [DAYS_MISSING, DAYS_NOT_DESCENDING, DAYS_NOT_WHOLE, DAYS_OUT_OF_RANGE, DAYS_TOO_MANY];
+    expect(messages.filter((message) => message.length > 36)).toEqual([]);
+  });
+});

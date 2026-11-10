@@ -19,7 +19,7 @@ use async_graphql::{
 };
 
 use super::enums::{IpFamily, RecordType, RequestMethod, SnmpVersion};
-use crate::{credentials::Secret, scalars::IpAddr};
+use crate::{checks::CheckSettings, credentials::Secret, scalars::IpAddr};
 
 /// The field a parse error names: the input that could not be read is the whole argument.
 const ARGUMENT: &str = "input";
@@ -84,6 +84,45 @@ impl InputType for SecretText {
 
     fn to_value(&self) -> Value {
         Value::Null
+    }
+
+    fn as_raw_value(&self) -> Option<&Self::RawValueType> {
+        Some(self)
+    }
+}
+
+/// The `retries` of a create input: `None` when the input sent none, so the check type picks
+/// its own; a domain expiry check does not retry (R-102). The schema shows the default most
+/// types take (K1: 3), but an omitted field parses to `None`, never to that number.
+pub(super) struct CreateRetries(pub(super) Option<i32>);
+
+impl InputType for CreateRetries {
+    type RawValueType = Self;
+
+    fn type_name() -> Cow<'static, str> {
+        <Option<i32> as InputType>::type_name()
+    }
+
+    fn qualified_type_name() -> String {
+        <Option<i32> as InputType>::qualified_type_name()
+    }
+
+    fn create_type_info(registry: &mut Registry) -> String {
+        <Option<i32> as InputType>::create_type_info(registry)
+    }
+
+    fn parse(value: Option<Value>) -> InputValueResult<Self> {
+        <Option<i32> as InputType>::parse(value)
+            .map(Self)
+            .map_err(InputValueError::propagate)
+    }
+
+    /// The number sent, or the schema's default for an input that sent none.
+    fn to_value(&self) -> Value {
+        Value::from(
+            self.0
+                .unwrap_or_else(|| i32::from(CheckSettings::default().retries)),
+        )
     }
 
     fn as_raw_value(&self) -> Option<&Self::RawValueType> {
@@ -220,6 +259,16 @@ pub(super) struct TailscalePingShape {
     pub(super) timeout_ms: Option<i32>,
 }
 
+#[derive(InputObject)]
+#[graphql(name = "DomainExpiryConfigInput")]
+pub(super) struct DomainExpiryShape {
+    pub(super) domain: String,
+    #[graphql(default_with = "Some(30)")]
+    pub(super) warn_days: Option<i32>,
+    #[graphql(default_with = "Some(10000)")]
+    pub(super) timeout_ms: Option<i32>,
+}
+
 /// The secrets are held as [`Secret`] from parse time; an absent one keeps the stored one.
 #[derive(InputObject)]
 #[graphql(name = "SnmpConfigInput")]
@@ -252,6 +301,7 @@ pub(super) enum ConfigShape {
     Snmp(Opaque<SnmpShape>),
     Systemd(SystemdShape),
     TailscalePing(TailscalePingShape),
+    DomainExpiry(DomainExpiryShape),
 }
 
 #[derive(InputObject)]
@@ -263,8 +313,8 @@ pub(super) struct CreateShape {
     pub(super) config: Opaque<ConfigShape>,
     #[graphql(default_with = "Some(60)")]
     pub(super) interval_seconds: Option<i32>,
-    #[graphql(default_with = "Some(3)")]
-    pub(super) retries: Option<i32>,
+    #[graphql(default_with = "CreateRetries(None)")]
+    pub(super) retries: CreateRetries,
     #[graphql(default_with = "Some(20)")]
     pub(super) retry_interval_seconds: Option<i32>,
     #[graphql(default_with = "Some(1000)")]

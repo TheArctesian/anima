@@ -5,6 +5,7 @@ mod outbox;
 mod partitions;
 mod privileges;
 mod schema;
+mod sealing;
 mod store;
 
 use chrono::{DateTime, Utc};

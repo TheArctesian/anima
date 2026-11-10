@@ -1,4 +1,5 @@
-//! HTTP egress: one POST over a client pinned to the checked addresses of one host.
+//! HTTP egress: one request (POST or PUT) over a client pinned to the checked addresses of one
+//! host, always over TLS (CR-14).
 //!
 //! The client resolves no name itself, follows no redirect, uses no proxy, keeps no cookie,
 //! decompresses nothing and verifies TLS with the built-in roots. It reads at most
@@ -7,7 +8,7 @@
 use std::{error::Error, future, net::SocketAddr, sync::Arc};
 
 use reqwest::{
-    Certificate, Client, Response, Url,
+    Certificate, Client, Method, Response, Url,
     dns::{Name, Resolve, Resolving},
     header::HeaderMap,
     redirect::Policy,
@@ -26,6 +27,15 @@ pub(super) const REPLY_CAP: usize = 4 * 1024;
 #[error("the notification client resolves no names")]
 struct LookupRefused;
 
+/// One HTTP request to send: method, https URL, headers and body. No `Debug`: the URL and the
+/// header values may be secrets (LOG-007).
+pub(crate) struct HttpRequest {
+    pub(crate) method: Method,
+    pub(crate) url: Url,
+    pub(crate) headers: HeaderMap,
+    pub(crate) body: Vec<u8>,
+}
+
 /// A resolver that refuses every name.
 struct NoLookup;
 
@@ -38,39 +48,41 @@ impl Resolve for NoLookup {
 }
 
 impl Egress {
-    /// Sends `body` with `headers` to `url` as one POST, within [`TIME_LIMIT`] from the lookup
-    /// to the last reply byte read. The host is resolved once and every address checked; the
-    /// request goes only to those addresses. Every header value is marked sensitive, so none
-    /// is printed in a debug view.
+    /// Sends `request` (its body with its headers to its URL by its method), within [`TIME_LIMIT`] from
+    /// the lookup to the last reply byte read: one deadline covers the lookup, the connection,
+    /// the answer's head and the body read, and the body read never gets a limit of its own
+    /// (N-8). The host is resolved once and every address checked; the request goes only to
+    /// those addresses. Every header value is marked sensitive, so none is printed in a debug
+    /// view.
+    ///
+    /// Once a status arrives it decides: a 2xx is success even when the body then stalls or
+    /// never ends, so an answered send never turns into a retry and a duplicate (S-B).
     ///
     /// # Errors
-    /// [`SendError::Url`] for a URL that is not http or https; [`SendError::Target`] when the
+    /// [`SendError::Url`] for a URL that is not https (CR-14); [`SendError::Target`] when the
     /// host does not resolve or names a refused address, with no connection made;
     /// [`SendError::TimedOut`] when no answer arrives within the limit;
     /// [`SendError::HttpStatus`] for an answer outside 2xx (a redirect included); otherwise
     /// the setup, connection or TLS failure.
-    pub(crate) async fn post(
-        &self,
-        url: &Url,
-        headers: HeaderMap,
-        body: Vec<u8>,
-    ) -> Result<(), SendError> {
+    pub(crate) async fn send_http(&self, request: HttpRequest) -> Result<(), SendError> {
         let deadline = Instant::now() + TIME_LIMIT;
-        let response = timeout_at(deadline, self.request(url, headers, body))
+        let response = timeout_at(deadline, self.request(request))
             .await
             .map_err(|_| SendError::TimedOut)??;
         judge(response, deadline).await
     }
 
-    /// Resolves and checks the host of `url`, then sends the POST and waits for the answer's
-    /// head.
-    async fn request(
-        &self,
-        url: &Url,
-        mut headers: HeaderMap,
-        body: Vec<u8>,
-    ) -> Result<Response, SendError> {
-        if !matches!(url.scheme(), "http" | "https") {
+    /// Resolves and checks the host of the request's URL, then sends the request and waits
+    /// for the answer's head.
+    async fn request(&self, request: HttpRequest) -> Result<Response, SendError> {
+        let HttpRequest {
+            method,
+            url,
+            mut headers,
+            body,
+        } = request;
+        // Always TLS (CR-14 item 6): a plain `http` URL gets no lookup and no connection.
+        if url.scheme() != "https" {
             return Err(SendError::Url);
         }
         let host = url.host_str().ok_or(SendError::Url)?;
@@ -81,7 +93,7 @@ impl Egress {
             value.set_sensitive(true);
         }
         client
-            .post(url.clone())
+            .request(method, url)
             .headers(headers)
             .body(body)
             .send()

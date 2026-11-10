@@ -186,11 +186,16 @@ describe('SEC-005: SNMP secrets on edit', () => {
 });
 
 describe('P3-002, D-29: a DOMAIN_EXPIRY check in the form', () => {
-  const domainExpiry = saved('DOMAIN_EXPIRY', { __typename: 'DomainExpiryConfig' });
+  const domainExpiry = saved('DOMAIN_EXPIRY', { __typename: 'DomainExpiryConfig', domain: 'example.net', warnDays: 30, timeoutMs: 10000 });
 
-  it('values from a saved check keep every default and take the name', () => {
+  it('values from a saved check keep every other default, take the name and the stored settings', () => {
     const values = checkValues(domainExpiry, 'ICMP');
-    expect(values).toEqual({ ...checkValues(null, 'DOMAIN_EXPIRY'), name: 'check' });
+    expect(values).toEqual({
+      ...checkValues(null, 'DOMAIN_EXPIRY'),
+      name: 'check',
+      retries: '0',
+      domainExpiry: { domain: 'example.net', warnDays: '30', timeoutMs: '10000', daysLeft: null },
+    });
   });
 
   it('a bare Docker config keeps the defaults (WP-29 not yet selecting its fields)', () => {

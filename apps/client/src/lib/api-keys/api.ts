@@ -50,7 +50,7 @@ export type { ApiKeyInput };
  * A key the hub has just made. `secret` is the whole key, shown once (INT-003): the caller keeps it only while the
  * dialog that shows it is open and never logs, stores or sends it anywhere (LOG-007).
  */
-export interface CreatedApiKey {
+interface CreatedApiKey {
   readonly key: ApiKey;
   readonly secret: string;
 }

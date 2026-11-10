@@ -83,7 +83,7 @@ async fn api_003_r_020_connection_init_takes_a_bearer_authorization(pool: PgPool
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn api_003_a_read_token_may_sign_out_on_the_real_schema(pool: PgPool) {
+async fn d_23_a_read_key_may_read_but_not_sign_out_on_the_real_schema(pool: PgPool) {
     set_operator(&pool).await;
     // Only an API key may be read-only (K2 0010-0029), and it is spelled `anima_` + token.
     let token = format!("anima_{}", URL_SAFE_NO_PAD.encode([5_u8; 32]));
@@ -105,8 +105,16 @@ async fn api_003_a_read_token_may_sign_out_on_the_real_schema(pool: PgPool) {
         .post(Some(&token), "{ me { username } }", json!({}))
         .await;
     assert_eq!(me["data"]["me"]["username"], USERNAME, "{me}");
+    // Signing out would delete the key: an API key may not (D-23, WP-43 A-6).
     let logout = hub
         .post(Some(&token), "mutation { logout }", json!({}))
         .await;
-    assert_eq!(logout, json!({ "data": { "logout": true } }));
+    assert_eq!(
+        logout["errors"][0]["extensions"]["code"], "FORBIDDEN",
+        "{logout}"
+    );
+    let again = hub
+        .post(Some(&token), "{ me { username } }", json!({}))
+        .await;
+    assert_eq!(again["data"]["me"]["username"], USERNAME, "{again}");
 }

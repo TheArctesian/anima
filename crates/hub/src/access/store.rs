@@ -1,14 +1,19 @@
-//! The only SQL for `access.operators`, `access.api_tokens`, `access.login_attempts` and
-//! `access.permitted_networks` (in `store/permitted.rs`).
+//! The only SQL for `access.operators`, `access.api_tokens` (API keys in `store/keys.rs`),
+//! `access.login_attempts` (in `store/attempts.rs`) and `access.permitted_networks` (in
+//! `store/permitted.rs`).
 
+mod attempts;
+mod keys;
 mod permitted;
-
-use std::net::IpAddr;
 
 use chrono::{DateTime, Utc};
 use sqlx::{FromRow, PgConnection, PgExecutor};
 use uuid::Uuid;
 
+pub(super) use attempts::{
+    AttemptKey, Outcome, delete_attempts_of, failures, finish_attempt, start_attempt,
+};
+pub(super) use keys::{KEY_NAME_INDEX, NewKey, StoredKey, delete_key, insert_key, keys_of};
 pub(super) use permitted::{permitted_networks, replace_labelled_networks};
 
 use super::tokens::{Scope, TokenHash, TokenKind};
@@ -147,23 +152,6 @@ pub(super) async fn claim_totp_step(
     Ok(done.rows_affected() == 1)
 }
 
-/// Deletes the login attempts of these usernames and every attempt from an address where one
-/// of them was tried, so a reset operator can sign in at once, even after typos that locked
-/// the address (D-8, D-9).
-pub(super) async fn delete_attempts_of(
-    conn: &mut PgConnection,
-    usernames: &[&str],
-) -> Result<(), sqlx::Error> {
-    sqlx::query(
-        "delete from access.login_attempts where username = any($1) or client_addr in \
-         (select client_addr from access.login_attempts where username = any($1))",
-    )
-    .bind(usernames)
-    .execute(conn)
-    .await?;
-    Ok(())
-}
-
 /// What [`prune`] deletes: attempts at or before `attempts`, login and browser tokens that
 /// expired at or before `tokens`, and API keys that expired at or before `keys`.
 pub(super) struct Cutoffs {
@@ -292,76 +280,4 @@ pub(super) async fn delete_token(conn: &mut PgConnection, id: Uuid) -> Result<bo
         .execute(conn)
         .await?;
     Ok(done.rows_affected() == 1)
-}
-
-/// Records a login attempt as failed until `finish_attempt` says otherwise, so concurrent
-/// attempts count it at once (D-8). Returns its id.
-pub(super) async fn start_attempt(
-    db: impl PgExecutor<'_>,
-    at: DateTime<Utc>,
-    username: &str,
-    client: IpAddr,
-) -> Result<Uuid, sqlx::Error> {
-    let id = Uuid::now_v7();
-    sqlx::query(
-        "insert into access.login_attempts (id, at, username, client_addr, ok) \
-         values ($1, $2, $3, $4, false)",
-    )
-    .bind(id)
-    .bind(at)
-    .bind(username)
-    .bind(client)
-    .execute(db)
-    .await?;
-    Ok(id)
-}
-
-/// How a login attempt ended.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum Outcome {
-    /// Signed in.
-    Ok,
-    /// Turned away by the throttle before any password check.
-    Refused,
-}
-
-pub(super) async fn finish_attempt(
-    db: impl PgExecutor<'_>,
-    id: Uuid,
-    outcome: Outcome,
-) -> Result<(), sqlx::Error> {
-    sqlx::query("update access.login_attempts set ok = $2, refused = $3 where id = $1")
-        .bind(id)
-        .bind(outcome == Outcome::Ok)
-        .bind(outcome == Outcome::Refused)
-        .execute(db)
-        .await?;
-    Ok(())
-}
-
-/// Times of the checked failures from the attempt's client address in `(since, attempt.at]`,
-/// other than the attempt itself, oldest first.
-pub(super) async fn failures(
-    conn: &mut PgConnection,
-    attempt: &AttemptKey,
-    since: DateTime<Utc>,
-) -> Result<Vec<DateTime<Utc>>, sqlx::Error> {
-    sqlx::query_scalar(
-        "select at from access.login_attempts \
-         where client_addr = $1 and not ok and not refused and at > $2 and at <= $3 \
-         and id <> $4 order by at",
-    )
-    .bind(attempt.client)
-    .bind(since)
-    .bind(attempt.at)
-    .bind(attempt.id)
-    .fetch_all(conn)
-    .await
-}
-
-/// The attempt whose throttle state is read.
-pub(super) struct AttemptKey {
-    pub id: Uuid,
-    pub at: DateTime<Utc>,
-    pub client: IpAddr,
 }

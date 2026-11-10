@@ -1,7 +1,7 @@
 import { GraphQLError } from 'graphql';
 import { BEARER_TOKEN, COOKIE_MAX_AGE_SECONDS, HUB_ORIGIN, OPERATOR, type Caller } from '../access';
 import type { Row } from '../fixtures';
-import { allDevices, connection, checkView, deviceOf, eventRows, sessionRows, type HubState } from '../model';
+import { allDevices, channelView, connection, checkView, deviceOf, eventRows, sessionRows, type HubState } from '../model';
 
 /** What one GraphQL call brings to its resolvers, and what they hand back for the answer's headers. */
 export interface CallContext {
@@ -89,6 +89,8 @@ export function rootValue(state: HubState): Record<string, unknown> {
     },
     retention: () => state.fixtures.retention,
     checkDefaults: () => state.fixtures.checkDefaults,
+    notificationChannels: () => state.fixtures.channels.map((row) => channelView(state, row)),
+    notificationSettings: () => state.fixtures.notificationSettings,
     apiKeys: () => state.fixtures.apiKeys,
     login: ({ input }: { input: LoginInput }) => {
       checkCredentials(input);

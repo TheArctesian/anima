@@ -186,6 +186,46 @@ fixture_test! {
         assert!(!text.contains("anima_check_domain_days_left{"));
     }
 
+    async fn int_002_domain_days_left_only_for_domain_expiry_checks_with_an_expiry_date(
+        pool: PgPool
+    ) {
+        const DOMAIN_CHECK: &str = "0190a000-0000-7000-8003-0000000000d1";
+        let now = database_now(&pool).await;
+        let expiry = now + TimeDelta::days(12) + TimeDelta::hours(1);
+        sqlx::query(
+            "INSERT INTO checks.checks \
+                 (id, device_id, type, name, config, interval_seconds, retries, domain_not_after) \
+             VALUES ($1::uuid, $2::uuid, 'domain_expiry', 'Domain', \
+                     '{\"domain\":\"example.com\"}', 86400, 0, $3)",
+        )
+        .bind(DOMAIN_CHECK)
+        .bind(PVE_01)
+        .bind(expiry)
+        .execute(&pool)
+        .await
+        .unwrap();
+        // The schema refuses a date on any other type; lift that to show the type decides.
+        sqlx::query("ALTER TABLE checks.checks DROP CONSTRAINT checks_domain_not_after_check")
+            .execute(&pool)
+            .await
+            .unwrap();
+        sqlx::query("UPDATE checks.checks SET domain_not_after = $2 WHERE id = $1::uuid")
+            .bind(PVE_01_WEB)
+            .bind(expiry)
+            .execute(&pool)
+            .await
+            .unwrap();
+        let (router, _) = rig(&pool, now);
+
+        let text = body(&router).await;
+
+        let family = "anima_check_domain_days_left";
+        let labels = [("check_id", DOMAIN_CHECK), ("check_type", "domain_expiry")];
+        assert_eq!(value(&text, family, &labels).as_deref(), Some("12"));
+        assert_eq!(of_check(&text, family, PVE_01_WEB), None, "only domain checks have days");
+        assert_eq!(text.lines().filter(|l| l.starts_with(&format!("{family}{{"))).count(), 1);
+    }
+
     async fn int_001_every_check_and_device_has_a_status_sample(pool: PgPool) {
         let (router, _) = rig(&pool, database_now(&pool).await);
 

@@ -7,7 +7,7 @@
     reason = "the async-graphql Enum derive generates async trait impls"
 )]
 
-use std::str::FromStr;
+use std::{num::NonZeroU8, str::FromStr};
 
 use async_graphql::Enum;
 
@@ -69,9 +69,11 @@ pub enum MetricsSource {
     #[default]
     None,
     Ssh,
+    /// Set only by enrolment (MET-011, R-092 D-7).
+    Agent,
 }
 
-stored_text!(MetricsSource, "metrics source", { None => "none", Ssh => "ssh" });
+stored_text!(MetricsSource, "metrics source", { None => "none", Ssh => "ssh", Agent => "agent" });
 
 /// How to reach a device over RDP. The password lives in `credentials`, never here.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -190,6 +192,9 @@ pub(super) struct RemoteForm {
     pub(super) mac_address: Option<String>,
     pub(super) metrics_source: Option<MetricsSource>,
     pub(super) transfer: Option<TransferPolicy>,
+    /// On a create `null` is no limit; on an update `null` keeps the limit and `0` clears it.
+    pub(super) session_limit: Option<i32>,
+    pub(super) record_sessions: Option<bool>,
 }
 
 /// The validated remote access part of a device to create.
@@ -200,10 +205,13 @@ pub(super) struct RemoteAccess {
     pub(super) mac_address: Option<MacAddress>,
     pub(super) metrics_source: MetricsSource,
     pub(super) transfer: TransferPolicy,
+    /// `None` is no limit on simultaneous sessions (RA-036).
+    pub(super) session_limit: Option<NonZeroU8>,
+    pub(super) record_sessions: bool,
 }
 
 /// The validated remote access part of a device update: `None` leaves the field as it is, and
-/// `Some(None)` clears the address.
+/// `Some(None)` clears the address or the session limit.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(super) struct RemoteChange {
     pub(super) rdp: Option<RdpSettings>,
@@ -215,4 +223,10 @@ pub(super) struct RemoteChange {
     pub(super) mac_address: Option<Option<MacAddress>>,
     pub(super) metrics_source: Option<MetricsSource>,
     pub(super) transfer: Option<TransferPolicy>,
+    #[expect(
+        clippy::option_option,
+        reason = "absent keeps the limit, null clears it, a value sets it"
+    )]
+    pub(super) session_limit: Option<Option<NonZeroU8>>,
+    pub(super) record_sessions: Option<bool>,
 }

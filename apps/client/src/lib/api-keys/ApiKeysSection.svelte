@@ -27,6 +27,7 @@
   /** `null` while loading or after a failed load. */
   let keys = $state<readonly ApiKey[] | null>(null);
   let loadFailed = $state(false);
+  let retrying = $state(false);
   let creating = $state(false);
   let revoking = $state<ApiKey | null>(null);
   let root: HTMLElement | undefined = $state();
@@ -36,10 +37,26 @@
   const skeleton = skeletonDelay(() => loading, clock);
 
   async function load(): Promise<void> {
-    loadFailed = false;
     const result = await api.list();
-    if (result.ok) keys = result.value;
-    else loadFailed = true;
+    if (result.ok) {
+      keys = result.value;
+      loadFailed = false;
+    } else loadFailed = true;
+  }
+
+  /** Try again: the button stays mounted, and aria-disabled, while the hub answers; on success focus goes to Create (NAV-005). */
+  async function retry(): Promise<void> {
+    if (retrying) return;
+    retrying = true;
+    try {
+      await load();
+    } finally {
+      retrying = false;
+    }
+    if (!loadFailed) {
+      await tick();
+      root?.querySelector<HTMLElement>('[data-create]')?.focus();
+    }
   }
 
   $effect(() => {
@@ -94,7 +111,7 @@
       <div class="failed">
         <span class="mark"><Icon name="nf-md-alert_circle_outline" size="sm" /></span>
         <p role="alert">Anima could not load the API keys.</p>
-        <FormButton tabindex={0} onclick={load}>Try again</FormButton>
+        <FormButton tabindex={0} aria-disabled={retrying} aria-busy={retrying} onclick={retry}>Try again</FormButton>
       </div>
     {:else if keys !== null && keys.length === 0}
       <p class="quiet">No API keys. Programs that call the hub's GraphQL API need one.</p>

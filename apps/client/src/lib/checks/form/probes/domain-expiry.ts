@@ -1,27 +1,22 @@
 import type { FieldError } from '$lib/hub/hub';
 import { isValidHost, normalizeHost } from '$lib/devices/form/host';
+import { dayCount } from '../../days';
 import type { CheckConfigInput, CheckType } from '../model/hub-types';
 import { integerError, isIntegerIn, lengthError, timeoutError, toNumber } from '../model/range';
 
 /** D-29: RDAP is slow to change, so a domain expiry check runs at most once an hour. */
-export const MIN_INTERVAL_SECONDS = 3600;
+const MIN_INTERVAL_SECONDS = 3600;
 /** D-29: the interval the form proposes for a new domain expiry check, 12 hours. */
-export const PROPOSED_INTERVAL_SECONDS = 43_200;
+const PROPOSED_INTERVAL_SECONDS = 43_200;
 
 const DOMAIN_BYTES = 253;
 const WARN_DAYS: readonly [number, number] = [1, 365];
 
-/** A domain expiry config with its fields; the generated `Check.config` union names it without them until the hub declares them (F-3). */
-export interface DomainExpiryConfigFields {
-  readonly __typename: 'DomainExpiryConfig';
+/** The stored settings of a domain expiry check, as K1 serves them. */
+interface DomainExpiryStored {
   readonly domain: string;
   readonly warnDays: number;
   readonly timeoutMs: number;
-}
-
-/** A domain expiry config as the generated union names it today: the type only. */
-interface BareDomainExpiryConfig {
-  readonly __typename: 'DomainExpiryConfig';
 }
 
 /** What the operator typed for a domain expiry check (CHK-009). */
@@ -37,13 +32,8 @@ export function blankDomainExpiry(): DomainExpiryValues {
   return { domain: '', warnDays: '30', timeoutMs: '10000', daysLeft: null };
 }
 
-/** `values` with the settings of a saved config, or as they were when the config has no fields yet. */
-export function withDomainExpiryConfig(
-  values: DomainExpiryValues,
-  config: DomainExpiryConfigFields | BareDomainExpiryConfig,
-  daysLeft: number | null,
-): DomainExpiryValues {
-  if (!('domain' in config)) return { ...values, daysLeft };
+/** The form's values for a saved domain expiry config (CHK-009) and the days the hub last read. */
+export function withDomainExpiryConfig(config: DomainExpiryStored, daysLeft: number | null): DomainExpiryValues {
   return { domain: config.domain, warnDays: String(config.warnDays), timeoutMs: String(config.timeoutMs), daysLeft };
 }
 
@@ -54,6 +44,14 @@ export function withDomainExpiryConfig(
 export function intervalFor(type: CheckType, current: string, ordinary: string, touched: boolean): string {
   if (touched) return current;
   return type === 'DOMAIN_EXPIRY' ? String(PROPOSED_INTERVAL_SECONDS) : ordinary;
+}
+
+/**
+ * R-102, D-29, CHK-009: a domain expiry check takes no retries (RDAP is queried at most once an hour), so its form
+ * has no retries or retry-interval fields; the input sends `retries: 0` and no retry interval.
+ */
+export function takesRetries(type: CheckType): boolean {
+  return type !== 'DOMAIN_EXPIRY';
 }
 
 /** D-29: refuses an interval under one hour; a malformed interval is left to the general settings check. */
@@ -84,8 +82,9 @@ export function domainExpiryInput({ domain, warnDays, timeoutMs }: DomainExpiryV
   return { domainExpiry: { domain: normalizeHost(domain), warnDays: toNumber(warnDays), timeoutMs: toNumber(timeoutMs) } };
 }
 
-/** The days-left line for the check form; the same words in every place that shows it. */
+/** The days-left line of the domain expiry check form; a check row words it its own way (rows.ts). */
 export function daysLeftText(daysLeft: number | null): string {
   if (daysLeft === null) return 'Days left: not known yet';
-  return `Days left: ${String(daysLeft)} ${Math.abs(daysLeft) === 1 ? 'day' : 'days'}`;
+  if (daysLeft < 0) return `Expired ${dayCount(-daysLeft)} ago`;
+  return `Days left: ${dayCount(daysLeft)}`;
 }

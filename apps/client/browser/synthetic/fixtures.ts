@@ -17,9 +17,12 @@ export interface Fixtures {
   readonly checks: Row[];
   readonly sessions: Row[];
   readonly metrics: Row[];
-  /** The Settings slices (WP-50): the retention periods, the check defaults and the API keys. */
+  /** The Settings slices (WP-50): the retention periods, the check defaults, the notification channels and settings, and the API keys. */
   readonly retention: Row[];
   readonly checkDefaults: Row;
+  readonly channels: Row[];
+  readonly deliveries: Row[];
+  readonly notificationSettings: Row;
   readonly apiKeys: Row[];
 }
 
@@ -39,9 +42,9 @@ function mergedById(files: readonly Row[], name: string): Row[] {
   return [...byId.values()];
 }
 
-function checkDefaultsOf(files: readonly Row[]): Row {
-  const found = files.map((file) => file.checkDefaults).find((each) => each !== undefined);
-  if (found === undefined) throw new Error('no contract fixture file holds checkDefaults');
+function single(files: readonly Row[], name: string): Row {
+  const found = files.map((file) => file[name]).find((each) => each !== undefined);
+  if (found === undefined) throw new Error(`no contract fixture file holds ${name}`);
   return found as Row;
 }
 
@@ -59,7 +62,10 @@ export function loadFixtures(): Fixtures {
     sessions: collection('sessions'),
     metrics: collection('metrics'),
     retention: later.flatMap((file) => rows(file, 'retention')),
-    checkDefaults: checkDefaultsOf(later),
+    checkDefaults: single(later, 'checkDefaults'),
+    channels: collection('channels'),
+    deliveries: collection('deliveries'),
+    notificationSettings: single(later, 'notificationSettings'),
     apiKeys: later.flatMap((file) => rows(file, 'apiKeys')),
   };
 }

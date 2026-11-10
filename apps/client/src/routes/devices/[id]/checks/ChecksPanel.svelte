@@ -35,10 +35,8 @@
     editing = true;
   }
 
-  async function save(values: CheckFormValues): Promise<HubResult<unknown>> {
-    const result = await onSave(edited, values);
-    if (result.ok) editing = false;
-    return result;
+  function save(values: CheckFormValues): Promise<HubResult<unknown>> {
+    return onSave(edited, values);
   }
 </script>
 

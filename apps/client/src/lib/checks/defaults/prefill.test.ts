@@ -49,7 +49,7 @@ it('D-26: an edited check keeps its own values and does not ask for the defaults
   show({ check: OWN });
   await settled();
   expect(settings()).toEqual(['90', '1', '15', '700']);
-  expect(hub.sent).toEqual([]);
+  expect(hub.sent.map((request) => request.operation).filter((operation) => operation === 'CheckDefaults')).toEqual([]);
 });
 
 // The failed answer also carries a payload a wrong success check would read: a mutant that ignores `ok` shows STORED.

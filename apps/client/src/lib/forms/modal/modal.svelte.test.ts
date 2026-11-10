@@ -6,6 +6,7 @@ import { overlayCovers } from '$lib/overlay/overlay.svelte';
 import { installAnimations } from '../animations.fixture';
 import ConfirmModal from './ConfirmModal.svelte';
 import HostKeyModal from './HostKeyModal.svelte';
+import FooterHost from './tests/FooterHost.svelte';
 
 vi.mock('motion', async (importOriginal) => ({
   ...(await importOriginal<typeof import('motion')>()),
@@ -314,4 +315,31 @@ it('MAT-008, WEB-005: destroying an open modal lowers the count', async () => {
   if (app) await unmount(app);
   app = undefined;
   expect(overlayCovers()).toBe(false);
+});
+
+it('MOT-007: a form replaced in an open modal leaves its successor\'s footer actions; a form taken out takes its own, and Svelte warns of nothing', () => {
+  const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+  const state = $state({ form: true, version: 1 });
+  app = mount(FooterHost, {
+    target: document.body,
+    props: {
+      get form() {
+        return state.form;
+      },
+      get version() {
+        return state.version;
+      },
+    },
+  });
+  flushSync();
+  const footer = () => document.querySelector('[role="dialog"] .footer');
+  expect(footer()?.textContent.trim()).toBe('Save 1');
+  state.version = 2;
+  flushSync();
+  expect(footer()?.textContent.trim()).toBe('Save 2');
+  state.form = false;
+  flushSync();
+  expect(footer()).toBeNull();
+  expect(warn).not.toHaveBeenCalled();
+  warn.mockRestore();
 });

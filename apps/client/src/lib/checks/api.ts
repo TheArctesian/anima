@@ -41,6 +41,7 @@ void graphql(`
     paused
     status
     certificateDaysLeft
+    domainDaysLeft
     lastHeartbeat {
       at
       status
@@ -96,6 +97,11 @@ void graphql(`
           id
           name
         }
+      }
+      ... on DomainExpiryConfig {
+        domain
+        warnDays
+        timeoutMs
       }
     }
   }
@@ -221,6 +227,32 @@ const SetCheckPaused = graphql(`
   mutation SetCheckPaused($id: ID!, $paused: Boolean!) {
     setCheckPaused(id: $id, paused: $paused) {
       ...CheckFields
+    }
+  }
+`);
+
+// Own documents (WP-50 F-3, R-085): `Check.notifications` is @pending, so a hub without it fails these two documents
+// only; the check's own documents never select it and the rest of the form still loads and saves.
+export const CheckNotifications = graphql(`
+  query CheckNotifications($id: ID!) {
+    check(id: $id) {
+      notifications {
+        channels {
+          id
+        }
+        resendEveryBeats
+      }
+    }
+  }
+`);
+
+export const SetCheckNotifications = graphql(`
+  mutation SetCheckNotifications($checkId: ID!, $input: CheckNotificationsInput!) {
+    setCheckNotifications(checkId: $checkId, input: $input) {
+      channels {
+        id
+      }
+      resendEveryBeats
     }
   }
 `);

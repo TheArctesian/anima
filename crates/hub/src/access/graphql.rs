@@ -1,5 +1,6 @@
-//! K1 access fields: `me`, `login`, `signInBrowser` and `logout` (SEC-002, API-003, LOG-005,
-//! D-3, D-4).
+//! K1 access fields: `me`, `login`, `signInBrowser`, `logout` and the API key fields
+//! `apiKeys`, `createApiKey` and `revokeApiKey` (SEC-002, API-003, INT-003, LOG-005, D-3, D-4,
+//! D-23).
 
 use std::{any::Any, sync::Arc};
 
@@ -10,6 +11,7 @@ use sqlx::PgPool;
 
 use super::{
     Authenticated, ClientAddr, Error, Identity, SameOrigin, TokenKind, browser,
+    keys::{self, ApiKey, ApiKeyCreated, ApiKeyInput},
     login::{self, Attempt, Issue, SignedIn},
     password::Password,
     store::{self, Account},
@@ -89,6 +91,12 @@ impl Query {
             .ok_or_else(|| Error::Unauthenticated.into_graphql())?;
         Ok((&account).into())
     }
+
+    /// The operator's API keys; never their secrets (D-23). Refused for an API key.
+    #[graphql(guard = "Authenticated")]
+    async fn api_keys(&self, ctx: &Context<'_>) -> async_graphql::Result<Vec<ApiKey>> {
+        keys::api_keys(ctx).await
+    }
 }
 
 /// Merged into the root `Mutation`.
@@ -104,7 +112,9 @@ impl Mutation {
     }
 
     /// Signs a browser in; needs no token (D-4). Refused before any attempt is recorded unless
-    /// the request comes from the public origin (A-4). Sets the `__Host-anima` cookie.
+    /// the request comes from the public origin (A-4). Sets the `__Host-anima` cookie; once
+    /// signed in, deletes the browser token the request's cookie held, which the new cookie
+    /// overwrites (SEC-002).
     async fn sign_in_browser(
         &self,
         ctx: &Context<'_>,
@@ -113,7 +123,8 @@ impl Mutation {
         if ctx.data_opt::<SameOrigin>().is_none() {
             return Err(Error::OtherOrigin.into_graphql());
         }
-        let signed_in = sign_in(ctx, input, Issue::BROWSER).await?;
+        let issue = Issue::browser(ctx.data_opt::<Identity>());
+        let signed_in = sign_in(ctx, input, issue).await?;
         ctx.append_http_header(SET_COOKIE, browser::signed_in(&signed_in.token));
         Ok(BrowserSignIn {
             operator: (&signed_in.account).into(),
@@ -134,6 +145,22 @@ impl Mutation {
             ctx.append_http_header(SET_COOKIE, browser::signed_out());
         }
         Ok(true)
+    }
+
+    /// Makes an API key and shows its secret once (INT-003, D-23). Login or browser token only.
+    #[graphql(guard = "Authenticated")]
+    async fn create_api_key(
+        &self,
+        ctx: &Context<'_>,
+        input: ApiKeyInput,
+    ) -> async_graphql::Result<ApiKeyCreated> {
+        keys::create_api_key(ctx, input).await
+    }
+
+    /// Deletes an API key; the next request with it is signed out (D-23).
+    #[graphql(guard = "Authenticated")]
+    async fn revoke_api_key(&self, ctx: &Context<'_>, id: ID) -> async_graphql::Result<ID> {
+        keys::revoke_api_key(ctx, id).await
     }
 }
 

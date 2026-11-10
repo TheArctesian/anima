@@ -46,14 +46,20 @@
   /**
    * A form's actions, shown below the body by the form inside (see `footer.ts`). Each showing is its own
    * entry, so a form that is replaced takes out its own actions and never those of the form after it.
+   * Raw, so `shown` is the entry itself; a deep proxy never equals its value.
    */
-  let shown = $state<{ readonly actions: Snippet }>();
+  let shown = $state.raw<{ readonly actions: Snippet }>();
+  /** The same entry, kept plain: a teardown reads `$state` as it was before, so it would find its own entry still shown. */
+  let latest: { readonly actions: Snippet } | undefined;
   offerFooter({
     show: (actions) => {
       const entry = { actions };
+      latest = entry;
       shown = entry;
       return () => {
-        if (shown === entry) shown = undefined;
+        if (latest !== entry) return;
+        latest = undefined;
+        shown = undefined;
       };
     },
   });

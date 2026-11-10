@@ -63,9 +63,15 @@ describe('D-29: the proposed interval', () => {
 });
 
 describe('CHK-009: days left', () => {
+  it('D-29: an expired registration reads "Expired N days ago"', () => {
+    expect(daysLeftText(-5)).toBe('Expired 5 days ago');
+    expect(daysLeftText(-1)).toBe('Expired 1 day ago');
+  });
+
   it('reads in days, one day, and not known', () => {
     expect(daysLeftText(9)).toBe('Days left: 9 days');
     expect(daysLeftText(1)).toBe('Days left: 1 day');
+    expect(daysLeftText(0)).toBe('Days left: 0 days');
     expect(daysLeftText(null)).toBe('Days left: not known yet');
   });
 });

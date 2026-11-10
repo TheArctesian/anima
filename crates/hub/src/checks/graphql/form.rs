@@ -13,8 +13,8 @@ use std::collections::HashSet;
 use async_graphql::ID;
 
 use super::input::{
-    ConfigShape, CreateShape, DnsShape, DockerShape, IcmpShape, SystemdShape, TailscalePingShape,
-    TcpShape, TlsShape, UpdateShape,
+    ConfigShape, CreateShape, DnsShape, DockerShape, DomainExpiryShape, IcmpShape, SystemdShape,
+    TailscalePingShape, TcpShape, TlsShape, UpdateShape,
 };
 use super::settings::RawSettings;
 use crate::{
@@ -109,6 +109,15 @@ fn tailscale_ping(shape: TailscalePingShape) -> Result<ConfigForm, FieldError> {
     }))
 }
 
+/// The domain in lower case, as the probe asks for it; the domain rules check the rest.
+fn domain_expiry(shape: &DomainExpiryShape) -> Result<ConfigForm, FieldError> {
+    Ok(ConfigForm::plain(CheckConfig::DomainExpiry {
+        domain: shape.domain.to_ascii_lowercase(),
+        warn_days: or_default("warnDays", shape.warn_days, 30)?,
+        timeout_ms: or_default("timeoutMs", shape.timeout_ms, 10_000)?,
+    }))
+}
+
 fn dns(shape: DnsShape) -> ConfigForm {
     ConfigForm::plain(CheckConfig::Dns {
         name: shape.name,
@@ -177,6 +186,7 @@ fn config(shape: ConfigShape) -> Result<Draft, FieldError> {
         ConfigShape::Docker(shape) => docker(shape),
         ConfigShape::Systemd(shape) => systemd(shape),
         ConfigShape::TailscalePing(shape) => tailscale_ping(shape),
+        ConfigShape::DomainExpiry(shape) => domain_expiry(&shape),
         ConfigShape::Push(false) => Err(FieldError::new("config", "Send push: true.")),
         ConfigShape::Group(shape) => Ok(ConfigForm {
             definition: Definition::Config(CheckConfig::Group),
@@ -212,7 +222,7 @@ pub(super) fn create(
     let config = keep(config(input.config.0), &mut errors);
     let raw = RawSettings {
         interval_seconds: input.interval_seconds,
-        retries: input.retries,
+        retries: input.retries.0,
         retry_interval_seconds: input.retry_interval_seconds,
         degraded_threshold_ms: input.degraded_threshold_ms,
     };
@@ -224,7 +234,9 @@ pub(super) fn create(
     let base = CheckSettings::default();
     let settings = CheckSettings {
         interval_seconds: given.interval_seconds.unwrap_or(base.interval_seconds),
-        retries: given.retries.unwrap_or(base.retries),
+        retries: given
+            .retries
+            .unwrap_or_else(|| default_retries(&config.definition)),
         retry_interval_seconds: given
             .retry_interval_seconds
             .unwrap_or(base.retry_interval_seconds),
@@ -244,6 +256,15 @@ pub(super) fn create(
         children: config.children,
         sealed: config.sealed,
     })
+}
+
+/// The retries of a check whose create input sent none: a domain expiry check does not
+/// retry (R-102, CHK-009); every other type takes the default.
+fn default_retries(definition: &Definition) -> u8 {
+    match definition {
+        Definition::Config(CheckConfig::DomainExpiry { .. }) => 0,
+        _ => CheckSettings::default().retries,
+    }
 }
 
 /// A change to apply, with what the mutation does besides the update.

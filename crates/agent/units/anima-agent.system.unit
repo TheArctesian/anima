@@ -1,0 +1,55 @@
+# Anima agent as a systemd system unit (MET-019). The installer makes the `anima-agent` user
+# and group, and replaces ExecStart's path with the place it copied the binary to. The agent
+# reads /proc and /sys, runs `df` and the GPU tools, writes only its state directory, and
+# listens on no port (MET-002, MET-020). PrivateDevices stays off: nvidia-smi needs /dev/nvidia*.
+[Unit]
+Description=Anima agent: pushes this computer's metrics to the hub
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=anima-agent
+Group=anima-agent
+Environment=ANIMA_AGENT_HOME=/var/lib/anima-agent
+Environment=PATH=/usr/sbin:/usr/bin
+ExecStart=/usr/local/bin/anima-agent run
+Restart=on-failure
+RestartSec=10
+StateDirectory=anima-agent
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+LockPersonality=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+RestrictNamespaces=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+MemoryDenyWriteExecute=yes
+ProtectProc=invisible
+PrivateIPC=yes
+RemoveIPC=yes
+LimitCORE=0
+SocketBindDeny=any
+# The agent reaches only this computer and the VPN ranges. The hub's name must therefore resolve
+# through a local stub (systemd-resolved at 127.0.0.53) or through a DNS server inside the VPN;
+# a resolver anywhere else is blocked here, and so is a hub that is not on the VPN.
+IPAddressDeny=any
+IPAddressAllow=localhost 100.64.0.0/10 fd7a:115c:a1e0::/48
+
+[Install]
+WantedBy=multi-user.target

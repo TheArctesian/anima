@@ -16,6 +16,10 @@
   import { firstInvalidField, formErrors, inputId, replaceField, sectionOf } from './errors';
   import GeneralSection from './GeneralSection.svelte';
   import { emptyRemoteSecrets } from '../remote/values';
+  import { contextPolicyCalls } from '../policy/calls';
+  import { PolicyDraft } from '../policy/draft.svelte';
+  import PolicyNotice from '../policy/PolicyNotice.svelte';
+  import PolicySection from '../policy/PolicySection.svelte';
   import RdpSection from '../remote/RdpSection.svelte';
   import TransferSection from '../remote/TransferSection.svelte';
   import VncSection from '../remote/VncSection.svelte';
@@ -103,6 +107,9 @@
   let rdp = $state(untrack(() => section === 'rdp'));
   let vnc = $state(untrack(() => section === 'vnc'));
   let files = $state(false);
+  let sessions = $state(false);
+  /** RA-036, RA-040: a saved device reads its own policy and saves it apart from the device (F-3). */
+  const policy = new PolicyDraft(untrack(() => deviceId), untrack(() => (device === null ? null : contextPolicyCalls())));
   let root = $state<HTMLElement>();
 
   const creating = $derived(device === null);
@@ -152,6 +159,13 @@
     root?.querySelector<HTMLElement>(`#${inputId(field)}`)?.focus();
   }
 
+  /** Opens Sessions and focuses the limit field, where the policy sentence is. */
+  async function showLimit(): Promise<void> {
+    sessions = true;
+    await tick();
+    root?.querySelector<HTMLElement>('#device-policy-sessionLimit')?.focus();
+  }
+
   function openSection(name: 'ssh' | 'rdp' | 'vnc' | undefined): void {
     if (name === 'ssh') ssh = true;
     else if (name === 'rdp') rdp = true;
@@ -187,15 +201,27 @@
       await show(found);
       return;
     }
+    if (!policy.check()) {
+      await showLimit();
+      return;
+    }
     saving = true;
-    const result = await onSave($state.snapshot(values), placement());
+    // The policy goes first: the page starts the form again from the saved device once the device save succeeds.
+    if (!(await policy.save())) {
+      saving = false;
+      await showLimit();
+      return;
+    }
+    const result = await onSave({ ...$state.snapshot(values), ...(creating ? { policy: $state.snapshot(policy.values) } : {}) }, placement());
     saving = false;
     if (result.ok) {
+      policy.deviceSaved();
       values.credential = { password: '', privateKey: '', passphrase: '' };
       values.remoteSecrets = emptyRemoteSecrets();
       errors = [];
       saves += 1;
     } else {
+      policy.deviceNotSaved();
       await show(fieldErrorsFrom(result.error));
     }
   }
@@ -274,11 +300,13 @@
         {/if}
       </Disclosure>
     </div>
+    <PolicySection {policy} bind:open={sessions} />
     <div data-section="files">
       <Disclosure label="Files and clipboard" icon="nf-md-folder" level={3} bind:open={files}>
         <TransferSection bind:values />
       </Disclosure>
     </div>
+    <PolicyNotice {policy} />
     {#if footer === undefined}
       {@render actions()}
     {/if}

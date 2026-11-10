@@ -20,6 +20,10 @@ const KEY_PREFIX: &str = "anima_";
 /// Length of an API key's secret: the prefix and a token's text.
 const KEY_CHARS: usize = KEY_PREFIX.len() + TOKEN_CHARS;
 
+/// Characters of an API key's secret the operator sees again: `anima_` and six more, enough to
+/// tell keys apart, far too few to use one (D-23).
+const KEY_DISPLAY_CHARS: usize = 12;
+
 /// A login token is valid this long (D-7).
 pub(super) const LOGIN_LIFETIME: TimeDelta = TimeDelta::days(30);
 
@@ -142,6 +146,20 @@ impl Token {
     pub(super) fn hash(&self) -> TokenHash {
         hash_of(self.expose()).expect("a token encodes 32 bytes")
     }
+
+    /// The token spelled as an API key: `anima_` and its text, so secret scanners can find a
+    /// leaked one (D-23). Shown once, in `createApiKey`'s answer. Wiped on drop.
+    pub(super) fn key_secret(&self) -> Zeroizing<String> {
+        let mut secret = Zeroizing::new(String::with_capacity(KEY_CHARS));
+        secret.push_str(KEY_PREFIX);
+        secret.push_str(self.expose());
+        secret
+    }
+
+    /// The first 12 characters of the key's secret, which `apiKeys` shows (K1 `ApiKey.prefix`).
+    pub(super) fn key_display_prefix(&self) -> String {
+        self.key_secret()[..KEY_DISPLAY_CHARS].to_owned()
+    }
 }
 
 /// The SHA-256 of a token's bytes: what `api_tokens.token_hash` holds and lookups use.
@@ -164,12 +182,47 @@ pub(super) fn hash_of(presented: &str) -> Option<TokenHash> {
 
 /// The hash and the spelling of a presented token, or `None` if the text can be neither a
 /// token nor an API key. A key is exactly `anima_` and 43 characters, so a plain token that
-/// happens to start with `anima_` is still read as plain; both hash the 32 decoded bytes.
+/// happens to start with `anima_` is still read as plain; both hash the 32 decoded bytes. An
+/// agent token or an enrolment code is neither (R-092 D-1).
 pub(super) fn read_presented(presented: &str) -> Option<(TokenHash, Spelling)> {
+    if is_agent_secret(presented) {
+        return None;
+    }
     match presented.strip_prefix(KEY_PREFIX) {
         Some(body) if presented.len() == KEY_CHARS => Some((hash_of(body)?, Spelling::Key)),
         _ => Some((hash_of(presented)?, Spelling::Plain)),
     }
+}
+
+/// An agent token: this prefix and 43 base64url characters (32 bytes, K8, MET-013).
+const AGENT_TOKEN_PREFIX: &str = "anima_agent_";
+const AGENT_TOKEN_CHARS: usize = 43;
+
+/// An enrolment code: this prefix and 22 base64url characters (16 bytes, K8, MET-012).
+const ENROLMENT_CODE_PREFIX: &str = "anima_enrol_";
+const ENROLMENT_CODE_CHARS: usize = 22;
+
+/// Whether `presented` is spelled exactly as one of the metrics agent's secrets: an agent token
+/// or an enrolment code, its prefix and then exactly its K8 number of base64url characters.
+/// These live in `metrics`, never in `access.api_tokens`, so the guard refuses them by spelling
+/// on every transport before any lookup (R-092 D-1). An API key is `anima_` and 43 characters,
+/// so one whose text begins `agent_` or `enrol_` is still a key.
+///
+/// The length rule of [`read_presented`] also refuses both shapes today (55 and 34 characters
+/// are neither a token nor a key); this rule keeps holding if token lengths change.
+pub(super) fn is_agent_secret(presented: &str) -> bool {
+    spelled(presented, AGENT_TOKEN_PREFIX, AGENT_TOKEN_CHARS)
+        || spelled(presented, ENROLMENT_CODE_PREFIX, ENROLMENT_CODE_CHARS)
+}
+
+/// Whether `presented` is `prefix` and exactly `chars` base64url characters.
+fn spelled(presented: &str, prefix: &str, chars: usize) -> bool {
+    presented.strip_prefix(prefix).is_some_and(|body| {
+        body.len() == chars
+            && body
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_')
+    })
 }
 
 /// A token is usable until, not at, its expiry.

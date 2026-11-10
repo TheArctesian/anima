@@ -2,6 +2,7 @@
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { failure, fakeHub, ok } from '$lib/access/access.fixture';
+import { TOKEN_KEPT_AFTER_LOGOUT } from '$lib/access/sign-out';
 import { SETTINGS } from '$lib/nav/nav';
 import { BROWSER, DESKTOP_MAC } from '$lib/platform/answers.fixture';
 import type { Capabilities } from '$lib/platform/platform';
@@ -23,6 +24,8 @@ vi.mock('$lib/updates/UpdatesRow.svelte', async () => ({ default: (await vi.impo
 vi.mock('$lib/process-log/LogFolderRow.svelte', async () => ({ default: (await vi.importActual<{ default: unknown }>('$lib/updates/tests/LogRowStub.svelte')).default }));
 // The API keys section loads its own data and has its own tests in `$lib/api-keys/` (WP-50 F-3, F-10).
 vi.mock('$lib/api-keys/ApiKeysSection.svelte', () => ({ default: () => undefined }));
+// The Notifications section loads its own data and has its own tests in `$lib/notifications/` (WP-50 F-3, F-10).
+vi.mock('$lib/notifications/NotificationsSection.svelte', () => ({ default: () => undefined }));
 // The default check settings section loads its own data and has its own tests in `$lib/checks/defaults/` (WP-50 F-3, F-10).
 vi.mock('$lib/checks/defaults/DefaultsSection.svelte', () => ({ default: () => undefined }));
 // The Data retention section loads its own data and has its own tests in `$lib/retention/` (WP-50 F-3, F-10).
@@ -97,10 +100,10 @@ function sectionTexts(target: HTMLElement, heading: string): string[] {
   return [...section.querySelectorAll('h2, p, label, button, option')].map(readable);
 }
 
-it('SET-001, UI-005, MOT-043: the page is the title, then Account, then Appearance with Theme, Reduce motion and the two fonts, then Default check settings, then Data retention, then API keys', async () => {
+it('SET-001, UI-005, MOT-043: the page is the title, then Account, then Appearance with Theme, Reduce motion and the two fonts, then Notifications, then Default check settings, then Data retention, then API keys', async () => {
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
   expect(target.querySelector('h1')?.compareDocumentPosition(sections(target)[0] as Node)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-  expect(sectionHeadings(target)).toEqual(['Account', 'Appearance', 'Default check settings', 'Data retention', 'API keys']);
+  expect(sectionHeadings(target)).toEqual(['Account', 'Appearance', 'Notifications', 'Default check settings', 'Data retention', 'API keys']);
   expect(sectionTexts(target, 'Account')).toEqual(['Account', 'Who is signed in to this hub.', 'Signed in as ann', 'Sign out', '']);
   const fonts = ['Fira Code', 'OpenDyslexic'];
   expect(sectionTexts(target, 'Appearance')).toEqual([
@@ -113,7 +116,7 @@ it('SET-001, UI-005, MOT-043: the page is the title, then Account, then Appearan
 it('SET-001, UPD-006: the desktop app adds the Updates section before API keys, holding the update and log folder rows', async () => {
   mocks.platform = DESKTOP_MAC;
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
-  expect(sectionHeadings(target)).toEqual(['Account', 'Appearance', 'Default check settings', 'Data retention', 'Updates', 'API keys']);
+  expect(sectionHeadings(target)).toEqual(['Account', 'Hub', 'Appearance', 'Notifications', 'Default check settings', 'Data retention', 'Updates', 'API keys']);
   const updates = target.querySelector('section[aria-labelledby="settings-updates"]');
   expect(updates?.querySelectorAll('[data-stub]')).toHaveLength(2);
   expect(target.querySelectorAll('[data-stub]')).toHaveLength(2);
@@ -199,4 +202,98 @@ it('MOT-007: the name, the Sign out button and the alert line are laid out befor
 it('NAV-005: the Sign out button is focusable by Tab in WebKit (tabindex 0)', async () => {
   const target = await open({ Me: ok({ me: { username: 'ann' } }) });
   expect(signOutButton(target).getAttribute('tabindex')).toBe('0');
+});
+
+function hubButton(target: HTMLElement, label: string): HTMLButtonElement {
+  const button = [...target.querySelectorAll('section[aria-labelledby="settings-hub"] button')].find((each) => each.textContent === label);
+  if (button === undefined) throw new Error(`no ${label} button`);
+  return button as HTMLButtonElement;
+}
+
+const hubStatus = (target: HTMLElement) => target.querySelector('section[aria-labelledby="settings-hub"] [role="status"]');
+
+it('CLI-002, D-5: the browser shows no Hub section', async () => {
+  const target = await open({ Me: ok({ me: { username: 'ann' } }) });
+  expect(target.querySelector('section[aria-labelledby="settings-hub"]')).toBeNull();
+});
+
+it('CLI-002, F-10: desktop shows Hub after Account and before Appearance, with the stored address and an empty status line', async () => {
+  mocks.platform = DESKTOP_MAC;
+  const target = await open({ Me: ok({ me: { username: 'ann' } }) });
+  const headings = sectionHeadings(target);
+  expect(headings.slice(0, 3)).toEqual(['Account', 'Hub', 'Appearance']);
+  expect(sectionTexts(target, 'Hub')).toEqual(['Hub', 'The hub this app talks to.', `Hub address${hub.hub.address.origin}`, 'Test connection', 'Change hub', '']);
+  expect(hubStatus(target)?.textContent).toBe('');
+});
+
+it('CLI-002: Test connection shows that the hub answered, also when it refuses an unsigned caller', async () => {
+  mocks.platform = DESKTOP_MAC;
+  const target = await open({ Me: failure('UNAUTHENTICATED') });
+  hubButton(target, 'Test connection').click();
+  await settled();
+  expect(hubStatus(target)?.textContent).toBe('The hub answered.');
+});
+
+it('CLI-002, NET-004: Test connection failure shows a fixed sentence, never the hub text', async () => {
+  mocks.platform = DESKTOP_MAC;
+  const target = await open({ Me: failure('unreachable', 'secret hub text') });
+  hubButton(target, 'Test connection').click();
+  await settled();
+  expect(hubStatus(target)?.textContent).toBe('The hub did not answer.');
+  expect(target.textContent).not.toContain('secret hub text');
+});
+
+it('CLI-002, NET-004: a malformed answer shows a fixed sentence, never the hub text', async () => {
+  mocks.platform = DESKTOP_MAC;
+  const target = await open({ Me: failure('malformed', 'secret hub text') });
+  hubButton(target, 'Test connection').click();
+  await settled();
+  expect(hubStatus(target)?.textContent).toBe('The hub sent an odd answer.');
+  expect(target.textContent).not.toContain('secret hub text');
+});
+
+it('MOT-007: a busy Hub button is aria-disabled, keeps focus and sends no second request', async () => {
+  mocks.platform = DESKTOP_MAC;
+  let release: (result: ReturnType<typeof ok>) => void = () => undefined;
+  const pending = new Promise<ReturnType<typeof ok>>((resolve) => {
+    release = resolve;
+  });
+  const target = await open({ Me: pending });
+  const button = hubButton(target, 'Test connection');
+  button.focus();
+  button.click();
+  flushSync();
+  expect(button.getAttribute('aria-disabled')).toBe('true');
+  expect(button.getAttribute('aria-busy')).toBe('true');
+  expect(button.disabled).toBe(false);
+  expect(document.activeElement).toBe(button);
+  expect(hubStatus(target)?.textContent).toBe('Testing the hub…');
+  button.click();
+  hubButton(target, 'Change hub').click();
+  await settled();
+  expect(hub.sent.filter((request) => request.operation === 'Me')).toHaveLength(2);
+  expect(hub.sent.some((request) => request.operation === 'Logout')).toBe(false);
+  release(ok({ me: { username: 'ann' } }));
+  await settled();
+  expect(button.getAttribute('aria-disabled')).toBe('false');
+});
+
+it('CLI-002, D-5: Change hub signs out, clears the token and goes to sign-in', async () => {
+  mocks.platform = DESKTOP_MAC;
+  const target = await open({ Me: ok({ me: { username: 'ann' } }), Logout: ok({ logout: true }) });
+  hubButton(target, 'Change hub').click();
+  await settled();
+  expect(hub.sent.map((request) => request.operation)).toEqual(['Me', 'Logout']);
+  expect(mocks.clearAccessToken).toHaveBeenCalledWith(hub.hub.address);
+  expect(mocks.goToSignIn).toHaveBeenCalledOnce();
+});
+
+it('CLI-002: Change hub stays put and shows the sign-out sentence when the token cannot be removed', async () => {
+  mocks.platform = DESKTOP_MAC;
+  mocks.clearAccessToken.mockRejectedValue(new Error('keychain secret'));
+  const target = await open({ Me: ok({ me: { username: 'ann' } }), Logout: ok({ logout: true }) });
+  hubButton(target, 'Change hub').click();
+  await settled();
+  expect(mocks.goToSignIn).not.toHaveBeenCalled();
+  expect(hubStatus(target)?.textContent).toBe(TOKEN_KEPT_AFTER_LOGOUT);
 });

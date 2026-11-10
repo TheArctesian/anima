@@ -5,8 +5,18 @@
 //! and the certificate check use the host name. Implicit TLS or STARTTLS is required; there is
 //! no plaintext or opportunistic mode, so a server that does not offer STARTTLS gets no login
 //! and no message.
+//!
+//! The reply to the message (after DATA) decides the outcome, within the time limit. QUIT is
+//! sent afterwards in whatever time is left and its answer is ignored, so a server that queued
+//! the message but never answers QUIT still counts as sent and is not sent to again (S-A).
+//!
+//! The client greets with the address literal `[127.0.0.1]` (RFC 5321 4.1.4), never the
+//! machine's host name, which would name the hub's container or host to every mail server.
 
-use std::{io, net::SocketAddr};
+use std::{
+    io,
+    net::{Ipv4Addr, SocketAddr},
+};
 
 use lettre::{
     Message,
@@ -18,17 +28,23 @@ use lettre::{
     },
 };
 
+use serde::{Deserialize, Serialize};
+use tokio::time::{Instant, timeout_at};
+
 use super::{Egress, SendError, TIME_LIMIT, causes, tls_broke};
 use crate::targets::resolve_checked;
 
-/// How the connection to a mail server is encrypted. There is no plaintext choice.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// How the connection to a mail server is encrypted. There is no plaintext choice. An e-mail
+/// channel stores it as `tls` or `starttls` (K1 `SmtpSecurity`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) enum SmtpSecurity {
     /// TLS from the first byte (port 465).
+    #[serde(rename = "tls")]
     Implicit,
     /// Plain connection upgraded with STARTTLS before anything else (port 587); a server that
     /// does not offer it is refused. Implicit TLS is the recommended mode: lettre reads a reply
     /// an attacker injects in plaintext right after the STARTTLS answer as if it came over TLS.
+    #[serde(rename = "starttls")]
     StartTls,
 }
 
@@ -44,9 +60,14 @@ pub(crate) struct SmtpServer {
 /// The login mechanisms offered, only ever over TLS.
 const MECHANISMS: [Mechanism; 2] = [Mechanism::Plain, Mechanism::Login];
 
+/// The name the client greets with: a fixed address literal, so no mail server learns the
+/// hub's host name.
+pub(super) const HELLO: ClientId = ClientId::Ipv4(Ipv4Addr::LOCALHOST);
+
 impl Egress {
     /// Sends `message` to its envelope's recipients through `server`, logging in with `login`
-    /// when given, within [`TIME_LIMIT`].
+    /// when given. The outcome is decided within [`TIME_LIMIT`] from the lookup; QUIT then
+    /// gets only what is left of it, and its answer changes nothing (S-A).
     ///
     /// # Errors
     /// [`SendError::Target`] when the host does not resolve or names a refused address, with
@@ -60,23 +81,29 @@ impl Egress {
         login: Option<&Credentials>,
         message: &Message,
     ) -> Result<(), SendError> {
-        tokio::time::timeout(TIME_LIMIT, self.deliver(server, login, message))
+        let deadline = Instant::now() + TIME_LIMIT;
+        let (mut connection, outcome) = timeout_at(deadline, self.deliver(server, login, message))
             .await
-            .map_err(|_| SendError::TimedOut)?
+            .map_err(|_| SendError::TimedOut)??;
+        // The outcome is decided; a QUIT that is not answered in time is dropped with the
+        // connection.
+        let _ = timeout_at(deadline, connection.abort()).await;
+        outcome
     }
 
+    /// Connects, logs in and sends; returns the open connection and the server's verdict on
+    /// the message, which the reply after DATA decides.
     async fn deliver(
         &self,
         server: &SmtpServer,
         login: Option<&Credentials>,
         message: &Message,
-    ) -> Result<(), SendError> {
+    ) -> Result<(AsyncSmtpConnection, Result<(), SendError>), SendError> {
         let addresses = resolve_checked(&server.host, server.port, &self.policy).await?;
         let tls = self.tls_parameters(&server.host)?;
         let mut connection = open(&addresses, server.security, tls).await?;
         let outcome = submit(&mut connection, login, message).await;
-        connection.abort().await;
-        outcome
+        Ok((connection, outcome))
     }
 
     /// TLS parameters that verify the server's certificate for `host` against the built-in
@@ -103,10 +130,9 @@ pub(super) async fn open(
     security: SmtpSecurity,
     tls: TlsParameters,
 ) -> Result<AsyncSmtpConnection, SendError> {
-    let hello = ClientId::default();
     let wrapper = (security == SmtpSecurity::Implicit).then(|| tls.clone());
     let mut connection =
-        AsyncSmtpConnection::connect_tokio1(addresses, Some(TIME_LIMIT), &hello, wrapper, None)
+        AsyncSmtpConnection::connect_tokio1(addresses, Some(TIME_LIMIT), &HELLO, wrapper, None)
             .await
             .map_err(|error| classify(&error))?;
     if security == SmtpSecurity::StartTls {
@@ -115,7 +141,7 @@ pub(super) async fn open(
             return Err(SendError::NoStartTls);
         }
         connection
-            .starttls(tls, &hello)
+            .starttls(tls, &HELLO)
             .await
             .map_err(|error| classify(&error))?;
     }

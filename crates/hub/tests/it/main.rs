@@ -1,4 +1,7 @@
 mod acceptance;
+mod agent;
+mod api_keys;
+mod bearer;
 mod browser;
 mod checks;
 mod contract;
@@ -14,6 +17,7 @@ mod logs;
 mod maintenance;
 mod metrics;
 mod networks;
+mod notifications;
 mod operator;
 mod retention;
 mod sessions;

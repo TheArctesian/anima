@@ -16,6 +16,7 @@ macro_rules! tick_test {
 
 mod beaten;
 mod decisions;
+mod domain;
 mod policy;
 mod push;
 mod races;

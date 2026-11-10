@@ -116,7 +116,8 @@ async fn write_state(conn: &mut PgConnection, check: CheckId, beat: &Beat) -> Re
         "UPDATE checks.checks SET status = $2, failures = $3, next_due_at = $4, \
                 last_beat_at = $5, \
                 resolved_ip = COALESCE($6, resolved_ip), \
-                cert_not_after = COALESCE($7, cert_not_after) \
+                cert_not_after = COALESCE($7, cert_not_after), \
+                domain_not_after = COALESCE($8, domain_not_after) \
          WHERE id = $1 AND NOT paused AND (last_beat_at IS NULL OR last_beat_at < $5)",
     )
     .bind(check)
@@ -126,6 +127,7 @@ async fn write_state(conn: &mut PgConnection, check: CheckId, beat: &Beat) -> Re
     .bind(beat.at)
     .bind(beat.resolved_ip)
     .bind(beat.cert_not_after)
+    .bind(beat.domain_not_after)
     .execute(conn)
     .await?;
     Ok(updated.rows_affected() > 0)

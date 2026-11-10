@@ -5,9 +5,9 @@ use sqlx::{Connection, PgConnection, PgExecutor, PgPool};
 
 use super::{
     Error, Missing,
-    model::{Device, DeviceChange, DeviceFilter, NewDevice, NewSite, OperatingSystem, Site},
+    model::{Device, DeviceChange, DeviceFilter, NewDevice, OperatingSystem},
     page::split_page,
-    records::{DeviceRow, to_devices, to_site, write_error},
+    records::{DeviceRow, to_devices, write_error},
 };
 use crate::ids::{DeviceId, SiteId};
 
@@ -25,8 +25,8 @@ macro_rules! select_device {
                     r.resize_method AS rdp_resize_method, r.audio_out AS rdp_audio_out, \
                     r.microphone AS rdp_microphone, r.shared_drive AS rdp_shared_drive, \
                     v.enabled AS vnc_enabled, v.port AS vnc_port, v.username AS vnc_username, \
-                    d.mac_address::text AS mac_address, d.metrics_source, d.transfer_upload, \
-                    d.transfer_download, d.transfer_copy, d.transfer_paste \
+                    d.mac_address::text AS mac_address, d.metrics_source, d.session_limit, d.record_sessions, \
+                    d.transfer_upload, d.transfer_download, d.transfer_copy, d.transfer_paste \
              FROM devices.devices d JOIN devices.ssh_settings s ON s.device_id = d.id \
                   JOIN devices.rdp_settings r ON r.device_id = d.id \
                   JOIN devices.vnc_settings v ON v.device_id = d.id ",
@@ -45,43 +45,16 @@ macro_rules! device_filter {
 }
 
 mod distribution;
+mod holds;
 mod remote;
+mod sites;
 
 pub(super) use distribution::set_distribution;
-pub(super) use remote::{devices_by_ids, lock_site, set_wake_relay, share_device, wake_relay};
-
-pub(super) async fn create_site(
-    conn: &mut PgConnection,
-    id: SiteId,
-    site: &NewSite,
-) -> Result<Site, Error> {
-    sqlx::query_as("INSERT INTO devices.sites (id, name, subnet) VALUES ($1, $2, $3) RETURNING id, name, subnet, wake_relay_device_id")
-        .bind(id)
-        .bind(&site.name)
-        .bind(site.subnet.net())
-        .fetch_one(conn)
-        .await
-        .map(to_site)
-        .map_err(write_error)
-}
-
-pub(super) async fn list_sites(db: &PgPool) -> Result<Vec<Site>, Error> {
-    let rows =
-        sqlx::query_as("SELECT id, name, subnet, wake_relay_device_id FROM devices.sites ORDER BY name COLLATE \"C\"")
-            .fetch_all(db)
-            .await?;
-    Ok(rows.into_iter().map(to_site).collect())
-}
-
-pub(super) async fn sites_by_ids(db: &PgPool, ids: &[SiteId]) -> Result<Vec<Site>, Error> {
-    let rows = sqlx::query_as(
-        "SELECT id, name, subnet, wake_relay_device_id FROM devices.sites WHERE id = ANY($1) ORDER BY name COLLATE \"C\"",
-    )
-    .bind(ids)
-    .fetch_all(db)
-    .await?;
-    Ok(rows.into_iter().map(to_site).collect())
-}
+pub(super) use holds::lock_device;
+pub(super) use remote::{
+    devices_by_ids, lock_site, set_agent_source, set_wake_relay, share_device, wake_relay,
+};
+pub(super) use sites::{create_site, list_sites, sites_by_ids};
 
 /// Inserts the device, its tags and its settings; all or nothing.
 /// An AFTER INSERT trigger adds the default `rdp_settings` and `vnc_settings` rows.

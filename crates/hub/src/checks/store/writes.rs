@@ -157,6 +157,9 @@ pub(in crate::checks) async fn update(
             parent_type = CASE WHEN NOT $2 THEN parent_type \
                                WHEN $3::uuid IS NULL THEN NULL ELSE 'group' END, \
             name = COALESCE($4, name), config = COALESCE($5, config), \
+            domain_not_after = CASE WHEN $5::jsonb IS NULL \
+                                      OR $5::jsonb ->> 'domain' = config ->> 'domain' \
+                                    THEN domain_not_after END, \
             secrets_sealed = CASE WHEN $5::jsonb IS NULL THEN secrets_sealed ELSE $6 END, \
             push_token = COALESCE($7, push_token), \
             interval_seconds = COALESCE($8, interval_seconds), \

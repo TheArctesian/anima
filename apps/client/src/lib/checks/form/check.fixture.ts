@@ -8,10 +8,11 @@ export function saved(type: CheckType, config: CheckConfigFields, change: Partia
     type,
     name: 'check',
     intervalSeconds: 60,
-    retries: 3,
+    retries: type === 'DOMAIN_EXPIRY' ? 0 : 3,
     retryIntervalSeconds: 20,
     degradedThresholdMs: 1000,
     invert: false,
+    domainDaysLeft: null,
     config,
     ...change,
   };

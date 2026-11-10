@@ -12,7 +12,8 @@ use uuid::Uuid;
 
 use crate::{
     ids::{
-        ChannelId, CheckId, DeviceId, EventId, OperatorId, SessionId, ShareId, SiteId, WindowId,
+        ApiKeyId, ChannelId, CheckId, DeviceId, EventId, OperatorId, SessionId, ShareId, SiteId,
+        WindowId,
     },
     status::Status,
 };
@@ -166,6 +167,8 @@ pub enum AuditAction {
     Download,
     /// A Wake-on-LAN packet sent to a device (RA-031).
     Wake,
+    /// A test notification sent through a channel (NOT-004).
+    Send,
 }
 
 impl AuditAction {
@@ -188,6 +191,7 @@ impl AuditAction {
             Self::Upload => "upload",
             Self::Download => "download",
             Self::Wake => "wake",
+            Self::Send => "send",
         }
     }
 }
@@ -213,6 +217,8 @@ pub enum AuditTarget {
     Channel(ChannelId),
     /// A share of a session (RA-035).
     Share(ShareId),
+    /// An API key for scripts (D-23).
+    ApiKey(ApiKeyId),
 }
 
 impl AuditTarget {
@@ -232,6 +238,7 @@ impl AuditTarget {
             Self::Setting(_) => "setting",
             Self::Channel(_) => "channel",
             Self::Share(_) => "share",
+            Self::ApiKey(_) => "api_key",
         }
     }
 
@@ -250,6 +257,7 @@ impl AuditTarget {
             Self::Setting(name) => name.to_owned(),
             Self::Channel(id) => id.to_string(),
             Self::Share(id) => id.to_string(),
+            Self::ApiKey(id) => id.to_string(),
         }
     }
 }

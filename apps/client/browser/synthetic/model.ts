@@ -70,6 +70,25 @@ export function checkView(state: HubState, row: Row): Row {
   };
 }
 
+const CHANNEL_SETTINGS_TYPES: Record<string, string> = {
+  WEBHOOK: 'WebhookSettings',
+  NTFY: 'NtfySettings',
+  EMAIL: 'EmailSettings',
+  APPRISE: 'AppriseSettings',
+};
+
+/** A notification channel with its settings typed by kind and its latest delivery, if any (NOT-002). */
+export function channelView(state: HubState, row: Row): Row {
+  const latest = state.fixtures.deliveries
+    .filter((found) => found.channelId === row.id)
+    .reduce<Row | null>((last, each) => (last === null || String(each.at) > String(last.at) ? each : last), null);
+  return {
+    ...row,
+    settings: { __typename: CHANNEL_SETTINGS_TYPES[String(row.kind)], ...(row.settings as Row) },
+    lastDelivery: latest,
+  };
+}
+
 function seriesOf(state: HubState, deviceId: string, range: string): Row[] {
   const entry = state.fixtures.metrics.find((found) => found.deviceId === deviceId);
   return ((entry?.series ?? []) as Row[]).filter((found) => found.range === range);

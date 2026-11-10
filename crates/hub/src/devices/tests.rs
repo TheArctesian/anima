@@ -13,14 +13,15 @@ macro_rules! store_test {
 
 mod distribution;
 mod graphql_error;
+mod holds;
 mod host;
 mod input_limits;
 mod mac;
 mod page;
 mod remote;
 mod rules;
-mod store_read;
-mod store_write;
+mod session_controls;
+mod store;
 mod warnings;
 
 use super::model::*;

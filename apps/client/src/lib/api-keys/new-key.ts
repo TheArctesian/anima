@@ -13,9 +13,9 @@ const HUB_BOUND_MS = 365 * DAY_MS;
  */
 const BOUND_MARGIN_MS = 5 * MINUTE_MS;
 
-export const NAME_MAX = 64;
+const NAME_MAX = 64;
 
-export type ExpiryChoice = '30d' | '90d' | '1y' | 'date';
+type ExpiryChoice = '30d' | '90d' | '1y' | 'date';
 
 export const EXPIRY_CHOICES: readonly { readonly id: ExpiryChoice; readonly label: string }[] = [
   { id: '30d', label: '30 days' },
@@ -58,7 +58,7 @@ export interface NewKeyProblem {
   readonly message: string;
 }
 
-export type NewKeyCheck = { readonly ok: true; readonly input: ApiKeyInput } | { readonly ok: false; readonly problems: readonly NewKeyProblem[] };
+type NewKeyCheck = { readonly ok: true; readonly input: ApiKeyInput } | { readonly ok: false; readonly problems: readonly NewKeyProblem[] };
 
 /** Local midnight at the start of a `YYYY-MM-DD` day, or `null` when the text is not a real calendar day. */
 function startOfDay(text: string): Date | null {
@@ -119,16 +119,16 @@ export function checkNewKey(form: NewKeyForm, now: Date): NewKeyCheck {
 export function createFailure(error: HubError): string {
   switch (error.code) {
     case 'CONFLICT':
-      return 'An API key with this name exists. Choose another name.';
+      return 'This name is taken.';
     case 'VALIDATION':
-      return 'The hub refused the name or the expiry date.';
+      return 'The hub refused the name or date.';
     case 'FORBIDDEN':
       return 'This sign-in cannot make API keys.';
     case 'unreachable':
+      return 'The hub did not answer.';
     case 'malformed':
-      // These two are the client's own fixed sentences (`$lib/hub/error`).
-      return error.message;
+      return 'The hub sent an unreadable answer.';
     default:
-      return 'The hub did not make the key. Try again.';
+      return 'The hub did not make the key.';
   }
 }

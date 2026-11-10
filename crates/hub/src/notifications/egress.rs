@@ -12,15 +12,9 @@
 mod http;
 mod smtp;
 #[cfg(test)]
-mod tests;
+pub(super) mod tests;
 
-#[cfg_attr(
-    not(test),
-    expect(
-        unused_imports,
-        reason = "the dispatcher (WP-45 T6) is the first caller"
-    )
-)]
+pub(crate) use http::HttpRequest;
 pub(crate) use smtp::{SmtpSecurity, SmtpServer};
 
 use std::{error::Error, io, time::Duration};
@@ -28,8 +22,8 @@ use std::{error::Error, io, time::Duration};
 use crate::targets::{AddressPolicy, TargetError};
 
 /// The longest one notification connection may take, from the lookup to the last byte read
-/// (D-17).
-const TIME_LIMIT: Duration = Duration::from_secs(8);
+/// (D-17). `sendTestNotification` waits at most this long for its answer (K1).
+pub(crate) const TIME_LIMIT: Duration = Duration::from_secs(8);
 
 /// The rules a notification connection obeys: the address policy every resolved address must
 /// pass. A test may also trust its own root certificate ([`Egress::trusting`]).
@@ -67,7 +61,7 @@ pub(crate) enum SendError {
     /// which internal names exist (no DNS oracle).
     #[error("the target address is not permitted")]
     Target(#[from] TargetError),
-    #[error("the address is not an http or https URL with a host")]
+    #[error("the address is not an https URL with a host")]
     Url,
     /// The hub could not prepare the connection itself (its TLS settings or HTTP client); no
     /// connection was made.

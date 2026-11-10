@@ -1,15 +1,18 @@
 //! Resource metrics of a device: CPU, memory, disk, network, uptime and load, read from the
-//! output of fixed read-only commands run over SSH (spec 6.6, HUB-004, MET-001, MET-002).
+//! output of fixed read-only commands run over SSH (spec 6.6, HUB-004, MET-001, MET-002), and
+//! the device's GPUs with their usage (MET-006).
 //!
-//! The pure part: [`agent_core::readings`] turns command output into a [`Reading`], and [`samples`] turns
-//! two readings and the time between them into [`Sample`]s. The device is not trusted, so no
-//! reader panics and none fails on a bad line. [`spawn_collector`] runs the commands every 30
-//! seconds and publishes each collection on the [`Feed`].
+//! The pure part: [`agent_core::readings`] turns command output into a [`Reading`], and
+//! [`samples`] turns two readings and the time between them into [`Sample`]s. The device is
+//! not trusted, so no reader panics and none fails on a bad line. [`spawn_collector`] runs the
+//! commands every 30 seconds and publishes each collection on the [`Feed`].
 
 mod collector;
 mod commands;
 mod feed;
+mod gpu_label;
 pub mod graphql;
+mod ingest;
 mod latest;
 mod model;
 mod range;
@@ -29,6 +32,7 @@ pub use agent_core::{
 };
 pub use collector::{Collecting, spawn_collector};
 pub use feed::Feed;
+pub use ingest::agent_router;
 pub use model::{
     Gpu, GpuVendor, MetricKind, MetricPoint, MetricRange, MetricSample, MetricSeries, MetricsAdded,
     Readings,

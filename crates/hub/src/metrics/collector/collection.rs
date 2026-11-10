@@ -1,16 +1,18 @@
-//! One device's collection: a link opened for it, its fixed commands run, the reading stored
-//! and published, the Linux distribution recorded, the link dropped (MET-001, MET-002,
-//! DEV-016, P2-003, D-11). I/O edge; it logs only a distribution it cannot store, and no
-//! failure or log line holds a host, an address, command output or a secret (LOG-007).
+//! One device's collection: a link opened for it, its fixed commands run, then its GPU reads,
+//! a new discovery and the samples stored and published, the Linux distribution recorded, the
+//! link dropped (MET-001, MET-002, MET-006, DEV-016, P2-003, D-11). I/O edge; it logs only a
+//! distribution it cannot store, and no failure or log line holds a host, an address, command
+//! output or a secret (LOG-007).
 
 use std::sync::Arc;
 
 use async_graphql::ID;
 use chrono::{DateTime, Utc};
-use tokio::time::timeout;
+use tokio::time::{Instant, timeout};
 
 use super::{
     Context, DEADLINE,
+    gpus::{self, Discovered, GpuRound, Plan},
     outputs::{self, Parts, Previous},
 };
 use sqlx::PgPool;
@@ -19,9 +21,10 @@ use crate::{
     devices::{self, Device, Distribution},
     ids::DeviceId,
     metrics::{
-        self, MetricSample, MetricsAdded, Reading, Readings, Sample,
+        self, Gpu, MetricSample, MetricsAdded, Reading, Readings, Sample,
         commands::{Command, Source, commands},
         record_collection,
+        store::{self, Discovery},
     },
     ssh::{self, LinkError},
 };
@@ -50,24 +53,28 @@ impl From<metrics::Error> for Failure {
     }
 }
 
+/// What the collector keeps of a device's last collection that worked: its reading, for the
+/// next rates, and the GPUs known from its last discovery.
+#[derive(Clone, Debug)]
+pub(super) struct Kept {
+    pub(super) previous: Previous,
+    pub(super) gpus: Option<Discovered>,
+}
+
 /// How one device's collection ended, for the round to keep.
 #[derive(Debug)]
 pub(super) struct Finished {
     pub(super) device: DeviceId,
     /// The device's name, for the event that reports a change (D-10).
     pub(super) name: String,
-    /// The reading to rate the next collection against, or why there is none this round.
-    pub(super) result: Result<Previous, Failure>,
+    /// What to keep for the next collection, or why there is nothing new this round.
+    pub(super) result: Result<Kept, Failure>,
 }
 
-/// Collects `device` at the hub clock's time, against its `previous` reading.
-pub(super) async fn collect(
-    ctx: Arc<Context>,
-    device: Device,
-    previous: Option<Previous>,
-) -> Finished {
+/// Collects `device` at the hub clock's time, against what was `kept` of its last collection.
+pub(super) async fn collect(ctx: Arc<Context>, device: Device, kept: Option<Kept>) -> Finished {
     let at = ctx.clock.now();
-    let result = collect_at(&ctx, &device, previous.as_ref(), at).await;
+    let result = collect_at(&ctx, &device, kept, at).await;
     Finished {
         device: device.id,
         name: device.name,
@@ -78,17 +85,43 @@ pub(super) async fn collect(
 async fn collect_at(
     ctx: &Context,
     device: &Device,
-    previous: Option<&Previous>,
+    kept: Option<Kept>,
     at: DateTime<Utc>,
-) -> Result<Previous, Failure> {
-    let (reading, distribution) = within_deadline(read(ctx, device, at)).await?;
-    let samples = outputs::collected(previous, &reading, at);
+) -> Result<Kept, Failure> {
+    let (previous, known) = kept.map_or((None, None), |kept| (Some(kept.previous), kept.gpus));
+    let (reading, distribution, gpus) = within_deadline(read(ctx, device, known, at)).await?;
+    if gpus.discovered_now
+        && let Some(found) = &gpus.known
+    {
+        store_discovery(ctx, device.id, found).await?;
+    }
+    let mut samples = outputs::collected(previous.as_ref(), &reading, at);
+    samples.extend(gpus.samples);
     record_collection(&ctx.db, device.id, at, &samples).await?;
     if !samples.is_empty() {
         publish(ctx, device.id, at, &samples).await?;
     }
     record_distribution(&ctx.db, device, distribution).await;
-    Ok(Previous { at, reading })
+    Ok(Kept {
+        previous: Previous { at, reading },
+        gpus: gpus.known,
+    })
+}
+
+/// Replaces the stored GPUs of `device` with those `found` (MET-006).
+async fn store_discovery(
+    ctx: &Context,
+    device: DeviceId,
+    found: &Discovered,
+) -> Result<(), Failure> {
+    let gpus: Vec<Gpu> = found.gpus.iter().map(|found| found.gpu.clone()).collect();
+    let discovery = Discovery {
+        found_at: found.found_at,
+        boot_at: found.boot_at,
+        gpus: &gpus,
+    };
+    store::replace_gpus(&ctx.db, device, discovery).await?;
+    Ok(())
 }
 
 /// Stores the distribution the device named when it differs from the one listed this round.
@@ -119,14 +152,18 @@ pub(super) async fn within_deadline<T>(
 }
 
 /// Opens a link to `device`, runs its commands in order, each within its limit, reads each
-/// output into the reading and drops its bytes before the next command (D-11), then drops the
-/// link. The first link error ends the collection, except on `/etc/os-release`: the
-/// distribution is not a metric, so its read failing leaves only it out (DEV-016).
+/// output into the reading and drops its bytes before the next command (D-11), then runs the
+/// GPU reads its plan asks for until the context's GPU window after the start, then drops the
+/// link. The first link error of the commands ends the collection, except on `/etc/os-release`:
+/// the distribution is not a metric, so its read failing leaves only it out (DEV-016). A GPU
+/// read never ends it.
 async fn read(
     ctx: &Context,
     device: &Device,
+    known: Option<Discovered>,
     at: DateTime<Utc>,
-) -> Result<(Reading, Option<Distribution>), LinkError> {
+) -> Result<(Reading, Option<Distribution>, GpuRound), LinkError> {
+    let gpu_until = Instant::now() + ctx.gpu_window;
     let Context { db, collecting, .. } = ctx;
     let mut link = ssh::link(db, &collecting.vault, &collecting.policy, device, at).await?;
     let mut parts = Parts::default();
@@ -143,7 +180,10 @@ async fn read(
         }
     }
     let distribution = parts.take_distribution();
-    Ok((parts.reading(at), distribution))
+    let reading = parts.reading(at);
+    let plan = Plan::new(device.os, known, &reading, at);
+    let answers = gpus::ask(&mut link, plan.commands(), gpu_until).await;
+    Ok((reading, distribution, plan.finish(&answers)))
 }
 
 /// Publishes what the collection added with the device's readings as stored, so the feed and

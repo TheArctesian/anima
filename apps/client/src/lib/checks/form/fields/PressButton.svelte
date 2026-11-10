@@ -8,10 +8,12 @@
     /** The ID of the form a submit button outside that form submits. */
     form?: string;
     disabled?: boolean;
+    /** Working: the button stays focusable and says so with `aria-disabled`; the owner ignores the press. */
+    busy?: boolean;
     onclick?: () => void;
   }
 
-  const { label, kind = 'quiet', submit = false, form, disabled = false, onclick }: Props = $props();
+  const { label, kind = 'quiet', submit = false, form, disabled = false, busy = false, onclick }: Props = $props();
 </script>
 
 <button
@@ -19,6 +21,7 @@
   type={submit ? 'submit' : 'button'}
   {form}
   {disabled}
+  aria-disabled={busy ? 'true' : undefined}
   {onclick}
   {@attach press()}
 >
@@ -38,11 +41,12 @@
     transition: background-color var(--duration-fast) var(--ease-enter);
   }
 
-  button:hover:not(:disabled, .primary) {
+  button:hover:not(:disabled, [aria-disabled='true'], .primary) {
     background: var(--surface-hover);
   }
 
-  button:disabled {
+  button:disabled,
+  button[aria-disabled='true'] {
     color: var(--text-muted);
   }
 
@@ -53,11 +57,11 @@
     color: var(--bg);
   }
 
-  .primary:active:not(:disabled) {
+  .primary:active:not(:disabled, [aria-disabled='true']) {
     background: var(--accent-deep);
   }
 
-  .primary:disabled {
+  .primary:is(:disabled, [aria-disabled='true']) {
     color: var(--bg);
     opacity: var(--opacity-disabled);
   }

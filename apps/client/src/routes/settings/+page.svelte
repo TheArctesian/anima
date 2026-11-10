@@ -2,6 +2,8 @@
   import ApiKeysSection from '$lib/api-keys/ApiKeysSection.svelte';
   import DefaultsSection from '$lib/checks/defaults/DefaultsSection.svelte';
   import SignOutRow from '$lib/access/SignOutRow.svelte';
+  import HubRows from '$lib/hub-address/HubRows.svelte';
+  import NotificationsSection from '$lib/notifications/NotificationsSection.svelte';
   import { capabilities } from '$lib/platform/platform';
   import MotionRow from '$lib/theme/MotionRow.svelte';
   import RetentionSection from '$lib/retention/RetentionSection.svelte';
@@ -11,7 +13,8 @@
   import DesktopRows from '$lib/updates/DesktopRows.svelte';
 
   // The desktop rows decide each row themselves; the page only leaves out the section when none can show (UPD-006, LOG-008).
-  const { updates, processLog } = capabilities();
+  // The Hub section is desktop only: a browser talks only to the hub that served it (CLI-002, D-5).
+  const { updates, processLog, keyStore } = capabilities();
 </script>
 
 <div class="page">
@@ -22,10 +25,20 @@
     <SignOutRow />
   </SettingsSection>
 
+  {#if keyStore}
+    <SettingsSection id="settings-hub" title="Hub" icon="nf-md-server_network" description="The hub this app talks to.">
+      <HubRows />
+    </SettingsSection>
+  {/if}
+
   <SettingsSection id="settings-appearance" title="Appearance" icon="nf-md-palette" description="How Anima looks on this device.">
     <ThemeRow />
     <MotionRow />
     <TypefaceRows />
+  </SettingsSection>
+
+  <SettingsSection id="settings-notifications" title="Notifications" icon="nf-md-bell_outline" description="Where the hub sends alerts.">
+    <NotificationsSection />
   </SettingsSection>
 
   <SettingsSection id="settings-check-defaults" title="Default check settings" icon="nf-md-tune" description="New checks start with these settings.">

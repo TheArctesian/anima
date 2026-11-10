@@ -29,11 +29,14 @@ pub(in crate::devices) async fn write_new(
     write_rdp(conn, id, &remote.rdp).await?;
     write_vnc(conn, id, &remote.vnc).await?;
     sqlx::query(
-        "UPDATE devices.devices SET mac_address = $2::text::macaddr, metrics_source = $3 WHERE id = $1",
+        "UPDATE devices.devices SET mac_address = $2::text::macaddr, metrics_source = $3, \
+                session_limit = $4, record_sessions = $5 WHERE id = $1",
     )
     .bind(id)
     .bind(remote.mac_address.map(|mac| mac.to_string()))
     .bind(remote.metrics_source.as_str())
+    .bind(remote.session_limit.map(|limit| i32::from(limit.get())))
+    .bind(remote.record_sessions)
     .execute(&mut *conn)
     .await?;
     write_transfer(conn, id, remote.transfer).await
@@ -57,15 +60,41 @@ pub(in crate::devices) async fn write_change(
     sqlx::query(
         "UPDATE devices.devices SET \
             mac_address = CASE WHEN $2 THEN $3::text::macaddr ELSE mac_address END, \
-            metrics_source = COALESCE($4, metrics_source) WHERE id = $1",
+            metrics_source = COALESCE($4, metrics_source), \
+            session_limit = CASE WHEN $5 THEN $6 ELSE session_limit END, \
+            record_sessions = COALESCE($7, record_sessions) WHERE id = $1",
     )
     .bind(id)
     .bind(change.mac_address.is_some())
     .bind(change.mac_address.flatten().map(|mac| mac.to_string()))
     .bind(change.metrics_source.map(MetricsSource::as_str))
+    .bind(change.session_limit.is_some())
+    .bind(
+        change
+            .session_limit
+            .flatten()
+            .map(|limit| i32::from(limit.get())),
+    )
+    .bind(change.record_sessions)
     .execute(conn)
     .await?;
     Ok(())
+}
+
+/// Sets the metrics source to `agent` and returns the device's name; the update locks the
+/// device row first, the order `delete_device` takes it in.
+pub(in crate::devices) async fn set_agent_source(
+    conn: &mut PgConnection,
+    id: DeviceId,
+) -> Result<String, Error> {
+    let name: Option<String> = sqlx::query_scalar(
+        "UPDATE devices.devices SET metrics_source = $2 WHERE id = $1 RETURNING name",
+    )
+    .bind(id)
+    .bind(MetricsSource::Agent.as_str())
+    .fetch_optional(conn)
+    .await?;
+    name.ok_or(Error::NotFound(Missing::Device(id)))
 }
 
 async fn write_rdp(conn: &mut PgConnection, id: DeviceId, rdp: &RdpSettings) -> Result<(), Error> {

@@ -44,6 +44,7 @@ async fn decide(pool: &PgPool) -> Decided {
         config: Some(check.config),
         settings: check.settings,
         state: check.state,
+        last_beat_at: check.last_beat_at,
     };
     let seen = repairs::facts(pool, id).await.unwrap().unwrap();
     assert!(is_candidate(&seen.facts, false));

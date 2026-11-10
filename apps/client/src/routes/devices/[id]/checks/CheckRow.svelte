@@ -33,18 +33,20 @@
 </script>
 
 <li class="row" class:paused={check.paused}>
-  <button type="button" class="name" aria-expanded={open} onclick={onHistory} {@attach press()}>
+  <button type="button" class="name" title={check.name} aria-expanded={open} onclick={onHistory} {@attach press()}>
     <span>{check.name}</span>
   </button>
-  <span class="type">{text.type}</span>
-  <!-- A reading changes with a cross-fade, in place (MOT-008, Status change). -->
-  <span class="reading">
-    {#key check.status}<span transition:crossFade>{check.paused ? 'Paused' : statusLabel(check.status)}</span>{/key}
+  <span class="facts">
+    <span class="type" title={text.type}>{text.type}</span>
+    <!-- A reading changes with a cross-fade, in place (MOT-008, Status change). -->
+    <span class="reading">
+      {#key check.status}<span transition:crossFade>{check.paused ? 'Paused' : statusLabel(check.status)}</span>{/key}
+    </span>
+    <span class="reading ms">
+      {#key text.responseTime}<span transition:crossFade>{text.responseTime}</span>{/key}
+    </span>
+    <span class="expiry" title={text.expiry ?? undefined}>{text.expiry ?? ''}</span>
   </span>
-  <span class="reading ms">
-    {#key text.responseTime}<span transition:crossFade>{text.responseTime}</span>{/key}
-  </span>
-  <span class="certificate">{text.certificate ?? ''}</span>
   <span class="actions">
     <!-- The name starts with the visible text, Pause or Resume (label in name). -->
     <button
@@ -65,7 +67,7 @@
 <style>
   .row {
     display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.5fr) auto;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr) auto;
     align-items: center;
     gap: var(--space-2);
     min-block-size: var(--target-min-touch);
@@ -89,9 +91,71 @@
   }
 
   .type,
-  .certificate {
+  .expiry {
     color: var(--text-muted);
     font-size: var(--text-sm);
+  }
+
+  /* One line in its column, so a long reading never changes the row's height (MOT-007). */
+  .expiry {
+    min-inline-size: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* One line in its cell at every width: a long reading is cut with an ellipsis, never wrapped (MOT-007). */
+  .type,
+  .reading > span {
+    min-inline-size: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Wide: the facts are the row's own columns. */
+  .facts {
+    display: contents;
+  }
+
+  /*
+   * Below the wide breakpoint the row is three lines, each reserved in every row so no row differs in height (MOT-007): the
+   * name and the actions at their natural width, then the type, the status and the latency, then the expiry on a line of its
+   * own. The breakpoint is the medium edge of `$lib/motion/tokens`, less 0.02px.
+   */
+  @media (max-width: 1100.98px) {
+    .row {
+      grid-template-columns: minmax(0, 1fr) auto;
+      padding-block: var(--space-1);
+    }
+
+    .name,
+    .actions {
+      grid-row: 1;
+    }
+
+    .actions {
+      grid-column: 2;
+    }
+
+    .facts {
+      display: grid;
+      grid-row: 2;
+      grid-column: 1 / -1;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: var(--space-1) var(--space-2);
+    }
+
+    .type,
+    .reading,
+    .expiry {
+      min-inline-size: 0;
+      min-block-size: 1lh;
+    }
+
+    .expiry {
+      grid-column: 1 / -1;
+    }
   }
 
   .actions {

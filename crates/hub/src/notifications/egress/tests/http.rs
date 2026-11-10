@@ -1,29 +1,26 @@
-//! HTTP egress: checked address only, no second lookup, no redirect, TLS verified for the host
-//! name, and at most 4 KiB of the reply read (P3-003, D-17).
+//! HTTP egress: https only, checked address only, no second lookup, no redirect, and TLS
+//! verified for the host name (P3-003, D-17, CR-14). How the reply is read is in `replies`.
 
 use std::net::SocketAddr;
 
 use reqwest::{
-    Url,
+    Method, Url,
     header::{HeaderMap, HeaderValue},
 };
 
 use super::{
     local, loopback_denied,
-    servers::{Behaviour, certificate, serve},
+    servers::{Behaviour, Server, certificate, serve},
 };
 use crate::{
-    notifications::egress::{
-        Egress, SendError,
-        http::{REPLY_CAP, classify, discard_reply},
-    },
+    notifications::egress::{Egress, HttpRequest, SendError, http::classify},
     targets::{AddressPolicy, TargetError},
 };
 
 const NO_CONTENT: &[u8] = b"HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n";
 const BODY: &[u8] = b"{\"text\":\"web is down\"}";
 
-fn url(text: &str) -> Url {
+pub(super) fn url(text: &str) -> Url {
     Url::parse(text).unwrap()
 }
 
@@ -37,15 +34,31 @@ fn headers() -> HeaderMap {
     headers
 }
 
-async fn post(egress: &Egress, target: &str) -> Result<(), SendError> {
-    egress.post(&url(target), headers(), BODY.to_vec()).await
+fn request(method: Method, target: Url) -> HttpRequest {
+    HttpRequest {
+        method,
+        url: target,
+        headers: headers(),
+        body: BODY.to_vec(),
+    }
+}
+
+pub(super) async fn post(egress: &Egress, target: &str) -> Result<(), SendError> {
+    egress.send_http(request(Method::POST, url(target))).await
+}
+
+/// A TLS server for `name` that answers `reply`, and an egress that trusts its certificate.
+async fn tls_server(name: &str, reply: &[u8]) -> (Server, Egress) {
+    let (der, acceptor) = certificate(name);
+    let server = serve(Behaviour::Http(reply.to_vec(), Some(acceptor))).await;
+    (server, local().trusting(der))
 }
 
 #[tokio::test]
 async fn p3_003_a_host_name_is_reached_at_its_checked_address() {
-    let server = serve(Behaviour::Http(NO_CONTENT.to_vec(), None)).await;
+    let (server, egress) = tls_server("localhost", NO_CONTENT).await;
 
-    let sent = post(&local(), &format!("http://localhost:{}/hook", server.port)).await;
+    let sent = post(&egress, &format!("https://localhost:{}/hook", server.port)).await;
 
     assert_eq!(sent, Ok(()));
     server.settle().await;
@@ -55,9 +68,9 @@ async fn p3_003_a_host_name_is_reached_at_its_checked_address() {
 
 #[tokio::test]
 async fn p3_003_the_body_and_the_given_headers_are_sent() {
-    let server = serve(Behaviour::Http(NO_CONTENT.to_vec(), None)).await;
+    let (server, egress) = tls_server("localhost", NO_CONTENT).await;
 
-    let sent = post(&local(), &format!("http://localhost:{}/hook", server.port)).await;
+    let sent = post(&egress, &format!("https://localhost:{}/hook", server.port)).await;
 
     assert_eq!(sent, Ok(()));
     server.settle().await;
@@ -89,9 +102,9 @@ async fn p3_003_an_answer_outside_2xx_is_its_status() {
             503,
         ),
     ] {
-        let server = serve(Behaviour::Http(reply.to_vec(), None)).await;
+        let (server, egress) = tls_server("localhost", reply).await;
 
-        let sent = post(&local(), &format!("http://localhost:{}/", server.port)).await;
+        let sent = post(&egress, &format!("https://localhost:{}/", server.port)).await;
 
         assert_eq!(sent, Err(SendError::HttpStatus(status)));
     }
@@ -103,7 +116,7 @@ async fn d_17_a_root_the_hub_cannot_read_is_a_setup_failure_with_no_connection()
 
     let sent = post(
         &local().trusting(b"not a certificate".to_vec()),
-        &format!("http://localhost:{}/", server.port),
+        &format!("https://localhost:{}/", server.port),
     )
     .await;
 
@@ -113,21 +126,23 @@ async fn d_17_a_root_the_hub_cannot_read_is_a_setup_failure_with_no_connection()
 }
 
 #[tokio::test]
-async fn d_17_a_server_that_never_answers_ends_at_the_time_limit() {
-    let server = serve(Behaviour::Silent).await;
+async fn not_002_a_put_is_sent_as_a_put() {
+    let (server, egress) = tls_server("localhost", NO_CONTENT).await;
+    let target = url(&format!("https://localhost:{}/hook", server.port));
 
-    let sent = post(&local(), &format!("http://localhost:{}/", server.port)).await;
+    let sent = egress.send_http(request(Method::PUT, target)).await;
 
-    assert_eq!(sent, Err(SendError::TimedOut));
+    assert_eq!(sent, Ok(()));
     server.settle().await;
-    assert_eq!(server.connections(), 1);
+    assert_eq!(server.lines(), ["PUT /hook HTTP/1.1"]);
+    assert_eq!(server.bodies(), [BODY]);
 }
 
 #[tokio::test]
 async fn p3_003_an_ip_literal_host_is_checked_and_reached() {
-    let server = serve(Behaviour::Http(NO_CONTENT.to_vec(), None)).await;
+    let (server, egress) = tls_server("127.0.0.1", NO_CONTENT).await;
 
-    let sent = post(&local(), &format!("http://127.0.0.1:{}/hook", server.port)).await;
+    let sent = post(&egress, &format!("https://127.0.0.1:{}/hook", server.port)).await;
 
     assert_eq!(sent, Ok(()));
     server.settle().await;
@@ -163,9 +178,9 @@ async fn p3_003_the_pinned_client_resolves_no_name_of_its_own() {
 #[tokio::test]
 async fn p3_003_a_refused_address_gets_no_connection() {
     let server = serve(Behaviour::Http(NO_CONTENT.to_vec(), None)).await;
-    let by_name = format!("http://localhost:{}/", server.port);
-    let by_address = format!("http://127.0.0.1:{}/", server.port);
-    let by_v6 = format!("http://[::ffff:127.0.0.1]:{}/", server.port);
+    let by_name = format!("https://localhost:{}/", server.port);
+    let by_address = format!("https://127.0.0.1:{}/", server.port);
+    let by_v6 = format!("https://[::ffff:127.0.0.1]:{}/", server.port);
     let default = Egress::new(AddressPolicy::default());
 
     let refused = Err(SendError::Target(TargetError::Refused));
@@ -180,7 +195,7 @@ async fn p3_003_a_refused_address_gets_no_connection() {
 
 #[tokio::test]
 async fn p3_003_an_unresolved_name_or_another_scheme_is_never_sent() {
-    let unresolved = post(&local(), "http://nothing-here.invalid/").await;
+    let unresolved = post(&local(), "https://nothing-here.invalid/").await;
     let ftp = post(&local(), "ftp://localhost/").await;
 
     assert_eq!(unresolved, Err(SendError::Target(TargetError::Unresolved)));
@@ -188,15 +203,31 @@ async fn p3_003_an_unresolved_name_or_another_scheme_is_never_sent() {
 }
 
 #[tokio::test]
+async fn cr_14_an_http_url_gets_no_lookup_and_no_connection() {
+    let server = serve(Behaviour::Http(NO_CONTENT.to_vec(), None)).await;
+
+    let by_name = post(&local(), &format!("http://localhost:{}/hook", server.port)).await;
+    let by_address = post(&local(), &format!("http://127.0.0.1:{}/hook", server.port)).await;
+    // `.invalid` never resolves: had the name been looked up, this would be `Unresolved`.
+    let unresolvable = post(&local(), "http://nothing-here.invalid/").await;
+
+    assert_eq!(by_name, Err(SendError::Url));
+    assert_eq!(by_address, Err(SendError::Url));
+    assert_eq!(unresolvable, Err(SendError::Url));
+    server.settle().await;
+    assert_eq!(server.connections(), 0);
+}
+
+#[tokio::test]
 async fn p3_003_a_redirect_is_a_failure_and_is_not_followed() {
-    let second = serve(Behaviour::Http(NO_CONTENT.to_vec(), None)).await;
+    let (second, _) = tls_server("localhost", NO_CONTENT).await;
     let moved = format!(
-        "HTTP/1.1 302 Found\r\nLocation: http://localhost:{}/\r\nContent-Length: 0\r\n\r\n",
+        "HTTP/1.1 302 Found\r\nLocation: https://localhost:{}/\r\nContent-Length: 0\r\n\r\n",
         second.port
     );
-    let first = serve(Behaviour::Http(moved.into_bytes(), None)).await;
+    let (first, egress) = tls_server("localhost", moved.as_bytes()).await;
 
-    let sent = post(&local(), &format!("http://localhost:{}/", first.port)).await;
+    let sent = post(&egress, &format!("https://localhost:{}/", first.port)).await;
 
     assert_eq!(sent, Err(SendError::HttpStatus(302)));
     first.settle().await;
@@ -249,36 +280,4 @@ async fn d_17_a_trusted_server_sees_the_host_name_as_sni() {
     server.settle().await;
     assert_eq!(server.server_names(), ["localhost"]);
     assert_eq!(server.lines(), ["POST /hook HTTP/1.1"]);
-}
-
-#[tokio::test]
-async fn d_17_an_endless_reply_is_read_only_to_the_cap() {
-    let server = serve(Behaviour::Endless).await;
-    let target: SocketAddr = ([127, 0, 0, 1], server.port).into();
-    let client = local().pinned_client(Some("localhost"), &[target]).unwrap();
-    let mut response = client
-        .post(url(&format!("http://localhost:{}/", server.port)))
-        .send()
-        .await
-        .unwrap();
-
-    let read = discard_reply(&mut response).await;
-
-    // The body never ends, so the read stopped at the cap, within the one chunk that
-    // crossed it.
-    assert!(read >= REPLY_CAP, "read {read}");
-    assert!(read < 1024 * 1024, "read {read}");
-}
-
-#[tokio::test]
-async fn d_17_an_endless_reply_ends_the_send_and_closes_the_connection() {
-    let server = serve(Behaviour::Endless).await;
-
-    let sent = post(&local(), &format!("http://localhost:{}/", server.port)).await;
-
-    assert_eq!(sent, Ok(()));
-    server.settle().await;
-    // Read to the time limit, loopback would carry gigabytes; the socket buffers hold a few
-    // megabytes once the client stops reading and closes.
-    assert!(server.written() < 64 * 1024 * 1024, "{}", server.written());
 }

@@ -1,6 +1,7 @@
 import type { AcceptHostKeyMutation, DeviceQuery, OperatingSystem, SitesQuery, SshAuth } from '$lib/hub/generated/graphql';
 import type { ThisMachine } from '$lib/desktop/this-machine';
 import { normalizeHost } from './host';
+import type { PolicyValues } from './policy/policy';
 import {
   defaultRemoteValues,
   emptyRemoteSecrets,
@@ -43,6 +44,8 @@ export interface DeviceFormValues extends RemoteValues {
   };
   /** Never filled from the hub (DEV-011). */
   readonly remoteSecrets: RemoteSecrets;
+  /** The session limit and recording setting a new device is created with (RA-036, RA-040); an edit saves them apart (F-3). */
+  readonly policy?: PolicyValues;
 }
 
 function emptyCredential(): DeviceFormValues['credential'] {

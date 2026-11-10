@@ -103,15 +103,14 @@
           <small>{preview === null ? 'At most one year away.' : `The key stops working on ${shownDate(preview.toISOString())}.`}</small>
           <small id="{ids}-expiry-problem" class="problem">{expiryProblem}</small>
         </fieldset>
-        {#if failure !== null}
-          <p class="failure" role="alert">{failure}</p>
-        {/if}
-        <div class="actions">
-          <FormButton tabindex={0} onclick={close}>Cancel</FormButton>
-          <!-- The label stays while the hub works, so neither button moves (MOT-007); the disabled form and aria-busy say it is busy. -->
-          <FormButton tabindex={0} type="submit" tone="primary" aria-busy={busy}>Create key</FormButton>
-        </div>
       </fieldset>
+      <!-- Always mounted, one line high, so a refusal moves neither the form nor the buttons (MOT-007). -->
+      <p class="failure" role="alert">{failure ?? ''}</p>
+      <div class="actions">
+        <FormButton tabindex={0} onclick={close} aria-disabled={busy}>Cancel</FormButton>
+        <!-- The buttons sit outside the disabled fieldset, so focus stays on Create key while the hub works; the label stays, so neither button moves (MOT-007). -->
+        <FormButton tabindex={0} type="submit" tone="primary" aria-disabled={busy} aria-busy={busy}>Create key</FormButton>
+      </div>
     </form>
   {:else}
     <p id="{ids}-about">Anima shows this key only once. Copy it now and keep it where your program reads it; the hub keeps only a hash of it.</p>
@@ -142,6 +141,13 @@
   }
 
   .fields {
+    gap: var(--space-3);
+  }
+
+  form {
+    min-inline-size: 0;
+    display: flex;
+    flex-direction: column;
     gap: var(--space-3);
   }
 
@@ -215,7 +221,18 @@
     outline-offset: var(--border-focus);
   }
 
+  /* It adds no width of its own (zero inline size, stretched to the form), so a long line is cut and never widens the dialog. */
   .failure {
+    box-sizing: border-box;
+    inline-size: 0;
+    min-inline-size: 100%;
+    min-block-size: 1lh;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .failure:not(:empty) {
     padding-inline-start: var(--space-2);
     border-inline-start: var(--border-focus) solid var(--status-down);
   }

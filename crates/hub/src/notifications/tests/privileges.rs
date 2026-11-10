@@ -86,7 +86,7 @@ async fn db_009_runtime_role_does_everything_the_hub_needs(pool: PgPool) {
     assert_eq!(claimed.len(), 1);
     assert_eq!(last[&id], delivery);
     assert_eq!(page, [delivery]);
-    assert!(sql::mark_sent(&runtime, claimed[0].id, at).await.unwrap());
+    assert!(sql::mark_sent(&runtime, &claimed[0], at).await.unwrap());
     assert_eq!(delete_finished_outbox(&runtime, at).await.unwrap(), 0);
     let mut conn = runtime.acquire().await.unwrap();
     assert!(sql::delete_channel(&mut conn, id).await.unwrap());
