@@ -78,12 +78,34 @@ fn k8_a_label_is_1_to_128_bytes_without_a_control_character() {
 fn k8_the_key_of_a_collection_sample_drops_the_empty_label_of_a_plain_kind() {
     let cpu = Sample::new(Kind::CpuPercent, "", 5.0).unwrap();
     let disk = Sample::new(Kind::DiskPercent, "/", 5.0).unwrap();
-    let gpu = Sample::new(Kind::GpuPercent, "", 5.0).unwrap();
+    // Built by hand: `Sample::new` makes no GPU sample, so only a hand-made one lacks its index.
+    let gpu = Sample {
+        kind: Kind::GpuPercent,
+        label: String::new(),
+        value: 5.0,
+        gpu_index: None,
+    };
     let cpu_key = SeriesKey::of(&cpu).unwrap();
     assert_eq!(
         (cpu_key.kind(), cpu_key.label(), cpu_key.gpu()),
         (Kind::CpuPercent, None, None)
     );
     assert_eq!(SeriesKey::of(&disk).unwrap().label(), Some("/"));
-    assert_eq!(SeriesKey::of(&gpu), None, "a sample names no GPU");
+    assert_eq!(SeriesKey::of(&gpu), None, "a GPU kind's sample with no GPU");
+}
+
+#[test]
+fn r_099_the_key_of_a_gpu_sample_carries_its_index_and_no_label() {
+    for kind in PER_GPU {
+        let sample = Sample::gpu(kind, 3, 5.0).unwrap();
+        let key = SeriesKey::of(&sample).unwrap();
+        assert_eq!(
+            (key.kind(), key.label(), key.gpu()),
+            (kind, None, Some(3)),
+            "{kind:?}"
+        );
+    }
+    let first = SeriesKey::of(&Sample::gpu(Kind::GpuPercent, 0, 5.0).unwrap());
+    let second = SeriesKey::of(&Sample::gpu(Kind::GpuPercent, 1, 5.0).unwrap());
+    assert_ne!(first, second, "two GPUs share no series");
 }

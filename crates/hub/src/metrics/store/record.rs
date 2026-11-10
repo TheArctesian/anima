@@ -1,7 +1,7 @@
 //! One collection's write: series, samples and the three aggregate rows of each (DB-008).
 
 use chrono::{DateTime, Utc};
-use sqlx::PgPool;
+use sqlx::{PgConnection, PgPool};
 use uuid::Uuid;
 
 use crate::{
@@ -12,8 +12,8 @@ use crate::{
 /// A GPU series is labelled with its GPU index, so the index of an existing series never
 /// changes and the conflict leaves it as it is (MET-009).
 const UPSERT_SERIES_SQL: &str = "\
-    INSERT INTO metrics.series (id, device_id, kind, label, gpu_index) \
-    SELECT w.id, $1, w.kind, w.label, w.gpu_index \
+    INSERT INTO metrics.series (id, device_id, kind, label, gpu_index, created_at) \
+    SELECT w.id, $1, w.kind, w.label, w.gpu_index, $6 \
     FROM unnest($2::uuid[], $3::text[], $4::text[], $5::int4[]) \
         AS w(id, kind, label, gpu_index) \
     ON CONFLICT (device_id, kind, label) DO NOTHING";
@@ -73,28 +73,12 @@ pub(in crate::metrics) async fn record(
         .bind(at)
         .execute(db)
         .await?;
-    let ids: Vec<MetricSeriesId> = samples
-        .iter()
-        .map(|_| MetricSeriesId::from(Uuid::now_v7()))
-        .collect();
     let kinds: Vec<&str> = samples.iter().map(|sample| sample.kind.as_str()).collect();
     let labels: Vec<&str> = samples.iter().map(|sample| sample.label.as_str()).collect();
     let values: Vec<f64> = samples.iter().map(|sample| sample.value).collect();
-    let gpus: Vec<Option<i32>> = samples
-        .iter()
-        .map(|sample| sample.gpu_index.map(i32::from))
-        .collect();
 
     let mut tx = db.begin().await?;
-    sqlx::query(UPSERT_SERIES_SQL)
-        .bind(device)
-        .bind(ids)
-        .bind(&kinds)
-        .bind(&labels)
-        .bind(gpus)
-        .execute(&mut *tx)
-        .await
-        .map_err(device_missing)?;
+    add_series(&mut tx, device, samples, at).await?;
     sqlx::query(ADD_SAMPLES_SQL)
         .bind(device)
         .bind(at)
@@ -104,6 +88,37 @@ pub(in crate::metrics) async fn record(
         .execute(&mut *tx)
         .await?;
     tx.commit().await?;
+    Ok(())
+}
+
+/// Creates the series of `samples` that `device` does not have yet, created at `now`, in the
+/// caller's transaction; an existing series is left as it is (R-098 e).
+pub(in crate::metrics) async fn add_series(
+    conn: &mut PgConnection,
+    device: DeviceId,
+    samples: &[Sample],
+    now: DateTime<Utc>,
+) -> Result<(), Error> {
+    let ids: Vec<MetricSeriesId> = samples
+        .iter()
+        .map(|_| MetricSeriesId::from(Uuid::now_v7()))
+        .collect();
+    let kinds: Vec<&str> = samples.iter().map(|sample| sample.kind.as_str()).collect();
+    let labels: Vec<&str> = samples.iter().map(|sample| sample.label.as_str()).collect();
+    let gpus: Vec<Option<i32>> = samples
+        .iter()
+        .map(|sample| sample.gpu_index.map(i32::from))
+        .collect();
+    sqlx::query(UPSERT_SERIES_SQL)
+        .bind(device)
+        .bind(ids)
+        .bind(kinds)
+        .bind(labels)
+        .bind(gpus)
+        .bind(now)
+        .execute(conn)
+        .await
+        .map_err(device_missing)?;
     Ok(())
 }
 

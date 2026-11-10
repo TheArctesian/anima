@@ -6,36 +6,35 @@
 use std::time::Duration;
 
 use agent_core::wire::{AgentToken, EnrolmentCode};
-use chrono::TimeDelta;
 use sqlx::PgPool;
 use tokio::task::JoinHandle;
 
-use super::{database_now, pve};
+use super::{database_now, enrolled_pve, pve};
 use crate::{
-    devices,
     events::Bus,
     metrics::ingest::{
         credential::authenticate,
         enrolment::{enrol, redeem},
-        make_code, revoke, store,
+        make_code, revoke,
     },
 };
 
-/// Whether `task` came to wait for a row lock in this test's database before it finished. Read
-/// from `pg_stat_activity`, so the answer does not depend on how fast either side runs.
-async fn waits_for_a_lock<T>(pool: &PgPool, task: &JoinHandle<T>) -> bool {
+/// Whether `task` came to wait before it finished, seen as `count` sessions of this test's
+/// database waiting for a lock. Read from `pg_stat_activity`, so the answer does not depend on
+/// how fast either side runs.
+pub(super) async fn waits_for_locks<T>(pool: &PgPool, task: &JoinHandle<T>, count: i64) -> bool {
     for _ in 0..2000 {
         if task.is_finished() {
             return false;
         }
-        let waiting: bool = sqlx::query_scalar(
-            "SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_stat_activity \
-             WHERE datname = pg_catalog.current_database() AND wait_event_type = 'Lock')",
+        let waiting: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM pg_catalog.pg_stat_activity \
+             WHERE datname = pg_catalog.current_database() AND wait_event_type = 'Lock'",
         )
         .fetch_one(pool)
         .await
         .unwrap();
-        if waiting {
+        if waiting >= count {
             return true;
         }
         tokio::time::sleep(Duration::from_millis(5)).await;
@@ -87,17 +86,35 @@ async fn met_013_a_revoke_after_the_code_was_redeemed_stops_the_enrolment(pool: 
 )]
 async fn met_013_a_revoke_waits_for_an_enrolment_in_flight_then_deletes_its_token(pool: PgPool) {
     let now = database_now(&pool).await;
-    // An enrolment past its code check: the device row taken and its token row written.
-    let mut enrolling = pool.begin().await.unwrap();
-    devices::use_agent_metrics(&mut enrolling, pve())
-        .await
-        .unwrap();
-    let token = AgentToken::from_random([7; 32]);
-    let expiry = now + TimeDelta::days(365);
-    store::replace_token(&mut enrolling, pve(), token.hash(), expiry)
+    enrolled_pve(&pool, now, 1).await;
+    let code = EnrolmentCode::from_random([5; 16]);
+    let presented = EnrolmentCode::parse(code.expose()).unwrap();
+    let mut conn = pool.acquire().await.unwrap();
+    make_code(&mut conn, pve(), code, now).await.unwrap();
+    drop(conn);
+    let redeemed = redeem(&pool, &presented, now).await.unwrap().unwrap();
+    // Holds the agent row, so the enrolment stops after it took the device row.
+    let mut holding = pool.begin().await.unwrap();
+    sqlx::query("SELECT 1 FROM metrics.agents WHERE device_id = $1 FOR UPDATE")
+        .bind(pve())
+        .execute(&mut *holding)
         .await
         .unwrap();
 
+    let token = AgentToken::from_random([7; 32]);
+    let agent = AgentToken::parse(token.expose()).unwrap();
+    let enrolling = tokio::spawn({
+        let pool = pool.clone();
+        async move {
+            enrol(&pool, &Bus::new(4), (redeemed, token), now)
+                .await
+                .unwrap()
+        }
+    });
+    assert!(
+        waits_for_locks(&pool, &enrolling, 1).await,
+        "the enrolment did not reach the agent row"
+    );
     let revoking = tokio::spawn({
         let pool = pool.clone();
         async move {
@@ -108,15 +125,17 @@ async fn met_013_a_revoke_waits_for_an_enrolment_in_flight_then_deletes_its_toke
         }
     });
     assert!(
-        waits_for_a_lock(&pool, &revoking).await,
+        waits_for_locks(&pool, &revoking, 2).await,
         "the revoke ran beside the enrolment"
     );
-    enrolling.commit().await.unwrap();
+    holding.commit().await.unwrap();
+    assert!(enrolling.await.unwrap().is_some(), "the enrolment finished");
     assert!(
         revoking.await.unwrap(),
         "the revoke missed the enrolled token"
     );
     assert_eq!(agents(&pool).await, 0);
+    assert_eq!(authenticate(&pool, &agent, now).await.unwrap(), None);
 }
 
 #[sqlx::test(
@@ -141,7 +160,7 @@ async fn met_012_a_second_code_made_while_the_first_is_stored_waits_then_voids_i
         }
     });
     assert!(
-        waits_for_a_lock(&pool, &making).await,
+        waits_for_locks(&pool, &making, 1).await,
         "the second code was made beside the first"
     );
     storing.commit().await.unwrap();

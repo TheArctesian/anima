@@ -5,7 +5,9 @@
 //! The pure part: [`agent_core::readings`] turns command output into a [`Reading`], and
 //! [`samples`] turns two readings and the time between them into [`Sample`]s. The device is
 //! not trusted, so no reader panics and none fails on a bad line. [`spawn_collector`] runs the
-//! commands every 30 seconds and publishes each collection on the [`Feed`].
+//! commands every 30 seconds and publishes each collection on the [`Feed`]. A device may push
+//! its metrics from the Anima agent instead ([`agent_router`], K8); [`spawn_stale_watch`] marks
+//! an agent that stopped pushing (MET-018).
 
 mod collector;
 mod commands;
@@ -21,7 +23,7 @@ mod store;
 #[cfg(test)]
 mod tests;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use chrono::{DateTime, Days, TimeDelta, Utc};
 use sqlx::PgPool;
@@ -32,7 +34,7 @@ pub use agent_core::{
 };
 pub use collector::{Collecting, spawn_collector};
 pub use feed::Feed;
-pub use ingest::agent_router;
+pub use ingest::{agent_router, spawn_stale_watch};
 pub use model::{
     Gpu, GpuVendor, MetricKind, MetricPoint, MetricRange, MetricSample, MetricSeries, MetricsAdded,
     Readings,
@@ -113,6 +115,16 @@ pub async fn series(
 /// `Database` when the query fails; `Unreadable` for a stored vendor this version does not know.
 pub async fn gpus(db: &PgPool, devices: &[DeviceId]) -> Result<HashMap<DeviceId, Vec<Gpu>>, Error> {
     store::gpus(db, devices).await
+}
+
+/// Of `devices`, those whose agent's metrics are stale: its token was revoked, it has sent no
+/// batch yet, or it was marked stale after 30 seconds with none (MET-018). Ask only for the
+/// devices whose metrics source is `agent`; for any other the answer means nothing.
+///
+/// # Errors
+/// `Database` when the query fails.
+pub async fn stale_agents(db: &PgPool, devices: &[DeviceId]) -> Result<HashSet<DeviceId>, Error> {
+    Ok(ingest::without_fresh_agent(db, devices).await?)
 }
 
 /// Creates the sample partitions of today (UTC) and the next 7 days (DB-004).

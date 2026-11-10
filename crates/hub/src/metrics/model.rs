@@ -4,13 +4,15 @@
     reason = "the async-graphql Enum derive generates async trait impls"
 )]
 
-use agent_core::points::{Kind, Sample};
+use agent_core::{
+    points::{Kind, Sample},
+    wire::{self, BatchGpu},
+};
 use async_graphql::{Enum, ID, SimpleObject};
 use chrono::{DateTime, Utc};
 
 /// What a series measures (the API's `MetricKind`). Stored as [`MetricKind::as_str`]: the name
-/// of its [`Kind`], the one list of stored kind names. `gpu_memory_bytes` has no member yet
-/// (K1 `@pending`).
+/// of its [`Kind`], the one list of stored kind names.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Enum)]
 pub enum MetricKind {
     CpuPercent,
@@ -34,10 +36,12 @@ pub enum MetricKind {
     GpuTemperatureC,
     #[graphql(name = "GPU_POWER_W")]
     GpuPowerW,
+    /// Memory in use by a unified-memory GPU (Apple), never a VRAM value (MET-007, R-092 D-6).
+    GpuMemoryBytes,
 }
 
 impl MetricKind {
-    const ALL: [Self; 16] = [
+    const ALL: [Self; 17] = [
         Self::CpuPercent,
         Self::MemoryPercent,
         Self::MemoryBytes,
@@ -54,6 +58,7 @@ impl MetricKind {
         Self::VramBytes,
         Self::GpuTemperatureC,
         Self::GpuPowerW,
+        Self::GpuMemoryBytes,
     ];
 
     /// The text kept in the `series.kind` column.
@@ -68,8 +73,8 @@ impl MetricKind {
         Self::ALL.into_iter().find(|kind| kind.as_str() == text)
     }
 
-    /// The API's member for `kind`; `None` for a kind the API does not serve yet
-    /// (`gpu_memory_bytes`, K8, CR-15).
+    /// The API's member for `kind`; `None` for a kind the API does not serve. Every stored kind
+    /// is served; a kind added to [`Kind`] later stays out until it has a member (K8, CR-15).
     #[must_use]
     pub fn served(kind: Kind) -> Option<Self> {
         Self::ALL
@@ -97,6 +102,7 @@ impl From<MetricKind> for Kind {
             MetricKind::VramBytes => Self::VramBytes,
             MetricKind::GpuTemperatureC => Self::GpuTemperatureC,
             MetricKind::GpuPowerW => Self::GpuPowerW,
+            MetricKind::GpuMemoryBytes => Self::GpuMemoryBytes,
         }
     }
 }
@@ -138,6 +144,18 @@ impl GpuVendor {
     }
 }
 
+/// The vendor of a GPU an agent listed (K8 Section 4, R-098 f).
+impl From<wire::GpuVendor> for GpuVendor {
+    fn from(vendor: wire::GpuVendor) -> Self {
+        match vendor {
+            wire::GpuVendor::Nvidia => Self::Nvidia,
+            wire::GpuVendor::Amd => Self::Amd,
+            wire::GpuVendor::Intel => Self::Intel,
+            wire::GpuVendor::Apple => Self::Apple,
+        }
+    }
+}
+
 /// A GPU found on a device (MET-006).
 #[derive(Clone, Debug, PartialEq, Eq, SimpleObject)]
 pub struct Gpu {
@@ -146,6 +164,18 @@ pub struct Gpu {
     pub vendor: GpuVendor,
     /// False for integrated and Apple GPUs (MET-007).
     pub has_vram: bool,
+}
+
+/// A GPU an agent listed in a batch (MET-006, K8 Section 4).
+impl From<BatchGpu> for Gpu {
+    fn from(gpu: BatchGpu) -> Self {
+        Self {
+            index: i32::from(gpu.index),
+            name: gpu.name,
+            vendor: gpu.vendor.into(),
+            has_vram: gpu.has_vram,
+        }
+    }
 }
 
 /// One point of a chart: the mean of its bucket, with the lowest and highest value in it.

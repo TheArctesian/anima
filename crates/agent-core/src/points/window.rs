@@ -38,8 +38,9 @@ impl Window {
     /// the open one (time moved on, or the clock went back), the open window closes first and
     /// its point is returned; a window in which no value was kept makes no point.
     ///
-    /// A value that is not finite or is below 0 is left out, and a percent is held to 100, as
-    /// [`Sample::new`](super::Sample::new) does. A window keeps at most [`MAX_SERIES`] series; later new ones are
+    /// A value that is not finite, is below 0 or is above its kind's
+    /// [`ceiling`](super::ceiling) is left out, and a percent is held to 100, as
+    /// [`Sample::new`](super::Sample::new) and [`Sample::gpu`](super::Sample::gpu) do (CR-17). A window keeps at most [`MAX_SERIES`] series; later new ones are
     /// left out.
     pub fn add(
         &mut self,

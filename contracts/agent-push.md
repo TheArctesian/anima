@@ -103,7 +103,9 @@ Request:
   covers the 10 seconds that end at `at`. `mean[i]` is the mean of the 2-second samples of `series[i]` in that
   window, or `null` when the window has none. `max`, when present, has the same length; only `cpu_percent`
   and `gpu_percent` columns may be non-null, and each is at least its mean. Every number is finite and at
-  least 0; percent kinds are at most 100.
+  least 0; percent kinds are at most 100; a `gpu_temperature_c` is at most 1000 (°C) and a `gpu_power_w` at
+  most 10 000 (W), and a batch with a value past either is `MALFORMED` (MET-002, CR-17). The agent drops such a
+  2-second sample before it makes a mean, so it never sends one.
 - `gpus`: optional. The agent sends it in its first batch after start and after each GPU discovery (at start
   and every 24 hours, MET-006). Absent means "unchanged". `vendor` is `nvidia`, `amd`, `intel` or `apple`;
   `name` is 1 to 128 bytes, no control character; `hasVram` is false for `intel` and `apple` (MET-007).
@@ -114,7 +116,19 @@ The hub:
   key follows the SSH collector's rule for the same kind, label and GPU;
 - folds `max` into the `max` column of the minute, hour and day aggregates; the samples hold the mean;
 - skips a point whose series and `at` are already stored, so sending a batch twice adds nothing twice;
-- records the time of the last accepted batch for MET-018 (stale after 30 seconds with none).
+- keys a GPU series by its index: its label is the index as text. A GPU series with a `label` is `MALFORMED`;
+- lets a device create at most 1024 series in any hour, counted by when the hub created each series, never
+  by the times of its points: a batch whose new series would pass that is `MALFORMED` and stores none of it.
+  One agent has at most 519 series (at most 256 in one batch) (R-098 e, CR-20);
+- with `gpus` present, replaces the device's GPU set with it; `[]` means the device has no GPUs now, and an
+  absent `gpus` leaves the set as it is. A GPU that leaves the set keeps its series and their history
+  (R-098 b);
+- records the time of the last accepted batch for MET-018 (R-098 a). Any accepted batch resets it, even one
+  whose series the hub all ignores; a refused batch does not. 30 seconds after the last accepted batch the
+  device's metrics are stale: the hub writes one event (source `metrics`, severity warning) and serves
+  `Device.metricsStale` true. The next accepted batch clears the mark and writes one event (severity info).
+  An agent that has never pushed is not marked, and `metricsStale` is true for it. Stale changes no check:
+  a stale agent is never a Down check.
 
 ## 5. Renewal (MET-013)
 
@@ -140,7 +154,7 @@ The body of every refusal is `{ "error": "<CODE>" }` and nothing else. It never 
 | Status | Code | When | Agent does |
 | --- | --- | --- | --- |
 | 400 | `MALFORMED` | The body is not a valid `Batch` or `{}` by Section 4 or 5 | Drops that batch; logs the code |
-| 401 | `TOKEN_REFUSED` | The token is missing, malformed, unknown, expired or revoked | Stops pushing; keeps sampling and buffering; logs once; tries again every 10 minutes and after the token store changes |
+| 401 | `TOKEN_REFUSED` | The token is missing, malformed, unknown, expired or revoked, or the device's metrics source is no longer `agent` (CR-18) | Stops pushing; keeps sampling and buffering; logs once; tries again every 10 minutes and after the token store changes |
 | 401 | `ENROLMENT_REFUSED` | Section 3 | `anima-agent enrol` exits 1 with a fixed sentence |
 | 403 | `WRONG_DEVICE` | `device` is not the token's device | As `TOKEN_REFUSED` |
 | 413 | `TOO_LARGE` | The body exceeds its limit | Drops that batch; sends smaller batches |
@@ -151,7 +165,8 @@ The hub runs the push checks in this order and stops at the first refusal: the b
 the JSON, the device, the shape, the times. Every push refusal is written to the event log (source `metrics`,
 severity warning) with its code, the client address and, when the token was valid, the device, and never with
 the token (MET-017). A refusal with no valid token is written at most once a minute per client address, so a
-flood cannot fill the event log.
+flood cannot fill the event log. A refusal with a valid token, on any agent route, is written at most once a
+minute per device (CR-21). Only the event is held back: the refusal and its answer are the same.
 
 ## 7. Agent buffer (MET-014)
 

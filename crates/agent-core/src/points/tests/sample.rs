@@ -22,7 +22,7 @@ fn met_002_percent_kinds_are_clamped_to_100_and_others_are_not() {
         100.0_f64.to_bits()
     );
     assert_eq!(
-        Sample::new(Kind::VramPercent, "", 100.5)
+        Sample::gpu(Kind::VramPercent, 0, 100.5)
             .unwrap()
             .value
             .to_bits(),
@@ -43,6 +43,22 @@ fn met_009_a_gpu_sample_is_labelled_with_its_index_and_carries_it() {
     let last = Sample::gpu(Kind::VramBytes, crate::points::MAX_GPU_INDEX, 1.0).unwrap();
     assert_eq!(last.label, "63");
     assert_eq!(Sample::new(Kind::Load1, "", 1.0).unwrap().gpu_index, None);
+}
+
+#[test]
+fn r_099_a_gpu_kind_has_no_sample_without_its_index() {
+    for kind in [
+        Kind::GpuPercent,
+        Kind::VramPercent,
+        Kind::VramBytes,
+        Kind::GpuTemperatureC,
+        Kind::GpuPowerW,
+        Kind::GpuMemoryBytes,
+    ] {
+        assert_eq!(Sample::new(kind, "", 1.0), None, "{kind:?}");
+        assert_eq!(Sample::new(kind, "0", 1.0), None, "{kind:?}");
+        assert!(Sample::gpu(kind, 0, 1.0).is_some(), "{kind:?}");
+    }
 }
 
 #[test]

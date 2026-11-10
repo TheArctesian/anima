@@ -50,7 +50,7 @@ pub fn web_client(root: &Path, origin: &PublicOrigin) -> axum::Router;   // head
 //   /watch:   sessions::watch_router(&serving)
 //   /recording: sessions::playback_router(&serving)
 //   fallback: web_client(..) when ANIMA_WEB_ROOT is set
-// spawns.rs (P3-007): spawn_scheduler, spawn_collector, notifications::spawn_dispatcher.
+// spawns.rs (P3-007): spawn_scheduler, spawn_collector, metrics::spawn_stale_watch, notifications::spawn_dispatcher.
 // upkeep.rs: reads retention::periods daily and passes each period to its domain's job (D-25).
 ```
 
@@ -187,7 +187,7 @@ GraphQL composition edges (R-011). Only the file `<domain>/graphql.rs` may also 
 | --- | --- | --- |
 | `devices` | `access` (R-022), `checks`, `sessions` (replaced in Phase 3 by `trust`, see the Phase 3 row below) | the `Authenticated` guard; `Device.status`, `Device.checks`, `Device.uptime`, `DeviceFilter.status`, `DeviceSort.STATUS`/`UPTIME`, `createDevice(addDefaultCheck)`, `SshSettings.hostKey` |
 
-| `devices` (Phase 2, adds) | `metrics`, `web_interfaces` | `Device.readings`, `Device.metrics`, `Device.gpus`, `Device.webInterfaces`, `Device.webInterfaceSuggestions` |
+| `devices` (Phase 2, adds) | `metrics`, `web_interfaces` | `Device.readings`, `Device.metrics`, `Device.gpus`, `Device.webInterfaces`, `Device.webInterfaceSuggestions`; Phase 3: `Device.metricsStale` (MET-018, CR-18) |
 | `metrics`, `web_interfaces` (Phase 2) | `access` (R-022) | the `Authenticated` guard on their root fields |
 | `builds` (Phase 3, WP-36) | `access` | the `Authenticated` and `BuilderSignedIn` guards |
 | `checks`, `maintenance`, `events` | `access` (R-022) | the `Authenticated` guard on their root fields (API-003) |
@@ -418,8 +418,11 @@ pub async fn gpus(db: &Db, devices: &[DeviceId]) -> Result<HashMap<DeviceId, Vec
 // (Phase 3, WP-54; K8, R-092)
 /// POST /agent/v1/{enrol,push,renew} (K8). main.rs merges it behind the NET-002 layer.
 pub fn agent_router(db: Db, feed: Feed, bus: events::Bus, clock: Clock) -> axum::Router;
-/// Marks AGENT devices stale after 30 s with no batch (MET-018); spawned from spawns.rs (P3-007).
-pub fn spawn_stale_watch(db: Db, feed: Feed, clock: Clock) -> JoinHandle<()>;
+/// Marks AGENT devices stale after 30 s with no batch, with one event each way (MET-018);
+/// spawned from spawns.rs (P3-007). Takes the event bus, not the feed (CR-18).
+pub fn spawn_stale_watch(db: Db, bus: events::Bus, clock: Clock) -> JoinHandle<()>;
+/// Of `devices`, those whose agent is not fresh: never pushed, revoked or stale (MET-018, CR-18).
+pub async fn stale_agents(db: &Db, devices: &[DeviceId]) -> Result<HashSet<DeviceId>, Error>;
 ```
 
 ## web_interfaces (Phase 2, WP-30)

@@ -1,11 +1,16 @@
 //! MET-013, R-092 D-7: revoking ends the device's token and unused codes at once and leaves the
-//! metrics source `AGENT`; deleting the device removes its agent rows (MET-011, R-092 D-1).
+//! metrics source `AGENT`; deleting the device removes its agent rows (MET-011, R-092 D-1). A
+//! push that waited for the device row while its token was replaced or the source switched
+//! away is refused (CR-18).
 
 use axum::http::StatusCode;
 use serde_json::json;
 use sqlx::PgPool;
 
-use super::harness::{Agents, DOCKER_HOST, PVE_01, refusal, rows_of, source};
+use super::{
+    batches::{cpu_batch, samples_of},
+    harness::{Agents, DOCKER_HOST, PVE_01, pushing_now, refusal, rows_of, source},
+};
 use crate::hub::error;
 
 const REVOKE: &str =
@@ -134,4 +139,77 @@ async fn met_011_r_092_d_7_the_operator_cannot_choose_the_agent_source(pool: PgP
         "{switched}"
     );
     assert_eq!(agents.renew(&token).await.0, StatusCode::UNAUTHORIZED);
+}
+
+/// Waits until a statement of this test's database waits for a lock.
+async fn until_a_push_waits(pool: &PgPool) {
+    for _ in 0..1000 {
+        let waiting: i64 = sqlx::query_scalar(
+            "SELECT count(*) FROM pg_catalog.pg_stat_activity \
+             WHERE wait_event_type = 'Lock' AND datname = pg_catalog.current_database()",
+        )
+        .fetch_one(pool)
+        .await
+        .unwrap();
+        if waiting > 0 {
+            return;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+    panic!("no push waited for the device row");
+}
+
+/// A push checked before `change` commits, held on the device row until it has: refused
+/// `TOKEN_REFUSED` with nothing stored, since the batch checks again under the lock.
+async fn push_across(pool: &PgPool, change: &str) {
+    let now = pushing_now(pool).await;
+    let agents = Agents::at(pool, now).await;
+    let token = agents.token_for(PVE_01).await;
+    let mut operator = pool.begin().await.unwrap();
+    sqlx::query("SELECT 1 FROM devices.devices WHERE id = $1::uuid FOR UPDATE")
+        .bind(PVE_01)
+        .execute(&mut *operator)
+        .await
+        .unwrap();
+    let pushed = cpu_batch(PVE_01, now, 5.0);
+    let (answer, ()) = tokio::join!(agents.push(&token, &pushed), async {
+        until_a_push_waits(pool).await;
+        sqlx::query(change)
+            .bind(PVE_01)
+            .execute(&mut *operator)
+            .await
+            .unwrap();
+        operator.commit().await.unwrap();
+    });
+    assert_eq!(
+        answer,
+        (StatusCode::UNAUTHORIZED, refusal("TOKEN_REFUSED")),
+        "{change}"
+    );
+    assert_eq!(samples_of(pool, PVE_01).await, 0, "{change}");
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn cr_18_a_push_cannot_land_after_a_switch_away_from_the_agent(pool: PgPool) {
+    push_across(
+        &pool,
+        "UPDATE devices.devices SET metrics_source = 'ssh' WHERE id = $1::uuid",
+    )
+    .await;
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../fixtures", scripts("devices"))
+)]
+async fn met_013_a_push_cannot_land_after_its_token_is_replaced(pool: PgPool) {
+    push_across(
+        &pool,
+        "UPDATE metrics.agents SET token_sha256 = sha256('another token'::bytea) \
+         WHERE device_id = $1::uuid",
+    )
+    .await;
 }

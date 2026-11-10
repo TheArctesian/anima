@@ -1,5 +1,5 @@
-//! Batched reads that join the metrics domain into `Device` (API-005, MET-004, MET-006): one
-//! call to the metrics face per batch. `readings` is judged at the schema clock, read once
+//! Batched reads that join the metrics domain into `Device` (API-005, MET-004, MET-006,
+//! MET-018): one call to the metrics face per batch. `readings` is judged at the schema clock, read once
 //! per batch.
 
 use std::{collections::HashMap, sync::Arc};
@@ -44,6 +44,22 @@ impl Loader<DeviceId> for GpusOf {
     }
 }
 
+/// Whether each agent device's metrics are stale, for `Device.metricsStale` (MET-018). Load
+/// only devices whose metrics source is `agent`.
+pub struct StaleOf(PgPool);
+
+impl Loader<DeviceId> for StaleOf {
+    type Value = bool;
+    type Error = Arc<Error>;
+
+    async fn load(&self, keys: &[DeviceId]) -> Result<HashMap<DeviceId, bool>, Self::Error> {
+        let stale = metrics::stale_agents(&self.0, keys)
+            .await
+            .map_err(Arc::new)?;
+        Ok(keys.iter().map(|id| (*id, stale.contains(id))).collect())
+    }
+}
+
 /// The loader behind `Device.readings`: one `metrics::readings` call per batch, no cache.
 #[must_use]
 pub fn readings_loader(pool: PgPool, clock: Arc<dyn Clock>) -> DataLoader<ReadingsOf> {
@@ -54,4 +70,10 @@ pub fn readings_loader(pool: PgPool, clock: Arc<dyn Clock>) -> DataLoader<Readin
 #[must_use]
 pub fn gpus_loader(pool: PgPool) -> DataLoader<GpusOf> {
     DataLoader::new(GpusOf(pool), tokio::spawn)
+}
+
+/// The loader behind `Device.metricsStale`: one `metrics::stale_agents` call per batch, no cache.
+#[must_use]
+pub fn stale_loader(pool: PgPool) -> DataLoader<StaleOf> {
+    DataLoader::new(StaleOf(pool), tokio::spawn)
 }

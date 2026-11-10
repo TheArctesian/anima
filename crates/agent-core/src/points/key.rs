@@ -38,12 +38,13 @@ impl SeriesKey {
         (label_fits && gpu_fits).then_some(Self { kind, label, gpu })
     }
 
-    /// The key of a collection sample, which names no GPU: `None` for a GPU kind, or for a label
-    /// K8 Section 4 does not allow.
+    /// The key of a collection sample: its label for a disk or network kind, its GPU index for
+    /// a GPU kind (whose label, the same index, stays out of the key), and `None` when K8
+    /// Section 4 does not allow it, for instance a GPU kind's sample with no index (R-099).
     #[must_use]
     pub fn of(sample: &Sample) -> Option<Self> {
         let label = sample.kind.is_labelled().then(|| sample.label.clone());
-        Self::new(sample.kind, label, None)
+        Self::new(sample.kind, label, sample.gpu_index)
     }
 
     #[must_use]

@@ -165,12 +165,13 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         build_updates: builds::Updates::new(),
         bucket,
     };
-    let upkeep = upkeep::spawn(&dependencies);
+    let mut background = upkeep::spawn(&dependencies);
     let scheduler = checks::spawn_scheduler(pool.clone(), bus.clone(), clock.clone(), probing);
     let collector =
         metrics::spawn_collector(pool.clone(), feed, bus.clone(), clock.clone(), collecting);
     let dispatcher =
         notifications::spawn_dispatcher(pool.clone(), bus.clone(), clock.clone(), sending);
+    let stale_watch = metrics::spawn_stale_watch(pool.clone(), bus.clone(), clock.clone());
     // Every route is behind the same permitted-networks check (K3, NET-002).
     let edge = access::Edge::new(pool.clone(), bus, clock.clone());
     let app = all_routes(dependencies, edge.clone());
@@ -187,8 +188,8 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         first_stop_signal(),
     )
     .await;
-    (upkeep.iter().chain([&scheduler, &collector, &dispatcher]))
-        .for_each(tokio::task::JoinHandle::abort);
+    background.extend([scheduler, collector, dispatcher, stale_watch]);
+    background.iter().for_each(tokio::task::JoinHandle::abort);
     Ok(())
 }
 
