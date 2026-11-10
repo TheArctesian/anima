@@ -17,4 +17,6 @@ export interface Capabilities {
   readonly thisMachine: boolean;
   /** The shell can open System Settings at Sharing, for Remote Login and Screen Sharing (R-059, R-079). */
   readonly systemSettings: boolean;
+  /** The window draws its content under the OS title bar, with the window buttons over the navigation bar (macOS). */
+  readonly overlayTitleBar: boolean;
 }

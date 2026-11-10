@@ -161,7 +161,8 @@ it('MOT-007: Save keeps its label and place while the hub answers, and keeps foc
   type(input(target, 'Events'), '120');
   button?.click();
   flushSync();
-  expect(button?.textContent).toBe('Save');
+  // Under threshold-loading the label is still Save (the pending label waits, so it never flashes).
+  expect(button?.querySelector('[aria-hidden="false"]')?.textContent).toBe('Save');
   expect(button?.getAttribute('aria-disabled')).toBe('true');
   button?.click();
   expect(sentSets()).toHaveLength(1);

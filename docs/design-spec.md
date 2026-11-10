@@ -448,6 +448,8 @@ The navigation bar is on the left side of the window on desktop and web. It is a
 - **NAV-003.** The navigation bar must show the connection status of the hub immediately above the Settings item: "Connected" or "Disconnected".
 - **NAV-004.** The Devices page must be the start page.
 - **NAV-005.** The operator must be able to go to each page with the keyboard.
+- **NAV-006.** The operator must be able to collapse the navigation bar to icons and expand it again. The app must keep the choice on the device.
+- **NAV-007.** On macOS the window must draw under the title bar. The window buttons must sit in the top row of the navigation bar, and that row and the strip above the page must move the window.
 
 ### 5.4 Design principles
 
@@ -605,7 +607,7 @@ Springs use the two Apple parameters: damping ratio and response. The token buil
 | Menu and popover | Sort, tags, Web menu, Keys menu | Scale 0.96 to 1 and fade, from the control, `spring-snappy` | Fade and scale to 0.98, `duration-fast` | Fade only |
 | Modal | Add device, confirmations, host key warning | Scrim fades in. Surface materializes: blur and scale 0.98 to 1, `spring-default` | Same path in reverse, `duration-fast` | Fade only |
 | Page change | Devices and Settings | Cross-fade `duration-base` | Same | Same |
-| Card to detail | Device card to device detail | The device name and status move from the card to the header (shared item), `spring-move` | The header moves back to the card | Cross-fade |
+| Card to detail | Device card to device detail | The device name and status move from the card to the header (shared item), `spring-move`. A copy flies in a fixed layer above both pages at full opacity; the header item shows when it lands | The header moves back to the card | Cross-fade |
 | Session tab open | SSH, RDP, VNC, Web buttons | The tab grows from the button that opened it, `spring-snappy` | The tab closes to its place in the tab strip | Fade |
 | Reorder | Sort, filter, live status order | Items move to new places by FLIP, `spring-move`. New items fade and scale from 0.98, `stagger-list` | Items fade, `duration-fast`, and keep their place until the fade ends | Instant order, fade |
 | Status change | Device card, table row, status pill | Pill cross-fade `duration-base`. Card edge highlight fades over `duration-highlight` | — | Cross-fade only |
@@ -613,6 +615,8 @@ Springs use the two Apple parameters: damping ratio and response. The token buil
 | New log row | Logs panel | Row comes in at the top, other rows move down (FLIP), highlight fades over `duration-highlight` | — | Instant, highlight remains |
 | Chart update | Metric charts | New point comes in from the right. The line moves left continuously | Range change: cross-fade | Instant |
 | Loading | Lists, charts, detail tabs | After `threshold-loading`: skeleton with the same geometry. Data replaces it with a cross-fade | — | Same, no shimmer |
+| Async action | Save, Copy and other buttons that wait for the hub or the system | After `threshold-loading` the label cross-fades to a pending word (no spinner). On success a check and a done word, held for `duration-highlight`, then the label. The labels share one cell, so the button keeps its width | Failure: the label returns at once and the reason shows beside it | Same |
+| Navigation bar collapse | Collapse toggle, resize edge | The bar's width changes at once (MOT-006); the page moves from its old edge to the new one by FLIP, `spring-default`. On expand the names fade in, `duration-base` | Same | Instant, names appear |
 | Toast | Results of actions | In from the bottom-right, `spring-default` | Out on the same path | Fade |
 | Connection steps | Session start | Each step mark changes when the step ends. No easing on progress | — | Same |
 | Theme change | Settings | Cross-fade of colours `duration-base` | — | Same |
@@ -622,7 +626,7 @@ Springs use the two Apple parameters: damping ratio and response. The token buil
 | Gesture | Platform | Behaviour |
 | --- | --- | --- |
 | Resize the logs panel | Desktop | The panel edge follows the pointer 1:1. On release, the panel goes to the snap point nearest the projected position: collapsed, 33 % or 66 %. |
-| Resize the navigation bar | Desktop | Follows the pointer 1:1, with rubber-band resistance below the icon-only width and above 280 px. |
+| Resize the navigation bar | Desktop | The edge follows the pointer 1:1 between the icon-only and full widths, with rubber-band resistance past either. On release the bar rests at the width nearest the projected position (collapsed or expanded, NAV-006) and the choice is kept as the toggle's is. The left and right arrow keys on the focused edge collapse and expand it. |
 | Reorder session tabs | Desktop | The tab follows the pointer from the grab point. Other tabs move away with `spring-move`. |
 | Drag a session tab out of the strip | Desktop | Pops the session out to a new window (RA-002). |
 | Dismiss a toast | Desktop and iOS | Swipe right. A fast flick dismisses it even when the distance is short. |
@@ -705,6 +709,7 @@ The operator uses a form to add or edit a device. The form has these fields:
 - **DEV-013.** The operator must be able to test the connection before the operator saves the device.
 - **DEV-014.** The operator must confirm before Anima deletes a device.
 - **DEV-015.** When the operator deletes a device, the hub must delete its credentials, checks, heartbeats and metrics.
+- **DEV-016.** The operator does not enter the Linux distribution. With each SSH metrics collection of a Linux device, the hub must read the `ID` of `/etc/os-release` and store it when it is a short lower-case token (`[a-z0-9._-]`, 1 to 32 characters). A failed read must leave the stored value as it is and must not fail the collection. The client must show the logo of the distribution beside the device.
 
 ### 6.3 Remote access
 
@@ -915,8 +920,8 @@ The agent may read NVIDIA values through NVML in place of `nvidia-smi`. The valu
 
 The operator clicks a device card to open the device detail view.
 
-- **DEV-020.** The header of the device detail view must be one line. It must show, from left to right: a "Devices" back link, the device name, the status, the host, the IP address, the device type, the operating system and the tags. The SSH, RDP and Edit buttons must be at the right end of the line.
-- **DEV-021.** If the line is too long, the client must hide the end of the host and tag information with a fade. The name, the status and the buttons must always be visible. The full text must be available as a tooltip.
+- **DEV-020.** The header of the device detail view must have three rows. The first row must be a "Devices" back link. The second row must show an icon for the device type, the device name and the status, with the SSH, RDP, VNC, Web and Edit buttons at its right end; in a narrow window the buttons move to a row of their own. The third row must show the host, the IP address, the device type, the operating system and the tags, each as a chip with an icon.
+- **DEV-021.** The chips must wrap onto further lines and must never be cut off. The name and the status must always be visible; a name that is too long ends with an ellipsis and the full name is available as a tooltip.
 - **DEV-022.** The header must always show an SSH button and an RDP button. If a protocol is not set up on the device, its button must have a dashed border and a "+" icon. This button must open the Settings tab of the device. It must not start a session.
 
 The view has these tabs:

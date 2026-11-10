@@ -1,4 +1,4 @@
-import type { OpenIn, Status } from '$lib/hub/generated/graphql';
+import type { OpenIn, OperatingSystem, Status } from '$lib/hub/generated/graphql';
 import type { WebViewShell } from '$lib/web-interfaces/shell/shell';
 import type { Sessions } from '$lib/sessions/sessions.svelte';
 import { capabilities } from '$lib/platform/platform';
@@ -6,7 +6,7 @@ import type { Origin, WebTarget } from '$lib/sessions/tabs';
 
 /** The Web button that was pressed: the device, its interface and the control the tab grows from (WEB-003, MOT-005). */
 export interface WebOpening {
-  readonly device: { readonly id: string; readonly name: string; readonly status: Status };
+  readonly device: { readonly id: string; readonly name: string; readonly status: Status; readonly os?: OperatingSystem; readonly distribution?: string | null };
   readonly webInterface: WebTarget & { readonly openIn: OpenIn };
   readonly origin: Origin | null;
 }
@@ -48,5 +48,5 @@ export async function openWebInterface(sessions: Pick<Sessions, 'openWeb'>, shel
   }
   const { device, webInterface, origin } = opening;
   const { id, deviceId, url, label, pinnedFingerprintSha256 } = webInterface;
-  sessions.openWeb({ deviceId: device.id, deviceName: device.name, status: device.status, web: { id, deviceId, url, label, pinnedFingerprintSha256 }, origin });
+  sessions.openWeb({ deviceId: device.id, deviceName: device.name, ...(device.os === undefined ? {} : { os: device.os }), ...(device.distribution == null ? {} : { distribution: device.distribution }), status: device.status, web: { id, deviceId, url, label, pinnedFingerprintSha256 }, origin });
 }

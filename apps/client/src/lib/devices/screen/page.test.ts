@@ -245,7 +245,7 @@ it('WP-14 H-1: SSH opens a session tab for the device, growing from the button',
   expect(ssh).toBeDefined();
   ssh?.click();
   expect(current.opened).toEqual([
-    { deviceId: 'a', deviceName: 'Device a', protocol: 'SSH', origin: ssh?.getBoundingClientRect() },
+    { deviceId: 'a', deviceName: 'Device a', os: 'OTHER', protocol: 'SSH', origin: ssh?.getBoundingClientRect() },
   ]);
   expect(current.goto).toEqual([]);
 });

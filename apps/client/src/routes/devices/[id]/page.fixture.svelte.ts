@@ -16,6 +16,7 @@ export function device(change: Partial<DeviceDetail> = {}, ssh: Partial<DeviceDe
     ip: '192.168.1.20',
     kind: 'server',
     os: 'LINUX',
+    distribution: null,
     tags: ['lab', 'storage'],
     maintenance: false,
     status: 'UP',

@@ -36,14 +36,19 @@ pub(super) const WIN_DESKTOP: &str = "0190a000-0000-7000-8002-00000000000d";
 pub(super) const OPERATOR: &str = "0190a000-0000-7000-8000-000000000001";
 
 /// The command lines of a Linux collection, in order (D-3).
-pub(super) const LINUX_LINES: [&str; 6] = [
+pub(super) const LINUX_LINES: [&str; 7] = [
     "cat /proc/stat",
     "cat /proc/meminfo",
     "cat /proc/net/dev",
     "cat /proc/uptime",
     "cat /proc/loadavg",
     "df -P -B1",
+    "cat /etc/os-release",
 ];
+
+/// The os-release of a Pop!_OS device (DEV-016).
+pub(super) const OS_RELEASE: &[u8] =
+    b"NAME=\"Pop!_OS\"\nVERSION=\"22.04 LTS\"\nID=pop\nID_LIKE=\"ubuntu debian\"\n";
 
 /// A clock the test moves.
 pub(super) struct Steps(Mutex<DateTime<Utc>>);
@@ -86,6 +91,7 @@ pub(super) async fn bench(pool: &PgPool, accepted: bool) -> Bench {
         PROC_UPTIME,
         PROC_LOADAVG,
         DF_LINUX,
+        OS_RELEASE,
     ]) {
         server.answer(line, stdout);
     }

@@ -14,9 +14,8 @@ function show(): HTMLElement {
 }
 
 function themeSelect(target: HTMLElement): HTMLSelectElement {
-  const found = [...target.querySelectorAll('label')].find((each) => each.querySelector('span')?.textContent === 'Theme');
-  const control = found?.querySelector('select');
-  if (control == null) throw new Error('no Theme');
+  const control = [...target.querySelectorAll('label')].find((each) => each.textContent === 'Theme')?.control;
+  if (!(control instanceof HTMLSelectElement)) throw new Error('no Theme');
   return control;
 }
 

@@ -118,7 +118,7 @@ it('DEV-002: a heartbeatAdded push adds a beat to the right device', async () =>
   const beat = { checkId: 'c1', deviceId: 'b', heartbeat: { at: '2026-11-04T10:00:00Z', status: 'DOWN', responseTimeMs: null } };
   fake.push('HeartbeatAdded', { heartbeatAdded: beat });
   await settle();
-  const labels = [...document.querySelectorAll('[role="img"]')].map((node) => node.getAttribute('aria-label'));
+  const labels = [...document.querySelectorAll('.bar[role="img"]')].map((node) => node.getAttribute('aria-label'));
   expect(labels).toEqual(['No heartbeats yet', '1 heartbeat, latest down']);
 });
 

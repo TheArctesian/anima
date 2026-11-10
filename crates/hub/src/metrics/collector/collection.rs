@@ -1,6 +1,7 @@
 //! One device's collection: a link opened for it, its fixed commands run, the reading stored
-//! and published, the link dropped (MET-001, MET-002, P2-003, D-11). I/O edge; nothing here
-//! logs, and no failure holds a host, an address, command output or a secret (LOG-007).
+//! and published, the Linux distribution recorded, the link dropped (MET-001, MET-002,
+//! DEV-016, P2-003, D-11). I/O edge; it logs only a distribution it cannot store, and no
+//! failure or log line holds a host, an address, command output or a secret (LOG-007).
 
 use std::sync::Arc;
 
@@ -12,12 +13,14 @@ use super::{
     Context, DEADLINE,
     outputs::{self, Parts, Previous},
 };
+use sqlx::PgPool;
+
 use crate::{
-    devices::Device,
+    devices::{self, Device, Distribution},
     ids::DeviceId,
     metrics::{
         self, MetricSample, MetricsAdded, Reading, Readings, Sample,
-        commands::{Command, commands},
+        commands::{Command, Source, commands},
         record_collection,
     },
     ssh::{self, LinkError},
@@ -78,13 +81,32 @@ async fn collect_at(
     previous: Option<&Previous>,
     at: DateTime<Utc>,
 ) -> Result<Previous, Failure> {
-    let reading = within_deadline(read(ctx, device, at)).await?;
+    let (reading, distribution) = within_deadline(read(ctx, device, at)).await?;
     let samples = outputs::collected(previous, &reading, at);
     record_collection(&ctx.db, device.id, at, &samples).await?;
     if !samples.is_empty() {
         publish(ctx, device.id, at, &samples).await?;
     }
+    record_distribution(&ctx.db, device, distribution).await;
     Ok(Previous { at, reading })
+}
+
+/// Stores the distribution the device named when it differs from the one listed this round.
+/// No distribution read leaves the stored one. A failed write leaves it too and does not fail
+/// the collection; it is logged with the device id and the error's fixed text (DEV-016,
+/// LOG-007).
+async fn record_distribution(db: &PgPool, device: &Device, read: Option<Distribution>) {
+    let Some(read) = read.filter(|read| device.distribution.as_ref() != Some(read)) else {
+        return;
+    };
+    if let Err(error) = devices::record_distribution(db, device.id, &read).await {
+        tracing::warn!(
+            domain = "metrics",
+            device_id = %device.id,
+            %error,
+            "the device's distribution cannot be stored"
+        );
+    }
 }
 
 /// The result of `work`, a device's link and commands, or [`Failure::Deadline`] when it takes
@@ -98,8 +120,13 @@ pub(super) async fn within_deadline<T>(
 
 /// Opens a link to `device`, runs its commands in order, each within its limit, reads each
 /// output into the reading and drops its bytes before the next command (D-11), then drops the
-/// link. The first link error ends the collection.
-async fn read(ctx: &Context, device: &Device, at: DateTime<Utc>) -> Result<Reading, LinkError> {
+/// link. The first link error ends the collection, except on `/etc/os-release`: the
+/// distribution is not a metric, so its read failing leaves only it out (DEV-016).
+async fn read(
+    ctx: &Context,
+    device: &Device,
+    at: DateTime<Utc>,
+) -> Result<(Reading, Option<Distribution>), LinkError> {
     let Context { db, collecting, .. } = ctx;
     let mut link = ssh::link(db, &collecting.vault, &collecting.policy, device, at).await?;
     let mut parts = Parts::default();
@@ -109,10 +136,14 @@ async fn read(ctx: &Context, device: &Device, at: DateTime<Utc>) -> Result<Readi
         limit,
     } in commands(device.os)
     {
-        let output = link.run(&fixed, limit).await?;
-        parts.add(source, &output);
+        match link.run(&fixed, limit).await {
+            Ok(output) => parts.add(source, &output),
+            Err(_) if source == Source::OsRelease => {}
+            Err(error) => return Err(error),
+        }
     }
-    Ok(parts.reading(at))
+    let distribution = parts.take_distribution();
+    Ok((parts.reading(at), distribution))
 }
 
 /// Publishes what the collection added with the device's readings as stored, so the feed and

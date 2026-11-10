@@ -1,8 +1,9 @@
 <script lang="ts">
   import LineChart from '$lib/charts/LineChart.svelte';
   import type { MetricsSource } from '$lib/hub/generated/graphql';
+  import Icon from '$lib/icons/Icon.svelte';
   import { chartsOf } from '$lib/metrics/overview-charts';
-    import type { MetricRange } from '$lib/metrics/api';
+  import type { MetricRange } from '$lib/metrics/api';
   import MetricBars from '$lib/metrics/bars/MetricBars.svelte';
   import { skeletonDelay } from '$lib/motion/loading/delay.svelte';
   import type { LoadingClock } from '$lib/motion/loading/loading';
@@ -35,9 +36,9 @@
   const skeleton = skeletonDelay(() => waiting, clock);
 </script>
 
-<section class="metrics" aria-labelledby="overview-metrics">
+<section class="overview-card metrics" aria-labelledby="overview-metrics">
   <div class="head">
-    <h2 id="overview-metrics" class="metrics-title">Metrics</h2>
+    <h2 id="overview-metrics" class="overview-card-title"><Icon name="nf-md-chart_line" />Metrics</h2>
     {#if source === 'SSH'}
       <div class="range" role="group" aria-label="Time range">
         {#each RANGES as choice (choice.range)}
@@ -49,10 +50,12 @@
     {/if}
   </div>
   {#if source !== 'SSH'}
-    <p class="metrics-off">
-      Metrics are off for this device.
-      <button type="button" class="link" onclick={onSettings} {@attach press()}>Open Settings</button>
-    </p>
+    <!-- D-7: an empty state with its icon, the sentence and the way to turn metrics on. -->
+    <div class="metrics-off">
+      <span class="off-icon"><Icon name="nf-md-chart_line" size="lg" /></span>
+      <p>Metrics are off for this device.</p>
+      <button type="button" class="settings" onclick={onSettings} {@attach press()}><Icon name="nf-md-cog_outline" size="sm" />Open Settings</button>
+    </div>
   {:else}
     <MetricBars readings={metrics.readings} {source} />
     {#if metrics.liveError !== null}
@@ -97,9 +100,7 @@
 
 <style>
   .metrics {
-    display: grid;
     gap: var(--space-4);
-    min-inline-size: 0;
   }
 
   .head {
@@ -151,7 +152,7 @@
     padding: 0 var(--space-3);
     border: var(--border-thin) solid var(--border);
     border-radius: var(--radius-md);
-    background: var(--surface-raised);
+    background: var(--surface);
     color: var(--text);
     font: inherit;
   }
@@ -159,7 +160,7 @@
   /* The chosen range has a colour, an underline and, for more contrast, a ring: never colour alone. */
   button[aria-pressed='true'] {
     border-color: var(--accent);
-    background: var(--surface);
+    background: var(--accent-tint);
     text-decoration: underline;
     text-decoration-thickness: var(--border-focus);
     text-underline-offset: var(--space-1);
@@ -171,12 +172,27 @@
     }
   }
 
-  button.link {
-    padding: 0 var(--space-1);
-    border-color: transparent;
-    background: none;
-    color: var(--accent);
-    text-decoration: underline;
+  .off-icon {
+    color: var(--text-muted);
+    font-size: var(--text-2xl);
+    line-height: var(--leading-tight);
+  }
+
+  .metrics-off p {
+    color: var(--text-muted);
+  }
+
+  .settings {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-block-size: var(--target-min-touch);
+    padding: 0 var(--space-4);
+    transition: background-color var(--duration-fast) var(--ease-enter);
+  }
+
+  .settings:hover {
+    background: var(--surface-hover);
   }
 
   button:focus-visible {

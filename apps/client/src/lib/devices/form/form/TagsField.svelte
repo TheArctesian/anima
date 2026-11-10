@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from '$lib/icons/Icon.svelte';
   import { normalizeTags } from '../values';
 
   interface Props {
@@ -40,8 +41,8 @@
     {#each tags as tag (tag)}
       <span class="chip">
         {tag}
-        <button type="button" aria-label="Remove tag {tag}" onclick={() => { remove(tag); }}>
-          x
+        <button type="button" aria-label="Remove tag {tag}" title="Remove tag {tag}" onclick={() => { remove(tag); }}>
+          <Icon name="nf-md-close" size="sm" />
         </button>
       </span>
     {/each}
@@ -58,14 +59,16 @@
     gap: var(--space-1);
   }
 
-  label,
-  small {
-    color: var(--text-muted);
+  /* As Field: the label in the text colour, the hint muted. */
+  label {
+    color: var(--text);
     font-size: var(--text-sm);
   }
 
   small {
-    font-size: var(--text-xs);
+    color: var(--text-muted);
+    font-size: var(--text-sm);
+    line-height: var(--leading-tight);
   }
 
   .box {
@@ -73,7 +76,9 @@
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-1);
-    padding: var(--space-1) var(--space-2);
+    box-sizing: border-box;
+    min-block-size: var(--space-8);
+    padding: 0 var(--space-1) 0 var(--space-2);
     background: var(--surface);
     border: var(--border-thin) solid var(--border);
     border-radius: var(--radius-md);
@@ -94,6 +99,15 @@
     font-size: var(--text-sm);
   }
 
+  .chip button:hover {
+    color: var(--text);
+  }
+
+  .chip button:focus-visible {
+    outline: var(--border-focus) solid var(--accent);
+    border-radius: var(--radius-pill);
+  }
+
   .announcement {
     position: absolute;
     overflow: hidden;
@@ -104,6 +118,8 @@
   }
 
   .chip button {
+    display: inline-grid;
+    place-items: center;
     min-inline-size: var(--target-min-desktop);
     min-block-size: var(--target-min-desktop);
     padding: 0;
@@ -117,10 +133,12 @@
     flex: 1;
     min-inline-size: calc(var(--space-16) * 2);
     min-block-size: var(--target-min-desktop);
+    padding: 0;
     background: none;
     border: 0;
     color: var(--text);
     font: inherit;
+    font-size: var(--text-md);
   }
 
   input:focus {

@@ -83,7 +83,7 @@ it('D-7: a device without SSH metrics sends no metrics request and links to Sett
   expect(metricRequests(fake)).toEqual([]);
   expect(fake.subscriptions.map((one) => one.operation)).not.toContain('MetricsAdded');
   expect(document.body.textContent).toContain('Metrics are off for this device.');
-  [...document.querySelectorAll('button')].find((one) => one.textContent.trim() === 'Open Settings')?.click();
+  [...document.querySelectorAll('button')].find((one) => one.textContent.replace(/\p{Co}/gu, '').trim() === 'Open Settings')?.click();
   expect(current.goto[0]?.[0]).toBe(`/devices/${ID}?tab=settings&section=general`);
 });
 
@@ -128,7 +128,7 @@ it('D-7: a metrics error shows the hub message and Retry asks again', async () =
   expect(metricRequests(fake)).toHaveLength(2);
 });
 
-const tabButton = (name: string) => [...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find((one) => one.textContent.trim() === name);
+const tabButton = (name: string) => [...document.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find((one) => one.textContent.replace(/\p{Co}/gu, '').trim() === name);
 
 it('D-5: leaving the Overview stops the live points, and returning loads again', async () => {
   const fake = await show(ssh());

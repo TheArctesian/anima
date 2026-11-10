@@ -1,7 +1,7 @@
 //! Rounds against a test SSH device on loopback: one link per collection with the exact
 //! commands and nothing else, the samples stored and published, rates on the second round,
-//! one event per change, and Windows skipped without a link (MET-001, MET-002, MET-005,
-//! CHK-012, P2-003, D-4, D-10, D-11).
+//! one event per change, Windows skipped without a link, and the distribution recorded
+//! (MET-001, MET-002, MET-005, CHK-012, DEV-016, P2-003, D-4, D-10, D-11).
 
 use sqlx::PgPool;
 use tokio::sync::broadcast::error::TryRecvError;
@@ -69,7 +69,7 @@ async fn met_001_a_round_runs_the_exact_commands_over_one_link_stores_and_publis
         2,
         "a new link per collection (D-11)"
     );
-    assert_eq!(bench.server.heard().len(), 12);
+    assert_eq!(bench.server.heard().len(), 14);
     let second = bench.feed.try_recv().unwrap();
     assert_eq!(value(&second, MetricKind::CpuPercent, ""), Some(75.0));
     assert_eq!(
@@ -183,4 +183,67 @@ async fn met_002_a_failed_command_leaves_its_source_out_and_the_rest_is_stored(p
         stored.iter().all(|(_, name, _)| name != "docker-host"),
         "a partial collection works: {stored:?}"
     );
+}
+
+/// `docker-host`'s stored distribution and the transaction id that last wrote its row.
+async fn distribution(pool: &PgPool) -> (Option<String>, String) {
+    sqlx::query_as("select distribution, xmin::text from devices.devices where id = $1::text::uuid")
+        .bind(DOCKER_HOST)
+        .fetch_one(pool)
+        .await
+        .unwrap()
+}
+
+#[sqlx::test(
+    migrations = "./migrations",
+    fixtures(path = "../../../../tests/fixtures", scripts("devices"))
+)]
+async fn dev_016_a_round_records_the_distribution_once_and_a_failed_read_keeps_it(pool: PgPool) {
+    let mut bench = bench(&pool, true).await;
+    assert_eq!(distribution(&pool).await.0, None);
+    bench.collector.round().await;
+    let first = distribution(&pool).await;
+    assert_eq!(first.0.as_deref(), Some("pop"));
+    bench.clock.advance(30);
+    bench.collector.round().await;
+    assert_eq!(
+        distribution(&pool).await,
+        first,
+        "an unchanged distribution is not written"
+    );
+
+    bench
+        .server
+        .answer("cat /etc/os-release", b"ID=\"Pop!_OS\"\n");
+    bench.clock.advance(30);
+    bench.collector.round().await;
+    assert_eq!(distribution(&pool).await, first, "junk is not stored");
+    bench
+        .server
+        .answers
+        .lock()
+        .unwrap()
+        .remove("cat /etc/os-release");
+    bench.clock.advance(30);
+    bench.collector.round().await;
+    assert_eq!(
+        distribution(&pool).await,
+        first,
+        "a failed read keeps the value"
+    );
+    assert_eq!(
+        bench.feed.len(),
+        4,
+        "every round still published its samples"
+    );
+    let stored = events(&pool).await;
+    assert!(
+        stored.iter().all(|(_, name, _)| name != "docker-host"),
+        "no event for the distribution: {stored:?}"
+    );
+
+    bench.server.answer("cat /etc/os-release", b"ID=arch\n");
+    bench.clock.advance(30);
+    bench.collector.round().await;
+    assert_eq!(distribution(&pool).await.0.as_deref(), Some("arch"));
 }

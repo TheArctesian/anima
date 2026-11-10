@@ -10,6 +10,7 @@ export const browserCapabilities: Capabilities = {
   processLog: false,
   thisMachine: false,
   systemSettings: false,
+  overlayTitleBar: false,
 };
 
 /** Hosts a plain `http:` page may come from: this machine only, for a local build or test (E-2). */

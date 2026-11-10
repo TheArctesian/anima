@@ -1,0 +1,196 @@
+<title>Anima motion reel</title>
+<!-- Starting point for a showcase reel. Replace the tokens, the scene and the storyboard; keep the engine.
+     Every style comes from t inside seek(t). See references/reel.md. -->
+<style>
+	:root { --paper:#2e3440; --wash:#242933; --ink:#eceff4; --muted:#d8dee9; --line:rgba(216,222,233,.18); --chrome:#3b4252; --surface:#434c5e; --accent:#88c0d0; --up:#a3be8c; color-scheme:dark; }
+	body { margin:0; padding-inline:16px; background:var(--wash); color:var(--ink); font:16px 'Fira Code',ui-monospace,monospace; box-sizing:border-box; }
+	.page { display:grid; justify-items:center; gap:12px; padding-block:16px; }
+	#frame { width:min(100%,calc(100vh - 96px),1440px); aspect-ratio:1; position:relative; overflow:hidden; background:var(--paper); }
+	#stage,#world { position:absolute; left:0; top:0; width:1440px; height:1440px; transform-origin:0 0; overflow:hidden; }
+	.abs { position:absolute; left:0; top:0; }
+	.pill { display:grid; place-items:center; height:56px; font-size:24px; }
+	.ind { background:var(--ink); border-radius:10px; height:56px; top:0; }
+	.box { border:1px solid var(--line); border-radius:12px; }
+	.btn { background:var(--ink); color:var(--paper); overflow:hidden; display:grid; place-items:center; font-size:28px; white-space:nowrap; }
+	.btn > * { grid-area:1/1; }
+	#cursor { position:absolute; left:0; top:0; width:42px; height:50px; transform-origin:4px 4px; }
+	.bar { display:flex; gap:12px; align-items:center; width:min(100%,720px); color:var(--muted); font-size:14px; flex-wrap:wrap; }
+	.bar input { flex:1; min-width:160px; }
+	body.render { padding:0; background:var(--paper); } body.render .page { padding:0; } body.render .bar { display:none; }
+	body.render #frame { width:1440px; }
+</style>
+<div class="page">
+	<div id="frame" role="img" aria-label="A looping demonstration of proposed motion, on synthetic content"><div id="stage">
+		<div id="world" data-seam></div>
+		<svg id="cursor" data-seam viewBox="0 0 28 34" aria-hidden="true"><path d="M3 3 L3 27 L9.5 21 L14 31 L18 29.2 L13.6 19.4 L22 19.4 Z" fill="#eceff4" stroke="#2e3440" stroke-width="2" stroke-linejoin="round"/></svg>
+	</div></div>
+	<div class="bar"><button id="play" type="button">Pause</button><input id="scrub" type="range" min="0" max="1" step="0.001" aria-label="Reel position"><span id="now"></span></div>
+</div>
+<script>
+'use strict';
+// ---- engine: keep this -------------------------------------------------------------------------
+const BPM = 120, BARS = 6, BEAT = 60 / BPM, T = BARS * 4 * BEAT;
+const B = n => (n - 1) * BEAT;                 // beat n starts here
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const lerp = (a, b, p) => a + (b - a) * p;
+function bezier(x1, y1, x2, y2) {
+	const f = (a, b, s) => ((1 - 3 * b + 3 * a) * s + 3 * b - 6 * a) * s * s + 3 * a * s;
+	return p => { if (p <= 0) return 0; if (p >= 1) return 1; let lo = 0, hi = 1, s = p;
+		for (let i = 0; i < 24; i++) { s = (lo + hi) / 2; f(x1, x2, s) < p ? lo = s : hi = s; } return f(y1, y2, s); };
+}
+const EASE_OUT = bezier(.2, 0, 0, 1), EASE_IN = bezier(1, 0, .8, 1);   // ease-enter, ease-exit   // use the product's curves
+const tw = (t, t0, d, ease = EASE_OUT) => ease(clamp((t - t0) / d));
+// Closed-form step response. zeta < 1 overshoots slightly; keep it at 0.9 or above: bounce is not the point.
+function S(x, { response, zeta }) {
+	if (x <= 0) return 0;
+	const w = 2 * Math.PI / response;
+	if (zeta >= 1) return 1 - (1 + w * x) * Math.exp(-w * x);
+	const wd = w * Math.sqrt(1 - zeta * zeta), k = zeta * w;
+	return 1 - Math.exp(-k * x) * (Math.cos(wd * x) + (k / wd) * Math.sin(wd * x));
+}
+const SPRINGS = { travel: { response: .35, zeta: .95 }, def: { response: .35, zeta: 1 }, move: { response: .4, zeta: 1 }, camera: { response: .7, zeta: 1 } };
+// One spring per change, plus the previous loop's tail. Targets must return to `start`, which makes the
+// loop exactly periodic in value and velocity.
+function sum(t, start, events, spring) {
+	let v = start, prev = start;
+	for (const [ti, g] of events) { v += (g - prev) * (S(t - ti, spring) + S(t + T - ti, spring)); prev = g; }
+	return v;
+}
+const sumN = (t, start, events, spring) => start.map((s, k) => sum(t, s, events.map(e => [e[0], e[1][k]]), spring));
+
+// ---- storyboard ---------------------------------------------------------------------------------
+// Beats: 1-4 collapse (M-1), 5-6 expand, 7-11 card to detail (M-5), 12 uptime cross-fade (M-4), 13-16 copy (M-6),
+// 17 to Settings, 19-23 async Save (M-3), 23-24 back to the devices page so the loop closes.
+const REST = [1250, 1180];
+const TOGGLE = [262, 268], CARD_NAME = [560, 432], HEAD_NAME = [470, 330], COPY = [1010, 650], SETTINGS = [230, 1080], SAVE = [1160, 560];
+const CURSOR = [[B(1), TOGGLE], [B(6), CARD_NAME], [B(11), COPY], [B(16), SETTINGS], [B(18), SAVE], [B(22), REST]];
+const CAMERA = [[B(1), [1.25, 520, 520]], [B(7), [1.05, 720, 640]], [B(12), [1.3, 860, 600]], [B(17), [1.25, 900, 600]], [B(23), [1.25, 520, 520]]];
+const PRESS = [B(3), B(5), B(7), B(13), B(17), B(19)];
+const LABELS = ['to the toggle', 'hover', 'collapse: labels fade', 'page glides left', 'expand', 'page glides right',
+	'press the card name', 'name flies at full strength', 'pill follows', 'header settles', 'detail', 'uptime cross-fades',
+	'press Copy', 'icon to check', 'Copied', 'Copied fades', 'to Settings', 'Settings', 'press Save', 'Saving after 300 ms',
+	'hub answers', 'Saved', 'back to Save', 'back to Devices'];
+const NAV_FULL = 220, NAV_ICONS = 84, WIN = [120, 220, 1200, 1000];
+
+// ---- scene ---------------------------------------------------------------------------------------
+const world = document.getElementById('world'), cursor = document.getElementById('cursor');
+const el = (cls, css, html = '', parent = world) => { const e = document.createElement('div'); e.className = cls; e.style.cssText = css; e.innerHTML = html; parent.appendChild(e); return e; };
+const css = document.createElement('style');
+css.textContent = `.card{position:absolute;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.t{position:absolute;white-space:nowrap}.btn2{position:absolute;display:grid;place-items:center;border:1px solid var(--line);border-radius:10px;background:var(--chrome);color:var(--ink);font-size:22px}
+.btn2>span{grid-area:1/1;white-space:nowrap}.pillx{position:absolute;padding:4px 14px;border-radius:99px;background:var(--chrome);font-size:20px}`;
+document.head.appendChild(css);
+const win = el('abs box', `left:${WIN[0]}px;top:${WIN[1]}px;width:${WIN[2]}px;height:${WIN[3]}px;background:var(--paper);overflow:hidden`);
+const nav = el('abs', 'left:0;top:0;height:100%;background:var(--chrome);border-right:1px solid var(--line)', '', win);
+const toggle = el('t', 'left:120px;top:30px;font-size:26px;color:var(--muted)', '▭', nav);
+const navItems = ['Devices', 'Live sessions', 'Settings'].map((s, i) => {
+	const row = el('t', `left:24px;top:${110 + i * 70 + (i === 2 ? 680 : 0)}px;font-size:24px;color:var(--ink)`, '', nav);
+	el('', 'display:inline-block;width:30px;color:var(--accent)', '■', row);
+	return el('', 'display:inline-block;margin-left:14px', s, row);
+});
+// Pages are layers inside one content box that glides with the nav (M-1).
+const content = el('abs', 'top:0;height:100%;width:1200px', '', win);
+const pageA = el('abs', 'left:0;top:0;width:100%;height:100%', '', content);
+el('card', 'left:40px;top:150px;width:470px;height:230px', '', pageA);
+el('card', 'left:540px;top:150px;width:470px;height:230px', '', pageA);
+el('t', 'left:600px;top:190px;font-size:24px;font-weight:700', 'pop-os', pageA);
+el('t', 'left:64px;top:240px;font-size:20px;color:var(--muted)', '100.64.0.2 · Uptime 99.58 %', pageA);
+['Search by name', 'Status', 'Tags', 'Sort', '+ Add device'].forEach((s, i) => el('btn2', `left:${40 + [0, 330, 470, 590, 720][i]}px;top:60px;width:${[310, 120, 100, 110, 200][i]}px;height:52px;font-size:20px`, `<span>${s}</span>`, pageA));
+const pageB = el('abs', 'left:0;top:0;width:100%;height:100%', '', content);
+el('t', 'left:40px;top:40px;font-size:20px;color:var(--muted)', '‹ Devices', pageB);
+el('t', 'left:40px;top:150px;font-size:18px;color:var(--muted)', '▣ 100.64.0.2 · ▣ macOS · ▣ workstation', pageB);
+el('card', 'left:40px;top:250px;width:440px;height:300px', '', pageB);
+el('t', 'left:64px;top:275px;font-size:22px;font-weight:700', '◷ Uptime', pageB);
+const up1 = el('t', 'left:64px;top:330px;font-size:44px;font-weight:700', '99.58 %', pageB);
+const up2 = el('t', 'left:64px;top:330px;font-size:44px;font-weight:700', '99.61 %', pageB);
+el('t', 'left:64px;top:390px;font-size:18px;color:var(--muted)', '24 hours', pageB);
+el('card', 'left:510px;top:250px;width:620px;height:300px', '', pageB);
+el('t', 'left:534px;top:275px;font-size:22px;font-weight:700', '⌘ SSH host key', pageB);
+el('t', 'left:534px;top:330px;font-size:20px', 'SHA256:Os+Lateo…JR6lg4mc', pageB);
+const copyBtn = el('btn2', 'left:534px;top:400px;width:170px;height:56px', '', pageB);
+const copyIcon = el('', '', '⧉ Copy', copyBtn), checkIcon = el('', 'color:var(--up)', '✓ Copy', copyBtn);
+const copied = el('t', 'left:722px;top:414px;font-size:20px;color:var(--muted)', 'Copied', pageB);
+const pageC = el('abs', 'left:0;top:0;width:100%;height:100%', '', content);
+el('t', 'left:40px;top:50px;font-size:40px;font-weight:700', 'Settings', pageC);
+el('t', 'left:40px;top:150px;font-size:22px;font-weight:700', '◴ Data retention', pageC);
+el('card', 'left:40px;top:200px;width:820px;height:420px', '', pageC);
+['Check results', 'Metrics', 'Events'].forEach((s, i) => {
+	el('t', `left:70px;top:${240 + i * 120}px;font-size:22px`, s, pageC);
+	el('t', `left:70px;top:${272 + i * 120}px;font-size:16px;color:var(--muted)`, '1 to 400 days', pageC);
+	el('btn2', `left:500px;top:${240 + i * 120}px;width:110px;height:52px`, `<span>${[30, 30, 90][i]}</span>`, pageC);
+	el('t', `left:625px;top:${252 + i * 120}px;font-size:20px;color:var(--muted)`, 'days', pageC);
+});
+const save = el('btn2', 'left:690px;top:240px;width:150px;height:52px', '', pageC);
+const sLabel = el('', '', 'Save', save), sWait = el('', 'color:var(--muted)', 'Saving', save), sDone = el('', 'color:var(--up)', '✓ Saved', save);
+[2, 3].forEach(i => el('btn2', `left:690px;top:${240 + (i - 1) * 120}px;width:150px;height:52px`, '<span>Save</span>', pageC));
+// The shared items fly in a layer above every page, at full strength (M-5).
+const name = el('t', 'font-size:26px;font-weight:700', 'Stephen’s MacBook Pro', win);
+const pill = el('pillx', '', '<span style="color:var(--up)">●</span> Up', win);
+
+function seek(tIn) {
+	const t = ((tIn % T) + T) % T;
+	const [cs, cx, cy] = sumN(t, [1.25, 520, 520], CAMERA, SPRINGS.camera);
+	world.style.transform = `translate(${720 - cx * cs}px, ${720 - cy * cs}px) scale(${cs})`;
+
+	// M-1: the width snaps (MOT-006); the page follows by translate on spring-default; labels fade.
+	const collapsed = t >= B(3) && t < B(5);
+	const navW = collapsed ? NAV_ICONS : NAV_FULL;
+	nav.style.width = `${navW}px`;
+	toggle.style.left = `${navW - 64}px`;
+	const left = sum(t, NAV_FULL, [[B(3), NAV_ICONS], [B(5), NAV_FULL]], SPRINGS.def);
+	content.style.transform = `translateX(${left}px)`;
+	const labels = t < B(5) ? 1 - tw(t, B(3) - .12, .15, EASE_IN) : tw(t, B(5), .2);
+	navItems.forEach(e => { e.style.opacity = labels; });
+
+	// Pages cross-fade (duration-base): devices → detail at beat 7, detail → settings at 17, settings → devices at 23.
+	const f = (a, b) => tw(t, a, .2) * (1 - tw(t, b, .2, EASE_IN));
+	const oB = f(B(7), B(17)), oC = f(B(17), B(23)), oA = 1 - (t < B(23) ? tw(t, B(7), .2, EASE_IN) : 1 - tw(t, B(23), .2));
+	pageA.style.opacity = oA; pageB.style.opacity = oB; pageC.style.opacity = oC;
+
+	// M-5: name and pill fly at full strength; afterwards they belong to whichever page shows them.
+	const nx = sum(t, 64, [[B(7), 40], [B(21), 64]], SPRINGS.move), ny = sum(t, 190, [[B(7), 90], [B(21), 190]], SPRINGS.move);
+	const sc = sum(t, 1, [[B(7), 1.45], [B(21), 1]], SPRINGS.move);
+	const px = sum(t, 400, [[B(7), 560], [B(21), 400]], SPRINGS.move), py = sum(t, 186, [[B(7), 96], [B(21), 186]], SPRINGS.move);
+	const flying = t >= B(7) && t < B(9);
+	const shared = flying ? 1 : t < B(7) ? oA : t < B(21) ? oB : oA;
+	[[name, nx, ny, sc], [pill, px, py, 1]].forEach(([e, x, y, s]) => {
+		e.style.transform = `translate(${left + x}px, ${y}px) scale(${s})`; e.style.transformOrigin = '0 0'; e.style.opacity = shared;
+	});
+
+	// M-4: the reading cross-fades; it never counts.
+	const u = tw(t, B(12), .2); up1.style.opacity = 1 - u; up2.style.opacity = u;
+	if (t < B(7)) { up1.style.opacity = 1; up2.style.opacity = 0; }
+
+	// M-6: the icon becomes a check, "Copied" fades in, both return after duration-highlight.
+	const c = tw(t, B(13) + .05, .2) * (1 - tw(t, B(16), .2, EASE_IN));
+	copyIcon.style.opacity = 1 - c; checkIcon.style.opacity = c; copied.style.opacity = c;
+
+	// M-3: nothing for threshold-loading, then Saving; the hub answers; Saved holds, then the label returns. No spinner.
+	const wait = tw(t, B(19) + .3, .2) * (1 - tw(t, B(21), .2, EASE_IN));
+	const done = tw(t, B(21), .2) * (1 - tw(t, B(22) + .5, .2, EASE_IN));
+	sLabel.style.opacity = 1 - wait - done; sWait.style.opacity = wait; sDone.style.opacity = done;
+
+	const [wx, wy] = sumN(t, REST, CURSOR, SPRINGS.travel);
+	let press = 1;
+	for (const p of PRESS) if (t >= p && t < p + .25) press = Math.min(press, 1 - .1 * Math.sin(Math.PI * (t - p) / .25));
+	cursor.style.transform = `translate(${720 + (wx - cx) * cs - 4}px, ${720 + (wy - cy) * cs - 4}px) scale(${press})`;
+	return t;
+}
+window.seek = seek; window.REEL = { T, BEAT };
+
+// ---- playback: keep ------------------------------------------------------------------------------
+const render = new URLSearchParams(location.search).has('render');
+if (render) document.body.classList.add('render');
+const stage = document.getElementById('stage'), frame = document.getElementById('frame');
+const scrub = document.getElementById('scrub'), now = document.getElementById('now'), play = document.getElementById('play');
+const fit = () => { stage.style.transform = `scale(${frame.clientWidth / 1440})`; };
+new ResizeObserver(fit).observe(frame); fit(); scrub.max = T;
+let reduced = false; try { reduced = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch {}
+let playing = !render && !reduced, origin = performance.now();
+const show = t => { const s = seek(t), b = Math.floor(s / BEAT); scrub.value = s; now.textContent = `${s.toFixed(2)} s · beat ${b + 1} · ${LABELS[b] || ''}`; };
+play.textContent = playing ? 'Pause' : 'Play';
+play.onclick = () => { playing = !playing; play.textContent = playing ? 'Pause' : 'Play'; if (playing) origin = performance.now() - scrub.value * 1000; };
+scrub.oninput = () => { playing = false; play.textContent = 'Play'; show(+scrub.value); };
+show(reduced ? B(13) + .3 : 0);
+if (!render) { const loop = ts => { if (playing) show((ts - origin) / 1000); requestAnimationFrame(loop); }; requestAnimationFrame(loop); }
+</script>

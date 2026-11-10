@@ -27,6 +27,7 @@ export const Devices = graphql(`
           status
           uptime(window: DAY)
           os
+          distribution
           macAddress
           metricsSource
           readings {
@@ -119,6 +120,7 @@ void graphql(`
     ip
     kind
     os
+    distribution
     tags
     maintenance
     status

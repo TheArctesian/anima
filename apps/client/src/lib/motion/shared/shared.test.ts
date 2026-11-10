@@ -95,13 +95,15 @@ it('card to detail: an element with another key is not a counterpart', () => {
   expect(runs).toEqual([]);
 });
 
-it('card to detail, MOT-006: the item starts on the card rect and springs to its place by translate and scale', () => {
+/** The copy that flies above both pages, if one is in flight. */
+const copy = () => document.querySelector<HTMLElement>('[data-flight]');
+
+it('card to detail, MOT-006: a copy starts on the card rect and springs to the item by translate and scale', () => {
   card();
   const node = header();
 
   attach(node);
 
-  expect(node.getBoundingClientRect()).toEqual(new DOMRect(40, 300, 100, 20));
   expect(runs.map((run) => run.keyframes)).toEqual([
     [-30, 0],
     [270, 0],
@@ -111,7 +113,33 @@ it('card to detail, MOT-006: the item starts on the card rect and springs to its
   for (const run of runs) {
     expect(run.options).toMatchObject({ type: 'spring', stiffness: spring.move.stiffness, damping: spring.move.damping });
   }
-  expect(node.getAttribute('style')).toMatch(/^translate: [^;]+; scale: [^;]+;$/);
+  expect(copy()?.style.translate).not.toBe('');
+  expect(copy()?.style.scale).not.toBe('');
+});
+
+it('card to detail: the copy flies above both pages at full strength while the item waits, hidden', () => {
+  card();
+  const node = header();
+
+  attach(node);
+
+  expect(copy()?.style.position).toBe('fixed');
+  expect(copy()?.style.opacity).toBe('1');
+  expect(copy()?.getAttribute('aria-hidden')).toBe('true');
+  expect(copy()?.dataset.shared).toBe(key);
+  expect(node.style.opacity).toBe('0');
+});
+
+it('card to detail: when the copy lands it is removed and the item shows', async () => {
+  card();
+  const node = header();
+  attach(node);
+
+  for (const run of runs) run.finish();
+  await settled();
+
+  expect(copy()).toBeNull();
+  expect(node.style.opacity).toBe('');
 });
 
 it('card to detail: the card is hidden during the flight and shown again when it lands', async () => {
@@ -134,7 +162,8 @@ it('card to detail: with several outgoing pages, the last one mounted is the cou
 
   attach(node);
 
-  expect(node.getBoundingClientRect().top).toBe(100);
+  // The copy starts on the second card: its centre is 70 px below the header's.
+  expect(runs[1]?.keyframes).toEqual([70, 0]);
   expect(second.style.opacity).toBe('0');
   expect(first.style.opacity).toBe('');
 });
@@ -170,6 +199,7 @@ it('card to detail: detaching mid-flight stops the flight and clears the styles 
   expect(node.style.scale).toBe('');
   expect(node.dataset.shared).toBeUndefined();
   expect(old.style.opacity).toBe('');
+  expect(copy()).toBeNull();
 });
 
 it('card to detail: detaching after no flight leaves the styles it did not write', () => {
@@ -184,20 +214,31 @@ it('card to detail: detaching after no flight leaves the styles it did not write
   expect(node.dataset.shared).toBeUndefined();
 });
 
-it('MOT-002: a page that mounts mid-flight starts from where the moving item is on screen', () => {
+it('MOT-002: a page that mounts mid-flight starts from where the flying copy is on screen', () => {
   card();
-  const middle = header();
-  attach(middle);
+  attach(header());
+  const first = copy();
+  if (first === null) throw new Error('no copy in flight');
+  // The copy sits on the header's box (20, 20, 200 × 40) and is moved by its own translate and scale.
+  first.getBoundingClientRect = () => {
+    const [x, y] = pair(first.style.translate, 0);
+    const [sx] = pair(first.style.scale, 1);
+    return new DOMRect(20 + x + (200 - 200 * sx) / 2, 20 + y + (40 - 40 * sx) / 2, 200 * sx, 40 * sx);
+  };
   runs[0]?.frame(-10);
   runs[1]?.frame(100);
   runs[2]?.frame(0.75);
   runs[3]?.frame(0.75);
-  const onScreen = middle.getBoundingClientRect();
   runs.length = 0;
 
-  const last = box({ top: 400, left: 20, width: 200, height: 40 });
-  attach(last);
+  attach(box({ top: 400, left: 20, width: 200, height: 40 }));
 
-  expect(last.getBoundingClientRect()).toEqual(onScreen);
-  expect(middle.style.opacity).toBe('0');
+  expect(runs.map((run) => run.keyframes)).toEqual([
+    [-10, 0],
+    [-280, 0],
+    [0.75, 1],
+    [0.75, 1],
+  ]);
+  expect(document.querySelectorAll('[data-flight]')).toHaveLength(1);
+  expect(first.isConnected).toBe(false);
 });

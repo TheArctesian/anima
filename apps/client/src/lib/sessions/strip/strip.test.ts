@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { flushSync } from 'svelte';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Hub } from '$lib/hub/hub';
+import { glyph } from '$lib/icons/icons';
 import { runs } from '$lib/motion/engine.fixture';
 import { route } from '$lib/nav/route.fixture.svelte';
 import Layout from '../../../routes/+layout.svelte';
@@ -272,6 +273,16 @@ it('K4 §8.7: a title the shell sets shows in the tab next to the device name, w
   sessions.retitle(id, '');
   await settle();
   expect(tab?.querySelector('.title')?.textContent).toBe('');
+});
+
+it('UI-015: a tab opened with the device\'s OS shows its logo in place of the console icon, and its name stays the device and protocol', () => {
+  const sessions = show();
+  sessions.openSession({ ...request, os: 'MACOS', origin: null });
+  sessions.openSession({ ...request, origin: null });
+  flushSync();
+  const glyphs = tabs().map((tab) => tab.querySelector('.icon')?.textContent);
+  expect(glyphs).toEqual([glyph('nf-md-apple'), glyph('nf-md-console')]);
+  expect(tabs()[0]?.querySelector('[role="img"]')).toBeNull();
 });
 
 it('MOT-007, MV-004: the tab has one width whatever the title, so a title moves neither the close button nor the protocol', () => {

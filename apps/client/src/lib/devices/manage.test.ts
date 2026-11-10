@@ -11,6 +11,7 @@ const DETAIL: DeviceDetail = {
   ip: '10.0.0.5',
   kind: 'server',
   os: 'LINUX',
+  distribution: null,
   tags: ['lab'],
   maintenance: false,
   status: 'UP',

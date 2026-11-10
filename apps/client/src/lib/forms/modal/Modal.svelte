@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import Icon from '$lib/icons/Icon.svelte';
+  import type { IconName } from '$lib/icons/icons';
+  import { press } from '$lib/motion/roles/press';
   import { coverWhile } from '$lib/overlay/overlay.svelte';
   import { fade, modal } from '$lib/motion/roles/transitions';
   import { offerFooter } from './footer';
@@ -30,10 +32,14 @@
     width?: number;
     /** Lowers the surface by `--space-16` from the top edge, for a warning that sits over the page's own controls. */
     lowered?: boolean;
+    /** An icon before the title, for a dialog that is a task (Add device); a warning's icon wins over it. */
+    icon?: IconName;
+    /** Shows a Close button at the end of the title row; it calls `onClose`, as Escape does. */
+    dismissible?: boolean;
     children: Snippet;
   }
 
-  const { open, title, onClose, size = 'content', warning = false, describedBy, closeOnScrim = true, returnTo, width = 8, lowered = false, children }: Props = $props();
+  const { open, title, onClose, size = 'content', warning = false, describedBy, closeOnScrim = true, returnTo, width = 8, lowered = false, icon, dismissible = false, children }: Props = $props();
   const titleId = $props.id();
   coverWhile(() => open);
 
@@ -144,6 +150,8 @@
         class="surface"
         class:form={size === 'form'}
         class:warning
+        class:dismissible
+        class:marked={icon !== undefined && !warning}
         role={warning ? 'alertdialog' : 'dialog'}
         aria-modal="true"
         aria-labelledby={titleId}
@@ -157,6 +165,16 @@
         }}
       >
         <h2 id={titleId}>{#if warning}<Icon name="nf-md-alert" />{/if}{title}</h2>
+        {#if icon !== undefined && !warning}
+          <!-- Beside the title, not in it: the heading's text stays the title alone. -->
+          <span class="mark"><Icon name={icon} /></span>
+        {/if}
+        {#if dismissible}
+          <!-- Not the first stop: focus still starts in the body (see `initialFocusIn`). UI-015: a label and a tooltip. -->
+          <button type="button" class="close" data-dismiss aria-label="Close" title="Close" onclick={onClose} {@attach press()}>
+            <Icon name="nf-md-close" />
+          </button>
+        {/if}
         <div class="body">
           {@render children()}
         </div>
@@ -200,6 +218,7 @@
   }
 
   .surface {
+    position: relative;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
@@ -266,5 +285,65 @@
 
   h2 :global(.icon) {
     color: var(--status-warning);
+  }
+
+  /*
+   * A task's title row: as tall as the Close button, with the task's icon in the padding at its start and
+   * the Close button in the padding at its end, both laid over the surface's padding box.
+   */
+  .marked h2,
+  .dismissible h2 {
+    min-block-size: var(--space-8);
+  }
+
+  .marked h2 {
+    padding-inline-start: calc(var(--icon-md) + var(--space-3));
+  }
+
+  .dismissible h2 {
+    padding-inline-end: var(--space-10);
+  }
+
+  .mark {
+    position: absolute;
+    inset-block-start: var(--space-5);
+    inset-inline-start: var(--space-5);
+    display: grid;
+    place-items: center;
+    block-size: var(--space-8);
+    color: var(--accent);
+  }
+
+  .close {
+    position: absolute;
+    inset-block-start: var(--space-5);
+    inset-inline-end: var(--space-4);
+    display: grid;
+    place-items: center;
+    box-sizing: border-box;
+    inline-size: var(--space-8);
+    block-size: var(--space-8);
+    padding: 0;
+    background: none;
+    border: 0;
+    border-radius: var(--radius-md);
+    color: var(--text-muted);
+    font: inherit;
+    transition: background-color var(--duration-fast) var(--ease-enter);
+  }
+
+  .close:hover {
+    background: var(--surface-hover);
+    color: var(--text);
+  }
+
+  .close:active {
+    transition-duration: var(--duration-press);
+    background: var(--accent-tint);
+  }
+
+  .close:focus-visible {
+    outline: var(--border-focus) solid var(--accent);
+    outline-offset: calc(var(--border-focus) * -1);
   }
 </style>

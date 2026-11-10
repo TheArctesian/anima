@@ -8,7 +8,7 @@ use ipnet::IpNet;
 use super::{
     Error, FieldError,
     mac::MacAddress,
-    model::{Device, OperatingSystem, Site, SshAuth, SshSettings},
+    model::{Device, Distribution, OperatingSystem, Site, SshAuth, SshSettings, UnknownValue},
     remote::{RdpSettings, RemoteAccess, TransferPolicy, VncSettings},
 };
 use crate::ids::{DeviceId, SiteId};
@@ -23,6 +23,7 @@ pub(super) struct DeviceRow {
     kind: String,
     os: String,
     maintenance: bool,
+    distribution: Option<String>,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
     enabled: bool,
@@ -128,10 +129,16 @@ impl TryFrom<DeviceRow> for Device {
             mac_address: remote.mac_address,
             metrics_source: remote.metrics_source,
             transfer: remote.transfer,
+            distribution: row.distribution.as_deref().map(distribution).transpose()?,
             created_at: row.created_at,
             updated_at: row.updated_at,
         })
     }
+}
+
+/// The stored distribution; the column's check keeps it valid, so anything else is a decode error.
+fn distribution(text: &str) -> Result<Distribution, sqlx::Error> {
+    Distribution::new(text).ok_or_else(|| decode(UnknownValue::new("distribution", text)))
 }
 
 pub(super) fn to_devices(rows: Vec<DeviceRow>) -> Result<Vec<Device>, Error> {

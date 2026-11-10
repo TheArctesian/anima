@@ -1,6 +1,7 @@
 <script lang="ts">
   import FormButton from '$lib/forms/FormButton.svelte';
   import { useHub } from '$lib/hub/context';
+  import Icon from '$lib/icons/Icon.svelte';
   import type { HubResult } from '$lib/hub/hub';
   import { retentionApi, type RetentionPeriod } from './api';
   import { inPageOrder, SUBJECTS } from './periods';
@@ -30,24 +31,23 @@
   }
 </script>
 
-<div class="rows">
-  {#if periods === null}
-    {#each SUBJECTS as { subject, label } (subject)}
-      <RetentionRow {label} period={null} />
-    {/each}
-  {:else}
-    {#each periods as period (period.subject)}
-      <RetentionRow
-        label={SUBJECTS.find((each) => each.subject === period.subject)?.label ?? period.subject}
-        {period}
-        save={(days) => save(period.subject, days)}
-      />
-    {/each}
-  {/if}
-</div>
-<!-- One block holds the note or, when the load failed, its message and retry, so the section keeps its height at every width. -->
+{#if periods === null}
+  {#each SUBJECTS as { subject, label } (subject)}
+    <RetentionRow {label} period={null} />
+  {/each}
+{:else}
+  {#each periods as period (period.subject)}
+    <RetentionRow
+      label={SUBJECTS.find((each) => each.subject === period.subject)?.label ?? period.subject}
+      {period}
+      save={(days) => save(period.subject, days)}
+    />
+  {/each}
+{/if}
+<!-- The card's footer holds the note or, when the load failed, its notice and Try again, at one height (MOT-007). -->
 <div class="note">
   {#if loadFailed}
+    <span class="mark"><Icon name="nf-md-alert_circle_outline" size="sm" /></span>
     <p role="alert">Could not load the periods.</p>
     <FormButton tabindex={0} onclick={load}>Try again</FormButton>
   {:else}
@@ -56,40 +56,35 @@
 </div>
 
 <style>
-  .rows {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-    margin-block-start: var(--space-3);
-  }
-
   .note {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: var(--space-2);
-    /* The note, and the failure message that wraps to two lines beside Try again, fill the same block (MOT-007). */
-    min-block-size: max(var(--target-min-desktop), calc(var(--text-md) * var(--leading-tight) * 2));
-    margin-block-start: var(--space-3);
+    /* The note and the notice beside Try again fill the same block, the height of a button (MOT-007). */
+    min-block-size: var(--space-8);
+    padding: var(--space-3) var(--space-4);
+    border-block-start: var(--border-thin) solid var(--border);
   }
 
-  /* Try again stays on one line, so the failed block keeps the height of the note. */
   .note :global(button) {
     white-space: nowrap;
   }
 
+  .mark {
+    display: inline-flex;
+    color: var(--status-down);
+  }
+
+  /* The notice text stays --text (MAT-005); the icon beside it marks the error, never colour alone (UI-003). */
   p {
+    flex: 1 1 0;
+    min-inline-size: 0;
     margin: 0;
-    font-size: var(--text-md);
+    font-size: var(--text-sm);
+    line-height: var(--leading-tight);
   }
 
   p:not([role]) {
     color: var(--text-muted);
-  }
-
-  /* --status-down text is 3.05:1 on the page (MAT-005 needs 4.5:1): the text stays --text and a bar marks the error. */
-  [role='alert'] {
-    padding-inline-start: var(--space-2);
-    border-inline-start: var(--border-focus) solid var(--status-down);
   }
 </style>

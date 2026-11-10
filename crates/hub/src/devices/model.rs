@@ -79,6 +79,28 @@ impl FromStr for OperatingSystem {
     }
 }
 
+/// The Linux distribution a device runs: the `ID` of its os-release, 1 to 32 characters of
+/// `a-z`, `0-9`, `.`, `_` and `-` (DEV-016). Text from the device, so nothing else is kept.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Distribution(String);
+
+impl Distribution {
+    /// `text` when it is a valid distribution id; `None` for anything else.
+    #[must_use]
+    pub fn new(text: &str) -> Option<Self> {
+        let allowed = |byte: u8| {
+            byte.is_ascii_lowercase() || byte.is_ascii_digit() || matches!(byte, b'.' | b'_' | b'-')
+        };
+        let valid = (1..=32).contains(&text.len()) && text.bytes().all(allowed);
+        valid.then(|| Self(text.to_owned()))
+    }
+
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
 /// How the hub signs in over SSH, stored as lower-case text.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Enum)]
 pub enum SshAuth {
@@ -159,6 +181,8 @@ pub struct Device {
     pub mac_address: Option<MacAddress>,
     pub metrics_source: MetricsSource,
     pub transfer: TransferPolicy,
+    /// Read over SSH, never entered; `None` until read (DEV-016).
+    pub distribution: Option<Distribution>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }

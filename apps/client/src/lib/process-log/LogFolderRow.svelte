@@ -1,6 +1,7 @@
 <script lang="ts">
   import { LogFolderError, openLogFolder } from '$lib/desktop/process-log';
   import { press } from '$lib/motion/roles/press';
+  import SettingRow from '$lib/settings/SettingRow.svelte';
 
   let problem = $state<string | null>(null);
 
@@ -17,27 +18,19 @@
   }
 </script>
 
-<section aria-label="Logs">
-  <button type="button" tabindex="0" onclick={open} {@attach press()}>Open log folder</button>
-  {#if problem !== null}
-    <p role="alert">{problem}</p>
-  {/if}
-</section>
+<SettingRow label="Logs">
+  {#snippet hint()}
+    <p class="hint">The desktop app's process log, for a bug report.</p>
+  {/snippet}
+  <button type="button" tabindex="0" onclick={open} {@attach press()}>
+    Open log folder
+  </button>
+  {#snippet message()}
+    {#if problem !== null}<p role="alert">{problem}</p>{/if}
+  {/snippet}
+</SettingRow>
 
 <style>
-  section {
-    display: flex;
-    flex-direction: column;
-    align-items: start;
-    gap: var(--space-2);
-    margin-block-start: var(--space-6);
-  }
-
-  p {
-    margin: 0;
-    font-size: var(--text-md);
-  }
-
   button {
     box-sizing: border-box;
     block-size: var(--space-8);
@@ -47,21 +40,17 @@
     background: var(--surface);
     color: var(--text);
     font: inherit;
+    font-size: var(--text-md);
+    white-space: nowrap;
     transition: background-color var(--duration-fast) var(--ease-enter);
   }
 
   button:hover {
-    background: var(--surface-raised);
+    background: var(--surface-hover);
   }
 
   button:focus-visible {
     outline: var(--border-focus) solid var(--accent);
     outline-offset: var(--border-focus);
-  }
-
-  /* --status-down text is 3.05:1 on the page (MAT-005 needs 4.5:1): the text stays --text and a bar marks the error. */
-  [role='alert'] {
-    padding-inline-start: var(--space-2);
-    border-inline-start: var(--border-focus) solid var(--status-down);
   }
 </style>

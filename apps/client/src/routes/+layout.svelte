@@ -7,10 +7,15 @@
   import { readAccessToken } from '$lib/desktop/token';
   import { createHub, type HubAddress } from '$lib/hub/hub';
   import { crossFade } from '$lib/motion/roles/transitions';
+  import { shiftShell } from '$lib/nav/banner-shift';
   import { DATA_AGE_REFRESH_MS } from '$lib/nav/nav';
-  import { watchIconOnly } from '$lib/nav/icon-only';
+  import { storedCollapsed, storeCollapsed } from '$lib/nav/collapse/collapse';
+  import { watchIconOnly } from '$lib/nav/collapse/icon-only';
+  import { releaseWidth } from '$lib/nav/collapse/resize';
+  import { fadeInWords } from '$lib/nav/collapse/words';
   import { createClock } from '$lib/nav/clock.svelte';
   import Nav from '$lib/nav/Nav.svelte';
+  import { capabilities } from '$lib/platform/platform';
   import { sessionsApi } from '$lib/sessions/api';
   import { restoredScroll, type CoveredScroll } from '$lib/sessions/covered';
   import { createSessions, provideSessions, type SessionPort } from '$lib/sessions/sessions.svelte';
@@ -29,12 +34,31 @@
   applyTypefaces(document.documentElement, storedTypefaces(localStorage));
   applyTheme(document.documentElement, storedTheme(localStorage));
   applyMotion(document.documentElement, storedMotion(localStorage));
-  // The bar shows icons only below the compact breakpoint; set before the first render so the width never changes after load.
-  let iconOnly = $state(false);
-  const stopWatchingWidth = watchIconOnly(document.documentElement, window, (now) => {
-    iconOnly = now;
+  // On a Mac the window draws under its title bar; the bar keeps room for the window buttons.
+  if (capabilities().overlayTitleBar) document.documentElement.dataset['titlebar'] = 'overlay';
+  // The bar shows icons only below the compact breakpoint or when the operator collapses it; set before the first
+  // render so the width never changes after load.
+  let nav = $state({ iconOnly: false, compact: false });
+  const startsCollapsed = storedCollapsed(localStorage);
+  let collapsed = $state(startsCollapsed);
+  const iconOnlyWatch = watchIconOnly(document.documentElement, window, startsCollapsed, (now) => {
+    nav = now;
   });
-  $effect(() => stopWatchingWidth);
+  $effect(() => iconOnlyWatch.stop);
+
+  /** Collapses or expands the bar: its width changes at once and the page glides to its new edge (NAV-006, MOT-006). */
+  function setCollapsed(next: boolean) {
+    const root = document.documentElement;
+    const changed = next !== collapsed;
+    collapsed = next;
+    storeCollapsed(localStorage, next);
+    shiftShell(root, () => {
+      releaseWidth(root);
+      iconOnlyWatch.collapse(next);
+    });
+    const bar = document.getElementById('main-nav');
+    if (changed && !next && bar !== null) void fadeInWords(bar);
+  }
 
   // Decided once, from the page the browser loaded: a bare route (the share viewer) renders only its page, with no
   // operator hub, socket, guard or shell (SEC-002, D-7, E-3); a navigation across that line loads the whole client.
@@ -115,7 +139,20 @@
 {#if shell !== null}
   {@const { api, clock, sessions, navigate } = shell}
   <div class="shell">
-    <Nav pathname={page.url.pathname} now={clock.current} onnavigate={navigate} {iconOnly} />
+    <Nav
+      pathname={page.url.pathname}
+      now={clock.current}
+      onnavigate={navigate}
+      iconOnly={nav.iconOnly}
+      {collapsed}
+      canCollapse={!nav.compact}
+      ontogglecollapse={() => {
+        setCollapsed(!collapsed);
+      }}
+      oncollapse={setCollapsed}
+    />
+    <!-- On a Mac the strip above the page moves the window, as the title bar it replaces did. -->
+    <div class="drag" data-tauri-drag-region></div>
     <main data-shifts-with-banner>
       <SessionTabs />
       <div class="stage">
@@ -170,6 +207,20 @@
     grid-template-columns: minmax(0, 1fr);
     min-inline-size: 0;
     padding: var(--space-6);
+  }
+
+  .drag {
+    display: none;
+  }
+
+  /* The window buttons sit over the bar; the strip over the page's top padding drags the window (macOS). */
+  :global(:root[data-titlebar='overlay']) .drag {
+    display: block;
+    position: fixed;
+    inset-block-start: 0;
+    inset-inline: var(--nav-inline-size) 0;
+    block-size: var(--space-6);
+    z-index: var(--layer-nav);
   }
 
   /* Below the compact breakpoint the unreachable strip takes the top of the window; the page starts below it. */

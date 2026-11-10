@@ -16,7 +16,7 @@ macro_rules! select_device {
     ($($tail:expr),*) => {
         concat!(
             "SELECT d.id, d.site_id, d.name, d.host, d.ip, d.kind, d.os, d.maintenance, \
-                    d.created_at, d.updated_at, s.enabled, s.port, s.username, s.auth, \
+                    d.distribution, d.created_at, d.updated_at, s.enabled, s.port, s.username, s.auth, \
                     ARRAY(SELECT t.tag FROM devices.device_tags t WHERE t.device_id = d.id \
                           ORDER BY t.tag COLLATE \"C\") AS tags, \
                     r.enabled AS rdp_enabled, r.port AS rdp_port, r.username AS rdp_username, \
@@ -44,8 +44,10 @@ macro_rules! device_filter {
     };
 }
 
+mod distribution;
 mod remote;
 
+pub(super) use distribution::set_distribution;
 pub(super) use remote::{devices_by_ids, lock_site, set_wake_relay, share_device, wake_relay};
 
 pub(super) async fn create_site(

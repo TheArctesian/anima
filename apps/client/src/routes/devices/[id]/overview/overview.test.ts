@@ -67,13 +67,13 @@ const LOADED: Shown = {
 };
 const WAITING: Shown = { view: null, span: null, shownRange: null, chartShape: null, readings: null, error: null, liveError: null };
 
-function show(metrics: Shown, source: 'SSH' | 'NONE' = 'SSH', range: MetricRange = 'HOUR') {
+function show(metrics: Shown, source: 'SSH' | 'NONE' = 'SSH', range: MetricRange = 'HOUR', ssh: Partial<ReturnType<typeof device>['ssh']> = {}) {
   const time = manualClock();
   const calls = { range: vi.fn<(range: MetricRange) => void>(), retry: vi.fn<() => void>(), settings: vi.fn<() => void>() };
   app = mount(OverviewPanel, {
     target: document.body,
     props: {
-      device: device({ maintenance: true, metricsSource: source }),
+      device: device({ maintenance: true, metricsSource: source }, ssh),
       checks: [{ status: 'UP' }],
       metrics,
       range,
@@ -88,12 +88,47 @@ function show(metrics: Shown, source: 'SSH' | 'NONE' = 'SSH', range: MetricRange
   return { time, calls };
 }
 
-const button = (name: string) => [...document.querySelectorAll('button')].find((one) => one.textContent.trim() === name);
+/** Text as read, without the icon glyphs (private-use code points), which are hidden from assistive technology. */
+const words = (node: Element | null | undefined) => (node?.textContent ?? '').replace(/\p{Co}/gu, '').replace(/\s+/g, ' ').trim();
+/** The words a button shows and says now: labels hidden from screen readers are the ones faded out. */
+const shown = (node: Element) => {
+  const copy = node.cloneNode(true) as Element;
+  for (const hidden of copy.querySelectorAll('[aria-hidden="true"]')) hidden.remove();
+  return words(copy);
+};
+const button = (name: string) => [...document.querySelectorAll('button')].find((one) => shown(one) === name);
+/** A card by its heading, as a screen reader finds the region. */
+const card = (title: string) => [...document.querySelectorAll('section')].find((one) => words(one.querySelector('h2')) === title);
+/** A card's stat figures as label and value pairs. */
+const figures = (title: string) => [...(card(title)?.querySelectorAll('dt') ?? [])].map((term) => [words(term), words(term.nextElementSibling)]);
 
-it('D-10: the panel shows status, maintenance, uptime, check counts and the key', () => {
+it('D-10: the panel shows status, maintenance, uptime, check counts and the key, each in its card', () => {
   show(LOADED);
-  const text = document.body.textContent;
-  for (const part of ['Status', 'Up', 'Maintenance', 'On', 'Uptime, 30 days', '—', '1 Up', 'SHA256:abc']) expect(text).toContain(part);
+  expect(figures('Status')).toEqual([['Status', 'Up'], ['Maintenance', 'On']]);
+  expect(figures('Uptime')).toEqual([['24 hours', '99.95 %'], ['7 days', '99.00 %'], ['30 days', '—']]);
+  expect(figures('Checks')).toEqual([['Up', '1']]);
+  expect(words(card('SSH host key'))).toContain('ssh-ed25519');
+  expect(words(card('SSH host key')?.querySelector('.overview-key'))).toBe('SHA256:abc');
+});
+
+it('D-10: Copy puts the fingerprint alone on the clipboard and says so', async () => {
+  const writeText = vi.fn<(text: string) => Promise<void>>().mockResolvedValue(undefined);
+  vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
+  show(LOADED);
+  button('Copy')?.click();
+  await vi.waitFor(() => {
+    expect(words(card('SSH host key')?.querySelector('[role="status"]'))).toBe('Copied.');
+  });
+  expect(writeText).toHaveBeenCalledExactlyOnceWith('SHA256:abc');
+  // M-6: the button itself turns to a check and Copied.
+  expect(button('Copied')).toBeDefined();
+  vi.unstubAllGlobals();
+});
+
+it('D-10: with no key the card says why, and offers no Copy', () => {
+  show(LOADED, 'SSH', 'HOUR', { enabled: false, hostKey: null });
+  expect(words(card('SSH host key'))).toBe('SSH host key SSH is off');
+  expect(button('Copy')).toBeUndefined();
 });
 
 it('MET-003: the data shows one chart per metric group with its title, and the current bars', () => {
@@ -170,30 +205,36 @@ it('MET-007: data with no series says it is waiting for metrics', () => {
 it.each([
   ['NONE', 0, 1],
   ['SSH', 4, 0],
-] as const)('D-9: the Overview skeleton for %s draws %i chart cells and %i "off" lines, as the loaded layout does', (source, cells, off) => {
+] as const)('D-9: the Overview skeleton for %s draws %i chart cells and %i "off" blocks, and the loaded cards', (source, cells, off) => {
   app = mount(OverviewSkeleton, { target: document.body, props: { range: 'HOUR', source, ssh: null, now: () => NOW } });
   flushSync();
   expect(document.querySelectorAll('.chart-grid > .cell')).toHaveLength(cells);
   expect(document.querySelectorAll('.metrics-off')).toHaveLength(off);
-  expect(document.querySelectorAll('.overview-facts > div')).toHaveLength(7);
+  const skeletonCards = [...document.querySelectorAll('.overview-facts > .overview-card')].map((one) => words(one.querySelector('h2')));
+  void unmount(app);
+  document.body.replaceChildren();
+  show(WAITING, source);
+  expect([...document.querySelectorAll('.overview-facts > .overview-card')].map((one) => words(one.querySelector('h2')))).toEqual(skeletonCards);
 });
 
 it.each([
   ['a host key', { enabled: true, hostKey: device().ssh.hostKey }],
   ['no key yet', { enabled: true, hostKey: null }],
   ['SSH off', { enabled: false, hostKey: null }],
-])('MOT-007: the skeleton host key row for %s has the loaded key row\'s text and class', (_case, ssh) => {
+])('MOT-007: the skeleton host key card for %s holds the loaded card\'s text, so it wraps to the same lines', (_case, ssh) => {
   app = mount(OverviewSkeleton, { target: document.body, props: { range: 'HOUR', source: 'SSH', ssh, now: () => NOW } });
   flushSync();
-  const row = document.querySelector('.overview-facts > div:last-child dd');
-  expect(row?.textContent).toBe(hostKeyText(ssh));
-  expect(row?.classList.contains('key')).toBe(true);
+  const ghost = words(card('SSH host key'));
+  void unmount(app);
+  document.body.replaceChildren();
+  show(LOADED, 'SSH', 'HOUR', ssh);
+  expect(words(card('SSH host key'))).toBe(ghost);
 });
 
-it('MOT-007: with no device known the skeleton key row holds a full-length key', () => {
+it('MOT-007: with no device known the skeleton key card holds a full-length key', () => {
   app = mount(OverviewSkeleton, { target: document.body, props: { range: 'HOUR', source: 'SSH', ssh: null, now: () => NOW } });
   flushSync();
-  expect(document.querySelector('.overview-facts .key')?.textContent).toMatch(/^ssh-ed25519 SHA256:x{43}$/);
+  expect(words(document.querySelector('.key-card .overview-key'))).toMatch(/^SHA256:x{43}$/);
 });
 
 it('MET-003: while a switch is pending the old chart keeps its own range in the label and its own gap', () => {

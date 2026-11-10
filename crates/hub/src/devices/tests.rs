@@ -11,6 +11,7 @@ macro_rules! store_test {
     )+};
 }
 
+mod distribution;
 mod graphql_error;
 mod host;
 mod input_limits;

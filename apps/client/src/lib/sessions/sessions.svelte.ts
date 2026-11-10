@@ -1,5 +1,5 @@
 import { createContext } from 'svelte';
-import type { Status } from '$lib/hub/generated/graphql';
+import type { OperatingSystem, Status } from '$lib/hub/generated/graphql';
 import type { HubError, HubResult } from '$lib/hub/hub';
 import type { TunnelRefusal } from './tunnel/state';
 import type { DeviceStarts, RemoteStart, SessionStart, ViewStartResult } from './view/start';
@@ -50,6 +50,8 @@ export interface PoppedOutDevice {
 export interface SessionRequest {
   readonly deviceId: string;
   readonly deviceName: string;
+  readonly os?: OperatingSystem;
+  readonly distribution?: string | null;
   readonly protocol: SessionProtocol;
   readonly origin: Origin | null;
 }
@@ -58,6 +60,8 @@ export interface SessionRequest {
 export interface WebRequest {
   readonly deviceId: string;
   readonly deviceName: string;
+  readonly os?: OperatingSystem;
+  readonly distribution?: string | null;
   readonly status: Status;
   readonly web: WebTarget;
   readonly origin: Origin | null;
@@ -164,17 +168,17 @@ class OpenSessions implements Sessions {
     return this.#find(this.#state.activeId) ?? null;
   }
 
-  openSession({ deviceId, deviceName, protocol, origin }: SessionRequest): TabId {
+  openSession({ deviceId, deviceName, os, distribution, protocol, origin }: SessionRequest): TabId {
     this.#opens += 1;
     const id = `tab-${String(this.#opens)}`;
-    this.#state = opened(this.#state, { id, deviceId, deviceName, protocol, origin, sessionId: null });
+    this.#state = opened(this.#state, { id, deviceId, deviceName, ...(os === undefined ? {} : { os }), ...(distribution == null ? {} : { distribution }), protocol, origin, sessionId: null });
     return id;
   }
 
-  openWeb({ deviceId, deviceName, status, web, origin }: WebRequest): TabId {
+  openWeb({ deviceId, deviceName, os, distribution, status, web, origin }: WebRequest): TabId {
     this.#opens += 1;
     const id = `tab-${String(this.#opens)}`;
-    this.#state = opened(this.#state, { id, deviceId, deviceName, protocol: 'WEB', origin, sessionId: null, web, status });
+    this.#state = opened(this.#state, { id, deviceId, deviceName, ...(os === undefined ? {} : { os }), ...(distribution == null ? {} : { distribution }), protocol: 'WEB', origin, sessionId: null, web, status });
     return id;
   }
 

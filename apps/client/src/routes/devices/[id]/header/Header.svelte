@@ -1,13 +1,10 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
   import WarningBadge from '$lib/devices/actions/WarningBadge.svelte';
-  import WebMenu from '$lib/devices/actions/WebMenu.svelte';
-  import { webInterfacesOf } from '$lib/devices/actions/actions';
-  import '$lib/devices/actions/actions.css';
-  import ScreenSharingButton from '$lib/devices/screen-sharing/ScreenSharingButton.svelte';
   import type { ScreenSharingCalls } from '$lib/devices/screen-sharing/setup';
   import type { DeviceDetail } from '$lib/devices/api';
   import StatusPill from '$lib/devices/card/StatusPill.svelte';
+  import OsIcon from '$lib/devices/os/OsIcon.svelte';
   import { skeletonDelay } from '$lib/motion/loading/delay.svelte';
   import type { LoadingClock } from '$lib/motion/loading/loading';
   import Icon from '$lib/icons/Icon.svelte';
@@ -17,11 +14,12 @@
   import type { SessionProtocol } from '$lib/sessions/tabs';
   import type { WebInterface } from '$lib/web-interfaces/api';
   import type { SettingsSection } from '../tabs/tabs';
-  import { overflowFade } from './fade';
-  import { headerLine, protocolButton, type HeaderDevice, type ProtocolMode } from './header';
+  import DetailChips from './DetailChips.svelte';
+  import HeaderActions from './HeaderActions.svelte';
+  import { headerLine, type HeaderDevice } from './header';
 
   interface Props {
-    /** Null while the device loads: the line keeps its size and shows only the back link (D-13). */
+    /** Null while the device loads: the header keeps its size and shows only the back link (D-13). */
     device: HeaderDevice | null;
     /** A protocol that is ready: the button is passed so the session tab grows from it (WP-14 H-1, RA-030, MOT-005). */
     onConnect: (protocol: SessionProtocol, button: HTMLElement) => void;
@@ -31,7 +29,7 @@
     screenSharing?: { readonly calls: ScreenSharingCalls; readonly onEnabled: (device: DeviceDetail) => void };
     /** Opens the Settings tab, at `section` when given (DEV-022). */
     onSettings: (section: SettingsSection | null) => void;
-    /** The device is on its way: after `threshold-loading` a skeleton of the line shows until it arrives (5.7.3, Loading). */
+    /** The device is on its way: after `threshold-loading` a skeleton of the header shows until it arrives (5.7.3, Loading). */
     loading?: boolean;
     clock?: LoadingClock;
   }
@@ -43,109 +41,74 @@
   const skeleton = skeletonDelay(() => loading, clock);
 </script>
 
-{#snippet protocolAction(protocol: SessionProtocol, mode: ProtocolMode, shown: HeaderDevice)}
-  {@const action = protocolButton(protocol, mode, shown.name)}
-  <!-- Off is dashed with a "+" and opens Settings, never a session (DEV-022). -->
-  <button
-    type="button"
-    class="device-action {mode === 'set-up' ? 'dashed' : 'solid'}"
-    tabindex="0"
-    aria-label={action.label}
-    onclick={(event) => {
-      if (action.section === null) onConnect(protocol, event.currentTarget);
-      else onSettings(action.section);
-    }}
-    {@attach press()}
-  >
-    {#if mode === 'set-up'}<Icon name="nf-md-plus" size="sm" />{/if}{protocol}
-  </button>
-{/snippet}
-
-<!-- One line, in the order of DEV-020; the buttons are last. -->
+<!--
+  Three rows (DEV-020): the back link; the OS logo, the name, the status and the buttons; the details as chips.
+  The name, the status and the buttons are always whole (DEV-021). Each row keeps its block size while the device
+  loads, so the tabs never move (MOT-007).
+-->
 <div class="fit">
-<header class="line">
-  <a class="back" href={resolve('/devices')} {@attach press()}>Devices</a>
-  {#if device !== null && line !== null}
-    <h1 title={device.name} {@attach sharedItem(`device-name:${device.id}`)}>{device.name}</h1>
-    <!-- A live region, so a status change is heard as well as seen (D-11). -->
-    <span class="status" aria-live="polite">
-      <StatusPill status={device.status} deviceId={device.id} />
-      <WarningBadge warnings={device.accessWarnings} />
-    </span>
-    <p class="details" {@attach overflowFade(line.title)}>
-      {#each line.items as item, index (index)}
-        <span class="item {item.part}" title={item.text}>{item.text}</span>
-      {/each}
-    </p>
-    <div class="actions">
-      {@render protocolAction('SSH', line.ssh, device)}
-      {@render protocolAction('RDP', line.rdp, device)}
-      {#if line.vnc}
-        {@render protocolAction('VNC', 'connect', device)}
-      {:else if screenSharing !== undefined && line.screenSharing}
-        <ScreenSharingButton
-          {device}
-          calls={screenSharing.calls}
-          onReady={(updated, button) => {
-            onConnect('VNC', button);
-            screenSharing.onEnabled(updated);
-          }}
-        />
-      {/if}
-      {#if onOpenWeb !== undefined && webInterfacesOf(device).length > 0}
-        <WebMenu deviceName={device.name} interfaces={webInterfacesOf(device)} onOpen={onOpenWeb} />
-      {/if}
-      <button type="button" class="device-action" tabindex="0" onclick={() => { onSettings(null); }} {@attach press()}>
-        <Icon name="nf-md-pencil" size="sm" />Edit
-      </button>
-    </div>
-  {/if}
+<header class="head">
+  <a class="back" href={resolve('/devices')} {@attach press()}><Icon name="nf-md-chevron_left" size="sm" />Devices</a>
+  <div class="title-row">
+    {#if device !== null && line !== null}
+      <div class="identity">
+        <!-- Decorative: the OS chip below says the system in words (UI-003). -->
+        <span class="system"><OsIcon os={device.os} distribution={device.distribution} size="lg" decorative /></span>
+        <h1 title={device.name} {@attach sharedItem(`device-name:${device.id}`)}>{device.name}</h1>
+        <!-- A live region, so a status change is heard as well as seen (D-11). -->
+        <span class="status" aria-live="polite">
+          <StatusPill status={device.status} deviceId={device.id} />
+          <WarningBadge warnings={device.accessWarnings} />
+        </span>
+      </div>
+      <div class="actions-slot">
+        <HeaderActions {device} {line} {onConnect} {onOpenWeb} {screenSharing} {onSettings} />
+      </div>
+    {/if}
+  </div>
+  <ul class="meta" aria-label="Details">
+    {#if device !== null && line !== null}<DetailChips items={line.items} kind={line.kindIcon} os={line.osIcon} />{/if}
+  </ul>
   {#if skeleton.visible}
-    <!-- Over the line, after a ghost of the back link that has its width: the real line fades in under it without moving (MOT-007). -->
-    <div class="skeleton" aria-hidden="true" transition:crossFade>
-      <span class="back ghost">Devices</span>
-      <span class="name"></span>
-      <span class="pill"></span>
-      <span class="details-place"></span>
-      <span class="actions-place"></span>
+    <!-- Over the header with its rows, after a ghost of the back link: the real header fades in under it without moving (MOT-007). -->
+    <div class="head skeleton" aria-hidden="true" transition:crossFade>
+      <span class="back ghost"><Icon name="nf-md-chevron_left" size="sm" />Devices</span>
+      <div class="title-row">
+        <div class="identity"><span class="name"></span><span class="pill"></span></div>
+        <span class="actions-place"></span>
+      </div>
+      <div class="meta"><span class="meta-place"></span></div>
     </div>
   {/if}
 </header>
 </div>
 
 <style>
-  /*
-   * One row at a block size from tokens, so no font change or late data moves the tabs (R-042). The host and tag
-   * details take what the name, the pill and the buttons leave and shrink to nothing first; a name that is too long ends in
-   * an ellipsis with its full text as the tooltip (DEV-021).
-   */
   .fit {
     container-type: inline-size;
     min-inline-size: 0;
   }
 
-  .line {
+  .head {
     --actions-rows: 1;
     --actions-block-size: calc(
       var(--target-min-desktop) * var(--actions-rows) + var(--space-2) * (var(--actions-rows) - 1)
     );
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    block-size: var(--target-min-touch);
+    --title-block-size: var(--target-min-touch);
+    --chip-block-size: calc(var(--text-sm) * var(--leading-tight) + var(--space-1) * 2);
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    gap: var(--space-2);
     margin-block-end: var(--space-4);
     min-inline-size: 0;
-    position: relative;
   }
 
   .skeleton {
     position: absolute;
     inset: 0;
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    min-inline-size: 0;
+    margin: 0;
     overflow: hidden;
   }
 
@@ -153,147 +116,51 @@
     visibility: hidden;
   }
 
-  .name,
-  .pill,
-  .details-place,
-  .actions-place {
-    flex: none;
-    border-radius: var(--radius-md);
-    background: var(--surface);
-  }
-
-  .name {
-    inline-size: calc(var(--space-16) * 3);
-    block-size: var(--space-6);
-  }
-
-  .pill {
-    inline-size: var(--space-16);
-    block-size: var(--space-6);
-    border-radius: var(--radius-pill);
-  }
-
-  .details-place {
-    flex: 1 1 auto;
-    min-inline-size: 0;
-    block-size: var(--space-4);
-  }
-
-  .actions-place {
-    inline-size: calc(var(--space-16) * 4);
-    block-size: var(--target-min-desktop);
-  }
-
-  /*
-   * When the window leaves too little for the name, the pill, the Warning badge and every button on one line, four rows
-   * of fixed size: the back link and the pill; the name; the details; the buttons. The container is the header's own
-   * width, so the switch follows what fits and not the window (DEV-021). The block size is the same while the device
-   * loads and when it arrives (MOT-007).
-   */
-  @container (max-inline-size: 56rem) {
-    .line,
-    .skeleton {
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr) auto;
-      grid-template-rows:
-        var(--target-min-touch) calc(var(--text-xl) * var(--leading-tight)) calc(var(--text-sm) * var(--leading-tight))
-        var(--actions-block-size);
-      gap: var(--space-2) var(--space-3);
-    }
-
-    .line {
-      block-size: calc(
-        var(--target-min-touch) + var(--text-xl) * var(--leading-tight) + var(--text-sm) * var(--leading-tight) +
-          var(--actions-block-size) + var(--space-2) * 3
-      );
-    }
-
-    .back {
-      grid-area: 1 / 1;
-    }
-
-    .status {
-      grid-area: 1 / 3;
-    }
-
-    h1 {
-      grid-area: 2 / 1 / 3 / -1;
-    }
-
-    .details,
-    .actions {
-      grid-column: 1 / -1;
-    }
-
-    /* The skeleton has the same rows, so each placeholder lies over the row it stands for (MOT-007, 5.7.3 Loading). */
-    .skeleton > .ghost {
-      grid-area: 1 / 1;
-    }
-
-    .skeleton > .pill {
-      grid-area: 1 / 3;
-      align-self: center;
-    }
-
-    .skeleton > .name {
-      grid-area: 2 / 1 / 3 / -1;
-      align-self: center;
-    }
-
-    .skeleton > .details-place {
-      grid-area: 3 / 1 / 4 / -1;
-      align-self: center;
-    }
-
-    .skeleton > .actions-place {
-      grid-area: 4 / 1 / 5 / -1;
-      justify-self: start;
-      max-inline-size: 100%;
-    }
-
-    .actions,
-    .skeleton > .actions-place {
-      align-self: start;
-      block-size: var(--actions-block-size);
-    }
-
-    .actions {
-      align-content: start;
-      flex-wrap: wrap;
-    }
-  }
-
-  /* Five buttons no longer fit one row: the buttons wrap onto two, and the row reserves both, loading or loaded (DEV-021, MOT-007). */
-  @container (max-inline-size: 30rem) {
-    .line {
-      --actions-rows: 2;
-    }
-  }
-
-  /* The pill and the buttons never shrink (DEV-021). */
-  .back,
-  .status,
-  .actions {
-    flex: none;
-  }
-
-  .status {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-  }
-
   .back {
-    display: flex;
+    justify-self: start;
+    display: inline-flex;
     align-items: center;
+    gap: var(--space-1);
     min-block-size: var(--target-min-desktop);
-    color: var(--accent);
+    color: var(--text-muted);
+    font-size: var(--text-sm);
     text-decoration: none;
+    transition: color var(--duration-fast) var(--ease-enter);
+  }
+
+  .back:hover {
+    color: var(--text);
   }
 
   .back:focus-visible {
     outline: var(--border-focus) solid var(--accent);
     outline-offset: var(--border-focus);
+  }
+
+  /* The identity takes what the buttons leave; only the name gives way, with an ellipsis and its full text as the tooltip (DEV-021). */
+  .title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    min-block-size: var(--title-block-size);
+    min-inline-size: 0;
+  }
+
+  .identity {
+    display: flex;
+    flex: 0 1 auto;
+    align-items: center;
+    gap: var(--space-3);
+    min-block-size: var(--target-min-touch);
+    min-inline-size: 0;
+  }
+
+  .system {
+    flex: none;
+    color: var(--text-muted);
+    font-size: var(--text-2xl);
+    line-height: var(--leading-tight);
   }
 
   h1 {
@@ -303,60 +170,98 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: var(--text-xl);
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-display);
     line-height: var(--leading-tight);
   }
 
-  .details {
-    flex: 1 1 0;
-    display: flex;
-    gap: var(--space-2);
-    min-inline-size: 0;
-    margin: 0;
-    overflow: hidden;
-    color: var(--text-muted);
-    font-size: var(--text-sm);
-    white-space: nowrap;
-  }
-
-  /* The fade covers the end edge only while the group is cut (DEV-021). */
-  .details:global([data-overflowing]) {
-    mask-image: linear-gradient(to right, var(--text) calc(100% - var(--space-8)), transparent);
-  }
-
-  .item {
+  .status,
+  .actions-slot {
     flex: none;
   }
 
-  .ip {
-    font-family: var(--font-mono);
-  }
-
-  .tag {
-    padding: 0 var(--space-2);
-    border-radius: var(--radius-pill);
-    background: var(--surface-raised);
-  }
-
-  .actions {
+  .status {
     display: flex;
+    align-items: center;
     gap: var(--space-2);
   }
 
-  .solid {
-    border-color: var(--accent);
-    background: var(--accent);
-    color: var(--bg);
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    min-block-size: var(--chip-block-size);
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
 
-  .solid:hover,
-  .solid:active {
-    background: var(--accent-deep);
+  /* The skeleton's placeholders: the same rows, so each lies over the part it stands for (5.7.3 Loading). */
+  .name,
+  .pill,
+  .actions-place,
+  .meta-place {
+    flex: none;
+    border-radius: var(--radius-md);
+    background: var(--surface);
   }
 
-  /* Not set up: a dashed border and a "+" (DEV-022). */
-  .dashed {
-    border-style: dashed;
-    background: transparent;
+  .name {
+    inline-size: calc(var(--space-16) * 3);
+    block-size: var(--space-8);
+  }
+
+  .pill {
+    inline-size: var(--space-16);
+    block-size: var(--space-6);
+    border-radius: var(--radius-pill);
+  }
+
+  .actions-place {
+    inline-size: calc(var(--space-16) * 4);
+    max-inline-size: 100%;
+    block-size: var(--target-min-desktop);
+  }
+
+  .meta-place {
+    inline-size: calc(var(--space-16) * 5);
+    max-inline-size: 100%;
+    block-size: var(--chip-block-size);
+    border-radius: var(--radius-pill);
+  }
+
+  /*
+   * When the header is too narrow for the name, the pill and every button on one row, the buttons take their own row
+   * under the name. The container is the header's own width, so the switch follows what fits and not the window; the
+   * rows are reserved loading or loaded (DEV-021, MOT-007).
+   */
+  @container (max-inline-size: 56rem) {
+    .head {
+      --title-block-size: calc(var(--target-min-touch) + var(--space-2) + var(--actions-block-size));
+    }
+
+    .title-row {
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: start;
+      gap: var(--space-2);
+    }
+
+    .actions-slot,
+    .actions-place {
+      block-size: var(--actions-block-size);
+    }
+
+    .actions-place {
+      align-self: start;
+    }
+  }
+
+  /* Five buttons no longer fit one row: they wrap onto two, and the row reserves both (DEV-021, MOT-007). */
+  @container (max-inline-size: 30rem) {
+    .head {
+      --actions-rows: 2;
+    }
   }
 </style>
