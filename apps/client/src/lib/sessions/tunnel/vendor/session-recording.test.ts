@@ -32,14 +32,20 @@ interface FakeContext {
   fillStyle: string;
   /** The `fillStyle` at each `fill()`, in order. */
   fills: string[];
+  /** Every `fill` (with its colour) and `drawImage`, in order. */
+  ops: string[];
 }
 
 const contexts = new WeakMap<HTMLCanvasElement, FakeContext>();
 
 function fakeContext(): FakeContext {
-  const state: FakeContext = { fillStyle: '', fills: [] };
+  const state: FakeContext = { fillStyle: '', fills: [], ops: [] };
   const methods: Record<string, unknown> = {
-    fill: () => state.fills.push(state.fillStyle),
+    fill: () => {
+      state.fills.push(state.fillStyle);
+      state.ops.push(`fill ${state.fillStyle}`);
+    },
+    drawImage: () => state.ops.push('drawImage'),
     getImageData: (_x: number, _y: number, w: number, h: number) => ({ width: w, height: h, data: new Uint8ClampedArray(w * h * 4) }),
   };
   return new Proxy(state, {
@@ -120,6 +126,12 @@ function lastFill(recording: Guacamole.SessionRecording): string | undefined {
   return canvas ? contexts.get(canvas)?.fills.at(-1) : undefined;
 }
 
+/** The last operation drawn on the default layer's canvas. */
+function lastOp(recording: Guacamole.SessionRecording): string | undefined {
+  const canvas = recording.getDisplay().getElement().querySelector('canvas');
+  return canvas ? contexts.get(canvas)?.ops.at(-1) : undefined;
+}
+
 describe('SessionRecording loads the stream the hub tees (RA-041, K4 §11)', () => {
   it('the fixtures make a stream of one opening frame and six later frames, with the ready removed', () => {
     expect(opening.startsWith('5.ready,')).toBe(true);
@@ -145,7 +157,6 @@ describe('SessionRecording loads the stream the hub tees (RA-041, K4 §11)', () 
     });
     expect(durations).toEqual(syncs.map((_, frame) => at(frame)));
   });
-
 });
 
 describe('SessionRecording seeks and plays the stream the hub tees (RA-041, K4 §11)', () => {
@@ -164,10 +175,11 @@ describe('SessionRecording seeks and plays the stream the hub tees (RA-041, K4 �
     expect(lastFill(recording)).toBe(fills[2]);
   });
 
-  it('K4 §11: a time between two frames lands on a frame, never between', async () => {
+  it('K4 §11: a time just after a frame lands on that frame', async () => {
     const recording = await load(stream);
     await seek(recording, at(4) + 1);
-    expect([at(4), at(5)]).toContain(recording.getPosition());
+    expect(recording.getPosition()).toBe(at(4));
+    expect(lastFill(recording)).toBe(fills[3]);
   });
 
   it('K4 §11: seek backwards lands on the earlier frame and shows its draw, not the later one', async () => {
@@ -186,9 +198,13 @@ describe('SessionRecording seeks and plays the stream the hub tees (RA-041, K4 �
   it('K4 §11: seek to zero returns to the opening frame', async () => {
     const recording = await load(stream);
     await seek(recording, at(4));
+    expect(lastOp(recording)).toBe(`fill ${fills[3] ?? ''}`);
     await seek(recording, 0);
     expect(recording.getPosition()).toBe(0);
     expect(recording.getDisplay().getWidth()).toBe(64);
+    expect(recording.getDisplay().getHeight()).toBe(48);
+    // The state restored from the opening is drawn over frame 4's fill; the opening has no fill of its own.
+    expect(lastOp(recording)).toBe('drawImage');
   });
 
   it('K4 §11: seeking past the end clamps to the duration and the last frame', async () => {
@@ -197,7 +213,6 @@ describe('SessionRecording seeks and plays the stream the hub tees (RA-041, K4 �
     expect(recording.getPosition()).toBe(recording.getDuration());
     expect(lastFill(recording)).toBe(fills[5]);
   });
-
 });
 
 describe('SessionRecording plays the stream the hub tees (RA-041, K4 §11)', () => {
@@ -211,13 +226,22 @@ describe('SessionRecording plays the stream the hub tees (RA-041, K4 §11)', () 
 
       recording.play();
       expect(recording.isPlaying()).toBe(true);
-      await until(() => vi.getTimerCount() > 0); // frame 0 is replayed, frame 1 is scheduled
+      // Let frame 0 replay and frame 1 be scheduled; a paced player must not move on while the fake clock stands.
+      await until(() => vi.getTimerCount() > 0);
+      for (let turn = 0; turn < 50; turn++) await new Promise((resolve) => setImmediate(resolve));
+      expect(recording.getPosition()).toBe(0);
+      expect(lastFill(recording)).toBeUndefined();
+
+      // No real yield between the advance and these checks: the gap has not fully passed.
       await vi.advanceTimersByTimeAsync(at(1) - 1);
       expect(recording.getPosition()).toBe(0);
+      expect(recording.isPlaying()).toBe(true);
+      expect(lastFill(recording)).toBeUndefined();
 
       // The captures are not contiguous: frame 1 comes `at(1)` ms after frame 0 and playback waits that long.
       await vi.advanceTimersByTimeAsync(1);
       await until(() => recording.getPosition() === at(1));
+      expect(lastFill(recording)).toBe(fills[0]);
 
       await vi.advanceTimersByTimeAsync(at(2) - at(1));
       await until(() => recording.getPosition() === at(2));
