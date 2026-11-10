@@ -131,6 +131,18 @@ mod tests {
             None,
             "no group line"
         );
+        let renamed = GROUP.replace("ada:x:1000:", "devs:x:1000:");
+        assert_eq!(
+            private_group(1000, PASSWD, &renamed),
+            None,
+            "not named as the user"
+        );
+        let shared = format!("{PASSWD}mallory:x:1003:1000::/:/bin/sh\n");
+        assert_eq!(
+            private_group(1000, &shared, GROUP),
+            None,
+            "another account's primary"
+        );
         let twice = format!("{GROUP}staff:x:1000:bob\n");
         assert_eq!(
             private_group(1000, PASSWD, &twice),
