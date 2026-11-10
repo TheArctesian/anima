@@ -1,5 +1,6 @@
 //! Each kind of channel sends its encoded notification through the one egress path, and the
-//! send is logged as an ok delivery (NOT-002, NOT-004, D-17, P3-003).
+//! send is logged as an ok delivery, worded by the channel's template when it has one (NOT-002,
+//! NOT-004, NOT-007, D-17, P3-003).
 
 use sqlx::PgPool;
 
@@ -164,4 +165,28 @@ async fn not_001_nothing_due_is_nothing_sent(pool: PgPool) {
     server.settle().await;
     assert_eq!(server.connections(), 0);
     assert_eq!(deliveries(&pool).await.len(), 0);
+}
+
+#[sqlx::test(migrations = "./migrations")]
+async fn not_007_a_channel_template_words_its_notification(pool: PgPool) {
+    let (server, egress) = answering(NO_CONTENT).await;
+    let hooks = channel(&pool, "hooks", webhook(&server)).await;
+    sqlx::query(
+        "UPDATE notifications.channels SET title_template = $2, body_template = $3 WHERE id = $1",
+    )
+    .bind(hooks)
+    .bind("[{status}] {check}")
+    .bind("{device}: {message}")
+    .execute(&pool)
+    .await
+    .unwrap();
+    let t0 = start(&pool).await;
+    queue(&pool, hooks, None, t0).await;
+
+    dispatcher(&pool, egress).tick(t0).await;
+
+    server.settle().await;
+    let body: serde_json::Value = serde_json::from_slice(&server.bodies()[0]).unwrap();
+    assert_eq!(body["title"], "[down] web");
+    assert_eq!(body["body"], "pve-01: timed out");
 }

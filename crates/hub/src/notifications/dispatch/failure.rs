@@ -6,7 +6,8 @@
 //!
 //! | Reason | Code | Permanent |
 //! | --- | --- | --- |
-//! | `TARGET_NOT_PERMITTED` (refused or unresolved host, refused Apprise URL) | — | yes |
+//! | `TARGET_NOT_PERMITTED` (refused host, refused Apprise URL) | — | yes |
+//! | `TARGET_NOT_PERMITTED` (unresolved host) | — | no |
 //! | `BAD_ADDRESS` (not an https URL; an unreadable mail address) | — | yes |
 //! | `SECRET_UNREADABLE` (sealed secrets that do not open or do not fit) | — | yes |
 //! | `SETUP_FAILED` (unreadable settings or template; the hub's own TLS or client setup) | — | yes |
@@ -17,16 +18,18 @@
 //! | `CONNECTION_FAILED`, `TLS_FAILED`, `TIMED_OUT`, `NO_STARTTLS`, `NOT_UNDERSTOOD` | — | no |
 //!
 //! A permanent failure is one the same send would meet again until the operator changes the
-//! channel or the target's owner changes the target, so it is given up at once. An
-//! unresolved host is folded into `TARGET_NOT_PERMITTED` on purpose (no DNS oracle, egress
-//! `SendError::Target`), so it is permanent too: a lookup that fails for a while loses that
-//! notification.
+//! channel or the target's owner changes the target, so it is given up at once. A host that
+//! resolves to an address outside the egress allow list is permanent. A host that does not
+//! resolve is not (R-103): a lookup failure is usually brief, so it is retried on the normal
+//! schedule. It keeps the reason word `TARGET_NOT_PERMITTED` and names no address, so the
+//! delivery log says no more than its retries do.
 
 use chrono::{DateTime, Utc};
 
 use crate::{
     ids::DeliveryId,
     notifications::{Channel, Delivery, DeliveryReason, NotificationKind, egress::SendError},
+    targets::TargetError,
 };
 
 /// One failed send.
@@ -36,16 +39,25 @@ pub(in crate::notifications) struct Failure {
     /// The HTTP status for `HttpStatus` and the SMTP reply code for `SmtpRefused`; `None`
     /// for every other reason.
     pub(in crate::notifications) code: Option<i32>,
+    /// The host did not resolve: `TARGET_NOT_PERMITTED`, but retried (R-103).
+    unresolved: bool,
 }
 
 impl Failure {
     /// A failure whose reason has no code.
     pub(in crate::notifications) const fn of(reason: DeliveryReason) -> Self {
-        Self { reason, code: None }
+        Self {
+            reason,
+            code: None,
+            unresolved: false,
+        }
     }
 
     /// Whether trying the same send again can only fail the same way (the table above).
     pub(in crate::notifications) const fn is_permanent(self) -> bool {
+        if self.unresolved {
+            return false;
+        }
         match (self.reason, self.code) {
             (
                 DeliveryReason::TargetNotPermitted
@@ -87,7 +99,12 @@ impl From<SendError> for Failure {
             SendError::SmtpReply(reply) => (DeliveryReason::SmtpRefused, Some(i32::from(reply))),
             SendError::Exchange => (DeliveryReason::NotUnderstood, None),
         };
-        Self { reason, code }
+        let unresolved = matches!(error, SendError::Target(TargetError::Unresolved));
+        Self {
+            reason,
+            code,
+            unresolved,
+        }
     }
 }
 

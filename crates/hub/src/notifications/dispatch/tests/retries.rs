@@ -1,17 +1,22 @@
-//! Failed sends: the retry schedule, giving up with one Warning event, permanent failures,
-//! channels turned off and channels that cannot be read (D-16, NOT-001, NOT-002, NOT-004).
+//! Failed sends: the retry schedule, giving up with one Warning event, permanent failures, an
+//! unresolved host that is retried, channels turned off and channels that cannot be read (D-16,
+//! R-103, NOT-001, NOT-002, NOT-004).
 
 use chrono::{DateTime, TimeDelta, Utc};
 use sqlx::PgPool;
 use uuid::Uuid;
 
 use super::{
-    NO_CONTENT, answering, channel, deliveries, dispatcher, queue, row, start, vault, warnings,
-    webhook,
+    NO_CONTENT, answering, channel, deliveries, dispatcher, queue, row, secret, start, vault,
+    warnings, webhook,
 };
 use crate::{
     ids::{ChannelId, CheckId},
-    notifications::{ChannelFields, ChannelKind, DeliveryReason, sealing, store},
+    notifications::{
+        ChannelFields, ChannelKind, DeliveryReason,
+        channels::{Secrets, Settings},
+        sealing, store,
+    },
 };
 
 const UNAVAILABLE: &[u8] = b"HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\n\r\n";
@@ -301,25 +306,29 @@ async fn sec_005_secrets_sealed_for_another_channel_are_secret_unreadable(pool: 
 }
 
 #[sqlx::test(migrations = "./migrations")]
-async fn not_007_a_channel_template_words_its_notification(pool: PgPool) {
+async fn d_16_r_103_a_host_that_does_not_resolve_is_tried_again_not_given_up(pool: PgPool) {
     let (server, egress) = answering(NO_CONTENT).await;
-    let hooks = channel(&pool, "hooks", webhook(&server)).await;
-    sqlx::query(
-        "UPDATE notifications.channels SET title_template = $2, body_template = $3 WHERE id = $1",
-    )
-    .bind(hooks)
-    .bind("[{status}] {check}")
-    .bind("{device}: {message}")
-    .execute(&pool)
-    .await
-    .unwrap();
+    let (Settings::Webhook(mut settings), Secrets::Webhook(mut secrets)) = webhook(&server) else {
+        unreachable!("a webhook fixture");
+    };
+    // `.invalid` never resolves (RFC 6761).
+    settings.origin = "https://nothing-here.invalid".to_owned();
+    secrets.url = secret("https://nothing-here.invalid/hooks/synthetic-path-secret");
+    let fields = (Settings::Webhook(settings), Secrets::Webhook(secrets));
+    let hooks = channel(&pool, "hooks", fields).await;
     let t0 = start(&pool).await;
-    queue(&pool, hooks, None, t0).await;
+    let queued = queue(&pool, hooks, None, t0).await;
 
     dispatcher(&pool, egress).tick(t0).await;
 
-    server.settle().await;
-    let body: serde_json::Value = serde_json::from_slice(&server.bodies()[0]).unwrap();
-    assert_eq!(body["title"], "[down] web");
-    assert_eq!(body["body"], "pve-01: timed out");
+    let state = row(&pool, queued).await;
+    assert_eq!(
+        (state.attempts, state.given_up, state.next_attempt_at),
+        (1, false, t0 + minutes(1))
+    );
+    assert_eq!(
+        deliveries(&pool).await[0].reason,
+        Some(DeliveryReason::TargetNotPermitted)
+    );
+    assert_eq!(warnings(&pool).await.len(), 0);
 }

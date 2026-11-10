@@ -188,3 +188,24 @@ fn d_16_a_sixth_claim_has_no_try_left() {
     );
     assert!(out_of_tries(u32::MAX));
 }
+
+#[test]
+fn d_16_r_103_an_unresolved_host_is_retried() {
+    let failure = Failure::from(SendError::Target(TargetError::Unresolved));
+
+    assert_eq!(failure.reason, DeliveryReason::TargetNotPermitted);
+    assert!(!failure.is_permanent());
+    assert_eq!(
+        after_failure(failure, 1, at()),
+        Next::RetryAt(at() + TimeDelta::minutes(1))
+    );
+}
+
+#[test]
+fn d_16_r_103_a_host_outside_the_allow_list_is_given_up_at_once() {
+    let failure = Failure::from(SendError::Target(TargetError::Refused));
+
+    assert_eq!(failure.reason, DeliveryReason::TargetNotPermitted);
+    assert!(failure.is_permanent());
+    assert_eq!(after_failure(failure, 1, at()), Next::GiveUp);
+}
