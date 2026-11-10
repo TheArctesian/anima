@@ -81,6 +81,21 @@ signs and notarizes, and the hub can write the Mac feeds. Keys stay in the build
 release; `requireSignedVersion` stops mislabelled versions, not rollbacks. The protection is the
 Cloudflare account and the hub being the only writer of `latest.json`.
 
+## Fallback workflow: setup (until WP-36 is accepted, UPD-007)
+
+Only for a release made with `release.yml`. In the repository settings, create an environment named
+`release` and set its deployment branch policy to `main` only, BEFORE `main` holds the workflow:
+GitHub creates an unprotected environment on first use. All five jobs use it. Then store the key as
+environment secrets, never as repository secrets (file `~/.tauri/anima-updater.key`):
+
+```sh
+gh secret set --env release TAURI_SIGNING_PRIVATE_KEY < ~/.tauri/anima-updater.key
+gh secret set --env release TAURI_SIGNING_PRIVATE_KEY_PASSWORD   # only if you set a password; it prompts
+```
+
+The workflow's `version` job fails at once if `plugins.updater.pubkey` is the placeholder or the
+secret is empty. Its feed is a GitHub release; copy its files to the bucket as described above.
+
 ## Roll back
 
 The hub refuses a feed older than the published one (BLD-069), so a rollback is a manual act. Write
