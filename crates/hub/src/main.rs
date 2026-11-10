@@ -19,7 +19,7 @@ use anima_hub::{
     config::{self, Config},
     credentials::Vault,
     events::{self, Bus, process_log},
-    metrics,
+    metrics, notifications,
     schema::Dependencies,
     serve_until, sessions,
     targets::AddressPolicy,
@@ -143,7 +143,8 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
         .denying(policy.clone());
     tracing::info!(listen = %listening.local_addr()?, "hub started");
     let bus = Bus::new(BUS_CAPACITY);
-    let (probing, collecting) = reaching(&vault, &policy, config.tailscale_localapi.clone());
+    let (probing, collecting, sending) =
+        reaching(&vault, &policy, config.tailscale_localapi.clone());
     let feed = metrics::Feed::new();
     let dependencies = Dependencies {
         config,
@@ -159,6 +160,8 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     let scheduler = checks::spawn_scheduler(pool.clone(), bus.clone(), clock.clone(), probing);
     let collector =
         metrics::spawn_collector(pool.clone(), feed, bus.clone(), clock.clone(), collecting);
+    let dispatcher =
+        notifications::spawn_dispatcher(pool.clone(), bus.clone(), clock.clone(), sending);
     // Every route is behind the same permitted-networks check (K3, NET-002).
     let edge = access::Edge::new(pool.clone(), bus, clock.clone());
     let app = all_routes(dependencies, edge.clone());
@@ -178,15 +181,17 @@ async fn serve(config: Arc<Config>) -> Result<(), StartError> {
     upkeep.iter().for_each(tokio::task::JoinHandle::abort);
     scheduler.abort();
     collector.abort();
+    dispatcher.abort();
     Ok(())
 }
 
-/// What checks and metrics need to reach devices: the vault and the one address policy (P2-004).
+/// What checks, metrics and notifications need to reach the outside: the vault and the one
+/// address policy (P2-004, D-16).
 fn reaching(
     vault: &Vault,
     policy: &AddressPolicy,
     localapi: Option<String>,
-) -> (checks::Probing, metrics::Collecting) {
+) -> (checks::Probing, metrics::Collecting, notifications::Sending) {
     let (vault, policy) = (vault.clone(), policy.clone());
     (
         checks::Probing {
@@ -194,7 +199,11 @@ fn reaching(
             policy: policy.clone(),
             localapi,
         },
-        metrics::Collecting { vault, policy },
+        metrics::Collecting {
+            vault: vault.clone(),
+            policy: policy.clone(),
+        },
+        notifications::Sending { vault, policy },
     )
 }
 
