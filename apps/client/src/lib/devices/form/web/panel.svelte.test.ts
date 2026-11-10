@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { flushSync, mount, unmount } from 'svelte';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { fakeHub } from '$lib/devices/hub.fixture';
+import { metricsApi } from '$lib/metrics/api';
 import { installAnimations } from '../../../forms/animations.fixture';
 import SettingsPanel from '../../../../routes/devices/[id]/settings/SettingsPanel.svelte';
 import { device } from '../../../../routes/devices/[id]/page.fixture.svelte';
@@ -39,6 +41,8 @@ function show(): void {
         onClearVncCredential: done,
         webInterfaces: { onCreate: done, onUpdate: done, onDelete: done, onAcceptSuggestion: done, onDismissSuggestion: done },
       },
+      agent: { calls: metricsApi(fakeHub().hub), origin: 'https://hub.test', reveal: false },
+      now: () => new Date(),
       onTest: vi.fn(),
       onCancel: () => undefined,
       onDelete: done,

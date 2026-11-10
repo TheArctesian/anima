@@ -27,6 +27,8 @@
     { value: 'NONE', label: 'None' },
     { value: 'SSH', label: 'SSH' },
   ];
+  /** D-7: only enrolment sets AGENT, so it is shown as the saved state and never offered as a choice. */
+  const agentSet = $derived(values.metricsSource === 'AGENT');
   const KINDS = ['server', 'router', 'switch', 'workstation', 'laptop', 'printer'] as const;
 </script>
 
@@ -99,6 +101,7 @@
     <Field label="Metrics source" field="metricsSource" {errors}>
       {#snippet control(attributes)}
         <select {...attributes} bind:value={values.metricsSource}>
+          {#if agentSet}<option value="AGENT" disabled>Agent (set by the agent)</option>{/if}
           {#each METRICS as source (source.value)}
             <option value={source.value}>{source.label}</option>
           {/each}

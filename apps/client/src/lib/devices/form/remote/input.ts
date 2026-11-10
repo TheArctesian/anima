@@ -69,7 +69,7 @@ export function createAdditions(values: RemoteValues): DeviceAdditions {
     ...(now.rdp.enabled ? { rdp: rdpInput(now.rdp) } : {}),
     ...(now.vnc.enabled ? { vnc: vncInput(now.vnc) } : {}),
     ...(now.macAddress === '' ? {} : { macAddress: now.macAddress }),
-    ...(now.metricsSource === 'NONE' ? {} : { metricsSource: now.metricsSource }),
+    ...(now.metricsSource === 'NONE' || now.metricsSource === 'AGENT' ? {} : { metricsSource: now.metricsSource }),
     ...(everyFlagOn ? {} : { transfer: transferInput(now.transfer) }),
   };
 }
@@ -84,7 +84,7 @@ export function updateAdditions(initial: RemoteValues, values: RemoteValues): De
     ...(sameJson(rdp, rdpInput(before.rdp)) ? {} : { rdp }),
     ...(sameJson(vnc, vncInput(before.vnc)) ? {} : { vnc }),
     ...(now.macAddress === before.macAddress ? {} : { macAddress: now.macAddress }),
-    ...(now.metricsSource === before.metricsSource ? {} : { metricsSource: now.metricsSource }),
+    ...(now.metricsSource === before.metricsSource || now.metricsSource === 'AGENT' ? {} : { metricsSource: now.metricsSource }),
     ...(sameJson(now.transfer, before.transfer) ? {} : { transfer: transferInput(now.transfer) }),
   };
 }

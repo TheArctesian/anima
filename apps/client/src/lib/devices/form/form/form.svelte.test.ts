@@ -299,3 +299,20 @@ it('an error that belongs to no field is brought into view', async () => {
   expect(alert.textContent).toContain('Try again.');
   expect(scrolled).toHaveBeenCalledOnce();
 });
+
+it('D-7: an AGENT device shows the source as set by the agent, and offers only None and SSH to pick', () => {
+  show({ ...SAVED, metricsSource: 'AGENT' });
+  const select = document.querySelector<HTMLSelectElement>('#device-metricsSource');
+  const options = [...(select?.options ?? [])].map((option) => ({ value: option.value, text: option.text, disabled: option.disabled }));
+  expect(select?.value).toBe('AGENT');
+  expect(options).toEqual([
+    { value: 'AGENT', text: 'Agent (set by the agent)', disabled: true },
+    { value: 'NONE', text: 'None', disabled: false },
+    { value: 'SSH', text: 'SSH', disabled: false },
+  ]);
+});
+
+it('D-7: a device that does not use the agent is not offered Agent', () => {
+  show(SAVED);
+  expect([...(document.querySelector<HTMLSelectElement>('#device-metricsSource')?.options ?? [])].map((option) => option.value)).toEqual(['NONE', 'SSH']);
+});

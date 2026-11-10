@@ -147,6 +147,26 @@ describe('update diffs', () => {
   });
 });
 
+describe('D-7: the form never resubmits the AGENT source', () => {
+  const saved = formValues(SAVED);
+  const agent = edit(formValues({ ...PHASE_1, ...K1, metricsSource: 'AGENT' }), {});
+
+  it('D-7: saving other changes of an AGENT device sends no metricsSource', () => {
+    expect(updateInput(agent, edit(agent, { macAddress: 'aa:bb:cc:dd:ee:00' }))).toEqual({ macAddress: 'aa:bb:cc:dd:ee:00' });
+    expect(updateInput(agent, agent)).toEqual({});
+  });
+
+  it('D-7: AGENT is not sent even when it differs from the saved source, nor on create', () => {
+    expect(updateInput(saved, edit(saved, { metricsSource: 'AGENT' }))).toEqual({});
+    expect(createAdditions(edit(saved, { metricsSource: 'AGENT' }))).not.toHaveProperty('metricsSource');
+  });
+
+  it('D-7: the way off the agent is a pick of SSH or NONE, and that is sent', () => {
+    expect(updateInput(agent, edit(agent, { metricsSource: 'SSH' })).metricsSource).toBe('SSH');
+    expect(updateInput(agent, edit(agent, { metricsSource: 'NONE' })).metricsSource).toBe('NONE');
+  });
+});
+
 describe('RA-031 MAC address', () => {
   it.each(['aa:bb:cc:dd:ee:ff', 'AA-BB-CC-DD-EE-FF', 'aA:Bb:cC:Dd:eE:fF', ''])('accepts "%s"', (text) => {
     expect(isValidMac(text)).toBe(true);
