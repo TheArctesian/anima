@@ -43,7 +43,7 @@ function operationOf(document: DocumentNode, operationName: string | null | unde
   return { name: operation?.name?.value ?? null, fields: fields.filter((name) => name !== '__typename') };
 }
 
-/** A signed-out request may run exactly one of `login`, `signInBrowser` and `joinShare` (K7). */
+/** A signed-out request may run exactly one of `login` and `signInBrowser` (K7, R-111). */
 function allowedSignedOut(fields: readonly string[]): boolean {
   return fields.length === 1 && SIGNED_OUT_FIELDS.includes(fields[0] ?? '');
 }

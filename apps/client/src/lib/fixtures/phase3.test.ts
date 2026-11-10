@@ -7,7 +7,6 @@ import {
   NOTIFICATION_KINDS,
   RECORDING_FORMATS,
   RETENTION_SUBJECTS,
-  SHARE_ACCESS,
   SMTP_SECURITY,
   TOKEN_SCOPES,
   WEBHOOK_METHODS,
@@ -21,7 +20,6 @@ import {
   notificationSettings,
   recordings,
   retention,
-  shares,
 } from './phase3';
 
 describe('K6 phase3 client fixtures', () => {
@@ -43,10 +41,6 @@ describe('K6 phase3 client fixtures', () => {
     expect(apiKeys.map((k) => k.scope).sort()).toEqual(['READ', 'WRITE']);
     expect(apiKeys.filter((k) => Date.parse(k.expiresAt) < Date.parse('2026-11-07T00:00:00Z'))).toHaveLength(1);
     expect(apiKeys.every((k) => k.prefix.length === 12 && !('secret' in k))).toBe(true);
-  });
-
-  it('RA-035: the one share is VIEW with one viewer', () => {
-    expect(shares).toMatchObject([{ access: 'VIEW', viewers: 1 }]);
   });
 
   it('RA-041: recordings are complete, incomplete and stopped by the size limit', () => {
@@ -101,7 +95,6 @@ describe('K6 phase3 client fixtures: ties to K1', () => {
       [CHANNEL_KINDS, 'ChannelKind'],
       [NOTIFICATION_KINDS, 'NotificationKind'],
       [TOKEN_SCOPES, 'TokenScope'],
-      [SHARE_ACCESS, 'ShareAccess'],
       [RECORDING_FORMATS, 'RecordingFormat'],
       [RETENTION_SUBJECTS, 'RetentionSubject'],
       [WEBHOOK_METHODS, 'WebhookMethod'],
@@ -117,7 +110,6 @@ describe('K6 phase3 client fixtures: ties to K1', () => {
       [channels[0], 'NotificationChannel', []],
       [deliveries[0], 'Delivery', []],
       [apiKeys[0], 'ApiKey', []],
-      [shares[0], 'SessionShare', []],
       [recordings[0], 'Recording', ['stoppedReason']],
       [retention[0], 'RetentionPeriod', []],
       [checkDefaults, 'CheckDefaults', []],
