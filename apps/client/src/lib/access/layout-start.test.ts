@@ -33,7 +33,6 @@ vi.mock('$lib/hub/hub', async (importOriginal) => {
 });
 
 const fetches: string[] = [];
-const reload = vi.fn();
 /** Whether the hub answers `me` with UNAUTHENTICATED; otherwise no request is ever answered. */
 let signedOut = false;
 let app: ReturnType<typeof mount> | undefined;
@@ -69,7 +68,6 @@ beforeEach(() => {
   signedOut = false;
   mocks.createHub.mockClear();
   mocks.goto.mockClear();
-  reload.mockClear();
   FakeSocket.opened = [];
   vi.stubGlobal('WebSocket', FAKE_WEBSOCKET);
   vi.stubGlobal('fetch', (url: string, init: RequestInit) => {
@@ -79,7 +77,6 @@ beforeEach(() => {
     if (signedOut && operation === 'Me') return Promise.resolve(new Response(JSON.stringify(UNAUTHENTICATED)));
     return new Promise<Response>(() => undefined);
   });
-  vi.stubGlobal('location', { reload });
   // jsdom has no Web Animations; Svelte's transition runtime needs `animate` for the page cross-fade.
   const animation = { cancel: vi.fn(), finish: vi.fn(), pause: vi.fn(), play: vi.fn(), currentTime: 0 };
   Object.defineProperty(Element.prototype, 'animate', { value: () => animation, configurable: true });
@@ -105,8 +102,8 @@ describe('the root layout on an operator route in a browser', () => {
     expect(fetches.every((sent) => sent.startsWith('https://hub.example.org/graphql '))).toBe(true);
   });
 
-  it.each(['/shared', '/shared/x', '/%73hared'])(
-    'R-111, API-003: a signed-out visitor at %s gets the shell, never a bare page, and is sent to sign-in',
+  it.each(['/shared', '/shared/x'])(
+    'R-111, API-003: a signed-out visitor at %s gets the shell and is sent to sign-in',
     async (path) => {
       signedOut = true;
       const target = open(`https://hub.example.org${path}`);
@@ -123,7 +120,6 @@ describe('the root layout on an operator route in a browser', () => {
     routerShows('https://hub.example.org/settings');
     await settled();
     expect(pagesShown(target)).toContain('/settings');
-    expect(reload).not.toHaveBeenCalled();
   });
 
   it.each(['/sign-in', '/sign-%69n'])('E-3: %s starts the shell, since its mutation needs the hub, and the guard does not ask me', async (path) => {

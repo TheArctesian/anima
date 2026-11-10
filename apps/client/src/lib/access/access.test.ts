@@ -118,7 +118,7 @@ describe('startGuard in a browser', () => {
     expect(c.goToSignIn).not.toHaveBeenCalled();
   });
 
-  it.each(['/shared', '/shared/', '/shared/x'])('R-111, API-003: %s needs sign-in like any other route', async (path) => {
+  it.each(['/shared', '/shared/', '/shared/x', '/Sign-in'])('R-111, API-003: %s needs sign-in like any other route', async (path) => {
     const c = browser(path, failure('UNAUTHENTICATED'));
     await c.run();
     expect(c.me).toHaveBeenCalledOnce();
