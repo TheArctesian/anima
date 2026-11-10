@@ -66,12 +66,8 @@ impl Issue {
     pub(super) fn browser(cookie: Option<&Identity>) -> Self {
         let replaces = cookie
             .filter(|identity| identity.kind() == TokenKind::Browser)
-            .and_then(|identity| {
-                Some(Replaced {
-                    token: identity.token(),
-                    operator: identity.operator()?.clone(),
-                })
-            });
+            .and_then(|identity| Some((identity.token(), identity.operator()?.clone())))
+            .map(|(token, operator)| Replaced { token, operator });
         Self {
             kind: TokenKind::Browser,
             lifetime: BROWSER_LIFETIME,
