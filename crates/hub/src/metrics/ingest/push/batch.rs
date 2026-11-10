@@ -26,9 +26,9 @@ const NEW_SERIES_SPAN: TimeDelta = TimeDelta::hours(1);
 
 /// The most series one device may create in any hour, a batch's new ones included (R-098 e,
 /// CR-20). Counted by the hub's creation time, so the times of a batch's points cannot reset it.
-/// One agent sends at most 519 at a time (one per plain kind, `MAX_LABELS` per disk and network
-/// kind, one per GPU kind for each of the 64 GPU indexes K8 allows); the rest is room for disks
-/// and interfaces that come and go within the hour.
+/// One agent has at most 519 series (at most 256 in one batch): one per plain kind, `MAX_LABELS`
+/// per disk and network kind, one per GPU kind for each of the 64 GPU indexes K8 allows; the rest
+/// is room for disks and interfaces that come and go within the hour.
 pub(super) const MAX_NEW_SERIES: i64 = 1024;
 
 /// The batch's device and credential, and its GPUs when it listed them.

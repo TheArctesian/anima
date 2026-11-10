@@ -119,7 +119,7 @@ The hub:
 - keys a GPU series by its index: its label is the index as text. A GPU series with a `label` is `MALFORMED`;
 - lets a device create at most 1024 series in any hour, counted by when the hub created each series, never
   by the times of its points: a batch whose new series would pass that is `MALFORMED` and stores none of it.
-  One agent sends at most 519 series at once (R-098 e, CR-20);
+  One agent has at most 519 series (at most 256 in one batch) (R-098 e, CR-20);
 - with `gpus` present, replaces the device's GPU set with it; `[]` means the device has no GPUs now, and an
   absent `gpus` leaves the set as it is. A GPU that leaves the set keeps its series and their history
   (R-098 b);
